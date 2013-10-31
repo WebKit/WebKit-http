@@ -45,6 +45,11 @@ public:
     BlendModeType blendMode() const;
     bool setBlendMode(BlendModeType);
 
+    void platformApplyGeneric(unsigned char* srcPixelArrayA, unsigned char* srcPixelArrayB, unsigned char* dstPixelArray,
+                           unsigned colorArrayLength);
+    void platformApplyNEON(unsigned char* srcPixelArrayA, unsigned char* srcPixelArrayB, unsigned char* dstPixelArray,
+                           unsigned colorArrayLength);
+
     virtual void platformApplySoftware();
     virtual void dump();
 

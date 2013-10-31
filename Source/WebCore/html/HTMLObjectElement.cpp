@@ -26,6 +26,8 @@
 
 #include "Attribute.h"
 #include "CSSValueKeywords.h"
+#include "Chrome.h"
+#include "ChromeClient.h"
 #include "EventNames.h"
 #include "ExceptionCode.h"
 #include "FormDataList.h"
@@ -192,11 +194,11 @@ void HTMLObjectElement::parametersForPlugin(Vector<String>& paramNames, Vector<S
     // Turn the attributes of the <object> element into arrays, but don't override <param> values.
     if (hasAttributes()) {
         for (unsigned i = 0; i < attributeCount(); ++i) {
-            Attribute* it = attributeItem(i);
-            const AtomicString& name = it->name().localName();
+            const Attribute* attribute = attributeItem(i);
+            const AtomicString& name = attribute->name().localName();
             if (!uniqueParamNames.contains(name.impl())) {
                 paramNames.append(name.string());
-                paramValues.append(it->value().string());
+                paramValues.append(attribute->value().string());
             }
         }
     }
@@ -392,9 +394,8 @@ static bool isRecognizedTagName(const QualifiedName& tagName)
 {
     DEFINE_STATIC_LOCAL(HashSet<AtomicStringImpl*>, tagList, ());
     if (tagList.isEmpty()) {
-        size_t tagCount = 0;
-        QualifiedName** tags = HTMLNames::getHTMLTags(&tagCount);
-        for (size_t i = 0; i < tagCount; i++) {
+        QualifiedName** tags = HTMLNames::getHTMLTags();
+        for (size_t i = 0; i < HTMLNames::HTMLTagsCount; i++) {
             if (*tags[i] == bgsoundTag
                 || *tags[i] == commandTag
                 || *tags[i] == detailsTag

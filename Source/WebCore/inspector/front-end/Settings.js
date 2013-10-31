@@ -45,8 +45,7 @@ var Preferences = {
     applicationTitle: "Web Inspector - %s",
     showHeapSnapshotObjectsHiddenProperties: false,
     showDockToRight: false,
-    exposeFileSystemInspection: false,
-    displayInitiator: false
+    exposeFileSystemInspection: false
 }
 
 var Capabilities = {
@@ -57,6 +56,7 @@ var Capabilities = {
     heapProfilerPresent: false,
     canOverrideDeviceMetrics: false,
     timelineSupportsFrameInstrumentation: false,
+    canOverrideGeolocation: false,
 }
 
 /**
@@ -100,7 +100,6 @@ WebInspector.Settings = function()
     this.savedURLs = this.createSetting("savedURLs", {});
     this.javaScriptDisabled = this.createSetting("javaScriptDisabled", false);
     this.geolocationOverride = this.createSetting("geolocationOverride", "");
-    this.geolocationError = this.createSetting("geolocationError", "None");
 
     // If there are too many breakpoints in a storage, it is likely due to a recent bug that caused
     // periodical breakpoints duplication leading to inspector slowness.
@@ -189,6 +188,9 @@ WebInspector.ExperimentsSettings = function()
     this.nativeMemorySnapshots = this._createExperiment("nativeMemorySnapshots", "Native memory profiling");
     this.liveNativeMemoryChart = this._createExperiment("liveNativeMemoryChart", "Live native memory chart");
     this.fileSystemInspection = this._createExperiment("fileSystemInspection", "FileSystem inspection");
+    this.mainThreadMonitoring = this._createExperiment("mainThreadMonitoring", "Show CPU activity in Timeline");
+    this.geolocationOverride = this._createExperiment("geolocationOverride", "Override Device Geolocation");
+    this.sass = this._createExperiment("sass", "Support for SASS");
 
     this._cleanUpSetting();
 }

@@ -38,7 +38,9 @@
 namespace WebCore {
 
 class AudioBus;
-    
+
+typedef int ExceptionCode;
+
 class AudioBuffer : public RefCounted<AudioBuffer> {
 public:   
     static PassRefPtr<AudioBuffer> create(unsigned numberOfChannels, size_t numberOfFrames, float sampleRate);
@@ -53,6 +55,7 @@ public:
 
     // Channel data access
     unsigned numberOfChannels() const { return m_channels.size(); }
+    Float32Array* getChannelData(unsigned channelIndex, ExceptionCode&);
     Float32Array* getChannelData(unsigned channelIndex);
     void zero();
 
@@ -67,7 +70,7 @@ public:
     
 protected:
     AudioBuffer(unsigned numberOfChannels, size_t numberOfFrames, float sampleRate);
-    AudioBuffer(AudioBus* bus);
+    explicit AudioBuffer(AudioBus*);
 
     double m_gain; // scalar gain
     float m_sampleRate;

@@ -239,7 +239,7 @@ void Element::setBooleanAttribute(const QualifiedName& name, bool value)
 
 NamedNodeMap* Element::attributes() const
 {
-    const_cast<Element*>(this)->ensureUpdatedAttributeData();
+    ensureUpdatedAttributeData();
     ElementRareData* rareData = const_cast<Element*>(this)->ensureElementRareData();
     if (NamedNodeMap* attributeMap = rareData->m_attributeMap.get())
         return attributeMap;
@@ -268,8 +268,8 @@ const AtomicString& Element::getAttribute(const QualifiedName& name) const
         updateAnimatedSVGAttribute(name);
 #endif
 
-    if (m_attributeData) {
-        if (Attribute* attribute = getAttributeItem(name))
+    if (attributeData()) {
+        if (const Attribute* attribute = getAttributeItem(name))
             return attribute->value();
     }
     return nullAtom;
@@ -416,8 +416,12 @@ int Element::clientLeft()
 {
     document()->updateLayoutIgnorePendingStylesheets();
 
-    if (RenderBox* renderer = renderBox())
-        return adjustForAbsoluteZoom(roundToInt(renderer->clientLeft()), renderer);
+    if (RenderBox* renderer = renderBox()) {
+        LayoutUnit clientLeft = renderer->clientLeft();
+        if (renderer->style() && renderer->style()->shouldPlaceBlockDirectionScrollbarOnLogicalLeft())
+            clientLeft += renderer->verticalScrollbarWidth();
+        return adjustForAbsoluteZoom(roundToInt(clientLeft), renderer);
+    }
     return 0;
 }
 
@@ -628,15 +632,15 @@ const AtomicString& Element::getAttribute(const AtomicString& name) const
     }
 #endif
 
-    if (m_attributeData) {
-        if (Attribute* attribute = m_attributeData->getAttributeItem(name, ignoreCase))
+    if (attributeData()) {
+        if (const Attribute* attribute = attributeData()->getAttributeItem(name, ignoreCase))
             return attribute->value();
     }
 
     return nullAtom;
 }
 
-const AtomicString& Element::getAttributeNS(const String& namespaceURI, const String& localName) const
+const AtomicString& Element::getAttributeNS(const AtomicString& namespaceURI, const AtomicString& localName) const
 {
     return getAttribute(QualifiedName(nullAtom, localName, namespaceURI));
 }
@@ -711,7 +715,7 @@ void Element::attributeChanged(const Attribute& attribute)
             setNeedsStyleRecalc();
     }
 
-    invalidateNodeListsCacheAfterAttributeChanged(attribute.name(), this);
+    invalidateNodeListCachesInAncestors(&attribute.name(), this);
 
     if (!AXObjectCache::accessibilityEnabled())
         return;
@@ -780,7 +784,7 @@ void Element::parserSetAttributes(const Vector<Attribute>& attributeVector, Frag
             }
 
             if (isAttributeToRemove(attribute.name(), attribute.value()))
-                attribute.setValue(nullAtom);
+                attribute.setValue(emptyAtom);
             i++;
         }
     }
@@ -797,7 +801,7 @@ void Element::parserSetAttributes(const Vector<Attribute>& attributeVector, Frag
 bool Element::hasAttributes() const
 {
     updateInvalidAttributes();
-    return m_attributeData && m_attributeData->length();
+    return attributeData() && attributeData()->length();
 }
 
 bool Element::hasEquivalentAttributes(const Element* other) const
@@ -914,6 +918,10 @@ void Element::removedFrom(ContainerNode* insertionPoint)
     if (containsFullScreenElement())
         setContainsFullScreenElementOnAncestorsCrossingFrameBoundaries(false);
 #endif
+#if ENABLE(POINTER_LOCK)
+    if (document()->page())
+        document()->page()->pointerLockController()->elementRemoved(this);
+#endif
 
     setSavedLayerScrollOffset(IntSize());
 
@@ -937,6 +945,9 @@ void Element::attach()
 
     createRendererIfNeeded();
     StyleResolverParentPusher parentPusher(this);
+
+    if (parentElement() && parentElement()->isInCanvasSubtree())
+        setIsInCanvasSubtree(true);
 
     // When a shadow root exists, it does the work of attaching the children.
     if (ElementShadow* shadow = this->shadow()) {
@@ -976,8 +987,10 @@ void Element::detach()
     RenderWidget::suspendWidgetHierarchyUpdates();
     unregisterNamedFlowContentNode();
     cancelFocusAppearanceUpdate();
-    if (hasRareData())
+    if (hasRareData()) {
+        setIsInCanvasSubtree(false);
         elementRareData()->resetComputedStyle();
+    }
 
     if (ElementShadow* shadow = this->shadow()) {
         detachChildrenIfNeeded();
@@ -1175,6 +1188,18 @@ ElementShadow* Element::ensureShadow()
 
     elementRareData()->m_shadow = adoptPtr(new ElementShadow());
     return elementRareData()->m_shadow.get();
+}
+
+ShadowRoot* Element::userAgentShadowRoot() const
+{
+    if (ElementShadow* elementShadow = shadow()) {
+        if (ShadowRoot* shadowRoot = elementShadow->oldestShadowRoot()) {
+            ASSERT(shadowRoot->type() == ShadowRoot::UserAgentShadowRoot);
+            return shadowRoot;
+        }
+    }
+
+    return 0;
 }
 
 ShadowRoot* Element::ensureShadowRoot()
@@ -1385,6 +1410,7 @@ PassRefPtr<Attr> Element::setAttributeNode(Attr* attr, ExceptionCode& ec)
         return 0;
     }
 
+    updateInvalidAttributes();
     ElementAttributeData* attributeData = mutableAttributeData();
 
     size_t index = attributeData->getAttributeItemIndex(attr->qualifiedName());
@@ -1436,23 +1462,30 @@ PassRefPtr<Attr> Element::removeAttributeNode(Attr* attr, ExceptionCode& ec)
     return detachAttribute(index);
 }
 
-void Element::setAttributeNS(const AtomicString& namespaceURI, const AtomicString& qualifiedName, const AtomicString& value, ExceptionCode& ec, FragmentScriptingPermission scriptingPermission)
+bool Element::parseAttributeName(QualifiedName& out, const AtomicString& namespaceURI, const AtomicString& qualifiedName, ExceptionCode& ec)
 {
     String prefix, localName;
     if (!Document::parseQualifiedName(qualifiedName, prefix, localName, ec))
-        return;
+        return false;
+    ASSERT(!ec);
 
     QualifiedName qName(prefix, localName, namespaceURI);
 
     if (!Document::hasValidNamespaceForAttributes(qName)) {
         ec = NAMESPACE_ERR;
-        return;
+        return false;
     }
 
-    if (scriptingPermission == DisallowScriptingContent && (isEventHandlerAttribute(qName) || isAttributeToRemove(qName, value)))
-        return;
+    out = qName;
+    return true;
+}
 
-    setAttribute(qName, value);
+void Element::setAttributeNS(const AtomicString& namespaceURI, const AtomicString& qualifiedName, const AtomicString& value, ExceptionCode& ec)
+{
+    QualifiedName parsedName = anyName;
+    if (!parseAttributeName(parsedName, namespaceURI, qualifiedName, ec))
+        return;
+    setAttribute(parsedName, value);
 }
 
 void Element::removeAttribute(size_t index)
@@ -1670,6 +1703,17 @@ bool Element::styleAffectedByEmpty() const
     return hasRareData() && elementRareData()->m_styleAffectedByEmpty;
 }
 
+void Element::setIsInCanvasSubtree(bool isInCanvasSubtree)
+{
+    ElementRareData* data = ensureElementRareData();
+    data->m_isInCanvasSubtree = isInCanvasSubtree;
+}
+
+bool Element::isInCanvasSubtree() const
+{
+    return hasRareData() && elementRareData()->m_isInCanvasSubtree;
+}
+
 AtomicString Element::computeInheritedLanguage() const
 {
     const Node* n = this;
@@ -1778,8 +1822,8 @@ DOMStringMap* Element::dataset()
 KURL Element::getURLAttribute(const QualifiedName& name) const
 {
 #if !ASSERT_DISABLED
-    if (m_attributeData) {
-        if (Attribute* attribute = getAttributeItem(name))
+    if (attributeData()) {
+        if (const Attribute* attribute = getAttributeItem(name))
             ASSERT(isURLAttribute(*attribute));
     }
 #endif
@@ -1789,8 +1833,8 @@ KURL Element::getURLAttribute(const QualifiedName& name) const
 KURL Element::getNonEmptyURLAttribute(const QualifiedName& name) const
 {
 #if !ASSERT_DISABLED
-    if (m_attributeData) {
-        if (Attribute* attribute = getAttributeItem(name))
+    if (attributeData()) {
+        if (const Attribute* attribute = getAttributeItem(name))
             ASSERT(isURLAttribute(*attribute));
     }
 #endif
@@ -1836,12 +1880,12 @@ bool Element::childShouldCreateRenderer(const NodeRenderingContext& childContext
 #if ENABLE(FULLSCREEN_API)
 void Element::webkitRequestFullscreen()
 {
-    document()->requestFullScreenForElement(this, ALLOW_KEYBOARD_INPUT, Document::EnforceIFrameAllowFulScreenRequirement);
+    document()->requestFullScreenForElement(this, ALLOW_KEYBOARD_INPUT, Document::EnforceIFrameAllowFullScreenRequirement);
 }
 
 void Element::webkitRequestFullScreen(unsigned short flags)
 {
-    document()->requestFullScreenForElement(this, (flags | LEGACY_MOZILLA_REQUEST), Document::EnforceIFrameAllowFulScreenRequirement);
+    document()->requestFullScreenForElement(this, (flags | LEGACY_MOZILLA_REQUEST), Document::EnforceIFrameAllowFullScreenRequirement);
 }
 
 bool Element::containsFullScreenElement() const
@@ -1872,7 +1916,8 @@ void Element::setContainsFullScreenElementOnAncestorsCrossingFrameBoundaries(boo
 #if ENABLE(POINTER_LOCK)
 void Element::webkitRequestPointerLock()
 {
-    document()->frame()->page()->pointerLockController()->requestPointerLock(this, 0, 0);
+    if (document()->page())
+        document()->page()->pointerLockController()->requestPointerLock(this, 0, 0);
 }
 #endif
 
@@ -2154,5 +2199,63 @@ void Element::createMutableAttributeData()
     else
         m_attributeData = m_attributeData->makeMutable();
 }
+
+#if ENABLE(UNDO_MANAGER)
+bool Element::undoScope() const
+{
+    return hasRareData() && elementRareData()->m_undoScope;
+}
+
+void Element::setUndoScope(bool undoScope)
+{
+    ElementRareData* data = ensureElementRareData();
+    data->m_undoScope = undoScope;
+    if (!undoScope)
+        disconnectUndoManager();
+}
+
+PassRefPtr<UndoManager> Element::undoManager()
+{
+    if (!undoScope() || (isContentEditable() && !isRootEditableElement())) {
+        disconnectUndoManager();
+        return 0;
+    }
+    ElementRareData* data = ensureElementRareData();
+    if (!data->m_undoManager)
+        data->m_undoManager = UndoManager::create(this);
+    return data->m_undoManager;
+}
+
+void Element::disconnectUndoManager()
+{
+    if (!hasRareData())
+        return;
+    ElementRareData* data = elementRareData();
+    UndoManager* undoManager = data->m_undoManager.get();
+    if (!undoManager)
+        return;
+    undoManager->clearUndoRedo();
+    undoManager->disconnect();
+    data->m_undoManager.clear();
+}
+
+void Element::disconnectUndoManagersInSubtree()
+{
+    Node* node = firstChild();
+    while (node) {
+        if (node->isElementNode()) {
+            Element* element = toElement(node);
+            if (element->hasRareData() && element->elementRareData()->m_undoManager) {
+                if (!node->isContentEditable()) {
+                    node = node->traverseNextSibling(this);
+                    continue;
+                }
+                element->disconnectUndoManager();
+            }
+        }
+        node = node->traverseNextNode(this);
+    }
+}
+#endif
 
 } // namespace WebCore

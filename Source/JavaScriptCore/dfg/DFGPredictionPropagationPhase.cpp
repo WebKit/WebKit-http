@@ -449,7 +449,9 @@ private:
         }
             
         case GetPropertyStorage: 
-        case GetIndexedPropertyStorage: {
+        case GetIndexedPropertyStorage:
+        case AllocatePropertyStorage:
+        case ReallocatePropertyStorage: {
             changed |= setPrediction(SpecOther);
             changed |= mergeDefaultFlags(node);
             break;
@@ -635,9 +637,9 @@ private:
         }
         
         case PutByVal:
-            changed |= m_graph[node.child1()].mergeFlags(NodeUsedAsValue);
-            changed |= m_graph[node.child2()].mergeFlags(NodeUsedAsNumber | NodeUsedAsInt);
-            changed |= m_graph[node.child3()].mergeFlags(NodeUsedAsValue);
+            changed |= m_graph[m_graph.varArgChild(node, 0)].mergeFlags(NodeUsedAsValue);
+            changed |= m_graph[m_graph.varArgChild(node, 1)].mergeFlags(NodeUsedAsNumber | NodeUsedAsInt);
+            changed |= m_graph[m_graph.varArgChild(node, 2)].mergeFlags(NodeUsedAsValue);
             break;
 
         case PutScopedVar:

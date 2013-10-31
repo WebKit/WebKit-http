@@ -48,9 +48,12 @@
 #include "Node.h"
 #include "NodeList.h"
 #include "StylePropertySet.h"
+#include "StylePropertyShorthand.h"
 #include "StyleResolver.h"
 #include "StyleRule.h"
 #include "StyleSheetList.h"
+#include "WebKitNamedFlow.h"
+#include "WebKitNamedFlowCollection.h"
 
 #include <wtf/CurrentTime.h>
 #include <wtf/HashSet.h>
@@ -778,13 +781,61 @@ void InspectorCSSAgent::addRule(ErrorString* errorString, const int contextNodeI
     result = inspectorStyleSheet->buildObjectForRule(rule);
 }
 
-void InspectorCSSAgent::getSupportedCSSProperties(ErrorString*, RefPtr<TypeBuilder::Array<String> >& cssProperties)
+void InspectorCSSAgent::getSupportedCSSProperties(ErrorString*, RefPtr<TypeBuilder::Array<TypeBuilder::CSS::CSSPropertyInfo> >& cssProperties)
 {
-    RefPtr<TypeBuilder::Array<String> > properties = TypeBuilder::Array<String>::create();
-    for (int i = 0; i < numCSSProperties; ++i)
-        properties->addItem(propertyNameStrings[i]);
+    RefPtr<TypeBuilder::Array<TypeBuilder::CSS::CSSPropertyInfo> > properties = TypeBuilder::Array<TypeBuilder::CSS::CSSPropertyInfo>::create();
+    for (int i = firstCSSProperty; i <= lastCSSProperty; ++i) {
+        CSSPropertyID id = convertToCSSPropertyID(i);
+        RefPtr<TypeBuilder::CSS::CSSPropertyInfo> property = TypeBuilder::CSS::CSSPropertyInfo::create()
+            .setName(getPropertyName(id));
 
+        const StylePropertyShorthand& shorthand = shorthandForProperty(id);
+        if (!shorthand.length()) {
+            properties->addItem(property.release());
+            continue;
+        }
+        RefPtr<TypeBuilder::Array<String> > longhands = TypeBuilder::Array<String>::create();
+        for (unsigned j = 0; j < shorthand.length(); ++j) {
+            CSSPropertyID longhandID = shorthand.properties()[j];
+            longhands->addItem(getPropertyName(longhandID));
+        }
+        property->setLonghands(longhands);
+        properties->addItem(property.release());
+    }
     cssProperties = properties.release();
+}
+
+void InspectorCSSAgent::getNamedFlowCollection(ErrorString* errorString, int nodeId, RefPtr<TypeBuilder::Array<String> >& result)
+{
+    Document* document = m_domAgent->assertDocument(errorString, nodeId);
+    if (!document)
+        return;
+
+    Vector<String> namedFlowsVector = document->namedFlows()->namedFlowsNames();
+    RefPtr<TypeBuilder::Array<String> > namedFlows = TypeBuilder::Array<String>::create();
+
+    for (Vector<String>::iterator it = namedFlowsVector.begin(); it != namedFlowsVector.end(); ++it)
+        namedFlows->addItem(*it);
+
+    result = namedFlows.release();
+}
+
+void InspectorCSSAgent::getFlowByName(ErrorString* errorString, int nodeId, const String& flowName, RefPtr<TypeBuilder::CSS::NamedFlow>& result)
+{
+    Document* document = m_domAgent->assertDocument(errorString, nodeId);
+    if (!document)
+        return;
+
+    WebKitNamedFlow* namedFlow = document->namedFlows()->flowByName(flowName);
+    if (!namedFlow) {
+        *errorString = "No target CSS Named Flow found";
+        return;
+    }
+
+    result = TypeBuilder::CSS::NamedFlow::create()
+        .setNodeId(nodeId)
+        .setName(flowName)
+        .setOverset(namedFlow->overset());
 }
 
 void InspectorCSSAgent::startSelectorProfiler(ErrorString*)

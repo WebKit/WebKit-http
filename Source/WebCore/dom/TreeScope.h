@@ -36,6 +36,7 @@ class ContainerNode;
 class DOMSelection;
 class Element;
 class HTMLMapElement;
+class IdTargetObserverRegistry;
 class Node;
 
 // A class which inherits both Node and TreeScope must call clearRareData() in its destructor
@@ -61,10 +62,6 @@ public:
     void removeImageMap(HTMLMapElement*);
     HTMLMapElement* getImageMap(const String& url) const;
 
-    void addNodeListCache() { ++m_numNodeListCaches; }
-    void removeNodeListCache() { ASSERT(m_numNodeListCaches > 0); --m_numNodeListCaches; }
-    bool hasNodeListCaches() const { return m_numNodeListCaches; }
-
     DOMSelection* getSelection() const;
 
     // Find first anchor with the given name.
@@ -82,8 +79,10 @@ public:
 
     ContainerNode* rootNode() const { return m_rootNode; }
 
+    IdTargetObserverRegistry& idTargetObserverRegistry() const { return *m_idTargetObserverRegistry.get(); }
+
 protected:
-    TreeScope(ContainerNode*);
+    explicit TreeScope(ContainerNode*);
     virtual ~TreeScope();
 
     void destroyTreeScopeData();
@@ -95,7 +94,7 @@ private:
     DocumentOrderedMap m_elementsById;
     DocumentOrderedMap m_imageMapsByName;
 
-    unsigned m_numNodeListCaches;
+    OwnPtr<IdTargetObserverRegistry> m_idTargetObserverRegistry;
 
     mutable RefPtr<DOMSelection> m_selection;
 };

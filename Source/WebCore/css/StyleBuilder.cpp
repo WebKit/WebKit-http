@@ -44,6 +44,12 @@
 #include <wtf/StdLibExtras.h>
 #include <wtf/UnusedParam.h>
 
+#if ENABLE(CSS_EXCLUSIONS)
+#include "CSSWrapShapes.h"
+#include "WrapShapeFunctions.h"
+#include "WrapShapes.h"
+#endif
+
 using namespace std;
 
 namespace WebCore {
@@ -761,6 +767,10 @@ public:
 
         if (size < 0)
             return;
+
+        // Overly large font sizes will cause crashes on some platforms (such as Windows).
+        // Cap font size here to make sure that doesn't happen.
+        size = min(1000000.0f, size);
 
         styleResolver->setFontSize(fontDescription, size);
         styleResolver->setFontDescription(fontDescription);
@@ -1726,23 +1736,25 @@ public:
 };
 
 #if ENABLE(CSS_EXCLUSIONS)
-template <CSSWrapShape* (RenderStyle::*getterFunction)() const, void (RenderStyle::*setterFunction)(PassRefPtr<CSSWrapShape>), CSSWrapShape* (*initialFunction)()>
+template <WrapShape* (RenderStyle::*getterFunction)() const, void (RenderStyle::*setterFunction)(PassRefPtr<WrapShape>), WrapShape* (*initialFunction)()>
 class ApplyPropertyWrapShape {
 public:
-    static void setValue(RenderStyle* style, PassRefPtr<CSSWrapShape> value) { (style->*setterFunction)(value); }
+    static void setValue(RenderStyle* style, PassRefPtr<WrapShape> value) { (style->*setterFunction)(value); }
     static void applyValue(StyleResolver* styleResolver, CSSValue* value)
     {
         if (value->isPrimitiveValue()) {
             CSSPrimitiveValue* primitiveValue = static_cast<CSSPrimitiveValue*>(value);
             if (primitiveValue->getIdent() == CSSValueAuto)
                 setValue(styleResolver->style(), 0);
-            else if (primitiveValue->isShape())
-                setValue(styleResolver->style(), primitiveValue->getShapeValue());
+            else if (primitiveValue->isShape()) {
+                RefPtr<WrapShape> wrapShape = wrapShapeForValue(styleResolver, primitiveValue->getShapeValue());
+                setValue(styleResolver->style(), wrapShape.release());
+            }
         }
     }
     static PropertyHandler createHandler()
     {
-        PropertyHandler handler = ApplyPropertyDefaultBase<CSSWrapShape*, getterFunction, PassRefPtr<CSSWrapShape>, setterFunction, CSSWrapShape*, initialFunction>::createHandler();
+        PropertyHandler handler = ApplyPropertyDefaultBase<WrapShape*, getterFunction, PassRefPtr<WrapShape>, setterFunction, WrapShape*, initialFunction>::createHandler();
         return PropertyHandler(handler.inheritFunction(), handler.initialFunction(), &applyValue);
     }
 };
@@ -1872,6 +1884,9 @@ StyleBuilder::StyleBuilder()
     setPropertyHandler(CSSPropertyFontVariant, ApplyPropertyFont<FontSmallCaps, &FontDescription::smallCaps, &FontDescription::setSmallCaps, FontSmallCapsOff>::createHandler());
     setPropertyHandler(CSSPropertyFontWeight, ApplyPropertyFontWeight::createHandler());
     setPropertyHandler(CSSPropertyHeight, ApplyPropertyLength<&RenderStyle::height, &RenderStyle::setHeight, &RenderStyle::initialSize, AutoEnabled, LegacyIntrinsicEnabled, IntrinsicDisabled, NoneDisabled, UndefinedDisabled>::createHandler());
+#if ENABLE(CSS_IMAGE_ORIENTATION)
+    setPropertyHandler(CSSPropertyImageOrientation, ApplyPropertyDefault<ImageOrientationEnum, &RenderStyle::imageOrientation, ImageOrientationEnum, &RenderStyle::setImageOrientation, ImageOrientationEnum, &RenderStyle::initialImageOrientation>::createHandler());
+#endif
     setPropertyHandler(CSSPropertyImageRendering, ApplyPropertyDefault<EImageRendering, &RenderStyle::imageRendering, EImageRendering, &RenderStyle::setImageRendering, EImageRendering, &RenderStyle::initialImageRendering>::createHandler());
 #if ENABLE(CSS_IMAGE_RESOLUTION)
     setPropertyHandler(CSSPropertyImageResolution, ApplyPropertyImageResolution::createHandler());

@@ -375,19 +375,19 @@ void ChromeClientBlackBerry::setResizable(bool)
 
 bool ChromeClientBlackBerry::canRunBeforeUnloadConfirmPanel()
 {
-    notImplemented();
-    return false;
+    return true;
 }
 
-bool ChromeClientBlackBerry::runBeforeUnloadConfirmPanel(const String& message, Frame*)
+bool ChromeClientBlackBerry::runBeforeUnloadConfirmPanel(const String& message, Frame* frame)
 {
 #if !defined(PUBLIC_BUILD) || !PUBLIC_BUILD
     if (m_webPagePrivate->m_dumpRenderTree)
         return m_webPagePrivate->m_dumpRenderTree->runBeforeUnloadConfirmPanel(message);
 #endif
 
-    notImplemented();
-    return false;
+    TimerBase::fireTimersInNestedEventLoop();
+    CString latinOrigin = frameOrigin(frame);
+    return m_webPagePrivate->m_client->runBeforeUnloadConfirmPanel(message.characters(), message.length(), latinOrigin.data(), latinOrigin.length());
 }
 
 void ChromeClientBlackBerry::closeWindowSoon()
@@ -507,26 +507,25 @@ void ChromeClientBlackBerry::exceededDatabaseQuota(Frame* frame, const String& n
 void ChromeClientBlackBerry::runOpenPanel(Frame*, PassRefPtr<FileChooser> chooser)
 {
     SharedArray<WebString> initialFiles;
-    unsigned int initialFileSize = chooser->settings().selectedFiles.size();
-    if (initialFileSize > 0)
-        initialFiles.reset(new WebString[initialFileSize]);
-    for (unsigned i = 0; i < initialFileSize; ++i)
+    unsigned numberOfInitialFiles = chooser->settings().selectedFiles.size();
+    if (numberOfInitialFiles > 0)
+        initialFiles.reset(new WebString[numberOfInitialFiles], numberOfInitialFiles);
+    for (unsigned i = 0; i < numberOfInitialFiles; ++i)
         initialFiles[i] = chooser->settings().selectedFiles[i];
 
     SharedArray<WebString> chosenFiles;
-    unsigned int chosenFileSize;
 
     {
         PageGroupLoadDeferrer deferrer(m_webPagePrivate->m_page, true);
         TimerBase::fireTimersInNestedEventLoop();
 
         // FIXME: Use chooser->settings().acceptMIMETypes instead of WebString() for the second parameter.
-        if (!m_webPagePrivate->m_client->chooseFilenames(chooser->settings().allowsMultipleFiles, WebString(), initialFiles, initialFileSize, chosenFiles, chosenFileSize))
+        if (!m_webPagePrivate->m_client->chooseFilenames(chooser->settings().allowsMultipleFiles, WebString(), initialFiles, chosenFiles))
             return;
     }
 
-    Vector<String> files(chosenFileSize);
-    for (unsigned i = 0; i < chosenFileSize; ++i)
+    Vector<String> files(chosenFiles.length());
+    for (unsigned i = 0; i < chosenFiles.length(); ++i)
         files[i] = chosenFiles[i];
     chooser->chooseFiles(files);
 }
@@ -817,19 +816,21 @@ PassOwnPtr<ColorChooser> ChromeClientBlackBerry::createColorChooser(ColorChooser
 }
 
 #if ENABLE(CUSTOM_SCHEME_HANDLER)
-ChromeClient::CustomHandlersState ChromeClientBlackBerry::isProtocolHandlerRegistered(const String&, const String&, const String&)
+ChromeClient::CustomHandlersState ChromeClientBlackBerry::isProtocolHandlerRegistered(const String& scheme, const String& baseURL, const String& url)
 {
-    return ChromeClient::CustomHandlersDeclined;
+    return static_cast<CustomHandlersState>(m_webPagePrivate->m_client->isProtocolHandlerRegistered(scheme, baseURL, url));
 }
 
-void ChromeClientBlackBerry::unregisterProtocolHandler(const String&, const String&, const String&)
+void ChromeClientBlackBerry::unregisterProtocolHandler(const String& scheme, const String& baseURL, const String& url)
 {
+    m_webPagePrivate->m_client->unregisterProtocolHandler(scheme, baseURL, url);
 }
 #endif
 
 #if ENABLE(REGISTER_PROTOCOL_HANDLER)
-void ChromeClientBlackBerry::registerProtocolHandler(const WTF::String&, const WTF::String&, const WTF::String&, const WTF::String&)
+void ChromeClientBlackBerry::registerProtocolHandler(const String& scheme, const String& baseURL, const String& url, const String& title)
 {
+    m_webPagePrivate->m_client->registerProtocolHandler(scheme, baseURL, url, title);
 }
 #endif
 

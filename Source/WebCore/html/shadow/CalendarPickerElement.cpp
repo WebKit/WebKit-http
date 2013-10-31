@@ -37,7 +37,6 @@
 #include "Chrome.h"
 #include "ChromeClient.h"
 #include "DateComponents.h"
-#include "DocumentWriter.h"
 #include "Event.h"
 #include "FrameView.h"
 #include "HTMLInputElement.h"
@@ -81,13 +80,17 @@ RenderObject* CalendarPickerElement::createRenderer(RenderArena* arena, RenderSt
 
 inline HTMLInputElement* CalendarPickerElement::hostInput()
 {
-    ASSERT(shadowAncestorNode());
-    ASSERT(shadowAncestorNode()->hasTagName(inputTag));
-    return static_cast<HTMLInputElement*>(shadowAncestorNode());
+    // JavaScript code can't create CalendarPickerElement objects. This is
+    // always in shadow of <input>.
+    ASSERT(shadowHost());
+    ASSERT(shadowHost()->hasTagName(inputTag));
+    return static_cast<HTMLInputElement*>(shadowHost());
 }
 
 void CalendarPickerElement::defaultEventHandler(Event* event)
 {
+    if (!renderer())
+        return;
     HTMLInputElement* input = hostInput();
     if (input->readOnly() || input->disabled())
         return;
@@ -99,6 +102,15 @@ void CalendarPickerElement::defaultEventHandler(Event* event)
 
     if (!event->defaultHandled())
         HTMLDivElement::defaultEventHandler(event);
+}
+
+bool CalendarPickerElement::willRespondToMouseClickEvents()
+{
+    const HTMLInputElement* input = hostInput();
+    if (renderer() && !input->readOnly() && !input->disabled())
+        return true;
+
+    return HTMLDivElement::willRespondToMouseClickEvents();
 }
 
 void CalendarPickerElement::openPopup()
@@ -139,67 +151,6 @@ IntSize CalendarPickerElement::contentSize()
     return IntSize(100, 100);
 }
 
-#define addLiteral(literal, writer)    writer.addData(literal, sizeof(literal) - 1)
-
-static inline void addString(const String& str, DocumentWriter& writer)
-{
-    CString str8 = str.utf8();
-    writer.addData(str8.data(), str8.length());
-}
-
-static void addJavaScriptString(const String& str, DocumentWriter& writer)
-{
-    addLiteral("\"", writer);
-    StringBuilder builder;
-    builder.reserveCapacity(str.length());
-    for (unsigned i = 0; i < str.length(); ++i) {
-        if (str[i] == '\\' || str[i] == '"')
-            builder.append('\\');
-        builder.append(str[i]);
-    }
-    addString(builder.toString(), writer);
-    addLiteral("\"", writer);
-}
-
-static void addProperty(const char* name, const String& value, DocumentWriter& writer)
-{
-    writer.addData(name, strlen(name));
-    addLiteral(": ", writer);
-    addJavaScriptString(value, writer);
-    addLiteral(",\n", writer);
-}
-
-static void addProperty(const char* name, unsigned value, DocumentWriter& writer)
-{
-    writer.addData(name, strlen(name));
-    addLiteral(": ", writer);
-    addString(String::number(value), writer);
-    addLiteral(",\n", writer);
-}
-
-static void addProperty(const char* name, bool value, DocumentWriter& writer)
-{
-    writer.addData(name, strlen(name));
-    addLiteral(": ", writer);
-    if (value)
-        addLiteral("true", writer);
-    else
-        addLiteral("false", writer);
-    addLiteral(",\n", writer);
-}
-
-static void addProperty(const char* name, const Vector<String>& values, DocumentWriter& writer)
-{
-    writer.addData(name, strlen(name));
-    addLiteral(": [", writer);
-    for (unsigned i = 0; i < values.size(); ++i) {
-        if (i)
-            addLiteral(",", writer);
-        addJavaScriptString(values[i], writer);
-    }
-    addLiteral("],\n", writer);
-}
-
 void CalendarPickerElement::writeDocument(DocumentWriter& writer)
 {
     HTMLInputElement* input = hostInput();
@@ -213,14 +164,14 @@ void CalendarPickerElement::writeDocument(DocumentWriter& writer)
     if (stepString.isEmpty() || !input->getAllowedValueStep(&step))
         stepString = "1";
 
-    addLiteral("<!DOCTYPE html><head><meta charset='UTF-8'><style>\n", writer);
+    addString("<!DOCTYPE html><head><meta charset='UTF-8'><style>\n", writer);
     writer.addData(calendarPickerCss, sizeof(calendarPickerCss));
     if (document()->page()) {
         CString extraStyle = document()->page()->theme()->extraCalendarPickerStyleSheet();
         if (extraStyle.length())
             writer.addData(extraStyle.data(), extraStyle.length());
     }
-    addLiteral("</style></head><body><div id=main>Loading...</div><script>\n"
+    addString("</style></head><body><div id=main>Loading...</div><script>\n"
                "window.dialogArguments = {\n", writer);
     addProperty("min", minString, writer);
     addProperty("max", maxString, writer);
@@ -235,10 +186,10 @@ void CalendarPickerElement::writeDocument(DocumentWriter& writer)
     addProperty("dayLabels", weekDayShortLabels(), writer);
     Direction dir = direction(monthLabels()[0][0]);
     addProperty("isRTL", dir == RightToLeft || dir == RightToLeftArabic, writer);
-    addLiteral("}\n", writer);
+    addString("}\n", writer);
 
     writer.addData(calendarPickerJs, sizeof(calendarPickerJs));
-    addLiteral("</script></body>\n", writer);
+    addString("</script></body>\n", writer);
 }
 
 void CalendarPickerElement::setValueAndClosePopup(int numValue, const String& stringValue)

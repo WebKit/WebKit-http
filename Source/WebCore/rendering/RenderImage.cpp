@@ -446,7 +446,7 @@ void RenderImage::paintIntoRect(GraphicsContext* context, const LayoutRect& rect
     if (!img || img->isNull())
         return;
 
-    HTMLImageElement* imageElt = (node() && node()->hasTagName(imgTag)) ? static_cast<HTMLImageElement*>(node()) : 0;
+    HTMLImageElement* imageElt = hostImageElement();
     CompositeOperator compositeOperator = imageElt ? imageElt->compositeOperator() : CompositeSourceOver;
     Image* image = m_imageResource->image().get();
     bool useLowQualityScaling = shouldPaintAtLowQuality(context, image, image, alignedRect.size());
@@ -494,7 +494,7 @@ int RenderImage::minimumReplacedHeight() const
 
 HTMLMapElement* RenderImage::imageMap() const
 {
-    HTMLImageElement* i = node() && node()->hasTagName(imgTag) ? static_cast<HTMLImageElement*>(node()) : 0;
+    HTMLImageElement* i = hostImageElement();
     return i ? i->treeScope()->getImageMap(i->fastGetAttribute(usemapAttr)) : 0;
 }
 
@@ -507,7 +507,7 @@ bool RenderImage::nodeAtPoint(const HitTestRequest& request, HitTestResult& resu
         if (HTMLMapElement* map = imageMap()) {
             LayoutRect contentBox = contentBoxRect();
             float scaleFactor = 1 / style()->effectiveZoom();
-            LayoutPoint mapLocation = pointInContainer.point() - toLayoutSize(accumulatedOffset) - LayoutSize(this->x(), this->y()) - toLayoutSize(contentBox.location());
+            LayoutPoint mapLocation = pointInContainer.point() - toLayoutSize(accumulatedOffset) - locationOffset() - toLayoutSize(contentBox.location());
             mapLocation.scale(scaleFactor, scaleFactor);
 
             if (map->mapMouseEvent(mapLocation, contentBox.size(), tempResult))
@@ -529,8 +529,8 @@ void RenderImage::updateAltText()
 
     if (node()->hasTagName(inputTag))
         m_altText = static_cast<HTMLInputElement*>(node())->altText();
-    else if (node()->hasTagName(imgTag))
-        m_altText = static_cast<HTMLImageElement*>(node())->altText();
+    else if (HTMLImageElement* image = hostImageElement())
+        m_altText = image->altText();
 }
 
 void RenderImage::layout()
@@ -561,6 +561,24 @@ void RenderImage::computeIntrinsicRatioInformation(FloatSize& intrinsicSize, dou
         intrinsicRatio = 1;
         return;
     }
+}
+
+HTMLImageElement* RenderImage::hostImageElement() const
+{
+    if (!node())
+        return 0;
+
+    if (isHTMLImageElement(node()))
+        return toHTMLImageElement(node());
+
+    if (node()->hasTagName(webkitInnerImageTag)) {
+        if (Node* ancestor = node()->shadowAncestorNode()) {
+            if (ancestor->hasTagName(imgTag))
+                return toHTMLImageElement(ancestor);
+        }
+    }
+
+    return 0;
 }
 
 bool RenderImage::needsPreferredWidthsRecalculation() const

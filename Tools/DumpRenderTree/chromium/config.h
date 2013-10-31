@@ -31,17 +31,6 @@
 #ifndef config_h
 #define config_h
 
-// To avoid confict of LOG in wtf/Assertions.h and LOG in base/logging.h,
-// skip base/loggin.h by defining BASE_LOGGING_H_ and define some macros
-// provided by base/logging.h.
-// FIXME: Remove this hack!
-#include <iostream>
-#define BASE_LOGGING_H_
-#define CHECK(condition) while (false && (condition)) std::cerr
-#define DCHECK(condition) while (false && (condition)) std::cerr
-#define DCHECK_EQ(a, b) while (false && (a) == (b)) std::cerr
-#define DCHECK_NE(a, b) while (false && (a) != (b)) std::cerr
-
 #include <wtf/Platform.h>
 #include <wtf/ExportMacros.h>
 

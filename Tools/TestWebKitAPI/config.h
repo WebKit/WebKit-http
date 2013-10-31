@@ -23,6 +23,12 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#if defined(HAVE_CONFIG_H) && HAVE_CONFIG_H
+#ifdef BUILDING_WITH_CMAKE
+#include "cmakeconfig.h"
+#endif
+#endif
+
 #include <wtf/Platform.h>
 #include <wtf/ExportMacros.h>
 #if USE(JSC)

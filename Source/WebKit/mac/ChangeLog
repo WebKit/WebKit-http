@@ -1,3 +1,303 @@
+2012-07-29  Rik Cabanier  <cabanier@adobe.com>
+
+        Add ENABLE_CSS_COMPOSITING flag
+        https://bugs.webkit.org/show_bug.cgi?id=92553
+
+        Reviewed by Dirk Schulze.
+
+        Adds compiler flag CSS_COMPOSITING to build systems to enable CSS blending and compositing. See spec https://dvcs.w3.org/hg/FXTF/rawfile/tip/compositing/index.html
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2012-07-27  Anders Carlsson  <andersca@apple.com>
+
+        Show the unavailable plug-in indicator for Java applets as well
+        https://bugs.webkit.org/show_bug.cgi?id=92521
+
+        Reviewed by Sam Weinig.
+
+        Check if the Java plug-in is blocked before trying to instantiate it.
+
+        * WebCoreSupport/WebFrameLoaderClient.mm:
+
+2012-07-25  Jer Noble  <jer.noble@apple.com>
+
+        Add setting to enable and disable diagnostic logging.
+        https://bugs.webkit.org/show_bug.cgi?id=92337
+
+        Reviewed by Anders Carlsson.
+
+        Add a WebKit WebPreferences API to set set the WebCore diagnosticLoggingEnabled setting.
+
+        * WebView/WebPreferenceKeysPrivate.h:
+        * WebView/WebPreferences.mm:
+        (+[WebPreferences initialize]): Register the default value to false.
+        (-[WebPreferences diagnosticLoggingEnabled]): Simple userDefaults accessor.
+        (-[WebPreferences setDiagnosticLoggingEnabled:]): Ditto.
+        * WebView/WebPreferencesPrivate.h:
+        * WebView/WebView.mm:
+        (-[WebView _preferencesChanged:]): Ensure this preference is propagated to Settings
+            whenever the preferences change.
+
+2012-07-25  Pratik Solanki  <psolanki@apple.com>
+
+        Remove catchesDelegateExceptions from WebViewData and related accessor methods
+        https://bugs.webkit.org/show_bug.cgi?id=90898
+
+        Reviewed by Darin Adler.
+
+        Remove catchesDelegateException ivar from WebViewData and all its accesor methods from
+        WebView. All uses of this flag in WebKit set it to YES and no one calls
+        _setCatchesDelegateExceptions with NO.
+
+        * WebCoreSupport/WebDragClient.mm:
+        (WebDragClient::startDrag):
+        * WebView/WebDelegateImplementationCaching.mm:
+        (CallDelegate):
+        (CallDelegateReturningFloat):
+        (CallDelegateReturningBoolean):
+        (CallResourceLoadDelegateReturningBoolean):
+        (CallFormDelegate):
+        (CallFormDelegateReturningBoolean):
+        * WebView/WebView.mm:
+        (-[WebView _commonInitializationWithFrameName:groupName:]):
+        (-[WebView _policyDelegateForwarder]):
+        (-[WebView _UIDelegateForwarder]):
+        (-[WebView _editingDelegateForwarder]):
+        (-[_WebSafeForwarder initWithTarget:defaultTarget:]):
+        (-[_WebSafeForwarder forwardInvocation:]):
+        * WebView/WebViewData.h:
+        * WebView/WebViewPrivate.h:
+
+2012-07-23  Simon Fraser  <simon.fraser@apple.com>
+
+        Part 2 of: Implement sticky positioning
+        https://bugs.webkit.org/show_bug.cgi?id=90046
+
+        Reviewed by Ojan Vafai.
+
+        Turn on ENABLE_CSS_STICKY_POSITION.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2012-07-23  Pierre Rossi  <pierre.rossi@gmail.com>
+
+        Unify numTouchEventHandlersChanged and needTouchEvents in the chrome client
+        https://bugs.webkit.org/show_bug.cgi?id=91006
+
+        Reviewed by Ryosuke Niwa.
+
+        Remove numTouchEventHandlersChanged stub.
+
+        * WebCoreSupport/WebChromeClient.h:
+
+2012-07-23  Simon Fraser  <simon.fraser@apple.com>
+
+        Part 1 of: Implement sticky positioning
+        https://bugs.webkit.org/show_bug.cgi?id=90046
+
+        Reviewed by Ojan Vafai.
+
+        Add ENABLE_CSS_STICKY_POSITION, defaulting to off initially.
+        
+        Sort the ENABLE_CSS lines in the file. Make sure all the flags
+        are in FEATURE_DEFINES.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2012-07-23  Kent Tamura  <tkent@chromium.org>
+
+        Rename ENABLE_METER_TAG and ENABLE_PROGRESS_TAG to ENABLE_METER_ELEMENT and ENABLE_PROGRESS_ELEMENT respectively
+        https://bugs.webkit.org/show_bug.cgi?id=91941
+
+        Reviewed by Kentaro Hara.
+
+        A flag name for an elmement should be ENABLE_*_ELEMENT.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2012-07-22  Kent Tamura  <tkent@chromium.org>
+
+        Rename ENABLE_DETAILS to ENABLE_DETAILS_ELEMENT
+        https://bugs.webkit.org/show_bug.cgi?id=91928
+
+        Reviewed by Kentaro Hara.
+
+        A flag name for an elmement should be ENABLE_*_ELEMENT.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2012-07-20  Kent Tamura  <tkent@chromium.org>
+
+        Rename ENABLE_DATALIST to ENABLE_DATALIST_ELEMENT
+        https://bugs.webkit.org/show_bug.cgi?id=91846
+
+        Reviewed by Kentaro Hara.
+
+        A flag name for an elmement should be ENABLE_*_ELEMENT.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2012-07-18  Benjamin Poulain  <bpoulain@apple.com>
+
+        [Mac] Make WebDataSourcePrivate lighter
+        https://bugs.webkit.org/show_bug.cgi?id=91511
+
+        Reviewed by Anders Carlsson.
+
+        Make WebDataSourcePrivate a simple C++ class and use smart pointers for memory management.
+
+        Since the "loader" attribute is only set on initialization, all the assertions spread in
+        various function are removed in favor of assertions on initialization.
+
+        * WebView/WebDataSource.h:
+        * WebView/WebDataSource.mm:
+        (WebDataSourcePrivate):
+        (WebDataSourcePrivate::WebDataSourcePrivate):
+        (WebDataSourcePrivate::~WebDataSourcePrivate):
+        Use a class instead of a Objective-C object for WebDataSourcePrivate.
+        Use smart pointers instead of ref counting manually.
+
+        (-[WebDataSource _setRepresentation:]):
+        (-[WebDataSource _addSubframeArchives:]):
+        (-[WebDataSource _transferApplicationCache:]):
+        (-[WebDataSource _setDeferMainResourceDataLoad:]):
+        (-[WebDataSource _documentFragmentWithArchive:]):
+        (-[WebDataSource _initWithDocumentLoader:]):
+
+        (+[WebDataSource initialize]):
+        (-[WebDataSource dealloc]):
+        (-[WebDataSource finalize]):
+        WebDataSource takes the special initialization and destruction that was done in WebDataSourcePrivate.
+
+        (-[WebDataSource representation]):
+
+2012-07-17  Vivek Galatage  <vivekgalatage@gmail.com>
+
+        Web Inspector: refactor InspectorController::connectFrontend() to accept InspectorFrontendChannel.
+        https://bugs.webkit.org/show_bug.cgi?id=91196
+
+        Reviewed by Pavel Feldman.
+
+        Refactoring InspectorClients. InspectorClient::openInspectorFrontend
+        now returning the InspectorFrontendChannel.
+
+        * WebCoreSupport/WebInspectorClient.h:
+        (WebInspectorClient):
+        * WebCoreSupport/WebInspectorClient.mm:
+        (WebInspectorClient::openInspectorFrontend):
+
+2012-07-17  David Barr  <davidbarr@chromium.org>
+
+        Introduce ENABLE_CSS_IMAGE_ORIENTATION compile flag
+        https://bugs.webkit.org/show_bug.cgi?id=89055
+
+        Reviewed by Kent Tamura.
+
+        The css3-images module is at candidate recommendation.
+        http://www.w3.org/TR/2012/CR-css3-images-20120417/#the-image-orientation
+
+        Add a configuration option for CSS image-orientation support, disabling it by default.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2012-07-15  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Fix case sensitive build issue.
+
+        Unreviewed build fix.
+
+        * WebView/WebPreferences.mm:
+
+2012-07-15  Benjamin Poulain  <benjamin@webkit.org>
+
+        Make WebPreferencesPrivate a simple struct
+        https://bugs.webkit.org/show_bug.cgi?id=91330
+
+        Reviewed by Filip Pizlo.
+
+        To avoid taking time creating a new Objective-C object for WebPreferencesPrivate, we can just make
+        it a simple struct.
+
+        * WebView/WebPreferences.h:
+        * WebView/WebPreferences.mm:
+        (WebPreferencesPrivate):
+        (WebPreferencesPrivate::WebPreferencesPrivate):
+        Replace the Objective-C WebPreferencesPrivate by a struct.
+        Remove IBCreatorID from the object as it is unused.
+        Use RetainPtr for the Objective-C attribute to avoid tracking their memory manually.
+
+        (-[WebPreferences initWithIdentifier:]):
+        Change the order of the initialization to avoid allocating anyting if a WebPreferences exists
+        for the identifier.
+        Both [NSObject init] and WebPreferencesPrivate allocation are moved after the fast path.
+
+        (-[WebPreferences initWithCoder:]):
+        (-[WebPreferences encodeWithCoder:]):
+        (-[WebPreferences dealloc]):
+        (-[WebPreferences identifier]):
+        (-[WebPreferences _valueForKey:]):
+        (-[WebPreferences _setStringValue:forKey:]):
+        (-[WebPreferences _setIntegerValue:forKey:]):
+        (-[WebPreferences _setFloatValue:forKey:]):
+        (-[WebPreferences _setBoolValue:forKey:]):
+        (-[WebPreferences _setLongLongValue:forKey:]):
+        (-[WebPreferences _setUnsignedLongLongValue:forKey:]):
+
+2012-07-14  Benjamin Poulain  <bpoulain@apple.com>
+
+        [Mac] Do not try to update the cache model for every WebPreferences change
+        https://bugs.webkit.org/show_bug.cgi?id=91302
+
+        Reviewed by Joseph Pecoraro.
+
+        WebView was listening to any change on any WebPreferences in order to update the cache model. This is unneeded in most cases,
+        we can just listen to updates of the CacheModel property.
+
+        * WebView/WebPreferences.mm:
+        (-[WebPreferences initWithIdentifier:]):
+        (-[WebPreferences _postCacheModelChangedNotification]):
+        (-[WebPreferences setCacheModel:]):
+        * WebView/WebPreferencesPrivate.h:
+        * WebView/WebView.mm:
+        (+[WebView initialize]):
+        (+[WebView _cacheModelChangedNotification:]):
+
+2012-07-14  Sheriff Bot  <webkit.review.bot@gmail.com>
+
+        Unreviewed, rolling out r122665.
+        http://trac.webkit.org/changeset/122665
+        https://bugs.webkit.org/show_bug.cgi?id=91321
+
+        Broke Mac builds (Requested by rniwa on #webkit).
+
+        * WebView/WebPreferences.mm:
+        (-[WebPreferences initWithIdentifier:]):
+        (-[WebPreferences setCacheModel:]):
+        * WebView/WebPreferencesPrivate.h:
+        * WebView/WebView.mm:
+        (+[WebView initialize]):
+        (+[WebView _preferencesChangedNotification:]):
+
+2012-07-13  Benjamin Poulain  <bpoulain@apple.com>
+
+        [Mac] Do not try to update the cache model for every WebPreferences change
+        https://bugs.webkit.org/show_bug.cgi?id=91302
+
+        Reviewed by Joseph Pecoraro.
+
+        WebView was listening to any change on any WebPreferences in order to update the cache model. This is unneeded in most cases,
+        we can just listen to updates of the CacheModel property.
+
+        * WebView/WebPreferences.mm:
+        (-[WebPreferences initWithIdentifier:]):
+        (-[WebPreferences _postCacheModelChangedNotification]):
+        (-[WebPreferences setCacheModel:]):
+        * WebView/WebPreferencesPrivate.h:
+        * WebView/WebView.mm:
+        (+[WebView initialize]):
+        (+[WebView _cacheModelChangedNotification:]):
+
 2012-07-11  Mark Rowe  <mrowe@apple.com>
 
         Fix a logic error in the #if so that the correct code is compiled on Snow Leopard.

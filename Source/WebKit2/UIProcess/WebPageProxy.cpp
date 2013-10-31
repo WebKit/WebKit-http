@@ -1136,7 +1136,7 @@ void WebPageProxy::handleKeyboardEvent(const NativeWebKeyboardEvent& event)
         bool handled = false;
         process()->sendSync(Messages::WebPage::KeyEventSyncForTesting(event), Messages::WebPage::KeyEventSyncForTesting::Reply(handled), m_pageID);
         didReceiveEvent(event.type(), handled);
-    } else
+    } else if (m_keyEventQueue.size() == 1) // Otherwise, sent from DidReceiveEvent message handler.
         process()->send(Messages::WebPage::KeyEvent(event), m_pageID);
 }
 
@@ -1221,7 +1221,7 @@ void WebPageProxy::receivedPolicyDecision(PolicyAction action, WebFrameProxy* fr
         // Create a download proxy.
         DownloadProxy* download = m_process->context()->createDownloadProxy();
         downloadID = download->downloadID();
-#if PLATFORM(QT)
+#if PLATFORM(QT) || PLATFORM(EFL)
         // Our design does not suppport downloads without a WebPage.
         handleDownloadRequest(download);
 #endif
@@ -1894,13 +1894,18 @@ void WebPageProxy::didFinishProgress()
 }
 
 #if ENABLE(WEB_INTENTS_TAG)
-void WebPageProxy::registerIntentServiceForFrame(uint64_t frameID, const IntentServiceInfo& serviceInfo)
+void WebPageProxy::registerIntentServiceForFrame(uint64_t frameID, const IntentServiceInfo& serviceInfo, CoreIPC::ArgumentDecoder* arguments)
 {
+    RefPtr<APIObject> userData;
+    WebContextUserMessageDecoder messageDecoder(userData, m_process->context());
+    if (!arguments->decode(messageDecoder))
+        return;
+
     WebFrameProxy* frame = process()->webFrame(frameID);
     MESSAGE_CHECK(frame);
 
     RefPtr<WebIntentServiceInfo> webIntentServiceInfo = WebIntentServiceInfo::create(serviceInfo);
-    m_loaderClient.registerIntentServiceForFrame(this, frame, webIntentServiceInfo.get());
+    m_loaderClient.registerIntentServiceForFrame(this, frame, webIntentServiceInfo.get(), userData.get());
 }
 #endif
 
@@ -2175,13 +2180,18 @@ void WebPageProxy::didDetectXSSForFrame(uint64_t frameID, CoreIPC::ArgumentDecod
 }
 
 #if ENABLE(WEB_INTENTS)
-void WebPageProxy::didReceiveIntentForFrame(uint64_t frameID, const IntentData& intentData)
+void WebPageProxy::didReceiveIntentForFrame(uint64_t frameID, const IntentData& intentData, CoreIPC::ArgumentDecoder* arguments)
 {
+    RefPtr<APIObject> userData;
+    WebContextUserMessageDecoder messageDecoder(userData, m_process->context());
+    if (!arguments->decode(messageDecoder))
+        return;
+
     WebFrameProxy* frame = process()->webFrame(frameID);
     MESSAGE_CHECK(frame);
 
     RefPtr<WebIntentData> webIntentData = WebIntentData::create(intentData);
-    m_loaderClient.didReceiveIntentForFrame(this, frame, webIntentData.get());
+    m_loaderClient.didReceiveIntentForFrame(this, frame, webIntentData.get(), userData.get());
 }
 #endif
 
@@ -2632,11 +2642,6 @@ void WebPageProxy::didReceiveMessageFromNavigatorQtObject(const String& contents
     m_pageClient->didReceiveMessageFromNavigatorQtObject(contents);
 }
 
-void WebPageProxy::handleDownloadRequest(DownloadProxy* download)
-{
-    m_pageClient->handleDownloadRequest(download);
-}
-
 void WebPageProxy::authenticationRequiredRequest(const String& hostname, const String& realm, const String& prefilledUsername, String& username, String& password)
 {
     m_pageClient->handleAuthenticationRequiredRequest(hostname, realm, prefilledUsername, username, password);
@@ -2652,6 +2657,13 @@ void WebPageProxy::certificateVerificationRequest(const String& hostname, bool& 
     m_pageClient->handleCertificateVerificationRequest(hostname, ignoreErrors);
 }
 #endif // PLATFORM(QT).
+
+#if PLATFORM(QT) || PLATFORM(EFL)
+void WebPageProxy::handleDownloadRequest(DownloadProxy* download)
+{
+    m_pageClient->handleDownloadRequest(download);
+}
+#endif // PLATFORM(QT) || PLATFORM(EFL)
 
 #if ENABLE(TOUCH_EVENTS)
 void WebPageProxy::needTouchEvents(bool needTouchEvents)
@@ -3243,8 +3255,10 @@ void WebPageProxy::didReceiveEvent(uint32_t opaqueType, bool handled)
 
         m_keyEventQueue.removeFirst();
 
-        m_pageClient->doneWithKeyEvent(event, handled);
+        if (!m_keyEventQueue.isEmpty())
+            process()->send(Messages::WebPage::KeyEvent(m_keyEventQueue.first()), m_pageID);
 
+        m_pageClient->doneWithKeyEvent(event, handled);
         if (handled)
             break;
 

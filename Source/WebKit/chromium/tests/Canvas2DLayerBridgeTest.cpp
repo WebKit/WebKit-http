@@ -30,10 +30,10 @@
 #include "GraphicsContext3DPrivate.h"
 #include "ImageBuffer.h"
 #include "LayerChromium.h"
-#include "TextureManager.h"
 #include "WebCompositor.h"
 #include "WebKit.h"
 #include "cc/CCGraphicsContext.h"
+#include "cc/CCRenderingStats.h"
 #include "cc/CCTextureUpdater.h"
 #include "platform/WebKitPlatformSupport.h"
 #include "platform/WebThread.h"
@@ -152,8 +152,8 @@ TEST(Canvas2DLayerBridgeTest2, testClearClient)
     RefPtr<LayerChromium> layer = bridge->layer();
     bridge.clear();
     CCTextureUpdater updater;
-    layer->update(updater, 0);
+    CCRenderingStats stats;
+    layer->update(updater, 0, stats);
 }
 
 } // namespace
-

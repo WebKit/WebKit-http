@@ -93,6 +93,14 @@ public:
 #endif
 #endif
 
+#if ENABLE(DATALIST_ELEMENT)
+    // Returns size of one slider tick mark for a horizontal track.
+    // For vertical tracks we rotate it and use it. i.e. Width is always length along the track.
+    virtual IntSize sliderTickSize() const;
+    // Returns the distance of slider tick origin from the slider track center.
+    virtual int sliderTickOffsetFromTrackCenter() const;
+#endif
+
 #ifdef GTK_API_VERSION_2
     GtkWidget* gtkContainer() const;
     GtkWidget* gtkEntry() const;
@@ -168,7 +176,7 @@ protected:
     virtual bool paintMediaCurrentTime(RenderObject*, const PaintInfo&, const IntRect&);
 #endif
 
-#if ENABLE(PROGRESS_TAG)
+#if ENABLE(PROGRESS_ELEMENT)
     virtual double animationRepeatIntervalForProgressBar(RenderProgress*) const;
     virtual double animationDurationForProgressBar(RenderProgress*) const;
     virtual void adjustProgressBarStyle(StyleResolver*, RenderStyle*, Element*) const;
@@ -191,7 +199,7 @@ private:
     bool paintMediaButton(RenderObject*, GraphicsContext*, const IntRect&, const char* iconName);
 #endif
 
-#if ENABLE(PROGRESS_TAG)
+#if ENABLE(PROGRESS_ELEMENT)
     static IntRect calculateProgressRect(RenderObject*, const IntRect&);
 #endif
 

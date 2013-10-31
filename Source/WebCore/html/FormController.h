@@ -35,48 +35,7 @@ class FormAssociatedElement;
 class FormKeyGenerator;
 class HTMLFormControlElementWithState;
 class HTMLFormElement;
-
-class FormElementKey {
-public:
-    FormElementKey(AtomicStringImpl* = 0, AtomicStringImpl* = 0, AtomicStringImpl* = 0);
-    ~FormElementKey();
-    FormElementKey(const FormElementKey&);
-    FormElementKey& operator=(const FormElementKey&);
-
-    AtomicStringImpl* name() const { return m_name; }
-    AtomicStringImpl* type() const { return m_type; }
-    AtomicStringImpl* formKey() const { return m_formKey; }
-
-    // Hash table deleted values, which are only constructed and never copied or destroyed.
-    FormElementKey(WTF::HashTableDeletedValueType) : m_name(hashTableDeletedValue()) { }
-    bool isHashTableDeletedValue() const { return m_name == hashTableDeletedValue(); }
-
-private:
-    void ref() const;
-    void deref() const;
-
-    static AtomicStringImpl* hashTableDeletedValue() { return reinterpret_cast<AtomicStringImpl*>(-1); }
-
-    AtomicStringImpl* m_name;
-    AtomicStringImpl* m_type;
-    AtomicStringImpl* m_formKey;
-};
-
-inline bool operator==(const FormElementKey& a, const FormElementKey& b)
-{
-    return a.name() == b.name() && a.type() == b.type() && a.formKey() == b.formKey();
-}
-
-struct FormElementKeyHash {
-    static unsigned hash(const FormElementKey&);
-    static bool equal(const FormElementKey& a, const FormElementKey& b) { return a == b; }
-    static const bool safeToCompareToEmptyOrDeleted = true;
-};
-
-struct FormElementKeyHashTraits : WTF::GenericHashTraits<FormElementKey> {
-    static void constructDeletedValue(FormElementKey& slot) { new (NotNull, &slot) FormElementKey(WTF::HashTableDeletedValue); }
-    static bool isDeletedValue(const FormElementKey& value) { return value.isHashTableDeletedValue(); }
-};
+class SavedFormState;
 
 class FormControlState {
 public:
@@ -129,25 +88,21 @@ public:
     Vector<String> formElementsState() const;
     // This should be callled only by Document::setStateForNewFormElements().
     void setStateForNewFormElements(const Vector<String>&);
-    FormControlState takeStateForFormElement(const HTMLFormControlElementWithState&);
     void willDeleteForm(HTMLFormElement*);
-
-    void registerFormElementWithFormAttribute(FormAssociatedElement*);
-    void unregisterFormElementWithFormAttribute(FormAssociatedElement*);
-    void resetFormElementsOwner();
+    void restoreControlStateFor(HTMLFormControlElementWithState&);
+    void restoreControlStateIn(HTMLFormElement&);
 
 private:
+    typedef ListHashSet<HTMLFormControlElementWithState*, 64> FormElementListHashSet;
+    typedef HashMap<RefPtr<AtomicStringImpl>, OwnPtr<SavedFormState> > SavedFormStateMap;
+
     FormController();
+    static PassOwnPtr<SavedFormStateMap> createSavedFormStateMap(const FormElementListHashSet&);
+    FormControlState takeStateForFormElement(const HTMLFormControlElementWithState&);
 
     CheckedRadioButtons m_checkedRadioButtons;
-
-    typedef ListHashSet<HTMLFormControlElementWithState*, 64> FormElementListHashSet;
     FormElementListHashSet m_formElementsWithState;
-    typedef ListHashSet<RefPtr<FormAssociatedElement>, 32> FormAssociatedElementListHashSet;
-    FormAssociatedElementListHashSet m_formElementsWithFormAttribute;
-
-    typedef HashMap<FormElementKey, Deque<FormControlState>, FormElementKeyHash, FormElementKeyHashTraits> FormElementStateMap;
-    FormElementStateMap m_stateForNewFormElements;
+    SavedFormStateMap m_savedFormStateMap;
     OwnPtr<FormKeyGenerator> m_formKeyGenerator;
 };
 

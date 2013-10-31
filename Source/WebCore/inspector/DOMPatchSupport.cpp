@@ -35,7 +35,6 @@
 #include "DOMPatchSupport.h"
 
 #include "Attribute.h"
-#include "Base64.h"
 #include "ContextFeatures.h"
 #include "DOMEditor.h"
 #include "Document.h"
@@ -52,6 +51,7 @@
 #include <wtf/HashTraits.h>
 #include <wtf/RefPtr.h>
 #include <wtf/SHA1.h>
+#include <wtf/text/Base64.h>
 #include <wtf/text/CString.h>
 
 using namespace std;
@@ -177,8 +177,8 @@ bool DOMPatchSupport::innerPatchNode(Digest* oldDigest, Digest* newDigest, Excep
         // FIXME: Create a function in Element for removing all properties. Take in account whether did/willModifyAttribute are important.
         if (oldElement->hasAttributesWithoutUpdate()) {
             while (oldElement->attributeCount()) {
-                Attribute* attr = oldElement->attributeItem(0);
-                if (!m_domEditor->removeAttribute(oldElement, attr->localName(), ec))
+                const Attribute* attribute = oldElement->attributeItem(0);
+                if (!m_domEditor->removeAttribute(oldElement, attribute->localName(), ec))
                     return false;
             }
         }

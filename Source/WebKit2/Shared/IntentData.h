@@ -37,9 +37,16 @@ class ArgumentDecoder;
 class ArgumentEncoder;
 }
 
+namespace WebCore {
+class Intent;
+}
+
 namespace WebKit {
 
 struct IntentData {
+    IntentData() { }
+    explicit IntentData(WebCore::Intent*);
+
     void encode(CoreIPC::ArgumentEncoder*) const;
     static bool decode(CoreIPC::ArgumentDecoder*, IntentData&);
 

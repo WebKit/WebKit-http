@@ -30,11 +30,13 @@
 
 #include "config.h"
 
+#include "MockWebKitPlatformSupport.h"
 #include "TestShell.h"
 #include "WebCompositor.h"
 #include "webkit/support/webkit_support.h"
 #include <v8/include/v8-testing.h>
 #include <v8/include/v8.h>
+#include <wtf/OwnPtr.h>
 #include <wtf/Vector.h>
 
 using namespace std;
@@ -47,8 +49,6 @@ static const char optionThreaded[] = "--threaded";
 static const char optionDebugRenderTree[] = "--debug-render-tree";
 static const char optionDebugLayerTree[] = "--debug-layer-tree";
 
-static const char optionPixelTestsWithName[] = "--pixel-tests=";
-static const char optionTestShell[] = "--test-shell";
 static const char optionAllowExternalPages[] = "--allow-external-pages";
 static const char optionStartupDialog[] = "--testshell-startup-dialog";
 static const char optionCheckLayoutTestSystemDeps[] = "--check-layout-test-sys-deps";
@@ -66,6 +66,7 @@ static const char optionEnablePerTilePainting[] = "--enable-per-tile-painting";
 static const char optionStressOpt[] = "--stress-opt";
 static const char optionStressDeopt[] = "--stress-deopt";
 static const char optionJavaScriptFlags[] = "--js-flags=";
+static const char optionEncodeBinary[] = "--encode-binary";
 static const char optionNoTimeout[] = "--no-timeout";
 static const char optionWebCoreLogChannels[] = "--webcore-log-channels=";
 
@@ -73,38 +74,26 @@ class WebKitSupportTestEnvironment {
 public:
     WebKitSupportTestEnvironment()
     {
-        webkit_support::SetUpTestEnvironment();
+        m_mockPlatform = MockWebKitPlatformSupport::create();
+        webkit_support::SetUpTestEnvironment(m_mockPlatform.get());
     }
     ~WebKitSupportTestEnvironment()
     {
         webkit_support::TearDownTestEnvironment();
     }
+private:
+    OwnPtr<MockWebKitPlatformSupport> m_mockPlatform;
 };
 
-static void runTest(TestShell& shell, TestParams& params, const string& testName, bool testShellMode)
+static void runTest(TestShell& shell, TestParams& params, const string& testName)
 {
     int oldTimeoutMsec = shell.layoutTestTimeout();
     params.pixelHash = "";
     string pathOrURL = testName;
-    if (testShellMode) {
-        string timeOut;
-        string::size_type separatorPosition = pathOrURL.find(' ');
-        if (separatorPosition != string::npos) {
-            timeOut = pathOrURL.substr(separatorPosition + 1);
-            pathOrURL.erase(separatorPosition);
-            separatorPosition = timeOut.find_first_of(' ');
-            if (separatorPosition != string::npos) {
-                params.pixelHash = timeOut.substr(separatorPosition + 1);
-                timeOut.erase(separatorPosition);
-            }
-            shell.setLayoutTestTimeout(atoi(timeOut.c_str()));
-        }
-    } else {
-        string::size_type separatorPosition = pathOrURL.find("'");
-        if (separatorPosition != string::npos) {
-            params.pixelHash = pathOrURL.substr(separatorPosition + 1);
-            pathOrURL.erase(separatorPosition);
-        }
+    string::size_type separatorPosition = pathOrURL.find("'");
+    if (separatorPosition != string::npos) {
+        params.pixelHash = pathOrURL.substr(separatorPosition + 1);
+        pathOrURL.erase(separatorPosition);
     }
     params.testUrl = webkit_support::CreateURLForPathOrURL(pathOrURL);
     webkit_support::SetCurrentDirectoryForFileURL(params.testUrl);
@@ -136,7 +125,6 @@ int main(int argc, char* argv[])
     TestParams params;
     Vector<string> tests;
     bool serverMode = false;
-    bool testShellMode = false;
     bool allowExternalPages = false;
     bool startupDialog = false;
     bool acceleratedCompositingForVideoEnabled = false;
@@ -150,6 +138,7 @@ int main(int argc, char* argv[])
     bool stressDeopt = false;
     bool hardwareAcceleratedGL = false;
     string javaScriptFlags;
+    bool encodeBinary = false;
     bool noTimeout = false;
     for (int i = 1; i < argc; ++i) {
         string argument(argv[i]);
@@ -159,17 +148,11 @@ int main(int argc, char* argv[])
             params.dumpTree = false;
         else if (argument == optionPixelTests)
             params.dumpPixels = true;
-        else if (!argument.find(optionPixelTestsWithName)) {
-            params.dumpPixels = true;
-            params.pixelFileName = argument.substr(strlen(optionPixelTestsWithName));
-        } else if (argument == optionDebugRenderTree)
+        else if (argument == optionDebugRenderTree)
             params.debugRenderTree = true;
         else if (argument == optionDebugLayerTree)
             params.debugLayerTree = true;
-        else if (argument == optionTestShell) {
-            testShellMode = true;
-            serverMode = true;
-        } else if (argument == optionAllowExternalPages)
+        else if (argument == optionAllowExternalPages)
             allowExternalPages = true;
         else if (argument == optionStartupDialog)
             startupDialog = true;
@@ -205,6 +188,8 @@ int main(int argc, char* argv[])
             stressDeopt = true;
         else if (!argument.find(optionJavaScriptFlags))
             javaScriptFlags = argument.substr(strlen(optionJavaScriptFlags));
+        else if (argument == optionEncodeBinary)
+            encodeBinary = true;
         else if (argument == optionNoTimeout)
             noTimeout = true;
         else if (!argument.find(optionWebCoreLogChannels)) {
@@ -214,10 +199,6 @@ int main(int argc, char* argv[])
             fprintf(stderr, "Unknown option: %s\n", argv[i]);
         else
             tests.append(argument);
-    }
-    if (testShellMode && params.dumpPixels && params.pixelFileName.empty()) {
-        fprintf(stderr, "--pixel-tests with --test-shell requires a file name.\n");
-        return EXIT_FAILURE;
     }
     if (stressOpt && stressDeopt) {
         fprintf(stderr, "--stress-opt and --stress-deopt are mutually exclusive.\n");
@@ -231,7 +212,6 @@ int main(int argc, char* argv[])
 
     { // Explicit scope for the TestShell instance.
         TestShell shell;
-        shell.setTestShellMode(testShellMode);
         shell.setAllowExternalPages(allowExternalPages);
         shell.setAcceleratedCompositingForVideoEnabled(acceleratedCompositingForVideoEnabled);
         shell.setThreadedCompositingEnabled(threadedCompositingEnabled);
@@ -243,6 +223,7 @@ int main(int argc, char* argv[])
         shell.setJavaScriptFlags(javaScriptFlags);
         shell.setStressOpt(stressOpt);
         shell.setStressDeopt(stressDeopt);
+        shell.setEncodeBinary(encodeBinary);
         if (noTimeout) {
             // 0x20000000ms is big enough for the purpose to avoid timeout in debugging.
             shell.setLayoutTestTimeout(0x20000000);
@@ -265,14 +246,14 @@ int main(int argc, char* argv[])
                 // Explicitly quit on platforms where EOF is not reliable.
                 if (!strcmp(testString, "QUIT"))
                     break;
-                runTest(shell, params, testString, testShellMode);
+                runTest(shell, params, testString);
             }
         } else if (!tests.size())
             puts("#EOF");
         else {
             params.printSeparators = tests.size() > 1;
             for (unsigned i = 0; i < tests.size(); i++)
-                runTest(shell, params, tests[i], testShellMode);
+                runTest(shell, params, tests[i]);
         }
 
         shell.callJSGC();

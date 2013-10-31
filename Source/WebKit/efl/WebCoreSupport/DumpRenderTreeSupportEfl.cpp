@@ -173,21 +173,6 @@ int DumpRenderTreeSupportEfl::numberOfPages(const Evas_Object* ewkFrame, float p
     return WebCore::PrintContext::numberOfPages(frame, WebCore::FloatSize(pageWidth, pageHeight));
 }
 
-int DumpRenderTreeSupportEfl::numberOfPagesForElementId(const Evas_Object* ewkFrame, const char* elementId, float pageWidth, float pageHeight)
-{
-    WebCore::Frame* frame = EWKPrivate::coreFrame(ewkFrame);
-
-    if (!frame)
-        return 0;
-
-    WebCore::Element *element = frame->document()->getElementById(elementId);
-
-    if (!element)
-        return 0;
-
-    return WebCore::PrintContext::pageNumberForElement(element, WebCore::FloatSize(pageWidth, pageHeight));
-}
-
 String DumpRenderTreeSupportEfl::pageSizeAndMarginsInPixels(const Evas_Object* ewkFrame, int pageNumber, int width, int height, int marginTop, int marginRight, int marginBottom, int marginLeft)
 {
     WebCore::Frame* frame = EWKPrivate::coreFrame(ewkFrame);
@@ -518,6 +503,18 @@ bool DumpRenderTreeSupportEfl::isTargetItem(const Ewk_History_Item* ewkHistoryIt
         return false;
 
     return historyItem->isTargetItem();
+}
+
+void DumpRenderTreeSupportEfl::evaluateInWebInspector(const Evas_Object* ewkView, long callId, const String& script)
+{
+#if ENABLE(INSPECTOR)
+    WebCore::Page* page = EWKPrivate::corePage(ewkView);
+    if (!page)
+        return;
+
+    if (page->inspectorController())
+        page->inspectorController()->evaluateForTestInFrontend(callId, script);
+#endif
 }
 
 void DumpRenderTreeSupportEfl::evaluateScriptInIsolatedWorld(const Evas_Object* ewkFrame, int worldID, JSObjectRef globalObject, const String& script)

@@ -33,6 +33,7 @@ LIST(APPEND WebCore_SOURCES
   platform/efl/DragImageEfl.cpp
   platform/efl/EflKeyboardUtilities.cpp
   platform/efl/EflScreenUtilities.cpp
+  platform/efl/ErrorsEfl.cpp
   platform/efl/EventLoopEfl.cpp
   platform/efl/FileSystemEfl.cpp
   platform/efl/GamepadsEfl.cpp
@@ -41,6 +42,7 @@ LIST(APPEND WebCore_SOURCES
   platform/efl/LocalizedStringsEfl.cpp
   platform/efl/LoggingEfl.cpp
   platform/efl/MIMETypeRegistryEfl.cpp
+  platform/efl/NetworkInfoProviderEfl.cpp
   platform/efl/PasteboardEfl.cpp
   platform/efl/PlatformKeyboardEventEfl.cpp
   platform/efl/PlatformMouseEventEfl.cpp
@@ -63,7 +65,6 @@ LIST(APPEND WebCore_SOURCES
   platform/efl/TemporaryLinkStubs.cpp
   platform/efl/WidgetEfl.cpp
   platform/graphics/ImageSource.cpp
-  platform/graphics/efl/GraphicsLayerEfl.cpp
   platform/graphics/efl/IconEfl.cpp
   platform/graphics/efl/ImageEfl.cpp
   platform/graphics/efl/IntPointEfl.cpp
@@ -78,12 +79,13 @@ LIST(APPEND WebCore_SOURCES
   platform/image-decoders/png/PNGImageDecoder.cpp
   platform/image-decoders/webp/WEBPImageDecoder.cpp
   platform/linux/GamepadDeviceLinux.cpp
-  platform/mediastream/gstreamer/DeprecatedPeerConnectionHandler.cpp
   platform/mediastream/gstreamer/MediaStreamCenterGStreamer.cpp
   platform/network/soup/CookieJarSoup.cpp
+  platform/network/soup/CookieStorageSoup.cpp
   platform/network/soup/CredentialStorageSoup.cpp
   platform/network/soup/DNSSoup.cpp
   platform/network/soup/GOwnPtrSoup.cpp
+  platform/network/soup/ProxyResolverSoup.cpp
   platform/network/soup/ProxyServerSoup.cpp
   platform/network/soup/ResourceHandleSoup.cpp
   platform/network/soup/ResourceRequestSoup.cpp
@@ -132,6 +134,7 @@ IF (WTF_USE_CAIRO)
     platform/graphics/cairo/GraphicsContextCairo.cpp
     platform/graphics/cairo/ImageBufferCairo.cpp
     platform/graphics/cairo/ImageCairo.cpp
+    platform/graphics/cairo/IntRectCairo.cpp
     platform/graphics/cairo/NativeImageCairo.cpp
     platform/graphics/cairo/OwnPtrCairo.cpp
     platform/graphics/cairo/PathCairo.cpp
@@ -139,6 +142,8 @@ IF (WTF_USE_CAIRO)
     platform/graphics/cairo/PlatformContextCairo.cpp
     platform/graphics/cairo/PlatformPathCairo.cpp
     platform/graphics/cairo/RefPtrCairo.cpp
+    platform/graphics/cairo/TileCairo.cpp
+    platform/graphics/cairo/TiledBackingStoreBackendCairo.cpp
     platform/graphics/cairo/TransformationMatrixCairo.cpp
 
     platform/image-decoders/cairo/ImageDecoderCairo.cpp
@@ -147,15 +152,24 @@ IF (WTF_USE_CAIRO)
   IF (WTF_USE_FREETYPE)
     LIST(APPEND WebCore_INCLUDE_DIRECTORIES
       "${WEBCORE_DIR}/platform/graphics/freetype"
+      "${WEBCORE_DIR}/platform/graphics/harfbuzz/"
+      "${WEBCORE_DIR}/platform/graphics/harfbuzz/ng"
     )
     LIST(APPEND WebCore_SOURCES
       platform/graphics/WOFFFileFormat.cpp
-      platform/graphics/efl/FontEfl.cpp
+      platform/graphics/cairo/FontCairoHarfbuzzNG.cpp
       platform/graphics/freetype/FontCacheFreeType.cpp
       platform/graphics/freetype/FontCustomPlatformDataFreeType.cpp
       platform/graphics/freetype/FontPlatformDataFreeType.cpp
       platform/graphics/freetype/GlyphPageTreeNodeFreeType.cpp
       platform/graphics/freetype/SimpleFontDataFreeType.cpp
+      platform/graphics/harfbuzz/HarfBuzzShaperBase.cpp
+      platform/graphics/harfbuzz/ng/HarfBuzzNGFace.cpp
+      platform/graphics/harfbuzz/ng/HarfBuzzNGFaceCairo.cpp
+      platform/graphics/harfbuzz/ng/HarfBuzzShaper.cpp
+    )
+    LIST(APPEND WebCore_LIBRARIES
+      ${HARFBUZZ_LIBRARIES}
     )
   ENDIF ()
 
@@ -186,6 +200,16 @@ IF (WTF_USE_ICU_UNICODE)
     platform/text/TextEncodingDetectorICU.cpp
     platform/text/TextBreakIteratorICU.cpp
     platform/text/TextCodecICU.cpp
+  )
+ENDIF ()
+
+IF (WTF_USE_TEXTURE_MAPPER)
+  LIST(APPEND WebCore_SOURCES
+    platform/graphics/texmap/GraphicsLayerTextureMapper.cpp
+  )
+ELSE ()
+  LIST(APPEND WebCore_SOURCES
+    platform/graphics/efl/GraphicsLayerEfl.cpp
   )
 ENDIF ()
 
@@ -263,24 +287,30 @@ IF (ENABLE_VIDEO)
   )
 ENDIF ()
 
-IF (ENABLE_WEBGL)
+IF (WTF_USE_3D_GRAPHICS)
+  SET(WTF_USE_OPENGL 1)
+  ADD_DEFINITIONS(-DWTF_USE_OPENGL=1)
+
   LIST(APPEND WebCore_INCLUDE_DIRECTORIES
-    ${OPENGL_INCLUDE_DIR}
     "${WEBCORE_DIR}/platform/graphics/cairo"
-    "${WEBCORE_DIR}/platform/graphics/glx"
     "${WEBCORE_DIR}/platform/graphics/opengl"
+    "${WEBCORE_DIR}/platform/graphics/texmap"
   )
   LIST(APPEND WebCore_LIBRARIES
     ${OPENGL_gl_LIBRARY}
   )
   LIST(APPEND WebCore_SOURCES
-    platform/graphics/cairo/DrawingBufferCairo.cpp
-    platform/graphics/cairo/GraphicsContext3DCairo.cpp
-    platform/graphics/glx/GraphicsContext3DPrivate.cpp
     platform/graphics/OpenGLShims.cpp
+    platform/graphics/cairo/DrawingBufferCairo.cpp
+    platform/graphics/cairo/GLContext.cpp
+    platform/graphics/cairo/GraphicsContext3DCairo.cpp
+    platform/graphics/cairo/GraphicsContext3DPrivate.cpp
     platform/graphics/opengl/Extensions3DOpenGL.cpp
+    platform/graphics/opengl/Extensions3DOpenGLCommon.cpp
     platform/graphics/opengl/GraphicsContext3DOpenGL.cpp
     platform/graphics/opengl/GraphicsContext3DOpenGLCommon.cpp
+    platform/graphics/texmap/TextureMapperGL.cpp
+    platform/graphics/texmap/TextureMapperShaderManager.cpp
   )
 ENDIF ()
 
@@ -311,7 +341,7 @@ IF (ENABLE_WEB_AUDIO)
   ADD_DEFINITIONS(-DUNINSTALLED_AUDIO_RESOURCES_DIR="${WEBCORE_DIR}/platform/audio/resources")
 ENDIF ()
 
-IF (ENABLE_GAMEPAD)
+IF (ENABLE_GAMEPAD OR ENABLE_NETWORK_INFO)
   LIST(APPEND WebCore_INCLUDE_DIRECTORIES
     ${EEZE_INCLUDE_DIRS}
   )

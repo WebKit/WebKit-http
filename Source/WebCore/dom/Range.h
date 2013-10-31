@@ -112,7 +112,7 @@ public:
 
     ShadowRoot* shadowRoot() const;
 
-    IntRect boundingBox();
+    IntRect boundingBox() const;
     
     enum RangeInFixedPosition {
         NotFixedPosition,
@@ -121,7 +121,7 @@ public:
     };
     
     // Not transform-friendly
-    void textRects(Vector<IntRect>&, bool useSelectionHeight = false, RangeInFixedPosition* = 0);
+    void textRects(Vector<IntRect>&, bool useSelectionHeight = false, RangeInFixedPosition* = 0) const;
     // Transform-friendly
     void textQuads(Vector<FloatQuad>&, bool useSelectionHeight = false, RangeInFixedPosition* = 0) const;
     void getBorderAndTextQuads(Vector<FloatQuad>&) const;
@@ -149,7 +149,7 @@ public:
 #endif
 
 private:
-    Range(PassRefPtr<Document>);
+    explicit Range(PassRefPtr<Document>);
     Range(PassRefPtr<Document>, PassRefPtr<Node> startContainer, int startOffset, PassRefPtr<Node> endContainer, int endOffset);
 
     void setDocument(Document*);

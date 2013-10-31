@@ -77,9 +77,9 @@
 #include "Logging.h"
 #include "MIMETypeRegistry.h"
 #include "MainResourceLoader.h"
+#include "MemoryInstrumentation.h"
 #include "Page.h"
 #include "PageCache.h"
-#include "PageGroup.h"
 #include "PageTransitionEvent.h"
 #include "PluginData.h"
 #include "PluginDatabase.h"
@@ -1234,8 +1234,6 @@ void FrameLoader::load(const ResourceRequest& request, const SubstituteData& sub
     if (m_inStopAllLoaders)
         return;
         
-    // FIXME: is this the right place to reset loadType? Perhaps this should be done after loading is finished or aborted.
-    m_loadType = FrameLoadTypeStandard;
     RefPtr<DocumentLoader> loader = m_client->createDocumentLoader(request, substituteData);
     if (lockHistory && m_documentLoader)
         loader->setClientRedirectSourceForHistory(m_documentLoader->didCreateGlobalHistoryEntry() ? m_documentLoader->urlForHistory().string() : m_documentLoader->clientRedirectSourceForHistory());
@@ -1280,7 +1278,9 @@ void FrameLoader::load(DocumentLoader* newDocumentLoader)
     if (shouldTreatURLAsSameAsCurrent(newDocumentLoader->originalRequest().url())) {
         r.setCachePolicy(ReloadIgnoringCacheData);
         type = FrameLoadTypeSame;
-    } else
+    } else if (shouldTreatURLAsSameAsCurrent(newDocumentLoader->unreachableURL()) && m_loadType == FrameLoadTypeReload)
+        type = FrameLoadTypeReload;
+    else
         type = FrameLoadTypeStandard;
 
     if (m_documentLoader)
@@ -3185,6 +3185,9 @@ void FrameLoader::dispatchDidCommitLoad()
 
     m_client->dispatchDidCommitLoad();
 
+    if (isLoadingMainFrame())
+        m_frame->page()->resetSeenPlugins();
+
     InspectorInstrumentation::didCommitLoad(m_frame, m_documentLoader.get());
 }
 
@@ -3218,6 +3221,16 @@ void FrameLoader::tellClientAboutPastMemoryCacheLoads()
 NetworkingContext* FrameLoader::networkingContext() const
 {
     return m_networkingContext.get();
+}
+
+void FrameLoader::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
+{
+    MemoryClassInfo<FrameLoader> info(memoryObjectInfo, this, MemoryInstrumentation::Loader);
+    info.addInstrumentedMember(m_documentLoader.get());
+    info.addInstrumentedMember(m_provisionalDocumentLoader.get());
+    info.addInstrumentedMember(m_policyDocumentLoader.get());
+    info.addString(m_outgoingReferrer);
+    info.addInstrumentedHashSet(m_openedFrames);
 }
 
 bool FrameLoaderClient::hasHTMLView() const

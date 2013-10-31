@@ -39,16 +39,15 @@ namespace WebCore {
 class CCActiveGestureAnimation;
 class CCCompletionEvent;
 class CCDebugRectHistory;
-class CCFontAtlas;
 class CCFrameRateCounter;
-class CCHeadsUpDisplay;
 class CCLayerImpl;
 class CCLayerTreeHostImplTimeSourceAdapter;
 class CCPageScaleAnimation;
 class CCRenderPassDrawQuad;
+class CCResourceProvider;
 class LayerRendererChromium;
-class TextureAllocator;
 struct LayerRendererCapabilities;
+struct CCRenderingStats;
 
 // CCLayerTreeHost->CCProxy callback interface.
 class CCLayerTreeHostImplClient {
@@ -70,22 +69,22 @@ public:
     virtual ~CCLayerTreeHostImpl();
 
     // CCInputHandlerClient implementation
-    virtual CCInputHandlerClient::ScrollStatus scrollBegin(const IntPoint&, CCInputHandlerClient::ScrollInputType);
-    virtual void scrollBy(const IntSize&);
-    virtual void scrollEnd();
-    virtual void pinchGestureBegin();
-    virtual void pinchGestureUpdate(float, const IntPoint&);
-    virtual void pinchGestureEnd();
-    virtual void startPageScaleAnimation(const IntSize& targetPosition, bool anchorPoint, float pageScale, double startTime, double duration);
-    virtual CCActiveGestureAnimation* activeGestureAnimation() { return m_activeGestureAnimation.get(); }
+    virtual CCInputHandlerClient::ScrollStatus scrollBegin(const IntPoint&, CCInputHandlerClient::ScrollInputType) OVERRIDE;
+    virtual void scrollBy(const IntSize&) OVERRIDE;
+    virtual void scrollEnd() OVERRIDE;
+    virtual void pinchGestureBegin() OVERRIDE;
+    virtual void pinchGestureUpdate(float, const IntPoint&) OVERRIDE;
+    virtual void pinchGestureEnd() OVERRIDE;
+    virtual void startPageScaleAnimation(const IntSize& targetPosition, bool anchorPoint, float pageScale, double startTime, double duration) OVERRIDE;
+    virtual CCActiveGestureAnimation* activeGestureAnimation() OVERRIDE { return m_activeGestureAnimation.get(); }
     // To clear an active animation, pass nullptr.
-    virtual void setActiveGestureAnimation(PassOwnPtr<CCActiveGestureAnimation>);
-    virtual void scheduleAnimation();
+    virtual void setActiveGestureAnimation(PassOwnPtr<CCActiveGestureAnimation>) OVERRIDE;
+    virtual void scheduleAnimation() OVERRIDE;
 
     struct FrameData {
         Vector<IntRect> occludingScreenSpaceRects;
         CCRenderPassList renderPasses;
-        CCRenderPassList skippedPasses;
+        CCRenderPassIdHashMap renderPassesById;
         CCLayerList* renderSurfaceLayerList;
         CCLayerList willDrawLayers;
     };
@@ -118,16 +117,14 @@ public:
     CCGraphicsContext* context() const;
 
     String layerTreeAsText() const;
-    void setFontAtlas(PassOwnPtr<CCFontAtlas>);
 
     void finishAllRendering();
-    int sourceAnimationFrameNumber() const { return m_sourceAnimationFrameNumber; }
+    int sourceAnimationFrameNumber() const;
 
     bool initializeLayerRenderer(PassOwnPtr<CCGraphicsContext>, TextureUploaderOption);
     bool isContextLost();
     CCRenderer* layerRenderer() { return m_layerRenderer.get(); }
     const LayerRendererCapabilities& layerRendererCapabilities() const;
-    TextureAllocator* contentsTextureAllocator() const;
 
     bool swapBuffers();
 
@@ -175,12 +172,15 @@ public:
 
     void setNeedsRedraw();
 
+    void renderingStats(CCRenderingStats&) const;
+
     CCFrameRateCounter* fpsCounter() const { return m_fpsCounter.get(); }
     CCDebugRectHistory* debugRectHistory() const { return m_debugRectHistory.get(); }
+    CCResourceProvider* resourceProvider() const { return m_resourceProvider.get(); }
 
     class CullRenderPassesWithCachedTextures {
     public:
-        bool shouldRemoveRenderPass(const CCRenderPassList&, const CCRenderPassDrawQuad&) const;
+        bool shouldRemoveRenderPass(const CCRenderPassDrawQuad&, const FrameData&) const;
 
         // Iterates from the root first, in order to remove the surfaces closest
         // to the root with cached textures, and all surfaces that draw into
@@ -196,7 +196,7 @@ public:
 
     class CullRenderPassesWithNoQuads {
     public:
-        bool shouldRemoveRenderPass(const CCRenderPassList&, const CCRenderPassDrawQuad&) const;
+        bool shouldRemoveRenderPass(const CCRenderPassDrawQuad&, const FrameData&) const;
 
         // Iterates in draw order, so that when a surface is removed, and its
         // target becomes empty, then its target can be removed also.
@@ -225,7 +225,6 @@ protected:
 
     CCLayerTreeHostImplClient* m_client;
     int m_sourceFrameNumber;
-    int m_sourceAnimationFrameNumber;
 
 private:
     void computeDoubleTapZoomDeltas(CCScrollAndScaleSet* scrollInfo);
@@ -244,8 +243,6 @@ private:
     void setBackgroundTickingEnabled(bool);
     IntSize contentSize() const;
 
-    static void removeRenderPassesRecursive(CCRenderPassList& passes, size_t bottomPass, const CCRenderPass* firstToRemove, CCRenderPassList& skippedPasses);
-
     void sendDidLoseContextRecursive(CCLayerImpl*);
     void clearRenderSurfaces();
     bool ensureRenderSurfaceLayerList();
@@ -254,6 +251,7 @@ private:
     void dumpRenderSurfaces(TextStream&, int indent, const CCLayerImpl*) const;
 
     OwnPtr<CCGraphicsContext> m_context;
+    OwnPtr<CCResourceProvider> m_resourceProvider;
     OwnPtr<CCRenderer> m_layerRenderer;
     OwnPtr<CCLayerImpl> m_rootLayerImpl;
     CCLayerImpl* m_rootScrollLayerImpl;
@@ -266,8 +264,6 @@ private:
     bool m_visible;
     bool m_contentsTexturesWerePurgedSinceLastCommit;
     size_t m_memoryAllocationLimitBytes;
-
-    OwnPtr<CCHeadsUpDisplay> m_headsUpDisplay;
 
     float m_pageScale;
     float m_pageScaleDelta;

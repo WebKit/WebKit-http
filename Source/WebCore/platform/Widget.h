@@ -132,7 +132,7 @@ enum WidgetNotification { WillPaintFlattened, DidPaintFlattened };
 //
 class Widget : public RefCounted<Widget> {
 public:
-    Widget(PlatformWidget = 0);
+    explicit Widget(PlatformWidget = 0);
     virtual ~Widget();
 
     PlatformWidget platformWidget() const;
@@ -234,10 +234,6 @@ public:
 
     void setEvasObject(Evas_Object*);
     Evas_Object* evasObject() const;
-
-    const String edjeTheme() const;
-    void setEdjeTheme(const String &);
-    const String edjeThemeRecursive() const;
 #endif
 
 #if PLATFORM(CHROMIUM)

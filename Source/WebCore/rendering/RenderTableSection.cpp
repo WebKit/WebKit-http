@@ -340,41 +340,42 @@ int RenderTableSection::calcRowLogicalHeight()
 
         for (unsigned c = 0; c < totalCols; c++) {
             CellStruct& current = cellAt(r, c);
-            cell = current.primaryCell();
+            for (unsigned i = 0; i < current.cells.size(); i++) {
+                cell = current.cells[i];
+                if (current.inColSpan && cell->rowSpan() == 1)
+                    continue;
 
-            if (!cell || current.inColSpan)
-                continue;
+                // FIXME: We are always adding the height of a rowspan to the last rows which doesn't match
+                // other browsers. See webkit.org/b/52185 for example.
+                if ((cell->rowIndex() + cell->rowSpan() - 1) != r)
+                    continue;
 
-            // FIXME: We are always adding the height of a rowspan to the last rows which doesn't match
-            // other browsers. See webkit.org/b/52185 for example.
-            if ((cell->rowIndex() + cell->rowSpan() - 1) != r)
-                continue;
+                // For row spanning cells, |r| is the last row in the span.
+                unsigned cellStartRow = cell->rowIndex();
 
-            // For row spanning cells, |r| is the last row in the span.
-            unsigned cellStartRow = cell->rowIndex();
-
-            if (cell->hasOverrideHeight()) {
-                if (!statePusher.didPush()) {
-                    // Technically, we should also push state for the row, but since
-                    // rows don't push a coordinate transform, that's not necessary.
-                    statePusher.push(this, locationOffset());
+                if (cell->hasOverrideHeight()) {
+                    if (!statePusher.didPush()) {
+                        // Technically, we should also push state for the row, but since
+                        // rows don't push a coordinate transform, that's not necessary.
+                        statePusher.push(this, locationOffset());
+                    }
+                    cell->clearIntrinsicPadding();
+                    cell->clearOverrideSize();
+                    cell->setChildNeedsLayout(true, MarkOnlyThis);
+                    cell->layoutIfNeeded();
                 }
-                cell->clearIntrinsicPadding();
-                cell->clearOverrideSize();
-                cell->setChildNeedsLayout(true, MarkOnlyThis);
-                cell->layoutIfNeeded();
-            }
 
-            int cellLogicalHeight = cell->logicalHeightForRowSizing();
-            m_rowPos[r + 1] = max(m_rowPos[r + 1], m_rowPos[cellStartRow] + cellLogicalHeight);
+                int cellLogicalHeight = cell->logicalHeightForRowSizing();
+                m_rowPos[r + 1] = max(m_rowPos[r + 1], m_rowPos[cellStartRow] + cellLogicalHeight);
 
-            // find out the baseline
-            EVerticalAlign va = cell->style()->verticalAlign();
-            if (va == BASELINE || va == TEXT_BOTTOM || va == TEXT_TOP || va == SUPER || va == SUB || va == LENGTH) {
-                LayoutUnit baselinePosition = cell->cellBaselinePosition();
-                if (baselinePosition > cell->borderBefore() + cell->paddingBefore()) {
-                    m_grid[cellStartRow].baseline = max(m_grid[cellStartRow].baseline, baselinePosition - cell->intrinsicPaddingBefore());
-                    baselineDescent = max(baselineDescent, m_rowPos[cellStartRow] + cellLogicalHeight - (baselinePosition - cell->intrinsicPaddingBefore()));
+                // find out the baseline
+                EVerticalAlign va = cell->style()->verticalAlign();
+                if (va == BASELINE || va == TEXT_BOTTOM || va == TEXT_TOP || va == SUPER || va == SUB || va == LENGTH) {
+                    LayoutUnit baselinePosition = cell->cellBaselinePosition();
+                    if (baselinePosition > cell->borderBefore() + cell->paddingBefore()) {
+                        m_grid[cellStartRow].baseline = max(m_grid[cellStartRow].baseline, baselinePosition - cell->intrinsicPaddingBefore());
+                        baselineDescent = max(baselineDescent, m_rowPos[cellStartRow] + cellLogicalHeight - (baselinePosition - cell->intrinsicPaddingBefore()));
+                    }
                 }
             }
         }
@@ -656,7 +657,7 @@ void RenderTableSection::layoutRows()
             cell->setIntrinsicPaddingBefore(intrinsicPaddingBefore);
             cell->setIntrinsicPaddingAfter(intrinsicPaddingAfter);
 
-            LayoutRect oldCellRect(cell->x(), cell->y() , cell->width(), cell->height());
+            LayoutRect oldCellRect = cell->frameRect();
 
             setLogicalPositionForCell(cell, c);
 
@@ -1378,7 +1379,7 @@ bool RenderTableSection::nodeAtPoint(const HitTestRequest& request, HitTestResul
     // Just forward to our children always.
     LayoutPoint adjustedLocation = accumulatedOffset + location();
 
-    if (hasOverflowClip() && !pointInContainer.intersects(overflowClipRect(adjustedLocation, result.region())))
+    if (hasOverflowClip() && !pointInContainer.intersects(overflowClipRect(adjustedLocation, pointInContainer.region())))
         return false;
 
     if (hasOverflowingCell()) {
@@ -1468,7 +1469,7 @@ RenderTableSection* RenderTableSection::createAnonymousWithParentRenderer(const 
 
 void RenderTableSection::setLogicalPositionForCell(RenderTableCell* cell, unsigned effectiveColumn) const
 {
-    LayoutPoint oldCellLocation(cell->x(), cell->y());
+    LayoutPoint oldCellLocation = cell->location();
 
     LayoutPoint cellLocation(0, m_rowPos[cell->rowIndex()]);
     int horizontalBorderSpacing = table()->hBorderSpacing();

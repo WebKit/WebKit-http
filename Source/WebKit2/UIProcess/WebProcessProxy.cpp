@@ -110,6 +110,11 @@ void WebProcessProxy::connect()
         launchOptions.architecture = ProcessLauncher::LaunchOptions::MatchCurrentArchitecture;
         launchOptions.executableHeap = false;
 #endif
+#ifndef NDEBUG
+        const char* webProcessCmdPrefix = getenv("WEB_PROCESS_CMD_PREFIX");
+        if (webProcessCmdPrefix && *webProcessCmdPrefix)
+            launchOptions.processCmdPrefix = String::fromUTF8(webProcessCmdPrefix);
+#endif
         m_processLauncher = ProcessLauncher::create(this, launchOptions);
     }
 }
@@ -316,9 +321,15 @@ void WebProcessProxy::didReceiveMessage(CoreIPC::Connection* connection, CoreIPC
         || messageID.is<CoreIPC::MessageClassWebIconDatabase>()
         || messageID.is<CoreIPC::MessageClassWebKeyValueStorageManagerProxy>()
         || messageID.is<CoreIPC::MessageClassWebMediaCacheManagerProxy>()
+#if ENABLE(NETWORK_INFO)
+        || messageID.is<CoreIPC::MessageClassWebNetworkInfoManagerProxy>()
+#endif
         || messageID.is<CoreIPC::MessageClassWebNotificationManagerProxy>()
 #if USE(SOUP)
         || messageID.is<CoreIPC::MessageClassWebSoupRequestManagerProxy>()
+#endif
+#if ENABLE(VIBRATION)
+        || messageID.is<CoreIPC::MessageClassWebVibrationProxy>()
 #endif
         || messageID.is<CoreIPC::MessageClassWebResourceCacheManagerProxy>()) {
         m_context->didReceiveMessage(connection, messageID, arguments);
@@ -343,7 +354,10 @@ void WebProcessProxy::didReceiveSyncMessage(CoreIPC::Connection* connection, Cor
         return;
     }
 
-    if (messageID.is<CoreIPC::MessageClassWebContext>() || messageID.is<CoreIPC::MessageClassWebContextLegacy>() 
+    if (messageID.is<CoreIPC::MessageClassWebContext>() || messageID.is<CoreIPC::MessageClassWebContextLegacy>()
+#if ENABLE(NETWORK_INFO)
+        || messageID.is<CoreIPC::MessageClassWebNetworkInfoManagerProxy>()
+#endif
         || messageID.is<CoreIPC::MessageClassDownloadProxy>() || messageID.is<CoreIPC::MessageClassWebIconDatabase>()) {
         m_context->didReceiveSyncMessage(connection, messageID, arguments, reply);
         return;

@@ -381,8 +381,7 @@ bool RenderLayerBacking::updateGraphicsLayerConfiguration()
     if (isDirectlyCompositedImage())
         updateImageContents();
 
-    if ((renderer->isEmbeddedObject() && toRenderEmbeddedObject(renderer)->allowsAcceleratedCompositing())
-        || (renderer->isApplet() && toRenderApplet(renderer)->allowsAcceleratedCompositing())) {
+    if (renderer->isEmbeddedObject() && toRenderEmbeddedObject(renderer)->allowsAcceleratedCompositing()) {
         PluginViewBase* pluginViewBase = static_cast<PluginViewBase*>(toRenderWidget(renderer)->widget());
         m_graphicsLayer->setContentsToMedia(pluginViewBase->platformLayer());
     }
@@ -599,7 +598,10 @@ void RenderLayerBacking::updateGraphicsLayerGeometry()
         }
 
         m_foregroundLayer->setPosition(foregroundPosition);
-        m_foregroundLayer->setSize(foregroundSize);
+        if (foregroundSize != m_foregroundLayer->size()) {
+            m_foregroundLayer->setSize(foregroundSize);
+            m_foregroundLayer->setNeedsDisplay();
+        }
         m_foregroundLayer->setOffsetFromRenderer(foregroundOffset);
     }
 
@@ -1013,7 +1015,7 @@ bool RenderLayerBacking::containsPaintedContent() const
     if (renderer()->isVideo() && toRenderVideo(renderer())->shouldDisplayVideo())
         return hasBoxDecorationsOrBackground(renderer());
 #endif
-#if PLATFORM(MAC) && USE(CA) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 1070
+#if PLATFORM(MAC) && USE(CA) && (PLATFORM(IOS) || __MAC_OS_X_VERSION_MIN_REQUIRED >= 1070)
 #elif ENABLE(WEBGL) || ENABLE(ACCELERATED_2D_CANVAS)
     if (isAcceleratedCanvas(renderer()))
         return hasBoxDecorationsOrBackground(renderer());

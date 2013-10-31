@@ -60,7 +60,6 @@ public:
     bool isRunning() const { return m_isRunning; }
 #endif
     bool isCancelled() const { return m_cancelled; }
-    void loadAboutURL();
     int cancelJob();
     bool isDeferringLoading() const { return m_deferLoadingCount > 0; }
     void updateDeferLoadingCount(int delta);
@@ -80,6 +79,7 @@ public:
     void handleNotifyDataSent(unsigned long long bytesSent, unsigned long long totalBytesToBeSent);
     virtual void notifyClose(int status);
     void handleNotifyClose(int status);
+    virtual int status() const { return m_extendedStatusCode; }
 
 private:
     bool isClientAvailable() const { return !m_cancelled && m_handle && m_handle->client(); }
@@ -114,14 +114,7 @@ private:
     void sendResponseIfNeeded();
     void sendMultipartResponseIfNeeded();
 
-    void fireLoadAboutTimer(Timer<NetworkJob>*)
-    {
-        handleAbout();
-    }
-
     void fireDeleteJobTimer(Timer<NetworkJob>*);
-
-    void handleAbout();
 
     bool handleFTPHeader(const String& header);
 
@@ -143,7 +136,6 @@ private:
     String m_pageGroupName;
     RefPtr<ResourceHandle> m_handle;
     ResourceResponse m_response;
-    Timer<NetworkJob> m_loadAboutTimer;
     OwnPtr<ResourceResponse> m_multipartResponse;
     Timer<NetworkJob> m_deleteJobTimer;
     String m_contentType;
@@ -151,7 +143,6 @@ private:
     String m_contentDisposition;
     BlackBerry::Platform::NetworkStreamFactory* m_streamFactory;
     bool m_isFile;
-    bool m_isAbout;
     bool m_isFTP;
     bool m_isFTPDir;
 #ifndef NDEBUG
@@ -164,6 +155,7 @@ private:
     bool m_callingClient;
     bool m_needsRetryAsFTPDirectory;
     bool m_isOverrideContentType;
+    bool m_newJobWithCredentialsStarted;
 
     // If an HTTP status code is received, m_extendedStatusCode and m_response.httpStatusCode will both be set to it.
     // If a platform error code is received, m_extendedStatusCode will be set to it and m_response.httpStatusCode will be set to 404.

@@ -512,6 +512,7 @@ public:
     void paint(GraphicsContext*, const LayoutRect& damageRect, PaintBehavior = PaintBehaviorNormal, RenderObject* paintingRoot = 0,
         RenderRegion* = 0, PaintLayerFlags = 0);
     bool hitTest(const HitTestRequest&, HitTestResult&);
+    bool hitTest(const HitTestRequest&, const HitTestPoint&, HitTestResult&);
     void paintOverlayScrollbars(GraphicsContext*, const LayoutRect& damageRect, PaintBehavior, RenderObject* paintingRoot);
 
     // This method figures out our layerBounds in coordinates relative to
@@ -546,6 +547,7 @@ public:
         IncludeSelfTransform = 1 << 0,
         UseLocalClipRectIfPossible = 1 << 1,
         IncludeLayerFilterOutsets = 1 << 2,
+        ExcludeHiddenDescendants = 1 << 3,
         DefaultCalculateLayerBoundsFlags =  IncludeSelfTransform | UseLocalClipRectIfPossible | IncludeLayerFilterOutsets
     };
     typedef unsigned CalculateLayerBoundsFlags;
@@ -845,6 +847,7 @@ private:
     
     enum IndirectCompositingReason {
         NoIndirectCompositingReason,
+        IndirectCompositingForStacking,
         IndirectCompositingForOverlap,
         IndirectCompositingForBackgroundLayer,
         IndirectCompositingForGraphicalEffect, // opacity, mask, filter, transform etc.

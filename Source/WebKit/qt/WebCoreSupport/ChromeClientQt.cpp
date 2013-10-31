@@ -32,6 +32,7 @@
 
 #include "ApplicationCacheStorage.h"
 #include "ColorChooser.h"
+#include "ColorChooserClient.h"
 #include "DatabaseTracker.h"
 #include "Document.h"
 #include "FileChooser.h"
@@ -69,6 +70,7 @@
 #include "qwebsecurityorigin.h"
 #include "qwebsecurityorigin_p.h"
 #include "qwebview.h"
+#include <qabstractanimation.h>
 #include <qdebug.h>
 #include <qeventloop.h>
 #include <qtooltip.h>
@@ -86,6 +88,40 @@
 #endif
 
 namespace WebCore {
+
+#if ENABLE(REQUEST_ANIMATION_FRAME) && !USE(REQUEST_ANIMATION_FRAME_TIMER)
+class RefreshAnimation : public QAbstractAnimation {
+public:
+    RefreshAnimation(ChromeClientQt* chromeClient)
+        : QAbstractAnimation()
+        , m_chromeClient(chromeClient)
+        , m_animationScheduled(false)
+    { }
+
+    virtual int duration() const { return -1; }
+
+    void scheduleAnimation()
+    {
+        m_animationScheduled = true;
+        if (state() != QAbstractAnimation::Running)
+            start();
+    }
+
+protected:
+    virtual void updateCurrentTime(int currentTime)
+    {
+        UNUSED_PARAM(currentTime);
+        if (m_animationScheduled) {
+            m_animationScheduled = false;
+            m_chromeClient->serviceScriptedAnimations();
+        } else
+            stop();
+    }
+private:
+    ChromeClientQt* m_chromeClient;
+    bool m_animationScheduled;
+};
+#endif
 
 bool ChromeClientQt::dumpVisitedLinksCallbacks = false;
 
@@ -559,9 +595,11 @@ void ChromeClientQt::reachedApplicationCacheOriginQuota(SecurityOrigin* origin, 
 }
 
 #if ENABLE(INPUT_TYPE_COLOR)
-PassOwnPtr<ColorChooser> ChromeClientQt::createColorChooser(ColorChooserClient*, const Color&)
+PassOwnPtr<ColorChooser> ChromeClientQt::createColorChooser(ColorChooserClient* client, const Color& color)
 {
-    notImplemented();
+    const QColor selectedColor = m_webPage->d->colorSelectionRequested(QColor(color));
+    client->didChooseColor(selectedColor);
+    client->didEndChooser();
     return nullptr;
 }
 #endif
@@ -615,6 +653,19 @@ void ChromeClientQt::setCursor(const Cursor& cursor)
 #endif
 }
 
+#if ENABLE(REQUEST_ANIMATION_FRAME) && !USE(REQUEST_ANIMATION_FRAME_TIMER)
+void ChromeClientQt::scheduleAnimation()
+{
+    if (!m_refreshAnimation)
+        m_refreshAnimation = adoptPtr(new RefreshAnimation(this));
+    m_refreshAnimation->scheduleAnimation();
+}
+
+void ChromeClientQt::serviceScriptedAnimations()
+{
+    m_webPage->mainFrame()->d->frame->view()->serviceScriptedAnimations(convertSecondsToDOMTimeStamp(currentTime()));
+}
+#endif
 
 #if USE(ACCELERATED_COMPOSITING)
 void ChromeClientQt::attachRootGraphicsLayer(Frame* frame, GraphicsLayer* graphicsLayer)

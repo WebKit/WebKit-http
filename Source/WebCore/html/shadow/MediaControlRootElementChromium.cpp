@@ -49,17 +49,27 @@ namespace WebCore {
 static const double timeWithoutMouseMovementBeforeHidingControls = 2;
 
 MediaControlChromiumEnclosureElement::MediaControlChromiumEnclosureElement(Document* document)
-    : HTMLDivElement(HTMLNames::divTag, document->document())
-    , m_mediaController(0)
+    : MediaControlElement(document)
 {
 }
 
-PassRefPtr<MediaControlChromiumEnclosureElement> MediaControlChromiumEnclosureElement::create(Document* document)
+MediaControlElementType MediaControlChromiumEnclosureElement::displayType() const
 {
-    return adoptRef(new MediaControlChromiumEnclosureElement(document));
+    // Mapping onto same MediaControlElementType as panel element, since it has similar properties.
+    return MediaControlsPanel;
 }
 
-const AtomicString& MediaControlChromiumEnclosureElement::shadowPseudoId() const
+MediaControlPanelEnclosureElement::MediaControlPanelEnclosureElement(Document* document)
+    : MediaControlChromiumEnclosureElement(document)
+{
+}
+
+PassRefPtr<MediaControlPanelEnclosureElement> MediaControlPanelEnclosureElement::create(Document* document)
+{
+    return adoptRef(new MediaControlPanelEnclosureElement(document));
+}
+
+const AtomicString& MediaControlPanelEnclosureElement::shadowPseudoId() const
 {
     DEFINE_STATIC_LOCAL(AtomicString, id, ("-webkit-media-controls-enclosure"));
     return id;
@@ -80,17 +90,19 @@ MediaControlRootElementChromium::MediaControlRootElementChromium(Document* docum
 #if ENABLE(VIDEO_TRACK)
     , m_textDisplayContainer(0)
 #endif
-    , m_opaque(true)
     , m_hideFullscreenControlsTimer(this, &MediaControlRootElementChromium::hideFullscreenControlsTimerFired)
     , m_isMouseOverControls(false)
     , m_isFullscreen(false)
 {
 }
 
+// MediaControls::create() for Android is defined in MediaControlRootElementChromiumAndroid.cpp.
+#if !OS(ANDROID)
 PassRefPtr<MediaControls> MediaControls::create(Document* document)
 {
     return MediaControlRootElementChromium::create(document);
 }
+#endif
 
 PassRefPtr<MediaControlRootElementChromium> MediaControlRootElementChromium::create(Document* document)
 {
@@ -99,68 +111,76 @@ PassRefPtr<MediaControlRootElementChromium> MediaControlRootElementChromium::cre
 
     RefPtr<MediaControlRootElementChromium> controls = adoptRef(new MediaControlRootElementChromium(document));
 
+    if (controls->initializeControls(document))
+        return controls.release();
+
+    return 0;
+}
+
+bool MediaControlRootElementChromium::initializeControls(Document* document)
+{
     // Create an enclosing element for the panel so we can visually offset the controls correctly.
-    RefPtr<MediaControlChromiumEnclosureElement> enclosure = MediaControlChromiumEnclosureElement::create(document);
+    RefPtr<MediaControlPanelEnclosureElement> enclosure = MediaControlPanelEnclosureElement::create(document);
 
     RefPtr<MediaControlPanelElement> panel = MediaControlPanelElement::create(document);
 
     ExceptionCode ec;
 
     RefPtr<MediaControlPlayButtonElement> playButton = MediaControlPlayButtonElement::create(document);
-    controls->m_playButton = playButton.get();
+    m_playButton = playButton.get();
     panel->appendChild(playButton.release(), ec, true);
     if (ec)
-        return 0;
+        return false;
 
-    RefPtr<MediaControlTimelineElement> timeline = MediaControlTimelineElement::create(document, controls.get());
-    controls->m_timeline = timeline.get();
+    RefPtr<MediaControlTimelineElement> timeline = MediaControlTimelineElement::create(document, this);
+    m_timeline = timeline.get();
     panel->appendChild(timeline.release(), ec, true);
     if (ec)
-        return 0;
+        return false;
 
     RefPtr<MediaControlCurrentTimeDisplayElement> currentTimeDisplay = MediaControlCurrentTimeDisplayElement::create(document);
-    controls->m_currentTimeDisplay = currentTimeDisplay.get();
-    controls->m_currentTimeDisplay->hide();
+    m_currentTimeDisplay = currentTimeDisplay.get();
+    m_currentTimeDisplay->hide();
     panel->appendChild(currentTimeDisplay.release(), ec, true);
     if (ec)
-        return 0;
+        return false;
 
     RefPtr<MediaControlTimeRemainingDisplayElement> durationDisplay = MediaControlTimeRemainingDisplayElement::create(document);
-    controls->m_durationDisplay = durationDisplay.get();
+    m_durationDisplay = durationDisplay.get();
     panel->appendChild(durationDisplay.release(), ec, true);
     if (ec)
-        return 0;
+        return false;
 
-    RefPtr<MediaControlPanelMuteButtonElement> panelMuteButton = MediaControlPanelMuteButtonElement::create(document, controls.get());
-    controls->m_panelMuteButton = panelMuteButton.get();
+    RefPtr<MediaControlPanelMuteButtonElement> panelMuteButton = MediaControlPanelMuteButtonElement::create(document, this);
+    m_panelMuteButton = panelMuteButton.get();
     panel->appendChild(panelMuteButton.release(), ec, true);
     if (ec)
-        return 0;
+        return false;
 
     RefPtr<MediaControlVolumeSliderElement> slider = MediaControlVolumeSliderElement::create(document);
-    controls->m_volumeSlider = slider.get();
-    controls->m_volumeSlider->setClearMutedOnUserInteraction(true);
+    m_volumeSlider = slider.get();
+    m_volumeSlider->setClearMutedOnUserInteraction(true);
     panel->appendChild(slider.release(), ec, true);
     if (ec)
-        return 0;
+        return false;
 
-    RefPtr<MediaControlFullscreenButtonElement> fullscreenButton = MediaControlFullscreenButtonElement::create(document, controls.get());
-    controls->m_fullscreenButton = fullscreenButton.get();
+    RefPtr<MediaControlFullscreenButtonElement> fullscreenButton = MediaControlFullscreenButtonElement::create(document, this);
+    m_fullscreenButton = fullscreenButton.get();
     panel->appendChild(fullscreenButton.release(), ec, true);
     if (ec)
-        return 0;
+        return false;
 
-    controls->m_panel = panel.get();
+    m_panel = panel.get();
     enclosure->appendChild(panel.release(), ec, true);
     if (ec)
-        return 0;
+        return false;
 
-    controls->m_enclosure = enclosure.get();
-    controls->appendChild(enclosure.release(), ec, true);
+    m_enclosure = enclosure.get();
+    appendChild(enclosure.release(), ec, true);
     if (ec)
-        return 0;
+        return false;
 
-    return controls.release();
+    return true;
 }
 
 void MediaControlRootElementChromium::setMediaController(MediaControllerInterface* controller)
@@ -245,7 +265,7 @@ void MediaControlRootElementChromium::reset()
         }
     }
 
-    if (m_mediaController->supportsFullscreen())
+    if (m_mediaController->supportsFullscreen() && m_mediaController->hasVideo())
         m_fullscreenButton->show();
     else
         m_fullscreenButton->hide();

@@ -57,7 +57,7 @@
 #include "PluginDatabase.h"
 #endif
 
-#if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 1080 && !PLATFORM(IOS)
+#if PLATFORM(MAC) && !PLATFORM(IOS) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 1080
 #include "WebCoreSystemInterface.h"
 #endif
 
@@ -76,7 +76,7 @@ MainResourceLoader::MainResourceLoader(Frame* frame)
     , m_loadingMultipartContent(false)
     , m_waitingForContentPolicy(false)
     , m_timeOfLastDataReceived(0.0)
-#if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 1080 && !PLATFORM(IOS)
+#if PLATFORM(MAC) && !PLATFORM(IOS) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 1080
     , m_filter(0)
 #endif
 {
@@ -84,7 +84,7 @@ MainResourceLoader::MainResourceLoader(Frame* frame)
 
 MainResourceLoader::~MainResourceLoader()
 {
-#if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 1080 && !PLATFORM(IOS)
+#if PLATFORM(MAC) && !PLATFORM(IOS) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 1080
     ASSERT(!m_filter);
 #endif
 }
@@ -134,7 +134,7 @@ void MainResourceLoader::didCancel(const ResourceError& error)
     // like calling DOMWindow::print(), during which a half-canceled load could try to finish.
     documentLoader()->mainReceivedError(error);
 
-#if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 1080 && !PLATFORM(IOS)
+#if PLATFORM(MAC) && !PLATFORM(IOS) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 1080
     if (m_filter) {
         wkFilterRelease(m_filter);
         m_filter = 0;
@@ -266,7 +266,11 @@ void MainResourceLoader::continueAfterContentPolicy(PolicyAction contentPolicy, 
     switch (contentPolicy) {
     case PolicyUse: {
         // Prevent remote web archives from loading because they can claim to be from any domain and thus avoid cross-domain security checks (4120255).
-        bool isRemoteWebArchive = (equalIgnoringCase("application/x-webarchive", mimeType) || equalIgnoringCase("multipart/related", mimeType))
+        bool isRemoteWebArchive = (equalIgnoringCase("application/x-webarchive", mimeType)
+#if PLATFORM(GTK)
+                                   || equalIgnoringCase("message/rfc822", mimeType)
+#endif
+                                   || equalIgnoringCase("multipart/related", mimeType))
             && !m_substituteData.isValid() && !SchemeRegistry::shouldTreatURLSchemeAsLocal(url.protocol());
         if (!frameLoader()->client()->canShowMIMEType(mimeType) || isRemoteWebArchive) {
             frameLoader()->policyChecker()->cannotShowMIMEType(r);
@@ -413,7 +417,7 @@ void MainResourceLoader::didReceiveResponse(const ResourceResponse& r)
     }
 #endif
 
-#if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 1080 && !PLATFORM(IOS)
+#if PLATFORM(MAC) && !PLATFORM(IOS) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 1080
     if (r.url().protocolIs("https") && wkFilterIsManagedSession())
         m_filter = wkFilterCreateInstance(r.nsURLResponse());
 #endif
@@ -443,7 +447,7 @@ void MainResourceLoader::didReceiveData(const char* data, int length, long long 
     ASSERT(!defersLoading());
 #endif
 
-#if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 1080 && !PLATFORM(IOS)
+#if PLATFORM(MAC) && !PLATFORM(IOS) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 1080
     if (m_filter) {
         ASSERT(!wkFilterWasBlocked(m_filter));
         const char* blockedData = wkFilterAddData(m_filter, data, &length);
@@ -469,7 +473,7 @@ void MainResourceLoader::didReceiveData(const char* data, int length, long long 
 
     ResourceLoader::didReceiveData(data, length, encodedDataLength, allAtOnce);
 
-#if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 1080 && !PLATFORM(IOS)
+#if PLATFORM(MAC) && !PLATFORM(IOS) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 1080
     if (WebFilterEvaluator *filter = m_filter) {
         // If we got here, it means we know if we were blocked or not. If we were blocked, we're
         // done loading the page altogether. Either way, we don't need the filter anymore.
@@ -496,7 +500,7 @@ void MainResourceLoader::didFinishLoading(double finishTime)
     RefPtr<MainResourceLoader> protect(this);
     RefPtr<DocumentLoader> dl = documentLoader();
 
-#if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 1080 && !PLATFORM(IOS)
+#if PLATFORM(MAC) && !PLATFORM(IOS) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 1080
     if (m_filter) {
         int length;
         const char* data = wkFilterDataComplete(m_filter, &length);
@@ -521,7 +525,7 @@ void MainResourceLoader::didFinishLoading(double finishTime)
 
 void MainResourceLoader::didFail(const ResourceError& error)
 {
-#if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 1080 && !PLATFORM(IOS)
+#if PLATFORM(MAC) && !PLATFORM(IOS) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 1080
     if (m_filter) {
         wkFilterRelease(m_filter);
         m_filter = 0;

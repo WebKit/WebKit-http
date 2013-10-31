@@ -36,7 +36,7 @@ namespace JSC {
 #if USE(JSVALUE32_64)
 #define INLINE_STORAGE_CAPACITY 6
 #else
-#define INLINE_STORAGE_CAPACITY 4
+#define INLINE_STORAGE_CAPACITY 5
 #endif
 
 typedef int PropertyOffset;
@@ -118,7 +118,7 @@ inline size_t offsetInOutOfLineStorage(PropertyOffset offset)
 {
     validateOffset(offset);
     ASSERT(isOutOfLineOffset(offset));
-    return offset - firstOutOfLineOffset;
+    return -static_cast<ptrdiff_t>(offset - firstOutOfLineOffset) - 2;
 }
 
 inline size_t offsetInRespectiveStorage(PropertyOffset offset)

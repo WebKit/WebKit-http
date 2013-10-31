@@ -9,12 +9,14 @@
       <dep package="fonts"/>
       <dep package="fontconfig"/>
       <dep package="freetype6"/>
+      <dep package="harfbuzz"/>
       <dep package="glib"/>
       <dep package="glib-networking"/>
       <dep package="libsoup"/>
       <dep package="edje"/>
       <dep package="e_dbus"/>
       <dep package="eeze"/>
+      <dep package="efreet"/>
     </dependencies>
   </metamodule>
 
@@ -30,8 +32,6 @@
       href="http://ftp.gnome.org"/>
   <repository type="git" name="git.gnome.org"
       href="git://git.gnome.org/"/>
-  <repository type="tarball" name="gnu.org"
-      href="http://ftp.gnu.org/"/>
   <repository type="tarball" name="cairographics.org"
       href="http://cairographics.org"/>
   <repository type="tarball" name="freedesktop.org"
@@ -59,7 +59,6 @@
             md5sum="a2d0b120509bdccb10aa7f4bec3730e4">
     </branch>
   </autotools>
-
 
   <autotools id="fonts"
              skip-autogen="true">
@@ -120,7 +119,7 @@
 
   <autotools id="glib-networking">
     <dependencies>
-      <dep package="gnutls"/>
+      <dep package="glib"/>
     </dependencies>
     <branch module="/pub/GNOME/sources/glib-networking/2.33/glib-networking-2.33.2.tar.xz" version="2.33.2"
             repo="ftp.gnome.org"
@@ -128,26 +127,15 @@
             md5sum="5abb364f2a0babe2ec1e3a6d59f69043"/>
   </autotools>
 
-  <autotools id="gnutls"
-             autogenargs="--enable-ld-version-script --enable-cxx --without-lzo --with-libgcrypt">
-    <dependencies>
-      <dep package="libgcrypt"/>
-      <dep package="p11-kit"/>
-    </dependencies>
-    <branch module="/gnu/gnutls/gnutls-2.12.14.tar.bz2" version="2.12.14"
-            repo="gnu.org"
-            hash="sha256:5ee72ba6de7a23cf315792561954451e022dac8730149ca95f93c61e95be2ce3"
-            md5sum="555687a7ffefba0bd9de1e71cb61402c"/>
-  </autotools>
-
   <autotools id="libsoup"
              autogenargs="--without-gnome --disable-introspection">
     <dependencies>
       <dep package="glib-networking"/>
     </dependencies>
-    <branch module="libsoup" version="2.39.2"
-            repo="git.gnome.org"
-            tag="LIBSOUP_2_39_2"/>
+    <branch module="/pub/gnome/sources/libsoup/2.39/libsoup-2.39.4.1.tar.xz" version="2.39.4.1"
+            repo="ftp.gnome.org"
+            hash="sha256:0740c3f6e393d31f87f166f0c6d11de5ebaa013d382c59ed924a1384c575612e"
+            md5sum="895ed1e0c949a2ce50aeaeb58661bfc3"/>
   </autotools>
 
   <autotools id="fontconfig" autogen-sh="configure">
@@ -157,6 +145,15 @@
             md5sum="77e15a92006ddc2adbb06f840d591c0e">
     </branch>
   </autotools>
+
+ <autotools id="harfbuzz" autogen-sh="configure">
+   <branch module="software/harfbuzz/release/harfbuzz-20120627.tar.bz2" version="0.9.0"
+           checkoutdir="harfbuzz-0.9.0"
+           repo="freedesktop.org"
+           hash="sha256:562a187b84a2b5bd38f87e898f5f18aa918a41db62adbc17f6fcfd8fa1755485"
+           md5sum="18e6a8d847259441723a26e299792d55">
+   </branch>
+ </autotools>
 
   <autotools id="eina" >
     <branch module="eina"
@@ -194,6 +191,7 @@
             repo="enlightenment.org"
             revision="73027"/>
     <dependencies>
+      <dep package="libgcrypt"/>
       <dep package="eina"/>
     </dependencies>
   </autotools>
@@ -227,6 +225,17 @@
     <dependencies>
       <dep package="ecore"/>
       <dep package="eina"/>
+    </dependencies>
+  </autotools>
+
+  <autotools id="efreet">
+    <branch module="efreet"
+            repo="enlightenment.org"
+            revision="73027"/>
+    <dependencies>
+        <deb package="ecore"/>
+        <deb package="eina"/>
+        <deb package="eet"/>
     </dependencies>
   </autotools>
 

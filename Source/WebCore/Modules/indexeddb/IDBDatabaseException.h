@@ -65,8 +65,8 @@ public:
         IDB_QUOTA_EXCEEDED_ERR,
         IDB_SYNTAX_ERR,
         IDB_DATA_CLONE_ERR,
-        IDB_TYPE_ERR, // FIXME: Placeholder until bindings have been updated to throw a JS TypeError. See https://bugs.webkit.org/show_bug.cgi?id=85513
-        IDB_NOT_SUPPORTED_ERR,
+        LEGACY_IDB_TYPE_ERR, // FIXME: Placeholder.
+        LEGACY_IDB_NOT_SUPPORTED_ERR, // FIXME: Placeholder.
     };
 
     static int ErrorCodeToExceptionCode(int errorCode)

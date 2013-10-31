@@ -52,6 +52,7 @@ WebLayerTreeView::Settings::operator CCLayerTreeSettings() const
     settings.refreshRate = refreshRate;
     settings.defaultTileSize = defaultTileSize;
     settings.maxUntiledLayerSize = maxUntiledLayerSize;
+    settings.acceleratePainting = acceleratePainting;
 
     // FIXME: showFPSCounter / showPlatformLayerTree / maxPartialTextureUpdates aren't supported currently.
     return settings;
@@ -182,6 +183,9 @@ void WebLayerTreeView::renderingStats(WebRenderingStats& stats) const
 
     stats.numAnimationFrames = ccStats.numAnimationFrames;
     stats.numFramesSentToScreen = ccStats.numFramesSentToScreen;
+    stats.droppedFrameCount = ccStats.droppedFrameCount;
+    stats.totalPaintTimeInSeconds = ccStats.totalPaintTimeInSeconds;
+    stats.totalRasterizeTimeInSeconds = ccStats.totalRasterizeTimeInSeconds;
 }
 
 void WebLayerTreeView::loseCompositorContext(int numTimes)

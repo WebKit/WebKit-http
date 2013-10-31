@@ -34,6 +34,7 @@
 #include "BindingSecurity.h"
 #include "DOMDataStore.h"
 #include "PlatformString.h"
+#include "V8BindingMacros.h"
 #include "V8DOMWrapper.h"
 #include "V8GCController.h"
 #include "V8HiddenPropertyName.h"
@@ -49,7 +50,7 @@ namespace WebCore {
     class EventListener;
     class EventTarget;
     class ExternalStringVisitor;
-    class MemoryInstrumentation;
+    class MemoryObjectInfo;
 
     // FIXME: Remove V8Binding.
     class V8Binding {
@@ -79,7 +80,7 @@ namespace WebCore {
 
         void remove(StringImpl*);
 
-        void reportMemoryUsage(MemoryInstrumentation*);
+        void reportMemoryUsage(MemoryObjectInfo*) const;
 
     private:
         v8::Local<v8::String> v8ExternalStringSlow(StringImpl*, v8::Isolate*);
@@ -217,7 +218,15 @@ namespace WebCore {
 
         GCEventData& gcEventData() { return m_gcEventData; }
 
-        void reportMemoryUsage(MemoryInstrumentation*);
+        void reportMemoryUsage(MemoryObjectInfo*) const;
+
+        // Gives the system a hint that we should send a low memory
+        // notification upon the next close or navigation event,
+        // because some expensive objects have been allocated that we
+        // want to take every opportunity to collect.
+        void setLowMemoryNotificationHint() { m_lowMemoryNotificationHint = true; }
+        void clearLowMemoryNotificationHint() { m_lowMemoryNotificationHint = false; }
+        bool isLowMemoryNotificationHint() const { return m_lowMemoryNotificationHint; }
 
     private:
         explicit V8BindingPerIsolateData(v8::Isolate*);
@@ -247,6 +256,8 @@ namespace WebCore {
         int m_internalScriptRecursionLevel;
 #endif
         GCEventData m_gcEventData;
+
+        bool m_lowMemoryNotificationHint;
     };
 
     class ConstructorMode {
@@ -437,6 +448,31 @@ namespace WebCore {
             result.append(TraitsType::arrayNativeValue(array, i));
         }
         return result;
+    }
+
+    // Validates that the passed object is a sequence type per WebIDL spec
+    // http://www.w3.org/TR/2012/WD-WebIDL-20120207/#es-sequence
+    inline v8::Handle<v8::Value> toV8Sequence(v8::Handle<v8::Value> value, uint32_t& length)
+    {
+        if (!value->IsObject()) {
+            V8Proxy::throwTypeError();
+            return v8::Local<v8::Value>();
+        }
+
+        v8::Local<v8::Value> v8Value(v8::Local<v8::Value>::New(value));
+        v8::Local<v8::Object> object = v8::Local<v8::Object>::Cast(v8Value);
+
+        EXCEPTION_BLOCK(v8::Local<v8::Value>, lengthValue, object->Get(v8::String::New("length")));
+
+        if (lengthValue->IsUndefined() || lengthValue->IsNull()) {
+            V8Proxy::throwTypeError();
+            return v8::Local<v8::Value>();
+        }
+
+        EXCEPTION_BLOCK(uint32_t, sequenceLength, lengthValue->Int32Value());
+        length = sequenceLength;
+
+        return v8Value;
     }
 
     // Enables caching v8 wrappers created for WTF::StringImpl.  Currently this cache requires

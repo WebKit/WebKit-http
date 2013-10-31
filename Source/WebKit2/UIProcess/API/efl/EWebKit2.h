@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2012 Samsung Electronics
+ * Copyright (C) 2012 Intel Corporation. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -28,11 +29,16 @@
 #define EWebKit2_h
 
 #include "ewk_context.h"
+#include "ewk_cookie_manager.h"
+#include "ewk_download_job.h"
+#include "ewk_form_submission_request.h"
 #include "ewk_intent.h"
 #include "ewk_intent_service.h"
+#include "ewk_main.h"
 #include "ewk_navigation_policy_decision.h"
 #include "ewk_url_request.h"
 #include "ewk_url_response.h"
+#include "ewk_url_scheme_request.h"
 #include "ewk_view.h"
 #include "ewk_web_error.h"
 #include "ewk_web_resource.h"

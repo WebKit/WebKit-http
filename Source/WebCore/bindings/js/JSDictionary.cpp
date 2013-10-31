@@ -107,7 +107,7 @@ void JSDictionary::convertValue(ExecState* exec, JSValue value, Vector<String>& 
     if (value.isUndefinedOrNull())
         return;
 
-    unsigned length;
+    unsigned length = 0;
     JSObject* object = toJSSequence(exec, value, length);
     if (exec->hadException())
         return;
@@ -163,7 +163,7 @@ void JSDictionary::convertValue(ExecState*, JSValue value, RefPtr<TrackBase>& re
 }
 #endif
 
-#if ENABLE(MUTATION_OBSERVERS)
+#if ENABLE(MUTATION_OBSERVERS) || ENABLE(WEB_INTENTS)
 void JSDictionary::convertValue(ExecState* exec, JSValue value, HashSet<AtomicString>& result)
 {
     result.clear();
@@ -171,7 +171,7 @@ void JSDictionary::convertValue(ExecState* exec, JSValue value, HashSet<AtomicSt
     if (value.isUndefinedOrNull())
         return;
 
-    unsigned length;
+    unsigned length = 0;
     JSObject* object = toJSSequence(exec, value, length);
     if (exec->hadException())
         return;

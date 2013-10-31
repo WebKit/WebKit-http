@@ -26,7 +26,7 @@
 #include "config.h"
 #include "Hyphenation.h"
 
-#if (!PLATFORM(MAC) && !PLATFORM(CHROMIUM)) || __MAC_OS_X_VERSION_MIN_REQUIRED >= 1070
+#if (!PLATFORM(MAC) && !PLATFORM(CHROMIUM)) || PLATFORM(IOS) || __MAC_OS_X_VERSION_MIN_REQUIRED >= 1070
 
 #include "AtomicStringKeyedMRUCache.h"
 #include "TextBreakIteratorInternalICU.h"
@@ -70,10 +70,11 @@ size_t lastHyphenLocation(const UChar* characters, size_t length, size_t beforeI
     RetainPtr<CFLocaleRef> locale = cfLocaleCache().get(localeIdentifier);
     ASSERT(locale);
 
-    CFIndex result = CFStringGetHyphenationLocationBeforeIndex(string.get(), beforeIndex, CFRangeMake(0, length), 0, locale.get(), 0);
+    CFOptionFlags searchAcrossWordBoundaries = 1;
+    CFIndex result = CFStringGetHyphenationLocationBeforeIndex(string.get(), beforeIndex, CFRangeMake(0, length), searchAcrossWordBoundaries, locale.get(), 0);
     return result == kCFNotFound ? 0 : result;
 }
 
 } // namespace WebCore
 
-#endif // !PLATFORM(MAC) || __MAC_OS_X_VERSION_MIN_REQUIRED >= 1070
+#endif // (!PLATFORM(MAC) && !PLATFORM(CHROMIUM)) || PLATFORM(IOS) || __MAC_OS_X_VERSION_MIN_REQUIRED >= 1070

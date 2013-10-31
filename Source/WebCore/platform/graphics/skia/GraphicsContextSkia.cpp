@@ -37,14 +37,17 @@
 #include "Gradient.h"
 #include "ImageBuffer.h"
 #include "IntRect.h"
+#include "KURL.h"
 #include "NativeImageSkia.h"
 #include "NotImplemented.h"
 #include "PlatformContextSkia.h"
 
+#include "SkAnnotation.h"
 #include "SkBitmap.h"
 #include "SkBlurMaskFilter.h"
 #include "SkColorFilter.h"
 #include "SkCornerPathEffect.h"
+#include "SkData.h"
 #include "SkLayerDrawLooper.h"
 #include "SkShader.h"
 #include "SkiaUtils.h"
@@ -658,6 +661,10 @@ void GraphicsContext::drawRect(const IntRect& rect)
     if (paintingDisabled())
         return;
 
+    ASSERT(!rect.isEmpty());
+    if (rect.isEmpty())
+        return;
+
     platformContext()->drawRect(rect);
 }
 
@@ -747,7 +754,7 @@ void GraphicsContext::fillRoundedRect(const IntRect& rect,
     platformContext()->didDrawPath(path, paint);
 }
 
-AffineTransform GraphicsContext::getCTM() const
+AffineTransform GraphicsContext::getCTM(IncludeDeviceScale) const
 {
     if (paintingDisabled())
         return AffineTransform();
@@ -994,6 +1001,11 @@ void GraphicsContext::setPlatformTextDrawingMode(TextDrawingModeFlags mode)
 
 void GraphicsContext::setURLForRect(const KURL& link, const IntRect& destRect)
 {
+    if (paintingDisabled())
+        return;
+
+    SkAutoDataUnref url(SkData::NewWithCString(link.string().utf8().data()));
+    SkAnnotateRectWithURL(platformContext()->canvas(), destRect, url.get());
 }
 
 void GraphicsContext::setPlatformShouldAntialias(bool enable)

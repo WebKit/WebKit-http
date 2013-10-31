@@ -356,6 +356,10 @@ void LayerTreeCoordinator::performScheduledLayerFlush()
 {
     if (m_isSuspended || m_waitingForUIProcess)
         return;
+#if ENABLE(REQUEST_ANIMATION_FRAME) && !USE(REQUEST_ANIMATION_FRAME_TIMER) && !USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
+    // Make sure that any previously registered animation callbacks are being executed before we flush the layers.
+    m_webPage->corePage()->mainFrame()->view()->serviceScriptedAnimations(convertSecondsToDOMTimeStamp(currentTime()));
+#endif
 
     m_webPage->layoutIfNeeded();
 
@@ -409,12 +413,12 @@ int64_t LayerTreeCoordinator::adoptImageBackingStore(Image* image)
     int64_t key = 0;
 
 #if PLATFORM(QT)
-    QPixmap* pixmap = image->nativeImageForCurrentFrame();
+    QImage* nativeImage = image->nativeImageForCurrentFrame();
 
-    if (!pixmap)
+    if (!nativeImage)
         return InvalidWebLayerID;
 
-    key = pixmap->cacheKey();
+    key = nativeImage->cacheKey();
 #endif
 
     HashMap<int64_t, int>::iterator it = m_directlyCompositedImageRefCounts.find(key);
@@ -543,6 +547,13 @@ void LayerTreeCoordinator::setVisibleContentsRect(const IntRect& rect, float sca
     if (contentsRectDidChange)
         m_shouldSendScrollPositionUpdate = true;
 }
+
+#if USE(UI_SIDE_COMPOSITING)
+void LayerTreeCoordinator::scheduleAnimation()
+{
+    scheduleLayerFlush();
+}
+#endif
 
 void LayerTreeCoordinator::renderNextFrame()
 {

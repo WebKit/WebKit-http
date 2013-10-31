@@ -301,8 +301,8 @@ end
 
 _llint_op_enter:
     traceExecution()
-    loadp CodeBlock[cfr], t2
-    loadi CodeBlock::m_numVars[t2], t2
+    loadp CodeBlock[cfr], t2                // t2<CodeBlock> = cfr.CodeBlock
+    loadi CodeBlock::m_numVars[t2], t2      // t2<size_t> = t2<CodeBlock>.m_numVars
     btiz t2, .opEnterDone
     move UndefinedTag, t0
     move 0, t1
@@ -921,20 +921,22 @@ _llint_op_is_string:
 
 macro loadPropertyAtVariableOffsetKnownNotFinal(propertyOffset, objectAndStorage, tag, payload)
     assert(macro (ok) bigteq propertyOffset, InlineStorageCapacity, ok end)
+    negi propertyOffset
     loadp JSObject::m_outOfLineStorage[objectAndStorage], objectAndStorage
-    loadi TagOffset - 8 * InlineStorageCapacity[objectAndStorage, propertyOffset, 8], tag
-    loadi PayloadOffset - 8 * InlineStorageCapacity[objectAndStorage, propertyOffset, 8], payload
+    loadi TagOffset + (InlineStorageCapacity - 2) * 8[objectAndStorage, propertyOffset, 8], tag
+    loadi PayloadOffset + (InlineStorageCapacity - 2) * 8[objectAndStorage, propertyOffset, 8], payload
 end
 
 macro loadPropertyAtVariableOffset(propertyOffset, objectAndStorage, tag, payload)
     bilt propertyOffset, InlineStorageCapacity, .isInline
     loadp JSObject::m_outOfLineStorage[objectAndStorage], objectAndStorage
+    negi propertyOffset
     jmp .ready
 .isInline:
-    addp JSFinalObject::m_inlineStorage + InlineStorageCapacity * 8, objectAndStorage
+    addp JSFinalObject::m_inlineStorage - (InlineStorageCapacity - 2) * 8, objectAndStorage
 .ready:
-    loadi TagOffset - 8 * InlineStorageCapacity[objectAndStorage, propertyOffset, 8], tag
-    loadi PayloadOffset - 8 * InlineStorageCapacity[objectAndStorage, propertyOffset, 8], payload
+    loadi TagOffset + (InlineStorageCapacity - 2) * 8[objectAndStorage, propertyOffset, 8], tag
+    loadi PayloadOffset + (InlineStorageCapacity - 2) * 8[objectAndStorage, propertyOffset, 8], payload
 end
 
 macro resolveGlobal(size, slow)

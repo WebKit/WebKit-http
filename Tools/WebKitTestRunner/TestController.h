@@ -104,7 +104,7 @@ private:
 
     OwnPtr<TestInvocation> m_currentInvocation;
 
-    bool m_dumpPixels;
+    bool m_dumpPixelsForAllTests;
     bool m_verbose;
     bool m_printSeparators;
     bool m_usingServerMode;
@@ -129,6 +129,7 @@ private:
     double m_shortTimeout;
     double m_noTimeout;
     bool m_useWaitToDumpWatchdogTimer;
+    bool m_forceNoTimeout;
 
     bool m_didPrintWebProcessCrashedMessage;
     bool m_shouldExitWhenWebProcessCrashes;

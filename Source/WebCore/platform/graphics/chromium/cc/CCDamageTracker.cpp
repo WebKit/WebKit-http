@@ -270,27 +270,28 @@ void CCDamageTracker::extendDamageForLayer(CCLayerImpl* layer, FloatRect& target
     // To consider how a layer's targetSurface contributes to the ancestorSurface,
     // extendDamageForRenderSurface() must be called instead.
 
-    // Compute the layer's "originTransform" by translating the drawTransform.
-    WebTransformationMatrix originTransform = layer->drawTransform();
-    originTransform.translate(-0.5 * layer->bounds().width(), -0.5 * layer->bounds().height());
-
     bool layerIsNew = false;
-    FloatRect oldLayerRect = removeRectFromCurrentFrame(layer->id(), layerIsNew);
+    FloatRect oldRectInTargetSpace = removeRectFromCurrentFrame(layer->id(), layerIsNew);
 
-    FloatRect layerRectInTargetSpace = CCMathUtil::mapClippedRect(originTransform, FloatRect(FloatPoint::zero(), layer->bounds()));
-    saveRectForNextFrame(layer->id(), layerRectInTargetSpace);
+    FloatRect rectInTargetSpace = CCMathUtil::mapClippedRect(layer->drawTransform(), FloatRect(FloatPoint::zero(), layer->contentBounds()));
+    saveRectForNextFrame(layer->id(), rectInTargetSpace);
 
     if (layerIsNew || layerNeedsToRedrawOntoItsTargetSurface(layer)) {
         // If a layer is new or has changed, then its entire layer rect affects the target surface.
-        targetDamageRect.uniteIfNonZero(layerRectInTargetSpace);
+        targetDamageRect.uniteIfNonZero(rectInTargetSpace);
 
         // The layer's old region is now exposed on the target surface, too.
-        // Note oldLayerRect is already in target space.
-        targetDamageRect.uniteIfNonZero(oldLayerRect);
+        // Note oldRectInTargetSpace is already in target space.
+        targetDamageRect.uniteIfNonZero(oldRectInTargetSpace);
     } else if (!layer->updateRect().isEmpty()) {
         // If the layer properties havent changed, then the the target surface is only
         // affected by the layer's update area, which could be empty.
-        FloatRect updateRectInTargetSpace = CCMathUtil::mapClippedRect(originTransform, layer->updateRect());
+        FloatRect updateContentRect = layer->updateRect();
+        float widthScale = layer->contentBounds().width() / static_cast<float>(layer->bounds().width());
+        float heightScale = layer->contentBounds().height() / static_cast<float>(layer->bounds().height());
+        updateContentRect.scale(widthScale, heightScale);
+
+        FloatRect updateRectInTargetSpace = CCMathUtil::mapClippedRect(layer->drawTransform(), updateContentRect);
         targetDamageRect.uniteIfNonZero(updateRectInTargetSpace);
     }
 }
@@ -331,13 +332,13 @@ void CCDamageTracker::extendDamageForRenderSurface(CCLayerImpl* layer, FloatRect
 
     // If there was damage, transform it to target space, and possibly contribute its reflection if needed.
     if (!damageRectInLocalSpace.isEmpty()) {
-        const WebTransformationMatrix& originTransform = renderSurface->originTransform();
-        FloatRect damageRectInTargetSpace = CCMathUtil::mapClippedRect(originTransform, damageRectInLocalSpace);
+        const WebTransformationMatrix& drawTransform = renderSurface->drawTransform();
+        FloatRect damageRectInTargetSpace = CCMathUtil::mapClippedRect(drawTransform, damageRectInLocalSpace);
         targetDamageRect.uniteIfNonZero(damageRectInTargetSpace);
 
         if (layer->replicaLayer()) {
-            const WebTransformationMatrix& replicaOriginTransform = renderSurface->replicaOriginTransform();
-            targetDamageRect.uniteIfNonZero(CCMathUtil::mapClippedRect(replicaOriginTransform, damageRectInLocalSpace));
+            const WebTransformationMatrix& replicaDrawTransform = renderSurface->replicaDrawTransform();
+            targetDamageRect.uniteIfNonZero(CCMathUtil::mapClippedRect(replicaDrawTransform, damageRectInLocalSpace));
         }
     }
 
@@ -348,9 +349,8 @@ void CCDamageTracker::extendDamageForRenderSurface(CCLayerImpl* layer, FloatRect
         bool replicaIsNew = false;
         removeRectFromCurrentFrame(replicaMaskLayer->id(), replicaIsNew);
 
-        // Compute the replica's "originTransform" that maps from the replica's origin space to the target surface origin space.
-        const WebTransformationMatrix& replicaOriginTransform = renderSurface->replicaOriginTransform();
-        FloatRect replicaMaskLayerRect = CCMathUtil::mapClippedRect(replicaOriginTransform, FloatRect(FloatPoint::zero(), FloatSize(replicaMaskLayer->bounds().width(), replicaMaskLayer->bounds().height())));
+        const WebTransformationMatrix& replicaDrawTransform = renderSurface->replicaDrawTransform();
+        FloatRect replicaMaskLayerRect = CCMathUtil::mapClippedRect(replicaDrawTransform, FloatRect(FloatPoint::zero(), FloatSize(replicaMaskLayer->bounds().width(), replicaMaskLayer->bounds().height())));
         saveRectForNextFrame(replicaMaskLayer->id(), replicaMaskLayerRect);
 
         // In the current implementation, a change in the replica mask damages the entire replica region.

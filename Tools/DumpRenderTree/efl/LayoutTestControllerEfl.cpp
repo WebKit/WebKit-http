@@ -123,11 +123,6 @@ JSRetainPtr<JSStringRef> LayoutTestController::layerTreeAsText() const
     return JSRetainPtr<JSStringRef>(Adopt, JSStringCreateWithUTF8CString(""));
 }
 
-int LayoutTestController::pageNumberForElementById(JSStringRef id, float pageWidth, float pageHeight)
-{
-    return DumpRenderTreeSupportEfl::numberOfPagesForElementId(browser->mainFrame(), id->ustring().utf8().data(), pageWidth, pageHeight);
-}
-
 int LayoutTestController::numberOfPages(float pageWidth, float pageHeight)
 {
     return DumpRenderTreeSupportEfl::numberOfPages(browser->mainFrame(), pageWidth, pageHeight);
@@ -765,17 +760,18 @@ void LayoutTestController::setAsynchronousSpellCheckingEnabled(bool)
 
 void LayoutTestController::showWebInspector()
 {
-    notImplemented();
+    ewk_view_web_inspector_show(browser->mainView());
+    browser->waitInspectorLoadFinished();
 }
 
 void LayoutTestController::closeWebInspector()
 {
-    notImplemented();
+    ewk_view_web_inspector_close(browser->mainView());
 }
 
-void LayoutTestController::evaluateInWebInspector(long, JSStringRef)
+void LayoutTestController::evaluateInWebInspector(long callId, JSStringRef script)
 {
-    notImplemented();
+    DumpRenderTreeSupportEfl::evaluateInWebInspector(browser->mainView(), callId, String(script->ustring().impl()));
 }
 
 void LayoutTestController::evaluateScriptInIsolatedWorldAndReturnValue(unsigned, JSObjectRef, JSStringRef)

@@ -40,14 +40,13 @@ FakeLayerTextureUpdater::Texture::~Texture()
 {
 }
 
-void FakeLayerTextureUpdater::Texture::updateRect(CCGraphicsContext*, TextureAllocator* allocator, const IntRect&, const IntRect&)
+void FakeLayerTextureUpdater::Texture::updateRect(CCResourceProvider* resourceProvider, const IntRect&, const IntRect&)
 {
-    if (allocator)
-        texture()->acquireBackingTexture(allocator);
+    texture()->acquireBackingTexture(resourceProvider);
     m_layer->updateRect();
 }
 
-void FakeLayerTextureUpdater::Texture::prepareRect(const IntRect&)
+void FakeLayerTextureUpdater::Texture::prepareRect(const IntRect&, WebCore::CCRenderingStats&)
 {
     m_layer->prepareRect();
 }
@@ -63,7 +62,7 @@ FakeLayerTextureUpdater::~FakeLayerTextureUpdater()
 {
 }
 
-void FakeLayerTextureUpdater::prepareToUpdate(const IntRect& contentRect, const IntSize&, float, float, IntRect& resultingOpaqueRect)
+void FakeLayerTextureUpdater::prepareToUpdate(const IntRect& contentRect, const IntSize&, float, float, IntRect& resultingOpaqueRect, CCRenderingStats&)
 {
     m_prepareCount++;
     m_lastUpdateRect = contentRect;
@@ -116,27 +115,25 @@ void FakeTiledLayerChromium::setNeedsDisplayRect(const FloatRect& rect)
     TiledLayerChromium::setNeedsDisplayRect(rect);
 }
 
-void FakeTiledLayerChromium::update(CCTextureUpdater& updater, const CCOcclusionTracker* occlusion)
+void FakeTiledLayerChromium::update(CCTextureUpdater& updater, const CCOcclusionTracker* occlusion, CCRenderingStats& stats)
 {
-    updateContentRect(updater, visibleContentRect(), occlusion);
+    updateContentRect(updater, visibleContentRect(), occlusion, stats);
 }
 
 void FakeTiledLayerChromium::setTexturePriorities(const CCPriorityCalculator& calculator)
 {
     // Ensure there is always a target render surface available. If none has been
     // set (the layer is an orphan for the test), then just set a surface on itself.
-    bool missingTargetRenderSurface = !targetRenderSurface();
+    bool missingTargetRenderSurface = !renderTarget();
 
-    if (missingTargetRenderSurface) {
+    if (missingTargetRenderSurface)
         createRenderSurface();
-        setTargetRenderSurface(renderSurface());
-    }
 
     TiledLayerChromium::setTexturePriorities(calculator);
 
     if (missingTargetRenderSurface) {
         clearRenderSurface();
-        setTargetRenderSurface(0);
+        setRenderTarget(0);
     }
 }
 

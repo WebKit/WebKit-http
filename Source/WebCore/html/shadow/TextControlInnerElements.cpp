@@ -63,7 +63,7 @@ PassRefPtr<TextControlInnerElement> TextControlInnerElement::create(Document* do
 
 PassRefPtr<RenderStyle> TextControlInnerElement::customStyleForRenderer()
 {
-    RenderTextControlSingleLine* parentRenderer = toRenderTextControlSingleLine(shadowAncestorNode()->renderer());
+    RenderTextControlSingleLine* parentRenderer = toRenderTextControlSingleLine(shadowHost()->renderer());
     return parentRenderer->createInnerBlockStyle(parentRenderer->style());
 }
 
@@ -86,11 +86,13 @@ void TextControlInnerTextElement::defaultEventHandler(Event* event)
     // Then we would add one to the text field's inner div, and we wouldn't need this subclass.
     // Or possibly we could just use a normal event listener.
     if (event->isBeforeTextInsertedEvent() || event->type() == eventNames().webkitEditableContentChangedEvent) {
-        Node* shadowAncestor = shadowAncestorNode();
-        // A TextControlInnerTextElement can be its own shadow ancestor if its been detached, but kept alive by an EditCommand.
-        // In this case, an undo/redo can cause events to be sent to the TextControlInnerTextElement.  
-        // To prevent an infinite loop, we must check for this case before sending the event up the chain.
-        if (shadowAncestor && shadowAncestor != this)
+        Element* shadowAncestor = shadowHost();
+        // A TextControlInnerTextElement can have no host if its been detached,
+        // but kept alive by an EditCommand. In this case, an undo/redo can
+        // cause events to be sent to the TextControlInnerTextElement. To
+        // prevent an infinite loop, we must check for this case before sending
+        // the event up the chain.
+        if (shadowAncestor)
             shadowAncestor->defaultEventHandler(event);
     }
     if (!event->defaultHandled())
@@ -100,7 +102,7 @@ void TextControlInnerTextElement::defaultEventHandler(Event* event)
 RenderObject* TextControlInnerTextElement::createRenderer(RenderArena* arena, RenderStyle*)
 {
     bool multiLine = false;
-    Node* shadowAncestor = shadowAncestorNode();
+    Element* shadowAncestor = shadowHost();
     if (shadowAncestor && shadowAncestor->renderer()) {
         ASSERT(shadowAncestor->renderer()->isTextField() || shadowAncestor->renderer()->isTextArea());
         multiLine = shadowAncestor->renderer()->isTextArea();
@@ -110,7 +112,7 @@ RenderObject* TextControlInnerTextElement::createRenderer(RenderArena* arena, Re
 
 PassRefPtr<RenderStyle> TextControlInnerTextElement::customStyleForRenderer()
 {
-    RenderTextControl* parentRenderer = toRenderTextControl(shadowAncestorNode()->renderer());
+    RenderTextControl* parentRenderer = toRenderTextControl(shadowHost()->renderer());
     return parentRenderer->createInnerTextStyle(parentRenderer->style());
 }
 
@@ -131,7 +133,7 @@ const AtomicString& SearchFieldResultsButtonElement::shadowPseudoId() const
     DEFINE_STATIC_LOCAL(AtomicString, resultsId, ("-webkit-search-results-button"));
     DEFINE_STATIC_LOCAL(AtomicString, resultsDecorationId, ("-webkit-search-results-decoration"));
     DEFINE_STATIC_LOCAL(AtomicString, decorationId, ("-webkit-search-decoration"));
-    Node* host = shadowAncestorNode();
+    Element* host = shadowHost();
     if (!host)
         return resultsId;
     if (HTMLInputElement* input = host->toInputElement()) {
@@ -147,7 +149,7 @@ const AtomicString& SearchFieldResultsButtonElement::shadowPseudoId() const
 void SearchFieldResultsButtonElement::defaultEventHandler(Event* event)
 {
     // On mousedown, bring up a menu, if needed
-    HTMLInputElement* input = static_cast<HTMLInputElement*>(shadowAncestorNode());
+    HTMLInputElement* input = static_cast<HTMLInputElement*>(shadowHost());
     if (event->type() == eventNames().mousedownEvent && event->isMouseEvent() && static_cast<MouseEvent*>(event)->button() == LeftButton) {
         input->focus();
         input->select();
@@ -161,6 +163,11 @@ void SearchFieldResultsButtonElement::defaultEventHandler(Event* event)
 
     if (!event->defaultHandled())
         HTMLDivElement::defaultEventHandler(event);
+}
+
+bool SearchFieldResultsButtonElement::willRespondToMouseClickEvents()
+{
+    return true;
 }
 
 // ----------------------------
@@ -195,7 +202,7 @@ void SearchFieldCancelButtonElement::detach()
 void SearchFieldCancelButtonElement::defaultEventHandler(Event* event)
 {
     // If the element is visible, on mouseup, clear the value, and set selection
-    RefPtr<HTMLInputElement> input(static_cast<HTMLInputElement*>(shadowAncestorNode()));
+    RefPtr<HTMLInputElement> input(static_cast<HTMLInputElement*>(shadowHost()));
     if (input->disabled() || input->isReadOnlyFormControl()) {
         if (!event->defaultHandled())
             HTMLDivElement::defaultEventHandler(event);
@@ -230,6 +237,15 @@ void SearchFieldCancelButtonElement::defaultEventHandler(Event* event)
 
     if (!event->defaultHandled())
         HTMLDivElement::defaultEventHandler(event);
+}
+
+bool SearchFieldCancelButtonElement::willRespondToMouseClickEvents()
+{
+    const HTMLInputElement* input = static_cast<HTMLInputElement*>(shadowHost());
+    if (!input->disabled() && !input->isReadOnlyFormControl())
+        return true;
+
+    return HTMLDivElement::willRespondToMouseClickEvents();
 }
 
 // ----------------------------
@@ -276,7 +292,7 @@ void SpinButtonElement::defaultEventHandler(Event* event)
         return;
     }
 
-    RefPtr<HTMLInputElement> input(static_cast<HTMLInputElement*>(shadowAncestorNode()));
+    RefPtr<HTMLInputElement> input(static_cast<HTMLInputElement*>(shadowHost()));
     if (input->disabled() || input->isReadOnlyFormControl()) {
         if (!event->defaultHandled())
             HTMLDivElement::defaultEventHandler(event);
@@ -326,6 +342,24 @@ void SpinButtonElement::defaultEventHandler(Event* event)
         HTMLDivElement::defaultEventHandler(event);
 }
 
+bool SpinButtonElement::willRespondToMouseMoveEvents()
+{
+    const HTMLInputElement* input = static_cast<HTMLInputElement*>(shadowHost());
+    if (renderBox() && !input->disabled() && !input->isReadOnlyFormControl())
+        return true;
+
+    return HTMLDivElement::willRespondToMouseMoveEvents();
+}
+
+bool SpinButtonElement::willRespondToMouseClickEvents()
+{
+    const HTMLInputElement* input = static_cast<HTMLInputElement*>(shadowHost());
+    if (renderBox() && !input->disabled() && !input->isReadOnlyFormControl())
+        return true;
+
+    return HTMLDivElement::willRespondToMouseClickEvents();
+}
+
 void SpinButtonElement::doStepAction(int amount)
 {
     if (!m_stepActionHandler)
@@ -362,7 +396,7 @@ void SpinButtonElement::stopRepeatingTimer()
 
 void SpinButtonElement::step(int amount)
 {
-    HTMLInputElement* input = static_cast<HTMLInputElement*>(shadowAncestorNode());
+    HTMLInputElement* input = static_cast<HTMLInputElement*>(shadowHost());
     if (input->disabled() || input->isReadOnlyFormControl())
         return;
     // On Mac OS, NSStepper updates the value for the button under the mouse
@@ -427,7 +461,7 @@ void InputFieldSpeechButtonElement::defaultEventHandler(Event* event)
     // The call to focus() below dispatches a focus event, and an event handler in the page might
     // remove the input element from DOM. To make sure it remains valid until we finish our work
     // here, we take a temporary reference.
-    RefPtr<HTMLInputElement> input(static_cast<HTMLInputElement*>(shadowAncestorNode()));
+    RefPtr<HTMLInputElement> input(static_cast<HTMLInputElement*>(shadowHost()));
 
     if (input->disabled() || input->isReadOnlyFormControl()) {
         if (!event->defaultHandled())
@@ -477,11 +511,20 @@ void InputFieldSpeechButtonElement::defaultEventHandler(Event* event)
         HTMLDivElement::defaultEventHandler(event);
 }
 
+bool InputFieldSpeechButtonElement::willRespondToMouseClickEvents()
+{
+    const HTMLInputElement* input = static_cast<HTMLInputElement*>(shadowHost());
+    if (!input->disabled() && !input->isReadOnlyFormControl())
+        return true;
+
+    return HTMLDivElement::willRespondToMouseClickEvents();
+}
+
 void InputFieldSpeechButtonElement::setState(SpeechInputState state)
 {
     if (m_state != state) {
         m_state = state;
-        shadowAncestorNode()->renderer()->repaint();
+        shadowHost()->renderer()->repaint();
     }
 }
 
@@ -507,7 +550,7 @@ void InputFieldSpeechButtonElement::setRecognitionResult(int, const SpeechInputR
     // The call to setValue() below dispatches an event, and an event handler in the page might
     // remove the input element from DOM. To make sure it remains valid until we finish our work
     // here, we take a temporary reference.
-    RefPtr<HTMLInputElement> input(static_cast<HTMLInputElement*>(shadowAncestorNode()));
+    RefPtr<HTMLInputElement> input(static_cast<HTMLInputElement*>(shadowHost()));
     if (input->disabled() || input->isReadOnlyFormControl())
         return;
 
@@ -560,7 +603,7 @@ void InputFieldSpeechButtonElement::startSpeechInput()
     if (m_state != Idle)
         return;
 
-    RefPtr<HTMLInputElement> input = static_cast<HTMLInputElement*>(shadowAncestorNode());
+    RefPtr<HTMLInputElement> input = static_cast<HTMLInputElement*>(shadowHost());
     AtomicString language = input->computeInheritedLanguage();
     String grammar = input->getAttribute(webkitgrammarAttr);
     // FIXME: this should probably respect transforms

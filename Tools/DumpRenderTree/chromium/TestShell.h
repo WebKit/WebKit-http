@@ -37,7 +37,7 @@
 #include "LayoutTestController.h"
 #include "NotificationPresenter.h"
 #include "TestEventPrinter.h"
-#include "TextInputController.h"
+#include "TestInterfaces.h"
 #include "WebPreferences.h"
 #include "WebViewHost.h"
 #include <string>
@@ -69,8 +69,6 @@ struct TestParams {
     bool debugLayerTree;
     bool printSeparators;
     WebKit::WebURL testUrl;
-    // Resultant image file name. Required only if the test_shell mode.
-    std::string pixelFileName;
     std::string pixelHash;
 
     TestParams()
@@ -94,12 +92,11 @@ public:
     WebViewHost* webViewHost() const { return m_webViewHost.get(); }
     LayoutTestController* layoutTestController() const { return m_layoutTestController.get(); }
     EventSender* eventSender() const { return m_eventSender.get(); }
-    AccessibilityController* accessibilityController() const { return m_accessibilityController.get(); }
-    GamepadController* gamepadController() const { return m_gamepadController.get(); }
+    AccessibilityController* accessibilityController() const { return m_testInterfaces->accessibilityController(); }
 #if ENABLE(NOTIFICATIONS)
     NotificationPresenter* notificationPresenter() const { return m_notificationPresenter.get(); }
 #endif
-    TestEventPrinter* printer() const { return m_printer.get(); }
+    const TestEventPrinter* printer() const { return &m_printer; }
 
     WebPreferences* preferences() { return &m_prefs; }
     void applyPreferences() { m_prefs.applyTo(m_webView); }
@@ -135,7 +132,6 @@ public:
     bool allowExternalPages() const { return m_allowExternalPages; }
     void setAllowExternalPages(bool allowExternalPages) { m_allowExternalPages = allowExternalPages; }
 
-    void setTestShellMode(bool testShellMode) { m_testShellMode = testShellMode; }
     void setAcceleratedCompositingForVideoEnabled(bool enabled) { m_acceleratedCompositingForVideoEnabled = enabled; }
     void setThreadedCompositingEnabled(bool enabled) { m_threadedCompositingEnabled = enabled; }
     void setForceCompositingMode(bool enabled) { m_forceCompositingMode = enabled; }
@@ -169,6 +165,9 @@ public:
 
     void setIsDisplayingModalDialog(bool isDisplayingModalDialog) { m_isDisplayingModalDialog = isDisplayingModalDialog; }
     bool isDisplayingModalDialog() const { return m_isDisplayingModalDialog; }
+
+    // Set whether the binary data output should be encoded in base64 text.
+    void setEncodeBinary(bool encodeBinary) { m_printer.setEncodeBinary(encodeBinary); }
 
     WebViewHost* createNewWindow(const WebKit::WebURL&);
     void closeWindow(WebViewHost*);
@@ -207,19 +206,16 @@ private:
     bool m_isLoading;
     WebKit::WebView* m_webView;
     WebKit::WebWidget* m_focusedWidget;
-    bool m_testShellMode;
     WebViewHost* m_devTools;
 
     // Be careful of the destruction order of the following objects.
-    OwnPtr<TestEventPrinter> m_printer;
+    TestEventPrinter m_printer;
     OwnPtr<WebPermissions> m_webPermissions;
     OwnPtr<DRTDevToolsAgent> m_drtDevToolsAgent;
     OwnPtr<DRTDevToolsClient> m_drtDevToolsClient;
-    OwnPtr<AccessibilityController> m_accessibilityController;
-    OwnPtr<GamepadController> m_gamepadController;
+    OwnPtr<TestInterfaces> m_testInterfaces;
     OwnPtr<EventSender> m_eventSender;
     OwnPtr<LayoutTestController> m_layoutTestController;
-    OwnPtr<TextInputController> m_textInputController;
 #if ENABLE(NOTIFICATIONS) || ENABLE(LEGACY_NOTIFICATIONS)
     OwnPtr<NotificationPresenter> m_notificationPresenter;
 #endif

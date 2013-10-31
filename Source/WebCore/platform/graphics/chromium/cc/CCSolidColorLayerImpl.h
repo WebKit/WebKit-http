@@ -41,8 +41,7 @@ public:
     }
     virtual ~CCSolidColorLayerImpl();
 
-    virtual WebKit::WebTransformationMatrix quadTransform() const OVERRIDE;
-    virtual void appendQuads(CCQuadCuller&, const CCSharedQuadState*, bool& hadMissingTiles) OVERRIDE;
+    virtual void appendQuads(CCQuadSink&, const CCSharedQuadState*, bool& hadMissingTiles) OVERRIDE;
 
 protected:
     explicit CCSolidColorLayerImpl(int id);

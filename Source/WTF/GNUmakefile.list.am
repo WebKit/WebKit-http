@@ -52,6 +52,7 @@ wtf_sources += \
     Source/WTF/wtf/Forward.h \
     Source/WTF/wtf/Functional.h \
     Source/WTF/wtf/GetPtr.h \
+    Source/WTF/wtf/GregorianDateTime.h \
     Source/WTF/wtf/HashCountedSet.h \
     Source/WTF/wtf/HashFunctions.h \
     Source/WTF/wtf/HashIterators.h \
@@ -75,6 +76,8 @@ wtf_sources += \
     Source/WTF/wtf/MainThread.h \
     Source/WTF/wtf/MallocZoneSupport.h \
     Source/WTF/wtf/MathExtras.h \
+    Source/WTF/wtf/MediaTime.h \
+    Source/WTF/wtf/MediaTime.cpp \
     Source/WTF/wtf/MessageQueue.h \
     Source/WTF/wtf/MetaAllocator.cpp \
     Source/WTF/wtf/MetaAllocator.h \
@@ -199,6 +202,8 @@ wtf_sources += \
     Source/WTF/wtf/text/AtomicString.h \
     Source/WTF/wtf/text/AtomicStringHash.h \
     Source/WTF/wtf/text/AtomicStringImpl.h \
+    Source/WTF/wtf/text/Base64.cpp \
+    Source/WTF/wtf/text/Base64.h \
     Source/WTF/wtf/text/CString.cpp \
     Source/WTF/wtf/text/CString.h \
     Source/WTF/wtf/text/StringBuffer.h \

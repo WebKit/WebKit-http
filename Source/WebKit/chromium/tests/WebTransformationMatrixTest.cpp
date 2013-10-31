@@ -200,10 +200,10 @@ TEST(WebTransformationMatrixTest, verifyMatrixInversion)
     EXPECT_TRUE(scale.isInvertible());
 
     WebTransformationMatrix inverseScale = scale.inverse();
-    EXPECT_ROW1_EQ(0.25,  0,    0,    0, inverseScale);
-    EXPECT_ROW2_EQ(0,    0.1,   0,    0, inverseScale);
-    EXPECT_ROW3_EQ(0,     0,   0.01,  0, inverseScale);
-    EXPECT_ROW4_EQ(0,     0,    0,    1, inverseScale);
+    EXPECT_ROW1_EQ(0.25,   0,    0, 0, inverseScale);
+    EXPECT_ROW2_EQ(0,    .1f,    0, 0, inverseScale);
+    EXPECT_ROW3_EQ(0,      0, .01f, 0, inverseScale);
+    EXPECT_ROW4_EQ(0,      0,    0, 1, inverseScale);
 
     // Try to invert a matrix that is not invertible.
     // The inverse() function should simply return an identity matrix.
@@ -979,7 +979,7 @@ TEST(WebTransformationMatrixTest, verifyIsIntegerTranslation)
     EXPECT_TRUE(A.isIntegerTranslation());
 
     A.makeIdentity();
-    A.translate(2.0, 3.0);
+    A.translate(2, 3);
     EXPECT_TRUE(A.isIntegerTranslation());
 
     A.makeIdentity();
@@ -1183,7 +1183,7 @@ TEST(WebTransformationMatrixTest, verifyBlendForRotationAboutX)
     EXPECT_ROW3_NEAR(0, sin(expectedRotationAngle),  cos(expectedRotationAngle), 0, to, ERROR_THRESHOLD);
     EXPECT_ROW4_EQ(0, 0, 0, 1, to);
 
-    expectedRotationAngle = 45.0 * piDouble / 180.0;
+    expectedRotationAngle = 45 * piDouble / 180.0;
     to.makeIdentity();
     to.rotate3d(1, 0, 0, 90);
     to.blend(from, 0.5);
@@ -1222,7 +1222,7 @@ TEST(WebTransformationMatrixTest, verifyBlendForRotationAboutY)
     EXPECT_ROW3_NEAR(-sin(expectedRotationAngle), 0, cos(expectedRotationAngle), 0, to, ERROR_THRESHOLD);
     EXPECT_ROW4_EQ(0, 0, 0, 1, to);
 
-    expectedRotationAngle = 45.0 * piDouble / 180.0;
+    expectedRotationAngle = 45 * piDouble / 180.0;
     to.makeIdentity();
     to.rotate3d(0, 1, 0, 90);
     to.blend(from, 0.5);
@@ -1261,7 +1261,7 @@ TEST(WebTransformationMatrixTest, verifyBlendForRotationAboutZ)
     EXPECT_ROW3_NEAR(0, 0, 1, 0, to, ERROR_THRESHOLD);
     EXPECT_ROW4_EQ(0, 0, 0, 1, to);
 
-    expectedRotationAngle = 45.0 * piDouble / 180.0;
+    expectedRotationAngle = 45 * piDouble / 180.0;
     to.makeIdentity();
     to.rotate3d(0, 0, 1, 90);
     to.blend(from, 0.5);

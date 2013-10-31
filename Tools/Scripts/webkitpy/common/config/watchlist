@@ -69,6 +69,10 @@
             "less": r"[Ss]ecurityOrigin(?!\.(h|cpp))",
             "filename": r"XSS|[Ss]ecurity",
         },
+        "SkiaGraphics": {
+            "filename": r"Source/WebCore/platform/graphics/skia/"
+                        r"|Source/WebCore/platform/graphics/filters/skia/",
+        },
         "V8Bindings": {
             "filename": r"Source/WebCore/bindings/v8/",
         },
@@ -101,6 +105,17 @@
             "filename": r"Source/WebKit2/UIProcess/API/qt/"
                         r"|Source/WebKit2/UIProcess/API/cpp/qt/"
                         r"|Source/WebKit2/UIProcess/API/C/qt/",
+        },
+        "QtGraphics": {
+            "filename": r"Source/WebCore/platform/graphics/qt/"
+                        r"|Source/WebKit2/WebProcess/WebPage/LayerTreeCoordinator/"
+                        r"|Source/WebKit2/UIProcess/WebLayerTreeRenderer(?!\.(h|cpp))",
+        },
+        "TextureMapper": {
+            "filename": r"Source/WebCore/platform/graphics/texmap/",
+        },
+        "OpenGL": {
+            "filename": r"Source/WebCore/platform/graphics/opengl/",
         },
         "QtWebKit2PlatformSpecific": {
             "filename": r"Source/WebKit2/.*\.(pri|pro)"
@@ -137,6 +152,24 @@
                         r"|Tools/EWebLauncher"
                         r"|Tools/DumpRenderTree/efl/"
                         r"|LayoutTests/platform/efl/",
+        },
+        "EFLWebKit2PublicAPI": {
+            "filename": r"Source/WebKit2/UIProcess/API/efl/"
+                        r"|Source/WebKit2/UIProcess/API/C/efl/",
+        },
+        "EFLWebKit2PlatformSpecific": {
+            "filename": r"Source/WebKit2/.*\.(cmake|txt)"
+                        r"|Source/WebKit2/Platform/efl/"
+                        r"|Source/WebKit2/efl/"
+                        r"|Source/WebKit2/Shared/API/c/efl/"
+                        r"|Source/WebKit2/Shared/efl/"
+                        r"|Source/WebKit2/WebProcess/InjectedBundle/efl/"
+                        r"|Source/WebKit2/WebProcess/WebPage/efl/"
+                        r"|Source/WebKit2/WebProcess/efl/"
+                        r"|Source/WebKit2/WebProcess/Downloads/efl/"
+                        r"|Source/WebKit2/WebProcess/WebCoreSupport/efl/"
+                        r"|Source/WebKit2/UIProcess/efl/"
+                        r"|Source/WebKit2/UIProcess/Launcher/efl/",
         },
         "CMake": {
             "filename": r".*CMakeLists\w*\.txt"
@@ -178,6 +211,12 @@
                         r"|Tools/DumpRenderTree/blackberry"
                         r"|LayoutTests/platform/blackberry",
         },
+        "NetworkInfo": {
+            "filename": r"Source/WebCore/Modules/networkinfo",
+        },
+        "Battery": {
+            "filename": r"Source/WebCore/Modules/battery",
+        },
 
     },
     "CC_RULES": {
@@ -185,14 +224,17 @@
         # Specifically, levin@chromium.org and levin+threading@chromium.org are
         # two different accounts as far as bugzilla is concerned.
         "AppleMacPublicApi": [ "timothy@apple.com" ],
+        "Battery": [ "gyuyoung.kim@samsung.com" ],
         "BlackBerry": [ "mifenton@rim.com" ],
-        "CMake": [ "rakuco@webkit.org", ],
+        "CMake": [ "rakuco@webkit.org", "gyuyoung.kim@samsung.com" ],
         "CSS": [ "alexis.menard@openbossa.org", "macpherson@chromium.org", "cmarcelo@webkit.org" ],
         "ChromiumDumpRenderTree": [ "tkent@chromium.org", ],
         "ChromiumGraphics": [ "jamesr@chromium.org", "cc-bugs@google.com" ],
         "ChromiumPublicApi": [ "abarth@webkit.org", "dglazkov@chromium.org", "fishd@chromium.org", "jamesr@chromium.org", "tkent+wkapi@chromium.org" ],
         "DOMAttributes": [ "cmarcelo@webkit.org", ],
-        "EFL": [ "rakuco@webkit.org", ],
+        "EFL": [ "rakuco@webkit.org", "gyuyoung.kim@samsung.com" ],
+        "EFLWebKit2PlatformSpecific": [ "gyuyoung.kim@samsung.com" ],
+        "EFLWebKit2PublicAPI": [ "gyuyoung.kim@samsung.com" ],
         "Editing": [ "mifenton@rim.com" ],
         "Forms": [ "tkent@chromium.org", "mifenton@rim.com" ],
         "FrameLoader": [ "abarth@webkit.org", "japhet@chromium.org", "jochen@chromium.org" ],
@@ -201,7 +243,11 @@
         "Loader": [ "japhet@chromium.org", "jochen@chromium.org" ],
         "MathML": [ "dbarton@mathscribe.com" ],
         "Media": [ "feature-media-reviews@chromium.org", "eric.carlson@apple.com" ],
+        "NetworkInfo": [ "gyuyoung.kim@samsung.com" ],
+        "OpenGL" : [ "noam.rosenthal@nokia.com" ],
+        "SkiaGraphics": [ "senorblanco@chromium.org" ],
         "QtBuildSystem" : [ "vestbo@webkit.org", ],
+        "QtGraphics" : [ "noam.rosenthal@nokia.com" ],
         "QtWebKit2PlatformSpecific": [ "alexis.menard@openbossa.org", "zoltan@webkit.org", "cmarcelo@webkit.org" ],
         "QtWebKit2PublicAPI": [ "alexis.menard@openbossa.org", "zoltan@webkit.org", "cmarcelo@webkit.org" ],
         "Rendering": [ "eric@webkit.org" ],
@@ -210,6 +256,7 @@
         "SoupNetwork": [ "rakuco@webkit.org", "gns@gnome.org", "mrobinson@webkit.org", "danw@gnome.org" ],
         "StyleChecker": [ "levin@chromium.org", ],
         "TestFailures": [ "abarth@webkit.org", "dglazkov@chromium.org" ],
+        "TextureMapper" : [ "noam.rosenthal@nokia.com" ],
         "ThreadingFiles|ThreadingUsage": [ "levin+threading@chromium.org", ],
         "V8Bindings|BindingsScripts": [ "abarth@webkit.org", "japhet@chromium.org", "haraken@chromium.org", "jochen@chromium.org" ],
         "WatchListScript": [ "levin+watchlist@chromium.org", ],

@@ -166,7 +166,11 @@ messages -> WebPage {
     SetTextForActivePopupMenu(int32_t index);
 #if PLATFORM(GTK)    
     FailedToShowPopupMenu();
-#endif    
+#endif
+#if PLATFORM(QT)
+    HidePopupMenu();
+    SelectedIndex(int32_t newIndex);
+#endif
     
 #if ENABLE(CONTEXT_MENUS)
     # Context menu.
@@ -228,6 +232,10 @@ messages -> WebPage {
     # Web Intents
 #if ENABLE(WEB_INTENTS)
     DeliverIntentToFrame(uint64_t frameID, WebKit::IntentData intentData);
+#endif
+
+#if PLATFORM(EFL)
+    SetThemePath(WTF::String themePath)
 #endif
 
 #if PLATFORM(QT)

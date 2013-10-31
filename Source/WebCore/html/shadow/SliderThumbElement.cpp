@@ -74,7 +74,7 @@ inline static bool hasVerticalAppearance(HTMLInputElement* input)
 SliderThumbElement* sliderThumbElementOf(Node* node)
 {
     ASSERT(node);
-    ShadowRoot* shadow = node->toInputElement()->shadow()->oldestShadowRoot();
+    ShadowRoot* shadow = node->toInputElement()->userAgentShadowRoot();
     ASSERT(shadow);
     Node* thumb = shadow->firstChild()->firstChild()->firstChild();
     ASSERT(thumb);
@@ -113,7 +113,7 @@ void RenderSliderThumb::layout()
 {
     // Do not cast node() to SliderThumbElement. This renderer is used for
     // TrackLimitElement too.
-    HTMLInputElement* input = node()->shadowAncestorNode()->toInputElement();
+    HTMLInputElement* input = node()->shadowHost()->toInputElement();
     bool isVertical = hasVerticalAppearance(input);
 
     double fraction = (sliderPosition(input) * 100).toDouble();
@@ -142,25 +142,44 @@ private:
 
 void RenderSliderContainer::layout()
 {
-    HTMLInputElement* input = node()->shadowAncestorNode()->toInputElement();
+    HTMLInputElement* input = node()->shadowHost()->toInputElement();
     bool isVertical = hasVerticalAppearance(input);
     style()->setBoxOrient(isVertical ? VERTICAL : HORIZONTAL);
     // Sets the concrete height if the height of the <input> is not fixed or a
     // percentage value because a percentage height value of this box won't be
     // based on the <input> height in such case.
-    Length inputHeight = input->renderer()->style()->height();
-    RenderObject* trackRenderer = node()->firstChild()->renderer();
-    if (!isVertical && input->renderer()->isSlider() && !inputHeight.isFixed() && !inputHeight.isPercent()) {
-        RenderObject* thumbRenderer = input->shadow()->oldestShadowRoot()->firstChild()->firstChild()->firstChild()->renderer();
-        if (thumbRenderer) {
-            style()->setHeight(thumbRenderer->style()->height());
-            if (trackRenderer)
-                trackRenderer->style()->setHeight(thumbRenderer->style()->height());
+    if (input->renderer()->isSlider()) {
+        if (!isVertical) {
+            RenderObject* trackRenderer = node()->firstChild()->renderer();
+            Length inputHeight = input->renderer()->style()->height();
+            if (!inputHeight.isSpecified()) {
+                RenderObject* thumbRenderer = input->sliderThumbElement()->renderer();
+                if (thumbRenderer) {
+                    Length height = thumbRenderer->style()->height();
+#if ENABLE(DATALIST_ELEMENT)
+                    if (input && input->list()) {
+                        int offsetFromCenter = theme()->sliderTickOffsetFromTrackCenter();
+                        int trackHeight = 0;
+                        if (offsetFromCenter < 0)
+                            trackHeight = -2 * offsetFromCenter;
+                        else {
+                            int tickLength = theme()->sliderTickSize().height();
+                            trackHeight = 2 * (offsetFromCenter + tickLength);
+                        }
+                        float zoomFactor = style()->effectiveZoom();
+                        if (zoomFactor != 1.0)
+                            trackHeight *= zoomFactor;
+                        height = Length(trackHeight, Fixed);
+                    }
+#endif
+                    style()->setHeight(height);
+                }
+            } else {
+                style()->setHeight(Length(100, Percent));
+                if (trackRenderer)
+                    trackRenderer->style()->setHeight(Length());
+            }
         }
-    } else {
-        style()->setHeight(Length(100, Percent));
-        if (trackRenderer)
-            trackRenderer->style()->setHeight(Length());
     }
 
     RenderDeprecatedFlexibleBox::layout();
@@ -312,6 +331,24 @@ void SliderThumbElement::defaultEventHandler(Event* event)
     HTMLDivElement::defaultEventHandler(event);
 }
 
+bool SliderThumbElement::willRespondToMouseMoveEvents()
+{
+    const HTMLInputElement* input = hostInput();
+    if (input && !input->isReadOnlyFormControl() && input->isEnabledFormControl() && m_inDragMode)
+        return true;
+
+    return HTMLDivElement::willRespondToMouseMoveEvents();
+}
+
+bool SliderThumbElement::willRespondToMouseClickEvents()
+{
+    const HTMLInputElement* input = hostInput();
+    if (input && !input->isReadOnlyFormControl() && input->isEnabledFormControl())
+        return true;
+
+    return HTMLDivElement::willRespondToMouseClickEvents();
+}
+
 void SliderThumbElement::detach()
 {
     if (m_inDragMode) {
@@ -324,8 +361,8 @@ void SliderThumbElement::detach()
 HTMLInputElement* SliderThumbElement::hostInput() const
 {
     // Only HTMLInputElement creates SliderThumbElement instances as its shadow nodes.
-    // So, shadowAncestorNode() must be an HTMLInputElement.
-    return shadowAncestorNode()->toInputElement();
+    // So, shadowHost() must be an HTMLInputElement.
+    return shadowHost()->toInputElement();
 }
 
 static const AtomicString& sliderThumbShadowPseudoId()
@@ -384,7 +421,7 @@ RenderObject* TrackLimiterElement::createRenderer(RenderArena* arena, RenderStyl
 
 const AtomicString& TrackLimiterElement::shadowPseudoId() const
 {
-    HTMLInputElement* input = shadowAncestorNode()->toInputElement();
+    HTMLInputElement* input = shadowHost()->toInputElement();
     if (!input)
         return sliderThumbShadowPseudoId();
 
@@ -405,8 +442,7 @@ const AtomicString& TrackLimiterElement::shadowPseudoId() const
 TrackLimiterElement* trackLimiterElementOf(Node* node)
 {
     ASSERT(node);
-    ASSERT(node->toInputElement()->shadow());
-    ShadowRoot* shadow = node->toInputElement()->shadow()->oldestShadowRoot();
+    ShadowRoot* shadow = node->toInputElement()->userAgentShadowRoot();
     ASSERT(shadow);
     Node* limiter = shadow->firstChild()->lastChild();
     ASSERT(limiter);
@@ -435,7 +471,7 @@ const AtomicString& SliderContainerElement::shadowPseudoId() const
     DEFINE_STATIC_LOCAL(const AtomicString, mediaSliderContainer, ("-webkit-media-slider-container"));
     DEFINE_STATIC_LOCAL(const AtomicString, sliderContainer, ("-webkit-slider-container"));
 
-    HTMLInputElement* input = shadowAncestorNode()->toInputElement();
+    HTMLInputElement* input = shadowHost()->toInputElement();
     if (!input)
         return sliderContainer;
 

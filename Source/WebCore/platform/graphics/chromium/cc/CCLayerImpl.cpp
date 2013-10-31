@@ -35,7 +35,7 @@
 #include "cc/CCLayerSorter.h"
 #include "cc/CCMathUtil.h"
 #include "cc/CCProxy.h"
-#include "cc/CCQuadCuller.h"
+#include "cc/CCQuadSink.h"
 #include <wtf/text/WTFString.h>
 
 using WebKit::WebTransformationMatrix;
@@ -50,7 +50,6 @@ CCLayerImpl::CCLayerImpl(int id)
     , m_layerTreeHostImpl(0)
     , m_anchorPoint(0.5, 0.5)
     , m_anchorPointZ(0)
-    , m_contentsScale(1)
     , m_scrollable(false)
     , m_shouldScrollOnMainThread(false)
     , m_haveWheelEventHandlers(false)
@@ -64,14 +63,13 @@ CCLayerImpl::CCLayerImpl(int id)
     , m_preserves3D(false)
     , m_useParentBackfaceVisibility(false)
     , m_drawCheckerboardForMissingTiles(false)
-    , m_usesLayerClipping(false)
     , m_isNonCompositedContent(false)
     , m_drawsContent(false)
     , m_forceRenderSurface(false)
     , m_isContainerForFixedPositionLayers(false)
     , m_fixedToContainerLayer(false)
     , m_pageScaleDelta(1)
-    , m_targetRenderSurface(0)
+    , m_renderTarget(0)
     , m_drawDepth(0)
     , m_drawOpacity(0)
     , m_drawOpacityIsAnimating(false)
@@ -133,7 +131,7 @@ void CCLayerImpl::createRenderSurface()
 {
     ASSERT(!m_renderSurface);
     m_renderSurface = adoptPtr(new CCRenderSurface(this));
-    setTargetRenderSurface(m_renderSurface.get());
+    setRenderTarget(this);
 }
 
 bool CCLayerImpl::descendantDrawsContent()
@@ -145,12 +143,12 @@ bool CCLayerImpl::descendantDrawsContent()
     return false;
 }
 
-PassOwnPtr<CCSharedQuadState> CCLayerImpl::createSharedQuadState() const
+PassOwnPtr<CCSharedQuadState> CCLayerImpl::createSharedQuadState(int id) const
 {
-    return CCSharedQuadState::create(quadTransform(), m_visibleContentRect, m_scissorRect, m_drawOpacity, m_opaque);
+    return CCSharedQuadState::create(id, m_drawTransform, m_visibleContentRect, m_scissorRect, m_drawOpacity, m_opaque);
 }
 
-void CCLayerImpl::willDraw(CCRenderer*, CCGraphicsContext*)
+void CCLayerImpl::willDraw(CCResourceProvider*)
 {
 #ifndef NDEBUG
     // willDraw/didDraw must be matched.
@@ -159,7 +157,7 @@ void CCLayerImpl::willDraw(CCRenderer*, CCGraphicsContext*)
 #endif
 }
 
-void CCLayerImpl::didDraw()
+void CCLayerImpl::didDraw(CCResourceProvider*)
 {
 #ifndef NDEBUG
     ASSERT(m_betweenWillDrawAndDidDraw);
@@ -167,7 +165,7 @@ void CCLayerImpl::didDraw()
 #endif
 }
 
-void CCLayerImpl::appendDebugBorderQuad(CCQuadCuller& quadList, const CCSharedQuadState* sharedQuadState) const
+void CCLayerImpl::appendDebugBorderQuad(CCQuadSink& quadList, const CCSharedQuadState* sharedQuadState) const
 {
     if (!hasDebugBorders())
         return;
@@ -176,7 +174,7 @@ void CCLayerImpl::appendDebugBorderQuad(CCQuadCuller& quadList, const CCSharedQu
     quadList.append(CCDebugBorderDrawQuad::create(sharedQuadState, contentRect, debugBorderColor(), debugBorderWidth()));
 }
 
-unsigned CCLayerImpl::contentsTextureId() const
+CCResourceProvider::ResourceId CCLayerImpl::contentsResourceId() const
 {
     ASSERT_NOT_REACHED();
     return 0;
@@ -226,26 +224,6 @@ CCInputHandlerClient::ScrollStatus CCLayerImpl::tryScroll(const IntPoint& viewpo
     return CCInputHandlerClient::ScrollStarted;
 }
 
-const IntRect CCLayerImpl::getDrawRect() const
-{
-    // Form the matrix used by the shader to map the corners of the layer's
-    // bounds into the view space.
-    FloatRect layerRect(-0.5 * bounds().width(), -0.5 * bounds().height(), bounds().width(), bounds().height());
-    IntRect mappedRect = enclosingIntRect(CCMathUtil::mapClippedRect(drawTransform(), layerRect));
-    return mappedRect;
-}
-
-WebTransformationMatrix CCLayerImpl::quadTransform() const
-{
-    WebTransformationMatrix quadTransformation = drawTransform();
-
-    float offsetX = -0.5 * bounds().width();
-    float offsetY = -0.5 * bounds().height();
-    quadTransformation.translate(offsetX, offsetY);
-
-    return quadTransformation;
-}
-
 void CCLayerImpl::writeIndent(TextStream& ts, int indent)
 {
     for (int i = 0; i != indent; ++i)
@@ -260,9 +238,9 @@ void CCLayerImpl::dumpLayerProperties(TextStream& ts, int indent) const
     writeIndent(ts, indent);
     ts << "bounds: " << bounds().width() << ", " << bounds().height() << "\n";
 
-    if (m_targetRenderSurface) {
+    if (m_renderTarget) {
         writeIndent(ts, indent);
-        ts << "targetRenderSurface: " << m_targetRenderSurface->name() << "\n";
+        ts << "renderTarget: " << m_renderTarget->m_layerId << "\n";
     }
 
     writeIndent(ts, indent);

@@ -46,6 +46,7 @@ typedef enum {
 extern NSString *WebPreferencesChangedNotification;
 extern NSString *WebPreferencesRemovedNotification;
 extern NSString *WebPreferencesChangedInternalNotification;
+extern NSString *WebPreferencesCacheModelChangedInternalNotification;
 
 @interface WebPreferences (WebPrivate)
 
@@ -300,5 +301,8 @@ extern NSString *WebPreferencesChangedInternalNotification;
 
 - (void)setIncrementalRenderingSuppressionTimeoutInSeconds:(NSTimeInterval)timeout;
 - (NSTimeInterval)incrementalRenderingSuppressionTimeoutInSeconds;
+
+- (BOOL)diagnosticLoggingEnabled;
+- (void)setDiagnosticLoggingEnabled:(BOOL)enabled;
 
 @end

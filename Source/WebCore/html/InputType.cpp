@@ -98,17 +98,20 @@ static PassOwnPtr<InputTypeFactoryMap> createInputTypeFactoryMap()
         map->add(InputTypeNames::date(), DateInputType::create);
 #endif
 #if ENABLE(INPUT_TYPE_DATETIME)
-    map->add(InputTypeNames::datetime(), DateTimeInputType::create);
+    if (RuntimeEnabledFeatures::inputTypeDateTimeEnabled())
+        map->add(InputTypeNames::datetime(), DateTimeInputType::create);
 #endif
 #if ENABLE(INPUT_TYPE_DATETIMELOCAL)
-    map->add(InputTypeNames::datetimelocal(), DateTimeLocalInputType::create);
+    if (RuntimeEnabledFeatures::inputTypeDateTimeLocalEnabled())
+        map->add(InputTypeNames::datetimelocal(), DateTimeLocalInputType::create);
 #endif
     map->add(InputTypeNames::email(), EmailInputType::create);
     map->add(InputTypeNames::file(), FileInputType::create);
     map->add(InputTypeNames::hidden(), HiddenInputType::create);
     map->add(InputTypeNames::image(), ImageInputType::create);
 #if ENABLE(INPUT_TYPE_MONTH)
-    map->add(InputTypeNames::month(), MonthInputType::create);
+    if (RuntimeEnabledFeatures::inputTypeMonthEnabled())
+        map->add(InputTypeNames::month(), MonthInputType::create);
 #endif
     map->add(InputTypeNames::number(), NumberInputType::create);
     map->add(InputTypeNames::password(), PasswordInputType::create);
@@ -119,11 +122,13 @@ static PassOwnPtr<InputTypeFactoryMap> createInputTypeFactoryMap()
     map->add(InputTypeNames::submit(), SubmitInputType::create);
     map->add(InputTypeNames::telephone(), TelephoneInputType::create);
 #if ENABLE(INPUT_TYPE_TIME)
-    map->add(InputTypeNames::time(), TimeInputType::create);
+    if (RuntimeEnabledFeatures::inputTypeTimeEnabled())
+        map->add(InputTypeNames::time(), TimeInputType::create);
 #endif
     map->add(InputTypeNames::url(), URLInputType::create);
 #if ENABLE(INPUT_TYPE_WEEK)
-    map->add(InputTypeNames::week(), WeekInputType::create);
+    if (RuntimeEnabledFeatures::inputTypeWeekEnabled())
+        map->add(InputTypeNames::week(), WeekInputType::create);
 #endif
     // No need to register "text" because it is the default type.
     return map.release();
@@ -453,12 +458,10 @@ void InputType::createShadowSubtree()
 
 void InputType::destroyShadowSubtree()
 {
-    ElementShadow* shadow = element()->shadow();
-    if (!shadow)
+    ShadowRoot* root = element()->userAgentShadowRoot();
+    if (!root)
         return;
 
-    ShadowRoot* root = shadow->oldestShadowRoot();
-    ASSERT(root->type() == ShadowRoot::UserAgentShadowRoot);
     root->removeAllChildren();
 
     // It's ok to clear contents of all other ShadowRoots because they must have
@@ -865,6 +868,10 @@ String InputType::fixedPlaceholder()
     return String();
 }
 
+void InputType::updateInnerTextValue()
+{
+}
+
 void InputType::updatePlaceholderText()
 {
 }
@@ -896,6 +903,12 @@ String InputType::defaultToolTip() const
 {
     return String();
 }
+
+#if ENABLE(DATALIST_ELEMENT)
+void InputType::listAttributeTargetChanged()
+{
+}
+#endif
 
 bool InputType::supportsIndeterminateAppearance() const
 {

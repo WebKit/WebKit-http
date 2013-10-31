@@ -57,12 +57,18 @@ class WebGeolocationManagerProxy;
 class WebIconDatabase;
 class WebKeyValueStorageManagerProxy;
 class WebMediaCacheManagerProxy;
+#if ENABLE(NETWORK_INFO)
+class WebNetworkInfoManagerProxy;
+#endif
 class WebNotificationManagerProxy;
 class WebPageGroup;
 class WebPageProxy;
 class WebResourceCacheManagerProxy;
 #if USE(SOUP)
 class WebSoupRequestManagerProxy;
+#endif
+#if ENABLE(VIBRATION)
+class WebVibrationProxy;
 #endif
 struct StatisticsData;
 struct WebProcessCreationParameters;
@@ -73,7 +79,6 @@ class WebContext : public APIObject, private CoreIPC::Connection::QueueClient {
 public:
     static const Type APIType = TypeContext;
 
-    static WebContext* sharedProcessContext();
     static WebContext* sharedThreadContext();
 
     static PassRefPtr<WebContext> create(const String& injectedBundlePath);
@@ -161,16 +166,24 @@ public:
     WebBatteryManagerProxy* batteryManagerProxy() const { return m_batteryManagerProxy.get(); }
 #endif
     WebCookieManagerProxy* cookieManagerProxy() const { return m_cookieManagerProxy.get(); }
+#if ENABLE(SQL_DATABASE)
     WebDatabaseManagerProxy* databaseManagerProxy() const { return m_databaseManagerProxy.get(); }
+#endif
     WebGeolocationManagerProxy* geolocationManagerProxy() const { return m_geolocationManagerProxy.get(); }
     WebIconDatabase* iconDatabase() const { return m_iconDatabase.get(); }
     WebKeyValueStorageManagerProxy* keyValueStorageManagerProxy() const { return m_keyValueStorageManagerProxy.get(); }
     WebMediaCacheManagerProxy* mediaCacheManagerProxy() const { return m_mediaCacheManagerProxy.get(); }
+#if ENABLE(NETWORK_INFO)
+    WebNetworkInfoManagerProxy* networkInfoManagerProxy() const { return m_networkInfoManagerProxy.get(); }
+#endif
     WebNotificationManagerProxy* notificationManagerProxy() const { return m_notificationManagerProxy.get(); }
     WebPluginSiteDataManager* pluginSiteDataManager() const { return m_pluginSiteDataManager.get(); }
     WebResourceCacheManagerProxy* resourceCacheManagerProxy() const { return m_resourceCacheManagerProxy.get(); }
 #if USE(SOUP)
     WebSoupRequestManagerProxy* soupRequestManagerProxy() const { return m_soupRequestManagerProxy.get(); }
+#endif
+#if ENABLE(VIBRATION)
+    WebVibrationProxy* vibrationProxy() const { return m_vibrationProxy.get(); }
 #endif
 
     struct Statistics {
@@ -309,16 +322,24 @@ private:
     RefPtr<WebBatteryManagerProxy> m_batteryManagerProxy;
 #endif
     RefPtr<WebCookieManagerProxy> m_cookieManagerProxy;
+#if ENABLE(SQL_DATABASE)
     RefPtr<WebDatabaseManagerProxy> m_databaseManagerProxy;
+#endif
     RefPtr<WebGeolocationManagerProxy> m_geolocationManagerProxy;
     RefPtr<WebIconDatabase> m_iconDatabase;
     RefPtr<WebKeyValueStorageManagerProxy> m_keyValueStorageManagerProxy;
     RefPtr<WebMediaCacheManagerProxy> m_mediaCacheManagerProxy;
+#if ENABLE(NETWORK_INFO)
+    RefPtr<WebNetworkInfoManagerProxy> m_networkInfoManagerProxy;
+#endif
     RefPtr<WebNotificationManagerProxy> m_notificationManagerProxy;
     RefPtr<WebPluginSiteDataManager> m_pluginSiteDataManager;
     RefPtr<WebResourceCacheManagerProxy> m_resourceCacheManagerProxy;
 #if USE(SOUP)
     RefPtr<WebSoupRequestManagerProxy> m_soupRequestManagerProxy;
+#endif
+#if ENABLE(VIBRATION)
+    RefPtr<WebVibrationProxy> m_vibrationProxy;
 #endif
 
 #if PLATFORM(WIN)

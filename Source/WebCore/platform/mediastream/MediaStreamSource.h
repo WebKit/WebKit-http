@@ -41,36 +41,43 @@ namespace WebCore {
 
 class MediaStreamSource : public RefCounted<MediaStreamSource> {
 public:
+    class Observer {
+    public:
+        virtual ~Observer() { }
+        virtual void sourceChangedState() = 0;
+    };
+
     enum Type {
         TypeAudio,
         TypeVideo
     };
 
-    static PassRefPtr<MediaStreamSource> create(const String& id, Type type, const String& name)
-    {
-        return adoptRef(new MediaStreamSource(id, type, name));
-    }
+    enum ReadyState {
+        ReadyStateLive = 0,
+        ReadyStateMuted = 1,
+        ReadyStateEnded = 2
+    };
+
+    static PassRefPtr<MediaStreamSource> create(const String& id, Type, const String& name, ReadyState = ReadyStateLive);
 
     const String& id() const { return m_id; }
     Type type() const { return m_type; }
     const String& name() const { return m_name; }
 
-    bool muted() const { return m_muted; }
-    void setMuted(bool muted) { m_muted = muted; }
+    void setReadyState(ReadyState);
+    ReadyState readyState() const { return m_readyState; }
+
+    void addObserver(Observer*);
+    void removeObserver(Observer*);
 
 private:
-    MediaStreamSource(const String& id, Type type, const String& name)
-        : m_id(id)
-        , m_type(type)
-        , m_name(name)
-        , m_muted(false)
-    {
-    }
+    MediaStreamSource(const String& id, Type, const String& name, ReadyState);
 
     String m_id;
     Type m_type;
     String m_name;
-    bool m_muted;
+    ReadyState m_readyState;
+    Vector<Observer*> m_observers;
 };
 
 typedef Vector<RefPtr<MediaStreamSource> > MediaStreamSourceVector;

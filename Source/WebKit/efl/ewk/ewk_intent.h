@@ -76,7 +76,7 @@ EAPI const char *ewk_intent_service_get(const Ewk_Intent *intent);
  *
  * @param intent intent item to query.
  *
- * @return @c Eina_List with suggested service URLs on success, or @c 0 on failure,
+ * @return @c Eina_List with suggested service URLs on success, or @c NULL on failure,
  *         the Eina_List and its items should be freed after use. Use free() to free the
  *         items.
  */
@@ -85,21 +85,23 @@ EAPI Eina_List *ewk_intent_suggestions_get(const Ewk_Intent *intent);
 /**
  * Retrieves the value (if any) from the extra data dictionary this intent was constructed with.
  *
+ * The returned string should be freed by eina_stringshare_del() after use.
+ *
  * @param intent intent item to query.
  * @param key key to query in the dictionary.
  *
  * @return a newly allocated string or @c NULL in case of error or if the key does not exist.
  */
-EAPI char *ewk_intent_extra_get(const Ewk_Intent *intent, const char *key);
+EAPI const char *ewk_intent_extra_get(const Ewk_Intent *intent, const char *key);
 
 /**
  * Retrieve a list of the names of extra metadata associated with the intent.
  *
  * @param intent intent item to query.
  *
- * @return @c Eina_List with names of extra metadata on success, or @c 0 on failure,
- *         the Eina_List and its items should be freed after use. Use free() to free the
- *         items.
+ * @return @c Eina_List with names of extra metadata on success, or @c NULL on failure,
+ *         the Eina_List and its items should be freed after use. Use eina_stringshare_del()
+ *         to free the items.
  */
 EAPI Eina_List *ewk_intent_extra_names_get(const Ewk_Intent *intent);
 

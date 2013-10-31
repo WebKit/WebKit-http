@@ -510,7 +510,7 @@ public:
     PlatformLayer* platformLayer() const;
 #endif
 #elif PLATFORM(EFL)
-    PlatformGraphicsContext3D platformGraphicsContext3D() const;
+    PlatformGraphicsContext3D platformGraphicsContext3D();
     Platform3DObject platformTexture() const { return m_texture; }
 #if USE(ACCELERATED_COMPOSITING)
     PlatformLayer* platformLayer() const;
@@ -805,6 +805,9 @@ public:
 #elif PLATFORM(QT)
     void paintToCanvas(const unsigned char* imagePixels, int imageWidth, int imageHeight,
                        int canvasWidth, int canvasHeight, QPainter* context);
+#elif PLATFORM(BLACKBERRY)
+    void paintToCanvas(const unsigned char* imagePixels, int imageWidth, int imageHeight,
+                       int canvasWidth, int canvasHeight, GraphicsContext*);
 #endif
 
     void markContextChanged();
@@ -931,6 +934,11 @@ public:
     void readPixelsAndConvertToBGRAIfNecessary(int x, int y, int width, int height, unsigned char* pixels);
 #endif
 
+#if PLATFORM(BLACKBERRY)
+    void logFrameBufferStatus(int line);
+    void readPixelsIMG(GC3Dint x, GC3Dint y, GC3Dsizei width, GC3Dsizei height, GC3Denum format, GC3Denum type, void* data);
+#endif
+
     bool reshapeFBOs(const IntSize&);
     void resolveMultisamplingIfNecessary(const IntRect& = IntRect());
 #if PLATFORM(QT) && USE(GRAPHICS_SURFACE)
@@ -943,6 +951,11 @@ public:
 #if PLATFORM(MAC)
     CGLContextObj m_contextObj;
     RetainPtr<WebGLLayer> m_webGLLayer;
+#elif PLATFORM(BLACKBERRY)
+#if USE(ACCELERATED_COMPOSITING)
+    RefPtr<PlatformLayer> m_compositingLayer;
+#endif
+    void* m_context;
 #endif
 
 #if PLATFORM(MAC) || PLATFORM(GTK) || PLATFORM(QT) || PLATFORM(EFL) || PLATFORM(BLACKBERRY)
@@ -956,10 +969,7 @@ public:
     ANGLEWebKitBridge m_compiler;
 #endif
 
-#if PLATFORM(QT) && defined(QT_OPENGL_ES_2)
-    friend class Extensions3DQt;
-    OwnPtr<Extensions3DQt> m_extensions;
-#elif PLATFORM(BLACKBERRY)
+#if PLATFORM(BLACKBERRY) || (PLATFORM(QT) && defined(QT_OPENGL_ES_2))
     friend class Extensions3DOpenGLES;
     OwnPtr<Extensions3DOpenGLES> m_extensions;
 #elif !PLATFORM(CHROMIUM)
@@ -999,9 +1009,14 @@ public:
     // Errors raised by synthesizeGLError().
     ListHashSet<GC3Denum> m_syntheticErrors;
 
+#if PLATFORM(BLACKBERRY)
+    bool m_isImaginationHardware;
+#endif
+
+#if !PLATFORM(BLACKBERRY)
     friend class GraphicsContext3DPrivate;
     OwnPtr<GraphicsContext3DPrivate> m_private;
-
+#endif
     bool systemAllowsMultisamplingOnATICards() const;
 };
 

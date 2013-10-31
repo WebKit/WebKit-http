@@ -33,7 +33,7 @@ namespace WebCore {
 using namespace HTMLNames;
 
 HTMLNameCollection::HTMLNameCollection(Document* document, CollectionType type, const AtomicString& name)
-    : HTMLCollection(document, type)
+    : HTMLCollection(document, type, OverridesItemAfter)
     , m_name(name)
 {
 }
@@ -49,8 +49,9 @@ HTMLNameCollection::~HTMLNameCollection()
         static_cast<Document*>(base())->removeDocumentNamedItemCache(this, m_name);
 }
 
-Element* HTMLNameCollection::itemAfter(Node* previous) const
+Element* HTMLNameCollection::virtualItemAfter(unsigned& offsetInArray, Element* previous) const
 {
+    ASSERT_UNUSED(offsetInArray, !offsetInArray);
     ASSERT(previous != base());
 
     Node* current;

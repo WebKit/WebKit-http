@@ -48,7 +48,8 @@ public:
     virtual bool putObjectStoreRecord(int64_t databaseId, int64_t objectStoreId, const IDBKey&, const String& value, ObjectStoreRecordIdentifier*) OVERRIDE { return false; }
     virtual void clearObjectStore(int64_t databaseId, int64_t objectStoreId) OVERRIDE { }
     virtual void deleteObjectStoreRecord(int64_t databaseId, int64_t objectStoreId, const ObjectStoreRecordIdentifier*) OVERRIDE { }
-    virtual int64_t nextAutoIncrementNumber(int64_t databaseId, int64_t objectStoreId) OVERRIDE { return 0.0; }
+    virtual int64_t getKeyGeneratorCurrentNumber(int64_t databaseId, int64_t objectStoreId) OVERRIDE { return 0; }
+    virtual bool maybeUpdateKeyGeneratorCurrentNumber(int64_t databaseId, int64_t objectStoreId, int64_t newNumber, bool checkCurrent) OVERRIDE { return false; }
     virtual bool keyExistsInObjectStore(int64_t databaseId, int64_t objectStoreId, const IDBKey&, ObjectStoreRecordIdentifier* foundRecordIdentifier) OVERRIDE { return false; }
 
     virtual bool forEachObjectStoreRecord(int64_t databaseId, int64_t objectStoreId, ObjectStoreRecordCallback&) OVERRIDE { return false; }
@@ -58,7 +59,6 @@ public:
     virtual void deleteIndex(int64_t databaseId, int64_t objectStoreId, int64_t indexId) OVERRIDE { }
     virtual bool putIndexDataForRecord(int64_t databaseId, int64_t objectStoreId, int64_t indexId, const IDBKey&, const ObjectStoreRecordIdentifier*) OVERRIDE { return false; }
     virtual bool deleteIndexDataForRecord(int64_t databaseId, int64_t objectStoreId, int64_t indexId, const ObjectStoreRecordIdentifier*) OVERRIDE { return false; }
-    virtual String getObjectViaIndex(int64_t databaseId, int64_t objectStoreId, int64_t indexId, const IDBKey&) OVERRIDE { return String(); }
     virtual PassRefPtr<IDBKey> getPrimaryKeyViaIndex(int64_t databaseId, int64_t objectStoreId, int64_t indexId, const IDBKey&) OVERRIDE { return PassRefPtr<IDBKey>(); }
     virtual bool keyExistsInIndex(int64_t databaseid, int64_t objectStoreId, int64_t indexId, const IDBKey& indexKey, RefPtr<IDBKey>& foundPrimaryKey) OVERRIDE { return false; }
 

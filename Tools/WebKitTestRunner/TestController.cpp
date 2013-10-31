@@ -67,7 +67,7 @@ TestController& TestController::shared()
 }
 
 TestController::TestController(int argc, const char* argv[])
-    : m_dumpPixels(false)
+    : m_dumpPixelsForAllTests(false)
     , m_verbose(false)
     , m_printSeparators(false)
     , m_usingServerMode(false)
@@ -78,10 +78,11 @@ TestController::TestController(int argc, const char* argv[])
     , m_shortTimeout(defaultShortTimeout)
     , m_noTimeout(defaultNoTimeout)
     , m_useWaitToDumpWatchdogTimer(true)
+    , m_forceNoTimeout(false)
     , m_didPrintWebProcessCrashedMessage(false)
     , m_shouldExitWhenWebProcessCrashes(true)
     , m_beforeUnloadReturnValue(true)
-#if PLATFORM(MAC) || PLATFORM(QT) || PLATFORM(GTK)
+#if PLATFORM(MAC) || PLATFORM(QT) || PLATFORM(GTK) || PLATFORM(EFL)
     , m_eventSenderProxy(new EventSenderProxy(this))
 #endif
 {
@@ -260,8 +261,14 @@ void TestController::initialize(int argc, const char* argv[])
             continue;
         }
 
+        if (argument == "--no-timeout-at-all") {
+            m_useWaitToDumpWatchdogTimer = false;
+            m_forceNoTimeout = true;
+            continue;
+        }
+
         if (argument == "--pixel-tests") {
-            m_dumpPixels = true;
+            m_dumpPixelsForAllTests = true;
             continue;
         }
         if (argument == "--verbose") {
@@ -324,7 +331,8 @@ void TestController::initialize(int argc, const char* argv[])
     };
     WKContextSetInjectedBundleClient(m_context.get(), &injectedBundleClient);
 
-    WKContextSetAdditionalPluginsDirectory(m_context.get(), testPluginDirectory());
+    if (testPluginDirectory())
+        WKContextSetAdditionalPluginsDirectory(m_context.get(), testPluginDirectory());
 
     m_mainWebView = adoptPtr(new PlatformWebView(m_context.get(), m_pageGroup.get()));
 
@@ -509,18 +517,31 @@ bool TestController::runTest(const char* test)
         return false;
     }
 
-    std::string pathOrURL(test);
+    bool dumpPixelsTest = m_dumpPixelsForAllTests;
+    std::string command(test);
+    std::string pathOrURL = command;
     std::string expectedPixelHash;
-    size_t separatorPos = pathOrURL.find("'");
-    if (separatorPos != std::string::npos) {
-        pathOrURL = std::string(std::string(test), 0, separatorPos);
-        expectedPixelHash = std::string(std::string(test), separatorPos + 1);
+    size_t firstSeparatorPos = command.find_first_of('\'');
+    size_t secondSeparatorPos = command.find_first_of('\'', firstSeparatorPos + 1);
+    if (firstSeparatorPos != std::string::npos) {
+        pathOrURL = std::string(command, 0, firstSeparatorPos);
+        size_t pixelHashPos = firstSeparatorPos + 1;
+
+        // NRWT passes --pixel-test if we should dump pixels for the test.
+        const std::string expectedPixelTestArg("--pixel-test");
+        std::string argTest = std::string(command, firstSeparatorPos + 1, expectedPixelTestArg.size());
+        if (argTest == expectedPixelTestArg) {
+            dumpPixelsTest = true;
+            pixelHashPos = secondSeparatorPos == std::string::npos ? std::string::npos : secondSeparatorPos + 1;
+        }
+        if (pixelHashPos != std::string::npos && pixelHashPos < command.size())
+            expectedPixelHash = std::string(command, pixelHashPos);
     }
 
     m_state = RunningTest;
 
     m_currentInvocation = adoptPtr(new TestInvocation(pathOrURL));
-    if (m_dumpPixels)
+    if (dumpPixelsTest)
         m_currentInvocation->setIsPixelTest(expectedPixelHash);
 
     m_currentInvocation->invoke();
@@ -559,18 +580,20 @@ void TestController::run()
 
 void TestController::runUntil(bool& done, TimeoutDuration timeoutDuration)
 {
-    double timeout;
-    switch (timeoutDuration) {
-    case ShortTimeout:
-        timeout = m_shortTimeout;
-        break;
-    case LongTimeout:
-        timeout = m_longTimeout;
-        break;
-    case NoTimeout:
-    default:
-        timeout = m_noTimeout;
-        break;
+    double timeout = m_noTimeout;
+    if (!m_forceNoTimeout) {
+        switch (timeoutDuration) {
+        case ShortTimeout:
+            timeout = m_shortTimeout;
+            break;
+        case LongTimeout:
+            timeout = m_longTimeout;
+            break;
+        case NoTimeout:
+        default:
+            timeout = m_noTimeout;
+            break;
+        }
     }
 
     platformRunUntil(done, timeout);
@@ -597,7 +620,7 @@ void TestController::didReceiveMessageFromInjectedBundle(WKStringRef messageName
 
 WKRetainPtr<WKTypeRef> TestController::didReceiveSynchronousMessageFromInjectedBundle(WKStringRef messageName, WKTypeRef messageBody)
 {
-#if PLATFORM(MAC) || PLATFORM(QT) || PLATFORM(GTK)
+#if PLATFORM(MAC) || PLATFORM(QT) || PLATFORM(GTK) || PLATFORM(EFL)
     if (WKStringIsEqualToUTF8CString(messageName, "EventSender")) {
         ASSERT(WKGetTypeID(messageBody) == WKDictionaryGetTypeID());
         WKDictionaryRef messageBodyDictionary = static_cast<WKDictionaryRef>(messageBody);

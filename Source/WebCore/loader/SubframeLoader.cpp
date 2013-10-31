@@ -33,7 +33,10 @@
 #include "config.h"
 #include "SubframeLoader.h"
 
+#include "Chrome.h"
+#include "ChromeClient.h"
 #include "ContentSecurityPolicy.h"
+#include "DiagnosticLoggingKeys.h"
 #include "Frame.h"
 #include "FrameLoaderClient.h"
 #include "HTMLAppletElement.h"
@@ -130,7 +133,24 @@ bool SubframeLoader::requestPlugin(HTMLPlugInImageElement* ownerElement, const K
     ASSERT(ownerElement->hasTagName(objectTag) || ownerElement->hasTagName(embedTag));
     return loadPlugin(ownerElement, url, mimeType, paramNames, paramValues, useFallback);
 }
- 
+
+static void logPluginRequest(Page* page, const String& mimeType, bool success)
+{
+    if (!page || !page->settings()->diagnosticLoggingEnabled())
+        return;
+    
+    ChromeClient* client = page->chrome()->client();
+    client->logDiagnosticMessage(success ? DiagnosticLoggingKeys::pluginLoadedKey() : DiagnosticLoggingKeys::pluginLoadingFailedKey(), mimeType, DiagnosticLoggingKeys::noopKey());
+    
+    if (!page->hasSeenAnyPlugin())
+        client->logDiagnosticMessage(DiagnosticLoggingKeys::pageContainsAtLeastOnePluginKey(), emptyString(), DiagnosticLoggingKeys::noopKey());
+    
+    if (!page->hasSeenPlugin(mimeType))
+        client->logDiagnosticMessage(DiagnosticLoggingKeys::pageContainsPluginKey(), mimeType, DiagnosticLoggingKeys::noopKey());
+
+    page->sawPlugin(mimeType);
+}
+
 bool SubframeLoader::requestObject(HTMLPlugInImageElement* ownerElement, const String& url, const AtomicString& frameName, const String& mimeType, const Vector<String>& paramNames, const Vector<String>& paramValues)
 {
     if (url.isEmpty() && mimeType.isEmpty())
@@ -147,8 +167,11 @@ bool SubframeLoader::requestObject(HTMLPlugInImageElement* ownerElement, const S
         completedURL = completeURL(url);
 
     bool useFallback;
-    if (shouldUsePlugin(completedURL, mimeType, ownerElement->shouldPreferPlugInsForImages(), renderer->hasFallbackContent(), useFallback))
-        return requestPlugin(ownerElement, completedURL, mimeType, paramNames, paramValues, useFallback);
+    if (shouldUsePlugin(completedURL, mimeType, ownerElement->shouldPreferPlugInsForImages(), renderer->hasFallbackContent(), useFallback)) {
+        bool success = requestPlugin(ownerElement, completedURL, mimeType, paramNames, paramValues, useFallback);
+        logPluginRequest(document()->page(), mimeType, success);
+        return success;
+    }
 
     // If the plug-in element already contains a subframe, loadOrRedirectSubframe will re-use it. Otherwise,
     // it will create a new frame and set it as the RenderPart's widget, causing what was previously 
@@ -199,20 +222,16 @@ PassRefPtr<Widget> SubframeLoader::loadMediaPlayerProxyPlugin(Node* node, const 
 }
 #endif // ENABLE(PLUGIN_PROXY_FOR_VIDEO)
 
-PassRefPtr<Widget> SubframeLoader::createJavaAppletWidget(const LayoutSize& size, HTMLAppletElement* element, const HashMap<String, String>& args)
+PassRefPtr<Widget> SubframeLoader::createJavaAppletWidget(const IntSize& size, HTMLAppletElement* element, const Vector<String>& paramNames, const Vector<String>& paramValues)
 {
     String baseURLString;
     String codeBaseURLString;
-    Vector<String> paramNames;
-    Vector<String> paramValues;
-    HashMap<String, String>::const_iterator end = args.end();
-    for (HashMap<String, String>::const_iterator it = args.begin(); it != end; ++it) {
-        if (equalIgnoringCase(it->first, "baseurl"))
-            baseURLString = it->second;
-        else if (equalIgnoringCase(it->first, "codebase"))
-            codeBaseURLString = it->second;
-        paramNames.append(it->first);
-        paramValues.append(it->second);
+
+    for (size_t i = 0; i < paramNames.size(); ++i) {
+        if (equalIgnoringCase(paramNames[i], "baseurl"))
+            baseURLString = paramValues[i];
+        else if (equalIgnoringCase(paramNames[i], "codebase"))
+            codeBaseURLString = paramValues[i];
     }
 
     if (!codeBaseURLString.isEmpty()) {
@@ -232,9 +251,17 @@ PassRefPtr<Widget> SubframeLoader::createJavaAppletWidget(const LayoutSize& size
 
     RefPtr<Widget> widget;
     if (allowPlugins(AboutToInstantiatePlugin))
-        widget = m_frame->loader()->client()->createJavaAppletWidget(roundedIntSize(size), element, baseURL, paramNames, paramValues);
-    if (!widget)
+        widget = m_frame->loader()->client()->createJavaAppletWidget(size, element, baseURL, paramNames, paramValues);
+
+    logPluginRequest(document()->page(), element->serviceType(), widget);
+
+    if (!widget) {
+        RenderEmbeddedObject* renderer = element->renderEmbeddedObject();
+
+        if (!renderer->showsUnavailablePluginIndicator())
+            renderer->setPluginUnavailabilityReason(RenderEmbeddedObject::PluginMissing);
         return 0;
+    }
 
     m_containsPlugins = true;
     return widget;

@@ -559,15 +559,26 @@ void V8Proxy::resetIsolatedWorlds()
     m_isolatedWorldSecurityOrigins.clear();
 }
 
+void V8Proxy::hintForGCIfNecessary()
+{
+    V8BindingPerIsolateData* data = V8BindingPerIsolateData::current();
+    if (data->isLowMemoryNotificationHint()) {
+        data->clearLowMemoryNotificationHint();
+        v8::V8::LowMemoryNotification();
+    }
+}
+
 void V8Proxy::clearForClose()
 {
     resetIsolatedWorlds();
+    hintForGCIfNecessary();
     windowShell()->clearForClose();
 }
 
 void V8Proxy::clearForNavigation()
 {
     resetIsolatedWorlds();
+    hintForGCIfNecessary();
     windowShell()->clearForNavigation();
 }
 
@@ -592,6 +603,11 @@ v8::Handle<v8::Value> V8Proxy::setDOMException(int ec, v8::Isolate* isolate)
 {
     if (ec <= 0)
         return v8::Handle<v8::Value>();
+
+    if (ec == NATIVE_TYPE_ERR) {
+        const char* message = 0;
+        return throwTypeError(message, isolate);
+    }
 
     ExceptionCodeDescription description(ec);
 

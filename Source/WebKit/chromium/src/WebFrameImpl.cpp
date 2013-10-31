@@ -1465,10 +1465,10 @@ VisiblePosition WebFrameImpl::visiblePositionForWindowPoint(const WebPoint& poin
     HitTestRequest::HitTestRequestType hitType = HitTestRequest::Move;
     hitType |= HitTestRequest::ReadOnly;
     hitType |= HitTestRequest::Active;
+    hitType |= HitTestRequest::IgnoreClipping;
     HitTestRequest request(hitType);
     FrameView* view = frame()->view();
-    HitTestResult result(view->windowToContents(
-        view->convertFromContainingWindow(IntPoint(point.x, point.y))));
+    HitTestResult result(view->windowToContents(IntPoint(point.x, point.y)));
 
     frame()->document()->renderView()->layer()->hitTest(request, result);
 
@@ -1529,6 +1529,7 @@ float WebFrameImpl::getPrintPageShrink(int page)
 
 float WebFrameImpl::printPage(int page, WebCanvas* canvas)
 {
+#if ENABLE(PRINTING)
     // Ensure correct state.
     if (!m_printContext || page < 0 || !frame() || !frame()->document()) {
         ASSERT_NOT_REACHED();
@@ -1540,6 +1541,9 @@ float WebFrameImpl::printPage(int page, WebCanvas* canvas)
     gc.platformContext()->setPrinting(true);
 
     return m_printContext->spoolPage(gc, page);
+#else
+    return 0;
+#endif
 }
 
 void WebFrameImpl::printEnd()
@@ -1995,21 +1999,6 @@ WebString WebFrameImpl::renderTreeAsText(RenderAsTextControls toShow) const
 WebString WebFrameImpl::markerTextForListItem(const WebElement& webElement) const
 {
     return WebCore::markerTextForListItem(const_cast<Element*>(webElement.constUnwrap<Element>()));
-}
-
-int WebFrameImpl::pageNumberForElementById(const WebString& id,
-                                           float pageWidthInPixels,
-                                           float pageHeightInPixels) const
-{
-    if (!m_frame)
-        return -1;
-
-    Element* element = m_frame->document()->getElementById(id);
-    if (!element)
-        return -1;
-
-    FloatSize pageSize(pageWidthInPixels, pageHeightInPixels);
-    return PrintContext::pageNumberForElement(element, pageSize);
 }
 
 void WebFrameImpl::printPagesWithBoundaries(WebCanvas* canvas, const WebSize& pageSizeInPixels)

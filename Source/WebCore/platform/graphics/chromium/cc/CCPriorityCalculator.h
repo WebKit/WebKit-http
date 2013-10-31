@@ -28,7 +28,6 @@
 #include "GraphicsContext3D.h"
 #include "IntRect.h"
 #include "IntSize.h"
-#include "TextureManager.h"
 
 namespace WebCore {
 

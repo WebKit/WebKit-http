@@ -239,7 +239,7 @@ class PortTest(unittest.TestCase):
 
     def test_additional_platform_directory(self):
         port = self.make_port(port_name='foo')
-        port.baseline_search_path = lambda: ['LayoutTests/platform/foo']
+        port.default_baseline_search_path = lambda: ['LayoutTests/platform/foo']
         layout_test_dir = port.layout_tests_dir()
         test_file = 'fast/test.html'
 
@@ -286,6 +286,14 @@ class PortTest(unittest.TestCase):
         port._options.additional_expectations = [
             '/tmp/additional-expectations-1.txt', '/tmp/additional-expectations-2.txt']
         self.assertEquals('\n'.join(port.expectations_dict().values()), '\ncontent1\n\ncontent2\n')
+
+    def test_additional_env_var(self):
+        port = self.make_port(options=optparse.Values({'additional_env_var': ['FOO=BAR', 'BAR=FOO']}))
+        self.assertEqual(port.get_option('additional_env_var'), ['FOO=BAR', 'BAR=FOO'])
+        environment = port.setup_environ_for_server()
+        self.assertTrue(('FOO' in environment) & ('BAR' in environment))
+        self.assertEqual(environment['FOO'], 'BAR')
+        self.assertEqual(environment['BAR'], 'FOO')
 
     def test_uses_test_expectations_file(self):
         port = self.make_port(port_name='foo')
@@ -382,28 +390,6 @@ class PortTest(unittest.TestCase):
         self.assertFalse(port.check_httpd())
         _, _, logs = capture.restore_output()
         self.assertEqual('httpd seems broken. Cannot run http tests.\n', logs)
-
-    def assertVirtual(self, method, *args, **kwargs):
-        self.assertRaises(NotImplementedError, method, *args, **kwargs)
-
-    def test_virtual_methods(self):
-        port = Port(MockSystemHost())
-        self.assertVirtual(port.baseline_path)
-        self.assertVirtual(port.baseline_search_path)
-        self.assertVirtual(port.check_build, None)
-        self.assertVirtual(port.check_image_diff)
-        self.assertVirtual(port.create_driver, 0)
-        self.assertVirtual(port.diff_image, None, None)
-        self.assertVirtual(port.default_results_directory)
-        self.assertVirtual(port._path_to_apache)
-        self.assertVirtual(port._path_to_apache_config_file)
-        self.assertVirtual(port._path_to_driver)
-        self.assertVirtual(port._path_to_helper)
-        self.assertVirtual(port._path_to_image_diff)
-        self.assertVirtual(port._path_to_lighttpd)
-        self.assertVirtual(port._path_to_lighttpd_modules)
-        self.assertVirtual(port._path_to_lighttpd_php)
-        self.assertVirtual(port._path_to_wdiff)
 
     def test_test_exists(self):
         port = self.make_port(with_tests=True)

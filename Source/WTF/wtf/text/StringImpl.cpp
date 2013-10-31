@@ -82,6 +82,12 @@ StringImpl::~StringImpl()
     m_substringBuffer->deref();
 }
 
+PassRefPtr<StringImpl> StringImpl::createFromLiteral(const LChar* characters, unsigned length)
+{
+    ASSERT(charactersAreAllASCII<LChar>(characters, length));
+    return adoptRef(new StringImpl(characters, length));
+}
+
 PassRefPtr<StringImpl> StringImpl::createUninitialized(unsigned length, LChar*& data)
 {
     if (!length) {
@@ -1685,6 +1691,21 @@ PassRefPtr<StringImpl> StringImpl::createWithTerminatingNullCharacter(const Stri
     terminatedString->m_length--;
     terminatedString->m_hashAndFlags = (string.m_hashAndFlags & (~s_flagMask | s_hashFlag8BitBuffer)) | s_hashFlagHasTerminatingNullCharacter;
     return terminatedString.release();
+}
+
+size_t StringImpl::sizeInBytes() const
+{
+    // FIXME: support substrings
+    size_t size = length();
+    if (is8Bit()) {
+        if (has16BitShadow()) {
+            size += 2 * size;
+            if (hasTerminatingNullCharacter())
+                size += 2;
+        }
+    } else
+        size *= 2;
+    return size + sizeof(*this);
 }
 
 } // namespace WTF

@@ -154,8 +154,8 @@ protected:
 
 JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionVoidMethod(JSC::ExecState*);
 JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionVoidMethodWithArgs(JSC::ExecState*);
-JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionIntMethod(JSC::ExecState*);
-JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionIntMethodWithArgs(JSC::ExecState*);
+JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionMethod(JSC::ExecState*);
+JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionMethodWithArgs(JSC::ExecState*);
 JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionObjMethod(JSC::ExecState*);
 JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionObjMethodWithArgs(JSC::ExecState*);
 JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionMethodWithSequenceArg(JSC::ExecState*);
@@ -203,7 +203,8 @@ JSC::EncodedJSValue JSC_HOST_CALL jsTestObjConstructorFunctionClassMethod2(JSC::
 #if ENABLE(Condition1)
 JSC::EncodedJSValue JSC_HOST_CALL jsTestObjConstructorFunctionOverloadedMethod1(JSC::ExecState*);
 #endif
-JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionMethodWithUnsignedLongArray(JSC::ExecState*);
+JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionClassMethodWithClamp(JSC::ExecState*);
+JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionMethodWithUnsignedLongSequence(JSC::ExecState*);
 JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionStringArrayFunction(JSC::ExecState*);
 JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionGetSVGDocument(JSC::ExecState*);
 JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionConvert1(JSC::ExecState*);
@@ -217,15 +218,19 @@ JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionOrange(JSC::ExecStat
 JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionStrictFunction(JSC::ExecState*);
 // Attributes
 
-JSC::JSValue jsTestObjReadOnlyIntAttr(JSC::ExecState*, JSC::JSValue, JSC::PropertyName);
+JSC::JSValue jsTestObjReadOnlyLongAttr(JSC::ExecState*, JSC::JSValue, JSC::PropertyName);
 JSC::JSValue jsTestObjReadOnlyStringAttr(JSC::ExecState*, JSC::JSValue, JSC::PropertyName);
 JSC::JSValue jsTestObjReadOnlyTestObjAttr(JSC::ExecState*, JSC::JSValue, JSC::PropertyName);
+JSC::JSValue jsTestObjConstructorStaticReadOnlyLongAttr(JSC::ExecState*, JSC::JSValue, JSC::PropertyName);
+JSC::JSValue jsTestObjConstructorStaticStringAttr(JSC::ExecState*, JSC::JSValue, JSC::PropertyName);
+void setJSTestObjConstructorStaticStringAttr(JSC::ExecState*, JSC::JSObject*, JSC::JSValue);
+JSC::JSValue jsTestObjConstructorTestSubObj(JSC::ExecState*, JSC::JSValue, JSC::PropertyName);
 JSC::JSValue jsTestObjShortAttr(JSC::ExecState*, JSC::JSValue, JSC::PropertyName);
 void setJSTestObjShortAttr(JSC::ExecState*, JSC::JSObject*, JSC::JSValue);
 JSC::JSValue jsTestObjUnsignedShortAttr(JSC::ExecState*, JSC::JSValue, JSC::PropertyName);
 void setJSTestObjUnsignedShortAttr(JSC::ExecState*, JSC::JSObject*, JSC::JSValue);
-JSC::JSValue jsTestObjIntAttr(JSC::ExecState*, JSC::JSValue, JSC::PropertyName);
-void setJSTestObjIntAttr(JSC::ExecState*, JSC::JSObject*, JSC::JSValue);
+JSC::JSValue jsTestObjAttr(JSC::ExecState*, JSC::JSValue, JSC::PropertyName);
+void setJSTestObjAttr(JSC::ExecState*, JSC::JSObject*, JSC::JSValue);
 JSC::JSValue jsTestObjLongLongAttr(JSC::ExecState*, JSC::JSValue, JSC::PropertyName);
 void setJSTestObjLongLongAttr(JSC::ExecState*, JSC::JSObject*, JSC::JSValue);
 JSC::JSValue jsTestObjUnsignedLongLongAttr(JSC::ExecState*, JSC::JSValue, JSC::PropertyName);
@@ -321,6 +326,8 @@ JSC::JSValue jsTestObjDescription(JSC::ExecState*, JSC::JSValue, JSC::PropertyNa
 JSC::JSValue jsTestObjId(JSC::ExecState*, JSC::JSValue, JSC::PropertyName);
 void setJSTestObjId(JSC::ExecState*, JSC::JSObject*, JSC::JSValue);
 JSC::JSValue jsTestObjHash(JSC::ExecState*, JSC::JSValue, JSC::PropertyName);
+JSC::JSValue jsTestObjReplaceableAttribute(JSC::ExecState*, JSC::JSValue, JSC::PropertyName);
+void setJSTestObjReplaceableAttribute(JSC::ExecState*, JSC::JSObject*, JSC::JSValue);
 JSC::JSValue jsTestObjConstructor(JSC::ExecState*, JSC::JSValue, JSC::PropertyName);
 // Constants
 

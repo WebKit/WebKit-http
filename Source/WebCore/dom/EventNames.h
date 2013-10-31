@@ -157,6 +157,8 @@ namespace WebCore {
     macro(webkitbeginfullscreen) \
     macro(webkitendfullscreen) \
     \
+    macro(webkitaddsourcebuffer) \
+    macro(webkitremovesourcebuffer) \
     macro(webkitsourceopen) \
     macro(webkitsourceended) \
     macro(webkitsourceclose) \
@@ -217,6 +219,8 @@ namespace WebCore {
     macro(removestream) \
     macro(statechange) \
     macro(removetrack) \
+    macro(mute) \
+    macro(unmute) \
     \
     macro(show) \
     \

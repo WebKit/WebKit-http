@@ -31,6 +31,7 @@ VPATH = \
     $(WebCore)/Modules/filesystem \
     $(WebCore)/Modules/geolocation \
     $(WebCore)/Modules/indexeddb \
+    $(WebCore)/Modules/mediasource \
     $(WebCore)/Modules/notifications \
     $(WebCore)/Modules/quota \
     $(WebCore)/Modules/webaudio \
@@ -105,6 +106,8 @@ BINDING_IDLS = \
     $(WebCore)/Modules/indexeddb/IDBVersionChangeEvent.idl \
     $(WebCore)/Modules/indexeddb/IDBVersionChangeRequest.idl \
     $(WebCore)/Modules/indexeddb/WorkerContextIndexedDatabase.idl \
+    $(WebCore)/Modules/mediasource/SourceBuffer.idl \
+    $(WebCore)/Modules/mediasource/SourceBufferList.idl \
     $(WebCore)/Modules/notifications/DOMWindowNotifications.idl \
     $(WebCore)/Modules/notifications/Notification.idl \
     $(WebCore)/Modules/notifications/NotificationCenter.idl \
@@ -242,6 +245,8 @@ BINDING_IDLS = \
     $(WebCore)/dom/PopStateEvent.idl \
     $(WebCore)/dom/ProcessingInstruction.idl \
     $(WebCore)/dom/ProgressEvent.idl \
+    $(WebCore)/dom/ProgressEvent.idl \
+    $(WebCore)/dom/PropertyNodeList.idl \
     $(WebCore)/dom/Range.idl \
     $(WebCore)/dom/RangeException.idl \
     $(WebCore)/dom/RequestAnimationFrameCallback.idl \
@@ -348,6 +353,7 @@ BINDING_IDLS = \
     $(WebCore)/html/ImageData.idl \
     $(WebCore)/html/MediaController.idl \
     $(WebCore)/html/MediaError.idl \
+    $(WebCore)/html/MicroDataItemValue.idl \
     $(WebCore)/html/RadioNodeList.idl \
     $(WebCore)/html/TextMetrics.idl \
     $(WebCore)/html/TimeRanges.idl \
@@ -405,6 +411,7 @@ BINDING_IDLS = \
     $(WebCore)/page/Console.idl \
     $(WebCore)/page/Coordinates.idl \
     $(WebCore)/page/Crypto.idl \
+    $(WebCore)/page/DOMSecurityPolicy.idl \
     $(WebCore)/page/DOMSelection.idl \
     $(WebCore)/page/DOMWindow.idl \
     $(WebCore)/page/EventSource.idl \
@@ -582,6 +589,7 @@ BINDING_IDLS = \
     $(WebCore)/svg/SVGViewSpec.idl \
     $(WebCore)/svg/SVGZoomAndPan.idl \
     $(WebCore)/svg/SVGZoomEvent.idl \
+    $(WebCore)/testing/FastMallocStatistics.idl \
     $(WebCore)/testing/Internals.idl \
     $(WebCore)/testing/InternalSettings.idl \
     $(WebCore)/workers/AbstractWorker.idl \
@@ -815,24 +823,24 @@ WebKitFontFamilyNames.cpp WebKitFontFamilyNames.h : dom/make_names.pl css/WebKit
 
 # HTML tag and attribute names
 
-ifeq ($(findstring ENABLE_DATALIST,$(FEATURE_DEFINES)), ENABLE_DATALIST)
-    HTML_FLAGS := $(HTML_FLAGS) ENABLE_DATALIST=1
+ifeq ($(findstring ENABLE_DATALIST_ELEMENT,$(FEATURE_DEFINES)), ENABLE_DATALIST_ELEMENT)
+    HTML_FLAGS := $(HTML_FLAGS) ENABLE_DATALIST_ELEMENT=1
 endif
 
-ifeq ($(findstring ENABLE_DETAILS,$(FEATURE_DEFINES)), ENABLE_DETAILS)
-    HTML_FLAGS := $(HTML_FLAGS) ENABLE_DETAILS=1
+ifeq ($(findstring ENABLE_DETAILS_ELEMENT,$(FEATURE_DEFINES)), ENABLE_DETAILS_ELEMENT)
+    HTML_FLAGS := $(HTML_FLAGS) ENABLE_DETAILS_ELEMENT=1
 endif
 
-ifeq ($(findstring ENABLE_METER_TAG,$(FEATURE_DEFINES)), ENABLE_METER_TAG)
-    HTML_FLAGS := $(HTML_FLAGS) ENABLE_METER_TAG=1
+ifeq ($(findstring ENABLE_METER_ELEMENT,$(FEATURE_DEFINES)), ENABLE_METER_ELEMENT)
+    HTML_FLAGS := $(HTML_FLAGS) ENABLE_METER_ELEMENT=1
 endif
 
 ifeq ($(findstring ENABLE_MICRODATA,$(FEATURE_DEFINES)), ENABLE_MICRODATA)
     HTML_FLAGS := $(HTML_FLAGS) ENABLE_MICRODATA=1
 endif
 
-ifeq ($(findstring ENABLE_PROGRESS_TAG,$(FEATURE_DEFINES)), ENABLE_PROGRESS_TAG)
-    HTML_FLAGS := $(HTML_FLAGS) ENABLE_PROGRESS_TAG=1
+ifeq ($(findstring ENABLE_PROGRESS_ELEMENT,$(FEATURE_DEFINES)), ENABLE_PROGRESS_ELEMENT)
+    HTML_FLAGS := $(HTML_FLAGS) ENABLE_PROGRESS_ELEMENT=1
 endif
 
 ifeq ($(findstring ENABLE_VIDEO,$(FEATURE_DEFINES)), ENABLE_VIDEO)
@@ -943,6 +951,7 @@ IDL_INCLUDES = \
     $(WebCore)/fileapi \
     $(WebCore)/html \
     $(WebCore)/css \
+    $(WebCore)/Modules/mediasource \
     $(WebCore)/Modules/notifications \
     $(WebCore)/page \
     $(WebCore)/xml \

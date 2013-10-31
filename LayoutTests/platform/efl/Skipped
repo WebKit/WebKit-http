@@ -211,10 +211,6 @@ fast/dom/HTMLAnchorElement/anchor-download.html
 fast/dom/HTMLAnchorElement/anchor-nodownload-set.html
 fast/dom/HTMLAnchorElement/anchor-nodownload.html
 
-# The EFL port has no support for Geolocation
-fast/dom/Geolocation
-fast/dom/Window/window-properties-geolocation.html
-
 # The EFL port has no support for x-webkit-speech (and addMockSpeechInputResult in LayoutTestController)
 fast/speech
 fast/events/constructors/speech-recognition-event-constructor.html
@@ -233,11 +229,6 @@ plugins
 
 # The EFL port has no support for accessibility features
 accessibility
-
-# The EFL port has no support for the web inspector
-inspector
-http/tests/inspector
-http/tests/inspector-enabled
 
 # The EFL port has no support for device motion and orientation
 fast/dom/DeviceMotion
@@ -541,7 +532,6 @@ fast/events/tab-focus-anchor.html
 fast/history/back-forward-reset-after-error-handling.html
 fast/repaint/no-caret-repaint-in-non-content-editable-element.html
 http/tests/canvas/webgl/origin-clean-conformance.html
-http/tests/inspector/network/ping.html
 http/tests/navigation/go-back-to-error-page.html
 loader/go-back-to-different-window-size.html
 userscripts/user-script-plugin-document.html
@@ -750,6 +740,7 @@ http/tests/websocket/tests/hybi/
 
 # Pointer Lock is not implemented.
 pointer-lock/
+http/tests/pointer-lock/
 
 # Tests for MediaSource API. Feature is not yet functional.
 # https://bugs.webkit.org/show_bug.cgi?id=64731
@@ -790,8 +781,7 @@ fast/forms/input-step-as-double.html
 fast/forms/input-text-scroll-left-on-blur.html
 fast/forms/mailto/advanced-get.html
 fast/forms/mailto/advanced-put.html
-fast/forms/number/spin-button-events.html
-fast/forms/number/spin-in-multi-column.html
+fast/forms/number/number-spinbutton-in-multi-column.html
 fast/forms/placeholder-position.html
 fast/forms/placeholder-pseudo-style.html
 fast/forms/radio/radio_checked_name.html
@@ -1098,28 +1088,11 @@ userscripts/script-run-at-end.html
 # This test requires flac codec
 media/media-can-play-flac-audio.html
 
-# Requires ENABLE(MEDIA_CAPTURE)
-fast/forms/file/file-input-capture.html
-
 # Requires ENABLE(FILE_SYSTEM)
 fast/forms/file/input-file-entries.html
 
 # Transparent image being produced
 fast/frames/transparent-scrollbar.html
-
-# Fail until SUBPIXEL_LAYOUT is enabled
-# https://bugs.webkit.org/show_bug.cgi?id=85532
-fast/sub-pixel/client-rect-has-subpixel-precision.html
-fast/sub-pixel/client-width-height-snapping.html
-fast/sub-pixel/float-containing-block-with-margin.html
-fast/sub-pixel/float-with-right-margin-zoom.html
-fast/sub-pixel/float-wrap-with-subpixel-top.html
-fast/sub-pixel/inline-block-with-margin.html
-fast/sub-pixel/inline-block-with-padding.html
-fast/sub-pixel/layout-boxes-with-zoom.html
-fast/sub-pixel/size-of-box-with-zoom.html
-fast/sub-pixel/selection/selection-gaps-at-fractional-offsets.html
-fast/sub-pixel/file-upload-control-at-fractional-offset.html
 
 # This should only be a layer change
 # http://webkit.org/b/82129
@@ -1147,3 +1120,53 @@ fast/profiler/dead-time.html
 # http://webkit.org/b/35981
 # Needs a text rebaseline: 30px height difference.
 fast/block/basic/fieldset-stretch-to-legend.html
+
+# JSC doesn't support heap profiling
+inspector/profiler/heap-snapshot-inspect-dom-wrapper.html
+inspector/profiler/heap-snapshot-comparison-dom-groups-change.html
+inspector/profiler/heap-snapshot-comparison-show-all.html
+inspector/profiler/heap-snapshot-loader.html
+inspector/profiler/heap-snapshot-reveal-in-dominators-view.html
+inspector/profiler/heap-snapshot-summary-retainers.html
+inspector/profiler/heap-snapshot-summary-show-ranges.html
+inspector/profiler/heap-snapshot-summary-sorting-fields.html
+inspector/profiler/heap-snapshot-summary-sorting.html
+inspector/profiler/heap-snapshot-summary-sorting-instances.html
+
+# following tests started failing on EFL afrer r122952.
+http/tests/inspector/inspect-element.html
+http/tests/inspector/network/network-initiator.html
+http/tests/inspector/network/network-content-replacement-embed.html
+http/tests/inspector/network/network-embed.html
+http/tests/inspector/network/network-size-chunked.html
+http/tests/inspector/network/network-size-sync.html
+http/tests/inspector/network/network-size.html
+http/tests/inspector/resource-har-conversion.html
+http/tests/inspector/console-cd-completions.html
+http/tests/inspector/console-cross-origin-iframe-logging.html
+http/tests/inspector/resource-parameters.html
+http/tests/inspector/filesystem/request-directory-content.html
+http/tests/inspector/filesystem/request-file-content.html
+http/tests/inspector/filesystem/request-filesystem-root.html
+http/tests/inspector/filesystem/directory-tree.html
+http/tests/inspector/filesystem/request-metadata.html
+http/tests/inspector/console-cd.html
+http/tests/inspector/extensions-useragent.html
+http/tests/inspector/compiler-source-mapping-debug.html
+http/tests/inspector/console-websocket-error.html
+inspector/styles/variables/css-variables.html
+inspector/styles/svg-style.xhtml
+inspector/styles/override-screen-size.html
+inspector/console/console-long-eval-crash.html
+inspector/debugger/event-listener-breakpoints.html
+inspector/debugger/live-edit.html
+inspector/debugger/step-through-event-listeners.html
+inspector/debugger/xhr-breakpoints.html
+inspector/debugger/debugger-compile-and-run.html
+inspector/debugger/dom-breakpoints.html
+inspector/timeline/timeline-paint.html
+inspector/timeline/timeline-receive-response-event.html
+inspector/extensions/extensions-api.html
+inspector/extensions/extensions-audits-content-script.html
+inspector/extensions/extensions-audits.html
+inspector/extensions/extensions-eval-content-script.html

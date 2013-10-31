@@ -198,11 +198,11 @@ public:
     bool shouldRenderAnimationsOnScrollOrZoom() const;
     void setShouldRenderAnimationsOnScrollOrZoom(bool enable);
 
-    unsigned overZoomColor() const;
-    void setOverZoomColor(unsigned);
+    unsigned overScrollColor() const;
+    void setOverScrollColor(unsigned);
 
-    WebString overScrollImagePath() const;
-    void setOverScrollImagePath(const char*);
+    bool isEnableDefaultOverScrollBackground() const;
+    void setEnableDefaultOverScrollBackground(bool);
 
     unsigned backgroundColor() const;
     void setBackgroundColor(unsigned);
@@ -227,6 +227,9 @@ public:
 
     bool isSpatialNavigationEnabled() const;
     void setSpatialNavigationEnabled(bool);
+
+    bool isAsynchronousSpellCheckingEnabled() const;
+    void setAsynchronousSpellCheckingEnabled(bool) const;
 
     bool fullScreenVideoCapable() const;
     void setFullScreenVideoCapable(bool);

@@ -1160,9 +1160,9 @@ public:
     int paintContentsCount() { return m_paintContentsCount; }
     void resetPaintContentsCount() { m_paintContentsCount = 0; }
 
-    virtual void update(CCTextureUpdater& updater, const CCOcclusionTracker* occlusion) OVERRIDE
+    virtual void update(CCTextureUpdater& updater, const CCOcclusionTracker* occlusion, CCRenderingStats& stats) OVERRIDE
     {
-        ContentLayerChromium::update(updater, occlusion);
+        ContentLayerChromium::update(updater, occlusion, stats);
         m_paintContentsCount++;
     }
 
@@ -1301,7 +1301,6 @@ public:
         // The root layer is scaled by 2x.
         WebTransformationMatrix rootScreenSpaceTransform = scaleTransform;
         WebTransformationMatrix rootDrawTransform = scaleTransform;
-        rootDrawTransform.translate(root->bounds().width() * 0.5, root->bounds().height() * 0.5);
 
         EXPECT_EQ(rootDrawTransform, root->drawTransform());
         EXPECT_EQ(rootScreenSpaceTransform, root->screenSpaceTransform());
@@ -1311,7 +1310,6 @@ public:
         childScreenSpaceTransform.translate(2, 2);
         WebTransformationMatrix childDrawTransform = scaleTransform;
         childDrawTransform.translate(2, 2);
-        childDrawTransform.translate(child->bounds().width() * 0.5, child->bounds().height() * 0.5);
 
         EXPECT_EQ(childDrawTransform, child->drawTransform());
         EXPECT_EQ(childScreenSpaceTransform, child->screenSpaceTransform());
@@ -1576,7 +1574,7 @@ class TestLayerChromium : public LayerChromium {
 public:
     static PassRefPtr<TestLayerChromium> create() { return adoptRef(new TestLayerChromium()); }
 
-    virtual void update(CCTextureUpdater&, const CCOcclusionTracker* occlusion) OVERRIDE
+    virtual void update(CCTextureUpdater&, const CCOcclusionTracker* occlusion, CCRenderingStats&) OVERRIDE
     {
         // Gain access to internals of the CCOcclusionTracker.
         const TestCCOcclusionTracker* testOcclusion = static_cast<const TestCCOcclusionTracker*>(occlusion);
@@ -2176,8 +2174,14 @@ public:
     virtual void beginTest() OVERRIDE
     {
         m_layerTreeHost->setViewportSize(IntSize(10, 10));
+        m_layerTreeHost->rootLayer()->setBounds(IntSize(10, 10));
+        
         m_rootScrollLayer = ContentLayerChromium::create(&m_mockDelegate);
         m_rootScrollLayer->setBounds(IntSize(10, 10));
+
+        m_rootScrollLayer->setPosition(FloatPoint(0, 0));
+        m_rootScrollLayer->setAnchorPoint(FloatPoint(0, 0));
+
         m_rootScrollLayer->setIsDrawable(true);
         m_rootScrollLayer->setScrollable(true);
         m_rootScrollLayer->setMaxScrollPosition(IntSize(100, 100));
@@ -2188,6 +2192,10 @@ public:
         m_childLayer->setIsDrawable(true);
         m_childLayer->setScrollable(true);
         m_childLayer->setMaxScrollPosition(IntSize(100, 100));
+
+        m_childLayer->setPosition(FloatPoint(0, 0));
+        m_childLayer->setAnchorPoint(FloatPoint(0, 0));
+
         m_rootScrollLayer->addChild(m_childLayer);
         postSetNeedsCommitToMainThread();
     }
@@ -2267,7 +2275,9 @@ public:
     CCLayerTreeHostTestSurfaceNotAllocatedForLayersOutsideMemoryLimit()
         : m_rootLayer(ContentLayerChromiumWithUpdateTracking::create(&m_mockDelegate))
         , m_surfaceLayer1(ContentLayerChromiumWithUpdateTracking::create(&m_mockDelegate))
+        , m_replicaLayer1(ContentLayerChromiumWithUpdateTracking::create(&m_mockDelegate))
         , m_surfaceLayer2(ContentLayerChromiumWithUpdateTracking::create(&m_mockDelegate))
+        , m_replicaLayer2(ContentLayerChromiumWithUpdateTracking::create(&m_mockDelegate))
     {
     }
 
@@ -2282,6 +2292,9 @@ public:
         m_surfaceLayer2->setBounds(IntSize(100, 100));
         m_surfaceLayer2->setForceRenderSurface(true);
         m_surfaceLayer2->setOpacity(0.5);
+
+        m_surfaceLayer1->setReplicaLayer(m_replicaLayer1.get());
+        m_surfaceLayer2->setReplicaLayer(m_replicaLayer2.get());
 
         m_rootLayer->addChild(m_surfaceLayer1);
         m_surfaceLayer1->addChild(m_surfaceLayer2);
@@ -2321,14 +2334,18 @@ public:
         // Clear layer references so CCLayerTreeHost dies.
         m_rootLayer.clear();
         m_surfaceLayer1.clear();
+        m_replicaLayer1.clear();
         m_surfaceLayer2.clear();
+        m_replicaLayer2.clear();
     }
 
 private:
     MockContentLayerDelegate m_mockDelegate;
     RefPtr<ContentLayerChromiumWithUpdateTracking> m_rootLayer;
     RefPtr<ContentLayerChromiumWithUpdateTracking> m_surfaceLayer1;
+    RefPtr<ContentLayerChromiumWithUpdateTracking> m_replicaLayer1;
     RefPtr<ContentLayerChromiumWithUpdateTracking> m_surfaceLayer2;
+    RefPtr<ContentLayerChromiumWithUpdateTracking> m_replicaLayer2;
 };
 
 SINGLE_AND_MULTI_THREAD_TEST_F(CCLayerTreeHostTestSurfaceNotAllocatedForLayersOutsideMemoryLimit)

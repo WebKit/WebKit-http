@@ -52,6 +52,7 @@ class WebNode;
 class WebPageOverlay;
 class WebPermissionClient;
 class WebPrerendererClient;
+class WebViewBenchmarkSupport;
 class WebRange;
 class WebSettings;
 class WebSpellCheckClient;
@@ -62,7 +63,6 @@ struct WebActiveWheelFlingParameters;
 struct WebMediaPlayerAction;
 struct WebPluginAction;
 struct WebPoint;
-struct WebRenderingStats;
 
 class WebView : public WebWidget {
 public:
@@ -196,6 +196,9 @@ public:
     // previous element in the tab sequence (if reverse is true).
     virtual void advanceFocus(bool reverse) { }
 
+    // Animate a scale into the specified find-in-page rect.
+    virtual void zoomToFindInPageRect(const WebRect&) = 0;
+
 
     // Zoom ----------------------------------------------------------------
 
@@ -249,6 +252,14 @@ public:
 
     virtual float minimumPageScaleFactor() const = 0;
     virtual float maximumPageScaleFactor() const = 0;
+
+    // Save the WebView's current scroll and scale state. Each call to this function
+    // overwrites the previously saved scroll and scale state.
+    virtual void saveScrollAndScaleState() = 0;
+
+    // Restore the previously saved scroll and scale state. After restroing the
+    // state, this function deletes any saved scroll and scale state.
+    virtual void restoreScrollAndScaleState() = 0;
 
     // Prevent the web page from setting a maximum scale via the viewport meta
     // tag. This is an accessibility feature that lets folks zoom in to web
@@ -317,28 +328,16 @@ public:
 
     // Callback methods when a drag-and-drop operation is trying to drop
     // something on the WebView.
-    // FIXME: Remove this method after chromium changes catch up.
-    virtual WebDragOperation dragTargetDragEnter(
-        const WebDragData&,
-        const WebPoint& clientPoint, const WebPoint& screenPoint,
-        WebDragOperationsMask operationsAllowed) = 0;
     virtual WebDragOperation dragTargetDragEnter(
         const WebDragData&,
         const WebPoint& clientPoint, const WebPoint& screenPoint,
         WebDragOperationsMask operationsAllowed,
         int keyModifiers) = 0;
-    // FIXME: Remove this method after chromium changes catch up.
-    virtual WebDragOperation dragTargetDragOver(
-        const WebPoint& clientPoint, const WebPoint& screenPoint,
-        WebDragOperationsMask operationsAllowed) = 0;
     virtual WebDragOperation dragTargetDragOver(
         const WebPoint& clientPoint, const WebPoint& screenPoint,
         WebDragOperationsMask operationsAllowed,
         int keyModifiers) = 0;
     virtual void dragTargetDragLeave() = 0;
-    // FIXME: Remove this method after chromium changes catch up.
-    virtual void dragTargetDrop(
-        const WebPoint& clientPoint, const WebPoint& screenPoint) = 0;
     virtual void dragTargetDrop(
         const WebPoint& clientPoint, const WebPoint& screenPoint,
         int keyModifiers) = 0;
@@ -393,6 +392,8 @@ public:
 
     // Hides any popup (suggestions, selects...) that might be showing.
     virtual void hidePopups() = 0;
+
+    virtual void selectAutofillSuggestionAtIndex(unsigned listIndex) = 0;
 
 
     // Context menu --------------------------------------------------------
@@ -458,9 +459,11 @@ public:
 
     virtual bool setEditableSelectionOffsets(int start, int end) = 0;
 
-    // Fills in a WebRenderingStats struct containing information about the state of the compositor.
-    // This call is relatively expensive in threaded mode as it blocks on the compositor thread.
-    virtual void renderingStats(WebRenderingStats&) const { }
+    virtual bool isSelectionEditable() const = 0;
+
+    // Benchmarking support --------------------------------------------
+
+    virtual WebViewBenchmarkSupport* benchmarkSupport() { return 0; }
 
     // Visibility -----------------------------------------------------------
 

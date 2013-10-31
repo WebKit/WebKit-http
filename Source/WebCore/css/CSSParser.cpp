@@ -69,6 +69,7 @@
 #include "Rect.h"
 #include "RenderTheme.h"
 #include "RuntimeEnabledFeatures.h"
+#include "SVGParserUtilities.h"
 #include "Settings.h"
 #include "ShadowValue.h"
 #include "StylePropertySet.h"
@@ -614,8 +615,12 @@ static inline bool isValidKeywordPropertyAndValue(CSSPropertyID propertyId, int 
         if (valueID == CSSValueVisible || valueID == CSSValueNone || valueID == CSSValueAll || valueID == CSSValueAuto || (valueID >= CSSValueVisiblepainted && valueID <= CSSValueStroke))
             return true;
         break;
-    case CSSPropertyPosition: // static | relative | absolute | fixed | inherit
-        if (valueID == CSSValueStatic || valueID == CSSValueRelative || valueID == CSSValueAbsolute || valueID == CSSValueFixed)
+    case CSSPropertyPosition: // static | relative | absolute | fixed | sticky | inherit
+        if (valueID == CSSValueStatic || valueID == CSSValueRelative || valueID == CSSValueAbsolute || valueID == CSSValueFixed
+#if ENABLE(CSS_STICKY_POSITION)
+            || valueID == CSSValueWebkitSticky
+#endif
+            )
             return true;
         break;
     case CSSPropertyResize: // none | both | horizontal | vertical | auto
@@ -1682,6 +1687,7 @@ bool CSSParser::parseValue(CSSPropertyID propId, bool important)
         m_valueList->next();
         return true;
     }
+    ASSERT(propId != CSSPropertyVariable);
 #endif
 
     if (isKeywordPropertyID(propId)) {
@@ -2686,6 +2692,11 @@ bool CSSParser::parseValue(CSSPropertyID propId, bool important)
     case CSSPropertyWebkitWrap:
         return RuntimeEnabledFeatures::cssExclusionsEnabled() && parseShorthand(propId, webkitWrapShorthand(), important);
 #endif
+#if ENABLE(CSS_IMAGE_ORIENTATION)
+    case CSSPropertyImageOrientation:
+        validPrimitive = !id && validUnit(value, FAngle);
+        break;
+#endif
 #if ENABLE(CSS_IMAGE_RESOLUTION)
     case CSSPropertyImageResolution:
         parsedValue = parseImageResolution(m_valueList.get());
@@ -2693,11 +2704,6 @@ bool CSSParser::parseValue(CSSPropertyID propId, bool important)
             return false;
         m_valueList->next();
         break;
-#endif
-#if ENABLE(CSS_VARIABLES)
-    case CSSPropertyVariable:
-        // FIXME: This should have an actual implementation.
-        return false;
 #endif
     case CSSPropertyBorderBottomStyle:
     case CSSPropertyBorderCollapse:
@@ -2735,6 +2741,9 @@ bool CSSParser::parseValue(CSSPropertyID propId, bool important)
     case CSSPropertyTextTransform:
     case CSSPropertyTextUnderlineMode:
     case CSSPropertyTextUnderlineStyle:
+#if ENABLE(CSS_VARIABLES)
+    case CSSPropertyVariable:
+#endif
     case CSSPropertyVisibility:
     case CSSPropertyWebkitAppearance:
     case CSSPropertyWebkitBackfaceVisibility:
@@ -3013,7 +3022,10 @@ void CSSParser::storeVariableDeclaration(const CSSParserString& name, PassOwnPtr
     for (unsigned i = 0, size = value->size(); i < size; i++) {
         if (i)
             builder.append(' ');
-        builder.append(value->valueAt(i)->createCSSValue()->cssText());
+        RefPtr<CSSValue> cssValue = value->valueAt(i)->createCSSValue();
+        if (!cssValue)
+            return;
+        builder.append(cssValue->cssText());
     }
     addProperty(CSSPropertyVariable, CSSVariableValue::create(variableName, builder.toString()), important, false);
 }
@@ -4460,17 +4472,22 @@ PassRefPtr<CSSWrapShape> CSSParser::parseExclusionShapeRectangle(CSSParserValueL
     unsigned argumentNumber = 0;
     CSSParserValue* argument = args->current();
     while (argument) {
-        if (!validUnit(argument, FLength))
+        Units unitFlags = FLength | FPercent;
+        if (argumentNumber > 1) {
+            // Arguments width, height, rx, and ry cannot be negative.
+            unitFlags = unitFlags | FNonNeg;
+        }
+        if (!validUnit(argument, unitFlags))
             return 0;
 
         RefPtr<CSSPrimitiveValue> length = createPrimitiveNumericValue(argument);
         ASSERT(argumentNumber < 6);
         switch (argumentNumber) {
         case 0:
-            shape->setLeft(length);
+            shape->setX(length);
             break;
         case 1:
-            shape->setTop(length);
+            shape->setY(length);
             break;
         case 2:
             shape->setWidth(length);
@@ -4487,7 +4504,7 @@ PassRefPtr<CSSWrapShape> CSSParser::parseExclusionShapeRectangle(CSSParserValueL
         }
         argument = args->next();
         if (argument) {
-            if (argument->unit != CSSParserValue::Operator || argument->iValue != ',')
+            if (!isComma(argument))
                 return 0;
 
             argument = args->next();
@@ -4504,7 +4521,7 @@ PassRefPtr<CSSWrapShape> CSSParser::parseExclusionShapeCircle(CSSParserValueList
 {
     ASSERT(args);
 
-    // circle(x, y, r)
+    // circle(centerX, centerY, radius)
     if (args->size() != 5)
         return 0;
 
@@ -4513,17 +4530,23 @@ PassRefPtr<CSSWrapShape> CSSParser::parseExclusionShapeCircle(CSSParserValueList
     unsigned argumentNumber = 0;
     CSSParserValue* argument = args->current();
     while (argument) {
-        if (!validUnit(argument, FLength))
+        Units unitFlags = FLength | FPercent;
+        if (argumentNumber == 2) {
+            // Argument radius cannot be negative.
+            unitFlags = unitFlags | FNonNeg;
+        }
+
+        if (!validUnit(argument, unitFlags))
             return 0;
 
         RefPtr<CSSPrimitiveValue> length = createPrimitiveNumericValue(argument);
         ASSERT(argumentNumber < 3);
         switch (argumentNumber) {
         case 0:
-            shape->setLeft(length);
+            shape->setCenterX(length);
             break;
         case 1:
-            shape->setTop(length);
+            shape->setCenterY(length);
             break;
         case 2:
             shape->setRadius(length);
@@ -4532,7 +4555,7 @@ PassRefPtr<CSSWrapShape> CSSParser::parseExclusionShapeCircle(CSSParserValueList
 
         argument = args->next();
         if (argument) {
-            if (argument->unit != CSSParserValue::Operator || argument->iValue != ',')
+            if (!isComma(argument))
                 return 0;
             argument = args->next();
         }
@@ -4548,7 +4571,7 @@ PassRefPtr<CSSWrapShape> CSSParser::parseExclusionShapeEllipse(CSSParserValueLis
 {
     ASSERT(args);
 
-    // ellipse(x, y, rx, ry)
+    // ellipse(centerX, centerY, radiusX, radiusY)
     if (args->size() != 7)
         return 0;
 
@@ -4556,17 +4579,22 @@ PassRefPtr<CSSWrapShape> CSSParser::parseExclusionShapeEllipse(CSSParserValueLis
     unsigned argumentNumber = 0;
     CSSParserValue* argument = args->current();
     while (argument) {
-        if (!validUnit(argument, FLength))
+        Units unitFlags = FLength | FPercent;
+        if (argumentNumber > 1) {
+            // Arguments radiusX and radiusY cannot be negative.
+            unitFlags = unitFlags | FNonNeg;
+        }
+        if (!validUnit(argument, unitFlags))
             return 0;
 
         RefPtr<CSSPrimitiveValue> length = createPrimitiveNumericValue(argument);
         ASSERT(argumentNumber < 4);
         switch (argumentNumber) {
         case 0:
-            shape->setLeft(length);
+            shape->setCenterX(length);
             break;
         case 1:
-            shape->setTop(length);
+            shape->setCenterY(length);
             break;
         case 2:
             shape->setRadiusX(length);
@@ -4578,7 +4606,7 @@ PassRefPtr<CSSWrapShape> CSSParser::parseExclusionShapeEllipse(CSSParserValueLis
 
         argument = args->next();
         if (argument) {
-            if (argument->unit != CSSParserValue::Operator || argument->iValue != ',')
+            if (!isComma(argument))
                 return 0;
             argument = args->next();
         }
@@ -4617,11 +4645,11 @@ PassRefPtr<CSSWrapShape> CSSParser::parseExclusionShapePolygon(CSSParserValueLis
 
     CSSParserValue* argumentX = argument;
     while (argumentX) {
-        if (!validUnit(argumentX, FLength))
+        if (!validUnit(argumentX, FLength | FPercent))
             return 0;
 
         CSSParserValue* argumentY = args->next();
-        if (!argumentY || !validUnit(argumentY, FLength))
+        if (!argumentY || !validUnit(argumentY, FLength | FPercent))
             return 0;
 
         RefPtr<CSSPrimitiveValue> xLength = createPrimitiveNumericValue(argumentX);
@@ -6059,6 +6087,8 @@ bool CSSParser::parseBorderImageRepeat(RefPtr<CSSValue>& result)
     RefPtr<CSSPrimitiveValue> firstValue;
     RefPtr<CSSPrimitiveValue> secondValue;
     CSSParserValue* val = m_valueList->current();
+    if (!val)
+        return false;
     if (isBorderImageRepeatKeyword(val->id))
         firstValue = cssValuePool().createIdentifierValue(val->id);
     else
@@ -8963,8 +8993,29 @@ restartAfterComment:
             break;
         }
 
-        yylval->number = charactersToDouble(m_tokenStart, m_currentCharacter - m_tokenStart);
-
+#if ENABLE(SVG)
+        // Use SVG parser for numbers on SVG presentation attributes.
+        if (m_context.mode == SVGAttributeMode) {
+            // We need to take care of units like 'em' or 'ex'.
+            UChar* currentCharacter = m_currentCharacter;
+            if (isASCIIAlphaCaselessEqual(*currentCharacter, 'e')) {
+                ASSERT(currentCharacter - m_tokenStart > 0);
+                ++currentCharacter;
+                if (*currentCharacter == '-' || *currentCharacter == '+' || isASCIIDigit(*currentCharacter)) {
+                    ++currentCharacter;
+                    while (isASCIIDigit(*currentCharacter))
+                        ++currentCharacter;
+                    // Use FLOATTOKEN if the string contains exponents.
+                    dotSeen = true;
+                    m_currentCharacter = currentCharacter;
+                }
+            }
+            if (!parseSVGNumber(m_tokenStart, currentCharacter - m_tokenStart, yylval->number))
+                break;
+        } else
+#endif
+            yylval->number = charactersToDouble(m_tokenStart, m_currentCharacter - m_tokenStart);
+ 
         // Type of the function.
         if (isIdentifierStart()) {
             UChar* type = m_currentCharacter;
@@ -9493,7 +9544,8 @@ StyleRuleBase* CSSParser::createStyleRule(Vector<OwnPtr<CSSParserSelector> >* se
         result = rule.get();
         m_parsedRules.append(rule.release());
         processAndAddNewRuleToSourceTreeIfNeeded();
-    }
+    } else
+        popRuleData();
     clearProperties();
     return result;
 }

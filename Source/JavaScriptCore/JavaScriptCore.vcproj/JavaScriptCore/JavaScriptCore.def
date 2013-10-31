@@ -72,6 +72,9 @@ EXPORTS
     ?append@StringBuilder@WTF@@QAEXPB_WI@Z
     ?ascii@UString@JSC@@QBE?AVCString@WTF@@XZ
     ?attach@Debugger@JSC@@QAEXPAVJSGlobalObject@2@@Z
+    ?base64Decode@WTF@@YA_NABVString@1@AAV?$Vector@D$0A@@1@W4Base64DecodePolicy@1@@Z
+    ?base64Encode@WTF@@YA?AVString@1@PBDIW4Base64EncodePolicy@1@@Z
+    ?base64Encode@WTF@@YAXPBDIAAV?$Vector@D$0A@@1@W4Base64EncodePolicy@1@@Z
     ?broadcast@ThreadCondition@WTF@@QAEXXZ
     ?bufferLengthForStringDecimal@DecimalNumber@WTF@@QBEIXZ
     ?bufferLengthForStringExponential@DecimalNumber@WTF@@QBEIXZ
@@ -148,6 +151,7 @@ EXPORTS
     ?deleteProperty@JSSymbolTableObject@JSC@@SA_NPAVJSCell@2@PAVExecState@2@VPropertyName@2@@Z
     ?deletePropertyByIndex@JSObject@JSC@@SA_NPAVJSCell@2@PAVExecState@2@I@Z
     ?deleteTable@HashTable@JSC@@QBEXXZ
+    ?description@JSValue@JSC@@QBEPADXZ
     ?despecifyDictionaryFunction@Structure@JSC@@QAEXAAVJSGlobalData@2@VPropertyName@2@@Z
     ?despecifyFunctionTransition@Structure@JSC@@SAPAV12@AAVJSGlobalData@2@PAV12@VPropertyName@2@@Z
     ?destroy@JSCell@JSC@@KAXPAV12@@Z
@@ -160,6 +164,7 @@ EXPORTS
     ?displayName@JSFunction@JSC@@QAE?BVUString@2@PAVExecState@2@@Z
     ?dtoa@WTF@@YAXQADNAA_NAAHAAI@Z
     ?dumpAllOptions@Options@JSC@@SAXPAU_iobuf@@@Z
+    ?dumpCallFrame@Interpreter@JSC@@QAEXPAVExecState@2@@Z
     ?dumpSampleData@JSGlobalData@JSC@@QAEXPAVExecState@2@@Z
     ?empty@StringImpl@WTF@@SAPAV12@XZ
     ?enumerable@PropertyDescriptor@JSC@@QBE_NXZ
@@ -374,6 +379,23 @@ EXPORTS
     ?writable@PropertyDescriptor@JSC@@QBE_NXZ
     ?writeBarrier@HandleSet@JSC@@QAEXPAVJSValue@2@ABV32@@Z
     ?yield@WTF@@YAXXZ
+    ?toDouble@MediaTime@WTF@@QBENXZ 
+    ?toFloat@MediaTime@WTF@@QBEMXZ 
+    ?createWithDouble@MediaTime@WTF@@SA?AV12@NH@Z 
+    ?createWithFloat@MediaTime@WTF@@SA?AV12@MH@Z 
+    ?abs@WTF@@YA?AVMediaTime@1@ABV21@@Z 
+    ?zeroTime@MediaTime@WTF@@SAABV12@XZ 
+    ??GMediaTime@WTF@@QBE?AV01@ABV01@@Z 
+    ??HMediaTime@WTF@@QBE?AV01@ABV01@@Z 
+    ??1MediaTime@WTF@@QAE@XZ 
+    ??0MediaTime@WTF@@QAE@_JHI@Z 
+    ?indefiniteTime@MediaTime@WTF@@SAABV12@XZ 
+    ?invalidTime@MediaTime@WTF@@SAABV12@XZ 
+    ??8MediaTime@WTF@@QBE_NABV01@@Z 
+    ??MMediaTime@WTF@@QBE_NABV01@@Z 
+    ??OMediaTime@WTF@@QBE_NABV01@@Z 
+    ?positiveInfiniteTime@MediaTime@WTF@@SAABV12@XZ 
+    ?negativeInfiniteTime@MediaTime@WTF@@SAABV12@XZ
     WTFGetBacktrace
     WTFInvokeCrashHook
     WTFLog

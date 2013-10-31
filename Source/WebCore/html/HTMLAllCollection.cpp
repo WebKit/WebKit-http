@@ -36,7 +36,7 @@ PassRefPtr<HTMLAllCollection> HTMLAllCollection::create(Document* document)
 }
 
 HTMLAllCollection::HTMLAllCollection(Document* document)
-    : HTMLCollection(document, DocAll)
+    : HTMLCollection(document, DocAll, DoesNotOverrideItemAfter)
 {
 }
 
@@ -46,7 +46,6 @@ HTMLAllCollection::~HTMLAllCollection()
 
 Node* HTMLAllCollection::namedItemWithIndex(const AtomicString& name, unsigned index) const
 {
-    invalidateCacheIfNeeded();
     updateNameCache();
 
     if (Vector<Element*>* cache = idCache(name)) {

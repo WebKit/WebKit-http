@@ -67,12 +67,14 @@ void IDBObjectStoreBackendProxy::get(PassRefPtr<IDBKeyRange> keyRange, PassRefPt
     m_webIDBObjectStore->get(keyRange, new WebIDBCallbacksImpl(callbacks), *transactionProxy->getWebIDBTransaction(), ec);
 }
 
-void IDBObjectStoreBackendProxy::put(PassRefPtr<SerializedScriptValue> value, PassRefPtr<IDBKey> key, PutMode putMode, PassRefPtr<IDBCallbacks> callbacks, IDBTransactionBackendInterface* transaction, ExceptionCode& ec)
+void IDBObjectStoreBackendProxy::putWithIndexKeys(PassRefPtr<SerializedScriptValue> value, PassRefPtr<IDBKey> key, PutMode putMode, PassRefPtr<IDBCallbacks> callbacks, IDBTransactionBackendInterface* transaction, const Vector<String>& indexNames, const Vector<IndexKeys>& indexKeys, ExceptionCode& ec)
 {
     // The transaction pointer is guaranteed to be a pointer to a proxy object as, in the renderer,
     // all implementations of IDB interfaces are proxy objects.
     IDBTransactionBackendProxy* transactionProxy = static_cast<IDBTransactionBackendProxy*>(transaction);
-    m_webIDBObjectStore->put(value, key, static_cast<WebIDBObjectStore::PutMode>(putMode), new WebIDBCallbacksImpl(callbacks), *transactionProxy->getWebIDBTransaction(), ec);
+    WebVector<WebString> webIndexNames(indexNames);
+    WebVector<IndexKeys> webIndexKeys(indexKeys);
+    m_webIDBObjectStore->putWithIndexKeys(value, key, static_cast<WebIDBObjectStore::PutMode>(putMode), new WebIDBCallbacksImpl(callbacks), *transactionProxy->getWebIDBTransaction(), webIndexNames, webIndexKeys, ec);
 }
 
 void IDBObjectStoreBackendProxy::deleteFunction(PassRefPtr<IDBKeyRange> keyRange, PassRefPtr<IDBCallbacks> callbacks, IDBTransactionBackendInterface* transaction, ExceptionCode& ec)

@@ -46,8 +46,6 @@ namespace {
 void executeCalculateDrawTransformsAndVisibility(CCLayerImpl* root, Vector<CCLayerImpl*>& renderSurfaceLayerList)
 {
     CCLayerSorter layerSorter;
-    WebTransformationMatrix identityMatrix;
-    Vector<CCLayerImpl*> dummyLayerList;
     int dummyMaxTextureSize = 512;
 
     // Sanity check: The test itself should create the root layer's render surface, so
@@ -56,9 +54,7 @@ void executeCalculateDrawTransformsAndVisibility(CCLayerImpl* root, Vector<CCLay
     ASSERT_TRUE(root->renderSurface());
     ASSERT_FALSE(renderSurfaceLayerList.size());
 
-    root->renderSurface()->clearLayerList();
-    renderSurfaceLayerList.append(root);
-    CCLayerTreeHostCommon::calculateDrawTransforms(root, root, identityMatrix, identityMatrix, renderSurfaceLayerList, dummyLayerList, &layerSorter, dummyMaxTextureSize);
+    CCLayerTreeHostCommon::calculateDrawTransforms(root, root->bounds(), 1, &layerSorter, dummyMaxTextureSize, renderSurfaceLayerList);
     CCLayerTreeHostCommon::calculateVisibleAndScissorRects(renderSurfaceLayerList, root->renderSurface()->contentRect());
 }
 
@@ -99,6 +95,7 @@ PassOwnPtr<CCLayerImpl> createTestTreeWithOneSurface()
     root->setPosition(FloatPoint::zero());
     root->setAnchorPoint(FloatPoint::zero());
     root->setBounds(IntSize(500, 500));
+    root->setContentBounds(IntSize(500, 500));
     root->setDrawsContent(true);
     root->createRenderSurface();
     root->renderSurface()->setContentRect(IntRect(IntPoint(), IntSize(500, 500)));
@@ -106,6 +103,7 @@ PassOwnPtr<CCLayerImpl> createTestTreeWithOneSurface()
     child->setPosition(FloatPoint(100, 100));
     child->setAnchorPoint(FloatPoint::zero());
     child->setBounds(IntSize(30, 30));
+    child->setContentBounds(IntSize(30, 30));
     child->setDrawsContent(true);
     root->addChild(child.release());
 
@@ -127,6 +125,7 @@ PassOwnPtr<CCLayerImpl> createTestTreeWithTwoSurfaces()
     root->setPosition(FloatPoint::zero());
     root->setAnchorPoint(FloatPoint::zero());
     root->setBounds(IntSize(500, 500));
+    root->setContentBounds(IntSize(500, 500));
     root->setDrawsContent(true);
     root->createRenderSurface();
     root->renderSurface()->setContentRect(IntRect(IntPoint(), IntSize(500, 500)));
@@ -134,22 +133,26 @@ PassOwnPtr<CCLayerImpl> createTestTreeWithTwoSurfaces()
     child1->setPosition(FloatPoint(100, 100));
     child1->setAnchorPoint(FloatPoint::zero());
     child1->setBounds(IntSize(30, 30));
+    child1->setContentBounds(IntSize(30, 30));
     child1->setOpacity(0.5); // with a child that drawsContent, this will cause the layer to create its own renderSurface.
     child1->setDrawsContent(false); // this layer does not draw, but is intended to create its own renderSurface.
 
     child2->setPosition(FloatPoint(11, 11));
     child2->setAnchorPoint(FloatPoint::zero());
     child2->setBounds(IntSize(18, 18));
+    child2->setContentBounds(IntSize(18, 18));
     child2->setDrawsContent(true);
 
     grandChild1->setPosition(FloatPoint(200, 200));
     grandChild1->setAnchorPoint(FloatPoint::zero());
     grandChild1->setBounds(IntSize(6, 8));
+    grandChild1->setContentBounds(IntSize(6, 8));
     grandChild1->setDrawsContent(true);
 
     grandChild2->setPosition(FloatPoint(190, 190));
     grandChild2->setAnchorPoint(FloatPoint::zero());
     grandChild2->setBounds(IntSize(6, 8));
+    grandChild2->setContentBounds(IntSize(6, 8));
     grandChild2->setDrawsContent(true);
 
     child1->addChild(grandChild1.release());
@@ -311,11 +314,9 @@ TEST_F(CCDamageTrackerTest, verifyDamageForTransformedLayer)
     WebTransformationMatrix rotation;
     rotation.rotate(45);
 
-    // Note carefully, the anchor is actually part of layer->position(). By setting anchor
-    // to (0.5, 0.5), the layer's position (100, 100) now refers to the center of the
-    // layer, not the corner. This means the layer has actually changed position.
     clearDamageForAllSurfaces(root.get());
     child->setAnchorPoint(FloatPoint(0.5, 0.5));
+    child->setPosition(FloatPoint(85, 85));
     emulateDrawingOneFrame(root.get());
 
     // Sanity check that the layer actually moved to (85, 85), damaging its old location and new location.
@@ -331,8 +332,8 @@ TEST_F(CCDamageTrackerTest, verifyDamageForTransformedLayer)
     // Since the child layer is square, rotation by 45 degrees about the center should
     // increase the size of the expected rect by sqrt(2), centered around (100, 100). The
     // old exposed region should be fully contained in the new region.
-    double expectedWidth = 30.0 * sqrt(2.0);
-    double expectedPosition = 100.0 - 0.5 * expectedWidth;
+    double expectedWidth = 30 * sqrt(2.0);
+    double expectedPosition = 100 - 0.5 * expectedWidth;
     FloatRect expectedRect(expectedPosition, expectedPosition, expectedWidth, expectedWidth);
     rootDamageRect = root->renderSurface()->damageTracker()->currentDamageRect();
     EXPECT_FLOAT_RECT_EQ(expectedRect, rootDamageRect);
@@ -362,6 +363,7 @@ TEST_F(CCDamageTrackerTest, verifyDamageForPerspectiveClippedLayer)
     // Set up the child
     child->setPosition(FloatPoint(0, 0));
     child->setBounds(IntSize(100, 100));
+    child->setContentBounds(IntSize(100, 100));
     child->setTransform(transform);
     emulateDrawingOneFrame(root.get());
 
@@ -528,6 +530,7 @@ TEST_F(CCDamageTrackerTest, verifyDamageForAddingAndRemovingLayer)
         child2->setPosition(FloatPoint(400, 380));
         child2->setAnchorPoint(FloatPoint::zero());
         child2->setBounds(IntSize(6, 8));
+        child2->setContentBounds(IntSize(6, 8));
         child2->setDrawsContent(true);
         root->addChild(child2.release());
     }
@@ -567,6 +570,7 @@ TEST_F(CCDamageTrackerTest, verifyDamageForNewUnchangedLayer)
         child2->setPosition(FloatPoint(400, 380));
         child2->setAnchorPoint(FloatPoint::zero());
         child2->setBounds(IntSize(6, 8));
+        child2->setContentBounds(IntSize(6, 8));
         child2->setDrawsContent(true);
         child2->resetAllChangeTrackingForSubtree();
         // Sanity check the initial conditions of the test, if these asserts trigger, it
@@ -596,6 +600,7 @@ TEST_F(CCDamageTrackerTest, verifyDamageForMultipleLayers)
         child2->setPosition(FloatPoint(400, 380));
         child2->setAnchorPoint(FloatPoint::zero());
         child2->setBounds(IntSize(6, 8));
+        child2->setContentBounds(IntSize(6, 8));
         child2->setDrawsContent(true);
         root->addChild(child2.release());
     }
@@ -814,6 +819,7 @@ TEST_F(CCDamageTrackerTest, verifyDamageForReplica)
         grandChild3->setPosition(FloatPoint(240, 240));
         grandChild3->setAnchorPoint(FloatPoint::zero());
         grandChild3->setBounds(IntSize(10, 10));
+        grandChild3->setContentBounds(IntSize(10, 10));
         grandChild3->setDrawsContent(true);
         child1->addChild(grandChild3.release());
     }
@@ -828,7 +834,7 @@ TEST_F(CCDamageTrackerTest, verifyDamageForReplica)
         grandChild1Replica->setPosition(FloatPoint::zero());
         grandChild1Replica->setAnchorPoint(FloatPoint::zero());
         WebTransformationMatrix reflection;
-        reflection.scale3d(-1.0, 1.0, 1.0);
+        reflection.scale3d(-1, 1, 1);
         grandChild1Replica->setTransform(reflection);
         grandChild1->setReplicaLayer(grandChild1Replica.release());
     }
@@ -848,7 +854,7 @@ TEST_F(CCDamageTrackerTest, verifyDamageForReplica)
     //         areas to be damaged on the target.
     clearDamageForAllSurfaces(root.get());
     IntRect oldContentRect = child1->renderSurface()->contentRect();
-    grandChild1->setPosition(FloatPoint(195.0, 205.0));
+    grandChild1->setPosition(FloatPoint(195, 205));
     emulateDrawingOneFrame(root.get());
     ASSERT_EQ(oldContentRect.width(), child1->renderSurface()->contentRect().width());
     ASSERT_EQ(oldContentRect.height(), child1->renderSurface()->contentRect().height());
@@ -896,6 +902,7 @@ TEST_F(CCDamageTrackerTest, verifyDamageForMask)
         maskLayer->setPosition(child->position());
         maskLayer->setAnchorPoint(FloatPoint::zero());
         maskLayer->setBounds(child->bounds());
+        maskLayer->setContentBounds(child->bounds());
         child->setMaskLayer(maskLayer.release());
     }
     CCLayerImpl* maskLayer = child->maskLayer();
@@ -904,9 +911,10 @@ TEST_F(CCDamageTrackerTest, verifyDamageForMask)
     child->setOpacity(0.5);
     {
         OwnPtr<CCLayerImpl> grandChild = CCLayerImpl::create(4);
-        grandChild->setPosition(FloatPoint(2.0, 2.0));
+        grandChild->setPosition(FloatPoint(2, 2));
         grandChild->setAnchorPoint(FloatPoint::zero());
         grandChild->setBounds(IntSize(2, 2));
+        grandChild->setContentBounds(IntSize(2, 2));
         grandChild->setDrawsContent(true);
         child->addChild(grandChild.release());
     }
@@ -979,7 +987,7 @@ TEST_F(CCDamageTrackerTest, verifyDamageForReplicaMask)
         grandChild1Replica->setPosition(FloatPoint::zero());
         grandChild1Replica->setAnchorPoint(FloatPoint::zero());
         WebTransformationMatrix reflection;
-        reflection.scale3d(-1.0, 1.0, 1.0);
+        reflection.scale3d(-1, 1, 1);
         grandChild1Replica->setTransform(reflection);
         grandChild1->setReplicaLayer(grandChild1Replica.release());
     }
@@ -991,6 +999,7 @@ TEST_F(CCDamageTrackerTest, verifyDamageForReplicaMask)
         replicaMaskLayer->setPosition(FloatPoint::zero());
         replicaMaskLayer->setAnchorPoint(FloatPoint::zero());
         replicaMaskLayer->setBounds(grandChild1->bounds());
+        replicaMaskLayer->setContentBounds(grandChild1->bounds());
         grandChild1Replica->setMaskLayer(replicaMaskLayer.release());
     }
     CCLayerImpl* replicaMaskLayer = grandChild1Replica->maskLayer();
@@ -1030,20 +1039,17 @@ TEST_F(CCDamageTrackerTest, verifyDamageForReplicaMaskWithAnchor)
     CCLayerImpl* child1 = root->children()[0].get();
     CCLayerImpl* grandChild1 = child1->children()[0].get();
 
-    // Verify that the correct replicaOriginTransform is used for the replicaMask; the
-    // incorrect old code incorrectly accounted for the anchor for the replica. A
-    // non-zero anchor point should not affect the replica reflection.
-
+    // Verify that the correct replicaOriginTransform is used for the replicaMask;
     clearDamageForAllSurfaces(root.get());
 
-    grandChild1->setAnchorPoint(FloatPoint(1.0, 0.0)); // This is the anchor being tested.
+    grandChild1->setAnchorPoint(FloatPoint(1, 0)); // This is not exactly the anchor being tested, but by convention its expected to be the same as the replica's anchor point.
 
     {
         OwnPtr<CCLayerImpl> grandChild1Replica = CCLayerImpl::create(6);
         grandChild1Replica->setPosition(FloatPoint::zero());
-        grandChild1Replica->setAnchorPoint(FloatPoint::zero()); // note, this is not the anchor being tested.
+        grandChild1Replica->setAnchorPoint(FloatPoint(1, 0)); // This is the anchor being tested.
         WebTransformationMatrix reflection;
-        reflection.scale3d(-1.0, 1.0, 1.0);
+        reflection.scale3d(-1, 1, 1);
         grandChild1Replica->setTransform(reflection);
         grandChild1->setReplicaLayer(grandChild1Replica.release());
     }
@@ -1055,6 +1061,7 @@ TEST_F(CCDamageTrackerTest, verifyDamageForReplicaMaskWithAnchor)
         replicaMaskLayer->setPosition(FloatPoint::zero());
         replicaMaskLayer->setAnchorPoint(FloatPoint::zero()); // note, this is not the anchor being tested.
         replicaMaskLayer->setBounds(grandChild1->bounds());
+        replicaMaskLayer->setContentBounds(grandChild1->bounds());
         grandChild1Replica->setMaskLayer(replicaMaskLayer.release());
     }
     CCLayerImpl* replicaMaskLayer = grandChild1Replica->maskLayer();
@@ -1071,7 +1078,7 @@ TEST_F(CCDamageTrackerTest, verifyDamageForReplicaMaskWithAnchor)
     emulateDrawingOneFrame(root.get());
 
     FloatRect childDamageRect = child1->renderSurface()->damageTracker()->currentDamageRect();
-    EXPECT_FLOAT_RECT_EQ(FloatRect(194, 200, 6, 8), childDamageRect);
+    EXPECT_FLOAT_RECT_EQ(FloatRect(206, 200, 6, 8), childDamageRect);
 }
 
 TEST_F(CCDamageTrackerTest, verifyDamageWhenForcedFullDamage)
@@ -1107,7 +1114,7 @@ TEST_F(CCDamageTrackerTest, verifyDamageForEmptyLayerList)
     OwnPtr<CCLayerImpl> root = CCLayerImpl::create(1);
     root->createRenderSurface();
 
-    ASSERT_TRUE(root->renderSurface() == root->targetRenderSurface());
+    ASSERT_TRUE(root == root->renderTarget());
     CCRenderSurface* targetSurface = root->renderSurface();
     targetSurface->clearLayerList();
     targetSurface->damageTracker()->updateDamageTrackingState(targetSurface->layerList(), targetSurface->owningLayerId(), false, IntRect(), 0, WebFilterOperations());

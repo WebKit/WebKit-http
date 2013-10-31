@@ -21,6 +21,8 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 # THE POSSIBILITY OF SUCH DAMAGE.
 
+require "config"
+
 def isX64
     case $activeBackend
     when "X86"
@@ -353,7 +355,7 @@ class Sequence
                             operand
                         end
                     }
-                    newNode = Instruction.new(node.codeOrigin, node.opcode, newOperands)
+                    newNode = Instruction.new(node.codeOrigin, node.opcode, newOperands, node.annotation)
                 end
             else
                 unless node.is_a? Label or
@@ -622,7 +624,9 @@ class Instruction
     end
     
     def lowerX86Common
-        $asm.comment codeOriginString
+        $asm.codeOrigin codeOriginString if $enableCodeOriginComments
+        $asm.annotation annotation if $enableInstrAnnotations
+
         case opcode
         when "addi"
             handleX86Add(:int)
@@ -1024,7 +1028,7 @@ class Instruction
         when "leap"
             $asm.puts "lea#{x86Suffix(:ptr)} #{operands[0].x86AddressOperand(:ptr)}, #{operands[1].x86Operand(:ptr)}"
         else
-            raise "Bad opcode: #{opcode}"
+            lowerDefault
         end
     end
 end

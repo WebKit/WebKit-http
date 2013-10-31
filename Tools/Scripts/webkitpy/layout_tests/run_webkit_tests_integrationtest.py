@@ -51,7 +51,7 @@ from webkitpy.common.host_mock import MockHost
 
 from webkitpy.layout_tests import port
 from webkitpy.layout_tests import run_webkit_tests
-from webkitpy.layout_tests.controllers.manager_worker_broker import WorkerException
+from webkitpy.layout_tests.controllers.manager import WorkerException
 from webkitpy.layout_tests.port import Port
 from webkitpy.layout_tests.port.test import TestPort, TestDriver
 from webkitpy.test.skip import skip_if
@@ -179,7 +179,7 @@ def get_tests_run(extra_args=None, tests_included=False, flatten_batches=False,
 
 # Update this magic number if you add an unexpected test to webkitpy.layout_tests.port.test
 # FIXME: It's nice to have a routine in port/test.py that returns this number.
-unexpected_tests_count = 12
+unexpected_tests_count = 14
 
 
 class StreamTestingMixin(object):
@@ -404,11 +404,6 @@ class MainTest(unittest.TestCase, StreamTestingMixin):
         tests_run = get_tests_run(['--repeat-each', '2'] + tests_to_run, tests_included=True, flatten_batches=True)
         self.assertEquals(tests_run, ['passes/image.html', 'passes/image.html', 'passes/text.html', 'passes/text.html'])
 
-    def test_skip_pixel_test_if_no_baseline_option(self):
-        tests_to_run = ['passes/image.html', 'passes/text.html']
-        tests_run = get_tests_run(['--skip-pixel-test-if-no-baseline'] + tests_to_run, tests_included=True, flatten_batches=True)
-        self.assertEquals(tests_run, ['passes/image.html', 'passes/text.html'])
-
     def test_ignore_flag(self):
         # Note that passes/image.html is expected to be run since we specified it directly.
         tests_run = get_tests_run(['-i', 'passes', 'passes/image.html'], flatten_batches=True, tests_included=True)
@@ -501,7 +496,7 @@ class MainTest(unittest.TestCase, StreamTestingMixin):
 
     def test_run_singly_actually_runs_tests(self):
         res, _, _, _ = logging_run(['--run-singly', 'failures/unexpected'])
-        self.assertEquals(res, 8)
+        self.assertEquals(res, 10)
 
     def test_single_file(self):
         # FIXME: We should consider replacing more of the get_tests_run()-style tests
@@ -572,6 +567,20 @@ class MainTest(unittest.TestCase, StreamTestingMixin):
         self.assertTrue(json_string.find('"num_regressions":1') != -1)
         self.assertTrue(json_string.find('"num_flaky":0') != -1)
         self.assertTrue(json_string.find('"num_missing":1') != -1)
+
+    def test_pixel_test_directories(self):
+        host = MockHost()
+
+        """Both tests have faling checksum. We include only the first in pixel tests so only that should fail."""
+        args = ['--pixel-tests', '--pixel-test-directory', 'failures/unexpected/pixeldir',
+                'failures/unexpected/pixeldir/image_in_pixeldir.html',
+                'failures/unexpected/image_not_in_pixeldir.html']
+        res, out, err, _ = logging_run(extra_args=args, host=host, record_results=True, tests_included=True)
+
+        self.assertEquals(res, 1)
+        expected_token = '"unexpected":{"pixeldir":{"image_in_pixeldir.html":{"expected":"PASS","actual":"IMAGE"'
+        json_string = host.filesystem.read_text_file('/tmp/layout-test-results/full_results.json')
+        self.assertTrue(json_string.find(expected_token) != -1)
 
     def test_missing_and_unexpected_results_with_custom_exit_code(self):
         # Test that we update expectations in place. If the expectation
@@ -951,11 +960,11 @@ class EndToEndTest(unittest.TestCase):
         self.assertTrue("multiple-mismatch-success.html" not in json["tests"]["reftests"]["foo"])
         self.assertTrue("multiple-both-success.html" not in json["tests"]["reftests"]["foo"])
         self.assertEqual(json["tests"]["reftests"]["foo"]["multiple-match-failure.html"],
-            {"expected": "PASS", "ref_file": "reftests/foo/second-mismatching-ref.html", "actual": "IMAGE", "image_diff_percent": 1, 'is_reftest': True})
+            {"expected": "PASS", "actual": "IMAGE", "image_diff_percent": 1, 'is_reftest': True})
         self.assertEqual(json["tests"]["reftests"]["foo"]["multiple-mismatch-failure.html"],
-            {"expected": "PASS", "ref_file": "reftests/foo/matching-ref.html", "actual": "IMAGE", "is_mismatch_reftest": True})
+            {"expected": "PASS", "actual": "IMAGE", "is_mismatch_reftest": True})
         self.assertEqual(json["tests"]["reftests"]["foo"]["multiple-both-failure.html"],
-            {"expected": "PASS", "ref_file": "reftests/foo/matching-ref.html", "actual": "IMAGE", "is_mismatch_reftest": True})
+            {"expected": "PASS", "actual": "IMAGE", "is_mismatch_reftest": True})
 
 
 class RebaselineTest(unittest.TestCase, StreamTestingMixin):

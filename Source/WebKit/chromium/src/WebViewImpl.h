@@ -52,9 +52,11 @@
 #include "IntRect.h"
 #include "NotificationPresenterImpl.h"
 #include "PageOverlayList.h"
+#include "PagePopupDriver.h"
 #include "PageWidgetDelegate.h"
 #include "PlatformGestureCurveTarget.h"
 #include "UserMediaClientImpl.h"
+#include "WebViewBenchmarkSupportImpl.h"
 #include <wtf/OwnPtr.h>
 #include <wtf/RefCounted.h>
 
@@ -105,6 +107,7 @@ class WebFrameImpl;
 class WebGestureEvent;
 class WebPagePopupImpl;
 class WebPrerendererClient;
+class WebViewBenchmarkSupport;
 class WebImage;
 class WebKeyboardEvent;
 class WebMouseEvent;
@@ -112,7 +115,14 @@ class WebMouseWheelEvent;
 class WebSettingsImpl;
 class WebTouchEvent;
 
-class WebViewImpl : public WebView, public WebLayerTreeViewClient, public RefCounted<WebViewImpl>, public WebCore::PlatformGestureCurveTarget, public PageWidgetEventHandler {
+class WebViewImpl : public WebView
+                  , public WebLayerTreeViewClient
+                  , public RefCounted<WebViewImpl>
+                  , public WebCore::PlatformGestureCurveTarget
+#if ENABLE(PAGE_POPUP)
+                  , public WebCore::PagePopupDriver
+#endif
+                  , public PageWidgetEventHandler {
 public:
     enum AutoZoomType {
         DoubleTap,
@@ -151,6 +161,8 @@ public:
     virtual WebTextInputInfo textInputInfo();
     virtual WebTextInputType textInputType();
     virtual bool setEditableSelectionOffsets(int start, int end);
+    virtual bool isSelectionEditable() const;
+    virtual WebColor backgroundColor() const;
     virtual bool selectionBounds(WebRect& start, WebRect& end) const;
     virtual bool selectionTextDirection(WebTextDirection& start, WebTextDirection& end) const;
     virtual bool caretOrSelectionRange(size_t* location, size_t* length);
@@ -162,6 +174,7 @@ public:
     virtual void didChangeWindowResizerRect();
     virtual void instrumentBeginFrame();
     virtual void instrumentCancelFrame();
+    virtual void renderingStats(WebRenderingStats&) const;
 
     // WebView methods:
     virtual void initializeMainFrame(WebFrameClient*);
@@ -195,6 +208,7 @@ public:
     virtual void clearFocusedNode();
     virtual void scrollFocusedNodeIntoView();
     virtual void scrollFocusedNodeIntoRect(const WebRect&);
+    virtual void zoomToFindInPageRect(const WebRect&);
     virtual void advanceFocus(bool reverse);
     virtual double zoomLevel();
     virtual double setZoomLevel(bool textOnly, double zoomLevel);
@@ -207,6 +221,8 @@ public:
     virtual void setPageScaleFactorLimits(float minPageScale, float maxPageScale);
     virtual float minimumPageScaleFactor() const;
     virtual float maximumPageScaleFactor() const;
+    virtual void saveScrollAndScaleState();
+    virtual void restoreScrollAndScaleState();
     virtual void setIgnoreViewportTagMaximumScale(bool);
 
     virtual float deviceScaleFactor() const;
@@ -239,26 +255,14 @@ public:
         const WebDragData&,
         const WebPoint& clientPoint,
         const WebPoint& screenPoint,
-        WebDragOperationsMask operationsAllowed);
-    virtual WebDragOperation dragTargetDragEnter(
-        const WebDragData&,
-        const WebPoint& clientPoint,
-        const WebPoint& screenPoint,
         WebDragOperationsMask operationsAllowed,
         int keyModifiers);
-    virtual WebDragOperation dragTargetDragOver(
-        const WebPoint& clientPoint,
-        const WebPoint& screenPoint,
-        WebDragOperationsMask operationsAllowed);
     virtual WebDragOperation dragTargetDragOver(
         const WebPoint& clientPoint,
         const WebPoint& screenPoint,
         WebDragOperationsMask operationsAllowed,
         int keyModifiers);
     virtual void dragTargetDragLeave();
-    virtual void dragTargetDrop(
-        const WebPoint& clientPoint,
-        const WebPoint& screenPoint);
     virtual void dragTargetDrop(
         const WebPoint& clientPoint,
         const WebPoint& screenPoint,
@@ -280,6 +284,7 @@ public:
         const WebVector<int>& itemIDs,
         int separatorIndex);
     virtual void hidePopups();
+    virtual void selectAutofillSuggestionAtIndex(unsigned listIndex);
     virtual void setScrollbarColors(unsigned inactiveColor,
                                     unsigned activeColor,
                                     unsigned trackColor);
@@ -294,7 +299,7 @@ public:
     virtual void updateBatteryStatus(const WebBatteryStatus&);
 #endif
     virtual void transferActiveWheelFlingAnimation(const WebActiveWheelFlingParameters&);
-    virtual void renderingStats(WebRenderingStats&) const;
+    virtual WebViewBenchmarkSupport* benchmarkSupport();
 
     // WebLayerTreeViewClient
     virtual void willBeginFrame();
@@ -377,10 +382,10 @@ public:
     // Event related methods:
     void mouseContextMenu(const WebMouseEvent&);
     void mouseDoubleClick(const WebMouseEvent&);
-    void startPageScaleAnimation(const WebCore::IntPoint& targetPosition, bool useAnchor, float newScale, double durationSec);
+    void startPageScaleAnimation(const WebCore::IntPoint& targetPosition, bool useAnchor, float newScale, double durationInSeconds);
 
     void numberOfWheelEventHandlersChanged(unsigned);
-    void numberOfTouchEventHandlersChanged(unsigned);
+    void hasTouchEventHandlers(bool);
 
     // PlatformGestureCurveTarget implementation for wheel fling.
     virtual void scrollBy(const WebCore::IntPoint&);
@@ -491,8 +496,9 @@ public:
     void popupOpened(WebCore::PopupContainer* popupContainer);
     void popupClosed(WebCore::PopupContainer* popupContainer);
 #if ENABLE(PAGE_POPUP)
-    WebCore::PagePopup* openPagePopup(WebCore::PagePopupClient*, const WebCore::IntRect& originBoundsInRootView);
-    void closePagePopup(WebCore::PagePopup*);
+    // PagePopupDriver functions.
+    virtual WebCore::PagePopup* openPagePopup(WebCore::PagePopupClient*, const WebCore::IntRect& originBoundsInRootView) OVERRIDE;
+    virtual void closePagePopup(WebCore::PagePopup*) OVERRIDE;
 #endif
 
     void hideAutofillPopup();
@@ -506,6 +512,7 @@ public:
         return m_currentInputEvent;
     }
 
+    WebCore::GraphicsLayer* rootGraphicsLayer();
 #if USE(ACCELERATED_COMPOSITING)
     bool allowsAcceleratedCompositing();
     void setRootGraphicsLayer(WebCore::GraphicsLayer*);
@@ -547,6 +554,7 @@ public:
 #if ENABLE(GESTURE_EVENTS)
     void computeScaleAndScrollForHitRect(const WebRect& hitRect, AutoZoomType, float& scale, WebPoint& scroll);
 #endif
+    void animateZoomAroundPoint(const WebCore::IntPoint&, AutoZoomType);
 
     void loseCompositorContext(int numTimes);
 
@@ -572,6 +580,8 @@ private:
     bool computePageScaleFactorLimits();
     float clampPageScaleFactorToLimits(float scale);
     WebPoint clampOffsetAtScale(const WebPoint& offset, float scale);
+
+    void resetSavedScrollAndScaleState();
 
     friend class WebView;  // So WebView::Create can call our constructor
     friend class WTF::RefCounted<WebViewImpl>;
@@ -701,14 +711,17 @@ private:
 
     double m_maximumZoomLevel;
 
+    // State related to the page scale
     float m_pageDefinedMinimumPageScaleFactor;
     float m_pageDefinedMaximumPageScaleFactor;
     float m_minimumPageScaleFactor;
     float m_maximumPageScaleFactor;
-
     bool m_ignoreViewportTagMaximumScale;
-
     bool m_pageScaleFactorIsSet;
+
+    // Saved page scale state.
+    float m_savedPageScaleFactor; // 0 means that no page scale factor is saved.
+    WebCore::IntSize m_savedScrollOffset;
 
     bool m_contextMenuAllowed;
 
@@ -787,6 +800,8 @@ private:
     RefPtr<WebCore::Frame> m_fullScreenFrame;
     bool m_isCancelingFullScreen;
 
+    WebViewBenchmarkSupportImpl m_benchmarkSupport;
+
 #if USE(ACCELERATED_COMPOSITING)
     WebCore::IntRect m_rootLayerScrollDamage;
     OwnPtr<NonCompositedContentHost> m_nonCompositedContentHost;
@@ -823,6 +838,9 @@ private:
 
 #if ENABLE(MEDIA_STREAM)
     UserMediaClientImpl m_userMediaClientImpl;
+#endif
+#if ENABLE(REGISTER_PROTOCOL_HANDLER)
+    OwnPtr<RegisterProtocolHandlerClientImpl> m_registerProtocolHandlerClient;
 #endif
     OwnPtr<WebCore::ActivePlatformGestureAnimation> m_gestureAnimation;
     WebPoint m_lastWheelPosition;

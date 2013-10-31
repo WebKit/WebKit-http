@@ -39,6 +39,10 @@ public:
     static inline PassRefPtr<Int8Array> create(const signed char* array, unsigned length);
     static inline PassRefPtr<Int8Array> create(PassRefPtr<ArrayBuffer>, unsigned byteOffset, unsigned length);
 
+    // Should only be used when it is known the entire array will be filled. Do
+    // not return these results directly to JavaScript without filling first.
+    static inline PassRefPtr<Int8Array> createUninitialized(unsigned length);
+
     // Can’t use "using" here due to a bug in the RVCT compiler.
     bool set(TypedArrayBase<signed char>* array, unsigned offset) { return TypedArrayBase<signed char>::set(array, offset); }
     void set(unsigned index, double value) { IntegralTypedArrayBase<signed char>::set(index, value); }
@@ -46,15 +50,17 @@ public:
     inline PassRefPtr<Int8Array> subarray(int start) const;
     inline PassRefPtr<Int8Array> subarray(int start, int end) const;
 
+    virtual ViewType getType() const
+    {
+        return TypeInt8;
+    }
+
 private:
     inline Int8Array(PassRefPtr<ArrayBuffer>,
                    unsigned byteOffset,
                    unsigned length);
     // Make constructor visible to superclass.
     friend class TypedArrayBase<signed char>;
-
-    // Overridden from ArrayBufferView.
-    virtual bool isByteArray() const { return true; }
 };
 
 PassRefPtr<Int8Array> Int8Array::create(unsigned length)
@@ -70,6 +76,11 @@ PassRefPtr<Int8Array> Int8Array::create(const signed char* array, unsigned lengt
 PassRefPtr<Int8Array> Int8Array::create(PassRefPtr<ArrayBuffer> buffer, unsigned byteOffset, unsigned length)
 {
     return TypedArrayBase<signed char>::create<Int8Array>(buffer, byteOffset, length);
+}
+
+PassRefPtr<Int8Array> Int8Array::createUninitialized(unsigned length)
+{
+    return TypedArrayBase<signed char>::createUninitialized<Int8Array>(length);
 }
 
 Int8Array::Int8Array(PassRefPtr<ArrayBuffer> buffer, unsigned byteOffset, unsigned length)

@@ -82,9 +82,7 @@ public:
     QString localStoragePath;
     QString offlineWebApplicationCachePath;
     qint64 offlineStorageDefaultQuota;
-#if QT_VERSION >= QT_VERSION_CHECK(4, 8, 0)
     QWebSettings::ThirdPartyCookiePolicy thirdPartyCookiePolicy;
-#endif
     void apply();
     WebCore::Settings* settings;
 };
@@ -164,6 +162,10 @@ void QWebSettingsPrivate::apply()
                                  global->attributes.value(QWebSettings::WebGLEnabled));
 
         settings->setWebGLEnabled(value);
+#if ENABLE(CSS_SHADERS)
+        // For now, enable CSS shaders when WebGL is enabled.
+        settings->setCSSCustomFilterEnabled(value);
+#endif
 #if USE(ACCELERATED_COMPOSITING)
         settings->setAcceleratedCompositingForCanvasEnabled(value);
 #endif
@@ -365,7 +367,6 @@ QWebSettings* QWebSettings::globalSettings()
     \value DefaultFixedFontSize The default font size for fixed-pitch text.
 */
 
-#if QT_VERSION >= QT_VERSION_CHECK(4, 8, 0)
 /*!
     \enum QWebSettings::ThirdPartyCookiePolicy
 
@@ -380,7 +381,6 @@ QWebSettings* QWebSettings::globalSettings()
 
     \since QtWebKit 2,3
 */
-#endif
 
 /*!
     \enum QWebSettings::WebGraphic
@@ -530,9 +530,7 @@ QWebSettings::QWebSettings()
     d->attributes.insert(QWebSettings::SiteSpecificQuirksEnabled, true);
     d->offlineStorageDefaultQuota = 5 * 1024 * 1024;
     d->defaultTextEncoding = QLatin1String("iso-8859-1");
-#if QT_VERSION >= QT_VERSION_CHECK(4, 8, 0)
     d->thirdPartyCookiePolicy = AlwaysAllowThirdPartyCookies;
-#endif
 }
 
 /*!
@@ -717,12 +715,12 @@ void QWebSettings::clearIconDatabase()
 QIcon QWebSettings::iconForUrl(const QUrl& url)
 {
     WebCore::initializeWebCoreQt();
-    QPixmap* icon = WebCore::iconDatabase().synchronousNativeIconForPageURL(WebCore::KURL(url).string(),
+    QImage* icon = WebCore::iconDatabase().synchronousNativeIconForPageURL(WebCore::KURL(url).string(),
                                 WebCore::IntSize(16, 16));
     if (!icon)
-        return QPixmap();
+        return QIcon();
 
-    return* icon;
+    return QPixmap::fromImage(*icon);
 }
 
 /*
@@ -765,7 +763,7 @@ static const char* resourceNameForWebGraphic(QWebSettings::WebGraphic type)
 void QWebSettings::setWebGraphic(WebGraphic type, const QPixmap& graphic)
 {
     WebCore::initializeWebCoreQt();
-    WebCore::Image::setPlatformResource(resourceNameForWebGraphic(type), graphic);
+    WebCore::Image::setPlatformResource(resourceNameForWebGraphic(type), graphic.toImage());
 }
 
 /*!
@@ -780,10 +778,10 @@ QPixmap QWebSettings::webGraphic(WebGraphic type)
     RefPtr<WebCore::Image> img = WebCore::Image::loadPlatformResource(resourceNameForWebGraphic(type));
     if (!img)
         return QPixmap();
-    QPixmap* pixmap = img->nativeImageForCurrentFrame();
-    if (!pixmap)
+    QImage* image = img->nativeImageForCurrentFrame();
+    if (!image)
         return QPixmap();
-    return *pixmap;
+    return QPixmap::fromImage(*image);
 }
 
 /*!
@@ -869,7 +867,6 @@ void QWebSettings::setObjectCacheCapacities(int cacheMinDeadCapacity, int cacheM
                                     qMax(0, totalCapacity));
 }
 
-#if QT_VERSION >= QT_VERSION_CHECK(4, 8, 0)
 /*!
     Sets the third-party cookie policy, the default is AlwaysAllowThirdPartyCookies.
 */
@@ -885,7 +882,6 @@ QWebSettings::ThirdPartyCookiePolicy QWebSettings::thirdPartyCookiePolicy() cons
 {
     return d->thirdPartyCookiePolicy;
 }
-#endif
 
 /*!
     Sets the actual font family to \a family for the specified generic family,

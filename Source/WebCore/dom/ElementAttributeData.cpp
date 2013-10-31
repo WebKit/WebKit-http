@@ -49,8 +49,9 @@ ElementAttributeData::ElementAttributeData(const Vector<Attribute>& attributes)
     : m_isMutable(false)
     , m_arraySize(attributes.size())
 {
+    Attribute* buffer = reinterpret_cast<Attribute*>(&m_attributes);
     for (unsigned i = 0; i < attributes.size(); ++i)
-        new (&array()[i]) Attribute(attributes[i]);
+        new (&buffer[i]) Attribute(attributes[i]);
 }
 
 ElementAttributeData::ElementAttributeData(const ElementAttributeData& other)
@@ -65,19 +66,21 @@ ElementAttributeData::ElementAttributeData(const ElementAttributeData& other)
     // This copy constructor should only be used by makeMutable() to go from immutable to mutable.
     ASSERT(!other.m_isMutable);
 
-    // Reserve space for one extra attribute since the typical reason we're here is because an
-    // attribute is being added.
-    m_mutableAttributeVector->reserveInitialCapacity(other.m_arraySize + 1);
+    const Attribute* otherBuffer = reinterpret_cast<const Attribute*>(&other.m_attributes);
     for (unsigned i = 0; i < other.m_arraySize; ++i)
-        m_mutableAttributeVector->uncheckedAppend(other.array()[i]);
+        m_mutableAttributeVector->append(otherBuffer[i]);
 }
 
 ElementAttributeData::~ElementAttributeData()
 {
-    if (isMutable())
+    if (isMutable()) {
+        ASSERT(!m_arraySize);
         delete m_mutableAttributeVector;
-    for (unsigned i = 0; i < m_arraySize; ++i)
-        array()[i].~Attribute();
+    } else {
+        Attribute* buffer = reinterpret_cast<Attribute*>(&m_attributes);
+        for (unsigned i = 0; i < m_arraySize; ++i)
+            buffer[i].~Attribute();
+    }
 }
 
 typedef Vector<RefPtr<Attr> > AttrList;
@@ -195,7 +198,7 @@ StylePropertySet* ElementAttributeData::ensureMutableInlineStyle(StyledElement* 
     return ensureInlineStyle(element);
 }
     
-void ElementAttributeData::updateInlineStyleAvoidingMutation(StyledElement* element, const String& text)
+void ElementAttributeData::updateInlineStyleAvoidingMutation(StyledElement* element, const String& text) const
 {
     // We reconstruct the property set instead of mutating if there is no CSSOM wrapper.
     // This makes wrapperless property sets immutable and so cacheable.
@@ -229,6 +232,7 @@ void ElementAttributeData::addAttribute(const Attribute& attribute, Element* ele
 
 void ElementAttributeData::removeAttribute(size_t index, Element* element, EInUpdateStyleAttribute inUpdateStyleAttribute)
 {
+    ASSERT(isMutable());
     ASSERT(index < length());
 
     Attribute& attribute = m_mutableAttributeVector->at(index);
@@ -265,7 +269,7 @@ bool ElementAttributeData::isEquivalent(const ElementAttributeData* other) const
     return true;
 }
 
-void ElementAttributeData::detachAttrObjectsFromElement(Element* element)
+void ElementAttributeData::detachAttrObjectsFromElement(Element* element) const
 {
     ASSERT(element->hasAttrList());
 
@@ -322,8 +326,9 @@ void ElementAttributeData::cloneDataFrom(const ElementAttributeData& sourceData,
     else {
         ASSERT(m_mutableAttributeVector->isEmpty());
         m_mutableAttributeVector->reserveInitialCapacity(sourceData.m_arraySize);
+        const Attribute* sourceBuffer = reinterpret_cast<const Attribute*>(&sourceData.m_attributes);
         for (unsigned i = 0; i < sourceData.m_arraySize; ++i)
-            m_mutableAttributeVector->uncheckedAppend(sourceData.array()[i]);
+            m_mutableAttributeVector->uncheckedAppend(sourceBuffer[i]);
     }
 
     for (unsigned i = 0; i < length(); ++i) {
@@ -371,7 +376,7 @@ PassRefPtr<Attr> ElementAttributeData::getAttributeNode(const String& name, bool
     const Attribute* attribute = getAttributeItem(name, shouldIgnoreAttributeCase);
     if (!attribute)
         return 0;
-    return const_cast<ElementAttributeData*>(this)->ensureAttr(element, attribute->name());
+    return ensureAttr(element, attribute->name());
 }
 
 PassRefPtr<Attr> ElementAttributeData::getAttributeNode(const QualifiedName& name, Element* element) const
@@ -380,7 +385,7 @@ PassRefPtr<Attr> ElementAttributeData::getAttributeNode(const QualifiedName& nam
     const Attribute* attribute = getAttributeItem(name);
     if (!attribute)
         return 0;
-    return const_cast<ElementAttributeData*>(this)->ensureAttr(element, attribute->name());
+    return ensureAttr(element, attribute->name());
 }
 
 }

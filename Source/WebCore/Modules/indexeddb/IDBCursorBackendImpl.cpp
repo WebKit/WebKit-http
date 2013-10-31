@@ -37,12 +37,12 @@
 #include "IDBObjectStoreBackendImpl.h"
 #include "IDBRequest.h"
 #include "IDBTracing.h"
-#include "IDBTransactionBackendInterface.h"
+#include "IDBTransactionBackendImpl.h"
 #include "SerializedScriptValue.h"
 
 namespace WebCore {
 
-IDBCursorBackendImpl::IDBCursorBackendImpl(PassRefPtr<IDBBackingStore::Cursor> cursor, IDBCursor::Direction direction, CursorType cursorType, IDBTransactionBackendInterface* transaction, IDBObjectStoreBackendInterface* objectStore)
+IDBCursorBackendImpl::IDBCursorBackendImpl(PassRefPtr<IDBBackingStore::Cursor> cursor, IDBCursor::Direction direction, CursorType cursorType, IDBTransactionBackendImpl* transaction, IDBObjectStoreBackendImpl* objectStore)
     : m_cursor(cursor)
     , m_direction(direction)
     , m_cursorType(cursorType)
@@ -81,17 +81,6 @@ PassRefPtr<SerializedScriptValue> IDBCursorBackendImpl::value() const
     if (m_cursorType == IndexKeyCursor)
       return SerializedScriptValue::nullValue();
     return SerializedScriptValue::createFromWire(m_cursor->value());
-}
-
-void IDBCursorBackendImpl::update(PassRefPtr<SerializedScriptValue> value, PassRefPtr<IDBCallbacks> callbacks, ExceptionCode& ec)
-{
-    IDB_TRACE("IDBCursorBackendImpl::update");
-    ASSERT(m_transaction->mode() != IDBTransaction::READ_ONLY);
-
-    ASSERT(m_cursor);
-    ASSERT(m_cursorType != IndexKeyCursor);
-
-    m_objectStore->put(value, m_cursor->primaryKey(), IDBObjectStoreBackendInterface::CursorUpdate, callbacks, m_transaction.get(), ec);
 }
 
 void IDBCursorBackendImpl::continueFunction(PassRefPtr<IDBKey> prpKey, PassRefPtr<IDBCallbacks> prpCallbacks, ExceptionCode& ec)
@@ -189,7 +178,7 @@ void IDBCursorBackendImpl::prefetchContinueInternal(ScriptExecutionContext*, Pas
     if (cursor->m_cursor)
         cursor->m_savedCursor = cursor->m_cursor->clone();
 
-    const size_t kMaxSizeEstimate = 10 * 1024 * 1024;
+    const size_t maxSizeEstimate = 10 * 1024 * 1024;
     size_t sizeEstimate = 0;
 
     for (int i = 0; i < numberToFetch; ++i) {
@@ -211,7 +200,7 @@ void IDBCursorBackendImpl::prefetchContinueInternal(ScriptExecutionContext*, Pas
         if (cursor->m_cursorType != IDBCursorBackendInterface::IndexKeyCursor)
             sizeEstimate += cursor->m_cursor->value().length() * sizeof(UChar);
 
-        if (sizeEstimate > kMaxSizeEstimate)
+        if (sizeEstimate > maxSizeEstimate)
             break;
     }
 

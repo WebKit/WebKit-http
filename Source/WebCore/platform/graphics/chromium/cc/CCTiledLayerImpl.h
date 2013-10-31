@@ -42,15 +42,15 @@ public:
     }
     virtual ~CCTiledLayerImpl();
 
-    virtual void appendQuads(CCQuadCuller&, const CCSharedQuadState*, bool& hadMissingTiles) OVERRIDE;
+    virtual void appendQuads(CCQuadSink&, const CCSharedQuadState*, bool& hadMissingTiles) OVERRIDE;
 
-    virtual unsigned contentsTextureId() const OVERRIDE;
+    virtual CCResourceProvider::ResourceId contentsResourceId() const OVERRIDE;
 
     virtual void dumpLayerProperties(TextStream&, int indent) const OVERRIDE;
 
     void setSkipsDraw(bool skipsDraw) { m_skipsDraw = skipsDraw; }
     void setTilingData(const CCLayerTilingData& tiler);
-    void pushTileProperties(int, int, unsigned textureId, const IntRect& opaqueRect);
+    void pushTileProperties(int, int, CCResourceProvider::ResourceId, const IntRect& opaqueRect);
 
     void setContentsSwizzled(bool contentsSwizzled) { m_contentsSwizzled = contentsSwizzled; }
     bool contentsSwizzled() const { return m_contentsSwizzled; }
@@ -63,8 +63,6 @@ protected:
     // Exposed for testing.
     bool hasTileAt(int, int) const;
     bool hasTextureIdForTileAt(int, int) const;
-
-    virtual WebKit::WebTransformationMatrix quadTransform() const OVERRIDE;
 
 private:
 

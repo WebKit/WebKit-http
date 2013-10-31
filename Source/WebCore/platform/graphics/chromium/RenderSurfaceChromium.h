@@ -31,16 +31,13 @@
 
 #include "FloatRect.h"
 #include "IntRect.h"
-#include <public/WebFilterOperations.h>
 #include <public/WebTransformationMatrix.h>
 #include <wtf/Noncopyable.h>
 
 namespace WebCore {
 
-class FilterOperations;
 class LayerChromium;
 class LayerRendererChromium;
-class ManagedTexture;
 
 class RenderSurfaceChromium {
     WTF_MAKE_NONCOPYABLE(RenderSurfaceChromium);
@@ -65,17 +62,11 @@ public:
     const WebKit::WebTransformationMatrix& drawTransform() const { return m_drawTransform; }
     void setDrawTransform(const WebKit::WebTransformationMatrix& drawTransform) { m_drawTransform = drawTransform; }
 
-    const WebKit::WebTransformationMatrix& originTransform() const { return m_originTransform; }
-    void setOriginTransform(const WebKit::WebTransformationMatrix& originTransform) { m_originTransform = originTransform; }
-
     const WebKit::WebTransformationMatrix& screenSpaceTransform() const { return m_screenSpaceTransform; }
     void setScreenSpaceTransform(const WebKit::WebTransformationMatrix& screenSpaceTransform) { m_screenSpaceTransform = screenSpaceTransform; }
 
     const WebKit::WebTransformationMatrix& replicaDrawTransform() const { return m_replicaDrawTransform; }
     void setReplicaDrawTransform(const WebKit::WebTransformationMatrix& replicaDrawTransform) { m_replicaDrawTransform = replicaDrawTransform; }
-
-    const WebKit::WebTransformationMatrix& replicaOriginTransform() const { return m_replicaOriginTransform; }
-    void setReplicaOriginTransform(const WebKit::WebTransformationMatrix& replicaOriginTransform) { m_replicaOriginTransform = replicaOriginTransform; }
 
     const WebKit::WebTransformationMatrix& replicaScreenSpaceTransform() const { return m_replicaScreenSpaceTransform; }
     void setReplicaScreenSpaceTransform(const WebKit::WebTransformationMatrix& replicaScreenSpaceTransform) { m_replicaScreenSpaceTransform = replicaScreenSpaceTransform; }
@@ -91,58 +82,32 @@ public:
     const IntRect& scissorRect() const { return m_scissorRect; }
     void setScissorRect(const IntRect& scissorRect) { m_scissorRect = scissorRect; }
 
-    void setFilters(const WebKit::WebFilterOperations& filters) { m_filters = filters; }
-    const WebKit::WebFilterOperations& filters() const { return m_filters; }
-
-    void setBackgroundFilters(const WebKit::WebFilterOperations& filters) { m_backgroundFilters = filters; }
-    const WebKit::WebFilterOperations& backgroundFilters() const { return m_backgroundFilters; }
-
-    bool skipsDraw() const { return m_skipsDraw; }
-    void setSkipsDraw(bool skipsDraw) { m_skipsDraw = skipsDraw; }
-
     void clearLayerList() { m_layerList.clear(); }
     Vector<RefPtr<LayerChromium> >& layerList() { return m_layerList; }
-
-    void setMaskLayer(LayerChromium* maskLayer) { m_maskLayer = maskLayer; }
 
     void setNearestAncestorThatMovesPixels(RenderSurfaceChromium* surface) { m_nearestAncestorThatMovesPixels = surface; }
     const RenderSurfaceChromium* nearestAncestorThatMovesPixels() const { return m_nearestAncestorThatMovesPixels; }
 
-    RenderSurfaceChromium* targetRenderSurface() const;
-
-    bool hasReplica() const;
-
-    bool hasMask() const;
-    bool replicaHasMask() const;
-
     FloatRect computeRootScissorRectInCurrentSurface(const FloatRect& rootScissorRect) const;
 private:
     LayerChromium* m_owningLayer;
-    LayerChromium* m_maskLayer;
 
     // Uses this surface's space.
     IntRect m_contentRect;
-    bool m_skipsDraw;
 
     float m_drawOpacity;
     bool m_drawOpacityIsAnimating;
     WebKit::WebTransformationMatrix m_drawTransform;
-    WebKit::WebTransformationMatrix m_originTransform;
     WebKit::WebTransformationMatrix m_screenSpaceTransform;
     WebKit::WebTransformationMatrix m_replicaDrawTransform;
-    WebKit::WebTransformationMatrix m_replicaOriginTransform;
     WebKit::WebTransformationMatrix m_replicaScreenSpaceTransform;
     bool m_targetSurfaceTransformsAreAnimating;
     bool m_screenSpaceTransformsAreAnimating;
-    WebKit::WebFilterOperations m_filters;
-    WebKit::WebFilterOperations m_backgroundFilters;
 
     // Uses the space of the surface's target surface.
     IntRect m_clipRect;
 
     // During drawing, identifies the region outside of which nothing should be drawn.
-    // Currently this is set to layer's clipRect if usesLayerClipping is true, otherwise
-    // it's targetRenderSurface's contentRect.
     // Uses the space of the surface's target surface.
     IntRect m_scissorRect;
 

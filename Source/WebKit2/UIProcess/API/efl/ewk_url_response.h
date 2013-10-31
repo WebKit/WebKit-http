@@ -50,7 +50,7 @@ EAPI void ewk_url_response_ref(Ewk_Url_Response *response);
 /**
  * Decreases the reference count of the given object, possibly freeing it.
  *
- * When the reference count it's reached 0, the URL request is freed.
+ * When the reference count reaches 0, the URL response is freed.
  *
  * @param response the URL response object to decrease the reference count
  */
@@ -93,6 +93,17 @@ EAPI int ewk_url_response_status_code_get(const Ewk_Url_Response *response);
  *         strdup().
  */
 EAPI const char *ewk_url_response_mime_type_get(const Ewk_Url_Response *response);
+
+/**
+ * Get the expected content length of the #Ewk_Url_Response.
+ *
+ * It can be 0 if the server provided an incorrect or missing Content-Length.
+ *
+ * @param response a #Ewk_Url_Response.
+ *
+ * @return the expected content length of @a response or 0 in case of failure.
+ */
+EAPI unsigned long ewk_url_response_content_length_get(const Ewk_Url_Response *response);
 
 #ifdef __cplusplus
 }

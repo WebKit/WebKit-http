@@ -125,7 +125,7 @@ namespace WebCore {
             RefPtr<BackForwardList> backForwardClient;
         };
 
-        Page(PageClients&);
+        explicit Page(PageClients&);
         ~Page();
 
         ArenaSize renderTreeSize() const;
@@ -348,6 +348,11 @@ namespace WebCore {
 
         AlternativeTextClient* alternativeTextClient() const { return m_alternativeTextClient; }
 
+        bool hasSeenPlugin(const String& serviceType) const;
+        bool hasSeenAnyPlugin() const;
+        void sawPlugin(const String& serviceType);
+        void resetSeenPlugins();
+
     private:
         void initGroup();
 
@@ -451,6 +456,8 @@ namespace WebCore {
         AlternativeTextClient* m_alternativeTextClient;
 
         bool m_scriptedAnimationsSuspended;
+
+        HashSet<String> m_seenPlugins;
     };
 
 } // namespace WebCore

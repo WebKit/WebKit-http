@@ -31,10 +31,21 @@
 #include "APIObject.h"
 #include "DataReference.h"
 #include "WebCoreArgumentCoders.h"
+#include <WebCore/Intent.h>
 
 using namespace WebCore;
 
 namespace WebKit {
+
+IntentData::IntentData(Intent* coreIntent)
+    : action(coreIntent->action())
+    , type(coreIntent->type())
+    , service(coreIntent->service())
+    , data(coreIntent->data()->data())
+    , extras(coreIntent->extras())
+    , suggestions(coreIntent->suggestions())
+{
+}
 
 void IntentData::encode(CoreIPC::ArgumentEncoder* encoder) const
 {

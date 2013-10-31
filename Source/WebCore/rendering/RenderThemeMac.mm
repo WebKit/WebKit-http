@@ -58,7 +58,7 @@
 
 #import "RenderProgress.h"
 
-#if ENABLE(METER_TAG)
+#if ENABLE(METER_ELEMENT)
 #include "RenderMeter.h"
 #include "HTMLMeterElement.h"
 #endif
@@ -857,7 +857,7 @@ bool RenderThemeMac::paintMenuList(RenderObject* o, const PaintInfo& paintInfo, 
     return false;
 }
 
-#if ENABLE(METER_TAG)
+#if ENABLE(METER_ELEMENT)
 
 IntSize RenderThemeMac::meterSizeForBounds(const RenderMeter* renderMeter, const IntRect& bounds) const
 {
@@ -961,7 +961,7 @@ NSLevelIndicatorCell* RenderThemeMac::levelIndicatorFor(const RenderMeter* rende
 
 #endif
 
-#if ENABLE(PROGRESS_TAG)
+#if ENABLE(PROGRESS_ELEMENT)
 const IntSize* RenderThemeMac::progressBarSizes() const
 {
     static const IntSize sizes[3] = { IntSize(0, 20), IntSize(0, 12), IntSize(0, 12) };
@@ -1372,6 +1372,10 @@ bool RenderThemeMac::paintSliderTrack(RenderObject* o, const PaintInfo& paintInf
     CGContextRef context = localContext.cgContext();
     CGColorSpaceRef cspace = deviceRGBColorSpaceRef();
 
+#if ENABLE(DATALIST_ELEMENT)
+    paintSliderTicks(o, paintInfo, r);
+#endif
+
     GraphicsContextStateSaver stateSaver(*paintInfo.context);
     CGContextClipToRect(context, bounds);
 
@@ -1555,8 +1559,9 @@ void RenderThemeMac::adjustSearchFieldStyle(StyleResolver* styleResolver, Render
 
 bool RenderThemeMac::paintSearchFieldCancelButton(RenderObject* o, const PaintInfo& paintInfo, const IntRect& r)
 {
-    Element* input = toElement(o->node()->shadowAncestorNode());
-    ASSERT(input);
+    Element* input = o->node()->shadowHost();
+    if (!input)
+        input = toElement(o->node());
 
     if (!input->renderer()->isBox())
         return false;
@@ -1648,7 +1653,9 @@ void RenderThemeMac::adjustSearchFieldResultsDecorationStyle(StyleResolver*, Ren
 
 bool RenderThemeMac::paintSearchFieldResultsDecoration(RenderObject* o, const PaintInfo& paintInfo, const IntRect& r)
 {
-    Node* input = o->node()->shadowAncestorNode();
+    Node* input = o->node()->shadowHost();
+    if (!input)
+        input = o->node();
     if (!input->renderer()->isBox())
         return false;
 
@@ -1681,7 +1688,9 @@ void RenderThemeMac::adjustSearchFieldResultsButtonStyle(StyleResolver*, RenderS
 
 bool RenderThemeMac::paintSearchFieldResultsButton(RenderObject* o, const PaintInfo& paintInfo, const IntRect& r)
 {
-    Node* input = o->node()->shadowAncestorNode();
+    Node* input = o->node()->shadowHost();
+    if (!input)
+        input = o->node();
     if (!input->renderer()->isBox())
         return false;
 
@@ -1739,6 +1748,18 @@ static int mediaControllerTheme()
 
     controllerTheme = MediaControllerThemeQuickTime;
     return controllerTheme;
+}
+#endif
+
+#if ENABLE(DATALIST_ELEMENT)
+IntSize RenderThemeMac::sliderTickSize() const
+{
+    return IntSize(1, 3);
+}
+
+int RenderThemeMac::sliderTickOffsetFromTrackCenter() const
+{
+    return -9;
 }
 #endif
 
@@ -1843,7 +1864,7 @@ bool RenderThemeMac::paintMediaFullscreenButton(RenderObject* o, const PaintInfo
 bool RenderThemeMac::paintMediaMuteButton(RenderObject* o, const PaintInfo& paintInfo, const IntRect& r)
 {
     Node* node = o->node();
-    Node* mediaNode = node ? node->shadowAncestorNode() : 0;
+    Node* mediaNode = node ? node->shadowHost() : 0;
     if (!mediaNode || (!mediaNode->hasTagName(videoTag) && !mediaNode->hasTagName(audioTag)))
         return false;
 
@@ -1857,7 +1878,7 @@ bool RenderThemeMac::paintMediaMuteButton(RenderObject* o, const PaintInfo& pain
 bool RenderThemeMac::paintMediaPlayButton(RenderObject* o, const PaintInfo& paintInfo, const IntRect& r)
 {
     Node* node = o->node();
-    Node* mediaNode = node ? node->shadowAncestorNode() : 0;
+    Node* mediaNode = node ? node->shadowHost() : 0;
     if (!mediaNode || (!mediaNode->hasTagName(videoTag) && !mediaNode->hasTagName(audioTag)))
         return false;
 
@@ -1893,8 +1914,8 @@ bool RenderThemeMac::paintMediaSeekForwardButton(RenderObject* o, const PaintInf
 bool RenderThemeMac::paintMediaSliderTrack(RenderObject* o, const PaintInfo& paintInfo, const IntRect& r)
 {
     Node* node = o->node();
-    Node* mediaNode = node ? node->shadowAncestorNode() : 0;
-    if (!mediaNode || !mediaNode->isElementNode() || !static_cast<Element*>(mediaNode)->isMediaElement())
+    Element* mediaNode = node ? node->shadowHost() : 0;
+    if (!mediaNode || !mediaNode->isMediaElement())
         return false;
 
     HTMLMediaElement* mediaElement = static_cast<HTMLMediaElement*>(mediaNode);

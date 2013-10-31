@@ -35,9 +35,12 @@
 #include "Element.h"
 #include "ElementShadow.h"
 #include "HTMLContentElement.h"
+#include "HTMLInputElement.h"
 #include "HTMLNames.h"
+#include "HTMLTextAreaElement.h"
 #include "InsertionPoint.h"
 #include "NodeRareData.h"
+#include "RuntimeEnabledFeatures.h"
 #include "SVGNames.h"
 #include "StyleResolver.h"
 #include "markup.h"
@@ -75,16 +78,17 @@ ShadowRoot::~ShadowRoot()
 
 static bool allowsAuthorShadowRoot(Element* element)
 {
-    // FIXME: MEDIA recreates shadow root dynamically.
-    // https://bugs.webkit.org/show_bug.cgi?id=77936
-    if (element->hasTagName(HTMLNames::videoTag) || element->hasTagName(HTMLNames::audioTag))
-        return false;
+#if ENABLE(SHADOW_DOM)
+    if (RuntimeEnabledFeatures::authorShadowDOMForAnyElementEnabled())
+        return true;
+#endif
 
-    // FIXME: ValidationMessage recreates shadow root dynamically.
-    // https://bugs.webkit.org/show_bug.cgi?id=77937
-    // Especially, INPUT recreates shadow root dynamically.
-    // https://bugs.webkit.org/show_bug.cgi?id=77930
-    if (element->isFormControlElement())
+    // FIXME: The elements in Shadow DOM of an input element assumes that they have renderer if the input
+    // element has a renderer. However, this does not hold until input elemnet is AuthorShadowDOM-ready.
+    // So we would like to prohibit having a AuthorShadowDOM for a while. The same thing happens to
+    // textarea element also.
+    // https://bugs.webkit.org/show_bug.cgi?id=92608
+    if (isHTMLInputElement(element) || isHTMLTextAreaElement(element))
         return false;
 
     // FIXME: We disable multiple shadow subtrees for SVG for while, because there will be problems to support it.
@@ -122,7 +126,7 @@ PassRefPtr<ShadowRoot> ShadowRoot::create(Element* element, ShadowRootType type,
 #endif
 
     ec = 0;
-    element->ensureShadow()->addShadowRoot(element, shadowRoot, ec);
+    element->ensureShadow()->addShadowRoot(element, shadowRoot, type, ec);
     if (ec)
         return 0;
     ASSERT(element == shadowRoot->host());

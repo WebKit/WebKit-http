@@ -166,6 +166,11 @@ void PluginTest::NPN_InvalidateRect(NPRect* invalidRect)
     browser->invalidaterect(m_npp, invalidRect);
 }
 
+void* PluginTest::NPN_MemAlloc(uint32_t size)
+{
+    return browser->memalloc(size);
+}
+
 // NPRuntime NPN functions.
 
 NPIdentifier PluginTest::NPN_GetStringIdentifier(const NPUTF8 *name)
@@ -206,11 +211,6 @@ NPObject* PluginTest::NPN_RetainObject(NPObject* npObject)
 void PluginTest::NPN_ReleaseObject(NPObject* npObject)
 {
     browser->releaseobject(npObject);
-}
-
-bool PluginTest::NPN_GetProperty(NPObject* npObject, NPIdentifier propertyName, NPVariant* value)
-{
-    return browser->getproperty(m_npp, npObject, propertyName, value);
 }
 
 bool PluginTest::NPN_RemoveProperty(NPObject* npObject, NPIdentifier propertyName)

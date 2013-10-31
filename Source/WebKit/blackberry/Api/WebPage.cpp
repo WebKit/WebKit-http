@@ -330,6 +330,7 @@ void WebPage::autofillTextField(const string& item)
 WebPagePrivate::WebPagePrivate(WebPage* webPage, WebPageClient* client, const IntRect& rect)
     : m_webPage(webPage)
     , m_client(client)
+    , m_inspectorClient(0)
     , m_page(0) // Initialized by init.
     , m_mainFrame(0) // Initialized by init.
     , m_currentContextNode(0)
@@ -337,6 +338,7 @@ WebPagePrivate::WebPagePrivate(WebPage* webPage, WebPageClient* client, const In
     , m_visible(false)
     , m_activationState(ActivationActive)
     , m_shouldResetTilesWhenShown(false)
+    , m_shouldZoomToInitialScaleAfterLoadFinished(false)
     , m_userScalable(true)
     , m_userPerformedManualZoom(false)
     , m_userPerformedManualScroll(false)
@@ -487,9 +489,8 @@ void WebPagePrivate::init(const WebString& pageGroupName)
 #if ENABLE(DRAG_SUPPORT)
     dragClient = new DragClientBlackBerry();
 #endif
-    InspectorClientBlackBerry* inspectorClient = 0;
 #if ENABLE(INSPECTOR)
-    inspectorClient = new InspectorClientBlackBerry(this);
+    m_inspectorClient = new InspectorClientBlackBerry(this);
 #endif
 
     FrameLoaderClientBlackBerry* frameLoaderClient = new FrameLoaderClientBlackBerry();
@@ -499,7 +500,7 @@ void WebPagePrivate::init(const WebString& pageGroupName)
     pageClients.contextMenuClient = contextMenuClient;
     pageClients.editorClient = editorClient;
     pageClients.dragClient = dragClient;
-    pageClients.inspectorClient = inspectorClient;
+    pageClients.inspectorClient = m_inspectorClient;
 
     m_page = new Page(pageClients);
 #if !defined(PUBLIC_BUILD) || !PUBLIC_BUILD
@@ -519,7 +520,7 @@ void WebPagePrivate::init(const WebString& pageGroupName)
 #endif
 
 #if ENABLE(BATTERY_STATUS)
-    WebCore::provideBatteryTo(m_page, new WebCore::BatteryClientBlackBerry);
+    WebCore::provideBatteryTo(m_page, new WebCore::BatteryClientBlackBerry(this));
 #endif
 
 #if ENABLE(MEDIA_STREAM)
@@ -546,8 +547,9 @@ void WebPagePrivate::init(const WebString& pageGroupName)
     // so that we only get one didChangeSettings() callback when we set the page group name. This causes us
     // to make a copy of the WebSettings since some WebSettings method make use of the page group name.
     // Instead, we shouldn't be storing the page group name in WebSettings.
-    m_webSettings->setDelegate(this);
     m_webSettings->setPageGroupName(pageGroupName);
+    m_webSettings->setDelegate(this);
+    didChangeSettings(m_webSettings);
 
     RefPtr<Frame> newFrame = Frame::create(m_page, /* HTMLFrameOwnerElement* */ 0, frameLoaderClient);
 
@@ -563,22 +565,16 @@ void WebPagePrivate::init(const WebString& pageGroupName)
     m_page->settings()->setCanvasUsesAcceleratedDrawing(true);
     m_page->settings()->setAccelerated2dCanvasEnabled(true);
 #endif
-#if ENABLE(VIEWPORT_REFLOW)
-    m_page->settings()->setTextReflowEnabled(m_webSettings->textReflowMode() == WebSettings::TextReflowEnabled);
-#endif
 
     m_page->settings()->setInteractiveFormValidationEnabled(true);
     m_page->settings()->setAllowUniversalAccessFromFileURLs(false);
     m_page->settings()->setAllowFileAccessFromFileURLs(false);
-    m_page->settings()->setShouldUseCrossOriginProtocolCheck(!m_webSettings->allowCrossSiteRequests());
-    m_page->settings()->setWebSecurityEnabled(!m_webSettings->allowCrossSiteRequests());
 
     m_backingStoreClient = BackingStoreClient::create(m_mainFrame, /* parent frame */ 0, m_webPage);
     // The direct access to BackingStore is left here for convenience since it
     // is owned by BackingStoreClient and then deleted by its destructor.
     m_backingStore = m_backingStoreClient->backingStore();
 
-    m_page->settings()->setSpatialNavigationEnabled(m_webSettings->isSpatialNavigationEnabled());
     blockClickRadius = int(roundf(0.35 * Platform::Graphics::Screen::primaryScreen()->pixelsPerInch(0).width())); // The clicked rectangle area should be a fixed unit of measurement.
 
     m_page->settings()->setDelegateSelectionPaint(true);
@@ -881,9 +877,8 @@ bool WebPage::executeJavaScriptFunction(const std::vector<std::string> &function
 
     JSObjectRef functionObject = obj;
     JSValueRef result = 0;
-    JSValueRef exception;
     if (functionObject && thisObject)
-        result = JSObjectCallAsFunction(ctx, functionObject, thisObject, args.size(), argListRef.data(), &exception);
+        result = JSObjectCallAsFunction(ctx, functionObject, thisObject, args.size(), argListRef.data(), 0);
 
     for (unsigned i = 0; i < args.size(); ++i)
         JSStringRelease(argList[i]);
@@ -892,11 +887,6 @@ bool WebPage::executeJavaScriptFunction(const std::vector<std::string> &function
 
     if (!value) {
         returnType = JSException;
-        JSStringRef stringRef = JSValueToStringCopy(ctx, exception, 0);
-        size_t bufferSize = JSStringGetMaximumUTF8CStringSize(stringRef);
-        WTF::Vector<char> buffer(bufferSize);
-        JSStringGetUTF8CString(stringRef, buffer.data(), bufferSize);
-        returnValue = WebString::fromUtf8(buffer.data());
         return false;
     }
 
@@ -984,6 +974,11 @@ void WebPage::prepareToDestroy()
     d->prepareToDestroy();
 }
 
+bool WebPage::dispatchBeforeUnloadEvent()
+{
+    return d->m_page->mainFrame()->loader()->shouldClose();
+}
+
 static void enableCrossSiteXHRRecursively(Frame* frame)
 {
     frame->document()->securityOrigin()->grantUniversalAccess();
@@ -1060,6 +1055,7 @@ void WebPagePrivate::setLoadState(LoadState state)
             m_backingStore->d->resetRenderQueue();
             m_backingStore->d->resetTiles(true /* resetBackground */);
             m_backingStore->d->setScrollingOrZooming(false, false /* shouldBlit */);
+            m_shouldZoomToInitialScaleAfterLoadFinished = false;
             m_userPerformedManualZoom = false;
             m_userPerformedManualScroll = false;
             m_shouldUseFixedDesktopMode = false;
@@ -1178,8 +1174,6 @@ bool WebPagePrivate::shouldZoomAboutPoint(double scale, const FloatPoint&, bool 
     *clampedScale = scale;
 
     if (currentScale() == scale) {
-        // Make sure backingstore updates resume from pinch zoom in the case where the final zoom level doesn't change.
-        m_backingStore->d->resumeScreenAndBackingStoreUpdates(BackingStore::None);
         m_client->zoomChanged(m_webPage->isMinZoomed(), m_webPage->isMaxZoomed(), !shouldZoomOnEscape(), currentScale());
         return false;
     }
@@ -1275,7 +1269,6 @@ bool WebPagePrivate::zoomAboutPoint(double unclampedScale, const FloatPoint& anc
 
     // Clear window to make sure there are no artifacts.
     if (shouldRender) {
-        m_backingStore->d->clearWindow();
         // Resume all screen updates to the backingstore and render+blit visible contents to screen.
         m_backingStore->d->resumeScreenAndBackingStoreUpdates(BackingStore::RenderAndBlit);
     } else {
@@ -1372,6 +1365,7 @@ void WebPagePrivate::unscheduleZoomAboutPoint()
 void WebPagePrivate::zoomAboutPointTimerFired(Timer<WebPagePrivate>*)
 {
     zoomAboutPoint(m_delayedZoomArguments.scale, m_delayedZoomArguments.anchor, m_delayedZoomArguments.enforceScaleClamping, m_delayedZoomArguments.forceRendering);
+    m_backingStore->d->resumeScreenAndBackingStoreUpdates(m_delayedZoomArguments.forceRendering ? BackingStore::RenderAndBlit : BackingStore::None);
 }
 
 void WebPagePrivate::setNeedsLayout()
@@ -1705,9 +1699,10 @@ void WebPagePrivate::layoutFinished()
 
     m_nestedLayoutFinishedCount++;
 
-    if (shouldZoomToInitialScaleOnLoad())
+    if (shouldZoomToInitialScaleOnLoad()) {
         zoomToInitialScaleOnLoad();
-    else if (loadState() != None)
+        m_shouldZoomToInitialScaleAfterLoadFinished = false;
+    } else if (loadState() != None)
         notifyTransformedContentsSizeChanged();
 
     m_nestedLayoutFinishedCount--;
@@ -1740,19 +1735,6 @@ void WebPagePrivate::layoutFinished()
             }
         }
     }
-}
-
-bool WebPagePrivate::shouldZoomToInitialScaleOnLoad() const
-{
-    // For FrameLoadTypeSame or FrameLoadTypeStandard load, the layout timer can be fired which can call dispatchDidFirstVisuallyNonEmptyLayout()
-    // after the load Finished state, in which case the web page will have no chance to zoom to initial scale. So we should give it a chance,
-    // otherwise the scale of the web page can be incorrect.
-    FrameLoadType frameLoadType = FrameLoadTypeStandard;
-    if (m_mainFrame && m_mainFrame->loader())
-        frameLoadType = m_mainFrame->loader()->loadType();
-    if (m_loadState == Committed || (m_loadState == Finished && (frameLoadType == FrameLoadTypeSame || frameLoadType == FrameLoadTypeStandard)))
-        return true;
-    return false;
 }
 
 void WebPagePrivate::zoomToInitialScaleOnLoad()
@@ -2103,7 +2085,6 @@ void WebPagePrivate::notifyTransformedContentsSizeChanged()
     const IntSize size = transformedContentsSize();
     m_backingStore->d->contentsSizeChanged(size);
     m_client->contentsSizeChanged(size);
-    m_selectionHandler->selectionPositionChanged();
 }
 
 void WebPagePrivate::notifyTransformedScrollChanged()
@@ -2399,9 +2380,6 @@ Platform::WebContext WebPagePrivate::webContext(TargetDetectionStrategy strategy
         }
     }
 
-    if (!nodeAllowSelectionOverride && !node->canStartSelection())
-        context.resetFlag(Platform::WebContext::IsSelectable);
-
     if (node->isHTMLElement()) {
         HTMLImageElement* imageElement = 0;
         HTMLMediaElement* mediaElement = 0;
@@ -2445,9 +2423,18 @@ Platform::WebContext WebPagePrivate::webContext(TargetDetectionStrategy strategy
             context.setText(curText->wholeText().utf8().data());
     }
 
+    bool canStartSelection = node->canStartSelection();
+
     if (node->isElementNode()) {
         Element* element = static_cast<Element*>(node->shadowAncestorNode());
         if (DOMSupport::isTextBasedContentEditableElement(element)) {
+            if (!canStartSelection) {
+                // Input fields host node is by spec non-editable unless the field itself has content editable enabled.
+                // Enable selection if the shadow tree for the input field is selectable.
+                Node* nodeUnderFinger = m_touchEventHandler->lastFatFingersResult().isValid() ? m_touchEventHandler->lastFatFingersResult().node(FatFingersResult::ShadowContentAllowed) : 0;
+                if (nodeUnderFinger)
+                    canStartSelection = nodeUnderFinger->canStartSelection();
+            }
             context.setFlag(Platform::WebContext::IsInput);
             if (element->hasTagName(HTMLNames::inputTag))
                 context.setFlag(Platform::WebContext::IsSingleLine);
@@ -2459,6 +2446,9 @@ Platform::WebContext WebPagePrivate::webContext(TargetDetectionStrategy strategy
                 context.setText(elementText.utf8().data());
         }
     }
+
+    if (!nodeAllowSelectionOverride && !canStartSelection)
+        context.resetFlag(Platform::WebContext::IsSelectable);
 
     if (node->isFocusable())
         context.setFlag(Platform::WebContext::IsFocusable);
@@ -3084,20 +3074,25 @@ IntRect WebPagePrivate::blockZoomRectForNode(Node* node)
     clipToTransformedContentsRect(blockRect);
 
 #if DEBUG_BLOCK_ZOOM
-    // Re-paint the backingstore to screen to erase other annotations.
-    m_backingStore->d->resumeScreenAndBackingStoreUpdates(BackingStore::Blit);
+    if (!m_backingStore->d->isSuspended()) {
+        // Re-paint the backingstore to screen to erase other annotations.
+        if (m_backingStore->d->shouldDirectRenderingToWindow())
+            m_backingStore->d->renderVisibleContents();
+        else
+            m_backingStore->d->blitVisibleContents();
 
-    // Render a black square over the calculated block and a gray square over the original block for visual inspection.
-    originalRect = mapToTransformed(originalRect);
-    clipToTransformedContentsRect(originalRect);
-    IntRect renderRect = mapFromTransformedContentsToTransformedViewport(blockRect);
-    IntRect originalRenderRect = mapFromTransformedContentsToTransformedViewport(originalRect);
-    IntSize viewportSize = transformedViewportSize();
-    renderRect.intersect(IntRect(0, 0, viewportSize.width(), viewportSize.height()));
-    originalRenderRect.intersect(IntRect(0, 0, viewportSize.width(), viewportSize.height()));
-    m_backingStore->d->clearWindow(renderRect, 0, 0, 0);
-    m_backingStore->d->clearWindow(originalRenderRect, 120, 120, 120);
-    m_backingStore->d->invalidateWindow(renderRect);
+        // Render a black square over the calculated block and a gray square over the original block for visual inspection.
+        originalRect = mapToTransformed(originalRect);
+        clipToTransformedContentsRect(originalRect);
+        IntRect renderRect = mapFromTransformedContentsToTransformedViewport(blockRect);
+        IntRect originalRenderRect = mapFromTransformedContentsToTransformedViewport(originalRect);
+        IntSize viewportSize = transformedViewportSize();
+        renderRect.intersect(IntRect(0, 0, viewportSize.width(), viewportSize.height()));
+        originalRenderRect.intersect(IntRect(0, 0, viewportSize.width(), viewportSize.height()));
+        m_backingStore->d->clearWindow(renderRect, 0, 0, 0);
+        m_backingStore->d->clearWindow(originalRenderRect, 120, 120, 120);
+        m_backingStore->d->invalidateWindow(renderRect);
+    }
 #endif
 
     return blockRect;
@@ -3179,7 +3174,6 @@ void WebPagePrivate::zoomBlock()
     }
 
     notifyTransformChanged();
-    m_backingStore->d->clearWindow();
     m_backingStore->d->resumeScreenAndBackingStoreUpdates(BackingStore::RenderAndBlit);
     m_client->zoomChanged(m_webPage->isMinZoomed(), m_webPage->isMaxZoomed(), !shouldZoomOnEscape(), currentScale());
 }
@@ -3397,7 +3391,7 @@ void WebPagePrivate::updateDelegatedOverlays(bool dispatched)
     if (Platform::webKitThreadMessageClient()->isCurrentThread()) {
         // Must be called on the WebKit thread.
         if (m_selectionHandler->isSelectionActive())
-            m_selectionHandler->selectionPositionChanged(true /* visualChangeOnly */);
+            m_selectionHandler->selectionPositionChanged();
         if (m_inspectorOverlay)
             m_inspectorOverlay->update();
 
@@ -3658,12 +3652,14 @@ void WebPagePrivate::resumeBackingStore()
         m_backingStore->d->orientationChanged(); // Updates tile geometry and creates visible tile buffer.
         m_backingStore->d->resetTiles(true /* resetBackground */);
         m_backingStore->d->updateTiles(false /* updateVisible */, false /* immediate */);
+
         // This value may have changed, so we need to update it.
         directRendering = m_backingStore->d->shouldDirectRenderingToWindow();
-        if (m_backingStore->d->renderVisibleContents() && !m_backingStore->d->isSuspended() && !directRendering)
-            m_backingStore->d->blitVisibleContents();
-
-        m_client->notifyContentRendered(m_backingStore->d->visibleContentsRect());
+        if (m_backingStore->d->renderVisibleContents()) {
+            if (!m_backingStore->d->isSuspended() && !directRendering)
+                m_backingStore->d->blitVisibleContents();
+            m_client->notifyContentRendered(m_backingStore->d->visibleContentsRect());
+        }
     } else {
         if (m_backingStore->d->isOpenGLCompositing())
            setCompositorDrawsRootLayer(false);
@@ -4129,37 +4125,7 @@ bool WebPagePrivate::handleWheelEvent(PlatformWheelEvent& wheelEvent)
 bool WebPage::touchEvent(const Platform::TouchEvent& event)
 {
 #if DEBUG_TOUCH_EVENTS
-    switch (event.m_type) {
-    case Platform::TouchEvent::TouchEnd:
-        Platform::log(Platform::LogLevelCritical, "WebPage::touchEvent Touch End");
-        break;
-    case Platform::TouchEvent::TouchStart:
-        Platform::log(Platform::LogLevelCritical, "WebPage::touchEvent Touch Start");
-        break;
-    case Platform::TouchEvent::TouchMove:
-        Platform::log(Platform::LogLevelCritical, "WebPage::touchEvent Touch Move");
-        break;
-    case Platform::TouchEvent::TouchCancel:
-        Platform::log(Platform::LogLevelCritical, "WebPage::touchCancel Touch Cancel");
-        break;
-    }
-
-    for (unsigned i = 0; i < event.m_points.size(); i++) {
-        switch (event.m_points[i].m_state) {
-        case Platform::TouchPoint::TouchPressed:
-            Platform::log(Platform::LogLevelCritical, "WebPage::touchEvent %d Touch Pressed (%d, %d)", event.m_points[i].m_id, event.m_points[i].m_pos.x(), event.m_points[i].m_pos.y());
-            break;
-        case Platform::TouchPoint::TouchReleased:
-            Platform::log(Platform::LogLevelCritical, "WebPage::touchEvent %d Touch Released (%d, %d)", event.m_points[i].m_id, event.m_points[i].m_pos.x(), event.m_points[i].m_pos.y());
-            break;
-        case Platform::TouchPoint::TouchMoved:
-            Platform::log(Platform::LogLevelCritical, "WebPage::touchEvent %d Touch Moved (%d, %d)", event.m_points[i].m_id, event.m_points[i].m_pos.x(), event.m_points[i].m_pos.y());
-            break;
-        case Platform::TouchPoint::TouchStationary:
-            Platform::log(Platform::LogLevelCritical, "WebPage::touchEvent %d Touch Stationary (%d, %d)", event.m_points[i].m_id, event.m_points[i].m_pos.x(), event.m_points[i].m_pos.y());
-            break;
-        }
-    }
+    BBLOG(LogLevelCritical, "%s", event.toString().c_str());
 #endif
 
 #if ENABLE(TOUCH_EVENTS)
@@ -4631,9 +4597,14 @@ void WebPage::setSpellCheckingEnabled(bool enabled)
     static_cast<EditorClientBlackBerry*>(d->m_page->editorClient())->enableSpellChecking(enabled);
 }
 
-void WebPage::spellCheckingRequestProcessed(int32_t id, spannable_string_t* spannableString)
+void WebPage::spellCheckingRequestCancelled(int32_t transactionId)
 {
-    d->m_inputHandler->spellCheckingRequestProcessed(id, spannableString);
+    d->m_inputHandler->spellCheckingRequestCancelled(transactionId);
+}
+
+void WebPage::spellCheckingRequestProcessed(int32_t transactionId, spannable_string_t* spannableString)
+{
+    d->m_inputHandler->spellCheckingRequestProcessed(transactionId, spannableString);
 }
 
 class DeferredTaskSelectionCancelled: public DeferredTask<&WebPagePrivate::m_wouldCancelSelection> {
@@ -4715,6 +4686,13 @@ void WebPage::paste()
     if (d->m_page->defersLoading())
         return;
     d->m_inputHandler->paste();
+}
+
+void WebPage::selectAll()
+{
+    if (d->m_page->defersLoading())
+        return;
+    d->m_inputHandler->selectAll();
 }
 
 void WebPage::setSelection(const Platform::IntPoint& startPoint, const Platform::IntPoint& endPoint)
@@ -5412,13 +5390,12 @@ JSValueRef WebPage::windowObject() const
 // Serialize only the members of HistoryItem which are needed by the client,
 // and copy them into a SharedArray. Also include the HistoryItem pointer which
 // will be used by the client as an opaque reference to identify the item.
-void WebPage::getBackForwardList(SharedArray<BackForwardEntry>& result, unsigned int& resultSize) const
+void WebPage::getBackForwardList(SharedArray<BackForwardEntry>& result) const
 {
     HistoryItemVector entries = static_cast<BackForwardListImpl*>(d->m_page->backForward()->client())->entries();
-    resultSize = entries.size();
-    result.reset(new BackForwardEntry[resultSize]);
+    result.reset(new BackForwardEntry[entries.size()], entries.size());
 
-    for (unsigned i = 0; i < resultSize; ++i) {
+    for (unsigned i = 0; i < entries.size(); ++i) {
         RefPtr<HistoryItem> entry = entries[i];
         BackForwardEntry& resultEntry = result[i];
         resultEntry.url = entry->urlString();
@@ -5755,7 +5732,10 @@ void WebPage::onCertificateStoreLocationSet(const WebString& caPath)
 
 void WebPage::enableWebInspector()
 {
-    d->m_page->inspectorController()->connectFrontend();
+    if (!d->m_inspectorClient)
+        return;
+
+    d->m_page->inspectorController()->connectFrontend(d->m_inspectorClient);
     d->m_page->settings()->setDeveloperExtrasEnabled(true);
 }
 
@@ -5901,21 +5881,33 @@ void WebPagePrivate::setCompositor(PassRefPtr<WebPageCompositorPrivate> composit
 {
     using namespace BlackBerry::Platform;
 
+    // We depend on the current thread being the WebKit thread when it's not the Compositing thread.
+    // That seems extremely likely to be the case, but let's assert just to make sure.
+    ASSERT(webKitThreadMessageClient()->isCurrentThread());
+
+    if (m_compositor || m_client->window())
+        m_backingStore->d->suspendScreenAndBackingStoreUpdates();
+
+    // This method call always round-trips on the WebKit thread (see WebPageCompositor::WebPageCompositor() and ~WebPageCompositor()),
+    // and the compositing context must be set on the WebKit thread. How convenient!
+    if (compositingContext != EGL_NO_CONTEXT)
+        BlackBerry::Platform::Graphics::setCompositingContext(compositingContext);
+
     // The m_compositor member has to be modified during a sync call for thread
     // safe access to m_compositor and its refcount.
-    if (!userInterfaceThreadMessageClient()->isCurrentThread()) {
-        // We depend on the current thread being the WebKit thread when it's not the Compositing thread.
-        // That seems extremely likely to be the case, but let's assert just to make sure.
-        ASSERT(webKitThreadMessageClient()->isCurrentThread());
+    userInterfaceThreadMessageClient()->dispatchSyncMessage(createMethodCallMessage(&WebPagePrivate::setCompositorHelper, this, compositor, compositingContext));
 
-        // This method call always round-trips on the WebKit thread (see WebPageCompositor::WebPageCompositor() and ~WebPageCompositor()),
-        // and the compositing context must be set on the WebKit thread. How convenient!
-        if (compositingContext != EGL_NO_CONTEXT)
-            BlackBerry::Platform::Graphics::setCompositingContext(compositingContext);
+    if (m_compositor || m_client->window()) // the new compositor, if one was set
+        m_backingStore->d->resumeScreenAndBackingStoreUpdates(BackingStore::RenderAndBlit);
+}
 
-        userInterfaceThreadMessageClient()->dispatchSyncMessage(createMethodCallMessage(&WebPagePrivate::setCompositor, this, compositor, compositingContext));
-        return;
-    }
+void WebPagePrivate::setCompositorHelper(PassRefPtr<WebPageCompositorPrivate> compositor, EGLContext compositingContext)
+{
+    using namespace BlackBerry::Platform;
+
+    // The m_compositor member has to be modified during a sync call for thread
+    // safe access to m_compositor and its refcount.
+    ASSERT(userInterfaceThreadMessageClient()->isCurrentThread());
 
     m_compositor = compositor;
     if (m_compositor) {
@@ -6420,6 +6412,7 @@ void WebPagePrivate::didChangeSettings(WebSettings* webSettings)
     coreSettings->setDefaultTextEncodingName(webSettings->defaultTextEncodingName().impl());
     coreSettings->setDownloadableBinaryFontsEnabled(webSettings->downloadableBinaryFontsEnabled());
     coreSettings->setSpatialNavigationEnabled(m_webSettings->isSpatialNavigationEnabled());
+    coreSettings->setAsynchronousSpellCheckingEnabled(m_webSettings->isAsynchronousSpellCheckingEnabled());
 
     WebString stylesheetURL = webSettings->userStyleSheetString();
     if (stylesheetURL.isEmpty())

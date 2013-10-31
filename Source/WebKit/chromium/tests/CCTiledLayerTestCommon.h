@@ -34,6 +34,7 @@
 #include "TiledLayerChromium.h"
 #include "cc/CCGraphicsContext.h"
 #include "cc/CCPrioritizedTexture.h"
+#include "cc/CCResourceProvider.h"
 #include "cc/CCTextureUpdater.h"
 #include "cc/CCTiledLayerImpl.h"
 
@@ -48,8 +49,8 @@ public:
         Texture(FakeLayerTextureUpdater*, PassOwnPtr<WebCore::CCPrioritizedTexture>);
         virtual ~Texture();
 
-        virtual void updateRect(WebCore::CCGraphicsContext*, WebCore::TextureAllocator* , const WebCore::IntRect&, const WebCore::IntRect&) OVERRIDE;
-        virtual void prepareRect(const WebCore::IntRect&) OVERRIDE;
+        virtual void updateRect(WebCore::CCResourceProvider* , const WebCore::IntRect&, const WebCore::IntRect&) OVERRIDE;
+        virtual void prepareRect(const WebCore::IntRect&, WebCore::CCRenderingStats&) OVERRIDE;
 
     private:
         FakeLayerTextureUpdater* m_layer;
@@ -61,7 +62,7 @@ public:
     virtual PassOwnPtr<WebCore::LayerTextureUpdater::Texture> createTexture(WebCore::CCPrioritizedTextureManager*) OVERRIDE;
     virtual SampledTexelFormat sampledTexelFormat(GC3Denum) OVERRIDE { return SampledTexelFormatRGBA; }
 
-    virtual void prepareToUpdate(const WebCore::IntRect& contentRect, const WebCore::IntSize&, float, float, WebCore::IntRect& resultingOpaqueRect) OVERRIDE;
+    virtual void prepareToUpdate(const WebCore::IntRect& contentRect, const WebCore::IntSize&, float, float, WebCore::IntRect& resultingOpaqueRect, WebCore::CCRenderingStats&) OVERRIDE;
     // Sets the rect to invalidate during the next call to prepareToUpdate(). After the next
     // call to prepareToUpdate() the rect is reset.
     void setRectToInvalidate(const WebCore::IntRect&, FakeTiledLayerChromium*);
@@ -121,7 +122,7 @@ public:
     const WebCore::FloatRect& lastNeedsDisplayRect() const { return m_lastNeedsDisplayRect; }
 
     // Updates the visibleContentRect().
-    virtual void update(WebCore::CCTextureUpdater&, const WebCore::CCOcclusionTracker*) OVERRIDE;
+    virtual void update(WebCore::CCTextureUpdater&, const WebCore::CCOcclusionTracker*, WebCore::CCRenderingStats&) OVERRIDE;
 
     virtual void setTexturePriorities(const WebCore::CCPriorityCalculator&) OVERRIDE;
 
@@ -150,17 +151,10 @@ protected:
     WebCore::IntSize m_forcedContentBounds;
 };
 
-class FakeTextureAllocator : public WebCore::TextureAllocator {
-public:
-    virtual unsigned createTexture(const WebCore::IntSize&, GC3Denum) OVERRIDE { return 1; }
-    virtual void deleteTexture(unsigned, const WebCore::IntSize&, GC3Denum) OVERRIDE { }
-    virtual void deleteAllTextures() OVERRIDE { }
-};
-
 class FakeTextureCopier : public WebCore::TextureCopier {
 public:
-    virtual void copyTexture(WebCore::CCGraphicsContext*, unsigned, unsigned, const WebCore::IntSize&) { }
-    virtual void copyToTexture(WebCore::CCGraphicsContext*, const void*, unsigned, const WebCore::IntSize&, GC3Denum) { }
+    virtual void copyTexture(unsigned, unsigned, const WebCore::IntSize&) { }
+    virtual void flush() { }
 };
 
 class FakeTextureUploader : public WebCore::TextureUploader {
@@ -168,7 +162,7 @@ public:
     virtual bool isBusy() { return false; }
     virtual void beginUploads() { }
     virtual void endUploads() { }
-    virtual void uploadTexture(WebCore::CCGraphicsContext* context, WebCore::LayerTextureUpdater::Texture* texture, WebCore::TextureAllocator* allocator, const WebCore::IntRect sourceRect, const WebCore::IntRect destRect) { texture->updateRect(context, allocator, sourceRect, destRect); }
+    virtual void uploadTexture(WebCore::LayerTextureUpdater::Texture* texture, WebCore::CCResourceProvider* resourceProvider, const WebCore::IntRect sourceRect, const WebCore::IntRect destRect) { texture->updateRect(resourceProvider, sourceRect, destRect); }
 };
 
 }

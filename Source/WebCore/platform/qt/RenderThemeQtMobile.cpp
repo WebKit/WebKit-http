@@ -36,7 +36,7 @@
 #include "PaintInfo.h"
 #include "QWebPageClient.h"
 #include "RenderBox.h"
-#if ENABLE(PROGRESS_TAG)
+#if ENABLE(PROGRESS_ELEMENT)
 #include "RenderProgress.h"
 #endif
 #include "StyleResolver.h"
@@ -66,10 +66,10 @@ static const float buttonPaddingRight = 18;
 static const float buttonPaddingTop = 2;
 static const float buttonPaddingBottom = 3;
 static const float menuListPadding = 9;
-static const float textFieldPadding = 5;
+static const float textFieldPadding = 10;
 static const float radiusFactor = 0.36;
 static const float progressBarChunkPercentage = 0.2;
-#if ENABLE(PROGRESS_TAG)
+#if ENABLE(PROGRESS_ELEMENT)
 static const int progressAnimationGranularity = 2;
 #endif
 static const float sliderGrooveBorderRatio = 0.2;
@@ -108,6 +108,44 @@ uint qHash(const KeyIdentifier& id)
     return hash;
 }
 
+/*
+ * The octants' indices are identified below, for each point (x,y)
+ * in the first octant, we can populate the 7 others with the corresponding
+ * point.
+ *
+ *                                       index |   xpos   |   ypos
+ *                xd                    ---------------------------
+ *      4      |<--->| 3                    0  |  xd + x  |    y
+ *     __________________                   1  |  xd + y  |    x
+ *    /                  \                  2  |  xd + y  |   -x
+ * 5 |         .(c)       |  2              3  |  xd + x  |   -y
+ * 6 |                    |  1              4  | -xd - x  |   -y
+ *    \__________________/                  5  | -xd - y  |   -x
+ *                                          6  | -xd - y  |    x
+ *      7              0                    7  | -xd - x  |    y
+ *
+ **/
+
+static void addPointToOctants(QVector<QPainterPath>& octants, const QPointF& center, qreal x, qreal y , int xDelta = 0)
+{
+    ASSERT(octants.count() == 8);
+
+    for (short i = 0; i < 8; ++i) {
+        QPainterPath& octant = octants[i];
+        QPointF pos(center);
+        // The Gray code corresponding to the octant's index helps doing the math in a more generic way.
+        const short gray = (i >> 1) ^ i;
+        const qreal xOffset = xDelta + ((gray & 1) ? y : x);
+        pos.ry() += ((gray & 2)? -1 : 1) * ((gray & 1) ? x : y);
+        pos.rx() += (i < 4) ? xOffset : -xOffset;
+
+        if (octant.elementCount())
+            octant.lineTo(pos);
+        else // The path is empty. Initialize the start point.
+            octant.moveTo(pos);
+    }
+}
+
 static void drawControlBackground(QPainter* painter, const QPen& pen, const QRect& rect, const QBrush& brush)
 {
     QPen oldPen = painter->pen();
@@ -116,28 +154,32 @@ static void drawControlBackground(QPainter* painter, const QPen& pen, const QRec
     painter->setPen(pen);
     painter->setBrush(brush);
 
-    const int line = 1;
-    const QRect paddedRect = rect.adjusted(line, line, -line, -line);
+    static const qreal line = 1.5;
+    const QRectF paddedRect = rect.adjusted(line, line, -line, -line);
 
-    const int n = 3;
+    static const int n = 3;
     const qreal invPow = 1 / double(n);
     ASSERT(paddedRect.width() >= paddedRect.height());
     const int radius = paddedRect.height() / 2;
     const int xDelta = paddedRect.width() / 2 - radius;
-    const QPoint center = paddedRect.topLeft() + QPoint(xDelta + radius, radius);
-    qreal x, y;
-    QPainterPath path;
-    path.moveTo(-xDelta, -radius);
-    for (y = -radius ; y <= radius; ++y) {
-        x = -xDelta - radius * pow(1 - pow(qAbs(y) / radius , n), invPow);
-        path.lineTo(x, y);
+    const QPointF center = paddedRect.center();
+    qreal x = 0;
+    qreal y;
+    QVector<QPainterPath> octants(8);
+    // Stay within reasonable distance from edge values, which can cause artifacts at certain zoom levels.
+    static const float epsilon = 0.02;
+    for (y = radius - epsilon; y - epsilon > x; y -= 0.5) {
+        x = radius * pow(1 - pow(qAbs(y) / radius , n), invPow);
+        addPointToOctants(octants, center, x, y, xDelta);
     }
-    for (y = radius ; y >= -radius; --y) {
-        x =  xDelta + radius * pow(1 - pow(qAbs(y) / radius , n), invPow);
-        path.lineTo(x, y);
+
+    QPainterPath path = octants.first();
+    for (int i = 1; i < 8; ++i) {
+        // Due to the orientation of the arcs, we need to reverse the paths with odd indices.
+        QPainterPath subPath = (i % 2) ?  octants.at(i).toReversed() : octants.at(i);
+        path.connectPath(subPath);
     }
     path.closeSubpath();
-    path.translate(center);
 
     painter->drawPath(path);
     painter->setPen(oldPen);
@@ -152,12 +194,18 @@ static inline QRect shrinkRectToSquare(const QRect& rect)
 
 static inline QPen borderPen(QPainter* painter = 0)
 {
-    return QPen(darkColor, 0.4 * painterScale(painter), Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin);
+    return QPen(darkColor, qMin(1.0, 0.4 * painterScale(painter)));
 }
 
 QSharedPointer<StylePainter> RenderThemeQtMobile::getStylePainter(const PaintInfo& pi)
 {
     return QSharedPointer<StylePainter>(new StylePainterMobile(this, pi));
+}
+
+QPalette RenderThemeQtMobile::colorPalette() const
+{
+    static QPalette lightGrayPalette(Qt::lightGray);
+    return lightGrayPalette;
 }
 
 StylePainterMobile::StylePainterMobile(RenderThemeQtMobile* theme, const PaintInfo& paintInfo)
@@ -383,14 +431,14 @@ QPixmap StylePainterMobile::findLineEdit(const QSize & size, bool focused) const
 
     if (!findCachedControl(id, &result)) {
         const int focusFrame = painterScale(painter);
-        result = QPixmap(size + QSize(2 * focusFrame, 2 * focusFrame));
+        result = QPixmap(size);
         result.fill(Qt::transparent);
         const QRect rect = result.rect().adjusted(focusFrame, focusFrame, -focusFrame, -focusFrame);
         QPainter cachePainter(&result);
         drawControlBackground(&cachePainter, borderPen(painter), rect, Qt::white);
 
         if (focused) {
-            QPen focusPen(highlightColor, focusFrame, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin);
+            QPen focusPen(highlightColor, 1.2 * painterScale(painter), Qt::SolidLine);
             drawControlBackground(&cachePainter, focusPen, rect, Qt::NoBrush);
         }
         insertIntoCache(id, result);
@@ -697,6 +745,10 @@ void RenderThemeQtMobile::adjustTextFieldStyle(StyleResolver*, RenderStyle* styl
     // padding. Just worth keeping in mind!
     style->setBackgroundColor(Color::transparent);
     style->resetBorder();
+    style->setBorderTopWidth(frameWidth);
+    style->setBorderRightWidth(frameWidth);
+    style->setBorderBottomWidth(frameWidth);
+    style->setBorderLeftWidth(frameWidth);
     style->resetPadding();
     computeSizeBasedOnStyle(style);
     style->setPaddingLeft(Length(textFieldPadding, Fixed));
@@ -776,7 +828,7 @@ bool RenderThemeQtMobile::paintMenuListButton(RenderObject* o, const PaintInfo& 
     return false;
 }
 
-#if ENABLE(PROGRESS_TAG)
+#if ENABLE(PROGRESS_ELEMENT)
 double RenderThemeQtMobile::animationDurationForProgressBar(RenderProgress* renderProgress) const
 {
     if (renderProgress->isDeterminate())
@@ -848,13 +900,6 @@ bool RenderThemeQtMobile::checkMultiple(RenderObject* o) const
 {
     HTMLSelectElement* select = o ? static_cast<HTMLSelectElement*>(o->node()) : 0;
     return select ? select->multiple() : false;
-}
-
-void RenderThemeQtMobile::setPaletteFromPageClientIfExists(QPalette& palette) const
-{
-    static QPalette lightGrayPalette(Qt::lightGray);
-    palette = lightGrayPalette;
-    return;
 }
 
 void RenderThemeQtMobile::adjustSliderThumbSize(RenderStyle* style, Element* element) const

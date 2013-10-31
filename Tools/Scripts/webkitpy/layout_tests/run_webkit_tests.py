@@ -35,6 +35,7 @@ import optparse
 import os
 import signal
 import sys
+import traceback
 
 from webkitpy.common.host import Host
 from webkitpy.common.system import stack_utils
@@ -88,49 +89,35 @@ def lint(port, options):
 
 
 def run(port, options, args, regular_output=sys.stderr, buildbot_output=sys.stdout):
-    warnings = _set_up_derived_options(port, options)
-
-    printer = printing.Printer(port, options, regular_output, buildbot_output, logger=logging.getLogger())
-
-    for warning in warnings:
-        _log.warning(warning)
-
-    if options.help_printing:
-        printer.help_printing()
-        printer.cleanup()
-        return 0
-
-    if options.lint_test_files:
-        return lint(port, options)
-
-    # We wrap any parts of the run that are slow or likely to raise exceptions
-    # in a try/finally to ensure that we clean up the logging configuration.
-    unexpected_result_count = -1
     try:
+        warnings = _set_up_derived_options(port, options)
+
+        printer = printing.Printer(port, options, regular_output, buildbot_output, logger=logging.getLogger())
+
+        for warning in warnings:
+            _log.warning(warning)
+
+        if options.help_printing:
+            printer.help_printing()
+            printer.cleanup()
+            return 0
+
+        if options.lint_test_files:
+            return lint(port, options)
+
+        # We wrap any parts of the run that are slow or likely to raise exceptions
+        # in a try/finally to ensure that we clean up the logging configuration.
+        unexpected_result_count = -1
+
         manager = Manager(port, options, printer)
-        manager.print_config()
+        printer.print_config()
 
-        printer.print_update("Collecting tests ...")
-        try:
-            manager.collect_tests(args)
-        except IOError, e:
-            if e.errno == errno.ENOENT:
-                return -1
-            raise
-
-        printer.print_update("Checking build ...")
-        if not port.check_build(manager.needs_servers()):
-            _log.error("Build check failed")
-            return -1
-
-        printer.print_update("Parsing expectations ...")
-        manager.parse_expectations()
-
-        unexpected_result_count = manager.run()
+        unexpected_result_count = manager.run(args)
         _log.debug("Testing completed, Exit status: %d" % unexpected_result_count)
     except Exception:
         exception_type, exception_value, exception_traceback = sys.exc_info()
         if exception_type not in (KeyboardInterrupt, TestRunInterruptedException, WorkerException):
+            print >> sys.stderr, '\n%s raised: %s' % (exception_type.__name__, exception_value)
             stack_utils.log_traceback(_log.error, exception_traceback)
         raise
     finally:
@@ -172,15 +159,28 @@ def _set_up_derived_options(port, options):
         warnings.append("--force/--skipped=%s overrides --no-http." % (options.skipped))
         options.http = True
 
-    if options.skip_pixel_test_if_no_baseline and not options.pixel_tests:
-        warnings.append("--skip-pixel-test-if-no-baseline is only supported with -p (--pixel-tests)")
-
     if options.ignore_metrics and (options.new_baseline or options.reset_results):
         warnings.append("--ignore-metrics has no effect with --new-baselines or with --reset-results")
 
     if options.new_baseline:
         options.reset_results = True
         options.add_platform_exceptions = True
+
+    if options.pixel_test_directories:
+        options.pixel_tests = True
+        varified_dirs = set()
+        pixel_test_directories = options.pixel_test_directories
+        for directory in pixel_test_directories:
+            # FIXME: we should support specifying the directories all the ways we support it for additional
+            # arguments specifying which tests and directories to run. We should also move the logic for that
+            # to Port.
+            filesystem = port.host.filesystem
+            if not filesystem.isdir(filesystem.join(port.layout_tests_dir(), directory)):
+                warnings.append("'%s' was passed to --pixel-test-directories, which doesn't seem to be a directory" % str(directory))
+            else:
+                varified_dirs.add(directory)
+
+        options.pixel_test_directories = list(varified_dirs)
 
     return warnings
 
@@ -243,15 +243,16 @@ def parse_args(args=None):
             action="store_true",
             default=False,
             help="Use hardware accelerated painting of composited pages"),
-        optparse.make_option("--enable-hardware-gpu",
-            action="store_true",
-            default=False,
-            help="Run graphics tests on real GPU hardware vs software"),
         optparse.make_option("--per-tile-painting",
             action="store_true",
             help="Use per-tile painting of composited pages"),
         optparse.make_option("--adb-args", type="string",
             help="Arguments parsed to Android adb, to select device, etc."),
+    ]))
+
+    option_group_definitions.append(("EFL-specific Options", [
+        optparse.make_option("--webprocess-cmd-prefix", type="string",
+            default=False, help="Prefix used when spawning the Web process (Debug mode only)"),
     ]))
 
     option_group_definitions.append(("WebKit Options", [
@@ -267,8 +268,9 @@ def parse_args(args=None):
             help="Run a concurrent JavaScript thread with each test"),
         optparse.make_option("--webkit-test-runner", "-2", action="store_true",
             help="Use WebKitTestRunner rather than DumpRenderTree."),
+        # FIXME: We should merge this w/ --build-directory and only have one flag.
         optparse.make_option("--root", action="store",
-            help="Path to a pre-built root of WebKit (for running tests using a nightly build of WebKit)"),
+            help="Path to a directory containing the executables needed to run tests."),
     ]))
 
     option_group_definitions.append(("ORWT Compatibility Options", [
@@ -304,9 +306,16 @@ def parse_args(args=None):
         optparse.make_option("--no-new-test-results", action="store_false",
             dest="new_test_results", default=True,
             help="Don't create new baselines when no expected results exist"),
-        optparse.make_option("--skip-pixel-test-if-no-baseline", action="store_true",
-            dest="skip_pixel_test_if_no_baseline", help="Do not generate and check pixel result in the case when "
-                 "no image baseline is available for the test."),
+
+        #FIXME: we should support a comma separated list with --pixel-test-directory as well.
+        optparse.make_option("--pixel-test-directory", action="append", default=[], dest="pixel_test_directories",
+            help="A directory where it is allowed to execute tests as pixel tests. "
+                 "Specify multiple times to add multiple directories. "
+                 "This option implies --pixel-tests. If specified, only those tests "
+                 "will be executed as pixel tests that are located in one of the "
+                 "directories enumerated with the option. Some ports may ignore this "
+                 "option while others can have a default value that can be overridden here."),
+
         optparse.make_option("--skip-failing-tests", action="store_true",
             default=False, help="Skip tests that are expected to fail. "
                  "Note: When using this option, you might miss new crashes "
@@ -413,6 +422,13 @@ def parse_args(args=None):
             help="Don't re-try any tests that produce unexpected results."),
         optparse.make_option("--max-locked-shards", type="int",
             help="Set the maximum number of locked shards"),
+        # For chromium-android to reduce the cost of restarting the driver.
+        # FIXME: Remove the option once per-test arg is supported:
+        # https://bugs.webkit.org/show_bug.cgi?id=91539.
+        optparse.make_option("--shard-ref-tests", action="store_true",
+            help="Run ref tests in dedicated shard(s). Enabled on Android by default."),
+        optparse.make_option("--additional-env-var", type="string", action="append", default=[],
+            help="Passes that environment variable to the tests (--additional-env-var=NAME=VALUE)"),
     ]))
 
     option_group_definitions.append(("Miscellaneous Options", [
@@ -448,22 +464,25 @@ def parse_args(args=None):
 
 
 def main(argv=None):
-    options, args = parse_args(argv)
-    if options.platform and 'test' in options.platform:
-        # It's a bit lame to import mocks into real code, but this allows the user
-        # to run tests against the test platform interactively, which is useful for
-        # debugging test failures.
-        from webkitpy.common.host_mock import MockHost
-        host = MockHost()
-    else:
-        host = Host()
-
     try:
+        options, args = parse_args(argv)
+        if options.platform and 'test' in options.platform:
+            # It's a bit lame to import mocks into real code, but this allows the user
+            # to run tests against the test platform interactively, which is useful for
+            # debugging test failures.
+            from webkitpy.common.host_mock import MockHost
+            host = MockHost()
+        else:
+            host = Host()
         port = host.port_factory.get(options.platform, options)
     except NotImplementedError, e:
         # FIXME: is this the best way to handle unsupported port names?
         print >> sys.stderr, str(e)
         return EXCEPTIONAL_EXIT_STATUS
+    except Exception, e:
+        print >> sys.stderr, '\n%s raised: %s' % (e.__class__.__name__, str(e))
+        traceback.print_exc(file=sys.stderr)
+        raise
 
     logging.getLogger().setLevel(logging.DEBUG if options.verbose else logging.INFO)
     return run(port, options, args)
@@ -471,8 +490,10 @@ def main(argv=None):
 
 if '__main__' == __name__:
     try:
-        sys.exit(main())
-    except Exception, e:
+        return_code = main()
+    except BaseException, e:
         if e.__class__ in (KeyboardInterrupt, TestRunInterruptedException):
             sys.exit(INTERRUPTED_EXIT_STATUS)
         sys.exit(EXCEPTIONAL_EXIT_STATUS)
+
+    sys.exit(return_code)

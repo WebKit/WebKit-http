@@ -22,6 +22,7 @@
 #include "WebKitLoaderClient.h"
 
 #include "WebKitBackForwardListPrivate.h"
+#include "WebKitURIResponsePrivate.h"
 #include "WebKitWebViewBasePrivate.h"
 #include "WebKitWebViewPrivate.h"
 #include <wtf/gobject/GOwnPtr.h>
@@ -64,7 +65,16 @@ static void didCommitLoadForFrame(WKPageRef page, WKFrameRef frame, WKTypeRef us
     if (!WKFrameIsMainFrame(frame))
         return;
 
-    webkitWebViewLoadChanged(WEBKIT_WEB_VIEW(clientInfo), WEBKIT_LOAD_COMMITTED);
+    WebKitWebView* webView = WEBKIT_WEB_VIEW(clientInfo);
+    WebKitWebResource* resource = webkit_web_view_get_main_resource(webView);
+    if (resource) {
+        // We might not have a resource if this load is a content replacement.
+        // FIXME: For some reason, when going back/forward this callback is emitted even before
+        // didInitiateLoadForResource(), so we don't have a main resource at this point either.
+        webkitURIResponseSetCertificateInfo(webkit_web_resource_get_response(resource), WKFrameGetCertificateInfo(frame));
+    }
+
+    webkitWebViewLoadChanged(webView, WEBKIT_LOAD_COMMITTED);
 }
 
 static void didFinishLoadForFrame(WKPageRef page, WKFrameRef frame, WKTypeRef userData, const void* clientInfo)

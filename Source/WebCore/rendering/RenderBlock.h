@@ -295,10 +295,10 @@ public:
     LayoutUnit marginAfterForChild(const RenderBoxModelObject* child) const { return child->marginAfter(style()); }
     LayoutUnit marginStartForChild(const RenderBoxModelObject* child) const { return child->marginStart(style()); }
     LayoutUnit marginEndForChild(const RenderBoxModelObject* child) const { return child->marginEnd(style()); }
-    void setMarginStartForChild(RenderBox* child, LayoutUnit value) { child->setMarginStart(value, style()); }
-    void setMarginEndForChild(RenderBox* child, LayoutUnit value) { child->setMarginEnd(value, style()); }
-    void setMarginBeforeForChild(RenderBox* child, LayoutUnit value) { child->setMarginBefore(value, style()); }
-    void setMarginAfterForChild(RenderBox* child, LayoutUnit value) { child->setMarginAfter(value, style()); }
+    void setMarginStartForChild(RenderBox* child, LayoutUnit value) const { child->setMarginStart(value, style()); }
+    void setMarginEndForChild(RenderBox* child, LayoutUnit value) const { child->setMarginEnd(value, style()); }
+    void setMarginBeforeForChild(RenderBox* child, LayoutUnit value) const { child->setMarginBefore(value, style()); }
+    void setMarginAfterForChild(RenderBox* child, LayoutUnit value) const { child->setMarginAfter(value, style()); }
     LayoutUnit collapsedMarginBeforeForChild(const RenderBox* child) const;
     LayoutUnit collapsedMarginAfterForChild(const RenderBox* child) const;
 
@@ -414,6 +414,8 @@ protected:
 
     virtual void paint(PaintInfo&, const LayoutPoint&);
     virtual void paintObject(PaintInfo&, const LayoutPoint&);
+    virtual void paintChildren(PaintInfo& forSelf, const LayoutPoint&, PaintInfo& forChild, bool usePrintRect);
+    bool paintChild(RenderBox*, PaintInfo& forSelf, const LayoutPoint&, PaintInfo& forChild, bool usePrintRect);
    
     LayoutUnit logicalRightOffsetForLine(LayoutUnit position, LayoutUnit fixedOffset, bool applyTextIndent, LayoutUnit* logicalHeightRemaining = 0, LayoutUnit logicalHeight = 0) const;
     LayoutUnit logicalLeftOffsetForLine(LayoutUnit position, LayoutUnit fixedOffset, bool applyTextIndent, LayoutUnit* logicalHeightRemaining = 0, LayoutUnit logicalHeight = 0) const;
@@ -471,9 +473,9 @@ protected:
 
     void computeInitialRegionRangeForBlock();
     void computeRegionRangeForBlock();
-    
+
     virtual void checkForPaginationLogicalHeightChange(LayoutUnit& pageLogicalHeight, bool& pageLogicalHeightChanged, bool& hasSpecifiedPageLogicalHeight);
-    
+
 private:
     virtual RenderObjectChildList* virtualChildren() { return children(); }
     virtual const RenderObjectChildList* virtualChildren() const { return children(); }
@@ -732,7 +734,6 @@ private:
     void paintContents(PaintInfo&, const LayoutPoint&);
     void paintColumnContents(PaintInfo&, const LayoutPoint&, bool paintFloats = false);
     void paintColumnRules(PaintInfo&, const LayoutPoint&);
-    void paintChildren(PaintInfo&, const LayoutPoint&);
     void paintEllipsisBoxes(PaintInfo&, const LayoutPoint&);
     void paintSelection(PaintInfo&, const LayoutPoint&);
     void paintCaret(PaintInfo&, const LayoutPoint&, CaretType);
@@ -815,9 +816,6 @@ private:
 
     Position positionForBox(InlineBox*, bool start = true) const;
     VisiblePosition positionForPointWithInlineChildren(const LayoutPoint&);
-
-    // Adjust from painting offsets to the local coords of this renderer
-    void offsetForContents(LayoutPoint&) const;
 
     virtual void calcColumnWidth();
     void makeChildrenAnonymousColumnBlocks(RenderObject* beforeChild, RenderBlock* newBlockBox, RenderObject* newChild);
@@ -963,6 +961,9 @@ protected:
     LayoutUnit adjustForUnsplittableChild(RenderBox* child, LayoutUnit logicalOffset, bool includeMargins = false); // If the child is unsplittable and can't fit on the current page, return the top of the next page/column.
     void adjustLinePositionForPagination(RootInlineBox*, LayoutUnit& deltaOffset); // Computes a deltaOffset value that put a line at the top of the next page if it doesn't fit on the current page.
     LayoutUnit adjustBlockChildForPagination(LayoutUnit logicalTopAfterClear, LayoutUnit estimateWithoutPagination, RenderBox* child, bool atBeforeSideOfBlock);
+
+    // Adjust from painting offsets to the local coords of this renderer
+    void offsetForContents(LayoutPoint&) const;
 
     // This function is called to test a line box that has moved in the block direction to see if it has ended up in a new
     // region/page/column that has a different available line width than the old one. Used to know when you have to dirty a

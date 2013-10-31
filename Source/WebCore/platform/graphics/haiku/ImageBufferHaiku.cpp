@@ -26,12 +26,12 @@
 #include "config.h"
 #include "ImageBuffer.h"
 
-#include "Base64.h"
 #include "GraphicsContext.h"
 #include "ImageData.h"
 #include "MIMETypeRegistry.h"
 #include "NotImplemented.h"
 #include "StillImageHaiku.h"
+#include <wtf/text/Base64.h>
 #include <wtf/text/CString.h>
 #include <BitmapStream.h>
 #include <String.h>

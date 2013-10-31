@@ -53,7 +53,7 @@
 #include "PopupMenuClient.h"
 #include "ProgressTracker.h"
 #include "RefPtrCairo.h"
-#include "RenderTheme.h"
+#include "RenderThemeEfl.h"
 #include "ResourceHandle.h"
 #include "Settings.h"
 #include "c_instance.h"
@@ -101,6 +101,10 @@
 
 #if ENABLE(INPUT_TYPE_COLOR)
 #include "ColorChooserClient.h"
+#endif
+
+#if ENABLE(REGISTER_PROTOCOL_HANDLER) || ENABLE(CUSTOM_SCHEME_HANDLER)
+#include "RegisterProtocolHandlerClientEfl.h"
 #endif
 
 static const float zoomMinimum = 0.05;
@@ -629,9 +633,9 @@ static Eina_Bool _ewk_view_smart_should_interrupt_javascript(Ewk_View_Smart_Data
     return false;
 }
 
-static Eina_Bool _ewk_view_smart_run_javascript_prompt(Ewk_View_Smart_Data* smartData, Evas_Object* frame, const char* message, const char* defaultValue, char** value)
+static Eina_Bool _ewk_view_smart_run_javascript_prompt(Ewk_View_Smart_Data* smartData, Evas_Object* frame, const char* message, const char* defaultValue, const char** value)
 {
-    *value = strdup("test");
+    *value = eina_stringshare_add("test");
     Eina_Bool result = true;
     INF("javascript prompt:\n"
         "\t      message: %s\n"
@@ -754,7 +758,11 @@ static Ewk_View_Private_Data* _ewk_view_priv_new(Ewk_View_Smart_Data* smartData)
 #endif
 
 #if ENABLE(BATTERY_STATUS)
-    WebCore::provideBatteryTo(priv->page.get(), new BatteryClientEfl);
+    WebCore::provideBatteryTo(priv->page.get(), new BatteryClientEfl(smartData->self));
+#endif
+
+#if ENABLE(REGISTER_PROTOCOL_HANDLER) || ENABLE(CUSTOM_SCHEME_HANDLER)
+    WebCore::provideRegisterProtocolHandlerTo(priv->page.get(), new WebCore::RegisterProtocolHandlerClientEfl(smartData->self));
 #endif
 
     priv->pageSettings = priv->page->settings();
@@ -789,6 +797,7 @@ static Ewk_View_Private_Data* _ewk_view_priv_new(Ewk_View_Smart_Data* smartData)
 #if ENABLE(FULLSCREEN_API)
     priv->pageSettings->setFullScreenEnabled(true);
 #endif
+    priv->pageSettings->setInteractiveFormValidationEnabled(true);
 
     url = priv->pageSettings->userStyleSheetLocation();
     priv->settings.userStylesheet = eina_stringshare_add(url.string().utf8().data());
@@ -1376,12 +1385,8 @@ void ewk_view_theme_set(Evas_Object* ewkView, const char* path)
     if (!eina_stringshare_replace(&priv->settings.theme, path))
         return;
 
-    WebCore::FrameView* view = priv->mainFrame->view();
-    if (view) {
-        view->setEdjeTheme(WTF::String(path));
-        priv->page->theme()->themeChanged();
-    }
-
+    WebCore::RenderThemeEfl* theme = static_cast<WebCore::RenderThemeEfl*>(priv->page->theme());
+    theme->setThemePath(path);
 }
 
 const char* ewk_view_theme_get(const Evas_Object* ewkView)
@@ -1580,14 +1585,14 @@ Eina_Bool ewk_view_editable_set(Evas_Object* ewkView, Eina_Bool editable)
     return ewk_frame_editable_set(smartData->main_frame, editable);
 }
 
-char* ewk_view_selection_get(const Evas_Object* ewkView)
+const char* ewk_view_selection_get(const Evas_Object* ewkView)
 {
     EWK_VIEW_SD_GET_OR_RETURN(ewkView, smartData, 0);
     EWK_VIEW_PRIV_GET_OR_RETURN(smartData, priv, 0);
     CString selectedString = priv->page->focusController()->focusedOrMainFrame()->editor()->selectedText().utf8();
     if (selectedString.isNull())
         return 0;
-    return strdup(selectedString.data());
+    return eina_stringshare_add(selectedString.data());
 }
 
 Eina_Bool ewk_view_editor_command_execute(const Evas_Object* ewkView, const Ewk_Editor_Command command, const char* value)
@@ -2609,8 +2614,8 @@ Eina_Bool ewk_view_setting_minimum_timer_interval_set(Evas_Object* ewkView, doub
 
 double ewk_view_setting_minimum_timer_interval_get(const Evas_Object* ewkView)
 {
-    EWK_VIEW_SD_GET_OR_RETURN(ewkView, smartData, false);
-    EWK_VIEW_PRIV_GET_OR_RETURN(smartData, priv, false);
+    EWK_VIEW_SD_GET_OR_RETURN(ewkView, smartData, -1.0);
+    EWK_VIEW_PRIV_GET_OR_RETURN(smartData, priv, -1.0);
     return priv->settings.domTimerInterval;
 }
 
@@ -3476,7 +3481,7 @@ bool ewk_view_run_javascript_confirm(Evas_Object* ewkView, Evas_Object* frame, c
     return smartData->api->run_javascript_confirm(smartData, frame, message);
 }
 
-bool ewk_view_run_javascript_prompt(Evas_Object* ewkView, Evas_Object* frame, const char* message, const char* defaultValue, char** value)
+bool ewk_view_run_javascript_prompt(Evas_Object* ewkView, Evas_Object* frame, const char* message, const char* defaultValue, const char** value)
 {
     DBG("ewkView=%p frame=%p message=%s", ewkView, frame, message);
     EWK_VIEW_SD_GET_OR_RETURN(ewkView, smartData, false);
@@ -3573,9 +3578,9 @@ uint64_t ewk_view_exceeded_database_quota(Evas_Object* ewkView, Evas_Object* fra
  *
  * @return @false if user canceled file selection; @true if confirmed.
  */
-bool ewk_view_run_open_panel(Evas_Object* ewkView, Evas_Object* frame, bool allowsMultipleFiles, const WTF::Vector<WTF::String>& acceptMIMETypes, Eina_List** selectedFilenames)
+bool ewk_view_run_open_panel(Evas_Object* ewkView, Evas_Object* frame, Ewk_File_Chooser* fileChooser, Eina_List** selectedFilenames)
 {
-    DBG("ewkView=%p frame=%p allows_multiple_files=%d", ewkView, frame, allowsMultipleFiles);
+    DBG("ewkView=%p frame=%p allows_multiple_files=%d", ewkView, frame, ewk_file_chooser_allows_multiple_files_get(fileChooser));
     EWK_VIEW_SD_GET_OR_RETURN(ewkView, smartData, false);
     EINA_SAFETY_ON_NULL_RETURN_VAL(smartData->api, false);
 
@@ -3583,18 +3588,9 @@ bool ewk_view_run_open_panel(Evas_Object* ewkView, Evas_Object* frame, bool allo
         return false;
 
     *selectedFilenames = 0;
-
-    Eina_List* cAcceptMIMETypes = 0;
-    for (WTF::Vector<WTF::String>::const_iterator iterator = acceptMIMETypes.begin(); iterator != acceptMIMETypes.end(); ++iterator)
-        cAcceptMIMETypes = eina_list_append(cAcceptMIMETypes, strdup((*iterator).utf8().data()));
-
-    bool confirm = smartData->api->run_open_panel(smartData, frame, allowsMultipleFiles, cAcceptMIMETypes, selectedFilenames);
+    bool confirm = smartData->api->run_open_panel(smartData, frame, fileChooser, selectedFilenames);    
     if (!confirm && *selectedFilenames)
         ERR("Canceled file selection, but selected filenames != 0. Free names before return.");
-
-    void* item = 0;
-    EINA_LIST_FREE(cAcceptMIMETypes, item)
-        free(item);
 
     return confirm;
 }
@@ -4022,18 +4018,22 @@ void ewk_view_transition_to_commited_for_newpage(Evas_Object* ewkView)
 
 /**
  * @internal
- * Reports a requeset will be loaded. It's client responsibility to decide if
- * request would be used. If @return is true, loader will try to load. Else,
- * Loader ignore action of request.
+ * Reports that a navigation policy decision should be taken. If @return
+ * is true, the navigation request will be accepted, otherwise it will be
+ * ignored.
  *
  * @param ewkView View to load
  * @param request Request which contain url to navigate
  * @param navigationType navigation type
+ *
+ * @return true if the client accepted the navigation request, false otherwise. If the
+ * client did not make a decision, we return true by default since the default policy
+ * is to accept.
  */
 bool ewk_view_navigation_policy_decision(Evas_Object* ewkView, Ewk_Frame_Resource_Request* request, Ewk_Navigation_Type navigationType)
 {
-    EWK_VIEW_SD_GET_OR_RETURN(ewkView, smartData, true);
-    EINA_SAFETY_ON_NULL_RETURN_VAL(smartData->api, true);
+    EWK_VIEW_SD_GET_OR_RETURN(ewkView, smartData, false);
+    EINA_SAFETY_ON_NULL_RETURN_VAL(smartData->api, false);
 
     if (!smartData->api->navigation_policy_decision)
         return true;
@@ -4099,12 +4099,12 @@ void ewk_view_contents_size_changed(Evas_Object* ewkView, int width, int height)
  *
  * @param ewkView view.
  *
- * @return page size.
+ * @return page size, or -1.0 size on failure
  */
 WebCore::FloatRect ewk_view_page_rect_get(const Evas_Object* ewkView)
 {
-    EWK_VIEW_SD_GET(ewkView, smartData);
-    EWK_VIEW_PRIV_GET(smartData, priv);
+    EWK_VIEW_SD_GET_OR_RETURN(ewkView, smartData, WebCore::FloatRect(-1.0, -1.0, -1.0, -1.0));
+    EWK_VIEW_PRIV_GET_OR_RETURN(smartData, priv, WebCore::FloatRect(-1.0, -1.0, -1.0, -1.0));
 
     WebCore::Frame* main_frame = priv->page->mainFrame();
     return main_frame->view()->frameRect();
@@ -4279,8 +4279,8 @@ void ewk_view_soup_session_set(Evas_Object* ewkView, SoupSession* session)
 
 Eina_Bool ewk_view_setting_enable_xss_auditor_get(const Evas_Object* ewkView)
 {
-    EWK_VIEW_SD_GET_OR_RETURN(ewkView, smartData, EINA_FALSE);
-    EWK_VIEW_PRIV_GET_OR_RETURN(smartData, priv, EINA_FALSE);
+    EWK_VIEW_SD_GET_OR_RETURN(ewkView, smartData, false);
+    EWK_VIEW_PRIV_GET_OR_RETURN(smartData, priv, false);
     return priv->settings.enableXSSAuditor;
 }
 

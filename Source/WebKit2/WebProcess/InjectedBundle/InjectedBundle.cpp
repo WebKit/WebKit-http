@@ -36,6 +36,7 @@
 #include "WKBundleAPICast.h"
 #include "WebApplicationCacheManager.h"
 #include "WebContextMessageKinds.h"
+#include "WebCookieManager.h"
 #include "WebCoreArgumentCoders.h"
 #include "WebDatabaseManager.h"
 #include "WebFrame.h"
@@ -112,6 +113,11 @@ WebConnection* InjectedBundle::webConnectionToUIProcess() const
 void InjectedBundle::setShouldTrackVisitedLinks(bool shouldTrackVisitedLinks)
 {
     WebProcess::shared().setShouldTrackVisitedLinks(shouldTrackVisitedLinks);
+}
+
+void InjectedBundle::setAlwaysAcceptCookies(bool accept)
+{
+    WebCookieManager::shared().setHTTPCookieAcceptPolicy(accept ? HTTPCookieAcceptPolicyAlways : HTTPCookieAcceptPolicyOnlyFromMainDocumentDomain);
 }
 
 void InjectedBundle::removeAllVisitedLinks()
@@ -263,12 +269,16 @@ void InjectedBundle::resetOriginAccessWhitelists()
 
 void InjectedBundle::clearAllDatabases()
 {
+#if ENABLE(SQL_DATABASE)
     WebDatabaseManager::shared().deleteAllDatabases();
+#endif
 }
 
 void InjectedBundle::setDatabaseQuota(uint64_t quota)
 {
+#if ENABLE(SQL_DATABASE)
     WebDatabaseManager::shared().setQuotaForOrigin("file:///", quota);
+#endif
 }
 
 void InjectedBundle::clearApplicationCache()

@@ -37,6 +37,7 @@
 
 namespace WebCore {
 
+class InspectorOverlay;
 class Page;
 class PageScriptDebugServer;
 
@@ -44,7 +45,7 @@ class PageDebuggerAgent : public InspectorDebuggerAgent {
     WTF_MAKE_NONCOPYABLE(PageDebuggerAgent);
     WTF_MAKE_FAST_ALLOCATED;
 public:
-    static PassOwnPtr<PageDebuggerAgent> create(InstrumentingAgents*, InspectorState*, Page*, InjectedScriptManager*);
+    static PassOwnPtr<PageDebuggerAgent> create(InstrumentingAgents*, InspectorState*, Page*, InjectedScriptManager*, InspectorOverlay*);
     virtual ~PageDebuggerAgent();
 
 private:
@@ -55,9 +56,11 @@ private:
     virtual void unmuteConsole();
 
     virtual InjectedScript injectedScriptForEval(ErrorString*, const int* executionContextId);
+    virtual void setOverlayMessage(ErrorString*, const String*);
 
-    PageDebuggerAgent(InstrumentingAgents*, InspectorState*, Page*, InjectedScriptManager*);
+    PageDebuggerAgent(InstrumentingAgents*, InspectorState*, Page*, InjectedScriptManager*, InspectorOverlay*);
     Page* const m_inspectedPage;
+    InspectorOverlay* m_overlay;
 };
 
 } // namespace WebCore

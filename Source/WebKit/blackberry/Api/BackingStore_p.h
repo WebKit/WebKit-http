@@ -166,6 +166,9 @@ public:
     void clearAndUpdateTileOfNotRenderedRegion(const TileIndex&, BackingStoreTile*, const Platform::IntRectRegion&, const Platform::IntRect& backingStoreRect, bool update = true);
     bool isCurrentVisibleJob(const TileIndex&, BackingStoreTile*, const Platform::IntRect& backingStoreRect) const;
 
+    // Not thread safe. Call only when threads are in sync.
+    void clearRenderedRegion(BackingStoreTile*, const Platform::IntRectRegion&);
+
     // Responsible for scrolling the backing store and updating the
     // tile matrix geometry.
     void scrollBackingStore(int deltaX, int deltaY);
@@ -307,11 +310,10 @@ public:
     void renderContents(Platform::Graphics::Drawable* /*drawable*/, const Platform::IntRect& /*contentsRect*/, const Platform::IntSize& /*destinationSize*/) const;
 
     void blitToWindow(const Platform::IntRect& dstRect, const BlackBerry::Platform::Graphics::Buffer* srcBuffer, const Platform::IntRect& srcRect, bool blend, unsigned char globalAlpha);
-    void checkerWindow(const Platform::IntRect& dstRect, const Platform::IntPoint& contentsOrigin, double contentsScale);
+    void fillWindow(Platform::Graphics::FillPattern, const Platform::IntRect& dstRect, const Platform::IntPoint& contentsOrigin, double contentsScale);
 
     void invalidateWindow();
     void invalidateWindow(const Platform::IntRect& dst);
-    void clearWindow();
     void clearWindow(const Platform::IntRect&, unsigned char red, unsigned char green, unsigned char blue, unsigned char alpha = 255);
 
     bool isScrollingOrZooming() const;
@@ -335,12 +337,11 @@ public:
     BlackBerry::Platform::IntSize surfaceSize() const;
     BlackBerry::Platform::Graphics::Buffer* buffer() const;
 
-    bool ensureOverScrollImage();
-
     static WebPage* s_currentBackingStoreOwner;
 
-    bool m_suspendScreenUpdates;
-    bool m_suspendBackingStoreUpdates;
+    unsigned m_suspendScreenUpdates;
+    unsigned m_suspendBackingStoreUpdates;
+    BackingStore::ResumeUpdateOperation m_resumeOperation;
 
     bool m_suspendRenderJobs;
     bool m_suspendRegularRenderJobs;
@@ -377,10 +378,6 @@ public:
     mutable bool m_needsDrawLayersOnCommit; // Not thread safe, WebKit thread only
     bool m_isDirectRenderingAnimationMessageScheduled;
 #endif
-
-    static Platform::Graphics::Buffer* s_overScrollImage;
-    static std::string s_overScrollImagePath;
-    static Platform::IntSize s_overScrollImageSize;
 
 protected:
     virtual ~BackingStorePrivate();

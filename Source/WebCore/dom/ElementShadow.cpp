@@ -65,7 +65,7 @@ static bool validateShadowRoot(Document* document, ShadowRoot* shadowRoot, Excep
     return true;
 }
 
-void ElementShadow::addShadowRoot(Element* shadowHost, PassRefPtr<ShadowRoot> shadowRoot, ExceptionCode& ec)
+void ElementShadow::addShadowRoot(Element* shadowHost, PassRefPtr<ShadowRoot> shadowRoot, ShadowRoot::ShadowRootType type, ExceptionCode& ec)
 {
     ASSERT(shadowHost);
     ASSERT(shadowRoot);
@@ -73,10 +73,13 @@ void ElementShadow::addShadowRoot(Element* shadowHost, PassRefPtr<ShadowRoot> sh
     if (!validateShadowRoot(shadowHost->document(), shadowRoot.get(), ec))
         return;
 
+    if (type == ShadowRoot::AuthorShadowRoot)
+        shadowHost->willAddAuthorShadowRoot();
+
     shadowRoot->setHost(shadowHost);
     shadowRoot->setParentTreeScope(shadowHost->treeScope());
     m_shadowRoots.push(shadowRoot.get());
-    invalidateDistribution(shadowHost);
+    invalidateDistribution(shadowHost, InvalidateIfNeeded);
     ChildNodeInsertionNotifier(shadowHost).notify(shadowRoot.get());
 
     if (shadowHost->attached() && !shadowRoot->attached())
@@ -105,7 +108,7 @@ void ElementShadow::removeAllShadowRoots()
         ChildNodeRemovalNotifier(shadowHost).notify(oldRoot.get());
     }
 
-    invalidateDistribution(shadowHost);
+    invalidateDistribution(shadowHost, InvalidateIfNeeded);
 }
 
 void ElementShadow::attach()
@@ -185,22 +188,26 @@ void ElementShadow::ensureDistribution()
     m_distributor.distribute(host());
 }
 
-void ElementShadow::invalidateDistribution()
+void ElementShadow::invalidateDistribution(InvalidationType type)
 {
-    invalidateDistribution(host());
+    invalidateDistribution(host(), type);
 }
 
-void ElementShadow::invalidateDistribution(Element* host)
+void ElementShadow::invalidateDistribution(Element* host, InvalidationType type)
 {
-    if (!m_distributor.needsInvalidation())
-        return;
-    bool needsReattach = m_distributor.invalidate(host);
+    bool needsReattach = (type == InvalidateAndForceReattach);
+    bool needsInvalidation = m_distributor.needsInvalidation();
+
+    if (needsInvalidation)
+        needsReattach |= m_distributor.invalidate(host);
+
     if (needsReattach && host->attached()) {
         host->detach();
         host->lazyAttach(Node::DoNotSetAttached);
     }
 
-    m_distributor.finishInivalidation();
+    if (needsInvalidation)
+        m_distributor.finishInivalidation();
 }
 
 } // namespace

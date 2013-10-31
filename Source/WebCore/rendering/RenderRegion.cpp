@@ -127,7 +127,7 @@ bool RenderRegion::nodeAtPoint(const HitTestRequest& request, HitTestResult& res
 
     // Check our bounds next. For this purpose always assume that we can only be hit in the
     // foreground phase (which is true for replaced elements like images).
-    LayoutRect boundsRect = borderBoxRectInRegion(result.region());
+    LayoutRect boundsRect = borderBoxRectInRegion(pointInContainer.region());
     boundsRect.moveBy(adjustedLocation);
     if (visibleToHitTesting() && action == HitTestForeground && pointInContainer.intersects(boundsRect)) {
         // Check the contents of the RenderFlowThread.
@@ -144,13 +144,22 @@ bool RenderRegion::nodeAtPoint(const HitTestRequest& request, HitTestResult& res
 void RenderRegion::styleDidChange(StyleDifference diff, const RenderStyle* oldStyle)
 {
     RenderReplaced::styleDidChange(diff, oldStyle);
+
+    // If the region is not attached to any thread, there is no need to check
+    // whether the region has region styling since no content will be displayed
+    // into the region.
+    if (!m_flowThread) {
+        setHasCustomRegionStyle(false);
+        return;
+    }
+
     bool customRegionStyle = false;
     if (node()) {
         Element* regionElement = static_cast<Element*>(node());
         customRegionStyle = view()->document()->styleResolver()->checkRegionStyle(regionElement);
     }
     setHasCustomRegionStyle(customRegionStyle);
-    flowThread()->checkRegionsWithStyling();
+    m_flowThread->checkRegionsWithStyling();
 }
 
 void RenderRegion::layout()

@@ -40,10 +40,10 @@ class FileList;
 class HTMLInputElement;
 class PopupMenu;
 class RenderMenuList;
-#if ENABLE(METER_TAG)
+#if ENABLE(METER_ELEMENT)
 class RenderMeter;
 #endif
-#if ENABLE(PROGRESS_TAG)
+#if ENABLE(PROGRESS_ELEMENT)
 class RenderProgress;
 #endif
 class CSSStyleSheet;
@@ -185,7 +185,7 @@ public:
     // Method for painting the caps lock indicator
     virtual bool paintCapsLockIndicator(RenderObject*, const PaintInfo&, const IntRect&) { return 0; };
 
-#if ENABLE(PROGRESS_TAG)
+#if ENABLE(PROGRESS_ELEMENT)
     // Returns the repeat interval of the animation for the progress bar.
     virtual double animationRepeatIntervalForProgressBar(RenderProgress*) const;
     // Returns the duration of the animation for the progress bar.
@@ -209,11 +209,20 @@ public:
     virtual IntPoint volumeSliderOffsetFromMuteButton(RenderBox*, const IntSize&) const;
 #endif
 
-#if ENABLE(METER_TAG)
+#if ENABLE(METER_ELEMENT)
     virtual IntSize meterSizeForBounds(const RenderMeter*, const IntRect&) const;
     virtual bool supportsMeter(ControlPart) const;
 #endif
-    
+
+#if ENABLE(DATALIST_ELEMENT)
+    // Returns size of one slider tick mark for a horizontal track.
+    // For vertical tracks we rotate it and use it. i.e. Width is always length along the track.
+    virtual IntSize sliderTickSize() const = 0;
+    // Returns the distance of slider tick origin from the slider track center.
+    virtual int sliderTickOffsetFromTrackCenter() const = 0;
+    void paintSliderTicks(RenderObject*, const PaintInfo&, const IntRect&);
+#endif
+
     virtual bool shouldShowPlaceholderWhenFocused() const { return false; }
     virtual bool shouldHaveSpinButton(HTMLInputElement*) const;
 
@@ -270,12 +279,12 @@ protected:
     virtual void adjustMenuListButtonStyle(StyleResolver*, RenderStyle*, Element*) const;
     virtual bool paintMenuListButton(RenderObject*, const PaintInfo&, const IntRect&) { return true; }
 
-#if ENABLE(METER_TAG)
+#if ENABLE(METER_ELEMENT)
     virtual void adjustMeterStyle(StyleResolver*, RenderStyle*, Element*) const;
     virtual bool paintMeter(RenderObject*, const PaintInfo&, const IntRect&);
 #endif
 
-#if ENABLE(PROGRESS_TAG)
+#if ENABLE(PROGRESS_ELEMENT)
     virtual void adjustProgressBarStyle(StyleResolver*, RenderStyle*, Element*) const;
     virtual bool paintProgressBar(RenderObject*, const PaintInfo&, const IntRect&) { return true; }
 #endif
@@ -309,6 +318,7 @@ protected:
     virtual void adjustMediaControlStyle(StyleResolver*, RenderStyle*, Element*) const;
     virtual bool paintMediaFullscreenButton(RenderObject*, const PaintInfo&, const IntRect&) { return true; }
     virtual bool paintMediaPlayButton(RenderObject*, const PaintInfo&, const IntRect&) { return true; }
+    virtual bool paintMediaOverlayPlayButton(RenderObject*, const PaintInfo&, const IntRect&) { return true; }
     virtual bool paintMediaMuteButton(RenderObject*, const PaintInfo&, const IntRect&) { return true; }
     virtual bool paintMediaSeekBackButton(RenderObject*, const PaintInfo&, const IntRect&) { return true; }
     virtual bool paintMediaSeekForwardButton(RenderObject*, const PaintInfo&, const IntRect&) { return true; }

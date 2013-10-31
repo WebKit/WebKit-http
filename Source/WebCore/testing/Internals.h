@@ -44,10 +44,12 @@ class Element;
 class Frame;
 class InternalSettings;
 class Node;
+class PagePopupController;
 class Range;
 class ScriptExecutionContext;
 class ShadowRoot;
 class WebKitPoint;
+class FastMallocStatistics;
 
 typedef int ExceptionCode;
 
@@ -80,6 +82,8 @@ public:
     String shadowPseudoId(Element*, ExceptionCode&);
     void setShadowPseudoId(Element*, const String&, ExceptionCode&);
 
+    void setAuthorShadowDOMForAnyElementEnabled(bool isEnabled);
+
     PassRefPtr<Element> createContentElement(Document*, ExceptionCode&);
     Element* getElementByIdInShadowRoot(Node* shadowRoot, const String& id, ExceptionCode&);
     bool isValidContentSelect(Element* insertionPoint, ExceptionCode&);
@@ -101,6 +105,9 @@ public:
 #endif
     PassRefPtr<DOMStringList> formControlStateOfPreviousHistoryItem(ExceptionCode&);
     void setFormControlStateOfPreviousHistoryItem(PassRefPtr<DOMStringList>, ExceptionCode&);
+#if ENABLE(PAGE_POPUP)
+    PassRefPtr<PagePopupController> pagePopupController();
+#endif
 
     PassRefPtr<ClientRect> absoluteCaretBounds(Document*, ExceptionCode&);
 
@@ -113,9 +120,11 @@ public:
     unsigned markerCountForNode(Node*, const String&, ExceptionCode&);
     PassRefPtr<Range> markerRangeForNode(Node*, const String& markerType, unsigned index, ExceptionCode&);
     String markerDescriptionForNode(Node*, const String& markerType, unsigned index, ExceptionCode&);
+    void addTextMatchMarker(const Range*, bool isActive);
 
     void setScrollViewPosition(Document*, long x, long y, ExceptionCode&);
-    void setPagination(Document*, const String& mode, int gap, ExceptionCode&);
+    void setPagination(Document* document, const String& mode, int gap, ExceptionCode& ec) { setPagination(document, mode, gap, 0, ec); }
+    void setPagination(Document*, const String& mode, int gap, int pageLength, ExceptionCode&);
     String configurationForViewport(Document*, float devicePixelRatio, int deviceWidth, int deviceHeight, int availableWidth, int availableHeight, ExceptionCode&);
 
     bool wasLastChangeUserEdit(Element* textField, ExceptionCode&);
@@ -140,7 +149,7 @@ public:
 
     int lastSpellCheckRequestSequence(Document*, ExceptionCode&);
     int lastSpellCheckProcessedSequence(Document*, ExceptionCode&);
-    
+
     Vector<String> userPreferredLanguages() const;
     void setUserPreferredLanguages(const Vector<String>&);
 
@@ -149,6 +158,7 @@ public:
 
     unsigned wheelEventHandlerCount(Document*, ExceptionCode&);
     unsigned touchEventHandlerCount(Document*, ExceptionCode&);
+    bool hasTouchEventListener(Document*, ExceptionCode&);
 
     PassRefPtr<NodeList> nodesFromRect(Document*, int x, int y, unsigned topPadding, unsigned rightPadding,
         unsigned bottomPadding, unsigned leftPadding, bool ignoreClipping, bool allowShadowContent, ExceptionCode&) const;
@@ -175,6 +185,8 @@ public:
     void suspendAnimations(Document*, ExceptionCode&) const;
     void resumeAnimations(Document*, ExceptionCode&) const;
 
+    void garbageCollectDocumentResources(Document*, ExceptionCode&) const;
+
     void allowRoundingHacks() const;
 
 #if ENABLE(INSPECTOR)
@@ -185,6 +197,9 @@ public:
 
     String counterValue(Element*);
 
+    int pageNumber(Element*, float pageWidth = 800, float pageHeight = 600);
+    PassRefPtr<DOMStringList> iconURLs(Document*) const;
+
 #if ENABLE(FULLSCREEN_API)
     void webkitWillEnterFullScreenForElement(Document*, Element*);
     void webkitDidEnterFullScreenForElement(Document*, Element*);
@@ -194,6 +209,8 @@ public:
 
     void registerURLSchemeAsBypassingContentSecurityPolicy(const String& scheme);
     void removeURLSchemeRegisteredAsBypassingContentSecurityPolicy(const String& scheme);
+
+    PassRefPtr<FastMallocStatistics> fastMallocStatistics() const;
 
 private:
     explicit Internals(Document*);

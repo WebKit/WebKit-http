@@ -1,3 +1,64 @@
+2012-07-29  Rik Cabanier  <cabanier@adobe.com>
+
+        Add ENABLE_CSS_COMPOSITING flag
+        https://bugs.webkit.org/show_bug.cgi?id=92553
+
+        Reviewed by Dirk Schulze.
+
+        Adds compiler flag CSS_COMPOSITING to build systems to enable CSS blending and compositing. See spec https://dvcs.w3.org/hg/FXTF/rawfile/tip/compositing/index.html
+
+        * win/tools/vsprops/FeatureDefines.vsprops:
+        * win/tools/vsprops/FeatureDefinesCairo.vsprops:
+
+2012-07-23  Roger Fong  <roger_fong@apple.com>
+
+        Disable flexbox on Windows
+        https://bugs.webkit.org/show_bug.cgi?id=92047
+        <rdar://problem/11570384>
+
+        Reviewed by Darin Adler.
+
+        Disabled Flexbox CSS3 syntax on Mac, need to do the same for Windows.
+
+        * win/tools/vsprops/FeatureDefines.vsprops:
+        Disable ENABLE_CSS3_FLEXBOX property.
+        
+2012-07-23  Kent Tamura  <tkent@chromium.org>
+
+        Rename ENABLE_METER_TAG and ENABLE_PROGRESS_TAG to ENABLE_METER_ELEMENT and ENABLE_PROGRESS_ELEMENT respectively
+        https://bugs.webkit.org/show_bug.cgi?id=91941
+
+        Reviewed by Kentaro Hara.
+
+        A flag name for an elmement should be ENABLE_*_ELEMENT.
+
+        * win/tools/vsprops/FeatureDefines.vsprops:
+        * win/tools/vsprops/FeatureDefinesCairo.vsprops:
+
+2012-07-22  Kent Tamura  <tkent@chromium.org>
+
+        Rename ENABLE_DETAILS to ENABLE_DETAILS_ELEMENT
+        https://bugs.webkit.org/show_bug.cgi?id=91928
+
+        Reviewed by Kentaro Hara.
+
+        A flag name for an elmement should be ENABLE_*_ELEMENT.
+
+        * win/tools/vsprops/FeatureDefines.vsprops:
+        * win/tools/vsprops/FeatureDefinesCairo.vsprops:
+
+2012-07-20  Kent Tamura  <tkent@chromium.org>
+
+        Rename ENABLE_DATALIST to ENABLE_DATALIST_ELEMENT
+        https://bugs.webkit.org/show_bug.cgi?id=91846
+
+        Reviewed by Kentaro Hara.
+
+        A flag name for an elmement should be ENABLE_*_ELEMENT.
+
+        * win/tools/vsprops/FeatureDefines.vsprops:
+        * win/tools/vsprops/FeatureDefinesCairo.vsprops:
+
 2012-07-11  Mark Rowe  <mrowe@apple.com>
 
         Add a Mountain Lion version of libWebKitSystemInterface.a.

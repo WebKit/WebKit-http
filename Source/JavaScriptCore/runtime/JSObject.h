@@ -173,14 +173,14 @@ namespace JSC {
         {
             PropertyOffset offset = structure()->get(globalData, propertyName);
             checkOffset(offset, structure()->typeInfo().type());
-            return offset != invalidOffset ? locationForOffset(offset) : 0;
+            return isValidOffset(offset) ? locationForOffset(offset) : 0;
         }
 
         WriteBarrierBase<Unknown>* getDirectLocation(JSGlobalData& globalData, PropertyName propertyName, unsigned& attributes)
         {
             JSCell* specificFunction;
             PropertyOffset offset = structure()->get(globalData, propertyName, attributes, specificFunction);
-            return offset != invalidOffset ? locationForOffset(offset) : 0;
+            return isValidOffset(offset) ? locationForOffset(offset) : 0;
         }
 
         bool hasInlineStorage() const { return structure()->hasInlineStorage(); }
@@ -227,7 +227,7 @@ namespace JSC {
             if (offsetInInlineStorage < static_cast<size_t>(inlineStorageCapacity))
                 result = offsetInInlineStorage;
             else
-                result = location - outOfLineStorage() + firstOutOfLineOffset;
+                result = outOfLineStorage() - location + (inlineStorageCapacity - 2);
             validateOffset(result, structure()->typeInfo().type());
             return result;
         }
@@ -272,7 +272,6 @@ namespace JSC {
         JS_EXPORT_PRIVATE PropertyStorage growOutOfLineStorage(JSGlobalData&, size_t oldSize, size_t newSize);
         void setOutOfLineStorage(JSGlobalData&, PropertyStorage, Structure*);
         
-        bool reallocateStorageIfNecessary(JSGlobalData&, unsigned oldCapacity, Structure*);
         void setStructureAndReallocateStorageIfNecessary(JSGlobalData&, unsigned oldCapacity, Structure*);
         void setStructureAndReallocateStorageIfNecessary(JSGlobalData&, Structure*);
 
@@ -295,7 +294,6 @@ namespace JSC {
         
         static size_t offsetOfInlineStorage();
         static size_t offsetOfOutOfLineStorage();
-        static size_t offsetOfInheritorID();
 
         static JS_EXPORTDATA const ClassInfo s_info;
 
@@ -322,10 +320,12 @@ namespace JSC {
         // To create derived types you likely want JSNonFinalObject, below.
         JSObject(JSGlobalData&, Structure*);
         
-        void resetInheritorID()
+        void resetInheritorID(JSGlobalData& globalData)
         {
-            m_inheritorID.clear();
+            removeDirect(globalData, globalData.m_inheritorIDKey);
         }
+        
+        void visitOutOfLineStorage(SlotVisitor&, PropertyStorage, size_t storageSize);
 
     private:
         friend class LLIntOffsetsExtractor;
@@ -348,7 +348,9 @@ namespace JSC {
         Structure* createInheritorID(JSGlobalData&);
 
         StorageBarrier m_outOfLineStorage;
-        WriteBarrier<Structure> m_inheritorID;
+#if USE(JSVALUE32_64)
+        void* m_padding;
+#endif
     };
 
 
@@ -461,11 +463,6 @@ inline size_t JSObject::offsetOfOutOfLineStorage()
     return OBJECT_OFFSETOF(JSObject, m_outOfLineStorage);
 }
 
-inline size_t JSObject::offsetOfInheritorID()
-{
-    return OBJECT_OFFSETOF(JSObject, m_inheritorID);
-}
-
 inline bool JSObject::isGlobalObject() const
 {
     return structure()->typeInfo().type() == GlobalObjectType;
@@ -564,9 +561,10 @@ inline void JSObject::setPrototype(JSGlobalData& globalData, JSValue prototype)
 
 inline Structure* JSObject::inheritorID(JSGlobalData& globalData)
 {
-    if (m_inheritorID) {
-        ASSERT(m_inheritorID->isEmpty());
-        return m_inheritorID.get();
+    if (WriteBarrierBase<Unknown>* location = getDirectLocation(globalData, globalData.m_inheritorIDKey)) {
+        Structure* inheritorID = jsCast<Structure*>(location->get());
+        ASSERT(inheritorID->isEmpty());
+        return inheritorID;
     }
     return createInheritorID(globalData);
 }

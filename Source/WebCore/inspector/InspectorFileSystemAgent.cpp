@@ -34,7 +34,6 @@
 
 #include "InspectorFileSystemAgent.h"
 
-#include "Base64.h"
 #include "DOMFileSystem.h"
 #include "DOMImplementation.h"
 #include "DirectoryEntry.h"
@@ -44,6 +43,7 @@
 #include "EntryArray.h"
 #include "EntryCallback.h"
 #include "ErrorCallback.h"
+#include "File.h"
 #include "FileCallback.h"
 #include "FileEntry.h"
 #include "FileError.h"
@@ -63,6 +63,7 @@
 #include "SecurityOrigin.h"
 #include "TextEncoding.h"
 #include "TextResourceDecoder.h"
+#include <wtf/text/Base64.h>
 
 using WebCore::TypeBuilder::Array;
 

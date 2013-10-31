@@ -21,14 +21,9 @@
 #include "config.h"
 #include "qwebframe.h"
 
-#if USE(JSC)
 #include "APICast.h"
 #include "BridgeJSC.h"
 #include "CallFrame.h"
-#elif USE(V8)
-#include "V8Binding.h"
-#include <QJSEngine>
-#endif
 #include "Document.h"
 #include "DocumentLoader.h"
 #include "DragData.h"
@@ -39,11 +34,7 @@
 #include "FrameSelection.h"
 #include "FrameTree.h"
 #include "FrameView.h"
-#if USE(JSC)
 #include "GCController.h"
-#elif USE(V8)
-#include "V8GCController.h"
-#endif
 #include "GraphicsContext.h"
 #include "HTMLFormElement.h"
 #include "HTMLMetaElement.h"
@@ -51,7 +42,6 @@
 #include "HTTPParsers.h"
 #include "IconDatabase.h"
 #include "InspectorController.h"
-#if USE(JSC)
 #include "JavaScript.h"
 #include "JSDOMBinding.h"
 #include "JSDOMWindowBase.h"
@@ -59,20 +49,14 @@
 #include "JSObject.h"
 #include "JSRetainPtr.h"
 #include "OpaqueJSString.h"
-#elif USE(V8)
-#include "V8DOMWrapper.h"
-#include "V8DOMWindowShell.h"
-#endif
 #include "NetworkingContext.h"
 #include "NodeList.h"
 #include "Page.h"
 #include "PlatformMouseEvent.h"
 #include "PlatformWheelEvent.h"
 #include "PrintContext.h"
-#if USE(JSC)
 #include "PropertyDescriptor.h"
 #include "PutPropertySlot.h"
-#endif
 #include "RenderLayer.h"
 #include "RenderTreeAsText.h"
 #include "RenderView.h"
@@ -87,10 +71,8 @@
 #include "TiledBackingStore.h"
 #include "htmlediting.h"
 #include "markup.h"
-#if USE(JSC)
 #include "qt_instance.h"
 #include "qt_runtime.h"
-#endif
 #include "qwebelement.h"
 #include "qwebframe_p.h"
 #include "qwebpage.h"
@@ -99,10 +81,8 @@
 #include "qwebsecurityorigin_p.h"
 #include "qwebscriptworld.h"
 #include "qwebscriptworld_p.h"
-#if USE(JSC)
 #include "runtime_object.h"
 #include "runtime_root.h"
-#endif
 #if USE(TEXTURE_MAPPER)
 #include "texmap/TextureMapper.h"
 #include "texmap/TextureMapperLayer.h"
@@ -356,6 +336,32 @@ void QWebFramePrivate::renderCompositedLayers(GraphicsContext* context, const In
 }
 #endif
 
+// This code is copied from ChromeClientGtk.cpp.
+static void coalesceRectsIfPossible(const QRect& clipRect, QVector<QRect>& rects)
+{
+    const unsigned int rectThreshold = 10;
+    const float wastedSpaceThreshold = 0.75f;
+    bool useUnionedRect = (rects.size() <= 1) || (rects.size() > rectThreshold);
+    if (!useUnionedRect) {
+        // Attempt to guess whether or not we should use the unioned rect or the individual rects.
+        // We do this by computing the percentage of "wasted space" in the union. If that wasted space
+        // is too large, then we will do individual rect painting instead.
+        float unionPixels = (clipRect.width() * clipRect.height());
+        float singlePixels = 0;
+        for (size_t i = 0; i < rects.size(); ++i)
+            singlePixels += rects[i].width() * rects[i].height();
+        float wastedSpace = 1 - (singlePixels / unionPixels);
+        if (wastedSpace <= wastedSpaceThreshold)
+            useUnionedRect = true;
+    }
+
+    if (!useUnionedRect)
+        return;
+
+    rects.clear();
+    rects.append(clipRect);
+}
+
 void QWebFramePrivate::renderRelativeCoords(GraphicsContext* context, QFlags<QWebFrame::RenderLayer> layers, const QRegion& clip)
 {
     if (!frame->view() || !frame->contentRenderer())
@@ -371,6 +377,8 @@ void QWebFramePrivate::renderRelativeCoords(GraphicsContext* context, QFlags<QWe
     view->updateLayoutAndStyleIfNeededRecursive();
 
     if (layers & QWebFrame::ContentsLayer) {
+        QRect clipBoundingRect = clip.boundingRect();
+        coalesceRectsIfPossible(clipBoundingRect, vector);
         for (int i = 0; i < vector.size(); ++i) {
             const QRect& clipRect = vector.at(i);
 
@@ -396,7 +404,7 @@ void QWebFramePrivate::renderRelativeCoords(GraphicsContext* context, QFlags<QWe
             context->restore();
         }
 #if USE(ACCELERATED_COMPOSITING)
-        renderCompositedLayers(context, IntRect(clip.boundingRect()));
+        renderCompositedLayers(context, IntRect(clipBoundingRect));
 #endif
     }
     renderFrameExtras(context, layers, clip);
@@ -484,14 +492,11 @@ void QWebFramePrivate::_q_orientationChanged()
 
 void QWebFramePrivate::didClearWindowObject()
 {
-#if USE(JSC)
     if (page->settings()->testAttribute(QWebSettings::JavascriptEnabled))
         addQtSenderToGlobalObject();
-#endif
     emit q->javaScriptWindowObjectCleared();
 }
 
-#if USE(JSC)
 static JSValueRef qtSenderCallback(JSContextRef context, JSObjectRef, JSObjectRef, size_t, const JSValueRef[], JSValueRef*)
 {
     QObject* sender = JSC::Bindings::QtInstance::qtSenderStack()->top();
@@ -525,7 +530,6 @@ void QWebFramePrivate::addQtSenderToGlobalObject()
     descriptor.setConfigurable(false);
     window->methodTable()->defineOwnProperty(window, exec, propertyName.get()->identifier(&exec->globalData()), descriptor, false);
 }
-#endif
 
 /*!
     \class QWebFrame
@@ -654,7 +658,6 @@ void QWebFrame::addToJavaScriptWindowObject(const QString &name, QObject *object
 {
     if (!page()->settings()->testAttribute(QWebSettings::JavascriptEnabled))
         return;
-#if USE(JSC)
     JSC::Bindings::QtInstance::ValueOwnership valueOwnership = static_cast<JSC::Bindings::QtInstance::ValueOwnership>(ownership);
     JSDOMWindow* window = toJSDOMWindow(d->frame, mainThreadNormalWorld());
     JSC::Bindings::RootObject* root;
@@ -680,13 +683,6 @@ void QWebFrame::addToJavaScriptWindowObject(const QString &name, QObject *object
 
     JSC::PutPropertySlot slot;
     window->methodTable()->put(window, exec, JSC::Identifier(&exec->globalData(), reinterpret_cast_ptr<const UChar*>(name.constData()), name.length()), runtimeObject, slot);
-#elif USE(V8)
-    QJSEngine* engine = d->frame->script()->qtScriptEngine();
-    if (!engine)
-        return;
-    QJSValue v = engine->newQObject(object); // FIXME: Ownership not propagated yet.
-    engine->globalObject().property(QLatin1String("window")).setProperty(name, v);
-#endif
 }
 
 /*!
@@ -1576,17 +1572,10 @@ QVariant QWebFrame::evaluateJavaScript(const QString& scriptSource)
     ScriptController *proxy = d->frame->script();
     QVariant rc;
     if (proxy) {
-#if USE(JSC)
         int distance = 0;
         JSC::JSValue v = d->frame->script()->executeScript(ScriptSourceCode(scriptSource)).jsValue();
 
         rc = JSC::Bindings::convertValueToQVariant(proxy->globalObject(mainThreadNormalWorld())->globalExec(), v, QMetaType::Void, &distance);
-#elif USE(V8)
-        QJSEngine* engine = d->frame->script()->qtScriptEngine();
-        if (!engine)
-            return rc;
-        rc = engine->evaluate(scriptSource).toVariant();
-#endif
     }
     return rc;
 }
@@ -1745,9 +1734,9 @@ QWebHitTestResultPrivate::QWebHitTestResultPrivate(const WebCore::HitTestResult 
     boundingRect = innerNonSharedNode ? innerNonSharedNode->renderer()->absoluteBoundingBoxRect() : IntRect();
     WebCore::Image *img = hitTest.image();
     if (img) {
-        QPixmap *pix = img->nativeImageForCurrentFrame();
+        QImage *pix = img->nativeImageForCurrentFrame();
         if (pix)
-            pixmap = *pix;
+            pixmap = QPixmap::fromImage(*pix);
     }
     WebCore::Frame *wframe = hitTest.targetFrame();
     if (wframe)

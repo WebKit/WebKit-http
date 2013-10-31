@@ -35,18 +35,24 @@
 
 class TestEventPrinter {
 public:
-    static PassOwnPtr<TestEventPrinter> createDRTPrinter();
-    static PassOwnPtr<TestEventPrinter> createTestShellPrinter();
+    TestEventPrinter();
+    ~TestEventPrinter();
+    void handleTestHeader(const char* url) const;
+    void handleTimedOut() const;
+    void handleTextHeader() const;
+    void handleTextFooter() const;
+    void handleAudio(const void* audioData, size_t audioSize) const;
+    void handleAudioFooter() const;
+    void handleImage(const char* actualHash, const char* expectedHash, const void* imageData, size_t imageSize) const;
+    void handleTestFooter(bool dumpedAnything) const;
 
-    virtual ~TestEventPrinter();
-    virtual void handleTestHeader(const char* url) const = 0;
-    virtual void handleTimedOut() const = 0;
-    virtual void handleTextHeader() const = 0;
-    virtual void handleTextFooter() const = 0;
-    virtual void handleAudioHeader() const = 0;
-    virtual void handleAudioFooter() const = 0;
-    virtual void handleImage(const char* actualHash, const char* expectedHash, const unsigned char* imageData, size_t imageSize, const char* fileName) const = 0;
-    virtual void handleTestFooter(bool dumpedAnything) const = 0;
+    // Set if binary output data should be encoded in base64. Default is off.
+    void setEncodeBinary(bool encodeBinary) { m_encodeBinary = encodeBinary; }
+
+private:
+    void handleBinary(const void* data, size_t) const;
+
+    bool m_encodeBinary;
 };
 
 #endif // TestEventPrinter_h

@@ -1137,18 +1137,17 @@ printing/page-format-data.html
 
 # Implement spinbutton support in RenderThemeSafari 
 # https://bugs.webkit.org/show_bug.cgi?id=54662
-fast/forms/number/input-appearance-number-rtl.html
-fast/forms/number/input-appearance-spinbutton-disabled-readonly.html
-fast/forms/number/input-appearance-spinbutton-layer.html
-fast/forms/number/input-appearance-spinbutton-visibility.html
-fast/forms/number/input-number-events.html
-fast/forms/number/input-number-large-padding.html
-fast/forms/number/input-number-size.html
-fast/forms/number/input-spinbutton-capturing.html
-fast/forms/number/spin-button-events.html
-fast/forms/number/spin-button-gets-disabled-or-readonly.html
-fast/forms/number/spin-button-state.html
-fast/forms/number/spin-in-multi-column.html
+fast/forms/number/number-appearance-rtl.html
+fast/forms/number/number-appearance-spinbutton-disabled-readonly.html
+fast/forms/number/number-appearance-spinbutton-layer.html
+fast/forms/number/number-appearance-spinbutton-visibility.html
+fast/forms/number/number-spinbutton-change-and-input-events.html
+fast/forms/number/number-large-padding.html
+fast/forms/number/number-size.html
+fast/forms/number/number-spinbutton-capturing.html
+fast/forms/number/number-spinbutton-gets-disabled-or-readonly.html
+fast/forms/number/number-spinbutton-state.html
+fast/forms/number/number-spinbutton-in-multi-column.html
 
 # Datalist is not yet enabled.
 fast/forms/datalist
@@ -1229,6 +1228,7 @@ http/tests/misc/webtiming-one-redirect.php
 http/tests/misc/webtiming-slow-load.php
 http/tests/misc/webtiming-ssl.php
 http/tests/misc/webtiming-two-redirects.php
+http/tests/w3c/webperf
 fast/performance
 
 # Still working out flakiness issues with the perf tests.
@@ -1299,11 +1299,6 @@ http/tests/security/filesystem-iframe-from-remote.html
 http/tests/websocket/tests/hybi/send-file-blob.html
 http/tests/websocket/tests/hybi/send-file-blob-fail.html
 fast/mutation/filesystem-callback-delivery.html
-
-# LayoutTestController::nodesFromRect is not supported.
-fast/dom/nodesFromRect-basic.html
-fast/dom/nodesFromRect-links-and-text.html
-fast/dom/nodesFromRect-inner-documents.html
 
 # https://bugs.webkit.org/show_bug.cgi?id=46223
 # The WebKit plugin implementation does not support iframe shims.
@@ -1566,6 +1561,7 @@ webintents/
 
 # Pointer Lock is not implemented.
 pointer-lock/
+http/tests/pointer-lock/
 
 # https://bugs.webkit.org/show_bug.cgi?id=72435
 fast/dom/Window/window-postmessage-arrays.html
@@ -1733,15 +1729,17 @@ fast/block/lineboxcontain/font.html
 # https://bugs.webkit.org/show_bug.cgi?id=85532
 fast/sub-pixel/client-rect-has-subpixel-precision.html
 fast/sub-pixel/client-width-height-snapping.html
+fast/sub-pixel/file-upload-control-at-fractional-offset.html
 fast/sub-pixel/float-containing-block-with-margin.html
 fast/sub-pixel/float-with-right-margin-zoom.html
 fast/sub-pixel/float-wrap-with-subpixel-top.html
 fast/sub-pixel/inline-block-with-margin.html
 fast/sub-pixel/inline-block-with-padding.html
 fast/sub-pixel/layout-boxes-with-zoom.html
-fast/sub-pixel/size-of-box-with-zoom.html
+fast/sub-pixel/position-right-aligns-with-container.html
 fast/sub-pixel/selection/selection-gaps-at-fractional-offsets.html
-fast/sub-pixel/file-upload-control-at-fractional-offset.html
+fast/sub-pixel/size-of-box-with-zoom.html
+fast/sub-pixel/table-rows-no-gaps.html
 
 # No CORS support for media elements is implemented yet.
 http/tests/security/video-cross-origin-readback.html
@@ -1942,6 +1940,14 @@ svg/W3C-I18N/tspan-dirRTL-ubOverride-in-rtl-context.svg
 svg/W3C-SVG-1.1-SE/linking-uri-01-b.svg
 svg/W3C-SVG-1.1-SE/text-intro-05-t.svg
 
+# CSS3 flexbox is disabled <rdar://problem/11570384>
+css3/flexbox
+transitions/flex-transitions.html
+fast/multicol/span/clone-flexbox.html
+
 # Content Security Policy 1.1 (ENABLE_CSP_NEXT) is not enabled
 # https://bugs.webkit.org/show_bug.cgi?id=85558
 http/tests/security/contentSecurityPolicy/1.1
+
+# Skip tests in fast/text/shaping
+fast/text/shaping

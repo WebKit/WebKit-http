@@ -76,6 +76,9 @@ WebInspector.ConsolePanel.prototype = {
         delete this._searchRegex;
     },
 
+    /**
+     * @param {string} query
+     */
     performSearch: function(query)
     {
         WebInspector.searchController.updateSearchMatchesCount(0, this);
@@ -111,6 +114,7 @@ WebInspector.ConsolePanel.prototype = {
         if (index === -1)
             index = this._searchResults.length - 1;
         this._jumpToSearchResult(index);
+        return true;
     },
 
     _clearCurrentSearchResultHighlight: function()
@@ -127,6 +131,7 @@ WebInspector.ConsolePanel.prototype = {
     {
         this._clearCurrentSearchResultHighlight();
         this._currentSearchResultIndex = index;
+        WebInspector.searchController.updateCurrentMatchIndex(this._currentSearchResultIndex, this);
         this._searchResults[index].highlightSearchResults(this._searchRegex);
     },
 

@@ -272,6 +272,22 @@ public:
     {
         use(nodeUse.index());
     }
+    
+    RegisterSet usedRegisters()
+    {
+        RegisterSet result;
+        for (unsigned i = GPRInfo::numberOfRegisters; i--;) {
+            GPRReg gpr = GPRInfo::toRegister(i);
+            if (m_gprs.isInUse(gpr))
+                result.set(gpr);
+        }
+        for (unsigned i = FPRInfo::numberOfRegisters; i--;) {
+            FPRReg fpr = FPRInfo::toRegister(i);
+            if (m_fprs.isInUse(fpr))
+                result.set(fpr);
+        }
+        return result;
+    }
 
     static void markCellCard(MacroAssembler&, GPRReg ownerGPR, GPRReg scratchGPR1, GPRReg scratchGPR2);
     static void writeBarrier(MacroAssembler&, GPRReg ownerGPR, GPRReg scratchGPR1, GPRReg scratchGPR2, WriteBarrierUseKind);
@@ -942,10 +958,10 @@ public:
     void nonSpeculativeUInt32ToNumber(Node&);
 
 #if USE(JSVALUE64)
-    void cachedGetById(CodeOrigin, GPRReg baseGPR, GPRReg resultGPR, GPRReg scratchGPR, unsigned identifierNumber, JITCompiler::Jump slowPathTarget = JITCompiler::Jump(), SpillRegistersMode = NeedToSpill);
+    void cachedGetById(CodeOrigin, GPRReg baseGPR, GPRReg resultGPR, unsigned identifierNumber, JITCompiler::Jump slowPathTarget = JITCompiler::Jump(), SpillRegistersMode = NeedToSpill);
     void cachedPutById(CodeOrigin, GPRReg base, GPRReg value, Edge valueUse, GPRReg scratchGPR, unsigned identifierNumber, PutKind, JITCompiler::Jump slowPathTarget = JITCompiler::Jump());
 #elif USE(JSVALUE32_64)
-    void cachedGetById(CodeOrigin, GPRReg baseTagGPROrNone, GPRReg basePayloadGPR, GPRReg resultTagGPR, GPRReg resultPayloadGPR, GPRReg scratchGPR, unsigned identifierNumber, JITCompiler::Jump slowPathTarget = JITCompiler::Jump(), SpillRegistersMode = NeedToSpill);
+    void cachedGetById(CodeOrigin, GPRReg baseTagGPROrNone, GPRReg basePayloadGPR, GPRReg resultTagGPR, GPRReg resultPayloadGPR, unsigned identifierNumber, JITCompiler::Jump slowPathTarget = JITCompiler::Jump(), SpillRegistersMode = NeedToSpill);
     void cachedPutById(CodeOrigin, GPRReg basePayloadGPR, GPRReg valueTagGPR, GPRReg valuePayloadGPR, Edge valueUse, GPRReg scratchGPR, unsigned identifierNumber, PutKind, JITCompiler::Jump slowPathTarget = JITCompiler::Jump());
 #endif
 
@@ -1135,6 +1151,21 @@ public:
     // machine registers, and delegate the calling convention specific
     // decision as to how to fill the regsiters to setupArguments* methods.
 #if USE(JSVALUE64)
+    JITCompiler::Call callOperation(P_DFGOperation_E operation, GPRReg result)
+    {
+        m_jit.setupArgumentsExecState();
+        return appendCallWithExceptionCheckSetResult(operation, result);
+    }
+    JITCompiler::Call callOperation(P_DFGOperation_ES operation, GPRReg result, size_t size)
+    {
+        m_jit.setupArgumentsWithExecState(TrustedImmPtr(size));
+        return appendCallWithExceptionCheckSetResult(operation, result);
+    }
+    JITCompiler::Call callOperation(P_DFGOperation_EPS operation, GPRReg result, GPRReg old, size_t size)
+    {
+        m_jit.setupArgumentsWithExecState(old, TrustedImmPtr(size));
+        return appendCallWithExceptionCheckSetResult(operation, result);
+    }
     JITCompiler::Call callOperation(J_DFGOperation_E operation, GPRReg result)
     {
         m_jit.setupArgumentsExecState();
@@ -1397,6 +1428,16 @@ public:
 #define EABI_32BIT_DUMMY_ARG
 #endif
 
+    JITCompiler::Call callOperation(P_DFGOperation_E operation, GPRReg result)
+    {
+        m_jit.setupArgumentsExecState();
+        return appendCallWithExceptionCheckSetResult(operation, result);
+    }
+    JITCompiler::Call callOperation(P_DFGOperation_ES operation, GPRReg result, size_t size)
+    {
+        m_jit.setupArgumentsWithExecState(TrustedImmPtr(size));
+        return appendCallWithExceptionCheckSetResult(operation, result);
+    }
     JITCompiler::Call callOperation(Z_DFGOperation_D operation, GPRReg result, FPRReg arg1)
     {
         prepareForExternalCall();
@@ -2032,6 +2073,9 @@ public:
     
     bool compileStrictEq(Node&);
     
+    void compileAllocatePropertyStorage(Node&);
+    void compileReallocatePropertyStorage(Node&);
+    
     void compileGetCharCodeAt(Node&);
     void compileGetByValOnString(Node&);
 
@@ -2099,9 +2143,6 @@ public:
         
         // Initialize the object's classInfo pointer
         m_jit.storePtr(MacroAssembler::TrustedImmPtr(&ClassType::s_info), MacroAssembler::Address(resultGPR, JSCell::classInfoOffset()));
-        
-        // Initialize the object's inheritorID.
-        m_jit.storePtr(MacroAssembler::TrustedImmPtr(0), MacroAssembler::Address(resultGPR, JSObject::offsetOfInheritorID()));
         
         // Initialize the object's property storage pointer.
         m_jit.storePtr(MacroAssembler::TrustedImmPtr(0), MacroAssembler::Address(resultGPR, ClassType::offsetOfOutOfLineStorage()));

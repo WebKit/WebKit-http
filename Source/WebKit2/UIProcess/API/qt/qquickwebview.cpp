@@ -491,7 +491,7 @@ void QQuickWebViewPrivate::updateIcon()
 {
     Q_Q(QQuickWebView);
 
-    QQuickView* view = qobject_cast<QQuickView*>(q->canvas());
+    QQuickView* view = qobject_cast<QQuickView*>(q->window());
     if (!view)
         return;
 
@@ -777,15 +777,15 @@ void QQuickWebViewLegacyPrivate::initialize(WKContextRef contextRef, WKPageGroup
 void QQuickWebViewLegacyPrivate::updateViewportSize()
 {
     Q_Q(QQuickWebView);
-    QSize viewportSize = q->boundingRect().size().toSize();
+    QSizeF viewportSize = q->boundingRect().size();
     if (viewportSize.isEmpty())
         return;
     pageView->setContentsSize(viewportSize);
     // The fixed layout is handled by the FrameView and the drawing area doesn't behave differently
     // whether its fixed or not. We still need to tell the drawing area which part of it
     // has to be rendered on tiles, and in desktop mode it's all of it.
-    webPageProxy->drawingArea()->setSize(viewportSize, IntSize());
-    webPageProxy->drawingArea()->setVisibleContentsRect(IntRect(IntPoint(), viewportSize), 1, FloatPoint());
+    webPageProxy->drawingArea()->setSize(viewportSize.toSize(), IntSize());
+    webPageProxy->drawingArea()->setVisibleContentsRect(FloatRect(FloatPoint(), viewportSize), 1, FloatPoint());
 }
 
 void QQuickWebViewLegacyPrivate::enableMouseEvents()
@@ -1659,6 +1659,12 @@ bool QQuickWebView::childMouseEventFilter(QQuickItem* item, QEvent* event)
 {
     if (!isVisible() || !isEnabled() || !s_flickableViewportEnabled)
         return QQuickFlickable::childMouseEventFilter(item, event);
+
+    Q_D(QQuickWebView);
+    if (d->m_dialogActive) {
+        event->ignore();
+        return false;
+    }
 
     // This function is used by MultiPointTouchArea and PinchArea to filter
     // touch events, thus to hinder the canvas from sending synthesized

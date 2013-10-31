@@ -27,9 +27,6 @@
 #include "RenderThemeEfl.h"
 
 #include "CSSValueKeywords.h"
-#include "FileSystem.h"
-#include "Frame.h"
-#include "FrameView.h"
 #include "GraphicsContext.h"
 #include "HTMLInputElement.h"
 #include "NotImplemented.h"
@@ -103,6 +100,7 @@ bool RenderThemeEfl::themePartCacheEntryReset(struct ThemePartCacheEntry* entry,
     const char *file, *group;
 
     ASSERT(entry);
+    ASSERT(m_edje);
 
     edje_object_file_get(m_edje, &file, 0);
     group = edjeGroupFromFormType(type);
@@ -341,7 +339,7 @@ bool RenderThemeEfl::paintThemePart(RenderObject* object, FormType type, const P
             msg->val[0] = 0;
         msg->val[1] = 0.1;
         edje_object_message_send(entry->o, EDJE_MESSAGE_FLOAT_SET, 0, msg);
-#if ENABLE(PROGRESS_TAG)
+#if ENABLE(PROGRESS_ELEMENT)
     } else if (type == ProgressBar) {
         RenderProgress* renderProgress = toRenderProgress(object);
         Edje_Message_Float_Set* msg;
@@ -422,6 +420,15 @@ static void renderThemeEflColorClassFocusRing(void* data, Evas_Object* object, c
     that->setFocusRingColor(fr, fg, fb, fa);
 }
 
+void RenderThemeEfl::setThemePath(const String& path)
+{
+    if (path == m_themePath)
+        return;
+
+    m_themePath = path;
+    themeChanged();
+}
+
 void RenderThemeEfl::createCanvas()
 {
     ASSERT(!m_canvas);
@@ -432,20 +439,17 @@ void RenderThemeEfl::createCanvas()
 void RenderThemeEfl::createEdje()
 {
     ASSERT(!m_edje);
-    Frame* frame = m_page ? m_page->mainFrame() : 0;
-    FrameView* view = frame ? frame->view() : 0;
-    String theme = view ? view->edjeThemeRecursive() : "";
-    if (theme.isEmpty())
+    if (m_themePath.isEmpty())
         EINA_LOG_ERR("No theme defined, unable to set RenderThemeEfl.");
     else {
         m_edje = edje_object_add(ecore_evas_get(m_canvas));
         if (!m_edje)
             EINA_LOG_ERR("Could not create base edje object.");
-        else if (!edje_object_file_set(m_edje, theme.utf8().data(), "webkit/base")) {
+        else if (!edje_object_file_set(m_edje, m_themePath.utf8().data(), "webkit/base")) {
             Edje_Load_Error err = edje_object_load_error_get(m_edje);
             const char* errmsg = edje_load_error_str(err);
             EINA_LOG_ERR("Could not load 'webkit/base' from theme %s: %s",
-                         theme.utf8().data(), errmsg);
+                         m_themePath.utf8().data(), errmsg);
             evas_object_del(m_edje);
             m_edje = 0;
         } else {
@@ -461,7 +465,6 @@ void RenderThemeEfl::createEdje()
 #undef CONNECT
         }
     }
-    ASSERT(m_edje);
 }
 
 void RenderThemeEfl::applyEdjeColors()
@@ -563,7 +566,7 @@ const char* RenderThemeEfl::edjeGroupFromFormType(FormType type) const
         W("entry"),
         W("checkbox"),
         W("combo"),
-#if ENABLE(PROGRESS_TAG)
+#if ENABLE(PROGRESS_ELEMENT)
         W("progressbar"),
 #endif
         W("search/field"),
@@ -660,8 +663,6 @@ RenderThemeEfl::RenderThemeEfl(Page* page)
     , m_canvas(0)
     , m_edje(0)
 {
-    if (page && page->mainFrame() && page->mainFrame()->view())
-        themeChanged();
 }
 
 RenderThemeEfl::~RenderThemeEfl()
@@ -784,6 +785,20 @@ void RenderThemeEfl::adjustSliderThumbSize(RenderStyle* style, Element*) const
     }
 #endif
 }
+
+#if ENABLE(DATALIST_ELEMENT)
+IntSize RenderThemeEfl::sliderTickSize() const
+{
+    // FIXME: We need to set this to the size of one tick mark.
+    return IntSize(0, 0);
+}
+
+int RenderThemeEfl::sliderTickOffsetFromTrackCenter() const
+{
+    // FIXME: We need to set this to the position of the tick marks.
+    return 0;
+}
+#endif
 
 bool RenderThemeEfl::paintSliderThumb(RenderObject* object, const PaintInfo& info, const IntRect& rect)
 {
@@ -1019,7 +1034,7 @@ void RenderThemeEfl::systemFont(int propId, FontDescription& fontDescription) co
     fontDescription.setItalic(false);
 }
 
-#if ENABLE(PROGRESS_TAG)
+#if ENABLE(PROGRESS_ELEMENT)
 void RenderThemeEfl::adjustProgressBarStyle(StyleResolver*, RenderStyle* style, Element*) const
 {
     style->setBoxShadow(nullptr);
@@ -1090,7 +1105,9 @@ String RenderThemeEfl::formatMediaControlsCurrentTime(float currentTime, float d
 
 bool RenderThemeEfl::paintMediaFullscreenButton(RenderObject* object, const PaintInfo& info, const IntRect& rect)
 {
-    Node* mediaNode = object->node() ? object->node()->shadowAncestorNode() : 0;
+    Node* mediaNode = object->node() ? object->node()->shadowHost() : 0;
+    if (!mediaNode)
+        mediaNode = object->node();
     if (!mediaNode || (!mediaNode->hasTagName(videoTag)))
         return false;
 
@@ -1102,7 +1119,9 @@ bool RenderThemeEfl::paintMediaFullscreenButton(RenderObject* object, const Pain
 
 bool RenderThemeEfl::paintMediaMuteButton(RenderObject* object, const PaintInfo& info, const IntRect& rect)
 {
-    Node* mediaNode = object->node() ? object->node()->shadowAncestorNode() : 0;
+    Node* mediaNode = object->node() ? object->node()->shadowHost() : 0;
+    if (!mediaNode)
+        mediaNode = object->node();
     if (!mediaNode || !mediaNode->isElementNode() || !static_cast<Element*>(mediaNode)->isMediaElement())
         return false;
 

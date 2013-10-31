@@ -25,17 +25,16 @@
 #ifndef CCPrioritizedTexture_h
 #define CCPrioritizedTexture_h
 
-#include "CCPriorityCalculator.h"
 #include "GraphicsContext3D.h"
 #include "IntRect.h"
 #include "IntSize.h"
-#include "TextureManager.h"
+#include "cc/CCPriorityCalculator.h"
+#include "cc/CCResourceProvider.h"
+#include "cc/CCTexture.h"
 
 namespace WebCore {
 
 class CCPrioritizedTextureManager;
-class CCPriorityCalculator;
-class CCGraphicsContext;
 
 class CCPrioritizedTexture {
     WTF_MAKE_NONCOPYABLE(CCPrioritizedTexture);
@@ -57,7 +56,7 @@ public:
     void setDimensions(IntSize, GC3Denum format);
     GC3Denum format() const { return m_format; }
     IntSize size() const { return m_size; }
-    size_t memorySizeBytes() const { return m_memorySizeBytes; }
+    size_t bytes() const { return m_bytes; }
 
     // Set priority for the requested texture. 
     void setRequestPriority(int priority) { m_priority = priority; }
@@ -68,61 +67,51 @@ public:
     bool canAcquireBackingTexture() const { return m_isAbovePriorityCutoff; }
 
     // This returns whether we still have a backing texture. This can continue
-    // to be true even after canAquireBackingTexture() becomes false. In this
+    // to be true even after canAcquireBackingTexture() becomes false. In this
     // case the texture can be used but shouldn't be updated since it will get
     // taken away "soon".
-    bool haveBackingTexture() const { return !!currentBacking(); }
+    bool haveBackingTexture() const { return !!backing(); }
 
-    // If canAquireBackingTexture() is true acquireBackingTexture() will acquire
+    // If canAcquireBackingTexture() is true acquireBackingTexture() will acquire
     // a backing texture for use. Call this whenever the texture is actually needed.
-    void acquireBackingTexture(TextureAllocator*);
+    void acquireBackingTexture(CCResourceProvider*);
 
     // FIXME: Request late is really a hack for when we are totally out of memory
     //        (all textures are visible) but we can still squeeze into the limit
     //        by not painting occluded textures. In this case the manager
     //        refuses all visible textures and requestLate() will enable
-    //        canAquireBackingTexture() on a call-order basis. We might want to
+    //        canAcquireBackingTexture() on a call-order basis. We might want to
     //        just remove this in the future (carefully) and just make sure we don't
     //        regress OOMs situations.
     bool requestLate();
 
-    // These functions will aquire the texture if possible. If neither haveBackingTexture()
-    // nor canAquireBackingTexture() is true, an ID of zero will be used/returned.
-    void bindTexture(CCGraphicsContext*, TextureAllocator*);
-    void framebufferTexture2D(CCGraphicsContext*, TextureAllocator*);
-    unsigned textureId();
+    // Uploads pixels into the backing resource. This functions will aquire the backing if needed.
+    void upload(CCResourceProvider*, const uint8_t* image, const IntRect& imageRect, const IntRect& sourceRect, const IntRect& destRect);
+
+    CCResourceProvider::ResourceId resourceId() const;
+
+    // Self-managed textures are accounted for when prioritizing other textures,
+    // but they are not allocated/recycled/deleted, so this needs to be done
+    // externally. canAcquireBackingTexture() indicates if the texture would have
+    // been allowed given its priority.
+    void setIsSelfManaged(bool isSelfManaged) { m_isSelfManaged = isSelfManaged; }
+    bool isSelfManaged() { return m_isSelfManaged; }
+    void setToSelfManagedMemoryPlaceholder(size_t bytes);
 
 private:
     friend class CCPrioritizedTextureManager;
 
-    class Backing {
+    class Backing : public CCTexture {
         WTF_MAKE_NONCOPYABLE(Backing);
     public:
-        IntSize size() const { return m_size; }
-        GC3Denum format() const { return m_format; }
-        size_t memorySizeBytes() const { return m_memorySizeBytes; }
-        unsigned textureId() const { return m_textureId; }
-        CCPrioritizedTexture* currentTexture() const { return m_currentTexture; }
-        void setCurrentTexture(CCPrioritizedTexture* current) { m_currentTexture = current; }
+        Backing(unsigned id, IntSize size, GC3Denum format)
+            : CCTexture(id, size, format), m_owner(0) { }
+        ~Backing() { ASSERT(!m_owner); }
 
+        CCPrioritizedTexture* owner() { return m_owner; }
     private:
-        friend class CCPrioritizedTextureManager;
-
-        Backing(IntSize size, GC3Denum format, unsigned textureId)
-            : m_size(size)
-            , m_format(format)
-            , m_memorySizeBytes(TextureManager::memoryUseBytes(size, format))
-            , m_textureId(textureId)
-            , m_priority(CCPriorityCalculator::lowestPriority())
-            , m_currentTexture(0) { }
-        ~Backing() { ASSERT(!m_currentTexture); }
-
-        IntSize m_size;
-        GC3Denum m_format;
-        size_t m_memorySizeBytes;
-        unsigned m_textureId;
-        int m_priority;
-        CCPrioritizedTexture* m_currentTexture;
+        friend class CCPrioritizedTexture;
+        CCPrioritizedTexture* m_owner;
     };
 
     CCPrioritizedTexture(CCPrioritizedTextureManager*, IntSize, GC3Denum format);
@@ -131,17 +120,19 @@ private:
     void setAbovePriorityCutoff(bool isAbovePriorityCutoff) { m_isAbovePriorityCutoff = isAbovePriorityCutoff; }
     void setManagerInternal(CCPrioritizedTextureManager* manager) { m_manager = manager; }
 
-    Backing* currentBacking() const { return m_currentBacking; }
-    void setCurrentBacking(Backing*);
+    Backing* backing() const { return m_backing; }
+    void link(Backing*);
+    void unlink();
 
     IntSize m_size;
     GC3Denum m_format;
-    size_t m_memorySizeBytes;
+    size_t m_bytes;
 
     size_t m_priority;
     bool m_isAbovePriorityCutoff;
+    bool m_isSelfManaged;
 
-    Backing* m_currentBacking;
+    Backing* m_backing;
     CCPrioritizedTextureManager* m_manager;
 };
 

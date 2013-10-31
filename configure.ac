@@ -2,7 +2,7 @@ AC_PREREQ(2.60)
 
 m4_define([webkit_major_version], [1])
 m4_define([webkit_minor_version], [9])
-m4_define([webkit_micro_version], [4])
+m4_define([webkit_micro_version], [5])
 
 # This is the version we'll be using as part of our User-Agent string
 # e.g., AppleWebKit/$(webkit_user_agent_version) ...
@@ -35,13 +35,13 @@ AC_CONFIG_SRCDIR([Source/WebCore/config.h])
 
 dnl # Libtool library version, not to confuse with API version
 dnl # see http://www.gnu.org/software/libtool/manual/html_node/Libtool-versioning.html
-LIBWEBKITGTK_VERSION=14:0:14
+LIBWEBKITGTK_VERSION=15:0:15
 AC_SUBST([LIBWEBKITGTK_VERSION])
 
-LIBJAVASCRIPTCOREGTK_VERSION=13:3:13
+LIBJAVASCRIPTCOREGTK_VERSION=13:4:13
 AC_SUBST([LIBJAVASCRIPTCOREGTK_VERSION])
 
-LIBWEBKIT2GTK_VERSION=15:0:15
+LIBWEBKIT2GTK_VERSION=16:0:16
 AC_SUBST([LIBWEBKIT2GTK_VERSION])
 
 AM_INIT_AUTOMAKE([foreign subdir-objects dist-xz no-dist-gzip tar-ustar])
@@ -827,8 +827,8 @@ AC_MSG_RESULT([$enable_mathml])
 AC_MSG_CHECKING([whether to enable MHTML support])
 AC_ARG_ENABLE(mhtml,
               AC_HELP_STRING([--enable-mhtml],
-                             [enable support for MHTML [default=no]]),
-              [],[enable_mhtml="no"])
+                             [enable support for MHTML [default=yes]]),
+              [],[enable_mhtml="yes"])
 AC_MSG_RESULT([$enable_mhtml])
 
 # check whether to enable SVG support
@@ -1133,6 +1133,14 @@ AC_ARG_ENABLE(css_filters,
               [],[enable_css_filters="no"])
 AC_MSG_RESULT([$enable_css_filters])
 
+# check whether to enable CSS Compositing support
+AC_MSG_CHECKING([whether to enable CSS Compositing])
+AC_ARG_ENABLE(css_compositing,
+              AC_HELP_STRING([--enable-css-compositing],
+                             [enable support for CSS Compositing[default=no]]),
+              [],[enable_css_compositing="no"])
+AC_MSG_RESULT([$enable_css_compositing])
+
 G_IR_SCANNER=
 G_IR_COMPILER=
 G_IR_GENERATE=
@@ -1410,18 +1418,18 @@ AM_CONDITIONAL([ENABLE_UNSTABLE_FEATURES],[test "$enable_unstable_features" = "y
 AM_CONDITIONAL([ENABLE_WEBGL],[test "$enable_webgl" = "yes"])
 AM_CONDITIONAL([ENABLE_BLOB],[test "$enable_blob" = "yes"])
 AM_CONDITIONAL([ENABLE_LEGACY_WEBKIT_BLOB_BUILDER],[test "$enable_legacy_webkit_blob_builder" = "yes"])
-AM_CONDITIONAL([ENABLE_METER_TAG],[test "$enable_meter_tag" = "yes"])
+AM_CONDITIONAL([ENABLE_METER_ELEMENT],[test "$enable_meter_tag" = "yes"])
 AM_CONDITIONAL([ENABLE_MICRODATA],[test "$enable_microdata" = "yes"])
 AM_CONDITIONAL([ENABLE_PAGE_VISIBILITY_API],[test "$enable_page_visibility_api" = "yes"])
-AM_CONDITIONAL([ENABLE_PROGRESS_TAG],[test "$enable_progress_tag" = "yes"])
+AM_CONDITIONAL([ENABLE_PROGRESS_ELEMENT],[test "$enable_progress_tag" = "yes"])
 AM_CONDITIONAL([ENABLE_CHANNEL_MESSAGING],[test "$enable_channel_messaging" = "yes"])
 AM_CONDITIONAL([ENABLE_JAVASCRIPT_DEBUGGER],[test "$enable_javascript_debugger" = "yes"])
 AM_CONDITIONAL([ENABLE_GAMEPAD],[test "$enable_gamepad" = "yes"])
 AM_CONDITIONAL([ENABLE_DIRECTORY_UPLOAD],[test "$enable_directory_upload" = "yes"])
 AM_CONDITIONAL([ENABLE_DATA_TRANSFER_ITEMS],[test "$enable_data_transfer_items" = "yes"])
 AM_CONDITIONAL([ENABLE_SQL_DATABASE],[test "$enable_sql_database" = "yes"])
-AM_CONDITIONAL([ENABLE_DATALIST],[test "$enable_datalist" = "yes"])
-AM_CONDITIONAL([ENABLE_DETAILS],[test "$enable_details" = "yes"])
+AM_CONDITIONAL([ENABLE_DATALIST_ELEMENT],[test "$enable_datalist" = "yes"])
+AM_CONDITIONAL([ENABLE_DETAILS_ELEMENT],[test "$enable_details" = "yes"])
 AM_CONDITIONAL([ENABLE_FAST_MOBILE_SCROLLING],[test "$enable_fast_mobile_scrolling" = "yes"])
 AM_CONDITIONAL([ENABLE_FILE_SYSTEM],[test "$enable_file_system" = "yes"])
 AM_CONDITIONAL([ENABLE_STYLE_SCOPED],[test "$enable_style_scoped" = "yes"])
@@ -1474,6 +1482,7 @@ AM_CONDITIONAL([ENABLE_TEXT_AUTOSIZING],[test "$enable_text_autosizing" = "yes"]
 AM_CONDITIONAL([ENABLE_CSS_EXCLUSIONS],[test "$enable_css_exclusions" = "yes"])
 AM_CONDITIONAL([ENABLE_CSS_REGIONS],[test "$enable_css_regions" = "yes"])
 AM_CONDITIONAL([ENABLE_CSS_FILTERS],[test "$enable_css_filters" = "yes"])
+AM_CONDITIONAL([ENABLE_CSS_COMPOSITING],[test "$enable_css_compositing" = "yes"])
 
 # Gtk conditionals
 AM_CONDITIONAL([ENABLE_INTROSPECTION],[test "$enable_introspection" = "yes"])
@@ -1536,6 +1545,7 @@ Features:
  CSS Exclusions support                                   : $enable_css_exclusions
  CSS Regions support                                      : $enable_css_regions
  CSS Filters support                                      : $enable_css_filters
+ CSS Compositing support                                  : $enable_css_compositing
  DeviceOrientation support                                : $enable_device_orientation
  Directory upload                                         : $enable_directory_upload
  DOM mutation observer support                            : $enable_mutation_observers

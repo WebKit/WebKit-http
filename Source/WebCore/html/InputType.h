@@ -79,7 +79,9 @@ public:
 // Do not expose instances of InputType and classes derived from it to classes
 // other than HTMLInputElement.
 class InputType {
-    WTF_MAKE_NONCOPYABLE(InputType); WTF_MAKE_FAST_ALLOCATED;
+    WTF_MAKE_NONCOPYABLE(InputType);
+    WTF_MAKE_FAST_ALLOCATED;
+
 public:
     static PassOwnPtr<InputType> create(HTMLInputElement*, const String&);
     static PassOwnPtr<InputType> createText(HTMLInputElement*);
@@ -226,6 +228,7 @@ public:
 #if ENABLE(INPUT_SPEECH)
     virtual HTMLElement* speechButtonElement() const { return 0; }
 #endif
+    virtual HTMLElement* sliderThumbElement() const { return 0; }
     virtual HTMLElement* placeholderElement() const;
 
     // Miscellaneous functions
@@ -270,11 +273,15 @@ public:
     virtual bool supportsPlaceholder() const;
     virtual bool usesFixedPlaceholder() const;
     virtual String fixedPlaceholder();
+    virtual void updateInnerTextValue();
     virtual void updatePlaceholderText();
     virtual void multipleAttributeChanged();
     virtual void disabledAttributeChanged();
     virtual void readonlyAttributeChanged();
     virtual String defaultToolTip() const;
+#if ENABLE(DATALIST_ELEMENT)
+    virtual void listAttributeTargetChanged();
+#endif
 
     // Parses the specified string for the type, and return
     // the Decimal value for the parsing result if the parsing

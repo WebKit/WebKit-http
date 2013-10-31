@@ -60,12 +60,8 @@ void CachedCSSStyleSheet::didAddClient(CachedResourceClient* c)
     ASSERT(c->resourceClientType() == CachedStyleSheetClient::expectedType());
     if (!isLoading())
         static_cast<CachedStyleSheetClient*>(c)->setCSSStyleSheet(m_resourceRequest.url(), m_response.url(), m_decoder->encoding().name(), this);
-}
 
-void CachedCSSStyleSheet::allClientsRemoved()
-{
-    if (!MemoryCache::shouldMakeResourcePurgeableOnEviction() && isSafeToMakePurgeable())
-        makePurgeable(true);
+    CachedResource::didAddClient(c);
 }
 
 void CachedCSSStyleSheet::setEncoding(const String& chs)
@@ -163,6 +159,9 @@ void CachedCSSStyleSheet::destroyDecodedData()
     m_parsedStyleSheetCache.clear();
 
     setDecodedSize(0);
+
+    if (!MemoryCache::shouldMakeResourcePurgeableOnEviction() && isSafeToMakePurgeable())
+        makePurgeable(true);
 }
 
 PassRefPtr<StyleSheetContents> CachedCSSStyleSheet::restoreParsedStyleSheet(const CSSParserContext& context)

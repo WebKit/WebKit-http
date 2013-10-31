@@ -349,7 +349,8 @@ WebInspector.UserAgentSettingsTab = function()
     p.appendChild(this._createUserAgentControl());
     if (Capabilities.canOverrideDeviceMetrics)
         p.appendChild(this._createDeviceMetricsControl());
-    p.appendChild(this._createGeolocationOverrideControl());
+    if (Capabilities.canOverrideGeolocation && WebInspector.experimentsSettings.geolocationOverride.isEnabled())
+        p.appendChild(this._createGeolocationOverrideControl());
     p.appendChild(this._createCheckboxSetting(WebInspector.UIString("Emulate touch events"), WebInspector.settings.emulateTouchEvents));
 }
 
@@ -656,53 +657,43 @@ WebInspector.UserAgentSettingsTab.prototype = {
     {
         const geolocationSetting = WebInspector.settings.geolocationOverride.get();
         var geolocation = WebInspector.UserAgentSupport.GeolocationPosition.parseSetting(geolocationSetting);
-
-        const p = document.createElement("p");
-        const labelElement = p.createChild("label");
-        const checkboxElement = labelElement.createChild("input");
+        var p = document.createElement("p");
+        var labelElement = p.createChild("label");
+        var checkboxElement = labelElement.createChild("input");
         checkboxElement.id = "geolocation-override-checkbox";
         checkboxElement.type = "checkbox";
-        checkboxElement.checked = !geolocation || (geolocation._latitude && geolocation._longitude);
+        checkboxElement.checked = !geolocation || (((typeof geolocation.latitude === "number") && (typeof geolocation.longitude === "number")) || geolocation.error);
         checkboxElement.addEventListener("click", this._onGeolocationOverrideCheckboxClicked.bind(this), false);
         this._geolocationOverrideCheckboxElement = checkboxElement;
         labelElement.appendChild(document.createTextNode(WebInspector.UIString("Override Geolocation")));
 
-        const geolocationSectionElement = this._createGeolocationOverrideElement(geolocation);
+        var geolocationSectionElement = this._createGeolocationOverrideElement(geolocation);
         p.appendChild(geolocationSectionElement);
-
-        const geolocationErrorElement = this._createRadioSetting(WebInspector.UIString("Geolocation Error"), [
-        [ "None", WebInspector.UIString("None") ],
-        [ "PermissionDenied", WebInspector.UIString("PermissionDenied") ],
-        [ "PositionUnavailable", WebInspector.UIString("PositionUnavailable") ] ], WebInspector.settings.geolocationError);
-        p.appendChild(geolocationErrorElement);
-        this._geolocationErrorElement = geolocationErrorElement;
         this._geolocationSectionElement = geolocationSectionElement;
-
         this._setGeolocationPosition(geolocation, false, true);
-
         return p;
     },
 
     _onGeolocationOverrideCheckboxClicked: function()
     {
+        var controlsDisabled = !this._geolocationOverrideCheckboxElement.checked;
+        this._latitudeElement.disabled = controlsDisabled;
+        this._longitudeElement.disabled = controlsDisabled;
+        this._geolocationErrorElement.disabled = controlsDisabled;
+
         if (this._geolocationOverrideCheckboxElement.checked) {
-            this._geolocationSectionElement.removeStyleClass("hidden");
-            this._geolocationErrorElement.removeStyleClass("hidden");
-            var geolocation = WebInspector.UserAgentSupport.GeolocationPosition.parseUserInput(this._latitudeElement.value, this._longitudeElement.value);
+            var geolocation = WebInspector.UserAgentSupport.GeolocationPosition.parseUserInput(this._latitudeElement.value, this._longitudeElement.value, this._geolocationErrorElement.checked);
             if (geolocation)
                 this._setGeolocationPosition(geolocation, false, false);
             if (!this._latitudeElement.value)
                 this._latitudeElement.focus();
-        } else {
-            this._geolocationSectionElement.addStyleClass("hidden");
-            this._geolocationErrorElement.addStyleClass("hidden");
-            PageAgent.clearGeolocationData();
-        }
+        } else
+            WebInspector.UserAgentSupport.GeolocationPosition.clearGeolocationOverride();
     },
 
     _applyGeolocationUserInput: function()
     {
-        this._setGeolocationPosition(WebInspector.UserAgentSupport.GeolocationPosition.parseUserInput(this._latitudeElement.value.trim(), this._longitudeElement.value.trim()), true, false);
+        this._setGeolocationPosition(WebInspector.UserAgentSupport.GeolocationPosition.parseUserInput(this._latitudeElement.value.trim(), this._longitudeElement.value.trim(), this._geolocationErrorElement.checked), true, false);
     },
 
     /**
@@ -716,8 +707,8 @@ WebInspector.UserAgentSettingsTab.prototype = {
             return;
 
         if (!userInputModified) {
-            this._latitudeElement.value = geolocation._latitude;
-            this._longitudeElement.value = geolocation._longitude;
+            this._latitudeElement.value = geolocation.latitude;
+            this._longitudeElement.value = geolocation.longitude;
         }
 
         var value = geolocation.toSetting();
@@ -752,11 +743,22 @@ WebInspector.UserAgentSettingsTab.prototype = {
 
         var rowElement = tableElement.createChild("tr");
         var cellElement = rowElement.createChild("td");
-        cellElement.appendChild(document.createTextNode(WebInspector.UIString("Geolocation Position:")));
+        cellElement.appendChild(document.createTextNode(WebInspector.UIString("Geolocation Position") + ":"));
         cellElement = rowElement.createChild("td");
-        this._latitudeElement = createInput.call(this, cellElement, "geolocation-override-latitude", String(geolocation._latitude));
+        this._latitudeElement = createInput.call(this, cellElement, "geolocation-override-latitude", String(geolocation.latitude));
         cellElement.appendChild(document.createTextNode(" , "));
-        this._longitudeElement = createInput.call(this, cellElement, "geolocation-override-longitude", String(geolocation._longitude));
+        this._longitudeElement = createInput.call(this, cellElement, "geolocation-override-longitude", String(geolocation.longitude));
+        rowElement = tableElement.createChild("tr");
+        cellElement = rowElement.createChild("td");
+        var geolocationErrorLabelElement = document.createElement("label");
+        var geolocationErrorCheckboxElement = geolocationErrorLabelElement.createChild("input");
+        geolocationErrorCheckboxElement.id = "geolocation-error";
+        geolocationErrorCheckboxElement.type = "checkbox";
+        geolocationErrorCheckboxElement.checked = !geolocation || geolocation.error;
+        geolocationErrorCheckboxElement.addEventListener("click", this._applyGeolocationUserInput.bind(this), false);
+        geolocationErrorLabelElement.appendChild(document.createTextNode(WebInspector.UIString("Emulate position unavailable")));
+        this._geolocationErrorElement = geolocationErrorCheckboxElement;
+        cellElement.appendChild(geolocationErrorLabelElement);
 
         return fieldsetElement;
     }

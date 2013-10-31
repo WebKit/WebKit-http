@@ -412,25 +412,27 @@ public:
         ASSERT(static_cast<const uint8_t*>(arrayBuffer.data()) + arrayBufferView.byteOffset() ==
                static_cast<const uint8_t*>(arrayBufferView.baseAddress()));
 #endif
-        if (arrayBufferView.isByteArray())
+        ArrayBufferView::ViewType type = arrayBufferView.getType();
+
+        if (type == ArrayBufferView::TypeInt8)
             append(ByteArrayTag);
-        else if (arrayBufferView.isUnsignedByteClampedArray())
+        else if (type == ArrayBufferView::TypeUint8Clamped)
             append(UnsignedByteClampedArrayTag);
-        else if (arrayBufferView.isUnsignedByteArray())
+        else if (type == ArrayBufferView::TypeUint8)
             append(UnsignedByteArrayTag);
-        else if (arrayBufferView.isShortArray())
+        else if (type == ArrayBufferView::TypeInt16)
             append(ShortArrayTag);
-        else if (arrayBufferView.isUnsignedShortArray())
+        else if (type == ArrayBufferView::TypeUint16)
             append(UnsignedShortArrayTag);
-        else if (arrayBufferView.isIntArray())
+        else if (type == ArrayBufferView::TypeInt32)
             append(IntArrayTag);
-        else if (arrayBufferView.isUnsignedIntArray())
+        else if (type == ArrayBufferView::TypeUint32)
             append(UnsignedIntArrayTag);
-        else if (arrayBufferView.isFloatArray())
+        else if (type == ArrayBufferView::TypeFloat32)
             append(FloatArrayTag);
-        else if (arrayBufferView.isDoubleArray())
+        else if (type == ArrayBufferView::TypeFloat64)
             append(DoubleArrayTag);
-        else if (arrayBufferView.isDataView())
+        else if (type == ArrayBufferView::TypeDataView)
             append(DataViewTag);
         else
             ASSERT_NOT_REACHED();
@@ -2201,6 +2203,7 @@ PassRefPtr<SerializedScriptValue> SerializedScriptValue::release()
 }
 
 SerializedScriptValue::SerializedScriptValue()
+    : m_externallyAllocatedMemory(0)
 {
 }
 
@@ -2252,6 +2255,7 @@ SerializedScriptValue::SerializedScriptValue(v8::Handle<v8::Value> value,
                                              MessagePortArray* messagePorts, ArrayBufferArray* arrayBuffers,
                                              bool& didThrow,
                                              v8::Isolate* isolate)
+    : m_externallyAllocatedMemory(0)
 {
     didThrow = false;
     Writer writer(isolate);
@@ -2298,6 +2302,7 @@ SerializedScriptValue::SerializedScriptValue(v8::Handle<v8::Value> value,
 }
 
 SerializedScriptValue::SerializedScriptValue(const String& wireData)
+    : m_externallyAllocatedMemory(0)
 {
     m_data = wireData.isolatedCopy();
 }
@@ -2321,5 +2326,24 @@ ScriptValue SerializedScriptValue::deserializeForInspector(ScriptState* scriptSt
     return ScriptValue(deserialize(0, isolate));
 }
 #endif
+
+void SerializedScriptValue::registerMemoryAllocatedWithCurrentScriptContext()
+{
+    if (m_externallyAllocatedMemory)
+        return;
+    m_externallyAllocatedMemory = static_cast<intptr_t>(m_data.length());
+    v8::V8::AdjustAmountOfExternalAllocatedMemory(m_externallyAllocatedMemory);
+}
+
+SerializedScriptValue::~SerializedScriptValue()
+{
+    // If the allocated memory was not registered before, then this class is likely
+    // used in a context other then Worker's onmessage environment and the presence of
+    // current v8 context is not guaranteed. Avoid calling v8 then.
+    if (m_externallyAllocatedMemory) {
+        ASSERT(v8::Isolate::GetCurrent());
+        v8::V8::AdjustAmountOfExternalAllocatedMemory(-m_externallyAllocatedMemory);
+    }
+}
 
 } // namespace WebCore

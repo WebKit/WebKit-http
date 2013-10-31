@@ -172,7 +172,7 @@ void StyledElement::classAttributeChanged(const AtomicString& newClassString)
         ensureAttributeData()->setClass(newClassString, shouldFoldCase);
         if (DOMTokenList* classList = optionalClassList())
             static_cast<ClassList*>(classList)->reset(newClassString);
-    } else
+    } else if (attributeData())
         mutableAttributeData()->clearClass();
     setNeedsStyleRecalc();
 }
@@ -234,7 +234,7 @@ bool StyledElement::removeInlineStyleProperty(CSSPropertyID propertyID)
 {
     if (!attributeData() || !attributeData()->inlineStyle())
         return false;
-    bool changes = mutableAttributeData()->inlineStyle()->removeProperty(propertyID);
+    bool changes = ensureInlineStyle()->removeProperty(propertyID);
     if (changes)
         inlineStyleChanged();
     return changes;
@@ -262,7 +262,7 @@ void StyledElement::makePresentationAttributeCacheKey(PresentationAttributeCache
         return;
     unsigned size = attributeCount();
     for (unsigned i = 0; i < size; ++i) {
-        Attribute* attribute = attributeItem(i);
+        const Attribute* attribute = attributeItem(i);
         if (!isPresentationAttribute(attribute->name()))
             continue;
         if (!attribute->namespaceURI().isNull())
@@ -312,7 +312,7 @@ void StyledElement::updateAttributeStyle()
         style = StylePropertySet::create(isSVGElement() ? SVGAttributeMode : CSSQuirksMode);
         unsigned size = attributeCount();
         for (unsigned i = 0; i < size; ++i) {
-            Attribute* attribute = attributeItem(i);
+            const Attribute* attribute = attributeItem(i);
             collectStyleForAttribute(*attribute, style.get());
         }
     }

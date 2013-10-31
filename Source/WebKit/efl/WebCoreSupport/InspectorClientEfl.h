@@ -32,7 +32,10 @@
 #ifndef InspectorClientEfl_h
 #define InspectorClientEfl_h
 
+#if ENABLE(INSPECTOR)
+
 #include "InspectorClient.h"
+#include "InspectorFrontendChannel.h"
 #include "InspectorFrontendClientLocal.h"
 #include <Evas.h>
 #include <wtf/Forward.h>
@@ -41,14 +44,14 @@ namespace WebCore {
 class InspectorFrontendClientEfl;
 class Page;
 
-class InspectorClientEfl : public InspectorClient {
+class InspectorClientEfl : public InspectorClient, public InspectorFrontendChannel {
 public:
-    InspectorClientEfl(Evas_Object*);
+    explicit InspectorClientEfl(Evas_Object*);
     ~InspectorClientEfl();
 
     virtual void inspectorDestroyed();
 
-    virtual void openInspectorFrontend(InspectorController*);
+    virtual InspectorFrontendChannel* openInspectorFrontend(InspectorController*);
     virtual void closeInspectorFrontend();
     virtual void bringFrontendToFront();
 
@@ -95,4 +98,5 @@ private:
 };
 }
 
+#endif
 #endif // InspectorClientEfl_h

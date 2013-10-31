@@ -23,6 +23,7 @@ use warnings;
 
 use Config;
 use IPC::Open2;
+use IPC::Open3;
 
 BEGIN {
    use Exporter   ();
@@ -64,11 +65,14 @@ sub applyPreprocessor
     @macros = map { "-D$_" } @macros;
 
     my $pid = 0;
-    if ($Config{osname} eq "cygwin") {
+    if ($Config{osname} eq "cygwin" || $Config{osname} eq 'MSWin32') {
         # This call can fail if Windows rebases cygwin, so retry a few times until it succeeds.
         for (my $tries = 0; !$pid && ($tries < 20); $tries++) {
             eval {
-                $pid = open2(\*PP_OUT, \*PP_IN, split(' ', $preprocessor), @args, @macros, $fileName);
+                # Suppress STDERR so that if we're using cl.exe, the output
+                # name isn't needlessly echoed.
+                use Symbol 'gensym'; my $err = gensym;
+                $pid = open3(\*PP_IN, \*PP_OUT, $err, split(' ', $preprocessor), @args, @macros, $fileName);
                 1;
             } or do {
                 sleep 1;

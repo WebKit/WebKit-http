@@ -29,6 +29,7 @@
 
 #if ENABLE(VIDEO)
 
+#include "MediaControlElements.h"
 #include "MediaControls.h"
 #include <wtf/RefPtr.h>
 
@@ -61,22 +62,21 @@ class MediaControlTextTrackContainerElement;
 class MediaControlTextTrackDisplayElement;
 #endif
 
-class MediaControlChromiumEnclosureElement : public HTMLDivElement {
-public:
-    static PassRefPtr<MediaControlChromiumEnclosureElement> create(Document*);
-
-    virtual const AtomicString& shadowPseudoId() const;
-
-    void setMediaController(MediaControllerInterface* controller) { m_mediaController = controller; }
-    MediaControllerInterface* mediaController() const { return m_mediaController; }
-
+class MediaControlChromiumEnclosureElement : public MediaControlElement {
 protected:
-    MediaControlChromiumEnclosureElement(Document*);
+    explicit MediaControlChromiumEnclosureElement(Document*);
 
 private:
-    virtual bool isMediaControlElement() const { return true; }
+    virtual MediaControlElementType displayType() const;
+};
 
-    MediaControllerInterface* m_mediaController;
+class MediaControlPanelEnclosureElement : public MediaControlChromiumEnclosureElement {
+public:
+    static PassRefPtr<MediaControlPanelEnclosureElement> create(Document*);
+
+private:
+    explicit MediaControlPanelEnclosureElement(Document*);
+    virtual const AtomicString& shadowPseudoId() const;
 };
 
 class MediaControlRootElementChromium : public MediaControls {
@@ -84,7 +84,7 @@ public:
     static PassRefPtr<MediaControlRootElementChromium> create(Document*);
 
     // MediaControls implementation.
-    void setMediaController(MediaControllerInterface*);
+    virtual void setMediaController(MediaControllerInterface*);
 
     void show();
     void hide();
@@ -93,9 +93,9 @@ public:
 
     void reset();
 
-    void playbackProgressed();
-    void playbackStarted();
-    void playbackStopped();
+    virtual void playbackProgressed();
+    virtual void playbackStarted();
+    virtual void playbackStopped();
 
     void changedMute();
     void changedVolume();
@@ -122,9 +122,13 @@ public:
 
     virtual bool shouldHideControls();
 
-private:
-    MediaControlRootElementChromium(Document*);
+protected:
+    explicit MediaControlRootElementChromium(Document*);
 
+    // Returns true if successful, otherwise return false.
+    bool initializeControls(Document*);
+
+private:
     virtual void defaultEventHandler(Event*);
     void hideFullscreenControlsTimerFired(Timer<MediaControlRootElementChromium>*);
     void startHideFullscreenControlsTimer();
@@ -144,12 +148,12 @@ private:
     MediaControlVolumeSliderElement* m_volumeSlider;
     MediaControlFullscreenButtonElement* m_fullscreenButton;
     MediaControlPanelElement* m_panel;
-    MediaControlChromiumEnclosureElement* m_enclosure;
+    MediaControlPanelEnclosureElement* m_enclosure;
+
 #if ENABLE(VIDEO_TRACK)
     MediaControlTextTrackContainerElement* m_textDisplayContainer;
 #endif
 
-    bool m_opaque;
     Timer<MediaControlRootElementChromium> m_hideFullscreenControlsTimer;
     bool m_isMouseOverControls;
     bool m_isFullscreen;

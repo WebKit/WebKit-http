@@ -95,12 +95,15 @@ public:
     PassRefPtr<IDBRequest> count(ScriptExecutionContext*, PassRefPtr<IDBKeyRange>, ExceptionCode&);
     PassRefPtr<IDBRequest> count(ScriptExecutionContext*, PassRefPtr<IDBKey>, ExceptionCode&);
 
-    PassRefPtr<IDBRequest> put(IDBObjectStoreBackendInterface::PutMode, ScriptExecutionContext*, PassRefPtr<SerializedScriptValue>, PassRefPtr<IDBKey>, ExceptionCode&);
+    PassRefPtr<IDBRequest> put(IDBObjectStoreBackendInterface::PutMode, PassRefPtr<IDBAny> source, ScriptExecutionContext*, PassRefPtr<SerializedScriptValue>, PassRefPtr<IDBKey>, ExceptionCode&);
     void markDeleted() { m_deleted = true; }
     void transactionFinished();
 
     IDBObjectStoreMetadata metadata() const { return m_metadata; }
     void setMetadata(const IDBObjectStoreMetadata& metadata) { m_metadata = metadata; }
+
+    typedef Vector<RefPtr<IDBKey> > IndexKeys;
+    typedef HashMap<String, IndexKeys> IndexKeyMap;
 
 private:
     IDBObjectStore(const IDBObjectStoreMetadata&, PassRefPtr<IDBObjectStoreBackendInterface>, IDBTransaction*);

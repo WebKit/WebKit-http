@@ -252,6 +252,7 @@ IDL_BINDINGS += \
     $$PWD/dom/PopStateEvent.idl \
     $$PWD/dom/ProcessingInstruction.idl \
     $$PWD/dom/ProgressEvent.idl \
+    $$PWD/dom/PropertyNodeList.idl \
     $$PWD/dom/RangeException.idl \
     $$PWD/dom/Range.idl \
     $$PWD/dom/RequestAnimationFrameCallback.idl \
@@ -396,6 +397,7 @@ IDL_BINDINGS += \
     $$PWD/html/ImageData.idl \
     $$PWD/html/MediaController.idl \
     $$PWD/html/MediaError.idl \
+    $$PWD/html/MicroDataItemValue.idl \
     $$PWD/html/RadioNodeList.idl \
     $$PWD/html/TextMetrics.idl \
     $$PWD/html/TimeRanges.idl \
@@ -413,6 +415,7 @@ IDL_BINDINGS += \
     $$PWD/page/Console.idl \
     $$PWD/page/Coordinates.idl \
     $$PWD/page/Crypto.idl \
+    $$PWD/page/DOMSecurityPolicy.idl \
     $$PWD/page/DOMSelection.idl \
     $$PWD/page/DOMWindow.idl \
     $$PWD/page/EventSource.idl \
@@ -440,6 +443,7 @@ IDL_BINDINGS += \
     $$PWD/plugins/DOMMimeTypeArray.idl \
     $$PWD/storage/Storage.idl \
     $$PWD/storage/StorageEvent.idl \
+    $$PWD/testing/FastMallocStatistics.idl \
     $$PWD/testing/Internals.idl \
     $$PWD/testing/InternalSettings.idl \
     $$PWD/workers/AbstractWorker.idl \
@@ -461,12 +465,6 @@ IDL_BINDINGS += \
     $$PWD/xml/XPathResult.idl \
     $$PWD/xml/XPathEvaluator.idl \
     $$PWD/xml/XSLTProcessor.idl
-
-v8 {
-  IDL_BINDINGS += \
-    $$PWD/Modules/indexeddb/IDBVersionChangeEvent.idl \
-    $$PWD/Modules/indexeddb/IDBVersionChangeRequest.idl
-}
 
 contains(DEFINES, ENABLE_SVG=1) {
   IDL_BINDINGS += \
@@ -624,14 +622,17 @@ contains(DEFINES, ENABLE_VIDEO_TRACK=1) {
     $$PWD/html/track/TrackEvent.idl \
 }
 
-v8: wrapperFactoryArg = --wrapperFactoryV8
-else: wrapperFactoryArg = --wrapperFactory
+contains(DEFINES, ENABLE_MEDIA_SOURCE=1) {
+  IDL_BINDINGS += \
+    $$PWD/Modules/mediasource/SourceBuffer.idl \
+    $$PWD/Modules/mediasource/SourceBufferList.idl
+}
 
 mathmlnames.output = MathMLNames.cpp
 mathmlnames.input = MATHML_NAMES
 mathmlnames.depends = $$PWD/mathml/mathattrs.in
 mathmlnames.script = $$PWD/dom/make_names.pl
-mathmlnames.commands = perl -I$$PWD/bindings/scripts $$mathmlnames.script --tags $$PWD/mathml/mathtags.in --attrs $$PWD/mathml/mathattrs.in --extraDefines \"$${DEFINES}\" --preprocessor \"$${QMAKE_MOC} -E\" --factory $$wrapperFactoryArg --outputDir ${QMAKE_FUNC_FILE_OUT_PATH}
+mathmlnames.commands = perl -I$$PWD/bindings/scripts $$mathmlnames.script --tags $$PWD/mathml/mathtags.in --attrs $$PWD/mathml/mathattrs.in --extraDefines \"$${DEFINES}\" --preprocessor \"$${QMAKE_MOC} -E\" --factory --wrapperFactory --outputDir ${QMAKE_FUNC_FILE_OUT_PATH}
 mathmlnames.extra_sources = MathMLElementFactory.cpp
 GENERATORS += mathmlnames
 
@@ -640,13 +641,9 @@ svgnames.output = SVGNames.cpp
 svgnames.input = SVG_NAMES
 svgnames.depends = $$PWD/svg/svgattrs.in
 svgnames.script = $$PWD/dom/make_names.pl
-svgnames.commands = perl -I$$PWD/bindings/scripts $$svgnames.script --tags $$PWD/svg/svgtags.in --attrs $$PWD/svg/svgattrs.in --extraDefines \"$${DEFINES}\" --preprocessor \"$${QMAKE_MOC} -E\" --factory $$wrapperFactoryArg --outputDir ${QMAKE_FUNC_FILE_OUT_PATH}
+svgnames.commands = perl -I$$PWD/bindings/scripts $$svgnames.script --tags $$PWD/svg/svgtags.in --attrs $$PWD/svg/svgattrs.in --extraDefines \"$${DEFINES}\" --preprocessor \"$${QMAKE_MOC} -E\" --factory --wrapperFactory --outputDir ${QMAKE_FUNC_FILE_OUT_PATH}
 svgnames.extra_sources = SVGElementFactory.cpp
-v8 {
-    svgnames.extra_sources += V8SVGElementWrapperFactory.cpp
-} else {
     svgnames.extra_sources += JSSVGElementWrapperFactory.cpp
-}
 GENERATORS += svgnames
 
 # GENERATOR 5-D:
@@ -703,11 +700,9 @@ GENERATORS += preprocessIdls
 # GENERATOR 1: Generate .h and .cpp from IDLs
 generateBindings.input = IDL_BINDINGS
 generateBindings.script = $$PWD/bindings/scripts/generate-bindings.pl
-v8: generator = V8
-else: generator = JS
 generateBindings.commands = perl -I$$PWD/bindings/scripts $$generateBindings.script \
                             --defines \"$${FEATURE_DEFINES_JAVASCRIPT}\" \
-                            --generator $$generator \
+                            --generator JS \
                             --include $$PWD/Modules/filesystem \
                             --include $$PWD/Modules/geolocation \
                             --include $$PWD/Modules/indexeddb \
@@ -727,25 +722,14 @@ generateBindings.commands = perl -I$$PWD/bindings/scripts $$generateBindings.scr
                             --outputDir ${QMAKE_FUNC_FILE_OUT_PATH} \
                             --supplementalDependencyFile ${QMAKE_FUNC_FILE_OUT_PATH}/$$SUPPLEMENTAL_DEPENDENCY_FILE \
                             --preprocessor \"$${QMAKE_MOC} -E\" ${QMAKE_FILE_NAME}
-v8 {
-    generateBindings.output = V8${QMAKE_FILE_BASE}.cpp
-    generateBindings.depends = ${QMAKE_FUNC_FILE_OUT_PATH}/$$SUPPLEMENTAL_DEPENDENCY_FILE \
-                               $$PWD/bindings/scripts/CodeGenerator.pm \
-                               $$PWD/bindings/scripts/CodeGeneratorV8.pm \
-                               $$PWD/bindings/scripts/IDLParser.pm \
-                               $$PWD/bindings/scripts/IDLStructure.pm \
-                               $$PWD/bindings/scripts/InFilesParser.pm \
-                               $$PWD/bindings/scripts/preprocessor.pm
-} else {
-    generateBindings.output = JS${QMAKE_FILE_BASE}.cpp
-    generateBindings.depends = ${QMAKE_FUNC_FILE_OUT_PATH}/$$SUPPLEMENTAL_DEPENDENCY_FILE \
-                               $$PWD/bindings/scripts/CodeGenerator.pm \
-                               $$PWD/bindings/scripts/CodeGeneratorJS.pm \
-                               $$PWD/bindings/scripts/IDLParser.pm \
-                               $$PWD/bindings/scripts/IDLStructure.pm \
-                               $$PWD/bindings/scripts/InFilesParser.pm \
-                               $$PWD/bindings/scripts/preprocessor.pm
-}
+generateBindings.output = JS${QMAKE_FILE_BASE}.cpp
+generateBindings.depends = ${QMAKE_FUNC_FILE_OUT_PATH}/$$SUPPLEMENTAL_DEPENDENCY_FILE \
+                           $$PWD/bindings/scripts/CodeGenerator.pm \
+                           $$PWD/bindings/scripts/CodeGeneratorJS.pm \
+                           $$PWD/bindings/scripts/IDLParser.pm \
+                           $$PWD/bindings/scripts/IDLStructure.pm \
+                           $$PWD/bindings/scripts/InFilesParser.pm \
+                           $$PWD/bindings/scripts/preprocessor.pm
 GENERATORS += generateBindings
 
 # GENERATOR 2: inspector idl compiler
@@ -810,13 +794,9 @@ htmlnames.output = HTMLNames.cpp
 htmlnames.input = HTML_NAMES
 htmlnames.script = $$PWD/dom/make_names.pl
 htmlnames.depends = $$PWD/html/HTMLAttributeNames.in
-htmlnames.commands = perl -I$$PWD/bindings/scripts $$htmlnames.script --tags $$PWD/html/HTMLTagNames.in --attrs $$PWD/html/HTMLAttributeNames.in --extraDefines \"$${DEFINES}\" --preprocessor \"$${QMAKE_MOC} -E\"  --factory $$wrapperFactoryArg --outputDir ${QMAKE_FUNC_FILE_OUT_PATH}
+htmlnames.commands = perl -I$$PWD/bindings/scripts $$htmlnames.script --tags $$PWD/html/HTMLTagNames.in --attrs $$PWD/html/HTMLAttributeNames.in --extraDefines \"$${DEFINES}\" --preprocessor \"$${QMAKE_MOC} -E\"  --factory --wrapperFactory --outputDir ${QMAKE_FUNC_FILE_OUT_PATH}
 htmlnames.extra_sources = HTMLElementFactory.cpp
-v8 {
-    htmlnames.extra_sources += V8HTMLElementWrapperFactory.cpp
-} else {
-    htmlnames.extra_sources += JSHTMLElementWrapperFactory.cpp
-}
+htmlnames.extra_sources += JSHTMLElementWrapperFactory.cpp
 GENERATORS += htmlnames
 
 # GENERATOR 5-B:
@@ -932,11 +912,35 @@ webkitversion.clean = ${QMAKE_FUNC_FILE_OUT_PATH}/WebKitVersion.h
 webkitversion.add_output_to_sources = false
 GENERATORS += webkitversion
 
-# Stolen from JavaScriptCore, needed for YARR
-v8 {
-    retgen.output = RegExpJitTables.h
-    retgen.script = $$PWD/../JavaScriptCore/create_regex_tables
-    retgen.input = retgen.script
-    retgen.commands = python $$retgen.script > ${QMAKE_FILE_OUT}
-    GENERATORS += retgen
+# Generator 12: Angle parsers
+contains(DEFINES, WTF_USE_3D_GRAPHICS=1) {
+
+    ANGLE_DIR = $$replace(PWD, "WebCore", "ThirdParty/ANGLE")
+
+    ANGLE_FLEX_SOURCES = \
+        $$ANGLE_DIR/src/compiler/glslang.l \
+        $$ANGLE_DIR/src/compiler/preprocessor/new/Tokenizer.l
+
+    angleflex.output = ${QMAKE_FILE_BASE}_lex.cpp
+    angleflex.input = ANGLE_FLEX_SOURCES
+    angleflex.commands = flex --noline --nounistd --outfile=${QMAKE_FILE_OUT} ${QMAKE_FILE_IN}
+    *g++*: angleflex.variable_out = ANGLE_SOURCES
+    GENERATORS += angleflex
+
+    ANGLE_BISON_SOURCES = \
+        $$ANGLE_DIR/src/compiler/glslang.y \
+        $$ANGLE_DIR/src/compiler/preprocessor/new/ExpressionParser.y
+
+    anglebison_decl.output = ${QMAKE_FILE_BASE}_tab.h
+    anglebison_decl.input = ANGLE_BISON_SOURCES
+    anglebison_decl.commands = bison --no-lines --skeleton=yacc.c --defines=${QMAKE_FILE_OUT} --output=${QMAKE_FUNC_FILE_OUT_PATH}$${QMAKE_DIR_SEP}${QMAKE_FILE_OUT_BASE}.cpp ${QMAKE_FILE_IN}
+    anglebison_decl.variable_out = GENERATED_FILES
+    GENERATORS += anglebison_decl
+
+    anglebison_impl.input = ANGLE_BISON_SOURCES
+    anglebison_impl.commands = $$escape_expand(\\n)
+    anglebison_impl.depends = ${QMAKE_FILE_BASE}_tab.h
+    anglebison_impl.output = ${QMAKE_FILE_BASE}_tab.cpp
+    *g++*: anglebison_impl.variable_out = ANGLE_SOURCES
+    GENERATORS += anglebison_impl
 }

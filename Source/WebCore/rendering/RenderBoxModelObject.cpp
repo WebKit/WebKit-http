@@ -1171,13 +1171,11 @@ void RenderBoxModelObject::calculateBackgroundImageGeometry(const FillLayer* fil
         // its margins. Since those were added in already, we have to factor them out when computing
         // the background positioning area.
         if (isRoot()) {
-            positioningAreaSize = IntSize(snapSizeToPixel(toRenderBox(this)->width() - left - right, toRenderBox(this)->x()),
-                                          snapSizeToPixel(toRenderBox(this)->height() - top - bottom, toRenderBox(this)->y()));
+            positioningAreaSize = pixelSnappedIntSize(toRenderBox(this)->size() - LayoutSize(left + right, top + bottom), toRenderBox(this)->location());
             left += marginLeft();
             top += marginTop();
         } else
-            positioningAreaSize = IntSize(snapSizeToPixel(paintRect.width() - left - right, paintRect.x()),
-                                          snapSizeToPixel(paintRect.height() - top - bottom, paintRect.y()));
+            positioningAreaSize = pixelSnappedIntSize(paintRect.size() - LayoutSize(left + right, top + bottom), paintRect.location());
     } else {
         geometry.setDestRect(pixelSnappedIntRect(viewRect()));
         positioningAreaSize = geometry.destRect().size();
@@ -1234,17 +1232,9 @@ bool RenderBoxModelObject::paintNinePieceImage(GraphicsContext* graphicsContext,
 
     // FIXME: border-image is broken with full page zooming when tiling has to happen, since the tiling function
     // doesn't have any understanding of the zoom that is in effect on the tile.
-    LayoutUnit topOutset;
-    LayoutUnit rightOutset;
-    LayoutUnit bottomOutset;
-    LayoutUnit leftOutset;
-    style->getImageOutsets(ninePieceImage, topOutset, rightOutset, bottomOutset, leftOutset);
-
-    LayoutUnit topWithOutset = rect.y() - topOutset;
-    LayoutUnit bottomWithOutset = rect.maxY() + bottomOutset;
-    LayoutUnit leftWithOutset = rect.x() - leftOutset;
-    LayoutUnit rightWithOutset = rect.maxX() + rightOutset;
-    IntRect borderImageRect = pixelSnappedIntRect(leftWithOutset, topWithOutset, rightWithOutset - leftWithOutset, bottomWithOutset - topWithOutset);
+    LayoutRect rectWithOutsets = rect;
+    rectWithOutsets.expand(style->imageOutsets(ninePieceImage));
+    IntRect borderImageRect = pixelSnappedIntRect(rectWithOutsets);
 
     IntSize imageSize = calculateImageIntrinsicDimensions(styleImage, borderImageRect.size(), DoNotScaleByEffectiveZoom);
 
@@ -1418,7 +1408,7 @@ public:
     }
     
     bool hasVisibleColorAndStyle() const { return style > BHIDDEN && !isTransparent; }
-    bool shouldRender() const { return isPresent && hasVisibleColorAndStyle(); }
+    bool shouldRender() const { return isPresent && width && hasVisibleColorAndStyle(); }
     bool presentButInvisible() const { return usedWidth() && !hasVisibleColorAndStyle(); }
     bool obscuresBackgroundEdge(float scale) const
     {
@@ -1656,6 +1646,7 @@ void RenderBoxModelObject::paintOneBorderSide(GraphicsContext* graphicsContext, 
     BackgroundBleedAvoidance bleedAvoidance, bool includeLogicalLeftEdge, bool includeLogicalRightEdge, bool antialias, const Color* overrideColor)
 {
     const BorderEdge& edgeToRender = edges[side];
+    ASSERT(edgeToRender.width);
     const BorderEdge& adjacentEdge1 = edges[adjacentSide1];
     const BorderEdge& adjacentEdge2 = edges[adjacentSide2];
 

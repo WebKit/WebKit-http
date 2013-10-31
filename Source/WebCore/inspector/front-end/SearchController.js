@@ -34,32 +34,80 @@
  */
 WebInspector.SearchController = function()
 {
-    this._element = document.createElement("div");
-    this._element.textContent = "Search:";
+    this._element = document.createElement("table");
+    this._element.className = "toolbar-search";
+    this._element.cellSpacing = 0;
 
-    this._searchInputElement = this._element.createChild("input");
-    this._searchInputElement.id = "search";
-    this._searchInputElement.type = "search";
-    this._searchInputElement.incremental = true;
-    this._searchInputElement.results = 0;
+    this._firstRowElement = this._element.createChild("tr");
+    this._secondRowElement = this._element.createChild("tr", "hidden");
 
-    this._searchNavigationNextElement = this._element.createChild("div", "toolbar-search-navigation toolbar-search-navigation-next hidden");
-    this._searchNavigationNextElement.addEventListener("mousedown", this._onNextButtonSearch.bind(this), false); 
-    this._searchNavigationNextElement.title = WebInspector.UIString("Search Next");
+    // Column 1
+    this._searchControlElement = this._firstRowElement.createChild("td").createChild("span", "toolbar-search-control");
+    this._searchInputElement = this._searchControlElement.createChild("input", "search-replace");
+    this._searchInputElement.id = "search-input-field";
+    this._searchInputElement.placeholder = WebInspector.UIString("Find");
 
-    this._searchNavigationPrevElement = this._element.createChild("div", "toolbar-search-navigation toolbar-search-navigation-prev hidden");
-    this._searchNavigationPrevElement.addEventListener("mousedown", this._onPrevButtonSearch.bind(this), false);
+    this._matchesElement = this._searchControlElement.createChild("label", "search-results-matches");
+    this._matchesElement.setAttribute("for", "search-input-field");
+
+    var searchNavigationElement = this._searchControlElement.createChild("div", "toolbar-search-navigation-controls");
+
+    this._searchNavigationPrevElement = searchNavigationElement.createChild("div", "toolbar-search-navigation toolbar-search-navigation-prev");
+    this._searchNavigationPrevElement.addEventListener("click", this._onPrevButtonSearch.bind(this), false);
     this._searchNavigationPrevElement.title = WebInspector.UIString("Search Previous");
 
-    this._matchesElement = this._element.createChild("span", "search-results-matches");
+    this._searchNavigationNextElement = searchNavigationElement.createChild("div", "toolbar-search-navigation toolbar-search-navigation-next"); 
+    this._searchNavigationNextElement.addEventListener("click", this._onNextButtonSearch.bind(this), false);
+    this._searchNavigationNextElement.title = WebInspector.UIString("Search Next");
 
-    this._searchInputElement.addEventListener("search", this._onSearch.bind(this), false); // when the search is emptied
     this._searchInputElement.addEventListener("mousedown", this._onSearchFieldManualFocus.bind(this), false); // when the search field is manually selected
     this._searchInputElement.addEventListener("keydown", this._onKeyDown.bind(this), true);
+    this._searchInputElement.addEventListener("input", this._onInput.bind(this), false);
 
-    var closeButtonElement = this._element.createChild("span", "drawer-header-close-button");
-    closeButtonElement.textContent = WebInspector.UIString("\u00D7");
-    closeButtonElement.addEventListener("click", this.cancelSearch.bind(this), false);
+    this._replaceInputElement = this._secondRowElement.createChild("td").createChild("input", "search-replace toolbar-replace-control");
+    this._replaceInputElement.addEventListener("keydown", this._onKeyDown.bind(this), true);
+    this._replaceInputElement.placeholder = WebInspector.UIString("Replace");
+
+    // Column 2
+    this._findButtonElement = this._firstRowElement.createChild("td").createChild("button", "hidden");
+    this._findButtonElement.textContent = WebInspector.UIString("Find");
+    this._findButtonElement.tabIndex = -1;
+    this._findButtonElement.addEventListener("click", this._onNextButtonSearch.bind(this), false);
+
+    this._replaceButtonElement = this._secondRowElement.createChild("td").createChild("button");
+    this._replaceButtonElement.textContent = WebInspector.UIString("Replace");
+    this._replaceButtonElement.disabled = true;
+    this._replaceButtonElement.tabIndex = -1;
+    this._replaceButtonElement.addEventListener("click", this._replace.bind(this), false);
+
+    // Column 3
+    this._prevButtonElement = this._firstRowElement.createChild("td").createChild("button", "hidden");
+    this._prevButtonElement.textContent = WebInspector.UIString("Previous");
+    this._prevButtonElement.disabled = true;
+    this._prevButtonElement.tabIndex = -1;
+    this._prevButtonElement.addEventListener("click", this._onPrevButtonSearch.bind(this), false);
+
+    this._replaceAllButtonElement = this._secondRowElement.createChild("td").createChild("button");
+    this._replaceAllButtonElement.textContent = WebInspector.UIString("Replace All");
+    this._replaceAllButtonElement.addEventListener("click", this._replaceAll.bind(this), false);
+
+    // Column 4
+    this._replaceElement = this._firstRowElement.createChild("td").createChild("span");
+
+    this._replaceCheckboxElement = this._replaceElement.createChild("input");
+    this._replaceCheckboxElement.type = "checkbox";
+    this._replaceCheckboxElement.id = "search-replace-trigger";
+    this._replaceCheckboxElement.addEventListener("click", this._updateSecondRowVisibility.bind(this), false);
+
+    this._replaceLabelElement = this._replaceElement.createChild("label");
+    this._replaceLabelElement.textContent = WebInspector.UIString("Replace");
+    this._replaceLabelElement.setAttribute("for", "search-replace-trigger");
+
+    // Column 5
+    var cancelButtonElement = this._firstRowElement.createChild("td").createChild("button");
+    cancelButtonElement.textContent = WebInspector.UIString("Cancel");
+    cancelButtonElement.tabIndex = -1;
+    cancelButtonElement.addEventListener("click", this.cancelSearch.bind(this), false);
 }
 
 WebInspector.SearchController.prototype = {
@@ -71,7 +119,7 @@ WebInspector.SearchController.prototype = {
         panel.currentSearchMatches = matches;
 
         if (panel === WebInspector.inspectorView.currentPanel())
-            this._updateSearchMatchesCountAndCurrentMatchIndex(WebInspector.inspectorView.currentPanel().currentQuery && matches);
+            this._updateSearchMatchesCountAndCurrentMatchIndex(WebInspector.inspectorView.currentPanel().currentQuery ? matches : 0, -1);
     },
 
     updateCurrentMatchIndex: function(currentMatchIndex, panel)
@@ -80,25 +128,25 @@ WebInspector.SearchController.prototype = {
             this._updateSearchMatchesCountAndCurrentMatchIndex(panel.currentSearchMatches, currentMatchIndex);
     },
 
-    updateSearchLabel: function()
-    {
-        var panelName = WebInspector.inspectorView.currentPanel() && WebInspector.inspectorView.currentPanel().toolbarItemLabel;
-        if (!panelName)
-            return;
-        var newLabel = WebInspector.UIString("Search %s", panelName);
-        this._searchInputElement.setAttribute("placeholder", newLabel);
-    },
-
     cancelSearch: function()
     {
-        this._searchInputElement.value = "";
-        this._performSearch("");
+        if (!this._searchIsVisible)
+            return;
+        delete this._searchIsVisible;
         WebInspector.inspectorView.setFooterElement(null);
+        this.resetSearch();
+    },
+
+    resetSearch: function()
+    {
+        this._performSearch("", false, false);
+        this._updateReplaceVisibility();
+        this._matchesElement.textContent = "";
     },
 
     disableSearchUntilExplicitAction: function(event)
     {
-        this._performSearch("");
+        this._performSearch("", false, false);
     },
 
     /**
@@ -117,16 +165,15 @@ WebInspector.SearchController.prototype = {
                     var isFindKey = event.ctrlKey && !event.metaKey && !event.altKey && !event.shiftKey;
 
                 if (isFindKey) {
-                    this.focusSearchField();
+                    this.showSearchField();
                     event.consume(true);
                     return true;
                 }
                 break;
 
-
             case "F3":
                 if (!isMac) {
-                    this.focusSearchField();
+                    this.showSearchField();
                     event.consume();
                 }
                 break;
@@ -135,10 +182,9 @@ WebInspector.SearchController.prototype = {
                 var currentPanel = WebInspector.inspectorView.currentPanel();
 
                 if (isMac && event.metaKey && !event.ctrlKey && !event.altKey) {
-                    if (event.shiftKey) {
-                        if (currentPanel.jumpToPreviousSearchResult)
-                            currentPanel.jumpToPreviousSearchResult();
-                    } else if (currentPanel.jumpToNextSearchResult)
+                    if (event.shiftKey)
+                        currentPanel.jumpToPreviousSearchResult();
+                    else
                         currentPanel.jumpToNextSearchResult();
                     event.consume(true);
                     return true;
@@ -148,85 +194,50 @@ WebInspector.SearchController.prototype = {
         return false;
     },
 
-    activePanelChanged: function()
-    {
-        this.updateSearchLabel();
-
-        if (!this._currentQuery)
-            return;
-
-        var panel = WebInspector.inspectorView.currentPanel();
-        if (panel.performSearch) {
-            function performPanelSearch()
-            {
-                this._updateSearchMatchesCountAndCurrentMatchIndex();
-
-                panel.currentQuery = this._currentQuery;
-                panel.performSearch(this._currentQuery);
-            }
-
-            // Perform the search on a timeout so the panel switches fast.
-            setTimeout(performPanelSearch.bind(this), 0);
-        } else {
-            // Update to show Not found for panels that can't be searched.
-            this._updateSearchMatchesCountAndCurrentMatchIndex();
-        }
-    },
-
     _updateSearchNavigationButtonState: function(enabled)
     {
+        this._replaceButtonElement.disabled = !enabled;
+        this._prevButtonElement.disabled = !enabled;
+        var panel = WebInspector.inspectorView.currentPanel();
         if (enabled) {
-            this._searchNavigationPrevElement.removeStyleClass("hidden");
-            this._searchNavigationNextElement.removeStyleClass("hidden");
+            this._searchNavigationPrevElement.addStyleClass("enabled");
+            this._searchNavigationNextElement.addStyleClass("enabled");
         } else {
-            this._searchNavigationPrevElement.addStyleClass("hidden");
-            this._searchNavigationNextElement.addStyleClass("hidden");
+            this._searchNavigationPrevElement.removeStyleClass("enabled");
+            this._searchNavigationNextElement.removeStyleClass("enabled");
         }
     },
 
     /**
-     * @param {?number=} matches
-     * @param {number=} currentMatchIndex
+     * @param {number} matches
+     * @param {number} currentMatchIndex
      */
     _updateSearchMatchesCountAndCurrentMatchIndex: function(matches, currentMatchIndex)
     {
-        if (matches == null) {
-            this._matchesElement.addStyleClass("hidden");
-            // Make Search Nav key non-accessible when there is no active search.
-            this._updateSearchNavigationButtonState(false); 
-            return;
-        }
-
-        if (matches) {
-            if (matches === 1) {
-                if (currentMatchIndex === 0)
-                    var matchesString = WebInspector.UIString("1 of 1 match");
-                else
-                    var matchesString = WebInspector.UIString("1 match");
-            } else {
-                if (typeof currentMatchIndex === "number")
-                    var matchesString = WebInspector.UIString("%d of %d matches", currentMatchIndex + 1, matches);
-                else
-                    var matchesString = WebInspector.UIString("%d matches", matches);
-                // Make search nav key accessible when there are more than 1 search results found.    
-                this._updateSearchNavigationButtonState(true);
-            }
-        } else {
-            var matchesString = WebInspector.UIString("Not Found");
-            // Make search nav key non-accessible when there is no match found.
-            this._updateSearchNavigationButtonState(false);
-        }
-
-        this._matchesElement.removeStyleClass("hidden");
-        this._matchesElement.textContent = matchesString;
-        WebInspector.toolbar.resize();
+        if (matches === 0 || currentMatchIndex >= 0)
+            this._matchesElement.textContent = WebInspector.UIString("%d of %d", currentMatchIndex + 1, matches);
+        this._updateSearchNavigationButtonState(matches > 0);
     },
 
-    focusSearchField: function()
+    showSearchField: function()
     {
         WebInspector.inspectorView.setFooterElement(this._element);
+        this._updateReplaceVisibility();
         this._searchInputElement.focus();
         this._searchInputElement.select();
+        this._searchIsVisible = true;
+    },
+
+    _updateReplaceVisibility: function()
+    {
+        var panel = WebInspector.inspectorView.currentPanel();
+        if (panel && panel.canSearchAndReplace())
+            this._replaceElement.removeStyleClass("hidden");
+        else {
+            this._replaceElement.addStyleClass("hidden");
+            this._replaceCheckboxElement.checked = false;
+            this._updateSecondRowVisibility();
+        }
     },
 
     _onSearchFieldManualFocus: function(event)
@@ -246,101 +257,113 @@ WebInspector.SearchController.prototype = {
             return false;
         }
 
-        if (!isEnterKey(event))
-            return false;
-
-        // Select all of the text so the user can easily type an entirely new query.
-        event.target.select();
-
-        // Only call performSearch if the Enter key was pressed. Otherwise the search
-        // performance is poor because of searching on every key. The search field has
-        // the incremental attribute set, so we still get incremental searches.
-        this._onSearch(event);
-
-        // Call preventDefault since this was the Enter key. This prevents a "search" event
-        // from firing for key down. This stops performSearch from being called twice in a row.
-        event.preventDefault();
+        if (isEnterKey(event)) {
+            if (event.target === this._searchInputElement)
+                this._performSearch(event.target.value, true, event.shiftKey);
+            else if (event.target === this._replaceInputElement)
+                this._replace();
+        }
     },
 
-    _onSearch: function(event)
+    _onInput: function(event)
     {
-        var forceSearch = event.keyIdentifier === "Enter";
-        this._performSearch(event.target.value, forceSearch, event.shiftKey, false);
+        this._performSearch(event.target.value, false, false);
     },
 
     _onNextButtonSearch: function(event)
     {
         // Simulate next search on search-navigation-button click.
-        this._performSearch(this._searchInputElement.value, true, false, false);
+        this._performSearch(this._searchInputElement.value, true, false);
+        this._searchInputElement.focus();
     },
 
     _onPrevButtonSearch: function(event)
     {
+        if (!this._searchNavigationPrevElement.hasStyleClass("enabled"))
+            return;
         // Simulate previous search on search-navigation-button click.
-        this._performSearch(this._searchInputElement.value, true, true, false);
+        this._performSearch(this._searchInputElement.value, true, true);
+        this._searchInputElement.focus();
     },
 
     /**
-     * @param {boolean=} forceSearch
-     * @param {boolean=} isBackwardSearch
-     * @param {boolean=} repeatSearch
+     * @param {string} query
+     * @param {boolean} forceSearch
+     * @param {boolean} isBackwardSearch
      */
-    _performSearch: function(query, forceSearch, isBackwardSearch, repeatSearch)
+    _performSearch: function(query, forceSearch, isBackwardSearch)
     {
-        var isShortSearch = (query.length < 3);
-
-        // Clear a leftover short search flag due to a non-conflicting forced search.
-        if (isShortSearch && this._shortSearchWasForcedByKeyEvent && this._currentQuery !== query)
-            delete this._shortSearchWasForcedByKeyEvent;
-
-        // Indicate this was a forced search on a short query.
-        if (isShortSearch && forceSearch)
-            this._shortSearchWasForcedByKeyEvent = true;
-
-        if (!query || !query.length || (!forceSearch && isShortSearch)) {
-            // Prevent clobbering a short search forced by the user.
-            if (this._shortSearchWasForcedByKeyEvent) {
-                delete this._shortSearchWasForcedByKeyEvent;
-                return;
-            }
-
+        if (!query || !query.length) {
             delete this._currentQuery;
 
             for (var panelName in WebInspector.panels) {
                 var panel = WebInspector.panels[panelName];
                 var hadCurrentQuery = !!panel.currentQuery;
                 delete panel.currentQuery;
-                if (hadCurrentQuery && panel.searchCanceled)
+                if (hadCurrentQuery)
                     panel.searchCanceled();
             }
-
-            this._updateSearchMatchesCountAndCurrentMatchIndex();
-
+            this._updateSearchMatchesCountAndCurrentMatchIndex(0, -1);
             return;
         }
 
         var currentPanel = WebInspector.inspectorView.currentPanel();
-        if (!repeatSearch && query === currentPanel.currentQuery && currentPanel.currentQuery === this._currentQuery) {
+        if (query === currentPanel.currentQuery && currentPanel.currentQuery === this._currentQuery) {
             // When this is the same query and a forced search, jump to the next
             // search result for a good user experience.
             if (forceSearch) {
-                if (!isBackwardSearch && currentPanel.jumpToNextSearchResult)
+                if (!isBackwardSearch)
                     currentPanel.jumpToNextSearchResult();
-                else if (isBackwardSearch && currentPanel.jumpToPreviousSearchResult)
+                else if (isBackwardSearch)
                     currentPanel.jumpToPreviousSearchResult();
             }
             return;
         }
 
-        this._currentQuery = query;
-
-        this._updateSearchMatchesCountAndCurrentMatchIndex();
-
-        if (!currentPanel.performSearch)
+        if (!forceSearch && query.length < 3 && !this._currentQuery)
             return;
+
+        this._currentQuery = query;
 
         currentPanel.currentQuery = query;
         currentPanel.performSearch(query);
+    },
+
+    _updateSecondRowVisibility: function()
+    {
+        if (!this._searchIsVisible)
+            return;
+        if (this._replaceCheckboxElement.checked) {
+            this._element.addStyleClass("toolbar-search-replace");
+            this._secondRowElement.removeStyleClass("hidden");
+            this._prevButtonElement.removeStyleClass("hidden");
+            this._findButtonElement.removeStyleClass("hidden");
+            this._replaceCheckboxElement.tabIndex = -1;
+            this._replaceInputElement.focus();
+        } else {
+            this._element.removeStyleClass("toolbar-search-replace");
+            this._secondRowElement.addStyleClass("hidden");
+            this._prevButtonElement.addStyleClass("hidden");
+            this._findButtonElement.addStyleClass("hidden");
+            this._replaceCheckboxElement.tabIndex = 0;
+            this._searchInputElement.focus();
+        }
+        WebInspector.inspectorView.setFooterElement(this._element);
+    },
+
+    _replace: function()
+    {
+        var currentPanel = WebInspector.inspectorView.currentPanel();
+        currentPanel.replaceSelectionWith(this._replaceInputElement.value);
+        var query = this._currentQuery;
+        delete this._currentQuery;
+        this._performSearch(query, true, false);
+    },
+
+    _replaceAll: function()
+    {
+        var currentPanel = WebInspector.inspectorView.currentPanel();
+        currentPanel.replaceAllWith(this._searchInputElement.value, this._replaceInputElement.value);
     }
 }
 

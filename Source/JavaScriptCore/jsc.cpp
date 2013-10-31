@@ -84,10 +84,12 @@ static bool fillBufferWithContentsOfFile(const UString& fileName, Vector<char>& 
 
 static EncodedJSValue JSC_HOST_CALL functionPrint(ExecState*);
 static EncodedJSValue JSC_HOST_CALL functionDebug(ExecState*);
+static EncodedJSValue JSC_HOST_CALL functionDescribe(ExecState*);
 static EncodedJSValue JSC_HOST_CALL functionJSCStack(ExecState*);
 static EncodedJSValue JSC_HOST_CALL functionGC(ExecState*);
 #ifndef NDEBUG
 static EncodedJSValue JSC_HOST_CALL functionReleaseExecutableMemory(ExecState*);
+static EncodedJSValue JSC_HOST_CALL functionDumpCallFrame(ExecState*);
 #endif
 static EncodedJSValue JSC_HOST_CALL functionVersion(ExecState*);
 static EncodedJSValue JSC_HOST_CALL functionRun(ExecState*);
@@ -190,10 +192,12 @@ protected:
         Base::finishCreation(globalData);
         
         addFunction(globalData, "debug", functionDebug, 1);
+        addFunction(globalData, "describe", functionDescribe, 1);
         addFunction(globalData, "print", functionPrint, 1);
         addFunction(globalData, "quit", functionQuit, 0);
         addFunction(globalData, "gc", functionGC, 0);
 #ifndef NDEBUG
+        addFunction(globalData, "dumpCallFrame", functionDumpCallFrame, 0);
         addFunction(globalData, "releaseExecutableMemory", functionReleaseExecutableMemory, 0);
 #endif
         addFunction(globalData, "version", functionVersion, 1);
@@ -281,9 +285,24 @@ EncodedJSValue JSC_HOST_CALL functionPrint(ExecState* exec)
     return JSValue::encode(jsUndefined());
 }
 
+#ifndef NDEBUG
+EncodedJSValue JSC_HOST_CALL functionDumpCallFrame(ExecState* exec)
+{
+    if (!exec->callerFrame()->hasHostCallFrameFlag())
+        exec->globalData().interpreter->dumpCallFrame(exec->callerFrame());
+    return JSValue::encode(jsUndefined());
+}
+#endif
+
 EncodedJSValue JSC_HOST_CALL functionDebug(ExecState* exec)
 {
     fprintf(stderr, "--> %s\n", exec->argument(0).toString(exec)->value(exec).utf8().data());
+    return JSValue::encode(jsUndefined());
+}
+
+EncodedJSValue JSC_HOST_CALL functionDescribe(ExecState* exec)
+{
+    fprintf(stderr, "--> %s\n", exec->argument(0).description());
     return JSValue::encode(jsUndefined());
 }
 

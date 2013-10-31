@@ -179,15 +179,9 @@ public:
 
     virtual bool shouldRubberBandInDirection(WebCore::ScrollDirection) const { return true; }
     virtual void numWheelEventHandlersChanged(unsigned) { }
-    virtual void numTouchEventHandlersChanged(unsigned) { }
 
-#if ENABLE(REGISTER_PROTOCOL_HANDLER)
-    virtual void registerProtocolHandler(const String& scheme, const String& baseURL, const String& url, const String& title);
-#endif
-
-#if ENABLE(CUSTOM_SCHEME_HANDLER)
-    virtual CustomHandlersState isProtocolHandlerRegistered(const String& scheme, const String& baseURL, const String& url);
-    virtual void unregisterProtocolHandler(const String& scheme, const String& baseURL, const String& url);
+#if USE(TILED_BACKING_STORE)
+    virtual void delegatedScrollRequested(const IntPoint& scrollPoint);
 #endif
 
     Evas_Object* m_view;

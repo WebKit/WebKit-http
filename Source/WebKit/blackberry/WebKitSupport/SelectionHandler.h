@@ -21,6 +21,7 @@
 
 #include "BlackBerryPlatformIntRectRegion.h"
 #include "BlackBerryPlatformPrimitives.h"
+#include "BlackBerryPlatformStopWatch.h"
 #include "TextGranularity.h"
 
 #include <wtf/Vector.h>
@@ -64,7 +65,7 @@ public:
     void selectObject(WebCore::TextGranularity);
     void selectObject(WebCore::Node*);
 
-    void selectionPositionChanged(bool visualChangeOnly = false);
+    void selectionPositionChanged(bool forceUpdateWithoutChange = false);
 
     void setCaretPosition(const WebCore::IntPoint&);
 
@@ -89,6 +90,8 @@ private:
     bool m_caretActive;
     bool m_lastUpdatedEndPointIsValid;
     BlackBerry::Platform::IntRectRegion m_lastSelectionRegion;
+
+    BlackBerry::Platform::StopWatch m_timer;
 };
 
 }

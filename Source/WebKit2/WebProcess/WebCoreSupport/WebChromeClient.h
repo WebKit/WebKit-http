@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010 Apple Inc. All rights reserved.
+ * Copyright (C) 2010, 2011, 2012 Apple Inc. All rights reserved.
  * Copyright (C) 2010 Nokia Corporation and/or its subsidiary(-ies).
  *
  * Redistribution and use in source and binary forms, with or without
@@ -162,6 +162,9 @@ private:
 
     virtual void setCursor(const WebCore::Cursor&) OVERRIDE;
     virtual void setCursorHiddenUntilMouseMoves(bool) OVERRIDE;
+#if ENABLE(REQUEST_ANIMATION_FRAME) && !USE(REQUEST_ANIMATION_FRAME_TIMER)
+    virtual void scheduleAnimation() OVERRIDE;
+#endif
 
     // Notification that the given form element has changed. This function
     // will be called frequently, so handling should be very fast.
@@ -189,6 +192,10 @@ private:
     }
 #endif
 
+#if PLATFORM(WIN) && USE(AVFOUNDATION)
+    virtual WebCore::GraphicsDeviceAdapter* graphicsDeviceAdapter() const OVERRIDE;
+#endif
+
 #if ENABLE(TOUCH_EVENTS)
     virtual void needTouchEvents(bool) OVERRIDE;
 #endif
@@ -214,16 +221,8 @@ private:
     virtual bool shouldRubberBandInDirection(WebCore::ScrollDirection) const OVERRIDE;
     
     virtual void numWheelEventHandlersChanged(unsigned) OVERRIDE;
-    virtual void numTouchEventHandlersChanged(unsigned) OVERRIDE { }
 
-#if ENABLE(REGISTER_PROTOCOL_HANDLER)
-    virtual void registerProtocolHandler(const String& scheme, const String& baseURL, const String& url, const String& title) OVERRIDE { }
-#endif
-
-#if ENABLE(CUSTOM_SCHEME_HANDLER)
-    virtual CustomHandlersState isProtocolHandlerRegistered(const String&, const String&, const String&) { return CustomHandlersDeclined; }
-    virtual void unregisterProtocolHandler(const String&, const String&, const String&) { }
-#endif
+    virtual void logDiagnosticMessage(const String& message, const String& description, const String& success) OVERRIDE;
 
     String m_cachedToolTip;
     mutable RefPtr<WebFrame> m_cachedFrameSetLargestFrame;

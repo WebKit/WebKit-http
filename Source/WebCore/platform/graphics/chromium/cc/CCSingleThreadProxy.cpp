@@ -28,10 +28,8 @@
 
 #include "TraceEvent.h"
 #include "cc/CCDrawQuad.h"
-#include "cc/CCFontAtlas.h"
 #include "cc/CCGraphicsContext.h"
 #include "cc/CCLayerTreeHost.h"
-#include "cc/CCRenderingStats.h"
 #include "cc/CCTextureUpdater.h"
 #include "cc/CCTimer.h"
 #include <wtf/CurrentTime.h>
@@ -158,7 +156,7 @@ bool CCSingleThreadProxy::recreateContext()
     bool initialized;
     {
         DebugScopedSetImplThread impl;
-        m_layerTreeHost->deleteContentsTexturesOnImplThread(m_layerTreeHostImpl->contentsTextureAllocator());
+        m_layerTreeHost->deleteContentsTexturesOnImplThread(m_layerTreeHostImpl->resourceProvider());
         initialized = m_layerTreeHostImpl->initializeLayerRenderer(context.release(), UnthrottledUploader);
         if (initialized) {
             m_layerRendererCapabilitiesForMainThread = m_layerTreeHostImpl->layerRendererCapabilities();
@@ -173,7 +171,7 @@ bool CCSingleThreadProxy::recreateContext()
 
 void CCSingleThreadProxy::implSideRenderingStats(CCRenderingStats& stats)
 {
-    stats.numFramesSentToScreen = m_layerTreeHostImpl->sourceAnimationFrameNumber();
+    m_layerTreeHostImpl->renderingStats(stats);
 }
 
 const LayerRendererCapabilities& CCSingleThreadProxy::layerRendererCapabilities() const
@@ -213,7 +211,7 @@ void CCSingleThreadProxy::doCommit(CCTextureUpdater& updater)
         // here as the throttled uploader isn't used in single thread mode.
         // For correctness, loop until no more updates are pending.
         while (updater.hasMoreUpdates())
-            updater.update(m_layerTreeHostImpl->context(), m_layerTreeHostImpl->contentsTextureAllocator(), m_layerTreeHostImpl->layerRenderer()->textureCopier(), m_layerTreeHostImpl->layerRenderer()->textureUploader(), maxPartialTextureUpdates());
+            updater.update(m_layerTreeHostImpl->resourceProvider(), m_layerTreeHostImpl->layerRenderer()->textureCopier(), m_layerTreeHostImpl->layerRenderer()->textureUploader(), maxPartialTextureUpdates());
 
         m_layerTreeHost->finishCommitOnImplThread(m_layerTreeHostImpl.get());
 
@@ -262,17 +260,10 @@ void CCSingleThreadProxy::stop()
         DebugScopedSetImplThread impl;
 
         if (!m_layerTreeHostImpl->contentsTexturesWerePurgedSinceLastCommit())
-            m_layerTreeHost->deleteContentsTexturesOnImplThread(m_layerTreeHostImpl->contentsTextureAllocator());
+            m_layerTreeHost->deleteContentsTexturesOnImplThread(m_layerTreeHostImpl->resourceProvider());
         m_layerTreeHostImpl.clear();
     }
     m_layerTreeHost = 0;
-}
-
-void CCSingleThreadProxy::setFontAtlas(PassOwnPtr<CCFontAtlas> fontAtlas)
-{
-    ASSERT(isMainThread());
-    DebugScopedSetImplThread impl;
-    m_layerTreeHostImpl->setFontAtlas(fontAtlas);
 }
 
 void CCSingleThreadProxy::postAnimationEventsToMainThreadOnImplThread(PassOwnPtr<CCAnimationEventsVector> events, double wallClockTime)

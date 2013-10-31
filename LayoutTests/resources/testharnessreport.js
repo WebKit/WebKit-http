@@ -13,8 +13,10 @@
  */
 
 // Setup for WebKit JavaScript tests
-if (self.testRunner)
+if (self.testRunner) {
     testRunner.dumpAsText();
+    testRunner.waitUntilDone();
+}
 
 // Function used to convert the test status code into
 // the corresponding string
@@ -71,4 +73,7 @@ add_completion_callback(function (tests, harness_status){
 
 	// Add results element to document
 	document.body.appendChild(results);
+
+ 	if (self.testRunner)
+ 		testRunner.notifyDone();
 });

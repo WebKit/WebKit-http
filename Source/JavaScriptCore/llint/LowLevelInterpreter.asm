@@ -86,7 +86,7 @@ const HashFlags8BitBuffer = 64
 
 # Property storage constants
 if JSVALUE64
-    const InlineStorageCapacity = 4
+    const InlineStorageCapacity = 5
 else
     const InlineStorageCapacity = 6
 end
@@ -318,7 +318,6 @@ macro allocateBasicJSObject(sizeClassIndex, classInfoOffset, structure, result, 
         loadp classInfoOffset[scratch1], scratch2
         storep scratch2, [result]
         storep structure, JSCell::m_structure[result]
-        storep 0, JSObject::m_inheritorID[result]
         storep 0, JSObject::m_outOfLineStorage[result]
     end
 end

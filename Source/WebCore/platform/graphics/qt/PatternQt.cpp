@@ -33,12 +33,12 @@ namespace WebCore {
 
 QBrush Pattern::createPlatformPattern() const
 {
-    QPixmap* pixmap = tileImage()->nativeImageForCurrentFrame();
-    if (!pixmap)
+    QImage* image = tileImage()->nativeImageForCurrentFrame();
+    if (!image)
         return QBrush();
 
     // Qt merges patter space and user space itself
-    QBrush brush(*pixmap);
+    QBrush brush(*image);
     brush.setTransform(m_patternSpaceTransformation);
 
     return brush;

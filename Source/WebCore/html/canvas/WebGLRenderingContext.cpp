@@ -441,11 +441,14 @@ WebGLRenderingContext::WebGLRenderingContext(HTMLCanvasElement* passedCanvas, Pa
     m_contextGroup = WebGLContextGroup::create();
     m_contextGroup->addContext(this);
 
+    m_maxViewportDims[0] = m_maxViewportDims[1] = 0;
+    m_context->getIntegerv(GraphicsContext3D::MAX_VIEWPORT_DIMS, m_maxViewportDims);
+
 #if PLATFORM(CHROMIUM)
     // Create the DrawingBuffer and initialize the platform layer.
     DrawingBuffer::PreserveDrawingBuffer preserve = m_attributes.preserveDrawingBuffer ? DrawingBuffer::Preserve : DrawingBuffer::Discard;
     DrawingBuffer::AlphaRequirement alpha = m_attributes.alpha ? DrawingBuffer::Alpha : DrawingBuffer::Opaque;
-    m_drawingBuffer = DrawingBuffer::create(m_context.get(), IntSize(canvas()->size()), preserve, alpha);
+    m_drawingBuffer = DrawingBuffer::create(m_context.get(), clampedCanvasSize(), preserve, alpha);
 #endif
 
     if (m_drawingBuffer)
@@ -504,8 +507,6 @@ void WebGLRenderingContext::initializeNewContext()
     m_maxCubeMapTextureLevel = WebGLTexture::computeLevelCount(m_maxCubeMapTextureSize, m_maxCubeMapTextureSize);
     m_maxRenderbufferSize = 0;
     m_context->getIntegerv(GraphicsContext3D::MAX_RENDERBUFFER_SIZE, &m_maxRenderbufferSize);
-    m_maxViewportDims[0] = m_maxViewportDims[1] = 0;
-    m_context->getIntegerv(GraphicsContext3D::MAX_VIEWPORT_DIMS, m_maxViewportDims);
 
     m_defaultVertexArrayObject = WebGLVertexArrayObjectOES::create(this, WebGLVertexArrayObjectOES::VaoTypeDefault);
     addContextObject(m_defaultVertexArrayObject.get());
@@ -518,11 +519,12 @@ void WebGLRenderingContext::initializeNewContext()
     if (!isGLES2Compliant())
         initVertexAttrib0();
 
+    IntSize canvasSize = clampedCanvasSize();
     if (m_drawingBuffer)
-        m_drawingBuffer->reset(IntSize(canvas()->width(), canvas()->height()));
+        m_drawingBuffer->reset(canvasSize);
 
-    m_context->reshape(canvas()->width(), canvas()->height());
-    m_context->viewport(0, 0, canvas()->width(), canvas()->height());
+    m_context->reshape(canvasSize.width(), canvasSize.height());
+    m_context->viewport(0, 0, canvasSize.width(), canvasSize.height());
 
     m_context->setContextLostCallback(adoptPtr(new WebGLRenderingContextLostCallback(this)));
     m_context->setErrorMessageCallback(adoptPtr(new WebGLRenderingContextErrorMessageCallback(this)));
@@ -605,7 +607,7 @@ void WebGLRenderingContext::markContextChanged()
 #endif
         if (!m_markedCanvasDirty) {
             m_markedCanvasDirty = true;
-            canvas()->didDraw(FloatRect(0, 0, canvas()->width(), canvas()->height()));
+            canvas()->didDraw(FloatRect(FloatPoint(0, 0), clampedCanvasSize()));
         }
 #if USE(ACCELERATED_COMPOSITING)
     }
@@ -1334,7 +1336,7 @@ void WebGLRenderingContext::copyTexImage2D(GC3Denum target, GC3Dint level, GC3De
 {
     if (isContextLost())
         return;
-    if (!validateTexFuncParameters("copyTexImage2D", target, level, internalformat, width, height, border, internalformat, GraphicsContext3D::UNSIGNED_BYTE))
+    if (!validateTexFuncParameters("copyTexImage2D", NotTexSubImage2D, target, level, internalformat, width, height, border, internalformat, GraphicsContext3D::UNSIGNED_BYTE))
         return;
     if (!validateSettableTexFormat("copyTexImage2D", internalformat))
         return;
@@ -3278,7 +3280,7 @@ void WebGLRenderingContext::readPixels(GC3Dint x, GC3Dint y, GC3Dsizei width, GC
         return;
     }
     // Validate array type against pixel type.
-    if (!pixels->isUnsignedByteArray()) {
+    if (pixels->getType() != ArrayBufferView::TypeUint8) {
         synthesizeGLError(GraphicsContext3D::INVALID_OPERATION, "readPixels", "ArrayBufferView not Uint8Array");
         return;
     }
@@ -3307,9 +3309,10 @@ void WebGLRenderingContext::readPixels(GC3Dint x, GC3Dint y, GC3Dsizei width, GC
         m_context->readPixels(x, y, width, height, format, type, data);
     }
 
-#if OS(DARWIN)
-    // FIXME: remove this section when GL driver bug on Mac is fixed, i.e.,
-    // when alpha is off, readPixels should set alpha to 255 instead of 0.
+#if OS(DARWIN) || OS(QNX)
+    // FIXME: remove this section when GL driver bug on Mac AND the GLES driver bug
+    // on QC & Imagination QNX is fixed, i.e., when alpha is off, readPixels should
+    // set alpha to 255 instead of 0.
     if (!m_framebufferBinding && !m_context->getContextAttributes().alpha) {
         unsigned char* pixels = reinterpret_cast<unsigned char*>(data);
         for (GC3Dsizei iy = 0; iy < height; ++iy) {
@@ -3503,7 +3506,7 @@ void WebGLRenderingContext::texImage2DBase(GC3Denum target, GC3Dint level, GC3De
 {
     // FIXME: For now we ignore any errors returned
     ec = 0;
-    if (!validateTexFuncParameters("texImage2D", target, level, internalformat, width, height, border, format, type))
+    if (!validateTexFuncParameters("texImage2D", NotTexSubImage2D, target, level, internalformat, width, height, border, format, type))
         return;
     WebGLTexture* tex = validateTextureBinding("texImage2D", target, true);
     if (!tex)
@@ -3748,7 +3751,7 @@ void WebGLRenderingContext::texSubImage2DBase(GC3Denum target, GC3Dint level, GC
     ec = 0;
     if (isContextLost())
         return;
-    if (!validateTexFuncParameters("texSubImage2D", target, level, format, width, height, 0, format, type))
+    if (!validateTexFuncParameters("texSubImage2D", TexSubImage2D, target, level, format, width, height, 0, format, type))
         return;
     if (!validateSize("texSubImage2D", xoffset, yoffset))
         return;
@@ -4855,6 +4858,7 @@ bool WebGLRenderingContext::validateTexFuncLevel(const char* functionName, GC3De
 }
 
 bool WebGLRenderingContext::validateTexFuncParameters(const char* functionName,
+                                                      TexFuncValidationFunctionType functionType,
                                                       GC3Denum target, GC3Dint level,
                                                       GC3Denum internalformat,
                                                       GC3Dsizei width, GC3Dsizei height, GC3Dint border,
@@ -4884,8 +4888,14 @@ bool WebGLRenderingContext::validateTexFuncParameters(const char* functionName,
     case GraphicsContext3D::TEXTURE_CUBE_MAP_NEGATIVE_Y:
     case GraphicsContext3D::TEXTURE_CUBE_MAP_POSITIVE_Z:
     case GraphicsContext3D::TEXTURE_CUBE_MAP_NEGATIVE_Z:
-        if (width != height || width > m_maxCubeMapTextureSize) {
-            synthesizeGLError(GraphicsContext3D::INVALID_VALUE, functionName, "width != height or width or height out of range for cube map");
+        if (functionType != TexSubImage2D && width != height) {
+          synthesizeGLError(GraphicsContext3D::INVALID_VALUE, functionName, "width != height for cube map");
+          return false;
+        }
+        // No need to check height here. For texImage width == height.
+        // For texSubImage that will be checked when checking yoffset + height is in range.
+        if (width > m_maxCubeMapTextureSize) {
+            synthesizeGLError(GraphicsContext3D::INVALID_VALUE, functionName, "width or height out of range for cube map");
             return false;
         }
         break;
@@ -4927,7 +4937,7 @@ bool WebGLRenderingContext::validateTexFuncData(const char* functionName, GC3Din
 
     switch (type) {
     case GraphicsContext3D::UNSIGNED_BYTE:
-        if (!pixels->isUnsignedByteArray()) {
+        if (pixels->getType() != ArrayBufferView::TypeUint8) {
             synthesizeGLError(GraphicsContext3D::INVALID_OPERATION, functionName, "type UNSIGNED_BYTE but ArrayBufferView not Uint8Array");
             return false;
         }
@@ -4935,13 +4945,13 @@ bool WebGLRenderingContext::validateTexFuncData(const char* functionName, GC3Din
     case GraphicsContext3D::UNSIGNED_SHORT_5_6_5:
     case GraphicsContext3D::UNSIGNED_SHORT_4_4_4_4:
     case GraphicsContext3D::UNSIGNED_SHORT_5_5_5_1:
-        if (!pixels->isUnsignedShortArray()) {
+        if (pixels->getType() != ArrayBufferView::TypeUint16) {
             synthesizeGLError(GraphicsContext3D::INVALID_OPERATION, functionName, "type UNSIGNED_SHORT but ArrayBufferView not Uint16Array");
             return false;
         }
         break;
     case GraphicsContext3D::FLOAT: // OES_texture_float
-        if (!pixels->isFloatArray()) {
+        if (pixels->getType() != ArrayBufferView::TypeFloat32) {
             synthesizeGLError(GraphicsContext3D::INVALID_OPERATION, functionName, "type FLOAT but ArrayBufferView not Float32Array");
             return false;
         }
@@ -5656,6 +5666,12 @@ void WebGLRenderingContext::enableOrDisable(GC3Denum capability, bool enable)
         m_context->enable(capability);
     else
         m_context->disable(capability);
+}
+
+IntSize WebGLRenderingContext::clampedCanvasSize()
+{
+    return IntSize(clamp(canvas()->width(), 1, m_maxViewportDims[0]),
+                   clamp(canvas()->height(), 1, m_maxViewportDims[1]));
 }
 
 } // namespace WebCore

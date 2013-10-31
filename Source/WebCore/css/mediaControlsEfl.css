@@ -84,13 +84,25 @@ audio::-webkit-media-controls-timeline-container, video::-webkit-media-controls-
 audio::-webkit-media-controls-current-time-display, video::-webkit-media-controls-current-time-display {
     -webkit-appearance: media-current-time-display;
     -webkit-user-select: none;
-    display: inline-block;
+    display: -webkit-box;
     height: 20px;
 
     padding: 4px;
 
     text-align: center;
     font-size: 10px;
+
+    color: black;
+    letter-spacing: normal;
+    word-spacing: normal;
+    line-height: normal;
+    text-transform: none;
+    text-indent: 0;
+    text-shadow: none;
+    text-decoration: none;
+    font-style: normal;
+    font-weight: normal;
+    font-family: serif;
 }
 
 audio::-webkit-media-controls-time-remaining-display, video::-webkit-media-controls-time-remaining-display {

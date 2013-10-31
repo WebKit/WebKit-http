@@ -111,6 +111,8 @@ public:
 
     void stopLoading();
 
+    bool dispatchBeforeUnloadEvent();
+
     // This will force any unload handlers to run.
     void prepareToDestroy();
 
@@ -158,6 +160,7 @@ public:
     void cut();
     void copy();
     void paste();
+    void selectAll();
 
     // Text encoding.
     WebString textEncoding();
@@ -255,7 +258,8 @@ public:
     int32_t commitText(spannable_string_t*, int32_t relativeCursorPosition);
 
     void setSpellCheckingEnabled(bool);
-    void spellCheckingRequestProcessed(int32_t id, spannable_string_t*);
+    void spellCheckingRequestProcessed(int32_t transactionId, spannable_string_t*);
+    void spellCheckingRequestCancelled(int32_t transactionId);
 
     void setSelection(const Platform::IntPoint& startPoint, const Platform::IntPoint& endPoint);
     void setCaretPosition(const Platform::IntPoint&);
@@ -295,7 +299,7 @@ public:
     void goToBackForwardEntry(BackForwardId);
 
     int backForwardListLength() const;
-    void getBackForwardList(SharedArray<BackForwardEntry>& result, unsigned& resultLength) const;
+    void getBackForwardList(SharedArray<BackForwardEntry>& result) const;
     void releaseBackForwardEntry(BackForwardId) const;
     void clearBackForwardList(bool keepCurrentPage) const;
 

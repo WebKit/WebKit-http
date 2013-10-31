@@ -75,17 +75,15 @@ public:
 private:
     EventDispatcher(Node*);
 
-    EventDispatchBehavior determineDispatchBehavior(Event*, ShadowRoot*);
+    EventDispatchBehavior determineDispatchBehavior(Event*, ShadowRoot*, EventTarget*);
 
     void ensureEventAncestors(Event*);
     const EventContext* topEventContext();
 
     Vector<EventContext> m_ancestors;
     RefPtr<Node> m_node;
-    RefPtr<EventTarget> m_originalTarget;
     RefPtr<FrameView> m_view;
     bool m_ancestorsInitialized;
-    bool m_shouldPreventDispatch;
 };
 
 inline Node* EventDispatcher::node() const

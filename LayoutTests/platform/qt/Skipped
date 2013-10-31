@@ -170,6 +170,7 @@ editing/shadow
 fast/dom/shadow/access-key.html
 fast/dom/shadow/adopt-node-with-shadow-root.html
 fast/dom/shadow/composed-shadow-tree-walker.html
+fast/dom/shadow/content-after-style.html
 fast/dom/shadow/content-element-api.html
 fast/dom/shadow/content-element-move.html
 fast/dom/shadow/content-element-outside-shadow.html
@@ -179,7 +180,9 @@ fast/dom/shadow/content-element-in-meter-element.html
 fast/dom/shadow/drop-event-for-input-in-shadow.html
 fast/dom/shadow/drop-event-in-shadow.html
 fast/dom/shadow/elements-in-frameless-document.html
+fast/dom/shadow/events-stopped-at-shadow-boundary.html
 fast/dom/shadow/focus-navigation.html
+fast/dom/shadow/focus-navigation-with-distributed-nodes.html
 fast/dom/shadow/form-in-shadow.html
 fast/dom/shadow/get-element-by-id-in-shadow-mutation.html
 fast/dom/shadow/get-element-by-id-in-shadow-root.html
@@ -194,6 +197,20 @@ fast/dom/shadow/multiple-shadowroot-adopt.html
 fast/dom/shadow/parent-tree-scope-in-shadow.html
 fast/dom/shadow/selections-in-shadow.html
 fast/dom/shadow/selection-shouldnt-expose-shadow-dom.html
+fast/dom/shadow/shadowdom-for-image-alt-update.html
+fast/dom/shadow/shadowdom-for-image-alt.html
+fast/dom/shadow/shadowdom-for-image-content.html
+fast/dom/shadow/shadowdom-for-image-dynamic.html
+fast/dom/shadow/shadowdom-for-image-event-click.html
+fast/dom/shadow/shadowdom-for-image-in-shadowdom.html
+fast/dom/shadow/shadowdom-for-image-map.html
+fast/dom/shadow/shadowdom-for-image-style.html
+fast/dom/shadow/shadowdom-for-image-with-multiple-shadow.html
+fast/dom/shadow/shadowdom-for-image-with-pseudo-id.html
+fast/dom/shadow/shadowdom-for-image-with-width-and-height.html
+fast/dom/shadow/shadowdom-for-image.html
+fast/dom/shadow/shadowdom-for-media.html
+fast/dom/shadow/shadow-and-list-elements.html
 fast/dom/shadow/shadow-boundary-events.html
 fast/dom/shadow/shadow-content-crash.html
 fast/dom/shadow/shadow-contents-fallback-dynamic.html
@@ -218,20 +235,46 @@ fast/dom/shadow/shadow-root-resetStyleInheritance.html
 fast/dom/shadow/shadow-ul-li.html
 fast/dom/shadow/tab-order-iframe-and-shadow.html
 fast/dom/shadow/user-modify-inheritance.html
+fast/dom/shadow/shadowdom-for-object-complex-shadow.html
+fast/dom/shadow/shadowdom-for-object-only-shadow.html
+fast/dom/shadow/shadowdom-for-object-without-shadow.html
+fast/dom/shadow/shadowdom-for-textarea-complex-shadow.html
+fast/dom/shadow/shadowdom-for-textarea-only-shadow.html
+fast/dom/shadow/shadowdom-for-textarea-without-shadow.html
+fast/dom/shadow/shadowdom-for-button-complex-shadow.html
+fast/dom/shadow/shadowdom-for-button-only-shadow.html
+fast/dom/shadow/shadowdom-for-button-without-shadow.html
+fast/dom/shadow/shadowdom-for-select-complex-shadow.html
+fast/dom/shadow/shadowdom-for-select-only-shadow.html
+fast/dom/shadow/shadowdom-for-select-without-shadow.html
+fast/dom/shadow/shadowdom-for-output-complex-shadow.html
+fast/dom/shadow/shadowdom-for-output-only-shadow.html
+fast/dom/shadow/shadowdom-for-output-without-shadow.html
+fast/dom/shadow/shadowdom-for-fieldset-complex-shadow.html
+fast/dom/shadow/shadowdom-for-fieldset-only-shadow.html
+fast/dom/shadow/shadowdom-for-fieldset-without-shadow.html
+fast/dom/shadow/shadowdom-for-keygen-complex-shadow.html
+fast/dom/shadow/shadowdom-for-keygen-only-shadow.html
+fast/dom/shadow/shadowdom-for-keygen-without-shadow.html
+fast/dom/shadow/input-with-validation.html
+fast/dom/shadow/input-with-validation-without-shadow.html
+fast/dom/shadow/shadowdom-for-form-associated-element-useragent.html
 
 # Fail until SUBPIXEL_LAYOUT is enabled
 # https://bugs.webkit.org/show_bug.cgi?id=85532
 fast/sub-pixel/client-rect-has-subpixel-precision.html
 fast/sub-pixel/client-width-height-snapping.html
+fast/sub-pixel/file-upload-control-at-fractional-offset.html
 fast/sub-pixel/float-containing-block-with-margin.html
 fast/sub-pixel/float-with-right-margin-zoom.html
 fast/sub-pixel/float-wrap-with-subpixel-top.html
 fast/sub-pixel/inline-block-with-margin.html
 fast/sub-pixel/inline-block-with-padding.html
 fast/sub-pixel/layout-boxes-with-zoom.html
-fast/sub-pixel/size-of-box-with-zoom.html
+fast/sub-pixel/position-right-aligns-with-container.html
 fast/sub-pixel/selection/selection-gaps-at-fractional-offsets.html
-fast/sub-pixel/file-upload-control-at-fractional-offset.html
+fast/sub-pixel/size-of-box-with-zoom.html
+fast/sub-pixel/table-rows-no-gaps.html
 
 # CSS Regions support not yet enabled. http://webkit.org/b/57312
 fast/regions
@@ -388,6 +431,7 @@ webintents/
 
 # Pointer Lock is not implemented.
 pointer-lock/
+http/tests/pointer-lock/
 
 # Skip because this platform does not support a paging mouse wheel event
 fast/events/platform-wheelevent-paging-x-in-non-scrolling-div.html
@@ -595,10 +639,6 @@ http/tests/misc/authentication-redirect-3/authentication-sent-to-redirect-same-o
 # https://bugs.webkit.org/show_bug.cgi?id=85969
 http/tests/loading/post-in-iframe-with-back-navigation.html
 
-# [Qt] Acid3 test reveals that WTR does not pick up monospace fonts for testing
-# https://bugs.webkit.org/show_bug.cgi?id=87501
-http/tests/misc/acid3.html
-
 # Benign pixel differences except for:
 # +selection start: position 0 of child 5 {IMG} of body
 # +selection end:   position 1 of child 5 {IMG} of body
@@ -695,6 +735,11 @@ http/tests/misc/xslt-bad-import.html
 # New test http/tests/cookies/js-get-and-set-http-only-cookie.php fails on Mac, GTK, Qt, EFL (introduced in r119947)
 # https://bugs.webkit.org/show_bug.cgi?id=87208
 http/tests/cookies/js-get-and-set-http-only-cookie.html
+
+# [Qt] new tests introduced in r122528 fail
+# https://bugs.webkit.org/show_bug.cgi?id=91218
+http/tests/w3c/webperf/approved/navigation-timing/html/test_performance_attributes_exist_in_object.html
+http/tests/w3c/webperf/approved/navigation-timing/html/test_timing_xserver_redirect.html
 
 # =========================================================================== #
 #       Failing xmlhttprequest tests                                          #
@@ -975,6 +1020,10 @@ http/tests/misc/link-rel-icon-beforeload.html
 # https://bugs.webkit.org/show_bug.cgi?id=64002
 fast/selectors/unqualified-hover-strict.html
 
+# http/tests/websocket/tests/hybi/workers/close.html is flaky
+# https://bugs.webkit.org/show_bug.cgi?id=89153
+http/tests/websocket/tests/hybi/workers/close.html
+
 
 # =========================================================================== #
 # failing media tests
@@ -1207,6 +1256,7 @@ fast/forms/validation-message-on-menulist.html
 fast/forms/validation-message-on-radio.html
 fast/forms/validation-message-on-range.html
 fast/forms/validation-message-on-textarea.html
+fast/forms/validation-message-user-modify.html
 
 # LayoutTestController::clearApplicationCacheForOrigin is not implemented
 http/tests/appcache/origin-delete.html
@@ -1235,6 +1285,11 @@ fast/events/constructors/media-key-event-constructor.html
 
 # missing testRunner.setStorageDatabaseIdleInterval() implementation
 storage/domstorage/storage-close-database-on-idle.html
+
+# Missing targetDiv1.webkitRequestFullscreen() implementation
+# https://bugs.webkit.org/show_bug.cgi?id=92078
+http/tests/fullscreen/fullscreenelement-different-origin.html
+http/tests/fullscreen/fullscreenelement-same-origin.html
 
 # ============================================================================= #
 # Failing SVG tests
@@ -1412,6 +1467,8 @@ fast/repaint/moving-shadow-on-path.html
 svg/W3C-SVG-1.1/paths-data-03-f.svg
 svg/css/stars-with-shadow.html
 svg/custom/use-on-symbol-inside-pattern.svg
+svg/batik/text/longTextOnPath.svg
+svg/carto.net/tabgroup.svg
 
 # ============================================================================= #
 # Failing CSS Tests
@@ -1901,6 +1958,12 @@ fast/xmlhttprequest/xmlhttprequest-get.xhtml
 # https://bugs.webkit.org/show_bug.cgi?id=84013
 fast/repaint/line-flow-with-floats-in-regions.html
 
+# [Qt]REGRESSION(r123786) It made 3 fast/animation tests fail
+# https://bugs.webkit.org/show_bug.cgi?id=92490
+fast/animation/request-animation-frame-cancel2.html
+fast/animation/request-animation-frame-detach-element.html
+fast/animation/request-animation-frame-during-modal.html
+
 # [Qt] fast/block/positioning/offsetLeft-offsetTop-multicolumn.html is failing
 # https://bugs.webkit.org/show_bug.cgi?id=86130
 fast/block/positioning/offsetLeft-offsetTop-multicolumn.html
@@ -1929,9 +1992,13 @@ fast/dom/gc-attribute-node.html
 # https://bugs.webkit.org/show_bug.cgi?id=89656
 fast/forms/datalist/input-list.html
 
-# [Qt] New fast/forms/number/input-number-validation-message.html introduced in r121019 fails.
+# [Qt] New fast/forms/number/number-validation-message.html introduced in r121019 fails.
 # https://bugs.webkit.org/show_bug.cgi?id=89760
-fast/forms/number/input-number-validation-message.html
+fast/forms/number/number-validation-message.html
+
+# [Qt] New fast/css/sticky/parsing-position-sticky.html fails since r123379
+# https://bugs.webkit.org/show_bug.cgi?id=92080
+fast/css/sticky/parsing-position-sticky.html
 
 # ============================================================================= #
 # failing fonts tests
@@ -2173,17 +2240,39 @@ fast/speech/input-appearance-searchandspeech.html
 fast/speech/speech-bidi-rendering.html
 fast/css/relative-positioned-block-with-inline-ancestor-and-parent-dynamic.html
 
-#[Qt]fast/text/international/bdi-dir-default-to-auto.html fails
-#https://bugs.webkit.org/show_bug.cgi?id=81899
-fast/text/international/bdi-dir-default-to-auto.html
+# new tests without expected files, need investigation
+css3/filters/effect-reference-external.html
+css3/filters/effect-reference-hw.html
+css3/filters/effect-reference.html
+css3/filters/effect-reference-ordering.html
+fast/repaint/repaint-during-scroll-with-zoom.html
+fast/multicol/shrink-to-column-height-for-pagination.html
+fast/forms/textarea/textarea-placeholder-paint-order.html
+fast/forms/select/optgroup-rendering.html
+fast/forms/input-placeholder-paint-order.html
+fast/reflections/reflection-with-zoom.html
+fast/table/mozilla-bug10296-vertical-align-2.html
+fast/table/mozilla-bug10296-vertical-align-1.html
+fast/events/touch/gesture/context-menu-on-long-press.html
+fast/events/touch/gesture/context-menu-on-two-finger-tap.html
+fast/css/text-overflow-ellipsis-text-align-right.html
+fast/css/text-overflow-ellipsis-text-align-left.html
+fast/css/vertical-text-overflow-ellipsis-text-align-center.html
+fast/css/vertical-text-overflow-ellipsis-text-align-right.html
+fast/css/text-overflow-ellipsis-text-align-center.html
+fast/css/vertical-text-overflow-ellipsis-text-align-justify.html
+fast/css/text-overflow-ellipsis-text-align-justify.html
+fast/css/vertical-text-overflow-ellipsis-text-align-left.html
+css2.1/20110323/table-height-algorithm-024.htm
+css2.1/20110323/table-height-algorithm-023.htm
+css2.1/20110323/inline-table-002a.htm
+css2.1/20110323/inline-table-001.htm
+css2.1/20110323/inline-table-003.htm
+editing/inserting/multiple-lines-selected.html
 
 # ============================================================================= #
 # Regressions occured after Qt version update
 # ============================================================================= #
-
-# [Qt] editing/execCommand/move-selection-back-line.html fails with Qt >= 4.7.1
-# https://bugs.webkit.org/show_bug.cgi?id=50144
-editing/execCommand/move-selection-back-line.html
 
 # [Qt] fast/forms/textarea-appearance-wrap.html fails with Qt >= 4.7.1
 # https://bugs.webkit.org/show_bug.cgi?id=50145
@@ -2310,10 +2399,6 @@ fast/css/apple-prefix.html
 fast/replaced/table-percent-height.html
 fast/forms/basic-buttons.html
 
-# [Qt] move-selection-back-line-strict.html fails
-# https://bugs.webkit.org/show_bug.cgi?id=65801
-editing/execCommand/move-selection-back-line-strict.html
-
 # [Qt] fast/dom/HTMLDocument/hasFocus.html fails
 # https://bugs.webkit.org/show_bug.cgi?id=66076
 fast/dom/HTMLDocument/hasFocus.html
@@ -2328,9 +2413,9 @@ fast/harness/sample-fail-mismatch-reftest.html
 # [Qt] REGRESSION(r93937): 4 failing and 3 flaky tests
 # https://bugs.webkit.org/show_bug.cgi?id=67118
 # Flaky
-fast/forms/number/input-number-large-padding.html
-fast/forms/number/input-spinbutton-capturing.html
-fast/forms/number/input-number-events.html
+fast/forms/number/number-large-padding.html
+fast/forms/number/number-spinbutton-capturing.html
+fast/forms/number/number-spinbutton-change-and-input-events.html
 
 # [Qt] Incorrect results for new fast/multicol tests added in r94084
 # https://bugs.webkit.org/show_bug.cgi?id=67293
@@ -2455,11 +2540,14 @@ fast/block/lineboxcontain/block-glyphs.html
 fast/block/lineboxcontain/font.html
 
 # Failing reftests, we skip them until we find out how we have to gardening after them
+css3/flexbox/flexbox-overflow-auto.html
 fast/block/line-layout/selection-highlight-overlap.html
 fast/css/empty-cell-baseline.html
+fast/forms/datalist/update-range-with-datalist.html
 fast/multicol/cell-shrinkback.html
 fast/multicol/overflow-into-columngap.html
 fast/table/td-width-fifty-percent-regression.html
+fast/sub-pixel/block-with-margin-overflow.html
 svg/custom/anchor-on-use.svg
 svg/animations/animateTransform-rotate-around-point.svg
 svg/animations/animateMotion-additive-1.svg
@@ -2491,10 +2579,6 @@ http/tests/cookies/single-quoted-value.html
 # Viewport attribute values are leaked when document.write() is used.
 # https://bugs.webkit.org/show_bug.cgi?id=86077
 html5lib/runner.html
-
-# [Qt] tab-size CSS property doesn't work at all
-# https://bugs.webkit.org/show_bug.cgi?id=86179
-fast/css/tab-size.html
 
 # [Qt] fast/frames/seamless/seamless-inherited-document-style.html fails
 # https://bugs.webkit.org/show_bug.cgi?id=86182
@@ -2543,6 +2627,8 @@ fast/block/float/floats-wrap-inside-inline-001.htm
 fast/block/float/floats-wrap-inside-inline-002.htm
 fast/block/float/floats-wrap-inside-inline-003.htm
 fast/multicol/table-row-height-increase.html
+css2.1/20110323/vertical-align-boxes-001.htm
+svg/as-image/svg-intrinsic-size-rectangular-vertical.html
 
 # [Qt] css3/filters/huge-region-composited.html makes css3/filters/huge-region.html crash
 # https://bugs.webkit.org/show_bug.cgi?id=90165
@@ -2557,6 +2643,39 @@ http/tests/inspector/console-cd.html
 # https://bugs.webkit.org/show_bug.cgi?id=90706
 inspector/timeline/timeline-frames.html
 
-# [Qt][WK2] REGRESSION(r122376): It made 68 tests flakey (TEXT PASS)
-# https://bugs.webkit.org/show_bug.cgi?id=91063
-compositing/columns/geometry-map-paginated-assert.html
+# [Qt] REGRESSION(r122768, r122771): They broke jquery/data.html and inspector/elements/edit-dom-actions.html
+# https://bugs.webkit.org/show_bug.cgi?id=91476
+inspector/elements/edit-dom-actions.html
+jquery/data.html
+
+# [Qt] css2.1/20110323/text-indent-intrinsic-00* fail
+# https://bugs.webkit.org/show_bug.cgi?id=91772
+css2.1/20110323/text-indent-intrinsic-001.htm
+css2.1/20110323/text-indent-intrinsic-002.htm
+css2.1/20110323/text-indent-intrinsic-003.htm
+css2.1/20110323/text-indent-intrinsic-004.htm
+
+# [Qt] new test introduced in r123205 fails on Qt
+# https://bugs.webkit.org/show_bug.cgi?id=91967
+inspector/styles/protocol-css-regions-commands.html
+
+# [Qt] new test introduced in r123281 fails on Qt
+# https://bugs.webkit.org/show_bug.cgi?id=91968
+fast/sub-pixel/table-rows-have-stable-height.html
+
+# [Qt] svg/zoom/{page,text}/zoom-hixie-mixed-009.xml fails
+# https://bugs.webkit.org/show_bug.cgi?id=92018
+svg/zoom/text/zoom-hixie-mixed-009.xml
+svg/zoom/page/zoom-hixie-mixed-009.xml
+
+# [Qt] svg/repaint/container-repaint.svg fails
+# https://bugs.webkit.org/show_bug.cgi?id=92039
+svg/repaint/container-repaint.svg
+
+# This test depends on subpixel layout.
+# https://bugs.webkit.org/show_bug.cgi?id=92352
+css3/flexbox/flex-rounding.html
+
+# [Qt] REGRESSION http/tests/security/contentSecurityPolicy/object-src-none-blocked.html fails after r123978
+# https://bugs.webkit.org/show_bug.cgi?id=92649
+http/tests/security/contentSecurityPolicy/object-src-none-blocked.html

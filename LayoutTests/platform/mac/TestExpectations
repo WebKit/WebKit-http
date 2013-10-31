@@ -19,6 +19,9 @@ BUGWK87908 SKIP : editing/undomanager = PASS
 // CSS image-resolution is not yet enabled.
 BUGWK85262 SKIP : fast/css/image-resolution = PASS
 
+// CSS image-orientation is not yet enabled.
+BUGWK89052 SKIP : fast/css/image-orientation = PASS
+
 // Our slow tests, in alphabetical order.
 BUGWK57672 : http/tests/local/fileapi/send-sliced-dragged-file.html = TEXT PASS
 
@@ -204,13 +207,8 @@ BUGWK60731 : ietestcenter/css3/grid/grid-column-003.htm = IMAGE
 BUGWK60731 : ietestcenter/css3/grid/grid-items-002.htm = IMAGE
 BUGWK60731 : ietestcenter/css3/grid/grid-items-003.htm = IMAGE
 
-// Fails after r115379
-BUGWK85038 : http/tests/inspector/network/network-initiator.html = TEXT TIMEOUT
-
 BUGWK85401 : media/video-colorspace-yuv420.html = TEXT
 BUGWK85401 : media/video-colorspace-yuv422.html = TEXT
-
-BUGWK88198 : svg/stroke/non-scaling-stroke-pattern.svg = PASS IMAGE
 
 BUGWK85404 : fast/loader/javascript-url-in-embed.html = TEXT PASS
 
@@ -292,3 +290,18 @@ BUGWK84186 SKIP : fast/text-autosizing = PASS
 
 // Dialog element is not yet enabled.
 BUGWK84635 SKIP : fast/dom/HTMLDialogElement = TEXT
+
+// INPUT_TYPE_DATE is not enabled on the Mac
+BUGWK90987 : fast/forms/input-in-table-cell-no-value.html = IMAGE
+
+// Skip tests in fast/text/shaping
+BUGWK90951 SKIP : fast/text/shaping = PASS
+
+// [Mac] REGRESSION (r122494): Running platform/mac/plugins/root-object-premature-delete-crash.html results in a crash
+BUGWK91505 : platform/mac/plugins/root-object-premature-delete-crash.html = CRASH
+
+// [Mac] REGRESSION (r122651): fast/text/descent-clip-in-scaled-page.html fails
+BUGWK91552 : fast/text/descent-clip-in-scaled-page.html = IMAGE
+
+// Layout Test css3/filters/custom/custom-filter-animation.html is failing
+BUGWK84813 : css3/filters/custom/custom-filter-animation.html = TEXT

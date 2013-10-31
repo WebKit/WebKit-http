@@ -79,6 +79,7 @@ class DocumentMarkerController;
 class DocumentParser;
 class DocumentType;
 class DocumentWeakReference;
+class DynamicNodeListCacheBase;
 class EditingText;
 class Element;
 class EntityReference;
@@ -137,6 +138,7 @@ class TextResourceDecoder;
 class TreeWalker;
 class UndoManager;
 class WebKitNamedFlow;
+class WebKitNamedFlowCollection;
 class XMLHttpRequest;
 class XPathEvaluator;
 class XPathExpression;
@@ -177,6 +179,10 @@ class Prerenderer;
 class TextAutosizer;
 #endif
 
+#if ENABLE(CSP_NEXT)
+class DOMSecurityPolicy;
+#endif
+
 typedef int ExceptionCode;
 
 enum PageshowEventPersistence {
@@ -185,6 +191,19 @@ enum PageshowEventPersistence {
 };
 
 enum StyleResolverUpdateFlag { RecalcStyleImmediately, DeferRecalcStyle, RecalcStyleIfNeeded };
+
+enum NodeListInvalidationType {
+    DoNotInvalidateOnAttributeChanges = 0,
+    InvalidateOnClassAttrChange,
+    InvalidateOnIdNameAttrChange,
+    InvalidateOnNameAttrChange,
+    InvalidateOnForAttrChange,
+    InvalidateForFormControls,
+    InvalidateOnHRefAttrChange,
+    InvalidateOnItemAttrChange,
+    InvalidateOnAnyAttrChange,
+};
+const int numNodeListInvalidationTypes = InvalidateOnAnyAttrChange + 1;
 
 class Document : public ContainerNode, public TreeScope, public ScriptExecutionContext {
 public:
@@ -332,13 +351,10 @@ public:
 
     bool cssRegionsEnabled() const;
 #if ENABLE(CSS_REGIONS)
-    enum FlowNameCheck {
-        CheckFlowNameForInvalidValues,
-        DoNotCheckFlowNameForInvalidValues
-    };
     PassRefPtr<WebKitNamedFlow> webkitGetFlowByName(const String&);
-    PassRefPtr<WebKitNamedFlow> webkitGetFlowByName(const String&, FlowNameCheck);
 #endif
+
+    WebKitNamedFlowCollection* namedFlows();
 
     bool regionBasedColumnsEnabled() const;
 
@@ -402,6 +418,10 @@ public:
     String webkitVisibilityState() const;
     bool webkitHidden() const;
     void dispatchVisibilityStateChangeEvent();
+#endif
+
+#if ENABLE(CSP_NEXT)
+    DOMSecurityPolicy* securityPolicy();
 #endif
 
     PassRefPtr<Node> adoptNode(PassRefPtr<Node> source, ExceptionCode&);
@@ -723,9 +743,10 @@ public:
     bool isPendingStyleRecalc() const;
     void styleRecalcTimerFired(Timer<Document>*);
 
-    void registerDynamicSubtreeNodeList(DynamicSubtreeNodeList*);
-    void unregisterDynamicSubtreeNodeList(DynamicSubtreeNodeList*);
-    void clearNodeListCaches();
+    void registerNodeListCache(DynamicNodeListCacheBase*);
+    void unregisterNodeListCache(DynamicNodeListCacheBase*);
+    bool shouldInvalidateNodeListCaches(const QualifiedName* attrName = 0) const;
+    void invalidateNodeListCaches(const QualifiedName* attrName);
 
     void attachNodeIterator(NodeIterator*);
     void detachNodeIterator(NodeIterator*);
@@ -939,7 +960,7 @@ public:
     
     void setHasNodesWithPlaceholderStyle() { m_hasNodesWithPlaceholderStyle = true; }
 
-    const Vector<IconURL>& iconURLs() const;
+    const Vector<IconURL>& iconURLs();
     void addIconURL(const String& url, const String& mimeType, const String& size, IconType);
 
     void setUseSecureKeyboardEntryWhenActive(bool);
@@ -1048,8 +1069,8 @@ public:
     Element* webkitCurrentFullScreenElement() const { return m_fullScreenElement.get(); }
     
     enum FullScreenCheckType {
-        EnforceIFrameAllowFulScreenRequirement,
-        ExemptIFrameAllowFulScreenRequirement,
+        EnforceIFrameAllowFullScreenRequirement,
+        ExemptIFrameAllowFullScreenRequirement,
     };
 
     void requestFullScreenForElement(Element*, unsigned short flags, FullScreenCheckType);
@@ -1111,7 +1132,12 @@ public:
     void didAddWheelEventHandler();
     void didRemoveWheelEventHandler();
 
+#if ENABLE(TOUCH_EVENTS)
     unsigned touchEventHandlerCount() const { return m_touchEventHandlerCount; }
+#else
+    unsigned touchEventHandlerCount() const { return 0; }
+#endif
+
     void didAddTouchEventHandler();
     void didRemoveTouchEventHandler();
 
@@ -1408,7 +1434,8 @@ private:
 
     InheritedBool m_designMode;
 
-    HashSet<DynamicSubtreeNodeList*> m_listsInvalidatedAtDocument;
+    HashSet<DynamicNodeListCacheBase*> m_listsInvalidatedAtDocument;
+    unsigned m_nodeListCounts[numNodeListInvalidationTypes];
 
     HTMLCollection* m_collections[NumUnnamedDocumentCachedTypes];
     typedef HashMap<AtomicString, HTMLNameCollection*> NamedCollectionMap;
@@ -1490,7 +1517,9 @@ private:
     unsigned m_writeRecursionDepth;
     
     unsigned m_wheelEventHandlerCount;
+#if ENABLE(TOUCH_EVENTS)
     unsigned m_touchEventHandlerCount;
+#endif
     
 #if ENABLE(UNDO_MANAGER)
     RefPtr<UndoManager> m_undoManager;
@@ -1515,6 +1544,12 @@ private:
     
     bool m_visualUpdatesAllowed;
     Timer<Document> m_visualUpdatesSuppressionTimer;
+
+    RefPtr<WebKitNamedFlowCollection> m_namedFlows;
+
+#if ENABLE(CSP_NEXT)
+    RefPtr<DOMSecurityPolicy> m_domSecurityPolicy;
+#endif
 
 #ifndef NDEBUG
     bool m_didDispatchViewportPropertiesChanged;

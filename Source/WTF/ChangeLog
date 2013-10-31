@@ -1,3 +1,860 @@
+2012-07-30  Patrick Gansterer  <paroga@webkit.org>
+
+        Add special export macro for string related functions
+        https://bugs.webkit.org/show_bug.cgi?id=92624
+
+        Reviewed by Hajime Morita.
+
+        The windows port compiles string related code into every binary for performance reasons (see r59187).
+        Add the WTF_EXPORT_STRING_API define to allow this behaviour with export macros too.
+
+        * wtf/ExportMacros.h:
+        * wtf/text/AtomicString.h:
+        (AtomicString):
+        * wtf/text/StringImpl.h:
+        (StringImpl):
+        (WTF):
+        * wtf/text/WTFString.h:
+        (WTF):
+        (String):
+
+2012-07-30  Patrick Gansterer  <paroga@webkit.org>
+
+        Replace UnicodeWinCE with UnicodeWchar
+        https://bugs.webkit.org/show_bug.cgi?id=92539
+
+        Reviewed by Ryosuke Niwa.
+
+        UnicodeWinCE never contained WinCE specific code. UnicodeWchar
+        is a replacement for it, which is mainly based on the functions
+        from <wchar.h>. It is ment as a minimal Unicode backend, which
+        can be used very easy and has no external dependencies.
+
+        * WTF.gyp/WTF.gyp:
+        * WTF.gypi:
+        * wtf/Platform.h:
+        * wtf/PlatformWinCE.cmake:
+        * wtf/unicode/Unicode.h:
+        * wtf/unicode/wchar/UnicodeWchar.cpp: Added.
+        (Unicode):
+        (WTF::Unicode::category):
+        (WTF::Unicode::combiningClass):
+        (WTF::Unicode::direction):
+        (WTF::Unicode::decompositionType):
+        (WTF::Unicode::hasLineBreakingPropertyComplexContext):
+        (WTF::Unicode::mirroredChar):
+        (WTF::Unicode::convertWithFunction):
+        (WTF::Unicode::foldCase):
+        (WTF::Unicode::toLower):
+        (WTF::Unicode::toUpper):
+        * wtf/unicode/wchar/UnicodeWchar.h: Added.
+        (Unicode):
+        (WTF::Unicode::isAlphanumeric):
+        (WTF::Unicode::isDigit):
+        (WTF::Unicode::isLetter):
+        (WTF::Unicode::isLower):
+        (WTF::Unicode::isPrintableChar):
+        (WTF::Unicode::isPunct):
+        (WTF::Unicode::isSpace):
+        (WTF::Unicode::isUpper):
+        (WTF::Unicode::isArabicChar):
+        (WTF::Unicode::isSeparatorSpace):
+        (WTF::Unicode::foldCase):
+        (WTF::Unicode::toLower):
+        (WTF::Unicode::toUpper):
+        (WTF::Unicode::toTitleCase):
+        (WTF::Unicode::umemcasecmp):
+        * wtf/unicode/wince/UnicodeWinCE.cpp: Removed.
+        * wtf/unicode/wince/UnicodeWinCE.h: Removed.
+
+2012-07-26  Yury Semikhatsky  <yurys@chromium.org>
+
+        Web Inspector: move StringImpl size calculation to StringImpl
+        https://bugs.webkit.org/show_bug.cgi?id=92359
+
+        Reviewed by Pavel Feldman.
+
+        Moved stringSize(StringImpl*) implementation from InspectorMemoryAgent to
+        StringImpl::sizeInBytes();
+
+        * wtf/text/StringImpl.cpp:
+        (WTF::StringImpl::sizeInBytes):
+        (WTF):
+        * wtf/text/StringImpl.h:
+        (StringImpl):
+
+2012-07-28  Patrick Gansterer  <paroga@webkit.org>
+
+        [WIN] Add missing export macro to friend decleration.
+
+        Since the __declspec is part of the function signature
+        on windows, we need it at all friend declerations too.
+
+        * wtf/MediaTime.h:
+
+2012-07-28  Patrick Gansterer  <paroga@webkit.org>
+
+        [CMake] Add missing MediaTime files after r123878.
+
+        * wtf/CMakeLists.txt:
+
+2012-07-28  Patrick Gansterer  <paroga@webkit.org>
+
+        Remove obsolete functions from WTF::Unicode
+        https://bugs.webkit.org/show_bug.cgi?id=92571
+
+        Reviewed by Kentaro Hara.
+
+        Remove hasLineBreakingPropertyComplexContextOrIdeographic() and digitValue(),
+        since they are never used and defined for a few Unicode backends only.
+
+        * wtf/unicode/glib/UnicodeGLib.h:
+        * wtf/unicode/icu/UnicodeIcu.h:
+
+2012-07-27  Sheriff Bot  <webkit.review.bot@gmail.com>
+
+        Unreviewed, rolling out r123679.
+        http://trac.webkit.org/changeset/123679
+        https://bugs.webkit.org/show_bug.cgi?id=92565
+
+        Slowed down HTML parsing by 3.6% (Requested by abarth on
+        #webkit).
+
+        * wtf/text/WTFString.h:
+
+2012-07-27  Arnaud Renevier  <a.renevier@sisa.samsung.com>
+
+        use createUninitialized when creating TypedArray from another array
+        https://bugs.webkit.org/show_bug.cgi?id=92518
+
+        Reviewed by Kenneth Russell.
+
+        Expose a createUninitialized static method on TypedArray classes.
+
+        * wtf/Float32Array.h:
+        (Float32Array):
+        (WTF::Float32Array::createUninitialized):
+        (WTF):
+        * wtf/Float64Array.h:
+        (Float64Array):
+        (WTF::Float64Array::createUninitialized):
+        (WTF):
+        * wtf/Int16Array.h:
+        (Int16Array):
+        (WTF::Int16Array::createUninitialized):
+        (WTF):
+        * wtf/Int32Array.h:
+        (Int32Array):
+        (WTF::Int32Array::createUninitialized):
+        (WTF):
+        * wtf/Int8Array.h:
+        (Int8Array):
+        (WTF::Int8Array::createUninitialized):
+        (WTF):
+        * wtf/Uint16Array.h:
+        (Uint16Array):
+        (WTF::Uint16Array::createUninitialized):
+        (WTF):
+        * wtf/Uint32Array.h:
+        (Uint32Array):
+        (WTF::Uint32Array::createUninitialized):
+        (WTF):
+        * wtf/Uint8Array.h:
+        (Uint8Array):
+        (WTF::Uint8Array::createUninitialized):
+        (WTF):
+        * wtf/Uint8ClampedArray.h:
+        (Uint8ClampedArray):
+
+2012-07-27  Patrick Gansterer  <paroga@webkit.org>
+
+        [WINCE] Use macros from ICU instead of defining the same functionality again
+        https://bugs.webkit.org/show_bug.cgi?id=92530
+
+        Reviewed by Ryosuke Niwa.
+
+        Replace isHighSurrogate() with U16_IS_LEAD(), isLowSurrogate() with
+        U16_IS_TRAIL() and surrogateToUcs4() with U16_GET_SUPPLEMENTARY().
+
+        * wtf/unicode/wince/UnicodeWinCE.h:
+
+2012-07-27  Caio Marcelo de Oliveira Filho  <caio.oliveira@openbossa.org>
+
+        [Qt] Fix build after r123917
+        https://bugs.webkit.org/show_bug.cgi?id=92555
+
+        Unreviewed.
+
+        * wtf/GregorianDateTime.h: Needs string.h for memset().
+
+2012-07-27  Paweł Forysiuk  <tuxator@o2.pl>
+
+        MinGW build fails because of missing header in GregorianDateTime.h
+        https://bugs.webkit.org/show_bug.cgi?id=92531
+
+        * wtf/GregorianDateTime.h: Include time.h
+
+2012-07-27  Jer Noble  <jer.noble@apple.com>
+
+        Unreviewed build fix.
+
+        Use MathExtras.h and the non std:: versions of isnan and signbit.
+
+        * wtf/MediaTime.cpp:
+        (WTF::MediaTime::createWithFloat):
+        (WTF::MediaTime::createWithDouble):
+
+2012-07-27  Jer Noble  <jer.noble@apple.com>
+
+        Support a rational time class for use by media elements.
+        https://bugs.webkit.org/show_bug.cgi?id=88787
+
+        Reviewed by Eric Carlson.
+
+        Add a new MediaTime class which implements rational math operations.
+
+        Add common constructors and assignment operators:
+        * wtf/MediaTime.cpp: Added.
+        (WTF::MediaTime::MediaTime):
+        (WTF::MediaTime::~MediaTime):
+        (WTF::MediaTime::operator=):
+
+        Add common math operators:
+        * wtf/MediaTime.cpp:
+        (WTF::MediaTime::operator+):
+        (WTF::MediaTime::operator-):
+        (WTF::MediaTime::operator<):
+        (WTF::MediaTime::operator>):
+        (WTF::MediaTime::operator==):
+        (WTF::MediaTime::operator>=):
+        (WTF::MediaTime::operator<=):
+
+        Add functions to check the MeiaTime time type flags:
+        * wtf/MediaTime.h:
+        (WTF::MediaTime::isValid):
+        (WTF::MediaTime::isInvalid):
+        (WTF::MediaTime::hasBeenRounde):
+        (WTF::MediaTime::isPositiveInfinite):
+        (WTF::MediaTime::isNegativeInfinite):
+        (WTF::MediaTime::isIndefinite):
+
+        Add constants for commonly used MediaTime values:
+        (WTF::MediaTime::zeroTime):
+        (WTF::MediaTime::invalidTime):
+        (WTF::MediaTime::positiveInfiniteTime):
+        (WTF::MediaTime::negativeInfiniteTime):
+        (WTF::MediaTime::indefiniteTime):
+
+        Add explicit conversion functions to convert to and from floating point values.
+        * wtf/MediaTime.cpp:
+        (WTF::MediaTime::createWithFloat):
+        (WTF::MediaTime::createWithDouble):
+        (WTF::MediaTime::toFloat):
+        (WTF::MediaTime::toDouble):
+
+        Add some useful exported functions:
+        * wtf/MediaTime.cpp:
+        (WTF::MediaTime::compare): Master function for the comparison operators above.
+        (WTF::MediaTime::setTimeScale): Rescale the time value to a new time scale.
+        (WTF::abs): Return an absolute value for the current MediaTime.
+
+        Static utility functions to implement the above:
+        * wtf/MediaTime.cpp:
+        (WTF::greatestCommonDivisor):
+        (WTF::leastCommonMultiple):
+        (WTF::signum):
+
+        Windows-only implementations of isinf and signbit:
+        * wtf/MediaTime.cpp:
+        (std::isinf):
+        (std::signbit):
+
+        Add the new class to platform build files:
+        * GNUmakefile.list.am:
+        * WTF.gypi:
+        * WTF.pro:
+        * WTF.vcproj/WTF.vcproj:
+        * WTF.xcodeproj/project.pbxproj:
+
+2012-07-27  Wei James  <james.wei@intel.com>
+
+        set WTF_USE_LOCKFREE_THREADSAFEREFCOUNTED for chromium android
+        https://bugs.webkit.org/show_bug.cgi?id=91746
+
+        Reviewed by Adam Barth.
+
+        This patch is part of efforts to enable web audio for chromium android.
+        Web audio component needs to use atomicIncrement and atomicDecrement,
+        which are enabled by this MACRO.
+
+        As mentioned in https://bugs.webkit.org/show_bug.cgi?id=89428#c19, make
+        this patch standalone.
+
+        * wtf/Atomics.h:
+        (WTF):
+
+2012-07-27  Wei James  <james.wei@intel.com>
+
+        set WTF_USE_LOCKFREE_THREADSAFEREFCOUNTED for chromium android
+        https://bugs.webkit.org/show_bug.cgi?id=91746
+
+        Reviewed by Adam Barth.
+
+        This patch is part of efforts to enable web audio for chromium android.
+        Web audio component needs to use atomicIncrement and atomicDecrement,
+        which are enabled by this MACRO.
+
+        As mentioned in https://bugs.webkit.org/show_bug.cgi?id=89428#c19, make
+        this patch standalone.
+
+        * wtf/Atomics.h:
+        (WTF):
+
+2012-07-26  Arnaud Renevier  <a.renevier@sisa.samsung.com>
+
+        constructing TypedArray from another TypedArray is slow
+        https://bugs.webkit.org/show_bug.cgi?id=90838
+
+        Reviewed by Kenneth Russell.
+
+        Introduce virtual method getType on ArrayBufferView. It returns the actual
+        type of the view. This method replaces previous is<Type>Array() methods.
+
+        * wtf/ArrayBufferView.h:
+        * wtf/Float32Array.h:
+        (WTF::Float32Array::getType):
+        (Float32Array):
+        * wtf/Float64Array.h:
+        (WTF::Float64Array::getType):
+        (Float64Array):
+        * wtf/Int16Array.h:
+        (WTF::Int16Array::getType):
+        (Int16Array):
+        * wtf/Int32Array.h:
+        (WTF::Int32Array::getType):
+        (Int32Array):
+        * wtf/Int8Array.h:
+        (WTF::Int8Array::getType):
+        (Int8Array):
+        * wtf/IntegralTypedArrayBase.h:
+        * wtf/TypedArrayBase.h:
+        (TypedArrayBase):
+        (WTF::TypedArrayBase::item):
+        * wtf/Uint16Array.h:
+        (WTF::Uint16Array::getType):
+        (Uint16Array):
+        * wtf/Uint32Array.h:
+        (WTF::Uint32Array::getType):
+        (Uint32Array):
+        * wtf/Uint8Array.h:
+        (WTF::Uint8Array::getType):
+        (Uint8Array):
+        * wtf/Uint8ClampedArray.h:
+        (WTF::Uint8ClampedArray::getType):
+        (Uint8ClampedArray):
+
+2012-07-26  Zeno Albisser  <zeno@webkit.org>
+
+        [Qt] requestAnimationFrame should only trigger when a new frame can be displayed.
+        https://bugs.webkit.org/show_bug.cgi?id=88638
+
+        Disable REQUEST_ANIMATION_FRAME_TIMER for the Qt port and tie
+        the servicing of scripted animations to layer syncing for WK2.
+        For WK1 we rely on the RefreshAnimation that is based on QAbstractAnimation.
+
+        Reviewed by Jocelyn Turcotte.
+
+        * wtf/Platform.h:
+
+2012-07-26  Yury Semikhatsky  <yurys@chromium.org>
+
+        Unreviewed. Revert r123740 as it breaks AppleMac compilation.
+
+        * wtf/text/StringImpl.cpp:
+        * wtf/text/StringImpl.h:
+
+2012-07-26  Yury Semikhatsky  <yurys@chromium.org>
+
+        Web Inspector: move StringImpl size calculation to StringImpl
+        https://bugs.webkit.org/show_bug.cgi?id=92359
+
+        Reviewed by Pavel Feldman.
+
+        Moved stringSize(StringImpl*) implementation from InspectorMemoryAgent to
+        StringImpl::sizeInBytes();
+
+        * wtf/text/StringImpl.cpp:
+        (WTF::StringImpl::sizeInBytes):
+        (WTF):
+        * wtf/text/StringImpl.h:
+        (StringImpl):
+
+2012-07-25  Benjamin Poulain  <bpoulain@apple.com>
+
+        Initialize QualifiedName's strings from the read only data segment
+        https://bugs.webkit.org/show_bug.cgi?id=92226
+
+        Reviewed by Anders Carlsson.
+
+        Add constructors for StringImpl and AtomicString to be able to create
+        the strings from the literal in read only memory.
+
+        * wtf/text/AtomicString.cpp:
+        (HashTranslatorCharBuffer):
+        (WTF::LCharBufferFromLiteralDataTranslator::hash):
+        (LCharBufferFromLiteralDataTranslator):
+        (WTF::LCharBufferFromLiteralDataTranslator::equal):
+        (WTF::LCharBufferFromLiteralDataTranslator::translate):
+        (WTF::AtomicString::addFromLiteralData):
+        * wtf/text/AtomicString.h:
+        (WTF::AtomicString::AtomicString):
+        (AtomicString):
+        * wtf/text/StringImpl.cpp:
+        (WTF::StringImpl::createFromLiteral):
+        * wtf/text/StringImpl.h:
+        (WTF):
+        (StringImpl):
+        (WTF::StringImpl::createFromLiteral):
+
+2012-07-25  Michael Saboff  <msaboff@apple.com>
+
+        Convert HTML parser to handle 8-bit resources without converting to UChar*
+        https://bugs.webkit.org/show_bug.cgi?id=90321
+
+        Reviewed by Geoffrey Garen.
+
+        * wtf/text/WTFString.h:
+        (WTF::String::dataSize): New method to return the number of bytes 
+        the string requires.  This replaces a harcoded calculation based on
+        length and sizeof(UChar).
+
+2012-07-25  Caio Marcelo de Oliveira Filho  <caio.oliveira@openbossa.org>
+
+        Create a specialized pair for use in HashMap iterators
+        https://bugs.webkit.org/show_bug.cgi?id=92137
+
+        Reviewed by Ryosuke Niwa.
+
+        The type used for internal storage in HashMap is exposed in its interface as iterator
+        "contents". Currently HashMap uses std::pair<>, which this patch replaces with
+        KeyValuePair.
+
+        Having this specialized structure will allow us to customize the members to be called
+        key/value, improving readability in code using HashMap iterators. They are still called
+        first/second to separate this change from the mechanical change of updating callsites.
+
+        * wtf/HashIterators.h:
+        (HashTableConstKeysIterator):
+        (HashTableConstValuesIterator):
+        (HashTableKeysIterator):
+        (HashTableValuesIterator):
+        Use KeyValuePair instead of std::pair when defining the iterators.
+
+        * wtf/HashMap.h:
+        (WTF):
+        (WTF::KeyValuePairKeyExtractor::extract):
+        (HashMap):
+        Remove PairFirstExtractor. Add and use the KeyValuePair corresponding extractor.
+
+        (WTF::HashMapValueTraits::isEmptyValue): Use KeyValuePairHashTraits for HashMaps.
+        (WTF::HashMapTranslator::translate):
+        (WTF::HashMapTranslatorAdapter::translate):
+        The traits of the mapped value is now called ValueTraits instead of SecondTraits.
+
+        * wtf/HashTable.h:
+        (WTF::hashTableSwap): Add specialization for swapping KeyValuePairs.
+        (WTF): Remove now unneeded specialization for std::pairs.
+
+        * wtf/HashTraits.h:
+        (KeyValuePair):
+        (WTF::KeyValuePair::KeyValuePair):
+        (WTF):
+        Specialized pair. In the future difference from pair should be the member names.
+
+        (KeyValuePairHashTraits):
+        (WTF::KeyValuePairHashTraits::emptyValue):
+        (WTF::KeyValuePairHashTraits::constructDeletedValue):
+        (WTF::KeyValuePairHashTraits::isDeletedValue):
+        These traits are analogous to PairHashTraits but for KeyValuePair.
+
+        * wtf/RefPtrHashMap.h: Use KeyValuePairHashTraits.
+
+2012-07-25  Andrew Wilson  <atwilson@chromium.org>
+
+        Unreviewed, rolling out r123560.
+        http://trac.webkit.org/changeset/123560
+        https://bugs.webkit.org/show_bug.cgi?id=90321
+
+        Breaks chromium valgrind tests.
+
+        * wtf/text/WTFString.h:
+
+2012-07-25  Csaba Osztrogonác  <ossy@webkit.org>
+
+        [Qt] There are parallel GC related crashes regularly
+        https://bugs.webkit.org/show_bug.cgi?id=90957
+
+        Rubber-stamped by Zoltan Herczeg.
+
+        * wtf/Platform.h: Disable parallel GC temporarily on Qt until proper fix.
+
+2012-07-24  Benjamin Poulain  <bpoulain@apple.com> && Joseph Pecoraro  <pecoraro@apple.com>
+
+        QualifiedName's HashSet should be big enough to hold at least all the static names
+        https://bugs.webkit.org/show_bug.cgi?id=91891
+
+        Reviewed by Darin Adler.
+
+        Add a static struct to compute the HashTable capacity for any given size at compile time.
+        This allow us to create HashTraits giving the minimumSize without hardcoding the values.
+
+        * wtf/HashTable.h:
+        (OneifyLowBits):
+        (UpperPowerOfTwoBound):
+        (HashTableCapacityForSize): Compute the HashTable capacity at compile time.
+
+2012-07-24  Michael Saboff  <msaboff@apple.com>
+
+        Convert HTML parser to handle 8-bit resources without converting to UChar*
+        https://bugs.webkit.org/show_bug.cgi?id=90321
+
+        Reviewed by Geoffrey Garen.
+
+        * wtf/text/WTFString.h:
+        (WTF::String::dataSize): New method to return the number of bytes 
+        the string requires.  This replaces a harcoded calculation based on
+        length and sizeof(UChar).
+
+2012-07-24  Sam Weinig  <sam@webkit.org>
+
+        Add per-HashTable stats
+        https://bugs.webkit.org/show_bug.cgi?id=92185
+
+        Reviewed by Anders Carlsson.
+
+        Add per-HashTable stats, so we can look at the effectiveness of an individual HashTable.
+
+        * wtf/HashTable.h:
+        (WTF::HashTable::Stats::Stats):
+        Add a HashTable::Stats to hold the stats.
+
+        (WTF::HashTable::Stats::recordCollisionAtCount):
+        (WTF::HashTable::Stats::dumpStats):
+        Add versions of recordCollisionAtCount and dumpStats for per-HashTable version.
+
+        (WTF::HashTable):
+        Keep the stats, if enabled, in an OwnPtr, to not blow JSCell max size restrictions.
+
+        (WTF::lookup):
+        (WTF::lookupForWriting):
+        (WTF::fullLookupForWriting):
+        (WTF::add):
+        (WTF::reinsert):
+        (WTF::remove):
+        (WTF::rehash):
+        Keep track of the stats as the table is used.
+
+2012-07-24  Patrick Gansterer  <paroga@webkit.org>
+
+        Store the full year in GregorianDateTime
+        https://bugs.webkit.org/show_bug.cgi?id=92067
+
+        Reviewed by Geoffrey Garen.
+
+        Use the full year instead of the offset from year 1900 
+        for the year member variable of GregorianDateTime.
+
+        * wtf/GregorianDateTime.h:
+        (WTF::GregorianDateTime::operator tm):
+
+2012-07-23  Patrick Gansterer  <paroga@webkit.org>
+
+        Move GregorianDateTime from JSC to WTF namespace
+        https://bugs.webkit.org/show_bug.cgi?id=91948
+
+        Reviewed by Geoffrey Garen.
+
+        Moving GregorianDateTime into the WTF namespace allows us to us to
+        use it in WebCore too. The new class has the same behaviour as the
+        old struct. Only the unused timeZone member has been removed.
+
+        * GNUmakefile.list.am:
+        * WTF.gypi:
+        * WTF.pro:
+        * WTF.vcproj/WTF.vcproj:
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/CMakeLists.txt:
+        * wtf/GregorianDateTime.h: Added.
+        (GregorianDateTime):
+
+2012-07-23  Rob Buis  <rbuis@rim.com>
+
+        [BlackBerry] Merge createThreadInternal implementations
+        https://bugs.webkit.org/show_bug.cgi?id=91899
+
+        Reviewed by Yong Li.
+
+        PR 111675
+
+        Remove our implementation since the default thread stack size on QNX is fine.
+
+        * wtf/ThreadingPthreads.cpp:
+        (WTF::createThreadInternal):
+        (WTF::initializeCurrentThreadInternal): make sure we set the thread name.
+
+2012-07-23  Patrick Gansterer  <paroga@webkit.org>
+
+        [WINCE] Define NOMINMAX in the build system instead of Platform.h
+        https://bugs.webkit.org/show_bug.cgi?id=91938
+
+        Reviewed by Ryosuke Niwa.
+
+        * wtf/Platform.h:
+
+2012-07-23  Patrick Gansterer  <paroga@webkit.org>
+
+        Build fix for Windows after r123317.
+
+        * wtf/DateMath.cpp: Added missing header include.
+
+2012-07-23  Patrick Gansterer  <paroga@webkit.org>
+
+        [WIN] Use GetTimeZoneInformation() for calculateUTCOffset()
+        https://bugs.webkit.org/show_bug.cgi?id=91935
+
+        Reviewed by Ryosuke Niwa.
+
+        GetTimeZoneInformation() returns the offset directly. Using it
+        avoids unnecessary calculations and remove dependencies on
+        other time related function, which do not exist on WinCE.
+
+        * wtf/DateMath.cpp:
+        (WTF::calculateUTCOffset):
+
+2012-07-20  Han Shen  <shenhan@google.com>
+
+        [Chromium] Compilation fails under gcc 4.7
+        https://bugs.webkit.org/show_bug.cgi?id=90227
+
+        Reviewed by Tony Chang.
+
+        Disable warnings about c++0x compatibility in gcc newer than 4.6.
+
+        * WTF.gyp/WTF.gyp:
+
+2012-07-19  Dan Bernstein  <mitz@apple.com>
+
+        The ATSUI-based complex text code is unused
+        https://bugs.webkit.org/show_bug.cgi?id=91816
+
+        Reviewed by Sam Weinig.
+
+        Removed definitions of WTF_USE_ATSUI and WTF_USE_CORE_TEXT.
+
+        * wtf/Platform.h:
+
+2012-07-19  Wei James  <james.wei@intel.com>
+
+        enable Web Audio for chromium android port
+        https://bugs.webkit.org/show_bug.cgi?id=89428
+
+        Reviewed by Kenneth Russell.
+
+        * wtf/MathExtras.h:
+        (log2):
+        (log2f):
+
+2012-07-19  Scott Graham  <scottmg@chromium.org>
+
+        [Chromium] disable warning on Windows from gcc-only pragma in Assertions.cpp"
+        https://bugs.webkit.org/show_bug.cgi?id=91776
+
+        Reviewed by Ryosuke Niwa.
+
+        Avoids:
+            ...\source\wtf\wtf\assertions.cpp(31) : warning C4068: unknown pragma
+
+        * WTF.gyp/WTF.gyp:
+
+2012-07-19  Robert Sesek  <rsesek@chromium.org>
+
+        [chromium][Mac] Switch the MACOSX_DEPLOYMENT_TARGET to 10.6
+        https://bugs.webkit.org/show_bug.cgi?id=91752
+
+        Reviewed by Eric Seidel.
+
+        When building CHROMIUM && DARWIN, do not enable ATSUI support.
+
+        * wtf/Platform.h:
+
+2012-07-18  Yong Li  <yoli@rim.com>
+
+        [BlackBerry] Implement currentTime() and monotonicallyIncreasingTime() for OS(QNX)
+        https://bugs.webkit.org/show_bug.cgi?id=91659
+
+        Reviewed by Rob Buis.
+
+        Implement currentTime() and monotonicallyIncreasingTime() for OS(QNX) with clock_gettime().
+
+        * wtf/CurrentTime.cpp:
+        (WTF):
+        (WTF::currentTime):
+        (WTF::monotonicallyIncreasingTime):
+
+2012-07-18  Tom Sepez  <tsepez@chromium.org>
+
+        OOB read of stack buffer below DoubleToStringConverter::CreateExponentialRepresentation() in debug builds
+        https://bugs.webkit.org/show_bug.cgi?id=91642
+
+        Reviewed by Abhishek Arya.
+
+        * wtf/dtoa/double-conversion.cc:
+        (DoubleToStringConverter::CreateExponentialRepresentation): NUL-terminate string buffer before passing it to StringBuilder::AddSubstring()
+        
+2012-07-18  Michael Saboff  <msaboff@apple.com>
+
+        Make TextCodecLatin1 handle 8 bit data without converting to UChar's
+        https://bugs.webkit.org/show_bug.cgi?id=90319
+
+        Reviewed by Oliver Hunt.
+
+        * wtf/text/StringImpl.h:
+        (StringImpl): Exported LChar variant of adopt().
+        * wtf/text/WTFString.h:
+        (WTF::String::createUninitialized): Exported LChar variant.
+
+2012-07-18  Rob Buis  <rbuis@rim.com>
+
+        Alignment crash in MIMESniffer
+        https://bugs.webkit.org/show_bug.cgi?id=89787
+
+        Reviewed by Yong Li.
+
+        PR 169064
+
+        Change isPointerTypeAlignmentOkay so calling it does not require ifdefs.
+
+        * wtf/StdLibExtras.h:
+        (isPointerTypeAlignmentOkay):
+
+2012-07-17  Gabor Ballabas  <gaborb@inf.u-szeged.hu>
+
+        [Qt][V8] Remove the V8 related codepaths and configuration
+        https://bugs.webkit.org/show_bug.cgi?id=90863
+
+        Reviewed by Simon Hausmann.
+
+        * WTF.pri:
+
+2012-07-17  Sheriff Bot  <webkit.review.bot@gmail.com>
+
+        Unreviewed, rolling out r122834.
+        http://trac.webkit.org/changeset/122834
+        https://bugs.webkit.org/show_bug.cgi?id=91492
+
+        it broke the chromium (Requested by kkristof on #webkit).
+
+        * WTF.pri:
+
+2012-07-17  Gabor Ballabas  <gaborb@inf.u-szeged.hu>
+
+        [Qt][V8] Remove the V8 related codepaths and configuration
+        https://bugs.webkit.org/show_bug.cgi?id=90863
+
+        Reviewed by Simon Hausmann.
+
+        * WTF.pri:
+
+2012-07-16  Hajime Morrita  <morrita@chromium.org>
+
+        WebCore needs WEBCORE_TESTING macro to mark methods being exported for testing.
+        https://bugs.webkit.org/show_bug.cgi?id=90764
+
+        Reviewed by Adam Barth.
+
+        Added USE(EXPORT_MACROS_FOR_TESTING) and enabled it on GTK and Windows.
+
+        * wtf/ExportMacros.h:
+        * wtf/Platform.h:
+
+2012-07-16  Filip Pizlo  <fpizlo@apple.com>
+
+        Unreviewed build fix.
+
+        * wtf/FastMalloc.cpp:
+        (WTF::TCMalloc_ThreadCache::CreateCacheIfNecessary):
+
+2012-07-16  Adam Treat  <atreat@rim.com>
+
+        [BlackBerry] Use newer version of platform API to implement callOnMainThread
+        https://bugs.webkit.org/show_bug.cgi?id=91404
+
+        Reviewed by Yong Li.
+
+        Right now we're using an outdated API that involves a virtual function call for no reason.
+        Use the new API that is much more direct and to the point.
+
+        * wtf/blackberry/MainThreadBlackBerry.cpp:
+        (WTF::scheduleDispatchFunctionsOnMainThread):
+
+2012-07-14  Filip Pizlo  <fpizlo@apple.com>
+
+        Unreviewed, build fix.
+
+        * wtf/Assertions.cpp:
+        * wtf/Platform.h:
+        * wtf/unicode/icu/CollatorICU.cpp:
+        (WTF::Collator::userDefault):
+
+2012-07-13  Xianzhu Wang  <wangxianzhu@chromium.org>
+
+        Move WebCore/platform/text/Base64 to WTF/wtf/text
+        https://bugs.webkit.org/show_bug.cgi?id=91162
+
+        Reviewed by Adam Barth.
+
+        * GNUmakefile.list.am:
+        * WTF.gypi:
+        * WTF.pro:
+        * WTF.vcproj/WTF.vcproj:
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/CMakeLists.txt:
+        * wtf/text/Base64.cpp: Renamed from Source/WebCore/platform/text/Base64.cpp.
+        (WTF):
+        (WTF::base64Encode):
+        (WTF::base64Decode):
+        (WTF::base64DecodeInternal):
+        * wtf/text/Base64.h: Renamed from Source/WebCore/platform/text/Base64.h.
+        (WTF):
+        (WTF::base64Encode):
+
+2012-07-12  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Add API to get HTTPS status to WebKit2 GTK+
+        https://bugs.webkit.org/show_bug.cgi?id=91100
+
+        Reviewed by Martin Robinson.
+
+        Add support for GByteArray.
+
+        * wtf/gobject/GRefPtr.cpp:
+        (WTF::refGPtr):
+        (WTF):
+        (WTF::derefGPtr):
+        * wtf/gobject/GRefPtr.h:
+        (WTF):
+        * wtf/gobject/GTypedefs.h:
+
+2012-07-12  Maciej Stachowiak  <mjs@apple.com>
+
+        Document ListHashSet iteration guarantees
+        https://bugs.webkit.org/show_bug.cgi?id=91106
+
+        Reviewed by Eric Seidel.
+
+        * wtf/ListHashSet.h:
+        (WTF): Expand class comment to document this.
+
 2012-07-11  Mark Rowe  <mrowe@apple.com>
 
         <http://webkit.org/b/91024> Build against the latest SDK when targeting older OS X versions.

@@ -140,6 +140,19 @@ map {
     display: inline
 }
 
+#if defined(ENABLE_DIALOG_ELEMENT) && ENABLE_DIALOG_ELEMENT
+dialog:not([open]) { display: none; }
+dialog {
+    position: absolute;
+    left: 0; right: 0;
+    margin: auto;
+    border: solid;
+    padding: 1em;
+    background: white;
+    color: black;
+}
+#endif
+
 /* heading elements */
 
 h1 {
@@ -452,7 +465,7 @@ input[type="search"]::-webkit-search-results-button {
     -webkit-box-flex: 0;
 }
 
-#if defined(ENABLE_DATALIST) && ENABLE_DATALIST
+#if defined(ENABLE_DATALIST_ELEMENT) && ENABLE_DATALIST_ELEMENT
 datalist {
     display: none;
 }
@@ -645,7 +658,7 @@ input[type="color"]::-webkit-color-swatch {
     -webkit-box-flex: 1;
 }
 
-#if defined(ENABLE_DATALIST) && ENABLE_DATALIST
+#if defined(ENABLE_DATALIST_ELEMENT) && ENABLE_DATALIST_ELEMENT
 
 input[type="color"][list] {
     -webkit-appearance: menulist;
@@ -662,7 +675,7 @@ input[type="color"][list]::-webkit-color-swatch {
     border-color: #000000;
 }
 
-#endif // defined(ENABLE_DATALIST) && ENABLE_DATALIST
+#endif // defined(ENABLE_DATALIST_ELEMENT) && ENABLE_DATALIST_ELEMENT
 
 #endif // defined(ENABLE_INPUT_TYPE_COLOR) && ENABLE_INPUT_TYPE_COLOR
 
@@ -732,6 +745,7 @@ output {
     margin: 0;
     -webkit-text-security: none;
     -webkit-transition: opacity 05.5s ease;
+    -webkit-user-modify: read-only !important;
 }
 
 ::-webkit-validation-bubble-message {
@@ -749,6 +763,7 @@ output {
     -webkit-box-shadow: 4px 4px 4px rgba(100,100,100,0.6),
         inset -2px -2px 1px #d0c4c4,
         inset 2px 2px 1px white;
+    -webkit-user-modify: read-only !important;
     line-height: normal;
     white-space: normal;
     z-index: 2147483644;
@@ -756,10 +771,12 @@ output {
 
 ::-webkit-validation-bubble-text-block {
     -webkit-box-flex: 1;
+    -webkit-user-modify: read-only !important;
 }
 
 ::-webkit-validation-bubble-heading {
     font-weight: bold;
+    -webkit-user-modify: read-only !important;
 }
 
 ::-webkit-validation-bubble-arrow {
@@ -775,6 +792,7 @@ output {
     box-shadow: inset 2px 2px 1px white;
     -webkit-transform-origin: 0 0;
     -webkit-transform: rotate(45deg);
+    -webkit-user-modify: read-only !important;
     z-index: 2147483645;
 }
 
@@ -782,9 +800,10 @@ output {
     display: block;
     overflow: hidden;
     height: 16px;
+    -webkit-user-modify: read-only !important;
 }
 
-#if defined(ENABLE_METER_TAG) && ENABLE_METER_TAG
+#if defined(ENABLE_METER_ELEMENT) && ENABLE_METER_ELEMENT
 /* meter */
 
 meter {
@@ -800,29 +819,33 @@ meter::-webkit-meter-bar {
     background: -webkit-gradient(linear, left top, left bottom, from(#ddd), to(#ddd), color-stop(0.20, #eee), color-stop(0.45, #ccc), color-stop(0.55, #ccc));
     height: 100%;
     width: 100%;
+    -webkit-user-modify: read-only !important;
     -webkit-box-sizing: border-box;
 }
 
 meter::-webkit-meter-optimum-value {
     background: -webkit-gradient(linear, left top, left bottom, from(#ad7), to(#ad7), color-stop(0.20, #cea), color-stop(0.45, #7a3), color-stop(0.55, #7a3));
     height: 100%;
+    -webkit-user-modify: read-only !important;
     -webkit-box-sizing: border-box;
 }
 
 meter::-webkit-meter-suboptimum-value {
     background: -webkit-gradient(linear, left top, left bottom, from(#fe7), to(#fe7), color-stop(0.20, #ffc), color-stop(0.45, #db3), color-stop(0.55, #db3));
     height: 100%;
+    -webkit-user-modify: read-only !important;
     -webkit-box-sizing: border-box;
 }
 
 meter::-webkit-meter-even-less-good-value {
     background: -webkit-gradient(linear, left top, left bottom, from(#f77), to(#f77), color-stop(0.20, #fcc), color-stop(0.45, #d44), color-stop(0.55, #d44));
     height: 100%;
+    -webkit-user-modify: read-only !important;
     -webkit-box-sizing: border-box;
 }
 #endif
 
-#if defined(ENABLE_PROGRESS_TAG) && ENABLE_PROGRESS_TAG
+#if defined(ENABLE_PROGRESS_ELEMENT) && ENABLE_PROGRESS_ELEMENT
 /* progress */
 
 progress {
@@ -838,6 +861,7 @@ progress::-webkit-progress-bar {
     background-color: gray;
     height: 100%;
     width: 100%;
+    -webkit-user-modify: read-only !important;
     -webkit-box-sizing: border-box;
 }
 
@@ -845,11 +869,16 @@ progress::-webkit-progress-value {
     background-color: green;
     height: 100%;
     width: 50%; /* should be removed later */
+    -webkit-user-modify: read-only !important;
     -webkit-box-sizing: border-box;
 }
 #endif
 
 /* inline elements */
+
+img {
+    display: inline-block;
+}
 
 u, ins {
     text-decoration: underline

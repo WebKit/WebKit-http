@@ -53,9 +53,11 @@ my (
     $cssBoxDecorationBreakSupport,
     $cssExclusionsSupport,
     $cssFiltersSupport,
+    $cssImageOrientationSupport,
     $cssImageResolutionSupport,
     $cssRegionsSupport,
     $cssShadersSupport,
+    $cssCompositingSupport,
     $cssVariablesSupport,
     $customSchemeHandlerSupport,
     $dataTransferItemsSupport,
@@ -91,6 +93,7 @@ my (
     $linkPrefetchSupport,
     $linkPrerenderSupport,
     $mathmlSupport,
+    $mediaCaptureSupport,
     $mediaSourceSupport,
     $mediaStatisticsSupport,
     $mediaStreamSupport,
@@ -126,6 +129,8 @@ my (
     $videoTrackSupport,
     $webglSupport,
     $webAudioSupport,
+    $webIntentsSupport,
+    $webIntentsTagSupport,
     $webSocketsSupport,
     $webTimingSupport,
     $workersSupport,
@@ -166,6 +171,9 @@ my @features = (
     { option => "css-box-decoration-break", desc => "Toggle CSS box-decoration-break support",
       define => "ENABLE_CSS_BOX_DECORATION_BREAK", default => 1, value => \$cssBoxDecorationBreakSupport },
 
+    { option => "css-image-orientation", desc => "Toggle CSS image-orientation support",
+      define => "ENABLE_CSS_IMAGE_ORIENTATION", default => 0, value => \$cssImageOrientationSupport },
+
     { option => "css-image-resolution", desc => "Toggle CSS image-resolution support",
       define => "ENABLE_CSS_IMAGE_RESOLUTION", default => 0, value => \$cssImageResolutionSupport },
 
@@ -175,6 +183,9 @@ my @features = (
     { option => "css-shaders", desc => "Toggle CSS Shaders support",
       define => "ENABLE_CSS_SHADERS", default => isAppleMacWebKit(), value => \$cssShadersSupport },
 
+    { option => "css-compositing", desc => "Toggle CSS Compositing support",
+      define => "ENABLE_CSS_COMPOSITING", default => 0, value => \$cssCompositingSupport },
+
     { option => "css-variables", desc => "Toggle CSS Variable support",
       define => "ENABLE_CSS_VARIABLES", default => isEfl(), value => \$cssVariablesSupport },
 
@@ -182,13 +193,13 @@ my @features = (
       define => "ENABLE_CUSTOM_SCHEME_HANDLER", default => (isBlackBerry() || isEfl()), value => \$customSchemeHandlerSupport },
 
     { option => "datalist", desc => "Toggle Datalist support",
-      define => "ENABLE_DATALIST", default => isEfl(), value => \$datalistSupport },
+      define => "ENABLE_DATALIST_ELEMENT", default => isEfl(), value => \$datalistSupport },
 
     { option => "data-transfer-items", desc => "Toggle Data Transfer Items support",
       define => "ENABLE_DATA_TRANSFER_ITEMS", default => 0, value => \$dataTransferItemsSupport },
 
     { option => "details", desc => "Toggle Details support",
-      define => "ENABLE_DETAILS", default => 1, value => \$detailsSupport },
+      define => "ENABLE_DETAILS_ELEMENT", default => 1, value => \$detailsSupport },
 
     { option => "device-orientation", desc => "Toggle Device Orientation support",
       define => "ENABLE_DEVICE_ORIENTATION", default => isBlackBerry(), value => \$deviceOrientationSupport },
@@ -277,6 +288,9 @@ my @features = (
     { option => "mathml", desc => "Toggle MathML support",
       define => "ENABLE_MATHML", default => 1, value => \$mathmlSupport },
 
+    { option => "media-capture", desc => "Toggle Media Capture support",
+      define => "ENABLE_MEDIA_CAPTURE", default => isEfl(), value => \$mediaCaptureSupport },
+
     { option => "media-source", desc => "Toggle Media Source support",
       define => "ENABLE_MEDIA_SOURCE", default => 0, value => \$mediaSourceSupport },
 
@@ -287,10 +301,10 @@ my @features = (
       define => "ENABLE_MEDIA_STREAM", default => (isChromium() || isGtk() || isBlackBerry()), value => \$mediaStreamSupport },
 
     { option => "meter-tag", desc => "Toggle Meter Tag support",
-      define => "ENABLE_METER_TAG", default => !isAppleWinWebKit(), value => \$meterTagSupport },
+      define => "ENABLE_METER_ELEMENT", default => !isAppleWinWebKit(), value => \$meterTagSupport },
 
     { option => "mhtml", desc => "Toggle MHTML support",
-      define => "ENABLE_MHTML", default => 0, value => \$mhtmlSupport },
+      define => "ENABLE_MHTML", default => isGtk(), value => \$mhtmlSupport },
 
     { option => "microdata", desc => "Toggle Microdata support",
       define => "ENABLE_MICRODATA", default => (isEfl() || isBlackBerry()), value => \$microdataSupport },
@@ -314,7 +328,7 @@ my @features = (
       define => "ENABLE_PAGE_VISIBILITY_API", default => (isBlackBerry() || isEfl()), value => \$pageVisibilityAPISupport },
 
     { option => "progress-tag", desc => "Toggle Progress Tag support",
-      define => "ENABLE_PROGRESS_TAG", default => 1, value => \$progressTagSupport },
+      define => "ENABLE_PROGRESS_ELEMENT", default => 1, value => \$progressTagSupport },
 
     { option => "quota", desc => "Toggle Quota support",
       define => "ENABLE_QUOTA", default => 0, value => \$quotaSupport },
@@ -381,6 +395,12 @@ my @features = (
 
     { option => "web-audio", desc => "Toggle Web Audio support",
       define => "ENABLE_WEB_AUDIO", default => 0, value => \$webAudioSupport },
+
+    { option => "web-intents", desc => "Toggle Web Intents support",
+      define => "ENABLE_WEB_INTENTS", default => isEfl(), value => \$webIntentsSupport },
+
+    { option => "web-intents-tag", desc => "Toggle Web Intents Tag support",
+      define => "ENABLE_WEB_INTENTS_TAG", default => isEfl(), value => \$webIntentsTagSupport },
 
     { option => "web-sockets", desc => "Toggle Web Sockets support",
       define => "ENABLE_WEB_SOCKETS", default => 1, value => \$webSocketsSupport },

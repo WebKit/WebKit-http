@@ -65,6 +65,10 @@ static void onConsoleMessage(Ewk_View_Smart_Data*, const char* message, unsigned
             newMessage = newMessage.left(fileProtocol) + urlSuitableForTestResult(newMessage.substring(fileProtocol));
     }
 
+    // Ignore simple translation-related messages and unnecessary messages
+    if (newMessage.contains("Localized string") || newMessage.contains("Protocol Error: the message is for non-existing domain 'Profiler'"))
+        return;
+
     printf("CONSOLE MESSAGE: ");
     if (lineNumber)
         printf("line %u: ", lineNumber);
@@ -82,10 +86,10 @@ static Eina_Bool onJavaScriptConfirm(Ewk_View_Smart_Data*, Evas_Object*, const c
     return EINA_TRUE;
 }
 
-static Eina_Bool onJavaScriptPrompt(Ewk_View_Smart_Data*, Evas_Object*, const char* message, const char* defaultValue, char** value)
+static Eina_Bool onJavaScriptPrompt(Ewk_View_Smart_Data*, Evas_Object*, const char* message, const char* defaultValue, const char** value)
 {
     printf("PROMPT: %s, default text: %s\n", message, defaultValue);
-    *value = strdup(defaultValue);
+    *value = eina_stringshare_add(defaultValue);
     return EINA_TRUE;
 }
 

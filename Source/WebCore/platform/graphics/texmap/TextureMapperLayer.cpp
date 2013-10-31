@@ -108,7 +108,9 @@ void TextureMapperLayer::updateBackingStore(TextureMapper* textureMapper, Graphi
         return;
     }
 
-    IntRect dirtyRect = enclosingIntRect(m_state.needsDisplay ? layerRect() : m_state.needsDisplayRect);
+    IntRect dirtyRect = enclosingIntRect(layerRect());
+    if (!m_state.needsDisplay)
+        dirtyRect.intersect(enclosingIntRect(m_state.needsDisplayRect));
     if (dirtyRect.isEmpty())
         return;
 
@@ -485,7 +487,7 @@ void TextureMapperLayer::syncCompositingStateSelf(GraphicsLayerTextureMapper* gr
         m_state.needsDisplayRect.unite(graphicsLayer->needsDisplayRect());
     m_contentsLayer = graphicsLayer->contentsLayer();
 
-    m_transform.setPosition(m_state.pos);
+    m_transform.setPosition(adjustedPosition());
     m_transform.setAnchorPoint(m_state.anchorPoint);
     m_transform.setSize(m_state.size);
     m_transform.setFlattening(!m_state.preserves3D);
@@ -565,17 +567,17 @@ bool TextureMapperLayer::isAncestorFixedToViewport() const
     return false;
 }
 
-void TextureMapperLayer::setScrollPositionDeltaIfNeeded(const IntPoint& delta)
+void TextureMapperLayer::setScrollPositionDeltaIfNeeded(const FloatSize& delta)
 {
     // delta is the difference between the scroll offset in the ui process and the scroll offset
     // in the web process. We add this delta to the position of fixed layers, to make
     // sure that they do not move while scrolling. We need to reset this delta to fixed layers
     // that have an ancestor which is also a fixed layer, because the delta will be added to the ancestor.
     if (isAncestorFixedToViewport())
-        m_scrollPositionDelta = IntPoint();
+        m_scrollPositionDelta = FloatSize();
     else
         m_scrollPositionDelta = delta;
-    m_transform.setPosition(m_state.pos + m_scrollPositionDelta);
+    m_transform.setPosition(adjustedPosition());
 }
 
 void TextureMapperLayer::setDebugBorder(const Color& color, float width)

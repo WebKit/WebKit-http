@@ -30,6 +30,8 @@
 
 namespace WebCore {
 
+struct GraphicsSurfacePrivate { };
+
 uint32_t GraphicsSurface::platformExport()
 {
     return IOSurfaceGetID(m_platformSurface);
@@ -118,8 +120,14 @@ void GraphicsSurface::platformCopyFromFramebuffer(uint32_t originFbo, const IntR
     glFlush();
 }
 
-bool GraphicsSurface::platformCreate(const IntSize& size, Flags flags)
+PassRefPtr<GraphicsSurface> GraphicsSurface::platformCreate(const IntSize& size, Flags flags)
 {
+    // We currently disable support for CopyToTexture on Mac, because this is used for single buffered Tiles.
+    // The single buffered nature of this requires a call to glFlush, as described in platformCopyToTexture.
+    // This call blocks the GPU for about 40ms, which makes smooth animations impossible.
+    if (flags & SupportsCopyToTexture)
+        return PassRefPtr<GraphicsSurface>();
+
     unsigned pixelFormat = 'BGRA';
     unsigned bytesPerElement = 4;
     int width = size.width();
@@ -154,14 +162,26 @@ bool GraphicsSurface::platformCreate(const IntSize& size, Flags flags)
     for (unsigned i = 0; i < 7; i++)
         CFRelease(values[i]);
 
-    m_platformSurface = IOSurfaceCreate(dict);
-    return !!m_platformSurface;
+    RefPtr<GraphicsSurface> surface = adoptRef(new GraphicsSurface(size, flags));
+    surface->m_platformSurface = IOSurfaceCreate(dict);
+    if (!surface->m_platformSurface)
+        return PassRefPtr<GraphicsSurface>();
+    return surface;
 }
 
-bool GraphicsSurface::platformImport(uint32_t token)
+PassRefPtr<GraphicsSurface> GraphicsSurface::platformImport(const IntSize& size, Flags flags, uint32_t token)
 {
-    m_platformSurface = IOSurfaceLookup(token);
-    return !!m_platformSurface;
+    // We currently disable support for CopyToTexture on Mac, because this is used for single buffered Tiles.
+    // The single buffered nature of this requires a call to glFlush, as described in platformCopyToTexture.
+    // This call blocks the GPU for about 40ms, which makes smooth animations impossible.
+    if (flags & SupportsCopyToTexture)
+        return PassRefPtr<GraphicsSurface>();
+
+    RefPtr<GraphicsSurface> surface = adoptRef(new GraphicsSurface(size, flags));
+    surface->m_platformSurface = IOSurfaceLookup(token);
+    if (!surface->m_platformSurface)
+        return PassRefPtr<GraphicsSurface>();
+    return surface;
 }
 
 static int ioSurfaceLockOptions(int lockOptions)

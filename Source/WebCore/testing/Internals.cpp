@@ -38,6 +38,7 @@
 #include "Element.h"
 #include "ElementShadow.h"
 #include "ExceptionCode.h"
+#include "FastMallocStatistics.h"
 #include "Frame.h"
 #include "FrameView.h"
 #include "HTMLContentElement.h"
@@ -55,9 +56,11 @@
 #include "Language.h"
 #include "NodeRenderingContext.h"
 #include "Page.h"
+#include "PrintContext.h"
 #include "Range.h"
 #include "RenderObject.h"
 #include "RenderTreeAsText.h"
+#include "RuntimeEnabledFeatures.h"
 #include "SchemeRegistry.h"
 #include "Settings.h"
 #include "ShadowRoot.h"
@@ -77,6 +80,10 @@
 #if ENABLE(NETWORK_INFO)
 #include "NetworkInfo.h"
 #include "NetworkInfoController.h"
+#endif
+
+#if ENABLE(PAGE_POPUP)
+#include "PagePopupController.h"
 #endif
 
 #if ENABLE(TOUCH_ADJUSTMENT)
@@ -426,6 +433,15 @@ void Internals::setShadowPseudoId(Element* element, const String& id, ExceptionC
     return element->setShadowPseudoId(id, ec);
 }
 
+void Internals::setAuthorShadowDOMForAnyElementEnabled(bool isEnabled)
+{
+#if ENABLE(SHADOW_DOM)
+    RuntimeEnabledFeatures::setAuthorShadowDOMForAnyElementEnabled(isEnabled);
+#else
+    UNUSED_PARAM(isEnabled);
+#endif
+}
+
 String Internals::visiblePlaceholder(Element* element)
 {
     HTMLTextFormControlElement* textControl = toTextFormControl(element);
@@ -480,6 +496,16 @@ void Internals::setFormControlStateOfPreviousHistoryItem(PassRefPtr<DOMStringLis
     else
         ec = INVALID_ACCESS_ERR;
 }
+
+#if ENABLE(PAGE_POPUP)
+PassRefPtr<PagePopupController> Internals::pagePopupController()
+{
+    InternalSettings* settings = this->settings();
+    if (!settings)
+        return 0;
+    return settings->pagePopupController();
+}
+#endif
 
 PassRefPtr<ClientRect> Internals::absoluteCaretBounds(Document* document, ExceptionCode& ec)
 {
@@ -610,6 +636,12 @@ String Internals::markerDescriptionForNode(Node* node, const String& markerType,
     return marker->description();
 }
 
+void Internals::addTextMatchMarker(const Range* range, bool isActive)
+{
+    range->ownerDocument()->updateLayoutIgnorePendingStylesheets();
+    range->ownerDocument()->markers()->addTextMatchMarker(range, isActive);
+}
+
 void Internals::setScrollViewPosition(Document* document, long x, long y, ExceptionCode& ec)
 {
     if (!document || !document->view()) {
@@ -628,9 +660,9 @@ void Internals::setScrollViewPosition(Document* document, long x, long y, Except
     frameView->setConstrainsScrollingToContentEdge(constrainsScrollingToContentEdgeOldValue);
 }
 
-void Internals::setPagination(Document*, const String& mode, int gap, ExceptionCode& ec)
+void Internals::setPagination(Document*, const String& mode, int gap, int pageLength, ExceptionCode& ec)
 {
-    settings()->setPagination(mode, gap, ec);
+    settings()->setPagination(mode, gap, pageLength, ec);
 }
 
 String Internals::configurationForViewport(Document*, float devicePixelRatio, int deviceWidth, int deviceHeight, int availableWidth, int availableHeight, ExceptionCode& ec)
@@ -904,6 +936,17 @@ unsigned Internals::touchEventHandlerCount(Document* document, ExceptionCode& ec
     return document->touchEventHandlerCount();
 }
 
+bool Internals::hasTouchEventListener(Document* document, ExceptionCode& ec)
+{
+    if (!document) {
+        ec = INVALID_ACCESS_ERR;
+        return 0;
+    }
+
+    return document->hasListenerType(Document::TOUCH_LISTENER);
+}
+
+
 PassRefPtr<NodeList> Internals::nodesFromRect(Document* document, int x, int y, unsigned topPadding, unsigned rightPadding,
     unsigned bottomPadding, unsigned leftPadding, bool ignoreClipping, bool allowShadowContent, ExceptionCode& ec) const
 {
@@ -1063,6 +1106,19 @@ void Internals::resumeAnimations(Document* document, ExceptionCode& ec) const
     controller->resumeAnimations();
 }
 
+void Internals::garbageCollectDocumentResources(Document* document, ExceptionCode& ec) const
+{
+    if (!document) {
+        ec = INVALID_ACCESS_ERR;
+        return;
+    }
+
+    CachedResourceLoader* cachedResourceLoader = document->cachedResourceLoader();
+    if (!cachedResourceLoader)
+        return;
+    cachedResourceLoader->garbageCollectDocumentResources();
+}
+
 void Internals::allowRoundingHacks() const
 {
     settings()->allowRoundingHacks();
@@ -1074,6 +1130,26 @@ String Internals::counterValue(Element* element)
         return String();
 
     return counterValueForElement(element);
+}
+
+int Internals::pageNumber(Element* element, float pageWidth, float pageHeight)
+{
+    if (!element)
+        return 0;
+
+    return PrintContext::pageNumberForElement(element, FloatSize(pageWidth, pageHeight));
+}
+
+PassRefPtr<DOMStringList> Internals::iconURLs(Document* document) const
+{
+    Vector<IconURL> iconURLs = document->iconURLs();
+    RefPtr<DOMStringList> stringList = DOMStringList::create();
+
+    Vector<IconURL>::const_iterator iter(iconURLs.begin());
+    for (; iter != iconURLs.end(); ++iter)
+        stringList->append(iter->m_iconURL.string());
+
+    return stringList.release();
 }
 
 #if ENABLE(FULLSCREEN_API)
@@ -1114,6 +1190,11 @@ void Internals::registerURLSchemeAsBypassingContentSecurityPolicy(const String& 
 void Internals::removeURLSchemeRegisteredAsBypassingContentSecurityPolicy(const String& scheme)
 {
     SchemeRegistry::removeURLSchemeRegisteredAsBypassingContentSecurityPolicy(scheme);
+}
+
+PassRefPtr<FastMallocStatistics> Internals::fastMallocStatistics() const
+{
+    return FastMallocStatistics::create();
 }
 
 }

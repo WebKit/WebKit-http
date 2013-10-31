@@ -82,7 +82,7 @@ static NSString *webFallbackFontFamily(void)
 }
 
 #if !ERROR_DISABLED
-#if defined(__LP64__) || __MAC_OS_X_VERSION_MIN_REQUIRED >= 1070
+#if defined(__LP64__) || PLATFORM(IOS) || __MAC_OS_X_VERSION_MIN_REQUIRED >= 1070
 static NSString* pathFromFont(NSFont*)
 {
     // FMGetATSFontRefFromFont is not available. As pathFromFont is only used for debugging purposes,
@@ -142,12 +142,6 @@ const SimpleFontData* SimpleFontData::getCompositeFontReferenceFontData(NSFont *
 
 void SimpleFontData::platformInit()
 {
-#if USE(ATSUI)
-    m_ATSUMirrors = false;
-    m_checkedShapesArabic = false;
-    m_shapesArabic = false;
-#endif
-
     m_syntheticBoldOffset = m_platformData.m_syntheticBold ? 1.0f : 0.f;
 
     bool failedSetup = false;
@@ -233,7 +227,7 @@ void SimpleFontData::platformInit()
     NSString *familyName = [m_platformData.font() familyName];
     if ([familyName isEqualToString:@"Times"] || [familyName isEqualToString:@"Helvetica"] || [familyName isEqualToString:@"Courier"])
         ascent += floorf(((ascent + descent) * 0.15f) + 0.5f);
-#if __MAC_OS_X_VERSION_MIN_REQUIRED == 1050
+#if !PLATFORM(IOS) && __MAC_OS_X_VERSION_MIN_REQUIRED == 1050
     else if ([familyName isEqualToString:@"Geeza Pro"]) {
         // Geeza Pro has glyphs that draw slightly above the ascent or far below the descent. Adjust
         // those vertical metrics to better match reality, so that diacritics at the bottom of one line
@@ -319,12 +313,6 @@ void SimpleFontData::platformDestroy()
         if (m_derivedFontData->emphasisMark)
             fontCache()->releaseFontData(m_derivedFontData->emphasisMark.leakPtr());
     }
-
-#if USE(ATSUI)
-    HashMap<unsigned, ATSUStyle>::iterator end = m_ATSUStyleMap.end();
-    for (HashMap<unsigned, ATSUStyle>::iterator it = m_ATSUStyleMap.begin(); it != end; ++it)
-        ATSUDisposeStyle(it->second);
-#endif
 }
 
 PassOwnPtr<SimpleFontData> SimpleFontData::createScaledFontData(const FontDescription& fontDescription, float scaleFactor) const

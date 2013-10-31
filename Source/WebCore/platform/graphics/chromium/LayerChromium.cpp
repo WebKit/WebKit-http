@@ -77,7 +77,6 @@ LayerChromium::LayerChromium()
     , m_masksToBounds(false)
     , m_opaque(false)
     , m_doubleSided(true)
-    , m_usesLayerClipping(false)
     , m_isNonCompositedContent(false)
     , m_preserves3D(false)
     , m_useParentBackfaceVisibility(false)
@@ -87,7 +86,7 @@ LayerChromium::LayerChromium()
     , m_replicaLayer(0)
     , m_drawOpacity(0)
     , m_drawOpacityIsAnimating(false)
-    , m_targetRenderSurface(0)
+    , m_renderTarget(0)
     , m_drawTransformIsAnimating(false)
     , m_screenSpaceTransformIsAnimating(false)
     , m_contentsScale(1.0)
@@ -535,7 +534,6 @@ void LayerChromium::pushPropertiesTo(CCLayerImpl* layer)
     layer->setBackgroundColor(m_backgroundColor);
     layer->setBounds(m_bounds);
     layer->setContentBounds(contentBounds());
-    layer->setContentsScale(contentsScale());
     layer->setDebugBorderColor(m_debugBorderColor);
     layer->setDebugBorderWidth(m_debugBorderWidth);
     layer->setDebugName(m_debugName.isolatedCopy()); // We have to use isolatedCopy() here to safely pass ownership to another thread.
@@ -616,7 +614,6 @@ void LayerChromium::setDebugName(const String& debugName)
     setNeedsCommit();
 }
 
-
 void LayerChromium::setContentsScale(float contentsScale)
 {
     if (!needsContentsScale() || m_contentsScale == contentsScale)
@@ -629,7 +626,7 @@ void LayerChromium::createRenderSurface()
 {
     ASSERT(!m_renderSurface);
     m_renderSurface = adoptPtr(new RenderSurfaceChromium(this));
-    setTargetRenderSurface(m_renderSurface.get());
+    setRenderTarget(this);
 }
 
 bool LayerChromium::descendantDrawsContent()

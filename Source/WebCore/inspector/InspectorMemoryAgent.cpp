@@ -96,6 +96,7 @@ static const char domTreeOther[] = "DOMTreeOther";
 static const char domTreeDOM[] = "DOMTreeDOM";
 static const char domTreeCSS[] = "DOMTreeCSS";
 static const char domTreeBinding[] = "DOMTreeBinding";
+static const char domTreeLoader[] = "DOMTreeLoader";
 }
 
 namespace {
@@ -107,21 +108,6 @@ String nodeName(Node* node)
     if (node->document()->isXHTMLDocument())
          return node->nodeName();
     return node->nodeName().lower();
-}
-
-size_t stringSize(StringImpl* string)
-{
-    // FIXME: support substrings
-    size_t size = string->length();
-    if (string->is8Bit()) {
-        if (string->has16BitShadow()) {
-            size += 2 * size;
-            if (string->hasTerminatingNullCharacter())
-                size += 2;
-        }
-    } else
-        size *= 2;
-    return size + sizeof(*string);
 }
 
 typedef HashSet<StringImpl*, PtrHash<StringImpl*> > StringImplIdentitySet;
@@ -142,7 +128,7 @@ public:
             return;
         m_domStringImplSet.add(dataImpl);
 
-        m_characterDataSize += stringSize(dataImpl);
+        m_characterDataSize += dataImpl->sizeInBytes();
     }
 
     bool contains(StringImpl* s) { return m_domStringImplSet.contains(s); }
@@ -287,7 +273,7 @@ public:
 
     virtual void visitJSExternalString(StringImpl* string)
     {
-        int size = stringSize(string);
+        int size = string->sizeInBytes();
         m_jsExternalStringSize += size;
         if (m_characterDataStatistics.contains(string))
             m_sharedStringSize += size;
@@ -351,7 +337,7 @@ private:
     virtual void visitJSExternalString(StringImpl* string)
     {
         if (m_visitedObjects.add(string).isNewEntry)
-            m_jsExternalStringSize += stringSize(string);
+            m_jsExternalStringSize += string->sizeInBytes();
     }
 
     VisitedObjects& m_visitedObjects;
@@ -416,17 +402,15 @@ void InspectorMemoryAgent::getDOMNodeCount(ErrorString*, RefPtr<TypeBuilder::Arr
 
 static PassRefPtr<InspectorMemoryBlock> jsHeapInfo()
 {
-    size_t usedJSHeapSize;
-    size_t totalJSHeapSize;
-    size_t jsHeapSizeLimit;
-    ScriptGCEvent::getHeapSize(usedJSHeapSize, totalJSHeapSize, jsHeapSizeLimit);
+    HeapInfo info;
+    ScriptGCEvent::getHeapSize(info);
 
     RefPtr<InspectorMemoryBlock> jsHeapAllocated = InspectorMemoryBlock::create().setName(MemoryBlockName::jsHeapAllocated);
-    jsHeapAllocated->setSize(totalJSHeapSize);
+    jsHeapAllocated->setSize(static_cast<int>(info.totalJSHeapSize));
 
     RefPtr<TypeBuilder::Array<InspectorMemoryBlock> > children = TypeBuilder::Array<InspectorMemoryBlock>::create();
     RefPtr<InspectorMemoryBlock> jsHeapUsed = InspectorMemoryBlock::create().setName(MemoryBlockName::jsHeapUsed);
-    jsHeapUsed->setSize(usedJSHeapSize);
+    jsHeapUsed->setSize(static_cast<int>(info.usedJSHeapSize));
     children->addItem(jsHeapUsed);
 
     jsHeapAllocated->setChildren(children);
@@ -483,6 +467,7 @@ public:
         addMemoryBlockFor(domChildren.get(), m_totalSizes[DOM], MemoryBlockName::domTreeDOM);
         addMemoryBlockFor(domChildren.get(), m_totalSizes[CSS], MemoryBlockName::domTreeCSS);
         addMemoryBlockFor(domChildren.get(), m_totalSizes[Binding], MemoryBlockName::domTreeBinding);
+        addMemoryBlockFor(domChildren.get(), m_totalSizes[Loader], MemoryBlockName::domTreeLoader);
 
         RefPtr<InspectorMemoryBlock> dom = InspectorMemoryBlock::create().setName(MemoryBlockName::dom);
         dom->setSize(totalSize);
@@ -500,13 +485,6 @@ public:
     }
 
 private:
-    virtual void reportString(ObjectType objectType, const String& string)
-    {
-        if (string.isNull() || visited(string.impl()))
-            return;
-        countObjectSize(objectType, stringSize(string.impl()));
-    }
-
     virtual void countObjectSize(ObjectType objectType, size_t size) OVERRIDE
     {
         ASSERT(objectType >= 0 && objectType < LastTypeEntry);
@@ -541,13 +519,20 @@ public:
         if (node->document() && node->document()->frame() && m_page != node->document()->frame()->page())
             return;
 
-        m_domMemoryUsage.reportInstrumentedPointer(node);
+        m_domMemoryUsage.addInstrumentedObject(node);
+        m_domMemoryUsage.processDeferredInstrumentedPointers();
+    }
+
+    void visitFrame(Frame* frame)
+    {
+        m_domMemoryUsage.addInstrumentedObject(frame);
         m_domMemoryUsage.processDeferredInstrumentedPointers();
     }
 
     void visitBindings()
     {
         ScriptProfiler::collectBindingMemoryInfo(&m_domMemoryUsage);
+        m_domMemoryUsage.processDeferredInstrumentedPointers();
     }
 
     PassRefPtr<InspectorMemoryBlock> dumpStatistics(InspectorDataCounter* inspectorData)
@@ -569,8 +554,10 @@ static PassRefPtr<InspectorMemoryBlock> domTreeInfo(Page* page, VisitedObjects& 
 
     // Make sure all documents reachable from the main frame are accounted.
     for (Frame* frame = page->mainFrame(); frame; frame = frame->tree()->traverseNext()) {
-        if (Document* doc = frame->document())
+        if (Document* doc = frame->document()) {
             domTreesIterator.visitNode(doc);
+            domTreesIterator.visitFrame(frame);
+        }
     }
 
     domTreesIterator.visitBindings();

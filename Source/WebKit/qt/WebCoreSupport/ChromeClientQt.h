@@ -49,6 +49,7 @@ class FileChooser;
 class FileIconLoader;
 class FloatRect;
 class Page;
+class RefreshAnimation;
 struct FrameLoadRequest;
 class QtAbstractWebPopup;
 struct ViewportArguments;
@@ -176,6 +177,11 @@ public:
     virtual void setCursor(const Cursor&);
     virtual void setCursorHiddenUntilMouseMoves(bool) { }
 
+#if ENABLE(REQUEST_ANIMATION_FRAME) && !USE(REQUEST_ANIMATION_FRAME_TIMER)
+    virtual void scheduleAnimation();
+    virtual void serviceScriptedAnimations();
+#endif
+
     virtual void scrollRectIntoView(const LayoutRect) const { }
 
     virtual bool selectItemWritingDirectionIsNatural();
@@ -191,7 +197,6 @@ public:
 
     virtual bool shouldRubberBandInDirection(WebCore::ScrollDirection) const { return true; }
     virtual void numWheelEventHandlersChanged(unsigned) { }
-    virtual void numTouchEventHandlersChanged(unsigned) { }
 
     QWebPage* m_webPage;
     KURL lastHoverURL;
@@ -202,6 +207,9 @@ public:
     bool statusBarVisible;
     bool menuBarVisible;
     QEventLoop* m_eventLoop;
+#if ENABLE(REQUEST_ANIMATION_FRAME) && !USE(REQUEST_ANIMATION_FRAME_TIMER)
+    OwnPtr<RefreshAnimation> m_refreshAnimation;
+#endif
 
 #if ENABLE(VIDEO) && (USE(GSTREAMER) || USE(QT_MULTIMEDIA) || USE(QTKIT))
     FullScreenVideoQt* m_fullScreenVideo;

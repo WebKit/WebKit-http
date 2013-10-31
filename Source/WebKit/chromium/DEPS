@@ -32,7 +32,7 @@
 
 vars = {
   'chromium_svn': 'http://src.chromium.org/svn/trunk/src',
-  'chromium_rev': '146218'
+  'chromium_rev': '148739'
 }
 
 deps = {
@@ -143,12 +143,20 @@ deps = {
 
 deps_os = {
   'win': {
+    'third_party/bison':
+      From('chromium_deps', 'src/third_party/bison'),
     'third_party/cygwin':
       From('chromium_deps', 'src/third_party/cygwin'),
+    'third_party/gperf':
+      From('chromium_deps', 'src/third_party/gperf'),
     'third_party/lighttpd':
       From('chromium_deps', 'src/third_party/lighttpd'),
     'third_party/nss':
       From('chromium_deps', 'src/third_party/nss'),
+    'third_party/perl':
+      From('chromium_deps', 'src/third_party/perl'),
+    'tools/isolate':
+      Var('chromium_svn')+'/tools/isolate@'+Var('chromium_rev'),
     # Dependencies used by libjpeg-turbo
     'third_party/yasm/binaries':
       From('chromium_deps', 'src/third_party/yasm/binaries'),
@@ -156,6 +164,8 @@ deps_os = {
   'mac': {
     'third_party/nss':
       From('chromium_deps', 'src/third_party/nss'),
+    'third_party/GTM':
+      From('chromium_deps', 'src/third_party/GTM'),
   },
   'unix': {
     # Linux, actually.

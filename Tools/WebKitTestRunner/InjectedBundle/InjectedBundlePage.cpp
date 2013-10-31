@@ -49,6 +49,14 @@
 #include "DumpRenderTreeSupportQt.h"
 #endif
 
+#if ENABLE(WEB_INTENTS)
+#include <WebKit2/WKBundleIntentRequest.h>
+#include <WebKit2/WKIntentData.h>
+#endif
+#if ENABLE(WEB_INTENTS_TAG)
+#include <WebKit2/WKIntentServiceInfo.h>
+#endif
+
 using namespace std;
 
 namespace WTR {
@@ -241,7 +249,9 @@ InjectedBundlePage::InjectedBundlePage(WKBundlePageRef page)
         0, // didReconnectDOMWindowExtensionToGlobalObject
         0, // willDestroyGlobalObjectForDOMWindowExtension
         didFinishProgress, // didFinishProgress
-        0 // shouldForceUniversalAccessFromLocalURL
+        0, // shouldForceUniversalAccessFromLocalURL
+        didReceiveIntentForFrame, // didReceiveIntentForFrame
+        registerIntentServiceForFrame // registerIntentServiceForFrame
     };
     WKBundlePageSetPageLoaderClient(m_page, &loaderClient);
 
@@ -352,7 +362,7 @@ void InjectedBundlePage::resetAfterTest()
     WKBundleFrameRef frame = WKBundlePageGetMainFrame(m_page);
     JSGlobalContextRef context = WKBundleFrameGetJavaScriptContext(frame);
 #if PLATFORM(QT)
-    DumpRenderTreeSupportQt::injectInternalsObject(context);
+    DumpRenderTreeSupportQt::resetInternalsObject(context);
 #else
     WebCoreTestSupport::resetInternalsObject(context);
 #endif
@@ -414,6 +424,78 @@ void InjectedBundlePage::didFinishLoadForFrame(WKBundlePageRef page, WKBundleFra
 void InjectedBundlePage::didFinishProgress(WKBundlePageRef, const void *clientInfo)
 {
     static_cast<InjectedBundlePage*>(const_cast<void*>(clientInfo))->didFinishProgress();
+}
+
+void InjectedBundlePage::didReceiveIntentForFrame(WKBundlePageRef page, WKBundleFrameRef frame, WKBundleIntentRequestRef intentRequest, WKTypeRef* userData, const void* clientInfo)
+{
+#if ENABLE(WEB_INTENTS)
+    static_cast<InjectedBundlePage*>(const_cast<void*>(clientInfo))->m_currentIntentRequest = intentRequest;
+    WKRetainPtr<WKIntentDataRef> intent(AdoptWK, WKBundleIntentRequestCopyIntentData(intentRequest));
+
+    InjectedBundle::shared().stringBuilder()->append("Received Web Intent: action=");
+    WKRetainPtr<WKStringRef> wkAction(AdoptWK, WKIntentDataCopyAction(intent.get()));
+    InjectedBundle::shared().stringBuilder()->append(toWTFString(wkAction.get()));
+    InjectedBundle::shared().stringBuilder()->append(" type=");
+    WKRetainPtr<WKStringRef> wkType(AdoptWK, WKIntentDataCopyType(intent.get()));
+    InjectedBundle::shared().stringBuilder()->append(toWTFString(wkType.get()));
+    InjectedBundle::shared().stringBuilder()->append("\n");
+
+    // FIXME: Print number of ports when exposed in WebKit2
+
+    WKRetainPtr<WKURLRef> wkServiceUrl(AdoptWK, WKIntentDataCopyService(intent.get()));
+    if (wkServiceUrl) {
+        WKRetainPtr<WKStringRef> wkService(AdoptWK, WKURLCopyString(wkServiceUrl.get()));
+        if (wkService && !WKStringIsEmpty(wkService.get())) {
+            InjectedBundle::shared().stringBuilder()->append("Explicit intent service: ");
+            InjectedBundle::shared().stringBuilder()->append(toWTFString(wkService.get()));
+            InjectedBundle::shared().stringBuilder()->append("\n");
+        }
+    }
+
+    WKRetainPtr<WKDictionaryRef> wkExtras(AdoptWK, WKIntentDataCopyExtras(intent.get()));
+    WKRetainPtr<WKArrayRef> wkExtraKeys(AdoptWK, WKDictionaryCopyKeys(wkExtras.get()));
+    const size_t numExtraKeys = WKArrayGetSize(wkExtraKeys.get());
+    for (size_t i = 0; i < numExtraKeys; ++i) {
+        WKStringRef wkKey = static_cast<WKStringRef>(WKArrayGetItemAtIndex(wkExtraKeys.get(), i));
+        WKStringRef wkValue = static_cast<WKStringRef>(WKDictionaryGetItemForKey(wkExtras.get(), wkKey));
+        InjectedBundle::shared().stringBuilder()->append("Extras[");
+        InjectedBundle::shared().stringBuilder()->append(toWTFString(wkKey));
+        InjectedBundle::shared().stringBuilder()->append("] = ");
+        InjectedBundle::shared().stringBuilder()->append(toWTFString(wkValue));
+        InjectedBundle::shared().stringBuilder()->append("\n");
+    }
+
+    WKRetainPtr<WKArrayRef> wkSuggestions(AdoptWK, WKIntentDataCopySuggestions(intent.get()));
+    const size_t numSuggestions = WKArrayGetSize(wkSuggestions.get());
+    for (size_t i = 0; i < numSuggestions; ++i) {
+        WKStringRef wkSuggestion = static_cast<WKStringRef>(WKArrayGetItemAtIndex(wkSuggestions.get(), i));
+        InjectedBundle::shared().stringBuilder()->append("Have suggestion ");
+        InjectedBundle::shared().stringBuilder()->append(toWTFString(wkSuggestion));
+        InjectedBundle::shared().stringBuilder()->append("\n");
+    }
+#endif
+}
+
+void InjectedBundlePage::registerIntentServiceForFrame(WKBundlePageRef page, WKBundleFrameRef frame, WKIntentServiceInfoRef serviceInfo, WKTypeRef* userData, const void* clientInfo)
+{
+#if ENABLE(WEB_INTENTS_TAG)
+    InjectedBundle::shared().stringBuilder()->append("Registered Web Intent Service: action=");
+    WKRetainPtr<WKStringRef> wkAction(AdoptWK, WKIntentServiceInfoCopyAction(serviceInfo));
+    InjectedBundle::shared().stringBuilder()->append(toWTFString(wkAction.get()));
+    InjectedBundle::shared().stringBuilder()->append(" type=");
+    WKRetainPtr<WKStringRef> wkType(AdoptWK, WKIntentServiceInfoCopyType(serviceInfo));
+    InjectedBundle::shared().stringBuilder()->append(toWTFString(wkType.get()));
+    InjectedBundle::shared().stringBuilder()->append(" title=");
+    WKRetainPtr<WKStringRef> wkTitle(AdoptWK, WKIntentServiceInfoCopyTitle(serviceInfo));
+    InjectedBundle::shared().stringBuilder()->append(toWTFString(wkTitle.get()));
+    InjectedBundle::shared().stringBuilder()->append(" url=");
+    WKRetainPtr<WKURLRef> wkUrl(AdoptWK, WKIntentServiceInfoCopyHref(serviceInfo));
+    InjectedBundle::shared().stringBuilder()->append(toWTFString(adoptWK(WKURLCopyString(wkUrl.get()))));
+    InjectedBundle::shared().stringBuilder()->append(" disposition=");
+    WKRetainPtr<WKStringRef> wkDisposition(AdoptWK, WKIntentServiceInfoCopyDisposition(serviceInfo));
+    InjectedBundle::shared().stringBuilder()->append(toWTFString(wkDisposition.get()));
+    InjectedBundle::shared().stringBuilder()->append("\n");
+#endif
 }
 
 void InjectedBundlePage::didFinishDocumentLoadForFrame(WKBundlePageRef page, WKBundleFrameRef frame, WKTypeRef*, const void* clientInfo)

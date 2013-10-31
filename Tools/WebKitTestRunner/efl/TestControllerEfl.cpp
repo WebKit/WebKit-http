@@ -23,6 +23,7 @@
 #include <Ecore.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
 #include <wtf/Platform.h>
 #include <wtf/text/WTFString.h>
 
@@ -49,10 +50,23 @@ void TestController::notifyDone()
 
 void TestController::platformInitialize()
 {
+    const char* isDebugging = getenv("WEB_PROCESS_CMD_PREFIX");
+    if (isDebugging && *isDebugging) {
+        m_useWaitToDumpWatchdogTimer = false;
+        m_forceNoTimeout = true;
+    }
 }
 
-void TestController::platformRunUntil(bool&, double timeout)
+void TestController::platformRunUntil(bool& condition, double timeout)
 {
+    if (timeout == m_noTimeout) {
+        // Never timeout if we are debugging or not meant to timeout.
+        while (!condition) {
+            ecore_main_loop_iterate();
+            sleep(1);
+        }
+        return;
+    }
     timer = ecore_timer_loop_add(timeout, timerFired, 0);
     ecore_main_loop_begin();
 }

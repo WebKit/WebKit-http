@@ -198,6 +198,11 @@ void setDOMException(ExecState* exec, ExceptionCode ec)
     if (!ec || exec->hadException())
         return;
 
+    if (ec == NATIVE_TYPE_ERR) {
+        throwTypeError(exec);
+        return;
+    }
+
     // FIXME: All callers to setDOMException need to pass in the right global object
     // for now, we're going to assume the lexicalGlobalObject.  Which is wrong in cases like this:
     // frames[0].document.createElement(null, null); // throws an exception which should have the subframes prototypes.
@@ -270,29 +275,6 @@ Structure* cacheDOMStructure(JSDOMGlobalObject* globalObject, Structure* structu
     JSDOMStructureMap& structures = globalObject->structures();
     ASSERT(!structures.contains(classInfo));
     return structures.set(classInfo, WriteBarrier<Structure>(globalObject->globalData(), globalObject, structure)).iterator->second.get();
-}
-
-JSC::JSObject* toJSSequence(ExecState* exec, JSValue value, unsigned& length)
-{
-    JSObject* object = value.getObject();
-    if (!object) {
-        throwTypeError(exec);
-        return 0;
-    }
-    JSValue lengthValue = object->get(exec, exec->propertyNames().length);
-    if (exec->hadException())
-        return 0;
-
-    if (lengthValue.isUndefinedOrNull()) {
-        throwTypeError(exec);
-        return 0;
-    }
-
-    length = lengthValue.toUInt32(exec);
-    if (exec->hadException())
-        return 0;
-
-    return object;
 }
 
 } // namespace WebCore

@@ -601,6 +601,11 @@ LayoutUnit RootInlineBox::selectionBottom() const
     return nextTop;
 }
 
+int RootInlineBox::blockDirectionPointInLine() const
+{
+    return !block()->style()->isFlippedBlocksWritingMode() ? max(lineTop(), selectionTop()) : min(lineBottom(), selectionBottom());
+}
+
 RenderBlock* RootInlineBox::block() const
 {
     return toRenderBlock(renderer());
@@ -875,7 +880,7 @@ LayoutUnit RootInlineBox::verticalPositionForBox(InlineBox* box, VerticalPositio
         else if (verticalAlign == TEXT_TOP)
             verticalPosition += renderer->baselinePosition(baselineType(), firstLine, lineDirection) - fontMetrics.ascent(baselineType());
         else if (verticalAlign == MIDDLE)
-            verticalPosition += -static_cast<int>(fontMetrics.xHeight() / 2) - renderer->lineHeight(firstLine, lineDirection) / 2 + renderer->baselinePosition(baselineType(), firstLine, lineDirection);
+            verticalPosition = (verticalPosition - static_cast<LayoutUnit>(fontMetrics.xHeight() / 2) - renderer->lineHeight(firstLine, lineDirection) / 2 + renderer->baselinePosition(baselineType(), firstLine, lineDirection)).round();
         else if (verticalAlign == TEXT_BOTTOM) {
             verticalPosition += fontMetrics.descent(baselineType());
             // lineHeight - baselinePosition is always 0 for replaced elements (except inline blocks), so don't bother wasting time in that case.
@@ -883,8 +888,15 @@ LayoutUnit RootInlineBox::verticalPositionForBox(InlineBox* box, VerticalPositio
                 verticalPosition -= (renderer->lineHeight(firstLine, lineDirection) - renderer->baselinePosition(baselineType(), firstLine, lineDirection));
         } else if (verticalAlign == BASELINE_MIDDLE)
             verticalPosition += -renderer->lineHeight(firstLine, lineDirection) / 2 + renderer->baselinePosition(baselineType(), firstLine, lineDirection);
-        else if (verticalAlign == LENGTH)
-            verticalPosition -= valueForLength(renderer->style()->verticalAlignLength(), renderer->lineHeight(firstLine, lineDirection), renderer->view());
+        else if (verticalAlign == LENGTH) {
+            LayoutUnit lineHeight;
+            //Per http://www.w3.org/TR/CSS21/visudet.html#propdef-vertical-align: 'Percentages: refer to the 'line-height' of the element itself'.
+            if (renderer->style()->verticalAlignLength().isPercent())
+                lineHeight = renderer->style()->computedLineHeight();
+            else
+                lineHeight = renderer->lineHeight(firstLine, lineDirection);
+            verticalPosition -= valueForLength(renderer->style()->verticalAlignLength(), lineHeight, renderer->view());
+        }
     }
 
     // Store the cached value.

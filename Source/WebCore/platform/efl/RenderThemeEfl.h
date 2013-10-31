@@ -48,7 +48,7 @@ enum FormType { // KEEP IN SYNC WITH edjeGroupFromFormType()
     TextField,
     CheckBox,
     ComboBox,
-#if ENABLE(PROGRESS_TAG)
+#if ENABLE(PROGRESS_ELEMENT)
     ProgressBar,
 #endif
     SearchField,
@@ -161,6 +161,11 @@ public:
 
     virtual void adjustSliderThumbSize(RenderStyle*, Element*) const;
 
+#if ENABLE(DATALIST_ELEMENT)
+    virtual IntSize sliderTickSize() const OVERRIDE;
+    virtual int sliderTickOffsetFromTrackCenter() const OVERRIDE;
+#endif
+
     virtual bool paintSliderThumb(RenderObject*, const PaintInfo&, const IntRect&);
 
     virtual void adjustInnerSpinButtonStyle(StyleResolver*, RenderStyle*, Element*) const;
@@ -168,7 +173,7 @@ public:
 
     static void setDefaultFontSize(int fontsize);
 
-#if ENABLE(PROGRESS_TAG)
+#if ENABLE(PROGRESS_ELEMENT)
     virtual void adjustProgressBarStyle(StyleResolver*, RenderStyle*, Element*) const;
     virtual bool paintProgressBar(RenderObject*, const PaintInfo&, const IntRect&);
     virtual double animationRepeatIntervalForProgressBar(RenderProgress*) const;
@@ -196,6 +201,8 @@ public:
     virtual bool paintMediaCurrentTime(RenderObject*, const PaintInfo&, const IntRect&);
 #endif
 
+    void setThemePath(const String&);
+    String themePath() { return m_themePath; }
 protected:
     static float defaultFontSize;
 
@@ -225,6 +232,8 @@ private:
     Color m_mediaPanelColor;
     Color m_mediaSliderColor;
 #endif
+
+    String m_themePath;
     Ecore_Evas* m_canvas;
     Evas_Object* m_edje;
 

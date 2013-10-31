@@ -48,7 +48,7 @@
 #include <gtk/gtk.h>
 #include <wtf/text/CString.h>
 
-#if ENABLE(PROGRESS_TAG)
+#if ENABLE(PROGRESS_ELEMENT)
 #include "RenderProgress.h"
 #endif
 
@@ -64,7 +64,9 @@ using namespace HTMLNames;
 static HTMLMediaElement* getMediaElementFromRenderObject(RenderObject* o)
 {
     Node* node = o->node();
-    Node* mediaNode = node ? node->shadowAncestorNode() : 0;
+    Node* mediaNode = node ? node->shadowHost() : 0;
+    if (!mediaNode)
+        mediaNode = node;
     if (!mediaNode || !mediaNode->isElementNode() || !static_cast<Element*>(mediaNode)->isMediaElement())
         return 0;
 
@@ -313,7 +315,9 @@ void RenderThemeGtk::adjustSearchFieldResultsDecorationStyle(StyleResolver*, Ren
 static IntRect centerRectVerticallyInParentInputElement(RenderObject* renderObject, const IntRect& rect)
 {
     // Get the renderer of <input> element.
-    Node* input = renderObject->node()->shadowAncestorNode();
+    Node* input = renderObject->node()->shadowHost();
+    if (!input)
+        input = renderObject->node();
     if (!input->renderer()->isBox())
         return IntRect();
 
@@ -641,7 +645,7 @@ bool RenderThemeGtk::paintMediaCurrentTime(RenderObject* renderObject, const Pai
 }
 #endif
 
-#if ENABLE(PROGRESS_TAG)
+#if ENABLE(PROGRESS_ELEMENT)
 void RenderThemeGtk::adjustProgressBarStyle(StyleResolver*, RenderStyle* style, Element*) const
 {
     style->setBoxShadow(nullptr);
@@ -710,5 +714,19 @@ String RenderThemeGtk::fileListNameForWidth(const FileList* fileList, const Font
 
     return StringTruncator::centerTruncate(string, width, font, StringTruncator::EnableRoundingHacks);
 }
+
+#if ENABLE(DATALIST_ELEMENT)
+IntSize RenderThemeGtk::sliderTickSize() const
+{
+    // FIXME: We need to set this to the size of one tick mark.
+    return IntSize(0, 0);
+}
+
+int RenderThemeGtk::sliderTickOffsetFromTrackCenter() const
+{
+    // FIXME: We need to set this to the position of the tick marks.
+    return 0;
+}
+#endif
 
 }

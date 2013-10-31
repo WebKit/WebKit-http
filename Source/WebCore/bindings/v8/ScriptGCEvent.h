@@ -31,12 +31,25 @@
 #ifndef ScriptGCEvent_h
 #define ScriptGCEvent_h
 
-#if ENABLE(INSPECTOR)
-
 #include "v8.h"
 #include <wtf/Vector.h>
 
 namespace WebCore {
+
+struct HeapInfo {
+    HeapInfo()
+        : usedJSHeapSize(0)
+        , totalJSHeapSize(0)
+        , jsHeapSizeLimit(0)
+    {
+    }
+
+    size_t usedJSHeapSize;
+    size_t totalJSHeapSize;
+    size_t jsHeapSizeLimit;
+};
+
+#if ENABLE(INSPECTOR)
 
 class ScriptGCEventListener;
 
@@ -45,14 +58,16 @@ class ScriptGCEvent
 public:
     static void addEventListener(ScriptGCEventListener*);
     static void removeEventListener(ScriptGCEventListener*);
-    static void getHeapSize(size_t&, size_t&, size_t&);
+    static void getHeapSize(HeapInfo&);
+
 private:
     static void gcEpilogueCallback(v8::GCType type, v8::GCCallbackFlags flags);
     static void gcPrologueCallback(v8::GCType type, v8::GCCallbackFlags flags);
     static size_t getUsedHeapSize();
 };
 
+#endif // ENABLE(INSPECTOR)
+
 } // namespace WebCore
 
-#endif // !ENABLE(INSPECTOR)
 #endif // !defined(ScriptGCEvent_h)

@@ -53,10 +53,12 @@ public:
     typedef ARMv7Assembler::LinkRecord LinkRecord;
     typedef ARMv7Assembler::JumpType JumpType;
     typedef ARMv7Assembler::JumpLinkType JumpLinkType;
-    // Magic number is the biggest useful offset we can get on ARMv7 with
-    // a LDR_imm_T2 encoding
-    static const int MaximumCompactPtrAlignedAddressOffset = 124;
-    
+
+    static bool isCompactPtrAlignedAddressOffset(ptrdiff_t value)
+    {
+        return value >= -255 && value <= 255;
+    }
+
     Vector<LinkRecord>& jumpsToLink() { return m_assembler.jumpsToLink(); }
     void* unlinkedCode() { return m_assembler.unlinkedCode(); }
     bool canCompact(JumpType jumpType) { return m_assembler.canCompact(jumpType); }
@@ -156,6 +158,12 @@ public:
     void add32(TrustedImm32 imm, RegisterID dest)
     {
         add32(imm, dest, dest);
+    }
+    
+    void add32(AbsoluteAddress src, RegisterID dest)
+    {
+        load32(src.m_ptr, dataTempRegister);
+        add32(dataTempRegister, dest);
     }
 
     void add32(TrustedImm32 imm, RegisterID src, RegisterID dest)
@@ -636,26 +644,14 @@ public:
         return label;
     }
     
-    // FIXME: we should be able to plant a compact load relative to/from any base/dest register.
     DataLabelCompact load32WithCompactAddressOffsetPatch(Address address, RegisterID dest)
     {
         RegisterID base = address.base;
         
-        if (base >= ARMRegisters::r8) {
-            move(base, addressTempRegister);
-            base = addressTempRegister;
-        }
-
         DataLabelCompact label(this);
-        ASSERT(address.offset >= 0);
-        ASSERT(address.offset <= MaximumCompactPtrAlignedAddressOffset);
-        ASSERT(ARMThumbImmediate::makeUInt12(address.offset).isUInt7());
+        ASSERT(isCompactPtrAlignedAddressOffset(address.offset));
 
-        if (dest >= ARMRegisters::r8) {
-            m_assembler.ldrCompact(addressTempRegister, base, ARMThumbImmediate::makeUInt12(address.offset));
-            move(addressTempRegister, dest);
-        } else
-            m_assembler.ldrCompact(dest, base, ARMThumbImmediate::makeUInt12(address.offset));
+        m_assembler.ldr(dest, base, address.offset, true, false);
         return label;
     }
 

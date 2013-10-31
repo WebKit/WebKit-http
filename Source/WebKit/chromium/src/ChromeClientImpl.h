@@ -34,8 +34,10 @@
 
 #include "ChromeClientChromium.h"
 #include "PopupMenu.h"
+#include "RegisterProtocolHandlerClient.h"
 #include "SearchPopupMenu.h"
 #include "WebNavigationPolicy.h"
+#include <wtf/PassOwnPtr.h>
 
 namespace WebCore {
 class AccessibilityObject;
@@ -107,9 +109,6 @@ public:
     virtual bool shouldInterruptJavaScript();
     virtual WebCore::KeyboardUIMode keyboardUIMode();
     virtual WebCore::IntRect windowResizerRect() const;
-#if ENABLE(REGISTER_PROTOCOL_HANDLER)
-    virtual void registerProtocolHandler(const String& scheme, const String& baseURL, const String& url, const String& title);
-#endif
     virtual void invalidateRootView(const WebCore::IntRect&, bool);
     virtual void invalidateContentsAndRootView(const WebCore::IntRect&, bool);
     virtual void invalidateContentsForSlowScroll(const WebCore::IntRect&, bool);
@@ -149,8 +148,7 @@ public:
     virtual void setCursorHiddenUntilMouseMoves(bool);
     virtual void formStateDidChange(const WebCore::Node*);
 #if ENABLE(TOUCH_EVENTS)
-    // FIXME: All touch events are forwarded regardless of whether or not they are needed.
-    virtual void needTouchEvents(bool needTouchEvents) { }
+    virtual void needTouchEvents(bool needTouchEvents) OVERRIDE;
 #endif
 
 #if USE(ACCELERATED_COMPOSITING)
@@ -198,6 +196,8 @@ public:
 #if ENABLE(PAGE_POPUP)
     virtual WebCore::PagePopup* openPagePopup(WebCore::PagePopupClient*, const WebCore::IntRect&) OVERRIDE;
     virtual void closePagePopup(WebCore::PagePopup*) OVERRIDE;
+    virtual void setPagePopupDriver(WebCore::PagePopupDriver*) OVERRIDE;
+    virtual void resetPagePopupDriver() OVERRIDE;
 #endif
     virtual bool willAddTextFieldDecorationsTo(WebCore::HTMLInputElement*) OVERRIDE;
     virtual void addTextFieldDecorationsTo(WebCore::HTMLInputElement*) OVERRIDE;
@@ -206,7 +206,6 @@ public:
 
     virtual bool shouldRubberBandInDirection(WebCore::ScrollDirection) const;
     virtual void numWheelEventHandlersChanged(unsigned);
-    virtual void numTouchEventHandlersChanged(unsigned);
 
 #if ENABLE(POINTER_LOCK)
     virtual bool requestPointerLock();
@@ -228,6 +227,22 @@ private:
 
     // The policy for how the next webview to be created will be shown.
     WebNavigationPolicy m_nextNewWindowNavigationPolicy;
+#if ENABLE(PAGE_POPUP)
+    WebCore::PagePopupDriver* m_pagePopupDriver;
+#endif
+};
+
+class RegisterProtocolHandlerClientImpl : public WebCore::RegisterProtocolHandlerClient {
+public:
+    static PassOwnPtr<RegisterProtocolHandlerClientImpl> create(WebViewImpl*);
+    ~RegisterProtocolHandlerClientImpl() { }
+
+    virtual void registerProtocolHandler(const String& scheme, const String& baseURL, const String& url, const String& title) OVERRIDE;
+
+private:
+    explicit RegisterProtocolHandlerClientImpl(WebViewImpl*);
+
+    WebViewImpl* m_webView;
 };
 
 } // namespace WebKit

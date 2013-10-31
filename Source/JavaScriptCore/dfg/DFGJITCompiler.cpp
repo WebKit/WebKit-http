@@ -179,7 +179,7 @@ void JITCompiler::link(LinkBuffer& linkBuffer)
         info.patch.dfg.valueTagGPR = m_propertyAccesses[i].m_valueTagGPR;
         info.patch.dfg.valueGPR = m_propertyAccesses[i].m_valueGPR;
 #endif
-        info.patch.dfg.scratchGPR = m_propertyAccesses[i].m_scratchGPR;
+        m_propertyAccesses[i].m_usedRegisters.copyInfo(info.patch.dfg.usedRegisters);
         info.patch.dfg.registersFlushed = m_propertyAccesses[i].m_registerMode == PropertyAccessRecord::RegistersFlushed;
     }
     
@@ -188,6 +188,7 @@ void JITCompiler::link(LinkBuffer& linkBuffer)
         CallLinkInfo& info = m_codeBlock->callLinkInfo(i);
         info.callType = m_jsCalls[i].m_callType;
         info.isDFG = true;
+        info.bytecodeIndex = m_jsCalls[i].m_codeOrigin.bytecodeIndex;
         linkBuffer.link(m_jsCalls[i].m_slowCall, FunctionPtr((m_globalData->getCTIStub(info.callType == CallLinkInfo::Construct ? linkConstructThunkGenerator : linkCallThunkGenerator)).code().executableAddress()));
         info.callReturnLocation = linkBuffer.locationOfNearCall(m_jsCalls[i].m_slowCall);
         info.hotPathBegin = linkBuffer.locationOf(m_jsCalls[i].m_targetToCheck);

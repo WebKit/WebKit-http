@@ -39,3 +39,17 @@ WKTypeID WKNetworkInfoManagerGetTypeID()
     return 0;
 #endif
 }
+
+void WKNetworkInfoManagerSetProvider(WKNetworkInfoManagerRef networkInfoManager, const WKNetworkInfoProvider* provider)
+{
+#if ENABLE(NETWORK_INFO)
+    toImpl(networkInfoManager)->initializeProvider(provider);
+#endif
+}
+
+void WKNetworkInfoManagerProviderDidChangeNetworkInformation(WKNetworkInfoManagerRef networkInfoManager, WKStringRef eventType, WKNetworkInfoRef networkInfo)
+{
+#if ENABLE(NETWORK_INFO)
+    toImpl(networkInfoManager)->providerDidChangeNetworkInformation(AtomicString(toImpl(eventType)->string()), toImpl(networkInfo));
+#endif
+}

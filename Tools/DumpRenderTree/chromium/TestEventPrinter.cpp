@@ -34,84 +34,53 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <wtf/Assertions.h>
+#include <wtf/text/Base64.h>
 
-class DRTPrinter : public TestEventPrinter {
-public:
-    DRTPrinter() { }
-    void handleTestHeader(const char* url) const;
-    void handleTimedOut() const;
-    void handleTextHeader() const;
-    void handleTextFooter() const;
-    void handleAudioHeader() const;
-    void handleAudioFooter() const;
-    void handleImage(const char* actualHash, const char* expectedHash, const unsigned char* imageData, size_t imageSize, const char* fileName) const;
-    void handleImageFooter() const;
-    void handleTestFooter(bool dumpedAnything) const;
-};
-
-class TestShellPrinter : public TestEventPrinter {
-public:
-    TestShellPrinter() { }
-    void handleTestHeader(const char* url) const;
-    void handleTimedOut() const;
-    void handleTextHeader() const;
-    void handleTextFooter() const;
-    void handleAudioHeader() const;
-    void handleAudioFooter() const;
-    void handleImage(const char* actualHash, const char* expectedHash, const unsigned char* imageData, size_t imageSize, const char* fileName) const;
-    void handleImageFooter() const;
-    void handleTestFooter(bool dumpedAnything) const;
-};
+TestEventPrinter::TestEventPrinter()
+    : m_encodeBinary(false)
+{
+}
 
 TestEventPrinter::~TestEventPrinter()
 {
 }
 
-PassOwnPtr<TestEventPrinter> TestEventPrinter::createDRTPrinter()
-{
-    return adoptPtr(new DRTPrinter);
-}
-
-PassOwnPtr<TestEventPrinter> TestEventPrinter::createTestShellPrinter()
-{
-    return adoptPtr(new TestShellPrinter);
-}
-
 // ----------------------------------------------------------------
 
-void DRTPrinter::handleTestHeader(const char*) const
+void TestEventPrinter::handleTestHeader(const char*) const
 {
 }
 
-void DRTPrinter::handleTimedOut() const
+void TestEventPrinter::handleTimedOut() const
 {
     fprintf(stderr, "FAIL: Timed out waiting for notifyDone to be called\n");
     fprintf(stdout, "FAIL: Timed out waiting for notifyDone to be called\n");
 }
 
-void DRTPrinter::handleTextHeader() const
+void TestEventPrinter::handleTextHeader() const
 {
     printf("Content-Type: text/plain\n");
 }
 
-void DRTPrinter::handleTextFooter() const
+void TestEventPrinter::handleTextFooter() const
 {
     printf("#EOF\n");
     fprintf(stderr, "#EOF\n");
 }
 
-void DRTPrinter::handleAudioHeader() const
+void TestEventPrinter::handleAudio(const void* audioData, size_t audioSize) const
 {
     printf("Content-Type: audio/wav\n");
+    handleBinary(audioData, audioSize);
 }
 
-void DRTPrinter::handleAudioFooter() const
+void TestEventPrinter::handleAudioFooter() const
 {
     printf("#EOF\n");
     fprintf(stderr, "#EOF\n");
 }
 
-void DRTPrinter::handleImage(const char* actualHash, const char* expectedHash, const unsigned char* imageData, size_t imageSize, const char*) const
+void TestEventPrinter::handleImage(const char* actualHash, const char* expectedHash, const void* imageData, size_t imageSize) const
 {
     ASSERT(actualHash);
     printf("\nActualHash: %s\n", actualHash);
@@ -119,72 +88,28 @@ void DRTPrinter::handleImage(const char* actualHash, const char* expectedHash, c
         printf("\nExpectedHash: %s\n", expectedHash);
     if (imageData && imageSize) {
         printf("Content-Type: image/png\n");
-        // Printf formatting for size_t on 32-bit, 64-bit, and on Windows is hard so just cast to an int.
-        printf("Content-Length: %d\n", static_cast<int>(imageSize));
-        if (fwrite(imageData, 1, imageSize, stdout) != imageSize) {
-            fprintf(stderr, "Short write to stdout.\n");
-            exit(1);
-        }
+        handleBinary(imageData, imageSize);
     }
 }
 
-void DRTPrinter::handleTestFooter(bool) const
+void TestEventPrinter::handleTestFooter(bool) const
 {
     printf("#EOF\n");
 }
 
-// ----------------------------------------------------------------
-
-void TestShellPrinter::handleTestHeader(const char* url) const
+void TestEventPrinter::handleBinary(const void* data, size_t size) const
 {
-    printf("#URL:%s\n", url);
-}
-
-void TestShellPrinter::handleTimedOut() const
-{
-    puts("#TEST_TIMED_OUT\n");
-}
-
-void TestShellPrinter::handleTextHeader() const
-{
-}
-
-void TestShellPrinter::handleTextFooter() const
-{
-}
-
-void TestShellPrinter::handleAudioHeader() const
-{
-    printf("Content-Type: audio/wav\n");
-}
-
-void TestShellPrinter::handleAudioFooter() const
-{
-    printf("\n");
-}
-
-void TestShellPrinter::handleImage(const char* actualHash, const char*, const unsigned char* imageData, size_t imageSize, const char* fileName) const
-{
-    ASSERT(actualHash);
-    if (imageData && imageSize) {
-        ASSERT(fileName);
-        FILE* fp = fopen(fileName, "wb");
-        if (!fp) {
-            perror(fileName);
-            exit(EXIT_FAILURE);
-        }
-        if (fwrite(imageData, 1, imageSize, fp) != imageSize) {
-            perror(fileName);
-            fclose(fp);
-            exit(EXIT_FAILURE);
-        }
-        fclose(fp);
+    Vector<char> base64;
+    if (m_encodeBinary) {
+        base64Encode(static_cast<const char*>(data), size, base64, Base64InsertLFs);
+        data = base64.data();
+        size = base64.size();
+        printf("Content-Transfer-Encoding: base64\n");
     }
-    printf("#MD5:%s\n", actualHash);
-}
-
-void TestShellPrinter::handleTestFooter(bool dumpedAnything) const
-{
-    if (dumpedAnything)
-        printf("#EOF\n");
+    // Printf formatting for size_t on 32-bit, 64-bit, and on Windows is hard so just cast to an int.
+    printf("Content-Length: %d\n", static_cast<int>(size));
+    if (fwrite(data, 1, size, stdout) != size) {
+        fprintf(stderr, "Short write to stdout.\n");
+        exit(1);
+    }
 }

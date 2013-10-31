@@ -41,8 +41,6 @@ WebInspector.ScriptSnippetModel = function()
     this._snippetStorage = new WebInspector.SnippetStorage("script", "Script snippet #");
     this._lastSnippetEvaluationIndexSetting = WebInspector.settings.createSetting("lastSnippetEvaluationIndex", 0);
     this._snippetScriptMapping = new WebInspector.SnippetScriptMapping(this);
-    
-    WebInspector.resourceTreeModel.addEventListener(WebInspector.ResourceTreeModel.EventTypes.CachedResourcesLoaded, this._reset, this);
 }
 
 WebInspector.ScriptSnippetModel.snippetSourceURLPrefix = "snippets:///";
@@ -550,3 +548,35 @@ WebInspector.SnippetContentProvider.prototype.__proto__ = WebInspector.StaticCon
  * @type {?WebInspector.ScriptSnippetModel}
  */
 WebInspector.scriptSnippetModel = null;
+
+/**
+ * @constructor
+ * @extends {WebInspector.JavaScriptSourceFrame}
+ * @param {WebInspector.ScriptsPanel} scriptsPanel
+ * @param {WebInspector.SnippetJavaScriptSource} snippetJavaScriptSource
+ */
+WebInspector.SnippetJavaScriptSourceFrame = function(scriptsPanel, snippetJavaScriptSource)
+{
+    WebInspector.JavaScriptSourceFrame.call(this, scriptsPanel, snippetJavaScriptSource);
+    
+    this._snippetJavaScriptSource = snippetJavaScriptSource;
+    this._runButton = new WebInspector.StatusBarButton(WebInspector.UIString("Run"), "evaluate-snippet-status-bar-item");
+    this._runButton.addEventListener("click", this._runButtonClicked, this);
+}
+
+WebInspector.SnippetJavaScriptSourceFrame.prototype = {
+    /**
+     * @return {Array.<Element>}
+     */
+    statusBarItems: function()
+    {
+        return [this._runButton.element];
+    },
+
+    _runButtonClicked: function()
+    {
+        this._snippetJavaScriptSource.evaluate();
+    }
+}
+
+WebInspector.SnippetJavaScriptSourceFrame.prototype.__proto__ = WebInspector.JavaScriptSourceFrame.prototype;

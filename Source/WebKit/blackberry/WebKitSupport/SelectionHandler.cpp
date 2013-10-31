@@ -45,15 +45,22 @@
 // Note: This generates a lot of logs when dumping rects lists. It will seriously
 // impact performance. Do not enable this during performance tests.
 #define SHOWDEBUG_SELECTIONHANDLER 0
+#define SHOWDEBUG_SELECTIONHANDLER_TIMING 0
 
 using namespace BlackBerry::Platform;
 using namespace WebCore;
 
 #if SHOWDEBUG_SELECTIONHANDLER
-#define DEBUG_SELECTION(severity, format, ...) logAlways(severity, format, ## __VA_ARGS__)
+#define SelectionLog(severity, format, ...) logAlways(severity, format, ## __VA_ARGS__)
 #else
-#define DEBUG_SELECTION(severity, format, ...)
+#define SelectionLog(severity, format, ...)
 #endif // SHOWDEBUG_SELECTIONHANDLER
+
+#if SHOWDEBUG_SELECTIONHANDLER_TIMING
+#define SelectionTimingLog(severity, format, ...) logAlways(severity, format, ## __VA_ARGS__)
+#else
+#define SelectionTimingLog(severity, format, ...)
+#endif // SHOWDEBUG_SELECTIONHANDLER_TIMING
 
 namespace BlackBerry {
 namespace WebKit {
@@ -75,7 +82,7 @@ void SelectionHandler::cancelSelection()
     m_selectionActive = false;
     m_lastSelectionRegion = IntRectRegion();
 
-    DEBUG_SELECTION(LogLevelInfo, "SelectionHandler::cancelSelection");
+    SelectionLog(LogLevelInfo, "SelectionHandler::cancelSelection");
 
     if (m_webPage->m_inputHandler->isInputMode())
         m_webPage->m_inputHandler->cancelSelection();
@@ -205,7 +212,7 @@ bool SelectionHandler::shouldUpdateSelectionOrCaretForPoint(const WebCore::IntPo
     bool aboveCaret = point.y() < caretRect.y();
     bool belowCaret = point.y() >= caretRect.maxY();
 
-    DEBUG_SELECTION(LogLevelInfo, "SelectionHandler::shouldUpdateSelectionOrCaretForPoint multiline = %s above = %s below = %s first line = %s last line = %s start = %s \n"
+    SelectionLog(LogLevelInfo, "SelectionHandler::shouldUpdateSelectionOrCaretForPoint multiline = %s above = %s below = %s first line = %s last line = %s start = %s"
             , m_webPage->m_inputHandler->isMultilineInputMode() ? "true" : "false", aboveCaret ? "true" : "false", belowCaret ? "true" : "false"
             , inSameLine(currentSelection.visibleStart(), startOfEditableContent(currentSelection.visibleStart())) ? "true" : "false"
             , inSameLine(currentSelection.visibleEnd(), endOfEditableContent(currentSelection.visibleEnd())) ? "true" : "false"
@@ -228,7 +235,7 @@ void SelectionHandler::setCaretPosition(const WebCore::IntPoint &position)
 
     m_caretActive = true;
 
-    DEBUG_SELECTION(LogLevelInfo, "SelectionHandler::setCaretPosition requested point %d, %d", position.x(), position.y());
+    SelectionLog(LogLevelInfo, "SelectionHandler::setCaretPosition requested point %d, %d", position.x(), position.y());
 
     Frame* focusedFrame = m_webPage->focusedOrMainFrame();
     FrameSelection* controller = focusedFrame->selection();
@@ -236,7 +243,7 @@ void SelectionHandler::setCaretPosition(const WebCore::IntPoint &position)
     WebCore::IntRect currentCaretRect = controller->selection().visibleStart().absoluteCaretBounds();
 
     if (relativePoint == DOMSupport::InvalidPoint || !shouldUpdateSelectionOrCaretForPoint(relativePoint, currentCaretRect)) {
-        selectionPositionChanged();
+        selectionPositionChanged(true /* forceUpdateWithoutChange */);
         return;
     }
 
@@ -246,19 +253,21 @@ void SelectionHandler::setCaretPosition(const WebCore::IntPoint &position)
         if (unsigned short character = directionOfPointRelativeToRect(relativePoint, currentCaretRect))
             m_webPage->m_inputHandler->handleKeyboardInput(Platform::KeyboardEvent(character));
 
-        selectionPositionChanged();
+        // Send the selection changed in case this does not trigger a selection change to
+        // ensure the caret position is accurate. This may be a duplicate event.
+        selectionPositionChanged(true /* forceUpdateWithoutChange */);
         return;
     }
 
     VisibleSelection newSelection(visibleCaretPosition);
     if (controller->selection() == newSelection) {
-        selectionPositionChanged();
+        selectionPositionChanged(true /* forceUpdateWithoutChange */);
         return;
     }
 
     controller->setSelection(newSelection);
 
-    DEBUG_SELECTION(LogLevelInfo, "SelectionHandler::setCaretPosition point valid, cursor updated");
+    SelectionLog(LogLevelInfo, "SelectionHandler::setCaretPosition point valid, cursor updated");
 }
 
 // This function makes sure we are not reducing the selection to a caret selection.
@@ -396,7 +405,7 @@ bool SelectionHandler::updateOrHandleInputSelection(VisibleSelection& newSelecti
     // Check if the handle movement is valid.
     if (!shouldUpdateSelectionOrCaretForPoint(relativeStart, currentStartCaretRect, true /* startCaret */)
         || !shouldUpdateSelectionOrCaretForPoint(relativeEnd, currentEndCaretRect, false /* startCaret */)) {
-        selectionPositionChanged();
+        selectionPositionChanged(true /* forceUpdateWithoutChange */);
         return true;
     }
 
@@ -426,14 +435,14 @@ bool SelectionHandler::updateOrHandleInputSelection(VisibleSelection& newSelecti
     if (!character)
         return false;
 
-    DEBUG_SELECTION(LogLevelInfo, "SelectionHandler::setSelection making selection change attempt using key event %d", character);
+    SelectionLog(LogLevelInfo, "SelectionHandler::updateOrHandleInputSelection making selection change attempt using key event %d", character);
 
     if (shouldExtendSelectionInDirection(controller->selection(), character))
         m_webPage->m_inputHandler->handleKeyboardInput(Platform::KeyboardEvent(character, Platform::KeyboardEvent::KeyDown, KEYMOD_SHIFT));
 
-    // Must send the selectionPositionChanged every time, sometimes this will duplicate but an accepted
-    // handleNavigationMove may not make an actual selection change.
-    selectionPositionChanged();
+    // Send the selection changed in case this does not trigger a selection change to
+    // ensure the caret position is accurate. This may be a duplicate event.
+    selectionPositionChanged(true /* forceUpdateWithoutChange */);
     return true;
 }
 
@@ -448,7 +457,11 @@ void SelectionHandler::setSelection(const WebCore::IntPoint& start, const WebCor
     Frame* focusedFrame = m_webPage->focusedOrMainFrame();
     FrameSelection* controller = focusedFrame->selection();
 
-    DEBUG_SELECTION(LogLevelInfo, "SelectionHandler::setSelection adjusted points %d, %d, %d, %d", start.x(), start.y(), end.x(), end.y());
+#if SHOWDEBUG_SELECTIONHANDLER_TIMING
+    m_timer.start();
+#endif
+
+    SelectionLog(LogLevelInfo, "SelectionHandler::setSelection adjusted points %d, %d, %d, %d", start.x(), start.y(), end.x(), end.y());
 
     // Note that IntPoint(-1, -1) is being our sentinel so far for
     // clipped out selection starting or ending location.
@@ -502,7 +515,7 @@ void SelectionHandler::setSelection(const WebCore::IntPoint& start, const WebCor
     }
 
     if (controller->selection() == newSelection) {
-        selectionPositionChanged();
+        selectionPositionChanged(true /* forceUpdateWithoutChange */);
         return;
     }
 
@@ -514,20 +527,21 @@ void SelectionHandler::setSelection(const WebCore::IntPoint& start, const WebCor
 
     IntRectRegion unclippedRegion;
     regionForTextQuads(quads, unclippedRegion, false /* shouldClipToVisibleContent */);
-    if (!unclippedRegion.isEmpty()) {
-        // Check if the handles reversed position.
-        if (m_selectionActive && !newSelection.isBaseFirst())
-            m_webPage->m_client->notifySelectionHandlesReversed();
 
-        controller->setSelection(newSelection);
-
-        DEBUG_SELECTION(LogLevelInfo, "SelectionHandler::setSelection selection points valid, selection updated\n");
-    } else {
+    if (unclippedRegion.isEmpty()) {
         // Requested selection results in an empty selection, skip this change.
-        selectionPositionChanged();
+        selectionPositionChanged(true /* forceUpdateWithoutChange */);
 
-        DEBUG_SELECTION(LogLevelWarn, "SelectionHandler::setSelection selection points invalid, selection not updated\n");
+        SelectionLog(LogLevelWarn, "SelectionHandler::setSelection selection points invalid, selection not updated.");
+        return;
     }
+
+    // Check if the handles reversed position.
+    if (m_selectionActive && !newSelection.isBaseFirst())
+        m_webPage->m_client->notifySelectionHandlesReversed();
+
+    controller->setSelection(newSelection);
+    SelectionLog(LogLevelInfo, "SelectionHandler::setSelection selection points valid, selection updated.");
 }
 
 // FIXME re-use this in context. Must be updated to include an option to return the href.
@@ -606,7 +620,7 @@ void SelectionHandler::selectObject(const WebCore::IntPoint& location, TextGranu
     ASSERT(m_webPage && m_webPage->focusedOrMainFrame() && m_webPage->focusedOrMainFrame()->selection());
     Frame* focusedFrame = m_webPage->focusedOrMainFrame();
 
-    DEBUG_SELECTION(LogLevelInfo, "SelectionHandler::selectObject adjusted points %d, %d", location.x(), location.y());
+    SelectionLog(LogLevelInfo, "SelectionHandler::selectObject adjusted points %d, %d", location.x(), location.y());
 
     WebCore::IntPoint relativePoint = DOMSupport::convertPointToFrame(m_webPage->mainFrame(), focusedFrame, location);
     VisiblePosition pointLocation(focusedFrame->visiblePositionForPoint(relativePoint));
@@ -625,7 +639,7 @@ void SelectionHandler::selectObject(TextGranularity granularity)
     ASSERT(m_webPage->focusedOrMainFrame() && m_webPage->focusedOrMainFrame()->selection());
     Frame* focusedFrame = m_webPage->focusedOrMainFrame();
 
-    DEBUG_SELECTION(LogLevelInfo, "SelectionHandler::selectObject using current selection");
+    SelectionLog(LogLevelInfo, "SelectionHandler::selectObject using current selection");
 
     // Use the current selection as the selection point.
     ASSERT(focusedFrame->selection()->selectionType() != VisibleSelection::NoSelection);
@@ -642,7 +656,7 @@ void SelectionHandler::selectObject(Node* node)
     ASSERT(m_webPage && m_webPage->focusedOrMainFrame() && m_webPage->focusedOrMainFrame()->selection());
     Frame* focusedFrame = m_webPage->focusedOrMainFrame();
 
-    DEBUG_SELECTION(LogLevelInfo, "SelectionHandler::selectNode");
+    SelectionLog(LogLevelInfo, "SelectionHandler::selectNode");
 
     VisibleSelection selection = VisibleSelection::selectionFromContentsOfNode(node);
     focusedFrame->selection()->setSelection(selection);
@@ -827,9 +841,9 @@ bool SelectionHandler::inputNodeOverridesTouch() const
 
 // Note: This is the only function in SelectionHandler in which the coordinate
 // system is not entirely WebKit.
-void SelectionHandler::selectionPositionChanged(bool visualChangeOnly)
+void SelectionHandler::selectionPositionChanged(bool forceUpdateWithoutChange)
 {
-    DEBUG_SELECTION(LogLevelInfo, "SelectionHandler::selectionPositionChanged visibleChangeOnly = %s", visualChangeOnly ? "true" : "false");
+    SelectionLog(LogLevelInfo, "SelectionHandler::selectionPositionChanged forceUpdateWithoutChange = %s", forceUpdateWithoutChange ? "true" : "false");
 
     // This method can get called during WebPage shutdown process.
     // If that is the case, just bail out since the client is not
@@ -858,6 +872,8 @@ void SelectionHandler::selectionPositionChanged(bool visualChangeOnly)
     else if (!m_selectionActive)
         return;
 
+    SelectionTimingLog(LogLevelInfo, "SelectionHandler::selectionPositionChanged starting at %f", m_timer.elapsed());
+
     WebCore::IntRect startCaret;
     WebCore::IntRect endCaret;
 
@@ -870,7 +886,7 @@ void SelectionHandler::selectionPositionChanged(bool visualChangeOnly)
 
     // If there is no change in selected text and the visual rects
     // have not changed then don't bother notifying anything.
-    if (visualChangeOnly && m_lastSelectionRegion.isEqual(unclippedRegion))
+    if (!forceUpdateWithoutChange && m_lastSelectionRegion.isEqual(unclippedRegion))
         return;
 
     m_lastSelectionRegion = unclippedRegion;
@@ -889,11 +905,11 @@ void SelectionHandler::selectionPositionChanged(bool visualChangeOnly)
 
         regionForTextQuads(quads, visibleSelectionRegion);
 
-#if SHOWDEBUG_SELECTIONHANDLER // Don't rely just on DEBUG_SELECTION to avoid loop.
+#if SHOWDEBUG_SELECTIONHANDLER // Don't rely just on SelectionLog to avoid loop.
         for (unsigned int i = 0; i < unclippedRegion.numRects(); i++)
-            DEBUG_SELECTION(LogLevelCritical, "Rect list - Unmodified #%d, (%d, %d) (%d x %d)", i, unclippedRegion.rects()[i].x(), unclippedRegion.rects()[i].y(), unclippedRegion.rects()[i].width(), unclippedRegion.rects()[i].height());
+            SelectionLog(LogLevelInfo, "Rect list - Unmodified #%d, (%d, %d) (%d x %d)", i, unclippedRegion.rects()[i].x(), unclippedRegion.rects()[i].y(), unclippedRegion.rects()[i].width(), unclippedRegion.rects()[i].height());
         for (unsigned int i = 0; i < visibleSelectionRegion.numRects(); i++)
-            DEBUG_SELECTION(LogLevelCritical, "Rect list  - Clipped to Visible #%d, (%d, %d) (%d x %d)", i, visibleSelectionRegion.rects()[i].x(), visibleSelectionRegion.rects()[i].y(), visibleSelectionRegion.rects()[i].width(), visibleSelectionRegion.rects()[i].height());
+            SelectionLog(LogLevelInfo, "Rect list  - Clipped to Visible #%d, (%d, %d) (%d x %d)", i, visibleSelectionRegion.rects()[i].x(), visibleSelectionRegion.rects()[i].y(), visibleSelectionRegion.rects()[i].width(), visibleSelectionRegion.rects()[i].height());
 #endif
 
         bool shouldCareAboutPossibleClippedOutSelection = frame != m_webPage->mainFrame() || m_webPage->m_inputHandler->isInputMode();
@@ -922,19 +938,20 @@ void SelectionHandler::selectionPositionChanged(bool visualChangeOnly)
         }
     }
 
-    DEBUG_SELECTION(BlackBerry::Platform::LogLevelInfo, "SelectionHandler::selectionPositionChanged Start Rect=(%d, %d) (%d x %d) End Rect=(%d, %d) (%d x %d)",
+    SelectionLog(BlackBerry::Platform::LogLevelInfo, "SelectionHandler::selectionPositionChanged Start Rect=(%d, %d) (%d x %d) End Rect=(%d, %d) (%d x %d)",
                     startCaret.x(), startCaret.y(), startCaret.width(), startCaret.height(), endCaret.x(), endCaret.y(), endCaret.width(), endCaret.height());
 
     if (m_webPage->m_selectionOverlay)
         m_webPage->m_selectionOverlay->draw(visibleSelectionRegion);
 
     m_webPage->m_client->notifySelectionDetailsChanged(startCaret, endCaret, visibleSelectionRegion, inputNodeOverridesTouch());
+    SelectionTimingLog(LogLevelInfo, "SelectionHandler::selectionPositionChanged completed at %f", m_timer.elapsed());
 }
 
 // NOTE: This function is not in WebKit coordinates.
 void SelectionHandler::caretPositionChanged()
 {
-    DEBUG_SELECTION(LogLevelInfo, "SelectionHandler::caretPositionChanged");
+    SelectionLog(LogLevelInfo, "SelectionHandler::caretPositionChanged");
 
     WebCore::IntRect caretLocation;
     // If the input field is empty, we always turn off the caret.
@@ -965,7 +982,7 @@ void SelectionHandler::caretPositionChanged()
 
     m_caretActive = !caretLocation.isEmpty();
 
-    DEBUG_SELECTION(LogLevelInfo, "SelectionHandler::caretPositionChanged caret Rect %d, %d, %dx%d",
+    SelectionLog(LogLevelInfo, "SelectionHandler::caretPositionChanged caret Rect %d, %d, %dx%d",
                         caretLocation.x(), caretLocation.y(), caretLocation.width(), caretLocation.height());
 
     caretLocation = m_webPage->mapToTransformed(caretLocation);
@@ -984,7 +1001,7 @@ void SelectionHandler::caretPositionChanged()
         m_webPage->clipToTransformedContentsRect(nodeBoundingBox);
     }
 
-    DEBUG_SELECTION(LogLevelInfo, "SelectionHandler::single line %s single line bounding box %d, %d, %dx%d",
+    SelectionLog(LogLevelInfo, "SelectionHandler::single line %s single line bounding box %d, %d, %dx%d",
                     singleLineInput ? "true" : "false", nodeBoundingBox.x(), nodeBoundingBox.y(), nodeBoundingBox.width(), nodeBoundingBox.height());
 
     m_webPage->m_client->notifyCaretChanged(caretLocation, m_webPage->m_touchEventHandler->lastFatFingersResult().isTextInput() /* userTouchTriggered */, singleLineInput, nodeBoundingBox);

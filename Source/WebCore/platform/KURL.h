@@ -73,11 +73,11 @@ public:
     // It is usually best to avoid repeatedly parsing a string, unless memory saving outweigh the possible slow-downs.
     KURL(ParsedURLStringTag, const String&);
 #if USE(GOOGLEURL)
-    KURL(WTF::HashTableDeletedValueType) : m_url(WTF::HashTableDeletedValue) { }
+    explicit KURL(WTF::HashTableDeletedValueType) : m_url(WTF::HashTableDeletedValue) { }
 #elif USE(WTFURL)
-    KURL(WTF::HashTableDeletedValueType) : m_urlImpl(WTF::HashTableDeletedValue) { }
+    explicit KURL(WTF::HashTableDeletedValueType) : m_urlImpl(WTF::HashTableDeletedValue) { }
 #else
-    KURL(WTF::HashTableDeletedValueType) : m_string(WTF::HashTableDeletedValue) { }
+    explicit KURL(WTF::HashTableDeletedValueType) : m_string(WTF::HashTableDeletedValue) { }
 #endif
 #if !USE(WTFURL)
     bool isHashTableDeletedValue() const { return string().isHashTableDeletedValue(); }

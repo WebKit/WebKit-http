@@ -225,6 +225,11 @@ WebInspector.ProfilesPanel = function()
     this.clearResultsButton = new WebInspector.StatusBarButton(WebInspector.UIString("Clear all profiles."), "clear-status-bar-item");
     this.clearResultsButton.addEventListener("click", this._clearProfiles, this);
 
+    if (WebInspector.experimentsSettings.liveNativeMemoryChart.isEnabled()) {
+        this.garbageCollectButton = new WebInspector.StatusBarButton(WebInspector.UIString("Collect Garbage"), "garbage-collect-status-bar-item");
+        this.garbageCollectButton.addEventListener("click", this._garbageCollectButtonClicked, this);
+    }
+
     this.profileViewStatusBarItemsContainer = document.createElement("div");
     this.profileViewStatusBarItemsContainer.className = "status-bar-items";
 
@@ -300,7 +305,10 @@ WebInspector.ProfilesPanel.prototype = {
 
     get statusBarItems()
     {
-        return [this.enableToggleButton.element, this.recordButton.element, this.clearResultsButton.element, this.profileViewStatusBarItemsContainer];
+        var statusBarItems = [this.enableToggleButton.element, this.recordButton.element, this.clearResultsButton.element, this.profileViewStatusBarItemsContainer];
+        if (WebInspector.experimentsSettings.liveNativeMemoryChart.isEnabled())
+            statusBarItems.splice(3, 0, this.garbageCollectButton.element);
+        return statusBarItems;
     },
 
     toggleRecordButton: function()
@@ -406,6 +414,11 @@ WebInspector.ProfilesPanel.prototype = {
     {
         ProfilerAgent.clearProfiles();
         this._reset();
+    },
+
+    _garbageCollectButtonClicked: function()
+    {
+        ProfilerAgent.collectGarbage();
     },
 
     /**
@@ -737,6 +750,9 @@ WebInspector.ProfilesPanel.prototype = {
         return title;
     },
 
+    /**
+     * @param {string} query
+     */
     performSearch: function(query)
     {
         this.searchCanceled();
@@ -752,6 +768,7 @@ WebInspector.ProfilesPanel.prototype = {
         function updateMatchesCount()
         {
             WebInspector.searchController.updateSearchMatchesCount(this._totalSearchMatches, this);
+            WebInspector.searchController.updateCurrentMatchIndex(this._currentSearchResultIndex, this);
             matchesCountUpdateTimeout = null;
         }
 
@@ -833,9 +850,11 @@ WebInspector.ProfilesPanel.prototype = {
             showFirstResult = true;
         }
 
+        WebInspector.searchController.updateCurrentMatchIndex(this._currentSearchResultIndex, this);
+
         if (currentView !== this.visibleView) {
             this.showView(currentView);
-            WebInspector.searchController.focusSearchField();
+            WebInspector.searchController.showSearchField();
         }
 
         if (showFirstResult)
@@ -866,9 +885,11 @@ WebInspector.ProfilesPanel.prototype = {
             showLastResult = true;
         }
 
+        WebInspector.searchController.updateCurrentMatchIndex(this._currentSearchResultIndex, this);
+
         if (currentView !== this.visibleView) {
             this.showView(currentView);
-            WebInspector.searchController.focusSearchField();
+            WebInspector.searchController.showSearchField();
         }
 
         if (showLastResult)

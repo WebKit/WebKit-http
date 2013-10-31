@@ -27,34 +27,85 @@
 #include "PageClientImpl.h"
 #include "WKAPICast.h"
 #include "WKRetainPtr.h"
+#include "WKString.h"
 #include "WKURL.h"
 #include "ewk_context.h"
 #include "ewk_context_private.h"
 #include "ewk_intent_private.h"
+#include "ewk_view_form_client_private.h"
 #include "ewk_view_loader_client_private.h"
 #include "ewk_view_policy_client_private.h"
 #include "ewk_view_private.h"
 #include "ewk_view_resource_load_client_private.h"
 #include "ewk_web_resource.h"
+#include <Ecore_Evas.h>
+#include <Edje.h>
+#include <WebCore/Cursor.h>
+#include <WebCore/EflScreenUtilities.h>
 #include <wtf/text/CString.h>
+
+#if USE(ACCELERATED_COMPOSITING)
+#include <Evas_GL.h>
+#endif
 
 using namespace WebKit;
 using namespace WebCore;
 
 static const char EWK_VIEW_TYPE_STR[] = "EWK2_View";
 
+static const int defaultCursorSize = 16;
+
 typedef HashMap<uint64_t, Ewk_Web_Resource*> LoadingResourcesMap;
+static void _ewk_view_priv_loading_resources_clear(LoadingResourcesMap& loadingResourcesMap);
 
 struct _Ewk_View_Private_Data {
     OwnPtr<PageClientImpl> pageClient;
     const char* uri;
     const char* title;
+    const char* theme;
+    const char* customEncoding;
+    const char* cursorGroup;
+    Evas_Object* cursorObject;
     LoadingResourcesMap loadingResourcesMap;
+
+#ifdef HAVE_ECORE_X
+    bool isUsingEcoreX;
+#endif
+
+#if USE(ACCELERATED_COMPOSITING)
+    Evas_GL* evasGl;
+    Evas_GL_Context* evasGlContext;
+    Evas_GL_Surface* evasGlSurface;
+#endif
 
     _Ewk_View_Private_Data()
         : uri(0)
         , title(0)
+        , theme(0)
+        , customEncoding(0)
+        , cursorGroup(0)
+        , cursorObject(0)
+#ifdef HAVE_ECORE_X
+        , isUsingEcoreX(false)
+#endif
+#if USE(ACCELERATED_COMPOSITING)
+        , evasGl(0)
+        , evasGlContext(0)
+        , evasGlSurface(0)
+#endif
     { }
+
+    ~_Ewk_View_Private_Data()
+    {
+        eina_stringshare_del(uri);
+        eina_stringshare_del(title);
+        eina_stringshare_del(theme);
+        eina_stringshare_del(customEncoding);
+        _ewk_view_priv_loading_resources_clear(loadingResourcesMap);
+
+        if (cursorObject)
+            evas_object_del(cursorObject);
+    }
 };
 
 #define EWK_VIEW_TYPE_CHECK(ewkView, result)                                   \
@@ -271,17 +322,26 @@ static Ewk_View_Private_Data* _ewk_view_priv_new(Ewk_View_Smart_Data* smartData)
         return 0;
     }
 
+#ifdef HAVE_ECORE_X
+    priv->isUsingEcoreX = WebCore::isUsingEcoreX(smartData->base.evas);
+#endif
+
     return priv;
+}
+
+static void _ewk_view_priv_loading_resources_clear(LoadingResourcesMap& loadingResourcesMap)
+{
+    // Clear the loadingResources HashMap.
+    LoadingResourcesMap::iterator it = loadingResourcesMap.begin();
+    LoadingResourcesMap::iterator end = loadingResourcesMap.end();
+    for ( ; it != end; ++it)
+        ewk_web_resource_unref(it->second);
+
+    loadingResourcesMap.clear();
 }
 
 static void _ewk_view_priv_del(Ewk_View_Private_Data* priv)
 {
-    if (!priv)
-        return;
-
-    priv->pageClient = nullptr;
-    eina_stringshare_del(priv->uri);
-    eina_stringshare_del(priv->title);
     delete priv;
 }
 
@@ -302,17 +362,17 @@ static void _ewk_view_smart_add(Evas_Object* ewkView)
     }
 
     smartData->self = ewkView;
-    smartData->priv = _ewk_view_priv_new(smartData);
     smartData->api = api;
 
+    g_parentSmartClass.add(ewkView);
+
+    smartData->priv = _ewk_view_priv_new(smartData);
     if (!smartData->priv) {
         EINA_LOG_CRIT("could not allocate _Ewk_View_Private_Data");
         evas_object_smart_data_set(ewkView, 0);
         free(smartData);
         return;
     }
-
-    g_parentSmartClass.add(ewkView);
 
     // Create evas_object_image to draw web contents.
     smartData->image = evas_object_image_add(smartData->base.evas);
@@ -362,6 +422,94 @@ static void _ewk_view_smart_move(Evas_Object* ewkView, Evas_Coord x, Evas_Coord 
     _ewk_view_smart_changed(smartData);
 }
 
+IntSize ewk_view_size_get(const Evas_Object* ewkView)
+{
+    int width, height;
+    evas_object_geometry_get(ewkView, 0, 0, &width, &height);
+    return IntSize(width, height);
+}
+
+#if USE(ACCELERATED_COMPOSITING)
+static bool ewk_view_create_gl_surface(const Evas_Object* ewkView, const IntSize& viewSize)
+{
+    EWK_VIEW_SD_GET_OR_RETURN(ewkView, smartData, false);
+    EWK_VIEW_PRIV_GET_OR_RETURN(smartData, priv, false);
+
+    Evas_GL_Config evasGlConfig = {
+        EVAS_GL_RGBA_8888,
+        EVAS_GL_DEPTH_BIT_8,
+        EVAS_GL_STENCIL_NONE,
+        EVAS_GL_OPTIONS_NONE,
+        EVAS_GL_MULTISAMPLE_NONE
+    };
+
+    ASSERT(!priv->evasGlSurface);
+    priv->evasGlSurface = evas_gl_surface_create(priv->evasGl, &evasGlConfig, viewSize.width(), viewSize.height());
+    if (!priv->evasGlSurface)
+        return false;
+
+    Evas_Native_Surface nativeSurface;
+    evas_gl_native_surface_get(priv->evasGl, priv->evasGlSurface, &nativeSurface);
+    evas_object_image_native_surface_set(smartData->image, &nativeSurface);
+
+    return true;
+}
+
+bool ewk_view_accelerated_compositing_mode_enter(const Evas_Object* ewkView)
+{
+    EWK_VIEW_SD_GET_OR_RETURN(ewkView, smartData, false);
+    EWK_VIEW_PRIV_GET_OR_RETURN(smartData, priv, false);
+
+    EINA_SAFETY_ON_NULL_RETURN_VAL(!priv->evasGl, false);
+
+    Evas* evas = evas_object_evas_get(ewkView);
+    priv->evasGl = evas_gl_new(evas);
+    if (!priv->evasGl)
+        return false;
+
+    priv->evasGlContext = evas_gl_context_create(priv->evasGl, 0);
+    if (!priv->evasGlContext) {
+        evas_gl_free(priv->evasGl);
+        priv->evasGl = 0;
+        return false;
+    }
+
+    if (!ewk_view_create_gl_surface(ewkView, ewk_view_size_get(ewkView))) {
+        evas_gl_context_destroy(priv->evasGl, priv->evasGlContext);
+        priv->evasGlContext = 0;
+
+        evas_gl_free(priv->evasGl);
+        priv->evasGl = 0;
+        return false;
+    }
+
+    return true;
+}
+
+bool ewk_view_accelerated_compositing_mode_exit(const Evas_Object* ewkView)
+{
+    EWK_VIEW_SD_GET_OR_RETURN(ewkView, smartData, false);
+    EWK_VIEW_PRIV_GET_OR_RETURN(smartData, priv, false);
+
+    EINA_SAFETY_ON_NULL_RETURN_VAL(priv->evasGl, false);
+
+    if (priv->evasGlSurface) {
+        evas_gl_surface_destroy(priv->evasGl, priv->evasGlSurface);
+        priv->evasGlSurface = 0;
+    }
+
+    if (priv->evasGlContext) {
+        evas_gl_context_destroy(priv->evasGl, priv->evasGlContext);
+        priv->evasGlContext = 0;
+    }
+
+    evas_gl_free(priv->evasGl);
+    priv->evasGl = 0;
+
+    return true;
+}
+#endif
+
 static void _ewk_view_smart_calculate(Evas_Object* ewkView)
 {
     EWK_VIEW_SD_GET_OR_RETURN(ewkView, smartData);
@@ -375,6 +523,16 @@ static void _ewk_view_smart_calculate(Evas_Object* ewkView)
     if (smartData->changed.size) {
         if (priv->pageClient->page()->drawingArea())
             priv->pageClient->page()->drawingArea()->setSize(IntSize(width, height), IntSize());
+
+#if USE(ACCELERATED_COMPOSITING)
+        if (!priv->evasGlSurface)
+            return;
+        evas_gl_surface_destroy(priv->evasGl, priv->evasGlSurface);
+        priv->evasGlSurface = 0;
+        ewk_view_create_gl_surface(ewkView, IntSize(width, height));
+        ewk_view_display(ewkView, IntRect(IntPoint(), IntSize(width, height)));
+#endif
+
         smartData->view.w = width;
         smartData->view.h = height;
         smartData->changed.size = false;
@@ -503,9 +661,14 @@ Evas_Object* ewk_view_base_add(Evas* canvas, WKContextRef contextRef, WKPageGrou
     }
 
     priv->pageClient = PageClientImpl::create(toImpl(contextRef), toImpl(pageGroupRef), ewkView);
-    ewk_view_loader_client_attach(toAPI(priv->pageClient->page()), ewkView);
-    ewk_view_policy_client_attach(toAPI(priv->pageClient->page()), ewkView);
-    ewk_view_resource_load_client_attach(toAPI(priv->pageClient->page()), ewkView);
+
+    WKPageRef wkPage = toAPI(priv->pageClient->page());
+    ewk_view_form_client_attach(wkPage, ewkView);
+    ewk_view_loader_client_attach(wkPage, ewkView);
+    ewk_view_policy_client_attach(wkPage, ewkView);
+    ewk_view_resource_load_client_attach(wkPage, ewkView);
+
+    ewk_view_theme_set(ewkView, DEFAULT_THEME_PATH"/default.edj");
 
     return ewkView;
 }
@@ -520,15 +683,35 @@ Evas_Object* ewk_view_add(Evas* canvas)
     return ewk_view_add_with_context(canvas, ewk_context_default_get());
 }
 
+/**
+ * @internal
+ * The uri of view was changed by the frame loader.
+ *
+ * Emits signal: "uri,changed" with pointer to new uri string.
+ */
+void ewk_view_uri_update(Evas_Object* ewkView)
+{
+    EWK_VIEW_SD_GET_OR_RETURN(ewkView, smartData);
+    EWK_VIEW_PRIV_GET_OR_RETURN(smartData, priv);
+
+    String activeURL = priv->pageClient->page()->activeURL();
+    if (activeURL.isEmpty())
+        return;
+
+    if (!eina_stringshare_replace(&priv->uri, activeURL.utf8().data()))
+        return;
+
+    evas_object_smart_callback_call(ewkView, "uri,changed", static_cast<void*>(const_cast<char*>(priv->uri)));
+}
+
 Eina_Bool ewk_view_uri_set(Evas_Object* ewkView, const char* uri)
 {
-    EWK_VIEW_SD_GET_OR_RETURN(ewkView, smartData, 0);
-    EWK_VIEW_PRIV_GET_OR_RETURN(smartData, priv, 0);
+    EWK_VIEW_SD_GET_OR_RETURN(ewkView, smartData, false);
+    EWK_VIEW_PRIV_GET_OR_RETURN(smartData, priv, false);
+    EINA_SAFETY_ON_NULL_RETURN_VAL(uri, false);
 
-    WKRetainPtr<WKURLRef> url(AdoptWK, WKURLCreateWithUTF8CString(uri));
-    WKPageLoadURL(toAPI(priv->pageClient->page()), url.get());
-
-    eina_stringshare_replace(&priv->uri, uri);
+    priv->pageClient->page()->loadURL(uri);
+    ewk_view_uri_update(ewkView);
 
     return true;
 }
@@ -546,7 +729,9 @@ Eina_Bool ewk_view_reload(Evas_Object* ewkView)
     EWK_VIEW_SD_GET_OR_RETURN(ewkView, smartData, false);
     EWK_VIEW_PRIV_GET_OR_RETURN(smartData, priv, false);
 
-    WKPageReload(toAPI(priv->pageClient->page()));
+    priv->pageClient->page()->reload(/*reloadFromOrigin*/ false);
+    ewk_view_uri_update(ewkView);
+
     return true;
 }
 
@@ -555,7 +740,8 @@ Eina_Bool ewk_view_reload_bypass_cache(Evas_Object* ewkView)
     EWK_VIEW_SD_GET_OR_RETURN(ewkView, smartData, false);
     EWK_VIEW_PRIV_GET_OR_RETURN(smartData, priv, false);
 
-    WKPageReloadFromOrigin(toAPI(priv->pageClient->page()));
+    priv->pageClient->page()->reload(/*reloadFromOrigin*/ true);
+    ewk_view_uri_update(ewkView);
 
     return true;
 }
@@ -565,7 +751,8 @@ Eina_Bool ewk_view_stop(Evas_Object* ewkView)
     EWK_VIEW_SD_GET_OR_RETURN(ewkView, smartData, false);
     EWK_VIEW_PRIV_GET_OR_RETURN(smartData, priv, false);
 
-    WKPageStopLoading(toAPI(priv->pageClient->page()));
+    priv->pageClient->page()->stopLoading();
+
     return true;
 }
 
@@ -691,10 +878,27 @@ void ewk_view_title_changed(Evas_Object* ewkView, const char* title)
 
 double ewk_view_load_progress_get(const Evas_Object* ewkView)
 {
-    EWK_VIEW_SD_GET_OR_RETURN(ewkView, smartData, 0);
-    EWK_VIEW_PRIV_GET_OR_RETURN(smartData, priv, 0);
+    EWK_VIEW_SD_GET_OR_RETURN(ewkView, smartData, -1.0);
+    EWK_VIEW_PRIV_GET_OR_RETURN(smartData, priv, -1.0);
 
-    return WKPageGetEstimatedProgress(toAPI(priv->pageClient->page()));
+    return priv->pageClient->page()->estimatedProgress();
+}
+
+Eina_Bool ewk_view_scale_set(Evas_Object* ewkView, double scaleFactor, int x, int y)
+{
+    EWK_VIEW_SD_GET_OR_RETURN(ewkView, smartData, false);
+    EWK_VIEW_PRIV_GET_OR_RETURN(smartData, priv, false);
+
+    priv->pageClient->page()->scalePage(scaleFactor, IntPoint(x, y));
+    return true;
+}
+
+double ewk_view_scale_get(const Evas_Object* ewkView)
+{
+    EWK_VIEW_SD_GET_OR_RETURN(ewkView, smartData, -1);
+    EWK_VIEW_PRIV_GET_OR_RETURN(smartData, priv, -1);
+
+    return priv->pageClient->page()->pageScaleFactor();
 }
 
 Eina_Bool ewk_view_device_pixel_ratio_set(Evas_Object* ewkView, float ratio)
@@ -703,13 +907,14 @@ Eina_Bool ewk_view_device_pixel_ratio_set(Evas_Object* ewkView, float ratio)
     EWK_VIEW_PRIV_GET_OR_RETURN(smartData, priv, false);
 
     priv->pageClient->page()->setCustomDeviceScaleFactor(ratio);
+
     return true;
 }
 
 float ewk_view_device_pixel_ratio_get(const Evas_Object* ewkView)
 {
-    EWK_VIEW_SD_GET_OR_RETURN(ewkView, smartData, 1);
-    EWK_VIEW_PRIV_GET_OR_RETURN(smartData, priv, 1);
+    EWK_VIEW_SD_GET_OR_RETURN(ewkView, smartData, -1.0);
+    EWK_VIEW_PRIV_GET_OR_RETURN(smartData, priv, -1.0);
 
     return priv->pageClient->page()->deviceScaleFactor();
 }
@@ -738,6 +943,77 @@ void ewk_view_intent_request_new(Evas_Object* ewkView, const Ewk_Intent* ewkInte
 #endif
 }
 
+void ewk_view_theme_set(Evas_Object* ewkView, const char* path)
+{
+    EWK_VIEW_SD_GET_OR_RETURN(ewkView, smartData);
+    EWK_VIEW_PRIV_GET_OR_RETURN(smartData, priv);
+
+    if (!eina_stringshare_replace(&priv->theme, path))
+        return;
+
+    priv->pageClient->page()->setThemePath(path);
+}
+
+const char* ewk_view_theme_get(const Evas_Object* ewkView)
+{
+    EWK_VIEW_SD_GET_OR_RETURN(ewkView, smartData, 0);
+    EWK_VIEW_PRIV_GET_OR_RETURN(smartData, priv, 0);
+
+    return priv->theme;
+}
+
+void ewk_view_cursor_set(Evas_Object* ewkView, const Cursor& cursor)
+{
+    EWK_VIEW_SD_GET_OR_RETURN(ewkView, smartData);
+    EWK_VIEW_PRIV_GET_OR_RETURN(smartData, priv);
+
+    const char* group = cursor.platformCursor();
+    if (!group || group == priv->cursorGroup)
+        return;
+
+    priv->cursorGroup = group;
+
+    if (priv->cursorObject)
+        evas_object_del(priv->cursorObject);
+    priv->cursorObject = edje_object_add(smartData->base.evas);
+
+    Ecore_Evas* ecoreEvas = ecore_evas_ecore_evas_get(smartData->base.evas);
+    if (!priv->theme || !edje_object_file_set(priv->cursorObject, priv->theme, group)) {
+        evas_object_del(priv->cursorObject);
+        priv->cursorObject = 0;
+
+        ecore_evas_object_cursor_set(ecoreEvas, 0, 0, 0, 0);
+#ifdef HAVE_ECORE_X
+        if (priv->isUsingEcoreX)
+            WebCore::applyFallbackCursor(ecoreEvas, group);
+#endif
+        return;
+    }
+
+    Evas_Coord width, height;
+    edje_object_size_min_get(priv->cursorObject, &width, &height);
+    if (width <= 0 || height <= 0)
+        edje_object_size_min_calc(priv->cursorObject, &width, &height);
+    if (width <= 0 || height <= 0) {
+        width = defaultCursorSize;
+        height = defaultCursorSize;
+    }
+    evas_object_resize(priv->cursorObject, width, height);
+
+    const char* data;
+    int hotspotX = 0;
+    data = edje_object_data_get(priv->cursorObject, "hot.x");
+    if (data)
+        hotspotX = atoi(data);
+
+    int hotspotY = 0;
+    data = edje_object_data_get(priv->cursorObject, "hot.y");
+    if (data)
+        hotspotY = atoi(data);
+
+    ecore_evas_object_cursor_set(ecoreEvas, priv->cursorObject, EVAS_LAYER_MAX, hotspotX, hotspotY);
+}
+
 void ewk_view_display(Evas_Object* ewkView, const IntRect& rect)
 {
     EWK_VIEW_SD_GET_OR_RETURN(ewkView, smartData);
@@ -747,16 +1023,62 @@ void ewk_view_display(Evas_Object* ewkView, const IntRect& rect)
     evas_object_image_data_update_add(smartData->image, rect.x(), rect.y(), rect.width(), rect.height());
 }
 
+/**
+ * @internal
+ * A download for that view was cancelled.
+ *
+ * Emits signal: "download,cancelled" with pointer to a Ewk_Download_Job.
+ */
+void ewk_view_download_job_cancelled(Evas_Object* ewkView, Ewk_Download_Job* download)
+{
+    evas_object_smart_callback_call(ewkView, "download,cancelled", download);
+}
+
+/**
+ * @internal
+ * A new download has been requested for that view.
+ *
+ * Emits signal: "download,request" with pointer to a Ewk_Download_Job.
+ */
+void ewk_view_download_job_requested(Evas_Object* ewkView, Ewk_Download_Job* download)
+{
+     evas_object_smart_callback_call(ewkView, "download,request", download);
+}
+
+/**
+ * @internal
+ * A download for that view has failed.
+ *
+ * Emits signal: "download,failed" with pointer to a Ewk_Download_Job_Error.
+ */
+void ewk_view_download_job_failed(Evas_Object* ewkView, Ewk_Download_Job* download, Ewk_Web_Error* error)
+{
+    Ewk_Download_Job_Error downloadError = { download, error };
+    evas_object_smart_callback_call(ewkView, "download,failed", &downloadError);
+}
+
+/**
+ * @internal
+ * A download for that view finished successfully.
+ *
+ * Emits signal: "download,finished" with pointer to a Ewk_Download_Job.
+ */
+void ewk_view_download_job_finished(Evas_Object* ewkView, Ewk_Download_Job* download)
+{
+     evas_object_smart_callback_call(ewkView, "download,finished", download);
+}
+
 Eina_Bool ewk_view_back(Evas_Object* ewkView)
 {
     EWK_VIEW_SD_GET_OR_RETURN(ewkView, smartData, false);
     EWK_VIEW_PRIV_GET_OR_RETURN(smartData, priv, false);
 
-    WKPageRef pageRef = toAPI(priv->pageClient->page());
-    if (WKPageCanGoBack(pageRef)) {
-        WKPageGoBack(pageRef);
+    WebPageProxy* page = priv->pageClient->page();
+    if (page->canGoBack()) {
+        page->goBack();
         return true;
     }
+
     return false;
 }
 
@@ -765,11 +1087,12 @@ Eina_Bool ewk_view_forward(Evas_Object* ewkView)
     EWK_VIEW_SD_GET_OR_RETURN(ewkView, smartData, false);
     EWK_VIEW_PRIV_GET_OR_RETURN(smartData, priv, false);
 
-    WKPageRef pageRef = toAPI(priv->pageClient->page());
-    if (WKPageCanGoForward(pageRef)) {
-        WKPageGoForward(pageRef);
+    WebPageProxy* page = priv->pageClient->page();
+    if (page->canGoForward()) {
+        page->goForward();
         return true;
     }
+
     return false;
 }
 
@@ -780,8 +1103,9 @@ Eina_Bool ewk_view_intent_deliver(Evas_Object* ewkView, Ewk_Intent* intent)
     EWK_VIEW_PRIV_GET_OR_RETURN(smartData, priv, false);
     EINA_SAFETY_ON_NULL_RETURN_VAL(intent, false);
 
-    WKPageRef wkPage = toAPI(priv->pageClient->page());
-    WKPageDeliverIntentToFrame(wkPage, WKPageGetMainFrame(wkPage), ewk_intent_WKIntentDataRef_get(intent));
+    WebPageProxy* page = priv->pageClient->page();
+    page->deliverIntentToFrame(page->mainFrame(), toImpl(ewk_intent_WKIntentDataRef_get(intent)));
+
     return true;
 #else
     return false;
@@ -793,7 +1117,7 @@ Eina_Bool ewk_view_back_possible(Evas_Object* ewkView)
     EWK_VIEW_SD_GET_OR_RETURN(ewkView, smartData, false);
     EWK_VIEW_PRIV_GET_OR_RETURN(smartData, priv, false);
 
-    return WKPageCanGoBack(toAPI(priv->pageClient->page()));
+    return priv->pageClient->page()->canGoBack();
 }
 
 Eina_Bool ewk_view_forward_possible(Evas_Object* ewkView)
@@ -801,7 +1125,7 @@ Eina_Bool ewk_view_forward_possible(Evas_Object* ewkView)
     EWK_VIEW_SD_GET_OR_RETURN(ewkView, smartData, false);
     EWK_VIEW_PRIV_GET_OR_RETURN(smartData, priv, false);
 
-    return WKPageCanGoForward(toAPI(priv->pageClient->page()));
+    return priv->pageClient->page()->canGoForward();
 }
 
 void ewk_view_image_data_set(Evas_Object* ewkView, void* imageData, const IntSize& size)
@@ -813,6 +1137,17 @@ void ewk_view_image_data_set(Evas_Object* ewkView, void* imageData, const IntSiz
     evas_object_resize(smartData->image, size.width(), size.height());
     evas_object_image_size_set(smartData->image, size.width(), size.height());
     evas_object_image_data_copy_set(smartData->image, imageData);
+}
+
+/**
+ * @internal
+ * Reports that a form request is about to be submitted.
+ *
+ * Emits signal: "form,submission,request" with pointer to Ewk_Form_Submission_Request.
+ */
+void ewk_view_form_submission_request_new(Evas_Object* ewkView, Ewk_Form_Submission_Request* request)
+{
+    evas_object_smart_callback_call(ewkView, "form,submission,request", request);
 }
 
 /**
@@ -834,6 +1169,7 @@ void ewk_view_load_error(Evas_Object* ewkView, const Ewk_Web_Error* error)
  */
 void ewk_view_load_finished(Evas_Object* ewkView)
 {
+    ewk_view_uri_update(ewkView);
     evas_object_smart_callback_call(ewkView, "load,finished", 0);
 }
 
@@ -856,6 +1192,7 @@ void ewk_view_load_provisional_failed(Evas_Object* ewkView, const Ewk_Web_Error*
  */
 void ewk_view_load_provisional_redirect(Evas_Object* ewkView)
 {
+    ewk_view_uri_update(ewkView);
     evas_object_smart_callback_call(ewkView, "load,provisional,redirect", 0);
 }
 
@@ -872,12 +1209,9 @@ void ewk_view_load_provisional_started(Evas_Object* ewkView)
 
     // The main frame started provisional load, we should clear
     // the loadingResources HashMap to start clean.
-    LoadingResourcesMap::iterator it = priv->loadingResourcesMap.begin();
-    LoadingResourcesMap::iterator end = priv->loadingResourcesMap.end();
-    for ( ; it != end; ++it)
-        ewk_web_resource_unref(it->second);
-    priv->loadingResourcesMap.clear();
+    _ewk_view_priv_loading_resources_clear(priv->loadingResourcesMap);
 
+    ewk_view_uri_update(ewkView);
     evas_object_smart_callback_call(ewkView, "load,provisional,started", 0);
 }
 
@@ -913,6 +1247,7 @@ Eina_Bool ewk_view_html_string_load(Evas_Object* ewkView, const char* html, cons
         priv->pageClient->page()->loadAlternateHTMLString(String::fromUTF8(html), baseUrl ? String::fromUTF8(baseUrl) : "", String::fromUTF8(unreachableUrl));
     else
         priv->pageClient->page()->loadHTMLString(String::fromUTF8(html), baseUrl ? String::fromUTF8(baseUrl) : "");
+    ewk_view_uri_update(ewkView);
 
     return true;
 }
@@ -936,4 +1271,29 @@ WebPageProxy* ewk_view_page_get(const Evas_Object* ewkView)
     EWK_VIEW_PRIV_GET_OR_RETURN(smartData, priv, 0);
 
     return priv->pageClient->page();
+}
+
+const char* ewk_view_setting_encoding_custom_get(const Evas_Object* ewkView)
+{
+    EWK_VIEW_SD_GET_OR_RETURN(ewkView, smartData, 0);
+    EWK_VIEW_PRIV_GET_OR_RETURN(smartData, priv, 0);
+
+    String customEncoding = priv->pageClient->page()->customTextEncodingName();
+    if (customEncoding.isEmpty())
+        return 0;
+
+    eina_stringshare_replace(&priv->customEncoding, customEncoding.utf8().data());
+
+    return priv->customEncoding;
+}
+
+Eina_Bool ewk_view_setting_encoding_custom_set(Evas_Object* ewkView, const char* encoding)
+{
+    EWK_VIEW_SD_GET_OR_RETURN(ewkView, smartData, false);
+    EWK_VIEW_PRIV_GET_OR_RETURN(smartData, priv, false);
+
+    if (eina_stringshare_replace(&priv->customEncoding, encoding))
+        priv->pageClient->page()->setCustomTextEncodingName(encoding ? encoding : String());
+
+    return true;
 }

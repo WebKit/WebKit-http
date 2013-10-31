@@ -27,20 +27,26 @@ import re
 import time
 import unittest
 
+from webkitpy.common import message_pool
 
 _log = logging.getLogger(__name__)
 
 
-class TestRunner(object):
-    def __init__(self, stream, options, loader):
-        self.options = options
-        self.stream = stream
-        self.loader = loader
-        self.test_description = re.compile("(\w+) \(([\w.]+)\)")
+_test_description = re.compile("(\w+) \(([\w.]+)\)")
 
-    def test_name(self, test):
-        m = self.test_description.match(str(test))
-        return "%s.%s" % (m.group(2), m.group(1))
+
+def _test_name(test):
+    m = _test_description.match(str(test))
+    return "%s.%s" % (m.group(2), m.group(1))
+
+
+class Runner(object):
+    def __init__(self, printer, options, loader):
+        self.options = options
+        self.printer = printer
+        self.loader = loader
+        self.result = unittest.TestResult()
+        self.worker_factory = lambda caller: _Worker(caller, self.loader)
 
     def all_test_names(self, suite):
         names = []
@@ -48,85 +54,48 @@ class TestRunner(object):
             for t in suite._tests:
                 names.extend(self.all_test_names(t))
         else:
-            names.append(self.test_name(suite))
+            names.append(_test_name(suite))
         return names
 
     def run(self, suite):
         run_start_time = time.time()
         all_test_names = self.all_test_names(suite)
+        self.printer.num_tests = len(all_test_names)
+
+        with message_pool.get(self, self.worker_factory, int(self.options.child_processes)) as pool:
+            pool.run(('test', test_name) for test_name in all_test_names)
+
+        self.printer.print_result(self.result, time.time() - run_start_time)
+        return self.result
+
+    def handle(self, message_name, source, test_name, delay=None, result=None):
+        if message_name == 'started_test':
+            self.printer.print_started_test(source, test_name)
+            return
+
+        self.result.testsRun += 1
+        self.result.errors.extend(result.errors)
+        self.result.failures.extend(result.failures)
+        self.printer.print_finished_test(source, test_name, delay, result.failures, result.errors)
+
+
+class _Worker(object):
+    def __init__(self, caller, loader):
+        self._caller = caller
+        self._loader = loader
+
+    def handle(self, message_name, source, test_name):
+        assert message_name == 'test'
         result = unittest.TestResult()
-        stop = run_start_time
-        for test_name in all_test_names:
-            if self.options.verbose:
-                self.stream.write(test_name)
-            num_failures = len(result.failures)
-            num_errors = len(result.errors)
+        start = time.time()
+        self._caller.post('started_test', test_name)
+        self._loader.loadTestsFromName(test_name, None).run(result)
 
-            start = time.time()
-            # FIXME: it's kinda lame that we re-load the test suites for each
-            # test, and this may slow things down, but this makes implementing
-            # the logging easy and will also allow us to parallelize nicely.
-            self.loader.loadTestsFromName(test_name, None).run(result)
-            stop = time.time()
+        # The tests in the TestResult contain file objects and other unpicklable things; we only
+        # care about the test name, so we rewrite the result to replace the test with the test name.
+        # FIXME: We need an automated test for this, but I don't know how to write an automated
+        # test that will fail in this case that doesn't get picked up by test-webkitpy normally :(.
+        result.failures = [(_test_name(failure[0]), failure[1]) for failure in result.failures]
+        result.errors = [(_test_name(error[0]), error[1]) for error in result.errors]
 
-            err = None
-            failure = None
-            if len(result.failures) > num_failures:
-                failure = result.failures[num_failures][1]
-            elif len(result.errors) > num_errors:
-                err = result.errors[num_errors][1]
-            self.write_result(result, test_name, stop - start, failure, err)
-
-        self.write_summary(result, stop - run_start_time)
-
-        return result
-
-    def write_result(self, result, test_name, test_time, failure=None, err=None):
-        timing = ''
-        if self.options.timing:
-            timing = ' %.4fs' % test_time
-        if self.options.verbose:
-            if failure:
-                msg = ' failed'
-            elif err:
-                msg = ' erred'
-            else:
-                msg = ' passed'
-            self.stream.write(msg + timing + '\n')
-        else:
-            if failure:
-                msg = 'F'
-            elif err:
-                msg = 'E'
-            else:
-                msg = '.'
-            self.stream.write(msg)
-
-    def write_summary(self, result, run_time):
-        self.stream.write('\n')
-
-        for (test, err) in result.errors:
-            self.stream.write("=" * 80 + '\n')
-            self.stream.write("ERROR: " + self.test_name(test) + '\n')
-            self.stream.write("-" * 80 + '\n')
-            for line in err.splitlines():
-                self.stream.write(line + '\n')
-            self.stream.write('\n')
-
-        for (test, failure) in result.failures:
-            self.stream.write("=" * 80 + '\n')
-            self.stream.write("FAILURE: " + self.test_name(test) + '\n')
-            self.stream.write("-" * 80 + '\n')
-            for line in failure.splitlines():
-                self.stream.write(line + '\n')
-            self.stream.write('\n')
-
-        self.stream.write('-' * 80 + '\n')
-        self.stream.write('Ran %d test%s in %.3fs\n' %
-            (result.testsRun, result.testsRun != 1 and "s" or "", run_time))
-
-        if result.wasSuccessful():
-            self.stream.write('\nOK\n')
-        else:
-            self.stream.write('FAILED (failures=%d, errors=%d)\n' %
-                (len(result.failures), len(result.errors)))
+        self._caller.post('finished_test', test_name, time.time() - start, result)

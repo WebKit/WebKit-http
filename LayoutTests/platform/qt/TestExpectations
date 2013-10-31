@@ -70,8 +70,6 @@ BUGWK86137 : ietestcenter/css3/namespaces/prefix-007.xml = IMAGE
 BUGWK86139 : ietestcenter/css3/namespaces/prefix-010.xml = IMAGE
 BUGWK86142 : ietestcenter/css3/namespaces/syntax-021.xml = IMAGE
 
-BUGWK88198 : svg/stroke/non-scaling-stroke-pattern.svg = PASS IMAGE
-
 // CSS Variables are not yet enabled.
 BUGWK85580 SKIP : fast/css/variables = PASS
 BUGWK85580 SKIP : inspector/styles/variables = PASS
@@ -81,6 +79,9 @@ BUGWK87908 SKIP : editing/undomanager = PASS
 
 // CSS image-resolution is not yet enabled.
 BUGWK85262 SKIP : fast/css/image-resolution = PASS
+
+// CSS image-orientation is not yet enabled.
+BUGWK89052 SKIP : fast/css/image-orientation = PASS
 
 // Needs rebaseline after bug 86441
 // failing new tests
@@ -113,3 +114,11 @@ BUGWK84186 SKIP : fast/text-autosizing = PASS
 
 // Dialog element is not yet enabled.
 BUGWK84635 SKIP : fast/dom/HTMLDialogElement = TEXT
+
+// Skip tests in fast/text/shaping
+BUGWK90951 SKIP : fast/text/shaping = PASS
+
+// Flaky tests
+BUGWK91376 : http/tests/security/sandboxed-iframe-modify-self.html = TEXT PASS
+BUGWK91379 : http/tests/security/contentSecurityPolicy/policy-does-not-affect-child.html = TEXT PASS
+BUGWK91379 : http/tests/security/contentSecurityPolicy/object-src-none-allowed.html = TEXT PASS

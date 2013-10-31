@@ -35,6 +35,7 @@
 #if ENABLE(CONTEXT_MENUS)
 #include "InjectedBundlePageContextMenuClient.h"
 #endif
+#include "InjectedBundlePageDiagnosticLoggingClient.h"
 #include "InjectedBundlePageEditorClient.h"
 #include "InjectedBundlePageFormClient.h"
 #include "InjectedBundlePageFullScreenClient.h"
@@ -131,6 +132,7 @@ class WebFrame;
 class WebFullScreenManager;
 class WebImage;
 class WebInspector;
+class WebInspectorClient;
 class WebKeyboardEvent;
 class WebMouseEvent;
 class WebNotificationClient;
@@ -247,6 +249,7 @@ public:
 #if ENABLE(FULLSCREEN_API)
     void initializeInjectedBundleFullScreenClient(WKBundlePageFullScreenClient*);
 #endif
+    void initializeInjectedBundleDiagnosticLoggingClient(WKBundlePageDiagnosticLoggingClient*);
 
 #if ENABLE(CONTEXT_MENUS)
     InjectedBundlePageContextMenuClient& injectedBundleContextMenuClient() { return m_contextMenuClient; }
@@ -257,6 +260,7 @@ public:
     InjectedBundlePagePolicyClient& injectedBundlePolicyClient() { return m_policyClient; }
     InjectedBundlePageResourceLoadClient& injectedBundleResourceLoadClient() { return m_resourceLoadClient; }
     InjectedBundlePageUIClient& injectedBundleUIClient() { return m_uiClient; }
+    InjectedBundlePageDiagnosticLoggingClient& injectedBundleDiagnosticLoggingClient() { return m_logDiagnosticMessageClient; }
 #if ENABLE(FULLSCREEN_API)
     InjectedBundlePageFullScreenClient& injectedBundleFullScreenClient() { return m_fullScreenClient; }
 #endif
@@ -403,6 +407,10 @@ public:
 
     SandboxExtensionTracker& sandboxExtensionTracker() { return m_sandboxExtensionTracker; }
 
+#if PLATFORM(EFL)
+    void setThemePath(const String&);
+#endif
+
 #if PLATFORM(QT)
     void setComposition(const String& text, Vector<WebCore::CompositionUnderline> underlines, uint64_t selectionStart, uint64_t selectionEnd, uint64_t replacementRangeStart, uint64_t replacementRangeEnd);
     void confirmComposition(const String& text, int64_t selectionStart, int64_t selectionLength);
@@ -445,6 +453,7 @@ public:
 
 #elif PLATFORM(GTK)
     void updateAccessibilityTree();
+    bool handleMousePressedEvent(const WebCore::PlatformMouseEvent&);
 #if USE(TEXTURE_MAPPER_GL)
     void widgetMapped(int64_t nativeWindowHandle);
 #endif
@@ -466,6 +475,10 @@ public:
     void stopSpeaking();
 
     bool isSmartInsertDeleteEnabled() const { return m_isSmartInsertDeleteEnabled; }
+#endif
+
+#if ENABLE(WEB_INTENTS)
+    void deliverIntentToFrame(uint64_t frameID, const IntentData&);
 #endif
 
     void replaceSelectionWithText(WebCore::Frame*, const String&);
@@ -646,10 +659,6 @@ private:
     void runJavaScriptInMainFrame(const String&, uint64_t callbackID);
     void forceRepaint(uint64_t callbackID);
 
-#if ENABLE(WEB_INTENTS)
-    void deliverIntentToFrame(uint64_t frameID, const IntentData&);
-#endif
-
     void preferencesDidChange(const WebPreferencesStore&);
     void platformPreferencesDidChange(const WebPreferencesStore&);
     void updatePreferences(const WebPreferencesStore&);
@@ -691,6 +700,10 @@ private:
 #if PLATFORM(GTK)
     void failedToShowPopupMenu();
 #endif
+#if PLATFORM(QT)
+    void hidePopupMenu();
+    void selectedIndex(int32_t newIndex);
+#endif
 
     void didChooseFilesForOpenPanel(const Vector<String>&);
     void didCancelForOpenPanel();
@@ -718,6 +731,7 @@ private:
     void didSelectItemFromActiveContextMenu(const WebContextMenuItemData&);
 #endif
 
+    void changeSelectedIndex(int32_t index);
     void setCanStartMediaTimerFired();
 
     static bool platformCanHandleRequest(const WebCore::ResourceRequest&);
@@ -800,6 +814,7 @@ private:
 #if ENABLE(FULLSCREEN_API)
     InjectedBundlePageFullScreenClient m_fullScreenClient;
 #endif
+    InjectedBundlePageDiagnosticLoggingClient m_logDiagnosticMessageClient;
 
 #if USE(TILED_BACKING_STORE)
     WebCore::IntSize m_viewportSize;
@@ -871,6 +886,7 @@ private:
 #if ENABLE(PAGE_VISIBILITY_API)
     WebCore::PageVisibilityState m_visibilityState;
 #endif
+    WebInspectorClient* m_inspectorClient;
 };
 
 } // namespace WebKit

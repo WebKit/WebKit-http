@@ -10,10 +10,23 @@ var mockAccuracy = 100;
 if (window.testRunner) {
     testRunner.setGeolocationPermission(true);
     testRunner.setMockGeolocationPosition(mockLatitude,
-                                                    mockLongitude,
-                                                    mockAccuracy);
+                                          mockLongitude,
+                                          mockAccuracy);
 } else
     debug('This test can not be run without the LayoutTestController');
+
+function getGeolocation()
+{
+    function printLocation(pos)
+    {
+        console.log('lat: ' + pos.coords.latitude + ', long: ' + pos.coords.longitude);
+    }
+    function printError(err)
+    {
+        console.log('Error: ' + err.code);
+    }
+    navigator.geolocation.getCurrentPosition(printLocation, printError, [])
+}
 
 function test()
 {
@@ -23,11 +36,11 @@ function test()
     }
     function callback()
     {
-        PageAgent.clearGeolocationData();
-        InspectorTest.evaluateInPage("navigator.geolocation.getCurrentPosition(function(pos){console.log('lat: ' + pos.coords.latitude + ',' + ' long: ' + pos.coords.longitude);}, function(err){console.log(err);}, [])", callbackComplete);
+        PageAgent.clearGeolocationOverride();
+        InspectorTest.evaluateInPage("getGeolocation()", callbackComplete);
     }
-    PageAgent.setGeolocationData(0, 0, 0, "PositionUnavailable");
-    InspectorTest.evaluateInPage("navigator.geolocation.getCurrentPosition(function(pos){console.log(pos);}, function(err){console.log('Error: ' + err.code);}, [])", callback);
+    PageAgent.setGeolocationOverride();
+    InspectorTest.evaluateInPage("getGeolocation()", callback);
 }
 
 

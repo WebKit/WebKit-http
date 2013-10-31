@@ -475,8 +475,6 @@
 #if PLATFORM(CHROMIUM)
 #if OS(DARWIN)
 #define WTF_USE_SKIA 1
-#define WTF_USE_ATSUI 1
-#define WTF_USE_CORE_TEXT 1
 #define WTF_USE_ICCJPEG 1
 #define WTF_USE_QCMSLIB 1
 #elif OS(ANDROID)
@@ -512,7 +510,6 @@
 #endif
 
 #if OS(WINCE) && !PLATFORM(QT)
-#define NOMINMAX       /* Windows min and max conflict with standard macros */
 #define NOSHLWAPI      /* shlwapi.h not available on WinCe */
 
 /* MSDN documentation says these functions are provided with uspce.lib.  But we cannot find this file. */
@@ -528,7 +525,7 @@
 #define WTF_USE_QT4_UNICODE 1
 #endif
 #elif OS(WINCE)
-#define WTF_USE_WINCE_UNICODE 1
+#define WTF_USE_WCHAR_UNICODE 1
 #elif PLATFORM(GTK)
 /* The GTK+ Unicode backend is configurable */
 #else
@@ -652,7 +649,6 @@
 #define ENABLE_LLINT 0
 #if OS(DARWIN)
 #define WTF_USE_CF 1
-#define WTF_USE_CORE_TEXT 1
 #define ENABLE_WEB_ARCHIVE 1
 #endif
 #endif
@@ -730,7 +726,7 @@
 #define HAVE_SYS_TIMEB_H 1
 #define WTF_USE_ACCELERATE 1
 
-#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1060
+#if PLATFORM(IOS) || __MAC_OS_X_VERSION_MIN_REQUIRED >= 1060
 
 #define HAVE_DISPATCH_H 1
 #define HAVE_HOSTED_CORE_ANIMATION 1
@@ -1028,12 +1024,6 @@
 #endif
 #endif
 
-#if PLATFORM(MAC)
-/* Complex text framework */
-#define WTF_USE_ATSUI 0
-#define WTF_USE_CORE_TEXT 1
-#endif
-
 /* Accelerated compositing */
 #if PLATFORM(MAC) || PLATFORM(IOS) || PLATFORM(QT) || (PLATFORM(WIN) && !OS(WINCE) && !PLATFORM(WIN_CAIRO))
 #define WTF_USE_ACCELERATED_COMPOSITING 1
@@ -1069,7 +1059,7 @@
 #define ENABLE_PLUGIN_PACKAGE_SIMPLE_HASH 1
 #endif
 
-#if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 1080
+#if PLATFORM(MAC) && !PLATFORM(IOS) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 1080
 #define ENABLE_THREADED_SCROLLING 1
 #endif
 
@@ -1113,6 +1103,10 @@
 #define WTF_USE_EXPORT_MACROS 1
 #endif
 
+#if !defined(WTF_USE_EXPORT_MACROS_FOR_TESTING) && (PLATFORM(GTK) || PLATFORM(WIN))
+#define WTF_USE_EXPORT_MACROS_FOR_TESTING 1
+#endif
+
 #if (PLATFORM(QT) && !OS(DARWIN)) || PLATFORM(GTK) || PLATFORM(EFL)
 #define WTF_USE_UNIX_DOMAIN_SOCKETS 1
 #endif
@@ -1123,23 +1117,26 @@
 
 #define ENABLE_OBJECT_MARK_LOGGING 0
 
-#if !defined(ENABLE_PARALLEL_GC) && !ENABLE(OBJECT_MARK_LOGGING) && (PLATFORM(MAC) || PLATFORM(IOS) || PLATFORM(QT) || PLATFORM(BLACKBERRY) || PLATFORM(GTK)) && ENABLE(COMPARE_AND_SWAP)
+#if !defined(ENABLE_PARALLEL_GC) && !ENABLE(OBJECT_MARK_LOGGING) && (PLATFORM(MAC) || PLATFORM(IOS) || PLATFORM(BLACKBERRY) || PLATFORM(GTK)) && ENABLE(COMPARE_AND_SWAP)
 #define ENABLE_PARALLEL_GC 1
+#elif PLATFORM(QT)
+// Parallel GC is temporarily disabled on Qt because of regular crashes, see https://bugs.webkit.org/show_bug.cgi?id=90957 for details
+#define ENABLE_PARALLEL_GC 0
 #endif
 
 #if !defined(ENABLE_GC_VALIDATION) && !defined(NDEBUG)
 #define ENABLE_GC_VALIDATION 1
 #endif
 
-#if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 1070
+#if PLATFORM(MAC) && !PLATFORM(IOS) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 1070
 #define WTF_USE_AVFOUNDATION 1
 #endif
 
-#if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 1080
+#if PLATFORM(MAC) && !PLATFORM(IOS) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 1080
 #define WTF_USE_COREMEDIA 1
 #endif
 
-#if PLATFORM(MAC) || PLATFORM(GTK) || PLATFORM(EFL) || (PLATFORM(WIN) && !OS(WINCE) && !PLATFORM(WIN_CAIRO)) || PLATFORM(QT) || PLATFORM(BLACKBERRY)
+#if PLATFORM(MAC) || PLATFORM(GTK) || PLATFORM(EFL) || (PLATFORM(WIN) && !OS(WINCE) && !PLATFORM(WIN_CAIRO)) || PLATFORM(BLACKBERRY)
 #define WTF_USE_REQUEST_ANIMATION_FRAME_TIMER 1
 #endif
 
@@ -1147,7 +1144,7 @@
 #define WTF_USE_REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR 1
 #endif
 
-#if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 1070
+#if PLATFORM(MAC) && (PLATFORM(IOS) || __MAC_OS_X_VERSION_MIN_REQUIRED >= 1070)
 #define HAVE_INVERTED_WHEEL_EVENTS 1
 #endif
 

@@ -71,6 +71,7 @@ webkit2_h_api += \
 	$(WebKit2)/UIProcess/API/C/WKMediaCacheManager.h \
 	$(WebKit2)/UIProcess/API/C/WKNativeEvent.h \
 	$(WebKit2)/UIProcess/API/C/WKNavigationData.h \
+	$(WebKit2)/UIProcess/API/C/WKNetworkInfo.h \
 	$(WebKit2)/UIProcess/API/C/WKNetworkInfoManager.h \
 	$(WebKit2)/UIProcess/API/C/WKNotification.h \
 	$(WebKit2)/UIProcess/API/C/WKNotificationManager.h \
@@ -104,6 +105,7 @@ webkit2gtk_h_api += \
 	$(WebKit2)/UIProcess/API/gtk/WebKitError.h \
 	$(WebKit2)/UIProcess/API/gtk/WebKitFileChooserRequest.h \
 	$(WebKit2)/UIProcess/API/gtk/WebKitFindController.h \
+	$(WebKit2)/UIProcess/API/gtk/WebKitFormSubmissionRequest.h \
 	$(WebKit2)/UIProcess/API/gtk/WebKitGeolocationPermissionRequest.h \
 	$(WebKit2)/UIProcess/API/gtk/WebKitHitTestResult.h \
 	$(WebKit2)/UIProcess/API/gtk/WebKitJavascriptResult.h \
@@ -370,10 +372,8 @@ webkit2_sources += \
 	Source/WebKit2/Shared/gtk/NativeWebKeyboardEventGtk.cpp \
 	Source/WebKit2/Shared/gtk/NativeWebMouseEventGtk.cpp \
 	Source/WebKit2/Shared/gtk/NativeWebWheelEventGtk.cpp \
-	Source/WebKit2/Shared/gtk/PlatformCertificateInfo.h \
 	Source/WebKit2/Shared/gtk/PrintInfoGtk.cpp \
 	Source/WebKit2/Shared/gtk/ProcessExecutablePathGtk.cpp \
-	Source/WebKit2/Shared/gtk/WebCoreArgumentCodersGtk.cpp \
 	Source/WebKit2/Shared/gtk/WebEventFactory.cpp \
 	Source/WebKit2/Shared/gtk/WebEventFactory.h \
 	Source/WebKit2/Shared/ImageOptions.h \
@@ -427,7 +427,10 @@ webkit2_sources += \
 	Source/WebKit2/Shared/StatisticsData.cpp \
 	Source/WebKit2/Shared/StatisticsData.h \
 	Source/WebKit2/Shared/StringPairVector.h \
+	Source/WebKit2/Shared/soup/PlatformCertificateInfo.cpp \
+	Source/WebKit2/Shared/soup/PlatformCertificateInfo.h \
 	Source/WebKit2/Shared/soup/SoupCookiePersistentStorageType.h \
+	Source/WebKit2/Shared/soup/WebCoreArgumentCodersSoup.cpp \
 	Source/WebKit2/Shared/TextCheckerState.h \
 	Source/WebKit2/Shared/UserMessageCoders.h \
 	Source/WebKit2/Shared/UpdateInfo.cpp \
@@ -466,6 +469,10 @@ webkit2_sources += \
 	Source/WebKit2/Shared/WebHitTestResult.h \
 	Source/WebKit2/Shared/WebImage.cpp \
 	Source/WebKit2/Shared/WebImage.h \
+	Source/WebKit2/Shared/WebIntentData.cpp \
+	Source/WebKit2/Shared/WebIntentData.h \
+	Source/WebKit2/Shared/WebIntentServiceInfo.cpp \
+	Source/WebKit2/Shared/WebIntentServiceInfo.h \
 	Source/WebKit2/Shared/WebKeyboardEvent.cpp \
 	Source/WebKit2/Shared/WebMouseEvent.cpp \
 	Source/WebKit2/Shared/WebNavigationDataStore.h \
@@ -570,6 +577,8 @@ webkit2_sources += \
 	Source/WebKit2/UIProcess/API/C/WKNativeEvent.h \
 	Source/WebKit2/UIProcess/API/C/WKNavigationData.cpp \
 	Source/WebKit2/UIProcess/API/C/WKNavigationData.h \
+	Source/WebKit2/UIProcess/API/C/WKNetworkInfo.cpp \
+	Source/WebKit2/UIProcess/API/C/WKNetworkInfo.h \
 	Source/WebKit2/UIProcess/API/C/WKNetworkInfoManager.cpp \
 	Source/WebKit2/UIProcess/API/C/WKNetworkInfoManager.h \
 	Source/WebKit2/UIProcess/API/C/WKNotification.cpp \
@@ -636,6 +645,11 @@ webkit2_sources += \
 	Source/WebKit2/UIProcess/API/gtk/WebKitFileChooserRequest.cpp \
 	Source/WebKit2/UIProcess/API/gtk/WebKitFileChooserRequest.h \
 	Source/WebKit2/UIProcess/API/gtk/WebKitFileChooserRequestPrivate.h \
+	Source/WebKit2/UIProcess/API/gtk/WebKitFormSubmissionRequest.cpp \
+	Source/WebKit2/UIProcess/API/gtk/WebKitFormSubmissionRequest.h \
+	Source/WebKit2/UIProcess/API/gtk/WebKitFormSubmissionRequestPrivate.h \
+	Source/WebKit2/UIProcess/API/gtk/WebKitFormClient.cpp \
+	Source/WebKit2/UIProcess/API/gtk/WebKitFormClient.h \
 	Source/WebKit2/UIProcess/API/gtk/WebKitFullscreenClient.cpp \
 	Source/WebKit2/UIProcess/API/gtk/WebKitFullscreenClient.h \
 	Source/WebKit2/UIProcess/API/gtk/WebKitGeolocationPermissionRequest.cpp \
@@ -857,10 +871,6 @@ webkit2_sources += \
 	Source/WebKit2/UIProcess/WebIconDatabaseClient.h \
 	Source/WebKit2/UIProcess/WebInspectorProxy.cpp \
 	Source/WebKit2/UIProcess/WebInspectorProxy.h \
-	Source/WebKit2/UIProcess/WebIntentData.cpp \
-	Source/WebKit2/UIProcess/WebIntentData.h \
-	Source/WebKit2/UIProcess/WebIntentServiceInfo.cpp \
-	Source/WebKit2/UIProcess/WebIntentServiceInfo.h \
 	Source/WebKit2/UIProcess/WebKeyValueStorageManagerProxy.cpp \
 	Source/WebKit2/UIProcess/WebKeyValueStorageManagerProxy.h \
 	Source/WebKit2/UIProcess/WebMediaCacheManagerProxy.cpp \
@@ -919,7 +929,9 @@ webkit2_sources += \
 	Source/WebKit2/WebProcess/Downloads/DownloadAuthenticationClient.h \
 	Source/WebKit2/WebProcess/Downloads/DownloadManager.cpp \
 	Source/WebKit2/WebProcess/Downloads/DownloadManager.h \
+	Source/WebKit2/WebProcess/Downloads/gtk/DownloadSoupErrorsGtk.cpp \
 	Source/WebKit2/WebProcess/Downloads/soup/DownloadSoup.cpp \
+	Source/WebKit2/WebProcess/Downloads/soup/DownloadSoupErrors.h \
 	Source/WebKit2/WebProcess/FullScreen/WebFullScreenManager.cpp \
 	Source/WebKit2/WebProcess/FullScreen/WebFullScreenManager.h \
 	Source/WebKit2/WebProcess/Geolocation/GeolocationPermissionRequestManager.cpp \
@@ -952,6 +964,8 @@ webkit2_sources += \
 	Source/WebKit2/WebProcess/InjectedBundle/API/c/WKBundleInitialize.h \
 	Source/WebKit2/WebProcess/InjectedBundle/API/c/WKBundleInspector.cpp \
 	Source/WebKit2/WebProcess/InjectedBundle/API/c/WKBundleInspector.h \
+	Source/WebKit2/WebProcess/InjectedBundle/API/c/WKBundleIntentRequest.cpp \
+	Source/WebKit2/WebProcess/InjectedBundle/API/c/WKBundleIntentRequest.h \
 	Source/WebKit2/WebProcess/InjectedBundle/API/c/WKBundleNodeHandle.cpp \
 	Source/WebKit2/WebProcess/InjectedBundle/API/c/WKBundleNodeHandle.h \
 	Source/WebKit2/WebProcess/InjectedBundle/API/c/WKBundleNodeHandlePrivate.h \
@@ -984,10 +998,14 @@ webkit2_sources += \
 	Source/WebKit2/WebProcess/InjectedBundle/InjectedBundleDOMWindowExtension.h \
 	Source/WebKit2/WebProcess/InjectedBundle/InjectedBundleHitTestResult.cpp \
 	Source/WebKit2/WebProcess/InjectedBundle/InjectedBundleHitTestResult.h \
+	Source/WebKit2/WebProcess/InjectedBundle/InjectedBundleIntentRequest.cpp \
+	Source/WebKit2/WebProcess/InjectedBundle/InjectedBundleIntentRequest.h \
 	Source/WebKit2/WebProcess/InjectedBundle/InjectedBundleNavigationAction.cpp \
 	Source/WebKit2/WebProcess/InjectedBundle/InjectedBundleNavigationAction.h \
 	Source/WebKit2/WebProcess/InjectedBundle/InjectedBundlePageContextMenuClient.cpp \
 	Source/WebKit2/WebProcess/InjectedBundle/InjectedBundlePageContextMenuClient.h \
+	Source/WebKit2/WebProcess/InjectedBundle/InjectedBundlePageDiagnosticLoggingClient.cpp \
+	Source/WebKit2/WebProcess/InjectedBundle/InjectedBundlePageDiagnosticLoggingClient.h \
 	Source/WebKit2/WebProcess/InjectedBundle/InjectedBundlePageEditorClient.cpp \
 	Source/WebKit2/WebProcess/InjectedBundle/InjectedBundlePageEditorClient.h \
 	Source/WebKit2/WebProcess/InjectedBundle/InjectedBundlePageFormClient.cpp \
@@ -1230,13 +1248,13 @@ webkit2_plugin_process_sources += \
 	Source/WebKit2/Shared/WebKeyboardEvent.cpp \
 	Source/WebKit2/Shared/WebMouseEvent.cpp \
 	Source/WebKit2/Shared/WebWheelEvent.cpp \
-	Source/WebKit2/Shared/gtk/WebCoreArgumentCodersGtk.cpp \
 	Source/WebKit2/Shared/gtk/NativeWebKeyboardEventGtk.cpp \
 	Source/WebKit2/Shared/gtk/NativeWebWheelEventGtk.cpp \
 	Source/WebKit2/Shared/gtk/NativeWebMouseEventGtk.cpp \
 	Source/WebKit2/Shared/gtk/ProcessExecutablePathGtk.cpp \
 	Source/WebKit2/Shared/gtk/WebEventFactory.cpp \
 	Source/WebKit2/Shared/cairo/ShareableBitmapCairo.cpp \
+	Source/WebKit2/Shared/soup/WebCoreArgumentCodersSoup.cpp \
 	Source/WebKit2/UIProcess/Plugins/gtk/PluginProcessProxyGtk.cpp \
 	Source/WebKit2/WebProcess/Plugins/Plugin.cpp \
 	Source/WebKit2/WebProcess/Plugins/Plugin.h \

@@ -79,21 +79,17 @@ class Worker(object):
         start_time = time.time()
         for test_input in test_inputs:
             self._run_test(test_input)
-            self._caller.yield_to_caller()
         elapsed_time = time.time() - start_time
         self._caller.post('finished_test_list', test_list_name, len(test_inputs), elapsed_time)
 
     def _update_test_input(self, test_input):
-        test_input.reference_files = self._port.reference_files(test_input.test_name)
+        if test_input.reference_files is None:
+            # Lazy initialization.
+            test_input.reference_files = self._port.reference_files(test_input.test_name)
         if test_input.reference_files:
             test_input.should_run_pixel_test = True
-        elif self._options.pixel_tests:
-            if self._options.skip_pixel_test_if_no_baseline:
-                test_input.should_run_pixel_test = bool(self._port.expected_image(test_input.test_name))
-            else:
-                test_input.should_run_pixel_test = True
         else:
-            test_input.should_run_pixel_test = False
+            test_input.should_run_pixel_test = self._port.should_run_as_pixel_test(test_input)
 
     def _run_test(self, test_input):
         self._update_test_input(test_input)

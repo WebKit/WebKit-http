@@ -52,11 +52,11 @@ public:
 
         void reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
         {
-            memoryObjectInfo->reportObjectInfo(this, MemoryInstrumentation::DOM);
-            memoryObjectInfo->reportObject(m_prefix);
-            memoryObjectInfo->reportObject(m_localName);
-            memoryObjectInfo->reportObject(m_namespace);
-            memoryObjectInfo->reportObject(m_localNameUpper);
+            MemoryClassInfo<QualifiedNameImpl> info(memoryObjectInfo, this, MemoryInstrumentation::DOM);
+            info.addString(m_prefix);
+            info.addString(m_localName);
+            info.addString(m_namespace);
+            info.addString(m_localNameUpper);
         }
     private:
         QualifiedNameImpl(const AtomicString& prefix, const AtomicString& localName, const AtomicString& namespaceURI)
@@ -69,7 +69,6 @@ public:
     };
 
     QualifiedName(const AtomicString& prefix, const AtomicString& localName, const AtomicString& namespaceURI);
-    QualifiedName(const AtomicString& prefix, const char* localName, const AtomicString& namespaceURI);
     QualifiedName(WTF::HashTableDeletedValueType) : m_impl(hashTableDeletedValue()) { }
     bool isHashTableDeletedValue() const { return m_impl == hashTableDeletedValue(); }
     ~QualifiedName();
@@ -104,11 +103,10 @@ public:
     
     void reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
     {
-        memoryObjectInfo->reportObjectInfo(this, MemoryInstrumentation::DOM);
-        memoryObjectInfo->reportInstrumentedPointer(m_impl);
+        MemoryClassInfo<QualifiedName> info(memoryObjectInfo, this, MemoryInstrumentation::DOM);
+        info.addInstrumentedMember(m_impl);
     }
 private:
-    void init(const AtomicString& prefix, const AtomicString& localName, const AtomicString& namespaceURI);
     void ref() const { m_impl->ref(); }
     void deref();
 
@@ -146,6 +144,9 @@ struct QualifiedNameHash {
 
     static const bool safeToCompareToEmptyOrDeleted = false;
 };
+
+void createQualifiedName(void* targetAddress, const char* name, unsigned nameLength);
+void createQualifiedName(void* targetAddress, const char* name, unsigned nameLength, const AtomicString& nameNamespace);
 
 }
 

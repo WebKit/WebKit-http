@@ -40,8 +40,6 @@ module html {
         Node item(in unsigned long index);
 
         readonly attribute DOMStringList names;
-
-        // FIXME: HTML5 specifies that this should return PropertyNodeList.
-        NodeList namedItem(in DOMString name);
+        PropertyNodeList namedItem(in DOMString name);
     };
 }

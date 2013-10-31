@@ -250,6 +250,7 @@ __ZN7WebCore14DocumentLoader8setTitleERKNS_19StringWithDirectionE
 __ZN7WebCore14DocumentLoaderC1ERKNS_15ResourceRequestERKNS_14SubstituteDataE
 __ZN7WebCore14DocumentLoaderC2ERKNS_15ResourceRequestERKNS_14SubstituteDataE
 __ZN7WebCore14DocumentLoaderD2Ev
+__ZNK7WebCore14DocumentLoader17reportMemoryUsageEPNS_16MemoryObjectInfoE
 __ZN7WebCore14DocumentWriter11setEncodingERKN3WTF6StringEb
 __ZN7WebCore14FileIconLoader14notifyFinishedEN3WTF10PassRefPtrINS_4IconEEE
 __ZN7WebCore14FrameSelection10setFocusedEb
@@ -517,6 +518,7 @@ __ZN7WebCore19TextResourceDecoder5flushEv
 __ZN7WebCore19TextResourceDecoder6decodeEPKcm
 __ZN7WebCore19TextResourceDecoderC1ERKN3WTF6StringERKNS_12TextEncodingEb
 __ZN7WebCore19TextResourceDecoderD1Ev
+__ZN7WebCore20CachedResourceLoader31garbageCollectDocumentResourcesEv
 __ZN7WebCore20DictationAlternativeC1Ejjy
 __ZN7WebCore20DictationAlternativeC1Ev
 __ZN7WebCore20DisplaySleepDisablerC1EPKc
@@ -590,6 +592,7 @@ __ZN7WebCore24ComposedShadowTreeWalker8previousEv
 __ZN7WebCore24ComposedShadowTreeWalker9lastChildEv
 __ZN7WebCore24DocumentMarkerController10markersForEPNS_4NodeENS_14DocumentMarker11MarkerTypesE
 __ZN7WebCore24DocumentMarkerController13removeMarkersENS_14DocumentMarker11MarkerTypesE
+__ZN7WebCore24DocumentMarkerController18addTextMatchMarkerEPKNS_5RangeEb
 __ZN7WebCore24DocumentMarkerController23renderedRectsForMarkersENS_14DocumentMarker10MarkerTypeE
 __ZN7WebCore24FrameDestructionObserver12observeFrameEPNS_5FrameE
 __ZN7WebCore24FrameDestructionObserver14frameDestroyedEv
@@ -834,6 +837,7 @@ __ZN7WebCore8Document26pageSizeAndMarginsInPixelsEiRNS_7IntSizeERiS3_S3_S3_
 __ZN7WebCore8Document27removeMediaCanStartListenerEPNS_21MediaCanStartListenerE
 __ZN7WebCore8Document36updateLayoutIgnorePendingStylesheetsEv
 __ZN7WebCore8Document4headEv
+__ZN7WebCore8Document8iconURLsEv
 __ZN7WebCore8FormData6createEPKvm
 __ZN7WebCore8FormDataD1Ev
 __ZN7WebCore8Gradient12addColorStopEfRKNS_5ColorE
@@ -994,6 +998,7 @@ __ZN7WebCore9HTMLNames8hrefAttrE
 __ZN7WebCore9HTMLNames8inputTagE
 __ZN7WebCore9HTMLNames8nameAttrE
 __ZN7WebCore9HTMLNames8videoTagE
+__ZN7WebCore9HTMLNames9appletTagE
 __ZN7WebCore9HTMLNames9iframeTagE
 __ZN7WebCore9HTMLNames9objectTagE
 __ZN7WebCore9HTMLNames9scriptTagE
@@ -1174,7 +1179,6 @@ __ZNK7WebCore15FocusController18focusedOrMainFrameEv
 __ZNK7WebCore15GraphicsContext15platformContextEv
 __ZNK7WebCore15GraphicsContext16paintingDisabledEv
 __ZNK7WebCore15GraphicsContext20updatingControlTintsEv
-__ZNK7WebCore15GraphicsContext6getCTMEv
 __ZNK7WebCore15ProgressTracker17estimatedProgressEv
 __ZNK7WebCore15ProtectionSpace10serverTypeEv
 __ZNK7WebCore15ProtectionSpace26receivesCredentialSecurelyEv
@@ -1989,23 +1993,23 @@ __ZN7WebCore7IntSizeC1ERK7_NSSize
 __ZNK7WebCore7IntSizecv7_NSSizeEv
 #endif
 
-#if __MAC_OS_X_VERSION_MIN_REQUIRED == 1060 && !PLATFORM(IOS)
+#if !PLATFORM(IOS) && __MAC_OS_X_VERSION_MIN_REQUIRED == 1060
 _wkGetNSEventMomentumPhase
 #endif
 
-#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1070 || PLATFORM(IOS)
+#if PLATFORM(IOS) || __MAC_OS_X_VERSION_MIN_REQUIRED >= 1070
 _wkCALayerEnumerateRectsBeingDrawnWithBlock
 _wkCFURLRequestAllowAllPostCaching
 _wkCGPathAddRoundedRect
 _wkCreateCTTypesetterWithUniCharProviderAndOptions
 #endif
 
-#if (__MAC_OS_X_VERSION_MIN_REQUIRED >= 1070 || PLATFORM(IOS)) && !PLATFORM(IOS_SIMULATOR)
+#if (PLATFORM(IOS) || __MAC_OS_X_VERSION_MIN_REQUIRED >= 1070) && !PLATFORM(IOS_SIMULATOR)
 _wkIOSurfaceContextCreate
 _wkIOSurfaceContextCreateImage
 #endif
 
-#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1070 && !PLATFORM(IOS)
+#if !PLATFORM(IOS) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 1070
 _wkAVAssetResolvedURL
 _wkCopyDefaultSearchProviderDisplayName
 _wkCreateVMPressureDispatchOnMainQueue
@@ -2014,7 +2018,7 @@ _wkExecutableWasLinkedOnOrBeforeSnowLeopard
 _wkRecommendedScrollerStyle
 #endif
 
-#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1080 && !PLATFORM(IOS)
+#if !PLATFORM(IOS) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 1080
 _wkExecutableWasLinkedOnOrBeforeLion
 _wkFilterAddData
 _wkFilterCreateInstance
@@ -2073,7 +2077,7 @@ __ZN7WebCore14ResourceHandle46setPrivateBrowsingStorageSessionIdentifierBaseERKN
 __ZN7WebCore14ResourceHandle21currentStorageSessionEv
 __ZN7WebCore14ResourceHandle29privateBrowsingStorageSessionEv
 __ZN7WebCore26currentCFHTTPCookieStorageEv
-#if __MAC_OS_X_VERSION_MIN_REQUIRED == 1060
+#if !PLATFORM(IOS) && __MAC_OS_X_VERSION_MIN_REQUIRED == 1060
 __ZN7WebCore14ResourceHandle24setDefaultStorageSessionEP21__CFURLStorageSession
 #else
 __ZN7WebCore14ResourceHandle24setDefaultStorageSessionEPK21__CFURLStorageSession
@@ -2547,7 +2551,7 @@ __ZNK7WebCore4KURL7isValidEv
 __ZNK7WebCore4KURL22protocolIsInHTTPFamilyEv
 #endif
 
-#if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 1080
+#if PLATFORM(MAC) && !PLATFORM(IOS) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 1080
 __ZN7WebCore27AlternativeTextUIController15addAlternativesERKN3WTF9RetainPtrI18NSTextAlternativesEE
 __ZN7WebCore27AlternativeTextUIController22alternativesForContextEy
 __ZN7WebCore27AlternativeTextUIController5clearEv

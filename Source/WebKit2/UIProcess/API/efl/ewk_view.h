@@ -26,6 +26,20 @@
  *
  * The following signals (see evas_object_smart_callback_add()) are emitted:
  *
+ * - "download,cancelled", Ewk_Download_Job*: reports that a download was effectively cancelled.
+ * - "download,failed", Ewk_Download_Job_Error*: reports that a download failed with the given error.
+ * - "download,finished", Ewk_Download_Job*: reports that a download completed successfully.
+ * - "download,request", Ewk_Download_Job*: reports that a new download has been requested. The client should set the
+ *   destination path by calling ewk_download_job_destination_set() or the download will fail.
+ * - "form,submission,request", Ewk_Form_Submission_Request*: Reports that a form request is about to be submitted.
+ *   The Ewk_Form_Submission_Request passed contains information about the text fields of the form. This
+ *   is typically used to store login information that can be used later to pre-fill the form.
+ *   The form will not be submitted until ewk_form_submission_request_submit() is called.
+ *   It is possible to handle the form submission request asynchronously, by simply calling
+ *   ewk_form_submission_request_ref() on the request and calling ewk_form_submission_request_submit()
+ *   when done to continue with the form submission. If the last reference is removed on a
+ *   #Ewk_Form_Submission_Request and the form has not been submitted yet,
+ *   ewk_form_submission_request_submit() will be called automatically.
  * - "intent,request,new", Ewk_Intent_Request*: reports new Web intent request.
  * - "intent,service,register", Ewk_Intent_Service*: reports new Web intent service registration.
  * - "load,error", const Ewk_Web_Error*: reports main frame load failed.
@@ -35,19 +49,25 @@
  * - "load,provisional,redirect", void: view received redirect for provisional load.
  * - "load,provisional,started", void: view started provisional load.
  * - "policy,decision,navigation", Ewk_Navigation_Policy_Decision*: a navigation policy decision should be taken.
+ *   To make a policy decision asynchronously, simply increment the reference count of the
+ *   #Ewk_Navigation_Policy_Decision object using ewk_navigation_policy_decision_ref().
  * - "policy,decision,new,window", Ewk_Navigation_Policy_Decision*: a new window policy decision should be taken.
+ *   To make a policy decision asynchronously, simply increment the reference count of the
+ *   #Ewk_Navigation_Policy_Decision object using ewk_navigation_policy_decision_ref().
  * - "resource,request,failed", const Ewk_Web_Resource_Load_Error*: a resource failed loading.
  * - "resource,request,finished", const Ewk_Web_Resource*: a resource finished loading.
  * - "resource,request,new", const Ewk_Web_Resource_Request*: a resource request was initiated.
  * - "resource,request,response", Ewk_Web_Resource_Load_Response*: a response to a resource request was received.
  * - "resource,request,sent", const Ewk_Web_Resource_Request*: a resource request was sent.
  * - "title,changed", const char*: title of the main frame was changed.
+ * - "uri,changed", const char*: uri of the main frame was changed.
  */
 
 #ifndef ewk_view_h
 #define ewk_view_h
 
 #include "ewk_context.h"
+#include "ewk_download_job.h"
 #include "ewk_intent.h"
 #include "ewk_url_request.h"
 #include "ewk_url_response.h"
@@ -157,7 +177,7 @@ typedef struct _Ewk_Web_Resource_Request Ewk_Web_Resource_Request;
 struct _Ewk_Web_Resource_Request {
     Ewk_Web_Resource *resource; /**< resource being requested */
     Ewk_Url_Request *request; /**< URL request for the resource */
-    Ewk_Url_Response *redirect_response; /**< Possible redirect response for the resource */
+    Ewk_Url_Response *redirect_response; /**< Possible redirect response for the resource or @c NULL */
 };
 
 /// Creates a type name for _Ewk_Web_Resource_Load_Response.
@@ -184,12 +204,23 @@ struct _Ewk_Web_Resource_Load_Error {
     Ewk_Web_Error *error; /**< load error */
 };
 
+/// Creates a type name for _Ewk_Download_Job_Error.
+typedef struct _Ewk_Download_Job_Error Ewk_Download_Job_Error;
+
+/**
+ * @brief Structure containing details about a download failure.
+ */
+struct _Ewk_Download_Job_Error {
+    Ewk_Download_Job *download_job; /**< download that failed */
+    Ewk_Web_Error *error; /**< download error */
+};
+
 /**
  * Creates a new EFL WebKit view object.
  *
  * @param e canvas object where to create the view object
  *
- * @return view object on success or @c 0 on failure
+ * @return view object on success or @c NULL on failure
  */
 EAPI Evas_Object *ewk_view_add(Evas *e);
 
@@ -199,7 +230,7 @@ EAPI Evas_Object *ewk_view_add(Evas *e);
  * @param e canvas object where to create the view object
  * @param context Ewk_Context object to declare process model
  *
- * @return view object on success or @c 0 on failure
+ * @return view object on success or @c NULL on failure
  */
 EAPI Evas_Object *ewk_view_add_with_context(Evas *e, Ewk_Context *context);
 
@@ -209,7 +240,8 @@ EAPI Evas_Object *ewk_view_add_with_context(Evas *e, Ewk_Context *context);
  * @param o view object to load @a URI
  * @param uri uniform resource identifier to load
  *
- * @return @c EINA_TRUE is returned if @a o is valid, irrespective of load.
+ * @return @c EINA_TRUE is returned if @a o is valid, irrespective of load,
+ *         or @c EINA_FALSE on failure
  */
 EAPI Eina_Bool ewk_view_uri_set(Evas_Object *o, const char *uri);
 
@@ -221,7 +253,7 @@ EAPI Eina_Bool ewk_view_uri_set(Evas_Object *o, const char *uri);
  *
  * @param o view object to get current URI
  *
- * @return current URI on success or @c 0 on failure
+ * @return current URI on success or @c NULL on failure
  */
 EAPI const char *ewk_view_uri_get(const Evas_Object *o);
 
@@ -311,7 +343,7 @@ EAPI Eina_Bool    ewk_view_forward_possible(Evas_Object *o);
  *
  * @param o view object to get current title
  *
- * @return current title on success or @c 0 on failure
+ * @return current title on success or @c NULL on failure
  */
 EAPI const char *ewk_view_title_get(const Evas_Object *o);
 
@@ -322,7 +354,8 @@ EAPI const char *ewk_view_title_get(const Evas_Object *o);
  *
  * @param o view object to get the current progress
  *
- * @return the load progres of page, value from 0.0 to 1.0.
+ * @return the load progress of page, value from 0.0 to 1.0,
+ *         or @c -1.0 on failure
  */
 EAPI double ewk_view_load_progress_get(const Evas_Object *o);
 
@@ -344,6 +377,30 @@ EAPI double ewk_view_load_progress_get(const Evas_Object *o);
  * @return @c EINA_TRUE if it the HTML was successfully loaded, @c EINA_FALSE otherwise
  */
 EAPI Eina_Bool ewk_view_html_string_load(Evas_Object *o, const char *html, const char *baseUrl, const char *unreachableUrl);
+
+/**
+ * Scales the current page, centered at the given point.
+ *
+ * @param o view object to set the zoom level
+ * @param scale_factor a new level to set
+ * @param cx x of center coordinate
+ * @param cy y of center coordinate
+ *
+ * @return @c EINA_TRUE on success or @c EINA_FALSE otherwise
+ */
+Eina_Bool ewk_view_scale_set(Evas_Object *o, double scaleFactor, int x, int y);
+
+/**
+ * Queries the current scale factor of the page.
+ *
+ * It returns previous scale factor after ewk_view_scale_set is called immediately
+ * until scale factor of page is really changed.
+ *
+ * @param o view object to get the scale factor
+ *
+ * @return current scale factor in use on success or @c -1.0 on failure
+ */
+double ewk_view_scale_get(const Evas_Object *o);
 
 /**
  * Queries the ratio between the CSS units and device pixels when the content is unscaled.
@@ -378,7 +435,8 @@ EAPI Eina_Bool ewk_view_html_string_load(Evas_Object *o, const char *html, const
  *
  * @param o view object to get device pixel ratio
  *
- * @return the ratio between the CSS units and device pixels.
+ * @return the ratio between the CSS units and device pixels,
+ *         or @c -1.0 on failure
  */
 EAPI float ewk_view_device_pixel_ratio_get(const Evas_Object *o);
 
@@ -392,6 +450,49 @@ EAPI float ewk_view_device_pixel_ratio_get(const Evas_Object *o);
  * @see ewk_view_device_pixel_ratio_get()
  */
 EAPI Eina_Bool ewk_view_device_pixel_ratio_set(Evas_Object *o, float ratio);
+
+/**
+ * Sets the theme path that will be used by this view.
+ *
+ * This also sets the theme on the main frame. As frames inherit theme
+ * from their parent, this will have all frames with unset theme to
+ * use this one.
+ *
+ * @param o view object to change theme
+ * @param path theme path, may be @c NULL to reset to the default theme
+ */
+EAPI void ewk_view_theme_set(Evas_Object *o, const char *path);
+
+/**
+ * Gets the theme set on this view.
+ *
+ * This returns the value set by ewk_view_theme_set().
+ *
+ * @param o view object to get theme path
+ *
+ * @return the theme path, may be @c NULL if not set
+ */
+EAPI const char *ewk_view_theme_get(const Evas_Object *o);
+
+/**
+ * Gets the current custom character encoding name.
+ *
+ * @param o view object to get the current encoding
+ *
+ * @return @c eina_strinshare containing the current encoding, or
+ *         @c NULL if it's not set
+ */
+EAPI const char  *ewk_view_setting_encoding_custom_get(const Evas_Object *o);
+
+/**
+ * Sets the custom character encoding and reloads the page.
+ *
+ * @param o view to set the encoding
+ * @param encoding the new encoding to set or @c NULL to restore the default one
+ *
+ * @return @c EINA_TRUE on success @c EINA_FALSE otherwise
+ */
+EAPI Eina_Bool    ewk_view_setting_encoding_custom_set(Evas_Object *o, const char *encoding);
 
 #ifdef __cplusplus
 }

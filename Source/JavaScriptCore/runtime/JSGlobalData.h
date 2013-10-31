@@ -39,6 +39,7 @@
 #include "JSValue.h"
 #include "LLIntData.h"
 #include "NumericStrings.h"
+#include "PrivateName.h"
 #include "SmallStrings.h"
 #include "Strong.h"
 #include "Terminator.h"
@@ -129,6 +130,10 @@ namespace JSC {
 #if ENABLE(DFG_JIT)
     class ConservativeRoots;
 
+#if COMPILER(MSVC)
+#pragma warning(push)
+#pragma warning(disable: 4200) // Disable "zero-sized array in struct/union" warning
+#endif
     struct ScratchBuffer {
         ScratchBuffer()
             : m_activeLength(0)
@@ -151,6 +156,9 @@ namespace JSC {
         size_t m_activeLength;
         void* m_buffer[0];
     };
+#if COMPILER(MSVC)
+#pragma warning(pop)
+#endif
 #endif
 
     class JSGlobalData : public ThreadSafeRefCounted<JSGlobalData> {
@@ -285,6 +293,8 @@ namespace JSC {
 #else
         bool canUseRegExpJIT() { return m_canUseAssembler; }
 #endif
+
+        PrivateName m_inheritorIDKey;
 
         OwnPtr<ParserArena> parserArena;
         OwnPtr<Keywords> keywords;

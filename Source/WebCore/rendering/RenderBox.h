@@ -201,8 +201,8 @@ public:
     LayoutUnit clientTop() const { return borderTop(); }
     LayoutUnit clientWidth() const;
     LayoutUnit clientHeight() const;
-    LayoutUnit clientLogicalWidth() const { return style()->isHorizontalWritingMode() ? pixelSnappedClientWidth() : pixelSnappedClientHeight(); }
-    LayoutUnit clientLogicalHeight() const { return style()->isHorizontalWritingMode() ? pixelSnappedClientHeight() : pixelSnappedClientWidth(); }
+    LayoutUnit clientLogicalWidth() const { return style()->isHorizontalWritingMode() ? clientWidth() : clientHeight(); }
+    LayoutUnit clientLogicalHeight() const { return style()->isHorizontalWritingMode() ? clientHeight() : clientWidth(); }
     LayoutUnit clientLogicalBottom() const { return borderBefore() + clientLogicalHeight(); }
     LayoutRect clientBoxRect() const { return LayoutRect(clientLeft(), clientTop(), clientWidth(), clientHeight()); }
 
@@ -290,7 +290,7 @@ public:
     void computeInlineDirectionMargins(RenderBlock* containingBlock, LayoutUnit containerWidth, LayoutUnit childWidth);
 
     // Used to resolve margins in the containing block's block-flow direction.
-    void computeBlockDirectionMargins(RenderBlock* containingBlock);
+    void computeBlockDirectionMargins(const RenderBlock* containingBlock);
 
     enum RenderBoxRegionInfoFlags { CacheRenderBoxRegionInfo, DoNotCacheRenderBoxRegionInfo };
     LayoutRect borderBoxRectInRegion(RenderRegion*, LayoutUnit offsetFromLogicalTopOfFirstPage = 0, RenderBoxRegionInfoFlags = CacheRenderBoxRegionInfo) const;
@@ -353,9 +353,9 @@ public:
 
     LayoutUnit computePercentageLogicalHeight(const Length& height);
 
-    // Block flows subclass availableWidth to handle multi column layout (shrinking the width available to children when laying out.)
+    // Block flows subclass availableWidth/Height to handle multi column layout (shrinking the width/height available to children when laying out.)
     virtual LayoutUnit availableLogicalWidth() const { return contentLogicalWidth(); }
-    LayoutUnit availableLogicalHeight() const;
+    virtual LayoutUnit availableLogicalHeight() const;
     LayoutUnit availableLogicalHeightUsing(const Length&) const;
     
     // There are a few cases where we need to refer specifically to the available physical width and available physical height.

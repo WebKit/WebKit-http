@@ -36,21 +36,21 @@ var test = function()
             InspectorTest.showScriptSource("obfuscated.js", didShowScriptSource);
             function didShowScriptSource(sourceFrame)
             {
-                formatter.formatContent("text/javascript", sourceFrame._textModel.text, didFormatContent);
+                formatter.formatContent("text/javascript", sourceFrame._textModel.text(), didFormatContent);
             }
 
             function didFormatContent(content, mapping)
             {
-                var source = WebInspector.panels.scripts.visibleView._textModel.text;
+                var source = WebInspector.panels.scripts.visibleView._textModel.text();
                 var formattedSource = content;
 
                 function testMapping(string)
                 {
                     var originalPosition = source.indexOf(string);
                     InspectorTest.assertTrue(originalPosition !== -1);
-                    var originalLocation = WebInspector.ScriptFormatter.positionToLocation(source.lineEndings(), originalPosition);
+                    var originalLocation = WebInspector.Formatter.positionToLocation(source.lineEndings(), originalPosition);
                     var formattedLocation = mapping.originalToFormatted(originalLocation[0], originalLocation[1]);
-                    var formattedPosition = WebInspector.ScriptFormatter.locationToPosition(formattedSource.lineEndings(), formattedLocation[0], formattedLocation[1]);
+                    var formattedPosition = WebInspector.Formatter.locationToPosition(formattedSource.lineEndings(), formattedLocation[0], formattedLocation[1]);
                     var expectedFormattedPosition = formattedSource.indexOf(string);
                     InspectorTest.assertEquals(expectedFormattedPosition, formattedPosition, "wrong mapping for <" + string + ">");
                 }

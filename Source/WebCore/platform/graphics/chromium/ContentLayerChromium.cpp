@@ -93,7 +93,7 @@ void ContentLayerChromium::setTexturePriorities(const CCPriorityCalculator& prio
     TiledLayerChromium::setTexturePriorities(priorityCalc);
 }
 
-void ContentLayerChromium::update(CCTextureUpdater& updater, const CCOcclusionTracker* occlusion)
+void ContentLayerChromium::update(CCTextureUpdater& updater, const CCOcclusionTracker* occlusion, CCRenderingStats& stats)
 {
     createTextureUpdaterIfNeeded();
 
@@ -104,7 +104,7 @@ void ContentLayerChromium::update(CCTextureUpdater& updater, const CCOcclusionTr
     if (drawsContent())
         contentRect = visibleContentRect();
 
-    updateContentRect(updater, contentRect, occlusion);
+    updateContentRect(updater, contentRect, occlusion, stats);
     m_needsDisplay = false;
 }
 
@@ -122,9 +122,9 @@ void ContentLayerChromium::createTextureUpdaterIfNeeded()
     if (layerTreeHost()->settings().acceleratePainting)
         m_textureUpdater = FrameBufferSkPictureCanvasLayerTextureUpdater::create(ContentLayerPainter::create(m_delegate));
     else if (CCSettings::perTilePaintingEnabled())
-        m_textureUpdater = BitmapSkPictureCanvasLayerTextureUpdater::create(ContentLayerPainter::create(m_delegate), layerTreeHost()->layerRendererCapabilities().usingMapSub);
+        m_textureUpdater = BitmapSkPictureCanvasLayerTextureUpdater::create(ContentLayerPainter::create(m_delegate));
     else
-        m_textureUpdater = BitmapCanvasLayerTextureUpdater::create(ContentLayerPainter::create(m_delegate), layerTreeHost()->layerRendererCapabilities().usingMapSub);
+        m_textureUpdater = BitmapCanvasLayerTextureUpdater::create(ContentLayerPainter::create(m_delegate));
     m_textureUpdater->setOpaque(opaque());
 
     GC3Denum textureFormat = layerTreeHost()->layerRendererCapabilities().bestTextureFormat;

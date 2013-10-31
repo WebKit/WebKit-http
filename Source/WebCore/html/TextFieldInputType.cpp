@@ -103,7 +103,7 @@ void TextFieldInputType::setValue(const String& sanitizedValue, bool valueChange
     InputType::setValue(sanitizedValue, valueChanged, DispatchNoEvent);
 
     if (valueChanged)
-        input->updateInnerTextValue();
+        updateInnerTextValue();
 
     unsigned max = visibleValue().length();
     if (input->focused())
@@ -246,11 +246,11 @@ void TextFieldInputType::createShadowSubtree()
     ExceptionCode ec = 0;
     m_innerText = TextControlInnerTextElement::create(document);
     if (!createsContainer) {
-        element()->shadow()->oldestShadowRoot()->appendChild(m_innerText, ec);
+        element()->userAgentShadowRoot()->appendChild(m_innerText, ec);
         return;
     }
 
-    ShadowRoot* shadowRoot = element()->shadow()->oldestShadowRoot();
+    ShadowRoot* shadowRoot = element()->userAgentShadowRoot();
     m_container = HTMLDivElement::create(document);
     m_container->setShadowPseudoId("-webkit-textfield-decoration-container");
     shadowRoot->appendChild(m_container, ec);
@@ -417,7 +417,7 @@ void TextFieldInputType::updatePlaceholderText()
     if (!m_placeholder) {
         m_placeholder = HTMLDivElement::create(element()->document());
         m_placeholder->setShadowPseudoId("-webkit-input-placeholder");
-        element()->shadow()->oldestShadowRoot()->insertBefore(m_placeholder, m_container ? m_container->nextSibling() : innerTextElement()->nextSibling(), ec);
+        element()->userAgentShadowRoot()->insertBefore(m_placeholder, m_container ? m_container->nextSibling() : innerTextElement()->nextSibling(), ec);
         ASSERT(!ec);
     }
     m_placeholder->setInnerText(placeholderText, ec);
@@ -450,5 +450,17 @@ void TextFieldInputType::spinButtonStepUp()
     stepUpFromRenderer(1);
 }
 
+void TextFieldInputType::updateInnerTextValue()
+{
+    if (!element()->suggestedValue().isNull()) {
+        element()->setInnerTextValue(element()->suggestedValue());
+        element()->updatePlaceholderVisibility(false);
+    } else if (!element()->formControlValueMatchesRenderer()) {
+        // Update the renderer value if the formControlValueMatchesRenderer() flag is false.
+        // It protects an unacceptable renderer value from being overwritten with the DOM value.
+        element()->setInnerTextValue(visibleValue());
+        element()->updatePlaceholderVisibility(false);
+    }
+}
 
 } // namespace WebCore

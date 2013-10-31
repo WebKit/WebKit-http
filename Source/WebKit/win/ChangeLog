@@ -1,3 +1,104 @@
+2012-07-26  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
+
+        [Mac] Fix build break on Apple win bot after r123711
+        https://bugs.webkit.org/show_bug.cgi?id=92354
+
+        Reviewed by Adam Barth.
+
+        Missing return value.
+
+        * WebFrame.cpp:
+        (WebFrame::pageNumberForElementById):
+
+2012-07-26  Kaustubh Atrawalkar  <kaustubh@motorola.com>
+
+        [DRT] LTC:: pageNumberForElementById() could be moved to Internals
+        https://bugs.webkit.org/show_bug.cgi?id=92091
+
+        Reviewed by Adam Barth.
+
+        Moved the pageNumberForElementById from LayoutTestCotroller to Internals and
+        remove the old platform specific implementations as it exclusively tests WebCore functionality.
+
+        * WebFrame.cpp: Added comment for removing the function. Removed implementation.
+
+2012-07-25  Roger Fong  <roger_fong@apple.com>
+
+        Changes to the WebFrame API cause dependent apps to crash.
+        https://bugs.webkit.org/show_bug.cgi?id=91656
+        <rdar://problem/11904605>
+        
+        Reviewed by Jon Honeycutt.
+        
+        Changes to the WebFrame API cause certain apps to crash because of inconsistencies in the COM interface.
+        The resumeAnimations and suspendAnimations are removed, which are still needed.
+        The counterValueByElementId method was also removed, although is not needed there.
+        However, for all of these methods, no method stubs were added where appropriate after removal.
+        
+        * Interfaces/IWebFramePrivate.idl:
+        Added resumeAnimations() and suspendAnimations() methods back in. Added unused method stub for counterValueByElementId method.
+        
+        * WebFrame.cpp:
+        (WebFrame::resumeAnimations):
+        Added this method back in.
+        (WebFrame::suspendAnimations):
+        Added this method back in.
+        
+        * WebFrame.h:
+        (Re)added methods and unused method stubs. 
+
+2012-07-23  Patrick Gansterer  <paroga@webkit.org>
+
+        Build fix if NOMINMAX is defined by the build system.
+
+        * COMEnumVariant.h: Added #ifndef NOMINMAX around #define NOMINMAX.
+        * COMPropertyBag.h: Ditto.
+
+2012-07-23  Pierre Rossi  <pierre.rossi@gmail.com>
+
+        Unify numTouchEventHandlersChanged and needTouchEvents in the chrome client
+        https://bugs.webkit.org/show_bug.cgi?id=91006
+
+        Reviewed by Ryosuke Niwa.
+
+        Remove numTouchEventHandlersChanged stub.
+
+        * WebCoreSupport/WebChromeClient.h:
+
+2012-07-17  Vivek Galatage  <vivekgalatage@gmail.com>
+
+        Web Inspector: refactor InspectorController::connectFrontend() to accept InspectorFrontendChannel.
+        https://bugs.webkit.org/show_bug.cgi?id=91196
+
+        Reviewed by Pavel Feldman.
+
+        Refactoring InspectorClients. InspectorClient::openInspectorFrontend
+        now returning the InspectorFrontendChannel.
+
+        * WebCoreSupport/WebInspectorClient.cpp:
+        (WebInspectorClient::openInspectorFrontend):
+        * WebCoreSupport/WebInspectorClient.h:
+        (WebInspectorClient):
+
+2012-07-14  Eric Carlson  <eric.carlson@apple.com>
+
+        Enable AVCF hardware video decoding
+        https://bugs.webkit.org/show_bug.cgi?id=90015
+        <rdar://problem/10770317>
+
+        Reviewed by Anders Carlsson.
+
+        * WebCoreSupport/WebChromeClient.cpp:
+        (WebChromeClient::graphicsDeviceAdapter): New, return the view's graphics adapter.
+        * WebCoreSupport/WebChromeClient.h:
+        (WebChromeClient):
+
+        * WebView.cpp:
+        (WebView::graphicsDeviceAdapter): New, return the layer tree host's graphics adapter.
+        * WebView.h:
+        (WebCore):
+        (WebView):
+
 2012-07-10  Adam Barth  <abarth@webkit.org>
 
         WebCore::Settings for Hixie76 WebSocket protocol doesn't do anything and should be removed

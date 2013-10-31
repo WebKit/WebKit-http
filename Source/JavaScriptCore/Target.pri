@@ -67,6 +67,7 @@ SOURCES += \
     bytecode/ResolveGlobalStatus.cpp \
     bytecode/SamplingTool.cpp \
     bytecode/SpeculatedType.cpp \
+    bytecode/StructureStubClearingWatchpoint.cpp \
     bytecode/StructureStubInfo.cpp \
     bytecode/Watchpoint.cpp \
     bytecompiler/BytecodeGenerator.cpp \
@@ -218,6 +219,7 @@ SOURCES += \
     runtime/LiteralParser.cpp \
     runtime/Lookup.cpp \
     runtime/MathObject.cpp \
+    runtime/MemoryStatistics.cpp \
     runtime/NameConstructor.cpp \
     runtime/NameInstance.cpp \
     runtime/NamePrototype.cpp \

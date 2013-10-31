@@ -86,6 +86,7 @@
 #include "RenderTreeAsText.h"
 #include "RenderView.h"
 #include "ScaleTransformOperation.h"
+#include "ScrollAnimator.h"
 #include "Scrollbar.h"
 #include "ScrollbarTheme.h"
 #include "Settings.h"
@@ -195,6 +196,8 @@ RenderLayer::RenderLayer(RenderBoxModelObject* renderer)
         // We save and restore only the scrollOffset as the other scroll values are recalculated.
         Element* element = toElement(node);
         m_scrollOffset = element->savedLayerScrollOffset();
+        if (!m_scrollOffset.isZero())
+            scrollAnimator()->setCurrentPosition(FloatPoint(m_scrollOffset.width(), m_scrollOffset.height()));
         element->setSavedLayerScrollOffset(IntSize());
     }
 }
@@ -842,7 +845,11 @@ void RenderLayer::updateLayerPosition()
             // FIXME: Composited layers ignore pagination, so about the best we can do is make sure they're offset into the appropriate column.
             // They won't split across columns properly.
             LayoutSize columnOffset;
-            parent()->renderer()->adjustForColumns(columnOffset, localPoint);
+            if (!parent()->renderer()->hasColumns() && parent()->renderer()->isRoot() && renderer()->view()->hasColumns())
+                renderer()->view()->adjustForColumns(columnOffset, localPoint);
+            else
+                parent()->renderer()->adjustForColumns(columnOffset, localPoint);
+
             localPoint += columnOffset;
         }
 
@@ -1615,8 +1622,8 @@ IntSize RenderLayer::clampScrollOffset(const IntSize& scrollOffset) const
     RenderBox* box = renderBox();
     ASSERT(box);
 
-    int maxX = scrollWidth() - box->clientWidth();
-    int maxY = scrollHeight() - box->clientHeight();
+    int maxX = scrollWidth() - box->pixelSnappedClientWidth();
+    int maxY = scrollHeight() - box->pixelSnappedClientHeight();
 
     int x = min(max(scrollOffset.width(), 0), maxX);
     int y = min(max(scrollOffset.height(), 0), maxY);
@@ -2438,7 +2445,7 @@ int RenderLayer::scrollWidth() const
     ASSERT(renderBox());
     if (m_scrollDimensionsDirty)
         const_cast<RenderLayer*>(this)->computeScrollDimensions();
-    return snapSizeToPixel(m_scrollSize.width(), renderBox()->clientLeft());
+    return snapSizeToPixel(m_scrollSize.width(), renderBox()->clientLeft() + renderBox()->x());
 }
 
 int RenderLayer::scrollHeight() const
@@ -2446,7 +2453,7 @@ int RenderLayer::scrollHeight() const
     ASSERT(renderBox());
     if (m_scrollDimensionsDirty)
         const_cast<RenderLayer*>(this)->computeScrollDimensions();
-    return snapSizeToPixel(m_scrollSize.height(), renderBox()->clientTop());
+    return snapSizeToPixel(m_scrollSize.height(), renderBox()->clientTop() + renderBox()->y());
 }
 
 LayoutUnit RenderLayer::overflowTop() const
@@ -3382,19 +3389,24 @@ static inline LayoutRect frameVisibleRect(RenderObject* renderer)
 
 bool RenderLayer::hitTest(const HitTestRequest& request, HitTestResult& result)
 {
+    return hitTest(request, result.hitTestPoint(), result);
+}
+
+bool RenderLayer::hitTest(const HitTestRequest& request, const HitTestPoint& hitTestPoint, HitTestResult& result)
+{
     renderer()->document()->updateLayout();
     
     LayoutRect hitTestArea = renderer()->isRenderFlowThread() ? toRenderFlowThread(renderer())->borderBoxRect() : renderer()->view()->documentRect();
     if (!request.ignoreClipping())
         hitTestArea.intersect(frameVisibleRect(renderer()));
 
-    RenderLayer* insideLayer = hitTestLayer(this, 0, request, result, hitTestArea, result.hitTestPoint(), false);
+    RenderLayer* insideLayer = hitTestLayer(this, 0, request, result, hitTestArea, hitTestPoint, false);
     if (!insideLayer) {
         // We didn't hit any layer. If we are the root layer and the mouse is -- or just was -- down, 
         // return ourselves. We do this so mouse events continue getting delivered after a drag has 
         // exited the WebView, and so hit testing over a scrollbar hits the content document.
         if ((request.active() || request.release()) && isRootLayer()) {
-            renderer()->updateHitTestResult(result, result.point());
+            renderer()->updateHitTestResult(result, toRenderView(renderer())->flipForWritingMode(result.point()));
             insideLayer = this;
         }
     }
@@ -3452,7 +3464,7 @@ PassRefPtr<HitTestingTransformState> RenderLayer::createLocalTransformState(Rend
     } else {
         // If this is the first time we need to make transform state, then base it off of hitTestPoint,
         // which is relative to rootLayer.
-        transformState = HitTestingTransformState::create(hitTestPoint.point(), FloatQuad(hitTestRect));
+        transformState = HitTestingTransformState::create(hitTestPoint.transformedPoint(), hitTestPoint.transformedRect(), FloatQuad(hitTestRect));
         convertToLayerCoords(rootLayer, offset);
     }
     
@@ -3513,7 +3525,7 @@ RenderLayer* RenderLayer::hitTestLayer(RenderLayer* rootLayer, RenderLayer* cont
     if (transform() && !appliedTransform) {
         // Make sure the parent's clip rects have been calculated.
         if (parent()) {
-            ClipRect clipRect = backgroundClipRect(rootLayer, result.region(), useTemporaryClipRects ? TemporaryClipRects : RootRelativeClipRects, IncludeOverlayScrollbarSize);
+            ClipRect clipRect = backgroundClipRect(rootLayer, hitTestPoint.region(), useTemporaryClipRects ? TemporaryClipRects : RootRelativeClipRects, IncludeOverlayScrollbarSize);
             // Go ahead and test the enclosing clip now.
             if (!clipRect.intersects(hitTestPoint))
                 return 0;
@@ -3532,10 +3544,14 @@ RenderLayer* RenderLayer::hitTestLayer(RenderLayer* rootLayer, RenderLayer* cont
         //
         // We can't just map hitTestPoint and hitTestRect because they may have been flattened (losing z)
         // by our container.
-        LayoutPoint localPoint = roundedLayoutPoint(newTransformState->mappedPoint());
-        LayoutRect localHitTestRect = newTransformState->boundsOfMappedQuad();
-        HitTestPoint newHitTestPoint(result.hitTestPoint());
-        newHitTestPoint.setPoint(localPoint);
+        FloatPoint localPoint = newTransformState->mappedPoint();
+        FloatQuad localPointQuad = newTransformState->mappedQuad();
+        LayoutRect localHitTestRect = newTransformState->boundsOfMappedArea();
+        HitTestPoint newHitTestPoint;
+        if (hitTestPoint.isRectBasedTest())
+            newHitTestPoint = HitTestPoint(localPoint, localPointQuad);
+        else
+            newHitTestPoint = HitTestPoint(localPoint);
 
         // Now do a hit test with the root layer shifted to be us.
         return hitTestLayer(this, containerLayer, request, result, localHitTestRect, newHitTestPoint, true, newTransformState.get(), zOffset);
@@ -3576,7 +3592,7 @@ RenderLayer* RenderLayer::hitTestLayer(RenderLayer* rootLayer, RenderLayer* cont
     ClipRect bgRect;
     ClipRect fgRect;
     ClipRect outlineRect;
-    calculateRects(rootLayer, result.region(), useTemporaryClipRects ? TemporaryClipRects : RootRelativeClipRects, hitTestRect, layerBounds, bgRect, fgRect, outlineRect, IncludeOverlayScrollbarSize);
+    calculateRects(rootLayer, hitTestPoint.region(), useTemporaryClipRects ? TemporaryClipRects : RootRelativeClipRects, hitTestRect, layerBounds, bgRect, fgRect, outlineRect, IncludeOverlayScrollbarSize);
     
     // The following are used for keeping track of the z-depth of the hit point of 3d-transformed
     // descendants.
@@ -3831,10 +3847,14 @@ RenderLayer* RenderLayer::hitTestChildLayerColumns(RenderLayer* childLayer, Rend
                 RenderLayer* nextLayer = columnLayers[columnIndex - 1];
                 RefPtr<HitTestingTransformState> newTransformState = nextLayer->createLocalTransformState(rootLayer, nextLayer, localClipRect, hitTestPoint, transformState);
                 newTransformState->translate(offset.width(), offset.height(), HitTestingTransformState::AccumulateTransform);
-                LayoutPoint localPoint = roundedLayoutPoint(newTransformState->mappedPoint());
-                LayoutRect localHitTestRect = newTransformState->mappedQuad().enclosingBoundingBox();
-                HitTestPoint newHitTestPoint(result.hitTestPoint());
-                newHitTestPoint.setPoint(localPoint);
+                FloatPoint localPoint = newTransformState->mappedPoint();
+                FloatQuad localPointQuad = newTransformState->mappedQuad();
+                LayoutRect localHitTestRect = newTransformState->mappedArea().enclosingBoundingBox();
+                HitTestPoint newHitTestPoint;
+                if (hitTestPoint.isRectBasedTest())
+                    newHitTestPoint = HitTestPoint(localPoint, localPointQuad);
+                else
+                    newHitTestPoint = HitTestPoint(localPoint);
                 newTransformState->flatten();
 
                 hitLayer = hitTestChildLayerColumns(childLayer, columnLayers[columnIndex - 1], request, result, localHitTestRect, newHitTestPoint,
@@ -4206,6 +4226,10 @@ IntRect RenderLayer::calculateLayerBounds(const RenderLayer* layer, const Render
     if (!layer->isSelfPaintingLayer())
         return IntRect();
 
+    // FIXME: This could be improved to do a check like hasVisibleNonCompositingDescendantLayers() (bug 92580).
+    if ((flags & ExcludeHiddenDescendants) && layer != ancestorLayer && !layer->hasVisibleContent() && !layer->hasVisibleDescendant())
+        return IntRect();
+
     LayoutRect boundingBoxRect = layer->localBoundingBox();
     if (layer->renderer()->isBox())
         layer->renderBox()->flipForWritingMode(boundingBoxRect);
@@ -4240,11 +4264,14 @@ IntRect RenderLayer::calculateLayerBounds(const RenderLayer* layer, const Render
         }
     }
 
+    // FIXME: should probably just pass 'flags' down to descendants.
+    CalculateLayerBoundsFlags descendantFlags = DefaultCalculateLayerBoundsFlags | (flags & ExcludeHiddenDescendants);
+
     const_cast<RenderLayer*>(layer)->updateLayerListsIfNeeded();
 
     if (RenderLayer* reflection = layer->reflectionLayer()) {
         if (!reflection->isComposited()) {
-            IntRect childUnionBounds = calculateLayerBounds(reflection, layer);
+            IntRect childUnionBounds = calculateLayerBounds(reflection, layer, descendantFlags);
             unionBounds.unite(childUnionBounds);
         }
     }
@@ -4260,7 +4287,7 @@ IntRect RenderLayer::calculateLayerBounds(const RenderLayer* layer, const Render
         for (size_t i = 0; i < listSize; ++i) {
             RenderLayer* curLayer = negZOrderList->at(i);
             if (!curLayer->isComposited()) {
-                IntRect childUnionBounds = calculateLayerBounds(curLayer, layer);
+                IntRect childUnionBounds = calculateLayerBounds(curLayer, layer, descendantFlags);
                 unionBounds.unite(childUnionBounds);
             }
         }
@@ -4271,7 +4298,7 @@ IntRect RenderLayer::calculateLayerBounds(const RenderLayer* layer, const Render
         for (size_t i = 0; i < listSize; ++i) {
             RenderLayer* curLayer = posZOrderList->at(i);
             if (!curLayer->isComposited()) {
-                IntRect childUnionBounds = calculateLayerBounds(curLayer, layer);
+                IntRect childUnionBounds = calculateLayerBounds(curLayer, layer, descendantFlags);
                 unionBounds.unite(childUnionBounds);
             }
         }
@@ -4282,7 +4309,7 @@ IntRect RenderLayer::calculateLayerBounds(const RenderLayer* layer, const Render
         for (size_t i = 0; i < listSize; ++i) {
             RenderLayer* curLayer = normalFlowList->at(i);
             if (!curLayer->isComposited()) {
-                IntRect curAbsBounds = calculateLayerBounds(curLayer, layer);
+                IntRect curAbsBounds = calculateLayerBounds(curLayer, layer, descendantFlags);
                 unionBounds.unite(curAbsBounds);
             }
         }
@@ -4727,7 +4754,6 @@ bool RenderLayer::shouldBeNormalFlowOnly() const
                 || renderer()->isCanvas()
                 || renderer()->isVideo()
                 || renderer()->isEmbeddedObject()
-                || renderer()->isApplet()
                 || renderer()->isRenderIFrame()
                 || renderer()->style()->specifiesColumns())
             && !renderer()->isOutOfFlowPositioned()
@@ -4749,7 +4775,6 @@ bool RenderLayer::shouldBeSelfPaintingLayer() const
         || renderer()->isCanvas()
         || renderer()->isVideo()
         || renderer()->isEmbeddedObject()
-        || renderer()->isApplet()
         || renderer()->isRenderIFrame();
 }
 

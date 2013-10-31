@@ -201,7 +201,6 @@ void EventDispatcher::adjustRelatedTarget(Event* event, PassRefPtr<EventTarget> 
 EventDispatcher::EventDispatcher(Node* node)
     : m_node(node)
     , m_ancestorsInitialized(false)
-    , m_shouldPreventDispatch(false)
 {
     ASSERT(node);
     m_view = node->document()->view();
@@ -228,7 +227,7 @@ void EventDispatcher::ensureEventAncestors(Event* event)
         last = node;
         if (!node->isShadowRoot())
             continue;
-        if (determineDispatchBehavior(event, toShadowRoot(node)) == StayInsideShadowDOM)
+        if (determineDispatchBehavior(event, toShadowRoot(node), targetStack.last()) == StayInsideShadowDOM)
             return;
         if (!isSVGElement) {
             ASSERT(!targetStack.isEmpty());
@@ -254,7 +253,7 @@ bool EventDispatcher::dispatchEvent(PassRefPtr<Event> event)
 
     // Give the target node a chance to do some work before DOM event handlers get a crack.
     void* data = m_node->preDispatchEventHandler(event.get());
-    if (m_ancestors.isEmpty() || m_shouldPreventDispatch || event->propagationStopped())
+    if (m_ancestors.isEmpty() || event->propagationStopped())
         goto doneDispatching;
 
     // Trigger capturing event handlers, starting at the top and working our way down.
@@ -277,8 +276,6 @@ bool EventDispatcher::dispatchEvent(PassRefPtr<Event> event)
     }
 
     event->setEventPhase(Event::AT_TARGET);
-    event->setTarget(originalTarget.get());
-    event->setCurrentTarget(eventTargetRespectingSVGTargetRules(m_node.get()));
     m_ancestors[0].handleLocalEvents(event.get());
     if (event->propagationStopped())
         goto doneDispatching;
@@ -347,7 +344,12 @@ const EventContext* EventDispatcher::topEventContext()
     return m_ancestors.isEmpty() ? 0 : &m_ancestors.last();
 }
 
-EventDispatchBehavior EventDispatcher::determineDispatchBehavior(Event* event, ShadowRoot* shadowRoot)
+static inline bool inTheSameScope(ShadowRoot* shadowRoot, EventTarget* target)
+{
+    return target->toNode() && target->toNode()->treeScope()->rootNode() == shadowRoot;
+}
+
+EventDispatchBehavior EventDispatcher::determineDispatchBehavior(Event* event, ShadowRoot* shadowRoot, EventTarget* target)
 {
 #if ENABLE(FULLSCREEN_API) && ENABLE(VIDEO)
     // Video-only full screen is a mode where we use the shadow DOM as an implementation
@@ -365,7 +367,15 @@ EventDispatchBehavior EventDispatcher::determineDispatchBehavior(Event* event, S
     // WebKit never allowed selectstart event to cross the the shadow DOM boundary.
     // Changing this breaks existing sites.
     // See https://bugs.webkit.org/show_bug.cgi?id=52195 for details.
-    if (event->type() == eventNames().selectstartEvent)
+    const AtomicString eventType = event->type();
+    if (inTheSameScope(shadowRoot, target)
+        && (eventType == eventNames().abortEvent
+            || eventType == eventNames().changeEvent
+            || eventType == eventNames().resetEvent
+            || eventType == eventNames().resizeEvent
+            || eventType == eventNames().scrollEvent
+            || eventType == eventNames().selectEvent
+            || eventType == eventNames().selectstartEvent))
         return StayInsideShadowDOM;
 
     return RetargetEvent;

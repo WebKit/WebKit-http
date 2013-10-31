@@ -42,7 +42,9 @@ typedef int ExceptionCode;
 
 class Frame;
 class Document;
+class MockPagePopupDriver;
 class Page;
+class PagePopupController;
 class Settings;
 
 class InternalSettings : public RefCountedSupplement<Page, InternalSettings> {
@@ -80,7 +82,9 @@ public:
     static InternalSettings* from(Page*);
 
     virtual ~InternalSettings();
-
+#if ENABLE(PAGE_POPUP)
+    PagePopupController* pagePopupController();
+#endif
     void reset();
 
     void setInspectorResourcesDataSizeLimits(int maximumResourcesContentSize, int maximumSingleResourceContentSize, ExceptionCode&);
@@ -123,11 +127,14 @@ public:
     void setJavaScriptProfilingEnabled(bool enabled, ExceptionCode&);
     Vector<String> userPreferredLanguages() const;
     void setUserPreferredLanguages(const Vector<String>&);
-    void setPagination(const String& mode, int gap, ExceptionCode&);
+    void setPagination(const String& mode, int gap, ExceptionCode& ec) { setPagination(mode, gap, 0, ec); }
+    void setPagination(const String& mode, int gap, int pageLength, ExceptionCode&);
     void allowRoundingHacks() const;
     void setShouldDisplayTrackKind(const String& kind, bool enabled, ExceptionCode&);
     bool shouldDisplayTrackKind(const String& kind, ExceptionCode&);
+    void setEnableMockPagePopup(bool, ExceptionCode&);
     String configurationForViewport(float devicePixelRatio, int deviceWidth, int deviceHeight, int availableWidth, int availableHeight, ExceptionCode&);
+    void setMemoryInfoEnabled(bool, ExceptionCode&);
 private:
     explicit InternalSettings(Page*);
     virtual void hostDestroyed() OVERRIDE { m_page = 0; }
@@ -137,6 +144,9 @@ private:
 
     Page* m_page;
     Backup m_backup;
+#if ENABLE(PAGE_POPUP)
+    OwnPtr<MockPagePopupDriver> m_pagePopupDriver;
+#endif
 };
 
 } // namespace WebCore

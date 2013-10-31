@@ -362,6 +362,9 @@ public:
     void proxyAuthenticationRequiredRequest(const String& hostname, uint16_t port, const String& prefilledUsername, String& username, String& password);
     void setUserScripts(const Vector<String>&);
 #endif // PLATFORM(QT).
+#if PLATFORM(EFL)
+    void setThemePath(const String&);
+#endif
 
 #if PLATFORM(QT)
     void setComposition(const String& text, Vector<WebCore::CompositionUnderline> underlines, uint64_t selectionStart, uint64_t selectionEnd, uint64_t replacementRangeStart, uint64_t replacementRangeEnd);
@@ -632,6 +635,9 @@ public:
 #if PLATFORM(QT)
     void findZoomableAreaForPoint(const WebCore::IntPoint&, const WebCore::IntSize&);
     void didReceiveMessageFromNavigatorQtObject(const String&);
+#endif
+
+#if PLATFORM(QT) || PLATFORM(EFL)
     void handleDownloadRequest(DownloadProxy*);
 #endif
 
@@ -716,7 +722,11 @@ private:
     virtual void setTextFromItemForPopupMenu(WebPopupMenuProxy*, int32_t index);
 #if PLATFORM(GTK)
     virtual void failedToShowPopupMenu();
-#endif    
+#endif
+#if PLATFORM(QT)
+    virtual void changeSelectedIndex(int32_t newSelectedIndex);
+    virtual void closePopupMenu();
+#endif
 
     // Implemented in generated WebPageProxyMessageReceiver.cpp
     void didReceiveWebPageProxyMessage(CoreIPC::Connection*, CoreIPC::MessageID, CoreIPC::ArgumentDecoder*);
@@ -749,10 +759,10 @@ private:
     void didFinishProgress();
 
 #if ENABLE(WEB_INTENTS)
-    void didReceiveIntentForFrame(uint64_t frameID, const IntentData&);
+    void didReceiveIntentForFrame(uint64_t frameID, const IntentData&, CoreIPC::ArgumentDecoder*);
 #endif
 #if ENABLE(WEB_INTENTS_TAG)
-    void registerIntentServiceForFrame(uint64_t frameID, const IntentServiceInfo&);
+    void registerIntentServiceForFrame(uint64_t frameID, const IntentServiceInfo&, CoreIPC::ArgumentDecoder*);
 #endif
     
     void decidePolicyForNavigationAction(uint64_t frameID, uint32_t navigationType, uint32_t modifiers, int32_t mouseButton, const WebCore::ResourceRequest&, uint64_t listenerID, CoreIPC::ArgumentDecoder*, bool& receivedPolicyAction, uint64_t& policyAction, uint64_t& downloadID);

@@ -64,7 +64,7 @@ protected:
     virtual bool paintMenuListButton(RenderObject*, const PaintInfo&, const IntRect&);
     virtual void adjustMenuListButtonStyle(StyleResolver*, RenderStyle*, Element*) const;
 
-#if ENABLE(PROGRESS_TAG)
+#if ENABLE(PROGRESS_ELEMENT)
     // Returns the duration of the animation for the progress bar.
     virtual double animationDurationForProgressBar(RenderProgress*) const;
     virtual bool paintProgressBar(RenderObject*, const PaintInfo&, const IntRect&);
@@ -97,6 +97,8 @@ protected:
 
     virtual void setPopupPadding(RenderStyle*) const;
 
+    virtual QPalette colorPalette() const;
+
 private:
     ControlPart initializeCommonQStyleOptions(QStyleOption&, RenderObject*) const;
 
@@ -105,6 +107,8 @@ private:
     int findFrameLineWidth(QStyle*) const;
 
     QStyle* fallbackStyle() const;
+
+    void setPaletteFromPageClientIfExists(QPalette&) const;
 
 #ifdef Q_OS_MAC
     int m_buttonFontPixelSize;

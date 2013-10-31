@@ -56,6 +56,7 @@ module window {
         boolean isValidContentSelect(in Element contentElement) raises(DOMException);
         Node treeScopeRootNode(in Node node) raises (DOMException);
         Node parentTreeScope(in Node node) raises (DOMException);
+        void setAuthorShadowDOMForAnyElementEnabled(in boolean isEnabled);
 
         Node nextSiblingByWalker(in Node node) raises(DOMException);
         Node firstChildByWalker(in Node node) raises(DOMException);
@@ -71,6 +72,9 @@ module window {
 #endif
         DOMString[] formControlStateOfPreviousHistoryItem() raises(DOMException);
         void setFormControlStateOfPreviousHistoryItem(in DOMString[] values) raises(DOMException);
+#if defined(ENABLE_PAGE_POPUP) && ENABLE_PAGE_POPUP
+        readonly attribute PagePopupController pagePopupController;
+#endif
 
         ClientRect absoluteCaretBounds(in Document document) raises(DOMException);
 
@@ -83,10 +87,11 @@ module window {
         unsigned long markerCountForNode(in Node node, in DOMString markerType) raises(DOMException);
         Range markerRangeForNode(in Node node, in DOMString markerType, in unsigned long index) raises(DOMException);
         DOMString markerDescriptionForNode(in Node node, in DOMString markerType, in unsigned long index) raises(DOMException);
+        void addTextMatchMarker(in Range range, in boolean isActive);
 
         void setScrollViewPosition(in Document document, in long x, in long y) raises(DOMException);
 
-        void setPagination(in Document document, in DOMString mode, in long gap) raises(DOMException);
+        void setPagination(in Document document, in DOMString mode, in long gap, in [Optional] long pageLength) raises(DOMException);
 
         DOMString configurationForViewport(in Document document,
                                            in float devicePixelRatio,
@@ -129,6 +134,7 @@ module window {
 
         unsigned long wheelEventHandlerCount(in Document document) raises (DOMException);
         unsigned long touchEventHandlerCount(in Document document) raises (DOMException);
+        boolean hasTouchEventListener(in Document document) raises (DOMException);
 
         NodeList nodesFromRect(in Document document, in long x, in long y,
             in unsigned long topPadding, in unsigned long rightPadding, in unsigned long bottomPadding, in unsigned long leftPadding,
@@ -150,6 +156,8 @@ module window {
         void suspendAnimations(in Document document) raises (DOMException);
         void resumeAnimations(in Document document) raises (DOMException);
 
+        void garbageCollectDocumentResources(in Document document) raises (DOMException);
+
         void allowRoundingHacks();
 
 #if defined(ENABLE_BATTERY_STATUS) && ENABLE_BATTERY_STATUS
@@ -165,6 +173,8 @@ module window {
         [Conditional=INSPECTOR] sequence<String> consoleMessageArgumentCounts(in Document document);
 
         DOMString counterValue(in Element element);
+        long pageNumber(in Element element, in [Optional] float pageWidth, in [Optional] float pageHeight);
+        DOMString[] iconURLs(in Document document);
 
 #if defined(ENABLE_FULLSCREEN_API) && ENABLE_FULLSCREEN_API
         void webkitWillEnterFullScreenForElement(in Document document, in Element element);
@@ -175,6 +185,8 @@ module window {
 
         void registerURLSchemeAsBypassingContentSecurityPolicy(in DOMString scheme);
         void removeURLSchemeRegisteredAsBypassingContentSecurityPolicy(in DOMString scheme);
+
+        FastMallocStatistics fastMallocStatistics();
     };
 }
 

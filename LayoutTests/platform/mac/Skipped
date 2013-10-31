@@ -260,6 +260,7 @@ http/tests/misc/webtiming-one-redirect.php
 http/tests/misc/webtiming-slow-load.php
 http/tests/misc/webtiming-ssl.php
 http/tests/misc/webtiming-two-redirects.php
+http/tests/w3c/webperf
 fast/performance/
 
 # Content Security Policy 1.1 (ENABLE_CSP_NEXT) is not enabled
@@ -550,6 +551,7 @@ webintents/
 
 # Pointer Lock is not implemented.
 pointer-lock/
+http/tests/pointer-lock/
 
 # Placeholder is not rendered since the patch in the following bug. It seems a DRT-only problem.
 # https://bugs.webkit.org/show_bug.cgi?id=67408
@@ -807,17 +809,20 @@ scrollbars/scrollbar-miss-mousemove-disabled.html
 
 # Fail until SUBPIXEL_LAYOUT is enabled
 # https://bugs.webkit.org/show_bug.cgi?id=85532
+fast/sub-pixel/block-with-margin-overflow.html
 fast/sub-pixel/client-rect-has-subpixel-precision.html
 fast/sub-pixel/client-width-height-snapping.html
+fast/sub-pixel/file-upload-control-at-fractional-offset.html
 fast/sub-pixel/float-containing-block-with-margin.html
 fast/sub-pixel/float-with-right-margin-zoom.html
 fast/sub-pixel/float-wrap-with-subpixel-top.html
 fast/sub-pixel/inline-block-with-margin.html
 fast/sub-pixel/inline-block-with-padding.html
 fast/sub-pixel/layout-boxes-with-zoom.html
-fast/sub-pixel/size-of-box-with-zoom.html
+fast/sub-pixel/position-right-aligns-with-container.html
 fast/sub-pixel/selection/selection-gaps-at-fractional-offsets.html
-fast/sub-pixel/file-upload-control-at-fractional-offset.html
+fast/sub-pixel/size-of-box-with-zoom.html
+fast/sub-pixel/table-rows-no-gaps.html
 
 # No CORS support for media elements is implemented yet.
 http/tests/security/video-cross-origin-readback.html
@@ -944,3 +949,10 @@ sputnik/Conformance/08_Types/8.4_The_String_Type/S8.4_A7.2.html
 
 # https://bugs.webkit.org/show_bug.cgi?id=90833
 fast/js/global-constructors.html
+
+# https://bugs.webkit.org/show_bug.cgi?id=91505
+platform/mac/plugins/root-object-premature-delete-crash.html
+
+# This test depends on subpixel layout.
+# https://bugs.webkit.org/show_bug.cgi?id=92352
+css3/flexbox/flex-rounding.html

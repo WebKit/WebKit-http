@@ -34,6 +34,7 @@
 #include "cc/CCInputHandler.h"
 #include "cc/CCLayerAnimationController.h"
 #include "cc/CCRenderSurface.h"
+#include "cc/CCResourceProvider.h"
 #include "cc/CCSharedQuadState.h"
 #include <public/WebFilterOperations.h>
 #include <public/WebTransformationMatrix.h>
@@ -44,11 +45,10 @@
 
 namespace WebCore {
 
-class CCGraphicsContext;
 class CCLayerSorter;
 class CCLayerTreeHostImpl;
-class CCQuadCuller;
 class CCRenderer;
+class CCQuadSink;
 class LayerChromium;
 
 class CCLayerImpl : public CCLayerAnimationControllerClient {
@@ -80,20 +80,24 @@ public:
     void setReplicaLayer(PassOwnPtr<CCLayerImpl>);
     CCLayerImpl* replicaLayer() const { return m_replicaLayer.get(); }
 
+    bool hasMask() const { return m_maskLayer; }
+    bool hasReplica() const { return m_replicaLayer; }
+    bool replicaHasMask() const { return m_replicaLayer && (m_maskLayer || m_replicaLayer->m_maskLayer); }
+
     CCLayerTreeHostImpl* layerTreeHostImpl() const { return m_layerTreeHostImpl; }
     void setLayerTreeHostImpl(CCLayerTreeHostImpl* hostImpl) { m_layerTreeHostImpl = hostImpl; }
 
-    PassOwnPtr<CCSharedQuadState> createSharedQuadState() const;
+    PassOwnPtr<CCSharedQuadState> createSharedQuadState(int id) const;
     // willDraw must be called before appendQuads. If willDraw is called,
     // didDraw is guaranteed to be called before another willDraw or before
     // the layer is destroyed. To enforce this, any class that overrides
     // willDraw/didDraw must call the base class version.
-    virtual void willDraw(CCRenderer*, CCGraphicsContext*);
-    virtual void appendQuads(CCQuadCuller&, const CCSharedQuadState*, bool& hadMissingTiles) { }
-    virtual void didDraw();
-    void appendDebugBorderQuad(CCQuadCuller&, const CCSharedQuadState*) const;
+    virtual void willDraw(CCResourceProvider*);
+    virtual void appendQuads(CCQuadSink&, const CCSharedQuadState*, bool& hadMissingTiles) { }
+    virtual void didDraw(CCResourceProvider*);
+    void appendDebugBorderQuad(CCQuadSink&, const CCSharedQuadState*) const;
 
-    virtual unsigned contentsTextureId() const;
+    virtual CCResourceProvider::ResourceId contentsResourceId() const;
 
     // Returns true if this layer has content to draw.
     void setDrawsContent(bool);
@@ -144,9 +148,6 @@ public:
     void setUseParentBackfaceVisibility(bool useParentBackfaceVisibility) { m_useParentBackfaceVisibility = useParentBackfaceVisibility; }
     bool useParentBackfaceVisibility() const { return m_useParentBackfaceVisibility; }
 
-    void setUsesLayerClipping(bool usesLayerClipping) { m_usesLayerClipping = usesLayerClipping; }
-    bool usesLayerClipping() const { return m_usesLayerClipping; }
-
     void setIsNonCompositedContent(bool isNonCompositedContent) { m_isNonCompositedContent = isNonCompositedContent; }
     bool isNonCompositedContent() const { return m_isNonCompositedContent; }
 
@@ -174,24 +175,17 @@ public:
     bool drawOpacityIsAnimating() const { return m_drawOpacityIsAnimating; }
     void setDrawOpacityIsAnimating(bool drawOpacityIsAnimating) { m_drawOpacityIsAnimating = drawOpacityIsAnimating; }
 
-    // Usage: if this->usesLayerClipping() is false, then this clipRect should not be used.
-    const IntRect& clipRect() const { return m_clipRect; }
-    void setClipRect(const IntRect& rect) { m_clipRect = rect; }
-
     const IntRect& scissorRect() const { return m_scissorRect; }
     void setScissorRect(const IntRect& rect) { m_scissorRect = rect; }
 
-    CCRenderSurface* targetRenderSurface() const { return m_targetRenderSurface; }
-    void setTargetRenderSurface(CCRenderSurface* surface) { m_targetRenderSurface = surface; }
+    CCLayerImpl* renderTarget() const { ASSERT(!m_renderTarget || m_renderTarget->renderSurface()); return m_renderTarget; }
+    void setRenderTarget(CCLayerImpl* target) { m_renderTarget = target; }
 
     void setBounds(const IntSize&);
     const IntSize& bounds() const { return m_bounds; }
 
     const IntSize& contentBounds() const { return m_contentBounds; }
     void setContentBounds(const IntSize&);
-
-    void setContentsScale(float contentsScale) { m_contentsScale = contentsScale; }
-    float contentsScale() const { return m_contentsScale; }
 
     const IntPoint& scrollPosition() const { return m_scrollPosition; }
     void setScrollPosition(const IntPoint&);
@@ -233,9 +227,6 @@ public:
     bool doubleSided() const { return m_doubleSided; }
     void setDoubleSided(bool);
 
-    // Returns the rect containtaining this layer in the current view's coordinate system.
-    const IntRect getDrawRect() const;
-
     void setTransform(const WebKit::WebTransformationMatrix&);
     bool transformIsAnimating() const;
 
@@ -258,10 +249,12 @@ public:
 
     void setStackingOrderChanged(bool);
 
-    bool layerPropertyChanged() const { return m_layerPropertyChanged; }
+    bool layerPropertyChanged() const { return m_layerPropertyChanged || layerIsAlwaysDamaged(); }
     bool layerSurfacePropertyChanged() const;
 
     void resetAllChangeTrackingForSubtree();
+
+    virtual bool layerIsAlwaysDamaged() const { return false; }
 
     CCLayerAnimationController* layerAnimationController() { return m_layerAnimationController.get(); }
 
@@ -277,9 +270,6 @@ protected:
 
     virtual void dumpLayerProperties(TextStream&, int indent) const;
     static void writeIndent(TextStream&, int indent);
-
-    // Transformation used to transform quads provided in appendQuads.
-    virtual WebKit::WebTransformationMatrix quadTransform() const;
 
 private:
     void setParent(CCLayerImpl* parent) { m_parent = parent; }
@@ -311,7 +301,6 @@ private:
     float m_anchorPointZ;
     IntSize m_bounds;
     IntSize m_contentBounds;
-    float m_contentsScale;
     IntPoint m_scrollPosition;
     bool m_scrollable;
     bool m_shouldScrollOnMainThread;
@@ -342,7 +331,6 @@ private:
     bool m_drawCheckerboardForMissingTiles;
     WebKit::WebTransformationMatrix m_sublayerTransform;
     WebKit::WebTransformationMatrix m_transform;
-    bool m_usesLayerClipping;
     bool m_isNonCompositedContent;
 
     bool m_drawsContent;
@@ -358,11 +346,10 @@ private:
     IntSize m_maxScrollPosition;
     float m_pageScaleDelta;
 
-    // Render surface this layer draws into. This is a surface that can belong
-    // either to this layer (if m_targetRenderSurface == m_renderSurface) or
-    // to an ancestor of this layer. The target render surface determines the
-    // coordinate system the layer's transforms are relative to.
-    CCRenderSurface* m_targetRenderSurface;
+    // The layer whose coordinate space this layer draws into. This can be
+    // either the same layer (m_renderTarget == this) or an ancestor of this
+    // layer.
+    CCLayerImpl* m_renderTarget;
 
     // The global depth value of the center of the layer. This value is used
     // to sort layers from back to front.
@@ -388,12 +375,6 @@ private:
 #ifndef NDEBUG
     bool m_betweenWillDrawAndDidDraw;
 #endif
-
-    // The rect that contributes to the scissor when this layer is drawn.
-    // Inherited by the parent layer and further restricted if this layer masks
-    // to bounds.
-    // Uses target surface's space.
-    IntRect m_clipRect;
 
     // During drawing, identifies the region outside of which nothing should be drawn.
     // Uses target surface's space.

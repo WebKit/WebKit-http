@@ -30,7 +30,9 @@
 #include <WebKit2/WKContext.h>
 #include <WebKit2/WKPage.h>
 #include <WebKit2/WKPageGroup.h>
+#include <wtf/Platform.h>
 
+QT_BEGIN_NAMESPACE
 class QRect;
 class QRectF;
 class QPoint;
@@ -42,6 +44,7 @@ class QTouchEvent;
 class QUrl;
 class QMatrix4x4;
 class QCursor;
+QT_END_NAMESPACE
 
 class QRawWebViewPrivate;
 
@@ -92,7 +95,9 @@ public:
     void sendKeyEvent(QKeyEvent*);
     void sendMouseEvent(QMouseEvent*, int clickCount = 0);
     void sendWheelEvent(QWheelEvent*);
+#if ENABLE(TOUCH_EVENTS)
     void sendTouchEvent(QTouchEvent*);
+#endif
 
 private:
     QRawWebViewPrivate* d;

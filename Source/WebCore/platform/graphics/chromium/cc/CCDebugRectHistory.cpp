@@ -38,11 +38,6 @@ CCDebugRectHistory::CCDebugRectHistory()
 {
 }
 
-bool CCDebugRectHistory::enabled(const CCLayerTreeSettings& settings)
-{
-    return settings.showPaintRects || settings.showPropertyChangedRects || settings.showSurfaceDamageRects || settings.showScreenSpaceRects || settings.showReplicaScreenSpaceRects || settings.showOccludingRects;
-}
-
 void CCDebugRectHistory::saveDebugRectsForCurrentFrame(CCLayerImpl* rootLayer, const Vector<CCLayerImpl*>& renderSurfaceLayerList, const Vector<IntRect>& occludingScreenSpaceRects, const CCLayerTreeSettings& settings)
 {
     // For now, clear all rects from previous frames. In the future we may want to store
@@ -72,8 +67,11 @@ void CCDebugRectHistory::savePaintRects(CCLayerImpl* layer)
     // regardless of whether this layer is skipped for actual drawing or not. Therefore
     // we traverse recursively over all layers, not just the render surface list.
 
-    if (!layer->updateRect().isEmpty() && layer->drawsContent())
-        m_debugRects.append(CCDebugRect(PaintRectType, CCMathUtil::mapClippedRect(layer->screenSpaceTransform(), layer->updateRect())));
+    if (!layer->updateRect().isEmpty() && layer->drawsContent()) {
+        FloatRect updateContentRect = layer->updateRect();
+        updateContentRect.scale(layer->contentBounds().width() / static_cast<float>(layer->bounds().width()), layer->contentBounds().height() / static_cast<float>(layer->bounds().height()));
+        m_debugRects.append(CCDebugRect(PaintRectType, CCMathUtil::mapClippedRect(layer->screenSpaceTransform(), updateContentRect)));
+    }
 
     for (unsigned i = 0; i < layer->children().size(); ++i)
         savePaintRects(layer->children()[i].get());
@@ -93,8 +91,11 @@ void CCDebugRectHistory::savePropertyChangedRects(const Vector<CCLayerImpl*>& re
             if (CCLayerTreeHostCommon::renderSurfaceContributesToTarget<CCLayerImpl>(layer, renderSurfaceLayer->id()))
                 continue;
 
-            if (layer->layerPropertyChanged())
-                m_debugRects.append(CCDebugRect(PropertyChangedRectType, CCMathUtil::mapClippedRect(layer->screenSpaceTransform(), FloatRect(FloatPoint::zero(), layer->bounds()))));
+            if (layer->layerIsAlwaysDamaged())
+                continue;
+
+            if (layer->layerPropertyChanged() || layer->layerSurfacePropertyChanged())
+                m_debugRects.append(CCDebugRect(PropertyChangedRectType, CCMathUtil::mapClippedRect(layer->screenSpaceTransform(), FloatRect(FloatPoint::zero(), layer->contentBounds()))));
         }
     }
 }

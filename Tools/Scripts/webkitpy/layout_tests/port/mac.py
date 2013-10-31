@@ -89,7 +89,7 @@ class MacPort(ApplePort):
             return self._webkit_baseline_path('mac')
         return ApplePort.baseline_path(self)
 
-    def baseline_search_path(self):
+    def default_baseline_search_path(self):
         fallback_index = self.VERSION_FALLBACK_ORDER.index(self._port_name_with_version())
         fallback_names = list(self.VERSION_FALLBACK_ORDER[fallback_index:])
         if self.get_option('webkit_test_runner'):
@@ -220,8 +220,8 @@ class MacPort(ApplePort):
                 now = time_fn()
 
         if not crash_log:
-            return None
-        return crash_log
+            return (stderr, None)
+        return (stderr, crash_log)
 
     def look_for_new_crash_logs(self, crashed_processes, start_time):
         """Since crash logs can take a long time to be written out if the system is
@@ -235,7 +235,7 @@ class MacPort(ApplePort):
         for (test_name, process_name, pid) in crashed_processes:
             # Passing None for output.  This is a second pass after the test finished so
             # if the output had any loggine we would have already collected it.
-            crash_log = self._get_crash_log(process_name, pid, None, None, start_time, wait_for_log=False)
+            crash_log = self._get_crash_log(process_name, pid, None, None, start_time, wait_for_log=False)[1]
             if not crash_log:
                 continue
             crash_logs[test_name] = crash_log

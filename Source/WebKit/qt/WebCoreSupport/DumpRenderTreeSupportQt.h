@@ -34,20 +34,11 @@ class Text;
 class Node;
 }
 
-
-#if defined(WTF_USE_V8) && WTF_USE_V8
-namespace V8 {
-namespace Bindings {
-class QtDRTNodeRuntime;
-}
-}
-#else
 namespace JSC {
 namespace Bindings {
 class QtDRTNodeRuntime;
 }
 }
-#endif
 
 class QWebElement;
 class QWebFrame;
@@ -74,11 +65,7 @@ private:
 
     friend class DumpRenderTreeSupportQt;
 
-#if defined(WTF_USE_V8) && WTF_USE_V8
-    friend class V8::Bindings::QtDRTNodeRuntime;
-#else
     friend class QtDRTNodeRuntime;
-#endif
 
     WebCore::Node* m_node;
 };
@@ -141,7 +128,6 @@ public:
     static void overwritePluginDirectories();
     static int numberOfActiveAnimations(QWebFrame*);
     static int numberOfPages(QWebFrame* frame, float width, float height);
-    static int pageNumberForElementById(QWebFrame* frame, const QString& id, float width, float height);
     static bool hasDocumentElement(QWebFrame* frame);
     static bool elementDoesAutoCompleteForElementWithId(QWebFrame* frame, const QString& elementId);
     static void setWindowsBehaviorAsEditingBehavior(QWebPage*);
@@ -218,15 +204,14 @@ public:
     static void injectInternalsObject(QWebFrame*);
     static void injectInternalsObject(JSContextRef);
     static void resetInternalsObject(QWebFrame*);
+    static void resetInternalsObject(JSContextRef);
 
     static void setInteractiveFormValidationEnabled(QWebPage*, bool);
 
     static void setDefersLoading(QWebPage*, bool flag);
     static void goBack(QWebPage*);
 
-#if QT_VERSION >= QT_VERSION_CHECK(4, 8, 0)
     static bool thirdPartyCookiePolicyAllows(QWebPage*, const QUrl&, const QUrl& firstPartyUrl);
-#endif
 
     static QImage paintPagesWithBoundaries(QWebFrame*);
 };

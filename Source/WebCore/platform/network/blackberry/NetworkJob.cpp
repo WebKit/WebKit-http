@@ -19,7 +19,6 @@
 #include "config.h"
 #include "NetworkJob.h"
 
-#include "AboutData.h"
 #include "Chrome.h"
 #include "ChromeClient.h"
 #include "CookieManager.h"
@@ -38,8 +37,6 @@
 
 #include <BlackBerryPlatformClient.h>
 #include <BlackBerryPlatformLog.h>
-#include <BlackBerryPlatformWebKitCredits.h>
-#include <BuildInformation.h>
 #include <LocalizeResource.h>
 #include <network/MultipartStream.h>
 #include <network/NetworkStreamFactory.h>
@@ -65,11 +62,9 @@ inline static bool isUnauthorized(int statusCode)
 
 NetworkJob::NetworkJob()
     : m_playerId(0)
-    , m_loadAboutTimer(this, &NetworkJob::fireLoadAboutTimer)
     , m_deleteJobTimer(this, &NetworkJob::fireDeleteJobTimer)
     , m_streamFactory(0)
     , m_isFile(false)
-    , m_isAbout(false)
     , m_isFTP(false)
     , m_isFTPDir(true)
 #ifndef NDEBUG
@@ -82,6 +77,7 @@ NetworkJob::NetworkJob()
     , m_callingClient(false)
     , m_needsRetryAsFTPDirectory(false)
     , m_isOverrideContentType(false)
+    , m_newJobWithCredentialsStarted(false)
     , m_extendedStatusCode(0)
     , m_redirectCount(0)
     , m_deferredData(*this)
@@ -105,7 +101,6 @@ bool NetworkJob::initialize(int playerId,
 
     m_response.setURL(url);
     m_isFile = url.protocolIs("file") || url.protocolIs("local");
-    m_isAbout = url.protocolIs("about");
     m_isFTP = url.protocolIs("ftp");
 
     m_handle = handle;
@@ -130,10 +125,6 @@ bool NetworkJob::initialize(int playerId,
         m_isOverrideContentType = true;
     }
 
-    // No need to create the streams for about.
-    if (m_isAbout)
-        return true;
-
     if (!request.getSuggestedSaveName().empty()) {
         m_contentDisposition = "filename=";
         m_contentDisposition += request.getSuggestedSaveName().c_str();
@@ -147,23 +138,9 @@ bool NetworkJob::initialize(int playerId,
     return true;
 }
 
-void NetworkJob::loadAboutURL()
-{
-    m_loadAboutTimer.startOneShot(0);
-}
-
 int NetworkJob::cancelJob()
 {
     m_cancelled = true;
-
-    // Cancel jobs loading local data by killing the timer, and jobs
-    // getting data from the network by calling the inherited URLStream::cancel.
-
-    if (m_loadAboutTimer.isActive()) {
-        m_loadAboutTimer.stop();
-        notifyClose(BlackBerry::Platform::FilterStream::StatusCancelled);
-        return 0;
-    }
 
     return streamCancel();
 }
@@ -190,7 +167,7 @@ void NetworkJob::notifyStatusReceived(int status, const char* message)
 void NetworkJob::handleNotifyStatusReceived(int status, const String& message)
 {
     // Check for messages out of order or after cancel.
-    if ((m_statusReceived && m_extendedStatusCode != 401) || m_responseSent || m_cancelled)
+    if (m_responseSent || m_cancelled)
         return;
 
     if (isInfo(status))
@@ -281,7 +258,7 @@ void NetworkJob::notifyAuthReceived(BlackBerry::Platform::NetworkRequest::AuthTy
         return;
     }
 
-    sendRequestWithCredentials(serverType, scheme, realm);
+    m_newJobWithCredentialsStarted = sendRequestWithCredentials(serverType, scheme, realm);
 }
 
 void NetworkJob::notifyStringHeaderReceived(const String& key, const String& value)
@@ -480,7 +457,8 @@ void NetworkJob::handleNotifyClose(int status)
 
             sendResponseIfNeeded();
             if (isClientAvailable()) {
-
+                if (isError(status))
+                    m_extendedStatusCode = status;
                 RecursionGuard guard(m_callingClient);
                 if (shouldNotifyClientFailed()) {
                     String domain = m_extendedStatusCode < 0 ? ResourceError::platformErrorDomain : ResourceError::httpErrorDomain;
@@ -503,15 +481,8 @@ void NetworkJob::handleNotifyClose(int status)
 
 bool NetworkJob::shouldReleaseClientResource()
 {
-    if (m_redirectCount >= s_redirectMaximum)
-        return true;
-
-    if (m_needsRetryAsFTPDirectory && retryAsFTPDirectory())
+    if ((m_needsRetryAsFTPDirectory && retryAsFTPDirectory()) || (isRedirect(m_extendedStatusCode) && handleRedirect()) || m_newJobWithCredentialsStarted)
         return false;
-
-    if (isRedirect(m_extendedStatusCode) && handleRedirect())
-        return false;
-
     return true;
 }
 
@@ -574,7 +545,7 @@ bool NetworkJob::startNewJobWithRequest(ResourceRequest& newRequest, bool increa
 bool NetworkJob::handleRedirect()
 {
     ASSERT(m_handle);
-    if (!m_handle)
+    if (!m_handle || m_redirectCount >= s_redirectMaximum)
         return false;
 
     String location = m_response.httpHeaderField("Location");
@@ -614,7 +585,7 @@ void NetworkJob::sendResponseIfNeeded()
         return;
 
     String urlFilename;
-    if (!m_response.url().protocolIsData() && !m_response.url().protocolIs("about"))
+    if (!m_response.url().protocolIsData())
         urlFilename = m_response.url().lastPathComponent();
 
     // Get the MIME type that was set by the content sniffer
@@ -642,32 +613,23 @@ void NetworkJob::sendResponseIfNeeded()
     if (!contentLength.isNull())
         m_response.setExpectedContentLength(contentLength.toInt64());
 
-    // Set suggested filename for downloads from the Content-Disposition header; if this fails,
-    // fill it in from the url and sniffed mime type;Skip this for about URLs,
-    // because they have no Content-Disposition header and the format is wrong to be a filename.
-    if (!m_isAbout) {
-        String suggestedFilename = filenameFromHTTPContentDisposition(m_contentDisposition);
-        if (suggestedFilename.isEmpty()) {
-            // Check and see if an extension already exists.
-            String mimeExtension = MIMETypeRegistry::getPreferredExtensionForMIMEType(mimeType);
-            if (urlFilename.isEmpty()) {
-                if (mimeExtension.isEmpty()) // No extension found for the mimeType.
-                    suggestedFilename = String(BlackBerry::Platform::LocalizeResource::getString(BlackBerry::Platform::FILENAME_UNTITLED));
-                else
-                    suggestedFilename = String(BlackBerry::Platform::LocalizeResource::getString(BlackBerry::Platform::FILENAME_UNTITLED)) + "." + mimeExtension;
-            } else {
-                if (urlFilename.reverseFind('.') == notFound && !mimeExtension.isEmpty())
-                   suggestedFilename = urlFilename + '.' + mimeExtension;
-                else
-                   suggestedFilename = urlFilename;
-            }
+    String suggestedFilename = filenameFromHTTPContentDisposition(m_contentDisposition);
+    if (suggestedFilename.isEmpty()) {
+        // Check and see if an extension already exists.
+        String mimeExtension = MIMETypeRegistry::getPreferredExtensionForMIMEType(mimeType);
+        if (urlFilename.isEmpty()) {
+            if (mimeExtension.isEmpty()) // No extension found for the mimeType.
+                suggestedFilename = String(BlackBerry::Platform::LocalizeResource::getString(BlackBerry::Platform::FILENAME_UNTITLED));
+            else
+                suggestedFilename = String(BlackBerry::Platform::LocalizeResource::getString(BlackBerry::Platform::FILENAME_UNTITLED)) + "." + mimeExtension;
+        } else {
+            if (urlFilename.reverseFind('.') == notFound && !mimeExtension.isEmpty())
+               suggestedFilename = urlFilename + '.' + mimeExtension;
+            else
+               suggestedFilename = urlFilename;
         }
-        m_response.setSuggestedFilename(suggestedFilename);
     }
-
-    // Don't cache resources for "about:"
-    if (m_isAbout)
-        m_response.setHTTPHeaderField("Cache-Control", "no-cache");
+    m_response.setSuggestedFilename(suggestedFilename);
 
     if (isClientAvailable()) {
         RecursionGuard guard(m_callingClient);
@@ -722,15 +684,19 @@ bool NetworkJob::sendRequestWithCredentials(ProtectionSpaceServerType type, Prot
     if (!newURL.isValid())
         return false;
 
-    int port = 0;
+    String host;
+    int port;
     if (type == ProtectionSpaceProxyHTTP) {
-        std::stringstream toPort(BlackBerry::Platform::Client::get()->getProxyPort());
-        toPort >> port;
-    } else
+        String proxyAddress = BlackBerry::Platform::Client::get()->getProxyAddress(newURL.string().ascii().data()).c_str();
+        KURL proxyURL(KURL(), proxyAddress);
+        host = proxyURL.host();
+        port = proxyURL.port();
+    } else {
+        host = m_response.url().host();
         port = m_response.url().port();
+    }
 
-    ProtectionSpace protectionSpace((type == ProtectionSpaceProxyHTTP) ? BlackBerry::Platform::Client::get()->getProxyAddress().c_str() : m_response.url().host()
-            , port, type, realm, scheme);
+    ProtectionSpace protectionSpace(host, port, type, realm, scheme);
 
     // We've got the scheme and realm. Now we need a username and password.
     // First search the CredentialStorage.
@@ -830,99 +796,6 @@ bool NetworkJob::shouldSendClientData() const
 void NetworkJob::fireDeleteJobTimer(Timer<NetworkJob>*)
 {
     NetworkManager::instance()->deleteJob(this);
-}
-
-void NetworkJob::handleAbout()
-{
-    // First 6 chars are "about:".
-    String aboutWhat(m_response.url().string().substring(6));
-
-    String result;
-
-    bool handled = false;
-    if (equalIgnoringCase(aboutWhat, "blank")) {
-        handled = true;
-    } else if (equalIgnoringCase(aboutWhat, "credits")) {
-        result.append(String("<html><head><title>Open Source Credits</title> <style> .about {padding:14px;} </style> <meta name=\"viewport\" content=\"width=device-width, user-scalable=no\"></head><body>"));
-        result.append(String(BlackBerry::Platform::WEBKITCREDITS));
-        result.append(String("</body></html>"));
-        handled = true;
-    } else if (aboutWhat.startsWith("cache?query=", false)) {
-        BlackBerry::Platform::Client* client = BlackBerry::Platform::Client::get();
-        ASSERT(client);
-        std::string key(aboutWhat.substring(12, aboutWhat.length() - 12).utf8().data()); // 12 is length of "cache?query=".
-        result.append(String("<html><head><title>BlackBerry Browser Disk Cache</title></head><body>"));
-        result.append(String(key.data()));
-        result.append(String("<hr>"));
-        result.append(String(client->generateHtmlFragmentForCacheHeaders(key).data()));
-        result.append(String("</body></html>"));
-        handled = true;
-    } else if (equalIgnoringCase(aboutWhat, "cache")) {
-        BlackBerry::Platform::Client* client = BlackBerry::Platform::Client::get();
-        ASSERT(client);
-        result.append(String("<html><head><title>BlackBerry Browser Disk Cache</title></head><body>"));
-        result.append(String(client->generateHtmlFragmentForCacheKeys().data()));
-        result.append(String("</body></html>"));
-        handled = true;
-#if !defined(PUBLIC_BUILD) || !PUBLIC_BUILD
-    } else if (equalIgnoringCase(aboutWhat, "cache/disable")) {
-        BlackBerry::Platform::Client* client = BlackBerry::Platform::Client::get();
-        ASSERT(client);
-        client->setDiskCacheEnabled(false);
-        result.append(String("<html><head><title>BlackBerry Browser Disk Cache</title></head><body>Http disk cache is disabled.</body></html>"));
-        handled = true;
-    } else if (equalIgnoringCase(aboutWhat, "cache/enable")) {
-        BlackBerry::Platform::Client* client = BlackBerry::Platform::Client::get();
-        ASSERT(client);
-        client->setDiskCacheEnabled(true);
-        result.append(String("<html><head><title>BlackBerry Browser Disk Cache</title></head><body>Http disk cache is enabled.</body></html>"));
-        handled = true;
-    } else if (equalIgnoringCase(aboutWhat, "cookie")) {
-        result.append(String("<html><head><title>BlackBerry Browser cookie information</title></head><body>"));
-        result.append(cookieManager().generateHtmlFragmentForCookies());
-        result.append(String("</body></html>"));
-        handled = true;
-    } else if (equalIgnoringCase(aboutWhat, "version")) {
-        result.append(String("<html><meta name=\"viewport\" content=\"width=device-width, user-scalable=no\"></head><body>"));
-        result.append(String(BlackBerry::Platform::BUILDTIME));
-        result.append(String("</body></html>"));
-        handled = true;
-    } else if (BlackBerry::Platform::debugSetting() > 0 && equalIgnoringCase(aboutWhat, "config")) {
-        result = configPage();
-        handled = true;
-    } else if (BlackBerry::Platform::debugSetting() > 0 && equalIgnoringCase(aboutWhat, "build")) {
-        result.append(String("<html><head><title>BlackBerry Browser Build Information</title></head><body><table>"));
-        result.append(String("<tr><td>Build Computer:  </td><td>"));
-        result.append(String(BlackBerry::Platform::BUILDCOMPUTER));
-        result.append(String("</td></tr>"));
-        result.append(String("<tr><td>Build User:  </td><td>"));
-        result.append(String(BlackBerry::Platform::BUILDUSER));
-        result.append(String("</td></tr>"));
-        result.append(String("<tr><td>Build Time:  </td><td>"));
-        result.append(String(BlackBerry::Platform::BUILDTIME));
-        result.append(String("</td></tr><tr><td></td><td></td></tr>"));
-        result.append(String(BlackBerry::Platform::BUILDINFO_WEBKIT));
-        result.append(String(BlackBerry::Platform::BUILDINFO_PLATFORM));
-        result.append(String(BlackBerry::Platform::BUILDINFO_LIBWEBVIEW));
-        result.append(String("</table></body></html>"));
-        handled = true;
-    } else if (equalIgnoringCase(aboutWhat, "memory")) {
-        result = memoryPage();
-        handled = true;
-#endif
-    }
-    if (handled) {
-        CString resultString = result.utf8();
-        notifyStatusReceived(BlackBerry::Platform::FilterStream::StatusSuccess, 0);
-        notifyStringHeaderReceived("Content-Length", String::number(resultString.length()));
-        notifyStringHeaderReceived("Content-Type", "text/html");
-        notifyDataReceivedPlain(resultString.data(), resultString.length());
-        notifyClose(BlackBerry::Platform::FilterStream::StatusSuccess);
-    } else {
-        // If we can not handle it, we take it as an error of invalid URL.
-        notifyStatusReceived(BlackBerry::Platform::FilterStream::StatusErrorInvalidUrl, 0);
-        notifyClose(BlackBerry::Platform::FilterStream::StatusErrorInvalidUrl);
-    }
 }
 
 } // namespace WebCore

@@ -39,66 +39,29 @@ class NodeList;
 
 class HTMLCollectionCacheBase : public DynamicNodeListCacheBase {
 public:
-    HTMLCollectionCacheBase(CollectionType type, bool includeChildren)
-        : DynamicNodeListCacheBase(RootedAtNode, AlwaysInvalidate) // These two flags are never used
-        , m_cachedElementsArrayOffset(0)
-        , m_cacheTreeVersion(0)
-        , m_hasNameCache(false)
-        , m_type(type)
-        , m_includeChildren(includeChildren)
+    HTMLCollectionCacheBase(Node* ownerNode, NodeListRootType rootType, NodeListInvalidationType invalidationType,
+        bool shouldOnlyIncludeDirectChildren, CollectionType collectionType, ItemAfterOverrideType itemAfterOverrideType)
+        : DynamicNodeListCacheBase(ownerNode, rootType, invalidationType, shouldOnlyIncludeDirectChildren, collectionType, itemAfterOverrideType)
     {
-        ASSERT(static_cast<CollectionType>(m_type) == type);
     }
-
-    CollectionType type() const { return static_cast<CollectionType>(m_type); }
 
 protected:
-    void clearCache(uint64_t currentDomTreeVersion) const
-    {
-        DynamicNodeListCacheBase::clearCache();
-        m_idCache.clear();
-        m_nameCache.clear();
-        m_cachedElementsArrayOffset = 0;
-        m_cacheTreeVersion = currentDomTreeVersion;
-        m_hasNameCache = false;
-    }
-
-    using DynamicNodeListCacheBase::setItemCache;
-    void setItemCache(Node* item, unsigned offset, unsigned elementsArrayOffset) const
-    {
-        setItemCache(item, offset);
-        m_cachedElementsArrayOffset = elementsArrayOffset;
-    }
-    unsigned cachedElementsArrayOffset() const { return m_cachedElementsArrayOffset; }
-
-    bool includeChildren() const { return m_includeChildren; }
-    uint64_t cacheTreeVersion() const { return m_cacheTreeVersion; }
-
     typedef HashMap<AtomicStringImpl*, OwnPtr<Vector<Element*> > > NodeCacheMap;
     Vector<Element*>* idCache(const AtomicString& name) const { return m_idCache.get(name.impl()); }
     Vector<Element*>* nameCache(const AtomicString& name) const { return m_nameCache.get(name.impl()); }
     void appendIdCache(const AtomicString& name, Element* element) const { append(m_idCache, name, element); }
     void appendNameCache(const AtomicString& name, Element* element) const { append(m_nameCache, name, element); }
 
-    bool hasNameCache() const { return m_hasNameCache; }
-    void setHasNameCache() const { m_hasNameCache = true; }
-
     static void append(NodeCacheMap&, const AtomicString&, Element*);
 
 private:
     using DynamicNodeListCacheBase::isRootedAtDocument;
-    using DynamicNodeListCacheBase::shouldInvalidateOnAttributeChange;
-    using DynamicNodeListCacheBase::clearCache;
 
     mutable NodeCacheMap m_idCache;
     mutable NodeCacheMap m_nameCache;
     mutable unsigned m_cachedElementsArrayOffset;
-    mutable uint64_t m_cacheTreeVersion;
 
-    // FIXME: Move these bit flags to DynamicNodeListCacheBase to pack them better.
-    mutable unsigned m_hasNameCache : 1;
-    const unsigned m_type : 5; // CollectionType
-    const unsigned m_includeChildren : 1;
+    friend class DynamicNodeListCacheBase;
 };
 
 class HTMLCollection : public RefCounted<HTMLCollection>, public HTMLCollectionCacheBase {
@@ -107,8 +70,8 @@ public:
     virtual ~HTMLCollection();
 
     // DOM API
-    unsigned length() const;
-    virtual Node* item(unsigned index) const;
+    unsigned length() const { return lengthCommon(); }
+    Node* item(unsigned offset) const { return itemCommon(offset); }
     virtual Node* namedItem(const AtomicString& name) const;
     PassRefPtr<NodeList> tags(const String&);
 
@@ -117,7 +80,6 @@ public:
     void namedItems(const AtomicString& name, Vector<RefPtr<Node> >&) const;
     bool isEmpty() const
     {
-        invalidateCacheIfNeeded();
         if (isLengthCacheValid())
             return !cachedLength();
         if (isItemCacheValid())
@@ -126,7 +88,6 @@ public:
     }
     bool hasExactlyOneItem() const
     {
-        invalidateCacheIfNeeded();
         if (isLengthCacheValid())
             return cachedLength() == 1;
         if (isItemCacheValid())
@@ -134,37 +95,16 @@ public:
         return item(0) && !item(1);
     }
 
-    Node* base() const { return m_base.get(); }
-
-    void invalidateCache() const;
-    void invalidateCacheIfNeeded() const;
+    Node* base() const { return ownerNode(); }
+    virtual Element* virtualItemAfter(unsigned& offsetInArray, Element*) const;
 
 protected:
-    HTMLCollection(Node* base, CollectionType);
+    HTMLCollection(Node* base, CollectionType, ItemAfterOverrideType);
 
     virtual void updateNameCache() const;
-    virtual Element* itemAfter(Node*) const;
 
 private:
     bool checkForNameMatch(Element*, bool checkName, const AtomicString& name) const;
-
-    virtual unsigned calcLength() const;
-
-    bool isAcceptableElement(Element*) const;
-
-    RefPtr<Node> m_base;
-};
-
-class HTMLCollectionWithArrayStorage : public HTMLCollection {
-public:
-    HTMLCollectionWithArrayStorage(Node* base, CollectionType type)
-        : HTMLCollection(base, type)
-    { }
-
-    virtual Node* item(unsigned index) const OVERRIDE;
-
-private:
-    virtual HTMLElement* itemInArrayAfter(unsigned& offsetInArray, HTMLElement* previousItem) const = 0;
 };
 
 } // namespace

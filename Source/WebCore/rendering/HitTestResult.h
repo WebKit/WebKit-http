@@ -22,6 +22,7 @@
 #ifndef HitTestResult_h
 #define HitTestResult_h
 
+#include "FloatQuad.h"
 #include "FloatRect.h"
 #include "HitTestRequest.h"
 #include "LayoutTypes.h"
@@ -51,8 +52,12 @@ public:
 
     HitTestPoint();
     HitTestPoint(const LayoutPoint&);
+    HitTestPoint(const FloatPoint&);
+    HitTestPoint(const FloatPoint&, const FloatQuad&);
     // Pass non-zero padding values to perform a rect-based hit test.
     HitTestPoint(const LayoutPoint& centerPoint, unsigned topPadding, unsigned rightPadding, unsigned bottomPadding, unsigned leftPadding);
+    // Make a copy the HitTestPoint in a new region by applying given offset to internal point and area.
+    HitTestPoint(const HitTestPoint&, const LayoutSize& offset, RenderRegion*);
     HitTestPoint(const HitTestPoint&);
     ~HitTestPoint();
     HitTestPoint& operator=(const HitTestPoint&);
@@ -60,10 +65,11 @@ public:
     LayoutPoint point() const { return m_point; }
     IntPoint roundedPoint() const { return roundedIntPoint(m_point); }
 
-    void setPoint(const LayoutPoint&);
+    RenderRegion* region() const { return m_region; }
 
     // Rect-based hit test related methods.
     bool isRectBasedTest() const { return m_isRectBased; }
+    bool isRectilinear() const { return m_isRectilinear; }
     IntRect boundingBox() const { return m_boundingBox; }
 
     static IntRect rectForPoint(const LayoutPoint&, unsigned topPadding, unsigned rightPadding, unsigned bottomPadding, unsigned leftPadding);
@@ -75,11 +81,25 @@ public:
     bool intersects(const LayoutRect&) const;
     bool intersects(const FloatRect&) const;
 
-private:
-    LayoutPoint m_point;
+    const FloatPoint& transformedPoint() const { return m_transformedPoint; }
+    const FloatQuad& transformedRect() const { return m_transformedRect; }
 
+private:
+    template<typename RectType>
+    bool intersectsRect(const RectType&) const;
+    void move(const LayoutSize& offset);
+
+    // This is cached forms of the more accurate point and area below.
+    LayoutPoint m_point;
     IntRect m_boundingBox;
+
+    FloatPoint m_transformedPoint;
+    FloatQuad m_transformedRect;
+
+    RenderRegion* m_region; // The region we're inside.
+
     bool m_isRectBased;
+    bool m_isRectilinear;
 };
 
 class HitTestResult : public HitTestPoint {
@@ -101,9 +121,6 @@ public:
     Element* URLElement() const { return m_innerURLElement.get(); }
     Scrollbar* scrollbar() const { return m_scrollbar.get(); }
     bool isOverWidget() const { return m_isOverWidget; }
-
-    RenderRegion* region() const { return m_region; }
-    void setRegion(RenderRegion* region) { m_region = region; }
 
     void setToNonShadowAncestor();
 
@@ -176,8 +193,6 @@ private:
     bool m_isOverWidget; // Returns true if we are over a widget (and not in the border/padding area of a RenderWidget for example).
 
     ShadowContentFilterPolicy m_shadowContentFilterPolicy;
-
-    RenderRegion* m_region; // The region we're inside.
 
     mutable OwnPtr<NodeSet> m_rectBasedTestResult;
 };

@@ -540,10 +540,10 @@ SelectorChecker::SelectorMatch SelectorChecker::checkSelector(const SelectorChec
             // If we're in the same tree-scope as the scoping element, then following a shadow descendant combinator would escape that and thus the scope.
             if (context.scope && context.scope->treeScope() == context.element->treeScope())
                 return SelectorFailsCompletely;
-            Node* shadowHostNode = context.element->shadowAncestorNode();
-            if (shadowHostNode == context.element || !shadowHostNode->isElementNode())
+            Element* shadowHostNode = context.element->shadowHost();
+            if (!shadowHostNode)
                 return SelectorFailsCompletely;
-            nextContext.element = toElement(shadowHostNode);
+            nextContext.element = shadowHostNode;
             nextContext.isSubSelector = false;
             nextContext.elementStyle = 0;
             nextContext.elementParentStyle = 0;
@@ -622,7 +622,7 @@ bool htmlAttributeHasCaseInsensitiveValue(const QualifiedName& attr)
     return isPossibleHTMLAttr && htmlCaseInsensitiveAttributesSet->contains(attr.localName().impl());
 }
 
-static bool attributeValueMatches(Attribute* attributeItem, CSSSelector::Match match, const AtomicString& selectorValue, bool caseSensitive)
+static bool attributeValueMatches(const Attribute* attributeItem, CSSSelector::Match match, const AtomicString& selectorValue, bool caseSensitive)
 {
     const AtomicString& value = attributeItem->value();
     if (value.isNull())
@@ -689,7 +689,7 @@ static bool anyAttributeMatches(Element* element, CSSSelector::Match match, cons
 {
     ASSERT(element->hasAttributesWithoutUpdate());
     for (size_t i = 0; i < element->attributeCount(); ++i) {
-        Attribute* attributeItem = element->attributeItem(i);
+        const Attribute* attributeItem = element->attributeItem(i);
 
         if (!SelectorChecker::attributeNameMatches(attributeItem, selectorAttr))
             continue;
@@ -1103,7 +1103,7 @@ bool SelectorChecker::checkOneSelector(const SelectorCheckingContext& context, P
             {
                 if (!element)
                     break;
-#if ENABLE(PROGRESS_TAG)
+#if ENABLE(PROGRESS_ELEMENT)
                 if (element->hasTagName(progressTag)) {
                     HTMLProgressElement* progress = static_cast<HTMLProgressElement*>(element);
                     if (progress && !progress->isDeterminate())

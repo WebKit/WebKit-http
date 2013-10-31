@@ -39,6 +39,7 @@
 #include "ContentType.h"
 #include "CSSPropertyNames.h"
 #include "CSSValueKeywords.h"
+#include "DiagnosticLoggingKeys.h"
 #include "DocumentLoader.h"
 #include "ElementShadow.h"
 #include "Event.h"
@@ -490,7 +491,10 @@ bool HTMLMediaElement::childShouldCreateRenderer(const NodeRenderingContext& chi
 {
     if (!hasMediaControls())
         return false;
-    // Only allows nodes from the controls shadow subtree.
+    // <media> doesn't allow its content, including shadow subtree, to
+    // be rendered. So this should return false for most of the children.
+    // One exception is a shadow tree built for rendering controls which should be visible.
+    // So we let them go here by comparing its subtree root with one of the controls.
     return (mediaControls()->treeScope() == childContext.node()->treeScope()
             && childContext.isOnUpperEncapsulationBoundary() && HTMLElement::childShouldCreateRenderer(childContext));
 }
@@ -759,6 +763,7 @@ void HTMLMediaElement::loadInternal()
     // If we can't start a load right away, start it later.
     Page* page = document()->page();
     if (pageConsentRequiredForLoad() && page && !page->canStartMedia()) {
+        setShouldDelayLoadEvent(false);
         if (m_isWaitingUntilMediaCanStart)
             return;
         document()->addMediaCanStartListener(this);
@@ -1503,6 +1508,20 @@ void HTMLMediaElement::mediaPlayerNetworkStateChanged(MediaPlayer*)
     endProcessingMediaPlayerCallback();
 }
 
+static String stringForNetworkState(MediaPlayer::NetworkState state)
+{
+    switch (state) {
+    case MediaPlayer::Empty: return "Empty";
+    case MediaPlayer::Idle: return "Idle";
+    case MediaPlayer::Loading: return "Loading";
+    case MediaPlayer::Loaded: return "Loaded";
+    case MediaPlayer::FormatError: return "FormatError";
+    case MediaPlayer::NetworkError: return "NetworkError";
+    case MediaPlayer::DecodeError: return "DecodeError";
+    default: return emptyString();
+    }
+}
+
 void HTMLMediaElement::mediaLoadingFailed(MediaPlayer::NetworkState error)
 {
     stopPeriodicTimers();
@@ -1539,6 +1558,9 @@ void HTMLMediaElement::mediaLoadingFailed(MediaPlayer::NetworkState error)
         mediaControls()->reset();
         mediaControls()->reportedError();
     }
+
+    if (document()->page() && document()->page()->settings()->diagnosticLoggingEnabled())
+        document()->page()->chrome()->client()->logDiagnosticMessage(DiagnosticLoggingKeys::mediaLoadingFailedKey(), stringForNetworkState(error), DiagnosticLoggingKeys::failKey());
 }
 
 void HTMLMediaElement::setNetworkState(MediaPlayer::NetworkState state)
@@ -1667,6 +1689,9 @@ void HTMLMediaElement::setReadyState(MediaPlayer::ReadyState state)
             mediaControls()->loadedMetadata();
         if (renderer())
             renderer()->updateFromElement();
+
+        if (document()->page() && document()->page()->settings()->diagnosticLoggingEnabled())
+            document()->page()->chrome()->client()->logDiagnosticMessage(DiagnosticLoggingKeys::mediaLoadedKey(), m_player->engineDescription(), DiagnosticLoggingKeys::noopKey());
     }
 
     bool shouldUpdateDisplayState = false;
@@ -1854,6 +1879,18 @@ void HTMLMediaElement::progressEventTimerFired(Timer<HTMLMediaElement>*)
         m_sentStalledEvent = true;
         setShouldDelayLoadEvent(false);
     }
+}
+
+void HTMLMediaElement::createShadowSubtree()
+{
+    ASSERT(!userAgentShadowRoot());
+    ShadowRoot::create(this, ShadowRoot::UserAgentShadowRoot);
+}
+
+void HTMLMediaElement::willAddAuthorShadowRoot()
+{
+    if (!userAgentShadowRoot())
+        createShadowSubtree();
 }
 
 void HTMLMediaElement::rewind(float timeDelta)
@@ -2184,7 +2221,7 @@ void HTMLMediaElement::setPlaybackRate(float rate)
 void HTMLMediaElement::updatePlaybackRate()
 {
     float effectiveRate = m_mediaController ? m_mediaController->playbackRate() : m_playbackRate;
-    if (m_player && potentiallyPlaying() && m_player->rate() != effectiveRate && !m_mediaController)
+    if (m_player && potentiallyPlaying() && m_player->rate() != effectiveRate)
         m_player->setRate(effectiveRate);
 }
 
@@ -2537,6 +2574,11 @@ void HTMLMediaElement::webkitGenerateKeyRequest(const String& keySystem, Excepti
 void HTMLMediaElement::webkitAddKey(const String& keySystem, PassRefPtr<Uint8Array> key, PassRefPtr<Uint8Array> initData, const String& sessionId, ExceptionCode& ec)
 {
     if (keySystem.isEmpty()) {
+        ec = SYNTAX_ERR;
+        return;
+    }
+
+    if (!key) {
         ec = SYNTAX_ERR;
         return;
     }
@@ -3485,6 +3527,16 @@ void HTMLMediaElement::mediaPlayerRenderingModeChanged(MediaPlayer*)
 }
 #endif
 
+#if PLATFORM(WIN) && USE(AVFOUNDATION)
+GraphicsDeviceAdapter* HTMLMediaElement::mediaPlayerGraphicsDeviceAdapter(const MediaPlayer*) const
+{
+    if (!document() || !document()->page())
+        return 0;
+
+    return document()->page()->chrome()->client()->graphicsDeviceAdapter();
+}
+#endif
+
 void HTMLMediaElement::mediaPlayerEngineUpdated(MediaPlayer*)
 {
     LOG(Media, "HTMLMediaElement::mediaPlayerEngineUpdated");
@@ -3858,6 +3910,15 @@ void HTMLMediaElement::defaultEventHandler(Event* event)
 #endif
 }
 
+bool HTMLMediaElement::willRespondToMouseClickEvents()
+{
+#if ENABLE(PLUGIN_PROXY_FOR_VIDEO)
+    return true;
+#else
+    return HTMLElement::willRespondToMouseClickEvents();
+#endif
+}
+
 #if ENABLE(PLUGIN_PROXY_FOR_VIDEO)
 
 void HTMLMediaElement::ensureMediaPlayer()
@@ -3975,7 +4036,7 @@ void HTMLMediaElement::enterFullscreen()
 
 #if ENABLE(FULLSCREEN_API)
     if (document() && document()->settings() && document()->settings()->fullScreenEnabled()) {
-        document()->requestFullScreenForElement(this, 0, Document::ExemptIFrameAllowFulScreenRequirement);
+        document()->requestFullScreenForElement(this, 0, Document::ExemptIFrameAllowFullScreenRequirement);
         return;
     }
 #endif
@@ -4148,17 +4209,18 @@ void HTMLMediaElement::privateBrowsingStateDidChange()
 
 MediaControls* HTMLMediaElement::mediaControls() const
 {
-    return toMediaControls(shadow()->oldestShadowRoot()->firstChild());
+    return toMediaControls(userAgentShadowRoot()->firstChild());
 }
 
 bool HTMLMediaElement::hasMediaControls() const
 {
-    ElementShadow* elementShadow = shadow();
-    if (!elementShadow)
-        return false;
+    if (ShadowRoot* userAgent = userAgentShadowRoot()) {
+        Node* node = userAgent->firstChild();
+        ASSERT(!node || node->isMediaControls());
+        return node;
+    }
 
-    Node* node = elementShadow->oldestShadowRoot()->firstChild();
-    return node && node->isMediaControls();
+    return false;
 }
 
 bool HTMLMediaElement::createMediaControls()
@@ -4176,7 +4238,11 @@ bool HTMLMediaElement::createMediaControls()
     if (isFullscreen())
         controls->enteredFullscreen();
 
-    ensureShadowRoot()->appendChild(controls, ec);
+    if (!shadow())
+        createShadowSubtree();
+
+    ASSERT(userAgentShadowRoot());
+    userAgentShadowRoot()->appendChild(controls, ec);
     return true;
 }
 

@@ -27,38 +27,6 @@
 # THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+from webkitpy.common import multiprocessing_bootstrap
 
-import logging
-import os
-import sys
-
-# NOTE: We intentionally limit imports from webkitpy here to minimize the
-# chances of breaking test-webkitpy itself.
-from webkitpy.common import version_check
-from webkitpy.test import main
-
-
-_log = logging.getLogger("test-webkitpy")
-
-
-if __name__ == "__main__":
-    webkit_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-    tester = main.Tester()
-    tester.add_tree(os.path.join(webkit_root, 'Tools', 'Scripts'), 'webkitpy')
-    tester.add_tree(os.path.join(webkit_root, 'Source', 'WebKit2', 'Scripts'), 'webkit2')
-
-    # FIXME: Do we need to be able to test QueueStatusServer on Windows as well?
-    appengine_sdk_path = '/usr/local/google_appengine'
-    if os.path.exists(appengine_sdk_path):
-        if not appengine_sdk_path in sys.path:
-            sys.path.append(appengine_sdk_path)
-        import dev_appserver
-        from google.appengine.dist import use_library
-        use_library('django', '1.2')
-        dev_appserver.fix_sys_path()
-        tester.add_tree(os.path.join(webkit_root, 'Tools', 'QueueStatusServer'))
-    else:
-        _log.info('Skipping QueueStatusServer tests; the Google AppEngine Python SDK is not installed.')
-
-    sys.exit(not tester.run())
+multiprocessing_bootstrap.run('webkitpy', 'test', 'main.py')

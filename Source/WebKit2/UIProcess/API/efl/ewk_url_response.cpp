@@ -46,6 +46,13 @@ struct _Ewk_Url_Response {
         , url(0)
         , mimeType(0)
     { }
+
+    ~_Ewk_Url_Response()
+    {
+        ASSERT(!__ref);
+        eina_stringshare_del(url);
+        eina_stringshare_del(mimeType);
+    }
 };
 
 void ewk_url_response_ref(Ewk_Url_Response* response)
@@ -61,8 +68,6 @@ void ewk_url_response_unref(Ewk_Url_Response* response)
     if (--response->__ref)
         return;
 
-    eina_stringshare_del(response->url);
-    eina_stringshare_del(response->mimeType);
     delete response;
 }
 
@@ -91,6 +96,13 @@ const char* ewk_url_response_mime_type_get(const Ewk_Url_Response* response)
     eina_stringshare_replace(&ewkResponse->mimeType, response->coreResponse.mimeType().utf8().data());
 
     return response->mimeType;
+}
+
+unsigned long ewk_url_response_content_length_get(const Ewk_Url_Response* response)
+{
+    EINA_SAFETY_ON_NULL_RETURN_VAL(response, 0);
+
+    return response->coreResponse.expectedContentLength();
 }
 
 /**

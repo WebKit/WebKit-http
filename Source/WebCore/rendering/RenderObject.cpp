@@ -282,15 +282,8 @@ void RenderObject::addChild(RenderObject* newChild, RenderObject* beforeChild)
         needsTable = !isTable();
     else if (newChild->isTableRow())
         needsTable = !isTableSection();
-    else if (newChild->isTableCell()) {
+    else if (newChild->isTableCell())
         needsTable = !isTableRow();
-        // I'm not 100% sure this is the best way to fix this, but without this
-        // change we recurse infinitely when trying to render the CSS2 test page:
-        // http://www.bath.ac.uk/%7Epy8ieh/internet/eviltests/htmlbodyheadrendering2.html.
-        // See Radar 2925291.
-        if (needsTable && isTableCell() && !children->firstChild() && !newChild->isTableCell())
-            needsTable = false;
-    }
 
     if (needsTable) {
         RenderTable* table;
@@ -302,10 +295,8 @@ void RenderObject::addChild(RenderObject* newChild, RenderObject* beforeChild)
             addChild(table, beforeChild);
         }
         table->addChild(newChild);
-    } else {
-        // Just add it...
+    } else
         children->insertChildNode(this, newChild, beforeChild);
-    }
 
     if (newChild->isText() && newChild->style()->textTransform() == CAPITALIZE)
         toRenderText(newChild)->transformText();
@@ -843,9 +834,22 @@ void RenderObject::drawLineForBoxSide(GraphicsContext* graphicsContext, int x1, 
                                       BoxSide side, Color color, EBorderStyle style,
                                       int adjacentWidth1, int adjacentWidth2, bool antialias)
 {
-    int width = (side == BSTop || side == BSBottom ? y2 - y1 : x2 - x1);
+    int thickness;
+    int length;
+    if (side == BSTop || side == BSBottom) {
+        thickness = y2 - y1;
+        length = x2 - x1;
+    } else {
+        thickness = x2 - x1;
+        length = y2 - y1;
+    }
 
-    if (style == DOUBLE && width < 3)
+    // FIXME: We really would like this check to be an ASSERT as we don't want to draw empty borders. However
+    // nothing guarantees that the following recursive calls to drawLineForBoxSide will have non-null dimensions.
+    if (!thickness || !length)
+        return;
+
+    if (style == DOUBLE && thickness < 3)
         style = SOLID;
 
     switch (style) {
@@ -855,11 +859,11 @@ void RenderObject::drawLineForBoxSide(GraphicsContext* graphicsContext, int x1, 
         case DOTTED:
         case DASHED: {
             graphicsContext->setStrokeColor(color, m_style->colorSpace());
-            graphicsContext->setStrokeThickness(width);
+            graphicsContext->setStrokeThickness(thickness);
             StrokeStyle oldStrokeStyle = graphicsContext->strokeStyle();
             graphicsContext->setStrokeStyle(style == DASHED ? DashedStroke : DottedStroke);
 
-            if (width > 0) {
+            if (thickness > 0) {
                 bool wasAntialiased = graphicsContext->shouldAntialias();
                 graphicsContext->setShouldAntialias(antialias);
 
@@ -879,7 +883,8 @@ void RenderObject::drawLineForBoxSide(GraphicsContext* graphicsContext, int x1, 
             break;
         }
         case DOUBLE: {
-            int third = (width + 1) / 3;
+            int thirdOfThickness = (thickness + 1) / 3;
+            ASSERT(thirdOfThickness);
 
             if (adjacentWidth1 == 0 && adjacentWidth2 == 0) {
                 StrokeStyle oldStrokeStyle = graphicsContext->strokeStyle();
@@ -892,16 +897,16 @@ void RenderObject::drawLineForBoxSide(GraphicsContext* graphicsContext, int x1, 
                 switch (side) {
                     case BSTop:
                     case BSBottom:
-                        graphicsContext->drawRect(IntRect(x1, y1, x2 - x1, third));
-                        graphicsContext->drawRect(IntRect(x1, y2 - third, x2 - x1, third));
+                        graphicsContext->drawRect(IntRect(x1, y1, length, thirdOfThickness));
+                        graphicsContext->drawRect(IntRect(x1, y2 - thirdOfThickness, length, thirdOfThickness));
                         break;
                     case BSLeft:
-                        graphicsContext->drawRect(IntRect(x1, y1 + 1, third, y2 - y1 - 1));
-                        graphicsContext->drawRect(IntRect(x2 - third, y1 + 1, third, y2 - y1 - 1));
-                        break;
                     case BSRight:
-                        graphicsContext->drawRect(IntRect(x1, y1 + 1, third, y2 - y1 - 1));
-                        graphicsContext->drawRect(IntRect(x2 - third, y1 + 1, third, y2 - y1 - 1));
+                        // FIXME: Why do we offset the border by 1 in this case but not the other one?
+                        if (length > 1) {
+                            graphicsContext->drawRect(IntRect(x1, y1 + 1, thirdOfThickness, length - 1));
+                            graphicsContext->drawRect(IntRect(x2 - thirdOfThickness, y1 + 1, thirdOfThickness, length - 1));
+                        }
                         break;
                 }
 
@@ -914,33 +919,33 @@ void RenderObject::drawLineForBoxSide(GraphicsContext* graphicsContext, int x1, 
                 switch (side) {
                     case BSTop:
                         drawLineForBoxSide(graphicsContext, x1 + max((-adjacentWidth1 * 2 + 1) / 3, 0),
-                                   y1, x2 - max((-adjacentWidth2 * 2 + 1) / 3, 0), y1 + third,
+                                   y1, x2 - max((-adjacentWidth2 * 2 + 1) / 3, 0), y1 + thirdOfThickness,
                                    side, color, SOLID, adjacent1BigThird, adjacent2BigThird, antialias);
                         drawLineForBoxSide(graphicsContext, x1 + max((adjacentWidth1 * 2 + 1) / 3, 0),
-                                   y2 - third, x2 - max((adjacentWidth2 * 2 + 1) / 3, 0), y2,
+                                   y2 - thirdOfThickness, x2 - max((adjacentWidth2 * 2 + 1) / 3, 0), y2,
                                    side, color, SOLID, adjacent1BigThird, adjacent2BigThird, antialias);
                         break;
                     case BSLeft:
                         drawLineForBoxSide(graphicsContext, x1, y1 + max((-adjacentWidth1 * 2 + 1) / 3, 0),
-                                   x1 + third, y2 - max((-adjacentWidth2 * 2 + 1) / 3, 0),
+                                   x1 + thirdOfThickness, y2 - max((-adjacentWidth2 * 2 + 1) / 3, 0),
                                    side, color, SOLID, adjacent1BigThird, adjacent2BigThird, antialias);
-                        drawLineForBoxSide(graphicsContext, x2 - third, y1 + max((adjacentWidth1 * 2 + 1) / 3, 0),
+                        drawLineForBoxSide(graphicsContext, x2 - thirdOfThickness, y1 + max((adjacentWidth1 * 2 + 1) / 3, 0),
                                    x2, y2 - max((adjacentWidth2 * 2 + 1) / 3, 0),
                                    side, color, SOLID, adjacent1BigThird, adjacent2BigThird, antialias);
                         break;
                     case BSBottom:
                         drawLineForBoxSide(graphicsContext, x1 + max((adjacentWidth1 * 2 + 1) / 3, 0),
-                                   y1, x2 - max((adjacentWidth2 * 2 + 1) / 3, 0), y1 + third,
+                                   y1, x2 - max((adjacentWidth2 * 2 + 1) / 3, 0), y1 + thirdOfThickness,
                                    side, color, SOLID, adjacent1BigThird, adjacent2BigThird, antialias);
                         drawLineForBoxSide(graphicsContext, x1 + max((-adjacentWidth1 * 2 + 1) / 3, 0),
-                                   y2 - third, x2 - max((-adjacentWidth2 * 2 + 1) / 3, 0), y2,
+                                   y2 - thirdOfThickness, x2 - max((-adjacentWidth2 * 2 + 1) / 3, 0), y2,
                                    side, color, SOLID, adjacent1BigThird, adjacent2BigThird, antialias);
                         break;
                     case BSRight:
                         drawLineForBoxSide(graphicsContext, x1, y1 + max((adjacentWidth1 * 2 + 1) / 3, 0),
-                                   x1 + third, y2 - max((adjacentWidth2 * 2 + 1) / 3, 0),
+                                   x1 + thirdOfThickness, y2 - max((adjacentWidth2 * 2 + 1) / 3, 0),
                                    side, color, SOLID, adjacent1BigThird, adjacent2BigThird, antialias);
-                        drawLineForBoxSide(graphicsContext, x2 - third, y1 + max((-adjacentWidth1 * 2 + 1) / 3, 0),
+                        drawLineForBoxSide(graphicsContext, x2 - thirdOfThickness, y1 + max((-adjacentWidth1 * 2 + 1) / 3, 0),
                                    x2, y2 - max((-adjacentWidth2 * 2 + 1) / 3, 0),
                                    side, color, SOLID, adjacent1BigThird, adjacent2BigThird, antialias);
                         break;
@@ -1715,7 +1720,7 @@ void RenderObject::setStyle(PassRefPtr<RenderStyle> style)
 #if USE(ACCELERATED_COMPOSITING)
         // We need to run through adjustStyleDifference() for iframes and plugins, so
         // style sharing is disabled for them. That should ensure that we never hit this code path.
-        ASSERT(!isRenderIFrame() && !isEmbeddedObject() &&!isApplet());
+        ASSERT(!isRenderIFrame() && !isEmbeddedObject());
 #endif
         return;
     }
@@ -1997,7 +2002,7 @@ FloatPoint RenderObject::absoluteToLocal(const FloatPoint& containerPoint, bool 
     return transformState.lastPlanarPoint();
 }
 
-void RenderObject::mapLocalToContainer(RenderBoxModelObject* repaintContainer, bool fixed, bool useTransforms, TransformState& transformState, ApplyContainerFlipOrNot, bool* wasFixed) const
+void RenderObject::mapLocalToContainer(RenderBoxModelObject* repaintContainer, bool fixed, bool useTransforms, TransformState& transformState, ApplyContainerFlipOrNot applyContainerFlip, bool* wasFixed) const
 {
     if (repaintContainer == this)
         return;
@@ -2008,8 +2013,11 @@ void RenderObject::mapLocalToContainer(RenderBoxModelObject* repaintContainer, b
 
     // FIXME: this should call offsetFromContainer to share code, but I'm not sure it's ever called.
     LayoutPoint centerPoint = roundedLayoutPoint(transformState.mappedPoint());
-    if (o->isBox() && o->style()->isFlippedBlocksWritingMode())
-        transformState.move(toRenderBox(o)->flipForWritingModeIncludingColumns(roundedLayoutPoint(transformState.mappedPoint())) - centerPoint);
+    if (applyContainerFlip && o->isBox()) {
+        if (o->style()->isFlippedBlocksWritingMode())
+            transformState.move(toRenderBox(o)->flipForWritingModeIncludingColumns(roundedLayoutPoint(transformState.mappedPoint())) - centerPoint);
+        applyContainerFlip = DoNotApplyContainerFlip;
+    }
 
     LayoutSize columnOffset;
     o->adjustForColumns(columnOffset, roundedLayoutPoint(transformState.mappedPoint()));
@@ -2019,7 +2027,7 @@ void RenderObject::mapLocalToContainer(RenderBoxModelObject* repaintContainer, b
     if (o->hasOverflowClip())
         transformState.move(-toRenderBox(o)->scrolledContentOffset());
 
-    o->mapLocalToContainer(repaintContainer, fixed, useTransforms, transformState, DoNotApplyContainerFlip, wasFixed);
+    o->mapLocalToContainer(repaintContainer, fixed, useTransforms, transformState, applyContainerFlip, wasFixed);
 }
 
 const RenderObject* RenderObject::pushMappingToContainer(const RenderBoxModelObject* ancestorToStopAt, RenderGeometryMap& geometryMap) const
@@ -2189,7 +2197,7 @@ RespectImageOrientationEnum RenderObject::shouldRespectImageOrientation() const
 {
     // Respect the image's orientation if it's being used as a full-page image or it's
     // an <img> and the setting to respect it everywhere is set.
-    return document()->isImageDocument() || (document()->settings() && document()->settings()->shouldRespectImageOrientation() && node() && node()->hasTagName(HTMLNames::imgTag)) ? RespectImageOrientation : DoNotRespectImageOrientation;
+    return document()->isImageDocument() || (document()->settings() && document()->settings()->shouldRespectImageOrientation() && node() && (node()->hasTagName(HTMLNames::imgTag) || node()->hasTagName(HTMLNames::webkitInnerImageTag))) ? RespectImageOrientation : DoNotRespectImageOrientation;
 }
 
 bool RenderObject::hasOutlineAnnotation() const
@@ -2699,6 +2707,11 @@ bool RenderObject::willRenderImage(CachedImage*)
     // If we're not in a window (i.e., we're dormant from being put in the b/f cache or in a background tab)
     // then we don't want to render either.
     if (document()->inPageCache() || document()->view()->isOffscreen())
+        return false;
+
+    // If the document is being destroyed or has not been attached, then this
+    // RenderObject will not be rendered.
+    if (!view())
         return false;
 
     // If a renderer is outside the viewport, we won't render.

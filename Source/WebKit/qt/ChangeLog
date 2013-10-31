@@ -1,3 +1,421 @@
+2012-07-27  Csaba Osztrogonác  <ossy@webkit.org>
+
+        [Qt][WK2] REGRESSION(r119127): resetting window.internals settings between tests doesn't work properly
+        https://bugs.webkit.org/show_bug.cgi?id=88064
+
+        Reviewed by Zoltan Herczeg.
+
+        Add missing DumpRenderTreeSupportQt::resetInternalsObject(JSContextRef context) function.
+
+        * WebCoreSupport/DumpRenderTreeSupportQt.cpp:
+        (DumpRenderTreeSupportQt::resetInternalsObject):
+        * WebCoreSupport/DumpRenderTreeSupportQt.h:
+
+2012-07-26  Zeno Albisser  <zeno@webkit.org>
+
+        Unreviewed Qt buildfix after r123786.
+
+        Qt-minimal builds with ENABLE_REQUEST_ANIMATION_FRAME=0.
+        Therefore adding #ifdefs to allow for that configuration.
+
+        * WebCoreSupport/ChromeClientQt.cpp:
+        (WebCore):
+        * WebCoreSupport/ChromeClientQt.h:
+        (ChromeClientQt):
+
+2012-07-26  Zeno Albisser  <zeno@webkit.org>
+
+        [Qt] requestAnimationFrame should only trigger when a new frame can be displayed.
+        https://bugs.webkit.org/show_bug.cgi?id=88638
+
+        Disable REQUEST_ANIMATION_FRAME_TIMER for the Qt port and tie
+        the servicing of scripted animations to the renderNextFrame call for WK2.
+        For WK1 we rely on the RefreshAnimation that is based on QAbstractAnimation.
+
+        Reviewed by Jocelyn Turcotte.
+
+        * WebCoreSupport/ChromeClientQt.cpp:
+        (RefreshAnimation):
+            Add a RefreshAnimation that is based on QAbstractAnimation
+            and drives the servicing of the scripted animations for WK1.
+        (WebCore::RefreshAnimation::RefreshAnimation):
+        (WebCore::RefreshAnimation::duration):
+        (WebCore::RefreshAnimation::scheduleAnimation):
+            Set m_animationScheduled to true and start the animation
+            timer in case it is not running yet.
+        (WebCore::RefreshAnimation::updateCurrentTime):
+            Call serviceScriptedAnimations if m_animationScheduled is true.
+            If this is not the case, the animation timer can be stopped,
+            because no animation needs to be scheduled anymore.
+        (WebCore):
+        (WebCore::ChromeClientQt::scheduleAnimation):
+            Create and start the RefreshAnimation instance with the
+            first call to scheduleAnimation.
+        * WebCoreSupport/ChromeClientQt.h:
+        (WebCore):
+        (ChromeClientQt):
+
+2012-07-26  Kaustubh Atrawalkar  <kaustubh@motorola.com>
+
+        [DRT] LTC:: pageNumberForElementById() could be moved to Internals
+        https://bugs.webkit.org/show_bug.cgi?id=92091
+
+        Reviewed by Adam Barth.
+
+        Move the pageNumberForElementById from LayoutTestCotroller to Internals and
+        remove the old platform specific implementations as it exclusively tests WebCore functionality.
+
+        * WebCoreSupport/DumpRenderTreeSupportQt.cpp:
+        * WebCoreSupport/DumpRenderTreeSupportQt.h:
+
+2012-07-24  Pierre Rossi  <pierre.rossi@gmail.com>
+
+        [Qt][WK1] color input type support
+        https://bugs.webkit.org/show_bug.cgi?id=91998
+
+        Reviewed by Simon Hausmann.
+
+        Using QColorDialog. This is private for now, but
+        it could be exposed via a virtual function in
+        QWebPage at a later point in a Qt 5 minor release
+        if there are requests for that.
+
+        * Api/qwebpage.cpp:
+        (QWebPagePrivate::colorSelectionRequested):
+        * Api/qwebpage_p.h:
+        (QWebPagePrivate):
+        * WebCoreSupport/ChromeClientQt.cpp:
+        (WebCore::ChromeClientQt::createColorChooser):
+
+2012-07-23  Oswald Buddenhagen  <oswald.buddenhagen@nokia.com>
+
+        [Qt] Fix compilation against namespaced Qt
+
+        Reviewed by Simon Hausmann.
+
+        * WebCoreSupport/GeolocationClientQt.h:
+        * examples/platformplugin/WebPlugin.h:
+
+2012-07-23  Pierre Rossi  <pierre.rossi@gmail.com>
+
+        Unify numTouchEventHandlersChanged and needTouchEvents in the chrome client
+        https://bugs.webkit.org/show_bug.cgi?id=91006
+
+        Reviewed by Ryosuke Niwa.
+
+        Remove numTouchEventHandlersChanged stub.
+
+        * WebCoreSupport/ChromeClientQt.h:
+
+2012-07-23  Caio Marcelo de Oliveira Filho  <caio.oliveira@openbossa.org>
+
+        [Qt] RenderThemeQtMobile highlight colors are not being used
+        https://bugs.webkit.org/show_bug.cgi?id=92004
+
+        Reviewed by Noam Rosenthal.
+
+        * WebCoreSupport/RenderThemeQStyle.cpp:
+        (WebCore::RenderThemeQStyle::setPaletteFromPageClientIfExists): Moved here since
+        it's used only by RenderThemeQStyle. Remove unnecessary check for m_page->chrome().
+        (WebCore):
+        (WebCore::RenderThemeQStyle::colorPalette):
+        * WebCoreSupport/RenderThemeQStyle.h:
+        (RenderThemeQStyle):
+
+2012-07-22  Kent Tamura  <tkent@chromium.org>
+
+        Rename ENABLE_METER_TAG and ENABLE_PROGRESS_TAG to ENABLE_METER_ELEMENT and ENABLE_PROGRESS_ELEMENT respectively
+        https://bugs.webkit.org/show_bug.cgi?id=91941
+
+        Reviewed by Kentaro Hara.
+
+        A flag name for an elmement should be ENABLE_*_ELEMENT.
+
+        * WebCoreSupport/RenderThemeQStyle.cpp:
+        (WebCore):
+        * WebCoreSupport/RenderThemeQStyle.h:
+
+2012-07-19  No'am Rosenthal  <noam.rosenthal@nokia.com>
+
+        [Qt] Enable CSS shaders in Qt (software mode)
+        https://bugs.webkit.org/show_bug.cgi?id=85140
+
+        Reviewed by Simon Hausmann.
+
+        Enable CSS Shaders in settings when WebGL is enabled.
+
+        * Api/qwebsettings.cpp:
+        (QWebSettingsPrivate::apply):
+
+2012-07-19  Simon Hausmann  <simon.hausmann@nokia.com>
+
+        [Qt] Remove support for Qt versions before 4.8.0
+        https://bugs.webkit.org/show_bug.cgi?id=91730
+
+        Reviewed by Kenneth Rohde Christiansen.
+
+        Remove Qt version check #ifdefs for Qt versions before 4.8.0.
+
+        * Api/qwebsettings.cpp:
+        (QWebSettingsPrivate):
+        (QWebSettings::QWebSettings):
+        (QWebSettings::thirdPartyCookiePolicy):
+        * Api/qwebsettings.h:
+        * WebCoreSupport/DumpRenderTreeSupportQt.cpp:
+        (DumpRenderTreeSupportQt::thirdPartyCookiePolicyAllows):
+        * WebCoreSupport/DumpRenderTreeSupportQt.h:
+        * tests/qdeclarativewebview/tst_qdeclarativewebview.cpp:
+        (tst_QDeclarativeWebView):
+        (tst_QDeclarativeWebView::backgroundColor):
+        * tests/qwebelement/tst_qwebelement.cpp:
+        (tst_QWebElement::render):
+        * tests/qwebpage/tst_qwebpage.cpp:
+        (tst_QWebPage):
+        (tst_QWebPage::thirdPartyCookiePolicy):
+
+2012-07-17  Gabor Ballabas  <gaborb@inf.u-szeged.hu>
+
+        [Qt][V8] Remove the V8 related codepaths and configuration
+        https://bugs.webkit.org/show_bug.cgi?id=90863
+
+        Reviewed by Simon Hausmann.
+
+        * Api/qwebelement.cpp:
+        (setupScriptContext):
+        (QWebElement::evaluateJavaScript):
+        (convertWebElementVariantToJSValue):
+        (QtWebElementRuntime::initialize):
+        * Api/qwebframe.cpp:
+        (QWebFramePrivate::didClearWindowObject):
+        (QWebFramePrivate::addQtSenderToGlobalObject):
+        (QWebFrame::addToJavaScriptWindowObject):
+        (QWebFrame::evaluateJavaScript):
+        * WebCoreSupport/DumpRenderTreeSupportQt.cpp:
+        (convertNodeVariantToJSValue):
+        (QtDRTNodeRuntime::initialize):
+        (DumpRenderTreeSupportQt::javaScriptObjectsCount):
+        (DumpRenderTreeSupportQt::garbageCollectorCollect):
+        (DumpRenderTreeSupportQt::garbageCollectorCollectOnAlternateThread):
+        (DumpRenderTreeSupportQt::evaluateScriptInIsolatedWorld):
+        (DumpRenderTreeSupportQt::injectInternalsObject):
+        (DumpRenderTreeSupportQt::resetInternalsObject):
+        * WebCoreSupport/DumpRenderTreeSupportQt.h:
+        * WebCoreSupport/FrameLoaderClientQt.cpp:
+        (WebCore::FrameLoaderClientQt::createDocumentLoader):
+        * WebCoreSupport/FrameLoaderClientQt.h:
+        (FrameLoaderClientQt):
+        * v8/ForwardingHeaders/v8-debug.h: Removed.
+        * v8/ForwardingHeaders/v8-preparser.h: Removed.
+        * v8/ForwardingHeaders/v8-profiler.h: Removed.
+        * v8/ForwardingHeaders/v8-testing.h: Removed.
+        * v8/ForwardingHeaders/v8.h: Removed.
+        * v8/ForwardingHeaders/v8stdint.h: Removed.
+
+2012-07-17  Vivek Galatage  <vivekgalatage@gmail.com>
+
+        Web Inspector: refactor InspectorController::connectFrontend() to accept InspectorFrontendChannel.
+        https://bugs.webkit.org/show_bug.cgi?id=91196
+
+        Reviewed by Pavel Feldman.
+
+        Refactoring InspectorClients. InspectorClient::openInspectorFrontend
+        now returning the InspectorFrontendChannel.
+
+        * WebCoreSupport/InspectorClientQt.cpp:
+        (WebCore::InspectorClientQt::openInspectorFrontend):
+        (WebCore::InspectorClientQt::attachAndReplaceRemoteFrontend):
+        * WebCoreSupport/InspectorClientQt.h:
+        (InspectorClientQt):
+
+2012-07-17  Sheriff Bot  <webkit.review.bot@gmail.com>
+
+        Unreviewed, rolling out r122834.
+        http://trac.webkit.org/changeset/122834
+        https://bugs.webkit.org/show_bug.cgi?id=91492
+
+        it broke the chromium (Requested by kkristof on #webkit).
+
+        * Api/qwebelement.cpp:
+        (setupScriptContext):
+        (QWebElement::evaluateJavaScript):
+        (QtWebElementRuntime::initialize):
+        * Api/qwebframe.cpp:
+        (QWebFramePrivate::didClearWindowObject):
+        (QWebFrame::addToJavaScriptWindowObject):
+        (QWebFrame::evaluateJavaScript):
+        * WebCoreSupport/DumpRenderTreeSupportQt.cpp:
+        (QtDRTNodeRuntime::initialize):
+        (DumpRenderTreeSupportQt::javaScriptObjectsCount):
+        (DumpRenderTreeSupportQt::garbageCollectorCollect):
+        (DumpRenderTreeSupportQt::garbageCollectorCollectOnAlternateThread):
+        (DumpRenderTreeSupportQt::evaluateScriptInIsolatedWorld):
+        (DumpRenderTreeSupportQt::injectInternalsObject):
+        (DumpRenderTreeSupportQt::resetInternalsObject):
+        * WebCoreSupport/DumpRenderTreeSupportQt.h:
+        (Bindings):
+        * WebCoreSupport/FrameLoaderClientQt.cpp:
+        (WebCore):
+        (WebCore::FrameLoaderClientQt::didCreateScriptContext):
+        (WebCore::FrameLoaderClientQt::willReleaseScriptContext):
+        (WebCore::FrameLoaderClientQt::didCreateIsolatedScriptContext):
+        (WebCore::FrameLoaderClientQt::createDocumentLoader):
+        * WebCoreSupport/FrameLoaderClientQt.h:
+        (FrameLoaderClientQt):
+        (WebCore::FrameLoaderClientQt::allowScriptExtension):
+        * v8/ForwardingHeaders/v8-debug.h: Added.
+        * v8/ForwardingHeaders/v8-preparser.h: Added.
+        * v8/ForwardingHeaders/v8-profiler.h: Added.
+        * v8/ForwardingHeaders/v8-testing.h: Added.
+        * v8/ForwardingHeaders/v8.h: Added.
+        * v8/ForwardingHeaders/v8stdint.h: Added.
+
+2012-07-17  Gabor Ballabas  <gaborb@inf.u-szeged.hu>
+
+        [Qt][V8] Remove the V8 related codepaths and configuration
+        https://bugs.webkit.org/show_bug.cgi?id=90863
+
+        Reviewed by Simon Hausmann.
+
+        * Api/qwebelement.cpp:
+        (setupScriptContext):
+        (QWebElement::evaluateJavaScript):
+        (convertWebElementVariantToJSValue):
+        (QtWebElementRuntime::initialize):
+        * Api/qwebframe.cpp:
+        (QWebFramePrivate::didClearWindowObject):
+        (QWebFramePrivate::addQtSenderToGlobalObject):
+        (QWebFrame::addToJavaScriptWindowObject):
+        (QWebFrame::evaluateJavaScript):
+        * WebCoreSupport/DumpRenderTreeSupportQt.cpp:
+        (convertNodeVariantToJSValue):
+        (QtDRTNodeRuntime::initialize):
+        (DumpRenderTreeSupportQt::javaScriptObjectsCount):
+        (DumpRenderTreeSupportQt::garbageCollectorCollect):
+        (DumpRenderTreeSupportQt::garbageCollectorCollectOnAlternateThread):
+        (DumpRenderTreeSupportQt::evaluateScriptInIsolatedWorld):
+        (DumpRenderTreeSupportQt::injectInternalsObject):
+        (DumpRenderTreeSupportQt::resetInternalsObject):
+        * WebCoreSupport/DumpRenderTreeSupportQt.h:
+        * WebCoreSupport/FrameLoaderClientQt.cpp:
+        (WebCore::FrameLoaderClientQt::createDocumentLoader):
+        * WebCoreSupport/FrameLoaderClientQt.h:
+        (FrameLoaderClientQt):
+        * v8/ForwardingHeaders/v8-debug.h: Removed.
+        * v8/ForwardingHeaders/v8-preparser.h: Removed.
+        * v8/ForwardingHeaders/v8-profiler.h: Removed.
+        * v8/ForwardingHeaders/v8-testing.h: Removed.
+        * v8/ForwardingHeaders/v8.h: Removed.
+        * v8/ForwardingHeaders/v8stdint.h: Removed.
+
+2012-07-16  Simon Hausmann  <simon.hausmann@nokia.com>
+
+        [Qt] Fix inconsistent DLL linkage on Windows with WebKit1
+        https://bugs.webkit.org/show_bug.cgi?id=91375
+
+        Reviewed by Laszlo Gombos.
+
+        Export QWebHistoryItemPrivate as required for tests. Unfortunately we cannot use
+        Q_AUTOTEST_EXPORT outside of Qt.
+
+        * Api/qwebhistory_p.h:
+
+2012-07-16  Zoltan Horvath  <zoltan@webkit.org>
+
+        [Qt] Change NativeImagePtr from QPixmap* to QImage*
+        https://bugs.webkit.org/show_bug.cgi?id=88785
+
+        Reviewed by Simon Hausmann.
+
+        Since we use raster engine there is no difference between QPixmap and QImage, so we are going
+        to use QImage everywhere where it is possible. This refactoring contains the change of the
+        NativeImagePtr typedef from QPixmap* to QImage* and covers the related modifications.
+
+        Part of the change is similar to Viatcheslav Ostapenko's internal work.
+
+        Covered by existing tests.
+
+        * Api/qwebframe.cpp:
+        (QWebHitTestResultPrivate::QWebHitTestResultPrivate):
+        * Api/qwebhistory.cpp:
+        (QWebHistoryItem::icon):
+        * Api/qwebsettings.cpp:
+        (QWebSettings::iconForUrl):
+        (QWebSettings::setWebGraphic):
+        (QWebSettings::webGraphic):
+        * WebCoreSupport/DragClientQt.cpp:
+        (WebCore::DragClientQt::startDrag):
+        * WebCoreSupport/InitWebCoreQt.cpp:
+        (WebCore::initializeWebCoreQt):
+
+2012-07-16  Frederik Gladhorn  <frederik.gladhorn@nokia.com>
+
+        Accessible Widget for QWebView
+        https://bugs.webkit.org/show_bug.cgi?id=91073
+
+        Added classes that allow navigation to the web view widget.
+        This is the glue to later access webkit's accessible objects
+        though the Qt accessibility framework.
+
+        Reviewed by Simon Hausmann.
+
+        * Api/qwebview.cpp:
+        (QWebView::QWebView):
+        * Api/qwebviewaccessible.cpp: Added.
+        (accessibleInterfaceFactory):
+        (QWebFrameAccessible::QWebFrameAccessible):
+        (QWebFrameAccessible::frame):
+        (QWebFrameAccessible::parent):
+        (QWebFrameAccessible::text):
+        (QWebFrameAccessible::childCount):
+        (QWebFrameAccessible::child):
+        (QWebFrameAccessible::indexOfChild):
+        (QWebFrameAccessible::state):
+        (QWebFrameAccessible::role):
+        (QWebFrameAccessible::navigate):
+        (QWebPageAccessible::QWebPageAccessible):
+        (QWebPageAccessible::page):
+        (QWebPageAccessible::text):
+        (QWebPageAccessible::parent):
+        (QWebPageAccessible::child):
+        (QWebPageAccessible::childCount):
+        (QWebPageAccessible::indexOfChild):
+        (QWebPageAccessible::navigate):
+        (QWebPageAccessible::role):
+        (QWebPageAccessible::state):
+        (QWebViewAccessible::QWebViewAccessible):
+        (QWebViewAccessible::view):
+        (QWebViewAccessible::childCount):
+        (QWebViewAccessible::child):
+        * Api/qwebviewaccessible_p.h: Added.
+        (QWebFrameAccessible):
+        (QWebPageAccessible):
+        (QWebViewAccessible):
+
+2012-07-12  Huang Dongsung  <luxtella@company100.net>
+
+        [Qt] Increase the drawing performance by merging dirty rects.
+        https://bugs.webkit.org/show_bug.cgi?id=91075
+
+        Reviewed by Noam Rosenthal.
+
+        QWebFramePrivate calls FrameView::paintContents as many as the number of dirty
+        rects, so it causes too many redundant render tree traversals.
+        I changed it to merge dirty rects and call FrameView::paintContents only once.
+        The algorithm to merge rects is copied from GTK.
+
+        When parallel image decoders are in use, each image is independently repainted
+        when decoding is finished. This creates a lot by repaint requests. So by merging
+        these repaint requests, I could improve rendering performance.
+
+        For example, I tested parallel image decoders on the locally mirrored Pinterest site.
+        QWebFramePrivate called FrameView::paintContents 165 times after parallel image
+        decoders decoded all the images. It took about 120ms on my six-core Intel Xeon machine.
+        This patch decreases painting time from 120ms to 30ms.
+
+        * Api/qwebframe.cpp:
+        (coalesceRectsIfPossible):
+        (QWebFramePrivate::renderRelativeCoords):
+
 2012-07-11  Steffen Imhof  <steffen.imhof@basyskom.com>
 
         [Qt] Middle clicking a scrollbar causes text to be pasted.

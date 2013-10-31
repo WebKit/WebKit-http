@@ -112,6 +112,8 @@ HEADERS += \
     Shared/WebGraphicsContext.h \
     Shared/WebHitTestResult.h \
     Shared/WebImage.h \
+    Shared/WebIntentData.h \
+    Shared/WebIntentServiceInfo.h \
     Shared/WebLayerTreeInfo.h \
     Shared/WebNavigationDataStore.h \
     Shared/WebNumber.h \
@@ -167,6 +169,7 @@ HEADERS += \
     UIProcess/API/C/WKOpenPanelParameters.h \
     UIProcess/API/C/WKOpenPanelResultListener.h \
     UIProcess/API/C/WKNavigationData.h \
+    UIProcess/API/C/WKNetworkInfo.h \
     UIProcess/API/C/WKNetworkInfoManager.h \
     UIProcess/API/C/WKNotification.h \
     UIProcess/API/C/WKNotificationManager.h \
@@ -264,8 +267,6 @@ HEADERS += \
     UIProcess/WebIconDatabase.h \
     UIProcess/WebIconDatabaseClient.h \
     UIProcess/WebInspectorProxy.h \
-    UIProcess/WebIntentData.h \
-    UIProcess/WebIntentServiceInfo.h \
     UIProcess/WebKeyValueStorageManagerProxy.h \
     UIProcess/WebLayerTreeRenderer.h \
     UIProcess/WebLoaderClient.h \
@@ -318,6 +319,7 @@ HEADERS += \
     WebProcess/InjectedBundle/API/c/WKBundleBackForwardList.h \
     WebProcess/InjectedBundle/API/c/WKBundleBackForwardListItem.h \
     WebProcess/InjectedBundle/API/c/WKBundleHitTestResult.h \
+    WebProcess/InjectedBundle/API/c/WKBundleIntentRequest.h \
     WebProcess/InjectedBundle/API/c/WKBundleNavigationAction.h \
     WebProcess/InjectedBundle/API/c/WKBundleNodeHandle.h \
     WebProcess/InjectedBundle/API/c/WKBundleNodeHandlePrivate.h \
@@ -330,8 +332,10 @@ HEADERS += \
     WebProcess/InjectedBundle/InjectedBundleClient.h \
     WebProcess/InjectedBundle/InjectedBundleDOMWindowExtension.h \
     WebProcess/InjectedBundle/InjectedBundleHitTestResult.h \
+    WebProcess/InjectedBundle/InjectedBundleIntentRequest.h \
     WebProcess/InjectedBundle/InjectedBundleNavigationAction.h \
     WebProcess/InjectedBundle/InjectedBundlePageContextMenuClient.h \
+    WebProcess/InjectedBundle/InjectedBundlePageDiagnosticLoggingClient.h \
     WebProcess/InjectedBundle/InjectedBundlePageFormClient.h \
     WebProcess/InjectedBundle/InjectedBundlePageFullScreenClient.h \
     WebProcess/InjectedBundle/InjectedBundlePagePolicyClient.h \
@@ -491,6 +495,8 @@ SOURCES += \
     Shared/WebHitTestResult.cpp \
     Shared/WebKeyboardEvent.cpp \
     Shared/WebImage.cpp \
+    Shared/WebIntentData.cpp \
+    Shared/WebIntentServiceInfo.cpp \
     Shared/WebLayerTreeInfo.cpp \
     Shared/WebMouseEvent.cpp \
     Shared/WebNetworkInfo.cpp \
@@ -547,6 +553,7 @@ SOURCES += \
     UIProcess/API/C/WKOpenPanelParameters.cpp \
     UIProcess/API/C/WKOpenPanelResultListener.cpp \
     UIProcess/API/C/WKNavigationData.cpp \
+    UIProcess/API/C/WKNetworkInfo.cpp \
     UIProcess/API/C/WKNetworkInfoManager.cpp \
     UIProcess/API/C/WKPage.cpp \
     UIProcess/API/C/WKPageGroup.cpp \
@@ -631,8 +638,6 @@ SOURCES += \
     UIProcess/WebIconDatabase.cpp \
     UIProcess/WebIconDatabaseClient.cpp \
     UIProcess/WebInspectorProxy.cpp \
-    UIProcess/WebIntentData.cpp \
-    UIProcess/WebIntentServiceInfo.cpp \
     UIProcess/WebKeyValueStorageManagerProxy.cpp \
     UIProcess/WebLayerTreeRenderer.cpp \
     UIProcess/WebLoaderClient.cpp \
@@ -698,6 +703,7 @@ SOURCES += \
     WebProcess/InjectedBundle/API/c/WKBundleFrame.cpp \
     WebProcess/InjectedBundle/API/c/WKBundleHitTestResult.cpp \
     WebProcess/InjectedBundle/API/c/WKBundleInspector.cpp \
+    WebProcess/InjectedBundle/API/c/WKBundleIntentRequest.cpp \
     WebProcess/InjectedBundle/API/c/WKBundleNavigationAction.cpp \
     WebProcess/InjectedBundle/API/c/WKBundleNodeHandle.cpp \
     WebProcess/InjectedBundle/API/c/WKBundlePage.cpp \
@@ -712,8 +718,10 @@ SOURCES += \
     WebProcess/InjectedBundle/InjectedBundleClient.cpp \
     WebProcess/InjectedBundle/InjectedBundleDOMWindowExtension.cpp \
     WebProcess/InjectedBundle/InjectedBundleHitTestResult.cpp \
+    WebProcess/InjectedBundle/InjectedBundleIntentRequest.cpp \
     WebProcess/InjectedBundle/InjectedBundleNavigationAction.cpp \
     WebProcess/InjectedBundle/InjectedBundlePageContextMenuClient.cpp \
+    WebProcess/InjectedBundle/InjectedBundlePageDiagnosticLoggingClient.cpp \    
     WebProcess/InjectedBundle/InjectedBundlePageEditorClient.cpp \
     WebProcess/InjectedBundle/InjectedBundlePageFormClient.cpp \
     WebProcess/InjectedBundle/InjectedBundlePageFullScreenClient.cpp \

@@ -76,6 +76,8 @@ private:
     virtual WebCore::IntPoint screenToWindow(const WebCore::IntPoint&);
     virtual WebCore::IntRect windowToScreen(const WebCore::IntRect&);
 
+    virtual void handleDownloadRequest(DownloadProxy*);
+
     virtual void doneWithKeyEvent(const NativeWebKeyboardEvent&, bool);
 #if ENABLE(TOUCH_EVENTS)
     virtual void doneWithTouchEvent(const NativeWebTouchEvent&, bool wasEventHandled);
@@ -105,6 +107,10 @@ private:
     virtual void flashBackingStoreUpdates(const Vector<WebCore::IntRect>&);
     virtual void findStringInCustomRepresentation(const String&, FindOptions, unsigned);
     virtual void countStringMatchesInCustomRepresentation(const String&, FindOptions, unsigned);
+
+#if USE(TILED_BACKING_STORE)
+    virtual void pageDidRequestScroll(const WebCore::IntPoint&);
+#endif
 
 private:
     RefPtr<WebPageProxy> m_page;

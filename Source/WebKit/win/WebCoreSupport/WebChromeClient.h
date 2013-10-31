@@ -142,6 +142,10 @@ public:
         virtual void scheduleCompositingLayerSync();
 #endif
 
+#if PLATFORM(WIN) && USE(AVFOUNDATION)
+    virtual WebCore::GraphicsDeviceAdapter* graphicsDeviceAdapter() const OVERRIDE;
+#endif
+
     virtual void scrollRectIntoView(const WebCore::IntRect&) const { }
 
 #if ENABLE(VIDEO)
@@ -168,7 +172,6 @@ public:
 
     virtual bool shouldRubberBandInDirection(WebCore::ScrollDirection) const { return true; }
     virtual void numWheelEventHandlersChanged(unsigned) { }
-    virtual void numTouchEventHandlersChanged(unsigned) { }
 
 private:
     COMPtr<IWebUIDelegate> uiDelegate();

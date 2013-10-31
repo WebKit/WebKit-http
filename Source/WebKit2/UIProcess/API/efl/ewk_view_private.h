@@ -26,10 +26,13 @@
 #include <WebKit2/WKBase.h>
 
 namespace WebCore {
+class Cursor;
 class IntRect;
 class IntSize;
 }
 
+typedef struct _Ewk_Download_Job Ewk_Download_Job;
+typedef struct _Ewk_Form_Submission_Request Ewk_Form_Submission_Request;
 typedef struct _Ewk_Url_Request Ewk_Url_Request;
 typedef struct _Ewk_Url_Response Ewk_Url_Response;
 typedef struct _Ewk_Web_Error Ewk_Web_Error;
@@ -42,7 +45,13 @@ typedef struct _Ewk_Intent Ewk_Intent;
 typedef struct _Ewk_Intent_Service Ewk_Intent_Service;
 #endif
 
+void ewk_view_cursor_set(Evas_Object* ewkView, const WebCore::Cursor& cursor);
 void ewk_view_display(Evas_Object* ewkView, const WebCore::IntRect& rect);
+void ewk_view_download_job_cancelled(Evas_Object* ewkView, Ewk_Download_Job*);
+void ewk_view_download_job_failed(Evas_Object* ewkView, Ewk_Download_Job*, Ewk_Web_Error*);
+void ewk_view_download_job_finished(Evas_Object* ewkView, Ewk_Download_Job*);
+void ewk_view_download_job_requested(Evas_Object* ewkView, Ewk_Download_Job*);
+void ewk_view_form_submission_request_new(Evas_Object* ewkView, Ewk_Form_Submission_Request*);
 void ewk_view_image_data_set(Evas_Object* ewkView, void* imageData, const WebCore::IntSize& size);
 void ewk_view_load_error(Evas_Object* ewkView, const Ewk_Web_Error* error);
 void ewk_view_load_finished(Evas_Object* ewkView);
@@ -69,5 +78,11 @@ void ewk_view_intent_service_register(Evas_Object* ewkView, const Ewk_Intent_Ser
 #endif
 
 WebKit::WebPageProxy* ewk_view_page_get(const Evas_Object* ewkView);
+WebCore::IntSize ewk_view_size_get(const Evas_Object* ewkView);
+
+#if USE(ACCELERATED_COMPOSITING)
+bool ewk_view_accelerated_compositing_mode_enter(const Evas_Object* ewkView);
+bool ewk_view_accelerated_compositing_mode_exit(const Evas_Object* ewkView);
+#endif
 
 #endif // ewk_view_private_h

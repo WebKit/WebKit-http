@@ -105,7 +105,6 @@ TestShell::TestShell()
     : m_testIsPending(false)
     , m_testIsPreparing(false)
     , m_focusedWidget(0)
-    , m_testShellMode(false)
     , m_devTools(0)
     , m_allowExternalPages(false)
     , m_acceleratedCompositingForVideoEnabled(false)
@@ -123,6 +122,11 @@ TestShell::TestShell()
     WebRuntimeFeatures::enableGeolocation(true);
     WebRuntimeFeatures::enablePointerLock(true);
     WebRuntimeFeatures::enableIndexedDatabase(true);
+    WebRuntimeFeatures::enableInputTypeDateTime(true);
+    WebRuntimeFeatures::enableInputTypeDateTimeLocal(true);
+    WebRuntimeFeatures::enableInputTypeMonth(true);
+    WebRuntimeFeatures::enableInputTypeTime(true);
+    WebRuntimeFeatures::enableInputTypeWeek(true);
     WebRuntimeFeatures::enableFileSystem(true);
     WebRuntimeFeatures::enableJavaScriptI18NAPI(true);
     WebRuntimeFeatures::enableMediaSource(true);
@@ -146,16 +150,12 @@ TestShell::TestShell()
 void TestShell::initialize()
 {
     m_webPermissions = adoptPtr(new WebPermissions(this));
-    m_accessibilityController = adoptPtr(new AccessibilityController(this));
-    m_gamepadController = adoptPtr(new GamepadController(this));
-
+    m_testInterfaces = adoptPtr(new TestInterfaces());
     m_layoutTestController = adoptPtr(new LayoutTestController(this));
-    m_eventSender = adoptPtr(new EventSender(this));
-    m_textInputController = adoptPtr(new TextInputController(this));
+    m_eventSender = adoptPtr(new EventSender());
 #if ENABLE(NOTIFICATIONS) || ENABLE(LEGACY_NOTIFICATIONS)
     m_notificationPresenter = adoptPtr(new NotificationPresenter(this));
 #endif
-    m_printer = m_testShellMode ? TestEventPrinter::createTestShellPrinter() : TestEventPrinter::createDRTPrinter();
 #if ENABLE(LINK_PRERENDER)
     m_prerenderingSupport = adoptPtr(new MockWebPrerenderingSupport());
 #endif
@@ -176,15 +176,19 @@ void TestShell::createMainWindow()
     m_drtDevToolsAgent = adoptPtr(new DRTDevToolsAgent);
     m_webViewHost = adoptPtr(createNewWindow(WebURL(), m_drtDevToolsAgent.get()));
     m_webView = m_webViewHost->webView();
+    m_testInterfaces->setDelegate(m_webViewHost.get());
+    m_testInterfaces->setWebView(m_webView);
+    m_eventSender->setDelegate(m_webViewHost.get());
+    m_eventSender->setWebView(m_webView);
     m_drtDevToolsAgent->setWebView(m_webView);
 }
 
 TestShell::~TestShell()
 {
-    // Note: DevTools are closed together with all the other windows in the
-    // windows list.
-
-    // Destroy the WebView before its WebViewHost.
+    m_testInterfaces->setDelegate(0);
+    m_testInterfaces->setWebView(0);
+    m_eventSender->setDelegate(0);
+    m_eventSender->setWebView(0);
     m_drtDevToolsAgent->setWebView(0);
 }
 
@@ -266,7 +270,7 @@ void TestShell::runFileTest(const TestParams& params)
         m_layoutTestController->setShowDebugLayerTree(true);
 
     if (m_dumpWhenFinished)
-        m_printer->handleTestHeader(testUrl.c_str());
+        m_printer.handleTestHeader(testUrl.c_str());
     loadURL(m_params.testUrl);
 
     m_testIsPreparing = false;
@@ -295,8 +299,7 @@ void TestShell::resetTestController()
 {
     resetWebSettings(*webView());
     m_webPermissions->reset();
-    m_accessibilityController->reset();
-    m_gamepadController->reset();
+    m_testInterfaces->resetAll();
     m_layoutTestController->reset();
     m_eventSender->reset();
     m_webViewHost->reset();
@@ -374,7 +377,7 @@ void TestShell::testFinished()
 
 void TestShell::testTimedOut()
 {
-    m_printer->handleTimedOut();
+    m_printer.handleTimedOut();
     testFinished();
 }
 
@@ -562,15 +565,10 @@ void TestShell::dump()
     bool dumpedAnything = false;
 
     if (shouldDumpAsAudio) {
-        m_printer->handleAudioHeader();
-
         const WebKit::WebArrayBufferView& webArrayBufferView = m_layoutTestController->audioData();
-        printf("Content-Length: %d\n", webArrayBufferView.byteLength());
-
-        if (fwrite(webArrayBufferView.baseAddress(), 1, webArrayBufferView.byteLength(), stdout) != webArrayBufferView.byteLength())
-            FATAL("Short write to stdout, disk full?\n");
-        m_printer->handleAudioFooter();
-        m_printer->handleTestFooter(true);
+        m_printer.handleAudio(webArrayBufferView.baseAddress(), webArrayBufferView.byteLength());
+        m_printer.handleAudioFooter();
+        m_printer.handleTestFooter(true);
 
         fflush(stdout);
         fflush(stderr);
@@ -579,7 +577,7 @@ void TestShell::dump()
 
     if (m_params.dumpTree) {
         dumpedAnything = true;
-        m_printer->handleTextHeader();
+        m_printer.handleTextHeader();
         // Text output: the test page can request different types of output
         // which we handle here.
         if (!shouldDumpAsText) {
@@ -609,7 +607,7 @@ void TestShell::dump()
             printf("%s", dumpAllBackForwardLists().c_str());
     }
     if (dumpedAnything && m_params.printSeparators)
-        m_printer->handleTextFooter();
+        m_printer.handleTextFooter();
 
     if (m_params.dumpPixels && shouldGeneratePixelResults) {
         // Image output: we write the image data to the file given on the
@@ -654,7 +652,7 @@ void TestShell::dump()
 
         dumpImage(m_webViewHost->canvas());
     }
-    m_printer->handleTestFooter(dumpedAnything);
+    m_printer.handleTestFooter(dumpedAnything);
     fflush(stdout);
     fflush(stderr);
 }
@@ -721,20 +719,18 @@ void TestShell::dumpImage(SkCanvas* canvas) const
             sourceBitmap.height(), static_cast<int>(sourceBitmap.rowBytes()), discardTransparency, md5hash, &png);
 #endif
 
-        m_printer->handleImage(md5hash.c_str(), m_params.pixelHash.c_str(), &png[0], png.size(), m_params.pixelFileName.c_str());
+        m_printer.handleImage(md5hash.c_str(), m_params.pixelHash.c_str(), &png[0], png.size());
     } else
-        m_printer->handleImage(md5hash.c_str(), m_params.pixelHash.c_str(), 0, 0, m_params.pixelFileName.c_str());
+        m_printer.handleImage(md5hash.c_str(), m_params.pixelHash.c_str(), 0, 0);
 }
 
 void TestShell::bindJSObjectsToWindow(WebFrame* frame)
 {
     WebTestingSupport::injectInternalsObject(frame);
-    m_accessibilityController->bindToJavascript(frame, WebString::fromUTF8("accessibilityController"));
-    m_gamepadController->bindToJavascript(frame, WebString::fromUTF8("gamepadController"));
+    m_testInterfaces->bindTo(frame);
     m_layoutTestController->bindToJavascript(frame, WebString::fromUTF8("layoutTestController"));
     m_layoutTestController->bindToJavascript(frame, WebString::fromUTF8("testRunner"));
     m_eventSender->bindToJavascript(frame, WebString::fromUTF8("eventSender"));
-    m_textInputController->bindToJavascript(frame, WebString::fromUTF8("textInputController"));
 }
 
 WebViewHost* TestShell::createNewWindow(const WebKit::WebURL& url)

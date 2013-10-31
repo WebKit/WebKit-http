@@ -26,7 +26,8 @@
 #include "config.h"
 #include "InternalSettings.h"
 
-#include "CachedResourceLoader.h"
+#include "Chrome.h"
+#include "ChromeClient.h"
 #include "Document.h"
 #include "ExceptionCode.h"
 #include "Frame.h"
@@ -34,6 +35,7 @@
 #include "InspectorController.h"
 #include "Language.h"
 #include "LocaleToScriptMapping.h"
+#include "MockPagePopupDriver.h"
 #include "Page.h"
 #include "RuntimeEnabledFeatures.h"
 #include "Settings.h"
@@ -141,12 +143,24 @@ InternalSettings::InternalSettings(Page* page)
 {
 }
 
+#if ENABLE(PAGE_POPUP)
+PagePopupController* InternalSettings::pagePopupController()
+{
+    return m_pagePopupDriver ? m_pagePopupDriver->pagePopupController() : 0;
+}
+#endif
+
 void InternalSettings::reset()
 {
     TextRun::setAllowsRoundingHacks(false);
     setUserPreferredLanguages(Vector<String>());
     page()->setPagination(Page::Pagination());
     page()->setPageScaleFactor(1, IntPoint(0, 0));
+#if ENABLE(PAGE_POPUP)
+    m_pagePopupDriver.clear();
+    if (page()->chrome())
+        page()->chrome()->client()->resetPagePopupDriver();
+#endif
 
     m_backup.restoreTo(page(), settings());
     m_backup = Backup(page(), settings());
@@ -512,7 +526,7 @@ bool InternalSettings::shouldDisplayTrackKind(const String& kind, ExceptionCode&
 #endif
 }
 
-void InternalSettings::setPagination(const String& mode, int gap, ExceptionCode& ec)
+void InternalSettings::setPagination(const String& mode, int gap, int pageLength, ExceptionCode& ec)
 {
     if (!page()) {
         ec = INVALID_ACCESS_ERR;
@@ -536,7 +550,27 @@ void InternalSettings::setPagination(const String& mode, int gap, ExceptionCode&
     }
 
     pagination.gap = gap;
+    pagination.pageLength = pageLength;
     page()->setPagination(pagination);
+}
+
+void InternalSettings::setEnableMockPagePopup(bool enabled, ExceptionCode& ec)
+{
+#if ENABLE(PAGE_POPUP)
+    InternalSettingsGuardForPage();
+    if (!page()->chrome())
+        return;
+    if (!enabled) {
+        page()->chrome()->client()->resetPagePopupDriver();
+        return;
+    }
+    if (!m_pagePopupDriver)
+        m_pagePopupDriver = MockPagePopupDriver::create(page()->mainFrame());
+    page()->chrome()->client()->setPagePopupDriver(m_pagePopupDriver.get());
+#else
+    UNUSED_PARAM(enabled);
+    UNUSED_PARAM(ec);
+#endif
 }
 
 String InternalSettings::configurationForViewport(float devicePixelRatio, int deviceWidth, int deviceHeight, int availableWidth, int availableHeight, ExceptionCode& ec)
@@ -554,6 +588,12 @@ String InternalSettings::configurationForViewport(float devicePixelRatio, int de
     restrictScaleFactorToInitialScaleIfNotUserScalable(attributes);
 
     return "viewport size " + String::number(attributes.layoutSize.width()) + "x" + String::number(attributes.layoutSize.height()) + " scale " + String::number(attributes.initialScale) + " with limits [" + String::number(attributes.minimumScale) + ", " + String::number(attributes.maximumScale) + "] and userScalable " + (attributes.userScalable ? "true" : "false");
+}
+
+void InternalSettings::setMemoryInfoEnabled(bool enabled, ExceptionCode& ec)
+{
+    InternalSettingsGuardForSettings();
+    settings()->setMemoryInfoEnabled(enabled);
 }
 
 }

@@ -39,7 +39,7 @@
 #include "HTMLElement.h"
 #include "HTMLNames.h"
 #include "Node.h"
-#include "StaticNodeList.h"
+#include "PropertyNodeList.h"
 
 namespace WebCore {
 
@@ -51,9 +51,7 @@ PassRefPtr<HTMLPropertiesCollection> HTMLPropertiesCollection::create(Node* item
 }
 
 HTMLPropertiesCollection::HTMLPropertiesCollection(Node* itemNode)
-    : HTMLCollectionWithArrayStorage(itemNode, ItemProperties)
-    , m_hasPropertyNameCache(false)
-    , m_hasItemRefElements(false)
+    : HTMLCollection(itemNode, ItemProperties, OverridesItemAfter)
 {
 }
 
@@ -63,43 +61,12 @@ HTMLPropertiesCollection::~HTMLPropertiesCollection()
 
 void HTMLPropertiesCollection::updateRefElements() const
 {
-    if (m_hasItemRefElements)
+    if (isItemRefElementsCacheValid())
         return;
-
-    HTMLElement* baseElement = toHTMLElement(base());
 
     m_itemRefElements.clear();
-    m_hasItemRefElements = true;
-
-    if (!baseElement->fastHasAttribute(itemscopeAttr))
-        return;
-
-    if (!baseElement->fastHasAttribute(itemrefAttr)) {
-        m_itemRefElements.append(baseElement);
-        return;
-    }
-
-    DOMSettableTokenList* itemRef = baseElement->itemRef();
-    RefPtr<DOMSettableTokenList> processedItemRef = DOMSettableTokenList::create();
-    Node* rootNode = baseElement->treeScope()->rootNode();
-
-    for (Node* current = rootNode->firstChild(); current; current = current->traverseNextNode(rootNode)) {
-        if (!current->isHTMLElement())
-            continue;
-        HTMLElement* element = toHTMLElement(current);
-
-        if (element == baseElement) {
-            m_itemRefElements.append(element);
-            continue;
-        }
-
-        const AtomicString& id = element->getIdAttribute();
-        if (!processedItemRef->tokens().contains(id) && itemRef->tokens().contains(id)) {
-            processedItemRef->setValue(id);
-            if (!element->isDescendantOf(baseElement))
-                m_itemRefElements.append(element);
-        }
-    }
+    setItemRefElementsCacheValid();
+    toHTMLElement(base())->getItemRefElements(m_itemRefElements);
 }
 
 static Node* nextNodeWithProperty(Node* base, Node* node)
@@ -112,10 +79,10 @@ static Node* nextNodeWithProperty(Node* base, Node* node)
             ? node->traverseNextNode(base) : node->traverseNextSibling(base);
 }
 
-HTMLElement* HTMLPropertiesCollection::itemInArrayAfter(unsigned& offsetInArray, HTMLElement* previousItem) const
+Element* HTMLPropertiesCollection::virtualItemAfter(unsigned& offsetInArray, Element* previousItem) const
 {
     while (offsetInArray < m_itemRefElements.size()) {
-        if (HTMLElement* next = itemAfter(m_itemRefElements[offsetInArray], previousItem))
+        if (Element* next = virtualItemAfter(m_itemRefElements[offsetInArray], previousItem))
             return next;
         offsetInArray++;
         previousItem = 0;
@@ -123,7 +90,7 @@ HTMLElement* HTMLPropertiesCollection::itemInArrayAfter(unsigned& offsetInArray,
     return 0;
 }
 
-HTMLElement* HTMLPropertiesCollection::itemAfter(HTMLElement* base, HTMLElement* previous) const
+HTMLElement* HTMLPropertiesCollection::virtualItemAfter(HTMLElement* base, Element* previous) const
 {
     Node* current;
     current = previous ? nextNodeWithProperty(base, previous) : base;
@@ -140,46 +107,23 @@ HTMLElement* HTMLPropertiesCollection::itemAfter(HTMLElement* base, HTMLElement*
     return 0;
 }
 
-unsigned HTMLPropertiesCollection::calcLength() const
-{
-    unsigned length = 0;
-    updateRefElements();
-
-    for (unsigned i = 0; i < m_itemRefElements.size(); ++i) {
-        for (HTMLElement* element = itemAfter(m_itemRefElements[i], 0); element; element = itemAfter(m_itemRefElements[i], element))
-            ++length;
-    }
-
-    return length;
-}
-
-void HTMLPropertiesCollection::cacheFirstItem() const
-{
-    for (unsigned i = 0; i < m_itemRefElements.size(); ++i) {
-        if (HTMLElement* element = itemAfter(m_itemRefElements[i], 0))
-            return setItemCache(element, 0, i);
-    }
-    setItemCache(0, 0, 0);
-}
-
 void HTMLPropertiesCollection::updateNameCache() const
 {
-    invalidateCacheIfNeeded();
-    if (m_hasPropertyNameCache)
+    if (hasNameCache())
         return;
 
     updateRefElements();
 
     for (unsigned i = 0; i < m_itemRefElements.size(); ++i) {
         HTMLElement* refElement = m_itemRefElements[i];
-        for (HTMLElement* element = itemAfter(refElement, 0); element; element = itemAfter(refElement, element)) {
+        for (HTMLElement* element = virtualItemAfter(refElement, 0); element; element = virtualItemAfter(refElement, element)) {
             DOMSettableTokenList* itemProperty = element->itemProp();
             for (unsigned propertyIndex = 0; propertyIndex < itemProperty->length(); ++propertyIndex)
                 updatePropertyCache(element, itemProperty->item(propertyIndex));
         }
     }
 
-    m_hasPropertyNameCache = true;
+    setHasNameCache();
 }
 
 PassRefPtr<DOMStringList> HTMLPropertiesCollection::names() const
@@ -190,28 +134,16 @@ PassRefPtr<DOMStringList> HTMLPropertiesCollection::names() const
     return m_propertyNames;
 }
 
-PassRefPtr<NodeList> HTMLPropertiesCollection::namedItem(const String& name) const
+PassRefPtr<PropertyNodeList> HTMLPropertiesCollection::namedItem(const String& name) const
 {
-    updateNameCache();
-
-    Vector<RefPtr<Node> > namedItems;
-    Vector<Element*>* propertyResults = m_propertyCache.get(AtomicString(name).impl());
-    for (unsigned i = 0; propertyResults && i < propertyResults->size(); ++i)
-        namedItems.append(propertyResults->at(i));
-
-    // FIXME: HTML5 specifies that this should return PropertyNodeList.
-    return namedItems.isEmpty() ? 0 : StaticNodeList::adopt(namedItems);
+    return base()->propertyNodeList(name);
 }
 
 bool HTMLPropertiesCollection::hasNamedItem(const AtomicString& name) const
 {
     updateNameCache();
-
-    if (Vector<Element*>* propertyCache = m_propertyCache.get(name.impl())) {
-        if (!propertyCache->isEmpty())
-            return true;
-    }
-
+    if (m_propertyNames)
+        return m_propertyNames->contains(name);
     return false;
 }
 

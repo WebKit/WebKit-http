@@ -60,7 +60,8 @@ enum CollectionType {
     ItemProperties, // Microdata item properties in the document
 #endif
 
-    FormControls
+    FormControls,
+    NodeListCollectionType
 };
 
 static const CollectionType FirstUnnamedDocumentCachedType = DocImages;

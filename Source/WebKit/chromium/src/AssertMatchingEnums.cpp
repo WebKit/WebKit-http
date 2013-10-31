@@ -53,6 +53,7 @@
 #include "IDBFactoryBackendInterface.h"
 #include "IDBKey.h"
 #include "IDBKeyPath.h"
+#include "IDBMetadata.h"
 #include "IceOptions.h"
 #include "IconURL.h"
 #include "MediaPlayer.h"
@@ -87,6 +88,7 @@
 #include "WebIDBFactory.h"
 #include "WebIDBKey.h"
 #include "WebIDBKeyPath.h"
+#include "WebIDBMetadata.h"
 #include "WebIconURL.h"
 #include "WebInputElement.h"
 #include "WebMediaPlayer.h"
@@ -431,6 +433,23 @@ COMPILE_ASSERT_MATCHING_ENUM(WebScrollbar::ScrollByPage, ScrollByPage);
 COMPILE_ASSERT_MATCHING_ENUM(WebScrollbar::ScrollByDocument, ScrollByDocument);
 COMPILE_ASSERT_MATCHING_ENUM(WebScrollbar::ScrollByPixel, ScrollByPixel);
 
+COMPILE_ASSERT_MATCHING_ENUM(WebScrollbar::RegularScrollbar, RegularScrollbar);
+COMPILE_ASSERT_MATCHING_ENUM(WebScrollbar::SmallScrollbar, SmallScrollbar);
+COMPILE_ASSERT_MATCHING_ENUM(WebScrollbar::NoPart, NoPart);
+COMPILE_ASSERT_MATCHING_ENUM(WebScrollbar::BackButtonStartPart, BackButtonStartPart);
+COMPILE_ASSERT_MATCHING_ENUM(WebScrollbar::ForwardButtonStartPart, ForwardButtonStartPart);
+COMPILE_ASSERT_MATCHING_ENUM(WebScrollbar::BackTrackPart, BackTrackPart);
+COMPILE_ASSERT_MATCHING_ENUM(WebScrollbar::ThumbPart, ThumbPart);
+COMPILE_ASSERT_MATCHING_ENUM(WebScrollbar::ForwardTrackPart, ForwardTrackPart);
+COMPILE_ASSERT_MATCHING_ENUM(WebScrollbar::BackButtonEndPart, BackButtonEndPart);
+COMPILE_ASSERT_MATCHING_ENUM(WebScrollbar::ForwardButtonEndPart, ForwardButtonEndPart);
+COMPILE_ASSERT_MATCHING_ENUM(WebScrollbar::ScrollbarBGPart, ScrollbarBGPart);
+COMPILE_ASSERT_MATCHING_ENUM(WebScrollbar::TrackBGPart, TrackBGPart);
+COMPILE_ASSERT_MATCHING_ENUM(WebScrollbar::AllParts, AllParts);
+COMPILE_ASSERT_MATCHING_ENUM(WebScrollbar::ScrollbarOverlayStyleDefault, ScrollbarOverlayStyleDefault);
+COMPILE_ASSERT_MATCHING_ENUM(WebScrollbar::ScrollbarOverlayStyleDark, ScrollbarOverlayStyleDark);
+COMPILE_ASSERT_MATCHING_ENUM(WebScrollbar::ScrollbarOverlayStyleLight, ScrollbarOverlayStyleLight);
+
 COMPILE_ASSERT_MATCHING_ENUM(WebSettings::EditingBehaviorMac, EditingMacBehavior);
 COMPILE_ASSERT_MATCHING_ENUM(WebSettings::EditingBehaviorWin, EditingWindowsBehavior);
 COMPILE_ASSERT_MATCHING_ENUM(WebSettings::EditingBehaviorUnix, EditingUnixBehavior);
@@ -461,6 +480,8 @@ COMPILE_ASSERT_MATCHING_ENUM(WebIDBKey::NumberType, IDBKey::NumberType);
 COMPILE_ASSERT_MATCHING_ENUM(WebIDBKeyPath::NullType, IDBKeyPath::NullType);
 COMPILE_ASSERT_MATCHING_ENUM(WebIDBKeyPath::StringType, IDBKeyPath::StringType);
 COMPILE_ASSERT_MATCHING_ENUM(WebIDBKeyPath::ArrayType, IDBKeyPath::ArrayType);
+
+COMPILE_ASSERT_MATCHING_ENUM(WebIDBMetadata::NoIntVersion, IDBDatabaseMetadata::NoIntVersion);
 #endif
 
 #if ENABLE(FILE_SYSTEM)
@@ -533,6 +554,9 @@ COMPILE_ASSERT_MATCHING_ENUM(WebPageVisibilityStatePreview, PageVisibilityStateP
 #if ENABLE(MEDIA_STREAM)
 COMPILE_ASSERT_MATCHING_ENUM(WebMediaStreamSource::TypeAudio, MediaStreamSource::TypeAudio);
 COMPILE_ASSERT_MATCHING_ENUM(WebMediaStreamSource::TypeVideo, MediaStreamSource::TypeVideo);
+COMPILE_ASSERT_MATCHING_ENUM(WebMediaStreamSource::ReadyStateLive, MediaStreamSource::ReadyStateLive);
+COMPILE_ASSERT_MATCHING_ENUM(WebMediaStreamSource::ReadyStateMuted, MediaStreamSource::ReadyStateMuted);
+COMPILE_ASSERT_MATCHING_ENUM(WebMediaStreamSource::ReadyStateEnded, MediaStreamSource::ReadyStateEnded);
 
 COMPILE_ASSERT_MATCHING_ENUM(WebICEOptions::CandidateTypeAll, IceOptions::ALL);
 COMPILE_ASSERT_MATCHING_ENUM(WebICEOptions::CandidateTypeNoRelay, IceOptions::NO_RELAY);

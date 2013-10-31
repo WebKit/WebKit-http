@@ -35,12 +35,17 @@ module test {
         InterfaceName=TestObject
     ] TestObj {
         // Attributes
-        readonly attribute long            readOnlyIntAttr;
+        readonly attribute long            readOnlyLongAttr;
         readonly attribute DOMString       readOnlyStringAttr;
         readonly attribute TestObj         readOnlyTestObjAttr;
+#if defined(TESTING_JS) || defined(TESTING_V8)
+        static readonly attribute long     staticReadOnlyLongAttr;
+        static attribute DOMString         staticStringAttr;
+        static readonly attribute TestSubObjConstructor TestSubObj;
+#endif
         attribute short                    shortAttr;
         attribute unsigned short           unsignedShortAttr;
-        attribute long                     intAttr;
+        attribute long                     longAttr;
         attribute long long                longLongAttr;
         attribute unsigned long long       unsignedLongLongAttr;
         attribute DOMString                stringAttr;
@@ -64,14 +69,14 @@ module test {
 
         // Methods
         void    voidMethod();
-        void    voidMethodWithArgs(in long intArg, in DOMString strArg, in TestObj objArg);
-        long    intMethod();
-        long    intMethodWithArgs(in long intArg, in DOMString strArg, in TestObj objArg);
+        void    voidMethodWithArgs(in long longArg, in DOMString strArg, in TestObj objArg);
+        long    longMethod();
+        long    longMethodWithArgs(in long longArg, in DOMString strArg, in TestObj objArg);
         TestObj objMethod();
-        TestObj objMethodWithArgs(in long intArg, in DOMString strArg, in TestObj objArg);
+        TestObj objMethodWithArgs(in long longArg, in DOMString strArg, in TestObj objArg);
 
         void methodWithSequenceArg(in sequence<ScriptProfile> sequenceArg);
-        sequence<ScriptProfile> methodReturningSequence(in long intArg);
+        sequence<ScriptProfile> methodReturningSequence(in long longArg);
 
         TestObj methodThatRequiresAllArgsAndThrows(in DOMString strArg, in TestObj objArg)
             raises(DOMException);
@@ -90,7 +95,7 @@ module test {
         // 'Custom' extended attribute
         attribute [Custom] long            customAttr;
         [Custom] void customMethod();
-        [Custom] void customMethodWithArgs(in long intArg, in DOMString strArg, in TestObj objArg);
+        [Custom] void customMethodWithArgs(in long longArg, in DOMString strArg, in TestObj objArg);
 
         void addEventListener(in DOMString type, 
                               in EventListener listener, 
@@ -164,14 +169,15 @@ module test {
 #if defined(TESTING_V8) || defined(TESTING_JS)
         // Overloads
         void    overloadedMethod(in TestObj? objArg, in DOMString strArg);
-        void    overloadedMethod(in TestObj? objArg, in [Optional] long intArg);
+        void    overloadedMethod(in TestObj? objArg, in [Optional] long longArg);
         void    overloadedMethod(in DOMString strArg);
-        void    overloadedMethod(in long intArg);
+        void    overloadedMethod(in long longArg);
         void    overloadedMethod(in [Callback] TestCallback callback);
         void    overloadedMethod(in DOMStringList? listArg);
         void    overloadedMethod(in DOMString[]? arrayArg);
         void    overloadedMethod(in TestObj objArg);
         void    overloadedMethod(in DOMString[] arrayArg);
+        void    overloadedMethod(in sequence<unsigned long> arrayArg);
 #endif
 
         // Class methods within JavaScript (like what's used for IDBKeyRange).
@@ -183,15 +189,19 @@ module test {
         [Conditional=Condition1] static void overloadedMethod1(in long arg);
         [Conditional=Condition1] static void overloadedMethod1(in DOMString type);
 
+        void classMethodWithClamp(in [Clamp] unsigned short objArgsShort, in [Clamp] unsigned long objArgsLong);
+
 #if defined(TESTING_V8)
         // 'V8EnabledAtRuntime' methods and attributes.
-        [V8EnabledAtRuntime] void enabledAtRuntimeMethod1(in int intArg);
-        [V8EnabledAtRuntime=FeatureName] void enabledAtRuntimeMethod2(in int intArg);
+        [V8EnabledAtRuntime] void enabledAtRuntimeMethod1(in long longArg);
+        [V8EnabledAtRuntime=FeatureName] void enabledAtRuntimeMethod2(in long longArg);
         attribute [V8EnabledAtRuntime] long enabledAtRuntimeAttr1;
         attribute [V8EnabledAtRuntime=FeatureName] long enabledAtRuntimeAttr2;
-        // V8EnabledPerContext currently only supports attributes.
-        attribute [V8EnabledPerContext] long enabledAtContextAttr1;
-        attribute [V8EnabledPerContext=FeatureName] long enabledAtContextAttr2;
+        // 'V8EnabledPerContext' methods and attributes.
+        [V8EnabledPerContext] void enabledPerContextMethod1(in long longArg);
+        [V8EnabledPerContext=FeatureName] void enabledPerContextMethod2(in long longArg);
+        attribute [V8EnabledPerContext] long enabledPerContextAttr1;
+        attribute [V8EnabledPerContext=FeatureName] long enabledPerContextAttr2;
 #endif
 
 
@@ -201,7 +211,7 @@ module test {
 #endif
 
 #if defined(TESTING_JS)
-        void methodWithUnsignedLongArray(in unsigned long[] unsignedLongArray);
+        void methodWithUnsignedLongSequence(in sequence<unsigned long> unsignedLongSequence);
 #endif
 #if defined(TESTING_V8) || defined(TESTING_JS)
         DOMString[] stringArrayFunction(in DOMString[] values) raises(DOMException);
@@ -223,10 +233,10 @@ module test {
         [Immutable] SVGPoint immutablePointFunction();
 
         [ImplementedAs=banana] void orange();
-        attribute [ImplementedAs=blueberry] int strawberry;
+        attribute [ImplementedAs=blueberry] long strawberry;
 
         attribute [StrictTypeChecking] float strictFloat;
-        [StrictTypeChecking] bool strictFunction(in DOMString str, in float a, in int b)
+        [StrictTypeChecking] bool strictFunction(in DOMString str, in float a, in long b)
             raises(DOMException);
 
         // ObjectiveC reserved words.
@@ -247,5 +257,7 @@ module test {
         const unsigned short CONST_VALUE_13 = 0X20;
         const unsigned short CONST_VALUE_14 = 0x1abc;
         [Reflect=CONST_IMPL] const unsigned short CONST_JAVASCRIPT = 15;
+
+        attribute [Replaceable] long replaceableAttribute;
     };
 }

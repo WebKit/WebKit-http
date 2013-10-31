@@ -26,13 +26,40 @@
 #endif
 
 #include "QualifiedName.h"
+#include "HTMLNames.h"
+#include "XLinkNames.h"
+#include "XMLNSNames.h"
+#include "XMLNames.h"
 #include <wtf/Assertions.h>
 #include <wtf/HashSet.h>
 #include <wtf/StaticConstructors.h>
 
+#if ENABLE(MATHML)
+#include "MathMLNames.h"
+#endif
+
+#if ENABLE(SVG)
+#include "SVGNames.h"
+#endif
+
 namespace WebCore {
 
-typedef HashSet<QualifiedName::QualifiedNameImpl*, QualifiedNameHash> QNameSet;
+static const int staticQualifiedNamesCount = HTMLNames::HTMLTagsCount + HTMLNames::HTMLAttrsCount
+#if ENABLE(MATHML)
+    + MathMLNames::MathMLTagsCount + MathMLNames::MathMLAttrsCount
+#endif
+#if ENABLE(SVG)
+    + SVGNames::SVGTagsCount + SVGNames::SVGAttrsCount
+#endif
+    + XLinkNames::XLinkAttrsCount
+    + XMLNSNames::XMLNSAttrsCount
+    + XMLNames::XMLAttrsCount;
+
+struct QualifiedNameHashTraits : public HashTraits<QualifiedName::QualifiedNameImpl*> {
+    static const int minimumTableSize = WTF::HashTableCapacityForSize<staticQualifiedNamesCount>::value;
+};
+
+typedef HashSet<QualifiedName::QualifiedNameImpl*, QualifiedNameHash, QualifiedNameHashTraits> QNameSet;
 
 struct QNameComponentsTranslator {
     static unsigned hash(const QualifiedNameComponents& components)
@@ -51,7 +78,7 @@ struct QNameComponentsTranslator {
 
 static QNameSet* gNameCache;
 
-void QualifiedName::init(const AtomicString& p, const AtomicString& l, const AtomicString& n)
+QualifiedName::QualifiedName(const AtomicString& p, const AtomicString& l, const AtomicString& n)
 {
     if (!gNameCache)
         gNameCache = new QNameSet;
@@ -60,16 +87,6 @@ void QualifiedName::init(const AtomicString& p, const AtomicString& l, const Ato
     m_impl = *addResult.iterator;
     if (!addResult.isNewEntry)
         m_impl->ref();
-}
-
-QualifiedName::QualifiedName(const AtomicString& p, const AtomicString& l, const AtomicString& n)
-{
-    init(p, l, n);
-}
-
-QualifiedName::QualifiedName(const AtomicString& p, const char* l, const AtomicString& n)
-{
-    init(p, AtomicString(l), n);
 }
 
 QualifiedName::~QualifiedName()
@@ -122,6 +139,18 @@ const AtomicString& QualifiedName::localNameUpper() const
     if (!m_impl->m_localNameUpper)
         m_impl->m_localNameUpper = m_impl->m_localName.upper();
     return m_impl->m_localNameUpper;
+}
+
+void createQualifiedName(void* targetAddress, const char* name, unsigned nameLength, const AtomicString& nameNamespace)
+{
+    AtomicString atomicName(name, nameLength, AtomicString::ConstructFromLiteral);
+    new (reinterpret_cast<void*>(targetAddress)) QualifiedName(nullAtom, atomicName, nameNamespace);
+}
+
+void createQualifiedName(void* targetAddress, const char* name, unsigned nameLength)
+{
+    AtomicString atomicName(name, nameLength, AtomicString::ConstructFromLiteral);
+    new (reinterpret_cast<void*>(targetAddress)) QualifiedName(nullAtom, atomicName, nullAtom);
 }
 
 }

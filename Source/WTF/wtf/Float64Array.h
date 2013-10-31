@@ -38,6 +38,10 @@ public:
     static inline PassRefPtr<Float64Array> create(const double* array, unsigned length);
     static inline PassRefPtr<Float64Array> create(PassRefPtr<ArrayBuffer>, unsigned byteOffset, unsigned length);
 
+    // Should only be used when it is known the entire array will be filled. Do
+    // not return these results directly to JavaScript without filling first.
+    static inline PassRefPtr<Float64Array> createUninitialized(unsigned length);
+
     // Can’t use "using" here due to a bug in the RVCT compiler.
     bool set(TypedArrayBase<double>* array, unsigned offset) { return TypedArrayBase<double>::set(array, offset); }
 
@@ -48,17 +52,13 @@ public:
         TypedArrayBase<double>::data()[index] = static_cast<double>(value);
     }
 
-    // Invoked by the indexed getter. Does not perform range checks; caller
-    // is responsible for doing so and returning undefined as necessary.
-    double item(unsigned index) const
-    {
-        ASSERT(index < TypedArrayBase<double>::m_length);
-        double result = TypedArrayBase<double>::data()[index];
-        return result;
-    }
-
     inline PassRefPtr<Float64Array> subarray(int start) const;
     inline PassRefPtr<Float64Array> subarray(int start, int end) const;
+
+    virtual ViewType getType() const
+    {
+        return TypeFloat64;
+    }
 
 private:
     inline Float64Array(PassRefPtr<ArrayBuffer>,
@@ -66,9 +66,6 @@ private:
                  unsigned length);
     // Make constructor visible to superclass.
     friend class TypedArrayBase<double>;
-
-    // Overridden from ArrayBufferView.
-    virtual bool isDoubleArray() const { return true; }
 };
 
 PassRefPtr<Float64Array> Float64Array::create(unsigned length)
@@ -84,6 +81,11 @@ PassRefPtr<Float64Array> Float64Array::create(const double* array, unsigned leng
 PassRefPtr<Float64Array> Float64Array::create(PassRefPtr<ArrayBuffer> buffer, unsigned byteOffset, unsigned length)
 {
     return TypedArrayBase<double>::create<Float64Array>(buffer, byteOffset, length);
+}
+
+PassRefPtr<Float64Array> Float64Array::createUninitialized(unsigned length)
+{
+    return TypedArrayBase<double>::createUninitialized<Float64Array>(length);
 }
 
 Float64Array::Float64Array(PassRefPtr<ArrayBuffer> buffer, unsigned byteOffset, unsigned length)

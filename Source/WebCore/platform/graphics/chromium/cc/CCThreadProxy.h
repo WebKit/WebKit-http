@@ -71,7 +71,6 @@ public:
     virtual void stop() OVERRIDE;
     virtual size_t maxPartialTextureUpdates() const OVERRIDE;
     virtual void acquireLayerTextures() OVERRIDE;
-    virtual void setFontAtlas(PassOwnPtr<CCFontAtlas>) OVERRIDE;
     virtual void forceSerializeOnSwapBuffers() OVERRIDE;
 
     // CCLayerTreeHostImplClient implementation
@@ -144,7 +143,6 @@ private:
     void recreateContextOnImplThread(CCCompletionEvent*, CCGraphicsContext*, bool* recreateSucceeded, LayerRendererCapabilities*);
     void implSideRenderingStatsOnImplThread(CCCompletionEvent*, CCRenderingStats*);
     CCScheduledActionDrawAndSwapResult scheduledActionDrawAndSwapInternal(bool forcedDraw);
-    void setFontAtlasOnImplThread(PassOwnPtr<CCFontAtlas>);
     void forceSerializeOnSwapBuffersOnImplThread(CCCompletionEvent*);
     void setNeedsForcedCommitOnImplThread();
 
@@ -152,7 +150,6 @@ private:
     bool m_animateRequested;
     bool m_commitRequested;
     bool m_forcedCommitRequested;
-    bool m_contextLost;
     OwnPtr<CCThreadProxyContextRecreationTimer> m_contextRecreationTimer;
     CCLayerTreeHost* m_layerTreeHost;
     int m_compositorIdentifier;

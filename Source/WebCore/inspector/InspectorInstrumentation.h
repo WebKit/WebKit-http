@@ -187,6 +187,7 @@ public:
     static void frameDetachedFromParent(Frame*);
     static void didCommitLoad(Frame*, DocumentLoader*);
     static void loaderDetachedFromFrame(Frame*, DocumentLoader*);
+    static void willDestroyCachedResource(CachedResource*);
 
     static InspectorInstrumentationCookie willWriteHTML(Document*, unsigned int length, unsigned int startLine);
     static void didWriteHTML(const InspectorInstrumentationCookie&, unsigned int endLine);
@@ -224,8 +225,6 @@ public:
 #if ENABLE(WORKERS)
     static bool shouldPauseDedicatedWorkerOnStart(ScriptExecutionContext*);
     static void didStartWorkerContext(ScriptExecutionContext*, WorkerContextProxy*, const KURL&);
-    static void didCreateWorker(ScriptExecutionContext*, intptr_t id, const String& url, bool isSharedWorker);
-    static void didDestroyWorker(ScriptExecutionContext*, intptr_t id);
     static void workerContextTerminated(ScriptExecutionContext*, WorkerContextProxy*);
     static void willEvaluateWorkerScript(WorkerContext*, int workerThreadStartMode);
 #endif
@@ -262,8 +261,11 @@ public:
 #endif
 
 #if ENABLE(GEOLOCATION)
-    static GeolocationPosition* checkGeolocationPositionOrError(Page*, GeolocationPosition*);
+    static GeolocationPosition* overrideGeolocationPosition(Page*, GeolocationPosition*);
 #endif
+
+    static void registerInstrumentingAgents(InstrumentingAgents*);
+    static void unregisterInstrumentingAgents(InstrumentingAgents*);
 
 private:
 #if ENABLE(INSPECTOR)
@@ -361,6 +363,7 @@ private:
     static void frameDetachedFromParentImpl(InstrumentingAgents*, Frame*);
     static void didCommitLoadImpl(InstrumentingAgents*, Page*, DocumentLoader*);
     static void loaderDetachedFromFrameImpl(InstrumentingAgents*, DocumentLoader*);
+    static void willDestroyCachedResourceImpl(CachedResource*);
 
     static InspectorInstrumentationCookie willWriteHTMLImpl(InstrumentingAgents*, unsigned int length, unsigned int startLine, Frame*);
     static void didWriteHTMLImpl(const InspectorInstrumentationCookie&, unsigned int endLine);
@@ -394,8 +397,6 @@ private:
 #if ENABLE(WORKERS)
     static bool shouldPauseDedicatedWorkerOnStartImpl(InstrumentingAgents*);
     static void didStartWorkerContextImpl(InstrumentingAgents*, WorkerContextProxy*, const KURL&);
-    static void didCreateWorkerImpl(InstrumentingAgents*, intptr_t id, const String& url, bool isSharedWorker);
-    static void didDestroyWorkerImpl(InstrumentingAgents*, intptr_t id);
     static void workerContextTerminatedImpl(InstrumentingAgents*, WorkerContextProxy*);
 #endif
 
@@ -427,7 +428,7 @@ private:
     static InspectorTimelineAgent* retrieveTimelineAgent(const InspectorInstrumentationCookie&);
 
 #if ENABLE(GEOLOCATION)
-    static GeolocationPosition* checkGeolocationPositionOrErrorImpl(InstrumentingAgents*, GeolocationPosition*);
+    static GeolocationPosition* overrideGeolocationPositionImpl(InstrumentingAgents*, GeolocationPosition*);
 #endif
 
     static int s_frontendCounter;
@@ -1204,6 +1205,14 @@ inline void InspectorInstrumentation::loaderDetachedFromFrame(Frame* frame, Docu
 #endif
 }
 
+inline void InspectorInstrumentation::willDestroyCachedResource(CachedResource* cachedResource)
+{
+#if ENABLE(INSPECTOR)
+    FAST_RETURN_IF_NO_FRONTENDS(void());
+    willDestroyCachedResourceImpl(cachedResource);
+#endif
+}
+
 inline InspectorInstrumentationCookie InspectorInstrumentation::willWriteHTML(Document* document, unsigned int length, unsigned int startLine)
 {
 #if ENABLE(INSPECTOR)
@@ -1256,24 +1265,6 @@ inline void InspectorInstrumentation::didStartWorkerContext(ScriptExecutionConte
 #if ENABLE(INSPECTOR)
     if (InstrumentingAgents* instrumentingAgents = instrumentingAgentsForContext(context))
         didStartWorkerContextImpl(instrumentingAgents, proxy, url);
-#endif
-}
-
-inline void InspectorInstrumentation::didCreateWorker(ScriptExecutionContext* context, intptr_t id, const String& url, bool isSharedWorker)
-{
-#if ENABLE(INSPECTOR)
-    FAST_RETURN_IF_NO_FRONTENDS(void());
-    if (InstrumentingAgents* instrumentingAgents = instrumentingAgentsForContext(context))
-        didCreateWorkerImpl(instrumentingAgents, id, url, isSharedWorker);
-#endif
-}
-
-inline void InspectorInstrumentation::didDestroyWorker(ScriptExecutionContext* context, intptr_t id)
-{
-#if ENABLE(INSPECTOR)
-    FAST_RETURN_IF_NO_FRONTENDS(void());
-    if (InstrumentingAgents* instrumentingAgents = instrumentingAgentsForContext(context))
-        didDestroyWorkerImpl(instrumentingAgents, id);
 #endif
 }
 
@@ -1397,12 +1388,12 @@ inline void InspectorInstrumentation::didFireAnimationFrame(const InspectorInstr
 
 
 #if ENABLE(GEOLOCATION)
-inline GeolocationPosition* InspectorInstrumentation::checkGeolocationPositionOrError(Page* page, GeolocationPosition* position)
+inline GeolocationPosition* InspectorInstrumentation::overrideGeolocationPosition(Page* page, GeolocationPosition* position)
 {
 #if ENABLE(INSPECTOR)
     FAST_RETURN_IF_NO_FRONTENDS(position);
     if (InstrumentingAgents* instrumentingAgents = instrumentingAgentsForPage(page))
-        return checkGeolocationPositionOrErrorImpl(instrumentingAgents, position);
+        return overrideGeolocationPositionImpl(instrumentingAgents, position);
 #endif
     return position;
 }

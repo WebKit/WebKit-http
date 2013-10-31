@@ -32,7 +32,6 @@
 #include "FloatRect.h"
 #include "IntRect.h"
 #include "cc/CCSharedQuadState.h"
-#include <public/WebFilterOperations.h>
 #include <public/WebTransformationMatrix.h>
 #include <wtf/Noncopyable.h>
 #include <wtf/text/WTFString.h>
@@ -40,7 +39,7 @@
 namespace WebCore {
 
 class CCDamageTracker;
-class CCQuadCuller;
+class CCQuadSink;
 class CCRenderPass;
 class CCLayerImpl;
 class LayerRendererChromium;
@@ -63,12 +62,6 @@ public:
     float drawOpacity() const { return m_drawOpacity; }
     void setDrawOpacity(float opacity) { m_drawOpacity = opacity; }
 
-    void setFilters(const WebKit::WebFilterOperations& filters) { m_filters = filters; }
-    const WebKit::WebFilterOperations& filters() const { return m_filters; }
-
-    void setBackgroundFilters(const WebKit::WebFilterOperations& filters) { m_backgroundFilters = filters; }
-    const WebKit::WebFilterOperations& backgroundFilters() const { return m_backgroundFilters; }
-
     void setNearestAncestorThatMovesPixels(CCRenderSurface* surface) { m_nearestAncestorThatMovesPixels = surface; }
     const CCRenderSurface* nearestAncestorThatMovesPixels() const { return m_nearestAncestorThatMovesPixels; }
 
@@ -78,17 +71,11 @@ public:
     void setDrawTransform(const WebKit::WebTransformationMatrix& drawTransform) { m_drawTransform = drawTransform; }
     const WebKit::WebTransformationMatrix& drawTransform() const { return m_drawTransform; }
 
-    void setOriginTransform(const WebKit::WebTransformationMatrix& originTransform) { m_originTransform = originTransform; }
-    const WebKit::WebTransformationMatrix& originTransform() const { return m_originTransform; }
-
     void setScreenSpaceTransform(const WebKit::WebTransformationMatrix& screenSpaceTransform) { m_screenSpaceTransform = screenSpaceTransform; }
     const WebKit::WebTransformationMatrix& screenSpaceTransform() const { return m_screenSpaceTransform; }
 
     void setReplicaDrawTransform(const WebKit::WebTransformationMatrix& replicaDrawTransform) { m_replicaDrawTransform = replicaDrawTransform; }
     const WebKit::WebTransformationMatrix& replicaDrawTransform() const { return m_replicaDrawTransform; }
-
-    void setReplicaOriginTransform(const WebKit::WebTransformationMatrix& replicaOriginTransform) { m_replicaOriginTransform = replicaOriginTransform; }
-    const WebKit::WebTransformationMatrix& replicaOriginTransform() const { return m_replicaOriginTransform; }
 
     void setReplicaScreenSpaceTransform(const WebKit::WebTransformationMatrix& replicaScreenSpaceTransform) { m_replicaScreenSpaceTransform = replicaScreenSpaceTransform; }
     const WebKit::WebTransformationMatrix& replicaScreenSpaceTransform() const { return m_replicaScreenSpaceTransform; }
@@ -98,7 +85,6 @@ public:
     bool screenSpaceTransformsAreAnimating() const { return m_screenSpaceTransformsAreAnimating; }
     void setScreenSpaceTransformsAreAnimating(bool animating) { m_screenSpaceTransformsAreAnimating = animating; }
 
-    // Usage: this clipRect should not be used if one of the two conditions is true: (a) clipRect() is empty, or (b) owningLayer->parent()->usesLayerClipping() is false.
     void setClipRect(const IntRect&);
     const IntRect& clipRect() const { return m_clipRect; }
 
@@ -114,12 +100,6 @@ public:
     Vector<CCLayerImpl*>& layerList() { return m_layerList; }
 
     int owningLayerId() const;
-    CCRenderSurface* targetRenderSurface() const;
-
-    bool hasReplica() const;
-
-    bool hasMask() const;
-    bool replicaHasMask() const;
 
     void resetPropertyChangedFlag() { m_surfacePropertyChanged = false; }
     bool surfacePropertyChanged() const;
@@ -127,10 +107,10 @@ public:
 
     CCDamageTracker* damageTracker() const { return m_damageTracker.get(); }
 
-    PassOwnPtr<CCSharedQuadState> createSharedQuadState() const;
-    PassOwnPtr<CCSharedQuadState> createReplicaSharedQuadState() const;
+    PassOwnPtr<CCSharedQuadState> createSharedQuadState(int id) const;
+    PassOwnPtr<CCSharedQuadState> createReplicaSharedQuadState(int id) const;
 
-    void appendQuads(CCQuadCuller&, CCSharedQuadState*, bool forReplica, const CCRenderPass*);
+    void appendQuads(CCQuadSink&, CCSharedQuadState*, bool forReplica, int renderPassId);
 
     FloatRect computeRootScissorRectInCurrentSurface(const FloatRect& rootScissorRect) const;
 
@@ -144,15 +124,11 @@ private:
     float m_drawOpacity;
     bool m_drawOpacityIsAnimating;
     WebKit::WebTransformationMatrix m_drawTransform;
-    WebKit::WebTransformationMatrix m_originTransform;
     WebKit::WebTransformationMatrix m_screenSpaceTransform;
     WebKit::WebTransformationMatrix m_replicaDrawTransform;
-    WebKit::WebTransformationMatrix m_replicaOriginTransform;
     WebKit::WebTransformationMatrix m_replicaScreenSpaceTransform;
     bool m_targetSurfaceTransformsAreAnimating;
     bool m_screenSpaceTransformsAreAnimating;
-    WebKit::WebFilterOperations m_filters;
-    WebKit::WebFilterOperations m_backgroundFilters;
 
     // Uses the space of the surface's target surface.
     IntRect m_clipRect;
@@ -172,6 +148,7 @@ private:
     // For CCLayerIteratorActions
     int m_targetRenderSurfaceLayerIndexHistory;
     int m_currentLayerIndexHistory;
+
     friend struct CCLayerIteratorActions;
 };
 

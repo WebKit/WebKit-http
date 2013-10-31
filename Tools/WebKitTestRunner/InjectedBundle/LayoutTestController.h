@@ -141,7 +141,6 @@ public:
 
     // Printing
     int numberOfPages(double pageWidthInPixels, double pageHeightInPixels);
-    int pageNumberForElementById(JSStringRef, double pageWidthInPixels, double pageHeightInPixels);
     JSRetainPtr<JSStringRef> pageSizeAndMarginsInPixels(int pageIndex, int width, int height, int marginTop, int marginRight, int marginBottom, int marginLeft);
     bool isPageBoxVisible(int pageIndex);
 
@@ -205,6 +204,13 @@ public:
     void callSetBackingScaleFactorCallback();
 
     void overridePreference(JSStringRef preference, bool value);
+
+    // Web intents testing.
+    void sendWebIntentResponse(JSStringRef reply);
+    void deliverWebIntent(JSStringRef action, JSStringRef type, JSStringRef data);
+
+    // Cookies testing
+    void setAlwaysAcceptCookies(bool);
 
     // Custom full screen behavior.
     void setHasCustomFullScreenBehavior(bool value) { m_customFullScreenBehavior = value; }

@@ -44,7 +44,7 @@ import re
 import sys
 import time
 
-from webkitpy.layout_tests.controllers import manager_worker_broker
+from webkitpy.common import message_pool
 from webkitpy.layout_tests.controllers import worker
 from webkitpy.layout_tests.controllers.test_result_writer import TestResultWriter
 from webkitpy.layout_tests.layout_package import json_layout_results_generator
@@ -88,11 +88,9 @@ def interpret_test_failures(port, test_name, failures):
             test_dict['image_diff_percent'] = failure.diff_percent
         elif isinstance(failure, test_failures.FailureReftestMismatch):
             test_dict['is_reftest'] = True
-            test_dict['ref_file'] = port.relative_test_filename(failure.reference_filename)
             test_dict['image_diff_percent'] = failure.diff_percent
         elif isinstance(failure, test_failures.FailureReftestMismatchDidNotOccur):
             test_dict['is_mismatch_reftest'] = True
-            test_dict['ref_file'] = port.relative_test_filename(failure.reference_filename)
 
     if test_failures.FailureMissingResult in failure_types:
         test_dict['is_missing_text'] = True
@@ -266,8 +264,8 @@ class TestRunInterruptedException(Exception):
         return self.__class__, (self.reason,)
 
 
-# Export this so callers don't need to know about manager_worker_broker.
-WorkerException = manager_worker_broker.WorkerException
+# Export this so callers don't need to know about message pools.
+WorkerException = message_pool.WorkerException
 
 
 class TestShard(object):
@@ -331,7 +329,7 @@ class Manager(object):
         self._worker_stats = {}
         self._current_result_summary = None
 
-    def collect_tests(self, args):
+    def _collect_tests(self, args):
         """Find all the files to test.
 
         Args:
@@ -368,7 +366,7 @@ class Manager(object):
     def _is_perf_test(self, test):
         return self.PERF_SUBDIR == test or (self.PERF_SUBDIR + self._port.TEST_PATH_SEPARATOR) in test
 
-    def parse_expectations(self):
+    def _parse_expectations(self):
         self._expectations = test_expectations.TestExpectations(self._port, self._test_files)
 
     def _split_into_chunks_if_necessary(self, skipped):
@@ -419,19 +417,14 @@ class Manager(object):
 
         files = test_files[slice_start:slice_end]
 
-        tests_run_msg = 'Running: %d tests (chunk slice [%d:%d] of %d)' % ((slice_end - slice_start), slice_start, slice_end, num_tests)
-        self._printer.print_expected(tests_run_msg)
+        _log.debug('chunk slice [%d:%d] of %d is %d tests' % (slice_start, slice_end, num_tests, (slice_end - slice_start)))
 
         # If we reached the end and we don't have enough tests, we run some
         # from the beginning.
         if slice_end - slice_start < chunk_len:
             extra = chunk_len - (slice_end - slice_start)
-            extra_msg = ('   last chunk is partial, appending [0:%d]' % extra)
-            self._printer.print_expected(extra_msg)
-            tests_run_msg += "\n" + extra_msg
+            _log.debug('   last chunk is partial, appending [0:%d]' % extra)
             files.extend(test_files[0:extra])
-        tests_run_filename = self._filesystem.join(self._results_directory, "tests_run.txt")
-        self._filesystem.write_text_file(tests_run_filename, tests_run_msg)
 
         len_skip_chunk = int(len(files) * len(skipped) / float(len(self._test_files)))
         skip_chunk_list = list(skipped)[0:len_skip_chunk]
@@ -446,7 +439,7 @@ class Manager(object):
         self._test_files_list = files + skip_chunk_list
         self._test_files = set(self._test_files_list)
 
-        self.parse_expectations()
+        self._parse_expectations()
 
         self._test_files = set(files)
         self._test_files_list = files
@@ -482,19 +475,12 @@ class Manager(object):
         # now make sure we're explicitly running any tests passed on the command line.
         self._test_files.update(found_test_files.intersection(self._paths))
 
-        if not num_all_test_files:
+        num_to_run = len(self._test_files)
+        num_skipped = num_all_test_files - num_to_run
+
+        if not num_to_run:
             _log.critical('No tests to run.')
             return None
-
-        num_skipped = num_all_test_files - len(self._test_files)
-        if num_skipped:
-            self._printer.print_expected("Running %s (found %d, skipping %d)." % (
-                grammar.pluralize('test', num_all_test_files - num_skipped),
-                num_all_test_files, num_skipped))
-        elif len(self._test_files) > 1:
-            self._printer.print_expected("Running all %d tests." % len(self._test_files))
-        else:
-            self._printer.print_expected("Running 1 test.")
 
         # Create a sorted list of test files so the subset chunk,
         # if used, contains alphabetically consecutive tests.
@@ -520,10 +506,8 @@ class Manager(object):
             (self._options.repeat_each if self._options.repeat_each else 1) * \
             (self._options.iterations if self._options.iterations else 1)
         result_summary = ResultSummary(self._expectations, self._test_files | skipped, iterations)
-        self._print_expected_results_of_type(result_summary, test_expectations.PASS, "passes")
-        self._print_expected_results_of_type(result_summary, test_expectations.FAIL, "failures")
-        self._print_expected_results_of_type(result_summary, test_expectations.FLAKY, "flaky")
-        self._print_expected_results_of_type(result_summary, test_expectations.SKIP, "skipped")
+
+        self._printer.print_expected(num_all_test_files, result_summary, self._expectations.get_tests_with_result_type)
 
         if self._options.skipped != 'ignore':
             # Note that we don't actually run the skipped tests (they were
@@ -532,17 +516,8 @@ class Manager(object):
             for test in skipped:
                 result = test_results.TestResult(test)
                 result.type = test_expectations.SKIP
-                iterations =  \
-                    (self._options.repeat_each if self._options.repeat_each else 1) * \
-                    (self._options.iterations if self._options.iterations else 1)
                 for iteration in range(iterations):
-                    result_summary.add(result, expected=True)
-        self._printer.print_expected('')
-
-        # Check to make sure we didn't filter out all of the tests.
-        if not len(self._test_files):
-            _log.info("All tests are being skipped")
-            return None
+                    result_summary.add(result, expected=True, test_is_slow=self._test_is_slow(test))
 
         return result_summary
 
@@ -575,7 +550,13 @@ class Manager(object):
     def _test_is_slow(self, test_file):
         return self._expectations.has_modifier(test_file, test_expectations.SLOW)
 
-    def _shard_tests(self, test_files, num_workers, fully_parallel):
+    def _is_ref_test(self, test_input):
+        if test_input.reference_files is None:
+            # Lazy initialization.
+            test_input.reference_files = self._port.reference_files(test_input.test_name)
+        return bool(test_input.reference_files)
+
+    def _shard_tests(self, test_files, num_workers, fully_parallel, shard_ref_tests):
         """Groups tests into batches.
         This helps ensure that tests that depend on each other (aka bad tests!)
         continue to run together as most cross-tests dependencies tend to
@@ -589,30 +570,40 @@ class Manager(object):
         # own class or module. Consider grouping it with the chunking logic
         # in prepare_lists as well.
         if num_workers == 1:
-            return self._shard_in_two(test_files)
+            return self._shard_in_two(test_files, shard_ref_tests)
         elif fully_parallel:
             return self._shard_every_file(test_files)
-        return self._shard_by_directory(test_files, num_workers)
+        return self._shard_by_directory(test_files, num_workers, shard_ref_tests)
 
-    def _shard_in_two(self, test_files):
+    def _shard_in_two(self, test_files, shard_ref_tests):
         """Returns two lists of shards, one with all the tests requiring a lock and one with the rest.
 
         This is used when there's only one worker, to minimize the per-shard overhead."""
         locked_inputs = []
+        locked_ref_test_inputs = []
         unlocked_inputs = []
+        unlocked_ref_test_inputs = []
         for test_file in test_files:
             test_input = self._get_test_input_for_file(test_file)
             if self._test_requires_lock(test_file):
-                locked_inputs.append(test_input)
+                if shard_ref_tests and self._is_ref_test(test_input):
+                    locked_ref_test_inputs.append(test_input)
+                else:
+                    locked_inputs.append(test_input)
             else:
-                unlocked_inputs.append(test_input)
+                if shard_ref_tests and self._is_ref_test(test_input):
+                    unlocked_ref_test_inputs.append(test_input)
+                else:
+                    unlocked_inputs.append(test_input)
+        locked_inputs.extend(locked_ref_test_inputs)
+        unlocked_inputs.extend(unlocked_ref_test_inputs)
 
         locked_shards = []
         unlocked_shards = []
         if locked_inputs:
             locked_shards = [TestShard('locked_tests', locked_inputs)]
         if unlocked_inputs:
-            unlocked_shards = [TestShard('unlocked_tests', unlocked_inputs)]
+            unlocked_shards.append(TestShard('unlocked_tests', unlocked_inputs))
 
         return locked_shards, unlocked_shards
 
@@ -635,7 +626,7 @@ class Manager(object):
 
         return locked_shards, unlocked_shards
 
-    def _shard_by_directory(self, test_files, num_workers):
+    def _shard_by_directory(self, test_files, num_workers, shard_ref_tests):
         """Returns two lists of shards, each shard containing all the files in a directory.
 
         This is the default mode, and gets as much parallelism as we can while
@@ -643,16 +634,29 @@ class Manager(object):
         locked_shards = []
         unlocked_shards = []
         tests_by_dir = {}
+        ref_tests_by_dir = {}
         # FIXME: Given that the tests are already sorted by directory,
         # we can probably rewrite this to be clearer and faster.
         for test_file in test_files:
             directory = self._get_dir_for_test_file(test_file)
             test_input = self._get_test_input_for_file(test_file)
-            tests_by_dir.setdefault(directory, [])
-            tests_by_dir[directory].append(test_input)
+            if shard_ref_tests and self._is_ref_test(test_input):
+                ref_tests_by_dir.setdefault(directory, [])
+                ref_tests_by_dir[directory].append(test_input)
+            else:
+                tests_by_dir.setdefault(directory, [])
+                tests_by_dir[directory].append(test_input)
 
         for directory, test_inputs in tests_by_dir.iteritems():
             shard = TestShard(directory, test_inputs)
+            if self._test_requires_lock(directory):
+                locked_shards.append(shard)
+            else:
+                unlocked_shards.append(shard)
+
+        for directory, test_inputs in ref_tests_by_dir.iteritems():
+            # '~' to place the ref tests after other tests after sorted.
+            shard = TestShard('~ref:' + directory, test_inputs)
             if self._test_requires_lock(directory):
                 locked_shards.append(shard)
             else:
@@ -714,15 +718,6 @@ class Manager(object):
                                         extract_and_flatten(some_shards)))
         return new_shards
 
-    def _log_num_workers(self, num_workers, num_shards, num_locked_shards):
-        driver_name = self._port.driver_name()
-        if num_workers == 1:
-            self._printer.print_config("Running 1 %s over %s" %
-                (driver_name, grammar.pluralize('shard', num_shards)))
-        else:
-            self._printer.print_config("Running %d %ss in parallel over %d shards (%d locked)" %
-                (num_workers, driver_name, num_shards, num_locked_shards))
-
     def _run_tests(self, file_list, result_summary, num_workers):
         """Runs the tests in the file_list.
 
@@ -747,8 +742,8 @@ class Manager(object):
         keyboard_interrupted = False
         interrupted = False
 
-        self._printer.print_update('Sharding tests ...')
-        locked_shards, unlocked_shards = self._shard_tests(file_list, int(self._options.child_processes), self._options.fully_parallel)
+        self._printer.write_update('Sharding tests ...')
+        locked_shards, unlocked_shards = self._shard_tests(file_list, int(self._options.child_processes), self._options.fully_parallel, self._options.shard_ref_tests)
 
         # FIXME: We don't have a good way to coordinate the workers so that
         # they don't try to run the shards that need a lock if we don't actually
@@ -764,20 +759,18 @@ class Manager(object):
             self.start_servers_with_lock(2 * min(num_workers, len(locked_shards)))
 
         num_workers = min(num_workers, len(all_shards))
-        self._log_num_workers(num_workers, len(all_shards), len(locked_shards))
+        self._printer.print_workers_and_shards(num_workers, len(all_shards), len(locked_shards))
 
         def worker_factory(worker_connection):
             return worker.Worker(worker_connection, self.results_directory(), self._options)
 
-        manager_connection = manager_worker_broker.get(num_workers, self, worker_factory, self._port.host)
-
         if self._options.dry_run:
             return (keyboard_interrupted, interrupted, self._worker_stats.values(), self._group_stats, self._all_results)
 
-        self._printer.print_update('Starting %s ...' % grammar.pluralize('worker', num_workers))
+        self._printer.write_update('Starting %s ...' % grammar.pluralize('worker', num_workers))
 
         try:
-            with manager_worker_broker.get(self, worker_factory, num_workers, self._port.worker_startup_delay_secs(), self._port.host) as pool:
+            with message_pool.get(self, worker_factory, num_workers, self._port.worker_startup_delay_secs(), self._port.host) as pool:
                 pool.run(('test_list', shard.name, shard.test_inputs) for shard in all_shards)
         except KeyboardInterrupt:
             self._printer.flush()
@@ -786,8 +779,8 @@ class Manager(object):
         except TestRunInterruptedException, e:
             _log.warning(e.reason)
             interrupted = True
-        except:
-            _log.error("Exception raised, exiting")
+        except Exception, e:
+            _log.debug('%s("%s") raised, exiting' % (e.__class__.__name__, str(e)))
             raise
         finally:
             self.stop_servers_with_lock()
@@ -802,9 +795,6 @@ class Manager(object):
             self._filesystem.maybe_make_directory(self._filesystem.join(self._results_directory, 'retries'))
             return self._filesystem.join(self._results_directory, 'retries')
 
-    def update(self):
-        self.update_summary(self._current_result_summary)
-
     def needs_servers(self):
         return any(self._test_requires_lock(test_name) for test_name in self._test_files) and self._options.http
 
@@ -818,12 +808,12 @@ class Manager(object):
         # This must be started before we check the system dependencies,
         # since the helper may do things to make the setup correct.
         if self._options.pixel_tests:
-            self._printer.print_update("Starting pixel test helper ...")
+            self._printer.write_update("Starting pixel test helper ...")
             self._port.start_helper()
 
         # Check that the system dependencies (themes, fonts, ...) are correct.
         if not self._options.nocheck_sys_deps:
-            self._printer.print_update("Checking system dependencies ...")
+            self._printer.write_update("Checking system dependencies ...")
             if not self._port.check_sys_deps(self.needs_servers()):
                 self._port.stop_helper()
                 return None
@@ -836,28 +826,29 @@ class Manager(object):
 
         self._port.setup_test_run()
 
-        self._printer.print_update("Preparing tests ...")
+        self._printer.write_update("Preparing tests ...")
         result_summary = self.prepare_lists_and_print_output()
         if not result_summary:
             return None
 
         return result_summary
 
-    def run(self):
-        """Run all our tests on all our test files.
+    def run(self, args):
+        """Run all our tests on all our test files and return the number of unexpected results (0 == success)."""
+        self._printer.write_update("Collecting tests ...")
+        try:
+            self._collect_tests(args)
+        except IOError as e:
+            # This is raised when the --test-list doesn't exist.
+            return -1
 
-        For each test file, we run each test type. If there are any failures,
-        we collect them for reporting.
+        self._printer.write_update("Checking build ...")
+        if not self._port.check_build(self.needs_servers()):
+            _log.error("Build check failed")
+            return -1
 
-        Args:
-          result_summary: a summary object tracking the test results.
-
-        Return:
-          The number of unexpected results (0 == success)
-        """
-        # collect_tests() must have been called first to initialize us.
-        # If we didn't find any files to test, we've errored out already in
-        # prepare_lists_and_print_output().
+        self._printer.write_update("Parsing expectations ...")
+        self._parse_expectations()
 
         result_summary = self._set_up_run()
         if not result_summary:
@@ -891,13 +882,9 @@ class Manager(object):
         self._look_for_new_crash_logs(retry_summary, start_time)
         self._clean_up_run()
 
-        self._print_timing_statistics(end_time - start_time, thread_timings, test_timings, individual_test_timings, result_summary)
-        self._print_result_summary(result_summary)
-
-        self._printer.print_one_line_summary(result_summary.total, result_summary.expected, result_summary.unexpected)
-
         unexpected_results = summarize_results(self._port, self._expectations, result_summary, retry_summary, individual_test_timings, only_unexpected=True, interrupted=interrupted)
-        self._printer.print_unexpected_results(unexpected_results)
+
+        self._printer.print_results(end_time - start_time, thread_timings, test_timings, individual_test_timings, result_summary, unexpected_results)
 
         # Re-raise a KeyboardInterrupt if necessary so the caller can handle it.
         if keyboard_interrupted:
@@ -920,25 +907,25 @@ class Manager(object):
         return self._port.exit_code_from_summarized_results(unexpected_results)
 
     def start_servers_with_lock(self, number_of_servers):
-        self._printer.print_update('Acquiring http lock ...')
+        self._printer.write_update('Acquiring http lock ...')
         self._port.acquire_http_lock()
         if self._http_tests():
-            self._printer.print_update('Starting HTTP server ...')
+            self._printer.write_update('Starting HTTP server ...')
             self._port.start_http_server(number_of_servers=number_of_servers)
         if self._websocket_tests():
-            self._printer.print_update('Starting WebSocket server ...')
+            self._printer.write_update('Starting WebSocket server ...')
             self._port.start_websocket_server()
         self._has_http_lock = True
 
     def stop_servers_with_lock(self):
         if self._has_http_lock:
             if self._http_tests():
-                self._printer.print_update('Stopping HTTP server ...')
+                self._printer.write_update('Stopping HTTP server ...')
                 self._port.stop_http_server()
             if self._websocket_tests():
-                self._printer.print_update('Stopping WebSocket server ...')
+                self._printer.write_update('Stopping WebSocket server ...')
                 self._port.stop_websocket_server()
-            self._printer.print_update('Releasing server lock ...')
+            self._printer.write_update('Releasing server lock ...')
             self._port.release_http_lock()
             self._has_http_lock = False
 
@@ -976,17 +963,6 @@ class Manager(object):
                 writer = TestResultWriter(self._port._filesystem, self._port, self._port.results_directory(), test)
                 writer.write_crash_log(crash_log)
 
-    def update_summary(self, result_summary):
-        """Update the summary and print results with any completed tests."""
-        while True:
-            try:
-                result = test_results.TestResult.loads(self._result_queue.get_nowait())
-            except Queue.Empty:
-                self._printer.print_progress(result_summary, self._retrying, self._test_files_list)
-                return
-
-            self._update_summary_with_result(result_summary, result)
-
     def _mark_interrupted_tests_as_skipped(self, result_summary):
         for test_name in self._test_files:
             if test_name not in result_summary.results:
@@ -994,7 +970,7 @@ class Manager(object):
                 # FIXME: We probably need to loop here if there are multiple iterations.
                 # FIXME: Also, these results are really neither expected nor unexpected. We probably
                 # need a third type of result.
-                result_summary.add(result, expected=False)
+                result_summary.add(result, expected=False, test_is_slow=self._test_is_slow(test_name))
 
     def _interrupt_if_at_failure_limits(self, result_summary):
         # Note: The messages in this method are constructed to match old-run-webkit-tests
@@ -1019,21 +995,25 @@ class Manager(object):
 
     def _update_summary_with_result(self, result_summary, result):
         if result.type == test_expectations.SKIP:
-            result_summary.add(result, expected=True)
+            exp_str = got_str = 'SKIP'
+            expected = True
         else:
             expected = self._expectations.matches_an_expected_result(result.test_name, result.type, self._options.pixel_tests or test_failures.is_reftest_failure(result.failures))
-            result_summary.add(result, expected)
             exp_str = self._expectations.get_expectations_string(result.test_name)
             got_str = self._expectations.expectation_to_string(result.type)
-            self._printer.print_test_result(result, expected, exp_str, got_str)
-        self._printer.print_progress(result_summary, self._retrying, self._test_files_list)
+
+        result_summary.add(result, expected, self._test_is_slow(result.test_name))
+
+        # FIXME: there's too many arguments to this function.
+        self._printer.print_finished_test(result, expected, exp_str, got_str, result_summary, self._retrying, self._test_files_list)
+
         self._interrupt_if_at_failure_limits(result_summary)
 
     def _clobber_old_results(self):
         # Just clobber the actual test results directories since the other
         # files in the results directory are explicitly used for cross-run
         # tracking.
-        self._printer.print_update("Clobbering old results in %s" %
+        self._printer.write_update("Clobbering old results in %s" %
                                    self._results_directory)
         layout_tests_dir = self._port.layout_tests_dir()
         possible_dirs = self._port.test_dirs()
@@ -1114,53 +1094,6 @@ class Manager(object):
         self._filesystem.remove(times_json_path)
         self._filesystem.remove(incremental_results_path)
 
-    def print_config(self):
-        """Prints the configuration for the test run."""
-        p = self._printer
-        p.print_config("Using port '%s'" % self._port.name())
-        p.print_config("Test configuration: %s" % self._port.test_configuration())
-        p.print_config("Placing test results in %s" % self._results_directory)
-        if self._options.new_baseline:
-            p.print_config("Placing new baselines in %s" %
-                           self._port.baseline_path())
-
-        fallback_path = [self._filesystem.split(x)[1] for x in self._port.baseline_search_path()]
-        p.print_config("Baseline search path: %s -> generic" % " -> ".join(fallback_path))
-
-        p.print_config("Using %s build" % self._options.configuration)
-        if self._options.pixel_tests:
-            p.print_config("Pixel tests enabled")
-        else:
-            p.print_config("Pixel tests disabled")
-
-        p.print_config("Regular timeout: %s, slow test timeout: %s" %
-                       (self._options.time_out_ms,
-                        self._options.slow_time_out_ms))
-
-        p.print_config('Command line: ' +
-                       ' '.join(self._port.driver_cmd_line()))
-        p.print_config("")
-
-    def _print_expected_results_of_type(self, result_summary,
-                                        result_type, result_type_str):
-        """Print the number of the tests in a given result class.
-
-        Args:
-          result_summary - the object containing all the results to report on
-          result_type - the particular result type to report in the summary.
-          result_type_str - a string description of the result_type.
-        """
-        tests = self._expectations.get_tests_with_result_type(result_type)
-        now = result_summary.tests_by_timeline[test_expectations.NOW]
-        wontfix = result_summary.tests_by_timeline[test_expectations.WONTFIX]
-
-        # We use a fancy format string in order to print the data out in a
-        # nicely-aligned table.
-        fmtstr = ("Expect: %%5d %%-8s (%%%dd now, %%%dd wontfix)"
-                  % (self._num_digits(now), self._num_digits(wontfix)))
-        self._printer.print_expected(fmtstr %
-            (len(tests), result_type_str, len(tests & now), len(tests & wontfix)))
-
     def _num_digits(self, num):
         """Returns the number of digits needed to represent the length of a
         sequence."""
@@ -1168,218 +1101,6 @@ class Manager(object):
         if len(num):
             ndigits = int(math.log10(len(num))) + 1
         return ndigits
-
-    def _print_timing_statistics(self, total_time, thread_timings,
-                               directory_test_timings, individual_test_timings,
-                               result_summary):
-        """Record timing-specific information for the test run.
-
-        Args:
-          total_time: total elapsed time (in seconds) for the test run
-          thread_timings: wall clock time each thread ran for
-          directory_test_timings: timing by directory
-          individual_test_timings: timing by file
-          result_summary: summary object for the test run
-        """
-        self._printer.print_timing("Test timing:")
-        self._printer.print_timing("  %6.2f total testing time" % total_time)
-        self._printer.print_timing("")
-        self._printer.print_timing("Thread timing:")
-        cuml_time = 0
-        for t in thread_timings:
-            self._printer.print_timing("    %10s: %5d tests, %6.2f secs" %
-                  (t['name'], t['num_tests'], t['total_time']))
-            cuml_time += t['total_time']
-        self._printer.print_timing("   %6.2f cumulative, %6.2f optimal" %
-              (cuml_time, cuml_time / int(self._options.child_processes)))
-        self._printer.print_timing("")
-
-        self._print_aggregate_test_statistics(individual_test_timings)
-        self._print_individual_test_times(individual_test_timings,
-                                          result_summary)
-        self._print_directory_timings(directory_test_timings)
-
-    def _print_aggregate_test_statistics(self, individual_test_timings):
-        """Prints aggregate statistics (e.g. median, mean, etc.) for all tests.
-        Args:
-          individual_test_timings: List of TestResults for all tests.
-        """
-        times_for_dump_render_tree = [test_stats.test_run_time for test_stats in individual_test_timings]
-        self._print_statistics_for_test_timings("PER TEST TIME IN TESTSHELL (seconds):",
-                                                times_for_dump_render_tree)
-
-    def _print_individual_test_times(self, individual_test_timings,
-                                  result_summary):
-        """Prints the run times for slow, timeout and crash tests.
-        Args:
-          individual_test_timings: List of TestStats for all tests.
-          result_summary: summary object for test run
-        """
-        # Reverse-sort by the time spent in DumpRenderTree.
-        individual_test_timings.sort(lambda a, b:
-            cmp(b.test_run_time, a.test_run_time))
-
-        num_printed = 0
-        slow_tests = []
-        timeout_or_crash_tests = []
-        unexpected_slow_tests = []
-        for test_tuple in individual_test_timings:
-            test_name = test_tuple.test_name
-            is_timeout_crash_or_slow = False
-            if self._test_is_slow(test_name):
-                is_timeout_crash_or_slow = True
-                slow_tests.append(test_tuple)
-
-            if test_name in result_summary.failures:
-                result = result_summary.results[test_name].type
-                if (result == test_expectations.TIMEOUT or
-                    result == test_expectations.CRASH):
-                    is_timeout_crash_or_slow = True
-                    timeout_or_crash_tests.append(test_tuple)
-
-            if (not is_timeout_crash_or_slow and
-                num_printed < printing.NUM_SLOW_TESTS_TO_LOG):
-                num_printed = num_printed + 1
-                unexpected_slow_tests.append(test_tuple)
-
-        self._printer.print_timing("")
-        self._print_test_list_timing("%s slowest tests that are not "
-            "marked as SLOW and did not timeout/crash:" %
-            printing.NUM_SLOW_TESTS_TO_LOG, unexpected_slow_tests)
-        self._printer.print_timing("")
-        self._print_test_list_timing("Tests marked as SLOW:", slow_tests)
-        self._printer.print_timing("")
-        self._print_test_list_timing("Tests that timed out or crashed:",
-                                     timeout_or_crash_tests)
-        self._printer.print_timing("")
-
-    def _print_test_list_timing(self, title, test_list):
-        """Print timing info for each test.
-
-        Args:
-          title: section heading
-          test_list: tests that fall in this section
-        """
-        if self._printer.disabled('slowest'):
-            return
-
-        self._printer.print_timing(title)
-        for test_tuple in test_list:
-            test_run_time = round(test_tuple.test_run_time, 1)
-            self._printer.print_timing("  %s took %s seconds" % (test_tuple.test_name, test_run_time))
-
-    def _print_directory_timings(self, directory_test_timings):
-        """Print timing info by directory for any directories that
-        take > 10 seconds to run.
-
-        Args:
-          directory_test_timing: time info for each directory
-        """
-        timings = []
-        for directory in directory_test_timings:
-            num_tests, time_for_directory = directory_test_timings[directory]
-            timings.append((round(time_for_directory, 1), directory,
-                            num_tests))
-        timings.sort()
-
-        self._printer.print_timing("Time to process slowest subdirectories:")
-        min_seconds_to_print = 10
-        for timing in timings:
-            if timing[0] > min_seconds_to_print:
-                self._printer.print_timing(
-                    "  %s took %s seconds to run %s tests." % (timing[1],
-                    timing[0], timing[2]))
-        self._printer.print_timing("")
-
-    def _print_statistics_for_test_timings(self, title, timings):
-        """Prints the median, mean and standard deviation of the values in
-        timings.
-
-        Args:
-          title: Title for these timings.
-          timings: A list of floats representing times.
-        """
-        self._printer.print_timing(title)
-        timings.sort()
-
-        num_tests = len(timings)
-        if not num_tests:
-            return
-        percentile90 = timings[int(.9 * num_tests)]
-        percentile99 = timings[int(.99 * num_tests)]
-
-        if num_tests % 2 == 1:
-            median = timings[((num_tests - 1) / 2) - 1]
-        else:
-            lower = timings[num_tests / 2 - 1]
-            upper = timings[num_tests / 2]
-            median = (float(lower + upper)) / 2
-
-        mean = sum(timings) / num_tests
-
-        for timing in timings:
-            sum_of_deviations = math.pow(timing - mean, 2)
-
-        std_deviation = math.sqrt(sum_of_deviations / num_tests)
-        self._printer.print_timing("  Median:          %6.3f" % median)
-        self._printer.print_timing("  Mean:            %6.3f" % mean)
-        self._printer.print_timing("  90th percentile: %6.3f" % percentile90)
-        self._printer.print_timing("  99th percentile: %6.3f" % percentile99)
-        self._printer.print_timing("  Standard dev:    %6.3f" % std_deviation)
-        self._printer.print_timing("")
-
-    def _print_result_summary(self, result_summary):
-        """Print a short summary about how many tests passed.
-
-        Args:
-          result_summary: information to log
-        """
-        failed = result_summary.total_failures
-        skipped = result_summary.total_tests_by_expectation[test_expectations.SKIP]
-        total = result_summary.total
-        passed = total - failed - skipped
-        pct_passed = 0.0
-        if total > 0:
-            pct_passed = float(passed) * 100 / total
-
-        self._printer.print_actual("")
-        self._printer.print_actual("=> Results: %d/%d tests passed (%.1f%%)" %
-                     (passed, total, pct_passed))
-        self._printer.print_actual("")
-        self._print_result_summary_entry(result_summary,
-            test_expectations.NOW, "Tests to be fixed")
-
-        self._printer.print_actual("")
-        self._print_result_summary_entry(result_summary,
-            test_expectations.WONTFIX,
-            "Tests that will only be fixed if they crash (WONTFIX)")
-        self._printer.print_actual("")
-
-    def _print_result_summary_entry(self, result_summary, timeline,
-                                    heading):
-        """Print a summary block of results for a particular timeline of test.
-
-        Args:
-          result_summary: summary to print results for
-          timeline: the timeline to print results for (NOT, WONTFIX, etc.)
-          heading: a textual description of the timeline
-        """
-        total = len(result_summary.tests_by_timeline[timeline])
-        not_passing = (total -
-           len(result_summary.tests_by_expectation[test_expectations.PASS] &
-               result_summary.tests_by_timeline[timeline]))
-        self._printer.print_actual("=> %s (%d):" % (heading, not_passing))
-
-        for result in TestExpectations.EXPECTATION_ORDER:
-            if result == test_expectations.PASS:
-                continue
-            results = (result_summary.tests_by_expectation[result] &
-                       result_summary.tests_by_timeline[timeline])
-            desc = TestExpectations.EXPECTATION_DESCRIPTIONS[result]
-            if not_passing and len(results):
-                pct = len(results) * 100.0 / not_passing
-                self._printer.print_actual("  %5d %-24s (%4.1f%%)" %
-                    (len(results), desc[len(results) != 1], pct))
 
     def _copy_results_html_file(self):
         base_dir = self._port.path_from_webkit_base('LayoutTests', 'fast', 'harness')
@@ -1449,7 +1170,7 @@ def read_test_files(fs, filenames, test_path_separator):
         except IOError, e:
             if e.errno == errno.ENOENT:
                 _log.critical('')
-                _log.critical('--test-list file "%s" not found' % file)
+                _log.critical('--test-list file "%s" not found' % filename)
             raise
     return tests
 

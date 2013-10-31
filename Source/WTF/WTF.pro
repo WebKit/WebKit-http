@@ -61,6 +61,7 @@ HEADERS += \
     Forward.h \
     Functional.h \
     GetPtr.h \
+    GregorianDateTime.h \
     HashCountedSet.h \
     HashFunctions.h \
     HashIterators.h \
@@ -79,6 +80,7 @@ HEADERS += \
     MallocZoneSupport.h \
     MathExtras.h \
     MD5.h \
+    MediaTime.h \
     MessageQueue.h \
     MetaAllocator.h \
     MetaAllocatorHandle.h \
@@ -131,6 +133,7 @@ HEADERS += \
     text/AtomicString.h \
     text/AtomicStringHash.h \
     text/AtomicStringImpl.h \
+    text/Base64.h \
     text/CString.h \
     text/StringBuffer.h \
     text/StringBuilder.h \
@@ -192,6 +195,7 @@ SOURCES += \
     HashTable.cpp \
     MD5.cpp \
     MainThread.cpp \
+    MediaTime.cpp \
     MetaAllocator.cpp \
     NullPtr.cpp \
     NumberOfCores.cpp \
@@ -211,6 +215,7 @@ SOURCES += \
     TypeTraits.cpp \
     WTFThreadData.cpp \
     text/AtomicString.cpp \
+    text/Base64.cpp \
     text/CString.cpp \
     text/StringBuilder.cpp \
     text/StringImpl.cpp \

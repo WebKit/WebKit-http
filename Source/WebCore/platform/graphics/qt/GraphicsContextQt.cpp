@@ -211,11 +211,7 @@ public:
 
     QRectF clipBoundingRect() const
     {
-#if QT_VERSION >= QT_VERSION_CHECK(4, 8, 0)
         return p()->clipBoundingRect();
-#else
-        return p()->clipRegion().boundingRect();
-#endif
     }
 
     void takeOwnershipOfPlatformContext() { platformContextIsOwned = true; }
@@ -291,7 +287,7 @@ PlatformGraphicsContext* GraphicsContext::platformContext() const
     return m_data->p();
 }
 
-AffineTransform GraphicsContext::getCTM() const
+AffineTransform GraphicsContext::getCTM(IncludeDeviceScale) const
 {
     if (paintingDisabled())
         return AffineTransform();
@@ -326,6 +322,8 @@ void GraphicsContext::drawRect(const IntRect& rect)
 {
     if (paintingDisabled())
         return;
+
+    ASSERT(!rect.isEmpty());
 
     QPainter* p = m_data->p();
     const bool antiAlias = p->testRenderHint(QPainter::Antialiasing);
@@ -1022,7 +1020,7 @@ void GraphicsContext::clearPlatformShadow()
     m_data->shadow->clear();
 }
 
-void GraphicsContext::pushTransparencyLayerInternal(const QRect &rect, qreal opacity, QPixmap& alphaMask)
+void GraphicsContext::pushTransparencyLayerInternal(const QRect &rect, qreal opacity, QImage& alphaMask)
 {
     QPainter* p = m_data->p();
 
@@ -1057,7 +1055,7 @@ void GraphicsContext::beginPlatformTransparencyLayer(float opacity)
         h = int(qBound(qreal(0), deviceClip.height(), (qreal)h) + 2);
     }
 
-    QPixmap emptyAlphaMask;
+    QImage emptyAlphaMask;
     m_data->layers.push(new TransparencyLayer(p, QRect(x, y, w, h), opacity, emptyAlphaMask));
     ++m_data->layerCount;
 }
@@ -1071,7 +1069,7 @@ void GraphicsContext::endPlatformTransparencyLayer()
     if (!layer->alphaMask.isNull()) {
         layer->painter.resetTransform();
         layer->painter.setCompositionMode(QPainter::CompositionMode_DestinationIn);
-        layer->painter.drawPixmap(QPoint(), layer->alphaMask);
+        layer->painter.drawImage(QPoint(), layer->alphaMask);
     } else
         --m_data->layerCount; // see the comment for layerCount
     layer->painter.end();
@@ -1080,7 +1078,7 @@ void GraphicsContext::endPlatformTransparencyLayer()
     p->save();
     p->resetTransform();
     p->setOpacity(layer->opacity);
-    p->drawPixmap(layer->offset, layer->pixmap);
+    p->drawImage(layer->offset, layer->image);
     p->restore();
 
     delete layer;

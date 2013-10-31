@@ -35,6 +35,7 @@
 #include "JSCell.h"
 #include "JSObject.h"
 #include "ScopeChain.h"
+#include "SlotVisitorInlineMethods.h"
 #include "Structure.h"
 #include "UString.h"
 #include "WriteBarrier.h"
@@ -515,31 +516,26 @@ void MarkStack::mergeOpaqueRoots()
 
 void SlotVisitor::startCopying()
 {
-    ASSERT(!m_copyBlock);
-    m_copyBlock = m_shared.m_copiedSpace->allocateBlockForCopyingPhase();
-}    
+    ASSERT(!m_copiedAllocator.isValid());
+}
 
-void* SlotVisitor::allocateNewSpace(void* ptr, size_t bytes)
+void* SlotVisitor::allocateNewSpaceSlow(size_t bytes)
 {
-    if (CopiedSpace::isOversize(bytes)) {
-        m_shared.m_copiedSpace->pin(CopiedSpace::oversizeBlockFor(ptr));
+    m_shared.m_copiedSpace->doneFillingBlock(m_copiedAllocator.resetCurrentBlock());
+    m_copiedAllocator.setCurrentBlock(m_shared.m_copiedSpace->allocateBlockForCopyingPhase());
+
+    void* result = 0;
+    CheckedBoolean didSucceed = m_copiedAllocator.tryAllocate(bytes, &result);
+    ASSERT(didSucceed);
+    return result;
+}
+
+void* SlotVisitor::allocateNewSpaceOrPin(void* ptr, size_t bytes)
+{
+    if (!checkIfShouldCopyAndPinOtherwise(ptr, bytes))
         return 0;
-    }
-
-    if (m_shared.m_copiedSpace->isPinned(ptr))
-        return 0;
-
-    // The only time it's possible to have a null copy block is if we have just started copying.
-    if (!m_copyBlock)
-        startCopying();
-
-    if (!CopiedSpace::fitsInBlock(m_copyBlock, bytes)) {
-        // We don't need to lock across these two calls because the master thread won't 
-        // call doneCopying() because this thread is considered active.
-        m_shared.m_copiedSpace->doneFillingBlock(m_copyBlock);
-        m_copyBlock = m_shared.m_copiedSpace->allocateBlockForCopyingPhase();
-    }
-    return CopiedSpace::allocateFromBlock(m_copyBlock, bytes);
+    
+    return allocateNewSpace(bytes);
 }
 
 ALWAYS_INLINE bool JSString::tryHashConstLock()
@@ -618,7 +614,7 @@ ALWAYS_INLINE void MarkStack::internalAppend(JSValue* slot)
 void SlotVisitor::copyAndAppend(void** ptr, size_t bytes, JSValue* values, unsigned length)
 {
     void* oldPtr = *ptr;
-    void* newPtr = allocateNewSpace(oldPtr, bytes);
+    void* newPtr = allocateNewSpaceOrPin(oldPtr, bytes);
     if (newPtr) {
         size_t jsValuesOffset = static_cast<size_t>(reinterpret_cast<char*>(values) - static_cast<char*>(oldPtr));
 
@@ -639,12 +635,10 @@ void SlotVisitor::copyAndAppend(void** ptr, size_t bytes, JSValue* values, unsig
     
 void SlotVisitor::doneCopying()
 {
-    if (!m_copyBlock)
+    if (!m_copiedAllocator.isValid())
         return;
 
-    m_shared.m_copiedSpace->doneFillingBlock(m_copyBlock);
-
-    m_copyBlock = 0;
+    m_shared.m_copiedSpace->doneFillingBlock(m_copiedAllocator.resetCurrentBlock());
 }
 
 void SlotVisitor::harvestWeakReferences()

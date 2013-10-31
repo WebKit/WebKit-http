@@ -101,10 +101,10 @@ public:
 
     virtual void reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
     {
-        memoryObjectInfo->reportObjectInfo(this, MemoryInstrumentation::DOM);
-        Node::reportMemoryUsage(memoryObjectInfo);
-        memoryObjectInfo->reportInstrumentedPointer(m_firstChild);
-        memoryObjectInfo->reportInstrumentedPointer(m_lastChild);
+        MemoryClassInfo<ContainerNode> info(memoryObjectInfo, this, MemoryInstrumentation::DOM);
+        info.visitBaseClass<Node>(this);
+        info.addInstrumentedMember(m_firstChild);
+        info.addInstrumentedMember(m_lastChild);
     }
 
 protected:

@@ -37,7 +37,7 @@ using namespace HTMLNames;
 // calculation every time if anything has changed.
 
 HTMLFormCollection::HTMLFormCollection(Element* base)
-    : HTMLCollectionWithArrayStorage(base, FormControls)
+    : HTMLCollection(base, FormControls, OverridesItemAfter)
 {
     ASSERT(base->hasTagName(formTag) || base->hasTagName(fieldsetTag));
 }
@@ -67,15 +67,7 @@ const Vector<HTMLImageElement*>& HTMLFormCollection::formImageElements() const
     return static_cast<HTMLFormElement*>(base())->imageElements();
 }
 
-unsigned HTMLFormCollection::calcLength() const
-{
-    ASSERT(base()->hasTagName(formTag) || base()->hasTagName(fieldsetTag));
-    if (base()->hasTagName(formTag))
-        return static_cast<HTMLFormElement*>(base())->length();
-    return static_cast<HTMLFieldSetElement*>(base())->length();
-}
-
-HTMLElement* HTMLFormCollection::itemInArrayAfter(unsigned& offset, HTMLElement* previousItem) const
+Element* HTMLFormCollection::virtualItemAfter(unsigned& offset, Element* previousItem) const
 {
     const Vector<FormAssociatedElement*>& elementsArray = formControlElements();
     if (previousItem)
@@ -119,7 +111,6 @@ Node* HTMLFormCollection::namedItem(const AtomicString& name) const
     // attribute. If a match is not found, the method then searches for an
     // object with a matching name attribute, but only on those elements
     // that are allowed a name attribute.
-    invalidateCacheIfNeeded();
     const Vector<HTMLImageElement*>* imagesElements = base()->hasTagName(fieldsetTag) ? 0 : &formImageElements();
     if (HTMLElement* item = firstNamedItem(formControlElements(), imagesElements, idAttr, name))
         return item;
@@ -129,7 +120,6 @@ Node* HTMLFormCollection::namedItem(const AtomicString& name) const
 
 void HTMLFormCollection::updateNameCache() const
 {
-    invalidateCacheIfNeeded();
     if (hasNameCache())
         return;
 

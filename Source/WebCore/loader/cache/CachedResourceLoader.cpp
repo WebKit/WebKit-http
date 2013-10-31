@@ -676,7 +676,11 @@ void CachedResourceLoader::loadDone()
 void CachedResourceLoader::garbageCollectDocumentResourcesTimerFired(Timer<CachedResourceLoader>* timer)
 {
     ASSERT_UNUSED(timer, timer == &m_garbageCollectDocumentResourcesTimer);
+    garbageCollectDocumentResources();
+}
 
+void CachedResourceLoader::garbageCollectDocumentResources()
+{
     typedef Vector<String, 10> StringVector;
     StringVector resourcesToDelete;
 
@@ -728,14 +732,20 @@ void CachedResourceLoader::preload(CachedResource::Type type, ResourceRequest& r
     // FIXME: Rip this out when we are sure it is no longer necessary (even for mobile).
     UNUSED_PARAM(referencedFromBody);
 
-    bool hasRendering = m_document->body() && m_document->body()->renderer();
-    bool canBlockParser = type == CachedResource::Script || type == CachedResource::CSSStyleSheet;
-    if (!hasRendering && !canBlockParser) {
-        // Don't preload subresources that can't block the parser before we have something to draw.
-        // This helps prevent preloads from delaying first display when bandwidth is limited.
-        PendingPreload pendingPreload = { type, request, charset };
-        m_pendingPreloads.append(pendingPreload);
-        return;
+    bool delaySubresourceLoad = true;
+#if PLATFORM(IOS)
+    delaySubresourceLoad = false;
+#endif
+    if (delaySubresourceLoad) {
+        bool hasRendering = m_document->body() && m_document->body()->renderer();
+        bool canBlockParser = type == CachedResource::Script || type == CachedResource::CSSStyleSheet;
+        if (!hasRendering && !canBlockParser) {
+            // Don't preload subresources that can't block the parser before we have something to draw.
+            // This helps prevent preloads from delaying first display when bandwidth is limited.
+            PendingPreload pendingPreload = { type, request, charset };
+            m_pendingPreloads.append(pendingPreload);
+            return;
+        }
     }
     requestPreload(type, request, charset);
 }
@@ -807,9 +817,8 @@ void CachedResourceLoader::clearPreloads()
     for (ListHashSet<CachedResource*>::iterator it = m_preloads->begin(); it != end; ++it) {
         CachedResource* res = *it;
         res->decreasePreloadCount();
-        if (res->canDelete() && !res->inCache())
-            delete res;
-        else if (res->preloadResult() == CachedResource::PreloadNotReferenced)
+        bool deleted = res->deleteIfPossible();
+        if (!deleted && res->preloadResult() == CachedResource::PreloadNotReferenced)
             memoryCache()->remove(res);
     }
     m_preloads.clear();

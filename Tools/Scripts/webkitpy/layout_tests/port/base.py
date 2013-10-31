@@ -33,9 +33,13 @@ test infrastructure (the Port and Driver classes)."""
 import cgi
 import difflib
 import errno
+import itertools
+import logging
 import os
+import operator
 import optparse
 import re
+import sys
 
 try:
     from collections import OrderedDict
@@ -48,18 +52,19 @@ from webkitpy.common import find_files
 from webkitpy.common import read_checksum_from_png
 from webkitpy.common.memoized import memoized
 from webkitpy.common.system import path
-from webkitpy.common.system import logutils
 from webkitpy.common.system.executive import ScriptError
 from webkitpy.common.system.systemhost import SystemHost
 from webkitpy.layout_tests.models.test_configuration import TestConfiguration
 from webkitpy.layout_tests.port import config as port_config
 from webkitpy.layout_tests.port import driver
 from webkitpy.layout_tests.port import http_lock
+from webkitpy.layout_tests.port import image_diff
+from webkitpy.layout_tests.port import server_process
 from webkitpy.layout_tests.servers import apache_http_server
 from webkitpy.layout_tests.servers import http_server
 from webkitpy.layout_tests.servers import websocket_server
 
-_log = logutils.get_logger(__file__)
+_log = logging.getLogger(__name__)
 
 
 # FIXME: This class should merge with WebKitPort now that Chromium behaves mostly like other webkit ports.
@@ -109,6 +114,8 @@ class Port(object):
         self._helper = None
         self._http_server = None
         self._websocket_server = None
+        self._image_differ = None
+        self._server_process_constructor = server_process.ServerProcess  # overridable for testing
         self._http_lock = None  # FIXME: Why does this live on the port object?
 
         # Python's Popen has a bug that causes any pipes opened to a
@@ -178,18 +185,49 @@ class Port(object):
 
     def baseline_version_dir(self):
         """Return the absolute path to the platform-and-version-specific results."""
-        baseline_search_paths = self.get_option('additional_platform_directory', []) + self.baseline_search_path()
+        baseline_search_paths = self.baseline_search_path()
         return baseline_search_paths[0]
 
+
     def baseline_search_path(self):
+        return self.get_option('additional_platform_directory', []) + self.default_baseline_search_path()
+
+    def default_baseline_search_path(self):
         """Return a list of absolute paths to directories to search under for
         baselines. The directories are searched in order."""
-        raise NotImplementedError('Port.baseline_search_path')
+        search_paths = []
+        if self.get_option('webkit_test_runner'):
+            search_paths.append(self._wk2_port_name())
+        search_paths.append(self.name())
+        if self.name() != self.port_name:
+            search_paths.append(self.port_name)
+        return map(self._webkit_baseline_path, search_paths)
 
     def check_build(self, needs_http):
         """This routine is used to ensure that the build is up to date
         and all the needed binaries are present."""
-        raise NotImplementedError('Port.check_build')
+        # If we're using a pre-built copy of WebKit (--root), we assume it also includes a build of DRT.
+        if not self.get_option('root') and self.get_option('build') and not self._build_driver():
+            return False
+        if not self._check_driver():
+            return False
+        if self.get_option('pixel_tests'):
+            if not self.check_image_diff():
+                return False
+        if not self._check_port_build():
+            return False
+        return True
+
+    def _check_driver(self):
+        driver_path = self._path_to_driver()
+        if not self._filesystem.exists(driver_path):
+            _log.error("%s was not found at %s" % (self.driver_name(), driver_path))
+            return False
+        return True
+
+    def _check_port_build(self):
+        # Ports can override this method to do additional checks.
+        return True
 
     def check_sys_deps(self, needs_http):
         """If the port needs to do some runtime checks to ensure that the
@@ -203,7 +241,11 @@ class Port(object):
 
     def check_image_diff(self, override_step=None, logging=True):
         """This routine is used to check whether image_diff binary exists."""
-        raise NotImplementedError('Port.check_image_diff')
+        image_diff_path = self._path_to_image_diff()
+        if not self._filesystem.exists(image_diff_path):
+            _log.error("ImageDiff was not found at %s" % image_diff_path)
+            return False
+        return True
 
     def check_pretty_patch(self, logging=True):
         """Checks whether we can use the PrettyPatch ruby script."""
@@ -273,8 +315,18 @@ class Port(object):
 
         |tolerance| should be a percentage value (0.0 - 100.0).
         If it is omitted, the port default tolerance value is used.
+
+        If an error occurs (like ImageDiff isn't found, or crashes, we log an error and return True (for a diff).
         """
-        raise NotImplementedError('Port.diff_image')
+        if not actual_contents and not expected_contents:
+            return (None, 0)
+        if not actual_contents or not expected_contents:
+            return (True, 0)
+        if not self._image_differ:
+            self._image_differ = image_diff.ImageDiffer(self)
+        self.set_option_default('tolerance', 0.1)
+        tolerance = tolerance or self.get_option('tolerance')
+        return self._image_differ.diff_image(expected_contents, actual_contents, tolerance)
 
     def diff_text(self, expected_text, actual_text, expected_filename, actual_filename):
         """Returns a string containing the diff of the two text strings
@@ -308,9 +360,10 @@ class Port(object):
         pass
 
     def driver_name(self):
-        # FIXME: Seems we should get this from the Port's Driver class.
         if self.get_option('driver_name'):
             return self.get_option('driver_name')
+        if self.get_option('webkit_test_runner'):
+            return 'WebKitTestRunner'
         return 'DumpRenderTree'
 
     def expected_baselines_by_extension(self, test_name):
@@ -362,7 +415,7 @@ class Port(object):
         platform specific.
         """
         baseline_filename = self._filesystem.splitext(test_name)[0] + '-expected' + suffix
-        baseline_search_path = self.get_option('additional_platform_directory', []) + self.baseline_search_path()
+        baseline_search_path = self.baseline_search_path()
 
         baselines = []
         for platform_dir in baseline_search_path:
@@ -617,7 +670,10 @@ class Port(object):
 
     def skipped_layout_tests(self, test_list):
         """Returns the set of tests found in Skipped files. Does *not* include tests marked as SKIP in expectations files."""
-        return set([])
+        tests_to_skip = set(self._expectations_from_skipped_files(self._skipped_file_search_paths()))
+        tests_to_skip.update(self._tests_for_other_platforms())
+        tests_to_skip.update(self._skipped_tests_for_unsupported_features(test_list))
+        return tests_to_skip
 
     def _tests_from_skipped_file_contents(self, skipped_file_contents):
         tests_to_skip = []
@@ -733,7 +789,9 @@ class Port(object):
 
     def default_results_directory(self):
         """Absolute path to the default place to store the test results."""
-        raise NotImplementedError()
+        # Results are store relative to the built products to make it easy
+        # to have multiple copies of webkit checked out and built.
+        return self._build_path('layout-test-results')
 
     def setup_test_run(self):
         """Perform port-specific work at the beginning of a test run."""
@@ -741,7 +799,9 @@ class Port(object):
 
     def clean_up_test_run(self):
         """Perform port-specific work at the end of a test run."""
-        pass
+        if self._image_differ:
+            self._image_differ.stop()
+            self._image_differ = None
 
     # FIXME: os.environ access should be moved to onto a common/system class to be more easily mockable.
     def _value_or_default_from_environ(self, name, default=None):
@@ -777,12 +837,20 @@ class Port(object):
 
             # Windows:
             'PATH',
+
+            # Most ports (?):
+            'WEBKIT_TESTFONTS',
         ]
         for variable in variables_to_copy:
             self._copy_value_from_environ_if_set(clean_env, variable)
 
         # For Linux:
         clean_env['DISPLAY'] = self._value_or_default_from_environ('DISPLAY', ':1')
+
+        for string_variable in self.get_option('additional_env_var', []):
+            [name, value] = string_variable.split('=', 1)
+            clean_env[name] = value
+
         return clean_env
 
     def show_results_html_file(self, results_filename):
@@ -1019,6 +1087,15 @@ class Port(object):
     def default_configuration(self):
         return self._config.default_configuration()
 
+    def process_kill_time(self):
+        """ Returns the amount of time in seconds to wait before killing the process.
+
+        Within server_process.stop there is a time delta before the test is explictly
+        killed. By changing this the time can be extended in case the process needs
+        more time to cleanly exit on its own.
+        """
+        return 3.0
+
     #
     # PROTECTED ROUTINES
     #
@@ -1029,25 +1106,66 @@ class Port(object):
     def _uses_apache(self):
         return True
 
+    # FIXME: This does not belong on the port object.
+    @memoized
     def _path_to_apache(self):
         """Returns the full path to the apache binary.
 
         This is needed only by ports that use the apache_http_server module."""
-        raise NotImplementedError('Port.path_to_apache')
+        # The Apache binary path can vary depending on OS and distribution
+        # See http://wiki.apache.org/httpd/DistrosDefaultLayout
+        for path in ["/usr/sbin/httpd", "/usr/sbin/apache2"]:
+            if self._filesystem.exists(path):
+                return path
+        _log.error("Could not find apache. Not installed or unknown path.")
+        return None
+
+    # FIXME: This belongs on some platform abstraction instead of Port.
+    def _is_redhat_based(self):
+        return self._filesystem.exists('/etc/redhat-release')
+
+    def _is_debian_based(self):
+        return self._filesystem.exists('/etc/debian_version')
+
+    # We pass sys_platform into this method to make it easy to unit test.
+    def _apache_config_file_name_for_platform(self, sys_platform):
+        if sys_platform == 'cygwin':
+            return 'cygwin-httpd.conf'  # CYGWIN is the only platform to still use Apache 1.3.
+        if sys_platform.startswith('linux'):
+            if self._is_redhat_based():
+                return 'fedora-httpd.conf'  # This is an Apache 2.x config file despite the naming.
+            if self._is_debian_based():
+                return 'apache2-debian-httpd.conf'
+        # All platforms use apache2 except for CYGWIN (and Mac OS X Tiger and prior, which we no longer support).
+        return "apache2-httpd.conf"
 
     def _path_to_apache_config_file(self):
         """Returns the full path to the apache binary.
 
         This is needed only by ports that use the apache_http_server module."""
-        raise NotImplementedError('Port.path_to_apache_config_file')
+        config_file_name = self._apache_config_file_name_for_platform(sys.platform)
+        return self._filesystem.join(self.layout_tests_dir(), 'http', 'conf', config_file_name)
+
+    def _build_path(self, *comps):
+        root_directory = self.get_option('root')
+        if not root_directory:
+            build_directory = self.get_option('build_directory')
+            if build_directory:
+                root_directory = self._filesystem.join(self.get_option('configuration'))
+            else:
+                root_directory = self._config.build_directory(self.get_option('configuration'))
+            # Set --root so that we can pass this to subprocesses and avoid making the
+            # slow call to config.build_directory() N times in each worker.
+            self.set_option_default('root', root_directory)
+        return self._filesystem.join(self._filesystem.abspath(root_directory), *comps)
 
     def _path_to_driver(self, configuration=None):
         """Returns the full path to the test driver (DumpRenderTree)."""
-        raise NotImplementedError('Port._path_to_driver')
+        return self._build_path(self.driver_name())
 
     def _path_to_webcore_library(self):
         """Returns the full path to a built copy of WebCore."""
-        raise NotImplementedError('Port.path_to_webcore_library')
+        return None
 
     def _path_to_helper(self):
         """Returns the full path to the layout_test_helper binary, which
@@ -1055,13 +1173,13 @@ class Port(object):
         if no helper is needed.
 
         This is likely only used by start/stop_helper()."""
-        raise NotImplementedError('Port._path_to_helper')
+        return None
 
     def _path_to_image_diff(self):
         """Returns the full path to the image_diff binary, or None if it is not available.
 
         This is likely used only by diff_image()"""
-        raise NotImplementedError('Port.path_to_image_diff')
+        return self._build_path('ImageDiff')
 
     def _path_to_lighttpd(self):
         """Returns the path to the LigHTTPd binary.
@@ -1085,7 +1203,7 @@ class Port(object):
         """Returns the full path to the wdiff binary, or None if it is not available.
 
         This is likely used only by wdiff_text()"""
-        raise NotImplementedError('Port._path_to_wdiff')
+        return 'wdiff'
 
     def _webkit_baseline_path(self, platform):
         """Return the  full path to the top of the baseline tree for a
@@ -1100,16 +1218,16 @@ class Port(object):
 
     def _driver_class(self):
         """Returns the port's driver implementation."""
-        raise NotImplementedError('Port._driver_class')
+        return driver.Driver
 
     def _get_crash_log(self, name, pid, stdout, stderr, newer_than):
         name_str = name or '<unknown process name>'
         pid_str = str(pid or '<unknown>')
         stdout_lines = (stdout or '<empty>').decode('utf8', 'replace').splitlines()
         stderr_lines = (stderr or '<empty>').decode('utf8', 'replace').splitlines()
-        return 'crash log for %s (pid %s):\n%s\n%s\n' % (name_str, pid_str,
+        return (stderr, 'crash log for %s (pid %s):\n%s\n%s\n' % (name_str, pid_str,
             '\n'.join(('STDOUT: ' + l) for l in stdout_lines),
-            '\n'.join(('STDERR: ' + l) for l in stderr_lines))
+            '\n'.join(('STDERR: ' + l) for l in stderr_lines)))
 
     def look_for_new_crash_logs(self, crashed_processes, start_time):
         pass
@@ -1158,6 +1276,202 @@ class Port(object):
             if test_name.startswith(suite.name):
                 return suite.args
         return []
+
+    def supports_switching_pixel_tests_per_test(self):
+        if self.get_option('webkit_test_runner'):
+            return True
+        return self._supports_switching_pixel_tests_per_test()
+
+    def _supports_switching_pixel_tests_per_test(self):
+        # FIXME: all ports should support it.
+        return False
+
+    def should_run_as_pixel_test(self, test_input):
+        if not self._options.pixel_tests:
+            return False
+        if not self.supports_switching_pixel_tests_per_test():
+            # Cannot do more filtering without this.
+            return True
+        if self._options.pixel_test_directories:
+            return any(test_input.test_name.startswith(directory) for directory in self._options.pixel_test_directories)
+        return self._should_run_as_pixel_test(test_input)
+
+    def _should_run_as_pixel_test(self, test_input):
+        # Default behavior is to allow all test to run as pixel tests if --pixel-tests is on and
+        # --pixel-test-directory is not specified.
+        return True
+
+    # FIXME: Eventually we should standarize port naming, and make this method smart enough
+    # to use for all port configurations (including architectures, graphics types, etc).
+    def _port_flag_for_scripts(self):
+        # This is overrriden by ports which need a flag passed to scripts to distinguish the use of that port.
+        # For example --qt on linux, since a user might have both Gtk and Qt libraries installed.
+        # FIXME: Chromium should override this once ChromiumPort is a WebKitPort.
+        return None
+
+    # This is modeled after webkitdirs.pm argumentsForConfiguration() from old-run-webkit-tests
+    def _arguments_for_configuration(self):
+        config_args = []
+        config_args.append(self._config.flag_for_configuration(self.get_option('configuration')))
+        # FIXME: We may need to add support for passing --32-bit like old-run-webkit-tests had.
+        port_flag = self._port_flag_for_scripts()
+        if port_flag:
+            config_args.append(port_flag)
+        return config_args
+
+    def _run_script(self, script_name, args=None, include_configuration_arguments=True, decode_output=True, env=None):
+        run_script_command = [self._config.script_path(script_name)]
+        if include_configuration_arguments:
+            run_script_command.extend(self._arguments_for_configuration())
+        if args:
+            run_script_command.extend(args)
+        output = self._executive.run_command(run_script_command, cwd=self._config.webkit_base_dir(), decode_output=decode_output, env=env)
+        _log.debug('Output of %s:\n%s' % (run_script_command, output))
+        return output
+
+    def _build_driver(self):
+        environment = self.host.copy_current_environment()
+        environment.disable_gcc_smartquotes()
+        env = environment.to_dictionary()
+
+        # FIXME: We build both DumpRenderTree and WebKitTestRunner for
+        # WebKitTestRunner runs because DumpRenderTree still includes
+        # the DumpRenderTreeSupport module and the TestNetscapePlugin.
+        # These two projects should be factored out into their own
+        # projects.
+        try:
+            self._run_script("build-dumprendertree", args=self._build_driver_flags(), env=env)
+            if self.get_option('webkit_test_runner'):
+                self._run_script("build-webkittestrunner", args=self._build_driver_flags(), env=env)
+        except ScriptError, e:
+            _log.error(e.message_with_output(output_limit=None))
+            return False
+        return True
+
+    def _build_driver_flags(self):
+        return []
+
+    def _tests_for_other_platforms(self):
+        # By default we will skip any directory under LayoutTests/platform
+        # that isn't in our baseline search path (this mirrors what
+        # old-run-webkit-tests does in findTestsToRun()).
+        # Note this returns LayoutTests/platform/*, not platform/*/*.
+        entries = self._filesystem.glob(self._webkit_baseline_path('*'))
+        dirs_to_skip = []
+        for entry in entries:
+            if self._filesystem.isdir(entry) and entry not in self.baseline_search_path():
+                basename = self._filesystem.basename(entry)
+                dirs_to_skip.append('platform/%s' % basename)
+        return dirs_to_skip
+
+    def _runtime_feature_list(self):
+        """If a port makes certain features available only through runtime flags, it can override this routine to indicate which ones are available."""
+        return None
+
+    def nm_command(self):
+        return 'nm'
+
+    def _modules_to_search_for_symbols(self):
+        path = self._path_to_webcore_library()
+        if path:
+            return [path]
+        return []
+
+    def _symbols_string(self):
+        symbols = ''
+        for path_to_module in self._modules_to_search_for_symbols():
+            try:
+                symbols += self._executive.run_command([self.nm_command(), path_to_module], error_handler=self._executive.ignore_error)
+            except OSError, e:
+                _log.warn("Failed to run nm: %s.  Can't determine supported features correctly." % e)
+        return symbols
+
+    # Ports which use run-time feature detection should define this method and return
+    # a dictionary mapping from Feature Names to skipped directoires.  NRWT will
+    # run DumpRenderTree --print-supported-features and parse the output.
+    # If the Feature Names are not found in the output, the corresponding directories
+    # will be skipped.
+    def _missing_feature_to_skipped_tests(self):
+        """Return the supported feature dictionary. Keys are feature names and values
+        are the lists of directories to skip if the feature name is not matched."""
+        # FIXME: This list matches WebKitWin and should be moved onto the Win port.
+        return {
+            "Accelerated Compositing": ["compositing"],
+            "3D Rendering": ["animations/3d", "transforms/3d"],
+        }
+
+    # Ports which use compile-time feature detection should define this method and return
+    # a dictionary mapping from symbol substrings to possibly disabled test directories.
+    # When the symbol substrings are not matched, the directories will be skipped.
+    # If ports don't ever enable certain features, then those directories can just be
+    # in the Skipped list instead of compile-time-checked here.
+    def _missing_symbol_to_skipped_tests(self):
+        """Return the supported feature dictionary. The keys are symbol-substrings
+        and the values are the lists of directories to skip if that symbol is missing."""
+        return {
+            "MathMLElement": ["mathml"],
+            "GraphicsLayer": ["compositing"],
+            "WebCoreHas3DRendering": ["animations/3d", "transforms/3d"],
+            "WebGLShader": ["fast/canvas/webgl", "compositing/webgl", "http/tests/canvas/webgl"],
+            "MHTMLArchive": ["mhtml"],
+            "CSSVariableValue": ["fast/css/variables", "inspector/styles/variables"],
+        }
+
+    def _has_test_in_directories(self, directory_lists, test_list):
+        if not test_list:
+            return False
+
+        directories = itertools.chain.from_iterable(directory_lists)
+        for directory, test in itertools.product(directories, test_list):
+            if test.startswith(directory):
+                return True
+        return False
+
+    def _skipped_tests_for_unsupported_features(self, test_list):
+        # Only check the runtime feature list of there are tests in the test_list that might get skipped.
+        # This is a performance optimization to avoid the subprocess call to DRT.
+        # If the port supports runtime feature detection, disable any tests
+        # for features missing from the runtime feature list.
+        # If _runtime_feature_list returns a non-None value, then prefer
+        # runtime feature detection over static feature detection.
+        if self._has_test_in_directories(self._missing_feature_to_skipped_tests().values(), test_list):
+            supported_feature_list = self._runtime_feature_list()
+            if supported_feature_list is not None:
+                return reduce(operator.add, [directories for feature, directories in self._missing_feature_to_skipped_tests().items() if feature not in supported_feature_list])
+
+        # Only check the symbols of there are tests in the test_list that might get skipped.
+        # This is a performance optimization to avoid the calling nm.
+        # Runtime feature detection not supported, fallback to static dectection:
+        # Disable any tests for symbols missing from the executable or libraries.
+        if self._has_test_in_directories(self._missing_symbol_to_skipped_tests().values(), test_list):
+            symbols_string = self._symbols_string()
+            if symbols_string is not None:
+                return reduce(operator.add, [directories for symbol_substring, directories in self._missing_symbol_to_skipped_tests().items() if symbol_substring not in symbols_string], [])
+
+        return []
+
+    def _wk2_port_name(self):
+        # By current convention, the WebKit2 name is always mac-wk2, win-wk2, not mac-leopard-wk2, etc,
+        # except for Qt because WebKit2 is only supported by Qt 5.0 (therefore: qt-5.0-wk2).
+        return "%s-wk2" % self.port_name
+
+    def _skipped_file_search_paths(self):
+        # Unlike baseline_search_path, we only want to search [WK2-PORT, PORT-VERSION, PORT] and any directories
+        # included via --additional-platform-directory, not the full casade.
+        # Note order doesn't matter since the Skipped file contents are all combined.
+
+        search_paths = set([self.port_name])
+        if 'future' not in self.name():
+            search_paths.add(self.name())
+
+        if self.get_option('webkit_test_runner'):
+            # Because nearly all of the skipped tests for WebKit 2 are due to cross-platform
+            # issues, all wk2 ports share a skipped list under platform/wk2.
+            search_paths.update([self._wk2_port_name(), "wk2"])
+
+        search_paths.update(self.get_option("additional_platform_directory", []))
+
+        return search_paths
 
 
 class VirtualTestSuite(object):

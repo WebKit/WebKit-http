@@ -31,11 +31,14 @@
 #if ENABLE(JIT)
 
 #include "CodeOrigin.h"
+#include "DFGRegisterSet.h"
 #include "Instruction.h"
 #include "JITStubRoutine.h"
 #include "MacroAssembler.h"
 #include "Opcode.h"
 #include "Structure.h"
+#include "StructureStubClearingWatchpoint.h"
+#include <wtf/OwnPtr.h>
 
 namespace JSC {
 
@@ -170,6 +173,7 @@ namespace JSC {
             deref();
             accessType = access_unset;
             stubRoutine.clear();
+            watchpoints.clear();
         }
 
         void deref();
@@ -184,6 +188,12 @@ namespace JSC {
         void setSeen()
         {
             seen = true;
+        }
+        
+        StructureStubClearingWatchpoint* addWatchpoint(CodeBlock* codeBlock)
+        {
+            return WatchpointsOnStructureStubInfo::ensureReferenceAndAddWatchpoint(
+                watchpoints, codeBlock, this);
         }
         
         unsigned bytecodeIndex;
@@ -203,7 +213,7 @@ namespace JSC {
                 int8_t valueTagGPR;
 #endif
                 int8_t valueGPR;
-                int8_t scratchGPR;
+                DFG::RegisterSetPOD usedRegisters;
                 int32_t deltaCallToDone;
                 int32_t deltaCallToStorageLoad;
                 int32_t deltaCallToStructCheck;
@@ -290,6 +300,7 @@ namespace JSC {
         RefPtr<JITStubRoutine> stubRoutine;
         CodeLocationCall callReturnLocation;
         CodeLocationLabel hotPathBegin;
+        RefPtr<WatchpointsOnStructureStubInfo> watchpoints;
     };
 
     inline void* getStructureStubInfoReturnLocation(StructureStubInfo* structureStubInfo)

@@ -883,20 +883,10 @@ HRESULT STDMETHODCALLTYPE WebFrame::pageNumberForElementById(
     /* [in] */ float pageHeightInPixels,
     /* [retval][out] */ int* result)
 {
-    if (!result)
-        return E_POINTER;
-
-    Frame* coreFrame = core(this);
-    if (!coreFrame)
-        return E_FAIL;
-
-    String coreId = String(id, SysStringLen(id));
-
-    Element* element = coreFrame->document()->getElementById(coreId);
-    if (!element)
-        return E_FAIL;
-    *result = PrintContext::pageNumberForElement(element, FloatSize(pageWidthInPixels, pageHeightInPixels));
-    return S_OK;
+    // TODO: Please remove this function if not needed as this is LTC specific function
+    // and has been moved to Internals.
+    notImplemented();
+    return E_FAIL;
 }
 
 HRESULT STDMETHODCALLTYPE WebFrame::numberOfPages(
@@ -1195,6 +1185,26 @@ HRESULT WebFrame::elementDoesAutoComplete(IDOMElement *element, BOOL *result)
     else
         *result = inputElement->isTextField() && !inputElement->isPasswordField() && inputElement->shouldAutocomplete();
 
+    return S_OK;
+}
+
+HRESULT STDMETHODCALLTYPE WebFrame::resumeAnimations()
+{
+    Frame* frame = core(this);
+    if (!frame)
+        return E_FAIL;
+
+    frame->animation()->resumeAnimations();
+    return S_OK;
+}
+
+HRESULT STDMETHODCALLTYPE WebFrame::suspendAnimations()
+{
+    Frame* frame = core(this);
+    if (!frame)
+        return E_FAIL;
+
+    frame->animation()->suspendAnimations();
     return S_OK;
 }
 

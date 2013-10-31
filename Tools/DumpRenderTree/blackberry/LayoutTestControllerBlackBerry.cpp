@@ -308,9 +308,8 @@ void LayoutTestController::waitForPolicyDelegate()
 size_t LayoutTestController::webHistoryItemCount()
 {
     SharedArray<BlackBerry::WebKit::WebPage::BackForwardEntry> backForwardList;
-    unsigned size;
-    BlackBerry::WebKit::DumpRenderTree::currentInstance()->page()->getBackForwardList(backForwardList, size);
-    return size;
+    BlackBerry::WebKit::DumpRenderTree::currentInstance()->page()->getBackForwardList(backForwardList);
+    return backForwardList.length();
 }
 
 int LayoutTestController::windowCount()
@@ -514,12 +513,6 @@ JSRetainPtr<JSStringRef> LayoutTestController::pageSizeAndMarginsInPixels(int, i
 {
     notImplemented();
     return 0;
-}
-
-int LayoutTestController::pageNumberForElementById(JSStringRef, float, float)
-{
-    notImplemented();
-    return -1;
 }
 
 int LayoutTestController::numberOfPages(float, float)

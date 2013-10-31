@@ -36,7 +36,9 @@
 #include <wtf/Noncopyable.h>
 
 #if PLATFORM(QT)
+QT_BEGIN_NAMESPACE
 class QPainter;
+QT_END_NAMESPACE
 #elif PLATFORM(GTK)
 typedef struct _cairo cairo_t;
 #endif
@@ -94,7 +96,7 @@ public:
     virtual WebCore::IntRect contentsRect() const;
     virtual bool isBackingStoreReady() const { return true; }
     LayerTreeCoordinatorProxy* layerTreeCoordinatorProxy() const { return m_layerTreeCoordinatorProxy.get(); }
-    virtual void setVisibleContentsRect(const WebCore::IntRect& visibleContentsRect, float scale, const WebCore::FloatPoint& trajectoryVector, const WebCore::FloatPoint& accurateVisibleContentsPosition = WebCore::FloatPoint()) { }
+    virtual void setVisibleContentsRect(const WebCore::FloatRect& visibleContentsRect, float scale, const WebCore::FloatPoint& trajectoryVector) { }
     virtual void createTileForLayer(int layerID, int tileID, const WebKit::UpdateInfo&) { }
     virtual void updateTileForLayer(int layerID, int tileID, const WebKit::UpdateInfo&) { }
     virtual void removeTileForLayer(int layerID, int tileID) { }

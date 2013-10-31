@@ -81,7 +81,6 @@ module WTR {
 
         // Printing
         int numberOfPages(in double pageWidthInPixels, in double pageHeightInPixels);
-        int pageNumberForElementById(in DOMString id, in double pageWidthInPixels, in double pageHeightInPixels);
         DOMString pageSizeAndMarginsInPixels(in int pageIndex, in int width, in int height, in int marginTop, in int marginRight, in int marginBottom, in int marginLeft);
         boolean isPageBoxVisible(in int pageIndex);
 
@@ -129,6 +128,10 @@ module WTR {
         void setShouldStayOnPageAfterHandlingBeforeUnload(in boolean flag);
 
         void setDefersLoading(in boolean flag);
+
+        // Web intents testing.
+        void sendWebIntentResponse(in DOMString reply);
+        void deliverWebIntent(in DOMString action, in DOMString type, in DOMString data);
         
         // Focus testing.
         void addChromeInputField(in object callback);
@@ -138,6 +141,9 @@ module WTR {
         void setBackingScaleFactor(in double backingScaleFactor, in object callback);
 
         void setWindowIsKey(in boolean isKey);
+
+        // Cookies testing
+        void setAlwaysAcceptCookies(in boolean accept);
 
         // FIXME: handle non-boolean preferences.
         void overridePreference(in DOMString preference, in boolean value);

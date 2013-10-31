@@ -20,6 +20,7 @@
 #include "config.h"
 #include "PlatformWebView.h"
 
+#include "EWebKit2.h"
 #include "WebKit2/WKAPICast.h"
 #include <Ecore_Evas.h>
 
@@ -46,7 +47,10 @@ PlatformWebView::PlatformWebView(WKContextRef context, WKPageGroupRef pageGroup)
     m_window = initEcoreEvas();
     Evas* evas = ecore_evas_get(m_window);
     m_view = toImpl(WKViewCreate(evas, context, pageGroup));
+
+    ewk_view_theme_set(m_view, THEME_DIR"/default.edj");
     m_windowIsKey = false;
+    evas_object_show(m_view);
 }
 
 PlatformWebView::~PlatformWebView()
@@ -67,6 +71,7 @@ WKPageRef PlatformWebView::page()
 
 void PlatformWebView::focus()
 {
+    evas_object_focus_set(m_view, true);
 }
 
 WKRect PlatformWebView::windowFrame()

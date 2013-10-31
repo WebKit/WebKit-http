@@ -28,16 +28,17 @@
 
 import optparse
 import StringIO
+import time
 import unittest
 
 from webkitpy.common.system import executive_mock
 from webkitpy.common.system.executive_mock import MockExecutive2
 from webkitpy.common.system.systemhost_mock import MockSystemHost
-from webkitpy.thirdparty.mock import Mock
 
 from webkitpy.layout_tests.port import chromium_android
 from webkitpy.layout_tests.port import chromium_port_testcase
-from webkitpy.layout_tests.port import Port
+from webkitpy.layout_tests.port import driver
+from webkitpy.layout_tests.port import driver_unittest
 
 
 class ChromiumAndroidPortTest(chromium_port_testcase.ChromiumPortTestCase):
@@ -47,7 +48,6 @@ class ChromiumAndroidPortTest(chromium_port_testcase.ChromiumPortTestCase):
 
     def test_attributes(self):
         port = self.make_port()
-        self.assertTrue(port.get_option('enable_hardware_gpu'))
         self.assertEquals(port.baseline_path(), port._webkit_baseline_path('chromium-android'))
 
     def test_default_timeout_ms(self):
@@ -104,7 +104,13 @@ class ChromiumAndroidPortTest(chromium_port_testcase.ChromiumPortTestCase):
         port._executive = MockExecutive2(run_command_fn=ChromiumAndroidPortTest.mock_run_command_fn)
         ChromiumAndroidPortTest.mock_logcat = 'logcat contents\n'
         self.assertEquals(port._get_crash_log('foo', 1234, 'out bar\nout baz\n', 'err bar\nerr baz\n', newer_than=None),
-            (u'crash log for foo (pid 1234):\n'
+            ('err bar\n'
+             'err baz\n'
+             '********* Tombstone file:\n'
+             '-rw------- 1000 1000 45316 2012-04-27 16:33 tombstone_03\n'
+             '/data/tombstones/tombstone_03\n'
+             'mock_contents\n',
+             u'crash log for foo (pid 1234):\n'
              u'STDOUT: out bar\n'
              u'STDOUT: out baz\n'
              u'STDOUT: ********* Logcat:\n'
@@ -116,13 +122,21 @@ class ChromiumAndroidPortTest(chromium_port_testcase.ChromiumPortTestCase):
              u'STDERR: /data/tombstones/tombstone_03\n'
              u'STDERR: mock_contents\n'))
         self.assertEquals(port._get_crash_log(None, None, None, None, newer_than=None),
-            (u'crash log for <unknown process name> (pid <unknown>):\n'
+            ('********* Tombstone file:\n'
+             '-rw------- 1000 1000 45316 2012-04-27 16:33 tombstone_03\n'
+             '/data/tombstones/tombstone_03\n'
+             'mock_contents\n',
+             u'crash log for <unknown process name> (pid <unknown>):\n'
              u'STDOUT: ********* Logcat:\n'
              u'STDOUT: logcat contents\n'
              u'STDERR: ********* Tombstone file:\n'
              u'STDERR: -rw------- 1000 1000 45316 2012-04-27 16:33 tombstone_03\n'
              u'STDERR: /data/tombstones/tombstone_03\n'
              u'STDERR: mock_contents\n'))
+
+    def test_driver_cmd_line(self):
+        # Overriding PortTestCase.test_cmd_line(). Use ChromiumAndroidDriverTest.test_cmd_line() instead.
+        return
 
 
 class ChromiumAndroidDriverTest(unittest.TestCase):
@@ -131,34 +145,30 @@ class ChromiumAndroidDriverTest(unittest.TestCase):
         self.driver = chromium_android.ChromiumAndroidDriver(mock_port, worker_number=0, pixel_tests=True)
 
     def test_cmd_line(self):
-        cmd_line = self.driver.cmd_line(True, ['--a'])
+        cmd_line = self.driver.cmd_line(True, ['anything'])
+        self.assertEquals(['adb', 'shell'], cmd_line)
+
+    def test_drt_cmd_line(self):
+        cmd_line = self.driver._drt_cmd_line(True, ['--a'])
         self.assertTrue('--a' in cmd_line)
         self.assertTrue('--in-fifo=' + chromium_android.DRT_APP_FILES_DIR + 'DumpRenderTree.in' in cmd_line)
         self.assertTrue('--out-fifo=' + chromium_android.DRT_APP_FILES_DIR + 'DumpRenderTree.out' in cmd_line)
-        self.assertTrue('--err-file=' + chromium_android.DRT_APP_FILES_DIR + 'DumpRenderTree.err' in cmd_line)
+        self.assertTrue('--err-fifo=' + chromium_android.DRT_APP_FILES_DIR + 'DumpRenderTree.err' in cmd_line)
 
     def test_read_prompt(self):
-        self.driver._proc = Mock()  # FIXME: This should use a tighter mock.
-        self.driver._proc.stdout = StringIO.StringIO("root@android:/ # ")
-        self.assertEquals(self.driver._read_prompt(), None)
-        self.driver._proc.stdout = StringIO.StringIO("$ ")
-        self.assertRaises(AssertionError, self.driver._read_prompt)
+        self.driver._server_process = driver_unittest.MockServerProcess(lines=['root@android:/ # '])
+        self.assertEquals(self.driver._read_prompt(time.time() + 1), None)
+        self.driver._server_process = driver_unittest.MockServerProcess(lines=['$ '])
+        self.assertRaises(AssertionError, self.driver._read_prompt, time.time() + 1)
 
-    def test_test_shell_command(self):
-        uri = 'file://%s/test.html' % self.driver._port.layout_tests_dir()
-        self.assertEquals(uri, 'file:///mock-checkout/LayoutTests/test.html')
-        expected_command = 'file:///data/local/tmp/third_party/WebKit/LayoutTests/test.html 2 checksum\n'
-        self.assertEquals(self.driver._test_shell_command(uri, 2, 'checksum'), expected_command)
-        self.assertEquals(self.driver._test_shell_command('http://test.html', 2, 'checksum'), 'http://test.html 2 checksum\n')
+    def test_command_from_driver_input(self):
+        driver_input = driver.DriverInput('foo/bar/test.html', 10, 'checksum', True)
+        expected_command = "/data/local/tmp/third_party/WebKit/LayoutTests/foo/bar/test.html'checksum\n"
+        self.assertEquals(self.driver._command_from_driver_input(driver_input), expected_command)
 
-    def test_write_command_and_read_line(self):
-        self.driver._proc = Mock()  # FIXME: This should use a tighter mock.
-        self.driver._proc.stdout = StringIO.StringIO("#URL:file:///data/local/tmp/third_party/WebKit/LayoutTests/test.html\noutput\n\n")
-        self.assertEquals(self.driver._write_command_and_read_line(), ('#URL:file:///mock-checkout/LayoutTests/test.html\n', False))
-        self.assertEquals(self.driver._write_command_and_read_line(), ('output\n', False))
-        self.assertEquals(self.driver._write_command_and_read_line(), ('\n', False))
-        # Unexpected EOF is treated as crash.
-        self.assertEquals(self.driver._write_command_and_read_line(), ('', True))
+        driver_input = driver.DriverInput('http/tests/foo/bar/test.html', 10, 'checksum', True)
+        expected_command = "http://127.0.0.1:8000/foo/bar/test.html'checksum\n"
+        self.assertEquals(self.driver._command_from_driver_input(driver_input), expected_command)
 
 
 if __name__ == '__main__':

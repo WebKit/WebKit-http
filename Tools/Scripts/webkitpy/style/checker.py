@@ -178,8 +178,9 @@ _PATH_RULES_SPECIFIER = [
      ["-build/header_guard"]),
     ([# assembler has lots of opcodes that use underscores, so
       # we don't check for underscores in that directory.
-      "/Source/JavaScriptCore/assembler/"],
-     ["-readability/naming"]),
+      "Source/JavaScriptCore/assembler/",
+      "Source/JavaScriptCore/jit/JIT"],
+     ["-readability/naming/underscores"]),
     ([# JITStubs has an usual syntax which causes false alarms for a few checks.
       "JavaScriptCore/jit/JITStubs.cpp"],
      ["-readability/parameter_name",
@@ -193,12 +194,13 @@ _PATH_RULES_SPECIFIER = [
      ["-readability/naming",
       "-readability/parameter_name"]),
     ([# EWebLauncher and MiniBrowser are EFL simple application.
-      # They need to use efl coding style.
+      # They need to use efl coding style and they don't have config.h.
       "Tools/EWebLauncher/",
       "Tools/MiniBrowser/efl/"],
      ["-readability/naming",
       "-readability/parameter_name",
-      "-whitespace/declaration"]),
+      "-whitespace/declaration",
+      "-build/include_order"]),
 
     # WebKit2 rules:
     # WebKit2 and certain directories have idiosyncracies.
@@ -219,7 +221,9 @@ _PATH_RULES_SPECIFIER = [
       "Source/WebCore/platform/graphics/gstreamer/VideoSinkGStreamer1.cpp",
       "Source/WebCore/platform/graphics/gstreamer/VideoSinkGStreamer.cpp",
       "Source/WebCore/platform/graphics/gstreamer/WebKitWebSourceGStreamer.cpp",
-      "Source/WebCore/platform/audio/gstreamer/WebKitWebAudioSourceGStreamer.cpp"],
+      "Source/WebCore/platform/audio/gstreamer/WebKitWebAudioSourceGStreamer.cpp",
+      "Source/WebCore/platform/network/soup/ProxyResolverSoup.cpp",
+      "Source/WebCore/platform/network/soup/ProxyResolverSoup.h"],
      ["-readability/naming"]),
 
     # For third-party Python code, keep only the following checks--

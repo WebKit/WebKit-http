@@ -33,7 +33,7 @@
 #include <QGuiApplication>
 #include <QInputMethod>
 #include <QMimeData>
-#include <QtQuick/QQuickCanvas>
+#include <QQuickWindow>
 #include <QStyleHints>
 #include <QTextFormat>
 #include <QTouchEvent>
@@ -246,12 +246,14 @@ void QtWebPageEventHandler::activateTapHighlight(const QTouchEvent::TouchPoint& 
 
 void QtWebPageEventHandler::deactivateTapHighlight()
 {
+#if ENABLE(TOUCH_EVENTS)
     if (!m_isTapHighlightActive)
         return;
 
     // An empty point deactivates the highlighting.
     m_webPageProxy->handlePotentialActivation(IntPoint(), IntSize());
     m_isTapHighlightActive = false;
+#endif
 }
 
 void QtWebPageEventHandler::handleSingleTapEvent(const QTouchEvent::TouchPoint& point)
@@ -560,7 +562,7 @@ void QtWebPageEventHandler::startDrag(const WebCore::DragData& dragData, PassRef
     QPoint globalPosition;
     Qt::DropAction actualDropAction = Qt::IgnoreAction;
 
-    if (QWindow* window = m_webPage->canvas()) {
+    if (QWindow* window = m_webPage->window()) {
         QDrag* drag = new QDrag(window);
         drag->setPixmap(QPixmap::fromImage(dragQImage));
         drag->setMimeData(mimeData);

@@ -15,6 +15,7 @@ webcore_cppflags += \
 	-I$(srcdir)/Source/WebCore/Modules/gamepad \
 	-I$(srcdir)/Source/WebCore/Modules/geolocation \
 	-I$(srcdir)/Source/WebCore/Modules/indexeddb \
+	-I$(srcdir)/Source/WebCore/Modules/mediasource \
 	-I$(srcdir)/Source/WebCore/Modules/mediastream \
 	-I$(srcdir)/Source/WebCore/Modules/notifications \
 	-I$(srcdir)/Source/WebCore/Modules/protocolhandler \
@@ -169,26 +170,26 @@ endif # END TARGET_WIN32
 # ----
 # HTML Details Element
 # ----
-if ENABLE_DETAILS
-FEATURE_DEFINES += ENABLE_DETAILS=1
-webcore_cppflags += -DENABLE_DETAILS=1
-endif # END ENABLE_DETAILS
+if ENABLE_DETAILS_ELEMENT
+FEATURE_DEFINES += ENABLE_DETAILS_ELEMENT=1
+webcore_cppflags += -DENABLE_DETAILS_ELEMENT=1
+endif # END ENABLE_DETAILS_ELEMENT
 
 # ----
 # HTML Meter Element
 # ----
-if ENABLE_METER_TAG
-FEATURE_DEFINES += ENABLE_METER_TAG=1
-webcore_cppflags += -DENABLE_METER_TAG=1
-endif # END ENABLE_METER_TAG
+if ENABLE_METER_ELEMENT
+FEATURE_DEFINES += ENABLE_METER_ELEMENT=1
+webcore_cppflags += -DENABLE_METER_ELEMENT=1
+endif # END ENABLE_METER_ELEMENT
 
 # ----
 # HTML Progress Element
 # ----
-if ENABLE_PROGRESS_TAG
-FEATURE_DEFINES += ENABLE_PROGRESS_TAG=1
-webcore_cppflags += -DENABLE_PROGRESS_TAG=1
-endif # END ENABLE_PROGRESS_TAG
+if ENABLE_PROGRESS_ELEMENT
+FEATURE_DEFINES += ENABLE_PROGRESS_ELEMENT=1
+webcore_cppflags += -DENABLE_PROGRESS_ELEMENT=1
+endif # END ENABLE_PROGRESS_ELEMENT
 
 # ----
 # JavaScript Debugger/Profiler
@@ -223,11 +224,11 @@ endif # END ENABLE_SQL_DATABASE
 # ----
 # HTML5 datalist Support
 # ----
-if ENABLE_DATALIST
-FEATURE_DEFINES += ENABLE_DATALIST=1
-HTML_FEATURES += ENABLE_DATALIST=1
-webcore_cppflags += -DENABLE_DATALIST=1
-endif # END ENABLE_DATALIST
+if ENABLE_DATALIST_ELEMENT
+FEATURE_DEFINES += ENABLE_DATALIST_ELEMENT=1
+HTML_FEATURES += ENABLE_DATALIST_ELEMENT=1
+webcore_cppflags += -DENABLE_DATALIST_ELEMENT=1
+endif # END ENABLE_DATALIST_ELEMENT
 
 # ----
 # HTML5 data transfer items support
@@ -495,6 +496,18 @@ FEATURE_DEFINES += ENABLE_CSS_FILTERS=1
 webcore_cppflags += -DENABLE_CSS_FILTERS=1
 
 endif # END ENABLE_CSS_FILTERS
+
+# ----
+# Compositing
+# ----
+if ENABLE_CSS_COMPOSITING
+FEATURE_DEFINES += ENABLE_CSS_COMPOSITING=1
+webcore_cppflags += -DENABLE_CSS_COMPOSITING=1
+if ENABLE_SVG
+SVG_FEATURES += ENABLE_CSS_COMPOSITING=1
+endif
+
+endif # END ENABLE_CSS_COMPOSITING
 
 # ----
 # Exclusions
@@ -881,6 +894,7 @@ IDL_PATH := \
     $(WebCore)/Modules/gamepad \
     $(WebCore)/Modules/geolocation \
     $(WebCore)/Modules/indexeddb \
+    $(WebCore)/Modules/mediasource \
     $(WebCore)/Modules/mediastream \
     $(WebCore)/Modules/notifications \
     $(WebCore)/Modules/webaudio \
@@ -1049,8 +1063,10 @@ EXTRA_DIST += \
 	$(shell ls $(srcdir)/Source/WebCore/Modules/gamepad/*.idl) \
 	$(shell ls $(srcdir)/Source/WebCore/Modules/geolocation/*.idl) \
 	$(shell ls $(srcdir)/Source/WebCore/Modules/indexeddb/*.idl) \
+	$(shell ls $(srcdir)/Source/WebCore/Modules/mediasource/*.idl) \
 	$(shell ls $(srcdir)/Source/WebCore/Modules/mediastream/*.idl) \
 	$(shell ls $(srcdir)/Source/WebCore/Modules/notifications/*.idl) \
+	$(shell ls $(srcdir)/Source/WebCore/Modules/protocolhandler/*.idl) \
 	$(shell ls $(srcdir)/Source/WebCore/Modules/webaudio/*.idl) \
 	$(shell ls $(srcdir)/Source/WebCore/Modules/webdatabase/*.idl) \
 	$(shell ls $(srcdir)/Source/WebCore/Modules/websockets/*.idl) \

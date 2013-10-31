@@ -28,20 +28,6 @@
                     { "name": "object", "$ref": "Runtime.RemoteObject" },
                     { "name": "hints", "type": "object" }
                 ]
-            },
-            {
-                "name": "didCreateWorker",
-                "parameters": [
-                    { "name": "id", "type": "integer" },
-                    { "name": "url", "type": "string" },
-                    { "name": "isShared", "type": "boolean" }
-                ]
-            },
-            {
-                "name": "didDestroyWorker",
-                "parameters": [
-                    { "name": "id", "type": "integer" }
-                ]
             }
         ]
     },
@@ -366,18 +352,27 @@
                 ]
             },
             {
-                "name": "setGeolocationData",
-                "description": "overrides the GeolocationPosition or GeolocationError in the GeolocationController.",
+                "name": "setGeolocationOverride",
+                "description": "Overrides the Geolocation Position or Error.",
                 "parameters": [
-                    { "name": "longitude", "type": "number", "optional": true, "description": "Mock longitude"},
-                    { "name": "latitude", "type": "number", "optional": true, "description": "Mock latitude"},
-                    { "name": "accuracy", "type": "number", "optional": true, "description": "Mock accuracy"},
-                    { "name": "errorType", "type": "string", "optional": true, "enum": ["PermissionDenied", "PositionUnavailable"], "description": "Error type"}
-                ]
+                    { "name": "latitude", "type": "number", "optional": true, "description": "Mock longitude"},
+                    { "name": "longitude", "type": "number", "optional": true, "description": "Mock latitude"},
+                    { "name": "accuracy", "type": "number", "optional": true, "description": "Mock accuracy"}
+                ],
+                "hidden": true
             },
             {
-                "name": "clearGeolocationData",
-                "description": "clears the overriden GeolocationPosition and GeolocationError."
+                "name": "clearGeolocationOverride",
+                "description": "Clears the overriden Geolocation Position and Error.",
+                "hidden": true
+            },
+            {
+                "name": "canOverrideGeolocation",
+                "description": "Checks if Geolocation can be overridden.",
+                "returns": [
+                    { "name": "result", "type": "boolean", "description": "True if browser can ovrride Geolocation." }
+                ],
+                "hidden": true
             }
         ],
         "events": [
@@ -2088,13 +2083,21 @@
                 "type": "object"
             },
             {
+                "id": "CSSPropertyInfo",
+                "type": "object",
+                "properties": [
+                    { "name": "name", "type": "string", "description": "Property name." },
+                    { "name": "longhands", "type": "array", "optional": true, "items": { "type": "string" }, "description": "Longhand property names." }
+                ]
+            },
+            {
                 "id": "CSSComputedStyleProperty",
                 "type": "object",
                 "properties": [
                     { "name": "name", "type": "string", "description": "Computed style property name." },
                     { "name": "value", "type": "string", "description": "Computed style property value." }
                 ]
-            },            
+            },
             {
                 "id": "CSSStyle",
                 "type": "object",
@@ -2120,7 +2123,6 @@
                     { "name": "text", "type": "string", "optional": true, "description": "The full property text as specified in the style." },
                     { "name": "parsedOk", "type": "boolean", "optional": true, "description": "Whether the property is understood by the browser (implies <code>true</code> if absent)." },
                     { "name": "status", "type": "string", "enum": ["active", "inactive", "disabled", "style"], "optional": true, "description": "The property status: \"active\" (implied if absent) if the property is effective in the style, \"inactive\" if the property is overridden by a same-named property in this style later on, \"disabled\" if the property is disabled by the user, \"style\" if the property is reported by the browser rather than by the CSS source parser." },
-                    { "name": "shorthandName", "type": "string", "optional": true, "description": "The related shorthand property name (absent if this property is not a longhand)." },
                     { "name": "range", "$ref": "SourceRange", "optional": true, "description": "The entire property range in the enclosing style declaration (if available)." }
                 ],
                 "description": "CSS style effective visual dimensions and source offsets."
@@ -2156,6 +2158,17 @@
                     { "name": "totalTime", "type": "number", "description": "Total processing time for all selectors in the profile (in milliseconds.)" },
                     { "name": "data", "type": "array", "items": { "$ref": "SelectorProfileEntry" }, "description": "CSS selector profile entries." }
                 ]
+            },
+            {
+                "id": "NamedFlow",
+                "type": "object",
+                "properties": [
+                    { "name": "nodeId", "$ref": "DOM.NodeId", "description": "The document node id." },
+                    { "name": "name", "type": "string", "description": "Named Flow identifier." },
+                    { "name": "overset", "type": "boolean", "description": "The \"overset\" attribute of a Named Flow." }
+                ],
+                "description": "This object represents a Named Flow.",
+                "hidden": true
             }
         ],
         "commands": [
@@ -2289,7 +2302,7 @@
             {
                 "name": "getSupportedCSSProperties",
                 "returns": [
-                    { "name": "cssProperties", "type": "array", "items": { "type": "string" }, "description": "Supported property names." }
+                    { "name": "cssProperties", "type": "array", "items": { "$ref": "CSSPropertyInfo" }, "description": "Supported property metainfo." }
                 ],
                 "description": "Returns all supported CSS property names."
             },
@@ -2301,6 +2314,29 @@
                 "returns": [
                     { "name": "profile", "$ref": "SelectorProfile" }
                 ]
+            },
+            {
+                "name": "getNamedFlowCollection",
+                "parameters": [
+                    { "name": "nodeId", "$ref": "DOM.NodeId", "description": "The document node id for which to get the Named Flow Collection." }
+                ],
+                "returns": [
+                    { "name": "namedFlows", "type": "array", "items": { "type": "string" }, "description": "An array containing the Named Flows in the document." }
+                ],
+                "description": "Returns the Named Flows from the document.",
+                "hidden": true
+            },
+            {
+                "name": "getFlowByName",
+                "parameters": [
+                    { "name": "nodeId", "$ref": "DOM.NodeId", "description": "The document node id." },
+                    { "name": "name", "type": "string", "description": "Named Flow identifier." }
+                ],
+                "returns": [
+                    { "name": "namedFlow", "$ref": "NamedFlow", "description": "A Named Flow." }
+                ],
+                "description": "Returns the Named Flow identified by the given name",
+                "hidden": true
             }
         ],
         "events": [
@@ -2644,6 +2680,14 @@
                     { "name": "wasThrown", "type": "boolean", "optional": true, "description": "True if the result was thrown during the script run." }
                 ],
                 "description": "Runs script with given id in a given context."
+            },
+            {
+                "name": "setOverlayMessage",
+                "parameters": [
+                    { "name": "message", "type": "string", "optional": true, "description": "Overlay message to display when paused in debugger." }
+                ],
+                "hidden": true,
+                "description": "Sets overlay message."
             }
         ],
         "events": [

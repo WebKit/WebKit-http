@@ -7,7 +7,7 @@ a interfaceName=HTMLAnchorElement
 abbr interfaceName=HTMLElement
 acronym interfaceName=HTMLElement
 address interfaceName=HTMLElement
-applet
+applet constructorNeedsCreatedByParser
 area
 article interfaceName=HTMLElement
 aside interfaceName=HTMLElement
@@ -33,10 +33,10 @@ colgroup interfaceName=HTMLTableColElement
 command interfaceName=HTMLElement
 content interfaceName=HTMLContentElement, conditional=SHADOW_DOM, contextConditional=shadowDOM
 webkitShadowContent interfaceName=HTMLElement, noConstructor
-datalist interfaceName=HTMLDataListElement, conditional=DATALIST
+datalist interfaceName=HTMLDataListElement, conditional=DATALIST_ELEMENT
 dd interfaceName=HTMLElement
 del interfaceName=HTMLModElement
-details conditional=DETAILS
+details conditional=DETAILS_ELEMENT
 dfn interfaceName=HTMLElement
 dir interfaceName=HTMLDirectoryElement
 dialog conditional=DIALOG_ELEMENT, contextConditional=dialogElement
@@ -68,6 +68,7 @@ i interfaceName=HTMLElement
 iframe interfaceName=HTMLIFrameElement
 image mapToTagName=img
 img interfaceName=HTMLImageElement, constructorNeedsFormElement
+webkitInnerImage interfaceName=HTMLElement, noConstructor
 input constructorNeedsFormElement, constructorNeedsCreatedByParser
 intent conditional=WEB_INTENTS_TAG
 ins interfaceName=HTMLModElement
@@ -85,7 +86,7 @@ mark interfaceName=HTMLElement
 marquee
 menu
 meta
-meter interfaceName=HTMLMeterElement, conditional=METER_TAG
+meter interfaceName=HTMLMeterElement, conditional=METER_ELEMENT
 nav interfaceName=HTMLElement
 nobr interfaceName=HTMLElement
 noembed interfaceName=HTMLElement
@@ -101,7 +102,7 @@ p interfaceName=HTMLParagraphElement
 param
 plaintext interfaceName=HTMLElement
 pre
-progress interfaceName=HTMLProgressElement, conditional=PROGRESS_TAG
+progress interfaceName=HTMLProgressElement, conditional=PROGRESS_ELEMENT
 q interfaceName=HTMLQuoteElement
 rp interfaceName=HTMLElement
 rt interfaceName=HTMLElement
@@ -118,7 +119,7 @@ strike interfaceName=HTMLElement
 strong interfaceName=HTMLElement
 style constructorNeedsCreatedByParser
 sub interfaceName=HTMLElement
-summary interfaceName=HTMLSummaryElement, JSInterfaceName=HTMLElement, conditional=DETAILS
+summary interfaceName=HTMLSummaryElement, JSInterfaceName=HTMLElement, conditional=DETAILS_ELEMENT
 sup interfaceName=HTMLElement
 table
 tbody interfaceName=HTMLTableSectionElement

@@ -43,10 +43,38 @@ typedef struct _MiniBrowser {
     Evas_Object *browser;
 } MiniBrowser;
 
+static const Ecore_Getopt options = {
+    "MiniBrowser",
+    "%prog [options] [url]",
+    "0.0.1",
+    "(C)2012 Samsung Electronics\n",
+    "",
+    "Test Web Browser using the Enlightenment Foundation Libraries of WebKit2",
+    EINA_TRUE, {
+        ECORE_GETOPT_STORE_STR
+            ('e', "engine", "ecore-evas engine to use."),
+        ECORE_GETOPT_CALLBACK_NOARGS
+            ('E', "list-engines", "list ecore-evas engines.",
+             ecore_getopt_callback_ecore_evas_list_engines, NULL),
+        ECORE_GETOPT_VERSION
+            ('V', "version"),
+        ECORE_GETOPT_COPYRIGHT
+            ('R', "copyright"),
+        ECORE_GETOPT_HELP
+            ('h', "help"),
+        ECORE_GETOPT_SENTINEL
+    }
+};
+
 static Eina_Bool main_signal_exit(void *data, int ev_type, void *ev)
 {
     ecore_main_loop_quit();
     return EINA_TRUE;
+}
+
+static void closeWindow(Ecore_Evas *ee)
+{
+    ecore_main_loop_quit();
 }
 
 static void on_ecore_evas_resize(Ecore_Evas *ee)
@@ -70,6 +98,12 @@ static void
 on_key_down(void *data, Evas *e, Evas_Object *obj, void *event_info)
 {
     Evas_Event_Key_Down *ev = (Evas_Event_Key_Down*) event_info;
+    static const char *encodings[] = {
+        "ISO-8859-1",
+        "UTF-8",
+        NULL
+    };
+    static int currentEncoding = -1;
     if (!strcmp(ev->key, "F1")) {
         info("Back (F1) was pressed\n");
         if (!ewk_view_back(obj))
@@ -78,6 +112,10 @@ on_key_down(void *data, Evas *e, Evas_Object *obj, void *event_info)
         info("Forward (F2) was pressed\n");
         if (!ewk_view_forward(obj))
             info("Forward ignored: No forward history\n");
+    } else if (!strcmp(ev->key, "F3")) {
+        currentEncoding = (currentEncoding + 1) % (sizeof(encodings) / sizeof(encodings[0]));
+        info("Set encoding (F3) pressed. New encoding to %s", encodings[currentEncoding]);
+        ewk_view_setting_encoding_custom_set(obj, encodings[currentEncoding]);
     } else if (!strcmp(ev->key, "F5")) {
             info("Reload (F5) was pressed, reloading.\n");
             ewk_view_reload(obj);
@@ -139,16 +177,33 @@ on_error(void *user_data, Evas_Object *webview, void *event_info)
     eina_strbuf_free(buffer);
 }
 
-static MiniBrowser *browserCreate(const char *url)
+static int
+quit(Eina_Bool success, const char *msg)
+{
+    ewk_shutdown();
+
+    if (msg)
+        fputs(msg, (success) ? stdout : stderr);
+
+    if (!success)
+        return EXIT_FAILURE;
+
+    return EXIT_SUCCESS;
+}
+
+static MiniBrowser *browserCreate(const char *url, const char *engine)
 {
     MiniBrowser *app = malloc(sizeof(MiniBrowser));
 
-    app->ee = ecore_evas_new(0, 0, 0, DEFAULT_WIDTH, DEFAULT_HEIGHT, 0);
+    app->ee = ecore_evas_new(engine, 0, 0, DEFAULT_WIDTH, DEFAULT_HEIGHT, 0);
+    if (!app->ee)
+        return 0;
 
     ecore_evas_title_set(app->ee, APP_NAME);
     ecore_evas_callback_resize_set(app->ee, on_ecore_evas_resize);
     ecore_evas_borderless_set(app->ee, 0);
     ecore_evas_show(app->ee);
+    ecore_evas_callback_delete_request_set(app->ee, closeWindow);
 
     app->evas = ecore_evas_get(app->ee);
 
@@ -163,6 +218,7 @@ static MiniBrowser *browserCreate(const char *url)
 
     /* Create webview */
     app->browser = ewk_view_add(app->evas);
+    ewk_view_theme_set(app->browser, THEME_DIR"/default.edj");
     evas_object_name_set(app->browser, "browser");
 
     evas_object_smart_callback_add(app->browser, "load,error", on_error, app);
@@ -185,16 +241,38 @@ int main(int argc, char *argv[])
 {
     const char *url;
     int args = 1;
+    char *engine = NULL;
+    unsigned char quitOption = 0;
 
-    if (!ecore_evas_init())
+    Ecore_Getopt_Value values[] = {
+        ECORE_GETOPT_VALUE_STR(engine),
+        ECORE_GETOPT_VALUE_BOOL(quitOption),
+        ECORE_GETOPT_VALUE_BOOL(quitOption),
+        ECORE_GETOPT_VALUE_BOOL(quitOption),
+        ECORE_GETOPT_VALUE_BOOL(quitOption),
+        ECORE_GETOPT_VALUE_NONE
+    };
+
+    if (!ewk_init())
         return EXIT_FAILURE;
+
+    ecore_app_args_set(argc, (const char **) argv);
+    args = ecore_getopt_parse(&options, values, argc, argv);
+
+    if (args < 0)
+        return quit(EINA_FALSE, "ERROR: could not parse options.\n");
+
+    if (quitOption)
+        return quit(EINA_TRUE, NULL);
 
     if (args < argc)
         url = argv[args];
     else
         url = DEFAULT_URL;
 
-    MiniBrowser *browser = browserCreate(url);
+    MiniBrowser *browser = browserCreate(url, engine);
+    if (!browser)
+        return quit(EINA_FALSE, "ERROR: could not create browser.\n");
 
     Ecore_Event_Handler *handle = ecore_event_handler_add(ECORE_EVENT_SIGNAL_EXIT, main_signal_exit, 0);
 
@@ -204,7 +282,5 @@ int main(int argc, char *argv[])
     ecore_evas_free(browser->ee);
     free(browser);
 
-    ecore_evas_shutdown();
-
-    return 0;
+    return quit(EINA_TRUE, NULL);
 }

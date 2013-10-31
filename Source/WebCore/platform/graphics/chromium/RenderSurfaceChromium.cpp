@@ -40,8 +40,6 @@ namespace WebCore {
 
 RenderSurfaceChromium::RenderSurfaceChromium(LayerChromium* owningLayer)
     : m_owningLayer(owningLayer)
-    , m_maskLayer(0)
-    , m_skipsDraw(false)
     , m_drawOpacity(1)
     , m_drawOpacityIsAnimating(false)
     , m_targetSurfaceTransformsAreAnimating(false)
@@ -56,36 +54,10 @@ RenderSurfaceChromium::~RenderSurfaceChromium()
 
 FloatRect RenderSurfaceChromium::drawableContentRect() const
 {
-    FloatRect localContentRect(-0.5 * m_contentRect.width(), -0.5 * m_contentRect.height(),
-                               m_contentRect.width(), m_contentRect.height());
-    FloatRect drawableContentRect = CCMathUtil::mapClippedRect(m_drawTransform, localContentRect);
-    if (m_owningLayer->replicaLayer())
-        drawableContentRect.unite(CCMathUtil::mapClippedRect(m_replicaDrawTransform, localContentRect));
-
+    FloatRect drawableContentRect = CCMathUtil::mapClippedRect(m_drawTransform, m_contentRect);
+    if (m_owningLayer->hasReplica())
+        drawableContentRect.unite(CCMathUtil::mapClippedRect(m_replicaDrawTransform, m_contentRect));
     return drawableContentRect;
-}
-
-RenderSurfaceChromium* RenderSurfaceChromium::targetRenderSurface() const
-{
-    LayerChromium* parent = m_owningLayer->parent();
-    if (!parent)
-        return 0;
-    return parent->targetRenderSurface();
-}
-
-bool RenderSurfaceChromium::hasReplica() const
-{
-    return m_owningLayer->replicaLayer();
-}
-
-bool RenderSurfaceChromium::hasMask() const
-{
-    return m_maskLayer;
-}
-
-bool RenderSurfaceChromium::replicaHasMask() const
-{
-    return hasReplica() && (m_maskLayer || m_owningLayer->replicaLayer()->maskLayer());
 }
 
 FloatRect RenderSurfaceChromium::computeRootScissorRectInCurrentSurface(const FloatRect& rootScissorRect) const

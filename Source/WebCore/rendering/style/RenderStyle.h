@@ -304,7 +304,7 @@ protected:
         unsigned _overflowY : 3; // EOverflow
         unsigned _vertical_align : 4; // EVerticalAlign
         unsigned _clear : 2; // EClear
-        unsigned _position : 2; // EPosition
+        unsigned _position : 3; // EPosition
         unsigned _floating : 2; // EFloat
         unsigned _table_layout : 1; // ETableLayout
 
@@ -331,7 +331,7 @@ protected:
         unsigned _affectedByDrag : 1;
         unsigned _isLink : 1;
         // If you add more style bits here, you will also need to update RenderStyle::copyNonInheritedFrom()
-        // 53 bits
+        // 54 bits
     } noninherited_flags;
 
 // !END SYNC!
@@ -440,35 +440,19 @@ public:
         return hasBackgroundImage();
     }
     
-    void getImageOutsets(const NinePieceImage&, LayoutUnit& top, LayoutUnit& right, LayoutUnit& bottom, LayoutUnit& left) const;
+    LayoutBoxExtent imageOutsets(const NinePieceImage&) const;
     bool hasBorderImageOutsets() const
     {
         return borderImage().hasImage() && borderImage().outset().nonZero();
     }
-    void getBorderImageOutsets(LayoutUnit& top, LayoutUnit& right, LayoutUnit& bottom, LayoutUnit& left) const
+    LayoutBoxExtent borderImageOutsets() const
     {
-        return getImageOutsets(borderImage(), top, right, bottom, left);
+        return imageOutsets(borderImage());
     }
-    void getBorderImageHorizontalOutsets(LayoutUnit& left, LayoutUnit& right) const
+
+    LayoutBoxExtent maskBoxImageOutsets() const
     {
-        return getImageHorizontalOutsets(borderImage(), left, right);
-    }
-    void getBorderImageVerticalOutsets(LayoutUnit& top, LayoutUnit& bottom) const
-    {
-        return getImageVerticalOutsets(borderImage(), top, bottom);
-    }
-    void getBorderImageInlineDirectionOutsets(LayoutUnit& logicalLeft, LayoutUnit& logicalRight) const
-    {
-        return getImageInlineDirectionOutsets(borderImage(), logicalLeft, logicalRight);
-    }
-    void getBorderImageBlockDirectionOutsets(LayoutUnit& logicalTop, LayoutUnit& logicalBottom) const
-    {
-        return getImageBlockDirectionOutsets(borderImage(), logicalTop, logicalBottom);
-    }
-    
-    void getMaskBoxImageOutsets(LayoutUnit& top, LayoutUnit& right, LayoutUnit& bottom, LayoutUnit& left) const
-    {
-        return getImageOutsets(maskBoxImage(), top, right, bottom, left);
+        return imageOutsets(maskBoxImage());
     }
 
 #if ENABLE(CSS_FILTERS)
@@ -830,8 +814,8 @@ public:
     const Vector<Length>& gridColumns() const { return rareNonInheritedData->m_grid->m_gridColumns; }
     const Vector<Length>& gridRows() const { return rareNonInheritedData->m_grid->m_gridRows; }
 
-    const Length& gridItemColumn() const { return rareNonInheritedData->m_gridItem->m_gridColumn; }
-    const Length& gridItemRow() const { return rareNonInheritedData->m_gridItem->m_gridRow; }
+    Length gridItemColumn() const { return rareNonInheritedData->m_gridItem->m_gridColumn; }
+    Length gridItemRow() const { return rareNonInheritedData->m_gridItem->m_gridRow; }
 
     const ShadowData* boxShadow() const { return rareNonInheritedData->m_boxShadow.get(); }
     void getBoxShadowExtent(LayoutUnit& top, LayoutUnit& right, LayoutUnit& bottom, LayoutUnit& left) const { getShadowExtent(boxShadow(), top, right, bottom, left); }
@@ -978,6 +962,10 @@ public:
     bool isHorizontalWritingMode() const { return writingMode() == TopToBottomWritingMode || writingMode() == BottomToTopWritingMode; }
     bool isFlippedLinesWritingMode() const { return writingMode() == LeftToRightWritingMode || writingMode() == BottomToTopWritingMode; }
     bool isFlippedBlocksWritingMode() const { return writingMode() == RightToLeftWritingMode || writingMode() == BottomToTopWritingMode; }
+
+#if ENABLE(CSS_IMAGE_ORIENTATION)
+    ImageOrientationEnum imageOrientation() const { return static_cast<ImageOrientationEnum>(rareInheritedData->m_imageOrientation); }
+#endif
 
     EImageRendering imageRendering() const { return static_cast<EImageRendering>(rareInheritedData->m_imageRendering); }
 
@@ -1151,6 +1139,11 @@ public:
     bool setZoom(float);
     void setZoomWithoutReturnValue(float f) { setZoom(f); }
     bool setEffectiveZoom(float);
+
+#if ENABLE(CSS_IMAGE_ORIENTATION)
+    void setImageOrientation(ImageOrientationEnum v) { SET_VAR(rareInheritedData, m_imageOrientation, static_cast<int>(v)) }
+#endif
+
     void setImageRendering(EImageRendering v) { SET_VAR(rareInheritedData, m_imageRendering, v) }
 
 #if ENABLE(CSS_IMAGE_RESOLUTION)
@@ -1443,22 +1436,22 @@ public:
     void setKerning(SVGLength k) { accessSVGStyle()->setKerning(k); }
 #endif
 
-    void setWrapShapeInside(PassRefPtr<CSSWrapShape> shape)
+    void setWrapShapeInside(PassRefPtr<WrapShape> shape)
     {
         if (rareNonInheritedData->m_wrapShapeInside != shape)
             rareNonInheritedData.access()->m_wrapShapeInside = shape;
     }
-    CSSWrapShape* wrapShapeInside() const { return rareNonInheritedData->m_wrapShapeInside.get(); }
+    WrapShape* wrapShapeInside() const { return rareNonInheritedData->m_wrapShapeInside.get(); }
 
-    void setWrapShapeOutside(PassRefPtr<CSSWrapShape> shape)
+    void setWrapShapeOutside(PassRefPtr<WrapShape> shape)
     {
         if (rareNonInheritedData->m_wrapShapeOutside != shape)
             rareNonInheritedData.access()->m_wrapShapeOutside = shape;
     }
-    CSSWrapShape* wrapShapeOutside() const { return rareNonInheritedData->m_wrapShapeOutside.get(); }
+    WrapShape* wrapShapeOutside() const { return rareNonInheritedData->m_wrapShapeOutside.get(); }
 
-    static CSSWrapShape* initialWrapShapeInside() { return 0; }
-    static CSSWrapShape* initialWrapShapeOutside() { return 0; }
+    static WrapShape* initialWrapShapeInside() { return 0; }
+    static WrapShape* initialWrapShapeOutside() { return 0; }
 
     Length wrapPadding() const { return rareNonInheritedData->m_wrapPadding; }
     void setWrapPadding(Length wrapPadding) { SET_VAR(rareNonInheritedData, m_wrapPadding, wrapPadding); }
@@ -1674,6 +1667,7 @@ public:
     static const AtomicString& initialTextEmphasisCustomMark() { return nullAtom; }
     static TextEmphasisPosition initialTextEmphasisPosition() { return TextEmphasisPositionOver; }
     static LineBoxContain initialLineBoxContain() { return LineBoxContainBlock | LineBoxContainInline | LineBoxContainReplaced; }
+    static ImageOrientationEnum initialImageOrientation() { return OriginTopLeft; }
     static EImageRendering initialImageRendering() { return ImageRenderingAuto; }
     static ImageResolutionSource initialImageResolutionSource() { return ImageResolutionSpecified; }
     static ImageResolutionSnap initialImageResolutionSnap() { return ImageResolutionNoSnap; }
@@ -1752,18 +1746,6 @@ private:
     void getShadowBlockDirectionExtent(const ShadowData* shadow, LayoutUnit& logicalTop, LayoutUnit& logicalBottom) const
     {
         return isHorizontalWritingMode() ? getShadowVerticalExtent(shadow, logicalTop, logicalBottom) : getShadowHorizontalExtent(shadow, logicalTop, logicalBottom);
-    }
-
-    // Helpers for obtaining border image outsets for overflow.
-    void getImageHorizontalOutsets(const NinePieceImage&, LayoutUnit& left, LayoutUnit& right) const;
-    void getImageVerticalOutsets(const NinePieceImage&, LayoutUnit& top, LayoutUnit& bottom) const;
-    void getImageInlineDirectionOutsets(const NinePieceImage& image, LayoutUnit& logicalLeft, LayoutUnit& logicalRight) const
-    {
-        return isHorizontalWritingMode() ? getImageHorizontalOutsets(image, logicalLeft, logicalRight) : getImageVerticalOutsets(image, logicalLeft, logicalRight);
-    }
-    void getImageBlockDirectionOutsets(const NinePieceImage& image, LayoutUnit& logicalTop, LayoutUnit& logicalBottom) const
-    {
-        return isHorizontalWritingMode() ? getImageVerticalOutsets(image, logicalTop, logicalBottom) : getImageHorizontalOutsets(image, logicalTop, logicalBottom);
     }
 
     // Color accessors are all private to make sure callers use visitedDependentColor instead to access them.

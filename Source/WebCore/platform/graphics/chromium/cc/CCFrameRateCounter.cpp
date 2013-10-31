@@ -28,12 +28,14 @@
 #include "CCFrameRateCounter.h"
 
 #include "CCProxy.h"
+#include <public/Platform.h>
 #include <wtf/CurrentTime.h>
 
 namespace WebCore {
 
 const double CCFrameRateCounter::kFrameTooFast = 1.0 / 70.0; // measured in seconds
 const double CCFrameRateCounter::kFrameTooSlow = 1.0 / 12.0;
+const double CCFrameRateCounter::kDroppedFrameTime = 1.0 / 50.0;
 
 // safeMod works on -1, returning m-1 in that case.
 static inline int safeMod(int number, int modulus)
@@ -41,13 +43,20 @@ static inline int safeMod(int number, int modulus)
     return (number + modulus) % modulus;
 }
 
-inline int CCFrameRateCounter::frameIndex(int frame) const
+inline double CCFrameRateCounter::frameInterval(int frameNumber) const
 {
-    return safeMod(frame, kTimeStampHistorySize);
+    return m_timeStampHistory[frameIndex(frameNumber)] -
+        m_timeStampHistory[frameIndex(frameNumber - 1)];
+}
+
+inline int CCFrameRateCounter::frameIndex(int frameNumber) const
+{
+    return safeMod(frameNumber, kTimeStampHistorySize);
 }
 
 CCFrameRateCounter::CCFrameRateCounter()
     : m_currentFrameNumber(1)
+    , m_droppedFrameCount(0)
 {
     m_timeStampHistory[0] = currentTime();
     m_timeStampHistory[1] = m_timeStampHistory[0];
@@ -57,7 +66,18 @@ CCFrameRateCounter::CCFrameRateCounter()
 
 void CCFrameRateCounter::markBeginningOfFrame(double timestamp)
 {
+    if (CCProxy::hasImplThread() && m_currentFrameNumber > 0) {
+        double lastFrameTimestamp = frameIndex(m_currentFrameNumber - 1);
+        double drawDelaySeconds = timestamp - lastFrameTimestamp;
+        double drawDelayMs = drawDelaySeconds * 1000.0;
+
+        WebKit::Platform::current()->histogramCustomCounts("Renderer4.CompositorThreadImplDrawDelay", static_cast<int>(drawDelayMs), 1, 120, 60);
+    }
+
     m_timeStampHistory[frameIndex(m_currentFrameNumber)] = timestamp;
+    double delta = frameInterval(m_currentFrameNumber);
+    if (!isBadFrameInterval(delta) && delta > kDroppedFrameTime)
+        ++m_droppedFrameCount;
 }
 
 void CCFrameRateCounter::markEndOfFrame()
@@ -75,9 +95,7 @@ bool CCFrameRateCounter::isBadFrameInterval(double intervalBetweenConsecutiveFra
 
 bool CCFrameRateCounter::isBadFrame(int frameNumber) const
 {
-    double delta = m_timeStampHistory[frameIndex(frameNumber)] -
-            m_timeStampHistory[frameIndex(frameNumber - 1)];
-    return isBadFrameInterval(delta);
+    return isBadFrameInterval(frameInterval(frameNumber));
 }
 
 void CCFrameRateCounter::getAverageFPSAndStandardDeviation(double& averageFPS, double& standardDeviation) const

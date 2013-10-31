@@ -94,6 +94,7 @@
 #include "JSDOMParser.cpp"
 #include "JSDOMPlugin.cpp"
 #include "JSDOMPluginArray.cpp"
+#include "JSDOMSecurityPolicy.cpp"
 #include "JSDOMSelection.cpp"
 #include "JSDOMSettableTokenList.cpp"
 #include "JSDOMStringList.cpp"
@@ -267,6 +268,7 @@
 #include "JSPositionErrorCallback.cpp"
 #include "JSProcessingInstruction.cpp"
 #include "JSProgressEvent.cpp"
+#include "JSPropertyNodeList.cpp"
 #include "JSRadioNodeList.cpp"
 #include "JSRange.cpp"
 #include "JSRangeException.cpp"
@@ -279,6 +281,10 @@
 #include "JSShadowRoot.cpp"
 #include "JSSharedWorker.cpp"
 #include "JSSharedWorkerContext.cpp"
+#if ENABLE(MEDIA_SOURCE)
+#include "JSSourceBuffer.cpp"
+#include "JSSourceBufferList.cpp"
+#endif
 #include "JSSQLError.cpp"
 #include "JSSQLException.cpp"
 #include "JSSQLResultSet.cpp"

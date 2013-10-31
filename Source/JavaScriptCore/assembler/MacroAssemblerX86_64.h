@@ -63,6 +63,12 @@ public:
         and32(imm, Address(scratchRegister));
     }
     
+    void add32(AbsoluteAddress address, RegisterID dest)
+    {
+        move(TrustedImmPtr(address.m_ptr), scratchRegister);
+        add32(Address(scratchRegister), dest);
+    }
+    
     void or32(TrustedImm32 imm, AbsoluteAddress address)
     {
         move(TrustedImmPtr(address.m_ptr), scratchRegister);
@@ -140,6 +146,17 @@ public:
     {
         m_assembler.addq_rr(src, dest);
     }
+    
+    void addPtr(Address src, RegisterID dest)
+    {
+        m_assembler.addq_mr(src.offset, src.base, dest);
+    }
+
+    void addPtr(AbsoluteAddress src, RegisterID dest)
+    {
+        move(TrustedImmPtr(src.m_ptr), scratchRegister);
+        addPtr(Address(scratchRegister), dest);
+    }
 
     void addPtr(TrustedImm32 imm, RegisterID srcDest)
     {
@@ -181,6 +198,11 @@ public:
     void andPtr(TrustedImm32 imm, RegisterID srcDest)
     {
         m_assembler.andq_ir(imm.m_value, srcDest);
+    }
+    
+    void negPtr(RegisterID dest)
+    {
+        m_assembler.negq_r(dest);
     }
 
     void orPtr(RegisterID src, RegisterID dest)
@@ -451,6 +473,12 @@ public:
             m_assembler.cmpq_im(0, address.offset, address.base);
         else
             m_assembler.testq_i32m(mask.m_value, address.offset, address.base);
+        return Jump(m_assembler.jCC(x86Condition(cond)));
+    }
+
+    Jump branchTestPtr(ResultCondition cond, Address address, RegisterID reg)
+    {
+        m_assembler.testq_rm(reg, address.offset, address.base);
         return Jump(m_assembler.jCC(x86Condition(cond)));
     }
 

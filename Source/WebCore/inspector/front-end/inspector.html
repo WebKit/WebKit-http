@@ -91,7 +91,6 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
     <script type="text/javascript" src="ApplicationCacheItemsView.js"></script>
     <script type="text/javascript" src="IndexedDBModel.js"></script>
     <script type="text/javascript" src="IndexedDBViews.js"></script>
-    <script type="text/javascript" src="Script.js"></script>
     <script type="text/javascript" src="Spectrum.js"></script>
     <script type="text/javascript" src="SidebarPane.js"></script>
     <script type="text/javascript" src="ElementsTreeOutline.js"></script>
@@ -119,9 +118,9 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
     <script type="text/javascript" src="StatusBarButton.js"></script>
     <script type="text/javascript" src="ElementsPanel.js"></script>
     <script type="text/javascript" src="NetworkPanel.js"></script>
-    <script type="text/javascript" src="InjectedFakeWorker.js"></script>
     <script type="text/javascript" src="TextEditor.js"></script>
     <script type="text/javascript" src="SourceFrame.js"></script>
+    <script type="text/javascript" src="UISourceCodeFrame.js"></script>
     <script type="text/javascript" src="ResourceView.js"></script>
     <script type="text/javascript" src="RequestView.js"></script>
     <script type="text/javascript" src="JavaScriptSourceFrame.js"></script>
@@ -136,6 +135,7 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
     <script type="text/javascript" src="ExtensionAPI.js"></script>
     <script type="text/javascript" src="ExtensionAuditCategory.js"></script>
     <script type="text/javascript" src="ExtensionServer.js"></script>
+    <script type="text/javascript" src="ExtensionView.js"></script>
     <script type="text/javascript" src="ExtensionPanel.js"></script>
     <script type="text/javascript" src="AuditsPanel.js"></script>
     <script type="text/javascript" src="AuditResultView.js"></script>
@@ -186,6 +186,7 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
     <script type="text/javascript" src="DebuggerModel.js"></script>
     <script type="text/javascript" src="SourceMapping.js"></script>
     <script type="text/javascript" src="UISourceCode.js"></script>
+    <script type="text/javascript" src="Script.js"></script>
     <script type="text/javascript" src="JavaScriptSource.js"></script>
     <script type="text/javascript" src="Linkifier.js"></script>
     <script type="text/javascript" src="DebuggerScriptMapping.js"></script>
@@ -196,6 +197,7 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
     <script type="text/javascript" src="RawSourceCode.js"></script>
     <script type="text/javascript" src="ResourceScriptMapping.js"></script>
     <script type="text/javascript" src="CompilerScriptMapping.js"></script>
+    <script type="text/javascript" src="SASSSourceMapping.js"></script>
     <script type="text/javascript" src="ScriptsSearchScope.js"></script>
     <script type="text/javascript" src="DOMAgent.js"></script>
     <script type="text/javascript" src="TimelinePresentationModel.js"></script>
@@ -231,8 +233,14 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
         </div>
     </div>
     <div id="main">
-        <div id="main-status-bar" class="status-bar"><div id="anchored-status-bar-items"><div id="counters"><div id="error-warning-count" class="hidden"></div></div></div></div>
+        <div id="floating-status-bar-container" class="status-bar"><div id="floating-status-bar-resizer"></div></div>
     </div>
     <div id="drawer"></div>
+    <div id="main-status-bar" class="status-bar">
+        <div id="bottom-status-bar-container">
+            <div id="panel-status-bar"></div>
+        </div>
+        <div id="error-warning-count" class="hidden"></div>
+    </div>
 </body>
 </html>

@@ -87,15 +87,17 @@ inspector/styles/styles-computed-trace.html
 # https://bugs.webkit.org/show_bug.cgi?id=85532
 fast/sub-pixel/client-rect-has-subpixel-precision.html
 fast/sub-pixel/client-width-height-snapping.html
+fast/sub-pixel/file-upload-control-at-fractional-offset.html
 fast/sub-pixel/float-containing-block-with-margin.html
 fast/sub-pixel/float-with-right-margin-zoom.html
 fast/sub-pixel/float-wrap-with-subpixel-top.html
 fast/sub-pixel/inline-block-with-margin.html
 fast/sub-pixel/inline-block-with-padding.html
 fast/sub-pixel/layout-boxes-with-zoom.html
+fast/sub-pixel/position-right-aligns-with-container.html
+fast/sub-pixel/selection/selection-gaps-at-fractional-offsets.html
 fast/sub-pixel/size-of-box-with-zoom.html
-fast/sub-pixel/selection-gaps-at-fractional-offsets.html
-fast/sub-pixel/file-upload-control-at-fractional-offset.html
+fast/sub-pixel/table-rows-no-gaps.html
 
 # CONSOLE MESSAGE: line 0: SVG animation pause API missing!
 # [WK2] SVG animation pause API missing
@@ -899,11 +901,6 @@ platform/mac/editing/spelling/move-cursor-around-misspelled-word.html
 # WebKitTestRunner needs layoutTestController.hasGrammarMarker
 editing/spelling/grammar.html
 
-# WebKitTestRunner needs layoutTestController.nodesFromRect
-fast/dom/nodesFromRect-basic.html
-fast/dom/nodesFromRect-inner-documents.html
-fast/dom/nodesFromRect-links-and-text.html
-
 # WebKitTestRunner needs layoutTestController.setSpatialNavigationEnabled
 fast/spatial-navigation
 
@@ -1420,6 +1417,9 @@ fast/parser/pre-html5-parser-quirks.html
 # [WK2] New fast/events/drag-display-none-element.html fails
 # https://bugs.webkit.org/show_bug.cgi?id=90177
 fast/events/drag-display-none-element.html
+
+# Skip tests in fast/text/shaping
+fast/text/shaping
 
 ### END OF (4) Features that are not supported in WebKit2 and likely never will be
 ########################################

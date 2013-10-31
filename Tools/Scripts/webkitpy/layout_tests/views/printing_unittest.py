@@ -184,19 +184,30 @@ class  Testprinter(unittest.TestCase):
         # buildbot is expecting.
         pass
 
+    def test_fallback_path_in_config(self):
+        printer, err, out = self.get_printer(['--print', 'everything'])
+        # FIXME: it's lame that i have to set these options directly.
+        printer._options.results_directory = '/tmp'
+        printer._options.pixel_tests = True
+        printer._options.new_baseline = True
+        printer._options.time_out_ms = 6000
+        printer._options.slow_time_out_ms = 12000
+        printer.print_config()
+        self.assertTrue('Baseline search path: test-mac-leopard -> test-mac-snowleopard -> generic' in err.getvalue())
+
     def test_print_config(self):
-        self.do_switch_tests('print_config', 'config', to_buildbot=False)
+        self.do_switch_tests('_print_config', 'config', to_buildbot=False)
 
     def test_print_expected(self):
-        self.do_switch_tests('print_expected', 'expected', to_buildbot=False)
+        self.do_switch_tests('_print_expected', 'expected', to_buildbot=False)
 
     def test_print_timing(self):
         self.do_switch_tests('print_timing', 'timing', to_buildbot=False)
 
-    def test_print_update(self):
+    def test_write_update(self):
         # Note that there shouldn't be a carriage return here; updates()
         # are meant to be overwritten.
-        self.do_switch_tests('print_update', 'updates', to_buildbot=False,
+        self.do_switch_tests('write_update', 'updates', to_buildbot=False,
                              message='hello', exp_err=['hello'])
 
     def test_print_one_line_summary(self):
@@ -206,11 +217,11 @@ class  Testprinter(unittest.TestCase):
 
         printer, err, out = self.get_printer(['--print', 'one-line-summary'])
         printer.print_one_line_summary(1, 1, 0)
-        self.assertWritten(err, ["All 1 tests ran as expected.\n", "\n"])
+        self.assertWritten(err, ["The test ran as expected.\n", "\n"])
 
         printer, err, out = self.get_printer(['--print', 'everything'])
         printer.print_one_line_summary(1, 1, 0)
-        self.assertWritten(err, ["All 1 tests ran as expected.\n", "\n"])
+        self.assertWritten(err, ["The test ran as expected.\n", "\n"])
 
         printer, err, out = self.get_printer(['--print', 'everything'])
         printer.print_one_line_summary(2, 1, 1)
@@ -405,25 +416,26 @@ class  Testprinter(unittest.TestCase):
                     all pass on the second run).
 
             """
+            test_is_slow = False
             paths, rs, exp = self.get_result_summary(tests, expectations)
             if expected:
-                rs.add(self.get_result('passes/text.html', test_expectations.PASS), expected)
-                rs.add(self.get_result('failures/expected/timeout.html', test_expectations.TIMEOUT), expected)
-                rs.add(self.get_result('failures/expected/crash.html', test_expectations.CRASH), expected)
+                rs.add(self.get_result('passes/text.html', test_expectations.PASS), expected, test_is_slow)
+                rs.add(self.get_result('failures/expected/timeout.html', test_expectations.TIMEOUT), expected, test_is_slow)
+                rs.add(self.get_result('failures/expected/crash.html', test_expectations.CRASH), expected, test_is_slow)
             elif passing:
-                rs.add(self.get_result('passes/text.html'), expected)
-                rs.add(self.get_result('failures/expected/timeout.html'), expected)
-                rs.add(self.get_result('failures/expected/crash.html'), expected)
+                rs.add(self.get_result('passes/text.html'), expected, test_is_slow)
+                rs.add(self.get_result('failures/expected/timeout.html'), expected, test_is_slow)
+                rs.add(self.get_result('failures/expected/crash.html'), expected, test_is_slow)
             else:
-                rs.add(self.get_result('passes/text.html', test_expectations.TIMEOUT), expected)
-                rs.add(self.get_result('failures/expected/timeout.html', test_expectations.CRASH), expected)
-                rs.add(self.get_result('failures/expected/crash.html', test_expectations.TIMEOUT), expected)
+                rs.add(self.get_result('passes/text.html', test_expectations.TIMEOUT), expected, test_is_slow)
+                rs.add(self.get_result('failures/expected/timeout.html', test_expectations.CRASH), expected, test_is_slow)
+                rs.add(self.get_result('failures/expected/crash.html', test_expectations.TIMEOUT), expected, test_is_slow)
             retry = rs
             if flaky:
                 paths, retry, exp = self.get_result_summary(tests, expectations)
-                retry.add(self.get_result('passes/text.html'), True)
-                retry.add(self.get_result('failures/expected/timeout.html'), True)
-                retry.add(self.get_result('failures/expected/crash.html'), True)
+                retry.add(self.get_result('passes/text.html'), True, test_is_slow)
+                retry.add(self.get_result('failures/expected/timeout.html'), True, test_is_slow)
+                retry.add(self.get_result('failures/expected/crash.html'), True, test_is_slow)
             unexpected_results = manager.summarize_results(self._port, exp, rs, retry, test_timings={}, only_unexpected=True, interrupted=False)
             return unexpected_results
 

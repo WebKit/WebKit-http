@@ -60,6 +60,7 @@
 #include "NavigationAction.h"
 #include "Node.h"
 #include "Page.h"
+#include "PagePopupDriver.h"
 #include "PlatformScreen.h"
 #include "PlatformSupport.h"
 #include "PopupContainer.h"
@@ -102,6 +103,7 @@
 #include "WindowFeatures.h"
 #include "WrappedResourceRequest.h"
 #include <public/Platform.h>
+#include <wtf/text/CString.h>
 #include <wtf/text/StringBuilder.h>
 #include <wtf/text/StringConcatenate.h>
 #include <wtf/unicode/CharacterNames.h>
@@ -139,6 +141,9 @@ ChromeClientImpl::ChromeClientImpl(WebViewImpl* webView)
     , m_menubarVisible(true)
     , m_resizable(true)
     , m_nextNewWindowNavigationPolicy(WebNavigationPolicyIgnore)
+#if ENABLE(PAGE_POPUP)
+    , m_pagePopupDriver(webView)
+#endif
 {
 }
 
@@ -491,13 +496,6 @@ IntRect ChromeClientImpl::windowResizerRect() const
         result = m_webView->client()->windowResizerRect();
     return result;
 }
-
-#if ENABLE(REGISTER_PROTOCOL_HANDLER)
-void ChromeClientImpl::registerProtocolHandler(const String& scheme, const String& baseURL, const String& url, const String& title)
-{
-    m_webView->client()->registerProtocolHandler(scheme, baseURL, url, title);
-}
-#endif
 
 void ChromeClientImpl::invalidateRootView(const IntRect&, bool)
 {
@@ -1009,12 +1007,25 @@ PassRefPtr<SearchPopupMenu> ChromeClientImpl::createSearchPopupMenu(PopupMenuCli
 #if ENABLE(PAGE_POPUP)
 PagePopup* ChromeClientImpl::openPagePopup(PagePopupClient* client, const IntRect& originBoundsInRootView)
 {
-    return m_webView->openPagePopup(client, originBoundsInRootView);
+    ASSERT(m_pagePopupDriver);
+    return m_pagePopupDriver->openPagePopup(client, originBoundsInRootView);
 }
 
 void ChromeClientImpl::closePagePopup(PagePopup* popup)
 {
-    m_webView->closePagePopup(popup);
+    ASSERT(m_pagePopupDriver);
+    m_pagePopupDriver->closePagePopup(popup);
+}
+
+void ChromeClientImpl::setPagePopupDriver(PagePopupDriver* driver)
+{
+    ASSERT(driver);
+    m_pagePopupDriver = driver;
+}
+
+void ChromeClientImpl::resetPagePopupDriver()
+{
+    m_pagePopupDriver = m_webView;
 }
 #endif
 
@@ -1079,10 +1090,12 @@ void ChromeClientImpl::numWheelEventHandlersChanged(unsigned numberOfWheelHandle
     m_webView->numberOfWheelEventHandlersChanged(numberOfWheelHandlers);
 }
 
-void ChromeClientImpl::numTouchEventHandlersChanged(unsigned numberOfTouchHandlers)
+#if ENABLE(TOUCH_EVENTS)
+void ChromeClientImpl::needTouchEvents(bool needsTouchEvents)
 {
-    m_webView->numberOfTouchEventHandlersChanged(numberOfTouchHandlers);
+    m_webView->hasTouchEventHandlers(needsTouchEvents);
 }
+#endif // ENABLE(TOUCH_EVENTS)
 
 #if ENABLE(POINTER_LOCK)
 bool ChromeClientImpl::requestPointerLock()
@@ -1099,6 +1112,23 @@ bool ChromeClientImpl::isPointerLocked()
 {
     return m_webView->isPointerLocked();
 }
+#endif
+
+#if ENABLE(REGISTER_PROTOCOL_HANDLER)
+PassOwnPtr<RegisterProtocolHandlerClientImpl> RegisterProtocolHandlerClientImpl::create(WebViewImpl* webView)
+{
+    return adoptPtr(new RegisterProtocolHandlerClientImpl(webView));
+}
+
+RegisterProtocolHandlerClientImpl::RegisterProtocolHandlerClientImpl(WebViewImpl* webView)
+    : m_webView(webView)
+{
+}
+
+void RegisterProtocolHandlerClientImpl::registerProtocolHandler(const String& scheme, const String& baseURL, const String& url, const String& title) 
+{ 
+    m_webView->client()->registerProtocolHandler(scheme, baseURL, url, title);
+} 
 #endif
 
 } // namespace WebKit

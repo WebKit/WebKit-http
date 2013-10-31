@@ -49,7 +49,7 @@ WebInspector.ResourcesPanel = function(database)
     this.resourcesListTreeElement = new WebInspector.StorageCategoryTreeElement(this, WebInspector.UIString("Frames"), "Frames", ["frame-storage-tree-item"]);
     this.sidebarTree.appendChild(this.resourcesListTreeElement);
 
-    this.databasesListTreeElement = new WebInspector.StorageCategoryTreeElement(this, WebInspector.UIString("Databases"), "Databases", ["database-storage-tree-item"]);
+    this.databasesListTreeElement = new WebInspector.StorageCategoryTreeElement(this, WebInspector.UIString("Web SQL"), "Databases", ["database-storage-tree-item"]);
     this.sidebarTree.appendChild(this.databasesListTreeElement);
 
     this.indexedDBListTreeElement = new WebInspector.IndexedDBTreeElement(this);
@@ -635,21 +635,14 @@ WebInspector.ResourcesPanel.prototype = {
         this.storageViewStatusBarItemsContainer.style.left = width + "px";
     },
 
+    /**
+     * @param {string} query
+     */
     performSearch: function(query)
     {
         this._resetSearchResults();
         var regex = WebInspector.SourceFrame.createSearchRegex(query);
         var totalMatchesCount = 0;
-
-        function searchInEditedResource(treeElement)
-        {
-            var resource = treeElement.representedObject;
-            if (resource.history.length == 0)
-                return;
-            var matchesCount = countRegexMatches(regex, resource.content)
-            treeElement.searchMatchesFound(matchesCount);
-            totalMatchesCount += matchesCount;
-        }
 
         function callback(error, result)
         {
@@ -667,8 +660,6 @@ WebInspector.ResourcesPanel.prototype = {
                     if (!resource)
                         continue;
 
-                    if (resource.history.length > 0)
-                        continue; // Skip edited resources.
                     this._findTreeElementForResource(resource).searchMatchesFound(searchResult.matchesCount);
                     totalMatchesCount += searchResult.matchesCount;
                 }
@@ -681,7 +672,6 @@ WebInspector.ResourcesPanel.prototype = {
                 this.jumpToNextSearchResult();
         }
 
-        this._forAllResourceTreeElements(searchInEditedResource.bind(this));
         PageAgent.searchInResources(regex.source, !regex.ignoreCase, true, callback.bind(this));
     },
 
@@ -714,7 +704,7 @@ WebInspector.ResourcesPanel.prototype = {
         // At first show view for treeElement.
         if (searchResult.treeElement !== this.sidebarTree.selectedTreeElement) {
             this.showResource(searchResult.treeElement.representedObject);
-            WebInspector.searchController.focusSearchField();
+            WebInspector.searchController.showSearchField();
         }
 
         function callback(searchId)
@@ -1629,7 +1619,7 @@ WebInspector.IDBDatabaseTreeElement.prototype = {
 
         if (this._view)
             this._view.update(database);
-        
+
         this._updateTooltip();
     },
 
@@ -1725,13 +1715,13 @@ WebInspector.IDBObjectStoreTreeElement.prototype = {
 
         if (this._view)
             this._view.update(this._objectStore);
-        
+
         this._updateTooltip();
     },
 
     _updateTooltip: function()
     {
-        
+
         var keyPathString = this._objectStore.keyPathString;
         var tooltipString = keyPathString !== null ? (WebInspector.UIString("Key path: ") + keyPathString) : "";
         if (this._objectStore.autoIncrement)
@@ -1803,7 +1793,7 @@ WebInspector.IDBIndexTreeElement.prototype = {
 
         if (this._view)
             this._view.update(this._index);
-        
+
         this._updateTooltip();
     },
 

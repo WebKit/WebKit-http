@@ -12,6 +12,7 @@
     -webkit-flex: 1;
     padding: 3px;
     border: 4px solid cyan;
+    min-height: 0;
 }
 .vertical {
     position: relative;
@@ -31,9 +32,9 @@
 if (window.testRunner)
     testRunner.dumpAsText();
 </script>
-<script src="resources/flexbox.js"></script>
+<script src="../../resources/check-layout.js"></script>
 
-<body onload="checkFlexBoxen()">
+<body onload="checkLayout('.flexbox')">
     <div class="flexbox">
         <div class="flexitem" data-expected-width=200 data-expected-height=300>
             <div class="vertical" data-expected-height=286>

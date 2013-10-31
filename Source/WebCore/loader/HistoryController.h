@@ -48,7 +48,7 @@ class HistoryController {
 public:
     enum HistoryUpdateType { UpdateAll, UpdateAllExceptBackForwardList };
 
-    HistoryController(Frame*);
+    explicit HistoryController(Frame*);
     ~HistoryController();
 
     void saveScrollPositionAndViewStateToItem(HistoryItem*);
@@ -98,6 +98,7 @@ private:
     void recursiveSetProvisionalItem(HistoryItem*, HistoryItem*, FrameLoadType);
     void recursiveGoToItem(HistoryItem*, HistoryItem*, FrameLoadType);
     bool isReplaceLoadTypeWithProvisionalItem(FrameLoadType);
+    bool isReloadTypeWithProvisionalItem(FrameLoadType);
     void recursiveUpdateForCommit();
     void recursiveUpdateForSameDocumentNavigation();
     bool itemsAreClones(HistoryItem*, HistoryItem*) const;

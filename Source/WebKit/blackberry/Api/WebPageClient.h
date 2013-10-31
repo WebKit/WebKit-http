@@ -113,6 +113,7 @@ public:
     virtual void runJavaScriptAlert(const unsigned short* message, unsigned messageLength, const char* origin, unsigned originLength) = 0;
     virtual bool runJavaScriptConfirm(const unsigned short* message, unsigned messageLength, const char* origin, unsigned originLength) = 0;
     virtual bool runJavaScriptPrompt(const unsigned short* message, unsigned messageLength, const unsigned short* defaultValue, unsigned defaultValueLength, const char* origin, unsigned originLength, WebString& result) = 0;
+    virtual bool runBeforeUnloadConfirmPanel(const unsigned short* message, unsigned messageLength, const char* origin, unsigned originLength) = 0;
 
     virtual bool shouldInterruptJavaScript() = 0;
 
@@ -135,7 +136,7 @@ public:
     virtual void notifyContentRendered(const Platform::IntRect&) = 0;
     virtual void resizeSurfaceIfNeeded() = 0;
 
-    virtual void inputFocusGained(Platform::BlackBerryInputType, int inputStyle) = 0;
+    virtual void inputFocusGained(Platform::BlackBerryInputType, int inputStyle, Platform::VirtualKeyboardType, Platform::VirtualKeyboardEnterKeyType) = 0;
     virtual void inputFocusLost() = 0;
     virtual void inputTextChanged() = 0;
     virtual void inputSelectionChanged(unsigned selectionStart, unsigned selectionEnd) = 0;
@@ -143,9 +144,7 @@ public:
 
     virtual void showVirtualKeyboard(bool) = 0;
 
-    virtual void checkSpellingOfString(const unsigned short* text, int length, int& misspellingLocation, int& misspellingLength) = 0;
     virtual void requestSpellingSuggestionsForString(unsigned start, unsigned end) = 0;
-
     virtual int32_t checkSpellingOfStringAsync(wchar_t* text, int length) = 0;
 
     virtual void notifySelectionDetailsChanged(const Platform::IntRect& start, const Platform::IntRect& end, const Platform::IntRectRegion&, bool overrideTouchHandling = false) = 0;
@@ -168,9 +167,9 @@ public:
     virtual void openDateTimePopup(int type, const WebString& value, const WebString& min, const WebString& max, double step) = 0;
     virtual void openColorPopup(const WebString& value) = 0;
 
-    virtual bool chooseFilenames(bool allowMultiple, const WebString& acceptTypes, const SharedArray<WebString>& initialFiles, unsigned initialFileSize, SharedArray<WebString>& chosenFiles, unsigned& chosenFileSize) = 0;
+    virtual bool chooseFilenames(bool allowMultiple, const WebString& acceptTypes, const SharedArray<WebString>& initialFiles, SharedArray<WebString>& chosenFiles) = 0;
 
-    virtual void loadPluginForMimetype(int, int width, int height, const SharedArray<WebString>& paramNames, const SharedArray<WebString>& paramValues, int size, const char* url) = 0;
+    virtual void loadPluginForMimetype(int, int width, int height, const SharedArray<WebString>& paramNames, const SharedArray<WebString>& paramValues, const char* url) = 0;
     virtual void notifyPluginRectChanged(int, Platform::IntRect rectChanged) = 0;
     virtual void destroyPlugin(int) = 0;
     virtual void playMedia(int) = 0;
@@ -259,6 +258,16 @@ public:
     virtual bool hasKeyboardFocus() = 0;
     virtual bool createPopupWebView(const Platform::IntRect&) = 0;
     virtual void closePopupWebView() = 0;
+
+    // Match with ChromeClient::CustomHandlersState.
+    enum ProtocolHandlersState {
+        ProtocolHandlersNew,
+        ProtocolHandlersRegistered,
+        ProtocolHandlersDeclined
+    };
+    virtual void registerProtocolHandler(const WebString& /*scheme*/, const WebString& /*baseURL*/, const WebString& /*url*/, const WebString& /*title*/) = 0;
+    virtual ProtocolHandlersState isProtocolHandlerRegistered(const WebString& /*scheme*/, const WebString& /*baseURL*/, const WebString& /*url*/) = 0;
+    virtual void unregisterProtocolHandler(const WebString& /*scheme*/, const WebString& /*baseURL*/, const WebString& /*url*/) = 0;
 };
 } // namespace WebKit
 } // namespace BlackBerry

@@ -36,7 +36,6 @@
 
 #include "Extensions3DChromium.h"
 #include "TextureCopier.h"
-#include "TrackingTextureAllocator.h"
 #include "cc/CCCheckerboardDrawQuad.h"
 #include "cc/CCDebugBorderDrawQuad.h"
 #include "cc/CCIOSurfaceDrawQuad.h"
@@ -66,7 +65,7 @@ class LayerRendererChromium : public CCRenderer,
                               public WebKit::WebGraphicsContext3D::WebGraphicsContextLostCallback {
     WTF_MAKE_NONCOPYABLE(LayerRendererChromium);
 public:
-    static PassOwnPtr<LayerRendererChromium> create(CCRendererClient*, WebKit::WebGraphicsContext3D*, TextureUploaderOption);
+    static PassOwnPtr<LayerRendererChromium> create(CCRendererClient*, CCResourceProvider*, TextureUploaderOption);
 
     virtual ~LayerRendererChromium();
 
@@ -81,11 +80,7 @@ public:
     virtual void decideRenderPassAllocationsForFrame(const CCRenderPassList&) OVERRIDE;
     virtual bool haveCachedResourcesForRenderPassId(int id) const OVERRIDE;
 
-    virtual void beginDrawingFrame(const CCRenderPass* defaultRenderPass) OVERRIDE;
-    virtual void drawRenderPass(const CCRenderPass*, const FloatRect& framebufferDamageRect) OVERRIDE;
-    virtual void finishDrawingFrame() OVERRIDE;
-
-    virtual void drawHeadsUpDisplay(const CCScopedTexture*, const IntSize& hudSize) OVERRIDE;
+    virtual void drawFrame(const CCRenderPassList&, const CCRenderPassIdHashMap&, const FloatRect& rootScissorRect) OVERRIDE;
 
     // waits for rendering to finish
     virtual void finish() OVERRIDE;
@@ -103,22 +98,16 @@ public:
 
     virtual TextureCopier* textureCopier() const OVERRIDE { return m_textureCopier.get(); }
     virtual TextureUploader* textureUploader() const OVERRIDE { return m_textureUploader.get(); }
-    virtual TextureAllocator* implTextureAllocator() const OVERRIDE { return m_implTextureAllocator.get(); }
-    virtual TextureAllocator* contentsTextureAllocator() const OVERRIDE { return m_contentsTextureAllocator.get(); }
-
-    virtual void setScissorToRect(const IntRect&) OVERRIDE;
 
     virtual bool isContextLost() OVERRIDE;
 
     virtual void setVisible(bool) OVERRIDE;
 
-    void drawTexturedQuad(const WebKit::WebTransformationMatrix& layerMatrix,
-                          float width, float height, float opacity, const FloatQuad&,
-                          int matrixLocation, int alphaLocation, int quadLocation);
-    void copyTextureToFramebuffer(int textureId, const IntSize& bounds, const WebKit::WebTransformationMatrix& drawMatrix);
+    CCResourceProvider* resourceProvider() const { return m_resourceProvider; }
 
 protected:
-    LayerRendererChromium(CCRendererClient*, WebKit::WebGraphicsContext3D*, TextureUploaderOption);
+    LayerRendererChromium(CCRendererClient*, CCResourceProvider*, TextureUploaderOption);
+
 
     bool isFramebufferDiscarded() const { return m_isFramebufferDiscarded; }
     bool initialize();
@@ -126,30 +115,59 @@ protected:
     void releaseRenderPassTextures();
 
 private:
+    struct DrawingFrame {
+        const CCRenderPassIdHashMap* renderPassesById;
+        const CCRenderPass* rootRenderPass;
+        const CCRenderPass* currentRenderPass;
+        const CCScopedTexture* currentTexture;
+        OwnPtr<CCScopedLockResourceForWrite> currentFramebufferLock;
+
+        WebKit::WebTransformationMatrix projectionMatrix;
+        WebKit::WebTransformationMatrix windowMatrix;
+
+        DrawingFrame()
+            : rootRenderPass(0)
+            , currentRenderPass(0)
+            , currentTexture(0)
+        { }
+    };
+
     static void toGLMatrix(float*, const WebKit::WebTransformationMatrix&);
 
-    void drawQuad(const CCDrawQuad*);
-    void drawCheckerboardQuad(const CCCheckerboardDrawQuad*);
-    void drawDebugBorderQuad(const CCDebugBorderDrawQuad*);
-    PassOwnPtr<CCScopedTexture> drawBackgroundFilters(const CCRenderPassDrawQuad*, const WebKit::WebTransformationMatrix& deviceTransform);
-    void drawRenderPassQuad(const CCRenderPassDrawQuad*);
-    void drawSolidColorQuad(const CCSolidColorDrawQuad*);
-    void drawStreamVideoQuad(const CCStreamVideoDrawQuad*);
-    void drawTextureQuad(const CCTextureDrawQuad*);
-    void drawIOSurfaceQuad(const CCIOSurfaceDrawQuad*);
-    void drawTileQuad(const CCTileDrawQuad*);
-    void drawYUVVideoQuad(const CCYUVVideoDrawQuad*);
+    void beginDrawingFrame();
+    void drawRenderPass(DrawingFrame&, const CCRenderPass*, const FloatRect& framebufferDamageRect);
+    void finishDrawingFrame();
 
-    void setDrawFramebufferRect(const IntRect&, bool flipY);
+    void drawQuad(DrawingFrame&, const CCDrawQuad*);
+    void drawCheckerboardQuad(DrawingFrame&, const CCCheckerboardDrawQuad*);
+    void drawDebugBorderQuad(DrawingFrame&, const CCDebugBorderDrawQuad*);
+    PassOwnPtr<CCScopedTexture> drawBackgroundFilters(DrawingFrame&, const CCRenderPassDrawQuad*, const WebKit::WebFilterOperations&, const WebKit::WebTransformationMatrix& deviceTransform);
+    void drawRenderPassQuad(DrawingFrame&, const CCRenderPassDrawQuad*);
+    void drawSolidColorQuad(DrawingFrame&, const CCSolidColorDrawQuad*);
+    void drawStreamVideoQuad(DrawingFrame&, const CCStreamVideoDrawQuad*);
+    void drawTextureQuad(DrawingFrame&, const CCTextureDrawQuad*);
+    void drawIOSurfaceQuad(DrawingFrame&, const CCIOSurfaceDrawQuad*);
+    void drawTileQuad(DrawingFrame&, const CCTileDrawQuad*);
+    void drawYUVVideoQuad(DrawingFrame&, const CCYUVVideoDrawQuad*);
+
+    void setShaderOpacity(float opacity, int alphaLocation);
+    void setShaderFloatQuad(const FloatQuad&, int quadLocation);
+    void drawQuadGeometry(DrawingFrame&, const WebKit::WebTransformationMatrix& drawTransform, const FloatRect& quadRect, int matrixLocation);
+
+    void copyTextureToFramebuffer(DrawingFrame&, int textureId, const IntRect&, const WebKit::WebTransformationMatrix& drawMatrix);
+
+    void setScissorToRect(DrawingFrame&, const IntRect&);
+
+    void setDrawFramebufferRect(DrawingFrame&, const IntRect&, bool flipY);
 
     // The current drawing target is either a RenderPass or ScopedTexture. Use these functions to switch to a new drawing target.
-    bool useRenderPass(const CCRenderPass*);
-    bool useScopedTexture(const CCScopedTexture*, const IntRect& viewportRect);
-    bool isCurrentRenderPass(const CCRenderPass*);
+    bool useRenderPass(DrawingFrame&, const CCRenderPass*);
+    bool useScopedTexture(DrawingFrame&, const CCScopedTexture*, const IntRect& viewportRect);
+    bool isCurrentRenderPass(DrawingFrame&, const CCRenderPass*);
 
-    bool bindFramebufferToTexture(const CCScopedTexture*, const IntRect& viewportRect);
+    bool bindFramebufferToTexture(DrawingFrame&, const CCScopedTexture*, const IntRect& viewportRect);
 
-    void clearRenderPass(const CCRenderPass*, const FloatRect& framebufferDamageRect);
+    void clearFramebuffer(DrawingFrame&, const FloatRect& framebufferDamageRect);
 
     bool makeContextCurrent();
 
@@ -173,12 +191,12 @@ private:
 
     LayerRendererCapabilities m_capabilities;
 
-    const CCRenderPass* m_currentRenderPass;
-    const CCScopedTexture* m_currentTexture;
     unsigned m_offscreenFramebufferId;
 
     OwnPtr<GeometryBinding> m_sharedGeometry;
     FloatQuad m_sharedGeometryQuad;
+
+    class CachedTexture;
 
     // This block of bindings defines all of the programs used by the compositor itself.
 
@@ -200,7 +218,7 @@ private:
     // Texture shaders.
     typedef ProgramBinding<VertexShaderPosTexTransform, FragmentShaderRGBATexAlpha> TextureProgram;
     typedef ProgramBinding<VertexShaderPosTexTransform, FragmentShaderRGBATexFlipAlpha> TextureProgramFlip;
-    typedef ProgramBinding<VertexShaderPosTexTransform, FragmentShaderRGBATexRectFlipAlpha> TextureIOSurfaceProgram;
+    typedef ProgramBinding<VertexShaderPosTexTransform, FragmentShaderRGBATexRectAlpha> TextureIOSurfaceProgram;
 
     // Video shaders.
     typedef ProgramBinding<VertexShaderVideoTransform, FragmentShaderOESImageExternal> VideoStreamTextureProgram;
@@ -208,10 +226,6 @@ private:
 
     // Special purpose / effects shaders.
     typedef ProgramBinding<VertexShaderPos, FragmentShaderColor> SolidColorProgram;
-
-    // Debugging shaders.
-    typedef ProgramBinding<VertexShaderPosTex, FragmentShaderRGBATexSwizzleAlpha> HeadsUpDisplayProgram;
-
 
     const TileProgram* tileProgram();
     const TileProgramOpaque* tileProgramOpaque();
@@ -235,8 +249,6 @@ private:
 
     const SolidColorProgram* solidColorProgram();
 
-    const HeadsUpDisplayProgram* headsUpDisplayProgram();
-
     OwnPtr<TileProgram> m_tileProgram;
     OwnPtr<TileProgramOpaque> m_tileProgramOpaque;
     OwnPtr<TileProgramAA> m_tileProgramAA;
@@ -258,18 +270,14 @@ private:
     OwnPtr<VideoStreamTextureProgram> m_videoStreamTextureProgram;
 
     OwnPtr<SolidColorProgram> m_solidColorProgram;
-    OwnPtr<HeadsUpDisplayProgram> m_headsUpDisplayProgram;
 
+    CCResourceProvider* m_resourceProvider;
     OwnPtr<AcceleratedTextureCopier> m_textureCopier;
     OwnPtr<TextureUploader> m_textureUploader;
-    OwnPtr<TrackingTextureAllocator> m_contentsTextureAllocator;
-    OwnPtr<TrackingTextureAllocator> m_implTextureAllocator;
 
-    HashMap<int, OwnPtr<CCScopedTexture> > m_renderPassTextures;
+    HashMap<int, OwnPtr<CachedTexture> > m_renderPassTextures;
 
     WebKit::WebGraphicsContext3D* m_context;
-
-    const CCRenderPass* m_defaultRenderPass;
 
     bool m_isViewportChanged;
     bool m_isFramebufferDiscarded;

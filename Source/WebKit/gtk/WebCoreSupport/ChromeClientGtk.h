@@ -99,9 +99,6 @@ namespace WebKit {
         virtual KeyboardUIMode keyboardUIMode();
 
         virtual IntRect windowResizerRect() const;
-#if ENABLE(REGISTER_PROTOCOL_HANDLER) 
-        virtual void registerProtocolHandler(const WTF::String&, const WTF::String&, const WTF::String&, const WTF::String&); 
-#endif 
         virtual void invalidateRootView(const IntRect&, bool);
         virtual void invalidateContentsAndRootView(const IntRect&, bool);
         virtual void invalidateContentsForSlowScroll(const IntRect&, bool);
@@ -155,7 +152,6 @@ namespace WebKit {
 
         virtual bool shouldRubberBandInDirection(ScrollDirection) const { return true; }
         virtual void numWheelEventHandlersChanged(unsigned) { }
-        virtual void numTouchEventHandlersChanged(unsigned) { }
 
 #if USE(ACCELERATED_COMPOSITING) 
         virtual void attachRootGraphicsLayer(Frame*, GraphicsLayer*);

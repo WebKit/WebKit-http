@@ -35,19 +35,21 @@
 #include "PageDebuggerAgent.h"
 
 #include "Console.h"
+#include "DOMNodeHighlighter.h"
 #include "Page.h"
 #include "PageScriptDebugServer.h"
 
 namespace WebCore {
 
-PassOwnPtr<PageDebuggerAgent> PageDebuggerAgent::create(InstrumentingAgents* instrumentingAgents, InspectorState* inspectorState, Page* inspectedPage, InjectedScriptManager* injectedScriptManager)
+PassOwnPtr<PageDebuggerAgent> PageDebuggerAgent::create(InstrumentingAgents* instrumentingAgents, InspectorState* inspectorState, Page* inspectedPage, InjectedScriptManager* injectedScriptManager, InspectorOverlay* overlay)
 {
-    return adoptPtr(new PageDebuggerAgent(instrumentingAgents, inspectorState, inspectedPage, injectedScriptManager));
+    return adoptPtr(new PageDebuggerAgent(instrumentingAgents, inspectorState, inspectedPage, injectedScriptManager, overlay));
 }
 
-PageDebuggerAgent::PageDebuggerAgent(InstrumentingAgents* instrumentingAgents, InspectorState* inspectorState, Page* inspectedPage, InjectedScriptManager* injectedScriptManager)
+PageDebuggerAgent::PageDebuggerAgent(InstrumentingAgents* instrumentingAgents, InspectorState* inspectorState, Page* inspectedPage, InjectedScriptManager* injectedScriptManager, InspectorOverlay* overlay)
     : InspectorDebuggerAgent(instrumentingAgents, inspectorState, injectedScriptManager)
     , m_inspectedPage(inspectedPage)
+    , m_overlay(overlay)
 {
 }
 
@@ -92,6 +94,10 @@ InjectedScript PageDebuggerAgent::injectedScriptForEval(ErrorString* errorString
     return injectedScript;
 }
 
+void PageDebuggerAgent::setOverlayMessage(ErrorString*, const String* message)
+{
+    m_overlay->setPausedInDebuggerMessage(message);
+}
 
 } // namespace WebCore
 

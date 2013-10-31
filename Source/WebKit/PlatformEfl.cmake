@@ -2,6 +2,7 @@ LIST(APPEND WebKit_LINK_FLAGS
     ${ECORE_X_LDFLAGS}
     ${EDJE_LDFLAGS}
     ${EFLDEPS_LDFLAGS}
+    ${EFREET_LDFLAGS}
     ${EVAS_LDFLAGS}
 )
 
@@ -13,10 +14,12 @@ LIST(APPEND WebKit_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/platform/efl"
     "${WEBCORE_DIR}/platform/graphics/cairo"
     "${WEBCORE_DIR}/platform/graphics/efl"
+    "${WEBCORE_DIR}/platform/network/soup"
     ${CAIRO_INCLUDE_DIRS}
     ${ECORE_X_INCLUDE_DIRS}
     ${EDJE_INCLUDE_DIRS}
     ${EFLDEPS_INCLUDE_DIRS}
+    ${EFREET_INCLUDE_DIRS}
     ${EVAS_INCLUDE_DIRS}
     ${EUKIT_INCLUDE_DIRS}
     ${EDBUS_INCLUDE_DIRS}
@@ -67,25 +70,27 @@ IF (WTF_USE_PANGO)
   )
 ENDIF ()
 
-IF (ENABLE_NETWORK_INFO)
-  LIST(APPEND WebKit_LINK_FLAGS
-    ${EEZE_LDFLAGS}
-  )
-  LIST(APPEND WebKit_INCLUDE_DIRECTORIES
-    "${WEBCORE_DIR}/Modules/networkinfo"
-     ${EEZE_INCLUDE_DIRS}
-  )
-  LIST(APPEND WebKit_SOURCES
-    efl/WebCoreSupport/NetworkInfoClientEfl.cpp
-  )
-  LIST(APPEND WebKit_LIBRARIES
-    ${EEZE_LIBRARIES}
-  )
-ENDIF ()
-
 IF (ENABLE_NOTIFICATIONS)
   LIST(APPEND WebKit_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/Modules/notifications"
+  )
+ENDIF ()
+
+IF (ENABLE_VIBRATION)
+  LIST(APPEND WebKit_INCLUDE_DIRECTORIES
+    "${WEBCORE_DIR}/Modules/vibration"
+  )
+ENDIF ()
+
+IF (ENABLE_BATTERY_STATUS)
+  LIST(APPEND WebKit_INCLUDE_DIRECTORIES
+    "${WEBCORE_DIR}/Modules/battery"
+  )
+ENDIF ()
+
+IF (ENABLE_REGISTER_PROTOCOL_HANDLER OR ENABLE_CUSTOM_SCHEME_HANDLER)
+  LIST(APPEND WebKit_INCLUDE_DIRECTORIES
+    "${WEBCORE_DIR}/Modules/protocolhandler"
   )
 ENDIF ()
 
@@ -102,16 +107,21 @@ LIST(APPEND WebKit_SOURCES
     efl/WebCoreSupport/FrameNetworkingContextEfl.cpp
     efl/WebCoreSupport/FullscreenVideoControllerEfl.cpp
     efl/WebCoreSupport/IconDatabaseClientEfl.cpp
-    efl/WebCoreSupport/StorageTrackerClientEfl.cpp
     efl/WebCoreSupport/InspectorClientEfl.cpp
+    efl/WebCoreSupport/NetworkInfoClientEfl.cpp
     efl/WebCoreSupport/NotificationPresenterClientEfl.cpp
     efl/WebCoreSupport/PageClientEfl.cpp
     efl/WebCoreSupport/PlatformStrategiesEfl.cpp 
+    efl/WebCoreSupport/RegisterProtocolHandlerClientEfl.cpp 
+    efl/WebCoreSupport/StorageTrackerClientEfl.cpp
+    efl/WebCoreSupport/VibrationClientEfl.cpp
 
     efl/ewk/ewk_auth.cpp
     efl/ewk/ewk_auth_soup.cpp
     efl/ewk/ewk_contextmenu.cpp
     efl/ewk/ewk_cookies.cpp
+    efl/ewk/ewk_custom_handler.cpp
+    efl/ewk/ewk_file_chooser.cpp
     efl/ewk/ewk_frame.cpp
     efl/ewk/ewk_history.cpp
     efl/ewk/ewk_intent.cpp
@@ -138,6 +148,7 @@ LIST(APPEND WebKit_LIBRARIES
     ${CAIRO_LIBRARIES}
     ${ECORE_X_LIBRARIES}
     ${EFLDEPS_LIBRARIES}
+    ${EFREET_LIBRARIES}
     ${EUKIT_LIBRARIES}
     ${EDBUS_LIBRARIES}
     ${FREETYPE_LIBRARIES}
@@ -151,28 +162,9 @@ LIST(APPEND WebKit_LIBRARIES
     ${LIBSOUP24_LIBRARIES}
 )
 
-IF (ENABLE_VIBRATION)
-    LIST(APPEND WebKit_INCLUDE_DIRECTORIES
-        ${WEBCORE_DIR}/Modules/vibration
-    )
-    LIST(APPEND WebKit_SOURCES
-        efl/WebCoreSupport/VibrationClientEfl.cpp
-    )
-ENDIF ()
-
-IF (ENABLE_BATTERY_STATUS)
-    LIST(APPEND WebKit_INCLUDE_DIRECTORIES ${WEBCORE_DIR}/Modules/battery)
-ENDIF ()
-
-IF (ENABLE_REGISTER_PROTOCOL_HANDLER)
-    LIST(APPEND WebKit_SOURCES
-        efl/ewk/ewk_custom_handler.cpp
-    )
-ENDIF ()
-
 SET(WebKit_THEME_DEFINITION "")
-IF (ENABLE_PROGRESS_TAG)
-  LIST(APPEND WebKit_THEME_DEFINITION "-DENABLE_PROGRESS_TAG")
+IF (ENABLE_PROGRESS_ELEMENT)
+  LIST(APPEND WebKit_THEME_DEFINITION "-DENABLE_PROGRESS_ELEMENT")
 ENDIF ()
 
 FILE(MAKE_DIRECTORY ${THEME_BINARY_DIR})
@@ -273,6 +265,7 @@ SET(EWebKit_HEADERS
     ${CMAKE_CURRENT_SOURCE_DIR}/efl/ewk/ewk_auth.h
     ${CMAKE_CURRENT_SOURCE_DIR}/efl/ewk/ewk_contextmenu.h
     ${CMAKE_CURRENT_SOURCE_DIR}/efl/ewk/ewk_cookies.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/efl/ewk/ewk_file_chooser.h
     ${CMAKE_CURRENT_SOURCE_DIR}/efl/ewk/ewk_frame.h
     ${CMAKE_CURRENT_SOURCE_DIR}/efl/ewk/ewk_history.h
     ${CMAKE_CURRENT_SOURCE_DIR}/efl/ewk/ewk_intent.h
@@ -297,6 +290,7 @@ INSTALL(FILES ${WebKit_THEME}
 INCLUDE_DIRECTORIES(${THIRDPARTY_DIR}/gtest/include)
 
 SET(EWKUnitTests_LIBRARIES
+    ${WTF_LIBRARY_NAME}
     ${JavaScriptCore_LIBRARY_NAME}
     ${WebCore_LIBRARY_NAME}
     ${WebKit_LIBRARY_NAME}
@@ -304,6 +298,7 @@ SET(EWKUnitTests_LIBRARIES
     ${ECORE_EVAS_LIBRARIES}
     ${EVAS_LIBRARIES}
     ${EDJE_LIBRARIES}
+    gtest
 )
 
 SET(EWKUnitTests_INCLUDE_DIRECTORIES
@@ -335,8 +330,10 @@ ENDIF ()
 
 SET(DEFAULT_TEST_PAGE_DIR ${CMAKE_SOURCE_DIR}/Source/WebKit/efl/tests/resources)
 
-ADD_DEFINITIONS(-DDEFAULT_TEST_PAGE_DIR=\"${DEFAULT_TEST_PAGE_DIR}\")
-ADD_DEFINITIONS(-DDEFAULT_THEME_PATH=\"${THEME_BINARY_DIR}\")
+ADD_DEFINITIONS(-DDEFAULT_TEST_PAGE_DIR=\"${DEFAULT_TEST_PAGE_DIR}\"
+    -DDEFAULT_THEME_PATH=\"${THEME_BINARY_DIR}\"
+    -DGTEST_LINKED_AS_SHARED_LIBRARY=1
+)
 
 ADD_LIBRARY(ewkTestUtils
     ${WEBKIT_DIR}/efl/tests/UnitTestUtils/EWKTestBase.cpp
@@ -350,13 +347,16 @@ SET(EWKUnitTests_BINARIES
     test_ewk_view
 )
 
-FOREACH(testName ${EWKUnitTests_BINARIES})
-    ADD_EXECUTABLE(${testName} ${WEBKIT_EFL_TEST_DIR}/${testName}.cpp ${WEBKIT_EFL_TEST_DIR}/test_runner.cpp)
-    ADD_TEST(${testName} ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${testName})
-    TARGET_LINK_LIBRARIES(${testName} ${EWKUnitTests_LIBRARIES} ewkTestUtils gtest pthread)
-    ADD_TARGET_PROPERTIES(${testName} LINK_FLAGS "${EWKUnitTests_LINK_FLAGS}")
-    SET_TARGET_PROPERTIES(${testName} PROPERTIES FOLDER "WebKit")
-ENDFOREACH()
+IF (ENABLE_API_TESTS)
+    FOREACH (testName ${EWKUnitTests_BINARIES})
+        ADD_EXECUTABLE(${testName} ${WEBKIT_EFL_TEST_DIR}/${testName}.cpp ${WEBKIT_EFL_TEST_DIR}/test_runner.cpp)
+        ADD_TEST(${testName} ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${testName})
+        SET_TESTS_PROPERTIES(${testName} PROPERTIES TIMEOUT 60)
+        TARGET_LINK_LIBRARIES(${testName} ${EWKUnitTests_LIBRARIES} ewkTestUtils)
+        ADD_TARGET_PROPERTIES(${testName} LINK_FLAGS "${EWKUnitTests_LINK_FLAGS}")
+        SET_TARGET_PROPERTIES(${testName} PROPERTIES FOLDER "WebKit")
+    ENDFOREACH ()
+ENDIF ()
 
 IF (ENABLE_INSPECTOR)
     SET(WEB_INSPECTOR_DIR ${CMAKE_BINARY_DIR}/WebKit/efl/webinspector)

@@ -27,10 +27,9 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-import multiprocessing
-import ctypes
 import errno
 import logging
+import multiprocessing
 import os
 import StringIO
 import signal
@@ -211,12 +210,18 @@ class Executive(object):
                     continue
                 if e.errno == errno.ESRCH:  # The process does not exist.
                     return
+                if e.errno == errno.EPIPE:  # The process has exited already on cygwin
+                    return
                 if e.errno == errno.ECHILD:
                     # Can't wait on a non-child process, but the kill worked.
                     return
                 raise
 
     def _win32_check_running_pid(self, pid):
+        # importing ctypes at the top-level seems to cause weird crashes at
+        # exit under cygwin on apple's win port. Only win32 needs cygwin, so
+        # we import it here instead. See https://bugs.webkit.org/show_bug.cgi?id=91682
+        import ctypes
 
         class PROCESSENTRY32(ctypes.Structure):
             _fields_ = [("dwSize", ctypes.c_ulong),

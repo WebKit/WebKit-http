@@ -39,6 +39,7 @@
 #include "HTMLFrameOwnerElement.h"
 #include "HTMLMapElement.h"
 #include "HTMLNames.h"
+#include "IdTargetObserverRegistry.h"
 #include "InsertionPoint.h"
 #include "Page.h"
 #include "ShadowRoot.h"
@@ -54,7 +55,7 @@ using namespace HTMLNames;
 TreeScope::TreeScope(ContainerNode* rootNode)
     : m_rootNode(rootNode)
     , m_parentTreeScope(0)
-    , m_numNodeListCaches(0)
+    , m_idTargetObserverRegistry(IdTargetObserverRegistry::create())
 {
     ASSERT(rootNode);
 }
@@ -93,11 +94,13 @@ Element* TreeScope::getElementById(const AtomicString& elementId) const
 void TreeScope::addElementById(const AtomicString& elementId, Element* element)
 {
     m_elementsById.add(elementId.impl(), element);
+    m_idTargetObserverRegistry->notifyObservers(elementId);
 }
 
 void TreeScope::removeElementById(const AtomicString& elementId, Element* element)
 {
     m_elementsById.remove(elementId.impl(), element);
+    m_idTargetObserverRegistry->notifyObservers(elementId);
 }
 
 Node* TreeScope::ancestorInThisScope(Node* node) const
@@ -249,8 +252,8 @@ static void listTreeScopes(Node* node, Vector<TreeScope*, 5>& treeScopes)
 {
     while (true) {
         treeScopes.append(node->treeScope());
-        Node* ancestor = node->shadowAncestorNode();
-        if (node == ancestor)
+        Element* ancestor = node->shadowHost();
+        if (!ancestor)
             break;
         node = ancestor;
     }

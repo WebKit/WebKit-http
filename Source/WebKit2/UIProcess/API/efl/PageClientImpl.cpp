@@ -32,6 +32,10 @@
 #include "WebContext.h"
 #include "WebContextMenuProxy.h"
 #include "WebPageProxy.h"
+#include "ewk_context.h"
+#include "ewk_context_private.h"
+#include "ewk_download_job.h"
+#include "ewk_download_job_private.h"
 #include "ewk_view_private.h"
 
 using namespace WebCore;
@@ -72,9 +76,7 @@ void PageClientImpl::scrollView(const WebCore::IntRect& scrollRect, const WebCor
 
 WebCore::IntSize PageClientImpl::viewSize()
 {
-    int width, height;
-    evas_object_geometry_get(m_viewWidget, 0, 0, &width, &height);
-    return IntSize(width, height);
+    return ewk_view_size_get(m_viewWidget);
 }
 
 bool PageClientImpl::isViewWindowActive()
@@ -121,9 +123,9 @@ void PageClientImpl::toolTipChanged(const String&, const String&)
     notImplemented();
 }
 
-void PageClientImpl::setCursor(const Cursor&)
+void PageClientImpl::setCursor(const Cursor& cursor)
 {
-    notImplemented();
+    ewk_view_cursor_set(m_viewWidget, cursor);
 }
 
 void PageClientImpl::setCursorHiddenUntilMouseMoves(bool)
@@ -221,12 +223,12 @@ void PageClientImpl::setFindIndicator(PassRefPtr<FindIndicator>, bool, bool)
 #if USE(ACCELERATED_COMPOSITING)
 void PageClientImpl::enterAcceleratedCompositingMode(const LayerTreeContext&)
 {
-    notImplemented();
+    ewk_view_accelerated_compositing_mode_enter(m_viewWidget);
 }
 
 void PageClientImpl::exitAcceleratedCompositingMode()
 {
-    notImplemented();
+    ewk_view_accelerated_compositing_mode_exit(m_viewWidget);
 }
 
 void PageClientImpl::updateAcceleratedCompositingMode(const LayerTreeContext&)
@@ -275,5 +277,22 @@ void PageClientImpl::countStringMatchesInCustomRepresentation(const String&, Fin
 {
     notImplemented();
 }
+
+void PageClientImpl::handleDownloadRequest(DownloadProxy* download)
+{
+    Ewk_Download_Job* ewkDownload = ewk_download_job_new(download, m_viewWidget);
+    // For now we only support one default context, but once we support
+    // multiple contexts, we will need to retrieve the context from the
+    // view.
+    ewk_context_download_job_add(ewk_context_default_get(), ewkDownload);
+    ewk_download_job_unref(ewkDownload);
+}
+
+#if USE(TILED_BACKING_STORE)
+void PageClientImpl::pageDidRequestScroll(const IntPoint&)
+{
+    notImplemented();
+}
+#endif
 
 } // namespace WebKit

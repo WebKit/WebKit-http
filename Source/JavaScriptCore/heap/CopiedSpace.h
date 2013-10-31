@@ -68,6 +68,8 @@ public:
 
     bool contains(CopiedBlock*);
     bool contains(void*, CopiedBlock*&);
+    
+    void pinIfNecessary(void* pointer);
 
     size_t size();
     size_t capacity();
@@ -77,9 +79,7 @@ public:
     static CopiedBlock* blockFor(void*);
 
 private:
-    static void* allocateFromBlock(CopiedBlock*, size_t);
     static bool isOversize(size_t);
-    static bool fitsInBlock(CopiedBlock*, size_t);
     static CopiedBlock* oversizeBlockFor(void* ptr);
 
     CheckedBoolean tryAllocateSlowCase(size_t, void**);

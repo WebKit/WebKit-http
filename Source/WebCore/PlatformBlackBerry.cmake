@@ -236,7 +236,6 @@ ENDIF ()
 
 if (ENABLE_MEDIA_STREAM)
     LIST(APPEND WebCore_SOURCES
-        platform/mediastream/blackberry/DeprecatedPeerConnectionHandler.cpp
         platform/mediastream/blackberry/MediaStreamCenterBlackBerry.cpp
     )
 ENDIF ()
@@ -312,7 +311,7 @@ ENDFOREACH ()
 
 # FIXME: We need to add the IDLs for SQL storage and Web Workers. See PR #123484.
 SET(WebCore_NO_CPP_IDL_FILES
-    ${SVG_IDL_FILES}
+    ${WebCore_SVG_IDL_FILES}
     dom/CustomEvent.idl
     dom/PopStateEvent.idl
     inspector/ScriptProfile.idl

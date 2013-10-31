@@ -19,12 +19,12 @@
 #include "config.h"
 #include "FrameLoaderClientBlackBerry.h"
 
+#include "AboutData.h"
 #include "AutofillManager.h"
 #include "BackForwardController.h"
 #include "BackForwardListImpl.h"
 #include "BackingStoreClient.h"
 #include "BackingStore_p.h"
-#include "Base64.h"
 #include "Chrome.h"
 #include "ChromeClientBlackBerry.h"
 #include "ClientExtension.h"
@@ -66,6 +66,7 @@
 #include "WebPageClient.h"
 
 #include <BlackBerryPlatformLog.h>
+#include <BlackBerryPlatformMediaDocument.h>
 #include <BlackBerryPlatformScreen.h>
 #include <JavaScriptCore/APICast.h>
 #include <network/FilterStream.h>
@@ -387,9 +388,26 @@ PassRefPtr<DocumentLoader> FrameLoaderClientBlackBerry::createDocumentLoader(con
             newRequest.setToken(originalRequest.token());
     }
 
+    SubstituteData substituteDataLocal = substituteData;
+    if (isMainFrame()) {
+        String source;
+        if (request.url().protocolIs("about")) {
+            // The first 6 letters is "about:"
+            String aboutWhat = request.url().string().substring(6);
+            source = aboutData(aboutWhat);
+        } else if (request.url().protocolIs("rtsp"))
+            source = BlackBerry::Platform::mediaDocument(request.url().string().utf8().data()).c_str();
+
+        if (!source.isEmpty()) {
+            // Always ignore existing substitute data if any.
+            WTF::RefPtr<SharedBuffer> buffer = SharedBuffer::create(source.is8Bit() ? reinterpret_cast<const char*>(source.characters8()) : source.latin1().data(), source.length());
+            substituteDataLocal = SubstituteData(buffer, "text/html", "latin1", KURL());
+        }
+    }
+
     // FIXME: This should probably be shared.
-    RefPtr<DocumentLoader> loader = DocumentLoader::create(newRequest, substituteData);
-    if (substituteData.isValid())
+    RefPtr<DocumentLoader> loader = DocumentLoader::create(newRequest, substituteDataLocal);
+    if (substituteDataLocal.isValid())
         loader->setDeferMainResourceDataLoad(false);
     return loader.release();
 }
@@ -531,6 +549,9 @@ void FrameLoaderClientBlackBerry::dispatchDidCommitLoad()
             m_webPagePrivate->m_client->notifyLoadCommitted(
                 originalUrl.characters(), originalUrl.length(),
                     url.characters(), url.length(), token.characters(), token.length());
+            HistoryItem* currentItem = m_frame->loader()->history()->currentItem();
+            if (currentItem && currentItem->isInPageCache())
+                dispatchDidReceiveIcon();
         }
     }
 
@@ -825,10 +846,23 @@ void FrameLoaderClientBlackBerry::dispatchDidFirstVisuallyNonEmptyLayout()
 
     readyToRender(true);
 
+    // For FrameLoadTypeSame or FrameLoadTypeStandard load, the layout timer can be fired which can call
+    // dispatchDidFirstVisuallyNonEmptyLayout() after the load Finished state, in which case the web page
+    // will have no chance to zoom to initial scale. So we should give it a chance, otherwise the scale of
+    // the web page can be incorrect.
+    FrameLoadType frameLoadType = m_frame->loader()->loadType();
+    if (m_webPagePrivate->loadState() == WebPagePrivate::Finished && (frameLoadType == FrameLoadTypeSame || frameLoadType == FrameLoadTypeStandard))
+        m_webPagePrivate->setShouldZoomToInitialScaleAfterLoadFinished(true);
+
     if (m_webPagePrivate->shouldZoomToInitialScaleOnLoad()) {
+        BackingStorePrivate* backingStorePrivate = m_webPagePrivate->m_backingStore->d;
         m_webPagePrivate->zoomToInitialScaleOnLoad(); // Set the proper zoom level first.
-        m_webPagePrivate->m_backingStore->d->clearVisibleZoom(); // Clear the visible zoom since we're explicitly rendering+blitting below.
-        m_webPagePrivate->m_backingStore->d->renderVisibleContents();
+        backingStorePrivate->clearVisibleZoom(); // Clear the visible zoom since we're explicitly rendering+blitting below.
+        if (backingStorePrivate->renderVisibleContents()) {
+            if (!backingStorePrivate->shouldDirectRenderingToWindow())
+                backingStorePrivate->blitVisibleContents();
+            m_webPagePrivate->m_client->notifyContentRendered(backingStorePrivate->visibleContentsRect());
+        }
     }
 
     m_webPagePrivate->m_client->notifyFirstVisuallyNonEmptyLayout();
@@ -1060,12 +1094,12 @@ void FrameLoaderClientBlackBerry::restoreViewState()
 
     m_webPagePrivate->m_shouldReflowBlock = viewState.shouldReflowBlock;
 
-    // Will restore updates to backingstore guaranteed!
-    if (!m_webPagePrivate->zoomAboutPoint(scale, m_frame->view()->scrollPosition(), true /* enforceScaleClamping */, true /*forceRendering*/, true /*isRestoringZoomLevel*/)) {
-        // If we're already at that scale, then we should still force rendering since
-        // our scroll position changed.
-        m_webPagePrivate->m_backingStore->d->renderVisibleContents();
+    bool didZoom = m_webPagePrivate->zoomAboutPoint(scale, m_frame->view()->scrollPosition(), true /* enforceScaleClamping */, true /*forceRendering*/, true /*isRestoringZoomLevel*/);
+    // If we're already at that scale, then we should still force rendering
+    // since our scroll position changed.
+    m_webPagePrivate->m_backingStore->d->resumeScreenAndBackingStoreUpdates(BackingStore::RenderAndBlit);
 
+    if (!didZoom) {
         // We need to notify the client of the scroll position and content size change(s) above even if we didn't scale.
         m_webPagePrivate->notifyTransformedContentsSizeChanged();
         m_webPagePrivate->notifyTransformedScrollChanged();

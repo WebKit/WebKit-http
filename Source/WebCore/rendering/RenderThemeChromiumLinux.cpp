@@ -146,6 +146,18 @@ Color RenderThemeChromiumLinux::platformInactiveSelectionForegroundColor() const
     return m_inactiveSelectionForegroundColor;
 }
 
+#if ENABLE(DATALIST_ELEMENT)
+IntSize RenderThemeChromiumLinux::sliderTickSize() const
+{
+    return IntSize(1, 6);
+}
+
+int RenderThemeChromiumLinux::sliderTickOffsetFromTrackCenter() const
+{
+    return -16;
+}
+#endif
+
 void RenderThemeChromiumLinux::adjustSliderThumbSize(RenderStyle* style, Element* element) const
 {
     IntSize size = PlatformSupport::getThemePartSize(PlatformSupport::PartSliderThumb);
@@ -292,6 +304,11 @@ bool RenderThemeChromiumLinux::paintSliderTrack(RenderObject* o, const PaintInfo
     extraParams.slider.vertical = o->style()->appearance() == SliderVerticalPart;
 
     PlatformSupport::paintThemePart(i.context, PlatformSupport::PartSliderTrack, getWebThemeState(this, o), rect, &extraParams);
+
+#if ENABLE(DATALIST_ELEMENT)
+    paintSliderTicks(o, i, rect);
+#endif
+
     return false;
 }
 
@@ -323,7 +340,7 @@ bool RenderThemeChromiumLinux::paintInnerSpinButton(RenderObject* o, const Paint
     return false;
 }
 
-#if ENABLE(PROGRESS_TAG)
+#if ENABLE(PROGRESS_ELEMENT)
 
 bool RenderThemeChromiumLinux::paintProgressBar(RenderObject* o, const PaintInfo& i, const IntRect& rect)
 {
@@ -340,6 +357,7 @@ bool RenderThemeChromiumLinux::paintProgressBar(RenderObject* o, const PaintInfo
     extraParams.progressBar.valueRectWidth = valueRect.width();
     extraParams.progressBar.valueRectHeight = valueRect.height();
 
+    DirectionFlippingScope scope(o, i, rect);
     PlatformSupport::paintThemePart(i.context, PlatformSupport::PartProgressBar, getWebThemeState(this, o), rect, &extraParams);
     return false;
 }

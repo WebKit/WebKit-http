@@ -30,7 +30,6 @@
 #include "TiledLayerChromium.h"
 
 #include "GraphicsContext3D.h"
-#include "ManagedTexture.h"
 #include "Region.h"
 #include "TextStream.h"
 
@@ -227,7 +226,7 @@ void TiledLayerChromium::pushPropertiesTo(CCLayerImpl* layer)
         if (tile->isDirtyForCurrentFrame())
             continue;
 
-        tiledLayer->pushTileProperties(i, j, tile->managedTexture()->textureId(), tile->opaqueRect());
+        tiledLayer->pushTileProperties(i, j, tile->managedTexture()->resourceId(), tile->opaqueRect());
         tile->isInUseOnImpl = true;
     }
     for (Vector<UpdatableTile*>::const_iterator iter = invalidTiles.begin(); iter != invalidTiles.end(); ++iter)
@@ -346,7 +345,7 @@ bool TiledLayerChromium::tileNeedsBufferedUpdate(UpdatableTile* tile)
     return true;
 }
 
-void TiledLayerChromium::updateTiles(bool idle, int left, int top, int right, int bottom, CCTextureUpdater& updater, const CCOcclusionTracker* occlusion)
+void TiledLayerChromium::updateTiles(bool idle, int left, int top, int right, int bottom, CCTextureUpdater& updater, const CCOcclusionTracker* occlusion, CCRenderingStats& stats)
 {
     createTextureUpdaterIfNeeded();
 
@@ -438,7 +437,7 @@ void TiledLayerChromium::updateTiles(bool idle, int left, int top, int right, in
     // so we grab a local reference here to hold the updater alive until the paint completes.
     RefPtr<LayerTextureUpdater> protector(textureUpdater());
     IntRect paintedOpaqueRect;
-    textureUpdater()->prepareToUpdate(paintRect, m_tiler->tileSize(), 1 / widthScale, 1 / heightScale, paintedOpaqueRect);
+    textureUpdater()->prepareToUpdate(paintRect, m_tiler->tileSize(), 1 / widthScale, 1 / heightScale, paintedOpaqueRect, stats);
     m_didPaint = true;
 
     for (int j = top; j <= bottom; ++j) {
@@ -483,7 +482,7 @@ void TiledLayerChromium::updateTiles(bool idle, int left, int top, int right, in
             if (sourceRect.isEmpty())
                 continue;
 
-            tile->texture()->prepareRect(sourceRect);
+            tile->texture()->prepareRect(sourceRect, stats);
             if (occlusion)
                 occlusion->overdrawMetrics().didUpload(WebTransformationMatrix(), sourceRect, tile->opaqueRect());
 
@@ -526,7 +525,7 @@ void TiledLayerChromium::setTexturePrioritiesInRect(const CCPriorityCalculator& 
     resetUpdateState();
 
     IntRect prepaintRect = idlePaintRect(visibleContentRect);
-    bool drawsToRootSurface = !targetRenderSurface()->targetRenderSurface();
+    bool drawsToRoot = !renderTarget()->parent();
 
     // Minimally create the tiles in the desired pre-paint rect.
     if (!prepaintRect.isEmpty()) {
@@ -562,7 +561,7 @@ void TiledLayerChromium::setTexturePrioritiesInRect(const CCPriorityCalculator& 
 
                 tile->dirtyRect = m_tiler->tileRect(tile);
                 LayerTextureUpdater::Texture* backBuffer = tile->texture();
-                backBuffer->texture()->setRequestPriority(priorityCalc.priorityFromVisibility(true, drawsToRootSurface));
+                backBuffer->texture()->setRequestPriority(priorityCalc.priorityFromVisibility(true, drawsToRoot));
                 OwnPtr<CCPrioritizedTexture> frontBuffer = CCPrioritizedTexture::create(backBuffer->texture()->textureManager(),
                                                                                         backBuffer->texture()->size(),
                                                                                         backBuffer->texture()->format());
@@ -582,9 +581,9 @@ void TiledLayerChromium::setTexturePrioritiesInRect(const CCPriorityCalculator& 
         // 512 pixels of pre-painting. Later we can just pass an animating flag etc. to the
         // calculator and it can take care of this special case if we still need it.
         if (visibleContentRect.isEmpty() && !prepaintRect.isEmpty())
-            tile->managedTexture()->setRequestPriority(priorityCalc.priorityFromDistance(512, drawsToRootSurface));
+            tile->managedTexture()->setRequestPriority(priorityCalc.priorityFromDistance(512, drawsToRoot));
         else if (!visibleContentRect.isEmpty())
-            tile->managedTexture()->setRequestPriority(priorityCalc.priorityFromDistance(visibleContentRect, tileRect, drawsToRootSurface));
+            tile->managedTexture()->setRequestPriority(priorityCalc.priorityFromDistance(visibleContentRect, tileRect, drawsToRoot));
     }
 }
 
@@ -611,7 +610,7 @@ void TiledLayerChromium::resetUpdateState()
     }
 }
 
-void TiledLayerChromium::updateContentRect(CCTextureUpdater& updater, const IntRect& contentRect, const CCOcclusionTracker* occlusion)
+void TiledLayerChromium::updateContentRect(CCTextureUpdater& updater, const IntRect& contentRect, const CCOcclusionTracker* occlusion, CCRenderingStats& stats)
 {
     m_skipsDraw = false;
     m_skipsIdlePaint = false;
@@ -626,7 +625,7 @@ void TiledLayerChromium::updateContentRect(CCTextureUpdater& updater, const IntR
     if (!contentRect.isEmpty()) {
         int left, top, right, bottom;
         m_tiler->contentRectToTileIndices(contentRect, left, top, right, bottom);
-        updateTiles(false, left, top, right, bottom, updater, occlusion);
+        updateTiles(false, left, top, right, bottom, updater, occlusion, stats);
     }
 
     // Abort if we have already painted or run out of memory.
@@ -643,16 +642,16 @@ void TiledLayerChromium::updateContentRect(CCTextureUpdater& updater, const IntR
 
     // If the layer is not visible, we have nothing to expand from, so instead we prepaint the outer-most set of tiles.
     if (contentRect.isEmpty()) {
-        updateTiles(true, prepaintLeft, prepaintTop, prepaintRight, prepaintTop, updater, 0);
+        updateTiles(true, prepaintLeft, prepaintTop, prepaintRight, prepaintTop, updater, 0, stats);
         if (m_didPaint || m_skipsIdlePaint)
             return;
-        updateTiles(true, prepaintLeft, prepaintBottom, prepaintRight, prepaintBottom, updater, 0);
+        updateTiles(true, prepaintLeft, prepaintBottom, prepaintRight, prepaintBottom, updater, 0, stats);
         if (m_didPaint || m_skipsIdlePaint)
             return;
-        updateTiles(true, prepaintLeft, prepaintTop, prepaintLeft, prepaintBottom, updater, 0);
+        updateTiles(true, prepaintLeft, prepaintTop, prepaintLeft, prepaintBottom, updater, 0, stats);
         if (m_didPaint || m_skipsIdlePaint)
             return;
-        updateTiles(true, prepaintRight, prepaintTop, prepaintRight, prepaintBottom, updater, 0);
+        updateTiles(true, prepaintRight, prepaintTop, prepaintRight, prepaintBottom, updater, 0, stats);
         return;
     }
 
@@ -660,7 +659,7 @@ void TiledLayerChromium::updateContentRect(CCTextureUpdater& updater, const IntR
     m_tiler->contentRectToTileIndices(contentRect, left, top, right, bottom);
 
     // Otherwise, prepaint anything that was occluded but inside the layer's visible region.
-    updateTiles(true, left, top, right, bottom, updater, 0);
+    updateTiles(true, left, top, right, bottom, updater, 0, stats);
     if (m_didPaint || m_skipsIdlePaint)
         return;
 
@@ -668,25 +667,25 @@ void TiledLayerChromium::updateContentRect(CCTextureUpdater& updater, const IntR
     while (!m_skipsIdlePaint && (left > prepaintLeft || top > prepaintTop || right < prepaintRight || bottom < prepaintBottom)) {
         if (bottom < prepaintBottom) {
             ++bottom;
-            updateTiles(true, left, bottom, right, bottom, updater, 0);
+            updateTiles(true, left, bottom, right, bottom, updater, 0, stats);
             if (m_didPaint || m_skipsIdlePaint)
                 break;
         }
         if (top > prepaintTop) {
             --top;
-            updateTiles(true, left, top, right, top, updater, 0);
+            updateTiles(true, left, top, right, top, updater, 0, stats);
             if (m_didPaint || m_skipsIdlePaint)
                 break;
         }
         if (left > prepaintLeft) {
             --left;
-            updateTiles(true, left, top, left, bottom, updater, 0);
+            updateTiles(true, left, top, left, bottom, updater, 0, stats);
             if (m_didPaint || m_skipsIdlePaint)
                 break;
         }
         if (right < prepaintRight) {
             ++right;
-            updateTiles(true, right, top, right, bottom, updater, 0);
+            updateTiles(true, right, top, right, bottom, updater, 0, stats);
             if (m_didPaint || m_skipsIdlePaint)
                 break;
         }

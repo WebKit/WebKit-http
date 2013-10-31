@@ -27,24 +27,21 @@
 
 """WebKit Efl implementation of the Port interface."""
 
-import logging
-import signal
-import subprocess
-
 from webkitpy.layout_tests.models.test_configuration import TestConfiguration
-from webkitpy.layout_tests.port.webkit import WebKitPort
+from webkitpy.layout_tests.port.base import Port
 from webkitpy.layout_tests.port.pulseaudio_sanitizer import PulseAudioSanitizer
 
 
-class EflPort(WebKitPort, PulseAudioSanitizer):
+class EflPort(Port, PulseAudioSanitizer):
     port_name = 'efl'
 
     def __init__(self, *args, **kwargs):
-        WebKitPort.__init__(self, *args, **kwargs)
+        super(EflPort, self).__init__(*args, **kwargs)
 
         self._jhbuild_wrapper_path = self.path_from_webkit_base('Tools', 'efl', 'run-with-jhbuild')
 
         self.set_option_default('wrapper', self._jhbuild_wrapper_path)
+        self.webprocess_cmd_prefix = self.get_option('webprocess_cmd_prefix')
 
     def _port_flag_for_scripts(self):
         return "--efl"
@@ -56,9 +53,22 @@ class EflPort(WebKitPort, PulseAudioSanitizer):
         env = super(EflPort, self).setup_environ_for_server(server_name)
         env['TEST_RUNNER_INJECTED_BUNDLE_FILENAME'] = self._build_path('lib', 'libTestRunnerInjectedBundle.so')
         env['TEST_RUNNER_PLUGIN_PATH'] = self._build_path('lib')
+        if self.webprocess_cmd_prefix:
+            env['WEB_PROCESS_CMD_PREFIX'] = self.webprocess_cmd_prefix
+
+        env['XDG_CACHE_HOME'] = str(self._filesystem.mkdtemp(prefix='%s-Efl-CacheDir-' % self.driver_name()))
+        env['XDG_DATA_HOME'] = str(self._filesystem.mkdtemp(prefix='%s-Efl-DataDir-' % self.driver_name()))
         return env
 
+    def default_timeout_ms(self):
+        # Tests run considerably slower under gdb
+        # or valgrind.
+        if self.get_option('webprocess_cmd_prefix'):
+            return 350 * 1000
+        return super(EflPort, self).default_timeout_ms()
+
     def clean_up_test_run(self):
+        super(EflPort, self).clean_up_test_run()
         self._restore_pulseaudio_module()
 
     def _generate_all_test_configurations(self):

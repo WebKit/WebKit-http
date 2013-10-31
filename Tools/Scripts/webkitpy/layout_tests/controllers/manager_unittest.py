@@ -59,8 +59,15 @@ from webkitpy.common.host_mock import MockHost
 
 
 class ManagerWrapper(Manager):
+    def __init__(self, ref_tests, **kwargs):
+        Manager.__init__(self, **kwargs)
+        self._ref_tests = ref_tests
+
     def _get_test_input_for_file(self, test_file):
         return test_file
+
+    def _is_ref_test(self, test_input):
+        return test_input in self._ref_tests
 
 
 class ShardingTests(unittest.TestCase):
@@ -77,14 +84,21 @@ class ShardingTests(unittest.TestCase):
         "perf/object-keys.html",
     ]
 
-    def get_shards(self, num_workers, fully_parallel, test_list=None, max_locked_shards=None):
+    ref_tests = [
+        "http/tests/security/view-source-no-refresh.html",
+        "http/tests/websocket/tests/websocket-protocol-ignored.html",
+        "ietestcenter/Javascript/11.1.5_4-4-c-1.html",
+        "dom/html/level2/html/HTMLAnchorElement06.html",
+    ]
+
+    def get_shards(self, num_workers, fully_parallel, shard_ref_tests=False, test_list=None, max_locked_shards=None):
         test_list = test_list or self.test_list
         host = MockHost()
         port = host.port_factory.get(port_name='test')
         port._filesystem = MockFileSystem()
         options = MockOptions(max_locked_shards=max_locked_shards)
-        self.manager = ManagerWrapper(port=port, options=options, printer=Mock())
-        return self.manager._shard_tests(test_list, num_workers, fully_parallel)
+        self.manager = ManagerWrapper(self.ref_tests, port=port, options=options, printer=Mock())
+        return self.manager._shard_tests(test_list, num_workers, fully_parallel, shard_ref_tests)
 
     def test_shard_by_dir(self):
         locked, unlocked = self.get_shards(num_workers=2, fully_parallel=False)
@@ -108,6 +122,31 @@ class ShardingTests(unittest.TestCase):
              TestShard('fast/css',
                        ['fast/css/display-none-inline-style-change-crash.html']),
              TestShard('ietestcenter/Javascript',
+                       ['ietestcenter/Javascript/11.1.5_4-4-c-1.html'])])
+
+    def test_shard_by_dir_sharding_ref_tests(self):
+        locked, unlocked = self.get_shards(num_workers=2, fully_parallel=False, shard_ref_tests=True)
+
+        # Note that although there are tests in multiple dirs that need locks,
+        # they are crammed into a single shard in order to reduce the # of
+        # workers hitting the server at once.
+        self.assertEquals(locked,
+            [TestShard('locked_shard_1',
+              ['http/tests/websocket/tests/unicode.htm',
+               'http/tests/xmlhttprequest/supported-xml-content-types.html',
+               'perf/object-keys.html',
+               'http/tests/security/view-source-no-refresh.html',
+               'http/tests/websocket/tests/websocket-protocol-ignored.html'])])
+        self.assertEquals(unlocked,
+            [TestShard('animations',
+                       ['animations/keyframes.html']),
+             TestShard('dom/html/level2/html',
+                       ['dom/html/level2/html/HTMLAnchorElement03.html']),
+             TestShard('fast/css',
+                       ['fast/css/display-none-inline-style-change-crash.html']),
+             TestShard('~ref:dom/html/level2/html',
+                       ['dom/html/level2/html/HTMLAnchorElement06.html']),
+             TestShard('~ref:ietestcenter/Javascript',
                        ['ietestcenter/Javascript/11.1.5_4-4-c-1.html'])])
 
     def test_shard_every_file(self):
@@ -134,6 +173,23 @@ class ShardingTests(unittest.TestCase):
                         'http/tests/websocket/tests/websocket-protocol-ignored.html',
                         'http/tests/xmlhttprequest/supported-xml-content-types.html',
                         'perf/object-keys.html'])])
+        self.assertEquals(unlocked,
+            [TestShard('unlocked_tests',
+                       ['animations/keyframes.html',
+                        'fast/css/display-none-inline-style-change-crash.html',
+                        'dom/html/level2/html/HTMLAnchorElement03.html',
+                        'ietestcenter/Javascript/11.1.5_4-4-c-1.html',
+                        'dom/html/level2/html/HTMLAnchorElement06.html'])])
+
+    def test_shard_in_two_sharding_ref_tests(self):
+        locked, unlocked = self.get_shards(num_workers=1, fully_parallel=False, shard_ref_tests=True)
+        self.assertEquals(locked,
+            [TestShard('locked_tests',
+                       ['http/tests/websocket/tests/unicode.htm',
+                        'http/tests/xmlhttprequest/supported-xml-content-types.html',
+                        'perf/object-keys.html',
+                        'http/tests/security/view-source-no-refresh.html',
+                        'http/tests/websocket/tests/websocket-protocol-ignored.html'])])
         self.assertEquals(unlocked,
             [TestShard('unlocked_tests',
                        ['animations/keyframes.html',
@@ -200,25 +256,6 @@ class ManagerTest(unittest.TestCase):
     def get_options(self):
         return MockOptions(pixel_tests=False, new_baseline=False, time_out_ms=6000, slow_time_out_ms=30000, worker_model='inline')
 
-    def get_printer(self):
-        class FakePrinter(object):
-            def __init__(self):
-                self.output = []
-
-            def print_config(self, msg):
-                self.output.append(msg)
-
-        return FakePrinter()
-
-    def test_fallback_path_in_config(self):
-        options = self.get_options()
-        host = MockHost()
-        port = host.port_factory.get('test-mac-leopard', options=options)
-        printer = self.get_printer()
-        manager = Manager(port, options, printer)
-        manager.print_config()
-        self.assertTrue('Baseline search path: test-mac-leopard -> test-mac-snowleopard -> generic' in printer.output)
-
     def test_http_locking(tester):
         options, args = run_webkit_tests.parse_args(['--platform=test', '--print=nothing', 'http/tests/passes', 'passes'])
         host = MockHost()
@@ -226,9 +263,7 @@ class ManagerTest(unittest.TestCase):
         run_webkit_tests._set_up_derived_options(port, options)
         printer = printing.Printer(port, options, StringIO.StringIO(), StringIO.StringIO())
         manager = LockCheckingManager(port, options, printer, tester, True)
-        manager.collect_tests(args)
-        manager.parse_expectations()
-        num_unexpected_results = manager.run()
+        num_unexpected_results = manager.run(args)
         printer.cleanup()
         tester.assertEquals(num_unexpected_results, 0)
 
@@ -239,9 +274,7 @@ class ManagerTest(unittest.TestCase):
         run_webkit_tests._set_up_derived_options(port, options)
         printer = printing.Printer(port, options, StringIO.StringIO(), StringIO.StringIO())
         manager = LockCheckingManager(port, options, printer, tester, False)
-        manager.collect_tests(args)
-        manager.parse_expectations()
-        num_unexpected_results = manager.run()
+        num_unexpected_results = manager.run(args)
         printer.cleanup()
         tester.assertEquals(num_unexpected_results, 0)
 
@@ -253,6 +286,8 @@ class ManagerTest(unittest.TestCase):
 
         manager._options = MockOptions(exit_after_n_failures=None, exit_after_n_crashes_or_timeouts=None)
         manager._test_files = ['foo/bar.html', 'baz.html']
+        manager._test_is_slow = lambda test_name: False
+
         result_summary = ResultSummary(expectations=Mock(), test_files=manager._test_files)
         result_summary.unexpected_failures = 100
         result_summary.unexpected_crashes = 50
@@ -311,7 +346,7 @@ class ManagerTest(unittest.TestCase):
             host = MockHost()
             port = host.port_factory.get()
             manager = Manager(port, options=MockOptions(test_list=None, http=True), printer=Mock())
-            manager.collect_tests(test_names)
+            manager._collect_tests(test_names)
             return manager
 
         manager = get_manager_with_tests(['fast/html'])
@@ -332,7 +367,7 @@ class ManagerTest(unittest.TestCase):
             host = MockHost()
             port = host.port_factory.get('test-mac-leopard')
             manager = Manager(port, options=MockOptions(test_list=None, http=True), printer=Mock())
-            manager.collect_tests(test_names)
+            manager._collect_tests(test_names)
             return manager
         host = MockHost()
         port = host.port_factory.get('test-mac-leopard')
@@ -452,7 +487,6 @@ class ResultSummaryTest(unittest.TestCase):
             [test_failures.FailureReftestMismatch(self.port.abspath_for_test('foo/common.html'))])
         self.assertTrue('is_reftest' in test_dict)
         self.assertFalse('is_mismatch_reftest' in test_dict)
-        self.assertEqual(test_dict['ref_file'], 'foo/common.html')
 
         test_dict = interpret_test_failures(self.port, 'foo/reftest.html',
             [test_failures.FailureReftestMismatchDidNotOccur(self.port.abspath_for_test('foo/reftest-expected-mismatch.html'))])
@@ -463,7 +497,6 @@ class ResultSummaryTest(unittest.TestCase):
             [test_failures.FailureReftestMismatchDidNotOccur(self.port.abspath_for_test('foo/common.html'))])
         self.assertFalse('is_reftest' in test_dict)
         self.assertTrue(test_dict['is_mismatch_reftest'])
-        self.assertEqual(test_dict['ref_file'], 'foo/common.html')
 
     def get_result(self, test_name, result_type=test_expectations.PASS, run_time=0):
         failures = []
@@ -488,29 +521,30 @@ class ResultSummaryTest(unittest.TestCase):
         if extra_expectations:
             expectations += extra_expectations
 
+        test_is_slow = False
         paths, rs, exp = self.get_result_summary(port, tests, expectations)
         if expected:
-            rs.add(self.get_result('passes/text.html', test_expectations.PASS), expected)
-            rs.add(self.get_result('failures/expected/timeout.html', test_expectations.TIMEOUT), expected)
-            rs.add(self.get_result('failures/expected/crash.html', test_expectations.CRASH), expected)
+            rs.add(self.get_result('passes/text.html', test_expectations.PASS), expected, test_is_slow)
+            rs.add(self.get_result('failures/expected/timeout.html', test_expectations.TIMEOUT), expected, test_is_slow)
+            rs.add(self.get_result('failures/expected/crash.html', test_expectations.CRASH), expected, test_is_slow)
         elif passing:
-            rs.add(self.get_result('passes/text.html'), expected)
-            rs.add(self.get_result('failures/expected/timeout.html'), expected)
-            rs.add(self.get_result('failures/expected/crash.html'), expected)
+            rs.add(self.get_result('passes/text.html'), expected, test_is_slow)
+            rs.add(self.get_result('failures/expected/timeout.html'), expected, test_is_slow)
+            rs.add(self.get_result('failures/expected/crash.html'), expected, test_is_slow)
         else:
-            rs.add(self.get_result('passes/text.html', test_expectations.TIMEOUT), expected)
-            rs.add(self.get_result('failures/expected/timeout.html', test_expectations.CRASH), expected)
-            rs.add(self.get_result('failures/expected/crash.html', test_expectations.TIMEOUT), expected)
+            rs.add(self.get_result('passes/text.html', test_expectations.TIMEOUT), expected, test_is_slow)
+            rs.add(self.get_result('failures/expected/timeout.html', test_expectations.CRASH), expected, test_is_slow)
+            rs.add(self.get_result('failures/expected/crash.html', test_expectations.TIMEOUT), expected, test_is_slow)
 
         for test in extra_tests:
-            rs.add(self.get_result(test, test_expectations.CRASH), expected)
+            rs.add(self.get_result(test, test_expectations.CRASH), expected, test_is_slow)
 
         retry = rs
         if flaky:
             paths, retry, exp = self.get_result_summary(port, tests, expectations)
-            retry.add(self.get_result('passes/text.html'), True)
-            retry.add(self.get_result('failures/expected/timeout.html'), True)
-            retry.add(self.get_result('failures/expected/crash.html'), True)
+            retry.add(self.get_result('passes/text.html'), True, test_is_slow)
+            retry.add(self.get_result('failures/expected/timeout.html'), True, test_is_slow)
+            retry.add(self.get_result('failures/expected/crash.html'), True, test_is_slow)
         unexpected_results = manager.summarize_results(port, exp, rs, retry, test_timings={}, only_unexpected=True, interrupted=False)
         expected_results = manager.summarize_results(port, exp, rs, retry, test_timings={}, only_unexpected=False, interrupted=False)
         return expected_results, unexpected_results

@@ -375,9 +375,8 @@ static const char webViewIsOpen[] = "At least one WebView is still open.";
 {
     id target; // Non-retained. Don't retain delegates.
     id defaultTarget;
-    BOOL catchExceptions;
 }
-- (id)initWithTarget:(id)target defaultTarget:(id)defaultTarget catchExceptions:(BOOL)catchExceptions;
+- (id)initWithTarget:(id)target defaultTarget:(id)defaultTarget;
 @end
 
 FindOptions coreOptions(WebFindOptions options)
@@ -709,7 +708,6 @@ static bool shouldRespectPriorityInCSSAttributeSetters()
     [standardPreferences willAddToWebView];
 
     _private->preferences = [standardPreferences retain];
-    _private->catchesDelegateExceptions = YES;
     _private->mainFrameDocumentReady = NO;
     _private->drawsBackground = YES;
     _private->backgroundColor = [[NSColor colorWithDeviceWhite:1 alpha:1] retain];
@@ -1543,6 +1541,7 @@ static bool needsSelfRetainWhileLoadingQuirk()
     settings->setNeedsIsLoadingInAPISenseQuirk([self _needsIsLoadingInAPISenseQuirk]);
     settings->setRequestAnimationFrameEnabled([preferences requestAnimationFrameEnabled]);
     settings->setNeedsDidFinishLoadOrderQuirk(needsDidFinishLoadOrderQuirk());
+    settings->setDiagnosticLoggingEnabled([preferences diagnosticLoggingEnabled]);
     
     NSTimeInterval timeout = [preferences incrementalRenderingSuppressionTimeoutInSeconds];
     if (timeout > 0)
@@ -1679,14 +1678,14 @@ static inline IMP getMethod(id o, SEL s)
 - (id)_policyDelegateForwarder
 {
     if (!_private->policyDelegateForwarder)
-        _private->policyDelegateForwarder = [[_WebSafeForwarder alloc] initWithTarget:_private->policyDelegate defaultTarget:[WebDefaultPolicyDelegate sharedPolicyDelegate] catchExceptions:_private->catchesDelegateExceptions];
+        _private->policyDelegateForwarder = [[_WebSafeForwarder alloc] initWithTarget:_private->policyDelegate defaultTarget:[WebDefaultPolicyDelegate sharedPolicyDelegate]];
     return _private->policyDelegateForwarder;
 }
 
 - (id)_UIDelegateForwarder
 {
     if (!_private->UIDelegateForwarder)
-        _private->UIDelegateForwarder = [[_WebSafeForwarder alloc] initWithTarget:_private->UIDelegate defaultTarget:[WebDefaultUIDelegate sharedUIDelegate] catchExceptions:_private->catchesDelegateExceptions];
+        _private->UIDelegateForwarder = [[_WebSafeForwarder alloc] initWithTarget:_private->UIDelegate defaultTarget:[WebDefaultUIDelegate sharedUIDelegate]];
     return _private->UIDelegateForwarder;
 }
 
@@ -1698,7 +1697,7 @@ static inline IMP getMethod(id o, SEL s)
         return nil;
 
     if (!_private->editingDelegateForwarder)
-        _private->editingDelegateForwarder = [[_WebSafeForwarder alloc] initWithTarget:_private->editingDelegate defaultTarget:[WebDefaultEditingDelegate sharedEditingDelegate] catchExceptions:_private->catchesDelegateExceptions];
+        _private->editingDelegateForwarder = [[_WebSafeForwarder alloc] initWithTarget:_private->editingDelegate defaultTarget:[WebDefaultEditingDelegate sharedEditingDelegate]];
     return _private->editingDelegateForwarder;
 }
 
@@ -2361,16 +2360,6 @@ static inline IMP getMethod(id o, SEL s)
     _private->page->clearUndoRedoOperations();
 }
 
-- (void)_setCatchesDelegateExceptions:(BOOL)f
-{
-    _private->catchesDelegateExceptions = f;
-}
-
-- (BOOL)_catchesDelegateExceptions
-{
-    return _private->catchesDelegateExceptions;
-}
-
 - (void)_executeCoreCommandByName:(NSString *)name value:(NSString *)value
 {
     Frame* coreFrame = [self _mainCoreFrame];
@@ -2987,28 +2976,24 @@ static PassOwnPtr<Vector<String> > toStringVector(NSArray* patterns)
 
 // Used to send messages to delegates that implement informal protocols.
 
-- (id)initWithTarget:(id)t defaultTarget:(id)dt catchExceptions:(BOOL)c
+- (id)initWithTarget:(id)t defaultTarget:(id)dt
 {
     self = [super init];
     if (!self)
         return nil;
     target = t; // Non retained.
     defaultTarget = dt;
-    catchExceptions = c;
     return self;
 }
 
 - (void)forwardInvocation:(NSInvocation *)invocation
 {
     if ([target respondsToSelector:[invocation selector]]) {
-        if (catchExceptions) {
-            @try {
-                [invocation invokeWithTarget:target];
-            } @catch(id exception) {
-                ReportDiscardedDelegateException([invocation selector], exception);
-            }
-        } else
+        @try {
             [invocation invokeWithTarget:target];
+        } @catch(id exception) {
+            ReportDiscardedDelegateException([invocation selector], exception);
+        }
         return;
     }
 
@@ -3040,7 +3025,7 @@ static PassOwnPtr<Vector<String> > toStringVector(NSArray* patterns)
     WebCore::RunLoop::initializeMainRunLoop();
 
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(_applicationWillTerminate) name:NSApplicationWillTerminateNotification object:NSApp];
-    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(_preferencesChangedNotification:) name:WebPreferencesChangedInternalNotification object:nil];
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(_cacheModelChangedNotification:) name:WebPreferencesCacheModelChangedInternalNotification object:nil];
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(_preferencesRemovedNotification:) name:WebPreferencesRemovedNotification object:nil];    
 
     continuousSpellCheckingEnabled = [[NSUserDefaults standardUserDefaults] boolForKey:WebContinuousSpellCheckingEnabled];
@@ -5913,7 +5898,7 @@ static inline uint64_t roundUpToPowerOf2(uint64_t num)
     return cacheModel;
 }
 
-+ (void)_preferencesChangedNotification:(NSNotification *)notification
++ (void)_cacheModelChangedNotification:(NSNotification *)notification
 {
     WebPreferences *preferences = (WebPreferences *)[notification object];
     ASSERT([preferences isKindOfClass:[WebPreferences class]]);

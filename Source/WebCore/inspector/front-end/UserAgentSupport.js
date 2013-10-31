@@ -38,7 +38,6 @@ WebInspector.UserAgentSupport = function()
     WebInspector.settings.deviceMetrics.addChangeListener(this._deviceMetricsChanged, this);
     WebInspector.settings.deviceFitWindow.addChangeListener(this._deviceMetricsChanged, this);
     WebInspector.settings.geolocationOverride.addChangeListener(this._geolocationPositionChanged, this);
-    WebInspector.settings.geolocationError.addChangeListener(this._onGeolocationErrorChanged, this);
 }
 
 /**
@@ -170,10 +169,11 @@ WebInspector.UserAgentSupport.DeviceMetrics.prototype = {
  * @param {number} latitude
  * @param {number} longitude
  */
-WebInspector.UserAgentSupport.GeolocationPosition = function (latitude, longitude)
+WebInspector.UserAgentSupport.GeolocationPosition = function(latitude, longitude, error)
 {
-    this._latitude = latitude;
-    this._longitude = longitude;
+    this.latitude = latitude;
+    this.longitude = longitude;
+    this.error = error;
 }
 
 WebInspector.UserAgentSupport.GeolocationPosition.prototype = {
@@ -182,7 +182,7 @@ WebInspector.UserAgentSupport.GeolocationPosition.prototype = {
      */
     toSetting: function()
     {
-        return (this._latitude || this._latitude == 0) && (this._longitude || this._longitude == 0) ? this._latitude + "@" + this._longitude : "";
+        return (typeof this.latitude === "number" && typeof this.longitude === "number" && typeof this.error === "string") ? this.latitude + "@" + this.longitude + ":" + this.error : "";
     }
 }
 
@@ -192,17 +192,20 @@ WebInspector.UserAgentSupport.GeolocationPosition.prototype = {
 WebInspector.UserAgentSupport.GeolocationPosition.parseSetting = function(value)
 {
     if (value) {
-        var splitPosition = value.split("@");
-        if (splitPosition.length === 2)
-            return new WebInspector.UserAgentSupport.GeolocationPosition(parseFloat(splitPosition[0]), parseFloat(splitPosition[1]));
+        var splitError = value.split(":");
+        if (splitError.length === 2) {
+            var splitPosition = splitError[0].split("@")
+            if (splitPosition.length === 2)
+                return new WebInspector.UserAgentSupport.GeolocationPosition(parseFloat(splitPosition[0]), parseFloat(splitPosition[1]), splitError[1]);
+        }
     }
-    return new WebInspector.UserAgentSupport.GeolocationPosition(0, 0);
+    return new WebInspector.UserAgentSupport.GeolocationPosition(0, 0, "");
 }
 
 /**
  * @return {?WebInspector.UserAgentSupport.GeolocationPosition}
  */
-WebInspector.UserAgentSupport.GeolocationPosition.parseUserInput = function(latitudeString, longitudeString)
+WebInspector.UserAgentSupport.GeolocationPosition.parseUserInput = function(latitudeString, longitudeString, errorStatus)
 {
     function isUserInputValid(value)
     {
@@ -223,7 +226,12 @@ WebInspector.UserAgentSupport.GeolocationPosition.parseUserInput = function(lati
     var latitude = isLatitudeValid ? parseFloat(latitudeString) : -1;
     var longitude = isLongitudeValid ? parseFloat(longitudeString) : -1;
 
-    return new WebInspector.UserAgentSupport.GeolocationPosition(latitude, longitude);
+    return new WebInspector.UserAgentSupport.GeolocationPosition(latitude, longitude, errorStatus ? "PositionUnavailable" : "");
+}
+
+WebInspector.UserAgentSupport.GeolocationPosition.clearGeolocationOverride = function()
+{
+    PageAgent.clearGeolocationOverride();
 }
 
 WebInspector.UserAgentSupport.prototype = {
@@ -234,19 +242,13 @@ WebInspector.UserAgentSupport.prototype = {
             PageAgent.setDeviceMetricsOverride(metrics.width, metrics.height, metrics.fontScaleFactor, WebInspector.settings.deviceFitWindow.get());
     },
 
-    _geolocationPositionChanged: function(errorType)
+    _geolocationPositionChanged: function()
     {
         var geolocation = WebInspector.UserAgentSupport.GeolocationPosition.parseSetting(WebInspector.settings.geolocationOverride.get());
-        PageAgent.setGeolocationData(geolocation._latitude, geolocation._longitude, 150, typeof errorType === 'string'? errorType : WebInspector.settings.geolocationError.get());
-    },
-
-    /**
-     * @param {WebInspector.Event} event
-     */
-    _onGeolocationErrorChanged: function(event)
-    {
-        this._geolocationPositionChanged(event.data);
-        console.log(event);
+        if (geolocation.error)
+            PageAgent.setGeolocationOverride();
+        else
+            PageAgent.setGeolocationOverride(geolocation.latitude, geolocation.longitude, 150);
     }
 }
 

@@ -45,6 +45,8 @@ SET(WebKit2_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}"
     "${WEBCORE_DIR}/Modules/battery"
     "${WEBCORE_DIR}/Modules/intents"
+    "${WEBCORE_DIR}/Modules/networkinfo"
+    "${WEBCORE_DIR}/Modules/vibration"
     "${WEBCORE_DIR}/accessibility"
     "${WEBCORE_DIR}/bindings/js"
     "${WEBCORE_DIR}/bindings"
@@ -55,6 +57,7 @@ SET(WebKit2_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/editing"
     "${WEBCORE_DIR}/history"
     "${WEBCORE_DIR}/html"
+    "${WEBCORE_DIR}/html/shadow"
     "${WEBCORE_DIR}/html/track"
     "${WEBCORE_DIR}/inspector"
     "${WEBCORE_DIR}/loader"
@@ -66,6 +69,8 @@ SET(WebKit2_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/platform/animation"
     "${WEBCORE_DIR}/platform/graphics"
     "${WEBCORE_DIR}/platform/graphics/filters"
+    "${WEBCORE_DIR}/platform/graphics/harfbuzz"
+    "${WEBCORE_DIR}/platform/graphics/harfbuzz/ng"
     "${WEBCORE_DIR}/platform/graphics/transforms"
     "${WEBCORE_DIR}/platform/network"
     "${WEBCORE_DIR}/platform/sql"
@@ -154,6 +159,8 @@ SET(WebKit2_SOURCES
     Shared/WebGraphicsContext.cpp
     Shared/WebHitTestResult.cpp
     Shared/WebImage.cpp
+    Shared/WebIntentData.cpp
+    Shared/WebIntentServiceInfo.cpp
     Shared/WebKeyboardEvent.cpp
     Shared/WebLayerTreeInfo.cpp
     Shared/WebMemorySampler.cpp
@@ -246,8 +253,6 @@ SET(WebKit2_SOURCES
     UIProcess/WebIconDatabase.cpp
     UIProcess/WebIconDatabaseClient.cpp
     UIProcess/WebInspectorProxy.cpp
-    UIProcess/WebIntentData.cpp
-    UIProcess/WebIntentServiceInfo.cpp
     UIProcess/WebKeyValueStorageManagerProxy.cpp
     UIProcess/WebLayerTreeRenderer.cpp
     UIProcess/WebLoaderClient.cpp
@@ -297,6 +302,7 @@ SET(WebKit2_SOURCES
     UIProcess/API/C/WKKeyValueStorageManager.cpp
     UIProcess/API/C/WKMediaCacheManager.cpp
     UIProcess/API/C/WKNavigationData.cpp
+    UIProcess/API/C/WKNetworkInfo.cpp
     UIProcess/API/C/WKNetworkInfoManager.cpp
     UIProcess/API/C/WKNotification.cpp
     UIProcess/API/C/WKNotificationManager.cpp
@@ -365,7 +371,9 @@ SET(WebKit2_SOURCES
     WebProcess/InjectedBundle/InjectedBundleClient.cpp
     WebProcess/InjectedBundle/InjectedBundleDOMWindowExtension.cpp
     WebProcess/InjectedBundle/InjectedBundleHitTestResult.cpp
+    WebProcess/InjectedBundle/InjectedBundleIntentRequest.cpp
     WebProcess/InjectedBundle/InjectedBundleNavigationAction.cpp
+    WebProcess/InjectedBundle/InjectedBundlePageDiagnosticLoggingClient.cpp
     WebProcess/InjectedBundle/InjectedBundlePageContextMenuClient.cpp
     WebProcess/InjectedBundle/InjectedBundlePageEditorClient.cpp
     WebProcess/InjectedBundle/InjectedBundlePageFormClient.cpp
@@ -383,6 +391,7 @@ SET(WebKit2_SOURCES
     WebProcess/InjectedBundle/API/c/WKBundleFrame.cpp
     WebProcess/InjectedBundle/API/c/WKBundleHitTestResult.cpp
     WebProcess/InjectedBundle/API/c/WKBundleInspector.cpp
+    WebProcess/InjectedBundle/API/c/WKBundleIntentRequest.cpp
     WebProcess/InjectedBundle/API/c/WKBundleNavigationAction.cpp
     WebProcess/InjectedBundle/API/c/WKBundleNodeHandle.cpp
     WebProcess/InjectedBundle/API/c/WKBundlePage.cpp
@@ -538,6 +547,10 @@ SET(WebProcess_LIBRARIES
     ${WebKit2_LIBRARY_NAME}
 )
 
+SET(WebKit2_LIBRARIES
+    ${WebCore_LIBRARY_NAME}
+)
+
 WEBKIT_INCLUDE_CONFIG_FILES_IF_EXISTS()
 
 # Create JavaScript C++ code given an IDL input
@@ -553,10 +566,6 @@ FOREACH (_file ${WebKit2_MESSAGES_IN_FILES})
 
     LIST(APPEND WebKit2_SOURCES ${DERIVED_SOURCES_WEBKIT2_DIR}/${_name}MessageReceiver.cpp)
 ENDFOREACH ()
-
-SET(WebKit2_LIBRARIES
-    ${WebCore_LIBRARY_NAME}
-)
 
 ADD_DEFINITIONS(-DBUILDING_WEBKIT)
 INCLUDE_DIRECTORIES(${WebKit2_INCLUDE_DIRECTORIES})

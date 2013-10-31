@@ -21,8 +21,7 @@
 #include "config.h"
 #include "HTMLSummaryElement.h"
 
-#if ENABLE(DETAILS)
-
+#if ENABLE(DETAILS_ELEMENT)
 #include "DetailsMarkerControl.h"
 #include "ElementShadow.h"
 #include "HTMLContentElement.h"
@@ -109,7 +108,7 @@ static bool isClickableControl(Node* node)
     Element* element = toElement(node);
     if (element->isFormControlElement())
         return true;
-    Element* host = toElement(element->shadowAncestorNode());
+    Element* host = element->shadowHost();
     return host && host->isFormControlElement();
 }
 
@@ -156,6 +155,14 @@ void HTMLSummaryElement::defaultEventHandler(Event* event)
     }
 
     HTMLElement::defaultEventHandler(event);
+}
+
+bool HTMLSummaryElement::willRespondToMouseClickEvents()
+{
+    if (isMainSummary() && renderer())
+        return true;
+
+    return HTMLElement::willRespondToMouseClickEvents();
 }
 
 }

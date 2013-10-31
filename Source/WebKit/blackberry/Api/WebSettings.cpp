@@ -23,7 +23,6 @@
 #include "WebSettings_p.h"
 
 #include "WebString.h"
-#include <Base64.h>
 #include <BlackBerryPlatformDeviceInfo.h>
 #include <BlackBerryPlatformFontInfo.h>
 #include <BlackBerryPlatformScreen.h>
@@ -33,11 +32,13 @@
 #include <ViewportArguments.h>
 #include <wtf/HashSet.h>
 #include <wtf/Vector.h>
+#include <wtf/text/Base64.h>
 
 namespace BlackBerry {
 namespace WebKit {
 
 DEFINE_STATIC_LOCAL(String, BlackBerryAllowCrossSiteRequests, ("BlackBerryAllowCrossSiteRequests"));
+DEFINE_STATIC_LOCAL(String, BlackBerryAsynchronousSpellChecking, ("BlackBerryAsynchronousSpellChecking"));
 DEFINE_STATIC_LOCAL(String, BlackBerryBackgroundColor, ("BlackBerryBackgroundColor"));
 DEFINE_STATIC_LOCAL(String, BlackBerryCookiesEnabled, ("BlackBerryCookiesEnabled"));
 DEFINE_STATIC_LOCAL(String, BlackBerryDirectRenderingToWindowEnabled, ("BlackBerryDirectRenderingToWindowEnabled"));
@@ -48,8 +49,8 @@ DEFINE_STATIC_LOCAL(String, BlackBerryHandlePatternURLs, ("BlackBerryHandlePatte
 DEFINE_STATIC_LOCAL(String, BlackBerryInitialScale, ("BlackBerryInitialScale"));
 DEFINE_STATIC_LOCAL(String, BlackBerryLinksHandledExternallyEnabled, ("BlackBerryLinksHandledExternallyEnabled"));
 DEFINE_STATIC_LOCAL(String, BlackBerryMaxPluginInstances, ("BlackBerryMaxPluginInstances"));
-DEFINE_STATIC_LOCAL(String, BlackBerryOverZoomColor, ("BlackBerryOverZoomColor"));
-DEFINE_STATIC_LOCAL(String, BlackBerryOverScrollImagePath, ("BlackBerryOverScrollImagePath"));
+DEFINE_STATIC_LOCAL(String, BlackBerryOverScrollColor, ("BlackBerryOverScrollColor"));
+DEFINE_STATIC_LOCAL(String, BlackBerryEnableDefaultOverScrollBackground, ("BlackBerryEnableDefaultOverScrollBackground"));
 DEFINE_STATIC_LOCAL(String, BlackBerryRenderAnimationsOnScrollOrZoomEnabled, ("BlackBerryRenderAnimationsOnScrollOrZoomEnabled"));
 DEFINE_STATIC_LOCAL(String, BlackBerryScrollbarsEnabled, ("BlackBerryScrollbarsEnabled"));
 DEFINE_STATIC_LOCAL(String, BlackBerryTextReflowMode, ("BlackBerryTextReflowMode"));
@@ -164,8 +165,8 @@ WebSettings* WebSettings::standardSettings()
     settings->m_private->setBoolean(BlackBerryCookiesEnabled, true);
     settings->m_private->setDouble(BlackBerryInitialScale, -1);
     settings->m_private->setUnsigned(BlackBerryMaxPluginInstances, 1);
-    settings->m_private->setUnsigned(BlackBerryOverZoomColor, WebCore::Color::white);
-    settings->m_private->setString(BlackBerryOverScrollImagePath, "");
+    settings->m_private->setUnsigned(BlackBerryOverScrollColor, WebCore::Color::white);
+    settings->m_private->setBoolean(BlackBerryEnableDefaultOverScrollBackground, true);
     settings->m_private->setBoolean(BlackBerryScrollbarsEnabled, true);
 
     // FIXME: We should detect whether we are embedded in a browser or an email client and default to TextReflowEnabledOnlyForBlockZoom and TextReflowEnabled, respectively.
@@ -177,6 +178,7 @@ WebSettings* WebSettings::standardSettings()
     settings->m_private->setBoolean(BlackBerryFullScreenVideoCapable, false);
     settings->m_private->setBoolean(BlackBerryCredentialAutofillEnabled, false);
     settings->m_private->setBoolean(BlackBerryFormAutofillEnabled, false);
+    settings->m_private->setBoolean(BlackBerryAsynchronousSpellChecking, true);
 
     if (BlackBerry::Platform::DeviceInfo::instance()->isMobile()) {
         WebCore::FloatSize currentPPI = Platform::Graphics::Screen::primaryScreen()->pixelsPerInch(-1);
@@ -198,10 +200,10 @@ WebSettings* WebSettings::standardSettings()
     settings->m_private->setInteger(WebKitMinimumFontSize, 8);
     settings->m_private->setBoolean(WebKitWebSocketsEnabled, true);
 
-    settings->m_private->setString(WebKitFixedFontFamily, BlackBerry::Platform::fontFamily("-webkit-monospace", "").c_str());
-    settings->m_private->setString(WebKitSansSeriffFontFamily, BlackBerry::Platform::fontFamily("-webkit-sans-serif", "").c_str());
-    settings->m_private->setString(WebKitSeriffFontFamily, BlackBerry::Platform::fontFamily("-webkit-serif", "").c_str());
-    settings->m_private->setString(WebKitStandardFontFamily, BlackBerry::Platform::fontFamily("-webkit-standard", "").c_str());
+    settings->m_private->setString(WebKitFixedFontFamily, BlackBerry::Platform::FontInfo::instance()->fontFamily("-webkit-monospace", "").c_str());
+    settings->m_private->setString(WebKitSansSeriffFontFamily, BlackBerry::Platform::FontInfo::instance()->fontFamily("-webkit-sans-serif", "").c_str());
+    settings->m_private->setString(WebKitSeriffFontFamily, BlackBerry::Platform::FontInfo::instance()->fontFamily("-webkit-serif", "").c_str());
+    settings->m_private->setString(WebKitStandardFontFamily, BlackBerry::Platform::FontInfo::instance()->fontFamily("-webkit-standard", "").c_str());
 
     return settings;
 }
@@ -471,7 +473,7 @@ void WebSettings::setUserStyleSheetString(const char* userStyleSheetString)
     data.append(userStyleSheetString, length);
 
     Vector<char> encodedData;
-    WebCore::base64Encode(data, encodedData);
+    base64Encode(data, encodedData);
 
     const char prefix[] = "data:text/css;charset=utf-8;base64,";
     size_t prefixLength = sizeof(prefix) - 1;
@@ -707,24 +709,24 @@ void WebSettings::setShouldRenderAnimationsOnScrollOrZoom(bool enable)
     m_private->setBoolean(BlackBerryRenderAnimationsOnScrollOrZoomEnabled, enable);
 }
 
-unsigned WebSettings::overZoomColor() const
+unsigned WebSettings::overScrollColor() const
 {
-    return m_private->getUnsigned(BlackBerryOverZoomColor);
+    return m_private->getUnsigned(BlackBerryOverScrollColor);
 }
 
-void WebSettings::setOverZoomColor(unsigned color)
+void WebSettings::setOverScrollColor(unsigned color)
 {
-    m_private->setUnsigned(BlackBerryOverZoomColor, color);
+    m_private->setUnsigned(BlackBerryOverScrollColor, color);
 }
 
-WebString WebSettings::overScrollImagePath() const
+bool WebSettings::isEnableDefaultOverScrollBackground() const
 {
-    return m_private->getString(BlackBerryOverScrollImagePath);
+    return m_private->getBoolean(BlackBerryEnableDefaultOverScrollBackground);
 }
 
-void WebSettings::setOverScrollImagePath(const char* path)
+void WebSettings::setEnableDefaultOverScrollBackground(bool enabled)
 {
-    m_private->setString(BlackBerryOverScrollImagePath, path);
+    m_private->setBoolean(BlackBerryEnableDefaultOverScrollBackground, enabled);
 }
 
 unsigned WebSettings::backgroundColor() const
@@ -805,6 +807,16 @@ bool WebSettings::isSpatialNavigationEnabled() const
 void WebSettings::setSpatialNavigationEnabled(bool enable)
 {
     m_private->setBoolean(SpatialNavigationEnabled, enable);
+}
+
+bool WebSettings::isAsynchronousSpellCheckingEnabled() const
+{
+    return m_private->getBoolean(BlackBerryAsynchronousSpellChecking);
+}
+
+void WebSettings::setAsynchronousSpellCheckingEnabled(bool enable) const
+{
+    return m_private->setBoolean(BlackBerryAsynchronousSpellChecking, enable);
 }
 
 bool WebSettings::fullScreenVideoCapable() const

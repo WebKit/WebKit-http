@@ -38,6 +38,7 @@
 #include "Operations.h"
 #include "PropertyDescriptor.h"
 #include "PropertyNameArray.h"
+#include "SlotVisitorInlineMethods.h"
 #include <math.h>
 #include <wtf/Assertions.h>
 
@@ -85,6 +86,31 @@ static inline void getClassPropertyNames(ExecState* exec, const ClassInfo* class
     }
 }
 
+ALWAYS_INLINE void JSObject::visitOutOfLineStorage(SlotVisitor& visitor, PropertyStorage storage, size_t storageSize)
+{
+    ASSERT(storage);
+    ASSERT(storageSize);
+    
+    size_t capacity = structure()->outOfLineCapacity();
+    ASSERT(capacity);
+    size_t capacityInBytes = capacity * sizeof(WriteBarrierBase<Unknown>);
+    PropertyStorage baseOfStorage = storage - capacity - 1;
+    if (visitor.checkIfShouldCopyAndPinOtherwise(baseOfStorage, capacityInBytes)) {
+        PropertyStorage newBaseOfStorage = static_cast<PropertyStorage>(visitor.allocateNewSpace(capacityInBytes));
+        PropertyStorage currentTarget = newBaseOfStorage + capacity;
+        PropertyStorage newStorage = currentTarget + 1;
+        PropertyStorage currentSource = storage - 1;
+        for (size_t count = storageSize; count--;) {
+            JSValue value = (--currentSource)->get();
+            ASSERT(value);
+            visitor.appendUnbarrieredValue(&value);
+            (--currentTarget)->setWithoutWriteBarrier(value);
+        }
+        m_outOfLineStorage.set(newStorage, StorageBarrier::Unchecked);
+    } else
+        visitor.appendValues(storage - storageSize - 1, storageSize);
+}
+
 void JSObject::visitChildren(JSCell* cell, SlotVisitor& visitor)
 {
     JSObject* thisObject = jsCast<JSObject*>(cell);
@@ -97,17 +123,8 @@ void JSObject::visitChildren(JSCell* cell, SlotVisitor& visitor)
     JSCell::visitChildren(thisObject, visitor);
 
     PropertyStorage storage = thisObject->outOfLineStorage();
-    if (storage) {
-        size_t storageSize = thisObject->structure()->outOfLineSizeForKnownNonFinalObject();
-        // We have this extra temp here to slake GCC's thirst for the blood of those who dereference type-punned pointers.
-        void* temp = storage;
-        visitor.copyAndAppend(&temp, thisObject->structure()->outOfLineCapacity() * sizeof(WriteBarrierBase<Unknown>), storage->slot(), storageSize);
-        storage = static_cast<PropertyStorage>(temp);
-        thisObject->m_outOfLineStorage.set(storage, StorageBarrier::Unchecked);
-    }
-
-    if (thisObject->m_inheritorID)
-        visitor.append(&thisObject->m_inheritorID);
+    if (storage)
+        thisObject->visitOutOfLineStorage(visitor, storage, thisObject->structure()->outOfLineSizeForKnownNonFinalObject());
 
 #if !ASSERT_DISABLED
     visitor.m_isCheckingForDefaultMarkViolation = wasCheckingForDefaultMarkViolation;
@@ -126,17 +143,8 @@ void JSFinalObject::visitChildren(JSCell* cell, SlotVisitor& visitor)
     JSCell::visitChildren(thisObject, visitor);
 
     PropertyStorage storage = thisObject->outOfLineStorage();
-    if (storage) {
-        size_t storageSize = thisObject->structure()->outOfLineSizeForKnownFinalObject();
-        // We have this extra temp here to slake GCC's thirst for the blood of those who dereference type-punned pointers.
-        void* temp = storage;
-        visitor.copyAndAppend(&temp, thisObject->structure()->outOfLineCapacity() * sizeof(WriteBarrierBase<Unknown>), storage->slot(), storageSize);
-        storage = static_cast<PropertyStorage>(temp);
-        thisObject->m_outOfLineStorage.set(storage, StorageBarrier::Unchecked);
-    }
-
-    if (thisObject->m_inheritorID)
-        visitor.append(&thisObject->m_inheritorID);
+    if (storage)
+        thisObject->visitOutOfLineStorage(visitor, storage, thisObject->structure()->outOfLineSizeForKnownFinalObject());
 
     size_t storageSize = thisObject->structure()->inlineSizeForKnownFinalObject();
     visitor.appendValues(thisObject->inlineStorage(), storageSize);
@@ -578,15 +586,21 @@ NEVER_INLINE void JSObject::fillGetterPropertySlot(PropertySlot& slot, WriteBarr
 
 Structure* JSObject::createInheritorID(JSGlobalData& globalData)
 {
+    ASSERT(!getDirectLocation(globalData, globalData.m_inheritorIDKey));
+
     JSGlobalObject* globalObject;
     if (isGlobalThis())
         globalObject = static_cast<JSGlobalThis*>(this)->unwrappedObject();
     else
         globalObject = structure()->globalObject();
     ASSERT(globalObject);
-    m_inheritorID.set(globalData, this, createEmptyObjectStructure(globalData, globalObject, this));
-    ASSERT(m_inheritorID->isEmpty());
-    return m_inheritorID.get();
+
+    Structure* inheritorID = createEmptyObjectStructure(globalData, globalObject, this);
+    ASSERT(inheritorID->isEmpty());
+
+    PutPropertySlot slot;
+    putDirectInternal<PutModeDefineOwnProperty>(globalData, globalData.m_inheritorIDKey, inheritorID, DontEnum, slot, 0);
+    return inheritorID;
 }
 
 PropertyStorage JSObject::growOutOfLineStorage(JSGlobalData& globalData, size_t oldSize, size_t newSize)
@@ -595,23 +609,17 @@ PropertyStorage JSObject::growOutOfLineStorage(JSGlobalData& globalData, size_t 
 
     // It's important that this function not rely on structure(), since
     // we might be in the middle of a transition.
-
+    
     PropertyStorage oldPropertyStorage = m_outOfLineStorage.get();
     PropertyStorage newPropertyStorage = 0;
 
-    if (!oldPropertyStorage) {
-        // We have this extra temp here to slake GCC's thirst for the blood of those who dereference type-punned pointers.
-        void* temp = newPropertyStorage;
-        if (!globalData.heap.tryAllocateStorage(sizeof(WriteBarrierBase<Unknown>) * newSize, &temp))
-            CRASH();
-        newPropertyStorage = static_cast<PropertyStorage>(temp);
-    } else {
-        // We have this extra temp here to slake GCC's thirst for the blood of those who dereference type-punned pointers.
-        void* temp = oldPropertyStorage;
-        if (!globalData.heap.tryReallocateStorage(&temp, sizeof(WriteBarrierBase<Unknown>) * oldSize, sizeof(WriteBarrierBase<Unknown>) * newSize))
-            CRASH();
-        newPropertyStorage = static_cast<PropertyStorage>(temp);
-    }
+    // We have this extra temp here to slake GCC's thirst for the blood of those who dereference type-punned pointers.
+    void* temp = newPropertyStorage;
+    if (!globalData.heap.tryAllocateStorage(sizeof(WriteBarrierBase<Unknown>) * newSize, &temp))
+        CRASH();
+    newPropertyStorage = static_cast<PropertyStorage>(temp) + newSize + 1;
+    
+    memcpy(newPropertyStorage - oldSize - 1, oldPropertyStorage - oldSize - 1, sizeof(WriteBarrierBase<Unknown>) * oldSize);
 
     ASSERT(newPropertyStorage);
     return newPropertyStorage;

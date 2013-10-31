@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<body>
+<input type=date id=date value="10000-12-31">
+<script>
+function sendKey(input, keyName) {
+    var event = document.createEvent('KeyboardEvent');
+    event.initKeyboardEvent('keydown', true, true, document.defaultView, keyName);
+    input.dispatchEvent(event);
+}
+
+function finishTest() {
+    console.log(pickerWindow.pagePopupController);
+    pickerWindow.document.getElementById('main').removeEventListener('webkitTransitionEnd', finishTest);
+    testRunner.notifyDone();
+}
+
+console.log('Check if window.pagePopupController exists for a page-popup window.');
+testRunner.dumpAsText(true);
+testRunner.waitUntilDone();
+if (window.internals)
+    internals.settings.setEnableMockPagePopup(true);
+
+sendKey(document.getElementById('date'), 'Down');
+var pickerWindow = document.getElementById('mock-page-popup').contentWindow;
+pickerWindow.document.getElementById('main').addEventListener('webkitTransitionEnd', finishTest, false);
+</script>
+</body>
+

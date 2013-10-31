@@ -292,6 +292,9 @@ WebInspector.ElementsPanel.prototype = {
         WebInspector.domAgent.cancelSearch();
     },
 
+    /**
+     * @param {string} query
+     */
     performSearch: function(query)
     {
         // Call searchCanceled since it will reset everything we need before doing a new search.
@@ -497,7 +500,7 @@ WebInspector.ElementsPanel.prototype = {
         this._hideSearchHighlights();
         if (++this._currentSearchResultIndex >= this._searchResults.length)
             this._currentSearchResultIndex = 0;
-            
+
         this._highlightCurrentSearchResult();
     },
 
@@ -511,6 +514,7 @@ WebInspector.ElementsPanel.prototype = {
             this._currentSearchResultIndex = (this._searchResults.length - 1);
 
         this._highlightCurrentSearchResult();
+        return true;
     },
 
     _highlightCurrentSearchResult: function()

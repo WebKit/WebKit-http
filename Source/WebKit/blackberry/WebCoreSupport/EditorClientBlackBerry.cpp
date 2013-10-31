@@ -556,7 +556,7 @@ void EditorClientBlackBerry::learnWord(const WTF::String&)
 
 void EditorClientBlackBerry::checkSpellingOfString(const UChar* text, int textLength, int* misspellLocation, int* misspellLength)
 {
-    m_webPagePrivate->m_client->checkSpellingOfString(text, textLength, *misspellLocation, *misspellLength);
+    notImplemented();
 }
 
 WTF::String EditorClientBlackBerry::getAutoCorrectSuggestionForMisspelledWord(const WTF::String& misspelledWord)
@@ -570,7 +570,12 @@ void EditorClientBlackBerry::checkGrammarOfString(const UChar*, int, WTF::Vector
     notImplemented();
 }
 
-void EditorClientBlackBerry::requestCheckingOfString(WTF::PassRefPtr<WebCore::TextCheckingRequest>)
+void EditorClientBlackBerry::requestCheckingOfString(PassRefPtr<TextCheckingRequest> testCheckingRequest)
+{
+    m_webPagePrivate->m_inputHandler->requestCheckingOfString(textCheckingRequest);
+}
+
+void EditorClientBlackBerry::checkTextOfParagraph(const UChar*, int, TextCheckingTypeMask, Vector<TextCheckingResult>&)
 {
     notImplemented();
 }

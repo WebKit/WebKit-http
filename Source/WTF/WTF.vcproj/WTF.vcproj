@@ -408,6 +408,14 @@
 				>
 			</File>
 			<File
+				RelativePath="..\wtf\text\Base64.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\wtf\text\Base64.h"
+				>
+			</File>
+			<File
 				RelativePath="..\wtf\text\CString.cpp"
 				>
 			</File>
@@ -789,6 +797,10 @@
 			>
 		</File>
 		<File
+			RelativePath="..\wtf\GregorianDateTime.h"
+			>
+		</File>
+		<File
 			RelativePath="..\wtf\HashCountedSet.h"
 			>
 		</File>
@@ -870,6 +882,14 @@
 		</File>
 		<File
 			RelativePath="..\wtf\MD5.h"
+			>
+		</File>
+		<File
+			RelativePath="..\wtf\MediaTime.h"
+			>
+		</File>
+		<File
+			RelativePath="..\wtf\MediaTime.cpp"
 			>
 		</File>
 		<File

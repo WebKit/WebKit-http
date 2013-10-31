@@ -229,6 +229,27 @@ public:
         addCallArgument(arg3);
     }
 
+    ALWAYS_INLINE void setupArgumentsWithExecState(GPRReg arg1, TrustedImmPtr arg2, TrustedImm32 arg3, GPRReg arg4)
+    {
+        resetCallArguments();
+        addCallArgument(GPRInfo::callFrameRegister);
+        addCallArgument(arg1);
+        addCallArgument(arg2);
+        addCallArgument(arg3);
+        addCallArgument(arg4);
+    }
+
+    ALWAYS_INLINE void setupArgumentsWithExecState(GPRReg arg1, TrustedImmPtr arg2, TrustedImm32 arg3, GPRReg arg4, GPRReg arg5)
+    {
+        resetCallArguments();
+        addCallArgument(GPRInfo::callFrameRegister);
+        addCallArgument(arg1);
+        addCallArgument(arg2);
+        addCallArgument(arg3);
+        addCallArgument(arg4);
+        addCallArgument(arg5);
+    }
+
     ALWAYS_INLINE void setupArgumentsWithExecState(GPRReg arg1, GPRReg arg2, GPRReg arg3, GPRReg arg4)
     {
         resetCallArguments();
@@ -570,6 +591,14 @@ public:
         move(GPRInfo::callFrameRegister, GPRInfo::argumentGPR0);
     }
 
+    ALWAYS_INLINE void setupArgumentsWithExecState(GPRReg arg1, TrustedImmPtr arg2, TrustedImm32 arg3)
+    {
+        move(arg1, GPRInfo::argumentGPR1);
+        move(arg2, GPRInfo::argumentGPR2);
+        move(arg3, GPRInfo::argumentGPR3);
+        move(GPRInfo::callFrameRegister, GPRInfo::argumentGPR0);
+    }
+
     ALWAYS_INLINE void setupArgumentsWithExecState(GPRReg arg1, TrustedImmPtr arg2, TrustedImmPtr arg3)
     {
         move(arg1, GPRInfo::argumentGPR1);
@@ -638,6 +667,19 @@ public:
 #if NUMBER_OF_ARGUMENT_REGISTERS == 4
     ALWAYS_INLINE void setupArgumentsWithExecState(GPRReg arg1, GPRReg arg2, GPRReg arg3, GPRReg arg4)
     {
+        poke(arg4);
+        setupArgumentsWithExecState(arg1, arg2, arg3);
+    }
+
+    ALWAYS_INLINE void setupArgumentsWithExecState(GPRReg arg1, TrustedImmPtr arg2, TrustedImm32 arg3, GPRReg arg4)
+    {
+        poke(arg4);
+        setupArgumentsWithExecState(arg1, arg2, arg3);
+    }
+
+    ALWAYS_INLINE void setupArgumentsWithExecState(GPRReg arg1, TrustedImmPtr arg2, TrustedImm32 arg3, GPRReg arg4, GPRReg arg5)
+    {
+        poke(arg5, 1);
         poke(arg4);
         setupArgumentsWithExecState(arg1, arg2, arg3);
     }
@@ -721,6 +763,16 @@ public:
     }
 
 #endif // NUMBER_OF_ARGUMENT_REGISTERS == 4
+
+#if NUMBER_OF_ARGUMENT_REGISTERS >= 5
+    ALWAYS_INLINE void setupArgumentsWithExecState(GPRReg arg1, TrustedImmPtr arg2, TrustedImm32 arg3, GPRReg arg4)
+    {
+        setupTwoStubArgs<GPRInfo::argumentGPR1, GPRInfo::argumentGPR4>(arg1, arg4);
+        move(arg2, GPRInfo::argumentGPR2);
+        move(arg3, GPRInfo::argumentGPR3);
+        move(GPRInfo::callFrameRegister, GPRInfo::argumentGPR0);
+    }
+#endif
 
     void setupResults(GPRReg destA, GPRReg destB)
     {

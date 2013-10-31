@@ -34,9 +34,11 @@
 #include <WebCore/EflKeyboardUtilities.h>
 #include <WebCore/FocusController.h>
 #include <WebCore/Frame.h>
+#include <WebCore/FrameView.h>
 #include <WebCore/KeyboardEvent.h>
 #include <WebCore/Page.h>
 #include <WebCore/PlatformKeyboardEvent.h>
+#include <WebCore/RenderThemeEfl.h>
 #include <WebCore/Settings.h>
 
 using namespace WebCore;
@@ -102,6 +104,12 @@ const char* WebPage::interpretKeyEvent(const KeyboardEvent* event)
         return getKeyDownCommandName(event);
 
     return getKeyPressCommandName(event);
+}
+
+void WebPage::setThemePath(const String& themePath)
+{
+    WebCore::RenderThemeEfl* theme = static_cast<WebCore::RenderThemeEfl*>(m_page->theme());
+    theme->setThemePath(themePath);
 }
 
 } // namespace WebKit

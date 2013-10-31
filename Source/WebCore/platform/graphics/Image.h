@@ -52,10 +52,6 @@ typedef SIZE* LPSIZE;
 typedef struct HBITMAP__ *HBITMAP;
 #endif
 
-#if PLATFORM(QT)
-#include <QPixmap>
-#endif
-
 #if PLATFORM(GTK)
 typedef struct _GdkPixbuf GdkPixbuf;
 #endif
@@ -157,7 +153,7 @@ public:
 #endif
 
 #if PLATFORM(QT)
-    static void setPlatformResource(const char* name, const QPixmap&);
+    static void setPlatformResource(const char* name, const QImage&);
 #endif
 
     virtual void drawPattern(GraphicsContext*, const FloatRect& srcRect, const AffineTransform& patternTransform,
@@ -181,6 +177,7 @@ protected:
     virtual void drawFrameMatchingSourceSize(GraphicsContext*, const FloatRect& dstRect, const IntSize& srcSize, ColorSpace styleColorSpace, CompositeOperator) { }
 #endif
     virtual void draw(GraphicsContext*, const FloatRect& dstRect, const FloatRect& srcRect, ColorSpace styleColorSpace, CompositeOperator) = 0;
+    virtual void draw(GraphicsContext*, const FloatRect& dstRect, const FloatRect& srcRect, ColorSpace styleColorSpace, CompositeOperator, RespectImageOrientationEnum);
     void drawTiled(GraphicsContext*, const FloatRect& dstRect, const FloatPoint& srcPoint, const FloatSize& tileSize, ColorSpace styleColorSpace, CompositeOperator);
     void drawTiled(GraphicsContext*, const FloatRect& dstRect, const FloatRect& srcRect, const FloatSize& tileScaleFactor, TileRule hRule, TileRule vRule, ColorSpace styleColorSpace, CompositeOperator);
 

@@ -21,8 +21,7 @@
 #include "config.h"
 #include "HTMLDetailsElement.h"
 
-#if ENABLE(DETAILS)
-
+#if ENABLE(DETAILS_ELEMENT)
 #include "ElementShadow.h"
 #include "HTMLContentElement.h"
 #include "HTMLNames.h"
@@ -124,7 +123,7 @@ Element* HTMLDetailsElement::findMainSummary() const
             return toElement(child);
     }
 
-    return static_cast<DetailsSummaryElement*>(shadow()->oldestShadowRoot()->firstChild())->fallbackSummary();
+    return static_cast<DetailsSummaryElement*>(userAgentShadowRoot()->firstChild())->fallbackSummary();
 }
 
 void HTMLDetailsElement::parseAttribute(const Attribute& attribute)

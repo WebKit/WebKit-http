@@ -124,15 +124,8 @@ public:
 #if ENABLE(PAGE_POPUP)
     virtual PagePopup* openPagePopup(PagePopupClient*, const IntRect&) OVERRIDE { return 0; }
     virtual void closePagePopup(PagePopup*) OVERRIDE { }
-#endif
-
-#if ENABLE(REGISTER_PROTOCOL_HANDLER)
-    virtual void registerProtocolHandler(const String&, const String&, const String&, const String&) { }
-#endif
-
-#if ENABLE(CUSTOM_SCHEME_HANDLER)
-    virtual CustomHandlersState isProtocolHandlerRegistered(const String&, const String&, const String&) { return CustomHandlersDeclined; }
-    virtual void unregisterProtocolHandler(const String&, const String&, const String&) { }
+    virtual void setPagePopupDriver(PagePopupDriver*) OVERRIDE { }
+    virtual void resetPagePopupDriver() OVERRIDE { }
 #endif
 
     virtual void setStatusbarText(const String&) { }
@@ -206,7 +199,6 @@ public:
 #endif
     
     virtual void numWheelEventHandlersChanged(unsigned) OVERRIDE { }
-    virtual void numTouchEventHandlersChanged(unsigned) OVERRIDE { }
     
     virtual bool shouldRubberBandInDirection(WebCore::ScrollDirection) const { return false; }
 };
@@ -567,14 +559,12 @@ public:
 
     virtual void inspectorDestroyed() { }
     
-    virtual void openInspectorFrontend(InspectorController*) { }
+    virtual InspectorFrontendChannel* openInspectorFrontend(InspectorController*) { return 0; }
     virtual void closeInspectorFrontend() { }
     virtual void bringFrontendToFront() { }
 
     virtual void highlight() { }
     virtual void hideHighlight() { }
-
-    virtual bool sendMessageToFrontend(const String&) { return false; }
 };
 
 class EmptyDeviceMotionClient : public DeviceMotionClient {

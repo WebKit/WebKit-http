@@ -838,7 +838,7 @@ void GraphicsContext::setPlatformCompositeOperation(CompositeOperator op)
     m_data->view()->SetDrawingMode(mode);
 }
 
-AffineTransform GraphicsContext::getCTM() const
+AffineTransform GraphicsContext::getCTM(IncludeDeviceScale) const
 {
     // TODO: Maybe this needs to use the accumulated transform?
     AffineTransform matrix;

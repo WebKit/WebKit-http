@@ -42,6 +42,12 @@
 
 #include <wtf/text/StringImpl.h> 
 
+#if USE(HARFBUZZ_NG)
+#include "HarfBuzzNGFace.h"
+#else
+#include "HarfBuzzSkia.h"
+#endif
+
 namespace WebCore {
 
 static SkPaint::Hinting skiaHinting = SkPaint::kNormal_Hinting;
@@ -79,6 +85,39 @@ void FontPlatformData::setSubpixelRendering(bool useSubpixelRendering)
 void FontPlatformData::setSubpixelPositioning(bool useSubpixelPositioning)
 {
     useSkiaSubpixelPositioning = useSubpixelPositioning;
+}
+
+FontPlatformData::FontPlatformData(WTF::HashTableDeletedValueType)
+    : m_typeface(hashTableDeletedFontValue())
+    , m_textSize(0)
+    , m_emSizeInFontUnits(0)
+    , m_fakeBold(false)
+    , m_fakeItalic(false)
+    , m_orientation(Horizontal)
+    , m_textOrientation(TextOrientationVerticalRight)
+{
+}
+
+FontPlatformData::FontPlatformData()
+    : m_typeface(0)
+    , m_textSize(0)
+    , m_emSizeInFontUnits(0)
+    , m_fakeBold(false)
+    , m_fakeItalic(false)
+    , m_orientation(Horizontal)
+    , m_textOrientation(TextOrientationVerticalRight)
+{
+}
+
+FontPlatformData::FontPlatformData(float textSize, bool fakeBold, bool fakeItalic)
+    : m_typeface(0)
+    , m_textSize(textSize)
+    , m_emSizeInFontUnits(0)
+    , m_fakeBold(fakeBold)
+    , m_fakeItalic(fakeItalic)
+    , m_orientation(Horizontal)
+    , m_textOrientation(TextOrientationVerticalRight)
+{
 }
 
 FontPlatformData::FontPlatformData(const FontPlatformData& src)
@@ -175,31 +214,19 @@ String FontPlatformData::description() const
 
 void FontPlatformData::setupPaint(SkPaint* paint) const
 {
+    paint->setAntiAlias(m_style.useAntiAlias);
+    paint->setHinting(static_cast<SkPaint::Hinting>(m_style.hintStyle));
+    paint->setEmbeddedBitmapText(m_style.useBitmaps);
+    paint->setAutohinted(m_style.useAutoHint);
+    paint->setSubpixelText(m_style.useSubpixelPositioning);
+    if (m_style.useAntiAlias)
+        paint->setLCDRenderText(m_style.useSubpixelRendering);
+
     const float ts = m_textSize >= 0 ? m_textSize : 12;
-
-    paint->setAntiAlias(m_style.useAntiAlias == FontRenderStyle::NoPreference ? useSkiaAntiAlias : m_style.useAntiAlias);
-    switch (m_style.useHinting) {
-    case FontRenderStyle::NoPreference:
-        paint->setHinting(skiaHinting);
-        break;
-    case 0:
-        paint->setHinting(SkPaint::kNo_Hinting);
-        break;
-    default:
-        paint->setHinting(static_cast<SkPaint::Hinting>(m_style.hintStyle));
-        break;
-    }
-
-    paint->setEmbeddedBitmapText(m_style.useBitmaps == FontRenderStyle::NoPreference ? useSkiaBitmaps : m_style.useBitmaps);
     paint->setTextSize(SkFloatToScalar(ts));
     paint->setTypeface(m_typeface);
     paint->setFakeBoldText(m_fakeBold);
     paint->setTextSkewX(m_fakeItalic ? -SK_Scalar1 / 4 : 0);
-    paint->setAutohinted(m_style.useAutoHint == FontRenderStyle::NoPreference ? useSkiaAutoHint : m_style.useAutoHint);
-    paint->setSubpixelText(m_style.useSubpixelPositioning == FontRenderStyle::NoPreference ? useSkiaSubpixelPositioning : m_style.useSubpixelPositioning);
-
-    if (m_style.useAntiAlias == 1 || (m_style.useAntiAlias == FontRenderStyle::NoPreference && useSkiaAntiAlias))
-        paint->setLCDRenderText(m_style.useSubpixelRendering == FontRenderStyle::NoPreference ? useSkiaSubpixelRendering : m_style.useSubpixelRendering);
 }
 
 SkFontID FontPlatformData::uniqueID() const
@@ -252,10 +279,10 @@ bool FontPlatformData::isFixedPitch() const
 }
 
 #if USE(HARFBUZZ_NG)
-HarfBuzzFace* FontPlatformData::harfbuzzFace() const
+HarfBuzzNGFace* FontPlatformData::harfbuzzFace() const
 {
     if (!m_harfbuzzFace)
-        m_harfbuzzFace = HarfBuzzFace::create(const_cast<FontPlatformData*>(this), uniqueID());
+        m_harfbuzzFace = HarfBuzzNGFace::create(const_cast<FontPlatformData*>(this), uniqueID());
 
     return m_harfbuzzFace.get();
 }
@@ -272,6 +299,26 @@ HarfbuzzFace* FontPlatformData::harfbuzzFace() const
 void FontPlatformData::querySystemForRenderStyle()
 {
     PlatformSupport::getRenderStyleForStrike(m_family.data(), (((int)m_textSize) << 2) | (m_typeface->style() & 3), &m_style);
+
+    // Fix FontRenderStyle::NoPreference to actual styles.
+    if (m_style.useAntiAlias == FontRenderStyle::NoPreference)
+         m_style.useAntiAlias = useSkiaAntiAlias;
+
+    if (!m_style.useHinting)
+        m_style.hintStyle = SkPaint::kNo_Hinting;
+    else if (m_style.useHinting == FontRenderStyle::NoPreference)
+        m_style.hintStyle = skiaHinting;
+
+    if (m_style.useBitmaps == FontRenderStyle::NoPreference)
+        m_style.useBitmaps = useSkiaBitmaps;
+    if (m_style.useAutoHint == FontRenderStyle::NoPreference)
+        m_style.useAutoHint = useSkiaAutoHint;
+    if (m_style.useSubpixelPositioning == FontRenderStyle::NoPreference)
+        m_style.useSubpixelPositioning = useSkiaSubpixelPositioning;
+    if (m_style.useAntiAlias == FontRenderStyle::NoPreference)
+        m_style.useAntiAlias = useSkiaAntiAlias;
+    if (m_style.useSubpixelRendering == FontRenderStyle::NoPreference)
+        m_style.useSubpixelRendering = useSkiaSubpixelRendering;
 }
 
 } // namespace WebCore

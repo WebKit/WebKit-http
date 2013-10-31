@@ -65,6 +65,7 @@ class KURL;
 class KeyframeList;
 class KeyframeValue;
 class MediaQueryEvaluator;
+class MemoryObjectInfo;
 class Node;
 class RenderRegion;
 class RuleData;
@@ -223,6 +224,7 @@ private:
 public:
     bool useSVGZoomRules();
 
+    static bool colorFromPrimitiveValueIsDerivedFromElement(CSSPrimitiveValue*);
     Color colorFromPrimitiveValue(CSSPrimitiveValue*, bool forVisitedLink = false) const;
 
     bool hasSelectorForAttribute(const AtomicString&) const;
@@ -286,6 +288,7 @@ public:
         ~Features();
         void add(const StyleResolver::Features&);
         void clear();
+        void reportMemoryUsage(MemoryObjectInfo*) const;
         HashSet<AtomicStringImpl*> idsInRules;
         HashSet<AtomicStringImpl*> attrsInRules;
         Vector<RuleFeature> siblingRules;
@@ -419,6 +422,8 @@ public:
     static Length convertToFloatLength(CSSPrimitiveValue*, RenderStyle*, RenderStyle* rootStyle, double multiplier = 1);
 
     CSSToStyleMap* styleMap() { return &m_styleMap; }
+
+    void reportMemoryUsage(MemoryObjectInfo*) const;
     
 private:
     static RenderStyle* s_styleNotYetAvailable;

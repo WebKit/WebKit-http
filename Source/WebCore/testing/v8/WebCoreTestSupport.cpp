@@ -31,6 +31,7 @@
 #include "Internals.h"
 #include "ScriptExecutionContext.h"
 #include "V8Internals.h"
+#include "V8PagePopupController.h"
 
 #include <v8.h>
 

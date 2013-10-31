@@ -34,7 +34,6 @@
 
 #include "InspectorPageAgent.h"
 
-#include "Base64.h"
 #include "CachedCSSStyleSheet.h"
 #include "CachedFont.h"
 #include "CachedImage.h"
@@ -53,7 +52,6 @@
 #include "FrameView.h"
 #include "GeolocationController.h"
 #include "GeolocationError.h"
-#include "GeolocationPosition.h"
 #include "HTMLFrameOwnerElement.h"
 #include "HTMLNames.h"
 #include "IdentifiersFactory.h"
@@ -79,6 +77,7 @@
 #include <wtf/CurrentTime.h>
 #include <wtf/ListHashSet.h>
 #include <wtf/Vector.h>
+#include <wtf/text/Base64.h>
 
 using namespace std;
 
@@ -226,9 +225,9 @@ bool InspectorPageAgent::sharedBufferContent(PassRefPtr<SharedBuffer> buffer, co
     return decodeSharedBuffer(buffer, textEncodingName, result);
 }
 
-PassOwnPtr<InspectorPageAgent> InspectorPageAgent::create(InstrumentingAgents* instrumentingAgents, Page* page, InspectorAgent* inspectorAgent, InspectorState* state, InjectedScriptManager* injectedScriptManager, InspectorClient* client)
+PassOwnPtr<InspectorPageAgent> InspectorPageAgent::create(InstrumentingAgents* instrumentingAgents, Page* page, InspectorAgent* inspectorAgent, InspectorState* state, InjectedScriptManager* injectedScriptManager, InspectorClient* client, InspectorOverlay* overlay)
 {
-    return adoptPtr(new InspectorPageAgent(instrumentingAgents, page, inspectorAgent, state, injectedScriptManager, client));
+    return adoptPtr(new InspectorPageAgent(instrumentingAgents, page, inspectorAgent, state, injectedScriptManager, client, overlay));
 }
 
 // static
@@ -311,18 +310,18 @@ TypeBuilder::Page::ResourceType::Enum InspectorPageAgent::cachedResourceTypeJson
     return resourceTypeJson(cachedResourceType(cachedResource));
 }
 
-InspectorPageAgent::InspectorPageAgent(InstrumentingAgents* instrumentingAgents, Page* page, InspectorAgent* inspectorAgent, InspectorState* inspectorState, InjectedScriptManager* injectedScriptManager, InspectorClient* client)
+InspectorPageAgent::InspectorPageAgent(InstrumentingAgents* instrumentingAgents, Page* page, InspectorAgent* inspectorAgent, InspectorState* inspectorState, InjectedScriptManager* injectedScriptManager, InspectorClient* client, InspectorOverlay* overlay)
     : InspectorBaseAgent<InspectorPageAgent>("Page", instrumentingAgents, inspectorState)
     , m_page(page)
     , m_inspectorAgent(inspectorAgent)
     , m_injectedScriptManager(injectedScriptManager)
     , m_client(client)
     , m_frontend(0)
+    , m_overlay(overlay)
     , m_lastScriptIdentifier(0)
     , m_lastPaintContext(0)
     , m_didLoadEventFire(false)
-    , m_geolocationError()
-    , m_geolocationPosition()
+    , m_geolocationOverridden(false)
 {
 }
 
@@ -890,7 +889,7 @@ void InspectorPageAgent::didPaint()
         Color(0, 0, 0xFF, 0x3F),
     };
 
-    DOMNodeHighlighter::drawOutline(*m_lastPaintContext, m_lastPaintRect, colors[colorSelector++ % WTF_ARRAY_LENGTH(colors)]);
+    m_overlay->drawOutline(*m_lastPaintContext, m_lastPaintRect, colors[colorSelector++ % WTF_ARRAY_LENGTH(colors)]);
 
     m_lastPaintContext = 0;
 }
@@ -968,54 +967,70 @@ void InspectorPageAgent::updateViewMetrics(int width, int height, double fontSca
     m_client->overrideDeviceMetrics(width, height, static_cast<float>(fontScaleFactor), fitWindow);
 
     Document* document = mainFrame()->document();
-    document->styleResolverChanged(RecalcStyleImmediately);
+    if (document)
+        document->styleResolverChanged(RecalcStyleImmediately);
     InspectorInstrumentation::mediaQueryResultChanged(document);
 }
 
-void InspectorPageAgent::setGeolocationData(ErrorString*, const double* longitude, const double* latitude, const double* accuracy, const String* errorType)
+void InspectorPageAgent::setGeolocationOverride(ErrorString* error, const double* latitude, const double* longitude, const double* accuracy)
 {
 #if ENABLE (GEOLOCATION)
     GeolocationController* controller = GeolocationController::from(m_page);
-    if (!controller)
-        return;
-
-    clearGeolocationData(0);
-
-    if (*errorType == "PermissionDenied")
-        m_geolocationError = GeolocationError::create(GeolocationError::PermissionDenied, *errorType).leakRef();
-    else if (*errorType == "PositionUnavailable")
-        m_geolocationError = GeolocationError::create(GeolocationError::PositionUnavailable, *errorType).leakRef();
-
-    if (m_geolocationError.get()) {
-        controller->errorOccurred(m_geolocationError.get());
+    GeolocationPosition* position = 0;
+    if (!controller) {
+        *error = "Internal error: unable to override geolocation.";
         return;
     }
+    position = controller->lastPosition();
+    if (!m_geolocationOverridden && position)
+        m_platformGeolocationPosition = position;
 
-    m_geolocationPosition = GeolocationPosition::create(currentTimeMS(), *longitude, *latitude, *accuracy).leakRef();
-    controller->positionChanged(m_geolocationPosition.get());
+    m_geolocationOverridden = true;
+    if (latitude && longitude && accuracy)
+        m_geolocationPosition = GeolocationPosition::create(currentTimeMS(), *latitude, *longitude, *accuracy);
+    else
+        m_geolocationPosition.clear();
+
+    controller->positionChanged(0); // Kick location update.
+#else
+    *error = "Geolocation is not available.";
 #endif
 }
 
-void InspectorPageAgent::clearGeolocationData(ErrorString*)
+void InspectorPageAgent::clearGeolocationOverride(ErrorString* error)
 {
+    if (!m_geolocationOverridden)
+        return;
 #if ENABLE(GEOLOCATION)
-    m_geolocationError.clear();
+    UNUSED_PARAM(error);
+    m_geolocationOverridden = false;
     m_geolocationPosition.clear();
+
+    GeolocationController* controller = GeolocationController::from(m_page);
+    if (controller && m_platformGeolocationPosition.get())
+        controller->positionChanged(m_platformGeolocationPosition.get());
+#else
+    *error = "Geolocation is not available.";
 #endif
 }
 
-bool InspectorPageAgent::sendGeolocationError()
+void InspectorPageAgent::canOverrideGeolocation(ErrorString*, bool* out_param)
 {
 #if ENABLE(GEOLOCATION)
-    if (m_geolocationError.get()) {
-        GeolocationController* controller = GeolocationController::from(m_page);
-        if (controller) {
-            controller->errorOccurred(m_geolocationError.get());
-            return true;
-        }
-    }
+    *out_param = true;
+#else
+    *out_param = false;
 #endif
-    return false;
+}
+
+GeolocationPosition* InspectorPageAgent::overrideGeolocationPosition(GeolocationPosition* position)
+{
+    if (m_geolocationOverridden) {
+        if (position)
+            m_platformGeolocationPosition = position;
+        return m_geolocationPosition.get();
+    }
+    return position;
 }
 
 } // namespace WebCore

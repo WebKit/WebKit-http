@@ -38,9 +38,8 @@ public:
     static inline PassRefPtr<Uint8ClampedArray> create(const unsigned char* array, unsigned length);
     static inline PassRefPtr<Uint8ClampedArray> create(PassRefPtr<ArrayBuffer>, unsigned byteOffset, unsigned length);
 
-    // Should only be used for WebCore-internal use (like filters and
-    // getImageData) when it is known the entire array will be filled.
-    // Do not return these results directly to JavaScript.
+    // Should only be used when it is known the entire array will be filled. Do
+    // not return these results directly to JavaScript without filling first.
     static inline PassRefPtr<Uint8ClampedArray> createUninitialized(unsigned length);
 
     // It's only needed to potentially call this method if the array
@@ -55,15 +54,17 @@ public:
     inline PassRefPtr<Uint8ClampedArray> subarray(int start) const;
     inline PassRefPtr<Uint8ClampedArray> subarray(int start, int end) const;
 
+    virtual ViewType getType() const
+    {
+        return TypeUint8Clamped;
+    }
+
 private:
     inline Uint8ClampedArray(PassRefPtr<ArrayBuffer>,
                              unsigned byteOffset,
                              unsigned length);
     // Make constructor visible to superclass.
     friend class TypedArrayBase<unsigned char>;
-
-    // Overridden from ArrayBufferView.
-    virtual bool isUnsignedByteClampedArray() const { return true; }
 };
 
 PassRefPtr<Uint8ClampedArray> Uint8ClampedArray::create(unsigned length)

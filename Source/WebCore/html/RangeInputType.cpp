@@ -96,6 +96,11 @@ void RangeInputType::setValueAsDecimal(const Decimal& newValue, TextFieldEventBe
     element()->setValue(serialize(newValue), eventBehavior);
 }
 
+bool RangeInputType::typeMismatchFor(const String& value) const
+{
+    return !value.isEmpty() && !isfinite(parseToDoubleForNumberType(value));
+}
+
 bool RangeInputType::supportsRequired() const
 {
     return false;
@@ -132,7 +137,7 @@ void RangeInputType::handleMouseDownEvent(MouseEvent* event)
     if (event->button() != LeftButton || !targetNode)
         return;
     ASSERT(element()->shadow());
-    if (targetNode != element() && !targetNode->isDescendantOf(element()->shadow()->oldestShadowRoot()))
+    if (targetNode != element() && !targetNode->isDescendantOf(element()->userAgentShadowRoot()))
         return;
     SliderThumbElement* thumb = sliderThumbElementOf(element());
     if (targetNode == thumb)
@@ -239,7 +244,7 @@ void RangeInputType::createShadowSubtree()
     RefPtr<HTMLElement> container = SliderContainerElement::create(document);
     container->appendChild(track.release(), ec);
     container->appendChild(TrackLimiterElement::create(document), ec);
-    element()->shadow()->oldestShadowRoot()->appendChild(container.release(), ec);
+    element()->userAgentShadowRoot()->appendChild(container.release(), ec);
 }
 
 RenderObject* RangeInputType::createRenderer(RenderArena* arena, RenderStyle*) const
@@ -305,5 +310,17 @@ bool RangeInputType::shouldRespectListAttribute()
 {
     return InputType::themeSupportsDataListUI(this);
 }
+
+HTMLElement* RangeInputType::sliderThumbElement() const
+{
+    return sliderThumbElementOf(element());
+}
+
+#if ENABLE(DATALIST_ELEMENT)
+void RangeInputType::listAttributeTargetChanged()
+{
+    element()->setNeedsStyleRecalc();
+}
+#endif
 
 } // namespace WebCore

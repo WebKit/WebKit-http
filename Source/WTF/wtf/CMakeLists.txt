@@ -28,6 +28,7 @@ SET(WTF_HEADERS
     FixedArray.h
     Forward.h
     GetPtr.h
+    GregorianDateTime.h
     HashCountedSet.h
     HashFunctions.h
     HashIterators.h
@@ -43,6 +44,7 @@ SET(WTF_HEADERS
     MainThread.h
     MallocZoneSupport.h
     MathExtras.h
+    MediaTime.h
     MessageQueue.h
     MetaAllocator.h
     MetaAllocatorHandle.h
@@ -118,6 +120,7 @@ SET(WTF_HEADERS
 
     text/AtomicString.h
     text/AtomicStringImpl.h
+    text/Base64.h
     text/CString.h
     text/StringBuffer.h
     text/StringHash.h
@@ -147,6 +150,7 @@ SET(WTF_SOURCES
     HashTable.cpp
     MD5.cpp
     MainThread.cpp
+    MediaTime.cpp
     MetaAllocator.cpp
     OSRandomSource.cpp
     NumberOfCores.cpp
@@ -174,6 +178,7 @@ SET(WTF_SOURCES
     dtoa/strtod.cc
 
     text/AtomicString.cpp
+    text/Base64.cpp
     text/CString.cpp
     text/StringBuilder.cpp
     text/StringImpl.cpp

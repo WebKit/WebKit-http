@@ -533,7 +533,7 @@ void RenderInline::paint(PaintInfo& paintInfo, const LayoutPoint& paintOffset)
 }
 
 template<typename GeneratorContext>
-void RenderInline::generateLineBoxRects(GeneratorContext yield) const
+void RenderInline::generateLineBoxRects(GeneratorContext& yield) const
 {
     if (!alwaysCreateLineBoxes())
         generateCulledLineBoxRects(yield, this);
@@ -545,7 +545,7 @@ void RenderInline::generateLineBoxRects(GeneratorContext yield) const
 }
 
 template<typename GeneratorContext>
-void RenderInline::generateCulledLineBoxRects(GeneratorContext yield, const RenderInline* container) const
+void RenderInline::generateCulledLineBoxRects(GeneratorContext& yield, const RenderInline* container) const
 {
     if (!culledInlineFirstLineBox()) {
         yield(FloatRect());
@@ -631,7 +631,8 @@ private:
 
 void RenderInline::absoluteRects(Vector<IntRect>& rects, const LayoutPoint& accumulatedOffset) const
 {
-    generateLineBoxRects(AbsoluteRectsGeneratorContext(rects, accumulatedOffset));
+    AbsoluteRectsGeneratorContext context(rects, accumulatedOffset);
+    generateLineBoxRects(context);
 
     if (continuation()) {
         if (continuation()->isBox()) {
@@ -647,17 +648,11 @@ namespace {
 
 class AbsoluteQuadsGeneratorContext {
 public:
-    AbsoluteQuadsGeneratorContext(const RenderInline* renderer, Vector<FloatQuad>& quads, bool* wasFixed)
+    AbsoluteQuadsGeneratorContext(const RenderInline* renderer, Vector<FloatQuad>& quads)
         : m_quads(quads)
-        , m_wasFixed(wasFixed)
         , m_geometryMap()
     {
-        RenderObject* root = renderer->parent();
-        while (root && root->parent())
-            root = root->parent();
-
-        if (root)
-            m_geometryMap.pushMappingsToAncestor(renderer, toRenderBoxModelObject(root));
+        m_geometryMap.pushMappingsToAncestor(renderer, 0);
     }
 
     void operator()(const FloatRect& rect)
@@ -666,7 +661,6 @@ public:
     }
 private:
     Vector<FloatQuad>& m_quads;
-    bool* m_wasFixed;
     RenderGeometryMap m_geometryMap;
 };
 
@@ -674,7 +668,8 @@ private:
 
 void RenderInline::absoluteQuads(Vector<FloatQuad>& quads, bool* wasFixed) const
 {
-    generateLineBoxRects(AbsoluteQuadsGeneratorContext(this, quads, wasFixed));
+    AbsoluteQuadsGeneratorContext context(this, quads);
+    generateLineBoxRects(context);
 
     if (continuation())
         continuation()->absoluteQuads(quads, wasFixed);
@@ -809,7 +804,8 @@ IntRect RenderInline::linesBoundingBox() const
     if (!alwaysCreateLineBoxes()) {
         ASSERT(!firstLineBox());
         FloatRect floatResult;
-        generateCulledLineBoxRects(LinesBoundingBoxGeneratorContext(floatResult), this);
+        LinesBoundingBoxGeneratorContext context(floatResult);
+        generateCulledLineBoxRects(context, this);
         return enclosingIntRect(floatResult);
     }
 
@@ -893,7 +889,8 @@ InlineBox* RenderInline::culledInlineLastLineBox() const
 LayoutRect RenderInline::culledInlineVisualOverflowBoundingBox() const
 {
     FloatRect floatResult;
-    generateCulledLineBoxRects(LinesBoundingBoxGeneratorContext(floatResult), this);
+    LinesBoundingBoxGeneratorContext context(floatResult);
+    generateCulledLineBoxRects(context, this);
     LayoutRect result(enclosingLayoutRect(floatResult));
     bool isHorizontal = style()->isHorizontalWritingMode();
     for (RenderObject* curr = firstChild(); curr; curr = curr->nextSibling()) {
@@ -1138,9 +1135,11 @@ void RenderInline::mapLocalToContainer(RenderBoxModelObject* repaintContainer, b
     if (!o)
         return;
 
-    if (applyContainerFlip && o->isBox() && o->style()->isFlippedBlocksWritingMode()) {
-        IntPoint centerPoint = roundedIntPoint(transformState.mappedPoint());
-        transformState.move(toRenderBox(o)->flipForWritingModeIncludingColumns(centerPoint) - centerPoint);
+    if (applyContainerFlip && o->isBox()) {
+        if (o->style()->isFlippedBlocksWritingMode()) {
+            IntPoint centerPoint = roundedIntPoint(transformState.mappedPoint());
+            transformState.move(toRenderBox(o)->flipForWritingModeIncludingColumns(centerPoint) - centerPoint);
+        }
         applyContainerFlip = DoNotApplyContainerFlip;
     }
 
@@ -1231,7 +1230,7 @@ void RenderInline::updateHitTestResult(HitTestResult& result, const LayoutPoint&
             
             // Get our containing block.
             RenderBox* block = containingBlock();
-            localPoint.move(block->x() - firstBlock->x(), block->y() - firstBlock->y());
+            localPoint.moveBy(block->location() - firstBlock->locationOffset());
         }
 
         result.setInnerNode(n);
@@ -1359,7 +1358,8 @@ void RenderInline::imageChanged(WrappedImagePtr, const IntRect*)
 
 void RenderInline::addFocusRingRects(Vector<IntRect>& rects, const LayoutPoint& additionalOffset)
 {
-    generateLineBoxRects(AbsoluteRectsGeneratorContext(rects, additionalOffset));
+    AbsoluteRectsGeneratorContext context(rects, additionalOffset);
+    generateLineBoxRects(context);
 
     for (RenderObject* curr = firstChild(); curr; curr = curr->nextSibling()) {
         if (!curr->isText() && !curr->isListMarker()) {
@@ -1368,7 +1368,7 @@ void RenderInline::addFocusRingRects(Vector<IntRect>& rects, const LayoutPoint& 
             if (curr->hasLayer()) 
                 pos = curr->localToAbsolute();
             else if (curr->isBox())
-                pos.move(toRenderBox(curr)->x(), toRenderBox(curr)->y());
+                pos.move(toRenderBox(curr)->locationOffset());
             curr->addFocusRingRects(rects, flooredIntPoint(pos));
         }
     }

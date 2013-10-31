@@ -53,6 +53,7 @@
 #include "ViewportArguments.h"
 #include "WindowFeatures.h"
 #include "ewk_custom_handler_private.h"
+#include "ewk_file_chooser_private.h"
 #include "ewk_frame_private.h"
 #include "ewk_private.h"
 #include "ewk_security_origin_private.h"
@@ -294,11 +295,11 @@ bool ChromeClientEfl::runJavaScriptConfirm(Frame* frame, const String& message)
 
 bool ChromeClientEfl::runJavaScriptPrompt(Frame* frame, const String& message, const String& defaultValue, String& result)
 {
-    char* value = 0;
+    const char* value = 0;
     ewk_view_run_javascript_prompt(m_view, kit(frame), message.utf8().data(), defaultValue.utf8().data(), &value);
     if (value) {
         result = String::fromUTF8(value);
-        free(value);
+        eina_stringshare_del(value);
         return true;
     }
     return false;
@@ -474,17 +475,16 @@ void ChromeClientEfl::runOpenPanel(Frame* frame, PassRefPtr<FileChooser> prpFile
 {
     RefPtr<FileChooser> chooser = prpFileChooser;
     Eina_List* selectedFilenames = 0;
-    void* filename;
-    Vector<String> filenames;
-
-    const FileChooserSettings& settings = chooser->settings();
-    bool confirm = ewk_view_run_open_panel(m_view, kit(frame), settings.allowsMultipleFiles, settings.acceptMIMETypes, &selectedFilenames);
-
+    Ewk_File_Chooser* fileChooser = ewk_file_chooser_new(chooser.get());
+    bool confirm = ewk_view_run_open_panel(m_view, kit(frame), fileChooser, &selectedFilenames);
+    ewk_file_chooser_free(fileChooser);
     if (!confirm)
         return;
 
+    void* filename;
+    Vector<String> filenames;
     EINA_LIST_FREE(selectedFilenames, filename) {
-        filenames.append((char*)filename);
+        filenames.append(String::fromUTF8(static_cast<char*>(filename)));
         free(filename);
     }
 
@@ -650,54 +650,11 @@ void ChromeClientEfl::exitFullScreenForElement(WebCore::Element*)
 }
 #endif
 
-#if ENABLE(REGISTER_PROTOCOL_HANDLER) || ENABLE(CUSTOM_SCHEME_HANDLER)
-static Ewk_Custom_Handler_Data* customHandlerDataCreate(Evas_Object* ewkView, const char* scheme, const char* baseURL, const char* url)
+#if USE(TILED_BACKING_STORE)
+void ChromeClientEfl::delegatedScrollRequested(const IntPoint& point)
 {
-    Ewk_Custom_Handler_Data* data = new Ewk_Custom_Handler_Data;
-    data->ewkView = ewkView;
-    data->scheme = eina_stringshare_add(scheme);
-    data->base_url = eina_stringshare_add(baseURL);
-    data->url = eina_stringshare_add(url);
-    return data;
-}
-
-static void customHandlerDataDelete(Ewk_Custom_Handler_Data* data)
-{
-    eina_stringshare_del(data->scheme);
-    eina_stringshare_del(data->base_url);
-    eina_stringshare_del(data->url);
-    delete data;
-}
-
-#if ENABLE(REGISTER_PROTOCOL_HANDLER)
-void ChromeClientEfl::registerProtocolHandler(const String& scheme, const String& baseURL, const String& url, const String& title)
-{
-    Ewk_Custom_Handler_Data* data = customHandlerDataCreate(m_view, scheme.utf8().data(), baseURL.utf8().data(), url.utf8().data());
-    data->title = eina_stringshare_add(title.utf8().data());
-    ewk_custom_handler_register_protocol_handler(data);
-    eina_stringshare_del(data->title);
-    customHandlerDataDelete(data);
+    notImplemented();
 }
 #endif
-
-#if ENABLE(CUSTOM_SCHEME_HANDLER)
-ChromeClient::CustomHandlersState ChromeClientEfl::isProtocolHandlerRegistered(const String& scheme, const String& baseURL, const String& url)
-{
-    Ewk_Custom_Handler_Data* data = customHandlerDataCreate(m_view, scheme.utf8().data(), baseURL.utf8().data(), url.utf8().data());
-    ChromeClient::CustomHandlersState result = static_cast<CustomHandlersState>(ewk_custom_handler_register_protocol_handler(data));
-    customHandlerDataDelete(data);
-
-    return result;
-}
-
-void ChromeClientEfl::unregisterProtocolHandler(const String& scheme, const String& baseURL, const String& url)
-{
-    Ewk_Custom_Handler_Data* data = customHandlerDataCreate(m_view, scheme.utf8().data(), baseURL.utf8().data(), url.utf8().data());
-    ewk_custom_handler_register_protocol_handler(data);
-    customHandlerDataDelete(data);
-}
-#endif
-
-#endif // ENABLE(REGISTER_PROTOCOL_HANDLER) || ENABLE(CUSTOM_SCHEME_HANDLER)
 
 }

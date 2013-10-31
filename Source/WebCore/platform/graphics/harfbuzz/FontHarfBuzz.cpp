@@ -185,9 +185,11 @@ void Font::drawComplexText(GraphicsContext* gc, const TextRun& run,
 #if USE(HARFBUZZ_NG)
     GlyphBuffer glyphBuffer;
     HarfBuzzShaper shaper(this, run);
+    shaper.setDrawRange(from, to);
     if (!shaper.shape(&glyphBuffer))
         return;
-    drawGlyphBuffer(gc, run, glyphBuffer, point);
+    FloatPoint adjustedPoint = shaper.adjustStartPoint(point);
+    drawGlyphBuffer(gc, run, glyphBuffer, adjustedPoint);
 #else
     SkCanvas* canvas = gc->platformContext()->canvas();
     ComplexTextController controller(this, run, point.x(), point.y());

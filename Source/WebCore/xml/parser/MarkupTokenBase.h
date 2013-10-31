@@ -36,6 +36,16 @@
 
 namespace WebCore {
 
+static inline Attribute* findAttributeInVector(Vector<Attribute>& attributes, const QualifiedName& name)
+{
+    for (unsigned i = 0; i < attributes.size(); ++i) {
+        if (attributes.at(i).name().matches(name))
+            return &attributes.at(i);
+    }
+    return 0;
+}
+
+
 class DoctypeDataBase {
     WTF_MAKE_NONCOPYABLE(DoctypeDataBase);
 public:
@@ -480,6 +490,11 @@ public:
     {
         ASSERT(m_type == Token::Type::DOCTYPE);
         return m_doctypeData->m_systemIdentifier;
+    }
+
+    void clearExternalCharacters()
+    {
+        m_externalCharacters = 0;
     }
 
 protected:

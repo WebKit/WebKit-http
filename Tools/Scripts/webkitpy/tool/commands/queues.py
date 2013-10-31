@@ -38,6 +38,7 @@ from optparse import make_option
 from StringIO import StringIO
 
 from webkitpy.common.config.committervalidator import CommitterValidator
+from webkitpy.common.config.ports import DeprecatedPort
 from webkitpy.common.net.bugzilla import Attachment
 from webkitpy.common.net.statusserver import StatusServer
 from webkitpy.common.system.deprecated_logging import error, log
@@ -257,10 +258,17 @@ class AbstractPatchQueue(AbstractQueue):
 
 class CommitQueue(AbstractPatchQueue, StepSequenceErrorHandler, CommitQueueTaskDelegate):
     name = "commit-queue"
+    port_name = "chromium-xvfb"
+
+    def __init__(self):
+        AbstractPatchQueue.__init__(self)
+        self.port = DeprecatedPort.port(self.port_name)
 
     # AbstractPatchQueue methods
 
     def begin_work_queue(self):
+        # FIXME: This violates abstraction
+        self._tool._deprecated_port = self.port
         AbstractPatchQueue.begin_work_queue(self)
         self.committer_validator = CommitterValidator(self._tool)
         self._expected_failures = ExpectedFailures()
@@ -305,7 +313,7 @@ class CommitQueue(AbstractPatchQueue, StepSequenceErrorHandler, CommitQueueTaskD
     # CommitQueueTaskDelegate methods
 
     def run_command(self, command):
-        self.run_webkit_patch(command)
+        self.run_webkit_patch(command + [self.port.flag()])
 
     def command_passed(self, message, patch):
         self._update_status(message, patch=patch)
@@ -371,9 +379,6 @@ class AbstractReviewQueue(AbstractPatchQueue, StepSequenceErrorHandler):
 
     # AbstractPatchQueue methods
 
-    def begin_work_queue(self):
-        AbstractPatchQueue.begin_work_queue(self)
-
     def next_work_item(self):
         return self._next_patch()
 
@@ -407,6 +412,23 @@ class StyleQueue(AbstractReviewQueue, StyleQueueTaskDelegate):
 
     def __init__(self):
         AbstractReviewQueue.__init__(self)
+
+    def begin_work_queue(self):
+        AbstractReviewQueue.begin_work_queue(self)
+        self.clean_bugzilla()
+
+    def clean_bugzilla(self):
+        try:
+            self._update_status("Cleaning review queue")
+            self.run_webkit_patch(["clean-review-queue"])
+        except ScriptError, e:
+            self._update_status(e)
+
+        try:
+            self._update_status("Cleaning pending commit")
+            self.run_webkit_patch(["clean-pending-commit"])
+        except ScriptError, e:
+            self._update_status(e)
 
     def review_patch(self, patch):
         task = StyleQueueTask(self, patch)

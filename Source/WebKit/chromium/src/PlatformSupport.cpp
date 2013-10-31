@@ -276,33 +276,6 @@ void PlatformSupport::getRenderStyleForStrike(const char* font, int sizeAndStyle
 }
 #endif
 
-// Databases ------------------------------------------------------------------
-
-PlatformFileHandle PlatformSupport::databaseOpenFile(const String& vfsFileName, int desiredFlags)
-{
-    return webKitPlatformSupport()->databaseOpenFile(WebString(vfsFileName), desiredFlags);
-}
-
-int PlatformSupport::databaseDeleteFile(const String& vfsFileName, bool syncDir)
-{
-    return webKitPlatformSupport()->databaseDeleteFile(WebString(vfsFileName), syncDir);
-}
-
-long PlatformSupport::databaseGetFileAttributes(const String& vfsFileName)
-{
-    return webKitPlatformSupport()->databaseGetFileAttributes(WebString(vfsFileName));
-}
-
-long long PlatformSupport::databaseGetFileSize(const String& vfsFileName)
-{
-    return webKitPlatformSupport()->databaseGetFileSize(WebString(vfsFileName));
-}
-
-long long PlatformSupport::databaseGetSpaceAvailableForOrigin(const String& originIdentifier)
-{
-    return webKitPlatformSupport()->databaseGetSpaceAvailableForOrigin(originIdentifier);
-}
-
 // Indexed Database -----------------------------------------------------------
 
 PassRefPtr<IDBFactoryBackendInterface> PlatformSupport::idbFactory()
@@ -327,13 +300,6 @@ void PlatformSupport::createIDBKeysFromSerializedValuesAndKeyPath(const Vector<R
 PassRefPtr<SerializedScriptValue> PlatformSupport::injectIDBKeyIntoSerializedValue(PassRefPtr<IDBKey> key, PassRefPtr<SerializedScriptValue> value, const IDBKeyPath& keyPath)
 {
     return webKitPlatformSupport()->injectIDBKeyIntoSerializedValue(key, value, keyPath);
-}
-
-// LayoutTestMode -------------------------------------------------------------
-
-bool PlatformSupport::layoutTestMode()
-{
-    return WebKit::layoutTestMode();
 }
 
 // Plugin ---------------------------------------------------------------------

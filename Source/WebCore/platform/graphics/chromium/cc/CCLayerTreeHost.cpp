@@ -26,8 +26,8 @@
 
 #include "cc/CCLayerTreeHost.h"
 
+#include "HeadsUpDisplayLayerChromium.h"
 #include "LayerChromium.h"
-#include "ManagedTexture.h"
 #include "Region.h"
 #include "TraceEvent.h"
 #include "TreeSynchronizer.h"
@@ -39,7 +39,6 @@
 #include "cc/CCLayerTreeHostImpl.h"
 #include "cc/CCOcclusionTracker.h"
 #include "cc/CCOverdrawMetrics.h"
-#include "cc/CCRenderingStats.h"
 #include "cc/CCSettings.h"
 #include "cc/CCSingleThreadProxy.h"
 #include "cc/CCThreadProxy.h"
@@ -73,8 +72,8 @@ CCLayerTreeHost::CCLayerTreeHost(CCLayerTreeHostClient* client, const CCLayerTre
     , m_animating(false)
     , m_needsAnimateLayers(false)
     , m_client(client)
-    , m_animationFrameNumber(0)
     , m_commitNumber(0)
+    , m_renderingStats()
     , m_layerRendererInitialized(false)
     , m_contextLost(false)
     , m_numTimesRecreateShouldFail(0)
@@ -106,14 +105,6 @@ bool CCLayerTreeHost::initialize()
 
     if (!m_proxy->initializeContext())
         return false;
-
-    // Only allocate the font atlas if we have reason to use the heads-up display.
-    if (m_settings.showFPSCounter || m_settings.showPlatformLayerTree) {
-        TRACE_EVENT0("cc", "CCLayerTreeHost::initialize::initializeFontAtlas");
-        OwnPtr<CCFontAtlas> fontAtlas(CCFontAtlas::create());
-        fontAtlas->initialize();
-        m_proxy->setFontAtlas(fontAtlas.release());
-    }
 
     m_compositorIdentifier = m_proxy->compositorIdentifier();
     return true;
@@ -152,7 +143,8 @@ void CCLayerTreeHost::initializeLayerRenderer()
     // Update m_settings based on partial update capability.
     m_settings.maxPartialTextureUpdates = min(m_settings.maxPartialTextureUpdates, m_proxy->maxPartialTextureUpdates());
 
-    m_contentsTextureManager = CCPrioritizedTextureManager::create(0, m_proxy->layerRendererCapabilities().maxTextureSize);
+    m_contentsTextureManager = CCPrioritizedTextureManager::create(0, m_proxy->layerRendererCapabilities().maxTextureSize, CCRenderer::ContentPool);
+    m_surfaceMemoryPlaceholder = m_contentsTextureManager->createTexture(IntSize(), GraphicsContext3D::RGBA);
 
     m_layerRendererInitialized = true;
 
@@ -197,11 +189,11 @@ CCLayerTreeHost::RecreateResult CCLayerTreeHost::recreateContext()
     return RecreateFailedAndGaveUp;
 }
 
-void CCLayerTreeHost::deleteContentsTexturesOnImplThread(TextureAllocator* allocator)
+void CCLayerTreeHost::deleteContentsTexturesOnImplThread(CCResourceProvider* resourceProvider)
 {
     ASSERT(CCProxy::isImplThread());
     if (m_layerRendererInitialized)
-        m_contentsTextureManager->clearAllMemory(allocator);
+        m_contentsTextureManager->clearAllMemory(resourceProvider);
 }
 
 void CCLayerTreeHost::acquireLayerTextures()
@@ -217,7 +209,7 @@ void CCLayerTreeHost::updateAnimations(double monotonicFrameBeginTime)
     animateLayers(monotonicFrameBeginTime);
     m_animating = false;
 
-    m_animationFrameNumber++;
+    m_renderingStats.numAnimationFrames++;
 }
 
 void CCLayerTreeHost::layout()
@@ -230,7 +222,7 @@ void CCLayerTreeHost::beginCommitOnImplThread(CCLayerTreeHostImpl* hostImpl)
     ASSERT(CCProxy::isImplThread());
     TRACE_EVENT0("cc", "CCLayerTreeHost::commitTo");
 
-    m_contentsTextureManager->reduceMemory(hostImpl->contentsTextureAllocator());
+    m_contentsTextureManager->reduceMemory(hostImpl->resourceProvider());
 }
 
 // This function commits the CCLayerTreeHost to an impl tree. When modifying
@@ -259,8 +251,20 @@ void CCLayerTreeHost::finishCommitOnImplThread(CCLayerTreeHostImpl* hostImpl)
     m_commitNumber++;
 }
 
+void CCLayerTreeHost::willCommit()
+{
+    m_client->willCommit();
+    if (m_rootLayer && m_settings.showDebugInfo()) {
+        if (!m_hudLayer)
+            m_hudLayer = HeadsUpDisplayLayerChromium::create(m_settings, layerRendererCapabilities().maxTextureSize);
+        m_rootLayer->addChild(m_hudLayer);
+    }
+}
+
 void CCLayerTreeHost::commitComplete()
 {
+    if (m_hudLayer)
+        m_hudLayer->removeFromParent();
     m_deleteTextureAfterCommitList.clear();
     m_client->didCommit();
 }
@@ -303,8 +307,8 @@ void CCLayerTreeHost::finishAllRendering()
 
 void CCLayerTreeHost::renderingStats(CCRenderingStats& stats) const
 {
+    stats = m_renderingStats;
     m_proxy->implSideRenderingStats(stats);
-    stats.numAnimationFrames = animationFrameNumber();
 }
 
 const LayerRendererCapabilities& CCLayerTreeHost::layerRendererCapabilities() const
@@ -463,34 +467,18 @@ void CCLayerTreeHost::updateLayers(LayerChromium* rootLayer, CCTextureUpdater& u
 {
     TRACE_EVENT0("cc", "CCLayerTreeHost::updateLayers");
 
-    if (!rootLayer->renderSurface())
-        rootLayer->createRenderSurface();
-    rootLayer->renderSurface()->setContentRect(IntRect(IntPoint(0, 0), deviceViewportSize()));
-
-    IntRect rootClipRect(IntPoint(), deviceViewportSize());
-    rootLayer->setClipRect(rootClipRect);
-
     LayerList updateList;
-    updateList.append(rootLayer);
-
-    RenderSurfaceChromium* rootRenderSurface = rootLayer->renderSurface();
-    rootRenderSurface->clearLayerList();
 
     {
         TRACE_EVENT0("cc", "CCLayerTreeHost::updateLayers::calcDrawEtc");
-        WebTransformationMatrix identityMatrix;
-        WebTransformationMatrix deviceScaleTransform;
-        deviceScaleTransform.scale(m_deviceScaleFactor);
-        CCLayerTreeHostCommon::calculateDrawTransforms(rootLayer, rootLayer, deviceScaleTransform, identityMatrix, updateList, rootRenderSurface->layerList(), layerRendererCapabilities().maxTextureSize);
+        CCLayerTreeHostCommon::calculateDrawTransforms(rootLayer, deviceViewportSize(), m_deviceScaleFactor, layerRendererCapabilities().maxTextureSize, updateList);
 
-        FloatRect rootScissorRect(FloatPoint(0, 0), viewportSize());
+        FloatRect rootScissorRect(FloatPoint(0, 0), deviceViewportSize());
         CCLayerTreeHostCommon::calculateVisibleAndScissorRects(updateList, rootScissorRect);
     }
 
     // Reset partial texture update requests.
     m_partialTextureUpdateRequests = 0;
-
-    prioritizeTextures(updateList);
 
     bool needMoreUpdates = paintLayerContents(updateList, updater);
     if (m_triggerIdleUpdates && needMoreUpdates)
@@ -500,12 +488,19 @@ void CCLayerTreeHost::updateLayers(LayerChromium* rootLayer, CCTextureUpdater& u
         updateList[i]->clearRenderSurface();
 }
 
-void CCLayerTreeHost::prioritizeTextures(const LayerList& updateList)
+void CCLayerTreeHost::setPrioritiesForSurfaces(size_t surfaceMemoryBytes)
+{
+    // Surfaces have a place holder for their memory since they are managed
+    // independantly but should still be tracked and reduce other memory usage.
+    m_surfaceMemoryPlaceholder->setTextureManager(m_contentsTextureManager.get());
+    m_surfaceMemoryPlaceholder->setRequestPriority(CCPriorityCalculator::renderSurfacePriority());
+    m_surfaceMemoryPlaceholder->setToSelfManagedMemoryPlaceholder(surfaceMemoryBytes);
+}
+
+void CCLayerTreeHost::setPrioritiesForLayers(const LayerList& updateList)
 {
     // Use BackToFront since it's cheap and this isn't order-dependent.
     typedef CCLayerIterator<LayerChromium, Vector<RefPtr<LayerChromium> >, RenderSurfaceChromium, CCLayerIteratorActions::BackToFront> CCLayerIteratorType;
-
-    m_contentsTextureManager->clearPriorities();
 
     CCPriorityCalculator calculator;
     CCLayerIteratorType end = CCLayerIteratorType::end(&updateList);
@@ -519,7 +514,25 @@ void CCLayerTreeHost::prioritizeTextures(const LayerList& updateList)
                 it->replicaLayer()->maskLayer()->setTexturePriorities(calculator);
         }
     }
+}
 
+void CCLayerTreeHost::prioritizeTextures(const LayerList& renderSurfaceLayerList, CCOverdrawMetrics& metrics)
+{
+    m_contentsTextureManager->clearPriorities();
+
+    size_t memoryForRenderSurfacesMetric = calculateMemoryForRenderSurfaces(renderSurfaceLayerList);
+
+    setPrioritiesForLayers(renderSurfaceLayerList);
+    setPrioritiesForSurfaces(memoryForRenderSurfacesMetric);
+
+    metrics.didUseContentsTextureMemoryBytes(m_contentsTextureManager->memoryAboveCutoffBytes());
+    metrics.didUseRenderSurfaceTextureMemoryBytes(memoryForRenderSurfacesMetric);
+
+    m_contentsTextureManager->prioritizeTextures();
+}
+
+size_t CCLayerTreeHost::calculateMemoryForRenderSurfaces(const LayerList& updateList)
+{
     size_t readbackBytes = 0;
     size_t maxBackgroundTextureBytes = 0;
     size_t contentsTextureBytes = 0;
@@ -529,20 +542,18 @@ void CCLayerTreeHost::prioritizeTextures(const LayerList& updateList)
         LayerChromium* renderSurfaceLayer = updateList[i].get();
         RenderSurfaceChromium* renderSurface = renderSurfaceLayer->renderSurface();
 
-        size_t bytes = TextureManager::memoryUseBytes(renderSurface->contentRect().size(), GraphicsContext3D::RGBA);
+        size_t bytes = CCTexture::memorySizeBytes(renderSurface->contentRect().size(), GraphicsContext3D::RGBA);
         contentsTextureBytes += bytes;
 
-        if (renderSurface->backgroundFilters().isEmpty())
+        if (renderSurfaceLayer->backgroundFilters().isEmpty())
             continue;
 
         if (bytes > maxBackgroundTextureBytes)
             maxBackgroundTextureBytes = bytes;
         if (!readbackBytes)
-            readbackBytes = TextureManager::memoryUseBytes(m_deviceViewportSize, GraphicsContext3D::RGBA);
+            readbackBytes = CCTexture::memorySizeBytes(m_deviceViewportSize, GraphicsContext3D::RGBA);
     }
-    size_t renderSurfacesBytes = readbackBytes + maxBackgroundTextureBytes + contentsTextureBytes;
-
-    m_contentsTextureManager->prioritizeTextures(renderSurfacesBytes);
+    return readbackBytes + maxBackgroundTextureBytes + contentsTextureBytes;
 }
 
 bool CCLayerTreeHost::paintMasksForRenderSurface(LayerChromium* renderSurfaceLayer, CCTextureUpdater& updater)
@@ -554,13 +565,13 @@ bool CCLayerTreeHost::paintMasksForRenderSurface(LayerChromium* renderSurfaceLay
     bool needMoreUpdates = false;
     LayerChromium* maskLayer = renderSurfaceLayer->maskLayer();
     if (maskLayer) {
-        maskLayer->update(updater, 0);
+        maskLayer->update(updater, 0, m_renderingStats);
         needMoreUpdates |= maskLayer->needMoreUpdates();
     }
 
     LayerChromium* replicaMaskLayer = renderSurfaceLayer->replicaLayer() ? renderSurfaceLayer->replicaLayer()->maskLayer() : 0;
     if (replicaMaskLayer) {
-        replicaMaskLayer->update(updater, 0);
+        replicaMaskLayer->update(updater, 0, m_renderingStats);
         needMoreUpdates |= replicaMaskLayer->needMoreUpdates();
     }
     return needMoreUpdates;
@@ -576,6 +587,8 @@ bool CCLayerTreeHost::paintLayerContents(const LayerList& renderSurfaceLayerList
     CCOcclusionTracker occlusionTracker(IntRect(IntPoint(), deviceViewportSize()), recordMetricsForFrame);
     occlusionTracker.setMinimumTrackingSize(m_settings.minimumOcclusionTrackingSize);
 
+    prioritizeTextures(renderSurfaceLayerList, occlusionTracker.overdrawMetrics());
+
     CCLayerIteratorType end = CCLayerIteratorType::end(&renderSurfaceLayerList);
     for (CCLayerIteratorType it = CCLayerIteratorType::begin(&renderSurfaceLayerList); it != end; ++it) {
         occlusionTracker.enterLayer(it);
@@ -585,15 +598,13 @@ bool CCLayerTreeHost::paintLayerContents(const LayerList& renderSurfaceLayerList
             needMoreUpdates |= paintMasksForRenderSurface(*it, updater);
         } else if (it.representsItself()) {
             ASSERT(!it->bounds().isEmpty());
-            it->update(updater, &occlusionTracker);
+            it->update(updater, &occlusionTracker, m_renderingStats);
             needMoreUpdates |= it->needMoreUpdates();
         }
 
         occlusionTracker.leaveLayer(it);
     }
 
-    occlusionTracker.overdrawMetrics().didUseContentsTextureMemoryBytes(m_contentsTextureManager->memoryAboveCutoffBytes());
-    occlusionTracker.overdrawMetrics().didUseRenderSurfaceTextureMemoryBytes(m_contentsTextureManager->memoryForRenderSurfacesBytes());
     occlusionTracker.overdrawMetrics().recordMetrics(this);
 
     return needMoreUpdates;

@@ -24,6 +24,7 @@
 
 #include <wtf/Alignment.h>
 #include <wtf/Assertions.h>
+#include <wtf/DataLog.h>
 #include <wtf/FastMalloc.h>
 #include <wtf/HashTraits.h>
 #include <wtf/StdLibExtras.h>
@@ -39,6 +40,7 @@
 namespace WTF {
 
 #define DUMP_HASHTABLE_STATS 0
+#define DUMP_HASHTABLE_STATS_PER_TABLE 0
 
 // Enables internal WTF consistency checks that are invoked automatically. Non-WTF callers can call checkTableConsistency() even if internal checks are disabled.
 #define CHECK_HASHTABLE_CONSISTENCY 0
@@ -54,8 +56,6 @@ namespace WTF {
 #if DUMP_HASHTABLE_STATS
 
     struct HashTableStats {
-        // All of the variables are accessed in ~HashTableStats when the static struct is destroyed.
-
         // The following variables are all atomically incremented when modified.
         WTF_EXPORTDATA static int numAccesses;
         WTF_EXPORTDATA static int numRehashes;
@@ -284,8 +284,7 @@ namespace WTF {
         swap(a, b);
     }
 
-    // Swap pairs by component, in case of pair members that specialize swap.
-    template<typename T, typename U> inline void hashTableSwap(std::pair<T, U>& a, std::pair<T, U>& b)
+    template<typename T, typename U> inline void hashTableSwap(KeyValuePair<T, U>& a, KeyValuePair<T, U>& b)
     {
         swap(a.first, b.first);
         swap(a.second, b.second);
@@ -318,6 +317,51 @@ namespace WTF {
         typedef Value ValueType;
         typedef IdentityHashTranslator<HashFunctions> IdentityTranslatorType;
         typedef HashTableAddResult<iterator> AddResult;
+
+#if DUMP_HASHTABLE_STATS_PER_TABLE
+        struct Stats {
+            Stats()
+                : numAccesses(0)
+                , numRehashes(0)
+                , numRemoves(0)
+                , numReinserts(0)
+                , maxCollisions(0)
+                , numCollisions(0)
+                , collisionGraph()
+            {
+            }
+
+            int numAccesses;
+            int numRehashes;
+            int numRemoves;
+            int numReinserts;
+
+            int maxCollisions;
+            int numCollisions;
+            int collisionGraph[4096];
+
+            void recordCollisionAtCount(int count)
+            {
+                if (count > maxCollisions)
+                    maxCollisions = count;
+                numCollisions++;
+                collisionGraph[count]++;
+            }
+
+            void dumpStats()
+            {
+                dataLog("\nWTF::HashTable::Stats dump\n\n");
+                dataLog("%d accesses\n", numAccesses);
+                dataLog("%d total collisions, average %.2f probes per access\n", numCollisions, 1.0 * (numAccesses + numCollisions) / numAccesses);
+                dataLog("longest collision chain: %d\n", maxCollisions);
+                for (int i = 1; i <= maxCollisions; i++) {
+                    dataLog("  %d lookups with exactly %d collisions (%.2f%% , %.2f%% with this many or more)\n", collisionGraph[i], i, 100.0 * (collisionGraph[i] - collisionGraph[i+1]) / numAccesses, 100.0 * collisionGraph[i] / numAccesses);
+                }
+                dataLog("%d rehashes\n", numRehashes);
+                dataLog("%d reinserts\n", numReinserts);
+            }
+        };
+#endif
 
         HashTable();
         ~HashTable() 
@@ -453,6 +497,49 @@ namespace WTF {
         // Use OwnPtr so HashTable can still be memmove'd or memcpy'ed.
         mutable OwnPtr<Mutex> m_mutex;
 #endif
+
+#if DUMP_HASHTABLE_STATS_PER_TABLE
+    public:
+        mutable OwnPtr<Stats> m_stats;
+#endif
+    };
+
+    // Set all the bits to one after the most significant bit: 00110101010 -> 00111111111.
+    template<unsigned size> struct OneifyLowBits;
+    template<>
+    struct OneifyLowBits<0> {
+        static const unsigned value = 0;
+    };
+    template<unsigned number>
+    struct OneifyLowBits {
+        static const unsigned value = number | OneifyLowBits<(number >> 1)>::value;
+    };
+    // Compute the first power of two integer that is an upper bound of the parameter 'number'.
+    template<unsigned number>
+    struct UpperPowerOfTwoBound {
+        static const unsigned value = (OneifyLowBits<number - 1>::value + 1) * 2;
+    };
+
+    // Because power of two numbers are the limit of maxLoad, their capacity is twice the
+    // UpperPowerOfTwoBound, or 4 times their values.
+    template<unsigned size, bool isPowerOfTwo> struct HashTableCapacityForSizeSplitter;
+    template<unsigned size>
+    struct HashTableCapacityForSizeSplitter<size, true> {
+        static const unsigned value = size * 4;
+    };
+    template<unsigned size>
+    struct HashTableCapacityForSizeSplitter<size, false> {
+        static const unsigned value = UpperPowerOfTwoBound<size>::value;
+    };
+
+    // HashTableCapacityForSize computes the upper power of two capacity to hold the size parameter.
+    // This is done at compile time to initialize the HashTraits.
+    template<unsigned size>
+    struct HashTableCapacityForSize {
+        static const unsigned value = HashTableCapacityForSizeSplitter<size, !(size & (size - 1))>::value;
+        COMPILE_ASSERT(size > 0, HashTableNonZeroMinimumCapacity);
+        COMPILE_ASSERT(!static_cast<int>(value >> 31), HashTableNoCapacityOverflow);
+        COMPILE_ASSERT(value > (2 * size), HashTableCapacityHoldsContentSize);
     };
 
     template<typename Key, typename Value, typename Extractor, typename HashFunctions, typename Traits, typename KeyTraits>
@@ -465,6 +552,9 @@ namespace WTF {
 #if CHECK_HASHTABLE_ITERATORS
         , m_iterators(0)
         , m_mutex(adoptPtr(new Mutex))
+#endif
+#if DUMP_HASHTABLE_STATS_PER_TABLE
+        , m_stats(adoptPtr(new Stats))
 #endif
     {
     }
@@ -525,6 +615,11 @@ namespace WTF {
         int probeCount = 0;
 #endif
 
+#if DUMP_HASHTABLE_STATS_PER_TABLE
+        ++m_stats->numAccesses;
+        int perTableProbeCount = 0;
+#endif
+
         while (1) {
             ValueType* entry = table + i;
                 
@@ -546,6 +641,12 @@ namespace WTF {
             ++probeCount;
             HashTableStats::recordCollisionAtCount(probeCount);
 #endif
+
+#if DUMP_HASHTABLE_STATS_PER_TABLE
+            ++perTableProbeCount;
+            m_stats->recordCollisionAtCount(perTableProbeCount);
+#endif
+
             if (k == 0)
                 k = 1 | doubleHash(h);
             i = (i + k) & sizeMask;
@@ -570,6 +671,11 @@ namespace WTF {
         int probeCount = 0;
 #endif
 
+#if DUMP_HASHTABLE_STATS_PER_TABLE
+        ++m_stats->numAccesses;
+        int perTableProbeCount = 0;
+#endif
+
         ValueType* deletedEntry = 0;
 
         while (1) {
@@ -598,6 +704,12 @@ namespace WTF {
             ++probeCount;
             HashTableStats::recordCollisionAtCount(probeCount);
 #endif
+
+#if DUMP_HASHTABLE_STATS_PER_TABLE
+            ++perTableProbeCount;
+            m_stats->recordCollisionAtCount(perTableProbeCount);
+#endif
+
             if (k == 0)
                 k = 1 | doubleHash(h);
             i = (i + k) & sizeMask;
@@ -622,6 +734,11 @@ namespace WTF {
         int probeCount = 0;
 #endif
 
+#if DUMP_HASHTABLE_STATS_PER_TABLE
+        ++m_stats->numAccesses;
+        int perTableProbeCount = 0;
+#endif
+
         ValueType* deletedEntry = 0;
 
         while (1) {
@@ -650,6 +767,12 @@ namespace WTF {
             ++probeCount;
             HashTableStats::recordCollisionAtCount(probeCount);
 #endif
+
+#if DUMP_HASHTABLE_STATS_PER_TABLE
+            ++perTableProbeCount;
+            m_stats->recordCollisionAtCount(perTableProbeCount);
+#endif
+
             if (k == 0)
                 k = 1 | doubleHash(h);
             i = (i + k) & sizeMask;
@@ -707,6 +830,11 @@ namespace WTF {
         int probeCount = 0;
 #endif
 
+#if DUMP_HASHTABLE_STATS_PER_TABLE
+        ++m_stats->numAccesses;
+        int perTableProbeCount = 0;
+#endif
+
         ValueType* deletedEntry = 0;
         ValueType* entry;
         while (1) {
@@ -735,6 +863,12 @@ namespace WTF {
             ++probeCount;
             HashTableStats::recordCollisionAtCount(probeCount);
 #endif
+
+#if DUMP_HASHTABLE_STATS_PER_TABLE
+            ++perTableProbeCount;
+            m_stats->recordCollisionAtCount(perTableProbeCount);
+#endif
+
             if (k == 0)
                 k = 1 | doubleHash(h);
             i = (i + k) & sizeMask;
@@ -820,6 +954,9 @@ namespace WTF {
 #if DUMP_HASHTABLE_STATS
         atomicIncrement(&HashTableStats::numReinserts);
 #endif
+#if DUMP_HASHTABLE_STATS_PER_TABLE
+        ++m_stats->numReinserts;
+#endif
 
         Mover<ValueType, Traits::needsDestruction>::move(entry, *lookupForWriting(Extractor::extract(entry)).first);
     }
@@ -882,6 +1019,9 @@ namespace WTF {
     {
 #if DUMP_HASHTABLE_STATS
         atomicIncrement(&HashTableStats::numRemoves);
+#endif
+#if DUMP_HASHTABLE_STATS_PER_TABLE
+        ++m_stats->numRemoves;
 #endif
 
         deleteBucket(*pos);
@@ -979,6 +1119,11 @@ namespace WTF {
             atomicIncrement(&HashTableStats::numRehashes);
 #endif
 
+#if DUMP_HASHTABLE_STATS_PER_TABLE
+        if (oldTableSize != 0)
+            ++m_stats->numRehashes;
+#endif
+
         m_tableSize = newTableSize;
         m_tableSizeMask = newTableSize - 1;
         m_table = allocateTable(newTableSize);
@@ -1019,6 +1164,9 @@ namespace WTF {
         , m_iterators(0)
         , m_mutex(adoptPtr(new Mutex))
 #endif
+#if DUMP_HASHTABLE_STATS_PER_TABLE
+        , m_stats(adoptPtr(new Stats(*other.m_stats)))
+#endif
     {
         // Copy the hash table the dumb way, by adding each element to the new table.
         // It might be more efficient to copy the table slots, but it's not clear that efficiency is needed.
@@ -1052,6 +1200,10 @@ namespace WTF {
         int tmp_deletedCount = m_deletedCount;
         m_deletedCount = other.m_deletedCount;
         other.m_deletedCount = tmp_deletedCount;
+
+#if DUMP_HASHTABLE_STATS_PER_TABLE
+        m_stats.swap(other.m_stats);
+#endif
     }
 
     template<typename Key, typename Value, typename Extractor, typename HashFunctions, typename Traits, typename KeyTraits>

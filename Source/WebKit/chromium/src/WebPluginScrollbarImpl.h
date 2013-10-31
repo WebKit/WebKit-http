@@ -49,6 +49,7 @@ public:
 
     void setScrollOffset(int);
     void invalidateScrollbarRect(const WebCore::IntRect&);
+    // FIXME: Combine this with the other getTickmarks method
     void getTickmarks(Vector<WebCore::IntRect>&) const;
     WebCore::IntPoint convertFromContainingViewToScrollbar(const WebCore::IntPoint& parentPoint) const;
     void scrollbarStyleChanged();
@@ -57,16 +58,30 @@ public:
     WebCore::Scrollbar* scrollbar() { return m_scrollbar.get(); }
 
     // WebKit::WebScrollbar methods
-    virtual bool isOverlay() const;
-    virtual int value() const;
+    virtual bool isOverlay() const OVERRIDE;
+    virtual int value() const OVERRIDE;
+    virtual WebPoint location() const OVERRIDE;
+    virtual WebSize size() const OVERRIDE;
+    virtual bool enabled() const OVERRIDE;
+    virtual int maximum() const OVERRIDE;
+    virtual int totalSize() const OVERRIDE;
+    virtual bool isScrollViewScrollbar() const OVERRIDE;
+    virtual bool isScrollableAreaActive() const OVERRIDE;
+    virtual void getTickmarks(WebVector<WebRect>& tickmarks) const OVERRIDE;
+    virtual WebScrollbar::ScrollbarControlSize controlSize() const OVERRIDE;
+    virtual WebScrollbar::ScrollbarPart pressedPart() const OVERRIDE;
+    virtual WebScrollbar::ScrollbarPart hoveredPart() const OVERRIDE;
+    virtual WebScrollbar::ScrollbarOverlayStyle scrollbarOverlayStyle() const OVERRIDE;
+    virtual WebScrollbar::Orientation orientation() const OVERRIDE;
+    virtual bool isCustomScrollbar() const OVERRIDE;
 
     // WebKit::WebPluginScrollbar methods
-    virtual void setLocation(const WebRect&);
-    virtual void setValue(int position);
-    virtual void setDocumentSize(int);
-    virtual void scroll(ScrollDirection, ScrollGranularity, float multiplier);
-    virtual void paint(WebCanvas*, const WebRect&);
-    virtual bool handleInputEvent(const WebInputEvent&);
+    virtual void setLocation(const WebRect&) OVERRIDE;
+    virtual void setValue(int position) OVERRIDE;
+    virtual void setDocumentSize(int) OVERRIDE;
+    virtual void scroll(ScrollDirection, ScrollGranularity, float multiplier) OVERRIDE;
+    virtual void paint(WebCanvas*, const WebRect&) OVERRIDE;
+    virtual bool handleInputEvent(const WebInputEvent&) OVERRIDE;
 
 private:
     bool onMouseDown(const WebInputEvent&);

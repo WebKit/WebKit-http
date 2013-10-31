@@ -38,6 +38,10 @@ public:
     static inline PassRefPtr<Float32Array> create(const float* array, unsigned length);
     static inline PassRefPtr<Float32Array> create(PassRefPtr<ArrayBuffer>, unsigned byteOffset, unsigned length);
 
+    // Should only be used when it is known the entire array will be filled. Do
+    // not return these results directly to JavaScript without filling first.
+    static inline PassRefPtr<Float32Array> createUninitialized(unsigned length);
+
     // Can’t use "using" here due to a bug in the RVCT compiler.
     bool set(TypedArrayBase<float>* array, unsigned offset) { return TypedArrayBase<float>::set(array, offset); }
 
@@ -48,17 +52,13 @@ public:
         TypedArrayBase<float>::data()[index] = static_cast<float>(value);
     }
 
-    // Invoked by the indexed getter. Does not perform range checks; caller
-    // is responsible for doing so and returning undefined as necessary.
-    float item(unsigned index) const
-    {
-        ASSERT(index < TypedArrayBase<float>::m_length);
-        float result = TypedArrayBase<float>::data()[index];
-        return result;
-    }
-
     inline PassRefPtr<Float32Array> subarray(int start) const;
     inline PassRefPtr<Float32Array> subarray(int start, int end) const;
+
+    virtual ViewType getType() const
+    {
+        return TypeFloat32;
+    }
 
 private:
     inline Float32Array(PassRefPtr<ArrayBuffer>,
@@ -66,9 +66,6 @@ private:
                     unsigned length);
     // Make constructor visible to superclass.
     friend class TypedArrayBase<float>;
-
-    // Overridden from ArrayBufferView.
-    virtual bool isFloatArray() const { return true; }
 };
 
 PassRefPtr<Float32Array> Float32Array::create(unsigned length)
@@ -84,6 +81,11 @@ PassRefPtr<Float32Array> Float32Array::create(const float* array, unsigned lengt
 PassRefPtr<Float32Array> Float32Array::create(PassRefPtr<ArrayBuffer> buffer, unsigned byteOffset, unsigned length)
 {
     return TypedArrayBase<float>::create<Float32Array>(buffer, byteOffset, length);
+}
+
+PassRefPtr<Float32Array> Float32Array::createUninitialized(unsigned length)
+{
+    return TypedArrayBase<float>::createUninitialized<Float32Array>(length);
 }
 
 Float32Array::Float32Array(PassRefPtr<ArrayBuffer> buffer, unsigned byteOffset, unsigned length)

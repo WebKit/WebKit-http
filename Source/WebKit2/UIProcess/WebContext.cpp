@@ -70,8 +70,16 @@
 #include "WebBatteryManagerProxy.h"
 #endif
 
+#if ENABLE(NETWORK_INFO)
+#include "WebNetworkInfoManagerProxy.h"
+#endif
+
 #if USE(SOUP)
 #include "WebSoupRequestManagerProxy.h"
+#endif
+
+#if ENABLE(VIBRATION)
+#include "WebVibrationProxy.h"
 #endif
 
 #ifndef NDEBUG
@@ -86,15 +94,6 @@ using namespace WebCore;
 namespace WebKit {
 
 DEFINE_DEBUG_ONLY_GLOBAL(WTF::RefCountedLeakCounter, webContextCounter, ("WebContext"));
-
-WebContext* WebContext::sharedProcessContext()
-{
-    JSC::initializeThreading();
-    WTF::initializeMainThread();
-    RunLoop::initializeMainRunLoop();
-    static WebContext* context = adoptRef(new WebContext(ProcessModelSharedSecondaryProcess, String())).leakRef();
-    return context;
-}
 
 WebContext* WebContext::sharedThreadContext()
 {
@@ -138,16 +137,24 @@ WebContext::WebContext(ProcessModel processModel, const String& injectedBundlePa
     , m_batteryManagerProxy(WebBatteryManagerProxy::create(this))
 #endif
     , m_cookieManagerProxy(WebCookieManagerProxy::create(this))
+#if ENABLE(SQL_DATABASE)
     , m_databaseManagerProxy(WebDatabaseManagerProxy::create(this))
+#endif
     , m_geolocationManagerProxy(WebGeolocationManagerProxy::create(this))
     , m_iconDatabase(WebIconDatabase::create(this))
     , m_keyValueStorageManagerProxy(WebKeyValueStorageManagerProxy::create(this))
     , m_mediaCacheManagerProxy(WebMediaCacheManagerProxy::create(this))
+#if ENABLE(NETWORK_INFO)
+    , m_networkInfoManagerProxy(WebNetworkInfoManagerProxy::create(this))
+#endif
     , m_notificationManagerProxy(WebNotificationManagerProxy::create(this))
     , m_pluginSiteDataManager(WebPluginSiteDataManager::create(this))
     , m_resourceCacheManagerProxy(WebResourceCacheManagerProxy::create(this))
 #if USE(SOUP)
     , m_soupRequestManagerProxy(WebSoupRequestManagerProxy::create(this))
+#endif
+#if ENABLE(VIBRATION)
+    , m_vibrationProxy(WebVibrationProxy::create(this))
 #endif
 #if PLATFORM(WIN)
     , m_shouldPaintNativeControls(true)
@@ -196,8 +203,10 @@ WebContext::~WebContext()
     m_cookieManagerProxy->invalidate();
     m_cookieManagerProxy->clearContext();
 
+#if ENABLE(SQL_DATABASE)
     m_databaseManagerProxy->invalidate();
     m_databaseManagerProxy->clearContext();
+#endif
     
     m_geolocationManagerProxy->invalidate();
     m_geolocationManagerProxy->clearContext();
@@ -210,6 +219,11 @@ WebContext::~WebContext()
 
     m_mediaCacheManagerProxy->invalidate();
     m_mediaCacheManagerProxy->clearContext();
+
+#if ENABLE(NETWORK_INFO)
+    m_networkInfoManagerProxy->invalidate();
+    m_networkInfoManagerProxy->clearContext();
+#endif
     
     m_notificationManagerProxy->invalidate();
     m_notificationManagerProxy->clearContext();
@@ -223,6 +237,11 @@ WebContext::~WebContext()
 #if USE(SOUP)
     m_soupRequestManagerProxy->invalidate();
     m_soupRequestManagerProxy->clearContext();
+#endif
+
+#if ENABLE(VIBRATION)
+    m_vibrationProxy->invalidate();
+    m_vibrationProxy->clearContext();
 #endif
 
     invalidateCallbackMap(m_dictionaryCallbacks);
@@ -357,8 +376,10 @@ bool WebContext::shouldTerminate(WebProcessProxy* process)
         return false;
     if (!m_cookieManagerProxy->shouldTerminate(process))
         return false;
+#if ENABLE(SQL_DATABASE)
     if (!m_databaseManagerProxy->shouldTerminate(process))
         return false;
+#endif
     if (!m_keyValueStorageManagerProxy->shouldTerminate(process))
         return false;
     if (!m_mediaCacheManagerProxy->shouldTerminate(process))
@@ -414,14 +435,22 @@ void WebContext::disconnectProcess(WebProcessProxy* process)
     m_batteryManagerProxy->invalidate();
 #endif
     m_cookieManagerProxy->invalidate();
+#if ENABLE(SQL_DATABASE)
     m_databaseManagerProxy->invalidate();
+#endif
     m_geolocationManagerProxy->invalidate();
     m_keyValueStorageManagerProxy->invalidate();
     m_mediaCacheManagerProxy->invalidate();
+#if ENABLE(NETWORK_INFO)
+    m_networkInfoManagerProxy->invalidate();
+#endif
     m_notificationManagerProxy->invalidate();
     m_resourceCacheManagerProxy->invalidate();
 #if USE(SOUP)
     m_soupRequestManagerProxy->invalidate();
+#endif
+#if ENABLE(VIBRATION)
+    m_vibrationProxy->invalidate();
 #endif
 
     // When out of process plug-ins are enabled, we don't want to invalidate the plug-in site data
@@ -758,10 +787,12 @@ void WebContext::didReceiveMessage(CoreIPC::Connection* connection, CoreIPC::Mes
         return;
     }
 
+#if ENABLE(SQL_DATABASE)
     if (messageID.is<CoreIPC::MessageClassWebDatabaseManagerProxy>()) {
         m_databaseManagerProxy->didReceiveWebDatabaseManagerProxyMessage(connection, messageID, arguments);
         return;
     }
+#endif
 
     if (messageID.is<CoreIPC::MessageClassWebGeolocationManagerProxy>()) {
         m_geolocationManagerProxy->didReceiveMessage(connection, messageID, arguments);
@@ -782,6 +813,13 @@ void WebContext::didReceiveMessage(CoreIPC::Connection* connection, CoreIPC::Mes
         m_mediaCacheManagerProxy->didReceiveMessage(connection, messageID, arguments);
         return;
     }
+
+#if ENABLE(NETWORK_INFO)
+    if (messageID.is<CoreIPC::MessageClassWebNetworkInfoManagerProxy>()) {
+        m_networkInfoManagerProxy->didReceiveMessage(connection, messageID, arguments);
+        return;
+    }
+#endif
     
     if (messageID.is<CoreIPC::MessageClassWebNotificationManagerProxy>()) {
         m_notificationManagerProxy->didReceiveMessage(connection, messageID, arguments);
@@ -796,6 +834,13 @@ void WebContext::didReceiveMessage(CoreIPC::Connection* connection, CoreIPC::Mes
 #if USE(SOUP)
     if (messageID.is<CoreIPC::MessageClassWebSoupRequestManagerProxy>()) {
         m_soupRequestManagerProxy->didReceiveMessage(connection, messageID, arguments);
+        return;
+    }
+#endif
+
+#if ENABLE(VIBRATION)
+    if (messageID.is<CoreIPC::MessageClassWebVibrationProxy>()) {
+        m_vibrationProxy->didReceiveMessage(connection, messageID, arguments);
         return;
     }
 #endif
@@ -835,6 +880,13 @@ void WebContext::didReceiveSyncMessage(CoreIPC::Connection* connection, CoreIPC:
         m_iconDatabase->didReceiveSyncMessage(connection, messageID, arguments, reply);
         return;
     }
+
+#if ENABLE(NETWORK_INFO)
+    if (messageID.is<CoreIPC::MessageClassWebNetworkInfoManagerProxy>()) {
+        m_networkInfoManagerProxy->didReceiveSyncMessage(connection, messageID, arguments, reply);
+        return;
+    }
+#endif
     
     switch (messageID.get<WebContextLegacyMessage::Kind>()) {
         case WebContextLegacyMessage::PostSynchronousMessage: {
@@ -940,9 +992,12 @@ bool WebContext::httpPipeliningEnabled() const
 #endif
 }
 
-void WebContext::getWebCoreStatistics(PassRefPtr<DictionaryCallback> prpCallback)
+void WebContext::getWebCoreStatistics(PassRefPtr<DictionaryCallback> callback)
 {
-    RefPtr<DictionaryCallback> callback = prpCallback;
+    if (!m_process) {
+        callback->invalidate();
+        return;
+    }
     
     uint64_t callbackID = callback->callbackID();
     m_dictionaryCallbacks.set(callbackID, callback.get());

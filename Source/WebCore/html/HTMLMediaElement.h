@@ -83,7 +83,10 @@ class HTMLMediaElement : public HTMLElement, public MediaPlayerClient, public Me
 {
 public:
     MediaPlayer* player() const { return m_player.get(); }
-    
+
+    void createShadowSubtree();
+    virtual void willAddAuthorShadowRoot() OVERRIDE;
+
     virtual bool isVideo() const = 0;
     virtual bool hasVideo() const { return false; }
     virtual bool hasAudio() const;
@@ -325,6 +328,8 @@ public:
 
     virtual bool dispatchEvent(PassRefPtr<Event>);
 
+    virtual bool willRespondToMouseClickEvents() OVERRIDE;
+
 protected:
     HTMLMediaElement(const QualifiedName&, Document*, bool);
     virtual ~HTMLMediaElement();
@@ -431,6 +436,10 @@ private:
 
     virtual bool mediaPlayerNeedsSiteSpecificHacks() const OVERRIDE;
     virtual String mediaPlayerDocumentHost() const OVERRIDE;
+
+#if PLATFORM(WIN) && USE(AVFOUNDATION)
+    virtual GraphicsDeviceAdapter* mediaPlayerGraphicsDeviceAdapter(const MediaPlayer*) const OVERRIDE;
+#endif
 
     void loadTimerFired(Timer<HTMLMediaElement>*);
     void progressEventTimerFired(Timer<HTMLMediaElement>*);

@@ -39,25 +39,36 @@ namespace WebCore {
 
 class NodeList;
 class RenderNamedFlowThread;
+class WebKitNamedFlowCollection;
 
 class WebKitNamedFlow : public RefCounted<WebKitNamedFlow> {
 public:
-    static PassRefPtr<WebKitNamedFlow> create(RenderNamedFlowThread* parentFlowThread)
-    {
-        return adoptRef(new WebKitNamedFlow(parentFlowThread));
-    }
+    static PassRefPtr<WebKitNamedFlow> create(PassRefPtr<WebKitNamedFlowCollection> manager, const AtomicString& flowThreadName);
 
     ~WebKitNamedFlow();
 
-    String name() const;
+    const AtomicString& name() const;
     bool overset() const;
     int firstEmptyRegionIndex() const;
     PassRefPtr<NodeList> getRegionsByContent(Node*);
     PassRefPtr<NodeList> getContent();
 
-private:
-    WebKitNamedFlow(RenderNamedFlowThread*);
+    void setRenderer(RenderNamedFlowThread* parentFlowThread);
 
+    enum FlowState {
+        FlowStateCreated,
+        FlowStateNull
+    };
+
+    FlowState flowState() const { return m_parentFlowThread ? FlowStateCreated : FlowStateNull; }
+
+private:
+    WebKitNamedFlow(PassRefPtr<WebKitNamedFlowCollection>, const AtomicString&);
+
+    // The name of the flow thread as specified in CSS.
+    AtomicString m_flowThreadName;
+
+    RefPtr<WebKitNamedFlowCollection> m_flowManager;
     RenderNamedFlowThread* m_parentFlowThread;
 };
 

@@ -74,9 +74,14 @@
 #include <WebCore/WindowFeatures.h>
 
 #if ENABLE(WEB_INTENTS)
+#include "InjectedBundleIntentRequest.h"
 #include "IntentData.h"
-#include "IntentServiceInfo.h"
 #include <WebCore/IntentRequest.h>
+#endif
+
+#if ENABLE(WEB_INTENTS_TAG)
+#include "IntentServiceInfo.h"
+#include "WebIntentServiceInfo.h"
 #endif
 
 using namespace WebCore;
@@ -1359,11 +1364,10 @@ void WebFrameLoaderClient::redirectDataToPlugin(Widget* pluginWidget)
 
 PassRefPtr<Widget> WebFrameLoaderClient::createJavaAppletWidget(const IntSize& pluginSize, HTMLAppletElement* appletElement, const KURL& baseURL, const Vector<String>& paramNames, const Vector<String>& paramValues)
 {
-    const String mimeType = "application/x-java-applet";
-    RefPtr<Widget> plugin = createPlugin(pluginSize, appletElement, KURL(), paramNames, paramValues, mimeType, false);
+    RefPtr<Widget> plugin = createPlugin(pluginSize, appletElement, KURL(), paramNames, paramValues, appletElement->serviceType(), false);
     if (!plugin) {
         if (WebPage* webPage = m_frame->page())
-            webPage->send(Messages::WebPageProxy::DidFailToInitializePlugin(mimeType));
+            webPage->send(Messages::WebPageProxy::DidFailToInitializePlugin(appletElement->serviceType()));
     }
     return plugin.release();
 }
@@ -1557,17 +1561,12 @@ void WebFrameLoaderClient::dispatchIntent(PassRefPtr<IntentRequest> request)
     if (!webPage)
         return;
 
-    IntentData intentData;
-    Intent* coreIntent = request->intent();
-    ASSERT(coreIntent);
-    intentData.action = coreIntent->action();
-    intentData.type = coreIntent->type();
-    intentData.service = coreIntent->service();
-    intentData.data = coreIntent->data()->data();
-    intentData.extras = coreIntent->extras();
-    intentData.suggestions = coreIntent->suggestions();
+    RefPtr<APIObject> userData;
+    RefPtr<InjectedBundleIntentRequest> bundleIntentRequest = InjectedBundleIntentRequest::create(request.get());
+    webPage->injectedBundleLoaderClient().didReceiveIntentForFrame(webPage, m_frame, bundleIntentRequest.get(), userData);
 
-    webPage->send(Messages::WebPageProxy::DidReceiveIntentForFrame(m_frame->frameID(), intentData));
+    IntentData intentData(request->intent());
+    webPage->send(Messages::WebPageProxy::DidReceiveIntentForFrame(m_frame->frameID(), intentData, InjectedBundleUserMessageEncoder(userData.get())));
 }
 #endif
 
@@ -1585,7 +1584,11 @@ void WebFrameLoaderClient::registerIntentService(const String& action, const Str
     serviceInfo.title = title;
     serviceInfo.disposition = disposition;
 
-    webPage->send(Messages::WebPageProxy::RegisterIntentServiceForFrame(m_frame->frameID(), serviceInfo));
+    RefPtr<APIObject> userData;
+    RefPtr<WebIntentServiceInfo> webIntentServiceInfo = WebIntentServiceInfo::create(serviceInfo);
+    webPage->injectedBundleLoaderClient().registerIntentServiceForFrame(webPage, m_frame, webIntentServiceInfo.get(), userData);
+
+    webPage->send(Messages::WebPageProxy::RegisterIntentServiceForFrame(m_frame->frameID(), serviceInfo, InjectedBundleUserMessageEncoder(userData.get())));
 }
 #endif
 

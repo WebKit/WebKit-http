@@ -37,15 +37,6 @@ namespace WebCore {
 class Attr;
 class Element;
 
-inline Attribute* findAttributeInVector(const Vector<Attribute>& attributes, const QualifiedName& name)
-{
-    for (unsigned i = 0; i < attributes.size(); ++i) {
-        if (attributes.at(i).name().matches(name))
-            return &const_cast<Vector<Attribute>& >(attributes).at(i);
-    }
-    return 0;
-}
-
 enum EInUpdateStyleAttribute { NotInUpdateStyleAttribute, InUpdateStyleAttribute };
 
 class ElementAttributeData {
@@ -66,14 +57,14 @@ public:
     StylePropertySet* inlineStyle() { return m_inlineStyleDecl.get(); }
     StylePropertySet* ensureInlineStyle(StyledElement*);
     StylePropertySet* ensureMutableInlineStyle(StyledElement*);
-    void updateInlineStyleAvoidingMutation(StyledElement*, const String& text);
+    void updateInlineStyleAvoidingMutation(StyledElement*, const String& text) const;
     void destroyInlineStyle(StyledElement*) const;
 
     StylePropertySet* attributeStyle() const { return m_attributeStyle.get(); }
     void setAttributeStyle(PassRefPtr<StylePropertySet> style) const { m_attributeStyle = style; }
 
     size_t length() const;
-    bool isEmpty() const;
+    bool isEmpty() const { return !length(); }
 
     PassRefPtr<Attr> getAttributeNode(const String&, bool shouldIgnoreAttributeCase, Element*) const;
     PassRefPtr<Attr> getAttributeNode(const QualifiedName&, Element*) const;
@@ -101,16 +92,17 @@ public:
     void removeAttr(Element*, const QualifiedName&) const;
     PassRefPtr<Attr> attrIfExists(Element*, const QualifiedName&) const;
     PassRefPtr<Attr> ensureAttr(Element*, const QualifiedName&) const;
+    void detachAttrObjectsFromElement(Element*) const;
 
     void reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
     {
-        memoryObjectInfo->reportObjectInfo(this, MemoryInstrumentation::DOM);
-        memoryObjectInfo->reportInstrumentedPointer(m_inlineStyleDecl.get());
-        memoryObjectInfo->reportInstrumentedPointer(m_attributeStyle.get());
-        memoryObjectInfo->reportObject(m_classNames);
-        memoryObjectInfo->reportObject(m_idForStyleResolution);
+        MemoryClassInfo<ElementAttributeData> info(memoryObjectInfo, this, MemoryInstrumentation::DOM, m_arraySize * sizeof(Attribute));
+        info.addInstrumentedMember(m_inlineStyleDecl.get());
+        info.addInstrumentedMember(m_attributeStyle.get());
+        info.addMember(m_classNames);
+        info.addString(m_idForStyleResolution);
         if (m_isMutable)
-            memoryObjectInfo->reportPointer(m_mutableAttributeVector, MemoryInstrumentation::DOM);
+            info.addVector(*m_mutableAttributeVector);
     }
 
 private:
@@ -121,7 +113,6 @@ private:
     ElementAttributeData(const ElementAttributeData&);
     ElementAttributeData(const Vector<Attribute>&);
 
-    void detachAttrObjectsFromElement(Element*);
     Attribute* getAttributeItem(const AtomicString& name, bool shouldIgnoreAttributeCase);
     const Attribute* getAttributeItem(const AtomicString& name, bool shouldIgnoreAttributeCase) const;
     size_t getAttributeItemIndexSlowCase(const AtomicString& name, bool shouldIgnoreAttributeCase) const;
@@ -131,9 +122,6 @@ private:
 
     bool isMutable() const { return m_isMutable; }
     PassOwnPtr<ElementAttributeData> makeMutable() const { return adoptPtr(new ElementAttributeData(*this)); }
-
-    Attribute* array();
-    const Attribute* array() const;
 
     mutable RefPtr<StylePropertySet> m_inlineStyleDecl;
     mutable RefPtr<StylePropertySet> m_attributeStyle;
@@ -154,24 +142,6 @@ inline size_t ElementAttributeData::length() const
     if (isMutable())
         return m_mutableAttributeVector->size();
     return m_arraySize;
-}
-
-inline bool ElementAttributeData::isEmpty() const
-{
-    return !length();
-}
-
-inline Attribute* ElementAttributeData::array()
-{
-    // FIXME: It doesn't really make sense to have a non-const array(), at least not in the header file.
-    ASSERT(!isMutable());
-    return reinterpret_cast<Attribute*>(&m_attributes);
-}
-
-inline const Attribute* ElementAttributeData::array() const
-{
-    ASSERT(!isMutable());
-    return reinterpret_cast<const Attribute*>(&m_attributes);
 }
 
 inline void ElementAttributeData::removeAttribute(const QualifiedName& name, Element* element)
@@ -253,15 +223,15 @@ inline const Attribute* ElementAttributeData::attributeItem(unsigned index) cons
     ASSERT(index < length());
     if (isMutable())
         return &m_mutableAttributeVector->at(index);
-    return &array()[index];
+    const Attribute* buffer = reinterpret_cast<const Attribute*>(&m_attributes);
+    return &buffer[index];
 }
 
 inline Attribute* ElementAttributeData::attributeItem(unsigned index)
 {
+    ASSERT(isMutable());
     ASSERT(index < length());
-    if (isMutable())
-        return &m_mutableAttributeVector->at(index);
-    return &array()[index];
+    return &m_mutableAttributeVector->at(index);
 }
 
 }

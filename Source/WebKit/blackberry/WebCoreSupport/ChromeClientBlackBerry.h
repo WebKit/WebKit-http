@@ -90,7 +90,6 @@ public:
     virtual void dispatchViewportPropertiesDidChange(const ViewportArguments&) const;
     virtual bool shouldRubberBandInDirection(ScrollDirection) const { return true; }
     virtual void numWheelEventHandlersChanged(unsigned) { }
-    virtual void numTouchEventHandlersChanged(unsigned) { }
     virtual void print(Frame*);
     virtual void exceededDatabaseQuota(Frame*, const String&);
     virtual void runOpenPanel(Frame*, PassRefPtr<FileChooser>);
@@ -156,12 +155,12 @@ public:
 #endif
 
 #if ENABLE(REGISTER_PROTOCOL_HANDLER)
-    virtual void registerProtocolHandler(const WTF::String&, const WTF::String&, const WTF::String&, const WTF::String&);
+    virtual void registerProtocolHandler(const String& /*scheme*/, const String& /*baseURL*/, const String& /*url*/, const String& /*title*/);
 #endif
 
 #if ENABLE(CUSTOM_SCHEME_HANDLER)
-    virtual CustomHandlersState isProtocolHandlerRegistered(const String&, const String&, const String&);
-    virtual void unregisterProtocolHandler(const String&, const String&, const String&);
+    virtual CustomHandlersState isProtocolHandlerRegistered(const String& /*scheme*/, const String& /*baseURL*/, const String& /*url*/);
+    virtual void unregisterProtocolHandler(const String& /*scheme*/, const String& /*baseURL*/, const String& /*url*/);
 #endif
 
     BlackBerry::WebKit::WebPagePrivate* webPagePrivate() const { return m_webPagePrivate; }

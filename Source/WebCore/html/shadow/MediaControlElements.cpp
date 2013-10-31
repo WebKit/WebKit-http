@@ -68,7 +68,11 @@ static const float cScanMaximumRate = 8;
 
 HTMLMediaElement* toParentMediaElement(Node* node)
 {
-    Node* mediaNode = node ? node->shadowAncestorNode() : 0;
+    if (!node)
+        return 0;
+    Node* mediaNode = node->shadowHost();
+    if (!mediaNode)
+        mediaNode = node;
     if (!mediaNode || !mediaNode->isElementNode() || !static_cast<Element*>(mediaNode)->isMediaElement())
         return 0;
 
@@ -384,7 +388,6 @@ void MediaControlVolumeSliderContainerElement::defaultEventHandler(Event* event)
     hide();
 }
 
-
 MediaControlElementType MediaControlVolumeSliderContainerElement::displayType() const
 {
     return MediaVolumeSliderContainer;
@@ -603,6 +606,46 @@ void MediaControlPlayButtonElement::updateDisplayType()
 const AtomicString& MediaControlPlayButtonElement::shadowPseudoId() const
 {
     DEFINE_STATIC_LOCAL(AtomicString, id, ("-webkit-media-controls-play-button"));
+    return id;
+}
+
+// ----------------------------
+
+inline MediaControlOverlayPlayButtonElement::MediaControlOverlayPlayButtonElement(Document* document)
+    : MediaControlInputElement(document, MediaOverlayPlayButton)
+{
+}
+
+PassRefPtr<MediaControlOverlayPlayButtonElement> MediaControlOverlayPlayButtonElement::create(Document* document)
+{
+    RefPtr<MediaControlOverlayPlayButtonElement> button = adoptRef(new MediaControlOverlayPlayButtonElement(document));
+    button->createShadowSubtree();
+    button->setType("button");
+    return button.release();
+}
+
+void MediaControlOverlayPlayButtonElement::defaultEventHandler(Event* event)
+{
+    if (event->type() == eventNames().clickEvent && mediaController()->canPlay()) {
+        mediaController()->play();
+        updateDisplayType();
+        event->setDefaultHandled();
+    }
+    HTMLInputElement::defaultEventHandler(event);
+}
+
+void MediaControlOverlayPlayButtonElement::updateDisplayType()
+{
+    if (mediaController()->canPlay()) {
+        show();
+        setDisplayType(MediaOverlayPlayButton);
+    } else
+        hide();
+}
+
+const AtomicString& MediaControlOverlayPlayButtonElement::shadowPseudoId() const
+{
+    DEFINE_STATIC_LOCAL(AtomicString, id, ("-webkit-media-controls-overlay-play-button"));
     return id;
 }
 
@@ -880,7 +923,15 @@ void MediaControlTimelineElement::defaultEventHandler(Event* event)
         m_controls->updateTimeDisplay();
 }
 
-void MediaControlTimelineElement::setPosition(float currentTime) 
+bool MediaControlTimelineElement::willRespondToMouseClickEvents()
+{
+    if (!attached())
+        return false;
+
+    return true;
+}
+
+void MediaControlTimelineElement::setPosition(float currentTime)
 {
     setValue(String::number(currentTime));
 }
@@ -937,6 +988,22 @@ void MediaControlVolumeSliderElement::defaultEventHandler(Event* event)
     }
     if (m_clearMutedOnUserInteraction)
         mediaController()->setMuted(false);
+}
+
+bool MediaControlVolumeSliderElement::willRespondToMouseMoveEvents()
+{
+    if (!attached())
+        return false;
+
+    return MediaControlInputElement::willRespondToMouseMoveEvents();
+}
+
+bool MediaControlVolumeSliderElement::willRespondToMouseClickEvents()
+{
+    if (!attached())
+        return false;
+
+    return MediaControlInputElement::willRespondToMouseClickEvents();
 }
 
 void MediaControlVolumeSliderElement::setVolume(float volume)
@@ -1010,7 +1077,7 @@ void MediaControlFullscreenButtonElement::defaultEventHandler(Event* event)
             if (document()->webkitIsFullScreen() && document()->webkitCurrentFullScreenElement() == toParentMediaElement(this))
                 document()->webkitCancelFullScreen();
             else
-                document()->requestFullScreenForElement(toParentMediaElement(this), 0, Document::ExemptIFrameAllowFulScreenRequirement);
+                document()->requestFullScreenForElement(toParentMediaElement(this), 0, Document::ExemptIFrameAllowFullScreenRequirement);
         } else
 #endif
             mediaController()->enterFullscreen();

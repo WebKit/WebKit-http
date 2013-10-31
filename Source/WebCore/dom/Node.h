@@ -90,6 +90,7 @@ class TreeScope;
 
 #if ENABLE(MICRODATA)
 class HTMLPropertiesCollection;
+class PropertyNodeList;
 #endif
 
 typedef int ExceptionCode;
@@ -223,6 +224,10 @@ public:
     bool hasAttrList() const { return getFlag(HasAttrListFlag); }
     bool hasCustomCallbacks() const { return getFlag(HasCustomCallbacksFlag); }
 
+    // If this node is in a shadow tree, returns its shadow host. Otherwise, returns 0.
+    Element* shadowHost() const;
+    // If this node is in a shadow tree, returns its shadow host. Otherwise, returns this.
+    // Deprecated. Should use shadowHost() and check the return value.
     Node* shadowAncestorNode() const;
     ShadowRoot* shadowRoot() const;
     ShadowRoot* youngestShadowRoot() const;
@@ -558,8 +563,7 @@ public:
     void showTreeForThisAcrossFrame() const;
 #endif
 
-    void invalidateNodeListsCacheAfterAttributeChanged(const QualifiedName&, Element* attributeOwnerElement);
-    void invalidateNodeListsCacheAfterChildrenChanged();
+    void invalidateNodeListCachesInAncestors(const QualifiedName* attrName = 0, Element* attributeOwnerElement = 0);
     NodeListsNodeData* nodeLists();
     void removeCachedChildNodeList();
 
@@ -568,6 +572,9 @@ public:
     PassRefPtr<NodeList> getElementsByName(const String& elementName);
     PassRefPtr<NodeList> getElementsByClassName(const String& classNames);
     PassRefPtr<RadioNodeList> radioNodeList(const AtomicString&);
+
+    virtual bool willRespondToMouseMoveEvents();
+    virtual bool willRespondToMouseClickEvents();
 
     PassRefPtr<Element> querySelector(const AtomicString& selectors, ExceptionCode&);
     PassRefPtr<NodeList> querySelectorAll(const AtomicString& selectors, ExceptionCode&);
@@ -630,6 +637,7 @@ public:
     DOMSettableTokenList* itemProp();
     DOMSettableTokenList* itemRef();
     DOMSettableTokenList* itemType();
+    PassRefPtr<PropertyNodeList> propertyNodeList(const String&);
 #endif
 
 #if ENABLE(MUTATION_OBSERVERS)

@@ -31,6 +31,7 @@
 #include "CSSValueKeywords.h"
 #include "CSSValuePool.h"
 #include "ChildListMutationScope.h"
+#include "DOMSettableTokenList.h"
 #include "DocumentFragment.h"
 #include "Event.h"
 #include "EventListener.h"
@@ -233,6 +234,10 @@ void HTMLElement::parseAttribute(const Attribute& attribute)
         setItemRef(attribute.value());
     } else if (attribute.name() == itemtypeAttr) {
         setItemType(attribute.value());
+#endif
+#if ENABLE(UNDO_MANAGER)
+    } else if (attribute.name() == undoscopeAttr) {
+        setUndoScope(!attribute.isNull());
 #endif
     }
 // standard events
@@ -658,8 +663,14 @@ void HTMLElement::setContentEditable(const String& enabled, ExceptionCode& ec)
         setAttribute(contenteditableAttr, "plaintext-only");
     else if (equalIgnoringCase(enabled, "inherit"))
         removeAttribute(contenteditableAttr);
-    else
+    else {
         ec = SYNTAX_ERR;
+        return;
+    }
+#if ENABLE(UNDO_MANAGER)
+    if (isContentEditable())
+        disconnectUndoManagersInSubtree();
+#endif
 }
 
 bool HTMLElement::draggable() const
@@ -992,6 +1003,39 @@ void HTMLElement::setItemValueText(const String& value, ExceptionCode& ec)
 PassRefPtr<HTMLPropertiesCollection> HTMLElement::properties()
 {
     return static_cast<HTMLPropertiesCollection*>(ensureCachedHTMLCollection(ItemProperties).get());
+}
+
+void HTMLElement::getItemRefElements(Vector<HTMLElement*>& itemRefElements)
+{
+    if (!fastHasAttribute(itemscopeAttr))
+        return;
+
+    if (!fastHasAttribute(itemrefAttr)) {
+        itemRefElements.append(this);
+        return;
+    }
+
+    DOMSettableTokenList* itemRefs = itemRef();
+    RefPtr<DOMSettableTokenList> processedItemRef = DOMSettableTokenList::create();
+    Node* rootNode = treeScope()->rootNode();
+
+    for (Node* current = rootNode->firstChild(); current; current = current->traverseNextNode(rootNode)) {
+        if (!current->isHTMLElement())
+            continue;
+        HTMLElement* element = toHTMLElement(current);
+
+        if (element == this) {
+            itemRefElements.append(element);
+            continue;
+        }
+
+        const AtomicString& id = element->getIdAttribute();
+        if (!processedItemRef->tokens().contains(id) && itemRefs->tokens().contains(id)) {
+            processedItemRef->setValue(id);
+            if (!element->isDescendantOf(this))
+                itemRefElements.append(element);
+        }
+    }
 }
 #endif
 

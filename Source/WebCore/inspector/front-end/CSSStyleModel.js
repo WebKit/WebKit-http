@@ -35,6 +35,7 @@
 WebInspector.CSSStyleModel = function()
 {
     this._pendingCommandsMajorState = [];
+    this._sourceMappings = {};
     WebInspector.domAgent.addEventListener(WebInspector.DOMAgent.Events.UndoRedoRequested, this._undoRedoRequested, this);
     WebInspector.domAgent.addEventListener(WebInspector.DOMAgent.Events.UndoRedoCompleted, this._undoRedoCompleted, this);
     this._resourceBinding = new WebInspector.CSSStyleModelResourceBinding(this);
@@ -157,6 +158,51 @@ WebInspector.CSSStyleModel.prototype = {
         }
 
         CSSAgent.getInlineStylesForNode(nodeId, callback.bind(null, userCallback));
+    },
+
+    /**
+     * @param {DOMAgent.NodeId} nodeId
+     * @param {function(?Array.<string>)} userCallback
+     */
+    getNamedFlowCollectionAsync: function(nodeId, userCallback)
+    {
+        /**
+         * @param {function(?Array.<string>)} userCallback
+         * @param {?Protocol.Error} error
+         * @param {?Array.<string>=} namedFlowPayload
+         */
+        function callback(userCallback, error, namedFlowPayload)
+        {
+            if (error || !namedFlowPayload)
+                userCallback(null);
+            else
+                userCallback(namedFlowPayload);
+        }
+
+        CSSAgent.getNamedFlowCollection(nodeId, callback.bind(this, userCallback));
+    },
+
+    /**
+     * @param {DOMAgent.NodeId} nodeId
+     * @param {string} flowName
+     * @param {function(?WebInspector.NamedFlow)} userCallback
+     */
+    getFlowByNameAsync: function(nodeId, flowName, userCallback)
+    {
+        /**
+         * @param {function(?WebInspector.NamedFlow)} userCallback
+         * @param {?Protocol.Error} error
+         * @param {?CSSAgent.NamedFlow=} namedFlowPayload
+         */
+        function callback(userCallback, error, namedFlowPayload)
+        {
+            if (error || !namedFlowPayload)
+                userCallback(null);
+            else
+                userCallback(WebInspector.NamedFlow.parsePayload(namedFlowPayload));
+        }
+
+        CSSAgent.getFlowByName(nodeId, flowName, callback.bind(this, userCallback));
     },
 
     /**
@@ -343,10 +389,46 @@ WebInspector.CSSStyleModel.prototype = {
     resourceBinding: function()
     {
         return this._resourceBinding;
+    },
+
+    /**
+     * @param {string} url
+     * @param {WebInspector.SourceMapping} sourceMapping
+     */
+    setSourceMapping: function(url, sourceMapping)
+    {
+        this._sourceMappings[url] = sourceMapping;
+    },
+
+    resetSourceMappings: function()
+    {
+        this._sourceMappings = {};
+    },
+
+    /**
+     * @param {WebInspector.CSSLocation} rawLocation
+     * @return {?WebInspector.UILocation}
+     */
+    _rawLocationToUILocation: function(rawLocation)
+    {
+        var sourceMapping = this._sourceMappings[rawLocation.url];
+        return sourceMapping ? sourceMapping.rawLocationToUILocation(rawLocation) : null;
     }
 }
 
 WebInspector.CSSStyleModel.prototype.__proto__ = WebInspector.Object.prototype;
+
+/**
+ * @constructor
+ * @implements {WebInspector.RawLocation}
+ * @param {string} url
+ * @param {number} lineNumber
+ */
+WebInspector.CSSLocation = function(url, lineNumber)
+{
+    this.url = url;
+    this.lineNumber = lineNumber;
+}
 
 /**
  * @constructor
@@ -361,7 +443,6 @@ WebInspector.CSSStyleDeclaration = function(payload)
     this._shorthandValues = WebInspector.CSSStyleDeclaration.buildShorthandValueMap(payload.shorthandEntries);
     this._livePropertyMap = {}; // LIVE properties (source-based or style-based) : { name -> CSSProperty }
     this._allProperties = []; // ALL properties: [ CSSProperty ]
-    this._longhandProperties = {}; // shorthandName -> [ CSSProperty ]
     this.__disabledProperties = {}; // DISABLED properties: { index -> CSSProperty }
     var payloadPropertyCount = payload.cssProperties.length;
 
@@ -376,16 +457,6 @@ WebInspector.CSSStyleDeclaration = function(payload)
         var name = property.name;
         this[propertyIndex] = name;
         this._livePropertyMap[name] = property;
-
-        // Index longhand properties.
-        if (property.shorthand) { // only for parsed
-            var longhands = this._longhandProperties[property.shorthand];
-            if (!longhands) {
-                longhands = [];
-                this._longhandProperties[property.shorthand] = longhands;
-            }
-            longhands.push(property);
-        }
         ++propertyIndex;
     }
     this.length = propertyIndex;
@@ -476,33 +547,25 @@ WebInspector.CSSStyleDeclaration.prototype = {
      * @param {string} name
      * @return {Array.<WebInspector.CSSProperty>}
      */
-    getLonghandProperties: function(name)
+    longhandProperties: function(name)
     {
-        return this._longhandProperties[name] || [];
+        var longhands = WebInspector.CSSCompletions.cssPropertiesMetainfo.longhands(name);
+        var result = [];
+        for (var i = 0; longhands && i < longhands.length; ++i) {
+            var property = this._livePropertyMap[longhands[i]];
+            if (property)
+                result.push(property);
+        }
+        return result;
     },
 
     /**
      * @param {string} shorthandProperty
      * @return {string}
      */
-    getShorthandValue: function(shorthandProperty)
+    shorthandValue: function(shorthandProperty)
     {
-        var property = this.getLiveProperty(shorthandProperty);
-        return property ? property.value : this._shorthandValues[shorthandProperty];
-    },
-
-    /**
-     * @param {string} shorthandProperty
-     * @return {?string}
-     */
-    getShorthandPriority: function(shorthandProperty)
-    {
-        var priority = this.getPropertyPriority(shorthandProperty);
-        if (priority)
-            return priority;
-
-        var longhands = this._longhandProperties[shorthandProperty];
-        return longhands ? this.getPropertyPriority(longhands[0]) : null;
+        return this._shorthandValues[shorthandProperty];
     },
 
     /**
@@ -533,7 +596,7 @@ WebInspector.CSSStyleDeclaration.prototype = {
     newBlankProperty: function(index)
     {
         index = (typeof index === "undefined") ? this.pastLastSourcePropertyIndex() : index;
-        return new WebInspector.CSSProperty(this, index, "", "", "", "active", true, false, "", "");
+        return new WebInspector.CSSProperty(this, index, "", "", "", "active", true, false, "");
     },
 
     /**
@@ -591,6 +654,8 @@ WebInspector.CSSRule = function(payload)
     this.selectorText = payload.selectorText;
     this.sourceLine = payload.sourceLine;
     this.sourceURL = payload.sourceURL;
+    if (payload.sourceURL)
+        this._rawLocation = new WebInspector.CSSLocation(payload.sourceURL, payload.sourceLine);
     this.origin = payload.origin;
     this.style = WebInspector.CSSStyleDeclaration.parsePayload(payload.style);
     this.style.parentRule = this;
@@ -627,6 +692,16 @@ WebInspector.CSSRule.prototype = {
     get isRegular()
     {
         return this.origin === "regular";
+    },
+
+    /**
+     * @return {?WebInspector.UILocation}
+     */
+    uiLocation: function()
+    {
+        if (!this._rawLocation)
+            return null;
+        return WebInspector.cssModel._rawLocationToUILocation(this._rawLocation);
     }
 }
 
@@ -640,10 +715,9 @@ WebInspector.CSSRule.prototype = {
  * @param {string} status
  * @param {boolean} parsedOk
  * @param {boolean} implicit
- * @param {string} shorthand
  * @param {?string=} text
  */
-WebInspector.CSSProperty = function(ownerStyle, index, name, value, priority, status, parsedOk, implicit, shorthand, text)
+WebInspector.CSSProperty = function(ownerStyle, index, name, value, priority, status, parsedOk, implicit, text)
 {
     this.ownerStyle = ownerStyle;
     this.index = index;
@@ -653,7 +727,6 @@ WebInspector.CSSProperty = function(ownerStyle, index, name, value, priority, st
     this.status = status;
     this.parsedOk = parsedOk;
     this.implicit = implicit;
-    this.shorthand = shorthand;
     this.text = text;
 }
 
@@ -670,9 +743,8 @@ WebInspector.CSSProperty.parsePayload = function(ownerStyle, index, payload)
     // parsedOk: true
     // implicit: false
     // status: "style"
-    // shorthandName: ""
     var result = new WebInspector.CSSProperty(
-        ownerStyle, index, payload.name, payload.value, payload.priority || "", payload.status || "style", ("parsedOk" in payload) ? !!payload.parsedOk : true, !!payload.implicit, payload.shorthandName || "", payload.text);
+        ownerStyle, index, payload.name, payload.value, payload.priority || "", payload.status || "style", ("parsedOk" in payload) ? !!payload.parsedOk : true, !!payload.implicit, payload.text);
     return result;
 }
 
@@ -1194,6 +1266,26 @@ WebInspector.CSSDispatcher.prototype = {
     {
         this._cssModel._fireStyleSheetChanged(styleSheetId);
     }
+}
+
+/**
+ * @constructor
+ * @param {CSSAgent.NamedFlow} payload
+ */
+WebInspector.NamedFlow = function(payload)
+{
+    this.nodeId = payload.nodeId;
+    this.name = payload.name;
+    this.overset = payload.overset;
+}
+
+/**
+ * @param {CSSAgent.NamedFlow} payload
+ * @return {WebInspector.NamedFlow}
+ */
+WebInspector.NamedFlow.parsePayload = function(payload)
+{
+    return new WebInspector.NamedFlow(payload);
 }
 
 /**

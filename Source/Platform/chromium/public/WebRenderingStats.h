@@ -31,10 +31,16 @@ namespace WebKit {
 struct WebRenderingStats {
     int numAnimationFrames;
     int numFramesSentToScreen;
+    int droppedFrameCount;
+    double totalPaintTimeInSeconds;
+    double totalRasterizeTimeInSeconds;
 
     WebRenderingStats()
         : numAnimationFrames(0)
         , numFramesSentToScreen(0)
+        , droppedFrameCount(0)
+        , totalPaintTimeInSeconds(0)
+        , totalRasterizeTimeInSeconds(0)
     {
     }
 };

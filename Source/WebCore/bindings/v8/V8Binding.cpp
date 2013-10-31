@@ -60,6 +60,7 @@ V8BindingPerIsolateData::V8BindingPerIsolateData(v8::Isolate* isolate)
 #ifndef NDEBUG
     , m_internalScriptRecursionLevel(0)
 #endif
+    , m_lowMemoryNotificationHint(false)
 {
 }
 
@@ -90,15 +91,16 @@ void V8BindingPerIsolateData::dispose(v8::Isolate* isolate)
     isolate->SetData(0);
 }
 
-void V8BindingPerIsolateData::reportMemoryUsage(MemoryInstrumentation* instrumentation)
+void V8BindingPerIsolateData::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
 {
-    instrumentation->reportPointer(this, MemoryInstrumentation::Binding);
-    instrumentation->reportHashMap(m_rawTemplates, MemoryInstrumentation::Binding);
-    instrumentation->reportHashMap(m_templates, MemoryInstrumentation::Binding);
-    m_stringCache.reportMemoryUsage(instrumentation);
+    MemoryClassInfo<V8BindingPerIsolateData> info(memoryObjectInfo, this, MemoryInstrumentation::Binding);
+    info.addHashMap(m_rawTemplates);
+    info.addHashMap(m_templates);
+    info.addInstrumentedMember(m_stringCache);
+    info.addVector(m_domDataList);
 
     for (size_t i = 0; i < m_domDataList.size(); i++)
-        m_domDataList[i]->reportMemoryUsage(instrumentation);
+        info.addInstrumentedMember(m_domDataList[i]);
 }
 
 // WebCoreStringResource is a helper class for v8ExternalString. It is used
@@ -466,6 +468,10 @@ void StringCache::remove(StringImpl* stringImpl)
 {
     ASSERT(m_stringCache.contains(stringImpl));
     m_stringCache.remove(stringImpl);
+    // Make sure that already disposed m_lastV8String is not used in
+    // StringCache::v8ExternalString().
+    if (m_lastStringImpl.get() == stringImpl)
+        m_lastStringImpl = 0;
 }
 
 v8::Local<v8::String> StringCache::v8ExternalStringSlow(StringImpl* stringImpl, v8::Isolate* isolate)
@@ -492,6 +498,7 @@ v8::Local<v8::String> StringCache::v8ExternalStringSlow(StringImpl* stringImpl, 
         return newString;
 
     stringImpl->ref();
+    wrapper.MarkIndependent();
     wrapper.MakeWeak(stringImpl, cachedStringCallback);
     m_stringCache.set(stringImpl, *wrapper);
 
@@ -587,9 +594,10 @@ v8::Persistent<v8::FunctionTemplate> getToStringTemplate()
     return toStringTemplate;
 }
 
-void StringCache::reportMemoryUsage(MemoryInstrumentation* instrumentation)
+void StringCache::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
 {
-    instrumentation->reportHashMap(m_stringCache, MemoryInstrumentation::Binding);
+    MemoryClassInfo<StringCache> info(memoryObjectInfo, this, MemoryInstrumentation::Binding);
+    info.addHashMap(m_stringCache);
 }
     
 PassRefPtr<DOMStringList> v8ValueToWebCoreDOMStringList(v8::Handle<v8::Value> value)

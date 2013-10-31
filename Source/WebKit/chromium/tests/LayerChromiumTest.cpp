@@ -440,10 +440,10 @@ TEST_F(LayerChromiumTest, checkSetNeedsDisplayCausesCorrectBehavior)
 
     IntSize testBounds = IntSize(501, 508);
 
-    FloatRect dirty1 = FloatRect(10.0f, 15.0f, 1.0f, 2.0f);
-    FloatRect dirty2 = FloatRect(20.0f, 25.0f, 3.0f, 4.0f);
-    FloatRect emptyDirtyRect = FloatRect(40.0f, 45.0f, 0, 0);
-    FloatRect outOfBoundsDirtyRect = FloatRect(400.0f, 405.0f, 500.0f, 502.0f);
+    FloatRect dirty1 = FloatRect(10, 15, 1, 2);
+    FloatRect dirty2 = FloatRect(20, 25, 3, 4);
+    FloatRect emptyDirtyRect = FloatRect(40, 45, 0, 0);
+    FloatRect outOfBoundsDirtyRect = FloatRect(400, 405, 500, 502);
 
     // Before anything, testLayer should not be dirty.
     EXPECT_FALSE(testLayer->needsDisplay());
@@ -495,11 +495,9 @@ TEST_F(LayerChromiumTest, checkPropertyChangeCausesCorrectBehavior)
 
     // Test properties that should not call needsDisplay and needsCommit when changed.
     EXECUTE_AND_VERIFY_SET_NEEDS_COMMIT_BEHAVIOR(0, testLayer->setVisibleContentRect(IntRect(0, 0, 40, 50)));
-    EXECUTE_AND_VERIFY_SET_NEEDS_COMMIT_BEHAVIOR(0, testLayer->setUsesLayerClipping(true));
     EXECUTE_AND_VERIFY_SET_NEEDS_COMMIT_BEHAVIOR(0, testLayer->setIsNonCompositedContent(true));
-    EXECUTE_AND_VERIFY_SET_NEEDS_COMMIT_BEHAVIOR(0, testLayer->setDrawOpacity(0.5f));
-    EXECUTE_AND_VERIFY_SET_NEEDS_COMMIT_BEHAVIOR(0, testLayer->setClipRect(IntRect(3, 3, 8, 8)));
-    EXECUTE_AND_VERIFY_SET_NEEDS_COMMIT_BEHAVIOR(0, testLayer->setTargetRenderSurface(0));
+    EXECUTE_AND_VERIFY_SET_NEEDS_COMMIT_BEHAVIOR(0, testLayer->setDrawOpacity(0.5));
+    EXECUTE_AND_VERIFY_SET_NEEDS_COMMIT_BEHAVIOR(0, testLayer->setRenderTarget(0));
     EXECUTE_AND_VERIFY_SET_NEEDS_COMMIT_BEHAVIOR(0, testLayer->setDrawTransform(WebTransformationMatrix()));
     EXECUTE_AND_VERIFY_SET_NEEDS_COMMIT_BEHAVIOR(0, testLayer->setScreenSpaceTransform(WebTransformationMatrix()));
     EXECUTE_AND_VERIFY_SET_NEEDS_COMMIT_BEHAVIOR(0, testLayer->setDrawableContentRect(IntRect(4, 5, 6, 7)));
@@ -512,9 +510,9 @@ TEST_F(LayerChromiumTest, checkPropertyChangeCausesCorrectBehavior)
     EXECUTE_AND_VERIFY_SET_NEEDS_COMMIT_BEHAVIOR(1, testLayer->setBackgroundColor(SK_ColorLTGRAY));
     EXECUTE_AND_VERIFY_SET_NEEDS_COMMIT_BEHAVIOR(1, testLayer->setMasksToBounds(true));
     EXECUTE_AND_VERIFY_SET_NEEDS_COMMIT_BEHAVIOR(1, testLayer->setMaskLayer(dummyLayer.get()));
-    EXECUTE_AND_VERIFY_SET_NEEDS_COMMIT_BEHAVIOR(1, testLayer->setOpacity(0.5f));
+    EXECUTE_AND_VERIFY_SET_NEEDS_COMMIT_BEHAVIOR(1, testLayer->setOpacity(0.5));
     EXECUTE_AND_VERIFY_SET_NEEDS_COMMIT_BEHAVIOR(1, testLayer->setOpaque(true));
-    EXECUTE_AND_VERIFY_SET_NEEDS_COMMIT_BEHAVIOR(1, testLayer->setPosition(FloatPoint(4.0f, 9.0f)));
+    EXECUTE_AND_VERIFY_SET_NEEDS_COMMIT_BEHAVIOR(1, testLayer->setPosition(FloatPoint(4, 9)));
     EXECUTE_AND_VERIFY_SET_NEEDS_COMMIT_BEHAVIOR(1, testLayer->setReplicaLayer(dummyLayer.get()));
     EXECUTE_AND_VERIFY_SET_NEEDS_COMMIT_BEHAVIOR(1, testLayer->setSublayerTransform(WebTransformationMatrix(0, 0, 0, 0, 0, 0)));
     EXECUTE_AND_VERIFY_SET_NEEDS_COMMIT_BEHAVIOR(1, testLayer->setScrollable(true));

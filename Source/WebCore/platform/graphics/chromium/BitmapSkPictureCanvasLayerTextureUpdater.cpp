@@ -34,7 +34,8 @@
 #include "PlatformColor.h"
 #include "SkCanvas.h"
 #include "SkDevice.h"
-#include "cc/CCGraphicsContext.h"
+#include "cc/CCRenderingStats.h"
+#include <wtf/CurrentTime.h>
 
 namespace WebCore {
 
@@ -44,34 +45,33 @@ BitmapSkPictureCanvasLayerTextureUpdater::Texture::Texture(BitmapSkPictureCanvas
 {
 }
 
-void BitmapSkPictureCanvasLayerTextureUpdater::Texture::prepareRect(const IntRect& sourceRect)
+void BitmapSkPictureCanvasLayerTextureUpdater::Texture::prepareRect(const IntRect& sourceRect, CCRenderingStats& stats)
 {
     m_bitmap.setConfig(SkBitmap::kARGB_8888_Config, sourceRect.width(), sourceRect.height());
     m_bitmap.allocPixels();
     m_bitmap.setIsOpaque(m_textureUpdater->layerIsOpaque());
     SkDevice device(m_bitmap);
     SkCanvas canvas(&device);
-    textureUpdater()->paintContentsRect(&canvas, sourceRect);
+    double paintBeginTime = monotonicallyIncreasingTime();
+    textureUpdater()->paintContentsRect(&canvas, sourceRect, stats);
+    stats.totalPaintTimeInSeconds += monotonicallyIncreasingTime() - paintBeginTime;
 }
 
-void BitmapSkPictureCanvasLayerTextureUpdater::Texture::updateRect(CCGraphicsContext* context, TextureAllocator* allocator, const IntRect& sourceRect, const IntRect& destRect)
+void BitmapSkPictureCanvasLayerTextureUpdater::Texture::updateRect(CCResourceProvider* resourceProvider, const IntRect& sourceRect, const IntRect& destRect)
 {
-    texture()->bindTexture(context, allocator);
-
     m_bitmap.lockPixels();
-    textureUpdater()->updateTextureRect(context, texture()->format(), destRect, static_cast<uint8_t*>(m_bitmap.getPixels()));
+    texture()->upload(resourceProvider, static_cast<uint8_t*>(m_bitmap.getPixels()), destRect, destRect, destRect);
     m_bitmap.unlockPixels();
     m_bitmap.reset();
 }
 
-PassRefPtr<BitmapSkPictureCanvasLayerTextureUpdater> BitmapSkPictureCanvasLayerTextureUpdater::create(PassOwnPtr<LayerPainterChromium> painter, bool useMapTexSubImage)
+PassRefPtr<BitmapSkPictureCanvasLayerTextureUpdater> BitmapSkPictureCanvasLayerTextureUpdater::create(PassOwnPtr<LayerPainterChromium> painter)
 {
-    return adoptRef(new BitmapSkPictureCanvasLayerTextureUpdater(painter, useMapTexSubImage));
+    return adoptRef(new BitmapSkPictureCanvasLayerTextureUpdater(painter));
 }
 
-BitmapSkPictureCanvasLayerTextureUpdater::BitmapSkPictureCanvasLayerTextureUpdater(PassOwnPtr<LayerPainterChromium> painter, bool useMapTexSubImage)
+BitmapSkPictureCanvasLayerTextureUpdater::BitmapSkPictureCanvasLayerTextureUpdater(PassOwnPtr<LayerPainterChromium> painter)
     : SkPictureCanvasLayerTextureUpdater(painter)
-    , m_texSubImage(useMapTexSubImage)
 {
 }
 
@@ -91,23 +91,14 @@ LayerTextureUpdater::SampledTexelFormat BitmapSkPictureCanvasLayerTextureUpdater
             LayerTextureUpdater::SampledTexelFormatRGBA : LayerTextureUpdater::SampledTexelFormatBGRA;
 }
 
-void BitmapSkPictureCanvasLayerTextureUpdater::prepareToUpdate(const IntRect& contentRect, const IntSize& tileSize, float contentsWidthScale, float contentsHeightScale, IntRect& resultingOpaqueRect)
-{
-    m_texSubImage.setSubImageSize(tileSize);
-    SkPictureCanvasLayerTextureUpdater::prepareToUpdate(contentRect, tileSize, contentsWidthScale, contentsHeightScale, resultingOpaqueRect);
-}
-
-void BitmapSkPictureCanvasLayerTextureUpdater::paintContentsRect(SkCanvas* canvas, const IntRect& sourceRect)
+void BitmapSkPictureCanvasLayerTextureUpdater::paintContentsRect(SkCanvas* canvas, const IntRect& sourceRect, CCRenderingStats& stats)
 {
     // Translate the origin of contentRect to that of sourceRect.
     canvas->translate(contentRect().x() - sourceRect.x(),
                       contentRect().y() - sourceRect.y());
+    double rasterizeBeginTime = monotonicallyIncreasingTime();
     drawPicture(canvas);
-}
-
-void BitmapSkPictureCanvasLayerTextureUpdater::updateTextureRect(CCGraphicsContext* context, GC3Denum format, const IntRect& destRect, const uint8_t* pixels)
-{
-    m_texSubImage.upload(pixels, destRect, destRect, destRect, format, context);
+    stats.totalRasterizeTimeInSeconds += monotonicallyIncreasingTime() - rasterizeBeginTime;
 }
 
 } // namespace WebCore

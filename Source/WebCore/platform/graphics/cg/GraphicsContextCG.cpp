@@ -54,12 +54,12 @@
 
 #if PLATFORM(MAC) || (PLATFORM(CHROMIUM) && OS(DARWIN))
 
-#if __MAC_OS_X_VERSION_MAX_ALLOWED >= 1060
+#if PLATFORM(IOS) || __MAC_OS_X_VERSION_MAX_ALLOWED >= 1060
 // Building on 10.6 or later: kCGInterpolationMedium is defined in the CGInterpolationQuality enum.
 #define HAVE_CG_INTERPOLATION_MEDIUM 1
 #endif
 
-#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1060
+#if PLATFORM(IOS) || __MAC_OS_X_VERSION_MIN_REQUIRED >= 1060
 // Targeting 10.6 or later: use kCGInterpolationMedium.
 #define WTF_USE_CG_INTERPOLATION_MEDIUM 1
 #endif
@@ -377,6 +377,8 @@ void GraphicsContext::drawRect(const IntRect& rect)
     // like drawPath does, it probably should.
     if (paintingDisabled())
         return;
+
+    ASSERT(!rect.isEmpty());
 
     CGContextRef context = platformContext();
 
@@ -1181,7 +1183,7 @@ void GraphicsContext::setPlatformShadow(const FloatSize& offset, float blur, con
     blurRadius = min(blurRadius, narrowPrecisionToCGFloat(1000.0));
 
 
-#if __MAC_OS_X_VERSION_MIN_REQUIRED <= 1070
+#if !PLATFORM(IOS) && __MAC_OS_X_VERSION_MIN_REQUIRED <= 1070
     if (!isAcceleratedContext()) {
         // Work around <rdar://problem/5539388> by ensuring that the offsets will get truncated
         // to the desired integer. Also see: <rdar://problem/10056277>
@@ -1409,12 +1411,18 @@ void GraphicsContext::setCTM(const AffineTransform& transform)
     m_data->m_userToDeviceTransformKnownToBeIdentity = false;
 }
 
-AffineTransform GraphicsContext::getCTM() const
+AffineTransform GraphicsContext::getCTM(IncludeDeviceScale includeScale) const
 {
     if (paintingDisabled())
         return AffineTransform();
 
-    return AffineTransform(CGContextGetCTM(platformContext()));
+    // The CTM usually includes the deviceScaleFactor except in WebKit 1 when the
+    // content is non-composited, since the scale factor is integrated at a lower
+    // level. To guarantee the deviceScale is included, we can use this CG API.
+    if (includeScale == DefinitelyIncludeDeviceScale)
+        return CGContextGetUserSpaceToDeviceSpaceTransform(platformContext());
+
+    return CGContextGetCTM(platformContext());
 }
 
 FloatRect GraphicsContext::roundToDevicePixels(const FloatRect& rect, RoundingMode roundingMode)
@@ -1598,7 +1606,7 @@ InterpolationQuality GraphicsContext::imageInterpolationQuality() const
 void GraphicsContext::setAllowsFontSmoothing(bool allowsFontSmoothing)
 {
     UNUSED_PARAM(allowsFontSmoothing);
-#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1060
+#if PLATFORM(IOS) || __MAC_OS_X_VERSION_MIN_REQUIRED >= 1060
     CGContextRef context = platformContext();
     CGContextSetAllowsFontSmoothing(context, allowsFontSmoothing);
 #endif

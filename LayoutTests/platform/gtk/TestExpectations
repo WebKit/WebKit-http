@@ -40,18 +40,50 @@
 // Expected failures
 //////////////////////////////////////////////////////////////////////////////////////////
 
+// This test verifies that a mismatch reftest will fail as intended if both results are same.
+WONTFIX : fast/harness/sample-fail-mismatch-reftest.html = IMAGE
+
+// Modal dialogs will not be supported in WebKit1. These expectations should eventually
+// be moved into WebKit1-specific TestExpectations file (once it's created).
+WONTFIX : fast/animation/request-animation-frame-during-modal.html = TEXT
+WONTFIX : fast/events/show-modal-dialog-onblur-onfocus.html = TEXT
+WONTFIX : fast/events/scroll-event-during-modal-dialog.html = TEXT
+WONTFIX : fast/harness/show-modal-dialog.html = TEXT
+WONTFIX : http/tests/security/cross-frame-access-call.html = TEXT
+WONTFIX : http/tests/security/cross-frame-access-get.html = TEXT
+WONTFIX SKIP : inspector/console/console-long-eval-crash.html = TEXT
+
+// This port doesn't support v8 i18n extension.
+WONTFIX : fast/js/i18n-bindings-locale.html = TEXT
+
+// Ignored because we do not have OBJC bindings (via Chromium).
+WONTFIX SKIP : editing/pasteboard/paste-RTFD.html = TEXT
+WONTFIX SKIP : editing/pasteboard/paste-TIFF.html = TEXT
+
+// This test assumes we cannot play RTSP, but we can.
+WONTFIX SKIP : media/unsupported-rtsp.html = TIMEOUT
+
+// We have no need to support Dashboard compatibility mode. (via Chromium).
+WONTFIX SKIP : fast/canvas/canvas-gradient-addStop-error.html = TEXT
+WONTFIX SKIP : http/tests/xmlhttprequest/default-content-type-dashboard.html = TEXT
+
+// These test -apple- and -khtml- prefixed CSS properties, which we don't support.
+WONTFIX SKIP : inspector/styles/vendor-prefixes.html = TEXT
+WONTFIX : fast/css/apple-prefix.html = TEXT
+
+// This port doesn't support detecting slow unload handlers.
+WONTFIX SKIP : fast/dom/Window/slow-unload-handler.html = TEXT
+WONTFIX SKIP : fast/dom/Window/slow-unload-handler-only-frame-is-stopped.html = TEXT
+
 // Feature disabled, see: https://bugs.webkit.org/show_bug.cgi?id=85425
-BUGWKGTK SKIP : fast/viewport/viewport-legacy-xhtmlmp.html = TEXT
 BUGWKGTK SKIP : fast/viewport/viewport-legacy-handheldfriendly.html = TEXT
 BUGWKGTK SKIP : fast/viewport/viewport-legacy-mobileoptimized-2.html = TEXT
 BUGWKGTK SKIP : fast/viewport/viewport-legacy-mobileoptimized-3.html = TEXT
 BUGWKGTK SKIP : fast/viewport/viewport-legacy-mobileoptimized.html = TEXT
 BUGWKGTK SKIP : fast/viewport/viewport-legacy-ordering-5.html = TEXT
 BUGWKGTK SKIP : fast/viewport/viewport-legacy-ordering-6.html = TEXT
-
-// Ignored because we do not have OBJC bindings (via Chromium).
-BUGWKGTK SKIP : editing/pasteboard/paste-RTFD.html = TEXT
-BUGWKGTK SKIP : editing/pasteboard/paste-TIFF.html = TEXT
+BUGWKGTK SKIP : fast/viewport/viewport-legacy-xhtmlmp-remove-and-add.html = TEXT
+BUGWKGTK SKIP : fast/viewport/viewport-legacy-xhtmlmp.html = TEXT
 
 // Deletion UI is a Mail-ism. We don't need to worry about this (via Chromium).
 BUGWKGTK SKIP : editing/deleting/deletionUI-single-instance.html = TEXT
@@ -59,10 +91,6 @@ BUGWKGTK SKIP : fast/dom/Element/id-in-deletebutton.html = TEXT
 
 // WebKitGTK+ uses different keyboard accelerators than Safari (via Chromium).
 BUGWKGTK SKIP : fast/events/option-tab.html = TEXT
-
-// We have no need to support Dashboard compatibility mode. (via Chromium).
-BUGWKGTK SKIP : fast/canvas/canvas-gradient-addStop-error.html = TEXT
-BUGWKGTK SKIP : http/tests/xmlhttprequest/default-content-type-dashboard.html = TEXT
 
 // These tests expect a TIFF decoder (via Chromium).
 BUGWKGTK SKIP : fast/images/embed-image.html = TEXT
@@ -90,9 +118,6 @@ BUGWKGTK SKIP : svg/custom/image-with-prefix-in-webarchive.svg = TEXT
 
 // This test is specific to QuickTime media engine.
 BUGWKGTK SKIP : media/video-does-not-loop.html = TEXT
-
-// This test assumes we cannot play RTSP, but we can.
-BUGWKGTK SKIP : media/unsupported-rtsp.html = TIMEOUT
 
 // Requires media engine closed caption support.
 BUGWKGTK SKIP : media/media-captions.html = TEXT
@@ -135,6 +160,7 @@ BUGWKGTK SKIP : fast/forms/color = TEXT
 
 // ENABLE_INPUT_TYPE_* are not enabled.
 BUGWK29359 : fast/forms/date = TEXT
+BUGWK29359 : fast/forms/date/calendar-picker-type-change-onclick.html = PASS
 BUGWK29359 : fast/forms/date/date-stepup-stepdown-from-renderer.html = PASS
 BUGWK29359 : fast/forms/date/no-page-popup-controller.html = PASS
 BUGWK90987 : fast/forms/input-in-table-cell-no-value.html = IMAGE
@@ -156,9 +182,6 @@ BUGWKGTK SKIP : fast/speech = TEXT
 
 // Speech JavaScript API is not yet enabled.
 BUGWKGTK SKIP : fast/events/constructors/speech-recognition-event-constructor.html = TEXT
-
-// Web Timing issues.
-BUGWKGTK : fast/dom/Window/window-properties-performance.html = TEXT
 
 // FileSystem API is not supported.
 BUGWKGTK SKIP : fast/filesystem = TEXT
@@ -288,6 +311,9 @@ BUGWKGTK SKIP : webintents = TEXT
 
 // Pointer Lock is not implemented.
 BUGWKGTK SKIP : pointer-lock = TEXT
+// As well as testing fullscreen functionality, these tests also utilize the pointer lock feature.
+BUGWKGTK SKIP : http/tests/fullscreen = TEXT
+BUGWKGTK SKIP : http/tests/pointer-lock = TEXT
 
 // Battery Status API support not yet.
 BUGWK62698 : batterystatus = TEXT
@@ -304,15 +330,18 @@ BUGWK85212 : ietestcenter/css3/flexbox/flexbox-layout-002.htm = IMAGE
 
 // These tests require subpixel layout to be enabled
 BUGWK85532 : fast/sub-pixel = TEXT IMAGE
+BUGWK85532 : fast/sub-pixel/column-clipping.html = PASS
+BUGWK85532 : fast/sub-pixel/file-upload-control-at-fractional-offset.html = PASS
 BUGWK85532 : fast/sub-pixel/float-containing-block-with-margin.html = PASS
 BUGWK85532 : fast/sub-pixel/float-with-margin-in-container.html = PASS
 BUGWK85532 : fast/sub-pixel/float-with-right-margin-zoom.html = PASS
 BUGWK85532 : fast/sub-pixel/float-wrap-with-subpixel-top.html = PASS
 BUGWK85532 : fast/sub-pixel/inline-block-with-margin.html = PASS
-BUGWK85532 : fast/sub-pixel/file-upload-control-at-fractional-offset.html = PASS
-BUGWK85532 : fast/sub-pixel/column-clipping.html = PASS
+BUGWK85532 : fast/sub-pixel/size-of-span-with-different-positions.html = PASS
 BUGWK85532 : fast/sub-pixel/table-cells-with-padding-do-not-wrap.html = PASS
-BUGWK85532 : fast/sub-pixel/table-rows-have-stable-height.html = PASS
+BUGWK85532 SKIP : fast/sub-pixel/table-rows-have-stable-height.html = CRASH TEXT
+BUGWK85532 : fast/sub-pixel/table-rows-no-gaps.html = PASS
+BUGWK85532 : fast/sub-pixel/vertical-align-middle-overflow.html = PASS
 
 // Mediastream implementation is not complete yet.
 BUGWK79203 SKIP : fast/mediastream = TEXT
@@ -324,6 +353,9 @@ BUGWK85580 SKIP : inspector/styles/variables = PASS
 // CSS image-resolution is not yet enabled.
 BUGWK85262 SKIP : fast/css/image-resolution = PASS TEXT
 
+// CSS image-orientation is not yet enabled.
+BUGWK89052 SKIP : fast/css/image-orientation = PASS
+
 // No CORS support for media elements is implemented yet.
 BUGWKGTK SKIP : http/tests/security/video-cross-origin-readback.html = TEXT
 
@@ -333,6 +365,7 @@ BUGWK87908 SKIP : editing/undomanager = PASS
 // New test infrastructure required -- need isolated worlds
 BUGWK31508 SKIP : http/tests/security/isolatedWorld = TEXT
 BUGWK31508 BUGWK61540 SKIP : http/tests/security/isolatedWorld/cross-origin-xhr.html = TEXT
+BUGWK31508 SKIP : plugins/npruntime/overrides-all-properties.html = TEXT
 BUGWK31508 SKIP : storage/websql/open-database-creation-callback-isolated-world.html = TEXT
 BUGWK31508 SKIP : storage/websql/statement-error-callback-isolated-world.html = TEXT
 BUGWK31508 SKIP : storage/websql/statement-success-callback-isolated-world.html = TEXT
@@ -372,8 +405,6 @@ BUGWK86176 DEBUG : ietestcenter/css3/valuesandunits/units-000.htm = CRASH
 
 BUGWK89188 RELEASE : storage/websql/quota-tracking.html = CRASH PASS
 
-BUGWK89954 DEBUG : http/tests/xmlhttprequest/reentrant-cancel.html = CRASH
-
 BUGWK90589 RELEASE : fast/css/user-drag-none.html = CRASH TIMEOUT
 
 //////////////////////////////////////////////////////////////////////////////////////////
@@ -385,7 +416,6 @@ BUGWK90589 RELEASE : fast/css/user-drag-none.html = CRASH TIMEOUT
 //////////////////////////////////////////////////////////////////////////////////////////
 
 BUGWK44199 SKIP : perf = PASS TEXT
-BUGWK47727 : mathml/presentation = PASS TEXT
 
 BUGWK68878 : media/video-playing-and-pause.html = PASS TEXT
 BUGWK55126 : media/video-aspect-ratio.html = PASS TEXT
@@ -421,14 +451,32 @@ BUGWK78344 : fast/text/international/inline-plaintext-relayout-with-leading-neut
 BUGWK80246 : fast/css/hover-update.html = PASS TEXT
 
 BUGWK86971 : svg/custom/non-scaling-stroke-markers.svg = PASS TEXT
-BUGWK88198 : svg/stroke/non-scaling-stroke-pattern.svg = PASS IMAGE
 
-BUGWK89650 : svg/W3C-SVG-1.1/animate-elem-32-t.svg = PASS TEXT
+BUGWK89650 DEBUG : svg/W3C-SVG-1.1/animate-elem-05-t.svg = PASS TEXT
+BUGWK89650 DEBUG : svg/W3C-SVG-1.1/animate-elem-06-t.svg = PASS TEXT
+BUGWK89650 DEBUG : svg/W3C-SVG-1.1/animate-elem-07-t.svg = PASS TEXT
+BUGWK89650 DEBUG : svg/W3C-SVG-1.1/animate-elem-08-t.svg = PASS TEXT
+BUGWK89650 DEBUG : svg/W3C-SVG-1.1/animate-elem-10-t.svg = PASS TEXT
+BUGWK89650 DEBUG : svg/W3C-SVG-1.1/animate-elem-11-t.svg = PASS TEXT
+BUGWK89650 : svg/W3C-SVG-1.1/animate-elem-12-t.svg = PASS TEXT
+BUGWK89650 DEBUG : svg/W3C-SVG-1.1/animate-elem-15-t.svg = PASS TEXT
+BUGWK89650 DEBUG : svg/W3C-SVG-1.1/animate-elem-16-t.svg = PASS TEXT
+BUGWK89650 : svg/W3C-SVG-1.1/animate-elem-17-t.svg = PASS TEXT
+BUGWK89650 : svg/W3C-SVG-1.1/animate-elem-19-t.svg = PASS TEXT
+BUGWK89650 : svg/W3C-SVG-1.1/animate-elem-22-b.svg = PASS TEXT
+BUGWK89650 DEBUG : svg/W3C-SVG-1.1/animate-elem-28-t.svg = PASS TEXT
+BUGWK89650 : svg/W3C-SVG-1.1/animate-elem-30-t.svg = PASS TEXT
+BUGWK89650 DEBUG : svg/W3C-SVG-1.1/animate-elem-32-t.svg = PASS TEXT
 BUGWK89650 : svg/W3C-SVG-1.1/animate-elem-33-t.svg = PASS TEXT
 BUGWK89650 : svg/W3C-SVG-1.1/animate-elem-36-t.svg = PASS TEXT
+BUGWK89650 : svg/W3C-SVG-1.1/animate-elem-37-t.svg = PASS TEXT
 BUGWK89650 : svg/W3C-SVG-1.1/animate-elem-40-t.svg = PASS TEXT
 BUGWK89650 : svg/W3C-SVG-1.1/animate-elem-41-t.svg = PASS TEXT
-BUGWK89650 : svg/W3C-SVG-1.1/animate-elem-46-t.svg = PASS TEXT
+BUGWK89650 DEBUG : svg/W3C-SVG-1.1/animate-elem-46-t.svg = PASS TEXT
+BUGWK89650 DEBUG : svg/W3C-SVG-1.1/animate-elem-81-t.svg = PASS TEXT
+BUGWK89650 : svg/W3C-SVG-1.1/animate-elem-82-t.svg = PASS TEXT
+BUGWK89650 DEBUG : svg/W3C-SVG-1.1/animate-elem-85-t.svg = PASS TEXT
+BUGWK89650 : svg/W3C-SVG-1.1/struct-dom-06-b.svg = PASS TEXT
 
 BUGWK80158 : plugins/netscape-plugin-page-cache-works.html = PASS TEXT
 
@@ -459,6 +507,10 @@ BUGWK77631 : fast/multicol/span/span-as-immediate-columns-child-removal.html = P
 
 BUGWK88061 : fast/replaced/border-radius-clip.html = PASS TEXT
 
+BUGWK91314 : http/tests/misc/webtiming-origins.html = PASS TEXT
+
+BUGWK70485 : fast/events/drag-selects-image.html = PASS TEXT
+
 //////////////////////////////////////////////////////////////////////////////////////////
 // End of Flaky tests
 //////////////////////////////////////////////////////////////////////////////////////////
@@ -474,19 +526,6 @@ BUGWKGTK SKIP : http/tests/xmlhttprequest/redirect-cross-origin-tripmine.html = 
 
 BUGWKGTK DEBUG : fast/css/user-drag-none.html = TIMEOUT
 
-BUGWK84676 SKIP : fast/files/workers/worker-read-blob-async.html = TIMEOUT
-BUGWK84676 SKIP : fast/files/workers/worker-read-blob-sync.html = TIMEOUT
-BUGWK84676 SKIP : fast/files/workers/worker-read-file-async.html = TIMEOUT
-BUGWK84676 SKIP : fast/files/workers/worker-read-file-sync.html = TIMEOUT
-BUGWK84676 SKIP : fast/files/read-blob-async.html = TIMEOUT
-BUGWK84676 SKIP : fast/files/read-file-async.html = TIMEOUT
-BUGWK84676 SKIP : fast/files/apply-blob-url-to-img.html = TIMEOUT
-BUGWK84676 SKIP : fast/files/file-reader-directory-crash.html = TIMEOUT
-BUGWK84676 SKIP : fast/files/null-origin-string.html = TIMEOUT
-BUGWK84676 SKIP : fast/files/file-reader-abort.html = TIMEOUT
-BUGWK84676 SKIP : fast/files/apply-blob-url-to-xhr.html = TIMEOUT
-BUGWK84676 SKIP : fast/files/file-reader-event-listener.html = TIMEOUT
-
 //////////////////////////////////////////////////////////////////////////////////////////
 // End of Tests timing out
 //////////////////////////////////////////////////////////////////////////////////////////
@@ -498,6 +537,7 @@ BUGWK84676 SKIP : fast/files/file-reader-event-listener.html = TIMEOUT
 // Fail on 32-bit release builders
 BUGWK84857 : fast/repaint/moving-shadow-on-container.html = PASS TEXT
 BUGWK84857 : fast/repaint/moving-shadow-on-path.html = PASS TEXT
+BUGWK80210 : security/block-test.html = PASS TEXT
 BUGWK43568 : sputnik/Conformance/15_Native_Objects/15.8_Math/15.8.2/15.8.2.16_sin/S15.8.2.16_A7.html = PASS TEXT
 BUGWK43568 : sputnik/Conformance/15_Native_Objects/15.8_Math/15.8.2/15.8.2.18_tan/S15.8.2.18_A7.html = PASS TEXT
 BUGWK62204 : svg/W3C-SVG-1.1/paths-data-03-f.svg = PASS TEXT
@@ -513,6 +553,9 @@ BUGWK89099 : svg/transforms/transformed-text-fill-pattern.html = PASS IMAGE
 
 // Fails on 32-bit release and 64-bit debug builders
 BUGWK83560 : fast/events/drop-with-file-paths.html = PASS TEXT
+
+// Fails on 32-bit release and 64-bit release builders
+BUGWK88727 : http/tests/xmlhttprequest/origin-exact-matching.html = PASS TEXT
 
 //////////////////////////////////////////////////////////////////////////////////////////
 // End of tests with architecture-specific results
@@ -575,9 +618,6 @@ BUGWKGTK SKIP : http/tests/security/feed-urls-from-remote.html = TEXT
 // This policy delegate is implemented, but it needs the DOM node path in the output.
 BUGWKGTK : fast/encoding/mailto-always-utf-8.html = TEXT
 
-// Missing output when page icon changes. We need some API exposing this event.
-BUGWKGTK : fast/dom/icon-url-property.html = TEXT
-
 // Looks like a bug in the LayoutTestController global history support due to missing API.
 BUGWKGTK : fast/history/window-open.html = TEXT
 
@@ -605,9 +645,6 @@ BUGWK44478 SKIP : fast/text/hyphens.html = TEXT
 BUGWK44478 SKIP : fast/text/hyphenate-first-word.html = TEXT
 BUGWK44478 SKIP : fast/text/hyphenate-locale.html = TEXT
 BUGWK44478 SKIP : fast/text/hyphen-min-preferred-width.html = IMAGE
-
-// This port doesn't support v8 i18n extension.
-BUGWKGTK : fast/js/i18n-bindings-locale.html = TEXT
 
 BUGWKGTK : http/tests/appcache/origin-quota.html = TEXT
 BUGWKGTK : http/tests/appcache/origin-quota-continued-download.html = TEXT
@@ -683,10 +720,6 @@ BUGWK51104 SKIP : http/tests/security/401-logout/401-logout.php = TEXT
 BUGWK51104 : http/tests/xmlhttprequest/basic-auth-nouser.html = TEXT
 BUGWK51104 : http/tests/xmlhttprequest/basic-auth-nopassword.html = TEXT
 BUGWK51104 : http/tests/xmlhttprequest/remember-bad-password.html = TEXT
-
-// This port doesn't support detecting slow unload handlers.
-BUGWKGTK : fast/dom/Window/slow-unload-handler.html = TEXT
-BUGWKGTK : fast/dom/Window/slow-unload-handler-only-frame-is-stopped.html = TEXT
 
 // This port doesn't have a global history delegate yet
 BUGWKGTK : http/tests/globalhistory = TEXT
@@ -888,15 +921,6 @@ BUGWKGTK : canvas/philip/tests/2d.path.rect.selfintersect.html = TEXT
 // rectangle has zero height.
 BUGWKGTK : canvas/philip/tests/2d.path.rect.zero.6.html = TEXT
 
-// Tests that user modal dialogs fail in the DRT for some reason.
-BUGWK53600 : fast/animation/request-animation-frame-during-modal.html = TEXT
-BUGWK53600 : fast/events/show-modal-dialog-onblur-onfocus.html = TEXT
-BUGWK53600 : fast/events/scroll-event-during-modal-dialog.html = TEXT
-BUGWK53600 : fast/harness/show-modal-dialog.html = TEXT
-BUGWK53600 : http/tests/security/cross-frame-access-call.html = TEXT
-BUGWK53600 : http/tests/security/cross-frame-access-get.html = TEXT
-BUGWK53600 SKIP : inspector/console/console-long-eval-crash.html = TEXT
-
 // pastes a space instead of a tab
 BUGWK38437 : editing/pasteboard/5761530-1.html = TEXT
 
@@ -998,18 +1022,12 @@ BUGWK61118 : fullscreen/full-screen-restrictions.html = TEXT
 
 BUGWK61630 : fast/events/dropzone-005.html = TEXT
 
-// This test verifies that a mismatch reftest will fail as intended if both results are same.
-BUGWKGTK : fast/harness/sample-fail-mismatch-reftest.html = IMAGE
-
 // Need layoutTestController.setShouldStayOnPageAfterHandlingBeforeUnload
 BUGWK67014 : fast/loader/form-submission-after-beforeunload-cancel.html = TEXT
 
 BUGWK67713 : accessibility/textbox-role-reports-selection.html = TEXT
 
 BUGWK68278 : http/tests/history/back-with-fragment-change.php = TEXT
-
-BUGWK66045 : fast/files/create-blob-url-crash.html = TEXT
-BUGWK66045 : fast/files/url-required-arguments.html = TEXT
 
 BUGWK68512 : accessibility/aria-hidden-updates-alldescendants.html = TEXT
 
@@ -1027,8 +1045,6 @@ BUGWK68979 SKIP : http/tests/multipart/stop-crash.html = TEXT
 
 // Fails because it does not throw a couple of expected exceptions
 BUGWKGTK : http/tests/local/fileapi/send-sliced-dragged-file.html = TEXT
-
-BUGWK70485 : fast/events/drag-selects-image.html = TEXT
 
 // Missing DRT AccessibilityController::addNotificationListener implementation
 BUGWK70606 SKIP : accessibility/aria-checkbox-sends-notification.html = TEXT
@@ -1081,8 +1097,8 @@ BUGWK62204 : svg/W3C-SVG-1.1/animate-elem-04-t.svg = TEXT
 BUGWK78673 : svg/animations/animate-text-nested-transforms.html = TEXT
 
 BUGWK73409 : fast/forms/textarea-placeholder-set-attribute.html = IMAGE
-BUGWK73409 : fast/forms/textarea/textarea-placeholder-paint-order.html = MISSING
-BUGWK73409 : fast/forms/input-placeholder-paint-order.html = MISSING
+BUGWK73409 : fast/forms/textarea/textarea-placeholder-paint-order.html = IMAGE
+BUGWK73409 : fast/forms/input-placeholder-paint-order.html = IMAGE
 
 BUGWK73653 : fast/forms/range/slider-in-multi-column.html = TEXT
 
@@ -1098,16 +1114,8 @@ BUGWKGTK : http/tests/download = TEXT
 BUGWK77015 : fast/events/clear-drag-state.html = TEXT
 BUGWK77015 : fast/events/clear-edit-drag-state.html = TEXT
 
-BUGWK77413 : fast/parser/nested-fragment-parser-crash.html = TEXT
-
-// These test -apple- and -khtml- prefixed CSS properties, which we don't support.
-BUGWKGTK SKIP : inspector/styles/vendor-prefixes.html = TEXT
-BUGWKGTK : fast/css/apple-prefix.html = TEXT
-
 // Let MemoryCache reuse cached XHRs (REGRESSION caused by r107672)
 BUGWK76564 : fast/workers/worker-crash-with-invalid-location.html = TEXT
-
-BUGWK80210 : security/block-test.html = TEXT
 
 BUGWK81320 : editing/pasteboard/copy-two-pasteboard-types-both-work.html = TEXT
 
@@ -1136,7 +1144,6 @@ BUGWK84678 : fast/spatial-navigation/snav-iframe-no-scrollable-content.html = TE
 BUGWK84679 : css3/zoom-coords.xhtml = TEXT
 
 BUGWK84694 : fast/events/selectstart-by-double-triple-clicks.html = TEXT
-BUGWK84693 : fast/events/panScroll-click-hyperlink.html = MISSING
 BUGWK84692 : fast/events/attempt-scroll-with-no-scrollbars.html = TEXT
 
 BUGWK84701 : fast/block/line-layout/selection-highlight-overlap.html = IMAGE
@@ -1169,9 +1176,6 @@ BUGWK85700 : fullscreen/non-ancestor-iframe.html = TEXT
 // Interferes with the rAF tests that are enabled
 BUGWK85689 SKIP : fast/animation/request-animation-frame-disabled.html = TEXT
 
-// New test introduced in r119911 failing on GTK and EFL ports
-BUGWK88727 : http/tests/xmlhttprequest/origin-exact-matching.html = TEXT
-
 // Started failing after it was added in r116473
 BUGWK85969 : http/tests/loading/post-in-iframe-with-back-navigation.html = TEXT
 
@@ -1194,12 +1198,6 @@ BUGWK86443 : plugins/npruntime/delete-plugin-within-setProperty.html = TEXT
 
 BUGWK86445 : fast/multicol/split-in-top-margin.html = IMAGE
 
-// Requires rebaseline after https://bugs.webkit.org/show_bug.cgi?id=85405
-BUGWK85405 : tables/mozilla/bugs/bug10296-1.html = TEXT
-
-// Paletted PNG with ICC color profiles not working.
-BUGWK86722 SKIP : fast/images/paletted-png-with-color-profile.html = TEXT MISSING
-
 // This test is affecting other tests and seems to be behaving incorrectly itself
 BUGWK86771 SKIP : fast/dom/gc-10.html = TEXT
 
@@ -1210,10 +1208,7 @@ BUGWK86971 : svg/hittest/svg-shapes-non-scale-stroke.html = TEXT
 
 BUGWK87088 : fast/js/names.html = TEXT
 
-BUGWK87973 : http/tests/misc/favicon-loads-with-images-disabled.html = TEXT
-
-BUGWK84102 : fast/profiler/dead-time.html = TEXT
-BUGWK84102 : fast/profiler/stop-profiling-after-setTimeout.html = TEXT
+BUGWKGTK : http/tests/misc/favicon-loads-with-icon-loading-override.html = TEXT
 
 BUGWK87734 : svg/dom/complex-svgView-specification.html = IMAGE
 BUGWK87734 : svg/dom/SVGViewSpec.html = TEXT
@@ -1235,9 +1230,6 @@ BUGWK51027 RELEASE : plugins/refcount-leaks.html = TEXT
 
 BUGWK57346 : fast/text/justify-ideograph-leading-expansion.html = TEXT
 
-// Needs Rebaseline after bug 86942
-BUGWK86942 : fast/backgrounds/size/zero.html = TEXT
-
 BUGWK83800 : plugins/get-url-with-blank-target.html = TEXT
 
 BUGWK84037 : fast/text/international/spaces-combined-in-vertical-text.html = TEXT
@@ -1253,6 +1245,23 @@ BUGWK90770 : fast/regions/webkit-flow-renderer-layer.html = IMAGE
 BUGWK89231 : fast/js/global-constructors.html = TEXT
 
 BUGWK91009 DEBUG : fast/xsl/xslt-missing-namespace-in-xslt.xml = TEXT
+
+// Skip tests in fast/text/shaping
+BUGWK90951 SKIP : fast/text/shaping = PASS
+
+BUGWK88684 : fast/text/descent-clip-in-scaled-page.html = IMAGE
+
+// This failure appears to be GTK-specific
+BUGWK91319 : css2.1/20110323/vertical-align-boxes-001.htm = IMAGE
+
+// Failing after r123379 on EFL and GTK.
+BUGWK92063 : fast/css/sticky/parsing-position-sticky.html = TEXT
+
+BUGWK92100 : accessibility/canvas-accessibilitynodeobject.html = TEXT
+
+// This test depends on subpixel layout.
+BUGWK92352 : css3/flexbox/flex-rounding.html = TEXT
+
 
 //////////////////////////////////////////////////////////////////////////////////////////
 // End of Tests failing

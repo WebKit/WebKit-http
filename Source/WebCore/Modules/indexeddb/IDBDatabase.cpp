@@ -111,6 +111,14 @@ PassRefPtr<DOMStringList> IDBDatabase::objectStoreNames() const
     return objectStoreNames.release();
 }
 
+PassRefPtr<IDBAny> IDBDatabase::version() const
+{
+    int64_t intVersion = m_metadata.intVersion;
+    if (intVersion == IDBDatabaseMetadata::NoIntVersion)
+        return IDBAny::createString(m_metadata.version);
+    return IDBAny::create(SerializedScriptValue::numberValue(intVersion));
+}
+
 PassRefPtr<IDBObjectStore> IDBDatabase::createObjectStore(const String& name, const Dictionary& options, ExceptionCode& ec)
 {
     if (!m_versionChangeTransaction) {
@@ -190,7 +198,7 @@ void IDBDatabase::deleteObjectStore(const String& name, ExceptionCode& ec)
 PassRefPtr<IDBVersionChangeRequest> IDBDatabase::setVersion(ScriptExecutionContext* context, const String& version, ExceptionCode& ec)
 {
     if (version.isNull()) {
-        ec = IDBDatabaseException::IDB_TYPE_ERR;
+        ec = NATIVE_TYPE_ERR;
         return 0;
     }
 

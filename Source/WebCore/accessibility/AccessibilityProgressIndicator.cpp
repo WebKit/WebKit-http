@@ -19,11 +19,9 @@
  */
 
 #include "config.h"
-
-#if ENABLE(PROGRESS_TAG)
-
 #include "AccessibilityProgressIndicator.h"
 
+#if ENABLE(PROGRESS_ELEMENT)
 #include "FloatConversion.h"
 #include "HTMLNames.h"
 #include "HTMLProgressElement.h"
@@ -41,7 +39,9 @@ AccessibilityProgressIndicator::AccessibilityProgressIndicator(RenderProgress* r
 
 PassRefPtr<AccessibilityProgressIndicator> AccessibilityProgressIndicator::create(RenderProgress* renderer)
 {
-    return adoptRef(new AccessibilityProgressIndicator(renderer));
+    AccessibilityProgressIndicator* obj = new AccessibilityProgressIndicator(renderer);
+    obj->init();
+    return adoptRef(obj);
 }
 
 bool AccessibilityProgressIndicator::accessibilityIsIgnored() const
@@ -75,4 +75,4 @@ HTMLProgressElement* AccessibilityProgressIndicator::element() const
 
 } // namespace WebCore
 
-#endif // ENABLE(PROGRESS_TAG)
+#endif // ENABLE(PROGRESS_ELEMENT)

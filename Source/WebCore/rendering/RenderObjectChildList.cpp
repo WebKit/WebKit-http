@@ -154,8 +154,12 @@ RenderObject* RenderObjectChildList::removeChildNode(RenderObject* owner, Render
     oldChild->setNextSibling(0);
     oldChild->setParent(0);
 
-    RenderCounter::rendererRemovedFromTree(oldChild);
-    RenderQuote::rendererRemovedFromTree(oldChild);
+    // rendererRemovedFromTree walks the whole subtree. We can improve performance
+    // by skipping this step when destroying the entire tree.
+    if (!owner->documentBeingDestroyed()) {
+        RenderCounter::rendererRemovedFromTree(oldChild);
+        RenderQuote::rendererRemovedFromTree(oldChild);
+    }
 
     if (AXObjectCache::accessibilityEnabled())
         owner->document()->axObjectCache()->childrenChanged(owner);
@@ -210,8 +214,10 @@ void RenderObjectChildList::appendChildNode(RenderObject* owner, RenderObject* n
             containerFlowThread->addFlowChild(newChild);
     }
 
-    RenderCounter::rendererSubtreeAttached(newChild);
-    RenderQuote::rendererSubtreeAttached(newChild);
+    if (!owner->documentBeingDestroyed()) {
+        RenderCounter::rendererSubtreeAttached(newChild);
+        RenderQuote::rendererSubtreeAttached(newChild);
+    }
     newChild->setNeedsLayoutAndPrefWidthsRecalc(); // Goes up the containing block hierarchy.
     if (!owner->normalChildNeedsLayout())
         owner->setChildNeedsLayout(true); // We may supply the static position for an absolute positioned child.
@@ -277,8 +283,10 @@ void RenderObjectChildList::insertChildNode(RenderObject* owner, RenderObject* c
             containerFlowThread->addFlowChild(child, beforeChild);
     }
 
-    RenderCounter::rendererSubtreeAttached(child);
-    RenderQuote::rendererSubtreeAttached(child);
+    if (!owner->documentBeingDestroyed()) {
+        RenderCounter::rendererSubtreeAttached(child);
+        RenderQuote::rendererSubtreeAttached(child);
+    }
     child->setNeedsLayoutAndPrefWidthsRecalc();
     if (!owner->normalChildNeedsLayout())
         owner->setChildNeedsLayout(true); // We may supply the static position for an absolute positioned child.
@@ -289,8 +297,9 @@ void RenderObjectChildList::insertChildNode(RenderObject* owner, RenderObject* c
 
 static RenderObject* findBeforeAfterParent(RenderObject* object)
 {
-    // Only table parts need to search for the :before or :after parent
-    if (!(object->isTable() || object->isTableSection() || object->isTableRow()))
+    // Only table parts and flex-boxes need to search for the :before or :after parent
+    // FIXME: We could likely get away without this check and always look for the right parent.
+    if (!(object->isTable() || object->isTableSection() || object->isTableRow() || object->isFlexibleBoxIncludingDeprecated()))
         return object;
 
     // If there is a :first-letter style applied on the :before or :after content,

@@ -47,7 +47,7 @@
 #include "PaintInfo.h"
 #include "QWebPageClient.h"
 #include "RenderBox.h"
-#if ENABLE(PROGRESS_TAG)
+#if ENABLE(PROGRESS_ELEMENT)
 #include "RenderProgress.h"
 #endif
 #include "RenderSlider.h"
@@ -70,7 +70,7 @@
 #include <QStyleFactory>
 #include <QStyleOptionButton>
 #include <QStyleOptionFrameV2>
-#if ENABLE(PROGRESS_TAG)
+#if ENABLE(PROGRESS_ELEMENT)
 #include <QStyleOptionProgressBarV2>
 #endif
 #include <QStyleOptionSlider>
@@ -159,6 +159,20 @@ RenderThemeQStyle::~RenderThemeQStyle()
 QStyle* RenderThemeQStyle::fallbackStyle() const
 {
     return (m_fallbackStyle) ? m_fallbackStyle : QApplication::style();
+}
+
+void RenderThemeQStyle::setPaletteFromPageClientIfExists(QPalette& palette) const
+{
+    if (!m_page)
+        return;
+
+    ASSERT(m_page->chrome());
+    ChromeClient* chromeClient = m_page->chrome()->client();
+    if (!chromeClient)
+        return;
+
+    if (QWebPageClient* pageClient = chromeClient->platformPageClient())
+        palette = pageClient->palette();
 }
 
 QStyle* RenderThemeQStyle::qStyle() const
@@ -432,6 +446,12 @@ void RenderThemeQStyle::setPopupPadding(RenderStyle* style) const
     style->setPaddingBottom(Length(2, Fixed));
 }
 
+QPalette RenderThemeQStyle::colorPalette() const
+{
+    QPalette palette = RenderThemeQt::colorPalette();
+    setPaletteFromPageClientIfExists(palette);
+    return palette;
+}
 
 bool RenderThemeQStyle::paintMenuList(RenderObject* o, const PaintInfo& i, const IntRect& r)
 {
@@ -492,7 +512,7 @@ bool RenderThemeQStyle::paintMenuListButton(RenderObject* o, const PaintInfo& i,
     return false;
 }
 
-#if ENABLE(PROGRESS_TAG)
+#if ENABLE(PROGRESS_ELEMENT)
 double RenderThemeQStyle::animationDurationForProgressBar(RenderProgress* renderProgress) const
 {
     if (renderProgress->position() >= 0)

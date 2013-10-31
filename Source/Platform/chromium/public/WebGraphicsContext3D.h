@@ -221,6 +221,12 @@ public:
     // GL_CHROMIUM_rate_limit_offscreen_context
     virtual void rateLimitOffscreenContextCHROMIUM() { }
 
+    // GL_CHROMIUM_stream_texture
+    // Returns the stream end point identifier created for the given texture.
+    virtual WebGLId createStreamTextureCHROMIUM(WebGLId texture) { return 0; }
+    // Destroys the stream for the given texture.
+    virtual void destroyStreamTextureCHROMIUM(WebGLId texture) { }
+
     // The entry points below map directly to the OpenGL ES 2.0 API.
     // See: http://www.khronos.org/registry/gles/
     // and: http://www.khronos.org/opengles/sdk/docs/man/
@@ -420,6 +426,9 @@ public:
     // GL_CHROMIUM_copy_texture
     virtual void copyTextureCHROMIUM(WGC3Denum target, WGC3Duint sourceId,
                                      WGC3Duint destId, WGC3Dint level, WGC3Denum internalFormat) { }
+
+    // GL_CHROMIUM_shallow_flush
+    virtual void shallowFlushCHROMIUM() { }
 
     GrGLInterface* createGrGLInterface();
 

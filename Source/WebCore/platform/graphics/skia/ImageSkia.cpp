@@ -70,18 +70,8 @@ enum ResamplingMode {
     RESAMPLE_AWESOME,
 };
 
-static ResamplingMode computeResamplingMode(PlatformContextSkia* platformContext, const NativeImageSkia& bitmap, int srcWidth, int srcHeight, float destWidth, float destHeight)
+static ResamplingMode computeResamplingMode(const SkMatrix& matrix, const NativeImageSkia& bitmap, int srcWidth, int srcHeight, float destWidth, float destHeight)
 {
-    if (platformContext->hasImageResamplingHint()) {
-        IntSize srcSize;
-        FloatSize dstSize;
-        platformContext->getImageResamplingHint(&srcSize, &dstSize);
-        srcWidth = srcSize.width();
-        srcHeight = srcSize.height();
-        destWidth = dstSize.width();
-        destHeight = dstSize.height();
-    }
-
     int destIWidth = static_cast<int>(destWidth);
     int destIHeight = static_cast<int>(destHeight);
 
@@ -147,7 +137,7 @@ static ResamplingMode computeResamplingMode(PlatformContextSkia* platformContext
 
     // Everything else gets resampled.
     // High quality interpolation only enabled for scaling and translation.
-    if (!(platformContext->canvas()->getTotalMatrix().getType() & (SkMatrix::kAffine_Mask | SkMatrix::kPerspective_Mask)))
+    if (!(matrix.getType() & (SkMatrix::kAffine_Mask | SkMatrix::kPerspective_Mask)))
         return RESAMPLE_AWESOME;
     
     return RESAMPLE_LINEAR;
@@ -259,7 +249,7 @@ static void paintSkBitmap(PlatformContextSkia* platformContext, const NativeImag
         if (!(canvas->getTotalMatrix().getType() & (SkMatrix::kAffine_Mask | SkMatrix::kPerspective_Mask)))
             canvas->getTotalMatrix().mapRect(&destRectTarget, destRect);
 
-        resampling = computeResamplingMode(platformContext, bitmap, srcRect.width(), srcRect.height(),
+        resampling = computeResamplingMode(canvas->getTotalMatrix(), bitmap, srcRect.width(), srcRect.height(),
                                            SkScalarToFloat(destRectTarget.width()), SkScalarToFloat(destRectTarget.height()));
     }
 
@@ -282,25 +272,6 @@ static void paintSkBitmap(PlatformContextSkia* platformContext, const NativeImag
         canvas->drawBitmapRect(bitmap.bitmap(), &srcRect, destRect, &paint);
     }
     platformContext->didDrawRect(destRect, paint, &bitmap.bitmap());
-}
-
-// Transforms the given dimensions with the given matrix. Used to see how big
-// images will be once transformed.
-static void TransformDimensions(const SkMatrix& matrix, float srcWidth, float srcHeight, float* destWidth, float* destHeight)
-{
-    // Transform 3 points to see how long each side of the bitmap will be.
-    SkPoint srcPoints[3]; // (0, 0), (width, 0), (0, height).
-    srcPoints[0].set(0, 0);
-    srcPoints[1].set(SkFloatToScalar(srcWidth), 0);
-    srcPoints[2].set(0, SkFloatToScalar(srcHeight));
-
-    // Now measure the length of the two transformed vectors relative to the
-    // transformed origin to see how big the bitmap will be. Note: for skews,
-    // this isn't the best thing, but we don't have skews.
-    SkPoint destPoints[3];
-    matrix.mapPoints(destPoints, srcPoints, 3);
-    *destWidth = SkScalarToFloat((destPoints[1] - destPoints[0]).length());
-    *destHeight = SkScalarToFloat((destPoints[2] - destPoints[0]).length());
 }
 
 // A helper method for translating negative width and height values.
@@ -353,20 +324,25 @@ void Image::drawPattern(GraphicsContext* context,
         return;
 
     SkIRect srcRect = enclosingIntRect(normSrcRect);
+    SkMatrix ctm = context->platformContext()->canvas()->getTotalMatrix();
+    SkMatrix totalMatrix;
+    totalMatrix.setConcat(ctm, patternTransform);
 
     // Figure out what size the bitmap will be in the destination. The
     // destination rect is the bounds of the pattern, we need to use the
     // matrix to see how big it will be.
-    float destBitmapWidth, destBitmapHeight;
-    TransformDimensions(patternTransform, srcRect.width(), srcRect.height(),
-                        &destBitmapWidth, &destBitmapHeight);
+    SkRect destRectTarget;
+    totalMatrix.mapRect(&destRectTarget, normSrcRect);
+
+    float destBitmapWidth = SkScalarToFloat(destRectTarget.width());
+    float destBitmapHeight = SkScalarToFloat(destRectTarget.height());
 
     // Compute the resampling mode.
     ResamplingMode resampling;
     if (context->platformContext()->isAccelerated() || context->platformContext()->printing())
         resampling = RESAMPLE_LINEAR;
     else
-        resampling = computeResamplingMode(context->platformContext(), *bitmap, srcRect.width(), srcRect.height(), destBitmapWidth, destBitmapHeight);
+        resampling = computeResamplingMode(totalMatrix, *bitmap, srcRect.width(), srcRect.height(), destBitmapWidth, destBitmapHeight);
     resampling = limitResamplingMode(context->platformContext(), resampling);
 
     // Load the transform WebKit requested.
@@ -380,10 +356,14 @@ void Image::drawPattern(GraphicsContext* context,
         SkBitmap resampled = bitmap->resizedBitmap(srcRect, width, height);
         shader = SkShader::CreateBitmapShader(resampled, SkShader::kRepeat_TileMode, SkShader::kRepeat_TileMode);
 
-        // Since we just resized the bitmap, we need to undo the scale set in
-        // the image transform.
-        matrix.setScaleX(SkIntToScalar(1));
-        matrix.setScaleY(SkIntToScalar(1));
+        // Since we just resized the bitmap, we need to remove the scale 
+        // applied to the pixels in the bitmap shader. This means we need
+        // CTM * patternTransform to have identity scale. Since we
+        // can't modify CTM (or the rectangle will be drawn in the wrong
+        // place), we must set patternTransform's scale to the inverse of
+        // CTM scale.
+        matrix.setScaleX(ctm.getScaleX() ? 1 / ctm.getScaleX() : 1);
+        matrix.setScaleY(ctm.getScaleY() ? 1 / ctm.getScaleY() : 1);
     } else {
         // No need to do nice resampling.
         SkBitmap srcSubset;
@@ -496,20 +476,20 @@ void BitmapImageSingleFrameSkia::draw(GraphicsContext* ctxt,
         observer->didDraw(this);
 }
 
-BitmapImageSingleFrameSkia::BitmapImageSingleFrameSkia(const SkBitmap& bitmap)
-    : m_nativeImage(bitmap)
+BitmapImageSingleFrameSkia::BitmapImageSingleFrameSkia(const SkBitmap& bitmap, float resolutionScale)
+    : m_nativeImage(bitmap, resolutionScale)
 {
 }
 
-PassRefPtr<BitmapImageSingleFrameSkia> BitmapImageSingleFrameSkia::create(const SkBitmap& bitmap, bool copyPixels)
+PassRefPtr<BitmapImageSingleFrameSkia> BitmapImageSingleFrameSkia::create(const SkBitmap& bitmap, bool copyPixels, float resolutionScale)
 {
     if (copyPixels) {
         SkBitmap temp;
         if (!bitmap.deepCopyTo(&temp, bitmap.config()))
             bitmap.copyTo(&temp, bitmap.config());
-        return adoptRef(new BitmapImageSingleFrameSkia(temp));
+        return adoptRef(new BitmapImageSingleFrameSkia(temp, resolutionScale));
     }
-    return adoptRef(new BitmapImageSingleFrameSkia(bitmap));
+    return adoptRef(new BitmapImageSingleFrameSkia(bitmap, resolutionScale));
 }
 
 } // namespace WebCore

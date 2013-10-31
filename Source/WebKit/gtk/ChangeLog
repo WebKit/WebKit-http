@@ -1,3 +1,156 @@
+2012-07-30  Sheriff Bot  <webkit.review.bot@gmail.com>
+
+        Unreviewed, rolling out r123966 and r123967.
+        http://trac.webkit.org/changeset/123966
+        http://trac.webkit.org/changeset/123967
+        https://bugs.webkit.org/show_bug.cgi?id=92656
+
+        This patch is causing assertion failures on the debug bot
+        (also rolling out a dependent patch) (Requested by mrobinson
+        on #webkit).
+
+        * webkit/webkitspellcheckerenchant.cpp:
+        (_WebKitSpellCheckerEnchantPrivate):
+        (createEnchantBrokerIfNeeded):
+        (freeSpellCheckingLanguage):
+        (webkit_spell_checker_enchant_finalize):
+        (webkit_spell_checker_enchant_class_init):
+        (webkit_spell_checker_enchant_init):
+        (wordEndIsAContractionApostrophe):
+        (checkSpellingOfString):
+        (getGuessesForWord):
+        (getAvailableDictionariesCallback):
+        (updateSpellCheckingLanguages):
+        (learnWord):
+        (ignoreWord):
+
+2012-07-30  Claudio Saavedra  <csaavedra@igalia.com>
+
+        [Gtk] Add WK1 API for snapshot retrieval
+        https://bugs.webkit.org/show_bug.cgi?id=92261
+
+        Reviewed by Martin Robinson.
+
+        Add API to WebKitWebView to retrieve a snapshot of its
+        visible contents as a cairo_surface_t.
+
+        * docs/webkitgtk-sections.txt: Add new symbols.
+        * webkit/webkitwebview.cpp:
+        (webkit_web_view_get_snapshot): New
+        method to paint a webview snapshot.
+        * webkit/webkitwebview.h: Ditto.
+
+2012-07-28  Mario Sanchez Prada  <msanchez@igalia.com>
+
+        [GTK] Add a new and reusable enchant-based spellchecker in WebCore
+        https://bugs.webkit.org/show_bug.cgi?id=90269
+
+        Reviewed by Martin Robinson.
+
+        Remove enchant specific code from WebKitSpellCheckerEnchant and
+        implement it relying in the new TextCheckerEnchant class in WebCore.
+
+        * webkit/webkitspellcheckerenchant.cpp:
+        (_WebKitSpellCheckerEnchantPrivate):
+        (webkit_spell_checker_enchant_finalize):
+        (webkit_spell_checker_enchant_class_init):
+        (webkit_spell_checker_enchant_init):
+        (checkSpellingOfString):
+        (getGuessesForWord):
+        (updateSpellCheckingLanguages):
+        (learnWord):
+        (ignoreWord):
+
+2012-07-26  Kaustubh Atrawalkar  <kaustubh@motorola.com>
+
+        [DRT] LTC:: pageNumberForElementById() could be moved to Internals
+        https://bugs.webkit.org/show_bug.cgi?id=92091
+
+        Reviewed by Adam Barth.
+
+        Move the pageNumberForElementById from LayoutTestCotroller to Internals and
+        remove the old platform specific implementations as it exclusively tests WebCore functionality.
+
+        * WebCoreSupport/DumpRenderTreeSupportGtk.cpp:
+        * WebCoreSupport/DumpRenderTreeSupportGtk.h:
+        (DumpRenderTreeSupportGtk):
+
+2012-07-24  Kaustubh Atrawalkar  <kaustubh@motorola.com>
+
+        [DRT] LTC:: pageNumberForElementById() could be moved to Internals
+        https://bugs.webkit.org/show_bug.cgi?id=92091
+
+        Reviewed by Adam Barth.
+
+        Move the pageNumberForElementById from LayoutTestCotroller to Internals and
+        remove the old platform specific implementations as it exclusively tests WebCore functionality.
+
+        * WebCoreSupport/DumpRenderTreeSupportGtk.cpp:
+        * WebCoreSupport/DumpRenderTreeSupportGtk.h:
+        (DumpRenderTreeSupportGtk):
+
+2012-07-23  Pierre Rossi  <pierre.rossi@gmail.com>
+
+        Unify numTouchEventHandlersChanged and needTouchEvents in the chrome client
+        https://bugs.webkit.org/show_bug.cgi?id=91006
+
+        Reviewed by Ryosuke Niwa.
+
+        Remove numTouchEventHandlersChanged stub.
+
+        * WebCoreSupport/ChromeClientGtk.h:
+
+2012-07-17  Vivek Galatage  <vivekgalatage@gmail.com>
+
+        Web Inspector: refactor InspectorController::connectFrontend() to accept InspectorFrontendChannel.
+        https://bugs.webkit.org/show_bug.cgi?id=91196
+
+        Reviewed by Pavel Feldman.
+
+        Refactoring InspectorClients. InspectorClient::openInspectorFrontend
+        now returning the InspectorFrontendChannel.
+
+        * WebCoreSupport/InspectorClientGtk.cpp:
+        (WebKit::InspectorClient::openInspectorFrontend):
+        * WebCoreSupport/InspectorClientGtk.h:
+        (InspectorClient):
+
+2012-07-16  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
+
+        Add RegisterProtocolHandlerClient to the Modules/protocolhandler
+        https://bugs.webkit.org/show_bug.cgi?id=90940
+
+        Reviewed by Hajime Morita.
+
+        As a step to let protocol handler be moved to the modules, RegisterProtocolHandlerClient needs
+        to be added to the Modules/protocolhandler. Because ChromeClient has some virtual functions for
+        protocol handlers, virtual functions should be moved to RegisterProtocolHandlerClient.
+
+        In order to support this, RegisterProtocolHandlerClientGtk class is added and webview registers
+        RegisterProtocolHandlerClientGtk. In addition, existing concrete functions in ChromeClientGtk are moved
+        to RegisterProtocolHandlerClientGtk.
+
+        * GNUmakefile.am:
+        * WebCoreSupport/ChromeClientGtk.cpp:
+        * WebCoreSupport/ChromeClientGtk.h:
+        (ChromeClient):
+        * WebCoreSupport/RegisterProtocolHandlerClientGtk.cpp: Added.
+        (WebKit):
+        (WebKit::RegisterProtocolHandlerClient::RegisterProtocolHandlerClient):
+        (WebKit::RegisterProtocolHandlerClient::registerProtocolHandler):
+        * WebCoreSupport/RegisterProtocolHandlerClientGtk.h: Added.
+        (WebKit):
+        (RegisterProtocolHandlerClient):
+        (WebKit::RegisterProtocolHandlerClient::~RegisterProtocolHandlerClient):
+        * webkit/webkitwebview.cpp:
+        (webkit_web_view_init):
+
+2012-07-16  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Update NEWS and configure.ac for 1.9.5 release
+
+        * NEWS: Added release notes for 1.9.5.
+
 2012-07-10  Adam Barth  <abarth@webkit.org>
 
         WebCore::Settings for Hixie76 WebSocket protocol doesn't do anything and should be removed

@@ -41,27 +41,11 @@
 #ifndef LayoutTestController_h
 #define LayoutTestController_h
 
-#include "CppBoundClass.h"
-#include "Task.h"
-#include "WebDeliveredIntentClient.h"
-#include "platform/WebArrayBufferView.h"
-#include "platform/WebString.h"
-#include "WebTextDirection.h"
-#include "platform/WebURL.h"
-#include <wtf/Deque.h>
-#include <wtf/OwnPtr.h>
-
-namespace WebKit {
-class WebGeolocationClientMock;
-}
-
-namespace webkit_support {
-class ScopedTempDirectory;
-}
+#include "TestRunner.h"
 
 class TestShell;
 
-class LayoutTestController : public CppBoundClass {
+class LayoutTestController : public TestRunner {
 public:
     // Builds the property and method lists needed to bind this class to a JS
     // object.
@@ -326,9 +310,6 @@ public:
 
     // Causes layout to happen as if targetted to printed pages.
     void setPrinting(const CppArgumentList&, CppVariant*);
-
-    // Gets the number of page where the specified element will be put.
-    void pageNumberForElementById(const CppArgumentList&, CppVariant*);
 
     // Gets the page size and margins for a printed page.
     void pageSizeAndMarginsInPixels(const CppArgumentList&, CppVariant*);

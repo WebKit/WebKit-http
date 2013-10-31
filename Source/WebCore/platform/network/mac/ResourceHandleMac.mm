@@ -30,7 +30,6 @@
 
 #import "AuthenticationChallenge.h"
 #import "AuthenticationMac.h"
-#import "Base64.h"
 #import "BlobRegistry.h"
 #import "BlockExceptions.h"
 #import "CookieStorage.h"
@@ -52,8 +51,9 @@
 #import "SubresourceLoader.h"
 #import "WebCoreSystemInterface.h"
 #import "WebCoreURLResponse.h"
-#import <wtf/text/CString.h>
 #import <wtf/UnusedParam.h>
+#import <wtf/text/Base64.h>
+#import <wtf/text/CString.h>
 
 using namespace WebCore;
 
@@ -214,7 +214,7 @@ void ResourceHandle::createNSURLConnection(id delegate, bool shouldUseCredential
         nsRequest = mutableRequest;
     }
 
-#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1060
+#if PLATFORM(IOS) || __MAC_OS_X_VERSION_MIN_REQUIRED >= 1060
     ASSERT([NSURLConnection instancesRespondToSelector:@selector(_initWithRequest:delegate:usesCache:maxContentLength:startImmediately:connectionProperties:)]);
     static bool supportsSettingConnectionProperties = true;
 #else
@@ -512,7 +512,7 @@ void ResourceHandle::didReceiveAuthenticationChallenge(const AuthenticationChall
     // we make sure that is actually present
     ASSERT(challenge.nsURLAuthenticationChallenge());
 
-#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1070
+#if PLATFORM(IOS) || __MAC_OS_X_VERSION_MIN_REQUIRED >= 1070
     // Proxy authentication is handled by CFNetwork internally. We can get here if the user cancels
     // CFNetwork authentication dialog, and we shouldn't ask the client to display another one in that case.
     if (challenge.protectionSpace().isProxy()) {
