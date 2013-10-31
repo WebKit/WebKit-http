@@ -48,6 +48,7 @@
             'chromium/public/WebData.h',
             'chromium/public/WebDragData.h',
             'chromium/public/WebExternalTextureLayer.h',
+            'chromium/public/WebExternalTextureLayerClient.h',
             'chromium/public/WebFileInfo.h',
             'chromium/public/WebFileSystem.h',
             'chromium/public/WebFileUtilities.h',
@@ -131,7 +132,6 @@
             'chromium/src/WebFloatQuad.cpp',
             'chromium/src/WebPrerenderingSupport.cpp',
             'chromium/src/WebString.cpp',
-            'chromium/src/WebVideoFrame.cpp',
         ]
     }
 }

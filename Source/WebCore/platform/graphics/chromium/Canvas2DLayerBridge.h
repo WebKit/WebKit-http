@@ -35,6 +35,10 @@
 class SkCanvas;
 class SkDevice;
 
+namespace WebKit {
+class WebGraphicsContext3D;
+}
+
 namespace WebCore {
 
 class LayerChromium;
@@ -52,7 +56,7 @@ public:
 
     // TextureLayerChromiumClient implementation.
     virtual unsigned prepareTexture(CCTextureUpdater&) OVERRIDE;
-    virtual GraphicsContext3D* context() OVERRIDE;
+    virtual WebKit::WebGraphicsContext3D* context() OVERRIDE;
 
     SkCanvas* skCanvas(SkDevice*);
     LayerChromium* layer() const;

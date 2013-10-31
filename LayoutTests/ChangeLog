@@ -1,3 +1,71 @@
+2012-06-11  Max Feil  <mfeil@rim.com>
+
+        [BlackBerry] Unexpected repeats of short media
+        https://bugs.webkit.org/show_bug.cgi?id=88733
+
+        Reviewed by Antonio Gomes.
+
+        Test for problem where short media repeats unintentionally.
+
+        * media/content/short.wav: Added.
+        * platform/blackberry/media/short-media-repeats-correctly-expected.txt: Added.
+        * platform/blackberry/media/short-media-repeats-correctly.html: Added.
+
+2012-06-11  Julien Chaffraix  <jchaffraix@webkit.org>
+
+        Account for margin after when laying out <legend> element
+        https://bugs.webkit.org/show_bug.cgi?id=35981
+
+        Reviewed by Abhishek Arya.
+
+        * fast/forms/legend-after-margin-horizontal-writing-mode-expected.html: Added.
+        * fast/forms/legend-after-margin-horizontal-writing-mode.html: Added.
+        * fast/forms/legend-after-margin-vertical-writing-mode-expected.html: Added.
+        * fast/forms/legend-after-margin-vertical-writing-mode.html: Added.
+        * fast/forms/legend-after-margin-with-before-border-horizontal-mode-expected.html: Added.
+        * fast/forms/legend-after-margin-with-before-border-horizontal-mode.html: Added.
+        * fast/forms/legend-small-after-margin-before-border-horizontal-mode-expected.html: Added.
+        * fast/forms/legend-small-after-margin-before-border-horizontal-mode.html: Added.
+
+2012-06-05  Eric Uhrhane <ericu@chromium.org>
+
+        Crash in fast/files/read tests during Garbage Collection
+        https://bugs.webkit.org/show_bug.cgi?id=87165
+
+        Reviewed by Michael Saboff
+
+        Simplify file-writer-abort-continue.js a bit, and add a new test case
+        for a write that gets aborted in the final progress event, which
+        previously would have hung the FileWriter.
+
+        * fast/filesystem/file-writer-abort-continue-expected.txt:
+        * fast/filesystem/resources/file-writer-abort-continue.js:
+
+2012-06-11  Dongwoo Im  <dw.im@samsung.com>
+
+        WebAudio tests need to set WebKitWebAudioEnabled.
+        https://bugs.webkit.org/show_bug.cgi?id=88624
+
+        Reviewed by Chris Rogers.
+
+        * webaudio/audiochannelmerger-basic.html: Set WebKitWebAudioEnabled by including 'audio-testing.js'.
+        * webaudio/audionode-connect-order.html: ditto.
+        * webaudio/biquadfilternode-basic.html: ditto.
+        * webaudio/delaynode-maxdelay.html: ditto.
+        * webaudio/delaynode-scheduling.html: ditto.
+        * webaudio/delaynode.html: ditto.
+        * webaudio/javascriptaudionode-downmix8-2channel-input.html: ditto.
+        * webaudio/javascriptaudionode-upmix2-8channel-input.html: ditto.
+        * webaudio/mediaelementaudiosourcenode-gc.html: ditto.
+        * webaudio/mediaelementaudiosourcenode.html: ditto.
+        * webaudio/realtimeanalyser-fft-sizing.html: ditto.
+        * webaudio/stereo2mono-down-mixing.html: ditto.
+
+2012-06-11  Ojan Vafai  <ojan@chromium.org>
+
+        Last large slew of Chromium windows png rebaselines. See  http://crbug.com/131829 for more information.
+        List of rebaselined files excluded because it's too long.
+
 2012-06-11  Xianzhu Wang  <wangxianzhu@chromium.org>
 
         SVGImageCache leaks image data

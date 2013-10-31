@@ -1,3 +1,72 @@
+2012-06-11  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
+
+        [CMAKE][EFL] Remove duplicated executable output path
+        https://bugs.webkit.org/show_bug.cgi?id=88765
+
+        Reviewed by Daniel Bates.
+
+        CMake files for EFL port have redefined executable output path. However, EFL port doesn't
+        need to define again because it is already defined in top-level CMake file.
+
+        * DumpRenderTree/efl/CMakeLists.txt:
+        * EWebLauncher/CMakeLists.txt:
+
+2012-06-11  Ojan Vafai  <ojan@chromium.org>
+
+        Don't consider show warnings in the garden-o-matic UI for non-layout test failures
+        https://bugs.webkit.org/show_bug.cgi?id=88816
+
+        Reviewed by Dirk Pranke.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/TestFailures/scripts/base.js:
+        Expose a way to clear AsynchronousCaches.
+        * BuildSlaveSupport/build.webkit.org-config/public_html/TestFailures/scripts/builders.js:
+        * BuildSlaveSupport/build.webkit.org-config/public_html/TestFailures/scripts/builders_unittests.js:
+        Clear the buildInfo cache at the beginning of each test in order to avoid having one test affect another.
+
+2012-06-11  Dirk Pranke  <dpranke@chromium.org>
+
+        nrwt exits early too frequently
+        https://bugs.webkit.org/show_bug.cgi?id=73843
+
+        Reviewed by Ryosuke Niwa.
+
+        Change the defaults for new-run-webkit-tests for both
+        --exit-after-n-failures and --exit-after-n-crashes-or-timeouts
+        to zero (i.e., we will never exit early by default).
+
+        If people want their buildbots to exit early it is their
+        responsibility to update their buildbot configs appropriately.
+
+        Note that we have tests that ensure that these flags work for
+        non-zero numbers, but we don't have tests that either test the
+        default or ensure that zero means "run all of the tests". I
+        think that's okay but can add tests if others disagree.
+
+        Also note that it looks like no changes on the build.webkit.org
+        master.cfg are necessary; all of the bots seem to be using the
+        RunWebKitTests wrapper which is already setting the flags. There
+        is a NewRunWebKitTests wrapper, but that looks to be unused; I
+        will delete that in a separate patch.
+
+        * Scripts/webkitpy/layout_tests/run_webkit_tests.py:
+        (parse_args):
+
+2012-06-11  Sudarsana Nagineni  <sudarsana.nagineni@linux.intel.com>
+
+        [EFL] [DRT] Reset CacheModel before running each test
+        https://bugs.webkit.org/show_bug.cgi?id=87534
+
+        Reviewed by Gustavo Noronha Silva.
+
+        Reset cache model to default before running each test to fix some
+        flaky tests on EFL build bots. Also fix case value in setCacheModel.
+
+        * DumpRenderTree/efl/DumpRenderTreeChrome.cpp:
+        (DumpRenderTreeChrome::resetDefaultsToConsistentValues):
+        * DumpRenderTree/efl/LayoutTestControllerEfl.cpp:
+        (LayoutTestController::setCacheModel):
+
 2012-06-11  Sudarsana Nagineni  <sudarsana.nagineni@linux.intel.com>
 
         [GTK] Memory leaks in DRT EventSender.cpp

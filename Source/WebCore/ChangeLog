@@ -1,16 +1,351 @@
-2013-05-07  Carlos Garcia Campos  <cgarcia@igalia.com>
+2012-06-11  James Robinson  <jamesr@chromium.org>
 
-        [X11][BlackBerry] Check if MOZ_X11 is defined instead of XP_UNIX npruntime_internal.h
-        https://bugs.webkit.org/show_bug.cgi?id=113687
+        [chromium] Port DrawingBufferChromium from TextureLayerChromium over to WebExternalTextureLayer
+        https://bugs.webkit.org/show_bug.cgi?id=86273
 
-        Reviewed by Anders Carlsson.
+        Reviewed by Adrienne Walker.
 
-        It's assumed that all UNIX platforms use X11 for plugins, which is
-        not the case of BlackBerry.
+        This converts more WebCore code over to using public APIs instead of internal compositor layer types.
 
-        * bridge/npruntime_internal.h: Use MOZ_X11 instead of XP_UNIX.
+        Refactor only, no change in behavior thus no new tests.
 
-2013-05-07  Mikhail Pozdnyakov  <mikhail.pozdnyakov@intel.com>
+        * platform/graphics/chromium/DrawingBufferChromium.cpp:
+        (WebCore::DrawingBufferPrivate::DrawingBufferPrivate):
+        (WebCore::DrawingBufferPrivate::~DrawingBufferPrivate):
+        (WebCore::DrawingBufferPrivate::layer):
+        (DrawingBufferPrivate):
+        * platform/graphics/chromium/TextureLayerChromium.cpp:
+        (WebCore::TextureLayerChromium::~TextureLayerChromium):
+        (WebCore::TextureLayerChromium::setRateLimitContext):
+        (WebCore::TextureLayerChromium::setNeedsDisplayRect):
+        (WebCore::TextureLayerChromium::update):
+        * platform/graphics/chromium/TextureLayerChromium.h:
+        (WebKit):
+        (TextureLayerChromiumClient):
+
+2012-06-11  Max Feil  <mfeil@rim.com>
+
+        [BlackBerry] Seek calls are being unnecessarily delayed
+        https://bugs.webkit.org/show_bug.cgi?id=88732
+
+        Reviewed by Antonio Gomes.
+
+        There is a problem with the way the m_userDrivenSeekTimer is
+        implemented. When MediaPlayerPrivate::seek() is called, there
+        is always a 100ms delay even if the timer is not running. The
+        timer is supposed to space out (i.e. throttle) repeated seeks
+        that come in too soon after a previous seek, but currently it
+        is slowing down even single seeks and seeks that come in with
+        adequate delay after a previous seek. I fixed this in my patch
+        by improving the way the timer fired function is called.
+        
+        A note on the new m_lastSeekTimePending flag: This flag is
+        needed so that userDrivenSeekTimerFired() knows whether or not
+        to perform the seek. The only case where this flag will not be
+        set is if no MediaPlayerPrivate::seek() call came in while the
+        timer was active, in which case it's important to do nothing.
+        I could encode this flag's information into the m_lastSeekTime
+        float, for example by initializing it and resetting it to NAN
+        and using isnan(). But I feel that using a separate bool is a
+        more portable approach.
+
+        No new tests. I would like to propose not including a layout test
+        with this fix. Doing timing tests for 100ms delays is tricky
+        from Javascript, and I don't think the benefit of such a test
+        outweighs the extra time it would take to develop one. The test
+        would also be a problem to maintain as it may give different
+        results over different runs and across different target hardware.
+
+        * platform/graphics/blackberry/MediaPlayerPrivateBlackBerry.cpp:
+        (WebCore::MediaPlayerPrivate::MediaPlayerPrivate):
+        (WebCore::MediaPlayerPrivate::seek):
+        (WebCore::MediaPlayerPrivate::userDrivenSeekTimerFired):
+        * platform/graphics/blackberry/MediaPlayerPrivateBlackBerry.h:
+        (MediaPlayerPrivate):
+
+2012-06-11  Max Feil  <mfeil@rim.com>
+
+        [BlackBerry] Unexpected repeats of short media
+        https://bugs.webkit.org/show_bug.cgi?id=88733
+
+        Reviewed by Antonio Gomes.
+
+        The m_userDrivenSeekTimer is causing unwanted repeats of short
+        media such as sound effects because it is causing the current
+        time to not reflect that the media has finished playing.
+        This problem only affects media whose duration is close to
+        or less than the SeekSubmissionDelay, which is currently
+        set to 100ms. My fix is to ignore the userDrivenSeekTimer in
+        MediaPlayerPrivate::currentTime() if the duration of the media
+        is within twice the SeekSubmissionDelay. Seek drag smoothness
+        is a non-issue for such short media.
+
+        Test: platform/blackberry/media/short-media-repeats-correctly.html
+
+        * platform/graphics/blackberry/MediaPlayerPrivateBlackBerry.cpp:
+        (WebCore::MediaPlayerPrivate::MediaPlayerPrivate):
+        (WebCore):
+        (WebCore::MediaPlayerPrivate::currentTime):
+        (WebCore::MediaPlayerPrivate::seek):
+        (WebCore::MediaPlayerPrivate::userDrivenSeekTimerFired):
+        * platform/graphics/blackberry/MediaPlayerPrivateBlackBerry.h:
+        (MediaPlayerPrivate):
+
+2012-06-11  Julien Chaffraix  <jchaffraix@webkit.org>
+
+        Account for margin after when laying out <legend> element
+        https://bugs.webkit.org/show_bug.cgi?id=35981
+
+        Reviewed by Abhishek Arya.
+
+        Tests: fast/forms/legend-after-margin-horizontal-writing-mode.html
+               fast/forms/legend-after-margin-vertical-writing-mode.html
+               fast/forms/legend-after-margin-with-before-border-horizontal-mode.html
+               fast/forms/legend-small-after-margin-before-border-horizontal-mode.html
+
+        The existing code would ignore margin after when layouting out the <legend>. This
+        change only adds the code to handle the margin after, the margin before is still
+        ignored as it's not obvious how it should be working.
+
+        * rendering/RenderFieldset.cpp:
+        (WebCore::RenderFieldset::layoutSpecialExcludedChild):
+        Split the code in 2 code paths to reflect how we position and size. Those are covered by the
+        tests above.
+
+2012-06-11  James Robinson  <jamesr@chromium.org>
+
+        [chromium] Use WebGraphicsContext3D in rate limiting logic inside compositor
+        https://bugs.webkit.org/show_bug.cgi?id=86259
+
+        Reviewed by Adrienne Walker.
+
+        This refactors the compositor's rate limiting implementation to use the Platform API's WebGraphicsContext3D
+        directly instead of WebCore::GraphicsContext3D to cut down on the number of spurious WebCore dependencies in the
+        compositor.  The one change in contract is that the caller to CCLayerTreeHost::startRateLimit() now has to call
+        CCLayerTreeHost::stopRateLimit() before allowing the referenced context to go away since CCLayerTreeHost no
+        longer retains a reference, but this was always happening already.
+
+        * platform/graphics/chromium/Canvas2DLayerChromium.cpp:
+        (WebCore::Canvas2DLayerChromium::~Canvas2DLayerChromium):
+        (WebCore::Canvas2DLayerChromium::setNeedsDisplayRect):
+        * platform/graphics/chromium/RateLimiter.cpp:
+        (WebCore::RateLimiter::create):
+        (WebCore::RateLimiter::RateLimiter):
+        (WebCore::RateLimiter::start):
+        (WebCore::RateLimiter::rateLimitContext):
+        * platform/graphics/chromium/RateLimiter.h:
+        (WebKit):
+        (RateLimiter):
+        * platform/graphics/chromium/TextureLayerChromium.cpp:
+        (WebCore::TextureLayerChromium::~TextureLayerChromium):
+        (WebCore::TextureLayerChromium::setRateLimitContext):
+        (WebCore::TextureLayerChromium::setNeedsDisplayRect):
+        * platform/graphics/chromium/cc/CCLayerTreeHost.cpp:
+        (WebCore::CCLayerTreeHost::startRateLimiter):
+        (WebCore::CCLayerTreeHost::stopRateLimiter):
+        (WebCore::CCLayerTreeHost::rateLimit):
+        (WebCore):
+        * platform/graphics/chromium/cc/CCLayerTreeHost.h:
+        (CCLayerTreeHost):
+
+2012-06-11  Dana Jansens  <danakj@chromium.org>
+
+        [chromium] Separate CCVideoDrawQuad and from the layer tree and video provider by removing ManagedTexture and WebVideoFrame pointers from the quad
+        https://bugs.webkit.org/show_bug.cgi?id=88363
+
+        Reviewed by Adrienne Walker.
+
+        CCVideoDrawQuad should not contain any pointers to data in the layer
+        tree so we are able to serialize it across process boundaries. This
+        patch removes the ManagedTexture pointers from the quad class,
+        replacing them with texture ids. It removes the WebVideoFrame* from
+        the quad, replacing it with the frame provider's texture id included
+        in the WebVideoFrame structure. And it uses a WebTransformationMatrix
+        instead of a pointer to an array of floats.
+
+        Texture allocation is done in CCVideoLayerImpl via the
+        contentsTextureAllocator, so that the memory usage can be tracked.
+
+        We move the copyPlaneToTextures() method back from LayerRendererChromium
+        to CCVideoLayerImpl, as this method uses the texture data pointer in the
+        WebVideoFrame, and we do not want to give this pointer to the quad
+        class. Instead, this method makes use of the LayerTextureSubImage class
+        to copy the pixel data into the texture.
+
+        LayerTextureSubImage is updated to allow non-4byte texture formats.
+
+        * platform/graphics/chromium/LayerRendererChromium.cpp:
+        (WebCore::LayerRendererChromium::drawYUV):
+        (WebCore::LayerRendererChromium::drawRGBA):
+        (WebCore::LayerRendererChromium::drawNativeTexture2D):
+        (WebCore::LayerRendererChromium::drawStreamTexture):
+        (WebCore::LayerRendererChromium::drawVideoQuad):
+        * platform/graphics/chromium/LayerTextureSubImage.cpp:
+        (WebCore::LayerTextureSubImage::uploadWithTexSubImage):
+        (WebCore::LayerTextureSubImage::uploadWithMapTexSubImage):
+        * platform/graphics/chromium/TextureCopier.cpp:
+        * platform/graphics/chromium/cc/CCVideoDrawQuad.cpp:
+        (WebCore::CCVideoDrawQuad::create):
+        (WebCore::CCVideoDrawQuad::CCVideoDrawQuad):
+        * platform/graphics/chromium/cc/CCVideoDrawQuad.h:
+        (CCVideoDrawQuad):
+        (WebCore::CCVideoDrawQuad::planes):
+        (WebCore::CCVideoDrawQuad::frameProviderTextureId):
+        * platform/graphics/chromium/cc/CCVideoLayerImpl.cpp:
+        (WebCore::CCVideoLayerImpl::~CCVideoLayerImpl):
+        (WebCore::CCVideoLayerImpl::willDraw):
+        (WebCore::CCVideoLayerImpl::willDrawInternal):
+        (WebCore::CCVideoLayerImpl::appendQuads):
+        (WebCore::CCVideoLayerImpl::didDraw):
+        (WebCore::CCVideoLayerImpl::FramePlane::allocateData):
+        (WebCore):
+        (WebCore::CCVideoLayerImpl::FramePlane::freeData):
+        (WebCore::CCVideoLayerImpl::allocatePlaneData):
+        (WebCore::CCVideoLayerImpl::copyPlaneData):
+        (WebCore::CCVideoLayerImpl::freePlaneData):
+        (WebCore::CCVideoLayerImpl::freeUnusedPlaneData):
+        (WebCore::CCVideoLayerImpl::didLoseContext):
+        * platform/graphics/chromium/cc/CCVideoLayerImpl.h:
+        (FramePlane):
+        (WebCore::CCVideoLayerImpl::FramePlane::FramePlane):
+
+2012-06-11  Joshua Bell  <jsbell@chromium.org>
+
+        IndexedDB: Object stores are not successfully deleted
+        https://bugs.webkit.org/show_bug.cgi?id=88788
+
+        Reviewed by Tony Chang.
+
+        Discovered while working on http://webkit.org/b/83074 - object stores are not
+        being deleted from the backing store. Deletion would succeed in the in-memory
+        data structures, but after closing/re-opening the backing store the object store
+        (but not its indexes/data) would reappear. Due to 83074, this isn't detectable
+        by DRT without a full restart.
+
+        Test: [chromium] webkit_unit_tests --gtest_filter='IDBLevelDBCodingTest.ComparisonTest'
+
+        * Modules/indexeddb/IDBLevelDBCoding.cpp:
+        (WebCore::IDBLevelDBCoding::ObjectStoreMetaDataKey::compare):
+
+2012-06-05  Eric Uhrhane <ericu@chromium.org>
+
+        Crash in fast/files/read tests during Garbage Collection
+        https://bugs.webkit.org/show_bug.cgi?id=87165
+
+        Reviewed by Michael Saboff
+
+        Fix previous fix for hasPendingActivity, and fix a bug in a complex
+        abort case as well--abort during the final progress event of a write
+        would hang the writer.
+
+        * Modules/filesystem/FileWriter.cpp:
+        (WebCore::FileWriter::stop):
+        (WebCore::FileWriter::write):
+        (WebCore::FileWriter::truncate):
+        (WebCore::FileWriter::didWrite):
+        (WebCore::FileWriter::didTruncate):
+        (WebCore::FileWriter::didFail):
+        (WebCore::FileWriter::completeAbort):
+        (WebCore::FileWriter::doOperation):
+        (WebCore::FileWriter::signalCompletion):
+
+2012-06-11  Shawn Singh  <shawnsingh@chromium.org>
+
+        [chromium] Implement position:fixed in compositor thread
+        https://bugs.webkit.org/show_bug.cgi?id=70103
+
+        Reviewed by Adrienne Walker.
+
+        Significant contributions to this patch by Alpha Lam and Sami Kyostila.
+
+        This patch is the compositor-side change that adds support for
+        fixed-position layers to be composited layers. Before this patch,
+        fixed-position elements were positioned only by WebCore (i.e. main
+        thread when painting), and the compositor did not have enough
+        knowledge on its own to position it properly. This patch adds the
+        necessary math and plumbs the necessary layer information so that
+        the impl thread can properly position fixed-position elements on
+        its own. This support is necessary for correctness of composited
+        fixed-position elements, which can greatly help to avoid
+        repainting container layers when scrolling with a fixed-position
+        layer.
+
+        There also needs to be WebCore-side support for this, which is
+        addressed in https://bugs.webkit.org/show_bug.cgi?id=78864
+
+        Unit tests added to CCLayerTreeHostCommonTest:
+          CCLayerTreeHostCommonTest.verifyScrollCompensationForFixedPositionLayerWithDirectContainer
+          CCLayerTreeHostCommonTest.verifyScrollCompensationForFixedPositionLayerWithTransformedDirectContainer
+          CCLayerTreeHostCommonTest.verifyScrollCompensationForFixedPositionLayerWithDistantContainer
+          CCLayerTreeHostCommonTest.verifyScrollCompensationForFixedPositionLayerWithDistantContainerAndTransforms
+          CCLayerTreeHostCommonTest.verifyScrollCompensationForFixedPositionLayerWithMultipleScrollDeltas
+          CCLayerTreeHostCommonTest.verifyScrollCompensationForFixedPositionLayerWithIntermediateSurfaceAndTransforms
+          CCLayerTreeHostCommonTest.verifyScrollCompensationForFixedPositionLayerWithMultipleIntermediateSurfaces
+          CCLayerTreeHostCommonTest.verifyScrollCompensationForFixedPositionLayerWithContainerLayerThatHasSurface
+          CCLayerTreeHostCommonTest.verifyScrollCompensationForFixedPositionLayerThatIsAlsoFixedPositionContainer
+          CCLayerTreeHostCommonTest.verifyScrollCompensationForFixedPositionLayerThatHasNoContainer
+
+        * platform/graphics/chromium/LayerChromium.cpp:
+        (WebCore::LayerChromium::LayerChromium):
+        (WebCore::LayerChromium::pushPropertiesTo):
+        * platform/graphics/chromium/LayerChromium.h:
+        (WebCore::LayerChromium::setIsContainerForFixedPositionLayers):
+        (WebCore::LayerChromium::isContainerForFixedPositionLayers):
+        (LayerChromium):
+        (WebCore::LayerChromium::setFixedToContainerLayerVisibleRect):
+        (WebCore::LayerChromium::fixedToContainerLayerVisibleRect):
+        * platform/graphics/chromium/cc/CCLayerImpl.cpp:
+        (WebCore::CCLayerImpl::CCLayerImpl):
+        * platform/graphics/chromium/cc/CCLayerImpl.h:
+        (WebCore::CCLayerImpl::setIsContainerForFixedPositionLayers):
+        (WebCore::CCLayerImpl::isContainerForFixedPositionLayers):
+        (CCLayerImpl):
+        (WebCore::CCLayerImpl::setFixedToContainerLayerVisibleRect):
+        (WebCore::CCLayerImpl::fixedToContainerLayerVisibleRect):
+        * platform/graphics/chromium/cc/CCLayerTreeHostCommon.cpp:
+        (WebCore::computeScrollCompensationForThisLayer):
+        (WebCore):
+        (WebCore::computeScrollCompensationMatrixForChildren):
+        (WebCore::calculateDrawTransformsInternal):
+        (WebCore::CCLayerTreeHostCommon::calculateDrawTransforms):
+
+2012-06-11  Sam Weinig  <sam@webkit.org>
+
+        Remove support for disconnected/excluded from search frames, they are not used by Safari anymore
+        https://bugs.webkit.org/show_bug.cgi?id=88723
+
+        Reviewed by Dan Bernstein.
+
+        * WebCore.exp.in:
+        Update export.
+        * editing/Editor.cpp:
+        (WebCore::Editor::rangeOfString):
+        (WebCore::Editor::countMatchesForText):
+        * editing/Editor.h:
+        (Editor):
+        * loader/FrameLoader.cpp:
+        (WebCore::FrameLoader::findFrameForNavigation):
+        * page/DOMWindow.cpp:
+        (WebCore::DOMWindow::parent):
+        (WebCore::DOMWindow::top):
+        * page/EventHandler.cpp:
+        (WebCore::EventHandler::hitTestResultAtPoint):
+        * page/Frame.cpp:
+        (WebCore::Frame::Frame):
+        * page/Frame.h:
+        (Frame):
+        * page/FrameTree.cpp:
+        (WebCore::FrameTree::parent):
+        (WebCore::FrameTree::top):
+        * page/FrameTree.h:
+        (FrameTree):
+        * page/Location.cpp:
+        (WebCore::Location::ancestorOrigins):
+        * xml/XMLTreeViewer.cpp:
+        (WebCore::XMLTreeViewer::hasNoStyleInformation):
+        Update for the removal of disconnected frames and text search exclusions concepts.
+
+2012-06-11  Xianzhu Wang  <wangxianzhu@chromium.org>
 
         SVGImageCache leaks image data
         https://bugs.webkit.org/show_bug.cgi?id=87792

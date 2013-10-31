@@ -53,11 +53,11 @@ public:
 
     LayerHostingMode layerHostingMode() { return m_layerHostingMode; }
 
+    void setColorSpace(CGColorSpaceRef);
+    CGColorSpaceRef colorSpace() const;
+
 private:
-    LayerHostingContext(mach_port_t serverPort);
-#if HAVE(LAYER_HOSTING_IN_WINDOW_SERVER)
     LayerHostingContext();
-#endif
 
     LayerHostingMode m_layerHostingMode;
     RetainPtr<WKCAContextRef> m_context;

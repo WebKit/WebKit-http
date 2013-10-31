@@ -1,3 +1,66 @@
+2012-06-11  Jonathan Dong  <jonathan.dong@torchmobile.com.cn>
+
+        [BlackBerry] Autofill feature implementation for BlackBerry porting
+        https://bugs.webkit.org/show_bug.cgi?id=85577
+
+        Reviewed by Rob Buis.
+
+        Remove the autofill saving procedure out of dispatchWillSubmitForm, this procedure
+        is same as the procedure in dispatchWillSendSubmitEvent.
+        Some sites will redirect to other url in its login process, which will cause the
+        user get notified to save credentials for this provisional redirecting url if we
+        put this saving procedure in dispatchWillSubmitForm. So we should remove it to make
+        sure we only save the autofill data before the submit event is fired.
+
+        * WebCoreSupport/FrameLoaderClientBlackBerry.cpp:
+        (WebCore::FrameLoaderClientBlackBerry::dispatchWillSubmitForm):
+
+2012-06-11  Antonio Gomes  <agomes@rim.com>
+
+        [BlackBerry] [BlackBerry] browser video player fullscreen mode (portrait) does not play well with rotation
+        https://bugs.webkit.org/show_bug.cgi?id=88809
+
+        Reviewed by Rob Buis.
+
+        Adjust the media container dimensions, whenever the FrameView::frameRect
+        (aka viewport rect) changes
+
+        Reviewed internally by Jacky Jiang.
+
+        * Api/WebPage.cpp:
+        (BlackBerry::WebKit::WebPagePrivate::updateViewportSize):
+        * WebCoreSupport/ChromeClientBlackBerry.cpp:
+        (WebCore::ChromeClientBlackBerry::fullScreenRendererChanged):
+
+2012-06-09  Antonio Gomes  <agomes@rim.com>
+
+        [BlackBerry] browser video player fullscreen mode (portrait) does not play well with viewport metatag - Controls are off screen so cannot exit fullscreen
+        https://bugs.webkit.org/show_bug.cgi?id=88719
+        PR #164026
+
+        Reviewed by Rob Buis.
+
+        Instead of using WebPage's viewport size, which suffers from
+        dealing with transformed coordinates, viewport metatag changes,
+        etc, lets use WebCore::FrameView's visibleContentRect::Size::Width,
+        which abstract all these variations.
+
+        It fixes an overscale issue we were having when video player entered
+        fullscreen, and webpage had viewport metatag set.
+
+        * WebCoreSupport/ChromeClientBlackBerry.cpp:
+        (WebCore::ChromeClientBlackBerry::fullScreenRendererChanged):
+
+2012-06-11  Sam Weinig  <sam@webkit.org>
+
+        Remove support for disconnected/excluded from search frames, they are not used by Safari anymore
+        https://bugs.webkit.org/show_bug.cgi?id=88723
+
+        Reviewed by Dan Bernstein.
+
+        * WebKitSupport/InPageSearchManager.cpp:
+        (BlackBerry::WebKit::InPageSearchManager::scopeStringMatches):
+
 2012-06-10  Antonio Gomes  <agomes@rim.com>
 
         [BlackBerry] Make media (<video> and <audio>) slide draggable again
