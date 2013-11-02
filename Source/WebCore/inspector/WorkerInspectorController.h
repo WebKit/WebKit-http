@@ -48,8 +48,6 @@ class InspectorFrontend;
 class InspectorFrontendChannel;
 class InspectorInstrumentation;
 class InspectorRuntimeAgent;
-class InspectorState;
-class InspectorStateClient;
 class InstrumentingAgents;
 class WorkerGlobalScope;
 
@@ -63,7 +61,6 @@ public:
     bool hasFrontend() const { return m_frontend; }
     void connectFrontend();
     void disconnectFrontend();
-    void restoreInspectorStateFromCookie(const String& inspectorCookie);
     void dispatchMessageFromFrontend(const String&);
 #if ENABLE(JAVASCRIPT_DEBUGGER)
     void resume();
@@ -73,8 +70,6 @@ private:
     friend InstrumentingAgents* instrumentationForWorkerGlobalScope(WorkerGlobalScope*);
 
     WorkerGlobalScope* m_workerGlobalScope;
-    OwnPtr<InspectorStateClient> m_stateClient;
-    OwnPtr<InspectorCompositeState> m_state;
     RefPtr<InstrumentingAgents> m_instrumentingAgents;
     OwnPtr<InjectedScriptManager> m_injectedScriptManager;
     InspectorRuntimeAgent* m_runtimeAgent;

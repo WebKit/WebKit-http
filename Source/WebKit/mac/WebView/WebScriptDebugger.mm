@@ -68,7 +68,7 @@ static NSURL *toNSURL(const String& s)
 static WebFrame *toWebFrame(JSGlobalObject* globalObject)
 {
     JSDOMWindow* window = static_cast<JSDOMWindow*>(globalObject);
-    return kit(window->impl()->frame());
+    return kit(window->impl().frame());
 }
 
 WebScriptDebugger::WebScriptDebugger(JSGlobalObject* globalObject)
@@ -76,6 +76,7 @@ WebScriptDebugger::WebScriptDebugger(JSGlobalObject* globalObject)
     , m_globalObject(globalObject->vm(), globalObject)
 {
     attach(globalObject);
+    setNeedsExceptionCallbacks(true);
 }
 
 // callbacks - relay to delegate

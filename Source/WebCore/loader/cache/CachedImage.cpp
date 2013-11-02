@@ -38,6 +38,7 @@
 #include "Page.h"
 #include "RenderElement.h"
 #include "ResourceBuffer.h"
+#include "SecurityOrigin.h"
 #include "Settings.h"
 #include "SubresourceLoader.h"
 #include <wtf/CurrentTime.h>
@@ -55,8 +56,6 @@
 #if ENABLE(DISK_IMAGE_CACHE)
 #include "DiskImageCacheIOS.h"
 #endif
-
-using std::max;
 
 namespace WebCore {
 
@@ -260,8 +259,21 @@ LayoutSize CachedImage::imageSizeForRenderer(const RenderObject* renderer, float
 
     LayoutSize imageSize;
 
+#if ENABLE(CSS_IMAGE_ORIENTATION)
+    if (!renderer)
+        return IntSize();
+
+    ImageOrientationDescription orientationDescription(renderer->shouldRespectImageOrientation());
+    orientationDescription.setImageOrientationEnum(renderer->style().imageOrientation());
+
+    if (m_image->isBitmapImage()
+        && (orientationDescription.respectImageOrientation() == RespectImageOrientation && orientationDescription.imageOrientation() != DefaultImageOrientation))
+        imageSize = static_cast<BitmapImage*>(m_image.get())->sizeRespectingOrientation(orientationDescription);
+#else
     if (m_image->isBitmapImage() && (renderer && renderer->shouldRespectImageOrientation() == RespectImageOrientation))
         imageSize = static_cast<BitmapImage*>(m_image.get())->sizeRespectingOrientation();
+#endif
+
 #if ENABLE(SVG)
     else if (m_image->isSVGImage() && sizeType == UsedSize) {
         imageSize = m_svgImageCache->imageSizeForRenderer(renderer);
@@ -572,5 +584,14 @@ void CachedImage::useDiskImageCache()
     m_data->sharedBuffer()->allowToBeMemoryMapped();
 }
 #endif
+
+bool CachedImage::isOriginClean(SecurityOrigin* securityOrigin)
+{
+    if (!image()->hasSingleSecurityOrigin())
+        return false;
+    if (passesAccessControlCheck(securityOrigin))
+        return true;
+    return !securityOrigin->taintsCanvas(response().url());
+}
 
 } // namespace WebCore

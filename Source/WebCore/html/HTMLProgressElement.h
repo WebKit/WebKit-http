@@ -54,7 +54,7 @@ private:
     virtual bool shouldAppearIndeterminate() const OVERRIDE;
     virtual bool supportLabels() const OVERRIDE { return true; }
 
-    virtual RenderElement* createRenderer(RenderArena&, RenderStyle&) OVERRIDE;
+    virtual RenderElement* createRenderer(PassRef<RenderStyle>) OVERRIDE;
     virtual bool childShouldCreateRenderer(const Node*) const OVERRIDE;
     RenderProgress* renderProgress() const;
 
@@ -69,7 +69,7 @@ private:
     ProgressValueElement* m_value;
 };
 
-ELEMENT_TYPE_CASTS(HTMLProgressElement)
+NODE_TYPE_CASTS(HTMLProgressElement)
 
 } // namespace
 

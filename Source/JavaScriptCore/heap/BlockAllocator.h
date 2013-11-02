@@ -26,6 +26,7 @@
 #ifndef BlockAllocator_h
 #define BlockAllocator_h
 
+#include "GCActivityCallback.h"
 #include "HeapBlock.h"
 #include "Region.h"
 #include <wtf/DoublyLinkedList.h>
@@ -62,6 +63,7 @@ private:
     void waitForRelativeTimeWhileHoldingLock(double relative);
     void waitForRelativeTime(double relative);
 
+    friend ThreadIdentifier createBlockFreeingThread(BlockAllocator*);
     void blockFreeingThreadMain();
     static void blockFreeingThreadStartFunc(void* heap);
 
@@ -200,6 +202,9 @@ inline void BlockAllocator::deallocate(T* block)
         MutexLocker mutexLocker(m_emptyRegionConditionLock);
         m_emptyRegionCondition.signal();
     }
+
+    if (!m_blockFreeingThread)
+        releaseFreeRegions();
 }
 
 template<typename T>
@@ -248,37 +253,37 @@ inline BlockAllocator::RegionSet& BlockAllocator::regionSetFor<HandleBlock>()
 }
 
 template <>
-inline BlockAllocator::RegionSet& BlockAllocator::regionSetFor<HeapBlock<CopiedBlock> >()
+inline BlockAllocator::RegionSet& BlockAllocator::regionSetFor<HeapBlock<CopiedBlock>>()
 {
     return m_copiedRegionSet;
 }
 
 template <>
-inline BlockAllocator::RegionSet& BlockAllocator::regionSetFor<HeapBlock<MarkedBlock> >()
+inline BlockAllocator::RegionSet& BlockAllocator::regionSetFor<HeapBlock<MarkedBlock>>()
 {
     return m_markedRegionSet;
 }
 
 template <>
-inline BlockAllocator::RegionSet& BlockAllocator::regionSetFor<HeapBlock<WeakBlock> >()
+inline BlockAllocator::RegionSet& BlockAllocator::regionSetFor<HeapBlock<WeakBlock>>()
 {
     return m_fourKBBlockRegionSet;
 }
 
 template <>
-inline BlockAllocator::RegionSet& BlockAllocator::regionSetFor<HeapBlock<MarkStackSegment> >()
+inline BlockAllocator::RegionSet& BlockAllocator::regionSetFor<HeapBlock<MarkStackSegment>>()
 {
     return m_fourKBBlockRegionSet;
 }
 
 template <>
-inline BlockAllocator::RegionSet& BlockAllocator::regionSetFor<HeapBlock<CopyWorkListSegment> >()
+inline BlockAllocator::RegionSet& BlockAllocator::regionSetFor<HeapBlock<CopyWorkListSegment>>()
 {
     return m_workListRegionSet;
 }
 
 template <>
-inline BlockAllocator::RegionSet& BlockAllocator::regionSetFor<HeapBlock<HandleBlock> >()
+inline BlockAllocator::RegionSet& BlockAllocator::regionSetFor<HeapBlock<HandleBlock>>()
 {
     return m_fourKBBlockRegionSet;
 }

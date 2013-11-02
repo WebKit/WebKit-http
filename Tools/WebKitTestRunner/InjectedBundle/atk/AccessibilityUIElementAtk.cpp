@@ -421,6 +421,10 @@ String attributesOfElement(AccessibilityUIElement* element)
     builder.append(String::format("AXRequired: %d\n", element->isRequired()));
     builder.append(String::format("AXChecked: %d\n", element->isChecked()));
 
+    String url = element->url()->string();
+    if (!url.isEmpty())
+        builder.append(String::format("%s\n", url.utf8().data()));
+
     // We append the ATK specific attributes as a single line at the end.
     builder.append("AXPlatformAttributes: ");
     builder.append(getAtkAttributeSetAsString(element->platformUIElement().get(), ObjectAttributeType));
@@ -864,14 +868,30 @@ double AccessibilityUIElement::height()
 
 double AccessibilityUIElement::clickPointX()
 {
-    // FIXME: implement
-    return 0;
+    if (!ATK_IS_COMPONENT(m_element.get()))
+        return 0;
+
+    int x, y;
+    atk_component_get_position(ATK_COMPONENT(m_element.get()), &x, &y, ATK_XY_WINDOW);
+
+    int width, height;
+    atk_component_get_size(ATK_COMPONENT(m_element.get()), &width, &height);
+
+    return x + width / 2.0;
 }
 
 double AccessibilityUIElement::clickPointY()
 {
-    // FIXME: implement
-    return 0;
+    if (!ATK_IS_COMPONENT(m_element.get()))
+        return 0;
+
+    int x, y;
+    atk_component_get_position(ATK_COMPONENT(m_element.get()), &x, &y, ATK_XY_WINDOW);
+
+    int width, height;
+    atk_component_get_size(ATK_COMPONENT(m_element.get()), &width, &height);
+
+    return y + height / 2.0;
 }
 
 double AccessibilityUIElement::intValue() const
@@ -1155,13 +1175,22 @@ PassRefPtr<AccessibilityUIElement> AccessibilityUIElement::verticalScrollbar() c
 
 JSRetainPtr<JSStringRef> AccessibilityUIElement::selectedTextRange()
 {
-    // FIXME: implement
-    return JSStringCreateWithCharacters(0, 0);
+    if (!ATK_IS_TEXT(m_element.get()))
+        return JSStringCreateWithCharacters(0, 0);
+
+    gint start, end;
+    g_free(atk_text_get_selection(ATK_TEXT(m_element.get()), 0, &start, &end));
+
+    GOwnPtr<gchar> selection(g_strdup_printf("{%d, %d}", start, end - start));
+    return JSStringCreateWithUTF8CString(selection.get());
 }
 
 void AccessibilityUIElement::setSelectedTextRange(unsigned location, unsigned length)
 {
-    // FIXME: implement
+    if (!ATK_IS_TEXT(m_element.get()))
+        return;
+
+    atk_text_set_selection(ATK_TEXT(m_element.get()), 0, location, location + length);
 }
 
 void AccessibilityUIElement::increment()
@@ -1225,8 +1254,16 @@ JSRetainPtr<JSStringRef> AccessibilityUIElement::documentURI()
 
 JSRetainPtr<JSStringRef> AccessibilityUIElement::url()
 {
-    // FIXME: implement
-    return JSStringCreateWithCharacters(0, 0);
+    if (!ATK_IS_HYPERLINK_IMPL(m_element.get()))
+        return JSStringCreateWithCharacters(0, 0);
+
+    AtkHyperlink* hyperlink = atk_hyperlink_impl_get_hyperlink(ATK_HYPERLINK_IMPL(m_element.get()));
+    GOwnPtr<char> hyperlinkURI(atk_hyperlink_get_uri(hyperlink, 0));
+
+    // Build the result string, stripping the absolute URL paths if present.
+    char* localURI = g_strstr_len(hyperlinkURI.get(), -1, "LayoutTests");
+    String axURL = String::format("AXURL: %s", localURI ? localURI : hyperlinkURI.get());
+    return JSStringCreateWithUTF8CString(axURL.utf8().data());
 }
 
 bool AccessibilityUIElement::addNotificationListener(JSValueRef functionCallback)
@@ -1365,6 +1402,18 @@ PassRefPtr<AccessibilityTextMarker> AccessibilityUIElement::startTextMarkerForTe
 }
 
 PassRefPtr<AccessibilityTextMarker> AccessibilityUIElement::endTextMarkerForTextMarkerRange(AccessibilityTextMarkerRange* range)
+{
+    // FIXME: implement
+    return 0;
+}
+
+PassRefPtr<AccessibilityTextMarker> AccessibilityUIElement::endTextMarkerForBounds(int x, int y, int width, int height)
+{
+    // FIXME: implement
+    return 0;
+}
+
+PassRefPtr<AccessibilityTextMarker> AccessibilityUIElement::startTextMarkerForBounds(int x, int y, int width, int height)
 {
     // FIXME: implement
     return 0;

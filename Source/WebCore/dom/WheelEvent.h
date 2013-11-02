@@ -25,7 +25,6 @@
 #ifndef WheelEvent_h
 #define WheelEvent_h
 
-#include "EventDispatchMediator.h"
 #include "FloatPoint.h"
 #include "MouseEvent.h"
 
@@ -109,15 +108,6 @@ private:
     double m_deltaZ;
     unsigned m_deltaMode;
     bool m_directionInvertedFromDevice;
-};
-
-class WheelEventDispatchMediator : public EventDispatchMediator {
-public:
-    static PassRefPtr<WheelEventDispatchMediator> create(const PlatformWheelEvent&, PassRefPtr<AbstractView>);
-private:
-    WheelEventDispatchMediator(const PlatformWheelEvent&, PassRefPtr<AbstractView>);
-    WheelEvent* event() const;
-    virtual bool mediateAndDispatchEvent(EventDispatcher*) const OVERRIDE;
 };
 
 } // namespace WebCore

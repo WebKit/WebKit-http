@@ -33,6 +33,7 @@
 
 namespace WebCore {
 
+class RenderTextControlInnerBlock;
 class SpeechInput;
 
 class TextControlInnerContainer FINAL : public HTMLDivElement {
@@ -40,7 +41,7 @@ public:
     static PassRefPtr<TextControlInnerContainer> create(Document&);
 protected:
     TextControlInnerContainer(Document&);
-    virtual RenderElement* createRenderer(RenderArena&, RenderStyle&) OVERRIDE;
+    virtual RenderElement* createRenderer(PassRef<RenderStyle>) OVERRIDE;
 };
 
 class TextControlInnerElement FINAL : public HTMLDivElement {
@@ -61,12 +62,19 @@ public:
 
     virtual void defaultEventHandler(Event*) OVERRIDE;
 
+    RenderTextControlInnerBlock* renderer() const;
+
 private:
     TextControlInnerTextElement(Document&);
-    virtual RenderElement* createRenderer(RenderArena&, RenderStyle&) OVERRIDE;
+    virtual RenderElement* createRenderer(PassRef<RenderStyle>) OVERRIDE;
     virtual PassRefPtr<RenderStyle> customStyleForRenderer() OVERRIDE;
     virtual bool isMouseFocusable() const OVERRIDE { return false; }
+    virtual bool isTextControlInnerTextElement() const OVERRIDE { return true; }
 };
+
+inline bool isTextControlInnerTextElement(const HTMLElement& element) { return element.isTextControlInnerTextElement(); }
+inline bool isTextControlInnerTextElement(const Node& node) { return node.isHTMLElement() && isTextControlInnerTextElement(toHTMLElement(node)); }
+NODE_TYPE_CASTS(TextControlInnerTextElement)
 
 class SearchFieldResultsButtonElement FINAL : public HTMLDivElement {
 public:

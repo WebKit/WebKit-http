@@ -26,8 +26,7 @@
 #include "InlineFlowBox.h"
 #include "Page.h"
 #include "PaintInfo.h"
-#include "RenderArena.h"
-#include "RenderBlock.h"
+#include "RenderBlockFlow.h"
 #include "RenderLineBreak.h"
 #include "RootInlineBox.h"
 
@@ -53,10 +52,6 @@ struct SameSizeAsInlineBox {
 COMPILE_ASSERT(sizeof(InlineBox) == sizeof(SameSizeAsInlineBox), InlineBox_size_guard);
 
 #if !ASSERT_DISABLED
-static bool inInlineBoxDetach;
-#endif
-
-#if !ASSERT_DISABLED
 InlineBox::~InlineBox()
 {
     if (!m_hasBadParent && m_parent)
@@ -64,36 +59,10 @@ InlineBox::~InlineBox()
 }
 #endif
 
-void InlineBox::remove()
+void InlineBox::removeFromParent()
 { 
     if (parent())
         parent()->removeChild(this);
-}
-
-void InlineBox::destroy(RenderArena& renderArena)
-{
-#if !ASSERT_DISABLED
-    inInlineBoxDetach = true;
-#endif
-    delete this;
-#if !ASSERT_DISABLED
-    inInlineBoxDetach = false;
-#endif
-
-    // Recover the size left there for us by operator delete and free the memory.
-    renderArena.free(*(size_t *)this, this);
-}
-
-void* InlineBox::operator new(size_t sz, RenderArena& renderArena)
-{
-    return renderArena.allocate(sz);
-}
-
-void InlineBox::operator delete(void* ptr, size_t sz)
-{
-    ASSERT(inInlineBoxDetach);
-    // Stash size where destroy can find it.
-    *(size_t *)ptr = sz;
 }
 
 #ifndef NDEBUG
@@ -187,7 +156,7 @@ void InlineBox::dirtyLineBoxes()
         curr->markDirty();
 }
 
-void InlineBox::deleteLine(RenderArena& arena)
+void InlineBox::deleteLine()
 {
     if (!m_bitfields.extracted()) {
         if (m_renderer.isBox())
@@ -195,7 +164,7 @@ void InlineBox::deleteLine(RenderArena& arena)
         else if (renderer().isLineBreak())
             toRenderLineBreak(renderer()).setInlineBoxWrapper(0);
     }
-    destroy(arena);
+    delete this;
 }
 
 void InlineBox::extractLine()
@@ -231,7 +200,7 @@ void InlineBox::paint(PaintInfo& paintInfo, const LayoutPoint& paintOffset, Layo
         return;
 
     LayoutPoint childPoint = paintOffset;
-    if (parent()->renderer().style()->isFlippedBlocksWritingMode() && renderer.isBox()) // Faster than calling containingBlock().
+    if (parent()->renderer().style().isFlippedBlocksWritingMode() && renderer.isBox()) // Faster than calling containingBlock().
         childPoint = m_renderer.containingBlock()->flipForWritingModeForChild(&toRenderBox(renderer), childPoint);
     
     // Paint all phases of replaced elements atomically, as though the replaced element established its
@@ -259,7 +228,7 @@ bool InlineBox::nodeAtPoint(const HitTestRequest& request, HitTestResult& result
     // own stacking context.  (See Appendix E.2, section 6.4 on inline block/table elements in the CSS2.1
     // specification.)
     LayoutPoint childPoint = accumulatedOffset;
-    if (parent()->renderer().style()->isFlippedBlocksWritingMode() && !renderer().isLineBreak()) // Faster than calling containingBlock().
+    if (parent()->renderer().style().isFlippedBlocksWritingMode() && !renderer().isLineBreak()) // Faster than calling containingBlock().
         childPoint = m_renderer.containingBlock()->flipForWritingModeForChild(&toRenderBox(renderer()), childPoint);
     
     return m_renderer.hitTest(request, result, locationInContainer, childPoint);
@@ -269,7 +238,7 @@ const RootInlineBox& InlineBox::root() const
 { 
     if (m_parent)
         return m_parent->root(); 
-    ASSERT(isRootInlineBox());
+    ASSERT_WITH_SECURITY_IMPLICATION(isRootInlineBox());
     return static_cast<const RootInlineBox&>(*this);
 }
 
@@ -277,7 +246,7 @@ RootInlineBox& InlineBox::root()
 { 
     if (m_parent)
         return m_parent->root(); 
-    ASSERT(isRootInlineBox());
+    ASSERT_WITH_SECURITY_IMPLICATION(isRootInlineBox());
     return static_cast<RootInlineBox&>(*this);
 }
 
@@ -364,10 +333,10 @@ void InlineBox::clearKnownToHaveNoOverflow()
 
 FloatPoint InlineBox::locationIncludingFlipping()
 {
-    if (!m_renderer.style()->isFlippedBlocksWritingMode())
+    if (!m_renderer.style().isFlippedBlocksWritingMode())
         return FloatPoint(x(), y());
-    RenderBlock& block = root().block();
-    if (block.style()->isHorizontalWritingMode())
+    RenderBlockFlow& block = root().blockFlow();
+    if (block.style().isHorizontalWritingMode())
         return FloatPoint(x(), block.height() - height() - y());
     else
         return FloatPoint(block.width() - width() - x(), y());
@@ -375,30 +344,30 @@ FloatPoint InlineBox::locationIncludingFlipping()
 
 void InlineBox::flipForWritingMode(FloatRect& rect)
 {
-    if (!m_renderer.style()->isFlippedBlocksWritingMode())
+    if (!m_renderer.style().isFlippedBlocksWritingMode())
         return;
-    root().block().flipForWritingMode(rect);
+    root().blockFlow().flipForWritingMode(rect);
 }
 
 FloatPoint InlineBox::flipForWritingMode(const FloatPoint& point)
 {
-    if (!m_renderer.style()->isFlippedBlocksWritingMode())
+    if (!m_renderer.style().isFlippedBlocksWritingMode())
         return point;
-    return root().block().flipForWritingMode(point);
+    return root().blockFlow().flipForWritingMode(point);
 }
 
 void InlineBox::flipForWritingMode(LayoutRect& rect)
 {
-    if (!m_renderer.style()->isFlippedBlocksWritingMode())
+    if (!m_renderer.style().isFlippedBlocksWritingMode())
         return;
-    root().block().flipForWritingMode(rect);
+    root().blockFlow().flipForWritingMode(rect);
 }
 
 LayoutPoint InlineBox::flipForWritingMode(const LayoutPoint& point)
 {
-    if (!m_renderer.style()->isFlippedBlocksWritingMode())
+    if (!m_renderer.style().isFlippedBlocksWritingMode())
         return point;
-    return root().block().flipForWritingMode(point);
+    return root().blockFlow().flipForWritingMode(point);
 }
 
 } // namespace WebCore

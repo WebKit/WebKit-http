@@ -32,15 +32,15 @@
 
 namespace WebCore {
     
-RenderSVGInline::RenderSVGInline(SVGGraphicsElement& element)
-    : RenderInline(&element)
+RenderSVGInline::RenderSVGInline(SVGGraphicsElement& element, PassRef<RenderStyle> style)
+    : RenderInline(element, std::move(style))
 {
     setAlwaysCreateLineBoxes();
 }
 
 InlineFlowBox* RenderSVGInline::createInlineFlowBox()
 {
-    InlineFlowBox* box = new (renderArena()) SVGInlineFlowBox(*this);
+    InlineFlowBox* box = new SVGInlineFlowBox(*this);
     box->setHasVirtualLogicalHeight();
     return box;
 }
@@ -102,33 +102,28 @@ void RenderSVGInline::absoluteQuads(Vector<FloatQuad>& quads, bool* wasFixed) co
 
 void RenderSVGInline::willBeDestroyed()
 {
-    SVGResourcesCache::clientDestroyed(this);
+    SVGResourcesCache::clientDestroyed(*this);
     RenderInline::willBeDestroyed();
-}
-
-void RenderSVGInline::styleWillChange(StyleDifference diff, const RenderStyle* newStyle)
-{
-    if (diff == StyleDifferenceLayout)
-        setNeedsBoundariesUpdate();
-    RenderInline::styleWillChange(diff, newStyle);
 }
 
 void RenderSVGInline::styleDidChange(StyleDifference diff, const RenderStyle* oldStyle)
 {
+    if (diff == StyleDifferenceLayout)
+        setNeedsBoundariesUpdate();
     RenderInline::styleDidChange(diff, oldStyle);
-    SVGResourcesCache::clientStyleChanged(this, diff, style());
+    SVGResourcesCache::clientStyleChanged(*this, diff, style());
 }
 
 void RenderSVGInline::addChild(RenderObject* child, RenderObject* beforeChild)
 {
     RenderInline::addChild(child, beforeChild);
-    SVGResourcesCache::clientWasAddedToTree(child, child->style());
+    SVGResourcesCache::clientWasAddedToTree(*child);
 
     if (RenderSVGText* textRenderer = RenderSVGText::locateRenderSVGTextAncestor(this))
         textRenderer->subtreeChildWasAdded(child);
 }
 
-void RenderSVGInline::removeChild(RenderObject* child)
+void RenderSVGInline::removeChild(RenderObject& child)
 {
     SVGResourcesCache::clientWillBeRemovedFromTree(child);
 
@@ -138,7 +133,7 @@ void RenderSVGInline::removeChild(RenderObject* child)
         return;
     }
     Vector<SVGTextLayoutAttributes*, 2> affectedAttributes;
-    textRenderer->subtreeChildWillBeRemoved(child, affectedAttributes);
+    textRenderer->subtreeChildWillBeRemoved(&child, affectedAttributes);
     RenderInline::removeChild(child);
     textRenderer->subtreeChildWasRemoved(affectedAttributes);
 }

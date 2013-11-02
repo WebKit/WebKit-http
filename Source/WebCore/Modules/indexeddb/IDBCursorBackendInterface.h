@@ -36,6 +36,7 @@ namespace WebCore {
 class IDBCallbacks;
 class IDBKey;
 class IDBRequest;
+class SharedBuffer;
 
 typedef int ExceptionCode;
 
@@ -49,6 +50,12 @@ public:
     virtual void prefetchContinue(int numberToFetch, PassRefPtr<IDBCallbacks>, ExceptionCode&) = 0;
     virtual void prefetchReset(int usedPrefetches, int unusedPrefetches) = 0;
     virtual void postSuccessHandlerCallback() = 0;
+
+    virtual IDBKey* key() const = 0;
+    virtual IDBKey* primaryKey() const = 0;
+    virtual SharedBuffer* value() const = 0;
+
+    virtual void close() = 0;
 };
 
 } // namespace WebCore

@@ -313,8 +313,8 @@ id <DOMEventTarget> kit(WebCore::EventTarget* eventTarget)
     if (!object->inherits(JSNode::info()))
         return nil;
 
-    WebCore::Node* node = jsCast<JSNode*>(object)->impl();
-    return kit(node);
+    WebCore::Node& node = jsCast<JSNode*>(object)->impl();
+    return kit(&node);
 }
 
 @end
@@ -382,7 +382,7 @@ id <DOMEventTarget> kit(WebCore::EventTarget* eventTarget)
     auto renderer = core(self)->renderer();
     if (!renderer)
         return nil;
-    return renderer->style()->font().primaryFont()->getNSFont();
+    return renderer->style().font().primaryFont()->getNSFont();
 }
 
 - (NSData *)_imageTIFFRepresentation

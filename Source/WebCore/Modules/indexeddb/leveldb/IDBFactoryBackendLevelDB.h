@@ -44,40 +44,44 @@ namespace WebCore {
 
 class DOMStringList;
 
-class IDBBackingStore;
-class IDBDatabaseBackendLevelDB;
+class IDBBackingStoreLevelDB;
+class IDBDatabaseBackendImpl;
 
 class IDBFactoryBackendLevelDB : public IDBFactoryBackendInterface {
 public:
-    static PassRefPtr<IDBFactoryBackendLevelDB> create()
+    static PassRefPtr<IDBFactoryBackendLevelDB> create(const String& databaseDirectory)
     {
-        return adoptRef(new IDBFactoryBackendLevelDB());
+        return adoptRef(new IDBFactoryBackendLevelDB(databaseDirectory));
     }
     virtual ~IDBFactoryBackendLevelDB();
 
     // Notifications from weak pointers.
-    virtual void removeIDBDatabaseBackend(const String& uniqueIdentifier);
+    virtual void removeIDBDatabaseBackend(const String& uniqueIdentifier) OVERRIDE FINAL;
 
-    virtual void getDatabaseNames(PassRefPtr<IDBCallbacks>, PassRefPtr<SecurityOrigin>, ScriptExecutionContext*, const String& dataDir);
-    virtual void open(const String& name, int64_t version, int64_t transactionId, PassRefPtr<IDBCallbacks>, PassRefPtr<IDBDatabaseCallbacks>, PassRefPtr<SecurityOrigin>, ScriptExecutionContext*, const String& dataDir);
+    virtual void getDatabaseNames(PassRefPtr<IDBCallbacks>, PassRefPtr<SecurityOrigin>, ScriptExecutionContext*, const String& dataDir) OVERRIDE FINAL;
+    virtual void open(const String& name, uint64_t version, int64_t transactionId, PassRefPtr<IDBCallbacks>, PassRefPtr<IDBDatabaseCallbacks>, const SecurityOrigin& openingOrigin, const SecurityOrigin& mainFrameOrigin) OVERRIDE FINAL;
 
-    virtual void deleteDatabase(const String& name, PassRefPtr<IDBCallbacks>, PassRefPtr<SecurityOrigin>, ScriptExecutionContext*, const String& dataDir);
+    virtual void deleteDatabase(const String& name, PassRefPtr<IDBCallbacks>, PassRefPtr<SecurityOrigin>, ScriptExecutionContext*, const String& dataDir) OVERRIDE FINAL;
+
+    virtual PassRefPtr<IDBTransactionBackendInterface> maybeCreateTransactionBackend(IDBDatabaseBackendInterface*, int64_t transactionId, PassRefPtr<IDBDatabaseCallbacks>, const Vector<int64_t>&, IndexedDB::TransactionMode) OVERRIDE FINAL;
+
+    virtual PassRefPtr<IDBCursorBackendInterface> createCursorBackend(IDBTransactionBackendInterface&, IDBBackingStoreInterface::Cursor&, IndexedDB::CursorType, IDBDatabaseBackendInterface::TaskType, int64_t objectStoreId);
 
 protected:
-    IDBFactoryBackendLevelDB();
-    virtual PassRefPtr<IDBBackingStore> openBackingStore(PassRefPtr<SecurityOrigin>, const String& dataDir);
+    virtual PassRefPtr<IDBBackingStoreLevelDB> openBackingStore(const SecurityOrigin&, const String& dataDir);
 
 private:
-    typedef HashMap<String, RefPtr<IDBDatabaseBackendLevelDB> > IDBDatabaseBackendMap;
+    explicit IDBFactoryBackendLevelDB(const String& databaseDirectory);
+
+    typedef HashMap<String, RefPtr<IDBDatabaseBackendImpl> > IDBDatabaseBackendMap;
     IDBDatabaseBackendMap m_databaseBackendMap;
 
-    typedef HashMap<String, WeakPtr<IDBBackingStore> > IDBBackingStoreMap;
-    IDBBackingStoreMap m_backingStoreMap;
+    typedef HashMap<String, WeakPtr<IDBBackingStoreLevelDB> > IDBBackingStoreLevelDBMap;
+    IDBBackingStoreLevelDBMap m_backingStoreMap;
 
-    HashSet<RefPtr<IDBBackingStore> > m_sessionOnlyBackingStores;
+    HashSet<RefPtr<IDBBackingStoreLevelDB> > m_sessionOnlyBackingStores;
 
-    // Only one instance of the factory should exist at any given time.
-    static IDBFactoryBackendLevelDB* idbFactoryBackendImpl;
+    String m_databaseDirectory;
 };
 
 } // namespace WebCore

@@ -58,9 +58,9 @@ PassRefPtr<TextControlInnerContainer> TextControlInnerContainer::create(Document
     return adoptRef(new TextControlInnerContainer(document));
 }
     
-RenderElement* TextControlInnerContainer::createRenderer(RenderArena& arena, RenderStyle&)
+RenderElement* TextControlInnerContainer::createRenderer(PassRef<RenderStyle> style)
 {
-    return new (arena) RenderTextControlInnerContainer(this);
+    return new RenderTextControlInnerContainer(*this, std::move(style));
 }
 
 TextControlInnerElement::TextControlInnerElement(Document& document)
@@ -77,7 +77,7 @@ PassRefPtr<TextControlInnerElement> TextControlInnerElement::create(Document& do
 PassRefPtr<RenderStyle> TextControlInnerElement::customStyleForRenderer()
 {
     RenderTextControlSingleLine* parentRenderer = toRenderTextControlSingleLine(shadowHost()->renderer());
-    return parentRenderer->createInnerBlockStyle(parentRenderer->style());
+    return parentRenderer->createInnerBlockStyle(&parentRenderer->style());
 }
 
 // ---------------------------
@@ -112,15 +112,20 @@ void TextControlInnerTextElement::defaultEventHandler(Event* event)
         HTMLDivElement::defaultEventHandler(event);
 }
 
-RenderElement* TextControlInnerTextElement::createRenderer(RenderArena& arena, RenderStyle&)
+RenderElement* TextControlInnerTextElement::createRenderer(PassRef<RenderStyle> style)
 {
-    return new (arena) RenderTextControlInnerBlock(this);
+    return new RenderTextControlInnerBlock(*this, std::move(style));
+}
+
+RenderTextControlInnerBlock* TextControlInnerTextElement::renderer() const
+{
+    return toRenderTextControlInnerBlock(HTMLDivElement::renderer());
 }
 
 PassRefPtr<RenderStyle> TextControlInnerTextElement::customStyleForRenderer()
 {
     RenderTextControl* parentRenderer = toRenderTextControl(shadowHost()->renderer());
-    return parentRenderer->createInnerTextStyle(parentRenderer->style());
+    return parentRenderer->createInnerTextStyle(&parentRenderer->style());
 }
 
 // ----------------------------

@@ -333,7 +333,8 @@ void Heap::reportAbandonedObjectGraph()
 
 void Heap::didAbandon(size_t bytes)
 {
-    m_activityCallback->didAllocate(m_bytesAllocated + m_bytesAbandoned);
+    if (m_activityCallback)
+        m_activityCallback->didAllocate(m_bytesAllocated + m_bytesAbandoned);
     m_bytesAbandoned += bytes;
 }
 
@@ -762,7 +763,8 @@ void Heap::collect(SweepToggle sweepToggle)
     m_operationInProgress = Collection;
     m_extraMemoryUsage = 0;
 
-    m_activityCallback->willCollect();
+    if (m_activityCallback)
+        m_activityCallback->willCollect();
 
     double lastGCStartTime = WTF::monotonicallyIncreasingTime();
     if (lastGCStartTime - m_lastCodeDiscardTime > minute) {
@@ -897,6 +899,11 @@ GCActivityCallback* Heap::activityCallback()
     return m_activityCallback.get();
 }
 
+void Heap::setIncrementalSweeper(PassOwnPtr<IncrementalSweeper> sweeper)
+{
+    m_sweeper = sweeper;
+}
+
 IncrementalSweeper* Heap::sweeper()
 {
     return m_sweeper.get();
@@ -904,12 +911,14 @@ IncrementalSweeper* Heap::sweeper()
 
 void Heap::setGarbageCollectionTimerEnabled(bool enable)
 {
-    activityCallback()->setEnabled(enable);
+    if (m_activityCallback)
+        m_activityCallback->setEnabled(enable);
 }
 
 void Heap::didAllocate(size_t bytes)
 {
-    m_activityCallback->didAllocate(m_bytesAllocated + m_bytesAbandoned);
+    if (m_activityCallback)
+        m_activityCallback->didAllocate(m_bytesAllocated + m_bytesAbandoned);
     m_bytesAllocated += bytes;
 }
 

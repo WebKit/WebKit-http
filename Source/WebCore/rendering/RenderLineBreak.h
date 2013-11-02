@@ -31,7 +31,7 @@ class Position;
 
 class RenderLineBreak FINAL : public RenderBoxModelObject {
 public:
-    explicit RenderLineBreak(HTMLElement&);
+    RenderLineBreak(HTMLElement&, PassRef<RenderStyle>);
     virtual ~RenderLineBreak();
 
     // FIXME: The lies here keep render tree dump based test results unchanged.
@@ -89,32 +89,7 @@ private:
     bool m_isWBR;
 };
 
-inline RenderLineBreak& toRenderLineBreak(RenderObject& object)
-{ 
-    ASSERT_WITH_SECURITY_IMPLICATION(object.isLineBreak());
-    return static_cast<RenderLineBreak&>(object);
-}
-
-inline const RenderLineBreak& toRenderLineBreak(const RenderObject& object)
-{
-    ASSERT_WITH_SECURITY_IMPLICATION(object.isLineBreak());
-    return static_cast<const RenderLineBreak&>(object);
-}
-
-inline RenderLineBreak* toRenderLineBreak(RenderObject* object)
-{ 
-    ASSERT_WITH_SECURITY_IMPLICATION(object->isLineBreak());
-    return static_cast<RenderLineBreak*>(object);
-}
-
-inline const RenderLineBreak* toRenderLineBreak(const RenderObject* object)
-{
-    ASSERT_WITH_SECURITY_IMPLICATION(object->isLineBreak());
-    return static_cast<const RenderLineBreak*>(object);
-}
-
-// This will catch anyone doing an unnecessary cast.
-void toRenderLineBreak(const RenderLineBreak&);
+RENDER_OBJECT_TYPE_CASTS(RenderLineBreak, isLineBreak())
 
 } // namespace WebCore
 

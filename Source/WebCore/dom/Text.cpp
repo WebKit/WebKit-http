@@ -41,8 +41,6 @@
 #include <wtf/text/CString.h>
 #include <wtf/text/StringBuilder.h>
 
-using namespace std;
-
 namespace WebCore {
 
 PassRefPtr<Text> Text::create(Document& document, const String& data)
@@ -87,7 +85,7 @@ PassRefPtr<Text> Text::splitText(unsigned offset, ExceptionCode& ec)
         document().textNodeSplit(this);
 
     if (renderer())
-        toRenderText(renderer())->setTextWithOffset(dataImpl(), 0, oldStr.length());
+        renderer()->setTextWithOffset(dataImpl(), 0, oldStr.length());
 
     return newText.release();
 }
@@ -191,16 +189,16 @@ static bool isSVGText(Text* text)
 }
 #endif
 
-RenderText* Text::createTextRenderer(RenderArena& arena, RenderStyle& style)
+RenderText* Text::createTextRenderer(RenderStyle& style)
 {
 #if ENABLE(SVG)
     if (isSVGText(this) || isSVGShadowText(this))
-        return new (arena) RenderSVGInlineText(*this, dataImpl());
+        return new RenderSVGInlineText(*this, dataImpl());
 #endif
     if (style.hasTextCombine())
-        return new (arena) RenderCombineText(*this, dataImpl());
+        return new RenderCombineText(*this, dataImpl());
 
-    return new (arena) RenderText(this, dataImpl());
+    return new RenderText(*this, dataImpl());
 }
 
 bool Text::childTypeAllowed(NodeType) const

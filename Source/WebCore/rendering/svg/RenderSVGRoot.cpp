@@ -56,8 +56,8 @@ using namespace std;
 
 namespace WebCore {
 
-RenderSVGRoot::RenderSVGRoot(SVGSVGElement& element)
-    : RenderReplaced(&element)
+RenderSVGRoot::RenderSVGRoot(SVGSVGElement& element, PassRef<RenderStyle> style)
+    : RenderReplaced(element, std::move(style))
     , m_objectBoundingBoxValid(false)
     , m_isLayoutSizeChanged(false)
     , m_needsBoundariesOrTransformUpdate(true)
@@ -148,11 +148,11 @@ LayoutUnit RenderSVGRoot::computeReplacedLogicalWidth(ShouldComputePreferred sho
     if (!m_containerSize.isEmpty())
         return m_containerSize.width();
 
-    if (style()->logicalWidth().isSpecified() || style()->logicalMaxWidth().isSpecified())
+    if (style().logicalWidth().isSpecified() || style().logicalMaxWidth().isSpecified())
         return RenderReplaced::computeReplacedLogicalWidth(shouldComputePreferred);
 
     if (svgSVGElement().widthAttributeEstablishesViewport())
-        return resolveLengthAttributeForSVG(svgSVGElement().intrinsicWidth(SVGSVGElement::IgnoreCSSProperties), style()->effectiveZoom(), containingBlock()->availableLogicalWidth(), &view());
+        return resolveLengthAttributeForSVG(svgSVGElement().intrinsicWidth(SVGSVGElement::IgnoreCSSProperties), style().effectiveZoom(), containingBlock()->availableLogicalWidth(), &view());
 
     // SVG embedded through object/embed/iframe.
     if (isEmbeddedThroughFrameContainingSVGDocument())
@@ -168,7 +168,7 @@ LayoutUnit RenderSVGRoot::computeReplacedLogicalHeight() const
     if (!m_containerSize.isEmpty())
         return m_containerSize.height();
 
-    if (style()->logicalHeight().isSpecified() || style()->logicalMaxHeight().isSpecified())
+    if (style().logicalHeight().isSpecified() || style().logicalMaxHeight().isSpecified())
         return RenderReplaced::computeReplacedLogicalHeight();
 
     if (svgSVGElement().heightAttributeEstablishesViewport()) {
@@ -178,12 +178,12 @@ LayoutUnit RenderSVGRoot::computeReplacedLogicalHeight() const
             ASSERT(cb);
             while (cb->isAnonymous() && !cb->isRenderView()) {
                 cb = cb->containingBlock();
-                cb->addPercentHeightDescendant(const_cast<RenderSVGRoot*>(this));
+                cb->addPercentHeightDescendant(const_cast<RenderSVGRoot&>(*this));
             }
         } else
-            RenderBlock::removePercentHeightDescendant(const_cast<RenderSVGRoot*>(this));
+            RenderBlock::removePercentHeightDescendant(const_cast<RenderSVGRoot&>(*this));
 
-        return resolveLengthAttributeForSVG(height, style()->effectiveZoom(), containingBlock()->availableLogicalHeight(IncludeMarginBorderPadding), &view());
+        return resolveLengthAttributeForSVG(height, style().effectiveZoom(), containingBlock()->availableLogicalHeight(IncludeMarginBorderPadding), &view());
     }
 
     // SVG embedded through object/embed/iframe.
@@ -287,7 +287,7 @@ void RenderSVGRoot::paintReplaced(PaintInfo& paintInfo, const LayoutPoint& paint
         SVGRenderingContext renderingContext;
         bool continueRendering = true;
         if (childPaintInfo.phase == PaintPhaseForeground) {
-            renderingContext.prepareToRenderSVGContent(this, childPaintInfo);
+            renderingContext.prepareToRenderSVGContent(*this, childPaintInfo);
             continueRendering = renderingContext.isRenderingPrepared();
         }
 
@@ -307,32 +307,27 @@ void RenderSVGRoot::paintReplaced(PaintInfo& paintInfo, const LayoutPoint& paint
 
 void RenderSVGRoot::willBeDestroyed()
 {
-    RenderBlock::removePercentHeightDescendant(const_cast<RenderSVGRoot*>(this));
+    RenderBlock::removePercentHeightDescendant(const_cast<RenderSVGRoot&>(*this));
 
-    SVGResourcesCache::clientDestroyed(this);
+    SVGResourcesCache::clientDestroyed(*this);
     RenderReplaced::willBeDestroyed();
-}
-
-void RenderSVGRoot::styleWillChange(StyleDifference diff, const RenderStyle* newStyle)
-{
-    if (diff == StyleDifferenceLayout)
-        setNeedsBoundariesUpdate();
-    RenderReplaced::styleWillChange(diff, newStyle);
 }
 
 void RenderSVGRoot::styleDidChange(StyleDifference diff, const RenderStyle* oldStyle)
 {
+    if (diff == StyleDifferenceLayout)
+        setNeedsBoundariesUpdate();
     RenderReplaced::styleDidChange(diff, oldStyle);
-    SVGResourcesCache::clientStyleChanged(this, diff, style());
+    SVGResourcesCache::clientStyleChanged(*this, diff, style());
 }
 
 void RenderSVGRoot::addChild(RenderObject* child, RenderObject* beforeChild)
 {
     RenderReplaced::addChild(child, beforeChild);
-    SVGResourcesCache::clientWasAddedToTree(child, child->style());
+    SVGResourcesCache::clientWasAddedToTree(*child);
 }
 
-void RenderSVGRoot::removeChild(RenderObject* child)
+void RenderSVGRoot::removeChild(RenderObject& child)
 {
     SVGResourcesCache::clientWillBeRemovedFromTree(child);
     RenderReplaced::removeChild(child);
@@ -342,7 +337,7 @@ void RenderSVGRoot::removeChild(RenderObject* child)
 // relative to our borderBox origin.  This method gives us exactly that.
 void RenderSVGRoot::buildLocalToBorderBoxTransform()
 {
-    float scale = style()->effectiveZoom();
+    float scale = style().effectiveZoom();
     SVGPoint translate = svgSVGElement().currentTranslate();
     LayoutSize borderAndPadding(borderLeft() + paddingLeft(), borderTop() + paddingTop());
     m_localToBorderBoxTransform = svgSVGElement().viewBoxToViewTransform(contentWidth() / scale, contentHeight() / scale);
@@ -373,8 +368,8 @@ void RenderSVGRoot::computeFloatRectForRepaint(const RenderLayerModelObject* rep
     // and then call RenderBox's method to handle all the normal CSS Box model bits
     repaintRect = m_localToBorderBoxTransform.mapRect(repaintRect);
 
-    const SVGRenderStyle* svgStyle = style()->svgStyle();
-    if (const ShadowData* shadow = svgStyle->shadow())
+    const SVGRenderStyle& svgStyle = style().svgStyle();
+    if (const ShadowData* shadow = svgStyle.shadow())
         shadow->adjustRectForShadow(repaintRect);
 
     // Apply initial viewport clip - not affected by overflow settings
@@ -404,7 +399,7 @@ const RenderObject* RenderSVGRoot::pushMappingToContainer(const RenderLayerModel
 void RenderSVGRoot::updateCachedBoundaries()
 {
     SVGRenderSupport::computeContainerBoundingBoxes(this, m_objectBoundingBox, m_objectBoundingBoxValid, m_strokeBoundingBox, m_repaintBoundingBoxExcludingShadow);
-    SVGRenderSupport::intersectRepaintRectWithResources(this, m_repaintBoundingBoxExcludingShadow);
+    SVGRenderSupport::intersectRepaintRectWithResources(*this, m_repaintBoundingBoxExcludingShadow);
     m_repaintBoundingBoxExcludingShadow.inflate(borderAndPaddingWidth());
 
     m_repaintBoundingBox = m_repaintBoundingBoxExcludingShadow;

@@ -208,9 +208,9 @@ void HTMLTextAreaElement::parseAttribute(const QualifiedName& name, const Atomic
         HTMLTextFormControlElement::parseAttribute(name, value);
 }
 
-RenderElement* HTMLTextAreaElement::createRenderer(RenderArena& arena, RenderStyle&)
+RenderElement* HTMLTextAreaElement::createRenderer(PassRef<RenderStyle> style)
 {
-    return new (arena) RenderTextControlMultiLine(*this);
+    return new RenderTextControlMultiLine(*this, std::move(style));
 }
 
 bool HTMLTextAreaElement::appendFormData(FormDataList& encoding, bool)
@@ -322,11 +322,10 @@ String HTMLTextAreaElement::sanitizeUserInputValue(const String& proposedValue, 
     return proposedValue.left(numCharactersInGraphemeClusters(proposedValue, maxLength));
 }
 
-HTMLElement* HTMLTextAreaElement::innerTextElement() const
+TextControlInnerTextElement* HTMLTextAreaElement::innerTextElement() const
 {
     Node* node = userAgentShadowRoot()->firstChild();
-    ASSERT(!node || node->hasTagName(divTag));
-    return toHTMLElement(node);
+    return toTextControlInnerTextElement(node);
 }
 
 void HTMLTextAreaElement::rendererWillBeDestroyed()

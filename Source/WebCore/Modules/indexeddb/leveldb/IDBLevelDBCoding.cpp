@@ -584,8 +584,8 @@ static int compareEncodedIDBKeys(const char*& ptrA, const char* limitA, const ch
 {
     ok = true;
     ASSERT(&ptrA != &ptrB);
-    ASSERT(ptrA < limitA);
-    ASSERT(ptrB < limitB);
+    ASSERT_WITH_SECURITY_IMPLICATION(ptrA < limitA);
+    ASSERT_WITH_SECURITY_IMPLICATION(ptrB < limitB);
     unsigned char typeA = *ptrA++;
     unsigned char typeB = *ptrB++;
 
@@ -1521,7 +1521,7 @@ int64_t IndexFreeListKey::indexId() const
 }
 
 // FIXME: We never use this to look up object store ids, because a mapping
-// is kept in the IDBDatabaseBackendLevelDB. Can the mapping become unreliable?
+// is kept in the IDBDatabaseBackendImpl. Can the mapping become unreliable?
 // Can we remove this?
 const char* ObjectStoreNamesKey::decode(const char* start, const char* limit, ObjectStoreNamesKey* result)
 {

@@ -532,7 +532,8 @@ public:
     Vector()
     {
     }
-    
+
+    // Unlike in std::vector, this constructor does not initialize POD types.
     explicit Vector(size_t size)
         : Base(size, size)
     {
@@ -772,15 +773,13 @@ Vector<T, inlineCapacity, OverflowHandler>& Vector<T, inlineCapacity, OverflowHa
 }
 
 template<typename T, size_t inlineCapacity, typename OverflowHandler>
-Vector<T, inlineCapacity, OverflowHandler>::Vector(Vector<T, inlineCapacity, OverflowHandler>&& other)
+inline Vector<T, inlineCapacity, OverflowHandler>::Vector(Vector<T, inlineCapacity, OverflowHandler>&& other)
 {
-    // It's a little weird to implement a move constructor using swap but this way we
-    // don't have to add a move constructor to VectorBuffer.
     swap(other);
 }
 
 template<typename T, size_t inlineCapacity, typename OverflowHandler>
-Vector<T, inlineCapacity, OverflowHandler>& Vector<T, inlineCapacity, OverflowHandler>::operator=(Vector<T, inlineCapacity, OverflowHandler>&& other)
+inline Vector<T, inlineCapacity, OverflowHandler>& Vector<T, inlineCapacity, OverflowHandler>::operator=(Vector<T, inlineCapacity, OverflowHandler>&& other)
 {
     swap(other);
     return *this;
@@ -1168,7 +1167,7 @@ inline void Vector<T, inlineCapacity, OverflowHandler>::checkConsistency()
 }
 
 template<typename T, size_t inlineCapacity, typename OverflowHandler>
-void deleteAllValues(const Vector<T, inlineCapacity, OverflowHandler>& collection)
+void deprecatedDeleteAllValues(const Vector<T, inlineCapacity, OverflowHandler>& collection)
 {
     typedef typename Vector<T, inlineCapacity, OverflowHandler>::const_iterator iterator;
     iterator end = collection.end();
@@ -1198,7 +1197,7 @@ inline bool operator!=(const Vector<T, inlineCapacity, OverflowHandler>& a, cons
 }
 
 #if !ASSERT_DISABLED
-template<typename T> struct ValueCheck<Vector<T> > {
+template<typename T> struct ValueCheck<Vector<T>> {
     typedef Vector<T> TraitType;
     static void checkConsistency(const Vector<T>& v)
     {

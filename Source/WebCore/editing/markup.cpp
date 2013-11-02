@@ -64,8 +64,6 @@
 #include "DeleteButtonController.h"
 #endif
 
-using namespace std;
-
 namespace WebCore {
 
 using namespace HTMLNames;
@@ -101,7 +99,8 @@ static void completeURLs(DocumentFragment* fragment, const String& baseURL)
 
     URL parsedBaseURL(ParsedURLString, baseURL);
 
-    for (auto element = elementDescendants(fragment).begin(), end = elementDescendants(fragment).end(); element != end; ++element) {
+    auto descendants = elementDescendants(*fragment);
+    for (auto element = descendants.begin(), end = descendants.end(); element != end; ++element) {
         if (!element->hasAttributes())
             continue;
         unsigned length = element->attributeCount();
@@ -749,7 +748,7 @@ static bool contextPreservesNewline(const Range& context)
     if (!container || !container->renderer())
         return false;
 
-    return container->renderer()->style()->preserveNewline();
+    return container->renderer()->style().preserveNewline();
 }
 
 PassRefPtr<DocumentFragment> createFragmentFromText(Range& context, const String& text)

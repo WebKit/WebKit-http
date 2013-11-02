@@ -71,12 +71,12 @@ def mysys(*cmd)
     raise "Command failed: #{$?.inspect}" unless system(*cmd)
 end
 
-numProcessors = `sysctl -n hw.availcpu`.to_i
-if numProcessors == 0
-    numProcessors = `nproc --all 2>/dev/null`.to_i
+$numProcessors = `sysctl -n hw.availcpu`.to_i
+if $numProcessors == 0
+    $numProcessors = `nproc --all 2>/dev/null`.to_i
 end
-if numProcessors == 0
-    numProcessors = 1
+if $numProcessors == 0
+    $numProcessors = 1
 end
 
 $jscPath = nil
@@ -186,7 +186,8 @@ def diffErrorHandler(expectedFilename)
         outp.puts "then"
         outp.puts "    (cat #{outputFilename} && echo ERROR: Unexpected exit code: `cat #{plan.failFile}`) | " + prefixCommand(plan.name)
         outp.puts "    " + plan.failCommand
-        outp.puts "else"
+        outp.puts "elif test -e #{Shellwords.shellescape(expectedFilename)}"
+        outp.puts "then"
         outp.puts "    diff -u #{Shellwords.shellescape(expectedFilename)} #{outputFilename} > #{diffFilename}"
         outp.puts "    if [ $? -eq 0 ]"
         outp.puts "    then"
@@ -195,6 +196,9 @@ def diffErrorHandler(expectedFilename)
         outp.puts "        (echo \"DIFF FAILURE!\" && cat #{diffFilename}) | " + prefixCommand(plan.name)
         outp.puts "        " + plan.failCommand
         outp.puts "    fi"
+        outp.puts "else"
+        outp.puts "    (echo \"NO EXPECTATION!\" && cat #{outputFilename}) | " + prefixCommand(plan.name)
+        outp.puts "    " + plan.failCommand
         outp.puts "fi"
     }
 end
@@ -269,6 +273,8 @@ def mozillaExit3ErrorHandler
     }
 end
 
+$runCommandOptions = {}
+
 class Plan
     attr_reader :directory, :arguments, :name, :outputHandler, :errorHandler
     attr_accessor :index
@@ -279,6 +285,7 @@ class Plan
         @name = name
         @outputHandler = outputHandler
         @errorHandler = errorHandler
+        @isSlow = !!$runCommandOptions[:isSlow]
     end
     
     def shellCommand
@@ -346,7 +353,12 @@ def baseOutputName(kind)
 end
 
 def addRunCommand(kind, command, outputHandler, errorHandler)
-    $runlist << Plan.new($benchmarkDirectory, command, baseOutputName(kind), outputHandler, errorHandler)
+    plan = Plan.new($benchmarkDirectory, command, baseOutputName(kind), outputHandler, errorHandler)
+    if $numProcessors > 1 and $runCommandOptions[:isSlow]
+        $runlist.unshift plan
+    else
+        $runlist << plan
+    end
 end
 
 # Returns true if there were run commands found in the file ($benchmarkDirectory +
@@ -373,12 +385,20 @@ def parseRunCommands
     didRun
 end
 
+def slow!
+    $runCommandOptions[:isSlow] = true
+end
+
 def run(kind, *options)
     addRunCommand(kind, [$jscPath.to_s] + options + [$benchmark.to_s], silentOutputHandler, simpleErrorHandler)
 end
 
 def runDefault
     run("default")
+end
+
+def runNoLLInt
+    run("no-llint", "--useLLInt=false")
 end
 
 def runNoCJIT
@@ -415,6 +435,7 @@ end
 
 def defaultRun
     runDefault
+    runNoLLInt
     runAlwaysTriggerCopyPhase
     runNoCJIT
     runDFGEager
@@ -424,6 +445,16 @@ def defaultRun
         runFTLNoCJIT
         runFTLEager
         runFTLEagerNoCJIT
+    end
+end
+
+def defaultQuickRun
+    if $enableFTL
+        runDefaultFTL
+        runFTLNoCJIT
+    else
+        runDefault
+        runNoCJIT
     end
 end
 
@@ -457,6 +488,10 @@ def runLayoutTestDefault
     runLayoutTest(nil)
 end
 
+def runLayoutTestNoLLInt
+    runLayoutTest("no-llint", "--useLLInt=false")
+end
+
 def runLayoutTestNoCJIT
     runLayoutTest("no-cjit", "--enableConcurrentJIT=false")
 end
@@ -467,6 +502,7 @@ end
 
 def defaultRunLayoutTest
     runLayoutTestDefault
+    runLayoutTestNoLLInt
     runLayoutTestNoCJIT
     runLayoutTestDFGEagerNoCJIT
 end
@@ -501,6 +537,10 @@ def runMozillaTestLLInt(mode, *extraFiles)
     runMozillaTest("llint", mode, extraFiles, "--useJIT=false")
 end
 
+def runMozillaTestBaselineJIT(mode, *extraFiles)
+    runMozillaTest("baseline", mode, extraFiles, "--useLLInt=false", "--useDFGJIT=false")
+end
+
 def runMozillaTestDFGEagerNoCJIT(mode, *extraFiles)
     runMozillaTest("dfg-eager-no-cjit", mode, extraFiles, "--enableConcurrentJIT=false", *EAGER_OPTIONS)
 end
@@ -508,6 +548,7 @@ end
 def defaultRunMozillaTest(mode, *extraFiles)
     runMozillaTestDefault(mode, *extraFiles)
     runMozillaTestLLInt(mode, *extraFiles)
+    runMozillaTestBaselineJIT(mode, *extraFiles)
     runMozillaTestDFGEagerNoCJIT(mode, *extraFiles)
 end
 
@@ -549,7 +590,7 @@ def uniqueifyName(names, name)
     result
 end
 
-def simplifyCollectionName(collectionNames, collectionPath)
+def simplifyCollectionName(collectionPath)
     outerDir = collectionPath.dirname
     name = collectionPath.basename
     lastName = name
@@ -560,7 +601,7 @@ def simplifyCollectionName(collectionNames, collectionPath)
             outerDir = outerDir.dirname
         end
     end
-    uniqueifyName(collectionNames, name)
+    uniqueifyName($collectionNames, name)
 end
 
 def prepareCollection(name)
@@ -572,59 +613,97 @@ def prepareCollection(name)
     }
 end
 
-collectionNames = {}
+$collectionNames = {}
+
+def handleCollectionFile(collection)
+    collectionName = simplifyCollectionName(collection)
+    
+    paths = {}
+    subCollections = []
+    YAML::load(IO::read(collection)).each {
+        | entry |
+        if entry["collection"]
+            subCollections << entry["collection"]
+            next
+        end
+        
+        if Pathname.new(entry["path"]).absolute?
+            raise "Absolute path: " + entry["path"] + " in #{collection}"
+        end
+        
+        if paths[entry["path"]]
+            raise "Duplicate path: " + entry["path"] + " in #{collection}"
+        end
+        
+        subCollection = collection.dirname + entry["path"]
+        
+        if subCollection.file?
+            subCollectionName = Pathname.new(entry["path"]).dirname
+        else
+            subCollectionName = entry["path"]
+        end
+        
+        $collection = subCollection
+        $collectionName = Pathname.new(collectionName)
+        Pathname.new(subCollectionName).each_filename {
+            | filename |
+            next if filename =~ /^\./
+            $collectionName += filename
+        }
+        $collectionName = $collectionName.to_s
+        
+        prepareCollection($collectionName)
+        
+        allJSFiles(subCollection).each {
+            | path |
+            
+            path = path.realpath
+            
+            $benchmark = path.basename
+            $benchmarkDirectory = path.dirname
+            
+            $runCommandOptions = {}
+            eval entry["cmd"]
+        }
+    }
+    
+    subCollections.each {
+        | subCollection |
+        handleCollection(collection.dirname + subCollection)
+    }
+end
+
+def handleCollectionDirectory(collection)
+    collectionName = simplifyCollectionName(collection)
+    
+    prepareCollection(collectionName)
+    
+    $collection = collection
+    $collectionName = collectionName
+    $benchmarkDirectory = $collection
+    allJSFiles($collection).each {
+        | path |
+        
+        $benchmark = path.basename
+        
+        $runCommandOptions = {}
+        defaultRun unless parseRunCommands
+    }
+end
+
+def handleCollection(collection)
+    collection = Pathname.new(collection)
+    
+    if collection.file?
+        handleCollectionFile(collection)
+    else
+        handleCollectionDirectory(collection)
+    end
+end
 
 ARGV.each {
     | collection |
-    collection = Pathname.new(collection)
-    collectionName = simplifyCollectionName(collectionNames, collection)
-    
-    if collection.file?
-        paths = {}
-        YAML::load(IO::read(collection)).each {
-            | entry |
-            if paths[entry["path"]]
-                raise "Duplicate path: " + entry["path"] + " in #{collection}"
-            end
-            
-            subCollection = collection.dirname + entry["path"]
-            
-            if subCollection.file?
-                subCollectionName = Pathname.new(entry["path"]).dirname
-            else
-                subCollectionName = entry["path"]
-            end
-            
-            $collection = subCollection
-            $collectionName = (Pathname.new(collectionName) + subCollectionName).to_s
-            
-            prepareCollection($collectionName)
-            
-            allJSFiles(subCollection).each {
-                | path |
-                
-                path = path.realpath
-                
-                $benchmark = path.basename
-                $benchmarkDirectory = path.dirname
-                
-                eval entry["cmd"]
-            }
-        }
-    else
-        prepareCollection(collectionName)
-        
-        $collection = collection
-        $collectionName = collectionName
-        $benchmarkDirectory = $collection
-        allJSFiles($collection).each {
-            | path |
-            
-            $benchmark = path.basename
-            
-            defaultRun unless parseRunCommands
-        }
-    end
+    handleCollection(collection)
 }
 
 def appendFailure(plan)
@@ -644,7 +723,7 @@ end
 if ENV["JSC_timeout"]
     # In the worst case, the processors just interfere with each other.
     # Increase the timeout proportionally to the number of processors.
-    ENV["JSC_timeout"] = (ENV["JSC_timeout"].to_i.to_f * Math.sqrt(numProcessors)).to_i.to_s
+    ENV["JSC_timeout"] = (ENV["JSC_timeout"].to_i.to_f * Math.sqrt($numProcessors)).to_i.to_s
 end
 
 # The goals of our parallel test runner are scalability and simplicity. The
@@ -704,6 +783,8 @@ toDelete.each {
     File.unlink(parallelDir + filename)
 }
 
+puts
+
 $runlist.each {
     | plan |
     plan.writeRunScript(parallelDir + "test_script_#{plan.index}")
@@ -717,15 +798,14 @@ File.open(parallelDir + "Makefile", "w") {
         plan = $runlist[index]
         outp.puts "test_done_#{index}:"
         outp.puts "\tsh test_script_#{plan.index}"
-        outp.puts "\ttouch test_done_#{index}"
     }
 }
 
 Dir.chdir(parallelDir) {
     unless $progressMeter
-        mysys("make", "-j", numProcessors.to_s, "-s", "-f", "Makefile")
+        mysys("make", "-j", $numProcessors.to_s, "-s", "-f", "Makefile")
     else
-        cmd = "make -j #{numProcessors} -s -f Makefile"
+        cmd = "make -j #{$numProcessors} -s -f Makefile"
         running = {}
         didRun = {}
         didFail = {}

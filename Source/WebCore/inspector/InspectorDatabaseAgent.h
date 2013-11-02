@@ -43,29 +43,27 @@ class Database;
 class InspectorArray;
 class InspectorDatabaseResource;
 class InspectorFrontend;
-class InspectorState;
 class InstrumentingAgents;
 
 typedef String ErrorString;
 
 class InspectorDatabaseAgent : public InspectorBaseAgent<InspectorDatabaseAgent>, public InspectorBackendDispatcher::DatabaseCommandHandler {
 public:
-    static PassOwnPtr<InspectorDatabaseAgent> create(InstrumentingAgents* instrumentingAgents, InspectorCompositeState* state)
+    static PassOwnPtr<InspectorDatabaseAgent> create(InstrumentingAgents* instrumentingAgents)
     {
-        return adoptPtr(new InspectorDatabaseAgent(instrumentingAgents, state));
+        return adoptPtr(new InspectorDatabaseAgent(instrumentingAgents));
     }
     ~InspectorDatabaseAgent();
 
     virtual void setFrontend(InspectorFrontend*);
     virtual void clearFrontend();
-    virtual void restore();
 
     void clearResources();
 
     // Called from the front-end.
     virtual void enable(ErrorString*);
     virtual void disable(ErrorString*);
-    virtual void getDatabaseTableNames(ErrorString*, const String& databaseId, RefPtr<TypeBuilder::Array<String> >& names);
+    virtual void getDatabaseTableNames(ErrorString*, const String& databaseId, RefPtr<TypeBuilder::Array<String>>& names);
     virtual void executeSQL(ErrorString*, const String& databaseId, const String& query, PassRefPtr<ExecuteSQLCallback>);
 
     // Called from the injected script.
@@ -73,13 +71,13 @@ public:
 
     void didOpenDatabase(PassRefPtr<Database>, const String& domain, const String& name, const String& version);
 private:
-    explicit InspectorDatabaseAgent(InstrumentingAgents*, InspectorCompositeState*);
+    explicit InspectorDatabaseAgent(InstrumentingAgents*);
 
     Database* databaseForId(const String& databaseId);
     InspectorDatabaseResource* findByFileName(const String& fileName);
 
     InspectorFrontend::Database* m_frontend;
-    typedef HashMap<String, RefPtr<InspectorDatabaseResource> > DatabaseResourcesMap;
+    typedef HashMap<String, RefPtr<InspectorDatabaseResource>> DatabaseResourcesMap;
     DatabaseResourcesMap m_resources;
     bool m_enabled;
 };

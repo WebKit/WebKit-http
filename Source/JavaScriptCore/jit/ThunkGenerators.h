@@ -31,12 +31,6 @@
 #if ENABLE(JIT)
 namespace JSC {
 
-MacroAssemblerCodeRef oldStyleLinkCallGenerator(VM*);
-MacroAssemblerCodeRef oldStyleLinkConstructGenerator(VM*);
-MacroAssemblerCodeRef oldStyleLinkClosureCallGenerator(VM*);
-MacroAssemblerCodeRef oldStyleVirtualCallGenerator(VM*);
-MacroAssemblerCodeRef oldStyleVirtualConstructGenerator(VM*);
-
 MacroAssemblerCodeRef throwExceptionFromCallSlowPathGenerator(VM*);
 
 MacroAssemblerCodeRef linkCallThunkGenerator(VM*);
@@ -47,7 +41,6 @@ MacroAssemblerCodeRef linkClosureCallThunkGenerator(VM*);
 MacroAssemblerCodeRef virtualCallThunkGenerator(VM*);
 MacroAssemblerCodeRef virtualConstructThunkGenerator(VM*);
 
-MacroAssemblerCodeRef stringLengthTrampolineGenerator(VM*);
 MacroAssemblerCodeRef nativeCallGenerator(VM*);
 MacroAssemblerCodeRef nativeConstructGenerator(VM*);
 MacroAssemblerCodeRef arityFixup(VM*);
@@ -64,6 +57,8 @@ MacroAssemblerCodeRef roundThunkGenerator(VM*);
 MacroAssemblerCodeRef sqrtThunkGenerator(VM*);
 MacroAssemblerCodeRef powThunkGenerator(VM*);
 MacroAssemblerCodeRef imulThunkGenerator(VM*);
+MacroAssemblerCodeRef arrayIteratorNextKeyThunkGenerator(VM*);
+MacroAssemblerCodeRef arrayIteratorNextValueThunkGenerator(VM*);
 
 }
 #endif // ENABLE(JIT)

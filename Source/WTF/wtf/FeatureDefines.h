@@ -112,6 +112,10 @@
 #define ENABLE_POINTER_LOCK 0
 #endif
 
+#if !defined(ENABLE_REMOTE_INSPECTOR)
+#define ENABLE_REMOTE_INSPECTOR 1
+#endif
+
 #if !defined(ENABLE_REPAINT_THROTTLING)
 #define ENABLE_REPAINT_THROTTLING 0
 #endif
@@ -174,8 +178,8 @@
 #define ENABLE_FULLSCREEN_API 1
 #endif
 
-#if !defined(ENABLE_GESTURE_EVENTS)
-#define ENABLE_GESTURE_EVENTS 1
+#if !defined(ENABLE_REMOTE_INSPECTOR)
+#define ENABLE_REMOTE_INSPECTOR 1
 #endif
 
 #if !defined(ENABLE_RUBBER_BANDING)
@@ -218,6 +222,10 @@
 
 #if !defined(ENABLE_INPUT_TYPE_COLOR_POPOVER)
 #define ENABLE_INPUT_TYPE_COLOR_POPOVER 1
+#endif
+
+#if !defined(ENABLE_MEDIA_SOURCE)
+#define ENABLE_MEDIA_SOURCE 1
 #endif
 
 #endif /* PLATFORM(MAC) && !PLATFORM(IOS) */
@@ -284,6 +292,10 @@
 #define ENABLE_SUBPIXEL_LAYOUT 1
 #endif
 
+#if !defined(ENABLE_8BIT_TEXTRUN)
+#define ENABLE_8BIT_TEXTRUN 1
+#endif
+
 #endif /* PLATFORM(EFL) */
 
 /* --------- Gtk port (Unix, Windows, Mac) --------- */
@@ -293,6 +305,10 @@
 #if !defined(ENABLE_PLUGIN_PACKAGE_SIMPLE_HASH)
 #define ENABLE_PLUGIN_PACKAGE_SIMPLE_HASH 1
 #endif
+#endif
+
+#if !defined(ENABLE_8BIT_TEXTRUN)
+#define ENABLE_8BIT_TEXTRUN 1
 #endif
 
 #endif /* PLATFORM(GTK) */
@@ -483,10 +499,6 @@
 
 #if !defined(ENABLE_GEOLOCATION)
 #define ENABLE_GEOLOCATION 0
-#endif
-
-#if !defined(ENABLE_GESTURE_EVENTS)
-#define ENABLE_GESTURE_EVENTS 0
 #endif
 
 #if !defined(ENABLE_GLIB_SUPPORT)
@@ -705,6 +717,10 @@
 #define ENABLE_REPAINT_THROTTLING 0
 #endif
 
+#if !defined(ENABLE_REMOTE_INSPECTOR)
+#define ENABLE_REMOTE_INSPECTOR 0
+#endif
+
 #if !defined(ENABLE_REQUEST_ANIMATION_FRAME)
 #define ENABLE_REQUEST_ANIMATION_FRAME 0
 #endif
@@ -815,6 +831,10 @@
 #define ENABLE_WEBGL 0
 #endif
 
+#if !defined(ENABLE_WEB_ANIMATIONS)
+#define ENABLE_WEB_ANIMATIONS 0
+#endif
+
 #if !defined(ENABLE_WEB_ARCHIVE)
 #define ENABLE_WEB_ARCHIVE 0
 #endif
@@ -859,6 +879,10 @@
 
 #if ENABLE(CSS_SHADERS) && !ENABLE(WEBGL)
 #error "ENABLE(CSS_SHADERS) requires ENABLE(WEBGL)"
+#endif
+
+#if ENABLE(REMOTE_INSPECTOR) && !ENABLE(INSPECTOR)
+#error "ENABLE(REMOTE_INSPECTOR) requires ENABLE(INSPECTOR)"
 #endif
 
 #endif /* WTF_FeatureDefines_h */

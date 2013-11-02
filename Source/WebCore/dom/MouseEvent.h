@@ -24,13 +24,11 @@
 #ifndef MouseEvent_h
 #define MouseEvent_h
 
-#include "EventDispatchMediator.h"
 #include "MouseRelatedEvent.h"
 
 namespace WebCore {
 
 class Clipboard;
-class EventDispatcher;
 class PlatformMouseEvent;
 
 struct MouseEventInit : public UIEventInit {
@@ -86,7 +84,7 @@ public:
     // but we will match the standard DOM.
     unsigned short button() const { return m_button; }
     bool buttonDown() const { return m_buttonDown; }
-    EventTarget* relatedTarget() const { return m_relatedTarget.get(); }
+    virtual EventTarget* relatedTarget() const OVERRIDE FINAL { return m_relatedTarget.get(); }
     void setRelatedTarget(PassRefPtr<EventTarget> relatedTarget) { m_relatedTarget = relatedTarget; }
 
     Clipboard* clipboard() const { return m_clipboard.get(); }
@@ -133,24 +131,16 @@ private:
     SimulatedMouseEvent(const AtomicString& eventType, PassRefPtr<AbstractView>, PassRefPtr<Event> underlyingEvent);
 };
 
-class MouseEventDispatchMediator : public EventDispatchMediator {
-public:
-    enum MouseEventType { SyntheticMouseEvent, NonSyntheticMouseEvent};
-    static PassRefPtr<MouseEventDispatchMediator> create(PassRefPtr<MouseEvent>, MouseEventType = NonSyntheticMouseEvent);
-
-private:
-    explicit MouseEventDispatchMediator(PassRefPtr<MouseEvent>, MouseEventType);
-    MouseEvent* event() const;
-
-    virtual bool mediateAndDispatchEvent(EventDispatcher*) const OVERRIDE;
-    bool isSyntheticMouseEvent() const { return m_mouseEventType == SyntheticMouseEvent; }
-    MouseEventType m_mouseEventType;
-};
-
 inline MouseEvent* toMouseEvent(Event* event)
 {
-    ASSERT(event && event->isMouseEvent());
+    ASSERT_WITH_SECURITY_IMPLICATION(event && event->isMouseEvent());
     return static_cast<MouseEvent*>(event);
+}
+
+inline MouseEvent& toMouseEvent(Event& event)
+{
+    ASSERT(event.isMouseEvent());
+    return static_cast<MouseEvent&>(event);
 }
 
 } // namespace WebCore

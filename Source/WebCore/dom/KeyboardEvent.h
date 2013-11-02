@@ -24,13 +24,11 @@
 #ifndef KeyboardEvent_h
 #define KeyboardEvent_h
 
-#include "EventDispatchMediator.h"
 #include "UIEventWithKeyState.h"
 #include <wtf/Vector.h>
 
 namespace WebCore {
 
-class EventDispatcher;
 class Node;
 class PlatformKeyboardEvent;
 
@@ -127,14 +125,6 @@ private:
 };
 
 KeyboardEvent* findKeyboardEvent(Event*);
-
-class KeyboardEventDispatchMediator : public EventDispatchMediator {
-public:
-    static PassRefPtr<KeyboardEventDispatchMediator> create(PassRefPtr<KeyboardEvent>);
-private:
-    explicit KeyboardEventDispatchMediator(PassRefPtr<KeyboardEvent>);
-    virtual bool mediateAndDispatchEvent(EventDispatcher*) const OVERRIDE;
-};
 
 } // namespace WebCore
 

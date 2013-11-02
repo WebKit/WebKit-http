@@ -55,7 +55,6 @@
 #include "Settings.h"
 #include "SpatialNavigation.h"
 
-using namespace std;
 using namespace WTF::Unicode;
 
 namespace WebCore {
@@ -304,7 +303,7 @@ void HTMLSelectElement::parseAttribute(const QualifiedName& name, const AtomicSt
             if (Attribute* sizeAttribute = ensureUniqueElementData().findAttributeByName(sizeAttr))
                 sizeAttribute->setValue(attrSize);
         }
-        size = max(size, 1);
+        size = std::max(size, 1);
 
         // Ensure that we've determined selectedness of the items at least once prior to changing the size.
         if (oldSize != size)
@@ -344,11 +343,11 @@ bool HTMLSelectElement::canSelectAll() const
     return !usesMenuList();
 }
 
-RenderElement* HTMLSelectElement::createRenderer(RenderArena& arena, RenderStyle&)
+RenderElement* HTMLSelectElement::createRenderer(PassRef<RenderStyle> style)
 {
     if (usesMenuList())
-        return new (arena) RenderMenuList(*this);
-    return new (arena) RenderListBox(*this);
+        return new RenderMenuList(*this, std::move(style));
+    return new RenderListBox(*this, std::move(style));
 }
 
 bool HTMLSelectElement::childShouldCreateRenderer(const Node* child) const
@@ -472,7 +471,7 @@ void HTMLSelectElement::setLength(unsigned newLen, ExceptionCode& ec)
 
         // Removing children fires mutation events, which might mutate the DOM further, so we first copy out a list
         // of elements that we intend to remove then attempt to remove them one at a time.
-        Vector<RefPtr<Element> > itemsToRemove;
+        Vector<RefPtr<Element>> itemsToRemove;
         size_t optionIndex = 0;
         for (size_t i = 0; i < items.size(); ++i) {
             Element* item = items[i];
@@ -621,8 +620,8 @@ void HTMLSelectElement::updateListBoxSelection(bool deselectOtherOptions)
     ASSERT(renderer() && (renderer()->isListBox() || m_multiple));
     ASSERT(!listItems().size() || m_activeSelectionAnchorIndex >= 0);
 
-    unsigned start = min(m_activeSelectionAnchorIndex, m_activeSelectionEndIndex);
-    unsigned end = max(m_activeSelectionAnchorIndex, m_activeSelectionEndIndex);
+    unsigned start = std::min(m_activeSelectionAnchorIndex, m_activeSelectionEndIndex);
+    unsigned end = std::max(m_activeSelectionAnchorIndex, m_activeSelectionEndIndex);
 
     const Vector<HTMLElement*>& items = listItems();
     for (unsigned i = 0; i < items.size(); ++i) {
@@ -1487,7 +1486,7 @@ void HTMLSelectElement::defaultEventHandler(Event* event)
 
     if (event->type() == eventNames().keypressEvent && event->isKeyboardEvent()) {
         KeyboardEvent* keyboardEvent = static_cast<KeyboardEvent*>(event);
-        if (!keyboardEvent->ctrlKey() && !keyboardEvent->altKey() && !keyboardEvent->metaKey() && isPrintableChar(keyboardEvent->charCode())) {
+        if (!keyboardEvent->ctrlKey() && !keyboardEvent->altKey() && !keyboardEvent->metaKey() && u_isprint(keyboardEvent->charCode())) {
             typeAheadFind(keyboardEvent);
             event->setDefaultHandled();
             return;

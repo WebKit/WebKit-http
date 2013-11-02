@@ -36,25 +36,20 @@
 #include "MediaStreamDescriptor.h"
 
 #include "MediaStreamCenter.h"
-#include "MediaStreamSource.h"
 #include "UUID.h"
 #include <wtf/RefCounted.h>
 #include <wtf/Vector.h>
 
 namespace WebCore {
 
-PassRefPtr<MediaStreamDescriptor> MediaStreamDescriptor::create(const MediaStreamSourceVector& audioSources, const MediaStreamSourceVector& videoSources)
+PassRefPtr<MediaStreamDescriptor> MediaStreamDescriptor::create(const Vector<RefPtr<MediaStreamSource>>& audioSources, const Vector<RefPtr<MediaStreamSource>>& videoSources)
 {
     return adoptRef(new MediaStreamDescriptor(createCanonicalUUIDString(), audioSources, videoSources));
 }
 
-MediaStreamDescriptor::~MediaStreamDescriptor()
+PassRefPtr<MediaStreamDescriptor> MediaStreamDescriptor::create(const Vector<RefPtr<MediaStreamTrackPrivate>>& audioPrivateTracks, const Vector<RefPtr<MediaStreamTrackPrivate>>& videoPrivateTracks)
 {
-    for (size_t i = 0; i < m_audioStreamSources.size(); i++)
-        m_audioStreamSources[i]->setStream(0);
-    
-    for (size_t i = 0; i < m_videoStreamSources.size(); i++)
-        m_videoStreamSources[i]->setStream(0);
+    return adoptRef(new MediaStreamDescriptor(createCanonicalUUIDString(), audioPrivateTracks, videoPrivateTracks));
 }
 
 void MediaStreamDescriptor::addSource(PassRefPtr<MediaStreamSource> source)
@@ -67,6 +62,9 @@ void MediaStreamDescriptor::addSource(PassRefPtr<MediaStreamSource> source)
     case MediaStreamSource::Video:
         if (m_videoStreamSources.find(source) == notFound)
             m_videoStreamSources.append(source);
+        break;
+    case MediaStreamSource::None:
+        ASSERT_NOT_REACHED();
         break;
     }
 }
@@ -87,9 +85,10 @@ void MediaStreamDescriptor::removeSource(PassRefPtr<MediaStreamSource> source)
             return;
         m_videoStreamSources.remove(pos);
         break;
+    case MediaStreamSource::None:
+        ASSERT_NOT_REACHED();
+        break;
     }
-
-    source->setStream(0);
 }
 
 void MediaStreamDescriptor::addRemoteSource(MediaStreamSource* source)
@@ -108,32 +107,95 @@ void MediaStreamDescriptor::removeRemoteSource(MediaStreamSource* source)
         removeSource(source);
 }
 
-MediaStreamDescriptor::MediaStreamDescriptor(const String& id, const MediaStreamSourceVector& audioSources, const MediaStreamSourceVector& videoSources)
+void MediaStreamDescriptor::addRemoteTrack(MediaStreamTrackPrivate* track)
+{
+    if (m_client)
+        m_client->addRemoteTrack(track);
+    else
+        addTrack(track);
+}
+
+void MediaStreamDescriptor::removeRemoteTrack(MediaStreamTrackPrivate* track)
+{
+    if (m_client)
+        m_client->removeRemoteTrack(track);
+    else
+        removeTrack(track);
+}
+
+MediaStreamDescriptor::MediaStreamDescriptor(const String& id, const Vector<RefPtr<MediaStreamSource>>& audioSources, const Vector<RefPtr<MediaStreamSource>>& videoSources)
     : m_client(0)
     , m_id(id)
     , m_ended(false)
 {
     ASSERT(m_id.length());
-    for (size_t i = 0; i < audioSources.size(); i++) {
-        audioSources[i]->setStream(this);
-        m_audioStreamSources.append(audioSources[i]);
-    }
+    for (size_t i = 0; i < audioSources.size(); i++)
+        addTrack(MediaStreamTrackPrivate::create(audioSources[i]));
 
-    for (size_t i = 0; i < videoSources.size(); i++) {
-        videoSources[i]->setStream(this);
-        m_videoStreamSources.append(videoSources[i]);
-    }
+    for (size_t i = 0; i < videoSources.size(); i++)
+        addTrack(MediaStreamTrackPrivate::create(videoSources[i]));
+
+    unsigned providedSourcesSize = audioSources.size() + videoSources.size();
+    unsigned tracksSize = m_audioPrivateTracks.size() + m_videoPrivateTracks.size();
+    // If sources were provided and no track was added to the MediaStreamDescriptor's tracks, this means
+    // that the tracks were all ended
+    if (providedSourcesSize > 0 && !tracksSize)
+        m_ended = true;
+}
+
+MediaStreamDescriptor::MediaStreamDescriptor(const String& id, const Vector<RefPtr<MediaStreamTrackPrivate>>& audioPrivateTracks, const Vector<RefPtr<MediaStreamTrackPrivate>>& videoPrivateTracks)
+    : m_client(0)
+    , m_id(id)
+    , m_ended(false)
+{
+    ASSERT(m_id.length());
+    for (size_t i = 0; i < audioPrivateTracks.size(); i++)
+        addTrack(audioPrivateTracks[i]);
+
+    for (size_t i = 0; i < videoPrivateTracks.size(); i++)
+        addTrack(videoPrivateTracks[i]);
+
+    unsigned providedTracksSize = audioPrivateTracks.size() + videoPrivateTracks.size();
+    unsigned tracksSize = m_audioPrivateTracks.size() + m_videoPrivateTracks.size();
+    // If tracks were provided and no one was added to the MediaStreamDescriptor's tracks, this means
+    // that the tracks were all ended
+    if (providedTracksSize > 0 && !tracksSize)
+        m_ended = true;
 }
 
 void MediaStreamDescriptor::setEnded()
 {
     if (m_client)
         m_client->streamDidEnd();
+
     m_ended = true;
-    for (size_t i = 0; i < m_audioStreamSources.size(); i++)
-        m_audioStreamSources[i]->setReadyState(MediaStreamSource::Ended);
-    for (size_t i = 0; i < m_videoStreamSources.size(); i++)
-        m_videoStreamSources[i]->setReadyState(MediaStreamSource::Ended);
+}
+
+void MediaStreamDescriptor::addTrack(PassRefPtr<MediaStreamTrackPrivate> track)
+{
+    if (track->ended())
+        return;
+
+    Vector<RefPtr<MediaStreamTrackPrivate>>& tracks = track->type() == MediaStreamSource::Audio ? m_audioPrivateTracks : m_videoPrivateTracks;
+
+    size_t pos = tracks.find(track);
+    if (pos != notFound)
+        return;
+
+    tracks.append(track);
+    if (track->source())
+        addSource(track->source());
+}
+
+void MediaStreamDescriptor::removeTrack(PassRefPtr<MediaStreamTrackPrivate> track)
+{
+    Vector<RefPtr<MediaStreamTrackPrivate>>& tracks = track->type() == MediaStreamSource::Audio ? m_audioPrivateTracks : m_videoPrivateTracks;
+
+    size_t pos = tracks.find(track);
+    if (pos == notFound)
+        return;
+
+    tracks.remove(pos);
 }
 
 } // namespace WebCore

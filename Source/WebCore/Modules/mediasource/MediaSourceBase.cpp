@@ -45,8 +45,8 @@
 
 namespace WebCore {
 
-MediaSourceBase::MediaSourceBase(ScriptExecutionContext* context)
-    : ActiveDOMObject(context)
+MediaSourceBase::MediaSourceBase(ScriptExecutionContext& context)
+    : ActiveDOMObject(&context)
     , m_readyState(closedKeyword())
     , m_asyncEventQueue(*this)
     , m_attached(false)
@@ -75,12 +75,11 @@ const AtomicString& MediaSourceBase::endedKeyword()
     return ended;
 }
 
-void MediaSourceBase::setPrivateAndOpen(PassOwnPtr<MediaSourcePrivate> mediaSourcePrivate)
+void MediaSourceBase::setPrivateAndOpen(PassRef<MediaSourcePrivate> mediaSourcePrivate)
 {
-    ASSERT(mediaSourcePrivate);
     ASSERT(!m_private);
     ASSERT(m_attached);
-    m_private = mediaSourcePrivate;
+    m_private = std::move(mediaSourcePrivate);
     setReadyState(openKeyword());
 }
 
@@ -103,7 +102,7 @@ PassRefPtr<TimeRanges> MediaSourceBase::buffered() const
 {
     // Implements MediaSource algorithm for HTMLMediaElement.buffered.
     // https://dvcs.w3.org/hg/html-media/raw-file/default/media-source/media-source.html#htmlmediaelement-extensions
-    Vector<RefPtr<TimeRanges> > ranges = activeRanges();
+    Vector<RefPtr<TimeRanges>> ranges = activeRanges();
 
     // 1. If activeSourceBuffers.length equals 0 then return an empty TimeRanges object and abort these steps.
     if (ranges.isEmpty())
@@ -257,12 +256,12 @@ void MediaSourceBase::stop()
     m_private.clear();
 }
 
-PassOwnPtr<SourceBufferPrivate> MediaSourceBase::createSourceBufferPrivate(const String& type, const MediaSourcePrivate::CodecsArray& codecs, ExceptionCode& ec)
+RefPtr<SourceBufferPrivate> MediaSourceBase::createSourceBufferPrivate(const ContentType& type, ExceptionCode& ec)
 {
-    OwnPtr<SourceBufferPrivate> sourceBufferPrivate;
-    switch (m_private->addSourceBuffer(type, codecs, &sourceBufferPrivate)) {
+    RefPtr<SourceBufferPrivate> sourceBufferPrivate;
+    switch (m_private->addSourceBuffer(type, sourceBufferPrivate)) {
     case MediaSourcePrivate::Ok: {
-        return sourceBufferPrivate.release();
+        return sourceBufferPrivate;
     }
     case MediaSourcePrivate::NotSupported:
         // 2.2 https://dvcs.w3.org/hg/html-media/raw-file/default/media-source/media-source.html#widl-MediaSource-addSourceBuffer-SourceBuffer-DOMString-type

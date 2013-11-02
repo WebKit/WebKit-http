@@ -337,7 +337,7 @@ PassRefPtr<NodeList> SVGSVGElement::collectIntersectionOrEnclosureList(const Flo
 {
     Vector<Ref<Element>> elements;
 
-    auto svgDescendants = descendantsOfType<SVGElement>(referenceElement ? referenceElement : this);
+    auto svgDescendants = descendantsOfType<SVGElement>(*(referenceElement ? referenceElement : this));
     for (auto it = svgDescendants.begin(), end = svgDescendants.end(); it != end; ++it) {
         const SVGElement* svgElement = &*it;
         if (collect == CollectIntersectionList) {
@@ -445,7 +445,7 @@ AffineTransform SVGSVGElement::localCoordinateSpaceTransform(SVGLocatable::CTMSc
             // We also need to adjust for the zoom level factored into CSS coordinates (bug #96361).
             if (renderer->isSVGRoot()) {
                 location = toRenderSVGRoot(renderer)->localToBorderBoxTransform().mapPoint(location);
-                zoomFactor = 1 / renderer->style()->effectiveZoom();
+                zoomFactor = 1 / renderer->style().effectiveZoom();
             }
 
             // Translate in our CSS parent coordinate space
@@ -480,12 +480,12 @@ bool SVGSVGElement::rendererIsNeeded(const RenderStyle& style)
     return StyledElement::rendererIsNeeded(style);
 }
 
-RenderElement* SVGSVGElement::createRenderer(RenderArena& arena, RenderStyle&)
+RenderElement* SVGSVGElement::createRenderer(PassRef<RenderStyle> style)
 {
     if (isOutermostSVGSVGElement())
-        return new (arena) RenderSVGRoot(*this);
+        return new RenderSVGRoot(*this, std::move(style));
 
-    return new (arena) RenderSVGViewportContainer(*this);
+    return new RenderSVGViewportContainer(*this, std::move(style));
 }
 
 Node::InsertionNotificationRequest SVGSVGElement::insertedInto(ContainerNode& rootParent)
@@ -535,7 +535,7 @@ void SVGSVGElement::setCurrentTime(float seconds)
 {
     if (std::isnan(seconds))
         return;
-    seconds = max(seconds, 0.0f);
+    seconds = std::max(seconds, 0.0f);
     m_timeContainer->setElapsed(seconds);
 }
 
@@ -583,7 +583,7 @@ FloatSize SVGSVGElement::currentViewportSize() const
 
     if (renderer()->isSVGRoot()) {
         LayoutRect contentBoxRect = toRenderSVGRoot(renderer())->contentBoxRect();
-        return FloatSize(contentBoxRect.width() / renderer()->style()->effectiveZoom(), contentBoxRect.height() / renderer()->style()->effectiveZoom());
+        return FloatSize(contentBoxRect.width() / renderer()->style().effectiveZoom(), contentBoxRect.height() / renderer()->style().effectiveZoom());
     }
 
     FloatRect viewportRect = toRenderSVGViewportContainer(renderer())->viewport();
@@ -649,7 +649,7 @@ Length SVGSVGElement::intrinsicWidth(ConsiderCSSMode mode) const
     }
 
     ASSERT(renderer());
-    return renderer()->style()->width();
+    return renderer()->style().width();
 }
 
 Length SVGSVGElement::intrinsicHeight(ConsiderCSSMode mode) const
@@ -663,7 +663,7 @@ Length SVGSVGElement::intrinsicHeight(ConsiderCSSMode mode) const
     }
 
     ASSERT(renderer());
-    return renderer()->style()->height();
+    return renderer()->style().height();
 }
 
 AffineTransform SVGSVGElement::viewBoxToViewTransform(float viewWidth, float viewHeight) const
@@ -777,7 +777,8 @@ Element* SVGSVGElement::getElementById(const AtomicString& id)
 
     // Fall back to traversing our subtree. Duplicate ids are allowed, the first found will
     // be returned.
-    for (auto element = elementDescendants(this).begin(), end = elementDescendants(this).end(); element != end; ++element) {
+    auto descendants = elementDescendants(*this);
+    for (auto element = descendants.begin(), end = descendants.end(); element != end; ++element) {
         if (element->getIdAttribute() == id)
             return &*element;
     }

@@ -50,7 +50,6 @@
 #include "HitTestResult.h"
 #include "InlineTextBox.h"
 #include "Page.h"
-#include "Range.h"
 #include "RenderText.h"
 #include "RenderTextControl.h"
 #include "RenderTheme.h"
@@ -60,7 +59,6 @@
 #include "Settings.h"
 #include "SpatialNavigation.h"
 #include "StylePropertySet.h"
-#include "TextIterator.h"
 #include "TypingCommand.h"
 #include "VisibleUnits.h"
 #include "htmlediting.h"
@@ -460,7 +458,13 @@ void FrameSelection::textWasReplaced(CharacterData* node, unsigned offset, unsig
 
     if (base != m_selection.base() || extent != m_selection.extent() || start != m_selection.start() || end != m_selection.end()) {
         VisibleSelection newSelection;
-        newSelection.setWithoutValidation(base, extent);
+        if (base != extent)
+            newSelection.setWithoutValidation(base, extent);
+        else if (m_selection.isDirectional() && !m_selection.isBaseFirst())
+            newSelection.setWithoutValidation(end, start);
+        else
+            newSelection.setWithoutValidation(start, end);
+
         m_frame->document()->updateLayout();
         setSelection(newSelection, DoNotSetFocus);
     }
@@ -1451,8 +1455,8 @@ void CaretBase::paintCaret(Node* node, GraphicsContext* context, const LayoutPoi
     Element* element = node->isElementNode() ? toElement(node) : node->parentElement();
 
     if (element && element->renderer()) {
-        caretColor = element->renderer()->style()->visitedDependentColor(CSSPropertyColor);
-        colorSpace = element->renderer()->style()->colorSpace();
+        caretColor = element->renderer()->style().visitedDependentColor(CSSPropertyColor);
+        colorSpace = element->renderer()->style().colorSpace();
     }
 
     context->fillRect(caret, caretColor, colorSpace);
@@ -1464,10 +1468,10 @@ void CaretBase::paintCaret(Node* node, GraphicsContext* context, const LayoutPoi
 #endif
 }
 
-void FrameSelection::debugRenderer(RenderObject *r, bool selected) const
+void FrameSelection::debugRenderer(RenderObject* r, bool selected) const
 {
     if (r->node()->isElementNode()) {
-        Element* element = static_cast<Element *>(r->node());
+        Element* element = toElement(r->node());
         fprintf(stderr, "%s%s\n", selected ? "==> " : "    ", element->localName().string().utf8().data());
     } else if (r->isText()) {
         RenderText* textRenderer = toRenderText(r);
@@ -1704,7 +1708,7 @@ void FrameSelection::focusedOrActiveStateChanged()
     if (Element* element = m_frame->document()->focusedElement()) {
         element->setNeedsStyleRecalc();
         if (RenderObject* renderer = element->renderer())
-            if (renderer && renderer->style()->hasAppearance())
+            if (renderer && renderer->style().hasAppearance())
                 renderer->theme()->stateChanged(renderer, FocusState);
     }
 }

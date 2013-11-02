@@ -62,7 +62,7 @@ void SVGTextChunkBuilder::buildTextChunks(Vector<SVGInlineTextBox*>& lineLayoutB
             lastChunkStartPosition = boxPosition;
             foundStart = true;
         } else {
-            ASSERT(boxPosition > lastChunkStartPosition);
+            ASSERT_WITH_SECURITY_IMPLICATION(boxPosition > lastChunkStartPosition);
             addTextChunk(lineLayoutBoxes, lastChunkStartPosition, boxPosition - lastChunkStartPosition);
             lastChunkStartPosition = boxPosition;
         }
@@ -93,25 +93,23 @@ void SVGTextChunkBuilder::addTextChunk(Vector<SVGInlineTextBox*>& lineLayoutBoxe
     SVGInlineTextBox* textBox = lineLayoutBoxes[boxStart];
     ASSERT(textBox);
 
-    const RenderStyle* style = textBox->renderer().style();
-    ASSERT(style);
+    const RenderStyle& style = textBox->renderer().style();
 
-    const SVGRenderStyle* svgStyle = style->svgStyle();
-    ASSERT(svgStyle);
+    const SVGRenderStyle& svgStyle = style.svgStyle();
 
     // Build chunk style flags.
     unsigned chunkStyle = SVGTextChunk::DefaultStyle;
 
     // Handle 'direction' property.
-    if (!style->isLeftToRightDirection())
+    if (!style.isLeftToRightDirection())
         chunkStyle |= SVGTextChunk::RightToLeftText;
 
     // Handle 'writing-mode' property.
-    if (svgStyle->isVerticalWritingMode())
+    if (svgStyle.isVerticalWritingMode())
         chunkStyle |= SVGTextChunk::VerticalText;
 
     // Handle 'text-anchor' property.
-    switch (svgStyle->textAnchor()) {
+    switch (svgStyle.textAnchor()) {
     case TA_START:
         break;
     case TA_MIDDLE:

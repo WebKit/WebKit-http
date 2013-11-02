@@ -34,7 +34,8 @@ static const unsigned maxRowIndex = 0x7FFFFFFE; // 2,147,483,646
 
 class RenderTableRow FINAL : public RenderBox {
 public:
-    explicit RenderTableRow(Element*);
+    RenderTableRow(Element&, PassRef<RenderStyle>);
+    RenderTableRow(Document&, PassRef<RenderStyle>);
 
     RenderTableRow* nextRow() const;
     RenderTableRow* previousRow() const;
@@ -47,7 +48,6 @@ public:
 
     void paintOutlineForRowIfNeeded(PaintInfo&, const LayoutPoint&);
 
-    static RenderTableRow* createAnonymous(Document&);
     static RenderTableRow* createAnonymousWithParentRenderer(const RenderObject*);
     virtual RenderBox* createAnonymousBoxWithSameTypeAs(const RenderObject* parent) const OVERRIDE
     {
@@ -72,17 +72,17 @@ public:
     const BorderValue& borderAdjoiningTableStart() const
     {
         if (section()->hasSameDirectionAs(table()))
-            return style()->borderStart();
+            return style().borderStart();
 
-        return style()->borderEnd();
+        return style().borderEnd();
     }
 
     const BorderValue& borderAdjoiningTableEnd() const
     {
         if (section()->hasSameDirectionAs(table()))
-            return style()->borderEnd();
+            return style().borderEnd();
 
-        return style()->borderStart();
+        return style().borderStart();
     }
 
     const BorderValue& borderAdjoiningStartCell(const RenderTableCell*) const;
@@ -119,26 +119,7 @@ private:
     unsigned m_rowIndex : 31;
 };
 
-inline RenderTableRow& toRenderTableRow(RenderObject& object)
-{
-    ASSERT_WITH_SECURITY_IMPLICATION(object.isTableRow());
-    return static_cast<RenderTableRow&>(object);
-}
-
-inline RenderTableRow* toRenderTableRow(RenderObject* object)
-{
-    ASSERT_WITH_SECURITY_IMPLICATION(!object || object->isTableRow());
-    return static_cast<RenderTableRow*>(object);
-}
-
-inline const RenderTableRow* toRenderTableRow(const RenderObject* object)
-{
-    ASSERT_WITH_SECURITY_IMPLICATION(!object || object->isTableRow());
-    return static_cast<const RenderTableRow*>(object);
-}
-
-// This will catch anyone doing an unnecessary cast.
-void toRenderTableRow(const RenderTableRow*);
+RENDER_OBJECT_TYPE_CASTS(RenderTableRow, isTableRow())
 
 inline RenderTableRow* RenderTableSection::firstRow() const
 {

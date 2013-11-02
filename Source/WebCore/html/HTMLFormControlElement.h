@@ -34,7 +34,6 @@ class HTMLFieldSetElement;
 class HTMLFormElement;
 class HTMLLegendElement;
 class ValidationMessage;
-class ValidityState;
 
 // HTMLFormControlElement is the default implementation of FormAssociatedElement,
 // and form-associated element implementations should use HTMLFormControlElement
@@ -89,7 +88,7 @@ public:
     virtual bool willValidate() const OVERRIDE;
     void updateVisibleValidationMessage();
     void hideVisibleValidationMessage();
-    bool checkValidity(Vector<RefPtr<FormAssociatedElement> >* unhandledInvalidControls = 0);
+    bool checkValidity(Vector<RefPtr<FormAssociatedElement>>* unhandledInvalidControls = 0);
     // This must be called when a validation constraint or control value is changed.
     void setNeedsValidityCheck();
     virtual void setCustomValidity(const String&) OVERRIDE;
@@ -144,8 +143,9 @@ private:
     virtual bool isValidFormControlElement() OVERRIDE;
     void updateAncestorDisabledState() const;
 
-    virtual HTMLElement* asHTMLElement() OVERRIDE FINAL { return this; }
-    virtual FormNamedItem* asFormNamedItem() OVERRIDE FINAL { return this; }
+    virtual HTMLElement& asHTMLElement() OVERRIDE FINAL { return *this; }
+    virtual const HTMLFormControlElement& asHTMLElement() const OVERRIDE FINAL { return *this; }
+    virtual HTMLFormControlElement* asFormNamedItem() OVERRIDE FINAL { return this; }
 
     OwnPtr<ValidationMessage> m_validationMessage;
     bool m_disabled : 1;
@@ -173,28 +173,12 @@ private:
     bool m_hasAutofocused : 1;
 };
 
-inline bool isHTMLFormControlElement(const Node* node)
-{
-    return node->isElementNode() && toElement(node)->isFormControlElement();
-}
+void isHTMLFormControlElement(const HTMLFormControlElement&); // Catch unnecessary runtime check of type known at compile time.
+inline bool isHTMLFormControlElement(const Element& element) { return element.isFormControlElement(); }
+inline bool isHTMLFormControlElement(const Node& node) { return node.isElementNode() && toElement(node).isFormControlElement(); }
+template <> inline bool isElementOfType<const HTMLFormControlElement>(const Element& element) { return isHTMLFormControlElement(element); }
 
-inline HTMLFormControlElement& toHTMLFormControlElement(Node& node)
-{
-    ASSERT_WITH_SECURITY_IMPLICATION(isHTMLFormControlElement(&node));
-    return static_cast<HTMLFormControlElement&>(node);
-}
-
-inline HTMLFormControlElement* toHTMLFormControlElement(Node* node)
-{
-    ASSERT_WITH_SECURITY_IMPLICATION(!node || isHTMLFormControlElement(node));
-    return static_cast<HTMLFormControlElement*>(node);
-}
-
-void toHTMLFormControlElement(const HTMLFormControlElement*);
-void toHTMLFormControlElement(const HTMLFormControlElement&);
-
-template <> inline bool isElementOfType<HTMLFormControlElement>(const Element* element) { return isHTMLFormControlElement(element); }
-
+NODE_TYPE_CASTS(HTMLFormControlElement)
 
 } // namespace
 

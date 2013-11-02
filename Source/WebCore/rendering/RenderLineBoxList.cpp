@@ -32,7 +32,6 @@
 #include "HitTestResult.h"
 #include "InlineTextBox.h"
 #include "PaintInfo.h"
-#include "RenderArena.h"
 #include "RenderBlockFlow.h"
 #include "RenderInline.h"
 #include "RenderLineBreak.h"
@@ -66,13 +65,13 @@ void RenderLineBoxList::appendLineBox(InlineFlowBox* box)
     checkConsistency();
 }
 
-void RenderLineBoxList::deleteLineBoxTree(RenderArena& arena)
+void RenderLineBoxList::deleteLineBoxTree()
 {
     InlineFlowBox* line = m_firstLineBox;
     InlineFlowBox* nextLine;
     while (line) {
         nextLine = line->nextLineBox();
-        line->deleteLine(arena);
+        line->deleteLine();
         line = nextLine;
     }
     m_firstLineBox = m_lastLineBox = 0;
@@ -129,13 +128,13 @@ void RenderLineBoxList::removeLineBox(InlineFlowBox* box)
     checkConsistency();
 }
 
-void RenderLineBoxList::deleteLineBoxes(RenderArena& arena)
+void RenderLineBoxList::deleteLineBoxes()
 {
     if (m_firstLineBox) {
         InlineFlowBox* next;
         for (InlineFlowBox* curr = m_firstLineBox; curr; curr = next) {
             next = curr->nextLineBox();
-            curr->destroy(arena);
+            delete curr;
         }
         m_firstLineBox = 0;
         m_lastLineBox = 0;
@@ -160,7 +159,7 @@ bool RenderLineBoxList::rangeIntersectsRect(RenderBoxModelObject* renderer, Layo
     LayoutUnit physicalExtent = absoluteValue(physicalEnd - physicalStart);
     physicalStart = min(physicalStart, physicalEnd);
     
-    if (renderer->style()->isHorizontalWritingMode()) {
+    if (renderer->style().isHorizontalWritingMode()) {
         physicalStart += offset.y();
         if (physicalStart >= rect.maxY() || physicalStart + physicalExtent <= rect.y())
             return false;

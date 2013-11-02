@@ -1,3 +1,146 @@
+2013-11-01  Andy Estes  <aestes@apple.com>
+
+        [iOS] Make some headers Private
+        https://bugs.webkit.org/show_bug.cgi?id=123626
+
+        Reviewed by Andreas Kling.
+
+        * WebKit.xcodeproj/project.pbxproj:
+
+2013-11-01  Afonso R. Costa Jr.  <afonso.costa@samsung.com>
+
+        Expose setApplicationCacheOriginQuota via window.internals
+        https://bugs.webkit.org/show_bug.cgi?id=87838
+
+        Reviewed by Joseph Pecoraro.
+
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExports.def.in: Add
+        symbols for setApplicationCacheOriginQuota from Internals.
+
+2013-11-01  Andy Estes  <aestes@apple.com>
+
+        Reverted r158443. It broke the build.
+
+        * WebKit.xcodeproj/project.pbxproj:
+
+2013-11-01  Andy Estes  <aestes@apple.com>
+
+        [iOS] Make some headers Private
+        https://bugs.webkit.org/show_bug.cgi?id=123626
+
+        Reviewed by Sam Weinig.
+
+        * WebKit.xcodeproj/project.pbxproj:
+
+2013-10-31  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Windows build fix attempt after r158421.
+
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExports.def.in:
+
+2013-10-29  Andy Estes  <aestes@apple.com>
+
+        [iOS] Upstream Source/WebKit/ios/
+        https://bugs.webkit.org/show_bug.cgi?id=123470
+
+        Reviewed by Sam Weinig.
+
+        * WebKit.xcodeproj/project.pbxproj:
+
+2013-10-30  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        WebKit/win/WebKitGraphics.h:void WebDrawText(WebTextRenderInfo*); is never called
+        https://bugs.webkit.org/show_bug.cgi?id=123485
+
+        Reviewed by Brent Fulgham.
+
+        Deleting the function
+
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExports.def.in:
+
+2013-10-30  Alex Christensen  <achristensen@webkit.org>
+
+        [Windows] Unreviewed build fix.
+
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExports.def.in:
+        Added missing 32-bit and 64-bit linker symbols.
+
+2013-10-30  Alex Christensen  <achristensen@webkit.org>
+
+        Disabled JIT on Win64.
+        https://bugs.webkit.org/show_bug.cgi?id=122472
+
+        Reviewed by Geoffrey Garen.
+
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExports.def.in:
+        Added missing 64-bit linker symbol.
+
+2013-10-28  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Upstream remaining PLATFORM(IOS) and ENABLE(REMOTE_INSPECTOR) pieces
+        https://bugs.webkit.org/show_bug.cgi?id=123411
+
+        Reviewed by Timothy Hatcher.
+
+        * WebKit.xcodeproj/project.pbxproj:
+
+2013-10-25  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Upstream ENABLE(REMOTE_INSPECTOR) and enable on iOS and Mac
+        https://bugs.webkit.org/show_bug.cgi?id=123111
+
+        Reviewed by Timothy Hatcher.
+
+        * WebKit.xcodeproj/project.pbxproj:
+
+2013-10-23  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
+
+        Integrate css3-images image-orientation with existing EXIF support
+        https://bugs.webkit.org/show_bug.cgi?id=91566
+
+        Reviewed by Beth Dakin.
+
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExports.def.in: Update export symbols for draw functions.
+
+2013-10-15  Andy Estes  <aestes@apple.com>
+
+        Expose -[WebPluginPackage bundle] as SPI
+        https://bugs.webkit.org/show_bug.cgi?id=122814
+
+        Reviewed by Anders Carlsson.
+
+        * WebKit.xcodeproj/project.pbxproj: Added WebPluginPackagePrivate.h.
+
+2013-10-10  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Windows build fix attempt.
+
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExports.def.in:
+
+2013-10-10  Marcelo Morais  <m.morais@samsung.com>
+
+        Web Inspector: Remove the old front-end from WebKit
+        https://bugs.webkit.org/show_bug.cgi?id=122295
+
+        Reviewed by Timothy Hatcher.
+
+        * PlatformBlackBerry.cmake: Removed the references for the old
+        inspector front-end.
+
+2013-10-10  Anders Carlsson  <andersca@apple.com>
+
+        Remove WebScrollBar
+        https://bugs.webkit.org/show_bug.cgi?id=122623
+
+        Reviewed by Brent Fulgham.
+
+        Remove files from VS projects.
+
+        * WebKit.vcxproj/Interfaces/Interfaces.vcxproj:
+        * WebKit.vcxproj/Interfaces/Interfaces.vcxproj.filters:
+        * WebKit.vcxproj/WebKit/WebKit.vcxproj:
+        * WebKit.vcxproj/WebKit/WebKit.vcxproj.filters:
+
 2013-10-08  Alex Christensen  <achristensen@webkit.org>
 
         Fixed Win64 linking.

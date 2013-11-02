@@ -33,9 +33,8 @@ class Position;
 
 class RenderInline : public RenderBoxModelObject {
 public:
-    explicit RenderInline(Element*);
-
-    static RenderInline* createAnonymous(Document&);
+    RenderInline(Element&, PassRef<RenderStyle>);
+    RenderInline(Document&, PassRef<RenderStyle>);
 
     virtual void addChild(RenderObject* newChild, RenderObject* beforeChild = 0) OVERRIDE;
 
@@ -59,7 +58,7 @@ public:
     InlineFlowBox* createAndAppendInlineFlowBox();
 
     void dirtyLineBoxes(bool fullLayout);
-    void deleteLineBoxTree();
+    void deleteLines();
 
     RenderLineBoxList& lineBoxes() { return m_lineBoxes; }
     const RenderLineBoxList& lineBoxes() const { return m_lineBoxes; }
@@ -177,33 +176,7 @@ private:
     bool m_alwaysCreateLineBoxes : 1;
 };
 
-inline RenderInline& toRenderInline(RenderObject& object)
-{
-    ASSERT_WITH_SECURITY_IMPLICATION(object.isRenderInline());
-    return static_cast<RenderInline&>(object);
-}
-
-inline const RenderInline& toRenderInline(const RenderObject& object)
-{
-    ASSERT_WITH_SECURITY_IMPLICATION(object.isRenderInline());
-    return static_cast<const RenderInline&>(object);
-}
-
-inline RenderInline* toRenderInline(RenderObject* object)
-{ 
-    ASSERT_WITH_SECURITY_IMPLICATION(!object || object->isRenderInline());
-    return static_cast<RenderInline*>(object);
-}
-
-inline const RenderInline* toRenderInline(const RenderObject* object)
-{ 
-    ASSERT_WITH_SECURITY_IMPLICATION(!object || object->isRenderInline());
-    return static_cast<const RenderInline*>(object);
-}
-
-// This will catch anyone doing an unnecessary cast.
-void toRenderInline(const RenderInline*);
-void toRenderInline(const RenderInline&);
+RENDER_OBJECT_TYPE_CASTS(RenderInline, isRenderInline())
 
 } // namespace WebCore
 

@@ -48,7 +48,6 @@
 #include "InspectorClient.h"
 #include "InspectorFrontend.h"
 #include "InspectorPageAgent.h"
-#include "InspectorState.h"
 #include "InspectorValues.h"
 #include "InstrumentingAgents.h"
 #include "URL.h"
@@ -77,13 +76,6 @@
 
 namespace WebCore {
 
-namespace ResourceAgentState {
-static const char resourceAgentEnabled[] = "resourceAgentEnabled";
-static const char extraRequestHeaders[] = "extraRequestHeaders";
-static const char cacheDisabled[] = "cacheDisabled";
-static const char userAgentOverride[] = "userAgentOverride";
-}
-
 void InspectorResourceAgent::setFrontend(InspectorFrontend* frontend)
 {
     m_frontend = frontend->network();
@@ -94,12 +86,6 @@ void InspectorResourceAgent::clearFrontend()
     m_frontend = 0;
     ErrorString error;
     disable(&error);
-}
-
-void InspectorResourceAgent::restore()
-{
-    if (m_state->getBoolean(ResourceAgentState::resourceAgentEnabled))
-        enable();
 }
 
 static PassRefPtr<InspectorObject> buildObjectForHeaders(const HTTPHeaderMap& headers)
@@ -184,7 +170,7 @@ static PassRefPtr<TypeBuilder::Network::CachedResource> buildObjectForCachedReso
 
 InspectorResourceAgent::~InspectorResourceAgent()
 {
-    if (m_state->getBoolean(ResourceAgentState::resourceAgentEnabled)) {
+    if (m_enabled) {
         ErrorString error;
         disable(&error);
     }
@@ -209,9 +195,9 @@ void InspectorResourceAgent::willSendRequest(unsigned long identifier, DocumentL
 
     m_resourcesData->setResourceType(requestId, type);
 
-    if (RefPtr<InspectorObject> headers = m_state->getObject(ResourceAgentState::extraRequestHeaders)) {
-        InspectorObject::const_iterator end = headers->end();
-        for (InspectorObject::const_iterator it = headers->begin(); it != end; ++it) {
+    if (m_extraRequestHeaders) {
+        InspectorObject::const_iterator end = m_extraRequestHeaders->end();
+        for (InspectorObject::const_iterator it = m_extraRequestHeaders->begin(); it != end; ++it) {
             String value;
             if (it->value->asString(&value))
                 request.setHTTPHeaderField(it->key, value);
@@ -221,7 +207,7 @@ void InspectorResourceAgent::willSendRequest(unsigned long identifier, DocumentL
     request.setReportLoadTiming(true);
     request.setReportRawHeaders(true);
 
-    if (m_state->getBoolean(ResourceAgentState::cacheDisabled)) {
+    if (m_cacheDisabled) {
         request.setHTTPHeaderField("Pragma", "no-cache");
         request.setCachePolicy(ReloadIgnoringCacheData);
         request.setHTTPHeaderField("Cache-Control", "no-cache");
@@ -430,9 +416,8 @@ void InspectorResourceAgent::willDestroyCachedResource(CachedResource* cachedRes
 
 void InspectorResourceAgent::applyUserAgentOverride(String* userAgent)
 {
-    String userAgentOverride = m_state->getString(ResourceAgentState::userAgentOverride);
-    if (!userAgentOverride.isEmpty())
-        *userAgent = userAgentOverride;
+    if (!m_userAgentOverride.isNull())
+        *userAgent = m_userAgentOverride;
 }
 
 void InspectorResourceAgent::willRecalculateStyle()
@@ -546,26 +531,27 @@ void InspectorResourceAgent::enable()
 {
     if (!m_frontend)
         return;
-    m_state->setBoolean(ResourceAgentState::resourceAgentEnabled, true);
+    m_enabled = true;
     m_instrumentingAgents->setInspectorResourceAgent(this);
 }
 
 void InspectorResourceAgent::disable(ErrorString*)
 {
-    m_state->setBoolean(ResourceAgentState::resourceAgentEnabled, false);
-    m_state->setString(ResourceAgentState::userAgentOverride, "");
+    m_enabled = false;
+    m_userAgentOverride = String();
     m_instrumentingAgents->setInspectorResourceAgent(0);
     m_resourcesData->clear();
+    m_extraRequestHeaders.clear();
 }
 
 void InspectorResourceAgent::setUserAgentOverride(ErrorString*, const String& userAgent)
 {
-    m_state->setString(ResourceAgentState::userAgentOverride, userAgent);
+    m_userAgentOverride = userAgent;
 }
 
 void InspectorResourceAgent::setExtraHTTPHeaders(ErrorString*, const RefPtr<InspectorObject>& headers)
 {
-    m_state->setObject(ResourceAgentState::extraRequestHeaders, headers);
+    m_extraRequestHeaders = headers;
 }
 
 void InspectorResourceAgent::getResponseBody(ErrorString* errorString, const String& requestId, String* content, bool* base64Encoded)
@@ -603,7 +589,7 @@ void InspectorResourceAgent::getResponseBody(ErrorString* errorString, const Str
 
 void InspectorResourceAgent::replayXHR(ErrorString*, const String& requestId)
 {
-    RefPtr<XMLHttpRequest> xhr = XMLHttpRequest::create(m_pageAgent->mainFrame()->document());
+    RefPtr<XMLHttpRequest> xhr = XMLHttpRequest::create(*m_pageAgent->mainFrame()->document());
     String actualRequestId = requestId;
 
     XHRReplayData* xhrReplayData = m_resourcesData->xhrReplayData(requestId);
@@ -647,25 +633,27 @@ void InspectorResourceAgent::clearBrowserCookies(ErrorString*)
 
 void InspectorResourceAgent::setCacheDisabled(ErrorString*, bool cacheDisabled)
 {
-    m_state->setBoolean(ResourceAgentState::cacheDisabled, cacheDisabled);
+    m_cacheDisabled = cacheDisabled;
     if (cacheDisabled)
         memoryCache()->evictResources();
 }
 
 void InspectorResourceAgent::mainFrameNavigated(DocumentLoader* loader)
 {
-    if (m_state->getBoolean(ResourceAgentState::cacheDisabled))
+    if (m_cacheDisabled)
         memoryCache()->evictResources();
 
     m_resourcesData->clear(m_pageAgent->loaderId(loader));
 }
 
-InspectorResourceAgent::InspectorResourceAgent(InstrumentingAgents* instrumentingAgents, InspectorPageAgent* pageAgent, InspectorClient* client, InspectorCompositeState* state)
-    : InspectorBaseAgent<InspectorResourceAgent>("Network", instrumentingAgents, state)
+InspectorResourceAgent::InspectorResourceAgent(InstrumentingAgents* instrumentingAgents, InspectorPageAgent* pageAgent, InspectorClient* client)
+    : InspectorBaseAgent<InspectorResourceAgent>("Network", instrumentingAgents)
     , m_pageAgent(pageAgent)
     , m_client(client)
     , m_frontend(0)
     , m_resourcesData(adoptPtr(new NetworkResourcesData()))
+    , m_enabled(false)
+    , m_cacheDisabled(false)
     , m_loadingXHRSynchronously(false)
     , m_isRecalculatingStyle(false)
 {

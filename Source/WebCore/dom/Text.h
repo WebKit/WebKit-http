@@ -47,9 +47,11 @@ public:
     String wholeText() const;
     PassRefPtr<Text> replaceWholeText(const String&, ExceptionCode&);
     
-    RenderText* createTextRenderer(RenderArena&, RenderStyle&);
+    RenderText* createTextRenderer(RenderStyle&);
     
     virtual bool canContainRangeEndPoint() const OVERRIDE FINAL { return true; }
+
+    RenderText* renderer() const;
 
 protected:
     Text(Document& document, const String& data, ConstructionType type)
@@ -70,10 +72,9 @@ private:
 #endif
 };
 
-inline bool isText(const Node& node)
-{
-    return node.isTextNode();
-}
+inline bool isText(const Node& node) { return node.isTextNode(); }
+void isText(const Text&); // Catch unnecessary runtime check of type known at compile time.
+void isText(const ContainerNode&); // Catch unnecessary runtime check of type known at compile time.
 
 NODE_TYPE_CASTS(Text)
 

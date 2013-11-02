@@ -164,11 +164,10 @@ void AnimationControllerPrivate::fireEventsAndUpdateStyle()
     // Protect the frame from getting destroyed in the event handler
     Ref<Frame> protector(m_frame);
 
-    bool updateStyle = !m_eventsToDispatch.isEmpty() || !m_nodeChangesToDispatch.isEmpty();
+    bool updateStyle = !m_eventsToDispatch.isEmpty() || !m_elementChangesToDispatch.isEmpty();
 
     // fire all the events
-    Vector<EventToDispatch> eventsToDispatch = m_eventsToDispatch;
-    m_eventsToDispatch.clear();
+    Vector<EventToDispatch> eventsToDispatch = std::move(m_eventsToDispatch);
     Vector<EventToDispatch>::const_iterator eventsToDispatchEnd = eventsToDispatch.end();
     for (Vector<EventToDispatch>::const_iterator it = eventsToDispatch.begin(); it != eventsToDispatchEnd; ++it) {
         Element* element = it->element.get();
@@ -178,12 +177,10 @@ void AnimationControllerPrivate::fireEventsAndUpdateStyle()
             element->dispatchEvent(WebKitAnimationEvent::create(it->eventType, it->name, it->elapsedTime));
     }
 
-    // call setChanged on all the elements
-    Vector<RefPtr<Node> >::const_iterator nodeChangesToDispatchEnd = m_nodeChangesToDispatch.end();
-    for (Vector<RefPtr<Node> >::const_iterator it = m_nodeChangesToDispatch.begin(); it != nodeChangesToDispatchEnd; ++it)
-        (*it)->setNeedsStyleRecalc(SyntheticStyleChange);
+    for (unsigned i = 0, size = m_elementChangesToDispatch.size(); i < size; ++i)
+        m_elementChangesToDispatch[i]->setNeedsStyleRecalc(SyntheticStyleChange);
 
-    m_nodeChangesToDispatch.clear();
+    m_elementChangesToDispatch.clear();
 
     if (updateStyle)
         m_frame.document()->updateStyleIfNeeded();
@@ -207,13 +204,10 @@ void AnimationControllerPrivate::addEventToDispatch(PassRefPtr<Element> element,
     startUpdateStyleIfNeededDispatcher();
 }
 
-void AnimationControllerPrivate::addNodeChangeToDispatch(PassRefPtr<Node> node)
+void AnimationControllerPrivate::addElementChangeToDispatch(PassRef<Element> element)
 {
-    ASSERT(!node || !node->document().inPageCache());
-    if (!node)
-        return;
-
-    m_nodeChangesToDispatch.append(node);
+    m_elementChangesToDispatch.append(std::move(element));
+    ASSERT(!m_elementChangesToDispatch.last()->document().inPageCache());
     startUpdateStyleIfNeededDispatcher();
 }
 
@@ -374,11 +368,11 @@ PassRefPtr<RenderStyle> AnimationControllerPrivate::getAnimatedStyleForRenderer(
 
     const CompositeAnimation* rendererAnimations = m_compositeAnimations.get(renderer);
     if (!rendererAnimations)
-        return renderer->style();
+        return &renderer->style();
     
     RefPtr<RenderStyle> animatingStyle = rendererAnimations->getAnimatedStyle();
     if (!animatingStyle)
-        animatingStyle = renderer->style();
+        animatingStyle = &renderer->style();
     
     return animatingStyle.release();
 }
@@ -495,19 +489,19 @@ void AnimationController::cancelAnimations(RenderElement* renderer)
     }
 }
 
-PassRefPtr<RenderStyle> AnimationController::updateAnimations(RenderElement* renderer, RenderStyle* newStyle)
+PassRef<RenderStyle> AnimationController::updateAnimations(RenderElement& renderer, PassRef<RenderStyle> newStyle)
 {
     // Don't do anything if we're in the cache
-    if (renderer->document().inPageCache())
+    if (renderer.document().inPageCache())
         return newStyle;
 
-    RenderStyle* oldStyle = renderer->style();
+    RenderStyle* oldStyle = renderer.hasInitializedStyle() ? &renderer.style() : nullptr;
 
-    if ((!oldStyle || (!oldStyle->animations() && !oldStyle->transitions())) && (!newStyle->animations() && !newStyle->transitions()))
+    if ((!oldStyle || (!oldStyle->animations() && !oldStyle->transitions())) && (!newStyle.get().animations() && !newStyle.get().transitions()))
         return newStyle;
 
     // Don't run transitions when printing.
-    if (renderer->view().printing())
+    if (renderer.view().printing())
         return newStyle;
 
     // Fetch our current set of implicit animations from a hashtable.  We then compare them
@@ -516,26 +510,28 @@ PassRefPtr<RenderStyle> AnimationController::updateAnimations(RenderElement* ren
     // a new style.
 
     // We don't support anonymous pseudo elements like :first-line or :first-letter.
-    ASSERT(renderer->element());
+    ASSERT(renderer.element());
 
-    CompositeAnimation& rendererAnimations = m_data->ensureCompositeAnimation(renderer);
-    RefPtr<RenderStyle> blendedStyle = rendererAnimations.animate(renderer, oldStyle, newStyle);
+    Ref<RenderStyle> newStyleBeforeAnimation(std::move(newStyle));
 
-    if (renderer->parent() || newStyle->animations() || (oldStyle && oldStyle->animations())) {
-        m_data->updateAnimationTimerForRenderer(renderer);
+    CompositeAnimation& rendererAnimations = m_data->ensureCompositeAnimation(&renderer);
+    auto blendedStyle = rendererAnimations.animate(renderer, oldStyle, newStyleBeforeAnimation.get());
+
+    if (renderer.parent() || newStyleBeforeAnimation->animations() || (oldStyle && oldStyle->animations())) {
+        m_data->updateAnimationTimerForRenderer(&renderer);
 #if ENABLE(REQUEST_ANIMATION_FRAME)
-        renderer->view().frameView().scheduleAnimation();
+        renderer.view().frameView().scheduleAnimation();
 #endif
     }
 
-    if (blendedStyle != newStyle) {
+    if (&blendedStyle.get() != &newStyleBeforeAnimation.get()) {
         // If the animations/transitions change opacity or transform, we need to update
         // the style to impose the stacking rules. Note that this is also
         // done in StyleResolver::adjustRenderStyle().
-        if (blendedStyle->hasAutoZIndex() && (blendedStyle->opacity() < 1.0f || blendedStyle->hasTransform()))
-            blendedStyle->setZIndex(0);
+        if (blendedStyle.get().hasAutoZIndex() && (blendedStyle.get().opacity() < 1.0f || blendedStyle.get().hasTransform()))
+            blendedStyle.get().setZIndex(0);
     }
-    return blendedStyle.release();
+    return blendedStyle;
 }
 
 PassRefPtr<RenderStyle> AnimationController::getAnimatedStyleForRenderer(RenderElement* renderer)

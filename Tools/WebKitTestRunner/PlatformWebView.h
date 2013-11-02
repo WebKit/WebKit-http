@@ -38,9 +38,6 @@ class WebKitTestRunnerWindow;
 #endif
 typedef WKView* PlatformWKView;
 typedef WebKitTestRunnerWindow* PlatformWindow;
-#elif defined(WIN32) || defined(_WIN32)
-typedef WKViewRef PlatformWKView;
-typedef HWND PlatformWindow;
 #elif defined(BUILDING_GTK__)
 typedef struct _GtkWidget GtkWidget;
 typedef WKViewRef PlatformWKView;
@@ -48,7 +45,7 @@ typedef GtkWidget* PlatformWindow;
 #elif PLATFORM(EFL)
 typedef struct _Ecore_Evas Ecore_Evas;
 #if USE(EO)
-typedef struct _Eo Evas_Object;
+typedef struct _Eo_Opaque Evas_Object;
 #else
 typedef struct _Evas_Object Evas_Object;
 #endif

@@ -41,13 +41,16 @@ namespace WebCore {
 struct LayerFragment;
 typedef Vector<LayerFragment, 1> LayerFragments;
 class RenderFlowThread;
+class RenderNamedFlowFragment;
 class RenderStyle;
 class RenderRegion;
 
 typedef ListHashSet<RenderRegion*> RenderRegionList;
 typedef Vector<RenderLayer*> RenderLayerList;
-typedef HashMap<RenderRegion*, RenderLayerList> RegionToLayerListMap;
-typedef HashMap<RenderLayer*, RenderRegion*> LayerToRegionMap;
+#if USE(ACCELERATED_COMPOSITING)
+typedef HashMap<RenderNamedFlowFragment*, RenderLayerList> RegionToLayerListMap;
+typedef HashMap<RenderLayer*, RenderNamedFlowFragment*> LayerToRegionMap;
+#endif
 
 // RenderFlowThread is used to collect all the render objects that participate in a
 // flow thread. It will also help in doing the layout. However, it will not render
@@ -57,7 +60,7 @@ typedef HashMap<RenderLayer*, RenderRegion*> LayerToRegionMap;
 
 class RenderFlowThread: public RenderBlockFlow {
 public:
-    RenderFlowThread();
+    RenderFlowThread(Document&, PassRef<RenderStyle>);
     virtual ~RenderFlowThread() { };
     
     virtual bool isRenderFlowThread() const OVERRIDE FINAL { return true; }
@@ -94,7 +97,7 @@ public:
     void invalidateRegions();
     bool hasValidRegionInfo() const { return !m_regionsInvalidated && !m_regionList.isEmpty(); }
 
-    static PassRefPtr<RenderStyle> createFlowThreadStyle(RenderStyle* parentStyle);
+    static PassRef<RenderStyle> createFlowThreadStyle(RenderStyle* parentStyle);
 
     virtual void styleDidChange(StyleDifference, const RenderStyle* oldStyle) OVERRIDE;
 
@@ -117,15 +120,13 @@ public:
 
     RenderRegion* regionAtBlockOffset(const RenderBox*, LayoutUnit, bool extendLastRegion = false, RegionAutoGenerationPolicy = AllowRegionAutoGeneration);
 
-    const RenderLayerList* getLayerListForRegion(RenderRegion*) const;
-
     bool regionsHaveUniformLogicalWidth() const { return m_regionsHaveUniformLogicalWidth; }
     bool regionsHaveUniformLogicalHeight() const { return m_regionsHaveUniformLogicalHeight; }
 
     RenderRegion* mapFromFlowToRegion(TransformState&) const;
 
     void removeRenderBoxRegionInfo(RenderBox*);
-    bool logicalWidthChangedInRegionsForBlock(const RenderBlock*);
+    void logicalWidthChangedInRegionsForBlock(const RenderBlock*, bool&);
 
     LayoutUnit contentLogicalWidthOfFirstRegion() const;
     LayoutUnit contentLogicalHeightOfFirstRegion() const;
@@ -181,13 +182,23 @@ public:
     void clearNeedsTwoPhasesLayout() { m_needsTwoPhasesLayout = false; }
 
 #if USE(ACCELERATED_COMPOSITING)
+    // Whether any of the regions has a compositing descendant.
+    bool hasCompositingRegionDescendant() const;
+
     void setNeedsLayerToRegionMappingsUpdate() { m_layersToRegionMappingsDirty = true; }
-    void updateLayerToRegionMappingsIfNeeded()
+    void updateAllLayerToRegionMappingsIfNeeded()
     {
         if (m_layersToRegionMappingsDirty)
-            updateLayerToRegionMappings();
+            updateAllLayerToRegionMappings();
     }
+
+    const RenderLayerList* getLayerListForRegion(RenderNamedFlowFragment*);
+
+    RenderNamedFlowFragment* regionForCompositedLayer(RenderLayer&); // By means of getRegionRangeForBox or regionAtBlockOffset.
+    RenderNamedFlowFragment* cachedRegionForCompositedLayer(RenderLayer&);
+
 #endif
+    virtual bool collectsGraphicsLayersUnderRegions() const;
 
     void pushFlowThreadLayoutState(const RenderObject*);
     void popFlowThreadLayoutState();
@@ -222,7 +233,11 @@ protected:
     LayoutRect computeRegionClippingRect(const LayoutPoint&, const LayoutRect&, const LayoutRect&) const;
 
 #if USE(ACCELERATED_COMPOSITING)
-    RenderRegion* regionForCompositedLayer(RenderLayer*);
+    bool updateAllLayerToRegionMappings();
+
+    // Triggers a layers' update if a layer has moved from a region to another since the last update.
+    void updateLayerToRegionMappings(RenderLayer&, LayerToRegionMap&, RegionToLayerListMap&, bool& needsLayerUpdate);
+    RenderNamedFlowFragment* regionForCompositedLayer(RenderLayer*);
     bool updateLayerToRegionMappings();
     void updateRegionForRenderLayer(RenderLayer*, LayerToRegionMap&, RegionToLayerListMap&, bool& needsLayerUpdate);
 #endif
@@ -304,7 +319,11 @@ protected:
     };
 
 #if USE(ACCELERATED_COMPOSITING)
+    // To easily find the region where a layer should be painted.
     OwnPtr<LayerToRegionMap> m_layerToRegionMap;
+
+    // To easily find the list of layers that paint in a region.
+    OwnPtr<RegionToLayerListMap> m_regionToLayerListMap;
 #endif
 
     // A maps from RenderBox
@@ -336,33 +355,7 @@ protected:
     bool m_layersToRegionMappingsDirty : 1;
 };
 
-inline RenderFlowThread& toRenderFlowThread(RenderObject& object)
-{
-    ASSERT_WITH_SECURITY_IMPLICATION(object.isRenderFlowThread());
-    return static_cast<RenderFlowThread&>(object);
-}
-
-inline const RenderFlowThread& toRenderFlowThread(const RenderObject& object)
-{
-    ASSERT_WITH_SECURITY_IMPLICATION(object.isRenderFlowThread());
-    return static_cast<const RenderFlowThread&>(object);
-}
-
-inline RenderFlowThread* toRenderFlowThread(RenderObject* object)
-{
-    ASSERT_WITH_SECURITY_IMPLICATION(!object || object->isRenderFlowThread());
-    return static_cast<RenderFlowThread*>(object);
-}
-
-inline const RenderFlowThread* toRenderFlowThread(const RenderObject* object)
-{
-    ASSERT_WITH_SECURITY_IMPLICATION(!object || object->isRenderFlowThread());
-    return static_cast<const RenderFlowThread*>(object);
-}
-
-// This will catch anyone doing an unnecessary cast.
-void toRenderFlowThread(const RenderFlowThread*);
-void toRenderFlowThread(const RenderFlowThread&);
+RENDER_OBJECT_TYPE_CASTS(RenderFlowThread, isRenderFlowThread())
 
 class CurrentRenderFlowThreadMaintainer {
     WTF_MAKE_NONCOPYABLE(CurrentRenderFlowThreadMaintainer);

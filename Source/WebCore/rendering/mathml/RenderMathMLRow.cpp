@@ -36,18 +36,21 @@ namespace WebCore {
 
 using namespace MathMLNames;
 
-RenderMathMLRow::RenderMathMLRow(Element* element)
-    : RenderMathMLBlock(element)
+RenderMathMLRow::RenderMathMLRow(Element& element, PassRef<RenderStyle> style)
+    : RenderMathMLBlock(element, std::move(style))
+{
+}
+
+RenderMathMLRow::RenderMathMLRow(Document& document, PassRef<RenderStyle> style)
+    : RenderMathMLBlock(document, std::move(style))
 {
 }
 
 // FIXME: Change all these createAnonymous... routines to return a PassOwnPtr<>.
 RenderMathMLRow* RenderMathMLRow::createAnonymousWithParentRenderer(const RenderObject* parent)
 {
-    RefPtr<RenderStyle> newStyle = RenderStyle::createAnonymousStyleWithDisplay(parent->style(), FLEX);
-    RenderMathMLRow* newMRow = new (parent->renderArena()) RenderMathMLRow(0);
-    newMRow->setDocumentForAnonymous(parent->document());
-    newMRow->setStyle(newStyle.release());
+    RenderMathMLRow* newMRow = new RenderMathMLRow(parent->document(), RenderStyle::createAnonymousStyleWithDisplay(&parent->style(), FLEX));
+    newMRow->initializeStyle();
     return newMRow;
 }
 
@@ -55,15 +58,16 @@ void RenderMathMLRow::layout()
 {
     int stretchLogicalHeight = 0;
     for (RenderObject* child = firstChild(); child; child = child->nextSibling()) {
-        child->layoutIfNeeded();
+        if (child->needsLayout())
+            toRenderElement(child)->layout();
         // FIXME: Only skip renderMo if it is stretchy.
         if (child->isRenderMathMLBlock() && toRenderMathMLBlock(child)->unembellishedOperator())
             continue;
         if (child->isBox())
-            stretchLogicalHeight = max<int>(stretchLogicalHeight, roundToInt(toRenderBox(child)->logicalHeight()));
+            stretchLogicalHeight = std::max<int>(stretchLogicalHeight, roundToInt(toRenderBox(child)->logicalHeight()));
     }
     if (!stretchLogicalHeight)
-        stretchLogicalHeight = style()->fontSize();
+        stretchLogicalHeight = style().fontSize();
     
     // Set the sizes of (possibly embellished) stretchy operator children.
     for (RenderObject* child = firstChild(); child; child = child->nextSibling()) {

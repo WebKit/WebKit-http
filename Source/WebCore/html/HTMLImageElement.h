@@ -98,7 +98,7 @@ private:
     virtual void collectStyleForPresentationAttribute(const QualifiedName&, const AtomicString&, MutableStylePropertySet*) OVERRIDE;
 
     virtual void didAttachRenderers() OVERRIDE;
-    virtual RenderElement* createRenderer(RenderArena&, RenderStyle&) OVERRIDE;
+    virtual RenderElement* createRenderer(PassRef<RenderStyle>) OVERRIDE;
 
     virtual bool canStartSelection() const OVERRIDE;
 
@@ -111,9 +111,10 @@ private:
     virtual InsertionNotificationRequest insertedInto(ContainerNode&) OVERRIDE;
     virtual void removedFrom(ContainerNode&) OVERRIDE;
 
-    virtual bool isFormAssociatedElement() OVERRIDE FINAL { return false; }
+    virtual bool isFormAssociatedElement() const OVERRIDE FINAL { return false; }
     virtual FormNamedItem* asFormNamedItem() OVERRIDE FINAL { return this; }
-    virtual HTMLElement* asHTMLElement() OVERRIDE FINAL { return this; }
+    virtual HTMLImageElement& asHTMLElement() OVERRIDE FINAL { return *this; }
+    virtual const HTMLImageElement& asHTMLElement() const OVERRIDE FINAL { return *this; }
 
     HTMLImageLoader m_imageLoader;
     HTMLFormElement* m_form;
@@ -122,7 +123,7 @@ private:
     AtomicString m_lowercasedUsemap;
 };
 
-ELEMENT_TYPE_CASTS(HTMLImageElement)
+NODE_TYPE_CASTS(HTMLImageElement)
 
 } //namespace
 

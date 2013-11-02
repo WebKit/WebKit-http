@@ -60,7 +60,7 @@ namespace WebCore {
 
 using namespace HTMLNames;
 
-typedef Vector<RefPtr<HTMLPlugInImageElement> > HTMLPlugInImageElementList;
+typedef Vector<RefPtr<HTMLPlugInImageElement>> HTMLPlugInImageElementList;
 typedef HashMap<String, String> MimeTypeToLocalizedStringMap;
 
 static const int sizingTinyDimensionThreshold = 40;
@@ -195,7 +195,7 @@ bool HTMLPlugInImageElement::wouldLoadAsNetscapePlugin(const String& url, const 
     return false;
 }
 
-RenderElement* HTMLPlugInImageElement::createRenderer(RenderArena& arena, RenderStyle& style)
+RenderElement* HTMLPlugInImageElement::createRenderer(PassRef<RenderStyle> style)
 {
     // Once a PlugIn Element creates its renderer, it needs to be told when the Document goes
     // inactive or reactivates so it can clear the renderer before going into the page cache.
@@ -205,7 +205,7 @@ RenderElement* HTMLPlugInImageElement::createRenderer(RenderArena& arena, Render
     }
 
     if (displayState() == DisplayingSnapshot) {
-        RenderSnapshottedPlugIn* renderSnapshottedPlugIn = new (arena) RenderSnapshottedPlugIn(*this);
+        RenderSnapshottedPlugIn* renderSnapshottedPlugIn = new RenderSnapshottedPlugIn(*this, std::move(style));
         renderSnapshottedPlugIn->updateSnapshot(m_snapshotImage);
         return renderSnapshottedPlugIn;
     }
@@ -214,15 +214,15 @@ RenderElement* HTMLPlugInImageElement::createRenderer(RenderArena& arena, Render
     // class and all superclasses because createObject won't necessarily
     // return a RenderEmbeddedObject or RenderWidget.
     if (useFallbackContent())
-        return RenderElement::createFor(*this, style);
+        return RenderElement::createFor(*this, std::move(style));
 
     if (isImageType()) {
-        RenderImage* image = new (arena) RenderImage(this);
+        RenderImage* image = new RenderImage(*this, std::move(style));
         image->setImageResource(RenderImageResource::create());
         return image;
     }
 
-    return new (arena) RenderEmbeddedObject(*this);
+    return new RenderEmbeddedObject(*this, std::move(style));
 }
 
 bool HTMLPlugInImageElement::willRecalcStyle(Style::Change)
@@ -663,8 +663,8 @@ void HTMLPlugInImageElement::subframeLoaderWillCreatePlugIn(const URL& url)
     }
 
     RenderBox* renderEmbeddedObject = toRenderBox(renderer());
-    Length styleWidth = renderEmbeddedObject->style()->width();
-    Length styleHeight = renderEmbeddedObject->style()->height();
+    Length styleWidth = renderEmbeddedObject->style().width();
+    Length styleHeight = renderEmbeddedObject->style().height();
     LayoutRect contentBoxRect = renderEmbeddedObject->contentBoxRect();
     int contentWidth = contentBoxRect.width();
     int contentHeight = contentBoxRect.height();

@@ -28,8 +28,6 @@ namespace WebCore {
 
 class RenderReplaced : public RenderBox {
 public:
-    explicit RenderReplaced(Element*);
-    RenderReplaced(Element*, const LayoutSize& intrinsicSize);
     virtual ~RenderReplaced();
 
     virtual LayoutUnit computeReplacedLogicalWidth(ShouldComputePreferred  = ComputeActual) const OVERRIDE;
@@ -41,6 +39,10 @@ public:
     bool hasReplacedLogicalHeight() const;
 
 protected:
+    RenderReplaced(Element&, PassRef<RenderStyle>);
+    RenderReplaced(Element&, PassRef<RenderStyle>, const LayoutSize& intrinsicSize);
+    RenderReplaced(Document&, PassRef<RenderStyle>, const LayoutSize& intrinsicSize);
+
     virtual void willBeDestroyed() OVERRIDE;
 
     virtual void layout() OVERRIDE;
@@ -87,20 +89,7 @@ private:
     mutable LayoutSize m_intrinsicSize;
 };
 
-inline RenderReplaced* toRenderReplaced(RenderObject* object)
-{
-    ASSERT_WITH_SECURITY_IMPLICATION(!object || object->isRenderReplaced());
-    return static_cast<RenderReplaced*>(object);
-}
-
-inline const RenderReplaced* toRenderReplaced(const RenderObject* object)
-{
-    ASSERT_WITH_SECURITY_IMPLICATION(!object || object->isRenderReplaced());
-    return static_cast<const RenderReplaced*>(object);
-}
-
-// This will catch anyone doing an unnecessary cast.
-void toRenderReplaced(const RenderReplaced*);
+RENDER_OBJECT_TYPE_CASTS(RenderReplaced, isRenderReplaced())
 
 }
 

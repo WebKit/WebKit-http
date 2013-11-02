@@ -1336,7 +1336,7 @@ HRESULT WebFrame::controlsInForm(IDOMElement* form, IDOMElement** controls, int*
     const Vector<FormAssociatedElement*>& elements = formElement->associatedElements();
     for (int i = 0; i < count; i++) {
         if (elements.at(i)->isEnumeratable()) { // Skip option elements, other duds
-            controls[*cControls] = DOMElement::createInstance(toHTMLElement(elements.at(i)));
+            controls[*cControls] = DOMElement::createInstance(&elements.at(i)->asHTMLElement());
             (*cControls)++;
         }
     }
@@ -1932,7 +1932,7 @@ HRESULT STDMETHODCALLTYPE WebFrame::string(
     if (!coreFrame)
         return E_FAIL;
 
-    RefPtr<Range> allRange(rangeOfContents(coreFrame->document()));
+    RefPtr<Range> allRange(rangeOfContents(*coreFrame->document()));
     String allString = plainText(allRange.get());
     *result = BString(allString).release();
     return S_OK;
@@ -2060,7 +2060,7 @@ HRESULT WebFrame::stringByEvaluatingJavaScriptInScriptWorld(IWebScriptWorld* iWo
         anyWorldGlobalObject = static_cast<JSDOMWindowShell*>(globalObjectObj)->window();
 
     // Get the frame frome the global object we've settled on.
-    Frame* frame = anyWorldGlobalObject->impl()->frame();
+    Frame* frame = anyWorldGlobalObject->impl().frame();
     ASSERT(frame->document());
     JSValue result = frame->script().executeScriptInWorld(world->world(), string, true).jsValue();
 

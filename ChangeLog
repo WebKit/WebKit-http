@@ -1,3 +1,136 @@
+2013-10-31  Ryuan Choi  <ryuan.choi@samsung.com>
+
+        [EFL][GLES] OpenGL should be an optional
+        https://bugs.webkit.org/show_bug.cgi?id=123399
+
+        Reviewed by Noam Rosenthal.
+
+        * Source/cmake/OptionsEfl.cmake:
+        Refactor the check routine of GL dependencies to use OpenGL as optional.
+
+2013-10-29  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Update NEWS and Versions.m4 for 2.3.1 release.
+
+        * Source/autotools/Versions.m4: Bump version numbers.
+
+2013-10-24  Ryuan Choi  <ryuan.choi@samsung.com>
+
+        [EFL] Build break with latest EFL 1.8 libraries.
+        https://bugs.webkit.org/show_bug.cgi?id=123245
+
+        Reviewed by Gyuyoung Kim.
+
+        After fixed build break on EFL 1.8 at r138326, EFL libraries are changed
+        Eo typedef and splitted header files which contain version macro.
+
+        * Source/cmake/EFLHelpers.cmake: Checked whether include path exist.
+        * Source/cmake/FindEcore.cmake: Added 1.8 Header which have version macro.
+        * Source/cmake/FindEdje.cmake: Ditto.
+        * Source/cmake/FindEina.cmake: Ditto.
+        * Source/cmake/FindEo.cmake: Ditto.
+        * Source/cmake/FindEvas.cmake: Ditto.
+
+2013-10-22  Ryuan Choi  <ryuan.choi@samsung.com>
+
+        [EFL] Remove HAVE_GLX macro
+        https://bugs.webkit.org/show_bug.cgi?id=123191
+
+        Reviewed by Gyuyoung Kim.
+
+        * Source/cmake/OptionsEfl.cmake: Removed unnecessary HAVE_GLX macro
+
+2013-10-21  Gergo Balogh  <geryxyz@inf.u-szeged.hu>
+
+        Remove .qmake.conf files
+        https://bugs.webkit.org/show_bug.cgi?id=123091
+
+        Reviewed by Csaba Osztrogonác.
+
+        * .qmake.conf: Removed.
+
+2013-10-18  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Generate API documentation for GObject DOM bindings
+        https://bugs.webkit.org/show_bug.cgi?id=121538
+
+        Reviewed by Gustavo Noronha Silva.
+
+        * GNUmakefile.am: Initialize gdom_symbol_files variable.
+
+2013-10-17  Afonso R. Costa Jr.  <afonso.costa@samsung.com>
+
+        [CMAKE] Update code to take advantage of CMake version 2.8.3+.
+        https://bugs.webkit.org/show_bug.cgi?id=97516
+
+        Reviewed by Gyuyoung Kim.
+
+        CMake's version was changed to 2.8.3. So, these files below
+        can be simplified to take advantage of CMake's new version.
+
+        * Source/cmake/FindCairo.cmake: Simplified according to CMake 2.8.3+.
+        * Source/cmake/FindGStreamer.cmake: Ditto.
+
+2013-10-16  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Add a new flakiness dashboard clone
+        https://bugs.webkit.org/show_bug.cgi?id=122936
+
+        Reviewed by Anders Carlsson.
+
+        Added the initial prototype.
+
+        * Websites/test-results: Added.
+        * Websites/test-results/.htaccess: Added.
+        * Websites/test-results/admin: Added.
+        * Websites/test-results/admin/index.php: Added.
+        * Websites/test-results/api: Added.
+        * Websites/test-results/api/manifest.php: Added.
+        * Websites/test-results/api/report.php: Added.
+        * Websites/test-results/api/results.php: Added.
+        * Websites/test-results/include: Added.
+        * Websites/test-results/include/config.json: Added.
+        * Websites/test-results/include/db.php: Added.
+        * Websites/test-results/include/init-database.sql: Added.
+        * Websites/test-results/include/json-shared.php: Added.
+        * Websites/test-results/include/test-results.php: Added.
+        * Websites/test-results/index.html: Added.
+        * Websites/test-results/js: Added.
+        * Websites/test-results/js/autocompleter.js: Added.
+        * Websites/test-results/js/build.js: Added.
+        * Websites/test-results/js/dom.js: Added.
+
+2013-10-16  Csaba Osztrogonác  <ossy@webkit.org>
+
+        [WK2][Efl][CMake] Add support for ENABLE_NETWORK_PROCESS to the build system
+        https://bugs.webkit.org/show_bug.cgi?id=110139
+
+        Reviewed by Laszlo Gombos.
+
+        Original patch by Balazs Kelemen <kbalazs@webkit.org>
+
+        * Source/cmake/WebKitFeatures.cmake:
+        * Source/cmakeconfig.h.cmake:
+
+2013-10-10  Marcelo Morais  <m.morais@samsung.com>
+
+        Web Inspector: Remove the old front-end from WebKit
+        https://bugs.webkit.org/show_bug.cgi?id=122295
+
+        Reviewed by Timothy Hatcher.
+
+        * Source/PlatformGTK.cmake: Removed. This file was using files from the
+        old inspector, not needed anymore.
+
+2013-10-09  Julien Brianceau  <jbriance@cisco.com>
+
+        [sh4] Add sh4 support when building with CMake.
+        https://bugs.webkit.org/show_bug.cgi?id=122542
+
+        Reviewed by Csaba Osztrogonác.
+
+        * CMakeLists.txt:
+
 2013-10-08  Martin Robinson  <mrobinson@igalia.com>
 
         [GTK] Re-enable MathML for release builds

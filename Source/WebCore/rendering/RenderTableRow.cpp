@@ -38,12 +38,18 @@ namespace WebCore {
 
 using namespace HTMLNames;
 
-RenderTableRow::RenderTableRow(Element* element)
-    : RenderBox(element, 0)
+RenderTableRow::RenderTableRow(Element& element, PassRef<RenderStyle> style)
+    : RenderBox(element, std::move(style), 0)
     , m_rowIndex(unsetRowIndex)
 {
-    // init RenderObject attributes
-    setInline(false);   // our object is not Inline
+    setInline(false);
+}
+
+RenderTableRow::RenderTableRow(Document& document, PassRef<RenderStyle> style)
+    : RenderBox(document, std::move(style), 0)
+    , m_rowIndex(unsetRowIndex)
+{
+    setInline(false);
 }
 
 void RenderTableRow::willBeRemovedFromTree()
@@ -63,21 +69,21 @@ static bool borderWidthChanged(const RenderStyle* oldStyle, const RenderStyle* n
 
 void RenderTableRow::styleDidChange(StyleDifference diff, const RenderStyle* oldStyle)
 {
-    ASSERT(style()->display() == TABLE_ROW);
+    ASSERT(style().display() == TABLE_ROW);
 
     RenderBox::styleDidChange(diff, oldStyle);
     propagateStyleToAnonymousChildren(PropagateToAllChildren);
 
-    if (section() && oldStyle && style()->logicalHeight() != oldStyle->logicalHeight())
+    if (section() && oldStyle && style().logicalHeight() != oldStyle->logicalHeight())
         section()->rowLogicalHeightChanged(rowIndex());
 
     // If border was changed, notify table.
     if (parent()) {
         RenderTable* table = this->table();
-        if (table && !table->selfNeedsLayout() && !table->normalChildNeedsLayout() && oldStyle && oldStyle->border() != style()->border())
+        if (table && !table->selfNeedsLayout() && !table->normalChildNeedsLayout() && oldStyle && oldStyle->border() != style().border())
             table->invalidateCollapsedBorders();
         
-        if (table && oldStyle && diff == StyleDifferenceLayout && needsLayout() && table->collapseBorders() && borderWidthChanged(oldStyle, style())) {
+        if (table && oldStyle && diff == StyleDifferenceLayout && needsLayout() && table->collapseBorders() && borderWidthChanged(oldStyle, &style())) {
             // If the border width changes on a row, we need to make sure the cells in the row know to lay out again.
             // This only happens when borders are collapsed, since they end up affecting the border sides of the cell
             // itself.
@@ -91,14 +97,14 @@ const BorderValue& RenderTableRow::borderAdjoiningStartCell(const RenderTableCel
 {
     ASSERT_UNUSED(cell, cell->isFirstOrLastCellInRow());
     // FIXME: https://webkit.org/b/79272 - Add support for mixed directionality at the cell level.
-    return style()->borderStart();
+    return style().borderStart();
 }
 
 const BorderValue& RenderTableRow::borderAdjoiningEndCell(const RenderTableCell* cell) const
 {
     ASSERT_UNUSED(cell, cell->isFirstOrLastCellInRow());
     // FIXME: https://webkit.org/b/79272 - Add support for mixed directionality at the cell level.
-    return style()->borderEnd();
+    return style().borderEnd();
 }
 
 void RenderTableRow::addChild(RenderObject* child, RenderObject* beforeChild)
@@ -157,7 +163,7 @@ void RenderTableRow::layout()
     ASSERT(needsLayout());
 
     // Table rows do not add translation.
-    LayoutStateMaintainer statePusher(&view(), this, LayoutSize(), hasTransform() || hasReflection() || style()->isFlippedBlocksWritingMode());
+    LayoutStateMaintainer statePusher(&view(), this, LayoutSize(), hasTransform() || hasReflection() || style().isFlippedBlocksWritingMode());
 
     bool paginated = view().layoutState()->isPaginated();
                 
@@ -229,7 +235,7 @@ void RenderTableRow::paintOutlineForRowIfNeeded(PaintInfo& paintInfo, const Layo
 {
     LayoutPoint adjustedPaintOffset = paintOffset + location();
     PaintPhase paintPhase = paintInfo.phase;
-    if ((paintPhase == PaintPhaseOutline || paintPhase == PaintPhaseSelfOutline) && style()->visibility() == VISIBLE)
+    if ((paintPhase == PaintPhaseOutline || paintPhase == PaintPhaseSelfOutline) && style().visibility() == VISIBLE)
         paintOutline(paintInfo, LayoutRect(adjustedPaintOffset, size()));
 }
 
@@ -253,18 +259,10 @@ void RenderTableRow::imageChanged(WrappedImagePtr, const IntRect*)
     repaint();
 }
 
-RenderTableRow* RenderTableRow::createAnonymous(Document& document)
-{
-    RenderTableRow* renderer = new (*document.renderArena()) RenderTableRow(0);
-    renderer->setDocumentForAnonymous(document);
-    return renderer;
-}
-
 RenderTableRow* RenderTableRow::createAnonymousWithParentRenderer(const RenderObject* parent)
 {
-    RenderTableRow* newRow = RenderTableRow::createAnonymous(parent->document());
-    RefPtr<RenderStyle> newStyle = RenderStyle::createAnonymousStyleWithDisplay(parent->style(), TABLE_ROW);
-    newRow->setStyle(newStyle.release());
+    auto newRow = new RenderTableRow(parent->document(), RenderStyle::createAnonymousStyleWithDisplay(&parent->style(), TABLE_ROW));
+    newRow->initializeStyle();
     return newRow;
 }
 

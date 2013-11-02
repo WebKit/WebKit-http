@@ -80,6 +80,7 @@ public:
     virtual bool isFilterEffect() const { return false; }
     virtual bool isGradientStop() const { return false; }
     virtual bool isTextContent() const { return false; }
+    virtual bool isSMILElement() const { return false; }
 
     // For SVGTests
     virtual bool isValid() const { return true; }
@@ -206,28 +207,11 @@ struct SVGAttributeHashTranslator {
     static bool equal(const QualifiedName& a, const QualifiedName& b) { return a.matches(b); }
 };
 
-inline SVGElement& toSVGElement(Node& node)
-{
-    ASSERT_WITH_SECURITY_IMPLICATION(node.isSVGElement());
-    return static_cast<SVGElement&>(node);
-}
+void isSVGElement(const SVGElement&); // Catch unnecessary runtime check of type known at compile time.
+inline bool isSVGElement(const Node& node) { return node.isSVGElement(); }
+template <> inline bool isElementOfType<const SVGElement>(const Element& element) { return element.isSVGElement(); }
 
-inline SVGElement* toSVGElement(Node* node)
-{
-    ASSERT_WITH_SECURITY_IMPLICATION(!node || node->isSVGElement());
-    return static_cast<SVGElement*>(node);
-}
-
-inline const SVGElement* toSVGElement(const Node* node)
-{
-    ASSERT_WITH_SECURITY_IMPLICATION(!node || node->isSVGElement());
-    return static_cast<const SVGElement*>(node);
-}
-
-void toSVGElement(const SVGElement*);
-void toSVGElement(const SVGElement&);
-
-template <> inline bool isElementOfType<SVGElement>(const Element* element) { return element->isSVGElement(); }
+NODE_TYPE_CASTS(SVGElement)
 
 }
 

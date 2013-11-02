@@ -35,7 +35,7 @@ class RenderTextFragment;
 // to date as the button changes.
 class RenderButton FINAL : public RenderFlexibleBox {
 public:
-    explicit RenderButton(HTMLFormControlElement&);
+    RenderButton(HTMLFormControlElement&, PassRef<RenderStyle>);
     virtual ~RenderButton();
 
     HTMLFormControlElement& formControlElement() const;
@@ -43,7 +43,7 @@ public:
     virtual bool canBeSelectionLeaf() const OVERRIDE;
 
     virtual void addChild(RenderObject* newChild, RenderObject *beforeChild = 0) OVERRIDE;
-    virtual void removeChild(RenderObject*) OVERRIDE;
+    virtual void removeChild(RenderObject&) OVERRIDE;
     virtual void removeLeftoverAnonymousBlock(RenderBlock*) OVERRIDE { }
     virtual bool createsAnonymousWrapper() const OVERRIDE { return true; }
 
@@ -63,7 +63,7 @@ private:
     virtual const char* renderName() const OVERRIDE { return "RenderButton"; }
     virtual bool isRenderButton() const OVERRIDE { return true; }
 
-    virtual void styleWillChange(StyleDifference, const RenderStyle* newStyle) OVERRIDE;
+    virtual void styleWillChange(StyleDifference, const RenderStyle& newStyle) OVERRIDE;
     virtual void styleDidChange(StyleDifference, const RenderStyle* oldStyle) OVERRIDE;
 
     virtual bool hasLineIfEmpty() const OVERRIDE;
@@ -75,24 +75,11 @@ private:
     RenderTextFragment* m_buttonText;
     RenderBlock* m_inner;
 
-    OwnPtr<Timer<RenderButton> > m_timer;
+    OwnPtr<Timer<RenderButton>> m_timer;
     bool m_default;
 };
 
-inline RenderButton* toRenderButton(RenderObject* object)
-{ 
-    ASSERT_WITH_SECURITY_IMPLICATION(!object || object->isRenderButton());
-    return static_cast<RenderButton*>(object);
-}
-
-inline const RenderButton* toRenderButton(const RenderObject* object)
-{ 
-    ASSERT_WITH_SECURITY_IMPLICATION(!object || object->isRenderButton());
-    return static_cast<const RenderButton*>(object);
-}
-
-// This will catch anyone doing an unnecessary cast.
-void toRenderButton(const RenderButton*);
+RENDER_OBJECT_TYPE_CASTS(RenderButton, isRenderButton())
 
 } // namespace WebCore
 

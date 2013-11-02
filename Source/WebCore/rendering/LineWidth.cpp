@@ -92,7 +92,7 @@ void LineWidth::updateAvailableWidth(LayoutUnit replacedHeight)
 void LineWidth::shrinkAvailableWidthForNewFloatIfNeeded(FloatingObject* newFloat)
 {
     LayoutUnit height = m_block.logicalHeight();
-    if (height < newFloat->logicalTop(m_block.isHorizontalWritingMode()) || height >= newFloat->logicalBottom(m_block.isHorizontalWritingMode()))
+    if (height < m_block.logicalTopForFloat(newFloat) || height >= m_block.logicalBottomForFloat(newFloat))
         return;
 
 #if ENABLE(CSS_SHAPES)
@@ -122,7 +122,7 @@ void LineWidth::shrinkAvailableWidthForNewFloatIfNeeded(FloatingObject* newFloat
 #endif
 
     if (newFloat->type() == FloatingObject::FloatLeft) {
-        float newLeft = newFloat->logicalRight(m_block.isHorizontalWritingMode());
+        float newLeft = m_block.logicalRightForFloat(newFloat);
 #if ENABLE(CSS_SHAPES)
         if (previousShapeOutsideInfo)
             newLeft -= previousShapeOutsideInfo->rightMarginBoxDelta();
@@ -130,11 +130,11 @@ void LineWidth::shrinkAvailableWidthForNewFloatIfNeeded(FloatingObject* newFloat
             newLeft += shapeOutsideInfo->rightMarginBoxDelta();
 #endif
 
-        if (shouldIndentText() && m_block.style()->isLeftToRightDirection())
+        if (shouldIndentText() && m_block.style().isLeftToRightDirection())
             newLeft += floorToInt(m_block.textIndentOffset());
         m_left = std::max<float>(m_left, newLeft);
     } else {
-        float newRight = newFloat->logicalLeft(m_block.isHorizontalWritingMode());
+        float newRight = m_block.logicalLeftForFloat(newFloat);
 #if ENABLE(CSS_SHAPES)
         if (previousShapeOutsideInfo)
             newRight -= previousShapeOutsideInfo->leftMarginBoxDelta();
@@ -142,7 +142,7 @@ void LineWidth::shrinkAvailableWidthForNewFloatIfNeeded(FloatingObject* newFloat
             newRight += shapeOutsideInfo->leftMarginBoxDelta();
 #endif
 
-        if (shouldIndentText() && !m_block.style()->isLeftToRightDirection())
+        if (shouldIndentText() && !m_block.style().isLeftToRightDirection())
             newRight -= floorToInt(m_block.textIndentOffset());
         m_right = std::min<float>(m_right, newRight);
     }
@@ -187,7 +187,7 @@ void LineWidth::fitBelowFloats()
 
         newLineLeft = m_block.logicalLeftOffsetForLine(floatLogicalBottom, shouldIndentText());
         newLineRight = m_block.logicalRightOffsetForLine(floatLogicalBottom, shouldIndentText());
-        newLineWidth = max(0.0f, newLineRight - newLineLeft);
+        newLineWidth = std::max(0.0f, newLineRight - newLineLeft);
         lastFloatLogicalBottom = floatLogicalBottom;
 
 #if ENABLE(CSS_SHAPES)
@@ -229,7 +229,7 @@ void LineWidth::updateCurrentShapeSegment()
 
 void LineWidth::computeAvailableWidthFromLeftAndRight()
 {
-    m_availableWidth = max(0.0f, m_right - m_left) + m_overhangWidth;
+    m_availableWidth = std::max<float>(0, m_right - m_left) + m_overhangWidth;
 }
 
 bool LineWidth::fitsOnLineExcludingTrailingCollapsedWhitespace() const

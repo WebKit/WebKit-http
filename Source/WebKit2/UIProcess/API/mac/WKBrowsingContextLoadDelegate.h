@@ -26,6 +26,7 @@
 #import <Foundation/Foundation.h>
 
 @class WKBrowsingContextController;
+@class WKBackForwardListItem;
 
 @protocol WKBrowsingContextLoadDelegate <NSObject>
 @optional
@@ -47,5 +48,11 @@
 
 /* Sent if the commited load fails. */
 - (void)browsingContextControllerDidFailLoad:(WKBrowsingContextController *)sender withError:(NSError *)error;
+
+- (void)browsingContextControllerDidStartProgress:(WKBrowsingContextController *)sender;
+- (void)browsingContextController:(WKBrowsingContextController *)sender estimatedProgressChangedTo:(double)estimatedProgress;
+- (void)browsingContextControllerDidFinishProgress:(WKBrowsingContextController *)sender;
+
+- (void)browsingContextControllerDidChangeBackForwardList:(WKBrowsingContextController *)sender addedItem:(WKBackForwardListItem *)addedItem removedItems:(NSArray *)removedItems;
 
 @end

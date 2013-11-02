@@ -49,7 +49,7 @@ PassRefPtr<SVGTextElement> SVGTextElement::create(const QualifiedName& tagName, 
 AffineTransform SVGTextElement::animatedLocalTransform() const
 {
     AffineTransform matrix;
-    RenderStyle* style = renderer() ? renderer()->style() : 0;
+    RenderStyle* style = renderer() ? &renderer()->style() : nullptr;
 
     // if CSS property was set, use that, otherwise fallback to attribute (if set)
     if (style && style->hasTransform()) {
@@ -68,9 +68,9 @@ AffineTransform SVGTextElement::animatedLocalTransform() const
     return matrix;
 }
 
-RenderElement* SVGTextElement::createRenderer(RenderArena& arena, RenderStyle&)
+RenderElement* SVGTextElement::createRenderer(PassRef<RenderStyle> style)
 {
-    return new (arena) RenderSVGText(*this);
+    return new RenderSVGText(*this, std::move(style));
 }
 
 bool SVGTextElement::childShouldCreateRenderer(const Node* child) const

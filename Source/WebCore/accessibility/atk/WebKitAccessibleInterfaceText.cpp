@@ -69,108 +69,13 @@ static AccessibilityObject* core(AtkText* text)
     return webkitAccessibleGetAccessibilityObject(WEBKIT_ACCESSIBLE(text));
 }
 
-static gchar* textForRenderer(RenderObject* renderer)
-{
-    GString* resultText = g_string_new(0);
-
-    if (!renderer)
-        return g_string_free(resultText, FALSE);
-
-    // For RenderBlocks, piece together the text from the RenderText objects they contain.
-    for (RenderObject* object = renderer->firstChildSlow(); object; object = object->nextSibling()) {
-        if (object->isBR()) {
-            g_string_append(resultText, "\n");
-            continue;
-        }
-
-        RenderText* renderText;
-        if (object->isText())
-            renderText = toRenderText(object);
-        else {
-            // List item's markers will be treated in an special way
-            // later on this function, so ignore them here.
-            if (object->isReplaced() && !object->isListMarker())
-                g_string_append_unichar(resultText, objectReplacementCharacter);
-
-            // We need to check children, if any, to consider when
-            // current object is not a text object but some of its
-            // children are, in order not to miss those portions of
-            // text by not properly handling those situations
-            if (object->firstChildSlow()) {
-                GOwnPtr<char> objectText(textForRenderer(object));
-                g_string_append(resultText, objectText.get());
-            }
-            continue;
-        }
-
-        InlineTextBox* box = renderText ? renderText->firstTextBox() : 0;
-        while (box) {
-            // WebCore introduces line breaks in the text that do not reflect
-            // the layout you see on the screen, replace them with spaces.
-            String text = String(renderText->characters(), renderText->textLength()).replace("\n", " ");
-            g_string_append(resultText, text.substring(box->start(), box->end() - box->start() + 1).utf8().data());
-
-            // Newline chars in the source result in separate text boxes, so check
-            // before adding a newline in the layout. See bug 25415 comment #78.
-            // If the next sibling is a BR, we'll add the newline when we examine that child.
-            if (!box->nextOnLineExists() && !(object->nextSibling() && object->nextSibling()->isBR())) {
-                // If there was a '\n' in the last position of the
-                // current text box, it would have been converted to a
-                // space in String::replace(), so remove it first.
-                if (renderText->characters()[box->end()] == '\n')
-                    g_string_erase(resultText, resultText->len - 1, -1);
-
-                g_string_append(resultText, "\n");
-            }
-            box = box->nextTextBox();
-        }
-    }
-
-    // Insert the text of the marker for list item in the right place, if present
-    if (renderer->isListItem()) {
-        String markerText = toRenderListItem(renderer)->markerTextWithSuffix();
-        if (renderer->style()->direction() == LTR)
-            g_string_prepend(resultText, markerText.utf8().data());
-        else
-            g_string_append(resultText, markerText.utf8().data());
-    }
-
-    return g_string_free(resultText, FALSE);
-}
-
-static gchar* textForObject(const AccessibilityObject* coreObject)
-{
-    GString* str = g_string_new(0);
-
-    // For text controls, we can get the text line by line.
-    if (coreObject->isTextControl()) {
-        unsigned textLength = coreObject->textLength();
-        int lineNumber = 0;
-        PlainTextRange range = coreObject->doAXRangeForLine(lineNumber);
-        while (range.length) {
-            // When a line of text wraps in a text area, the final space is removed.
-            if (range.start + range.length < textLength)
-                range.length -= 1;
-            String lineText = coreObject->doAXStringForRange(range);
-            g_string_append(str, lineText.utf8().data());
-            g_string_append(str, "\n");
-            range = coreObject->doAXRangeForLine(++lineNumber);
-        }
-    } else if (coreObject->isAccessibilityRenderObject()) {
-        GOwnPtr<gchar> rendererText(textForRenderer(coreObject->renderer()));
-        g_string_append(str, rendererText.get());
-    }
-
-    return g_string_free(str, FALSE);
-}
-
 static int baselinePositionForRenderObject(RenderObject* renderObject)
 {
     // FIXME: This implementation of baselinePosition originates from RenderObject.cpp and was
     // removed in r70072. The implementation looks incorrect though, because this is not the
     // baseline of the underlying RenderObject, but of the AccessibilityRenderObject.
-    const FontMetrics& fontMetrics = renderObject->firstLineStyle()->fontMetrics();
-    return fontMetrics.ascent() + (renderObject->firstLineStyle()->computedLineHeight() - fontMetrics.height()) / 2;
+    const FontMetrics& fontMetrics = renderObject->firstLineStyle().fontMetrics();
+    return fontMetrics.ascent() + (renderObject->firstLineStyle().computedLineHeight() - fontMetrics.height()) / 2;
 }
 
 static AtkAttributeSet* getAttributeSetForAccessibilityObject(const AccessibilityObject* object)
@@ -179,7 +84,7 @@ static AtkAttributeSet* getAttributeSetForAccessibilityObject(const Accessibilit
         return 0;
 
     RenderObject* renderer = object->renderer();
-    RenderStyle* style = renderer->style();
+    RenderStyle* style = &renderer->style();
 
     AtkAttributeSet* result = 0;
     GOwnPtr<gchar> buffer(g_strdup_printf("%i", style->fontSize()));
@@ -458,7 +363,7 @@ static int offsetAdjustmentForListItem(const AccessibilityObject* object)
     // We need to adjust the offsets for the list item marker in
     // Left-To-Right text, since we expose it together with the text.
     RenderObject* renderer = object->renderer();
-    if (renderer && renderer->isListItem() && renderer->style()->direction() == LTR)
+    if (renderer && renderer->isListItem() && renderer->style().direction() == LTR)
         return toRenderListItem(renderer)->markerTextWithSuffix().length();
 
     return 0;
@@ -516,7 +421,7 @@ static void getSelectionOffsetsForObject(AccessibilityObject* coreObject, Visibl
 
     // Early return with proper values if the selection falls entirely out of the object.
     if (!selectionBelongsToObject(coreObject, selection)) {
-        startOffset = comparePositions(selection.start(), firstValidPosition) < 0 ? 0 : accessibilityObjectLength(coreObject);
+        startOffset = comparePositions(selection.start(), firstValidPosition) <= 0 ? 0 : accessibilityObjectLength(coreObject);
         endOffset = startOffset;
         return;
     }
@@ -569,12 +474,13 @@ static gchar* webkitAccessibleTextGetText(AtkText* text, gint startOffset, gint 
 
     AccessibilityObject* coreObject = core(text);
 
-    int end = endOffset;
-    if (endOffset == -1) {
-        end = coreObject->stringValue().length();
-        if (!end)
-            end = coreObject->textUnderElement(AccessibilityTextUnderElementMode(AccessibilityTextUnderElementMode::TextUnderElementModeIncludeAllChildren)).length();
+#if ENABLE(INPUT_TYPE_COLOR)
+    if (coreObject->roleValue() == ColorWellRole) {
+        int r, g, b;
+        coreObject->colorValue(r, g, b);
+        return g_strdup_printf("rgb %7.5f %7.5f %7.5f 1", r / 255., g / 255., b / 255.);
     }
+#endif
 
     String ret;
     if (coreObject->isTextControl())
@@ -585,36 +491,19 @@ static gchar* webkitAccessibleTextGetText(AtkText* text, gint startOffset, gint 
             ret = coreObject->textUnderElement(AccessibilityTextUnderElementMode(AccessibilityTextUnderElementMode::TextUnderElementModeIncludeAllChildren));
     }
 
-    if (!ret.length()) {
-        // This can happen at least with anonymous RenderBlocks (e.g. body text amongst paragraphs)
-        // In such instances, there may also be embedded objects. The object replacement character
-        // is something ATs want included and we have to account for the fact that it is multibyte.
-        GOwnPtr<char> objectText(textForObject(coreObject));
-        ret = String::fromUTF8(objectText.get());
-        if (!end)
-            end = ret.length();
-    }
-
     // Prefix a item number/bullet if needed
+    int actualEndOffset = endOffset == -1 ? ret.length() : endOffset;
     if (coreObject->roleValue() == ListItemRole) {
         RenderObject* objRenderer = coreObject->renderer();
         if (objRenderer && objRenderer->isListItem()) {
             String markerText = toRenderListItem(objRenderer)->markerTextWithSuffix();
-            ret = objRenderer->style()->direction() == LTR ? markerText + ret : ret + markerText;
+            ret = objRenderer->style().direction() == LTR ? markerText + ret : ret + markerText;
             if (endOffset == -1)
-                end += markerText.length();
+                actualEndOffset = ret.length() + markerText.length();
         }
     }
 
-#if ENABLE(INPUT_TYPE_COLOR)
-    if (coreObject->roleValue() == ColorWellRole) {
-        int r, g, b;
-        coreObject->colorValue(r, g, b);
-        return g_strdup_printf("rgb %7.5f %7.5f %7.5f 1", r / 255., g / 255., b / 255.);
-    }
-#endif
-
-    ret = ret.substring(startOffset, end - startOffset);
+    ret = ret.substring(startOffset, actualEndOffset - startOffset);
     return g_strdup(ret.utf8().data());
 }
 
@@ -956,6 +845,7 @@ static char* webkitAccessibleTextSentenceForBoundary(AtkText* text, int offset, 
 
 static VisibleSelection lineAtPositionForAtkBoundary(const AccessibilityObject* coreObject, const VisiblePosition& position, AtkTextBoundary boundaryType)
 {
+    UNUSED_PARAM(coreObject);
     VisiblePosition startPosition;
     VisiblePosition endPosition;
 
@@ -1050,11 +940,11 @@ static char* webkitAccessibleTextLineForBoundary(AtkText* text, int offset, AtkT
     RenderObject* renderer = coreObject->renderer();
     if (renderer->isListItem()) {
         // For Left-to-Right, the list item marker is at the beginning of the exposed text.
-        if (renderer->style()->direction() == LTR && isFirstVisiblePositionInNode(selectedLine.visibleStart(), node))
+        if (renderer->style().direction() == LTR && isFirstVisiblePositionInNode(selectedLine.visibleStart(), node))
             *startOffset = 0;
 
         // For Right-to-Left, the list item marker is at the end of the exposed text.
-        if (renderer->style()->direction() == RTL && isLastVisiblePositionInNode(selectedLine.visibleEnd(), node))
+        if (renderer->style().direction() == RTL && isLastVisiblePositionInNode(selectedLine.visibleEnd(), node))
             *endOffset = accessibilityObjectLength(coreObject);
     }
 
@@ -1368,6 +1258,48 @@ static gboolean webkitAccessibleTextSetCaretOffset(AtkText* text, gint offset)
     return TRUE;
 }
 
+#if ATK_CHECK_VERSION(2, 10, 0)
+static gchar* webkitAccessibleTextGetStringAtOffset(AtkText* text, gint offset, AtkTextGranularity granularity, gint* startOffset, gint* endOffset)
+{
+    // This new API has been designed to simplify the AtkText interface and it has been
+    // designed to keep exactly the same behaviour the atk_text_get_text_at_text() for
+    // ATK_TEXT_BOUNDARY_*_START boundaries, so for now we just need to translate the
+    // granularity to the right old boundary and reuse the code for the old API.
+    // However, this should be simplified later on (and a lot of code removed) once
+    // WebKitGTK+ depends on ATK >= 2.9.4 *and* can safely assume that a version of
+    // AT-SPI2 new enough not to include the old APIs is being used. But until then,
+    // we will have to live with both the old and new APIs implemented here.
+    AtkTextBoundary boundaryType = ATK_TEXT_BOUNDARY_CHAR;
+    switch (granularity) {
+    case ATK_TEXT_GRANULARITY_CHAR:
+        break;
+
+    case ATK_TEXT_GRANULARITY_WORD:
+        boundaryType = ATK_TEXT_BOUNDARY_WORD_START;
+        break;
+
+    case ATK_TEXT_GRANULARITY_SENTENCE:
+        boundaryType = ATK_TEXT_BOUNDARY_SENTENCE_START;
+        break;
+
+    case ATK_TEXT_GRANULARITY_LINE:
+        boundaryType = ATK_TEXT_BOUNDARY_LINE_START;
+        break;
+
+    case ATK_TEXT_GRANULARITY_PARAGRAPH:
+        // FIXME: This has not been a need with the old AtkText API, which means ATs won't
+        // need it yet for some time, so we can skip it for now.
+        notImplemented();
+        return g_strdup("");
+
+    default:
+        ASSERT_NOT_REACHED();
+    }
+
+    return webkitAccessibleTextGetTextForOffset(text, offset, boundaryType, GetTextPositionAt, startOffset, endOffset);
+}
+#endif
+
 void webkitAccessibleTextInterfaceInit(AtkTextIface* iface)
 {
     iface->get_text = webkitAccessibleTextGetText;
@@ -1388,6 +1320,10 @@ void webkitAccessibleTextInterfaceInit(AtkTextIface* iface)
     iface->remove_selection = webkitAccessibleTextRemoveSelection;
     iface->set_selection = webkitAccessibleTextSetSelection;
     iface->set_caret_offset = webkitAccessibleTextSetCaretOffset;
+
+#if ATK_CHECK_VERSION(2, 10, 0)
+    iface->get_string_at_offset = webkitAccessibleTextGetStringAtOffset;
+#endif
 }
 
 #endif

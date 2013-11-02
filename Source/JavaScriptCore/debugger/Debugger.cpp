@@ -37,7 +37,7 @@ using namespace JSC;
 
 class Recompiler : public MarkedBlock::VoidFunctor {
 public:
-    Recompiler(Debugger*);
+    Recompiler(JSC::Debugger*);
     ~Recompiler();
     void operator()(JSCell*);
 
@@ -45,12 +45,12 @@ private:
     typedef HashSet<FunctionExecutable*> FunctionExecutableSet;
     typedef HashMap<SourceProvider*, ExecState*> SourceProviderMap;
     
-    Debugger* m_debugger;
+    JSC::Debugger* m_debugger;
     FunctionExecutableSet m_functionExecutables;
     SourceProviderMap m_sourceProviders;
 };
 
-inline Recompiler::Recompiler(Debugger* debugger)
+inline Recompiler::Recompiler(JSC::Debugger* debugger)
     : m_debugger(debugger)
 {
 }
@@ -91,6 +91,14 @@ inline void Recompiler::operator()(JSCell* cell)
 
 namespace JSC {
 
+Debugger::Debugger()
+    : m_needsExceptionCallbacks(false)
+    , m_needsOpDebugCallbacks(false)
+    , m_shouldPause(false)
+    , m_numberOfBreakpoints(0)
+{
+}
+
 Debugger::~Debugger()
 {
     HashSet<JSGlobalObject*>::iterator end = m_globalObjects.end();
@@ -112,6 +120,17 @@ void Debugger::detach(JSGlobalObject* globalObject)
     globalObject->setDebugger(0);
 }
 
+void Debugger::setNeedsExceptionCallbacks(bool value)
+{
+    m_needsExceptionCallbacks = value;
+}
+
+void Debugger::setShouldPause(bool value)
+{
+    m_shouldPause = value;
+    updateNeedForOpDebugCallbacks();
+}
+
 void Debugger::recompileAllJSFunctions(VM* vm)
 {
     // If JavaScript is running, it's not safe to recompile, since we'll end
@@ -125,6 +144,18 @@ void Debugger::recompileAllJSFunctions(VM* vm)
     Recompiler recompiler(this);
     HeapIterationScope iterationScope(vm->heap);
     vm->heap.objectSpace().forEachLiveCell(iterationScope, recompiler);
+}
+
+void Debugger::updateNumberOfBreakpoints(int numberOfBreakpoints)
+{
+    ASSERT(numberOfBreakpoints >= 0);
+    m_numberOfBreakpoints = numberOfBreakpoints;
+    updateNeedForOpDebugCallbacks();
+}
+
+void Debugger::updateNeedForOpDebugCallbacks()
+{
+    m_needsOpDebugCallbacks = m_shouldPause || m_numberOfBreakpoints;
 }
 
 } // namespace JSC

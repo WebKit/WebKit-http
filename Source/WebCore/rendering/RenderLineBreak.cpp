@@ -32,8 +32,8 @@ namespace WebCore {
 
 static const int invalidLineHeight = -1;
 
-RenderLineBreak::RenderLineBreak(HTMLElement& element)
-    : RenderBoxModelObject(&element, 0)
+RenderLineBreak::RenderLineBreak(HTMLElement& element, PassRef<RenderStyle> style)
+    : RenderBoxModelObject(element, std::move(style), 0)
     , m_inlineBoxWrapper(nullptr)
     , m_cachedLineHeight(invalidLineHeight)
     , m_isWBR(element.hasTagName(HTMLNames::wbrTag))
@@ -43,34 +43,33 @@ RenderLineBreak::RenderLineBreak(HTMLElement& element)
 
 RenderLineBreak::~RenderLineBreak()
 {
-    if (m_inlineBoxWrapper)
-        m_inlineBoxWrapper->destroy(renderArena());
+    delete m_inlineBoxWrapper;
 }
 
 LayoutUnit RenderLineBreak::lineHeight(bool firstLine, LineDirectionMode /*direction*/, LinePositionMode /*linePositionMode*/) const
 {
     if (firstLine && document().styleSheetCollection().usesFirstLineRules()) {
-        const RenderStyle& firstLineStyle = *this->firstLineStyle();
-        if (&firstLineStyle != style())
+        const RenderStyle& firstLineStyle = this->firstLineStyle();
+        if (&firstLineStyle != &style())
             return firstLineStyle.computedLineHeight(&view());
     }
 
     if (m_cachedLineHeight == invalidLineHeight)
-        m_cachedLineHeight = style()->computedLineHeight(&view());
+        m_cachedLineHeight = style().computedLineHeight(&view());
     
     return m_cachedLineHeight;
 }
 
 int RenderLineBreak::baselinePosition(FontBaseline baselineType, bool firstLine, LineDirectionMode direction, LinePositionMode linePositionMode) const
 {
-    const RenderStyle& style = firstLine ? *firstLineStyle() : *this->style();
+    const RenderStyle& style = firstLine ? firstLineStyle() : this->style();
     const FontMetrics& fontMetrics = style.fontMetrics();
     return fontMetrics.ascent(baselineType) + (lineHeight(firstLine, direction, linePositionMode) - fontMetrics.height()) / 2;
 }
 
 InlineBox* RenderLineBreak::createInlineBox()
 {
-    return new (renderArena()) InlineBox(*this);
+    return new InlineBox(*this);
 }
 
 void RenderLineBreak::setInlineBoxWrapper(InlineBox* inlineBox)
@@ -90,8 +89,8 @@ void RenderLineBreak::deleteInlineBoxWrapper()
     if (!m_inlineBoxWrapper)
         return;
     if (!documentBeingDestroyed())
-        m_inlineBoxWrapper->remove();
-    m_inlineBoxWrapper->destroy(renderArena());
+        m_inlineBoxWrapper->removeFromParent();
+    delete m_inlineBoxWrapper;
     m_inlineBoxWrapper = nullptr;
 }
 
@@ -100,7 +99,7 @@ void RenderLineBreak::dirtyLineBoxes(bool fullLayout)
     if (!m_inlineBoxWrapper)
         return;
     if (fullLayout) {
-        m_inlineBoxWrapper->destroy(renderArena());
+        delete m_inlineBoxWrapper;
         m_inlineBoxWrapper = nullptr;
         return;
     }
@@ -155,7 +154,7 @@ IntRect RenderLineBreak::linesBoundingBox() const
     float logicalLeftSide = m_inlineBoxWrapper->logicalLeft();
     float logicalRightSide = m_inlineBoxWrapper->logicalRight();
 
-    bool isHorizontal = style()->isHorizontalWritingMode();
+    bool isHorizontal = style().isHorizontalWritingMode();
 
     float x = isHorizontal ? logicalLeftSide : m_inlineBoxWrapper->x();
     float y = isHorizontal ? m_inlineBoxWrapper->y() : logicalLeftSide;

@@ -46,7 +46,7 @@
 
 namespace WebCore {
 
-typedef HashMap<const GraphicsLayer*, Vector<FloatRect> > RepaintMap;
+typedef HashMap<const GraphicsLayer*, Vector<FloatRect>> RepaintMap;
 static RepaintMap& repaintRectMap()
 {
     DEFINE_STATIC_LOCAL(RepaintMap, map, ());
@@ -367,13 +367,19 @@ void GraphicsLayer::getDebugBorderInfo(Color& color, float& width) const
         width = 2;
         return;
     }
+
+    if (hasContentsLayer()) {
+        color = Color(255, 150, 255, 200); // non-painting layer with contents: pink
+        width = 2;
+        return;
+    }
     
     if (masksToBounds()) {
         color = Color(128, 255, 255, 48); // masking layer: pale blue
         width = 20;
         return;
     }
-        
+
     color = Color(255, 255, 0, 192); // container: yellow
     width = 2;
 }
@@ -506,7 +512,7 @@ int GraphicsLayer::validateTransformOperations(const KeyframeValueList& valueLis
     double maxRotAngle = -1.0;
         
     for (size_t j = 0; j < firstVal.operations().size(); ++j) {
-        TransformOperation::OperationType type = firstVal.operations().at(j)->getOperationType();
+        TransformOperation::OperationType type = firstVal.operations().at(j)->type();
         
         // if this is a rotation entry, we need to see if any angle differences are >= 180 deg
         if (type == TransformOperation::ROTATE_X ||
@@ -563,12 +569,6 @@ void GraphicsLayer::addRepaintRect(const FloatRect& repaintRect)
             repaintRects.append(largestRepaintRect);
         }
     }
-}
-
-void GraphicsLayer::writeIndent(TextStream& ts, int indent)
-{
-    for (int i = 0; i != indent; ++i)
-        ts << "  ";
 }
 
 void GraphicsLayer::dumpLayer(TextStream& ts, int indent, LayerTreeAsTextBehavior behavior) const

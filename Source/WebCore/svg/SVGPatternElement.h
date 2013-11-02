@@ -63,7 +63,7 @@ private:
     virtual void svgAttributeChanged(const QualifiedName&);
     virtual void childrenChanged(const ChildChange&) OVERRIDE;
 
-    virtual RenderElement* createRenderer(RenderArena&, RenderStyle&);
+    virtual RenderElement* createRenderer(PassRef<RenderStyle>) OVERRIDE;
 
     virtual bool selfHasRelativeLengths() const;
 
@@ -87,7 +87,7 @@ private:
     virtual void synchronizeSystemLanguage() { SVGTests::synchronizeSystemLanguage(this); }
 };
 
-ELEMENT_TYPE_CASTS(SVGPatternElement)
+NODE_TYPE_CASTS(SVGPatternElement)
 
 } // namespace WebCore
 

@@ -60,8 +60,8 @@ typedef struct _GdkPixbuf GdkPixbuf;
 
 #if PLATFORM(EFL)
 #if USE(EO)
-typedef struct _Eo Evas;
-typedef struct _Eo Evas_Object;
+typedef struct _Eo_Opaque Evas;
+typedef struct _Eo_Opaque Evas_Object;
 #else
 typedef struct _Evas Evas;
 typedef struct _Evas_Object Evas_Object;
@@ -195,7 +195,6 @@ protected:
 #if PLATFORM(WIN)
     virtual void drawFrameMatchingSourceSize(GraphicsContext*, const FloatRect& dstRect, const IntSize& srcSize, ColorSpace styleColorSpace, CompositeOperator) { }
 #endif
-    virtual void draw(GraphicsContext*, const FloatRect& dstRect, const FloatRect& srcRect, ColorSpace styleColorSpace, CompositeOperator, BlendMode) = 0;
     virtual void draw(GraphicsContext*, const FloatRect& dstRect, const FloatRect& srcRect, ColorSpace styleColorSpace, CompositeOperator, BlendMode, ImageOrientationDescription);
     void drawTiled(GraphicsContext*, const FloatRect& dstRect, const FloatPoint& srcPoint, const FloatSize& tileSize, ColorSpace styleColorSpace,
         CompositeOperator , BlendMode);

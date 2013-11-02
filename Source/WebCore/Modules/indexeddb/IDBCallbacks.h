@@ -29,7 +29,6 @@
 #ifndef IDBCallbacks_h
 #define IDBCallbacks_h
 
-#include "IDBDatabaseBackendInterface.h"
 #include "IDBDatabaseError.h"
 #include "IDBKey.h"
 #include "IDBKeyPath.h"
@@ -41,6 +40,9 @@
 namespace WebCore {
 class DOMStringList;
 class IDBCursorBackendInterface;
+class IDBDatabaseBackendInterface;
+
+struct IDBDatabaseMetadata;
 
 class IDBCallbacks : public RefCounted<IDBCallbacks> {
 public:
@@ -66,7 +68,7 @@ public:
     // From IDBCursor.advance()/continue()
     virtual void onSuccess(PassRefPtr<IDBKey>, PassRefPtr<IDBKey> primaryKey, PassRefPtr<SharedBuffer>) = 0;
     // From IDBCursor.advance()/continue()
-    virtual void onSuccessWithPrefetch(const Vector<RefPtr<IDBKey> >& keys, const Vector<RefPtr<IDBKey> >& primaryKeys, const Vector<RefPtr<SharedBuffer> >& values) = 0;
+    virtual void onSuccessWithPrefetch(const Vector<RefPtr<IDBKey>>& keys, const Vector<RefPtr<IDBKey>>& primaryKeys, const Vector<RefPtr<SharedBuffer>>& values) = 0;
     // From IDBFactory.open()/deleteDatabase()
     virtual void onBlocked(uint64_t /* existingVersion */) { ASSERT_NOT_REACHED(); }
     // From IDBFactory.open()

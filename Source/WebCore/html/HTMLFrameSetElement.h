@@ -75,7 +75,7 @@ private:
 
     virtual void willAttachRenderers() OVERRIDE;
     virtual bool rendererIsNeeded(const RenderStyle&);
-    virtual RenderElement* createRenderer(RenderArena&, RenderStyle&);
+    virtual RenderElement* createRenderer(PassRef<RenderStyle>) OVERRIDE;
     
     virtual void defaultEventHandler(Event*);
 
@@ -100,7 +100,7 @@ private:
     bool m_noresize;
 };
 
-ELEMENT_TYPE_CASTS(HTMLFrameSetElement)
+NODE_TYPE_CASTS(HTMLFrameSetElement)
 
 } // namespace WebCore
 

@@ -28,6 +28,9 @@
 #ifndef IDBFactoryBackendInterface_h
 #define IDBFactoryBackendInterface_h
 
+#include "IDBBackingStoreInterface.h"
+#include "IndexedDB.h"
+
 #include <wtf/PassRefPtr.h>
 #include <wtf/RefCounted.h>
 #include <wtf/text/WTFString.h>
@@ -38,7 +41,9 @@ namespace WebCore {
 
 class IDBCallbacks;
 class IDBDatabase;
+class IDBDatabaseBackendInterface;
 class IDBDatabaseCallbacks;
+class IDBTransactionBackendInterface;
 class SecurityOrigin;
 class ScriptExecutionContext;
 
@@ -50,16 +55,22 @@ typedef int ExceptionCode;
 // trigger work on a background thread if necessary.
 class IDBFactoryBackendInterface : public RefCounted<IDBFactoryBackendInterface> {
 public:
-    static PassRefPtr<IDBFactoryBackendInterface> create();
+    static PassRefPtr<IDBFactoryBackendInterface> create(const String& databaseDirectoryIdentifier);
     virtual ~IDBFactoryBackendInterface() { }
 
     virtual void getDatabaseNames(PassRefPtr<IDBCallbacks>, PassRefPtr<SecurityOrigin>, ScriptExecutionContext*, const String& dataDir) = 0;
-    virtual void open(const String& name, int64_t version, int64_t transactionId, PassRefPtr<IDBCallbacks>, PassRefPtr<IDBDatabaseCallbacks>, PassRefPtr<SecurityOrigin>, ScriptExecutionContext*, const String& dataDir) = 0;
+    virtual void open(const String& name, uint64_t version, int64_t transactionId, PassRefPtr<IDBCallbacks>, PassRefPtr<IDBDatabaseCallbacks>, const SecurityOrigin& openingOrigin, const SecurityOrigin& mainFrameOrigin) = 0;
     virtual void deleteDatabase(const String& name, PassRefPtr<IDBCallbacks>, PassRefPtr<SecurityOrigin>, ScriptExecutionContext*, const String& dataDir) = 0;
+
+    virtual void removeIDBDatabaseBackend(const String& uniqueIdentifier) = 0;
+
+    virtual PassRefPtr<IDBTransactionBackendInterface> maybeCreateTransactionBackend(IDBDatabaseBackendInterface*, int64_t transactionId, PassRefPtr<IDBDatabaseCallbacks>, const Vector<int64_t>& objectStoreIds, IndexedDB::TransactionMode) = 0;
+
+    virtual PassRefPtr<IDBCursorBackendInterface> createCursorBackend(IDBTransactionBackendInterface&, IDBBackingStoreInterface::Cursor&, IndexedDB::CursorType, IDBDatabaseBackendInterface::TaskType, int64_t objectStoreId) = 0;
 };
 
 } // namespace WebCore
 
-#endif
+#endif // IDBFactoryBackendInterface_h
 
 #endif // IDBFactoryBackendInterface_h

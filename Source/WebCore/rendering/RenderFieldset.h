@@ -33,7 +33,7 @@ class HTMLFieldSetElement;
 
 class RenderFieldset FINAL : public RenderBlockFlow {
 public:
-    explicit RenderFieldset(HTMLFieldSetElement&);
+    RenderFieldset(HTMLFieldSetElement&, PassRef<RenderStyle>);
 
     enum FindLegendOption { IgnoreFloatingOrOutOfFlow, IncludeFloatingOrOutOfFlow };
     RenderBox* findLegend(FindLegendOption = IgnoreFloatingOrOutOfFlow) const;
@@ -55,14 +55,7 @@ private:
     virtual void paintMask(PaintInfo&, const LayoutPoint&) OVERRIDE;
 };
 
-inline RenderFieldset* toRenderFieldset(RenderObject* object)
-{
-    ASSERT_WITH_SECURITY_IMPLICATION(!object || object->isFieldset());
-    return static_cast<RenderFieldset*>(object);
-}
-
-// This will catch anyone doing an unnecessary cast.
-void toRenderFieldset(const RenderFieldset*);
+RENDER_OBJECT_TYPE_CASTS(RenderFieldset, isFieldset())
 
 } // namespace WebCore
 

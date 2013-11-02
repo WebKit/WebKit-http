@@ -28,7 +28,6 @@ BuildbotIteration = function(queue, id, finished)
     BaseObject.call(this);
 
     console.assert(queue);
-    console.assert(id);
 
     this.queue = queue;
     this.id = id;
@@ -78,14 +77,9 @@ BuildbotIteration.prototype = {
             if (!testStep)
                 return null;
 
-            if (testStep.results[0] === 4) {
-                // This build step was interrupted (perhaps due to the build slave restarting).
-                return null;
-            }
-
             var testResults = {};
 
-            if (!("isFinished" in testStep)) {
+            if (!testStep.isFinished) {
                 // The step never even ran, or hasn't finish running.
                 testResults.finished = false;
                 return testResults;
@@ -93,7 +87,7 @@ BuildbotIteration.prototype = {
 
             testResults.finished = true;
 
-            if (!("results" in testStep) || !testStep.results[0]) {
+            if (!testStep.results || !testStep.results[0]) {
                 // All tests passed.
                 testResults.allPassed = true;
                 return testResults;
@@ -140,39 +134,31 @@ BuildbotIteration.prototype = {
             var internalRevisionProperty = data.properties.findFirst(function(property) { return property[0] === "internal_got_revision"; });
             this.internalRevision = internalRevisionProperty ? parseInt(internalRevisionProperty[1], 10) : null;
 
-            if (!this.layoutTestResults || !this.layoutTestResults.finished) {
-                var layoutTestResults = collectTestResults.call(this, data, "layout-test");
-                this.layoutTestResults = layoutTestResults ? new BuildbotTestResults(this, layoutTestResults) : null;
-            }
+            var layoutTestResults = collectTestResults.call(this, data, "layout-test");
+            this.layoutTestResults = layoutTestResults ? new BuildbotTestResults(this, layoutTestResults) : null;
 
-            if (!this.javascriptTestResults || !this.javascriptTestResults.finished) {
-                var javascriptTestResults = collectTestResults.call(this, data, "jscore-test");
-                this.javascriptTestResults = javascriptTestResults ? new BuildbotTestResults(this, javascriptTestResults) : null;
-            }
+            var javascriptTestResults = collectTestResults.call(this, data, "jscore-test");
+            this.javascriptTestResults = javascriptTestResults ? new BuildbotTestResults(this, javascriptTestResults) : null;
 
-            if (!this.apiTestResults || !this.apiTestResults.finished) {
-                var apiTestResults = collectTestResults.call(this, data, "run-api-tests");
-                this.apiTestResults = apiTestResults ? new BuildbotTestResults(this, apiTestResults) : null;
-            }
+            var apiTestResults = collectTestResults.call(this, data, "run-api-tests");
+            this.apiTestResults = apiTestResults ? new BuildbotTestResults(this, apiTestResults) : null;
 
-            if (!this.pythonTestResults || !this.pythonTestResults.finished) {
-                var pythonTestResults = collectTestResults.call(this, data, "webkitpy-test");
-                this.pythonTestResults = pythonTestResults ? new BuildbotTestResults(this, pythonTestResults) : null;
-            }
+            var pythonTestResults = collectTestResults.call(this, data, "webkitpy-test");
+            this.pythonTestResults = pythonTestResults ? new BuildbotTestResults(this, pythonTestResults) : null;
 
-            if (!this.perlTestResults || !this.perlTestResults.finished) {
-                var perlTestResults = collectTestResults.call(this, data, "webkitperl-test");
-                this.perlTestResults = perlTestResults ? new BuildbotTestResults(this, perlTestResults) : null;
-            }
+            var perlTestResults = collectTestResults.call(this, data, "webkitperl-test");
+            this.perlTestResults = perlTestResults ? new BuildbotTestResults(this, perlTestResults) : null;
 
-            if (!this.bindingTestResults || !this.bindingTestResults.finished) {
-                var bindingTestResults = collectTestResults.call(this, data, "bindings-generation-tests");
-                this.bindingTestResults = bindingTestResults ? new BuildbotTestResults(this, bindingTestResults) : null;
-            }
+            var bindingTestResults = collectTestResults.call(this, data, "bindings-generation-tests");
+            this.bindingTestResults = bindingTestResults ? new BuildbotTestResults(this, bindingTestResults) : null;
 
             this.loaded = true;
 
+            // Results values (same for the iteration and for each of its steps):
+            // SUCCESS: 0, WARNINGS: 1, FAILURE: 2, SKIPPED: 3, EXCEPTION: 4, RETRY: 5.
             this.failed = !!data.results;
+
+            this.text = data.text.join(" ");
 
             if (!data.currentStep)
                 this.finished = true;

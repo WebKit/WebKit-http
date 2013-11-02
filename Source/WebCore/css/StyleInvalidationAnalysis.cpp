@@ -28,7 +28,7 @@
 
 #include "CSSSelectorList.h"
 #include "Document.h"
-#include "ElementTraversal.h"
+#include "ElementIterator.h"
 #include "StyleRuleImport.h"
 #include "StyleSheetContents.h"
 #include "StyledElement.h"
@@ -74,7 +74,7 @@ void StyleInvalidationAnalysis::analyzeStyleSheet(StyleSheetContents* styleSheet
 
     // See if all rules on the sheet are scoped to some specific ids or classes.
     // Then test if we actually have any of those in the tree at the moment.
-    const Vector<RefPtr<StyleRuleImport> >& importRules = styleSheetContents->importRules();
+    const Vector<RefPtr<StyleRuleImport>>& importRules = styleSheetContents->importRules();
     for (unsigned i = 0; i < importRules.size(); ++i) {
         if (!importRules[i]->styleSheet())
             continue;
@@ -82,7 +82,7 @@ void StyleInvalidationAnalysis::analyzeStyleSheet(StyleSheetContents* styleSheet
         if (m_dirtiesAllStyle)
             return;
     }
-    const Vector<RefPtr<StyleRuleBase> >& rules = styleSheetContents->childRules();
+    const Vector<RefPtr<StyleRuleBase>>& rules = styleSheetContents->childRules();
     for (unsigned i = 0; i < rules.size(); i++) {
         StyleRuleBase* rule = rules[i].get();
         if (!rule->isStyleRule()) {
@@ -98,13 +98,13 @@ void StyleInvalidationAnalysis::analyzeStyleSheet(StyleSheetContents* styleSheet
     }
 }
 
-static bool elementMatchesSelectorScopes(const Element* element, const HashSet<AtomicStringImpl*>& idScopes, const HashSet<AtomicStringImpl*>& classScopes)
+static bool elementMatchesSelectorScopes(const Element& element, const HashSet<AtomicStringImpl*>& idScopes, const HashSet<AtomicStringImpl*>& classScopes)
 {
-    if (!idScopes.isEmpty() && element->hasID() && idScopes.contains(element->idForStyleResolution().impl()))
+    if (!idScopes.isEmpty() && element.hasID() && idScopes.contains(element.idForStyleResolution().impl()))
         return true;
-    if (classScopes.isEmpty() || !element->hasClass())
+    if (classScopes.isEmpty() || !element.hasClass())
         return false;
-    const SpaceSplitString& classNames = element->classNames();
+    const SpaceSplitString& classNames = element.classNames();
     for (unsigned i = 0; i < classNames.size(); ++i) {
         if (classScopes.contains(classNames[i].impl()))
             return true;
@@ -112,20 +112,22 @@ static bool elementMatchesSelectorScopes(const Element* element, const HashSet<A
     return false;
 }
 
-void StyleInvalidationAnalysis::invalidateStyle(Document* document)
+void StyleInvalidationAnalysis::invalidateStyle(Document& document)
 {
     ASSERT(!m_dirtiesAllStyle);
     if (m_idScopes.isEmpty() && m_classScopes.isEmpty())
         return;
-    Element* element = ElementTraversal::firstWithin(document);
-    while (element) {
-        if (elementMatchesSelectorScopes(element, m_idScopes, m_classScopes)) {
-            element->setNeedsStyleRecalc();
+
+    auto it = elementDescendants(document).begin();
+    auto end = elementDescendants(document).end();
+    while (it != end) {
+        if (elementMatchesSelectorScopes(*it, m_idScopes, m_classScopes)) {
+            it->setNeedsStyleRecalc();
             // The whole subtree is now invalidated, we can skip to the next sibling.
-            element = ElementTraversal::nextSkippingChildren(element);
+            it.traverseNextSkippingChildren();
             continue;
         }
-        element = ElementTraversal::next(element);
+        ++it;
     }
 }
 

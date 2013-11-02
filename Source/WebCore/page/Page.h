@@ -103,16 +103,6 @@ enum FindDirection { FindDirectionForward, FindDirectionBackward };
 
 float deviceScaleFactor(Frame*);
 
-struct ArenaSize {
-    ArenaSize(size_t treeSize, size_t allocated)
-        : treeSize(treeSize)
-        , allocated(allocated)
-    {
-    }
-    size_t treeSize;
-    size_t allocated;
-};
-
 class Page : public Supplementable<Page> {
     WTF_MAKE_NONCOPYABLE(Page);
     friend class Settings;
@@ -145,7 +135,7 @@ public:
     explicit Page(PageClients&);
     ~Page();
 
-    ArenaSize renderTreeSize() const;
+    uint64_t renderTreeSize() const;
 
     void setNeedsRecalcStyleInAllFrames();
 
@@ -250,7 +240,7 @@ public:
     // the index of the first range after the user selection
     // NoMatchAfterUserSelection if there is no matching text after the user selection.
     enum { NoMatchAfterUserSelection = -1 };
-    void findStringMatchingRanges(const String&, FindOptions, int maxCount, Vector<RefPtr<Range> >*, int& indexForSelection);
+    void findStringMatchingRanges(const String&, FindOptions, int maxCount, Vector<RefPtr<Range>>*, int& indexForSelection);
 #if PLATFORM(MAC)
     void addSchedulePair(PassRefPtr<SchedulePair>);
     void removeSchedulePair(PassRefPtr<SchedulePair>);
@@ -312,7 +302,6 @@ public:
     void storageBlockingStateChanged();
     void privateBrowsingStateChanged();
 
-    static void setDebuggerForAllPages(JSC::Debugger*);
     void setDebugger(JSC::Debugger*);
     JSC::Debugger* debugger() const { return m_debugger; }
 

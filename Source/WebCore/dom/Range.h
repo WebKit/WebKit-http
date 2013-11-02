@@ -165,7 +165,7 @@ private:
     enum ActionType { Delete, Extract, Clone };
     PassRefPtr<DocumentFragment> processContents(ActionType, ExceptionCode&);
     static PassRefPtr<Node> processContentsBetweenOffsets(ActionType, PassRefPtr<DocumentFragment>, Node*, unsigned startOffset, unsigned endOffset, ExceptionCode&);
-    static void processNodes(ActionType, Vector<RefPtr<Node> >&, PassRefPtr<Node> oldContainer, PassRefPtr<Node> newContainer, ExceptionCode&);
+    static void processNodes(ActionType, Vector<RefPtr<Node>>&, PassRefPtr<Node> oldContainer, PassRefPtr<Node> newContainer, ExceptionCode&);
     enum ContentsProcessDirection { ProcessContentsForward, ProcessContentsBackward };
     static PassRefPtr<Node> processAncestorsAndTheirSiblings(ActionType, Node* container, ContentsProcessDirection, PassRefPtr<Node> clonedContainer, Node* commonRoot, ExceptionCode&);
 
@@ -174,7 +174,7 @@ private:
     RangeBoundaryPoint m_end;
 };
 
-PassRefPtr<Range> rangeOfContents(Node*);
+PassRefPtr<Range> rangeOfContents(Node&);
 
 bool areRangesEqual(const Range*, const Range*);
 

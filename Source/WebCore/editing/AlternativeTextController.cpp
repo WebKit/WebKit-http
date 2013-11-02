@@ -27,12 +27,9 @@
 #include "config.h"
 #include "AlternativeTextController.h"
 
-#include "DictationAlternative.h"
 #include "Document.h"
 #include "DocumentMarkerController.h"
-#include "EditCommand.h"
 #include "Editor.h"
-#include "EditorClient.h"
 #include "Element.h"
 #include "Event.h"
 #include "ExceptionCodePlaceholder.h"
@@ -44,16 +41,11 @@
 #include "TextCheckerClient.h"
 #include "TextCheckingHelper.h"
 #include "TextEvent.h"
-#include "TextIterator.h"
-#include "VisibleSelection.h"
 #include "VisibleUnits.h"
 #include "htmlediting.h"
 #include "markup.h"
 
 namespace WebCore {
-
-using namespace std;
-using namespace WTF;
 
 class AutocorrectionAlternativeDetails : public AlternativeTextDetails {
 public:

@@ -112,7 +112,7 @@ private:
 
 template <typename T, class OverflowHandler = CrashOnOverflow> class Checked;
 template <typename T> struct RemoveChecked;
-template <typename T> struct RemoveChecked<Checked<T> >;
+template <typename T> struct RemoveChecked<Checked<T>>;
 
 template <typename Target, typename Source, bool targetSigned = std::numeric_limits<Target>::is_signed, bool sourceSigned = std::numeric_limits<Source>::is_signed> struct BoundsChecker;
 template <typename Target, typename Source> struct BoundsChecker<Target, Source, false, false> {
@@ -178,12 +178,12 @@ template <typename T> struct RemoveChecked {
     static const CleanType DefaultValue = 0;    
 };
 
-template <typename T> struct RemoveChecked<Checked<T, CrashOnOverflow> > {
+template <typename T> struct RemoveChecked<Checked<T, CrashOnOverflow>> {
     typedef typename RemoveChecked<T>::CleanType CleanType;
     static const CleanType DefaultValue = 0;
 };
 
-template <typename T> struct RemoveChecked<Checked<T, RecordOverflow> > {
+template <typename T> struct RemoveChecked<Checked<T, RecordOverflow>> {
     typedef typename RemoveChecked<T>::CleanType CleanType;
     static const CleanType DefaultValue = 0;
 };
@@ -419,9 +419,6 @@ template <typename U, typename V> static inline bool safeEquals(U lhs, V rhs)
 
 enum ResultOverflowedTag { ResultOverflowed };
     
-// FIXME: Needed to workaround http://llvm.org/bugs/show_bug.cgi?id=10801
-static inline bool workAroundClangBug() { return true; }
-
 template <typename T, class OverflowHandler> class Checked : public OverflowHandler {
 public:
     template <typename _T, class _OverflowHandler> friend class Checked;
@@ -433,9 +430,7 @@ public:
     Checked(ResultOverflowedTag)
         : m_value(0)
     {
-        // FIXME: Remove this when clang fixes http://llvm.org/bugs/show_bug.cgi?id=10801
-        if (workAroundClangBug())
-            this->overflowed();
+        this->overflowed();
     }
 
     template <typename U> Checked(U value)

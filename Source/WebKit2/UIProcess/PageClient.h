@@ -58,9 +58,6 @@ class NativeWebKeyboardEvent;
 #if ENABLE(TOUCH_EVENTS)
 class NativeWebTouchEvent;
 #endif
-#if ENABLE(GESTURE_EVENTS)
-class WebGestureEvent;
-#endif
 class WebContextMenuProxy;
 class WebEditCommandProxy;
 class WebPopupMenuProxy;
@@ -101,6 +98,9 @@ public:
 
     // Return whether the view is visible.
     virtual bool isViewVisible() = 0;
+
+    // Return whether the window is visible.
+    virtual bool isWindowVisible() = 0;
 
     // Return whether the view is in a window.
     virtual bool isViewInWindow() = 0;
@@ -170,9 +170,6 @@ public:
     virtual WebCore::IntRect windowToScreen(const WebCore::IntRect&) = 0;
     
     virtual void doneWithKeyEvent(const NativeWebKeyboardEvent&, bool wasEventHandled) = 0;
-#if ENABLE(GESTURE_EVENTS)
-    virtual void doneWithGestureEvent(const WebGestureEvent&, bool wasEventHandled) = 0;
-#endif
 #if ENABLE(TOUCH_EVENTS)
     virtual void doneWithTouchEvent(const NativeWebTouchEvent&, bool wasEventHandled) = 0;
 #endif

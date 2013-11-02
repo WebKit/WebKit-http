@@ -29,6 +29,7 @@
 #define MathMLElement_h
 
 #if ENABLE(MATHML)
+
 #include "StyledElement.h"
 
 namespace WebCore {
@@ -40,25 +41,25 @@ public:
     int colSpan() const;
     int rowSpan() const;
 
+    virtual bool childShouldCreateRenderer(const Node*) const OVERRIDE;
+
 protected:
     MathMLElement(const QualifiedName& tagName, Document&);
 
     virtual void parseAttribute(const QualifiedName&, const AtomicString&) OVERRIDE;
 
 private:    
-    virtual bool isMathMLElement() const { return true; }
-
     virtual bool isPresentationAttribute(const QualifiedName&) const OVERRIDE;
     virtual void collectStyleForPresentationAttribute(const QualifiedName&, const AtomicString&, MutableStylePropertySet*) OVERRIDE;
 };
 
-inline MathMLElement* toMathMLElement(Node* node)
-{
-    ASSERT_WITH_SECURITY_IMPLICATION(!node || (node->isElementNode() && toElement(node)->isMathMLElement()));
-    return static_cast<MathMLElement*>(node);
-}
+void isMathMLElement(const MathMLElement&); // Catch unnecessary runtime check of type known at compile time.
+inline bool isMathMLElement(const Element& element) { return element.isMathMLElement(); }
+inline bool isMathMLElement(const Node& node) { return node.isElementNode() && toElement(node).isMathMLElement(); }
+NODE_TYPE_CASTS(MathMLElement)
 
 }
 
 #endif // ENABLE(MATHML)
+
 #endif // MathMLElement_h

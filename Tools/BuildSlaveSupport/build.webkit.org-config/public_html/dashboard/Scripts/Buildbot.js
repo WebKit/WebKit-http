@@ -41,15 +41,15 @@ BaseObject.addConstructorFunctions(Buildbot);
 
 // Ordered importance/recency.
 Buildbot.Platform = {
-    MacOSXMavericks: "mac-os-x-mavericks",
-    MacOSXMountainLion: "mac-os-x-mountain-lion",
-    MacOSXLion: "mac-os-x-lion",
-    Windows8: "windows-8",
-    Windows7: "windows-7",
-    WindowsXP: "windows-xp",
-    LinuxQt: "linux-qt",
-    LinuxGTK: "linux-gtk",
-    LinuxEFL: "linux-efl",
+    MacOSXMavericks: { name: "mac-os-x-mavericks", readableName: "OS X Mavericks", order: 10 },
+    MacOSXMountainLion: { name: "mac-os-x-mountain-lion", readableName: "OS X Mountain Lion", order: 20 },
+    MacOSXLion: { name : "mac-os-x-lion", readableName: "Mac OS X Lion", order: 30 },
+    Windows8: { name: "windows-8", readableName: "Windows 8", order: 40 },
+    Windows7: { name: "windows-7", readableName: "Windows 7", order: 50 },
+    WindowsXP: { name: "windows-xp", readableName: "Windows XP", order: 60 },
+    LinuxQt: { name : "linux-qt", readableName: "Linux Qt", order: 70 },
+    LinuxGTK: { name : "linux-gtk", readableName: "Linux GTK", order: 80 },
+    LinuxEFL: { name: "linux-efl", readableName: "Linux EFL", order : 90 }
 };
 
 // Ordered importance.
@@ -68,4 +68,34 @@ Buildbot.BuildArchitecture = {
 Buildbot.prototype = {
     constructor: Buildbot,
     __proto__: BaseObject.prototype,
+
+    buildPageURLForIteration: function(iteration)
+    {
+        return this.baseURL + "builders/" + encodeURIComponent(iteration.queue.id) + "/builds/" + iteration.id;
+    },
+
+    javascriptTestResultsURLForIteration: function(iteration)
+    {
+        return this.baseURL + "builders/" + encodeURIComponent(iteration.queue.id) + "/builds/" + iteration.id + "/steps/jscore-test/logs/stdio";
+    },
+
+    apiTestResultsURLForIteration: function(iteration)
+    {
+        return this.baseURL + "builders/" + encodeURIComponent(iteration.queue.id) + "/builds/" + iteration.id + "/steps/run-api-tests/logs/stdio";
+    },
+
+    webkitpyTestResultsURLForIteration: function(iteration)
+    {
+        return this.baseURL + "builders/" + encodeURIComponent(iteration.queue.id) + "/builds/" + iteration.id + "/steps/webkitpy-test/logs/stdio";
+    },
+
+    webkitperlTestResultsURLForIteration: function(iteration)
+    {
+        return this.baseURL + "builders/" + encodeURIComponent(iteration.queue.id) + "/builds/" + iteration.id + "/steps/webkitperl-test/logs/stdio";
+    },
+
+    bindingsTestResultsURLForIteration: function(iteration)
+    {
+        return this.baseURL + "builders/" + encodeURIComponent(iteration.queue.id) + "/builds/" + iteration.id + "/steps/bindings-generation-test/logs/stdio";
+    }
 };

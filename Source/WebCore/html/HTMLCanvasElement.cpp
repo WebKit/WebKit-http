@@ -109,16 +109,16 @@ void HTMLCanvasElement::parseAttribute(const QualifiedName& name, const AtomicSt
     HTMLElement::parseAttribute(name, value);
 }
 
-RenderElement* HTMLCanvasElement::createRenderer(RenderArena& arena, RenderStyle& style)
+RenderElement* HTMLCanvasElement::createRenderer(PassRef<RenderStyle> style)
 {
     Frame* frame = document().frame();
     if (frame && frame->script().canExecuteScripts(NotAboutToExecuteScript)) {
         m_rendererIsCanvas = true;
-        return new (arena) RenderHTMLCanvas(*this);
+        return new RenderHTMLCanvas(*this, std::move(style));
     }
 
     m_rendererIsCanvas = false;
-    return HTMLElement::createRenderer(arena, style);
+    return HTMLElement::createRenderer(std::move(style));
 }
 
 void HTMLCanvasElement::willAttachRenderers()
@@ -407,7 +407,7 @@ void HTMLCanvasElement::paint(GraphicsContext* context, const LayoutRect& r, boo
             if (m_presentedImage) {
                 ImageOrientationDescription orientationDescription;
 #if ENABLE(CSS_IMAGE_ORIENTATION)
-                orientationDescription.setImageOrientationEnum(renderer()->style()->imageOrientation());
+                orientationDescription.setImageOrientationEnum(renderer()->style().imageOrientation());
 #endif 
                 context->drawImage(m_presentedImage.get(), ColorSpaceDeviceRGB, pixelSnappedIntRect(r), CompositeSourceOver, orientationDescription, useLowQualityScale);
             } else

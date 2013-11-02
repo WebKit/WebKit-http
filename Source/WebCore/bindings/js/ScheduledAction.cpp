@@ -81,7 +81,7 @@ void ScheduledAction::execute(ScriptExecutionContext* context)
         execute(toDocument(context));
 #if ENABLE(WORKERS)
     else {
-        ASSERT(context->isWorkerGlobalScope());
+        ASSERT_WITH_SECURITY_IMPLICATION(context->isWorkerGlobalScope());
         execute(static_cast<WorkerGlobalScope*>(context));
     }
 #else
@@ -125,7 +125,7 @@ void ScheduledAction::execute(Document* document)
     if (!window)
         return;
 
-    RefPtr<Frame> frame = window->impl()->frame();
+    RefPtr<Frame> frame = window->impl().frame();
     if (!frame || !frame->script().canExecuteScripts(AboutToExecuteScript))
         return;
 

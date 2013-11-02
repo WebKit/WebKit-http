@@ -44,7 +44,7 @@ PassRefPtr<RTCDTMFToneChangeEvent> RTCDTMFToneChangeEvent::create(const String& 
 
 PassRefPtr<RTCDTMFToneChangeEvent> RTCDTMFToneChangeEvent::create(const AtomicString& type, const RTCDTMFToneChangeEventInit& initializer)
 {
-    ASSERT(type == eventNames().tonechangeEvent);
+    ASSERT_UNUSED(type, type == eventNames().tonechangeEvent);
     return adoptRef(new RTCDTMFToneChangeEvent(initializer));
 }
 

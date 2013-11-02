@@ -45,8 +45,6 @@
 #include <wtf/HashFunctions.h>
 #include <wtf/text/TextPosition.h>
 
-using namespace std;
-
 namespace WebCore {
 
 COMPILE_ASSERT(sizeof(StyledElement) == sizeof(Element), styledelement_should_remain_same_size_as_element);
@@ -154,7 +152,7 @@ MutableStylePropertySet& StyledElement::ensureMutableInlineStyle()
         inlineStyle = MutableStylePropertySet::create(strictToCSSParserMode(isHTMLElement() && !document().inQuirksMode()));
     else if (!inlineStyle->isMutable())
         inlineStyle = inlineStyle->mutableCopy();
-    ASSERT(inlineStyle->isMutable());
+    ASSERT_WITH_SECURITY_IMPLICATION(inlineStyle->isMutable());
     return static_cast<MutableStylePropertySet&>(*inlineStyle);
 }
 
@@ -304,7 +302,7 @@ void StyledElement::makePresentationAttributeCacheKey(PresentationAttributeCache
         // FIXME: Background URL may depend on the base URL and can't be shared. Disallow caching.
         if (attribute.name() == backgroundAttr)
             return;
-        result.attributesAndValues.append(make_pair(attribute.localName().impl(), attribute.value()));
+        result.attributesAndValues.append(std::make_pair(attribute.localName().impl(), attribute.value()));
     }
     if (result.attributesAndValues.isEmpty())
         return;

@@ -27,16 +27,14 @@
 #include "InsertLineBreakCommand.h"
 
 #include "Document.h"
-#include "EditingStyle.h"
 #include "Frame.h"
 #include "FrameSelection.h"
 #include "HTMLElement.h"
 #include "HTMLNames.h"
 #include "HTMLTableElement.h"
-#include "Range.h"
 #include "RenderElement.h"
+#include "RenderText.h"
 #include "Text.h"
-#include "VisiblePosition.h"
 #include "VisibleUnits.h"
 #include "htmlediting.h"
 
@@ -85,7 +83,7 @@ bool InsertLineBreakCommand::shouldUseBreakElement(const Position& insertionPos)
     // the input element, and in that case we need to check the input element's
     // parent's renderer.
     Position p(insertionPos.parentAnchoredEquivalent());
-    return p.deprecatedNode()->renderer() && !p.deprecatedNode()->renderer()->style()->preserveNewline();
+    return p.deprecatedNode()->renderer() && !p.deprecatedNode()->renderer()->style().preserveNewline();
 }
 
 void InsertLineBreakCommand::doApply()
@@ -151,7 +149,7 @@ void InsertLineBreakCommand::doApply()
             Position positionBeforeTextNode(positionInParentBeforeNode(textNode));
             // Clear out all whitespace and insert one non-breaking space
             deleteInsignificantTextDownstream(endingPosition);
-            ASSERT(!textNode->renderer() || textNode->renderer()->style()->collapseWhiteSpace());
+            ASSERT(!textNode->renderer() || textNode->renderer()->style().collapseWhiteSpace());
             // Deleting insignificant whitespace will remove textNode if it contains nothing but insignificant whitespace.
             if (textNode->inDocument())
                 insertTextIntoNode(textNode, 0, nonBreakingSpaceString());

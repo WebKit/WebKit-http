@@ -75,6 +75,17 @@ InspectorTest.log = function(message)
 }
 
 /**
+* Logs an assert message to document.
+* @param {boolean} condition
+* @param {string} message
+*/
+InspectorTest.assert = function(condition, message)
+{
+    var status = condition ? "PASS" : "FAIL";
+    this.sendCommand("Runtime.evaluate", { "expression": "log(" + JSON.stringify(status + ": " + message) + ")" } );
+}
+
+/**
 * Logs message directly to process stdout via alert function (hopefully followed by flush call).
 * This message should survive process crash or kill by timeout.
 * @param {string} message
@@ -106,8 +117,66 @@ InspectorTest.importScript = function(scriptName)
     var xhr = new XMLHttpRequest();
     xhr.open("GET", scriptName, false);
     xhr.send(null);
-    window.eval(xhr.responseText);
+    if (xhr.status !== 0 && xhr.status !== 200)
+        throw new Error("Invalid script URL: " + scriptName);
+    var script = "try { " + xhr.responseText + "} catch (e) { alert(" + JSON.stringify("Error in: " + scriptName) + "); throw e; }";
+    window.eval(script);
 }
+
+InspectorTest.importInspectorScripts = function()
+{
+    // Note: This function overwrites the InspectorFrontendAPI, so there's currently no
+    // way to intercept the messages from the backend.
+
+    var inspectorScripts = [
+        "Utilities",
+        "WebInspector",
+        "Object",
+        "InspectorBackend",
+        "InspectorFrontendAPI",
+        "InspectorFrontendHostStub",
+        "InspectorBackendCommands",
+        "URLUtilities",
+        "MessageDispatcher",
+        "Setting",
+        "PageObserver",
+        "DOMObserver",
+        "CSSObserver",
+        "FrameResourceManager",
+        "RuntimeManager",
+        "Frame",
+        "Revision",
+        "SourceCodeRevision",
+        "SourceCode",
+        "Resource",
+        "ResourceCollection",
+        "DOMTreeManager",
+        "DOMNode",
+        "ContentFlow",
+        "DOMTree",
+        "ExecutionContext",
+        "ExecutionContextList",
+        "CSSStyleManager",
+        "Color"
+    ];
+    for (var i = 0; i < inspectorScripts.length; ++i)
+        InspectorTest.importScript("../../../../../Source/WebInspectorUI/UserInterface/" + inspectorScripts[i] + ".js");
+
+    // The initialization should be in sync with WebInspector.loaded in Main.js.
+    // FIXME: As soon as we can support all the observers and managers we should remove UI related tasks 
+    // from WebInspector.loaded, so that it can be used from the LayoutTests.
+
+    InspectorBackend.registerPageDispatcher(new WebInspector.PageObserver);
+    InspectorBackend.registerDOMDispatcher(new WebInspector.DOMObserver);
+    InspectorBackend.registerCSSDispatcher(new WebInspector.CSSObserver);
+
+    WebInspector.frameResourceManager = new WebInspector.FrameResourceManager;
+    WebInspector.domTreeManager = new WebInspector.DOMTreeManager;
+    WebInspector.cssStyleManager = new WebInspector.CSSStyleManager;
+
+    InspectorFrontendHost.loaded();
+}
+
 
 window.addEventListener("message", function(event) {
     try {

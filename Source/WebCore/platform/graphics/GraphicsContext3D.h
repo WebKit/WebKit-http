@@ -434,6 +434,7 @@ public:
             , shareResources(true)
             , preferDiscreteGPU(false)
             , multithreaded(false)
+            , forceSoftwareRenderer(false)
         {
         }
 
@@ -447,6 +448,7 @@ public:
         bool shareResources;
         bool preferDiscreteGPU;
         bool multithreaded;
+        bool forceSoftwareRenderer;
     };
 
     enum RenderStyle {
@@ -1023,7 +1025,7 @@ private:
 
     Attributes m_attrs;
     RenderStyle m_renderStyle;
-    Vector<Vector<float> > m_vertexArray;
+    Vector<Vector<float>> m_vertexArray;
 
     GC3Duint m_texture;
 #if !PLATFORM(BLACKBERRY)

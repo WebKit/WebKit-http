@@ -44,16 +44,10 @@
 
 namespace WebCore {
 
-RenderNamedFlowThread* RenderNamedFlowThread::createAnonymous(Document& document, PassRefPtr<WebKitNamedFlow> namedFlow)
-{
-    ASSERT(document.cssRegionsEnabled());
-    RenderNamedFlowThread* renderer = new (*document.renderArena()) RenderNamedFlowThread(namedFlow);
-    renderer->setDocumentForAnonymous(document);
-    return renderer;
-}
-
-RenderNamedFlowThread::RenderNamedFlowThread(PassRefPtr<WebKitNamedFlow> namedFlow)
-    : m_overset(true)
+RenderNamedFlowThread::RenderNamedFlowThread(Document& document, PassRef<RenderStyle> style, PassRefPtr<WebKitNamedFlow> namedFlow)
+    : RenderFlowThread(document, std::move(style))
+    , m_flowThreadChildList(adoptPtr(new FlowThreadChildList()))
+    , m_overset(true)
     , m_namedFlow(namedFlow)
     , m_regionLayoutUpdateEventTimer(this, &RenderNamedFlowThread::regionLayoutUpdateEventTimerFired)
     , m_regionOversetChangeEventTimer(this, &RenderNamedFlowThread::regionOversetChangeEventTimerFired)
@@ -95,19 +89,19 @@ void RenderNamedFlowThread::updateWritingMode()
     RenderRegion* firstRegion = m_regionList.first();
     if (!firstRegion)
         return;
-    if (style()->writingMode() == firstRegion->style()->writingMode())
+    if (style().writingMode() == firstRegion->style().writingMode())
         return;
 
     // The first region defines the principal writing mode for the entire flow.
-    RefPtr<RenderStyle> newStyle = RenderStyle::clone(style());
-    newStyle->setWritingMode(firstRegion->style()->writingMode());
-    setStyle(newStyle.release());
+    auto newStyle = RenderStyle::clone(&style());
+    newStyle.get().setWritingMode(firstRegion->style().writingMode());
+    setStyle(std::move(newStyle));
 }
 
 RenderObject* RenderNamedFlowThread::nextRendererForNode(Node* node) const
 {
-    FlowThreadChildList::const_iterator it = m_flowThreadChildList.begin();
-    FlowThreadChildList::const_iterator end = m_flowThreadChildList.end();
+    FlowThreadChildList::const_iterator it = m_flowThreadChildList->begin();
+    FlowThreadChildList::const_iterator end = m_flowThreadChildList->end();
 
     for (; it != end; ++it) {
         RenderObject* child = *it;
@@ -122,11 +116,11 @@ RenderObject* RenderNamedFlowThread::nextRendererForNode(Node* node) const
 
 RenderObject* RenderNamedFlowThread::previousRendererForNode(Node* node) const
 {
-    if (m_flowThreadChildList.isEmpty())
+    if (m_flowThreadChildList->isEmpty())
         return 0;
 
-    FlowThreadChildList::const_iterator begin = m_flowThreadChildList.begin();
-    FlowThreadChildList::const_iterator end = m_flowThreadChildList.end();
+    FlowThreadChildList::const_iterator begin = m_flowThreadChildList->begin();
+    FlowThreadChildList::const_iterator end = m_flowThreadChildList->end();
     FlowThreadChildList::const_iterator it = end;
 
     do {
@@ -156,14 +150,14 @@ void RenderNamedFlowThread::addFlowChild(RenderObject* newChild)
 
     RenderObject* beforeChild = nextRendererForNode(childNode);
     if (beforeChild)
-        m_flowThreadChildList.insertBefore(beforeChild, newChild);
+        m_flowThreadChildList->insertBefore(beforeChild, newChild);
     else
-        m_flowThreadChildList.add(newChild);
+        m_flowThreadChildList->add(newChild);
 }
 
 void RenderNamedFlowThread::removeFlowChild(RenderObject* child)
 {
-    m_flowThreadChildList.remove(child);
+    m_flowThreadChildList->remove(child);
 }
 
 bool RenderNamedFlowThread::dependsOn(RenderNamedFlowThread* otherRenderFlowThread) const
@@ -202,21 +196,21 @@ static bool compareRenderRegions(const RenderRegion* firstRegion, const RenderRe
 
         // If the second region is contained in the first one, the first region is "less" if it's :before.
         if (position & Node::DOCUMENT_POSITION_CONTAINED_BY) {
-            ASSERT(secondRegion->style()->styleType() == NOPSEUDO);
-            return firstRegion->style()->styleType() == BEFORE;
+            ASSERT(secondRegion->style().styleType() == NOPSEUDO);
+            return firstRegion->style().styleType() == BEFORE;
         }
 
         // If the second region contains the first region, the first region is "less" if the second is :after.
         if (position & Node::DOCUMENT_POSITION_CONTAINS) {
-            ASSERT(firstRegion->style()->styleType() == NOPSEUDO);
-            return secondRegion->style()->styleType() == AFTER;
+            ASSERT(firstRegion->style().styleType() == NOPSEUDO);
+            return secondRegion->style().styleType() == AFTER;
         }
 
         return (position & Node::DOCUMENT_POSITION_FOLLOWING);
     }
 
     // FIXME: Currently it's not possible for an element to be both a region and have pseudo-children. The case is covered anyway.
-    switch (firstRegion->style()->styleType()) {
+    switch (firstRegion->style().styleType()) {
     case BEFORE:
         // The second region can be the node or the after pseudo-element (before is smaller than any of those).
         return true;
@@ -225,7 +219,7 @@ static bool compareRenderRegions(const RenderRegion* firstRegion, const RenderRe
         return false;
     case NOPSEUDO:
         // The second region can either be the before or the after pseudo-element (the node is only smaller than the after pseudo-element).
-        return firstRegion->style()->styleType() == AFTER;
+        return firstRegion->style().styleType() == AFTER;
     default:
         break;
     }
@@ -453,11 +447,13 @@ void RenderNamedFlowThread::registerNamedFlowContentElement(Element& contentElem
         unsigned short position = contentElement.compareDocumentPosition(element);
         if (position & Node::DOCUMENT_POSITION_FOLLOWING) {
             m_contentElements.insertBefore(element, &contentElement);
+            InspectorInstrumentation::didRegisterNamedFlowContentElement(&document(), m_namedFlow.get(), &contentElement, element);
             return;
         }
     }
 
     m_contentElements.add(&contentElement);
+    InspectorInstrumentation::didRegisterNamedFlowContentElement(&document(), m_namedFlow.get(), &contentElement);
 }
 
 void RenderNamedFlowThread::unregisterNamedFlowContentElement(Element& contentElement)
@@ -471,6 +467,8 @@ void RenderNamedFlowThread::unregisterNamedFlowContentElement(Element& contentEl
 
     if (canBeDestroyed())
         setMarkForDestruction();
+
+    InspectorInstrumentation::didUnregisterNamedFlowContentElement(&document(), m_namedFlow.get(), &contentElement);
 }
 
 bool RenderNamedFlowThread::hasContentElement(Element& contentElement) const
@@ -483,14 +481,14 @@ const AtomicString& RenderNamedFlowThread::flowThreadName() const
     return m_namedFlow->name();
 }
 
-bool RenderNamedFlowThread::isChildAllowed(RenderObject* child, RenderStyle* style) const
+bool RenderNamedFlowThread::isChildAllowed(const RenderObject& child, const RenderStyle& style) const
 {
-    if (!child->node())
+    if (!child.node())
         return true;
 
-    ASSERT(child->node()->isElementNode());
+    ASSERT(child.node()->isElementNode());
 
-    Node* originalParent = NodeRenderingTraversal::parent(child->node());
+    Node* originalParent = NodeRenderingTraversal::parent(child.node());
     if (!originalParent || !originalParent->isElementNode() || !originalParent->renderer())
         return true;
 
@@ -585,7 +583,7 @@ static Node* nextNodeInsideContentElement(const Node* currNode, const Element* c
     return NodeTraversal::next(currNode, contentElement);
 }
 
-void RenderNamedFlowThread::getRanges(Vector<RefPtr<Range> >& rangeObjects, const RenderRegion* region) const
+void RenderNamedFlowThread::getRanges(Vector<RefPtr<Range>>& rangeObjects, const RenderRegion* region) const
 {
     LayoutUnit logicalTopForRegion;
     LayoutUnit logicalBottomForRegion;
@@ -733,5 +731,16 @@ void RenderNamedFlowThread::getRanges(Vector<RefPtr<Range> >& rangeObjects, cons
             rangeObjects.append(range);
     }
 }
+
+#if USE(ACCELERATED_COMPOSITING)
+bool RenderNamedFlowThread::collectsGraphicsLayersUnderRegions() const
+{
+    // We only need to map layers to regions for named flow threads.
+    // Multi-column threads are displayed on top of the regions and do not require
+    // distributing the layers.
+
+    return true;
+}
+#endif
 
 }

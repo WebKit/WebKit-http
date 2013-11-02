@@ -23,16 +23,38 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "config.h"
-#include "RemoteLayerTreeHost.h"
+#import "config.h"
+#import "RemoteLayerTreeHost.h"
 
-#include "RemoteLayerTreeHostMessages.h"
-#include "RemoteLayerTreeTransaction.h"
-#include "WebPageProxy.h"
-#include "WebProcessProxy.h"
-#include <WebCore/GraphicsLayer.h>
+#import "RemoteLayerTreeHostMessages.h"
+#import "RemoteLayerTreeTransaction.h"
+#import "ShareableBitmap.h"
+#import "WebPageProxy.h"
+#import "WebProcessProxy.h"
+#import <WebCore/PlatformCAFilters.h>
+#import <WebCore/PlatformLayer.h>
+
+#import <QuartzCore/QuartzCore.h>
 
 using namespace WebCore;
+
+static NSDictionary *nullActionsDictionary()
+{
+    NSNull* nullValue = [NSNull null];
+    return @{
+        @"anchorPoint" : nullValue,
+        @"anchorPointZ" : nullValue,
+        @"bounds" : nullValue,
+        @"contents" : nullValue,
+        @"contentsRect" : nullValue,
+        @"opacity" : nullValue,
+        @"position" : nullValue,
+        @"shadowColor" : nullValue,
+        @"sublayerTransform" : nullValue,
+        @"sublayers" : nullValue,
+        @"transform" : nullValue,
+        @"zPosition" : nullValue };
+}
 
 namespace WebKit {
 
@@ -48,37 +70,182 @@ RemoteLayerTreeHost::~RemoteLayerTreeHost()
     m_webPageProxy->process()->removeMessageReceiver(Messages::RemoteLayerTreeHost::messageReceiverName(), m_webPageProxy->pageID());
 }
 
-void RemoteLayerTreeHost::notifyAnimationStarted(const GraphicsLayer*, double time)
+static RetainPtr<CGColorRef> cgColorFromColor(Color color)
 {
+    CGFloat components[4];
+    color.getRGBA(components[0], components[1], components[2], components[3]);
+
+    RetainPtr<CGColorSpaceRef> colorSpace = adoptCF(CGColorSpaceCreateDeviceRGB());
+    RetainPtr<CGColorRef> cgColor = adoptCF(CGColorCreate(colorSpace.get(), components));
+    return cgColor;
 }
 
-void RemoteLayerTreeHost::notifyFlushRequired(const GraphicsLayer*)
+static NSString *toCAFilterType(PlatformCALayer::FilterType type)
 {
+    switch (type) {
+    case PlatformCALayer::Linear:
+        return kCAFilterLinear;
+    case PlatformCALayer::Nearest:
+        return kCAFilterNearest;
+    case PlatformCALayer::Trilinear:
+        return kCAFilterTrilinear;
+    };
+
+    ASSERT_NOT_REACHED();
+    return 0;
 }
 
-void RemoteLayerTreeHost::paintContents(const GraphicsLayer*, GraphicsContext&, GraphicsLayerPaintingPhase, const IntRect&)
-{
-}
 
 void RemoteLayerTreeHost::commit(const RemoteLayerTreeTransaction& transaction)
 {
-    GraphicsLayer* rootLayer = getOrCreateLayer(transaction.rootLayerID());
+#if !defined(NDEBUG)
+    transaction.dump();
+#endif
+
+    for (auto createdLayer : transaction.createdLayers())
+        createLayer(createdLayer);
+
+    CALayer *rootLayer = getLayer(transaction.rootLayerID());
     if (m_rootLayer != rootLayer) {
         m_rootLayer = rootLayer;
         m_webPageProxy->setAcceleratedCompositingRootLayer(m_rootLayer);
     }
 
-#ifndef NDEBUG
-    // FIXME: Apply the transaction instead of dumping it to stderr.
-    transaction.dump();
-#endif
+    for (auto changedLayer : transaction.changedLayers()) {
+        RemoteLayerTreeTransaction::LayerID layerID = changedLayer.key;
+        const auto& properties = changedLayer.value;
+
+        CALayer *layer = getLayer(layerID);
+        ASSERT(layer);
+
+        if (properties.changedProperties & RemoteLayerTreeTransaction::NameChanged)
+            layer.name = properties.name;
+
+        if (properties.changedProperties & RemoteLayerTreeTransaction::PositionChanged) {
+            layer.position = CGPointMake(properties.position.x(), properties.position.y());
+            layer.zPosition = properties.position.z();
+        }
+
+        if (properties.changedProperties & RemoteLayerTreeTransaction::AnchorPointChanged) {
+            layer.anchorPoint = CGPointMake(properties.anchorPoint.x(), properties.anchorPoint.y());
+            layer.anchorPointZ = properties.anchorPoint.z();
+        }
+
+        if (properties.changedProperties & RemoteLayerTreeTransaction::SizeChanged)
+            layer.bounds = FloatRect(FloatPoint(), properties.size);
+
+        if (properties.changedProperties & RemoteLayerTreeTransaction::BackgroundColorChanged)
+            layer.backgroundColor = cgColorFromColor(properties.backgroundColor).get();
+
+        if (properties.changedProperties & RemoteLayerTreeTransaction::ChildrenChanged) {
+            RetainPtr<NSMutableArray> children = adoptNS([[NSMutableArray alloc] initWithCapacity:properties.children.size()]);
+            for (auto child : properties.children)
+                [children addObject:getLayer(child)];
+            layer.sublayers = children.get();
+        }
+
+        if (properties.changedProperties & RemoteLayerTreeTransaction::BorderColorChanged)
+            layer.borderColor = cgColorFromColor(properties.borderColor).get();
+
+        if (properties.changedProperties & RemoteLayerTreeTransaction::BorderWidthChanged)
+            layer.borderWidth = properties.borderWidth;
+
+        if (properties.changedProperties & RemoteLayerTreeTransaction::OpacityChanged)
+            layer.opacity = properties.opacity;
+
+        if (properties.changedProperties & RemoteLayerTreeTransaction::TransformChanged)
+            layer.transform = properties.transform;
+
+        if (properties.changedProperties & RemoteLayerTreeTransaction::SublayerTransformChanged)
+            layer.sublayerTransform = properties.sublayerTransform;
+
+        if (properties.changedProperties & RemoteLayerTreeTransaction::HiddenChanged)
+            layer.hidden = properties.hidden;
+
+        if (properties.changedProperties & RemoteLayerTreeTransaction::GeometryFlippedChanged)
+            layer.geometryFlipped = properties.geometryFlipped;
+
+        if (properties.changedProperties & RemoteLayerTreeTransaction::DoubleSidedChanged)
+            layer.doubleSided = properties.doubleSided;
+
+        if (properties.changedProperties & RemoteLayerTreeTransaction::MasksToBoundsChanged)
+            layer.masksToBounds = properties.masksToBounds;
+
+        if (properties.changedProperties & RemoteLayerTreeTransaction::OpaqueChanged)
+            layer.opaque = properties.opaque;
+
+        if (properties.changedProperties & RemoteLayerTreeTransaction::MaskLayerChanged) {
+            CALayer *maskLayer = getLayer(properties.maskLayer);
+            ASSERT(!maskLayer.superlayer);
+            if (!maskLayer.superlayer)
+                layer.mask = maskLayer;
+        }
+
+        if (properties.changedProperties & RemoteLayerTreeTransaction::ContentsRectChanged)
+            layer.contentsRect = properties.contentsRect;
+
+        if (properties.changedProperties & RemoteLayerTreeTransaction::ContentsScaleChanged)
+            layer.contentsScale = properties.contentsScale;
+
+        if (properties.changedProperties & RemoteLayerTreeTransaction::MinificationFilterChanged)
+            layer.minificationFilter = toCAFilterType(properties.minificationFilter);
+
+        if (properties.changedProperties & RemoteLayerTreeTransaction::MagnificationFilterChanged)
+            layer.magnificationFilter = toCAFilterType(properties.magnificationFilter);
+
+        if (properties.changedProperties & RemoteLayerTreeTransaction::SpeedChanged)
+            layer.speed = properties.speed;
+
+        if (properties.changedProperties & RemoteLayerTreeTransaction::TimeOffsetChanged)
+            layer.timeOffset = properties.timeOffset;
+
+        if (properties.changedProperties & RemoteLayerTreeTransaction::BackingStoreChanged) {
+            if (properties.backingStore.acceleratesDrawing())
+                layer.contents = (id)properties.backingStore.surface().get();
+            else
+                layer.contents = (id)properties.backingStore.image().get();
+        }
+
+        if (properties.changedProperties & RemoteLayerTreeTransaction::FiltersChanged)
+            PlatformCAFilters::setFiltersOnLayer(layer, properties.filters);
+
+        if (properties.changedProperties & RemoteLayerTreeTransaction::EdgeAntialiasingMaskChanged)
+            layer.edgeAntialiasingMask = properties.edgeAntialiasingMask;
+    }
+
+    for (auto destroyedLayer : transaction.destroyedLayers())
+        m_layers.remove(destroyedLayer);
 }
 
-GraphicsLayer* RemoteLayerTreeHost::getOrCreateLayer(uint64_t layerID)
+CALayer *RemoteLayerTreeHost::getLayer(RemoteLayerTreeTransaction::LayerID layerID)
 {
-    std::unique_ptr<GraphicsLayer>& layer = m_layers.add(layerID, nullptr).iterator->value;
-    if (!layer)
-        layer = GraphicsLayer::create(0, this);
+    return m_layers.get(layerID).get();
+}
+
+CALayer *RemoteLayerTreeHost::createLayer(RemoteLayerTreeTransaction::LayerCreationProperties properties)
+{
+    RetainPtr<CALayer>& layer = m_layers.add(properties.layerID, nullptr).iterator->value;
+
+    ASSERT(!layer);
+
+    switch (properties.type) {
+    case PlatformCALayer::LayerTypeLayer:
+    case PlatformCALayer::LayerTypeWebLayer:
+    case PlatformCALayer::LayerTypeRootLayer:
+    case PlatformCALayer::LayerTypeSimpleLayer:
+    case PlatformCALayer::LayerTypeTiledBackingLayer:
+    case PlatformCALayer::LayerTypePageTiledBackingLayer:
+    case PlatformCALayer::LayerTypeTiledBackingTileLayer:
+        layer = adoptNS([[CALayer alloc] init]);
+        break;
+    case PlatformCALayer::LayerTypeTransformLayer:
+        layer = adoptNS([[CATransformLayer alloc] init]);
+        break;
+    default:
+        ASSERT_NOT_REACHED();
+    }
+
+    [layer setStyle:@{ @"actions" : nullActionsDictionary() }];
 
     return layer.get();
 }

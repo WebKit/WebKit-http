@@ -161,7 +161,6 @@ public:
     virtual double currentTime() const OVERRIDE;
     virtual void setCurrentTime(double, ExceptionCode&) OVERRIDE;
     double initialTime() const;
-    double startTime() const;
     virtual double duration() const OVERRIDE;
     virtual bool paused() const OVERRIDE;
     virtual double defaultPlaybackRate() const OVERRIDE;
@@ -266,7 +265,7 @@ public:
 
 #if USE(PLATFORM_TEXT_TRACK_MENU)
     virtual void setSelectedTextTrack(PassRefPtr<PlatformTextTrack>) OVERRIDE;
-    virtual Vector<RefPtr<PlatformTextTrack> > platformTextTracks() OVERRIDE;
+    virtual Vector<RefPtr<PlatformTextTrack>> platformTextTracks() OVERRIDE;
     PlatformTextTrackMenuInterface* platformTextTrackMenu();
 #endif
 
@@ -281,7 +280,7 @@ public:
         {
         }
 
-        Vector<RefPtr<TextTrack> > tracks;
+        Vector<RefPtr<TextTrack>> tracks;
         RefPtr<TextTrack> visibleTrack;
         RefPtr<TextTrack> defaultTrack;
         GroupKind kind;
@@ -439,7 +438,7 @@ private:
     virtual bool supportsFocus() const OVERRIDE;
     virtual bool isMouseFocusable() const OVERRIDE;
     virtual bool rendererIsNeeded(const RenderStyle&) OVERRIDE;
-    virtual RenderElement* createRenderer(RenderArena&, RenderStyle&) OVERRIDE;
+    virtual RenderElement* createRenderer(PassRef<RenderStyle>) OVERRIDE;
     virtual bool childShouldCreateRenderer(const Node*) const OVERRIDE;
     virtual InsertionNotificationRequest insertedInto(ContainerNode&) OVERRIDE;
     virtual void removedFrom(ContainerNode&) OVERRIDE;
@@ -457,6 +456,10 @@ private:
     virtual void stop() OVERRIDE;
     
     virtual void mediaVolumeDidChange() OVERRIDE;
+
+#if ENABLE(PAGE_VISIBILITY_API)
+    virtual void visibilityStateChanged() OVERRIDE;
+#endif
 
     virtual void updateDisplayState() { }
     
@@ -620,8 +623,8 @@ private:
     virtual bool isLiveStream() const OVERRIDE { return movieLoadType() == MediaPlayer::LiveStream; }
     bool isAutoplaying() const { return m_autoplaying; }
 
+    void updateSleepDisabling();
 #if PLATFORM(MAC)
-    void updateDisableSleep();
     bool shouldDisableSleep() const;
 #endif
 
@@ -730,6 +733,9 @@ private:
     bool m_completelyLoaded : 1;
     bool m_havePreparedToPlay : 1;
     bool m_parsingInProgress : 1;
+#if ENABLE(PAGE_VISIBILITY_API)
+    bool m_isDisplaySleepDisablingSuspended : 1;
+#endif
 
 #if ENABLE(VIDEO_TRACK)
     bool m_tracksAreReady : 1;
@@ -744,7 +750,7 @@ private:
     RefPtr<AudioTrackList> m_audioTracks;
     RefPtr<TextTrackList> m_textTracks;
     RefPtr<VideoTrackList> m_videoTracks;
-    Vector<RefPtr<TextTrack> > m_textTracksWhenResourceSelectionBegan;
+    Vector<RefPtr<TextTrack>> m_textTracksWhenResourceSelectionBegan;
 
     CueIntervalTree m_cueTree;
 
@@ -811,25 +817,12 @@ struct ValueToString<TextTrackCue*> {
 #endif
 #endif
 
-inline bool isMediaElement(Node* node)
-{
-    return node && node->isElementNode() && toElement(node)->isMediaElement();
-}
+void isHTMLMediaElement(const HTMLMediaElement&); // Catch unnecessary runtime check of type known at compile time.
+inline bool isHTMLMediaElement(const Element& element) { return element.isMediaElement(); }
+inline bool isHTMLMediaElement(const Node& node) { return node.isElementNode() && toElement(node).isMediaElement(); }
+template <> inline bool isElementOfType<const HTMLMediaElement>(const Element& element) { return element.isMediaElement(); }
 
-inline HTMLMediaElement& toHTMLMediaElement(Node& node)
-{
-    ASSERT_WITH_SECURITY_IMPLICATION(isMediaElement(&node));
-    return static_cast<HTMLMediaElement&>(node);
-}
-
-inline HTMLMediaElement* toHTMLMediaElement(Node* node)
-{
-    ASSERT_WITH_SECURITY_IMPLICATION(!node || isMediaElement(node));
-    return static_cast<HTMLMediaElement*>(node);
-}
-
-void toHTMLMediaElement(const HTMLMediaElement&);
-void toHTMLMediaElement(const HTMLMediaElement*);
+NODE_TYPE_CASTS(HTMLMediaElement)
 
 } //namespace
 

@@ -37,11 +37,11 @@ private:
 
     virtual bool supportsFocus() const OVERRIDE { return true; }
 
-    virtual RenderElement* createRenderer(RenderArena&, RenderStyle&);
+    virtual RenderElement* createRenderer(PassRef<RenderStyle>) OVERRIDE;
     virtual bool childShouldCreateRenderer(const Node*) const;
 };
 
-ELEMENT_TYPE_CASTS(SVGTextElement)
+NODE_TYPE_CASTS(SVGTextElement)
 
 } // namespace WebCore
 

@@ -33,7 +33,7 @@ namespace WebCore {
 
 class RenderSVGPath FINAL : public RenderSVGShape {
 public:
-    explicit RenderSVGPath(SVGGraphicsElement&);
+    RenderSVGPath(SVGGraphicsElement&, PassRef<RenderStyle>);
     virtual ~RenderSVGPath();
 
 private:
@@ -54,11 +54,7 @@ private:
     Vector<FloatPoint> m_zeroLengthLinecapLocations;
 };
 
-inline RenderSVGPath* toRenderSVGPath(RenderObject* object)
-{
-    ASSERT_WITH_SECURITY_IMPLICATION(!object || object->isSVGPath());
-    return static_cast<RenderSVGPath*>(object);
-}
+RENDER_OBJECT_TYPE_CASTS(RenderSVGPath, isSVGPath())
 
 }
 

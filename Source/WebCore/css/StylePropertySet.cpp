@@ -45,8 +45,6 @@
 #include <wtf/text/CString.h>
 #endif
 
-using namespace std;
-
 namespace WebCore {
 
 static size_t sizeForImmutableStylePropertySetWithPropertyCount(unsigned count)
@@ -61,18 +59,18 @@ static bool isInitialOrInherit(const String& value)
     return value.length() == 7 && (value == initial || value == inherit);
 }
 
-PassRefPtr<ImmutableStylePropertySet> ImmutableStylePropertySet::create(const CSSProperty* properties, unsigned count, CSSParserMode cssParserMode)
+PassRef<ImmutableStylePropertySet> ImmutableStylePropertySet::create(const CSSProperty* properties, unsigned count, CSSParserMode cssParserMode)
 {
     void* slot = WTF::fastMalloc(sizeForImmutableStylePropertySetWithPropertyCount(count));
-    return adoptRef(new (NotNull, slot) ImmutableStylePropertySet(properties, count, cssParserMode));
+    return adoptRef(*new (NotNull, slot) ImmutableStylePropertySet(properties, count, cssParserMode));
 }
 
-PassRefPtr<ImmutableStylePropertySet> StylePropertySet::immutableCopyIfNeeded() const
+PassRef<ImmutableStylePropertySet> StylePropertySet::immutableCopyIfNeeded() const
 {
     if (!isMutable())
-        return static_cast<ImmutableStylePropertySet*>(const_cast<StylePropertySet*>(this));
-    const MutableStylePropertySet* mutableThis = static_cast<const MutableStylePropertySet*>(this);
-    return ImmutableStylePropertySet::create(mutableThis->m_propertyVector.data(), mutableThis->m_propertyVector.size(), cssParserMode());
+        return static_cast<ImmutableStylePropertySet&>(const_cast<StylePropertySet&>(*this));
+    const MutableStylePropertySet& mutableThis = static_cast<const MutableStylePropertySet&>(*this);
+    return ImmutableStylePropertySet::create(mutableThis.m_propertyVector.data(), mutableThis.m_propertyVector.size(), cssParserMode());
 }
 
 MutableStylePropertySet::MutableStylePropertySet(CSSParserMode cssParserMode)
@@ -360,16 +358,16 @@ String StylePropertySet::getLayeredShorthandValue(const StylePropertyShorthand& 
 
     const unsigned size = shorthand.length();
     // Begin by collecting the properties into an array.
-    Vector< RefPtr<CSSValue> > values(size);
+    Vector< RefPtr<CSSValue>> values(size);
     size_t numLayers = 0;
 
     for (unsigned i = 0; i < size; ++i) {
         values[i] = getPropertyCSSValue(shorthand.properties()[i]);
         if (values[i]) {
             if (values[i]->isBaseValueList())
-                numLayers = max(toCSSValueList(values[i].get())->length(), numLayers);
+                numLayers = std::max(toCSSValueList(values[i].get())->length(), numLayers);
             else
-                numLayers = max<size_t>(1U, numLayers);
+                numLayers = std::max<size_t>(1U, numLayers);
         }
     }
 
@@ -1098,7 +1096,7 @@ void MutableStylePropertySet::clear()
 
 const unsigned numBlockProperties = WTF_ARRAY_LENGTH(blockProperties);
 
-PassRefPtr<MutableStylePropertySet> StylePropertySet::copyBlockProperties() const
+PassRef<MutableStylePropertySet> StylePropertySet::copyBlockProperties() const
 {
     return copyPropertiesInSet(blockProperties, numBlockProperties);
 }
@@ -1193,12 +1191,12 @@ void MutableStylePropertySet::removeEquivalentProperties(const ComputedStyleExtr
         removeProperty(propertiesToRemove[i]);
 }
 
-PassRefPtr<MutableStylePropertySet> StylePropertySet::mutableCopy() const
+PassRef<MutableStylePropertySet> StylePropertySet::mutableCopy() const
 {
-    return adoptRef(new MutableStylePropertySet(*this));
+    return adoptRef(*new MutableStylePropertySet(*this));
 }
 
-PassRefPtr<MutableStylePropertySet> StylePropertySet::copyPropertiesInSet(const CSSPropertyID* set, unsigned length) const
+PassRef<MutableStylePropertySet> StylePropertySet::copyPropertiesInSet(const CSSPropertyID* set, unsigned length) const
 {
     Vector<CSSProperty, 256> list;
     list.reserveInitialCapacity(length);
@@ -1255,14 +1253,14 @@ void StylePropertySet::showStyle()
 }
 #endif
 
-PassRefPtr<MutableStylePropertySet> MutableStylePropertySet::create(CSSParserMode cssParserMode)
+PassRef<MutableStylePropertySet> MutableStylePropertySet::create(CSSParserMode cssParserMode)
 {
-    return adoptRef(new MutableStylePropertySet(cssParserMode));
+    return adoptRef(*new MutableStylePropertySet(cssParserMode));
 }
 
-PassRefPtr<MutableStylePropertySet> MutableStylePropertySet::create(const CSSProperty* properties, unsigned count)
+PassRef<MutableStylePropertySet> MutableStylePropertySet::create(const CSSProperty* properties, unsigned count)
 {
-    return adoptRef(new MutableStylePropertySet(properties, count));
+    return adoptRef(*new MutableStylePropertySet(properties, count));
 }
 
 String StylePropertySet::PropertyReference::cssName() const

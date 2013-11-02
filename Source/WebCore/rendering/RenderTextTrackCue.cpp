@@ -37,18 +37,18 @@
 
 namespace WebCore {
 
-RenderTextTrackCue::RenderTextTrackCue(TextTrackCueBox* element)
-    : RenderBlockFlow(element)
-    , m_cue(element->getCue())
+RenderTextTrackCue::RenderTextTrackCue(TextTrackCueBox& element, PassRef<RenderStyle> style)
+    : RenderBlockFlow(element, std::move(style))
+    , m_cue(element.getCue())
 {
 }
 
 void RenderTextTrackCue::layout()
 {
     StackStats::LayoutCheckPoint layoutCheckPoint;
-    RenderBlock::layout();
+    RenderBlockFlow::layout();
 
-    LayoutStateMaintainer statePusher(&view(), this, locationOffset(), hasTransform() || hasReflection() || style()->isFlippedBlocksWritingMode());
+    LayoutStateMaintainer statePusher(&view(), this, locationOffset(), hasTransform() || hasReflection() || style().isFlippedBlocksWritingMode());
     
     if (m_cue->cueType()== TextTrackCue::WebVTT) {
         if (m_cue->snapToLines())

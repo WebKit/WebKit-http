@@ -172,7 +172,7 @@ static const gchar* webkitAccessibleGetDescription(AtkObject* object)
     Node* node = 0;
     if (coreObject->isAccessibilityRenderObject())
         node = coreObject->node();
-    if (!node || !node->isHTMLElement() || coreObject->ariaRoleAttribute() != UnknownRole)
+    if (!node || !node->isHTMLElement() || coreObject->ariaRoleAttribute() != UnknownRole || coreObject->isImage())
         return cacheAndReturnAtkProperty(object, AtkCachedAccessibleDescription, accessibilityDescription(coreObject));
 
     // atk_table_get_summary returns an AtkObject. We have no summary object, so expose summary here.
@@ -1125,7 +1125,7 @@ void webkitAccessibleDetach(WebKitAccessible* accessible)
     ASSERT(accessible->m_object);
 
     if (accessible->m_object->roleValue() == WebAreaRole)
-        g_signal_emit_by_name(accessible, "state-change", "defunct", true);
+        atk_object_notify_state_change(ATK_OBJECT(accessible), ATK_STATE_DEFUNCT, true);
 
     // We replace the WebCore AccessibilityObject with a fallback object that
     // provides default implementations to avoid repetitive null-checking after

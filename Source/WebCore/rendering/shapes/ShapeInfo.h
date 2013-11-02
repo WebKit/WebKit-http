@@ -56,7 +56,7 @@ public:
     static void removeInfo(const KeyType* key) { infoMap().remove(key); }
     static InfoType* info(const KeyType* key) { return infoMap().get(key); }
 private:
-    typedef HashMap<const KeyType*, OwnPtr<InfoType> > InfoMap;
+    typedef HashMap<const KeyType*, OwnPtr<InfoType>> InfoMap;
     static InfoMap& infoMap()
     {
         DEFINE_STATIC_LOCAL(InfoMap, staticInfoMap, ());
@@ -74,7 +74,7 @@ public:
     {
         LayoutSize newLogicalSize(logicalWidth, logicalHeight);
 
-        if (m_renderer->style()->boxSizing() == CONTENT_BOX)
+        if (m_renderer->style().boxSizing() == CONTENT_BOX)
             newLogicalSize -= LayoutSize(m_renderer->borderAndPaddingLogicalWidth(), m_renderer->borderAndPaddingLogicalHeight());
 
         if (m_shapeLogicalSize == newLogicalSize)
@@ -96,24 +96,26 @@ public:
     LayoutUnit logicalLineBottom() const { return m_shapeLineTop + m_lineHeight + logicalTopOffset(); }
     LayoutUnit logicalLineBottom(LayoutUnit lineHeight) const { return m_shapeLineTop + lineHeight + logicalTopOffset(); }
 
-    LayoutUnit shapeContainingBlockLogicalHeight() const { return (m_renderer->style()->boxSizing() == CONTENT_BOX) ? (m_shapeLogicalSize.height() + m_renderer->borderAndPaddingLogicalHeight()) : m_shapeLogicalSize.height(); }
+    LayoutUnit shapeContainingBlockLogicalHeight() const { return (m_renderer->style().boxSizing() == CONTENT_BOX) ? (m_shapeLogicalSize.height() + m_renderer->borderAndPaddingLogicalHeight()) : m_shapeLogicalSize.height(); }
 
     virtual bool lineOverlapsShapeBounds() const = 0;
 
     void dirtyShapeSize() { m_shape.clear(); }
     bool shapeSizeDirty() { return !m_shape.get(); }
     const RenderType* owner() const { return m_renderer; }
+    LayoutSize shapeSize() const { return m_shapeLogicalSize; }
 
 protected:
     ShapeInfo(const RenderType* renderer): m_renderer(renderer) { }
 
     const Shape* computedShape() const;
+
     virtual LayoutRect computedShapeLogicalBoundingBox() const = 0;
     virtual ShapeValue* shapeValue() const = 0;
     virtual void getIntervals(LayoutUnit, LayoutUnit, SegmentList&) const = 0;
 
-    LayoutUnit logicalTopOffset() const { return m_renderer->style()->boxSizing() == CONTENT_BOX ? m_renderer->borderAndPaddingBefore() : LayoutUnit(); };
-    LayoutUnit logicalLeftOffset() const { return (m_renderer->style()->boxSizing() == CONTENT_BOX && !m_renderer->isRenderRegion()) ? m_renderer->borderAndPaddingStart() : LayoutUnit(); }
+    LayoutUnit logicalTopOffset() const { return m_renderer->style().boxSizing() == CONTENT_BOX ? m_renderer->borderAndPaddingBefore() : LayoutUnit(); };
+    LayoutUnit logicalLeftOffset() const { return (m_renderer->style().boxSizing() == CONTENT_BOX && !m_renderer->isRenderRegion()) ? m_renderer->borderAndPaddingStart() : LayoutUnit(); }
 
     LayoutUnit m_shapeLineTop;
     LayoutUnit m_lineHeight;
@@ -124,6 +126,9 @@ private:
     mutable OwnPtr<Shape> m_shape;
     LayoutSize m_shapeLogicalSize;
 };
+
+bool checkShapeImageOrigin(Document&, CachedImage&);
+
 }
 #endif
 #endif

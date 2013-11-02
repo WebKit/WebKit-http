@@ -32,9 +32,6 @@
 #include "HTMLTableElement.h"
 #include "RenderTableCell.h"
 
-using std::max;
-using std::min;
-
 namespace WebCore {
 
 // Clamp rowspan at 8k to match Firefox.
@@ -55,13 +52,13 @@ PassRefPtr<HTMLTableCellElement> HTMLTableCellElement::create(const QualifiedNam
 int HTMLTableCellElement::colSpan() const
 {
     const AtomicString& colSpanValue = fastGetAttribute(colspanAttr);
-    return max(1, colSpanValue.toInt());
+    return std::max(1, colSpanValue.toInt());
 }
 
 int HTMLTableCellElement::rowSpan() const
 {
     const AtomicString& rowSpanValue = fastGetAttribute(rowspanAttr);
-    return max(1, min(rowSpanValue.toInt(), maxRowspan));
+    return std::max(1, std::min(rowSpanValue.toInt(), maxRowspan));
 }
 
 int HTMLTableCellElement::cellIndex() const
@@ -131,12 +128,12 @@ bool HTMLTableCellElement::isURLAttribute(const Attribute& attribute) const
 
 String HTMLTableCellElement::abbr() const
 {
-    return getAttribute(abbrAttr);
+    return fastGetAttribute(abbrAttr);
 }
 
 String HTMLTableCellElement::axis() const
 {
-    return getAttribute(axisAttr);
+    return fastGetAttribute(axisAttr);
 }
 
 void HTMLTableCellElement::setColSpan(int n)
@@ -146,7 +143,7 @@ void HTMLTableCellElement::setColSpan(int n)
 
 String HTMLTableCellElement::headers() const
 {
-    return getAttribute(headersAttr);
+    return fastGetAttribute(headersAttr);
 }
 
 void HTMLTableCellElement::setRowSpan(int n)
@@ -156,7 +153,7 @@ void HTMLTableCellElement::setRowSpan(int n)
 
 String HTMLTableCellElement::scope() const
 {
-    return getAttribute(scopeAttr);
+    return fastGetAttribute(scopeAttr);
 }
 
 void HTMLTableCellElement::addSubresourceAttributeURLs(ListHashSet<URL>& urls) const
@@ -179,21 +176,5 @@ HTMLTableCellElement* HTMLTableCellElement::cellAbove() const
 
     return toHTMLTableCellElement(cellAboveRenderer->element());
 }
-
-#ifndef NDEBUG
-
-HTMLTableCellElement* toHTMLTableCellElement(Node* node)
-{
-    ASSERT_WITH_SECURITY_IMPLICATION(!node || node->hasTagName(HTMLNames::tdTag) || node->hasTagName(HTMLNames::thTag));
-    return static_cast<HTMLTableCellElement*>(node);
-}
-
-const HTMLTableCellElement* toHTMLTableCellElement(const Node* node)
-{
-    ASSERT_WITH_SECURITY_IMPLICATION(!node || node->hasTagName(HTMLNames::tdTag) || node->hasTagName(HTMLNames::thTag));
-    return static_cast<const HTMLTableCellElement*>(node);
-}
-
-#endif
 
 } // namespace WebCore

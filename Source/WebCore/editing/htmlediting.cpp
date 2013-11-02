@@ -45,19 +45,13 @@
 #include "HTMLUListElement.h"
 #include "NodeTraversal.h"
 #include "PositionIterator.h"
-#include "Range.h"
 #include "RenderElement.h"
 #include "ShadowRoot.h"
 #include "Text.h"
-#include "TextIterator.h"
-#include "VisiblePosition.h"
-#include "VisibleSelection.h"
 #include "VisibleUnits.h"
 #include <wtf/Assertions.h>
 #include <wtf/StdLibExtras.h>
 #include <wtf/unicode/CharacterNames.h>
-
-using namespace std;
 
 namespace WebCore {
 
@@ -332,7 +326,7 @@ TextDirection directionOfEnclosingBlock(const Position& position)
     auto renderer = block->renderer();
     if (!renderer)
         return LTR;
-    return renderer->style()->direction();
+    return renderer->style().direction();
 }
 
 // This method is used to create positions in the DOM. It returns the maximum valid offset
@@ -410,13 +404,13 @@ bool isSpecialElement(const Node *n)
     if (!renderer)
         return false;
         
-    if (renderer->style()->display() == TABLE || renderer->style()->display() == INLINE_TABLE)
+    if (renderer->style().display() == TABLE || renderer->style().display() == INLINE_TABLE)
         return true;
 
-    if (renderer->style()->isFloating())
+    if (renderer->style().isFloating())
         return true;
 
-    if (renderer->style()->position() != StaticPosition)
+    if (renderer->style().position() != StaticPosition)
         return true;
         
     return false;
@@ -544,7 +538,7 @@ bool isListElement(Node *n)
 
 bool isListItem(const Node *n)
 {
-    return n && n->renderer() && n->renderer()->isListItem();
+    return n && (isListElement(n->parentNode()) || (n->renderer() && n->renderer()->isListItem()));
 }
 
 Node* enclosingNodeWithTag(const Position& p, const QualifiedName& tagName)
@@ -820,7 +814,7 @@ bool isTableElement(Node* n)
         return false;
 
     RenderObject* renderer = n->renderer();
-    return (renderer && (renderer->style()->display() == TABLE || renderer->style()->display() == INLINE_TABLE));
+    return (renderer && (renderer->style().display() == TABLE || renderer->style().display() == INLINE_TABLE));
 }
 
 bool isTableCell(const Node* node)
@@ -974,7 +968,7 @@ bool isNodeRendered(const Node* node)
     if (!renderer)
         return false;
 
-    return renderer->style()->visibility() == VISIBLE;
+    return renderer->style().visibility() == VISIBLE;
 }
 
 unsigned numEnclosingMailBlockquotes(const Position& p)
@@ -1059,7 +1053,7 @@ bool lineBreakExistsAtPosition(const Position& position)
     if (!position.anchorNode()->renderer())
         return false;
     
-    if (!position.anchorNode()->isTextNode() || !position.anchorNode()->renderer()->style()->preserveNewline())
+    if (!position.anchorNode()->isTextNode() || !position.anchorNode()->renderer()->style().preserveNewline())
         return false;
     
     Text* textNode = toText(position.anchorNode());

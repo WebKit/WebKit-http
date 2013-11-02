@@ -132,7 +132,7 @@ private:
     virtual bool isPresentationAttribute(const QualifiedName&) const OVERRIDE;
 
     virtual bool childShouldCreateRenderer(const Node*) const OVERRIDE;
-    virtual RenderElement* createRenderer(RenderArena&, RenderStyle&) OVERRIDE;
+    virtual RenderElement* createRenderer(PassRef<RenderStyle>) OVERRIDE;
     virtual bool appendFormData(FormDataList&, bool) OVERRIDE;
 
     virtual void reset() OVERRIDE;
@@ -207,7 +207,7 @@ private:
     mutable bool m_shouldRecalcListItems;
 };
 
-ELEMENT_TYPE_CASTS(HTMLSelectElement)
+NODE_TYPE_CASTS(HTMLSelectElement)
 
 } // namespace
 

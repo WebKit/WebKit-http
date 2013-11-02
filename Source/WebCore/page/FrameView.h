@@ -401,6 +401,7 @@ public:
 #endif
 
     virtual bool isActive() const OVERRIDE;
+    virtual bool updatesScrollLayerPositionOnMainThread() const OVERRIDE;
 
 #if ENABLE(RUBBER_BANDING)
     GraphicsLayer* setWantsLayerForTopOverHangArea(bool) const;
@@ -689,13 +690,13 @@ inline void FrameView::incrementVisuallyNonEmptyPixelCount(const IntSize& size)
 
 inline FrameView* toFrameView(Widget* widget)
 {
-    ASSERT(!widget || widget->isFrameView());
+    ASSERT_WITH_SECURITY_IMPLICATION(!widget || widget->isFrameView());
     return static_cast<FrameView*>(widget);
 }
 
 inline const FrameView* toFrameView(const Widget* widget)
 {
-    ASSERT(!widget || widget->isFrameView());
+    ASSERT_WITH_SECURITY_IMPLICATION(!widget || widget->isFrameView());
     return static_cast<const FrameView*>(widget);
 }
 

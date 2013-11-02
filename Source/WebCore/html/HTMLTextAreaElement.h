@@ -53,7 +53,7 @@ public:
     virtual bool tooLong() const OVERRIDE;
     bool isValidValue(const String&) const;
     
-    virtual HTMLElement* innerTextElement() const OVERRIDE;
+    virtual TextControlInnerTextElement* innerTextElement() const OVERRIDE;
 
     void rendererWillBeDestroyed();
 
@@ -100,7 +100,7 @@ private:
     virtual void parseAttribute(const QualifiedName&, const AtomicString&) OVERRIDE;
     virtual bool isPresentationAttribute(const QualifiedName&) const OVERRIDE;
     virtual void collectStyleForPresentationAttribute(const QualifiedName&, const AtomicString&, MutableStylePropertySet*) OVERRIDE;
-    virtual RenderElement* createRenderer(RenderArena&, RenderStyle&) OVERRIDE;
+    virtual RenderElement* createRenderer(PassRef<RenderStyle>) OVERRIDE;
     virtual bool appendFormData(FormDataList&, bool) OVERRIDE;
     virtual void reset() OVERRIDE;
     virtual bool hasCustomFocusLogic() const OVERRIDE;
@@ -126,7 +126,7 @@ private:
     mutable bool m_wasModifiedByUser;
 };
 
-ELEMENT_TYPE_CASTS(HTMLTextAreaElement)
+NODE_TYPE_CASTS(HTMLTextAreaElement)
 
 } //namespace
 

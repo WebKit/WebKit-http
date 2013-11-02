@@ -31,21 +31,23 @@ class RenderElement : public RenderObject {
 public:
     virtual ~RenderElement();
 
-    static RenderElement* createFor(Element&, RenderStyle&);
+    static RenderElement* createFor(Element&, PassRef<RenderStyle>);
 
-    RenderStyle* style() const { return m_style.get(); }
-    RenderStyle* firstLineStyle() const;
+    bool hasInitializedStyle() const { return m_hasInitializedStyle; }
 
-    virtual void setStyle(PassRefPtr<RenderStyle>);
+    RenderStyle& style() const { return const_cast<RenderStyle&>(m_style.get()); }
+    RenderStyle& firstLineStyle() const;
+
+    void initializeStyle();
+
+    virtual void setStyle(PassRef<RenderStyle>);
     // Called to update a style that is allowed to trigger animations.
-    void setAnimatableStyle(PassRefPtr<RenderStyle>);
-    // Set the style of the object if it's generated content.
-    void setPseudoStyle(PassRefPtr<RenderStyle>);
+    void setAnimatableStyle(PassRef<RenderStyle>);
 
     // This is null for anonymous renderers.
     Element* element() const { return toElement(RenderObject::node()); }
     Element* nonPseudoElement() const { return toElement(RenderObject::nonPseudoNode()); }
-    Element* generatingElement() const { return toElement(RenderObject::generatingNode()); }
+    Element* generatingElement() const;
 
     RenderObject* firstChild() const { return m_firstChild; }
     RenderObject* lastChild() const { return m_lastChild; }
@@ -57,11 +59,12 @@ public:
     bool isRenderBlockFlow() const;
     bool isRenderReplaced() const;
     bool isRenderInline() const;
+    bool isRenderNamedFlowFragmentContainer() const;
 
-    virtual bool isChildAllowed(RenderObject*, RenderStyle*) const { return true; }
+    virtual bool isChildAllowed(const RenderObject&, const RenderStyle&) const { return true; }
     virtual void addChild(RenderObject* newChild, RenderObject* beforeChild = 0);
     virtual void addChildIgnoringContinuation(RenderObject* newChild, RenderObject* beforeChild = 0) { return addChild(newChild, beforeChild); }
-    virtual void removeChild(RenderObject*);
+    virtual void removeChild(RenderObject&);
 
     // The following functions are used when the render tree hierarchy changes to make sure layers get
     // properly added and removed. Since containership can be implemented by any subclass, and since a hierarchy
@@ -73,7 +76,7 @@ public:
 
     enum NotifyChildrenType { NotifyChildren, DontNotifyChildren };
     void insertChildInternal(RenderObject*, RenderObject* beforeChild, NotifyChildrenType);
-    void removeChildInternal(RenderObject*, NotifyChildrenType);
+    void removeChildInternal(RenderObject&, NotifyChildrenType);
 
     virtual RenderElement* hoverAncestor() const;
 
@@ -89,6 +92,12 @@ public:
 
     virtual void paint(PaintInfo&, const LayoutPoint&) = 0;
 
+    // Recursive function that computes the size and position of this object and all its descendants.
+    virtual void layout();
+
+    /* This function performs a layout only if one is needed. */
+    void layoutIfNeeded() { if (needsLayout()) layout(); }
+
     // Return the renderer whose background style is used to paint the root background. Should only be called on the renderer for which isRoot() is true.
     RenderElement* rendererForRootBackground();
 
@@ -98,7 +107,7 @@ public:
 
     // Updates only the local style ptr of the object. Does not update the state of the object,
     // and so only should be called when the style is known not to have changed (or from setStyle).
-    void setStyleInternal(PassRefPtr<RenderStyle> style) { m_style = style; }
+    void setStyleInternal(PassRef<RenderStyle> style) { m_style = std::move(style); }
 
 protected:
     enum BaseTypeFlags {
@@ -110,7 +119,8 @@ protected:
         RenderBlockFlowFlag = 1 << 5,
     };
 
-    explicit RenderElement(Element*, unsigned baseTypeFlags);
+    RenderElement(Element&, PassRef<RenderStyle>, unsigned baseTypeFlags);
+    RenderElement(Document&, PassRef<RenderStyle>, unsigned baseTypeFlags);
 
     bool layerCreationAllowedForSubtree() const;
 
@@ -124,8 +134,8 @@ protected:
     void setLastChild(RenderObject* child) { m_lastChild = child; }
     void destroyLeftoverChildren();
 
-    virtual void styleWillChange(StyleDifference, const RenderStyle*);
-    virtual void styleDidChange(StyleDifference, const RenderStyle*);
+    virtual void styleWillChange(StyleDifference, const RenderStyle& newStyle);
+    virtual void styleDidChange(StyleDifference, const RenderStyle* oldStyle);
 
     virtual void insertedIntoTree() OVERRIDE;
     virtual void willBeRemovedFromTree() OVERRIDE;
@@ -155,11 +165,12 @@ private:
 
     unsigned m_baseTypeFlags : 6;
     bool m_ancestorLineBoxDirty : 1;
+    bool m_hasInitializedStyle : 1;
 
     RenderObject* m_firstChild;
     RenderObject* m_lastChild;
 
-    RefPtr<RenderStyle> m_style;
+    Ref<RenderStyle> m_style;
 
     // FIXME: Get rid of this hack.
     // Store state between styleWillChange and styleDidChange
@@ -167,9 +178,9 @@ private:
     static bool s_noLongerAffectsParentBlock;
 };
 
-inline RenderStyle* RenderElement::firstLineStyle() const
+inline RenderStyle& RenderElement::firstLineStyle() const
 {
-    return document().styleSheetCollection().usesFirstLineRules() ? cachedFirstLineStyle() : style();
+    return document().styleSheetCollection().usesFirstLineRules() ? *cachedFirstLineStyle() : style();
 }
 
 inline void RenderElement::setAncestorLineBoxDirty(bool f)
@@ -229,33 +240,14 @@ inline bool RenderElement::isRenderInline() const
     return m_baseTypeFlags & RenderInlineFlag;
 }
 
-inline RenderElement& toRenderElement(RenderObject& object)
-{
-    ASSERT_WITH_SECURITY_IMPLICATION(object.isRenderElement());
-    return static_cast<RenderElement&>(object);
-}
+RENDER_OBJECT_TYPE_CASTS(RenderElement, isRenderElement())
 
-inline const RenderElement& toRenderElement(const RenderObject& object)
+inline Element* RenderElement::generatingElement() const
 {
-    ASSERT_WITH_SECURITY_IMPLICATION(object.isRenderElement());
-    return static_cast<const RenderElement&>(object);
+    if (parent() && isRenderNamedFlowFragment())
+        return parent()->generatingElement();
+    return toElement(RenderObject::generatingNode());
 }
-
-inline RenderElement* toRenderElement(RenderObject* object)
-{
-    ASSERT_WITH_SECURITY_IMPLICATION(!object || object->isRenderElement());
-    return static_cast<RenderElement*>(object);
-}
-
-inline const RenderElement* toRenderElement(const RenderObject* object)
-{
-    ASSERT_WITH_SECURITY_IMPLICATION(!object || object->isRenderElement());
-    return static_cast<const RenderElement*>(object);
-}
-
-// This will catch anyone doing an unnecessary cast.
-void toRenderElement(const RenderElement*);
-void toRenderElement(const RenderElement&);
 
 inline bool RenderObject::isRenderLayerModelObject() const
 {
@@ -287,14 +279,14 @@ inline bool RenderObject::isRenderInline() const
     return isRenderElement() && toRenderElement(this)->isRenderInline();
 }
 
-inline RenderStyle* RenderObject::style() const
+inline RenderStyle& RenderObject::style() const
 {
     if (isText())
         return m_parent->style();
     return toRenderElement(this)->style();
 }
 
-inline RenderStyle* RenderObject::firstLineStyle() const
+inline RenderStyle& RenderObject::firstLineStyle() const
 {
     if (isText())
         return m_parent->firstLineStyle();

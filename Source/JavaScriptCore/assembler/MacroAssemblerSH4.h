@@ -43,6 +43,7 @@ public:
     static const Scale ScalePtr = TimesFour;
     static const FPRegisterID fscratch = SH4Registers::dr10;
     static const RegisterID stackPointerRegister = SH4Registers::sp;
+    static const RegisterID framePointerRegister = SH4Registers::fp;
     static const RegisterID linkRegister = SH4Registers::pr;
     static const RegisterID scratchReg3 = SH4Registers::r13;
 
@@ -1767,6 +1768,26 @@ public:
         m_assembler.movImm8(1, dest);
     }
 
+    void test32(ResultCondition cond, Address address, TrustedImm32 mask, RegisterID dest)
+    {
+        ASSERT((cond == Zero) || (cond == NonZero));
+
+        load32(address, dest);
+        if (mask.m_value == -1)
+            compare32(0, dest, static_cast<RelationalCondition>(cond));
+        else
+            testlImm(mask.m_value, dest);
+        if (cond != NonZero) {
+            m_assembler.movt(dest);
+            return;
+        }
+
+        m_assembler.ensureSpace(m_assembler.maxInstructionSize + 4);
+        m_assembler.movImm8(0, dest);
+        m_assembler.branch(BT_OPCODE, 0);
+        m_assembler.movImm8(1, dest);
+    }
+
     void loadPtrLinkReg(ImplicitAddress address)
     {
         RegisterID scr = claimScratch();
@@ -2440,7 +2461,7 @@ public:
         return CodeLocationLabel();
     }
 
-    static void revertJumpReplacementToPatchableBranchPtrWithPatch(CodeLocationLabel instructionStart, Address, void* initialValue)
+    static void revertJumpReplacementToPatchableBranchPtrWithPatch(CodeLocationLabel, Address, void*)
     {
         UNREACHABLE_FOR_PLATFORM();
     }

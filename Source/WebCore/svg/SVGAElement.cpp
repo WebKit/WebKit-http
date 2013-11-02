@@ -139,12 +139,12 @@ void SVGAElement::svgAttributeChanged(const QualifiedName& attrName)
     }
 }
 
-RenderElement* SVGAElement::createRenderer(RenderArena& arena, RenderStyle&)
+RenderElement* SVGAElement::createRenderer(PassRef<RenderStyle> style)
 {
     if (parentNode() && parentNode()->isSVGElement() && toSVGElement(parentNode())->isTextContent())
-        return new (arena) RenderSVGInline(*this);
+        return new RenderSVGInline(*this, std::move(style));
 
-    return new (arena) RenderSVGTransformableContainer(*this);
+    return new RenderSVGTransformableContainer(*this, std::move(style));
 }
 
 void SVGAElement::defaultEventHandler(Event* event)
@@ -161,8 +161,8 @@ void SVGAElement::defaultEventHandler(Event* event)
 
             if (url[0] == '#') {
                 Element* targetElement = treeScope().getElementById(url.substring(1));
-                if (SVGSMILElement::isSMILElement(targetElement)) {
-                    toSVGSMILElement(targetElement)->beginByLinkActivation();
+                if (targetElement && isSVGSMILElement(*targetElement)) {
+                    toSVGSMILElement(*targetElement).beginByLinkActivation();
                     event->setDefaultHandled();
                     return;
                 }

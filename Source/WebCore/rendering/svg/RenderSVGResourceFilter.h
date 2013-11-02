@@ -41,6 +41,7 @@ namespace WebCore {
 
 struct FilterData {
     WTF_MAKE_FAST_ALLOCATED;
+    WTF_MAKE_NONCOPYABLE(FilterData);
 public:
     enum FilterDataState { PaintingSource, Applying, Built, CycleDetected, MarkedForRemoval };
 
@@ -51,7 +52,7 @@ public:
     }
 
     RefPtr<SVGFilter> filter;
-    RefPtr<SVGFilterBuilder> builder;
+    std::unique_ptr<SVGFilterBuilder> builder;
     OwnPtr<ImageBuffer> sourceGraphicBuffer;
     GraphicsContext* savedContext;
     AffineTransform shearFreeAbsoluteTransform;
@@ -65,7 +66,7 @@ class GraphicsContext;
 
 class RenderSVGResourceFilter FINAL : public RenderSVGResourceContainer {
 public:
-    explicit RenderSVGResourceFilter(SVGFilterElement&);
+    RenderSVGResourceFilter(SVGFilterElement&, PassRef<RenderStyle>);
     virtual ~RenderSVGResourceFilter();
 
     SVGFilterElement& filterElement() const { return toSVGFilterElement(RenderSVGResourceContainer::element()); }
@@ -73,12 +74,12 @@ public:
     virtual void removeAllClientsFromCache(bool markForInvalidation = true);
     virtual void removeClientFromCache(RenderObject*, bool markForInvalidation = true);
 
-    virtual bool applyResource(RenderObject*, RenderStyle*, GraphicsContext*&, unsigned short resourceMode);
-    virtual void postApplyResource(RenderObject*, GraphicsContext*&, unsigned short resourceMode, const Path*, const RenderSVGShape*);
+    virtual bool applyResource(RenderElement&, const RenderStyle&, GraphicsContext*&, unsigned short resourceMode) OVERRIDE;
+    virtual void postApplyResource(RenderElement&, GraphicsContext*&, unsigned short resourceMode, const Path*, const RenderSVGShape*) OVERRIDE;
 
-    virtual FloatRect resourceBoundingBox(RenderObject*);
+    virtual FloatRect resourceBoundingBox(const RenderObject&) OVERRIDE;
 
-    PassRefPtr<SVGFilterBuilder> buildPrimitives(SVGFilter*);
+    std::unique_ptr<SVGFilterBuilder> buildPrimitives(SVGFilter*);
 
     SVGUnitTypes::SVGUnitType filterUnits() const { return filterElement().filterUnits(); }
     SVGUnitTypes::SVGUnitType primitiveUnits() const { return filterElement().primitiveUnits(); }
@@ -100,11 +101,7 @@ private:
     HashMap<RenderObject*, std::unique_ptr<FilterData>> m_filter;
 };
 
-inline RenderSVGResourceFilter* toRenderSVGFilter(RenderObject* object)
-{
-    ASSERT_WITH_SECURITY_IMPLICATION(!object || object->isSVGResourceFilter());
-    return static_cast<RenderSVGResourceFilter*>(object);
-}
+RENDER_OBJECT_TYPE_CASTS(RenderSVGResourceFilter, isSVGResourceFilter())
 
 }
 

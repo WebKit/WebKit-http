@@ -37,12 +37,12 @@ namespace WebCore {
 
 class RenderRubyText FINAL : public RenderBlockFlow {
 public:
-    explicit RenderRubyText(Element&);
+    RenderRubyText(Element&, PassRef<RenderStyle>);
     virtual ~RenderRubyText();
 
     Element& element() const { return toElement(nodeForNonAnonymous()); }
 
-    virtual bool isChildAllowed(RenderObject*, RenderStyle*) const OVERRIDE;
+    virtual bool isChildAllowed(const RenderObject&, const RenderStyle&) const OVERRIDE;
 
 private:
     virtual const char* renderName() const OVERRIDE { return "RenderRubyText"; }

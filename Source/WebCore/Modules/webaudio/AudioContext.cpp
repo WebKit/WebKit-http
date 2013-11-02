@@ -107,11 +107,10 @@ bool AudioContext::isSampleRateRangeGood(float sampleRate)
 const unsigned MaxHardwareContexts = 4;
 unsigned AudioContext::s_hardwareContextCount = 0;
     
-PassRefPtr<AudioContext> AudioContext::create(Document* document, ExceptionCode& ec)
+PassRefPtr<AudioContext> AudioContext::create(Document& document, ExceptionCode& ec)
 {
     UNUSED_PARAM(ec);
 
-    ASSERT(document);
     ASSERT(isMainThread());
     if (s_hardwareContextCount >= MaxHardwareContexts)
         return 0;
@@ -122,8 +121,8 @@ PassRefPtr<AudioContext> AudioContext::create(Document* document, ExceptionCode&
 }
 
 // Constructor for rendering to the audio hardware.
-AudioContext::AudioContext(Document* document)
-    : ActiveDOMObject(document)
+AudioContext::AudioContext(Document& document)
+    : ActiveDOMObject(&document)
     , m_isStopScheduled(false)
     , m_isInitialized(false)
     , m_isAudioThreadFinished(false)
@@ -149,8 +148,8 @@ AudioContext::AudioContext(Document* document)
 }
 
 // Constructor for offline (non-realtime) rendering.
-AudioContext::AudioContext(Document* document, unsigned numberOfChannels, size_t numberOfFrames, float sampleRate)
-    : ActiveDOMObject(document)
+AudioContext::AudioContext(Document& document, unsigned numberOfChannels, size_t numberOfFrames, float sampleRate)
+    : ActiveDOMObject(&document)
     , m_isStopScheduled(false)
     , m_isInitialized(false)
     , m_isAudioThreadFinished(false)
@@ -417,7 +416,7 @@ PassRefPtr<MediaStreamAudioSourceNode> AudioContext::createMediaStreamSource(Med
 
     AudioSourceProvider* provider = 0;
 
-    MediaStreamTrackVector audioTracks = mediaStream->getAudioTracks();
+    Vector<RefPtr<MediaStreamTrack>> audioTracks = mediaStream->getAudioTracks();
     // FIXME: get a provider for non-local MediaStreams (like from a remote peer).
     for (size_t i = 0; i < audioTracks.size(); ++i) {
         RefPtr<MediaStreamTrack> localAudio = audioTracks[i];

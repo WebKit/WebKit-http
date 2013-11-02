@@ -36,8 +36,8 @@ namespace WebCore {
 
 RenderSVGResourceType RenderSVGResourcePattern::s_resourceType = PatternResourceType;
 
-RenderSVGResourcePattern::RenderSVGResourcePattern(SVGPatternElement& element)
-    : RenderSVGResourceContainer(element)
+RenderSVGResourcePattern::RenderSVGResourcePattern(SVGPatternElement& element, PassRef<RenderStyle> style)
+    : RenderSVGResourceContainer(element, std::move(style))
     , m_shouldCollectPatternAttributes(true)
 {
 }
@@ -137,39 +137,36 @@ PatternData* RenderSVGResourcePattern::buildPattern(RenderObject* object, unsign
     return m_patternMap.set(object, patternData.release()).iterator->value.get();
 }
 
-bool RenderSVGResourcePattern::applyResource(RenderObject* object, RenderStyle* style, GraphicsContext*& context, unsigned short resourceMode)
+bool RenderSVGResourcePattern::applyResource(RenderElement& renderer, const RenderStyle& style, GraphicsContext*& context, unsigned short resourceMode)
 {
-    ASSERT(object);
-    ASSERT(style);
     ASSERT(context);
     ASSERT(resourceMode != ApplyToDefaultMode);
 
     // Spec: When the geometry of the applicable element has no width or height and objectBoundingBox is specified,
     // then the given effect (e.g. a gradient or a filter) will be ignored.
-    FloatRect objectBoundingBox = object->objectBoundingBox();
+    FloatRect objectBoundingBox = renderer.objectBoundingBox();
     if (m_attributes.patternUnits() == SVGUnitTypes::SVG_UNIT_TYPE_OBJECTBOUNDINGBOX && objectBoundingBox.isEmpty())
         return false;
 
-    PatternData* patternData = buildPattern(object, resourceMode);
+    PatternData* patternData = buildPattern(&renderer, resourceMode);
     if (!patternData)
         return false;
 
     // Draw pattern
     context->save();
 
-    const SVGRenderStyle* svgStyle = style->svgStyle();
-    ASSERT(svgStyle);
+    const SVGRenderStyle& svgStyle = style.svgStyle();
 
     if (resourceMode & ApplyToFillMode) {
-        context->setAlpha(svgStyle->fillOpacity());
+        context->setAlpha(svgStyle.fillOpacity());
         context->setFillPattern(patternData->pattern);
-        context->setFillRule(svgStyle->fillRule());
+        context->setFillRule(svgStyle.fillRule());
     } else if (resourceMode & ApplyToStrokeMode) {
-        if (svgStyle->vectorEffect() == VE_NON_SCALING_STROKE)
-            patternData->pattern->setPatternSpaceTransform(transformOnNonScalingStroke(object, patternData->transform));
-        context->setAlpha(svgStyle->strokeOpacity());
+        if (svgStyle.vectorEffect() == VE_NON_SCALING_STROKE)
+            patternData->pattern->setPatternSpaceTransform(transformOnNonScalingStroke(&renderer, patternData->transform));
+        context->setAlpha(svgStyle.strokeOpacity());
         context->setStrokePattern(patternData->pattern);
-        SVGRenderSupport::applyStrokeStyleToContext(context, style, object);
+        SVGRenderSupport::applyStrokeStyleToContext(context, style, renderer);
     }
 
     if (resourceMode & ApplyToTextMode) {
@@ -191,7 +188,7 @@ bool RenderSVGResourcePattern::applyResource(RenderObject* object, RenderStyle* 
     return true;
 }
 
-void RenderSVGResourcePattern::postApplyResource(RenderObject*, GraphicsContext*& context, unsigned short resourceMode, const Path* path, const RenderSVGShape* shape)
+void RenderSVGResourcePattern::postApplyResource(RenderElement&, GraphicsContext*& context, unsigned short resourceMode, const Path* path, const RenderSVGShape* shape)
 {
     ASSERT(context);
     ASSERT(resourceMode != ApplyToDefaultMode);
@@ -272,7 +269,7 @@ PassOwnPtr<ImageBuffer> RenderSVGResourcePattern::createTileImage(const PatternA
         contentTransformation = tileImageTransform;
 
     // Draw the content into the ImageBuffer.
-    auto children = childrenOfType<SVGElement>(attributes.patternContentElement());
+    auto children = childrenOfType<SVGElement>(*attributes.patternContentElement());
     for (auto it = children.begin(), end = children.end(); it != end; ++it) {
         const SVGElement& child = *it;
         if (!child.renderer())

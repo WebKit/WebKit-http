@@ -11,7 +11,6 @@ EXPORTS
         WebLocalizedStringUTF8
         WebLocalizedLPCTSTRUTF8
 #if USE(CG)
-        WebDrawText
         FontMetrics
         TextFloatWidth
         CenterTruncateStringToWidth
@@ -233,7 +232,6 @@ EXPORTS
         symbolWithPointer(?windowObjectCleared@InspectorFrontendClientLocal@WebCore@@UAEXXZ, ?windowObjectCleared@InspectorFrontendClientLocal@WebCore@@UEAAXXZ)
         symbolWithPointer(?setResourcesDataSizeLimitsFromInternals@InspectorController@WebCore@@QAEXHH@Z, ?setResourcesDataSizeLimitsFromInternals@InspectorController@WebCore@@QEAAXHH@Z)
         symbolWithPointer(?pathByAppendingComponent@WebCore@@YA?AVString@WTF@@ABV23@0@Z, ?pathByAppendingComponent@WebCore@@YA?AVString@WTF@@AEBV23@0@Z)
-        symbolWithPointer(?profilerEnabled@InspectorController@WebCore@@QAE_NXZ, ?profilerEnabled@InspectorController@WebCore@@QEAA_NXZ)
         symbolWithPointer(?setProfilerEnabled@InspectorController@WebCore@@QAEX_N@Z, ?setProfilerEnabled@InspectorController@WebCore@@QEAAX_N@Z)
         symbolWithPointer(?disconnectFrontend@InspectorController@WebCore@@QAEXXZ, ?disconnectFrontend@InspectorController@WebCore@@QEAAXXZ)
 #endif
@@ -274,6 +272,7 @@ EXPORTS
         symbolWithPointer(?setDOMException@WebCore@@YAXPAVExecState@JSC@@H@Z, ?setDOMException@WebCore@@YAXPEAVExecState@JSC@@H@Z)
         symbolWithPointer(?setFantasyFontFamily@Settings@WebCore@@QAEXABVAtomicString@WTF@@W4UScriptCode@@@Z, ?setFantasyFontFamily@Settings@WebCore@@QEAAXAEBVAtomicString@WTF@@W4UScriptCode@@@Z)
         symbolWithPointer(?setFixedFontFamily@Settings@WebCore@@QAEXABVAtomicString@WTF@@W4UScriptCode@@@Z, ?setFixedFontFamily@Settings@WebCore@@QEAAXAEBVAtomicString@WTF@@W4UScriptCode@@@Z)
+        symbolWithPointer(?setFontFallbackPrefersPictographs@Settings@WebCore@@QAEX_N@Z, ?setFontFallbackPrefersPictographs@Settings@WebCore@@QEAAX_N@Z)
         symbolWithPointer(?setFooterHeight@FrameView@WebCore@@QAEXH@Z, ?setFooterHeight@FrameView@WebCore@@QEAAXH@Z)
         symbolWithPointer(?setHeaderHeight@FrameView@WebCore@@QAEXH@Z, ?setHeaderHeight@FrameView@WebCore@@QEAAXH@Z)
         symbolWithPointer(?setImagesEnabled@Settings@WebCore@@QAEX_N@Z, ?setImagesEnabled@Settings@WebCore@@QEAAX_N@Z)
@@ -371,11 +370,9 @@ EXPORTS
         symbolWithPointer(?getCGImageRef@BitmapImage@WebCore@@UAEPAUCGImage@@XZ, ?getCGImageRef@BitmapImage@WebCore@@UEAAPEAUCGImage@@XZ)
         symbolWithPointer(?getFirstCGImageRefOfSize@BitmapImage@WebCore@@UAEPAUCGImage@@ABVIntSize@2@@Z, ?getFirstCGImageRefOfSize@BitmapImage@WebCore@@UEAAPEAUCGImage@@AEBVIntSize@2@@Z)
         symbolWithPointer(?getCGImageArray@BitmapImage@WebCore@@UAE?AV?$RetainPtr@PBU__CFArray@@@WTF@@XZ, ?getCGImageArray@BitmapImage@WebCore@@UEAA?AV?$RetainPtr@PEBU__CFArray@@@WTF@@XZ)
-        symbolWithPointer(?draw@BitmapImage@WebCore@@MAEXPAVGraphicsContext@2@ABVFloatRect@2@1W4ColorSpace@2@W4CompositeOperator@2@W4BlendMode@2@@Z, ?draw@BitmapImage@WebCore@@MEAAXPEAVGraphicsContext@2@AEBVFloatRect@2@1W4ColorSpace@2@W4CompositeOperator@2@W4BlendMode@2@@Z)
 #elif USE(CAIRO)
         symbolWithPointer(?nativeImageForCurrentFrame@BitmapImage@WebCore@@UAE?AV?$PassRefPtr@U_cairo_surface@@@WTF@@XZ, ?nativeImageForCurrentFrame@BitmapImage@WebCore@@UEAA?AV?$PassRefPtr@U_cairo_surface@@@WTF@@XZ)
         symbolWithPointer(?draw@BitmapImage@WebCore@@MAEXPAVGraphicsContext@2@ABVFloatRect@2@1W4ColorSpace@2@W4CompositeOperator@2@W4BlendMode@2@UImageOrientationDescription@2@@Z, ?draw@BitmapImage@WebCore@@MEAAXPEAVGraphicsContext@2@AEBVFloatRect@2@1W4ColorSpace@2@W4CompositeOperator@2@W4BlendMode@2@UImageOrientationDescription@2@@Z)
-        symbolWithPointer(?draw@BitmapImage@WebCore@@MAEXPAVGraphicsContext@2@ABVFloatRect@2@1W4ColorSpace@2@W4CompositeOperator@2@W4BlendMode@2@@Z, ?draw@BitmapImage@WebCore@@MEAAXPEAVGraphicsContext@2@AEBVFloatRect@2@1W4ColorSpace@2@W4CompositeOperator@2@W4BlendMode@2@@Z)
 #endif
         symbolWithPointer(?getHBITMAP@BitmapImage@WebCore@@UAE_NPAUHBITMAP__@@@Z, ?getHBITMAP@BitmapImage@WebCore@@UEAA_NPEAUHBITMAP__@@@Z)
         symbolWithPointer(?getHBITMAPOfSize@BitmapImage@WebCore@@UAE_NPAUHBITMAP__@@PBVIntSize@2@@Z, ?getHBITMAPOfSize@BitmapImage@WebCore@@UEAA_NPEAUHBITMAP__@@PEBVIntSize@2@@Z)
@@ -386,12 +383,12 @@ EXPORTS
         symbolWithPointer(?mayFillWithSolidColor@BitmapImage@WebCore@@MAE_NXZ, ?mayFillWithSolidColor@BitmapImage@WebCore@@MEAA_NXZ)
         symbolWithPointer(?solidColor@BitmapImage@WebCore@@MBE?AVColor@2@XZ, ?solidColor@BitmapImage@WebCore@@MEBA?AVColor@2@XZ)
         symbolWithPointer(?frameOrientationAtIndex@BitmapImage@WebCore@@IAE?AVImageOrientation@2@I@Z, ?frameOrientationAtIndex@BitmapImage@WebCore@@IEAA?AVImageOrientation@2@_K@Z)
-        symbolWithPointer(?addAuthorSheet@DocumentStyleSheetCollection@WebCore@@QAEXV?$PassRefPtr@VStyleSheetContents@WebCore@@@WTF@@@Z, ?addAuthorSheet@DocumentStyleSheetCollection@WebCore@@QEAAXV?$PassRefPtr@VStyleSheetContents@WebCore@@@WTF@@@Z)
+        symbolWithPointer(?addAuthorSheet@DocumentStyleSheetCollection@WebCore@@QAEXV?$PassRef@VStyleSheetContents@WebCore@@@WTF@@@Z, ?addAuthorSheet@DocumentStyleSheetCollection@WebCore@@QEAAXV?$PassRef@VStyleSheetContents@WebCore@@@WTF@@@Z)
         symbolWithPointer(?parseString@StyleSheetContents@WebCore@@QAE_NABVString@WTF@@@Z, ?parseString@StyleSheetContents@WebCore@@QEAA_NAEBVString@WTF@@@Z)
         symbolWithPointer(?emptyString@WTF@@YAABVString@1@XZ, ?emptyString@WTF@@YAAEBVString@1@XZ)
         symbolWithPointer(?invalidate@URL@WebCore@@AAEXXZ, ?invalidate@URL@WebCore@@AEAAXXZ)
         symbolWithPointer(??0StyleSheetContents@WebCore@@AAE@PAVStyleRuleImport@1@ABVString@WTF@@ABUCSSParserContext@1@@Z, ??0StyleSheetContents@WebCore@@AEAA@PEAVStyleRuleImport@1@AEBVString@WTF@@AEBUCSSParserContext@1@@Z)
-        symbolWithPointer(?addUserSheet@DocumentStyleSheetCollection@WebCore@@QAEXV?$PassRefPtr@VStyleSheetContents@WebCore@@@WTF@@@Z, ?addUserSheet@DocumentStyleSheetCollection@WebCore@@QEAAXV?$PassRefPtr@VStyleSheetContents@WebCore@@@WTF@@@Z)
+        symbolWithPointer(?addUserSheet@DocumentStyleSheetCollection@WebCore@@QAEXV?$PassRef@VStyleSheetContents@WebCore@@@WTF@@@Z, ?addUserSheet@DocumentStyleSheetCollection@WebCore@@QEAAXV?$PassRef@VStyleSheetContents@WebCore@@@WTF@@@Z)
         symbolWithPointer(??1StyleSheetContents@WebCore@@QAE@XZ, ??1StyleSheetContents@WebCore@@QEAA@XZ)
         symbolWithPointer(?pauseAnimationAtTime@AnimationController@WebCore@@QAE_NPAVRenderElement@2@ABVAtomicString@WTF@@N@Z, ?pauseAnimationAtTime@AnimationController@WebCore@@QEAA_NPEAVRenderElement@2@AEBVAtomicString@WTF@@N@Z)
         symbolWithPointer(?pauseTransitionAtTime@AnimationController@WebCore@@QAE_NPAVRenderElement@2@ABVString@WTF@@N@Z, ?pauseTransitionAtTime@AnimationController@WebCore@@QEAA_NPEAVRenderElement@2@AEBVString@WTF@@N@Z)
@@ -458,3 +455,8 @@ EXPORTS
         symbolWithPointer(?fixedFontFamily@Settings@WebCore@@QBEABVAtomicString@WTF@@W4UScriptCode@@@Z, ?fixedFontFamily@Settings@WebCore@@QEBAAEBVAtomicString@WTF@@W4UScriptCode@@@Z)
         symbolWithPointer(?fantasyFontFamily@Settings@WebCore@@QBEABVAtomicString@WTF@@W4UScriptCode@@@Z, ?fantasyFontFamily@Settings@WebCore@@QEBAAEBVAtomicString@WTF@@W4UScriptCode@@@Z)
         symbolWithPointer(?cursiveFontFamily@Settings@WebCore@@QBEABVAtomicString@WTF@@W4UScriptCode@@@Z, ?cursiveFontFamily@Settings@WebCore@@QEBAAEBVAtomicString@WTF@@W4UScriptCode@@@Z)
+        symbolWithPointer(?setSimpleLineLayoutEnabled@Settings@WebCore@@QAEX_N@Z, ?setSimpleLineLayoutEnabled@Settings@WebCore@@QEAAX_N@Z)
+        symbolWithPointer(?setSimpleLineLayoutDebugBordersEnabled@Settings@WebCore@@QAEX_N@Z, ?setSimpleLineLayoutDebugBordersEnabled@Settings@WebCore@@QEAAX_N@Z)
+        symbolWithPointer(?storeUpdatedQuotaForOrigin@ApplicationCacheStorage@WebCore@@QAE_NPBVSecurityOrigin@2@_J@Z, ?setApplicationCacheOriginQuota@Internals@WebCore@@QAEX_K@Z)
+        symbolWithPointer(?cacheStorage@WebCore@@YAAAVApplicationCacheStorage@1@XZ, ?setApplicationCacheOriginQuota@Internals@WebCore@@QAEX_K@Z)
+        symbolWithPointer(?setDefaultOriginQuota@ApplicationCacheStorage@WebCore@@QAEX_J@Z, ?resetToConsistentState@Internals@WebCore@@SAXPAVPage@2@@Z)

@@ -90,71 +90,6 @@ SYMBOL_STRING(ctiTrampoline) ":" "\n"
 ".set reorder" "\n"
 ".set macro" "\n"
 ".end " SYMBOL_STRING(ctiTrampoline) "\n"
-".globl " SYMBOL_STRING(ctiTrampolineEnd) "\n"
-HIDE_SYMBOL(ctiTrampolineEnd) "\n"
-SYMBOL_STRING(ctiTrampolineEnd) ":" "\n"
-);
-
-asm (
-".text" "\n"
-".align 2" "\n"
-".set noreorder" "\n"
-".set nomacro" "\n"
-".set nomips16" "\n"
-".globl " SYMBOL_STRING(ctiVMThrowTrampoline) "\n"
-".ent " SYMBOL_STRING(ctiVMThrowTrampoline) "\n"
-SYMBOL_STRING(ctiVMThrowTrampoline) ":" "\n"
-#if WTF_MIPS_PIC
-".set macro" "\n"
-".cpload $31" "\n"
-    "la    $25," SYMBOL_STRING(cti_vm_throw) "\n"
-".set nomacro" "\n"
-    "bal " SYMBOL_STRING(cti_vm_throw) "\n"
-    "move  $4,$29" "\n"
-#else
-    "jal " SYMBOL_STRING(cti_vm_throw) "\n"
-    "move  $4,$29" "\n"
-#endif
-    "lw    $16," STRINGIZE_VALUE_OF(PRESERVED_S0_OFFSET) "($29)" "\n"
-    "lw    $17," STRINGIZE_VALUE_OF(PRESERVED_S1_OFFSET) "($29)" "\n"
-    "lw    $18," STRINGIZE_VALUE_OF(PRESERVED_S2_OFFSET) "($29)" "\n"
-    "lw    $19," STRINGIZE_VALUE_OF(PRESERVED_S3_OFFSET) "($29)" "\n"
-    "lw    $20," STRINGIZE_VALUE_OF(PRESERVED_S4_OFFSET) "($29)" "\n"
-    "lw    $31," STRINGIZE_VALUE_OF(PRESERVED_RETURN_ADDRESS_OFFSET) "($29)" "\n"
-    "jr    $31" "\n"
-    "addiu $29,$29," STRINGIZE_VALUE_OF(STACK_LENGTH) "\n"
-".set reorder" "\n"
-".set macro" "\n"
-".end " SYMBOL_STRING(ctiVMThrowTrampoline) "\n"
-);
-
-asm (
-".text" "\n"
-".align 2" "\n"
-".set noreorder" "\n"
-".set nomacro" "\n"
-".set nomips16" "\n"
-".globl " SYMBOL_STRING(ctiVMHandleException) "\n"
-".ent " SYMBOL_STRING(ctiVMHandleException) "\n"
-SYMBOL_STRING(ctiVMHandleException) ":" "\n"
-#if WTF_MIPS_PIC
-".set macro" "\n"
-".cpload $25" "\n"
-    "la    $25," SYMBOL_STRING(cti_vm_handle_exception) "\n"
-".set nomacro" "\n"
-    "bal " SYMBOL_STRING(cti_vm_handle_exception) "\n"
-    "move  $4,$16" "\n"
-#else
-    "jal " SYMBOL_STRING(cti_vm_handle_exception) "\n"
-    "move  $4,$16" "\n"
-#endif
-    // When cti_vm_handle_exception returns, v0 has callFrame and v1 has handler address
-    "move  $31,$3" "\n"
-    "jr    $31" "\n"
-    "move  $16,$2 " "\n"
-".set reorder" "\n"
-".set macro" "\n"
-".end " SYMBOL_STRING(ctiVMHandleException) "\n"
 );
 
 asm (
@@ -238,19 +173,6 @@ SYMBOL_STRING(ctiOpThrowNotCaught) ":" "\n"
     rtype JITStubThunked_##op(STUB_ARGS_DECLARATION)
 
 #endif // WTF_MIPS_PIC
-
-
-static void performMIPSJITAssertions()
-{
-    ASSERT(OBJECT_OFFSETOF(struct JITStackFrame, preservedGP) == PRESERVED_GP_OFFSET);
-    ASSERT(OBJECT_OFFSETOF(struct JITStackFrame, preservedS0) == PRESERVED_S0_OFFSET);
-    ASSERT(OBJECT_OFFSETOF(struct JITStackFrame, preservedS1) == PRESERVED_S1_OFFSET);
-    ASSERT(OBJECT_OFFSETOF(struct JITStackFrame, preservedS2) == PRESERVED_S2_OFFSET);
-    ASSERT(OBJECT_OFFSETOF(struct JITStackFrame, preservedReturnAddress) == PRESERVED_RETURN_ADDRESS_OFFSET);
-    ASSERT(OBJECT_OFFSETOF(struct JITStackFrame, thunkReturnAddress) == THUNK_RETURN_ADDRESS_OFFSET);
-    ASSERT(OBJECT_OFFSETOF(struct JITStackFrame, stack) == REGISTER_FILE_OFFSET);
-    ASSERT(OBJECT_OFFSETOF(struct JITStackFrame, vm) == VM_OFFSET);
-}
 
 } // namespace JSC
 

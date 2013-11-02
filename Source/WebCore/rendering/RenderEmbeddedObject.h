@@ -35,10 +35,10 @@ class TextRun;
 // For example, <embed src="foo.html"> does not invoke a plug-in.
 class RenderEmbeddedObject : public RenderWidget {
 public:
-    explicit RenderEmbeddedObject(HTMLFrameOwnerElement&);
+    RenderEmbeddedObject(HTMLFrameOwnerElement&, PassRef<RenderStyle>);
     virtual ~RenderEmbeddedObject();
 
-    static RenderEmbeddedObject* createForApplet(HTMLAppletElement&);
+    static RenderEmbeddedObject* createForApplet(HTMLAppletElement&, PassRef<RenderStyle>);
 
     enum PluginUnavailabilityReason {
         PluginMissing,
@@ -113,14 +113,7 @@ private:
     String m_unavailabilityDescription;
 };
 
-inline RenderEmbeddedObject* toRenderEmbeddedObject(RenderObject* object)
-{
-    ASSERT_WITH_SECURITY_IMPLICATION(!object || object->isEmbeddedObject());
-    return static_cast<RenderEmbeddedObject*>(object);
-}
-
-// This will catch anyone doing an unnecessary cast.
-void toRenderEmbeddedObject(const RenderEmbeddedObject*);
+RENDER_OBJECT_TYPE_CASTS(RenderEmbeddedObject, isEmbeddedObject())
 
 } // namespace WebCore
 

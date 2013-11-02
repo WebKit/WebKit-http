@@ -27,7 +27,7 @@
 #define SyntaxChecker_h
 
 #include "Lexer.h"
-#include <yarr/YarrSyntaxChecker.h>
+#include "YarrSyntaxChecker.h"
 
 namespace JSC {
     
@@ -88,8 +88,8 @@ public:
         {
         }
         ALWAYS_INLINE Property(const Identifier* ident, PropertyNode::Type ty)
-        : name(ident)
-        , type(ty)
+            : name(ident)
+            , type(ty)
         {
         }
         ALWAYS_INLINE Property(PropertyNode::Type ty)
@@ -157,6 +157,7 @@ public:
     void setFunctionStart(int, int) { }
     int createArguments() { return 1; }
     int createArguments(int) { return 1; }
+    ExpressionType createSpreadExpression(const JSTokenLocation&, ExpressionType, int, int, int) { return 1; }
     int createArgumentsList(const JSTokenLocation&, int) { return 1; }
     int createArgumentsList(const JSTokenLocation&, int, int) { return 1; }
     template <bool complete> Property createProperty(const Identifier* name, int, PropertyNode::Type type)
@@ -171,6 +172,10 @@ public:
         if (!complete)
             return Property(type);
         return Property(&vm->parserArena->identifierArena().makeNumericIdentifier(vm, name), type);
+    }
+    template <bool complete> Property createProperty(VM*, ExpressionNode*, int, PropertyNode::Type type)
+    {
+        return Property(type);
     }
     int createPropertyList(const JSTokenLocation&, Property) { return 1; }
     int createPropertyList(const JSTokenLocation&, Property, int) { return 1; }
@@ -250,7 +255,7 @@ public:
     
     void assignmentStackAppend(int, int, int, int, int, Operator) { }
     int createAssignment(const JSTokenLocation&, int, int, int, int, int) { RELEASE_ASSERT_NOT_REACHED(); return 1; }
-    const Identifier& getName(const Property& property) const { ASSERT(property.name); return *property.name; }
+    const Identifier* getName(const Property& property) const { ASSERT(property.name); return property.name; }
     PropertyNode::Type getType(const Property& property) const { return property.type; }
     bool isResolve(ExpressionType expr) const { return expr == ResolveExpr || expr == ResolveEvalExpr; }
     ExpressionType createDeconstructingAssignment(const JSTokenLocation&, int, ExpressionType)

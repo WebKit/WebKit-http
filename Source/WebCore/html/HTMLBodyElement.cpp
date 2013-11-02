@@ -165,12 +165,12 @@ Node::InsertionNotificationRequest HTMLBodyElement::insertedInto(ContainerNode& 
     // magically appear on the <body> of all documents embedded through <iframe> or <frame>.
     // FIXME: Perhaps this code should be in attach() instead of here.
     Element* ownerElement = document().ownerElement();
-    if (ownerElement && isHTMLFrameElementBase(ownerElement)) {
-        HTMLFrameElementBase* ownerFrameElement = toHTMLFrameElementBase(ownerElement);
-        int marginWidth = ownerFrameElement->marginWidth();
+    if (ownerElement && isHTMLFrameElementBase(*ownerElement)) {
+        HTMLFrameElementBase& ownerFrameElement = toHTMLFrameElementBase(*ownerElement);
+        int marginWidth = ownerFrameElement.marginWidth();
         if (marginWidth != -1)
             setIntegralAttribute(marginwidthAttr, marginWidth);
-        int marginHeight = ownerFrameElement->marginHeight();
+        int marginHeight = ownerFrameElement.marginHeight();
         if (marginHeight != -1)
             setIntegralAttribute(marginheightAttr, marginHeight);
     }
@@ -251,8 +251,6 @@ static int adjustForZoom(int value, Frame& frame)
 
 int HTMLBodyElement::scrollLeft()
 {
-    if (!document().inQuirksMode())
-        return 0;
     document().updateLayoutIgnorePendingStylesheets();
     Frame* frame = document().frame();
     if (!frame)
@@ -265,9 +263,6 @@ int HTMLBodyElement::scrollLeft()
 
 void HTMLBodyElement::setScrollLeft(int scrollLeft)
 {
-    if (!document().inQuirksMode())
-        return;
-
     document().updateLayoutIgnorePendingStylesheets();
     Frame* frame = document().frame();
     if (!frame)
@@ -280,8 +275,6 @@ void HTMLBodyElement::setScrollLeft(int scrollLeft)
 
 int HTMLBodyElement::scrollTop()
 {
-    if (!document().inQuirksMode())
-        return 0;
     document().updateLayoutIgnorePendingStylesheets();
     Frame* frame = document().frame();
     if (!frame)
@@ -294,9 +287,6 @@ int HTMLBodyElement::scrollTop()
 
 void HTMLBodyElement::setScrollTop(int scrollTop)
 {
-    if (!document().inQuirksMode())
-        return;
-
     document().updateLayoutIgnorePendingStylesheets();
     Frame* frame = document().frame();
     if (!frame)

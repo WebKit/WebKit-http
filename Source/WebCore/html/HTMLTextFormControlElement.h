@@ -31,6 +31,7 @@ namespace WebCore {
 
 class Position;
 class RenderTextControl;
+class TextControlInnerTextElement;
 class VisiblePosition;
 
 enum TextFieldSelectionDirection { SelectionHasNoDirection, SelectionHasForwardDirection, SelectionHasBackwardDirection };
@@ -44,7 +45,6 @@ public:
     virtual ~HTMLTextFormControlElement();
 
     void forwardEvent(Event*);
-
 
     virtual InsertionNotificationRequest insertedInto(ContainerNode&) OVERRIDE;
 
@@ -76,7 +76,7 @@ public:
     virtual int maxLength() const = 0;
     virtual String value() const = 0;
 
-    virtual HTMLElement* innerTextElement() const = 0;
+    virtual TextControlInnerTextElement* innerTextElement() const = 0;
 
     void selectionChanged(bool userTriggered);
     bool lastChangeWasUserEdit() const;
@@ -137,25 +137,10 @@ private:
     TextFieldSelectionDirection m_cachedSelectionDirection;
 };
 
-inline bool isHTMLTextFormControlElement(const Node* node)
-{
-    return node->isElementNode() && toElement(node)->isTextFormControl();
-}
-
-inline HTMLTextFormControlElement& toHTMLTextFormControlElement(Node& node)
-{
-    ASSERT_WITH_SECURITY_IMPLICATION(isHTMLTextFormControlElement(&node));
-    return static_cast<HTMLTextFormControlElement&>(node);
-}
-
-inline HTMLTextFormControlElement* toHTMLTextFormControlElement(Node* node)
-{
-    ASSERT_WITH_SECURITY_IMPLICATION(!node || isHTMLTextFormControlElement(node));
-    return static_cast<HTMLTextFormControlElement*>(node);
-}
-
-void toHTMLTextFormControlElement(const HTMLTextFormControlElement&);
-void toHTMLTextFormControlElement(const HTMLTextFormControlElement*);
+void isHTMLTextFormControlElement(const HTMLTextFormControlElement&); // Catch unnecessary runtime check of type known at compile time.
+inline bool isHTMLTextFormControlElement(const Element& element) { return element.isTextFormControl(); }
+inline bool isHTMLTextFormControlElement(const Node& node) { return node.isElementNode() && toElement(node).isTextFormControl(); }
+NODE_TYPE_CASTS(HTMLTextFormControlElement)
 
 HTMLTextFormControlElement* enclosingTextFormControl(const Position&);
 

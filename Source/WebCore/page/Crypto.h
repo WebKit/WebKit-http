@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2011 Google Inc. All rights reserved.
+ * Copyright (C) 2013 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -29,10 +30,11 @@
 #ifndef Crypto_h
 #define Crypto_h
 
-#include "ScriptWrappable.h"
+#include "ContextDestructionObserver.h"
 #include <wtf/Forward.h>
 #include <wtf/PassRefPtr.h>
 #include <wtf/RefCounted.h>
+#include <wtf/RefPtr.h>
 
 namespace JSC {
 class ArrayBufferView;
@@ -42,14 +44,28 @@ namespace WebCore {
 
 typedef int ExceptionCode;
 
-class Crypto : public ScriptWrappable, public RefCounted<Crypto> {
+class Document;
+class SubtleCrypto;
+
+class Crypto : public ContextDestructionObserver, public RefCounted<Crypto> {
 public:
-    static PassRefPtr<Crypto> create() { return adoptRef(new Crypto()); }
+    static PassRefPtr<Crypto> create(Document& document) { return adoptRef(new Crypto(document)); }
+    virtual ~Crypto();
+
+    Document* document() const;
 
     void getRandomValues(JSC::ArrayBufferView*, ExceptionCode&);
 
+#if ENABLE(SUBTLE_CRYPTO)
+    SubtleCrypto* subtle();
+#endif
+
 private:
-    Crypto();
+    Crypto(Document&);
+
+#if ENABLE(SUBTLE_CRYPTO)
+    RefPtr<SubtleCrypto> m_subtle;
+#endif
 };
 
 }

@@ -39,8 +39,8 @@
 
 namespace WebCore {
 
-RenderSVGForeignObject::RenderSVGForeignObject(SVGForeignObjectElement& element)
-    : RenderSVGBlock(element)
+RenderSVGForeignObject::RenderSVGForeignObject(SVGForeignObjectElement& element, PassRef<RenderStyle> style)
+    : RenderSVGBlock(element, std::move(style))
     , m_needsTransformUpdate(true)
 {
 }
@@ -70,7 +70,7 @@ void RenderSVGForeignObject::paint(PaintInfo& paintInfo, const LayoutPoint&)
     SVGRenderingContext renderingContext;
     bool continueRendering = true;
     if (paintInfo.phase == PaintPhaseForeground) {
-        renderingContext.prepareToRenderSVGContent(this, childPaintInfo);
+        renderingContext.prepareToRenderSVGContent(*this, childPaintInfo);
         continueRendering = renderingContext.isRenderingPrepared();
     }
 
@@ -168,7 +168,7 @@ void RenderSVGForeignObject::layout()
 
     // Invalidate all resources of this client if our layout changed.
     if (layoutChanged)
-        SVGResourcesCache::clientLayoutChanged(this);
+        SVGResourcesCache::clientLayoutChanged(*this);
 
     repainter.repaintAfterLayout();
 }

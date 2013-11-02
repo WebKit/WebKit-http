@@ -35,7 +35,7 @@ class HTMLFieldSetElement FINAL : public HTMLFormControlElement {
 public:
     static PassRefPtr<HTMLFieldSetElement> create(const QualifiedName&, Document&, HTMLFormElement*);
 
-    const HTMLLegendElement* legend() const;
+    HTMLLegendElement* legend() const;
     PassRefPtr<HTMLCollection> elements();
 
     const Vector<FormAssociatedElement*>& associatedElements() const;
@@ -49,7 +49,7 @@ private:
 
     virtual bool isEnumeratable() const OVERRIDE { return true; }
     virtual bool supportsFocus() const OVERRIDE;
-    virtual RenderElement* createRenderer(RenderArena&, RenderStyle&) OVERRIDE;
+    virtual RenderElement* createRenderer(PassRef<RenderStyle>) OVERRIDE;
     virtual const AtomicString& formControlType() const OVERRIDE;
     virtual bool recalcWillValidate() const OVERRIDE { return false; }
     virtual void childrenChanged(const ChildChange&) OVERRIDE;
@@ -63,7 +63,7 @@ private:
     mutable uint64_t m_documentVersion;
 };
 
-ELEMENT_TYPE_CASTS(HTMLFieldSetElement)
+NODE_TYPE_CASTS(HTMLFieldSetElement)
 
 } // namespace
 

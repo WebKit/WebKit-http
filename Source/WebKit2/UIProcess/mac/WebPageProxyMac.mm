@@ -143,13 +143,6 @@ CGContextRef WebPageProxy::containingWindowGraphicsContext()
     return m_pageClient->containingWindowGraphicsContext();
 }
 
-void WebPageProxy::updateWindowIsVisible(bool windowIsVisible)
-{
-    if (!isValid())
-        return;
-    process()->send(Messages::WebPage::SetWindowIsVisible(windowIsVisible), m_pageID);
-}
-
 void WebPageProxy::windowAndViewFramesChanged(const FloatRect& viewFrameInWindowCoordinates, const FloatPoint& accessibilityViewCoordinates)
 {
     if (!isValid())
@@ -511,9 +504,9 @@ void WebPageProxy::intrinsicContentSizeDidChange(const IntSize& intrinsicContent
     m_pageClient->intrinsicContentSizeDidChange(intrinsicContentSize);
 }
 
-void WebPageProxy::setAcceleratedCompositingRootLayer(const GraphicsLayer* rootLayer)
+void WebPageProxy::setAcceleratedCompositingRootLayer(PlatformLayer* rootLayer)
 {
-    m_pageClient->setAcceleratedCompositingRootLayer(rootLayer->platformLayer());
+    m_pageClient->setAcceleratedCompositingRootLayer(rootLayer);
 }
 
 static NSString *temporaryPDFDirectoryPath()

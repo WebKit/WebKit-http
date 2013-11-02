@@ -103,6 +103,9 @@
     <ClCompile Include="..\wtf\text\StringImpl.cpp" />
     <ClCompile Include="..\wtf\text\StringStatics.cpp" />
     <ClCompile Include="..\wtf\text\WTFString.cpp" />
+    <ClCompile Include="..\wtf\text\cf\AtomicStringCF.cpp" />
+    <ClCompile Include="..\wtf\text\cf\StringCF.cpp" />
+    <ClCompile Include="..\wtf\text\cf\StringImplCF.cpp" />
     <ClCompile Include="..\wtf\Threading.cpp" />
     <ClCompile Include="..\wtf\ThreadingWin.cpp" />
     <ClCompile Include="..\wtf\threadspecificWin.cpp" />
@@ -122,6 +125,8 @@
     <ClInclude Include="..\wtf\Atomics.h" />
     <ClInclude Include="..\wtf\AutodrainedPool.h" />
     <ClInclude Include="..\wtf\AVLTree.h" />
+    <ClInclude Include="..\wtf\Bag.h" />
+    <ClInclude Include="..\wtf\BagToHashMap.h" />
     <ClInclude Include="..\wtf\BitArray.h" />
     <ClInclude Include="..\wtf\Bitmap.h" />
     <ClInclude Include="..\wtf\BitVector.h" />
@@ -202,6 +207,7 @@
     <ClInclude Include="..\wtf\ParallelJobsLibdispatch.h" />
     <ClInclude Include="..\wtf\ParallelJobsOpenMP.h" />
     <ClInclude Include="..\wtf\PassOwnPtr.h" />
+    <ClInclude Include="..\wtf\PassRef.h" />
     <ClInclude Include="..\wtf\PassRefPtr.h" />
     <ClInclude Include="..\wtf\Platform.h" />
     <ClInclude Include="..\wtf\PossiblyNull.h" />

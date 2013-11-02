@@ -122,6 +122,7 @@ public:
     // Construct a string referencing an existing StringImpl.
     String(StringImpl* impl) : m_impl(impl) { }
     String(PassRefPtr<StringImpl> impl) : m_impl(impl) { }
+    String(PassRef<StringImpl> impl) : m_impl(std::move(impl)) { }
     String(RefPtr<StringImpl>&& impl) : m_impl(impl) { }
 
     // Construct a string from a constant string literal.
@@ -401,14 +402,14 @@ public:
     operator UnspecifiedBoolTypeB() const;
 
 #if USE(CF)
-    String(CFStringRef);
-    RetainPtr<CFStringRef> createCFString() const;
+    WTF_EXPORT_STRING_API String(CFStringRef);
+    WTF_EXPORT_STRING_API RetainPtr<CFStringRef> createCFString() const;
 #endif
 
 #ifdef __OBJC__
-    String(NSString*);
+    WTF_EXPORT_STRING_API String(NSString*);
     
-    // This conversion maps NULL to "", which loses the meaning of NULL, but we 
+    // This conversion maps NULL to "", which loses the meaning of NULL, but we
     // need this mapping because AppKit crashes when passed nil NSStrings.
     operator NSString*() const { if (!m_impl) return @""; return *m_impl; }
 #endif
@@ -440,13 +441,13 @@ public:
     static String fromUTF8WithLatin1Fallback(const char* s, size_t length) { return fromUTF8WithLatin1Fallback(reinterpret_cast<const LChar*>(s), length); };
     
     // Determines the writing direction using the Unicode Bidi Algorithm rules P2 and P3.
-    WTF::Unicode::Direction defaultWritingDirection(bool* hasStrongDirectionality = 0) const
+    UCharDirection defaultWritingDirection(bool* hasStrongDirectionality = nullptr) const
     {
         if (m_impl)
             return m_impl->defaultWritingDirection(hasStrongDirectionality);
         if (hasStrongDirectionality)
             *hasStrongDirectionality = false;
-        return WTF::Unicode::LeftToRight;
+        return U_LEFT_TO_RIGHT;
     }
 
     bool containsOnlyASCII() const;
@@ -524,7 +525,7 @@ inline void swap(String& a, String& b) { a.swap(b); }
 
 template<size_t inlineCapacity, typename OverflowHandler>
 String::String(const Vector<UChar, inlineCapacity, OverflowHandler>& vector)
-    : m_impl(vector.size() ? StringImpl::create(vector.data(), vector.size()) : StringImpl::empty())
+    : m_impl(vector.size() ? StringImpl::create(vector.data(), vector.size()) : *StringImpl::empty())
 {
 }
 

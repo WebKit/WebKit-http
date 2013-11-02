@@ -31,8 +31,10 @@
 #include "Arguments.h"
 #include "DataReference.h"
 #include "DecoderAdapter.h"
+#include "DragControllerAction.h"
 #include "DrawingArea.h"
 #include "DrawingAreaMessages.h"
+#include "EditorState.h"
 #include "EventDispatcher.h"
 #include "InjectedBundle.h"
 #include "InjectedBundleBackForwardList.h"
@@ -49,8 +51,8 @@
 #include "PrintInfo.h"
 #include "SessionState.h"
 #include "ShareableBitmap.h"
+#include "WKSharedAPICast.h"
 #include "WebAlternativeTextClient.h"
-#include "WebBackForwardList.h"
 #include "WebBackForwardListItem.h"
 #include "WebBackForwardListProxy.h"
 #include "WebChromeClient.h"
@@ -231,6 +233,7 @@ WebPage::WebPage(uint64_t pageID, const WebPageCreationParameters& parameters)
     , m_artificialPluginInitializationDelayEnabled(false)
     , m_scrollingPerformanceLoggingEnabled(false)
     , m_mainFrameIsScrollable(true)
+    , m_windowIsVisible(false)
 #if ENABLE(PRIMARY_SNAPSHOTTED_PLUGIN_HEURISTIC)
     , m_readyToFindPrimarySnapshottedPlugin(false)
     , m_didFindPrimarySnapshottedPlugin(false)
@@ -240,14 +243,13 @@ WebPage::WebPage(uint64_t pageID, const WebPageCreationParameters& parameters)
 #if PLATFORM(MAC)
     , m_pdfPluginEnabled(false)
     , m_hasCachedWindowFrame(false)
-    , m_windowIsVisible(false)
     , m_layerHostingMode(parameters.layerHostingMode)
     , m_keyboardEventBeingInterpreted(0)
 #elif PLATFORM(GTK)
     , m_accessibilityObject(0)
 #endif
     , m_setCanStartMediaTimer(RunLoop::main(), this, &WebPage::setCanStartMediaTimerFired)
-    , m_sendDidUpdateInWindowStateTimer(RunLoop::main(), this, &WebPage::didUpdateInWindowStateTimerFired)
+    , m_sendDidUpdateViewStateTimer(RunLoop::main(), this, &WebPage::didUpdateViewStateTimerFired)
     , m_findController(this)
 #if ENABLE(INPUT_TYPE_COLOR)
     , m_activeColorChooser(0)
@@ -279,6 +281,7 @@ WebPage::WebPage(uint64_t pageID, const WebPageCreationParameters& parameters)
     , m_maximumRenderingSuppressionToken(0)
     , m_scrollPinningBehavior(DoNotPin)
     , m_useThreadedScrolling(false)
+    , m_viewState(parameters.viewState)
 {
     ASSERT(m_pageID);
     // FIXME: This is a non-ideal location for this Setting and
@@ -307,11 +310,15 @@ WebPage::WebPage(uint64_t pageID, const WebPageCreationParameters& parameters)
 
     m_page = adoptPtr(new Page(pageClients));
 
-    m_useThreadedScrolling = parameters.store.getBoolValueForKey(WebPreferencesKey::threadedScrollingEnabledKey());
-    m_page->settings().setScrollingCoordinatorEnabled(m_useThreadedScrolling);
-
     m_drawingArea = DrawingArea::create(this, parameters);
     m_drawingArea->setPaintingEnabled(false);
+
+#if ENABLE(THREADED_SCROLLING)
+    m_useThreadedScrolling = parameters.store.getBoolValueForKey(WebPreferencesKey::threadedScrollingEnabledKey());
+    if (!m_drawingArea->supportsThreadedScrolling())
+        m_useThreadedScrolling = false;
+    m_page->settings().setScrollingCoordinatorEnabled(m_useThreadedScrolling);
+#endif
 
     m_mainFrame = WebFrame::createWithCoreMainFrame(this, &m_page->mainFrame());
 
@@ -358,16 +365,17 @@ WebPage::WebPage(uint64_t pageID, const WebPageCreationParameters& parameters)
 
     setMemoryCacheMessagesEnabled(parameters.areMemoryCacheClientCallsEnabled);
 
-    setActive(parameters.isActive);
-    setFocused(parameters.isFocused);
+    setActive(parameters.viewState & ViewState::WindowIsActive);
+    setFocused(parameters.viewState & ViewState::IsFocused);
 
     // Page defaults to in-window, but setIsInWindow depends on it being a valid indicator of actually having been put into a window.
-    if (!parameters.isInWindow)
+    bool isInWindow = parameters.viewState & ViewState::IsInWindow;
+    if (!isInWindow)
         m_page->setIsInWindow(false);
     else
         WebProcess::shared().pageDidEnterWindow(m_pageID);
 
-    setIsInWindow(parameters.isInWindow);
+    setIsInWindow(isInWindow);
 
     setMinimumLayoutSize(parameters.minimumLayoutSize);
     setAutoSizingShouldExpandToViewHeight(parameters.autoSizingShouldExpandToViewHeight);
@@ -625,7 +633,7 @@ uint64_t WebPage::renderTreeSize() const
 {
     if (!m_page)
         return 0;
-    return m_page->renderTreeSize().treeSize;
+    return m_page->renderTreeSize();
 }
 
 void WebPage::setTracksRepaints(bool trackRepaints)
@@ -1234,7 +1242,7 @@ void WebPage::setUseFixedLayout(bool fixed)
 #if USE(COORDINATED_GRAPHICS)
     m_page->settings().setAcceleratedCompositingForFixedPositionEnabled(fixed);
     m_page->settings().setFixedPositionCreatesStackingContext(fixed);
-    m_page->settings().setApplyPageScaleFactorInCompositor(fixed);
+    m_page->settings().setDelegatesPageScaling(fixed);
     m_page->settings().setScrollingCoordinatorEnabled(fixed);
 #endif
 
@@ -1709,30 +1717,6 @@ void WebPage::keyEventSyncForTesting(const WebKeyboardEvent& keyboardEvent, bool
         handled = performDefaultBehaviorForKeyEvent(keyboardEvent);
 }
 
-#if ENABLE(GESTURE_EVENTS)
-static bool handleGestureEvent(const WebGestureEvent& gestureEvent, Page* page)
-{
-    Frame& frame = page->mainFrame();
-    if (!frame.view())
-        return false;
-
-    PlatformGestureEvent platformGestureEvent = platform(gestureEvent);
-    return frame.eventHandler().handleGestureEvent(platformGestureEvent);
-}
-
-void WebPage::gestureEvent(const WebGestureEvent& gestureEvent)
-{
-    bool handled = false;
-
-    if (canHandleUserEvents()) {
-        CurrentEvent currentEvent(gestureEvent);
-
-        handled = handleGestureEvent(gestureEvent, m_page.get());
-    }
-    send(Messages::WebPageProxy::DidReceiveEvent(static_cast<uint32_t>(gestureEvent.type()), handled));
-}
-#endif
-    
 WKTypeRef WebPage::pageOverlayCopyAccessibilityAttributeValue(WKStringRef attribute, WKTypeRef parameter)
 {
     if (!m_pageOverlays.size())
@@ -1871,6 +1855,22 @@ void WebPage::setActive(bool isActive)
 #endif
 }
 
+void WebPage::setViewIsVisible(bool isVisible)
+{
+    if (!isVisible) {
+        m_drawingArea->suspendPainting();
+        m_page->suspendScriptedAnimations();
+    } else {
+        m_drawingArea->resumePainting();
+        // FIXME: this seems redundant; for the view to be visible the window must be visible too!
+        // refactoring for now, will change the logic later.
+        if (m_windowIsVisible) {
+            m_page->resumeScriptedAnimations();
+            m_page->resumeAnimatingImages();
+        }
+    }
+}
+
 void WebPage::setDrawsBackground(bool drawsBackground)
 {
     if (m_drawsBackground == drawsBackground)
@@ -1970,9 +1970,9 @@ void WebPage::setCanStartMediaTimerFired()
 }
 
 #if !PLATFORM(MAC)
-void WebPage::didUpdateInWindowStateTimerFired()
+void WebPage::didUpdateViewStateTimerFired()
 {
-    send(Messages::WebPageProxy::DidUpdateInWindowState());
+    send(Messages::WebPageProxy::DidUpdateViewState());
 }
 #endif
 
@@ -1985,7 +1985,7 @@ inline bool WebPage::canHandleUserEvents() const
     return true;
 }
 
-void WebPage::setIsInWindow(bool isInWindow, bool wantsDidUpdateViewInWindowState)
+void WebPage::setIsInWindow(bool isInWindow)
 {
     bool pageWasInWindow = m_page->isInWindow();
     
@@ -2013,9 +2013,31 @@ void WebPage::setIsInWindow(bool isInWindow, bool wantsDidUpdateViewInWindowStat
 
     if (isInWindow)
         layoutIfNeeded();
+}
 
-    if (wantsDidUpdateViewInWindowState)
-        m_sendDidUpdateInWindowStateTimer.startOneShot(0);
+void WebPage::setViewState(ViewState::Flags viewState, bool wantsDidUpdateViewState)
+{
+    ViewState::Flags changed = m_viewState ^ viewState;
+
+    // We want to make sure to update the active state while hidden, so if the view is hidden then update the active state
+    // early (in case it becomes visible), and if the view was visible then update active state later (in case it hides).
+    if (changed & ViewState::WindowIsVisible)
+        setWindowIsVisible(viewState & ViewState::WindowIsVisible);
+    if (changed & ViewState::IsFocused)
+        setFocused(viewState & ViewState::IsFocused);
+    if (changed & ViewState::WindowIsActive && !(m_viewState & ViewState::IsVisible))
+        setActive(viewState & ViewState::WindowIsActive);
+    if (changed & ViewState::IsVisible)
+        setViewIsVisible(viewState & ViewState::IsVisible);
+    if (changed & ViewState::WindowIsActive && m_viewState & ViewState::IsVisible)
+        setActive(viewState & ViewState::WindowIsActive);
+    if (changed & ViewState::IsInWindow)
+        setIsInWindow(viewState & ViewState::IsInWindow);
+
+    m_viewState = viewState;
+
+    if (wantsDidUpdateViewState)
+        m_sendDidUpdateViewStateTimer.startOneShot(0);
 }
 
 void WebPage::didReceivePolicyDecision(uint64_t frameID, uint64_t listenerID, uint32_t policyAction, uint64_t downloadID)
@@ -2373,6 +2395,7 @@ void WebPage::updatePreferences(const WebPreferencesStore& store)
     settings.setRegionBasedColumnsEnabled(store.getBoolValueForKey(WebPreferencesKey::regionBasedColumnsEnabledKey()));
     settings.setWebGLEnabled(store.getBoolValueForKey(WebPreferencesKey::webGLEnabledKey()));
     settings.setMultithreadedWebGLEnabled(store.getBoolValueForKey(WebPreferencesKey::multithreadedWebGLEnabledKey()));
+    settings.setForceSoftwareWebGLRendering(store.getBoolValueForKey(WebPreferencesKey::forceSoftwareWebGLRenderingKey()));
     settings.setAccelerated2dCanvasEnabled(store.getBoolValueForKey(WebPreferencesKey::accelerated2dCanvasEnabledKey()));
     settings.setMediaPlaybackRequiresUserGesture(store.getBoolValueForKey(WebPreferencesKey::mediaPlaybackRequiresUserGestureKey()));
     settings.setMediaPlaybackAllowsInline(store.getBoolValueForKey(WebPreferencesKey::mediaPlaybackAllowsInlineKey()));
@@ -2402,6 +2425,10 @@ void WebPage::updatePreferences(const WebPreferencesStore& store)
 
 #if ENABLE(WEB_AUDIO)
     settings.setWebAudioEnabled(store.getBoolValueForKey(WebPreferencesKey::webAudioEnabledKey()));
+#endif
+
+#if ENABLE(MEDIA_STREAM)
+    settings.setMediaStreamEnabled(store.getBoolValueForKey(WebPreferencesKey::mediaStreamEnabledKey()));
 #endif
 
     settings.setApplicationChromeMode(store.getBoolValueForKey(WebPreferencesKey::applicationChromeModeKey()));
@@ -2454,6 +2481,8 @@ void WebPage::updatePreferences(const WebPreferencesStore& store)
 #endif
 
     settings.setLowPowerVideoAudioBufferSizeEnabled(store.getBoolValueForKey(WebPreferencesKey::lowPowerVideoAudioBufferSizeEnabledKey()));
+    settings.setSimpleLineLayoutEnabled(store.getBoolValueForKey(WebPreferencesKey::simpleLineLayoutEnabledKey()));
+    settings.setSimpleLineLayoutDebugBordersEnabled(store.getBoolValueForKey(WebPreferencesKey::simpleLineLayoutDebugBordersEnabledKey()));
 
     platformPreferencesDidChange(store);
 
@@ -2946,18 +2975,20 @@ void WebPage::sendSetWindowFrame(const FloatRect& windowFrame)
     send(Messages::WebPageProxy::SetWindowFrame(windowFrame));
 }
 
-#if PLATFORM(MAC)
 void WebPage::setWindowIsVisible(bool windowIsVisible)
 {
     m_windowIsVisible = windowIsVisible;
 
     corePage()->focusController().setContainingWindowIsVisible(windowIsVisible);
 
+#if PLATFORM(MAC)
     // Tell all our plug-in views that the window visibility changed.
     for (HashSet<PluginView*>::const_iterator it = m_pluginViews.begin(), end = m_pluginViews.end(); it != end; ++it)
         (*it)->setWindowIsVisible(windowIsVisible);
+#endif
 }
 
+#if PLATFORM(MAC)
 void WebPage::windowAndViewFramesChanged(const FloatRect& windowFrameInScreenCoordinates, const FloatRect& windowFrameInUnflippedScreenCoordinates, const FloatRect& viewFrameInWindowCoordinates, const FloatPoint& accessibilityViewCoordinates)
 {
     m_windowFrameInScreenCoordinates = windowFrameInScreenCoordinates;
@@ -2997,10 +3028,9 @@ bool WebPage::windowIsFocused() const
 
 bool WebPage::windowAndWebPageAreFocused() const
 {
-#if PLATFORM(MAC)
     if (!m_windowIsVisible)
         return false;
-#endif
+
     return m_page->focusController().isFocused() && m_page->focusController().isActive();
 }
 
@@ -3653,6 +3683,7 @@ bool WebPage::canPluginHandleResponse(const ResourceResponse& response)
 
     return pluginLoadPolicy != PluginModuleBlocked && pluginProcessToken;
 #else
+    UNUSED_PARAM(response);
     return false;
 #endif
 }

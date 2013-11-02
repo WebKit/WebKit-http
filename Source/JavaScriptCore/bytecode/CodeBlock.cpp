@@ -39,7 +39,6 @@
 #include "DFGWorklist.h"
 #include "Debugger.h"
 #include "Interpreter.h"
-#include "JIT.h"
 #include "JITStubs.h"
 #include "JSActivation.h"
 #include "JSCJSValue.h"
@@ -53,6 +52,7 @@
 #include "RepatchBuffer.h"
 #include "SlotVisitorInlines.h"
 #include <stdio.h>
+#include <wtf/BagToHashMap.h>
 #include <wtf/CommaPrinter.h>
 #include <wtf/StringExtras.h>
 #include <wtf/StringPrintStream.h>
@@ -332,7 +332,7 @@ static void dumpChain(PrintStream& out, ExecState* exec, StructureChain* chain, 
 }
 #endif
 
-void CodeBlock::printGetByIdCacheStatus(PrintStream& out, ExecState* exec, int location)
+void CodeBlock::printGetByIdCacheStatus(PrintStream& out, ExecState* exec, int location, const StubInfoMap& map)
 {
     Instruction* instruction = instructions().begin() + location;
 
@@ -351,8 +351,8 @@ void CodeBlock::printGetByIdCacheStatus(PrintStream& out, ExecState* exec, int l
 #endif
 
 #if ENABLE(JIT)
-    if (numberOfStructureStubInfos()) {
-        StructureStubInfo& stubInfo = getStubInfo(location);
+    if (StructureStubInfo* stubPtr = map.get(CodeOrigin(location))) {
+        StructureStubInfo& stubInfo = *stubPtr;
         if (stubInfo.seen) {
             out.printf(" jit(");
             
@@ -444,6 +444,8 @@ void CodeBlock::printGetByIdCacheStatus(PrintStream& out, ExecState* exec, int l
             out.printf(")");
         }
     }
+#else
+    UNUSED_PARAM(map);
 #endif
 }
 
@@ -521,11 +523,19 @@ void CodeBlock::dumpBytecode(PrintStream& out)
         out.printf("; activation in r%d", activationRegister().offset());
     out.printf("\n");
     
+    StubInfoMap stubInfos;
+#if ENABLE(JIT)
+    {
+        ConcurrentJITLocker locker(m_lock);
+        getStubInfoMap(locker, stubInfos);
+    }
+#endif
+    
     const Instruction* begin = instructions().begin();
     const Instruction* end = instructions().end();
     for (const Instruction* it = begin; it != end; ++it)
-        dumpBytecode(out, exec, begin, it);
-
+        dumpBytecode(out, exec, begin, it, stubInfos);
+    
     if (numberOfIdentifiers()) {
         out.printf("\nIdentifiers:\n");
         size_t i = 0;
@@ -552,11 +562,6 @@ void CodeBlock::dumpBytecode(PrintStream& out)
             ++i;
         } while (i < count);
     }
-
-#if ENABLE(JIT)
-    if (!m_structureStubInfos.isEmpty())
-        out.printf("\nStructures:\n");
-#endif
 
     if (m_rareData && !m_rareData->m_exceptionHandlers.isEmpty()) {
         out.printf("\nException Handlers:\n");
@@ -658,7 +663,7 @@ void CodeBlock::dumpRareCaseProfile(PrintStream& out, const char* name, RareCase
 }
 #endif
 
-void CodeBlock::dumpBytecode(PrintStream& out, ExecState* exec, const Instruction* begin, const Instruction*& it)
+void CodeBlock::dumpBytecode(PrintStream& out, ExecState* exec, const Instruction* begin, const Instruction*& it, const StubInfoMap& map)
 {
     int location = it - begin;
     bool hasPrintedProfiling = false;
@@ -948,7 +953,7 @@ void CodeBlock::dumpBytecode(PrintStream& out, ExecState* exec, const Instructio
         case op_get_array_length:
         case op_get_string_length: {
             printGetByIdOp(out, exec, location, it);
-            printGetByIdCacheStatus(out, exec, location);
+            printGetByIdCacheStatus(out, exec, location, map);
             dumpValueProfiling(out, it, hasPrintedProfiling);
             break;
         }
@@ -1046,6 +1051,15 @@ void CodeBlock::dumpBytecode(PrintStream& out, ExecState* exec, const Instructio
             int r1 = (++it)->u.operand;
             int r2 = (++it)->u.operand;
             printLocationAndOp(out, exec, location, it, "put_by_val");
+            out.printf("%s, %s, %s", registerName(r0).data(), registerName(r1).data(), registerName(r2).data());
+            dumpArrayProfiling(out, it, hasPrintedProfiling);
+            break;
+        }
+        case op_put_by_val_direct: {
+            int r0 = (++it)->u.operand;
+            int r1 = (++it)->u.operand;
+            int r2 = (++it)->u.operand;
+            printLocationAndOp(out, exec, location, it, "put_by_val_direct");
             out.printf("%s, %s, %s", registerName(r0).data(), registerName(r1).data(), registerName(r2).data());
             dumpArrayProfiling(out, it, hasPrintedProfiling);
             break;
@@ -1414,7 +1428,6 @@ static HashSet<CodeBlock*> liveCodeBlockSet;
 
 #define FOR_EACH_MEMBER_VECTOR(macro) \
     macro(instructions) \
-    macro(structureStubInfos) \
     macro(callLinkInfos) \
     macro(linkedCallerList) \
     macro(identifiers) \
@@ -1748,6 +1761,12 @@ CodeBlock::CodeBlock(ScriptExecutable* ownerExecutable, UnlinkedCodeBlock* unlin
             instructions[i + opLength - 1] = &m_arrayProfiles[arrayProfileIndex];
             break;
         }
+        case op_put_by_val_direct: {
+            int arrayProfileIndex = pc[i + opLength - 1].u.operand;
+            m_arrayProfiles[arrayProfileIndex] = ArrayProfile(i);
+            instructions[i + opLength - 1] = &m_arrayProfiles[arrayProfileIndex];
+            break;
+        }
 
         case op_new_array:
         case op_new_array_buffer:
@@ -1931,8 +1950,8 @@ CodeBlock::~CodeBlock()
     // m_incomingCalls linked lists through the execution of the ~CallLinkInfo
     // destructors.
 
-    for (size_t size = m_structureStubInfos.size(), i = 0; i < size; ++i)
-        m_structureStubInfos[i].deref();
+    for (Bag<StructureStubInfo>::iterator iter = m_stubInfos.begin(); !!iter; ++iter)
+        (*iter)->deref();
 #endif // ENABLE(JIT)
 
 #if DUMP_CODE_BLOCK_STATISTICS
@@ -2087,8 +2106,8 @@ void CodeBlock::propagateTransitions(SlotVisitor& visitor)
 
 #if ENABLE(JIT)
     if (JITCode::isJIT(jitType())) {
-        for (unsigned i = 0; i < m_structureStubInfos.size(); ++i) {
-            StructureStubInfo& stubInfo = m_structureStubInfos[i];
+        for (Bag<StructureStubInfo>::iterator iter = m_stubInfos.begin(); !!iter; ++iter) {
+            StructureStubInfo& stubInfo = **iter;
             switch (stubInfo.accessType) {
             case access_put_by_id_transition_normal:
             case access_put_by_id_transition_direct: {
@@ -2344,8 +2363,8 @@ void CodeBlock::finalizeUnconditionally()
                 && !Heap::isMarked(callLinkInfo(i).lastSeenCallee.get()))
                 callLinkInfo(i).lastSeenCallee.clear();
         }
-        for (size_t size = m_structureStubInfos.size(), i = 0; i < size; ++i) {
-            StructureStubInfo& stubInfo = m_structureStubInfos[i];
+        for (Bag<StructureStubInfo>::iterator iter = m_stubInfos.begin(); !!iter; ++iter) {
+            StructureStubInfo& stubInfo = **iter;
             
             if (stubInfo.visitWeakReferences())
                 continue;
@@ -2357,10 +2376,23 @@ void CodeBlock::finalizeUnconditionally()
 }
 
 #if ENABLE(JIT)
+StructureStubInfo* CodeBlock::addStubInfo()
+{
+    ConcurrentJITLocker locker(m_lock);
+    return m_stubInfos.add();
+}
+
+void CodeBlock::getStubInfoMap(const ConcurrentJITLocker&, StubInfoMap& result)
+{
+    toHashMap(m_stubInfos, getStructureStubInfoCodeOrigin, result);
+}
+
 void CodeBlock::resetStub(StructureStubInfo& stubInfo)
 {
     if (stubInfo.accessType == access_unset)
         return;
+    
+    ConcurrentJITLocker locker(m_lock);
     
     RepatchBuffer repatchBuffer(this);
     resetStubInternal(repatchBuffer, stubInfo);
@@ -2375,29 +2407,16 @@ void CodeBlock::resetStubInternal(RepatchBuffer& repatchBuffer, StructureStubInf
         // of the CodeBlock.
         dataLog("Clearing structure cache (kind ", static_cast<int>(stubInfo.accessType), ") in ", RawPointer(this), ".\n");
     }
-
-    switch (jitType()) {
-    case JITCode::BaselineJIT:
-        if (isGetByIdAccess(accessType))
-            JIT::resetPatchGetById(repatchBuffer, &stubInfo);
-        else {
-            RELEASE_ASSERT(isPutByIdAccess(accessType));
-            JIT::resetPatchPutById(repatchBuffer, &stubInfo);
-        }
-        break;
-    case JITCode::DFGJIT:
-        if (isGetByIdAccess(accessType))
-            resetGetByID(repatchBuffer, stubInfo);
-        else if (isPutByIdAccess(accessType))
-            resetPutByID(repatchBuffer, stubInfo);
-        else {
-            RELEASE_ASSERT(isInAccess(accessType));
-            resetIn(repatchBuffer, stubInfo);
-        }
-        break;
-    default:
-        RELEASE_ASSERT_NOT_REACHED();
-        break;
+    
+    RELEASE_ASSERT(JITCode::isJIT(jitType()));
+    
+    if (isGetByIdAccess(accessType))
+        resetGetByID(repatchBuffer, stubInfo);
+    else if (isPutByIdAccess(accessType))
+        resetPutByID(repatchBuffer, stubInfo);
+    else {
+        RELEASE_ASSERT(isInAccess(accessType));
+        resetIn(repatchBuffer, stubInfo);
     }
     
     stubInfo.reset();
@@ -2450,22 +2469,33 @@ void CodeBlock::stronglyVisitWeakReferences(SlotVisitor& visitor)
 #endif    
 }
 
+CodeBlock* CodeBlock::baselineAlternative()
+{
+#if ENABLE(JIT)
+    CodeBlock* result = this;
+    while (result->alternative())
+        result = result->alternative();
+    RELEASE_ASSERT(result);
+    RELEASE_ASSERT(JITCode::isBaselineCode(result->jitType()) || result->jitType() == JITCode::None);
+    return result;
+#else
+    return this;
+#endif
+}
+
 CodeBlock* CodeBlock::baselineVersion()
 {
+#if ENABLE(JIT)
     if (JITCode::isBaselineCode(jitType()))
         return this;
-#if ENABLE(JIT)
     CodeBlock* result = replacement();
     if (!result) {
         // This can happen if we're creating the original CodeBlock for an executable.
         // Assume that we're the baseline CodeBlock.
-        ASSERT(jitType() == JITCode::None);
+        RELEASE_ASSERT(jitType() == JITCode::None);
         return this;
     }
-    while (result->alternative())
-        result = result->alternative();
-    RELEASE_ASSERT(result);
-    RELEASE_ASSERT(JITCode::isBaselineCode(result->jitType()));
+    result = result->baselineAlternative();
     return result;
 #else
     return this;
@@ -2590,7 +2620,6 @@ void CodeBlock::expressionRangeForBytecodeOffset(unsigned bytecodeOffset, int& d
 void CodeBlock::shrinkToFit(ShrinkMode shrinkMode)
 {
 #if ENABLE(JIT)
-    m_structureStubInfos.shrinkToFit();
     m_callLinkInfos.shrinkToFit();
 #endif
 #if ENABLE(VALUE_PROFILER)
@@ -2757,16 +2786,6 @@ const SlowArgument* CodeBlock::machineSlowArguments()
 }
 
 #if ENABLE(JIT)
-void CodeBlock::reoptimize()
-{
-    ASSERT(replacement() != this);
-    ASSERT(replacement()->alternative() == this);
-    if (DFG::shouldShowDisassembly())
-        dataLog(*replacement(), " will be jettisoned due to reoptimization of ", *this, ".\n");
-    replacement()->jettison();
-    countReoptimization();
-}
-
 CodeBlock* ProgramCodeBlock::replacement()
 {
     return jsCast<ProgramExecutable*>(ownerExecutable())->codeBlock();
@@ -2798,19 +2817,61 @@ DFG::CapabilityLevel FunctionCodeBlock::capabilityLevelInternal()
         return DFG::functionForConstructCapabilityLevel(this);
     return DFG::functionForCallCapabilityLevel(this);
 }
+#endif
 
-void CodeBlock::jettison()
+void CodeBlock::jettison(ReoptimizationMode mode)
 {
-    DeferGC deferGC(*m_heap);
-    ASSERT(JITCode::isOptimizingJIT(jitType()));
-    ASSERT(this == replacement());
+#if ENABLE(DFG_JIT)
+    if (DFG::shouldShowDisassembly()) {
+        dataLog("Jettisoning ", *this);
+        if (mode == CountReoptimization)
+            dataLog(" and counting reoptimization");
+        dataLog(".\n");
+    }
+    
+    DeferGCForAWhile deferGC(*m_heap);
+    RELEASE_ASSERT(JITCode::isOptimizingJIT(jitType()));
+    
+    // We want to accomplish two things here:
+    // 1) Make sure that if this CodeBlock is on the stack right now, then if we return to it
+    //    we should OSR exit at the top of the next bytecode instruction after the return.
+    // 2) Make sure that if we call the owner executable, then we shouldn't call this CodeBlock.
+    
+    // This accomplishes the OSR-exit-on-return part, and does its own book-keeping about
+    // whether the invalidation has already happened.
+    if (!jitCode()->dfgCommon()->invalidate()) {
+        // Nothing to do since we've already been invalidated. That means that we cannot be
+        // the optimized replacement.
+        RELEASE_ASSERT(this != replacement());
+        return;
+    }
+    
+    if (DFG::shouldShowDisassembly())
+        dataLog("    Did invalidate ", *this, "\n");
+    
+    // Count the reoptimization if that's what the user wanted.
+    if (mode == CountReoptimization) {
+        baselineVersion()->countReoptimization();
+        if (DFG::shouldShowDisassembly())
+            dataLog("    Did count reoptimization for ", *this, "\n");
+    }
+    
+    // Now take care of the entrypoint.
+    if (this != replacement()) {
+        // This means that we were never the entrypoint. This can happen for OSR entry code
+        // blocks.
+        return;
+    }
     alternative()->optimizeAfterWarmUp();
     tallyFrequentExitSites();
-    if (DFG::shouldShowDisassembly())
-        dataLog("Jettisoning ", *this, ".\n");
     alternative()->install();
+    if (DFG::shouldShowDisassembly())
+        dataLog("    Did install baseline version of ", *this, "\n");
+#else // ENABLE(DFG_JIT)
+    UNUSED_PARAM(mode);
+    UNREACHABLE_FOR_PLATFORM();
+#endif // ENABLE(DFG_JIT)
 }
-#endif
 
 JSGlobalObject* CodeBlock::globalObjectFor(CodeOrigin codeOrigin)
 {
@@ -3108,16 +3169,6 @@ void CodeBlock::setOptimizationThresholdBasedOnCompilationResult(CompilationResu
 
 #endif
     
-static bool structureStubInfoLessThan(const StructureStubInfo& a, const StructureStubInfo& b)
-{
-    return a.callReturnLocation.executableAddress() < b.callReturnLocation.executableAddress();
-}
-
-void CodeBlock::sortStructureStubInfos()
-{
-    std::sort(m_structureStubInfos.begin(), m_structureStubInfos.end(), structureStubInfoLessThan);
-}
-
 uint32_t CodeBlock::adjustedExitCountThreshold(uint32_t desiredThreshold)
 {
     ASSERT(JITCode::isOptimizingJIT(jitType()));

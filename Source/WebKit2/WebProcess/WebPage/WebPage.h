@@ -49,6 +49,7 @@
 #include "Plugin.h"
 #include "SandboxExtension.h"
 #include "ShareableBitmap.h"
+#include "ViewState.h"
 #include "WebUndoStep.h"
 #include <WebCore/DictationAlternative.h>
 #include <WebCore/DragData.h>
@@ -146,10 +147,6 @@ struct EditorState;
 struct PrintInfo;
 struct WebPageCreationParameters;
 struct WebPreferencesStore;
-
-#if ENABLE(GESTURE_EVENTS)
-class WebGestureEvent;
-#endif
 
 #if ENABLE(TOUCH_EVENTS)
 class WebTouchEvent;
@@ -337,11 +334,12 @@ public:
     void addPluginView(PluginView*);
     void removePluginView(PluginView*);
 
+    bool windowIsVisible() const { return m_windowIsVisible; }
+
 #if PLATFORM(MAC)
     LayerHostingMode layerHostingMode() const { return m_layerHostingMode; }
     void setLayerHostingMode(LayerHostingMode);
 
-    bool windowIsVisible() const { return m_windowIsVisible; }
     void updatePluginsActiveAndFocusedState();
     const WebCore::FloatRect& windowFrameInScreenCoordinates() const { return m_windowFrameInScreenCoordinates; }
     const WebCore::FloatRect& windowFrameInUnflippedScreenCoordinates() const { return m_windowFrameInUnflippedScreenCoordinates; }
@@ -567,9 +565,6 @@ public:
 #endif
 
     void wheelEvent(const WebWheelEvent&);
-#if ENABLE(GESTURE_EVENTS)
-    void gestureEvent(const WebGestureEvent&);
-#endif
 
     void numWheelEventHandlersChanged(unsigned);
     void recomputeShortCircuitHorizontalWheelEventsState();
@@ -685,9 +680,12 @@ private:
     void tryRestoreScrollPosition();
     void setActive(bool);
     void setFocused(bool);
+    void setViewIsVisible(bool);
+    void setWindowIsVisible(bool);
     void setInitialFocus(bool forward, bool isKeyboardEventValid, const WebKeyboardEvent&);
     void setWindowResizerSize(const WebCore::IntSize&);
-    void setIsInWindow(bool isInWindow, bool wantsDidUpdateViewInWindowState = false);
+    void setIsInWindow(bool);
+    void setViewState(ViewState::Flags, bool wantsDidUpdateViewState);
     void validateCommand(const String&, uint64_t);
     void executeEditCommand(const String&);
 
@@ -748,7 +746,6 @@ private:
     void performDictionaryLookupAtLocation(const WebCore::FloatPoint&);
     void performDictionaryLookupForRange(WebCore::Frame*, WebCore::Range*, NSDictionary *options);
 
-    void setWindowIsVisible(bool windowIsVisible);
     void windowAndViewFramesChanged(const WebCore::FloatRect& windowFrameInScreenCoordinates, const WebCore::FloatRect& windowFrameInUnflippedScreenCoordinates, const WebCore::FloatRect& viewFrameInWindowCoordinates, const WebCore::FloatPoint& accessibilityViewCoordinates);
 
     RetainPtr<PDFDocument> pdfDocumentForPrintingFrame(WebCore::Frame*);
@@ -806,7 +803,7 @@ private:
 
     void changeSelectedIndex(int32_t index);
     void setCanStartMediaTimerFired();
-    void didUpdateInWindowStateTimerFired();
+    void didUpdateViewStateTimerFired();
 
     bool canHandleUserEvents() const;
 
@@ -855,6 +852,9 @@ private:
 
     bool m_mainFrameIsScrollable;
 
+    // Whether the containing window is visible or not.
+    bool m_windowIsVisible;
+
 #if ENABLE(PRIMARY_SNAPSHOTTED_PLUGIN_HEURISTIC)
     bool m_readyToFindPrimarySnapshottedPlugin;
     bool m_didFindPrimarySnapshottedPlugin;
@@ -869,9 +869,6 @@ private:
     bool m_pdfPluginEnabled;
 
     bool m_hasCachedWindowFrame;
-
-    // Whether the containing window is visible or not.
-    bool m_windowIsVisible;
 
     // The frame of the containing window in screen coordinates.
     WebCore::FloatRect m_windowFrameInScreenCoordinates;
@@ -905,7 +902,7 @@ private:
     RefPtr<PageBanner> m_footerBanner;
 
     WebCore::RunLoop::Timer<WebPage> m_setCanStartMediaTimer;
-    WebCore::RunLoop::Timer<WebPage> m_sendDidUpdateInWindowStateTimer;
+    WebCore::RunLoop::Timer<WebPage> m_sendDidUpdateViewStateTimer;
     bool m_mayStartMediaWhenInWindow;
 
     HashMap<uint64_t, RefPtr<WebUndoStep>> m_undoStepMap;
@@ -996,6 +993,8 @@ private:
     WebCore::ScrollPinningBehavior m_scrollPinningBehavior;
 
     bool m_useThreadedScrolling;
+
+    ViewState::Flags m_viewState;
 };
 
 } // namespace WebKit

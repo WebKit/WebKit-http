@@ -34,11 +34,11 @@ namespace WebCore {
     
 class RenderMathMLUnderOver : public RenderMathMLBlock {
 public:
-    RenderMathMLUnderOver(Element*);
+    RenderMathMLUnderOver(Element&, PassRef<RenderStyle>);
     
     virtual RenderMathMLOperator* unembellishedOperator();
 
-    virtual int firstLineBoxBaseline() const OVERRIDE;
+    virtual int firstLineBaseline() const OVERRIDE;
     
 private:
     virtual bool isRenderMathMLUnderOver() const { return true; }

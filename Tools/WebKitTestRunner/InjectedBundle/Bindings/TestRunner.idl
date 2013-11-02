@@ -103,12 +103,14 @@ interface TestRunner {
     void setDatabaseQuota(unsigned long long quota);
     DOMString pathToLocalResource(DOMString url);
 
+    attribute double databaseDefaultQuota;
+    attribute double databaseMaxQuota;
+
     // Application Cache API
     void clearAllApplicationCaches();
     void setAppCacheMaximumSize(unsigned long long size);
     long long applicationCacheDiskUsageForOrigin(DOMString origin);
     void clearApplicationCacheForOrigin(DOMString name);
-    void setApplicationCacheOriginQuota(unsigned long long bytes);
     void disallowIncreaseForApplicationCacheQuota();
     object originsWithApplicationCache();
 

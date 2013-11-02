@@ -51,9 +51,9 @@ Node::InsertionNotificationRequest MathMLMathElement::insertedInto(ContainerNode
     return MathMLInlineContainerElement::insertedInto(insertionPoint);
 }
 
-RenderElement* MathMLMathElement::createRenderer(RenderArena& arena, RenderStyle&)
+RenderElement* MathMLMathElement::createRenderer(PassRef<RenderStyle> style)
 {
-    return new (arena) RenderMathMLMath(this);
+    return new RenderMathMLMath(*this, std::move(style));
 }
 
 }

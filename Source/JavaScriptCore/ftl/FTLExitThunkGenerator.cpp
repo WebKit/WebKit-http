@@ -48,13 +48,22 @@ ExitThunkGenerator::~ExitThunkGenerator()
 
 void ExitThunkGenerator::emitThunk(unsigned index)
 {
-    OSRExitCompilationInfo& info = m_state.osrExit[index];
+    OSRExitCompilationInfo& info = m_state.finalizer->osrExit[index];
     
     info.m_thunkLabel = label();
-    move(TrustedImm32(index), GPRInfo::nonArgGPR0);
+    if (Options::ftlUsesStackmaps())
+        push(TrustedImm32(index));
+    else
+        move(TrustedImm32(index), GPRInfo::nonArgGPR0);
     info.m_thunkJump = patchableJump();
     
     m_didThings = true;
+}
+
+void ExitThunkGenerator::emitThunks()
+{
+    for (unsigned i = 0; i < m_state.finalizer->osrExit.size(); ++i)
+        emitThunk(i);
 }
 
 } } // namespace JSC::FTL

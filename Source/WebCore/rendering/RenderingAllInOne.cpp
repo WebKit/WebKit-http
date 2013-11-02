@@ -42,7 +42,6 @@
 #include "LayoutRepainter.cpp"
 #include "LayoutState.cpp"
 #include "PointerEventsHitRules.cpp"
-#include "RenderArena.cpp"
 #include "RenderBlock.cpp"
 #include "RenderBlockFlow.cpp"
 #include "RenderBlockLineLayout.cpp"
@@ -108,6 +107,7 @@
 #include "RenderTextControlMultiLine.cpp"
 #include "RenderTextControlSingleLine.cpp"
 #include "RenderTextFragment.cpp"
+#include "RenderTextLineBoxes.cpp"
 #include "RenderTextTrackCue.cpp"
 #include "RenderTheme.cpp"
 #if PLATFORM(WIN)
@@ -119,5 +119,6 @@
 #include "RenderWidget.cpp"
 #include "RootInlineBox.cpp"
 #include "ScrollBehavior.cpp"
+#include "TextPainter.cpp"
 #include "break_lines.cpp"
 

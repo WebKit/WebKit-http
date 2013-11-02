@@ -43,7 +43,6 @@
 #include "InjectedScriptManager.h"
 #include "InspectorFrontend.h"
 #include "InspectorPageAgent.h"
-#include "InspectorState.h"
 #include "InstrumentingAgents.h"
 #include "MainFrame.h"
 #include "NodeList.h"
@@ -62,12 +61,8 @@ using WebCore::TypeBuilder::Network::FrameId;
 
 namespace WebCore {
 
-namespace CanvasAgentState {
-static const char canvasAgentEnabled[] = "canvasAgentEnabled";
-};
-
-InspectorCanvasAgent::InspectorCanvasAgent(InstrumentingAgents* instrumentingAgents, InspectorCompositeState* state, InspectorPageAgent* pageAgent, InjectedScriptManager* injectedScriptManager)
-    : InspectorBaseAgent<InspectorCanvasAgent>("Canvas", instrumentingAgents, state)
+InspectorCanvasAgent::InspectorCanvasAgent(InstrumentingAgents* instrumentingAgents, InspectorPageAgent* pageAgent, InjectedScriptManager* injectedScriptManager)
+    : InspectorBaseAgent<InspectorCanvasAgent>("Canvas", instrumentingAgents)
     , m_pageAgent(pageAgent)
     , m_injectedScriptManager(injectedScriptManager)
     , m_frontend(0)
@@ -91,20 +86,11 @@ void InspectorCanvasAgent::clearFrontend()
     disable(0);
 }
 
-void InspectorCanvasAgent::restore()
-{
-    if (m_state->getBoolean(CanvasAgentState::canvasAgentEnabled)) {
-        ErrorString error;
-        enable(&error);
-    }
-}
-
 void InspectorCanvasAgent::enable(ErrorString*)
 {
     if (m_enabled)
         return;
     m_enabled = true;
-    m_state->setBoolean(CanvasAgentState::canvasAgentEnabled, m_enabled);
     m_instrumentingAgents->setInspectorCanvasAgent(this);
     findFramesWithUninstrumentedCanvases();
 }
@@ -112,7 +98,6 @@ void InspectorCanvasAgent::enable(ErrorString*)
 void InspectorCanvasAgent::disable(ErrorString*)
 {
     m_enabled = false;
-    m_state->setBoolean(CanvasAgentState::canvasAgentEnabled, m_enabled);
     m_instrumentingAgents->setInspectorCanvasAgent(0);
     m_framesWithUninstrumentedCanvases.clear();
 }

@@ -36,14 +36,14 @@ namespace WebCore {
 
 class PseudoElement FINAL : public Element {
 public:
-    static PassRefPtr<PseudoElement> create(Element* host, PseudoId pseudoId)
+    static PassRefPtr<PseudoElement> create(Element& host, PseudoId pseudoId)
     {
         return adoptRef(new PseudoElement(host, pseudoId));
     }
     virtual ~PseudoElement();
 
     Element* hostElement() const { return m_hostElement; }
-    void clearHostElement() { m_hostElement = 0; }
+    void clearHostElement() { m_hostElement = nullptr; }
 
     virtual PassRefPtr<RenderStyle> customStyleForRenderer() OVERRIDE;
     virtual void didAttachRenderers() OVERRIDE;
@@ -61,7 +61,7 @@ public:
     static String pseudoElementNameForEvents(PseudoId);
 
 private:
-    PseudoElement(Element*, PseudoId);
+    PseudoElement(Element&, PseudoId);
 
     virtual void didRecalcStyle(Style::Change) OVERRIDE;
     virtual PseudoId customPseudoId() const OVERRIDE { return m_pseudoId; }
@@ -74,26 +74,12 @@ const QualifiedName& pseudoElementTagName();
 
 inline bool pseudoElementRendererIsNeeded(const RenderStyle* style)
 {
-    return style && style->display() != NONE && (style->contentData() || !style->regionThread().isEmpty());
+    return style && style->display() != NONE && (style->contentData() || style->hasFlowFrom());
 }
 
-inline PseudoElement& toPseudoElement(Node& node)
-{
-    ASSERT_WITH_SECURITY_IMPLICATION(node.isPseudoElement());
-    return static_cast<PseudoElement&>(node);
-}
-
-inline PseudoElement* toPseudoElement(Node* node)
-{
-    ASSERT_WITH_SECURITY_IMPLICATION(!node || node->isPseudoElement());
-    return static_cast<PseudoElement*>(node);
-}
-
-inline const PseudoElement* toPseudoElement(const Node* node)
-{
-    ASSERT_WITH_SECURITY_IMPLICATION(!node || node->isPseudoElement());
-    return static_cast<const PseudoElement*>(node);
-}
+void isPseudoElement(const PseudoElement&); // Catch unnecessary runtime check of type known at compile time.
+inline bool isPseudoElement(const Node& node) { return node.isPseudoElement(); }
+NODE_TYPE_CASTS(PseudoElement)
 
 } // namespace
 

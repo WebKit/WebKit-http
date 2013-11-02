@@ -62,9 +62,9 @@ public:
     virtual void removeAllClientsFromCache(bool markForInvalidation = true) = 0;
     virtual void removeClientFromCache(RenderObject*, bool markForInvalidation = true) = 0;
 
-    virtual bool applyResource(RenderObject*, RenderStyle*, GraphicsContext*&, unsigned short resourceMode) = 0;
-    virtual void postApplyResource(RenderObject*, GraphicsContext*&, unsigned short, const Path*, const RenderSVGShape*) { }
-    virtual FloatRect resourceBoundingBox(RenderObject*) = 0;
+    virtual bool applyResource(RenderElement&, const RenderStyle&, GraphicsContext*&, unsigned short resourceMode) = 0;
+    virtual void postApplyResource(RenderElement&, GraphicsContext*&, unsigned short, const Path*, const RenderSVGShape*) { }
+    virtual FloatRect resourceBoundingBox(const RenderObject&) = 0;
 
     virtual RenderSVGResourceType resourceType() const = 0;
 
@@ -78,8 +78,8 @@ public:
     }
 
     // Helper utilities used in the render tree to access resources used for painting shapes/text (gradients & patterns & solid colors only)
-    static RenderSVGResource* fillPaintingResource(RenderObject*, const RenderStyle*, Color& fallbackColor);
-    static RenderSVGResource* strokePaintingResource(RenderObject*, const RenderStyle*, Color& fallbackColor);
+    static RenderSVGResource* fillPaintingResource(RenderElement&, const RenderStyle*, Color& fallbackColor);
+    static RenderSVGResource* strokePaintingResource(RenderElement&, const RenderStyle*, Color& fallbackColor);
     static RenderSVGResourceSolidColor* sharedSolidPaintingResource();
 
     static void markForLayoutAndParentResourceInvalidation(RenderObject*, bool needsLayout = true);

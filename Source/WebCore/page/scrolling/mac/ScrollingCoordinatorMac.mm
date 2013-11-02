@@ -131,11 +131,15 @@ void ScrollingCoordinatorMac::frameViewLayoutUpdated(FrameView* frameView)
     if (!node)
         return;
 
+    Scrollbar* verticalScrollbar = frameView->verticalScrollbar();
+    Scrollbar* horizontalScrollbar = frameView->horizontalScrollbar();
+    setScrollbarPaintersFromScrollbarsForNode(verticalScrollbar, horizontalScrollbar, node);
+
     ScrollParameters scrollParameters;
     scrollParameters.horizontalScrollElasticity = frameView->horizontalScrollElasticity();
     scrollParameters.verticalScrollElasticity = frameView->verticalScrollElasticity();
-    scrollParameters.hasEnabledHorizontalScrollbar = frameView->horizontalScrollbar() && frameView->horizontalScrollbar()->enabled();
-    scrollParameters.hasEnabledVerticalScrollbar = frameView->verticalScrollbar() && frameView->verticalScrollbar()->enabled();
+    scrollParameters.hasEnabledHorizontalScrollbar = horizontalScrollbar && horizontalScrollbar->enabled();
+    scrollParameters.hasEnabledVerticalScrollbar = verticalScrollbar && verticalScrollbar->enabled();
     scrollParameters.horizontalScrollbarMode = frameView->horizontalScrollbarMode();
     scrollParameters.verticalScrollbarMode = frameView->verticalScrollbarMode();
 
@@ -178,7 +182,7 @@ void ScrollingCoordinatorMac::frameViewRootLayerDidChange(FrameView* frameView)
     setFooterLayerForNode(footerLayerForFrameView(frameView), node);
 }
 
-void ScrollingCoordinatorMac::scrollableAreaScrollbarLayerDidChange(ScrollableArea* scrollableArea, ScrollbarOrientation)
+void ScrollingCoordinatorMac::scrollableAreaScrollbarLayerDidChange(ScrollableArea* scrollableArea, ScrollbarOrientation orientation)
 {
     ASSERT(isMainThread());
     ASSERT(m_page);
@@ -186,7 +190,10 @@ void ScrollingCoordinatorMac::scrollableAreaScrollbarLayerDidChange(ScrollableAr
     if (scrollableArea != static_cast<ScrollableArea*>(m_page->mainFrame().view()))
         return;
 
-    // FIXME: Implement.
+    if (orientation == VerticalScrollbar)
+        scrollableArea->verticalScrollbarLayerDidChange();
+    else
+        scrollableArea->horizontalScrollbarLayerDidChange();
 }
 
 bool ScrollingCoordinatorMac::requestScrollPositionUpdate(FrameView* frameView, const IntPoint& scrollPosition)
@@ -278,6 +285,12 @@ void ScrollingCoordinatorMac::setFooterLayerForNode(GraphicsLayer* footerLayer, 
     scheduleTreeStateCommit();
 }
 
+void ScrollingCoordinatorMac::setScrollbarPaintersFromScrollbarsForNode(Scrollbar* verticalScrollbar, Scrollbar* horizontalScrollbar, ScrollingStateScrollingNode* node)
+{
+    node->setScrollbarPaintersFromScrollbars(verticalScrollbar, horizontalScrollbar);
+    scheduleTreeStateCommit();
+}
+
 void ScrollingCoordinatorMac::setNonFastScrollableRegionForNode(const Region& region, ScrollingStateScrollingNode* node)
 {
     node->setNonFastScrollableRegion(region);
@@ -343,7 +356,7 @@ void ScrollingCoordinatorMac::syncChildPositions(const LayoutRect& viewportRect)
     if (!m_scrollingStateTree->rootStateNode())
         return;
 
-    Vector<OwnPtr<ScrollingStateNode> >* children = m_scrollingStateTree->rootStateNode()->children();
+    Vector<OwnPtr<ScrollingStateNode>>* children = m_scrollingStateTree->rootStateNode()->children();
     if (!children)
         return;
 

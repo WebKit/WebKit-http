@@ -233,7 +233,7 @@ private:
         case ArithMod: {
             if (Node::shouldSpeculateInt32ForArithmetic(node->child1().node(), node->child2().node())
                 && node->canSpeculateInt32()) {
-                if (isX86() || isARMv7s()) {
+                if (isX86() || isARM64() || isARMv7s()) {
                     fixEdge<Int32Use>(node->child1());
                     fixEdge<Int32Use>(node->child2());
                     break;
@@ -278,7 +278,9 @@ private:
             break;
         }
             
-        case ArithSqrt: {
+        case ArithSqrt:
+        case ArithSin:
+        case ArithCos: {
             fixEdge<NumberUse>(node->child1());
             break;
         }
@@ -292,6 +294,8 @@ private:
                 fixEdge<Int32Use>(node->child1());
             else if (node->child1()->shouldSpeculateNumber())
                 fixEdge<NumberUse>(node->child1());
+            else if (node->child1()->shouldSpeculateString())
+                fixEdge<StringUse>(node->child1());
             break;
         }
             
@@ -471,7 +475,8 @@ private:
             
             break;
         }
-            
+
+        case PutByValDirect:
         case PutByVal:
         case PutByValAlias: {
             Edge& child1 = m_graph.varArgChild(node, 0);
@@ -882,6 +887,7 @@ private:
         case CheckTierUpAndOSREnter:
         case Int52ToDouble:
         case Int52ToValue:
+        case InvalidationPoint:
             RELEASE_ASSERT_NOT_REACHED();
             break;
 
@@ -904,7 +910,6 @@ private:
         case Flush:
         case PhantomLocal:
         case GetLocalUnlinked:
-        case InlineStart:
         case GetMyScope:
         case GetClosureVar:
         case GetGlobalVar:

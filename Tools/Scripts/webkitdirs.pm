@@ -361,7 +361,7 @@ sub jscPath($)
 {
     my ($productDir) = @_;
     my $jscName = "jsc";
-    $jscName .= "_debug"  if configurationForVisualStudio() eq "Debug_All";
+    $jscName .= "_debug"  if configuration() eq "Debug_All";
     $jscName .= ".exe" if (isWindows() || isCygwin());
     return "$productDir/$jscName" if -e "$productDir/$jscName";
     return "$productDir/JavaScriptCore.framework/Resources/$jscName";
@@ -375,7 +375,8 @@ sub argumentsForConfiguration()
     my @args = ();
     push(@args, '--debug') if $configuration eq "Debug";
     push(@args, '--release') if $configuration eq "Release";
-    push(@args, '--32-bit') if ($architecture ne "x86_64" and !hasArgument('--64-bit', \@ARGV));
+    push(@args, '--32-bit') if ($architecture ne "x86_64" and !isWin64());
+    push(@args, '--64-bit') if (isWin64());
     push(@args, '--gtk') if isGtk();
     push(@args, '--efl') if isEfl();
     push(@args, '--wincairo') if isWinCairo();
@@ -459,7 +460,7 @@ sub determineConfigurationForVisualStudio
     return if defined $configurationForVisualStudio;
     determineConfiguration();
     # FIXME: We should detect when Debug_All or Production has been chosen.
-    $configurationForVisualStudio = $configuration;
+    $configurationForVisualStudio = $configuration . (isWin64() ? "|x64" : "|Win32");
 }
 
 sub usesPerConfigurationBuildDirectory
@@ -476,9 +477,9 @@ sub determineConfigurationProductDir
     return if defined $configurationProductDir;
     determineBaseProductDir();
     determineConfiguration();
-    if (isAppleWinWebKit()) {
+    if (isAppleWinWebKit() || isWinCairo()) {
         my $binDir = isWin64() ? "bin64" : "bin32";
-        $configurationProductDir = File::Spec->catdir($baseProductDir, configurationForVisualStudio(), $binDir);
+        $configurationProductDir = File::Spec->catdir($baseProductDir, $configuration, $binDir);
     } else {
         if (usesPerConfigurationBuildDirectory()) {
             $configurationProductDir = "$baseProductDir";
@@ -620,6 +621,7 @@ sub determinePassedConfiguration
             $passedConfiguration = "Debug";
             $passedConfiguration .= "_WinCairo" if (isWinCairo() && isCygwin());
             $passedConfiguration .= "|x64" if isWin64();
+            $passedConfiguration .= "|Win32" if isWindows() && !isWin64();
             return;
         }
         if ($opt =~ /^--release$/i) {
@@ -627,6 +629,7 @@ sub determinePassedConfiguration
             $passedConfiguration = "Release";
             $passedConfiguration .= "_WinCairo" if (isWinCairo() && isCygwin());
             $passedConfiguration .= "|x64" if isWin64();
+            $passedConfiguration .= "|Win32" if isWindows() && !isWin64();
             return;
         }
         if ($opt =~ /^--profil(e|ing)$/i) {
@@ -634,6 +637,7 @@ sub determinePassedConfiguration
             $passedConfiguration = "Profiling";
             $passedConfiguration .= "_WinCairo" if (isWinCairo() && isCygwin());
             $passedConfiguration .= "|x64" if isWin64();
+            $passedConfiguration .= "|Win32" if isWindows() && !isWin64();
             return;
         }
     }
@@ -768,7 +772,7 @@ sub safariPath
             my $path = "$configurationProductDir/Safari.exe";
             my $debugPath = "$configurationProductDir/Safari_debug.exe";
 
-            if (configurationForVisualStudio() eq "Debug_All" && -x $debugPath) {
+            if (configuration() eq "Debug_All" && -x $debugPath) {
                 $safariBundle = $debugPath;
             } elsif (-x $path) {
                 $safariBundle = $path;
@@ -883,7 +887,6 @@ sub hasArgument($$)
 {
     my ($argToCheck, $arrayRef) = @_;
     my @matchingIndices = findMatchingArguments($argToCheck, $arrayRef);
-    my $far = scalar @matchingIndices;
     return scalar @matchingIndices > 0;
 }
 
@@ -1213,7 +1216,7 @@ sub isAppleMacWebKit()
 
 sub isAppleWinWebKit()
 {
-    return isAppleWebKit() && (isCygwin() || isWindows());
+    return isAppleWebKit() && (isCygwin() || isWindows()) && !isWinCairo();
 }
 
 sub willUseIOSDeviceSDKWhenBuilding()
@@ -1433,7 +1436,7 @@ sub checkRequiredSystemConfig
             print "most likely fail. The latest Xcode is available from the App Store.\n";
             print "*************************************************************\n";
         }
-    } elsif (isGtk() or isEfl()) {
+    } elsif (isGtk() or isEfl() or isWindows()) {
         my @cmds = qw(bison gperf flex);
         my @missing = ();
         my $oldPath = $ENV{PATH};
@@ -1477,12 +1480,15 @@ sub windowsOutputDir()
     return windowsSourceDir() . "\\WebKitBuild";
 }
 
+sub fontExists($)
+{
+    my $font = shift;
+    my $val = system qw(regtool get), '\\HKLM\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Fonts\\' . $font . ' (TrueType)';
+    return 0 == $val;
+}
+
 sub checkInstalledTools()
 {
-    # Make sure gperf is installed.
-    my $gperfVer = `gperf --version`;
-    die "You must have gperf installed to build WebKit.\n" if ($?);
-
     # SVN 1.7.10 is known to be compatible with current servers. SVN 1.8.x seems to be missing some authentication
     # protocols we use for svn.webkit.org:
     my $svnVersion = `svn --version | grep "\\sversion"`;
@@ -1496,6 +1502,23 @@ sub checkInstalledTools()
     my $pythonVer = `python --version 2>&1`;
     die "You must have Python installed to build WebKit.\n" if ($?);
     die "Python 2.7.3 is not compatible with the WebKit build. Please downgrade to Python 2.6.8.\n" if ($pythonVer =~ /2\.7\.3/);
+
+    # MathML requires fonts that do not ship with Windows (at least through Windows 8). Warn the user if they are missing
+    my @fonts = qw(STIXGeneral-Regular MathJax_Main-Regular);
+    my @missing = ();
+    foreach my $font (@fonts) {
+        push @missing, $font if not fontExists($font);
+    }
+
+    if (scalar @missing > 0) {
+        print "*************************************************************\n";
+        print "Mathematical fonts, such as STIX and MathJax, are needed to\n";
+        print "use the MathML feature.  You do not appear to have these fonts\n";
+        print "on your system.\n\n";
+        print "You can download a suitable set of fonts from the following URL:\n";
+        print "https://developer.mozilla.org/Mozilla/MathML_Projects/Fonts\n";
+        print "*************************************************************\n";
+    }
 
     print "Installed tools are correct for the WebKit build.\n";
 }
@@ -1630,7 +1653,7 @@ sub copyInspectorFrontendFiles
         } else {
             $inspectorResourcesDirPath = $productDir . "/WebCore.framework/Resources/inspector";
         }
-    } elsif (isAppleWinWebKit()) {
+    } elsif (isAppleWinWebKit() || isWinCairo()) {
         $inspectorResourcesDirPath = $productDir . "/WebKit.resources/inspector";
     } elsif (isGtk()) {
         my $prefix = $ENV{"WebKitInstallationPrefix"};
@@ -2131,6 +2154,9 @@ sub setPathForRunningWebKitApp
 
     if (isAppleWinWebKit()) {
         $env->{PATH} = join(':', productDir(), dirname(installedSafariPath()), appleApplicationSupportPath(), $env->{PATH} || "");
+    } elsif (isWinCairo()) {
+        my $winCairoBin = sourceDir() . "/WebKitLibraries/win/" . (isWin64() ? "bin64/" : "bin32/");
+        $env->{PATH} = join(':', productDir(), $winCairoBin , $env->{PATH} || "");
     }
 }
 

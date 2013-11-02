@@ -81,8 +81,6 @@
 #include "TouchEvent.h"
 #endif
 
-using namespace std;
-
 namespace WebCore {
 
 using namespace HTMLNames;
@@ -190,7 +188,7 @@ HTMLElement* HTMLInputElement::containerElement() const
     return m_inputType->containerElement();
 }
 
-HTMLElement* HTMLInputElement::innerTextElement() const
+TextControlInnerTextElement* HTMLInputElement::innerTextElement() const
 {
     return m_inputType->innerTextElement();
 }
@@ -456,7 +454,7 @@ void HTMLInputElement::setType(const String& type)
 
 void HTMLInputElement::updateType()
 {
-    OwnPtr<InputType> newType = InputType::create(*this, fastGetAttribute(typeAttr));
+    auto newType = InputType::create(*this, fastGetAttribute(typeAttr));
     bool hadType = m_hasType;
     m_hasType = true;
     if (m_inputType->formControlType() == newType->formControlType())
@@ -481,7 +479,7 @@ void HTMLInputElement::updateType()
     if (wasAttached)
         Style::detachRenderTree(*this);
 
-    m_inputType = newType.release();
+    m_inputType = std::move(newType);
     m_inputType->createShadowSubtree();
 
 #if ENABLE(TOUCH_EVENTS)
@@ -791,9 +789,9 @@ bool HTMLInputElement::rendererIsNeeded(const RenderStyle& style)
     return m_inputType->rendererIsNeeded() && HTMLTextFormControlElement::rendererIsNeeded(style);
 }
 
-RenderElement* HTMLInputElement::createRenderer(RenderArena& arena, RenderStyle& style)
+RenderElement* HTMLInputElement::createRenderer(PassRef<RenderStyle> style)
 {
-    return m_inputType->createRenderer(arena, style);
+    return m_inputType->createRenderer(std::move(style));
 }
 
 void HTMLInputElement::willAttachRenderers()
@@ -887,7 +885,7 @@ void HTMLInputElement::setChecked(bool nowChecked, TextFieldEventBehavior eventB
 
     if (CheckedRadioButtons* buttons = checkedRadioButtons())
             buttons->updateCheckedState(this);
-    if (renderer() && renderer()->style()->hasAppearance())
+    if (renderer() && renderer()->style().hasAppearance())
         renderer()->theme()->stateChanged(renderer(), CheckedState);
     setNeedsValidityCheck();
 
@@ -921,7 +919,7 @@ void HTMLInputElement::setIndeterminate(bool newValue)
 
     didAffectSelector(AffectedSelectorIndeterminate);
 
-    if (renderer() && renderer()->style()->hasAppearance())
+    if (renderer() && renderer()->style().hasAppearance())
         renderer()->theme()->stateChanged(renderer(), CheckedState);
 }
 

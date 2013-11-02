@@ -39,14 +39,12 @@
 #include "RenderBox.h"
 #include "RenderTheme.h"
 #include "ValidationMessage.h"
-#include "ValidityState.h"
 #include <wtf/Ref.h>
 #include <wtf/Vector.h>
 
 namespace WebCore {
 
 using namespace HTMLNames;
-using namespace std;
 
 HTMLFormControlElement::HTMLFormControlElement(const QualifiedName& tagName, Document& document, HTMLFormElement* form)
     : LabelableElement(tagName, document)
@@ -138,7 +136,7 @@ void HTMLFormControlElement::parseAttribute(const QualifiedName& name, const Ato
         if (wasReadOnly != m_isReadOnly) {
             setNeedsWillValidateCheck();
             setNeedsStyleRecalc();
-            if (renderer() && renderer()->style()->hasAppearance())
+            if (renderer() && renderer()->style().hasAppearance())
                 renderer()->theme()->stateChanged(renderer(), ReadOnlyState);
         }
     } else if (name == requiredAttr) {
@@ -158,7 +156,7 @@ void HTMLFormControlElement::disabledAttributeChanged()
 {
     setNeedsWillValidateCheck();
     didAffectSelector(AffectedSelectorDisabled | AffectedSelectorEnabled);
-    if (renderer() && renderer()->style()->hasAppearance())
+    if (renderer() && renderer()->style().hasAppearance())
         renderer()->theme()->stateChanged(renderer(), EnabledState);
 }
 
@@ -406,7 +404,7 @@ void HTMLFormControlElement::hideVisibleValidationMessage()
         m_validationMessage->requestToHideMessage();
 }
 
-bool HTMLFormControlElement::checkValidity(Vector<RefPtr<FormAssociatedElement> >* unhandledInvalidControls)
+bool HTMLFormControlElement::checkValidity(Vector<RefPtr<FormAssociatedElement>>* unhandledInvalidControls)
 {
     if (!willValidate() || isValidFormControlElement())
         return true;
@@ -423,13 +421,13 @@ bool HTMLFormControlElement::isValidFormControlElement()
 {
     // If the following assertion fails, setNeedsValidityCheck() is not called
     // correctly when something which changes validity is updated.
-    ASSERT(m_isValid == validity()->valid());
+    ASSERT(m_isValid == valid());
     return m_isValid;
 }
 
 void HTMLFormControlElement::setNeedsValidityCheck()
 {
-    bool newIsValid = validity()->valid();
+    bool newIsValid = valid();
     if (willValidate() && newIsValid != m_isValid) {
         // Update style for pseudo classes such as :valid :invalid.
         setNeedsStyleRecalc();

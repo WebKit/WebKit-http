@@ -52,15 +52,12 @@ public:
     // can be called from any thread).
     static void initializeMainRunLoop();
 
-    // Must be called before entering main run loop. If called, application style run loop will be used, handling events.
-    static void setUseApplicationRunLoopOnMainRunLoop();
-
     static RunLoop* current();
     static RunLoop* main();
     static bool isMain();
     ~RunLoop();
 
-    virtual void dispatch(const Function<void()>&) OVERRIDE;
+    virtual void dispatch(std::function<void ()>) OVERRIDE;
 
     static void run();
     void stop();
@@ -136,7 +133,7 @@ private:
     void performWork();
 
     Mutex m_functionQueueLock;
-    Deque<Function<void()> > m_functionQueue;
+    Deque<std::function<void ()>> m_functionQueue;
 
 #if PLATFORM(WIN)
     static bool registerRunLoopMessageWindowClass();
@@ -169,7 +166,7 @@ public:
     void popNestedMainLoop();
 private:
     GRefPtr<GMainContext> m_runLoopContext;
-    Vector<GRefPtr<GMainLoop> > m_runLoopMainLoops;
+    Vector<GRefPtr<GMainLoop>> m_runLoopMainLoops;
 #endif
 };
 

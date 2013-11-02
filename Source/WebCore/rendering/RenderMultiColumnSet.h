@@ -43,7 +43,7 @@ namespace WebCore {
 // come before and after the span.
 class RenderMultiColumnSet FINAL : public RenderRegionSet {
 public:
-    static RenderMultiColumnSet* createAnonymous(RenderFlowThread&);
+    RenderMultiColumnSet(RenderFlowThread&, PassRef<RenderStyle>);
 
     virtual bool isRenderMultiColumnSet() const OVERRIDE { return true; }
 
@@ -98,8 +98,6 @@ public:
     void prepareForLayout();
 
 private:
-    explicit RenderMultiColumnSet(RenderFlowThread*);
-
     virtual void computeLogicalHeight(LayoutUnit logicalHeight, LayoutUnit logicalTop, LogicalExtentComputedValues&) const OVERRIDE;
 
     virtual void paintObject(PaintInfo&, const LayoutPoint& paintOffset) OVERRIDE;
@@ -119,6 +117,8 @@ private:
     virtual void repaintFlowThreadContent(const LayoutRect& repaintRect, bool immediate) const OVERRIDE;
 
     virtual void collectLayerFragments(LayerFragments&, const LayoutRect& layerBoundingBox, const LayoutRect& dirtyRect) OVERRIDE;
+
+    virtual void adjustRegionBoundsFromFlowThreadPortionRect(const IntPoint& layerOffset, IntRect& regionBounds) OVERRIDE;
 
     virtual const char* renderName() const;
     
@@ -152,20 +152,7 @@ private:
     LayoutUnit m_forcedBreakOffset;
 };
 
-inline RenderMultiColumnSet* toRenderMultiColumnSet(RenderObject* object)
-{
-    ASSERT_WITH_SECURITY_IMPLICATION(!object || object->isRenderMultiColumnSet());
-    return static_cast<RenderMultiColumnSet*>(object);
-}
-
-inline const RenderMultiColumnSet* toRenderMultiColumnSet(const RenderObject* object)
-{
-    ASSERT_WITH_SECURITY_IMPLICATION(!object || object->isRenderMultiColumnSet());
-    return static_cast<const RenderMultiColumnSet*>(object);
-}
-
-// This will catch anyone doing an unnecessary cast.
-void toRenderMultiColumnSet(const RenderMultiColumnSet*);
+RENDER_OBJECT_TYPE_CASTS(RenderMultiColumnSet, isRenderMultiColumnSet())
 
 } // namespace WebCore
 

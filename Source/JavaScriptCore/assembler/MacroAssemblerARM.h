@@ -35,14 +35,18 @@
 
 namespace JSC {
 
-struct JITStackFrame;
-
 class MacroAssemblerARM : public AbstractMacroAssembler<ARMAssembler> {
     static const int DoubleConditionMask = 0x0f;
     static const int DoubleConditionBitSpecial = 0x10;
     COMPILE_ASSERT(!(DoubleConditionBitSpecial & DoubleConditionMask), DoubleConditionBitSpecial_should_not_interfere_with_ARMAssembler_Condition_codes);
 public:
     typedef ARMRegisters::FPRegisterID FPRegisterID;
+
+    static RegisterID firstRegister() { return ARMRegisters::r0; }
+    static RegisterID lastRegister() { return ARMRegisters::r15; }
+
+    static FPRegisterID firstFPRegister() { return ARMRegisters::d0; }
+    static FPRegisterID lastFPRegister() { return ARMRegisters::d31; }
 
     enum RelationalCondition {
         Equal = ARMAssembler::EQ,
@@ -83,6 +87,7 @@ public:
     };
 
     static const RegisterID stackPointerRegister = ARMRegisters::sp;
+    static const RegisterID framePointerRegister = ARMRegisters::fp;
     static const RegisterID linkRegister = ARMRegisters::lr;
 
     static const Scale ScalePtr = TimesFour;
@@ -1345,7 +1350,6 @@ public:
         ProbeFunction probeFunction;
         void* arg1;
         void* arg2;
-        JITStackFrame* jitStackFrame;
         CPUState cpu;
 
         void dump(const char* indentation = 0);

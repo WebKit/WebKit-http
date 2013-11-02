@@ -30,6 +30,7 @@
 #include "ContentData.h"
 #include "InspectorInstrumentation.h"
 #include "RenderElement.h"
+#include "RenderImage.h"
 #include "RenderQuote.h"
 
 namespace WebCore {
@@ -54,9 +55,9 @@ String PseudoElement::pseudoElementNameForEvents(PseudoId pseudoId)
     }
 }
 
-PseudoElement::PseudoElement(Element* host, PseudoId pseudoId)
-    : Element(pseudoElementTagName(), host->document(), CreatePseudoElement)
-    , m_hostElement(host)
+PseudoElement::PseudoElement(Element& host, PseudoId pseudoId)
+    : Element(pseudoElementTagName(), host.document(), CreatePseudoElement)
+    , m_hostElement(&host)
     , m_pseudoId(pseudoId)
 {
     ASSERT(pseudoId == BEFORE || pseudoId == AFTER);
@@ -79,15 +80,15 @@ PassRefPtr<RenderStyle> PseudoElement::customStyleForRenderer()
 void PseudoElement::didAttachRenderers()
 {
     RenderElement* renderer = this->renderer();
-    if (!renderer || !renderer->style()->regionThread().isEmpty())
+    if (!renderer || renderer->style().hasFlowFrom())
         return;
 
-    RenderStyle* style = renderer->style();
-    ASSERT(style->contentData());
+    RenderStyle& style = renderer->style();
+    ASSERT(style.contentData());
 
-    for (const ContentData* content = style->contentData(); content; content = content->next()) {
-        RenderObject* child = content->createRenderer(document(), *style);
-        if (renderer->isChildAllowed(child, style)) {
+    for (const ContentData* content = style.contentData(); content; content = content->next()) {
+        RenderObject* child = content->createRenderer(document(), style);
+        if (renderer->isChildAllowed(*child, style)) {
             renderer->addChild(child);
             if (child->isQuote())
                 toRenderQuote(child)->attachQuote();
@@ -113,7 +114,7 @@ void PseudoElement::didRecalcStyle(Style::Change)
         // We only manage the style for the generated content which must be images or text.
         if (!child->isImage())
             continue;
-        toRenderElement(child)->setPseudoStyle(renderer->style());
+        toRenderImage(child)->setPseudoStyle(&renderer->style());
     }
 }
 

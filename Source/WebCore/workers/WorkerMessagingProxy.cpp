@@ -299,7 +299,7 @@ WorkerMessagingProxy::~WorkerMessagingProxy()
 void WorkerMessagingProxy::startWorkerGlobalScope(const URL& scriptURL, const String& userAgent, const String& sourceCode, WorkerThreadStartMode startMode)
 {
     // FIXME: This need to be revisited when we support nested worker one day
-    ASSERT(m_scriptExecutionContext->isDocument());
+    ASSERT_WITH_SECURITY_IMPLICATION(m_scriptExecutionContext->isDocument());
     Document* document = static_cast<Document*>(m_scriptExecutionContext.get());
     GroupSettings* settings = 0;
     if (document->page())
@@ -504,11 +504,6 @@ void WorkerMessagingProxy::terminateWorkerGlobalScope()
 void WorkerMessagingProxy::postMessageToPageInspector(const String& message)
 {
     m_scriptExecutionContext->postTask(PostMessageToPageInspectorTask::create(this, message));
-}
-
-void WorkerMessagingProxy::updateInspectorStateCookie(const String&)
-{
-    notImplemented();
 }
 #endif
 

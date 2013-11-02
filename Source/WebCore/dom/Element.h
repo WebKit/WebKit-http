@@ -236,7 +236,7 @@ public:
     PassRefPtr<Attr> attrIfExists(const QualifiedName&);
     PassRefPtr<Attr> ensureAttr(const QualifiedName&);
 
-    const Vector<RefPtr<Attr> >& attrNodeList();
+    const Vector<RefPtr<Attr>>& attrNodeList();
 
     virtual CSSStyleDeclaration* style();
 
@@ -304,7 +304,7 @@ public:
     void lazyAttach(ShouldSetAttached = SetAttached);
     void lazyReattach(ShouldSetAttached = SetAttached);
 
-    virtual RenderElement* createRenderer(RenderArena&, RenderStyle&);
+    virtual RenderElement* createRenderer(PassRef<RenderStyle>);
     virtual bool rendererIsNeeded(const RenderStyle&);
     void didAffectSelector(AffectedSelectorMask);
 
@@ -418,6 +418,11 @@ public:
     virtual void didBecomeFullscreenElement() { }
     virtual void willStopBeingFullscreenElement() { }
 
+#if ENABLE(PAGE_VISIBILITY_API)
+    // Use Document::registerForVisibilityStateChangedCallbacks() to subscribe to this.
+    virtual void visibilityStateChanged() { }
+#endif
+
 #if ENABLE(VIDEO_TRACK)
     virtual void captionPreferencesChanged() { }
 #endif
@@ -447,12 +452,6 @@ public:
 
     DOMStringMap* dataset();
 
-#if ENABLE(MATHML)
-    virtual bool isMathMLElement() const { return false; }
-#else
-    static bool isMathMLElement() { return false; }
-#endif
-
 #if ENABLE(VIDEO)
     virtual bool isMediaElement() const { return false; }
 #endif
@@ -480,9 +479,9 @@ public:
     // to event listeners, and prevents DOMActivate events from being sent at all.
     virtual bool isDisabledFormControl() const { return false; }
 
+    virtual bool childShouldCreateRenderer(const Node*) const OVERRIDE;
 
 #if ENABLE(SVG)
-    virtual bool childShouldCreateRenderer(const Node*) const OVERRIDE;
     bool hasPendingResources() const;
     void setHasPendingResources();
     void clearHasPendingResources();
@@ -515,7 +514,7 @@ public:
     
     virtual bool isSpellCheckingEnabled() const;
 
-    PassRefPtr<RenderStyle> styleForRenderer();
+    PassRef<RenderStyle> styleForRenderer();
 
     RenderRegion* renderRegion() const;
 
@@ -523,7 +522,7 @@ public:
     virtual bool shouldMoveToFlowThread(const RenderStyle&) const;
     
     const AtomicString& webkitRegionOverset() const;
-    Vector<RefPtr<Range> > webkitGetRegionFlowRanges() const;
+    Vector<RefPtr<Range>> webkitGetRegionFlowRanges() const;
 #endif
 
     bool hasID() const;
@@ -633,7 +632,6 @@ private:
     void setAttributeInternal(unsigned index, const QualifiedName&, const AtomicString& value, SynchronizationOfLazyAttribute);
     void addAttributeInternal(const QualifiedName&, const AtomicString& value, SynchronizationOfLazyAttribute);
     void removeAttributeInternal(unsigned index, SynchronizationOfLazyAttribute);
-    void attributeChangedFromParserOrByCloning(const QualifiedName&, const AtomicString&, AttributeModificationReason);
 
 #ifndef NDEBUG
     virtual void formatForDebugger(char* buffer, unsigned length) const OVERRIDE;
@@ -685,41 +683,11 @@ private:
 
 inline bool isElement(const Node& node) { return node.isElementNode(); }
 
+NODE_TYPE_CASTS(Element)
 
-#define ELEMENT_TYPE_CASTS(ElementClassName) \
-inline const ElementClassName* to##ElementClassName(const Node* node) \
-{ \
-    ASSERT_WITH_SECURITY_IMPLICATION(!node || is##ElementClassName(*node)); \
-    return static_cast<const ElementClassName*>(node); \
-} \
-inline ElementClassName* to##ElementClassName(Node* node) \
-{ \
-    ASSERT_WITH_SECURITY_IMPLICATION(!node || is##ElementClassName(*node)); \
-    return static_cast<ElementClassName*>(node); \
-} \
-inline const ElementClassName& to##ElementClassName(const Node& node) \
-{ \
-    ASSERT_WITH_SECURITY_IMPLICATION(is##ElementClassName(node)); \
-    return static_cast<const ElementClassName&>(node); \
-} \
-inline ElementClassName& to##ElementClassName(Node& node) \
-{ \
-    ASSERT_WITH_SECURITY_IMPLICATION(is##ElementClassName(node)); \
-    return static_cast<ElementClassName&>(node); \
-} \
-void to##ElementClassName(const ElementClassName*); \
-void to##ElementClassName(const ElementClassName&);
-
-ELEMENT_TYPE_CASTS(Element)
-
-template <typename Type> bool isElementOfType(const Element*);
-template <typename Type> bool isElementOfType(const Node* node) { return node->isElementNode() && isElementOfType<Type>(toElement(node)); }
-template <> inline bool isElementOfType<Element>(const Element*) { return true; }
-
-inline bool isDisabledFormControl(const Node* node)
-{
-    return node->isElementNode() && toElement(node)->isDisabledFormControl();
-}
+template <typename Type> bool isElementOfType(const Element&);
+template <typename Type> inline bool isElementOfType(const Node& node) { return node.isElementNode() && isElementOfType<const Type>(toElement(node)); }
+template <> inline bool isElementOfType<const Element>(const Element&) { return true; }
 
 inline bool Node::hasTagName(const QualifiedName& name) const
 {
@@ -738,13 +706,13 @@ inline bool Node::hasAttributes() const
 
 inline NamedNodeMap* Node::attributes() const
 {
-    return isElementNode() ? toElement(this)->attributes() : 0;
+    return isElementNode() ? toElement(this)->attributes() : nullptr;
 }
 
 inline Element* Node::parentElement() const
 {
     ContainerNode* parent = parentNode();
-    return parent && parent->isElementNode() ? toElement(parent) : 0;
+    return parent && parent->isElementNode() ? toElement(parent) : nullptr;
 }
 
 inline bool Element::fastHasAttribute(const QualifiedName& name) const
@@ -843,11 +811,6 @@ inline UniqueElementData& Element::ensureUniqueElementData()
     if (!elementData() || !elementData()->isUnique())
         createUniqueElementData();
     return static_cast<UniqueElementData&>(*m_elementData);
-}
-
-inline bool isShadowHost(const Node* node)
-{
-    return node && node->isElementNode() && toElement(node)->shadowRoot();
 }
 
 } // namespace

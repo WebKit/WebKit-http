@@ -125,11 +125,10 @@ public:
         // that could be used by this code block even if it exits; it may be more
         // than what this code block needs if it never exits.
         unsigned calleeRegisters = scoreBoard.highWatermark() + m_graph.m_parameterSlots;
-        size_t inlineCallFrameCount = m_graph.m_inlineCallFrames->size();
-        for (size_t i = 0; i < inlineCallFrameCount; i++) {
-            InlineCallFrame* inlineCallFrame = m_graph.m_inlineCallFrames->at(i);
+        for (InlineCallFrameSet::iterator iter = m_graph.m_inlineCallFrames->begin(); !!iter; ++iter) {
+            InlineCallFrame* inlineCallFrame = *iter;
             CodeBlock* codeBlock = baselineCodeBlockForInlineCallFrame(inlineCallFrame);
-            unsigned requiredCalleeRegisters = VirtualRegister(inlineCallFrame->stackOffset).toLocal() + codeBlock->m_numCalleeRegisters;
+            unsigned requiredCalleeRegisters = VirtualRegister(inlineCallFrame->stackOffset).toLocal() + 1 + codeBlock->m_numCalleeRegisters;
             if (requiredCalleeRegisters > calleeRegisters)
                 calleeRegisters = requiredCalleeRegisters;
         }

@@ -35,8 +35,8 @@
 
 namespace WebCore {
 
-RenderMediaVolumeSliderContainer::RenderMediaVolumeSliderContainer(Element* element)
-    : RenderBlockFlow(element)
+RenderMediaVolumeSliderContainer::RenderMediaVolumeSliderContainer(Element& element, PassRef<RenderStyle> style)
+    : RenderBlockFlow(element, std::move(style))
 {
 }
 
@@ -44,7 +44,7 @@ void RenderMediaVolumeSliderContainer::layout()
 {
     RenderBlockFlow::layout();
 
-    if (style()->display() == NONE || !nextSibling() || !nextSibling()->isBox())
+    if (style().display() == NONE || !nextSibling() || !nextSibling()->isBox())
         return;
 
     RenderBox* buttonBox = toRenderBox(nextSibling());
@@ -59,8 +59,8 @@ void RenderMediaVolumeSliderContainer::layout()
 
 // ----------------------------
 
-RenderMediaControlTimelineContainer::RenderMediaControlTimelineContainer(Element* element)
-    : RenderFlexibleBox(element)
+RenderMediaControlTimelineContainer::RenderMediaControlTimelineContainer(Element& element, PassRef<RenderStyle> style)
+    : RenderFlexibleBox(element, std::move(style))
 {
 }
 
@@ -81,15 +81,15 @@ void RenderMediaControlTimelineContainer::layout()
 
 #if ENABLE(VIDEO_TRACK)
 
-RenderTextTrackContainerElement::RenderTextTrackContainerElement(Element* element)
-    : RenderBlockFlow(element)
+RenderTextTrackContainerElement::RenderTextTrackContainerElement(Element& element, PassRef<RenderStyle> style)
+    : RenderBlockFlow(element, std::move(style))
 {
 }
 
 void RenderTextTrackContainerElement::layout()
 {
     RenderBlockFlow::layout();
-    if (style()->display() == NONE)
+    if (style().display() == NONE)
         return;
 
     ASSERT(mediaControlElementType(element()) == MediaTextTrackDisplayContainer);

@@ -33,15 +33,17 @@
 #include "CodeBlock.h"
 #include "DFGDisassembler.h"
 #include "DFGGraph.h"
+#include "DFGInlineCacheWrapper.h"
 #include "DFGJITCode.h"
 #include "DFGOSRExitCompilationInfo.h"
 #include "DFGRegisterBank.h"
 #include "FPRInfo.h"
 #include "GPRInfo.h"
 #include "JITCode.h"
+#include "JITInlineCacheGenerator.h"
 #include "LinkBuffer.h"
 #include "MacroAssembler.h"
-#include "RegisterSet.h"
+#include "TempRegisterSet.h"
 
 namespace JSC {
 
@@ -77,101 +79,19 @@ struct CallLinkRecord {
     FunctionPtr m_function;
 };
 
-struct PropertyAccessRecord {
-    enum RegisterMode { RegistersFlushed, RegistersInUse };
-    
-#if USE(JSVALUE64)
-    PropertyAccessRecord(
-        CodeOrigin codeOrigin,
-        MacroAssembler::DataLabelPtr structureImm,
-        MacroAssembler::PatchableJump structureCheck,
-        MacroAssembler::ConvertibleLoadLabel propertyStorageLoad,
-        MacroAssembler::DataLabelCompact loadOrStore,
-        SlowPathGenerator* slowPathGenerator,
-        MacroAssembler::Label done,
-        int8_t baseGPR,
-        int8_t valueGPR,
-        const RegisterSet& usedRegisters,
-        RegisterMode registerMode = RegistersInUse)
-#elif USE(JSVALUE32_64)
-    PropertyAccessRecord(
-        CodeOrigin codeOrigin,
-        MacroAssembler::DataLabelPtr structureImm,
-        MacroAssembler::PatchableJump structureCheck,
-        MacroAssembler::ConvertibleLoadLabel propertyStorageLoad,
-        MacroAssembler::DataLabelCompact tagLoadOrStore,
-        MacroAssembler::DataLabelCompact payloadLoadOrStore,
-        SlowPathGenerator* slowPathGenerator,
-        MacroAssembler::Label done,
-        int8_t baseGPR,
-        int8_t valueTagGPR,
-        int8_t valueGPR,
-        const RegisterSet& usedRegisters,
-        RegisterMode registerMode = RegistersInUse)
-#endif
-        : m_codeOrigin(codeOrigin)
-        , m_structureImm(structureImm)
-        , m_structureCheck(structureCheck)
-        , m_propertyStorageLoad(propertyStorageLoad)
-#if USE(JSVALUE64)
-        , m_loadOrStore(loadOrStore)
-#elif USE(JSVALUE32_64)
-        , m_tagLoadOrStore(tagLoadOrStore)
-        , m_payloadLoadOrStore(payloadLoadOrStore)
-#endif
-        , m_slowPathGenerator(slowPathGenerator)
-        , m_done(done)
-        , m_baseGPR(baseGPR)
-#if USE(JSVALUE32_64)
-        , m_valueTagGPR(valueTagGPR)
-#endif
-        , m_valueGPR(valueGPR)
-        , m_usedRegisters(usedRegisters)
-        , m_registerMode(registerMode)
-    {
-    }
-
-    CodeOrigin m_codeOrigin;
-    MacroAssembler::DataLabelPtr m_structureImm;
-    MacroAssembler::PatchableJump m_structureCheck;
-    MacroAssembler::ConvertibleLoadLabel m_propertyStorageLoad;
-#if USE(JSVALUE64)
-    MacroAssembler::DataLabelCompact m_loadOrStore;
-#elif USE(JSVALUE32_64)
-    MacroAssembler::DataLabelCompact m_tagLoadOrStore;
-    MacroAssembler::DataLabelCompact m_payloadLoadOrStore;
-#endif
-    SlowPathGenerator* m_slowPathGenerator;
-    MacroAssembler::Label m_done;
-    int8_t m_baseGPR;
-#if USE(JSVALUE32_64)
-    int8_t m_valueTagGPR;
-#endif
-    int8_t m_valueGPR;
-    RegisterSet m_usedRegisters;
-    RegisterMode m_registerMode;
-};
-
 struct InRecord {
     InRecord(
-        CodeOrigin codeOrigin, MacroAssembler::PatchableJump jump,
-        SlowPathGenerator* slowPathGenerator, int8_t baseGPR, int8_t resultGPR,
-        const RegisterSet& usedRegisters)
-        : m_codeOrigin(codeOrigin)
-        , m_jump(jump)
+        MacroAssembler::PatchableJump jump, SlowPathGenerator* slowPathGenerator,
+        StructureStubInfo* stubInfo)
+        : m_jump(jump)
         , m_slowPathGenerator(slowPathGenerator)
-        , m_baseGPR(baseGPR)
-        , m_resultGPR(resultGPR)
-        , m_usedRegisters(usedRegisters)
+        , m_stubInfo(stubInfo)
     {
     }
     
-    CodeOrigin m_codeOrigin;
     MacroAssembler::PatchableJump m_jump;
     SlowPathGenerator* m_slowPathGenerator;
-    int8_t m_baseGPR;
-    int8_t m_resultGPR;
-    RegisterSet m_usedRegisters;
+    StructureStubInfo* m_stubInfo;
 };
 
 // === JITCompiler ===
@@ -195,15 +115,6 @@ public:
 
     // Accessors for properties.
     Graph& graph() { return m_graph; }
-    
-    void addLazily(Watchpoint* watchpoint, WatchpointSet* set)
-    {
-        m_graph.watchpoints().addLazily(watchpoint, set);
-    }
-    void addLazily(Watchpoint* watchpoint, InlineWatchpointSet& set)
-    {
-        m_graph.watchpoints().addLazily(watchpoint, set);
-    }
     
     // Methods to set labels for the disassembler.
     void setStartOfCode()
@@ -277,11 +188,12 @@ public:
         m_exceptionChecks.append(branchTestPtr(Zero, GPRInfo::returnValueGPR));
     }
     
-    void appendExitInfo(MacroAssembler::JumpList jumpsToFail = MacroAssembler::JumpList())
+    OSRExitCompilationInfo& appendExitInfo(MacroAssembler::JumpList jumpsToFail = MacroAssembler::JumpList())
     {
         OSRExitCompilationInfo info;
         info.m_failureJumps = jumpsToFail;
         m_exitCompilationInfo.append(info);
+        return m_exitCompilationInfo.last();
     }
 
 #if USE(JSVALUE32_64)
@@ -293,11 +205,16 @@ public:
     }
 #endif
 
-    void addPropertyAccess(const PropertyAccessRecord& record)
+    void addGetById(const JITGetByIdGenerator& gen, SlowPathGenerator* slowPath)
     {
-        m_propertyAccesses.append(record);
+        m_getByIds.append(InlineCacheWrapper<JITGetByIdGenerator>(gen, slowPath));
     }
     
+    void addPutById(const JITPutByIdGenerator& gen, SlowPathGenerator* slowPath)
+    {
+        m_putByIds.append(InlineCacheWrapper<JITPutByIdGenerator>(gen, slowPath));
+    }
+
     void addIn(const InRecord& record)
     {
         m_ins.append(record);
@@ -424,11 +341,12 @@ private:
         CodeOrigin m_codeOrigin;
     };
     
-    Vector<PropertyAccessRecord, 4> m_propertyAccesses;
+    Vector<InlineCacheWrapper<JITGetByIdGenerator>, 4> m_getByIds;
+    Vector<InlineCacheWrapper<JITPutByIdGenerator>, 4> m_putByIds;
     Vector<InRecord, 4> m_ins;
     Vector<JSCallRecord, 4> m_jsCalls;
-    Vector<OSRExitCompilationInfo> m_exitCompilationInfo;
-    Vector<Vector<Label> > m_exitSiteLabels;
+    SegmentedVector<OSRExitCompilationInfo, 4> m_exitCompilationInfo;
+    Vector<Vector<Label>> m_exitSiteLabels;
     
     Call m_callArityFixup;
     Label m_arityCheck;

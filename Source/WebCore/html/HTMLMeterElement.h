@@ -72,7 +72,7 @@ private:
     virtual bool supportLabels() const OVERRIDE { return true; }
 
     virtual bool recalcWillValidate() const { return false; }
-    virtual RenderElement* createRenderer(RenderArena&, RenderStyle&) OVERRIDE;
+    virtual RenderElement* createRenderer(PassRef<RenderStyle>) OVERRIDE;
     virtual bool childShouldCreateRenderer(const Node*) const OVERRIDE;
     virtual void parseAttribute(const QualifiedName&, const AtomicString&) OVERRIDE;
 
@@ -82,7 +82,7 @@ private:
     RefPtr<MeterValueElement> m_value;
 };
 
-ELEMENT_TYPE_CASTS(HTMLMeterElement)
+NODE_TYPE_CASTS(HTMLMeterElement)
 
 } // namespace
 

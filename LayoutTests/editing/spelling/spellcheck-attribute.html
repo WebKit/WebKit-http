@@ -59,7 +59,7 @@ function testMarkerForMisspelledWord(id, shouldBeMarked) {
     log("id=" + id + " type=" + inputElement.type + " spellcheck=" + inputElement.spellcheck
         + " parent's spellcheck=" + inputElement.parentNode.spellcheck);
 
-    shouldBe("internals.hasSpellingMarker(document, 0, 2)", shouldBeMarked ? "true" : "false")
+    shouldBe("internals.hasSpellingMarker(0, 2)", shouldBeMarked ? "true" : "false")
 }
 
 // For type="text".
@@ -94,10 +94,10 @@ testMarkerForMisspelledWord('test4_5', true);
 testMarkerForMisspelledWord('test4_6', false);
 
 if (window.testRunner) {
-    testRunner.dumpAsText();
     // Cleaning up for expeation text if running on DRT.
     document.getElementById("testRoot").style.display = "none";
 }
 </script>
+<script src="../../resources/js-test-post.js"></script>
 </body>
 </html>

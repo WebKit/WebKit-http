@@ -34,13 +34,10 @@
 
 #include "InspectorBaseAgent.h"
 
-#include "InspectorState.h"
-
 namespace WebCore {
 
-InspectorBaseAgentInterface::InspectorBaseAgentInterface(const String& name, InstrumentingAgents* instrumentingAgents, InspectorCompositeState* inspectorState)
+InspectorBaseAgentInterface::InspectorBaseAgentInterface(const String& name, InstrumentingAgents* instrumentingAgents)
     : m_instrumentingAgents(instrumentingAgents)
-    , m_state(inspectorState->createAgentState(name))
     , m_name(name)
 {
 }
@@ -64,12 +61,6 @@ void InspectorAgentRegistry::clearFrontend()
 {
     for (size_t i = 0; i < m_agents.size(); i++)
         m_agents[i]->clearFrontend();
-}
-
-void InspectorAgentRegistry::restore()
-{
-    for (size_t i = 0; i < m_agents.size(); i++)
-        m_agents[i]->restore();
 }
 
 void InspectorAgentRegistry::registerInDispatcher(InspectorBackendDispatcher* dispatcher)

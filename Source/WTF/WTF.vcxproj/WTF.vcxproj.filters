@@ -75,6 +75,15 @@
     <ClCompile Include="..\wtf\text\WTFString.cpp">
       <Filter>text</Filter>
     </ClCompile>
+    <ClCompile Include="..\wtf\text\cf\AtomicStringCF.cpp">
+      <Filter>text</Filter>
+    </ClCompile>
+    <ClCompile Include="..\wtf\text\cf\StringCF.cpp">
+      <Filter>text</Filter>
+    </ClCompile>
+    <ClCompile Include="..\wtf\text\cf\StringImpleCF.cpp">
+      <Filter>text</Filter>
+    </ClCompile>
     <ClCompile Include="..\wtf\win\MainThreadWin.cpp">
       <Filter>win</Filter>
     </ClCompile>
@@ -525,6 +534,9 @@
       <Filter>wtf</Filter>
     </ClInclude>
     <ClInclude Include="..\wtf\PassOwnPtr.h">
+      <Filter>wtf</Filter>
+    </ClInclude>
+    <ClInclude Include="..\wtf\PassRef.h">
       <Filter>wtf</Filter>
     </ClInclude>
     <ClInclude Include="..\wtf\PassRefPtr.h">

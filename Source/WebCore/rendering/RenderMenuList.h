@@ -43,7 +43,7 @@ class RenderText;
 class RenderMenuList FINAL : public RenderFlexibleBox, private PopupMenuClient {
 
 public:
-    explicit RenderMenuList(HTMLSelectElement&);
+    RenderMenuList(HTMLSelectElement&, PassRef<RenderStyle>);
     virtual ~RenderMenuList();
 
     HTMLSelectElement& selectElement() const;
@@ -64,7 +64,7 @@ private:
     virtual bool isMenuList() const OVERRIDE { return true; }
 
     virtual void addChild(RenderObject* newChild, RenderObject* beforeChild = 0) OVERRIDE;
-    virtual void removeChild(RenderObject*) OVERRIDE;
+    virtual void removeChild(RenderObject&) OVERRIDE;
     virtual bool createsAnonymousWrapper() const OVERRIDE { return true; }
 
     virtual void updateFromElement() OVERRIDE;
@@ -122,7 +122,7 @@ private:
     {
         return RenderBlock::baselinePosition(baseline, firstLine, direction, position);
     }
-    virtual int firstLineBoxBaseline() const OVERRIDE { return RenderBlock::firstLineBoxBaseline(); }
+    virtual int firstLineBaseline() const OVERRIDE { return RenderBlock::firstLineBaseline(); }
     virtual int inlineBlockBaseline(LineDirectionMode direction) const OVERRIDE { return RenderBlock::inlineBlockBaseline(direction); }
 
     void getItemBackgroundColor(unsigned listIndex, Color&, bool& itemHasCustomBackgroundColor) const;
@@ -149,14 +149,7 @@ private:
     bool m_popupIsVisible;
 };
 
-inline RenderMenuList* toRenderMenuList(RenderObject* object)
-{
-    ASSERT_WITH_SECURITY_IMPLICATION(!object || object->isMenuList());
-    return static_cast<RenderMenuList*>(object);
-}
-
-// This will catch anyone doing an unnecessary cast.
-void toRenderMenuList(const RenderMenuList*);
+RENDER_OBJECT_TYPE_CASTS(RenderMenuList, isMenuList())
 
 }
 

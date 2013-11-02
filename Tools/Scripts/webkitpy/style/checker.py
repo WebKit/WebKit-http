@@ -151,6 +151,8 @@ _PATH_RULES_SPECIFIER = [
       # lower-cased, underscore-separated values, whitespace before
       # parens for function calls, and always having variable names.
       # Also, GTK+ allows the use of NULL.
+      "Source/WebCore/bindings/gobject/WebKitDOMCustom.h",
+      "Source/WebCore/bindings/gobject/WebKitDOMEventTarget.h",
       "Source/WebCore/bindings/scripts/test/GObject",
       "Source/WebKit/gtk/webkit/",
       "Tools/DumpRenderTree/gtk/"],
@@ -168,7 +170,11 @@ _PATH_RULES_SPECIFIER = [
 
     ([# Header files in ForwardingHeaders have no header guards or
       # exceptional header guards (e.g., WebCore_FWD_Debugger_h).
-      "/ForwardingHeaders/"],
+      "/ForwardingHeaders/",
+      # Nix platform API classes uses common names under Nix namespace
+      # so the include guards should also include the namespace to avoid
+      # name clashes.
+       "Source/Platform/nix"],
      ["-build/header_guard"]),
     ([# assembler has lots of opcodes that use underscores, so
       # we don't check for underscores in that directory.
@@ -216,7 +222,7 @@ _PATH_RULES_SPECIFIER = [
     ([# These files define GObjects, which implies some definitions of
       # variables and functions containing underscores.
       "Source/WebCore/bindings/gobject/WebKitDOMCustom.cpp",
-      "Source/WebCore/bindings/gobject/WebKitDOMCustom.h",
+      "Source/WebCore/bindings/gobject/WebKitDOMEventTarget.cpp",
       "Source/WebCore/platform/graphics/gstreamer/VideoSinkGStreamer1.cpp",
       "Source/WebCore/platform/graphics/gstreamer/VideoSinkGStreamer.cpp",
       "Source/WebCore/platform/graphics/gstreamer/WebKitWebSourceGStreamer.cpp",

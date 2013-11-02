@@ -30,31 +30,17 @@
 #import <WebCore/ResourceError.h>
 #import <WebKitSystemInterface.h>
 #import <wtf/MainThread.h>
-#import <wtf/PassOwnPtr.h>
-#import <wtf/OwnPtr.h>
+#import <wtf/NeverDestroyed.h>
 
 using namespace WebCore;
 
 namespace WebKit {
 
-static OwnPtr<NetworkStorageSession>& privateBrowsingStorageSession()
+static std::unique_ptr<NetworkStorageSession>& privateBrowsingStorageSession()
 {
     ASSERT(isMainThread());
-    DEFINE_STATIC_LOCAL(OwnPtr<NetworkStorageSession>, session, ());
+    static NeverDestroyed<std::unique_ptr<NetworkStorageSession>> session;
     return session;
-}
-
-bool RemoteNetworkingContext::shouldClearReferrerOnHTTPSToHTTPRedirect() const
-{
-    return m_shouldClearReferrerOnHTTPSToHTTPRedirect;
-}
-
-RemoteNetworkingContext::RemoteNetworkingContext(bool needsSiteSpecificQuirks, bool localFileContentSniffingEnabled, bool privateBrowsingEnabled, bool shouldClearReferrerOnHTTPSToHTTPRedirect)
-    : m_needsSiteSpecificQuirks(needsSiteSpecificQuirks)
-    , m_localFileContentSniffingEnabled(localFileContentSniffingEnabled)
-    , m_privateBrowsingEnabled(privateBrowsingEnabled)
-    , m_shouldClearReferrerOnHTTPSToHTTPRedirect(shouldClearReferrerOnHTTPSToHTTPRedirect)
-{
 }
 
 RemoteNetworkingContext::~RemoteNetworkingContext()
@@ -125,7 +111,7 @@ void RemoteNetworkingContext::ensurePrivateBrowsingSession()
     ASSERT(!privateBrowsingStorageSessionIdentifierBase().isNull());
     RetainPtr<CFStringRef> cfIdentifier = String(privateBrowsingStorageSessionIdentifierBase() + ".PrivateBrowsing").createCFString();
 
-    privateBrowsingStorageSession() = NetworkStorageSession::createPrivateBrowsingSession(privateBrowsingStorageSessionIdentifierBase());
+    privateBrowsingStorageSession() = std::move(NetworkStorageSession::createPrivateBrowsingSession(privateBrowsingStorageSessionIdentifierBase()));
 }
 
 void RemoteNetworkingContext::destroyPrivateBrowsingSession()

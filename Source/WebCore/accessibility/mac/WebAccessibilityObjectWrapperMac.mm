@@ -77,7 +77,6 @@
 
 using namespace WebCore;
 using namespace HTMLNames;
-using namespace std;
 
 // Cell Tables
 #ifndef NSAccessibilitySelectedCellsAttribute
@@ -193,6 +192,15 @@ using namespace std;
 // Search
 #ifndef NSAccessibilityUIElementsForSearchPredicateParameterizedAttribute
 #define NSAccessibilityUIElementsForSearchPredicateParameterizedAttribute @"AXUIElementsForSearchPredicate"
+#endif
+
+// Text
+#ifndef NSAccessibilityEndTextMarkerForBoundsParameterizedAttribute
+#define NSAccessibilityEndTextMarkerForBoundsParameterizedAttribute @"AXEndTextMarkerForBounds"
+#endif
+
+#ifndef NSAccessibilityStartTextMarkerForBoundsParameterizedAttribute
+#define NSAccessibilityStartTextMarkerForBoundsParameterizedAttribute @"AXStartTextMarkerForBounds"
 #endif
 
 // Search Keys
@@ -440,6 +448,23 @@ static id AXTextMarkerRangeEnd(id range)
     return CFBridgingRelease(wkCopyAXTextMarkerRangeEnd(range));
 }
 
+#pragma mark Other helpers
+
+- (IntRect)screenToContents:(const IntRect&)rect
+{
+    Document* document = m_object->document();
+    if (!document)
+        return IntRect();
+    
+    FrameView* frameView = document->view();
+    if (!frameView)
+        return IntRect();
+    
+    IntPoint startPoint = frameView->screenToContents(rect.minXMaxYCorner());
+    IntPoint endPoint = frameView->screenToContents(rect.maxXMinYCorner());
+    return IntRect(startPoint.x(), startPoint.y(), endPoint.x() - startPoint.x(), endPoint.y() - startPoint.y());
+}
+
 #pragma mark Search helpers
 
 typedef HashMap<String, AccessibilitySearchKey> AccessibilitySearchKeyMap;
@@ -644,17 +669,17 @@ static void AXAttributeStringSetNumber(NSMutableAttributedString* attrString, NS
 
 static void AXAttributeStringSetStyle(NSMutableAttributedString* attrString, RenderObject* renderer, NSRange range)
 {
-    RenderStyle* style = renderer->style();
+    const RenderStyle& style = renderer->style();
     
     // set basic font info
-    AXAttributeStringSetFont(attrString, NSAccessibilityFontTextAttribute, style->font().primaryFont()->getNSFont(), range);
+    AXAttributeStringSetFont(attrString, NSAccessibilityFontTextAttribute, style.font().primaryFont()->getNSFont(), range);
     
     // set basic colors
-    AXAttributeStringSetColor(attrString, NSAccessibilityForegroundColorTextAttribute, nsColor(style->visitedDependentColor(CSSPropertyColor)), range);
-    AXAttributeStringSetColor(attrString, NSAccessibilityBackgroundColorTextAttribute, nsColor(style->visitedDependentColor(CSSPropertyBackgroundColor)), range);
+    AXAttributeStringSetColor(attrString, NSAccessibilityForegroundColorTextAttribute, nsColor(style.visitedDependentColor(CSSPropertyColor)), range);
+    AXAttributeStringSetColor(attrString, NSAccessibilityBackgroundColorTextAttribute, nsColor(style.visitedDependentColor(CSSPropertyBackgroundColor)), range);
     
     // set super/sub scripting
-    EVerticalAlign alignment = style->verticalAlign();
+    EVerticalAlign alignment = style.verticalAlign();
     if (alignment == SUB)
         AXAttributeStringSetNumber(attrString, NSAccessibilitySuperscriptTextAttribute, [NSNumber numberWithInt:(-1)], range);
     else if (alignment == SUPER)
@@ -663,13 +688,13 @@ static void AXAttributeStringSetStyle(NSMutableAttributedString* attrString, Ren
         [attrString removeAttribute:NSAccessibilitySuperscriptTextAttribute range:range];
     
     // set shadow
-    if (style->textShadow())
+    if (style.textShadow())
         AXAttributeStringSetNumber(attrString, NSAccessibilityShadowTextAttribute, [NSNumber numberWithBool:YES], range);
     else
         [attrString removeAttribute:NSAccessibilityShadowTextAttribute range:range];
     
     // set underline and strikethrough
-    int decor = style->textDecorationsInEffect();
+    int decor = style.textDecorationsInEffect();
     if ((decor & TextDecorationUnderline) == 0) {
         [attrString removeAttribute:NSAccessibilityUnderlineTextAttribute range:range];
         [attrString removeAttribute:NSAccessibilityUnderlineColorTextAttribute range:range];
@@ -1224,6 +1249,7 @@ static id textMarkerRangeFromVisiblePositions(AXObjectCache *cache, VisiblePosit
         [tempArray addObject:(NSString*)kAXMenuItemMarkCharAttribute];
         [tempArray addObject:(NSString*)kAXMenuItemPrimaryUIElementAttribute];
         [tempArray addObject:NSAccessibilityServesAsTitleForUIElementsAttribute];
+        [tempArray addObject:NSAccessibilityFocusedAttribute];
         menuItemAttrs = [[NSArray alloc] initWithArray:tempArray];
         [tempArray release];
     }
@@ -2817,6 +2843,8 @@ static NSString* roleValueToNSString(AccessibilityRole value)
                       NSAccessibilityBoundsForRangeParameterizedAttribute,
                       NSAccessibilityStringForRangeParameterizedAttribute,
                       NSAccessibilityUIElementsForSearchPredicateParameterizedAttribute,
+                      NSAccessibilityEndTextMarkerForBoundsParameterizedAttribute,
+                      NSAccessibilityStartTextMarkerForBoundsParameterizedAttribute,
                       nil];
     }
     
@@ -3156,6 +3184,8 @@ static RenderObject* rendererForView(NSView* view)
     bool pointSet = false;
     NSRange range = {0, 0};
     bool rangeSet = false;
+    NSRect rect = NSZeroRect;
+    bool rectSet = false;
     
     // basic parameter validation
     if (!m_object || !attribute || !parameter)
@@ -3192,6 +3222,9 @@ static RenderObject* rendererForView(NSView* view)
     } else if ([parameter isKindOfClass:[NSValue self]] && strcmp([(NSValue*)parameter objCType], @encode(NSRange)) == 0) {
         rangeSet = true;
         range = [(NSValue*)parameter rangeValue];
+    } else if ([parameter isKindOfClass:[NSValue self]] && strcmp([(NSValue*)parameter objCType], @encode(NSRect)) == 0) {
+        rectSet = true;
+        rect = [(NSValue*)parameter rectValue];
     } else {
         // Attribute type is not supported. Allow super to handle.
         return [super accessibilityAttributeValue:attribute forParameter:parameter];
@@ -3238,6 +3271,15 @@ static RenderObject* rendererForView(NSView* view)
         m_object->findMatchingObjects(&criteria, results);
         
         return convertToNSArray(results);
+    }
+    
+    if ([attribute isEqualToString:NSAccessibilityEndTextMarkerForBoundsParameterizedAttribute]) {
+        IntRect webCoreRect = [self screenToContents:enclosingIntRect(rect)];
+        return [self textMarkerForVisiblePosition:m_object->visiblePositionForBounds(webCoreRect, LastVisiblePositionForBounds)];
+    }
+    if ([attribute isEqualToString:NSAccessibilityStartTextMarkerForBoundsParameterizedAttribute]) {
+        IntRect webCoreRect = [self screenToContents:enclosingIntRect(rect)];
+        return [self textMarkerForVisiblePosition:m_object->visiblePositionForBounds(webCoreRect, FirstVisiblePositionForBounds)];
     }
     
     if ([attribute isEqualToString:NSAccessibilityTextMarkerIsValidParameterizedAttribute]) {
@@ -3577,7 +3619,7 @@ static RenderObject* rendererForView(NSView* view)
             if (index >= childCount)
                 return nil;
             
-            NSUInteger arrayLength = min(childCount - index, maxCount);
+            NSUInteger arrayLength = std::min(childCount - index, maxCount);
             return [children subarrayWithRange:NSMakeRange(index, arrayLength)];
         } else if (m_object->isTree()) {
             // Tree objects return their rows as their children. We can use the original method in this case.
@@ -3589,7 +3631,7 @@ static RenderObject* rendererForView(NSView* view)
         if (index >= childCount)
             return nil;
         
-        unsigned available = min(childCount - index, maxCount);
+        unsigned available = std::min(childCount - index, maxCount);
         
         NSMutableArray *subarray = [NSMutableArray arrayWithCapacity:available];
         for (unsigned added = 0; added < available; ++index, ++added) {

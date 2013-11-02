@@ -38,8 +38,8 @@ using namespace std;
 
 namespace WebCore {
 
-RenderRubyBase::RenderRubyBase()
-    : RenderBlockFlow(0)
+RenderRubyBase::RenderRubyBase(Document& document, PassRef<RenderStyle> style)
+    : RenderBlockFlow(document, std::move(style))
 {
     setInline(false);
 }
@@ -48,16 +48,9 @@ RenderRubyBase::~RenderRubyBase()
 {
 }
 
-RenderRubyBase* RenderRubyBase::createAnonymous(Document& document)
+bool RenderRubyBase::isChildAllowed(const RenderObject& child, const RenderStyle&) const
 {
-    RenderRubyBase* renderer = new (*document.renderArena()) RenderRubyBase();
-    renderer->setDocumentForAnonymous(document);
-    return renderer;
-}
-
-bool RenderRubyBase::isChildAllowed(RenderObject* child, RenderStyle*) const
-{
-    return child->isInline();
+    return child.isInline();
 }
 
 void RenderRubyBase::moveChildren(RenderRubyBase* toBase, RenderObject* beforeChild)
@@ -124,7 +117,7 @@ void RenderRubyBase::moveBlockChildren(RenderRubyBase* toBase, RenderObject* bef
         RenderBlock* anonBlockHere = toRenderBlock(firstChildHere);
         RenderBlock* anonBlockThere = toRenderBlock(lastChildThere);
         anonBlockHere->moveAllChildrenTo(anonBlockThere, true);
-        anonBlockHere->deleteLineBoxTree();
+        anonBlockHere->deleteLines();
         anonBlockHere->destroy();
     }
     // Move all remaining children normally.

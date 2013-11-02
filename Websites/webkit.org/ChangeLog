@@ -1,3 +1,46 @@
+2013-10-29  Beth Dakin  <bdakin@apple.com>
+
+        Just updating the sample code for this potential blog post.
+
+        * blog-files/regions/pizza-is-amazing.png: Replaced.
+        * blog-files/regions/unstyled-article.png: Replaced.
+        * demos/regions/pizza-regions-manifesto-regionstyling.html:
+        * demos/regions/pizza-regions-manifesto.html:
+
+2013-10-18  Tibor Meszaros  <tmeszaros@inf.u-szeged.hu>
+
+        Mixed content error when accessing webkit.org/team.html over https
+        https://bugs.webkit.org/show_bug.cgi?id=123020
+
+        Reviewed by Alexey Proskuryakov.
+
+        When the webkit.org/team.html page is accessed over https most browsers report
+        Mixed Content error, which is caused by the fact that the contributos.json file
+        is accessed over a plain http connection and not https.     
+
+        * team.html:
+
+2013-10-18  Tibor Meszaros  <tmeszaros@inf.u-szeged.hu>
+
+        Cleanup webkit.org/team.html
+        https://bugs.webkit.org/show_bug.cgi?id=123022
+
+        Reviewed by Alexey Proskuryakov.
+
+        Removed the annoteWithWikiData function, because data it tries to fetch does not exists.
+
+        * team.html:
+
+2013-10-16  Geoffrey Garen  <ggaren@apple.com>
+
+        Publish SunSpider 1.0.2
+        https://bugs.webkit.org/show_bug.cgi?id=122923
+
+        Reviewed by Darin Adler.
+
+        * perf/sunspider/sunspider.html:
+        * perf/sunspider/versions.html:
+
 2013-10-08  Geoffrey Garen  <ggaren@apple.com>
 
         Refined power management in SunSpider 1.0.2

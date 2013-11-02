@@ -52,7 +52,7 @@ typedef String ErrorString;
 class InspectorHeapProfilerAgent : public InspectorBaseAgent<InspectorHeapProfilerAgent>, public InspectorBackendDispatcher::HeapProfilerCommandHandler {
     WTF_MAKE_NONCOPYABLE(InspectorHeapProfilerAgent); WTF_MAKE_FAST_ALLOCATED;
 public:
-    static PassOwnPtr<InspectorHeapProfilerAgent> create(InstrumentingAgents*, InspectorCompositeState*, InjectedScriptManager*);
+    static PassOwnPtr<InspectorHeapProfilerAgent> create(InstrumentingAgents*, InjectedScriptManager*);
     virtual ~InspectorHeapProfilerAgent();
 
     virtual void collectGarbage(ErrorString*);
@@ -61,13 +61,12 @@ public:
 
     virtual void hasHeapProfiler(ErrorString*, bool*);
 
-    virtual void getProfileHeaders(ErrorString*, RefPtr<TypeBuilder::Array<TypeBuilder::HeapProfiler::ProfileHeader> >&);
+    virtual void getProfileHeaders(ErrorString*, RefPtr<TypeBuilder::Array<TypeBuilder::HeapProfiler::ProfileHeader>>&);
     virtual void getHeapSnapshot(ErrorString*, int uid);
     virtual void removeProfile(ErrorString*, int uid);
 
     virtual void setFrontend(InspectorFrontend*);
     virtual void clearFrontend();
-    virtual void restore();
 
     virtual void takeHeapSnapshot(ErrorString*, const bool* reportProgress);
 
@@ -75,9 +74,9 @@ public:
     virtual void getHeapObjectId(ErrorString*, const String& objectId, String* heapSnapshotObjectId);
 
 private:
-    InspectorHeapProfilerAgent(InstrumentingAgents*, InspectorCompositeState*, InjectedScriptManager*);
+    InspectorHeapProfilerAgent(InstrumentingAgents*, InjectedScriptManager*);
 
-    typedef HashMap<unsigned, RefPtr<ScriptHeapSnapshot> > IdToHeapSnapshotMap;
+    typedef HashMap<unsigned, RefPtr<ScriptHeapSnapshot>> IdToHeapSnapshotMap;
 
     void resetFrontendProfiles();
 
@@ -87,6 +86,7 @@ private:
     InspectorFrontend::HeapProfiler* m_frontend;
     unsigned m_nextUserInitiatedHeapSnapshotNumber;
     IdToHeapSnapshotMap m_snapshots;
+    bool m_profileHeadersRequested;
 };
 
 } // namespace WebCore

@@ -39,6 +39,8 @@ list(APPEND WebCore_SOURCES
 
     editing/efl/EditorEfl.cpp
 
+    html/shadow/MediaControlsApple.cpp
+
     loader/soup/CachedRawResourceSoup.cpp
     loader/soup/SubresourceLoaderSoup.cpp
 
@@ -121,6 +123,7 @@ list(APPEND WebCore_SOURCES
     platform/graphics/freetype/GlyphPageTreeNodeFreeType.cpp
     platform/graphics/freetype/SimpleFontDataFreeType.cpp
 
+    platform/graphics/gstreamer/AudioTrackPrivateGStreamer.cpp
     platform/graphics/gstreamer/GRefPtrGStreamer.cpp
     platform/graphics/gstreamer/GStreamerGWorld.cpp
     platform/graphics/gstreamer/GStreamerUtilities.cpp
@@ -132,7 +135,9 @@ list(APPEND WebCore_SOURCES
     platform/graphics/gstreamer/PlatformVideoWindowEfl.cpp
     platform/graphics/gstreamer/TextCombinerGStreamer.cpp
     platform/graphics/gstreamer/TextSinkGStreamer.cpp
+    platform/graphics/gstreamer/TrackPrivateBaseGStreamer.cpp
     platform/graphics/gstreamer/VideoSinkGStreamer.cpp
+    platform/graphics/gstreamer/VideoTrackPrivateGStreamer.cpp
     platform/graphics/gstreamer/WebKitWebSourceGStreamer.cpp
 
     platform/graphics/harfbuzz/HarfBuzzFace.cpp
@@ -278,9 +283,6 @@ if (ENABLE_VIDEO)
 endif ()
 
 if (WTF_USE_3D_GRAPHICS)
-    set(WTF_USE_OPENGL 1)
-    add_definitions(-DWTF_USE_OPENGL=1)
-
     list(APPEND WebCore_INCLUDE_DIRECTORIES
         "${WEBCORE_DIR}/platform/graphics/opengl"
         "${WEBCORE_DIR}/platform/graphics/surfaces"
@@ -349,12 +351,16 @@ if (WTF_USE_3D_GRAPHICS)
 
     list(APPEND WebCore_LIBRARIES
         ${X11_X11_LIB}
-        ${X11_Xcomposite_LIB}
-        ${X11_Xrender_LIB}
     )
+
     if (WTF_USE_EGL)
         list(APPEND WebCore_LIBRARIES
             ${EGL_LIBRARY}
+        )
+    elseif (X11_Xcomposite_FOUND AND X11_Xrender_FOUND)
+        list(APPEND WebCore_LIBRARIES
+            ${X11_Xcomposite_LIB}
+            ${X11_Xrender_LIB}
         )
     endif ()
 endif ()

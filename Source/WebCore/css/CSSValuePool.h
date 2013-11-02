@@ -44,9 +44,9 @@ class CSSValuePool {
 public:
     PassRefPtr<CSSValueList> createFontFaceValue(const AtomicString&);
     PassRefPtr<CSSPrimitiveValue> createFontFamilyValue(const String&);
-    PassRefPtr<CSSInheritedValue> createInheritedValue() { return m_inheritedValue; }
-    PassRefPtr<CSSInitialValue> createImplicitInitialValue() { return m_implicitInitialValue; }
-    PassRefPtr<CSSInitialValue> createExplicitInitialValue() { return m_explicitInitialValue; }
+    PassRef<CSSInheritedValue> createInheritedValue() { return m_inheritedValue.get(); }
+    PassRef<CSSInitialValue> createImplicitInitialValue() { return m_implicitInitialValue.get(); }
+    PassRef<CSSInitialValue> createExplicitInitialValue() { return m_explicitInitialValue.get(); }
     PassRefPtr<CSSPrimitiveValue> createIdentifierValue(CSSValueID identifier);
     PassRefPtr<CSSPrimitiveValue> createIdentifierValue(CSSPropertyID identifier);
     PassRefPtr<CSSPrimitiveValue> createColorValue(unsigned rgbValue);
@@ -60,13 +60,13 @@ public:
 private:
     CSSValuePool();
 
-    RefPtr<CSSInheritedValue> m_inheritedValue;
-    RefPtr<CSSInitialValue> m_implicitInitialValue;
-    RefPtr<CSSInitialValue> m_explicitInitialValue;
+    Ref<CSSInheritedValue> m_inheritedValue;
+    Ref<CSSInitialValue> m_implicitInitialValue;
+    Ref<CSSInitialValue> m_explicitInitialValue;
 
     RefPtr<CSSPrimitiveValue> m_identifierValueCache[numCSSValueKeywords];
 
-    typedef HashMap<unsigned, RefPtr<CSSPrimitiveValue> > ColorValueCache;
+    typedef HashMap<unsigned, RefPtr<CSSPrimitiveValue>> ColorValueCache;
     ColorValueCache m_colorValueCache;
     RefPtr<CSSPrimitiveValue> m_colorTransparent;
     RefPtr<CSSPrimitiveValue> m_colorWhite;
@@ -78,10 +78,10 @@ private:
     RefPtr<CSSPrimitiveValue> m_percentValueCache[maximumCacheableIntegerValue + 1];
     RefPtr<CSSPrimitiveValue> m_numberValueCache[maximumCacheableIntegerValue + 1];
 
-    typedef HashMap<AtomicString, RefPtr<CSSValueList> > FontFaceValueCache;
+    typedef HashMap<AtomicString, RefPtr<CSSValueList>> FontFaceValueCache;
     FontFaceValueCache m_fontFaceValueCache;
 
-    typedef HashMap<String, RefPtr<CSSPrimitiveValue> > FontFamilyValueCache;
+    typedef HashMap<String, RefPtr<CSSPrimitiveValue>> FontFamilyValueCache;
     FontFamilyValueCache m_fontFamilyValueCache;
 
     friend CSSValuePool& cssValuePool();

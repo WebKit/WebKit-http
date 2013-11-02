@@ -34,8 +34,6 @@
 #include "Logging.h"
 #include "RuntimeEnabledFeatures.h"
 
-using namespace std;
-
 namespace WebCore {
 
 using namespace HTMLNames;
@@ -86,7 +84,7 @@ Node::InsertionNotificationRequest HTMLTrackElement::insertedInto(ContainerNode&
 
 void HTMLTrackElement::removedFrom(ContainerNode& insertionPoint)
 {
-    if (!parentNode() && WebCore::isMediaElement(&insertionPoint))
+    if (!parentNode() && isHTMLMediaElement(insertionPoint))
         toHTMLMediaElement(insertionPoint).didRemoveTextTrack(this);
     HTMLElement::removedFrom(insertionPoint);
 }

@@ -45,7 +45,7 @@ class ScriptExecutionContext;
 
 class MediaController FINAL : public RefCounted<MediaController>, public MediaControllerInterface, public EventTargetWithInlineData {
 public:
-    static PassRefPtr<MediaController> create(ScriptExecutionContext*);
+    static PassRefPtr<MediaController> create(ScriptExecutionContext&);
     virtual ~MediaController();
 
     void addMediaElement(HTMLMediaElement*);
@@ -114,7 +114,7 @@ public:
     using RefCounted<MediaController>::deref;
 
 private:
-    explicit MediaController(ScriptExecutionContext*);
+    explicit MediaController(ScriptExecutionContext&);
     void reportControllerState();
     void updateReadyState();
     void updatePlaybackState();
@@ -132,7 +132,7 @@ private:
     virtual void refEventTarget() OVERRIDE { ref(); }
     virtual void derefEventTarget() OVERRIDE { deref(); }
     virtual EventTargetInterface eventTargetInterface() const OVERRIDE { return MediaControllerEventTargetInterfaceType; }
-    virtual ScriptExecutionContext* scriptExecutionContext() const OVERRIDE { return m_scriptExecutionContext; };
+    virtual ScriptExecutionContext* scriptExecutionContext() const OVERRIDE { return &m_scriptExecutionContext; };
 
     friend class HTMLMediaElement;
     friend class MediaControllerEventListener;
@@ -144,13 +144,13 @@ private:
     bool m_muted;
     ReadyState m_readyState;
     PlaybackState m_playbackState;
-    Vector<RefPtr<Event> > m_pendingEvents;
+    Vector<RefPtr<Event>> m_pendingEvents;
     Timer<MediaController> m_asyncEventTimer;
     mutable Timer<MediaController> m_clearPositionTimer;
     String m_mediaGroup;
     bool m_closedCaptionsVisible;
-    PassRefPtr<Clock> m_clock;
-    ScriptExecutionContext* m_scriptExecutionContext;
+    std::unique_ptr<Clock> m_clock;
+    ScriptExecutionContext& m_scriptExecutionContext;
     Timer<MediaController> m_timeupdateTimer;
     double m_previousTimeupdateTime;
 };

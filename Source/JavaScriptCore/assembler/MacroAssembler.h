@@ -34,6 +34,10 @@
 #include "MacroAssemblerARMv7.h"
 namespace JSC { typedef MacroAssemblerARMv7 MacroAssemblerBase; };
 
+#elif CPU(ARM64)
+#include "MacroAssemblerARM64.h"
+namespace JSC { typedef MacroAssemblerARM64 MacroAssemblerBase; };
+
 #elif CPU(ARM_TRADITIONAL)
 #include "MacroAssemblerARM.h"
 namespace JSC { typedef MacroAssemblerARM MacroAssemblerBase; };
@@ -67,6 +71,67 @@ namespace JSC {
 class MacroAssembler : public MacroAssemblerBase {
 public:
 
+    static bool isStackRelated(RegisterID reg)
+    {
+        return reg == stackPointerRegister || reg == framePointerRegister;
+    }
+    
+    static RegisterID firstRealRegister()
+    {
+        RegisterID firstRegister = MacroAssembler::firstRegister();
+        while (MacroAssembler::isStackRelated(firstRegister))
+            firstRegister = static_cast<RegisterID>(firstRegister + 1);
+        return firstRegister;
+    }
+    
+    static RegisterID nextRegister(RegisterID reg)
+    {
+        RegisterID result = static_cast<RegisterID>(reg + 1);
+        while (MacroAssembler::isStackRelated(result))
+            result = static_cast<RegisterID>(result + 1);
+        return result;
+    }
+    
+    static RegisterID secondRealRegister()
+    {
+        return nextRegister(firstRealRegister());
+    }
+    
+    static FPRegisterID nextFPRegister(FPRegisterID reg)
+    {
+        return static_cast<FPRegisterID>(reg + 1);
+    }
+    
+    static unsigned numberOfRegisters()
+    {
+        return lastRegister() - firstRegister() + 1;
+    }
+    
+    static unsigned registerIndex(RegisterID reg)
+    {
+        return reg - firstRegister();
+    }
+    
+    static unsigned numberOfFPRegisters()
+    {
+        return lastFPRegister() - firstFPRegister() + 1;
+    }
+    
+    static unsigned fpRegisterIndex(FPRegisterID reg)
+    {
+        return reg - firstFPRegister();
+    }
+    
+    static unsigned registerIndex(FPRegisterID reg)
+    {
+        return fpRegisterIndex(reg) + numberOfRegisters();
+    }
+    
+    static unsigned totalNumberOfRegisters()
+    {
+        return numberOfRegisters() + numberOfFPRegisters();
+    }
+
     using MacroAssemblerBase::pop;
     using MacroAssemblerBase::jump;
     using MacroAssemblerBase::branch32;
@@ -83,6 +148,11 @@ public:
     using MacroAssemblerBase::sub32;
     using MacroAssemblerBase::urshift32;
     using MacroAssemblerBase::xor32;
+
+    static bool isPtrAlignedAddressOffset(ptrdiff_t value)
+    {
+        return value == static_cast<int32_t>(value);
+    }
 
     static const double twoToThe32; // This is super useful for some double code.
 
@@ -180,7 +250,28 @@ public:
         storePtr(imm, addressForPoke(index));
     }
 
-#if CPU(X86_64)
+#if !CPU(ARM64)
+    void pushToSave(RegisterID src)
+    {
+        push(src);
+    }
+    void popToRestore(RegisterID dest)
+    {
+        pop(dest);
+    }
+    void pushToSave(FPRegisterID src)
+    {
+        subPtr(TrustedImm32(sizeof(double)), stackPointerRegister);
+        storeDouble(src, stackPointerRegister);
+    }
+    void popToRestore(FPRegisterID dest)
+    {
+        loadDouble(stackPointerRegister, dest);
+        addPtr(TrustedImm32(sizeof(double)), stackPointerRegister);
+    }
+#endif // !CPU(ARM64)
+
+#if CPU(X86_64) || CPU(ARM64)
     void peek64(RegisterID dest, int index = 0)
     {
         load64(Address(stackPointerRegister, (index * sizeof(void*))), dest);
@@ -257,7 +348,7 @@ public:
         branchTestPtr(cond, reg).linkTo(target, this);
     }
 
-#if !CPU(ARM_THUMB2)
+#if !CPU(ARM_THUMB2) && !CPU(ARM64)
     PatchableJump patchableBranchPtr(RelationalCondition cond, Address left, TrustedImmPtr right = TrustedImmPtr(0))
     {
         return PatchableJump(branchPtr(cond, left, right));
@@ -277,14 +368,12 @@ public:
     {
         return PatchableJump(branchTest32(cond, reg, mask));
     }
-#endif // !CPU(ARM_THUMB2)
 
-#if !CPU(ARM)
     PatchableJump patchableBranch32(RelationalCondition cond, RegisterID reg, TrustedImm32 imm)
     {
         return PatchableJump(branch32(cond, reg, imm));
     }
-#endif // !(CPU(ARM)
+#endif
 
     void jump(Label target)
     {
@@ -329,7 +418,7 @@ public:
     // Ptr methods
     // On 32-bit platforms (i.e. x86), these methods directly map onto their 32-bit equivalents.
     // FIXME: should this use a test for 32-bitness instead of this specific exception?
-#if !CPU(X86_64)
+#if !CPU(X86_64) && !CPU(ARM64)
     void addPtr(Address src, RegisterID dest)
     {
         add32(src, dest);
@@ -634,11 +723,6 @@ public:
     }
 
     void andPtr(TrustedImm32 imm, RegisterID srcDest)
-    {
-        and64(imm, srcDest);
-    }
-    
-    void andPtr(TrustedImmPtr imm, RegisterID srcDest)
     {
         and64(imm, srcDest);
     }
@@ -1288,7 +1372,7 @@ public:
         storePtr(value, addressForPoke(index));
     }
     
-#if CPU(X86_64)
+#if CPU(X86_64) || CPU(ARM64)
     void poke(Imm64 value, int index = 0)
     {
         store64(value, addressForPoke(index));

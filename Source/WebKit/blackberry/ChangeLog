@@ -1,3 +1,80 @@
+2013-11-01  Thiago de Barros Lacerda  <thiago.lacerda@openbossa.org>
+
+        Removing MediaStreamTrackVector and MediaStreamSourceVector typedefs
+        https://bugs.webkit.org/show_bug.cgi?id=123648
+
+        Reviewed by Eric Carlson.
+
+        * WebCoreSupport/UserMediaClientImpl.cpp:
+        (WebCore::toMediaStreamDescriptor):
+        (WebCore::UserMediaClientImpl::requestUserMedia):
+        * WebCoreSupport/UserMediaClientImpl.h:
+
+2013-10-31  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Remove InspectorState
+        https://bugs.webkit.org/show_bug.cgi?id=123547
+
+        Reviewed by Timothy Hatcher.
+
+        * WebCoreSupport/InspectorClientBlackBerry.cpp:
+        * WebCoreSupport/InspectorClientBlackBerry.h:
+
+2013-10-17  Jacky Jiang  <zhajiang@blackberry.com>
+
+        [BlackBerry] Improve the viewport of some websites like mobilesyrup.com/2013/08/25/moto-x-review/
+        https://bugs.webkit.org/show_bug.cgi?id=122995
+
+        Reviewed by George Staikos.
+        Internally reviewed by George Staikos and Eli Fidler.
+
+        JIRA 523949
+        Force to respect the viewport when there is viewport meta tag but width
+        is not specified even though the viewport is broken. By doing that, We
+        want to improve the user experience of some websites that use a reasonable
+        initial-scale, but have some overly-wide contents
+
+        The contents of those websites like mobilesyrup.com/2013/08/25/moto-x-review
+        should be improved by the contents provider eventually.
+
+        * Api/WebPage.cpp:
+        (BlackBerry::WebKit::WebPagePrivate::recomputeVirtualViewportFromViewportArguments):
+
+2013-10-16  Jochen Eisinger  <jochen@chromium.org>
+
+        A page should exit fullscreen mode if it opens a new popup
+        https://bugs.webkit.org/show_bug.cgi?id=122865
+
+        Reviewed by Jer Noble.
+
+        If a fullscreen page opens a popup, the popup would be hidden and
+        therefore invisible to the user. To avoid this, exit fullscreen mode
+        before opening a new window.
+
+        * WebCoreSupport/ChromeClientBlackBerry.cpp:
+        (WebCore::ChromeClientBlackBerry::createWindow):
+
+2013-10-13  Darin Adler  <darin@apple.com>
+
+        Deprecate or remove deleteAllValues functions; there are only a few call sites left
+        https://bugs.webkit.org/show_bug.cgi?id=122738
+
+        Reviewed by Anders Carlsson.
+
+        * WebKitSupport/InPageSearchManager.cpp:
+        (BlackBerry::WebKit::InPageSearchManager::cancelPendingScopingEffort):
+        Renamed deleteAllValues to deprecatedDeleteAllValues.
+
+2013-10-12  Darin Adler  <darin@apple.com>
+
+        Get rid of the toHTMLElement helper for casting FormAssociatedElement to HTMLElement
+        https://bugs.webkit.org/show_bug.cgi?id=122713
+
+        Reviewed by Sam Weinig.
+
+        * WebKitSupport/InputHandler.cpp:
+        (BlackBerry::WebKit::InputHandler::updateFormState): Use asHTMLElement.
+
 2013-09-30  Sam Weinig  <sam@webkit.org>
 
         Remove support for DOMFileSystem

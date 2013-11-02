@@ -131,7 +131,7 @@ static inline PassRefPtr<ClipPathOperation> blendFunc(const AnimationBase*, Clip
         return to;
 
     // Other clip-path operations than BasicShapes can not be animated.
-    if (from->getOperationType() != ClipPathOperation::SHAPE || to->getOperationType() != ClipPathOperation::SHAPE)
+    if (from->type() != ClipPathOperation::SHAPE || to->type() != ClipPathOperation::SHAPE)
         return to;
 
     const BasicShape* fromShape = static_cast<ShapeClipPathOperation*>(from)->basicShape();
@@ -176,7 +176,7 @@ static inline FilterOperations blendFilterOperations(const AnimationBase* anim, 
     FilterOperations result;
     size_t fromSize = from.operations().size();
     size_t toSize = to.operations().size();
-    size_t size = max(fromSize, toSize);
+    size_t size = std::max(fromSize, toSize);
     for (size_t i = 0; i < size; i++) {
         RefPtr<FilterOperation> fromOp = (i < fromSize) ? from.operations()[i].get() : 0;
         RefPtr<FilterOperation> toOp = (i < toSize) ? to.operations()[i].get() : 0;
@@ -217,7 +217,7 @@ static inline PassRefPtr<StyleImage> blendFilter(const AnimationBase* anim, Cach
 
     RefPtr<StyleCachedImage> styledImage = StyleCachedImage::create(image);
     RefPtr<CSSImageValue> imageValue = CSSImageValue::create(image->url(), styledImage.get());
-    RefPtr<CSSValue> filterValue = ComputedStyleExtractor::valueForFilter(anim->renderer(), anim->renderer()->style(), filterResult, DoNotAdjustPixelValues);
+    RefPtr<CSSValue> filterValue = ComputedStyleExtractor::valueForFilter(anim->renderer(), &anim->renderer()->style(), filterResult, DoNotAdjustPixelValues);
     RefPtr<CSSFilterImageValue> result = CSSFilterImageValue::create(imageValue, filterValue);
     result->setFilterOperations(filterResult);
 
@@ -699,7 +699,7 @@ private:
 
         OwnPtr<ShadowData> newShadowData;
 
-        int maxLength = max(fromLength, toLength);
+        int maxLength = std::max(fromLength, toLength);
         for (int i = 0; i < maxLength; ++i) {
             const ShadowData* fromShadow = i < fromLength ? fromShadows[i] : 0;
             const ShadowData* toShadow = i < toLength ? toShadows[i] : 0;
@@ -1246,6 +1246,8 @@ CSSPropertyAnimationWrapperMap::CSSPropertyAnimationWrapperMap()
 #if ENABLE(CSS_SHAPES)
         new PropertyWrapperShape(CSSPropertyWebkitShapeInside, &RenderStyle::shapeInside, &RenderStyle::setShapeInside),
         new PropertyWrapperShape(CSSPropertyWebkitShapeOutside, &RenderStyle::shapeOutside, &RenderStyle::setShapeOutside),
+        new LengthPropertyWrapper<Length>(CSSPropertyWebkitShapeMargin, &RenderStyle::shapeMargin, &RenderStyle::setShapeMargin),
+        new PropertyWrapper<float>(CSSPropertyWebkitShapeImageThreshold, &RenderStyle::shapeImageThreshold, &RenderStyle::setShapeImageThreshold),
 #endif
 
         new PropertyWrapperVisitedAffectedColor(CSSPropertyWebkitColumnRuleColor, MaybeInvalidColor, &RenderStyle::columnRuleColor, &RenderStyle::setColumnRuleColor, &RenderStyle::visitedLinkColumnRuleColor, &RenderStyle::setVisitedLinkColumnRuleColor),
@@ -1268,7 +1270,7 @@ CSSPropertyAnimationWrapperMap::CSSPropertyAnimationWrapperMap()
         new PropertyWrapperSVGPaint(CSSPropertyStroke, &RenderStyle::strokePaintType, &RenderStyle::strokePaintColor, &RenderStyle::setStrokePaintColor),
         new PropertyWrapper<float>(CSSPropertyStrokeOpacity, &RenderStyle::strokeOpacity, &RenderStyle::setStrokeOpacity),
         new PropertyWrapper<SVGLength>(CSSPropertyStrokeWidth, &RenderStyle::strokeWidth, &RenderStyle::setStrokeWidth),
-        new PropertyWrapper< Vector<SVGLength> >(CSSPropertyStrokeDasharray, &RenderStyle::strokeDashArray, &RenderStyle::setStrokeDashArray),
+        new PropertyWrapper< Vector<SVGLength>>(CSSPropertyStrokeDasharray, &RenderStyle::strokeDashArray, &RenderStyle::setStrokeDashArray),
         new PropertyWrapper<SVGLength>(CSSPropertyStrokeDashoffset, &RenderStyle::strokeDashOffset, &RenderStyle::setStrokeDashOffset),
         new PropertyWrapper<float>(CSSPropertyStrokeMiterlimit, &RenderStyle::strokeMiterLimit, &RenderStyle::setStrokeMiterLimit),
 

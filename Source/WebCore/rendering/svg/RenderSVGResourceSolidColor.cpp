@@ -42,38 +42,34 @@ RenderSVGResourceSolidColor::~RenderSVGResourceSolidColor()
 {
 }
 
-bool RenderSVGResourceSolidColor::applyResource(RenderObject* object, RenderStyle* style, GraphicsContext*& context, unsigned short resourceMode)
+bool RenderSVGResourceSolidColor::applyResource(RenderElement& renderer, const RenderStyle& style, GraphicsContext*& context, unsigned short resourceMode)
 {
-    // We are NOT allowed to ASSERT(object) here, unlike all other resources.
-    // RenderSVGResourceSolidColor is the only resource which may be used from HTML, when rendering
-    // SVG Fonts for a HTML document. This will be indicated by a null RenderObject pointer.
     ASSERT(context);
     ASSERT(resourceMode != ApplyToDefaultMode);
 
-    const SVGRenderStyle* svgStyle = style ? style->svgStyle() : 0;
-    ColorSpace colorSpace = style ? style->colorSpace() : ColorSpaceDeviceRGB;
+    const SVGRenderStyle& svgStyle = style.svgStyle();
+    ColorSpace colorSpace = style.colorSpace();
 
-    bool isRenderingMask = object->view().frameView().paintBehavior() & PaintBehaviorRenderingSVGMask;
+    bool isRenderingMask = renderer.view().frameView().paintBehavior() & PaintBehaviorRenderingSVGMask;
 
     if (resourceMode & ApplyToFillMode) {
-        if (!isRenderingMask && svgStyle)
-            context->setAlpha(svgStyle->fillOpacity());
+        if (!isRenderingMask)
+            context->setAlpha(svgStyle.fillOpacity());
         else
             context->setAlpha(1);
         context->setFillColor(m_color, colorSpace);
         if (!isRenderingMask)
-            context->setFillRule(svgStyle ? svgStyle->fillRule() : RULE_NONZERO);
+            context->setFillRule(svgStyle.fillRule());
 
         if (resourceMode & ApplyToTextMode)
             context->setTextDrawingMode(TextModeFill);
     } else if (resourceMode & ApplyToStrokeMode) {
         // When rendering the mask for a RenderSVGResourceClipper, the stroke code path is never hit.
         ASSERT(!isRenderingMask);
-        context->setAlpha(svgStyle ? svgStyle->strokeOpacity() : 1);
+        context->setAlpha(svgStyle.strokeOpacity());
         context->setStrokeColor(m_color, colorSpace);
 
-        if (style)
-            SVGRenderSupport::applyStrokeStyleToContext(context, style, object);
+        SVGRenderSupport::applyStrokeStyleToContext(context, style, renderer);
 
         if (resourceMode & ApplyToTextMode)
             context->setTextDrawingMode(TextModeStroke);
@@ -82,7 +78,7 @@ bool RenderSVGResourceSolidColor::applyResource(RenderObject* object, RenderStyl
     return true;
 }
 
-void RenderSVGResourceSolidColor::postApplyResource(RenderObject*, GraphicsContext*& context, unsigned short resourceMode, const Path* path, const RenderSVGShape* shape)
+void RenderSVGResourceSolidColor::postApplyResource(RenderElement&, GraphicsContext*& context, unsigned short resourceMode, const Path* path, const RenderSVGShape* shape)
 {
     ASSERT(context);
     ASSERT(resourceMode != ApplyToDefaultMode);

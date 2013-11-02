@@ -195,21 +195,6 @@ static PlatformWheelEventPhase phaseForEvent(NSEvent *event)
     return static_cast<PlatformWheelEventPhase>(phase);
 }
 
-#if ENABLE(GESTURE_EVENTS)
-static PlatformEvent::Type gestureEventTypeForEvent(NSEvent *event)
-{
-    switch ([event type]) {
-    case NSEventTypeBeginGesture:
-        return PlatformEvent::GestureScrollBegin;
-    case NSEventTypeEndGesture:
-        return PlatformEvent::GestureScrollEnd;
-    default:
-        ASSERT_NOT_REACHED();
-        return PlatformEvent::GestureScrollEnd;
-    }
-}
-#endif
-
 static inline String textFromEvent(NSEvent* event)
 {
     if ([event type] == NSFlagsChanged)
@@ -461,12 +446,7 @@ public:
         m_phase                             = phaseForEvent(event);
         m_momentumPhase                     = momentumPhaseForEvent(event);
         m_hasPreciseScrollingDeltas         = continuous;
-
-#if HAVE(INVERTED_WHEEL_EVENTS)
         m_directionInvertedFromDevice       = [event isDirectionInvertedFromDevice];
-#else
-        m_directionInvertedFromDevice       = false;
-#endif
     }
 };
 
@@ -523,29 +503,5 @@ PlatformKeyboardEvent PlatformEventFactory::createPlatformKeyboardEvent(NSEvent 
 {
     return PlatformKeyboardEventBuilder(event);
 }
-
-#if ENABLE(GESTURE_EVENTS)
-class PlatformGestureEventBuilder : public PlatformGestureEvent {
-public:
-    PlatformGestureEventBuilder(NSEvent *event, NSView *windowView)
-    {
-        // PlatformEvent
-        m_type                              = gestureEventTypeForEvent(event);
-        m_modifiers                         = modifiersForEvent(event);
-        m_timestamp                         = eventTimeStampSince1970(event);
-
-        // PlatformGestureEvent
-        m_position                          = pointForEvent(event, windowView);
-        m_globalPosition                    = globalPointForEvent(event);
-        m_deltaX                            = 0;
-        m_deltaY                            = 0;
-    }
-};
-
-PlatformGestureEvent PlatformEventFactory::createPlatformGestureEvent(NSEvent *event, NSView *windowView)
-{
-    return PlatformGestureEventBuilder(event, windowView);
-}
-#endif
 
 } // namespace WebCore

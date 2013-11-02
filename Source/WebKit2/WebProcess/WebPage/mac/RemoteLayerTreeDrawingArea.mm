@@ -26,7 +26,13 @@
 #import "config.h"
 #import "RemoteLayerTreeDrawingArea.h"
 
+#import "DrawingAreaProxyMessages.h"
 #import "RemoteLayerTreeContext.h"
+#import "WebPage.h"
+#import <WebCore/Frame.h>
+#import <WebCore/FrameView.h>
+#import <WebCore/MainFrame.h>
+#import <WebCore/Settings.h>
 
 using namespace WebCore;
 
@@ -34,8 +40,9 @@ namespace WebKit {
 
 RemoteLayerTreeDrawingArea::RemoteLayerTreeDrawingArea(WebPage* webPage, const WebPageCreationParameters&)
     : DrawingArea(DrawingAreaTypeRemoteLayerTree, webPage)
-    , m_RemoteLayerTreeContext(std::make_unique<RemoteLayerTreeContext>(webPage))
+    , m_remoteLayerTreeContext(std::make_unique<RemoteLayerTreeContext>(webPage))
 {
+    webPage->corePage()->settings().setForceCompositingMode(true);
 }
 
 RemoteLayerTreeDrawingArea::~RemoteLayerTreeDrawingArea()
@@ -56,17 +63,30 @@ void RemoteLayerTreeDrawingArea::scroll(const IntRect& scrollRect, const IntSize
 
 GraphicsLayerFactory* RemoteLayerTreeDrawingArea::graphicsLayerFactory()
 {
-    return m_RemoteLayerTreeContext.get();
+    return m_remoteLayerTreeContext.get();
 }
 
 void RemoteLayerTreeDrawingArea::setRootCompositingLayer(GraphicsLayer* rootLayer)
 {
-    m_RemoteLayerTreeContext->setRootLayer(rootLayer);
+    m_remoteLayerTreeContext->setRootLayer(rootLayer);
 }
 
 void RemoteLayerTreeDrawingArea::scheduleCompositingLayerFlush()
 {
-    m_RemoteLayerTreeContext->scheduleLayerFlush();
+    m_remoteLayerTreeContext->scheduleLayerFlush();
+}
+
+void RemoteLayerTreeDrawingArea::updateGeometry(const IntSize& viewSize, const IntSize& layerPosition)
+{
+    m_webPage->setSize(viewSize);
+    scheduleCompositingLayerFlush();
+
+    m_webPage->send(Messages::DrawingAreaProxy::DidUpdateGeometry());
+}
+
+bool RemoteLayerTreeDrawingArea::shouldUseTiledBackingForFrameView(const FrameView* frameView)
+{
+    return frameView && frameView->frame().isMainFrame();
 }
 
 } // namespace WebKit

@@ -38,6 +38,7 @@
 #import "WKAPICast.h"
 #import "WKStringCF.h"
 #import "WKViewInternal.h"
+#import "WKViewPrivate.h"
 #import "StringUtilities.h"
 #import "WebColorPickerMac.h"
 #import "WebContextMenuProxyMac.h"
@@ -201,10 +202,17 @@ bool PageClientImpl::isViewVisible()
     if ([m_wkView isHiddenOrHasHiddenAncestor])
         return false;
 
-    if ([m_wkView _isWindowOccluded])
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1090
+    if ([m_wkView windowOcclusionDetectionEnabled] && ([[m_wkView window] occlusionState] & NSWindowOcclusionStateVisible) != NSWindowOcclusionStateVisible)
         return false;
+#endif
 
     return true;
+}
+
+bool PageClientImpl::isWindowVisible()
+{
+    return [[m_wkView window] isVisible];
 }
 
 bool PageClientImpl::isViewInWindow()
@@ -369,13 +377,6 @@ IntRect PageClientImpl::windowToScreen(const IntRect& rect)
 #pragma clang diagnostic pop
     return enclosingIntRect(tempRect);
 }
-
-#if ENABLE(GESTURE_EVENTS)
-void PageClientImpl::doneWithGestureEvent(const WebGestureEvent&, bool wasEventHandled)
-{
-    notImplemented();
-}
-#endif
 
 void PageClientImpl::doneWithKeyEvent(const NativeWebKeyboardEvent& event, bool eventWasHandled)
 {

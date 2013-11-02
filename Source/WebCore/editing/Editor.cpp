@@ -97,7 +97,6 @@
 
 namespace WebCore {
 
-using namespace std;
 using namespace HTMLNames;
 using namespace WTF;
 using namespace Unicode;
@@ -169,7 +168,7 @@ VisibleSelection Editor::selectionForCommand(Event* event)
     // If the target is a text control, and the current selection is outside of its shadow tree,
     // then use the saved selection for that text control.
     HTMLTextFormControlElement* textFormControlOfSelectionStart = enclosingTextFormControl(selection.start());
-    HTMLTextFormControlElement* textFromControlOfTarget = isHTMLTextFormControlElement(event->target()->toNode()) ? toHTMLTextFormControlElement(event->target()->toNode()) : 0;
+    HTMLTextFormControlElement* textFromControlOfTarget = isHTMLTextFormControlElement(*event->target()->toNode()) ? toHTMLTextFormControlElement(event->target()->toNode()) : nullptr;
     if (textFromControlOfTarget && (selection.start().isNull() || textFromControlOfTarget != textFormControlOfSelectionStart)) {
         if (RefPtr<Range> range = textFromControlOfTarget->selection())
             return VisibleSelection(range.get(), DOWNSTREAM, selection.isDirectional());
@@ -463,7 +462,7 @@ bool Editor::shouldInsertFragment(PassRefPtr<DocumentFragment> fragment, PassRef
     if (fragment) {
         Node* child = fragment->firstChild();
         if (child && fragment->lastChild() == child && child->isCharacterDataNode())
-            return client()->shouldInsertText(static_cast<CharacterData*>(child)->data(), replacingDOMRange.get(), givenAction);        
+            return client()->shouldInsertText(toCharacterData(child)->data(), replacingDOMRange.get(), givenAction);
     }
 
     return client()->shouldInsertNode(fragment.get(), replacingDOMRange.get(), givenAction);
@@ -585,17 +584,16 @@ bool Editor::hasBidiSelection() const
         startNode = m_frame.selection().selection().visibleStart().deepEquivalent().deprecatedNode();
 
     auto renderer = startNode->renderer();
-    while (renderer && !renderer->isRenderBlock())
+    while (renderer && !renderer->isRenderBlockFlow())
         renderer = renderer->parent();
 
     if (!renderer)
         return false;
 
-    RenderStyle* style = renderer->style();
-    if (!style->isLeftToRightDirection())
+    if (!renderer->style().isLeftToRightDirection())
         return true;
 
-    return toRenderBlock(renderer)->containsNonZeroBidiLevel();
+    return toRenderBlockFlow(renderer)->containsNonZeroBidiLevel();
 }
 
 TriState Editor::selectionUnorderedListState() const
@@ -975,7 +973,7 @@ bool Editor::insertTextWithoutSendingTextEvent(const String& text, bool selectIn
     if (text == " " || text == "\t")
         shouldConsiderApplyingAutocorrection = true;
 
-    if (text.length() == 1 && isPunct(text[0]) && !isAmbiguousBoundaryCharacter(text[0]))
+    if (text.length() == 1 && u_ispunct(text[0]) && !isAmbiguousBoundaryCharacter(text[0]))
         shouldConsiderApplyingAutocorrection = true;
 
     bool autocorrectionWasApplied = shouldConsiderApplyingAutocorrection && m_alternativeTextController->applyAutocorrectionBeforeTypingIfAppropriate();
@@ -1417,7 +1415,7 @@ void Editor::toggleUnderline()
 void Editor::setBaseWritingDirection(WritingDirection direction)
 {
     Element* focusedElement = document().focusedElement();
-    if (focusedElement && isHTMLTextFormControlElement(focusedElement)) {
+    if (focusedElement && isHTMLTextFormControlElement(*focusedElement)) {
         if (direction == NaturalWritingDirection)
             return;
         toHTMLElement(focusedElement)->setAttribute(dirAttr, direction == LeftToRightWritingDirection ? "ltr" : "rtl");
@@ -1450,11 +1448,7 @@ WritingDirection Editor::baseWritingDirectionForSelectionStart() const
             return result;
     }
 
-    RenderStyle* style = renderer->style();
-    if (!style)
-        return result;
-
-    switch (style->direction()) {
+    switch (renderer->style().direction()) {
     case LTR:
         return LeftToRightWritingDirection;
     case RTL:
@@ -1635,8 +1629,8 @@ void Editor::setComposition(const String& text, const Vector<CompositionUnderlin
             if (baseNode->renderer())
                 baseNode->renderer()->repaint();
 
-            unsigned start = min(baseOffset + selectionStart, extentOffset);
-            unsigned end = min(max(start, baseOffset + selectionEnd), extentOffset);
+            unsigned start = std::min(baseOffset + selectionStart, extentOffset);
+            unsigned end = std::min(std::max(start, baseOffset + selectionEnd), extentOffset);
             RefPtr<Range> selectedRange = Range::create(baseNode->document(), baseNode, start, baseNode, end);
             m_frame.selection().setSelectedRange(selectedRange.get(), DOWNSTREAM, false);
         }
@@ -1683,7 +1677,7 @@ void Editor::advanceToNextMisspelling(bool startBeforeSelection)
     // Start at the end of the selection, search to edge of document.  Starting at the selection end makes
     // repeated "check spelling" commands work.
     VisibleSelection selection(m_frame.selection().selection());
-    RefPtr<Range> spellingSearchRange(rangeOfContents(&document()));
+    RefPtr<Range> spellingSearchRange(rangeOfContents(document()));
 
     bool startedWithSelection = false;
     if (selection.start().deprecatedNode()) {
@@ -2543,8 +2537,8 @@ PassRefPtr<Range> Editor::compositionRange() const
     if (!m_compositionNode)
         return 0;
     unsigned length = m_compositionNode->length();
-    unsigned start = min(m_compositionStart, length);
-    unsigned end = min(max(start, m_compositionEnd), length);
+    unsigned start = std::min(m_compositionStart, length);
+    unsigned end = std::min(std::max(start, m_compositionEnd), length);
     if (start >= end)
         return 0;
     return Range::create(m_compositionNode->document(), m_compositionNode.get(), start, m_compositionNode.get(), end);
@@ -2858,7 +2852,7 @@ PassRefPtr<Range> Editor::rangeOfString(const String& target, Range* referenceRa
 
     // Start from an edge of the reference range, if there's a reference range that's not in shadow content. Which edge
     // is used depends on whether we're searching forward or backward, and whether startInSelection is set.
-    RefPtr<Range> searchRange(rangeOfContents(&document()));
+    RefPtr<Range> searchRange(rangeOfContents(document()));
 
     bool forward = !(options & Backwards);
     bool startInReferenceRange = referenceRange && (options & StartInSelection);
@@ -2882,7 +2876,7 @@ PassRefPtr<Range> Editor::rangeOfString(const String& target, Range* referenceRa
     // Build a selection with the found range to remove collapsed whitespace.
     // Compare ranges instead of selection objects to ignore the way that the current selection was made.
     if (startInReferenceRange && areRangesEqual(VisibleSelection(resultRange.get()).toNormalizedRange().get(), referenceRange)) {
-        searchRange = rangeOfContents(&document());
+        searchRange = rangeOfContents(document());
         if (forward)
             searchRange->setStart(referenceRange->endPosition());
         else
@@ -2900,7 +2894,7 @@ PassRefPtr<Range> Editor::rangeOfString(const String& target, Range* referenceRa
 
     // If nothing was found in the shadow tree, search in main content following the shadow tree.
     if (resultRange->collapsed(ASSERT_NO_EXCEPTION) && shadowTreeRoot) {
-        searchRange = rangeOfContents(&document());
+        searchRange = rangeOfContents(document());
         if (forward)
             searchRange->setStartAfter(shadowTreeRoot->shadowHost());
         else
@@ -2912,7 +2906,7 @@ PassRefPtr<Range> Editor::rangeOfString(const String& target, Range* referenceRa
     // If we didn't find anything and we're wrapping, search again in the entire document (this will
     // redundantly re-search the area already searched in some cases).
     if (resultRange->collapsed(ASSERT_NO_EXCEPTION) && options & WrapAround) {
-        searchRange = rangeOfContents(&document());
+        searchRange = rangeOfContents(document());
         resultRange = findPlainText(searchRange.get(), target, options);
         // We used to return false here if we ended up with the same range that we started with
         // (e.g., the reference range was already the only instance of this text). But we decided that
@@ -2934,7 +2928,7 @@ static bool isFrameInRange(Frame* frame, Range* range)
     return inRange;
 }
 
-unsigned Editor::countMatchesForText(const String& target, Range* range, FindOptions options, unsigned limit, bool markMatches, Vector<RefPtr<Range> >* matches)
+unsigned Editor::countMatchesForText(const String& target, Range* range, FindOptions options, unsigned limit, bool markMatches, Vector<RefPtr<Range>>* matches)
 {
     if (target.isEmpty())
         return 0;
@@ -2947,7 +2941,7 @@ unsigned Editor::countMatchesForText(const String& target, Range* range, FindOpt
             return 0;
     }
     if (!searchRange)
-        searchRange = rangeOfContents(&document());
+        searchRange = rangeOfContents(document());
 
     Node* originalEndContainer = searchRange->endContainer();
     int originalEndOffset = searchRange->endOffset();
@@ -3077,7 +3071,7 @@ static Node* findFirstMarkable(Node* node)
             return 0;
         if (node->renderer()->isTextOrLineBreak())
             return node;
-        if (isHTMLTextFormControlElement(node))
+        if (isHTMLTextFormControlElement(*node))
             node = toHTMLTextFormControlElement(node)->visiblePositionForIndex(1).deepEquivalent().deprecatedNode();
         else if (node->firstChild())
             node = node->firstChild();

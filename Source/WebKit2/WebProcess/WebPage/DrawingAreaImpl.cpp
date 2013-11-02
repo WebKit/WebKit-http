@@ -57,7 +57,7 @@ DrawingAreaImpl::DrawingAreaImpl(WebPage* webPage, const WebPageCreationParamete
     , m_compositingAccordingToProxyMessages(false)
     , m_layerTreeStateIsFrozen(false)
     , m_wantsToExitAcceleratedCompositingMode(false)
-    , m_isPaintingSuspended(!parameters.isVisible)
+    , m_isPaintingSuspended(!(parameters.viewState & ViewState::IsVisible))
     , m_alwaysUseCompositing(false)
     , m_displayTimer(RunLoop::main(), this, &DrawingAreaImpl::displayTimerFired)
     , m_exitCompositingTimer(RunLoop::main(), this, &DrawingAreaImpl::exitAcceleratedCompositingMode)
@@ -437,8 +437,6 @@ void DrawingAreaImpl::suspendPainting()
 
     m_isPaintingSuspended = true;
     m_displayTimer.stop();
-
-    m_webPage->corePage()->suspendScriptedAnimations();
 }
 
 void DrawingAreaImpl::resumePainting()
@@ -456,8 +454,6 @@ void DrawingAreaImpl::resumePainting()
 
     // FIXME: We shouldn't always repaint everything here.
     setNeedsDisplay();
-
-    m_webPage->corePage()->resumeScriptedAnimations();
 }
 
 void DrawingAreaImpl::enterAcceleratedCompositingMode(GraphicsLayer* graphicsLayer)

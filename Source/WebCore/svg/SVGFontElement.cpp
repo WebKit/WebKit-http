@@ -69,14 +69,9 @@ void SVGFontElement::invalidateGlyphCache()
     m_isGlyphCacheValid = false;
 }
 
-SVGMissingGlyphElement* SVGFontElement::firstMissingGlyphElement() const
+const SVGMissingGlyphElement* SVGFontElement::firstMissingGlyphElement() const
 {
-    for (Node* child = firstChild(); child; child = child->nextSibling()) {
-        if (child->hasTagName(SVGNames::missing_glyphTag))
-            return toSVGMissingGlyphElement(child);
-    }
-
-    return 0;
+    return childrenOfType<SVGMissingGlyphElement>(*this).first();
 }
 
 void SVGFontElement::registerLigaturesInGlyphCache(Vector<String>& ligatures)
@@ -121,9 +116,10 @@ void SVGFontElement::ensureGlyphCache()
     if (m_isGlyphCacheValid)
         return;
 
-    SVGMissingGlyphElement* firstMissingGlyphElement = 0;
+    const SVGMissingGlyphElement* firstMissingGlyphElement = nullptr;
     Vector<String> ligatures;
-    for (auto child = childrenOfType<SVGElement>(this).begin(), end = childrenOfType<SVGElement>(this).end(); child != end; ++child) {
+    auto children = childrenOfType<SVGElement>(*this);
+    for (auto child = children.begin(), end = children.end(); child != end; ++child) {
         SVGElement* element = &*child;
         if (isSVGGlyphElement(element)) {
             SVGGlyphElement* glyph = toSVGGlyphElement(element);

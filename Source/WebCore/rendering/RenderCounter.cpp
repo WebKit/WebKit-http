@@ -43,8 +43,8 @@ namespace WebCore {
 
 using namespace HTMLNames;
 
-typedef HashMap<AtomicString, RefPtr<CounterNode> > CounterMap;
-typedef HashMap<const RenderObject*, OwnPtr<CounterMap> > CounterMaps;
+typedef HashMap<AtomicString, RefPtr<CounterNode>> CounterMap;
+typedef HashMap<const RenderObject*, OwnPtr<CounterMap>> CounterMaps;
 
 static CounterNode* makeCounterNode(RenderObject*, const AtomicString& identifier, bool alwaysCreateCounter);
 
@@ -111,10 +111,9 @@ static bool planCounter(RenderElement* object, const AtomicString& identifier, b
     if (!generatingElement)
         return false;
 
-    RenderStyle* style = object->style();
-    ASSERT(style);
+    const RenderStyle& style = object->style();
 
-    switch (style->styleType()) {
+    switch (style.styleType()) {
     case NOPSEUDO:
         // Sometimes elements have more then one renderer. Only the first one gets the counter
         // LayoutTests/http/tests/css/counter-crash.html
@@ -128,7 +127,7 @@ static bool planCounter(RenderElement* object, const AtomicString& identifier, b
         return false; // Counters are forbidden from all other pseudo elements.
     }
 
-    const CounterDirectives directives = style->getCounterDirectives(identifier);
+    const CounterDirectives directives = style.getCounterDirectives(identifier);
     if (directives.isDefined()) {
         value = directives.combinedValue();
         isReset = directives.isReset();
@@ -353,12 +352,13 @@ static CounterNode* makeCounterNode(RenderObject* object, const AtomicString& id
     return newNode.get();
 }
 
-RenderCounter::RenderCounter(const CounterContent& counter)
-    : RenderText(nullptr, emptyString())
+RenderCounter::RenderCounter(Document& document, const CounterContent& counter)
+    : RenderText(document, emptyString())
     , m_counter(counter)
-    , m_counterNode(0)
+    , m_counterNode(nullptr)
     , m_nextForSameCounter(0)
 {
+    view().addRenderCounter();
 }
 
 RenderCounter::~RenderCounter()
@@ -367,15 +367,6 @@ RenderCounter::~RenderCounter()
         m_counterNode->removeRenderer(this);
         ASSERT(!m_counterNode);
     }
-}
-
-RenderCounter* RenderCounter::createAnonymous(Document& document, const CounterContent& content)
-{
-    RenderCounter* counter = new (*document.renderArena()) RenderCounter(content);
-    counter->setDocumentForAnonymous(document);
-    counter->view().addRenderCounter();
-
-    return counter;
 }
 
 void RenderCounter::willBeDestroyed()
@@ -403,7 +394,7 @@ String RenderCounter::originalText() const
                 return String();
             if (!beforeAfterContainer->isAnonymous() && !beforeAfterContainer->isPseudoElement())
                 return String(); // RenderCounters are restricted to before and after pseudo elements
-            PseudoId containerStyle = beforeAfterContainer->style()->styleType();
+            PseudoId containerStyle = beforeAfterContainer->style().styleType();
             if ((containerStyle == BEFORE) || (containerStyle == AFTER))
                 break;
             beforeAfterContainer = beforeAfterContainer->parent();
@@ -510,16 +501,16 @@ void RenderCounter::destroyCounterNode(RenderObject* owner, const AtomicString& 
     // map associated with a renderer, so there is no risk in leaking the map.
 }
 
-void RenderCounter::rendererRemovedFromTree(RenderObject* renderer)
+void RenderCounter::rendererRemovedFromTree(RenderObject& renderer)
 {
-    if (!renderer->view().hasRenderCounters())
+    if (!renderer.view().hasRenderCounters())
         return;
-    RenderObject* currentRenderer = renderer->lastLeafChild();
+    RenderObject* currentRenderer = renderer.lastLeafChild();
     if (!currentRenderer)
-        currentRenderer = renderer;
+        currentRenderer = &renderer;
     while (true) {
         destroyCounterNodes(currentRenderer);
-        if (currentRenderer == renderer)
+        if (currentRenderer == &renderer)
             break;
         currentRenderer = currentRenderer->previousInPreOrder();
     }
@@ -527,8 +518,7 @@ void RenderCounter::rendererRemovedFromTree(RenderObject* renderer)
 
 static void updateCounters(RenderObject* renderer)
 {
-    ASSERT(renderer->style());
-    const CounterDirectiveMap* directiveMap = renderer->style()->counterDirectives();
+    const CounterDirectiveMap* directiveMap = renderer->style().counterDirectives();
     if (!directiveMap)
         return;
     CounterDirectiveMap::const_iterator end = directiveMap->end();

@@ -53,6 +53,7 @@
 #include "RenderWidget.h"
 #include "ResourceLoadScheduler.h"
 #include "RootInlineBox.h"
+#include "SelectorQuery.h"
 #include "TemplateContentDocumentFragment.h"
 #include "Text.h"
 #include <wtf/CurrentTime.h>
@@ -62,8 +63,6 @@
 #if ENABLE(DELETION_UI)
 #include "DeleteButtonController.h"
 #endif
-
-using namespace std;
 
 namespace WebCore {
 
@@ -1100,6 +1099,32 @@ void ContainerNode::updateTreeAfterInsertion(Node& child, AttachBehavior attachB
 void ContainerNode::setAttributeEventListener(const AtomicString& eventType, const QualifiedName& attributeName, const AtomicString& attributeValue)
 {
     setAttributeEventListener(eventType, JSLazyEventListener::createForNode(*this, attributeName, attributeValue));
+}
+
+Element* ContainerNode::querySelector(const AtomicString& selectors, ExceptionCode& ec)
+{
+    if (selectors.isEmpty()) {
+        ec = SYNTAX_ERR;
+        return nullptr;
+    }
+
+    SelectorQuery* selectorQuery = document().selectorQueryCache().add(selectors, document(), ec);
+    if (!selectorQuery)
+        return nullptr;
+    return selectorQuery->queryFirst(*this);
+}
+
+RefPtr<NodeList> ContainerNode::querySelectorAll(const AtomicString& selectors, ExceptionCode& ec)
+{
+    if (selectors.isEmpty()) {
+        ec = SYNTAX_ERR;
+        return nullptr;
+    }
+
+    SelectorQuery* selectorQuery = document().selectorQueryCache().add(selectors, document(), ec);
+    if (!selectorQuery)
+        return nullptr;
+    return selectorQuery->queryAll(*this);
 }
 
 } // namespace WebCore

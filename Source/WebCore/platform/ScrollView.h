@@ -148,7 +148,7 @@ public:
     virtual int visibleHeight() const OVERRIDE { return visibleContentRect().height(); }
 
     // visibleContentRect().size() is computed from unscaledVisibleContentSize() divided by the value of visibleContentScaleFactor.
-    // visibleContentScaleFactor is usually 1, except when the setting applyPageScaleFactorInCompositor is true and the
+    // visibleContentScaleFactor is usually 1, except when the setting delegatesPageScaling is true and the
     // ScrollView is the main frame; in that case, visibleContentScaleFactor is equal to the page's pageScaleFactor.
     // Ports that don't use pageScaleFactor can treat unscaledVisibleContentSize and visibleContentRect().size() as equivalent.
     IntSize unscaledVisibleContentSize(VisibleContentRectIncludesScrollbars = ExcludeScrollbars) const;
@@ -348,7 +348,7 @@ private:
 
     bool m_prohibitsScrolling;
 
-    HashSet<RefPtr<Widget> > m_children;
+    HashSet<RefPtr<Widget>> m_children;
 
     // This bool is unused on Mac OS because we directly ask the platform widget
     // whether it is safe to blit on scroll.

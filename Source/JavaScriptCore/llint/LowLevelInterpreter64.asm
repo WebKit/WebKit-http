@@ -56,6 +56,10 @@ macro cCall2(function, arg1, arg2)
         move arg1, t5
         move arg2, t4
         call function
+    elsif ARM64
+        move arg1, t0
+        move arg2, t1
+        call function
     elsif C_LOOP
         cloopCallSlowPath function, arg1, arg2
     else
@@ -70,6 +74,12 @@ macro cCall4(function, arg1, arg2, arg3, arg4)
         move arg2, t4
         move arg3, t1
         move arg4, t2
+        call function
+    elsif ARM64
+        move arg1, t0
+        move arg2, t1
+        move arg3, t2
+        move arg4, t3
         call function
     elsif C_LOOP
         error
@@ -193,6 +203,7 @@ macro functionArityCheck(doneLabel, slow_path)
     prepareStateForCCall()
     cCall2(slow_path, cfr, PC)   # This slow_path has a simple protocol: t0 = 0 => no error, t0 != 0 => error
     btiz t0, .isArityFixupNeeded
+    move t1, cfr   # t1 contains caller frame
     jmp _llint_throw_from_slow_path_trampoline
 
 .isArityFixupNeeded:
@@ -201,7 +212,6 @@ macro functionArityCheck(doneLabel, slow_path)
     // Move frame up "t1" slots
     negq t1
     move cfr, t3
-    addp 8, t3
     loadi PayloadOffset + ArgumentCount[cfr], t2
     addi CallFrameHeaderSlots, t2
 .copyLoop:
@@ -241,8 +251,8 @@ _llint_op_enter:
     negi t2
     sxi2q t2, t2
 .opEnterLoop:
-    addq 1, t2
     storeq t0, [cfr, t2, 8]
+    addq 1, t2
     btqnz t2, .opEnterLoop
 .opEnterDone:
     dispatch(1)
@@ -623,26 +633,31 @@ _llint_op_sub:
 
 _llint_op_div:
     traceExecution()
-    binaryOpCustomStore(
-        macro (left, right, slow, index)
-            # Assume t3 is scratchable.
-            btiz left, slow
-            bineq left, -1, .notNeg2TwoThe31DivByNeg1
-            bieq right, -2147483648, .slow
-        .notNeg2TwoThe31DivByNeg1:
-            btinz right, .intOK
-            bilt left, 0, slow
-        .intOK:
-            move left, t3
-            move right, t0
-            cdqi
-            idivi t3
-            btinz t1, slow
-            orq tagTypeNumber, t0
-            storeq t0, [cfr, index, 8]
-        end,
-        macro (left, right) divd left, right end,
-        _slow_path_div)
+    if X86_64
+        binaryOpCustomStore(
+            macro (left, right, slow, index)
+                # Assume t3 is scratchable.
+                btiz left, slow
+                bineq left, -1, .notNeg2TwoThe31DivByNeg1
+                bieq right, -2147483648, .slow
+            .notNeg2TwoThe31DivByNeg1:
+                btinz right, .intOK
+                bilt left, 0, slow
+            .intOK:
+                move left, t3
+                move right, t0
+                cdqi
+                idivi t3
+                btinz t1, slow
+                orq tagTypeNumber, t0
+                storeq t0, [cfr, index, 8]
+            end,
+            macro (left, right) divd left, right end,
+            _slow_path_div)
+    else
+        callSlowPath(_slow_path_div)
+        dispatch(5)
+    end
 
 
 macro bitOp(operation, slowPath, advance)
@@ -1148,7 +1163,7 @@ macro contiguousPutByVal(storeCallback)
     jmp .storeResult
 end
 
-_llint_op_put_by_val:
+macro putByVal(holeCheck, slowPath)
     traceExecution()
     loadisFromInstruction(1, t0)
     loadConstantOrVariableCell(t0, t1, .opPutByValSlow)
@@ -1196,7 +1211,7 @@ _llint_op_put_by_val:
 .opPutByValNotContiguous:
     bineq t2, ArrayStorageShape, .opPutByValSlow
     biaeq t3, -sizeof IndexingHeader + IndexingHeader::u.lengths.vectorLength[t0], .opPutByValOutOfBounds
-    btqz ArrayStorage::m_vector[t0, t3, 8], .opPutByValArrayStorageEmpty
+    holeCheck(ArrayStorage::m_vector[t0, t3, 8], .opPutByValArrayStorageEmpty)
 .opPutByValArrayStorageStoreResult:
     loadisFromInstruction(3, t2)
     loadConstantOrVariable(t2, t1)
@@ -1221,8 +1236,18 @@ _llint_op_put_by_val:
         storeb 1, ArrayProfile::m_outOfBounds[t0]
     end
 .opPutByValSlow:
-    callSlowPath(_llint_slow_path_put_by_val)
+    callSlowPath(slowPath)
     dispatch(5)
+end
+
+_llint_op_put_by_val:
+    putByVal(macro(slot, slowPath)
+        btqz slot, slowPath
+    end, _llint_slow_path_put_by_val)
+
+_llint_op_put_by_val_direct:
+    putByVal(macro(slot, slowPath)
+    end, _llint_slow_path_put_by_val_direct)
 
 
 _llint_op_jmp:
@@ -1637,7 +1662,25 @@ macro nativeCallTrampoline(executableOffsetToFunction)
         loadp ScopeChain[cfr], t3
         andp MarkedBlockMask, t3
         loadp MarkedBlock::m_weakSet + WeakSet::m_vm[t3], t3
-
+    elsif ARM64
+        loadp ScopeChain[cfr], t0
+        andp MarkedBlockMask, t0
+        loadp MarkedBlock::m_weakSet + WeakSet::m_vm[t0], t0
+        storep cfr, VM::topCallFrame[t0]
+        loadp CallerFrame[cfr], t2
+        loadp ScopeChain[t2], t1
+        storep t1, ScopeChain[cfr]
+        preserveReturnAddressAfterCall(t3)
+        storep t3, ReturnPC[cfr]
+        move cfr, t0
+        loadp Callee[cfr], t1
+        loadp JSFunction::m_executable[t1], t1
+        move t2, cfr # Restore cfr to avoid loading from stack
+        call executableOffsetToFunction[t1]
+        restoreReturnAddressBeforeReturn(t3)
+        loadp ScopeChain[cfr], t3
+        andp MarkedBlockMask, t3
+        loadp MarkedBlock::m_weakSet + WeakSet::m_vm[t3], t3
     elsif C_LOOP
         loadp CallerFrame[cfr], t0
         loadp ScopeChain[t0], t1
@@ -1668,7 +1711,7 @@ macro nativeCallTrampoline(executableOffsetToFunction)
     btqnz VM::m_exception[t3], .exception
     ret
 .exception:
-    preserveReturnAddressAfterCall(t1)
+    preserveReturnAddressAfterCall(t1) # This is really only needed on X86_64
     loadi ArgumentCount + TagOffset[cfr], PC
     loadp CodeBlock[cfr], PB
     loadp CodeBlock::m_vm[PB], t0

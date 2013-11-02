@@ -38,6 +38,7 @@
 #include "WebFrame.h"
 #include "WebFrameLoaderClient.h"
 #include "WebFrameNetworkingContext.h"
+#include "WebIDBFactoryBackend.h"
 #include "WebPage.h"
 #include "WebProcess.h"
 #include "WebProcessProxyMessages.h"
@@ -216,9 +217,13 @@ AbstractDatabaseServer* WebPlatformStrategies::getDatabaseServer()
 #endif // ENABLE(SQL_DATABASE)
 
 #if ENABLE(INDEXED_DATABASE)
-PassRefPtr<IDBFactoryBackendInterface> WebPlatformStrategies::createIDBFactoryBackend()
+PassRefPtr<IDBFactoryBackendInterface> WebPlatformStrategies::createIDBFactoryBackend(const String& databaseDirectoryIdentifier)
 {
-    return DatabaseStrategy::createIDBFactoryBackend();
+#if !ENABLE(DATABASE_PROCESS)
+    return DatabaseStrategy::createIDBFactoryBackend(databaseDirectoryIdentifier);
+#endif
+
+    return WebIDBFactoryBackend::create(databaseDirectoryIdentifier);
 }
 #endif // ENABLE(INDEXED_DATABASE)
 

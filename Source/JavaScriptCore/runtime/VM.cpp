@@ -38,6 +38,7 @@
 #include "DFGWorklist.h"
 #include "DebuggerActivation.h"
 #include "ErrorInstance.h"
+#include "FTLThunks.h"
 #include "FunctionConstructor.h"
 #include "GCActivityCallback.h"
 #include "GetterSetter.h"
@@ -122,8 +123,14 @@ extern const HashTable promiseResolverPrototypeTable;
 #if ENABLE(ASSEMBLER)
 static bool enableAssembler(ExecutableAllocator& executableAllocator)
 {
-    if (!executableAllocator.isValid() || (!Options::useJIT() && !Options::useRegExpJIT()))
+    if (!Options::useJIT() && !Options::useRegExpJIT())
         return false;
+
+    if (!executableAllocator.isValid()) {
+        if (Options::crashIfCantAllocateJITMemory())
+            CRASH();
+        return false;
+    }
 
 #if USE(CF)
 #if COMPILER(GCC) && !COMPILER(CLANG)
@@ -183,13 +190,11 @@ VM::VM(VMType vmType, HeapType heapType)
     , propertyNames(new CommonIdentifiers(this))
     , emptyList(new MarkedArgumentBuffer)
     , parserArena(adoptPtr(new ParserArena))
-    , keywords(adoptPtr(new Keywords(this)))
+    , keywords(adoptPtr(new Keywords(*this)))
     , interpreter(0)
     , jsArrayClassInfo(JSArray::info())
     , jsFinalObjectClassInfo(JSFinalObject::info())
-#if ENABLE(DFG_JIT)
     , sizeOfLastScratchBuffer(0)
-#endif
     , dynamicGlobalObject(0)
     , m_enabledProfiler(0)
     , m_regExpCache(new RegExpCache(this))
@@ -252,8 +257,11 @@ VM::VM(VMType vmType, HeapType heapType)
 
 #if ENABLE(JIT)
     jitStubs = adoptPtr(new JITThunks());
-    performPlatformSpecificJITAssertions(this);
 #endif
+
+#if ENABLE(FTL_JIT)
+    ftlThunks = std::make_unique<FTL::Thunks>();
+#endif // ENABLE(FTL_JIT)
     
     interpreter->initialize(this->canUseJIT());
     
@@ -420,6 +428,10 @@ static ThunkGenerator thunkGeneratorForIntrinsic(Intrinsic intrinsic)
         return logThunkGenerator;
     case IMulIntrinsic:
         return imulThunkGenerator;
+    case ArrayIteratorNextKeyIntrinsic:
+        return arrayIteratorNextKeyThunkGenerator;
+    case ArrayIteratorNextValueIntrinsic:
+        return arrayIteratorNextValueThunkGenerator;
     default:
         return 0;
     }

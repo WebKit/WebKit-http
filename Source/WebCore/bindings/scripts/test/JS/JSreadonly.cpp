@@ -137,9 +137,7 @@ static inline bool isObservable(JSreadonly* jsreadonly)
 
 bool JSreadonlyOwner::isReachableFromOpaqueRoots(JSC::Handle<JSC::Unknown> handle, void*, SlotVisitor& visitor)
 {
-    JSreadonly* jsreadonly = jsCast<JSreadonly*>(handle.get().asCell());
-    if (!isObservable(jsreadonly))
-        return false;
+    UNUSED_PARAM(handle);
     UNUSED_PARAM(visitor);
     return false;
 }
@@ -148,7 +146,7 @@ void JSreadonlyOwner::finalize(JSC::Handle<JSC::Unknown> handle, void* context)
 {
     JSreadonly* jsreadonly = jsCast<JSreadonly*>(handle.get().asCell());
     DOMWrapperWorld& world = *static_cast<DOMWrapperWorld*>(context);
-    uncacheWrapper(world, jsreadonly->impl(), jsreadonly);
+    uncacheWrapper(world, &jsreadonly->impl(), jsreadonly);
     jsreadonly->releaseImpl();
 }
 
@@ -171,7 +169,7 @@ JSC::JSValue toJS(JSC::ExecState* exec, JSDOMGlobalObject* globalObject, readonl
 
 readonly* toreadonly(JSC::JSValue value)
 {
-    return value.inherits(JSreadonly::info()) ? jsCast<JSreadonly*>(asObject(value))->impl() : 0;
+    return value.inherits(JSreadonly::info()) ? &jsCast<JSreadonly*>(asObject(value))->impl() : 0;
 }
 
 }

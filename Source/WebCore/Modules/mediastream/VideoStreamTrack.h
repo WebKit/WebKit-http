@@ -36,20 +36,21 @@ namespace WebCore {
 
 class MediaStreamSource;
 class ScriptExecutionContext;
+class MediaStremTrackDescriptor;
 
 class VideoStreamTrack FINAL : public MediaStreamTrack {
 public:
-    static RefPtr<VideoStreamTrack> create(ScriptExecutionContext*, const Dictionary&);
-    static RefPtr<VideoStreamTrack> create(ScriptExecutionContext*, MediaStreamSource*);
-    static RefPtr<VideoStreamTrack> create(MediaStreamTrack*);
+    static RefPtr<VideoStreamTrack> create(ScriptExecutionContext&, const Dictionary&);
+    static RefPtr<VideoStreamTrack> create(ScriptExecutionContext&, MediaStreamTrackPrivate&);
+    static RefPtr<VideoStreamTrack> create(MediaStreamTrack&);
 
     virtual ~VideoStreamTrack() { }
 
     virtual const AtomicString& kind() const OVERRIDE;
 
 private:
-    VideoStreamTrack(ScriptExecutionContext*, MediaStreamSource*, const Dictionary*);
-    explicit VideoStreamTrack(MediaStreamTrack*);
+    VideoStreamTrack(ScriptExecutionContext&, MediaStreamTrackPrivate&, const Dictionary*);
+    explicit VideoStreamTrack(MediaStreamTrack&);
 };
 
 } // namespace WebCore

@@ -29,8 +29,6 @@
 #include "Editor.h"
 
 #include "CSSComputedStyleDeclaration.h"
-#include "CSSPropertyNames.h"
-#include "CSSValueKeywords.h"
 #include "CSSValueList.h"
 #include "Chrome.h"
 #include "CreateLinkCommand.h"
@@ -256,13 +254,11 @@ static unsigned verticalScrollDistance(Frame& frame)
     auto renderer = focusedElement->renderer();
     if (!renderer || !renderer->isBox())
         return 0;
-    RenderStyle* style = renderer->style();
-    if (!style)
-        return 0;
-    if (!(style->overflowY() == OSCROLL || style->overflowY() == OAUTO || focusedElement->rendererIsEditable()))
+    const RenderStyle& style = renderer->style();
+    if (!(style.overflowY() == OSCROLL || style.overflowY() == OAUTO || focusedElement->rendererIsEditable()))
         return 0;
     int height = std::min<int>(toRenderBox(renderer)->clientHeight(), frame.view()->visibleHeight());
-    return static_cast<unsigned>(max(max<int>(height * Scrollbar::minFractionToStepWhenPaging(), height - Scrollbar::maxOverlapBetweenPages()), 1));
+    return static_cast<unsigned>(std::max(std::max<int>(height * Scrollbar::minFractionToStepWhenPaging(), height - Scrollbar::maxOverlapBetweenPages()), 1));
 }
 
 static RefPtr<Range> unionDOMRanges(Range* a, Range* b)

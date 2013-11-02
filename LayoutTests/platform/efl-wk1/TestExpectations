@@ -162,11 +162,8 @@ webkit.org/b/112005 accessibility/onclick-handlers.html [ Failure ]
 webkit.org/b/112006 accessibility/secure-textfield-title-ui.html [ Failure ]
 webkit.org/b/112008 accessibility/spinbutton-value.html [ Failure ]
 webkit.org/b/112012 accessibility/svg-bounds.html [ Failure ]
-webkit.org/b/112013 accessibility/svg-remote-element.html [ Failure ]
 webkit.org/b/112014 accessibility/textarea-insertion-point-line-number.html [ Failure ]
 webkit.org/b/112015 accessibility/textarea-line-for-index.html [ Failure ]
-webkit.org/b/112016 accessibility/textarea-selected-text-range.html [ Failure ]
-webkit.org/b/112017 accessibility/textbox-role-reports-selection.html [ Failure ]
 webkit.org/b/112018 accessibility/th-as-title-ui.html [ Failure ]
 webkit.org/b/112019 accessibility/title-ui-element-correctness.html [ Failure ]
 webkit.org/b/112021 accessibility/visible-elements.html [ Failure Crash ]
@@ -319,8 +316,6 @@ webkit.org/b/96881 fast/frames/sandboxed-iframe-plugins.html [ Failure ]
 webkit.org/b/96881 http/tests/plugins [ Skip ]
 webkit.org/b/96881 plugins [ Skip ]
 webkit.org/b/96881 userscripts/user-script-plugin-document.html [ Failure ]
-webkit.org/b/96881 http/tests/inspector/network/network-embed.html [ Failure ]
-webkit.org/b/96881 http/tests/inspector/network/network-content-replacement-embed.html [ Failure ]
 
 # EFL WK1 does not support the spellchecker feature
 webkit.org/b/86633 editing/spelling [ Skip ]
@@ -474,9 +469,6 @@ webkit.org/b/109081 webgl/conformance/uniforms/uniform-default-values.html [ Ski
 webkit.org/b/109081 webgl/conformance/uniforms/uniform-location.html [ Skip ]
 webkit.org/b/109081 webgl/conformance/uniforms/uniform-samplers-test.html [ Skip ]
 
-webkit.org/b/84333 storage/indexeddb/structured-clone.html [ Failure ]
-webkit.org/b/84333 storage/indexeddb/noblobs.html [ Failure ]
-
 # css3 device adaptation does not work for EFL WK1 properly.
 webkit.org/b/114948 css3/device-adapt/viewport-width-check-window-innerwidth-correct.html [ Failure ]
 webkit.org/b/114948 css3/device-adapt/viewport-width-not-affecting-next-page.html [ Failure ]
@@ -494,9 +486,14 @@ webkit.org/b/120671 editing/selection/doubleclick-japanese-text.html [ Failure ]
 Bug(EFL) fast/harness/results.html [ Failure ]
 
 # EFL has not fully implemented about some SVG attributes
+Bug(EFL) svg/as-image/image-respects-deviceScaleFactor.html
+Bug(EFL) svg/hixie/data-types/002.xhtml
 Bug(EFL) svg/zoom/page/zoom-zoom-coords.xhtml [ Failure ]
 
 # Text selection does not work correctly in DumpRenderTree
 Bug(EFL) fast/events/selectstart-by-double-triple-clicks.html [ Failure ]
 Bug(EFL) fast/events/selectstart-by-drag.html [ Failure ]
 Bug(EFL) fast/text/offsetForPosition-complex-fallback.html [ Failure ]
+
+# shader errors, fails to render.
+webkit.org/b/105031 fast/canvas/webgl/drawingbuffer-test.html [ Failure ]

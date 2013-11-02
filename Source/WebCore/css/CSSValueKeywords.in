@@ -467,8 +467,9 @@ static
 thick
 thin
 underline
-#if defined(ENABLE_CSS3_TEXT) && ENABLE_CSS3_TEXT
+#if defined(ENABLE_CSS3_TEXT_DECORATION) && ENABLE_CSS3_TEXT_DECORATION
 wavy
+ink
 #endif
 -webkit-nowrap
 
@@ -1040,3 +1041,5 @@ span
 -webkit-hanging
 #endif
 
+// -webkit-column-fill
+balance

@@ -26,16 +26,16 @@
 #include "config.h"
 
 #if ENABLE(INSPECTOR)
+
 #include "InspectorConsoleAgent.h"
 
-#include "InstrumentingAgents.h"
 #include "Console.h"
 #include "ConsoleMessage.h"
 #include "DOMWindow.h"
 #include "InjectedScriptHost.h"
 #include "InjectedScriptManager.h"
 #include "InspectorFrontend.h"
-#include "InspectorState.h"
+#include "InstrumentingAgents.h"
 #include "ResourceError.h"
 #include "ResourceResponse.h"
 #include "ScriptArguments.h"
@@ -56,20 +56,16 @@ namespace WebCore {
 static const unsigned maximumConsoleMessages = 1000;
 static const int expireConsoleMessagesStep = 100;
 
-namespace ConsoleAgentState {
-static const char monitoringXHR[] = "monitoringXHR";
-static const char consoleMessagesEnabled[] = "consoleMessagesEnabled";
-}
-
 int InspectorConsoleAgent::s_enabledAgentCount = 0;
 
-InspectorConsoleAgent::InspectorConsoleAgent(InstrumentingAgents* instrumentingAgents, InspectorCompositeState* state, InjectedScriptManager* injectedScriptManager)
-    : InspectorBaseAgent<InspectorConsoleAgent>("Console", instrumentingAgents, state)
+InspectorConsoleAgent::InspectorConsoleAgent(InstrumentingAgents* instrumentingAgents, InjectedScriptManager* injectedScriptManager)
+    : InspectorBaseAgent<InspectorConsoleAgent>("Console", instrumentingAgents)
     , m_injectedScriptManager(injectedScriptManager)
     , m_frontend(0)
     , m_previousMessage(0)
     , m_expiredConsoleMessageCount(0)
     , m_enabled(false)
+    , m_monitoringXHREnabled(false)
 {
     m_instrumentingAgents->setInspectorConsoleAgent(this);
 }
@@ -78,7 +74,6 @@ InspectorConsoleAgent::~InspectorConsoleAgent()
 {
     m_instrumentingAgents->setInspectorConsoleAgent(0);
     m_instrumentingAgents = 0;
-    m_state = 0;
     m_injectedScriptManager = 0;
 }
 
@@ -90,8 +85,6 @@ void InspectorConsoleAgent::enable(ErrorString*)
     if (!s_enabledAgentCount)
         ScriptController::setCaptureCallStackForUncaughtExceptions(true);
     ++s_enabledAgentCount;
-
-    m_state->setBoolean(ConsoleAgentState::consoleMessagesEnabled, true);
 
     if (m_expiredConsoleMessageCount) {
         ConsoleMessage expiredMessage(!isWorkerAgent(), OtherMessageSource, LogMessageType, WarningMessageLevel, String::format("%d console messages are not shown.", m_expiredConsoleMessageCount));
@@ -110,7 +103,6 @@ void InspectorConsoleAgent::disable(ErrorString*)
     m_enabled = false;
     if (!(--s_enabledAgentCount))
         ScriptController::setCaptureCallStackForUncaughtExceptions(false);
-    m_state->setBoolean(ConsoleAgentState::consoleMessagesEnabled, false);
 }
 
 void InspectorConsoleAgent::clearMessages(ErrorString*)
@@ -129,15 +121,6 @@ void InspectorConsoleAgent::reset()
     clearMessages(&error);
     m_times.clear();
     m_counts.clear();
-}
-
-void InspectorConsoleAgent::restore()
-{
-    if (m_state->getBoolean(ConsoleAgentState::consoleMessagesEnabled)) {
-        m_frontend->messagesCleared();
-        ErrorString error;
-        enable(&error);
-    }
 }
 
 void InspectorConsoleAgent::setFrontend(InspectorFrontend* frontend)
@@ -266,7 +249,7 @@ void InspectorConsoleAgent::didFinishXHRLoading(unsigned long requestIdentifier,
 {
     if (!developerExtrasEnabled())
         return;
-    if (m_frontend && m_state->getBoolean(ConsoleAgentState::monitoringXHR)) {
+    if (m_frontend && m_monitoringXHREnabled) {
         String message = "XHR finished loading: \"" + url + "\".";
         // FIXME: <http://webkit.org/b/114316> InspectorConsoleAgent::didFinishXHRLoading ConsoleMessage should include a column number
         addMessageToConsole(NetworkMessageSource, LogMessageType, DebugMessageLevel, message, sendURL, sendLineNumber, 0, 0, requestIdentifier);
@@ -301,7 +284,7 @@ void InspectorConsoleAgent::didFailLoading(unsigned long requestIdentifier, cons
 
 void InspectorConsoleAgent::setMonitoringXHREnabled(ErrorString*, bool enabled)
 {
-    m_state->setBoolean(ConsoleAgentState::monitoringXHR, enabled);
+    m_monitoringXHREnabled = enabled;
 }
 
 static bool isGroupMessage(MessageType type)

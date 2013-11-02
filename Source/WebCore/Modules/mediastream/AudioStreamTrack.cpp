@@ -35,27 +35,27 @@
 
 namespace WebCore {
 
-RefPtr<AudioStreamTrack> AudioStreamTrack::create(ScriptExecutionContext* context, const Dictionary& audioConstraints)
+RefPtr<AudioStreamTrack> AudioStreamTrack::create(ScriptExecutionContext& context, const Dictionary& audioConstraints)
 {
-    return adoptRef(new AudioStreamTrack(context, 0, &audioConstraints));
+    return adoptRef(new AudioStreamTrack(context, *MediaStreamTrackPrivate::create(0), &audioConstraints));
 }
 
-RefPtr<AudioStreamTrack> AudioStreamTrack::create(ScriptExecutionContext* context, MediaStreamSource* source)
+RefPtr<AudioStreamTrack> AudioStreamTrack::create(ScriptExecutionContext& context, MediaStreamTrackPrivate& privateTrack)
 {
-    return adoptRef(new AudioStreamTrack(context, source, 0));
+    return adoptRef(new AudioStreamTrack(context, privateTrack, 0));
 }
 
-RefPtr<AudioStreamTrack> AudioStreamTrack::create(MediaStreamTrack* track)
+RefPtr<AudioStreamTrack> AudioStreamTrack::create(MediaStreamTrack& track)
 {
     return adoptRef(new AudioStreamTrack(track));
 }
 
-AudioStreamTrack::AudioStreamTrack(ScriptExecutionContext* context, MediaStreamSource* source, const Dictionary* audioConstraints)
-    : MediaStreamTrack(context, source, audioConstraints)
+AudioStreamTrack::AudioStreamTrack(ScriptExecutionContext& context, MediaStreamTrackPrivate& privateTrack, const Dictionary* audioConstraints)
+    : MediaStreamTrack(context, privateTrack, audioConstraints)
 {
 }
 
-AudioStreamTrack::AudioStreamTrack(MediaStreamTrack* track)
+AudioStreamTrack::AudioStreamTrack(MediaStreamTrack& track)
     : MediaStreamTrack(track)
 {
 }

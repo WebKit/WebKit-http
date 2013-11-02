@@ -1,3 +1,244 @@
+2013-11-01  Patrick Gansterer  <paroga@webkit.org>
+
+        [WIN] Reduce usage of CFSTR() in WebPreferences
+        https://bugs.webkit.org/show_bug.cgi?id=121827
+
+        Reviewed by Brent Fulgham.
+
+        This moved the dependency on CF to a few functions only
+        and is a first step to make it compile without CF.
+
+        * WebPreferences.cpp:
+        * WebPreferences.h:
+
+2013-10-31  Alex Christensen  <achristensen@webkit.org>
+
+        Compile fix for VS2012.
+        https://bugs.webkit.org/show_bug.cgi?id=123599
+
+        Reviewed by Brent Fulgham.
+
+        * WebCoreSupport/WebFrameLoaderClient.cpp:
+        (WebFrameLoaderClient::WebFramePolicyListenerPrivate::WebFramePolicyListenerPrivate):
+        (WebFrameLoaderClient::cancelPolicyCheck):
+        (WebFrameLoaderClient::receivedPolicyDecision):
+        Use nullptr instead of 0 for m_policyFunction, which is a std::function.
+
+2013-10-31  Patrick Gansterer  <paroga@webkit.org>
+
+        [WIN] Make WebHistory compile without USE(CF)
+        https://bugs.webkit.org/show_bug.cgi?id=122010
+
+        Reviewed by Brent Fulgham.
+
+        Add an alternative code path for !USE(CF) to be able to
+        compile WebHistory without the CoreFoundation library.
+
+        * COMVariantSetter.h: Add support for setting a Vector.
+        * WebHistory.cpp:
+        (createUserInfoFromArray):
+        (createUserInfoFromHistoryItem):
+        (WebHistory::removeAllItems):
+        (WebHistory::removeItem):
+        (WebHistory::addItem):
+        (WebHistory::visitedURL):
+        * WebHistory.h:
+
+2013-10-30  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        WebKit/win/WebKitGraphics.h:void WebDrawText(WebTextRenderInfo*); is never called
+        https://bugs.webkit.org/show_bug.cgi?id=123485
+
+        Reviewed by Brent Fulgham.
+
+        Removed unused WebDrawText implementation.
+
+        * WebKitGraphics.cpp:
+        * WebKitGraphics.h:
+
+2013-10-30  Patrick Gansterer  <paroga@webkit.org>
+
+        [WIN] Add missing USE(CFNETWORK) to WebError.h
+        https://bugs.webkit.org/show_bug.cgi?id=121834
+
+        Reviewed by Brent Fulgham.
+
+        WebError.cpp uses USE(CFNETWORK), so add it to the header too.
+
+        * WebError.h:
+
+2013-10-30  peavo@outlook.com  <peavo@outlook.com>
+
+        [Curl][Win] Suggested filename of download is not url decoded.
+        https://bugs.webkit.org/show_bug.cgi?id=123511
+
+        Reviewed by Brent Fulgham.
+
+        * WebDownloadCurl.cpp:
+        (WebDownload::didReceiveResponse): Url decode suggested filename.
+
+2013-10-28  Tim Horton  <timothy_horton@apple.com>
+
+        Make TileController manipulate PlatformCALayers instead of CALayers
+        https://bugs.webkit.org/show_bug.cgi?id=123279
+
+        Reviewed by Simon Fraser.
+
+        * FullscreenVideoController.cpp:
+        (FullscreenVideoController::LayerClient::platformCALayerPaintContents):
+        (FullscreenVideoController::LayerClient::platformCALayerIncrementRepaintCount):
+        Adjust for new parameters on PlatformCALayerClient callbacks.
+
+2013-10-23  Alex Christensen  <achristensen@webkit.org>
+
+        Separated USE(CA) from USE(ACCELERATED_COMPOSITING) to prepare WinCairo for accelerated compositing.
+        https://bugs.webkit.org/show_bug.cgi?id=123214
+
+        Reviewed by Brent Fulgham.
+
+        * WebCoreSupport/WebChromeClient.h:
+        (WebChromeClient::delegatedScrollRequested): Added empty function.
+        * WebPreferences.cpp:
+        (WebPreferences::acceleratedCompositingEnabled):
+        Return true for non-CA ports using accelerated compositing.
+        * WebView.cpp:
+        (WebView::~WebView):
+        (WebView::sizeChanged):
+        (WebView::paint):
+        (WebView::setShouldInvertColors):
+        (WebView::flushPendingGraphicsLayerChangesSoon):
+        (WebView::setAcceleratedCompositing):
+        * WebView.h:
+        Added USE(CA) where necessary to compile WinCairo with accelerated compositing.
+
+2013-10-16  Tim Horton  <timothy_horton@apple.com>
+
+        Attempt to fix the Windows build after http://trac.webkit.org/changeset/157547.
+
+        Apparently some *more* Windows code uses setFrame and I missed it.
+
+        * FullscreenVideoController.cpp:
+        (FullscreenVideoController::LayerClient::platformCALayerLayoutSublayersOfLayer):
+
+2013-10-16  Jochen Eisinger  <jochen@chromium.org>
+
+        A page should exit fullscreen mode if it opens a new popup
+        https://bugs.webkit.org/show_bug.cgi?id=122865
+
+        Reviewed by Jer Noble.
+
+        If a fullscreen page opens a popup, the popup would be hidden and
+        therefore invisible to the user. To avoid this, exit fullscreen mode
+        before opening a new window.
+
+        * WebCoreSupport/WebChromeClient.cpp:
+        (WebChromeClient::createWindow):
+
+2013-10-15  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Remove Windows old front-end related code
+        https://bugs.webkit.org/show_bug.cgi?id=122845
+
+        Reviewed by Brent Fulgham.
+
+        * WebCoreSupport/WebInspectorClient.cpp:
+        (WebInspectorClient::openInspectorFrontend):
+
+2013-10-14  Roger Fong  <roger_fong@apple.com>
+
+        Windows select element doesn't draw RTL properly.
+        https://bugs.webkit.org/show_bug.cgi?id=122785.
+
+        Reviewed by Brent Fulgham.
+
+        * WebCoreSupport/WebChromeClient.cpp:
+        (WebChromeClient::selectItemWritingDirectionIsNatural):
+        (WebChromeClient::selectItemAlignmentFollowsMenuWritingDirection):
+
+2013-10-14  Tim Horton  <timothy_horton@apple.com>
+
+        Virtualize PlatformCALayer
+        https://bugs.webkit.org/show_bug.cgi?id=122672
+
+        Reviewed by Anders Carlsson.
+
+        * FullscreenVideoController.cpp:
+        (FullscreenVideoController::FullscreenVideoController):
+        Include PlatformCALayerWin.h and explicitly make PlatformCALayerWins here.
+
+2013-10-12  Darin Adler  <darin@apple.com>
+
+        Get rid of the toHTMLElement helper for casting FormAssociatedElement to HTMLElement
+        https://bugs.webkit.org/show_bug.cgi?id=122713
+
+        Reviewed by Sam Weinig.
+
+        * WebFrame.cpp:
+        (WebFrame::controlsInForm): Use asHTMLElement.
+
+2013-10-12  Darin Adler  <darin@apple.com>
+
+        Use unique_ptr instead of delete in a few places
+        https://bugs.webkit.org/show_bug.cgi?id=122639
+
+        Reviewed by Anders Carlsson.
+
+        * WebCoreSupport/WebFrameNetworkingContext.cpp:
+        (privateSession):
+        (identifierBase):
+        (WebFrameNetworkingContext::setCookieAcceptPolicyForAllContexts):
+        (WebFrameNetworkingContext::setPrivateBrowsingStorageSessionIdentifierBase):
+        (WebFrameNetworkingContext::ensurePrivateBrowsingSession):
+        (WebFrameNetworkingContext::destroyPrivateBrowsingSession):
+        (WebFrameNetworkingContext::storageSession):
+
+2013-10-10  Anders Carlsson  <andersca@apple.com>
+
+        Fix build.
+        
+        * Interfaces/WebKit.idl:
+        Oops, didn't mean to remove the uuid for WebURLResponse.
+
+2013-10-10  Anders Carlsson  <andersca@apple.com>
+
+        Remove WebScrollBar
+        https://bugs.webkit.org/show_bug.cgi?id=122623
+
+        Reviewed by Brent Fulgham.
+
+        WebScrollBar isn't used by anyone, remove it.
+
+        * ForEachCoClass.h:
+        * Interfaces/IWebScrollBarDelegatePrivate.idl: Removed.
+        * Interfaces/IWebScrollBarPrivate.idl: Removed.
+        * Interfaces/WebKit.idl:
+        * WebKitClassFactory.cpp:
+        (WebKitClassFactory::CreateInstance):
+        * WebScrollBar.cpp: Removed.
+        * WebScrollBar.h: Removed.
+
+2013-10-10  Beth Dakin  <bdakin@apple.com>
+
+        Build fix after http://trac.webkit.org/changeset/157253
+
+        * WebScrollBar.h:
+
+2013-10-09  peavo@outlook.com  <peavo@outlook.com>
+
+        [Win] BeginPaint should only be called in response to WM_PAINT.
+        https://bugs.webkit.org/show_bug.cgi?id=122549
+
+        Reviewed by Brent Fulgham.
+
+        According to the documentation, the Win32 api function BeginPaint should only be called in response to a WM_PAINT message.
+        Currently, the WebView window procedure might call this function (via WebView::paint(0, 0)) for all types of messages.
+        Also, there is potential for double drawing. If some message is dispatched before WM_PAINT, WebView::paint(0, 0) will be called.
+        This call does not validate the area drawn, so later the WM_PAINT will arrive, drawing the same area.
+        This can be fixed by calling the Win32 function UpdateWindow(), which will do a synchronous window update, and validate the area.
+
+        * WebView.cpp:
+        (WebView::WebViewWndProc): Use Win32 function UpdateWindow() to draw invalid area.
+
 2013-10-07  Sam Weinig  <sam@webkit.org>
 
         Consolidate findString functions

@@ -37,10 +37,12 @@ public:
     static PassRefPtr<MathMLTextElement> create(const QualifiedName& tagName, Document&);
     virtual void didAttachRenderers() OVERRIDE;
 
+    virtual bool childShouldCreateRenderer(const Node*) const OVERRIDE;
+
 private:
     MathMLTextElement(const QualifiedName& tagName, Document&);
 
-    virtual RenderElement* createRenderer(RenderArena&, RenderStyle&);
+    virtual RenderElement* createRenderer(PassRef<RenderStyle>) OVERRIDE;
     virtual void childrenChanged(const ChildChange&) OVERRIDE;
 };
     

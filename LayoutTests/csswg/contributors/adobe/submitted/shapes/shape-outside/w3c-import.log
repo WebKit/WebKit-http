@@ -8,7 +8,7 @@ Then run the Tools/Scripts/import-w3c-tests in Webkit to reimport
 Do NOT modify or remove this file
 
 ------------------------------------------------------------------------
-Last Import: 2013-09-27 16:37
+Last Import: 2013-10-31 13:25
 W3C Mercurial changeset: Not Available
 Test status at time of import: unknown
 ------------------------------------------------------------------------
@@ -22,6 +22,20 @@ List of files:
 /LayoutTests/csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-circle-000.html
 /LayoutTests/csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-circle-001-expected.html
 /LayoutTests/csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-circle-001.html
+/LayoutTests/csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-clipped-000-expected.html
+/LayoutTests/csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-clipped-000.html
+/LayoutTests/csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-clipped-001-expected.html
+/LayoutTests/csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-clipped-001.html
+/LayoutTests/csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-clipped-002-expected.html
+/LayoutTests/csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-clipped-002.html
+/LayoutTests/csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-clipped-003-expected.html
+/LayoutTests/csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-clipped-003.html
+/LayoutTests/csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-clipped-004-expected.html
+/LayoutTests/csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-clipped-004.html
+/LayoutTests/csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-clipped-005-expected.html
+/LayoutTests/csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-clipped-005.html
+/LayoutTests/csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-clipped-006-expected.html
+/LayoutTests/csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-clipped-006.html
 /LayoutTests/csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-ellipse-000-expected.html
 /LayoutTests/csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-ellipse-000.html
 /LayoutTests/csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-horizontal-rectangle-000-expected.html
@@ -60,6 +74,50 @@ List of files:
 /LayoutTests/csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-margin-008.html
 /LayoutTests/csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-margin-009-expected.html
 /LayoutTests/csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-margin-009.html
+/LayoutTests/csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-margin-010-expected.html
+/LayoutTests/csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-margin-010.html
+/LayoutTests/csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-margin-011-expected.html
+/LayoutTests/csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-margin-011.html
+/LayoutTests/csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-margin-012-expected.html
+/LayoutTests/csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-margin-012.html
+/LayoutTests/csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-margin-013-expected.html
+/LayoutTests/csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-margin-013.html
+/LayoutTests/csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-margin-014-expected.html
+/LayoutTests/csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-margin-014.html
+/LayoutTests/csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-margin-015-expected.html
+/LayoutTests/csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-margin-015.html
+/LayoutTests/csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-margin-016-expected.html
+/LayoutTests/csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-margin-016.html
+/LayoutTests/csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-margin-017-expected.html
+/LayoutTests/csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-margin-017.html
+/LayoutTests/csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-margin-018-expected.html
+/LayoutTests/csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-margin-018.html
+/LayoutTests/csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-margin-019-expected.html
+/LayoutTests/csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-margin-019.html
+/LayoutTests/csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-margin-020-expected.html
+/LayoutTests/csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-margin-020.html
+/LayoutTests/csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-margin-021-expected.html
+/LayoutTests/csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-margin-021.html
+/LayoutTests/csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-padding-000-expected.html
+/LayoutTests/csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-padding-000.html
+/LayoutTests/csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-padding-001-expected.html
+/LayoutTests/csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-padding-001.html
+/LayoutTests/csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-padding-002-expected.html
+/LayoutTests/csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-padding-002.html
+/LayoutTests/csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-padding-003-expected.html
+/LayoutTests/csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-padding-003.html
+/LayoutTests/csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-padding-004-expected.html
+/LayoutTests/csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-padding-004.html
+/LayoutTests/csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-padding-005-expected.html
+/LayoutTests/csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-padding-005.html
+/LayoutTests/csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-padding-006-expected.html
+/LayoutTests/csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-padding-006.html
+/LayoutTests/csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-padding-007-expected.html
+/LayoutTests/csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-padding-007.html
+/LayoutTests/csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-padding-008-expected.html
+/LayoutTests/csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-padding-008.html
+/LayoutTests/csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-padding-009-expected.html
+/LayoutTests/csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-padding-009.html
 /LayoutTests/csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-polygon-000-expected.html
 /LayoutTests/csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-polygon-000.html
 /LayoutTests/csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-polygon-001-expected.html

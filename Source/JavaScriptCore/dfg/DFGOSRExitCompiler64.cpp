@@ -113,8 +113,13 @@ void OSRExitCompiler::compileExit(const OSRExit& exit, const Operands<ValueRecov
                 scratch1 = AssemblyHelpers::selectScratchGPR(usedRegister);
                 scratch2 = AssemblyHelpers::selectScratchGPR(usedRegister, scratch1);
                 
+#if CPU(ARM64)
+                m_jit.pushToSave(scratch1);
+                m_jit.pushToSave(scratch2);
+#else
                 m_jit.push(scratch1);
                 m_jit.push(scratch2);
+#endif
                 
                 GPRReg value;
                 if (exit.m_jsValueSource.isAddress()) {
@@ -130,8 +135,13 @@ void OSRExitCompiler::compileExit(const OSRExit& exit, const Operands<ValueRecov
                 m_jit.lshift32(scratch1, scratch2);
                 m_jit.or32(scratch2, AssemblyHelpers::AbsoluteAddress(arrayProfile->addressOfArrayModes()));
                 
+#if CPU(ARM64)
+                m_jit.popToRestore(scratch2);
+                m_jit.popToRestore(scratch1);
+#else
                 m_jit.pop(scratch2);
                 m_jit.pop(scratch1);
+#endif
             }
         }
         
@@ -376,7 +386,7 @@ void OSRExitCompiler::compileExit(const OSRExit& exit, const Operands<ValueRecov
     
     if (haveArguments) {
         HashSet<InlineCallFrame*, DefaultHash<InlineCallFrame*>::Hash,
-            NullableHashTraits<InlineCallFrame*> > didCreateArgumentsObject;
+            NullableHashTraits<InlineCallFrame*>> didCreateArgumentsObject;
 
         for (size_t index = 0; index < operands.size(); ++index) {
             const ValueRecovery& recovery = operands[index];

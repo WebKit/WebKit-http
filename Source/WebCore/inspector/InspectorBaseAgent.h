@@ -40,26 +40,22 @@
 namespace WebCore {
 
 class InspectorFrontend;
-class InspectorCompositeState;
-class InspectorState;
 class InstrumentingAgents;
 
 class InspectorBaseAgentInterface {
 public:
-    InspectorBaseAgentInterface(const String&, InstrumentingAgents*, InspectorCompositeState*);
+    InspectorBaseAgentInterface(const String&, InstrumentingAgents*);
     virtual ~InspectorBaseAgentInterface();
 
     virtual void setFrontend(InspectorFrontend*) { }
     virtual void clearFrontend() { }
-    virtual void restore() { }
     virtual void registerInDispatcher(InspectorBackendDispatcher*) = 0;
     virtual void discardAgent() { }
 
-    String name() { return m_name; }
+    String name() const { return m_name; }
 
 protected:
     InstrumentingAgents* m_instrumentingAgents;
-    InspectorState* m_state;
 
 private:
     String m_name;
@@ -71,12 +67,11 @@ public:
 
     void setFrontend(InspectorFrontend*);
     void clearFrontend();
-    void restore();
     void registerInDispatcher(InspectorBackendDispatcher*);
     void discardAgents();
 
 private:
-    Vector<OwnPtr<InspectorBaseAgentInterface> > m_agents;
+    Vector<OwnPtr<InspectorBaseAgentInterface>> m_agents;
 };
 
 template<typename T>
@@ -90,8 +85,8 @@ public:
     }
 
 protected:
-    InspectorBaseAgent(const String& name, InstrumentingAgents* instrumentingAgents, InspectorCompositeState* inspectorState)
-        : InspectorBaseAgentInterface(name, instrumentingAgents, inspectorState)
+    InspectorBaseAgent(const String& name, InstrumentingAgents* instrumentingAgents)
+        : InspectorBaseAgentInterface(name, instrumentingAgents)
     {
     }
 };

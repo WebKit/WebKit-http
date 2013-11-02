@@ -26,14 +26,13 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+from webkitpy.port.mac import MacPort
+from webkitpy.port import port_testcase
 from webkitpy.common.system.filesystem_mock import MockFileSystem
 from webkitpy.common.system.outputcapture import OutputCapture
+from webkitpy.tool.mocktool import MockOptions
 from webkitpy.common.system.executive_mock import MockExecutive, MockExecutive2, MockProcess, ScriptError
 from webkitpy.common.system.systemhost_mock import MockSystemHost
-from webkitpy.port import port_testcase
-from webkitpy.port.base import Port
-from webkitpy.port.mac import MacPort
-from webkitpy.tool.mocktool import MockOptions
 
 
 class MacTest(port_testcase.PortTestCase):
@@ -101,16 +100,14 @@ java/
         self.assert_name('mac', 'snowleopard', 'mac-snowleopard')
         self.assert_name('mac-snowleopard', 'leopard', 'mac-snowleopard')
         self.assert_name('mac-snowleopard', 'lion', 'mac-snowleopard')
-
         self.assert_name('mac', 'lion', 'mac-lion')
         self.assert_name('mac-lion', 'lion', 'mac-lion')
-
         self.assert_name('mac', 'mountainlion', 'mac-mountainlion')
         self.assert_name('mac-mountainlion', 'lion', 'mac-mountainlion')
-
+        self.assert_name('mac', 'mavericks', 'mac-mavericks')
+        self.assert_name('mac-mavericks', 'mountainlion', 'mac-mavericks')
         self.assert_name('mac', 'future', 'mac-future')
         self.assert_name('mac-future', 'future', 'mac-future')
-
         self.assertRaises(AssertionError, self.assert_name, 'mac-tiger', 'leopard', 'mac-leopard')
 
     def test_setup_environ_for_server(self):
@@ -127,13 +124,15 @@ java/
 
     def test_baseline_search_path(self):
         # Note that we don't need total coverage here, just path coverage, since this is all data driven.
-        self._assert_search_path('mac-snowleopard', 'mac-snowleopard', ['mac-snowleopard', 'mac-lion', 'mac'])
-        self._assert_search_path('mac-lion', 'mac-lion', ['mac-lion', 'mac'])
-        self._assert_search_path('mac-mountainlion', 'mac', ['mac'])
+        self._assert_search_path('mac-snowleopard', 'mac-snowleopard', ['mac-snowleopard', 'mac-lion', 'mac-mountainlion', 'mac'])
+        self._assert_search_path('mac-lion', 'mac-lion', ['mac-lion', 'mac-mountainlion', 'mac'])
+        self._assert_search_path('mac-mountainlion', 'mac-mountainlion', ['mac-mountainlion', 'mac'])
+        self._assert_search_path('mac-mavericks', 'mac', ['mac'])
         self._assert_search_path('mac-future', 'mac', ['mac'])
-        self._assert_search_path('mac-snowleopard', 'mac-wk2', ['mac-wk2', 'wk2', 'mac-snowleopard', 'mac-lion', 'mac'], use_webkit2=True)
-        self._assert_search_path('mac-lion', 'mac-wk2', ['mac-wk2', 'wk2', 'mac-lion', 'mac'], use_webkit2=True)
-        self._assert_search_path('mac-mountainlion', 'mac-wk2', ['mac-wk2', 'wk2', 'mac'], use_webkit2=True)
+        self._assert_search_path('mac-snowleopard', 'mac-wk2', ['mac-wk2', 'wk2', 'mac-snowleopard', 'mac-lion', 'mac-mountainlion', 'mac'], use_webkit2=True)
+        self._assert_search_path('mac-lion', 'mac-wk2', ['mac-wk2', 'wk2', 'mac-lion', 'mac-mountainlion', 'mac'], use_webkit2=True)
+        self._assert_search_path('mac-mountainlion', 'mac-wk2', ['mac-wk2', 'wk2', 'mac-mountainlion', 'mac'], use_webkit2=True)
+        self._assert_search_path('mac-mavericks', 'mac-wk2', ['mac-wk2', 'wk2', 'mac'], use_webkit2=True)
         self._assert_search_path('mac-future', 'mac-wk2', ['mac-wk2', 'wk2', 'mac'], use_webkit2=True)
 
     def test_show_results_html_file(self):
@@ -256,30 +255,3 @@ java/
         port._run_script = run_script
         port._build_driver()
         self.assertEqual(self.args, [])
-
-    def test_commands(self):
-        port = self.make_port(port_name="mac")
-        self.assertEqual(port.tooling_flag(), "--port=mac")
-        self.assertEqual(port.update_webkit_command(), Port.script_shell_command("update-webkit"))
-        self.assertEqual(port.check_webkit_style_command(), Port.script_shell_command("check-webkit-style"))
-        self.assertEqual(port.prepare_changelog_command(), Port.script_shell_command("prepare-ChangeLog"))
-        self.assertEqual(port.build_webkit_command(), Port.script_shell_command("build-webkit"))
-        self.assertEqual(port.run_javascriptcore_tests_command(), Port.script_shell_command("run-javascriptcore-tests"))
-        self.assertEqual(port.run_webkit_unit_tests_command(), None)
-        self.assertEqual(port.run_webkit_tests_command(), Port.script_shell_command("run-webkit-tests"))
-        self.assertEqual(port.run_python_unittests_command(), Port.script_shell_command("test-webkitpy"))
-        self.assertEqual(port.run_perl_unittests_command(), Port.script_shell_command("test-webkitperl"))
-        self.assertEqual(port.run_bindings_tests_command(), Port.script_shell_command("run-bindings-tests"))
-
-        port = self.make_port(port_name="mac", options=MockOptions(webkit_test_runner=True))
-        self.assertEqual(port.tooling_flag(), "--port=mac-wk2")
-        self.assertEqual(port.update_webkit_command(), Port.script_shell_command("update-webkit"))
-        self.assertEqual(port.check_webkit_style_command(), Port.script_shell_command("check-webkit-style"))
-        self.assertEqual(port.prepare_changelog_command(), Port.script_shell_command("prepare-ChangeLog"))
-        self.assertEqual(port.build_webkit_command(), Port.script_shell_command("build-webkit"))
-        self.assertEqual(port.run_javascriptcore_tests_command(), Port.script_shell_command("run-javascriptcore-tests"))
-        self.assertEqual(port.run_webkit_unit_tests_command(), None)
-        self.assertEqual(port.run_webkit_tests_command(), Port.script_shell_command("run-webkit-tests"))
-        self.assertEqual(port.run_python_unittests_command(), Port.script_shell_command("test-webkitpy"))
-        self.assertEqual(port.run_perl_unittests_command(), Port.script_shell_command("test-webkitperl"))
-        self.assertEqual(port.run_bindings_tests_command(), Port.script_shell_command("run-bindings-tests"))

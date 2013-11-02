@@ -36,9 +36,7 @@ class FormDataList;
 class HTMLElement;
 class HTMLFormElement;
 class Node;
-class ValidationMessage;
 class ValidityState;
-class VisibleSelection;
 
 class FormAssociatedElement : public FormNamedItem {
 public:
@@ -71,10 +69,10 @@ public:
     void formRemovedFromTree(const Node* formRoot);
 
     // ValidityState attribute implementations
+    bool badInput() const { return hasBadInput(); }
     bool customError() const;
 
-    // Override functions for patterMismatch, rangeOverflow, rangerUnderflow,
-    // stepMismatch, tooLong and valueMissing must call willValidate method.
+    // Implementations of patternMismatch, rangeOverflow, rangerUnderflow, stepMismatch, tooLong and valueMissing must call willValidate.
     virtual bool hasBadInput() const;
     virtual bool patternMismatch() const;
     virtual bool rangeOverflow() const;
@@ -113,23 +111,12 @@ private:
 
     void resetFormAttributeTargetObserver();
 
-    virtual bool isFormAssociatedElement() OVERRIDE FINAL { return true; }
+    virtual bool isFormAssociatedElement() const OVERRIDE FINAL { return true; }
 
-    OwnPtr<FormAttributeTargetObserver> m_formAttributeTargetObserver;
+    std::unique_ptr<FormAttributeTargetObserver> m_formAttributeTargetObserver;
     HTMLFormElement* m_form;
-    OwnPtr<ValidityState> m_validityState;
     String m_customValidationMessage;
 };
-
-inline const HTMLElement* toHTMLElement(const FormAssociatedElement* associatedElement)
-{
-    return const_cast<FormAssociatedElement*>(associatedElement)->asHTMLElement();
-}
-
-inline HTMLElement* toHTMLElement(FormAssociatedElement* associatedElement)
-{
-    return associatedElement->asHTMLElement();
-}
 
 } // namespace
 

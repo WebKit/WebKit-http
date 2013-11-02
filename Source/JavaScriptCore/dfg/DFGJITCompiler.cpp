@@ -30,6 +30,7 @@
 
 #include "CodeBlock.h"
 #include "DFGFailedFinalizer.h"
+#include "DFGInlineCacheWrapperInlines.h"
 #include "DFGJITCode.h"
 #include "DFGJITFinalizer.h"
 #include "DFGOSRExitCompiler.h"
@@ -63,26 +64,25 @@ void JITCompiler::linkOSRExits()
     ASSERT(m_jitCode->osrExit.size() == m_exitCompilationInfo.size());
     if (m_graph.compilation()) {
         for (unsigned i = 0; i < m_jitCode->osrExit.size(); ++i) {
-            OSRExit& exit = m_jitCode->osrExit[i];
+            OSRExitCompilationInfo& info = m_exitCompilationInfo[i];
             Vector<Label> labels;
-            if (exit.m_watchpointIndex == std::numeric_limits<unsigned>::max()) {
-                OSRExitCompilationInfo& info = m_exitCompilationInfo[i];
+            if (!info.m_failureJumps.empty()) {
                 for (unsigned j = 0; j < info.m_failureJumps.jumps().size(); ++j)
                     labels.append(info.m_failureJumps.jumps()[j].label());
             } else
-                labels.append(m_jitCode->watchpoints[exit.m_watchpointIndex].sourceLabel());
+                labels.append(info.m_replacementSource);
             m_exitSiteLabels.append(labels);
         }
     }
     
     for (unsigned i = 0; i < m_jitCode->osrExit.size(); ++i) {
         OSRExit& exit = m_jitCode->osrExit[i];
-        JumpList& failureJumps = m_exitCompilationInfo[i].m_failureJumps;
-        ASSERT(failureJumps.empty() == (exit.m_watchpointIndex != std::numeric_limits<unsigned>::max()));
-        if (exit.m_watchpointIndex == std::numeric_limits<unsigned>::max())
+        OSRExitCompilationInfo& info = m_exitCompilationInfo[i];
+        JumpList& failureJumps = info.m_failureJumps;
+        if (!failureJumps.empty())
             failureJumps.link(this);
         else
-            m_jitCode->watchpoints[exit.m_watchpointIndex].setDestination(label());
+            info.m_replacementDestination = label();
         jitAssertHasValidCallFrame();
         store32(TrustedImm32(i), &vm()->osrExitIndex);
         exit.setPatchableCodeOffset(patchableJump());
@@ -99,7 +99,7 @@ void JITCompiler::compileEntry()
     // check) which will be dependent on stack layout. (We'd need to account for this in
     // both normal return code and when jumping to an exception handler).
     preserveReturnAddressAfterCall(GPRInfo::regT2);
-    emitPutToCallFrameHeader(GPRInfo::regT2, JSStack::ReturnPC);
+    emitPutReturnPCToCallFrameHeader(GPRInfo::regT2);
     emitPutImmediateToCallFrameHeader(m_codeBlock, JSStack::CodeBlock);
 }
 
@@ -127,8 +127,8 @@ void JITCompiler::compileExceptionHandlers()
     if (!m_exceptionChecksWithCallFrameRollback.empty()) {
         // Remove hostCallFrameFlag from caller.
         m_exceptionChecksWithCallFrameRollback.link(this);
-        emitGetFromCallFrameHeaderPtr(JSStack::CallerFrame, GPRInfo::argumentGPR0);
-        andPtr(TrustedImmPtr(reinterpret_cast<void*>(~CallFrame::hostCallFrameFlag())), GPRInfo::argumentGPR0);
+        emitGetCallerFrameFromCallFrameHeaderPtr(GPRInfo::argumentGPR0);
+        andPtr(TrustedImm32(safeCast<int32_t>(~CallFrame::hostCallFrameFlag())), GPRInfo::argumentGPR0);
         doLookup = jump();
     }
 
@@ -146,9 +146,7 @@ void JITCompiler::compileExceptionHandlers()
     poke(GPRInfo::argumentGPR0);
 #endif
     m_calls.append(CallLinkRecord(call(), lookupExceptionHandler));
-    // lookupExceptionHandler leaves the handler CallFrame* in the returnValueGPR,
-    // and the address of the handler in returnValueGPR2.
-    jump(GPRInfo::returnValueGPR2);
+    jumpToExceptionHandler();
 }
 
 void JITCompiler::link(LinkBuffer& linkBuffer)
@@ -158,10 +156,8 @@ void JITCompiler::link(LinkBuffer& linkBuffer)
     dataLogF("JIT code for %p start at [%p, %p). Size = %zu.\n", m_codeBlock, linkBuffer.debugAddress(), static_cast<char*>(linkBuffer.debugAddress()) + linkBuffer.debugSize(), linkBuffer.debugSize());
 #endif
     
-    if (!m_graph.m_inlineCallFrames->isEmpty()) {
-        m_graph.m_inlineCallFrames->shrinkToFit();
+    if (!m_graph.m_inlineCallFrames->isEmpty())
         m_jitCode->common.inlineCallFrames = m_graph.m_inlineCallFrames.release();
-    }
     
     m_jitCode->common.machineCaptureStart = m_graph.m_machineCaptureStart;
     m_jitCode->common.slowArguments = std::move(m_graph.m_slowArguments);
@@ -226,47 +222,19 @@ void JITCompiler::link(LinkBuffer& linkBuffer)
     for (unsigned i = 0; i < m_calls.size(); ++i)
         linkBuffer.link(m_calls[i].m_call, m_calls[i].m_function);
 
-    m_codeBlock->setNumberOfStructureStubInfos(m_propertyAccesses.size() + m_ins.size());
-    for (unsigned i = 0; i < m_propertyAccesses.size(); ++i) {
-        StructureStubInfo& info = m_codeBlock->structureStubInfo(i);
-        CodeLocationCall callReturnLocation = linkBuffer.locationOf(m_propertyAccesses[i].m_slowPathGenerator->call());
-        info.codeOrigin = m_propertyAccesses[i].m_codeOrigin;
-        info.callReturnLocation = callReturnLocation;
-        info.patch.dfg.deltaCheckImmToCall = differenceBetweenCodePtr(linkBuffer.locationOf(m_propertyAccesses[i].m_structureImm), callReturnLocation);
-        info.patch.dfg.deltaCallToStructCheck = differenceBetweenCodePtr(callReturnLocation, linkBuffer.locationOf(m_propertyAccesses[i].m_structureCheck));
-#if USE(JSVALUE64)
-        info.patch.dfg.deltaCallToLoadOrStore = differenceBetweenCodePtr(callReturnLocation, linkBuffer.locationOf(m_propertyAccesses[i].m_loadOrStore));
-#else
-        info.patch.dfg.deltaCallToTagLoadOrStore = differenceBetweenCodePtr(callReturnLocation, linkBuffer.locationOf(m_propertyAccesses[i].m_tagLoadOrStore));
-        info.patch.dfg.deltaCallToPayloadLoadOrStore = differenceBetweenCodePtr(callReturnLocation, linkBuffer.locationOf(m_propertyAccesses[i].m_payloadLoadOrStore));
-#endif
-        info.patch.dfg.deltaCallToSlowCase = differenceBetweenCodePtr(callReturnLocation, linkBuffer.locationOf(m_propertyAccesses[i].m_slowPathGenerator->label()));
-        info.patch.dfg.deltaCallToDone = differenceBetweenCodePtr(callReturnLocation, linkBuffer.locationOf(m_propertyAccesses[i].m_done));
-        info.patch.dfg.deltaCallToStorageLoad = differenceBetweenCodePtr(callReturnLocation, linkBuffer.locationOf(m_propertyAccesses[i].m_propertyStorageLoad));
-        info.patch.dfg.baseGPR = m_propertyAccesses[i].m_baseGPR;
-#if USE(JSVALUE64)
-        info.patch.dfg.valueGPR = m_propertyAccesses[i].m_valueGPR;
-#else
-        info.patch.dfg.valueTagGPR = m_propertyAccesses[i].m_valueTagGPR;
-        info.patch.dfg.valueGPR = m_propertyAccesses[i].m_valueGPR;
-#endif
-        m_propertyAccesses[i].m_usedRegisters.copyInfo(info.patch.dfg.usedRegisters);
-        info.patch.dfg.registersFlushed = m_propertyAccesses[i].m_registerMode == PropertyAccessRecord::RegistersFlushed;
-    }
+    for (unsigned i = m_getByIds.size(); i--;)
+        m_getByIds[i].finalize(linkBuffer);
+    for (unsigned i = m_putByIds.size(); i--;)
+        m_putByIds[i].finalize(linkBuffer);
+
     for (unsigned i = 0; i < m_ins.size(); ++i) {
-        StructureStubInfo& info = m_codeBlock->structureStubInfo(m_propertyAccesses.size() + i);
+        StructureStubInfo& info = *m_ins[i].m_stubInfo;
         CodeLocationLabel jump = linkBuffer.locationOf(m_ins[i].m_jump);
         CodeLocationCall callReturnLocation = linkBuffer.locationOf(m_ins[i].m_slowPathGenerator->call());
-        info.codeOrigin = m_ins[i].m_codeOrigin;
         info.hotPathBegin = jump;
         info.callReturnLocation = callReturnLocation;
-        info.patch.dfg.deltaCallToSlowCase = differenceBetweenCodePtr(callReturnLocation, linkBuffer.locationOf(m_ins[i].m_slowPathGenerator->label()));
-        info.patch.dfg.baseGPR = m_ins[i].m_baseGPR;
-        info.patch.dfg.valueGPR = m_ins[i].m_resultGPR;
-        m_ins[i].m_usedRegisters.copyInfo(info.patch.dfg.usedRegisters);
-        info.patch.dfg.registersFlushed = false;
+        info.patch.deltaCallToSlowCase = differenceBetweenCodePtr(callReturnLocation, linkBuffer.locationOf(m_ins[i].m_slowPathGenerator->label()));
     }
-    m_codeBlock->sortStructureStubInfos();
     
     m_codeBlock->setNumberOfCallLinkInfos(m_jsCalls.size());
     for (unsigned i = 0; i < m_jsCalls.size(); ++i) {
@@ -285,10 +253,14 @@ void JITCompiler::link(LinkBuffer& linkBuffer)
     CodeLocationLabel target = CodeLocationLabel(osrExitThunk.code());
     for (unsigned i = 0; i < m_jitCode->osrExit.size(); ++i) {
         OSRExit& exit = m_jitCode->osrExit[i];
+        OSRExitCompilationInfo& info = m_exitCompilationInfo[i];
         linkBuffer.link(exit.getPatchableCodeOffsetAsJump(), target);
         exit.correctJump(linkBuffer);
-        if (exit.m_watchpointIndex != std::numeric_limits<unsigned>::max())
-            m_jitCode->watchpoints[exit.m_watchpointIndex].correctLabels(linkBuffer);
+        if (info.m_replacementSource.isSet()) {
+            m_jitCode->common.jumpReplacements.append(JumpReplacement(
+                linkBuffer.locationOf(info.m_replacementSource),
+                linkBuffer.locationOf(info.m_replacementDestination)));
+        }
     }
     
     if (m_graph.compilation()) {
@@ -362,7 +334,7 @@ void JITCompiler::compileFunction()
     Label fromArityCheck(this);
     // Plant a check that sufficient space is available in the JSStack.
     // FIXME: https://bugs.webkit.org/show_bug.cgi?id=56291
-    addPtr(TrustedImm32(-m_codeBlock->m_numCalleeRegisters * sizeof(Register)), GPRInfo::callFrameRegister, GPRInfo::regT1);
+    addPtr(TrustedImm32(virtualRegisterForLocal(m_codeBlock->m_numCalleeRegisters).offset() * sizeof(Register)), GPRInfo::callFrameRegister, GPRInfo::regT1);
     Jump stackCheck = branchPtr(Above, AbsoluteAddress(m_vm->interpreter->stack().addressOfEnd()), GPRInfo::regT1);
     // Return here after stack check.
     Label fromStackCheck = label();
@@ -382,8 +354,6 @@ void JITCompiler::compileFunction()
     // we need to call out to a helper function to check whether more space is available.
     // FIXME: change this from a cti call to a DFG style operation (normal C calling conventions).
     stackCheck.link(this);
-    move(stackPointerRegister, GPRInfo::argumentGPR0);
-    poke(GPRInfo::callFrameRegister, OBJECT_OFFSETOF(struct JITStackFrame, callFrame) / sizeof(void*));
 
     emitStoreCodeOrigin(CodeOrigin(0));
     m_speculative->callOperationWithCallFrameRollbackOnException(operationStackCheck, m_codeBlock);
@@ -399,8 +369,6 @@ void JITCompiler::compileFunction()
 
     load32(AssemblyHelpers::payloadFor((VirtualRegister)JSStack::ArgumentCount), GPRInfo::regT1);
     branch32(AboveOrEqual, GPRInfo::regT1, TrustedImm32(m_codeBlock->numParameters())).linkTo(fromArityCheck, this);
-    move(stackPointerRegister, GPRInfo::argumentGPR0);
-    poke(GPRInfo::callFrameRegister, OBJECT_OFFSETOF(struct JITStackFrame, callFrame) / sizeof(void*));
     emitStoreCodeOrigin(CodeOrigin(0));
     m_speculative->callOperationWithCallFrameRollbackOnException(m_codeBlock->m_isConstructor ? operationConstructArityCheck : operationCallArityCheck, GPRInfo::regT0);
     branchTest32(Zero, GPRInfo::regT0).linkTo(fromArityCheck, this);

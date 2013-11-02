@@ -75,12 +75,12 @@ bool HTMLAppletElement::rendererIsNeeded(const RenderStyle& style)
     return HTMLPlugInImageElement::rendererIsNeeded(style);
 }
 
-RenderElement* HTMLAppletElement::createRenderer(RenderArena&, RenderStyle& style)
+RenderElement* HTMLAppletElement::createRenderer(PassRef<RenderStyle> style)
 {
     if (!canEmbedJava())
-        return RenderElement::createFor(*this, style);
+        return RenderElement::createFor(*this, std::move(style));
 
-    return RenderEmbeddedObject::createForApplet(*this);
+    return RenderEmbeddedObject::createForApplet(*this, std::move(style));
 }
 
 RenderWidget* HTMLAppletElement::renderWidgetForJSBindings() const
@@ -110,9 +110,9 @@ void HTMLAppletElement::updateWidget(PluginCreationOption pluginCreationOption)
 
     RenderEmbeddedObject* renderer = renderEmbeddedObject();
 
-    LayoutUnit contentWidth = renderer->style()->width().isFixed() ? LayoutUnit(renderer->style()->width().value()) :
+    LayoutUnit contentWidth = renderer->style().width().isFixed() ? LayoutUnit(renderer->style().width().value()) :
         renderer->width() - renderer->borderAndPaddingWidth();
-    LayoutUnit contentHeight = renderer->style()->height().isFixed() ? LayoutUnit(renderer->style()->height().value()) :
+    LayoutUnit contentHeight = renderer->style().height().isFixed() ? LayoutUnit(renderer->style().height().value()) :
         renderer->height() - renderer->borderAndPaddingHeight();
 
     Vector<String> paramNames;
@@ -148,7 +148,7 @@ void HTMLAppletElement::updateWidget(PluginCreationOption pluginCreationOption)
         paramValues.append(mayScript.string());
     }
 
-    auto paramChildren = childrenOfType<HTMLParamElement>(this);
+    auto paramChildren = childrenOfType<HTMLParamElement>(*this);
     for (auto param = paramChildren.begin(), end = paramChildren.end(); param != end; ++param) {
         if (param->name().isEmpty())
             continue;

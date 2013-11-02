@@ -52,8 +52,8 @@ class StyleImage;
 // actually uses one of these properties.
 class StyleRareInheritedData : public RefCounted<StyleRareInheritedData> {
 public:
-    static PassRefPtr<StyleRareInheritedData> create() { return adoptRef(new StyleRareInheritedData); }
-    PassRefPtr<StyleRareInheritedData> copy() const { return adoptRef(new StyleRareInheritedData(*this)); }
+    static PassRef<StyleRareInheritedData> create() { return adoptRef(*new StyleRareInheritedData); }
+    PassRef<StyleRareInheritedData> copy() const { return adoptRef(*new StyleRareInheritedData(*this)); }
     ~StyleRareInheritedData();
 
     bool operator==(const StyleRareInheritedData& o) const;
@@ -124,8 +124,11 @@ public:
 #if ENABLE(CSS3_TEXT)
     unsigned m_textAlignLast : 3; // TextAlignLast
     unsigned m_textJustify : 3; // TextJustify
-    unsigned m_textUnderlinePosition : 3; // TextUnderlinePosition
 #endif // CSS3_TEXT
+#if ENABLE(CSS3_TEXT_DECORATION)
+    unsigned m_textDecorationSkip : 5; // TextDecorationSkip
+    unsigned m_textUnderlinePosition : 3; // TextUnderlinePosition
+#endif
     unsigned m_rubyPosition : 1; // RubyPosition
 
 #if PLATFORM(IOS)

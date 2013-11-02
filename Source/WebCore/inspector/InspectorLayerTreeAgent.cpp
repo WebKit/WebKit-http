@@ -38,7 +38,6 @@
 #include "IdentifiersFactory.h"
 #include "InspectorDOMAgent.h"
 #include "InspectorFrontend.h"
-#include "InspectorState.h"
 #include "InstrumentingAgents.h"
 #include "IntRect.h"
 #include "PseudoElement.h"
@@ -49,12 +48,8 @@
 
 namespace WebCore {
 
-namespace LayerTreeAgentState {
-static const char layerTreeAgentEnabled[] = "layerTreeAgentEnabled";
-};
-
-InspectorLayerTreeAgent::InspectorLayerTreeAgent(InstrumentingAgents* instrumentingAgents, InspectorCompositeState* state)
-    : InspectorBaseAgent<InspectorLayerTreeAgent>("LayerTree", instrumentingAgents, state)
+InspectorLayerTreeAgent::InspectorLayerTreeAgent(InstrumentingAgents* instrumentingAgents)
+    : InspectorBaseAgent<InspectorLayerTreeAgent>("LayerTree", instrumentingAgents)
     , m_frontend(0)
 {
 }
@@ -75,12 +70,6 @@ void InspectorLayerTreeAgent::clearFrontend()
     disable(0);
 }
 
-void InspectorLayerTreeAgent::restore()
-{
-    if (m_state->getBoolean(LayerTreeAgentState::layerTreeAgentEnabled))
-        enable(0);
-}
-
 void InspectorLayerTreeAgent::reset()
 {
     m_documentLayerToIdMap.clear();
@@ -91,15 +80,11 @@ void InspectorLayerTreeAgent::reset()
 
 void InspectorLayerTreeAgent::enable(ErrorString*)
 {
-    m_state->setBoolean(LayerTreeAgentState::layerTreeAgentEnabled, true);
     m_instrumentingAgents->setInspectorLayerTreeAgent(this);
 }
 
 void InspectorLayerTreeAgent::disable(ErrorString*)
 {
-    if (!m_state->getBoolean(LayerTreeAgentState::layerTreeAgentEnabled))
-        return;
-    m_state->setBoolean(LayerTreeAgentState::layerTreeAgentEnabled, false);
     m_instrumentingAgents->setInspectorLayerTreeAgent(0);
 }
 
@@ -118,7 +103,7 @@ void InspectorLayerTreeAgent::pseudoElementDestroyed(PseudoElement* pseudoElemen
     unbindPseudoElement(pseudoElement);
 }
 
-void InspectorLayerTreeAgent::layersForNode(ErrorString* errorString, int nodeId, RefPtr<TypeBuilder::Array<TypeBuilder::LayerTree::Layer> >& layers)
+void InspectorLayerTreeAgent::layersForNode(ErrorString* errorString, int nodeId, RefPtr<TypeBuilder::Array<TypeBuilder::LayerTree::Layer>>& layers)
 {
     layers = TypeBuilder::Array<TypeBuilder::LayerTree::Layer>::create();
 
@@ -137,7 +122,7 @@ void InspectorLayerTreeAgent::layersForNode(ErrorString* errorString, int nodeId
     gatherLayersUsingRenderObjectHierarchy(errorString, renderer, layers);
 }
 
-void InspectorLayerTreeAgent::gatherLayersUsingRenderObjectHierarchy(ErrorString* errorString, RenderObject* renderer, RefPtr<TypeBuilder::Array<TypeBuilder::LayerTree::Layer> >& layers)
+void InspectorLayerTreeAgent::gatherLayersUsingRenderObjectHierarchy(ErrorString* errorString, RenderObject* renderer, RefPtr<TypeBuilder::Array<TypeBuilder::LayerTree::Layer>>& layers)
 {
     if (renderer->hasLayer()) {
         gatherLayersUsingRenderLayerHierarchy(errorString, toRenderLayerModelObject(renderer)->layer(), layers);
@@ -148,7 +133,7 @@ void InspectorLayerTreeAgent::gatherLayersUsingRenderObjectHierarchy(ErrorString
         gatherLayersUsingRenderObjectHierarchy(errorString, renderer, layers);
 }
 
-void InspectorLayerTreeAgent::gatherLayersUsingRenderLayerHierarchy(ErrorString* errorString, RenderLayer* renderLayer, RefPtr<TypeBuilder::Array<TypeBuilder::LayerTree::Layer> >& layers)
+void InspectorLayerTreeAgent::gatherLayersUsingRenderLayerHierarchy(ErrorString* errorString, RenderLayer* renderLayer, RefPtr<TypeBuilder::Array<TypeBuilder::LayerTree::Layer>>& layers)
 {
     if (renderLayer->isComposited())
         layers->addItem(buildObjectForLayer(errorString, renderLayer));
@@ -205,12 +190,11 @@ PassRefPtr<TypeBuilder::LayerTree::Layer> InspectorLayerTreeAgent::buildObjectFo
     // FIXME: RenderView is now really anonymous but don't tell about it to the frontend before making sure it can handle it.
     if (isAnonymous && !renderer->isRenderView()) {
         layerObject->setIsAnonymous(true);
-        if (RenderStyle* style = renderer->style()) {
-            if (style->styleType() == FIRST_LETTER)
-                layerObject->setPseudoElement("first-letter");
-            else if (style->styleType() == FIRST_LINE)
-                layerObject->setPseudoElement("first-line");
-        }
+        const RenderStyle& style = renderer->style();
+        if (style.styleType() == FIRST_LETTER)
+            layerObject->setPseudoElement("first-letter");
+        else if (style.styleType() == FIRST_LINE)
+            layerObject->setPseudoElement("first-line");
     }
 
     return layerObject;

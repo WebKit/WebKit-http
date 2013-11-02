@@ -230,6 +230,13 @@ public:
         return node;
     }
 
+    ExpressionNode* createSpreadExpression(const JSTokenLocation& location, ExpressionNode* expression, const JSTextPosition& start, const JSTextPosition& divot, const JSTextPosition& end)
+    {
+        auto node = new (m_vm) SpreadExpressionNode(location, expression);
+        setExceptionLocation(node, start, divot, end);
+        return node;
+    }
+
     ExpressionNode* createRegExp(const JSTokenLocation& location, const Identifier& pattern, const Identifier& flags, const JSTextPosition& start)
     {
         if (Yarr::checkSyntax(pattern.string()))
@@ -312,6 +319,7 @@ public:
         return new (m_vm) PropertyNode(m_vm, *propertyName, node, type);
     }
     template <bool> PropertyNode* createProperty(VM*, double propertyName, ExpressionNode* node, PropertyNode::Type type) { return new (m_vm) PropertyNode(m_vm, propertyName, node, type); }
+    template <bool> PropertyNode* createProperty(VM*, ExpressionNode* propertyName, ExpressionNode* node, PropertyNode::Type type) { return new (m_vm) PropertyNode(m_vm, propertyName, node, type); }
     PropertyListNode* createPropertyList(const JSTokenLocation& location, PropertyNode* property) { return new (m_vm) PropertyListNode(location, property); }
     PropertyListNode* createPropertyList(const JSTokenLocation& location, PropertyNode* property, PropertyListNode* tail) { return new (m_vm) PropertyListNode(location, property, tail); }
 
@@ -631,7 +639,7 @@ public:
         return result;
     }
     
-    const Identifier& getName(Property property) const { return property->name(); }
+    const Identifier* getName(Property property) const { return property->name(); }
     PropertyNode::Type getType(Property property) const { return property->type(); }
 
     bool isResolve(ExpressionNode* expr) const { return expr->isResolveNode(); }

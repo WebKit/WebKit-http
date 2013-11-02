@@ -26,80 +26,22 @@
 #ifndef EventDispatcher_h
 #define EventDispatcher_h
 
-#include "EventContext.h"
 #include "SimulatedClickOptions.h"
 #include <wtf/Forward.h>
-#include <wtf/HashMap.h>
 #include <wtf/PassRefPtr.h>
-#include <wtf/Vector.h>
 
 namespace WebCore {
 
+class Element;
 class Event;
-class EventDispatchMediator;
-class EventTarget;
-class FrameView;
 class Node;
-class PlatformKeyboardEvent;
-class PlatformMouseEvent;
-class ShadowRoot;
-class TreeScope;
-class WindowEventContext;
-struct InputElementClickState;
 
-enum EventDispatchContinuation {
-    ContinueDispatching,
-    DoneDispatching
-};
+namespace EventDispatcher {
 
-class EventPath {
-public:
-    EventPath(Node&, Event&);
+bool dispatchEvent(Node*, PassRefPtr<Event>);
+void dispatchScopedEvent(Node&, PassRefPtr<Event>);
+void dispatchSimulatedClick(Element*, Event* underlyingEvent, SimulatedClickMouseEventOptions, SimulatedClickVisualOptions);
 
-    bool isEmpty() const { return m_path.isEmpty(); }
-    size_t size() const { return m_path.size(); }
-    const EventContext& contextAt(size_t i) const { return *m_path[i]; }
-    EventContext& contextAt(size_t i) { return *m_path[i]; }
-
-    bool hasEventListeners(const AtomicString& eventType) const;
-
-    // FIXME: We shouldn't expose this function.
-    void shrink(size_t newSize) { m_path.shrink(newSize); }
-
-    EventContext* lastContextIfExists() { return m_path.isEmpty() ? 0 : m_path.last().get(); }
-
-private:
-    Vector<std::unique_ptr<EventContext>, 32> m_path;
-};
-
-class EventDispatcher {
-public:
-    static bool dispatchEvent(Node*, PassRefPtr<EventDispatchMediator>);
-    static void dispatchScopedEvent(Node&, PassRefPtr<EventDispatchMediator>);
-
-    static void dispatchSimulatedClick(Element*, Event* underlyingEvent, SimulatedClickMouseEventOptions, SimulatedClickVisualOptions);
-
-    bool dispatch();
-    Node* node() const { return m_node.get(); }
-    Event* event() const { return m_event.get(); }
-    EventPath& eventPath() { return m_eventPath; }
-
-private:
-    EventDispatcher(Node*, PassRefPtr<Event>);
-    const EventContext* topEventContext();
-
-    EventDispatchContinuation dispatchEventAtCapturing(WindowEventContext&);
-    EventDispatchContinuation dispatchEventAtTarget();
-    void dispatchEventAtBubbling(WindowEventContext&);
-    void dispatchEventPostProcess(const InputElementClickState&);
-
-    EventPath m_eventPath;
-    RefPtr<Node> m_node;
-    RefPtr<Event> m_event;
-    RefPtr<FrameView> m_view;
-#ifndef NDEBUG
-    bool m_eventDispatched;
-#endif
 };
 
 }

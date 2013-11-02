@@ -80,7 +80,7 @@ namespace JSC {
 
     namespace DeclarationStacks {
         enum VarAttrs { IsConstant = 1, HasInitializer = 2 };
-        typedef Vector<std::pair<Identifier, unsigned> > VarStack;
+        typedef Vector<std::pair<Identifier, unsigned>> VarStack;
         typedef Vector<FunctionBodyNode*> FunctionStack;
     }
 
@@ -112,6 +112,7 @@ namespace JSC {
     };
 
     class ParserArenaRefCounted : public RefCounted<ParserArenaRefCounted> {
+        WTF_FASTMALLOC_OPERATORS;
     protected:
         ParserArenaRefCounted(VM*);
 
@@ -161,6 +162,7 @@ namespace JSC {
         virtual bool isAdd() const { return false; }
         virtual bool isSubtract() const { return false; }
         virtual bool isBoolean() const { return false; }
+        virtual bool isSpreadExpression() const { return false; }
 
         virtual void emitBytecodeInConditionContext(BytecodeGenerator&, Label*, Label*, FallThroughMode);
 
@@ -479,13 +481,17 @@ namespace JSC {
 
         PropertyNode(VM*, const Identifier&, ExpressionNode*, Type);
         PropertyNode(VM*, double, ExpressionNode*, Type);
+        PropertyNode(VM*, ExpressionNode* propertyName, ExpressionNode*, Type);
+        
+        ExpressionNode* expressionName() const { return m_expression; }
+        const Identifier* name() const { return m_name; }
 
-        const Identifier& name() const { return m_name; }
         Type type() const { return m_type; }
 
     private:
         friend class PropertyListNode;
-        const Identifier& m_name;
+        const Identifier* m_name;
+        ExpressionNode* m_expression;
         ExpressionNode* m_assign;
         Type m_type;
     };
@@ -548,6 +554,19 @@ namespace JSC {
 
         ExpressionNode* m_base;
         const Identifier& m_ident;
+    };
+
+    class SpreadExpressionNode : public ExpressionNode, public ThrowableExpressionData {
+    public:
+        SpreadExpressionNode(const JSTokenLocation&, ExpressionNode*);
+        
+        ExpressionNode* expression() const { return m_expression; }
+        
+    private:
+        virtual RegisterID* emitBytecode(BytecodeGenerator&, RegisterID* = 0) OVERRIDE;
+        
+        virtual bool isSpreadExpression() const OVERRIDE { return true; }
+        ExpressionNode* m_expression;
     };
 
     class ArgumentListNode : public ExpressionNode {
@@ -1556,7 +1575,7 @@ namespace JSC {
 
     public:
         virtual void collectBoundIdentifiers(Vector<Identifier>&) const = 0;
-        virtual void emitBytecode(BytecodeGenerator&, RegisterID* source) const = 0;
+        virtual void bindValue(BytecodeGenerator&, RegisterID* source) const = 0;
         virtual void toString(StringBuilder&) const = 0;
 
         virtual bool isBindingNode() const { return false; }
@@ -1579,7 +1598,7 @@ namespace JSC {
     private:
         ArrayPatternNode(VM*);
         virtual void collectBoundIdentifiers(Vector<Identifier>&) const OVERRIDE;
-        virtual void emitBytecode(BytecodeGenerator&, RegisterID*) const OVERRIDE;
+        virtual void bindValue(BytecodeGenerator&, RegisterID*) const OVERRIDE;
         virtual RegisterID* emitDirectBinding(BytecodeGenerator&, RegisterID* dst, ExpressionNode*) OVERRIDE;
         virtual void toString(StringBuilder&) const OVERRIDE;
 
@@ -1597,7 +1616,7 @@ namespace JSC {
     private:
         ObjectPatternNode(VM*);
         virtual void collectBoundIdentifiers(Vector<Identifier>&) const OVERRIDE;
-        virtual void emitBytecode(BytecodeGenerator&, RegisterID*) const OVERRIDE;
+        virtual void bindValue(BytecodeGenerator&, RegisterID*) const OVERRIDE;
         virtual void toString(StringBuilder&) const OVERRIDE;
         struct Entry {
             Entry(const Identifier& propertyName, bool wasString, DeconstructionPatternNode* pattern)
@@ -1622,7 +1641,7 @@ namespace JSC {
         BindingNode(VM*, const Identifier& boundProperty, const JSTextPosition& divot, const JSTextPosition& start, const JSTextPosition& end);
 
         virtual void collectBoundIdentifiers(Vector<Identifier>&) const OVERRIDE;
-        virtual void emitBytecode(BytecodeGenerator&, RegisterID*) const OVERRIDE;
+        virtual void bindValue(BytecodeGenerator&, RegisterID*) const OVERRIDE;
         virtual void toString(StringBuilder&) const OVERRIDE;
         
         virtual bool isBindingNode() const OVERRIDE { return true; }

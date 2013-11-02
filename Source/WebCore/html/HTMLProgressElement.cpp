@@ -59,12 +59,12 @@ PassRefPtr<HTMLProgressElement> HTMLProgressElement::create(const QualifiedName&
     return progress.release();
 }
 
-RenderElement* HTMLProgressElement::createRenderer(RenderArena& arena, RenderStyle& style)
+RenderElement* HTMLProgressElement::createRenderer(PassRef<RenderStyle> style)
 {
-    if (!style.hasAppearance() || hasAuthorShadowRoot())
-        return RenderElement::createFor(*this, style);
+    if (!style.get().hasAppearance() || hasAuthorShadowRoot())
+        return RenderElement::createFor(*this, std::move(style));
 
-    return new (arena) RenderProgress(this);
+    return new RenderProgress(*this, std::move(style));
 }
 
 bool HTMLProgressElement::childShouldCreateRenderer(const Node* child) const

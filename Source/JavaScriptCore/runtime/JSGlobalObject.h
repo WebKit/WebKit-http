@@ -120,6 +120,9 @@ struct GlobalObjectMethodTable {
     typedef void (*QueueTaskToEventLoopCallbackFunctionPtr)(ExecState*, TaskContext*);
     typedef void (*QueueTaskToEventLoopFunctionPtr)(const JSGlobalObject*, QueueTaskToEventLoopCallbackFunctionPtr, PassRefPtr<TaskContext>);
     QueueTaskToEventLoopFunctionPtr queueTaskToEventLoop;
+
+    typedef bool (*ShouldInterruptScriptBeforeTimeoutPtr)(const JSGlobalObject*);
+    ShouldInterruptScriptBeforeTimeoutPtr shouldInterruptScriptBeforeTimeout;
 };
 
 class JSGlobalObject : public JSSegmentedVariableObject {
@@ -141,9 +144,7 @@ private:
 
 protected:
 
-    // Add one so we don't need to index with -1 to get current frame pointer.
-    // An index of -1 is an error for some compilers.
-    Register m_globalCallFrame[JSStack::CallFrameHeaderSize + 1];
+    Register m_globalCallFrame[JSStack::CallFrameHeaderSize];
 
     WriteBarrier<JSObject> m_globalThis;
 
@@ -406,6 +407,7 @@ public:
     Structure* setStructure() const { return m_setStructure.get(); }
     Structure* stringObjectStructure() const { return m_stringObjectStructure.get(); }
     Structure* iteratorResultStructure() const { return m_iteratorResultStructure.get(); }
+    static ptrdiff_t iteratorResultStructureOffset() { return OBJECT_OFFSETOF(JSGlobalObject, m_iteratorResultStructure); }
 
 #if ENABLE(PROMISES)
     Structure* promiseStructure() const { return m_promiseStructure.get(); }
@@ -466,6 +468,7 @@ public:
 
     Debugger* debugger() const { return m_debugger; }
     void setDebugger(Debugger* debugger) { m_debugger = debugger; }
+    static ptrdiff_t debuggerOffset() { return OBJECT_OFFSETOF(JSGlobalObject, m_debugger); }
 
     const GlobalObjectMethodTable* globalObjectMethodTable() const { return m_globalObjectMethodTable; }
 
@@ -476,6 +479,7 @@ public:
     JS_EXPORT_PRIVATE ExecState* globalExec();
 
     static bool shouldInterruptScript(const JSGlobalObject*) { return true; }
+    static bool shouldInterruptScriptBeforeTimeout(const JSGlobalObject*) { return false; }
     static bool javaScriptExperimentsEnabled(const JSGlobalObject*) { return false; }
 
     bool evalEnabled() const { return m_evalEnabled; }

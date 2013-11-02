@@ -64,7 +64,7 @@ TiledCoreAnimationDrawingArea::TiledCoreAnimationDrawingArea(WebPage* webPage, c
     : DrawingArea(DrawingAreaTypeTiledCoreAnimation, webPage)
     , m_layerTreeStateIsFrozen(false)
     , m_layerFlushScheduler(this)
-    , m_isPaintingSuspended(!parameters.isVisible)
+    , m_isPaintingSuspended(!(parameters.viewState & ViewState::IsVisible))
     , m_clipsToExposedRect(false)
     , m_updateIntrinsicContentSizeTimer(this, &TiledCoreAnimationDrawingArea::updateIntrinsicContentSizeTimerFired)
 {
@@ -388,8 +388,6 @@ void TiledCoreAnimationDrawingArea::suspendPainting()
 
     [m_rootLayer.get() setValue:(id)kCFBooleanTrue forKey:@"NSCAViewRenderPaused"];
     [[NSNotificationCenter defaultCenter] postNotificationName:@"NSCAViewRenderDidPauseNotification" object:nil userInfo:[NSDictionary dictionaryWithObject:m_rootLayer.get() forKey:@"layer"]];
-
-    m_webPage->corePage()->suspendScriptedAnimations();
 }
 
 void TiledCoreAnimationDrawingArea::resumePainting()
@@ -403,11 +401,6 @@ void TiledCoreAnimationDrawingArea::resumePainting()
 
     [m_rootLayer.get() setValue:(id)kCFBooleanFalse forKey:@"NSCAViewRenderPaused"];
     [[NSNotificationCenter defaultCenter] postNotificationName:@"NSCAViewRenderDidResumeNotification" object:nil userInfo:[NSDictionary dictionaryWithObject:m_rootLayer.get() forKey:@"layer"]];
-
-    if (m_webPage->windowIsVisible()) {
-        m_webPage->corePage()->resumeScriptedAnimations();
-        m_webPage->corePage()->resumeAnimatingImages();
-    }
 }
 
 void TiledCoreAnimationDrawingArea::setExposedRect(const FloatRect& exposedRect)
@@ -679,9 +672,11 @@ TiledBacking* TiledCoreAnimationDrawingArea::mainFrameTiledBacking() const
 void TiledCoreAnimationDrawingArea::updateDebugInfoLayer(bool showLayer)
 {
     if (showLayer) {
-        if (TiledBacking* tiledBacking = mainFrameTiledBacking())
-            m_debugInfoLayer = tiledBacking->tiledScrollingIndicatorLayer();
-        
+        if (TiledBacking* tiledBacking = mainFrameTiledBacking()) {
+            if (PlatformCALayer* indicatorLayer = tiledBacking->tiledScrollingIndicatorLayer())
+                m_debugInfoLayer = indicatorLayer->platformLayer();
+        }
+
         if (m_debugInfoLayer) {
 #ifndef NDEBUG
             [m_debugInfoLayer.get() setName:@"Debug Info"];

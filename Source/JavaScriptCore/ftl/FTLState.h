@@ -33,9 +33,10 @@
 #include "DFGGraph.h"
 #include "FTLAbbreviations.h"
 #include "FTLGeneratedFunction.h"
+#include "FTLInlineCacheDescriptor.h"
 #include "FTLJITCode.h"
 #include "FTLJITFinalizer.h"
-#include "FTLOSRExitCompilationInfo.h"
+#include "FTLStackMaps.h"
 #include <wtf/Noncopyable.h>
 
 namespace JSC { namespace FTL {
@@ -54,9 +55,12 @@ public:
     LModule module;
     LValue function;
     RefPtr<JITCode> jitCode;
-    Vector<OSRExitCompilationInfo> osrExit;
     GeneratedFunction generatedFunction;
     JITFinalizer* finalizer;
+    SegmentedVector<GetByIdDescriptor> getByIds;
+    Vector<CString> codeSectionNames;
+    Vector<CString> dataSectionNames;
+    RefCountedArray<LSectionWord> stackmapsSection;
     
     void dumpState(const char* when);
 };

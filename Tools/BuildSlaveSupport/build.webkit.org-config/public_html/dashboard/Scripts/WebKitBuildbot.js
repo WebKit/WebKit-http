@@ -26,23 +26,28 @@
 WebKitBuildbot = function()
 {
     const queueInfo = {
-        "Apple Lion Release (Build)": {platform: Buildbot.Platform.MacOSXLion, builder: true, architecture: Buildbot.BuildArchitecture.SixtyFourBit},
-        "Apple Lion Debug (Build)": {platform: Buildbot.Platform.MacOSXLion, debug: true, builder: true, architecture: Buildbot.BuildArchitecture.SixtyFourBit},
         "Apple MountainLion Release (Build)": {platform: Buildbot.Platform.MacOSXMountainLion, builder: true, architecture: Buildbot.BuildArchitecture.SixtyFourBit},
         "Apple MountainLion Release (32-bit Build)": {platform: Buildbot.Platform.MacOSXMountainLion, builder: true, architecture: Buildbot.BuildArchitecture.ThirtyTwoBit},
         "Apple MountainLion Debug (Build)": {platform: Buildbot.Platform.MacOSXMountainLion, debug: true, builder: true, architecture: Buildbot.BuildArchitecture.SixtyFourBit},
-        "Apple Lion Release WK1 (Tests)": {platform: Buildbot.Platform.MacOSXLion, tester: true, testCategory: Buildbot.TestCategory.WebKit1},
-        "Apple Lion Debug WK1 (Tests)": {platform: Buildbot.Platform.MacOSXLion, debug: true, tester: true, testCategory: Buildbot.TestCategory.WebKit1},
-        "Apple Lion Release WK2 (Tests)": {platform: Buildbot.Platform.MacOSXLion, tester: true, testCategory: Buildbot.TestCategory.WebKit2},
-        "Apple Lion Debug WK2 (Tests)": {platform: Buildbot.Platform.MacOSXLion, debug: true, tester: true, testCategory: Buildbot.TestCategory.WebKit2},
         "Apple MountainLion Release WK1 (Tests)": {platform: Buildbot.Platform.MacOSXMountainLion, tester: true, testCategory: Buildbot.TestCategory.WebKit1},
         "Apple MountainLion Debug WK1 (Tests)": {platform: Buildbot.Platform.MacOSXMountainLion, debug: true, tester: true, testCategory: Buildbot.TestCategory.WebKit1},
         "Apple MountainLion Release WK2 (Tests)": {platform: Buildbot.Platform.MacOSXMountainLion, tester: true, testCategory: Buildbot.TestCategory.WebKit2},
         "Apple MountainLion Debug WK2 (Tests)": {platform: Buildbot.Platform.MacOSXMountainLion, debug: true, tester: true, testCategory: Buildbot.TestCategory.WebKit2},
+        "Apple Mavericks Debug (Build)": {platform: Buildbot.Platform.MacOSXMavericks, debug: true, builder: true, architecture: Buildbot.BuildArchitecture.SixtyFourBit},
+        "Apple Mavericks Release (Build)": {platform: Buildbot.Platform.MacOSXMavericks, debug: false, builder: true, architecture: Buildbot.BuildArchitecture.SixtyFourBit},
+        "Apple Mavericks Debug WK1 (Tests)": {platform: Buildbot.Platform.MacOSXMavericks, debug: true, tester: true, testCategory: Buildbot.TestCategory.WebKit1},
+        "Apple Mavericks Debug WK2 (Tests)": {platform: Buildbot.Platform.MacOSXMavericks, debug: true, tester: true, testCategory: Buildbot.TestCategory.WebKit2},
+        "Apple Mavericks Release WK1 (Tests)": {platform: Buildbot.Platform.MacOSXMavericks, debug: false, tester: true, testCategory: Buildbot.TestCategory.WebKit1},
+        "Apple Mavericks Release WK2 (Tests)": {platform: Buildbot.Platform.MacOSXMavericks, debug: false, tester: true, testCategory: Buildbot.TestCategory.WebKit2},
         "Apple Win Debug (Build)": {platform: Buildbot.Platform.Windows7, debug: true, builder: true, architecture: Buildbot.BuildArchitecture.ThirtyTwoBit},
         "Apple Win Release (Build)": {platform: Buildbot.Platform.Windows7, builder: true, architecture: Buildbot.BuildArchitecture.ThirtyTwoBit},
         "Apple Win 7 Debug (Tests)": {platform: Buildbot.Platform.Windows7, debug: true, tester: true, testCategory: Buildbot.TestCategory.WebKit1},
-        "Apple Win 7 Release (Tests)": {platform: Buildbot.Platform.Windows7, tester: true, testCategory: Buildbot.TestCategory.WebKit1}
+        "Apple Win 7 Release (Tests)": {platform: Buildbot.Platform.Windows7, tester: true, testCategory: Buildbot.TestCategory.WebKit1},
+        "GTK Linux 64-bit Release": {platform: Buildbot.Platform.LinuxGTK, tester: true, testCategory: Buildbot.TestCategory.WebKit2},
+        "GTK Linux 64-bit Release WK1 (Tests)": {platform: Buildbot.Platform.LinuxGTK, tester: true, testCategory: Buildbot.TestCategory.WebKit1},
+        "EFL Linux 32-bit Release (Build)": {platform: Buildbot.Platform.LinuxEFL, builder: true, architecture: Buildbot.BuildArchitecture.ThirtyTwoBit},
+        "EFL Linux 64-bit Release WK1": {platform: Buildbot.Platform.LinuxEFL, tester: true, testCategory: Buildbot.TestCategory.WebKit1},
+        "EFL Linux 64-bit Release WK2": {platform: Buildbot.Platform.LinuxEFL, tester: true, testCategory: Buildbot.TestCategory.WebKit2}
     };
 
     Buildbot.call(this, "http://build.webkit.org/", queueInfo);
@@ -67,10 +72,5 @@ WebKitBuildbot.prototype = {
     layoutTestResultsURLForIteration: function(iteration)
     {
         return this.baseURL + "results/" + encodeURIComponent(iteration.queue.id) + "/" + encodeURIComponent("r" + iteration.openSourceRevision + " (" + iteration.id + ")") + "/results.html";
-    },
-
-    javascriptTestResultsURLForIteration: function(iteration)
-    {
-        return this.baseURL + "builders/" + encodeURIComponent(iteration.queue.id) + "/builds/" + iteration.id + "/steps/jscore-test/logs/actual.html";
     }
 };

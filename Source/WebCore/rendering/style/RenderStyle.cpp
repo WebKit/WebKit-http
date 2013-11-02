@@ -30,7 +30,6 @@
 #include "FontSelector.h"
 #include "Pagination.h"
 #include "QuotesData.h"
-#include "RenderArena.h"
 #include "RenderObject.h"
 #include "ScaleTransformOperation.h"
 #include "ShadowData.h"
@@ -80,46 +79,46 @@ struct SameSizeAsRenderStyle : public RefCounted<SameSizeAsRenderStyle> {
 
 COMPILE_ASSERT(sizeof(RenderStyle) == sizeof(SameSizeAsRenderStyle), RenderStyle_should_stay_small);
 
-inline RenderStyle* defaultStyle()
+inline RenderStyle& defaultStyle()
 {
-    static RenderStyle* s_defaultStyle = RenderStyle::createDefaultStyle().leakRef();
-    return s_defaultStyle;
+    static RenderStyle& style = RenderStyle::createDefaultStyle().leakRef();
+    return style;
 }
 
-PassRefPtr<RenderStyle> RenderStyle::create()
+PassRef<RenderStyle> RenderStyle::create()
 {
-    return adoptRef(new RenderStyle());
+    return adoptRef(*new RenderStyle());
 }
 
-PassRefPtr<RenderStyle> RenderStyle::createDefaultStyle()
+PassRef<RenderStyle> RenderStyle::createDefaultStyle()
 {
-    return adoptRef(new RenderStyle(true));
+    return adoptRef(*new RenderStyle(true));
 }
 
-PassRefPtr<RenderStyle> RenderStyle::createAnonymousStyleWithDisplay(const RenderStyle* parentStyle, EDisplay display)
+PassRef<RenderStyle> RenderStyle::createAnonymousStyleWithDisplay(const RenderStyle* parentStyle, EDisplay display)
 {
-    RefPtr<RenderStyle> newStyle = RenderStyle::create();
-    newStyle->inheritFrom(parentStyle);
-    newStyle->inheritUnicodeBidiFrom(parentStyle);
-    newStyle->setDisplay(display);
+    auto newStyle = RenderStyle::create();
+    newStyle.get().inheritFrom(parentStyle);
+    newStyle.get().inheritUnicodeBidiFrom(parentStyle);
+    newStyle.get().setDisplay(display);
     return newStyle;
 }
 
-PassRefPtr<RenderStyle> RenderStyle::clone(const RenderStyle* other)
+PassRef<RenderStyle> RenderStyle::clone(const RenderStyle* other)
 {
-    return adoptRef(new RenderStyle(*other));
+    return adoptRef(*new RenderStyle(*other));
 }
 
 ALWAYS_INLINE RenderStyle::RenderStyle()
-    : m_box(defaultStyle()->m_box)
-    , visual(defaultStyle()->visual)
-    , m_background(defaultStyle()->m_background)
-    , surround(defaultStyle()->surround)
-    , rareNonInheritedData(defaultStyle()->rareNonInheritedData)
-    , rareInheritedData(defaultStyle()->rareInheritedData)
-    , inherited(defaultStyle()->inherited)
+    : m_box(defaultStyle().m_box)
+    , visual(defaultStyle().visual)
+    , m_background(defaultStyle().m_background)
+    , surround(defaultStyle().surround)
+    , rareNonInheritedData(defaultStyle().rareNonInheritedData)
+    , rareInheritedData(defaultStyle().rareInheritedData)
+    , inherited(defaultStyle().inherited)
 #if ENABLE(SVG)
-    , m_svgStyle(defaultStyle()->m_svgStyle)
+    , m_svgStyle(defaultStyle().m_svgStyle)
 #endif
 {
     setBitDefaults(); // Would it be faster to copy this from the default style?
@@ -128,29 +127,18 @@ ALWAYS_INLINE RenderStyle::RenderStyle()
 }
 
 ALWAYS_INLINE RenderStyle::RenderStyle(bool)
+    : m_box(StyleBoxData::create())
+    , visual(StyleVisualData::create())
+    , m_background(StyleBackgroundData::create())
+    , surround(StyleSurroundData::create())
+    , rareNonInheritedData(StyleRareNonInheritedData::create())
+    , rareInheritedData(StyleRareInheritedData::create())
+    , inherited(StyleInheritedData::create())
+#if ENABLE(SVG)
+    , m_svgStyle(SVGRenderStyle::create())
+#endif
 {
     setBitDefaults();
-
-    m_box.init();
-    visual.init();
-    m_background.init();
-    surround.init();
-    rareNonInheritedData.init();
-    rareNonInheritedData.access()->m_deprecatedFlexibleBox.init();
-    rareNonInheritedData.access()->m_flexibleBox.init();
-    rareNonInheritedData.access()->m_marquee.init();
-    rareNonInheritedData.access()->m_multiCol.init();
-    rareNonInheritedData.access()->m_transform.init();
-#if ENABLE(CSS_FILTERS)
-    rareNonInheritedData.access()->m_filter.init();
-#endif
-    rareNonInheritedData.access()->m_grid.init();
-    rareNonInheritedData.access()->m_gridItem.init();
-    rareInheritedData.init();
-    inherited.init();
-#if ENABLE(SVG)
-    m_svgStyle.init();
-#endif
 }
 
 ALWAYS_INLINE RenderStyle::RenderStyle(const RenderStyle& o)
@@ -563,6 +551,9 @@ bool RenderStyle::changeRequiresLayout(const RenderStyle* other, unsigned& chang
             || rareInheritedData->m_tabSize != other->rareInheritedData->m_tabSize
             || rareInheritedData->m_lineBoxContain != other->rareInheritedData->m_lineBoxContain
             || rareInheritedData->m_lineGrid != other->rareInheritedData->m_lineGrid
+#if ENABLE(CSS_IMAGE_ORIENTATION)
+            || rareInheritedData->m_imageOrientation != other->rareInheritedData->m_imageOrientation
+#endif
 #if ENABLE(CSS_IMAGE_RESOLUTION)
             || rareInheritedData->m_imageResolutionSource != other->rareInheritedData->m_imageResolutionSource
             || rareInheritedData->m_imageResolutionSnap != other->rareInheritedData->m_imageResolutionSnap
@@ -797,10 +788,11 @@ bool RenderStyle::changeRequiresRepaintIfTextOrBorderOrOutline(const RenderStyle
     if (inherited->color != other->inherited->color
         || inherited_flags._text_decorations != other->inherited_flags._text_decorations
         || visual->textDecoration != other->visual->textDecoration
-#if ENABLE(CSS3_TEXT)
+#if ENABLE(CSS3_TEXT_DECORATION)
         || rareNonInheritedData->m_textDecorationStyle != other->rareNonInheritedData->m_textDecorationStyle
         || rareNonInheritedData->m_textDecorationColor != other->rareNonInheritedData->m_textDecorationColor
-#endif // CSS3_TEXT
+        || rareInheritedData->m_textDecorationSkip != other->rareInheritedData->m_textDecorationSkip
+#endif // CSS3_TEXT_DECORATION
         || rareInheritedData->textFillColor != other->rareInheritedData->textFillColor
         || rareInheritedData->textStrokeColor != other->rareInheritedData->textStrokeColor
         || rareInheritedData->textEmphasisColor != other->rareInheritedData->textEmphasisColor
@@ -994,7 +986,7 @@ void RenderStyle::setContent(QuoteType quote, bool add)
     rareNonInheritedData.access()->m_content = std::make_unique<QuoteContentData>(quote);
 }
     
-inline bool requireTransformOrigin(const Vector<RefPtr<TransformOperation> >& transformOperations, RenderStyle::ApplyTransformOrigin applyOrigin)
+inline bool requireTransformOrigin(const Vector<RefPtr<TransformOperation>>& transformOperations, RenderStyle::ApplyTransformOrigin applyOrigin)
 {
     // transform-origin brackets the transform with translate operations.
     // Optimize for the case where the only transform is a translation, since the transform-origin is irrelevant
@@ -1004,7 +996,7 @@ inline bool requireTransformOrigin(const Vector<RefPtr<TransformOperation> >& tr
 
     unsigned size = transformOperations.size();
     for (unsigned i = 0; i < size; ++i) {
-        TransformOperation::OperationType type = transformOperations[i]->getOperationType();
+        TransformOperation::OperationType type = transformOperations[i]->type();
         if (type != TransformOperation::TRANSLATE_X
             && type != TransformOperation::TRANSLATE_Y
             && type != TransformOperation::TRANSLATE 
@@ -1021,7 +1013,7 @@ void RenderStyle::applyTransform(TransformationMatrix& transform, const LayoutSi
     // FIXME: when subpixel layout is supported (bug 71143) the body of this function could be replaced by
     // applyTransform(transform, FloatRect(FloatPoint(), borderBoxSize), applyOrigin);
     
-    const Vector<RefPtr<TransformOperation> >& transformOperations = rareNonInheritedData->m_transform->m_operations.operations();
+    const Vector<RefPtr<TransformOperation>>& transformOperations = rareNonInheritedData->m_transform->m_operations.operations();
     bool applyTransformOrigin = requireTransformOrigin(transformOperations, applyOrigin);
 
     if (applyTransformOrigin)
@@ -1037,7 +1029,7 @@ void RenderStyle::applyTransform(TransformationMatrix& transform, const LayoutSi
 
 void RenderStyle::applyTransform(TransformationMatrix& transform, const FloatRect& boundingBox, ApplyTransformOrigin applyOrigin) const
 {
-    const Vector<RefPtr<TransformOperation> >& transformOperations = rareNonInheritedData->m_transform->m_operations.operations();
+    const Vector<RefPtr<TransformOperation>>& transformOperations = rareNonInheritedData->m_transform->m_operations.operations();
     bool applyTransformOrigin = requireTransformOrigin(transformOperations, applyOrigin);
     
     float offsetX = transformOriginX().type() == Percent ? boundingBox.x() : 0;
@@ -1595,11 +1587,11 @@ Color RenderStyle::colorIncludingFallback(int colorProperty, bool visitedLink) c
     case CSSPropertyWebkitColumnRuleColor:
         result = visitedLink ? visitedLinkColumnRuleColor() : columnRuleColor();
         break;
-#if ENABLE(CSS3_TEXT)
+#if ENABLE(CSS3_TEXT_DECORATION)
     case CSSPropertyWebkitTextDecorationColor:
         // Text decoration color fallback is handled in RenderObject::decorationColor.
         return visitedLink ? visitedLinkTextDecorationColor() : textDecorationColor();
-#endif // CSS3_TEXT
+#endif
     case CSSPropertyWebkitTextEmphasisColor:
         result = visitedLink ? visitedLinkTextEmphasisColor() : textEmphasisColor();
         break;
@@ -1631,11 +1623,11 @@ Color RenderStyle::visitedDependentColor(int colorProperty) const
 
     Color visitedColor = colorIncludingFallback(colorProperty, true);
 
-#if ENABLE(CSS3_TEXT)
+#if ENABLE(CSS3_TEXT_DECORATION)
     // Text decoration color validity is preserved (checked in RenderObject::decorationColor).
     if (colorProperty == CSSPropertyWebkitTextDecorationColor)
         return visitedColor;
-#endif // CSS3_TEXT
+#endif
 
     // FIXME: Technically someone could explicitly specify the color transparent, but for now we'll just
     // assume that if the background color is transparent that it wasn't set. Note that it's weird that

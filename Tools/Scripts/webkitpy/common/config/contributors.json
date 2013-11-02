@@ -1592,14 +1592,6 @@
             "bulach@chromium.org"
          ]
       },
-      "Mark Lam" : {
-         "emails" : [
-            "mark.lam@apple.com"
-         ],
-         "nicks" : [
-            "mlam"
-         ]
-      },
       "Mark Pilgrim" : {
          "emails" : [
             "pilgrim@chromium.org"
@@ -1712,14 +1704,6 @@
          "expertise" : "HTML Forms, ValidityState",
          "nicks" : [
             "michelangelo"
-         ]
-      },
-      "Mihnea Ovidenie" : {
-         "emails" : [
-            "mihnea@adobe.com"
-         ],
-         "nicks" : [
-            "mihnea"
          ]
       },
       "Mike Belshe" : {
@@ -2027,6 +2011,14 @@
             "reni"
          ]
       },
+      "Rik Cabanier" : {
+         "emails" : [
+            "cabanier@adobe.com"
+         ],
+         "nicks" : [
+            "cabanier"
+         ]
+      },
       "Robert Hogan" : {
          "emails" : [
             "robert@webkit.org",
@@ -2093,6 +2085,15 @@
          ],
          "nicks" : [
             "skyostil"
+         ]
+      },
+      "Samuel White" : {
+         "emails" : [
+            "samuel_white@apple.com"
+         ],
+         "expertise" : "Accessibility",
+         "nicks" : [
+            "samuel_white"
          ]
       },
       "Satish Sampath" : {
@@ -3619,6 +3620,14 @@
             "ggaren"
          ]
       },
+      "Mark Lam" : {
+         "emails" : [
+            "mark.lam@apple.com"
+         ],
+         "nicks" : [
+            "mlam"
+         ]
+      },
       "George Staikos" : {
          "emails" : [
             "staikos@kde.org",
@@ -3975,6 +3984,23 @@
          "expertise" : "The Chromium Port, Layout tests, History",
          "nicks" : [
             "mihaip"
+         ]
+      },
+      "Mihnea Ovidenie" : {
+         "emails" : [
+            "mihnea@adobe.com"
+         ],
+         "expertise" : "CSS Regions, CSS Exclusions",
+         "nicks" : [
+            "mihnea"
+         ]
+      },
+      "Nadav Rotem" : {
+         "emails" : [
+            "nrotem@apple.com"
+         ],
+         "nicks" : [
+            "nadav"
          ]
       },
       "Nate Chapin" : {

@@ -38,8 +38,6 @@ class Region;
 
 namespace WebKit {
 
-class CoordinatedLayerTreeHostProxy;
-
 class DrawingAreaProxyImpl : public DrawingAreaProxy {
 public:
     explicit DrawingAreaProxyImpl(WebPageProxy*);
@@ -59,7 +57,6 @@ private:
     virtual void deviceScaleFactorDidChange();
     virtual void layerHostingModeDidChange() OVERRIDE;
 
-    virtual void visibilityDidChange();
     virtual void setBackingStoreIsDiscardable(bool);
     virtual void waitForBackingStoreUpdateOnNextPaint();
 

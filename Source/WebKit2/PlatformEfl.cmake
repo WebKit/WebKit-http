@@ -1,7 +1,14 @@
 list(APPEND WebKit2_SOURCES
+    NetworkProcess/soup/NetworkProcessSoup.cpp
+    NetworkProcess/soup/NetworkResourceLoadSchedulerSoup.cpp
+    NetworkProcess/soup/RemoteNetworkingContextSoup.cpp
+
+    NetworkProcess/unix/NetworkProcessMainUnix.cpp
+
     Platform/CoreIPC/unix/AttachmentUnix.cpp
     Platform/CoreIPC/unix/ConnectionUnix.cpp
 
+    Platform/efl/DispatchQueueEfl.cpp
     Platform/efl/LoggingEfl.cpp
     Platform/efl/ModuleEfl.cpp
     Platform/efl/WorkQueueEfl.cpp
@@ -109,6 +116,8 @@ list(APPEND WebKit2_SOURCES
 
     UIProcess/Launcher/efl/ProcessLauncherEfl.cpp
 
+    UIProcess/Network/soup/NetworkProcessProxySoup.cpp
+
     UIProcess/Plugins/unix/PluginInfoStoreUnix.cpp
     UIProcess/Plugins/unix/PluginProcessProxyUnix.cpp
 
@@ -148,6 +157,7 @@ list(APPEND WebKit2_SOURCES
     UIProcess/efl/WebUIPopupMenuClient.cpp
     UIProcess/efl/WebViewEfl.cpp
 
+    UIProcess/soup/WebContextSoup.cpp
     UIProcess/soup/WebCookieManagerProxySoup.cpp
     UIProcess/soup/WebSoupRequestManagerClient.cpp
     UIProcess/soup/WebSoupRequestManagerProxy.cpp
@@ -193,6 +203,8 @@ list(APPEND WebKit2_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/platform/graphics/cairo"
     "${WEBCORE_DIR}/platform/network/soup"
     "${WEBCORE_DIR}/platform/text/enchant"
+    "${WEBKIT2_DIR}/NetworkProcess/unix"
+    "${WEBKIT2_DIR}/Platform/efl"
     "${WEBKIT2_DIR}/Shared/API/c/efl"
     "${WEBKIT2_DIR}/Shared/Downloads/soup"
     "${WEBKIT2_DIR}/Shared/efl"
@@ -381,6 +393,27 @@ if (ENABLE_PLUGIN_PROCESS)
     install(TARGETS PluginProcess DESTINATION "${EXEC_INSTALL_DIR}")
 endif () # ENABLE_PLUGIN_PROCESS
 
+if (ENABLE_NETWORK_PROCESS)
+    set(NetworkProcess_EXECUTABLE_NAME NetworkProcess)
+    list(APPEND NetworkProcess_INCLUDE_DIRECTORIES
+        "${WEBKIT2_DIR}/NetworkProcess"
+    )
+
+    include_directories(${NetworkProcess_INCLUDE_DIRECTORIES})
+
+    list(APPEND NetworkProcess_SOURCES
+        ${WEBKIT2_DIR}/unix/NetworkMainUnix.cpp
+    )
+
+    set(NetworkProcess_LIBRARIES
+        WebKit2
+    )
+
+    add_executable(${NetworkProcess_EXECUTABLE_NAME} ${NetworkProcess_SOURCES})
+    target_link_libraries(${NetworkProcess_EXECUTABLE_NAME} ${NetworkProcess_LIBRARIES})
+    install(TARGETS ${NetworkProcess_EXECUTABLE_NAME} DESTINATION "${EXEC_INSTALL_DIR}")
+endif ()
+
 include_directories(${THIRDPARTY_DIR}/gtest/include)
 
 set(EWK2UnitTests_LIBRARIES
@@ -410,6 +443,7 @@ add_definitions(-DTEST_RESOURCES_DIR=\"${TEST_RESOURCES_DIR}\"
     -DLIBEXECDIR=\"${CMAKE_INSTALL_PREFIX}/${EXEC_INSTALL_DIR}\"
     -DWEBPROCESSNAME=\"WebProcess\"
     -DPLUGINPROCESSNAME=\"PluginProcess\"
+    -DNETWORKPROCESSNAME=\"NetworkProcess\"
 )
 
 add_library(ewk2UnitTestUtils

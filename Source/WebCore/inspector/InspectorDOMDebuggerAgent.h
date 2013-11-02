@@ -48,7 +48,6 @@ class InspectorDOMAgent;
 class InspectorDebuggerAgent;
 class InspectorFrontend;
 class InspectorObject;
-class InspectorState;
 class InstrumentingAgents;
 class Node;
 
@@ -57,7 +56,7 @@ typedef String ErrorString;
 class InspectorDOMDebuggerAgent : public InspectorBaseAgent<InspectorDOMDebuggerAgent>, public InspectorDebuggerAgent::Listener, public InspectorBackendDispatcher::DOMDebuggerCommandHandler {
     WTF_MAKE_NONCOPYABLE(InspectorDOMDebuggerAgent);
 public:
-    static PassOwnPtr<InspectorDOMDebuggerAgent> create(InstrumentingAgents*, InspectorCompositeState*, InspectorDOMAgent*, InspectorDebuggerAgent*, InspectorAgent*);
+    static PassOwnPtr<InspectorDOMDebuggerAgent> create(InstrumentingAgents*, InspectorDOMAgent*, InspectorDebuggerAgent*, InspectorAgent*);
 
     virtual ~InspectorDOMDebuggerAgent();
 
@@ -85,7 +84,7 @@ public:
     virtual void discardAgent();
 
 private:
-    InspectorDOMDebuggerAgent(InstrumentingAgents*, InspectorCompositeState*, InspectorDOMAgent*, InspectorDebuggerAgent*, InspectorAgent*);
+    InspectorDOMDebuggerAgent(InstrumentingAgents*, InspectorDOMAgent*, InspectorDebuggerAgent*, InspectorAgent*);
 
     // InspectorDebuggerAgent::Listener implementation.
     virtual void debuggerWasEnabled();
@@ -106,7 +105,10 @@ private:
     InspectorDOMAgent* m_domAgent;
     InspectorDebuggerAgent* m_debuggerAgent;
     HashMap<Node*, uint32_t> m_domBreakpoints;
+    HashSet<String> m_eventListenerBreakpoints;
+    HashSet<String> m_xhrBreakpoints;
     bool m_pauseInNextEventListener;
+    bool m_pauseOnAllXHRsEnabled;
 };
 
 } // namespace WebCore

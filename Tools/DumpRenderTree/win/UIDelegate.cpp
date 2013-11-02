@@ -41,6 +41,7 @@
 #include <wtf/Vector.h>
 #include <JavaScriptCore/JavaScriptCore.h>
 #include <WebKit/WebKit.h>
+#include <WebKit/WebKitCOMAPI.h>
 #include <stdio.h>
 
 using std::wstring;
@@ -72,10 +73,10 @@ private:
 
 class DRTUndoStack {
 public:
-    ~DRTUndoStack() { deleteAllValues(m_undoVector); }
+    ~DRTUndoStack() { deprecatedDeleteAllValues(m_undoVector); }
 
     bool isEmpty() const { return m_undoVector.isEmpty(); }
-    void clear() { deleteAllValues(m_undoVector); m_undoVector.clear(); }
+    void clear() { deprecatedDeleteAllValues(m_undoVector); m_undoVector.clear(); }
 
     void push(DRTUndoObject* undoObject) { m_undoVector.append(undoObject); }
     DRTUndoObject* pop() { DRTUndoObject* top = m_undoVector.last(); m_undoVector.removeLast(); return top; }
@@ -594,8 +595,40 @@ HRESULT STDMETHODCALLTYPE UIDelegate::exceededDatabaseQuota(
     SysFreeString(protocol);
     SysFreeString(host);
 
-    static const unsigned long long defaultQuota = 5 * 1024 * 1024;
-    origin->setQuota(defaultQuota);
+    unsigned long long defaultQuota = 5 * 1024 * 1024;
+    double testDefaultQuota = gTestRunner->databaseDefaultQuota();
+    if (testDefaultQuota >= 0)
+        defaultQuota = testDefaultQuota;
+
+    COMPtr<IWebDatabaseManager> databaseManager;
+    COMPtr<IWebDatabaseManager> tmpDatabaseManager;
+
+    if (FAILED(WebKitCreateInstance(CLSID_WebDatabaseManager, 0, IID_IWebDatabaseManager, (void**)&tmpDatabaseManager))) {
+        origin->setQuota(defaultQuota);
+        return S_OK;
+    }
+    if (FAILED(tmpDatabaseManager->sharedWebDatabaseManager(&databaseManager))) {
+        origin->setQuota(defaultQuota);
+        return S_OK;
+    }
+    IPropertyBag* detailsBag;
+    if (FAILED(databaseManager->detailsForDatabase(databaseIdentifier, origin, &detailsBag))) {
+        origin->setQuota(defaultQuota);
+        return S_OK;
+    }
+    VARIANT var;
+    detailsBag->Read(WebDatabaseUsageKey, &var, 0);
+    unsigned long long expectedSize = V_UI8(&var);
+    unsigned long long newQuota = defaultQuota;
+
+    double maxQuota = gTestRunner->databaseMaxQuota();
+    if (maxQuota >= 0) {
+        if (defaultQuota < expectedSize && expectedSize <= maxQuota) {
+            newQuota = expectedSize;
+            printf("UI DELEGATE DATABASE CALLBACK: increased quota to %llu\n", newQuota);
+        }
+    }
+    origin->setQuota(newQuota);
 
     return S_OK;
 }

@@ -83,6 +83,8 @@ enum PseudoId {
     PUBLIC_PSEUDOID_MASK = ((1 << FIRST_INTERNAL_PSEUDOID) - 1) & ~((1 << FIRST_PUBLIC_PSEUDOID) - 1)
 };
 
+enum ColumnFill { ColumnFillBalance, ColumnFillAuto };
+
 enum ColumnSpan { ColumnSpanNone = 0, ColumnSpanAll };
 
 enum EBorderCollapse { BSEPARATE = 0, BCOLLAPSE = 1 };
@@ -356,12 +358,12 @@ inline TextDecoration& operator|= (TextDecoration& a, TextDecoration b) { return
 
 enum TextDecorationStyle {
     TextDecorationStyleSolid,
-#if ENABLE(CSS3_TEXT)
+#if ENABLE(CSS3_TEXT_DECORATION)
     TextDecorationStyleDouble,
     TextDecorationStyleDotted,
     TextDecorationStyleDashed,
     TextDecorationStyleWavy
-#endif // CSS3_TEXT
+#endif // CSS3_TEXT_DECORATION
 };
 
 #if ENABLE(CSS3_TEXT)
@@ -369,15 +371,24 @@ enum TextAlignLast {
     TextAlignLastAuto, TextAlignLastStart, TextAlignLastEnd, TextAlignLastLeft, TextAlignLastRight, TextAlignLastCenter, TextAlignLastJustify
 };
 
+enum TextJustify {
+    TextJustifyAuto, TextJustifyNone, TextJustifyInterWord, TextJustifyInterIdeograph, TextJustifyInterCluster, TextJustifyDistribute, TextJustifyKashida
+};
+#endif // CSS3_TEXT
+
+#if ENABLE(CSS3_TEXT_DECORATION)
+enum TextDecorationSkipItems {
+    TextDecorationSkipNone = 0,
+    TextDecorationSkipInk = 1 << 0
+};
+typedef unsigned TextDecorationSkip;
+
 enum TextUnderlinePosition {
     // FIXME: Implement support for 'under left' and 'under right' values.
     TextUnderlinePositionAuto = 0x1, TextUnderlinePositionAlphabetic = 0x2, TextUnderlinePositionUnder = 0x4
 };
 
-enum TextJustify {
-    TextJustifyAuto, TextJustifyNone, TextJustifyInterWord, TextJustifyInterIdeograph, TextJustifyInterCluster, TextJustifyDistribute, TextJustifyKashida
-};
-#endif // CSS3_TEXT
+#endif
 
 enum EPageBreak {
     PBAUTO, PBALWAYS, PBAVOID

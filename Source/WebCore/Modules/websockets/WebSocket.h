@@ -55,10 +55,10 @@ public:
     static void setIsAvailable(bool);
     static bool isAvailable();
     static const char* subProtocolSeperator();
-    static PassRefPtr<WebSocket> create(ScriptExecutionContext*);
-    static PassRefPtr<WebSocket> create(ScriptExecutionContext*, const String& url, ExceptionCode&);
-    static PassRefPtr<WebSocket> create(ScriptExecutionContext*, const String& url, const String& protocol, ExceptionCode&);
-    static PassRefPtr<WebSocket> create(ScriptExecutionContext*, const String& url, const Vector<String>& protocols, ExceptionCode&);
+    static PassRefPtr<WebSocket> create(ScriptExecutionContext&);
+    static PassRefPtr<WebSocket> create(ScriptExecutionContext&, const String& url, ExceptionCode&);
+    static PassRefPtr<WebSocket> create(ScriptExecutionContext&, const String& url, const String& protocol, ExceptionCode&);
+    static PassRefPtr<WebSocket> create(ScriptExecutionContext&, const String& url, const Vector<String>& protocols, ExceptionCode&);
     virtual ~WebSocket();
 
     enum State {
@@ -106,14 +106,14 @@ public:
     // WebSocketChannelClient functions.
     virtual void didConnect() OVERRIDE;
     virtual void didReceiveMessage(const String& message) OVERRIDE;
-    virtual void didReceiveBinaryData(PassOwnPtr<Vector<char> >) OVERRIDE;
+    virtual void didReceiveBinaryData(PassOwnPtr<Vector<char>>) OVERRIDE;
     virtual void didReceiveMessageError() OVERRIDE;
     virtual void didUpdateBufferedAmount(unsigned long bufferedAmount) OVERRIDE;
     virtual void didStartClosingHandshake() OVERRIDE;
     virtual void didClose(unsigned long unhandledBufferedAmount, ClosingHandshakeCompletionStatus, unsigned short code, const String& reason) OVERRIDE;
 
 private:
-    explicit WebSocket(ScriptExecutionContext*);
+    explicit WebSocket(ScriptExecutionContext&);
 
     // ActiveDOMObject functions.
     virtual void contextDestroyed() OVERRIDE;

@@ -181,21 +181,21 @@ PassRefPtr<FormSubmission> FormSubmission::create(HTMLFormElement* form, const A
 
     TextEncoding dataEncoding = isMailtoForm ? UTF8Encoding() : FormDataBuilder::encodingFromAcceptCharset(copiedAttributes.acceptCharset(), document);
     RefPtr<DOMFormData> domFormData = DOMFormData::create(dataEncoding.encodingForFormSubmission());
-    Vector<pair<String, String> > formValues;
+    Vector<pair<String, String>> formValues;
 
     bool containsPasswordData = false;
     for (unsigned i = 0; i < form->associatedElements().size(); ++i) {
-        FormAssociatedElement* control = form->associatedElements()[i];
-        HTMLElement* element = toHTMLElement(control);
-        if (!element->isDisabledFormControl())
-            control->appendFormData(*domFormData, isMultiPartForm);
+        FormAssociatedElement& control = *form->associatedElements()[i];
+        HTMLElement& element = control.asHTMLElement();
+        if (!element.isDisabledFormControl())
+            control.appendFormData(*domFormData, isMultiPartForm);
         if (isHTMLInputElement(element)) {
-            HTMLInputElement* input = toHTMLInputElement(element);
-            if (input->isTextField()) {
-                formValues.append(pair<String, String>(input->name().string(), input->value()));
-                input->addSearchResult();
+            HTMLInputElement& input = toHTMLInputElement(element);
+            if (input.isTextField()) {
+                formValues.append(pair<String, String>(input.name().string(), input.value()));
+                input.addSearchResult();
             }
-            if (input->isPasswordField() && !input->value().isEmpty())
+            if (input.isPasswordField() && !input.value().isEmpty())
                 containsPasswordData = true;
         }
     }

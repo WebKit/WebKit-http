@@ -42,17 +42,20 @@ friend class RenderMathMLScripts;
 public:
     enum WrapperType { Base, SubSupPair };
 
-    RenderMathMLScriptsWrapper(Element* element, WrapperType kind) :
-    RenderMathMLBlock(element), m_kind(kind) { };
-
     virtual void addChild(RenderObject* child, RenderObject* beforeChild = 0) OVERRIDE;
-    virtual void removeChild(RenderObject*) OVERRIDE;
+    virtual void removeChild(RenderObject&) OVERRIDE;
 
 private:
+    RenderMathMLScriptsWrapper(Document& document, PassRef<RenderStyle> style, WrapperType kind)
+        : RenderMathMLBlock(document, std::move(style))
+        , m_kind(kind)
+    {
+    }
+
     static RenderMathMLScriptsWrapper* createAnonymousWrapper(RenderMathMLScripts* renderObject, WrapperType);
 
     void addChildInternal(bool normalInsertion, RenderObject* child, RenderObject* beforeChild = 0);
-    void removeChildInternal(bool normalRemoval, RenderObject* child);
+    void removeChildInternal(bool normalRemoval, RenderObject& child);
 
     virtual const char* renderName() const { return m_kind == Base ? "Base Wrapper" : "SubSupPair Wrapper"; }
 
@@ -94,19 +97,19 @@ class RenderMathMLScripts : public RenderMathMLBlock {
 friend class RenderMathMLScriptsWrapper;
 
 public:
-    RenderMathMLScripts(Element*);
+    RenderMathMLScripts(Element&, PassRef<RenderStyle>);
     virtual void addChild(RenderObject* child, RenderObject* beforeChild = 0) OVERRIDE;
-    virtual void removeChild(RenderObject*) OVERRIDE;
+    virtual void removeChild(RenderObject&) OVERRIDE;
     
     virtual RenderMathMLOperator* unembellishedOperator();
-    virtual int firstLineBoxBaseline() const OVERRIDE;
+    virtual int firstLineBaseline() const OVERRIDE;
 
 protected:
     virtual void layout();
     
 private:
     void addChildInternal(bool normalInsertion, RenderObject* child, RenderObject* beforeChild = 0);
-    void removeChildInternal(bool normalRemoval, RenderObject* child);
+    void removeChildInternal(bool normalRemoval, RenderObject& child);
 
     virtual bool isRenderMathMLScripts() const OVERRIDE { return true; }
     void fixAnonymousStyleForSubSupPair(RenderObject* subSupPair, bool isPostScript);

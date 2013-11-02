@@ -1631,6 +1631,7 @@ class CppStyleTest(CppStyleTestBase):
         self.assert_lint('((a+b))', '')
         self.assert_lint('foo (foo)', 'Extra space before ( in function call'
                          '  [whitespace/parens] [4]')
+        self.assert_lint('@property (readonly) NSUInteger count;', '')
         self.assert_lint('#elif (foo(bar))', '')
         self.assert_lint('#elif (foo(bar) && foo(baz))', '')
         self.assert_lint('typedef foo (*foo)(foo)', '')
@@ -1646,6 +1647,10 @@ class CppStyleTest(CppStyleTestBase):
         self.assert_lint('char (*p)[sizeof(foo)] = &foo', '')
         self.assert_lint('char (&ref)[sizeof(foo)] = &foo', '')
         self.assert_lint('const char32 (*table[])[6];', '')
+        self.assert_lint('@interface Foo (Category)', '')
+        self.assert_lint('@interface Foo ()', '')
+        self.assert_lint('@implementation Foo (Category)', '')
+        self.assert_lint('@implementation Foo ()', '')
 
     def test_spacing_before_braces(self):
         self.assert_lint('if (foo){', 'Missing space before {'
@@ -3272,6 +3277,39 @@ class NoNonVirtualDestructorsTest(CppStyleTestBase):
 
         self.assert_multi_line_lint(
             '''\
+                ENUM_CLASS(Foo) {
+                    FOO_ONE = 1,
+                    FOO_TWO
+                };
+                ENUM_CLASS(Foo) { FOO_ONE };
+                ENUM_CLASS(Foo) {FooOne, fooTwo};
+                ENUM_CLASS(Foo) {
+                    FOO_ONE
+                };''',
+            ['enum members should use InterCaps with an initial capital letter.  [readability/enum_casing] [4]'] * 5)
+
+        self.assert_multi_line_lint(
+            '''\
+                ENUM_CLASS(Foo) {
+                    fooOne = 1,
+                    FooTwo = 2
+                };''',
+            'enum members should use InterCaps with an initial capital letter.  [readability/enum_casing] [4]')
+
+        self.assert_multi_line_lint(
+            '''\
+                ENUM_CLASS(Foo) {
+                    FooOne = 1,
+                    FooTwo
+                } fooVar = FooOne;
+                ENUM_CLASS(Enum123) {
+                    FooOne,
+                    FooTwo = FooOne,
+                };''',
+            '')
+
+        self.assert_multi_line_lint(
+            '''\
                 // WebIDL enum
                 enum Foo {
                     FOO_ONE = 1,
@@ -3283,6 +3321,26 @@ class NoNonVirtualDestructorsTest(CppStyleTestBase):
             '''\
                 // WebKitIDL enum
                 enum Foo { FOO_ONE, FOO_TWO };''',
+            '')
+
+    def test_enum_trailing_semicolon(self):
+        self.assert_lint(
+            'enum MyEnum { Value1, Value2 };',
+            '')
+        self.assert_lint(
+            'enum MyEnum {\n'
+            '    Value1,\n'
+            '    Value2\n'
+            '};',
+            '')
+        self.assert_lint(
+            'ENUM_CLASS(CPP11EnumClass) { Value1, Value2 };',
+            '')
+        self.assert_lint(
+            'ENUM_CLASS(MyEnum) {\n'
+            '    Value1,\n'
+            '    Value2\n'
+            '};',
             '')
 
     def test_destructor_non_virtual_when_virtual_needed(self):
@@ -4196,6 +4254,30 @@ class WebKitStyleTest(CppStyleTestBase):
             'case foo: return;\n'
             '}\n',
             'This { should be at the end of the previous line  [whitespace/braces] [4]')
+        self.assert_multi_line_lint(
+            'typedef NS_ENUM(NSInteger, type)\n'
+            '{\n'
+            '    0,\n'
+            '    1\n'
+            '};',
+            'This { should be at the end of the previous line  [whitespace/braces] [4]')
+        self.assert_multi_line_lint(
+            'typedef NS_ENUM(NSInteger, type) {\n'
+            '    0,\n'
+            '    1\n'
+            '};', '')
+        self.assert_multi_line_lint(
+            'ENUM_CLASS(CPP11EnumClass)\n'
+            '{\n'
+            '    Value1,\n'
+            '    Value2\n'
+            '};',
+            'This { should be at the end of the previous line  [whitespace/braces] [4]')
+        self.assert_multi_line_lint(
+            'ENUM_CLASS(CPP11EnumClass) {\n'
+            '    Value1,\n'
+            '    Value2\n'
+            '};', '')
 
         # 3. One-line control clauses should not use braces unless
         #    comments are included or a single statement spans multiple

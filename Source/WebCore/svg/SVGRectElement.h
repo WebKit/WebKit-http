@@ -47,7 +47,7 @@ private:
 
     virtual bool selfHasRelativeLengths() const;
 
-    virtual RenderElement* createRenderer(RenderArena&, RenderStyle&) OVERRIDE;
+    virtual RenderElement* createRenderer(PassRef<RenderStyle>) OVERRIDE;
 
     BEGIN_DECLARE_ANIMATED_PROPERTIES(SVGRectElement)
         DECLARE_ANIMATED_LENGTH(X, x)
@@ -60,7 +60,7 @@ private:
     END_DECLARE_ANIMATED_PROPERTIES
 };
 
-ELEMENT_TYPE_CASTS(SVGRectElement)
+NODE_TYPE_CASTS(SVGRectElement)
 
 } // namespace WebCore
 

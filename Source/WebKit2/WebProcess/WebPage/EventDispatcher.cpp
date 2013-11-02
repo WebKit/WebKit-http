@@ -104,17 +104,15 @@ void EventDispatcher::wheelEvent(uint64_t pageID, const WebWheelEvent& wheelEven
             return;
         }
     }
+#else
+    UNUSED_PARAM(canRubberBandsAtLeft);
+    UNUSED_PARAM(canRubberBandsAtRight);
+    UNUSED_PARAM(canRubberBandsAtTop);
+    UNUSED_PARAM(canRubberBandsAtBottom);
 #endif
 
     RunLoop::main()->dispatch(bind(&EventDispatcher::dispatchWheelEvent, this, pageID, wheelEvent));
 }
-
-#if ENABLE(GESTURE_EVENTS)
-void EventDispatcher::gestureEvent(uint64_t pageID, const WebGestureEvent& gestureEvent)
-{
-    RunLoop::main()->dispatch(bind(&EventDispatcher::dispatchGestureEvent, this, pageID, gestureEvent));
-}
-#endif
 
 void EventDispatcher::dispatchWheelEvent(uint64_t pageID, const WebWheelEvent& wheelEvent)
 {
@@ -126,19 +124,6 @@ void EventDispatcher::dispatchWheelEvent(uint64_t pageID, const WebWheelEvent& w
 
     webPage->wheelEvent(wheelEvent);
 }
-
-#if ENABLE(GESTURE_EVENTS)
-void EventDispatcher::dispatchGestureEvent(uint64_t pageID, const WebGestureEvent& gestureEvent)
-{
-    ASSERT(isMainThread());
-
-    WebPage* webPage = WebProcess::shared().webPage(pageID);
-    if (!webPage)
-        return;
-
-    webPage->gestureEvent(gestureEvent);
-}
-#endif
 
 #if ENABLE(THREADED_SCROLLING)
 void EventDispatcher::sendDidReceiveEvent(uint64_t pageID, const WebEvent& event, bool didHandleEvent)

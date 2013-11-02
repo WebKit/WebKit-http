@@ -46,6 +46,7 @@ namespace WebKit {
     M(NetworkScheduling) \
     M(Plugins) \
     M(SessionState) \
+    M(StorageAPI) \
     M(TextInput) \
     M(View) \
 

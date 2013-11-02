@@ -33,8 +33,6 @@
 
 namespace JSC {
 
-struct JITStackFrame;
-
 class MacroAssemblerX86Common : public AbstractMacroAssembler<X86Assembler> {
 protected:
 #if CPU(X86_64)
@@ -46,7 +44,6 @@ protected:
     static const int DoubleConditionBits = DoubleConditionBitInvert | DoubleConditionBitSpecial;
 
 public:
-    typedef X86Assembler::FPRegisterID FPRegisterID;
     typedef X86Assembler::XMMRegisterID XMMRegisterID;
     
     static bool isCompactPtrAlignedAddressOffset(ptrdiff_t value)
@@ -97,7 +94,7 @@ public:
 
     static const RegisterID stackPointerRegister = X86Registers::esp;
     static const RegisterID framePointerRegister = X86Registers::ebp;
-
+    
     static bool shouldBlindForSpecificArch(uint32_t value) { return value >= 0x00ffffff; }
 #if CPU(X86_64)
     static bool shouldBlindForSpecificArch(uint64_t value) { return value >= 0x00ffffff; }
@@ -1451,7 +1448,6 @@ public:
         ProbeFunction probeFunction;
         void* arg1;
         void* arg2;
-        JITStackFrame* jitStackFrame;
         CPUState cpu;
 
         void dump(const char* indentation = 0);

@@ -41,10 +41,6 @@ class PlatformMouseEvent;
 class ScrollableArea;
 class ScrollbarTheme;
 
-#if ENABLE(GESTURE_EVENTS)
-class PlatformGestureEvent;
-#endif
-
 class Scrollbar : public Widget,
                   public ScrollbarThemeClient {
 
@@ -126,10 +122,6 @@ public:
 
     bool isWindowActive() const;
 
-#if ENABLE(GESTURE_EVENTS)
-    bool gestureEvent(const PlatformGestureEvent&);
-#endif
-
     // These methods are used for platform scrollbars to give :hover feedback.  They will not get called
     // when the mouse went down in a scrollbar, since it is assumed the scrollbar will start
     // grabbing all events in that case anyway.
@@ -159,6 +151,8 @@ public:
 
     virtual bool isAlphaLocked() const OVERRIDE { return m_isAlphaLocked; }
     virtual void setIsAlphaLocked(bool flag) OVERRIDE { m_isAlphaLocked = flag; }
+
+    virtual bool supportsUpdateOnSecondaryThread() const;
 
 protected:
     Scrollbar(ScrollableArea*, ScrollbarOrientation, ScrollbarControlSize, ScrollbarTheme* = 0);

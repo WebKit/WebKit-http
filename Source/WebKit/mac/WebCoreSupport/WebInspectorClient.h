@@ -38,11 +38,13 @@
 
 #ifdef __OBJC__
 @class NSURL;
+@class WebInspectorRemoteChannel;
 @class WebInspectorWindowController;
 @class WebNodeHighlighter;
 @class WebView;
 #else
 class NSURL;
+class WebInspectorRemoteChannel;
 class WebInspectorWindowController;
 class WebNodeHighlighter;
 class WebView;
@@ -81,6 +83,26 @@ public:
 
     void releaseFrontend();
 
+#if ENABLE(REMOTE_INSPECTOR)
+    void sendMessageToBackend(const String&);
+
+    bool setupRemoteConnection(WebInspectorRemoteChannel *remoteChannel);
+    void teardownRemoteConnection(bool fromLocalSide);
+
+    unsigned pageId() const { return m_pageId; }
+    void setPageId(unsigned pageId) { m_pageId = pageId; }
+
+    bool hasLocalSession() const;
+
+    bool canBeRemotelyInspected() const;
+
+    WebView *inspectedWebView();
+
+#if PLATFORM(IOS)
+    virtual void didSetSearchingForNode(bool) OVERRIDE FINAL;
+#endif
+#endif
+
 private:
     PassOwnPtr<WebCore::InspectorFrontendClientLocal::Settings> createFrontendSettings();
 
@@ -88,6 +110,11 @@ private:
     RetainPtr<WebNodeHighlighter> m_highlighter;
     WebCore::Page* m_frontendPage;
     WebInspectorFrontendClient* m_frontendClient;
+
+#if ENABLE(REMOTE_INSPECTOR)
+    WebInspectorRemoteChannel *m_remoteChannel;
+    unsigned m_pageId;
+#endif
 };
 
 
@@ -121,8 +148,10 @@ private:
     virtual void save(const String& url, const String& content, bool forceSaveAs, bool base64Encoded) OVERRIDE;
     virtual void append(const String& url, const String& content) OVERRIDE;
 
+#if !PLATFORM(IOS)
     WebView* m_inspectedWebView;
     RetainPtr<WebInspectorWindowController> m_windowController;
     String m_inspectedURL;
     HashMap<String, RetainPtr<NSURL>> m_suggestedToActualURLMap;
+#endif
 };

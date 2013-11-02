@@ -62,25 +62,25 @@ static RenderMathMLOperator::StretchyCharacter stretchyCharacters[13] = {
     { 0x222b, 0x2320, 0x23ae, 0x2321, 0x0    } // integral sign
 };
 
-RenderMathMLOperator::RenderMathMLOperator(Element* element)
-    : RenderMathMLBlock(element)
+RenderMathMLOperator::RenderMathMLOperator(MathMLElement& element, PassRef<RenderStyle> style)
+    : RenderMathMLBlock(element, std::move(style))
     , m_stretchHeight(0)
     , m_operator(0)
     , m_operatorType(Default)
-    , m_stretchyCharacter(0)
+    , m_stretchyCharacter(nullptr)
 {
 }
 
-RenderMathMLOperator::RenderMathMLOperator(Element* element, UChar operatorChar)
-    : RenderMathMLBlock(element)
+RenderMathMLOperator::RenderMathMLOperator(MathMLElement& element, PassRef<RenderStyle> style, UChar operatorChar)
+    : RenderMathMLBlock(element, std::move(style))
     , m_stretchHeight(0)
     , m_operator(convertHyphenMinusToMinusSign(operatorChar))
     , m_operatorType(Default)
-    , m_stretchyCharacter(0)
+    , m_stretchyCharacter(nullptr)
 {
 }
 
-bool RenderMathMLOperator::isChildAllowed(RenderObject*, RenderStyle*) const
+bool RenderMathMLOperator::isChildAllowed(const RenderObject&, const RenderStyle&) const
 {
     return false;
 }
@@ -109,7 +109,7 @@ void RenderMathMLOperator::styleDidChange(StyleDifference diff, const RenderStyl
 
 FloatRect RenderMathMLOperator::glyphBoundsForCharacter(UChar character)
 {
-    GlyphData data = style()->font().glyphDataForCharacter(character, false);
+    GlyphData data = style().font().glyphDataForCharacter(character, false);
     return data.fontData->boundsForGlyph(data.glyph);
 }
 
@@ -121,7 +121,7 @@ float RenderMathMLOperator::glyphHeightForCharacter(UChar character)
 float RenderMathMLOperator::advanceForCharacter(UChar character)
 {
     // Hyphen minus is always replaced by the minus sign in rendered text.
-    GlyphData data = style()->font().glyphDataForCharacter(convertHyphenMinusToMinusSign(character), false);
+    GlyphData data = style().font().glyphDataForCharacter(convertHyphenMinusToMinusSign(character), false);
     return data.fontData->widthForGlyph(data.glyph);
 }
 
@@ -163,30 +163,30 @@ void RenderMathMLOperator::computePreferredLogicalWidths()
 // dynamic DOM changes.
 void RenderMathMLOperator::updateFromElement()
 {
-    RenderObject* savedRenderer = element()->renderer();
+    RenderElement* savedRenderer = element().renderer();
 
     // Destroy our current children
     destroyLeftoverChildren();
 
     // Since we share a node with our children, destroying our children may set our node's
     // renderer to 0, so we need to restore it.
-    element()->setRenderer(savedRenderer);
+    element().setRenderer(savedRenderer);
     
-    RefPtr<RenderStyle> newStyle = RenderStyle::create();
-    newStyle->inheritFrom(style());
-    newStyle->setDisplay(FLEX);
+    auto newStyle = RenderStyle::create();
+    newStyle.get().inheritFrom(&style());
+    newStyle.get().setDisplay(FLEX);
 
-    RenderMathMLBlock* container = new (renderArena()) RenderMathMLBlock(element());
+    RenderMathMLBlock* container = new RenderMathMLBlock(element(), std::move(newStyle));
     // This container doesn't offer any useful information to accessibility.
     container->setIgnoreInAccessibilityTree(true);
-    container->setStyle(newStyle.release());
+    container->initializeStyle();
 
     addChild(container);
-    RenderText* text = 0;
+    RenderText* text;
     if (m_operator)
-        text = RenderText::createAnonymous(document(), String(&m_operator, 1));
+        text = new RenderText(document(), String(&m_operator, 1));
     else
-        text = RenderText::createAnonymous(document(), element()->textContent().replace(hyphenMinus, minusSign).impl());
+        text = new RenderText(document(), element().textContent().replace(hyphenMinus, minusSign).impl());
 
     // If we can't figure out the text, leave it blank.
     if (text)
@@ -198,8 +198,7 @@ void RenderMathMLOperator::updateFromElement()
 
 bool RenderMathMLOperator::shouldAllowStretching(UChar& stretchedCharacter)
 {
-    Element* mo = element();
-    if (equalIgnoringCase(mo->getAttribute(MathMLNames::stretchyAttr), "false"))
+    if (equalIgnoringCase(element().getAttribute(MathMLNames::stretchyAttr), "false"))
         return false;
 
     if (m_operator) {
@@ -208,7 +207,7 @@ bool RenderMathMLOperator::shouldAllowStretching(UChar& stretchedCharacter)
     }
 
     // FIXME: This does not handle surrogate pairs (http://wkbug.com/122296/).
-    String opText = mo->textContent();
+    String opText = element().textContent();
     stretchedCharacter = 0;
     for (unsigned i = 0; i < opText.length(); ++i) {
         // If there's more than one non-whitespace character in this node, then don't even try to stretch it.
@@ -257,7 +256,7 @@ void RenderMathMLOperator::updateStyle()
     UChar stretchedCharacter;
     bool allowStretching = shouldAllowStretching(stretchedCharacter);
 
-    float stretchedCharacterHeight = style()->fontMetrics().floatHeight();
+    float stretchedCharacterHeight = style().fontMetrics().floatHeight();
     m_isStretched = allowStretching && expandedStretchHeight() > stretchedCharacterHeight;
 
     // Sometimes we cannot stretch an operator properly, so in that case, we should just use the original size.
@@ -266,11 +265,11 @@ void RenderMathMLOperator::updateStyle()
         m_isStretched = false;
 }
 
-int RenderMathMLOperator::firstLineBoxBaseline() const
+int RenderMathMLOperator::firstLineBaseline() const
 {
     if (m_isStretched)
         return expandedStretchHeight() * 2 / 3 - (expandedStretchHeight() - m_stretchHeight) / 2;
-    return RenderMathMLBlock::firstLineBoxBaseline();
+    return RenderMathMLBlock::firstLineBaseline();
 }
 
 void RenderMathMLOperator::computeLogicalHeight(LayoutUnit logicalHeight, LayoutUnit logicalTop, LogicalExtentComputedValues& computedValues) const
@@ -282,7 +281,7 @@ void RenderMathMLOperator::computeLogicalHeight(LayoutUnit logicalHeight, Layout
 
 LayoutRect RenderMathMLOperator::paintCharacter(PaintInfo& info, UChar character, const LayoutPoint& origin, CharacterPaintTrimming trim)
 {
-    GlyphData data = style()->font().glyphDataForCharacter(character, false);
+    GlyphData data = style().font().glyphDataForCharacter(character, false);
     FloatRect glyphBounds = data.fontData->boundsForGlyph(data.glyph);
 
     LayoutRect glyphPaintRect(origin, LayoutSize(glyphBounds.x() + glyphBounds.width(), glyphBounds.height()));
@@ -314,7 +313,7 @@ LayoutRect RenderMathMLOperator::paintCharacter(PaintInfo& info, UChar character
     GraphicsContextStateSaver stateSaver(*info.context);
     info.context->clip(clipBounds);
 
-    info.context->drawText(style()->font(), TextRun(&character, 1), origin);
+    info.context->drawText(style().font(), TextRun(&character, 1), origin);
 
     return glyphPaintRect;
 }
@@ -365,7 +364,7 @@ void RenderMathMLOperator::paint(PaintInfo& info, const LayoutPoint& paintOffset
     }
 
     GraphicsContextStateSaver stateSaver(*info.context);
-    info.context->setFillColor(style()->visitedDependentColor(CSSPropertyColor), style()->colorSpace());
+    info.context->setFillColor(style().visitedDependentColor(CSSPropertyColor), style().colorSpace());
 
     ASSERT(m_stretchyCharacter->topGlyph);
     ASSERT(m_stretchyCharacter->bottomGlyph);

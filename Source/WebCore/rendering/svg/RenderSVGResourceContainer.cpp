@@ -38,8 +38,8 @@ static inline SVGDocumentExtensions& svgExtensionsFromElement(SVGElement& elemen
     return *element.document().accessSVGExtensions();
 }
 
-RenderSVGResourceContainer::RenderSVGResourceContainer(SVGElement& element)
-    : RenderSVGHiddenContainer(element)
+RenderSVGResourceContainer::RenderSVGResourceContainer(SVGElement& element, PassRef<RenderStyle> style)
+    : RenderSVGHiddenContainer(element, std::move(style))
     , m_id(element.getIdAttribute())
     , m_registered(false)
     , m_isInvalidating(false)
@@ -64,7 +64,7 @@ void RenderSVGResourceContainer::layout()
 
 void RenderSVGResourceContainer::willBeDestroyed()
 {
-    SVGResourcesCache::resourceDestroyed(this);
+    SVGResourcesCache::resourceDestroyed(*this);
     RenderSVGHiddenContainer::willBeDestroyed();
 }
 
@@ -189,10 +189,10 @@ void RenderSVGResourceContainer::registerResource()
     for (SVGDocumentExtensions::SVGPendingElements::const_iterator it = clients->begin(); it != end; ++it) {
         ASSERT((*it)->hasPendingResources());
         extensions.clearHasPendingResourcesIfPossible(*it);
-        RenderObject* renderer = (*it)->renderer();
+        auto renderer = (*it)->renderer();
         if (!renderer)
             continue;
-        SVGResourcesCache::clientStyleChanged(renderer, StyleDifferenceLayout, renderer->style());
+        SVGResourcesCache::clientStyleChanged(*renderer, StyleDifferenceLayout, renderer->style());
         renderer->setNeedsLayout();
     }
 }

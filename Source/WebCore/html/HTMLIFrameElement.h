@@ -42,12 +42,12 @@ private:
     virtual void collectStyleForPresentationAttribute(const QualifiedName&, const AtomicString&, MutableStylePropertySet*) OVERRIDE;
 
     virtual bool rendererIsNeeded(const RenderStyle&);
-    virtual RenderElement* createRenderer(RenderArena&, RenderStyle&);
+    virtual RenderElement* createRenderer(PassRef<RenderStyle>) OVERRIDE;
 
     virtual void didRecalcStyle(Style::Change) OVERRIDE;
 };
 
-ELEMENT_TYPE_CASTS(HTMLIFrameElement)
+NODE_TYPE_CASTS(HTMLIFrameElement)
 
 } // namespace WebCore
 

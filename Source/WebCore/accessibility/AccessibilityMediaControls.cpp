@@ -175,7 +175,7 @@ String AccessibilityMediaControl::helpText() const
 
 bool AccessibilityMediaControl::computeAccessibilityIsIgnored() const
 {
-    if (!m_renderer || !m_renderer->style() || m_renderer->style()->visibility() != VISIBLE || controlType() == MediaTimelineContainer)
+    if (!m_renderer || m_renderer->style().visibility() != VISIBLE || controlType() == MediaTimelineContainer)
         return true;
 
     return accessibilityIsIgnoredByDefault();
@@ -238,12 +238,8 @@ String AccessibilityMediaControlsContainer::helpText() const
 
 bool AccessibilityMediaControlsContainer::controllingVideoElement() const
 {
-    if (!m_renderer->node())
-        return true;
-
-    MediaControlTimeDisplayElement* element = static_cast<MediaControlTimeDisplayElement*>(m_renderer->node());
-
-    return toParentMediaElement(element)->isVideo();
+    auto element = parentMediaElement(*m_renderer);
+    return !element || element->isVideo();
 }
 
 const String AccessibilityMediaControlsContainer::elementTypeName() const
@@ -306,10 +302,10 @@ PassRefPtr<AccessibilityObject> AccessibilityMediaTimeDisplay::create(RenderObje
 
 bool AccessibilityMediaTimeDisplay::computeAccessibilityIsIgnored() const
 {
-    if (!m_renderer || !m_renderer->style() || m_renderer->style()->visibility() != VISIBLE)
+    if (!m_renderer || m_renderer->style().visibility() != VISIBLE)
         return true;
 
-    if (!m_renderer->style()->width().value())
+    if (!m_renderer->style().width().value())
         return true;
     
     return accessibilityIsIgnoredByDefault();

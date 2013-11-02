@@ -28,7 +28,6 @@
 
 #include "Document.h"
 #include "DocumentMarkerController.h"
-#include "EditingBoundary.h"
 #include "Editor.h"
 #include "EditorClient.h"
 #include "Element.h"
@@ -39,6 +38,7 @@
 #include "HTMLTableElement.h"
 #include "NodeTraversal.h"
 #include "RenderTableCell.h"
+#include "RenderText.h"
 #include "Text.h"
 #include "VisibleUnits.h"
 
@@ -134,7 +134,9 @@ void DeleteSelectionCommand::initializeStartEnd(Position& start, Position& end)
         
         if (!startSpecialContainer && !endSpecialContainer)
             break;
-            
+
+        m_mergeBlocksAfterDelete = false;
+
         if (VisiblePosition(start) != m_selectionToDelete.visibleStart() || VisiblePosition(end) != m_selectionToDelete.visibleEnd())
             break;
 
@@ -574,12 +576,12 @@ void DeleteSelectionCommand::fixupWhitespace()
     // FIXME: isRenderedCharacter should be removed, and we should use VisiblePosition::characterAfter and VisiblePosition::characterBefore
     if (m_leadingWhitespace.isNotNull() && !m_leadingWhitespace.isRenderedCharacter() && m_leadingWhitespace.deprecatedNode()->isTextNode()) {
         Text* textNode = toText(m_leadingWhitespace.deprecatedNode());
-        ASSERT(!textNode->renderer() || textNode->renderer()->style()->collapseWhiteSpace());
+        ASSERT(!textNode->renderer() || textNode->renderer()->style().collapseWhiteSpace());
         replaceTextInNodePreservingMarkers(textNode, m_leadingWhitespace.deprecatedEditingOffset(), 1, nonBreakingSpaceString());
     }
     if (m_trailingWhitespace.isNotNull() && !m_trailingWhitespace.isRenderedCharacter() && m_trailingWhitespace.deprecatedNode()->isTextNode()) {
         Text* textNode = toText(m_trailingWhitespace.deprecatedNode());
-        ASSERT(!textNode->renderer() ||textNode->renderer()->style()->collapseWhiteSpace());
+        ASSERT(!textNode->renderer() || textNode->renderer()->style().collapseWhiteSpace());
         replaceTextInNodePreservingMarkers(textNode, m_trailingWhitespace.deprecatedEditingOffset(), 1, nonBreakingSpaceString());
     }
 }
@@ -634,7 +636,7 @@ void DeleteSelectionCommand::mergeParagraphs()
     if (mergeDestination == startOfParagraphToMove)
         return;
         
-    VisiblePosition endOfParagraphToMove = endOfParagraph(startOfParagraphToMove);
+    VisiblePosition endOfParagraphToMove = endOfParagraph(startOfParagraphToMove, CanSkipOverEditingBoundary);
     
     if (mergeDestination == endOfParagraphToMove)
         return;

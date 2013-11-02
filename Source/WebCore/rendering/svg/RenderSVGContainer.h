@@ -42,7 +42,7 @@ public:
     bool isObjectBoundingBoxValid() const { return m_objectBoundingBoxValid; }
 
 protected:
-    explicit RenderSVGContainer(SVGElement&);
+    RenderSVGContainer(SVGElement&, PassRef<RenderStyle>);
 
     virtual bool isSVGContainer() const OVERRIDE FINAL { return true; }
     virtual const char* renderName() const OVERRIDE { return "RenderSVGContainer"; }
@@ -52,7 +52,7 @@ protected:
     virtual void layout() OVERRIDE;
 
     virtual void addChild(RenderObject* child, RenderObject* beforeChild = 0) OVERRIDE FINAL;
-    virtual void removeChild(RenderObject*) OVERRIDE FINAL;
+    virtual void removeChild(RenderObject&) OVERRIDE FINAL;
     virtual void addFocusRingRects(Vector<IntRect>&, const LayoutPoint& additionalOffset, const RenderLayerModelObject* paintContainer = 0) OVERRIDE FINAL;
 
     virtual FloatRect objectBoundingBox() const OVERRIDE FINAL { return m_objectBoundingBox; }
@@ -81,21 +81,8 @@ private:
     FloatRect m_repaintBoundingBox;
     bool m_needsBoundariesUpdate : 1;
 };
-  
-inline RenderSVGContainer* toRenderSVGContainer(RenderObject* object)
-{
-    ASSERT_WITH_SECURITY_IMPLICATION(!object || object->isSVGContainer());
-    return static_cast<RenderSVGContainer*>(object);
-}
 
-inline const RenderSVGContainer* toRenderSVGContainer(const RenderObject* object)
-{
-    ASSERT_WITH_SECURITY_IMPLICATION(!object || object->isSVGContainer());
-    return static_cast<const RenderSVGContainer*>(object);
-}
-
-// This will catch anyone doing an unnecessary cast.
-void toRenderSVGContainer(const RenderSVGContainer*);
+RENDER_OBJECT_TYPE_CASTS(RenderSVGContainer, isSVGContainer())
 
 } // namespace WebCore
 

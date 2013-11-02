@@ -2560,6 +2560,25 @@
                     { "name": "namedFlow", "$ref": "NamedFlow", "description": "The Named Flow containing the regions whose regionOverset values changed." }
                 ],
                 "description": "Fires if any of the regionOverset values changed in a Named Flow's region chain."
+            },
+            {
+                "name": "registeredNamedFlowContentElement",
+                "parameters": [
+                    { "name": "documentNodeId", "$ref": "DOM.NodeId", "description": "The document node id." },
+                    { "name": "flowName", "type": "string", "description": "Named Flow identifier for which the new content element was registered." },
+                    { "name": "contentNodeId", "$ref": "DOM.NodeId", "description": "The node id of the registered content node." },
+                    { "name": "nextContentNodeId", "$ref": "DOM.NodeId", "description": "The node id of the element following the registered content node." }
+                ],
+                "description": "Fires when a Named Flow's has been registered with a new content node."
+            },
+            {
+                "name": "unregisteredNamedFlowContentElement",
+                "parameters": [
+                    { "name": "documentNodeId", "$ref": "DOM.NodeId", "description": "The document node id." },
+                    { "name": "flowName", "type": "string", "description": "Named Flow identifier for which the new content element was unregistered." },
+                    { "name": "contentNodeId", "$ref": "DOM.NodeId", "description": "The node id of the unregistered content node." }
+                ],
+                "description": "Fires when a Named Flow's has been registered with a new content node."
             }
         ]
     },
@@ -2592,8 +2611,7 @@
                     { "name": "data", "type": "object", "description": "Event data." },
                     { "name": "children", "type": "array", "optional": true, "items": { "$ref": "TimelineEvent" }, "description": "Nested records." },
                     { "name": "counters", "$ref": "DOMCounters", "optional": true,  "description": "Current values of DOM counters." },
-                    { "name": "usedHeapSize", "type": "integer", "optional": true,  "description": "Current size of JS heap." },
-                    { "name": "nativeHeapStatistics", "type": "object", "optional": true,  "description": "Native heap statistics." }
+                    { "name": "usedHeapSize", "type": "integer", "optional": true,  "description": "Current size of JS heap." }
                 ],
                 "description": "Timeline record contains information about the recorded activity."
             }
@@ -2603,8 +2621,7 @@
                 "name": "start",
                 "parameters": [
                     { "name": "maxCallStackDepth", "optional": true, "type": "integer", "description": "Samples JavaScript stack traces up to <code>maxCallStackDepth</code>, defaults to 5." },
-                    { "name": "includeDomCounters", "optional": true, "type": "boolean",  "description": "Whether DOM counters data should be included into timeline events." },
-                    { "name": "includeNativeMemoryStatistics", "optional": true, "type": "boolean",  "description": "Whether native memory usage statistics should be reported as part of timeline events." }
+                    { "name": "includeDomCounters", "optional": true, "type": "boolean",  "description": "Whether DOM counters data should be included into timeline events." }
                 ],
                 "description": "Starts capturing instrumentation events."
             },

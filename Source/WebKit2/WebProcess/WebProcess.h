@@ -72,6 +72,14 @@ struct WebProcessCreationParameters;
 #if ENABLE(NETWORK_PROCESS)
 class NetworkProcessConnection;
 class WebResourceLoadScheduler;
+#else
+#if USE(SOUP)
+class PlatformCertificateInfo;
+#endif
+#endif
+
+#if ENABLE(DATABASE_PROCESS)
+class WebToDatabaseProcessConnection;
 #endif
 
 class WebProcess : public ChildProcess, private DownloadManager::Client {
@@ -148,6 +156,11 @@ public:
     WebResourceLoadScheduler& webResourceLoadScheduler();
 #endif
 
+#if ENABLE(DATABASE_PROCESS)
+    void webToDatabaseProcessConnectionClosed(WebToDatabaseProcessConnection*);
+    WebToDatabaseProcessConnection* webToDatabaseProcessConnection();
+#endif
+
     void setCacheModel(uint32_t);
 
     void ensurePrivateBrowsingSession();
@@ -159,6 +172,10 @@ public:
     void nonVisibleProcessCleanupTimerFired(WebCore::Timer<WebProcess>*);
 
     void updateActivePages();
+
+#if !ENABLE(NETWORK_PROCESS) && USE(SOUP)
+    void allowSpecificHTTPSCertificateForHost(const PlatformCertificateInfo&, const String& host);
+#endif
 
 private:
     WebProcess();
@@ -289,6 +306,11 @@ private:
     RefPtr<NetworkProcessConnection> m_networkProcessConnection;
     bool m_usesNetworkProcess;
     WebResourceLoadScheduler* m_webResourceLoadScheduler;
+#endif
+
+#if ENABLE(DATABASE_PROCESS)
+    void ensureWebToDatabaseProcessConnection();
+    RefPtr<WebToDatabaseProcessConnection> m_webToDatabaseProcessConnection;
 #endif
 
 #if ENABLE(NETSCAPE_PLUGIN_API)

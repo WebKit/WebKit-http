@@ -142,7 +142,7 @@ private:
     virtual void parseAttribute(const QualifiedName&, const AtomicString&) OVERRIDE;
 
     virtual bool rendererIsNeeded(const RenderStyle&) OVERRIDE;
-    virtual RenderElement* createRenderer(RenderArena&, RenderStyle&);
+    virtual RenderElement* createRenderer(PassRef<RenderStyle>) OVERRIDE;
 
     virtual InsertionNotificationRequest insertedInto(ContainerNode&) OVERRIDE;
     virtual void removedFrom(ContainerNode&) OVERRIDE;
@@ -182,7 +182,7 @@ private:
     RefPtr<SVGViewSpec> m_viewSpec;
 };
 
-ELEMENT_TYPE_CASTS(SVGSVGElement)
+NODE_TYPE_CASTS(SVGSVGElement)
 
 } // namespace WebCore
 

@@ -35,6 +35,7 @@
 #include "FTLExitThunkGenerator.h"
 #include "FTLForOSREntryJITCode.h"
 #include "FTLFormattedValue.h"
+#include "FTLInlineCacheSize.h"
 #include "FTLLoweredNodeValue.h"
 #include "FTLOutput.h"
 #include "FTLThunks.h"
@@ -51,6 +52,11 @@ namespace JSC { namespace FTL {
 using namespace DFG;
 
 static int compileCounter;
+
+static bool generateExitThunks()
+{
+    return !Options::useLLVMOSRExitIntrinsic() && !Options::ftlUsesStackmaps();
+}
 
 // Using this instead of typeCheck() helps to reduce the load on LLVM, by creating
 // significantly less dead code.
@@ -75,6 +81,7 @@ public:
         , m_exitThunkGenerator(state)
         , m_state(state.graph)
         , m_interpreter(state.graph, m_state)
+        , m_stackmapIDs(0)
     {
     }
     
@@ -91,7 +98,7 @@ public:
         m_graph.m_dominators.computeIfNecessary(m_graph);
         
         m_ftlState.module =
-            LLVMModuleCreateWithNameInContext(name.data(), m_ftlState.context);
+            llvm->ModuleCreateWithNameInContext(name.data(), m_ftlState.context);
         
         m_ftlState.function = addFunction(
             m_ftlState.module, name.data(), functionType(m_out.int64, m_out.intPtr));
@@ -342,6 +349,9 @@ private:
         case PhantomPutStructure:
             compilePhantomPutStructure();
             break;
+        case GetById:
+            compileGetById();
+            break;
         case GetButterfly:
             compileGetButterfly();
             break;
@@ -437,8 +447,14 @@ private:
         case ForceOSRExit:
             compileForceOSRExit();
             break;
+        case InvalidationPoint:
+            compileInvalidationPoint();
+            break;
         case ValueToInt32:
             compileValueToInt32();
+            break;
+        case Int52ToValue:
+            compileInt52ToValue();
             break;
         default:
             RELEASE_ASSERT_NOT_REACHED();
@@ -462,7 +478,12 @@ private:
         ASSERT(m_node->child1().useKind() == BooleanUse);
         setInt32(m_out.zeroExt(lowBoolean(m_node->child1()), m_out.int32));
     }
-    
+
+    void compileInt52ToValue()
+    {
+        setJSValue(lowJSValue(m_node->child1()));
+    }
+
     void compileUpsilon()
     {
         LValue destination = m_phis.get(m_node->phi());
@@ -1070,14 +1091,40 @@ private:
     
     void compileInt32ToDouble()
     {
-        // This node is tricky to compile in the DFG backend because it tries to
-        // avoid converting child1 to a double in-place, as that would make subsequent
-        // int uses of of child1 fail. But the FTL needs no such special magic, since
-        // unlike the DFG backend, the FTL allows each node to have multiple
-        // contemporaneous low-level representations. So, this gives child1 a double
-        // representation and then forwards that representation to m_node.
+        if (!m_interpreter.needsTypeCheck(m_node->child1(), SpecFullNumber)
+            || m_node->speculationDirection() == BackwardSpeculation) {
+            setDouble(lowDouble(m_node->child1()));
+            return;
+        }
         
-        setDouble(lowDouble(m_node->child1()));
+        LValue boxedValue = lowJSValue(m_node->child1(), ManualOperandSpeculation);
+        
+        LBasicBlock intCase = FTL_NEW_BLOCK(m_out, ("Double unboxing int case"));
+        LBasicBlock doubleCase = FTL_NEW_BLOCK(m_out, ("Double unboxing double case"));
+        LBasicBlock continuation = FTL_NEW_BLOCK(m_out, ("Double unboxing continuation"));
+        
+        m_out.branch(isNotInt32(boxedValue), doubleCase, intCase);
+        
+        LBasicBlock lastNext = m_out.appendTo(intCase, doubleCase);
+        
+        ValueFromBlock intToDouble = m_out.anchor(
+            m_out.intToDouble(unboxInt32(boxedValue)));
+        m_out.jump(continuation);
+        
+        m_out.appendTo(doubleCase, continuation);
+
+        forwardTypeCheck(
+            jsValueValue(boxedValue), m_node->child1(), SpecFullNumber,
+            isCellOrMisc(boxedValue), jsValueValue(boxedValue));
+        
+        ValueFromBlock unboxedDouble = m_out.anchor(unboxDouble(boxedValue));
+        m_out.jump(continuation);
+        
+        m_out.appendTo(continuation, lastNext);
+        
+        LValue result = m_out.phi(m_out.doubleType, intToDouble, unboxedDouble);
+        
+        setDouble(result);
     }
     
     void compileCheckStructure()
@@ -1121,10 +1168,6 @@ private:
     void compileStructureTransitionWatchpoint()
     {
         addWeakReference(m_node->structure());
-        
-        // FIXME: Implement structure transition watchpoints.
-        // https://bugs.webkit.org/show_bug.cgi?id=113647
-        
         speculateCell(m_node->child1());
     }
     
@@ -1201,6 +1244,33 @@ private:
     void compilePhantomPutStructure()
     {
         m_ftlState.jitCode->common.notifyCompilingStructureTransition(m_graph.m_plan, codeBlock(), m_node);
+    }
+    
+    void compileGetById()
+    {
+        // UntypedUse is a bit harder to reason about and I'm not sure how best to do it, yet.
+        // Basically we need to emit a cell branch that takes you to the slow path, but the slow
+        // path is generated by the IC generator so we can't jump to it from here. And the IC
+        // generator currently doesn't know how to emit such a branch. So, for now, we just
+        // restrict this to CellUse.
+        ASSERT(m_node->child1().useKind() == CellUse);
+
+        LValue base = lowCell(m_node->child1());
+        StringImpl* uid = m_graph.identifiers()[m_node->identifierNumber()];
+
+        if (!Options::ftlUsesStackmaps()) {
+            setJSValue(vmCall(m_out.operation(operationGetById), m_callFrame, m_out.intPtrZero, base, m_out.constIntPtr(uid)));
+            return;
+        }
+
+        // Arguments: id, bytes, target, numArgs, args...
+        unsigned stackmapID = m_stackmapIDs++;
+        setJSValue(m_out.call(
+            m_out.webkitPatchpointInt64Intrinsic(),
+            m_out.constInt32(stackmapID), m_out.constInt32(sizeOfGetById()),
+            constNull(m_out.ref8), m_out.constInt32(2), m_callFrame, base));
+        
+        m_ftlState.getByIds.append(GetByIdDescriptor(stackmapID, m_node->codeOrigin, uid));
     }
     
     void compileGetButterfly()
@@ -1280,11 +1350,6 @@ private:
             
         case Array::Double: {
             if (m_node->arrayMode().isInBounds()) {
-                if (m_node->arrayMode().isSaneChain()) {
-                    // FIXME: Implement structure transition watchpoints.
-                    // https://bugs.webkit.org/show_bug.cgi?id=113647
-                }
-            
                 speculate(
                     OutOfBounds, noValue(), 0,
                     m_out.aboveOrEqual(
@@ -1501,8 +1566,13 @@ private:
                 if (isInt(type)) {
                     LValue intValue;
                     switch (child3.useKind()) {
+                    case MachineIntUse:
                     case Int32Use: {
-                        intValue = lowInt32(child3);
+                        if (child3.useKind() == Int32Use)
+                            intValue = lowInt32(child3);
+                        else
+                            intValue = m_out.castToInt32(lowInt52(child3));
+
                         if (isClamped(type)) {
                             ASSERT(elementSize(type) == 1);
                             
@@ -1645,8 +1715,8 @@ private:
     
     void compileGlobalVarWatchpoint()
     {
-        // FIXME: Implement watchpoints.
-        // https://bugs.webkit.org/show_bug.cgi?id=113647
+        // FIXME: In debug mode we could emit some assertion code here.
+        // https://bugs.webkit.org/show_bug.cgi?id=123471
     }
     
     void compileGetMyScope()
@@ -1695,7 +1765,6 @@ private:
     void compileCompareEqConstant()
     {
         ASSERT(m_graph.valueOfJSConstant(m_node->child2().node()).isNull());
-        masqueradesAsUndefinedWatchpointIfIsStillValid();
         setBoolean(
             equalNullOrUndefined(
                 m_node->child1(), AllCellsAreFalse, EqualNullOrUndefined));
@@ -1724,7 +1793,6 @@ private:
         }
         
         if (m_node->isBinaryUseKind(ObjectUse)) {
-            masqueradesAsUndefinedWatchpointIfIsStillValid();
             setBoolean(
                 m_out.equal(
                     lowNonNullObject(m_node->child1()),
@@ -1740,7 +1808,7 @@ private:
         JSValue constant = m_graph.valueOfJSConstant(m_node->child2().node());
 
         if (constant.isUndefinedOrNull()
-            && !masqueradesAsUndefinedWatchpointIfIsStillValid()) {
+            && !masqueradesAsUndefinedWatchpointIsStillValid()) {
             if (constant.isNull()) {
                 setBoolean(equalNullOrUndefined(m_node->child1(), AllCellsAreFalse, EqualNull));
                 return;
@@ -1885,7 +1953,7 @@ private:
         m_out.store32(
             m_out.constInt32(numPassedArgs + dummyThisArgument),
             payloadFor(calleeFrame, JSStack::ArgumentCount));
-        m_out.store64(m_callFrame, addressFor(calleeFrame, JSStack::CallerFrame));
+        m_out.store64(m_callFrame, calleeFrame, m_heaps.CallFrame_callerFrame);
         m_out.store64(
             lowJSValue(m_graph.varArgChild(m_node, 0)),
             addressFor(calleeFrame, JSStack::Callee));
@@ -2066,6 +2134,34 @@ private:
         terminate(InadequateCoverage);
     }
     
+    void compileInvalidationPoint()
+    {
+        if (!Options::ftlUsesStackmaps()) {
+            // We silently don't implement invalidation points if we don't have stackmaps.
+            // This is fine since the long-term plan is to require stackmaps.
+            return;
+        }
+        
+        if (verboseCompilationEnabled())
+            dataLog("    Invalidation point with value sources: ", m_valueSources, "\n");
+        
+        m_ftlState.jitCode->osrExit.append(OSRExit(
+            UncountableInvalidation, InvalidValueFormat, MethodOfGettingAValueProfile(),
+            m_codeOriginForExitTarget, m_codeOriginForExitProfile, m_lastSetOperand.offset(),
+            m_valueSources.numberOfArguments(), m_valueSources.numberOfLocals()));
+        m_ftlState.finalizer->osrExit.append(OSRExitCompilationInfo());
+        
+        OSRExit& exit = m_ftlState.jitCode->osrExit.last();
+        OSRExitCompilationInfo& info = m_ftlState.finalizer->osrExit.last();
+        
+        ExitArgumentList arguments;
+        
+        buildExitArguments(exit, arguments, FormattedValue());
+        callStackmap(exit, arguments);
+        
+        info.m_isInvalidationPoint = true;
+    }
+    
     LValue boolify(Edge edge)
     {
         switch (edge.useKind()) {
@@ -2080,6 +2176,11 @@ private:
                 equalNullOrUndefined(
                     edge, CellCaseSpeculatesObject, SpeculateNullOrUndefined,
                     ManualOperandSpeculation));
+        case StringUse: {
+            LValue stringValue = lowString(m_node->child1());
+            LValue length = m_out.load32(stringValue, m_heaps.JSString_length);
+            return m_out.notEqual(length, m_out.int32Zero);
+        }
         default:
             RELEASE_ASSERT_NOT_REACHED();
             return 0;
@@ -2100,7 +2201,7 @@ private:
         Edge edge, StringOrObjectMode cellMode, EqualNullOrUndefinedMode primitiveMode,
         OperandSpeculationMode operandMode = AutomaticOperandSpeculation)
     {
-        bool validWatchpoint = masqueradesAsUndefinedWatchpointIfIsStillValid();
+        bool validWatchpoint = masqueradesAsUndefinedWatchpointIsStillValid();
         
         LValue value = lowJSValue(edge, operandMode);
         
@@ -2336,11 +2437,11 @@ private:
     
     void forwardTypeCheck(
         FormattedValue lowValue, Edge highValue, SpeculatedType typesPassedThrough,
-        LValue failCondition)
+        LValue failCondition, const FormattedValue& recovery)
     {
         appendTypeCheck(
             lowValue, highValue, typesPassedThrough, failCondition, ForwardSpeculation,
-            FormattedValue());
+            recovery);
     }
     
     void typeCheck(
@@ -3022,7 +3123,7 @@ private:
         FTL_TYPE_CHECK(
             jsValueValue(cell), edge, SpecObject, 
             m_out.equal(structure, m_out.constIntPtr(vm().stringStructure.get())));
-        if (masqueradesAsUndefinedWatchpointIfIsStillValid())
+        if (masqueradesAsUndefinedWatchpointIsStillValid())
             return;
         
         speculate(
@@ -3070,16 +3171,6 @@ private:
     bool masqueradesAsUndefinedWatchpointIsStillValid()
     {
         return m_graph.masqueradesAsUndefinedWatchpointIsStillValid(m_node->codeOrigin);
-    }
-    
-    bool masqueradesAsUndefinedWatchpointIfIsStillValid()
-    {
-        if (!masqueradesAsUndefinedWatchpointIsStillValid())
-            return false;
-        
-        // FIXME: Implement masquerades-as-undefined watchpoints.
-        // https://bugs.webkit.org/show_bug.cgi?id=113647
-        return true;
     }
     
     enum ExceptionCheckMode { NoExceptions, CheckExceptions };
@@ -3235,17 +3326,17 @@ private:
         if (verboseCompilationEnabled())
             dataLog("    OSR exit with value sources: ", m_valueSources, "\n");
         
-        ASSERT(m_ftlState.jitCode->osrExit.size() == m_ftlState.osrExit.size());
-        unsigned index = m_ftlState.osrExit.size();
+        ASSERT(m_ftlState.jitCode->osrExit.size() == m_ftlState.finalizer->osrExit.size());
+        unsigned index = m_ftlState.finalizer->osrExit.size();
         
         m_ftlState.jitCode->osrExit.append(OSRExit(
             kind, lowValue.format(), m_graph.methodOfGettingAValueProfileFor(highValue),
             m_codeOriginForExitTarget, m_codeOriginForExitProfile, m_lastSetOperand.offset(),
             m_valueSources.numberOfArguments(), m_valueSources.numberOfLocals()));
-        m_ftlState.osrExit.append(OSRExitCompilationInfo());
+        m_ftlState.finalizer->osrExit.append(OSRExitCompilationInfo());
         
         OSRExit& exit = m_ftlState.jitCode->osrExit.last();
-        OSRExitCompilationInfo& info = m_ftlState.osrExit.last();
+        OSRExitCompilationInfo& info = m_ftlState.finalizer->osrExit.last();
 
         LBasicBlock lastNext = 0;
         LBasicBlock continuation = 0;
@@ -3256,8 +3347,10 @@ private:
             
             m_out.branch(failCondition, failCase, continuation);
 
-            m_out.appendTo(m_prologue);
-            info.m_thunkAddress = buildAlloca(m_out.m_builder, m_out.intPtr);
+            if (generateExitThunks()) {
+                m_out.appendTo(m_prologue);
+                info.m_thunkAddressValue = buildAlloca(m_out.m_builder, m_out.intPtr);
+            }
         
             lastNext = m_out.appendTo(failCase, continuation);
         }
@@ -3265,7 +3358,7 @@ private:
         if (Options::ftlOSRExitOmitsMarshalling()) {
             m_out.call(
                 m_out.intToPtr(
-                    m_out.get(info.m_thunkAddress),
+                    m_out.get(info.m_thunkAddressValue),
                     pointerType(functionType(m_out.voidType))));
         } else
             emitOSRExitCall(failCondition, index, exit, info, lowValue, direction, recovery);
@@ -3275,7 +3368,8 @@ private:
             
             m_out.appendTo(continuation, lastNext);
         
-            m_exitThunkGenerator.emitThunk(index);
+            if (generateExitThunks())
+                m_exitThunkGenerator.emitThunk(index);
         }
     }
     
@@ -3290,6 +3384,39 @@ private:
             arguments.append(m_out.constInt32(index));
         }
         
+        buildExitArguments(exit, arguments, lowValue);
+        
+        if (direction == ForwardSpeculation) {
+            ASSERT(m_node);
+            exit.convertToForward(m_highBlock, m_node, m_nodeIndex, recovery, arguments);
+        }
+        
+        if (Options::useLLVMOSRExitIntrinsic()) {
+            m_out.call(m_out.osrExitIntrinsic(), arguments);
+            return;
+        }
+        
+        if (Options::ftlUsesStackmaps()) {
+            callStackmap(exit, arguments);
+            return;
+        }
+        
+        // So, the really lame thing here is that we have to build an LLVM function type.
+        // Booo.
+        Vector<LType, 16> argumentTypes;
+        for (unsigned i = 0; i < arguments.size(); ++i)
+            argumentTypes.append(typeOf(arguments[i]));
+        
+        m_out.call(
+            m_out.intToPtr(
+                m_out.get(info.m_thunkAddressValue),
+                pointerType(functionType(m_out.voidType, argumentTypes))),
+            arguments);
+    }
+    
+    void buildExitArguments(
+        OSRExit& exit, ExitArgumentList& arguments, FormattedValue lowValue)
+    {
         arguments.append(m_callFrame);
         if (!!lowValue)
             arguments.append(lowValue.value());
@@ -3324,28 +3451,15 @@ private:
         
         if (verboseCompilationEnabled())
             dataLog("        Exit values: ", exit.m_values, "\n");
+    }
+    
+    void callStackmap(OSRExit& exit, ExitArgumentList& arguments)
+    {
+        exit.m_stackmapID = m_stackmapIDs++;
+        arguments.insert(0, m_out.constInt32(MacroAssembler::maxJumpReplacementSize()));
+        arguments.insert(0, m_out.constInt32(exit.m_stackmapID));
         
-        if (direction == ForwardSpeculation) {
-            ASSERT(m_node);
-            exit.convertToForward(m_highBlock, m_node, m_nodeIndex, recovery, arguments);
-        }
-        
-        // So, the really lame thing here is that we have to build an LLVM function type.
-        // Booo.
-        Vector<LType, 16> argumentTypes;
-        for (unsigned i = 0; i < arguments.size(); ++i)
-            argumentTypes.append(typeOf(arguments[i]));
-        
-        if (Options::useLLVMOSRExitIntrinsic()) {
-            m_out.call(m_out.osrExitIntrinsic(), arguments);
-            return;
-        }
-        
-        m_out.call(
-            m_out.intToPtr(
-                m_out.get(info.m_thunkAddress),
-                pointerType(functionType(m_out.voidType, argumentTypes))),
-            arguments);
+        m_out.call(m_out.webkitStackmapIntrinsic(), arguments);
     }
     
     void addExitArgumentForNode(
@@ -3424,7 +3538,12 @@ private:
         
         value = m_booleanValues.get(node);
         if (isValid(value)) {
-            addExitArgument(exit, arguments, index, ValueFormatBoolean, value.value());
+            LValue valueToPass;
+            if (Options::ftlUsesStackmaps())
+                valueToPass = m_out.zeroExt(value.value(), m_out.int32);
+            else
+                valueToPass = value.value();
+            addExitArgument(exit, arguments, index, ValueFormatBoolean, valueToPass);
             return;
         }
         
@@ -3475,7 +3594,7 @@ private:
     void linkOSRExitsAndCompleteInitializationBlocks()
     {
         MacroAssemblerCodeRef osrExitThunk =
-            vm().getCTIStub(osrExitGenerationThunkGenerator);
+            vm().getCTIStub(osrExitGenerationWithoutStackMapThunkGenerator);
         CodeLocationLabel target = CodeLocationLabel(osrExitThunk.code());
         
         m_out.appendTo(m_prologue);
@@ -3488,10 +3607,10 @@ private:
                 vm(), &m_exitThunkGenerator, m_ftlState.graph.m_codeBlock,
                 JITCompilationMustSucceed));
         
-            ASSERT(m_ftlState.osrExit.size() == m_ftlState.jitCode->osrExit.size());
+            ASSERT(m_ftlState.finalizer->osrExit.size() == m_ftlState.jitCode->osrExit.size());
         
-            for (unsigned i = 0; i < m_ftlState.osrExit.size(); ++i) {
-                OSRExitCompilationInfo& info = m_ftlState.osrExit[i];
+            for (unsigned i = 0; i < m_ftlState.finalizer->osrExit.size(); ++i) {
+                OSRExitCompilationInfo& info = m_ftlState.finalizer->osrExit[i];
                 OSRExit& exit = m_ftlState.jitCode->osrExit[i];
             
                 linkBuffer->link(info.m_thunkJump, target);
@@ -3499,12 +3618,12 @@ private:
                 m_out.set(
                     m_out.constIntPtr(
                         linkBuffer->locationOf(info.m_thunkLabel).executableAddress()),
-                    info.m_thunkAddress);
+                    info.m_thunkAddressValue);
             
                 exit.m_patchableCodeOffset = linkBuffer->offsetOf(info.m_thunkJump);
             }
         
-            m_ftlState.finalizer->initializeExitThunksLinkBuffer(linkBuffer.release());
+            m_ftlState.finalizer->exitThunksLinkBuffer = linkBuffer.release();
         }
 
         m_out.jump(lowBlock(m_graph.block(0)));
@@ -3696,6 +3815,8 @@ private:
     unsigned m_nodeIndex;
     Node* m_node;
     SpeculationDirection m_direction;
+    
+    uint32_t m_stackmapIDs;
 };
 
 void lowerDFGToLLVM(State& state)

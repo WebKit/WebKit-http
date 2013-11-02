@@ -36,7 +36,7 @@ class VerticalPositionCache;
 
 struct GlyphOverflow;
 
-typedef HashMap<const InlineTextBox*, pair<Vector<const SimpleFontData*>, GlyphOverflow> > GlyphOverflowAndFallbackFontsMap;
+typedef HashMap<const InlineTextBox*, pair<Vector<const SimpleFontData*>, GlyphOverflow>> GlyphOverflowAndFallbackFontsMap;
 
 class InlineFlowBox : public InlineBox {
 public:
@@ -61,7 +61,7 @@ public:
         // an invisible marker exists.  The side effect of having an invisible marker is that the quirks mode behavior of shrinking lines with no
         // text children must not apply.  This change also means that gaps will exist between image bullet list items.  Even when the list bullet
         // is an image, the line is still considered to be immune from the quirk.
-        m_hasTextChildren = renderer.style()->display() == LIST_ITEM;
+        m_hasTextChildren = renderer.style().display() == LIST_ITEM;
         m_hasTextDescendants = m_hasTextChildren;
     }
 
@@ -73,7 +73,7 @@ public:
 #endif
 
     RenderBoxModelObject& renderer() const { return toRenderBoxModelObject(InlineBox::renderer()); }
-    const RenderStyle& lineStyle() const { return isFirstLine() ? *renderer().firstLineStyle() : *renderer().style(); }
+    const RenderStyle& lineStyle() const { return isFirstLine() ? renderer().firstLineStyle() : renderer().style(); }
 
     InlineFlowBox* prevLineBox() const { return m_prevLineBox; }
     InlineFlowBox* nextLineBox() const { return m_nextLineBox; }
@@ -99,7 +99,7 @@ public:
     }
 
     void addToLine(InlineBox* child);
-    virtual void deleteLine(RenderArena&) OVERRIDE FINAL;
+    virtual void deleteLine() OVERRIDE FINAL;
     virtual void extractLine() OVERRIDE FINAL;
     virtual void attachLine() OVERRIDE FINAL;
     virtual void adjustPosition(float dx, float dy) OVERRIDE;
@@ -310,11 +310,11 @@ protected:
     InlineFlowBox* m_prevLineBox; // The previous box that also uses our RenderObject
     InlineFlowBox* m_nextLineBox; // The next box that also uses our RenderObject
 
-#if ENABLE(CSS3_TEXT)
+#if ENABLE(CSS3_TEXT_DECORATION)
     // Maximum logicalTop among all children of an InlineFlowBox. Used to
     // calculate the offset for TextUnderlinePositionUnder.
     void computeMaxLogicalTop(float& maxLogicalTop) const;
-#endif // CSS3_TEXT
+#endif
 private:
     unsigned m_includeLogicalLeftEdge : 1;
     unsigned m_includeLogicalRightEdge : 1;
@@ -332,9 +332,9 @@ protected:
     unsigned m_hasAnnotationsBefore : 1;
     unsigned m_hasAnnotationsAfter : 1;
 
-    unsigned m_lineBreakBidiStatusEor : 5; // WTF::Unicode::Direction
-    unsigned m_lineBreakBidiStatusLastStrong : 5; // WTF::Unicode::Direction
-    unsigned m_lineBreakBidiStatusLast : 5; // WTF::Unicode::Direction
+    unsigned m_lineBreakBidiStatusEor : 5; // UCharDirection
+    unsigned m_lineBreakBidiStatusLastStrong : 5; // UCharDirection
+    unsigned m_lineBreakBidiStatusLast : 5; // UCharDirection
 
     // End of RootInlineBox-specific members.
 

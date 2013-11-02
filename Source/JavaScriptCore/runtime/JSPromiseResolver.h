@@ -45,9 +45,9 @@ public:
 
     JSPromise* promise() const;
 
-    void fulfillIfNotResolved(ExecState*, JSValue);
+    JS_EXPORT_PRIVATE void fulfillIfNotResolved(ExecState*, JSValue);
     void resolveIfNotResolved(ExecState*, JSValue);
-    void rejectIfNotResolved(ExecState*, JSValue);
+    JS_EXPORT_PRIVATE void rejectIfNotResolved(ExecState*, JSValue);
 
     enum ResolverMode {
         ResolveSynchronously,

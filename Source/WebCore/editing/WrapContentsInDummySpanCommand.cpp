@@ -28,7 +28,6 @@
 
 #include "ApplyStyleCommand.h"
 #include "ExceptionCodePlaceholder.h"
-#include "HTMLElement.h"
 
 namespace WebCore {
 
@@ -41,7 +40,7 @@ WrapContentsInDummySpanCommand::WrapContentsInDummySpanCommand(PassRefPtr<Elemen
 
 void WrapContentsInDummySpanCommand::executeApply()
 {
-    Vector<RefPtr<Node> > children;
+    Vector<RefPtr<Node>> children;
     for (Node* child = m_element->firstChild(); child; child = child->nextSibling())
         children.append(child);
 
@@ -66,7 +65,7 @@ void WrapContentsInDummySpanCommand::doUnapply()
     if (!m_dummySpan || !m_element->rendererIsEditable())
         return;
 
-    Vector<RefPtr<Node> > children;
+    Vector<RefPtr<Node>> children;
     for (Node* child = m_dummySpan->firstChild(); child; child = child->nextSibling())
         children.append(child);
 

@@ -43,7 +43,7 @@ public:
 
 class RenderSVGResourceClipper FINAL : public RenderSVGResourceContainer {
 public:
-    explicit RenderSVGResourceClipper(SVGClipPathElement&);
+    RenderSVGResourceClipper(SVGClipPathElement&, PassRef<RenderStyle>);
     virtual ~RenderSVGResourceClipper();
 
     SVGClipPathElement& clipPathElement() const { return toSVGClipPathElement(nodeForNonAnonymous()); }
@@ -51,12 +51,12 @@ public:
     virtual void removeAllClientsFromCache(bool markForInvalidation = true);
     virtual void removeClientFromCache(RenderObject*, bool markForInvalidation = true);
 
-    virtual bool applyResource(RenderObject*, RenderStyle*, GraphicsContext*&, unsigned short resourceMode);
+    virtual bool applyResource(RenderElement&, const RenderStyle&, GraphicsContext*&, unsigned short resourceMode) OVERRIDE;
     // clipPath can be clipped too, but don't have a boundingBox or repaintRect. So we can't call
     // applyResource directly and use the rects from the object, since they are empty for RenderSVGResources
     // FIXME: We made applyClippingToContext public because we cannot call applyResource on HTML elements (it asserts on RenderObject::objectBoundingBox)
-    bool applyClippingToContext(RenderObject*, const FloatRect&, const FloatRect&, GraphicsContext*);
-    virtual FloatRect resourceBoundingBox(RenderObject*);
+    bool applyClippingToContext(RenderElement&, const FloatRect&, const FloatRect&, GraphicsContext*);
+    virtual FloatRect resourceBoundingBox(const RenderObject&) OVERRIDE;
 
     virtual RenderSVGResourceType resourceType() const { return ClipperResourceType; }
     

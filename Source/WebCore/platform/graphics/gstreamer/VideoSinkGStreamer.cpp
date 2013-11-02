@@ -188,7 +188,12 @@ static GstFlowReturn webkitVideoSinkRender(GstBaseSink* baseSink, GstBuffer* buf
 
     GRefPtr<GstCaps> caps = GST_BUFFER_CAPS(buffer);
 #else
-    GRefPtr<GstCaps> caps = adoptGRef(gst_video_info_to_caps(&priv->info));
+    GRefPtr<GstCaps> caps;
+    // The video info structure is valid only if the sink handled an allocation query.
+    if (GST_VIDEO_INFO_FORMAT(&priv->info) != GST_VIDEO_FORMAT_UNKNOWN)
+        caps = adoptGRef(gst_video_info_to_caps(&priv->info));
+    else
+        caps = priv->currentCaps;
 #endif
 
     GstVideoFormat format;
@@ -265,6 +270,7 @@ static GstFlowReturn webkitVideoSinkRender(GstBaseSink* baseSink, GstBuffer* buf
     // See: https://bugzilla.gnome.org/show_bug.cgi?id=610830.
     priv->timeoutId = g_timeout_add_full(G_PRIORITY_DEFAULT, 0, webkitVideoSinkTimeoutCallback,
                                           gst_object_ref(sink), reinterpret_cast<GDestroyNotify>(gst_object_unref));
+    g_source_set_name_by_id(priv->timeoutId, "[WebKit] webkitVideoSinkTimeoutCallback");
 
     g_cond_wait(priv->dataCondition, priv->bufferMutex);
     g_mutex_unlock(priv->bufferMutex);

@@ -24,7 +24,7 @@
 #if ENABLE(SVG)
 #include "SVGGradientElement.h"
 
-#include "Attribute.h"
+#include "ElementIterator.h"
 #include "RenderSVGHiddenContainer.h"
 #include "RenderSVGPath.h"
 #include "RenderSVGResourceLinearGradient.h"
@@ -141,13 +141,10 @@ Vector<Gradient::ColorStop> SVGGradientElement::buildStops()
 {
     Vector<Gradient::ColorStop> stops;
 
+    auto stopChildren = childrenOfType<SVGStopElement>(*this);
     float previousOffset = 0.0f;
-    for (Node* n = firstChild(); n; n = n->nextSibling()) {
-        SVGElement* element = n->isSVGElement() ? toSVGElement(n) : 0;
-        if (!element || !element->isGradientStop())
-            continue;
 
-        SVGStopElement* stop = toSVGStopElement(element);
+    for (auto stop = stopChildren.begin(), end = stopChildren.end(); stop != end; ++stop) {
         Color color = stop->stopColorIncludingOpacity();
 
         // Figure out right monotonic offset
@@ -164,6 +161,11 @@ Vector<Gradient::ColorStop> SVGGradientElement::buildStops()
     }
 
     return stops;
+}
+
+bool isSVGGradientElement(const Node& node)
+{
+    return node.hasTagName(SVGNames::radialGradientTag) || node.hasTagName(SVGNames::linearGradientTag);
 }
 
 }

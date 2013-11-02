@@ -38,7 +38,9 @@
 #include "FEGaussianBlur.h"
 #include "FEMerge.h"
 #include "FloatConversion.h"
+#include "Frame.h"
 #include "RenderLayer.h"
+#include "Settings.h"
 
 #include <algorithm>
 #include <wtf/MathExtras.h>
@@ -94,7 +96,7 @@ static PassRefPtr<FECustomFilter> createCustomFilterEffect(Filter* filter, Docum
         return 0;
 
     CustomFilterGlobalContext* globalContext = document->renderView()->customFilterGlobalContext();
-    globalContext->prepareContextIfNeeded(document->view()->hostWindow());
+    globalContext->prepareContextIfNeeded(document->view()->hostWindow(), document->frame()->settings().forceSoftwareWebGLRendering());
     if (!globalContext->context())
         return 0;
 
@@ -157,9 +159,9 @@ PassRefPtr<FilterEffect> FilterEffectRenderer::buildReferenceFilter(RenderElemen
     // wrong. We should probably be extracting the alpha from the 
     // previousEffect, but this requires some more processing.  
     // This may need a spec clarification.
-    RefPtr<SVGFilterBuilder> builder = SVGFilterBuilder::create(previousEffect, SourceAlpha::create(this));
+    auto builder = std::make_unique<SVGFilterBuilder>(previousEffect, SourceAlpha::create(this));
 
-    auto attributesChildren = childrenOfType<SVGFilterPrimitiveStandardAttributes>(filter);
+    auto attributesChildren = childrenOfType<SVGFilterPrimitiveStandardAttributes>(*filter);
     for (auto it = attributesChildren.begin(), end = attributesChildren.end(); it != end; ++it) {
         SVGFilterPrimitiveStandardAttributes* effectElement = &*it;
         effect = effectElement->build(builder.get(), this);
@@ -197,7 +199,7 @@ bool FilterEffectRenderer::build(RenderElement* renderer, const FilterOperations
     for (size_t i = 0; i < operations.operations().size(); ++i) {
         RefPtr<FilterEffect> effect;
         FilterOperation* filterOperation = operations.operations().at(i).get();
-        switch (filterOperation->getOperationType()) {
+        switch (filterOperation->type()) {
         case FilterOperation::REFERENCE: {
             ReferenceFilterOperation* referenceOperation = static_cast<ReferenceFilterOperation*>(filterOperation);
             effect = buildReferenceFilter(renderer, previousEffect, referenceOperation);
@@ -360,7 +362,7 @@ bool FilterEffectRenderer::build(RenderElement* renderer, const FilterOperations
             effect->setClipsToBounds(consumer == FilterFunction);
             effect->setOperatingColorSpace(ColorSpaceDeviceRGB);
             
-            if (filterOperation->getOperationType() != FilterOperation::REFERENCE) {
+            if (filterOperation->type() != FilterOperation::REFERENCE) {
                 effect->inputEffects().append(previousEffect);
                 m_effects.append(effect);
             }
@@ -510,7 +512,7 @@ void FilterEffectRendererHelper::applyFilterEffect(GraphicsContext* destinationC
     LayoutRect destRect = filter->outputRect();
     destRect.move(m_paintOffset.x(), m_paintOffset.y());
     
-    destinationContext->drawImageBuffer(filter->output(), m_renderLayer->renderer().style()->colorSpace(), pixelSnappedIntRect(destRect), CompositeSourceOver);
+    destinationContext->drawImageBuffer(filter->output(), m_renderLayer->renderer().style().colorSpace(), pixelSnappedIntRect(destRect), CompositeSourceOver);
     
     filter->clearIntermediateResults();
 }

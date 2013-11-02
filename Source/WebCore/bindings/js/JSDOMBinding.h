@@ -24,7 +24,6 @@
 #ifndef JSDOMBinding_h
 #define JSDOMBinding_h
 
-#include "BindingState.h"
 #include "JSDOMGlobalObject.h"
 #include "JSDOMWrapper.h"
 #include "DOMWrapperWorld.h"
@@ -59,12 +58,16 @@ class DOMStringList;
 
     class CachedScript;
     class Document;
+    class DOMWindow;
     class Frame;
     class HTMLDocument;
     class URL;
     class Node;
 
     typedef int ExceptionCode;
+
+    DOMWindow& activeDOMWindow(JSC::ExecState*);
+    DOMWindow& firstDOMWindow(JSC::ExecState*);
 
     // Base class for all constructor objects in the JSC bindings.
     class DOMConstructorObject : public JSDOMWrapper {
@@ -495,12 +498,12 @@ class DOMStringList;
     };
 
     template <class T, class JST>
-    Vector<RefPtr<T> > toRefPtrNativeArray(JSC::ExecState* exec, JSC::JSValue value, T* (*toT)(JSC::JSValue value))
+    Vector<RefPtr<T>> toRefPtrNativeArray(JSC::ExecState* exec, JSC::JSValue value, T* (*toT)(JSC::JSValue value))
     {
         if (!isJSArray(value))
-            return Vector<RefPtr<T> >();
+            return Vector<RefPtr<T>>();
 
-        Vector<RefPtr<T> > result;
+        Vector<RefPtr<T>> result;
         JSC::JSArray* array = asArray(value);
         for (size_t i = 0; i < array->length(); ++i) {
             JSC::JSValue element = array->getIndex(exec, i);
@@ -508,7 +511,7 @@ class DOMStringList;
                 result.append((*toT)(element));
             else {
                 throwVMError(exec, createTypeError(exec, "Invalid Array element type"));
-                return Vector<RefPtr<T> >();
+                return Vector<RefPtr<T>>();
             }
         }
         return result;
@@ -558,7 +561,7 @@ class DOMStringList;
     bool shouldAllowAccessToNode(JSC::ExecState*, Node*);
     bool shouldAllowAccessToFrame(JSC::ExecState*, Frame*);
     bool shouldAllowAccessToFrame(JSC::ExecState*, Frame*, String& message);
-    bool shouldAllowAccessToDOMWindow(BindingState*, DOMWindow*, String& message);
+    bool shouldAllowAccessToDOMWindow(JSC::ExecState*, DOMWindow&, String& message);
 
     void printErrorMessageForFrame(Frame*, const String& message);
     JSC::JSValue objectToStringFunctionGetter(JSC::ExecState*, JSC::JSValue, JSC::PropertyName);

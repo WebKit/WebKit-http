@@ -29,6 +29,7 @@ namespace WebCore {
 class EllipsisBox;
 class HitTestResult;
 class LogicalSelectionOffsetCaches;
+class RenderBlockFlow;
 class RenderRegion;
 
 struct BidiStatus;
@@ -36,13 +37,13 @@ struct GapRects;
 
 class RootInlineBox : public InlineFlowBox {
 public:
-    explicit RootInlineBox(RenderBlock&);
-
-    virtual void destroy(RenderArena&) OVERRIDE FINAL;
+    explicit RootInlineBox(RenderBlockFlow&);
+    virtual ~RootInlineBox();
 
     virtual bool isRootInlineBox() const OVERRIDE FINAL { return true; }
+    RenderBlockFlow& blockFlow() const;
 
-    void detachEllipsisBox(RenderArena&);
+    void detachEllipsisBox();
 
     RootInlineBox* nextRootBox() const { return static_cast<RootInlineBox*>(m_nextLineBox); }
     RootInlineBox* prevRootBox() const { return static_cast<RootInlineBox*>(m_prevLineBox); }
@@ -69,10 +70,10 @@ public:
 
     LayoutUnit selectionTop() const;
     LayoutUnit selectionBottom() const;
-    LayoutUnit selectionHeight() const { return max<LayoutUnit>(0, selectionBottom() - selectionTop()); }
+    LayoutUnit selectionHeight() const { return std::max<LayoutUnit>(0, selectionBottom() - selectionTop()); }
 
     LayoutUnit selectionTopAdjustedForPrecedingBlock() const;
-    LayoutUnit selectionHeightAdjustedForPrecedingBlock() const { return max<LayoutUnit>(0, selectionBottom() - selectionTopAdjustedForPrecedingBlock()); }
+    LayoutUnit selectionHeightAdjustedForPrecedingBlock() const { return std::max<LayoutUnit>(0, selectionBottom() - selectionTopAdjustedForPrecedingBlock()); }
 
     int blockDirectionPointInLine() const;
 
@@ -132,23 +133,21 @@ public:
     InlineBox* firstSelectedBox();
     InlineBox* lastSelectedBox();
 
-    GapRects lineSelectionGap(RenderBlock* rootBlock, const LayoutPoint& rootBlockPhysicalPosition, const LayoutSize& offsetFromRootBlock,
+    GapRects lineSelectionGap(RenderBlock& rootBlock, const LayoutPoint& rootBlockPhysicalPosition, const LayoutSize& offsetFromRootBlock,
         LayoutUnit selTop, LayoutUnit selHeight, const LogicalSelectionOffsetCaches&, const PaintInfo*);
 
     IntRect computeCaretRect(float logicalLeftPosition, unsigned caretWidth, LayoutUnit* extraWidthToEndOfLine) const;
 
-    RenderBlock& block() const;
-
     InlineBox* closestLeafChildForPoint(const IntPoint&, bool onlyEditableLeaves);
     InlineBox* closestLeafChildForLogicalLeftPosition(int, bool onlyEditableLeaves = false);
 
-    void appendFloat(RenderBox* floatingBox)
+    void appendFloat(RenderBox& floatingBox)
     {
         ASSERT(!isDirty());
         if (m_floats)
-            m_floats->append(floatingBox);
+            m_floats->append(&floatingBox);
         else
-            m_floats= adoptPtr(new Vector<RenderBox*>(1, floatingBox));
+            m_floats = adoptPtr(new Vector<RenderBox*>(1, &floatingBox));
     }
 
     Vector<RenderBox*>* floatsPtr() { ASSERT(!isDirty()); return m_floats.get(); }
@@ -190,10 +189,10 @@ public:
         return InlineFlowBox::logicalBottomLayoutOverflow(lineBottom());
     }
 
-#if ENABLE(CSS3_TEXT)
+#if ENABLE(CSS3_TEXT_DECORATION)
     // Used to calculate the underline offset for TextUnderlinePositionUnder.
     float maxLogicalTop() const;
-#endif // CSS3_TEXT
+#endif
 
     Node* getLogicalStartBoxWithNode(InlineBox*&) const;
     Node* getLogicalEndBoxWithNode(InlineBox*&) const;
@@ -253,7 +252,7 @@ private:
 
     // Floats hanging off the line are pushed into this vector during layout. It is only
     // good for as long as the line has not been marked dirty.
-    OwnPtr<Vector<RenderBox*> > m_floats;
+    OwnPtr<Vector<RenderBox*>> m_floats;
 };
 
 } // namespace WebCore

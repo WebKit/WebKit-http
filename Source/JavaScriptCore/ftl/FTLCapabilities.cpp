@@ -94,8 +94,14 @@ inline CapabilityLevel canCompile(Node* node)
     case GetClosureRegisters:
     case GetClosureVar:
     case PutClosureVar:
+    case Int52ToValue:
+    case InvalidationPoint:
         // These are OK.
         break;
+    case GetById:
+        if (node->child1().useKind() == CellUse)
+            break;
+        return CannotCompile;
     case GetIndexedPropertyStorage:
         if (isTypedView(node->arrayMode().typedArrayType()))
             break;
@@ -188,6 +194,7 @@ inline CapabilityLevel canCompile(Node* node)
         case BooleanUse:
         case Int32Use:
         case NumberUse:
+        case StringUse:
         case ObjectOrOtherUse:
             break;
         default:

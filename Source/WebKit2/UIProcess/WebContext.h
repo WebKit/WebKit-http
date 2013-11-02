@@ -54,6 +54,10 @@
 #include <wtf/text/StringHash.h>
 #include <wtf/text/WTFString.h>
 
+#if ENABLE(DATABASE_PROCESS)
+#include "DatabaseProcessProxy.h"
+#endif
+
 #if ENABLE(NETWORK_PROCESS)
 #include "NetworkProcessProxy.h"
 #endif
@@ -276,6 +280,10 @@ public:
     void getNetworkProcessConnection(PassRefPtr<Messages::WebProcessProxy::GetNetworkProcessConnection::DelayedReply>);
 #endif
 
+#if ENABLE(DATABASE_PROCESS)
+    void ensureDatabaseProcess();
+    void getDatabaseProcessConnection(PassRefPtr<Messages::WebProcessProxy::GetDatabaseProcessConnection::DelayedReply>);
+#endif
 
 #if PLATFORM(MAC)
     void setProcessSuppressionEnabled(bool);
@@ -390,6 +398,8 @@ private:
     void addPlugInAutoStartOriginHash(const String& pageOrigin, unsigned plugInOriginHash);
     void plugInDidReceiveUserInteraction(unsigned plugInOriginHash);
 
+    void setAnyPageGroupMightHavePrivateBrowsingEnabled(bool);
+
 #if ENABLE(NETSCAPE_PLUGIN_API)
     // PluginInfoStoreClient:
     virtual void pluginInfoStoreDidLoadPlugins(PluginInfoStore*) OVERRIDE;
@@ -483,6 +493,10 @@ private:
 #if ENABLE(NETWORK_PROCESS)
     bool m_usesNetworkProcess;
     RefPtr<NetworkProcessProxy> m_networkProcess;
+#endif
+
+#if ENABLE(DATABASE_PROCESS)
+    RefPtr<DatabaseProcessProxy> m_databaseProcess;
 #endif
     
     HashMap<uint64_t, RefPtr<DictionaryCallback>> m_dictionaryCallbacks;

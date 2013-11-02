@@ -31,6 +31,7 @@
 #include "CairoUtilities.h"
 #include "ImageObserver.h"
 #include "PlatformContextCairo.h"
+#include "Timer.h"
 #include <cairo.h>
 
 namespace WebCore {
@@ -39,12 +40,10 @@ BitmapImage::BitmapImage(PassRefPtr<cairo_surface_t> nativeImage, ImageObserver*
     : Image(observer)
     , m_size(cairoSurfaceSize(nativeImage.get()))
     , m_currentFrame(0)
-    , m_frames(0)
-    , m_frameTimer(0)
     , m_repetitionCount(cAnimationNone)
     , m_repetitionCountStatus(Unknown)
     , m_repetitionsComplete(0)
-    , m_decodedSize(0)
+    , m_decodedSize(m_size.width() * m_size.height() * 4)
     , m_frameCount(1)
     , m_isSolidColor(false)
     , m_checkedForSolidColor(false)
@@ -54,18 +53,12 @@ BitmapImage::BitmapImage(PassRefPtr<cairo_surface_t> nativeImage, ImageObserver*
     , m_sizeAvailable(true)
     , m_haveFrameCount(true)
 {
-    m_decodedSize = m_size.width() * m_size.height() * 4;
-
     m_frames.grow(1);
     m_frames[0].m_hasAlpha = cairo_surface_get_content(nativeImage.get()) != CAIRO_CONTENT_COLOR;
     m_frames[0].m_frame = nativeImage;
     m_frames[0].m_haveMetadata = true;
-    checkForSolidColor();
-}
 
-void BitmapImage::draw(GraphicsContext* context, const FloatRect& dst, const FloatRect& src, ColorSpace styleColorSpace, CompositeOperator op, BlendMode blendMode)
-{
-    draw(context, dst, src, styleColorSpace, op, blendMode, ImageOrientationDescription());
+    checkForSolidColor();
 }
 
 void BitmapImage::draw(GraphicsContext* context, const FloatRect& dst, const FloatRect& src, ColorSpace styleColorSpace, CompositeOperator op,
@@ -100,18 +93,18 @@ void BitmapImage::draw(GraphicsContext* context, const FloatRect& dst, const Flo
     FloatRect adjustedSrcRect(src);
 #endif
 
-    ImageOrientation orientation;
+    ImageOrientation frameOrientation(description.imageOrientation());
     if (description.respectImageOrientation() == RespectImageOrientation)
-        orientation = frameOrientationAtIndex(m_currentFrame);
+        frameOrientation = frameOrientationAtIndex(m_currentFrame);
 
     FloatRect dstRect = dst;
 
-    if (orientation != DefaultImageOrientation) {
+    if (frameOrientation != DefaultImageOrientation) {
         // ImageOrientation expects the origin to be at (0, 0).
         context->translate(dstRect.x(), dstRect.y());
         dstRect.setLocation(FloatPoint());
-        context->concatCTM(orientation.transformFromDefault(dstRect.size()));
-        if (orientation.usesWidthAsHeight()) {
+        context->concatCTM(frameOrientation.transformFromDefault(dstRect.size()));
+        if (frameOrientation.usesWidthAsHeight()) {
             // The destination rectangle will have it's width and height already reversed for the orientation of
             // the image, as it was needed for page layout, so we need to reverse it back here.
             dstRect = FloatRect(dstRect.x(), dstRect.y(), dstRect.height(), dstRect.width());

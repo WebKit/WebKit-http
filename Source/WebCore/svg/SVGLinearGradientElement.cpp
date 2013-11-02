@@ -118,9 +118,9 @@ void SVGLinearGradientElement::svgAttributeChanged(const QualifiedName& attrName
         object->setNeedsLayout();
 }
 
-RenderElement* SVGLinearGradientElement::createRenderer(RenderArena& arena, RenderStyle&)
+RenderElement* SVGLinearGradientElement::createRenderer(PassRef<RenderStyle> style)
 {
-    return new (arena) RenderSVGResourceLinearGradient(*this);
+    return new RenderSVGResourceLinearGradient(*this, std::move(style));
 }
 
 bool SVGLinearGradientElement::collectGradientAttributes(LinearGradientAttributes& attributes)

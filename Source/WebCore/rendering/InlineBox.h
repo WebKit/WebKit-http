@@ -63,9 +63,7 @@ public:
 
     virtual ~InlineBox();
 
-    virtual void destroy(RenderArena&);
-
-    virtual void deleteLine(RenderArena&);
+    virtual void deleteLine();
     virtual void extractLine();
     virtual void attachLine();
 
@@ -96,16 +94,6 @@ public:
 
     virtual void paint(PaintInfo&, const LayoutPoint&, LayoutUnit lineTop, LayoutUnit lineBottom);
     virtual bool nodeAtPoint(const HitTestRequest&, HitTestResult&, const HitTestLocation& locationInContainer, const LayoutPoint& accumulatedOffset, LayoutUnit lineTop, LayoutUnit lineBottom);
-
-    // Overloaded new operator.
-    void* operator new(size_t, RenderArena&);
-
-    // Overridden to prevent the normal delete from being called.
-    void operator delete(void*, size_t);
-
-private:
-    // The normal operator new is disallowed.
-    void* operator new(size_t) throw();
 
 public:
 #ifndef NDEBUG
@@ -154,7 +142,7 @@ public:
     void setIsFirstLine(bool firstLine) { m_bitfields.setFirstLine(firstLine); }
     bool isFirstLine() const { return m_bitfields.firstLine(); }
 
-    void remove();
+    void removeFromParent();
 
     InlineBox* nextOnLine() const { return m_next; }
     InlineBox* prevOnLine() const { return m_prev; }
@@ -279,9 +267,9 @@ public:
 
     int expansion() const { return m_bitfields.expansion(); }
 
-    bool visibleToHitTesting() const { return renderer().style()->visibility() == VISIBLE && renderer().style()->pointerEvents() != PE_NONE; }
+    bool visibleToHitTesting() const { return renderer().style().visibility() == VISIBLE && renderer().style().pointerEvents() != PE_NONE; }
 
-    const RenderStyle& lineStyle() const { return m_bitfields.firstLine() ? *renderer().firstLineStyle() : *renderer().style(); }
+    const RenderStyle& lineStyle() const { return m_bitfields.firstLine() ? renderer().firstLineStyle() : renderer().style(); }
     
     EVerticalAlign verticalAlign() const { return lineStyle().verticalAlign(); }
 

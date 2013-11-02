@@ -46,8 +46,9 @@ using namespace std;
 
 // Construct a string with UTF-16 data.
 String::String(const UChar* characters, unsigned length)
-    : m_impl(characters ? StringImpl::create(characters, length) : 0)
 {
+    if (characters)
+        m_impl = StringImpl::create(characters, length);
 }
 
 // Construct a string with UTF-16 data, from a null-terminated source.
@@ -61,24 +62,28 @@ String::String(const UChar* str)
 
 // Construct a string with latin1 data.
 String::String(const LChar* characters, unsigned length)
-    : m_impl(characters ? StringImpl::create(characters, length) : 0)
 {
+    if (characters)
+        m_impl = StringImpl::create(characters, length);
 }
 
 String::String(const char* characters, unsigned length)
-    : m_impl(characters ? StringImpl::create(reinterpret_cast<const LChar*>(characters), length) : 0)
 {
+    if (characters)
+        m_impl = StringImpl::create(reinterpret_cast<const LChar*>(characters), length);
 }
 
 // Construct a string with latin1 data, from a null-terminated source.
 String::String(const LChar* characters)
-    : m_impl(characters ? StringImpl::create(characters) : 0)
 {
+    if (characters)
+        m_impl = StringImpl::create(characters);
 }
 
 String::String(const char* characters)
-    : m_impl(characters ? StringImpl::create(reinterpret_cast<const LChar*>(characters)) : 0)
 {
+    if (characters)
+        m_impl = StringImpl::create(reinterpret_cast<const LChar*>(characters));
 }
 
 String::String(ASCIILiteral characters)
@@ -849,7 +854,7 @@ String String::fromUTF8(const LChar* stringStart, size_t length)
         return String();
 
     unsigned utf16Length = bufferCurrent - bufferStart;
-    ASSERT(utf16Length < length);
+    ASSERT_WITH_SECURITY_IMPLICATION(utf16Length < length);
     return StringImpl::create(bufferStart, utf16Length);
 }
 

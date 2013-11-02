@@ -46,10 +46,10 @@ class MediaStreamCenter;
 
 class MediaStream FINAL : public RefCounted<MediaStream>, public URLRegistrable, public ScriptWrappable, public MediaStreamDescriptorClient, public EventTargetWithInlineData, public ContextDestructionObserver {
 public:
-    static PassRefPtr<MediaStream> create(ScriptExecutionContext*);
-    static PassRefPtr<MediaStream> create(ScriptExecutionContext*, PassRefPtr<MediaStream>);
-    static PassRefPtr<MediaStream> create(ScriptExecutionContext*, const MediaStreamTrackVector&);
-    static PassRefPtr<MediaStream> create(ScriptExecutionContext*, PassRefPtr<MediaStreamDescriptor>);
+    static PassRefPtr<MediaStream> create(ScriptExecutionContext&);
+    static PassRefPtr<MediaStream> create(ScriptExecutionContext&, PassRefPtr<MediaStream>);
+    static PassRefPtr<MediaStream> create(ScriptExecutionContext&, const Vector<RefPtr<MediaStreamTrack>>&);
+    static PassRefPtr<MediaStream> create(ScriptExecutionContext&, PassRefPtr<MediaStreamDescriptor>);
     virtual ~MediaStream();
 
     String id() const { return m_descriptor->id(); }
@@ -58,12 +58,12 @@ public:
     void removeTrack(PassRefPtr<MediaStreamTrack>, ExceptionCode&);
     MediaStreamTrack* getTrackById(String);
 
-    MediaStreamTrackVector getAudioTracks() const { return m_audioTracks; }
-    MediaStreamTrackVector getVideoTracks() const { return m_videoTracks; }
+    Vector<RefPtr<MediaStreamTrack>> getAudioTracks() const { return m_audioTracks; }
+    Vector<RefPtr<MediaStreamTrack>> getVideoTracks() const { return m_videoTracks; }
 
     bool ended() const;
     void setEnded();
-    void stop();
+    PassRefPtr<MediaStream> clone();
 
     DEFINE_ATTRIBUTE_EVENT_LISTENER(ended);
     DEFINE_ATTRIBUTE_EVENT_LISTENER(addtrack);
@@ -82,7 +82,7 @@ public:
     virtual URLRegistry& registry() const OVERRIDE;
 
 protected:
-    MediaStream(ScriptExecutionContext*, PassRefPtr<MediaStreamDescriptor>);
+    MediaStream(ScriptExecutionContext&, PassRefPtr<MediaStreamDescriptor>);
 
     // ContextDestructionObserver
     virtual void contextDestroyed() OVERRIDE FINAL;
@@ -97,21 +97,30 @@ private:
     virtual void streamDidEnd() OVERRIDE FINAL;
     virtual void addRemoteSource(MediaStreamSource*) OVERRIDE FINAL;
     virtual void removeRemoteSource(MediaStreamSource*) OVERRIDE FINAL;
+    virtual void addRemoteTrack(MediaStreamTrackPrivate*) OVERRIDE FINAL;
+    virtual void removeRemoteTrack(MediaStreamTrackPrivate*) OVERRIDE FINAL;
+
+    bool removeTrack(PassRefPtr<MediaStreamTrack>);
+    bool addTrack(PassRefPtr<MediaStreamTrack>);
+
+    bool haveTrackWithSource(PassRefPtr<MediaStreamSource>);
 
     void scheduleDispatchEvent(PassRefPtr<Event>);
     void scheduledEventTimerFired(Timer<MediaStream>*);
 
-    bool m_stopped;
+    void cloneMediaStreamTrackVector(Vector<RefPtr<MediaStreamTrack>>&, const Vector<RefPtr<MediaStreamTrack>>&);
+
+    Vector<RefPtr<MediaStreamTrack>>* trackVectorForType(MediaStreamSource::Type);
 
     RefPtr<MediaStreamDescriptor> m_descriptor;
-    MediaStreamTrackVector m_audioTracks;
-    MediaStreamTrackVector m_videoTracks;
+    Vector<RefPtr<MediaStreamTrack>> m_audioTracks;
+    Vector<RefPtr<MediaStreamTrack>> m_videoTracks;
 
     Timer<MediaStream> m_scheduledEventTimer;
     Vector<RefPtr<Event>> m_scheduledEvents;
 };
 
-typedef Vector<RefPtr<MediaStream> > MediaStreamVector;
+typedef Vector<RefPtr<MediaStream>> MediaStreamVector;
 
 } // namespace WebCore
 

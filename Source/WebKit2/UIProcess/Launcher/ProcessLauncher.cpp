@@ -58,12 +58,10 @@ void ProcessLauncher::didFinishLaunchingProcess(PlatformProcessIdentifier proces
         if (identifier.port)
             mach_port_mod_refs(mach_task_self(), identifier.port, MACH_PORT_RIGHT_RECEIVE, -1);
 
-#if HAVE(XPC)
         if (identifier.xpcConnection) {
             xpc_release(identifier.xpcConnection);
             identifier.xpcConnection = 0;
         }
-#endif
 #endif
         return;
     }
@@ -89,6 +87,10 @@ const char* ProcessLauncher::processTypeAsString(ProcessType processType)
 #if ENABLE(NETWORK_PROCESS)
     case NetworkProcess:
         return "networkprocess";
+#endif
+#if ENABLE(DATABASE_PROCESS)
+    case DatabaseProcess:
+        return "databaseprocess";
 #endif
     }
 
@@ -117,6 +119,12 @@ bool ProcessLauncher::getProcessTypeFromString(const char* string, ProcessType& 
     }
 #endif
 
+#if ENABLE(DATABASE_PROCESS)
+    if (!strcmp(string, "databaseprocess")) {
+        processType = DatabaseProcess;
+        return true;
+    }
+#endif
     return false;
 }
 

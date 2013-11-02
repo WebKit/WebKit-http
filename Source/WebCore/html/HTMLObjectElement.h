@@ -101,14 +101,15 @@ private:
     virtual HTMLFormElement* virtualForm() const;
 
     virtual FormNamedItem* asFormNamedItem() OVERRIDE FINAL { return this; }
-    virtual HTMLElement* asHTMLElement() OVERRIDE FINAL { return this; }
+    virtual HTMLObjectElement& asHTMLElement() OVERRIDE FINAL { return *this; }
+    virtual const HTMLObjectElement& asHTMLElement() const OVERRIDE FINAL { return *this; }
 
     String m_classId;
     bool m_docNamedItem : 1;
     bool m_useFallbackContent : 1;
 };
 
-ELEMENT_TYPE_CASTS(HTMLObjectElement)
+NODE_TYPE_CASTS(HTMLObjectElement)
 
 }
 

@@ -43,7 +43,6 @@ BitmapImage::BitmapImage(ImageObserver* observer)
     : Image(observer)
     , m_currentFrame(0)
     , m_frames(0)
-    , m_frameTimer(0)
     , m_repetitionCount(cAnimationNone)
     , m_repetitionCountStatus(Unknown)
     , m_repetitionsComplete(0)
@@ -181,13 +180,20 @@ void BitmapImage::didDecodeProperties() const
         imageObserver()->decodedSizeChanged(this, deltaBytes);
 }
 
-void BitmapImage::updateSize() const
+void BitmapImage::updateSize(ImageOrientationDescription description) const
 {
-    if (!m_sizeAvailable || m_haveSize)
+    if (!m_sizeAvailable || (m_haveSize
+#if ENABLE(CSS_IMAGE_ORIENTATION)
+        && description.imageOrientation() == static_cast<ImageOrientationEnum>(m_imageOrientation)
+        && description.respectImageOrientation() == static_cast<RespectImageOrientationEnum>(m_shouldRespectImageOrientation)
+#endif
+        ))
         return;
 
-    m_size = m_source.size();
-    m_sizeRespectingOrientation = m_source.size(ImageOrientationDescription(RespectImageOrientation));
+    m_size = m_source.size(description);
+    m_sizeRespectingOrientation = m_source.size(ImageOrientationDescription(RespectImageOrientation, description.imageOrientation()));
+    m_imageOrientation = static_cast<unsigned>(description.imageOrientation());
+    m_shouldRespectImageOrientation = static_cast<unsigned>(description.respectImageOrientation());
     m_haveSize = true;
     didDecodeProperties();
 }
@@ -198,9 +204,9 @@ IntSize BitmapImage::size() const
     return m_size;
 }
 
-IntSize BitmapImage::sizeRespectingOrientation() const
+IntSize BitmapImage::sizeRespectingOrientation(ImageOrientationDescription description) const
 {
-    updateSize();
+    updateSize(description);
     return m_sizeRespectingOrientation;
 }
 
@@ -429,7 +435,7 @@ void BitmapImage::startAnimation(bool catchUpIfNecessary)
 
     if (!catchUpIfNecessary || time < m_desiredFrameStartTime) {
         // Haven't yet reached time for next frame to start; delay until then.
-        m_frameTimer = new Timer<BitmapImage>(this, &BitmapImage::advanceAnimation);
+        m_frameTimer = std::make_unique<Timer<BitmapImage>>(this, &BitmapImage::advanceAnimation);
         m_frameTimer->startOneShot(std::max(m_desiredFrameStartTime - time, 0.));
     } else {
         // We've already reached or passed the time for the next frame to start.
@@ -479,8 +485,7 @@ void BitmapImage::stopAnimation()
 {
     // This timer is used to animate all occurrences of this image.  Don't invalidate
     // the timer unless all renderers have stopped drawing.
-    delete m_frameTimer;
-    m_frameTimer = 0;
+    m_frameTimer = nullptr;
 }
 
 void BitmapImage::resetAnimation()
@@ -520,7 +525,7 @@ void BitmapImage::drawPattern(GraphicsContext* ctxt, const FloatRect& tileRect, 
         // Temporarily reset image observer, we don't want to receive any changeInRect() calls due to this relayout.
         setImageObserver(0);
 
-        draw(buffer->context(), tileRect, tileRect, styleColorSpace, op, blendMode);
+        draw(buffer->context(), tileRect, tileRect, styleColorSpace, op, blendMode, ImageOrientationDescription());
 
         setImageObserver(observer);
         buffer->convertToLuminanceMask();

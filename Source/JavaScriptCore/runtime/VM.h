@@ -29,12 +29,10 @@
 #ifndef VM_h
 #define VM_h
 
-#include "CachedTranscendentalFunction.h"
 #include "DateInstanceCache.h"
 #include "ExecutableAllocator.h"
 #include "Heap.h"
 #include "Intrinsic.h"
-#include "JITThunks.h"
 #include "JITThunks.h"
 #include "JSCJSValue.h"
 #include "JSLock.h"
@@ -99,6 +97,11 @@ namespace JSC {
     class Worklist;
     }
 #endif // ENABLE(DFG_JIT)
+#if ENABLE(FTL_JIT)
+    namespace FTL {
+    class Thunks;
+    }
+#endif // ENABLE(FTL_JIT)
 
     struct HashTable;
     struct Instruction;
@@ -182,7 +185,7 @@ namespace JSC {
 
         bool isSharedInstance() { return vmType == APIShared; }
         bool usingAPI() { return vmType != Default; }
-        static bool sharedInstanceExists();
+        JS_EXPORT_PRIVATE static bool sharedInstanceExists();
         JS_EXPORT_PRIVATE static VM& sharedInstance();
 
         JS_EXPORT_PRIVATE static PassRefPtr<VM> create(HeapType = SmallHeap);
@@ -315,7 +318,7 @@ namespace JSC {
         PrototypeMap prototypeMap;
 
         OwnPtr<ParserArena> parserArena;
-        typedef HashMap<RefPtr<SourceProvider>, RefPtr<SourceProviderCache> > SourceProviderCacheMap;
+        typedef HashMap<RefPtr<SourceProvider>, RefPtr<SourceProviderCache>> SourceProviderCacheMap;
         SourceProviderCacheMap sourceProviderCacheMap;
         OwnPtr<Keywords> keywords;
         Interpreter* interpreter;
@@ -327,13 +330,26 @@ namespace JSC {
         }
         NativeExecutable* getHostFunction(NativeFunction, Intrinsic);
 #endif
+#if ENABLE(FTL_JIT)
+        std::unique_ptr<FTL::Thunks> ftlThunks;
+#endif
         NativeExecutable* getHostFunction(NativeFunction, NativeFunction constructor);
 
         static ptrdiff_t exceptionOffset()
         {
             return OBJECT_OFFSETOF(VM, m_exception);
         }
-        
+
+        static ptrdiff_t callFrameForThrowOffset()
+        {
+            return OBJECT_OFFSETOF(VM, callFrameForThrow);
+        }
+
+        static ptrdiff_t targetMachinePCForThrowOffset()
+        {
+            return OBJECT_OFFSETOF(VM, targetMachinePCForThrow);
+        }
+
         JS_EXPORT_PRIVATE void clearException();
         JS_EXPORT_PRIVATE void clearExceptionStack();
         void getExceptionInfo(JSValue& exception, RefCountedArray<StackFrame>& exceptionStack);
@@ -396,13 +412,11 @@ namespace JSC {
         BumpPointerAllocator m_regExpAllocator;
 
 #if ENABLE(REGEXP_TRACING)
-        typedef ListHashSet<RefPtr<RegExp> > RTTraceList;
+        typedef ListHashSet<RefPtr<RegExp>> RTTraceList;
         RTTraceList* m_rtTraceList;
 #endif
 
         ThreadIdentifier exclusiveThread;
-
-        CachedTranscendentalFunction<std::sin> cachedSin;
 
         JS_EXPORT_PRIVATE void resetDateCache();
 

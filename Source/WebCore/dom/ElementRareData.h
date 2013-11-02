@@ -102,10 +102,10 @@ public:
     void setAttributeMap(PassOwnPtr<NamedNodeMap> attributeMap) { m_attributeMap = attributeMap; }
 
     RenderStyle* computedStyle() const { return m_computedStyle.get(); }
-    void setComputedStyle(PassRefPtr<RenderStyle> computedStyle) { m_computedStyle = computedStyle; }
+    void setComputedStyle(PassRef<RenderStyle> computedStyle) { m_computedStyle = std::move(computedStyle); }
 
     ClassList* classList() const { return m_classList.get(); }
-    void setClassList(OwnPtr<ClassList> classList) { m_classList = std::move(classList); }
+    void setClassList(std::unique_ptr<ClassList> classList) { m_classList = std::move(classList); }
     void clearClassListValueForQuirksMode()
     {
         if (!m_classList)
@@ -114,7 +114,7 @@ public:
     }
 
     DatasetDOMStringMap* dataset() const { return m_dataset.get(); }
-    void setDataset(PassOwnPtr<DatasetDOMStringMap> dataset) { m_dataset = dataset; }
+    void setDataset(std::unique_ptr<DatasetDOMStringMap> dataset) { m_dataset = std::move(dataset); }
 
     LayoutSize minimumSizeForResizing() const { return m_minimumSizeForResizing; }
     void setMinimumSizeForResizing(LayoutSize size) { m_minimumSizeForResizing = size; }
@@ -159,8 +159,8 @@ private:
     IntSize m_savedLayerScrollOffset;
     RefPtr<RenderStyle> m_computedStyle;
 
-    OwnPtr<DatasetDOMStringMap> m_dataset;
-    OwnPtr<ClassList> m_classList;
+    std::unique_ptr<DatasetDOMStringMap> m_dataset;
+    std::unique_ptr<ClassList> m_classList;
     RefPtr<ShadowRoot> m_shadowRoot;
     OwnPtr<NamedNodeMap> m_attributeMap;
 
@@ -225,7 +225,7 @@ inline void ElementRareData::setAfterPseudoElement(PassRefPtr<PseudoElement> pse
 
 inline void ElementRareData::resetComputedStyle()
 {
-    setComputedStyle(0);
+    m_computedStyle = nullptr;
     setStyleAffectedByEmpty(false);
     setChildIndex(0);
 }

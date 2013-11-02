@@ -2152,7 +2152,7 @@ static bool mouseEventIsPartOfClickOrDrag(NSEvent *event)
         return NO;
 
     Document* document = frame->document();
-    bool isHorizontal = !document || !document->renderView() || document->renderView()->style()->isHorizontalWritingMode();
+    bool isHorizontal = !document || !document->renderView() || document->renderView()->style().isHorizontalWritingMode();
 
     float pageLogicalWidth = isHorizontal ? pageWidth : pageHeight;
     float pageLogicalHeight = isHorizontal ? pageHeight : pageWidth;
@@ -2188,7 +2188,7 @@ static bool mouseEventIsPartOfClickOrDrag(NSEvent *event)
         return NO;
 
     Document* document = frame->document();
-    bool isHorizontal = !document || !document->renderView() || document->renderView()->style()->isHorizontalWritingMode();
+    bool isHorizontal = !document || !document->renderView() || document->renderView()->style().isHorizontalWritingMode();
 
     float pageLogicalWidth = isHorizontal ? pageSize.width : pageSize.height;
     float pageLogicalHeight = isHorizontal ? pageSize.height : pageSize.width;
@@ -3029,7 +3029,7 @@ WEBCORE_COMMAND(yankAndSelect)
         if (minPageLogicalWidth > 0.0) {
             FloatSize pageSize(minPageLogicalWidth, minPageLogicalHeight);
             FloatSize originalPageSize(originalPageWidth, originalPageHeight);
-            if (coreFrame->document() && coreFrame->document()->renderView() && !coreFrame->document()->renderView()->style()->isHorizontalWritingMode()) {
+            if (coreFrame->document() && coreFrame->document()->renderView() && !coreFrame->document()->renderView()->style().isHorizontalWritingMode()) {
                 pageSize = FloatSize(minPageLogicalHeight, minPageLogicalWidth);
                 originalPageSize = FloatSize(originalPageHeight, originalPageWidth);
             }
@@ -3972,7 +3972,7 @@ static PassRefPtr<KeyboardEvent> currentKeyboardEvent(Frame* coreFrame)
     if (coreFrame) {
         Document* document = coreFrame->document();
         if (document && document->renderView())
-            useViewWidth = document->renderView()->style()->isHorizontalWritingMode();
+            useViewWidth = document->renderView()->style().isHorizontalWritingMode();
     }
 
     float viewLogicalWidth = useViewWidth ? NSWidth([self bounds]) : NSHeight([self bounds]);
@@ -3984,7 +3984,7 @@ static PassRefPtr<KeyboardEvent> currentKeyboardEvent(Frame* coreFrame)
     float userScaleFactor = [printOperation _web_pageSetupScaleFactor];
     float maxShrinkToFitScaleFactor = 1.0f / _WebHTMLViewPrintingMaximumShrinkFactor;
     float shrinkToFitScaleFactor = (useViewWidth ? [printOperation _web_availablePaperWidth] :  [printOperation _web_availablePaperHeight]) / viewLogicalWidth;
-    return userScaleFactor * max(maxShrinkToFitScaleFactor, shrinkToFitScaleFactor);
+    return userScaleFactor * std::max(maxShrinkToFitScaleFactor, shrinkToFitScaleFactor);
 }
 
 // FIXME 3491344: This is a secret AppKit-internal method that we need to override in order
@@ -4370,7 +4370,8 @@ static PassRefPtr<KeyboardEvent> currentKeyboardEvent(Frame* coreFrame)
 {
     if (Frame* coreFrame = core([self _frame])) {
         // FIXME: We shouldn't have to make a copy here. We want callers of this function to work directly with StylePropertySet eventually.
-        coreFrame->editor().applyStyleToSelection(core(style)->copyProperties().get(), undoAction);
+        Ref<MutableStylePropertySet> properties(core(style)->copyProperties());
+        coreFrame->editor().applyStyleToSelection(&properties.get(), undoAction);
     }
 }
 
@@ -4672,7 +4673,8 @@ static PassRefPtr<KeyboardEvent> currentKeyboardEvent(Frame* coreFrame)
     if ([[webView _editingDelegateForwarder] webView:webView shouldApplyStyle:style toElementsInDOMRange:range]) {
         if (Frame* coreFrame = core([self _frame])) {
             // FIXME: We shouldn't have to make a copy here.
-            coreFrame->editor().applyStyle(core(style)->copyProperties().get(), [self _undoActionFromColorPanelWithSelector:selector]);
+            Ref<MutableStylePropertySet> properties(core(style)->copyProperties());
+            coreFrame->editor().applyStyle(&properties.get(), [self _undoActionFromColorPanelWithSelector:selector]);
         }
     }
 
@@ -5429,13 +5431,8 @@ static BOOL writingDirectionKeyBindingsEnabled()
     if ([[self _webView] _postsAcceleratedCompositingNotifications])
         [[NSNotificationCenter defaultCenter] postNotificationName:_WebViewDidStartAcceleratedCompositingNotification object:[self _webView] userInfo:nil];
 
-#if __MAC_OS_X_VERSION_MIN_REQUIRED <= 1070
-    // Do geometry flipping here, which flips all the compositing layers so they are top-down.
-    [viewLayer setGeometryFlipped:YES];
-#else
     if (WKExecutableWasLinkedOnOrBeforeLion())
         [viewLayer setGeometryFlipped:YES];
-#endif
 }
 
 - (void)detachRootLayer

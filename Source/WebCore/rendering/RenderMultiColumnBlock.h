@@ -35,7 +35,7 @@ class RenderMultiColumnFlowThread;
 
 class RenderMultiColumnBlock FINAL : public RenderBlockFlow {
 public:
-    explicit RenderMultiColumnBlock(Element&);
+    RenderMultiColumnBlock(Element&, PassRef<RenderStyle>);
     Element& element() const { return toElement(nodeForNonAnonymous()); }
 
     LayoutUnit columnHeightAvailable() const { return m_columnHeightAvailable; }
@@ -45,7 +45,7 @@ public:
 
     RenderMultiColumnFlowThread* flowThread() const { return m_flowThread; }
 
-    bool requiresBalancing() const { return !m_columnHeightAvailable; }
+    bool requiresBalancing() const { return !m_columnHeightAvailable || style().columnFill() == ColumnFillBalance; }
 
 private:
     virtual bool isRenderMultiColumnBlock() const { return true; }
@@ -73,20 +73,7 @@ private:
     bool m_inBalancingPass; // Set when relayouting for column balancing.
 };
 
-inline RenderMultiColumnBlock* toRenderMultiColumnBlock(RenderObject* object)
-{
-    ASSERT_WITH_SECURITY_IMPLICATION(!object || object->isRenderMultiColumnBlock());
-    return static_cast<RenderMultiColumnBlock*>(object);
-}
-
-inline const RenderMultiColumnBlock* toRenderMultiColumnBlock(const RenderObject* object)
-{
-    ASSERT_WITH_SECURITY_IMPLICATION(!object || object->isRenderMultiColumnBlock());
-    return static_cast<const RenderMultiColumnBlock*>(object);
-}
-
-// This will catch anyone doing an unnecessary cast.
-void toRenderMultiColumnBlock(const RenderMultiColumnBlock*);
+RENDER_OBJECT_TYPE_CASTS(RenderMultiColumnBlock, isRenderMultiColumnBlock())
 
 } // namespace WebCore
 

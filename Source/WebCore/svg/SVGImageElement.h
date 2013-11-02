@@ -53,7 +53,7 @@ private:
     virtual void didAttachRenderers() OVERRIDE;
     virtual InsertionNotificationRequest insertedInto(ContainerNode&) OVERRIDE;
 
-    virtual RenderElement* createRenderer(RenderArena&, RenderStyle&);
+    virtual RenderElement* createRenderer(PassRef<RenderStyle>) OVERRIDE;
 
     virtual const AtomicString& imageSourceURL() const OVERRIDE;
     virtual void addSubresourceAttributeURLs(ListHashSet<URL>&) const;
@@ -76,7 +76,7 @@ private:
     SVGImageLoader m_imageLoader;
 };
 
-ELEMENT_TYPE_CASTS(SVGImageElement)
+NODE_TYPE_CASTS(SVGImageElement)
 
 } // namespace WebCore
 

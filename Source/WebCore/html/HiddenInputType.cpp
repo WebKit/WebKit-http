@@ -37,16 +37,10 @@
 #include "HTMLInputElement.h"
 #include "HTMLNames.h"
 #include "InputTypeNames.h"
-#include <wtf/PassOwnPtr.h>
 
 namespace WebCore {
 
 using namespace HTMLNames;
-
-OwnPtr<InputType> HiddenInputType::create(HTMLInputElement& element)
-{
-    return adoptPtr(new HiddenInputType(element));
-}
 
 const AtomicString& HiddenInputType::formControlType() const
 {
@@ -72,7 +66,7 @@ bool HiddenInputType::supportsValidation() const
     return false;
 }
 
-RenderElement* HiddenInputType::createRenderer(RenderArena&, RenderStyle&) const
+RenderElement* HiddenInputType::createRenderer(PassRef<RenderStyle>) const
 {
     ASSERT_NOT_REACHED();
     return 0;

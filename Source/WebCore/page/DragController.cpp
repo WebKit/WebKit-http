@@ -627,7 +627,7 @@ Element* DragController::draggableElement(const Frame* sourceFrame, Element* sta
             // for the purposes of finding a draggable element.
             continue;
         }
-        EUserDrag dragMode = renderer->style()->userDrag();
+        EUserDrag dragMode = renderer->style().userDrag();
         if ((m_dragSourceAction & DragSourceActionDHTML) && dragMode == DRAG_ELEMENT) {
             state.type = static_cast<DragSourceAction>(state.type | DragSourceActionDHTML);
             return element;
@@ -854,9 +854,17 @@ void DragController::doImageDrag(Element& element, const IntPoint& dragOrigin, c
     DragImageRef dragImage = 0;
     IntPoint origin;
 
+    if (!element.renderer())
+        return;
+
+    ImageOrientationDescription orientationDescription(element.renderer()->shouldRespectImageOrientation());
+#if ENABLE(CSS_IMAGE_ORIENTATION)
+    orientationDescription.setImageOrientationEnum(element.renderer()->style().imageOrientation());
+#endif
+
     Image* image = getImage(element);
     if (image && image->size().height() * image->size().width() <= MaxOriginalImageArea
-        && (dragImage = createDragImageFromImage(image, element.renderer() ? ImageOrientationDescription(element.renderer()->shouldRespectImageOrientation()) : ImageOrientationDescription()))) {
+        && (dragImage = createDragImageFromImage(image, element.renderer() ? orientationDescription : ImageOrientationDescription()))) {
         IntSize originalSize = rect.size();
         origin = rect.location();
 

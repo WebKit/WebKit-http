@@ -40,6 +40,7 @@
 #include "CSSFontValue.h"
 #include "CSSFunctionValue.h"
 #include "CSSGradientValue.h"
+#include "CSSGridTemplateValue.h"
 #include "CSSImageGeneratorValue.h"
 #include "CSSImageSetValue.h"
 #include "CSSImageValue.h"
@@ -198,6 +199,8 @@ bool CSSValue::equals(const CSSValue& other) const
             return compareCSSValues<CSSInheritedValue>(*this, other);
         case InitialClass:
             return compareCSSValues<CSSInitialValue>(*this, other);
+        case GridTemplateClass:
+            return compareCSSValues<CSSGridTemplateValue>(*this, other);
         case PrimitiveClass:
             return compareCSSValues<CSSPrimitiveValue>(*this, other);
         case ReflectClass:
@@ -300,6 +303,8 @@ String CSSValue::cssText() const
         return toCSSInheritedValue(this)->customCSSText();
     case InitialClass:
         return toCSSInitialValue(this)->customCSSText();
+    case GridTemplateClass:
+        return toCSSGridTemplateValue(this)->customCSSText();
     case PrimitiveClass:
         return toCSSPrimitiveValue(this)->customCSSText();
     case ReflectClass:
@@ -344,9 +349,9 @@ String CSSValue::cssText() const
 #endif
 #if ENABLE(SVG)
     case SVGColorClass:
-        return static_cast<const SVGColor*>(this)->customCSSText();
+        return toSVGColor(this)->customCSSText();
     case SVGPaintClass:
-        return static_cast<const SVGPaint*>(this)->customCSSText();
+        return toSVGPaint(this)->customCSSText();
     case WebKitCSSSVGDocumentClass:
         return toWebKitCSSSVGDocumentValue(this)->customCSSText();
 #endif
@@ -425,6 +430,9 @@ void CSSValue::destroy()
     case InitialClass:
         delete toCSSInitialValue(this);
         return;
+    case GridTemplateClass:
+        delete toCSSGridTemplateValue(this);
+        return;
     case PrimitiveClass:
         delete toCSSPrimitiveValue(this);
         return;
@@ -489,10 +497,10 @@ void CSSValue::destroy()
 #endif
 #if ENABLE(SVG)
     case SVGColorClass:
-        delete static_cast<SVGColor*>(this);
+        delete toSVGColor(this);
         return;
     case SVGPaintClass:
-        delete static_cast<SVGPaint*>(this);
+        delete toSVGPaint(this);
         return;
     case WebKitCSSSVGDocumentClass:
         delete toWebKitCSSSVGDocumentValue(this);
@@ -532,9 +540,9 @@ PassRefPtr<CSSValue> CSSValue::cloneForCSSOM() const
 #endif
 #if ENABLE(SVG)
     case SVGColorClass:
-        return static_cast<const SVGColor*>(this)->cloneForCSSOM();
+        return toSVGColor(this)->cloneForCSSOM();
     case SVGPaintClass:
-        return static_cast<const SVGPaint*>(this)->cloneForCSSOM();
+        return toSVGPaint(this)->cloneForCSSOM();
 #endif
     default:
         ASSERT(!isSubtypeExposedToCSSOM());

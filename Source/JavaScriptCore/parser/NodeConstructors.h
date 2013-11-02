@@ -148,14 +148,22 @@ inline ResolveNode::ResolveNode(const JSTokenLocation& location, const Identifie
     }
 
     inline PropertyNode::PropertyNode(VM*, const Identifier& name, ExpressionNode* assign, Type type)
-        : m_name(name)
+        : m_name(&name)
         , m_assign(assign)
         , m_type(type)
     {
     }
 
     inline PropertyNode::PropertyNode(VM* vm, double name, ExpressionNode* assign, Type type)
-        : m_name(vm->parserArena->identifierArena().makeNumericIdentifier(vm, name))
+        : m_name(&vm->parserArena->identifierArena().makeNumericIdentifier(vm, name))
+        , m_assign(assign)
+        , m_type(type)
+    {
+    }
+    
+    inline PropertyNode::PropertyNode(VM*, ExpressionNode* name, ExpressionNode* assign, Type type)
+        : m_name(0)
+        , m_expression(name)
         , m_assign(assign)
         , m_type(type)
     {
@@ -200,6 +208,13 @@ inline ResolveNode::ResolveNode(const JSTokenLocation& location, const Identifie
         : ExpressionNode(location)
         , m_base(base)
         , m_ident(ident)
+    {
+    }
+    
+    
+    inline SpreadExpressionNode::SpreadExpressionNode(const JSTokenLocation& location, ExpressionNode* expression)
+        : ExpressionNode(location)
+        , m_expression(expression)
     {
     }
 
@@ -517,7 +532,7 @@ inline ResolveNode::ResolveNode(const JSTokenLocation& location, const Identifie
     }
 
     inline LogicalOpNode::LogicalOpNode(const JSTokenLocation& location, ExpressionNode* expr1, ExpressionNode* expr2, LogicalOperator oper)
-        : ExpressionNode(location, ResultType::booleanType())
+        : ExpressionNode(location, ResultType::forLogicalOp(expr1->resultDescriptor(), expr2->resultDescriptor()))
         , m_expr1(expr1)
         , m_expr2(expr2)
         , m_operator(oper)

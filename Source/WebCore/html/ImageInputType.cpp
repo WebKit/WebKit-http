@@ -33,20 +33,14 @@
 #include "InputTypeNames.h"
 #include "MouseEvent.h"
 #include "RenderImage.h"
-#include <wtf/PassOwnPtr.h>
 
 namespace WebCore {
 
 using namespace HTMLNames;
 
-inline ImageInputType::ImageInputType(HTMLInputElement& element)
+ImageInputType::ImageInputType(HTMLInputElement& element)
     : BaseButtonInputType(element)
 {
-}
-
-OwnPtr<InputType> ImageInputType::create(HTMLInputElement& element)
-{
-    return adoptPtr(new ImageInputType(element));
 }
 
 const AtomicString& ImageInputType::formControlType() const
@@ -101,9 +95,9 @@ void ImageInputType::handleDOMActivateEvent(Event* event)
     event->setDefaultHandled();
 }
 
-RenderElement* ImageInputType::createRenderer(RenderArena& arena, RenderStyle&) const
+RenderElement* ImageInputType::createRenderer(PassRef<RenderStyle> style) const
 {
-    RenderImage* image = new (arena) RenderImage(&element());
+    RenderImage* image = new RenderImage(element(), std::move(style));
     image->setImageResource(RenderImageResource::create());
     return image;
 }

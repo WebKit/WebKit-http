@@ -59,14 +59,14 @@ FloatRect SVGRenderSupport::repaintRectForRendererInLocalCoordinatesExcludingSVG
 LayoutRect SVGRenderSupport::clippedOverflowRectForRepaint(const RenderObject* object, const RenderLayerModelObject* repaintContainer)
 {
     // Return early for any cases where we don't actually paint
-    if (object->style()->visibility() != VISIBLE && !object->enclosingLayer()->hasVisibleContent())
+    if (object->style().visibility() != VISIBLE && !object->enclosingLayer()->hasVisibleContent())
         return LayoutRect();
 
     // Pass our local paint rect to computeRectForRepaint() which will
     // map to parent coords and recurse up the parent chain.
     FloatRect repaintRect = repaintRectForRendererInLocalCoordinatesExcludingSVGShadow(object);
-    const SVGRenderStyle* svgStyle = object->style()->svgStyle();
-    if (const ShadowData* shadow = svgStyle->shadow())
+    const SVGRenderStyle& svgStyle = object->style().svgStyle();
+    if (const ShadowData* shadow = svgStyle.shadow())
         shadow->adjustRectForShadow(repaintRect);
     object->computeFloatRectForRepaint(repaintContainer, repaintRect);
     return enclosingLayoutRect(repaintRect);
@@ -74,10 +74,10 @@ LayoutRect SVGRenderSupport::clippedOverflowRectForRepaint(const RenderObject* o
 
 void SVGRenderSupport::computeFloatRectForRepaint(const RenderObject* object, const RenderLayerModelObject* repaintContainer, FloatRect& repaintRect, bool fixed)
 {
-    const SVGRenderStyle* svgStyle = object->style()->svgStyle();
-    if (const ShadowData* shadow = svgStyle->shadow())
+    const SVGRenderStyle& svgStyle = object->style().svgStyle();
+    if (const ShadowData* shadow = svgStyle.shadow())
         shadow->adjustRectForShadow(repaintRect);
-    repaintRect.inflate(object->style()->outlineWidth());
+    repaintRect.inflate(object->style().outlineWidth());
 
     // Translate to coords in our parent renderer, and then call computeFloatRectForRepaint() on our parent.
     repaintRect = object->localToParentTransform().mapRect(repaintRect);
@@ -272,7 +272,7 @@ void SVGRenderSupport::layoutChildren(RenderObject* start, bool selfNeedsLayout)
             child->setNeedsLayout(MarkOnlyThis);
 
         if (child->needsLayout()) {
-            child->layout();
+            toRenderElement(child)->layout();
             // Renderers are responsible for repainting themselves when changing, except
             // for the initial paint to avoid potential double-painting caused by non-sensical "old" bounds.
             // We could handle this in the individual objects, but for now it's easier to have
@@ -299,15 +299,15 @@ void SVGRenderSupport::layoutChildren(RenderObject* start, bool selfNeedsLayout)
 bool SVGRenderSupport::isOverflowHidden(const RenderObject* object)
 {
     // SVG doesn't support independent x/y overflow
-    ASSERT(object->style()->overflowX() == object->style()->overflowY());
+    ASSERT(object->style().overflowX() == object->style().overflowY());
 
     // OSCROLL is never set for SVG - see StyleResolver::adjustRenderStyle
-    ASSERT(object->style()->overflowX() != OSCROLL);
+    ASSERT(object->style().overflowX() != OSCROLL);
 
     // RenderSVGRoot should never query for overflow state - it should always clip itself to the initial viewport size.
     ASSERT(!object->isRoot());
 
-    return object->style()->overflowX() == OHIDDEN;
+    return object->style().overflowX() == OHIDDEN;
 }
 
 bool SVGRenderSupport::rendererHasSVGShadow(const RenderObject* object)
@@ -349,14 +349,10 @@ void SVGRenderSupport::intersectRepaintRectWithShadows(const RenderObject* objec
     AffineTransform localToRootTransform;
 
     while (currentObject && rendererHasSVGShadow(currentObject)) {
-        RenderStyle* style = currentObject->style();
-        if (style) {
-            const SVGRenderStyle* svgStyle = style->svgStyle();
-            if (svgStyle) {
-                if (const ShadowData* shadow = svgStyle->shadow())
-                    shadow->adjustRectForShadow(repaintRect);
-            }
-        }
+        const RenderStyle& style = currentObject->style();
+        const SVGRenderStyle& svgStyle = style.svgStyle();
+        if (const ShadowData* shadow = svgStyle.shadow())
+            shadow->adjustRectForShadow(repaintRect);
 
         repaintRect = currentObject->localToParentTransform().mapRect(repaintRect);
         localToRootTransform *= currentObject->localToParentTransform();
@@ -371,12 +367,9 @@ void SVGRenderSupport::intersectRepaintRectWithShadows(const RenderObject* objec
     repaintRect = rootToLocalTransform.mapRect(repaintRect);
 }
 
-void SVGRenderSupport::intersectRepaintRectWithResources(const RenderObject* object, FloatRect& repaintRect)
+void SVGRenderSupport::intersectRepaintRectWithResources(const RenderElement& renderer, FloatRect& repaintRect)
 {
-    ASSERT(object);
-
-    RenderObject* renderer = const_cast<RenderObject*>(object);
-    SVGResources* resources = SVGResourcesCache::cachedResourcesForRenderObject(renderer);
+    SVGResources* resources = SVGResourcesCache::cachedResourcesForRenderObject(&renderer);
     if (!resources)
         return;
 
@@ -422,34 +415,31 @@ bool SVGRenderSupport::pointInClippingArea(RenderObject* object, const FloatPoin
     return true;
 }
 
-void SVGRenderSupport::applyStrokeStyleToContext(GraphicsContext* context, const RenderStyle* style, const RenderObject* object)
+void SVGRenderSupport::applyStrokeStyleToContext(GraphicsContext* context, const RenderStyle& style, const RenderElement& renderer)
 {
     ASSERT(context);
-    ASSERT(style);
-    ASSERT(object);
-    ASSERT(object->node());
-    ASSERT(object->node()->isSVGElement());
+    ASSERT(renderer.element());
+    ASSERT(renderer.element()->isSVGElement());
 
-    const SVGRenderStyle* svgStyle = style->svgStyle();
-    ASSERT(svgStyle);
+    const SVGRenderStyle& svgStyle = style.svgStyle();
 
-    SVGLengthContext lengthContext(toSVGElement(object->node()));
-    context->setStrokeThickness(svgStyle->strokeWidth().value(lengthContext));
-    context->setLineCap(svgStyle->capStyle());
-    context->setLineJoin(svgStyle->joinStyle());
-    if (svgStyle->joinStyle() == MiterJoin)
-        context->setMiterLimit(svgStyle->strokeMiterLimit());
+    SVGLengthContext lengthContext(toSVGElement(renderer.element()));
+    context->setStrokeThickness(svgStyle.strokeWidth().value(lengthContext));
+    context->setLineCap(svgStyle.capStyle());
+    context->setLineJoin(svgStyle.joinStyle());
+    if (svgStyle.joinStyle() == MiterJoin)
+        context->setMiterLimit(svgStyle.strokeMiterLimit());
 
-    const Vector<SVGLength>& dashes = svgStyle->strokeDashArray();
+    const Vector<SVGLength>& dashes = svgStyle.strokeDashArray();
     if (dashes.isEmpty())
         context->setStrokeStyle(SolidStroke);
     else {
         DashArray dashArray;
-        const Vector<SVGLength>::const_iterator end = dashes.end();
-        for (Vector<SVGLength>::const_iterator it = dashes.begin(); it != end; ++it)
-            dashArray.append((*it).value(lengthContext));
+        dashArray.reserveInitialCapacity(dashes.size());
+        for (unsigned i = 0, size = dashes.size(); i < size; ++i)
+            dashArray.uncheckedAppend(dashes[i].value(lengthContext));
 
-        context->setLineDash(dashArray, svgStyle->strokeDashOffset().value(lengthContext));
+        context->setLineDash(dashArray, svgStyle.strokeDashOffset().value(lengthContext));
     }
 }
 
@@ -461,7 +451,7 @@ void SVGRenderSupport::childAdded(RenderObject* parent, RenderObject* child)
 void SVGRenderSupport::styleChanged(RenderObject* object)
 {
     RenderObject* parent = object->parent();
-    SVGRenderSupport::setRendererHasSVGShadow(object, (parent && SVGRenderSupport::rendererHasSVGShadow(parent)) || (object->style()->svgStyle() && object->style()->svgStyle()->shadow()));
+    SVGRenderSupport::setRendererHasSVGShadow(object, (parent && SVGRenderSupport::rendererHasSVGShadow(parent)) || object->style().svgStyle().shadow());
 }
 
 }

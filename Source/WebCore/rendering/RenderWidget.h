@@ -60,7 +60,7 @@ class RenderWidget : public RenderReplaced, private OverlapTestRequestClient {
 public:
     virtual ~RenderWidget();
 
-    HTMLFrameOwnerElement& frameOwnerElement() const { return toFrameOwnerElement(nodeForNonAnonymous()); }
+    HTMLFrameOwnerElement& frameOwnerElement() const { return toHTMLFrameOwnerElement(nodeForNonAnonymous()); }
 
     Widget* widget() const { return m_widget.get(); }
     void setWidget(PassRefPtr<Widget>);
@@ -81,7 +81,7 @@ public:
     virtual void viewCleared() { }
 
 protected:
-    explicit RenderWidget(HTMLFrameOwnerElement&);
+    RenderWidget(HTMLFrameOwnerElement&, PassRef<RenderStyle>);
 
     virtual void styleDidChange(StyleDifference, const RenderStyle* oldStyle) OVERRIDE FINAL;
     virtual void layout() OVERRIDE;
@@ -113,20 +113,7 @@ private:
     IntRect m_clipRect; // The rectangle needs to remain correct after scrolling, so it is stored in content view coordinates, and not clipped to window.
 };
 
-inline RenderWidget* toRenderWidget(RenderObject* object)
-{
-    ASSERT_WITH_SECURITY_IMPLICATION(!object || object->isWidget());
-    return static_cast<RenderWidget*>(object);
-}
-
-inline const RenderWidget* toRenderWidget(const RenderObject* object)
-{
-    ASSERT_WITH_SECURITY_IMPLICATION(!object || object->isWidget());
-    return static_cast<const RenderWidget*>(object);
-}
-
-// This will catch anyone doing an unnecessary cast.
-void toRenderWidget(const RenderWidget*);
+RENDER_OBJECT_TYPE_CASTS(RenderWidget, isWidget())
 
 } // namespace WebCore
 

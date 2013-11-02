@@ -327,8 +327,8 @@ void RenderThemeEfl::applyEdjeRTLState(Evas_Object* edje, RenderObject* object, 
             return; // probably have -webkit-appearance: slider..
 
         RenderSlider* renderSlider = toRenderSlider(object);
-        HTMLInputElement* input = renderSlider->element()->toInputElement();
-        double valueRange = input->maximum() - input->minimum();
+        HTMLInputElement& input = renderSlider->element();
+        double valueRange = input.maximum() - input.minimum();
 
         OwnPtr<Edje_Message_Float_Set> msg = adoptPtr(static_cast<Edje_Message_Float_Set*>(::operator new (sizeof(Edje_Message_Float_Set) + sizeof(double))));
         msg->count = 2;
@@ -337,12 +337,12 @@ void RenderThemeEfl::applyEdjeRTLState(Evas_Object* edje, RenderObject* object, 
         // grows from the end of the slider or from the beginning. On vertical
         // sliders, it should always be the same and will not be affected by
         // text direction settings.
-        if (object->style()->direction() == RTL || type == SliderVertical)
+        if (object->style().direction() == RTL || type == SliderVertical)
             msg->val[0] = 1;
         else
             msg->val[0] = 0;
 
-        msg->val[1] = (input->valueAsNumber() - input->minimum()) / valueRange;
+        msg->val[1] = (input.valueAsNumber() - input.minimum()) / valueRange;
         edje_object_message_send(edje, EDJE_MESSAGE_FLOAT_SET, 0, msg.get());
 #if ENABLE(PROGRESS_ELEMENT)
     } else if (type == ProgressBar) {
@@ -354,7 +354,7 @@ void RenderThemeEfl::applyEdjeRTLState(Evas_Object* edje, RenderObject* object, 
         OwnPtr<Edje_Message_Float_Set> msg = adoptPtr(static_cast<Edje_Message_Float_Set*>(::operator new (sizeof(Edje_Message_Float_Set) + sizeof(double))));
         msg->count = 2;
 
-        if (object->style()->direction() == RTL)
+        if (object->style().direction() == RTL)
             msg->val[0] = (1.0 - value) * max;
         else
             msg->val[0] = 0;
@@ -380,7 +380,7 @@ bool RenderThemeEfl::paintThemePart(RenderObject* object, FormType type, const P
     if (!entry)
         return false;
 
-    bool haveBackgroundColor = isControlStyled(object->style(), object->style()->border(), *object->style()->backgroundLayers(), Color::white);
+    bool haveBackgroundColor = isControlStyled(&object->style(), object->style().border(), *object->style().backgroundLayers(), Color::white);
     applyEdjeStateFromForm(entry->edje(), controlStatesForRenderer(object), haveBackgroundColor);
 
     applyEdjeRTLState(entry->edje(), object, type, rect);
@@ -661,8 +661,8 @@ int RenderThemeEfl::baselinePosition(const RenderObject* object) const
     if (!object->isBox())
         return 0;
 
-    if (object->style()->appearance() == CheckboxPart
-    ||  object->style()->appearance() == RadioPart)
+    if (object->style().appearance() == CheckboxPart
+    ||  object->style().appearance() == RadioPart)
         return toRenderBox(object)->marginTop() + toRenderBox(object)->height() - 3;
 
     return RenderTheme::baselinePosition(object);
@@ -706,7 +706,7 @@ bool RenderThemeEfl::supportsSelectionForegroundColors() const
 
 bool RenderThemeEfl::paintSliderTrack(RenderObject* object, const PaintInfo& info, const IntRect& rect)
 {
-    if (object->style()->appearance() == SliderHorizontalPart)
+    if (object->style().appearance() == SliderHorizontalPart)
         paintThemePart(object, SliderHorizontal, info, rect);
     else
         paintThemePart(object, SliderVertical, info, rect);
@@ -782,7 +782,7 @@ bool RenderThemeEfl::supportsDataListUI(const AtomicString& type) const
 
 bool RenderThemeEfl::paintSliderThumb(RenderObject* object, const PaintInfo& info, const IntRect& rect)
 {
-    if (object->style()->appearance() == SliderThumbHorizontalPart)
+    if (object->style().appearance() == SliderThumbHorizontalPart)
         paintThemePart(object, SliderThumbHorizontal, info, rect);
     else
         paintThemePart(object, SliderThumbVertical, info, rect);
@@ -881,7 +881,7 @@ void RenderThemeEfl::adjustMenuListButtonStyle(StyleResolver* styleResolver, Ren
 
     // Calculate min-height of the <select> element.
     int minHeight = style->fontMetrics().height();
-    minHeight = max(minHeight, dropDownBoxMinHeight);
+    minHeight = std::max(minHeight, dropDownBoxMinHeight);
     style->setMinHeight(Length(minHeight, Fixed));
 
     adjustMenuListStyle(styleResolver, style, element);
@@ -1193,8 +1193,8 @@ bool RenderThemeEfl::paintMediaSliderTrack(RenderObject* object, const PaintInfo
     context->fillRect(FloatRect(IntRect(rect.x(), rect.y() + (rect.height() - mediaSliderHeight) / 2,
                                         rect.width(), mediaSliderHeight)), m_mediaSliderColor, ColorSpaceDeviceRGB);
 
-    RenderStyle* style = object->style();
-    HTMLMediaElement* mediaElement = toParentMediaElement(object);
+    RenderStyle* style = &object->style();
+    HTMLMediaElement* mediaElement = parentMediaElement(*object);
 
     if (!mediaElement)
         return false;

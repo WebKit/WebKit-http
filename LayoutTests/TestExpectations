@@ -44,13 +44,32 @@ webkit.org/b/119094 fast/forms/color/input-color-onchange-event.html [ Crash Pas
 # This test will run slowly in debug mode, but is plenty fast in release.
 [ Debug ] js/regress/emscripten-memops.html [ Skip ]
 
-# This test is based on incorrect assumptions about front-end behavior, and passes or fails randomly.
-webkit.org/b/114209 http/tests/inspector/appcache/appcache-manifest-with-non-existing-file.html [ WontFix ]
+# Skipping the tests for the old inspector UI
+inspector [ Skip ]
+http/tests/inspector [ Skip ]
+http/tests/inspector-enabled [ Skip ]
 
 webkit.org/b/112521 [ Release ] webaudio/javascriptaudionode.html [ Pass Failure ]
 webkit.org/b/112521 [ Debug ] webaudio/javascriptaudionode.html [ Pass Crash ]
+webkit.org/b/120148 [ Release ] webaudio/javascriptaudionode-upmix2-8channel-input.html [ Pass Failure ]
+webkit.org/b/120148 [ Debug ] webaudio/javascriptaudionode-upmix2-8channel-input.html [ Pass Crash ]
+webkit.org/b/120148 [ Release ] webaudio/javascriptaudionode-downmix8-2channel-input.html [ Pass Failure ]
+webkit.org/b/120148 [ Debug ] webaudio/javascriptaudionode-downmix8-2channel-input.html [ Pass Crash ]
+
+webaudio/javascriptaudionode-downmix8-2channel-input.html
 
 # The test frequently times out, and is just unsuccessful at detecting incorrect behavior when it passes.
 webkit.org/b/72698 media/audio-garbage-collect.html [ Skip ]
 
 webkit.org/b/53990 fast/forms/search-event-delay.html [ Pass Failure ]
+
+# No port in WebKit already support getMediaStream, so we are skipping those for now.
+fast/mediastream/MediaStream-construct-with-ended-tracks.html [ Skip ]
+fast/mediastream/MediaStream-clone.html [ Skip ]
+
+# The spec is not clear if the MediaStream ended event should be fired if stop is called on each MediaStream's track
+# Skipping it for now, then put it again when the spec decides it
+fast/mediastream/MediaStream-onended.html [ Skip ]
+
+webkit.org/b/123555 [ Debug ] media/media-fragments/TC0054.html [ Crash ]
+webkit.org/b/123555 [ Debug ] media/media-fragments/TC0061.html [ Crash ]

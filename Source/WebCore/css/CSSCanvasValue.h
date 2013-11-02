@@ -35,7 +35,7 @@ class Document;
 
 class CSSCanvasValue : public CSSImageGeneratorValue {
 public:
-    static PassRefPtr<CSSCanvasValue> create(const String& name) { return adoptRef(new CSSCanvasValue(name)); }
+    static PassRef<CSSCanvasValue> create(const String& name) { return adoptRef(*new CSSCanvasValue(name)); }
     ~CSSCanvasValue();
 
     String customCSSText() const;
@@ -50,7 +50,7 @@ public:
     bool equals(const CSSCanvasValue&) const;
 
 private:
-    CSSCanvasValue(const String& name)
+    explicit CSSCanvasValue(const String& name)
         : CSSImageGeneratorValue(CanvasClass)
         , m_canvasObserver(this)
         , m_name(name)
@@ -94,7 +94,7 @@ private:
     HTMLCanvasElement* m_element;
 };
 
-CSS_VALUE_TYPE_CASTS(CanvasValue)
+CSS_VALUE_TYPE_CASTS(CSSCanvasValue, isCanvasValue())
 
 } // namespace WebCore
 

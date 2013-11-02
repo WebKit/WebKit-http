@@ -56,8 +56,6 @@ class DOMSettableTokenList;
 class Document;
 class Element;
 class Event;
-class EventContext;
-class EventDispatchMediator;
 class EventListener;
 class FloatPoint;
 class Frame;
@@ -73,17 +71,12 @@ class NodeRareData;
 class QualifiedName;
 class RadioNodeList;
 class RegisteredEventListener;
-class RenderArena;
 class RenderBox;
 class RenderBoxModelObject;
 class RenderObject;
 class RenderStyle;
 class ShadowRoot;
 class TagNodeList;
-
-#if ENABLE(GESTURE_EVENTS)
-class PlatformGestureEvent;
-#endif
 
 #if ENABLE(INDIE_UI)
 class UIRequestEvent;
@@ -230,6 +223,7 @@ public:
     bool isTextNode() const { return getFlag(IsTextFlag); }
     bool isHTMLElement() const { return getFlag(IsHTMLFlag); }
     bool isSVGElement() const { return getFlag(IsSVGFlag); }
+    bool isMathMLElement() const { return getFlag(IsMathMLFlag); }
 
     bool isPseudoElement() const { return pseudoId() != NOPSEUDO; }
     bool isBeforePseudoElement() const { return pseudoId() == BEFORE; }
@@ -515,9 +509,6 @@ public:
     virtual bool willRespondToMouseClickEvents();
     virtual bool willRespondToTouchEvents();
 
-    PassRefPtr<Element> querySelector(const AtomicString& selectors, ExceptionCode&);
-    PassRefPtr<NodeList> querySelectorAll(const AtomicString& selectors, ExceptionCode&);
-
     unsigned short compareDocumentPosition(Node*);
 
     virtual Node* toNode() OVERRIDE;
@@ -533,16 +524,12 @@ public:
     virtual bool dispatchEvent(PassRefPtr<Event>) OVERRIDE;
 
     void dispatchScopedEvent(PassRefPtr<Event>);
-    void dispatchScopedEventDispatchMediator(PassRefPtr<EventDispatchMediator>);
 
-    virtual void handleLocalEvents(Event*);
+    virtual void handleLocalEvents(Event&);
 
     void dispatchSubtreeModifiedEvent();
     bool dispatchDOMActivateEvent(int detail, PassRefPtr<Event> underlyingEvent);
 
-#if ENABLE(GESTURE_EVENTS)
-    bool dispatchGestureEvent(const PlatformGestureEvent&);
-#endif
 #if ENABLE(TOUCH_EVENTS)
     bool dispatchTouchEvent(PassRefPtr<TouchEvent>);
 #endif
@@ -609,6 +596,7 @@ private:
         HasEventTargetDataFlag = 1 << 21,
         NeedsNodeRenderingTraversalSlowPathFlag = 1 << 22,
         IsInShadowTreeFlag = 1 << 23,
+        IsMathMLFlag = 1 << 24,
 
         DefaultNodeFlags = IsParsingChildrenFinishedFlag
     };
@@ -635,6 +623,7 @@ protected:
         CreateDocument = CreateContainer | InDocumentFlag,
         CreateInsertionPoint = CreateHTMLElement | NeedsNodeRenderingTraversalSlowPathFlag,
         CreateEditingText = CreateText | IsEditingTextFlag,
+        CreateMathMLElement = CreateStyledElement | IsMathMLFlag,
     };
     Node(Document*, ConstructionType);
 
@@ -685,7 +674,7 @@ private:
 
     void trackForDebugging();
 
-    Vector<OwnPtr<MutationObserverRegistration> >* mutationObserverRegistry();
+    Vector<OwnPtr<MutationObserverRegistration>>* mutationObserverRegistry();
     HashSet<MutationObserverRegistration*>* transientMutationObserverRegistry();
 
     mutable uint32_t m_nodeFlags;
@@ -731,29 +720,8 @@ inline ContainerNode* Node::parentNodeGuaranteedHostFree() const
     return parentNode();
 }
 
-#define NODE_TYPE_CASTS(NodeClassName) \
-inline const NodeClassName* to##NodeClassName(const Node* node) \
-{ \
-    ASSERT_WITH_SECURITY_IMPLICATION(!node || is##NodeClassName(*node)); \
-    return static_cast<const NodeClassName*>(node); \
-} \
-inline NodeClassName* to##NodeClassName(Node* node) \
-{ \
-    ASSERT_WITH_SECURITY_IMPLICATION(!node || is##NodeClassName(*node)); \
-    return static_cast<NodeClassName*>(node); \
-} \
-inline const NodeClassName& to##NodeClassName(const Node& node) \
-{ \
-    ASSERT_WITH_SECURITY_IMPLICATION(is##NodeClassName(node)); \
-    return static_cast<const NodeClassName&>(node); \
-} \
-inline NodeClassName& to##NodeClassName(Node& node) \
-{ \
-    ASSERT_WITH_SECURITY_IMPLICATION(is##NodeClassName(node)); \
-    return static_cast<NodeClassName&>(node); \
-} \
-void to##NodeClassName(const NodeClassName*); \
-void to##NodeClassName(const NodeClassName&);
+#define NODE_TYPE_CASTS(ToClassName) \
+    TYPE_CASTS_BASE(ToClassName, Node, node, WebCore::is##ToClassName(*node), WebCore::is##ToClassName(node))
 
 } // namespace WebCore
 

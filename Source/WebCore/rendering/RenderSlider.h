@@ -33,8 +33,10 @@ class RenderSlider FINAL : public RenderFlexibleBox {
 public:
     static const int defaultTrackLength;
 
-    explicit RenderSlider(HTMLInputElement*);
+    RenderSlider(HTMLInputElement&, PassRef<RenderStyle>);
     virtual ~RenderSlider();
+
+    HTMLInputElement& element() const;
 
     bool inDragMode() const;
 
@@ -50,14 +52,7 @@ private:
     virtual void layout() OVERRIDE;
 };
 
-inline RenderSlider* toRenderSlider(RenderObject* object)
-{
-    ASSERT_WITH_SECURITY_IMPLICATION(!object || object->isSlider());
-    return static_cast<RenderSlider*>(object);
-}
-
-// This will catch anyone doing an unnecessary cast.
-void toRenderSlider(const RenderSlider*);
+RENDER_OBJECT_TYPE_CASTS(RenderSlider, isSlider())
 
 } // namespace WebCore
 

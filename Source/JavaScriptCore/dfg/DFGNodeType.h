@@ -89,12 +89,11 @@ namespace JSC { namespace DFG {
     macro(GetLocalUnlinked, NodeResultJS) \
     \
     /* Marker for an argument being set at the prologue of a function. */\
-    macro(SetArgument, 0 | NodeDoesNotExit) \
+    macro(SetArgument, NodeDoesNotExit) \
     \
-    /* Hint that inlining begins here. No code is generated for this node. It's only */\
-    /* used for copying OSR data into inline frame data, to support reification of */\
-    /* call frames of inlined functions. */\
-    macro(InlineStart, NodeMustGenerate | NodeDoesNotExit) \
+    /* Marker of location in the IR where we may possibly perform jump replacement to */\
+    /* invalidate this code block. */\
+    macro(InvalidationPoint, NodeMustGenerate) \
     \
     /* Nodes for bitwise operations. */\
     macro(BitAnd, NodeResultInt32 | NodeMustGenerate) \
@@ -130,6 +129,8 @@ namespace JSC { namespace DFG {
     macro(ArithMin, NodeResultNumber | NodeMustGenerate) \
     macro(ArithMax, NodeResultNumber | NodeMustGenerate) \
     macro(ArithSqrt, NodeResultNumber | NodeMustGenerate) \
+    macro(ArithSin, NodeResultNumber | NodeMustGenerate) \
+    macro(ArithCos, NodeResultNumber | NodeMustGenerate) \
     \
     /* Add of values may either be arithmetic, or result in string concatenation. */\
     macro(ValueAdd, NodeResultJS | NodeMustGenerate | NodeMightClobber) \
@@ -140,6 +141,7 @@ namespace JSC { namespace DFG {
     /* this must be the directly subsequent property put. Note that PutByVal */\
     /* opcodes use VarArgs beause they may have up to 4 children. */\
     macro(GetByVal, NodeResultJS | NodeMustGenerate | NodeMightClobber) \
+    macro(PutByValDirect, NodeMustGenerate | NodeHasVarArgs | NodeMightClobber) \
     macro(PutByVal, NodeMustGenerate | NodeHasVarArgs | NodeMightClobber) \
     macro(PutByValAlias, NodeMustGenerate | NodeHasVarArgs | NodeMightClobber) \
     macro(GetById, NodeResultJS | NodeMustGenerate | NodeClobbersWorld) \

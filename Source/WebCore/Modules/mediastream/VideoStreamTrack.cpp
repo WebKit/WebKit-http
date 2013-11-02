@@ -35,29 +35,27 @@
 
 namespace WebCore {
 
-RefPtr<VideoStreamTrack> VideoStreamTrack::create(ScriptExecutionContext* context, const Dictionary& videoConstraints)
+RefPtr<VideoStreamTrack> VideoStreamTrack::create(ScriptExecutionContext& context, const Dictionary& videoConstraints)
 {
-    RefPtr<VideoStreamTrack> track = adoptRef(new VideoStreamTrack(context, 0, &videoConstraints));
-    return track.release();
+    return adoptRef(new VideoStreamTrack(context, *MediaStreamTrackPrivate::create(0), &videoConstraints));
 }
 
-RefPtr<VideoStreamTrack> VideoStreamTrack::create(ScriptExecutionContext* context, MediaStreamSource* source)
+RefPtr<VideoStreamTrack> VideoStreamTrack::create(ScriptExecutionContext& context, MediaStreamTrackPrivate& privateTrack)
 {
-    RefPtr<VideoStreamTrack> track = adoptRef(new VideoStreamTrack(context, source, 0));
-    return track.release();
+    return adoptRef(new VideoStreamTrack(context, privateTrack, 0));
 }
 
-RefPtr<VideoStreamTrack> VideoStreamTrack::create(MediaStreamTrack* track)
+RefPtr<VideoStreamTrack> VideoStreamTrack::create(MediaStreamTrack& track)
 {
     return adoptRef(new VideoStreamTrack(track));
 }
 
-VideoStreamTrack::VideoStreamTrack(ScriptExecutionContext* context, MediaStreamSource* source, const Dictionary* videoConstraints)
-    : MediaStreamTrack(context, source, videoConstraints)
+VideoStreamTrack::VideoStreamTrack(ScriptExecutionContext& context, MediaStreamTrackPrivate& privateTrack, const Dictionary* videoConstraints)
+    : MediaStreamTrack(context, privateTrack, videoConstraints)
 {
 }
 
-VideoStreamTrack::VideoStreamTrack(MediaStreamTrack* track)
+VideoStreamTrack::VideoStreamTrack(MediaStreamTrack& track)
     : MediaStreamTrack(track)
 {
 }

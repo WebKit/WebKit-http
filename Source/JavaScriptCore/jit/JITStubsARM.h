@@ -56,7 +56,6 @@ namespace JSC {
 #define PROBE_PROBE_FUNCTION_OFFSET (0 * PTR_SIZE)
 #define PROBE_ARG1_OFFSET (1 * PTR_SIZE)
 #define PROBE_ARG2_OFFSET (2 * PTR_SIZE)
-#define PROBE_JIT_STACK_FRAME_OFFSET (3 * PTR_SIZE)
 
 #define PROBE_FIRST_GPREG_OFFSET (4 * PTR_SIZE)
 
@@ -109,7 +108,6 @@ namespace JSC {
 COMPILE_ASSERT(PROBE_OFFSETOF(probeFunction) == PROBE_PROBE_FUNCTION_OFFSET, ProbeContext_probeFunction_offset_matches_ctiMasmProbeTrampoline);
 COMPILE_ASSERT(PROBE_OFFSETOF(arg1) == PROBE_ARG1_OFFSET, ProbeContext_arg1_offset_matches_ctiMasmProbeTrampoline);
 COMPILE_ASSERT(PROBE_OFFSETOF(arg2) == PROBE_ARG2_OFFSET, ProbeContext_arg2_offset_matches_ctiMasmProbeTrampoline);
-COMPILE_ASSERT(PROBE_OFFSETOF(jitStackFrame) == PROBE_JIT_STACK_FRAME_OFFSET, ProbeContext_jitStackFrame_offset_matches_ctiMasmProbeTrampoline);
 
 COMPILE_ASSERT(PROBE_OFFSETOF(cpu.r0) == PROBE_CPU_R0_OFFSET, ProbeContext_cpu_r0_offset_matches_ctiMasmProbeTrampoline);
 COMPILE_ASSERT(PROBE_OFFSETOF(cpu.r1) == PROBE_CPU_R1_OFFSET, ProbeContext_cpu_r1_offset_matches_ctiMasmProbeTrampoline);
@@ -163,27 +161,15 @@ SYMBOL_STRING(ctiTrampoline) ":" "\n"
     "stmdb sp!, {r4-r6, r8-r11, lr}" "\n"
     "sub sp, sp, #" STRINGIZE_VALUE_OF(PRESERVEDR4_OFFSET) "\n"
     "mov r5, r2" "\n"
-    "mov r6, #512" "\n"
     // r0 contains the code
     "blx r0" "\n"
     "add sp, sp, #" STRINGIZE_VALUE_OF(PRESERVEDR4_OFFSET) "\n"
     "ldmia sp!, {r4-r6, r8-r11, lr}" "\n"
     "add sp, sp, #12" "\n"
     "bx lr" "\n"
-".globl " SYMBOL_STRING(ctiTrampolineEnd) "\n"
-HIDE_SYMBOL(ctiTrampolineEnd) "\n"
-SYMBOL_STRING(ctiTrampolineEnd) ":" "\n"
 );
 
 asm (
-".text" "\n"
-".globl " SYMBOL_STRING(ctiVMThrowTrampoline) "\n"
-HIDE_SYMBOL(ctiVMThrowTrampoline) "\n"
-INLINE_ARM_FUNCTION(ctiVMThrowTrampoline)
-SYMBOL_STRING(ctiVMThrowTrampoline) ":" "\n"
-    "mov r0, sp" "\n"
-    "bl " SYMBOL_STRING(cti_vm_throw) "\n"
-
 // Both has the same return sequence
 ".text" "\n"
 ".globl " SYMBOL_STRING(ctiOpThrowNotCaught) "\n"
@@ -194,19 +180,6 @@ SYMBOL_STRING(ctiOpThrowNotCaught) ":" "\n"
     "ldmia sp!, {r4-r6, r8-r11, lr}" "\n"
     "add sp, sp, #12" "\n"
     "bx lr" "\n"
-);
-
-asm (
-".text" "\n"
-".globl " SYMBOL_STRING(ctiVMHandleException) "\n"
-HIDE_SYMBOL(ctiVMHandleException) "\n"
-INLINE_ARM_FUNCTION(ctiVMHandleException)
-SYMBOL_STRING(ctiVMHandleException) ":" "\n"
-    "mov r0, r5" "\n"
-    "bl " SYMBOL_STRING(cti_vm_handle_exception) "\n"
-    // When cti_vm_handle_exception returns, r0 has callFrame and r1 has handler address
-    "mov r5, r0" "\n"
-    "bx r1" "\n"
 );
 
 #if USE(MASM_PROBE)
@@ -257,7 +230,6 @@ SYMBOL_STRING(ctiMasmProbeTrampoline) ":" "\n"
     "str       lr, [sp, #" STRINGIZE_VALUE_OF(PROBE_CPU_LR_OFFSET) "]" "\n"
     "ldr       lr, [ip, #6 * " STRINGIZE_VALUE_OF(PTR_SIZE) "]" "\n"
     "str       lr, [sp, #" STRINGIZE_VALUE_OF(PROBE_CPU_SP_OFFSET) "]" "\n"
-    "str       lr, [sp, #" STRINGIZE_VALUE_OF(PROBE_JIT_STACK_FRAME_OFFSET) "]" "\n"
 
     "ldr       lr, [sp, #" STRINGIZE_VALUE_OF(PROBE_CPU_PC_OFFSET) "]" "\n"
 
@@ -384,24 +356,8 @@ __asm EncodedJSValue ctiTrampoline(void*, JSStack*, CallFrame*, void* /*unused1*
     stmdb sp!, {r4-r6, r8-r11, lr}
     sub sp, sp, # PRESERVEDR4_OFFSET
     mov r5, r2
-    mov r6, #512
     mov lr, pc
     bx r0
-    add sp, sp, # PRESERVEDR4_OFFSET
-    ldmia sp!, {r4-r6, r8-r11, lr}
-    add sp, sp, #12
-    bx lr
-}
-__asm void ctiTrampolineEnd()
-{
-}
-
-__asm void ctiVMThrowTrampoline()
-{
-    ARM
-    PRESERVE8
-    mov r0, sp
-    bl cti_vm_throw
     add sp, sp, # PRESERVEDR4_OFFSET
     ldmia sp!, {r4-r6, r8-r11, lr}
     add sp, sp, #12
@@ -457,17 +413,13 @@ MSVC_BEGIN(    AREA Trampoline, CODE)
 MSVC_BEGIN()
 MSVC_BEGIN(    EXPORT ctiTrampoline)
 MSVC_BEGIN(    EXPORT ctiTrampolineEnd)
-MSVC_BEGIN(    EXPORT ctiVMThrowTrampoline)
 MSVC_BEGIN(    EXPORT ctiOpThrowNotCaught)
-MSVC_BEGIN(    EXPORT ctiVMHandleException)
-MSVC_BEGIN(    IMPORT cti_vm_handle_exception)
 MSVC_BEGIN()
 MSVC_BEGIN(ctiTrampoline PROC)
 MSVC_BEGIN(    stmdb sp!, {r1-r3})
 MSVC_BEGIN(    stmdb sp!, {r4-r6, r8-r11, lr})
 MSVC_BEGIN(    sub sp, sp, #68 ; sync with PRESERVEDR4_OFFSET)
 MSVC_BEGIN(    mov r5, r2)
-MSVC_BEGIN(    mov r6, #512)
 MSVC_BEGIN(    ; r0 contains the code)
 MSVC_BEGIN(    mov lr, pc)
 MSVC_BEGIN(    bx r0)
@@ -477,23 +429,6 @@ MSVC_BEGIN(    add sp, sp, #12)
 MSVC_BEGIN(    bx lr)
 MSVC_BEGIN(ctiTrampolineEnd)
 MSVC_BEGIN(ctiTrampoline ENDP)
-MSVC_BEGIN()
-MSVC_BEGIN(ctiVMThrowTrampoline PROC)
-MSVC_BEGIN(    mov r0, sp)
-MSVC_BEGIN(    bl cti_vm_throw)
-MSVC_BEGIN(ctiOpThrowNotCaught)
-MSVC_BEGIN(    add sp, sp, #68 ; sync with PRESERVEDR4_OFFSET)
-MSVC_BEGIN(    ldmia sp!, {r4-r6, r8-r11, lr})
-MSVC_BEGIN(    add sp, sp, #12)
-MSVC_BEGIN(    bx lr)
-MSVC_BEGIN(ctiVMThrowTrampoline ENDP)
-MSVC_BEGIN()
-MSVC_BEGIN(ctiVMHandleException PROC)
-MSVC_BEGIN(    mov r0, r5)
-MSVC_BEGIN(    bl cti_vm_handle_exception)
-MSVC_BEGIN(    mov r5, r0)
-MSVC_BEGIN(    bx r1)
-MSVC_BEGIN(ctiVMHandleException ENDP)
 MSVC_BEGIN()
 
 MSVC(    EXPORT cti_#op#)
@@ -509,13 +444,6 @@ MSVC()
 MSVC_END(    END)
 */
 #endif // COMPILER(MSVC)
-
-
-static void performARMJITAssertions()
-{
-    ASSERT(OBJECT_OFFSETOF(struct JITStackFrame, thunkReturnAddress) == THUNK_RETURN_ADDRESS_OFFSET);
-    ASSERT(OBJECT_OFFSETOF(struct JITStackFrame, preservedR4) == PRESERVEDR4_OFFSET);
-}
 
 } // namespace JSC
 

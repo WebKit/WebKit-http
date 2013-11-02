@@ -29,8 +29,11 @@
 #import "WKBrowsingContextControllerInternal.h"
 
 #import "ObjCObjectGraph.h"
+#import "WKBackForwardListInternal.h"
+#import "WKBackForwardListItemInternal.h"
 #import "WKErrorCF.h"
 #import "WKFrame.h"
+#import "WKNSArray.h"
 #import "WKPagePrivate.h"
 #import "WKRetainPtr.h"
 #import "WKStringCF.h"
@@ -49,12 +52,12 @@ using namespace WebKit;
 
 static inline NSString *autoreleased(WKStringRef string)
 {
-    return CFBridgingRelease(WKStringCopyCFString(kCFAllocatorDefault, adoptWK(string).get()));
+    return string ? CFBridgingRelease(WKStringCopyCFString(kCFAllocatorDefault, adoptWK(string).get())) : nil;
 }
 
 static inline NSURL *autoreleased(WKURLRef url)
 {
-    return CFBridgingRelease(WKURLCopyCFURL(kCFAllocatorDefault, adoptWK(url).get()));
+    return url ? CFBridgingRelease(WKURLCopyCFURL(kCFAllocatorDefault, adoptWK(url).get())) : nil;
 }
 
 @interface WKBrowsingContextControllerData : NSObject {
@@ -252,6 +255,21 @@ static void releaseNSData(unsigned char*, const void* data)
     return WKPageCanGoBack(self._pageRef);
 }
 
+#if WK_API_ENABLED
+- (void)goToBackForwardListItem:(WKBackForwardListItem *)item
+{
+    toImpl(self._pageRef)->goToBackForwardItem(&item._item);
+}
+
+- (WKBackForwardList *)backForwardList
+{
+    WebBackForwardList* list = toImpl(self._pageRef)->backForwardList();
+    if (!list)
+        return nil;
+
+    return wrapper(*list);
+}
+#endif // WK_API_ENABLED
 
 #pragma mark Active Load Introspection
 
@@ -268,6 +286,11 @@ static void releaseNSData(unsigned char*, const void* data)
 - (NSURL *)committedURL
 {
     return autoreleased(WKPageCopyCommittedURL(self._pageRef));
+}
+
+- (double)estimatedProgress
+{
+    return toImpl(self._pageRef)->estimatedProgress();
 }
 
 #pragma mark Active Document Introspection
@@ -451,6 +474,40 @@ static void didFailLoadWithErrorForFrame(WKPageRef page, WKFrameRef frame, WKErr
     }
 }
 
+static void didStartProgress(WKPageRef page, const void* clientInfo)
+{
+    WKBrowsingContextController *browsingContext = (WKBrowsingContextController *)clientInfo;
+    if ([browsingContext.loadDelegate respondsToSelector:@selector(browsingContextControllerDidStartProgress:)])
+        [browsingContext.loadDelegate browsingContextControllerDidStartProgress:browsingContext];
+}
+
+static void didChangeProgress(WKPageRef page, const void* clientInfo)
+{
+    WKBrowsingContextController *browsingContext = (WKBrowsingContextController *)clientInfo;
+    if ([browsingContext.loadDelegate respondsToSelector:@selector(browsingContextController:estimatedProgressChangedTo:)])
+        [browsingContext.loadDelegate browsingContextController:browsingContext estimatedProgressChangedTo:toImpl(page)->estimatedProgress()];
+}
+
+static void didFinishProgress(WKPageRef page, const void* clientInfo)
+{
+    WKBrowsingContextController *browsingContext = (WKBrowsingContextController *)clientInfo;
+    if ([browsingContext.loadDelegate respondsToSelector:@selector(browsingContextControllerDidFinishProgress:)])
+        [browsingContext.loadDelegate browsingContextControllerDidFinishProgress:browsingContext];
+}
+
+#if WK_API_ENABLED
+static void didChangeBackForwardList(WKPageRef page, WKBackForwardListItemRef addedItem, WKArrayRef removedItems, const void *clientInfo)
+{
+    WKBrowsingContextController *browsingContext = (WKBrowsingContextController *)clientInfo;
+    if (![browsingContext.loadDelegate respondsToSelector:@selector(browsingContextControllerDidChangeBackForwardList:addedItem:removedItems:)])
+        return;
+
+    WKBackForwardListItem *added = addedItem ? wrapper(*toImpl(addedItem)) : nil;
+    NSArray *removed = removedItems ? wrapper(*toImpl(removedItems)) : nil;
+    [browsingContext.loadDelegate browsingContextControllerDidChangeBackForwardList:browsingContext addedItem:added removedItems:removed];
+}
+#endif // WK_API_ENABLED
+
 static void setUpPageLoaderClient(WKBrowsingContextController *browsingContext, WKPageRef pageRef)
 {
     WKPageLoaderClient loaderClient;
@@ -464,6 +521,14 @@ static void setUpPageLoaderClient(WKBrowsingContextController *browsingContext, 
     loaderClient.didCommitLoadForFrame = didCommitLoadForFrame;
     loaderClient.didFinishLoadForFrame = didFinishLoadForFrame;
     loaderClient.didFailLoadWithErrorForFrame = didFailLoadWithErrorForFrame;
+
+    loaderClient.didStartProgress = didStartProgress;
+    loaderClient.didChangeProgress = didChangeProgress;
+    loaderClient.didFinishProgress = didFinishProgress;
+
+#if WK_API_ENABLED
+    loaderClient.didChangeBackForwardList = didChangeBackForwardList;
+#endif
 
     WKPageSetPageLoaderClient(pageRef, &loaderClient);
 }

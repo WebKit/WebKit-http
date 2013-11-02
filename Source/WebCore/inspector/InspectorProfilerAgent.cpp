@@ -40,7 +40,6 @@
 #include "InjectedScriptHost.h"
 #include "InspectorConsoleAgent.h"
 #include "InspectorFrontend.h"
-#include "InspectorState.h"
 #include "InspectorValues.h"
 #include "InstrumentingAgents.h"
 #include "URL.h"
@@ -57,12 +56,6 @@
 
 namespace WebCore {
 
-namespace ProfilerAgentState {
-static const char userInitiatedProfiling[] = "userInitiatedProfiling";
-static const char profilerEnabled[] = "profilerEnabled";
-static const char profileHeadersRequested[] = "profileHeadersRequested";
-}
-
 static const char* const UserInitiatedProfileName = "org.webkit.profiles.user-initiated";
 static const char* const CPUProfileType = "CPU";
 static const char* const HeapProfileType = "HEAP";
@@ -70,8 +63,8 @@ static const char* const HeapProfileType = "HEAP";
 
 class PageProfilerAgent : public InspectorProfilerAgent {
 public:
-    PageProfilerAgent(InstrumentingAgents* instrumentingAgents, InspectorConsoleAgent* consoleAgent, Page* inspectedPage, InspectorCompositeState* state, InjectedScriptManager* injectedScriptManager)
-        : InspectorProfilerAgent(instrumentingAgents, consoleAgent, state, injectedScriptManager), m_inspectedPage(inspectedPage) { }
+    PageProfilerAgent(InstrumentingAgents* instrumentingAgents, InspectorConsoleAgent* consoleAgent, Page* inspectedPage, InjectedScriptManager* injectedScriptManager)
+        : InspectorProfilerAgent(instrumentingAgents, consoleAgent, injectedScriptManager), m_inspectedPage(inspectedPage) { }
     virtual ~PageProfilerAgent() { }
 
 private:
@@ -93,16 +86,16 @@ private:
     Page* m_inspectedPage;
 };
 
-PassOwnPtr<InspectorProfilerAgent> InspectorProfilerAgent::create(InstrumentingAgents* instrumentingAgents, InspectorConsoleAgent* consoleAgent, Page* inspectedPage, InspectorCompositeState* inspectorState, InjectedScriptManager* injectedScriptManager)
+PassOwnPtr<InspectorProfilerAgent> InspectorProfilerAgent::create(InstrumentingAgents* instrumentingAgents, InspectorConsoleAgent* consoleAgent, Page* inspectedPage, InjectedScriptManager* injectedScriptManager)
 {
-    return adoptPtr(new PageProfilerAgent(instrumentingAgents, consoleAgent, inspectedPage, inspectorState, injectedScriptManager));
+    return adoptPtr(new PageProfilerAgent(instrumentingAgents, consoleAgent, inspectedPage, injectedScriptManager));
 }
 
 #if ENABLE(WORKERS)
 class WorkerProfilerAgent : public InspectorProfilerAgent {
 public:
-    WorkerProfilerAgent(InstrumentingAgents* instrumentingAgents, InspectorConsoleAgent* consoleAgent, WorkerGlobalScope* workerGlobalScope, InspectorCompositeState* state, InjectedScriptManager* injectedScriptManager)
-        : InspectorProfilerAgent(instrumentingAgents, consoleAgent, state, injectedScriptManager), m_workerGlobalScope(workerGlobalScope) { }
+    WorkerProfilerAgent(InstrumentingAgents* instrumentingAgents, InspectorConsoleAgent* consoleAgent, WorkerGlobalScope* workerGlobalScope, InjectedScriptManager* injectedScriptManager)
+        : InspectorProfilerAgent(instrumentingAgents, consoleAgent, injectedScriptManager), m_workerGlobalScope(workerGlobalScope) { }
     virtual ~WorkerProfilerAgent() { }
 
 private:
@@ -121,18 +114,19 @@ private:
     WorkerGlobalScope* m_workerGlobalScope;
 };
 
-PassOwnPtr<InspectorProfilerAgent> InspectorProfilerAgent::create(InstrumentingAgents* instrumentingAgents, InspectorConsoleAgent* consoleAgent, WorkerGlobalScope* workerGlobalScope, InspectorCompositeState* inspectorState, InjectedScriptManager* injectedScriptManager)
+PassOwnPtr<InspectorProfilerAgent> InspectorProfilerAgent::create(InstrumentingAgents* instrumentingAgents, InspectorConsoleAgent* consoleAgent, WorkerGlobalScope* workerGlobalScope, InjectedScriptManager* injectedScriptManager)
 {
-    return adoptPtr(new WorkerProfilerAgent(instrumentingAgents, consoleAgent, workerGlobalScope, inspectorState, injectedScriptManager));
+    return adoptPtr(new WorkerProfilerAgent(instrumentingAgents, consoleAgent, workerGlobalScope, injectedScriptManager));
 }
 #endif
 
-InspectorProfilerAgent::InspectorProfilerAgent(InstrumentingAgents* instrumentingAgents, InspectorConsoleAgent* consoleAgent, InspectorCompositeState* inspectorState, InjectedScriptManager* injectedScriptManager)
-    : InspectorBaseAgent<InspectorProfilerAgent>("Profiler", instrumentingAgents, inspectorState)
+InspectorProfilerAgent::InspectorProfilerAgent(InstrumentingAgents* instrumentingAgents, InspectorConsoleAgent* consoleAgent, InjectedScriptManager* injectedScriptManager)
+    : InspectorBaseAgent<InspectorProfilerAgent>("Profiler", instrumentingAgents)
     , m_consoleAgent(consoleAgent)
     , m_injectedScriptManager(injectedScriptManager)
     , m_frontend(0)
     , m_enabled(false)
+    , m_profileHeadersRequested(false)
     , m_recordingCPUProfile(false)
     , m_currentUserInitiatedProfileNumber(-1)
     , m_nextUserInitiatedProfileNumber(1)
@@ -151,7 +145,7 @@ void InspectorProfilerAgent::addProfile(PassRefPtr<ScriptProfile> prpProfile, un
 {
     RefPtr<ScriptProfile> profile = prpProfile;
     m_profiles.add(profile->uid(), profile);
-    if (m_frontend && m_state->getBoolean(ProfilerAgentState::profileHeadersRequested))
+    if (m_frontend && m_profileHeadersRequested)
         m_frontend->addProfileHeader(createProfileHeader(*profile));
     addProfileFinishedMessageToConsole(profile, lineNumber, columnNumber, sourceURL);
 }
@@ -215,13 +209,11 @@ void InspectorProfilerAgent::enable(ErrorString*)
 {
     if (enabled())
         return;
-    m_state->setBoolean(ProfilerAgentState::profilerEnabled, true);
     enable(false);
 }
 
 void InspectorProfilerAgent::disable(ErrorString*)
 {
-    m_state->setBoolean(ProfilerAgentState::profilerEnabled, false);
     disable();
 }
 
@@ -230,7 +222,7 @@ void InspectorProfilerAgent::disable()
     if (!m_enabled)
         return;
     m_enabled = false;
-    m_state->setBoolean(ProfilerAgentState::profileHeadersRequested, false);
+    m_profileHeadersRequested = false;
     recompileScript();
 }
 
@@ -251,9 +243,9 @@ String InspectorProfilerAgent::getCurrentUserInitiatedProfileName(bool increment
     return makeString(UserInitiatedProfileName, '.', String::number(m_currentUserInitiatedProfileNumber));
 }
 
-void InspectorProfilerAgent::getProfileHeaders(ErrorString*, RefPtr<TypeBuilder::Array<TypeBuilder::Profiler::ProfileHeader> >& headers)
+void InspectorProfilerAgent::getProfileHeaders(ErrorString*, RefPtr<TypeBuilder::Array<TypeBuilder::Profiler::ProfileHeader>>& headers)
 {
-    m_state->setBoolean(ProfilerAgentState::profileHeadersRequested, true);
+    m_profileHeadersRequested = true;
     headers = TypeBuilder::Array<TypeBuilder::Profiler::ProfileHeader>::create();
 
     ProfilesMap::iterator profilesEnd = m_profiles.end();
@@ -332,7 +324,7 @@ void InspectorProfilerAgent::resetFrontendProfiles()
 {
     if (!m_frontend)
         return;
-    if (!m_state->getBoolean(ProfilerAgentState::profileHeadersRequested))
+    if (!m_profileHeadersRequested)
         return;
     if (m_profiles.isEmpty() && m_snapshots.isEmpty())
         m_frontend->resetProfiles();
@@ -351,23 +343,6 @@ void InspectorProfilerAgent::clearFrontend()
     disable(&error);
 }
 
-void InspectorProfilerAgent::restore()
-{
-    // Need to restore enablement state here as in setFrontend m_state wasn't loaded yet.
-    restoreEnablement();
-    resetFrontendProfiles();
-    if (m_state->getBoolean(ProfilerAgentState::userInitiatedProfiling))
-        start();
-}
-
-void InspectorProfilerAgent::restoreEnablement()
-{
-    if (m_state->getBoolean(ProfilerAgentState::profilerEnabled)) {
-        ErrorString error;
-        enable(&error);
-    }
-}
-
 void InspectorProfilerAgent::start(ErrorString*)
 {
     if (m_recordingCPUProfile)
@@ -381,7 +356,6 @@ void InspectorProfilerAgent::start(ErrorString*)
     startProfiling(title);
     addStartProfilingMessageToConsole(title, 0, 0, String());
     toggleRecordButton(true);
-    m_state->setBoolean(ProfilerAgentState::userInitiatedProfiling, true);
 }
 
 void InspectorProfilerAgent::stop(ErrorString*)
@@ -394,7 +368,6 @@ void InspectorProfilerAgent::stop(ErrorString*)
     if (profile)
         addProfile(profile, 0, 0, String());
     toggleRecordButton(false);
-    m_state->setBoolean(ProfilerAgentState::userInitiatedProfiling, false);
 }
 
 namespace {

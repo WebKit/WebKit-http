@@ -83,7 +83,7 @@ void PlatformCALayerWinInternal::displayCallback(CACFLayerRef caLayer, CGContext
         // smaller than the layer bounds (e.g. tiled layers)
         CGRect clipBounds = CGContextGetClipBoundingBox(context);
         IntRect clip(enclosingIntRect(clipBounds));
-        owner()->owner()->platformCALayerPaintContents(graphicsContext, clip);
+        owner()->owner()->platformCALayerPaintContents(owner(), graphicsContext, clip);
     }
 #ifndef NDEBUG
     else {
@@ -99,7 +99,7 @@ void PlatformCALayerWinInternal::displayCallback(CACFLayerRef caLayer, CGContext
     if (owner()->owner()->platformCALayerShowRepaintCounter(owner())) {
         FontCachePurgePreventer fontCachePurgePreventer;
 
-        String text = String::number(owner()->owner()->platformCALayerIncrementRepaintCount());
+        String text = String::number(owner()->owner()->platformCALayerIncrementRepaintCount(owner()));
 
         CGContextSaveGState(context);
 
@@ -331,7 +331,7 @@ void PlatformCALayerWinInternal::setBounds(const FloatRect& rect)
 
 void PlatformCALayerWinInternal::setFrame(const FloatRect& rect)
 {
-    CGRect oldFrame = owner()->frame();
+    CGRect oldFrame = CACFLayerGetFrame(owner()->platformLayer());
     if (CGRectEqualToRect(rect, oldFrame))
         return;
 

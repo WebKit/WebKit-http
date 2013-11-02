@@ -26,8 +26,13 @@
 #ifndef RemoteLayerTreeTransaction_h
 #define RemoteLayerTreeTransaction_h
 
-#include <WebCore/FloatPoint.h>
+#include "RemoteLayerBackingStore.h"
+#include <WebCore/Color.h>
+#include <WebCore/FilterOperations.h>
+#include <WebCore/FloatPoint3D.h>
 #include <WebCore/FloatSize.h>
+#include <WebCore/PlatformCALayer.h>
+#include <WebCore/TransformationMatrix.h>
 #include <wtf/HashMap.h>
 #include <wtf/text/WTFString.h>
 
@@ -38,16 +43,50 @@ class ArgumentEncoder;
 
 namespace WebKit {
 
-class RemoteGraphicsLayer;
+class PlatformCALayerRemote;
 
 class RemoteLayerTreeTransaction {
 public:
+    typedef uint64_t LayerID;
+
     enum LayerChange {
         NoChange = 0,
         NameChanged = 1 << 1,
         ChildrenChanged = 1 << 2,
         PositionChanged = 1 << 3,
         SizeChanged = 1 << 4,
+        BackgroundColorChanged = 1 << 5,
+        AnchorPointChanged = 1 << 6,
+        BorderWidthChanged = 1 << 7,
+        BorderColorChanged = 1 << 8,
+        OpacityChanged = 1 << 9,
+        TransformChanged = 1 << 10,
+        SublayerTransformChanged = 1 << 11,
+        HiddenChanged = 1 << 12,
+        GeometryFlippedChanged = 1 << 13,
+        DoubleSidedChanged = 1 << 14,
+        MasksToBoundsChanged = 1 << 15,
+        OpaqueChanged = 1 << 16,
+        MaskLayerChanged = 1 << 17,
+        ContentsRectChanged = 1 << 18,
+        ContentsScaleChanged = 1 << 19,
+        MinificationFilterChanged = 1 << 20,
+        MagnificationFilterChanged = 1 << 21,
+        SpeedChanged = 1 << 22,
+        TimeOffsetChanged = 1 << 23,
+        BackingStoreChanged = 1 << 24,
+        FiltersChanged = 1 << 25,
+        EdgeAntialiasingMaskChanged = 1 << 26
+    };
+
+    struct LayerCreationProperties {
+        LayerCreationProperties();
+
+        void encode(CoreIPC::ArgumentEncoder&) const;
+        static bool decode(CoreIPC::ArgumentDecoder&, LayerCreationProperties&);
+
+        LayerID layerID;
+        WebCore::PlatformCALayer::LayerType type;
     };
 
     struct LayerProperties {
@@ -56,12 +95,36 @@ public:
         void encode(CoreIPC::ArgumentEncoder&) const;
         static bool decode(CoreIPC::ArgumentDecoder&, LayerProperties&);
 
-        unsigned changedProperties;
+        void notePropertiesChanged(LayerChange layerChanges) { changedProperties = static_cast<LayerChange>(changedProperties | layerChanges); }
+
+        LayerChange changedProperties;
 
         String name;
-        Vector<uint64_t> children;
-        WebCore::FloatPoint position;
+        Vector<LayerID> children;
+        WebCore::FloatPoint3D position;
         WebCore::FloatSize size;
+        WebCore::Color backgroundColor;
+        WebCore::FloatPoint3D anchorPoint;
+        float borderWidth;
+        WebCore::Color borderColor;
+        float opacity;
+        WebCore::TransformationMatrix transform;
+        WebCore::TransformationMatrix sublayerTransform;
+        bool hidden;
+        bool geometryFlipped;
+        bool doubleSided;
+        bool masksToBounds;
+        bool opaque;
+        LayerID maskLayer;
+        WebCore::FloatRect contentsRect;
+        float contentsScale;
+        WebCore::PlatformCALayer::FilterType minificationFilter;
+        WebCore::PlatformCALayer::FilterType magnificationFilter;
+        float speed;
+        double timeOffset;
+        RemoteLayerBackingStore backingStore;
+        WebCore::FilterOperations filters;
+        unsigned edgeAntialiasingMask;
     };
 
     explicit RemoteLayerTreeTransaction();
@@ -70,19 +133,25 @@ public:
     void encode(CoreIPC::ArgumentEncoder&) const;
     static bool decode(CoreIPC::ArgumentDecoder&, RemoteLayerTreeTransaction&);
 
-    uint64_t rootLayerID() const { return m_rootLayerID; }
-    void setRootLayerID(uint64_t rootLayerID);
-    void layerPropertiesChanged(const RemoteGraphicsLayer*, unsigned changedProperties);
-    void setDestroyedLayerIDs(Vector<uint64_t>);
+    LayerID rootLayerID() const { return m_rootLayerID; }
+    void setRootLayerID(LayerID rootLayerID);
+    void layerPropertiesChanged(PlatformCALayerRemote*, LayerProperties&);
+    void setCreatedLayers(Vector<LayerCreationProperties>);
+    void setDestroyedLayerIDs(Vector<LayerID>);
 
-#ifndef NDEBUG
+#if !defined(NDEBUG)
     void dump() const;
 #endif
 
+    Vector<LayerCreationProperties> createdLayers() const { return m_createdLayers; }
+    HashMap<LayerID, LayerProperties> changedLayers() const { return m_changedLayerProperties; }
+    Vector<LayerID> destroyedLayers() const { return m_destroyedLayerIDs; }
+
 private:
-    uint64_t m_rootLayerID;
-    HashMap<uint64_t, LayerProperties> m_changedLayerProperties;
-    Vector<uint64_t> m_destroyedLayerIDs;
+    LayerID m_rootLayerID;
+    HashMap<LayerID, LayerProperties> m_changedLayerProperties;
+    Vector<LayerCreationProperties> m_createdLayers;
+    Vector<LayerID> m_destroyedLayerIDs;
 };
 
 } // namespace WebKit

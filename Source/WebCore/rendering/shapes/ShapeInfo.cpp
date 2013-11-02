@@ -39,16 +39,30 @@
 #include "Shape.h"
 
 namespace WebCore {
+
+
+bool checkShapeImageOrigin(Document& document, CachedImage& cachedImage)
+{
+    if (cachedImage.isOriginClean(document.securityOrigin()))
+        return true;
+
+    const URL& url = cachedImage.url();
+    String urlString = url.isNull() ? "''" : url.stringCenterEllipsizedToLength();
+    document.addConsoleMessage(SecurityMessageSource, ErrorMessageLevel, "Unsafe attempt to load URL " + urlString + ".");
+
+    return false;
+}
+
 template<class RenderType>
 const Shape* ShapeInfo<RenderType>::computedShape() const
 {
     if (Shape* shape = m_shape.get())
         return shape;
 
-    WritingMode writingMode = m_renderer->style()->writingMode();
-    Length margin = m_renderer->style()->shapeMargin();
-    Length padding = m_renderer->style()->shapePadding();
-    float shapeImageThreshold = m_renderer->style()->shapeImageThreshold();
+    WritingMode writingMode = m_renderer->style().writingMode();
+    Length margin = m_renderer->style().shapeMargin();
+    Length padding = m_renderer->style().shapePadding();
+    float shapeImageThreshold = m_renderer->style().shapeImageThreshold();
     const ShapeValue* shapeValue = this->shapeValue();
     ASSERT(shapeValue);
 

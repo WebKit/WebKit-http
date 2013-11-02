@@ -65,7 +65,7 @@ struct WidthIterator;
 enum FontDataVariant { AutoVariant, NormalVariant, SmallCapsVariant, EmphasisMarkVariant, BrokenIdeographVariant };
 enum Pitch { UnknownPitch, FixedPitch, VariablePitch };
 
-class SimpleFontData : public FontData {
+class SimpleFontData FINAL : public FontData {
 public:
     class AdditionalFontData {
         WTF_MAKE_FAST_ALLOCATED;
@@ -249,7 +249,7 @@ private:
     FontPlatformData m_platformData;
     OwnPtr<AdditionalFontData> m_fontData;
 
-    mutable OwnPtr<GlyphMetricsMap<FloatRect> > m_glyphToBoundsMap;
+    mutable OwnPtr<GlyphMetricsMap<FloatRect>> m_glyphToBoundsMap;
     mutable GlyphMetricsMap<float> m_glyphToWidthMap;
 
     bool m_treatAsFixedPitch;
@@ -301,11 +301,11 @@ private:
 #endif
 
 #if PLATFORM(MAC)
-    mutable HashMap<unsigned, RetainPtr<CFDictionaryRef> > m_CFStringAttributes;
+    mutable HashMap<unsigned, RetainPtr<CFDictionaryRef>> m_CFStringAttributes;
 #endif
 
 #if PLATFORM(MAC) || USE(HARFBUZZ)
-    mutable OwnPtr<HashMap<String, bool> > m_combiningCharacterSequenceSupport;
+    mutable OwnPtr<HashMap<String, bool>> m_combiningCharacterSequenceSupport;
 #endif
 
 #if PLATFORM(WIN)

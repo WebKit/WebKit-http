@@ -255,29 +255,21 @@ template <> inline bool isMatchingElement(const ClassNodeList* nodeList, Element
     return nodeList->nodeMatchesInlined(element);
 }
 
-static Node* previousNode(Node* base, Node* previous, bool onlyIncludeDirectChildren)
+static Node* previousNode(Node& base, Node* previous, bool onlyIncludeDirectChildren)
 {
-    return onlyIncludeDirectChildren ? previous->previousSibling() : NodeTraversal::previous(previous, base);
+    return onlyIncludeDirectChildren ? previous->previousSibling() : NodeTraversal::previous(previous, &base);
 }
 
-static inline Node* lastDescendent(Node* node)
+static Node* lastNode(Node& rootNode, bool onlyIncludeDirectChildren)
 {
-    node = node->lastChild();
-    for (Node* current = node; current; current = current->lastChild())
-        node = current;
-    return node;
-}
-
-static Node* lastNode(Node* rootNode, bool onlyIncludeDirectChildren)
-{
-    return onlyIncludeDirectChildren ? rootNode->lastChild() : lastDescendent(rootNode);
+    return onlyIncludeDirectChildren ? rootNode.lastChild() : rootNode.lastDescendant();
 }
 
 ALWAYS_INLINE Node* LiveNodeListBase::iterateForPreviousNode(Node* current) const
 {
     bool onlyIncludeDirectChildren = shouldOnlyIncludeDirectChildren();
     CollectionType collectionType = type();
-    Node* rootNode = this->rootNode();
+    Node& rootNode = this->rootNode();
     for (; current; current = previousNode(rootNode, current, onlyIncludeDirectChildren)) {
         if (isNodeList(collectionType)) {
             if (current->isElementNode() && isMatchingElement(static_cast<const LiveNodeList*>(this), toElement(current)))
@@ -324,7 +316,7 @@ inline Element* nextMatchingElement(const NodeListType* nodeList, Element* curre
 template <class NodeListType>
 inline Element* traverseMatchingElementsForwardToOffset(const NodeListType* nodeList, unsigned offset, Element* currentElement, unsigned& currentOffset, ContainerNode* root)
 {
-    ASSERT(currentOffset < offset);
+    ASSERT_WITH_SECURITY_IMPLICATION(currentOffset < offset);
     while ((currentElement = nextMatchingElement(nodeList, currentElement, root))) {
         if (++currentOffset == offset)
             return currentElement;
@@ -336,7 +328,7 @@ inline Element* traverseMatchingElementsForwardToOffset(const NodeListType* node
 inline Node* LiveNodeListBase::traverseChildNodeListForwardToOffset(unsigned offset, Node* currentNode, unsigned& currentOffset) const
 {
     ASSERT(type() == ChildNodeListType);
-    ASSERT(currentOffset < offset);
+    ASSERT_WITH_SECURITY_IMPLICATION(currentOffset < offset);
     while ((currentNode = currentNode->nextSibling())) {
         if (++currentOffset == offset)
             return currentNode;
@@ -548,7 +540,7 @@ inline Element* HTMLCollection::traverseNextElement(unsigned& offsetInArray, Ele
 
 inline Element* HTMLCollection::traverseForwardToOffset(unsigned offset, Element* currentElement, unsigned& currentOffset, unsigned& offsetInArray, ContainerNode* root) const
 {
-    ASSERT(currentOffset < offset);
+    ASSERT_WITH_SECURITY_IMPLICATION(currentOffset < offset);
     if (overridesItemAfter()) {
         offsetInArray = m_cachedElementsArrayOffset;
         while ((currentElement = virtualItemAfter(offsetInArray, currentElement))) {
@@ -671,7 +663,7 @@ PassRefPtr<NodeList> HTMLCollection::tags(const String& name)
 
 void HTMLCollection::append(NodeCacheMap& map, const AtomicString& key, Element* element)
 {
-    OwnPtr<Vector<Element*> >& vector = map.add(key.impl(), nullptr).iterator->value;
+    OwnPtr<Vector<Element*>>& vector = map.add(key.impl(), nullptr).iterator->value;
     if (!vector)
         vector = adoptPtr(new Vector<Element*>);
     vector->append(element);

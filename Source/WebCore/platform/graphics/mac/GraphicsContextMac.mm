@@ -99,6 +99,17 @@ static NSColor* makePatternColor(NSString* firstChoiceName, NSString* secondChoi
     return color;
 }
 
+static NSColor *spellingPatternColor = nullptr;
+static NSColor *grammarPatternColor = nullptr;
+static NSColor *correctionPatternColor = nullptr;
+
+void GraphicsContext::updateDocumentMarkerResources()
+{
+    spellingPatternColor = nullptr;
+    grammarPatternColor = nullptr;
+    correctionPatternColor = nullptr;
+}
+
 // WebKit on Mac is a standard platform component, so it must use the standard platform artwork for underline.
 void GraphicsContext::drawLineForDocumentMarker(const FloatPoint& point, float width, DocumentMarkerLineStyle style)
 {
@@ -116,7 +127,8 @@ void GraphicsContext::drawLineForDocumentMarker(const FloatPoint& point, float w
         {
             // Constants for spelling pattern color.
             static bool usingDotForSpelling = false;
-            static NSColor *spellingPatternColor = [makePatternColor(@"NSSpellingDot", @"SpellingDot", [NSColor redColor], usingDotForSpelling) retain];
+            if (!spellingPatternColor)
+                spellingPatternColor = [makePatternColor(@"NSSpellingDot", @"SpellingDot", [NSColor redColor], usingDotForSpelling) retain];
             usingDot = usingDotForSpelling;
             patternColor = spellingPatternColor;
             break;
@@ -125,7 +137,8 @@ void GraphicsContext::drawLineForDocumentMarker(const FloatPoint& point, float w
         {
             // Constants for grammar pattern color.
             static bool usingDotForGrammar = false;
-            static NSColor *grammarPatternColor = [makePatternColor(@"NSGrammarDot", @"GrammarDot", [NSColor greenColor], usingDotForGrammar) retain];
+            if (!grammarPatternColor)
+                grammarPatternColor = [makePatternColor(@"NSGrammarDot", @"GrammarDot", [NSColor greenColor], usingDotForGrammar) retain];
             usingDot = usingDotForGrammar;
             patternColor = grammarPatternColor;
             break;
@@ -137,9 +150,10 @@ void GraphicsContext::drawLineForDocumentMarker(const FloatPoint& point, float w
         {
             // Constants for spelling pattern color.
             static bool usingDotForSpelling = false;
-            static NSColor *spellingPatternColor = [makePatternColor(@"NSCorrectionDot", @"CorrectionDot", [NSColor blueColor], usingDotForSpelling) retain];
+            if (!correctionPatternColor)
+                correctionPatternColor = [makePatternColor(@"NSCorrectionDot", @"CorrectionDot", [NSColor blueColor], usingDotForSpelling) retain];
             usingDot = usingDotForSpelling;
-            patternColor = spellingPatternColor;
+            patternColor = correctionPatternColor;
             break;
         }
 #endif
@@ -150,15 +164,14 @@ void GraphicsContext::drawLineForDocumentMarker(const FloatPoint& point, float w
     FloatPoint offsetPoint = point;
 
     // Make sure to draw only complete dots.
-    // NOTE: Code here used to shift the underline to the left and increase the width
-    // to make sure everything gets underlined, but that results in drawing out of
-    // bounds (e.g. when at the edge of a view) and could make it appear that the
-    // space between adjacent misspelled words was underlined.
     if (usingDot) {
         // allow slightly more considering that the pattern ends with a transparent pixel
         float widthMod = fmodf(width, patternWidth);
         if (patternWidth - widthMod > cMisspellingLinePatternGapWidth) {
-            offsetPoint.move(widthMod / 2, 0);
+            float gapIncludeWidth = 0;
+            if (width > patternWidth)
+                gapIncludeWidth = cMisspellingLinePatternGapWidth;
+            offsetPoint.move(floor((widthMod + gapIncludeWidth) / 2), 0);
             width -= widthMod;
         }
     }

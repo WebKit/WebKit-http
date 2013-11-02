@@ -40,7 +40,7 @@ class HTMLSelectElement;
 
 class RenderListBox FINAL : public RenderBlockFlow, private ScrollableArea {
 public:
-    explicit RenderListBox(HTMLSelectElement&);
+    RenderListBox(HTMLSelectElement&, PassRef<RenderStyle>);
     virtual ~RenderListBox();
 
     HTMLSelectElement& selectElement() const;
@@ -123,6 +123,7 @@ private:
     virtual IntPoint lastKnownMousePosition() const OVERRIDE;
     virtual bool isHandlingWheelEvent() const OVERRIDE;
     virtual bool shouldSuspendScrollAnimations() const OVERRIDE;
+    virtual bool updatesScrollLayerPositionOnMainThread() const OVERRIDE { return true; }
 
     virtual ScrollableArea* enclosingScrollableArea() const OVERRIDE;
     virtual IntRect scrollableAreaBoundingBox() const OVERRIDE;
@@ -153,14 +154,7 @@ private:
     RefPtr<Scrollbar> m_vBar;
 };
 
-inline RenderListBox* toRenderListBox(RenderObject* object)
-{ 
-    ASSERT_WITH_SECURITY_IMPLICATION(!object || object->isListBox());
-    return static_cast<RenderListBox*>(object);
-}
-
-// This will catch anyone doing an unnecessary cast.
-void toRenderListBox(const RenderListBox*);
+RENDER_OBJECT_TYPE_CASTS(RenderListBox, isListBox())
 
 } // namepace WebCore
 

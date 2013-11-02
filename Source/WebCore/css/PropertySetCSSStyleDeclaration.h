@@ -68,7 +68,7 @@ private:
     virtual String getPropertyValueInternal(CSSPropertyID) OVERRIDE;
     virtual void setPropertyInternal(CSSPropertyID, const String& value, bool important, ExceptionCode&) OVERRIDE;
     
-    virtual PassRefPtr<MutableStylePropertySet> copyProperties() const OVERRIDE;
+    virtual PassRef<MutableStylePropertySet> copyProperties() const OVERRIDE;
 
     CSSValue* cloneAndCacheForCSSOM(CSSValue*);
     
@@ -78,13 +78,13 @@ protected:
     virtual void didMutate(MutationType) { }
 
     MutableStylePropertySet* m_propertySet;
-    OwnPtr<HashMap<CSSValue*, RefPtr<CSSValue> > > m_cssomCSSValueClones;
+    OwnPtr<HashMap<CSSValue*, RefPtr<CSSValue>>> m_cssomCSSValueClones;
 };
 
 class StyleRuleCSSStyleDeclaration : public PropertySetCSSStyleDeclaration
 {
 public:
-    static PassRefPtr<StyleRuleCSSStyleDeclaration> create(MutableStylePropertySet* propertySet, CSSRule* parentRule)
+    static PassRefPtr<StyleRuleCSSStyleDeclaration> create(MutableStylePropertySet& propertySet, CSSRule& parentRule)
     {
         return adoptRef(new StyleRuleCSSStyleDeclaration(propertySet, parentRule));
     }
@@ -95,10 +95,10 @@ public:
     virtual void ref() OVERRIDE;
     virtual void deref() OVERRIDE;
 
-    void reattach(MutableStylePropertySet*);
+    void reattach(MutableStylePropertySet&);
 
 private:
-    StyleRuleCSSStyleDeclaration(MutableStylePropertySet*, CSSRule*);
+    StyleRuleCSSStyleDeclaration(MutableStylePropertySet&, CSSRule&);
 
     virtual CSSStyleSheet* parentStyleSheet() const OVERRIDE;
 

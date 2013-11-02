@@ -48,7 +48,6 @@ MediaStreamSource::MediaStreamSource(const String& id, Type type, const String& 
     , m_type(type)
     , m_name(name)
     , m_readyState(New)
-    , m_stream(0)
     , m_enabled(true)
     , m_muted(false)
     , m_readonly(false)
@@ -63,7 +62,6 @@ MediaStreamSource::MediaStreamSource(const String& id, Type type, const String& 
 void MediaStreamSource::reset()
 {
     m_readyState = New;
-    m_stream = 0;
     m_enabled = true;
     m_muted = false;
     m_readonly = false;
@@ -76,8 +74,17 @@ void MediaStreamSource::setReadyState(ReadyState readyState)
         return;
 
     m_readyState = readyState;
-    for (Vector<Observer*>::iterator i = m_observers.begin(); i != m_observers.end(); ++i)
-        (*i)->sourceStateChanged();
+    for (auto observer = m_observers.begin(); observer != m_observers.end(); ++observer)
+        (*observer)->sourceReadyStateChanged();
+
+    if (m_readyState == Live) {
+        startProducingData();
+        return;
+    }
+    
+    // There are no more consumers of this source's data, shut it down as appropriate.
+    if (m_readyState == Ended)
+        stopProducingData();
 }
 
 void MediaStreamSource::addObserver(MediaStreamSource::Observer* observer)
@@ -90,25 +97,9 @@ void MediaStreamSource::removeObserver(MediaStreamSource::Observer* observer)
     size_t pos = m_observers.find(observer);
     if (pos != notFound)
         m_observers.remove(pos);
-}
 
-void MediaStreamSource::setStream(MediaStreamDescriptor* stream)
-{
-    // FIXME: A source should not need to know about its stream(s). This will be fixed as a part of
-    // https://bugs.webkit.org/show_bug.cgi?id=121954
-    m_stream = stream;
-}
-
-MediaConstraints* MediaStreamSource::constraints() const
-{
-    // FIXME: While this returns 
-    // https://bugs.webkit.org/show_bug.cgi?id=122428
-    return m_constraints.get();
-}
-    
-void MediaStreamSource::setConstraints(PassRefPtr<MediaConstraints> constraints)
-{
-    m_constraints = constraints;
+    if (!m_observers.size())
+        stop();
 }
 
 void MediaStreamSource::setMuted(bool muted)
@@ -121,47 +112,48 @@ void MediaStreamSource::setMuted(bool muted)
     if (m_readyState == Ended)
         return;
 
-    for (Vector<Observer*>::iterator i = m_observers.begin(); i != m_observers.end(); ++i)
-        (*i)->sourceMutedChanged();
+    for (auto observer = m_observers.begin(); observer != m_observers.end(); ++observer)
+        (*observer)->sourceMutedChanged();
 }
 
 void MediaStreamSource::setEnabled(bool enabled)
 {
+    if (!enabled) {
+        // Don't disable the source unless all observers are disabled.
+        for (auto observer = m_observers.begin(); observer != m_observers.end(); ++observer) {
+            if ((*observer)->observerIsEnabled())
+                return;
+        }
+    }
+
     if (m_enabled == enabled)
         return;
-    
+
     m_enabled = enabled;
 
     if (m_readyState == Ended)
         return;
-    
-    for (Vector<Observer*>::iterator i = m_observers.begin(); i != m_observers.end(); ++i)
-        (*i)->sourceEnabledChanged();
+
+    if (!enabled)
+        stopProducingData();
+    else
+        startProducingData();
+
+    for (auto observer = m_observers.begin(); observer != m_observers.end(); ++observer)
+        (*observer)->sourceEnabledChanged();
 }
 
 bool MediaStreamSource::readonly() const
 {
-    // http://www.w3.org/TR/mediacapture-streams/#widl-MediaStreamTrack-_readonly
-    // If the track (audio or video) is backed by a read-only source such as a file, or the track source 
-    // is a local microphone or camera, but is shared so that this track cannot modify any of the source's
-    // settings, the readonly attribute must return the value true. Otherwise, it must return the value false.
     return m_readonly;
 }
 
 void MediaStreamSource::stop()
 {
-    for (Vector<Observer*>::iterator i = m_observers.begin(); i != m_observers.end(); ++i) {
-        if (!(*i)->stopped())
-            return;
-    }
-
-    // There are no more consumers of this source's data, shut it down as appropriate.
+    // This is called from the track.stop() method, which should "Permanently stop the generation of data
+    // for track's source", so go straight to ended. This will notify any other tracks using this source
+    // that it is no longer available.
     setReadyState(Ended);
-
-    // http://www.w3.org/TR/mediacapture-streams/#widl-MediaStreamTrack-stop-void
-    // If the data is being generated from a live source (e.g., a microphone or camera), then the user 
-    // agent should remove any active "on-air" indicator for that source. If the data is being 
-    // generated from a prerecorded source (e.g. a video file), any remaining content in the file is ignored.
 }
 
 } // namespace WebCore
