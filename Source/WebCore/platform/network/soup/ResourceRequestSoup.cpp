@@ -43,7 +43,7 @@ void ResourceRequest::updateSoupMessage(SoupMessage* soupMessage) const
     if (!headers.isEmpty()) {
         HTTPHeaderMap::const_iterator end = headers.end();
         for (HTTPHeaderMap::const_iterator it = headers.begin(); it != end; ++it)
-            soup_message_headers_append(soupHeaders, it->first.string().utf8().data(), it->second.utf8().data());
+            soup_message_headers_append(soupHeaders, it->key.string().utf8().data(), it->value.utf8().data());
     }
 
     String firstPartyString = firstPartyForCookies().string();
@@ -66,7 +66,7 @@ SoupMessage* ResourceRequest::toSoupMessage() const
     if (!headers.isEmpty()) {
         HTTPHeaderMap::const_iterator end = headers.end();
         for (HTTPHeaderMap::const_iterator it = headers.begin(); it != end; ++it)
-            soup_message_headers_append(soupHeaders, it->first.string().utf8().data(), it->second.utf8().data());
+            soup_message_headers_append(soupHeaders, it->key.string().utf8().data(), it->value.utf8().data());
     }
 
     String firstPartyString = firstPartyForCookies().string();
@@ -122,6 +122,23 @@ unsigned initializeMaximumHTTPConnectionCountPerHost()
     // given to it, so that it is able to look ahead, and schedule
     // them in a good way.
     return 10000;
+}
+
+String ResourceRequest::urlStringForSoup() const
+{
+    // WebKit does not support fragment identifiers in data URLs, but soup does.
+    // Before passing the URL to soup, we should make sure to urlencode any '#'
+    // characters, so that soup does not interpret them as fragment identifiers.
+    // See http://wkbug.com/68089
+    if (m_url.protocolIsData()) {
+        String urlString = m_url.string();
+        urlString.replace("#", "%23");
+        return urlString;
+    }
+
+    KURL url = m_url;
+    url.removeFragmentIdentifier();
+    return url.string();
 }
 
 }

@@ -125,8 +125,8 @@ public:
 
 #if ENABLE(INSPECTOR)
     // Implemented in generated WebInspectorProxyMessageReceiver.cpp
-    void didReceiveWebInspectorProxyMessage(CoreIPC::Connection*, CoreIPC::MessageID, CoreIPC::ArgumentDecoder*);
-    void didReceiveSyncWebInspectorProxyMessage(CoreIPC::Connection*, CoreIPC::MessageID, CoreIPC::ArgumentDecoder*, OwnPtr<CoreIPC::ArgumentEncoder>&);
+    void didReceiveWebInspectorProxyMessage(CoreIPC::Connection*, CoreIPC::MessageID, CoreIPC::MessageDecoder&);
+    void didReceiveSyncWebInspectorProxyMessage(CoreIPC::Connection*, CoreIPC::MessageID, CoreIPC::MessageDecoder&, OwnPtr<CoreIPC::MessageEncoder>&);
 #endif
 
     static bool isInspectorPage(WebPageProxy*);
@@ -189,7 +189,7 @@ private:
     virtual void windowReceivedMessage(HWND, UINT message, WPARAM, LPARAM);
 #endif
 
-#if PLATFORM(GTK)
+#if PLATFORM(GTK) || PLATFORM(EFL)
     void createInspectorWindow();
 #endif
 

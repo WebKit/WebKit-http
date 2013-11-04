@@ -2,14 +2,14 @@ AC_PREREQ(2.60)
 
 m4_define([webkit_major_version], [1])
 m4_define([webkit_minor_version], [11])
-m4_define([webkit_micro_version], [0])
+m4_define([webkit_micro_version], [1])
 
 # This is the version we'll be using as part of our User-Agent string
 # e.g., AppleWebKit/$(webkit_user_agent_version) ...
 #
 # Sourced from Source/WebCore/Configurations/Version.xcconfig
 m4_define([webkit_user_agent_major_version], [537])
-m4_define([webkit_user_agent_minor_version], [4])
+m4_define([webkit_user_agent_minor_version], [16])
 
 AC_INIT([WebKitGTK],[webkit_major_version.webkit_minor_version.webkit_micro_version],[http://bugs.webkit.org/])
 
@@ -35,13 +35,13 @@ AC_CONFIG_SRCDIR([Source/WebCore/config.h])
 
 dnl # Libtool library version, not to confuse with API version
 dnl # see http://www.gnu.org/software/libtool/manual/html_node/Libtool-versioning.html
-LIBWEBKITGTK_VERSION=16:0:16
+LIBWEBKITGTK_VERSION=17:0:17
 AC_SUBST([LIBWEBKITGTK_VERSION])
 
-LIBJAVASCRIPTCOREGTK_VERSION=13:5:13
+LIBJAVASCRIPTCOREGTK_VERSION=13:6:13
 AC_SUBST([LIBJAVASCRIPTCOREGTK_VERSION])
 
-LIBWEBKIT2GTK_VERSION=17:0:17
+LIBWEBKIT2GTK_VERSION=18:0:18
 AC_SUBST([LIBWEBKIT2GTK_VERSION])
 
 AM_INIT_AUTOMAKE([foreign subdir-objects dist-xz no-dist-gzip tar-ustar])
@@ -390,6 +390,11 @@ AM_PATH_GLIB_2_0($GLIB_REQUIRED_VERSION, :, :, gmodule gobject gthread gio)
 if test -z "$GLIB_GENMARSHAL" || test -z "$GLIB_MKENUMS"; then
    AC_MSG_ERROR([You need the GLib dev tools in your path])
 fi
+
+# GResources
+GLIB_COMPILE_RESOURCES=`$PKG_CONFIG --variable glib_compile_resources gio-2.0`
+AC_SUBST(GLIB_COMPILE_RESOURCES)
+
 GLIB_GSETTINGS
 
 # Check and identify which unicode backend to use
@@ -547,11 +552,84 @@ AC_ARG_ENABLE(unstable_features,
               [],[enable_unstable_features="no"])
 AC_MSG_RESULT([$enable_unstable_features])
 
-found_opengl="no"
-if test "$with_target" = "x11"; then
-    AC_CHECK_HEADERS([GL/gl.h], [found_opengl="yes"], [])
-    AC_CHECK_HEADERS([GL/glx.h], [], [found_opengl="no"])
+found_opengl=no
+AC_ARG_ENABLE(glx,
+              AC_HELP_STRING([--enable-glx], [enable support for GLX [default=auto]]),
+              [], [enable_glx="auto"])
+AC_ARG_ENABLE(egl,
+              AC_HELP_STRING([--enable-egl], [enable support for EGL [default=auto]]),
+              [], [enable_egl="auto"])
+AC_ARG_ENABLE(gles2,
+              AC_HELP_STRING([--enable-gles2], [enable support for OpenGL ES 2 [default=auto]]),
+              [], [enable_gles2="auto"])
+
+have_glx=no
+AC_CHECK_HEADERS([GL/glx.h], [have_glx="yes"], [have_glx="no"])
+AC_MSG_CHECKING([whether to enable GLX support])
+if test "$enable_glx" != "no"; then
+   if test "$have_glx" = "no"; then
+      if test "$enable_glx" = "yes"; then
+         AC_MSG_ERROR([--enable-glx specified, but not available])
+      else
+         enable_glx=no
+      fi
+   elif test "$enable_gles2" != "yes"; then
+      enable_glx=yes
+   fi
 fi
+AC_MSG_RESULT([$enable_glx])
+
+have_egl=no
+AC_CHECK_HEADERS([EGL/egl.h], [have_egl="yes"], [have_egl="no"])
+AC_MSG_CHECKING([whether to enable EGL support])
+if test "$enable_egl" != "no"; then
+   if test "$have_egl" = "no"; then
+      if test "$enable_egl" = "yes"; then
+         AC_MSG_ERROR([--enable-egl specified, but not available])
+      else
+         enable_egl=no
+      fi
+   else
+      enable_egl=yes
+   fi
+fi
+AC_MSG_RESULT([$enable_egl])
+
+have_gles2=no
+AC_CHECK_HEADERS([GLES2/gl2.h], [have_gles2="yes"], [have_gles2="no"])
+AC_MSG_CHECKING([whether to use OpenGL ES 2 support])
+if test "$enable_glx" = "yes"; then
+   if test "$enable_gles2" = "yes"; then
+      AC_MSG_ERROR([Cannot enable OpenGL ES 2 support with GLX])
+   else
+      enable_gles2=no
+   fi
+fi
+if test "$enable_egl" = "no"; then
+   if test "$enable_gles2" = "yes"; then
+      AC_MSG_ERROR([Cannot enable OpenGL ES 2 support without EGL])
+   else
+      enable_gles2=no
+   fi
+fi
+if test "$enable_gles2" != "no"; then
+   if test "$have_gles2" = "no"; then
+      if test "$enable_gles2" = "yes"; then
+         AC_MSG_ERROR([--enable-gles2 specified, but not available])
+      else
+         enable_gles2=no
+      fi
+   else
+      enable_gles2=yes
+      found_opengl=yes
+   fi
+fi
+AC_MSG_RESULT([$enable_gles2])
+
+if test "$enable_gles2" != "yes"; then
+    AC_CHECK_HEADERS([GL/gl.h], [found_opengl="yes"], [])
+fi
+
 AC_MSG_CHECKING([which GPU acceleration backend to use])
 AC_ARG_WITH(acceleration_backend,
             AC_HELP_STRING([--with-acceleration-backend=@<:@opengl/clutter/none@:>@],
@@ -647,6 +725,14 @@ AC_ARG_ENABLE(media_stream,
               [],[enable_media_stream=$enable_unstable_features])
 AC_MSG_RESULT([$enable_media_stream])
 
+# check whether to enable XHR timeout support
+AC_MSG_CHECKING([whether to enable XHR timeout support])
+AC_ARG_ENABLE(xhr_timeout,
+              AC_HELP_STRING([--enable-xhr-timeout],
+                             [enable support for XHR timeout [default=yes]]),
+              [],[enable_xhr_timeout="yes"])
+AC_MSG_RESULT([$enable_xhr_timeout])
+
 # check whether to enable XSLT support
 AC_MSG_CHECKING([whether to enable XSLT support])
 AC_ARG_ENABLE(xslt,
@@ -722,6 +808,14 @@ AC_ARG_ENABLE(coverage,
               [],[enable_coverage="no"])
 AC_MSG_RESULT([$enable_coverage])
 
+# check whether to enable CSS conditional rules support
+AC_MSG_CHECKING([whether to enable CSS3 conditional rules support])
+AC_ARG_ENABLE(css3_conditional_rules,
+              AC_HELP_STRING([--enable-css3-conditional-rules],
+                             [enable CSS3 conditional rules support [default=no]]),
+              [],[enable_css3_conditional_rules="no"])
+AC_MSG_RESULT([$enable_css3_conditional_rules])
+
 # check whether to enable FastMalloc
 AC_MSG_CHECKING([whether to enable optimized memory allocator])
 AC_ARG_ENABLE(fast_malloc,
@@ -779,15 +873,23 @@ AC_ARG_ENABLE([introspection],
   [],[enable_introspection=no])
 AC_MSG_RESULT([$enable_introspection])
 
-# Enable css shaders if unstable_features, css_filters and
-# accelerated_compositing are turned on.
-AC_MSG_CHECKING([whether to enable CSS Shaders])
+# Enable CSS Filters and Shaders if unstable_features and accelerated_compositing are turned on.
+enable_css_filters=no;
+enable_css_shaders=no;
+AC_MSG_CHECKING([whether to enable CSS Filters and Shaders])
 if test "$enable_unstable_features" = "yes" && test "$enable_accelerated_compositing" = "yes" && test "$with_acceleration_backend" = "opengl"; then
-    enable_css_shaders=yes;
     enable_css_filters=yes;
+    enable_css_shaders=yes;
 fi
 AC_MSG_RESULT([$enable_css_filters])
-AC_MSG_RESULT([$enable_css_shaders])
+
+# CSS Device Adaptation
+AC_MSG_CHECKING([whether to enable CSS Device Adaptation])
+AC_ARG_ENABLE(css_device_adaptation,
+              AC_HELP_STRING([--enable-css-device-adaptation],
+                             [enable support for CSS Device Adaptation [default=no]]),
+              [],[enable_css_device_adaptation="no"])
+AC_MSG_RESULT([$enable_css_device_adaptation])
 
 G_IR_SCANNER=
 G_IR_COMPILER=
@@ -926,7 +1028,7 @@ if test "$enable_video" = "yes" || test "$enable_web_audio" = "yes"; then
    AC_SUBST([GSTREAMER_LIBS])
 fi
 
-
+acceleration_backend_description=$with_acceleration_backend
 if test "$with_acceleration_backend" = "clutter"; then
    PKG_CHECK_MODULES(CLUTTER, clutter-1.0 >= $CLUTTER_REQUIRED_VERSION)
    PKG_CHECK_MODULES([CLUTTER_GTK],
@@ -939,19 +1041,24 @@ if test "$with_acceleration_backend" = "clutter"; then
 fi
 
 if test "$with_acceleration_backend" = "opengl"; then
-    OPENGL_LIBS="-lGL -ldl"
+   if test "$enable_gles2" = "yes"; then
+    acceleration_backend_description+= "(gles2"
+    OPENGL_LIBS="-lGLESv2"
+   else
+    acceleration_backend_description+="(gl"
+    OPENGL_LIBS="-lGL"
+   fi
+   if test "$enable_egl" = "yes"; then
+    acceleration_backend_description+=", egl"
+    OPENGL_LIBS+=" -lEGL"
+   fi
+   if test "$enable_glx" = "yes"; then
+    acceleration_backend_description+=", glx"
+   fi
+   OPENGL_LIBS+=" -ldl"
+   acceleration_backend_description+=")"
 fi
 AC_SUBST([OPENGL_LIBS])
-
-# check if atspi2 is available (only needed for Webkit2 unit tests)
-if test "$enable_webkit2" = "yes"; then
-   PKG_CHECK_MODULES([ATSPI2],
-                     [atspi-2 >= $ATSPI2_REQUIRED_VERSION],
-                     [have_atspi2=yes], [have_atspi2=no])
-
-   AC_SUBST([ATSPI2_CFLAGS])
-   AC_SUBST([ATSPI2_LIBS])
-fi
 
 if test "$enable_gamepad" = "yes"; then
    PKG_CHECK_MODULES([GAMEPAD], [gio-unix-2.0 gudev-1.0])
@@ -1013,6 +1120,16 @@ AC_SUBST(GTK2_LIBS)
 
 GTK_DOC_CHECK([1.10])
 
+# We need atspi2 for Webkit2 unit tests
+if test "$enable_webkit2" = "yes"; then
+   PKG_CHECK_MODULES([ATSPI2],
+                     [atspi-2 >= $ATSPI2_REQUIRED_VERSION],
+                     [have_atspi2=yes], [have_atspi2=no])
+
+   AC_SUBST([ATSPI2_CFLAGS])
+   AC_SUBST([ATSPI2_LIBS])
+fi
+
 # OS conditionals
 AM_CONDITIONAL([OS_WIN32],[test "$os_win32" = "yes"])
 AM_CONDITIONAL([OS_UNIX],[test "$os_win32" = "no"])
@@ -1048,8 +1165,10 @@ AM_CONDITIONAL([USE_TEXTURE_MAPPER_GL], [test "$enable_accelerated_compositing" 
 AM_CONDITIONAL([USE_CLUTTER], [test "$with_acceleration_backend" = "clutter"])
 
 # These are the same now, but they will soon be separate.
-AM_CONDITIONAL([USE_GLX], [test "$with_acceleration_backend" = "opengl"])
 AM_CONDITIONAL([USE_OPENGL], [test "$with_acceleration_backend" = "opengl"])
+AM_CONDITIONAL([USE_EGL], [test "$enable_egl" = "yes"])
+AM_CONDITIONAL([USE_GLES2], [test "$enable_gles2" = "yes"])
+AM_CONDITIONAL([USE_GLX], [test "$enable_glx" = "yes"])
 
 # IndexedDB implies LevelDB, but other features may one day require LevelDB.
 AM_CONDITIONAL([ENABLE_INDEXED_DATABASE],[test "$enable_indexed_database" = "yes"])
@@ -1063,6 +1182,7 @@ AM_CONDITIONAL([ENABLE_DEBUG],[test "$enable_debug_features" = "yes"])
 AM_CONDITIONAL([ENABLE_UNSTABLE_FEATURES],[test "$enable_unstable_features" = "yes"])
 AM_CONDITIONAL([ENABLE_WEBGL],[test "$enable_webgl" = "yes"])
 AM_CONDITIONAL([ENABLE_GAMEPAD],[test "$enable_gamepad" = "yes"])
+AM_CONDITIONAL([ENABLE_XHR_TIMEOUT],[test "$enable_xhr_timeout" = "yes"])
 AM_CONDITIONAL([ENABLE_XSLT],[test "$enable_xslt" = "yes"])
 AM_CONDITIONAL([ENABLE_FILTERS],[test "$enable_filters" = "yes"])
 AM_CONDITIONAL([ENABLE_GEOLOCATION], [test "$enable_geolocation" = "yes"])
@@ -1071,12 +1191,14 @@ AM_CONDITIONAL([ENABLE_MEDIA_STREAM],[test "$enable_media_stream" = "yes"])
 AM_CONDITIONAL([ENABLE_SVG],[test "$enable_svg" = "yes"])
 AM_CONDITIONAL([ENABLE_SVG_FONTS],[test "$enable_svg_fonts" = "yes"])
 AM_CONDITIONAL([ENABLE_COVERAGE],[test "$enable_coverage" = "yes"])
+AM_CONDITIONAL([ENABLE_CSS3_CONDITIONAL_RULES],[test "$enable_css3_conditional_rules" = "yes"])
 AM_CONDITIONAL([ENABLE_FAST_MALLOC],[test "$enable_fast_malloc" = "yes"])
 AM_CONDITIONAL([ENABLE_WEB_AUDIO],[test "$enable_web_audio" = "yes"])
 AM_CONDITIONAL([ENABLE_OPCODE_STATS],[test "$enable_opcode_stats" = "yes"])
 AM_CONDITIONAL([ENABLE_WEBKIT2],[test "$enable_webkit2" = "yes"])
 AM_CONDITIONAL([ENABLE_PLUGIN_PROCESS],[test "$enable_plugin_process" = "yes"])
 AM_CONDITIONAL([ENABLE_SPELLCHECK],[test "$enable_spellcheck" = "yes"])
+AM_CONDITIONAL([ENABLE_CSS_DEVICE_ADAPTATION],[test "$enable_css_device_adaptation" = "yes"])
 AM_CONDITIONAL([ENABLE_CSS_FILTERS],[test "$enable_css_filters" = "yes"])
 AM_CONDITIONAL([ENABLE_CSS_SHADERS],[test "$enable_css_shaders" = "yes"])
 
@@ -1090,6 +1212,7 @@ GNUmakefile
 
 AC_CONFIG_FILES([
 Source/WebKit/gtk/webkit/webkitversion.h
+Source/WebKit/gtk/po/POTFILES
 DerivedSources/WebCore/UserAgentGtk.h:Source/WebCore/platform/gtk/UserAgentGtk.h.in
 ])
 
@@ -1128,11 +1251,12 @@ Build configuration:
  Unicode backend                                          : $with_unicode_backend
  Font backend                                             : $with_font_backend
  Optimized memory allocator                               : $enable_fast_malloc
- Accelerated rendering backend                            : $with_acceleration_backend
+ Accelerated rendering backend                            : $acceleration_backend_description
 
 Features:
 =======
  Accelerated Compositing                                  : $enable_accelerated_compositing
+ CSS3 Conditional Rules support                           : $enable_css3_conditional_rules
  Filters support                                          : $enable_filters
  Gamepad support                                          : $enable_gamepad
  Geolocation support                                      : $enable_geolocation
@@ -1145,6 +1269,7 @@ Features:
  Spellcheck support                                       : $enable_spellcheck
  Web Audio support                                        : $enable_web_audio
  WebGL                                                    : $enable_webgl
+ XHR timeout support                                      : $enable_xhr_timeout
  XSLT support                                             : $enable_xslt
 
 WebKit2 support:

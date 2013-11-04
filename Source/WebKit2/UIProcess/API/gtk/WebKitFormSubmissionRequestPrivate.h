@@ -23,6 +23,6 @@
 #include "WebKitFormSubmissionRequest.h"
 #include "WebKitPrivate.h"
 
-WebKitFormSubmissionRequest* webkitFormSubmissionRequestCreate(WKDictionaryRef, WKFormSubmissionListenerRef);
+WebKitFormSubmissionRequest* webkitFormSubmissionRequestCreate(WebKit::ImmutableDictionary* values, WebKit::WebFormSubmissionListenerProxy*);
 
 #endif // WebKitFormSubmissionRequestPrivate_h

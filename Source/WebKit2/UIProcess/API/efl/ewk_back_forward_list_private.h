@@ -26,12 +26,40 @@
 #ifndef ewk_back_forward_list_private_h
 #define ewk_back_forward_list_private_h
 
+#include "WKRetainPtr.h"
+#include "ewk_back_forward_list_item_private.h"
 #include <WebKit2/WKBase.h>
+#include <wtf/HashMap.h>
+#include <wtf/PassOwnPtr.h>
 
-typedef struct _Ewk_Back_Forward_List Ewk_Back_Forward_List;
+typedef HashMap<WKBackForwardListItemRef, RefPtr<Ewk_Back_Forward_List_Item> > ItemsMap;
 
-void ewk_back_forward_list_changed(Ewk_Back_Forward_List*, WKBackForwardListItemRef wkAddedItem, WKArrayRef wkRemovedItems);
-Ewk_Back_Forward_List* ewk_back_forward_list_new(WKBackForwardListRef wkBackForwardListRef);
-void ewk_back_forward_list_free(Ewk_Back_Forward_List* list);
+class Ewk_Back_Forward_List {
+public:
+    static PassOwnPtr<Ewk_Back_Forward_List> create(WKBackForwardListRef listRef)
+    {
+        return adoptPtr(new Ewk_Back_Forward_List(listRef));
+    }
+
+    Ewk_Back_Forward_List_Item* previousItem() const;
+    Ewk_Back_Forward_List_Item* currentItem() const;
+    Ewk_Back_Forward_List_Item* nextItem() const;
+    Ewk_Back_Forward_List_Item* itemAt(int index) const;
+
+    WKRetainPtr<WKArrayRef> backList(int limit = -1) const;
+    WKRetainPtr<WKArrayRef> forwardList(int limit = -1) const;
+    unsigned size() const;
+
+    void update(WKBackForwardListItemRef wkAddedItem, WKArrayRef wkRemovedItems);
+    Eina_List* createEinaList(WKArrayRef wkList) const;
+
+private:
+    explicit Ewk_Back_Forward_List(WKBackForwardListRef listRef);
+
+    Ewk_Back_Forward_List_Item* getFromCacheOrCreate(WKBackForwardListItemRef wkItem) const;
+
+    WKRetainPtr<WKBackForwardListRef> m_wkList;
+    mutable ItemsMap m_wrapperCache;
+};
 
 #endif // ewk_back_forward_list_private_h

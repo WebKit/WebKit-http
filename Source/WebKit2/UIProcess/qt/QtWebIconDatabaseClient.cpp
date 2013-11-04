@@ -22,7 +22,6 @@
 
 #include "Image.h"
 #include "KURL.h"
-#include "QtWebContext.h"
 #include "SharedBuffer.h"
 #include "WKURLQt.h"
 #include "WebContext.h"
@@ -40,11 +39,9 @@ static inline QtWebIconDatabaseClient* toQtWebIconDatabaseClient(const void* cli
     return reinterpret_cast<QtWebIconDatabaseClient*>(const_cast<void*>(clientInfo));
 }
 
-QtWebIconDatabaseClient::QtWebIconDatabaseClient(QtWebContext *qtWebContext)
+QtWebIconDatabaseClient::QtWebIconDatabaseClient(WebContext *context)
 {
-    m_contextId = qtWebContext->contextID();
     // The setter calls the getter here as it triggers the startup of the icon database.
-    WebContext* context = qtWebContext->context();
     if (!context->iconDatabase()->isOpen())
         context->setIconDatabasePath(context->iconDatabasePath());
     m_iconDatabase = context->iconDatabase();
@@ -59,6 +56,7 @@ QtWebIconDatabaseClient::QtWebIconDatabaseClient(QtWebContext *qtWebContext)
 
 QtWebIconDatabaseClient::~QtWebIconDatabaseClient()
 {
+    m_iconDatabase->close();
     WKIconDatabaseSetIconDatabaseClient(toAPI(m_iconDatabase.get()), 0);
 }
 
@@ -90,11 +88,11 @@ QImage QtWebIconDatabaseClient::iconImageForPageURL(const WTF::String& pageURL, 
 
     WebCore::IntSize size(iconSize.width(), iconSize.height());
 
-    QImage* nativeImage = m_iconDatabase->nativeImageForPageURL(pageURL, size);
+    QPixmap* nativeImage = m_iconDatabase->nativeImageForPageURL(pageURL, size);
     if (!nativeImage)
         return QImage();
 
-    return *nativeImage;
+    return nativeImage->toImage();
 }
 
 void QtWebIconDatabaseClient::retainIconForPageURL(const String& pageURL)

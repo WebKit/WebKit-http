@@ -77,7 +77,7 @@ public:
         LayerHostingMode layerHostingMode;
 #endif
 
-        void encode(CoreIPC::ArgumentEncoder*) const;
+        void encode(CoreIPC::ArgumentEncoder&) const;
         static bool decode(CoreIPC::ArgumentDecoder*, Parameters&);
     };
 
@@ -187,6 +187,15 @@ public:
 
     // Tells the plug-in to handle the passed in keyboard event. The plug-in should return true if it processed the event.
     virtual bool handleKeyboardEvent(const WebKeyboardEvent&) = 0;
+    
+    // Tells the plug-in to handle the passed in editing command. The plug-in should return true if it executed the command.
+    virtual bool handleEditingCommand(const String& commandName, const String& argument) = 0;
+    
+    // Ask the plug-in whether it will be able to handle the given editing command.
+    virtual bool isEditingCommandEnabled(const String&) = 0;
+    
+    // Ask the plug-in whether it wants to override full-page zoom.
+    virtual bool handlesPageScaleFactor() = 0;
     
     // Tells the plug-in about focus changes.
     virtual void setFocus(bool) = 0;

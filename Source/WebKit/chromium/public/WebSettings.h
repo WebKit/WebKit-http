@@ -74,6 +74,7 @@ public:
     virtual void setApplyDefaultDeviceScaleFactorInCompositor(bool) = 0;
     virtual void setApplyPageScaleFactorInCompositor(bool) = 0;
     virtual void setAsynchronousSpellCheckingEnabled(bool) = 0;
+    virtual void setAutoZoomFocusedNodeToLegibleScale(bool) = 0;
     virtual void setAuthorAndUserStylesEnabled(bool) = 0;
     virtual void setCaretBrowsingEnabled(bool) = 0;
     virtual void setCookieEnabled(bool) = 0;
@@ -85,9 +86,11 @@ public:
     virtual void setDefaultTextEncodingName(const WebString&) = 0;
     virtual void setDefaultTileSize(WebSize) = 0;
     virtual void setDeferred2dCanvasEnabled(bool) = 0;
+    virtual void setDeferredImageDecodingEnabled(bool) = 0;
     virtual void setDeveloperExtrasEnabled(bool) = 0;
     virtual void setDeviceSupportsMouse(bool) = 0;
     virtual void setDeviceSupportsTouch(bool) = 0;
+    virtual void setDoubleTapToZoomEnabled(bool) = 0;
     virtual void setDownloadableBinaryFontsEnabled(bool) = 0;
     virtual void setEditableLinkBehaviorNeverLive() = 0;
     virtual void setEditingBehavior(EditingBehavior) = 0;
@@ -138,12 +141,14 @@ public:
     virtual void setSansSerifFontFamily(const WebString&, UScriptCode = USCRIPT_COMMON) = 0;
     virtual void setSerifFontFamily(const WebString&, UScriptCode = USCRIPT_COMMON) = 0;
     virtual void setShouldPrintBackgrounds(bool) = 0;
+    virtual void setShouldRespectImageOrientation(bool) = 0;
     virtual void setShowDebugBorders(bool) = 0;
     virtual void setShowFPSCounter(bool) = 0;
     virtual void setShowPaintRects(bool) = 0;
     virtual void setShowPlatformLayerTree(bool) = 0;
     virtual void setShrinksStandaloneImagesToFit(bool) = 0;
     virtual void setStandardFontFamily(const WebString&, UScriptCode = USCRIPT_COMMON) = 0;
+    virtual void setSupportsMultipleWindows(bool) = 0;
     virtual void setSyncXHRInDocumentsEnabled(bool) = 0;
     virtual void setTextAreasAreResizable(bool) = 0;
     virtual void setTextAutosizingEnabled(bool) = 0;

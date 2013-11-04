@@ -60,6 +60,7 @@
 #include "HTMLAreaElement.h"
 #include "HTMLImageElement.h"
 #include "HTMLInputElement.h"
+#include "HTMLLabelElement.h"
 #include "HTMLNames.h"
 #if ENABLE(VIDEO)
 #include "MediaControlElements.h"
@@ -94,7 +95,7 @@ AXObjectCache::~AXObjectCache()
 {
     HashMap<AXID, RefPtr<AccessibilityObject> >::iterator end = m_objects.end();
     for (HashMap<AXID, RefPtr<AccessibilityObject> >::iterator it = m_objects.begin(); it != end; ++it) {
-        AccessibilityObject* obj = (*it).second.get();
+        AccessibilityObject* obj = (*it).value.get();
         detachWrapper(obj);
         obj->detach();
         removeAXID(obj);
@@ -316,8 +317,14 @@ AccessibilityObject* AXObjectCache::getOrCreate(Node* node)
     if (node->renderer())
         return getOrCreate(node->renderer());
 
+    if (!node->parentElement())
+        return 0;
+    
     // It's only allowed to create an AccessibilityObject from a Node if it's in a canvas subtree.
-    if (!node->parentElement() || !node->parentElement()->isInCanvasSubtree())
+    // Or if it's a hidden element, but we still want to expose it because of other ARIA attributes.
+    bool inCanvasSubtree = node->parentElement()->isInCanvasSubtree();
+    bool isHidden = !node->renderer() && isNodeAriaVisible(node);
+    if (!inCanvasSubtree && !isHidden)
         return 0;
 
     RefPtr<AccessibilityObject> newObj = createFromNode(node);
@@ -327,6 +334,9 @@ AccessibilityObject* AXObjectCache::getOrCreate(Node* node)
     m_nodeObjectMapping.set(node, newObj->axObjectID());
     m_objects.set(newObj->axObjectID(), newObj);
     attachWrapper(newObj.get());
+
+    newObj->setCachedIsIgnoredValue(newObj->accessibilityIsIgnored());
+
     return newObj.get();
 }
 
@@ -345,6 +355,9 @@ AccessibilityObject* AXObjectCache::getOrCreate(RenderObject* renderer)
     m_renderObjectMapping.set(renderer, newObj->axObjectID());
     m_objects.set(newObj->axObjectID(), newObj);
     attachWrapper(newObj.get());
+
+    newObj->setCachedIsIgnoredValue(newObj->accessibilityIsIgnored());
+
     return newObj.get();
 }
     
@@ -521,16 +534,26 @@ void AXObjectCache::removeAXID(AccessibilityObject* object)
     m_idsInUse.remove(objID);
 }
 
-void AXObjectCache::contentChanged(Node* node)
+void AXObjectCache::textChanged(Node* node)
 {
-    if (AccessibilityObject* object = getOrCreate(node))
-        object->contentChanged(); 
+    textChanged(getOrCreate(node));
 }
 
-void AXObjectCache::contentChanged(RenderObject* renderer)
+void AXObjectCache::textChanged(RenderObject* renderer)
 {
-    if (AccessibilityObject* object = getOrCreate(renderer))
-        object->contentChanged(); 
+    textChanged(getOrCreate(renderer));
+}
+
+void AXObjectCache::textChanged(AccessibilityObject* obj)
+{
+    if (!obj)
+        return;
+
+    bool parentAlreadyExists = obj->parentObjectIfExists();
+    obj->textChanged();
+    postNotification(obj, obj->document(), AXObjectCache::AXTextChanged, true);
+    if (parentAlreadyExists)
+        obj->notifyIfIgnoredValueChanged();
 }
 
 void AXObjectCache::updateCacheAfterNodeIsAttached(Node* node)
@@ -542,14 +565,23 @@ void AXObjectCache::updateCacheAfterNodeIsAttached(Node* node)
 
 void AXObjectCache::childrenChanged(Node* node)
 {
-    if (AccessibilityObject* obj = get(node))
-        obj->childrenChanged();
+    childrenChanged(get(node));
 }
 
 void AXObjectCache::childrenChanged(RenderObject* renderer)
 {
-    if (AccessibilityObject* obj = get(renderer))
-        obj->childrenChanged();
+    childrenChanged(get(renderer));
+}
+
+void AXObjectCache::childrenChanged(AccessibilityObject* obj)
+{
+    if (!obj)
+        return;
+
+    obj->childrenChanged();
+
+    if (obj->parentObjectIfExists() && obj->cachedIsIgnoredValue() != obj->accessibilityIsIgnored())
+        childrenChanged(obj->parentObject());
 }
     
 void AXObjectCache::notificationPostTimerFired(Timer<AXObjectCache>*)
@@ -700,8 +732,55 @@ void AXObjectCache::handleActiveDescendantChanged(Node* node)
 
 void AXObjectCache::handleAriaRoleChanged(Node* node)
 {
-    if (AccessibilityObject* obj = getOrCreate(node))
+    if (AccessibilityObject* obj = getOrCreate(node)) {
         obj->updateAccessibilityRole();
+        obj->notifyIfIgnoredValueChanged();
+    }
+}
+
+void AXObjectCache::handleAttributeChanged(const QualifiedName& attrName, Element* element)
+{
+    if (attrName == roleAttr)
+        handleAriaRoleChanged(element);
+    else if (attrName == altAttr || attrName == titleAttr)
+        textChanged(element);
+    else if (attrName == forAttr && element->hasTagName(labelTag))
+        labelChanged(element);
+
+    if (!attrName.localName().string().startsWith("aria-"))
+        return;
+
+    if (attrName == aria_activedescendantAttr)
+        handleActiveDescendantChanged(element);
+    else if (attrName == aria_valuenowAttr || attrName == aria_valuetextAttr)
+        postNotification(element, AXObjectCache::AXValueChanged, true);
+    else if (attrName == aria_labelAttr || attrName == aria_labeledbyAttr || attrName == aria_labelledbyAttr)
+        textChanged(element);
+    else if (attrName == aria_checkedAttr)
+        checkedStateChanged(element);
+    else if (attrName == aria_selectedAttr)
+        selectedChildrenChanged(element);
+    else if (attrName == aria_expandedAttr)
+        handleAriaExpandedChange(element);
+    else if (attrName == aria_hiddenAttr)
+        childrenChanged(element->parentNode());
+    else if (attrName == aria_invalidAttr)
+        postNotification(element, AXObjectCache::AXInvalidStatusChanged, true);
+    else
+        postNotification(element, AXObjectCache::AXAriaAttributeChanged, true);
+}
+
+void AXObjectCache::labelChanged(Element* element)
+{
+    ASSERT(element->hasTagName(labelTag));
+    HTMLElement* correspondingControl = static_cast<HTMLLabelElement*>(element)->control();
+    textChanged(correspondingControl);
+}
+
+void AXObjectCache::recomputeIsIgnored(RenderObject* renderer)
+{
+    if (AccessibilityObject* obj = get(renderer))
+        obj->notifyIfIgnoredValueChanged();
 }
 
 VisiblePosition AXObjectCache::visiblePositionForTextMarkerData(TextMarkerData& textMarkerData)
@@ -782,6 +861,17 @@ bool AXObjectCache::nodeIsTextControl(const Node* node)
 
     const AccessibilityObject* axObject = getOrCreate(const_cast<Node*>(node));
     return axObject && axObject->isTextControl();
+}
+    
+bool isNodeAriaVisible(Node* node)
+{
+    if (!node)
+        return false;
+    
+    if (!node->isElementNode())
+        return false;
+    
+    return equalIgnoringCase(toElement(node)->getAttribute(aria_hiddenAttr), "false");
 }
 
 } // namespace WebCore

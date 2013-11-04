@@ -60,15 +60,15 @@ WorkerScriptController::WorkerScriptController(WorkerContext* workerContext)
     , m_executionScheduledToTerminate(false)
 {
     V8PerIsolateData* data = V8PerIsolateData::create(m_isolate);
-    data->allStores().append(&m_DOMDataStore);
-    data->setDOMDataStore(&m_DOMDataStore);
     m_isolate->Enter();
+    m_domDataStore = adoptPtr(new DOMDataStore(DOMDataStore::Worker));
+    data->setDOMDataStore(m_domDataStore.get());
     m_proxy = adoptPtr(new WorkerContextExecutionProxy(workerContext));
 }
 
 WorkerScriptController::~WorkerScriptController()
 {
-    removeAllDOMObjects();
+    m_domDataStore.clear();
 #if PLATFORM(CHROMIUM)
     // The corresponding call to didStartWorkerRunLoop is in
     // WorkerThread::workerThread().
@@ -132,9 +132,9 @@ bool WorkerScriptController::isExecutionForbidden() const
     return m_executionForbidden;
 }
 
-void WorkerScriptController::disableEval(const String& /* errorMessage */)
+void WorkerScriptController::disableEval(const String& errorMessage)
 {
-    m_proxy->setEvalAllowed(false);
+    m_proxy->setEvalAllowed(false, errorMessage);
 }
 
 void WorkerScriptController::setException(const ScriptValue& exception)

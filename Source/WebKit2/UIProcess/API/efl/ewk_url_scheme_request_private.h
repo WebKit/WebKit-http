@@ -26,13 +26,40 @@
 #ifndef ewk_url_scheme_request_private_h
 #define ewk_url_scheme_request_private_h
 
+#include "WKAPICast.h"
 #include "WKBase.h"
+#include "WKEinaSharedString.h"
+#include "WKRetainPtr.h"
+#include "WKSoupRequestManager.h"
 
-typedef struct _Ewk_Url_Scheme_Request Ewk_Url_Scheme_Request;
-typedef struct _Ewk_Context Ewk_Context;
+/**
+ * \struct  Ewk_Url_Scheme_Request
+ * @brief   Contains the URL scheme request data.
+ */
+struct Ewk_Url_Scheme_Request : public RefCounted<Ewk_Url_Scheme_Request> {
+    static PassRefPtr<Ewk_Url_Scheme_Request> create(WKSoupRequestManagerRef manager, WKURLRef url, uint64_t requestID)
+    {
+        if (!manager || !url)
+            return 0;
 
-Ewk_Url_Scheme_Request* ewk_url_scheme_request_new(WKSoupRequestManagerRef, WKURLRef, uint64_t requestID);
+        return adoptRef(new Ewk_Url_Scheme_Request(manager, url, requestID));
+    }
 
-uint64_t ewk_url_scheme_request_id_get(const Ewk_Url_Scheme_Request* request);
+    uint64_t id() const;
+    const char* url() const;
+    const char* scheme() const;
+    const char* path() const;
+
+    void finish(const void* contentData, uint64_t contentLength, const char* mimeType);
+
+private:
+    Ewk_Url_Scheme_Request(WKSoupRequestManagerRef manager, WKURLRef urlRef, uint64_t requestID);
+
+    WKRetainPtr<WKSoupRequestManagerRef> m_wkRequestManager;
+    WKEinaSharedString m_url;
+    uint64_t m_requestID;
+    WKEinaSharedString m_scheme;
+    WKEinaSharedString m_path;
+};
 
 #endif // ewk_url_scheme_request_private_h

@@ -174,25 +174,7 @@ fast/events/remove-target-with-shadow-in-drag.html
 
 # Fail until SUBPIXEL_LAYOUT is enabled
 # https://bugs.webkit.org/show_bug.cgi?id=85532
-fast/sub-pixel/client-rect-has-subpixel-precision.html
-fast/sub-pixel/client-width-height-snapping.html
-fast/sub-pixel/file-upload-control-at-fractional-offset.html
-fast/sub-pixel/float-containing-block-with-margin.html
-fast/sub-pixel/float-with-right-margin-zoom.html
-fast/sub-pixel/float-wrap-with-subpixel-top.html
-fast/sub-pixel/inline-block-should-not-wrap.html
-fast/sub-pixel/inline-block-with-margin.html
-fast/sub-pixel/inline-block-with-padding.html
-fast/sub-pixel/large-sizes.html
-fast/sub-pixel/layout-boxes-with-zoom.html
-fast/sub-pixel/position-right-aligns-with-container.html
-fast/sub-pixel/selection/selection-gaps-at-fractional-offsets.html
-fast/sub-pixel/size-of-box-with-zoom.html
-fast/sub-pixel/table-rows-no-gaps.html
-fast/sub-pixel/sub-pixel-accumulates-to-layers.html
-fast/sub-pixel/selection/selection-rect-in-sub-pixel-table.html
-fast/sub-pixel/snap-negative-location.html
-fast/sub-pixel/zoomed-image-tiles.html
+fast/sub-pixel
 
 # fast/events/pagehide-timeout.html, pageshow-pagehide-on-back-cached-with-frames.html, and
 # pageshow-pagehide-on-back-cached.html flakey on Lion Intel Debug WebKit testers.
@@ -279,6 +261,12 @@ webkit.org/b/96580 css3/filters/custom/filter-fallback-to-software.html [ ImageO
 # new fast/load tests fail https://bugs.webkit.org/show_bug.cgi?id=96832
 webkit.org/b/96832 fast/loader/images-enabled-unset-can-block-image-and-can-reload-in-place.html [ Failure ]
 webkit.org/b/96832 fast/loader/display-image-unset-can-block-image-and-can-reload-in-place.html [ Failure ]
+
+# Will need rebaselining after bug 98527 fixed
+webkit.org/b/98527 http/tests/loading/text-content-type-with-binary-extension.html [ Failure ]
+
+# Causes next test to crash
+webkit.org/b/98960 fast/parser/document-open-in-unload.html [ Skip ]
 
 ### END OF (1) Classified failures with bug reports
 ########################################
@@ -370,5 +358,11 @@ sputnik/Unicode/Unicode_218/S7.6_A5.2_T1.html
 ### END OF (4) Features that are not supported in WebKit2 and likely never will be
 ########################################
 
+########################################
+### START OF (5) Features that are not supported in WebKit1, so skipped in mac/TestExpectations then re-enabled here
 
+platform/mac/tiled-drawing/ [ Pass ]
+
+### END OF (5) Features that are not supported in WebKit1, so skipped in mac/TestExpectations then re-enabled here
+########################################
 

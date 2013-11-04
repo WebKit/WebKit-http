@@ -120,6 +120,9 @@ typedef enum {
     wkPatternTilingConstantSpacing
 } wkPatternTiling;
 extern void (*wkCGContextResetClip)(CGContextRef);
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1080
+extern bool (*wkCGContextDrawsWithCorrectShadowOffsets)(CGContextRef);
+#endif
 extern CGPatternRef (*wkCGPatternCreateWithImageAndTransform)(CGImageRef, CGAffineTransform, int);
 extern CFReadStreamRef (*wkCreateCustomCFReadStream)(void *(*formCreate)(CFReadStreamRef, void *), 
     void (*formFinalize)(CFReadStreamRef, void *), 
@@ -232,6 +235,17 @@ extern int (*wkGetNSEventMomentumPhase)(NSEvent *);
 
 extern CTLineRef (*wkCreateCTLineWithUniCharProvider)(const UniChar* (*provide)(CFIndex stringIndex, CFIndex* charCount, CFDictionaryRef* attributes, void*), void (*dispose)(const UniChar* chars, void*), void*);
 
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1090
+enum {
+    wkCTFontTransformApplyShaping = (1 << 0),
+    wkCTFontTransformApplyPositioning = (1 << 1)
+};
+
+typedef int wkCTFontTransformOptions;
+
+extern bool (*wkCTFontTransformGlyphs)(CTFontRef font, CGGlyph glyphs[], CGSize advances[], CFIndex count, wkCTFontTransformOptions options);
+#endif
+
 #if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1070
 
 extern CTTypesetterRef (*wkCreateCTTypesetterWithUniCharProviderAndOptions)(const UniChar* (*provide)(CFIndex stringIndex, CFIndex* charCount, CFDictionaryRef* attributes, void*), void (*dispose)(const UniChar* chars, void*), void*, CFDictionaryRef options);
@@ -330,6 +344,40 @@ extern CGFloat (*wkNSElasticDeltaForReboundDelta)(CGFloat delta);
 extern CGFloat (*wkNSReboundDeltaForElasticDelta)(CGFloat delta);
 #endif
 
+typedef enum {
+    wkCaptionFontStyleDefault = 0,
+    wkCaptionFontStyleMonospacedWithSerif,
+    wkCaptionFontStyleProportionalWithSerif,
+    wkCaptionFontStyleMonospacedWithoutSerif,
+    wkCaptionFontStyleProportionalWithoutSerif,
+    wkCaptionFontStyleCasual,
+    wkCaptionFontStyleCursive,
+    wkCaptionFontStyleSmallCapital,
+    wkCaptionFontStyleMax
+} wkCaptionFontStyle;
+
+typedef enum {
+    wkCaptionTextEdgeStyleUndefined = 0,
+    wkCaptionTextEdgeStyleNone,
+    wkCaptionTextEdgeStyleRaised,
+    wkCaptionTextEdgeStyleDepressed,
+    wkCaptionTextEdgeStyleUniform,
+    wkCaptionTextEdgeStyleDropShadow,
+    wkCaptionTextEdgeStyleMax
+} wkCaptionTextEdgeStyle;
+
+extern bool (*wkCaptionAppearanceHasUserPreferences)(void);
+extern bool (*wkCaptionAppearanceShowCaptionsWhenAvailable)(void);
+extern CGColorRef(*wkCaptionAppearanceCopyForegroundColor)(void);
+extern CGColorRef(*wkCaptionAppearanceCopyBackgroundColor)(void);
+extern CGColorRef(*wkCaptionAppearanceCopyWindowColor)(void);
+extern bool(*wkCaptionAppearanceGetForegroundOpacity)(CGFloat*);
+extern bool(*wkCaptionAppearanceGetBackgroundOpacity)(CGFloat*);
+extern bool(*wkCaptionAppearanceGetWindowOpacity)(CGFloat*);
+extern CGFontRef(*wkCaptionAppearanceCopyFontForStyle)(int);
+extern bool(*wkCaptionAppearanceGetRelativeCharacterSize)(CGFloat*);
+extern int(*wkCaptionAppearanceGetTextEdgeStyle)(void);
+extern CFStringRef(*wkCaptionAppearanceGetSettingsChangedNotification)(void);
 }
 
 #endif

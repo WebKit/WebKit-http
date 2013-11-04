@@ -33,6 +33,7 @@
 #import "WebProcessCreationParameters.h"
 #import "WebProcessProxyMessages.h"
 #import <WebCore/FileSystem.h>
+#import <WebCore/Font.h>
 #import <WebCore/LocalizedStrings.h>
 #import <WebCore/MemoryCache.h>
 #import <WebCore/PageCache.h>
@@ -52,6 +53,7 @@
 #endif
 
 #if ENABLE(WEB_PROCESS_SANDBOX)
+#import <pwd.h>
 #import <stdlib.h>
 #import <sysexits.h>
 
@@ -167,15 +169,9 @@ static void appendReadonlySandboxDirectory(Vector<const char*>& vector, const ch
     appendSandboxParameterPathInternal(vector, name, [path length] ? [(NSString *)path fileSystemRepresentation] : "");
 }
 
-static void appendReadwriteSandboxDirectory(Vector<const char*>& vector, const char* name, NSString *path)
+static void appendReadwriteSandboxDirectory(Vector<const char*>& vector, const char* name, const char* path)
 {
-    NSError *error = nil;
-
-    // This is very unlikely to fail, but in case it actually happens, we'd like some sort of output in the console.
-    if (![[NSFileManager defaultManager] createDirectoryAtPath:path withIntermediateDirectories:YES attributes:nil error:&error])
-        NSLog(@"could not create \"%@\", error %@", path, error);
-
-    appendSandboxParameterPathInternal(vector, name, [(NSString *)path fileSystemRepresentation]);
+    appendSandboxParameterPathInternal(vector, name, path);
 }
 
 #endif
@@ -214,8 +210,17 @@ void WebProcess::initializeSandbox(const String& clientIdentifier)
     appendReadwriteConfDirectory(sandboxParameters, "DARWIN_USER_TEMP_DIR", _CS_DARWIN_USER_TEMP_DIR);
     appendReadwriteConfDirectory(sandboxParameters, "DARWIN_USER_CACHE_DIR", _CS_DARWIN_USER_CACHE_DIR);
 
+    char buffer[4096];
+    int bufferSize = sizeof(buffer);
+    struct passwd pwd;
+    struct passwd* result = 0;
+    if (getpwuid_r(getuid(), &pwd, buffer, bufferSize, &result) || !result) {
+        WTFLogAlways("WebProcess: Couldn't find home directory\n");
+        exit(EX_NOPERM);
+    }
+
     // These are read-write paths.
-    appendReadwriteSandboxDirectory(sandboxParameters, "HOME_DIR", NSHomeDirectory());
+    appendReadwriteSandboxDirectory(sandboxParameters, "HOME_DIR", pwd.pw_dir);
 
     sandboxParameters.append(static_cast<const char*>(0));
 
@@ -223,7 +228,7 @@ void WebProcess::initializeSandbox(const String& clientIdentifier)
 
     char* errorBuf;
     if (sandbox_init_with_parameters(profilePath, SANDBOX_NAMED_EXTERNAL, sandboxParameters.data(), &errorBuf)) {
-        WTFLogAlways("WebProcess: couldn't initialize sandbox profile [%s] error '%s'\n", profilePath, errorBuf);
+        WTFLogAlways("WebProcess: Couldn't initialize sandbox profile [%s] error '%s'\n", profilePath, errorBuf);
         for (size_t i = 0; sandboxParameters[i]; i += 2)
             WTFLogAlways("%s=%s\n", sandboxParameters[i], sandboxParameters[i + 1]);
         exit(EX_NOPERM);
@@ -235,7 +240,7 @@ void WebProcess::initializeSandbox(const String& clientIdentifier)
     // This will override LSFileQuarantineEnabled from Info.plist unless sandbox quarantine is globally disabled.
     OSStatus error = WKEnableSandboxStyleFileQuarantine();
     if (error) {
-        WTFLogAlways("WebProcess: couldn't enable sandbox style file quarantine: %ld\n", (long)error);
+        WTFLogAlways("WebProcess: Couldn't enable sandbox style file quarantine: %ld\n", (long)error);
         exit(EX_NOPERM);
     }
 #endif
@@ -250,28 +255,29 @@ static id NSApplicationAccessibilityFocusedUIElement(NSApplication*, SEL)
     return [page->accessibilityRemoteObject() accessibilityFocusedUIElement];
 }
     
-void WebProcess::platformInitializeWebProcess(const WebProcessCreationParameters& parameters, CoreIPC::ArgumentDecoder*)
+void WebProcess::platformInitializeWebProcess(const WebProcessCreationParameters& parameters, CoreIPC::MessageDecoder&)
 {
     SandboxExtension::consumePermanently(parameters.uiProcessBundleResourcePathExtensionHandle);
     SandboxExtension::consumePermanently(parameters.localStorageDirectoryExtensionHandle);
     SandboxExtension::consumePermanently(parameters.databaseDirectoryExtensionHandle);
     SandboxExtension::consumePermanently(parameters.applicationCacheDirectoryExtensionHandle);
-    SandboxExtension::consumePermanently(parameters.nsURLCachePathExtensionHandle);
+    SandboxExtension::consumePermanently(parameters.diskCacheDirectoryExtensionHandle);
 
     if (!parameters.parentProcessName.isNull()) {
         NSString *applicationName = [NSString stringWithFormat:WEB_UI_STRING("%@ Web Content", "Visible name of the web process. The argument is the application name."), (NSString *)parameters.parentProcessName];
         WKSetVisibleApplicationName((CFStringRef)applicationName);
     }
 
-    if (!parameters.nsURLCachePath.isNull()) {
+    if (!parameters.diskCacheDirectory.isNull()) {
         NSUInteger cacheMemoryCapacity = parameters.nsURLCacheMemoryCapacity;
         NSUInteger cacheDiskCapacity = parameters.nsURLCacheDiskCapacity;
 
-        RetainPtr<NSURLCache> parentProcessURLCache(AdoptNS, [[NSURLCache alloc] initWithMemoryCapacity:cacheMemoryCapacity diskCapacity:cacheDiskCapacity diskPath:parameters.nsURLCachePath]);
+        RetainPtr<NSURLCache> parentProcessURLCache(AdoptNS, [[NSURLCache alloc] initWithMemoryCapacity:cacheMemoryCapacity diskCapacity:cacheDiskCapacity diskPath:parameters.diskCacheDirectory]);
         [NSURLCache setSharedURLCache:parentProcessURLCache.get()];
     }
 
     m_shouldForceScreenFontSubstitution = parameters.shouldForceScreenFontSubstitution;
+    Font::setDefaultTypesettingFeatures(parameters.shouldEnableKerningAndLigaturesByDefault ? Kerning | Ligatures : 0);
 
     m_compositingRenderServerPort = parameters.acceleratedCompositingPort.port();
 

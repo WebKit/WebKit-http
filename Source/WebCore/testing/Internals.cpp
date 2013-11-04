@@ -204,6 +204,15 @@ Internals::~Internals()
 {
 }
 
+void Internals::resetToConsistentState(Page* page)
+{
+    ASSERT(page);
+#if ENABLE(INSPECTOR) && ENABLE(JAVASCRIPT_DEBUGGER)
+    if (page->inspectorController())
+        page->inspectorController()->setProfilerEnabled(false);
+#endif
+}
+
 Internals::Internals(Document* document)
     : ContextDestructionObserver(document)
 {
@@ -1159,6 +1168,27 @@ void Internals::closeDummyInspectorFrontend()
     m_frontendWindow->close(m_frontendWindow->scriptExecutionContext());
     m_frontendWindow.release();
 }
+
+void Internals::setInspectorResourcesDataSizeLimits(int maximumResourcesContentSize, int maximumSingleResourceContentSize, ExceptionCode& ec)
+{
+    Page* page = contextDocument()->frame()->page();
+    if (!page || !page->inspectorController()) {
+        ec = INVALID_ACCESS_ERR;
+        return;
+    }
+    page->inspectorController()->setResourcesDataSizeLimitsFromInternals(maximumResourcesContentSize, maximumSingleResourceContentSize);
+}
+
+void Internals::setJavaScriptProfilingEnabled(bool enabled, ExceptionCode& ec)
+{
+    Page* page = contextDocument()->frame()->page();
+    if (!page || !page->inspectorController()) {
+        ec = INVALID_ACCESS_ERR;
+        return;
+    }
+
+    page->inspectorController()->setProfilerEnabled(enabled);
+}
 #endif // ENABLE(INSPECTOR)
 
 bool Internals::hasGrammarMarker(Document* document, int from, int length, ExceptionCode&)
@@ -1220,6 +1250,27 @@ void Internals::resumeAnimations(Document* document, ExceptionCode& ec) const
         return;
 
     controller->resumeAnimations();
+}
+
+String Internals::layerTreeAsText(Document* document, ExceptionCode& ec) const
+{
+    return layerTreeAsText(document, 0, ec);
+}
+
+String Internals::layerTreeAsText(Document* document, unsigned flags, ExceptionCode& ec) const
+{
+    if (!document || !document->frame()) {
+        ec = INVALID_ACCESS_ERR;
+        return String();
+    }
+
+    LayerTreeFlags layerTreeFlags = 0;
+    if (flags & LAYER_TREE_INCLUDES_VISIBLE_RECTS)
+        layerTreeFlags |= LayerTreeFlagsIncludeVisibleRects;
+    if (flags & LAYER_TREE_INCLUDES_TILE_CACHES)
+        layerTreeFlags |= LayerTreeFlagsIncludeTileCaches;
+
+    return document->frame()->layerTreeAsText(layerTreeFlags);
 }
 
 void Internals::garbageCollectDocumentResources(Document* document, ExceptionCode& ec) const

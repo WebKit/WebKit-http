@@ -28,8 +28,6 @@
 
 #include "IntentServiceInfo.h"
 #include "WKAPICast.h"
-#include "WKEinaSharedString.h"
-#include "WKIntentServiceInfo.h"
 #include "WKRetainPtr.h"
 #include "WKURL.h"
 #include "ewk_intent_service_private.h"
@@ -37,41 +35,46 @@
 
 using namespace WebKit;
 
-/**
- * \struct _Ewk_Intent_Service
- * @brief Contains the intent service data.
- */
-struct _Ewk_Intent_Service {
-    unsigned int __ref; /**< the reference count of the object */
-
-    WKEinaSharedString action;
-    WKEinaSharedString type;
-    WKEinaSharedString href;
-    WKEinaSharedString title;
-    WKEinaSharedString disposition;
-
-    _Ewk_Intent_Service(WKIntentServiceInfoRef serviceRef)
-        : __ref(1)
 #if ENABLE(WEB_INTENTS_TAG)
-        , action(AdoptWK, WKIntentServiceInfoCopyAction(serviceRef))
-        , type(AdoptWK, WKIntentServiceInfoCopyType(serviceRef))
-        , href(AdoptWK, WKIntentServiceInfoCopyHref(serviceRef))
-        , title(AdoptWK, WKIntentServiceInfoCopyTitle(serviceRef))
-        , disposition(AdoptWK, WKIntentServiceInfoCopyDisposition(serviceRef))
-#endif
-    { }
+Ewk_Intent_Service::Ewk_Intent_Service(WKIntentServiceInfoRef serviceRef)
+    : m_action(AdoptWK, WKIntentServiceInfoCopyAction(serviceRef))
+    , m_type(AdoptWK, WKIntentServiceInfoCopyType(serviceRef))
+    , m_href(AdoptWK, WKIntentServiceInfoCopyHref(serviceRef))
+    , m_title(AdoptWK, WKIntentServiceInfoCopyTitle(serviceRef))
+    , m_disposition(AdoptWK, WKIntentServiceInfoCopyDisposition(serviceRef))
+{ }
 
-    ~_Ewk_Intent_Service()
-    {
-        ASSERT(!__ref);
-    }
-};
+const char* Ewk_Intent_Service::action() const
+{
+    return m_action;
+}
+
+const char* Ewk_Intent_Service::type() const
+{
+    return m_type;
+}
+
+const char* Ewk_Intent_Service::href() const
+{
+    return m_href;
+}
+
+const char* Ewk_Intent_Service::title() const
+{
+    return m_title;
+}
+
+const char* Ewk_Intent_Service::disposition() const
+{
+    return m_disposition;
+}
+#endif
 
 Ewk_Intent_Service* ewk_intent_service_ref(Ewk_Intent_Service* service)
 {
 #if ENABLE(WEB_INTENTS_TAG)
     EINA_SAFETY_ON_NULL_RETURN_VAL(service, 0);
-    ++service->__ref;
+    service->ref();
 #endif
 
     return service;
@@ -82,10 +85,7 @@ void ewk_intent_service_unref(Ewk_Intent_Service* service)
 #if ENABLE(WEB_INTENTS_TAG)
     EINA_SAFETY_ON_NULL_RETURN(service);
 
-    if (--service->__ref)
-        return;
-
-    delete service;
+    service->deref();
 #endif
 }
 
@@ -93,42 +93,43 @@ const char* ewk_intent_service_action_get(const Ewk_Intent_Service* service)
 {
     EINA_SAFETY_ON_NULL_RETURN_VAL(service, 0);
 
-    return service->action;
+#if ENABLE(WEB_INTENTS_TAG)
+    return service->action();
+#endif
 }
 
 const char* ewk_intent_service_type_get(const Ewk_Intent_Service* service)
 {
     EINA_SAFETY_ON_NULL_RETURN_VAL(service, 0);
 
-    return service->type;
+#if ENABLE(WEB_INTENTS_TAG)
+    return service->type();
+#endif
 }
 
 const char* ewk_intent_service_href_get(const Ewk_Intent_Service* service)
 {
     EINA_SAFETY_ON_NULL_RETURN_VAL(service, 0);
 
-    return service->href;
+#if ENABLE(WEB_INTENTS_TAG)
+    return service->href();
+#endif
 }
 
 const char* ewk_intent_service_title_get(const Ewk_Intent_Service* service)
 {
     EINA_SAFETY_ON_NULL_RETURN_VAL(service, 0);
 
-    return service->title;
+#if ENABLE(WEB_INTENTS_TAG)
+    return service->title();
+#endif
 }
 
 const char* ewk_intent_service_disposition_get(const Ewk_Intent_Service* service)
 {
     EINA_SAFETY_ON_NULL_RETURN_VAL(service, 0);
 
-    return service->disposition;
-}
-
 #if ENABLE(WEB_INTENTS_TAG)
-Ewk_Intent_Service* ewk_intent_service_new(WKIntentServiceInfoRef wkService)
-{
-    EINA_SAFETY_ON_NULL_RETURN_VAL(wkService, 0);
-
-    return new Ewk_Intent_Service(wkService);
-}
+    return service->disposition();
 #endif
+}

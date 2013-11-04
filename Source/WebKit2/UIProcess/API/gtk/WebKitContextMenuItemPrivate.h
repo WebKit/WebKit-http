@@ -23,7 +23,7 @@
 #include "WebKitContextMenuItem.h"
 #include "WebKitPrivate.h"
 
-WebKitContextMenuItem* webkitContextMenuItemCreate(WKContextMenuItemRef);
+WebKitContextMenuItem* webkitContextMenuItemCreate(WebKit::WebContextMenuItem*);
 GtkMenuItem* webkitContextMenuItemRelease(WebKitContextMenuItem*);
 void webkitContextMenuItemSetSubMenuFromGtkMenu(WebKitContextMenuItem*, GtkMenu*);
 

@@ -43,14 +43,20 @@ WebNetworkInfo::~WebNetworkInfo()
 {
 }
 
-void WebNetworkInfo::Data::encode(CoreIPC::ArgumentEncoder* encoder) const
+void WebNetworkInfo::Data::encode(CoreIPC::ArgumentEncoder& encoder) const
 {
-    encoder->encode(CoreIPC::In(bandwidth, metered));
+    encoder.encode(bandwidth);
+    encoder.encode(metered);
 }
 
-bool WebNetworkInfo::Data::decode(CoreIPC::ArgumentDecoder* decoder, Data& data)
+bool WebNetworkInfo::Data::decode(CoreIPC::ArgumentDecoder* decoder, Data& result)
 {
-    return decoder->decode(CoreIPC::Out(data.bandwidth, data.metered));
+    if (!decoder->decode(result.bandwidth))
+        return false;
+    if (!decoder->decode(result.metered))
+        return false;
+
+    return true;
 }
 
 } // namespace WebKit

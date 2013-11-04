@@ -91,8 +91,7 @@ float Font::getGlyphsAndAdvancesForComplexText(const TextRun& run, int from, int
 
     if (run.rtl()) {
         initialAdvance = controller.totalWidth() + controller.finalRoundingWidth() - afterWidth;
-        for (int i = 0, end = glyphBuffer.size() - 1; i < glyphBuffer.size() / 2; ++i, --end)
-            glyphBuffer.swap(i, end);
+        glyphBuffer.reverse(0, glyphBuffer.size());
     } else
         initialAdvance = beforeWidth;
 
@@ -177,8 +176,11 @@ const SimpleFontData* Font::fontDataForCombiningCharacterSequence(const UChar* c
 
     GlyphData baseCharacterGlyphData = glyphDataForCharacter(baseCharacter, false, variant);
 
+    if (!baseCharacterGlyphData.glyph)
+        return 0;
+
     if (length == baseCharacterLength)
-        return baseCharacterGlyphData.glyph ? baseCharacterGlyphData.fontData : 0;
+        return baseCharacterGlyphData.fontData;
 
     bool triedBaseCharacterFontData = false;
 
@@ -217,7 +219,7 @@ const SimpleFontData* Font::fontDataForCombiningCharacterSequence(const UChar* c
     if (!triedBaseCharacterFontData && baseCharacterGlyphData.fontData && baseCharacterGlyphData.fontData->canRenderCombiningCharacterSequence(characters, length))
         return baseCharacterGlyphData.fontData;
 
-    return 0;
+    return SimpleFontData::systemFallback();
 }
 
 } // namespace WebCore

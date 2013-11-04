@@ -23,6 +23,6 @@
 #include "WebKitGeolocationPermissionRequest.h"
 #include "WebKitPrivate.h"
 
-WebKitGeolocationPermissionRequest* webkitGeolocationPermissionRequestCreate(WKGeolocationPermissionRequestRef);
+WebKitGeolocationPermissionRequest* webkitGeolocationPermissionRequestCreate(WebKit::GeolocationPermissionRequestProxy*);
 
 #endif // WebKitGeolocationPermissionRequestPrivate_h

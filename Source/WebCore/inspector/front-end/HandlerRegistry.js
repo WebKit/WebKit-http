@@ -94,8 +94,11 @@ WebInspector.HandlerRegistry.prototype = {
      * @param {WebInspector.ContextMenu} contextMenu
      * @param {Object} target
      */
-    appendApplicableItems: function(contextMenu, target)
+    appendApplicableItems: function(event, contextMenu, target)
     {
+        if (event.hasBeenHandledByHandlerRegistry)
+            return;
+        event.hasBeenHandledByHandlerRegistry = true;
         this._appendContentProviderItems(contextMenu, target);
         this._appendHrefItems(contextMenu, target);
     },
@@ -132,7 +135,9 @@ WebInspector.HandlerRegistry.prototype = {
 
         function doSave(forceSaveAs, content)
         {
-            WebInspector.fileManager.save(contentProvider.contentURL(), content, forceSaveAs);
+            var url = contentProvider.contentURL();
+            WebInspector.fileManager.save(url, content, forceSaveAs);
+            WebInspector.fileManager.close(url);
         }
 
         function save(forceSaveAs)
@@ -141,6 +146,7 @@ WebInspector.HandlerRegistry.prototype = {
                 var uiSourceCode = /** @type {WebInspector.UISourceCode} */ contentProvider;
                 if (uiSourceCode.isDirty()) {
                     doSave(forceSaveAs, uiSourceCode.workingCopy());
+                    uiSourceCode.commitWorkingCopy(function() { });
                     return;
                 }
             }

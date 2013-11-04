@@ -26,11 +26,57 @@
 #ifndef ewk_cookie_manager_private_h
 #define ewk_cookie_manager_private_h
 
+#include "SoupCookiePersistentStorageType.h"
+#include "WKCookieManager.h"
+#include "WKRetainPtr.h"
+#include "ewk_cookie_manager.h"
 #include <WebKit2/WKBase.h>
+#include <wtf/PassOwnPtr.h>
 
-typedef struct _Ewk_Cookie_Manager Ewk_Cookie_Manager;
+struct Cookie_Change_Handler {
+    Ewk_Cookie_Manager_Changes_Watch_Cb callback;
+    void* userData;
 
-Ewk_Cookie_Manager* ewk_cookie_manager_new(WKCookieManagerRef wkCookieManager);
-void ewk_cookie_manager_free(Ewk_Cookie_Manager* manager);
+    Cookie_Change_Handler()
+        : callback(0)
+        , userData(0)
+    { }
+
+    Cookie_Change_Handler(Ewk_Cookie_Manager_Changes_Watch_Cb _callback, void* _userData)
+        : callback(_callback)
+        , userData(_userData)
+    { }
+};
+
+class Ewk_Cookie_Manager {
+public:
+    static PassOwnPtr<Ewk_Cookie_Manager> create(WKCookieManagerRef cookieManagerRef)
+    {
+        return adoptPtr(new Ewk_Cookie_Manager(cookieManagerRef));
+    }
+
+    ~Ewk_Cookie_Manager();
+
+    void setPersistentStorage(const String& filename, WebKit::SoupCookiePersistentStorageType storage);
+
+    void getHTTPAcceptPolicy(WKCookieManagerGetHTTPCookieAcceptPolicyFunction callback, void* userData) const;
+    void setHTTPAcceptPolicy(WKHTTPCookieAcceptPolicy policy);
+
+    void clearHostnameCookies(const String& hostname);
+    void clearAllCookies();
+
+    void getHostNamesWithCookies(WKCookieManagerGetCookieHostnamesFunction callback, void* userData) const;
+    void watchChanges(const Cookie_Change_Handler& changeHandler);
+
+private:
+    explicit Ewk_Cookie_Manager(WKCookieManagerRef cookieManagerRef);
+
+    bool isWatchingForChanges() const;
+
+    static void cookiesDidChange(WKCookieManagerRef, const void* clientInfo);
+
+    WKRetainPtr<WKCookieManagerRef> m_wkCookieManager;
+    Cookie_Change_Handler m_changeHandler;
+};
 
 #endif // ewk_cookie_manager_private_h

@@ -31,141 +31,59 @@
 #include "config.h"
 #include "DOMDataStore.h"
 
-#include "DOMData.h"
+#include "DOMWrapperMap.h"
+#include "IntrusiveDOMWrapperMap.h"
 #include "V8Binding.h"
 #include "WebCoreMemoryInstrumentation.h"
 #include <wtf/MainThread.h>
 
 namespace WebCore {
 
-// DOM binding algorithm:
-//
-// There are two kinds of DOM objects:
-// 1. DOM tree nodes, such as Document, HTMLElement, ...
-//    there classes implement TreeShared<T> interface;
-// 2. Non-node DOM objects, such as CSSRule, Location, etc.
-//    these classes implement a ref-counted scheme.
-//
-// A DOM object may have a JS wrapper object. If a tree node
-// is alive, its JS wrapper must be kept alive even it is not
-// reachable from JS roots.
-// However, JS wrappers of non-node objects can go away if
-// not reachable from other JS objects. It works like a cache.
-//
-// DOM objects are ref-counted, and JS objects are traced from
-// a set of root objects. They can create a cycle. To break
-// cycles, we do following:
-//   Handles from DOM objects to JS wrappers are always weak,
-// so JS wrappers of non-node object cannot create a cycle.
-//   Before starting a global GC, we create a virtual connection
-// between nodes in the same tree in the JS heap. If the wrapper
-// of one node in a tree is alive, wrappers of all nodes in
-// the same tree are considered alive. This is done by creating
-// object groups in GC prologue callbacks. The mark-compact
-// collector will remove these groups after each GC.
-//
-// DOM objects should be deref-ed from the owning thread, not the GC thread
-// that does not own them. In V8, GC can kick in from any thread. To ensure
-// that DOM objects are always deref-ed from the owning thread when running
-// V8 in multi-threading environment, we do following:
-// 1. Maintain a thread specific DOM wrapper map for each object map.
-//    (We're using TLS support from WTF instead of base since V8Bindings
-//     does not depend on base. We further assume that all child threads
-//     running V8 instances are created by WTF and thus a destructor will
-//     be called to clean up all thread specific data.)
-// 2. When GC happens:
-//    2.1. If the dead object is in GC thread's map, remove the JS reference
-//         and deref the DOM object.
-//    2.2. Otherwise, go through all thread maps to find the owning thread.
-//         Remove the JS reference from the owning thread's map and move the
-//         DOM object to a delayed queue. Post a task to the owning thread
-//         to have it deref-ed from the owning thread at later time.
-// 3. When a thread is tearing down, invoke a cleanup routine to go through
-//    all objects in the delayed queue and the thread map and deref all of
-//    them.
-
-
-DOMDataStore::DOMDataStore()
-    : m_domNodeMap(0)
-    , m_activeDomNodeMap(0)
-    , m_domObjectMap(0)
-    , m_activeDomObjectMap(0)
+DOMDataStore::DOMDataStore(Type type)
+    : m_type(type)
 {
+    if (type == MainWorld)
+        m_domNodeMap = adoptPtr(new DOMNodeWrapperMap);
+    else {
+        ASSERT(type == IsolatedWorld || type == Worker);
+        // FIXME: In principle, we shouldn't need to create this
+        // wrapper map for workers because there are no Nodes on
+        // worker threads.
+        m_domNodeMap = adoptPtr(new DOMWrapperHashMap<Node>);
+    }
+    m_domObjectMap = adoptPtr(new DOMWrapperHashMap<void>);
+
+    V8PerIsolateData::current()->registerDOMDataStore(this);
 }
 
 DOMDataStore::~DOMDataStore()
 {
+    ASSERT(m_type != MainWorld); // We never actually destruct the main world's DOMDataStore.
+
+    V8PerIsolateData::current()->unregisterDOMDataStore(this);
+
+    if (m_type == IsolatedWorld)
+        m_domNodeMap->clear();
+    m_domObjectMap->clear();
 }
 
-DOMDataList& DOMDataStore::allStores()
+DOMDataStore* DOMDataStore::current(v8::Isolate* isolate)
 {
-    return V8PerIsolateData::current()->allStores();
-}
-
-void* DOMDataStore::getDOMWrapperMap(DOMWrapperMapType type)
-{
-    switch (type) {
-    case DOMNodeMap:
-        return m_domNodeMap;
-    case ActiveDOMNodeMap:
-        return m_activeDomNodeMap;
-    case DOMObjectMap:
-        return m_domObjectMap;
-    case ActiveDOMObjectMap:
-        return m_activeDomObjectMap;
-    }
-
-    ASSERT_NOT_REACHED();
-    return 0;
+    DEFINE_STATIC_LOCAL(DOMDataStore, defaultStore, (MainWorld));
+    V8PerIsolateData* data = V8PerIsolateData::from(isolate);
+    if (UNLIKELY(!!data->domDataStore()))
+        return data->domDataStore();
+    V8DOMWindowShell* context = V8DOMWindowShell::getEntered();
+    if (UNLIKELY(!!context))
+        return context->world()->domDataStore();
+    return &defaultStore;
 }
 
 void DOMDataStore::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
 {
     MemoryClassInfo info(memoryObjectInfo, this, WebCoreMemoryTypes::Binding);
-    info.addWeakPointer(m_domNodeMap);
-    info.addWeakPointer(m_activeDomNodeMap);
-    info.addWeakPointer(m_domObjectMap);
-    info.addWeakPointer(m_activeDomObjectMap);
-}
-
-// Called when the object is near death (not reachable from JS roots).
-// It is time to remove the entry from the table and dispose the handle.
-void DOMDataStore::weakDOMObjectCallback(v8::Persistent<v8::Value> v8Object, void* domObject)
-{
-    v8::HandleScope scope;
-    ASSERT(v8Object->IsObject());
-    DOMData::handleWeakObject(DOMDataStore::DOMObjectMap, v8::Persistent<v8::Object>::Cast(v8Object), domObject);
-}
-
-void DOMDataStore::weakActiveDOMObjectCallback(v8::Persistent<v8::Value> v8Object, void* domObject)
-{
-    v8::HandleScope scope;
-    ASSERT(v8Object->IsObject());
-    DOMData::handleWeakObject(DOMDataStore::ActiveDOMObjectMap, v8::Persistent<v8::Object>::Cast(v8Object), domObject);
-}
-
-void DOMDataStore::weakNodeCallback(v8::Persistent<v8::Value> value, void* domObject)
-{
-    ASSERT(isMainThread());
-
-    Node* node = static_cast<Node*>(domObject);
-    // Node wrappers must be JS objects.
-    v8::Persistent<v8::Object> v8Object = v8::Persistent<v8::Object>::Cast(value);
-
-    DOMDataList& list = DOMDataStore::allStores();
-    for (size_t i = 0; i < list.size(); ++i) {
-        DOMDataStore* store = list[i];
-        DOMNodeMapping& nodeMap = node->isActiveNode() ? store->activeDomNodeMap() : store->domNodeMap();
-        if (nodeMap.removeIfPresent(node, v8Object)) {
-            node->deref(); // Nobody overrides Node::deref so it's safe
-            return; // There might be at most one wrapper for the node in world's maps
-        }
-    }
-
-    // If not found, it means map for the wrapper has been already destroyed, just dispose the
-    // handle and deref the object to fight memory leak.
-    v8Object.Dispose();
-    node->deref(); // Nobody overrides Node::deref so it's safe
+    info.addMember(m_domNodeMap);
+    info.addMember(m_domObjectMap);
 }
 
 } // namespace WebCore

@@ -57,28 +57,7 @@ class JSGlobalData;
 class ProgramNode;
 class SourceCode;
 
-#define fail() do { if (!m_error) updateErrorMessage(); return 0; } while (0)
-#define failWithToken(tok) do { if (!m_error) updateErrorMessage(tok); return 0; } while (0)
-#define failWithMessage(msg) do { if (!m_error) updateErrorMessage(msg); return 0; } while (0)
-#define failWithNameAndMessage(before, name, after) do { if (!m_error) updateErrorWithNameAndMessage(before, name, after); return 0; } while (0)
-#define failIfFalse(cond) do { if (!(cond)) fail(); } while (0)
-#define failIfFalseWithMessage(cond, msg) do { if (!(cond)) failWithMessage(msg); } while (0)
-#define failIfFalseWithNameAndMessage(cond, before, name, msg) do { if (!(cond)) failWithNameAndMessage(before, name, msg); } while (0)
-#define failIfTrue(cond) do { if ((cond)) fail(); } while (0)
-#define failIfTrueWithMessage(cond, msg) do { if ((cond)) failWithMessage(msg); } while (0)
-#define failIfTrueWithNameAndMessage(cond, before, name, msg) do { if ((cond)) failWithNameAndMessage(before, name, msg); } while (0)
-#define failIfTrueIfStrict(cond) do { if ((cond) && strictMode()) fail(); } while (0)
-#define failIfTrueIfStrictWithMessage(cond, msg) do { if ((cond) && strictMode()) failWithMessage(msg); } while (0)
-#define failIfTrueIfStrictWithNameAndMessage(cond, before, name, after) do { if ((cond) && strictMode()) failWithNameAndMessage(before, name, after); } while (0)
-#define failIfFalseIfStrict(cond) do { if ((!(cond)) && strictMode()) fail(); } while (0)
-#define failIfFalseIfStrictWithMessage(cond, msg) do { if ((!(cond)) && strictMode()) failWithMessage(msg); } while (0)
-#define failIfFalseIfStrictWithNameAndMessage(cond, before, name, after) do { if ((!(cond)) && strictMode()) failWithNameAndMessage(before, name, after); } while (0)
-#define consumeOrFail(tokenType) do { if (!consume(tokenType)) failWithToken(tokenType); } while (0)
-#define consumeOrFailWithFlags(tokenType, flags) do { if (!consume(tokenType, flags)) failWithToken(tokenType); } while (0)
-#define matchOrFail(tokenType) do { if (!match(tokenType)) failWithToken(tokenType); } while (0)
-#define failIfStackOverflow() do { failIfFalseWithMessage(canRecurse(), "Code nested too deeply."); } while (0)
-
-    // Macros to make the more common TreeBuilder types a little less verbose
+// Macros to make the more common TreeBuilder types a little less verbose
 #define TreeStatement typename TreeBuilder::Statement
 #define TreeExpression typename TreeBuilder::Expression
 #define TreeFormalParameterList typename TreeBuilder::FormalParameterList
@@ -903,7 +882,7 @@ private:
     
     bool canRecurse()
     {
-        return m_stack.recursionCheck();
+        return m_stack.isSafeToRecurse();
     }
     
     int lastTokenEnd() const
@@ -917,6 +896,7 @@ private:
     OwnPtr<LexerType> m_lexer;
     
     StackBounds m_stack;
+    bool m_hasStackOverflow;
     bool m_error;
     String m_errorMessage;
     JSToken m_token;
@@ -1008,7 +988,7 @@ PassRefPtr<ParsedNode> Parser<LexerType>::parse(JSGlobalObject* lexicalGlobalObj
         // we ran out of stack while parsing. If we see an error while parsing eval or program
         // code we assume that it was a syntax error since running out of stack is much less
         // likely, and we are currently unable to distinguish between the two cases.
-        if (isFunctionBodyNode(static_cast<ParsedNode*>(0)))
+        if (isFunctionBodyNode(static_cast<ParsedNode*>(0)) || m_hasStackOverflow)
             *exception = createStackOverflowError(lexicalGlobalObject);
         else if (isEvalNode<ParsedNode>())
             *exception = createSyntaxError(lexicalGlobalObject, errMsg);

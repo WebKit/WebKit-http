@@ -44,15 +44,15 @@ public:
     static PassRefPtr<IDBBackingStore> open(SecurityOrigin*, const String& pathBase, const String& fileIdentifier, IDBFactoryBackendImpl*);
     virtual ~IDBLevelDBBackingStore();
 
-    virtual void getDatabaseNames(Vector<String>& foundNames);
-    virtual bool getIDBDatabaseMetaData(const String& name, String& foundVersion, int64_t& foundIntVersion, int64_t& foundId);
+    virtual Vector<String> getDatabaseNames();
+    virtual bool getIDBDatabaseMetaData(const String& name, IDBDatabaseMetadata*);
     virtual bool createIDBDatabaseMetaData(const String& name, const String& version, int64_t intVersion, int64_t& rowId);
     virtual bool updateIDBDatabaseMetaData(IDBBackingStore::Transaction*, int64_t rowId, const String& version);
     virtual bool updateIDBDatabaseIntVersion(IDBBackingStore::Transaction*, int64_t rowId, int64_t intVersion);
     virtual bool deleteDatabase(const String& name);
 
-    virtual void getObjectStores(int64_t databaseId, Vector<int64_t>& foundIds, Vector<String>& foundNames, Vector<IDBKeyPath>& foundKeyPaths, Vector<bool>& foundAutoIncrementFlags);
-    virtual bool createObjectStore(IDBBackingStore::Transaction*, int64_t databaseId, const String& name, const IDBKeyPath&, bool autoIncrement, int64_t& assignedObjectStoreId);
+    virtual Vector<IDBObjectStoreMetadata> getObjectStores(int64_t databaseId);
+    virtual bool createObjectStore(IDBBackingStore::Transaction*, int64_t databaseId, int64_t objectStoreId, const String& name, const IDBKeyPath&, bool autoIncrement);
     virtual void deleteObjectStore(IDBBackingStore::Transaction*, int64_t databaseId, int64_t objectStoreId);
     virtual PassRefPtr<ObjectStoreRecordIdentifier> createInvalidRecordIdentifier();
     virtual String getObjectStoreRecord(IDBBackingStore::Transaction*, int64_t databaseId, int64_t objectStoreId, const IDBKey&);
@@ -65,8 +65,8 @@ public:
 
     virtual bool forEachObjectStoreRecord(IDBBackingStore::Transaction*, int64_t databaseId, int64_t objectStoreId, ObjectStoreRecordCallback&);
 
-    virtual void getIndexes(int64_t databaseId, int64_t objectStoreId, Vector<int64_t>& foundIds, Vector<String>& foundNames, Vector<IDBKeyPath>& foundKeyPaths, Vector<bool>& foundUniqueFlags, Vector<bool>& foundMultiEntryFlags);
-    virtual bool createIndex(IDBBackingStore::Transaction*, int64_t databaseId, int64_t objectStoreId, const String& name, const IDBKeyPath&, bool isUnique, bool isMultiEntry, int64_t& indexId);
+    virtual Vector<IDBIndexMetadata> getIndexes(int64_t databaseId, int64_t objectStoreId);
+    virtual bool createIndex(IDBBackingStore::Transaction*, int64_t databaseId, int64_t objectStoreId, int64_t indexId, const String& name, const IDBKeyPath&, bool isUnique, bool isMultiEntry);
     virtual void deleteIndex(IDBBackingStore::Transaction*, int64_t databaseId, int64_t objectStoreId, int64_t indexId);
     virtual bool putIndexDataForRecord(IDBBackingStore::Transaction*, int64_t databaseId, int64_t objectStoreId, int64_t indexId, const IDBKey&, const ObjectStoreRecordIdentifier*);
     virtual bool deleteIndexDataForRecord(IDBBackingStore::Transaction*, int64_t databaseId, int64_t objectStoreId, int64_t indexId, const ObjectStoreRecordIdentifier*);

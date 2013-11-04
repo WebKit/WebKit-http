@@ -85,7 +85,7 @@ public:
 
     static inline bool compareByStart(const InlineTextBox* first, const InlineTextBox* second) { return first->start() < second->start(); }
 
-    virtual LayoutUnit baselinePosition(FontBaseline) const;
+    virtual int baselinePosition(FontBaseline) const;
     virtual LayoutUnit lineHeight() const;
 
     bool getEmphasisMarkPosition(RenderStyle*, TextEmphasisPosition&) const;
@@ -107,7 +107,7 @@ private:
     LayoutUnit selectionHeight();
 
     TextRun constructTextRun(RenderStyle*, const Font&, BufferForAppendingHyphen* = 0) const;
-    TextRun constructTextRun(RenderStyle*, const Font&, const UChar*, int length, int maximumLength, BufferForAppendingHyphen* = 0) const;
+    TextRun constructTextRun(RenderStyle*, const Font&, String, int maximumLength, BufferForAppendingHyphen* = 0) const;
 
 public:
     virtual FloatRect calculateBoundaries() const { return FloatRect(x(), y(), width(), height()); }
@@ -183,7 +183,7 @@ protected:
 #endif
 
 private:
-    void paintDecoration(GraphicsContext*, const FloatPoint& boxOrigin, int decoration, const ShadowData*);
+    void paintDecoration(GraphicsContext*, const FloatPoint& boxOrigin, ETextDecoration, TextDecorationStyle, const ShadowData*);
     void paintSelection(GraphicsContext*, const FloatPoint& boxOrigin, RenderStyle*, const Font&, Color textColor);
     void paintDocumentMarker(GraphicsContext*, const FloatPoint& boxOrigin, DocumentMarker*, RenderStyle*, const Font&, bool grammar);
     void paintTextMatchMarker(GraphicsContext*, const FloatPoint& boxOrigin, DocumentMarker*, RenderStyle*, const Font&);

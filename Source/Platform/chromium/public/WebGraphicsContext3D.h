@@ -33,6 +33,7 @@
 
 #include "WebCommon.h"
 #include "WebGraphicsMemoryAllocation.h"
+#include "WebGraphicsMemoryStats.h"
 #include "WebNonCopyable.h"
 #include "WebString.h"
 
@@ -94,6 +95,7 @@ public:
             , noExtensions(false)
             , shareResources(true)
             , preferDiscreteGPU(false)
+            , noAutomaticFlushes(false)
         {
         }
 
@@ -106,6 +108,7 @@ public:
         bool noExtensions;
         bool shareResources;
         bool preferDiscreteGPU;
+        bool noAutomaticFlushes;
     };
 
     class WebGraphicsContextLostCallback {
@@ -160,6 +163,7 @@ public:
 
     // GL_CHROMIUM_gpu_memory_manager - sets callback to observe changes to memory allocation limits.
     virtual void setMemoryAllocationChangedCallbackCHROMIUM(WebGraphicsMemoryAllocationChangedCallbackCHROMIUM* callback) { }
+    virtual void sendManagedMemoryStatsCHROMIUM(const WebGraphicsManagedMemoryStats* stats) { }
 
     // GL_EXT_discard_framebuffer - discard/ensure existance of surface backbuffer.
     // FIXME: make these pure virtual once they are implemented by clients.
@@ -448,6 +452,10 @@ public:
     virtual void deleteVertexArrayOES(WebGLId array) { }
     virtual WGC3Dboolean isVertexArrayOES(WebGLId array) { return false; }
     virtual void bindVertexArrayOES(WebGLId array) { }
+
+    // GL_CHROMIUM_texture_from_image
+    virtual void bindTexImage2DCHROMIUM(WGC3Denum target, WGC3Dint imageId) { }
+    virtual void releaseTexImage2DCHROMIUM(WGC3Denum target, WGC3Dint imageId) { }
 
     GrGLInterface* createGrGLInterface();
 

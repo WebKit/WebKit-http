@@ -25,9 +25,6 @@ defineTest(detectFeatures) {
 
     # ------------- Prepare for feature detection -------------
 
-    # Load mobilityconfig if mobility is available
-    load(mobilityconfig, true)
-
     # ---------- Dynamically detect optional features -------------
     #
     # Please note: static feature defaults go in features.pri
@@ -99,9 +96,7 @@ defineTest(detectFeatures) {
     enable?(css_filters):enable?(webgl): WEBKIT_CONFIG += css_shaders
 
     # Geolocation support if QtMobility exists
-    contains(MOBILITY_CONFIG, location)|contains(QT_CONFIG, location) {
-        WEBKIT_CONFIG += geolocation
-    }
+    haveQtModule(location): WEBKIT_CONFIG += geolocation
 
     # Orientation support
     haveQtModule(sensors): WEBKIT_CONFIG += orientation_events device_orientation
@@ -121,7 +116,7 @@ defineTest(detectFeatures) {
         } else {
             CONFIGURE_WARNINGS += "Missing GLib/Gio/GStreamer, disabling media element support"
         }
-    } else: contains(MOBILITY_CONFIG, multimedia) {
+    } else: haveQtModule(multimediawidgets) {
         WEBKIT_CONFIG += video use_qt_multimedia
     }
 
@@ -129,8 +124,12 @@ defineTest(detectFeatures) {
     packagesExist(libudev): WEBKIT_CONFIG += gamepad
 
     # Support for Graphics Surface
-    mac: WEBKIT_CONFIG += use_graphics_surface
-    linux-*:contains(WEBKIT_CONFIG, have_glx):contains(WEBKIT_CONFIG, have_xcomposite):contains(WEBKIT_CONFIG, have_xrender): WEBKIT_CONFIG += use_graphics_surface
+    # GraphicsSurface requires GraphicsContext3D and hence use_3d_graphics
+    use?(3d_graphics) {
+        mac: WEBKIT_CONFIG += use_graphics_surface
+        win32:contains(QT_CONFIG, opengles2): WEBKIT_CONFIG += use_graphics_surface
+        linux-*:contains(WEBKIT_CONFIG, have_glx):contains(WEBKIT_CONFIG, have_xcomposite):contains(WEBKIT_CONFIG, have_xrender): WEBKIT_CONFIG += use_graphics_surface
+    }
 
     # Slider Touch is sensible to use when compiling WebKit2
     enable?(touch_events): WEBKIT_CONFIG += touch_slider

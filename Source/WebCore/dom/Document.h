@@ -156,8 +156,8 @@ class SVGDocumentExtensions;
 class TransformSource;
 #endif
 
-#if ENABLE(DASHBOARD_SUPPORT) || ENABLE(WIDGET_REGION)
-struct DashboardRegionValue;
+#if ENABLE(DASHBOARD_SUPPORT) || ENABLE(DRAGGABLE_REGION)
+struct AnnotatedRegionValue;
 #endif
 
 #if ENABLE(TOUCH_EVENTS)
@@ -992,13 +992,13 @@ public:
     void setFrameElementsShouldIgnoreScrolling(bool ignore) { m_frameElementsShouldIgnoreScrolling = ignore; }
     bool frameElementsShouldIgnoreScrolling() const { return m_frameElementsShouldIgnoreScrolling; }
 
-#if ENABLE(DASHBOARD_SUPPORT) || ENABLE(WIDGET_REGION)
-    void setDashboardRegionsDirty(bool f) { m_dashboardRegionsDirty = f; }
-    bool dashboardRegionsDirty() const { return m_dashboardRegionsDirty; }
-    bool hasDashboardRegions () const { return m_hasDashboardRegions; }
-    void setHasDashboardRegions(bool f) { m_hasDashboardRegions = f; }
-    const Vector<DashboardRegionValue>& dashboardRegions() const;
-    void setDashboardRegions(const Vector<DashboardRegionValue>&);
+#if ENABLE(DASHBOARD_SUPPORT) || ENABLE(DRAGGABLE_REGION)
+    void setAnnotatedRegionsDirty(bool f) { m_annotatedRegionsDirty = f; }
+    bool annotatedRegionsDirty() const { return m_annotatedRegionsDirty; }
+    bool hasAnnotatedRegions () const { return m_hasAnnotatedRegions; }
+    void setHasAnnotatedRegions(bool f) { m_hasAnnotatedRegions = f; }
+    const Vector<AnnotatedRegionValue>& annotatedRegions() const;
+    void setAnnotatedRegions(const Vector<AnnotatedRegionValue>&);
 #endif
 
     virtual void removeAllEventListeners();
@@ -1091,9 +1091,9 @@ public:
     const DocumentTiming* timing() const { return &m_documentTiming; }
 
 #if ENABLE(REQUEST_ANIMATION_FRAME)
-    int webkitRequestAnimationFrame(PassRefPtr<RequestAnimationFrameCallback>);
-    void webkitCancelAnimationFrame(int id);
-    void serviceScriptedAnimations(DOMTimeStamp);
+    int requestAnimationFrame(PassRefPtr<RequestAnimationFrameCallback>);
+    void cancelAnimationFrame(int id);
+    void serviceScriptedAnimations(double monotonicAnimationStartTime);
 #endif
 
     virtual EventTarget* errorEventTarget();
@@ -1197,6 +1197,8 @@ private:
 
     virtual double minimumTimerInterval() const;
 
+    virtual double timerAlignmentInterval() const;
+
     void updateTitle(const StringWithDirection&);
     void updateFocusAppearanceTimerFired(Timer<Document>*);
     void updateBaseURL();
@@ -1254,7 +1256,7 @@ private:
     Frame* m_frame;
     RefPtr<DOMWindow> m_domWindow;
 
-    OwnPtr<CachedResourceLoader> m_cachedResourceLoader;
+    RefPtr<CachedResourceLoader> m_cachedResourceLoader;
     RefPtr<DocumentParser> m_parser;
     RefPtr<ContextFeatures> m_contextFeatures;
 
@@ -1402,10 +1404,10 @@ private:
     OwnPtr<SVGDocumentExtensions> m_svgExtensions;
 #endif
 
-#if ENABLE(DASHBOARD_SUPPORT) || ENABLE(WIDGET_REGION)
-    Vector<DashboardRegionValue> m_dashboardRegions;
-    bool m_hasDashboardRegions;
-    bool m_dashboardRegionsDirty;
+#if ENABLE(DASHBOARD_SUPPORT) || ENABLE(DRAGGABLE_REGION)
+    Vector<AnnotatedRegionValue> m_annotatedRegions;
+    bool m_hasAnnotatedRegions;
+    bool m_annotatedRegionsDirty;
 #endif
 
     HashMap<String, RefPtr<HTMLCanvasElement> > m_cssCanvasElements;

@@ -515,11 +515,11 @@ void HTMLInputElement::updateType()
     if (didRespectHeightAndWidth != m_inputType->shouldRespectHeightAndWidthAttributes()) {
         ASSERT(attributeData());
         if (Attribute* height = getAttributeItem(heightAttr))
-            attributeChanged(*height);
+            attributeChanged(heightAttr, height->value());
         if (Attribute* width = getAttributeItem(widthAttr))
-            attributeChanged(*width);
+            attributeChanged(widthAttr, width->value());
         if (Attribute* align = getAttributeItem(alignAttr))
-            attributeChanged(*align);
+            attributeChanged(alignAttr, align->value());
     }
 
     if (wasAttached) {
@@ -1006,6 +1006,15 @@ void HTMLInputElement::setEditingValue(const String& value)
     dispatchInputEvent();
 }
 
+void HTMLInputElement::setValue(const String& value, ExceptionCode& ec, TextFieldEventBehavior eventBehavior)
+{
+    if (isFileUpload() && !value.isEmpty()) {
+        ec = INVALID_STATE_ERR;
+        return;
+    }
+    setValue(value, eventBehavior);
+}
+
 void HTMLInputElement::setValue(const String& value, TextFieldEventBehavior eventBehavior)
 {
     if (!m_inputType->canSetValue(value))
@@ -1316,6 +1325,14 @@ bool HTMLInputElement::multiple() const
 void HTMLInputElement::setSize(unsigned size)
 {
     setAttribute(sizeAttr, String::number(size));
+}
+
+void HTMLInputElement::setSize(unsigned size, ExceptionCode& ec)
+{
+    if (!size)
+        ec = INDEX_SIZE_ERR;
+    else
+        setSize(size);
 }
 
 KURL HTMLInputElement::src() const
@@ -1868,5 +1885,25 @@ void ListAttributeTargetObserver::idTargetChanged()
     m_element->listAttributeTargetChanged();
 }
 #endif
+
+void HTMLInputElement::setRangeText(const String& replacement, ExceptionCode& ec)
+{
+    if (!m_inputType->supportsSelectionAPI()) {
+        ec = INVALID_STATE_ERR;
+        return;
+    }
+
+    HTMLTextFormControlElement::setRangeText(replacement, ec);
+}
+
+void HTMLInputElement::setRangeText(const String& replacement, unsigned start, unsigned end, const String& selectionMode, ExceptionCode& ec)
+{
+    if (!m_inputType->supportsSelectionAPI()) {
+        ec = INVALID_STATE_ERR;
+        return;
+    }
+
+    HTMLTextFormControlElement::setRangeText(replacement, start, end, selectionMode, ec);
+}
 
 } // namespace

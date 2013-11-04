@@ -31,9 +31,13 @@
 #include <wtf/PassRefPtr.h>
 
 namespace CoreIPC {
-class ArgumentDecoder;
 class Connection;
+class MessageDecoder;
 class MessageID;
+}
+
+namespace WebCore {
+class PageGroup;
 }
 
 namespace WebKit {
@@ -50,19 +54,23 @@ public:
     bool isVisibleToInjectedBundle() const { return m_data.visibleToInjectedBundle; }
     bool isVisibleToHistoryClient() const { return m_data.visibleToHistoryClient; }
     
-    void didReceiveMessage(CoreIPC::Connection*, CoreIPC::MessageID, CoreIPC::ArgumentDecoder*);
+    void didReceiveMessage(CoreIPC::Connection*, CoreIPC::MessageID, CoreIPC::MessageDecoder&);
 
 private:
-    WebPageGroupProxy(const WebPageGroupData& data)
-        : m_data(data)
-    {
-    }
+    WebPageGroupProxy(const WebPageGroupData&);
 
     virtual Type type() const { return APIType; }
     
-    void didReceiveWebPageGroupProxyMessage(CoreIPC::Connection*, CoreIPC::MessageID, CoreIPC::ArgumentDecoder*);
+    void didReceiveWebPageGroupProxyMessage(CoreIPC::Connection*, CoreIPC::MessageID, CoreIPC::MessageDecoder&);
+    
+    void addUserStyleSheet(const WebCore::UserStyleSheet&);
+    void addUserScript(const WebCore::UserScript&);
+    void removeAllUserStyleSheets();
+    void removeAllUserScripts();
+    void removeAllUserContent();
 
     WebPageGroupData m_data;
+    WebCore::PageGroup* m_pageGroup;
 };
 
 } // namespace WebKit

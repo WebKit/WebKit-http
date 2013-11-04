@@ -53,7 +53,7 @@ void V8PerContextData::dispose()
     {
         WrapperBoilerplateMap::iterator it = m_wrapperBoilerplates.begin();
         for (; it != m_wrapperBoilerplates.end(); ++it) {
-            v8::Persistent<v8::Object> wrapper = it->second;
+            v8::Persistent<v8::Object> wrapper = it->value;
             wrapper.Dispose();
         }
         m_wrapperBoilerplates.clear();
@@ -62,7 +62,7 @@ void V8PerContextData::dispose()
     {
         ConstructorMap::iterator it = m_constructorMap.begin();
         for (; it != m_constructorMap.end(); ++it) {
-            v8::Persistent<v8::Function> wrapper = it->second;
+            v8::Persistent<v8::Function> wrapper = it->value;
             wrapper.Dispose();
         }
         m_constructorMap.clear();
@@ -129,11 +129,12 @@ v8::Local<v8::Function> V8PerContextData::constructorForTypeSlowCase(WrapperType
         return v8::Local<v8::Function>();
 
     function->SetPrototype(m_objectPrototype.get());
-
-    if (type->wrapperTypePrototype == WrapperTypeErrorPrototype) {
-        v8::Local<v8::Value> prototypeValue = function->Get(v8::String::NewSymbol("prototype"));
-        if (!prototypeValue.IsEmpty() && prototypeValue->IsObject())
-            v8::Local<v8::Object>::Cast(prototypeValue)->SetPrototype(m_errorPrototype.get());
+    v8::Local<v8::Value> prototypeValue = function->Get(v8::String::NewSymbol("prototype"));
+    if (!prototypeValue.IsEmpty() && prototypeValue->IsObject()) {
+        v8::Local<v8::Object> prototypeObject = v8::Local<v8::Object>::Cast(prototypeValue);
+        type->installPerContextPrototypeProperties(prototypeObject);
+        if (type->wrapperTypePrototype == WrapperTypeErrorPrototype)
+            prototypeObject->SetPrototype(m_errorPrototype.get());
     }
 
     m_constructorMap.set(type, v8::Persistent<v8::Function>::New(function));

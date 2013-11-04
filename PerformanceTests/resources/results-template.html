@@ -2,13 +2,6 @@
 <html>
 <head>
 <title>WebKit Performance Test Results</title>
-<script src="%AbsolutePathToWebKitTrunk%/PerformanceTests/Dromaeo/resources/dromaeo/web/lib/jquery-1.6.4.js"></script>
-<script src="https://trac.webkit.org/browser/trunk/PerformanceTests/Dromaeo/resources/dromaeo/web/lib/jquery-1.6.4.js?format=txt"></script>
-<script src="%AbsolutePathToWebKitTrunk%/PerformanceTests/resources/jquery.flot.min.js"></script>
-<script src="https://trac.webkit.org/browser/trunk/PerformanceTests/resources/jquery.flot.min.js?format=txt"></script>
-<script src="%AbsolutePathToWebKitTrunk%/PerformanceTests/resources/jquery.tablesorter.min.js"></script>
-<script src="https://trac.webkit.org/browser/trunk/PerformanceTests/resources/jquery.tablesorter.min.js?format=txt"></script>
-<script id="json" type="application/json">%PeformanceTestsResultsJSON%</script>
 <style type="text/css">
 
 section {
@@ -101,6 +94,10 @@ td.worse {
     color: #c66;
 }
 
+td.missing {
+    text-align: center;
+}
+
 .checkbox {
     display: inline-block;
     background: #eee;
@@ -136,23 +133,55 @@ td.worse {
 Result <span id="time-memory" class="checkbox"><span class="checked">Time</span><span>Memory</span></span>
 Reference <span id="reference" class="checkbox"></span>
 </div>
-<script>
-
-$(document).ready(function () {
-    $('.checkbox').each(function (index, checkbox) {
-        $(checkbox).children('span').click(function (event) {
-            if ($(this).hasClass('checked'))
-                return;
-            $(checkbox).children('span').removeClass('checked');
-            $(this).addClass('checked');
-            $(checkbox).trigger('change', $(this));
-        });
-    });
-})
-
-</script>
 <table id="container"></table>
 <script>
+
+(function () {
+    var jQuery = ['PerformanceTests/Dromaeo/resources/dromaeo/web/lib/jquery-1.6.4.js'];
+    var plugins = ['PerformanceTests/resources/jquery.flot.min.js', 'PerformanceTests/resources/jquery.tablesorter.min.js'];
+    var localPath = '%AbsolutePathToWebKitTrunk%';
+    var remotePath = 'https://svn.webkit.org/repository/webkit/trunk';
+    var numberOfFailures = 0;
+    var startedLoadingPlugins = false;
+    var numberOfLoadedPlugins = 0;
+
+    function loadScript(src, loaded, failed) {
+        var script = document.createElement('script');
+        script.async = true;
+        script.src = src;
+        script.onload = loaded;
+        if (failed)
+            script.onerror = failed;
+        document.body.appendChild(script);
+    }
+
+    function loadPlugins(trunkPath) {
+        for (var i = 0; i < plugins.length; i++)
+            loadScript(trunkPath + '/' + plugins[i], loadedPlugin, createFailedToLoadPlugin(plugins[i]));
+    }
+
+    function loadedPlugin() {
+        numberOfLoadedPlugins++;
+        if (numberOfLoadedPlugins == plugins.length)
+            setTimeout(init, 0);            
+    }
+
+    function createFailedToLoadPlugin(plugin) {
+        return function () { alert("Failed to load " + plugin); }
+    }
+
+    function createLoadedJQuery(trunkPath) {
+        return function () { loadPlugins(trunkPath); }
+    }
+
+    loadScript(localPath + '/' + jQuery,
+        createLoadedJQuery(localPath),
+        function () {
+            loadScript(remotePath + '/' + jQuery,
+                createLoadedJQuery(remotePath),
+                function () { alert("Failed to load jQuery."); });
+        });
+})();
 
 function TestResult(associatedTest, result, associatedRun) {
     this.unit = function () { return result.unit; }
@@ -369,7 +398,7 @@ function createTable(tests, runs, shouldIgnoreMemory, referenceIndex) {
     testNames.sort().map(function (testName) {
         var test = tests[testName];
         if (test.isMemoryTest() != shouldIgnoreMemory)
-            createTableRow(test, test.results()[referenceIndex]);
+            createTableRow(runs, test, referenceIndex);
     });
 
     $('#container').tablesorter({widgets: ['zebra']});
@@ -413,13 +442,14 @@ var warningSign = '<svg viewBox="0 0 100 100" style="width: 18px; height: 18px; 
     + '<circle cx="50" cy="73" r="6" fill="white" />'
     + '</svg>';
 
-function createTableRow(test, referenceResult) {
+function createTableRow(runs, test, referenceIndex) {
     var tableRow = $('<tr><td class="test">' + test.name() + '</td><td class="unit">' + test.unit() + '</td></tr>');
 
-    tableRow.append(test.results().map(function (result, index) {
-        var secondCell = '';
+    function markupForRun(result, referenceResult) {
+        var comparisonCell = '';
         var hiddenValue = '';
-        if (result !== referenceResult) {
+        var shouldCompare = result !== referenceResult;
+        if (shouldCompare && referenceResult) {
             var percentDifference = referenceResult.percentDifference(result);
             var better = test.smallerIsBetter() ? percentDifference < 0 : percentDifference > 0;
             var comparison = '';
@@ -429,8 +459,9 @@ function createTableRow(test, referenceResult) {
                 className += better ? ' better' : ' worse';
             }
             hiddenValue = '<span style="display: none">|' + comparison + '</span>';
-            secondCell = '</td><td class="' + className + '">' + comparison;
-        }
+            comparisonCell = '<td class="' + className + '">' + comparison + '</td>';
+        } else if (shouldCompare)
+            comparisonCell = '<td class="comparison"></td>';
 
         var values = result.values();
         var warning = '';
@@ -450,8 +481,31 @@ function createTableRow(test, referenceResult) {
         // Tablesorter doesn't know about the second cell so put the comparison in the invisible element.
         return '<td class="result" title="' + statistics + '">' + toFixedWidthPrecision(result.mean()) + hiddenValue
             + '</td><td class="stdev" title="' + statistics + '">&plusmn; '
-            + formatPercentage(result.stdevRatio()) + warning + secondCell + '</td>';
-    }).reduce(function (markup, cell) { return markup + cell; }, ''));
+            + formatPercentage(result.stdevRatio()) + warning + '</td>' + comparisonCell;
+    }
+
+    function markupForMissingRun(isReference) {
+        return '<td colspan="' + (isReference ? 2 : 3) + '" class="missing">Missing</td>';
+    }
+
+    var runIndex = 0;
+    var results = test.results();
+    var referenceResult = undefined;
+    var resultIndexMap = {};
+    for (var i = 0; i < results.length; i++) {
+        while (runs[runIndex] !== results[i].run())
+            runIndex++;
+        if (runIndex == referenceIndex)
+            referenceResult = results[i];
+        resultIndexMap[runIndex] = i;
+    }
+    for (var i = 0; i < runs.length; i++) {
+        var resultIndex = resultIndexMap[i];
+        if (resultIndex == undefined)
+            tableRow.append(markupForMissingRun(i == referenceIndex));
+        else
+            tableRow.append(markupForRun(results[resultIndex], referenceResult));
+    }
 
     $('#container').children('tbody').last().append(tableRow);
 
@@ -521,10 +575,19 @@ function init() {
         referenceIndex = parseInt(checkedElement.getAttribute('value'));
         createTable(tests, runs, shouldIgnoreMemory, referenceIndex);
     });
+
+    $('.checkbox').each(function (index, checkbox) {
+        $(checkbox).children('span').click(function (event) {
+            if ($(this).hasClass('checked'))
+                return;
+            $(checkbox).children('span').removeClass('checked');
+            $(this).addClass('checked');
+            $(checkbox).trigger('change', $(this));
+        });
+    });
 }
 
-init();
-
 </script>
+<script id="json" type="application/json">%PeformanceTestsResultsJSON%</script>
 </body>
 </html>

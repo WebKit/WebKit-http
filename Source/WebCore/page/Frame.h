@@ -76,14 +76,22 @@ namespace WebCore {
 
     class TreeScope;
 
+    enum {
+        LayerTreeFlagsIncludeDebugInfo = 1 << 0,
+        LayerTreeFlagsIncludeVisibleRects = 1 << 1,
+        LayerTreeFlagsIncludeTileCaches = 1 << 2
+    };
+    typedef unsigned LayerTreeFlags;
+
     class Frame : public RefCounted<Frame>, public TiledBackingStoreClient {
     public:
         static PassRefPtr<Frame> create(Page*, HTMLFrameOwnerElement*, FrameLoaderClient*);
 
         void init();
         void setView(PassRefPtr<FrameView>);
-        void createView(const IntSize&, const Color&, bool, const IntSize&, bool,
-            ScrollbarMode = ScrollbarAuto, bool horizontalLock = false,
+        void createView(const IntSize&, const Color&, bool,
+            const IntSize& fixedLayoutSize = IntSize(), const IntRect& fixedVisibleContentRect = IntRect(),
+            bool useFixedLayout = false, ScrollbarMode = ScrollbarAuto, bool horizontalLock = false,
             ScrollbarMode = ScrollbarAuto, bool verticalLock = false);
 
         ~Frame();
@@ -125,7 +133,7 @@ namespace WebCore {
 
         void injectUserScripts(UserScriptInjectionTime);
         
-        String layerTreeAsText(bool showDebugInfo = false) const;
+        String layerTreeAsText(LayerTreeFlags = 0) const;
 
         static Frame* frameForWidget(const Widget*);
 

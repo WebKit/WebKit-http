@@ -1,3 +1,500 @@
+2012-10-24  Brady Eidson  <beidson@apple.com>
+
+        Add a strategy for loader customization.
+        https://bugs.webkit.org/show_bug.cgi?id=100278
+
+        Reviewed by Alexey Proskuryakov.
+
+        * WebCoreSupport/PlatformStrategiesQt.cpp:
+        (PlatformStrategiesQt::createLoaderStrategy):
+        * WebCoreSupport/PlatformStrategiesQt.h:
+        (PlatformStrategiesQt):
+
+2012-10-23  Alexey Proskuryakov  <ap@apple.com>
+
+        Add a strategy for shared workers
+        https://bugs.webkit.org/show_bug.cgi?id=100165
+
+        Reviewed by Brady Eidson.
+
+        * WebCoreSupport/PlatformStrategiesQt.cpp:
+        (PlatformStrategiesQt::createPasteboardStrategy):
+        (PlatformStrategiesQt::createSharedWorkerStrategy):
+        (PlatformStrategiesQt::createVisitedLinkStrategy):
+        * WebCoreSupport/PlatformStrategiesQt.h:
+
+2012-10-24  Allan Sandfeld Jensen  <allan.jensen@digia.com>
+
+        [Qt] Expose useful WebCore::Settings
+        https://bugs.webkit.org/show_bug.cgi?id=100239
+
+        Reviewed by Kenneth Rohde Christiansen.
+
+        Expose the two settings CaretBrowsingEnabled and NotificationsEnabled.
+
+        * Api/qwebsettings.cpp:
+        (QWebSettingsPrivate::apply):
+        (QWebSettings::QWebSettings):
+        * Api/qwebsettings.h:
+
+2012-10-23  Andras Becsi  <andras.becsi@digia.com>
+
+        Remove devicePixelRatio from ViewportAttributes
+        https://bugs.webkit.org/show_bug.cgi?id=99845
+
+        Reviewed by Adam Barth.
+
+        Pass the device pixel ratio as a function argument to
+        match the new API.
+
+        * Api/qwebpage.cpp:
+        (QWebPage::viewportAttributesForSize):
+        * WebCoreSupport/DumpRenderTreeSupportQt.cpp:
+        (DumpRenderTreeSupportQt::viewportAsText):
+
+2012-10-23  Simon Hausmann  <simon.hausmann@digia.com>
+
+        Unreviewed build fix with newer Qt 5.
+
+        QPlastiqueStyle has been removed, but as pointed out by Jens it's also not
+        maintained anymore and hence safe to remove. We can do tweaks with the new
+        fusion style if required.
+
+        * WebCoreSupport/QStyleFacadeImp.cpp:
+        (WebKit::QStyleFacadeImp::paintInnerSpinButton):
+
+2012-10-22  Simon Hausmann  <simon.hausmann@digia.com>
+
+        [Qt] Fix build without QtWidgets
+        https://bugs.webkit.org/show_bug.cgi?id=99981
+
+        Reviewed by Tor Arne Vestbø.
+
+        Remove dependency to QtWidgets that is not needed here anymore since
+        the removal of the QtQuick1 code.
+
+        * declarative/experimental/experimental.pri:
+        * declarative/public.pri:
+
+2012-10-22  Jocelyn Turcotte  <jocelyn.turcotte@digia.com>
+
+        [Qt] Fix "ASSERTION FAILED: !document->inPageCache()" when loading a page
+        https://bugs.webkit.org/show_bug.cgi?id=98514
+
+        Reviewed by Kenneth Rohde Christiansen.
+
+        * WebCoreSupport/FrameLoaderClientQt.cpp:
+        (WebCore::FrameLoaderClientQt::transitionToCommittedForNewPage): Use FrameView::fixedVisibleContentRect
+        instead of FrameView::visibleContentRect as the source to always keep the correct state.
+
+2012-10-22  Allan Sandfeld Jensen  <allan.jensen@digia.com>
+
+        [Qt] Basic gesture event handling
+        https://bugs.webkit.org/show_bug.cgi?id=66173
+
+        Reviewed by Simon Hausmann.
+
+        Implement basic handling of QGestureEvent converting and forwarding
+        Tap and TapAndHold gestures to WebCore.
+
+        * Api/qwebpage.cpp:
+        (QWebPagePrivate::gestureEvent):
+        (QWebPage::event):
+        * Api/qwebpage_p.h:
+        (QWebPagePrivate):
+        * WebCoreSupport/WebEventConversion.cpp:
+        (WebKitPlatformGestureEvent):
+        (WebCore::WebKitPlatformGestureEvent::WebKitPlatformGestureEvent):
+        (WebCore::convertGesture):
+        * WebCoreSupport/WebEventConversion.h:
+
+2012-10-17  Tor Arne Vestbø  <tor.arne.vestbo@digia.com>
+
+        [Qt] Modularize documentation for QtWebKit
+
+        Running 'make docs' would fail unless 'make qmake_all' was ran first,
+        but qmake_all involved generating all the derived sources, which seems
+        overly complex just for building documentation.
+
+        We solve this by preventing all subdirs except QtWebKit from having a
+        docs target. This would normally work fine on its own, but since we
+        use CONFIG += ordered, there's now a missing doc target for the
+        immediate dependency of the QtWebKit subdir. We solve this by adding
+        a dummy-target ourselves.
+
+        Finally, we clean up the qdocconf file to match the rest of the Qt
+        documentation modularization efforts.
+
+        Reviewed by Simon Hausmann.
+
+        * docs/docs.pri: Removed.
+        * docs/qtwebkit.qdocconf: Removed.
+
+2012-10-15  Simon Hausmann  <simon.hausmann@digia.com>
+
+        [Qt] Separate Qt WebKit into Qt WebKit and Qt WebKit Widgets
+        https://bugs.webkit.org/show_bug.cgi?id=88162
+
+        Reviewed by Kenneth Rohde Christiansen.
+
+        Rename the QtWebKit module to QtWebKitWidgets.
+
+        * declarative/experimental/experimental.pri:
+        * declarative/public.pri:
+        * docs/webkitsnippets/simple/simple.pro:
+        * docs/webkitsnippets/webpage/webpage.pro:
+        * tests/tests.pri:
+
+2012-10-10  Jon Lee  <jonlee@apple.com>
+
+        [WK2] Activate plugins when user clicks on snapshot
+        https://bugs.webkit.org/show_bug.cgi?id=98328
+        <rdar://problem/12426681>
+
+        Reviewed by Brady Eidson.
+
+        * WebCoreSupport/FrameLoaderClientQt.h:
+        (WebCore::FrameLoaderClientQt::recreatePlugin): Stub implementation of recreatePlugin().
+
+2012-10-10  Balazs Kelemen  <kbalazs@webkit.org>
+
+        [Qt] Test drivers should handle repaint rects
+        https://bugs.webkit.org/show_bug.cgi?id=68870
+
+        Reviewed by Zoltan Herczeg.
+
+        Added helpers to enable and get the repaint rects.
+
+        * WebCoreSupport/DumpRenderTreeSupportQt.cpp:
+        (DumpRenderTreeSupportQt::setTrackRepaintRects):
+        (DumpRenderTreeSupportQt::trackRepaintRects):
+        (DumpRenderTreeSupportQt::getTrackedRepaintRects):
+        * WebCoreSupport/DumpRenderTreeSupportQt.h:
+
+2012-10-08  Simon Hausmann  <simon.hausmann@digia.com>
+
+        [Qt] Make RenderThemeQStyle/ScrollbarThemeQStyle compile without QStyle/QtWidgets
+        https://bugs.webkit.org/show_bug.cgi?id=98268
+
+        Reviewed by Tor Arne Vestbø.
+
+        Extracted QStyle/QWidget related code into a QWebStyle class that implements the QStyleFacade interface.
+
+        QStyleFacade is a pure interface that lives in WebCore/platform/qt
+        (next to RenderThemeQStyle and ScrollbarThemeQStyle) and provides a
+        minimal interface of what we need to draw with QStyle as well as basic
+        hit testing and metric retrieval. It also provides a
+        QStyleFacadeOption class that aggregates common meta-data for
+        rendering primitives, such as direction, rectangle, state (sunken,
+        enabled, etc.) or palette. It also provides some more slider/scrollbar
+        specific fields in a slider sub-structure.
+
+        RenderThemeQStyle/ScrollbarThemeQStyle used to instantiate specific QStyleOption sub-classes and populate
+        them with state information from render objects, before calling straight to QStyle. Most of the common code
+        was encapsulated in StylePainterQStyle.
+
+        The new RenderThemeQStyle/ScrolllbarThemeQStyle uses common code in
+        StylePainterQStyle to populate state into QStyleFacadeOption before
+        calling into QStyleFacade.
+
+        The style facade is then implemented by QStyleFacadeImp, which extracts
+        meta-data from QStyleFacadeOption arguments, populates style
+        primitive specific QStyleOption objects and then calls on QStyle.
+
+        RenderThemeQStyle/ScrollbarThemeQStyle can only use interface methods
+        from QStyleFacade. QStyleFacadeImp on the other hand will live in the
+        separate QtWebKitWidgets library in the future and therefore cannot use
+        any WebCore types.
+
+        * WebCoreSupport/InitWebCoreQt.cpp:
+        (WebCore::initializeWebCoreQt):
+        * WebCoreSupport/QStyleFacadeImp.cpp: Added.
+        (WebKit):
+        (WebKit::convertToQStyleState):
+        (WebKit::convertToQStyleSubControl):
+        (WebKit::initGenericStyleOption):
+        (WebKit::initSpecificStyleOption):
+        (MappedStyleOption):
+        (WebKit::MappedStyleOption::MappedStyleOption):
+        (WebKit::convertPixelMetric):
+        (WebKit::convertToQStyleFacadeSubControl):
+        (WebKit::QStyleFacadeImp::QStyleFacadeImp):
+        (WebKit::QStyleFacadeImp::~QStyleFacadeImp):
+        (WebKit::QStyleFacadeImp::buttonSubElementRect):
+        (WebKit::QStyleFacadeImp::findFrameLineWidth):
+        (WebKit::QStyleFacadeImp::simplePixelMetric):
+        (WebKit::QStyleFacadeImp::buttonMargin):
+        (WebKit::QStyleFacadeImp::sliderLength):
+        (WebKit::QStyleFacadeImp::sliderThickness):
+        (WebKit::QStyleFacadeImp::progressBarChunkWidth):
+        (WebKit::QStyleFacadeImp::getButtonMetrics):
+        (WebKit::QStyleFacadeImp::sizeFromContents):
+        (WebKit::QStyleFacadeImp::paintButton):
+        (WebKit::QStyleFacadeImp::paintTextField):
+        (WebKit::QStyleFacadeImp::paintComboBox):
+        (WebKit::QStyleFacadeImp::paintComboBoxArrow):
+        (WebKit::QStyleFacadeImp::paintSliderTrack):
+        (WebKit::QStyleFacadeImp::paintSliderThumb):
+        (WebKit::QStyleFacadeImp::paintInnerSpinButton):
+        (WebKit::QStyleFacadeImp::paintProgressBar):
+        (WebKit::QStyleFacadeImp::scrollBarExtent):
+        (WebKit::QStyleFacadeImp::scrollBarMiddleClickAbsolutePositionStyleHint):
+        (WebKit::QStyleFacadeImp::paintScrollCorner):
+        (WebKit::QStyleFacadeImp::hitTestScrollBar):
+        (WebKit::QStyleFacadeImp::scrollBarSubControlRect):
+        (WebKit::QStyleFacadeImp::paintScrollBar):
+        (WebKit::QStyleFacadeImp::widgetForPainter):
+        (WebKit::QStyleFacadeImp::style):
+        * WebCoreSupport/QStyleFacadeImp.h: Added.
+        (WebCore):
+        (WebKit):
+        (QStyleFacadeImp):
+        (WebKit::QStyleFacadeImp::create):
+        (WebKit::QStyleFacadeImp::isValid):
+
+2012-10-08  Zoltan Horvath  <zoltan@webkit.org>
+
+        [Qt] r122720 causes performance regression with DirectFB on ARMv7
+        https://bugs.webkit.org/show_bug.cgi?id=97548
+
+        Reviewed by Jocelyn Turcotte.
+
+        Revert the rest of r122720. This change modifies the NativeImagePtr from QImage* to QPixmap*.
+
+        Covered by existing tests.
+
+        * Api/qwebframe.cpp:
+        (QWebHitTestResultPrivate::QWebHitTestResultPrivate):
+        * Api/qwebhistory.cpp:
+        (QWebHistoryItem::icon):
+        * Api/qwebsettings.cpp:
+        (QWebSettings::iconForUrl):
+        (QWebSettings::setWebGraphic):
+        (QWebSettings::webGraphic):
+        * WebCoreSupport/DragClientQt.cpp:
+        (WebCore::DragClientQt::startDrag):
+        * WebCoreSupport/InitWebCoreQt.cpp:
+        (WebCore::initializeWebCoreQt):
+
+2012-10-07  Caio Marcelo de Oliveira Filho  <caio.oliveira@openbossa.org>
+
+        Rename first/second to key/value in HashMap iterators
+        https://bugs.webkit.org/show_bug.cgi?id=82784
+
+        Reviewed by Eric Seidel.
+
+        * Api/qwebpage.cpp:
+        (extractContentTypeFromPluginVector):
+        * Api/qwebplugindatabase.cpp:
+        (QWebPluginInfo::mimeTypes):
+        * WebCoreSupport/PlatformStrategiesQt.cpp:
+        (PlatformStrategiesQt::getPluginInfo):
+
+2012-10-05  Simon Hausmann  <simon.hausmann@digia.com>
+
+        Unreviewed, rolling out r130495.
+        http://trac.webkit.org/changeset/130495
+        https://bugs.webkit.org/show_bug.cgi?id=98268
+
+        Made WK2 tests crash.
+
+        * WebCoreSupport/InitWebCoreQt.cpp:
+        (WebCore::initializeWebCoreQt):
+        * WebCoreSupport/QStyleFacadeImp.cpp: Removed.
+        * WebCoreSupport/QStyleFacadeImp.h: Removed.
+        * WebCoreSupport/RenderThemeQStyle.cpp: Renamed from Source/WebCore/platform/qt/RenderThemeQStyle.cpp.
+        (WebCore):
+        (WebCore::initStyleOption):
+        (WebCore::RenderThemeQStyle::getStylePainter):
+        (WebCore::StylePainterQStyle::StylePainterQStyle):
+        (WebCore::StylePainterQStyle::init):
+        (WebCore::RenderThemeQStyle::create):
+        (WebCore::RenderThemeQStyle::RenderThemeQStyle):
+        (WebCore::RenderThemeQStyle::~RenderThemeQStyle):
+        (WebCore::RenderThemeQStyle::fallbackStyle):
+        (WebCore::RenderThemeQStyle::setPaletteFromPageClientIfExists):
+        (WebCore::RenderThemeQStyle::qStyle):
+        (WebCore::RenderThemeQStyle::findFrameLineWidth):
+        (WebCore::RenderThemeQStyle::inflateButtonRect):
+        (WebCore::RenderThemeQStyle::computeSizeBasedOnStyle):
+        (WebCore::RenderThemeQStyle::adjustButtonStyle):
+        (WebCore::RenderThemeQStyle::setButtonPadding):
+        (WebCore::RenderThemeQStyle::paintButton):
+        (WebCore::RenderThemeQStyle::paintTextField):
+        (WebCore::RenderThemeQStyle::adjustTextAreaStyle):
+        (WebCore::RenderThemeQStyle::paintTextArea):
+        (WebCore::RenderThemeQStyle::setPopupPadding):
+        (WebCore::RenderThemeQStyle::colorPalette):
+        (WebCore::RenderThemeQStyle::paintMenuList):
+        (WebCore::RenderThemeQStyle::adjustMenuListButtonStyle):
+        (WebCore::RenderThemeQStyle::paintMenuListButton):
+        (WebCore::RenderThemeQStyle::animationDurationForProgressBar):
+        (WebCore::RenderThemeQStyle::paintProgressBar):
+        (WebCore::RenderThemeQStyle::paintSliderTrack):
+        (WebCore::RenderThemeQStyle::adjustSliderTrackStyle):
+        (WebCore::RenderThemeQStyle::paintSliderThumb):
+        (WebCore::RenderThemeQStyle::adjustSliderThumbStyle):
+        (WebCore::RenderThemeQStyle::paintSearchField):
+        (WebCore::RenderThemeQStyle::adjustSearchFieldDecorationStyle):
+        (WebCore::RenderThemeQStyle::paintSearchFieldDecoration):
+        (WebCore::RenderThemeQStyle::adjustSearchFieldResultsDecorationStyle):
+        (WebCore::RenderThemeQStyle::paintSearchFieldResultsDecoration):
+        (WebCore::RenderThemeQStyle::paintInnerSpinButton):
+        (WebCore::RenderThemeQStyle::initializeCommonQStyleOptions):
+        (WebCore::RenderThemeQStyle::adjustSliderThumbSize):
+        * WebCoreSupport/RenderThemeQStyle.h: Renamed from Source/WebCore/platform/qt/RenderThemeQStyle.h.
+        (WebCore):
+        (RenderThemeQStyle):
+        (StylePainterQStyle):
+        (WebCore::StylePainterQStyle::isValid):
+        (WebCore::StylePainterQStyle::drawPrimitive):
+        (WebCore::StylePainterQStyle::drawControl):
+        (WebCore::StylePainterQStyle::drawComplexControl):
+        * WebCoreSupport/ScrollbarThemeQStyle.cpp: Renamed from Source/WebCore/platform/qt/ScrollbarThemeQStyle.cpp.
+        (WebCore):
+        (WebCore::ScrollbarThemeQStyle::~ScrollbarThemeQStyle):
+        (WebCore::scPart):
+        (WebCore::scrollbarPart):
+        (WebCore::styleOptionSlider):
+        (WebCore::ScrollbarThemeQStyle::paint):
+        (WebCore::ScrollbarThemeQStyle::hitTest):
+        (WebCore::ScrollbarThemeQStyle::shouldCenterOnThumb):
+        (WebCore::ScrollbarThemeQStyle::invalidatePart):
+        (WebCore::ScrollbarThemeQStyle::scrollbarThickness):
+        (WebCore::ScrollbarThemeQStyle::thumbPosition):
+        (WebCore::ScrollbarThemeQStyle::thumbLength):
+        (WebCore::ScrollbarThemeQStyle::trackPosition):
+        (WebCore::ScrollbarThemeQStyle::trackLength):
+        (WebCore::ScrollbarThemeQStyle::paintScrollCorner):
+        (WebCore::ScrollbarThemeQStyle::style):
+        * WebCoreSupport/ScrollbarThemeQStyle.h: Renamed from Source/WebCore/platform/qt/ScrollbarThemeQStyle.h.
+        (WebCore):
+        (ScrollbarThemeQStyle):
+
+2012-10-05  Simon Hausmann  <simon.hausmann@digia.com>
+
+        [Qt] Make RenderThemeQStyle/ScrollbarThemeQStyle compile without QStyle/QtWidgets
+        https://bugs.webkit.org/show_bug.cgi?id=98268
+
+        Reviewed by Tor Arne Vestbø.
+
+        Extracted QStyle/QWidget related code into a QWebStyle class that implements the QStyleFacade interface.
+
+        QStyleFacade is a pure interface that lives in WebCore/platform/qt
+        (next to RenderThemeQStyle and ScrollbarThemeQStyle) and provides a
+        minimal interface of what we need to draw with QStyle as well as basic
+        hit testing and metric retrieval. It also provides a
+        QStyleFacadeOption class that aggregates common meta-data for
+        rendering primitives, such as direction, rectangle, state (sunken,
+        enabled, etc.) or palette. It also provides some more slider/scrollbar
+        specific fields in a slider sub-structure.
+
+        RenderThemeQStyle/ScrollbarThemeQStyle used to instantiate specific QStyleOption sub-classes and populate
+        them with state information from render objects, before calling straight to QStyle. Most of the common code
+        was encapsulated in StylePainterQStyle.
+
+        The new RenderThemeQStyle/ScrolllbarThemeQStyle uses common code in
+        StylePainterQStyle to populate state into QStyleFacadeOption before
+        calling into QStyleFacade.
+
+        The style facade is then implemented by QStyleFacadeImp, which extracts
+        meta-data from QStyleFacadeOption arguments, populates style
+        primitive specific QStyleOption objects and then calls on QStyle.
+
+        RenderThemeQStyle/ScrollbarThemeQStyle can only use interface methods
+        from QStyleFacade. QStyleFacadeImp on the other hand will live in the
+        separate QtWebKitWidgets library in the future and therefore cannot use
+        any WebCore types.
+
+        * WebCoreSupport/InitWebCoreQt.cpp:
+        (WebCore::initializeWebCoreQt):
+        * WebCoreSupport/QStyleFacadeImp.cpp: Added.
+        (WebKit):
+        (WebKit::convertToQStyleState):
+        (WebKit::convertToQStyleSubControl):
+        (WebKit::initGenericStyleOption):
+        (WebKit::initSpecificStyleOption):
+        (MappedStyleOption):
+        (WebKit::MappedStyleOption::MappedStyleOption):
+        (WebKit::convertPixelMetric):
+        (WebKit::convertToQStyleFacadeSubControl):
+        (WebKit::QStyleFacadeImp::QStyleFacadeImp):
+        (WebKit::QStyleFacadeImp::~QStyleFacadeImp):
+        (WebKit::QStyleFacadeImp::buttonSubElementRect):
+        (WebKit::QStyleFacadeImp::findFrameLineWidth):
+        (WebKit::QStyleFacadeImp::simplePixelMetric):
+        (WebKit::QStyleFacadeImp::buttonMargin):
+        (WebKit::QStyleFacadeImp::sliderLength):
+        (WebKit::QStyleFacadeImp::sliderThickness):
+        (WebKit::QStyleFacadeImp::progressBarChunkWidth):
+        (WebKit::QStyleFacadeImp::getButtonMetrics):
+        (WebKit::QStyleFacadeImp::sizeFromContents):
+        (WebKit::QStyleFacadeImp::paintButton):
+        (WebKit::QStyleFacadeImp::paintTextField):
+        (WebKit::QStyleFacadeImp::paintComboBox):
+        (WebKit::QStyleFacadeImp::paintComboBoxArrow):
+        (WebKit::QStyleFacadeImp::paintSliderTrack):
+        (WebKit::QStyleFacadeImp::paintSliderThumb):
+        (WebKit::QStyleFacadeImp::paintInnerSpinButton):
+        (WebKit::QStyleFacadeImp::paintProgressBar):
+        (WebKit::QStyleFacadeImp::scrollBarExtent):
+        (WebKit::QStyleFacadeImp::scrollBarMiddleClickAbsolutePositionStyleHint):
+        (WebKit::QStyleFacadeImp::paintScrollCorner):
+        (WebKit::QStyleFacadeImp::hitTestScrollBar):
+        (WebKit::QStyleFacadeImp::scrollBarSubControlRect):
+        (WebKit::QStyleFacadeImp::paintScrollBar):
+        (WebKit::QStyleFacadeImp::widgetForPainter):
+        (WebKit::QStyleFacadeImp::style):
+        * WebCoreSupport/QStyleFacadeImp.h: Added.
+        (WebCore):
+        (WebKit):
+        (QStyleFacadeImp):
+        (WebKit::QStyleFacadeImp::create):
+        (WebKit::QStyleFacadeImp::isValid):
+
+2012-10-05  Simon Hausmann  <simon.hausmann@digia.com>
+
+        [Qt] Remove dead code
+        https://bugs.webkit.org/show_bug.cgi?id=98491
+
+        Reviewed by Jocelyn Turcotte.
+
+        This code was added long time ago for a Symbian related project and is
+        not needed anymore.
+
+        * Api/qwebframe.cpp:
+
+2012-10-04  Simon Fraser  <simon.fraser@apple.com>
+
+        Final part of "sync" to "flush" renaming
+        https://bugs.webkit.org/show_bug.cgi?id=98430
+
+        Reviewed by Tim Horton.
+
+        Change method names on GraphicsLayer and GraphicsLayerClient that
+        refer to "sync" to use the term "flush" instead, to be consistent
+        with the rest of the code.
+
+        * WebCoreSupport/PageClientQt.cpp:
+        (WebCore::TextureMapperLayerClientQt::syncRootLayer):
+
+2012-10-04  Simon Fraser  <simon.fraser@apple.com>
+
+        Standardize on "flush" terminology for compositing layer flushing/syncing
+        https://bugs.webkit.org/show_bug.cgi?id=98321
+
+        Reviewed by Simon Fraser.
+
+        Rename compositing-related methods that refer to "syncing" to instead
+        refer to "flushing".
+
+        * WebCoreSupport/ChromeClientQt.cpp:
+        (WebCore::ChromeClientQt::scheduleCompositingLayerFlush):
+        * WebCoreSupport/ChromeClientQt.h:
+        (ChromeClientQt):
+        * WebCoreSupport/PageClientQt.cpp:
+        (WebCore::PageClientQGraphicsWidget::syncLayers):
+
 2012-10-03  Balazs Kelemen  <kbalazs@webkit.org>
 
         [Qt] Enable mock scrollbars

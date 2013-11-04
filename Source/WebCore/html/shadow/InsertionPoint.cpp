@@ -33,11 +33,13 @@
 
 #include "ElementShadow.h"
 #include "ShadowRoot.h"
+#include "StaticNodeList.h"
 
 namespace WebCore {
 
 InsertionPoint::InsertionPoint(const QualifiedName& tagName, Document* document)
     : HTMLElement(tagName, document)
+    , m_shouldResetStyleInheritance(false)
 {
 }
 
@@ -67,6 +69,11 @@ void InsertionPoint::detach()
     HTMLElement::detach();
 }
 
+bool InsertionPoint::shouldUseFallbackElements() const
+{
+    return isActive() && !hasDistribution();
+}
+
 bool InsertionPoint::isShadowBoundary() const
 {
     return treeScope()->rootNode()->isShadowRoot() && isActive();
@@ -84,6 +91,17 @@ bool InsertionPoint::isActive() const
         node = node->parentNode();
     }
     return true;
+}
+
+PassRefPtr<NodeList> InsertionPoint::getDistributedNodes() const
+{
+    document()->updateLayout();
+    Vector<RefPtr<Node> > nodes;
+
+    for (size_t i = 0; i < m_distribution.size(); ++i)
+        nodes.append(m_distribution.at(i));
+
+    return StaticNodeList::adopt(nodes);
 }
 
 bool InsertionPoint::rendererIsNeeded(const NodeRenderingContext& context)
@@ -143,6 +161,20 @@ void InsertionPoint::removedFrom(ContainerNode* insertionPoint)
     }
 
     HTMLElement::removedFrom(insertionPoint);
+}
+
+bool InsertionPoint::resetStyleInheritance() const
+{
+    return m_shouldResetStyleInheritance;
+}
+
+void InsertionPoint::setResetStyleInheritance(bool value)
+{
+    if (value != m_shouldResetStyleInheritance) {
+        m_shouldResetStyleInheritance = value;
+        if (attached() && isActive())
+            shadowRoot()->host()->setNeedsStyleRecalc();
+    }
 }
 
 } // namespace WebCore

@@ -267,7 +267,8 @@ CalendarPicker.validateConfig = function(config) {
 /**
  * @param {!Object} args
  */
-function initialize(args) {
+function initialize(args) { 
+    global.params = args;
     var errorString = CalendarPicker.validateConfig(args);
     if (args.suggestionValues)
         errorString = errorString || SuggestionPicker.validateConfig(args)
@@ -276,7 +277,6 @@ function initialize(args) {
         main.textContent = "Internal error: " + errorString;
         resizeWindow(main.offsetWidth, main.offsetHeight);
     } else {
-        global.params = args;
         if (global.params.suggestionValues && global.params.suggestionValues.length)
             openSuggestionPicker();
         else
@@ -310,6 +310,9 @@ function openCalendarPicker() {
 function CalendarPicker(element, config) {
     Picker.call(this, element, config);
     this._element.classList.add("calendar-picker");
+    this._element.classList.add("preparing");
+    this._handleWindowResizeBound = this._handleWindowResize.bind(this);
+    window.addEventListener("resize", this._handleWindowResizeBound, false);
     // We assume this._config.min is a valid date.
     this.minimumDate = (typeof this._config.min !== "undefined") ? parseDateString(this._config.min) : CalendarPicker.MinimumPossibleDate;
     // We assume this._config.max is a valid date.
@@ -338,6 +341,10 @@ CalendarPicker.MaximumPossibleDate = new Date(8640000000000000.0);
 // See WebCore/html/DateInputType.cpp.
 CalendarPicker.DefaultStepScaleFactor = 86400000;
 CalendarPicker.DefaultStepBase = 0.0;
+
+CalendarPicker.prototype._handleWindowResize = function() {
+    this._element.classList.remove("preparing");
+};
 
 CalendarPicker.prototype.cleanup = function() {
     document.body.removeEventListener("keydown", this._handleBodyKeyDownBound, false);
@@ -375,7 +382,7 @@ CalendarPicker.prototype.fixWindowSize = function() {
     var DaysAreaContainerBorder = 1;
     var yearMonthEnd;
     var daysAreaEnd;
-    if (global.params.isRTL) {
+    if (global.params.isCalendarRTL) {
         var startOffset = this._element.offsetLeft + this._element.offsetWidth;
         yearMonthEnd = startOffset - yearMonthRightElement.offsetLeft;
         daysAreaEnd = startOffset - (daysAreaElement.offsetLeft + daysAreaElement.offsetWidth) + maxCellWidth * 7 + DaysAreaContainerBorder;
@@ -796,14 +803,6 @@ function DaysTable(picker) {
     /**
      * @type {!number}
      */
-    this._x = -1;
-    /**
-     * @type {!number}
-     */
-    this._y = -1;
-    /**
-     * @type {!number}
-     */
     this._currentYear = -1;
     /**
      * @type {!number}
@@ -815,7 +814,7 @@ function DaysTable(picker) {
  * @return {!boolean}
  */
 DaysTable.prototype._hasSelection = function() {
-    return this._x >= 0 && this._y >= 0;
+    return !!this._firstNodeInSelectedRange();
 }
 
 /**
@@ -981,27 +980,62 @@ DaysTable.prototype._moveInDays = function() {
 DaysTable.prototype.navigateToMonthAndKeepSelectionPosition = function(year, month) {
     if (year == this._currentYear && month == this._currentMonth)
         return;
+    var firstNodeInSelectedRange = this._firstNodeInSelectedRange();
     this._navigateToMonthWithAnimation(year, month);
-    if (this._hasSelection())
-        this._days[this._y][this._x].classList.add(ClassNames.Selected);
+    if (firstNodeInSelectedRange) {
+        var x = parseInt(firstNodeInSelectedRange.dataset.positionX, 10);
+        var y = parseInt(firstNodeInSelectedRange.dataset.positionY, 10);
+        this._selectRangeAtPosition(x, y);
+    }
 };
 
 /**
  * @param {!Date} date
  */
 DaysTable.prototype.selectDate = function(date) {
+    this._deselect();
     this._navigateToMonthWithAnimation(date.getUTCFullYear(), date.getUTCMonth());
     var dateString = serializeDate(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate());
     for (var w = 0; w < DaysTable._Weeks; w++) {
         for (var d = 0; d < 7; d++) {
             if (this._days[w][d].dataset.submitValue == dateString) {
                 this._days[w][d].classList.add(ClassNames.Selected);
-                this._x = d;
-                this._y = w;
                 break;
             }
         }
     }
+};
+
+/**
+ * @param {!Element} dayNode
+ */
+DaysTable.prototype._selectRangeContainingNode = function(dayNode) {
+    this._deselect();
+    if (!dayNode || !dayNode.classList.contains(ClassNames.Day) || !dayNode.classList.contains(ClassNames.Available))
+        return;
+    // FIXME: Select date, week or month depending on the config.
+    dayNode.classList.add(ClassNames.Selected);
+};
+
+/**
+ * @param {!number} x
+ * @param {!number} y
+ */
+DaysTable.prototype._selectRangeAtPosition = function(x, y) {
+    this._selectRangeContainingNode(this._days[y][x]);
+};
+
+/**
+ * @return {!Element}
+ */
+DaysTable.prototype._firstNodeInSelectedRange = function() {
+    return this._daysContainer.getElementsByClassName(ClassNames.Selected)[0];
+};
+
+DaysTable.prototype._deselect = function() {
+    var selectedNodes = this._daysContainer.getElementsByClassName(ClassNames.Selected);
+    for (var node = selectedNodes[0]; node; node = selectedNodes[0])
+        node.classList.remove(ClassNames.Selected);
 };
 
 /**
@@ -1053,26 +1087,16 @@ DaysTable.prototype._handleDayClick = function(event) {
  */
 DaysTable.prototype._handleMouseOver = function(event) {
     var node = event.target;
-    if (this._hasSelection())
-        this._days[this._y][this._x].classList.remove(ClassNames.Selected);
-    if (!node.classList.contains(ClassNames.Day)) {
-        this._x = -1;
-        this._y = -1;
+    if (node.classList.contains(ClassNames.Selected))
         return;
-    }
-    node.classList.add(ClassNames.Selected);
-    this._x = Number(node.dataset.positionX);
-    this._y = Number(node.dataset.positionY);
+    this._selectRangeContainingNode(node);
 };
 
 /**
  * @param {Event} event
  */
 DaysTable.prototype._handleMouseOut = function(event) {
-    if (this._hasSelection())
-        this._days[this._y][this._x].classList.remove(ClassNames.Selected);
-    this._x = -1;
-    this._y = -1;
+    this._deselect();
 };
 
 /**
@@ -1080,16 +1104,21 @@ DaysTable.prototype._handleMouseOut = function(event) {
  */
 DaysTable.prototype._handleKey = function(event) {
     this.picker.maybeUpdateFocusStyle();
-    var x = this._x;
-    var y = this._y;
+    var x = -1;
+    var y = -1;
     var key = event.keyIdentifier;
+    var firstNodeInSelectedRange = this._firstNodeInSelectedRange();
+    if (firstNodeInSelectedRange) {
+        x = parseInt(firstNodeInSelectedRange.dataset.positionX, 10);
+        y = parseInt(firstNodeInSelectedRange.dataset.positionY, 10);
+    }
     if (!this._hasSelection() && (key == "Left" || key == "Up" || key == "Right" || key == "Down")) {
         // Put the selection on a center cell.
         this.updateSelection(event, 3, Math.floor(DaysTable._Weeks / 2 - 1));
         return;
     }
 
-    if (key == (global.params.isRTL ? "Right" : "Left")) {
+    if (key == (global.params.isCalendarRTL ? "Right" : "Left")) {
         if (x == 0) {
             if (y == 0) {
                 if (!this._maybeSetPreviousMonth())
@@ -1111,7 +1140,7 @@ DaysTable.prototype._handleKey = function(event) {
             y--;
         this.updateSelection(event, x, y);
 
-    } else if (key == (global.params.isRTL ? "Left" : "Right")) {
+    } else if (key == (global.params.isCalendarRTL ? "Left" : "Right")) {
         if (x == 6) {
             if (y == DaysTable._Weeks - 1) {
                 if (!this._maybeSetNextMonth())
@@ -1151,7 +1180,6 @@ DaysTable.prototype._handleKey = function(event) {
         }
 
     } else if (key == "U+0054") { // 't'
-        this._days[this._y][this._x].classList.remove(ClassNames.Selected);
         this.selectDate(new Date());
         event.stopPropagation();
         event.preventDefault();
@@ -1164,13 +1192,7 @@ DaysTable.prototype._handleKey = function(event) {
  * @param {!number} y
  */
 DaysTable.prototype.updateSelection = function(event, x, y) {
-    if (this._hasSelection())
-        this._days[this._y][this._x].classList.remove(ClassNames.Selected);
-    if (x >= 0 && y >= 0) {
-        this._days[y][x].classList.add(ClassNames.Selected);
-        this._x = x;
-        this._y = y;
-    }
+    this._selectRangeAtPosition(x, y);
     event.stopPropagation();
     event.preventDefault();
 };

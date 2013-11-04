@@ -77,7 +77,7 @@
 #include "StyleFilterData.h"
 #endif
 
-#if ENABLE(DASHBOARD_SUPPORT) || ENABLE(WIDGET_REGION)
+#if ENABLE(DASHBOARD_SUPPORT)
 #include "StyleDashboardRegion.h"
 #endif
 
@@ -523,12 +523,12 @@ public:
     Length minHeight() const { return m_box->minHeight(); }
     Length maxHeight() const { return m_box->maxHeight(); }
     
-    Length logicalWidth() const;
-    Length logicalHeight() const;
-    Length logicalMinWidth() const;
-    Length logicalMaxWidth() const;
-    Length logicalMinHeight() const;
-    Length logicalMaxHeight() const;
+    Length logicalWidth() const { return isHorizontalWritingMode() ? width() : height(); }
+    Length logicalHeight() const { return isHorizontalWritingMode() ? height() : width(); }
+    Length logicalMinWidth() const { return isHorizontalWritingMode() ? minWidth() : minHeight(); }
+    Length logicalMaxWidth() const { return isHorizontalWritingMode() ? maxWidth() : maxHeight(); }
+    Length logicalMinHeight() const { return isHorizontalWritingMode() ? minHeight() : minWidth(); }
+    Length logicalMaxHeight() const { return isHorizontalWritingMode() ? maxHeight() : maxWidth(); }
 
     const BorderData& border() const { return surround->border; }
     const BorderValue& borderLeft() const { return surround->border.left(); }
@@ -617,9 +617,11 @@ public:
     ETextTransform textTransform() const { return static_cast<ETextTransform>(inherited_flags._text_transform); }
     ETextDecoration textDecorationsInEffect() const { return static_cast<ETextDecoration>(inherited_flags._text_decorations); }
     ETextDecoration textDecoration() const { return static_cast<ETextDecoration>(visual->textDecoration); }
-#if ENABLE(CSS3_TEXT_DECORATION)
+#if ENABLE(CSS3_TEXT)
     TextDecorationStyle textDecorationStyle() const { return static_cast<TextDecorationStyle>(rareNonInheritedData->m_textDecorationStyle); }
-#endif // CSS3_TEXT_DECORATION
+#else
+    TextDecorationStyle textDecorationStyle() const { return TextDecorationStyleSolid; }
+#endif // CSS3_TEXT
     int wordSpacing() const;
     int letterSpacing() const;
 
@@ -819,6 +821,7 @@ public:
 
     const ShadowData* boxShadow() const { return rareNonInheritedData->m_boxShadow.get(); }
     void getBoxShadowExtent(LayoutUnit& top, LayoutUnit& right, LayoutUnit& bottom, LayoutUnit& left) const { getShadowExtent(boxShadow(), top, right, bottom, left); }
+    LayoutBoxExtent getBoxShadowInsetExtent() const { return getShadowInsetExtent(boxShadow()); }
     void getBoxShadowHorizontalExtent(LayoutUnit& left, LayoutUnit& right) const { getShadowHorizontalExtent(boxShadow(), left, right); }
     void getBoxShadowVerticalExtent(LayoutUnit& top, LayoutUnit& bottom) const { getShadowVerticalExtent(boxShadow(), top, bottom); }
     void getBoxShadowInlineDirectionExtent(LayoutUnit& logicalLeft, LayoutUnit& logicalRight) { getShadowInlineDirectionExtent(boxShadow(), logicalLeft, logicalRight); }
@@ -1019,7 +1022,7 @@ public:
     void setMinHeight(Length v) { SET_VAR(m_box, m_minHeight, v) }
     void setMaxHeight(Length v) { SET_VAR(m_box, m_maxHeight, v) }
 
-#if ENABLE(DASHBOARD_SUPPORT) || ENABLE(WIDGET_REGION)
+#if ENABLE(DASHBOARD_SUPPORT)
     Vector<StyleDashboardRegion> dashboardRegions() const { return rareNonInheritedData->m_dashboardRegions; }
     void setDashboardRegions(Vector<StyleDashboardRegion> regions) { SET_VAR(rareNonInheritedData, m_dashboardRegions, regions); }
 
@@ -1036,6 +1039,11 @@ public:
             rareNonInheritedData.access()->m_dashboardRegions.clear();
         rareNonInheritedData.access()->m_dashboardRegions.append(region);
     }
+#endif
+
+#if ENABLE(DRAGGABLE_REGION)
+    DraggableRegionMode getDraggableRegionMode() const { return rareNonInheritedData->m_draggableRegionMode; }
+    void setDraggableRegionMode(DraggableRegionMode v) { SET_VAR(rareNonInheritedData, m_draggableRegionMode, v); }
 #endif
 
     void resetBorder() { resetBorderImage(); resetBorderTop(); resetBorderRight(); resetBorderBottom(); resetBorderLeft(); resetBorderRadius(); }
@@ -1142,9 +1150,9 @@ public:
     void addToTextDecorationsInEffect(ETextDecoration v) { inherited_flags._text_decorations |= v; }
     void setTextDecorationsInEffect(ETextDecoration v) { inherited_flags._text_decorations = v; }
     void setTextDecoration(ETextDecoration v) { SET_VAR(visual, textDecoration, v); }
-#if ENABLE(CSS3_TEXT_DECORATION)
+#if ENABLE(CSS3_TEXT)
     void setTextDecorationStyle(TextDecorationStyle v) { SET_VAR(rareNonInheritedData, m_textDecorationStyle, v); }
-#endif // CSS3_TEXT_DECORATION
+#endif // CSS3_TEXT
     void setDirection(TextDirection v) { inherited_flags._direction = v; }
     void setLineHeight(Length specifiedLineHeight);
     bool setZoom(float);
@@ -1601,9 +1609,9 @@ public:
     static Length initialLineHeight() { return Length(-100.0, Percent); }
     static ETextAlign initialTextAlign() { return TASTART; }
     static ETextDecoration initialTextDecoration() { return TDNONE; }
-#if ENABLE(CSS3_TEXT_DECORATION)
+#if ENABLE(CSS3_TEXT)
     static TextDecorationStyle initialTextDecorationStyle() { return TextDecorationStyleSolid; }
-#endif // CSS3_TEXT_DECORATION
+#endif // CSS3_TEXT
     static float initialZoom() { return 1.0f; }
     static int initialOutlineOffset() { return 0; }
     static float initialOpacity() { return 1.0f; }
@@ -1626,7 +1634,7 @@ public:
     static EAlignItems initialAlignItems() { return AlignStretch; }
     static EAlignItems initialAlignSelf() { return AlignAuto; }
     static EFlexDirection initialFlexDirection() { return FlowRow; }
-    static EFlexWrap initialFlexWrap() { return FlexWrapNone; }
+    static EFlexWrap initialFlexWrap() { return FlexNoWrap; }
     static EJustifyContent initialJustifyContent() { return JustifyFlexStart; }
     static int initialMarqueeLoopCount() { return -1; }
     static int initialMarqueeSpeed() { return 85; }
@@ -1726,7 +1734,7 @@ public:
 #if ENABLE(ACCELERATED_OVERFLOW_SCROLLING)
     static bool initialUseTouchOverflowScrolling() { return false; }
 #endif
-#if ENABLE(DASHBOARD_SUPPORT) || ENABLE(WIDGET_REGION)
+#if ENABLE(DASHBOARD_SUPPORT)
     static const Vector<StyleDashboardRegion>& initialDashboardRegions();
     static const Vector<StyleDashboardRegion>& noneDashboardRegions();
 #endif
@@ -1751,6 +1759,7 @@ private:
 
     void inheritUnicodeBidiFrom(const RenderStyle* parent) { noninherited_flags._unicodeBidi = parent->noninherited_flags._unicodeBidi; }
     void getShadowExtent(const ShadowData*, LayoutUnit& top, LayoutUnit& right, LayoutUnit& bottom, LayoutUnit& left) const;
+    LayoutBoxExtent getShadowInsetExtent(const ShadowData*) const;
     void getShadowHorizontalExtent(const ShadowData*, LayoutUnit& left, LayoutUnit& right) const;
     void getShadowVerticalExtent(const ShadowData*, LayoutUnit& top, LayoutUnit& bottom) const;
     void getShadowInlineDirectionExtent(const ShadowData* shadow, LayoutUnit& logicalLeft, LayoutUnit& logicalRight) const

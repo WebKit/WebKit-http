@@ -79,10 +79,12 @@ fast/js/dfg-arguments-mixed-alias
 fast/js/dfg-arguments-osr-exit
 fast/js/dfg-arguments-out-of-bounds
 fast/js/dfg-arguments-unexpected-escape
+fast/js/dfg-arrayify-elimination
 fast/js/dfg-arrayify-when-late-prevent-extensions
 fast/js/dfg-arrayify-when-prevent-extensions
 fast/js/dfg-array-length-dead
 fast/js/dfg-array-pop-side-effects
+fast/js/dfg-array-pop-value-clearing
 fast/js/dfg-array-push-bad-time
 fast/js/dfg-array-push-slow-put
 fast/js/dfg-bool-to-int32-reuse
@@ -91,6 +93,7 @@ fast/js/dfg-check-two-structures
 fast/js/dfg-constant-fold-first-local-read-after-block-merge
 fast/js/dfg-convert-this-dom-window
 fast/js/dfg-cse-cfa-discrepancy
+fast/js/dfg-cse-dead-get-scoped-var
 fast/js/dfg-dead-min-one-arg
 fast/js/dfg-dead-min-two-args
 fast/js/dfg-dead-redundant-get-array-length
@@ -152,6 +155,7 @@ fast/js/dfg-redundant-load-of-captured-variable-proven-constant
 fast/js/dfg-string-stricteq
 fast/js/dfg-tear-off-arguments-not-activation
 fast/js/dfg-uint16array
+fast/js/dfg-uint32-to-number-in-middle-of-copy-propagation
 fast/js/dfg-uint32-to-number-on-captured-variable
 fast/js/dfg-uint32-to-number
 fast/js/dfg-uint32array-overflow-constant
@@ -202,6 +206,7 @@ fast/js/function-toString-semicolon-insertion
 fast/js/getter-setter-gc
 fast/js/get-by-pname
 fast/js/get-by-pname-non-final-object
+fast/js/get-by-pname-that-looks-like-a-patchable-get-by-val
 fast/js/global-resolve-through-eval
 fast/js/gmail-re-re
 fast/js/has-own-property
@@ -291,6 +296,7 @@ fast/js/repeat-cached-vm-reentry
 fast/js/reserved-words-strict
 fast/js/reserved-words
 fast/js/resize-array-assign
+fast/js/resolve-arguments-from-scope
 fast/js/slash-lineterminator-parse
 fast/js/sort-large-array
 fast/js/sort-no-jit-code-crash

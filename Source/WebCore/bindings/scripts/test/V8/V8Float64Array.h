@@ -44,10 +44,11 @@ public:
     }
     inline static v8::Handle<v8::Object> wrap(Float64Array*, v8::Handle<v8::Object> creationContext = v8::Handle<v8::Object>(), v8::Isolate* = 0);
     static void derefObject(void*);
-    static void visitDOMWrapper(DOMDataStore*, void*, v8::Persistent<v8::Object>);
     static WrapperTypeInfo info;
     static v8::Handle<v8::Value> constructorCallback(const v8::Arguments&);
     static const int internalFieldCount = v8DefaultWrapperInternalFieldCount + 0;
+    static void installPerContextProperties(v8::Handle<v8::Object>, Float64Array*) { }
+    static void installPerContextPrototypeProperties(v8::Handle<v8::Object>) { }
 private:
     static v8::Handle<v8::Object> wrapSlow(PassRefPtr<Float64Array>, v8::Handle<v8::Object> creationContext, v8::Isolate*);
 };

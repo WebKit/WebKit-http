@@ -28,21 +28,13 @@
 
 #include "MessageReceiver.h"
 #include "WebGeolocationPosition.h"
-#include <wtf/HashSet.h>
+#include <wtf/Forward.h>
 #include <wtf/HashMap.h>
+#include <wtf/HashSet.h>
 #include <wtf/Noncopyable.h>
-
-namespace CoreIPC {
-class ArgumentDecoder;
-class Connection;
-}
 
 namespace WebCore {
 class Geolocation;
-}
-
-namespace WTF {
-class String;
 }
 
 namespace WebKit {
@@ -61,19 +53,17 @@ public:
 
     void requestPermission(WebCore::Geolocation*);
 
-
 private:
-    // MessageReceiver
-    virtual void didReceiveMessage(CoreIPC::Connection*, CoreIPC::MessageID, CoreIPC::ArgumentDecoder*) OVERRIDE;
+    // CoreIPC::MessageReceiver
+    virtual void didReceiveMessage(CoreIPC::Connection*, CoreIPC::MessageID, CoreIPC::MessageDecoder&) OVERRIDE;
 
     // Implemented in generated WebGeolocationManagerMessageReceiver.cpp
-    void didReceiveWebGeolocationManagerMessage(CoreIPC::Connection*, CoreIPC::MessageID, CoreIPC::ArgumentDecoder*);
+    void didReceiveWebGeolocationManagerMessage(CoreIPC::Connection*, CoreIPC::MessageID, CoreIPC::MessageDecoder&);
 
     void didChangePosition(const WebGeolocationPosition::Data&);
-    void didFailToDeterminePosition(const WTF::String& errorMessage);
+    void didFailToDeterminePosition(const String& errorMessage);
 
     WebProcess* m_process;
-    bool m_didAddMessageReceiver;
     HashSet<WebPage*> m_pageSet;
 };
 

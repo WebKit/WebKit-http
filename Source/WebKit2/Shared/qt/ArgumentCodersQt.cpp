@@ -41,7 +41,7 @@ void ArgumentCoder<WebCore::DragData>::encode(ArgumentEncoder* encoder, const Dr
     encoder->encode((uint64_t)dragData.flags());
 
     bool hasPlatformData = dragData.platformData();
-    encoder->encodeBool(hasPlatformData);
+    encoder->encode(hasPlatformData);
     if (!hasPlatformData)
         return;
 
@@ -86,8 +86,8 @@ bool ArgumentCoder<WebCore::DragData>::decode(ArgumentDecoder* decoder, DragData
         MIMEDataHashMap::iterator it = map.begin();
         MIMEDataHashMap::iterator end = map.end();
         for (; it != end; ++it) {
-            QByteArray bytes((char*)it->second.data(), it->second.size());
-            mimeData->setData(it->first, bytes);
+            QByteArray bytes((char*)it->value.data(), it->value.size());
+            mimeData->setData(it->key, bytes);
         }
     }
 

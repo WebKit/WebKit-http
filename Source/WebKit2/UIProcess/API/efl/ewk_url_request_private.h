@@ -26,6 +26,33 @@
 #ifndef ewk_url_request_private_h
 #define ewk_url_request_private_h
 
-Ewk_Url_Request* ewk_url_request_new(WKURLRequestRef);
+#include "WKEinaSharedString.h"
+#include "WKURL.h"
+#include "WKURLRequest.h"
+#include "WebURLRequest.h"
+#include <wtf/PassRefPtr.h>
+
+/**
+ * \struct  Ewk_Url_Request
+ * @brief   Contains the URL request data.
+ */
+class Ewk_Url_Request : public RefCounted<Ewk_Url_Request> {
+public:
+    static PassRefPtr<Ewk_Url_Request> create(WKURLRequestRef requestRef)
+    {
+        return adoptRef(new Ewk_Url_Request(requestRef));
+    }
+
+    const char* url() const;
+    const char* firstParty() const;
+    const char* httpMethod() const;
+
+private:
+    explicit Ewk_Url_Request(WKURLRequestRef requestRef);
+
+    WKEinaSharedString m_url;
+    WKEinaSharedString m_firstParty;
+    WKEinaSharedString m_httpMethod;
+};
 
 #endif // ewk_url_request_private_h

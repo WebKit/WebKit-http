@@ -139,7 +139,7 @@ Evas_Object* DumpRenderTreeChrome::createView() const
     return view;
 }
 
-Evas_Object* DumpRenderTreeChrome::createWebInspectorView()
+Evas_Object* DumpRenderTreeChrome::createInspectorView()
 {
     Evas_Object* inspectorView = drtViewAdd(m_evas);
     if (!inspectorView)
@@ -161,9 +161,9 @@ Evas_Object* DumpRenderTreeChrome::createWebInspectorView()
     return inspectorView;
 }
 
-void DumpRenderTreeChrome::removeWebInspectorView()
+void DumpRenderTreeChrome::removeInspectorView()
 {
-    Evas_Object* inspectorView = ewk_view_web_inspector_view_get(mainView());
+    Evas_Object* inspectorView = ewk_view_inspector_view_get(mainView());
     if (!inspectorView)
         return;
 
@@ -171,14 +171,14 @@ void DumpRenderTreeChrome::removeWebInspectorView()
     evas_object_smart_callback_del(mainFrame, "load,finished", onInspectorFrameLoadFinished);
 
     evas_object_del(inspectorView);
-    ewk_view_web_inspector_view_set(mainView(), 0);
+    ewk_view_inspector_view_set(mainView(), 0);
 }
 
 void DumpRenderTreeChrome::waitInspectorLoadFinished()
 {
     // Waits until the page has finished loading.
     // Because it can't complete loading inspector.html before loading testURL.
-    Evas_Object* inspectorView = ewk_view_web_inspector_view_get(mainView());
+    Evas_Object* inspectorView = ewk_view_inspector_view_get(mainView());
     if (inspectorView)
         ecore_main_loop_begin();
 }
@@ -287,6 +287,7 @@ void DumpRenderTreeChrome::resetDefaultsToConsistentValues()
     ewk_view_setting_web_audio_set(mainView(), EINA_FALSE);
     ewk_view_setting_allow_universal_access_from_file_urls_set(mainView(), EINA_TRUE);
     ewk_view_setting_allow_file_access_from_file_urls_set(mainView(), EINA_TRUE);
+    ewk_view_setting_resizable_textareas_set(mainView(), EINA_TRUE);
 
     ewk_view_zoom_set(mainView(), 1.0, 0, 0);
     ewk_view_scale_set(mainView(), 1.0, 0, 0);
@@ -319,6 +320,7 @@ void DumpRenderTreeChrome::resetDefaultsToConsistentValues()
     DumpRenderTreeSupportEfl::setMinimumLogicalFontSize(mainView(), 9);
     DumpRenderTreeSupportEfl::setCSSRegionsEnabled(mainView(), true);
     DumpRenderTreeSupportEfl::setShouldTrackVisitedLinks(false);
+    DumpRenderTreeSupportEfl::setTracksRepaints(mainFrame(), false);
 
     // Reset capacities for the memory cache for dead objects.
     static const unsigned cacheTotalCapacity =  8192 * 1024;
@@ -677,19 +679,19 @@ void DumpRenderTreeChrome::onWebViewPopulateVisitedLinks(void*, Evas_Object* ewk
 
 void DumpRenderTreeChrome::onInspectorViewCreate(void*, Evas_Object*, void*)
 {
-    Evas_Object* inspectorView = browser->createWebInspectorView();
+    Evas_Object* inspectorView = browser->createInspectorView();
     if (inspectorView)
-        ewk_view_web_inspector_view_set(browser->mainView(), inspectorView);
+        ewk_view_inspector_view_set(browser->mainView(), inspectorView);
 }
 
 void DumpRenderTreeChrome::onInspectorViewClose(void*, Evas_Object*, void*)
 {
-    browser->removeWebInspectorView();
+    browser->removeInspectorView();
 }
 
 void DumpRenderTreeChrome::onInspectorFrameLoadFinished(void*, Evas_Object*, void*)
 {
-    Evas_Object* inspectorView = ewk_view_web_inspector_view_get(browser->mainView());
+    Evas_Object* inspectorView = ewk_view_inspector_view_get(browser->mainView());
     if (inspectorView)
         ecore_main_loop_quit();
 }

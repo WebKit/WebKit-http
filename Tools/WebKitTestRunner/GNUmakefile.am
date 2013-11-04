@@ -31,7 +31,9 @@ Programs_WebKitTestRunner_SOURCES = \
 	Tools/WebKitTestRunner/TestInvocation.h \
 	Tools/WebKitTestRunner/WebNotificationProvider.cpp \
 	Tools/WebKitTestRunner/WebNotificationProvider.h \
-	Tools/WebKitTestRunner/WebKitTestRunnerPrefix.h
+	Tools/WebKitTestRunner/WebKitTestRunnerPrefix.h \
+	Tools/WebKitTestRunner/WorkQueueManager.cpp \
+	Tools/WebKitTestRunner/WorkQueueManager.h
 
 Programs_WebKitTestRunner_CPPFLAGS = \
 	-include Tools/WebKitTestRunner/WebKitTestRunnerPrefix.h \
@@ -40,6 +42,7 @@ Programs_WebKitTestRunner_CPPFLAGS = \
 	-I$(top_builddir)/DerivedSources/WebKit2/include \
 	$(global_cppflags) \
 	$(javascriptcore_cppflags) \
+	$(webcore_cppflags) \
 	$(GLOBALDEPS_CFLAGS) \
 	$(CAIRO_CFLAGS) \
 	$(GTK_CFLAGS) \
@@ -134,6 +137,7 @@ Libraries_libTestRunnerInjectedBundle_la_CPPFLAGS = \
 	-I$(top_builddir)/DerivedSources/WebKit2/include \
 	$(global_cppflags) \
 	$(javascriptcore_cppflags) \
+	$(webcore_cppflags) \
 	$(GLOBALDEPS_CFLAGS) \
 	$(CAIRO_CFLAGS) \
 	$(GLIB_CFLAGS) \

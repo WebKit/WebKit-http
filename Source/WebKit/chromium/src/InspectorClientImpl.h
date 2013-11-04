@@ -34,7 +34,7 @@
 #include "InspectorClient.h"
 #include "InspectorController.h"
 #include "InspectorFrontendChannel.h"
-#include "platform/WebThread.h"
+#include <public/WebThread.h>
 #include <wtf/OwnPtr.h>
 
 namespace WebKit {
@@ -79,6 +79,7 @@ public:
     virtual bool supportsFrameInstrumentation();
 
     virtual void getAllocatedObjects(HashSet<const void*>&);
+    virtual void dumpUncountedAllocatedObjects(const HashMap<const void*, size_t>&);
 
 private:
     // WebThread::TaskObserver

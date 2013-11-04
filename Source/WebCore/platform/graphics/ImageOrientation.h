@@ -36,13 +36,13 @@ class FloatSize;
 enum ImageOrientationEnum {
     // "TopLeft" means that the 0 row starts at the Top, the 0 column starts at the Left.
     OriginTopLeft = 1, // default
-    OriginTopRight = 2, // mirror along y-axes
+    OriginTopRight = 2, // mirror along y-axis
     OriginBottomRight = 3, // 180 degree rotation
-    OriginBottomLeft = 4, // mirror along the x-axes
-    OriginLeftTop = 5, // -90 degree rotation + mirror along x-axes
-    OriginRightTop = 6, // 90 degree rotation
-    OriginRightBottom = 7, // 90 degree rotation + mirror along x-axes
-    OriginLeftBottom = 8, // -90 degree rotation
+    OriginBottomLeft = 4, // mirror along the x-axis
+    OriginLeftTop = 5, // mirror along x-axis + 270 degree CW rotation
+    OriginRightTop = 6, // 90 degree CW rotation
+    OriginRightBottom = 7, // mirror along x-axis + 90 degree CW rotation
+    OriginLeftBottom = 8, // 270 degree CW rotation
     // All other values are "reserved" as of EXIF 2.2
     DefaultImageOrientation = OriginTopLeft,
 };
@@ -76,6 +76,7 @@ public:
     }
 
     // This transform can be used for drawing an image according to the orientation.
+    // It should be used in a right-handed coordinate system.
     AffineTransform transformFromDefault(const FloatSize& drawnSize) const;
 
     inline bool operator==(const ImageOrientation& other) const { return other.m_orientation == m_orientation; }

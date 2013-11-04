@@ -36,18 +36,6 @@
 extern "C" {
 #endif
 
-enum WKUserScriptInjectionTime {
-    kWKInjectAtDocumentStart,
-    kWKInjectAtDocumentEnd
-};
-typedef enum WKUserScriptInjectionTime WKUserScriptInjectionTime;
-
-enum WKUserContentInjectedFrames {
-    kWKInjectInAllFrames,
-    kWKInjectInTopFrameOnly
-};
-typedef enum WKUserContentInjectedFrames WKUserContentInjectedFrames;
-
 // TestRunner only SPI
 WK_EXPORT void WKBundleSetShouldTrackVisitedLinks(WKBundleRef bundle, bool shouldTrackVisitedLinks);
 WK_EXPORT void WKBundleSetAlwaysAcceptCookies(WKBundleRef bundle, bool);
@@ -113,6 +101,8 @@ WK_EXPORT void WKBundleSetPageVisibilityState(WKBundleRef bundle, WKBundlePageRe
 WK_EXPORT size_t WKBundleGetWorkerThreadCount(WKBundleRef bundle);
 
 WK_EXPORT void WKBundleSetTabKeyCyclesThroughElements(WKBundleRef bundle, WKBundlePageRef page, bool enabled);
+WK_EXPORT void WKBundleSetSerialLoadingEnabled(WKBundleRef bundle, bool enabled);
+WK_EXPORT void WKBundleDispatchPendingLoadRequests(WKBundleRef bundle);
 
 #ifdef __cplusplus
 }

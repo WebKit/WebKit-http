@@ -38,7 +38,6 @@ using namespace JSC;
 
 namespace WebCore {
 
-ASSERT_CLASS_FITS_IN_CELL(JSTestEventTarget);
 /* Hash table */
 
 static const HashTableValue JSTestEventTargetTableValues[] =
@@ -193,16 +192,11 @@ bool JSTestEventTarget::getOwnPropertySlotByIndex(JSCell* cell, ExecState* exec,
 {
     JSTestEventTarget* thisObject = jsCast<JSTestEventTarget*>(cell);
     ASSERT_GC_OBJECT_INHERITS(thisObject, &s_info);
-    PropertyName propertyName = Identifier::from(exec, index);
-    const HashEntry* entry = JSTestEventTargetTable.entry(exec, propertyName);
-    if (entry) {
-        slot.setCustom(thisObject, entry->propertyGetter());
-        return true;
-    }
     if (index < static_cast<TestEventTarget*>(thisObject->impl())->length()) {
         slot.setCustomIndex(thisObject, index, thisObject->indexGetter);
         return true;
     }
+    PropertyName propertyName = Identifier::from(exec, index);
     if (canGetItemsForName(exec, static_cast<TestEventTarget*>(thisObject->impl()), propertyName)) {
         slot.setCustom(thisObject, thisObject->nameGetter);
         return true;

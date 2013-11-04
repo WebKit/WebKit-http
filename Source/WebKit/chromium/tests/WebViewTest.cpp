@@ -585,24 +585,6 @@ TEST_F(WebViewTest, DetectContentAroundPosition)
     EXPECT_FALSE(client.contentDetectionRequested());
     client.reset();
 
-    // Content detection should still work on click, mouse and touch event listeners for long taps
-    // as long as we're not tapping on links.
-    EXPECT_TRUE(tapElementById(webView, WebInputEvent::GestureLongPress, clickListener));
-    EXPECT_TRUE(client.contentDetectionRequested());
-    client.reset();
-
-    EXPECT_TRUE(tapElementById(webView, WebInputEvent::GestureLongPress, touchstartListener));
-    EXPECT_TRUE(client.contentDetectionRequested());
-    client.reset();
-
-    EXPECT_TRUE(tapElementById(webView, WebInputEvent::GestureLongPress, mousedownListener));
-    EXPECT_TRUE(client.contentDetectionRequested());
-    client.reset();
-
-    EXPECT_TRUE(tapElementById(webView, WebInputEvent::GestureLongPress, link));
-    EXPECT_FALSE(client.contentDetectionRequested());
-    client.reset();
-
     // Content detection should work normally without these event listeners.
     // The click listener in the body should be ignored as a special case.
     EXPECT_TRUE(tapElementById(webView, WebInputEvent::GestureTap, noListener));
@@ -646,5 +628,27 @@ TEST_F(WebViewTest, ClientTapHandling)
     EXPECT_EQ(7, client.longpressY());
     webView->close();
 }
+
+#if OS(ANDROID)
+TEST_F(WebViewTest, LongPressSelection)
+{
+    URLTestHelpers::registerMockedURLFromBaseURL(WebString::fromUTF8(m_baseURL.c_str()), WebString::fromUTF8("longpress_selection.html"));
+
+    WebView* webView = FrameTestHelpers::createWebViewAndLoad(m_baseURL + "longpress_selection.html", true);
+    webView->resize(WebSize(500, 300));
+    webView->layout();
+    webkit_support::RunAllPendingMessages();
+
+    WebString target = WebString::fromUTF8("target");
+    WebString onselectstartfalse = WebString::fromUTF8("onselectstartfalse");
+    WebFrameImpl* frame = static_cast<WebFrameImpl*>(webView->mainFrame());
+
+    EXPECT_TRUE(tapElementById(webView, WebInputEvent::GestureLongPress, onselectstartfalse));
+    EXPECT_EQ("", std::string(frame->selectionAsText().utf8().data()));
+    EXPECT_TRUE(tapElementById(webView, WebInputEvent::GestureLongPress, target));
+    EXPECT_EQ("testword", std::string(frame->selectionAsText().utf8().data()));
+    webView->close();
+}
+#endif
 
 }

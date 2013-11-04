@@ -48,8 +48,6 @@
 
     'enable_wexit_time_destructors': 1,
 
-    'use_harfbuzz_ng%': 0,
-
     'webcore_include_dirs': [
       '../',
       '../..',
@@ -103,6 +101,7 @@
       '../page/animation',
       '../page/chromium',
       '../page/scrolling',
+      '../page/scrolling/chromium',
       '../platform',
       '../platform/animation',
       '../platform/audio',
@@ -139,6 +138,7 @@
       '../plugins',
       '../plugins/chromium',
       '../rendering',
+      '../rendering/mathml',
       '../rendering/style',
       '../rendering/svg',
       '../storage',
@@ -247,7 +247,7 @@
           '../platform/graphics/harfbuzz',
         ],
       }],
-      ['use_x11==1 and use_harfbuzz_ng==1', {
+      ['use_x11==1', {
         'webcore_include_dirs': [
           '../platform/graphics/harfbuzz/ng',
         ],
@@ -585,7 +585,7 @@
       },
       'sources': [
         # bison rule
-        '../css/CSSGrammar.y',
+        '<(SHARED_INTERMEDIATE_DIR)/webkit/CSSGrammar.y',
         '../xml/XPathGrammar.y',
 
         # gperf rule
@@ -1074,6 +1074,29 @@
             '<(SHARED_INTERMEDIATE_DIR)/supplemental_dependency.tmp',
             '--',
             '<@(derived_sources_aggregate_files)',
+          ],
+        },
+        {
+          'action_name': 'preprocess_grammar',
+          'inputs': [
+            '../css/CSSGrammar.y.in',
+            '../css/CSSGrammar.y.includes',
+          ],
+          'outputs': [
+            '<(SHARED_INTERMEDIATE_DIR)/webkit/CSSGrammar.y',
+          ],
+          'action': [
+            '<(perl_exe)',
+            '-I',
+            '../bindings/scripts',
+            '../css/makegrammar.pl',
+            '--outputDir',
+            '<(SHARED_INTERMEDIATE_DIR)/webkit/',
+            '--extraDefines',
+            '<(feature_defines)',
+            '--preprocessOnly',
+            '<@(preprocessor)',
+            '<@(_inputs)',
           ],
         },
       ],
@@ -1662,11 +1685,12 @@
         ['use_x11 == 1', {
           'sources/': [
             # Cherry-pick files excluded by the broader regular expressions above.
-            ['include', 'platform/graphics/harfbuzz/ComplexTextControllerHarfBuzz\\.cpp$'],
             ['include', 'platform/graphics/harfbuzz/FontHarfBuzz\\.cpp$'],
             ['include', 'platform/graphics/harfbuzz/FontPlatformDataHarfBuzz\\.cpp$'],
-            ['include', 'platform/graphics/harfbuzz/HarfBuzzSkia\\.cpp$'],
             ['include', 'platform/graphics/harfbuzz/HarfBuzzShaperBase\\.(cpp|h)$'],
+            ['include', 'platform/graphics/harfbuzz/ng/HarfBuzzNGFace\\.(cpp|h)$'],
+            ['include', 'platform/graphics/harfbuzz/ng/HarfBuzzNGFaceSkia\\.cpp$'],
+            ['include', 'platform/graphics/harfbuzz/ng/HarfBuzzShaper\\.(cpp|h)$'],
             ['include', 'platform/graphics/opentype/OpenTypeTypes\\.h$'],
             ['include', 'platform/graphics/opentype/OpenTypeVerticalData\\.(cpp|h)$'],
             ['include', 'platform/graphics/skia/SimpleFontDataSkia\\.cpp$'],
@@ -1675,15 +1699,6 @@
           'sources/': [
             ['exclude', 'Linux\\.cpp$'],
             ['exclude', 'Harfbuzz[^/]+\\.(cpp|h)$'],
-          ],
-        }],
-        ['use_x11==1 and use_harfbuzz_ng==1', {
-          'sources/': [
-            ['exclude', 'platform/graphics/harfbuzz/ComplexTextControllerHarfBuzz\\.cpp$'],
-            ['exclude', 'platform/graphics/harfbuzz/HarfBuzzSkia\\.cpp$'],
-            ['include', 'platform/graphics/harfbuzz/ng/HarfBuzzNGFace\\.(cpp|h)$'],
-            ['include', 'platform/graphics/harfbuzz/ng/HarfBuzzNGFaceSkia\\.cpp$'],
-            ['include', 'platform/graphics/harfbuzz/ng/HarfBuzzShaper\\.(cpp|h)$'],
           ],
         }],
         ['toolkit_uses_gtk == 1', {
@@ -1696,7 +1711,12 @@
             ['exclude', 'Gtk\\.cpp$'],
           ],
         }],
-        ['use_x11==1 or OS=="android"', {
+        ['use_x11==1', {
+          'dependencies': [
+            '<(chromium_src_dir)/third_party/harfbuzz-ng/harfbuzz.gyp:harfbuzz-ng',
+          ],
+        }],
+        ['OS=="android"', {
           'dependencies': [
             '<(chromium_src_dir)/third_party/harfbuzz/harfbuzz.gyp:harfbuzz',
           ],
@@ -1978,6 +1998,10 @@
         ['os_posix == 1 and OS != "mac" and gcc_version == 42', {
           # Due to a bug in gcc 4.2.1 (the current version on hardy), we get
           # warnings about uninitialized this.
+          'cflags': ['-Wno-uninitialized'],
+        }],
+        ['OS == "android" and target_arch == "ia32" and gcc_version == 46', {
+          # Due to a bug in gcc 4.6 in android NDK, we get warnings about uninitialized variable.
           'cflags': ['-Wno-uninitialized'],
         }],
         ['use_x11 == 0', {

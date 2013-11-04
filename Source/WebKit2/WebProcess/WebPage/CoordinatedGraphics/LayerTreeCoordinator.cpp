@@ -29,6 +29,7 @@
 #if USE(COORDINATED_GRAPHICS)
 #include "LayerTreeCoordinator.h"
 
+#include "CoordinatedGraphicsArgumentCoders.h"
 #include "CoordinatedGraphicsLayer.h"
 #include "DrawingAreaImpl.h"
 #include "GraphicsContext.h"
@@ -81,6 +82,7 @@ LayerTreeCoordinator::LayerTreeCoordinator(WebPage* webPage)
     , m_releaseInactiveAtlasesTimer(this, &LayerTreeCoordinator::releaseInactiveAtlasesTimerFired)
     , m_layerFlushSchedulingEnabled(true)
     , m_forceRepaintAsyncCallbackID(0)
+    , m_animationsLocked(false)
 {
     // Create a root layer.
     m_rootLayer = GraphicsLayer::create(this, this);
@@ -171,7 +173,7 @@ void LayerTreeCoordinator::setNonCompositedContentsNeedDisplay(const WebCore::In
     scheduleLayerFlush();
 }
 
-void LayerTreeCoordinator::scrollNonCompositedContents(const WebCore::IntRect& scrollRect, const WebCore::IntSize& scrollOffset)
+void LayerTreeCoordinator::scrollNonCompositedContents(const WebCore::IntRect& scrollRect, const WebCore::IntSize& /* scrollOffset */)
 {
     setNonCompositedContentsNeedDisplay(scrollRect);
 }
@@ -258,12 +260,16 @@ bool LayerTreeCoordinator::flushPendingLayerChanges()
         m_webPage->send(Messages::LayerTreeCoordinatorProxy::DeleteCompositingLayer(m_detachedLayers[i]));
     m_detachedLayers.clear();
 
-    bool didSync = m_webPage->corePage()->mainFrame()->view()->syncCompositingStateIncludingSubframes();
-    m_nonCompositedContentLayer->syncCompositingStateForThisLayerOnly();
+    bool didSync = m_webPage->corePage()->mainFrame()->view()->flushCompositingStateIncludingSubframes();
+    m_nonCompositedContentLayer->flushCompositingStateForThisLayerOnly();
     if (m_pageOverlayLayer)
-        m_pageOverlayLayer->syncCompositingStateForThisLayerOnly();
+        m_pageOverlayLayer->flushCompositingStateForThisLayerOnly();
 
-    m_rootLayer->syncCompositingStateForThisLayerOnly();
+    m_rootLayer->flushCompositingStateForThisLayerOnly();
+
+    for (size_t i = 0; i < m_releasedDirectlyCompositedImages.size(); ++i)
+        m_webPage->send(Messages::LayerTreeCoordinatorProxy::DestroyDirectlyCompositedImage(m_releasedDirectlyCompositedImages[i]));
+    m_releasedDirectlyCompositedImages.clear();
 
     if (m_shouldSyncRootLayer) {
         m_webPage->send(Messages::LayerTreeCoordinatorProxy::SetRootCompositingLayer(toCoordinatedGraphicsLayer(m_rootLayer.get())->id()));
@@ -278,7 +284,8 @@ bool LayerTreeCoordinator::flushPendingLayerChanges()
         m_webPage->send(Messages::LayerTreeCoordinatorProxy::DidRenderFrame(contentsSize, coveredRect));
         m_waitingForUIProcess = true;
         m_shouldSyncFrame = false;
-    }
+    } else
+        unlockAnimations();
 
     if (m_forceRepaintAsyncCallbackID) {
         m_webPage->send(Messages::WebPageProxy::VoidCallback(m_forceRepaintAsyncCallbackID));
@@ -305,11 +312,13 @@ void LayerTreeCoordinator::syncLayerChildren(WebLayerID id, const Vector<WebLaye
     m_webPage->send(Messages::LayerTreeCoordinatorProxy::SetCompositingLayerChildren(id, children));
 }
 
-void LayerTreeCoordinator::syncCanvas(WebLayerID id, const IntSize& canvasSize, uint64_t graphicsSurfaceToken, uint32_t frontBuffer)
+#if USE(GRAPHICS_SURFACE)
+void LayerTreeCoordinator::syncCanvas(WebLayerID id, const IntSize& canvasSize, const GraphicsSurfaceToken& token, uint32_t frontBuffer)
 {
     m_shouldSyncFrame = true;
-    m_webPage->send(Messages::LayerTreeCoordinatorProxy::SyncCanvas(id, canvasSize, graphicsSurfaceToken, frontBuffer));
+    m_webPage->send(Messages::LayerTreeCoordinatorProxy::SyncCanvas(id, canvasSize, token, frontBuffer));
 }
+#endif
 
 #if ENABLE(CSS_FILTERS)
 void LayerTreeCoordinator::syncLayerFilters(WebLayerID id, const FilterOperations& filters)
@@ -384,12 +393,36 @@ void LayerTreeCoordinator::syncFixedLayers()
         updateOffsetFromViewportForLayer(rootRenderLayer->firstChild());
 }
 
+void LayerTreeCoordinator::lockAnimations()
+{
+    m_animationsLocked = true;
+    m_webPage->send(Messages::LayerTreeCoordinatorProxy::SetAnimationsLocked(true));
+}
+
+void LayerTreeCoordinator::unlockAnimations()
+{
+    if (!m_animationsLocked)
+        return;
+
+    m_animationsLocked = false;
+    m_webPage->send(Messages::LayerTreeCoordinatorProxy::SetAnimationsLocked(false));
+}
+
 void LayerTreeCoordinator::performScheduledLayerFlush()
 {
     if (m_isSuspended || m_waitingForUIProcess)
         return;
 
+    // We lock the animations while performing layout, to avoid flickers caused by animations continuing in the UI process while
+    // the web process layout wants to cancel them.
+    lockAnimations();
     syncDisplayState();
+
+    // We can unlock the animations before flushing if there are no visible changes, for example if there are content updates
+    // in a layer with opacity 0.
+    bool canUnlockBeforeFlush = !m_isValid || !toCoordinatedGraphicsLayer(m_rootLayer.get())->hasPendingVisibleChanges();
+    if (canUnlockBeforeFlush)
+        unlockAnimations();
 
     if (!m_isValid)
         return;
@@ -451,7 +484,7 @@ int64_t LayerTreeCoordinator::adoptImageBackingStore(Image* image)
     int64_t key = 0;
 
 #if PLATFORM(QT)
-    QImage* nativeImage = image->nativeImageForCurrentFrame();
+    QPixmap* nativeImage = image->nativeImageForCurrentFrame();
 
     if (!nativeImage)
         return InvalidWebLayerID;
@@ -470,7 +503,7 @@ int64_t LayerTreeCoordinator::adoptImageBackingStore(Image* image)
     HashMap<int64_t, int>::iterator it = m_directlyCompositedImageRefCounts.find(key);
 
     if (it != m_directlyCompositedImageRefCounts.end()) {
-        ++(it->second);
+        ++(it->value);
         return key;
     }
 
@@ -495,26 +528,28 @@ void LayerTreeCoordinator::releaseImageBackingStore(int64_t key)
     if (it == m_directlyCompositedImageRefCounts.end())
         return;
 
-    it->second--;
+    it->value--;
 
-    if (it->second)
+    if (it->value)
         return;
 
-    m_directlyCompositedImageRefCounts.remove(it);
 #if USE(CAIRO)
     // Complement the referencing in adoptImageBackingStore().
     cairo_surface_t* cairoSurface = reinterpret_cast<cairo_surface_t*>(key);
     cairo_surface_destroy(cairoSurface);
 #endif
-    m_webPage->send(Messages::LayerTreeCoordinatorProxy::DestroyDirectlyCompositedImage(key));
+
+    m_directlyCompositedImageRefCounts.remove(it);
+    m_releasedDirectlyCompositedImages.append(key);
+    scheduleLayerFlush();
 }
 
 
-void LayerTreeCoordinator::notifyAnimationStarted(const WebCore::GraphicsLayer*, double time)
+void LayerTreeCoordinator::notifyAnimationStarted(const WebCore::GraphicsLayer*, double /* time */)
 {
 }
 
-void LayerTreeCoordinator::notifySyncRequired(const WebCore::GraphicsLayer*)
+void LayerTreeCoordinator::notifyFlushRequired(const WebCore::GraphicsLayer*)
 {
 }
 
@@ -577,16 +612,10 @@ WebCore::IntRect LayerTreeCoordinator::visibleContentsRect() const
 }
 
 
-void LayerTreeCoordinator::setLayerAnimatedOpacity(WebLayerID id, float opacity)
+void LayerTreeCoordinator::setLayerAnimations(WebLayerID layerID, const GraphicsLayerAnimations& animations)
 {
     m_shouldSyncFrame = true;
-    m_webPage->send(Messages::LayerTreeCoordinatorProxy::SetLayerAnimatedOpacity(id, opacity));
-}
-
-void LayerTreeCoordinator::setLayerAnimatedTransform(WebLayerID id, const TransformationMatrix& transform)
-{
-    m_shouldSyncFrame = true;
-    m_webPage->send(Messages::LayerTreeCoordinatorProxy::SetLayerAnimatedTransform(id, transform));
+    m_webPage->send(Messages::LayerTreeCoordinatorProxy::SetLayerAnimations(layerID, animations.getActiveAnimations()));
 }
 
 void LayerTreeCoordinator::setVisibleContentsRect(const IntRect& rect, float scale, const FloatPoint& trajectoryVector)

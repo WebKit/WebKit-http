@@ -4,11 +4,13 @@
 #include "ConservativeRoots.h"
 #include "CopiedSpace.h"
 #include "CopiedSpaceInlineMethods.h"
+#include "GCThread.h"
 #include "JSArray.h"
 #include "JSDestructibleObject.h"
 #include "JSGlobalData.h"
 #include "JSObject.h"
 #include "JSString.h"
+#include <wtf/StackStats.h>
 
 namespace JSC {
 
@@ -35,8 +37,8 @@ void SlotVisitor::setup()
     m_shared.m_shouldHashConst = m_shared.m_globalData->haveEnoughNewStringsToHashConst();
     m_shouldHashConst = m_shared.m_shouldHashConst;
 #if ENABLE(PARALLEL_GC)
-    for (unsigned i = 0; i < m_shared.m_markingThreadsMarkStack.size(); ++i)
-        m_shared.m_markingThreadsMarkStack[i]->m_shouldHashConst = m_shared.m_shouldHashConst;
+    for (unsigned i = 0; i < m_shared.m_gcThreads.size(); ++i)
+        m_shared.m_gcThreads[i]->slotVisitor()->m_shouldHashConst = m_shared.m_shouldHashConst;
 #endif
 }
 
@@ -57,6 +59,7 @@ void SlotVisitor::reset()
 
 void SlotVisitor::append(ConservativeRoots& conservativeRoots)
 {
+    StackStats::probe();
     JSCell** roots = conservativeRoots.roots();
     size_t size = conservativeRoots.size();
     for (size_t i = 0; i < size; ++i)
@@ -65,6 +68,7 @@ void SlotVisitor::append(ConservativeRoots& conservativeRoots)
 
 ALWAYS_INLINE static void visitChildren(SlotVisitor& visitor, const JSCell* cell)
 {
+    StackStats::probe();
 #if ENABLE(SIMPLE_HEAP_PROFILING)
     m_visitedTypeCounts.count(cell);
 #endif
@@ -91,6 +95,7 @@ ALWAYS_INLINE static void visitChildren(SlotVisitor& visitor, const JSCell* cell
 
 void SlotVisitor::donateKnownParallel()
 {
+    StackStats::probe();
     // NOTE: Because we re-try often, we can afford to be conservative, and
     // assume that donating is not profitable.
 
@@ -118,6 +123,7 @@ void SlotVisitor::donateKnownParallel()
 
 void SlotVisitor::drain()
 {
+    StackStats::probe();
     ASSERT(m_isInParallelMode);
    
 #if ENABLE(PARALLEL_GC)
@@ -143,6 +149,7 @@ void SlotVisitor::drain()
 
 void SlotVisitor::drainFromShared(SharedDrainMode sharedDrainMode)
 {
+    StackStats::probe();
     ASSERT(m_isInParallelMode);
     
     ASSERT(Options::numberOfGCMarkers());
@@ -181,7 +188,7 @@ void SlotVisitor::drainFromShared(SharedDrainMode sharedDrainMode)
                 while (true) {
                     // Did we reach termination?
                     if (!m_shared.m_numberOfActiveParallelMarkers && m_shared.m_sharedMarkStack.isEmpty()) {
-                        // Let any sleeping slaves know it's time for them to give their private CopiedBlocks back
+                        // Let any sleeping slaves know it's time for them to return;
                         m_shared.m_markingCondition.broadcast();
                         return;
                     }
@@ -200,17 +207,12 @@ void SlotVisitor::drainFromShared(SharedDrainMode sharedDrainMode)
                 if (!m_shared.m_numberOfActiveParallelMarkers && m_shared.m_sharedMarkStack.isEmpty())
                     m_shared.m_markingCondition.broadcast();
                 
-                while (m_shared.m_sharedMarkStack.isEmpty() && !m_shared.m_parallelMarkersShouldExit) {
-                    if (!m_shared.m_numberOfActiveParallelMarkers && m_shared.m_sharedMarkStack.isEmpty())
-                        doneCopying();
+                while (m_shared.m_sharedMarkStack.isEmpty() && !m_shared.m_parallelMarkersShouldExit)
                     m_shared.m_markingCondition.wait(m_shared.m_markingLock);
-                }
                 
-                // Is the VM exiting? If so, exit this thread.
-                if (m_shared.m_parallelMarkersShouldExit) {
-                    doneCopying();
+                // Is the current phase done? If so, return from this function.
+                if (m_shared.m_parallelMarkersShouldExit)
                     return;
-                }
             }
            
             size_t idleThreadCount = Options::numberOfGCMarkers() - m_shared.m_numberOfActiveParallelMarkers;
@@ -225,6 +227,7 @@ void SlotVisitor::drainFromShared(SharedDrainMode sharedDrainMode)
 
 void SlotVisitor::mergeOpaqueRoots()
 {
+    StackStats::probe();
     ASSERT(!m_opaqueRoots.isEmpty()); // Should only be called when opaque roots are non-empty.
     {
         MutexLocker locker(m_shared.m_opaqueRootsLock);
@@ -234,30 +237,6 @@ void SlotVisitor::mergeOpaqueRoots()
             m_shared.m_opaqueRoots.add(*iter);
     }
     m_opaqueRoots.clear();
-}
-
-void SlotVisitor::startCopying()
-{
-    ASSERT(!m_copiedAllocator.isValid());
-}
-
-void* SlotVisitor::allocateNewSpaceSlow(size_t bytes)
-{
-    m_shared.m_copiedSpace->doneFillingBlock(m_copiedAllocator.resetCurrentBlock());
-    m_copiedAllocator.setCurrentBlock(m_shared.m_copiedSpace->allocateBlockForCopyingPhase());
-
-    void* result = 0;
-    CheckedBoolean didSucceed = m_copiedAllocator.tryAllocate(bytes, &result);
-    ASSERT(didSucceed);
-    return result;
-}
-
-void* SlotVisitor::allocateNewSpaceOrPin(void* ptr, size_t bytes)
-{
-    if (!checkIfShouldCopyAndPinOtherwise(ptr, bytes))
-        return 0;
-    
-    return allocateNewSpace(bytes);
 }
 
 ALWAYS_INLINE bool JSString::tryHashConstLock()
@@ -304,6 +283,7 @@ ALWAYS_INLINE void SlotVisitor::internalAppend(JSValue* slot)
     // as it can change the JSValue pointed to be the argument when the original JSValue
     // is a string that contains the same contents as another string.
 
+    StackStats::probe();
     ASSERT(slot);
     JSValue value = *slot;
     ASSERT(value);
@@ -321,7 +301,7 @@ ALWAYS_INLINE void SlotVisitor::internalAppend(JSValue* slot)
             if (addResult.isNewEntry)
                 string->setHashConstSingleton();
             else {
-                JSValue existingJSValue = addResult.iterator->second;
+                JSValue existingJSValue = addResult.iterator->value;
                 if (value != existingJSValue)
                     jsCast<JSString*>(existingJSValue.asCell())->clearHashConstSingleton();
                 *slot = existingJSValue;
@@ -335,44 +315,16 @@ ALWAYS_INLINE void SlotVisitor::internalAppend(JSValue* slot)
     internalAppend(cell);
 }
 
-void SlotVisitor::copyAndAppend(void** ptr, size_t bytes, JSValue* values, unsigned length)
-{
-    void* oldPtr = *ptr;
-    void* newPtr = allocateNewSpaceOrPin(oldPtr, bytes);
-    if (newPtr) {
-        size_t jsValuesOffset = static_cast<size_t>(reinterpret_cast<char*>(values) - static_cast<char*>(oldPtr));
-
-        JSValue* newValues = reinterpret_cast_ptr<JSValue*>(static_cast<char*>(newPtr) + jsValuesOffset);
-        for (unsigned i = 0; i < length; i++) {
-            JSValue& value = values[i];
-            newValues[i] = value;
-            if (!value)
-                continue;
-            internalAppend(&newValues[i]);
-        }
-
-        memcpy(newPtr, oldPtr, jsValuesOffset);
-        *ptr = newPtr;
-    } else
-        append(values, length);
-}
-    
-void SlotVisitor::doneCopying()
-{
-    if (!m_copiedAllocator.isValid())
-        return;
-
-    m_shared.m_copiedSpace->doneFillingBlock(m_copiedAllocator.resetCurrentBlock());
-}
-
 void SlotVisitor::harvestWeakReferences()
 {
+    StackStats::probe();
     for (WeakReferenceHarvester* current = m_shared.m_weakReferenceHarvesters.head(); current; current = current->next())
         current->visitWeakReferences(*this);
 }
 
 void SlotVisitor::finalizeUnconditionalFinalizers()
 {
+    StackStats::probe();
     while (m_shared.m_unconditionalFinalizers.hasNext())
         m_shared.m_unconditionalFinalizers.removeNext()->finalizeUnconditionally();
 }

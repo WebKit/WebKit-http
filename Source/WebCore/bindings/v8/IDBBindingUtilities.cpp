@@ -180,6 +180,9 @@ static PassRefPtr<IDBKey> createIDBKeyFromScriptValueAndKeyPath(const ScriptValu
     IDBParseKeyPath(keyPath, keyPathElements, error);
     ASSERT(error == IDBKeyPathParseErrorNone);
 
+    v8::HandleScope handleScope;
+    v8::Context::Scope scope(V8PerIsolateData::current()->ensureAuxiliaryContext());
+
     v8::Handle<v8::Value> v8Value(value.v8Value());
     v8::Handle<v8::Value> v8Key(getNthValueOnKeyPath(v8Value, keyPathElements, keyPathElements.size()));
     if (v8Key.IsEmpty())
@@ -214,7 +217,10 @@ ScriptValue deserializeIDBValue(ScriptExecutionContext* scriptContext, PassRefPt
 {
     v8::HandleScope handleScope;
     v8::Context::Scope contextScope(toV8Context(scriptContext, UseCurrentWorld));
-    return ScriptValue(prpValue->deserialize());
+    RefPtr<SerializedScriptValue> serializedValue = prpValue;
+    if (serializedValue)
+        return ScriptValue(serializedValue->deserialize());
+    return ScriptValue(v8::Null());
 }
 
 bool injectIDBKeyIntoScriptValue(PassRefPtr<IDBKey> key, ScriptValue& value, const IDBKeyPath& keyPath)
@@ -258,6 +264,15 @@ bool canInjectIDBKeyIntoScriptValue(const ScriptValue& scriptValue, const IDBKey
 
     v8::Handle<v8::Value> v8Value(scriptValue.v8Value());
     return canInjectNthValueOnKeyPath(v8Value, keyPathElements, keyPathElements.size() - 1);
+}
+
+ScriptValue idbKeyToScriptValue(ScriptExecutionContext* scriptContext, PassRefPtr<IDBKey> key)
+{
+    v8::HandleScope handleScope;
+    v8::Context::Scope contextScope(toV8Context(scriptContext, UseCurrentWorld));
+
+    v8::Handle<v8::Value> v8Value(toV8(key.get()));
+    return ScriptValue(v8Value);
 }
 
 } // namespace WebCore

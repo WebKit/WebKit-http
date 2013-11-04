@@ -69,6 +69,7 @@
 #include "MIMETypeRegistry.h"
 #include "NodeRenderingContext.h"
 #include "Page.h"
+#include "PageGroup.h"
 #include "RenderVideo.h"
 #include "RenderView.h"
 #include "ScriptController.h"
@@ -281,6 +282,14 @@ HTMLMediaElement::HTMLMediaElement(const QualifiedName& tagName, Document* docum
 
     setHasCustomCallbacks();
     addElementToDocumentMap(this, document);
+
+#if ENABLE(VIDEO_TRACK)
+    if (document->page()) {
+        PageGroup& group = document->page()->group();
+        if (group.userHasCaptionPreferences())
+            m_disableCaptions = !group.userPrefersCaptions();
+    }
+#endif
 }
 
 HTMLMediaElement::~HTMLMediaElement()
@@ -541,6 +550,20 @@ void HTMLMediaElement::attach()
             frame->loader()->client()->hideMediaPlayerProxyPlugin(m_proxyWidget.get());
     }
 #endif
+
+#if ENABLE(VIDEO_TRACK)
+    if (document()->page())
+        document()->page()->group().registerForCaptionPreferencesChangedCallbacks(this);
+#endif
+}
+
+void HTMLMediaElement::detach()
+{
+#if ENABLE(VIDEO_TRACK)
+    if (document()->page())
+        document()->page()->group().unregisterForCaptionPreferencesChangedCallbacks(this);
+#endif
+    HTMLElement::detach();
 }
 
 void HTMLMediaElement::didRecalcStyle(StyleChange)
@@ -925,10 +948,9 @@ void HTMLMediaElement::loadResource(const KURL& initialURL, ContentType& content
     }
     
 #if ENABLE(MEDIA_SOURCE)
-    if (url.protocolIs(mediaSourceBlobProtocol)) {
-        if (m_mediaSource)
-            m_mediaSource->setReadyState(MediaSource::closedKeyword());
+    ASSERT(!m_mediaSource);
 
+    if (url.protocolIs(mediaSourceBlobProtocol)) {
         m_mediaSource = MediaSourceRegistry::registry().lookupMediaSource(url.string());
 
         if (m_mediaSource) {
@@ -1516,6 +1538,29 @@ void HTMLMediaElement::mediaPlayerNetworkStateChanged(MediaPlayer*)
     endProcessingMediaPlayerCallback();
 }
 
+static void logMediaLoadRequest(Page* page, const String& mediaEngine, const String& errorMessage, bool succeeded)
+{
+    if (!page || !page->settings()->diagnosticLoggingEnabled())
+        return;
+
+    ChromeClient* client = page->chrome()->client();
+
+    if (!succeeded) {
+        client->logDiagnosticMessage(DiagnosticLoggingKeys::mediaLoadingFailedKey(), errorMessage, DiagnosticLoggingKeys::failKey());
+        return;
+    }
+
+    client->logDiagnosticMessage(DiagnosticLoggingKeys::mediaLoadedKey(), mediaEngine, DiagnosticLoggingKeys::noopKey());
+
+    if (!page->hasSeenAnyMediaEngine())
+        client->logDiagnosticMessage(DiagnosticLoggingKeys::pageContainsAtLeastOneMediaEngineKey(), emptyString(), DiagnosticLoggingKeys::noopKey());
+
+    if (!page->hasSeenMediaEngine(mediaEngine))
+        client->logDiagnosticMessage(DiagnosticLoggingKeys::pageContainsMediaEngineKey(), mediaEngine, DiagnosticLoggingKeys::noopKey());
+
+    page->sawMediaEngine(mediaEngine);
+}
+
 static String stringForNetworkState(MediaPlayer::NetworkState state)
 {
     switch (state) {
@@ -1567,8 +1612,7 @@ void HTMLMediaElement::mediaLoadingFailed(MediaPlayer::NetworkState error)
         mediaControls()->reportedError();
     }
 
-    if (document()->page() && document()->page()->settings()->diagnosticLoggingEnabled())
-        document()->page()->chrome()->client()->logDiagnosticMessage(DiagnosticLoggingKeys::mediaLoadingFailedKey(), stringForNetworkState(error), DiagnosticLoggingKeys::failKey());
+    logMediaLoadRequest(document()->page(), String(), stringForNetworkState(error), false);
 }
 
 void HTMLMediaElement::setNetworkState(MediaPlayer::NetworkState state)
@@ -1698,8 +1742,7 @@ void HTMLMediaElement::setReadyState(MediaPlayer::ReadyState state)
         if (renderer())
             renderer()->updateFromElement();
 
-        if (document()->page() && document()->page()->settings()->diagnosticLoggingEnabled())
-            document()->page()->chrome()->client()->logDiagnosticMessage(DiagnosticLoggingKeys::mediaLoadedKey(), m_player->engineDescription(), DiagnosticLoggingKeys::noopKey());
+        logMediaLoadRequest(document()->page(), m_player->engineDescription(), String(), true);
     }
 
     bool shouldUpdateDisplayState = false;
@@ -1834,8 +1877,14 @@ void HTMLMediaElement::mediaPlayerKeyMessage(MediaPlayer*, const String& keySyst
     m_asyncEventQueue->enqueueEvent(event.release());
 }
 
-void HTMLMediaElement::mediaPlayerKeyNeeded(MediaPlayer*, const String& keySystem, const String& sessionId, const unsigned char* initData, unsigned initDataLength)
+bool HTMLMediaElement::mediaPlayerKeyNeeded(MediaPlayer*, const String& keySystem, const String& sessionId, const unsigned char* initData, unsigned initDataLength)
 {
+    if (!hasEventListeners(eventNames().webkitneedkeyEvent)) {
+        m_error = MediaError::create(MediaError::MEDIA_ERR_ENCRYPTED);
+        scheduleEvent(eventNames().errorEvent);
+        return false;
+    }
+
     MediaKeyEventInit initializer;
     initializer.keySystem = keySystem;
     initializer.sessionId = sessionId;
@@ -1846,6 +1895,7 @@ void HTMLMediaElement::mediaPlayerKeyNeeded(MediaPlayer*, const String& keySyste
     RefPtr<Event> event = MediaKeyEvent::create(eventNames().webkitneedkeyEvent, initializer);
     event->setTarget(this);
     m_asyncEventQueue->enqueueEvent(event.release());
+    return true;
 }
 #endif
 
@@ -2368,6 +2418,8 @@ void HTMLMediaElement::setSourceState(const String& state)
          return;
 
     m_mediaSource->setReadyState(state);
+    if (state == MediaSource::closedKeyword())
+        m_mediaSource = 0;
 }
 #endif
 
@@ -2783,28 +2835,30 @@ void HTMLMediaElement::willRemoveTrack(HTMLTrackElement* trackElement)
         m_textTracksWhenResourceSelectionBegan.remove(index);
 }
 
-bool HTMLMediaElement::userIsInterestedInThisLanguage(const String&) const
+bool HTMLMediaElement::userPrefersCaptions() const
 {
-    // FIXME: check the user's language preference - bugs.webkit.org/show_bug.cgi?id=74121
-    return true;
+    Page* page = document()->page();
+    if (!page)
+        return false;
+
+    PageGroup& group = page->group();
+    return group.userHasCaptionPreferences() && group.userPrefersCaptions();
 }
 
 bool HTMLMediaElement::userIsInterestedInThisTrackKind(String kind) const
 {
-    // If ... the user has indicated an interest in having a track with this text track kind, text track language, ... 
     if (m_disableCaptions)
         return false;
 
     Settings* settings = document()->settings();
-    if (!settings)
-        return false;
+    bool userPrefersCaptionsOrSubtitles = m_closedCaptionsVisible || userPrefersCaptions();
 
     if (kind == TextTrack::subtitlesKeyword())
-        return settings->shouldDisplaySubtitles() || m_closedCaptionsVisible;
+        return (settings && settings->shouldDisplaySubtitles()) || userPrefersCaptionsOrSubtitles;
     if (kind == TextTrack::captionsKeyword())
-        return settings->shouldDisplayCaptions() || m_closedCaptionsVisible;
+        return (settings && settings->shouldDisplayCaptions()) || userPrefersCaptionsOrSubtitles;
     if (kind == TextTrack::descriptionsKeyword())
-        return settings->shouldDisplayTextDescriptions() || m_closedCaptionsVisible;
+        return settings && settings->shouldDisplayTextDescriptions();
 
     return false;
 }
@@ -3969,22 +4023,8 @@ void HTMLMediaElement::setClosedCaptionsVisible(bool closedCaptionVisible)
 #if ENABLE(VIDEO_TRACK)
     if (RuntimeEnabledFeatures::webkitVideoTrackEnabled()) {
         m_disableCaptions = !m_closedCaptionsVisible;
-        
-        // Mark all track elements as not "configured" so that configureTextTracks()
-        // will reconsider which tracks to display in light of new user preferences
-        // (e.g. default tracks should not be displayed if the user has turned off
-        // captions and non-default tracks should be displayed based on language
-        // preferences if the user has turned captions on).
-        for (Node* node = firstChild(); node; node = node->nextSibling()) {
-            if (!node->hasTagName(trackTag))
-                continue;
-            HTMLTrackElement* trackElement = static_cast<HTMLTrackElement*>(node);
-            if (trackElement->kind() == TextTrack::captionsKeyword()
-                || trackElement->kind() == TextTrack::subtitlesKeyword())
-                trackElement->setHasBeenConfigured(false);
-        }
 
-        configureTextTracks();
+        markCaptionAndSubtitleTracksAsUnconfigured();
     }
 #else
     if (hasMediaControls())
@@ -4172,6 +4212,39 @@ void HTMLMediaElement::updateClosedCaptionsControls()
             mediaControls()->updateTextTrackDisplay();
     }
 }
+
+void HTMLMediaElement::captionPreferencesChanged()
+{
+    if (!isVideo())
+        return;
+
+    markCaptionAndSubtitleTracksAsUnconfigured();
+}
+
+void HTMLMediaElement::markCaptionAndSubtitleTracksAsUnconfigured()
+{
+    // Mark all track elements as not "configured" so that configureTextTracks()
+    // will reconsider which tracks to display in light of new user preferences
+    // (e.g. default tracks should not be displayed if the user has turned off
+    // captions and non-default tracks should be displayed based on language
+    // preferences if the user has turned captions on).
+    for (RefPtr<Node> node = firstChild(); node; node = node->nextSibling()) {
+        if (!node->hasTagName(trackTag))
+            continue;
+        
+        HTMLTrackElement* trackElement = static_cast<HTMLTrackElement*>(node.get());
+        RefPtr<TextTrack> textTrack = trackElement->track();
+        if (!textTrack)
+            continue;
+        
+        String kind = textTrack->kind();
+
+        if (kind == TextTrack::subtitlesKeyword() || kind == TextTrack::captionsKeyword())
+            trackElement->setHasBeenConfigured(false);
+    }
+    configureTextTracks();
+}
+
 #endif
 
 void* HTMLMediaElement::preDispatchEventHandler(Event* event)

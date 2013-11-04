@@ -772,7 +772,7 @@ void InjectedBundlePage::didReceiveServerRedirectForProvisionalLoadForFrame(WKBu
     InjectedBundle::shared().stringBuilder()->appendLiteral(" - didReceiveServerRedirectForProvisionalLoadForFrame\n");
 }
 
-void InjectedBundlePage::didFailProvisionalLoadWithErrorForFrame(WKBundleFrameRef frame, WKErrorRef error)
+void InjectedBundlePage::didFailProvisionalLoadWithErrorForFrame(WKBundleFrameRef frame, WKErrorRef)
 {
     if (!InjectedBundle::shared().isTestRunning())
         return;
@@ -782,14 +782,7 @@ void InjectedBundlePage::didFailProvisionalLoadWithErrorForFrame(WKBundleFrameRe
         InjectedBundle::shared().stringBuilder()->appendLiteral(" - didFailProvisionalLoadWithError\n");
     }
 
-    if (frame != InjectedBundle::shared().topLoadingFrame())
-        return;
-    InjectedBundle::shared().setTopLoadingFrame(0);
-
-    if (InjectedBundle::shared().testRunner()->waitToDump())
-        return;
-
-    InjectedBundle::shared().done();
+    frameDidChangeLocation(frame);
 }
 
 void InjectedBundlePage::didCommitLoadForFrame(WKBundleFrameRef frame)
@@ -951,7 +944,11 @@ void InjectedBundlePage::dump()
         InjectedBundle::shared().dumpBackForwardListsForAllPages();
 
     if (InjectedBundle::shared().shouldDumpPixels() && InjectedBundle::shared().testRunner()->shouldDumpPixels()) {
-        InjectedBundle::shared().setPixelResult(adoptWK(WKBundlePageCreateSnapshotWithOptions(m_page, WKBundleFrameGetVisibleContentBounds(WKBundlePageGetMainFrame(m_page)), kWKSnapshotOptionsShareable | kWKSnapshotOptionsInViewCoordinates)).get());
+        WKSnapshotOptions options = kWKSnapshotOptionsShareable | kWKSnapshotOptionsInViewCoordinates;
+        if (InjectedBundle::shared().testRunner()->shouldDumpSelectionRect())
+            options |= kWKSnapshotOptionsPaintSelectionRectangle;
+
+        InjectedBundle::shared().setPixelResult(adoptWK(WKBundlePageCreateSnapshotWithOptions(m_page, WKBundleFrameGetVisibleContentBounds(WKBundlePageGetMainFrame(m_page)), options)).get());
         if (WKBundlePageIsTrackingRepaints(m_page))
             InjectedBundle::shared().setRepaintRects(adoptWK(WKBundlePageCopyTrackedRepaintRects(m_page)).get());
     }
@@ -969,14 +966,7 @@ void InjectedBundlePage::didFinishLoadForFrame(WKBundleFrameRef frame)
         InjectedBundle::shared().stringBuilder()->appendLiteral(" - didFinishLoadForFrame\n");
     }
 
-    if (frame != InjectedBundle::shared().topLoadingFrame())
-        return;
-    InjectedBundle::shared().setTopLoadingFrame(0);
-
-    if (InjectedBundle::shared().testRunner()->waitToDump())
-        return;
-
-    InjectedBundle::shared().page()->dump();
+    frameDidChangeLocation(frame, /*shouldDump*/ true);
 }
 
 void InjectedBundlePage::didFailLoadWithErrorForFrame(WKBundleFrameRef frame, WKErrorRef)
@@ -989,14 +979,7 @@ void InjectedBundlePage::didFailLoadWithErrorForFrame(WKBundleFrameRef frame, WK
         InjectedBundle::shared().stringBuilder()->appendLiteral(" - didFailLoadWithError\n");
     }
 
-    if (frame != InjectedBundle::shared().topLoadingFrame())
-        return;
-    InjectedBundle::shared().setTopLoadingFrame(0);
-
-    if (InjectedBundle::shared().testRunner()->waitToDump())
-        return;
-
-    InjectedBundle::shared().done();
+    frameDidChangeLocation(frame);
 }
 
 void InjectedBundlePage::didReceiveTitleForFrame(WKStringRef title, WKBundleFrameRef frame)
@@ -1303,9 +1286,17 @@ WKBundlePagePolicyAction InjectedBundlePage::decidePolicyForNavigationAction(WKB
     if (!InjectedBundle::shared().testRunner()->isPolicyDelegateEnabled())
         return WKBundlePagePolicyActionUse;
 
-    WKRetainPtr<WKStringRef> url = adoptWK(WKURLCopyString(WKURLRequestCopyURL(request)));
+    WKRetainPtr<WKURLRef> url = adoptWK(WKURLRequestCopyURL(request));
+    WKRetainPtr<WKStringRef> urlScheme = adoptWK(WKURLCopyScheme(url.get()));
+
     InjectedBundle::shared().stringBuilder()->appendLiteral("Policy delegate: attempt to load ");
-    InjectedBundle::shared().stringBuilder()->append(toWTFString(url));
+    if (isLocalFileScheme(urlScheme.get())) {
+        WKRetainPtr<WKStringRef> filename = adoptWK(WKURLCopyLastPathComponent(url.get()));
+        InjectedBundle::shared().stringBuilder()->append(toWTFString(filename));
+    } else {
+        WKRetainPtr<WKStringRef> urlString = adoptWK(WKURLCopyString(url.get()));
+        InjectedBundle::shared().stringBuilder()->append(toWTFString(urlString));
+    }
     InjectedBundle::shared().stringBuilder()->appendLiteral(" with navigation type \'");
     InjectedBundle::shared().stringBuilder()->append(toWTFString(NavigationTypeToString(WKBundleNavigationActionGetNavigationType(navigationAction))));
     InjectedBundle::shared().stringBuilder()->appendLiteral("\'");
@@ -1884,5 +1875,26 @@ void InjectedBundlePage::platformDidStartProvisionalLoadForFrame(WKBundleFrameRe
 {
 }
 #endif
+
+void InjectedBundlePage::frameDidChangeLocation(WKBundleFrameRef frame, bool shouldDump)
+{
+    if (frame != InjectedBundle::shared().topLoadingFrame())
+        return;
+
+    InjectedBundle::shared().setTopLoadingFrame(0);
+
+    if (InjectedBundle::shared().testRunner()->waitToDump())
+        return;
+
+    if (InjectedBundle::shared().shouldProcessWorkQueue()) {
+        InjectedBundle::shared().processWorkQueue();
+        return;
+    }
+
+    if (shouldDump)
+        InjectedBundle::shared().page()->dump();
+    else
+        InjectedBundle::shared().done();
+}
 
 } // namespace WTR

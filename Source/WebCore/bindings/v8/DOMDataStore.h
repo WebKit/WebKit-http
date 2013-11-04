@@ -31,8 +31,8 @@
 #ifndef DOMDataStore_h
 #define DOMDataStore_h
 
-#include "V8DOMMap.h"
-
+#include "DOMWrapperMap.h"
+#include "Node.h"
 #include <v8.h>
 #include <wtf/HashMap.h>
 #include <wtf/MainThread.h>
@@ -45,57 +45,30 @@
 
 namespace WebCore {
 
-    class DOMData;
-    class DOMDataStore;
-
-    typedef WTF::Vector<DOMDataStore*> DOMDataList;
-
-    // DOMDataStore
-    //
-    // DOMDataStore is the backing store that holds the maps between DOM objects
-    // and JavaScript objects.  In general, each thread can have multiple backing
-    // stores, one per isolated world.
-    //
-    // This class doesn't manage the lifetime of the store.  The data store
-    // lifetime is managed by subclasses.
-    //
-    class DOMDataStore {
-        WTF_MAKE_NONCOPYABLE(DOMDataStore);
-    public:
-        enum DOMWrapperMapType {
-            DOMNodeMap,
-            ActiveDOMNodeMap,
-            DOMObjectMap,
-            ActiveDOMObjectMap,
-        };
-
-        DOMDataStore();
-        virtual ~DOMDataStore();
-
-        // A list of all DOMDataStore objects in the current V8 instance (thread). Normally, each World has a DOMDataStore.
-        static DOMDataList& allStores();
-
-        void* getDOMWrapperMap(DOMWrapperMapType);
-
-        DOMNodeMapping& domNodeMap() { return *m_domNodeMap; }
-        DOMNodeMapping& activeDomNodeMap() { return *m_activeDomNodeMap; }
-        DOMWrapperMap<void>& domObjectMap() { return *m_domObjectMap; }
-        DOMWrapperMap<void>& activeDomObjectMap() { return *m_activeDomObjectMap; }
-
-        // Need by V8GCController.
-        static void weakActiveDOMObjectCallback(v8::Persistent<v8::Value> v8Object, void* domObject);
-        static void weakNodeCallback(v8::Persistent<v8::Value> v8Object, void* domObject);
-
-        virtual void reportMemoryUsage(MemoryObjectInfo*) const;
-
-    protected:
-        static void weakDOMObjectCallback(v8::Persistent<v8::Value> v8Object, void* domObject);
-
-        DOMNodeMapping* m_domNodeMap;
-        DOMNodeMapping* m_activeDomNodeMap;
-        DOMWrapperMap<void>* m_domObjectMap;
-        DOMWrapperMap<void>* m_activeDomObjectMap;
+class DOMDataStore {
+    WTF_MAKE_NONCOPYABLE(DOMDataStore);
+public:
+    enum Type {
+        MainWorld,
+        IsolatedWorld,
+        Worker,
     };
+
+    explicit DOMDataStore(Type);
+    ~DOMDataStore();
+
+    static DOMDataStore* current(v8::Isolate*);
+
+    DOMWrapperMap<Node>& domNodeMap() { return *m_domNodeMap; }
+    DOMWrapperMap<void>& domObjectMap() { return *m_domObjectMap; }
+
+    void reportMemoryUsage(MemoryObjectInfo*) const;
+
+protected:
+    Type m_type;
+    OwnPtr<DOMWrapperMap<Node> > m_domNodeMap;
+    OwnPtr<DOMWrapperMap<void> > m_domObjectMap;
+};
 
 } // namespace WebCore
 

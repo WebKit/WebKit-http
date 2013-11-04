@@ -122,15 +122,15 @@ BINDING_IDLS = \
     $(WebCore)/Modules/webaudio/AudioBuffer.idl \
     $(WebCore)/Modules/webaudio/AudioBufferCallback.idl \
     $(WebCore)/Modules/webaudio/AudioBufferSourceNode.idl \
-    $(WebCore)/Modules/webaudio/AudioChannelMerger.idl \
-    $(WebCore)/Modules/webaudio/AudioChannelSplitter.idl \
+    $(WebCore)/Modules/webaudio/ChannelMergerNode.idl \
+    $(WebCore)/Modules/webaudio/ChannelSplitterNode.idl \
     $(WebCore)/Modules/webaudio/AudioContext.idl \
     $(WebCore)/Modules/webaudio/AudioDestinationNode.idl \
     $(WebCore)/Modules/webaudio/AudioGain.idl \
-    $(WebCore)/Modules/webaudio/AudioGainNode.idl \
+    $(WebCore)/Modules/webaudio/GainNode.idl \
     $(WebCore)/Modules/webaudio/AudioListener.idl \
     $(WebCore)/Modules/webaudio/AudioNode.idl \
-    $(WebCore)/Modules/webaudio/AudioPannerNode.idl \
+    $(WebCore)/Modules/webaudio/PannerNode.idl \
     $(WebCore)/Modules/webaudio/AudioParam.idl \
     $(WebCore)/Modules/webaudio/AudioProcessingEvent.idl \
     $(WebCore)/Modules/webaudio/AudioSourceNode.idl \
@@ -139,12 +139,12 @@ BINDING_IDLS = \
     $(WebCore)/Modules/webaudio/DOMWindowWebAudio.idl \
     $(WebCore)/Modules/webaudio/DelayNode.idl \
     $(WebCore)/Modules/webaudio/DynamicsCompressorNode.idl \
-    $(WebCore)/Modules/webaudio/JavaScriptAudioNode.idl \
+    $(WebCore)/Modules/webaudio/ScriptProcessorNode.idl \
     $(WebCore)/Modules/webaudio/MediaElementAudioSourceNode.idl \
     $(WebCore)/Modules/webaudio/MediaStreamAudioSourceNode.idl \
-    $(WebCore)/Modules/webaudio/Oscillator.idl \
+    $(WebCore)/Modules/webaudio/OscillatorNode.idl \
     $(WebCore)/Modules/webaudio/OfflineAudioCompletionEvent.idl \
-    $(WebCore)/Modules/webaudio/RealtimeAnalyserNode.idl \
+    $(WebCore)/Modules/webaudio/AnalyserNode.idl \
     $(WebCore)/Modules/webaudio/WaveShaperNode.idl \
     $(WebCore)/Modules/webaudio/WaveTable.idl \
     $(WebCore)/Modules/webdatabase/DOMWindowWebDatabase.idl \
@@ -356,6 +356,8 @@ BINDING_IDLS = \
     $(WebCore)/html/ImageData.idl \
     $(WebCore)/html/MediaController.idl \
     $(WebCore)/html/MediaError.idl \
+	$(WebCore)/html/MediaKeyError.idl \
+	$(WebCore)/html/MediaKeyEvent.idl \
     $(WebCore)/html/MicroDataItemValue.idl \
     $(WebCore)/html/RadioNodeList.idl \
     $(WebCore)/html/TextMetrics.idl \
@@ -375,6 +377,7 @@ BINDING_IDLS = \
     $(WebCore)/html/canvas/Int16Array.idl \
     $(WebCore)/html/canvas/Int32Array.idl \
     $(WebCore)/html/canvas/Int8Array.idl \
+    $(WebCore)/html/canvas/OESElementIndexUint.idl \
     $(WebCore)/html/canvas/OESStandardDerivatives.idl \
     $(WebCore)/html/canvas/OESTextureFloat.idl \
     $(WebCore)/html/canvas/OESVertexArrayObject.idl \
@@ -702,16 +705,16 @@ endif
 
 endif # MACOS
 
-ifndef ENABLE_WIDGET_REGION
-    ENABLE_WIDGET_REGION = 0
+ifndef ENABLE_DRAGGABLE_REGION
+    ENABLE_DRAGGABLE_REGION = 0
 endif
 
 ifeq ($(ENABLE_ORIENTATION_EVENTS), 1)
     ADDITIONAL_IDL_DEFINES := $(ADDITIONAL_IDL_DEFINES) ENABLE_ORIENTATION_EVENTS
 endif
 
-ifeq ($(ENABLE_WIDGET_REGION), 1)
-    ADDITIONAL_IDL_DEFINES := $(ADDITIONAL_IDL_DEFINES) ENABLE_WIDGET_REGION
+ifeq ($(ENABLE_DRAGGABLE_REGION), 1)
+    ADDITIONAL_IDL_DEFINES := $(ADDITIONAL_IDL_DEFINES) ENABLE_DRAGGABLE_REGION
 endif
 
 # --------
@@ -779,32 +782,14 @@ endif
 # --------
 
 # CSS grammar
-# NOTE: Older versions of bison do not inject an inclusion guard, so we add one.
-
-CSSGrammar.cpp : css/CSSGrammar.y
-	$(BISON) -d -p cssyy $< -o $@
-	touch CSSGrammar.cpp.h
-	touch CSSGrammar.hpp
-	echo '#ifndef CSSGrammar_h' > CSSGrammar.h
-	echo '#define CSSGrammar_h' >> CSSGrammar.h
-	cat CSSGrammar.cpp.h CSSGrammar.hpp >> CSSGrammar.h
-	echo '#endif' >> CSSGrammar.h
-	rm -f CSSGrammar.cpp.h CSSGrammar.hpp
+CSSGrammar.cpp : css/CSSGrammar.y.in
+	perl -I $(WebCore)/bindings/scripts $(WebCore)/css/makegrammar.pl --extraDefines "$(FEATURE_DEFINES)" --outputDir . --bison "$(BISON)" --symbolsPrefix cssyy $<
 
 # --------
 
 # XPath grammar
-# NOTE: Older versions of bison do not inject an inclusion guard, so we add one.
-
 XPathGrammar.cpp : xml/XPathGrammar.y $(PROJECT_FILE)
-	$(BISON) -d -p xpathyy $< -o $@
-	touch XPathGrammar.cpp.h
-	touch XPathGrammar.hpp
-	echo '#ifndef XPathGrammar_h' > XPathGrammar.h
-	echo '#define XPathGrammar_h' >> XPathGrammar.h
-	cat XPathGrammar.cpp.h XPathGrammar.hpp >> XPathGrammar.h
-	echo '#endif' >> XPathGrammar.h
-	rm -f XPathGrammar.cpp.h XPathGrammar.hpp
+	perl $(WebCore)/css/makegrammar.pl --outputDir . --bison "$(BISON)" --symbolsPrefix xpathyy $<
 
 # --------
 
@@ -869,6 +854,10 @@ endif
 
 ifeq ($(findstring ENABLE_SHADOW_DOM,$(FEATURE_DEFINES)), ENABLE_SHADOW_DOM)
     HTML_FLAGS := $(HTML_FLAGS) ENABLE_SHADOW_DOM=1
+endif
+
+ifeq ($(findstring ENABLE_ENCRYPTED_MEDIA,$(FEATURE_DEFINES)), ENABLE_ENCRYPTED_MEDIA)
+    HTML_FLAGS := $(HTML_FLAGS) ENABLE_ENCRYPTED_MEDIA=1
 endif
 
 ifdef HTML_FLAGS

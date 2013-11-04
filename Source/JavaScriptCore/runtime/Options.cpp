@@ -26,6 +26,7 @@
 #include "config.h"
 #include "Options.h"
 
+#include "HeapStatistics.h"
 #include <algorithm>
 #include <limits>
 #include <stdio.h>
@@ -40,10 +41,6 @@
 #if OS(DARWIN) && ENABLE(PARALLEL_GC)
 #include <sys/sysctl.h>
 #endif
-
-// Set to 1 to control the heuristics using environment variables.
-#define ENABLE_RUN_TIME_HEURISTICS 0
-
 
 namespace JSC {
 
@@ -75,10 +72,10 @@ static bool parse(const char* string, double& value)
     return sscanf(string, "%lf", &value) == 1;
 }
 
-#if ENABLE(RUN_TIME_HEURISTICS)
 template<typename T>
 void overrideOptionWithHeuristic(T& variable, const char* name)
 {
+#if !OS(WINCE)
     const char* stringValue = getenv(name);
     if (!stringValue)
         return;
@@ -87,9 +84,8 @@ void overrideOptionWithHeuristic(T& variable, const char* name)
         return;
     
     fprintf(stderr, "WARNING: failed to parse %s=%s\n", name, stringValue);
-}
 #endif
-
+}
 
 static unsigned computeNumberOfGCMarkers(int maxNumberOfGCMarkers)
 {
@@ -130,17 +126,19 @@ void Options::initialize()
 #if USE(CF) || OS(UNIX)
     objectsAreImmortal() = !!getenv("JSImmortalZombieEnabled");
     useZombieMode() = !!getenv("JSImmortalZombieEnabled") || !!getenv("JSZombieEnabled");
+
+    gcMaxHeapSize() = getenv("GCMaxHeapSize") ? HeapStatistics::parseMemoryAmount(getenv("GCMaxHeapSize")) : 0;
+    recordGCPauseTimes() = !!getenv("JSRecordGCPauseTimes");
+    logHeapStatisticsAtExit() = gcMaxHeapSize() || recordGCPauseTimes();
 #endif
 
     // Allow environment vars to override options if applicable.
     // The evn var should be the name of the option prefixed with
     // "JSC_".
-#if ENABLE(RUN_TIME_HEURISTICS)
 #define FOR_EACH_OPTION(type_, name_, defaultValue_) \
     overrideOptionWithHeuristic(name_(), "JSC_" #name_);
     JSC_OPTIONS(FOR_EACH_OPTION)
 #undef FOR_EACH_OPTION
-#endif // RUN_TIME_HEURISTICS
 
 #if 0
     ; // Deconfuse editors that do auto indentation
@@ -153,7 +151,7 @@ void Options::initialize()
 #if !ENABLE(YARR_JIT)
     useRegExpJIT() = false;
 #endif
-
+    
     // Do range checks where needed and make corrections to the options:
     ASSERT(thresholdForOptimizeAfterLongWarmUp() >= thresholdForOptimizeAfterWarmUp());
     ASSERT(thresholdForOptimizeAfterWarmUp() >= thresholdForOptimizeSoon());

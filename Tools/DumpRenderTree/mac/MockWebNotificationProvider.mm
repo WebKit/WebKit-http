@@ -26,7 +26,9 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#import "config.h"
 #import "MockWebNotificationProvider.h"
+
 #import <WebKit/WebSecurityOriginPrivate.h>
 
 @implementation MockWebNotificationProvider
@@ -107,7 +109,7 @@
         uint64_t id = [notificationID unsignedLongLongValue];
         NotificationIDMap::iterator it = _notifications.find(id);
         ASSERT(it != _notifications.end());
-        [it->second.get() dispatchCloseEvent];
+        [it->value.get() dispatchCloseEvent];
         _notifications.remove(it);
         _notificationViewMap.remove(id);
     }
@@ -129,7 +131,7 @@
     return WebNotificationPermissionDenied;
 }
 
-- (void)setWebNotificationOrigin:(NSString*)origin permission:(BOOL)allowed
+- (void)setWebNotificationOrigin:(NSString *)origin permission:(BOOL)allowed
 {
     [_permissions.get() setObject:[NSNumber numberWithBool:allowed] forKey:origin];
 }

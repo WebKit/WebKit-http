@@ -31,13 +31,11 @@
 #ifndef TestShell_h
 #define TestShell_h
 
-#include "AccessibilityControllerChromium.h"
 #include "DRTTestRunner.h"
-#include "GamepadController.h"
 #include "NotificationPresenter.h"
 #include "TestEventPrinter.h"
-#include "TestInterfaces.h"
 #include "WebPreferences.h"
+#include "WebTestInterfaces.h"
 #include "WebViewHost.h"
 #include <string>
 #include <wtf/OwnPtr.h>
@@ -88,8 +86,8 @@ public:
     // Returns the host for the main WebView.
     WebViewHost* webViewHost() const { return m_webViewHost.get(); }
     DRTTestRunner* testRunner() const { return m_testRunner.get(); }
-    EventSender* eventSender() const { return m_testInterfaces->eventSender(); }
-    AccessibilityController* accessibilityController() const { return m_testInterfaces->accessibilityController(); }
+    WebTestRunner::WebEventSender* eventSender() const { return m_testInterfaces->eventSender(); }
+    WebTestRunner::WebAccessibilityController* accessibilityController() const { return m_testInterfaces->accessibilityController(); }
 #if ENABLE(NOTIFICATIONS)
     NotificationPresenter* notificationPresenter() const { return m_notificationPresenter.get(); }
 #endif
@@ -138,6 +136,8 @@ public:
     void setDeferred2dCanvasEnabled(bool enabled) { m_deferred2dCanvasEnabled = enabled; }
     void setAcceleratedPaintingEnabled(bool enabled) { m_acceleratedPaintingEnabled = enabled; }
     void setPerTilePaintingEnabled(bool);
+    void setAcceleratedAnimationEnabled(bool);
+    void setDeferredImageDecodingEnabled(bool enabled) { m_deferredImageDecodingEnabled = enabled; }
 #if defined(OS_WIN)
     // Access to the finished event. Used by the static WatchDog thread.
     HANDLE finishedEvent() { return m_finishedEvent; }
@@ -212,7 +212,7 @@ private:
     OwnPtr<WebPermissions> m_webPermissions;
     OwnPtr<DRTDevToolsAgent> m_drtDevToolsAgent;
     OwnPtr<DRTDevToolsClient> m_drtDevToolsClient;
-    OwnPtr<TestInterfaces> m_testInterfaces;
+    OwnPtr<WebTestRunner::WebTestInterfaces> m_testInterfaces;
     OwnPtr<DRTTestRunner> m_testRunner;
 #if ENABLE(NOTIFICATIONS) || ENABLE(LEGACY_NOTIFICATIONS)
     OwnPtr<NotificationPresenter> m_notificationPresenter;
@@ -235,6 +235,7 @@ private:
     bool m_deferred2dCanvasEnabled;
     bool m_acceleratedPaintingEnabled;
     bool m_perTilePaintingEnabled;
+    bool m_deferredImageDecodingEnabled;
     WebPreferences m_prefs;
     bool m_stressOpt;
     bool m_stressDeopt;

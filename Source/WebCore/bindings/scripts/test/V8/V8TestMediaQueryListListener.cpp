@@ -33,7 +33,7 @@
 
 namespace WebCore {
 
-WrapperTypeInfo V8TestMediaQueryListListener::info = { V8TestMediaQueryListListener::GetTemplate, V8TestMediaQueryListListener::derefObject, 0, 0, 0, WrapperTypeObjectPrototype };
+WrapperTypeInfo V8TestMediaQueryListListener::info = { V8TestMediaQueryListListener::GetTemplate, V8TestMediaQueryListListener::derefObject, 0, 0, V8TestMediaQueryListListener::installPerContextPrototypeProperties, 0, WrapperTypeObjectPrototype };
 
 namespace TestMediaQueryListListenerV8Internal {
 
@@ -81,7 +81,7 @@ v8::Persistent<v8::FunctionTemplate> V8TestMediaQueryListListener::GetRawTemplat
     V8PerIsolateData* data = V8PerIsolateData::current();
     V8PerIsolateData::TemplateMap::iterator result = data->rawTemplateMap().find(&info);
     if (result != data->rawTemplateMap().end())
-        return result->second;
+        return result->value;
 
     v8::HandleScope handleScope;
     v8::Persistent<v8::FunctionTemplate> templ = createRawTemplate();
@@ -94,7 +94,7 @@ v8::Persistent<v8::FunctionTemplate> V8TestMediaQueryListListener::GetTemplate()
     V8PerIsolateData* data = V8PerIsolateData::current();
     V8PerIsolateData::TemplateMap::iterator result = data->templateMap().find(&info);
     if (result != data->templateMap().end())
-        return result->second;
+        return result->value;
 
     v8::HandleScope handleScope;
     v8::Persistent<v8::FunctionTemplate> templ =
@@ -112,8 +112,9 @@ bool V8TestMediaQueryListListener::HasInstance(v8::Handle<v8::Value> value)
 v8::Handle<v8::Object> V8TestMediaQueryListListener::wrapSlow(PassRefPtr<TestMediaQueryListListener> impl, v8::Handle<v8::Object> creationContext, v8::Isolate* isolate)
 {
     v8::Handle<v8::Object> wrapper;
-    Document* document = 0;
-    UNUSED_PARAM(document);
+    // Please don't add any more uses of this variable.
+    Document* deprecatedDocument = 0;
+    UNUSED_PARAM(deprecatedDocument);
 
     v8::Handle<v8::Context> context;
     if (!creationContext.IsEmpty() && creationContext->CreationContext() != v8::Context::GetCurrent()) {
@@ -124,13 +125,15 @@ v8::Handle<v8::Object> V8TestMediaQueryListListener::wrapSlow(PassRefPtr<TestMed
         context->Enter();
     }
 
-    wrapper = V8DOMWrapper::instantiateV8Object(document, &info, impl.get());
+    wrapper = V8DOMWrapper::instantiateV8Object(deprecatedDocument, &info, impl.get());
 
     if (!context.IsEmpty())
         context->Exit();
 
     if (UNLIKELY(wrapper.IsEmpty()))
         return wrapper;
+
+    installPerContextProperties(wrapper, impl.get());
     v8::Persistent<v8::Object> wrapperHandle = V8DOMWrapper::setJSWrapperForDOMObject(impl, wrapper, isolate);
     if (!hasDependentLifetime)
         wrapperHandle.MarkIndependent();

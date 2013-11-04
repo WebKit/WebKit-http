@@ -32,6 +32,7 @@
 #include "CachedResourceClient.h"
 #include "CachedResourceClientWalker.h"
 #include "CachedResourceLoader.h"
+#include "ResourceBuffer.h"
 #include "SharedBuffer.h"
 #include "TextResourceDecoder.h"
 #include <wtf/Vector.h>
@@ -47,7 +48,7 @@ CachedTextTrack::~CachedTextTrack()
 {
 }
 
-void CachedTextTrack::data(PassRefPtr<SharedBuffer> data, bool allDataReceived)
+void CachedTextTrack::data(PassRefPtr<ResourceBuffer> data, bool allDataReceived)
 {
     m_data = data;
     setEncodedSize(m_data.get() ? m_data->size() : 0);

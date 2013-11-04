@@ -46,10 +46,10 @@ using std::min;
 
 namespace WebCore {
 
-static const int defaultTrackLength = 129;
+const int RenderSlider::defaultTrackLength = 129;
 
 RenderSlider::RenderSlider(HTMLInputElement* element)
-    : RenderBlock(element)
+    : RenderFlexibleBox(element)
 {
     // We assume RenderSlider works only with <input type=range>.
     ASSERT(element->isRangeControl());
@@ -64,7 +64,7 @@ bool RenderSlider::canBeReplacedWithInlineRunIn() const
     return false;
 }
 
-LayoutUnit RenderSlider::baselinePosition(FontBaseline, bool /*firstLine*/, LineDirectionMode, LinePositionMode) const
+int RenderSlider::baselinePosition(FontBaseline, bool /*firstLine*/, LineDirectionMode, LinePositionMode) const
 {
     // FIXME: Patch this function for writing-mode.
     return height() + marginTop();
@@ -102,23 +102,22 @@ void RenderSlider::computePreferredLogicalWidths()
 
 void RenderSlider::layout()
 {
+    StackStats::LayoutCheckPoint layoutCheckPoint;
     // FIXME: Find a way to cascade appearance.
     // http://webkit.org/b/62535
     RenderBox* thumbBox = sliderThumbElementOf(node())->renderBox();
-    if (thumbBox && thumbBox->isSliderThumb())
+    if (thumbBox && thumbBox->isSliderThumb()) {
         static_cast<RenderSliderThumb*>(thumbBox)->updateAppearance(style());
-    if (RenderObject* limiterRenderer = trackLimiterElementOf(node())->renderer()) {
-        if (limiterRenderer->isSliderThumb())
-          static_cast<RenderSliderThumb*>(limiterRenderer)->updateAppearance(style());
+        if (RenderObject* limiterRenderer = trackLimiterElementOf(node())->renderer()) {
+            if (limiterRenderer->isSliderThumb()) {
+                static_cast<RenderSliderThumb*>(limiterRenderer)->updateAppearance(style());
+                limiterRenderer->style()->setWidth(thumbBox->style()->width());
+                limiterRenderer->style()->setHeight(thumbBox->style()->height());
+            }
+        }
     }
 
     RenderBlock::layout();
-
-    if (!thumbBox)
-        return;
-    LayoutUnit heightDiff = thumbBox->height() - contentHeight();
-    if (heightDiff > 0)
-        thumbBox->setY(thumbBox->y() - (heightDiff / 2));
 }
 
 bool RenderSlider::inDragMode() const

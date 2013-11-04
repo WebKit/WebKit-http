@@ -28,6 +28,7 @@
 
 #include "WebContext.h"
 #include "WebMediaCacheManagerMessages.h"
+#include "WebMediaCacheManagerProxyMessages.h"
 #include "WebSecurityOrigin.h"
 
 namespace WebKit {
@@ -40,6 +41,7 @@ PassRefPtr<WebMediaCacheManagerProxy> WebMediaCacheManagerProxy::create(WebConte
 WebMediaCacheManagerProxy::WebMediaCacheManagerProxy(WebContext* context)
     : m_webContext(context)
 {
+    m_webContext->addMessageReceiver(Messages::WebMediaCacheManagerProxy::messageReceiverName(), this);
 }
 
 WebMediaCacheManagerProxy::~WebMediaCacheManagerProxy()
@@ -56,9 +58,9 @@ bool WebMediaCacheManagerProxy::shouldTerminate(WebProcessProxy*) const
     return m_arrayCallbacks.isEmpty();
 }
 
-void WebMediaCacheManagerProxy::didReceiveMessage(CoreIPC::Connection* connection, CoreIPC::MessageID messageID, CoreIPC::ArgumentDecoder* arguments)
+void WebMediaCacheManagerProxy::didReceiveMessage(CoreIPC::Connection* connection, CoreIPC::MessageID messageID, CoreIPC::MessageDecoder& decoder)
 {
-    didReceiveWebMediaCacheManagerProxyMessage(connection, messageID, arguments);
+    didReceiveWebMediaCacheManagerProxyMessage(connection, messageID, decoder);
 }
 
 void WebMediaCacheManagerProxy::getHostnamesWithMediaCache(PassRefPtr<ArrayCallback> prpCallback)

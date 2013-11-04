@@ -16,7 +16,7 @@ if (isset($stallAt) && isset($stallFor)) {
     $stallFor = (int)$stallFor;
     if ($stallAt > filesize($name))
         die("Incorrect value for stallAt.");
-
+    $written = 0;
     while ($written < $stallAt) {
         $write = 1024;
         if ($write > $stallAt - $written)
@@ -32,6 +32,7 @@ if (isset($stallAt) && isset($stallFor)) {
 } else {
     echo(fread($file, filesize($name)));
 }
-
+flush();
+ob_flush();
 fclose($file);
 ?>

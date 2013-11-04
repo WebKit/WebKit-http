@@ -58,6 +58,10 @@ WebInspector.displayNameForURL = function(url)
     if (resource)
         return resource.displayName;
 
+    var uiSourceCode = WebInspector.workspace.uiSourceCodeForURL(url);
+    if (uiSourceCode)
+        return uiSourceCode.parsedURL.displayName;
+
     if (!WebInspector.inspectedPageURL)
         return url.trimURL("");
 
@@ -81,7 +85,7 @@ WebInspector.displayNameForURL = function(url)
 WebInspector.linkifyStringAsFragmentWithCustomLinkifier = function(string, linkifier)
 {
     var container = document.createDocumentFragment();
-    var linkStringRegEx = /(?:[a-zA-Z][a-zA-Z0-9+.-]{2,}:\/\/|www\.)[\w$\-_+*'=\|\/\\(){}[\]%@&#~,:;.!?]{2,}[\w$\-_+*=\|\/\\({%@&#~]/;
+    var linkStringRegEx = /(?:[a-zA-Z][a-zA-Z0-9+.-]{2,}:\/\/|data:|www\.)[\w$\-_+*'=\|\/\\(){}[\]%@&#~,:;.!?]{2,}[\w$\-_+*=\|\/\\({%@&#~]/;
     var lineColumnRegEx = /:(\d+)(:(\d+))?$/;
 
     while (string) {
@@ -161,7 +165,7 @@ WebInspector.linkifyStringAsFragment = function(string)
  * @param {string=} classes
  * @param {boolean=} isExternal
  * @param {string=} tooltipText
- * @return {Element}
+ * @return {!Element}
  */
 WebInspector.linkifyURLAsNode = function(url, linkText, classes, isExternal, tooltipText)
 {
@@ -177,8 +181,7 @@ WebInspector.linkifyURLAsNode = function(url, linkText, classes, isExternal, too
         a.title = url;
     else if (typeof tooltipText !== "string" || tooltipText.length)
         a.title = tooltipText;
-    a.textContent = linkText;
-    a.style.maxWidth = "100%";
+    a.textContent = linkText.trimMiddle(150);
     if (isExternal)
         a.setAttribute("target", "_blank");
 
@@ -225,4 +228,19 @@ WebInspector.linkifyRequestAsNode = function(request, classes)
     anchor.preferredPanel = "network";
     anchor.requestId  = request.requestId;
     return anchor;
+}
+
+/**
+ * @param {string} content
+ * @param {string} mimeType
+ * @param {boolean} contentEncoded
+ * @return {?string}
+ */
+WebInspector.contentAsDataURL = function(content, mimeType, contentEncoded)
+{
+    const maxDataUrlSize = 1024 * 1024;
+    if (content == null || content.length > maxDataUrlSize)
+        return null;
+
+    return "data:" + mimeType + (contentEncoded ? ";base64," : ",") + content;
 }

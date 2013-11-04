@@ -60,8 +60,8 @@ public:
     uint64_t pluginInstanceID() const { return m_pluginInstanceID; }
     void pluginProcessCrashed();
 
-    void didReceivePluginProxyMessage(CoreIPC::Connection*, CoreIPC::MessageID messageID, CoreIPC::ArgumentDecoder* arguments);
-    void didReceiveSyncPluginProxyMessage(CoreIPC::Connection*, CoreIPC::MessageID, CoreIPC::ArgumentDecoder*, OwnPtr<CoreIPC::ArgumentEncoder>&);
+    void didReceivePluginProxyMessage(CoreIPC::Connection*, CoreIPC::MessageID, CoreIPC::MessageDecoder&);
+    void didReceiveSyncPluginProxyMessage(CoreIPC::Connection*, CoreIPC::MessageID, CoreIPC::MessageDecoder&, OwnPtr<CoreIPC::MessageEncoder>&);
 
     bool isBeingAsynchronouslyInitialized() const { return m_waitingOnAsynchronousInitialization; }
 
@@ -101,6 +101,11 @@ private:
     virtual bool handleContextMenuEvent(const WebMouseEvent&);
     virtual bool handleKeyboardEvent(const WebKeyboardEvent&);
     virtual void setFocus(bool);
+    virtual bool handleEditingCommand(const String& commandName, const String& argument) OVERRIDE;
+    virtual bool isEditingCommandEnabled(const String& commandName) OVERRIDE;
+    
+    virtual bool handlesPageScaleFactor();
+    
     virtual NPObject* pluginScriptableNPObject();
 #if PLATFORM(MAC)
     virtual void windowFocusChanged(bool);

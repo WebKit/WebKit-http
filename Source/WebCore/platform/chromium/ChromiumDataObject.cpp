@@ -48,10 +48,10 @@ PassRefPtr<ChromiumDataObject> ChromiumDataObject::createFromPasteboard()
     uint64_t sequenceNumber = WebKit::Platform::current()->clipboard()->sequenceNumber(currentPasteboardBuffer());
     bool ignored;
     WebKit::WebVector<WebKit::WebString> webTypes = WebKit::Platform::current()->clipboard()->readAvailableTypes(currentPasteboardBuffer(), &ignored);
-    HashSet<String> types;
+    ListHashSet<String> types;
     for (size_t i = 0; i < webTypes.size(); ++i)
         types.add(webTypes[i]);
-    for (HashSet<String>::const_iterator it = types.begin(); it != types.end(); ++it)
+    for (ListHashSet<String>::const_iterator it = types.begin(); it != types.end(); ++it)
         dataObject->m_itemList.append(ChromiumDataObjectItem::createFromPasteboard(*it, sequenceNumber));
     return dataObject.release();
 }
@@ -126,9 +126,9 @@ void ChromiumDataObject::clearAllExceptFiles()
     }
 }
 
-HashSet<String> ChromiumDataObject::types() const
+ListHashSet<String> ChromiumDataObject::types() const
 {
-    HashSet<String> results;
+    ListHashSet<String> results;
     bool containsFiles = false;
     for (size_t i = 0; i < m_itemList.size(); ++i) {
         if (m_itemList[i]->kind() == DataTransferItem::kindString)

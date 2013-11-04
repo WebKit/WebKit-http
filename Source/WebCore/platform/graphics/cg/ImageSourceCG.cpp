@@ -33,6 +33,7 @@
 #include "IntPoint.h"
 #include "IntSize.h"
 #include "MIMETypeRegistry.h"
+#include "PlatformMemoryInstrumentation.h"
 #include "SharedBuffer.h"
 #include <ApplicationServices/ApplicationServices.h>
 #include <wtf/UnusedParam.h>
@@ -194,6 +195,18 @@ bool ImageSource::isSizeAvailable()
     return result;
 }
 
+static ImageOrientation orientationFromProperties(CFDictionaryRef imageProperties)
+{
+    ASSERT(imageProperties);
+    CFNumberRef orientationProperty = (CFNumberRef)CFDictionaryGetValue(imageProperties, kCGImagePropertyOrientation);
+    if (!orientationProperty)
+        return DefaultImageOrientation;
+
+    int exifValue;
+    CFNumberGetValue(orientationProperty, kCFNumberIntType, &exifValue);
+    return ImageOrientation::fromEXIFValue(exifValue);
+}
+
 IntSize ImageSource::frameSizeAtIndex(size_t index, RespectImageOrientationEnum shouldRespectOrientation) const
 {
     RetainPtr<CFDictionaryRef> properties(AdoptCF, CGImageSourceCopyPropertiesAtIndex(m_decoder, index, imageSourceOptions(SkipMetadata)));
@@ -209,7 +222,7 @@ IntSize ImageSource::frameSizeAtIndex(size_t index, RespectImageOrientationEnum 
     if (num)
         CFNumberGetValue(num, kCFNumberIntType, &h);
 
-    if ((shouldRespectOrientation == RespectImageOrientation) && orientationAtIndex(index).usesWidthAsHeight())
+    if ((shouldRespectOrientation == RespectImageOrientation) && orientationFromProperties(properties.get()).usesWidthAsHeight())
         return IntSize(h, w);
 
     return IntSize(w, h);
@@ -221,13 +234,7 @@ ImageOrientation ImageSource::orientationAtIndex(size_t index) const
     if (!properties)
         return DefaultImageOrientation;
 
-    CFNumberRef orientationProperty = (CFNumberRef)CFDictionaryGetValue(properties.get(), kCGImagePropertyOrientation);
-    if (!orientationProperty)
-        return DefaultImageOrientation;
-
-    int exifValue;
-    CFNumberGetValue(orientationProperty, kCFNumberIntType, &exifValue);
-    return ImageOrientation::fromEXIFValue(exifValue);
+    return orientationFromProperties(properties.get());
 }
 
 IntSize ImageSource::size(RespectImageOrientationEnum shouldRespectOrientation) const
@@ -388,6 +395,12 @@ unsigned ImageSource::frameBytesAtIndex(size_t index) const
 {
     IntSize frameSize = frameSizeAtIndex(index, RespectImageOrientation);
     return frameSize.width() * frameSize.height() * 4;
+}
+
+void ImageSource::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
+{
+    MemoryClassInfo info(memoryObjectInfo, this, PlatformMemoryTypes::Image);
+    // FIXME: addMember call required for m_decoder.
 }
 
 }

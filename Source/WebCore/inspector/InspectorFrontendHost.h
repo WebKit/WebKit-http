@@ -57,8 +57,6 @@ public:
     void disconnectClient();
 
     void loaded();
-    void requestAttachWindow();
-    void requestDetachWindow();
     void requestSetDockSide(const String&);
     void closeWindow();
     void bringToFront();
@@ -77,6 +75,7 @@ public:
     bool canSave();
     void save(const String& url, const String& content, bool forceSaveAs);
     void append(const String& url, const String& content);
+    void close(const String& url);
 
     bool canInspectWorkers();
 

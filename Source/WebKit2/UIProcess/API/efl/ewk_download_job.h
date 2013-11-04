@@ -43,11 +43,11 @@
 extern "C" {
 #endif
 
-/** Creates a type name for _Ewk_Download_Job_Job */
-typedef struct _Ewk_Download_Job Ewk_Download_Job;
+/** Creates a type name for Ewk_Download_Job */
+typedef struct Ewk_Download_Job Ewk_Download_Job;
 
 /// Defines the possible states of a download.
-enum _Ewk_Download_Job_State {
+enum Ewk_Download_Job_State {
     /// The download state is unknown
     EWK_DOWNLOAD_JOB_STATE_UNKNOWN = -1,
     /// The download has not started yet
@@ -63,8 +63,8 @@ enum _Ewk_Download_Job_State {
     /// The download completed successfully.
     EWK_DOWNLOAD_JOB_STATE_FINISHED
 };
-/// Creates a type name for @a _Ewk_Download_Job_State.
-typedef enum _Ewk_Download_Job_State Ewk_Download_Job_State;
+/// Creates a type name for @a Ewk_Download_Job_State.
+typedef enum Ewk_Download_Job_State Ewk_Download_Job_State;
 
 /**
  * Increases the reference count of the given object.
@@ -112,7 +112,7 @@ EAPI Ewk_Url_Request *ewk_download_job_request_get(const Ewk_Download_Job *downl
 EAPI Ewk_Url_Response *ewk_download_job_response_get(const Ewk_Download_Job *download);
 
 /**
- * Query the URI to which the downloaded file will be written.
+ * Query the URL to which the downloaded file will be written.
  *
  * @param download a #Ewk_Download_Job to query.
  *

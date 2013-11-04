@@ -77,8 +77,13 @@
         {
             'target_name': 'TestRunner',
             'type': 'static_library',
+            'defines': [
+                'WEBTESTRUNNER_IMPLEMENTATION=1',
+            ],
             'dependencies': [
+                'TestRunner_resources',
                 '<(source_dir)/WebKit/chromium/WebKit.gyp:webkit',
+                '<(source_dir)/WebKit/chromium/WebKit.gyp:webkit_test_support',
                 '<(source_dir)/WTF/WTF.gyp/WTF.gyp:wtf',
                 '<(chromium_src_dir)/webkit/support/webkit_support.gyp:webkit_support',
             ],
@@ -86,11 +91,14 @@
                 '<(chromium_src_dir)',
                 '<(source_dir)/WebKit/chromium/public',
                 '<(DEPTH)',
-                '../chromium/TestRunner',
+                '../chromium/TestRunner/public',
+                '../chromium/TestRunner/src',
+                '../../../Source',
             ],
             'direct_dependent_settings': {
                 'include_dirs': [
-                    '../chromium/TestRunner',
+                    '../chromium/TestRunner/public',
+                    '../../../Source',
                 ],
             },
             'sources': [
@@ -111,13 +119,79 @@
             ],
         },
         {
+            'target_name': 'TestRunner_resources',
+            'type': 'none',
+            'dependencies': [
+                'ImageDiff',
+                'copy_TestNetscapePlugIn',
+            ],
+            'conditions': [
+                ['OS=="win"', {
+                    'dependencies': [
+                        'LayoutTestHelper',
+                    ],
+                    'copies': [{
+                        'destination': '<(PRODUCT_DIR)',
+                        'files': ['<(ahem_path)'],
+                    }],
+                }],
+                ['OS=="mac"', {
+                    'dependencies': [
+                        'LayoutTestHelper',
+                    ],
+                    'all_dependent_settings': {
+                        'mac_bundle_resources': [
+                            '<(ahem_path)',
+                            '<(tools_dir)/DumpRenderTree/fonts/WebKitWeightWatcher100.ttf',
+                            '<(tools_dir)/DumpRenderTree/fonts/WebKitWeightWatcher200.ttf',
+                            '<(tools_dir)/DumpRenderTree/fonts/WebKitWeightWatcher300.ttf',
+                            '<(tools_dir)/DumpRenderTree/fonts/WebKitWeightWatcher400.ttf',
+                            '<(tools_dir)/DumpRenderTree/fonts/WebKitWeightWatcher500.ttf',
+                            '<(tools_dir)/DumpRenderTree/fonts/WebKitWeightWatcher600.ttf',
+                            '<(tools_dir)/DumpRenderTree/fonts/WebKitWeightWatcher700.ttf',
+                            '<(tools_dir)/DumpRenderTree/fonts/WebKitWeightWatcher800.ttf',
+                            '<(tools_dir)/DumpRenderTree/fonts/WebKitWeightWatcher900.ttf',
+                            '<(SHARED_INTERMEDIATE_DIR)/webkit/missingImage.png',
+                            '<(SHARED_INTERMEDIATE_DIR)/webkit/textAreaResizeCorner.png',
+                        ],
+                    },
+                }],
+                ['use_x11 == 1', {
+                    'copies': [{
+                        'destination': '<(PRODUCT_DIR)',
+                        'files': [
+                            '<(ahem_path)',
+                            '<(tools_dir)/DumpRenderTree/chromium/fonts.conf',
+                        ]
+                    }],
+                }],
+                ['OS=="android"', {
+                    'dependencies!': [
+                        'ImageDiff',
+                        'copy_TestNetscapePlugIn',
+                    ],
+                    'copies': [{
+                        'destination': '<(PRODUCT_DIR)',
+                        'files': [
+                            '<(ahem_path)',
+                            '<(tools_dir)/DumpRenderTree/chromium/android_main_fonts.xml',
+                            '<(tools_dir)/DumpRenderTree/chromium/android_fallback_fonts.xml',
+                        ]
+                    }],
+                }],
+                ['OS=="android" and android_build_type==0', {
+                    'dependencies': [
+                        'ImageDiff#host',
+                    ],
+                }],
+            ],
+        },
+        {
             'target_name': 'DumpRenderTree',
             'type': 'executable',
             'mac_bundle': 1,
             'dependencies': [
-                'ImageDiff',
                 'TestRunner',
-                'copy_TestNetscapePlugIn',
                 '<(source_dir)/WebKit/chromium/WebKit.gyp:inspector_resources',
                 '<(source_dir)/WebKit/chromium/WebKit.gyp:webkit',
                 '<(source_dir)/WTF/WTF.gyp/WTF.gyp:wtf',
@@ -126,7 +200,6 @@
                 '<(chromium_src_dir)/third_party/icu/icu.gyp:icuuc',
                 '<(chromium_src_dir)/third_party/mesa/mesa.gyp:osmesa',
                 '<(chromium_src_dir)/v8/tools/gyp/v8.gyp:v8',
-                '<(chromium_src_dir)/webkit/support/webkit_support.gyp:blob',
                 '<(chromium_src_dir)/webkit/support/webkit_support.gyp:webkit_support',
             ],
             'include_dirs': [
@@ -153,7 +226,6 @@
                 }],
                 ['OS=="win"', {
                     'dependencies': [
-                        'LayoutTestHelper',
                         '<(chromium_src_dir)/third_party/angle/src/build_angle.gyp:libEGL',
                         '<(chromium_src_dir)/third_party/angle/src/build_angle.gyp:libGLESv2',
                     ],
@@ -177,10 +249,6 @@
                             },
                         }],
                     ],
-                    'copies': [{
-                        'destination': '<(PRODUCT_DIR)',
-                        'files': ['<(ahem_path)'],
-                    }],
                 },{ # OS!="win"
                     'sources/': [
                         ['exclude', 'Win\\.cpp$'],
@@ -212,21 +280,6 @@
                 ['OS=="mac"', {
                     'dependencies': [
                         '<(source_dir)/WebKit/chromium/WebKit.gyp:copy_mesa',
-                        'LayoutTestHelper',
-                    ],
-                    'mac_bundle_resources': [
-                        '<(ahem_path)',
-                        '<(tools_dir)/DumpRenderTree/fonts/WebKitWeightWatcher100.ttf',
-                        '<(tools_dir)/DumpRenderTree/fonts/WebKitWeightWatcher200.ttf',
-                        '<(tools_dir)/DumpRenderTree/fonts/WebKitWeightWatcher300.ttf',
-                        '<(tools_dir)/DumpRenderTree/fonts/WebKitWeightWatcher400.ttf',
-                        '<(tools_dir)/DumpRenderTree/fonts/WebKitWeightWatcher500.ttf',
-                        '<(tools_dir)/DumpRenderTree/fonts/WebKitWeightWatcher600.ttf',
-                        '<(tools_dir)/DumpRenderTree/fonts/WebKitWeightWatcher700.ttf',
-                        '<(tools_dir)/DumpRenderTree/fonts/WebKitWeightWatcher800.ttf',
-                        '<(tools_dir)/DumpRenderTree/fonts/WebKitWeightWatcher900.ttf',
-                        '<(SHARED_INTERMEDIATE_DIR)/webkit/missingImage.png',
-                        '<(SHARED_INTERMEDIATE_DIR)/webkit/textAreaResizeCorner.png',
                     ],
                 },{ # OS!="mac"
                     'sources/': [
@@ -246,8 +299,6 @@
                     'copies': [{
                         'destination': '<(PRODUCT_DIR)',
                         'files': [
-                            '<(ahem_path)',
-                            '<(tools_dir)/DumpRenderTree/chromium/fonts.conf',
                             '<(INTERMEDIATE_DIR)/repack/DumpRenderTree.pak',
                         ]
                     }],
@@ -286,28 +337,15 @@
                         '<(chromium_src_dir)/tools/android/forwarder/forwarder.gyp:forwarder',
                         '<(chromium_src_dir)/tools/android/md5sum/md5sum.gyp:md5sum',
                     ],
-                    'dependencies!': [
-                        'ImageDiff',
-                        'copy_TestNetscapePlugIn',
-                        '<(chromium_src_dir)/third_party/mesa/mesa.gyp:osmesa',
-                    ],
                     'copies': [{
                         'destination': '<(PRODUCT_DIR)',
                         'files': [
-                            '<(ahem_path)',
-                            '<(tools_dir)/DumpRenderTree/chromium/android_main_fonts.xml',
-                            '<(tools_dir)/DumpRenderTree/chromium/android_fallback_fonts.xml',
                             '<(INTERMEDIATE_DIR)/repack/DumpRenderTree.pak',
                         ]
                     }],
                 }, { # OS!="android"
                     'sources/': [
                         ['exclude', 'Android\\.cpp$'],
-                    ],
-                }],
-                ['OS=="android" and android_build_type==0', {
-                    'dependencies': [
-                        'ImageDiff#host',
                     ],
                 }],
                 ['inside_chromium_build==1 and component=="shared_library"', {
@@ -326,20 +364,6 @@
                     'dependencies': [
                         '<(chromium_src_dir)/webkit/support/setup_third_party.gyp:third_party_headers',
                     ]
-                }],
-                ['inside_chromium_build==0 or component!="shared_library"', {
-                    'dependencies': [
-                        '<(source_dir)/WebCore/WebCore.gyp/WebCore.gyp:webcore_test_support',
-                    ],
-                    'include_dirs': [
-                        # WARNING: Do not view this particular case as a precedent for
-                        # including WebCore headers in DumpRenderTree project.
-                        '<(source_dir)/WebCore/testing/v8', # for WebCoreTestSupport.h, needed to link in window.internals code.
-                    ],
-                    'sources': [
-                        '<(source_dir)/WebKit/chromium/src/WebTestingSupport.cpp',
-                        '<(source_dir)/WebKit/chromium/public/WebTestingSupport.h',
-                    ],
                 }],
             ],
         },
@@ -512,7 +536,6 @@
                         '-DPRODUCT_DIR=<(ant_build_out)',
                         '--ant-args',
                         '-DCHROMIUM_SRC=<(ant_build_to_chromium_src)',
-                        '--sdk-build=<(sdk_build)',
                         '--app_abi',
                         '<(android_app_abi)',
                     ],

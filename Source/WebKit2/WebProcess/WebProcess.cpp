@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2009, 2010 Apple Inc. All rights reserved.
+ * Copyright (C) 2009, 2010, 2012 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -28,7 +28,6 @@
 
 #include "DownloadManager.h"
 #include "InjectedBundle.h"
-#include "InjectedBundleMessageKinds.h"
 #include "InjectedBundleUserMessageCoders.h"
 #include "SandboxExtension.h"
 #include "StatisticsData.h"
@@ -85,6 +84,10 @@
 
 #if ENABLE(NETWORK_INFO)
 #include "WebNetworkInfoManagerMessages.h"
+#endif
+
+#if ENABLE(NETWORK_PROCESS)
+#include "NetworkProcessConnection.h"
 #endif
 
 #if !OS(WINDOWS)
@@ -159,6 +162,9 @@ WebProcess::WebProcess()
     , m_notificationManager(this)
 #endif
     , m_iconDatabaseProxy(this)
+#if ENABLE(NETWORK_PROCESS)
+    , m_usesNetworkProcess(false)
+#endif
 #if USE(SOUP)
     , m_soupRequestManager(this)
 #endif
@@ -188,17 +194,32 @@ void WebProcess::initialize(CoreIPC::Connection::Identifier serverIdentifier, Ru
     startRandomCrashThreadIfRequested();
 }
 
-void WebProcess::initializeWebProcess(const WebProcessCreationParameters& parameters, CoreIPC::ArgumentDecoder* arguments)
+void WebProcess::addMessageReceiver(CoreIPC::StringReference messageReceiverName, CoreIPC::MessageReceiver* messageReceiver)
+{
+    m_messageReceiverMap.addMessageReceiver(messageReceiverName, messageReceiver);
+}
+
+void WebProcess::addMessageReceiver(CoreIPC::StringReference messageReceiverName, uint64_t destinationID, CoreIPC::MessageReceiver* messageReceiver)
+{
+    m_messageReceiverMap.addMessageReceiver(messageReceiverName, destinationID, messageReceiver);
+}
+
+void WebProcess::removeMessageReceiver(CoreIPC::StringReference messageReceiverName, uint64_t destinationID)
+{
+    m_messageReceiverMap.removeMessageReceiver(messageReceiverName, destinationID);
+}
+
+void WebProcess::initializeWebProcess(const WebProcessCreationParameters& parameters, CoreIPC::MessageDecoder& decoder)
 {
     ASSERT(m_pageMap.isEmpty());
 
-    platformInitializeWebProcess(parameters, arguments);
+    platformInitializeWebProcess(parameters, decoder);
 
     memoryPressureHandler().install();
 
     RefPtr<APIObject> injectedBundleInitializationUserData;
     InjectedBundleUserMessageDecoder messageDecoder(injectedBundleInitializationUserData);
-    if (!arguments->decode(messageDecoder))
+    if (!decoder.decode(messageDecoder))
         return;
 
     if (!parameters.injectedBundlePath.isEmpty()) {
@@ -247,9 +268,6 @@ void WebProcess::initializeWebProcess(const WebProcessCreationParameters& parame
 
     setDefaultRequestTimeoutInterval(parameters.defaultRequestTimeoutInterval);
 
-    for (size_t i = 0; i < parameters.mimeTypesWithCustomRepresentation.size(); ++i)
-        m_mimeTypesWithCustomRepresentations.add(parameters.mimeTypesWithCustomRepresentation[i]);
-
     if (parameters.shouldAlwaysUseComplexTextCodePath)
         setAlwaysUsesComplexTextCodePath(true);
 
@@ -260,8 +278,39 @@ void WebProcess::initializeWebProcess(const WebProcessCreationParameters& parame
     WebCore::ResourceHandle::setPrivateBrowsingStorageSessionIdentifierBase(parameters.uiProcessBundleIdentifier);
 #endif
 
+#if ENABLE(NETWORK_PROCESS)
+    m_usesNetworkProcess = parameters.usesNetworkProcess;
+    ensureNetworkProcessConnection();
+#endif
     setTerminationTimeout(parameters.terminationTimeout);
 }
+
+#if ENABLE(NETWORK_PROCESS)
+void WebProcess::ensureNetworkProcessConnection()
+{
+    if (!m_usesNetworkProcess)
+        return;
+
+    if (m_networkProcessConnection)
+        return;
+
+    CoreIPC::Attachment encodedConnectionIdentifier;
+
+    if (!connection()->sendSync(Messages::WebProcessProxy::GetNetworkProcessConnection(),
+        Messages::WebProcessProxy::GetNetworkProcessConnection::Reply(encodedConnectionIdentifier), 0))
+        return;
+
+#if PLATFORM(MAC)
+    CoreIPC::Connection::Identifier connectionIdentifier(encodedConnectionIdentifier.port());
+    if (CoreIPC::Connection::identifierIsNull(connectionIdentifier))
+        return;
+#else
+    ASSERT_NOT_REACHED();
+#endif
+
+    RefPtr<NetworkProcessConnection> m_networkProcessConnection = NetworkProcessConnection::create(connectionIdentifier);
+}
+#endif // ENABLE(NETWORK_PROCESS)
 
 void WebProcess::setShouldTrackVisitedLinks(bool shouldTrackVisitedLinks)
 {
@@ -346,7 +395,7 @@ void WebProcess::visitedLinkStateChanged(const Vector<WebCore::LinkHash>& linkHa
         HashMap<uint64_t, RefPtr<WebPageGroupProxy> >::const_iterator it = m_pageGroupMap.begin();
         HashMap<uint64_t, RefPtr<WebPageGroupProxy> >::const_iterator end = m_pageGroupMap.end();
         for (; it != end; ++it)
-            Page::visitedStateChanged(PageGroup::pageGroup(it->second->identifier()), linkHashes[i]);
+            Page::visitedStateChanged(PageGroup::pageGroup(it->value->identifier()), linkHashes[i]);
     }
 
     pageCache()->markPagesForVistedLinkStyleRecalc();
@@ -358,7 +407,7 @@ void WebProcess::allVisitedLinkStateChanged()
     HashMap<uint64_t, RefPtr<WebPageGroupProxy> >::const_iterator it = m_pageGroupMap.begin();
     HashMap<uint64_t, RefPtr<WebPageGroupProxy> >::const_iterator end = m_pageGroupMap.end();
     for (; it != end; ++it)
-        Page::allVisitedStateChanged(PageGroup::pageGroup(it->second->identifier()));
+        Page::allVisitedStateChanged(PageGroup::pageGroup(it->value->identifier()));
 
     pageCache()->markPagesForVistedLinkStyleRecalc();
 }
@@ -534,7 +583,7 @@ WebPage* WebProcess::focusedWebPage() const
 {    
     HashMap<uint64_t, RefPtr<WebPage> >::const_iterator end = m_pageMap.end();
     for (HashMap<uint64_t, RefPtr<WebPage> >::const_iterator it = m_pageMap.begin(); it != end; ++it) {
-        WebPage* page = (*it).second.get();
+        WebPage* page = (*it).value.get();
         if (page->windowAndWebPageAreFocused())
             return page;
     }
@@ -552,14 +601,14 @@ void WebProcess::createWebPage(uint64_t pageID, const WebPageCreationParameters&
     // link) the WebPage gets created both in the synchronous handler and through the normal way. 
     HashMap<uint64_t, RefPtr<WebPage> >::AddResult result = m_pageMap.add(pageID, 0);
     if (result.isNewEntry) {
-        ASSERT(!result.iterator->second);
-        result.iterator->second = WebPage::create(pageID, parameters);
+        ASSERT(!result.iterator->value);
+        result.iterator->value = WebPage::create(pageID, parameters);
 
         // Balanced by an enableTermination in removeWebPage.
         disableTermination();
     }
 
-    ASSERT(result.iterator->second);
+    ASSERT(result.iterator->value);
 }
 
 void WebProcess::removeWebPage(uint64_t pageID)
@@ -610,100 +659,56 @@ void WebProcess::terminate()
     m_runLoop->stop();
 }
 
-void WebProcess::didReceiveSyncMessage(CoreIPC::Connection* connection, CoreIPC::MessageID messageID, CoreIPC::ArgumentDecoder* arguments, OwnPtr<CoreIPC::ArgumentEncoder>& reply)
-{   
-    uint64_t pageID = arguments->destinationID();
-    if (!pageID)
+void WebProcess::didReceiveSyncMessage(CoreIPC::Connection* connection, CoreIPC::MessageID messageID, CoreIPC::MessageDecoder& decoder, OwnPtr<CoreIPC::MessageEncoder>& replyEncoder)
+{
+    m_messageReceiverMap.dispatchSyncMessage(connection, messageID, decoder, replyEncoder);
         return;
-    
-    WebPage* page = webPage(pageID);
-    if (!page)
-        return;
-    
-    page->didReceiveSyncMessage(connection, messageID, arguments, reply);
 }
 
-void WebProcess::didReceiveMessage(CoreIPC::Connection* connection, CoreIPC::MessageID messageID, CoreIPC::ArgumentDecoder* arguments)
+void WebProcess::didReceiveMessage(CoreIPC::Connection* connection, CoreIPC::MessageID messageID, CoreIPC::MessageDecoder& decoder)
 {
+    if (m_messageReceiverMap.dispatchMessage(connection, messageID, decoder))
+        return;
+
     if (messageID.is<CoreIPC::MessageClassWebProcess>()) {
-        didReceiveWebProcessMessage(connection, messageID, arguments);
+        didReceiveWebProcessMessage(connection, messageID, decoder);
         return;
     }
 
     if (messageID.is<CoreIPC::MessageClassWebApplicationCacheManager>()) {
-        WebApplicationCacheManager::shared().didReceiveMessage(connection, messageID, arguments);
+        WebApplicationCacheManager::shared().didReceiveMessage(connection, messageID, decoder);
         return;
     }
 
     if (messageID.is<CoreIPC::MessageClassWebCookieManager>()) {
-        WebCookieManager::shared().didReceiveMessage(connection, messageID, arguments);
+        WebCookieManager::shared().didReceiveMessage(connection, messageID, decoder);
         return;
     }
 
 #if ENABLE(SQL_DATABASE)
     if (messageID.is<CoreIPC::MessageClassWebDatabaseManager>()) {
-        WebDatabaseManager::shared().didReceiveMessage(connection, messageID, arguments);
+        WebDatabaseManager::shared().didReceiveMessage(connection, messageID, decoder);
         return;
     }
 #endif
-
-#if ENABLE(BATTERY_STATUS)
-    if (messageID.is<CoreIPC::MessageClassWebBatteryManager>()) {
-        m_batteryManager.didReceiveMessage(connection, messageID, arguments);
-        return;
-    }
-#endif
-
-#if ENABLE(NETWORK_INFO)
-    if (messageID.is<CoreIPC::MessageClassWebNetworkInfoManager>()) {
-        m_networkInfoManager.didReceiveMessage(connection, messageID, arguments);
-        return;
-    }
-#endif
-
-    if (messageID.is<CoreIPC::MessageClassWebIconDatabaseProxy>()) {
-        m_iconDatabaseProxy.didReceiveMessage(connection, messageID, arguments);
-        return;
-    }
 
     if (messageID.is<CoreIPC::MessageClassWebKeyValueStorageManager>()) {
-        WebKeyValueStorageManager::shared().didReceiveMessage(connection, messageID, arguments);
+        WebKeyValueStorageManager::shared().didReceiveMessage(connection, messageID, decoder);
         return;
     }
 
     if (messageID.is<CoreIPC::MessageClassWebMediaCacheManager>()) {
-        WebMediaCacheManager::shared().didReceiveMessage(connection, messageID, arguments);
+        WebMediaCacheManager::shared().didReceiveMessage(connection, messageID, decoder);
         return;
     }
-
-#if ENABLE(NOTIFICATIONS) || ENABLE(LEGACY_NOTIFICATIONS)
-    if (messageID.is<CoreIPC::MessageClassWebNotificationManager>()) {
-        m_notificationManager.didReceiveMessage(connection, messageID, arguments);
-        return;
-    }
-#endif
     
     if (messageID.is<CoreIPC::MessageClassWebResourceCacheManager>()) {
-        WebResourceCacheManager::shared().didReceiveMessage(connection, messageID, arguments);
-        return;
-    }
-
-#if USE(SOUP)
-    if (messageID.is<CoreIPC::MessageClassWebSoupRequestManager>()) {
-        m_soupRequestManager.didReceiveMessage(connection, messageID, arguments);
-        return;
-    }
-#endif
-
-    if (messageID.is<CoreIPC::MessageClassInjectedBundle>()) {
-        if (!m_injectedBundle)
-            return;
-        m_injectedBundle->didReceiveMessage(connection, messageID, arguments);    
+        WebResourceCacheManager::shared().didReceiveMessage(connection, messageID, decoder);
         return;
     }
     
     if (messageID.is<CoreIPC::MessageClassWebPageGroupProxy>()) {
-        uint64_t pageGroupID = arguments->destinationID();
+        uint64_t pageGroupID = decoder.destinationID();
         if (!pageGroupID)
             return;
         
@@ -711,18 +716,8 @@ void WebProcess::didReceiveMessage(CoreIPC::Connection* connection, CoreIPC::Mes
         if (!pageGroupProxy)
             return;
         
-        pageGroupProxy->didReceiveMessage(connection, messageID, arguments);
+        pageGroupProxy->didReceiveMessage(connection, messageID, decoder);
     }
-
-    uint64_t pageID = arguments->destinationID();
-    if (!pageID)
-        return;
-    
-    WebPage* page = webPage(pageID);
-    if (!page)
-        return;
-    
-    page->didReceiveMessage(connection, messageID, arguments);
 }
 
 void WebProcess::didClose(CoreIPC::Connection*)
@@ -754,10 +749,10 @@ void WebProcess::didReceiveInvalidMessage(CoreIPC::Connection*, CoreIPC::Message
     // we'll let it slide.
 }
 
-void WebProcess::didReceiveMessageOnConnectionWorkQueue(CoreIPC::Connection* connection, CoreIPC::MessageID messageID, CoreIPC::ArgumentDecoder* arguments, bool& didHandleMessage)
+void WebProcess::didReceiveMessageOnConnectionWorkQueue(CoreIPC::Connection* connection, CoreIPC::MessageID messageID, CoreIPC::MessageDecoder& decoder, bool& didHandleMessage)
 {
     if (messageID.is<CoreIPC::MessageClassWebProcess>()) {
-        didReceiveWebProcessMessageOnConnectionWorkQueue(connection, messageID, arguments, didHandleMessage);
+        didReceiveWebProcessMessageOnConnectionWorkQueue(connection, messageID, decoder, didHandleMessage);
         return;
     }
 }
@@ -794,11 +789,11 @@ WebPageGroupProxy* WebProcess::webPageGroup(const WebPageGroupData& pageGroupDat
 {
     HashMap<uint64_t, RefPtr<WebPageGroupProxy> >::AddResult result = m_pageGroupMap.add(pageGroupData.pageGroupID, 0);
     if (result.isNewEntry) {
-        ASSERT(!result.iterator->second);
-        result.iterator->second = WebPageGroupProxy::create(pageGroupData);
+        ASSERT(!result.iterator->value);
+        result.iterator->value = WebPageGroupProxy::create(pageGroupData);
     }
 
-    return result.iterator->second.get();
+    return result.iterator->value.get();
 }
 
 #if ENABLE(WEB_INTENTS)
@@ -820,26 +815,6 @@ void WebProcess::removeMessagePortChannel(uint64_t channelID)
     m_messagePortChannels.remove(channelID);
 }
 #endif
-
-static bool canPluginHandleResponse(const ResourceResponse& response)
-{
-    String pluginPath;
-    bool blocked;
-
-    if (!WebProcess::shared().connection()->sendSync(Messages::WebProcessProxy::GetPluginPath(response.mimeType(), response.url().string()), Messages::WebProcessProxy::GetPluginPath::Reply(pluginPath, blocked), 0))
-        return false;
-
-    return !blocked && !pluginPath.isEmpty();
-}
-
-bool WebProcess::shouldUseCustomRepresentationForResponse(const ResourceResponse& response) const
-{
-    if (!m_mimeTypesWithCustomRepresentations.contains(response.mimeType()))
-        return false;
-
-    // If a plug-in exists that claims to support this response, it should take precedence over the custom representation.
-    return !canPluginHandleResponse(response);
-}
 
 void WebProcess::clearResourceCaches(ResourceCachesToClear resourceCachesToClear)
 {
@@ -863,7 +838,7 @@ void WebProcess::clearApplicationCache()
     cacheStorage().empty();
 }
 
-#if !ENABLE(PLUGIN_PROCESS)
+#if ENABLE(NETSCAPE_PLUGIN_API) && !ENABLE(PLUGIN_PROCESS)
 void WebProcess::getSitesWithPluginData(const Vector<String>& pluginPaths, uint64_t callbackID)
 {
     LocalTerminationDisabler terminationDisabler(*this);
@@ -924,7 +899,7 @@ static void fromCountedSetToHashMap(TypeCountSet* countedSet, HashMap<String, ui
 {
     TypeCountSet::const_iterator end = countedSet->end();
     for (TypeCountSet::const_iterator it = countedSet->begin(); it != end; ++it)
-        map.set(it->first, it->second);
+        map.set(it->key, it->value);
 }
 
 static void getWebCoreMemoryCacheStatistics(Vector<HashMap<String, uint64_t> >& result)
@@ -1036,6 +1011,43 @@ void WebProcess::setJavaScriptGarbageCollectorTimerEnabled(bool flag)
     gcController().setJavaScriptGarbageCollectorTimerEnabled(flag);
 }
 
+void WebProcess::postInjectedBundleMessage(const CoreIPC::DataReference& messageData)
+{
+    InjectedBundle* injectedBundle = WebProcess::shared().injectedBundle();
+    if (!injectedBundle)
+        return;
+
+    OwnPtr<CoreIPC::ArgumentDecoder> decoder = CoreIPC::ArgumentDecoder::create(messageData.data(), messageData.size());
+
+    String messageName;
+    if (!decoder->decode(messageName))
+        return;
+
+    RefPtr<APIObject> messageBody;
+    InjectedBundleUserMessageDecoder messageBodyDecoder(messageBody);
+    if (!decoder->decode(messageBodyDecoder))
+        return;
+
+    injectedBundle->didReceiveMessage(messageName, messageBody.get());
+}
+
+#if ENABLE(NETWORK_PROCESS)
+void WebProcess::networkProcessConnectionClosed(NetworkProcessConnection* connection)
+{
+    ASSERT(m_networkProcessConnection);
+    ASSERT(m_networkProcessConnection == connection);
+
+    m_networkProcessConnection = 0;
+}
+
+void WebProcess::networkProcessCrashed(CoreIPC::Connection*)
+{
+    ASSERT(m_networkProcessConnection);
+    
+    networkProcessConnectionClosed(m_networkProcessConnection.get());
+}
+#endif
+
 #if ENABLE(PLUGIN_PROCESS)
 void WebProcess::pluginProcessCrashed(CoreIPC::Connection*, const String& pluginPath)
 {
@@ -1097,7 +1109,7 @@ void WebProcess::setTextCheckerState(const TextCheckerState& textCheckerState)
 
     HashMap<uint64_t, RefPtr<WebPage> >::iterator end = m_pageMap.end();
     for (HashMap<uint64_t, RefPtr<WebPage> >::iterator it = m_pageMap.begin(); it != end; ++it) {
-        WebPage* page = (*it).second.get();
+        WebPage* page = (*it).value.get();
         if (continuousSpellCheckingTurnedOff)
             page->unmarkAllMisspellings();
         if (grammarCheckingTurnedOff)
@@ -1105,6 +1117,7 @@ void WebProcess::setTextCheckerState(const TextCheckerState& textCheckerState)
     }
 }
 
+#if ENABLE(NETSCAPE_PLUGIN_API)
 void WebProcess::didGetPlugins(CoreIPC::Connection*, uint64_t requestID, const Vector<WebCore::PluginInfo>& plugins)
 {
 #if USE(PLATFORM_STRATEGIES)
@@ -1112,5 +1125,6 @@ void WebProcess::didGetPlugins(CoreIPC::Connection*, uint64_t requestID, const V
     handleDidGetPlugins(requestID, plugins);
 #endif
 }
+#endif // ENABLE(PLUGIN_PROCESS)
 
 } // namespace WebKit

@@ -20,27 +20,30 @@
 #define BlackBerryGlobal_h
 
 #if defined(__QNXNTO__) && defined(BUILD_WEBKIT)
-        #define BLACKBERRY_EXPORT __attribute__ ((visibility("default")))
+#define BLACKBERRY_EXPORT __attribute__ ((visibility("default")))
 #else
-    #define BLACKBERRY_EXPORT
+#define BLACKBERRY_EXPORT
 #endif
 
 namespace BlackBerry {
-namespace WebKit {
+namespace Platform {
+class String;
+}
 
-class WebString;
+namespace WebKit {
 
 BLACKBERRY_EXPORT void globalInitialize();
 void collectJavascriptGarbageNow();
 void clearCookieCache();
 BLACKBERRY_EXPORT void clearMemoryCaches();
-void clearAppCache(const WebString& pageGroupName);
+void clearAppCache(const BlackBerry::Platform::String& pageGroupName);
 void reopenAllAppCaches();
 void closeAllAppCaches();
-void clearDatabase(const WebString& pageGroupName);
+void clearDatabase(const BlackBerry::Platform::String& pageGroupName);
 void reopenAllTrackerDatabases();
 void closeAllTrackerDatabases();
 void updateOnlineStatus(bool online);
+bool isRunningDrt();
 }
 }
 

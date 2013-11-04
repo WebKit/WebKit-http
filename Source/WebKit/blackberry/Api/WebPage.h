@@ -21,10 +21,10 @@
 
 #include "BlackBerryGlobal.h"
 #include "JavaScriptVariant.h"
-#include "WebString.h"
 
 #include <BlackBerryPlatformGuardedPointer.h>
 #include <BlackBerryPlatformInputEvents.h>
+#include <BlackBerryPlatformString.h>
 #include <BlackBerryPlatformWebContext.h>
 #include <imf/input_data.h>
 #include <network/NetworkRequest.h>
@@ -57,6 +57,7 @@ class KeyboardEvent;
 class MouseEvent;
 class TouchEvent;
 class TouchPoint;
+class ViewportAccessor;
 }
 
 namespace WebKit {
@@ -72,7 +73,6 @@ class WebPageClient;
 class WebPageCompositor;
 class WebPageGroupLoadDeferrer;
 class WebPagePrivate;
-class WebSelectionOverlay;
 class WebSettings;
 class WebTapHighlight;
 class WebViewportArguments;
@@ -85,30 +85,30 @@ enum TargetDetectionStrategy {PointBased, RectBased};
 
 class BLACKBERRY_EXPORT WebPage : public Platform::GuardedPointerBase {
 public:
-    WebPage(WebPageClient*, const WebString& pageGroupName, const Platform::IntRect&);
+    WebPage(WebPageClient*, const BlackBerry::Platform::String& pageGroupName, const Platform::IntRect&);
     void destroy();
 
     WebPageClient* client() const;
 
-    void load(const char* url, const char* networkToken, bool isInitial = false);
+    void load(const BlackBerry::Platform::String& url, const BlackBerry::Platform::String& networkToken, bool isInitial = false);
 
     void loadExtended(const char* url, const char* networkToken, const char* method, Platform::NetworkRequest::CachePolicy = Platform::NetworkRequest::UseProtocolCachePolicy, const char* data = 0, size_t dataLength = 0, const char* const* headers = 0, size_t headersLength = 0, bool mustHandleInternally = false);
 
-    void loadFile(const char* path, const char* overrideContentType = "");
+    void loadFile(const BlackBerry::Platform::String& path, const BlackBerry::Platform::String& overrideContentType = "");
 
-    void loadString(const char* string, const char* baseURL, const char* contentType = "text/html", const char* failingURL = 0);
+    void loadString(const BlackBerry::Platform::String&, const BlackBerry::Platform::String& baseURL, const BlackBerry::Platform::String& contentType = "text/html", const BlackBerry::Platform::String& failingURL = BlackBerry::Platform::String::emptyString());
 
     void download(const Platform::NetworkRequest&);
 
-    bool executeJavaScript(const char* script, JavaScriptDataType& returnType, WebString& returnValue);
+    bool executeJavaScript(const BlackBerry::Platform::String& script, JavaScriptDataType& returnType, BlackBerry::Platform::String& returnValue);
 
     // This will execute the script even if in-page JavaScript is disabled.
-    bool executeJavaScriptInIsolatedWorld(const char* script, JavaScriptDataType& returnType, WebString& returnValue);
+    bool executeJavaScriptInIsolatedWorld(const BlackBerry::Platform::String& script, JavaScriptDataType& returnType, BlackBerry::Platform::String& returnValue);
 
     // Takes a UTF16 encoded script that is used explicitly by the pattern matching code
-    bool executeJavaScriptInIsolatedWorld(const std::wstring& script, JavaScriptDataType& returnType, WebString& returnValue);
+    bool executeJavaScriptInIsolatedWorld(const std::wstring& script, JavaScriptDataType& returnType, BlackBerry::Platform::String& returnValue);
 
-    void executeJavaScriptFunction(const std::vector<std::string> &function, const std::vector<JavaScriptVariant> &args, JavaScriptVariant& returnValue);
+    void executeJavaScriptFunction(const std::vector<BlackBerry::Platform::String> &function, const std::vector<JavaScriptVariant> &args, JavaScriptVariant& returnValue);
 
     void initializeIconDataBase();
 
@@ -120,8 +120,8 @@ public:
     void prepareToDestroy();
 
     void enableCrossSiteXHR();
-    void addOriginAccessWhitelistEntry(const char* sourceOrigin, const char* destinationOrigin, bool allowDestinationSubdomains);
-    void removeOriginAccessWhitelistEntry(const char* sourceOrigin, const char* destinationOrigin, bool allowDestinationSubdomains);
+    void addOriginAccessWhitelistEntry(const BlackBerry::Platform::String& sourceOrigin, const BlackBerry::Platform::String& destinationOrigin, bool allowDestinationSubdomains);
+    void removeOriginAccessWhitelistEntry(const BlackBerry::Platform::String& sourceOrigin, const BlackBerry::Platform::String& destinationOrigin, bool allowDestinationSubdomains);
 
     void reload();
     void reloadFromCache();
@@ -137,6 +137,7 @@ public:
     void setHasPendingSurfaceSizeChange();
     void applyPendingOrientationIfNeeded();
 
+    Platform::ViewportAccessor* webkitThreadViewportAccessor() const;
     Platform::IntSize viewportSize() const;
     void setViewportSize(const Platform::IntSize& viewportSize, bool ensureFocusElementVisible = true);
 
@@ -158,10 +159,10 @@ public:
     // Returns true if the key stroke was handled by WebKit.
     bool keyEvent(const Platform::KeyboardEvent&);
 
-    WebString title() const;
-    WebString selectedText() const;
-    WebString cutSelectedText();
-    void insertText(const WebString&);
+    BlackBerry::Platform::String title() const;
+    BlackBerry::Platform::String selectedText() const;
+    BlackBerry::Platform::String cutSelectedText();
+    void insertText(const BlackBerry::Platform::String&);
     void clearCurrentInputField();
 
     void cut();
@@ -170,9 +171,9 @@ public:
     void selectAll();
 
     // Text encoding.
-    WebString textEncoding();
-    WebString forcedTextEncoding();
-    void setForcedTextEncoding(const char*);
+    BlackBerry::Platform::String textEncoding();
+    BlackBerry::Platform::String forcedTextEncoding();
+    void setForcedTextEncoding(const BlackBerry::Platform::String&);
 
     // Scroll position returned is in transformed coordinates.
     Platform::IntPoint scrollPosition() const;
@@ -279,25 +280,25 @@ public:
 
     void popupListClosed(int size, const bool* selecteds);
     void popupListClosed(int index);
-    void setDateTimeInput(const WebString& value);
-    void setColorInput(const WebString& value);
+    void setDateTimeInput(const BlackBerry::Platform::String& value);
+    void setColorInput(const BlackBerry::Platform::String& value);
 
     void onInputLocaleChanged(bool isRTL);
     static void onNetworkAvailabilityChanged(bool available);
-    static void onCertificateStoreLocationSet(const WebString& caPath);
+    static void onCertificateStoreLocationSet(const BlackBerry::Platform::String& caPath);
 
-    WebString textHasAttribute(const WebString& query) const;
+    BlackBerry::Platform::String textHasAttribute(const BlackBerry::Platform::String& query) const;
 
-    void setAllowNotification(const WebString& domain, bool allow);
+    void setAllowNotification(const BlackBerry::Platform::String& domain, bool allow);
 
     Platform::WebContext webContext(TargetDetectionStrategy) const;
 
     typedef intptr_t BackForwardId;
     struct BackForwardEntry {
-        WebString url;
-        WebString originalUrl;
-        WebString title;
-        WebString networkToken;
+        BlackBerry::Platform::String url;
+        BlackBerry::Platform::String originalUrl;
+        BlackBerry::Platform::String title;
+        BlackBerry::Platform::String networkToken;
         BackForwardId id;
         bool lastVisitWasHTTPNonGet;
     };
@@ -329,12 +330,15 @@ public:
     bool isEnableLocalAccessToAllCookies() const;
     void setEnableLocalAccessToAllCookies(bool);
 
+    void enableDNSPrefetch();
+    void disableDNSPrefetch();
+    bool isDNSPrefetchEnabled() const;
     void enableWebInspector();
     void disableWebInspector();
     bool isWebInspectorEnabled();
     void enablePasswordEcho();
     void disablePasswordEcho();
-    void dispatchInspectorMessage(const std::string& message);
+    void dispatchInspectorMessage(const BlackBerry::Platform::String& message);
     void inspectCurrentContextElement();
 
     // FIXME: Needs API review on this header. See PR #120402.
@@ -360,9 +364,6 @@ public:
     void resetUserViewportArguments();
 
     WebTapHighlight* tapHighlight() const;
-    void setTapHighlight(WebTapHighlight*);
-
-    WebSelectionOverlay* selectionOverlay() const;
 
     // Adds an overlay that can be modified on the WebKit thread, and
     // whose attributes can be overridden on the compositing thread.
@@ -380,11 +381,11 @@ public:
     bool hasOpenedPopup() const;
     WebCore::PagePopupBlackBerry* popup();
 
-    void autofillTextField(const std::string&);
+    void autofillTextField(const BlackBerry::Platform::String&);
 
     void enableQnxJavaScriptObject(bool);
 
-    WebString renderTreeAsText();
+    BlackBerry::Platform::String renderTreeAsText();
 
 private:
     virtual ~WebPage();

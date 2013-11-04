@@ -60,9 +60,9 @@ WebIDBMetadata WebIDBDatabaseImpl::metadata() const
     return m_databaseBackend->metadata();
 }
 
-WebIDBObjectStore* WebIDBDatabaseImpl::createObjectStore(const WebString& name, const WebIDBKeyPath& keyPath, bool autoIncrement, const WebIDBTransaction& transaction, WebExceptionCode& ec)
+WebIDBObjectStore* WebIDBDatabaseImpl::createObjectStore(long long id, const WebString& name, const WebIDBKeyPath& keyPath, bool autoIncrement, const WebIDBTransaction& transaction, WebExceptionCode& ec)
 {
-    RefPtr<IDBObjectStoreBackendInterface> objectStore = m_databaseBackend->createObjectStore(name, keyPath, autoIncrement, transaction.getIDBTransactionBackendInterface(), ec);
+    RefPtr<IDBObjectStoreBackendInterface> objectStore = m_databaseBackend->createObjectStore(id, name, keyPath, autoIncrement, transaction.getIDBTransactionBackendInterface(), ec);
     if (!objectStore) {
         ASSERT(ec);
         return 0;

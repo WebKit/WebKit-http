@@ -64,6 +64,7 @@
 #include "HTMLElement.h"
 #include "HTMLFrameOwnerElement.h"
 #include "HTMLNames.h"
+#include "HTMLStyleElement.h"
 #include "InspectorCounters.h"
 #include "KeyboardEvent.h"
 #include "LabelsNodeList.h"
@@ -191,7 +192,7 @@ void Node::dumpStatistics()
                 Element* element = static_cast<Element*>(node);
                 HashMap<String, size_t>::AddResult result = perTagCount.add(element->tagName(), 1);
                 if (!result.isNewEntry)
-                    result.iterator->second++;
+                    result.iterator->value++;
 
                 if (ElementAttributeData* attributeData = element->attributeData()) {
                     attributes += attributeData->length();
@@ -279,7 +280,7 @@ void Node::dumpStatistics()
 
     printf("Element tag name distibution:\n");
     for (HashMap<String, size_t>::iterator it = perTagCount.begin(); it != perTagCount.end(); ++it)
-        printf("  Number of <%s> tags: %zu\n", it->first.utf8().data(), it->second);
+        printf("  Number of <%s> tags: %zu\n", it->key.utf8().data(), it->value);
 
     printf("Attributes:\n");
     printf("  Number of Attributes (non-Node and Node): %zu [%zu]\n", attributes, sizeof(Attribute));
@@ -515,7 +516,7 @@ void Node::clearRareData()
         NodeRareData::NodeRareDataMap& dataMap = NodeRareData::rareDataMap();
         NodeRareData::NodeRareDataMap::iterator it = dataMap.find(this);
         ASSERT(it != dataMap.end());
-        delete it->second;
+        delete it->value;
         dataMap.remove(it);
     }
     clearFlag(HasRareDataFlag);
@@ -1312,9 +1313,19 @@ void Node::detach()
     detachingNode = this;
 #endif
 
-    if (renderer())
+    if (renderer()) {
         renderer()->destroyAndCleanupAnonymousWrappers();
-    setRenderer(0);
+#ifndef NDEBUG
+        for (Node* node = this; node; node = node->traverseNextNode(this)) {
+            RenderObject* renderer = node->renderer();
+            // RenderFlowThread removes some elements from the regular tree
+            // hierarchy. They will be cleaned up when we call detach on them.
+            ASSERT(!renderer || renderer->inRenderFlowThread());
+        }
+#endif
+    }
+
+    ASSERT(!renderer());
 
     Document* doc = document();
     if (hovered())
@@ -1404,17 +1415,6 @@ RenderObject* Node::createRenderer(RenderArena*, RenderStyle*)
 {
     ASSERT_NOT_REACHED();
     return 0;
-}
-    
-RenderStyle* Node::nonRendererRenderStyle() const
-{ 
-    return 0; 
-}   
-
-void Node::setRenderStyle(PassRefPtr<RenderStyle> s)
-{
-    if (m_renderer)
-        m_renderer->setAnimatableStyle(s); 
 }
 
 RenderStyle* Node::virtualComputedStyle(PseudoId pseudoElementSpecifier)
@@ -1516,11 +1516,6 @@ Element* Node::parentOrHostElement() const
 bool Node::isBlockFlow() const
 {
     return renderer() && renderer()->isBlockFlow();
-}
-
-bool Node::isBlockFlowOrBlockTable() const
-{
-    return renderer() && (renderer()->isBlockFlow() || (renderer()->isTable() && !renderer()->isInline()));
 }
 
 Element *Node::enclosingBlockFlowElement() const
@@ -2070,7 +2065,7 @@ FloatPoint Node::convertToPage(const FloatPoint& p) const
 {
     // If there is a renderer, just ask it to do the conversion
     if (renderer())
-        return renderer()->localToAbsolute(p, false, true);
+        return renderer()->localToAbsolute(p, UseTransforms);
     
     // Otherwise go up the tree looking for a renderer
     Element *parent = ancestorElement();
@@ -2085,7 +2080,7 @@ FloatPoint Node::convertFromPage(const FloatPoint& p) const
 {
     // If there is a renderer, just ask it to do the conversion
     if (renderer())
-        return renderer()->absoluteToLocal(p, false, true);
+        return renderer()->absoluteToLocal(p, UseTransforms);
 
     // Otherwise go up the tree looking for a renderer
     Element *parent = ancestorElement();
@@ -2276,18 +2271,18 @@ void NodeListsNodeData::invalidateCaches(const QualifiedName* attrName)
 {
     NodeListAtomicNameCacheMap::const_iterator atomicNameCacheEnd = m_atomicNameCaches.end();
     for (NodeListAtomicNameCacheMap::const_iterator it = m_atomicNameCaches.begin(); it != atomicNameCacheEnd; ++it)
-        it->second->invalidateCache(attrName);
+        it->value->invalidateCache(attrName);
 
     NodeListNameCacheMap::const_iterator nameCacheEnd = m_nameCaches.end();
     for (NodeListNameCacheMap::const_iterator it = m_nameCaches.begin(); it != nameCacheEnd; ++it)
-        it->second->invalidateCache(attrName);
+        it->value->invalidateCache(attrName);
 
     if (attrName)
         return;
 
     TagNodeListCacheNS::iterator tagCacheEnd = m_tagNodeListCacheNS.end();
     for (TagNodeListCacheNS::iterator it = m_tagNodeListCacheNS.begin(); it != tagCacheEnd; ++it)
-        it->second->invalidateCache();
+        it->value->invalidateCache();
 }
 
 void Node::getSubresourceURLs(ListHashSet<KURL>& urls) const
@@ -2462,7 +2457,7 @@ static inline void collectMatchingObserversForMutation(HashMap<MutationObserver*
             MutationRecordDeliveryOptions deliveryOptions = registration.deliveryOptions();
             HashMap<MutationObserver*, MutationRecordDeliveryOptions>::AddResult result = observers.add(registration.observer(), deliveryOptions);
             if (!result.isNewEntry)
-                result.iterator->second |= deliveryOptions;
+                result.iterator->value |= deliveryOptions;
         }
     }
 }
@@ -2829,6 +2824,36 @@ void Node::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
     info.addMember(m_previous);
     if (m_renderer)
         info.addMember(m_renderer->style());
+}
+
+void Node::textRects(Vector<IntRect>& rects) const
+{
+    RefPtr<Range> range = Range::create(document());
+    WebCore::ExceptionCode ec = 0;
+    range->selectNodeContents(const_cast<Node*>(this), ec);
+    range->textRects(rects);
+}
+
+void Node::registerScopedHTMLStyleChild()
+{
+    setHasScopedHTMLStyleChild(true);
+}
+
+void Node::unregisterScopedHTMLStyleChild()
+{
+    ASSERT(hasScopedHTMLStyleChild());
+    setHasScopedHTMLStyleChild(numberOfScopedHTMLStyleChildren());
+}
+
+size_t Node::numberOfScopedHTMLStyleChildren() const
+{
+    size_t count = 0;
+    for (Node* child = firstChild(); child; child = child->nextSibling()) {
+        if (child->hasTagName(HTMLNames::styleTag) && static_cast<HTMLStyleElement*>(child)->isRegisteredAsScoped())
+            count++;
+    }
+
+    return count;
 }
 
 } // namespace WebCore

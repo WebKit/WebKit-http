@@ -23,6 +23,7 @@
 #include "ewk_settings.h"
 
 #include "ApplicationCacheStorage.h"
+#include "CairoUtilitiesEfl.h"
 #include "CrossOriginPreflightResultCache.h"
 #include "DatabaseTracker.h"
 #include "FontCache.h"
@@ -31,6 +32,7 @@
 #include "Image.h"
 #include "IntSize.h"
 #include "KURL.h"
+#include "LocalFileSystem.h"
 #include "MemoryCache.h"
 #include "PageCache.h"
 #include "RuntimeEnabledFeatures.h"
@@ -38,7 +40,6 @@
 #include "StorageTracker.h"
 #include "WebKitVersion.h"
 #include "ewk_private.h"
-#include "ewk_util_private.h"
 #include <Eina.h>
 #include <eina_safety_checks.h>
 #include <errno.h>
@@ -229,7 +230,7 @@ Evas_Object* ewk_settings_icon_database_icon_object_get(const char* url, Evas* c
     }
 
     cairo_surface_t* surface = icon->surface();
-    return surface ? ewk_util_image_from_cairo_surface_add(canvas, surface) : 0;
+    return surface ? WebCore::evasObjectFromCairoImageSurface(canvas, surface).leakRef() : 0;
 }
 
 void ewk_settings_object_cache_capacity_set(unsigned minDeadCapacity, unsigned maxDeadCapacity, unsigned totalCapacity)
@@ -321,6 +322,23 @@ const char* ewk_settings_default_user_agent_get()
     WTF::String staticUa = "Mozilla/5.0 (" + _ewk_settings_webkit_platform_get() + "; " + _ewk_settings_webkit_os_version_get() + ") AppleWebKit/" + uaVersion + " (KHTML, like Gecko) Version/5.0 Safari/" + uaVersion;
 
     return eina_stringshare_add(staticUa.utf8().data());
+}
+
+/**
+ * @internal
+ *
+ * Sets the given path to the directory where WebKit will write for
+ * the HTML5 file system API.
+ *
+ * @param path the new file system directory path
+ */
+void ewk_settings_file_system_path_set(const char* path)
+{
+#if ENABLE(FILE_SYSTEM)
+    WebCore::LocalFileSystem::initializeLocalFileSystem(String::fromUTF8(path));
+#else
+    UNUSED_PARAM(path);
+#endif
 }
 
 void ewk_settings_application_cache_path_set(const char* path)

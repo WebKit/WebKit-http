@@ -1,4 +1,4 @@
-    /*
+/*
  Copyright (C) 2010 Nokia Corporation and/or its subsidiary(-ies)
 
  This library is free software; you can redistribute it and/or
@@ -26,6 +26,7 @@
 #include "GraphicsLayer.h"
 #include "GraphicsLayerAnimation.h"
 #include "GraphicsLayerTransform.h"
+#include "GraphicsSurface.h"
 #include "Image.h"
 #include "IntSize.h"
 #include "ShareableBitmap.h"
@@ -41,6 +42,7 @@
 #if USE(COORDINATED_GRAPHICS)
 namespace WebCore {
 class CoordinatedGraphicsLayer;
+class GraphicsLayerAnimations;
 }
 
 namespace WebKit {
@@ -61,12 +63,11 @@ public:
 #if ENABLE(CSS_FILTERS)
     virtual void syncLayerFilters(WebLayerID, const WebCore::FilterOperations&) = 0;
 #endif
-#if PLATFORM(QT)
-    virtual void syncCanvas(WebLayerID, const WebCore::IntSize& canvasSize, uint64_t graphicsSurfaceToken, uint32_t frontBuffer) = 0;
+#if USE(GRAPHICS_SURFACE)
+    virtual void syncCanvas(WebLayerID, const WebCore::IntSize& canvasSize, const WebCore::GraphicsSurfaceToken&, uint32_t frontBuffer) = 0;
 #endif
 
-    virtual void setLayerAnimatedOpacity(WebLayerID, float) = 0;
-    virtual void setLayerAnimatedTransform(WebLayerID, const WebCore::TransformationMatrix&) = 0;
+    virtual void setLayerAnimations(WebLayerID, const WebCore::GraphicsLayerAnimations&) = 0;
 
     virtual void attachLayer(WebCore::CoordinatedGraphicsLayer*) = 0;
     virtual void detachLayer(WebCore::CoordinatedGraphicsLayer*) = 0;
@@ -78,9 +79,8 @@ public:
 namespace WebCore {
 
 class CoordinatedGraphicsLayer : public WebCore::GraphicsLayer
-                       , public TiledBackingStoreClient
-                       , public WebKit::CoordinatedTileClient
-                       , public GraphicsLayerAnimation::Client {
+    , public TiledBackingStoreClient
+    , public WebKit::CoordinatedTileClient {
 public:
     CoordinatedGraphicsLayer(GraphicsLayerClient*);
     virtual ~CoordinatedGraphicsLayer();
@@ -115,8 +115,8 @@ public:
     void setContentsNeedsDisplay();
     void setContentsScale(float);
     void setVisibleContentRectTrajectoryVector(const FloatPoint&);
-    virtual void syncCompositingState(const FloatRect&);
-    virtual void syncCompositingStateForThisLayerOnly();
+    virtual void flushCompositingState(const FloatRect&);
+    virtual void flushCompositingStateForThisLayerOnly();
 #if ENABLE(CSS_FILTERS)
     bool setFilters(const FilterOperations&);
 #endif
@@ -133,7 +133,7 @@ public:
 
     GraphicsLayer* maskTarget() const { return m_maskTarget; }
     void setMaskTarget(GraphicsLayer* layer) { m_maskTarget = layer; }
-    IntRect coverRect() const { return m_mainBackingStore ? m_mainBackingStore->coverRect() : IntRect(); }
+    IntRect coverRect() const { return m_mainBackingStore ? m_mainBackingStore->mapToContents(m_mainBackingStore->coverRect()) : IntRect(); }
 
     static void initFactory();
 
@@ -165,10 +165,7 @@ public:
     bool isReadyForTileBufferSwap() const;
     void updateContentBuffers();
     void purgeBackingStores();
-
-    // GraphicsLayerAnimation::Client
-    virtual void setAnimatedTransform(const TransformationMatrix&);
-    virtual void setAnimatedOpacity(float);
+    bool hasPendingVisibleChanges();
 
     virtual bool addAnimation(const KeyframeValueList&, const IntSize&, const Animation*, const String&, double);
     virtual void pauseAnimation(const String&, double);
@@ -187,12 +184,12 @@ private:
     bool m_shouldSyncLayerState: 1;
     bool m_shouldSyncChildren: 1;
     bool m_shouldSyncFilters: 1;
-    bool m_shouldSyncAnimatedProperties: 1;
+    bool m_shouldSyncAnimations: 1;
     bool m_fixedToViewport : 1;
     bool m_canvasNeedsDisplay : 1;
 
     void notifyChange();
-    void didChangeAnimatedProperties();
+    void didChangeAnimations();
     void didChangeGeometry();
     void didChangeLayerState();
     void didChangeChildren();
@@ -210,7 +207,7 @@ private:
     void adjustContentsScale();
     void computeTransformedVisibleRect();
     void syncLayerParameters();
-    void syncAnimatedProperties();
+    void syncAnimations();
     void setShouldUpdateVisibleRect();
     float effectiveContentsScale();
 

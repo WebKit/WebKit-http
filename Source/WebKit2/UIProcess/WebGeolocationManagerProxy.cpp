@@ -28,6 +28,7 @@
 
 #include "WebContext.h"
 #include "WebGeolocationManagerMessages.h"
+#include "WebGeolocationManagerProxyMessages.h"
 
 namespace WebKit {
 
@@ -40,6 +41,7 @@ WebGeolocationManagerProxy::WebGeolocationManagerProxy(WebContext* context)
     : m_isUpdating(false)
     , m_context(context)
 {
+    m_context->addMessageReceiver(Messages::WebGeolocationManagerProxy::messageReceiverName(), this);
 }
 
 WebGeolocationManagerProxy::~WebGeolocationManagerProxy()
@@ -72,9 +74,9 @@ void WebGeolocationManagerProxy::providerDidFailToDeterminePosition(const String
     m_context->sendToAllProcesses(Messages::WebGeolocationManager::DidFailToDeterminePosition(errorMessage));
 }
 
-void WebGeolocationManagerProxy::didReceiveMessage(CoreIPC::Connection* connection, CoreIPC::MessageID messageID, CoreIPC::ArgumentDecoder* arguments)
+void WebGeolocationManagerProxy::didReceiveMessage(CoreIPC::Connection* connection, CoreIPC::MessageID messageID, CoreIPC::MessageDecoder& decoder)
 {
-    didReceiveWebGeolocationManagerProxyMessage(connection, messageID, arguments);
+    didReceiveWebGeolocationManagerProxyMessage(connection, messageID, decoder);
 }
 
 void WebGeolocationManagerProxy::startUpdating()

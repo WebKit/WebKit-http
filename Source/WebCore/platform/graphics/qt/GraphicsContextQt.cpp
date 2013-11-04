@@ -156,6 +156,10 @@ static Qt::PenStyle toQPenStyle(StrokeStyle style)
         return Qt::NoPen;
         break;
     case SolidStroke:
+#if ENABLE(CSS3_TEXT)
+    case DoubleStroke:
+    case WavyStroke: // FIXME: https://bugs.webkit.org/show_bug.cgi?id=93507 - Needs platform support.
+#endif
         return Qt::SolidLine;
         break;
     case DottedStroke:
@@ -283,12 +287,13 @@ GraphicsContextPlatformPrivate::GraphicsContextPlatformPrivate(QPainter* p, cons
 
 GraphicsContextPlatformPrivate::~GraphicsContextPlatformPrivate()
 {
+    delete shadow;
+
     if (!platformContextIsOwned)
         return;
 
     QPaintDevice* device = painter->device();
     painter->end();
-    delete shadow;
     delete painter;
     delete device;
 }
@@ -401,6 +406,10 @@ void GraphicsContext::drawLine(const IntPoint& point1, const IntPoint& point2)
     switch (style) {
     case NoStroke:
     case SolidStroke:
+#if ENABLE(CSS3_TEXT)
+    case DoubleStroke:
+    case WavyStroke: // FIXME: https://bugs.webkit.org/show_bug.cgi?id=93507 - Needs platform support.
+#endif
         break;
     case DottedStroke: {
         capStyle = Qt::RoundCap;
@@ -1066,7 +1075,7 @@ void GraphicsContext::clearPlatformShadow()
     m_data->shadow->clear();
 }
 
-void GraphicsContext::pushTransparencyLayerInternal(const QRect &rect, qreal opacity, QImage& alphaMask)
+void GraphicsContext::pushTransparencyLayerInternal(const QRect &rect, qreal opacity, QPixmap& alphaMask)
 {
     QPainter* p = m_data->p();
 
@@ -1101,7 +1110,7 @@ void GraphicsContext::beginPlatformTransparencyLayer(float opacity)
         h = int(qBound(qreal(0), deviceClip.height(), (qreal)h) + 2);
     }
 
-    QImage emptyAlphaMask;
+    QPixmap emptyAlphaMask;
     m_data->layers.push(new TransparencyLayer(p, QRect(x, y, w, h), opacity, emptyAlphaMask));
     ++m_data->layerCount;
 }
@@ -1115,7 +1124,7 @@ void GraphicsContext::endPlatformTransparencyLayer()
     if (!layer->alphaMask.isNull()) {
         layer->painter.resetTransform();
         layer->painter.setCompositionMode(QPainter::CompositionMode_DestinationIn);
-        layer->painter.drawImage(QPoint(), layer->alphaMask);
+        layer->painter.drawPixmap(QPoint(), layer->alphaMask);
     } else
         --m_data->layerCount; // see the comment for layerCount
     layer->painter.end();
@@ -1124,7 +1133,7 @@ void GraphicsContext::endPlatformTransparencyLayer()
     p->save();
     p->resetTransform();
     p->setOpacity(layer->opacity);
-    p->drawImage(layer->offset, layer->image);
+    p->drawPixmap(layer->offset, layer->pixmap);
     p->restore();
 
     delete layer;
@@ -1189,6 +1198,9 @@ void GraphicsContext::setLineDash(const DashArray& dashes, float dashOffset)
             count *= 2;
 
         float penWidth = narrowPrecisionToFloat(double(pen.widthF()));
+        if (penWidth <= 0.f)
+            penWidth = 1.f;
+
         for (unsigned i = 0; i < count; i++)
             pattern.append(dashes[i % dashLength] / penWidth);
 

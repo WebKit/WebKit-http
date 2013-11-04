@@ -80,7 +80,6 @@ GraphicsLayer::GraphicsLayer(GraphicsLayerClient* client)
     , m_acceleratesDrawing(false)
     , m_maintainsPixelAlignment(false)
     , m_appliesPageScale(false)
-    , m_usingTileCache(false)
     , m_paintingPhase(GraphicsLayerPaintAllWithOverflowClip)
     , m_contentsOrientation(CompositingCoordinatesTopDown)
     , m_parent(0)
@@ -339,21 +338,39 @@ void GraphicsLayer::resumeAnimations()
 {
 }
 
+void GraphicsLayer::getDebugBorderInfo(Color& color, float& width) const
+{
+    if (drawsContent()) {
+        if (m_usingTiledLayer) {
+            color = Color(255, 128, 0, 128); // tiled layer: orange
+            width = 2;
+            return;
+        }
+
+        color = Color(0, 128, 32, 128); // normal layer: green
+        width = 2;
+        return;
+    }
+    
+    if (masksToBounds()) {
+        color = Color(128, 255, 255, 48); // masking layer: pale blue
+        width = 20;
+        return;
+    }
+        
+    color = Color(255, 255, 0, 192); // container: yellow
+    width = 2;
+}
+
 void GraphicsLayer::updateDebugIndicators()
 {
-    if (GraphicsLayer::showDebugBorders()) {
-        if (drawsContent()) {
-            if (m_usingTileCache) // tile cache layer: dark blue
-                setDebugBorder(Color(0, 0, 128, 128), 0.5);
-            else if (m_usingTiledLayer)
-                setDebugBorder(Color(255, 128, 0, 128), 2); // tiled layer: orange
-            else
-                setDebugBorder(Color(0, 128, 32, 128), 2); // normal layer: green
-        } else if (masksToBounds()) {
-            setDebugBorder(Color(128, 255, 255, 48), 20); // masking layer: pale blue
-        } else
-            setDebugBorder(Color(255, 255, 0, 192), 2); // container: yellow
-    }
+    if (!GraphicsLayer::showDebugBorders())
+        return;
+
+    Color borderColor;
+    float width = 0;
+    getDebugBorderInfo(borderColor, width);
+    setDebugBorder(borderColor, width);
 }
 
 void GraphicsLayer::setZPosition(float position)
@@ -519,7 +536,7 @@ double GraphicsLayer::backingStoreMemoryEstimate() const
     return static_cast<double>(4 * size().width()) * size().height();
 }
 
-static void writeIndent(TextStream& ts, int indent)
+void GraphicsLayer::writeIndent(TextStream& ts, int indent)
 {
     for (int i = 0; i != indent; ++i)
         ts << "  ";
@@ -645,6 +662,8 @@ void GraphicsLayer::dumpProperties(TextStream& ts, int indent, LayerTreeAsTextBe
         ts << ")\n";
     }
     
+    dumpAdditionalProperties(ts, indent, behavior);
+    
     if (m_children.size()) {
         writeIndent(ts, indent + 1);
         ts << "(children " << m_children.size() << "\n";
@@ -673,7 +692,7 @@ void showGraphicsLayerTree(const WebCore::GraphicsLayer* layer)
     if (!layer)
         return;
 
-    WTF::String output = layer->layerTreeAsText(LayerTreeAsTextDebug);
+    String output = layer->layerTreeAsText(LayerTreeAsTextDebug | LayerTreeAsTextIncludeVisibleRects | LayerTreeAsTextIncludeTileCaches);
     fprintf(stderr, "%s\n", output.utf8().data());
 }
 #endif

@@ -20,6 +20,7 @@
 #include "config.h"
 #include "GraphicsLayerTextureMapper.h"
 
+#include "GraphicsLayerAnimation.h"
 #include "GraphicsLayerFactory.h"
 #include "TextureMapperLayer.h"
 
@@ -56,7 +57,7 @@ void GraphicsLayerTextureMapper::notifyChange(TextureMapperLayer::ChangeMask cha
     m_changeMask |= changeMask;
     if (!client())
         return;
-    client()->notifySyncRequired(this);
+    client()->notifyFlushRequired(this);
 }
 
 void GraphicsLayerTextureMapper::didSynchronize()
@@ -367,16 +368,16 @@ void GraphicsLayerTextureMapper::setContentsToMedia(TextureMapperPlatformLayer* 
 
 /* \reimp (GraphicsLayer.h)
 */
-void GraphicsLayerTextureMapper::syncCompositingStateForThisLayerOnly()
+void GraphicsLayerTextureMapper::flushCompositingStateForThisLayerOnly()
 {
-    m_layer->syncCompositingState(this);
+    m_layer->flushCompositingState(this);
 }
 
 /* \reimp (GraphicsLayer.h)
 */
-void GraphicsLayerTextureMapper::syncCompositingState(const FloatRect&)
+void GraphicsLayerTextureMapper::flushCompositingState(const FloatRect&)
 {
-    m_layer->syncCompositingState(this, TextureMapperLayer::TraverseDescendants);
+    m_layer->flushCompositingState(this, TextureMapperLayer::TraverseDescendants);
 }
 
 bool GraphicsLayerTextureMapper::addAnimation(const KeyframeValueList& valueList, const IntSize& boxSize, const Animation* anim, const String& keyframesName, double timeOffset)
@@ -392,11 +393,18 @@ bool GraphicsLayerTextureMapper::addAnimation(const KeyframeValueList& valueList
     if (valueList.property() == AnimatedPropertyWebkitTransform)
         listsMatch = validateTransformOperations(valueList, hasBigRotation) >= 0;
 
-    m_animations.add(GraphicsLayerAnimation(keyframesName, valueList, boxSize, anim, timeOffset, listsMatch));
+    m_animations.add(GraphicsLayerAnimation(keyframesName, valueList, boxSize, anim, WTF::currentTime() - timeOffset, listsMatch));
     notifyChange(TextureMapperLayer::AnimationChange);
     m_animationStartedTimer.startOneShot(0);
     return true;
 }
+
+void GraphicsLayerTextureMapper::setAnimations(const GraphicsLayerAnimations& animations)
+{
+    m_animations = animations;
+    notifyChange(TextureMapperLayer::AnimationChange);
+}
+
 
 void GraphicsLayerTextureMapper::pauseAnimation(const String& animationName, double timeOffset)
 {

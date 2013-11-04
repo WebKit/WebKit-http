@@ -64,6 +64,7 @@ static const char optionEnableAcceleratedPainting[] = "--enable-accelerated-pain
 static const char optionEnableAcceleratedCompositingForVideo[] = "--enable-accelerated-video";
 static const char optionUseGraphicsContext3DImplementation[] = "--use-graphics-context-3d-implementation=";
 static const char optionEnablePerTilePainting[] = "--enable-per-tile-painting";
+static const char optionEnableDeferredImageDecoding[] = "--enable-deferred-image-decoding";
 
 static const char optionStressOpt[] = "--stress-opt";
 static const char optionStressDeopt[] = "--stress-deopt";
@@ -133,12 +134,14 @@ int main(int argc, char* argv[])
     bool deferred2DCanvasEnabled = false;
     bool acceleratedPaintingEnabled = false;
     bool perTilePaintingEnabled = false;
+    bool deferredImageDecodingEnabled = false;
     bool stressOpt = false;
     bool stressDeopt = false;
     bool hardwareAcceleratedGL = false;
     string javaScriptFlags;
     bool encodeBinary = false;
     bool noTimeout = false;
+    bool acceleratedAnimationEnabled = false;
     for (int i = 1; i < argc; ++i) {
         string argument(argv[i]);
         if (argument == "-")
@@ -183,6 +186,8 @@ int main(int argc, char* argv[])
               fprintf(stderr, "Unknown GraphicContext3D implementation %s\n", implementation.c_str());
         } else if (argument == optionEnablePerTilePainting)
             perTilePaintingEnabled = true;
+        else if (argument == optionEnableDeferredImageDecoding)
+            deferredImageDecodingEnabled = true;
         else if (argument == optionStressOpt)
             stressOpt = true;
         else if (argument == optionStressDeopt)
@@ -221,7 +226,9 @@ int main(int argc, char* argv[])
         shell.setAccelerated2dCanvasEnabled(accelerated2DCanvasEnabled);
         shell.setDeferred2dCanvasEnabled(deferred2DCanvasEnabled);
         shell.setAcceleratedPaintingEnabled(acceleratedPaintingEnabled);
+        shell.setAcceleratedAnimationEnabled(acceleratedAnimationEnabled);
         shell.setPerTilePaintingEnabled(perTilePaintingEnabled);
+        shell.setDeferredImageDecodingEnabled(deferredImageDecodingEnabled);
         shell.setJavaScriptFlags(javaScriptFlags);
         shell.setStressOpt(stressOpt);
         shell.setStressDeopt(stressDeopt);

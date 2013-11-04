@@ -258,6 +258,7 @@ QPointF QQuickWebViewPrivate::FlickableAxisLocker::adjust(const QPointF& positio
 
 QQuickWebViewPrivate::QQuickWebViewPrivate(QQuickWebView* viewport)
     : q_ptr(viewport)
+    , experimental(new QQuickWebViewExperimental(viewport, this))
     , alertDialog(0)
     , confirmDialog(0)
     , promptDialog(0)
@@ -329,14 +330,6 @@ void QQuickWebViewPrivate::loadDidStop()
     ASSERT(!q->loading());
     QWebLoadRequest loadRequest(q->url(), QQuickWebView::LoadStoppedStatus);
     emit q->loadingChanged(&loadRequest);
-}
-
-void QQuickWebViewPrivate::onComponentComplete()
-{
-    Q_Q(QQuickWebView);
-    m_pageViewportControllerClient.reset(new PageViewportControllerClientQt(q, pageView.data()));
-    m_pageViewportController.reset(new PageViewportController(webPageProxy.get(), m_pageViewportControllerClient.data()));
-    pageView->eventHandler()->setViewportController(m_pageViewportControllerClient.data());
 }
 
 void QQuickWebViewPrivate::setTransparentBackground(bool enable)
@@ -448,18 +441,23 @@ void QQuickWebViewPrivate::setNeedsDisplay()
 {
     Q_Q(QQuickWebView);
     if (renderToOffscreenBuffer()) {
-        // TODO: we can maintain a real image here and use it for pixel tests. Right now this is used only for running the rendering code-path while running tests.
+        // This is used only to mantain the rendering synchronisation between the UI and
+        // the web process when running tests even if the render loop is not active.
         QImage dummyImage(1, 1, QImage::Format_ARGB32);
         QPainter painter(&dummyImage);
         q->page()->d->paint(&painter);
         return;
     }
+    q->page()->update();
+}
 
+void QQuickWebViewPrivate::didRenderFrame()
+{
+    Q_Q(QQuickWebView);
     if (m_betweenLoadCommitAndFirstFrame) {
         emit q->experimental()->loadVisuallyCommitted();
         m_betweenLoadCommitAndFirstFrame = false;
     }
-    q->page()->update();
 }
 
 void QQuickWebViewPrivate::processDidCrash()
@@ -506,7 +504,7 @@ void QQuickWebViewPrivate::handleDownloadRequest(DownloadProxy* download)
     downloadItem->d->downloadProxy = download;
 
     q->connect(downloadItem->d, SIGNAL(receivedResponse(QWebDownloadItem*)), q, SLOT(_q_onReceivedResponseFromDownload(QWebDownloadItem*)));
-    context->downloadManager()->addDownload(download, downloadItem);
+    QtWebContext::downloadManager()->addDownload(download, downloadItem);
 }
 
 void QQuickWebViewPrivate::_q_onVisibleChanged()
@@ -824,12 +822,17 @@ void QQuickWebViewLegacyPrivate::updateViewportSize()
     QSizeF viewportSize = q->boundingRect().size();
     if (viewportSize.isEmpty())
         return;
+
+    float devicePixelRatio = webPageProxy->deviceScaleFactor();
     pageView->setContentsSize(viewportSize);
+    // Make sure that our scale matches the one passed to setVisibleContentsRect.
+    pageView->setContentsScale(devicePixelRatio);
+
     // The fixed layout is handled by the FrameView and the drawing area doesn't behave differently
     // whether its fixed or not. We still need to tell the drawing area which part of it
     // has to be rendered on tiles, and in desktop mode it's all of it.
-    webPageProxy->drawingArea()->setSize(viewportSize.toSize(), IntSize());
-    webPageProxy->drawingArea()->setVisibleContentsRect(FloatRect(FloatPoint(), FloatSize(viewportSize)), 1, FloatPoint());
+    webPageProxy->drawingArea()->setSize((viewportSize / devicePixelRatio).toSize(), IntSize());
+    webPageProxy->drawingArea()->setVisibleContentsRect(FloatRect(FloatPoint(), FloatSize(viewportSize / devicePixelRatio)), devicePixelRatio, FloatPoint());
 }
 
 qreal QQuickWebViewLegacyPrivate::zoomFactor() const
@@ -856,6 +859,11 @@ void QQuickWebViewFlickablePrivate::initialize(WKContextRef contextRef, WKPageGr
 void QQuickWebViewFlickablePrivate::onComponentComplete()
 {
     QQuickWebViewPrivate::onComponentComplete();
+
+    Q_Q(QQuickWebView);
+    m_pageViewportControllerClient.reset(new PageViewportControllerClientQt(q, pageView.data()));
+    m_pageViewportController.reset(new PageViewportController(webPageProxy.get(), m_pageViewportControllerClient.data()));
+    pageView->eventHandler()->setViewportController(m_pageViewportControllerClient.data());
 
     // Trigger setting of correct visibility flags after everything was allocated and initialized.
     _q_onVisibleChanged();
@@ -890,12 +898,12 @@ void QQuickWebViewFlickablePrivate::handleMouseEvent(QMouseEvent* event)
     pageView->eventHandler()->handleInputEvent(event);
 }
 
-QQuickWebViewExperimental::QQuickWebViewExperimental(QQuickWebView *webView)
+QQuickWebViewExperimental::QQuickWebViewExperimental(QQuickWebView *webView, QQuickWebViewPrivate* webViewPrivate)
     : QObject(webView)
     , q_ptr(webView)
-    , d_ptr(webView->d_ptr.data())
+    , d_ptr(webViewPrivate)
     , schemeParent(new QObject(this))
-    , m_test(new QWebKitTest(webView->d_ptr.data(), this))
+    , m_test(new QWebKitTest(webViewPrivate, this))
 {
 }
 
@@ -1466,7 +1474,6 @@ QQuickWebPage* QQuickWebViewExperimental::page()
 QQuickWebView::QQuickWebView(QQuickItem* parent)
     : QQuickFlickable(parent)
     , d_ptr(createPrivateObject(this))
-    , m_experimental(new QQuickWebViewExperimental(this))
 {
     Q_D(QQuickWebView);
     d->initialize();
@@ -1475,7 +1482,6 @@ QQuickWebView::QQuickWebView(QQuickItem* parent)
 QQuickWebView::QQuickWebView(WKContextRef contextRef, WKPageGroupRef pageGroupRef, QQuickItem* parent)
     : QQuickFlickable(parent)
     , d_ptr(createPrivateObject(this))
-    , m_experimental(new QQuickWebViewExperimental(this))
 {
     Q_D(QQuickWebView);
     d->initialize(contextRef, pageGroupRef);
@@ -1755,7 +1761,8 @@ QVariant QQuickWebView::inputMethodQuery(Qt::InputMethodQuery property) const
 */
 QQuickWebViewExperimental* QQuickWebView::experimental() const
 {
-    return m_experimental;
+    Q_D(const QQuickWebView);
+    return d->experimental;
 }
 
 /*!

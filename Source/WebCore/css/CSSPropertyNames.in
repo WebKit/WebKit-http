@@ -265,11 +265,11 @@ z-index
 #if defined(ENABLE_CSS_BOX_DECORATION_BREAK) && ENABLE_CSS_BOX_DECORATION_BREAK
 -webkit-box-decoration-break
 #endif
-#if defined(ENABLE_CSS_FILTERS) && ENABLE_CSS_FILTERS
--webkit-filter
-#endif
 #if defined(ENABLE_CSS_COMPOSITING) && ENABLE_CSS_COMPOSITING
 -webkit-blend-mode
+#endif
+#if defined(ENABLE_CSS_FILTERS) && ENABLE_CSS_FILTERS
+-webkit-filter
 #endif
 -webkit-align-content
 -webkit-align-items
@@ -354,7 +354,7 @@ z-index
 -webkit-rtl-ordering
 -webkit-text-combine
 -epub-text-combine = -webkit-text-combine
-#if defined(ENABLE_CSS3_TEXT_DECORATION) && ENABLE_CSS3_TEXT_DECORATION
+#if defined(ENABLE_CSS3_TEXT) && ENABLE_CSS3_TEXT
 -webkit-text-decoration-line
 -webkit-text-decoration-style
 #endif
@@ -408,8 +408,8 @@ z-index
 #if defined(ENABLE_DASHBOARD_SUPPORT) && ENABLE_DASHBOARD_SUPPORT
 -webkit-dashboard-region
 #endif
-#if defined(ENABLE_WIDGET_REGION) && ENABLE_WIDGET_REGION
--webkit-widget-region
+#if defined(ENABLE_DRAGGABLE_REGION) && ENABLE_DRAGGABLE_REGION
+-webkit-app-region
 #endif
 #if defined(ENABLE_ACCELERATED_OVERFLOW_SCROLLING) && ENABLE_ACCELERATED_OVERFLOW_SCROLLING
 -webkit-overflow-scrolling

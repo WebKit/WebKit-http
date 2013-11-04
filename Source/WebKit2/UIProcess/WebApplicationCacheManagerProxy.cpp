@@ -28,6 +28,7 @@
 
 #include "SecurityOriginData.h"
 #include "WebApplicationCacheManagerMessages.h"
+#include "WebApplicationCacheManagerProxyMessages.h"
 #include "WebContext.h"
 #include "WebSecurityOrigin.h"
 
@@ -41,6 +42,7 @@ PassRefPtr<WebApplicationCacheManagerProxy> WebApplicationCacheManagerProxy::cre
 WebApplicationCacheManagerProxy::WebApplicationCacheManagerProxy(WebContext* context)
     : m_webContext(context)
 {
+    m_webContext->addMessageReceiver(Messages::WebApplicationCacheManagerProxy::messageReceiverName(), this);
 }
 
 WebApplicationCacheManagerProxy::~WebApplicationCacheManagerProxy()
@@ -57,9 +59,9 @@ bool WebApplicationCacheManagerProxy::shouldTerminate(WebProcessProxy*) const
     return m_arrayCallbacks.isEmpty();
 }
 
-void WebApplicationCacheManagerProxy::didReceiveMessage(CoreIPC::Connection* connection, CoreIPC::MessageID messageID, CoreIPC::ArgumentDecoder* arguments)
+void WebApplicationCacheManagerProxy::didReceiveMessage(CoreIPC::Connection* connection, CoreIPC::MessageID messageID, CoreIPC::MessageDecoder& decoder)
 {
-    didReceiveWebApplicationCacheManagerProxyMessage(connection, messageID, arguments);
+    didReceiveWebApplicationCacheManagerProxyMessage(connection, messageID, decoder);
 }
 
 void WebApplicationCacheManagerProxy::getApplicationCacheOrigins(PassRefPtr<ArrayCallback> prpCallback)

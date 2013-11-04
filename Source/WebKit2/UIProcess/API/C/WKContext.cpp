@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010, 2011 Apple Inc. All rights reserved.
+ * Copyright (C) 2010, 2011, 2012 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -32,6 +32,7 @@
 #include "WebURLRequest.h"
 #include <wtf/PassRefPtr.h>
 #include <wtf/RefPtr.h>
+#include <wtf/UnusedParam.h>
 #include <wtf/text/WTFString.h>
 
 using namespace WebKit;
@@ -142,7 +143,12 @@ void WKContextSetShouldUseFontSmoothing(WKContextRef contextRef, bool useFontSmo
 
 void WKContextSetAdditionalPluginsDirectory(WKContextRef contextRef, WKStringRef pluginsDirectory)
 {
+#if ENABLE(NETSCAPE_PLUGIN_API)
     toImpl(contextRef)->setAdditionalPluginsDirectory(toImpl(pluginsDirectory)->string());
+#else
+    UNUSED_PARAM(contextRef);
+    UNUSED_PARAM(pluginsDirectory);
+#endif
 }
 
 void WKContextRegisterURLSchemeAsEmptyDocument(WKContextRef contextRef, WKStringRef urlScheme)
@@ -224,7 +230,11 @@ WKNotificationManagerRef WKContextGetNotificationManager(WKContextRef contextRef
 
 WKPluginSiteDataManagerRef WKContextGetPluginSiteDataManager(WKContextRef contextRef)
 {
+#if ENABLE(NETSCAPE_PLUGIN_API)
     return toAPI(toImpl(contextRef)->pluginSiteDataManager());
+#else
+    return 0;
+#endif
 }
 
 WKResourceCacheManagerRef WKContextGetResourceCacheManager(WKContextRef contextRef)
@@ -266,6 +276,16 @@ void WKContextSetLocalStorageDirectory(WKContextRef contextRef, WKStringRef loca
     toImpl(contextRef)->setLocalStorageDirectory(toImpl(localStorageDirectory)->string());
 }
 
+WK_EXPORT void WKContextSetDiskCacheDirectory(WKContextRef contextRef, WKStringRef diskCacheDirectory)
+{
+    toImpl(contextRef)->setDiskCacheDirectory(toImpl(diskCacheDirectory)->string());
+}
+
+WK_EXPORT void WKContextSetCookieStorageDirectory(WKContextRef contextRef, WKStringRef cookieStorageDirectory)
+{
+    toImpl(contextRef)->setCookieStorageDirectory(toImpl(cookieStorageDirectory)->string());
+}
+
 void WKContextDisableProcessTermination(WKContextRef contextRef)
 {
     toImpl(contextRef)->disableProcessTermination();
@@ -300,6 +320,12 @@ void WKContextSetJavaScriptGarbageCollectorTimerEnabled(WKContextRef contextRef,
 {
     toImpl(contextRef)->setJavaScriptGarbageCollectorTimerEnabled(enable);
 }
+
+void WKContextSetUsesNetworkProcess(WKContextRef contextRef, bool usesNetworkProcess)
+{
+    toImpl(contextRef)->setUsesNetworkProcess(usesNetworkProcess);
+}
+
 // Deprecated functions.
 void _WKContextSetAdditionalPluginsDirectory(WKContextRef context, WKStringRef pluginsDirectory)
 {

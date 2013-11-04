@@ -41,6 +41,7 @@
 #include "IDBEventDispatcher.h"
 #include "IDBTracing.h"
 #include "IDBTransaction.h"
+#include "ScriptExecutionContext.h"
 
 namespace WebCore {
 
@@ -74,6 +75,7 @@ IDBRequest::IDBRequest(ScriptExecutionContext* context, PassRefPtr<IDBAny> sourc
     , m_cursorFinished(false)
     , m_pendingCursor(0)
     , m_didFireUpgradeNeededEvent(false)
+    , m_preventPropagation(false)
 {
     if (m_transaction) {
         m_transaction->registerRequest(this);
@@ -376,6 +378,16 @@ void IDBRequest::onSuccess(PassRefPtr<SerializedScriptValue> prpSerializedScript
     onSuccessInternal(value);
 }
 
+void IDBRequest::onSuccess(int64_t value)
+{
+    return onSuccess(SerializedScriptValue::numberValue(value));
+}
+
+void IDBRequest::onSuccess()
+{
+    return onSuccess(SerializedScriptValue::undefinedValue());
+}
+
 void IDBRequest::onSuccessInternal(const ScriptValue& value)
 {
     m_result = IDBAny::create(value);
@@ -447,7 +459,7 @@ bool IDBRequest::dispatchEvent(PassRefPtr<Event> event)
 
     Vector<RefPtr<EventTarget> > targets;
     targets.append(this);
-    if (m_transaction) {
+    if (m_transaction && !m_preventPropagation) {
         targets.append(m_transaction);
         // If there ever are events that are associated with a database but
         // that do not have a transaction, then this will not work and we need
@@ -460,8 +472,10 @@ bool IDBRequest::dispatchEvent(PassRefPtr<Event> event)
     RefPtr<IDBCursor> cursorToNotify;
     if (event->type() == eventNames().successEvent) {
         cursorToNotify = getResultCursor();
-        if (cursorToNotify)
-            cursorToNotify->setValueReady(m_cursorKey.release(), m_cursorPrimaryKey.release(), m_cursorValue);
+        if (cursorToNotify) {
+            cursorToNotify->setValueReady(scriptExecutionContext(), m_cursorKey.release(), m_cursorPrimaryKey.release(), m_cursorValue);
+            m_cursorValue.clear();
+        }
     }
 
     if (event->type() == eventNames().upgradeneededEvent) {

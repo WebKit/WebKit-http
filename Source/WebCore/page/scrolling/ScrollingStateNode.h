@@ -28,7 +28,8 @@
 
 #if ENABLE(THREADED_SCROLLING)
 
-#include "GraphicsLayer.h"
+#include "PlatformLayer.h"
+#include "ScrollingCoordinator.h"
 #include <wtf/OwnPtr.h>
 #include <wtf/PassOwnPtr.h>
 #include <wtf/Vector.h>
@@ -39,14 +40,17 @@
 
 namespace WebCore {
 
+class GraphicsLayer;
 class ScrollingStateTree;
 
 class ScrollingStateNode {
     WTF_MAKE_NONCOPYABLE(ScrollingStateNode);
 
 public:
-    ScrollingStateNode(ScrollingStateTree*);
+    ScrollingStateNode(ScrollingStateTree*, ScrollingNodeID);
     virtual ~ScrollingStateNode();
+
+    virtual bool isScrollingStateScrollingNode() { return false; }
 
     virtual PassOwnPtr<ScrollingStateNode> cloneAndResetNode() = 0;
     void cloneAndResetChildNodes(ScrollingStateNode*);
@@ -54,6 +58,7 @@ public:
     virtual bool hasChangedProperties() const = 0;
     virtual unsigned changedProperties() const = 0;
     virtual void resetChangedProperties() = 0;
+    virtual void setHasChangedProperties() { setScrollLayerDidChange(true); }
 
     PlatformLayer* platformScrollLayer() const;
     void setScrollLayer(const GraphicsLayer*);
@@ -65,10 +70,16 @@ public:
     ScrollingStateTree* scrollingStateTree() const { return m_scrollingStateTree; }
     void setScrollingStateTree(ScrollingStateTree* tree) { m_scrollingStateTree = tree; }
 
-    ScrollingStateNode* parent() const { return m_parent; }
+    ScrollingNodeID scrollingNodeID() const { return m_nodeID; }
+    void setScrollingNodeID(ScrollingNodeID nodeID) { m_nodeID = nodeID; }
 
+    ScrollingStateNode* parent() const { return m_parent; }
     void setParent(ScrollingStateNode* parent) { m_parent = parent; }
+
+    Vector<OwnPtr<ScrollingStateNode> >* children() const { return m_children.get(); }
+
     void appendChild(PassOwnPtr<ScrollingStateNode>);
+    void removeChild(ScrollingStateNode*);
 
 protected:
     ScrollingStateNode(ScrollingStateNode*);
@@ -76,9 +87,10 @@ protected:
     ScrollingStateTree* m_scrollingStateTree;
 
 private:
-    ScrollingStateNode* m_parent;
+    ScrollingNodeID m_nodeID;
 
-    Vector<OwnPtr<ScrollingStateNode> >* m_children;
+    ScrollingStateNode* m_parent;
+    OwnPtr<Vector<OwnPtr<ScrollingStateNode> > > m_children;
 
     bool m_scrollLayerDidChange;
 

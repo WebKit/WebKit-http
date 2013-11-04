@@ -67,6 +67,7 @@ private:
     virtual void updateFromElement();
     virtual bool canBeReplacedWithInlineRunIn() const OVERRIDE;
     virtual bool hasControlClip() const { return true; }
+    virtual bool canHaveGeneratedChildren() const OVERRIDE { return false; }
     virtual void paintObject(PaintInfo&, const LayoutPoint&);
     virtual LayoutRect controlClipRect(const LayoutPoint&) const;
 
@@ -76,7 +77,7 @@ private:
     virtual bool logicalScroll(ScrollLogicalDirection, ScrollGranularity, float multiplier = 1, Node** stopNode = 0);
 
     virtual void computePreferredLogicalWidths();
-    virtual LayoutUnit baselinePosition(FontBaseline, bool firstLine, LineDirectionMode, LinePositionMode = PositionOnContainingLine) const;
+    virtual int baselinePosition(FontBaseline, bool firstLine, LineDirectionMode, LinePositionMode = PositionOnContainingLine) const;
     virtual void computeLogicalHeight(LayoutUnit logicalHeight, LayoutUnit logicalTop, LogicalExtentComputedValues&) const OVERRIDE;
 
     virtual void layout();

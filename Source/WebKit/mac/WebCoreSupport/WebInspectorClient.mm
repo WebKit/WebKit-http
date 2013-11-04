@@ -200,7 +200,13 @@ String WebInspectorFrontendClient::hiddenPanels()
 void WebInspectorFrontendClient::bringToFront()
 {
     updateWindowTitle();
+
     [m_windowController.get() showWindow:nil];
+
+    // Use the window from the WebView since m_windowController's window
+    // is not the same when the Inspector is docked.
+    WebView *webView = [m_windowController.get() webView];
+    [[webView window] makeFirstResponder:webView];
 }
 
 void WebInspectorFrontendClient::closeWindow()

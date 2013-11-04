@@ -142,7 +142,7 @@ bool RenderNamedFlowThread::dependsOn(RenderNamedFlowThread* otherRenderFlowThre
     RenderNamedFlowThreadCountedSet::const_iterator iterator = m_layoutBeforeThreadsSet.begin();
     RenderNamedFlowThreadCountedSet::const_iterator end = m_layoutBeforeThreadsSet.end();
     for (; iterator != end; ++iterator) {
-        const RenderNamedFlowThread* beforeFlowThread = (*iterator).first;
+        const RenderNamedFlowThread* beforeFlowThread = (*iterator).key;
         if (beforeFlowThread->dependsOn(otherRenderFlowThread))
             return true;
     }
@@ -201,24 +201,31 @@ static bool compareRenderRegions(const RenderRegion* firstRegion, const RenderRe
     return true;
 }
 
+// This helper function adds a region to a list preserving the order property of the list.
+static void addRegionToList(RenderRegionList& regionList, RenderRegion* renderRegion)
+{
+    if (regionList.isEmpty())
+        regionList.add(renderRegion);
+    else {
+        // Find the first region "greater" than renderRegion.
+        RenderRegionList::iterator it = regionList.begin();
+        while (it != regionList.end() && !compareRenderRegions(renderRegion, *it))
+            ++it;
+        regionList.insertBefore(it, renderRegion);
+    }
+}
+
 void RenderNamedFlowThread::addRegionToThread(RenderRegion* renderRegion)
 {
     ASSERT(renderRegion);
-    if (m_regionList.isEmpty())
-        m_regionList.add(renderRegion);
-    else {
-        // Find the first region "greater" than renderRegion.
-        RenderRegionList::iterator it = m_regionList.begin();
-        while (it != m_regionList.end() && !compareRenderRegions(renderRegion, *it))
-            ++it;
-        m_regionList.insertBefore(it, renderRegion);
-    }
 
     resetMarkForDestruction();
 
     ASSERT(!renderRegion->isValid());
     if (renderRegion->parentNamedFlowThread()) {
         if (renderRegion->parentNamedFlowThread()->dependsOn(this)) {
+            // The order of invalid regions is irrelevant.
+            m_invalidRegionList.add(renderRegion);
             // Register ourself to get a notification when the state changes.
             renderRegion->parentNamedFlowThread()->m_observerThreadsSet.add(this);
             return;
@@ -228,6 +235,7 @@ void RenderNamedFlowThread::addRegionToThread(RenderRegion* renderRegion)
     }
 
     renderRegion->setIsValid(true);
+    addRegionToList(m_regionList, renderRegion);
 
     invalidateRegions();
 }
@@ -236,10 +244,11 @@ void RenderNamedFlowThread::removeRegionFromThread(RenderRegion* renderRegion)
 {
     ASSERT(renderRegion);
     m_regionRangeMap.clear();
-    m_regionList.remove(renderRegion);
 
     if (renderRegion->parentNamedFlowThread()) {
         if (!renderRegion->isValid()) {
+            ASSERT(m_invalidRegionList.contains(renderRegion));
+            m_invalidRegionList.remove(renderRegion);
             renderRegion->parentNamedFlowThread()->m_observerThreadsSet.remove(this);
             // No need to invalidate the regions rectangles. The removed region
             // was not taken into account. Just return here.
@@ -247,6 +256,9 @@ void RenderNamedFlowThread::removeRegionFromThread(RenderRegion* renderRegion)
         }
         removeDependencyOnFlowThread(renderRegion->parentNamedFlowThread());
     }
+
+    ASSERT(m_regionList.contains(renderRegion));
+    m_regionList.remove(renderRegion);
 
     if (canBeDestroyed())
         setMarkForDestruction();
@@ -260,18 +272,28 @@ void RenderNamedFlowThread::removeRegionFromThread(RenderRegion* renderRegion)
 
 void RenderNamedFlowThread::checkInvalidRegions()
 {
-    for (RenderRegionList::iterator iter = m_regionList.begin(); iter != m_regionList.end(); ++iter) {
+    Vector<RenderRegion*> newValidRegions;
+    for (RenderRegionList::iterator iter = m_invalidRegionList.begin(); iter != m_invalidRegionList.end(); ++iter) {
         RenderRegion* region = *iter;
         // The only reason a region would be invalid is because it has a parent flow thread.
-        ASSERT(region->isValid() || region->parentNamedFlowThread());
-        if (region->isValid() || region->parentNamedFlowThread()->dependsOn(this))
+        ASSERT(!region->isValid() && region->parentNamedFlowThread());
+        if (region->parentNamedFlowThread()->dependsOn(this))
             continue;
 
-        region->parentNamedFlowThread()->m_observerThreadsSet.remove(this);
-        addDependencyOnFlowThread(region->parentNamedFlowThread());
-        region->setIsValid(true);
-        invalidateRegions();
+        newValidRegions.append(region);
     }
+
+    for (Vector<RenderRegion*>::iterator iter = newValidRegions.begin(); iter != newValidRegions.end(); ++iter) {
+        RenderRegion* region = *iter;
+        m_invalidRegionList.remove(region);
+        region->parentNamedFlowThread()->m_observerThreadsSet.remove(this);
+        region->setIsValid(true);
+        addDependencyOnFlowThread(region->parentNamedFlowThread());
+        addRegionToList(m_regionList, region);
+    }
+
+    if (!newValidRegions.isEmpty())
+        invalidateRegions();
 
     if (m_observerThreadsSet.isEmpty())
         return;
@@ -309,7 +331,7 @@ void RenderNamedFlowThread::removeDependencyOnFlowThread(RenderNamedFlowThread* 
 void RenderNamedFlowThread::pushDependencies(RenderNamedFlowThreadList& list)
 {
     for (RenderNamedFlowThreadCountedSet::iterator iter = m_layoutBeforeThreadsSet.begin(); iter != m_layoutBeforeThreadsSet.end(); ++iter) {
-        RenderNamedFlowThread* flowThread = (*iter).first;
+        RenderNamedFlowThread* flowThread = (*iter).key;
         if (list.contains(flowThread))
             continue;
         flowThread->pushDependencies(list);
@@ -413,10 +435,10 @@ static bool isContainedInNodes(Vector<Node*> others, Node* node)
 static bool boxIntersectsRegion(LayoutUnit logicalTopForBox, LayoutUnit logicalBottomForBox, LayoutUnit logicalTopForRegion, LayoutUnit logicalBottomForRegion)
 {
     bool regionIsEmpty = logicalBottomForRegion != MAX_LAYOUT_UNIT && logicalTopForRegion != MIN_LAYOUT_UNIT
-                         && (logicalBottomForRegion - logicalTopForRegion) <= 0;
+        && (logicalBottomForRegion - logicalTopForRegion) <= 0;
     return  (logicalBottomForBox - logicalTopForBox) > 0
-            && !regionIsEmpty
-            && logicalTopForBox < logicalBottomForRegion && logicalTopForRegion < logicalBottomForBox;
+        && !regionIsEmpty
+        && logicalTopForBox < logicalBottomForRegion && logicalTopForRegion < logicalBottomForBox;
 }
 
 void RenderNamedFlowThread::getRanges(Vector<RefPtr<Range> >& rangeObjects, const RenderRegion* region) const

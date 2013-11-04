@@ -29,14 +29,13 @@
  */
 
 #include "config.h"
-#include "platform/WebRect.h"
 #include "WebElement.h"
 #include "WebDocument.h"
-
 #include "Element.h"
 #include "NamedNodeMap.h"
 #include "RenderBoxModelObject.h"
 #include "RenderObject.h"
+#include <public/WebRect.h>
 #include <wtf/PassRefPtr.h>
 
 
@@ -63,6 +62,12 @@ bool WebElement::hasTagName(const WebString& tagName) const
 {
     return equalIgnoringCase(constUnwrap<Element>()->tagName(),
                              tagName.operator String());
+}
+
+bool WebElement::hasHTMLTagName(const WebString& tagName) const
+{
+    const Element* element = constUnwrap<Element>();
+    return HTMLNames::xhtmlNamespaceURI == element->namespaceURI() && equalIgnoringCase(element->tagName(), String(tagName));
 }
 
 bool WebElement::hasAttribute(const WebString& attrName) const

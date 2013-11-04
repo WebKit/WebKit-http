@@ -52,6 +52,7 @@ LIST(APPEND WebCore_SOURCES
   platform/efl/TemporaryLinkStubs.cpp
   platform/efl/WidgetEfl.cpp
   platform/graphics/ImageSource.cpp
+  platform/graphics/efl/CairoUtilitiesEfl.cpp
   platform/graphics/efl/IconEfl.cpp
   platform/graphics/efl/ImageEfl.cpp
   platform/graphics/efl/IntPointEfl.cpp
@@ -75,6 +76,7 @@ LIST(APPEND WebCore_SOURCES
   platform/network/soup/GOwnPtrSoup.cpp
   platform/network/soup/ProxyResolverSoup.cpp
   platform/network/soup/ProxyServerSoup.cpp
+  platform/network/soup/ResourceErrorSoup.cpp
   platform/network/soup/ResourceHandleSoup.cpp
   platform/network/soup/ResourceRequestSoup.cpp
   platform/network/soup/ResourceResponseSoup.cpp
@@ -83,6 +85,7 @@ LIST(APPEND WebCore_SOURCES
   platform/PlatformStrategies.cpp
   platform/posix/FileSystemPOSIX.cpp
   platform/text/efl/TextBreakIteratorInternalICUEfl.cpp
+  platform/text/enchant/TextCheckerEnchant.cpp
 )
 
 IF (ENABLE_BATTERY_STATUS)
@@ -280,21 +283,20 @@ IF (WTF_USE_3D_GRAPHICS)
   LIST(APPEND WebCore_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/platform/graphics/cairo"
     "${WEBCORE_DIR}/platform/graphics/opengl"
+    "${WEBCORE_DIR}/platform/graphics/surfaces"
     "${WEBCORE_DIR}/platform/graphics/texmap"
-  )
-  LIST(APPEND WebCore_LIBRARIES
-    ${OPENGL_gl_LIBRARY}
   )
   LIST(APPEND WebCore_SOURCES
     platform/graphics/OpenGLShims.cpp
     platform/graphics/cairo/DrawingBufferCairo.cpp
-    platform/graphics/cairo/GLContext.cpp
-    platform/graphics/cairo/GraphicsContext3DCairo.cpp
-    platform/graphics/cairo/GraphicsContext3DPrivate.cpp
+    platform/graphics/efl/GraphicsContext3DEfl.cpp
+    platform/graphics/efl/GraphicsContext3DPrivate.cpp
     platform/graphics/opengl/Extensions3DOpenGL.cpp
     platform/graphics/opengl/Extensions3DOpenGLCommon.cpp
     platform/graphics/opengl/GraphicsContext3DOpenGL.cpp
     platform/graphics/opengl/GraphicsContext3DOpenGLCommon.cpp
+    platform/graphics/surfaces/GraphicsSurface.cpp
+    platform/graphics/surfaces/qt/GraphicsSurfaceGLX.cpp
     platform/graphics/texmap/TextureMapperGL.cpp
     platform/graphics/texmap/TextureMapperShaderManager.cpp
   )
@@ -325,3 +327,12 @@ IF (ENABLE_WEB_AUDIO)
   INSTALL(FILES ${WEB_AUDIO_DATA} DESTINATION ${WEB_AUDIO_DIR})
   ADD_DEFINITIONS(-DUNINSTALLED_AUDIO_RESOURCES_DIR="${WEBCORE_DIR}/platform/audio/resources")
 ENDIF ()
+
+IF (ENABLE_SPELLCHECK)
+    LIST(APPEND WebCore_INCLUDE_DIRECTORIES
+        ${ENCHANT_INCLUDE_DIRS}
+    )
+    LIST(APPEND WebCore_LIBRARIES
+        ${ENCHANT_LIBRARIES}
+    )
+ENDIF()

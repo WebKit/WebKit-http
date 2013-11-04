@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2006, 2007, 2008, 2009, 2011 Apple Inc. All rights reserved.
+ * Copyright (C) 2006, 2007, 2008, 2009, 2011, 2012 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -62,7 +62,7 @@ static inline void setGenericFontFamilyMap(ScriptFontFamilyMap& fontMap, const A
         if (it == fontMap.end())
             return;
         fontMap.remove(it);
-    } else if (it != fontMap.end() && it->second == family)
+    } else if (it != fontMap.end() && it->value == family)
         return;
     else
         fontMap.set(static_cast<int>(script), family);
@@ -75,18 +75,21 @@ static inline const AtomicString& getGenericFontFamilyForScript(const ScriptFont
 {
     ScriptFontFamilyMap::const_iterator it = fontMap.find(static_cast<int>(script));
     if (it != fontMap.end())
-        return it->second;
+        return it->value;
     if (script != USCRIPT_COMMON)
         return getGenericFontFamilyForScript(fontMap, USCRIPT_COMMON);
     return emptyAtom;
 }
+
+double Settings::gDefaultMinDOMTimerInterval = 0.010; // 10 milliseconds
+double Settings::gDefaultDOMTimerAlignmentInterval = 0;
 
 #if USE(SAFARI_THEME)
 bool Settings::gShouldPaintNativeControls = true;
 #endif
 
 #if USE(AVFOUNDATION)
-bool Settings::gAVFoundationEnabled(false);
+bool Settings::gAVFoundationEnabled = false;
 #endif
 
 bool Settings::gMockScrollbarsEnabled = false;
@@ -125,6 +128,7 @@ static const double defaultIncrementalRenderingSuppressionTimeoutInSeconds = 5;
 
 Settings::Settings(Page* page)
     : m_page(0)
+    , m_mediaTypeOverride("screen")
     , m_editableLinkBehavior(EditableLinkDefaultBehavior)
     , m_textDirectionSubmenuInclusionBehavior(TextDirectionSubmenuAutomaticallyIncluded)
     , m_passwordEchoDurationInSeconds(1)
@@ -168,6 +172,7 @@ Settings::Settings(Page* page)
     , m_allowUniversalAccessFromFileURLs(true)
     , m_allowFileAccessFromFileURLs(true)
     , m_javaScriptCanOpenWindowsAutomatically(false)
+    , m_supportsMultipleWindows(true)
     , m_javaScriptCanAccessClipboard(false)
     , m_shouldPrintBackgrounds(false)
     , m_textAreasAreResizable(false)
@@ -294,6 +299,7 @@ Settings::Settings(Page* page)
     , m_diagnosticLoggingEnabled(false)
     , m_scrollingPerformanceLoggingEnabled(false)
     , m_applyPageScaleFactorInCompositor(false)
+    , m_plugInSnapshottingEnabled(false)
     , m_setImageLoadingSettingsTimer(this, &Settings::imageLoadingSettingsTimerFired)
     , m_incrementalRenderingSuppressionTimeoutInSeconds(defaultIncrementalRenderingSuppressionTimeoutInSeconds)
 {
@@ -458,6 +464,31 @@ void Settings::setTextAutosizingFontScaleFactor(float fontScaleFactor)
 
 #endif
 
+void Settings::setResolutionOverride(const IntSize& densityPerInchOverride)
+{
+    if (m_resolutionDensityPerInchOverride == densityPerInchOverride)
+        return;
+
+    m_resolutionDensityPerInchOverride = densityPerInchOverride;
+    m_page->setNeedsRecalcStyleInAllFrames();
+}
+
+void Settings::setMediaTypeOverride(const String& mediaTypeOverride)
+{
+    if (m_mediaTypeOverride == mediaTypeOverride)
+        return;
+
+    m_mediaTypeOverride = mediaTypeOverride;
+
+    Frame* mainFrame = m_page->mainFrame();
+    ASSERT(mainFrame);
+    FrameView* view = mainFrame->view();
+    ASSERT(view);
+
+    view->setMediaType(mediaTypeOverride);
+    m_page->setNeedsRecalcStyleInAllFrames();
+}
+
 void Settings::setLoadsImagesAutomatically(bool loadsImagesAutomatically)
 {
     m_loadsImagesAutomatically = loadsImagesAutomatically;
@@ -576,6 +607,11 @@ void Settings::setJavaScriptCanOpenWindowsAutomatically(bool javaScriptCanOpenWi
     m_javaScriptCanOpenWindowsAutomatically = javaScriptCanOpenWindowsAutomatically;
 }
 
+void Settings::setSupportsMultipleWindows(bool supportsMultipleWindows)
+{
+    m_supportsMultipleWindows = supportsMultipleWindows;
+}
+
 void Settings::setJavaScriptCanAccessClipboard(bool javaScriptCanAccessClipboard)
 {
     m_javaScriptCanAccessClipboard = javaScriptCanAccessClipboard;
@@ -664,12 +700,12 @@ void Settings::setDOMPasteAllowed(bool DOMPasteAllowed)
 
 void Settings::setDefaultMinDOMTimerInterval(double interval)
 {
-    DOMTimer::setDefaultMinTimerInterval(interval);
+    gDefaultMinDOMTimerInterval = interval;
 }
 
 double Settings::defaultMinDOMTimerInterval()
 {
-    return DOMTimer::defaultMinTimerInterval();
+    return gDefaultMinDOMTimerInterval;
 }
 
 void Settings::setMinDOMTimerInterval(double interval)
@@ -680,6 +716,26 @@ void Settings::setMinDOMTimerInterval(double interval)
 double Settings::minDOMTimerInterval()
 {
     return m_page->minimumTimerInterval();
+}
+
+void Settings::setDefaultDOMTimerAlignmentInterval(double interval)
+{
+    gDefaultDOMTimerAlignmentInterval = interval;
+}
+
+double Settings::defaultDOMTimerAlignmentInterval()
+{
+    return gDefaultDOMTimerAlignmentInterval;
+}
+
+void Settings::setDOMTimerAlignmentInterval(double interval)
+{
+    m_page->setTimerAlignmentInterval(interval);
+}
+
+double Settings::domTimerAlignmentInterval() const
+{
+    return m_page->timerAlignmentInterval();
 }
 
 void Settings::setUsesPageCache(bool usesPageCache)

@@ -23,20 +23,23 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#if defined(__LP64__) && defined(__clang__)
+
 #import <Foundation/Foundation.h>
 #import <WebKit2/WKBase.h>
 
 @class WKWebProcessPlugInController;
+@class WKWebProcessPlugInBrowserContextController;
 
 @protocol WKWebProcessPlugIn <NSObject>
 @optional
 - (void)webProcessPlugInInitialize:(WKWebProcessPlugInController *)plugInController;
+- (void)webProcessPlugIn:(WKWebProcessPlugInController *)plugInController didCreateBrowserContextController:(WKWebProcessPlugInBrowserContextController *)browserContextController;
+- (void)webProcessPlugIn:(WKWebProcessPlugInController *)plugInController willDestroyBrowserContextController:(WKWebProcessPlugInBrowserContextController *)browserContextController;
 @end
 
 WK_EXPORT
-@interface WKWebProcessPlugInController : NSObject {
-@private
-    void *_private;
-}
-
+@interface WKWebProcessPlugInController : NSObject
 @end
+
+#endif // defined(__LP64__) && defined(__clang__)

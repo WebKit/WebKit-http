@@ -689,13 +689,14 @@ QString DumpRenderTreeSupportQt::viewportAsText(QWebPage* page, int deviceDPI, c
 {
     WebCore::ViewportArguments args = page->d->viewportArguments();
 
+    float devicePixelRatio = deviceDPI / WebCore::ViewportArguments::deprecatedTargetDPI;
     WebCore::ViewportAttributes conf = WebCore::computeViewportAttributes(args,
         /* desktop-width    */ 980,
         /* device-width     */ deviceSize.width(),
         /* device-height    */ deviceSize.height(),
-        /* devicePixelRatio */ deviceDPI / WebCore::ViewportArguments::deprecatedTargetDPI,
+        devicePixelRatio,
         availableSize);
-    WebCore::restrictMinimumScaleFactorToViewportSize(conf, availableSize);
+    WebCore::restrictMinimumScaleFactorToViewportSize(conf, availableSize, devicePixelRatio);
     WebCore::restrictScaleFactorToInitialScaleIfNotUserScalable(conf);
 
     QString res;
@@ -835,7 +836,7 @@ void DumpRenderTreeSupportQt::evaluateScriptInIsolatedWorld(QWebFrame* frame, in
 
 void DumpRenderTreeSupportQt::addUserStyleSheet(QWebPage* page, const QString& sourceCode)
 {
-    page->handle()->page->group().addUserStyleSheetToWorld(mainThreadNormalWorld(), sourceCode, QUrl(), nullptr, nullptr, WebCore::InjectInAllFrames);
+    page->handle()->page->group().addUserStyleSheetToWorld(mainThreadNormalWorld(), sourceCode, QUrl(), Vector<String>(), Vector<String>(), WebCore::InjectInAllFrames);
 }
 
 void DumpRenderTreeSupportQt::removeUserStyleSheets(QWebPage* page)
@@ -1090,6 +1091,25 @@ QImage DumpRenderTreeSupportQt::paintPagesWithBoundaries(QWebFrame* qframe)
     printContext.end();
 
     return image;
+}
+
+void DumpRenderTreeSupportQt::setTrackRepaintRects(QWebFrame* frame, bool enable)
+{
+    QWebFramePrivate::core(frame)->view()->setTracksRepaints(enable);
+}
+
+bool DumpRenderTreeSupportQt::trackRepaintRects(QWebFrame* frame)
+{
+    return QWebFramePrivate::core(frame)->view()->isTrackingRepaints();
+}
+
+void DumpRenderTreeSupportQt::getTrackedRepaintRects(QWebFrame* frame, QVector<QRect>& result)
+{
+    Frame* coreFrame = QWebFramePrivate::core(frame);
+    const Vector<IntRect>& rects = coreFrame->view()->trackedRepaintRects();
+    result.resize(rects.size());
+    for (size_t i = 0; i < rects.size(); ++i)
+        result.append(rects[i]);
 }
 
 // Provide a backward compatibility with previously exported private symbols as of QtWebKit 4.6 release

@@ -28,8 +28,11 @@
 #include "LinkHash.h"
 #include "MediaQueryExp.h"
 #include "RenderStyle.h"
+#include "RuleFeature.h"
+#include "RuntimeEnabledFeatures.h"
 #include "SelectorChecker.h"
 #include "StyleInheritedData.h"
+#include "StyleScopeResolver.h"
 #include <wtf/HashMap.h>
 #include <wtf/HashSet.h>
 #include <wtf/RefPtr.h>
@@ -73,11 +76,13 @@ class RuleSet;
 class Settings;
 class StaticCSSRuleList;
 class StyleBuilder;
+class StyleScopeResolver;
 class StyleImage;
 class StyleKeyframe;
 class StylePendingImage;
 class StylePropertySet;
 class StyleRule;
+class StyleRuleHost;
 class StyleRuleKeyframes;
 class StyleRulePage;
 class StyleRuleRegion;
@@ -135,6 +140,9 @@ public:
     void popParentElement(Element*);
     void pushParentShadowRoot(const ShadowRoot*);
     void popParentShadowRoot(const ShadowRoot*);
+#if ENABLE(SHADOW_DOM)
+    void addHostRule(StyleRuleHost* rule, bool hasDocumentSecurityOrigin, const ContainerNode* scope) { ensureScopeResolver()->addHostRule(rule, hasDocumentSecurityOrigin, scope); }
+#endif
 
     PassRefPtr<RenderStyle> styleForElement(Element*, RenderStyle* parentStyle = 0, StyleSharingBehavior = AllowStyleSharing,
         RuleMatchingBehavior = MatchAllRules, RenderRegion* regionForStyling = 0);
@@ -161,30 +169,38 @@ public:
     bool hasParentNode() const { return m_parentNode; }
 
     void resetAuthorStyle();
-    void appendAuthorStylesheets(unsigned firstNew, const Vector<RefPtr<StyleSheet> >&);
-    
-    // Find the ids or classes the selectors on a stylesheet are scoped to. The selectors only apply to elements in subtrees where the root element matches the scope.
-    static bool determineStylesheetSelectorScopes(StyleSheetContents*, HashSet<AtomicStringImpl*>& idScopes, HashSet<AtomicStringImpl*>& classScopes);
+    void appendAuthorStyleSheets(unsigned firstNew, const Vector<RefPtr<CSSStyleSheet> >&);
 
 private:
+#if ENABLE(STYLE_SCOPED) || ENABLE(SHADOW_DOM)
+    StyleScopeResolver* ensureScopeResolver()
+    {
+#if ENABLE(STYLE_SCOPED)
+#if ENABLE(SHADOW_DOM)
+        ASSERT(RuntimeEnabledFeatures::shadowDOMEnabled() || RuntimeEnabledFeatures::styleScopedEnabled());
+#else
+        ASSERT(RuntimeEnabledFeatures::styleScopedEnabled());
+#endif
+#else
+        ASSERT(RuntimeEnabledFeatures::shadowDOMEnabled());
+#endif
+        if (!m_scopeResolver)
+            m_scopeResolver = adoptPtr(new StyleScopeResolver());
+        return m_scopeResolver.get();
+    }
+#endif
+
     void initForStyleResolve(Element*, RenderStyle* parentStyle = 0, PseudoId = NOPSEUDO);
     void initElement(Element*);
     void collectFeatures();
     RenderStyle* locateSharedStyle();
-    bool matchesRuleSet(RuleSet*);
+    bool styleSharingCandidateMatchesRuleSet(RuleSet*);
+    bool styleSharingCandidateMatchesHostRules();
     Node* locateCousinList(Element* parent, unsigned& visitedNodeCount) const;
     StyledElement* findSiblingForStyleSharing(Node*, unsigned& count) const;
     bool canShareStyleWithElement(StyledElement*) const;
 
     PassRefPtr<RenderStyle> styleForKeyframe(const RenderStyle*, const StyleKeyframe*, KeyframeValue&);
-
-#if ENABLE(STYLE_SCOPED)
-    void pushScope(const ContainerNode* scope, const ContainerNode* scopeParent);
-    void popScope(const ContainerNode* scope);
-#else
-    void pushScope(const ContainerNode*, const ContainerNode*) { }
-    void popScope(const ContainerNode*) { }
-#endif
 
 public:
     // These methods will give back the set of rules that matched for a given element (or a pseudo-element).
@@ -227,6 +243,7 @@ public:
     static bool colorFromPrimitiveValueIsDerivedFromElement(CSSPrimitiveValue*);
     Color colorFromPrimitiveValue(CSSPrimitiveValue*, bool forVisitedLink = false) const;
 
+    bool hasSelectorForId(const AtomicString&) const;
     bool hasSelectorForAttribute(const AtomicString&) const;
 
     CSSFontSelector* fontSelector() const { return m_fontSelector.get(); }
@@ -273,31 +290,6 @@ public:
 #endif // ENABLE(CSS_FILTERS)
 
     void loadPendingResources();
-
-    struct RuleFeature {
-        RuleFeature(StyleRule* rule, unsigned selectorIndex, bool hasDocumentSecurityOrigin)
-            : rule(rule)
-            , selectorIndex(selectorIndex)
-            , hasDocumentSecurityOrigin(hasDocumentSecurityOrigin) 
-        { 
-        }
-        StyleRule* rule;
-        unsigned selectorIndex;
-        bool hasDocumentSecurityOrigin;
-    };
-    struct Features {
-        Features();
-        ~Features();
-        void add(const StyleResolver::Features&);
-        void clear();
-        void reportMemoryUsage(MemoryObjectInfo*) const;
-        HashSet<AtomicStringImpl*> idsInRules;
-        HashSet<AtomicStringImpl*> attrsInRules;
-        Vector<RuleFeature> siblingRules;
-        Vector<RuleFeature> uncommonAttributeRules;
-        bool usesFirstLineRules;
-        bool usesBeforeAfterRules;
-    };
 
 private:
     // This function fixes up the default font size if it detects that the current generic font family has changed. -dwh
@@ -357,6 +349,7 @@ private:
     void matchAuthorRules(MatchResult&, bool includeEmptyRules);
     void matchUserRules(MatchResult&, bool includeEmptyRules);
     void matchScopedAuthorRules(MatchResult&, bool includeEmptyRules);
+    void matchHostRules(MatchResult&, bool includeEmptyRules);
     void collectMatchingRules(RuleSet*, int& firstRuleIndex, int& lastRuleIndex, const MatchOptions&);
     void collectMatchingRulesForRegion(RuleSet*, int& firstRuleIndex, int& lastRuleIndex, const MatchOptions&);
     void collectMatchingRulesForList(const Vector<RuleData>*, int& firstRuleIndex, int& lastRuleIndex, const MatchOptions&);
@@ -395,7 +388,7 @@ private:
     OwnPtr<RuleSet> m_authorStyle;
     OwnPtr<RuleSet> m_userStyle;
 
-    Features m_features;
+    RuleFeatureSet m_features;
     OwnPtr<RuleSet> m_siblingRuleSet;
     OwnPtr<RuleSet> m_uncommonAttributeRuleSet;
 
@@ -460,12 +453,14 @@ private:
 
     // Every N additions to the matched declaration cache trigger a sweep where entries holding
     // the last reference to a style declaration are garbage collected.
-    void sweepMatchedPropertiesCache();
+    void sweepMatchedPropertiesCache(Timer<StyleResolver>*);
 
     unsigned m_matchedPropertiesCacheAdditionsSinceLastSweep;
 
     typedef HashMap<unsigned, MatchedPropertiesCacheItem> MatchedPropertiesCache;
     MatchedPropertiesCache m_matchedPropertiesCache;
+
+    Timer<StyleResolver> m_matchedPropertiesCacheSweepTimer;
 
     // A buffer used to hold the set of matched rules for an element, and a temporary buffer used for
     // merge sorting.
@@ -517,34 +512,7 @@ private:
     HashMap<FilterOperation*, RefPtr<WebKitCSSSVGDocumentValue> > m_pendingSVGDocuments;
 #endif
 
-#if ENABLE(STYLE_SCOPED)
-    const ContainerNode* determineScope(const CSSStyleSheet*);
-
-    typedef HashMap<const ContainerNode*, OwnPtr<RuleSet> > ScopedRuleSetMap;
-
-    RuleSet* ruleSetForScope(const ContainerNode*) const;
-
-    void setupScopeStack(const ContainerNode*);
-    bool scopeStackIsConsistent(const ContainerNode* parent) const { return parent && parent == m_scopeStackParent; }
-
-    ScopedRuleSetMap m_scopedAuthorStyles;
-    
-    struct ScopeStackFrame {
-        ScopeStackFrame() : m_scope(0), m_authorStyleBoundsIndex(0), m_ruleSet(0) { }
-        ScopeStackFrame(const ContainerNode* scope, int authorStyleBoundsIndex, RuleSet* ruleSet) : m_scope(scope), m_authorStyleBoundsIndex(authorStyleBoundsIndex), m_ruleSet(ruleSet) { }
-        const ContainerNode* m_scope;
-        int m_authorStyleBoundsIndex;
-        RuleSet* m_ruleSet;
-    };
-    // Vector (used as stack) that keeps track of scoping elements (i.e., elements with a <style scoped> child)
-    // encountered during tree iteration for style resolution.
-    Vector<ScopeStackFrame> m_scopeStack;
-    // Element last seen as parent element when updating m_scopingElementStack.
-    // This is used to decide whether m_scopingElementStack is consistent, separately from SelectorChecker::m_parentStack.
-    const ContainerNode* m_scopeStackParent;
-    int m_scopeStackParentBoundsIndex;
-#endif
-
+    OwnPtr<StyleScopeResolver> m_scopeResolver;
     CSSToStyleMap m_styleMap;
 
     friend class StyleBuilder;

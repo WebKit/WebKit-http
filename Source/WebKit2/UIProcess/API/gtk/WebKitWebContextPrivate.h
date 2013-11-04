@@ -26,15 +26,19 @@
 #ifndef WebKitWebContextPrivate_h
 #define WebKitWebContextPrivate_h
 
+#include "DownloadProxy.h"
+#include "WebContext.h"
 #include "WebKitPrivate.h"
 #include "WebKitURISchemeRequest.h"
 #include "WebKitWebContext.h"
+#include "WebSoupRequestManagerProxy.h"
 
-WKContextRef webkitWebContextGetWKContext(WebKitWebContext*);
-WebKitDownload* webkitWebContextGetOrCreateDownload(WKDownloadRef);
-void webkitWebContextRemoveDownload(WKDownloadRef);
+WebKit::WebContext* webkitWebContextGetContext(WebKitWebContext*);
+WebKitDownload* webkitWebContextGetOrCreateDownload(WebKit::DownloadProxy*);
+WebKitDownload* webkitWebContextStartDownload(WebKitWebContext*, const char* uri, WebKit::WebPageProxy*);
+void webkitWebContextRemoveDownload(WebKit::DownloadProxy*);
 void webkitWebContextDownloadStarted(WebKitWebContext*, WebKitDownload*);
-WKSoupRequestManagerRef webkitWebContextGetRequestManager(WebKitWebContext*);
+WebKit::WebSoupRequestManagerProxy* webkitWebContextGetRequestManager(WebKitWebContext*);
 void webkitWebContextReceivedURIRequest(WebKitWebContext*, WebKitURISchemeRequest*);
 void webkitWebContextDidFailToLoadURIRequest(WebKitWebContext*, uint64_t requestID);
 void webkitWebContextDidFinishURIRequest(WebKitWebContext*, uint64_t requestID);

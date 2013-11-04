@@ -26,10 +26,13 @@
 #include "config.h"
 
 #include "UnitTestUtils/EWK2UnitTestBase.h"
+#include "UnitTestUtils/EWK2UnitTestEnvironment.h"
 #include <EWebKit2.h>
 #include <Eina.h>
 
 using namespace EWK2UnitTest;
+
+extern EWK2UnitTestEnvironment* environment;
 
 TEST_F(EWK2UnitTestBase, ewk_settings_fullscreen_enabled)
 {
@@ -94,4 +97,63 @@ TEST_F(EWK2UnitTestBase, ewk_settings_developer_extras_enabled)
 
     ASSERT_TRUE(ewk_settings_developer_extras_enabled_set(settings, EINA_FALSE));
     ASSERT_FALSE(ewk_settings_developer_extras_enabled_get(settings));
+}
+
+TEST_F(EWK2UnitTestBase, ewk_settings_file_access_from_file_urls_allowed)
+{
+    CString testURL = environment->urlForResource("local_file_access.html");
+    Ewk_Settings* settings = ewk_view_settings_get(webView());
+
+    ASSERT_FALSE(ewk_settings_file_access_from_file_urls_allowed_get(settings));
+
+    ASSERT_TRUE(ewk_settings_file_access_from_file_urls_allowed_set(settings, true));
+    ASSERT_TRUE(ewk_settings_file_access_from_file_urls_allowed_get(settings));
+
+    // Check that file access from file:// URLs is allowed.
+    ewk_view_url_set(webView(), testURL.data());
+    ASSERT_TRUE(waitUntilTitleChangedTo("Frame loaded"));
+
+    ASSERT_TRUE(ewk_settings_file_access_from_file_urls_allowed_set(settings, false));
+    ASSERT_FALSE(ewk_settings_file_access_from_file_urls_allowed_get(settings));
+
+    // Check that file access from file:// URLs is NOT allowed.
+    ewk_view_url_set(webView(), testURL.data());
+    ASSERT_TRUE(waitUntilTitleChangedTo("Frame NOT loaded"));
+}
+
+TEST_F(EWK2UnitTestBase, ewk_settings_frame_flattening_enabled_set)
+{
+    Ewk_Settings* settings = ewk_view_settings_get(webView());
+    ASSERT_TRUE(settings);
+
+    // The frame flattening is disabled by default.
+    ASSERT_FALSE(ewk_settings_frame_flattening_enabled_get(settings));
+    ewk_view_url_set(webView(), environment->urlForResource("frame_flattening_test.html").data());
+    waitUntilTitleChangedTo("200"); // width of iframe tag.
+    ASSERT_STREQ("200", ewk_view_title_get(webView()));
+
+    ASSERT_TRUE(ewk_settings_frame_flattening_enabled_set(settings, true));
+    ASSERT_TRUE(ewk_settings_frame_flattening_enabled_get(settings));
+    ewk_view_url_set(webView(), environment->urlForResource("frame_flattening_test.html").data());
+    waitUntilTitleChangedTo("600"); // width of frame_flattening_test_subframe.html
+    ASSERT_STREQ("600", ewk_view_title_get(webView()));
+
+    ASSERT_TRUE(ewk_settings_frame_flattening_enabled_set(settings, false));
+    ASSERT_FALSE(ewk_settings_frame_flattening_enabled_get(settings));
+    ewk_view_url_set(webView(), environment->urlForResource("frame_flattening_test.html").data());
+    waitUntilTitleChangedTo("200"); // width of iframe tag.
+    ASSERT_STREQ("200", ewk_view_title_get(webView()));
+}
+
+TEST_F(EWK2UnitTestBase, ewk_settings_dns_prefetching_enabled)
+{
+    Ewk_Settings* settings = ewk_view_settings_get(webView());
+
+    // DNS prefeching is disabled by default.
+    ASSERT_FALSE(ewk_settings_dns_prefetching_enabled_get(settings));
+    ASSERT_TRUE(ewk_settings_dns_prefetching_enabled_set(settings, true));
+    ASSERT_TRUE(ewk_settings_dns_prefetching_enabled_get(settings));
+
+    ASSERT_TRUE(ewk_settings_dns_prefetching_enabled_set(settings, false));
+    ASSERT_FALSE(ewk_settings_dns_prefetching_enabled_get(settings));
 }

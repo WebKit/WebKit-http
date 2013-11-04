@@ -29,6 +29,7 @@
 #include "DataReference.h"
 #include "Logging.h"
 #include "WebContext.h"
+#include "WebIconDatabaseMessages.h"
 #include "WebIconDatabaseProxyMessages.h"
 #include <WebCore/FileSystem.h>
 #include <WebCore/IconDatabase.h>
@@ -54,6 +55,7 @@ WebIconDatabase::WebIconDatabase(WebContext* context)
     , m_urlImportCompleted(false)
     , m_databaseCleanupDisabled(false)
 {
+    m_webContext->addMessageReceiver(Messages::WebIconDatabase::messageReceiverName(), this);
 }
 
 void WebIconDatabase::invalidate()
@@ -268,14 +270,14 @@ void WebIconDatabase::didFinishURLImport()
     HashMap<uint64_t, String>::iterator end = m_pendingLoadDecisionURLMap.end();
     
     for (; i != end; ++i) {
-        LOG(IconDatabase, "WK2 UIProcess performing delayed callback on callback ID %i for page url %s", (int)i->first, i->second.ascii().data());
-        IconLoadDecision decision = m_iconDatabaseImpl->synchronousLoadDecisionForIconURL(i->second, 0);
+        LOG(IconDatabase, "WK2 UIProcess performing delayed callback on callback ID %i for page url %s", (int)i->key, i->value.ascii().data());
+        IconLoadDecision decision = m_iconDatabaseImpl->synchronousLoadDecisionForIconURL(i->value, 0);
 
         // Decisions should never be unknown after the inital import is complete
         ASSERT(decision != IconLoadUnknown);
 
         // FIXME (Multi-WebProcess): <rdar://problem/12240223> We need to know which connection to send this message to.
-        m_webContext->sendToAllProcesses(Messages::WebIconDatabaseProxy::ReceivedIconLoadDecision(static_cast<int>(decision), i->first));
+        m_webContext->sendToAllProcesses(Messages::WebIconDatabaseProxy::ReceivedIconLoadDecision(static_cast<int>(decision), i->key));
     }
     
     m_pendingLoadDecisionURLMap.clear();
@@ -283,14 +285,14 @@ void WebIconDatabase::didFinishURLImport()
     m_urlImportCompleted = true;
 }
 
-void WebIconDatabase::didReceiveMessage(CoreIPC::Connection* connection, CoreIPC::MessageID messageID, CoreIPC::ArgumentDecoder* decoder)
+void WebIconDatabase::didReceiveMessage(CoreIPC::Connection* connection, CoreIPC::MessageID messageID, CoreIPC::MessageDecoder& decoder)
 {
     didReceiveWebIconDatabaseMessage(connection, messageID, decoder);
 }
 
-void WebIconDatabase::didReceiveSyncMessage(CoreIPC::Connection* connection, CoreIPC::MessageID messageID, CoreIPC::ArgumentDecoder* decoder, OwnPtr<CoreIPC::ArgumentEncoder>& reply)
+void WebIconDatabase::didReceiveSyncMessage(CoreIPC::Connection* connection, CoreIPC::MessageID messageID, CoreIPC::MessageDecoder& decoder, OwnPtr<CoreIPC::MessageEncoder>& replyEncoder)
 {
-    didReceiveSyncWebIconDatabaseMessage(connection, messageID, decoder, reply);
+    didReceiveSyncWebIconDatabaseMessage(connection, messageID, decoder, replyEncoder);
 }
 
 void WebIconDatabase::notifyIconDataReadyForPageURL(const String& pageURL)

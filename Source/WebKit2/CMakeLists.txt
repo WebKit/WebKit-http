@@ -6,6 +6,7 @@ SET(WebKit2_INCLUDE_DIRECTORIES
     "${WEBKIT2_DIR}/Shared"
     "${WEBKIT2_DIR}/Shared/API"
     "${WEBKIT2_DIR}/Shared/API/c"
+    "${WEBKIT2_DIR}/Shared/CoordinatedGraphics"
     "${WEBKIT2_DIR}/Shared/CoreIPCSupport"
     "${WEBKIT2_DIR}/Shared/Plugins"
     "${WEBKIT2_DIR}/Shared/Plugins/Netscape"
@@ -123,7 +124,10 @@ SET(WebKit2_SOURCES
     Platform/CoreIPC/BinarySemaphore.cpp
     Platform/CoreIPC/Connection.cpp
     Platform/CoreIPC/DataReference.cpp
+    Platform/CoreIPC/MessageDecoder.cpp
+    Platform/CoreIPC/MessageEncoder.cpp
     Platform/CoreIPC/MessageReceiverMap.cpp
+    Platform/CoreIPC/StringReference.cpp
 
     PluginProcess/PluginControllerProxy.cpp
     PluginProcess/PluginCreationParameters.cpp
@@ -133,6 +137,7 @@ SET(WebKit2_SOURCES
     Shared/APIClientTraits.cpp
     Shared/APIObject.cpp
     Shared/ChildProcess.cpp
+    Shared/ConnectionStack.cpp
     Shared/DictionaryPopupInfo.cpp
     Shared/EditorState.cpp
     Shared/FontInfo.cpp
@@ -212,6 +217,8 @@ SET(WebKit2_SOURCES
     Shared/API/c/WKURLResponse.cpp
     Shared/API/c/WKUserContentURLPattern.cpp
 
+    Shared/CoordinatedGraphics/CoordinatedGraphicsArgumentCoders.cpp
+
     Shared/Plugins/NPIdentifierData.cpp
     Shared/Plugins/NPObjectMessageReceiver.cpp
     Shared/Plugins/NPObjectProxy.cpp
@@ -230,6 +237,7 @@ SET(WebKit2_SOURCES
     UIProcess/GeolocationPermissionRequestManagerProxy.cpp
     UIProcess/GeolocationPermissionRequestProxy.cpp
 
+    UIProcess/PageViewportController.cpp
     UIProcess/ResponsivenessTimer.cpp
     UIProcess/VisitedLinkProvider.cpp
     UIProcess/WebApplicationCacheManagerProxy.cpp
@@ -496,6 +504,8 @@ SET(WebKit2_MESSAGES_IN_FILES
     PluginProcess/PluginProcess.messages.in
     PluginProcess/WebProcessConnection.messages.in
 
+    Shared/WebConnection.messages.in
+
     Shared/Plugins/NPObjectMessageReceiver.messages.in
 
     UIProcess/DrawingAreaProxy.messages.in
@@ -585,6 +595,10 @@ FOREACH (_file ${WebKit2_MESSAGES_IN_FILES})
     ADD_CUSTOM_COMMAND(
         OUTPUT ${DERIVED_SOURCES_WEBKIT2_DIR}/${_name}MessageReceiver.cpp ${DERIVED_SOURCES_WEBKIT2_DIR}/${_name}Messages.h
         MAIN_DEPENDENCY ${_file}
+        DEPENDS ${WEBKIT2_DIR}/Scripts/webkit2/__init__.py
+                ${WEBKIT2_DIR}/Scripts/webkit2/messages.py
+                ${WEBKIT2_DIR}/Scripts/webkit2/model.py
+                ${WEBKIT2_DIR}/Scripts/webkit2/parser.py
         COMMAND ${PYTHON_EXECUTABLE} ${WEBKIT2_DIR}/Scripts/generate-message-receiver.py ${_file} > ${DERIVED_SOURCES_WEBKIT2_DIR}/${_name}MessageReceiver.cpp
         COMMAND ${PYTHON_EXECUTABLE} ${WEBKIT2_DIR}/Scripts/generate-messages-header.py ${_file} > ${DERIVED_SOURCES_WEBKIT2_DIR}/${_name}Messages.h
         WORKING_DIRECTORY ${WEBKIT2_DIR}

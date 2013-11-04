@@ -31,8 +31,10 @@
 #include "FrameLoader.h"
 #include "InspectorInstrumentation.h"
 #include "KURL.h"
+#include "LoaderStrategy.h"
 #include "Logging.h"
 #include "NetscapePlugInStreamLoader.h"
+#include "PlatformStrategies.h"
 #include "ResourceLoader.h"
 #include "ResourceRequest.h"
 #include "SubresourceLoader.h"
@@ -71,11 +73,20 @@ ResourceLoadScheduler::HostInformation* ResourceLoadScheduler::hostForURL(const 
     return host;
 }
 
-ResourceLoadScheduler* resourceLoadScheduler()
+ResourceLoadScheduler* ResourceLoadScheduler::defaultResourceLoadScheduler()
 {
     ASSERT(isMainThread());
     DEFINE_STATIC_LOCAL(ResourceLoadScheduler, resourceLoadScheduler, ());
     return &resourceLoadScheduler;
+}
+
+ResourceLoadScheduler* resourceLoadScheduler()
+{
+#if USE(PLATFORM_STRATEGIES)
+    return platformStrategies()->loaderStrategy()->resourceLoadScheduler();
+#else
+    return ResourceLoadScheduler::defaultResourceLoadScheduler();
+#endif
 }
 
 ResourceLoadScheduler::ResourceLoadScheduler()
@@ -87,6 +98,10 @@ ResourceLoadScheduler::ResourceLoadScheduler()
 #if REQUEST_MANAGEMENT_ENABLED
     maxRequestsInFlightPerHost = initializeMaximumHTTPConnectionCountPerHost();
 #endif
+}
+
+ResourceLoadScheduler::~ResourceLoadScheduler()
+{
 }
 
 PassRefPtr<SubresourceLoader> ResourceLoadScheduler::scheduleSubresourceLoad(Frame* frame, CachedResource* resource, const ResourceRequest& request, ResourceLoadPriority priority, const ResourceLoaderOptions& options)
@@ -178,7 +193,7 @@ void ResourceLoadScheduler::servePendingRequests(ResourceLoadPriority minimumPri
     m_hosts.checkConsistency();
     HostMap::iterator end = m_hosts.end();
     for (HostMap::iterator iter = m_hosts.begin(); iter != end; ++iter)
-        hostsToServe.append(iter->second);
+        hostsToServe.append(iter->value);
 
     int size = hostsToServe.size();
     for (int i = 0; i < size; ++i) {

@@ -84,7 +84,7 @@ bool RenderSVGResourcePattern::applyResource(RenderObject* object, RenderStyle* 
     if (m_attributes.patternUnits() == SVGUnitTypes::SVG_UNIT_TYPE_OBJECTBOUNDINGBOX && objectBoundingBox.isEmpty())
         return false;
 
-    OwnPtr<PatternData>& patternData = m_patternMap.add(object, nullptr).iterator->second;
+    OwnPtr<PatternData>& patternData = m_patternMap.add(object, nullptr).iterator->value;
     if (!patternData)
         patternData = adoptPtr(new PatternData);
 
@@ -126,8 +126,9 @@ bool RenderSVGResourcePattern::applyResource(RenderObject* object, RenderStyle* 
             return false;
 
         // Compute pattern space transformation.
+        const IntSize tileImageSize = tileImage->logicalSize();
         patternData->transform.translate(tileBoundaries.x(), tileBoundaries.y());
-        patternData->transform.scale(tileBoundaries.width() / clampedAbsoluteTileBoundaries.width(), tileBoundaries.height() / clampedAbsoluteTileBoundaries.height());
+        patternData->transform.scale(tileBoundaries.width() / tileImageSize.width(), tileBoundaries.height() / tileImageSize.height());
 
         AffineTransform patternTransform = m_attributes.patternTransform();
         if (!patternTransform.isIdentity())

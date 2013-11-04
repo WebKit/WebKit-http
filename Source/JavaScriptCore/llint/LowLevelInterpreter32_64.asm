@@ -951,7 +951,7 @@ macro loadPropertyAtVariableOffset(propertyOffset, objectAndStorage, tag, payloa
     negi propertyOffset
     jmp .ready
 .isInline:
-    addp JSFinalObject::m_inlineStorage - (firstOutOfLineOffset - 2) * 8, objectAndStorage
+    addp sizeof JSObject - (firstOutOfLineOffset - 2) * 8, objectAndStorage
 .ready:
     loadi TagOffset + (firstOutOfLineOffset - 2) * 8[objectAndStorage, propertyOffset, 8], tag
     loadi PayloadOffset + (firstOutOfLineOffset - 2) * 8[objectAndStorage, propertyOffset, 8], payload
@@ -976,126 +976,7 @@ macro resolveGlobal(size, slow)
     valueProfile(t2, t3, t0)
 end
 
-_llint_op_resolve_global:
-    traceExecution()
-    resolveGlobal(6, .opResolveGlobalSlow)
-    dispatch(6)
-
-.opResolveGlobalSlow:
-    callSlowPath(_llint_slow_path_resolve_global)
-    dispatch(6)
-
-
-# Gives you the scope in t0, while allowing you to optionally perform additional checks on the
-# scopes as they are traversed. scopeCheck() is called with two arguments: the register
-# holding the scope, and a register that can be used for scratch. Note that this does not
-# use t3, so you can hold stuff in t3 if need be.
-macro getScope(deBruijinIndexOperand, scopeCheck)
-    loadp ScopeChain + PayloadOffset[cfr], t0
-    loadi deBruijinIndexOperand, t2
-    
-    btiz t2, .done
-    
-    loadp CodeBlock[cfr], t1
-    bineq CodeBlock::m_codeType[t1], FunctionCode, .loop
-    btbz CodeBlock::m_needsFullScopeChain[t1], .loop
-    
-    loadi CodeBlock::m_activationRegister[t1], t1
-
-    # Need to conditionally skip over one scope.
-    bieq TagOffset[cfr, t1, 8], EmptyValueTag, .noActivation
-    scopeCheck(t0, t1)
-    loadp JSScope::m_next[t0], t0
-.noActivation:
-    subi 1, t2
-    
-    btiz t2, .done
-.loop:
-    scopeCheck(t0, t1)
-    loadp JSScope::m_next[t0], t0
-    subi 1, t2
-    btinz t2, .loop
-
-.done:
-end
-
-_llint_op_resolve_global_dynamic:
-    traceExecution()
-    loadp CodeBlock[cfr], t3
-    loadp CodeBlock::m_globalObject[t3], t3
-    loadp JSGlobalObject::m_activationStructure[t3], t3
-    getScope(
-        20[PC],
-        macro (scope, scratch)
-            bpneq JSCell::m_structure[scope], t3, .opResolveGlobalDynamicSuperSlow
-        end)
-    resolveGlobal(7, .opResolveGlobalDynamicSlow)
-    dispatch(7)
-
-.opResolveGlobalDynamicSuperSlow:
-    callSlowPath(_llint_slow_path_resolve_for_resolve_global_dynamic)
-    dispatch(7)
-
-.opResolveGlobalDynamicSlow:
-    callSlowPath(_llint_slow_path_resolve_global_dynamic)
-    dispatch(7)
-
-
-_llint_op_get_scoped_var:
-    traceExecution()
-    # Operands are as follows:
-    # 4[PC]   Destination for the load.
-    # 8[PC]   Index of register in the scope.
-    # 12[PC]  De Bruijin index.
-    getScope(12[PC], macro (scope, scratch) end)
-    loadi 4[PC], t1
-    loadi 8[PC], t2
-    loadp JSVariableObject::m_registers[t0], t0
-    loadi TagOffset[t0, t2, 8], t3
-    loadi PayloadOffset[t0, t2, 8], t0
-    storei t3, TagOffset[cfr, t1, 8]
-    storei t0, PayloadOffset[cfr, t1, 8]
-    loadi 16[PC], t1
-    valueProfile(t3, t0, t1)
-    dispatch(5)
-
-
-_llint_op_put_scoped_var:
-    traceExecution()
-    getScope(8[PC], macro (scope, scratch) end)
-    loadi 12[PC], t1
-    loadConstantOrVariable(t1, t3, t2)
-    loadi 4[PC], t1
-    writeBarrier(t3, t2)
-    loadp JSVariableObject::m_registers[t0], t0
-    storei t3, TagOffset[t0, t1, 8]
-    storei t2, PayloadOffset[t0, t1, 8]
-    dispatch(4)
-
-
-macro getGlobalVar(size)
-    traceExecution()
-    loadp 8[PC], t0
-    loadi 4[PC], t3
-    loadi TagOffset[t0], t2
-    loadi PayloadOffset[t0], t1
-    storei t2, TagOffset[cfr, t3, 8]
-    storei t1, PayloadOffset[cfr, t3, 8]
-    loadi (size - 1) * 4[PC], t3
-    valueProfile(t2, t1, t3)
-    dispatch(size)
-end
-
-_llint_op_get_global_var:
-    getGlobalVar(4)
-
-
-_llint_op_get_global_var_watchable:
-    getGlobalVar(5)
-
-
 _llint_op_init_global_const:
-_llint_op_put_global_var:
     traceExecution()
     loadi 8[PC], t1
     loadi 4[PC], t0
@@ -1107,21 +988,19 @@ _llint_op_put_global_var:
 
 
 _llint_op_init_global_const_check:
-_llint_op_put_global_var_check:
     traceExecution()
     loadp 12[PC], t2
     loadi 8[PC], t1
     loadi 4[PC], t0
-    btbnz [t2], .opPutGlobalVarCheckSlow
+    btbnz [t2], .opInitGlobalConstCheckSlow
     loadConstantOrVariable(t1, t2, t3)
     writeBarrier(t2, t3)
     storei t2, TagOffset[t0]
     storei t3, PayloadOffset[t0]
     dispatch(5)
-.opPutGlobalVarCheckSlow:
-    callSlowPath(_llint_slow_path_put_global_var_check)
+.opInitGlobalConstCheckSlow:
+    callSlowPath(_llint_slow_path_init_global_const_check)
     dispatch(5)
-
 
 # We only do monomorphic get_by_id caching for now, and we do not modify the
 # opcode. We do, however, allow for the cache to change anytime if fails, since
@@ -1171,7 +1050,7 @@ _llint_op_get_array_length:
     loadp JSCell::m_structure[t3], t2
     arrayProfile(t2, t1, t0)
     btiz t2, IsArray, .opGetArrayLengthSlow
-    btiz t2, HasArrayStorage, .opGetArrayLengthSlow
+    btiz t2, IndexingShapeMask, .opGetArrayLengthSlow
     loadi 4[PC], t1
     loadp 32[PC], t2
     loadp JSObject::m_butterfly[t3], t0
@@ -1302,14 +1181,26 @@ _llint_op_get_by_val:
     loadp JSCell::m_structure[t0], t2
     loadp 16[PC], t3
     arrayProfile(t2, t3, t1)
-    btiz t2, HasArrayStorage, .opGetByValSlow
     loadi 12[PC], t3
     loadConstantOrVariablePayload(t3, Int32Tag, t1, .opGetByValSlow)
     loadp JSObject::m_butterfly[t0], t3
+    andi IndexingShapeMask, t2
+    bineq t2, ContiguousShape, .opGetByValNotContiguous
+    
+    biaeq t1, -sizeof IndexingHeader + IndexingHeader::m_publicLength[t3], .opGetByValSlow
+    loadi TagOffset[t3, t1, 8], t2
+    loadi PayloadOffset[t3, t1, 8], t1
+    jmp .opGetByValDone
+
+.opGetByValNotContiguous:
+    subi ArrayStorageShape, t2
+    bia t2, SlowPutArrayStorageShape - ArrayStorageShape, .opGetByValSlow
     biaeq t1, -sizeof IndexingHeader + IndexingHeader::m_vectorLength[t3], .opGetByValSlow
-    loadi 4[PC], t0
     loadi ArrayStorage::m_vector + TagOffset[t3, t1, 8], t2
     loadi ArrayStorage::m_vector + PayloadOffset[t3, t1, 8], t1
+
+.opGetByValDone:
+    loadi 4[PC], t0
     bieq t2, EmptyValueTag, .opGetByValSlow
     storei t2, TagOffset[cfr, t0, 8]
     storei t1, PayloadOffset[cfr, t0, 8]
@@ -1386,29 +1277,53 @@ _llint_op_put_by_val:
     loadp JSCell::m_structure[t1], t2
     loadp 16[PC], t3
     arrayProfile(t2, t3, t0)
-    btiz t2, HasArrayStorage, .opPutByValSlow
     loadi 8[PC], t0
-    loadConstantOrVariablePayload(t0, Int32Tag, t2, .opPutByValSlow)
+    loadConstantOrVariablePayload(t0, Int32Tag, t3, .opPutByValSlow)
     loadp JSObject::m_butterfly[t1], t0
-    biaeq t2, -sizeof IndexingHeader + IndexingHeader::m_vectorLength[t0], .opPutByValSlow
-    bieq ArrayStorage::m_vector + TagOffset[t0, t2, 8], EmptyValueTag, .opPutByValEmpty
-.opPutByValStoreResult:
-    loadi 12[PC], t3
-    loadConstantOrVariable2Reg(t3, t1, t3)
-    writeBarrier(t1, t3)
-    storei t1, ArrayStorage::m_vector + TagOffset[t0, t2, 8]
-    storei t3, ArrayStorage::m_vector + PayloadOffset[t0, t2, 8]
+    andi IndexingShapeMask, t2
+    bineq t2, ContiguousShape, .opPutByValNotContiguous
+
+    biaeq t3, -sizeof IndexingHeader + IndexingHeader::m_publicLength[t0], .opPutByValContiguousOutOfBounds
+.opPutByValContiguousStoreResult:
+    loadi 12[PC], t2
+    loadConstantOrVariable2Reg(t2, t1, t2)
+    writeBarrier(t1, t2)
+    storei t1, TagOffset[t0, t3, 8]
+    storei t2, PayloadOffset[t0, t3, 8]
     dispatch(5)
 
-.opPutByValEmpty:
+.opPutByValContiguousOutOfBounds:
+    biaeq t3, -sizeof IndexingHeader + IndexingHeader::m_vectorLength[t0], .opPutByValSlow
     if VALUE_PROFILER
-        storeb 1, ArrayProfile::m_mayStoreToHole[t3]
+        loadp 16[PC], t1
+        storeb 1, ArrayProfile::m_mayStoreToHole[t1]
+    end
+    addi 1, t3, t2
+    storei t2, -sizeof IndexingHeader + IndexingHeader::m_publicLength[t0]
+    jmp .opPutByValContiguousStoreResult
+
+.opPutByValNotContiguous:
+    bineq t2, ArrayStorageShape, .opPutByValSlow
+    biaeq t3, -sizeof IndexingHeader + IndexingHeader::m_vectorLength[t0], .opPutByValSlow
+    bieq ArrayStorage::m_vector + TagOffset[t0, t3, 8], EmptyValueTag, .opPutByValArrayStorageEmpty
+.opPutByValArrayStorageStoreResult:
+    loadi 12[PC], t2
+    loadConstantOrVariable2Reg(t2, t1, t2)
+    writeBarrier(t1, t2)
+    storei t1, ArrayStorage::m_vector + TagOffset[t0, t3, 8]
+    storei t2, ArrayStorage::m_vector + PayloadOffset[t0, t3, 8]
+    dispatch(5)
+
+.opPutByValArrayStorageEmpty:
+    if VALUE_PROFILER
+        loadp 16[PC], t1
+        storeb 1, ArrayProfile::m_mayStoreToHole[t1]
     end
     addi 1, ArrayStorage::m_numValuesInVector[t0]
-    bib t2, -sizeof IndexingHeader + IndexingHeader::m_publicLength[t0], .opPutByValStoreResult
+    bib t2, -sizeof IndexingHeader + IndexingHeader::m_publicLength[t0], .opPutByValArrayStorageStoreResult
     addi 1, t2, t1
     storei t1, -sizeof IndexingHeader + IndexingHeader::m_publicLength[t0]
-    jmp .opPutByValStoreResult
+    jmp .opPutByValArrayStorageStoreResult
 
 .opPutByValSlow:
     callSlowPath(_llint_slow_path_put_by_val)

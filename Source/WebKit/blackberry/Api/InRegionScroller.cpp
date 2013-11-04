@@ -202,7 +202,7 @@ void InRegionScrollerPrivate::calculateInRegionScrollableAreasForPoint(const Web
     ASSERT(m_activeInRegionScrollableAreas.empty());
     m_needsActiveScrollableAreaCalculation = false;
 
-    HitTestResult result = m_webPage->m_mainFrame->eventHandler()->hitTestResultAtPoint(m_webPage->mapFromViewportToContents(point), false /*allowShadowContent*/);
+    const HitTestResult& result = m_webPage->hitTestResult(m_webPage->mapFromViewportToContents(point));
     Node* node = result.innerNonSharedNode();
     if (!node || !node->renderer())
         return;
@@ -218,6 +218,9 @@ void InRegionScrollerPrivate::calculateInRegionScrollableAreasForPoint(const Web
                     reset();
                     return;
                 }
+
+                if (!renderView->compositor()->scrollLayer())
+                    continue;
 
                 if (canScrollInnerFrame(view->frame())) {
                     pushBackInRegionScrollable(new InRegionScrollableArea(m_webPage, layer));
@@ -299,19 +302,7 @@ bool InRegionScrollerPrivate::setLayerScrollPosition(RenderLayer* layer, const I
         ASSERT(canScrollInnerFrame(frame));
 
         view->setCanBlitOnScroll(false);
-
-        BackingStoreClient* backingStoreClient = m_webPage->backingStoreClientForFrame(view->frame());
-        if (backingStoreClient) {
-            backingStoreClient->setIsClientGeneratedScroll(true);
-            backingStoreClient->setIsScrollNotificationSuppressed(true);
-        }
-
         view->setScrollPosition(scrollPosition);
-
-        if (backingStoreClient) {
-            backingStoreClient->setIsClientGeneratedScroll(false);
-            backingStoreClient->setIsScrollNotificationSuppressed(false);
-        }
 
     } else {
 

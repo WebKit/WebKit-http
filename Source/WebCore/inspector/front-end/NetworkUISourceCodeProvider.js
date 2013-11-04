@@ -31,16 +31,19 @@
 /**
  * @constructor
  * @param {WebInspector.Workspace} workspace
+ * @param {WebInspector.NetworkWorkspaceProvider} networkWorkspaceProvider
  */
-WebInspector.NetworkUISourceCodeProvider = function(workspace)
+WebInspector.NetworkUISourceCodeProvider = function(workspace, networkWorkspaceProvider)
 {
     this._workspace = workspace;
+    this._networkWorkspaceProvider = networkWorkspaceProvider;
     WebInspector.resourceTreeModel.addEventListener(WebInspector.ResourceTreeModel.EventTypes.ResourceAdded, this._resourceAdded, this);
     this._workspace.addEventListener(WebInspector.Workspace.Events.ProjectWillReset, this._projectWillReset, this);
     this._workspace.addEventListener(WebInspector.Workspace.Events.ProjectDidReset, this._projectDidReset, this);
     WebInspector.debuggerModel.addEventListener(WebInspector.DebuggerModel.Events.ParsedScriptSource, this._parsedScriptSource, this);
 
-    this._uiSourceCodeForResource = {};
+    this._processedURLs = {};
+    this._lastDynamicAnonymousScriptIndexForURL = {};
 }
 
 WebInspector.NetworkUISourceCodeProvider.prototype = {
@@ -65,15 +68,24 @@ WebInspector.NetworkUISourceCodeProvider.prototype = {
     _parsedScriptSource: function(event)
     {
         var script = /** @type {WebInspector.Script} */ event.data;
-        if (!script.hasSourceURL && !script.isContentScript)
+        if (!script.sourceURL || script.isInlineScript())
             return;
-        if (!script.sourceURL)
-            return;
-        if (this._uiSourceCodeForResource[script.sourceURL])
-            return;
-        var uiSourceCode = new WebInspector.JavaScriptSource(script.sourceURL, script, true);
-        this._uiSourceCodeForResource[script.sourceURL] = uiSourceCode;
-        this._workspace.project().addUISourceCode(uiSourceCode);
+        var isDynamicAnonymousScript;
+        // Only add uiSourceCodes for
+        // - content scripts;
+        // - scripts with explicit sourceURL comment;
+        // - dynamic scripts (script elements with src attribute) when inspector is opened after the script was loaded.
+        if (!script.hasSourceURL && !script.isContentScript) {
+            if (WebInspector.resourceForURL(script.sourceURL) || WebInspector.networkLog.requestForURL(script.sourceURL))
+                return;
+        }
+        // Filter out embedder injected content scripts.
+        if (script.isContentScript && !script.hasSourceURL) {
+            var parsedURL = new WebInspector.ParsedURL(script.sourceURL);
+            if (!parsedURL.host)
+                return;
+        }
+        this._addFile(script.sourceURL, script, script.isContentScript);
     },
 
     /**
@@ -82,29 +94,30 @@ WebInspector.NetworkUISourceCodeProvider.prototype = {
     _resourceAdded: function(event)
     {
         var resource = /** @type {WebInspector.Resource} */ event.data;
-        if (this._uiSourceCodeForResource[resource.url])
+        this._addFile(resource.url, resource);
+    },
+
+    /**
+     * @param {string} url
+     * @param {WebInspector.ContentProvider} contentProvider
+     * @param {boolean=} isContentScript
+     */
+    _addFile: function(url, contentProvider, isContentScript)
+    {
+        var type = contentProvider.contentType();
+        if (type !== WebInspector.resourceTypes.Stylesheet && type !== WebInspector.resourceTypes.Document && type !== WebInspector.resourceTypes.Script)
             return;
-        var uiSourceCode;
-        switch (resource.type) {
-        case WebInspector.resourceTypes.Stylesheet:
-            uiSourceCode = new WebInspector.StyleSource(resource);
-            break;
-        case WebInspector.resourceTypes.Document:
-            uiSourceCode = new WebInspector.JavaScriptSource(resource.url, resource, false);
-            break;
-        case WebInspector.resourceTypes.Script:
-            uiSourceCode = new WebInspector.JavaScriptSource(resource.url, resource, true);
-            break;
-        }
-        if (uiSourceCode) {
-            this._uiSourceCodeForResource[resource.url] = uiSourceCode;
-            this._workspace.project().addUISourceCode(uiSourceCode);
-        }
+        if (this._processedURLs[url])
+            return;
+        this._processedURLs[url] = true;
+        var isEditable = type !== WebInspector.resourceTypes.Document;
+        this._networkWorkspaceProvider.addFile(url, contentProvider, isEditable, isContentScript);
     },
 
     _projectWillReset: function()
     {
-        this._uiSourceCodeForResource = {};
+        this._processedURLs = {};
+        this._lastDynamicAnonymousScriptIndexForURL = {};
     },
 
     _projectDidReset: function()

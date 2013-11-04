@@ -354,6 +354,10 @@ static PassOwnPtr<HPEN> createPen(const Color& col, double fWidth, StrokeStyle s
     int penStyle = PS_NULL;
     switch (style) {
         case SolidStroke:
+#if ENABLE(CSS3_TEXT)
+        case DoubleStroke:
+        case WavyStroke: // FIXME: https://bugs.webkit.org/show_bug.cgi?id=94114 - Needs platform support.
+#endif // CSS3_TEXT
             penStyle = PS_SOLID;
             break;
         case DottedStroke:  // not supported on Windows CE
@@ -1626,10 +1630,10 @@ void GraphicsContext::drawText(const SimpleFontData* fontData, const GlyphBuffer
         const GlyphBufferAdvance* advance = glyphBuffer.advances(from);
         if (scaleX == 1.)
             for (int i = 1; i < numGlyphs; ++i)
-                offset += *advance++;
+                offset += (*advance++).width();
         else
             for (int i = 1; i < numGlyphs; ++i)
-                offset += *advance++ * scaleX;
+                offset += (*advance++).width() * scaleX;
 
         offset += width;
 
@@ -1687,7 +1691,7 @@ void GraphicsContext::drawText(const SimpleFontData* fontData, const GlyphBuffer
         bool drawOneByOne = false;
         if (scaleX == 1.) {
             for (; srcChar < srcCharEnd; ++srcChar) {
-                offset += *advance++;
+                offset += (*advance++).width();
                 int offsetInt = stableRound(offset);
                 if (isCharVisible(*srcChar)) {
                     if (!drawOneByOne && WTF::Unicode::direction(*srcChar) == WTF::Unicode::RightToLeft)
@@ -1699,7 +1703,7 @@ void GraphicsContext::drawText(const SimpleFontData* fontData, const GlyphBuffer
             }
         } else {
             for (; srcChar < srcCharEnd; ++srcChar) {
-                offset += *advance++ * scaleX;
+                offset += (*advance++).width() * scaleX;
                 int offsetInt = stableRound(offset);
                 if (isCharVisible(*srcChar)) {
                     if (!drawOneByOne && WTF::Unicode::direction(*srcChar) == WTF::Unicode::RightToLeft)

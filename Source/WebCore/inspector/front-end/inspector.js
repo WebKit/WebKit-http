@@ -233,13 +233,13 @@ var WebInspector = {
 
     _zoomIn: function()
     {
-        ++this._zoomLevel;
+        this._zoomLevel = Math.min(this._zoomLevel + 1, WebInspector.Zoom.Table.length - WebInspector.Zoom.DefaultOffset - 1);
         this._requestZoom();
     },
 
     _zoomOut: function()
     {
-        --this._zoomLevel;
+        this._zoomLevel = Math.max(this._zoomLevel - 1, -WebInspector.Zoom.DefaultOffset);
         this._requestZoom();
     },
 
@@ -252,7 +252,11 @@ var WebInspector = {
     _requestZoom: function()
     {
         WebInspector.settings.zoomLevel.set(this._zoomLevel);
-        InspectorFrontendHost.setZoomFactor(Math.pow(1.2, this._zoomLevel));
+        // For backwards compatibility, zoomLevel takes integers (with 0 being default zoom).
+        var index = this._zoomLevel + WebInspector.Zoom.DefaultOffset;
+        index = Math.min(WebInspector.Zoom.Table.length - 1, index);
+        index = Math.max(0, index);
+        InspectorFrontendHost.setZoomFactor(WebInspector.Zoom.Table[index]);
     },
 
     toggleSearchingForNode: function()
@@ -330,6 +334,9 @@ WebInspector.loaded = function()
         WebInspector.socket.onopen = function() {
             InspectorFrontendHost.sendMessageToBackend = WebInspector.socket.send.bind(WebInspector.socket);
             WebInspector.doLoadedDone();
+        }
+        WebInspector.socket.onclose = function() {
+            (new WebInspector.RemoteDebuggingTerminatedScreen()).showModal();
         }
         return;
     }
@@ -416,18 +423,20 @@ WebInspector._doLoadedDoneWithCapabilities = function()
     this.openAnchorLocationRegistry = new WebInspector.HandlerRegistry(openAnchorLocationSetting);
     this.openAnchorLocationRegistry.registerHandler(autoselectPanel, function() { return false; });
 
+    this.networkWorkspaceProvider = new WebInspector.NetworkWorkspaceProvider();
     this.workspace = new WebInspector.Workspace();
+    this.workspace.addProject("network", this.networkWorkspaceProvider);
     this.workspaceController = new WebInspector.WorkspaceController(this.workspace);
 
     this.breakpointManager = new WebInspector.BreakpointManager(WebInspector.settings.breakpoints, this.debuggerModel, this.workspace);
 
-    this.scriptSnippetModel = new WebInspector.ScriptSnippetModel(this.workspace);
-    new WebInspector.DebuggerScriptMapping(this.workspace);
+    this.scriptSnippetModel = new WebInspector.ScriptSnippetModel(this.workspace, this.networkWorkspaceProvider);
+    new WebInspector.DebuggerScriptMapping(this.workspace, this.networkWorkspaceProvider);
     this.styleContentBinding = new WebInspector.StyleContentBinding(this.cssModel);
-    new WebInspector.NetworkUISourceCodeProvider(this.workspace);
+    new WebInspector.NetworkUISourceCodeProvider(this.workspace, this.networkWorkspaceProvider);
     new WebInspector.StylesSourceMapping(this.workspace);
     if (WebInspector.experimentsSettings.sass.isEnabled())
-        new WebInspector.SASSSourceMapping(this.workspace);
+        new WebInspector.SASSSourceMapping(this.workspace, this.networkWorkspaceProvider);
 
     new WebInspector.PresentationConsoleMessageHelper(this.workspace);
 
@@ -962,3 +971,8 @@ WebInspector.addMainEventListeners = function(doc)
 }
 
 WebInspector.ProfileURLRegExp = /webkit-profile:\/\/(.+)\/(.+)#([0-9]+)/;
+
+WebInspector.Zoom = {
+    Table: [0.25, 0.33, 0.5, 0.66, 0.75, 0.9, 1, 1.1, 1.25, 1.5, 1.75, 2, 2.5, 3, 4, 5],
+    DefaultOffset: 6
+}

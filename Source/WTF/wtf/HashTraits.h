@@ -50,7 +50,9 @@ namespace WTF {
         // The needsDestruction flag is used to optimize destruction and rehashing.
         static const bool needsDestruction = true;
 
-        static const int minimumTableSize = 64;
+        // The starting table size. Can be overridden when we know beforehand that
+        // a hash table will have at least N entries.
+        static const int minimumTableSize = 8;
     };
 
     // Default integer traits disallow both 0 and -1 as keys (max value instead of -1 for unsigned).
@@ -193,21 +195,20 @@ namespace WTF {
         }
 
         KeyValuePair(const KeyTypeArg& key, const ValueTypeArg& value)
-            : first(key)
-            , second(value)
+            : key(key)
+            , value(value)
         {
         }
 
         template <typename OtherKeyType, typename OtherValueType>
         KeyValuePair(const KeyValuePair<OtherKeyType, OtherValueType>& other)
-            : first(other.first)
-            , second(other.second)
+            : key(other.key)
+            , value(other.value)
         {
         }
 
-        // TODO: Rename these to key and value. See https://bugs.webkit.org/show_bug.cgi?id=82784.
-        KeyTypeArg first;
-        ValueTypeArg second;
+        KeyTypeArg key;
+        ValueTypeArg value;
     };
 
     template<typename KeyTraitsArg, typename ValueTraitsArg>
@@ -224,8 +225,8 @@ namespace WTF {
 
         static const int minimumTableSize = KeyTraits::minimumTableSize;
 
-        static void constructDeletedValue(TraitType& slot) { KeyTraits::constructDeletedValue(slot.first); }
-        static bool isDeletedValue(const TraitType& value) { return KeyTraits::isDeletedValue(value.first); }
+        static void constructDeletedValue(TraitType& slot) { KeyTraits::constructDeletedValue(slot.key); }
+        static bool isDeletedValue(const TraitType& value) { return KeyTraits::isDeletedValue(value.key); }
     };
 
     template<typename Key, typename Value>

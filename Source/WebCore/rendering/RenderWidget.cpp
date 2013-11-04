@@ -61,9 +61,9 @@ void WidgetHierarchyUpdatesSuspensionScope::moveWidgets()
     widgetNewParentMap().clear();
     WidgetToParentMap::iterator end = map.end();
     for (WidgetToParentMap::iterator it = map.begin(); it != end; ++it) {
-        Widget* child = it->first.get();
+        Widget* child = it->key.get();
         ScrollView* currentParent = child->parent();
-        FrameView* newParent = it->second;
+        FrameView* newParent = it->value;
         if (newParent != currentParent) {
             if (currentParent)
                 currentParent->removeChild(child);
@@ -169,7 +169,7 @@ bool RenderWidget::updateWidgetGeometry()
     if (!m_widget->transformsAffectFrameRect())
         return setWidgetGeometry(absoluteContentBox());
 
-    LayoutRect absoluteContentBox(localToAbsoluteQuad(FloatQuad(contentBox)).boundingBox());
+    LayoutRect absoluteContentBox(localToAbsoluteQuad(FloatQuad(contentBox), SnapOffsetForTransforms).boundingBox());
     if (m_widget->isFrameView()) {
         contentBox.setLocation(absoluteContentBox.location());
         return setWidgetGeometry(contentBox);
@@ -211,6 +211,7 @@ void RenderWidget::setWidget(PassRefPtr<Widget> widget)
 
 void RenderWidget::layout()
 {
+    StackStats::LayoutCheckPoint layoutCheckPoint;
     ASSERT(needsLayout());
 
     setNeedsLayout(false);
@@ -267,7 +268,9 @@ void RenderWidget::paint(PaintInfo& paintInfo, const LayoutPoint& paintOffset)
 
         // Push a clip if we have a border radius, since we want to round the foreground content that gets painted.
         paintInfo.context->save();
-        paintInfo.context->addRoundedRectClip(style()->getRoundedBorderFor(borderRect, view()));
+        RoundedRect roundedInnerRect = style()->getRoundedInnerBorderFor(borderRect,
+            paddingTop() + borderTop(), paddingBottom() + borderBottom(), paddingLeft() + borderLeft(), paddingRight() + borderRight(), true, true);
+        clipRoundedInnerRect(paintInfo.context, borderRect, roundedInnerRect);
     }
 
     if (m_widget) {

@@ -29,6 +29,7 @@
 #include "UpdateAtlas.h"
 #include <WebCore/GraphicsLayerClient.h>
 #include <WebCore/GraphicsLayerFactory.h>
+#include <WebCore/GraphicsSurface.h>
 #include <wtf/OwnPtr.h>
 
 namespace WebKit {
@@ -78,17 +79,18 @@ public:
     virtual void purgeBackingStores();
     virtual bool layerTreeTileUpdatesAllowed() const;
     virtual void setVisibleContentsRect(const WebCore::IntRect&, float scale, const WebCore::FloatPoint&);
-    virtual void didReceiveLayerTreeCoordinatorMessage(CoreIPC::Connection*, CoreIPC::MessageID, CoreIPC::ArgumentDecoder*);
+    virtual void didReceiveLayerTreeCoordinatorMessage(CoreIPC::Connection*, CoreIPC::MessageID, CoreIPC::MessageDecoder&);
     virtual WebCore::GraphicsLayerFactory* graphicsLayerFactory() OVERRIDE;
 
     virtual void syncLayerState(WebLayerID, const WebLayerInfo&);
     virtual void syncLayerChildren(WebLayerID, const Vector<WebLayerID>&);
-    virtual void setLayerAnimatedOpacity(WebLayerID, float);
-    virtual void setLayerAnimatedTransform(WebLayerID, const WebCore::TransformationMatrix&);
+    virtual void setLayerAnimations(WebLayerID, const WebCore::GraphicsLayerAnimations&);
 #if ENABLE(CSS_FILTERS)
     virtual void syncLayerFilters(WebLayerID, const WebCore::FilterOperations&);
 #endif
-    virtual void syncCanvas(WebLayerID, const WebCore::IntSize& canvasSize, uint64_t graphicsSurfaceToken, uint32_t frontBuffer) OVERRIDE;
+#if USE(GRAPHICS_SURFACE)
+    virtual void syncCanvas(WebLayerID, const WebCore::IntSize& canvasSize, const WebCore::GraphicsSurfaceToken&, uint32_t frontBuffer) OVERRIDE;
+#endif
     virtual void attachLayer(WebCore::CoordinatedGraphicsLayer*);
     virtual void detachLayer(WebCore::CoordinatedGraphicsLayer*);
     virtual void syncFixedLayers();
@@ -102,7 +104,7 @@ protected:
 private:
     // GraphicsLayerClient
     virtual void notifyAnimationStarted(const WebCore::GraphicsLayer*, double time);
-    virtual void notifySyncRequired(const WebCore::GraphicsLayer*);
+    virtual void notifyFlushRequired(const WebCore::GraphicsLayer*);
     virtual void paintContents(const WebCore::GraphicsLayer*, WebCore::GraphicsContext&, WebCore::GraphicsLayerPaintingPhase, const WebCore::IntRect& clipRect);
     virtual bool showDebugBorders(const WebCore::GraphicsLayer*) const;
     virtual bool showRepaintCounter(const WebCore::GraphicsLayer*) const;
@@ -118,6 +120,8 @@ private:
     void performScheduledLayerFlush();
     void didPerformScheduledLayerFlush();
     void syncDisplayState();
+    void lockAnimations();
+    void unlockAnimations();
 
     void layerFlushTimerFired(WebCore::Timer<LayerTreeCoordinator>*);
 
@@ -135,6 +139,7 @@ private:
     HashSet<WebCore::CoordinatedGraphicsLayer*> m_registeredLayers;
     Vector<WebLayerID> m_detachedLayers;
     HashMap<int64_t, int> m_directlyCompositedImageRefCounts;
+    Vector<int64_t> m_releasedDirectlyCompositedImages;
     Vector<OwnPtr<UpdateAtlas> > m_updateAtlases;
 
     bool m_notifyAfterScheduledLayerFlush;
@@ -153,6 +158,7 @@ private:
     WebCore::Timer<LayerTreeCoordinator> m_releaseInactiveAtlasesTimer;
     bool m_layerFlushSchedulingEnabled;
     uint64_t m_forceRepaintAsyncCallbackID;
+    bool m_animationsLocked;
 };
 
 }

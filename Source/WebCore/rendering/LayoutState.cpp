@@ -51,7 +51,7 @@ LayoutState::LayoutState(LayoutState* prev, RenderBox* renderer, const LayoutSiz
     bool fixed = renderer->isOutOfFlowPositioned() && renderer->style()->position() == FixedPosition;
     if (fixed) {
         // FIXME: This doesn't work correctly with transforms.
-        FloatPoint fixedOffset = renderer->view()->localToAbsolute(FloatPoint(), true);
+        FloatPoint fixedOffset = renderer->view()->localToAbsolute(FloatPoint(), IsFixed);
         m_paintOffset = LayoutSize(fixedOffset.x(), fixedOffset.y()) + offset;
     } else
         m_paintOffset = prev->m_paintOffset + offset;
@@ -119,6 +119,10 @@ LayoutState::LayoutState(LayoutState* prev, RenderBox* renderer, const LayoutSiz
 #endif
 
     m_layoutDelta = m_next->m_layoutDelta;
+#if !ASSERT_DISABLED && ENABLE(SATURATED_LAYOUT_ARITHMETIC)
+    m_layoutDeltaXSaturated = m_next->m_layoutDeltaXSaturated;
+    m_layoutDeltaYSaturated = m_next->m_layoutDeltaYSaturated;
+#endif
     
     m_isPaginated = m_pageLogicalHeight || m_columnInfo || renderer->isRenderFlowThread();
 
@@ -135,6 +139,10 @@ LayoutState::LayoutState(LayoutState* prev, RenderBox* renderer, const LayoutSiz
 LayoutState::LayoutState(RenderObject* root)
     : m_clipped(false)
     , m_isPaginated(false)
+#if !ASSERT_DISABLED && ENABLE(SATURATED_LAYOUT_ARITHMETIC)
+    , m_layoutDeltaXSaturated(false)
+    , m_layoutDeltaYSaturated(false)
+#endif    
     , m_pageLogicalHeight(0)
     , m_pageLogicalHeightChanged(false)
     , m_columnInfo(0)
@@ -148,7 +156,7 @@ LayoutState::LayoutState(RenderObject* root)
 #endif
 {
     RenderObject* container = root->container();
-    FloatPoint absContentPoint = container->localToAbsolute(FloatPoint(), false, true);
+    FloatPoint absContentPoint = container->localToAbsolute(FloatPoint(), UseTransforms | SnapOffsetForTransforms);
     m_paintOffset = LayoutSize(absContentPoint.x(), absContentPoint.y());
 
     if (container->hasOverflowClip()) {

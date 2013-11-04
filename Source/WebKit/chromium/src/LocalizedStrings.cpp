@@ -268,14 +268,9 @@ String placeholderForYearField()
     return query(WebLocalizedString::PlaceholderForYearField);
 }
 
-String monthFormatInLDML()
-{
-    return query(WebLocalizedString::MonthFormatInLDML);
-}
-
 String weekFormatInLDML()
 {
-    return query(WebLocalizedString::WeekFormatInLDML);
+    return query(WebLocalizedString::WeekFormatTemplate);
 }
 
 #endif

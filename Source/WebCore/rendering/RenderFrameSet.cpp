@@ -459,6 +459,7 @@ FrameEdgeInfo RenderFrameSet::edgeInfo() const
 
 void RenderFrameSet::layout()
 {
+    StackStats::LayoutCheckPoint layoutCheckPoint;
     ASSERT(needsLayout());
 
     bool doFullRepaint = selfNeedsLayout() && checkForRepaintDuringLayout();
@@ -699,7 +700,7 @@ bool RenderFrameSet::userResize(MouseEvent* evt)
         if (needsLayout())
             return false;
         if (evt->type() == eventNames().mousedownEvent && evt->button() == LeftButton) {
-            FloatPoint localPos = absoluteToLocal(evt->absoluteLocation(), false, true);
+            FloatPoint localPos = absoluteToLocal(evt->absoluteLocation(), UseTransforms | SnapOffsetForTransforms);
             startResizing(m_cols, localPos.x());
             startResizing(m_rows, localPos.y());
             if (m_cols.m_splitBeingResized != noSplit || m_rows.m_splitBeingResized != noSplit) {
@@ -709,7 +710,7 @@ bool RenderFrameSet::userResize(MouseEvent* evt)
         }
     } else {
         if (evt->type() == eventNames().mousemoveEvent || (evt->type() == eventNames().mouseupEvent && evt->button() == LeftButton)) {
-            FloatPoint localPos = absoluteToLocal(evt->absoluteLocation(), false, true);
+            FloatPoint localPos = absoluteToLocal(evt->absoluteLocation(), UseTransforms | SnapOffsetForTransforms);
             continueResizing(m_cols, localPos.x());
             continueResizing(m_rows, localPos.y());
             if (evt->type() == eventNames().mouseupEvent && evt->button() == LeftButton) {

@@ -24,7 +24,6 @@ Libraries_libTestWebKitAPIMain_la_CPPFLAGS = \
 	-I$(top_builddir)/DerivedSources/WebKit2/include \
 	$(global_cppflags) \
 	$(javascriptcore_cppflags) \
-	$(GLIB_CFLAGS) \
 	$(GTK_CFLAGS)
 
 noinst_PROGRAMS += \
@@ -33,17 +32,14 @@ noinst_PROGRAMS += \
 Programs_TestWebKitAPI_TestWTF_CPPFLAGS = \
 	$(Libraries_libTestWebKitAPIMain_la_CPPFLAGS) \
 	$(GLIB_LIBS) \
-	$(CAIRO_CFLAGS) \
-	$(LIBSOUP_CFLAGS)
+	$(CAIRO_CFLAGS)
 
 Programs_TestWebKitAPI_TestWTF_LDADD = \
 	Libraries/libTestWebKitAPIMain.la \
 	Libraries/libgtest.la \
 	libWTF.la \
-	$(CAIRO_LIBS) \
-	$(GLIB_LIBS) \
 	$(GTK_LIBS) \
-	$(LIBSOUP_LIBS)
+	$(GLIB_LIBS)
 
 Programs_TestWebKitAPI_TestWTF_LDFLAGS = \
 	-no-install \
@@ -58,6 +54,7 @@ Programs_TestWebKitAPI_TestWTF_SOURCES = \
 	Tools/TestWebKitAPI/Tests/WTF/IntegerToStringConversion.cpp \
 	Tools/TestWebKitAPI/Tests/WTF/MathExtras.cpp \
 	Tools/TestWebKitAPI/Tests/WTF/MediaTime.cpp \
+	Tools/TestWebKitAPI/Tests/WTF/MemoryInstrumentationTest.cpp \
 	Tools/TestWebKitAPI/Tests/WTF/RedBlackTree.cpp \
 	Tools/TestWebKitAPI/Tests/WTF/SaturatedArithmeticOperations.cpp \
 	Tools/TestWebKitAPI/Tests/WTF/StringBuilder.cpp \
@@ -76,13 +73,18 @@ Programs_TestWebKitAPI_TestGtk_CPPFLAGS = \
 	$(Programs_TestWebKitAPI_TestWTF_CPPFLAGS) \
 	$(webcore_cppflags) \
 	$(webcoregtk_cppflags) \
-	$(CAIRO_CFLAGS) \
+	$(GLIB_CFLAGS) \
+	$(GTK_CFLAGS) \
 	$(LIBSOUP_CFLAGS)
 
 Programs_TestWebKitAPI_TestGtk_LDADD = \
-	$(Programs_TestWebKitAPI_TestWTF_LDADD) \
+	Libraries/libTestWebKitAPIMain.la \
+	Libraries/libgtest.la \
 	libjavascriptcoregtk-@WEBKITGTK_API_MAJOR_VERSION@.@WEBKITGTK_API_MINOR_VERSION@.la \
-	libwebkitgtk-@WEBKITGTK_API_MAJOR_VERSION@.@WEBKITGTK_API_MINOR_VERSION@.la
+	libwebkitgtk-@WEBKITGTK_API_MAJOR_VERSION@.@WEBKITGTK_API_MINOR_VERSION@.la \
+	$(GLIB_LIBS) \
+	$(GTK_LIBS) \
+	$(LIBSOUP_LIBS)
 
 Programs_TestWebKitAPI_TestGtk_LDFLAGS = \
 	$(Programs_TestWebKitAPI_TestWTF_LDFLAGS)
@@ -101,12 +103,19 @@ noinst_PROGRAMS += \
 
 Programs_TestWebKitAPI_TestWebKit2_CPPFLAGS = \
 	$(Programs_TestWebKitAPI_TestWTF_CPPFLAGS) \
-	-I$(top_builddir)/DerivedSources/WebKit2/include
+	-I$(top_builddir)/DerivedSources/WebKit2/include \
+	$(GLIB_CFLAGS) \
+	$(GTK_CFLAGS) \
+	$(LIBSOUP_CFLAGS)
 
 Programs_TestWebKitAPI_TestWebKit2_LDADD = \
-	$(Programs_TestWebKitAPI_TestWTF_LDADD) \
+	Libraries/libTestWebKitAPIMain.la \
+	Libraries/libgtest.la \
 	libjavascriptcoregtk-@WEBKITGTK_API_MAJOR_VERSION@.@WEBKITGTK_API_MINOR_VERSION@.la \
-	libwebkit2gtk-@WEBKITGTK_API_MAJOR_VERSION@.@WEBKITGTK_API_MINOR_VERSION@.la
+	libwebkit2gtk-@WEBKITGTK_API_MAJOR_VERSION@.@WEBKITGTK_API_MINOR_VERSION@.la \
+	$(GLIB_LIBS) \
+	$(GTK_LIBS) \
+	$(LIBSOUP_LIBS)
 
 Programs_TestWebKitAPI_TestWebKit2_LDFLAGS = \
 	$(Programs_TestWebKitAPI_TestWTF_LDFLAGS)

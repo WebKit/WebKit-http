@@ -35,18 +35,30 @@ from webkitpy.common.memoized import memoized
 # In this dictionary, each item stores:
 # * port_name -- a fully qualified port name
 # * specifiers -- a set of specifiers, representing configurations covered by this builder.
+# * move_overwritten_baselines_to -- (optional) list of platform directories that we will copy an existing
+#      baseline to before pulling down a new baseline during rebaselining. This is useful
+#      for bringing up a new port, for example when adding a Lion was the most recent Mac version and
+#      we wanted to bring up Mountain Lion, we would want to copy an existing baseline in platform/mac
+#      to platform/mac-mountainlion before updating the platform/mac entry.
+# * rebaseline_override_dir -- (optional) directory to put baselines in instead of where you would normally put them.
+#      This is useful when we don't have bots that cover particular configurations; so, e.g., you might
+#      support mac-mountainlion but not have a mac-mountainlion bot yet, so you'd want to put the mac-lion
+#      results into platform/mac temporarily.
+
 _exact_matches = {
     # These builders are on build.chromium.org.
-    "Webkit Win": {"port_name": "chromium-win-xp", "specifiers": set(["xp", "release"])},
-    "Webkit Win7": {"port_name": "chromium-win-win7", "specifiers": set(["win7"])},
-    "Webkit Win (dbg)(1)": {"port_name": "chromium-win-xp", "specifiers": set(["win", "debug"])},
-    "Webkit Win (dbg)(2)": {"port_name": "chromium-win-xp", "specifiers": set(["win", "debug"])},
-    "Webkit Linux": {"port_name": "chromium-linux-x86_64", "specifiers": set(["linux", "x86_64", "release"])},
-    "Webkit Linux 32": {"port_name": "chromium-linux-x86", "specifiers": set(["linux", "x86"])},
-    "Webkit Linux (dbg)": {"port_name": "chromium-linux-x86_64", "specifiers": set(["linux", "debug"])},
-    "Webkit Mac10.6": {"port_name": "chromium-mac-snowleopard", "specifiers": set(["snowleopard"])},
-    "Webkit Mac10.6 (dbg)": {"port_name": "chromium-mac-snowleopard", "specifiers": set(["snowleopard", "debug"])},
-    "Webkit Mac10.7": {"port_name": "chromium-mac-lion", "specifiers": set(["lion"])},
+    "WebKit XP": {"port_name": "chromium-win-xp", "specifiers": set(["xp", "release"])},
+    "WebKit Win7": {"port_name": "chromium-win-win7", "specifiers": set(["win7", "release"])},
+    "WebKit Win7 (dbg)(1)": {"port_name": "chromium-win-win7", "specifiers": set(["win7", "debug"])},
+    "WebKit Win7 (dbg)(2)": {"port_name": "chromium-win-win7", "specifiers": set(["win7", "debug"])},
+    "WebKit Linux": {"port_name": "chromium-linux-x86_64", "specifiers": set(["linux", "x86_64", "release"])},
+    "WebKit Linux 32": {"port_name": "chromium-linux-x86", "specifiers": set(["linux", "x86"])},
+    "WebKit Linux (dbg)": {"port_name": "chromium-linux-x86_64", "specifiers": set(["linux", "debug"])},
+    "WebKit Mac10.6": {"port_name": "chromium-mac-snowleopard", "specifiers": set(["snowleopard"])},
+    "WebKit Mac10.6 (dbg)": {"port_name": "chromium-mac-snowleopard", "specifiers": set(["snowleopard", "debug"])},
+    "WebKit Mac10.7": {"port_name": "chromium-mac-lion", "specifiers": set(["lion", "release"])},
+    "WebKit Mac10.7 (dbg)": {"port_name": "chromium-mac-lion", "specifiers": set(["lion", "debug"])},
+    "WebKit Mac10.8": {"port_name": "chromium-mac-mountainlion", "specifiers": set(["mountainlion", "release"])},
 
     # These builders are on build.webkit.org.
     "Apple MountainLion Release WK1 (Tests)": {"port_name": "mac-mountainlion", "specifiers": set(["mountainlion"]), "rebaseline_override_dir": "mac"},
@@ -117,6 +129,10 @@ def rebaseline_override_dir(builder_name):
     return _exact_matches[builder_name].get("rebaseline_override_dir", None)
 
 
+def move_overwritten_baselines_to(builder_name):
+    return _exact_matches[builder_name].get("move_overwritten_baselines_to", [])
+
+
 def port_name_for_builder_name(builder_name):
     if builder_name in _exact_matches:
         return _exact_matches[builder_name]["port_name"]
@@ -135,7 +151,3 @@ def builder_name_for_port_name(target_port_name):
 
 def builder_path_for_port_name(port_name):
     builder_path_from_name(builder_name_for_port_name(port_name))
-
-
-def fallback_port_names_for_new_port(builder_name):
-    return _exact_matches[builder_name].get("move_overwritten_baselines_to", [])

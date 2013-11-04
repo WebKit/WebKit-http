@@ -37,8 +37,6 @@ using namespace std;
 
 namespace JSC {
 
-ASSERT_CLASS_FITS_IN_CELL(JSActivation);
-
 const ClassInfo JSActivation::s_info = { "JSActivation", &Base::s_info, 0, 0, CREATE_METHOD_TABLE(JSActivation) };
 
 void JSActivation::visitChildren(JSCell* cell, SlotVisitor& visitor)
@@ -49,7 +47,7 @@ void JSActivation::visitChildren(JSCell* cell, SlotVisitor& visitor)
     ASSERT(thisObject->structure()->typeInfo().overridesVisitChildren());
     Base::visitChildren(thisObject, visitor);
 
-    // No need to mark our registers if they're still in the RegisterFile.
+    // No need to mark our registers if they're still in the JSStack.
     if (!thisObject->isTornOff())
         return;
 
@@ -116,11 +114,11 @@ void JSActivation::getOwnNonIndexPropertyNames(JSObject* object, ExecState* exec
 
     SymbolTable::const_iterator end = thisObject->symbolTable()->end();
     for (SymbolTable::const_iterator it = thisObject->symbolTable()->begin(); it != end; ++it) {
-        if (it->second.getAttributes() & DontEnum && mode != IncludeDontEnumProperties)
+        if (it->value.getAttributes() & DontEnum && mode != IncludeDontEnumProperties)
             continue;
-        if (!thisObject->isValid(it->second))
+        if (!thisObject->isValid(it->value))
             continue;
-        propertyNames.add(Identifier(exec, it->first.get()));
+        propertyNames.add(Identifier(exec, it->key.get()));
     }
     // Skip the JSVariableObject implementation of getOwnNonIndexPropertyNames
     JSObject::getOwnNonIndexPropertyNames(thisObject, exec, propertyNames, mode);
@@ -133,7 +131,7 @@ inline bool JSActivation::symbolTablePutWithAttributes(JSGlobalData& globalData,
     SymbolTable::iterator iter = symbolTable()->find(propertyName.publicName());
     if (iter == symbolTable()->end())
         return false;
-    SymbolTableEntry& entry = iter->second;
+    SymbolTableEntry& entry = iter->value;
     ASSERT(!entry.isNull());
     if (!isValid(entry))
         return false;

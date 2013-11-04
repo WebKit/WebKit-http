@@ -40,8 +40,8 @@ PassRefPtr<WebConnectionToWebProcess> WebConnectionToWebProcess::create(WebProce
 }
 
 WebConnectionToWebProcess::WebConnectionToWebProcess(WebProcessProxy* process, CoreIPC::Connection::Identifier connectionIdentifier, RunLoop* runLoop)
-    : m_process(process)
-    , m_connection(CoreIPC::Connection::createServerConnection(connectionIdentifier, this, runLoop))
+    : WebConnection(CoreIPC::Connection::createServerConnection(connectionIdentifier, this, runLoop))
+    , m_process(process)
 {
 #if OS(DARWIN)
     m_connection->setShouldCloseConnectionOnMachExceptions();
@@ -50,51 +50,38 @@ WebConnectionToWebProcess::WebConnectionToWebProcess(WebProcessProxy* process, C
 #endif
 }
 
-void WebConnectionToWebProcess::invalidate()
-{
-    m_connection->invalidate();
-    m_connection = nullptr;
-    m_process = 0;
-}
-
 // WebConnection
 
-void WebConnectionToWebProcess::postMessage(const String& messageName, APIObject* messageBody)
+void WebConnectionToWebProcess::encodeMessageBody(CoreIPC::ArgumentEncoder& encoder, APIObject* messageBody)
 {
-    // We need to check if we have an underlying process here since a user of the API can hold
-    // onto us and call postMessage even after the process has been invalidated.
-    if (!m_process)
-        return;
+    encoder.encode(WebContextUserMessageEncoder(messageBody));
+}
 
-    m_process->deprecatedSend(WebConnectionLegacyMessage::PostMessage, 0, CoreIPC::In(messageName, WebContextUserMessageEncoder(messageBody)));
+bool WebConnectionToWebProcess::decodeMessageBody(CoreIPC::ArgumentDecoder& decoder, RefPtr<APIObject>& messageBody)
+{
+    WebContextUserMessageDecoder messageBodyDecoder(messageBody, m_process);
+
+    if (!decoder.decode(messageBodyDecoder))
+        return false;
+
+    return true;
 }
 
 // CoreIPC::Connection::Client
 
-void WebConnectionToWebProcess::didReceiveMessage(CoreIPC::Connection* connection, CoreIPC::MessageID messageID, CoreIPC::ArgumentDecoder* arguments)
+void WebConnectionToWebProcess::didReceiveMessage(CoreIPC::Connection* connection, CoreIPC::MessageID messageID, CoreIPC::MessageDecoder& decoder)
 {
-    if (messageID.is<CoreIPC::MessageClassWebConnectionLegacy>()) {
-        switch (messageID.get<WebConnectionLegacyMessage::Kind>()) {
-            case WebConnectionLegacyMessage::PostMessage: {
-                String messageName;
-                RefPtr<APIObject> messageBody;
-                WebContextUserMessageDecoder messageDecoder(messageBody, m_process);
-                if (!arguments->decode(CoreIPC::Out(messageName, messageDecoder)))
-                    return;
-
-                forwardDidReceiveMessageToClient(messageName, messageBody.get());
-                return;
-            }
-        }
+    if (messageID.is<CoreIPC::MessageClassWebConnection>()) {
+        didReceiveWebConnectionMessage(connection, messageID, decoder);
         return;
     }
 
-    m_process->didReceiveMessage(connection, messageID, arguments);
+    m_process->didReceiveMessage(connection, messageID, decoder);
 }
 
-void WebConnectionToWebProcess::didReceiveSyncMessage(CoreIPC::Connection* connection, CoreIPC::MessageID messageID, CoreIPC::ArgumentDecoder* arguments, OwnPtr<CoreIPC::ArgumentEncoder>& reply)
+void WebConnectionToWebProcess::didReceiveSyncMessage(CoreIPC::Connection* connection, CoreIPC::MessageID messageID, CoreIPC::MessageDecoder& decoder, OwnPtr<CoreIPC::MessageEncoder>& replyEncoder)
 {
-    m_process->didReceiveSyncMessage(connection, messageID, arguments, reply);
+    m_process->didReceiveSyncMessage(connection, messageID, decoder, replyEncoder);
 }
 
 void WebConnectionToWebProcess::didClose(CoreIPC::Connection* connection)

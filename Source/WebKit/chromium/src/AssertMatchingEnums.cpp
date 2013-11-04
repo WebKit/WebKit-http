@@ -64,6 +64,7 @@
 #include "PageVisibilityState.h"
 #include "PeerConnection00.h"
 #include "PlatformCursor.h"
+#include "RTCDataChannelDescriptor.h"
 #include "RTCPeerConnectionHandlerClient.h"
 #include "ReferrerPolicy.h"
 #include "ResourceResponse.h"
@@ -116,6 +117,7 @@
 #include <public/WebMediaStreamSource.h>
 #include <public/WebPeerConnection00Handler.h>
 #include <public/WebPeerConnection00HandlerClient.h>
+#include <public/WebRTCDataChannel.h>
 #include <public/WebRTCPeerConnectionHandler.h>
 #include <public/WebRTCPeerConnectionHandlerClient.h>
 #include <public/WebReferrerPolicy.h>
@@ -151,6 +153,8 @@ COMPILE_ASSERT_MATCHING_ENUM(WebAccessibilityNotificationRowCountChanged, AXObje
 COMPILE_ASSERT_MATCHING_ENUM(WebAccessibilityNotificationRowCollapsed, AXObjectCache::AXRowCollapsed);
 COMPILE_ASSERT_MATCHING_ENUM(WebAccessibilityNotificationRowExpanded, AXObjectCache::AXRowExpanded);
 COMPILE_ASSERT_MATCHING_ENUM(WebAccessibilityNotificationInvalidStatusChanged, AXObjectCache::AXInvalidStatusChanged);
+COMPILE_ASSERT_MATCHING_ENUM(WebAccessibilityNotificationTextChanged, AXObjectCache::AXTextChanged);
+COMPILE_ASSERT_MATCHING_ENUM(WebAccessibilityNotificationAriaAttributeChanged, AXObjectCache::AXAriaAttributeChanged);
 
 COMPILE_ASSERT_MATCHING_ENUM(WebAccessibilityRoleUnknown, UnknownRole);
 COMPILE_ASSERT_MATCHING_ENUM(WebAccessibilityRoleButton, ButtonRole);
@@ -591,6 +595,11 @@ COMPILE_ASSERT_MATCHING_ENUM(WebRTCPeerConnectionHandlerClient::ICEStateConnecte
 COMPILE_ASSERT_MATCHING_ENUM(WebRTCPeerConnectionHandlerClient::ICEStateCompleted, RTCPeerConnectionHandlerClient::IceStateCompleted);
 COMPILE_ASSERT_MATCHING_ENUM(WebRTCPeerConnectionHandlerClient::ICEStateFailed, RTCPeerConnectionHandlerClient::IceStateFailed);
 COMPILE_ASSERT_MATCHING_ENUM(WebRTCPeerConnectionHandlerClient::ICEStateClosed, RTCPeerConnectionHandlerClient::IceStateClosed);
+
+COMPILE_ASSERT_MATCHING_ENUM(WebRTCDataChannel::ReadyStateConnecting, RTCDataChannelDescriptor::ReadyStateConnecting);
+COMPILE_ASSERT_MATCHING_ENUM(WebRTCDataChannel::ReadyStateOpen, RTCDataChannelDescriptor::ReadyStateOpen);
+COMPILE_ASSERT_MATCHING_ENUM(WebRTCDataChannel::ReadyStateClosing, RTCDataChannelDescriptor::ReadyStateClosing);
+COMPILE_ASSERT_MATCHING_ENUM(WebRTCDataChannel::ReadyStateClosed, RTCDataChannelDescriptor::ReadyStateClosed);
 #endif
 
 #if ENABLE(SCRIPTED_SPEECH)

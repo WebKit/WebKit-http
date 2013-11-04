@@ -29,6 +29,7 @@
 #if ENABLE(VIBRATION)
 
 #include "WebContext.h"
+#include "WebVibrationProxyMessages.h"
 
 namespace WebKit {
 
@@ -40,6 +41,7 @@ PassRefPtr<WebVibrationProxy> WebVibrationProxy::create(WebContext* context)
 WebVibrationProxy::WebVibrationProxy(WebContext* context)
     : m_context(context)
 {
+    m_context->addMessageReceiver(Messages::WebVibrationProxy::messageReceiverName(), this);
 }
 
 WebVibrationProxy::~WebVibrationProxy()
@@ -56,9 +58,9 @@ void WebVibrationProxy::initializeProvider(const WKVibrationProvider* provider)
     m_provider.initialize(provider);
 }
 
-void WebVibrationProxy::didReceiveMessage(CoreIPC::Connection* connection, CoreIPC::MessageID messageID, CoreIPC::ArgumentDecoder* arguments)
+void WebVibrationProxy::didReceiveMessage(CoreIPC::Connection* connection, CoreIPC::MessageID messageID, CoreIPC::MessageDecoder& decoder)
 {
-    didReceiveWebVibrationProxyMessage(connection, messageID, arguments);
+    didReceiveWebVibrationProxyMessage(connection, messageID, decoder);
 }
 
 void WebVibrationProxy::vibrate(uint64_t vibrationTime)

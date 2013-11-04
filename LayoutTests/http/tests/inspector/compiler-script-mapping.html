@@ -11,7 +11,7 @@ function test()
     function createCompilerScriptMapping()
     {
         InspectorTest.createWorkspace();
-        var compilerScriptMapping = new WebInspector.CompilerScriptMapping(InspectorTest.testWorkspace);
+        var compilerScriptMapping = new WebInspector.CompilerScriptMapping(InspectorTest.testWorkspace, InspectorTest.testNetworkWorkspaceProvider);
         var resourceScriptMapping = new WebInspector.ResourceScriptMapping(InspectorTest.testWorkspace);
         return compilerScriptMapping;
     }
@@ -142,11 +142,12 @@ function test()
 
             function step1()
             {
-                InspectorTest.waitForWorkspaceUISourceCodeAddedEvent(originalUISourceCodeAdded);
+                InspectorTest.waitForWorkspaceTemporaryUISourceCodeAddedEvent(originalUISourceCodeAdded);
                 script = InspectorTest.createScriptMock("compiled.js", 0, 0, true, "");
                 script.sourceMapURL = "http://localhost:8000/inspector/resources/source-map.json";
                 script.setSourceMapping(mapping);
                 mapping.addScript(script);
+                afterScriptAdded();
             }
 
             function originalUISourceCodeAdded(uiSourceCode)
@@ -165,10 +166,12 @@ function test()
                 InspectorTest.addMockUISourceCodeToWorkspace("compiled.js", WebInspector.resourceTypes.Script, "");
             }
 
-            function originalResourceUISourceCodeAdded(uiSourceCode)
+            function originalResourceUISourceCodeAdded(uiSourceCode) { }
+
+            function afterScriptAdded(uiSourceCode)
             {
-                var uiSourceCode1 = mapping._uiSourceCodeByURL["http://localhost:8000/inspector/resources/source1.js"];
-                var uiSourceCode2 = mapping._uiSourceCodeByURL["http://localhost:8000/inspector/resources/source2.js"];
+                var uiSourceCode1 = InspectorTest.testWorkspace.uiSourceCodeForURL("http://localhost:8000/inspector/resources/source1.js");
+                var uiSourceCode2 = InspectorTest.testWorkspace.uiSourceCodeForURL("http://localhost:8000/inspector/resources/source2.js");
                 var originalUISourceCode = mapping._originalUISourceCodeForScriptId[script.scriptId];
 
                 InspectorTest.checkUILocation(uiSourceCode1, 4, 4, script.rawLocationToUILocation(0, 81));
@@ -199,8 +202,7 @@ function test()
         function testInlinedSourceMap(next)
         {
             WebInspector.debuggerModel._reset();
-            var workspace = new WebInspector.Workspace();
-            var mapping = new WebInspector.CompilerScriptMapping(workspace);
+            var mapping = createCompilerScriptMapping();
             var script = InspectorTest.createScriptMock("http://example.com/compiled.js", 0, 0, true, "");
             var sourceMap = {
                 "file":"compiled.js",
@@ -209,9 +211,18 @@ function test()
                 "sourcesContent":["<source content>"]
             };
             script.sourceMapURL = "data:application/json;base64," + btoa(JSON.stringify(sourceMap));
+            InspectorTest.waitForWorkspaceTemporaryUISourceCodeAddedEvent(originalUISourceCodeAdded);
+
+            function originalUISourceCodeAdded(uiSourceCode)
+            {
+                InspectorTest.waitForWorkspaceUISourceCodeAddedEvent(compiledUISourceCodeAdded);
+            }
+
+            function compiledUISourceCodeAdded(uiSourceCode) { }
+            
             mapping.addScript(script);
 
-            var uiSourceCode = mapping._uiSourceCodeByURL["source.js"];
+            var uiSourceCode = InspectorTest.testWorkspace.uiSourceCodeForURL("source.js");
 
             InspectorTest.checkUILocation(uiSourceCode, 2, 4, mapping.rawLocationToUILocation(WebInspector.debuggerModel.createRawLocation(script, 0, 18)));
             InspectorTest.checkRawLocation(script, 0, 18, mapping.uiLocationToRawLocation(uiSourceCode, 2, 4));
@@ -229,7 +240,10 @@ function test()
         {
             WebInspector.settings.sourceMapsEnabled.set(true);
             WebInspector.debuggerModel._reset();
+            var networkWorkspaceProvider = new WebInspector.NetworkWorkspaceProvider();
             var workspace = new WebInspector.Workspace();
+            workspace.addProject("network", networkWorkspaceProvider);
+
             var debuggerScriptMapping = new WebInspector.DebuggerScriptMapping(workspace);
 
             var script = InspectorTest.createScriptMock("compiled.js", 0, 0, true, "");

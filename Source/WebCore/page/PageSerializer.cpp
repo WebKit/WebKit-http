@@ -267,7 +267,7 @@ void PageSerializer::serializeCSSStyleSheet(CSSStyleSheet* styleSheet, const KUR
         Document* document = styleSheet->ownerDocument();
         // Some rules have resources associated with them that we need to retrieve.
         if (rule->isImportRule()) {
-            CSSImportRule* importRule = static_cast<CSSImportRule*>(rule);            
+            CSSImportRule* importRule = static_cast<CSSImportRule*>(rule);
             KURL importURL = document->completeURL(importRule->href());
             if (m_resourceURLs.contains(importURL))
                 continue;
@@ -298,8 +298,17 @@ void PageSerializer::addImageToResources(CachedImage* image, RenderObject* image
     if (!image || image->image() == Image::nullImage())
         return;
 
+    RefPtr<SharedBuffer> data = imageRenderer ? image->imageForRenderer(imageRenderer)->data() : 0;
+    if (!data)
+        data = image->image()->data();
+
+    if (!data) {
+        LOG_ERROR("No data for image %s", url.string().utf8().data());
+        return;
+    }
+
     String mimeType = image->response().mimeType();
-    m_resources->append(Resource(url, mimeType, imageRenderer ? image->imageForRenderer(imageRenderer)->data() : image->image()->data()));
+    m_resources->append(Resource(url, mimeType, data));
     m_resourceURLs.add(url);
 }
 
@@ -339,7 +348,7 @@ KURL PageSerializer::urlForBlankFrame(Frame* frame)
 {
     HashMap<Frame*, KURL>::iterator iter = m_blankFrameURLs.find(frame);
     if (iter != m_blankFrameURLs.end())
-        return iter->second;
+        return iter->value;
     String url = "wyciwyg://frame/" + String::number(m_blankFrameCounter++);
     KURL fakeURL(ParsedURLString, url);
     m_blankFrameURLs.add(frame, fakeURL);

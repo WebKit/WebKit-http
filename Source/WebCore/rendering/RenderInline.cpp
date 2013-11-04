@@ -40,7 +40,9 @@
 #include "TransformState.h"
 #include "VisiblePosition.h"
 
-#if ENABLE(DASHBOARD_SUPPORT) || ENABLE(WIDGET_REGION)
+#include <wtf/TemporaryChange.h>
+
+#if ENABLE(DASHBOARD_SUPPORT) || ENABLE(DRAGGABLE_REGION)
 #include "Frame.h"
 #endif
 
@@ -167,11 +169,18 @@ void RenderInline::styleDidChange(StyleDifference diff, const RenderStyle* oldSt
     // need to pass its style on to anyone else.
     RenderStyle* newStyle = style();
     RenderInline* continuation = inlineElementContinuation();
-    for (RenderInline* currCont = continuation; currCont; currCont = currCont->inlineElementContinuation()) {
-        RenderBoxModelObject* nextCont = currCont->continuation();
-        currCont->setContinuation(0);
-        currCont->setStyle(newStyle);
-        currCont->setContinuation(nextCont);
+    {
+        TemporaryChange<bool> enableAfter(RenderObjectChildList::s_enableUpdateBeforeAfterContent, false);
+        RenderInline* nextInlineElementCont = 0;
+        for (RenderInline* currCont = continuation; currCont; currCont = nextInlineElementCont) {
+            nextInlineElementCont = currCont->inlineElementContinuation();
+            // We need to update :after content for the last continuation in the chain.
+            RenderObjectChildList::s_enableUpdateBeforeAfterContent = !nextInlineElementCont;
+            RenderBoxModelObject* nextCont = currCont->continuation();
+            currCont->setContinuation(0);
+            currCont->setStyle(newStyle);
+            currCont->setContinuation(nextCont);
+        }
     }
 
     // If an inline's in-flow positioning has changed then any descendant blocks will need to change their in-flow positioning accordingly.
@@ -1103,7 +1112,7 @@ LayoutSize RenderInline::offsetFromContainer(RenderObject* container, const Layo
     return offset;
 }
 
-void RenderInline::mapLocalToContainer(RenderLayerModelObject* repaintContainer, TransformState& transformState, MapLocalToContainerFlags mode, bool* wasFixed) const
+void RenderInline::mapLocalToContainer(RenderLayerModelObject* repaintContainer, TransformState& transformState, MapCoordinatesFlags mode, bool* wasFixed) const
 {
     if (repaintContainer == this)
         return;
@@ -1292,7 +1301,7 @@ LayoutUnit RenderInline::lineHeight(bool firstLine, LineDirectionMode /*directio
     return style()->computedLineHeight(view());
 }
 
-LayoutUnit RenderInline::baselinePosition(FontBaseline baselineType, bool firstLine, LineDirectionMode direction, LinePositionMode linePositionMode) const
+int RenderInline::baselinePosition(FontBaseline baselineType, bool firstLine, LineDirectionMode direction, LinePositionMode linePositionMode) const
 {
     const FontMetrics& fontMetrics = style(firstLine)->fontMetrics();
     return fontMetrics.ascent(baselineType) + (lineHeight(firstLine, direction, linePositionMode) - fontMetrics.height()) / 2;
@@ -1525,13 +1534,14 @@ void RenderInline::paintOutlineForLine(GraphicsContext* graphicsContext, const L
             antialias);
 }
 
-#if ENABLE(DASHBOARD_SUPPORT) || ENABLE(WIDGET_REGION)
-void RenderInline::addDashboardRegions(Vector<DashboardRegionValue>& regions)
+#if ENABLE(DASHBOARD_SUPPORT) || ENABLE(DRAGGABLE_REGION)
+void RenderInline::addAnnotatedRegions(Vector<AnnotatedRegionValue>& regions)
 {
     // Convert the style regions to absolute coordinates.
     if (style()->visibility() != VISIBLE)
         return;
 
+#if ENABLE(DASHBOARD_SUPPORT)
     const Vector<StyleDashboardRegion>& styleRegions = style()->dashboardRegions();
     unsigned i, count = styleRegions.size();
     for (i = 0; i < count; i++) {
@@ -1541,7 +1551,7 @@ void RenderInline::addDashboardRegions(Vector<DashboardRegionValue>& regions)
         LayoutUnit w = linesBoundingBox.width();
         LayoutUnit h = linesBoundingBox.height();
 
-        DashboardRegionValue region;
+        AnnotatedRegionValue region;
         region.label = styleRegion.label;
         region.bounds = LayoutRect(linesBoundingBox.x() + styleRegion.offset.left().value(),
                                 linesBoundingBox.y() + styleRegion.offset.top().value(),
@@ -1566,6 +1576,24 @@ void RenderInline::addDashboardRegions(Vector<DashboardRegionValue>& regions)
 
         regions.append(region);
     }
+#else // ENABLE(DRAGGABLE_REGION)
+    if (style()->getDraggableRegionMode() == DraggableRegionNone)
+        return;
+
+    AnnotatedRegionValue region;
+    region.draggable = style()->getDraggableRegionMode() == DraggableRegionDrag;
+    region.bounds = linesBoundingBox();
+
+    RenderObject* container = containingBlock();
+    if (!container)
+        container = this;
+
+    FloatPoint absPos = container->localToAbsolute();
+    region.bounds.setX(absPos.x() + region.bounds.x());
+    region.bounds.setY(absPos.y() + region.bounds.y());
+    
+    regions.append(region);
+#endif
 }
 #endif
 

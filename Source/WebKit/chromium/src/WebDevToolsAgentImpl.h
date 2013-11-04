@@ -36,8 +36,7 @@
 
 #include "WebDevToolsAgentPrivate.h"
 #include "WebPageOverlay.h"
-#include "platform/WebSize.h"
-
+#include <public/WebSize.h>
 #include <wtf/Forward.h>
 #include <wtf/OwnPtr.h>
 
@@ -107,6 +106,7 @@ public:
     virtual void autoZoomPageToFitWidth();
 
     virtual void getAllocatedObjects(HashSet<const void*>&);
+    virtual void dumpUncountedAllocatedObjects(const HashMap<const void*, size_t>&);
 
     int hostId() { return m_hostId; }
 

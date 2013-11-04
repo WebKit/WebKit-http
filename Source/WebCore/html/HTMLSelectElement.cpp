@@ -106,7 +106,7 @@ void HTMLSelectElement::optionSelectedByUser(int optionIndex, bool fireOnChangeN
     // User interaction such as mousedown events can cause list box select elements to send change events.
     // This produces that same behavior for changes triggered by other code running on behalf of the user.
     if (!usesMenuList()) {
-        updateSelectedState(optionIndex, allowMultipleSelection, false);
+        updateSelectedState(optionToListIndex(optionIndex), allowMultipleSelection, false);
         setNeedsValidityCheck();
         if (fireOnChangeNow)
             listBoxOnChange();
@@ -1289,7 +1289,7 @@ void HTMLSelectElement::listBoxDefaultEventHandler(Event* event)
 
         // Convert to coords relative to the list box if needed.
         MouseEvent* mouseEvent = static_cast<MouseEvent*>(event);
-        IntPoint localOffset = roundedIntPoint(renderer()->absoluteToLocal(mouseEvent->absoluteLocation(), false, true));
+        IntPoint localOffset = roundedIntPoint(renderer()->absoluteToLocal(mouseEvent->absoluteLocation(), UseTransforms | SnapOffsetForTransforms));
         int listIndex = toRenderListBox(renderer())->listIndexAtOffset(toSize(localOffset));
         if (listIndex >= 0) {
             if (!disabled()) {
@@ -1309,11 +1309,15 @@ void HTMLSelectElement::listBoxDefaultEventHandler(Event* event)
         if (mouseEvent->button() != LeftButton || !mouseEvent->buttonDown())
             return;
 
-        IntPoint localOffset = roundedIntPoint(renderer()->absoluteToLocal(mouseEvent->absoluteLocation(), false, true));
+        IntPoint localOffset = roundedIntPoint(renderer()->absoluteToLocal(mouseEvent->absoluteLocation(), UseTransforms | SnapOffsetForTransforms));
         int listIndex = toRenderListBox(renderer())->listIndexAtOffset(toSize(localOffset));
         if (listIndex >= 0) {
             if (!disabled()) {
                 if (m_multiple) {
+                    // Only extend selection if there is something selected.
+                    if (m_activeSelectionAnchorIndex < 0)
+                        return;
+
                     setActiveSelectionEndIndex(listIndex);
                     updateListBoxSelection(false);
                 } else {
@@ -1514,8 +1518,10 @@ void HTMLSelectElement::typeAheadFind(KeyboardEvent* event)
         return;
 
     int selected = selectedIndex();
-    int index = (optionToListIndex(selected >= 0 ? selected : 0) + searchStartOffset) % itemCount;
-    ASSERT(index >= 0);
+    int index = optionToListIndex(selected >= 0 ? selected : 0) + searchStartOffset;
+    if (index < 0)
+        return;
+    index %= itemCount;
 
     // Compute a case-folded copy of the prefix string before beginning the search for
     // a matching element. This code uses foldCase to work around the fact that

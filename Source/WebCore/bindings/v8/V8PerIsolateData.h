@@ -52,10 +52,13 @@ class V8PerIsolateData {
 public:
     static V8PerIsolateData* create(v8::Isolate*);
     static void ensureInitialized(v8::Isolate*);
-    static V8PerIsolateData* current(v8::Isolate* isolate = 0)
+    static V8PerIsolateData* current()
     {
-        if (UNLIKELY(!isolate))
-            isolate = v8::Isolate::GetCurrent();
+        return from(v8::Isolate::GetCurrent());
+    }
+    static V8PerIsolateData* from(v8::Isolate* isolate)
+    {
+        ASSERT(isolate);
         ASSERT(isolate->GetData());
         return static_cast<V8PerIsolateData*>(isolate->GetData()); 
     }
@@ -74,6 +77,8 @@ public:
 
     StringCache* stringCache() { return m_stringCache.get(); }
     IntegerCache* integerCache() { return m_integerCache.get(); }
+
+    v8::Persistent<v8::Value> ensureLiveRoot();
 
 #if ENABLE(INSPECTOR)
     void visitExternalStrings(ExternalStringVisitor*);
@@ -135,10 +140,11 @@ private:
     OwnPtr<StringCache> m_stringCache;
     OwnPtr<IntegerCache> m_integerCache;
 
-    DOMDataList m_domDataList;
+    Vector<DOMDataStore*> m_domDataList;
     DOMDataStore* m_domDataStore;
 
     OwnPtr<V8HiddenPropertyName> m_hiddenPropertyName;
+    ScopedPersistent<v8::Value> m_liveRoot;
     ScopedPersistent<v8::Context> m_auxiliaryContext;
 
     bool m_constructorMode;

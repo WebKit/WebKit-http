@@ -484,7 +484,7 @@ bool ClipboardWin::setData(const String& type, const String& data)
     return false;
 }
 
-static void addMimeTypesForFormat(HashSet<String>& results, const FORMATETC& format)
+static void addMimeTypesForFormat(ListHashSet<String>& results, const FORMATETC& format)
 {
     // URL and Text are provided for compatibility with IE's model
     if (format.cfFormat == urlFormat()->cfFormat || format.cfFormat == urlWFormat()->cfFormat) {
@@ -499,9 +499,9 @@ static void addMimeTypesForFormat(HashSet<String>& results, const FORMATETC& for
 }
 
 // extensions beyond IE's API
-HashSet<String> ClipboardWin::types() const
+ListHashSet<String> ClipboardWin::types() const
 { 
-    HashSet<String> results; 
+    ListHashSet<String> results;
     if (policy() != ClipboardReadable && policy() != ClipboardTypesReadable)
         return results;
 
@@ -525,7 +525,7 @@ HashSet<String> ClipboardWin::types() const
     } else {
         for (DragDataMap::const_iterator it = m_dragDataMap.begin(); it != m_dragDataMap.end(); ++it) {
             FORMATETC data;
-            data.cfFormat = (*it).first;
+            data.cfFormat = (*it).key;
             addMimeTypesForFormat(results, data);
         }
     }

@@ -5,16 +5,15 @@ Mutation
 PageLoad/svg/files/33041-Samurai.svg
 
 # Takes too long to load
-PageLoad/svg/files/Sierpinski_carpet_6.svg
+SVG/SierpinskiCarpet.html
 
-PageLoad/svg/files/az-lizard_benji_park_01.svg
-PageLoad/svg/files/france.svg
-PageLoad/svg/files/francobollo_gnome_ezechi_02.svg
-PageLoad/svg/files/gearflowers.svg
-PageLoad/svg/files/hereGear4.svg
+SVG/France.html
+SVG/FrancoBolloGnomeEzechi.html
+SVG/GearFlowers.html
+SVG/HereGear.html
 
 # Takes 22s on MacBookPro
-PageLoad/svg/files/mtsthelens.svg
+SVG/MtSaintHelens.html
 
 # Do not conform to WebKit or Chromium perf test styles
 SunSpider
@@ -22,6 +21,9 @@ XSSAuditor
 
 # https://bugs.webkit.org/show_bug.cgi?id=95376
 Dromaeo/jslib-modify-jquery.html
+
+# https://bugs.webkit.org/show_bug.cgi?id=98708
+Layout/subtree-detaching.html
 
 # We have pure JS tests separately outside Dromaeo.
 Dromaeo/sunspider-3d-morph.html
@@ -54,4 +56,7 @@ Dromaeo/v8-richards.html
 
 # Bug 77024 - Web Inspector: tests in PerformanceTests/inspector/ are timing out
 inspector
+
+# Bug 100262 - REGRESSION(r131982): this test is crashing
+SVG/SvgNestedUse.html
 

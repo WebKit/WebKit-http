@@ -39,8 +39,8 @@
 #include "V8InspectorFrontendHost.h"
 #include "WebDevToolsFrontendClient.h"
 #include "WebDevToolsFrontendImpl.h"
-#include "platform/WebFloatPoint.h"
-#include "platform/WebString.h"
+#include <public/WebFloatPoint.h>
+#include <public/WebString.h>
 #include <wtf/text/WTFString.h>
 
 using namespace WebCore;
@@ -103,19 +103,15 @@ void InspectorFrontendClientImpl::closeWindow()
     m_client->closeWindow();
 }
 
-void InspectorFrontendClientImpl::requestAttachWindow()
+void InspectorFrontendClientImpl::requestSetDockSide(DockSide side)
 {
-    m_client->requestDockWindow();
-}
-
-void InspectorFrontendClientImpl::requestDetachWindow()
-{
-    m_client->requestUndockWindow();
-}
-
-void InspectorFrontendClientImpl::requestSetDockSide(const String& side)
-{
-    m_client->requestSetDockSide(side);
+    String sideString = "undocked";
+    switch (side) {
+    case DOCKED_TO_RIGHT: sideString = "right"; break;
+    case DOCKED_TO_BOTTOM: sideString = "bottom"; break;
+    case UNDOCKED: sideString = "undocked"; break;
+    }
+    m_client->requestSetDockSide(sideString);
 }
 
 void InspectorFrontendClientImpl::changeAttachedWindowHeight(unsigned)

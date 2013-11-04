@@ -21,6 +21,18 @@ InspectorTest.dumpConsoleMessages = function(printOriginatingCommand)
     return result;
 }
 
+InspectorTest.dumpConsoleMessagesWithStyles = function(sortMessages)
+{
+    var result = [];
+    var messages = WebInspector.consoleView.messages;
+    for (var i = 0; i < messages.length; ++i) {
+        var element = messages[i].toMessageElement();
+        InspectorTest.addResult(element.textContent.replace(/\u200b/g, ""));
+        var cssText = element.querySelector(".console-message-text span").style.cssText || "NO STYLES DEFINED.";
+        InspectorTest.addResult("Style: " + cssText);
+    }
+}
+
 InspectorTest.dumpConsoleMessagesWithClasses = function(sortMessages) {
     var result = [];
     var messages = WebInspector.consoleView.messages;

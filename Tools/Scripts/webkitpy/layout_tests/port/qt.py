@@ -62,7 +62,7 @@ class QtPort(Port):
     def __init__(self, host, port_name, **kwargs):
         super(QtPort, self).__init__(host, port_name, **kwargs)
 
-        # FIXME: This will allow Port.baseline_search_path and Port._skipped_file_search_paths
+        # FIXME: This will allow Port.baseline_search_path
         # to do the right thing, but doesn't include support for qt-4.8 or qt-arm (seen in LayoutTests/platform) yet.
         self._operating_system = port_name.replace('qt-', '')
 
@@ -88,9 +88,9 @@ class QtPort(Port):
 
     def _path_to_webcore_library(self):
         if self.operating_system() == 'mac':
-            return self._build_path('lib/QtWebKit.framework/QtWebKit')
+            return self._build_path('lib/QtWebKitWidgets.framework/QtWebKitWidgets')
         else:
-            return self._build_path('lib/libQtWebKit.so')
+            return self._build_path('lib/libQtWebKitWidgets.so')
 
     def _modules_to_search_for_symbols(self):
         # We search in every library to be reliable in the case of building with CONFIG+=force_static_libs_as_shared.
@@ -115,8 +115,6 @@ class QtPort(Port):
         return version
 
     def _search_paths(self):
-        # Qt port uses same paths for baseline_search_path and _skipped_file_search_paths
-        #
         # qt-5.0-wk1    qt-5.0-wk2
         #            \/
         #         qt-5.0    qt-4.8
@@ -160,6 +158,7 @@ class QtPort(Port):
         self._copy_value_from_environ_if_set(clean_env, 'DISABLE_NI_WARNING')
         self._copy_value_from_environ_if_set(clean_env, 'QT_WEBKIT_PAUSE_UI_PROCESS')
         self._copy_value_from_environ_if_set(clean_env, 'QT_QPA_PLATFORM_PLUGIN_PATH')
+        self._copy_value_from_environ_if_set(clean_env, 'QT_WEBKIT_DISABLE_UIPROCESS_DUMPPIXELS')
         return clean_env
 
     # FIXME: We should find a way to share this implmentation with Gtk,

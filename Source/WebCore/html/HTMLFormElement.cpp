@@ -74,7 +74,6 @@ HTMLFormElement::HTMLFormElement(const QualifiedName& tagName, Document* documen
     , m_isSubmittingOrPreparingForSubmission(false)
     , m_shouldSubmit(false)
     , m_isInResetFunction(false)
-    , m_wasMalformed(false)
     , m_wasDemoted(false)
 {
     ASSERT(hasTagName(formTag));
@@ -685,6 +684,12 @@ void HTMLFormElement::finishParsingChildren()
 {
     HTMLElement::finishParsingChildren();
     document()->formController()->restoreControlStateIn(*this);
+}
+
+void HTMLFormElement::copyNonAttributePropertiesFromElement(const Element& source)
+{
+    m_wasDemoted = static_cast<const HTMLFormElement&>(source).m_wasDemoted;
+    HTMLElement::copyNonAttributePropertiesFromElement(source);
 }
 
 } // namespace

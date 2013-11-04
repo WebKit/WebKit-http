@@ -681,7 +681,7 @@ void WebChromeClient::populateVisitedLinks()
 
 #if ENABLE(DASHBOARD_SUPPORT)
 
-void WebChromeClient::dashboardRegionsChanged()
+void WebChromeClient::annotatedRegionsChanged()
 {
     BEGIN_BLOCK_OBJC_EXCEPTIONS;
     CallUIDelegate(m_webView, @selector(webView:dashboardRegionsChanged:), [m_webView _dashboardRegions]);
@@ -878,10 +878,10 @@ void WebChromeClient::setNeedsOneShotDrawingSynchronization()
     END_BLOCK_OBJC_EXCEPTIONS;
 }
 
-void WebChromeClient::scheduleCompositingLayerSync()
+void WebChromeClient::scheduleCompositingLayerFlush()
 {
     BEGIN_BLOCK_OBJC_EXCEPTIONS;
-    [m_webView _scheduleCompositingLayerSync];
+    [m_webView _scheduleCompositingLayerFlush];
     END_BLOCK_OBJC_EXCEPTIONS;
 }
 

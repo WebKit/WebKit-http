@@ -62,6 +62,7 @@ EventSender::EventSender(QWebPage* parent)
     : QObject(parent)
 #ifndef QT_NO_GESTURES
     , m_tapGesture(parent)
+    , m_tapAndHoldGesture(parent)
 #endif
 {
     m_page = parent;
@@ -72,6 +73,7 @@ EventSender::EventSender(QWebPage* parent)
     startOfQueue = 0;
     m_eventLoop = 0;
     m_currentButton = 0;
+    m_currentDragActionsAllowed = 0;
     resetClickCount();
     m_page->view()->installEventFilter(this);
     // This is a hack that works because we normally scroll 60 pixels (3*20) per tick, but Apple scrolls 120.
@@ -184,6 +186,13 @@ void EventSender::mouseUp(int button)
     }
 
     sendOrQueueEvent(event);
+
+    if (m_currentDragData.urls().isEmpty())
+        return;
+
+    event = new QDropEvent(m_mousePos, m_currentDragActionsAllowed, &m_currentDragData, m_mouseButtons, Qt::NoModifier);
+    sendEvent(m_page, event);
+    m_currentDragData.clear();
 }
 
 void EventSender::mouseMoveTo(int x, int y)
@@ -201,6 +210,31 @@ void EventSender::mouseMoveTo(int x, int y)
     }
 
     sendOrQueueEvent(event);
+
+    if (m_currentDragData.urls().isEmpty())
+        return;
+
+    Qt::MouseButtons mouseButtons = m_mouseButtons | Qt::LeftButton;
+    event = new QDragMoveEvent(m_mousePos, m_currentDragActionsAllowed, &m_currentDragData, mouseButtons, Qt::NoModifier);
+    sendEvent(m_page, event);
+}
+
+// Simulates a mouse down event for drag without sending an actual mouse down event.
+void EventSender::beginDragWithFiles(const QStringList& files)
+{
+    m_currentDragData.clear();
+    QList<QUrl> fileUrls;
+    QUrl baseUrl = m_page->mainFrame()->baseUrl();
+    foreach (const QString& file, files) {
+        QUrl resolvedUrl = baseUrl.resolved(file);
+        fileUrls.append(resolvedUrl);
+    }
+
+    m_currentDragData.setUrls(fileUrls);
+    m_currentDragActionsAllowed = Qt::CopyAction;
+    Qt::MouseButtons mouseButtons = m_mouseButtons | Qt::LeftButton;
+    QDragEnterEvent* event = new QDragEnterEvent(m_mousePos, m_currentDragActionsAllowed, &m_currentDragData, mouseButtons, Qt::NoModifier);
+    sendEvent(m_page, event);
 }
 
 #ifndef QT_NO_WHEELEVENT
@@ -541,6 +575,15 @@ void EventSender::gestureTap(int x, int y)
     m_tapGesture.setPosition(QPointF(x, y));
     m_gestures.clear();
     m_gestures.append(&m_tapGesture);
+    QGestureEvent event(m_gestures);
+    sendEvent(m_page, &event);
+}
+
+void EventSender::gestureLongPress(int x, int y)
+{
+    m_tapAndHoldGesture.setPosition(QPointF(x, y));
+    m_gestures.clear();
+    m_gestures.append(&m_tapAndHoldGesture);
     QGestureEvent event(m_gestures);
     sendEvent(m_page, &event);
 }

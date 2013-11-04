@@ -35,8 +35,6 @@
 #include "EventListener.h"
 #include "EventNames.h"
 #include "EventTarget.h"
-#include "IDBMetadata.h"
-#include "IDBTransactionBackendInterface.h"
 #include "IDBTransactionCallbacks.h"
 #include <wtf/HashSet.h>
 #include <wtf/RefCounted.h>
@@ -47,6 +45,8 @@ class IDBCursor;
 class IDBDatabase;
 class IDBObjectStore;
 class IDBOpenDBRequest;
+class IDBTransactionBackendInterface;
+struct IDBObjectStoreMetadata;
 
 class IDBTransaction : public IDBTransactionCallbacks, public EventTarget, public ActiveDOMObject {
 public:
@@ -66,7 +66,7 @@ public:
     static const AtomicString& modeReadOnlyLegacy();
     static const AtomicString& modeReadWriteLegacy();
 
-    static Mode stringToMode(const String&, ExceptionCode&);
+    static Mode stringToMode(const String&, ScriptExecutionContext*, ExceptionCode&);
     static const AtomicString& modeToString(Mode, ExceptionCode&);
 
     IDBTransactionBackendInterface* backend() const;
@@ -104,7 +104,7 @@ public:
     DEFINE_ATTRIBUTE_EVENT_LISTENER(error);
 
     // IDBTransactionCallbacks
-    virtual void onAbort();
+    virtual void onAbort(PassRefPtr<IDBDatabaseError>);
     virtual void onComplete();
 
     // EventTarget

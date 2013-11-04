@@ -23,6 +23,6 @@
 #include "WebKitPrivate.h"
 #include "WebKitResponsePolicyDecision.h"
 
-WebKitResponsePolicyDecision* webkitResponsePolicyDecisionCreate(WKURLRequestRef, WKURLResponseRef, WKFramePolicyListenerRef);
+WebKitResponsePolicyDecision* webkitResponsePolicyDecisionCreate(WebKit::WebURLRequest*, WebKit::WebURLResponse*, WebKit::WebFramePolicyListenerProxy*);
 
 #endif // WebKitResponsePolicyDecisionPrivate_h

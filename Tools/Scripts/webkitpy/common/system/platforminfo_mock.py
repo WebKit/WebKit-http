@@ -42,7 +42,7 @@ class MockPlatformInfo(object):
         return self.os_name == 'win'
 
     def is_cygwin(self):
-        return False
+        return self.os_name == 'cygwin'
 
     def is_freebsd(self):
         return self.os_name == 'freebsd'
@@ -52,3 +52,6 @@ class MockPlatformInfo(object):
 
     def total_bytes_memory(self):
         return 3 * 1024 * 1024 * 1024  # 3GB is a reasonable amount of ram to mock.
+
+    def terminal_width(self):
+        return 80

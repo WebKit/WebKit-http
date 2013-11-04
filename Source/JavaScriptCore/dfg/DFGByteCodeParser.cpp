@@ -43,6 +43,76 @@
 
 namespace JSC { namespace DFG {
 
+class ConstantBufferKey {
+public:
+    ConstantBufferKey()
+        : m_codeBlock(0)
+        , m_index(0)
+    {
+    }
+    
+    ConstantBufferKey(WTF::HashTableDeletedValueType)
+        : m_codeBlock(0)
+        , m_index(1)
+    {
+    }
+    
+    ConstantBufferKey(CodeBlock* codeBlock, unsigned index)
+        : m_codeBlock(codeBlock)
+        , m_index(index)
+    {
+    }
+    
+    bool operator==(const ConstantBufferKey& other) const
+    {
+        return m_codeBlock == other.m_codeBlock
+            && m_index == other.m_index;
+    }
+    
+    unsigned hash() const
+    {
+        return WTF::PtrHash<CodeBlock*>::hash(m_codeBlock) ^ m_index;
+    }
+    
+    bool isHashTableDeletedValue() const
+    {
+        return !m_codeBlock && m_index;
+    }
+    
+    CodeBlock* codeBlock() const { return m_codeBlock; }
+    unsigned index() const { return m_index; }
+    
+private:
+    CodeBlock* m_codeBlock;
+    unsigned m_index;
+};
+
+struct ConstantBufferKeyHash {
+    static unsigned hash(const ConstantBufferKey& key) { return key.hash(); }
+    static bool equal(const ConstantBufferKey& a, const ConstantBufferKey& b)
+    {
+        return a == b;
+    }
+    
+    static const bool safeToCompareToEmptyOrDeleted = true;
+};
+
+} } // namespace JSC::DFG
+
+namespace WTF {
+
+template<typename T> struct DefaultHash;
+template<> struct DefaultHash<JSC::DFG::ConstantBufferKey> {
+    typedef JSC::DFG::ConstantBufferKeyHash Hash;
+};
+
+template<typename T> struct HashTraits;
+template<> struct HashTraits<JSC::DFG::ConstantBufferKey> : SimpleClassHashTraits<JSC::DFG::ConstantBufferKey> { };
+
+} // namespace WTF
+
+namespace JSC { namespace DFG {
+
 // === ByteCodeParser ===
 //
 // This class is used to compile the dataflow graph from a CodeBlock.
@@ -99,12 +169,17 @@ private:
     // Handle intrinsic functions. Return true if it succeeded, false if we need to plant a call.
     bool handleIntrinsic(bool usesResult, int resultOperand, Intrinsic, int registerOffset, int argumentCountIncludingThis, SpeculatedType prediction);
     bool handleConstantInternalFunction(bool usesResult, int resultOperand, InternalFunction*, int registerOffset, int argumentCountIncludingThis, SpeculatedType prediction, CodeSpecializationKind);
+    NodeIndex handleGetByOffset(SpeculatedType, NodeIndex base, unsigned identifierNumber, PropertyOffset);
     void handleGetByOffset(
         int destinationOperand, SpeculatedType, NodeIndex base, unsigned identifierNumber,
         PropertyOffset);
     void handleGetById(
         int destinationOperand, SpeculatedType, NodeIndex base, unsigned identifierNumber,
         const GetByIdStatus&);
+
+    // Convert a set of ResolveOperations into graph nodes
+    bool parseResolveOperations(SpeculatedType, unsigned identifierNumber, unsigned operations, unsigned putToBaseOperation, NodeIndex* base, NodeIndex* value);
+
     // Prepare to parse a block.
     void prepareToParseBlock();
     // Parse a single basic block of bytecode instructions.
@@ -142,7 +217,7 @@ private:
             return getJSConstant(constant);
         }
 
-        if (operand == RegisterFile::Callee)
+        if (operand == JSStack::Callee)
             return getCallee();
 
         // Is this an argument?
@@ -369,11 +444,11 @@ private:
             InlineCallFrame* inlineCallFrame = stack->m_inlineCallFrame;
             if (!inlineCallFrame)
                 break;
-            if (operand >= static_cast<int>(inlineCallFrame->stackOffset - RegisterFile::CallFrameHeaderSize))
+            if (operand >= static_cast<int>(inlineCallFrame->stackOffset - JSStack::CallFrameHeaderSize))
                 continue;
             if (operand == inlineCallFrame->stackOffset + CallFrame::thisArgumentOffset())
                 continue;
-            if (operand < static_cast<int>(inlineCallFrame->stackOffset - RegisterFile::CallFrameHeaderSize - inlineCallFrame->arguments.size()))
+            if (operand < static_cast<int>(inlineCallFrame->stackOffset - JSStack::CallFrameHeaderSize - inlineCallFrame->arguments.size()))
                 continue;
             int argument = operandToArgument(operand - inlineCallFrame->stackOffset);
             return stack->m_argumentPositions[argument];
@@ -672,9 +747,9 @@ private:
     {
         HashMap<JSCell*, NodeIndex>::AddResult result = m_cellConstantNodes.add(cell, NoNode);
         if (result.isNewEntry)
-            result.iterator->second = addToGraph(WeakJSConstant, OpInfo(cell));
+            result.iterator->value = addToGraph(WeakJSConstant, OpInfo(cell));
         
-        return result.iterator->second;
+        return result.iterator->value;
     }
     
     CodeOrigin currentCodeOrigin()
@@ -761,8 +836,8 @@ private:
         
         addVarArgChild(get(currentInstruction[1].u.operand));
         int argCount = currentInstruction[2].u.operand;
-        if (RegisterFile::CallFrameHeaderSize + (unsigned)argCount > m_parameterSlots)
-            m_parameterSlots = RegisterFile::CallFrameHeaderSize + argCount;
+        if (JSStack::CallFrameHeaderSize + (unsigned)argCount > m_parameterSlots)
+            m_parameterSlots = JSStack::CallFrameHeaderSize + argCount;
 
         int registerOffset = currentInstruction[3].u.operand;
         int dummyThisArgument = op == Call ? 0 : 1;
@@ -1052,6 +1127,8 @@ private:
     Vector<PhiStackEntry, 16> m_argumentPhiStack;
     Vector<PhiStackEntry, 16> m_localPhiStack;
     
+    HashMap<ConstantBufferKey, unsigned> m_constantBufferCache;
+    
     struct InlineStackEntry {
         ByteCodeParser* m_byteCodeParser;
         
@@ -1070,6 +1147,9 @@ private:
         // direct, caller).
         Vector<unsigned> m_identifierRemap;
         Vector<unsigned> m_constantRemap;
+        Vector<unsigned> m_constantBufferRemap;
+        Vector<unsigned> m_resolveOperationRemap;
+        Vector<unsigned> m_putToBaseOperationRemap;
         
         // Blocks introduced by this code block, which need successor linking.
         // May include up to one basic block that includes the continuation after
@@ -1142,7 +1222,7 @@ private:
                 return result;
             }
 
-            if (operand == RegisterFile::Callee)
+            if (operand == JSStack::Callee)
                 return m_calleeVR;
 
             return operand + m_inlineCallFrame->stackOffset;
@@ -1364,14 +1444,14 @@ bool ByteCodeParser::handleInlining(bool usesResult, int callTarget, NodeIndex c
     
     // FIXME: Don't flush constants!
     
-    int inlineCallFrameStart = m_inlineStackTop->remapOperand(registerOffset) - RegisterFile::CallFrameHeaderSize;
+    int inlineCallFrameStart = m_inlineStackTop->remapOperand(registerOffset) - JSStack::CallFrameHeaderSize;
     
     // Make sure that the area used by the call frame is reserved.
-    for (int arg = inlineCallFrameStart + RegisterFile::CallFrameHeaderSize + codeBlock->m_numVars; arg-- > inlineCallFrameStart;)
+    for (int arg = inlineCallFrameStart + JSStack::CallFrameHeaderSize + codeBlock->m_numVars; arg-- > inlineCallFrameStart;)
         m_preservedVars.set(arg);
     
     // Make sure that we have enough locals.
-    unsigned newNumLocals = inlineCallFrameStart + RegisterFile::CallFrameHeaderSize + codeBlock->m_numCalleeRegisters;
+    unsigned newNumLocals = inlineCallFrameStart + JSStack::CallFrameHeaderSize + codeBlock->m_numCalleeRegisters;
     if (newNumLocals > m_numLocals) {
         m_numLocals = newNumLocals;
         for (size_t i = 0; i < m_graph.m_blocks.size(); ++i)
@@ -1574,6 +1654,8 @@ bool ByteCodeParser::handleIntrinsic(bool usesResult, int resultOperand, Intrins
         case Array::ArrayWithArrayStorageToHole:
             ASSERT_NOT_REACHED();
             
+        case Array::ArrayWithContiguous:
+        case Array::ArrayWithContiguousOutOfBounds:
         case Array::ArrayWithArrayStorage:
         case Array::ArrayWithArrayStorageOutOfBounds: {
             NodeIndex arrayPush = addToGraph(ArrayPush, OpInfo(arrayMode), OpInfo(prediction), get(registerOffset + argumentToOperand(0)), get(registerOffset + argumentToOperand(1)));
@@ -1597,6 +1679,8 @@ bool ByteCodeParser::handleIntrinsic(bool usesResult, int resultOperand, Intrins
         case Array::ArrayWithArrayStorageToHole:
             ASSERT_NOT_REACHED();
             
+        case Array::ArrayWithContiguous:
+        case Array::ArrayWithContiguousOutOfBounds:
         case Array::ArrayWithArrayStorage:
         case Array::ArrayWithArrayStorageOutOfBounds: {
             NodeIndex arrayPop = addToGraph(ArrayPop, OpInfo(arrayMode), OpInfo(prediction), get(registerOffset + argumentToOperand(0)));
@@ -1702,24 +1786,28 @@ bool ByteCodeParser::handleConstantInternalFunction(
     return false;
 }
 
-void ByteCodeParser::handleGetByOffset(
-    int destinationOperand, SpeculatedType prediction, NodeIndex base, unsigned identifierNumber,
-    PropertyOffset offset)
+NodeIndex ByteCodeParser::handleGetByOffset(SpeculatedType prediction, NodeIndex base, unsigned identifierNumber, PropertyOffset offset)
 {
     NodeIndex propertyStorage;
     if (isInlineOffset(offset))
         propertyStorage = base;
     else
         propertyStorage = addToGraph(GetButterfly, base);
-    set(destinationOperand,
-        addToGraph(
-            GetByOffset, OpInfo(m_graph.m_storageAccessData.size()), OpInfo(prediction),
-            propertyStorage));
-        
+    NodeIndex getByOffset = addToGraph(GetByOffset, OpInfo(m_graph.m_storageAccessData.size()), OpInfo(prediction), propertyStorage);
+
     StorageAccessData storageAccessData;
     storageAccessData.offset = indexRelativeToBase(offset);
     storageAccessData.identifierNumber = identifierNumber;
     m_graph.m_storageAccessData.append(storageAccessData);
+
+    return getByOffset;
+}
+
+void ByteCodeParser::handleGetByOffset(
+    int destinationOperand, SpeculatedType prediction, NodeIndex base, unsigned identifierNumber,
+    PropertyOffset offset)
+{
+    set(destinationOperand, handleGetByOffset(prediction, base, identifierNumber, offset));
 }
 
 void ByteCodeParser::handleGetById(
@@ -1783,10 +1871,174 @@ void ByteCodeParser::prepareToParseBlock()
     m_cellConstantNodes.clear();
 }
 
+bool ByteCodeParser::parseResolveOperations(SpeculatedType prediction, unsigned identifier, unsigned operations, unsigned putToBaseOperation, NodeIndex* base, NodeIndex* value)
+{
+    ResolveOperations* resolveOperations = m_codeBlock->resolveOperations(operations);
+    if (resolveOperations->isEmpty()) {
+        addToGraph(ForceOSRExit);
+        return false;
+    }
+    JSGlobalObject* globalObject = m_inlineStackTop->m_codeBlock->globalObject();
+    int skipCount = 0;
+    bool skippedScopes = false;
+    bool setBase = false;
+    ResolveOperation* pc = resolveOperations->data();
+    NodeIndex localBase = 0;
+    bool resolvingBase = true;
+    while (resolvingBase) {
+        switch (pc->m_operation) {
+        case ResolveOperation::ReturnGlobalObjectAsBase:
+            *base = get(m_codeBlock->globalObjectConstant());
+            ASSERT(!value);
+            return true;
+
+        case ResolveOperation::SetBaseToGlobal:
+            *base = get(m_codeBlock->globalObjectConstant());
+            setBase = true;
+            resolvingBase = false;
+            ++pc;
+            break;
+
+        case ResolveOperation::SetBaseToUndefined:
+            *base = constantUndefined();
+            setBase = true;
+            resolvingBase = false;
+            ++pc;
+            break;
+
+        case ResolveOperation::SetBaseToScope:
+            localBase = addToGraph(GetScope, OpInfo(skipCount));
+            *base = localBase;
+            setBase = true;
+
+            resolvingBase = false;
+
+            // Reset the scope skipping as we've already loaded it
+            skippedScopes = false;
+            ++pc;
+            break;
+        case ResolveOperation::ReturnScopeAsBase:
+            *base = addToGraph(GetScope, OpInfo(skipCount));
+            ASSERT(!value);
+            return true;
+
+        case ResolveOperation::SkipTopScopeNode:
+            if (m_inlineStackTop->m_inlineCallFrame)
+                return false;
+            skipCount = 1;
+            skippedScopes = true;
+            ++pc;
+            break;
+
+        case ResolveOperation::SkipScopes:
+            if (m_inlineStackTop->m_inlineCallFrame)
+                return false;
+            skipCount += pc->m_scopesToSkip;
+            skippedScopes = true;
+            ++pc;
+            break;
+
+        case ResolveOperation::CheckForDynamicEntriesBeforeGlobalScope:
+            return false;
+
+        case ResolveOperation::Fail:
+            return false;
+
+        default:
+            resolvingBase = false;
+        }
+    }
+    if (skippedScopes)
+        localBase = addToGraph(GetScope, OpInfo(skipCount));
+
+    if (base && !setBase)
+        *base = localBase;
+
+    ASSERT(value);
+    ResolveOperation* resolveValueOperation = pc;
+    switch (resolveValueOperation->m_operation) {
+    case ResolveOperation::GetAndReturnGlobalProperty: {
+        ResolveGlobalStatus status = ResolveGlobalStatus::computeFor(m_inlineStackTop->m_profiledBlock, m_currentIndex, resolveValueOperation, m_codeBlock->identifier(identifier));
+        if (status.isSimple()) {
+            ASSERT(status.structure());
+
+            NodeIndex globalObjectNode = addStructureTransitionCheck(globalObject, status.structure());
+
+            if (status.specificValue()) {
+                ASSERT(status.specificValue().isCell());
+                *value = cellConstant(status.specificValue().asCell());
+            } else
+                *value = handleGetByOffset(prediction, globalObjectNode, identifier, status.offset());
+            return true;
+        }
+
+        NodeIndex resolve = addToGraph(ResolveGlobal, OpInfo(m_graph.m_resolveGlobalData.size()), OpInfo(prediction));
+        m_graph.m_resolveGlobalData.append(ResolveGlobalData());
+        ResolveGlobalData& data = m_graph.m_resolveGlobalData.last();
+        data.identifierNumber = identifier;
+        data.resolveOperationsIndex = operations;
+        data.putToBaseOperationIndex = putToBaseOperation;
+        data.resolvePropertyIndex = resolveValueOperation - resolveOperations->data();
+        *value = resolve;
+        return true;
+    }
+    case ResolveOperation::GetAndReturnGlobalVar: {
+        *value = addToGraph(GetGlobalVar,
+                            OpInfo(globalObject->assertRegisterIsInThisObject(pc->m_registerAddress)),
+                            OpInfo(prediction));
+        return true;
+    }
+    case ResolveOperation::GetAndReturnGlobalVarWatchable: {
+        SpeculatedType prediction = getPrediction();
+
+        JSGlobalObject* globalObject = m_inlineStackTop->m_codeBlock->globalObject();
+
+        Identifier ident = m_codeBlock->identifier(identifier);
+        SymbolTableEntry entry = globalObject->symbolTable()->get(ident.impl());
+        if (!entry.couldBeWatched()) {
+            *value = addToGraph(GetGlobalVar, OpInfo(globalObject->assertRegisterIsInThisObject(pc->m_registerAddress)), OpInfo(prediction));
+            return true;
+        }
+
+        // The watchpoint is still intact! This means that we will get notified if the
+        // current value in the global variable changes. So, we can inline that value.
+        // Moreover, currently we can assume that this value is a JSFunction*, which
+        // implies that it's a cell. This simplifies things, since in general we'd have
+        // to use a JSConstant for non-cells and a WeakJSConstant for cells. So instead
+        // of having both cases we just assert that the value is a cell.
+
+        // NB. If it wasn't for CSE, GlobalVarWatchpoint would have no need for the
+        // register pointer. But CSE tracks effects on global variables by comparing
+        // register pointers. Because CSE executes multiple times while the backend
+        // executes once, we use the following performance trade-off:
+        // - The node refers directly to the register pointer to make CSE super cheap.
+        // - To perform backend code generation, the node only contains the identifier
+        //   number, from which it is possible to get (via a few average-time O(1)
+        //   lookups) to the WatchpointSet.
+
+        addToGraph(GlobalVarWatchpoint, OpInfo(globalObject->assertRegisterIsInThisObject(pc->m_registerAddress)), OpInfo(identifier));
+
+        JSValue specificValue = globalObject->registerAt(entry.getIndex()).get();
+        ASSERT(specificValue.isCell());
+        *value = cellConstant(specificValue.asCell());
+        return true;
+    }
+    case ResolveOperation::GetAndReturnScopedVar: {
+        NodeIndex getScopeRegisters = addToGraph(GetScopeRegisters, localBase);
+        *value = addToGraph(GetScopedVar, OpInfo(resolveValueOperation->m_offset), OpInfo(prediction), getScopeRegisters);
+        return true;
+    }
+    default:
+        CRASH();
+        return false;
+    }
+
+}
+
 bool ByteCodeParser::parseBlock(unsigned limit)
 {
     bool shouldContinueParsing = true;
-    
+
     Interpreter* interpreter = m_globalData->interpreter;
     Instruction* instructionsBegin = m_inlineStackTop->m_codeBlock->instructions().begin();
     unsigned blockBegin = m_currentIndex;
@@ -1871,7 +2123,7 @@ bool ByteCodeParser::parseBlock(unsigned limit)
         }
 
         case op_create_this: {
-            set(currentInstruction[1].u.operand, addToGraph(CreateThis, get(RegisterFile::Callee)));
+            set(currentInstruction[1].u.operand, addToGraph(CreateThis, get(JSStack::Callee)));
             NEXT_OPCODE(op_create_this);
         }
             
@@ -1889,10 +2141,20 @@ bool ByteCodeParser::parseBlock(unsigned limit)
             NEXT_OPCODE(op_new_array);
         }
             
+        case op_new_array_with_size: {
+            int lengthOperand = currentInstruction[2].u.operand;
+            set(currentInstruction[1].u.operand, addToGraph(NewArrayWithSize, get(lengthOperand)));
+            NEXT_OPCODE(op_new_array_with_size);
+        }
+            
         case op_new_array_buffer: {
             int startConstant = currentInstruction[2].u.operand;
             int numConstants = currentInstruction[3].u.operand;
-            set(currentInstruction[1].u.operand, addToGraph(NewArrayBuffer, OpInfo(startConstant), OpInfo(numConstants)));
+            NewArrayBufferData data;
+            data.startConstant = m_inlineStackTop->m_constantBufferRemap[startConstant];
+            data.numConstants = numConstants;
+            m_graph.m_newArrayBufferData.append(data);
+            set(currentInstruction[1].u.operand, addToGraph(NewArrayBuffer, OpInfo(&m_graph.m_newArrayBufferData.last())));
             NEXT_OPCODE(op_new_array_buffer);
         }
             
@@ -2281,26 +2543,6 @@ bool ByteCodeParser::parseBlock(unsigned limit)
             m_currentIndex += OPCODE_LENGTH(op_method_check) + OPCODE_LENGTH(op_get_by_id);
             continue;
         }
-        case op_get_scoped_var: {
-            SpeculatedType prediction = getPrediction();
-            int dst = currentInstruction[1].u.operand;
-            int slot = currentInstruction[2].u.operand;
-            int depth = currentInstruction[3].u.operand;
-            NodeIndex getScope = addToGraph(GetScope, OpInfo(depth));
-            NodeIndex getScopeRegisters = addToGraph(GetScopeRegisters, getScope);
-            NodeIndex getScopedVar = addToGraph(GetScopedVar, OpInfo(slot), OpInfo(prediction), getScopeRegisters);
-            set(dst, getScopedVar);
-            NEXT_OPCODE(op_get_scoped_var);
-        }
-        case op_put_scoped_var: {
-            int slot = currentInstruction[1].u.operand;
-            int depth = currentInstruction[2].u.operand;
-            int source = currentInstruction[3].u.operand;
-            NodeIndex getScope = addToGraph(GetScope, OpInfo(depth));
-            NodeIndex getScopeRegisters = addToGraph(GetScopeRegisters, getScope);
-            addToGraph(PutScopedVar, OpInfo(slot), getScope, getScopeRegisters, get(source));
-            NEXT_OPCODE(op_put_scoped_var);
-        }
         case op_get_by_id:
         case op_get_by_id_out_of_line:
         case op_get_array_length: {
@@ -2427,75 +2669,15 @@ bool ByteCodeParser::parseBlock(unsigned limit)
             NEXT_OPCODE(op_put_by_id);
         }
 
-        case op_get_global_var: {
-            SpeculatedType prediction = getPrediction();
-            
-            JSGlobalObject* globalObject = m_inlineStackTop->m_codeBlock->globalObject();
-
-            NodeIndex getGlobalVar = addToGraph(
-                GetGlobalVar,
-                OpInfo(globalObject->assertRegisterIsInThisObject(currentInstruction[2].u.registerPointer)),
-                OpInfo(prediction));
-            set(currentInstruction[1].u.operand, getGlobalVar);
-            NEXT_OPCODE(op_get_global_var);
-        }
-                    
-        case op_get_global_var_watchable: {
-            SpeculatedType prediction = getPrediction();
-            
-            JSGlobalObject* globalObject = m_inlineStackTop->m_codeBlock->globalObject();
-            
-            unsigned identifierNumber = m_inlineStackTop->m_identifierRemap[currentInstruction[3].u.operand];
-            Identifier identifier = m_codeBlock->identifier(identifierNumber);
-            SymbolTableEntry entry = globalObject->symbolTable()->get(identifier.impl());
-            if (!entry.couldBeWatched()) {
-                NodeIndex getGlobalVar = addToGraph(
-                    GetGlobalVar,
-                    OpInfo(globalObject->assertRegisterIsInThisObject(currentInstruction[2].u.registerPointer)),
-                    OpInfo(prediction));
-                set(currentInstruction[1].u.operand, getGlobalVar);
-                NEXT_OPCODE(op_get_global_var_watchable);
-            }
-            
-            // The watchpoint is still intact! This means that we will get notified if the
-            // current value in the global variable changes. So, we can inline that value.
-            // Moreover, currently we can assume that this value is a JSFunction*, which
-            // implies that it's a cell. This simplifies things, since in general we'd have
-            // to use a JSConstant for non-cells and a WeakJSConstant for cells. So instead
-            // of having both cases we just assert that the value is a cell.
-            
-            // NB. If it wasn't for CSE, GlobalVarWatchpoint would have no need for the
-            // register pointer. But CSE tracks effects on global variables by comparing
-            // register pointers. Because CSE executes multiple times while the backend
-            // executes once, we use the following performance trade-off:
-            // - The node refers directly to the register pointer to make CSE super cheap.
-            // - To perform backend code generation, the node only contains the identifier
-            //   number, from which it is possible to get (via a few average-time O(1)
-            //   lookups) to the WatchpointSet.
-            
-            addToGraph(
-                GlobalVarWatchpoint,
-                OpInfo(globalObject->assertRegisterIsInThisObject(currentInstruction[2].u.registerPointer)),
-                OpInfo(identifierNumber));
-            
-            JSValue specificValue = globalObject->registerAt(entry.getIndex()).get();
-            ASSERT(specificValue.isCell());
-            set(currentInstruction[1].u.operand, cellConstant(specificValue.asCell()));
-            
-            NEXT_OPCODE(op_get_global_var_watchable);
-        }
-
-        case op_put_global_var:
         case op_init_global_const: {
             NodeIndex value = get(currentInstruction[2].u.operand);
             addToGraph(
                 PutGlobalVar,
                 OpInfo(m_inlineStackTop->m_codeBlock->globalObject()->assertRegisterIsInThisObject(currentInstruction[1].u.registerPointer)),
                 value);
-            NEXT_OPCODE(op_put_global_var);
+            NEXT_OPCODE(op_init_global_const);
         }
 
-        case op_put_global_var_check:
         case op_init_global_const_check: {
             NodeIndex value = get(currentInstruction[2].u.operand);
             CodeBlock* codeBlock = m_inlineStackTop->m_codeBlock;
@@ -2508,15 +2690,16 @@ bool ByteCodeParser::parseBlock(unsigned limit)
                     PutGlobalVar,
                     OpInfo(globalObject->assertRegisterIsInThisObject(currentInstruction[1].u.registerPointer)),
                     value);
-                NEXT_OPCODE(op_put_global_var_check);
+                NEXT_OPCODE(op_init_global_const_check);
             }
             addToGraph(
                 PutGlobalVarCheck,
                 OpInfo(codeBlock->globalObject()->assertRegisterIsInThisObject(currentInstruction[1].u.registerPointer)),
                 OpInfo(identifierNumber),
                 value);
-            NEXT_OPCODE(op_put_global_var_check);
+            NEXT_OPCODE(op_init_global_const_check);
         }
+
 
         // === Block terminators. ===
 
@@ -2756,8 +2939,8 @@ bool ByteCodeParser::parseBlock(unsigned limit)
             addToGraph(CheckArgumentsNotCreated);
             
             unsigned argCount = m_inlineStackTop->m_inlineCallFrame->arguments.size();
-            if (RegisterFile::CallFrameHeaderSize + argCount > m_parameterSlots)
-                m_parameterSlots = RegisterFile::CallFrameHeaderSize + argCount;
+            if (JSStack::CallFrameHeaderSize + argCount > m_parameterSlots)
+                m_parameterSlots = JSStack::CallFrameHeaderSize + argCount;
             
             addVarArgChild(get(currentInstruction[1].u.operand)); // callee
             addVarArgChild(get(currentInstruction[2].u.operand)); // this
@@ -2786,69 +2969,175 @@ bool ByteCodeParser::parseBlock(unsigned limit)
             addToGraph(Jump, OpInfo(m_currentIndex + OPCODE_LENGTH(op_jneq_ptr)));
             LAST_OPCODE(op_jneq_ptr);
 
-        case op_resolve: {
+        case op_resolve:
+        case op_resolve_global_property:
+        case op_resolve_global_var:
+        case op_resolve_scoped_var:
+        case op_resolve_scoped_var_on_top_scope:
+        case op_resolve_scoped_var_with_top_scope_check: {
             SpeculatedType prediction = getPrediction();
             
             unsigned identifier = m_inlineStackTop->m_identifierRemap[currentInstruction[2].u.operand];
+            unsigned operations = m_inlineStackTop->m_resolveOperationRemap[currentInstruction[3].u.operand];
+            NodeIndex value = 0;
+            if (parseResolveOperations(prediction, identifier, operations, 0, 0, &value)) {
+                set(currentInstruction[1].u.operand, value);
+                NEXT_OPCODE(op_resolve);
+            }
 
-            NodeIndex resolve = addToGraph(Resolve, OpInfo(identifier), OpInfo(prediction));
+            NodeIndex resolve = addToGraph(Resolve, OpInfo(m_graph.m_resolveOperationsData.size()), OpInfo(prediction));
+            m_graph.m_resolveOperationsData.append(ResolveOperationData());
+            ResolveOperationData& data = m_graph.m_resolveOperationsData.last();
+            data.identifierNumber = identifier;
+            data.resolveOperationsIndex = operations;
+
             set(currentInstruction[1].u.operand, resolve);
 
             NEXT_OPCODE(op_resolve);
         }
 
+        case op_put_to_base_variable:
+        case op_put_to_base: {
+            unsigned base = currentInstruction[1].u.operand;
+            unsigned identifier = m_inlineStackTop->m_identifierRemap[currentInstruction[2].u.operand];
+            unsigned value = currentInstruction[3].u.operand;
+            unsigned operation = m_inlineStackTop->m_putToBaseOperationRemap[currentInstruction[4].u.operand];
+            PutToBaseOperation* putToBase = m_codeBlock->putToBaseOperation(operation);
+
+            if (putToBase->m_isDynamic) {
+                addToGraph(Phantom, get(base));
+                addToGraph(PutById, OpInfo(identifier), get(base), get(value));
+                NEXT_OPCODE(op_put_to_base);
+            }
+
+            switch (putToBase->m_kind) {
+            case PutToBaseOperation::Uninitialised:
+                addToGraph(Phantom, get(base));
+                addToGraph(ForceOSRExit);
+                break;
+
+            case PutToBaseOperation::GlobalVariablePutChecked: {
+                CodeBlock* codeBlock = m_inlineStackTop->m_codeBlock;
+                JSGlobalObject* globalObject = codeBlock->globalObject();
+                SymbolTableEntry entry = globalObject->symbolTable()->get(m_codeBlock->identifier(identifier).impl());
+                if (entry.couldBeWatched()) {
+                    addToGraph(PutGlobalVarCheck,
+                               OpInfo(codeBlock->globalObject()->assertRegisterIsInThisObject(putToBase->m_registerAddress)),
+                               OpInfo(identifier),
+                               get(value));
+                    break;
+                }
+            }
+            case PutToBaseOperation::GlobalVariablePut:
+                addToGraph(PutGlobalVar,
+                           OpInfo(m_inlineStackTop->m_codeBlock->globalObject()->assertRegisterIsInThisObject(putToBase->m_registerAddress)),
+                           get(value));
+                break;
+            case PutToBaseOperation::VariablePut: {
+                addToGraph(Phantom, get(base));
+                NodeIndex getScope = addToGraph(GetScope, OpInfo(putToBase->m_scopeDepth));
+                NodeIndex getScopeRegisters = addToGraph(GetScopeRegisters, getScope);
+                addToGraph(PutScopedVar, OpInfo(putToBase->m_offset), getScope, getScopeRegisters, get(value));
+                break;
+            }
+            case PutToBaseOperation::GlobalPropertyPut: {
+                if (!putToBase->m_structure) {
+                    addToGraph(Phantom, get(base));
+                    addToGraph(ForceOSRExit);
+                    NEXT_OPCODE(op_put_to_base);
+                }
+                NodeIndex baseNode = get(base);
+                addToGraph(CheckStructure, OpInfo(m_graph.addStructureSet(putToBase->m_structure.get())), baseNode);
+                NodeIndex propertyStorage;
+                if (isInlineOffset(putToBase->m_offset))
+                    propertyStorage = baseNode;
+                else
+                    propertyStorage = addToGraph(GetButterfly, baseNode);
+                addToGraph(PutByOffset, OpInfo(m_graph.m_storageAccessData.size()), propertyStorage, baseNode, get(value));
+
+                StorageAccessData storageAccessData;
+                storageAccessData.offset = indexRelativeToBase(putToBase->m_offset);
+                storageAccessData.identifierNumber = identifier;
+                m_graph.m_storageAccessData.append(storageAccessData);
+                break;
+            }
+            case PutToBaseOperation::Readonly:
+            case PutToBaseOperation::Generic:
+                addToGraph(Phantom, get(base));
+                addToGraph(PutById, OpInfo(identifier), get(base), get(value));
+            }
+            NEXT_OPCODE(op_put_to_base);
+        }
+
+        case op_resolve_base_to_global:
+        case op_resolve_base_to_global_dynamic:
+        case op_resolve_base_to_scope:
+        case op_resolve_base_to_scope_with_top_scope_check:
         case op_resolve_base: {
             SpeculatedType prediction = getPrediction();
             
             unsigned identifier = m_inlineStackTop->m_identifierRemap[currentInstruction[2].u.operand];
+            unsigned operations = m_inlineStackTop->m_resolveOperationRemap[currentInstruction[4].u.operand];
+            unsigned putToBaseOperation = m_inlineStackTop->m_putToBaseOperationRemap[currentInstruction[5].u.operand];
 
-            NodeIndex resolve = addToGraph(currentInstruction[3].u.operand ? ResolveBaseStrictPut : ResolveBase, OpInfo(identifier), OpInfo(prediction));
+            NodeIndex base = 0;
+            if (parseResolveOperations(prediction, identifier, operations, 0, &base, 0)) {
+                set(currentInstruction[1].u.operand, base);
+                NEXT_OPCODE(op_resolve_base);
+            }
+
+            NodeIndex resolve = addToGraph(currentInstruction[3].u.operand ? ResolveBaseStrictPut : ResolveBase, OpInfo(m_graph.m_resolveOperationsData.size()), OpInfo(prediction));
+            m_graph.m_resolveOperationsData.append(ResolveOperationData());
+            ResolveOperationData& data = m_graph.m_resolveOperationsData.last();
+            data.identifierNumber = identifier;
+            data.resolveOperationsIndex = operations;
+            data.putToBaseOperationIndex = putToBaseOperation;
+        
             set(currentInstruction[1].u.operand, resolve);
 
             NEXT_OPCODE(op_resolve_base);
         }
-            
-        case op_resolve_global: {
+        case op_resolve_with_base: {
             SpeculatedType prediction = getPrediction();
-            
-            unsigned identifierNumber = m_inlineStackTop->m_identifierRemap[
-                currentInstruction[2].u.operand];
-            
-            ResolveGlobalStatus status = ResolveGlobalStatus::computeFor(
-                m_inlineStackTop->m_profiledBlock, m_currentIndex,
-                m_codeBlock->identifier(identifierNumber));
-            if (status.isSimple()) {
-                ASSERT(status.structure());
-                
-                NodeIndex globalObject = addStructureTransitionCheck(
-                    m_inlineStackTop->m_codeBlock->globalObject(), status.structure());
-                
-                if (status.specificValue()) {
-                    ASSERT(status.specificValue().isCell());
-                    
-                    set(currentInstruction[1].u.operand,
-                        cellConstant(status.specificValue().asCell()));
-                } else {
-                    handleGetByOffset(
-                        currentInstruction[1].u.operand, prediction, globalObject,
-                        identifierNumber, status.offset());
-                }
-                
-                m_globalResolveNumber++; // Skip over the unused global resolve info.
-                
-                NEXT_OPCODE(op_resolve_global);
+            unsigned baseDst = currentInstruction[1].u.operand;
+            unsigned valueDst = currentInstruction[2].u.operand;
+            unsigned identifier = m_inlineStackTop->m_identifierRemap[currentInstruction[3].u.operand];
+            unsigned operations = m_inlineStackTop->m_resolveOperationRemap[currentInstruction[4].u.operand];
+            unsigned putToBaseOperation = m_inlineStackTop->m_putToBaseOperationRemap[currentInstruction[5].u.operand];
+
+            NodeIndex base = 0;
+            NodeIndex value = 0;
+            if (parseResolveOperations(prediction, identifier, operations, putToBaseOperation, &base, &value)) {
+                set(baseDst, base);
+                set(valueDst, value);
+            } else {
+                addToGraph(ForceOSRExit);
+                set(baseDst, addToGraph(GarbageValue));
+                set(valueDst, addToGraph(GarbageValue));
             }
-            
-            NodeIndex resolve = addToGraph(ResolveGlobal, OpInfo(m_graph.m_resolveGlobalData.size()), OpInfo(prediction));
-            m_graph.m_resolveGlobalData.append(ResolveGlobalData());
-            ResolveGlobalData& data = m_graph.m_resolveGlobalData.last();
-            data.identifierNumber = identifierNumber;
-            data.resolveInfoIndex = m_globalResolveNumber++;
-            set(currentInstruction[1].u.operand, resolve);
 
-            NEXT_OPCODE(op_resolve_global);
+            NEXT_OPCODE(op_resolve_with_base);
         }
+        case op_resolve_with_this: {
+            SpeculatedType prediction = getPrediction();
+            unsigned baseDst = currentInstruction[1].u.operand;
+            unsigned valueDst = currentInstruction[2].u.operand;
+            unsigned identifier = m_inlineStackTop->m_identifierRemap[currentInstruction[3].u.operand];
+            unsigned operations = m_inlineStackTop->m_resolveOperationRemap[currentInstruction[4].u.operand];
 
+            NodeIndex base = 0;
+            NodeIndex value = 0;
+            if (parseResolveOperations(prediction, identifier, operations, 0, &base, &value)) {
+                set(baseDst, base);
+                set(valueDst, value);
+            } else {
+                addToGraph(ForceOSRExit);
+                set(baseDst, addToGraph(GarbageValue));
+                set(valueDst, addToGraph(GarbageValue));
+            }
+
+            NEXT_OPCODE(op_resolve_with_this);
+        }
         case op_loop_hint: {
             // Baseline->DFG OSR jumps between loop hints. The DFG assumes that Baseline->DFG
             // OSR can only happen at basic block boundaries. Assert that these two statements
@@ -2860,7 +3149,7 @@ bool ByteCodeParser::parseBlock(unsigned limit)
             // block. Hence, machine code block = true code block = not inline code block.
             if (!m_inlineStackTop->m_caller)
                 m_currentBlock->isOSRTarget = true;
-            
+
             // Emit a phantom node to ensure that there is a placeholder node for this bytecode
             // op.
             addToGraph(Phantom);
@@ -3210,7 +3499,7 @@ ByteCodeParser::InlineStackEntry::InlineStackEntry(
         
         InlineCallFrame inlineCallFrame;
         inlineCallFrame.executable.set(*byteCodeParser->m_globalData, byteCodeParser->m_codeBlock->ownerExecutable(), codeBlock->ownerExecutable());
-        inlineCallFrame.stackOffset = inlineCallFrameStart + RegisterFile::CallFrameHeaderSize;
+        inlineCallFrame.stackOffset = inlineCallFrameStart + JSStack::CallFrameHeaderSize;
         inlineCallFrame.callee.set(*byteCodeParser->m_globalData, byteCodeParser->m_codeBlock->ownerExecutable(), callee);
         inlineCallFrame.caller = byteCodeParser->currentCodeOrigin();
         inlineCallFrame.arguments.resize(argumentCountIncludingThis); // Set the number of arguments including this, but don't configure the value recoveries, yet.
@@ -3247,13 +3536,16 @@ ByteCodeParser::InlineStackEntry::InlineStackEntry(
         
         m_identifierRemap.resize(codeBlock->numberOfIdentifiers());
         m_constantRemap.resize(codeBlock->numberOfConstantRegisters());
+        m_constantBufferRemap.resize(codeBlock->numberOfConstantBuffers());
+        m_resolveOperationRemap.resize(codeBlock->numberOfResolveOperations());
+        m_putToBaseOperationRemap.resize(codeBlock->numberOfPutToBaseOperations());
 
         for (size_t i = 0; i < codeBlock->numberOfIdentifiers(); ++i) {
             StringImpl* rep = codeBlock->identifier(i).impl();
             IdentifierMap::AddResult result = byteCodeParser->m_identifierMap.add(rep, byteCodeParser->m_codeBlock->numberOfIdentifiers());
             if (result.isNewEntry)
                 byteCodeParser->m_codeBlock->addIdentifier(Identifier(byteCodeParser->m_globalData, rep));
-            m_identifierRemap[i] = result.iterator->second;
+            m_identifierRemap[i] = result.iterator->value;
         }
         for (size_t i = 0; i < codeBlock->numberOfConstantRegisters(); ++i) {
             JSValue value = codeBlock->getConstant(i + FirstConstantRegisterIndex);
@@ -3271,10 +3563,32 @@ ByteCodeParser::InlineStackEntry::InlineStackEntry(
                 byteCodeParser->m_codeBlock->addConstant(value);
                 byteCodeParser->m_constants.append(ConstantRecord());
             }
-            m_constantRemap[i] = result.iterator->second;
+            m_constantRemap[i] = result.iterator->value;
         }
-        for (unsigned i = 0; i < codeBlock->numberOfGlobalResolveInfos(); ++i)
-            byteCodeParser->m_codeBlock->addGlobalResolveInfo(std::numeric_limits<unsigned>::max());
+        for (size_t i = 0; i < codeBlock->numberOfResolveOperations(); i++) {
+            uint32_t newResolve = byteCodeParser->m_codeBlock->addResolve();
+            m_resolveOperationRemap[i] = newResolve;
+            byteCodeParser->m_codeBlock->resolveOperations(newResolve)->append(*codeBlock->resolveOperations(i));
+        }
+        for (unsigned i = 0; i < codeBlock->numberOfConstantBuffers(); ++i) {
+            // If we inline the same code block multiple times, we don't want to needlessly
+            // duplicate its constant buffers.
+            HashMap<ConstantBufferKey, unsigned>::iterator iter =
+                byteCodeParser->m_constantBufferCache.find(ConstantBufferKey(codeBlock, i));
+            if (iter != byteCodeParser->m_constantBufferCache.end()) {
+                m_constantBufferRemap[i] = iter->value;
+                continue;
+            }
+            Vector<JSValue>& buffer = codeBlock->constantBufferAsVector(i);
+            unsigned newIndex = byteCodeParser->m_codeBlock->addConstantBuffer(buffer);
+            m_constantBufferRemap[i] = newIndex;
+            byteCodeParser->m_constantBufferCache.add(ConstantBufferKey(codeBlock, i), newIndex);
+        }
+        for (size_t i = 0; i < codeBlock->numberOfPutToBaseOperations(); i++) {
+            uint32_t putToBaseResolve = byteCodeParser->m_codeBlock->addPutToBase();
+            m_putToBaseOperationRemap[i] = putToBaseResolve;
+            *byteCodeParser->m_codeBlock->putToBaseOperation(putToBaseResolve) = *codeBlock->putToBaseOperation(i);
+        }
         
         m_callsiteBlockHeadNeedsLinking = true;
     } else {
@@ -3290,11 +3604,20 @@ ByteCodeParser::InlineStackEntry::InlineStackEntry(
 
         m_identifierRemap.resize(codeBlock->numberOfIdentifiers());
         m_constantRemap.resize(codeBlock->numberOfConstantRegisters());
+        m_constantBufferRemap.resize(codeBlock->numberOfConstantBuffers());
+        m_resolveOperationRemap.resize(codeBlock->numberOfResolveOperations());
+        m_putToBaseOperationRemap.resize(codeBlock->numberOfPutToBaseOperations());
 
         for (size_t i = 0; i < codeBlock->numberOfIdentifiers(); ++i)
             m_identifierRemap[i] = i;
         for (size_t i = 0; i < codeBlock->numberOfConstantRegisters(); ++i)
             m_constantRemap[i] = i + FirstConstantRegisterIndex;
+        for (size_t i = 0; i < codeBlock->numberOfConstantBuffers(); ++i)
+            m_constantBufferRemap[i] = i;
+        for (size_t i = 0; i < codeBlock->numberOfResolveOperations(); ++i)
+            m_resolveOperationRemap[i] = i;
+        for (size_t i = 0; i < codeBlock->numberOfPutToBaseOperations(); ++i)
+            m_putToBaseOperationRemap[i] = i;
 
         m_callsiteBlockHeadNeedsLinking = false;
     }

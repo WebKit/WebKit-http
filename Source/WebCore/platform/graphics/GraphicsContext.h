@@ -141,7 +141,11 @@ namespace WebCore {
         NoStroke,
         SolidStroke,
         DottedStroke,
-        DashedStroke
+        DashedStroke,
+#if ENABLE(CSS3_TEXT)
+        DoubleStroke,
+        WavyStroke,
+#endif // CSS3_TEXT
     };
 
     enum InterpolationQuality {
@@ -503,7 +507,7 @@ namespace WebCore {
 #endif
 
 #if PLATFORM(QT)
-        void pushTransparencyLayerInternal(const QRect&, qreal, QImage&);
+        void pushTransparencyLayerInternal(const QRect&, qreal, QPixmap&);
         void takeOwnershipOfPlatformContext();
 #endif
 

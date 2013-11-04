@@ -44,6 +44,7 @@
 #include "Strong.h"
 #include "Terminator.h"
 #include "TimeoutChecker.h"
+#include "TypedArrayDescriptor.h"
 #include "WeakRandom.h"
 #include <wtf/BumpPointerAllocator.h>
 #include <wtf/Forward.h>
@@ -103,29 +104,6 @@ namespace JSC {
         double increment;
     };
 
-    enum ThreadStackType {
-        ThreadStackTypeLarge,
-        ThreadStackTypeSmall
-    };
-
-    struct TypedArrayDescriptor {
-        TypedArrayDescriptor()
-            : m_classInfo(0)
-            , m_storageOffset(0)
-            , m_lengthOffset(0)
-        {
-        }
-        TypedArrayDescriptor(const ClassInfo* classInfo, size_t storageOffset, size_t lengthOffset)
-            : m_classInfo(classInfo)
-            , m_storageOffset(storageOffset)
-            , m_lengthOffset(lengthOffset)
-        {
-        }
-        const ClassInfo* m_classInfo;
-        size_t m_storageOffset;
-        size_t m_lengthOffset;
-    };
-
 #if ENABLE(DFG_JIT)
     class ConservativeRoots;
 
@@ -181,9 +159,9 @@ namespace JSC {
         static bool sharedInstanceExists();
         JS_EXPORT_PRIVATE static JSGlobalData& sharedInstance();
 
-        JS_EXPORT_PRIVATE static PassRefPtr<JSGlobalData> create(ThreadStackType, HeapType = SmallHeap);
-        JS_EXPORT_PRIVATE static PassRefPtr<JSGlobalData> createLeaked(ThreadStackType, HeapType = SmallHeap);
-        static PassRefPtr<JSGlobalData> createContextGroup(ThreadStackType, HeapType = SmallHeap);
+        JS_EXPORT_PRIVATE static PassRefPtr<JSGlobalData> create(HeapType = SmallHeap);
+        JS_EXPORT_PRIVATE static PassRefPtr<JSGlobalData> createLeaked(HeapType = SmallHeap);
+        static PassRefPtr<JSGlobalData> createContextGroup(HeapType = SmallHeap);
         JS_EXPORT_PRIVATE ~JSGlobalData();
 
         void makeUsableFromMultipleThreads() { heap.machineThreads().makeUsableFromMultipleThreads(); }
@@ -363,8 +341,6 @@ namespace JSC {
         String cachedDateString;
         double cachedDateStringValue;
 
-        int maxReentryDepth;
-
         Profiler* m_enabledProfiler;
         RegExpCache* m_regExpCache;
         BumpPointerAllocator m_regExpAllocator;
@@ -429,13 +405,42 @@ namespace JSC {
         registerTypedArrayFunction(float32, Float32);
         registerTypedArrayFunction(float64, Float64);
 #undef registerTypedArrayFunction
+        
+        const TypedArrayDescriptor* typedArrayDescriptor(TypedArrayType type) const
+        {
+            switch (type) {
+            case TypedArrayNone:
+                return 0;
+            case TypedArrayInt8:
+                return &int8ArrayDescriptor();
+            case TypedArrayInt16:
+                return &int16ArrayDescriptor();
+            case TypedArrayInt32:
+                return &int32ArrayDescriptor();
+            case TypedArrayUint8:
+                return &uint8ArrayDescriptor();
+            case TypedArrayUint8Clamped:
+                return &uint8ClampedArrayDescriptor();
+            case TypedArrayUint16:
+                return &uint16ArrayDescriptor();
+            case TypedArrayUint32:
+                return &uint32ArrayDescriptor();
+            case TypedArrayFloat32:
+                return &float32ArrayDescriptor();
+            case TypedArrayFloat64:
+                return &float64ArrayDescriptor();
+            default:
+                CRASH();
+                return 0;
+            }
+        }
 
         JSLock& apiLock() { return m_apiLock; }
 
     private:
         friend class LLIntOffsetsExtractor;
         
-        JSGlobalData(GlobalDataType, ThreadStackType, HeapType);
+        JSGlobalData(GlobalDataType, HeapType);
         static JSGlobalData*& sharedInstanceInternal();
         void createNativeThunk();
 #if ENABLE(ASSEMBLER)

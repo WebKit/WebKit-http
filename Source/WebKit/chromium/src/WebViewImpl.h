@@ -325,6 +325,8 @@ public:
 
     // WebViewImpl
 
+    void suppressInvalidations(bool enable);
+
     void setIgnoreInputEvents(bool newValue);
     WebDevToolsAgentPrivate* devToolsAgentPrivate() { return m_devToolsAgent.get(); }
 
@@ -392,7 +394,7 @@ public:
     void mouseContextMenu(const WebMouseEvent&);
     void mouseDoubleClick(const WebMouseEvent&);
 
-    bool detectContentOnTouch(const WebPoint&, WebInputEvent::Type);
+    bool detectContentOnTouch(const WebPoint&);
     void startPageScaleAnimation(const WebCore::IntPoint& targetPosition, bool useAnchor, float newScale, double durationInSeconds);
 
     void numberOfWheelEventHandlersChanged(unsigned);
@@ -872,6 +874,8 @@ private:
     OwnPtr<LinkHighlight> m_linkHighlight;
 #endif
     OwnPtr<ValidationMessageClientImpl> m_validationMessage;
+
+    bool m_suppressInvalidations;
 };
 
 } // namespace WebKit

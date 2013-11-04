@@ -67,13 +67,13 @@ NPIdentifier NPIdentifierData::createNPIdentifier() const
     return static_cast<NPIdentifier>(IdentifierRep::get(m_number));
 }
 
-void NPIdentifierData::encode(CoreIPC::ArgumentEncoder* encoder) const
+void NPIdentifierData::encode(CoreIPC::ArgumentEncoder& encoder) const
 {
-    encoder->encode(m_isString);
+    encoder.encode(m_isString);
     if (m_isString)
-        encoder->encode(m_string);
+        encoder.encode(m_string);
     else
-        encoder->encodeInt32(m_number);
+        encoder.encode(m_number);
 }
 
 bool NPIdentifierData::decode(CoreIPC::ArgumentDecoder* decoder, NPIdentifierData& result)
@@ -84,7 +84,7 @@ bool NPIdentifierData::decode(CoreIPC::ArgumentDecoder* decoder, NPIdentifierDat
     if (result.m_isString)
         return decoder->decode(result.m_string);
 
-    return decoder->decodeInt32(result.m_number);
+    return decoder->decode(result.m_number);
 }
 
 } // namespace WebKit

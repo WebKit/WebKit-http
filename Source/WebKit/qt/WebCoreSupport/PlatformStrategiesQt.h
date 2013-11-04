@@ -29,16 +29,17 @@
 #define PlatformStrategiesQt_h
 
 #include <CookiesStrategy.h>
+#include <LoaderStrategy.h>
 #include <PlatformStrategies.h>
 #include <PluginStrategy.h>
+#include <SharedWorkerStrategy.h>
 #include <VisitedLinkStrategy.h>
 
 namespace WebCore {
-class Page;
 class PasteboardStrategy;
 }
 
-class PlatformStrategiesQt : public WebCore::PlatformStrategies, private WebCore::CookiesStrategy, private WebCore::PluginStrategy, private WebCore::VisitedLinkStrategy {
+class PlatformStrategiesQt : public WebCore::PlatformStrategies, private WebCore::CookiesStrategy, private WebCore::LoaderStrategy, private WebCore::PluginStrategy, private WebCore::SharedWorkerStrategy, private WebCore::VisitedLinkStrategy {
 public:
     static void initialize();
 
@@ -47,9 +48,11 @@ private:
 
     // WebCore::PlatformStrategies
     virtual WebCore::CookiesStrategy* createCookiesStrategy();
-    virtual WebCore::PluginStrategy* createPluginStrategy();
-    virtual WebCore::VisitedLinkStrategy* createVisitedLinkStrategy();
+    virtual WebCore::LoaderStrategy* createLoaderStrategy();
     virtual WebCore::PasteboardStrategy* createPasteboardStrategy();
+    virtual WebCore::PluginStrategy* createPluginStrategy();
+    virtual WebCore::SharedWorkerStrategy* createSharedWorkerStrategy();
+    virtual WebCore::VisitedLinkStrategy* createVisitedLinkStrategy();
     
     // WebCore::CookiesStrategy
     virtual void notifyCookiesChanged();

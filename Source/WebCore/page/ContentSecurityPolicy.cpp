@@ -104,6 +104,44 @@ bool isMediaTypeCharacter(UChar c)
     return !isASCIISpace(c) && c != '/';
 }
 
+static const char connectSrc[] = "connect-src";
+static const char defaultSrc[] = "default-src";
+static const char fontSrc[] = "font-src";
+static const char frameSrc[] = "frame-src";
+static const char imgSrc[] = "img-src";
+static const char mediaSrc[] = "media-src";
+static const char objectSrc[] = "object-src";
+static const char reportURI[] = "report-uri";
+static const char sandbox[] = "sandbox";
+static const char scriptSrc[] = "script-src";
+static const char styleSrc[] = "style-src";
+#if ENABLE(CSP_NEXT)
+static const char formAction[] = "form-action";
+static const char pluginTypes[] = "plugin-types";
+static const char scriptNonce[] = "script-nonce";
+#endif
+
+bool isDirectiveName(const String& name)
+{
+    return (equalIgnoringCase(name, connectSrc)
+        || equalIgnoringCase(name, defaultSrc)
+        || equalIgnoringCase(name, fontSrc)
+        || equalIgnoringCase(name, frameSrc)
+        || equalIgnoringCase(name, imgSrc)
+        || equalIgnoringCase(name, mediaSrc)
+        || equalIgnoringCase(name, objectSrc)
+        || equalIgnoringCase(name, reportURI)
+        || equalIgnoringCase(name, sandbox)
+        || equalIgnoringCase(name, scriptSrc)
+        || equalIgnoringCase(name, styleSrc)
+#if ENABLE(CSP_NEXT)
+        || equalIgnoringCase(name, formAction)
+        || equalIgnoringCase(name, pluginTypes)
+        || equalIgnoringCase(name, scriptNonce)
+#endif
+    );
+}
+
 } // namespace
 
 static bool skipExactly(const UChar*& position, const UChar* end, UChar delimiter)
@@ -181,7 +219,10 @@ private:
 
         String path = decodeURLEscapeSequences(url.path());
 
-        return path.startsWith(m_path, false);
+        if (m_path.endsWith("/"))
+            return path.startsWith(m_path, false);
+
+        return path == m_path;
     }
 
     bool portMatches(const KURL& url) const
@@ -307,6 +348,8 @@ void CSPSourceList::parse(const UChar* begin, const UChar* end)
                 continue;
             if (scheme.isEmpty())
                 scheme = m_policy->securityOrigin()->protocol();
+            if (isDirectiveName(host))
+                m_policy->reportDirectiveAsSourceExpression(m_directiveName, host);
             m_list.append(CSPSource(scheme, host, port, path, hostHasWildcard, portHasWildcard));
         } else
             m_policy->reportInvalidSourceExpression(m_directiveName, String(beginSource, position - beginSource));
@@ -505,12 +548,9 @@ bool CSPSourceList::parsePath(const UChar* begin, const UChar* end, String& path
         m_policy->reportInvalidPathCharacter(m_directiveName, String(begin, end - begin), *position);
 
     path = decodeURLEscapeSequences(String(begin, position - begin));
-    if (!path.endsWith('/'))
-        path = path + '/';
 
     ASSERT(position <= end);
     ASSERT(position == end || (*position == '#' || *position == '?'));
-    ASSERT(path.endsWith('/'));
     return true;
 }
 
@@ -1232,23 +1272,6 @@ void CSPDirectiveList::applySandboxPolicy(const String& name, const String& sand
 
 void CSPDirectiveList::addDirective(const String& name, const String& value)
 {
-    DEFINE_STATIC_LOCAL(String, defaultSrc, (ASCIILiteral("default-src")));
-    DEFINE_STATIC_LOCAL(String, scriptSrc, (ASCIILiteral("script-src")));
-    DEFINE_STATIC_LOCAL(String, objectSrc, (ASCIILiteral("object-src")));
-    DEFINE_STATIC_LOCAL(String, frameSrc, (ASCIILiteral("frame-src")));
-    DEFINE_STATIC_LOCAL(String, imgSrc, (ASCIILiteral("img-src")));
-    DEFINE_STATIC_LOCAL(String, styleSrc, (ASCIILiteral("style-src")));
-    DEFINE_STATIC_LOCAL(String, fontSrc, (ASCIILiteral("font-src")));
-    DEFINE_STATIC_LOCAL(String, mediaSrc, (ASCIILiteral("media-src")));
-    DEFINE_STATIC_LOCAL(String, connectSrc, (ASCIILiteral("connect-src")));
-    DEFINE_STATIC_LOCAL(String, sandbox, (ASCIILiteral("sandbox")));
-    DEFINE_STATIC_LOCAL(String, reportURI, (ASCIILiteral("report-uri")));
-#if ENABLE(CSP_NEXT)
-    DEFINE_STATIC_LOCAL(String, formAction, (ASCIILiteral("form-action")));
-    DEFINE_STATIC_LOCAL(String, pluginTypes, (ASCIILiteral("plugin-types")));
-    DEFINE_STATIC_LOCAL(String, scriptNonce, (ASCIILiteral("script-nonce")));
-#endif
-
     ASSERT(!name.isEmpty());
 
     if (equalIgnoringCase(name, defaultSrc))
@@ -1306,7 +1329,8 @@ void ContentSecurityPolicy::didReceiveHeader(const String& header, HeaderType ty
 {
     if (m_scriptExecutionContext->isDocument()) {
         Document* document = static_cast<Document*>(m_scriptExecutionContext);
-        FeatureObserver::observe(document->domWindow(), FeatureObserver::PrefixedContentSecurityPolicy);
+        if (document->domWindow())
+            FeatureObserver::observe(document->domWindow(), FeatureObserver::PrefixedContentSecurityPolicy);
     }
 
     // RFC2616, section 4.2 specifies that headers appearing multiple times can
@@ -1576,6 +1600,12 @@ void ContentSecurityPolicy::reportViolation(const String& directiveText, const S
 void ContentSecurityPolicy::reportUnrecognizedDirective(const String& name) const
 {
     String message = makeString("Unrecognized Content-Security-Policy directive '", name, "'.\n");
+    logToConsole(message);
+}
+
+void ContentSecurityPolicy::reportDirectiveAsSourceExpression(const String& directiveName, const String& sourceExpression) const
+{
+    String message = "The Content Security Policy directive '" + directiveName + "' contains '" + sourceExpression + "' as a source expression. Did you mean '" + directiveName + " ...; " + sourceExpression + "...' (note the semicolon)?";
     logToConsole(message);
 }
 

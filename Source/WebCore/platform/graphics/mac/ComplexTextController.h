@@ -54,7 +54,7 @@ public:
     ComplexTextController(const Font*, const TextRun&, bool mayUseNaturalWritingDirection = false, HashSet<const SimpleFontData*>* fallbackFonts = 0, bool forTextEmphasis = false);
 
     // Advance and emit glyphs up to the specified character.
-    void advance(unsigned to, GlyphBuffer* = 0, GlyphIterationStyle = IncludePartialGlyphs);
+    void advance(unsigned to, GlyphBuffer* = 0, GlyphIterationStyle = IncludePartialGlyphs, HashSet<const SimpleFontData*>* fallbackFonts = 0);
 
     // Compute the character offset for a given x coordinate.
     int offsetForPosition(float x, bool includePartialGlyphs);
@@ -72,8 +72,6 @@ public:
     float maxGlyphBoundingBoxY() const { return m_maxGlyphBoundingBoxY; }
     
 private:
-    static const SimpleFontData* systemFallbackFontData() { return reinterpret_cast<const SimpleFontData*>(-1); }
-
     class ComplexTextRun : public RefCounted<ComplexTextRun> {
     public:
         static PassRefPtr<ComplexTextRun> create(CTRunRef ctRun, const SimpleFontData* fontData, const UChar* characters, unsigned stringLocation, size_t stringLength, CFRange runRange)

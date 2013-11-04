@@ -42,12 +42,7 @@ function test()
 
             function didShowScriptSource(sourceFrame)
             {
-                InspectorTest.addSniffer(WebInspector.JavaScriptSourceFrame.prototype, "_didEditContent", didEditScriptSource);
                 InspectorTest.replaceInSource(sourceFrame, ",\"I'm good\"", "\"I'm good\"");
-            }
-
-            function didEditScriptSource()
-            {
                 InspectorTest.dumpSourceFrameContents(panel.visibleView);
                 next();
             }
@@ -131,6 +126,8 @@ function test()
     {
         InspectorTest.addSniffer(WebInspector.debuggerModel, "_didEditScriptSource", callback);
         InspectorTest.replaceInSource(sourceFrame, string, replacement);
+        InspectorTest.commitSource(sourceFrame);
+        
     }
 };
 

@@ -61,11 +61,15 @@ LayoutUnit RenderRegion::pageLogicalWidth() const
 
 LayoutUnit RenderRegion::pageLogicalHeight() const
 {
+    if (hasOverrideHeight() && view()->normalLayoutPhase())
+        return overrideLogicalContentHeight() + borderAndPaddingLogicalHeight();
     return m_flowThread->isHorizontalWritingMode() ? contentHeight() : contentWidth();
 }
 
 LayoutUnit RenderRegion::logicalHeightOfAllFlowThreadContent() const
 {
+    if (hasOverrideHeight() && view()->normalLayoutPhase())
+        return overrideLogicalContentHeight() + borderAndPaddingLogicalHeight();
     return m_flowThread->isHorizontalWritingMode() ? contentHeight() : contentWidth();
 }
 
@@ -208,6 +212,7 @@ void RenderRegion::styleDidChange(StyleDifference diff, const RenderStyle* oldSt
 
 void RenderRegion::layout()
 {
+    StackStats::LayoutCheckPoint layoutCheckPoint;
     RenderReplaced::layout();
     if (m_flowThread && isValid()) {
         LayoutRect oldRegionRect(flowThreadPortionRect());
@@ -336,7 +341,7 @@ RenderBoxRegionInfo* RenderRegion::setRenderBoxRegionInfo(const RenderBox* box, 
     if (!m_isValid || !m_flowThread)
         return 0;
 
-    OwnPtr<RenderBoxRegionInfo>& boxInfo = m_renderBoxRegionInfo.add(box, nullptr).iterator->second;
+    OwnPtr<RenderBoxRegionInfo>& boxInfo = m_renderBoxRegionInfo.add(box, nullptr).iterator->value;
     if (boxInfo)
         *boxInfo = RenderBoxRegionInfo(logicalLeftInset, logicalRightInset, containingBlockChainIsInset);
     else
@@ -401,8 +406,8 @@ void RenderRegion::setRegionObjectsRegionStyle()
         RefPtr<RenderStyle> objectStyleInRegion;
         bool objectRegionStyleCached = false;
         if (it != m_renderObjectRegionStyle.end()) {
-            objectStyleInRegion = it->second.style;
-            ASSERT(it->second.cached);
+            objectStyleInRegion = it->value.style;
+            ASSERT(it->value.cached);
             objectRegionStyleCached = true;
         } else
             objectStyleInRegion = computeStyleInRegion(object);
@@ -420,12 +425,12 @@ void RenderRegion::restoreRegionObjectsOriginalStyle()
 
     RenderObjectRegionStyleMap temp;
     for (RenderObjectRegionStyleMap::iterator iter = m_renderObjectRegionStyle.begin(), end = m_renderObjectRegionStyle.end(); iter != end; ++iter) {
-        RenderObject* object = const_cast<RenderObject*>(iter->first);
+        RenderObject* object = const_cast<RenderObject*>(iter->key);
         RefPtr<RenderStyle> objectRegionStyle = object->style();
-        RefPtr<RenderStyle> objectOriginalStyle = iter->second.style;
+        RefPtr<RenderStyle> objectOriginalStyle = iter->value.style;
         object->setStyleInternal(objectOriginalStyle);
 
-        bool shouldCacheRegionStyle = iter->second.cached;
+        bool shouldCacheRegionStyle = iter->value.cached;
         if (!shouldCacheRegionStyle) {
             // Check whether we should cache the computed style in region.
             unsigned changedContextSensitiveProperties = ContextSensitivePropertyNone;
@@ -472,7 +477,7 @@ PassRefPtr<RenderStyle> RenderRegion::computeStyleInRegion(const RenderObject* o
 
     return renderObjectRegionStyle.release();
 }
- 
+
 void RenderRegion::computeChildrenStyleInRegion(const RenderObject* object)
 {
     for (RenderObject* child = object->firstChild(); child; child = child->nextSibling()) {
@@ -482,7 +487,7 @@ void RenderRegion::computeChildrenStyleInRegion(const RenderObject* object)
         RefPtr<RenderStyle> childStyleInRegion;
         bool objectRegionStyleCached = false;
         if (it != m_renderObjectRegionStyle.end()) {
-            childStyleInRegion = it->second.style;
+            childStyleInRegion = it->value.style;
             objectRegionStyleCached = true;
         } else {
             if (child->isAnonymous())
@@ -498,7 +503,7 @@ void RenderRegion::computeChildrenStyleInRegion(const RenderObject* object)
         computeChildrenStyleInRegion(child);
     }
 }
- 
+
 void RenderRegion::setObjectStyleInRegion(RenderObject* object, PassRefPtr<RenderStyle> styleInRegion, bool objectRegionStyleCached)
 {
     ASSERT(object->inRenderFlowThread());
@@ -522,7 +527,7 @@ void RenderRegion::setObjectStyleInRegion(RenderObject* object, PassRefPtr<Rende
     styleInfo.cached = objectRegionStyleCached;
     m_renderObjectRegionStyle.set(object, styleInfo);
 }
- 
+
 void RenderRegion::clearObjectStyleInRegion(const RenderObject* object)
 {
     ASSERT(object);
@@ -577,6 +582,36 @@ void RenderRegion::getRanges(Vector<RefPtr<Range> >& rangeObjects) const
 {
     RenderNamedFlowThread* namedFlow = view()->flowThreadController()->ensureRenderFlowThreadWithName(style()->regionThread());
     namedFlow->getRanges(rangeObjects, this);
+}
+
+void RenderRegion::updateLogicalHeight()
+{
+    RenderReplaced::updateLogicalHeight();
+
+    if (!hasAutoLogicalHeight())
+        return;
+
+    // We want to update the logical height based on the computed override logical
+    // content height only if the view is in the layout phase
+    // in which all the auto logical height regions have their override logical height set.
+    if (view()->normalLayoutPhase())
+        return;
+
+    // There may be regions with auto logical height that during the prerequisite layout phase
+    // did not have the chance to layout flow thread content. Because of that, these regions do not
+    // have an overrideLogicalContentHeight computed and they will not be able to fragment any flow
+    // thread content.
+    if (!hasOverrideHeight())
+        return;
+
+    LayoutUnit newLogicalHeight = overrideLogicalContentHeight() + borderAndPaddingLogicalHeight();
+    if (newLogicalHeight > logicalHeight())
+        setLogicalHeight(newLogicalHeight);
+}
+
+bool RenderRegion::needsOverrideLogicalContentHeightComputation() const
+{
+    return hasAutoLogicalHeight() && view()->normalLayoutPhase() && !hasOverrideHeight();
 }
 
 } // namespace WebCore

@@ -66,7 +66,6 @@
 #include <wtf/NonCopyingSort.h>
 #include <wtf/OwnArrayPtr.h>
 #include <wtf/Vector.h>
-#include <wtf/text/CString.h>
 
 #define SDCARD_PATH "/developer"
 
@@ -77,6 +76,7 @@ RefPtr<TestRunner> gTestRunner;
 WebCore::Frame* mainFrame = 0;
 WebCore::Frame* topLoadingFrame = 0;
 bool waitForPolicy = false;
+bool runFromCommandLine = false;
 
 // FIXME: Assuming LayoutTests has been copied to /developer/LayoutTests/
 static const char* const kSDCLayoutTestsURI = "file:///developer/LayoutTests/";
@@ -153,7 +153,7 @@ DumpRenderTree::DumpRenderTree(BlackBerry::WebKit::WebPage* page)
     : m_gcController(0)
     , m_accessibilityController(0)
     , m_page(page)
-    , m_dumpPixels(false)
+    , m_enablePixelTests(getenv("pixelTests"))
     , m_waitToDumpWatchdogTimer(this, &DumpRenderTree::waitToDumpWatchdogTimerFired)
     , m_workTimer(this, &DumpRenderTree::processWork)
     , m_acceptsEditing(true)
@@ -174,26 +174,27 @@ DumpRenderTree::~DumpRenderTree()
     delete m_accessibilityController;
 }
 
-void DumpRenderTree::runTest(const String& url)
+void DumpRenderTree::runTest(const String& url, const String& imageHash)
 {
-    createFile(m_resultsDir + *m_currentTest + ".dump.crash");
-
     mainFrame->loader()->stopForUserCancel();
-    resetToConsistentStateBeforeTesting();
+    resetToConsistentStateBeforeTesting(url, imageHash);
     if (shouldLogFrameLoadDelegates(url))
         gTestRunner->setDumpFrameLoadCallbacks(true);
-    String stdoutFile = m_resultsDir + *m_currentTest + ".dump";
-    String stderrFile = m_resultsDir + *m_currentTest + ".stderr";
+    if (!runFromCommandLine) {
+        createFile(m_resultsDir + *m_currentTest + ".dump.crash");
 
-    // FIXME: we should preserve the original stdout and stderr here but aren't doing
-    // that yet due to issues with dup, etc.
-    freopen(stdoutFile.utf8().data(), "wb", stdout);
-    freopen(stderrFile.utf8().data(), "wb", stderr);
+        String stdoutFile = m_resultsDir + *m_currentTest + ".dump";
+        String stderrFile = m_resultsDir + *m_currentTest + ".stderr";
 
+        // FIXME: we should preserve the original stdout and stderr here but aren't doing
+        // that yet due to issues with dup, etc.
+        freopen(stdoutFile.utf8().data(), "wb", stdout);
+        freopen(stderrFile.utf8().data(), "wb", stderr);
+    }
     FILE* current = fopen(m_currentTestFile.utf8().data(), "w");
     fwrite(m_currentTest->utf8().data(), 1, m_currentTest->utf8().length(), current);
     fclose(current);
-    m_page->load(url.utf8().data(), 0, false);
+    m_page->load(url, BlackBerry::Platform::String::emptyString(), false);
 }
 
 void DumpRenderTree::doneDrt()
@@ -209,16 +210,27 @@ void DumpRenderTree::doneDrt()
 
 void DumpRenderTree::runCurrentTest()
 {
+    String imageHash = "";
+    int posSplitter = m_currentTest->find('?');
+    if (posSplitter > 1 && (unsigned)posSplitter < m_currentTest->length() - 1) {
+        imageHash = m_currentTest->substring(posSplitter + 1);
+        m_currentTest->truncate(posSplitter);
+    }
     if (isHTTPTest(m_currentTest->utf8().data())) {
         m_currentHttpTest = m_currentTest->utf8().data();
         m_currentHttpTest.remove(0, strlen(httpTestSyntax));
-        runTest(httpPrefixURL + m_currentHttpTest);
+        runTest(httpPrefixURL + m_currentHttpTest, imageHash);
     } else
-        runTest(kSDCLayoutTestsURI + *m_currentTest);
+        runTest(kSDCLayoutTestsURI + *m_currentTest, imageHash);
 }
 
 void DumpRenderTree::runRemainingTests()
 {
+    if (runFromCommandLine) {
+        doneDrt();
+        return;
+    }
+
     // FIXME: fflush should not be necessary but is temporarily required due to a bug in stdio output.
     fflush(stdout);
     fflush(stderr);
@@ -238,12 +250,9 @@ void DumpRenderTree::runRemainingTests()
     runCurrentTest();
 }
 
-void DumpRenderTree::resetToConsistentStateBeforeTesting()
+void DumpRenderTree::resetToConsistentStateBeforeTesting(const String& url, const String& imageHash)
 {
-    if (isHTTPTest(m_currentTest->utf8().data()))
-        gTestRunner = TestRunner::create(String(httpPrefixURL + *m_currentTest).utf8().data(), "");
-    else
-        gTestRunner = TestRunner::create(String(kSDCLayoutTestsURI + *m_currentTest).utf8().data(), "");
+    gTestRunner = TestRunner::create(url.utf8().data(), imageHash.utf8().data());
 
     gTestRunner->setIconDatabaseEnabled(false);
 
@@ -328,9 +337,14 @@ void DumpRenderTree::runTests()
 
     mainFrame = DumpRenderTreeSupport::corePage(m_page)->mainFrame();
 
-    // Get Test file name from PPS: /pps/services/drt/input
-    // Example: test_file::fast/js/arguments.html
-    waitForTest();
+    if (const char* testFile = getenv("drtTestFile")) {
+        runFromCommandLine = true;
+        addTest(testFile);
+    } else {
+        // Get Test file name from PPS: /pps/services/drt/input
+        // Example: test_file::fast/js/arguments.html
+        waitForTest();
+    }
 }
 
 void DumpRenderTree::addTest(const char* testFile)
@@ -381,7 +395,7 @@ bool DumpRenderTree::isHTTPTest(const String& test)
     String testLower = test.lower();
     int lenHttpTestSyntax = strlen(httpTestSyntax);
     return testLower.substring(0, lenHttpTestSyntax) == httpTestSyntax
-            && testLower.substring(lenHttpTestSyntax, strlen(localTestSyntax)) != localTestSyntax;
+        && testLower.substring(lenHttpTestSyntax, strlen(localTestSyntax)) != localTestSyntax;
 }
 
 void DumpRenderTree::invalidateAnyPreviousWaitToDumpWatchdog()
@@ -497,15 +511,28 @@ void DumpRenderTree::dump()
     String result = "Content-Type: " + resultMimeType + "\n" + data;
 
     dumpToFile(result);
-    if (m_dumpPixels && !dumpAsText && gTestRunner->generatePixelResults())
-        dumpWebViewAsPixelsAndCompareWithExpected(gTestRunner->expectedPixelHash());
 
-    String crashFile = dumpFile + ".crash";
-    unlink(crashFile.utf8().data());
+    if (!runFromCommandLine) {
+        // signal end of text block
+        fputs("#EOF\n", stdout);
 
-    String doneFile =  m_resultsDir + *m_currentTest + ".done";
-    createFile(doneFile);
+        // There are two scenarios for dumping pixels:
+        // 1. When the test case explicitly asks for it by calling dumpAsText(true) with that extra true passed as a parameter value, from JavaScript
+        bool explicitPixelResults = gTestRunner->dumpAsText() && gTestRunner->generatePixelResults();
+        // 2. When the test case implicitly allows it by not calling dumpAsText() at all (with no parameters).
+        bool implicitPixelResults = !gTestRunner->dumpAsText();
 
+        // But only if m_enablePixelTests is set, to say that the user wants to run pixel tests at all.
+        bool generatePixelResults = m_enablePixelTests && (explicitPixelResults || implicitPixelResults);
+        if (generatePixelResults)
+            dumpWebViewAsPixelsAndCompareWithExpected(gTestRunner->expectedPixelHash());
+
+        String crashFile = dumpFile + ".crash";
+        unlink(crashFile.utf8().data());
+
+        String doneFile =  m_resultsDir + *m_currentTest + ".done";
+        createFile(doneFile);
+    }
     testDone = true;
     runRemainingTests();
 }
@@ -641,7 +668,7 @@ void DumpRenderTree::didReceiveTitleForFrame(const String& title, WebCore::Frame
 }
 
 // ChromeClient delegates.
-void DumpRenderTree::addMessageToConsole(const String& message, unsigned int lineNumber, const String& sourceID)
+void DumpRenderTree::addMessageToConsole(const String& message, unsigned lineNumber, const String& sourceID)
 {
     printf("CONSOLE MESSAGE: ");
     if (lineNumber)
@@ -653,7 +680,7 @@ void DumpRenderTree::addMessageToConsole(const String& message, unsigned int lin
         String remaining = message.substring(pos);
         String fileName;
         int indexFile = remaining.reverseFind('/') + 1;
-        if (indexFile > 0 && indexFile < remaining.length())
+        if (indexFile > 0 && unsigned(indexFile) < remaining.length())
             fileName = remaining.substring(indexFile);
         else
             fileName = "file:";

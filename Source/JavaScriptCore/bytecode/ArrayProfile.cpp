@@ -26,7 +26,43 @@
 #include "config.h"
 #include "ArrayProfile.h"
 
+#include <wtf/StringExtras.h>
+
 namespace JSC {
+
+const char* arrayModesToString(ArrayModes arrayModes)
+{
+    if (!arrayModes)
+        return "0:<empty>";
+    
+    if (arrayModes == ALL_ARRAY_MODES)
+        return "TOP";
+
+    bool isNonArray = !!(arrayModes & asArrayModes(NonArray));
+    bool isNonArrayWithContiguous = !!(arrayModes & asArrayModes(NonArrayWithContiguous));
+    bool isNonArrayWithArrayStorage = !!(arrayModes & asArrayModes(NonArrayWithArrayStorage));
+    bool isNonArrayWithSlowPutArrayStorage = !!(arrayModes & asArrayModes(NonArrayWithSlowPutArrayStorage));
+    bool isArray = !!(arrayModes & asArrayModes(ArrayClass));
+    bool isArrayWithContiguous = !!(arrayModes & asArrayModes(ArrayWithContiguous));
+    bool isArrayWithArrayStorage = !!(arrayModes & asArrayModes(ArrayWithArrayStorage));
+    bool isArrayWithSlowPutArrayStorage = !!(arrayModes & asArrayModes(ArrayWithSlowPutArrayStorage));
+    
+    static char result[256];
+    snprintf(
+        result, sizeof(result),
+        "%u:%s%s%s%s%s%s%s%s",
+        arrayModes,
+        isNonArray ? "NonArray" : "",
+        isNonArrayWithContiguous ? "NonArrayWithContiguous" : "",
+        isNonArrayWithArrayStorage ? " NonArrayWithArrayStorage" : "",
+        isNonArrayWithSlowPutArrayStorage ? "NonArrayWithSlowPutArrayStorage" : "",
+        isArray ? "ArrayClass" : "",
+        isArrayWithContiguous ? "ArrayWithContiguous" : "",
+        isArrayWithArrayStorage ? " ArrayWithArrayStorage" : "",
+        isArrayWithSlowPutArrayStorage ? "ArrayWithSlowPutArrayStorage" : "");
+    
+    return result;
+}
 
 void ArrayProfile::computeUpdatedPrediction(OperationInProgress operation)
 {

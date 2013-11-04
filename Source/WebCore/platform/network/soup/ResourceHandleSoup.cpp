@@ -72,9 +72,6 @@ namespace WebCore {
 
 #define READ_BUFFER_SIZE 8192
 
-// Use the same value as in NSURLError.h
-static const int gTimeoutError = -1001;
-
 static bool loadingSynchronousRequest = false;
 
 class WebCoreSynchronousLoader : public ResourceHandleClient {
@@ -206,7 +203,6 @@ static void sendRequestCallback(GObject*, GAsyncResult*, gpointer);
 static void readCallback(GObject*, GAsyncResult*, gpointer);
 static void closeCallback(GObject*, GAsyncResult*, gpointer);
 static gboolean requestTimeoutCallback(void*);
-static bool startNonHTTPRequest(ResourceHandle*, KURL);
 #if ENABLE(WEB_TIMING)
 static int  milisecondsSinceRequest(double requestTime);
 #endif
@@ -233,16 +229,6 @@ ResourceHandleInternal::~ResourceHandleInternal()
 static SoupSession* sessionFromContext(NetworkingContext* context)
 {
     return (context && context->isValid()) ? context->soupSession() : ResourceHandle::defaultSession();
-}
-
-SoupSession* ResourceHandleInternal::soupSession()
-{
-    return sessionFromContext(m_context.get());
-}
-
-uint64_t ResourceHandleInternal::initiatingPageID()
-{
-    return (m_context && m_context->isValid()) ? m_context->initiatingPageID() : 0;
 }
 
 ResourceHandle::~ResourceHandle()
@@ -278,6 +264,13 @@ static void ensureSessionIsInitialized(SoupSession* session)
     }
 
     g_object_set_data(G_OBJECT(session), "webkit-init", reinterpret_cast<void*>(0xdeadbeef));
+}
+
+SoupSession* ResourceHandleInternal::soupSession()
+{
+    SoupSession* session = sessionFromContext(m_context.get());
+    ensureSessionIsInitialized(session);
+    return session;
 }
 
 static void gotHeadersCallback(SoupMessage* msg, gpointer data)
@@ -399,31 +392,25 @@ static void cleanupSoupRequestOperation(ResourceHandle* handle, bool isDestroyin
         handle->deref();
 }
 
-static ResourceError convertSoupErrorToResourceError(GError* error, SoupRequest* request, SoupMessage* message = 0)
+static bool handleUnignoredTLSErrors(ResourceHandle* handle)
 {
-    ASSERT(error);
-    ASSERT(request);
+    ResourceHandleInternal* d = handle->getInternal();
+    const ResourceResponse& response = d->m_response;
 
-    GOwnPtr<char> uri(soup_uri_to_string(soup_request_get_uri(request), FALSE));
-    if (message && SOUP_STATUS_IS_TRANSPORT_ERROR(message->status_code)) {
-        return ResourceError(g_quark_to_string(SOUP_HTTP_ERROR),
-                             static_cast<gint>(message->status_code),
-                             uri.get(),
-                             String::fromUTF8(message->reason_phrase));
-    }
+    if (!response.soupMessageTLSErrors() || gIgnoreSSLErrors)
+        return false;
 
-    // Non-transport errors are handled differently.
-    return ResourceError(g_quark_to_string(G_IO_ERROR),
-                         error->code,
-                         uri.get(),
-                         String::fromUTF8(error->message));
-}
+    String lowercaseHostURL = handle->firstRequest().url().host().lower();
+    if (allowsAnyHTTPSCertificateHosts().contains(lowercaseHostURL))
+        return false;
 
-static inline bool hasUnignoredTLSErrors(ResourceHandle* handle)
-{
-    return handle->getInternal()->m_response.soupMessageTLSErrors()
-        && !gIgnoreSSLErrors
-        && !allowsAnyHTTPSCertificateHosts().contains(handle->firstRequest().url().host().lower());
+    // We aren't ignoring errors globally, but the user may have already decided to accept this certificate.
+    CertificatesMap::iterator i = clientCertificates().find(lowercaseHostURL);
+    if (i != clientCertificates().end() && i->value.contains(response.soupMessageCertificate()))
+        return false;
+
+    handle->client()->didFail(handle, ResourceError::tlsError(d->m_soupRequest.get(), response.soupMessageTLSErrors(), response.soupMessageCertificate()));
+    return true;
 }
 
 static void sendRequestCallback(GObject*, GAsyncResult* res, gpointer data)
@@ -447,7 +434,7 @@ static void sendRequestCallback(GObject*, GAsyncResult* res, gpointer data)
     GOwnPtr<GError> error;
     GInputStream* in = soup_request_send_finish(d->m_soupRequest.get(), res, &error.outPtr());
     if (error) {
-        client->didFail(handle.get(), convertSoupErrorToResourceError(error.get(), d->m_soupRequest.get(), soupMessage));
+        client->didFail(handle.get(), ResourceError::httpError(soupMessage, error.get(), d->m_soupRequest.get()));
         cleanupSoupRequestOperation(handle.get());
         return;
     }
@@ -462,17 +449,11 @@ static void sendRequestCallback(GObject*, GAsyncResult* res, gpointer data)
         }
         d->m_response.updateFromSoupMessage(soupMessage);
 
-        if (hasUnignoredTLSErrors(handle.get())) {
-            CertificatesMap::iterator iter = clientCertificates().find(handle->firstRequest().url().host().lower());
-            if (iter == clientCertificates().end() || !iter->second.contains(d->m_response.soupMessageCertificate())) {
-                GOwnPtr<char> uri(soup_uri_to_string(soup_request_get_uri(d->m_soupRequest.get()), FALSE));
-                client->didFail(handle.get(), ResourceError(g_quark_to_string(SOUP_HTTP_ERROR), SOUP_STATUS_SSL_FAILED,
-                                                            uri.get(), unacceptableTLSCertificate(),
-                                                            d->m_response.soupMessageTLSErrors(), d->m_response.soupMessageCertificate()));
-                cleanupSoupRequestOperation(handle.get());
-                return;
-            }
+        if (handleUnignoredTLSErrors(handle.get())) {
+            cleanupSoupRequestOperation(handle.get());
+            return;
         }
+
     } else {
         d->m_response.setURL(handle->firstRequest().url());
         const gchar* contentType = soup_request_get_content_type(d->m_soupRequest.get());
@@ -688,39 +669,22 @@ static void networkEventCallback(SoupMessage*, GSocketClientEvent event, GIOStre
 
 static const char* gSoupRequestInitiaingPageIDKey = "wk-soup-request-initiaing-page-id";
 
-static void setSoupRequestInitiaingPageID(SoupRequest* request, uint64_t initiatingPageID)
+static void setSoupRequestInitiaingPageIDFromNetworkingContext(SoupRequest* request, NetworkingContext* context)
 {
-    if (!initiatingPageID)
+    if (!context || !context->isValid())
         return;
 
     uint64_t* initiatingPageIDPtr = static_cast<uint64_t*>(fastMalloc(sizeof(uint64_t)));
-    *initiatingPageIDPtr = initiatingPageID;
+    *initiatingPageIDPtr = context->initiatingPageID();
     g_object_set_data_full(G_OBJECT(request), g_intern_static_string(gSoupRequestInitiaingPageIDKey), initiatingPageIDPtr, fastFree);
 }
 
-static bool startHTTPRequest(ResourceHandle* handle)
+static bool createSoupMessageForHandleAndRequest(ResourceHandle* handle, const ResourceRequest& request)
 {
     ASSERT(handle);
 
     ResourceHandleInternal* d = handle->getInternal();
-
-    SoupSession* session = d->soupSession();
-    ensureSessionIsInitialized(session);
-    SoupRequester* requester = SOUP_REQUESTER(soup_session_get_feature(session, SOUP_TYPE_REQUESTER));
-
-    ResourceRequest request(handle->firstRequest());
-    KURL url(request.url());
-    url.removeFragmentIdentifier();
-    request.setURL(url);
-
-    GOwnPtr<GError> error;
-    d->m_soupRequest = adoptGRef(soup_requester_request(requester, url.string().utf8().data(), &error.outPtr()));
-    if (error) {
-        d->m_soupRequest = 0;
-        return false;
-    }
-
-    setSoupRequestInitiaingPageID(d->m_soupRequest.get(), d->initiatingPageID());
+    ASSERT(d->m_soupRequest);
 
     d->m_soupMessage = adoptGRef(soup_request_http_get_message(SOUP_REQUEST_HTTP(d->m_soupRequest.get())));
     if (!d->m_soupMessage)
@@ -729,18 +693,9 @@ static bool startHTTPRequest(ResourceHandle* handle)
     SoupMessage* soupMessage = d->m_soupMessage.get();
     request.updateSoupMessage(soupMessage);
 
+    g_object_set_data(G_OBJECT(soupMessage), "handle", handle);
     if (!handle->shouldContentSniff())
         soup_message_disable_feature(soupMessage, SOUP_TYPE_CONTENT_SNIFFER);
-
-    g_signal_connect(soupMessage, "got-headers", G_CALLBACK(gotHeadersCallback), handle);
-    g_signal_connect(soupMessage, "restarted", G_CALLBACK(restartedCallback), handle);
-    g_signal_connect(soupMessage, "wrote-body-data", G_CALLBACK(wroteBodyDataCallback), handle);
-
-#if ENABLE(WEB_TIMING)
-    g_signal_connect(soupMessage, "network-event", G_CALLBACK(networkEventCallback), handle);
-    g_signal_connect(soupMessage, "wrote-body", G_CALLBACK(wroteBodyCallback), handle);
-    g_object_set_data(G_OBJECT(soupMessage), "handle", handle);
-#endif
 
     String firstPartyString = request.firstPartyForCookies().string();
     if (!firstPartyString.isEmpty()) {
@@ -748,48 +703,57 @@ static bool startHTTPRequest(ResourceHandle* handle)
         soup_message_set_first_party(soupMessage, firstParty.get());
     }
 
-    FormData* httpBody = d->m_firstRequest.httpBody();
-    CString contentType = d->m_firstRequest.httpContentType().utf8().data();
-    if (httpBody && !httpBody->isEmpty()
-        && !addFormElementsToSoupMessage(soupMessage, contentType.data(), httpBody, d->m_bodySize)) {
+    FormData* httpBody = request.httpBody();
+    CString contentType = request.httpContentType().utf8().data();
+    if (httpBody && !httpBody->isEmpty() && !addFormElementsToSoupMessage(soupMessage, contentType.data(), httpBody, d->m_bodySize)) {
         // We failed to prepare the body data, so just fail this load.
-        g_signal_handlers_disconnect_matched(soupMessage, G_SIGNAL_MATCH_DATA, 0, 0, 0, 0, handle);
         d->m_soupMessage.clear();
         return false;
     }
-
-    // balanced by a deref() in cleanupSoupRequestOperation, which should always run
-    handle->ref();
-
-#if ENABLE(WEB_TIMING)
-    d->m_response.setResourceLoadTiming(ResourceLoadTiming::create());
-#endif
 
     // Make sure we have an Accept header for subresources; some sites
     // want this to serve some of their subresources
     if (!soup_message_headers_get_one(soupMessage->request_headers, "Accept"))
         soup_message_headers_append(soupMessage->request_headers, "Accept", "*/*");
 
-    // In the case of XHR .send() and .send("") explicitly tell libsoup
-    // to send a zero content-lenght header for consistency
-    // with other backends (e.g. Chromium's) and other UA implementations like FF.
-    // It's done in the backend here instead of in XHR code since in XHR CORS checking
-    // prevents us from this kind of late header manipulation.
+    // In the case of XHR .send() and .send("") explicitly tell libsoup to send a zero content-lenght header
+    // for consistency with other backends (e.g. Chromium's) and other UA implementations like FF. It's done
+    // in the backend here instead of in XHR code since in XHR CORS checking prevents us from this kind of
+    // late header manipulation.
     if ((request.httpMethod() == "POST" || request.httpMethod() == "PUT")
         && (!request.httpBody() || request.httpBody()->isEmpty()))
         soup_message_headers_set_content_length(soupMessage->request_headers, 0);
 
-    // Send the request only if it's not been explicitly deferred.
-    if (!d->m_defersLoading) {
+    g_signal_connect(d->m_soupMessage.get(), "got-headers", G_CALLBACK(gotHeadersCallback), handle);
+    g_signal_connect(d->m_soupMessage.get(), "restarted", G_CALLBACK(restartedCallback), handle);
+    g_signal_connect(d->m_soupMessage.get(), "wrote-body-data", G_CALLBACK(wroteBodyDataCallback), handle);
+
 #if ENABLE(WEB_TIMING)
-        d->m_response.resourceLoadTiming()->requestTime = monotonicallyIncreasingTime();
+    d->m_response.setResourceLoadTiming(ResourceLoadTiming::create());
+    g_signal_connect(d->m_soupMessage.get(), "network-event", G_CALLBACK(networkEventCallback), handle);
+    g_signal_connect(d->m_soupMessage.get(), "wrote-body", G_CALLBACK(wroteBodyCallback), handle);
 #endif
-        if (d->m_firstRequest.timeoutInterval() > 0) {
-            // soup_add_timeout returns a GSource* whose only reference is owned by the context. We need to have our own reference to it, hence not using adoptRef.
-            d->m_timeoutSource = soup_add_timeout(g_main_context_get_thread_default(), d->m_firstRequest.timeoutInterval() * 1000, requestTimeoutCallback, handle);
-        }
-        d->m_cancellable = adoptGRef(g_cancellable_new());
-        soup_request_send_async(d->m_soupRequest.get(), d->m_cancellable.get(), sendRequestCallback, handle);
+
+    return true;
+}
+
+static bool createSoupRequestAndMessageForHandle(ResourceHandle* handle, bool isHTTPFamilyRequest)
+{
+    ResourceHandleInternal* d = handle->getInternal();
+    SoupRequester* requester = SOUP_REQUESTER(soup_session_get_feature(d->soupSession(), SOUP_TYPE_REQUESTER));
+
+    GOwnPtr<GError> error;
+    const ResourceRequest& request = handle->firstRequest();
+    d->m_soupRequest = adoptGRef(soup_requester_request(requester, request.urlStringForSoup().utf8().data(), &error.outPtr()));
+    if (error) {
+        d->m_soupRequest.clear();
+        return false;
+    }
+
+    // Non-HTTP family requests do not need a soupMessage, as it's callbacks really only apply to HTTP.
+    if (isHTTPFamilyRequest && !createSoupMessageForHandleAndRequest(handle, request)) {
+        d->m_soupRequest.clear();
+        return false;
     }
 
     return true;
@@ -807,6 +771,9 @@ bool ResourceHandle::start(NetworkingContext* context)
     if (context && !context->isValid())
         return false;
 
+    // Used to set the keep track of custom SoupSessions for ports that support it (EFL).
+    d->m_context = context;
+
     if (!(d->m_user.isEmpty() || d->m_pass.isEmpty())) {
         // If credentials were specified for this request, add them to the url,
         // so that they will be passed to NetworkRequest.
@@ -816,25 +783,47 @@ bool ResourceHandle::start(NetworkingContext* context)
         d->m_firstRequest.setURL(urlWithCredentials);
     }
 
-    KURL url = firstRequest().url();
-    String urlString = url.string();
-    String protocol = url.protocol();
-
-    // Used to set the authentication dialog toplevel; may be NULL
-    d->m_context = context;
-
-    if (equalIgnoringCase(protocol, "http") || equalIgnoringCase(protocol, "https")) {
-        if (startHTTPRequest(this))
-            return true;
+    // Only allow the POST and GET methods for non-HTTP requests.
+    const ResourceRequest& request = firstRequest();
+    bool isHTTPFamilyRequest = request.url().protocolIsInHTTPFamily();
+    if (!isHTTPFamilyRequest && request.httpMethod() != "GET" && request.httpMethod() != "POST") {
+        this->scheduleFailure(InvalidURLFailure); // Error must not be reported immediately
+        return true;
     }
 
-    if (startNonHTTPRequest(this, url))
+    if (!createSoupRequestAndMessageForHandle(this, isHTTPFamilyRequest)) {
+        this->scheduleFailure(InvalidURLFailure); // Error must not be reported immediately
         return true;
+    }
 
-    // Error must not be reported immediately
-    this->scheduleFailure(InvalidURLFailure);
+    setSoupRequestInitiaingPageIDFromNetworkingContext(d->m_soupRequest.get(), context);
+
+    // Send the request only if it's not been explicitly deferred.
+    if (!d->m_defersLoading)
+        sendPendingRequest();
 
     return true;
+}
+
+void ResourceHandle::sendPendingRequest()
+{
+#if ENABLE(WEB_TIMING)
+    if (d->m_response.resourceLoadTiming())
+        d->m_response.resourceLoadTiming()->requestTime = monotonicallyIncreasingTime();
+#endif
+
+    if (d->m_firstRequest.timeoutInterval() > 0) {
+        // soup_add_timeout returns a GSource* whose only reference is owned by
+        // the context. We need to have our own reference to it, hence not using adoptRef.
+        d->m_timeoutSource = soup_add_timeout(g_main_context_get_thread_default(),
+            d->m_firstRequest.timeoutInterval() * 1000, requestTimeoutCallback, this);
+    }
+
+    // Balanced by a deref() in cleanupSoupRequestOperation, which should always run.
+    ref();
+
+    d->m_cancellable = adoptGRef(g_cancellable_new());
+    soup_request_send_async(d->m_soupRequest.get(), d->m_cancellable.get(), sendRequestCallback, this);
 }
 
 void ResourceHandle::cancel()
@@ -853,7 +842,7 @@ void ResourceHandle::setHostAllowsAnyHTTPSCertificate(const String& host)
 
 void ResourceHandle::setClientCertificate(const String& host, GTlsCertificate* certificate)
 {
-    clientCertificates().add(host.lower(), HostTLSCertificateSet()).iterator->second.add(certificate);
+    clientCertificates().add(host.lower(), HostTLSCertificateSet()).iterator->value.add(certificate);
 }
 
 void ResourceHandle::setIgnoreSSLErrors(bool ignoreSSLErrors)
@@ -861,11 +850,24 @@ void ResourceHandle::setIgnoreSSLErrors(bool ignoreSSLErrors)
     gIgnoreSSLErrors = ignoreSSLErrors;
 }
 
-static bool hasBeenSent(ResourceHandle* handle)
+#if PLATFORM(GTK)
+void ResourceHandle::didReceiveAuthenticationChallenge(const AuthenticationChallenge& challenge)
 {
-    ResourceHandleInternal* d = handle->getInternal();
+    if (client())
+        client()->didReceiveAuthenticationChallenge(this, challenge);
+}
 
-    return d->m_cancellable;
+void ResourceHandle::receivedRequestToContinueWithoutCredential(const AuthenticationChallenge&)
+{
+}
+#endif
+
+static bool waitingToSendRequest(ResourceHandle* handle)
+{
+    // We need to check for d->m_soupRequest because the request may have raised a failure
+    // (for example invalid URLs). We cannot  simply check for d->m_scheduledFailure because
+    // it's cleared as soon as the failure event is fired.
+    return handle->getInternal()->m_soupRequest && !handle->getInternal()->m_cancellable;
 }
 
 void ResourceHandle::platformSetDefersLoading(bool defersLoading)
@@ -882,21 +884,8 @@ void ResourceHandle::platformSetDefersLoading(bool defersLoading)
         return;
     }
 
-    // We need to check for d->m_soupRequest because the request may
-    // have raised a failure (for example invalid URLs). We cannot
-    // simply check for d->m_scheduledFailure because it's cleared as
-    // soon as the failure event is fired.
-    if (!hasBeenSent(this) && d->m_soupRequest) {
-#if ENABLE(WEB_TIMING)
-        if (d->m_response.resourceLoadTiming())
-            d->m_response.resourceLoadTiming()->requestTime = monotonicallyIncreasingTime();
-#endif
-        d->m_cancellable = adoptGRef(g_cancellable_new());
-        if (d->m_firstRequest.timeoutInterval() > 0) {
-            // soup_add_timeout returns a GSource* whose only reference is owned by the context. We need to have our own reference to it, hence not using adoptRef.
-            d->m_timeoutSource = soup_add_timeout(g_main_context_get_thread_default(), d->m_firstRequest.timeoutInterval() * 1000, requestTimeoutCallback, this);
-        }
-        soup_request_send_async(d->m_soupRequest.get(), d->m_cancellable.get(), sendRequestCallback, this);
+    if (waitingToSendRequest(this)) {
+        sendPendingRequest();
         return;
     }
 
@@ -982,7 +971,7 @@ static void readCallback(GObject*, GAsyncResult* asyncResult, gpointer data)
     GOwnPtr<GError> error;
     gssize bytesRead = g_input_stream_read_finish(d->m_inputStream.get(), asyncResult, &error.outPtr());
     if (error) {
-        client->didFail(handle.get(), convertSoupErrorToResourceError(error.get(), d->m_soupRequest.get()));
+        client->didFail(handle.get(), ResourceError::genericIOError(error.get(), d->m_soupRequest.get()));
         cleanupSoupRequestOperation(handle.get());
         return;
     }
@@ -1019,56 +1008,24 @@ static void readCallback(GObject*, GAsyncResult* asyncResult, gpointer data)
 static gboolean requestTimeoutCallback(gpointer data)
 {
     RefPtr<ResourceHandle> handle = static_cast<ResourceHandle*>(data);
-    ResourceHandleInternal* d = handle->getInternal();
-    ResourceHandleClient* client = handle->client();
-
-    ResourceError timeoutError("WebKitNetworkError", gTimeoutError, d->m_firstRequest.url().string(), "Request timed out");
-    timeoutError.setIsTimeout(true);
-    client->didFail(handle.get(), timeoutError);
+    handle->client()->didFail(handle.get(), ResourceError::timeoutError(handle->getInternal()->m_firstRequest.url().string()));
     handle->cancel();
 
     return FALSE;
 }
 
-static bool startNonHTTPRequest(ResourceHandle* handle, KURL url)
+#if PLATFORM(GTK)
+static void authenicateCallback(SoupSession* session, SoupMessage* soupMessage, SoupAuth* soupAuth, gboolean retrying)
 {
-    ASSERT(handle);
+    RefPtr<ResourceHandle> handle = static_cast<ResourceHandle*>(g_object_get_data(G_OBJECT(soupMessage), "handle"));
+    if (!handle)
+        return;
 
-    if (handle->firstRequest().httpMethod() != "GET" && handle->firstRequest().httpMethod() != "POST")
-        return false;
-
-    ResourceHandleInternal* d = handle->getInternal();
-
-    SoupSession* session = d->soupSession();
-    ensureSessionIsInitialized(session);
-    SoupRequester* requester = SOUP_REQUESTER(soup_session_get_feature(session, SOUP_TYPE_REQUESTER));
-
-    CString urlStr = url.string().utf8();
-
-    GOwnPtr<GError> error;
-    d->m_soupRequest = adoptGRef(soup_requester_request(requester, urlStr.data(), &error.outPtr()));
-    if (error) {
-        d->m_soupRequest = 0;
-        return false;
-    }
-
-    // balanced by a deref() in cleanupSoupRequestOperation, which should always run
-    handle->ref();
-
-    setSoupRequestInitiaingPageID(d->m_soupRequest.get(), d->initiatingPageID());
-
-    // Send the request only if it's not been explicitly deferred.
-    if (!d->m_defersLoading) {
-        d->m_cancellable = adoptGRef(g_cancellable_new());
-        if (d->m_firstRequest.timeoutInterval() > 0) {
-            // soup_add_timeout returns a GSource* whose only reference is owned by the context. We need to have our own reference to it, hence not using adoptRef.
-            d->m_timeoutSource = soup_add_timeout(g_main_context_get_thread_default(), d->m_firstRequest.timeoutInterval() * 1000, requestTimeoutCallback, handle);
-        }
-        soup_request_send_async(d->m_soupRequest.get(), d->m_cancellable.get(), sendRequestCallback, handle);
-    }
-
-    return true;
+    // We don't need to pass a client here, because GTK+ does not yet use the AuthenticationClient to
+    // respond to the AuthenticationChallenge -- instead dealing with the Soup objects directly.
+    handle->didReceiveAuthenticationChallenge(AuthenticationChallenge(session, soupMessage, soupAuth, retrying, 0));
 }
+#endif
 
 SoupSession* ResourceHandle::defaultSession()
 {
@@ -1090,8 +1047,12 @@ SoupSession* ResourceHandle::defaultSession()
                      SOUP_SESSION_ADD_FEATURE_BY_TYPE, SOUP_TYPE_PROXY_RESOLVER_DEFAULT,
                      SOUP_SESSION_USE_THREAD_CONTEXT, TRUE,
                      NULL);
+#if PLATFORM(GTK)
+        g_signal_connect(session, "authenticate", G_CALLBACK(authenicateCallback), 0);
+#endif
+
 #if ENABLE(WEB_TIMING)
-        g_signal_connect(G_OBJECT(session), "request-started", G_CALLBACK(requestStartedCallback), 0);
+        g_signal_connect(session, "request-started", G_CALLBACK(requestStartedCallback), 0);
 #endif
     }
 

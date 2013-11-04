@@ -38,8 +38,9 @@
 
 namespace WebCore {
 
-CustomFilterProgram::CustomFilterProgram(CustomFilterProgramMixSettings mixSettings)
-    : m_mixSettings(mixSettings)
+CustomFilterProgram::CustomFilterProgram(CustomFilterProgramType programType, const CustomFilterProgramMixSettings& mixSettings)
+    : m_programType(programType)
+    , m_mixSettings(mixSettings)
 {
     // Keep the constructor protected to prevent creating this object directly.
 }
@@ -75,13 +76,18 @@ void CustomFilterProgram::removeClient(CustomFilterProgramClient* client)
 void CustomFilterProgram::notifyClients()
 {
     for (CustomFilterProgramClientList::iterator iter = m_clients.begin(), end = m_clients.end(); iter != end; ++iter)
-        iter->first->notifyCustomFilterProgramLoaded(this);
+        iter->key->notifyCustomFilterProgramLoaded(this);
 }
 
 CustomFilterProgramInfo CustomFilterProgram::programInfo() const
 {
     ASSERT(isLoaded());
-    return CustomFilterProgramInfo(vertexShaderString(), fragmentShaderString(), m_mixSettings);
+    return CustomFilterProgramInfo(vertexShaderString(), fragmentShaderString(), m_programType, m_mixSettings);
+}
+
+bool CustomFilterProgram::operator==(const CustomFilterProgram& o) const
+{
+    return m_programType == o.m_programType && (m_programType != PROGRAM_TYPE_BLENDS_ELEMENT_TEXTURE || m_mixSettings == o.m_mixSettings);
 }
 
 } // namespace WebCore

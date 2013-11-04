@@ -21,23 +21,18 @@
 #define WebSoupRequestManagerProxy_h
 
 #include "APIObject.h"
+#include "MessageReceiver.h"
 #include "WebSoupRequestManagerClient.h"
 #include <wtf/PassRefPtr.h>
 #include <wtf/RefPtr.h>
 #include <wtf/text/WTFString.h>
-
-namespace CoreIPC {
-class ArgumentDecoder;
-class Connection;
-class MessageID;
-}
 
 namespace WebKit {
 
 class WebContext;
 class WebData;
 
-class WebSoupRequestManagerProxy : public APIObject {
+class WebSoupRequestManagerProxy : public APIObject, private CoreIPC::MessageReceiver {
 public:
     static const Type APIType = TypeSoupRequestManager;
 
@@ -55,14 +50,15 @@ public:
     void didFailToLoadURIRequest(uint64_t requestID);
 
     void didReceiveURIRequest(const String& uriString, WebPageProxy*, uint64_t requestID);
-    void didReceiveMessage(CoreIPC::Connection*, CoreIPC::MessageID, CoreIPC::ArgumentDecoder*);
 
 private:
     WebSoupRequestManagerProxy(WebContext*);
 
     virtual Type type() const { return APIType; }
 
-    void didReceiveWebSoupRequestManagerProxyMessage(CoreIPC::Connection*, CoreIPC::MessageID, CoreIPC::ArgumentDecoder*);
+    // CoreIPC::MessageReceiver
+    virtual void didReceiveMessage(CoreIPC::Connection*, CoreIPC::MessageID, CoreIPC::MessageDecoder&) OVERRIDE;
+    void didReceiveWebSoupRequestManagerProxyMessage(CoreIPC::Connection*, CoreIPC::MessageID, CoreIPC::MessageDecoder&);
 
     WebContext* m_webContext;
     WebSoupRequestManagerClient m_client;

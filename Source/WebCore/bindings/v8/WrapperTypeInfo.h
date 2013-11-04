@@ -37,7 +37,7 @@ namespace WebCore {
     
     class ActiveDOMObject;
     class DOMDataStore;
-    
+
     static const int v8DOMWrapperTypeIndex = 0;
     static const int v8DOMWrapperObjectIndex = 1;
     static const int v8DefaultWrapperInternalFieldCount = 2;
@@ -48,6 +48,7 @@ namespace WebCore {
     typedef void (*DerefObjectFunction)(void*);
     typedef ActiveDOMObject* (*ToActiveDOMObjectFunction)(v8::Handle<v8::Object>);
     typedef void (*DOMWrapperVisitorFunction)(DOMDataStore*, void*, v8::Persistent<v8::Object>);
+    typedef void (*InstallPerContextPrototypePropertiesFunction)(v8::Handle<v8::Object>);
 
     enum WrapperTypePrototype {
         WrapperTypeObjectPrototype,
@@ -88,6 +89,12 @@ namespace WebCore {
                 derefObjectFunction(object);
         }
         
+        void installPerContextPrototypeProperties(v8::Handle<v8::Object> proto)
+        {
+            if (installPerContextPrototypePropertiesFunction)
+                installPerContextPrototypePropertiesFunction(proto);
+        }
+
         ActiveDOMObject* toActiveDOMObject(v8::Handle<v8::Object> object)
         {
             if (!toActiveDOMObjectFunction)
@@ -105,9 +112,23 @@ namespace WebCore {
         const DerefObjectFunction derefObjectFunction;
         const ToActiveDOMObjectFunction toActiveDOMObjectFunction;
         const DOMWrapperVisitorFunction domWrapperVisitorFunction;
+        const InstallPerContextPrototypePropertiesFunction installPerContextPrototypePropertiesFunction;
         const WrapperTypeInfo* parentClass;
         const WrapperTypePrototype wrapperTypePrototype;
     };
+
+    inline void* toNative(v8::Handle<v8::Object> object)
+    {
+        ASSERT(object->InternalFieldCount() >= v8DOMWrapperObjectIndex);
+        return object->GetPointerFromInternalField(v8DOMWrapperObjectIndex);
+    }
+
+    inline WrapperTypeInfo* toWrapperTypeInfo(v8::Handle<v8::Object> object)
+    {
+        ASSERT(object->InternalFieldCount() >= v8DOMWrapperTypeIndex);
+        return static_cast<WrapperTypeInfo*>(object->GetPointerFromInternalField(v8DOMWrapperTypeIndex));
+    }
+
 }
 
 #endif // WrapperTypeInfo_h

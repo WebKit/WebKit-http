@@ -218,6 +218,7 @@ LayoutUnit RenderSVGRoot::computeReplacedLogicalHeight() const
 
 void RenderSVGRoot::layout()
 {
+    StackStats::LayoutCheckPoint layoutCheckPoint;
     ASSERT(needsLayout());
 
     m_resourcesNeedingToInvalidateClients.clear();
@@ -296,7 +297,7 @@ void RenderSVGRoot::paintReplaced(PaintInfo& paintInfo, const LayoutPoint& paint
     // Convert from container offsets (html renderers) to a relative transform (svg renderers).
     // Transform from our paint container's coordinate system to our local coords.
     IntPoint adjustedPaintOffset = roundedIntPoint(paintOffset);
-    childPaintInfo.applyTransform(AffineTransform::translation(adjustedPaintOffset.x() - x(), adjustedPaintOffset.y() - y()) * localToParentTransform());
+    childPaintInfo.applyTransform(AffineTransform::translation(adjustedPaintOffset.x(), adjustedPaintOffset.y()) * localToBorderBoxTransform());
 
     SVGRenderingContext renderingContext;
     bool continueRendering = true;
@@ -395,7 +396,7 @@ void RenderSVGRoot::computeFloatRectForRepaint(RenderLayerModelObject* repaintCo
 // This method expects local CSS box coordinates.
 // Callers with local SVG viewport coordinates should first apply the localToBorderBoxTransform
 // to convert from SVG viewport coordinates to local CSS box coordinates.
-void RenderSVGRoot::mapLocalToContainer(RenderLayerModelObject* repaintContainer, TransformState& transformState, MapLocalToContainerFlags mode, bool* wasFixed) const
+void RenderSVGRoot::mapLocalToContainer(RenderLayerModelObject* repaintContainer, TransformState& transformState, MapCoordinatesFlags mode, bool* wasFixed) const
 {
     ASSERT(mode & ~IsFixed); // We should have no fixed content in the SVG rendering tree.
     ASSERT(mode & UseTransforms); // mapping a point through SVG w/o respecting trasnforms is useless.

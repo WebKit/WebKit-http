@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010, 2011 Apple Inc. All rights reserved.
+ * Copyright (C) 2010, 2011, 2012 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -136,10 +136,15 @@ namespace WebKit {
     macro(ScrollAnimatorEnabled, scrollAnimatorEnabled, Bool, bool, DEFAULT_WEBKIT_SCROLL_ANIMATOR_ENABLED) \
     macro(ScreenFontSubstitutionEnabled, screenFontSubstitutionEnabled, Bool, bool, DEFAULT_SCREEN_FONT_SUBSTITUTION_ENABLED) \
     macro(CookieEnabled, cookieEnabled, Bool, bool, true) \
+    macro(PlugInSnapshottingEnabled, plugInSnapshottingEnabled, Bool, bool, false) \
+    macro(PDFPluginEnabled, pdfPluginEnabled, Bool, bool, false) \
     \
 
 #define FOR_EACH_WEBKIT_DOUBLE_PREFERENCE(macro) \
     macro(PDFScaleFactor, pdfScaleFactor, Double, double, 0) \
+    \
+
+#define FOR_EACH_WEBKIT_FLOAT_PREFERENCE(macro) \
     \
 
 #if PLATFORM(WIN)
@@ -210,6 +215,7 @@ namespace WebKit {
 #define FOR_EACH_WEBKIT_PREFERENCE(macro) \
     FOR_EACH_WEBKIT_BOOL_PREFERENCE(macro) \
     FOR_EACH_WEBKIT_DOUBLE_PREFERENCE(macro) \
+    FOR_EACH_WEBKIT_FLOAT_PREFERENCE(macro) \
     FOR_EACH_WEBKIT_UINT32_PREFERENCE(macro) \
     FOR_EACH_WEBKIT_STRING_PREFERENCE(macro) \
     \
@@ -227,7 +233,7 @@ FOR_EACH_WEBKIT_PREFERENCE(DECLARE_KEY_GETTERS)
 struct WebPreferencesStore {
     WebPreferencesStore();
 
-    void encode(CoreIPC::ArgumentEncoder*) const;
+    void encode(CoreIPC::ArgumentEncoder&) const;
     static bool decode(CoreIPC::ArgumentDecoder*, WebPreferencesStore&);
 
     // NOTE: The getters in this class have non-standard names to aid in the use of the preference macros.
@@ -244,6 +250,9 @@ struct WebPreferencesStore {
     bool setDoubleValueForKey(const String& key, double value);
     double getDoubleValueForKey(const String& key) const;
 
+    bool setFloatValueForKey(const String& key, float value);
+    float getFloatValueForKey(const String& key) const;
+
     // For WebKitTestRunner usage.
     static void overrideBoolValueForKey(const String& key, bool value);
     static void removeTestRunnerOverrides();
@@ -252,6 +261,7 @@ struct WebPreferencesStore {
     HashMap<String, bool> m_boolValues;
     HashMap<String, uint32_t> m_uint32Values;
     HashMap<String, double> m_doubleValues;
+    HashMap<String, float> m_floatValues;
 };
 
 } // namespace WebKit

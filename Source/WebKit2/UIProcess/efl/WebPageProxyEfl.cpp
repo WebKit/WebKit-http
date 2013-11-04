@@ -26,6 +26,8 @@
 #include "config.h"
 #include "WebPageProxy.h"
 
+#include "EwkViewImpl.h"
+#include "NativeWebKeyboardEvent.h"
 #include "NotImplemented.h"
 #include "PageClientImpl.h"
 #include "WebKitVersion.h"
@@ -38,7 +40,7 @@ namespace WebKit {
 
 Evas_Object* WebPageProxy::viewWidget()
 {
-    return static_cast<PageClientImpl*>(m_pageClient)->viewWidget();
+    return static_cast<PageClientImpl*>(m_pageClient)->viewImpl()->view();
 }
 
 String WebPageProxy::standardUserAgent(const String& /*applicationNameForUserAgent*/)
@@ -91,6 +93,35 @@ void WebPageProxy::createPluginContainer(uint64_t&)
 void WebPageProxy::windowedPluginGeometryDidChange(const WebCore::IntRect&, const WebCore::IntRect&, uint64_t)
 {
     notImplemented();
+}
+
+void WebPageProxy::handleInputMethodKeydown(bool& handled)
+{
+    handled = m_keyEventQueue.first().isFiltered();
+}
+
+void WebPageProxy::confirmComposition(const String& compositionString)
+{
+    if (!isValid())
+        return;
+
+    process()->send(Messages::WebPage::ConfirmComposition(compositionString), m_pageID, 0);
+}
+
+void WebPageProxy::setComposition(const String& compositionString, Vector<WebCore::CompositionUnderline>& underlines, int cursorPosition)
+{
+    if (!isValid())
+        return;
+
+    process()->send(Messages::WebPage::SetComposition(compositionString, underlines, cursorPosition), m_pageID, 0);
+}
+
+void WebPageProxy::cancelComposition()
+{
+    if (!isValid())
+        return;
+
+    process()->send(Messages::WebPage::CancelComposition(), m_pageID, 0);
 }
 
 } // namespace WebKit

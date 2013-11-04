@@ -28,6 +28,9 @@
     #define TEXMAP_OPENGL_ES_2
 #endif
 #endif
+#if PLATFORM(GTK) && USE(OPENGL_ES_2)
+#define TEXMAP_OPENGL_ES_2
+#endif
 
 #include "FilterOperations.h"
 #include "GraphicsContext.h"
@@ -53,6 +56,11 @@ public:
         SupportsAlpha = 0x01
     };
 
+    enum UpdateContentsFlag {
+        UpdateCanModifyOriginalImageData,
+        UpdateCannotModifyOriginalImageData
+    };
+
     typedef unsigned Flags;
 
     BitmapTexture()
@@ -64,13 +72,13 @@ public:
     virtual bool isBackedByOpenGL() const { return false; }
 
     virtual IntSize size() const = 0;
-    virtual void updateContents(Image*, const IntRect&, const IntPoint& offset) = 0;
-    virtual void updateContents(const void*, const IntRect& target, const IntPoint& offset, int bytesPerLine) = 0;
+    virtual void updateContents(Image*, const IntRect&, const IntPoint& offset, UpdateContentsFlag) = 0;
+    virtual void updateContents(const void*, const IntRect& target, const IntPoint& offset, int bytesPerLine, UpdateContentsFlag) = 0;
     virtual bool isValid() const = 0;
     inline Flags flags() const { return m_flags; }
 
     virtual int bpp() const { return 32; }
-    virtual bool canReuseWith(const IntSize& contentsSize, Flags flags = 0) { return false; }
+    virtual bool canReuseWith(const IntSize& /* contentsSize */, Flags = 0) { return false; }
     void reset(const IntSize& size, Flags flags = 0)
     {
         m_flags = flags;
@@ -137,7 +145,7 @@ public:
     TextDrawingModeFlags textDrawingMode() const { return m_textDrawingMode; }
     AccelerationMode accelerationMode() const { return m_accelerationMode; }
 
-    virtual void beginPainting(PaintFlags flags = 0) { }
+    virtual void beginPainting(PaintFlags = 0) { }
     virtual void endPainting() { }
 
     virtual IntSize maxTextureSize() const { return IntSize(INT_MAX, INT_MAX); }

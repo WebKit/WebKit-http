@@ -490,8 +490,8 @@ void Chrome::scheduleAnimation()
 
 // --------
 
-#if ENABLE(DASHBOARD_SUPPORT) || ENABLE(WIDGET_REGION)
-void ChromeClient::dashboardRegionsChanged()
+#if ENABLE(DASHBOARD_SUPPORT) || ENABLE(DRAGGABLE_REGION)
+void ChromeClient::annotatedRegionsChanged()
 {
 }
 #endif

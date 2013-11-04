@@ -113,9 +113,9 @@ public:
 
     virtual size_t length() const { return m_plainString.impl()->length(); }
 
-    String webcoreString() { return m_plainString; }
+    const String& webcoreString() { return m_plainString; }
 
-    AtomicString atomicString()
+    const AtomicString& atomicString()
     {
 #ifndef NDEBUG
         ASSERT(m_threadId == WTF::currentThread());
@@ -156,26 +156,26 @@ public:
      IntegerCache() : m_initialized(false) { };
     ~IntegerCache();
 
-    v8::Handle<v8::Integer> v8Integer(int value)
+    v8::Handle<v8::Integer> v8Integer(int value, v8::Isolate* isolate)
     {
         if (!m_initialized)
-            createSmallIntegers();
+            createSmallIntegers(isolate);
         if (0 <= value && value < numberOfCachedSmallIntegers)
             return m_smallIntegers[value];
-        return v8::Integer::New(value);
+        return v8::Integer::New(value, isolate);
     }
 
-    v8::Handle<v8::Integer> v8UnsignedInteger(unsigned value)
+    v8::Handle<v8::Integer> v8UnsignedInteger(unsigned value, v8::Isolate* isolate)
     {
         if (!m_initialized)
-            createSmallIntegers();
+            createSmallIntegers(isolate);
         if (value < static_cast<unsigned>(numberOfCachedSmallIntegers))
             return m_smallIntegers[value];
-        return v8::Integer::NewFromUnsigned(value);
+        return v8::Integer::NewFromUnsigned(value, isolate);
     }
 
 private:
-    void createSmallIntegers();
+    void createSmallIntegers(v8::Isolate*);
 
     v8::Persistent<v8::Integer> m_smallIntegers[numberOfCachedSmallIntegers];
     bool m_initialized;

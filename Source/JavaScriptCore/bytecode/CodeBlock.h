@@ -31,6 +31,7 @@
 #define CodeBlock_h
 
 #include "ArrayProfile.h"
+#include "ByValInfo.h"
 #include "BytecodeConventions.h"
 #include "CallLinkInfo.h"
 #include "CallReturnOffsetToBytecodeOffset.h"
@@ -48,7 +49,6 @@
 #include "EvalCodeCache.h"
 #include "ExecutionCounter.h"
 #include "ExpressionRangeInfo.h"
-#include "GlobalResolveInfo.h"
 #include "HandlerInfo.h"
 #include "MethodCallLinkInfo.h"
 #include "Options.h"
@@ -63,6 +63,7 @@
 #include "LineInfo.h"
 #include "Nodes.h"
 #include "RegExpObject.h"
+#include "ResolveOperation.h"
 #include "StructureStubInfo.h"
 #include "UnconditionalFinalizer.h"
 #include "ValueProfile.h"
@@ -159,7 +160,7 @@ namespace JSC {
             return result;
         }
 #endif
-        
+
         void visitAggregate(SlotVisitor&);
 
         static void dumpStatistics();
@@ -196,6 +197,30 @@ namespace JSC {
         int lineNumberForBytecodeOffset(unsigned bytecodeOffset);
         void expressionRangeForBytecodeOffset(unsigned bytecodeOffset, int& divot, int& startOffset, int& endOffset);
 
+        uint32_t addResolve()
+        {
+            m_resolveOperations.grow(m_resolveOperations.size() + 1);
+            return m_resolveOperations.size() - 1;
+        }
+        uint32_t addPutToBase()
+        {
+            m_putToBaseOperations.append(PutToBaseOperation(isStrictMode()));
+            return m_putToBaseOperations.size() - 1;
+        }
+
+        ResolveOperations* resolveOperations(uint32_t i)
+        {
+            return &m_resolveOperations[i];
+        }
+
+        PutToBaseOperation* putToBaseOperation(uint32_t i)
+        {
+            return &m_putToBaseOperations[i];
+        }
+
+        size_t numberOfResolveOperations() const { return m_resolveOperations.size(); }
+        size_t numberOfPutToBaseOperations() const { return m_putToBaseOperations.size(); }
+
 #if ENABLE(JIT)
 
         StructureStubInfo& getStubInfo(ReturnAddressPtr returnAddress)
@@ -209,6 +234,11 @@ namespace JSC {
         }
         
         void resetStub(StructureStubInfo&);
+        
+        ByValInfo& getByValInfo(unsigned bytecodeIndex)
+        {
+            return *(binarySearch<ByValInfo, unsigned, getByValInfoBytecodeIndex>(m_byValInfos.begin(), m_byValInfos.size(), bytecodeIndex));
+        }
 
         CallLinkInfo& getCallLinkInfo(ReturnAddressPtr returnAddress)
         {
@@ -594,11 +624,6 @@ namespace JSC {
         {
             m_propertyAccessInstructions.append(propertyAccessInstruction);
         }
-        void addGlobalResolveInstruction(unsigned globalResolveInstruction)
-        {
-            m_globalResolveInstructions.append(globalResolveInstruction);
-        }
-        bool hasGlobalResolveInstructionAtBytecodeOffset(unsigned bytecodeOffset);
 #if ENABLE(LLINT)
         LLIntCallLinkInfo* addLLIntCallLinkInfo()
         {
@@ -610,15 +635,10 @@ namespace JSC {
         void setNumberOfStructureStubInfos(size_t size) { m_structureStubInfos.grow(size); }
         size_t numberOfStructureStubInfos() const { return m_structureStubInfos.size(); }
         StructureStubInfo& structureStubInfo(int index) { return m_structureStubInfos[index]; }
-
-        void addGlobalResolveInfo(unsigned globalResolveInstruction)
-        {
-            m_globalResolveInfos.append(GlobalResolveInfo(globalResolveInstruction));
-        }
-        GlobalResolveInfo& globalResolveInfo(int index) { return m_globalResolveInfos[index]; }
-        bool hasGlobalResolveInfoAtBytecodeOffset(unsigned bytecodeOffset);
-        GlobalResolveInfo& globalResolveInfoForBytecodeOffset(unsigned bytecodeOffset);
-        unsigned numberOfGlobalResolveInfos() { return m_globalResolveInfos.size(); }
+        
+        void setNumberOfByValInfos(size_t size) { m_byValInfos.grow(size); }
+        size_t numberOfByValInfos() const { return m_byValInfos.size(); }
+        ByValInfo& byValInfo(size_t index) { return m_byValInfos[index]; }
 
         void setNumberOfCallLinkInfos(size_t size) { m_callLinkInfos.grow(size); }
         size_t numberOfCallLinkInfos() const { return m_callLinkInfos.size(); }
@@ -771,15 +791,6 @@ namespace JSC {
         ArrayProfile* getArrayProfile(unsigned bytecodeOffset);
         ArrayProfile* getOrAddArrayProfile(unsigned bytecodeOffset);
 #endif
-        
-        unsigned globalResolveInfoCount() const
-        {
-#if ENABLE(JIT)    
-            if (m_globalData->canUseJIT())
-                return m_globalResolveInfos.size();
-#endif
-            return 0;
-        }
 
         // Exception handling support
 
@@ -915,18 +926,32 @@ namespace JSC {
         }
         RegExp* regexp(int index) const { ASSERT(m_rareData); return m_rareData->m_regexps[index].get(); }
 
-        unsigned addConstantBuffer(unsigned length)
+        unsigned numberOfConstantBuffers() const
+        {
+            if (!m_rareData)
+                return 0;
+            return m_rareData->m_constantBuffers.size();
+        }
+        unsigned addConstantBuffer(const Vector<JSValue>& buffer)
         {
             createRareDataIfNecessary();
             unsigned size = m_rareData->m_constantBuffers.size();
-            m_rareData->m_constantBuffers.append(Vector<JSValue>(length));
+            m_rareData->m_constantBuffers.append(buffer);
             return size;
         }
+        unsigned addConstantBuffer(unsigned length)
+        {
+            return addConstantBuffer(Vector<JSValue>(length));
+        }
 
-        JSValue* constantBuffer(unsigned index)
+        Vector<JSValue>& constantBufferAsVector(unsigned index)
         {
             ASSERT(m_rareData);
-            return m_rareData->m_constantBuffers[index].data();
+            return m_rareData->m_constantBuffers[index];
+        }
+        JSValue* constantBuffer(unsigned index)
+        {
+            return constantBufferAsVector(index).data();
         }
 
         JSGlobalObject* globalObject() { return m_globalObject.get(); }
@@ -1191,13 +1216,16 @@ namespace JSC {
         int m_numVars;
         bool m_isConstructor;
 
+        int globalObjectConstant() const { return m_globalObjectConstant; }
+        void setGlobalObjectConstant(int globalRegister) { m_globalObjectConstant = globalRegister; }
+
     protected:
 #if ENABLE(JIT)
         virtual bool jitCompileImpl(ExecState*) = 0;
 #endif
         virtual void visitWeakReferences(SlotVisitor&);
         virtual void finalizeUnconditionally();
-        
+
     private:
         friend class DFGCodeBlocks;
         
@@ -1270,6 +1298,7 @@ namespace JSC {
         int m_thisRegister;
         int m_argumentsRegister;
         int m_activationRegister;
+        int m_globalObjectConstant;
 
         bool m_needsFullScopeChain;
         bool m_usesEval;
@@ -1282,14 +1311,13 @@ namespace JSC {
         unsigned m_sourceOffset;
 
         Vector<unsigned> m_propertyAccessInstructions;
-        Vector<unsigned> m_globalResolveInstructions;
 #if ENABLE(LLINT)
         SegmentedVector<LLIntCallLinkInfo, 8> m_llintCallLinkInfos;
         SentinelLinkedList<LLIntCallLinkInfo, BasicRawSentinelNode<LLIntCallLinkInfo> > m_incomingLLIntCalls;
 #endif
 #if ENABLE(JIT)
         Vector<StructureStubInfo> m_structureStubInfos;
-        Vector<GlobalResolveInfo> m_globalResolveInfos;
+        Vector<ByValInfo> m_byValInfos;
         Vector<CallLinkInfo> m_callLinkInfos;
         Vector<MethodCallLinkInfo> m_methodCallLinkInfos;
         JITCode m_jitCode;
@@ -1381,6 +1409,8 @@ namespace JSC {
         Vector<Comment>  m_bytecodeComments;
         size_t m_bytecodeCommentIterator;
 #endif
+        Vector<ResolveOperations> m_resolveOperations;
+        Vector<PutToBaseOperation, 1> m_putToBaseOperations;
 
         struct RareData {
            WTF_MAKE_FAST_ALLOCATED;

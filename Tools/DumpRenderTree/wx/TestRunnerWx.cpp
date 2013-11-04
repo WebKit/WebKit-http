@@ -333,7 +333,7 @@ void TestRunner::setMockDeviceOrientation(bool canProvideAlpha, double alpha, bo
     // See https://bugs.webkit.org/show_bug.cgi?id=30335.
 }
 
-void TestRunner::setMockGeolocationPosition(double latitude, double longitude, double accuracy)
+void TestRunner::setMockGeolocationPosition(double latitude, double longitude, double accuracy, bool providesAltitude, double altitude, bool providesAltitudeAccuracy, double altitudeAccuracy, bool providesHeading, double heading, bool providesSpeed, double speed)
 {
     // FIXME: Implement for Geolocation layout tests.
     // See https://bugs.webkit.org/show_bug.cgi?id=28264.
@@ -495,11 +495,6 @@ void TestRunner::setWebViewEditable(bool)
 bool TestRunner::callShouldCloseOnWebView()
 {
     return false;
-}
-
-JSRetainPtr<JSStringRef> TestRunner::layerTreeAsText() const
-{
-    return 0;
 }
 
 JSRetainPtr<JSStringRef> TestRunner::markerTextForListItem(JSContextRef context, JSValueRef nodeObject) const

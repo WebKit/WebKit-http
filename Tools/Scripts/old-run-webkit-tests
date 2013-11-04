@@ -2378,6 +2378,8 @@ sub readFromDumpToolWithTimer(**)
             } elsif (!$haveSeenContentTransferEncoding && $lineIn =~ /^Content-Transfer-Encoding: (\S+)$/) {
                 $encoding = $1;
                 $haveSeenContentTransferEncoding = 1;
+            } elsif ($lineIn =~ /^DumpMalloc|^DumpJSHeap: (\S+)$/) {
+                    # Ignored. Only used in performance tests.
             } elsif ($lineIn =~ /(.*)#EOF$/) {
                 if ($1 ne "") {
                     push @output, $1;
@@ -2744,9 +2746,9 @@ sub printResults
         my $message;
         if ($typeCount == 1) {
             $typeText =~ s/were/was/;
-            $message = sprintf "1 test case (%d%%) %s\n", 1 * 100 / $count, $typeText;
+            $message = sprintf "1 test case %s\n", $typeText;
         } else {
-            $message = sprintf "%d test cases (%d%%) %s\n", $typeCount, $typeCount * 100 / $count, $typeText;
+            $message = sprintf "%d test cases %s\n", $typeCount, $typeText;
         }
         $message =~ s-\(0%\)-(<1%)-;
         print $message;

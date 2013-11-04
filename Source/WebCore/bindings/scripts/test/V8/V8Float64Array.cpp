@@ -42,7 +42,7 @@
 
 namespace WebCore {
 
-WrapperTypeInfo V8Float64Array::info = { V8Float64Array::GetTemplate, V8Float64Array::derefObject, 0, 0, &V8ArrayBufferView::info, WrapperTypeObjectPrototype };
+WrapperTypeInfo V8Float64Array::info = { V8Float64Array::GetTemplate, V8Float64Array::derefObject, 0, 0, V8Float64Array::installPerContextPrototypeProperties, &V8ArrayBufferView::info, WrapperTypeObjectPrototype };
 
 namespace Float64ArrayV8Internal {
 
@@ -118,7 +118,7 @@ v8::Persistent<v8::FunctionTemplate> V8Float64Array::GetRawTemplate()
     V8PerIsolateData* data = V8PerIsolateData::current();
     V8PerIsolateData::TemplateMap::iterator result = data->rawTemplateMap().find(&info);
     if (result != data->rawTemplateMap().end())
-        return result->second;
+        return result->value;
 
     v8::HandleScope handleScope;
     v8::Persistent<v8::FunctionTemplate> templ = createRawTemplate();
@@ -131,7 +131,7 @@ v8::Persistent<v8::FunctionTemplate> V8Float64Array::GetTemplate()
     V8PerIsolateData* data = V8PerIsolateData::current();
     V8PerIsolateData::TemplateMap::iterator result = data->templateMap().find(&info);
     if (result != data->templateMap().end())
-        return result->second;
+        return result->value;
 
     v8::HandleScope handleScope;
     v8::Persistent<v8::FunctionTemplate> templ =
@@ -150,8 +150,9 @@ v8::Handle<v8::Object> V8Float64Array::wrapSlow(PassRefPtr<Float64Array> impl, v
 {
     v8::Handle<v8::Object> wrapper;
     ASSERT(static_cast<void*>(static_cast<ArrayBufferView*>(impl.get())) == static_cast<void*>(impl.get()));
-    Document* document = 0;
-    UNUSED_PARAM(document);
+    // Please don't add any more uses of this variable.
+    Document* deprecatedDocument = 0;
+    UNUSED_PARAM(deprecatedDocument);
 
     v8::Handle<v8::Context> context;
     if (!creationContext.IsEmpty() && creationContext->CreationContext() != v8::Context::GetCurrent()) {
@@ -162,13 +163,15 @@ v8::Handle<v8::Object> V8Float64Array::wrapSlow(PassRefPtr<Float64Array> impl, v
         context->Enter();
     }
 
-    wrapper = V8DOMWrapper::instantiateV8Object(document, &info, impl.get());
+    wrapper = V8DOMWrapper::instantiateV8Object(deprecatedDocument, &info, impl.get());
 
     if (!context.IsEmpty())
         context->Exit();
 
     if (UNLIKELY(wrapper.IsEmpty()))
         return wrapper;
+
+    installPerContextProperties(wrapper, impl.get());
     v8::Persistent<v8::Object> wrapperHandle = V8DOMWrapper::setJSWrapperForDOMObject(impl, wrapper, isolate);
     if (!hasDependentLifetime)
         wrapperHandle.MarkIndependent();

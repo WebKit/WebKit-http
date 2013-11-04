@@ -171,7 +171,7 @@ enum EBoxDirection { BNORMAL, BREVERSE };
 enum EAlignContent { AlignContentFlexStart, AlignContentFlexEnd, AlignContentCenter, AlignContentSpaceBetween, AlignContentSpaceAround, AlignContentStretch };
 enum EAlignItems { AlignAuto, AlignFlexStart, AlignFlexEnd, AlignCenter, AlignStretch, AlignBaseline };
 enum EFlexDirection { FlowRow, FlowRowReverse, FlowColumn, FlowColumnReverse };
-enum EFlexWrap { FlexWrapNone, FlexWrap, FlexWrapReverse };
+enum EFlexWrap { FlexNoWrap, FlexWrap, FlexWrapReverse };
 enum EJustifyContent { JustifyFlexStart, JustifyFlexEnd, JustifyCenter, JustifySpaceBetween, JustifySpaceAround };
 
 enum ETextSecurity {
@@ -303,10 +303,6 @@ enum EListStyleType {
     NoneListStyle
 };
 
-enum StyleContentType {
-    CONTENT_NONE, CONTENT_OBJECT, CONTENT_TEXT, CONTENT_COUNTER, CONTENT_QUOTE
-};
-
 enum QuoteType {
     OPEN_QUOTE, CLOSE_QUOTE, NO_OPEN_QUOTE, NO_CLOSE_QUOTE
 };
@@ -340,15 +336,15 @@ enum ETextDecoration {
 inline ETextDecoration operator|(ETextDecoration a, ETextDecoration b) { return ETextDecoration(int(a) | int(b)); }
 inline ETextDecoration& operator|=(ETextDecoration& a, ETextDecoration b) { return a = a | b; }
 
-#if ENABLE(CSS3_TEXT_DECORATION)
 enum TextDecorationStyle {
     TextDecorationStyleSolid,
+#if ENABLE(CSS3_TEXT)
     TextDecorationStyleDouble,
     TextDecorationStyleDotted,
     TextDecorationStyleDashed,
     TextDecorationStyleWavy
+#endif // CSS3_TEXT
 };
-#endif // CSS3_TEXT_DECORATION
 
 enum EPageBreak {
     PBAUTO, PBALWAYS, PBAVOID
@@ -472,6 +468,10 @@ enum LineAlign { LineAlignNone, LineAlignEdges };
 enum WrapFlow { WrapFlowAuto, WrapFlowBoth, WrapFlowStart, WrapFlowEnd, WrapFlowMaximum, WrapFlowClear };
 
 enum WrapThrough { WrapThroughWrap, WrapThroughNone };
+
+#if ENABLE(DRAGGABLE_REGION)
+enum DraggableRegionMode { DraggableRegionNone, DraggableRegionDrag, DraggableRegionNoDrag };
+#endif
 
 } // namespace WebCore
 

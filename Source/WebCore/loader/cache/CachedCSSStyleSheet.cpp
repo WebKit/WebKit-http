@@ -32,7 +32,7 @@
 #include "CachedStyleSheetClient.h"
 #include "HTTPParsers.h"
 #include "MemoryCache.h"
-#include "SharedBuffer.h"
+#include "ResourceBuffer.h"
 #include "StyleSheetContents.h"
 #include "TextResourceDecoder.h"
 #include "WebCoreMemoryInstrumentation.h"
@@ -94,7 +94,7 @@ const String CachedCSSStyleSheet::sheetText(bool enforceMIMEType, bool* hasValid
     return sheetText;
 }
 
-void CachedCSSStyleSheet::data(PassRefPtr<SharedBuffer> data, bool allDataReceived)
+void CachedCSSStyleSheet::data(PassRefPtr<ResourceBuffer> data, bool allDataReceived)
 {
     if (!allDataReceived)
         return;

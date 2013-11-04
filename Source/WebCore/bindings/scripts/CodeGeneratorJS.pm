@@ -314,6 +314,12 @@ sub IsScriptProfileType
     return 0;
 }
 
+sub IsReadonly
+{
+    my $attribute = shift;
+    return $attribute->type =~ /readonly/ && !$attribute->signature->extendedAttributes->{"Replaceable"};
+}
+
 sub AddTypedefForScriptProfileType
 {
     my $type = shift;
@@ -807,7 +813,7 @@ sub GenerateHeader
     # Check if we have any writable properties
     my $hasReadWriteProperties = 0;
     foreach (@{$dataNode->attributes}) {
-        if ($_->type !~ /^readonly\ attribute$/ && !$_->isStatic) {
+        if (!IsReadonly($_) && !$_->isStatic) {
             $hasReadWriteProperties = 1;
         }
     }
@@ -921,7 +927,7 @@ sub GenerateHeader
                 push(@headerContent, "    JSC::JSValue " . $methodName . "(JSC::ExecState*) const;\n");
                 push(@headerContent, "#endif\n") if $conditionalString;
             }
-            if (($attribute->signature->extendedAttributes->{"Custom"} || $attribute->signature->extendedAttributes->{"JSCustom"} || $attribute->signature->extendedAttributes->{"CustomSetter"} || $attribute->signature->extendedAttributes->{"JSCustomSetter"}) && $attribute->type !~ /^readonly/) {
+            if (($attribute->signature->extendedAttributes->{"Custom"} || $attribute->signature->extendedAttributes->{"JSCustom"} || $attribute->signature->extendedAttributes->{"CustomSetter"} || $attribute->signature->extendedAttributes->{"JSCustomSetter"}) && !IsReadonly($attribute)) {
                 push(@headerContent, "#if ${conditionalString}\n") if $conditionalString;
                 push(@headerContent, "    void set" . $codeGenerator->WK_ucfirst($attribute->signature->name) . "(JSC::ExecState*, JSC::JSValue);\n");
                 push(@headerContent, "#endif\n") if $conditionalString;
@@ -1144,7 +1150,7 @@ sub GenerateHeader
             push(@headerContent, "#if ${conditionalString}\n") if $conditionalString;
             my $getter = GetAttributeGetterName($interfaceName, $className, $attribute);
             push(@headerContent, "JSC::JSValue ${getter}(JSC::ExecState*, JSC::JSValue, JSC::PropertyName);\n");
-            unless ($attribute->type =~ /readonly/) {
+            if (!IsReadonly($attribute)) {
                 my $setter = GetAttributeSetterName($interfaceName, $className, $attribute);
                 push(@headerContent, "void ${setter}(JSC::ExecState*, JSC::JSObject*, JSC::JSValue);\n");
             }
@@ -1218,14 +1224,14 @@ sub GenerateAttributesHashTable($$)
         my @specials = ();
         push(@specials, "DontDelete") unless $attribute->signature->extendedAttributes->{"Deletable"};
         push(@specials, "DontEnum") if $attribute->signature->extendedAttributes->{"NotEnumerable"};
-        push(@specials, "ReadOnly") if $attribute->type =~ /readonly/;
+        push(@specials, "ReadOnly") if IsReadonly($attribute);
         my $special = (@specials > 0) ? join(" | ", @specials) : "0";
         push(@hashSpecials, $special);
 
         my $getter = GetAttributeGetterName($interfaceName, $className, $attribute);
         push(@hashValue1, $getter);
 
-        if ($attribute->type =~ /readonly/) {
+        if (IsReadonly($attribute)) {
             push(@hashValue2, "0");
         } else {
             my $setter = GetAttributeSetterName($interfaceName, $className, $attribute);
@@ -1274,12 +1280,15 @@ sub GenerateParametersCheckExpression
         my $type = $codeGenerator->StripModule($parameter->type);
 
         # Only DOMString or wrapper types are checked.
-        # For DOMString, Null, Undefined and any Object are accepted too, as
-        # these are acceptable values for a DOMString argument (any Object can
-        # be converted to a string via .toString).
+        # For DOMString with StrictTypeChecking only Null, Undefined and Object
+        # are accepted for compatibility. Otherwise, no restrictions are made to
+        # match the non-overloaded behavior.
+        # FIXME: Implement WebIDL overload resolution algorithm.
         if ($codeGenerator->IsStringType($type)) {
-            push(@andExpression, "(${value}.isUndefinedOrNull() || ${value}.isString() || ${value}.isObject())");
-            $usedArguments{$parameterIndex} = 1;
+            if ($parameter->extendedAttributes->{"StrictTypeChecking"}) {
+                push(@andExpression, "(${value}.isUndefinedOrNull() || ${value}.isString() || ${value}.isObject())");
+                $usedArguments{$parameterIndex} = 1;
+            }
         } elsif ($parameter->extendedAttributes->{"Callback"}) {
             # For Callbacks only checks if the value is null or object.
             push(@andExpression, "(${value}.isNull() || ${value}.isFunction())");
@@ -1417,8 +1426,6 @@ sub GenerateImplementation
     push(@implContent, "\nusing namespace JSC;\n\n");
     push(@implContent, "namespace WebCore {\n\n");
 
-    push(@implContent, "ASSERT_CLASS_FITS_IN_CELL($className);\n");
-
     my $numAttributes = GenerateAttributesHashTable($object, $dataNode);
 
     my $numConstants = @{$dataNode->constants};
@@ -1461,14 +1468,14 @@ sub GenerateImplementation
 
             my @specials = ();
             push(@specials, "DontDelete") unless $attribute->signature->extendedAttributes->{"Deletable"};
-            push(@specials, "ReadOnly") if $attribute->type =~ /readonly/;
+            push(@specials, "ReadOnly") if IsReadonly($attribute);
             my $special = (@specials > 0) ? join(" | ", @specials) : "0";
             push(@hashSpecials, $special);
 
             my $getter = GetAttributeGetterName($interfaceName, $className, $attribute);
             push(@hashValue1, $getter);
 
-            if ($attribute->type =~ /readonly/) {
+            if (IsReadonly($attribute)) {
                 push(@hashValue2, "0");
             } else {
                 my $setter = GetAttributeSetterName($interfaceName, $className, $attribute);
@@ -1767,10 +1774,8 @@ sub GenerateImplementation
             push(@implContent, "    ${className}* thisObject = jsCast<${className}*>(cell);\n");
             push(@implContent, "    ASSERT_GC_OBJECT_INHERITS(thisObject, &s_info);\n");
 
-            # This attempts to sink the somewhat expensive int-to-string conversion that happens when we create PropertyName
-            # to the point where we actually need it. In particular, when we generate this method for classes that can
-            # attempt their indexed getter first, we try to ensure that if that getter succeeds then we don't pay for the
-            # creation of the PropertyName.
+            # Sink the int-to-string conversion that happens when we create a PropertyName
+            # to the point where we actually need it.
             my $generatedPropertyName = 0;
             my $propertyNameGeneration = sub {
                 if ($generatedPropertyName) {
@@ -1780,22 +1785,6 @@ sub GenerateImplementation
                 $generatedPropertyName = 1;
             };
             
-            my $manualLookupGetterGeneration = sub {
-                my $requiresManualLookup = $dataNode->extendedAttributes->{"IndexedGetter"} || $dataNode->extendedAttributes->{"NamedGetter"};
-                if ($requiresManualLookup) {
-                    push(@implContent, "    const HashEntry* entry = ${className}Table.entry(exec, propertyName);\n");
-                    push(@implContent, "    if (entry) {\n");
-                    push(@implContent, "        slot.setCustom(thisObject, entry->propertyGetter());\n");
-                    push(@implContent, "        return true;\n");
-                    push(@implContent, "    }\n");
-                }
-            };
-            
-            if ($dataNode->extendedAttributes->{"NamedGetter"} && !$dataNode->extendedAttributes->{"CustomNamedGetter"}) {
-                &$propertyNameGeneration();
-                &$manualLookupGetterGeneration();
-            }
-
             if ($dataNode->extendedAttributes->{"IndexedGetter"} || $dataNode->extendedAttributes->{"NumericIndexedGetter"}) {
                 if (IndexGetterReturnsStrings($implClassName)) {
                     push(@implContent, "    if (index <= MAX_ARRAY_INDEX) {\n");
@@ -1818,11 +1807,6 @@ sub GenerateImplementation
                 push(@implContent, "        return true;\n");
                 push(@implContent, "    }\n");
                 $implIncludes{"wtf/text/AtomicString.h"} = 1;
-            }
-                
-            if ($dataNode->extendedAttributes->{"CustomNamedGetter"}) {
-                &$propertyNameGeneration();
-                &$manualLookupGetterGeneration();
             }
             
             if ($dataNode->extendedAttributes->{"JSCustomGetOwnPropertySlotAndDescriptor"}) {
@@ -1996,7 +1980,7 @@ sub GenerateImplementation
         # Check if we have any writable attributes
         my $hasReadWriteProperties = 0;
         foreach my $attribute (@{$dataNode->attributes}) {
-            $hasReadWriteProperties = 1 if $attribute->type !~ /^readonly/ && !$attribute->isStatic;
+            $hasReadWriteProperties = 1 if !IsReadonly($attribute) && !$attribute->isStatic;
         }
 
         my $hasSetter = $hasReadWriteProperties
@@ -2055,7 +2039,7 @@ sub GenerateImplementation
 
             if ($hasReadWriteProperties) {
                 foreach my $attribute (@{$dataNode->attributes}) {
-                    if ($attribute->type !~ /^readonly/) {
+                    if (!IsReadonly($attribute)) {
                         my $name = $attribute->signature->name;
                         my $type = $codeGenerator->StripModule($attribute->signature->type);
                         my $putFunctionName = GetAttributeSetterName($interfaceName, $className, $attribute);
@@ -2668,10 +2652,13 @@ sub GenerateParametersCheck
     $implIncludes{"JSDOMBinding.h"} = 1;
 
     foreach my $parameter (@{$function->parameters}) {
+        my $argType = $codeGenerator->StripModule($parameter->type);
+
         # Optional arguments with [Optional] should generate an early call with fewer arguments.
         # Optional arguments with [Optional=...] should not generate the early call.
+        # Optional Dictionary arguments always considered to have default of empty dictionary.
         my $optional = $parameter->extendedAttributes->{"Optional"};
-        if ($optional && $optional ne "DefaultIsUndefined" && $optional ne "DefaultIsNullString" && !$parameter->extendedAttributes->{"Callback"}) {
+        if ($optional && $optional ne "DefaultIsUndefined" && $optional ne "DefaultIsNullString" && $argType ne "Dictionary" && !$parameter->extendedAttributes->{"Callback"}) {
             # Generate early call if there are enough parameters.
             if (!$hasOptionalArguments) {
                 push(@$outputArray, "\n    size_t argsCount = exec->argumentCount();\n");
@@ -2689,7 +2676,6 @@ sub GenerateParametersCheck
         }
 
         my $name = $parameter->name;
-        my $argType = $codeGenerator->StripModule($parameter->type);
 
         if ($argType eq "XPathNSResolver") {
             push(@$outputArray, "    RefPtr<XPathNSResolver> customResolver;\n");

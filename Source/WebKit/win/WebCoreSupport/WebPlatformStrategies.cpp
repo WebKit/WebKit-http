@@ -47,12 +47,7 @@ CookiesStrategy* WebPlatformStrategies::createCookiesStrategy()
     return this;
 }
 
-PluginStrategy* WebPlatformStrategies::createPluginStrategy()
-{
-    return this;
-}
-
-VisitedLinkStrategy* WebPlatformStrategies::createVisitedLinkStrategy()
+LoaderStrategy* WebPlatformStrategies::createLoaderStrategy()
 {
     return this;
 }
@@ -60,6 +55,21 @@ VisitedLinkStrategy* WebPlatformStrategies::createVisitedLinkStrategy()
 PasteboardStrategy* WebPlatformStrategies::createPasteboardStrategy()
 {
     return 0;
+}
+
+PluginStrategy* WebPlatformStrategies::createPluginStrategy()
+{
+    return this;
+}
+
+SharedWorkerStrategy* WebPlatformStrategies::createSharedWorkerStrategy()
+{
+    return this;
+}
+
+VisitedLinkStrategy* WebPlatformStrategies::createVisitedLinkStrategy()
+{
+    return this;
 }
 
 void WebPlatformStrategies::notifyCookiesChanged()
@@ -93,8 +103,8 @@ void WebPlatformStrategies::getPluginInfo(const WebCore::Page*, Vector<WebCore::
         for (MIMEToDescriptionsMap::const_iterator it = mimeToDescriptions.begin(); it != end; ++it) {
             MimeClassInfo mime;
 
-            mime.type = it->first;
-            mime.desc = it->second;
+            mime.type = it->key;
+            mime.desc = it->value;
             mime.extensions = package->mimeToExtensions().get(mime.type);
 
             info.mimes.append(mime);

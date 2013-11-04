@@ -30,7 +30,6 @@ function runTest() {
 
         // Generate tap in region with no valid target ... this should cancel the first tap.
         eventSender.gestureTapDown(150, 150);
-        window.testRunner.display();
         window.setTimeout(function() { window.testRunner.notifyDone(); }, 0);
     } else {
         debug("This test requires DumpRenderTree.");

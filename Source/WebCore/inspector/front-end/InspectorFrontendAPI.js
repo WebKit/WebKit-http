@@ -74,10 +74,15 @@ var InspectorFrontendAPI = {
             WebInspector.CPUProfileType.instance.stopRecordingProfile();
     },
 
-    setAttachedWindow: function(attached)
+    setAttachedWindow: function(side)
+    {
+      
+    },
+
+    setDockSide: function(side)
     {
         if (WebInspector.dockController)
-            WebInspector.dockController.setDocked(attached);
+            WebInspector.dockController.setDockSide(side);
     },
 
     showConsole: function()

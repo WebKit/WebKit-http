@@ -40,56 +40,40 @@ PassRefPtr<WebConnectionToUIProcess> WebConnectionToUIProcess::create(WebProcess
 }
 
 WebConnectionToUIProcess::WebConnectionToUIProcess(WebProcess* process, CoreIPC::Connection::Identifier connectionIdentifier, RunLoop* runLoop)
-    : m_process(process)
-    , m_connection(CoreIPC::Connection::createClientConnection(connectionIdentifier, this, runLoop))
+    : WebConnection(CoreIPC::Connection::createClientConnection(connectionIdentifier, this, runLoop))
+    , m_process(process)
 {
     m_connection->setDidCloseOnConnectionWorkQueueCallback(ChildProcess::didCloseOnConnectionWorkQueue);
     m_connection->setShouldExitOnSyncMessageSendFailure(true);
 }
 
-void WebConnectionToUIProcess::invalidate()
-{
-    m_connection->invalidate();
-    m_connection = nullptr;
-    m_process = 0;
-}
-
 // WebConnection
 
-void WebConnectionToUIProcess::postMessage(const String& messageName, APIObject* messageBody)
+void WebConnectionToUIProcess::encodeMessageBody(CoreIPC::ArgumentEncoder& encoder, APIObject* messageBody)
 {
-    if (!m_process)
-        return;
+    encoder.encode(InjectedBundleUserMessageEncoder(messageBody));
+}
 
-    m_connection->deprecatedSend(WebConnectionLegacyMessage::PostMessage, 0, CoreIPC::In(messageName, InjectedBundleUserMessageEncoder(messageBody)));
+bool WebConnectionToUIProcess::decodeMessageBody(CoreIPC::ArgumentDecoder& decoder, RefPtr<APIObject>& messageBody)
+{
+    InjectedBundleUserMessageDecoder messageBodyDecoder(messageBody);
+    return decoder.decode(messageBodyDecoder);
 }
 
 // CoreIPC::Connection::Client
-
-void WebConnectionToUIProcess::didReceiveMessage(CoreIPC::Connection* connection, CoreIPC::MessageID messageID, CoreIPC::ArgumentDecoder* arguments)
+void WebConnectionToUIProcess::didReceiveMessage(CoreIPC::Connection* connection, CoreIPC::MessageID messageID, CoreIPC::MessageDecoder& decoder)
 {
-    if (messageID.is<CoreIPC::MessageClassWebConnectionLegacy>()) {
-        switch (messageID.get<WebConnectionLegacyMessage::Kind>()) {
-            case WebConnectionLegacyMessage::PostMessage: {
-                String messageName;            
-                RefPtr<APIObject> messageBody;
-                InjectedBundleUserMessageDecoder messageDecoder(messageBody);
-                if (!arguments->decode(CoreIPC::Out(messageName, messageDecoder)))
-                    return;
-
-                forwardDidReceiveMessageToClient(messageName, messageBody.get());
-                return;
-            }
-        }
+    if (messageID.is<CoreIPC::MessageClassWebConnection>()) {
+        didReceiveWebConnectionMessage(connection, messageID, decoder);
         return;
     }
 
-    m_process->didReceiveMessage(connection, messageID, arguments);
+    m_process->didReceiveMessage(connection, messageID, decoder);
 }
 
-void WebConnectionToUIProcess::didReceiveSyncMessage(CoreIPC::Connection* connection, CoreIPC::MessageID messageID, CoreIPC::ArgumentDecoder* arguments, OwnPtr<CoreIPC::ArgumentEncoder>& reply)
+void WebConnectionToUIProcess::didReceiveSyncMessage(CoreIPC::Connection* connection, CoreIPC::MessageID messageID, CoreIPC::MessageDecoder& decoder, OwnPtr<CoreIPC::MessageEncoder>& replyEncoder)
 {
-    m_process->didReceiveSyncMessage(connection, messageID, arguments, reply);
+    m_process->didReceiveSyncMessage(connection, messageID, decoder, replyEncoder);
 }
 
 void WebConnectionToUIProcess::didClose(CoreIPC::Connection* connection)

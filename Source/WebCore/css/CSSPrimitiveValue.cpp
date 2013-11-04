@@ -45,7 +45,7 @@
 #include <wtf/text/StringBuffer.h>
 #include <wtf/text/StringBuilder.h>
 
-#if ENABLE(DASHBOARD_SUPPORT) || ENABLE(WIDGET_REGION)
+#if ENABLE(DASHBOARD_SUPPORT)
 #include "DashboardRegion.h"
 #endif
 
@@ -62,7 +62,7 @@ static inline bool isValidCSSUnitTypeForDoubleConversion(CSSPrimitiveValue::Unit
     case CSSPrimitiveValue::CSS_CM:
     case CSSPrimitiveValue::CSS_DEG:
     case CSSPrimitiveValue::CSS_DIMENSION:
-#if ENABLE(CSS_IMAGE_RESOLUTION)
+#if ENABLE(CSS_IMAGE_RESOLUTION) || ENABLE(RESOLUTION_MEDIA_QUERY)
     case CSSPrimitiveValue::CSS_DPPX:
     case CSSPrimitiveValue::CSS_DPI:
     case CSSPrimitiveValue::CSS_DPCM:
@@ -91,10 +91,10 @@ static inline bool isValidCSSUnitTypeForDoubleConversion(CSSPrimitiveValue::Unit
     case CSSPrimitiveValue::CSS_ATTR:
     case CSSPrimitiveValue::CSS_COUNTER:
     case CSSPrimitiveValue::CSS_COUNTER_NAME:
-#if ENABLE(DASHBOARD_SUPPORT) || ENABLE(WIDGET_REGION)
+#if ENABLE(DASHBOARD_SUPPORT)
     case CSSPrimitiveValue::CSS_DASHBOARD_REGION:
 #endif
-#if !ENABLE(CSS_IMAGE_RESOLUTION)
+#if !ENABLE(CSS_IMAGE_RESOLUTION) && !ENABLE(RESOLUTION_MEDIA_QUERY)
     case CSSPrimitiveValue::CSS_DPPX:
     case CSSPrimitiveValue::CSS_DPI:
     case CSSPrimitiveValue::CSS_DPCM:
@@ -154,7 +154,7 @@ static CSSPrimitiveValue::UnitCategory unitCategory(CSSPrimitiveValue::UnitTypes
     case CSSPrimitiveValue::CSS_VH:
     case CSSPrimitiveValue::CSS_VMIN:
         return CSSPrimitiveValue::UViewportPercentageLength;
-#if ENABLE(CSS_IMAGE_RESOLUTION)
+#if ENABLE(CSS_IMAGE_RESOLUTION) || ENABLE(RESOLUTION_MEDIA_QUERY)
     case CSSPrimitiveValue::CSS_DPPX:
     case CSSPrimitiveValue::CSS_DPI:
     case CSSPrimitiveValue::CSS_DPCM:
@@ -330,7 +330,7 @@ void CSSPrimitiveValue::init(PassRefPtr<Quad> quad)
     m_value.quad = quad.leakRef();
 }
 
-#if ENABLE(DASHBOARD_SUPPORT) || ENABLE(WIDGET_REGION)
+#if ENABLE(DASHBOARD_SUPPORT)
 void CSSPrimitiveValue::init(PassRefPtr<DashboardRegion> r)
 {
     m_primitiveUnitType = CSS_DASHBOARD_REGION;
@@ -391,7 +391,7 @@ void CSSPrimitiveValue::cleanup()
     case CSS_PAIR:
         m_value.pair->deref();
         break;
-#if ENABLE(DASHBOARD_SUPPORT) || ENABLE(WIDGET_REGION)
+#if ENABLE(DASHBOARD_SUPPORT)
     case CSS_DASHBOARD_REGION:
         if (m_value.region)
             m_value.region->deref();
@@ -522,7 +522,10 @@ double CSSPrimitiveValue::computeLengthDouble(RenderStyle* style, RenderStyle* r
             // FIXME: We have a bug right now where the zoom will be applied twice to EX units.
             // We really need to compute EX using fontMetrics for the original specifiedSize and not use
             // our actual constructed rendering font.
-            factor = style->fontMetrics().xHeight();
+            if (style->fontMetrics().hasXHeight())
+                factor = style->fontMetrics().xHeight();
+            else
+                factor = (computingFontSize ? style->fontDescription().specifiedSize() : style->fontDescription().computedSize()) / 2.0;
             break;
         case CSS_REMS:
             if (rootStyle)
@@ -673,7 +676,7 @@ CSSPrimitiveValue::UnitTypes CSSPrimitiveValue::canonicalUnitTypeForCategory(Uni
         return CSS_HZ;
     case UViewportPercentageLength:
         return CSS_UNKNOWN; // Cannot convert between numbers and relative lengths.
-#if ENABLE(CSS_IMAGE_RESOLUTION)
+#if ENABLE(CSS_IMAGE_RESOLUTION) || ENABLE(RESOLUTION_MEDIA_QUERY)
     case UResolution:
         return CSS_DPPX;
 #endif
@@ -893,7 +896,7 @@ String CSSPrimitiveValue::customCssText() const
         case CSS_CM:
             text = formatNumber(m_value.num, "cm");
             break;
-#if ENABLE(CSS_IMAGE_RESOLUTION)
+#if ENABLE(CSS_IMAGE_RESOLUTION) || ENABLE(RESOLUTION_MEDIA_QUERY)
         case CSS_DPPX:
             text = formatNumber(m_value.num, "dppx");
             break;
@@ -1031,19 +1034,13 @@ String CSSPrimitiveValue::customCssText() const
         case CSS_PAIR:
             text = getPairValue()->cssText();
             break;
-#if ENABLE(DASHBOARD_SUPPORT) || ENABLE(WIDGET_REGION)
+#if ENABLE(DASHBOARD_SUPPORT)
         case CSS_DASHBOARD_REGION: {
             StringBuilder result;
             for (DashboardRegion* region = getDashboardRegionValue(); region; region = region->m_next.get()) {
                 if (!result.isEmpty())
                     result.append(' ');
-#if ENABLE(DASHBOARD_SUPPORT) && ENABLE(WIDGET_REGION)
-                result.append(region->m_cssFunctionName);
-#elif ENABLE(DASHBOARD_SUPPORT)
                 result.appendLiteral("dashboard-region(");
-#else
-                result.appendLiteral("region(");
-#endif
                 result.append(region->m_label);
                 if (region->m_isCircle)
                     result.appendLiteral(" circle");
@@ -1194,7 +1191,7 @@ PassRefPtr<CSSPrimitiveValue> CSSPrimitiveValue::cloneForCSSOM() const
         // Pair is not exposed to the CSSOM, no need for a deep clone.
         result = CSSPrimitiveValue::create(m_value.pair);
         break;
-#if ENABLE(DASHBOARD_SUPPORT) || ENABLE(WIDGET_REGION)
+#if ENABLE(DASHBOARD_SUPPORT)
     case CSS_DASHBOARD_REGION:
         // DashboardRegion is not exposed to the CSSOM, no need for a deep clone.
         result = CSSPrimitiveValue::create(m_value.region);
@@ -1231,7 +1228,7 @@ PassRefPtr<CSSPrimitiveValue> CSSPrimitiveValue::cloneForCSSOM() const
     case CSS_VW:
     case CSS_VH:
     case CSS_VMIN:
-#if ENABLE(CSS_IMAGE_RESOLUTION)
+#if ENABLE(CSS_IMAGE_RESOLUTION) || ENABLE(RESOLUTION_MEDIA_QUERY)
     case CSS_DPPX:
     case CSS_DPI:
     case CSS_DPCM:
@@ -1286,7 +1283,7 @@ void CSSPrimitiveValue::reportDescendantMemoryUsage(MemoryObjectInfo* memoryObje
     case CSS_PAIR:
         info.addMember(m_value.pair);
         break;
-#if ENABLE(DASHBOARD_SUPPORT) || ENABLE(WIDGET_REGION)
+#if ENABLE(DASHBOARD_SUPPORT)
     case CSS_DASHBOARD_REGION:
         info.addMember(m_value.region);
         break;

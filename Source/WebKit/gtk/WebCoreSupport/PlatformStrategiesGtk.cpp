@@ -42,7 +42,24 @@ CookiesStrategy* PlatformStrategiesGtk::createCookiesStrategy()
     return this;
 }
 
+LoaderStrategy* PlatformStrategiesGtk::createLoaderStrategy()
+{
+    return this;
+}
+
+PasteboardStrategy* PlatformStrategiesGtk::createPasteboardStrategy()
+{
+    // This is currently used only by Mac code.
+    notImplemented();
+    return 0;
+}
+
 PluginStrategy* PlatformStrategiesGtk::createPluginStrategy()
+{
+    return this;
+}
+
+SharedWorkerStrategy* PlatformStrategiesGtk::createSharedWorkerStrategy()
 {
     return this;
 }
@@ -50,13 +67,6 @@ PluginStrategy* PlatformStrategiesGtk::createPluginStrategy()
 VisitedLinkStrategy* PlatformStrategiesGtk::createVisitedLinkStrategy()
 {
     return this;
-}
-
-PasteboardStrategy* PlatformStrategiesGtk::createPasteboardStrategy()
-{
-    // This is currently used only by mac code.
-    notImplemented();
-    return 0;
 }
 
 // CookiesStrategy
@@ -88,8 +98,8 @@ void PlatformStrategiesGtk::getPluginInfo(const Page* page, Vector<PluginInfo>& 
         MIMEToDescriptionsMap::const_iterator end = mimeToDescriptions.end();
         for (MIMEToDescriptionsMap::const_iterator it = mimeToDescriptions.begin(); it != end; ++it) {
             MimeClassInfo mime;
-            mime.type = it->first;
-            mime.desc = it->second;
+            mime.type = it->key;
+            mime.desc = it->value;
             mime.extensions = package->mimeToExtensions().get(mime.type);
             pluginInfo.mimes.append(mime);
         }

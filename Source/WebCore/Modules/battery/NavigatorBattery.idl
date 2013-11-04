@@ -17,14 +17,10 @@
  *  Boston, MA 02110-1301, USA.
  */
 
-module window {
-
-    interface [
-        Conditional=BATTERY_STATUS,
-        Supplemental=Navigator
-    ] NavigatorBattery {
-        readonly attribute BatteryManager webkitBattery;
-    };
-
-}
+[
+    Conditional=BATTERY_STATUS,
+    Supplemental=Navigator
+] interface NavigatorBattery {
+    readonly attribute BatteryManager webkitBattery;
+};
 

@@ -26,51 +26,56 @@
 #include "config.h"
 #include "ewk_url_scheme_request.h"
 
+#include "GOwnPtrSoup.h"
 #include "WKData.h"
-#include "WKRetainPtr.h"
-#include "WKSoupRequestManager.h"
 #include "WKString.h"
-#include <wtf/text/CString.h>
+#include "ewk_url_scheme_request_private.h"
 
 using namespace WebKit;
 
-/**
- * \struct  _Ewk_Url_Scheme_Request
- * @brief   Contains the URL scheme request data.
- */
-struct _Ewk_Url_Scheme_Request {
-    unsigned int __ref; /**< the reference count of the object */
-    WKRetainPtr<WKSoupRequestManagerRef> wkRequestManager;
-    const char* url;
-    uint64_t requestID;
-    const char* scheme;
-    const char* path;
+Ewk_Url_Scheme_Request::Ewk_Url_Scheme_Request(WKSoupRequestManagerRef manager, WKURLRef url, uint64_t requestID)
+    : m_wkRequestManager(manager)
+    , m_url(url)
+    , m_requestID(requestID)
+{
+    GOwnPtr<SoupURI> soupURI(soup_uri_new(m_url));
+    m_scheme = soupURI->scheme;
+    m_path = soupURI->path;
+}
 
-    _Ewk_Url_Scheme_Request(WKSoupRequestManagerRef manager, const char* _url, uint64_t _requestID)
-        : __ref(1)
-        , wkRequestManager(manager)
-        , url(eina_stringshare_add(_url))
-        , requestID(_requestID)
-    {
-        SoupURI* soupURI = soup_uri_new(_url);
-        scheme = eina_stringshare_add(soupURI->scheme);
-        path = eina_stringshare_add(soupURI->path);
-        soup_uri_free(soupURI);
-    }
+uint64_t Ewk_Url_Scheme_Request::id() const
+{
+    return m_requestID;
+}
 
-    ~_Ewk_Url_Scheme_Request()
-    {
-        ASSERT(!__ref);
-        eina_stringshare_del(url);
-        eina_stringshare_del(scheme);
-        eina_stringshare_del(path);
-    }
-};
+const char* Ewk_Url_Scheme_Request::url() const
+{
+    return m_url;
+}
+
+const char* Ewk_Url_Scheme_Request::scheme() const
+{
+    return m_scheme;
+}
+
+const char* Ewk_Url_Scheme_Request::path() const
+{
+    return m_path;
+}
+
+void Ewk_Url_Scheme_Request::finish(const void* contentData, uint64_t contentLength, const char* mimeType)
+{
+    WKRetainPtr<WKDataRef> wkData(AdoptWK, WKDataCreate(contentLength ? reinterpret_cast<const unsigned char*>(contentData) : 0, contentLength));
+    WKRetainPtr<WKStringRef> wkMimeType = mimeType ? adoptWK(WKStringCreateWithUTF8CString(mimeType)) : 0;
+
+    // In case of empty reply an empty WKDataRef is sent to the WebProcess.
+    WKSoupRequestManagerDidHandleURIRequest(m_wkRequestManager.get(), wkData.get(), contentLength, wkMimeType.get(), m_requestID);
+}
 
 Ewk_Url_Scheme_Request* ewk_url_scheme_request_ref(Ewk_Url_Scheme_Request* request)
 {
     EINA_SAFETY_ON_NULL_RETURN_VAL(request, 0);
-    ++request->__ref;
+    request->ref();
 
     return request;
 }
@@ -79,65 +84,35 @@ void ewk_url_scheme_request_unref(Ewk_Url_Scheme_Request* request)
 {
     EINA_SAFETY_ON_NULL_RETURN(request);
 
-    if (--request->__ref)
-        return;
-
-    delete request;
+    request->deref();
 }
 
 const char* ewk_url_scheme_request_scheme_get(const Ewk_Url_Scheme_Request* request)
 {
     EINA_SAFETY_ON_NULL_RETURN_VAL(request, 0);
 
-    return request->scheme;
+    return request->scheme();
 }
 
 const char* ewk_url_scheme_request_url_get(const Ewk_Url_Scheme_Request* request)
 {
     EINA_SAFETY_ON_NULL_RETURN_VAL(request, 0);
 
-    return request->url;
+    return request->url();
 }
 
 const char* ewk_url_scheme_request_path_get(const Ewk_Url_Scheme_Request* request)
 {
     EINA_SAFETY_ON_NULL_RETURN_VAL(request, 0);
 
-    return request->path;
+    return request->path();
 }
 
-/**
- * @internal
- * Returns the #Ewk_Url_Scheme_Request identifier.
- */
-uint64_t ewk_url_scheme_request_id_get(const Ewk_Url_Scheme_Request* request)
-{
-    EINA_SAFETY_ON_NULL_RETURN_VAL(request, 0);
-
-    return request->requestID;
-}
-
-Eina_Bool ewk_url_scheme_request_finish(const Ewk_Url_Scheme_Request* request, const void* contentData, unsigned int contentLength, const char* mimeType)
+Eina_Bool ewk_url_scheme_request_finish(Ewk_Url_Scheme_Request* request, const void* contentData, uint64_t contentLength, const char* mimeType)
 {
     EINA_SAFETY_ON_NULL_RETURN_VAL(request, false);
 
-    WKRetainPtr<WKDataRef> wkData(AdoptWK, WKDataCreate(contentLength ? reinterpret_cast<const unsigned char*>(contentData) : 0, contentLength));
-    WKRetainPtr<WKStringRef> wkMimeType = mimeType ? adoptWK(WKStringCreateWithUTF8CString(mimeType)) : 0;
-
-    // In case of empty reply an empty WKDataRef is sent to the WebProcess.
-    WKSoupRequestManagerDidHandleURIRequest(request->wkRequestManager.get(), wkData.get(), contentLength, wkMimeType.get(), request->requestID);
+    request->finish(contentData, contentLength, mimeType);
 
     return true;
-}
-
-/**
- * @internal
- * Constructs a Ewk_Url_Scheme_Request.
- */
-Ewk_Url_Scheme_Request* ewk_url_scheme_request_new(WKSoupRequestManagerRef requestManager, WKURLRef url, uint64_t requestID)
-{
-    EINA_SAFETY_ON_NULL_RETURN_VAL(requestManager, 0);
-    EINA_SAFETY_ON_NULL_RETURN_VAL(url, 0);
-
-    return new Ewk_Url_Scheme_Request(requestManager, toImpl(url)->string().utf8().data(), requestID);
 }

@@ -33,17 +33,47 @@
 #if ENABLE(INSPECTOR)
 
 #include "MemoryInstrumentationImpl.h"
+
+#include "WebCoreMemoryInstrumentation.h"
 #include <wtf/Assertions.h>
+#include <wtf/MemoryInstrumentationHashMap.h>
+#include <wtf/MemoryInstrumentationHashSet.h>
+#include <wtf/MemoryInstrumentationVector.h>
+#include <wtf/text/StringHash.h>
 
 namespace WebCore {
 
-void MemoryInstrumentationClientImpl::countObjectSize(MemoryObjectType objectType, size_t size)
+TypeNameToSizeMap MemoryInstrumentationClientImpl::sizesMap() const
+{
+    // TypeToSizeMap uses const char* as the key.
+    // Thus it could happen that we have two different keys with equal string.
+    TypeNameToSizeMap sizesMap;
+    for (TypeToSizeMap::const_iterator i = m_totalSizes.begin(); i != m_totalSizes.end(); ++i) {
+        String objectType(i->key);
+        TypeNameToSizeMap::AddResult result = sizesMap.add(objectType, i->value);
+        if (!result.isNewEntry)
+            result.iterator->value += i->value;
+    }
+
+    return sizesMap;
+}
+
+void MemoryInstrumentationClientImpl::countObjectSize(const void* object, MemoryObjectType objectType, size_t size)
 {
     ASSERT(objectType);
+
     TypeToSizeMap::AddResult result = m_totalSizes.add(objectType, size);
     if (!result.isNewEntry)
-        result.iterator->second += size;
+        result.iterator->value += size;
     ++m_totalCountedObjects;
+
+    if (!checkInstrumentedObjects())
+        return;
+
+    if (object) {
+        m_countedObjects.add(object, size);
+        checkCountedObject(object);
+    }
 }
 
 bool MemoryInstrumentationClientImpl::visited(const void* object)
@@ -55,13 +85,22 @@ void MemoryInstrumentationClientImpl::checkCountedObject(const void* object)
 {
     if (!checkInstrumentedObjects())
         return;
-    if (!m_allocatedObjects->contains(object)) {
+    if (!m_allocatedObjects.contains(object)) {
         ++m_totalObjectsNotInAllocatedSet;
 #if 0
         printf("Found unknown object referenced by pointer: %p\n", object);
         WTFReportBacktrace();
 #endif
     }
+}
+
+void MemoryInstrumentationClientImpl::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
+{
+    MemoryClassInfo info(memoryObjectInfo, this, WebCoreMemoryTypes::InspectorMemoryAgent);
+    info.addMember(m_totalSizes);
+    info.addMember(m_visitedObjects);
+    info.addMember(m_allocatedObjects);
+    info.addMember(m_countedObjects);
 }
 
 void MemoryInstrumentationImpl::processDeferredInstrumentedPointers()
@@ -78,10 +117,12 @@ void MemoryInstrumentationImpl::deferInstrumentedPointer(PassOwnPtr<Instrumented
     m_deferredInstrumentedPointers.append(pointer);
 }
 
-size_t MemoryInstrumentationImpl::selfSize() const
+void MemoryInstrumentationImpl::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
 {
-    return calculateContainerSize(m_deferredInstrumentedPointers);
+    MemoryClassInfo info(memoryObjectInfo, this, WebCoreMemoryTypes::InspectorMemoryAgent);
+    info.addMember(m_deferredInstrumentedPointers);
 }
+
 
 } // namespace WebCore
 

@@ -63,13 +63,13 @@ class ChromiumPort(Port):
         ('icecreamsandwich', 'x86'))
 
     ALL_BASELINE_VARIANTS = [
-        'chromium-mac-lion', 'chromium-mac-snowleopard', 'chromium-mac-leopard',
+        'chromium-mac-mountainlion', 'chromium-mac-lion', 'chromium-mac-snowleopard',
         'chromium-win-win7', 'chromium-win-xp',
         'chromium-linux-x86_64', 'chromium-linux-x86',
     ]
 
     CONFIGURATION_SPECIFIER_MACROS = {
-        'mac': ['snowleopard', 'lion'],
+        'mac': ['snowleopard', 'lion', 'mountainlion'],
         'win': ['xp', 'win7'],
         'linux': ['lucid'],
         'android': ['icecreamsandwich'],
@@ -111,6 +111,13 @@ class ChromiumPort(Port):
 
     def is_chromium(self):
         return True
+
+    def default_max_locked_shards(self):
+        """Return the number of "locked" shards to run in parallel (like the http tests)."""
+        max_locked_shards = int(self.default_child_processes()) / 4
+        if not max_locked_shards:
+            return 1
+        return max_locked_shards
 
     def default_pixel_tests(self):
         return True
@@ -383,6 +390,9 @@ class ChromiumPort(Port):
             VirtualTestSuite('platform/chromium/virtual/softwarecompositing',
                              'compositing',
                              ['--enable-software-compositing']),
+            VirtualTestSuite('platform/chromium/virtual/deferred/fast/images',
+                             'fast/images',
+                             ['--enable-deferred-image-decoding', '--enable-per-tile-painting', '--force-compositing-mode']),
         ]
 
     #

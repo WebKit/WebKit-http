@@ -22,8 +22,11 @@ import os
 import subprocess
 import sys
 
-if not os.path.exists(common.top_level_path('WebKitBuild', 'Dependencies')):
-    os.execve(sys.argv[1], sys.argv[1])
+sys.path.append(common.top_level_path('Tools', 'jhbuild'))
+import jhbuildutils
+
+if (not os.path.exists(jhbuildutils.get_dependencies_path())):
+    os.execve(sys.argv[1], sys.argv[1:], os.environ)
 else:
     wrapper = common.top_level_path('Tools', 'jhbuild', 'jhbuild-wrapper')
     os.execve(wrapper, [wrapper, '--gtk', 'run'] + sys.argv[1:], os.environ)

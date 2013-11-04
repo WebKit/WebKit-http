@@ -35,6 +35,7 @@
 #import "GraphicsContext.h"
 #import "GraphicsLayerCA.h"
 #import "LengthFunctions.h"
+#import "TiledBacking.h"
 #import "WebLayer.h"
 #import "WebTiledLayer.h"
 #import "WebTileCacheLayer.h"
@@ -193,6 +194,7 @@ PlatformCALayer::PlatformCALayer(LayerType layerType, PlatformLayer* layer, Plat
                 layerClass = [WebTiledLayer class];
                 break;
             case LayerTypeTileCacheLayer:
+            case LayerTypePageTileCacheLayer:
                 layerClass = [WebTileCacheLayer class];
                 break;
             case LayerTypeCustom:
@@ -218,7 +220,7 @@ PlatformCALayer::PlatformCALayer(LayerType layerType, PlatformLayer* layer, Plat
         [tiledLayer setContentsGravity:@"bottomLeft"];
     }
     
-    if (m_layerType == LayerTypeTileCacheLayer) {
+    if (usesTileCacheLayer()) {
         m_customSublayers = adoptPtr(new PlatformCALayerList(1));
         CALayer* tileCacheTileContainerLayer = [static_cast<WebTileCacheLayer *>(m_layer.get()) tileContainerLayer];
         (*m_customSublayers)[0] = PlatformCALayer::create(tileCacheTileContainerLayer, 0);
@@ -238,7 +240,7 @@ PlatformCALayer::~PlatformCALayer()
     // Remove the owner pointer from the delegate in case there is a pending animationStarted event.
     [static_cast<WebAnimationDelegate*>(m_delegate.get()) setOwner:nil];
 
-    if (m_layerType == LayerTypeTileCacheLayer)
+    if (usesTileCacheLayer())
         [static_cast<WebTileCacheLayer *>(m_layer.get()) invalidate];
 }
 
@@ -328,6 +330,7 @@ void PlatformCALayer::removeAllSublayers()
 void PlatformCALayer::appendSublayer(PlatformCALayer* layer)
 {
     BEGIN_BLOCK_OBJC_EXCEPTIONS
+    ASSERT(m_layer != layer->m_layer);
     [m_layer.get() addSublayer:layer->m_layer.get()];
     END_BLOCK_OBJC_EXCEPTIONS
 }
@@ -335,6 +338,7 @@ void PlatformCALayer::appendSublayer(PlatformCALayer* layer)
 void PlatformCALayer::insertSublayer(PlatformCALayer* layer, size_t index)
 {
     BEGIN_BLOCK_OBJC_EXCEPTIONS
+    ASSERT(m_layer != layer->m_layer);
     [m_layer.get() insertSublayer:layer->m_layer.get() atIndex:index];
     END_BLOCK_OBJC_EXCEPTIONS
 }
@@ -342,6 +346,7 @@ void PlatformCALayer::insertSublayer(PlatformCALayer* layer, size_t index)
 void PlatformCALayer::replaceSublayer(PlatformCALayer* reference, PlatformCALayer* layer)
 {
     BEGIN_BLOCK_OBJC_EXCEPTIONS
+    ASSERT(m_layer != layer->m_layer);
     [m_layer.get() replaceSublayer:reference->m_layer.get() with:layer->m_layer.get()];
     END_BLOCK_OBJC_EXCEPTIONS
 }
@@ -931,7 +936,7 @@ void PlatformCALayer::setContentsScale(float value)
 
 TiledBacking* PlatformCALayer::tiledBacking()
 {
-    if (m_layerType != LayerTypeTileCacheLayer)
+    if (!usesTileCacheLayer())
         return 0;
 
     WebTileCacheLayer *tileCacheLayer = static_cast<WebTileCacheLayer *>(m_layer.get());

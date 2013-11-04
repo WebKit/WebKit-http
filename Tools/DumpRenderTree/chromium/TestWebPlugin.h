@@ -56,6 +56,7 @@ public:
     virtual bool initialize(WebKit::WebPluginContainer*);
     virtual void destroy();
     virtual NPObject* scriptableObject() { return 0; }
+    virtual bool canProcessDrag() const { return m_canProcessDrag; }
     virtual void paint(WebKit::WebCanvas*, const WebKit::WebRect&) { }
     virtual void updateGeometry(const WebKit::WebRect& frameRect,
                                 const WebKit::WebRect& clipRect,
@@ -65,6 +66,7 @@ public:
     virtual void updateVisibility(bool) { }
     virtual bool acceptsInputEvents() { return true; }
     virtual bool handleInputEvent(const WebKit::WebInputEvent&, WebKit::WebCursorInfo&);
+    virtual bool handleDragStatusUpdate(WebKit::WebDragStatus, const WebKit::WebDragData&, WebKit::WebDragOperationsMask, const WebKit::WebPoint& position, const WebKit::WebPoint& screenPosition);
     virtual void didReceiveResponse(const WebKit::WebURLResponse&) { }
     virtual void didReceiveData(const char* data, int dataLength) { }
     virtual void didFinishLoading() { }
@@ -131,6 +133,7 @@ private:
 
     bool m_acceptsTouchEvent;
     bool m_printEventDetails;
+    bool m_canProcessDrag;
 };
 
 #endif // TestPepperPlugin_h

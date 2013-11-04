@@ -13,7 +13,7 @@ IDBOpenDBRequest conditional=INDEXED_DATABASE
 IDBRequest conditional=INDEXED_DATABASE
 IDBTransaction conditional=INDEXED_DATABASE
 IDBVersionChangeRequest conditional=INDEXED_DATABASE
-JavaScriptAudioNode conditional=WEB_AUDIO
+ScriptProcessorNode conditional=WEB_AUDIO
 LocalMediaStream conditional=MEDIA_STREAM
 MediaController conditional=VIDEO
 MediaSource conditional=MEDIA_SOURCE
@@ -26,6 +26,7 @@ Node
 Notification conditional=NOTIFICATIONS|LEGACY_NOTIFICATIONS
 PeerConnection00 conditional=MEDIA_STREAM
 Performance conditional=WEB_TIMING
+RTCDataChannel conditional=MEDIA_STREAM
 RTCPeerConnection conditional=MEDIA_STREAM
 SharedWorker conditional=SHARED_WORKERS
 SharedWorkerContext conditional=SHARED_WORKERS

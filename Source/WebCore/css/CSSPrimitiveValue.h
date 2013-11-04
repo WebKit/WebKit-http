@@ -99,7 +99,7 @@ public:
         CSS_DPI = 30,
         CSS_DPCM = 31,
         CSS_PAIR = 100, // We envision this being exposed as a means of getting computed style values for pairs (border-spacing/radius, background-position, etc.)
-#if ENABLE(DASHBOARD_SUPPORT) || ENABLE(WIDGET_REGION)
+#if ENABLE(DASHBOARD_SUPPORT)
         CSS_DASHBOARD_REGION = 101, // FIXME: Dashboard region should not be a primitive value.
 #endif
         CSS_UNICODE_RANGE = 102,
@@ -143,7 +143,7 @@ public:
         UTime,
         UFrequency,
         UViewportPercentageLength,
-#if ENABLE(CSS_IMAGE_RESOLUTION)
+#if ENABLE(CSS_IMAGE_RESOLUTION) || ENABLE(RESOLUTION_MEDIA_QUERY)
         UResolution,
 #endif
         UOther
@@ -181,6 +181,10 @@ public:
     bool isCalculated() const { return m_primitiveUnitType == CSS_CALC; }
     bool isCalculatedPercentageWithNumber() const { return primitiveType() == CSS_CALC_PERCENTAGE_WITH_NUMBER; }
     bool isCalculatedPercentageWithLength() const { return primitiveType() == CSS_CALC_PERCENTAGE_WITH_LENGTH; }
+    bool isDotsPerInch() const { return primitiveType() == CSS_DPI; }
+    bool isDotsPerPixel() const { return primitiveType() == CSS_DPPX; }
+    bool isDotsPerCentimeter() const { return primitiveType() == CSS_DPCM; }
+
 #if ENABLE(CSS_VARIABLES)
     bool isVariableName() const { return primitiveType() == CSS_VARIABLE_NAME; }
 #endif
@@ -284,7 +288,7 @@ public:
     Pair* getPairValue(ExceptionCode&) const;
     Pair* getPairValue() const { return m_primitiveUnitType != CSS_PAIR ? 0 : m_value.pair; }
 
-#if ENABLE(DASHBOARD_SUPPORT) || ENABLE(WIDGET_REGION)
+#if ENABLE(DASHBOARD_SUPPORT)
     DashboardRegion* getDashboardRegionValue() const { return m_primitiveUnitType != CSS_DASHBOARD_REGION ? 0 : m_value.region; }
 #endif
 

@@ -37,11 +37,69 @@
 #include "CustomFilterGlobalContext.h"
 #include "CustomFilterProgramInfo.h"
 #include "NotImplemented.h"
+#include <wtf/HashMap.h>
 #include <wtf/text/StringBuilder.h>
+#include <wtf/text/StringHash.h>
 
 namespace WebCore {
 
 #define SHADER(Src) (#Src) 
+
+// FIXME: Reuse this type when we validate the types of built-in uniforms.
+// https://bugs.webkit.org/show_bug.cgi?id=98974
+typedef HashMap<String, ShDataType> SymbolNameToTypeMap;
+
+static SymbolNameToTypeMap* builtInAttributeNameToTypeMap()
+{
+    static SymbolNameToTypeMap* nameToTypeMap = 0;
+    if (!nameToTypeMap) {
+        nameToTypeMap = new SymbolNameToTypeMap;        
+        nameToTypeMap->set("a_meshCoord", SH_FLOAT_VEC2);
+        nameToTypeMap->set("a_position", SH_FLOAT_VEC4);
+        nameToTypeMap->set("a_texCoord", SH_FLOAT_VEC2);
+        nameToTypeMap->set("a_triangleCoord", SH_FLOAT_VEC3);
+    }
+    return nameToTypeMap;
+}
+
+static bool validateSymbols(const Vector<ANGLEShaderSymbol>& symbols)
+{
+    for (size_t i = 0; i < symbols.size(); ++i) {
+        const ANGLEShaderSymbol& symbol = symbols[i];
+        switch (symbol.symbolType) {
+        case SHADER_SYMBOL_TYPE_ATTRIBUTE: {
+            SymbolNameToTypeMap* attributeNameToTypeMap = builtInAttributeNameToTypeMap();
+            SymbolNameToTypeMap::iterator builtInAttribute = attributeNameToTypeMap->find(symbol.name);
+            if (builtInAttribute != attributeNameToTypeMap->end() && symbol.dataType != builtInAttribute->value) {
+                // The author defined one of the built-in attributes with the wrong type.
+                return false;
+            }
+
+            // FIXME: Return false when the attribute is not one of the built-in attributes.
+            // https://bugs.webkit.org/show_bug.cgi?id=98973
+            break;
+        }
+        case SHADER_SYMBOL_TYPE_UNIFORM:
+            if (symbol.isSampler()) {
+                // FIXME: For now, we restrict shaders with any sampler defined.
+                // When we implement texture parameters, we will allow shaders whose samplers are bound to valid textures.
+                // We must not allow OpenGL to give unbound samplers a default value of 0 because that references the element texture,
+                // which should be inaccessible to the author's shader code.
+                // https://bugs.webkit.org/show_bug.cgi?id=96230
+                return false;
+            }
+
+            // FIXME: Validate the types of built-in uniforms.
+            // https://bugs.webkit.org/show_bug.cgi?id=98974
+            break;
+        default:
+            ASSERT_NOT_REACHED();
+            break;
+        }
+    }
+
+    return true;
+}
 
 String CustomFilterValidatedProgram::defaultVertexShaderString()
 {
@@ -83,35 +141,26 @@ CustomFilterValidatedProgram::CustomFilterValidatedProgram(CustomFilterGlobalCon
         originalFragmentShader = defaultFragmentShaderString();
 
     // Shaders referenced from the CSS mix function use a different validator than regular WebGL shaders. See CustomFilterGlobalContext.h for more details.
-    ANGLEWebKitBridge* validator = programInfo.mixSettings().enabled ? m_globalContext->mixShaderValidator() : m_globalContext->webglShaderValidator();
+    bool blendsElementTexture = (programInfo.programType() == PROGRAM_TYPE_BLENDS_ELEMENT_TEXTURE);
+    ANGLEWebKitBridge* validator = blendsElementTexture ? m_globalContext->mixShaderValidator() : m_globalContext->webglShaderValidator();
     String vertexShaderLog, fragmentShaderLog;
-    bool vertexShaderValid = validator->validateShaderSource(originalVertexShader.utf8().data(), SHADER_TYPE_VERTEX, m_validatedVertexShader, vertexShaderLog, SH_ATTRIBUTES_UNIFORMS);
-    bool fragmentShaderValid = validator->validateShaderSource(originalFragmentShader.utf8().data(), SHADER_TYPE_FRAGMENT, m_validatedFragmentShader, fragmentShaderLog, SH_ATTRIBUTES_UNIFORMS);
+    Vector<ANGLEShaderSymbol> symbols;
+    bool vertexShaderValid = validator->compileShaderSource(originalVertexShader.utf8().data(), SHADER_TYPE_VERTEX, m_validatedVertexShader, vertexShaderLog, symbols);
+    bool fragmentShaderValid = validator->compileShaderSource(originalFragmentShader.utf8().data(), SHADER_TYPE_FRAGMENT, m_validatedFragmentShader, fragmentShaderLog, symbols);
     if (!vertexShaderValid || !fragmentShaderValid) {
         // FIXME: Report the validation errors.
         // https://bugs.webkit.org/show_bug.cgi?id=74416
         return;
     }
 
-    // Validate the author's samplers.
-    Vector<ANGLEShaderSymbol> uniforms;
-    if (!validator->getUniforms(SH_VERTEX_SHADER, uniforms))
+    if (!validateSymbols(symbols)) {
+        // FIXME: Report validation errors.
+        // https://bugs.webkit.org/show_bug.cgi?id=74416
         return;
-    if (!validator->getUniforms(SH_FRAGMENT_SHADER, uniforms))
-        return;
-    for (Vector<ANGLEShaderSymbol>::iterator it = uniforms.begin(); it != uniforms.end(); ++it) {
-        if (it->isSampler()) {
-            // FIXME: For now, we restrict shaders with any sampler defined.
-            // When we implement texture parameters, we will allow shaders whose samplers are bound to valid textures.
-            // We must not allow OpenGL to give unbound samplers a default value of 0 because that references the DOM element texture,
-            // which should be inaccessible to the author's shader code.
-            // https://bugs.webkit.org/show_bug.cgi?id=96230
-            return;
-        }
     }
 
     // We need to add texture access, blending, and compositing code to shaders that are referenced from the CSS mix function.
-    if (programInfo.mixSettings().enabled) {
+    if (blendsElementTexture) {
         rewriteMixVertexShader();
         rewriteMixFragmentShader();
     }
@@ -122,14 +171,23 @@ CustomFilterValidatedProgram::CustomFilterValidatedProgram(CustomFilterGlobalCon
 PassRefPtr<CustomFilterCompiledProgram> CustomFilterValidatedProgram::compiledProgram()
 {
     ASSERT(m_isInitialized && m_globalContext && !m_validatedVertexShader.isNull() && !m_validatedFragmentShader.isNull());
-    if (!m_compiledProgram)
+    if (!m_compiledProgram) {
         m_compiledProgram = CustomFilterCompiledProgram::create(m_globalContext->context(), m_validatedVertexShader, m_validatedFragmentShader, m_programInfo.programType());
+        ASSERT(m_compiledProgram->samplerLocation() != -1 || !needsInputTexture());
+    }
     return m_compiledProgram;
+}
+
+bool CustomFilterValidatedProgram::needsInputTexture() const
+{
+    return m_programInfo.programType() == PROGRAM_TYPE_BLENDS_ELEMENT_TEXTURE
+        && m_programInfo.mixSettings().compositeOperator != CompositeClear
+        && m_programInfo.mixSettings().compositeOperator != CompositeCopy;
 }
 
 void CustomFilterValidatedProgram::rewriteMixVertexShader()
 {
-    ASSERT(m_programInfo.mixSettings().enabled);
+    ASSERT(m_programInfo.programType() == PROGRAM_TYPE_BLENDS_ELEMENT_TEXTURE);
 
     // During validation, ANGLE renamed the author's "main" function to "css_main".
     // We write our own "main" function and call "css_main" from it.
@@ -148,7 +206,7 @@ void CustomFilterValidatedProgram::rewriteMixVertexShader()
 
 void CustomFilterValidatedProgram::rewriteMixFragmentShader()
 {
-    ASSERT(m_programInfo.mixSettings().enabled);
+    ASSERT(m_programInfo.programType() == PROGRAM_TYPE_BLENDS_ELEMENT_TEXTURE);
 
     StringBuilder builder;
     // ANGLE considered these symbols as built-ins during validation under the SH_CSS_SHADERS_SPEC flag.
@@ -173,7 +231,7 @@ void CustomFilterValidatedProgram::rewriteMixFragmentShader()
             css_main();
             mediump vec4 originalColor = texture2D(css_u_texture, css_v_texCoord);
             mediump vec4 multipliedColor = css_ColorMatrix * originalColor;
-            mediump vec3 blendedColor = css_Blend(multipliedColor.rgb, css_MixColor.rgb);
+            mediump vec3 blendedColor = css_BlendColor(multipliedColor.rgb, css_MixColor.rgb);
             gl_FragColor = css_Composite(multipliedColor.rgb, multipliedColor.a, blendedColor.rgb, css_MixColor.a);
         }
     ));
@@ -184,36 +242,124 @@ String CustomFilterValidatedProgram::blendFunctionString(BlendMode blendMode)
 {
     // Implemented using the same symbol names as the Compositing and Blending spec:
     // https://dvcs.w3.org/hg/FXTF/rawfile/tip/compositing/index.html#blendingnormal
-    // Cs: is the source color
-    // Cb: is the backdrop color
-    const char* expression = 0;
+    // Cs: is the source color in css_BlendColor() and the source color component in css_BlendComponent()
+    // Cb: is the backdrop color in css_BlendColor() and the backdrop color component in css_BlendComponent()
+    const char* blendColorExpression = "vec3(css_BlendComponent(Cb.r, Cs.r), css_BlendComponent(Cb.g, Cs.g), css_BlendComponent(Cb.b, Cs.b))";
+    const char* blendComponentExpression = "Co = 0.0;";
     switch (blendMode) {
     case BlendModeNormal:
-        expression = "Cs";
+        blendColorExpression = "Cs";
         break;
     case BlendModeMultiply:
-        expression = "Cs * Cb";
+        blendColorExpression = "Cs * Cb";
         break;
     case BlendModeScreen:
-        expression = "Cb + Cs - (Cb * Cs)";
+        blendColorExpression = "Cb + Cs - (Cb * Cs)";
         break;
     case BlendModeDarken:
-        expression = "min(Cb, Cs)";
+        blendColorExpression = "min(Cb, Cs)";
         break;
     case BlendModeLighten:
-        expression = "max(Cb, Cs)";
+        blendColorExpression = "max(Cb, Cs)";
         break;
     case BlendModeDifference:
-        expression = "abs(Cb - Cs)";
+        blendColorExpression = "abs(Cb - Cs)";
         break;
     case BlendModeExclusion:
-        expression = "Cb + Cs - 2.0 * Cb * Cs";
+        blendColorExpression = "Cb + Cs - 2.0 * Cb * Cs";
         break;
     case BlendModeOverlay:
+        /*
+            Co = HardLight(Cs, Cb)
+               = if(Cb <= 0.5)
+                     Multiply(Cs, 2 x Cb)
+                 else
+                     Screen(Cs, 2 x Cb - 1)
+               = if(Cb <= 0.5)
+                     Cs x (2 x Cb)
+                 else
+                     Cs + (2 x Cb - 1) - (Cs x (2 x Cb - 1))
+        */
+        blendComponentExpression = SHADER(
+            if (Cb <= 0.5)
+                Co = Cs * (2.0 * Cb);
+            else
+                Co = Cs + (2.0 * Cb - 1.0) - (Cs * (2.0 * Cb - 1.0));
+        );
+        break;
     case BlendModeColorDodge:
+        /*
+            Co = if(Cs < 1)
+                     min(1, Cb / (1 - Cs))
+                 else
+                     1
+        */
+        blendComponentExpression = SHADER(
+            if (Cs < 1.0)
+                Co = min(1.0, Cb / (1.0 - Cs));
+            else
+                Co = 1.0;
+        );
+        break;
     case BlendModeColorBurn:
+        /*
+            Co = if(Cs > 0)
+                     1 - min(1, (1 - Cb) / Cs)
+                 else
+                     0
+        */
+        blendComponentExpression = SHADER(
+            if (Cs > 0.0)
+                Co = 1.0 - min(1.0, (1.0 - Cb) / Cs);
+            else
+                Co = 0.0;
+        );
+        break;
     case BlendModeHardLight:
+        /*
+            Co = if(Cs <= 0.5)
+                     Multiply(Cb, 2 x Cs)
+                 else
+                     Screen(Cb, 2 x Cs -1)
+               = if(Cs <= 0.5)
+                     Cb x (2 x Cs)
+                 else
+                     Cb + (2 x Cs - 1) - (Cb x (2 x Cs - 1))
+        */
+        blendComponentExpression = SHADER(
+            if (Cs <= 0.5)
+                Co = Cb * (2.0 * Cs);
+            else
+                Co = Cb + (2.0 * Cs - 1.0) - (Cb * (2.0 * Cs - 1.0));
+        );
+        break;
     case BlendModeSoftLight:
+        /*
+            Co = if(Cs <= 0.5)
+                     Cb - (1 - 2 x Cs) x Cb x (1 - Cb)
+                 else
+                     Cb + (2 x Cs - 1) x (D(Cb) - Cb)
+
+            with
+
+            D(Cb) = if(Cb <= 0.25)
+                        (16 * Cb - 12) x Cb + 4) x Cb
+                    else
+                        sqrt(Cb)
+        */
+        blendComponentExpression = SHADER(
+            mediump float D;
+            if (Cb <= 0.25)
+                D = ((16.0 * Cb - 12.0) * Cb + 4.0) * Cb;
+            else
+                D = sqrt(Cb);
+
+            if (Cs <= 0.5)
+                Co = Cb - (1.0 - 2.0 * Cs) * Cb * (1.0 - Cb);
+            else
+                Co = Cb + (2.0 * Cs - 1.0) * (D - Cb);
+        );
+        break;
     case BlendModeHue:
     case BlendModeSaturation:
     case BlendModeColor:
@@ -222,13 +368,18 @@ String CustomFilterValidatedProgram::blendFunctionString(BlendMode blendMode)
         return String();
     }
 
-    ASSERT(expression);
     return String::format(SHADER(
-        mediump vec3 css_Blend(mediump vec3 Cb, mediump vec3 Cs)
+        mediump float css_BlendComponent(mediump float Cb, mediump float Cs)
+        {
+            mediump float Co;
+            %s
+            return Co;
+        }
+        mediump vec3 css_BlendColor(mediump vec3 Cb, mediump vec3 Cs)
         {
             return %s;
         }
-    ), expression);
+    ), blendComponentExpression, blendColorExpression);
 }
 
 String CustomFilterValidatedProgram::compositeFunctionString(CompositeOperator compositeOperator)
@@ -249,15 +400,45 @@ String CustomFilterValidatedProgram::compositeFunctionString(CompositeOperator c
         Fb = "1.0 - as";
         break;
     case CompositeClear:
+        Fa = "0.0";
+        Fb = "0.0";
+        break;
     case CompositeCopy:
+        Fa = "1.0";
+        Fb = "0.0";
+        break;
     case CompositeSourceOver:
+        Fa = "1.0";
+        Fb = "1.0 - as";
+        break;
     case CompositeSourceIn:
+        Fa = "ab";
+        Fb = "0.0";
+        break;
     case CompositeSourceOut:
+        Fa = "1.0 - ab";
+        Fb = "0.0";
+        break;
     case CompositeDestinationOver:
+        Fa = "1.0 - ab";
+        Fb = "1.0";
+        break;
     case CompositeDestinationIn:
+        Fa = "0.0";
+        Fb = "as";
+        break;
     case CompositeDestinationOut:
+        Fa = "0.0";
+        Fb = "1.0 - as";
+        break;
     case CompositeDestinationAtop:
+        Fa = "1.0 - ab";
+        Fb = "as";
+        break;
     case CompositeXOR:
+        Fa = "1.0 - ab";
+        Fb = "1.0 - as";
+        break;
     case CompositePlusLighter:
         notImplemented();
         return String();

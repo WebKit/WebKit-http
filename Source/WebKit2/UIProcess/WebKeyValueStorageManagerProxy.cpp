@@ -27,8 +27,9 @@
 #include "WebKeyValueStorageManagerProxy.h"
 
 #include "SecurityOriginData.h"
-#include "WebKeyValueStorageManagerMessages.h"
 #include "WebContext.h"
+#include "WebKeyValueStorageManagerMessages.h"
+#include "WebKeyValueStorageManagerProxyMessages.h"
 #include "WebSecurityOrigin.h"
 
 namespace WebKit {
@@ -41,6 +42,7 @@ PassRefPtr<WebKeyValueStorageManagerProxy> WebKeyValueStorageManagerProxy::creat
 WebKeyValueStorageManagerProxy::WebKeyValueStorageManagerProxy(WebContext* context)
     : m_webContext(context)
 {
+    m_webContext->addMessageReceiver(Messages::WebKeyValueStorageManagerProxy::messageReceiverName(), this);
 }
 
 WebKeyValueStorageManagerProxy::~WebKeyValueStorageManagerProxy()
@@ -57,9 +59,9 @@ bool WebKeyValueStorageManagerProxy::shouldTerminate(WebProcessProxy*) const
     return m_arrayCallbacks.isEmpty();
 }
 
-void WebKeyValueStorageManagerProxy::didReceiveMessage(CoreIPC::Connection* connection, CoreIPC::MessageID messageID, CoreIPC::ArgumentDecoder* arguments)
+void WebKeyValueStorageManagerProxy::didReceiveMessage(CoreIPC::Connection* connection, CoreIPC::MessageID messageID, CoreIPC::MessageDecoder& decoder)
 {
-    didReceiveWebKeyValueStorageManagerProxyMessage(connection, messageID, arguments);
+    didReceiveWebKeyValueStorageManagerProxyMessage(connection, messageID, decoder);
 }
 
 void WebKeyValueStorageManagerProxy::getKeyValueStorageOrigins(PassRefPtr<ArrayCallback> prpCallback)

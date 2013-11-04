@@ -73,7 +73,7 @@ public:
     void dumpBackForwardList() { m_shouldDumpBackForwardListsForAllWindows = true; }
     void dumpChildFrameScrollPositions() { m_shouldDumpAllFrameScrollPositions = true; }
     void dumpEditingCallbacks() { m_dumpEditingCallbacks = true; }
-    void dumpSelectionRect() { } // Will need to do something when we support pixel tests.
+    void dumpSelectionRect() { m_dumpSelectionRect = true; }
     void dumpStatusCallbacks() { m_dumpStatusCallbacks = true; }
     void dumpTitleChanges() { m_dumpTitleChanges = true; }
     void dumpFullScreenCallbacks() { m_dumpFullScreenCallbacks = true; }
@@ -110,6 +110,8 @@ public:
     void setMinimumTimerInterval(double seconds); // Interval specified in seconds.
     void setSpatialNavigationEnabled(bool);
     void setTabKeyCyclesThroughElements(bool);
+    void setSerializeHTTPLoads();
+    void dispatchPendingLoadRequests();
 
     // Special DOM functions.
     JSValueRef computedStyleIncludingVisitedInfo(JSValueRef element);
@@ -129,9 +131,6 @@ public:
     bool pauseAnimationAtTimeOnElementWithId(JSStringRef animationName, double time, JSStringRef elementId);
     bool pauseTransitionAtTimeOnElementWithId(JSStringRef propertyName, double time, JSStringRef elementId);
     void suspendAnimations();
-    
-    // Compositing testing.
-    JSRetainPtr<JSStringRef> layerTreeAsText() const;
     
     // UserContent testing.
     void addUserScript(JSStringRef source, bool runAtStart, bool allFrames);
@@ -178,6 +177,7 @@ public:
     bool shouldDumpWillCacheResponse() const { return m_dumpWillCacheResponse; }
     bool shouldDumpApplicationCacheDelegateCallbacks() const { return m_dumpApplicationCacheDelegateCallbacks; }
     bool shouldDumpDatabaseCallbacks() const { return m_dumpDatabaseCallbacks; }
+    bool shouldDumpSelectionRect() const { return m_dumpSelectionRect; }
 
     bool isPolicyDelegateEnabled() const { return m_policyDelegateEnabled; }
     bool isPolicyDelegatePermissive() const { return m_policyDelegatePermissive; }
@@ -251,7 +251,7 @@ public:
 
     // Geolocation.
     void setGeolocationPermission(bool);
-    void setMockGeolocationPosition(double latitude, double longitude, double accuracy);
+    void setMockGeolocationPosition(double latitude, double longitude, double accuracy, JSValueRef altitude, JSValueRef altitudeAccuracy, JSValueRef heading, JSValueRef speed);
     void setMockGeolocationPositionUnavailableError(JSStringRef message);
 
     JSRetainPtr<JSStringRef> platformName();
@@ -260,6 +260,14 @@ public:
     void resetPageVisibility();
 
     bool callShouldCloseOnWebView();
+
+    // Work queue.
+    void queueBackNavigation(unsigned howFarBackward);
+    void queueForwardNavigation(unsigned howFarForward);
+    void queueLoad(JSStringRef url, JSStringRef target);
+    void queueReload();
+    void queueLoadingScript(JSStringRef script);
+    void queueNonLoadingScript(JSStringRef script);
 
 private:
     static const double waitToDumpWatchdogTimerInterval;
@@ -280,6 +288,7 @@ private:
     bool m_dumpStatusCallbacks;
     bool m_dumpTitleChanges;
     bool m_dumpPixels;
+    bool m_dumpSelectionRect;
     bool m_dumpFullScreenCallbacks;
     bool m_dumpFrameLoadCallbacks;
     bool m_dumpProgressFinishedCallback;

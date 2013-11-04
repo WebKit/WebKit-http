@@ -27,7 +27,15 @@
 #include <CGLCurrent.h>
 #include <CGLIOSurface.h>
 #include <IOSurface/IOSurface.h>
+#include <OpenGL/OpenGL.h>
 #include <OpenGL/gl.h>
+#include <mach/mach.h>
+
+#if PLATFORM(QT)
+#include <QGuiApplication>
+#include <QOpenGLContext>
+#include <qpa/qplatformnativeinterface.h>
+#endif
 
 namespace WebCore {
 
@@ -64,24 +72,49 @@ static uint32_t createTexture(IOSurfaceRef handle)
 
 struct GraphicsSurfacePrivate {
 public:
-    GraphicsSurfacePrivate(uint64_t token)
-        : m_token(token)
+    GraphicsSurfacePrivate(const GraphicsSurfaceToken& token)
+        : m_context(0)
+        , m_token(token)
         , m_frontBufferTexture(0)
         , m_backBufferTexture(0)
+        , m_readFbo(0)
+        , m_drawFbo(0)
     {
-        // The token contains the IOSurfaceID of the fist surface/buffer in the first 32 Bit
-        // and the IOSurfaceID of the second surface/buffer in the second 32 Bit.
-        uint32_t frontBuffer = token >> 32;
-        uint32_t backBuffer = token & 0xffff;
-
-        m_frontBuffer = IOSurfaceLookup(frontBuffer);
-        m_backBuffer = IOSurfaceLookup(backBuffer);
+        m_frontBuffer = IOSurfaceLookupFromMachPort(m_token.frontBufferHandle);
+        m_backBuffer = IOSurfaceLookupFromMachPort(m_token.backBufferHandle);
     }
 
-    GraphicsSurfacePrivate(const IntSize& size, GraphicsSurface::Flags flags)
-        : m_frontBufferTexture(0)
+    GraphicsSurfacePrivate(const PlatformGraphicsContext3D shareContext, const IntSize& size, GraphicsSurface::Flags flags)
+        : m_context(0)
+        , m_frontBufferTexture(0)
         , m_backBufferTexture(0)
+        , m_readFbo(0)
+        , m_drawFbo(0)
     {
+#if PLATFORM(QT)
+#if 0
+        // This code path requires QCocoaNativeInterface::nativeResourceForContext() which is not availble in Qt5 on the build bots yet.
+        QPlatformNativeInterface* nativeInterface = QGuiApplication::platformNativeInterface();
+        CGLContextObj shareContextObject = static_cast<CGLContextObj>(nativeInterface->nativeResourceForContext(QByteArrayLiteral("cglContextObj"), shareContext));
+        if (!shareContextObject)
+            return;
+#else
+        // This code path should be removed as soon as QCocoaNativeInterface::nativeResourceForContext() has become available in Qt5 on the build bots.
+        CGLContextObj previousContext = CGLGetCurrentContext();
+        QSurface* currentSurface = shareContext->surface();
+        shareContext->makeCurrent(currentSurface);
+
+        CGLContextObj shareContextObject = CGLGetCurrentContext();
+
+        CGLSetCurrentContext(previousContext);
+#endif
+        CGLPixelFormatObj pixelFormatObject = CGLGetPixelFormat(shareContextObject);
+        if (kCGLNoError != CGLCreateContext(pixelFormatObject, shareContextObject, &m_context))
+            return;
+
+        CGLRetainContext(m_context);
+#endif
+
         unsigned pixelFormat = 'BGRA';
         unsigned bytesPerElement = 4;
         int width = size.width();
@@ -95,8 +128,8 @@ public:
         if (!allocSize)
             return;
 
-        const void *keys[7];
-        const void *values[7];
+        const void *keys[6];
+        const void *values[6];
         keys[0] = kIOSurfaceWidth;
         values[0] = CFNumberCreate(0, kCFNumberIntType, &width);
         keys[1] = kIOSurfaceHeight;
@@ -109,21 +142,18 @@ public:
         values[4] = CFNumberCreate(0, kCFNumberLongType, &bytesPerRow);
         keys[5] = kIOSurfaceAllocSize;
         values[5] = CFNumberCreate(0, kCFNumberLongType, &allocSize);
-        keys[6] = kIOSurfaceIsGlobal;
-        values[6] = (flags & GraphicsSurface::SupportsSharing) ? kCFBooleanTrue : kCFBooleanFalse;
 
-        CFDictionaryRef dict = CFDictionaryCreate(0, keys, values, 7, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
-        for (unsigned i = 0; i < 7; i++)
+        CFDictionaryRef dict = CFDictionaryCreate(0, keys, values, 6, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
+        for (unsigned i = 0; i < 6; i++)
             CFRelease(values[i]);
 
         m_frontBuffer = IOSurfaceCreate(dict);
         m_backBuffer = IOSurfaceCreate(dict);
 
-        uint64_t token = IOSurfaceGetID(m_frontBuffer);
-        token <<= 32;
-        token |= IOSurfaceGetID(m_backBuffer);
+        if (!(flags & GraphicsSurface::SupportsSharing))
+            return;
 
-        m_token = token;
+        m_token = GraphicsSurfaceToken(IOSurfaceCreateMachPort(m_frontBuffer), IOSurfaceCreateMachPort(m_backBuffer));
     }
 
     ~GraphicsSurfacePrivate()
@@ -139,6 +169,21 @@ public:
 
         if (m_backBuffer)
             CFRelease(IOSurfaceRef(m_backBuffer));
+
+        if (m_readFbo)
+            glDeleteFramebuffers(1, &m_readFbo);
+
+        if (m_drawFbo)
+            glDeleteFramebuffers(1, &m_drawFbo);
+
+        if (m_context)
+            CGLReleaseContext(m_context);
+
+        if (m_token.frontBufferHandle)
+            mach_port_deallocate(mach_task_self(), m_token.frontBufferHandle);
+        if (m_token.backBufferHandle)
+            mach_port_deallocate(mach_task_self(), m_token.backBufferHandle);
+
     }
 
     uint32_t swapBuffers()
@@ -149,7 +194,62 @@ public:
         return IOSurfaceGetID(m_frontBuffer);
     }
 
-    uint64_t token() const
+    void makeCurrent()
+    {
+        m_detachedContext = CGLGetCurrentContext();
+
+        if (m_context)
+            CGLSetCurrentContext(m_context);
+    }
+
+    void doneCurrent()
+    {
+        CGLSetCurrentContext(m_detachedContext);
+        m_detachedContext = 0;
+    }
+
+    void copyFromTexture(uint32_t texture, const IntRect& sourceRect)
+    {
+        // FIXME: The following glFlush can possibly be replaced by using the GL_ARB_sync extension.
+        glFlush(); // Make sure the texture has actually been completely written in the original context.
+
+        makeCurrent();
+        glEnable(GL_TEXTURE_RECTANGLE_ARB);
+
+        int x = sourceRect.x();
+        int y = sourceRect.y();
+        int width = sourceRect.width();
+        int height = sourceRect.height();
+
+        glPushAttrib(GL_ALL_ATTRIB_BITS);
+        GLint previousFBO;
+        glGetIntegerv(GL_FRAMEBUFFER_BINDING, &previousFBO);
+
+        if (!m_drawFbo)
+            glGenFramebuffers(1, &m_drawFbo);
+
+        if (!m_readFbo)
+            glGenFramebuffers(1, &m_readFbo);
+
+        glBindFramebuffer(GL_READ_FRAMEBUFFER, m_readFbo);
+        glFramebufferTexture2D(GL_READ_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, texture, 0);
+
+        glBindFramebuffer(GL_DRAW_FRAMEBUFFER, m_drawFbo);
+        glFramebufferTexture2D(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_RECTANGLE_ARB, backBufferTextureID(), 0);
+        glBlitFramebuffer(x, y, width, height, x, x+height, y+width, y, GL_COLOR_BUFFER_BIT, GL_LINEAR); // Flip the texture upside down.
+
+        glFramebufferTexture2D(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_RECTANGLE_ARB, 0, 0);
+        glFramebufferTexture2D(GL_READ_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, 0, 0);
+        glBindFramebuffer(GL_FRAMEBUFFER, previousFBO);
+        glPopAttrib();
+
+        // Flushing the gl command buffer is necessary to ensure the texture has correctly been bound to the IOSurface.
+        glFlush();
+
+        doneCurrent();
+    }
+
+    GraphicsSurfaceToken token() const
     {
         return m_token;
     }
@@ -181,14 +281,18 @@ public:
     }
 
 private:
+    CGLContextObj m_context;
+    CGLContextObj m_detachedContext;
     PlatformGraphicsSurface m_frontBuffer;
     PlatformGraphicsSurface m_backBuffer;
     uint32_t m_frontBufferTexture;
     uint32_t m_backBufferTexture;
-    uint64_t m_token;
+    uint32_t m_readFbo;
+    uint32_t m_drawFbo;
+    GraphicsSurfaceToken m_token;
 };
 
-uint64_t GraphicsSurface::platformExport()
+GraphicsSurfaceToken GraphicsSurface::platformExport()
 {
     return m_private->token();
 }
@@ -221,25 +325,9 @@ void GraphicsSurface::platformCopyToGLTexture(uint32_t target, uint32_t id, cons
     glFlush();
 }
 
-void GraphicsSurface::platformCopyFromFramebuffer(uint32_t originFbo, const IntRect& sourceRect)
+void GraphicsSurface::platformCopyFromTexture(uint32_t texture, const IntRect& sourceRect)
 {
-    glPushAttrib(GL_ALL_ATTRIB_BITS);
-    if (!m_fbo)
-        glGenFramebuffers(1, &m_fbo);
-
-    GLint oldFBO;
-    glGetIntegerv(GL_FRAMEBUFFER_BINDING, &oldFBO);
-    glEnable(GL_TEXTURE_RECTANGLE_ARB);
-    glBindFramebuffer(GL_READ_FRAMEBUFFER, originFbo);
-    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, m_fbo);
-    glFramebufferTexture2D(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_RECTANGLE_ARB, m_private->backBufferTextureID(), 0);
-    glBlitFramebuffer(0, 0, sourceRect.width(), sourceRect.height(), 0, sourceRect.height(), sourceRect.width(), 0, GL_COLOR_BUFFER_BIT, GL_LINEAR); // Flip the texture upside down.
-    glFramebufferTexture2D(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_RECTANGLE_ARB, 0, 0);
-    glBindFramebuffer(GL_FRAMEBUFFER, oldFBO);
-    glPopAttrib();
-
-    // Flushing the gl command buffer is necessary to ensure the texture has correctly been bound to the IOSurface.
-    glFlush();
+    m_private->copyFromTexture(texture, sourceRect);
 }
 
 void GraphicsSurface::platformPaintToTextureMapper(TextureMapper* textureMapper, const FloatRect& targetRect, const TransformationMatrix& transform, float opacity, BitmapTexture* mask)
@@ -259,7 +347,7 @@ uint32_t GraphicsSurface::platformSwapBuffers()
     return m_private->swapBuffers();
 }
 
-PassRefPtr<GraphicsSurface> GraphicsSurface::platformCreate(const IntSize& size, Flags flags)
+PassRefPtr<GraphicsSurface> GraphicsSurface::platformCreate(const IntSize& size, Flags flags, const PlatformGraphicsContext3D shareContext)
 {
     // We currently disable support for CopyToTexture on Mac, because this is used for single buffered Tiles.
     // The single buffered nature of this requires a call to glFlush, as described in platformCopyToTexture.
@@ -268,7 +356,7 @@ PassRefPtr<GraphicsSurface> GraphicsSurface::platformCreate(const IntSize& size,
         return PassRefPtr<GraphicsSurface>();
 
     RefPtr<GraphicsSurface> surface = adoptRef(new GraphicsSurface(size, flags));
-    surface->m_private = new GraphicsSurfacePrivate(size, flags);
+    surface->m_private = new GraphicsSurfacePrivate(shareContext, size, flags);
 
     if (!surface->m_private->frontBuffer() || !surface->m_private->backBuffer())
         return PassRefPtr<GraphicsSurface>();
@@ -276,7 +364,7 @@ PassRefPtr<GraphicsSurface> GraphicsSurface::platformCreate(const IntSize& size,
     return surface;
 }
 
-PassRefPtr<GraphicsSurface> GraphicsSurface::platformImport(const IntSize& size, Flags flags, uint64_t token)
+PassRefPtr<GraphicsSurface> GraphicsSurface::platformImport(const IntSize& size, Flags flags, const GraphicsSurfaceToken& token)
 {
     // We currently disable support for CopyToTexture on Mac, because this is used for single buffered Tiles.
     // The single buffered nature of this requires a call to glFlush, as described in platformCopyToTexture.

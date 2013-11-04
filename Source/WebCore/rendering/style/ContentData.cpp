@@ -22,7 +22,14 @@
 #include "config.h"
 #include "ContentData.h"
 
-#include "StyleImage.h"
+#include "RenderCounter.h"
+#include "RenderImage.h"
+#include "RenderImageResource.h"
+#include "RenderImageResourceStyleImage.h"
+#include "RenderQuote.h"
+#include "RenderStyle.h"
+#include "RenderTextFragment.h"
+#include "StyleInheritedData.h"
 
 namespace WebCore {
 
@@ -60,30 +67,41 @@ PassOwnPtr<ContentData> ContentData::clone() const
     return result.release();
 }
 
-bool operator==(const ContentData& a, const ContentData& b)
+RenderObject* ImageContentData::createRenderer(Document* doc, RenderStyle* pseudoStyle) const
 {
-    if (a.type() != b.type())
-        return false;
-
-    switch (a.type()) {
-    case CONTENT_NONE:
-        return true;
-    case CONTENT_OBJECT:
-        return *static_cast<const ImageContentData*>(&a)->image() == *static_cast<const ImageContentData*>(&b)->image();
-    case CONTENT_TEXT:
-        return static_cast<const TextContentData*>(&a)->text() == static_cast<const TextContentData*>(&b)->text();
-    case CONTENT_COUNTER:
-        return *static_cast<const CounterContentData*>(&a)->counter() == *static_cast<const CounterContentData*>(&b)->counter();
-    case CONTENT_QUOTE:
-        return static_cast<const QuoteContentData*>(&a)->quote() == static_cast<const QuoteContentData*>(&b)->quote();
-    }
-    ASSERT_NOT_REACHED();
-    return false;
+    RenderImage* image = new (doc->renderArena()) RenderImage(doc);
+    // Images are special and must inherit the pseudoStyle so the width and height of
+    // the pseudo element don't change the size of the image. In all other cases we
+    // can just share the style.
+    RefPtr<RenderStyle> style = RenderStyle::create();
+    style->inheritFrom(pseudoStyle);
+    image->setStyle(style.release());
+    if (m_image)
+        image->setImageResource(RenderImageResourceStyleImage::create(m_image.get()));
+    else
+        image->setImageResource(RenderImageResource::create());
+    return image;
 }
 
-bool operator!=(const ContentData& a, const ContentData& b)
+RenderObject* TextContentData::createRenderer(Document* doc, RenderStyle* pseudoStyle) const
 {
-    return !(a == b);
+    RenderObject* renderer = new (doc->renderArena()) RenderTextFragment(doc, m_text.impl());
+    renderer->setStyle(pseudoStyle);
+    return renderer;
+}
+
+RenderObject* CounterContentData::createRenderer(Document* doc, RenderStyle* pseudoStyle) const
+{
+    RenderObject* renderer = new (doc->renderArena()) RenderCounter(doc, *m_counter);
+    renderer->setStyle(pseudoStyle);
+    return renderer;
+}
+
+RenderObject* QuoteContentData::createRenderer(Document* doc, RenderStyle* pseudoStyle) const
+{
+    RenderObject* renderer = new (doc->renderArena()) RenderQuote(doc, m_quote);
+    renderer->setStyle(pseudoStyle);
+    return renderer;
 }
 
 } // namespace WebCore

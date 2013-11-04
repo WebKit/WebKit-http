@@ -382,9 +382,9 @@ float InlineFlowBox::placeBoxesInInlineDirection(float logicalLeft, bool& needsW
             InlineTextBox* text = toInlineTextBox(curr);
             RenderText* rt = toRenderText(text->renderer());
             if (rt->textLength()) {
-                if (needsWordSpacing && isSpaceOrNewline(rt->characters()[text->start()]))
+                if (needsWordSpacing && isSpaceOrNewline(rt->characterAt(text->start())))
                     logicalLeft += rt->style(isFirstLineStyle())->font().wordSpacing();
-                needsWordSpacing = !isSpaceOrNewline(rt->characters()[text->end()]);
+                needsWordSpacing = !isSpaceOrNewline(rt->characterAt(text->end()));
             }
             text->setLogicalLeft(logicalLeft);
             if (knownToHaveNoOverflow())
@@ -460,7 +460,7 @@ bool InlineFlowBox::requiresIdeographicBaseline(const GlyphOverflowAndFallbackFo
             const Vector<const SimpleFontData*>* usedFonts = 0;
             if (curr->isInlineTextBox()) {
                 GlyphOverflowAndFallbackFontsMap::const_iterator it = textBoxDataMap.find(toInlineTextBox(curr));
-                usedFonts = it == textBoxDataMap.end() ? 0 : &it->second.first;
+                usedFonts = it == textBoxDataMap.end() ? 0 : &it->value.first;
             }
 
             if (usedFonts) {
@@ -475,7 +475,7 @@ bool InlineFlowBox::requiresIdeographicBaseline(const GlyphOverflowAndFallbackFo
     return false;
 }
 
-void InlineFlowBox::adjustMaxAscentAndDescent(LayoutUnit& maxAscent, LayoutUnit& maxDescent, LayoutUnit maxPositionTop, LayoutUnit maxPositionBottom)
+void InlineFlowBox::adjustMaxAscentAndDescent(int& maxAscent, int& maxDescent, int maxPositionTop, int maxPositionBottom)
 {
     for (InlineBox* curr = firstChild(); curr; curr = curr->nextOnLine()) {
         // The computed lineheight needs to be extended for the
@@ -483,7 +483,7 @@ void InlineFlowBox::adjustMaxAscentAndDescent(LayoutUnit& maxAscent, LayoutUnit&
         if (curr->renderer()->isOutOfFlowPositioned())
             continue; // Positioned placeholders don't affect calculations.
         if (curr->verticalAlign() == TOP || curr->verticalAlign() == BOTTOM) {
-            LayoutUnit lineHeight = curr->lineHeight();
+            int lineHeight = curr->lineHeight();
             if (curr->verticalAlign() == TOP) {
                 if (maxAscent + maxDescent < lineHeight)
                     maxDescent = lineHeight - maxAscent;
@@ -503,7 +503,7 @@ void InlineFlowBox::adjustMaxAscentAndDescent(LayoutUnit& maxAscent, LayoutUnit&
 }
 
 void InlineFlowBox::computeLogicalBoxHeights(RootInlineBox* rootBox, LayoutUnit& maxPositionTop, LayoutUnit& maxPositionBottom,
-                                             LayoutUnit& maxAscent, LayoutUnit& maxDescent, bool& setMaxAscent, bool& setMaxDescent,
+                                             int& maxAscent, int& maxDescent, bool& setMaxAscent, bool& setMaxDescent,
                                              bool strictMode, GlyphOverflowAndFallbackFontsMap& textBoxDataMap,
                                              FontBaseline baselineType, VerticalPositionCache& verticalPositionCache)
 {
@@ -599,7 +599,7 @@ void InlineFlowBox::computeLogicalBoxHeights(RootInlineBox* rootBox, LayoutUnit&
     }
 }
 
-void InlineFlowBox::placeBoxesInBlockDirection(LayoutUnit top, LayoutUnit maxHeight, LayoutUnit maxAscent, bool strictMode, LayoutUnit& lineTop, LayoutUnit& lineBottom, bool& setLineTop,
+void InlineFlowBox::placeBoxesInBlockDirection(LayoutUnit top, LayoutUnit maxHeight, int maxAscent, bool strictMode, LayoutUnit& lineTop, LayoutUnit& lineBottom, bool& setLineTop,
                                                LayoutUnit& lineTopIncludingMargins, LayoutUnit& lineBottomIncludingMargins, bool& hasAnnotationsBefore, bool& hasAnnotationsAfter, FontBaseline baselineType)
 {
     bool isRootBox = isRootInlineBox();
@@ -824,7 +824,7 @@ inline void InlineFlowBox::addTextBoxVisualOverflow(InlineTextBox* textBox, Glyp
     RenderStyle* style = textBox->renderer()->style(isFirstLineStyle());
     
     GlyphOverflowAndFallbackFontsMap::iterator it = textBoxDataMap.find(textBox);
-    GlyphOverflow* glyphOverflow = it == textBoxDataMap.end() ? 0 : &it->second.second;
+    GlyphOverflow* glyphOverflow = it == textBoxDataMap.end() ? 0 : &it->value.second;
     bool isFlippedLine = style->isFlippedLinesWritingMode();
 
     int topGlyphEdge = glyphOverflow ? (isFlippedLine ? glyphOverflow->bottom : glyphOverflow->top) : 0;

@@ -236,9 +236,12 @@ Frame::~Frame()
 bool Frame::inScope(TreeScope* scope) const
 {
     ASSERT(scope);
-    HTMLFrameOwnerElement* owner = document()->ownerElement();
-    // Scoping test should be done only for child frames.
-    ASSERT(owner);
+    Document* doc = document();
+    if (!doc)
+        return false;
+    HTMLFrameOwnerElement* owner = doc->ownerElement();
+    if (!owner)
+        return false;
     return owner->treeScope() == scope;
 }
 
@@ -579,7 +582,7 @@ void Frame::injectUserScripts(UserScriptInjectionTime injectionTime)
         return;
     UserScriptMap::const_iterator end = userScripts->end();
     for (UserScriptMap::const_iterator it = userScripts->begin(); it != end; ++it)
-        injectUserScriptsForWorld(it->first.get(), *it->second, injectionTime);
+        injectUserScriptsForWorld(it->key.get(), *it->value, injectionTime);
 }
 
 void Frame::injectUserScriptsForWorld(DOMWrapperWorld* world, const UserScriptVector& userScripts, UserScriptInjectionTime injectionTime)
@@ -774,11 +777,10 @@ PassRefPtr<Range> Frame::rangeForPoint(const IntPoint& framePoint)
     return 0;
 }
 
-void Frame::createView(const IntSize& viewportSize,
-                       const Color& backgroundColor, bool transparent,
-                       const IntSize& fixedLayoutSize, bool useFixedLayout,
-                       ScrollbarMode horizontalScrollbarMode, bool horizontalLock,
-                       ScrollbarMode verticalScrollbarMode, bool verticalLock)
+void Frame::createView(const IntSize& viewportSize, const Color& backgroundColor, bool transparent,
+    const IntSize& fixedLayoutSize, const IntRect& fixedVisibleContentRect ,
+    bool useFixedLayout, ScrollbarMode horizontalScrollbarMode, bool horizontalLock,
+    ScrollbarMode verticalScrollbarMode, bool verticalLock)
 {
     ASSERT(this);
     ASSERT(m_page);
@@ -794,6 +796,7 @@ void Frame::createView(const IntSize& viewportSize,
     if (isMainFrame) {
         frameView = FrameView::create(this, viewportSize);
         frameView->setFixedLayoutSize(fixedLayoutSize);
+        frameView->setFixedVisibleContentRect(fixedVisibleContentRect);
         frameView->setUseFixedLayout(useFixedLayout);
     } else
         frameView = FrameView::create(this);
@@ -876,7 +879,7 @@ Color Frame::tiledBackingStoreBackgroundColor() const
 }
 #endif
 
-String Frame::layerTreeAsText(bool showDebugInfo) const
+String Frame::layerTreeAsText(LayerTreeFlags flags) const
 {
 #if USE(ACCELERATED_COMPOSITING)
     document()->updateLayout();
@@ -884,9 +887,9 @@ String Frame::layerTreeAsText(bool showDebugInfo) const
     if (!contentRenderer())
         return String();
 
-    return contentRenderer()->compositor()->layerTreeAsText(showDebugInfo);
+    return contentRenderer()->compositor()->layerTreeAsText(flags);
 #else
-    UNUSED_PARAM(showDebugInfo);
+    UNUSED_PARAM(flags);
     return String();
 #endif
 }

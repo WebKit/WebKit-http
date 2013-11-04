@@ -37,16 +37,17 @@
 #include "ChromeClientImpl.h"
 #include "DateComponents.h"
 #include "DateTimeChooserClient.h"
+#include "FrameView.h"
 #include "InputTypeNames.h"
 #include "Language.h"
 #include "Localizer.h"
 #include "NotImplemented.h"
 #include "PickerCommon.h"
 #include "RenderTheme.h"
+#include "WebViewImpl.h"
 #include <public/Platform.h>
 #include <public/WebLocalizedString.h>
 
-using namespace WTF::Unicode;
 using namespace WebCore;
 
 namespace WebKit {
@@ -88,7 +89,10 @@ void DateTimeChooserImpl::writeDocument(WebCore::DocumentWriter& writer)
     String maxString = date.toString();
     String stepString = String::number(m_parameters.step);
     String stepBaseString = String::number(m_parameters.stepBase, 11, WTF::TruncateTrailingZeros);
-    OwnPtr<Localizer> localizer = Localizer::create(nullAtom);
+    IntRect anchorRectInScreen = m_chromeClient->rootViewToScreen(m_parameters.anchorRectInRootView);
+    FrameView* view = static_cast<WebViewImpl*>(m_chromeClient->webView())->page()->mainFrame()->view();
+    IntRect rootViewVisibleContentRect = view->visibleContentRect(true /* include scrollbars */);
+    IntRect rootViewRectInScreen = m_chromeClient->rootViewToScreen(rootViewVisibleContentRect);
 
     addString("<!DOCTYPE html><head><meta charset='UTF-8'><style>\n", writer);
     writer.addData(WebCore::pickerCommonCss, sizeof(WebCore::pickerCommonCss));
@@ -99,6 +103,13 @@ void DateTimeChooserImpl::writeDocument(WebCore::DocumentWriter& writer)
         writer.addData(extraStyle.data(), extraStyle.length());
     addString("</style></head><body><div id=main>Loading...</div><script>\n"
                "window.dialogArguments = {\n", writer);
+    addProperty("anchorRectInScreen", anchorRectInScreen, writer);
+    addProperty("rootViewRectInScreen", rootViewRectInScreen, writer);
+#if OS(MAC_OS_X)
+    addProperty("confineToRootView", true, writer);
+#else
+    addProperty("confineToRootView", false, writer);
+#endif
     addProperty("min", minString, writer);
     addProperty("max", maxString, writer);
     addProperty("step", stepString, writer);
@@ -108,11 +119,10 @@ void DateTimeChooserImpl::writeDocument(WebCore::DocumentWriter& writer)
     addProperty("locale", WebCore::defaultLanguage(), writer);
     addProperty("todayLabel", Platform::current()->queryLocalizedString(WebLocalizedString::CalendarToday), writer);
     addProperty("clearLabel", Platform::current()->queryLocalizedString(WebLocalizedString::CalendarClear), writer);
-    addProperty("weekStartDay", localizer->firstDayOfWeek(), writer);
-    addProperty("monthLabels", localizer->monthLabels(), writer);
-    addProperty("dayLabels", localizer->weekDayShortLabels(), writer);
-    Direction dir = direction(localizer->monthLabels()[0][0]);
-    addProperty("isCalendarRTL", dir == RightToLeft || dir == RightToLeftArabic, writer);
+    addProperty("weekStartDay", m_localizer->firstDayOfWeek(), writer);
+    addProperty("monthLabels", m_localizer->monthLabels(), writer);
+    addProperty("dayLabels", m_localizer->weekDayShortLabels(), writer);
+    addProperty("isCalendarRTL", m_localizer->isRTL(), writer);
     addProperty("isRTL", m_parameters.isAnchorElementRTL, writer);
     if (m_parameters.suggestionValues.size()) {
         addProperty("inputWidth", static_cast<unsigned>(m_parameters.anchorRectInRootView.width()), writer);

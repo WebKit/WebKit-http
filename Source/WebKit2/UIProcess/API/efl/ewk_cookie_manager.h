@@ -31,22 +31,22 @@
 #ifndef ewk_cookie_manager_h
 #define ewk_cookie_manager_h
 
-#include "ewk_web_error.h"
+#include "ewk_error.h"
 #include <Eina.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-/** Creates a type name for _Ewk_Cookie_Manager */
-typedef struct _Ewk_Cookie_Manager Ewk_Cookie_Manager;
+/** Creates a type name for Ewk_Cookie_Manager */
+typedef struct Ewk_Cookie_Manager Ewk_Cookie_Manager;
 
 /**
- * \enum    _Ewk_Cookie_Accept_Policy
+ * \enum    Ewk_Cookie_Accept_Policy
  *
  * @brief   Contains accept policies for the cookies.
  */
-enum _Ewk_Cookie_Accept_Policy {
+enum Ewk_Cookie_Accept_Policy {
     /// Accepts every cookie sent from any page.
     EWK_COOKIE_ACCEPT_POLICY_ALWAYS,
     /// Rejects all cookies.
@@ -55,29 +55,29 @@ enum _Ewk_Cookie_Accept_Policy {
     EWK_COOKIE_ACCEPT_POLICY_NO_THIRD_PARTY
 };
 
-/// Creates a type name for the _Ewk_Cookie_Accept_Policy.
-typedef enum _Ewk_Cookie_Accept_Policy Ewk_Cookie_Accept_Policy;
+/// Creates a type name for the Ewk_Cookie_Accept_Policy.
+typedef enum Ewk_Cookie_Accept_Policy Ewk_Cookie_Accept_Policy;
 
 /**
- * \enum    _Ewk_Cookie_Persistent_Storage
+ * \enum    Ewk_Cookie_Persistent_Storage
  *
  * @brief   Enum values to denote cookies persistent storage type.
  */
-enum _Ewk_Cookie_Persistent_Storage {
+enum Ewk_Cookie_Persistent_Storage {
     /// Cookies are stored in a text file in the Mozilla "cookies.txt" format.
     EWK_COOKIE_PERSISTENT_STORAGE_TEXT,
     /// Cookies are stored in a SQLite file in the current Mozilla format.
     EWK_COOKIE_PERSISTENT_STORAGE_SQLITE
 };
 
-/// Creates a type name for the _Ewk_Cookie_Persistent_Storage.
-typedef enum _Ewk_Cookie_Persistent_Storage Ewk_Cookie_Persistent_Storage;
+/// Creates a type name for the Ewk_Cookie_Persistent_Storage.
+typedef enum Ewk_Cookie_Persistent_Storage Ewk_Cookie_Persistent_Storage;
 
 /**
  * @typedef Ewk_Cookie_Manager_Async_Policy_Get_Cb Ewk_Cookie_Manager_Async_Policy_Get_Cb
  * @brief Callback type for use with ewk_cookie_manager_async_accept_policy_get
  */
-typedef void (*Ewk_Cookie_Manager_Async_Policy_Get_Cb)(Ewk_Cookie_Accept_Policy policy, Ewk_Web_Error *error, void *event_info);
+typedef void (*Ewk_Cookie_Manager_Async_Policy_Get_Cb)(Ewk_Cookie_Accept_Policy policy, Ewk_Error *error, void *event_info);
 
 /**
  * @typedef Ewk_Cookie_Manager_Async_Hostnames_Get_Cb Ewk_Cookie_Manager_Async_Hostnames_Get_Cb
@@ -87,7 +87,7 @@ typedef void (*Ewk_Cookie_Manager_Async_Policy_Get_Cb)(Ewk_Cookie_Accept_Policy 
  * save yourself some cpu cycles and use eina_stringshare_ref() instead of eina_stringshare_add()
  * or strdup().
  */
-typedef void (*Ewk_Cookie_Manager_Async_Hostnames_Get_Cb)(Eina_List* hostnames, Ewk_Web_Error *error, void *event_info);
+typedef void (*Ewk_Cookie_Manager_Async_Hostnames_Get_Cb)(Eina_List *hostnames, Ewk_Error *error, void *event_info);
 
 /**
  * @typedef Ewk_Cookie_Manager_Changes_Watch_Cb Ewk_Cookie_Manager_Changes_Watch_Cb

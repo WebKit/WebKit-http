@@ -26,44 +26,29 @@
 #include "config.h"
 #include "GCThreadSharedData.h"
 
+#include "CopyVisitor.h"
+#include "CopyVisitorInlineMethods.h"
+#include "GCThread.h"
 #include "JSGlobalData.h"
 #include "MarkStack.h"
 #include "SlotVisitor.h"
 #include "SlotVisitorInlineMethods.h"
-#include <wtf/MainThread.h>
 
 namespace JSC {
 
 #if ENABLE(PARALLEL_GC)
 void GCThreadSharedData::resetChildren()
 {
-    for (unsigned i = 0; i < m_markingThreadsMarkStack.size(); ++i)
-        m_markingThreadsMarkStack[i]->reset();
+    for (size_t i = 0; i < m_gcThreads.size(); ++i)
+        m_gcThreads[i]->slotVisitor()->reset();
 }
 
 size_t GCThreadSharedData::childVisitCount()
 {       
     unsigned long result = 0;
-    for (unsigned i = 0; i < m_markingThreadsMarkStack.size(); ++i)
-        result += m_markingThreadsMarkStack[i]->visitCount();
+    for (unsigned i = 0; i < m_gcThreads.size(); ++i)
+        result += m_gcThreads[i]->slotVisitor()->visitCount();
     return result;
-}
-
-void GCThreadSharedData::markingThreadMain(SlotVisitor* slotVisitor)
-{
-    WTF::registerGCThread();
-    {
-        ParallelModeEnabler enabler(*slotVisitor);
-        slotVisitor->drainFromShared(SlotVisitor::SlaveDrain);
-    }
-    delete slotVisitor;
-}
-
-void GCThreadSharedData::markingThreadStartFunc(void* myVisitor)
-{               
-    SlotVisitor* slotVisitor = static_cast<SlotVisitor*>(myVisitor);
-
-    slotVisitor->sharedData().markingThreadMain(slotVisitor);
 }
 #endif
 
@@ -74,14 +59,29 @@ GCThreadSharedData::GCThreadSharedData(JSGlobalData* globalData)
     , m_sharedMarkStack(m_segmentAllocator)
     , m_numberOfActiveParallelMarkers(0)
     , m_parallelMarkersShouldExit(false)
+    , m_blocksToCopy(globalData->heap.m_blockSnapshot)
+    , m_copyIndex(0)
+    , m_numberOfActiveGCThreads(0)
+    , m_gcThreadsShouldWait(false)
+    , m_currentPhase(NoPhase)
 {
+    m_copyLock.Init();
 #if ENABLE(PARALLEL_GC)
+    // Grab the lock so the new GC threads can be properly initialized before they start running.
+    MutexLocker locker(m_phaseLock);
     for (unsigned i = 1; i < Options::numberOfGCMarkers(); ++i) {
+        m_numberOfActiveGCThreads++;
         SlotVisitor* slotVisitor = new SlotVisitor(*this);
-        m_markingThreadsMarkStack.append(slotVisitor);
-        m_markingThreads.append(createThread(markingThreadStartFunc, slotVisitor, "JavaScriptCore::Marking"));
-        ASSERT(m_markingThreads.last());
+        CopyVisitor* copyVisitor = new CopyVisitor(*this);
+        GCThread* newThread = new GCThread(*this, slotVisitor, copyVisitor);
+        ThreadIdentifier threadID = createThread(GCThread::gcThreadStartFunc, newThread, "JavaScriptCore::Marking");
+        newThread->initializeThreadID(threadID);
+        m_gcThreads.append(newThread);
     }
+
+    // Wait for all the GCThreads to get to the right place.
+    while (m_numberOfActiveGCThreads)
+        m_activityCondition.wait(m_phaseLock);
 #endif
 }
 
@@ -90,19 +90,23 @@ GCThreadSharedData::~GCThreadSharedData()
 #if ENABLE(PARALLEL_GC)    
     // Destroy our marking threads.
     {
-        MutexLocker locker(m_markingLock);
+        MutexLocker markingLocker(m_markingLock);
+        MutexLocker phaseLocker(m_phaseLock);
+        ASSERT(m_currentPhase == NoPhase);
         m_parallelMarkersShouldExit = true;
-        m_markingCondition.broadcast();
+        m_gcThreadsShouldWait = false;
+        m_currentPhase = Exit;
+        m_phaseCondition.broadcast();
     }
-    for (unsigned i = 0; i < m_markingThreads.size(); ++i)
-        waitForThreadCompletion(m_markingThreads[i]);
+    for (unsigned i = 0; i < m_gcThreads.size(); ++i) {
+        waitForThreadCompletion(m_gcThreads[i]->threadID());
+        delete m_gcThreads[i];
+    }
 #endif
 }
     
 void GCThreadSharedData::reset()
 {
-    ASSERT(!m_numberOfActiveParallelMarkers);
-    ASSERT(!m_parallelMarkersShouldExit);
     ASSERT(m_sharedMarkStack.isEmpty());
     
 #if ENABLE(PARALLEL_GC)
@@ -117,6 +121,70 @@ void GCThreadSharedData::reset()
         m_globalData->resetNewStringsSinceLastHashConst();
         m_shouldHashConst = false;
     }
+}
+
+void GCThreadSharedData::startNextPhase(GCPhase phase)
+{
+    MutexLocker phaseLocker(m_phaseLock);
+    ASSERT(!m_gcThreadsShouldWait);
+    ASSERT(m_currentPhase == NoPhase);
+    m_gcThreadsShouldWait = true;
+    m_currentPhase = phase;
+    m_phaseCondition.broadcast();
+}
+
+void GCThreadSharedData::endCurrentPhase()
+{
+    ASSERT(m_gcThreadsShouldWait);
+    MutexLocker locker(m_phaseLock);
+    m_currentPhase = NoPhase;
+    m_gcThreadsShouldWait = false;
+    m_phaseCondition.broadcast();
+    while (m_numberOfActiveGCThreads)
+        m_activityCondition.wait(m_phaseLock);
+}
+
+void GCThreadSharedData::didStartMarking()
+{
+    MutexLocker markingLocker(m_markingLock);
+    m_parallelMarkersShouldExit = false;
+    startNextPhase(Mark);
+}
+
+void GCThreadSharedData::didFinishMarking()
+{
+    {
+        MutexLocker markingLocker(m_markingLock);
+        m_parallelMarkersShouldExit = true;
+        m_markingCondition.broadcast();
+    }
+
+    ASSERT(m_currentPhase == Mark);
+    endCurrentPhase();
+}
+
+void GCThreadSharedData::didStartCopying()
+{
+    {
+        SpinLockHolder locker(&m_copyLock);
+        m_blocksToCopy = m_globalData->heap.m_blockSnapshot;
+        m_copyIndex = 0;
+    }
+
+    // We do this here so that we avoid a race condition where the main thread can 
+    // blow through all of the copying work before the GCThreads fully wake up. 
+    // The GCThreads then request a block from the CopiedSpace when the copying phase 
+    // has completed, which isn't allowed.
+    for (size_t i = 0; i < m_gcThreads.size(); i++)
+        m_gcThreads[i]->copyVisitor()->startCopying();
+
+    startNextPhase(Copy);
+}
+
+void GCThreadSharedData::didFinishCopying()
+{
+    ASSERT(m_currentPhase == Copy);
+    endCurrentPhase();
 }
 
 } // namespace JSC

@@ -31,6 +31,7 @@
 #include "WebContext.h"
 #include "WebNetworkInfo.h"
 #include "WebNetworkInfoManagerMessages.h"
+#include "WebNetworkInfoManagerProxyMessages.h"
 
 namespace WebKit {
 
@@ -43,6 +44,7 @@ WebNetworkInfoManagerProxy::WebNetworkInfoManagerProxy(WebContext* context)
     : m_isUpdating(false)
     , m_context(context)
 {
+    m_context->addMessageReceiver(Messages::WebNetworkInfoManagerProxy::messageReceiverName(), this);
 }
 
 WebNetworkInfoManagerProxy::~WebNetworkInfoManagerProxy()
@@ -67,14 +69,14 @@ void WebNetworkInfoManagerProxy::providerDidChangeNetworkInformation(const Atomi
     m_context->sendToAllProcesses(Messages::WebNetworkInfoManager::DidChangeNetworkInformation(eventType, networkInformation->data()));
 }
 
-void WebNetworkInfoManagerProxy::didReceiveMessage(CoreIPC::Connection* connection, CoreIPC::MessageID messageID, CoreIPC::ArgumentDecoder* arguments)
+void WebNetworkInfoManagerProxy::didReceiveMessage(CoreIPC::Connection* connection, CoreIPC::MessageID messageID, CoreIPC::MessageDecoder& decoder)
 {
-    didReceiveWebNetworkInfoManagerProxyMessage(connection, messageID, arguments);
+    didReceiveWebNetworkInfoManagerProxyMessage(connection, messageID, decoder);
 }
 
-void WebNetworkInfoManagerProxy::didReceiveSyncMessage(CoreIPC::Connection* connection, CoreIPC::MessageID messageID, CoreIPC::ArgumentDecoder* arguments, WTF::OwnPtr<CoreIPC::ArgumentEncoder>& reply)
+void WebNetworkInfoManagerProxy::didReceiveSyncMessage(CoreIPC::Connection* connection, CoreIPC::MessageID messageID, CoreIPC::MessageDecoder& decoder, OwnPtr<CoreIPC::MessageEncoder>& replyEncoder)
 {
-    didReceiveSyncWebNetworkInfoManagerProxyMessage(connection, messageID, arguments, reply);
+    didReceiveSyncWebNetworkInfoManagerProxyMessage(connection, messageID, decoder, replyEncoder);
 }
 
 void WebNetworkInfoManagerProxy::startUpdating()

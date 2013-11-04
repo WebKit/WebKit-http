@@ -3,7 +3,7 @@
  *           (C) 2000 Antti Koivisto (koivisto@kde.org)
  *           (C) 2000 Dirk Mueller (mueller@kde.org)
  *           (C) 2004 Allan Sandfeld Jensen (kde@carewolf.com)
- * Copyright (C) 2003, 2004, 2005, 2006, 2007, 2008, 2009 Apple Inc. All rights reserved.
+ * Copyright (C) 2003, 2004, 2005, 2006, 2007, 2008, 2009, 2012 Apple Inc. All rights reserved.
  * Copyright (C) 2009 Google Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
@@ -29,16 +29,18 @@
 #include "CachedImageClient.h"
 #include "DocumentStyleSheetCollection.h"
 #include "Element.h"
-#include "FractionalLayoutUnit.h"
 #include "FloatQuad.h"
+#include "FractionalLayoutUnit.h"
 #include "LayoutTypes.h"
 #include "PaintPhase.h"
 #include "RenderObjectChildList.h"
 #include "RenderStyle.h"
 #include "ScrollBehavior.h"
+#include "StyleInheritedData.h"
 #include "TextAffinity.h"
 #include "TransformationMatrix.h"
 #include <wtf/HashSet.h>
+#include <wtf/StackStats.h>
 #include <wtf/UnusedParam.h>
 
 namespace WebCore {
@@ -110,31 +112,39 @@ enum PlaceGeneratedRunInFlag {
     DoNotPlaceGeneratedRunIn
 };
 
-enum MapLocalToContainerMode {
+enum MapCoordinatesMode {
     IsFixed = 1 << 0,
     UseTransforms = 1 << 1,
     ApplyContainerFlip = 1 << 2,
     SnapOffsetForTransforms = 1 << 3
 };
-typedef unsigned MapLocalToContainerFlags;
+typedef unsigned MapCoordinatesFlags;
 
 const int caretWidth = 1;
 
-#if ENABLE(DASHBOARD_SUPPORT) || ENABLE(WIDGET_REGION)
-struct DashboardRegionValue {
-    bool operator==(const DashboardRegionValue& o) const
+#if ENABLE(DASHBOARD_SUPPORT) || ENABLE(DRAGGABLE_REGION)
+struct AnnotatedRegionValue {
+    bool operator==(const AnnotatedRegionValue& o) const
     {
+#if ENABLE(DASHBOARD_SUPPORT)
         return type == o.type && bounds == o.bounds && clip == o.clip && label == o.label;
+#else // ENABLE(DRAGGABLE_REGION)
+        return draggable == o.draggable && bounds == o.bounds;
+#endif
     }
-    bool operator!=(const DashboardRegionValue& o) const
+    bool operator!=(const AnnotatedRegionValue& o) const
     {
         return !(*this == o);
     }
 
-    String label;
     LayoutRect bounds;
+#if ENABLE(DASHBOARD_SUPPORT)
+    String label;
     LayoutRect clip;
     int type;
+#else // ENABLE(DRAGGABLE_REGION)
+    bool draggable;
+#endif
 };
 #endif
 
@@ -239,6 +249,16 @@ public:
     bool hasAXObject() const { return m_hasAXObject; }
     bool isSetNeedsLayoutForbidden() const { return m_setNeedsLayoutForbidden; }
     void setNeedsLayoutIsForbidden(bool flag) { m_setNeedsLayoutForbidden = flag; }
+
+    // Helper class forbidding calls to setNeedsLayout() during its lifetime.
+    class SetLayoutNeededForbiddenScope {
+    public:
+        explicit SetLayoutNeededForbiddenScope(RenderObject*);
+        ~SetLayoutNeededForbiddenScope();
+    private:
+        RenderObject* m_renderObject;
+        bool m_preexistingForbidden;
+    };
 #endif
 
     // Obtains the nearest enclosing block (including this block) that contributes a first-line style to our inline
@@ -337,6 +357,7 @@ public:
 #if ENABLE(METER_ELEMENT)
     virtual bool isMeter() const { return false; }
 #endif
+    virtual bool isSnapshottedPlugIn() const { return false; }
 #if ENABLE(PROGRESS_ELEMENT)
     virtual bool isProgress() const { return false; }
 #endif
@@ -665,9 +686,9 @@ public:
     // repaint and do not need a relayout
     virtual void updateFromElement() { }
 
-#if ENABLE(DASHBOARD_SUPPORT) || ENABLE(WIDGET_REGION)
-    virtual void addDashboardRegions(Vector<DashboardRegionValue>&);
-    void collectDashboardRegions(Vector<DashboardRegionValue>&);
+#if ENABLE(DASHBOARD_SUPPORT) || ENABLE(DRAGGABLE_REGION)
+    virtual void addAnnotatedRegions(Vector<AnnotatedRegionValue>&);
+    void collectAnnotatedRegions(Vector<AnnotatedRegionValue>&);
 #endif
 
     bool isComposited() const;
@@ -692,25 +713,25 @@ public:
 
     // Updates only the local style ptr of the object.  Does not update the state of the object,
     // and so only should be called when the style is known not to have changed (or from setStyle).
-    void setStyleInternal(PassRefPtr<RenderStyle>);
+    void setStyleInternal(PassRefPtr<RenderStyle> style) { m_style = style; }
 
     // returns the containing block level element for this element.
     RenderBlock* containingBlock() const;
 
     // Convert the given local point to absolute coordinates
-    // FIXME: Temporary. If useTransforms is true, take transforms into account. Eventually localToAbsolute() will always be transform-aware.
-    FloatPoint localToAbsolute(const FloatPoint& localPoint = FloatPoint(), bool fixed = false, bool useTransforms = false) const;
-    FloatPoint absoluteToLocal(const FloatPoint&, bool fixed = false, bool useTransforms = false) const;
+    // FIXME: Temporary. If UseTransforms is true, take transforms into account. Eventually localToAbsolute() will always be transform-aware.
+    FloatPoint localToAbsolute(const FloatPoint& localPoint = FloatPoint(), MapCoordinatesFlags = 0) const;
+    FloatPoint absoluteToLocal(const FloatPoint&, MapCoordinatesFlags = 0) const;
 
     // Convert a local quad to absolute coordinates, taking transforms into account.
-    FloatQuad localToAbsoluteQuad(const FloatQuad& quad, bool fixed = false, bool* wasFixed = 0) const
+    FloatQuad localToAbsoluteQuad(const FloatQuad& quad, MapCoordinatesFlags mode = 0, bool* wasFixed = 0) const
     {
-        return localToContainerQuad(quad, 0, false, fixed, wasFixed);
+        return localToContainerQuad(quad, 0, mode, wasFixed);
     }
 
     // Convert a local quad into the coordinate system of container, taking transforms into account.
-    FloatQuad localToContainerQuad(const FloatQuad&, RenderLayerModelObject* repaintContainer, bool snapOffsetForTransforms = true, bool fixed = false, bool* wasFixed = 0) const;
-    FloatPoint localToContainerPoint(const FloatPoint&, RenderLayerModelObject* repaintContainer, bool snapOffsetForTransforms = true, bool fixed = false, bool* wasFixed = 0) const;
+    FloatQuad localToContainerQuad(const FloatQuad&, RenderLayerModelObject* repaintContainer, MapCoordinatesFlags = 0, bool* wasFixed = 0) const;
+    FloatPoint localToContainerPoint(const FloatPoint&, RenderLayerModelObject* repaintContainer, MapCoordinatesFlags = 0, bool* wasFixed = 0) const;
 
     // Return the offset from the container() renderer (excluding transforms). In multi-column layout,
     // different offsets apply at different points, so return the offset that applies to the given point.
@@ -738,7 +759,7 @@ public:
     virtual LayoutUnit maxPreferredLogicalWidth() const { return 0; }
 
     RenderStyle* style() const { return m_style.get(); }
-    RenderStyle* firstLineStyle() const { return document()->styleSheetCollection()->usesFirstLineRules() ? firstLineStyleSlowCase() : style(); }
+    RenderStyle* firstLineStyle() const { return document()->styleSheetCollection()->usesFirstLineRules() ? cachedFirstLineStyle() : style(); }
     RenderStyle* style(bool firstLine) const { return firstLine ? firstLineStyle() : style(); }
 
     // Used only by Element::pseudoStyleCacheIsInvalid to get a first line style based off of a
@@ -908,8 +929,8 @@ public:
 
     // Map points and quads through elements, potentially via 3d transforms. You should never need to call these directly; use
     // localToAbsolute/absoluteToLocal methods instead.
-    virtual void mapLocalToContainer(RenderLayerModelObject* repaintContainer, TransformState&, MapLocalToContainerFlags mode = ApplyContainerFlip, bool* wasFixed = 0) const;
-    virtual void mapAbsoluteToLocalPoint(bool fixed, bool useTransforms, TransformState&) const;
+    virtual void mapLocalToContainer(RenderLayerModelObject* repaintContainer, TransformState&, MapCoordinatesFlags = ApplyContainerFlip, bool* wasFixed = 0) const;
+    virtual void mapAbsoluteToLocalPoint(MapCoordinatesFlags, TransformState&) const;
 
     // Pushes state onto RenderGeometryMap about how to map coordinates from this renderer to its container, or ancestorToStopAt (whichever is encountered first).
     // Returns the renderer which was mapped to (container or ancestorToStopAt).
@@ -965,7 +986,7 @@ protected:
     virtual void willBeRemovedFromTree();
 
 private:
-    RenderStyle* firstLineStyleSlowCase() const;
+    RenderStyle* cachedFirstLineStyle() const;
     StyleDifference adjustStyleDifference(StyleDifference, unsigned contextSensitiveProperties) const;
 
     Color selectionColor(int colorProperty) const;

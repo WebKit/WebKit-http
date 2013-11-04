@@ -32,7 +32,7 @@
 
 namespace WebCore {
 
-WrapperTypeInfo V8TestNamedConstructor::info = { V8TestNamedConstructor::GetTemplate, V8TestNamedConstructor::derefObject, V8TestNamedConstructor::toActiveDOMObject, 0, 0, WrapperTypeObjectPrototype };
+WrapperTypeInfo V8TestNamedConstructor::info = { V8TestNamedConstructor::GetTemplate, V8TestNamedConstructor::derefObject, V8TestNamedConstructor::toActiveDOMObject, 0, V8TestNamedConstructor::installPerContextPrototypeProperties, 0, WrapperTypeObjectPrototype };
 
 namespace TestNamedConstructorV8Internal {
 
@@ -40,7 +40,7 @@ template <typename T> void V8_USE(T) { }
 
 } // namespace TestNamedConstructorV8Internal
 
-WrapperTypeInfo V8TestNamedConstructorConstructor::info = { V8TestNamedConstructorConstructor::GetTemplate, V8TestNamedConstructor::derefObject, V8TestNamedConstructor::toActiveDOMObject, 0, 0, WrapperTypeObjectPrototype };
+WrapperTypeInfo V8TestNamedConstructorConstructor::info = { V8TestNamedConstructorConstructor::GetTemplate, V8TestNamedConstructor::derefObject, V8TestNamedConstructor::toActiveDOMObject, 0, V8TestNamedConstructor::installPerContextPrototypeProperties, 0, WrapperTypeObjectPrototype };
 
 static v8::Handle<v8::Value> V8TestNamedConstructorConstructorCallback(const v8::Arguments& args)
 {
@@ -72,7 +72,7 @@ static v8::Handle<v8::Value> V8TestNamedConstructorConstructorCallback(const v8:
         goto fail;
 
     V8DOMWrapper::setDOMWrapper(wrapper, &V8TestNamedConstructorConstructor::info, impl.get());
-    V8DOMWrapper::setJSWrapperForActiveDOMObject(impl.release(), wrapper, args.GetIsolate());
+    V8DOMWrapper::setJSWrapperForDOMObject(impl.release(), wrapper, args.GetIsolate());
     return wrapper;
   fail:
     return setDOMException(ec, args.GetIsolate());
@@ -117,7 +117,7 @@ v8::Persistent<v8::FunctionTemplate> V8TestNamedConstructor::GetRawTemplate()
     V8PerIsolateData* data = V8PerIsolateData::current();
     V8PerIsolateData::TemplateMap::iterator result = data->rawTemplateMap().find(&info);
     if (result != data->rawTemplateMap().end())
-        return result->second;
+        return result->value;
 
     v8::HandleScope handleScope;
     v8::Persistent<v8::FunctionTemplate> templ = createRawTemplate();
@@ -130,7 +130,7 @@ v8::Persistent<v8::FunctionTemplate> V8TestNamedConstructor::GetTemplate()
     V8PerIsolateData* data = V8PerIsolateData::current();
     V8PerIsolateData::TemplateMap::iterator result = data->templateMap().find(&info);
     if (result != data->templateMap().end())
-        return result->second;
+        return result->value;
 
     v8::HandleScope handleScope;
     v8::Persistent<v8::FunctionTemplate> templ =
@@ -152,8 +152,9 @@ ActiveDOMObject* V8TestNamedConstructor::toActiveDOMObject(v8::Handle<v8::Object
 v8::Handle<v8::Object> V8TestNamedConstructor::wrapSlow(PassRefPtr<TestNamedConstructor> impl, v8::Handle<v8::Object> creationContext, v8::Isolate* isolate)
 {
     v8::Handle<v8::Object> wrapper;
-    Document* document = 0;
-    UNUSED_PARAM(document);
+    // Please don't add any more uses of this variable.
+    Document* deprecatedDocument = 0;
+    UNUSED_PARAM(deprecatedDocument);
 
     v8::Handle<v8::Context> context;
     if (!creationContext.IsEmpty() && creationContext->CreationContext() != v8::Context::GetCurrent()) {
@@ -164,14 +165,16 @@ v8::Handle<v8::Object> V8TestNamedConstructor::wrapSlow(PassRefPtr<TestNamedCons
         context->Enter();
     }
 
-    wrapper = V8DOMWrapper::instantiateV8Object(document, &info, impl.get());
+    wrapper = V8DOMWrapper::instantiateV8Object(deprecatedDocument, &info, impl.get());
 
     if (!context.IsEmpty())
         context->Exit();
 
     if (UNLIKELY(wrapper.IsEmpty()))
         return wrapper;
-    v8::Persistent<v8::Object> wrapperHandle = V8DOMWrapper::setJSWrapperForActiveDOMObject(impl, wrapper, isolate);
+
+    installPerContextProperties(wrapper, impl.get());
+    v8::Persistent<v8::Object> wrapperHandle = V8DOMWrapper::setJSWrapperForDOMObject(impl, wrapper, isolate);
     if (!hasDependentLifetime)
         wrapperHandle.MarkIndependent();
     return wrapper;

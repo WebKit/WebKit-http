@@ -44,6 +44,7 @@ public:
         WebGLDebugShadersName,
         WebKitWebGLCompressedTextureS3TCName, // WEBKIT_ prefix until extension is official
         WebKitWebGLDepthTextureName, // WEBKIT_ prefix until extension is official
+        OESElementIndexUintName,
     };
 
     void ref() { m_context->ref(); }

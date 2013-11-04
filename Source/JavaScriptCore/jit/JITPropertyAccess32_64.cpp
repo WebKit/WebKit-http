@@ -204,27 +204,82 @@ void JIT::emit_op_get_by_val(Instruction* currentInstruction)
     unsigned dst = currentInstruction[1].u.operand;
     unsigned base = currentInstruction[2].u.operand;
     unsigned property = currentInstruction[3].u.operand;
+    ArrayProfile* profile = currentInstruction[4].u.arrayProfile;
     
     emitLoad2(base, regT1, regT0, property, regT3, regT2);
     
     addSlowCase(branch32(NotEqual, regT3, TrustedImm32(JSValue::Int32Tag)));
     emitJumpSlowCaseIfNotJSCell(base, regT1);
     loadPtr(Address(regT0, JSCell::structureOffset()), regT1);
-    emitArrayProfilingSite(regT1, regT3, currentInstruction[4].u.arrayProfile);
-    addSlowCase(branchTest32(Zero, regT1, TrustedImm32(HasArrayStorage)));
+    emitArrayProfilingSite(regT1, regT3, profile);
+    and32(TrustedImm32(IndexingShapeMask), regT1);
+
+    PatchableJump badType;
+    JumpList slowCases;
     
-    loadPtr(Address(regT0, JSObject::butterflyOffset()), regT3);
-    addSlowCase(branch32(AboveOrEqual, regT2, Address(regT3, ArrayStorage::vectorLengthOffset())));
+    JITArrayMode mode = chooseArrayMode(profile);
+    switch (mode) {
+    case JITContiguous:
+        slowCases = emitContiguousGetByVal(currentInstruction, badType);
+        break;
+    case JITArrayStorage:
+        slowCases = emitArrayStorageGetByVal(currentInstruction, badType);
+        break;
+    default:
+        CRASH();
+    }
     
-    load32(BaseIndex(regT3, regT2, TimesEight, OBJECT_OFFSETOF(ArrayStorage, m_vector[0]) + OBJECT_OFFSETOF(JSValue, u.asBits.tag)), regT1); // tag
-    load32(BaseIndex(regT3, regT2, TimesEight, OBJECT_OFFSETOF(ArrayStorage, m_vector[0]) + OBJECT_OFFSETOF(JSValue, u.asBits.payload)), regT0); // payload
-    addSlowCase(branch32(Equal, regT1, TrustedImm32(JSValue::EmptyValueTag)));
+    addSlowCase(badType);
+    addSlowCase(slowCases);
     
+    Label done = label();
+
+#if !ASSERT_DISABLED
+    Jump resultOK = branch32(NotEqual, regT1, TrustedImm32(JSValue::EmptyValueTag));
+    breakpoint();
+    resultOK.link(this);
+#endif
+
     emitValueProfilingSite();
     emitStore(dst, regT1, regT0);
     map(m_bytecodeOffset + OPCODE_LENGTH(op_get_by_val), dst, regT1, regT0);
+    
+    m_byValCompilationInfo.append(ByValCompilationInfo(m_bytecodeOffset, badType, mode, done));
 }
 
+JIT::JumpList JIT::emitContiguousGetByVal(Instruction*, PatchableJump& badType)
+{
+    JumpList slowCases;
+    
+    badType = patchableBranch32(NotEqual, regT1, TrustedImm32(ContiguousShape));
+    
+    loadPtr(Address(regT0, JSObject::butterflyOffset()), regT3);
+    slowCases.append(branch32(AboveOrEqual, regT2, Address(regT3, Butterfly::offsetOfPublicLength())));
+    
+    load32(BaseIndex(regT3, regT2, TimesEight, OBJECT_OFFSETOF(JSValue, u.asBits.tag)), regT1); // tag
+    load32(BaseIndex(regT3, regT2, TimesEight, OBJECT_OFFSETOF(JSValue, u.asBits.payload)), regT0); // payload
+    slowCases.append(branch32(Equal, regT1, TrustedImm32(JSValue::EmptyValueTag)));
+    
+    return slowCases;
+}
+
+JIT::JumpList JIT::emitArrayStorageGetByVal(Instruction*, PatchableJump& badType)
+{
+    JumpList slowCases;
+    
+    add32(TrustedImm32(-ArrayStorageShape), regT1, regT3);
+    badType = patchableBranch32(Above, regT3, TrustedImm32(SlowPutArrayStorageShape - ArrayStorageShape));
+    
+    loadPtr(Address(regT0, JSObject::butterflyOffset()), regT3);
+    slowCases.append(branch32(AboveOrEqual, regT2, Address(regT3, ArrayStorage::vectorLengthOffset())));
+    
+    load32(BaseIndex(regT3, regT2, TimesEight, OBJECT_OFFSETOF(ArrayStorage, m_vector[0]) + OBJECT_OFFSETOF(JSValue, u.asBits.tag)), regT1); // tag
+    load32(BaseIndex(regT3, regT2, TimesEight, OBJECT_OFFSETOF(ArrayStorage, m_vector[0]) + OBJECT_OFFSETOF(JSValue, u.asBits.payload)), regT0); // payload
+    slowCases.append(branch32(Equal, regT1, TrustedImm32(JSValue::EmptyValueTag)));
+    
+    return slowCases;
+}
+    
 void JIT::emitSlow_op_get_by_val(Instruction* currentInstruction, Vector<SlowCaseEntry>::iterator& iter)
 {
     unsigned dst = currentInstruction[1].u.operand;
@@ -248,10 +303,16 @@ void JIT::emitSlow_op_get_by_val(Instruction* currentInstruction, Vector<SlowCas
     linkSlowCase(iter); // vector length check
     linkSlowCase(iter); // empty value
     
+    Label slowPath = label();
+    
     JITStubCall stubCall(this, cti_op_get_by_val);
     stubCall.addArgument(base);
     stubCall.addArgument(property);
-    stubCall.call(dst);
+    Call call = stubCall.call(dst);
+
+    m_byValCompilationInfo[m_byValInstructionIndex].slowPathTarget = slowPath;
+    m_byValCompilationInfo[m_byValInstructionIndex].returnAddress = call;
+    m_byValInstructionIndex++;
 
     emitValueProfilingSite();
 }
@@ -260,20 +321,86 @@ void JIT::emit_op_put_by_val(Instruction* currentInstruction)
 {
     unsigned base = currentInstruction[1].u.operand;
     unsigned property = currentInstruction[2].u.operand;
-    unsigned value = currentInstruction[3].u.operand;
+    ArrayProfile* profile = currentInstruction[4].u.arrayProfile;
     
     emitLoad2(base, regT1, regT0, property, regT3, regT2);
     
     addSlowCase(branch32(NotEqual, regT3, TrustedImm32(JSValue::Int32Tag)));
     emitJumpSlowCaseIfNotJSCell(base, regT1);
     loadPtr(Address(regT0, JSCell::structureOffset()), regT1);
-    emitArrayProfilingSite(regT1, regT3, currentInstruction[4].u.arrayProfile);
-    addSlowCase(branchTest32(Zero, regT1, TrustedImm32(HasArrayStorage)));
-    loadPtr(Address(regT0, JSObject::butterflyOffset()), regT3);
-    addSlowCase(branch32(AboveOrEqual, regT2, Address(regT3, ArrayStorage::vectorLengthOffset())));
+    emitArrayProfilingSite(regT1, regT3, profile);
+    and32(TrustedImm32(IndexingShapeMask), regT1);
+    
+    PatchableJump badType;
+    JumpList slowCases;
+    
+    JITArrayMode mode = chooseArrayMode(profile);
+    switch (mode) {
+    case JITContiguous:
+        slowCases = emitContiguousPutByVal(currentInstruction, badType);
+        break;
+    case JITArrayStorage:
+        slowCases = emitArrayStoragePutByVal(currentInstruction, badType);
+        break;
+    default:
+        CRASH();
+        break;
+    }
+    
+    addSlowCase(badType);
+    addSlowCase(slowCases);
+    
+    Label done = label();
+    
+    m_byValCompilationInfo.append(ByValCompilationInfo(m_bytecodeOffset, badType, mode, done));
+}
 
+JIT::JumpList JIT::emitContiguousPutByVal(Instruction* currentInstruction, PatchableJump& badType)
+{
+    unsigned value = currentInstruction[3].u.operand;
+    ArrayProfile* profile = currentInstruction[4].u.arrayProfile;
+    
+    JumpList slowCases;
+    
+    badType = patchableBranch32(NotEqual, regT1, TrustedImm32(ContiguousShape));
+    
+    loadPtr(Address(regT0, JSObject::butterflyOffset()), regT3);
+    Jump outOfBounds = branch32(AboveOrEqual, regT2, Address(regT3, Butterfly::offsetOfPublicLength()));
+    
+    Label storeResult = label();
+    emitLoad(value, regT1, regT0);
+    store32(regT0, BaseIndex(regT3, regT2, TimesEight, OBJECT_OFFSETOF(JSValue, u.asBits.payload)));
+    store32(regT1, BaseIndex(regT3, regT2, TimesEight, OBJECT_OFFSETOF(JSValue, u.asBits.tag)));
+    Jump done = jump();
+    
+    outOfBounds.link(this);
+    slowCases.append(branch32(AboveOrEqual, regT2, Address(regT3, Butterfly::offsetOfVectorLength())));
+    
+    emitArrayProfileStoreToHoleSpecialCase(profile);
+    
+    add32(TrustedImm32(1), regT2, regT1);
+    store32(regT1, Address(regT3, Butterfly::offsetOfPublicLength()));
+    jump().linkTo(storeResult, this);
+    
+    done.link(this);
+    
     emitWriteBarrier(regT0, regT1, regT1, regT3, UnconditionalWriteBarrier, WriteBarrierForPropertyAccess);
     
+    return slowCases;
+}
+
+JIT::JumpList JIT::emitArrayStoragePutByVal(Instruction* currentInstruction, PatchableJump& badType)
+{
+    unsigned value = currentInstruction[3].u.operand;
+    ArrayProfile* profile = currentInstruction[4].u.arrayProfile;
+    
+    JumpList slowCases;
+    
+    badType = patchableBranch32(NotEqual, regT1, TrustedImm32(ArrayStorageShape));
+    
+    loadPtr(Address(regT0, JSObject::butterflyOffset()), regT3);
+    slowCases.append(branch32(AboveOrEqual, regT2, Address(regT3, ArrayStorage::vectorLengthOffset())));
+
     Jump empty = branch32(Equal, BaseIndex(regT3, regT2, TimesEight, OBJECT_OFFSETOF(ArrayStorage, m_vector[0]) + OBJECT_OFFSETOF(JSValue, u.asBits.tag)), TrustedImm32(JSValue::EmptyValueTag));
     
     Label storeResult(this);
@@ -283,7 +410,7 @@ void JIT::emit_op_put_by_val(Instruction* currentInstruction)
     Jump end = jump();
     
     empty.link(this);
-    emitArrayProfileStoreToHoleSpecialCase(currentInstruction[4].u.arrayProfile);
+    emitArrayProfileStoreToHoleSpecialCase(profile);
     add32(TrustedImm32(1), Address(regT3, OBJECT_OFFSETOF(ArrayStorage, m_numValuesInVector)));
     branch32(Below, regT2, Address(regT3, ArrayStorage::lengthOffset())).linkTo(storeResult, this);
     
@@ -292,6 +419,10 @@ void JIT::emit_op_put_by_val(Instruction* currentInstruction)
     jump().linkTo(storeResult, this);
     
     end.link(this);
+    
+    emitWriteBarrier(regT0, regT1, regT1, regT3, UnconditionalWriteBarrier, WriteBarrierForPropertyAccess);
+    
+    return slowCases;
 }
 
 void JIT::emitSlow_op_put_by_val(Instruction* currentInstruction, Vector<SlowCaseEntry>::iterator& iter)
@@ -303,13 +434,19 @@ void JIT::emitSlow_op_put_by_val(Instruction* currentInstruction, Vector<SlowCas
     linkSlowCase(iter); // property int32 check
     linkSlowCaseIfNotJSCell(iter, base); // base cell check
     linkSlowCase(iter); // base not array check
-    linkSlowCase(iter); // in vector check
+    linkSlowCase(iter); // out of bounds
+    
+    Label slowPath = label();
     
     JITStubCall stubPutByValCall(this, cti_op_put_by_val);
     stubPutByValCall.addArgument(base);
     stubPutByValCall.addArgument(property);
     stubPutByValCall.addArgument(value);
-    stubPutByValCall.call();
+    Call call = stubPutByValCall.call();
+    
+    m_byValCompilationInfo[m_byValInstructionIndex].slowPathTarget = slowPath;
+    m_byValCompilationInfo[m_byValInstructionIndex].returnAddress = call;
+    m_byValInstructionIndex++;
 }
 
 void JIT::emit_op_get_by_id(Instruction* currentInstruction)
@@ -616,7 +753,7 @@ void JIT::privateCompilePatchGetArrayLength(ReturnAddressPtr returnAddress)
     loadPtr(Address(regT0, JSCell::structureOffset()), regT2);
     emitArrayProfilingSiteForBytecodeIndex(regT2, regT3, stubInfo->bytecodeIndex);
     Jump failureCases1 = branchTest32(Zero, regT2, TrustedImm32(IsArray));
-    Jump failureCases2 = branchTest32(Zero, regT2, TrustedImm32(HasArrayStorage));
+    Jump failureCases2 = branchTest32(Zero, regT2, TrustedImm32(IndexingShapeMask));
     
     // Checks out okay! - get the length from the storage
     loadPtr(Address(regT0, JSArray::butterflyOffset()), regT2);
@@ -1089,78 +1226,13 @@ void JIT::emitSlow_op_get_by_pname(Instruction* currentInstruction, Vector<SlowC
     linkSlowCase(iter);
     linkSlowCase(iter);
     
-    JITStubCall stubCall(this, cti_op_get_by_val);
+    JITStubCall stubCall(this, cti_op_get_by_val_generic);
     stubCall.addArgument(base);
     stubCall.addArgument(property);
     stubCall.call(dst);
 }
 
-void JIT::emit_op_get_scoped_var(Instruction* currentInstruction)
-{
-    int dst = currentInstruction[1].u.operand;
-    int index = currentInstruction[2].u.operand;
-    int skip = currentInstruction[3].u.operand;
-
-    emitGetFromCallFrameHeaderPtr(RegisterFile::ScopeChain, regT2);
-    bool checkTopLevel = m_codeBlock->codeType() == FunctionCode && m_codeBlock->needsFullScopeChain();
-    ASSERT(skip || !checkTopLevel);
-    if (checkTopLevel && skip--) {
-        Jump activationNotCreated;
-        if (checkTopLevel)
-            activationNotCreated = branch32(Equal, tagFor(m_codeBlock->activationRegister()), TrustedImm32(JSValue::EmptyValueTag));
-        loadPtr(Address(regT2, JSScope::offsetOfNext()), regT2);
-        activationNotCreated.link(this);
-    }
-    while (skip--)
-        loadPtr(Address(regT2, JSScope::offsetOfNext()), regT2);
-
-    loadPtr(Address(regT2, JSVariableObject::offsetOfRegisters()), regT2);
-
-    emitLoad(index, regT1, regT0, regT2);
-    emitValueProfilingSite();
-    emitStore(dst, regT1, regT0);
-    map(m_bytecodeOffset + OPCODE_LENGTH(op_get_scoped_var), dst, regT1, regT0);
-}
-
-void JIT::emit_op_put_scoped_var(Instruction* currentInstruction)
-{
-    int index = currentInstruction[1].u.operand;
-    int skip = currentInstruction[2].u.operand;
-    int value = currentInstruction[3].u.operand;
-
-    emitLoad(value, regT1, regT0);
-
-    emitGetFromCallFrameHeaderPtr(RegisterFile::ScopeChain, regT2);
-    bool checkTopLevel = m_codeBlock->codeType() == FunctionCode && m_codeBlock->needsFullScopeChain();
-    ASSERT(skip || !checkTopLevel);
-    if (checkTopLevel && skip--) {
-        Jump activationNotCreated;
-        if (checkTopLevel)
-            activationNotCreated = branch32(Equal, tagFor(m_codeBlock->activationRegister()), TrustedImm32(JSValue::EmptyValueTag));
-        loadPtr(Address(regT2, JSScope::offsetOfNext()), regT2);
-        activationNotCreated.link(this);
-    }
-    while (skip--)
-        loadPtr(Address(regT2, JSScope::offsetOfNext()), regT2);
-
-    loadPtr(Address(regT2, JSVariableObject::offsetOfRegisters()), regT3);
-    emitStore(index, regT1, regT0, regT3);
-    emitWriteBarrier(regT2, regT1, regT0, regT1, ShouldFilterImmediates, WriteBarrierForVariableAccess);
-}
-
-void JIT::emit_op_get_global_var(Instruction* currentInstruction)
-{
-    int dst = currentInstruction[1].u.operand;
-    WriteBarrier<Unknown>* registerPointer = currentInstruction[2].u.registerPointer;
-
-    load32(registerPointer->tagPointer(), regT1);
-    load32(registerPointer->payloadPointer(), regT0);
-    emitValueProfilingSite();
-    emitStore(dst, regT1, regT0);
-    map(m_bytecodeOffset + OPCODE_LENGTH(op_get_global_var), dst, regT1, regT0);
-}
-
-void JIT::emit_op_put_global_var(Instruction* currentInstruction)
+void JIT::emit_op_init_global_const(Instruction* currentInstruction)
 {
     WriteBarrier<Unknown>* registerPointer = currentInstruction[1].u.registerPointer;
     int value = currentInstruction[2].u.operand;
@@ -1177,10 +1249,10 @@ void JIT::emit_op_put_global_var(Instruction* currentInstruction)
 
     store32(regT1, registerPointer->tagPointer());
     store32(regT0, registerPointer->payloadPointer());
-    map(m_bytecodeOffset + OPCODE_LENGTH(op_put_global_var), value, regT1, regT0);
+    map(m_bytecodeOffset + OPCODE_LENGTH(op_init_global_const), value, regT1, regT0);
 }
 
-void JIT::emit_op_put_global_var_check(Instruction* currentInstruction)
+void JIT::emit_op_init_global_const_check(Instruction* currentInstruction)
 {
     WriteBarrier<Unknown>* registerPointer = currentInstruction[1].u.registerPointer;
     int value = currentInstruction[2].u.operand;
@@ -1201,11 +1273,11 @@ void JIT::emit_op_put_global_var_check(Instruction* currentInstruction)
     unmap();
 }
 
-void JIT::emitSlow_op_put_global_var_check(Instruction* currentInstruction, Vector<SlowCaseEntry>::iterator& iter)
+void JIT::emitSlow_op_init_global_const_check(Instruction* currentInstruction, Vector<SlowCaseEntry>::iterator& iter)
 {
     linkSlowCase(iter);
     
-    JITStubCall stubCall(this, cti_op_put_global_var_check);
+    JITStubCall stubCall(this, cti_op_init_global_const_check);
     stubCall.addArgument(regT1, regT0);
     stubCall.addArgument(TrustedImm32(currentInstruction[4].u.operand));
     stubCall.call();

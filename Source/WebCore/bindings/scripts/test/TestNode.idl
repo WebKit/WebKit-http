@@ -18,13 +18,10 @@
  * Boston, MA 02110-1301, USA.
  */
 
-module test {
+[
+    EventTarget,
+    Constructor,
+    V8DependentLifetime
+] interface TestNode : Node {
+};
 
-    interface [
-        EventTarget,
-        Constructor,
-        V8DependentLifetime
-    ] TestNode : Node {
-    };
-
-}

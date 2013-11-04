@@ -45,7 +45,6 @@ BuilderMaster.prototype.builderJsonPath = function()
     return this.basePath + 'json/builders';
 };
 
-CHROMIUM_BUILDER_MASTER = new BuilderMaster('Chromium', 'http://build.chromium.org/p/chromium/');
 CHROMIUM_WIN_BUILDER_MASTER = new BuilderMaster('ChromiumWin', 'http://build.chromium.org/p/chromium.win/');
 CHROMIUM_MAC_BUILDER_MASTER = new BuilderMaster('ChromiumMac', 'http://build.chromium.org/p/chromium.mac/');
 CHROMIUM_LINUX_BUILDER_MASTER = new BuilderMaster('ChromiumLinux', 'http://build.chromium.org/p/chromium.linux/');
@@ -122,26 +121,13 @@ function associateBuildersWithMaster(builders, master)
     });
 }
 
-function doXHR(url, onLoad, builderGroups, groupName)
-{
-    var xhr = new XMLHttpRequest();
-    xhr.open('GET', url, true);
-    xhr.onload = function() {
-        if (xhr.status == 200)
-            onLoad(JSON.parse(xhr.response));
-        else
-            onErrorLoadingBuilderList(url, builderGroups, groupName);
-    };
-    xhr.onerror = function() { onErrorLoadingBuilderList(url, builderGroups, groupName); };
-    xhr.send();
-}
-
 function requestBuilderList(builderGroups, builderFilter, master, groupName, builderGroup)
 {
     if (!builderGroups[groupName])
         builderGroups[groupName] = builderGroup;
-    var onLoad = partial(onBuilderListLoad, builderGroups, builderFilter, master, groupName);
-    doXHR(master.builderJsonPath(), onLoad, builderGroups, groupName);
+    loader.request(master.builderJsonPath(),
+                   partial(onBuilderListLoad, builderGroups, builderFilter, master, groupName),
+                   partial(onErrorLoadingBuilderList, master.builderJsonPath(), builderGroups, groupName));
     builderGroups[groupName].expectedGroups += 1;
 }
 
@@ -179,17 +165,19 @@ function isChromiumContentShellTestRunner(builder)
 
 function isChromiumWebkitTipOfTreeTestRunner(builder)
 {
-    return builder.indexOf('Webkit') != -1 && builder.indexOf('Builder') == -1 && builder.indexOf('(deps)') == -1 && builder.indexOf('ASAN') == -1;
+    // FIXME: Remove the Android check once the android tests bot is actually uploading results.
+    return builder.indexOf('WebKit') != -1 && builder.indexOf('Builder') == -1 && builder.indexOf('(deps)') == -1 &&
+        builder.indexOf('ASAN') == -1 && !isChromiumContentShellTestRunner(builder) && builder.indexOf('Android') == -1;
 }
 
 function isChromiumWebkitDepsTestRunner(builder)
 {
-    return builder.indexOf('Webkit') != -1 && builder.indexOf('Builder') == -1 && builder.indexOf('(deps)') != -1;
+    return builder.indexOf('WebKit') != -1 && builder.indexOf('Builder') == -1 && builder.indexOf('(deps)') != -1;
 }
 
 function isChromiumDepsGTestRunner(builder)
 {
-    return builder.indexOf('Tests') != -1 && builder.indexOf('Chrome Frame') == -1;
+    return builder.indexOf('Builder') == -1;
 }
 
 function isChromiumDepsCrosGTestRunner(builder)
@@ -200,7 +188,7 @@ function isChromiumDepsCrosGTestRunner(builder)
 function isChromiumTipOfTreeGTestRunner(builder)
 {
     return !isChromiumTipOfTreeGpuTestRunner(builder) && builder.indexOf('Builder') == -1 && builder.indexOf('Perf') == -1 &&
-         builder.indexOf('Webkit') == -1 && builder.indexOf('Valgrind') == -1 && builder.indexOf('Chrome Frame') == -1;
+         builder.indexOf('WebKit') == -1 && builder.indexOf('Valgrind') == -1 && builder.indexOf('Chrome Frame') == -1;
 }
 
 function isChromiumDepsAVTestRunner(builder)
@@ -218,16 +206,16 @@ function generateBuildersFromBuilderList(builderList, filter)
     });
 }
 
-function onBuilderListLoad(builderGroups, builderFilter, master, groupName, json)
+function onBuilderListLoad(builderGroups, builderFilter, master, groupName, xhr)
 {
-    var builders = generateBuildersFromBuilderList(Object.keys(json), builderFilter);
+    var builders = generateBuildersFromBuilderList(Object.keys(JSON.parse(xhr.responseText)), builderFilter);
     associateBuildersWithMaster(builders, master);
     builderGroups[groupName].append(builders);
     if (builderGroups[groupName].loaded())
-        g_handleBuildersListLoaded();
+        g_resourceLoader.buildersListLoaded();
 }
 
-function onErrorLoadingBuilderList(url, builderGroups, groupName)
+function onErrorLoadingBuilderList(url, builderGroups, groupName, xhr)
 {
     builderGroups[groupName].groups += 1;
     console.log('Could not load list of builders from ' + url + '. Try reloading.');
@@ -300,7 +288,6 @@ function loadBuildersList(groupName, testType) {
         switch(groupName) {
         case '@DEPS - chromium.org':
             var builderGroup = new BuilderGroup(BuilderGroup.DEPS_WEBKIT);
-            requestBuilderList(CHROMIUM_GTESTS_BUILDER_GROUPS, isChromiumDepsGTestRunner, CHROMIUM_BUILDER_MASTER, groupName, builderGroup);
             requestBuilderList(CHROMIUM_GTESTS_BUILDER_GROUPS, isChromiumDepsGTestRunner, CHROMIUM_WIN_BUILDER_MASTER, groupName, builderGroup);
             requestBuilderList(CHROMIUM_GTESTS_BUILDER_GROUPS, isChromiumDepsGTestRunner, CHROMIUM_MAC_BUILDER_MASTER, groupName, builderGroup);
             requestBuilderList(CHROMIUM_GTESTS_BUILDER_GROUPS, isChromiumDepsGTestRunner, CHROMIUM_LINUX_BUILDER_MASTER, groupName, builderGroup);

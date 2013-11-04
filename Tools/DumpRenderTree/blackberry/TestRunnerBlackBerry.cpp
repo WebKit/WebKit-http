@@ -437,6 +437,8 @@ void TestRunner::overridePreference(JSStringRef key, JSStringRef value)
         DumpRenderTreeSupport::setLinksIncludedInFocusChain(valueStr == "true" || valueStr == "1");
     else if (keyStr == "WebKitHyperlinkAuditingEnabled")
         mainFrame->page()->settings()->setHyperlinkAuditingEnabled(valueStr == "true" || valueStr == "1");
+    else if (keyStr == "WebSocketsEnabled")
+        BlackBerry::WebKit::DumpRenderTree::currentInstance()->page()->settings()->setWebSocketsEnabled(valueStr == "true" || valueStr == "1");
 }
 
 void TestRunner::setAlwaysAcceptCookies(bool alwaysAcceptCookies)
@@ -585,12 +587,6 @@ JSValueRef TestRunner::computedStyleIncludingVisitedInfo(JSContextRef context, J
     return DumpRenderTreeSupport::computedStyleIncludingVisitedInfo(context, value);
 }
 
-JSRetainPtr<JSStringRef> TestRunner::layerTreeAsText() const
-{
-    notImplemented();
-    return 0;
-}
-
 JSRetainPtr<JSStringRef> TestRunner::markerTextForListItem(JSContextRef context, JSValueRef nodeObject) const
 {
     WebCore::Element* element = toElement(toJS(toJS(context), nodeObject));
@@ -623,7 +619,7 @@ void TestRunner::setApplicationCacheOriginQuota(unsigned long long quota)
 
 void TestRunner::setMockDeviceOrientation(bool canProvideAlpha, double alpha, bool canProvideBeta, double beta, bool canProvideGamma, double gamma)
 {
-    notImplemented();
+    DumpRenderTreeSupport::setMockDeviceOrientation(BlackBerry::WebKit::DumpRenderTree::currentInstance()->page(), canProvideAlpha, alpha, canProvideBeta, beta, canProvideGamma, gamma);
 }
 
 void TestRunner::addMockSpeechInputResult(JSStringRef result, double confidence, JSStringRef language)

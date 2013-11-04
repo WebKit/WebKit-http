@@ -32,14 +32,16 @@
  * @constructor
  * @extends {WebInspector.Object}
  * @param {WebInspector.Workspace} workspace
+ * @param {WebInspector.NetworkWorkspaceProvider} networkWorkspaceProvider
  */
-WebInspector.ScriptSnippetModel = function(workspace)
+WebInspector.ScriptSnippetModel = function(workspace, networkWorkspaceProvider)
 {
     this._workspace = workspace;
+    this._networkWorkspaceProvider = networkWorkspaceProvider;
     this._uiSourceCodeForScriptId = {};
     this._scriptForUISourceCode = new Map();
-    this._snippetJavaScriptSourceForSnippetId = {};
-    this._snippetIdForJavaScriptSource = new Map();
+    this._uiSourceCodeForSnippetId = {};
+    this._snippetIdForUISourceCode = new Map();
     
     this._snippetStorage = new WebInspector.SnippetStorage("script", "Script snippet #");
     this._lastSnippetEvaluationIndexSetting = WebInspector.settings.createSetting("lastSnippetEvaluationIndex", 0);
@@ -68,7 +70,7 @@ WebInspector.ScriptSnippetModel.prototype = {
     },
 
     /**
-     * @return {WebInspector.SnippetJavaScriptSource}
+     * @return {WebInspector.UISourceCode}
      */
     createScriptSnippet: function()
     {
@@ -78,73 +80,76 @@ WebInspector.ScriptSnippetModel.prototype = {
 
     /**
      * @param {WebInspector.Snippet} snippet
-     * @return {WebInspector.SnippetJavaScriptSource}
+     * @return {WebInspector.UISourceCode}
      */
     _addScriptSnippet: function(snippet)
     {
-        var snippetJavaScriptSource = new WebInspector.SnippetJavaScriptSource(snippet.name, new WebInspector.SnippetContentProvider(snippet), this);
-        snippetJavaScriptSource.hasDivergedFromVM = true;
-        this._snippetIdForJavaScriptSource.put(snippetJavaScriptSource, snippet.id);
-        snippetJavaScriptSource.setSourceMapping(this._snippetScriptMapping); 
-        this._snippetJavaScriptSourceForSnippetId[snippet.id] = snippetJavaScriptSource;
-        this._workspace.project().addUISourceCode(snippetJavaScriptSource);
-        return snippetJavaScriptSource;
+        this._networkWorkspaceProvider.addFile(snippet.name, new WebInspector.SnippetContentProvider(snippet), true, false, true);
+        var uiSourceCode = this._workspace.uiSourceCodeForURL(snippet.name);
+        var scriptFile = new WebInspector.SnippetScriptFile(this, uiSourceCode);
+        uiSourceCode.setScriptFile(scriptFile);
+        this._snippetIdForUISourceCode.put(uiSourceCode, snippet.id);
+        uiSourceCode.setSourceMapping(this._snippetScriptMapping);
+        this._uiSourceCodeForSnippetId[snippet.id] = uiSourceCode;
+        return uiSourceCode;
     },
 
     /**
-     * @param {WebInspector.SnippetJavaScriptSource} snippetJavaScriptSource
+     * @param {WebInspector.UISourceCode} uiSourceCode
      */
-    deleteScriptSnippet: function(snippetJavaScriptSource)
+    deleteScriptSnippet: function(uiSourceCode)
     {
-        var snippetId = this._snippetIdForJavaScriptSource.get(snippetJavaScriptSource);
+        var snippetId = this._snippetIdForUISourceCode.get(uiSourceCode);
         var snippet = this._snippetStorage.snippetForId(snippetId);
         this._snippetStorage.deleteSnippet(snippet);
-        this._removeBreakpoints(snippetJavaScriptSource);
-        this._releaseSnippetScript(snippetJavaScriptSource);
-        delete this._snippetJavaScriptSourceForSnippetId[snippet.id];
-        this._snippetIdForJavaScriptSource.remove(snippetJavaScriptSource);
-        this._workspace.project().removeUISourceCode(snippetJavaScriptSource);
+        this._removeBreakpoints(uiSourceCode);
+        this._releaseSnippetScript(uiSourceCode);
+        delete this._uiSourceCodeForSnippetId[snippet.id];
+        this._snippetIdForUISourceCode.remove(uiSourceCode);
+        this._networkWorkspaceProvider.removeFile(snippet.name);
     },
 
     /**
-     * @param {WebInspector.SnippetJavaScriptSource} snippetJavaScriptSource
+     * @param {WebInspector.UISourceCode} uiSourceCode
      * @param {string} newName
      */
-    renameScriptSnippet: function(snippetJavaScriptSource, newName)
+    renameScriptSnippet: function(uiSourceCode, newName)
     {
-        var breakpointLocations = this._removeBreakpoints(snippetJavaScriptSource);
-        var snippetId = this._snippetIdForJavaScriptSource.get(snippetJavaScriptSource);
+        var breakpointLocations = this._removeBreakpoints(uiSourceCode);
+        var snippetId = this._snippetIdForUISourceCode.get(uiSourceCode);
         var snippet = this._snippetStorage.snippetForId(snippetId);
         if (!snippet || !newName || snippet.name === newName)
             return;
         snippet.name = newName;
-        snippetJavaScriptSource.urlChanged(snippet.name);
-        this._restoreBreakpoints(snippetJavaScriptSource, breakpointLocations);
+        this._restoreBreakpoints(uiSourceCode, breakpointLocations);
+        uiSourceCode.urlChanged(snippet.name);
     },
 
     /**
-     * @param {WebInspector.SnippetJavaScriptSource} snippetJavaScriptSource
+     * @param {WebInspector.UISourceCode} uiSourceCode
      * @param {string} newContent
      */
-    _setScriptSnippetContent: function(snippetJavaScriptSource, newContent)
+    _setScriptSnippetContent: function(uiSourceCode, newContent)
     {
-        var snippetId = this._snippetIdForJavaScriptSource.get(snippetJavaScriptSource);
+        var snippetId = this._snippetIdForUISourceCode.get(uiSourceCode);
         var snippet = this._snippetStorage.snippetForId(snippetId);
         snippet.content = newContent;
     },
 
     /**
-     * @param {WebInspector.SnippetJavaScriptSource} snippetJavaScriptSource
+     * @param {WebInspector.UISourceCode} uiSourceCode
      */
-    _scriptSnippetEdited: function(snippetJavaScriptSource)
+    _scriptSnippetEdited: function(uiSourceCode)
     {
-        var script = this._scriptForUISourceCode.get(snippetJavaScriptSource);
+        var script = this._scriptForUISourceCode.get(uiSourceCode);
         if (!script)
             return;
-        
-        var breakpointLocations = this._removeBreakpoints(snippetJavaScriptSource);
-        this._releaseSnippetScript(snippetJavaScriptSource);
-        this._restoreBreakpoints(snippetJavaScriptSource, breakpointLocations);
+
+        var breakpointLocations = this._removeBreakpoints(uiSourceCode);
+        var createdUISourceCode = this._releaseSnippetScript(uiSourceCode);
+        this._restoreBreakpoints(uiSourceCode, breakpointLocations);
+        if (createdUISourceCode)
+            this._restoreBreakpoints(createdUISourceCode, breakpointLocations);
     },
 
     /**
@@ -159,26 +164,26 @@ WebInspector.ScriptSnippetModel.prototype = {
     },
 
     /**
-     * @param {WebInspector.SnippetJavaScriptSource} snippetJavaScriptSource
+     * @param {WebInspector.UISourceCode} uiSourceCode
      */
-    evaluateScriptSnippet: function(snippetJavaScriptSource)
+    evaluateScriptSnippet: function(uiSourceCode)
     {
-        var breakpointLocations = this._removeBreakpoints(snippetJavaScriptSource);
-        this._releaseSnippetScript(snippetJavaScriptSource);
-        this._restoreBreakpoints(snippetJavaScriptSource, breakpointLocations);
-        var snippetId = this._snippetIdForJavaScriptSource.get(snippetJavaScriptSource);
+        var breakpointLocations = this._removeBreakpoints(uiSourceCode);
+        this._releaseSnippetScript(uiSourceCode);
+        this._restoreBreakpoints(uiSourceCode, breakpointLocations);
+        var snippetId = this._snippetIdForUISourceCode.get(uiSourceCode);
         var evaluationIndex = this._nextEvaluationIndex(snippetId);
-        snippetJavaScriptSource._evaluationIndex = evaluationIndex;
-        var evaluationUrl = this._evaluationSourceURL(snippetJavaScriptSource);
+        uiSourceCode._evaluationIndex = evaluationIndex;
+        var evaluationUrl = this._evaluationSourceURL(uiSourceCode);
 
-        var expression = snippetJavaScriptSource.workingCopy();
+        var expression = uiSourceCode.workingCopy();
         
         // In order to stop on the breakpoints during the snippet evaluation we need to compile and run it separately.
         // If separate compilation and execution is not supported by the port we fall back to evaluation in console.
         // In case we don't need that since debugger is already paused.
         // We do the same when we are stopped on the call frame  since debugger is already paused and can not stop on breakpoint anymore.
         if (WebInspector.debuggerModel.selectedCallFrame() || !Capabilities.separateScriptCompilationAndExecutionEnabled) {
-            expression = snippetJavaScriptSource.workingCopy() + "\n//@ sourceURL=" + evaluationUrl + "\n";
+            expression = uiSourceCode.workingCopy() + "\n//@ sourceURL=" + evaluationUrl + "\n";
             WebInspector.evaluateInConsole(expression, true);
             return;
         }
@@ -193,7 +198,7 @@ WebInspector.ScriptSnippetModel.prototype = {
          */
         function compileCallback(error, scriptId, syntaxErrorMessage)
         {
-            if (!snippetJavaScriptSource || snippetJavaScriptSource._evaluationIndex !== evaluationIndex)
+            if (!uiSourceCode || uiSourceCode._evaluationIndex !== evaluationIndex)
                 return;
 
             if (error) {
@@ -210,8 +215,8 @@ WebInspector.ScriptSnippetModel.prototype = {
                 return;
             }
 
-            var breakpointLocations = this._removeBreakpoints(snippetJavaScriptSource);
-            this._restoreBreakpoints(snippetJavaScriptSource, breakpointLocations);
+            var breakpointLocations = this._removeBreakpoints(uiSourceCode);
+            this._restoreBreakpoints(uiSourceCode, breakpointLocations);
 
             this._runScript(scriptId);
         }
@@ -285,7 +290,7 @@ WebInspector.ScriptSnippetModel.prototype = {
         var result = [];
         for (var scriptId in this._uiSourceCodeForScriptId) {
             var uiSourceCode = this._uiSourceCodeForScriptId[scriptId];
-            if (!uiSourceCode.isSnippet)
+            if (uiSourceCode.isTemporary)
                 result.push(uiSourceCode);
         }
         return result;
@@ -297,83 +302,88 @@ WebInspector.ScriptSnippetModel.prototype = {
     _addScript: function(script)
     {
         var snippetId = this._snippetIdForSourceURL(script.sourceURL);
-        var snippetJavaScriptSource = this._snippetJavaScriptSourceForSnippetId[snippetId];
-        
-        if (!snippetJavaScriptSource || this._evaluationSourceURL(snippetJavaScriptSource) !== script.sourceURL) {
+        var uiSourceCode = this._uiSourceCodeForSnippetId[snippetId];
+
+        if (!uiSourceCode || this._evaluationSourceURL(uiSourceCode) !== script.sourceURL) {
             this._createUISourceCodeForScript(script);
             return;
         }
-        
-        console.assert(!this._scriptForUISourceCode.get(snippetJavaScriptSource));
-        this._uiSourceCodeForScriptId[script.scriptId] = snippetJavaScriptSource;
-        this._scriptForUISourceCode.put(snippetJavaScriptSource, script);
-        delete snippetJavaScriptSource.hasDivergedFromVM;
+
+        console.assert(!this._scriptForUISourceCode.get(uiSourceCode));
+        this._uiSourceCodeForScriptId[script.scriptId] = uiSourceCode;
+        this._scriptForUISourceCode.put(uiSourceCode, script);
+        uiSourceCode.scriptFile().setHasDivergedFromVM(false);
         script.setSourceMapping(this._snippetScriptMapping);
     },
 
     /**
      * @param {WebInspector.Script} script
+     * @return {WebInspector.UISourceCode} uiSourceCode
      */
     _createUISourceCodeForScript: function(script)
     {
-        var uiSourceCode = new WebInspector.JavaScriptSource(script.sourceURL, script, false);
-        uiSourceCode.setSourceMapping(this._snippetScriptMapping); 
-        uiSourceCode.isSnippetEvaluation = true;
+        var uiSourceCode = this._workspace.addTemporaryUISourceCode(script.sourceURL, script, false, true);
+        uiSourceCode.setSourceMapping(this._snippetScriptMapping);
         this._uiSourceCodeForScriptId[script.scriptId] = uiSourceCode;
         this._scriptForUISourceCode.put(uiSourceCode, script);
         script.setSourceMapping(this._snippetScriptMapping);
+        return uiSourceCode;
     },
 
     /**
-     * @param {WebInspector.SnippetJavaScriptSource} snippetJavaScriptSource
+     * @param {WebInspector.UISourceCode} uiSourceCode
      * @return {Array.<Object>}
      */
-    _removeBreakpoints: function(snippetJavaScriptSource)
+    _removeBreakpoints: function(uiSourceCode)
     {
-        var breakpointLocations = WebInspector.breakpointManager.breakpointLocationsForUISourceCode(snippetJavaScriptSource);
+        var breakpointLocations = WebInspector.breakpointManager.breakpointLocationsForUISourceCode(uiSourceCode);
         for (var i = 0; i < breakpointLocations.length; ++i)
             breakpointLocations[i].breakpoint.remove();
         return breakpointLocations;
     },
 
     /**
-     * @param {WebInspector.SnippetJavaScriptSource} snippetJavaScriptSource
+     * @param {WebInspector.UISourceCode} uiSourceCode
      * @param {Array.<Object>} breakpointLocations
      */
-    _restoreBreakpoints: function(snippetJavaScriptSource, breakpointLocations)
+    _restoreBreakpoints: function(uiSourceCode, breakpointLocations)
     {
         for (var i = 0; i < breakpointLocations.length; ++i) {
             var uiLocation = breakpointLocations[i].uiLocation;
             var breakpoint = breakpointLocations[i].breakpoint;
-            WebInspector.breakpointManager.setBreakpoint(uiLocation.uiSourceCode, uiLocation.lineNumber, breakpoint.condition(), breakpoint.enabled());
+            WebInspector.breakpointManager.setBreakpoint(uiSourceCode, uiLocation.lineNumber, breakpoint.condition(), breakpoint.enabled());
         }
     },
 
     /**
-     * @param {WebInspector.SnippetJavaScriptSource} snippetJavaScriptSource
+     * @param {WebInspector.UISourceCode} uiSourceCode
+     * @return {WebInspector.UISourceCode}
      */
-    _releaseSnippetScript: function(snippetJavaScriptSource)
+    _releaseSnippetScript: function(uiSourceCode)
     {
-        var script = this._scriptForUISourceCode.get(snippetJavaScriptSource);
+        var script = this._scriptForUISourceCode.get(uiSourceCode);
         if (!script)
-            return;
+            return null;
 
-        snippetJavaScriptSource.hasDivergedFromVM = true;
+        uiSourceCode.scriptFile().setIsDivergingFromVM(true);
+        uiSourceCode.scriptFile().setHasDivergedFromVM(true);
         delete this._uiSourceCodeForScriptId[script.scriptId];
-        this._scriptForUISourceCode.remove(snippetJavaScriptSource);
-        delete snippetJavaScriptSource._evaluationIndex;
-        this._createUISourceCodeForScript(script);
+        this._scriptForUISourceCode.remove(uiSourceCode);
+        delete uiSourceCode._evaluationIndex;
+        var createdUISourceCode = this._createUISourceCodeForScript(script);
+        uiSourceCode.scriptFile().setIsDivergingFromVM(false);
+        return createdUISourceCode;
     },
 
     /**
-     * @param {WebInspector.SnippetJavaScriptSource} snippetJavaScriptSource
+     * @param {WebInspector.UISourceCode} uiSourceCode
      * @return {string}
      */
-    _evaluationSourceURL: function(snippetJavaScriptSource)
+    _evaluationSourceURL: function(uiSourceCode)
     {
         var snippetPrefix = WebInspector.ScriptSnippetModel.snippetSourceURLPrefix;
-        var evaluationSuffix = "_" + snippetJavaScriptSource._evaluationIndex;
-        var snippetId = this._snippetIdForJavaScriptSource.get(snippetJavaScriptSource);
+        var evaluationSuffix = "_" + uiSourceCode._evaluationIndex;
+        var snippetId = this._snippetIdForUISourceCode.get(uiSourceCode);
         return snippetPrefix + snippetId + evaluationSuffix;
     },
 
@@ -396,8 +406,8 @@ WebInspector.ScriptSnippetModel.prototype = {
         var removedUISourceCodes = this._releasedUISourceCodes();
         this._uiSourceCodeForScriptId = {};
         this._scriptForUISourceCode = new Map();
-        this._snippetJavaScriptSourceForSnippetId = {};
-        this._snippetIdForJavaScriptSource = new Map();
+        this._uiSourceCodeForSnippetId = {};
+        this._snippetIdForUISourceCode = new Map();
     },
 
     _projectDidReset: function()
@@ -410,34 +420,65 @@ WebInspector.ScriptSnippetModel.prototype = {
 
 /**
  * @constructor
- * @extends {WebInspector.JavaScriptSource}
- * @param {string} snippetName
- * @param {WebInspector.ContentProvider} contentProvider
+ * @implements {WebInspector.ScriptFile}
+ * @extends {WebInspector.Object}
  * @param {WebInspector.ScriptSnippetModel} scriptSnippetModel
+ * @param {WebInspector.UISourceCode} uiSourceCode
  */
-WebInspector.SnippetJavaScriptSource = function(snippetName, contentProvider, scriptSnippetModel)
+WebInspector.SnippetScriptFile = function(scriptSnippetModel, uiSourceCode)
 {
-    WebInspector.JavaScriptSource.call(this, snippetName, contentProvider, true);
+    WebInspector.ScriptFile.call(this);
     this._scriptSnippetModel = scriptSnippetModel;
-    this.isSnippet = true;
+    this._uiSourceCode = uiSourceCode;
+    this._hasDivergedFromVM = true;
+    this._uiSourceCode.addEventListener(WebInspector.UISourceCode.Events.WorkingCopyCommitted, this._workingCopyCommitted, this);
+    this._uiSourceCode.addEventListener(WebInspector.UISourceCode.Events.WorkingCopyChanged, this._workingCopyChanged, this);
 }
 
-WebInspector.SnippetJavaScriptSource.prototype = {
+WebInspector.SnippetScriptFile.prototype = {
     /**
-     * @param {function(?string)} callback
+     * @return {boolean}
      */
-    workingCopyCommitted: function(callback)
-    {  
-        this._scriptSnippetModel._setScriptSnippetContent(this, this.workingCopy());
-        callback(null);
+    hasDivergedFromVM: function()
+    {
+        return this._hasDivergedFromVM;
     },
 
-    workingCopyChanged: function()
-    {  
-        this._scriptSnippetModel._scriptSnippetEdited(this);
+    /**
+     * @param {boolean} hasDivergedFromVM
+     */
+    setHasDivergedFromVM: function(hasDivergedFromVM)
+    {
+        this._hasDivergedFromVM = hasDivergedFromVM;
     },
 
-    __proto__: WebInspector.JavaScriptSource.prototype
+    /**
+     * @return {boolean}
+     */
+    isDivergingFromVM: function()
+    {
+        return this._isDivergingFromVM;
+    },
+
+    /**
+     * @param {boolean} isDivergingFromVM
+     */
+    setIsDivergingFromVM: function(isDivergingFromVM)
+    {
+        this._isDivergingFromVM = isDivergingFromVM;
+    },
+
+    _workingCopyCommitted: function()
+    {
+        this._scriptSnippetModel._setScriptSnippetContent(this._uiSourceCode, this._uiSourceCode.workingCopy());
+    },
+
+    _workingCopyChanged: function()
+    {
+        this._scriptSnippetModel._scriptSnippetEdited(this._uiSourceCode);
+    },
+
+    __proto__: WebInspector.Object.prototype
 }
 
 /**

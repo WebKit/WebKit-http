@@ -118,6 +118,7 @@ EXPORTS
         ?detachThread@WTF@@YAXI@Z
         ?didBeginFrameImpl@InspectorInstrumentation@WebCore@@CAXPAVInstrumentingAgents@2@@Z
         ?didCancelFrameImpl@InspectorInstrumentation@WebCore@@CAXPAVInstrumentingAgents@2@@Z
+        ?distributedNodes@InsertionPoint@WebCore@@QBE?AV?$PassRefPtr@VNodeList@WebCore@@@WTF@@XZ
         ?initializeMainThread@WTF@@YAXXZ
         ?initializeThreading@WTF@@YAXXZ
         ?instrumentationForPage@WebCore@@YAPAVInstrumentingAgents@1@PAVPage@1@@Z
@@ -262,7 +263,7 @@ EXPORTS
         ?nodesFromRect@Document@WebCore@@QBE?AV?$PassRefPtr@VNodeList@WebCore@@@WTF@@HHIIII_N0@Z
         ?selectionStartHasMarkerFor@Editor@WebCore@@QBE_NW4MarkerType@DocumentMarker@2@HH@Z
         ?restrictScaleFactorToInitialScaleIfNotUserScalable@WebCore@@YAXAAUViewportAttributes@1@@Z
-        ?restrictMinimumScaleFactorToViewportSize@WebCore@@YAXAAUViewportAttributes@1@VIntSize@1@@Z
+        ?restrictMinimumScaleFactorToViewportSize@WebCore@@YAXAAUViewportAttributes@1@VIntSize@1@M@Z
         ?computeViewportAttributes@WebCore@@YA?AUViewportAttributes@1@UViewportArguments@1@HHHMVIntSize@1@@Z
         ?viewportArguments@Page@WebCore@@QBE?AUViewportArguments@2@XZ
         ?isPageBoxVisible@Document@WebCore@@QAE_NH@Z
@@ -292,8 +293,7 @@ EXPORTS
         ?moveWindowBy@InspectorFrontendClientLocal@WebCore@@UAEXMM@Z
         ?open@DOMWindow@WebCore@@QAE?AV?$PassRefPtr@VDOMWindow@WebCore@@@WTF@@ABVString@4@ABVAtomicString@4@0PAV12@2@Z
         ?openInNewTab@InspectorFrontendClientLocal@WebCore@@UAEXABVString@WTF@@@Z
-        ?requestAttachWindow@InspectorFrontendClientLocal@WebCore@@UAEXXZ
-        ?requestDetachWindow@InspectorFrontendClientLocal@WebCore@@UAEXXZ
+        ?requestSetDockSide@InspectorFrontendClientLocal@WebCore@@UAEXW4DockSide@InspectorFrontendClient@2@@Z
         ?sendMessageToBackend@InspectorFrontendClientLocal@WebCore@@UAEXABVString@WTF@@@Z
         ?setInspectorFrontendClient@InspectorController@WebCore@@QAEXV?$PassOwnPtr@VInspectorFrontendClient@WebCore@@@WTF@@@Z
         ?setProperty@Settings@InspectorFrontendClientLocal@WebCore@@UAEXABVString@WTF@@0@Z

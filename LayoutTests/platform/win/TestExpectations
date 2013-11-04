@@ -142,6 +142,8 @@ fast/text/atsui-pointtooffset-calls-cg.html
 fast/text/cg-vs-atsui.html
 fast/text/atsui-spacing-features.html
 
+webkit.org/b/98718 svg/animations/animate-css-xml-attributeType.html [ Failure Pass ]
+
 # <rdar://problem/5718773> Support a minimum antialiased font size
 svg/hixie/text/003.html
 svg/hixie/text/003a.xml
@@ -186,6 +188,9 @@ fast/events/keydown-numpad-keys.html
 
 # No button tracked
 fast/events/mouseover-button.html
+
+# New test added for https://bugs.webkit.org/show_bug.cgi?id=98452 needs platform specific results
+fast/text/vertical-rl-rtl-linebreak.html [ Failure ]
 
 # The eqqivalent of option-tab doesn not exist in Boomer <rdar://problem/5137230>
 fast/events/frame-tab-focus.html
@@ -593,6 +598,7 @@ accessibility/aria-menubar-menuitems.html
 accessibility/aria-presentational-role.html
 accessibility/aria-readonly.html
 accessibility/aria-roles.html
+accessibility/aria-slider-value.html
 accessibility/aria-scrollbar-role.html
 accessibility/aria-tables.html
 accessibility/aria-tab-roles.html
@@ -601,6 +607,7 @@ accessibility/aria-used-on-image-maps.html
 accessibility/button-press-action.html
 accessibility/document-attributes.html
 accessibility/editable-webarea-context-menu-point.html
+accessibility/hidden-legend.html
 accessibility/ignore-spacer-elements.html
 accessibility/image-link.html
 accessibility/image-map1.html
@@ -640,6 +647,7 @@ accessibility/table-with-rules.html
 accessibility/textarea-insertion-point-line-number.html
 accessibility/textarea-line-for-index.html
 accessibility/textarea-selected-text-range.html
+accessibility/title-ui-element-correctness.html
 accessibility/th-as-title-ui.html
 accessibility/transformed-element.html
 accessibility/visible-elements.html
@@ -1022,6 +1030,7 @@ fast/media/media-query-list-04.html
 fast/media/media-query-list-05.html
 fast/media/media-query-list-06.html
 fast/media/media-query-list-07.html
+fast/media/mq-resolution.html
 
 # Need expectations. See https://bugs.webkit.org/show_bug.cgi?id=36461
 fast/repaint/overflow-scroll-body-appear.html
@@ -1266,8 +1275,12 @@ inspector/profiler/heap-snapshot-summary-sorting-fields.html
 inspector/profiler/heap-snapshot-summary-sorting.html
 inspector/profiler/heap-snapshot-summary-sorting-instances.html
 
+# New inspector/profiler/memory-instrumentation-canvas.html fails on JSC platforms
+webkit.org/b/99001 inspector/profiler/memory-instrumentation-canvas.html
+
 # https://bugs.webkit.org/show_bug.cgi?id=40300
 inspector/debugger/live-edit.html
+inspector/debugger/live-edit-breakpoints.html
 
 # https://bugs.webkit.org/show_bug.cgi?id=89652
 inspector/debugger/debugger-compile-and-run.html
@@ -1459,6 +1472,7 @@ http/tests/navigation/response204.html
 fast/events/page-visibility-iframe-delete-test.html
 fast/events/page-visibility-iframe-move-test.html
 fast/events/page-visibility-iframe-propagation-test.html
+fast/events/page-visibility-null-view.html
 fast/events/page-visibility-transition-test.html
 
 # Unskip after implementing LayoutTestController::setDefersLoading and ::goBack.
@@ -1721,7 +1735,7 @@ fast/repaint/scroll-inside-table-cell.html
 fast/repaint/scroll-relative-table-inside-table-cell.html
 fast/table/cell-pref-width-invalidation.html
 
-# The inner <input> should now grow to take the full cell's height.
+# <input> should be horizontal.
 fast/table/colspanMinWidth-vertical.html
 
 # Requires ENABLE(MEDIA_CAPTURE)
@@ -1736,25 +1750,7 @@ fast/block/lineboxcontain/font.html
 
 # Fail until SUBPIXEL_LAYOUT is enabled
 # https://bugs.webkit.org/show_bug.cgi?id=85532
-fast/sub-pixel/client-rect-has-subpixel-precision.html
-fast/sub-pixel/client-width-height-snapping.html
-fast/sub-pixel/file-upload-control-at-fractional-offset.html
-fast/sub-pixel/float-containing-block-with-margin.html
-fast/sub-pixel/float-with-right-margin-zoom.html
-fast/sub-pixel/float-wrap-with-subpixel-top.html
-fast/sub-pixel/inline-block-should-not-wrap.html
-fast/sub-pixel/inline-block-with-margin.html
-fast/sub-pixel/inline-block-with-padding.html
-fast/sub-pixel/large-sizes.html
-fast/sub-pixel/layout-boxes-with-zoom.html
-fast/sub-pixel/position-right-aligns-with-container.html
-fast/sub-pixel/selection/selection-gaps-at-fractional-offsets.html
-fast/sub-pixel/size-of-box-with-zoom.html
-fast/sub-pixel/table-rows-no-gaps.html
-fast/sub-pixel/sub-pixel-accumulates-to-layers.html
-fast/sub-pixel/selection/selection-rect-in-sub-pixel-table.html
-fast/sub-pixel/snap-negative-location.html
-fast/sub-pixel/zoomed-image-tiles.html
+fast/sub-pixel
 
 # No CORS support for media elements is implemented yet.
 http/tests/security/video-cross-origin-readback.html
@@ -1866,6 +1862,9 @@ compositing/rtl/rtl-fixed-overflow-scrolled.html
 compositing/rtl/rtl-fixed-overflow.html
 compositing/rtl/rtl-fixed.html
 
+# LAYER_TREE_INCLUDES_VISIBLE_RECTS option to layerTreeAsText is only applicable to Mac.
+compositing/visible-rect [ Skip ]
+
 # Asserts in RenderLayerBacking::paintIntoLayer
 # https://bugs.webkit.org/show_bug.cgi?id=88149
 compositing/backing/no-backing-foreground-layer.html
@@ -1962,8 +1961,8 @@ http/tests/security/contentSecurityPolicy/1.1
 # Skip tests in fast/text/shaping
 fast/text/shaping
 
-# ENABLE(WIDGET_REGION) is disabled
-fast/css/widget-region-parser.html
+# ENABLE(DRAGGABLE_REGION) is disabled
+fast/css/draggable-region-parser.html
 
 # CSS image-orientation property not yet supported
 fast/css/image-orientation/
@@ -1985,6 +1984,7 @@ plugins/nested-plugin-objects.html
 fast/css/word-space-extra.html
 
 # ENABLE(INPUT_MULTIPLE_FIELDS_UI) is disabled
+fast/forms/date-multiple-fields
 fast/forms/month-multiple-fields
 fast/forms/time-multiple-fields
 fast/forms/week-multiple-fields
@@ -2310,6 +2310,20 @@ http/tests/security/sandboxed-iframe-form-top.html
 #https://bugs.webkit.org/show_bug.cgi?id=95530
 http/tests/security/inactive-document-with-empty-security-origin.html
 
+webkit.org/b/98666 fast/dom/HTMLInputElement/input-slider-update.html [ Failure ]
+webkit.org/b/98666 fast/dom/HTMLInputElement/input-slider-update-styled.html [ Failure ]
+webkit.org/b/98666 fast/forms/input-appearance-height.html [ Failure ]
+webkit.org/b/98666 fast/forms/range/input-appearance-range.html [ Failure ]
+webkit.org/b/98666 fast/forms/range/range-thumb-height-percentage.html [ Failure ]
+webkit.org/b/98666 fast/forms/range/slider-padding.html [ Failure ]
+webkit.org/b/98666 fast/forms/range/slider-thumb-shared-style.html [ Failure ]
+webkit.org/b/98666 fast/forms/range/slider-thumb-stylability.html [ Failure ]
+webkit.org/b/98666 fast/multicol/client-rects.html [ Failure ]
+webkit.org/b/98666 fast/repaint/slider-thumb-drag-release.html [ Failure ]
+webkit.org/b/98666 fast/repaint/slider-thumb-float.html [ Failure ]
+webkit.org/b/98666 media/track/track-cue-rendering-vertical.html [ Failure ]
+webkit.org/b/98666 media/track/track-cue-rendering-horizontal.html [ Failure ]
+
 #https://bugs.webkit.org/show_bug.cgi?id=98079
 http/tests/security/cross-origin-local-storage-wk1.html
 
@@ -2319,9 +2333,41 @@ svg/custom/clip-mask-negative-scale.svg
 #https://bugs.webkit.org/show_bug.cgi?id=98095
 inspector/debugger/dynamic-script-tag.html
 
-# https://bugs.webkit.org/show_bug.cgi?id=98169
-http/tests/inspector/csp-injected-content-warning-contains-stacktrace.html
-http/tests/inspector/csp-inline-warning-contains-stacktrace.html
+#https://bugs.webkit.org/show_bug.cgi?id=98306
+css3/flexbox/flexbox-baseline.html
+#https://bugs.webkit.org/show_bug.cgi?id=99878
+css3/flexbox/flexbox-baseline-margins.html
 
-# https://bugs.webkit.org/show_bug.cgi?id=98209
-fast/text/international/float-as-only-child-of-isolate-crash.html
+# css3-conditionals support is not yet enabled. http://webkit.org/b/86146
+css3/supports.html
+
+# https://bugs.webkit.org/show_bug.cgi?id=98169
+http/tests/inspector/stacktraces
+
+# HIDDEN_PAGE_DOM_TIMER_THROTTLING is disabled
+fast/dom/timer-throttling-hidden-page.html
+
+# CSS_COMPOSITING is disabled (CIFilters don't work on Windows)
+css3/compositing/
+transitions/blendmode-transitions.html
+
+# User Timing is not enabled
+webkit.org/b/84893 http/tests/w3c/webperf/submission/Intel/user-timing
+
+# Resource Timing is not enable yet, skip it.
+webkit.org/b/61138 http/tests/w3c/webperf/submission/Intel/resource-timing
+
+# https://bugs.webkit.org/show_bug.cgi?id=99567
+# Not supported on Mac or Windows ports
+inspector/elements/update-shadowdom.html
+
+# Not supported in CFNetwork yet. https://bugs.webkit.org/show_bug.cgi?id=100349
+http/tests/xmlhttprequest/timeout/xmlhttprequest-timeout-aborted.html
+http/tests/xmlhttprequest/timeout/xmlhttprequest-timeout-overridesexpires.html
+http/tests/xmlhttprequest/timeout/xmlhttprequest-timeout-simple.html
+http/tests/xmlhttprequest/timeout/xmlhttprequest-timeout-twice.html
+http/tests/xmlhttprequest/timeout/xmlhttprequest-timeout-worker-aborted.html
+http/tests/xmlhttprequest/timeout/xmlhttprequest-timeout-worker-overridesexpires.html
+http/tests/xmlhttprequest/timeout/xmlhttprequest-timeout-worker-simple.html
+http/tests/xmlhttprequest/timeout/xmlhttprequest-timeout-worker-synconworker.html
+http/tests/xmlhttprequest/timeout/xmlhttprequest-timeout-worker-twice.html

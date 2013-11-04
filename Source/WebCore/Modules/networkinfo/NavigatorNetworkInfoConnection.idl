@@ -17,13 +17,10 @@
  * Boston, MA 02110-1301, USA.
  */
 
-module window {
+[
+    Conditional=NETWORK_INFO,
+    Supplemental=Navigator
+] interface NavigatorNetworkInfoConnection {
+    readonly attribute NetworkInfoConnection webkitConnection;
+};
 
-    interface [
-        Conditional=NETWORK_INFO,
-        Supplemental=Navigator
-    ] NavigatorNetworkInfoConnection {
-        readonly attribute NetworkInfoConnection webkitConnection;
-    };
-
-}

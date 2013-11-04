@@ -80,7 +80,7 @@
 #include "WebKitCSSFilterValue.h"
 #endif
 
-#if ENABLE(DASHBOARD_SUPPORT) || ENABLE(WIDGET_REGION)
+#if ENABLE(DASHBOARD_SUPPORT)
 #include "DashboardRegion.h"
 #endif
 
@@ -181,10 +181,10 @@ static const CSSPropertyID computedProperties[] = {
     CSSPropertyTabSize,
     CSSPropertyTextAlign,
     CSSPropertyTextDecoration,
-#if ENABLE(CSS3_TEXT_DECORATION)
+#if ENABLE(CSS3_TEXT)
     CSSPropertyWebkitTextDecorationLine,
     CSSPropertyWebkitTextDecorationStyle,
-#endif // CSS3_TEXT_DECORATION
+#endif // CSS3_TEXT
     CSSPropertyTextIndent,
     CSSPropertyTextRendering,
     CSSPropertyTextShadow,
@@ -351,8 +351,8 @@ static const CSSPropertyID computedProperties[] = {
     CSSPropertyWebkitRegionBreakBefore,
     CSSPropertyWebkitRegionBreakInside,
 #endif
-#if ENABLE(WIDGET_REGION)
-    CSSPropertyWebkitWidgetRegion,
+#if ENABLE(DRAGGABLE_REGION)
+    CSSPropertyWebkitAppRegion,
 #endif
 #if ENABLE(CSS_EXCLUSIONS)
     CSSPropertyWebkitWrapFlow,
@@ -921,7 +921,7 @@ PassRefPtr<CSSValue> CSSComputedStyleDeclaration::valueForFilter(const RenderObj
                 shadersList->append(cssValuePool().createIdentifierValue(CSSValueNone));
 
             const CustomFilterProgramMixSettings mixSettings = program->mixSettings();
-            if (mixSettings.enabled) {
+            if (program->programType() == PROGRAM_TYPE_BLENDS_ELEMENT_TEXTURE) {
                 RefPtr<WebKitCSSMixFunctionValue> mixFunction = WebKitCSSMixFunctionValue::create();
                 mixFunction->append(program->fragmentShader()->cssValue());
                 mixFunction->append(cssValuePool().createValue(mixSettings.blendMode));
@@ -935,8 +935,8 @@ PassRefPtr<CSSValue> CSSComputedStyleDeclaration::valueForFilter(const RenderObj
             filterValue->append(shadersList.release());
             
             RefPtr<CSSValueList> meshParameters = CSSValueList::createSpaceSeparated();
-            meshParameters->append(cssValuePool().createValue(customOperation->meshRows(), CSSPrimitiveValue::CSS_NUMBER));
             meshParameters->append(cssValuePool().createValue(customOperation->meshColumns(), CSSPrimitiveValue::CSS_NUMBER));
+            meshParameters->append(cssValuePool().createValue(customOperation->meshRows(), CSSPrimitiveValue::CSS_NUMBER));
             meshParameters->append(cssValuePool().createValue(customOperation->meshBoxType()));
             
             // FIXME: The specification doesn't have any "attached" identifier. Should we add one?
@@ -1219,7 +1219,7 @@ static PassRefPtr<CSSValue> renderTextDecorationFlagsToCSSValue(int textDecorati
     return list;
 }
 
-#if ENABLE(CSS3_TEXT_DECORATION)
+#if ENABLE(CSS3_TEXT)
 static PassRefPtr<CSSValue> renderTextDecorationStyleFlagsToCSSValue(TextDecorationStyle textDecorationStyle)
 {
     switch (textDecorationStyle) {
@@ -1238,7 +1238,7 @@ static PassRefPtr<CSSValue> renderTextDecorationStyleFlagsToCSSValue(TextDecorat
     ASSERT_NOT_REACHED();
     return cssValuePool().createExplicitInitialValue();
 }
-#endif // CSS3_TEXT_DECORATION
+#endif // CSS3_TEXT
 
 static PassRefPtr<CSSValue> fillRepeatToCSSValue(EFillRepeat xRepeat, EFillRepeat yRepeat)
 {
@@ -1302,8 +1302,8 @@ static PassRefPtr<CSSValue> counterToCSSValue(const RenderStyle* style, CSSPrope
 
     RefPtr<CSSValueList> list = CSSValueList::createSpaceSeparated();
     for (CounterDirectiveMap::const_iterator it = map->begin(); it != map->end(); ++it) {
-        list->append(cssValuePool().createValue(it->first, CSSPrimitiveValue::CSS_STRING));
-        short number = propertyID == CSSPropertyCounterIncrement ? it->second.incrementValue() : it->second.resetValue();
+        list->append(cssValuePool().createValue(it->key, CSSPrimitiveValue::CSS_STRING));
+        short number = propertyID == CSSPropertyCounterIncrement ? it->value.incrementValue() : it->value.resetValue();
         list->append(cssValuePool().createValue((double)number, CSSPrimitiveValue::CSS_NUMBER));
     }
     return list.release();
@@ -2026,12 +2026,12 @@ PassRefPtr<CSSValue> CSSComputedStyleDeclaration::getPropertyCSSValue(CSSPropert
             return cssValuePool().createValue(style->textAlign());
         case CSSPropertyTextDecoration:
             return renderTextDecorationFlagsToCSSValue(style->textDecoration());
-#if ENABLE(CSS3_TEXT_DECORATION)
+#if ENABLE(CSS3_TEXT)
         case CSSPropertyWebkitTextDecorationLine:
             return renderTextDecorationFlagsToCSSValue(style->textDecoration());
         case CSSPropertyWebkitTextDecorationStyle:
             return renderTextDecorationStyleFlagsToCSSValue(style->textDecorationStyle());
-#endif // CSS3_TEXT_DECORATION
+#endif // CSS3_TEXT
         case CSSPropertyWebkitTextDecorationsInEffect:
             return renderTextDecorationFlagsToCSSValue(style->textDecorationsInEffect());
         case CSSPropertyWebkitTextFillColor:
@@ -2169,13 +2169,8 @@ PassRefPtr<CSSValue> CSSComputedStyleDeclaration::getPropertyCSSValue(CSSPropert
             if (style->boxSizing() == CONTENT_BOX)
                 return cssValuePool().createIdentifierValue(CSSValueContentBox);
             return cssValuePool().createIdentifierValue(CSSValueBorderBox);
-#if ENABLE(DASHBOARD_SUPPORT) || ENABLE(WIDGET_REGION)
 #if ENABLE(DASHBOARD_SUPPORT)
         case CSSPropertyWebkitDashboardRegion:
-#endif
-#if ENABLE(WIDGET_REGION)
-        case CSSPropertyWebkitWidgetRegion:
-#endif
         {
             const Vector<StyleDashboardRegion>& regions = style->dashboardRegions();
             unsigned count = regions.size();
@@ -2205,6 +2200,10 @@ PassRefPtr<CSSValue> CSSComputedStyleDeclaration::getPropertyCSSValue(CSSPropert
             }
             return cssValuePool().createValue(firstRegion.release());
         }
+#endif
+#if ENABLE(DRAGGABLE_REGION)
+        case CSSPropertyWebkitAppRegion:
+            return cssValuePool().createIdentifierValue(style->getDraggableRegionMode() == DraggableRegionDrag ? CSSValueDrag : CSSValueNoDrag);
 #endif
         case CSSPropertyWebkitAnimationDelay:
             return getDelayValue(style->animations());
@@ -2468,6 +2467,12 @@ PassRefPtr<CSSValue> CSSComputedStyleDeclaration::getPropertyCSSValue(CSSPropert
             if (ClipPathOperation* operation = style->clipPath()) {
                 if (operation->getOperationType() == ClipPathOperation::SHAPE)
                     return valueForBasicShape(static_cast<ShapeClipPathOperation*>(operation)->basicShape());
+#if ENABLE(SVG)
+                else if (operation->getOperationType() == ClipPathOperation::REFERENCE) {
+                    ReferenceClipPathOperation* referenceOperation = static_cast<ReferenceClipPathOperation*>(operation);
+                    return CSSPrimitiveValue::create(referenceOperation->url(), CSSPrimitiveValue::CSS_URI);
+                }
+#endif
             }
             return cssValuePool().createIdentifierValue(CSSValueNone);
 #if ENABLE(CSS_REGIONS)

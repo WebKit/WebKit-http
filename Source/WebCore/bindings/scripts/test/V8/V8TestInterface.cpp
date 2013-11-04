@@ -40,7 +40,7 @@
 
 namespace WebCore {
 
-WrapperTypeInfo V8TestInterface::info = { V8TestInterface::GetTemplate, V8TestInterface::derefObject, V8TestInterface::toActiveDOMObject, 0, 0, WrapperTypeObjectPrototype };
+WrapperTypeInfo V8TestInterface::info = { V8TestInterface::GetTemplate, V8TestInterface::derefObject, V8TestInterface::toActiveDOMObject, 0, V8TestInterface::installPerContextPrototypeProperties, 0, WrapperTypeObjectPrototype };
 
 namespace TestInterfaceV8Internal {
 
@@ -263,7 +263,7 @@ v8::Handle<v8::Value> V8TestInterface::constructorCallback(const v8::Arguments& 
         goto fail;
 
     V8DOMWrapper::setDOMWrapper(wrapper, &info, impl.get());
-    V8DOMWrapper::setJSWrapperForActiveDOMObject(impl.release(), wrapper, args.GetIsolate());
+    V8DOMWrapper::setJSWrapperForDOMObject(impl.release(), wrapper, args.GetIsolate());
     return wrapper;
   fail:
     return setDOMException(ec, args.GetIsolate());
@@ -307,7 +307,7 @@ v8::Persistent<v8::FunctionTemplate> V8TestInterface::GetRawTemplate()
     V8PerIsolateData* data = V8PerIsolateData::current();
     V8PerIsolateData::TemplateMap::iterator result = data->rawTemplateMap().find(&info);
     if (result != data->rawTemplateMap().end())
-        return result->second;
+        return result->value;
 
     v8::HandleScope handleScope;
     v8::Persistent<v8::FunctionTemplate> templ = createRawTemplate();
@@ -320,7 +320,7 @@ v8::Persistent<v8::FunctionTemplate> V8TestInterface::GetTemplate()
     V8PerIsolateData* data = V8PerIsolateData::current();
     V8PerIsolateData::TemplateMap::iterator result = data->templateMap().find(&info);
     if (result != data->templateMap().end())
-        return result->second;
+        return result->value;
 
     v8::HandleScope handleScope;
     v8::Persistent<v8::FunctionTemplate> templ =
@@ -342,8 +342,9 @@ ActiveDOMObject* V8TestInterface::toActiveDOMObject(v8::Handle<v8::Object> objec
 v8::Handle<v8::Object> V8TestInterface::wrapSlow(PassRefPtr<TestInterface> impl, v8::Handle<v8::Object> creationContext, v8::Isolate* isolate)
 {
     v8::Handle<v8::Object> wrapper;
-    Document* document = 0;
-    UNUSED_PARAM(document);
+    // Please don't add any more uses of this variable.
+    Document* deprecatedDocument = 0;
+    UNUSED_PARAM(deprecatedDocument);
 
     v8::Handle<v8::Context> context;
     if (!creationContext.IsEmpty() && creationContext->CreationContext() != v8::Context::GetCurrent()) {
@@ -354,14 +355,16 @@ v8::Handle<v8::Object> V8TestInterface::wrapSlow(PassRefPtr<TestInterface> impl,
         context->Enter();
     }
 
-    wrapper = V8DOMWrapper::instantiateV8Object(document, &info, impl.get());
+    wrapper = V8DOMWrapper::instantiateV8Object(deprecatedDocument, &info, impl.get());
 
     if (!context.IsEmpty())
         context->Exit();
 
     if (UNLIKELY(wrapper.IsEmpty()))
         return wrapper;
-    v8::Persistent<v8::Object> wrapperHandle = V8DOMWrapper::setJSWrapperForActiveDOMObject(impl, wrapper, isolate);
+
+    installPerContextProperties(wrapper, impl.get());
+    v8::Persistent<v8::Object> wrapperHandle = V8DOMWrapper::setJSWrapperForDOMObject(impl, wrapper, isolate);
     if (!hasDependentLifetime)
         wrapperHandle.MarkIndependent();
     return wrapper;

@@ -148,6 +148,7 @@
 #include "SubstituteData.h"
 #include "TextAffinity.h"
 #include "TextIterator.h"
+#include "TraceEvent.h"
 #include "UserGestureIndicator.h"
 #include "V8DOMFileSystem.h"
 #include "V8DirectoryEntry.h"
@@ -181,16 +182,16 @@
 #include "htmlediting.h"
 #include "markup.h"
 #include "painting/GraphicsContextBuilder.h"
-#include "platform/WebFloatPoint.h"
-#include "platform/WebFloatRect.h"
-#include "platform/WebPoint.h"
-#include "platform/WebRect.h"
 #include "platform/WebSerializedScriptValue.h"
-#include "platform/WebSize.h"
-#include "platform/WebURLError.h"
 #include <algorithm>
 #include <public/Platform.h>
 #include <public/WebFileSystem.h>
+#include <public/WebFloatPoint.h>
+#include <public/WebFloatRect.h>
+#include <public/WebPoint.h>
+#include <public/WebRect.h>
+#include <public/WebSize.h>
+#include <public/WebURLError.h>
 #include <public/WebVector.h>
 #include <wtf/CurrentTime.h>
 #include <wtf/HashMap.h>
@@ -555,14 +556,6 @@ int WebFrame::instanceCount()
     return frameCount;
 }
 
-WebFrame* WebFrame::frameForEnteredContext()
-{
-    v8::Handle<v8::Context> context = v8::Context::GetEntered();
-    if (context.IsEmpty())
-        return 0;
-    return frameForContext(context);
-}
-
 WebFrame* WebFrame::frameForCurrentContext()
 {
     v8::Handle<v8::Context> context = v8::Context::GetCurrent();
@@ -874,7 +867,7 @@ void WebFrameImpl::collectGarbage()
 bool WebFrameImpl::checkIfRunInsecureContent(const WebURL& url) const
 {
     ASSERT(frame());
-    return frame()->loader()->checkIfRunInsecureContent(frame()->document()->securityOrigin(), url);
+    return frame()->loader()->mixedContentChecker()->canRunInsecureContent(frame()->document()->securityOrigin(), url);
 }
 
 v8::Handle<v8::Value> WebFrameImpl::executeScriptAndReturnValue(const WebScriptSource& source)
@@ -2156,7 +2149,9 @@ WebString WebFrameImpl::layerTreeAsText(bool showDebugInfo) const
 {
     if (!frame())
         return WebString();
-    return WebString(frame()->layerTreeAsText(showDebugInfo));
+    
+    LayerTreeFlags flags = showDebugInfo ? LayerTreeFlagsIncludeDebugInfo : 0;
+    return WebString(frame()->layerTreeAsText(flags));
 }
 
 // WebFrameImpl public ---------------------------------------------------------
@@ -2273,14 +2268,22 @@ void WebFrameImpl::didChangeContentsSize(const IntSize& size)
 
 void WebFrameImpl::createFrameView()
 {
+    TRACE_EVENT0("webkit", "WebFrameImpl::createFrameView");
+
     ASSERT(frame()); // If frame() doesn't exist, we probably didn't init properly.
 
     WebViewImpl* webView = viewImpl();
     bool isMainFrame = webView->mainFrameImpl()->frame() == frame();
-    frame()->createView(webView->size(), Color::white, webView->isTransparent(),  webView->fixedLayoutSize(), isMainFrame ? webView->isFixedLayoutModeEnabled() : 0);
+    if (isMainFrame)
+        webView->suppressInvalidations(true);
+ 
+    frame()->createView(webView->size(), Color::white, webView->isTransparent(), webView->fixedLayoutSize(), IntRect(), isMainFrame ? webView->isFixedLayoutModeEnabled() : 0);
     if (webView->shouldAutoResize() && isMainFrame)
         frame()->view()->enableAutoSizeMode(true, webView->minAutoSize(), webView->maxAutoSize());
 
+    if (isMainFrame)
+        webView->suppressInvalidations(false);
+ 
     if (isMainFrame && webView->devToolsAgentPrivate())
         webView->devToolsAgentPrivate()->mainFrameViewCreated(this);
 }

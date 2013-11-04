@@ -38,7 +38,7 @@
 #include <wtf/text/StringHash.h>
 
 // Enable this to add a light red wash over the visible portion of Tiled Layers, as computed
-// by syncCompositingState().
+// by flushCompositingState().
 // #define VISIBLE_TILE_WASH
 
 namespace WebCore {
@@ -131,10 +131,10 @@ public:
 
     void recursiveCommitChanges(const TransformState&, float pageScaleFactor = 1, const FloatPoint& positionRelativeToBase = FloatPoint(), bool affectedByPageScale = false);
 
-    virtual void syncCompositingState(const FloatRect&);
-    virtual void syncCompositingStateForThisLayerOnly();
+    virtual void flushCompositingState(const FloatRect&);
+    virtual void flushCompositingStateForThisLayerOnly();
 
-    virtual TiledBacking* tiledBacking() OVERRIDE;
+    virtual TiledBacking* tiledBacking() const OVERRIDE;
 
     bool allowTiledLayer() const { return m_allowTiledLayer; }
     virtual void setAllowTiledLayer(bool b);
@@ -153,7 +153,7 @@ private:
     virtual CompositingCoordinatesOrientation platformCALayerContentsOrientation() const { return contentsOrientation(); }
     virtual void platformCALayerPaintContents(GraphicsContext&, const IntRect& clip);
     virtual bool platformCALayerShowDebugBorders() const { return showDebugBorders(); }
-    virtual bool platformCALayerShowRepaintCounter() const { return showRepaintCounter(); }
+    virtual bool platformCALayerShowRepaintCounter(PlatformCALayer*) const;
     virtual int platformCALayerIncrementRepaintCount() { return incrementRepaintCount(); }
 
     virtual bool platformCALayerContentsOpaque() const { return contentsOpaque(); }
@@ -211,7 +211,7 @@ private:
         return m_runningAnimations.find(animationName) != m_runningAnimations.end();
     }
 
-    void commitLayerChangesBeforeSublayers(float pageScaleFactor, const FloatPoint& positionRelativeToBase);
+    void commitLayerChangesBeforeSublayers(float pageScaleFactor, const FloatPoint& positionRelativeToBase, const FloatRect& oldVisibleRect);
     void commitLayerChangesAfterSublayers();
 
     FloatPoint computePositionRelativeToBase(float& pageScale) const;
@@ -228,8 +228,15 @@ private:
 
     virtual void setReplicatedByLayer(GraphicsLayer*);
 
+    virtual void getDebugBorderInfo(Color&, float& width) const;
+    virtual void dumpAdditionalProperties(TextStream&, int indent, LayerTreeAsTextBehavior) const;
+
     void computePixelAlignment(float pixelAlignmentScale, const FloatPoint& positionRelativeToBase,
         FloatPoint& position, FloatSize&, FloatPoint3D& anchorPoint, FloatSize& alignmentOffset) const;
+    FloatRect computeVisibleRect(TransformState&) const;
+    const FloatRect& visibleRect() const { return m_visibleRect; }
+    
+    FloatRect adjustTiledLayerVisibleRect(TiledBacking*, const FloatRect& oldVisibleRect, const FloatSize& oldSize) const;
 
     // Used to track the path down the tree for replica layers.
     struct ReplicaState {
@@ -319,6 +326,7 @@ private:
     void updateLayerAnimations();
     void updateContentsNeedsDisplay();
     void updateAcceleratesDrawing();
+    void updateVisibleRect(const FloatRect& oldVisibleRect);
     void updateContentsScale(float pixelAlignmentScale, const FloatPoint& positionRelativeToBase);
     
     enum StructuralLayerPurpose {
@@ -368,8 +376,9 @@ private:
         AcceleratesDrawingChanged = 1 << 22,
         ContentsScaleChanged = 1 << 23,
         ContentsVisibilityChanged = 1 << 24,
+        VisibleRectChanged = 1 << 25,
 #if ENABLE(CSS_FILTERS)
-        FiltersChanged = 1 << 25,
+        FiltersChanged = 1 << 26,
 #endif
     };
     typedef unsigned LayerChangeFlags;
@@ -391,6 +400,8 @@ private:
 #ifdef VISIBLE_TILE_WASH
     RefPtr<PlatformCALayer> m_visibleTileWashLayer;
 #endif
+    FloatRect m_visibleRect;
+    FloatSize m_sizeAtLastVisibleRectUpdate;
     
     enum ContentsLayerPurpose {
         NoContentsLayer = 0,
@@ -403,6 +414,7 @@ private:
     ContentsLayerPurpose m_contentsLayerPurpose;
     bool m_contentsLayerHasBackgroundColor : 1;
     bool m_allowTiledLayer : 1;
+    bool m_isPageTileCacheLayer : 1;
 
     RetainPtr<CGImageRef> m_uncorrectedContentsImage;
     RetainPtr<CGImageRef> m_pendingContentsImage;

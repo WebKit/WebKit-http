@@ -30,6 +30,8 @@ include(yarr/yarr.pri)
 
 INSTALLDEPS += all
 
+debug_and_release: INCLUDEPATH += $$JAVASCRIPTCORE_GENERATED_SOURCES_DIR/$$activeBuildConfig()
+
 SOURCES += \
     API/JSBase.cpp \
     API/JSCallbackConstructor.cpp \
@@ -45,6 +47,7 @@ SOURCES += \
     assembler/ARMAssembler.cpp \
     assembler/ARMv7Assembler.cpp \
     assembler/LinkBuffer.cpp \
+    assembler/MacroAssembler.cpp \
     assembler/MacroAssemblerARM.cpp \
     assembler/MacroAssemblerSH4.cpp \
     bytecode/ArrayProfile.cpp \
@@ -72,6 +75,7 @@ SOURCES += \
     bytecompiler/BytecodeGenerator.cpp \
     bytecompiler/NodesCodegen.cpp \
     heap/CopiedSpace.cpp \
+    heap/CopyVisitor.cpp \
     heap/ConservativeRoots.cpp \
     heap/DFGCodeBlocks.cpp \
     heap/WeakSet.cpp \
@@ -81,7 +85,9 @@ SOURCES += \
     heap/HandleStack.cpp \
     heap/BlockAllocator.cpp \
     heap/GCThreadSharedData.cpp \
+    heap/GCThread.cpp \
     heap/Heap.cpp \
+    heap/HeapStatistics.cpp \
     heap/HeapTimer.cpp \
     heap/IncrementalSweeper.cpp \
     heap/JITStubRoutineSet.cpp \
@@ -137,7 +143,7 @@ SOURCES += \
     interpreter/AbstractPC.cpp \
     interpreter/CallFrame.cpp \
     interpreter/Interpreter.cpp \
-    interpreter/RegisterFile.cpp \
+    interpreter/JSStack.cpp \
     jit/ExecutableAllocatorFixedVMPool.cpp \
     jit/ExecutableAllocator.cpp \
     jit/HostCallReturnValue.cpp \
@@ -199,6 +205,7 @@ SOURCES += \
     runtime/GetterSetter.cpp \
     runtime/Options.cpp \
     runtime/Identifier.cpp \
+    runtime/IndexingType.cpp \
     runtime/InitializeThreading.cpp \
     runtime/InternalFunction.cpp \
     runtime/JSActivation.cpp \
@@ -267,6 +274,18 @@ SOURCES += \
     tools/CodeProfile.cpp \
     tools/CodeProfiling.cpp \
     yarr/YarrJIT.cpp \
+
+linux-*:if(isEqual(QT_ARCH, "i386")|isEqual(QT_ARCH, "x86_64")) {
+    SOURCES += \
+        disassembler/UDis86Disassembler.cpp \
+        disassembler/udis86/udis86.c \
+        disassembler/udis86/udis86_decode.c \
+        disassembler/udis86/udis86_input.c \
+        disassembler/udis86/udis86_itab_holder.c \
+        disassembler/udis86/udis86_syn-att.c \
+        disassembler/udis86/udis86_syn-intel.c \
+        disassembler/udis86/udis86_syn.c \
+}
 
 HEADERS += $$files(*.h, true)
 

@@ -43,6 +43,7 @@
 #include "InjectedBundlePagePolicyClient.h"
 #include "InjectedBundlePageResourceLoadClient.h"
 #include "InjectedBundlePageUIClient.h"
+#include "MessageReceiver.h"
 #include "MessageSender.h"
 #include "TapHighlightController.h"
 #include "Plugin.h"
@@ -113,6 +114,7 @@ namespace WebCore {
     class Page;
     class PrintContext;
     class Range;
+    class ResourceResponse;
     class ResourceRequest;
     class SharedBuffer;
     class VisibleSelection;
@@ -161,7 +163,7 @@ class WebGestureEvent;
 class WebTouchEvent;
 #endif
 
-class WebPage : public APIObject, public CoreIPC::MessageSender<WebPage> {
+class WebPage : public APIObject, public CoreIPC::MessageReceiver, public CoreIPC::MessageSender<WebPage> {
 public:
     static const Type APIType = TypeBundlePage;
 
@@ -237,9 +239,8 @@ public:
     WebOpenPanelResultListener* activeOpenPanelResultListener() const { return m_activeOpenPanelResultListener.get(); }
     void setActiveOpenPanelResultListener(PassRefPtr<WebOpenPanelResultListener>);
 
-    // -- Called from WebProcess.
-    void didReceiveMessage(CoreIPC::Connection*, CoreIPC::MessageID, CoreIPC::ArgumentDecoder*);
-    void didReceiveSyncMessage(CoreIPC::Connection*, CoreIPC::MessageID, CoreIPC::ArgumentDecoder*, OwnPtr<CoreIPC::ArgumentEncoder>&);
+    void didReceiveMessage(CoreIPC::Connection*, CoreIPC::MessageID, CoreIPC::MessageDecoder&) OVERRIDE;
+    void didReceiveSyncMessage(CoreIPC::Connection*, CoreIPC::MessageID, CoreIPC::MessageDecoder&, OwnPtr<CoreIPC::MessageEncoder>&) OVERRIDE;
 
     // -- InjectedBundle methods
 #if ENABLE(CONTEXT_MENUS)
@@ -279,7 +280,9 @@ public:
     WebCore::Frame* mainFrame() const; // May return 0.
     WebCore::FrameView* mainFrameView() const; // May return 0.
 
+#if ENABLE(NETSCAPE_PLUGIN_API)
     PassRefPtr<Plugin> createPlugin(WebFrame*, WebCore::HTMLPlugInElement*, const Plugin::Parameters&);
+#endif
 
     EditorState editorState() const;
 
@@ -318,6 +321,8 @@ public:
     void setPaginationBehavesLikeColumns(bool);
     void setPageLength(double);
     void setGapBetweenPages(double);
+
+    void postInjectedBundleMessage(const String& messageName, CoreIPC::MessageDecoder&);
 
     bool drawsBackground() const { return m_drawsBackground; }
     bool drawsTransparentBackground() const { return m_drawsTransparentBackground; }
@@ -460,7 +465,10 @@ public:
     void gestureWillBegin(const WebCore::IntPoint&, bool& canBeginPanning);
     void gestureDidScroll(const WebCore::IntSize&);
     void gestureDidEnd();
-
+#elif PLATFORM(EFL)
+    void confirmComposition(const String& compositionString);
+    void setComposition(const WTF::String& compositionString, const WTF::Vector<WebCore::CompositionUnderline>& underlines, uint64_t cursorPosition);
+    void cancelComposition();
 #elif PLATFORM(GTK)
     void updateAccessibilityTree();
 #if USE(TEXTURE_MAPPER_GL)
@@ -571,13 +579,15 @@ public:
 
     bool willGoToBackForwardItemCallbackEnabled() const { return m_willGoToBackForwardItemCallbackEnabled; }
 
-#if ENABLE(PAGE_VISIBILITY_API)
+#if ENABLE(PAGE_VISIBILITY_API) || ENABLE(HIDDEN_PAGE_DOM_TIMER_THROTTLING)
     void setVisibilityState(int visibilityState, bool isInitialState);
 #endif
 
 #if PLATFORM(GTK) && USE(TEXTURE_MAPPER_GL)
     uint64_t nativeWindowHandle() { return m_nativeWindowHandle; }
 #endif
+
+    bool shouldUseCustomRepresentationForResponse(const WebCore::ResourceResponse&) const;
 
     bool asynchronousPluginInitializationEnabled() const { return m_asynchronousPluginInitializationEnabled; }
     void setAsynchronousPluginInitializationEnabled(bool enabled) { m_asynchronousPluginInitializationEnabled = enabled; }
@@ -591,6 +601,15 @@ public:
     bool scrollingPerformanceLoggingEnabled() const { return m_scrollingPerformanceLoggingEnabled; }
     void setScrollingPerformanceLoggingEnabled(bool);
 
+#if PLATFORM(MAC)
+    bool pdfPluginEnabled() const { return m_pdfPluginEnabled; }
+    void setPDFPluginEnabled(bool enabled) { m_pdfPluginEnabled = enabled; }
+#endif
+
+#if PLATFORM(MAC)
+    static HashSet<String, CaseFoldingHash> pdfAndPostScriptMIMETypes();
+#endif
+
 private:
     WebPage(uint64_t pageID, const WebPageCreationParameters&);
 
@@ -598,8 +617,8 @@ private:
 
     void platformInitialize();
 
-    void didReceiveWebPageMessage(CoreIPC::Connection*, CoreIPC::MessageID, CoreIPC::ArgumentDecoder*);
-    void didReceiveSyncWebPageMessage(CoreIPC::Connection*, CoreIPC::MessageID, CoreIPC::ArgumentDecoder*, OwnPtr<CoreIPC::ArgumentEncoder>&);
+    void didReceiveWebPageMessage(CoreIPC::Connection*, CoreIPC::MessageID, CoreIPC::MessageDecoder&);
+    void didReceiveSyncWebPageMessage(CoreIPC::Connection*, CoreIPC::MessageID, CoreIPC::MessageDecoder&, OwnPtr<CoreIPC::MessageEncoder>&);
 
 #if !PLATFORM(MAC)
     static const char* interpretKeyEvent(const WebCore::KeyboardEvent*);
@@ -794,6 +813,8 @@ private:
     bool m_scrollingPerformanceLoggingEnabled;
 
 #if PLATFORM(MAC)
+    bool m_pdfPluginEnabled;
+
     // Whether the containing window is visible or not.
     bool m_windowIsVisible;
 
@@ -822,7 +843,7 @@ private:
 
     RefPtr<WebCore::Node> m_gestureTargetNode;
 #elif PLATFORM(GTK)
-    WebPageAccessibilityObject* m_accessibilityObject;
+    GRefPtr<WebPageAccessibilityObject> m_accessibilityObject;
 
 #if USE(TEXTURE_MAPPER_GL)
     // Our view's window in the UI process.
@@ -900,6 +921,8 @@ private:
 
     bool m_cachedMainFrameIsPinnedToLeftSide;
     bool m_cachedMainFrameIsPinnedToRightSide;
+    bool m_cachedMainFrameIsPinnedToTopSide;
+    bool m_cachedMainFrameIsPinnedToBottomSide;
     bool m_canShortCircuitHorizontalWheelEvents;
     unsigned m_numWheelEventHandlers;
 
@@ -921,6 +944,8 @@ private:
     WebCore::PageVisibilityState m_visibilityState;
 #endif
     WebInspectorClient* m_inspectorClient;
+
+    HashSet<String, CaseFoldingHash> m_mimeTypesWithCustomRepresentations;
 };
 
 } // namespace WebKit

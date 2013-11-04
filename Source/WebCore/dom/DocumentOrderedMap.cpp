@@ -55,6 +55,11 @@ inline bool keyMatchesLowercasedMapName(AtomicStringImpl* key, Element* element)
     return element->hasTagName(mapTag) && static_cast<HTMLMapElement*>(element)->getName().lower().impl() == key;
 }
 
+inline bool keyMatchesLabelForAttribute(AtomicStringImpl* key, Element* element)
+{
+    return element->hasTagName(labelTag) && element->getAttribute(forAttr).impl() == key;
+}
+
 void DocumentOrderedMap::clear()
 {
     m_map.clear();
@@ -98,7 +103,7 @@ void DocumentOrderedMap::remove(AtomicStringImpl* key, Element* element)
 
     m_map.checkConsistency();
     Map::iterator cachedItem = m_map.find(key);
-    if (cachedItem != m_map.end() && cachedItem->second == element)
+    if (cachedItem != m_map.end() && cachedItem->value == element)
         m_map.remove(cachedItem);
     else
         m_duplicateCounts.remove(key);
@@ -149,5 +154,9 @@ Element* DocumentOrderedMap::getElementByLowercasedMapName(AtomicStringImpl* key
     return get<keyMatchesLowercasedMapName>(key, scope);
 }
 
-} // namespace WebCore
+Element* DocumentOrderedMap::getElementByLabelForAttribute(AtomicStringImpl* key, const TreeScope* scope) const
+{
+    return get<keyMatchesLabelForAttribute>(key, scope);
+}
 
+} // namespace WebCore

@@ -42,6 +42,7 @@
 #include "RTCIceCandidate.h"
 #include "RTCPeerConnectionHandler.h"
 #include "RTCPeerConnectionHandlerClient.h"
+#include "Timer.h"
 #include <wtf/RefCounted.h>
 
 namespace WebCore {
@@ -49,6 +50,7 @@ namespace WebCore {
 class MediaConstraints;
 class MediaStreamTrack;
 class RTCConfiguration;
+class RTCDataChannel;
 class RTCErrorCallback;
 class RTCSessionDescription;
 class RTCSessionDescriptionCallback;
@@ -88,6 +90,8 @@ public:
 
     void getStats(PassRefPtr<RTCStatsCallback> successCallback, PassRefPtr<MediaStreamTrack> selector);
 
+    PassRefPtr<RTCDataChannel> createDataChannel(String label, const Dictionary& dataChannelDict, ExceptionCode&);
+
     void close(ExceptionCode&);
 
     DEFINE_ATTRIBUTE_EVENT_LISTENER(negotiationneeded);
@@ -97,6 +101,7 @@ public:
     DEFINE_ATTRIBUTE_EVENT_LISTENER(addstream);
     DEFINE_ATTRIBUTE_EVENT_LISTENER(removestream);
     DEFINE_ATTRIBUTE_EVENT_LISTENER(icechange);
+    DEFINE_ATTRIBUTE_EVENT_LISTENER(datachannel);
 
     // RTCPeerConnectionHandlerClient
     virtual void negotiationNeeded() OVERRIDE;
@@ -105,6 +110,7 @@ public:
     virtual void didChangeIceState(IceState) OVERRIDE;
     virtual void didAddRemoteStream(PassRefPtr<MediaStreamDescriptor>) OVERRIDE;
     virtual void didRemoveRemoteStream(MediaStreamDescriptor*) OVERRIDE;
+    virtual void didAddRemoteDataChannel(PassRefPtr<RTCDataChannelDescriptor>) OVERRIDE;
 
     // EventTarget
     virtual const AtomicString& interfaceName() const OVERRIDE;
@@ -120,6 +126,8 @@ private:
     RTCPeerConnection(ScriptExecutionContext*, PassRefPtr<RTCConfiguration>, PassRefPtr<MediaConstraints>, ExceptionCode&);
 
     static PassRefPtr<RTCConfiguration> parseConfiguration(const Dictionary& configuration, ExceptionCode&);
+    void scheduleDispatchEvent(PassRefPtr<Event>);
+    void scheduledEventTimerFired(Timer<RTCPeerConnection>*);
 
     // EventTarget implementation.
     virtual EventTargetData* eventTargetData();
@@ -137,7 +145,12 @@ private:
     RefPtr<MediaStreamList> m_localStreams;
     RefPtr<MediaStreamList> m_remoteStreams;
 
+    Vector<RefPtr<RTCDataChannel> > m_dataChannels;
+
     OwnPtr<RTCPeerConnectionHandler> m_peerHandler;
+
+    Timer<RTCPeerConnection> m_scheduledEventTimer;
+    Vector<RefPtr<Event> > m_scheduledEvents;
 };
 
 } // namespace WebCore

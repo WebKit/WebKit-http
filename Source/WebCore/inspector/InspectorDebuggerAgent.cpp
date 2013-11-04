@@ -43,6 +43,8 @@
 #include "RegularExpression.h"
 #include "ScriptDebugServer.h"
 #include "ScriptObject.h"
+#include <wtf/MemoryInstrumentationHashMap.h>
+#include <wtf/MemoryInstrumentationVector.h>
 #include <wtf/text/WTFString.h>
 
 using WebCore::TypeBuilder::Array;
@@ -248,9 +250,9 @@ void InspectorDebuggerAgent::setBreakpointByUrl(ErrorString* errorString, int li
 
     ScriptBreakpoint breakpoint(lineNumber, columnNumber, condition);
     for (ScriptsMap::iterator it = m_scripts.begin(); it != m_scripts.end(); ++it) {
-        if (!matches(it->second.url, url, isRegex))
+        if (!matches(it->value.url, url, isRegex))
             continue;
-        RefPtr<TypeBuilder::Debugger::Location> location = resolveBreakpoint(breakpointId, it->first, breakpoint);
+        RefPtr<TypeBuilder::Debugger::Location> location = resolveBreakpoint(breakpointId, it->key, breakpoint);
         if (location)
             locations->addItem(location);
     }
@@ -302,8 +304,8 @@ void InspectorDebuggerAgent::removeBreakpoint(ErrorString*, const String& breakp
     BreakpointIdToDebugServerBreakpointIdsMap::iterator debugServerBreakpointIdsIterator = m_breakpointIdToDebugServerBreakpointIds.find(breakpointId);
     if (debugServerBreakpointIdsIterator == m_breakpointIdToDebugServerBreakpointIds.end())
         return;
-    for (size_t i = 0; i < debugServerBreakpointIdsIterator->second.size(); ++i)
-        scriptDebugServer().removeBreakpoint(debugServerBreakpointIdsIterator->second[i]);
+    for (size_t i = 0; i < debugServerBreakpointIdsIterator->value.size(); ++i)
+        scriptDebugServer().removeBreakpoint(debugServerBreakpointIdsIterator->value[i]);
     m_breakpointIdToDebugServerBreakpointIds.remove(debugServerBreakpointIdsIterator);
 }
 
@@ -331,7 +333,7 @@ PassRefPtr<TypeBuilder::Debugger::Location> InspectorDebuggerAgent::resolveBreak
     ScriptsMap::iterator scriptIterator = m_scripts.find(scriptId);
     if (scriptIterator == m_scripts.end())
         return 0;
-    Script& script = scriptIterator->second;
+    Script& script = scriptIterator->value;
     if (breakpoint.lineNumber < script.startLine || script.endLine < breakpoint.lineNumber)
         return 0;
 
@@ -344,7 +346,7 @@ PassRefPtr<TypeBuilder::Debugger::Location> InspectorDebuggerAgent::resolveBreak
     BreakpointIdToDebugServerBreakpointIdsMap::iterator debugServerBreakpointIdsIterator = m_breakpointIdToDebugServerBreakpointIds.find(breakpointId);
     if (debugServerBreakpointIdsIterator == m_breakpointIdToDebugServerBreakpointIds.end())
         debugServerBreakpointIdsIterator = m_breakpointIdToDebugServerBreakpointIds.set(breakpointId, Vector<String>()).iterator;
-    debugServerBreakpointIdsIterator->second.append(debugServerBreakpointId);
+    debugServerBreakpointIdsIterator->value.append(debugServerBreakpointId);
 
     RefPtr<TypeBuilder::Debugger::Location> location = TypeBuilder::Debugger::Location::create()
         .setScriptId(scriptId)
@@ -370,7 +372,7 @@ void InspectorDebuggerAgent::searchInContent(ErrorString* error, const String& s
 
     ScriptsMap::iterator it = m_scripts.find(scriptId);
     if (it != m_scripts.end())
-        results = ContentSearchUtils::searchInTextByLines(it->second.source, query, caseSensitive, isRegex);
+        results = ContentSearchUtils::searchInTextByLines(it->value.source, query, caseSensitive, isRegex);
     else
         *error = "No script for id: " + scriptId;
 }
@@ -403,7 +405,7 @@ void InspectorDebuggerAgent::getScriptSource(ErrorString* error, const String& s
 {
     ScriptsMap::iterator it = m_scripts.find(scriptId);
     if (it != m_scripts.end())
-        *scriptSource = it->second.source;
+        *scriptSource = it->value.source;
     else
         *error = "No script for id: " + scriptId;
 }
@@ -645,7 +647,7 @@ void InspectorDebuggerAgent::didParseSource(const String& scriptId, const Script
 
     RefPtr<InspectorObject> breakpointsCookie = m_state->getObject(DebuggerAgentState::javaScriptBreakpoints);
     for (InspectorObject::iterator it = breakpointsCookie->begin(); it != breakpointsCookie->end(); ++it) {
-        RefPtr<InspectorObject> breakpointObject = it->second->asObject();
+        RefPtr<InspectorObject> breakpointObject = it->value->asObject();
         bool isRegex;
         breakpointObject->getBoolean("isRegex", &isRegex);
         String url;
@@ -656,9 +658,9 @@ void InspectorDebuggerAgent::didParseSource(const String& scriptId, const Script
         breakpointObject->getNumber("lineNumber", &breakpoint.lineNumber);
         breakpointObject->getNumber("columnNumber", &breakpoint.columnNumber);
         breakpointObject->getString("condition", &breakpoint.condition);
-        RefPtr<TypeBuilder::Debugger::Location> location = resolveBreakpoint(it->first, scriptId, breakpoint);
+        RefPtr<TypeBuilder::Debugger::Location> location = resolveBreakpoint(it->key, scriptId, breakpoint);
         if (location)
-            m_frontend->breakpointResolved(it->first, location);
+            m_frontend->breakpointResolved(it->key, location);
     }
 }
 
@@ -732,6 +734,29 @@ void InspectorDebuggerAgent::clearBreakDetails()
 {
     m_breakReason = InspectorFrontend::Debugger::Reason::Other;
     m_breakAuxData = 0;
+}
+
+void InspectorDebuggerAgent::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
+{
+    MemoryClassInfo info(memoryObjectInfo, this, WebCoreMemoryTypes::InspectorDebuggerAgent);
+    InspectorBaseAgent<InspectorDebuggerAgent>::reportMemoryUsage(memoryObjectInfo);
+    info.addMember(m_injectedScriptManager);
+    info.addWeakPointer(m_frontend);
+    info.addMember(m_pausedScriptState);
+    info.addMember(m_currentCallStack);
+    info.addMember(m_scripts);
+    info.addMember(m_breakpointIdToDebugServerBreakpointIds);
+    info.addMember(m_continueToLocationBreakpointId);
+    info.addMember(m_breakAuxData);
+    info.addMember(m_listener);
+}
+
+void ScriptDebugListener::Script::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
+{
+    MemoryClassInfo info(memoryObjectInfo, this, WebCoreMemoryTypes::InspectorDebuggerAgent);
+    info.addMember(url);
+    info.addMember(source);
+    info.addMember(sourceMappingURL);
 }
 
 } // namespace WebCore

@@ -90,6 +90,13 @@ class PortTestCase(unittest.TestCase):
         port_name = self.port_maker.determine_full_port_name(host, options, port_name)
         return self.port_maker(host, port_name, options=options, config=config, **kwargs)
 
+    def test_default_max_locked_shards(self):
+        port = self.make_port()
+        port.default_child_processes = lambda: 16
+        self.assertEquals(port.default_max_locked_shards(), 1)
+        port.default_child_processes = lambda: 2
+        self.assertEquals(port.default_max_locked_shards(), 1)
+
     def test_default_timeout_ms(self):
         self.assertEquals(self.make_port(options=MockOptions(configuration='Release')).default_timeout_ms(), 35000)
         self.assertEquals(self.make_port(options=MockOptions(configuration='Debug')).default_timeout_ms(), 35000)
@@ -495,15 +502,22 @@ class PortTestCase(unittest.TestCase):
     def test_skipped_layout_tests(self):
         self.assertEqual(TestWebKitPort(None, None).skipped_layout_tests(test_list=[]), set(['media']))
 
-    def test_skipped_file_search_paths(self):
+    def test_expectations_files(self):
         port = TestWebKitPort()
-        self.assertEqual(port._skipped_file_search_paths(), set(['testwebkitport']))
+
+        def platform_dirs(port):
+            return [port.host.filesystem.basename(port.host.filesystem.dirname(f)) for f in port.expectations_files()]
+
+        self.assertEqual(platform_dirs(port), ['testwebkitport'])
+
         port._name = "testwebkitport-version"
-        self.assertEqual(port._skipped_file_search_paths(), set(['testwebkitport', 'testwebkitport-version']))
+        self.assertEqual(platform_dirs(port), ['testwebkitport', 'testwebkitport-version'])
+
         port._options = MockOptions(webkit_test_runner=True)
-        self.assertEqual(port._skipped_file_search_paths(), set(['testwebkitport', 'testwebkitport-version', 'testwebkitport-wk2', 'wk2']))
+        self.assertEqual(platform_dirs(port), ['testwebkitport', 'testwebkitport-version', 'testwebkitport-wk2', 'wk2'])
+
         port._options = MockOptions(additional_platform_directory=["internal-testwebkitport"])
-        self.assertEqual(port._skipped_file_search_paths(), set(['testwebkitport', 'testwebkitport-version', 'internal-testwebkitport']))
+        self.assertEqual(platform_dirs(port), ['testwebkitport', 'testwebkitport-version', 'internal-testwebkitport'])
 
     def test_root_option(self):
         port = TestWebKitPort()

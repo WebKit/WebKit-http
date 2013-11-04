@@ -26,21 +26,21 @@
 #include "Color.h"
 #include "GraphicsLayerClient.h"
 #include "WebOverlay.h"
-#include "WebSelectionOverlay.h"
 
 #include <BlackBerryPlatformIntRectRegion.h>
 #include <wtf/OwnPtr.h>
+#include <wtf/PassOwnPtr.h>
 
 namespace BlackBerry {
 namespace WebKit {
 
 class WebPagePrivate;
 
-class SelectionOverlay : public WebSelectionOverlay, public WebCore::GraphicsLayerClient {
+class SelectionOverlay : public WebCore::GraphicsLayerClient {
 public:
-    static SelectionOverlay* create(WebPagePrivate* page)
+    static PassOwnPtr<SelectionOverlay> create(WebPagePrivate* page)
     {
-        return new SelectionOverlay(page);
+        return adoptPtr(new SelectionOverlay(page));
     }
 
     virtual ~SelectionOverlay();
@@ -50,7 +50,7 @@ public:
 
     // GraphicsLayerClient
     virtual void notifyAnimationStarted(const WebCore::GraphicsLayer*, double time) { }
-    virtual void notifySyncRequired(const WebCore::GraphicsLayer*);
+    virtual void notifyFlushRequired(const WebCore::GraphicsLayer*);
     virtual void paintContents(const WebCore::GraphicsLayer*, WebCore::GraphicsContext&, WebCore::GraphicsLayerPaintingPhase, const WebCore::IntRect& inClip);
     virtual bool showDebugBorders(const WebCore::GraphicsLayer*) const;
     virtual bool showRepaintCounter(const WebCore::GraphicsLayer*) const;
@@ -61,7 +61,6 @@ private:
     WebPagePrivate* m_page;
     OwnPtr<WebOverlay> m_overlay;
     BlackBerry::Platform::IntRectRegion m_region;
-    bool m_hideDispatched;
 };
 
 } // namespace WebKit

@@ -33,6 +33,7 @@
 
 #include "CachedRawResource.h"
 #include "CachedResourceLoader.h"
+#include "CachedResourceRequest.h"
 #include "CrossOriginAccessControl.h"
 #include "CrossOriginPreflightResultCache.h"
 #include "Document.h"
@@ -308,6 +309,8 @@ void DocumentThreadableLoader::notifyFinished(CachedResource* resource)
         ResourceError error("Network Request Failed", 0, m_resource->url(), "Resource failed to load");
         if (m_resource->wasCanceled())
             error.setIsCancellation(true);
+        if (m_resource->timedOut())
+            error.setIsTimeout(true);
         didFail(error);
     } else
         didFinishLoading(m_resource->identifier(), m_resource->loadFinishTime());
@@ -376,17 +379,17 @@ void DocumentThreadableLoader::loadRequest(const ResourceRequest& request, Secur
             options.shouldBufferData = BufferData;
         }
 
-        ResourceRequest newRequest(request);
+        CachedResourceRequest newRequest(request, options);
 #if ENABLE(INSPECTOR)
         if (m_actualRequest) {
             // Because willSendRequest only gets called during redirects, we initialize the identifier and the first willSendRequest here.
             m_preflightRequestIdentifier = m_document->frame()->page()->progress()->createUniqueIdentifier();
             ResourceResponse redirectResponse = ResourceResponse();
-            InspectorInstrumentation::willSendRequest(m_document->frame(), m_preflightRequestIdentifier, m_document->frame()->loader()->documentLoader(), newRequest, redirectResponse);
+            InspectorInstrumentation::willSendRequest(m_document->frame(), m_preflightRequestIdentifier, m_document->frame()->loader()->documentLoader(), newRequest.mutableResourceRequest(), redirectResponse);
         }
 #endif
         ASSERT(!m_resource);
-        m_resource = m_document->cachedResourceLoader()->requestRawResource(newRequest, options);
+        m_resource = m_document->cachedResourceLoader()->requestRawResource(newRequest);
         if (m_resource) {
 #if ENABLE(INSPECTOR)
             if (m_resource->loader()) {

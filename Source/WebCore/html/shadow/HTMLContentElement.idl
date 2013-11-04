@@ -24,11 +24,11 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-module html {
-    interface [
-        Conditional=SHADOW_DOM,
-        V8EnabledAtRuntime=shadowDOM
-    ] HTMLContentElement : HTMLElement {
-        attribute [Reflect] DOMString select;
-    };
-}
+[
+    Conditional=SHADOW_DOM,
+    V8EnabledAtRuntime=shadowDOM
+] interface HTMLContentElement : HTMLElement {
+    [Reflect] attribute DOMString select;
+    attribute boolean resetStyleInheritance;
+    NodeList getDistributedNodes();
+};

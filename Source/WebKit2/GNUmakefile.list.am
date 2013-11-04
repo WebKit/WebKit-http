@@ -165,6 +165,8 @@ webkit2_built_sources += \
 	DerivedSources/WebKit2/WebBatteryManagerProxyMessages.h \
 	DerivedSources/WebKit2/WebContextMessageReceiver.cpp \
 	DerivedSources/WebKit2/WebContextMessages.h \
+	DerivedSources/WebKit2/WebConnectionMessageReceiver.cpp \
+	DerivedSources/WebKit2/WebConnectionMessages.h \
 	DerivedSources/WebKit2/WebCookieManagerMessageReceiver.cpp \
 	DerivedSources/WebKit2/WebCookieManagerMessages.h \
 	DerivedSources/WebKit2/WebCookieManagerProxyMessageReceiver.cpp \
@@ -255,11 +257,17 @@ webkit2_sources += \
 	Source/WebKit2/Platform/CoreIPC/DataReference.cpp \
 	Source/WebKit2/Platform/CoreIPC/DataReference.h \
 	Source/WebKit2/Platform/CoreIPC/HandleMessage.h \
+	Source/WebKit2/Platform/CoreIPC/MessageDecoder.cpp \
+	Source/WebKit2/Platform/CoreIPC/MessageDecoder.h \
+	Source/WebKit2/Platform/CoreIPC/MessageEncoder.cpp \
+	Source/WebKit2/Platform/CoreIPC/MessageEncoder.h \
 	Source/WebKit2/Platform/CoreIPC/MessageID.h \
 	Source/WebKit2/Platform/CoreIPC/MessageReceiver.h \
 	Source/WebKit2/Platform/CoreIPC/MessageReceiverMap.cpp \
 	Source/WebKit2/Platform/CoreIPC/MessageReceiverMap.h \
 	Source/WebKit2/Platform/CoreIPC/MessageSender.h \
+	Source/WebKit2/Platform/CoreIPC/StringReference.cpp \
+	Source/WebKit2/Platform/CoreIPC/StringReference.h \
 	Source/WebKit2/Platform/CoreIPC/unix/AttachmentUnix.cpp \
 	Source/WebKit2/Platform/CoreIPC/unix/ConnectionUnix.cpp \
 	Source/WebKit2/Platform/gtk/LoggingGtk.cpp \
@@ -362,7 +370,8 @@ webkit2_sources += \
 	Source/WebKit2/Shared/ChildProcess.cpp \
 	Source/WebKit2/Shared/ChildProcess.h \
 	Source/WebKit2/Shared/CommandLine.h \
-	Source/WebKit2/Shared/CoreIPCSupport/InjectedBundleMessageKinds.h \
+	Source/WebKit2/Shared/ConnectionStack.cpp \
+	Source/WebKit2/Shared/ConnectionStack.h \
 	Source/WebKit2/Shared/CoreIPCSupport/WebConnectionMessageKinds.h \
 	Source/WebKit2/Shared/CoreIPCSupport/WebContextMessageKinds.h \
 	Source/WebKit2/Shared/CoreIPCSupport/WebPageProxyMessageKinds.h \
@@ -956,8 +965,6 @@ webkit2_sources += \
 	Source/WebKit2/WebProcess/Geolocation/GeolocationPermissionRequestManager.h \
 	Source/WebKit2/WebProcess/Geolocation/WebGeolocationManager.cpp \
 	Source/WebKit2/WebProcess/Geolocation/WebGeolocationManager.h \
-	Source/WebKit2/WebProcess/gtk/WebAuthDialog.cpp \
-	Source/WebKit2/WebProcess/gtk/WebAuthDialog.h \
 	Source/WebKit2/WebProcess/gtk/WebProcessMainGtk.cpp \
 	Source/WebKit2/WebProcess/gtk/WebProcessMainGtk.h \
 	Source/WebKit2/WebProcess/IconDatabase/WebIconDatabaseProxy.cpp \
@@ -1097,6 +1104,7 @@ webkit2_sources += \
 	Source/WebKit2/WebProcess/WebCoreSupport/gtk/WebDragClientGtk.cpp \
 	Source/WebKit2/WebProcess/WebCoreSupport/gtk/WebEditorClientGtk.cpp \
 	Source/WebKit2/WebProcess/WebCoreSupport/gtk/WebErrorsGtk.cpp \
+	Source/WebKit2/WebProcess/WebCoreSupport/gtk/WebFrameLoaderClientGtk.cpp \
 	Source/WebKit2/WebProcess/WebCoreSupport/gtk/WebPopupMenuGtk.cpp \
 	Source/WebKit2/WebProcess/WebCoreSupport/soup/WebFrameNetworkingContext.cpp \
 	Source/WebKit2/WebProcess/WebCoreSupport/soup/WebFrameNetworkingContext.h \
@@ -1218,11 +1226,17 @@ webkit2_plugin_process_sources += \
 	Source/WebKit2/Platform/CoreIPC/DataReference.cpp \
 	Source/WebKit2/Platform/CoreIPC/DataReference.h \
 	Source/WebKit2/Platform/CoreIPC/HandleMessage.h \
+	Source/WebKit2/Platform/CoreIPC/MessageDecoder.cpp \
+	Source/WebKit2/Platform/CoreIPC/MessageDecoder.h \
+	Source/WebKit2/Platform/CoreIPC/MessageEncoder.cpp \
+	Source/WebKit2/Platform/CoreIPC/MessageEncoder.h \
 	Source/WebKit2/Platform/CoreIPC/MessageID.h \
 	Source/WebKit2/Platform/CoreIPC/MessageReceiver.h \
 	Source/WebKit2/Platform/CoreIPC/MessageReceiverMap.cpp \
 	Source/WebKit2/Platform/CoreIPC/MessageReceiverMap.h \
 	Source/WebKit2/Platform/CoreIPC/MessageSender.h \
+	Source/WebKit2/Platform/CoreIPC/StringReference.cpp \
+	Source/WebKit2/Platform/CoreIPC/StringReference.h \
 	Source/WebKit2/Platform/CoreIPC/unix/AttachmentUnix.cpp \
 	Source/WebKit2/Platform/CoreIPC/unix/ConnectionUnix.cpp \
 	Source/WebKit2/Platform/Module.cpp \
@@ -1250,6 +1264,8 @@ webkit2_plugin_process_sources += \
 	Source/WebKit2/PluginProcess/unix/PluginProcessUnix.cpp \
 	Source/WebKit2/Shared/ChildProcess.cpp \
 	Source/WebKit2/Shared/ChildProcess.h \
+	Source/WebKit2/Shared/ConnectionStack.cpp \
+	Source/WebKit2/Shared/ConnectionStack.h \
 	Source/WebKit2/Shared/ProcessExecutablePath.h \
 	Source/WebKit2/Shared/Plugins/NPIdentifierData.cpp \
 	Source/WebKit2/Shared/Plugins/NPIdentifierData.h \

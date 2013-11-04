@@ -103,6 +103,8 @@ WebInspector.ElementsPanel = function()
     this._popoverHelper = new WebInspector.PopoverHelper(this.element, this._getPopoverAnchor.bind(this), this._showPopover.bind(this));
     this._popoverHelper.setTimeout(0);
 
+    WebInspector.domAgent.addEventListener(WebInspector.DOMAgent.Events.AttrModified, this._updateBreadcrumbIfNeeded, this);
+    WebInspector.domAgent.addEventListener(WebInspector.DOMAgent.Events.AttrRemoved, this._updateBreadcrumbIfNeeded, this);
     WebInspector.domAgent.addEventListener(WebInspector.DOMAgent.Events.NodeRemoved, this._nodeRemoved, this);
     WebInspector.domAgent.addEventListener(WebInspector.DOMAgent.Events.DocumentUpdated, this._documentUpdatedEvent, this);
     WebInspector.domAgent.addEventListener(WebInspector.DOMAgent.Events.InspectElementRequested, this._inspectElementRequested, this);
@@ -336,7 +338,7 @@ WebInspector.ElementsPanel.prototype = {
             WebInspector.settings.domWordWrap.set(!WebInspector.settings.domWordWrap.get());
         }
 
-        var contextMenu = new WebInspector.ContextMenu();
+        var contextMenu = new WebInspector.ContextMenu(event);
         var populated = this.treeOutline.populateContextMenu(contextMenu, event);
 
         if (WebInspector.experimentsSettings.cssRegions.isEnabled()) {
@@ -347,7 +349,7 @@ WebInspector.ElementsPanel.prototype = {
         contextMenu.appendSeparator();
         contextMenu.appendCheckboxItem(WebInspector.UIString(WebInspector.useLowerCaseMenuTitles() ? "Word wrap" : "Word Wrap"), toggleWordWrap.bind(this), WebInspector.settings.domWordWrap.get());
 
-        contextMenu.show(event);
+        contextMenu.show();
     },
 
     _showNamedFlowCollections: function()
@@ -594,6 +596,24 @@ WebInspector.ElementsPanel.prototype = {
         WebInspector.domAgent.hideDOMNodeHighlight();
 
         this._mouseOutOfCrumbsTimeout = setTimeout(this.updateBreadcrumbSizes.bind(this), 1000);
+    },
+
+    _updateBreadcrumbIfNeeded: function(event)
+    {
+        var name = event.data.name;
+        if (name !== "class" && name !== "id")
+            return;
+
+        var node = /** @type {WebInspector.DOMNode} */ event.data.node;
+        var crumbs = this.crumbsElement;
+        var crumb = crumbs.firstChild;
+        while (crumb) {
+            if (crumb.representedObject === node) {
+                this.updateBreadcrumb(true);
+                break;
+            }
+            crumb = crumb.nextSibling;
+        }
     },
 
     /**
@@ -1097,7 +1117,7 @@ WebInspector.ElementsPanel.prototype = {
      * @param {WebInspector.ContextMenu} contextMenu
      * @param {Object} target
      */
-    appendApplicableItems: function(contextMenu, target)
+    appendApplicableItems: function(event, contextMenu, target)
     {
         if (!(target instanceof WebInspector.RemoteObject))
             return;

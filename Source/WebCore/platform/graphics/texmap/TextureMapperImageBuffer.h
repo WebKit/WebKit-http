@@ -34,8 +34,8 @@ public:
     virtual void didReset();
     virtual bool isValid() const { return m_image; }
     inline GraphicsContext* graphicsContext() { return m_image ? m_image->context() : 0; }
-    virtual void updateContents(Image*, const IntRect&, const IntPoint&);
-    virtual void updateContents(const void*, const IntRect& target, const IntPoint& sourceOffset, int bytesPerLine);
+    virtual void updateContents(Image*, const IntRect&, const IntPoint&, UpdateContentsFlag);
+    virtual void updateContents(const void*, const IntRect& target, const IntPoint& sourceOffset, int bytesPerLine, UpdateContentsFlag);
 #if ENABLE(CSS_FILTERS)
     PassRefPtr<BitmapTexture> applyFilters(TextureMapper*, const BitmapTexture&, const FilterOperations&);
 #endif
@@ -52,8 +52,14 @@ public:
     static PassOwnPtr<TextureMapper> create() { return adoptPtr(new TextureMapperImageBuffer); }
 
     // TextureMapper implementation
-    virtual void drawBorder(const Color& color, float borderWidth, const FloatRect& targetRect, const TransformationMatrix& modelViewMatrix = TransformationMatrix()) OVERRIDE { };
-    virtual void drawRepaintCounter(int value, int pointSize, const FloatPoint&, const TransformationMatrix& modelViewMatrix = TransformationMatrix()) OVERRIDE { };
+    virtual void drawBorder(const Color&, float /* borderWidth */, const FloatRect& /* targetRect */, const TransformationMatrix& modelViewMatrix = TransformationMatrix()) OVERRIDE
+    {
+        UNUSED_PARAM(modelViewMatrix);
+    };
+    virtual void drawRepaintCounter(int /* value */, int /* pointSize */, const FloatPoint&, const TransformationMatrix& modelViewMatrix = TransformationMatrix()) OVERRIDE
+    {
+        UNUSED_PARAM(modelViewMatrix);
+    };
     virtual void drawTexture(const BitmapTexture&, const FloatRect& targetRect, const TransformationMatrix&, float opacity, const BitmapTexture* maskTexture, unsigned exposedEdges) OVERRIDE;
     virtual void beginClip(const TransformationMatrix&, const FloatRect&) OVERRIDE;
     virtual void bindSurface(BitmapTexture* surface) OVERRIDE { m_currentSurface = surface;}

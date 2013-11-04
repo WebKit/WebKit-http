@@ -39,6 +39,7 @@
 #include "dtoa/cached-powers.h"
 #include "HashMap.h"
 #include "RandomNumberSeed.h"
+#include "StackStats.h"
 #include "StdLibExtras.h"
 #include "ThreadFunctionInvocation.h"
 #include "ThreadIdentifierDataPthreads.h"
@@ -138,6 +139,7 @@ void initializeThreading()
     threadMapMutex();
     initializeRandomNumberGenerator();
     ThreadIdentifierData::initializeOnce();
+    StackStats::initialize();
     wtfThreadData();
     s_dtoaP5Mutex = new Mutex;
     initializeDates();
@@ -166,8 +168,8 @@ static ThreadIdentifier identifierByPthreadHandle(const pthread_t& pthreadHandle
 
     ThreadMap::iterator i = threadMap().begin();
     for (; i != threadMap().end(); ++i) {
-        if (pthread_equal(i->second->pthreadHandle(), pthreadHandle) && !i->second->hasExited())
-            return i->first;
+        if (pthread_equal(i->value->pthreadHandle(), pthreadHandle) && !i->value->hasExited())
+            return i->key;
     }
 
     return 0;

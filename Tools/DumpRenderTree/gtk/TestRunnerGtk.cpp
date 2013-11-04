@@ -112,13 +112,6 @@ JSValueRef TestRunner::computedStyleIncludingVisitedInfo(JSContextRef context, J
     return DumpRenderTreeSupportGtk::computedStyleIncludingVisitedInfo(context, value);
 }
 
-JSRetainPtr<JSStringRef> TestRunner::layerTreeAsText() const
-{
-    // FIXME: implement
-    JSRetainPtr<JSStringRef> string(Adopt, JSStringCreateWithUTF8CString(""));
-    return string;
-}
-
 size_t TestRunner::webHistoryItemCount()
 {
     WebKitWebView* webView = webkit_web_frame_get_web_view(mainFrame);
@@ -437,7 +430,7 @@ void TestRunner::setMockDeviceOrientation(bool canProvideAlpha, double alpha, bo
     // See https://bugs.webkit.org/show_bug.cgi?id=30335.
 }
 
-void TestRunner::setMockGeolocationPosition(double latitude, double longitude, double accuracy)
+void TestRunner::setMockGeolocationPosition(double latitude, double longitude, double accuracy, bool, double, bool, double, bool, double, bool, double)
 {
     WebKitWebView* view = WEBKIT_WEB_VIEW(g_slist_nth_data(webViewList, 0));
     if (!view)

@@ -248,7 +248,7 @@ bool DOMWindow::dispatchAllPendingBeforeUnloadEvents()
     Vector<RefPtr<DOMWindow> > windows;
     DOMWindowSet::iterator end = set.end();
     for (DOMWindowSet::iterator it = set.begin(); it != end; ++it)
-        windows.append(it->first);
+        windows.append(it->key);
 
     size_t size = windows.size();
     for (size_t i = 0; i < size; ++i) {
@@ -290,7 +290,7 @@ void DOMWindow::dispatchAllPendingUnloadEvents()
     Vector<RefPtr<DOMWindow> > windows;
     DOMWindowSet::iterator end = set.end();
     for (DOMWindowSet::iterator it = set.begin(); it != end; ++it)
-        windows.append(it->first);
+        windows.append(it->key);
 
     size_t size = windows.size();
     for (size_t i = 0; i < size; ++i) {
@@ -745,14 +745,23 @@ Storage* DOMWindow::sessionStorage(ExceptionCode& ec) const
         return 0;
     }
 
-    if (m_sessionStorage)
+    if (m_sessionStorage) {
+        if (!m_sessionStorage->area()->canAccessStorage(m_frame)) {
+            ec = SECURITY_ERR;
+            return 0;
+        }
         return m_sessionStorage.get();
+    }
 
     Page* page = document->page();
     if (!page)
         return 0;
 
     RefPtr<StorageArea> storageArea = page->sessionStorage()->storageArea(document->securityOrigin());
+    if (!storageArea->canAccessStorage(m_frame)) {
+        ec = SECURITY_ERR;
+        return 0;
+    }
     InspectorInstrumentation::didUseDOMStorage(page, storageArea.get(), false, m_frame);
 
     m_sessionStorage = Storage::create(m_frame, storageArea.release());
@@ -773,8 +782,13 @@ Storage* DOMWindow::localStorage(ExceptionCode& ec) const
         return 0;
     }
 
-    if (m_localStorage)
+    if (m_localStorage) {
+        if (!m_localStorage->area()->canAccessStorage(m_frame)) {
+            ec = SECURITY_ERR;
+            return 0;
+        }
         return m_localStorage.get();
+    }
 
     Page* page = document->page();
     if (!page)
@@ -784,6 +798,10 @@ Storage* DOMWindow::localStorage(ExceptionCode& ec) const
         return 0;
 
     RefPtr<StorageArea> storageArea = page->group().localStorage()->storageArea(document->securityOrigin());
+    if (!storageArea->canAccessStorage(m_frame)) {
+        ec = SECURITY_ERR;
+        return 0;
+    }
     InspectorInstrumentation::didUseDOMStorage(page, storageArea.get(), true, m_frame);
 
     m_localStorage = Storage::create(m_frame, storageArea.release());
@@ -1533,17 +1551,17 @@ void DOMWindow::clearInterval(int timeoutId)
 }
 
 #if ENABLE(REQUEST_ANIMATION_FRAME)
-int DOMWindow::webkitRequestAnimationFrame(PassRefPtr<RequestAnimationFrameCallback> callback)
+int DOMWindow::requestAnimationFrame(PassRefPtr<RequestAnimationFrameCallback> callback)
 {
     if (Document* d = document())
-        return d->webkitRequestAnimationFrame(callback);
+        return d->requestAnimationFrame(callback);
     return 0;
 }
 
-void DOMWindow::webkitCancelAnimationFrame(int id)
+void DOMWindow::cancelAnimationFrame(int id)
 {
     if (Document* d = document())
-        d->webkitCancelAnimationFrame(id);
+        d->cancelAnimationFrame(id);
 }
 #endif
 

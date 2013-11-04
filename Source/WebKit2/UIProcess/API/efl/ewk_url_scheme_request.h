@@ -37,8 +37,8 @@
 extern "C" {
 #endif
 
-/** Creates a type name for _Ewk_Url_Scheme_Request */
-typedef struct _Ewk_Url_Scheme_Request Ewk_Url_Scheme_Request;
+/** Creates a type name for Ewk_Url_Scheme_Request */
+typedef struct Ewk_Url_Scheme_Request Ewk_Url_Scheme_Request;
 
 /**
  * Increases the reference count of the given object.
@@ -105,7 +105,7 @@ EAPI const char *ewk_url_scheme_request_path_get(const Ewk_Url_Scheme_Request *r
  * @param content_length the length of the @a content_data.
  * @param mime_type the content type of the stream or %c NULL if not known
  */
-EAPI Eina_Bool ewk_url_scheme_request_finish(const Ewk_Url_Scheme_Request *request, const void *content_data, unsigned int content_length, const char *mime_type);
+EAPI Eina_Bool ewk_url_scheme_request_finish(Ewk_Url_Scheme_Request *request, const void *content_data, uint64_t content_length, const char *mime_type);
 
 #ifdef __cplusplus
 }

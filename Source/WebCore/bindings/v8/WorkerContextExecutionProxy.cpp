@@ -87,7 +87,7 @@ static void v8MessageHandler(v8::Handle<v8::Message> message, v8::Handle<v8::Val
 
 WorkerContextExecutionProxy::WorkerContextExecutionProxy(WorkerContext* workerContext)
     : m_workerContext(workerContext)
-    , m_disableEvalPending(false)
+    , m_disableEvalPending(String())
 {
     initIsolate();
 }
@@ -99,21 +99,8 @@ WorkerContextExecutionProxy::~WorkerContextExecutionProxy()
 
 void WorkerContextExecutionProxy::dispose()
 {
-    // Detach all events from their JS wrappers.
-    for (size_t eventIndex = 0; eventIndex < m_events.size(); ++eventIndex) {
-        Event* event = m_events[eventIndex];
-        if (forgetV8EventObject(event))
-          event->deref();
-    }
-    m_events.clear();
-
     m_perContextData.clear();
-
-    // Dispose the context.
-    if (!m_context.IsEmpty()) {
-        m_context.Dispose();
-        m_context.Clear();
-    }
+    m_context.clear();
 }
 
 void WorkerContextExecutionProxy::initIsolate()
@@ -122,8 +109,8 @@ void WorkerContextExecutionProxy::initIsolate()
     v8::V8::IgnoreOutOfMemoryException();
     v8::V8::SetFatalErrorHandler(reportFatalErrorInV8);
 
-    v8::V8::SetGlobalGCPrologueCallback(&V8GCController::gcPrologue);
-    v8::V8::SetGlobalGCEpilogueCallback(&V8GCController::gcEpilogue);
+    v8::V8::AddGCPrologueCallback(&V8GCController::gcPrologue);
+    v8::V8::AddGCEpilogueCallback(&V8GCController::gcEpilogue);
 
     // FIXME: Remove the following 2 lines when V8 default has changed.
     const char es5ReadonlyFlag[] = "--es5_readonly";
@@ -140,7 +127,7 @@ void WorkerContextExecutionProxy::initIsolate()
 bool WorkerContextExecutionProxy::initializeIfNeeded()
 {
     // Bail out if the context has already been initialized.
-    if (!m_context.IsEmpty())
+    if (!m_context.isEmpty())
         return true;
 
     // Setup the security handlers and message listener. This only has
@@ -151,16 +138,16 @@ bool WorkerContextExecutionProxy::initializeIfNeeded()
 
     // Create a new environment
     v8::Persistent<v8::ObjectTemplate> globalTemplate;
-    m_context = v8::Context::New(0, globalTemplate);
-    if (m_context.IsEmpty())
+    m_context.adopt(v8::Context::New(0, globalTemplate));
+    if (m_context.isEmpty())
         return false;
 
     // Starting from now, use local context only.
-    v8::Local<v8::Context> context = v8::Local<v8::Context>::New(m_context);
+    v8::Local<v8::Context> context = v8::Local<v8::Context>::New(m_context.get());
 
     v8::Context::Scope scope(context);
 
-    m_perContextData = V8PerContextData::create(m_context);
+    m_perContextData = V8PerContextData::create(m_context.get());
     if (!m_perContextData->init()) {
         dispose();
         return false;
@@ -195,15 +182,6 @@ bool WorkerContextExecutionProxy::initializeIfNeeded()
     return true;
 }
 
-bool WorkerContextExecutionProxy::forgetV8EventObject(Event* event)
-{
-    if (getDOMObjectMap().contains(event)) {
-        getDOMObjectMap().forget(event);
-        return true;
-    }
-    return false;
-}
-
 ScriptValue WorkerContextExecutionProxy::evaluate(const String& script, const String& fileName, const TextPosition& scriptStartPosition, WorkerContextExecutionState* state)
 {
     V8GCController::checkMemoryUsage();
@@ -213,12 +191,13 @@ ScriptValue WorkerContextExecutionProxy::evaluate(const String& script, const St
     if (!initializeIfNeeded())
         return ScriptValue();
 
-    if (m_disableEvalPending) {
+    if (!m_disableEvalPending.isEmpty()) {
         m_context->AllowCodeGenerationFromStrings(false);
-        m_disableEvalPending = false;
+        m_context->SetErrorMessageForCodeGenerationFromStrings(v8String(m_disableEvalPending));
+        m_disableEvalPending = String();
     }
 
-    v8::Context::Scope scope(m_context);
+    v8::Context::Scope scope(m_context.get());
 
     v8::TryCatch exceptionCatcher;
 
@@ -252,14 +231,9 @@ ScriptValue WorkerContextExecutionProxy::evaluate(const String& script, const St
     return ScriptValue(result);
 }
 
-void WorkerContextExecutionProxy::setEvalAllowed(bool enable)
+void WorkerContextExecutionProxy::setEvalAllowed(bool enable, const String& errorMessage)
 {
-    m_disableEvalPending = !enable;
-}
-
-void WorkerContextExecutionProxy::trackEvent(Event* event)
-{
-    m_events.append(event);
+    m_disableEvalPending = enable ? String() : errorMessage;
 }
 
 } // namespace WebCore

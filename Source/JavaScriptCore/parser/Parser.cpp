@@ -35,6 +35,28 @@
 #include <wtf/OwnPtr.h>
 #include <wtf/WTFThreadData.h>
 
+#define fail() do { if (!m_error) updateErrorMessage(); return 0; } while (0)
+#define failWithToken(tok) do { if (!m_error) updateErrorMessage(tok); return 0; } while (0)
+#define failWithMessage(msg) do { if (!m_error) updateErrorMessage(msg); return 0; } while (0)
+#define failWithNameAndMessage(before, name, after) do { if (!m_error) updateErrorWithNameAndMessage(before, name, after); return 0; } while (0)
+#define failWithStackOverflow() do { m_error = true; m_hasStackOverflow = true; return 0; } while (0)
+#define failIfFalse(cond) do { if (!(cond)) fail(); } while (0)
+#define failIfFalseWithMessage(cond, msg) do { if (!(cond)) failWithMessage(msg); } while (0)
+#define failIfFalseWithNameAndMessage(cond, before, name, msg) do { if (!(cond)) failWithNameAndMessage(before, name, msg); } while (0)
+#define failIfTrue(cond) do { if ((cond)) fail(); } while (0)
+#define failIfTrueWithMessage(cond, msg) do { if ((cond)) failWithMessage(msg); } while (0)
+#define failIfTrueWithNameAndMessage(cond, before, name, msg) do { if ((cond)) failWithNameAndMessage(before, name, msg); } while (0)
+#define failIfTrueIfStrict(cond) do { if ((cond) && strictMode()) fail(); } while (0)
+#define failIfTrueIfStrictWithMessage(cond, msg) do { if ((cond) && strictMode()) failWithMessage(msg); } while (0)
+#define failIfTrueIfStrictWithNameAndMessage(cond, before, name, after) do { if ((cond) && strictMode()) failWithNameAndMessage(before, name, after); } while (0)
+#define failIfFalseIfStrict(cond) do { if ((!(cond)) && strictMode()) fail(); } while (0)
+#define failIfFalseIfStrictWithMessage(cond, msg) do { if ((!(cond)) && strictMode()) failWithMessage(msg); } while (0)
+#define failIfFalseIfStrictWithNameAndMessage(cond, before, name, after) do { if ((!(cond)) && strictMode()) failWithNameAndMessage(before, name, after); } while (0)
+#define consumeOrFail(tokenType) do { if (!consume(tokenType)) failWithToken(tokenType); } while (0)
+#define consumeOrFailWithFlags(tokenType, flags) do { if (!consume(tokenType, flags)) failWithToken(tokenType); } while (0)
+#define matchOrFail(tokenType) do { if (!match(tokenType)) failWithToken(tokenType); } while (0)
+#define failIfStackOverflow() do { if (!canRecurse()) failWithStackOverflow(); } while (0)
+
 using namespace std;
 
 namespace JSC {
@@ -44,6 +66,7 @@ Parser<LexerType>::Parser(JSGlobalData* globalData, const SourceCode& source, Fu
     : m_globalData(globalData)
     , m_source(&source)
     , m_stack(wtfThreadData().stack())
+    , m_hasStackOverflow(false)
     , m_error(false)
     , m_errorMessage("Parse error")
     , m_allowsIn(true)
@@ -1366,10 +1389,10 @@ template <class TreeBuilder> TreeExpression Parser<LexerType>::parseStrictObject
         if (!m_syntaxAlreadyValidated) {
             ObjectValidationMap::AddResult propertyEntry = objectValidator.add(context.getName(property).impl(), context.getType(property));
             if (!propertyEntry.isNewEntry) {
-                failIfTrue(propertyEntry.iterator->second == PropertyNode::Constant);
+                failIfTrue(propertyEntry.iterator->value == PropertyNode::Constant);
                 failIfTrue(context.getType(property) == PropertyNode::Constant);
-                failIfTrue(context.getType(property) & propertyEntry.iterator->second);
-                propertyEntry.iterator->second |= context.getType(property);
+                failIfTrue(context.getType(property) & propertyEntry.iterator->value);
+                propertyEntry.iterator->value |= context.getType(property);
             }
         }
         tail = context.createPropertyList(propertyLocation, property, tail);

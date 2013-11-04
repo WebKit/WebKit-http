@@ -22,17 +22,10 @@
 #include "BlackBerryPlatformSettings.h"
 #include "IconDatabase.h"
 #include "WebSettings.h"
-#include "WebString.h"
 
 namespace WebCore {
 
-IconDatabaseClientBlackBerry* IconDatabaseClientBlackBerry::getInstance()
-{
-    static IconDatabaseClientBlackBerry* instance = 0;
-    if (!instance)
-        instance = new IconDatabaseClientBlackBerry();
-    return instance;
-}
+SINGLETON_INITIALIZER_THREADUNSAFE(IconDatabaseClientBlackBerry)
 
 bool IconDatabaseClientBlackBerry::initIconDatabase(const BlackBerry::WebKit::WebSettings* settings)
 {

@@ -22,7 +22,9 @@
 #ifndef WidthIterator_h
 #define WidthIterator_h
 
+#include "Font.h"
 #include "SVGGlyph.h"
+#include "TextRun.h"
 #include <wtf/HashSet.h>
 #include <wtf/Vector.h>
 #include <wtf/unicode/Unicode.h>
@@ -40,8 +42,8 @@ struct WidthIterator {
 public:
     WidthIterator(const Font*, const TextRun&, HashSet<const SimpleFontData*>* fallbackFonts = 0, bool accountForGlyphBounds = false, bool forTextEmphasis = false);
 
-    unsigned advance(int to, GlyphBuffer* = 0);
-    bool advanceOneCharacter(float& width, GlyphBuffer* = 0);
+    unsigned advance(int to, GlyphBuffer*);
+    bool advanceOneCharacter(float& width, GlyphBuffer&);
 
     float maxGlyphBoundingBoxY() const { ASSERT(m_accountForGlyphBounds); return m_maxGlyphBoundingBoxY; }
     float minGlyphBoundingBoxY() const { ASSERT(m_accountForGlyphBounds); return m_minGlyphBoundingBoxY; }
@@ -56,6 +58,18 @@ public:
     void setLastGlyphName(const String& name) { m_lastGlyphName = name; }
     Vector<SVGGlyph::ArabicForm>& arabicForms() { return m_arabicForms; }
 #endif
+
+    static bool supportsTypesettingFeatures(const Font& font)
+    {
+#if !PLATFORM(MAC) || __MAC_OS_X_VERSION_MIN_REQUIRED <= 1080
+        return !font.typesettingFeatures();
+#else
+        if (!font.isPrinterFont())
+            return !font.typesettingFeatures();
+
+        return !(font.typesettingFeatures() & ~(Kerning | Ligatures));
+#endif
+    }
 
     const Font* m_font;
 
@@ -78,6 +92,9 @@ private:
     template <typename TextIterator>
     inline unsigned advanceInternal(TextIterator&, GlyphBuffer*);
 
+    bool shouldApplyFontTransforms() const { return m_run.length() > 1 && (m_typesettingFeatures & (Kerning | Ligatures)); }
+
+    TypesettingFeatures m_typesettingFeatures;
     HashSet<const SimpleFontData*>* m_fallbackFonts;
     bool m_accountForGlyphBounds;
     float m_maxGlyphBoundingBoxY;

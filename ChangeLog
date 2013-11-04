@@ -1,3 +1,663 @@
+2012-10-26  Rob Buis  <rbuis@rim.com>
+
+        [BlackBerry] Platform Abstraction for WebKit Resource/Image Loading
+        https://bugs.webkit.org/show_bug.cgi?id=100518
+
+        PR 231732
+
+        Reviewed by Yong Li.
+
+        Remove RESOURCE_PATH from webkit, this is now abstracted in our platform layer.
+
+        * Source/cmake/OptionsBlackBerry.cmake:
+
+2012-10-26  Regina Chung  <heejin.r.chung@samsung.com>
+
+        [EFL][WK2] Enable WebGL
+        https://bugs.webkit.org/show_bug.cgi?id=97652
+
+        Reviewed by Gyuyoung Kim.
+
+        Use Graphics Surface to enable WebGL for WebKit2 EFL.
+
+        * Source/cmake/OptionsEfl.cmake:
+
+2012-10-26  Sheriff Bot  <webkit.review.bot@gmail.com>
+
+        Unreviewed, rolling out r132601.
+        http://trac.webkit.org/changeset/132601
+        https://bugs.webkit.org/show_bug.cgi?id=100494
+
+        It broke the Qt build (Requested by Ossy on #webkit).
+
+        * Source/cmake/OptionsEfl.cmake:
+
+2012-10-26  Regina Chung  <heejin.r.chung@samsung.com>
+
+        [EFL][WK2] Enable WebGL
+        https://bugs.webkit.org/show_bug.cgi?id=97652
+
+        Reviewed by Gyuyoung Kim.
+
+        Use Graphics Surface to enable WebGL for WebKit2 EFL.
+
+        * Source/cmake/OptionsEfl.cmake:
+
+2012-10-26  Thiago Marcos P. Santos  <thiago.santos@intel.com>
+
+        Add feature flags for CSS Device Adaptation
+        https://bugs.webkit.org/show_bug.cgi?id=95960
+
+        Reviewed by Kenneth Rohde Christiansen.
+
+        * Source/cmake/WebKitFeatures.cmake:
+        * Source/cmakeconfig.h.cmake:
+        * configure.ac:
+
+2012-10-25  Yael Aharon  <yael.aharon@intel.com>
+
+        [EFL][WK2][AC] Enable 3D_RENDERING flag
+        https://bugs.webkit.org/show_bug.cgi?id=99535
+
+        Reviewed by Laszlo Gombos.
+
+        Turn on the flag ENABLE_3D_RENDERING when WTF_USE_TILE_BACKING_STORE flag is on.
+        This flag controls perspective and preserves-3d behavior.
+
+        * Source/cmake/OptionsEfl.cmake:
+
+2012-10-25  Dominik Röttsches  <dominik.rottsches@intel.com>
+
+        Adding feature for XHR_TIMEOUT
+
+        Conditionalize XHR timeout support
+        https://bugs.webkit.org/show_bug.cgi?id=100356
+
+        Reviewed by Adam Barth.
+
+        Adding feature for XHR_TIMEOUT to disable it on ports that don't have
+        network backend support for setTimeoutInterval.
+
+        * Source/cmake/OptionsEfl.cmake: Default ON on EFL.
+        * Source/cmake/WebKitFeatures.cmake: Default OFF for any CMAKE based port.
+        * Source/cmakeconfig.h.cmake: Adding define.
+        * configure.ac: Make autogen.sh support the --enable/--disable-xhr-timeout parameter.
+
+2012-10-25  Mikhail Pozdnyakov  <mikhail.pozdnyakov@intel.com>
+
+        Add setMediaTypeOverride to window.internals.settings
+        https://bugs.webkit.org/show_bug.cgi?id=100249
+
+        Reviewed by Kenneth Rohde Christiansen.
+
+        Exported WebCore::Settings::setMediaTypeOverride(WTF::String const&) for GTK port.
+
+        * Source/autotools/symbols.filter:
+
+2012-10-24  Michael Carmody  <mcarmody@rim.com>
+
+        [BlackBerry] change CMAKE_<CCXX|C>_FLAGS_<RELEASE|DEBUG> from enviroment flags
+        https://bugs.webkit.org/show_bug.cgi?id=100256
+
+        Reviewed by Rob Buis.
+
+        This allow override of compile flags without having to edit CMake files.
+
+        * Source/cmake/OptionsBlackBerry.cmake:
+
+2012-10-24  Priit Laes  <plaes@plaes.org>
+
+        [GTK] ./configure output for CSS Shaders is broken
+        https://bugs.webkit.org/show_bug.cgi?id=100217
+
+        Reviewed by Martin Robinson.
+
+        Reformat CSS Filters / Shaders check to clean configure output.
+
+        * configure.ac:
+
+2012-10-24  Thiago Marcos P. Santos  <thiago.santos@intel.com>
+
+        [EFL] run-webkit-tests writes garbage on stderr when running on Xvfb
+        https://bugs.webkit.org/show_bug.cgi?id=100243
+
+        Reviewed by Kenneth Rohde Christiansen.
+
+        Search for X11 development libraries (and thus Xext), necessary to
+        disable the X extensions error reporting.
+
+        * Source/cmake/OptionsEfl.cmake:
+
+2012-10-24  Mario Sanchez Prada  <mario@webkit.org>
+
+        [WK2] [GTK] TestWebKitAccessibility is not being run
+        https://bugs.webkit.org/show_bug.cgi?id=100102
+
+        Reviewed by Carlos Garcia Campos.
+
+        Moved check for at-spi2 after the definition of enable_webkit2,
+        since it's only needed for WebKit2GTK API tests.
+
+        * configure.ac: Moved the check for at-spi2 down in the file.
+
+2012-10-23  Martin Robinson  <mrobinson@igalia.com>
+
+        POTFILES.in/.skip need updates for translators
+        https://bugs.webkit.org/show_bug.cgi?id=67580
+
+        Reviewed by Xan Lopez.
+
+        Now process POTFILES.in during configuration.
+
+        * configure.ac:
+
+2012-10-23  Kenneth Rohde Christiansen  <kenneth@webkit.org>
+
+        Add support for resolution media query
+        https://bugs.webkit.org/show_bug.cgi?id=99077
+
+        Reviewed by Antti Koivisto.
+
+        * Source/cmake/OptionsEfl.cmake:
+        * Source/cmake/WebKitFeatures.cmake:
+        * Source/cmakeconfig.h.cmake:
+
+            Add support for the RESOLUTION_MEDIA_QUERY feature flag.
+
+        * Source/autotools/symbols.filter:
+
+            Export the WebCore::Settings setting.
+
+2012-10-23  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Update NEWS and configure.ac for 1.11.1 release
+
+        * configure.ac: Bump version numbers.
+
+2012-10-23  Ryuan Choi  <ryuan.choi@samsung.com>
+
+        [EFL][WK2] Add support for IMF composition
+        https://bugs.webkit.org/show_bug.cgi?id=89552
+
+        Reviewed by Gyuyoung Kim.
+
+        * Source/cmake/FindEcore.cmake: Checked Ecore_IMF.
+
+2012-10-23  Andras Becsi  <andras.becsi@digia.com>
+
+        Remove devicePixelRatio from ViewportAttributes
+        https://bugs.webkit.org/show_bug.cgi?id=99845
+
+        Reviewed by Adam Barth.
+
+        * Source/autotools/symbols.filter: Update symbol.
+
+2012-10-22  Pavel Feldman  <pfeldman@chromium.org>
+
+        Web Inspector: merge "docked" state into the "dock side" enum.
+        https://bugs.webkit.org/show_bug.cgi?id=99717
+
+        Reviewed by Vsevolod Vlasov.
+
+        Otherwise, it is hard to manage these inter-dependent flags.
+
+        * Source/autotools/symbols.filter:
+
+2012-10-19  Tony Chang  <tony@chromium.org>
+
+        Unreviewed, rolling out r131936.
+        http://trac.webkit.org/changeset/131936
+        https://bugs.webkit.org/show_bug.cgi?id=99717
+
+        Broke the clang build
+
+        * Source/autotools/symbols.filter:
+
+2012-10-19  Dongwoo Joshua Im  <dw.im@samsung.com>
+
+        Rename ENABLE_CSS3_TEXT_DECORATION to ENABLE_CSS3_TEXT
+        https://bugs.webkit.org/show_bug.cgi?id=99804
+
+        Reviewed by Julien Chaffraix.
+
+        CSS3 text related properties will be implemented under this flag,
+        including text decoration, text-align-last, and text-justify.
+
+        * Source/cmake/OptionsEfl.cmake:
+        * Source/cmake/WebKitFeatures.cmake:
+        * Source/cmakeconfig.h.cmake:
+
+2012-10-18  Laszlo Gombos  <l.gombos@samsung.com>
+
+        [EFL] Buildfix if Netscape plugin support is disabled
+        https://bugs.webkit.org/show_bug.cgi?id=99757
+
+        Reviewed by Gyuyoung Kim.
+
+        Set ENABLE_PLUGIN_PROCESS only if ENABLE_NETSCAPE_PLUGIN_API is set.
+
+        * Source/cmake/OptionsEfl.cmake:
+
+2012-10-18  Pablo Flouret  <pablof@motorola.com>
+
+        Implement css3-conditional's @supports rule
+        https://bugs.webkit.org/show_bug.cgi?id=86146
+
+        Reviewed by Antti Koivisto.
+
+        * Source/cmake/WebKitFeatures.cmake:
+        * Source/cmakeconfig.h.cmake:
+        * configure.ac:
+            Add an ENABLE_CSS3_CONDITIONAL_RULES flag.
+
+2012-10-18  Simon Hausmann  <simon.hausmann@digia.com>
+
+        [Qt] Clean up variables controlling Qt module creation/handling
+
+        Reviewed by Tor Arne Vestbø.
+
+        We now depend on a Qt 5 version that is new enough to allow us to
+        clean this up. Qt's default_pre.prf uses MODULE_QMAKE_OUTDIR, but
+        the other MODULE_BASE_* variables are onl used in qmodule.prf.
+
+        * Source/api.pri:
+
+2012-10-17  Tor Arne Vestbø  <tor.arne.vestbo@digia.com>
+
+        [Qt] Modularize documentation for QtWebKit
+
+        Running 'make docs' would fail unless 'make qmake_all' was ran first,
+        but qmake_all involved generating all the derived sources, which seems
+        overly complex just for building documentation.
+
+        We solve this by preventing all subdirs except QtWebKit from having a
+        docs target. This would normally work fine on its own, but since we
+        use CONFIG += ordered, there's now a missing doc target for the
+        immediate dependency of the QtWebKit subdir. We solve this by adding
+        a dummy-target ourselves.
+
+        Finally, we clean up the qdocconf file to match the rest of the Qt
+        documentation modularization efforts.
+
+        Reviewed by Simon Hausmann.
+
+        * Source/QtWebKit.pro:
+        * Source/api.pri:
+        * Source/qtwebkit.qdocconf: Added.
+
+2012-10-17  Grzegorz Czajkowski  <g.czajkowski@samsung.com>, Michal Roj <m.roj@sasmung.com>
+
+        [WK2][EFL] Implementation of spellchecking feature.
+        https://bugs.webkit.org/show_bug.cgi?id=91854
+
+        Reviewed by Gyuyoung Kim.
+
+        Define SPELLCHECK macro and enable it for WK2-Efl.
+        The spellchecking implementation is based on the Enchant library.
+        It can be used by other WebKit ports.
+
+        * Source/cmake/FindEnchant.cmake: Added.
+        * Source/cmake/OptionsEfl.cmake: Enable spellchecking feature for WebKit2-EFL.
+        * Source/cmake/WebKitFeatures.cmake: Define the SPELLCHECK macro.
+        * Source/cmakeconfig.h.cmake: Add the feature.
+
+2012-10-16  Pablo Flouret  <pablof@motorola.com>
+
+        Pre-process CSSGrammar.y before running through bison.
+        https://bugs.webkit.org/show_bug.cgi?id=94290
+
+        Reviewed by Tony Chang.
+
+        * Source/cmake/WebKitMacros.cmake:
+            Use WebCore/css/makegrammar.pl to generate bison grammar files.
+
+2012-10-15  Jer Noble  <jer.noble@apple.com>
+
+        WebAudio: limit output level to 0db
+        https://bugs.webkit.org/show_bug.cgi?id=95792
+        <rdar://problem/11966135>
+
+        Reviewed by Chris Rogers.
+
+        Add a manual test to determine that output volume has been limited to 0db.
+
+        * ManualTests/webaudio/limit-level-0db.html: Added.
+
+2012-10-16  Simon Hausmann  <simon.hausmann@digia.com>
+
+        [Qt] Fix support for silent builds
+
+        Reviewed by Tor Arne Vestbø.
+
+        The .qmake.conf file in Qt modules usually contains a load(qt_build_config), which
+        ends up loading qmodule.pri, which contains the CONFIG += silent if Qt was configured
+        with -silent.
+
+        * .qmake.conf:
+
+2012-10-16  Simon Hausmann  <simon.hausmann@digia.com>, Tor Arne Vestbø <tor.arne.vestbo@digia.com>
+
+        [Qt] Add logic for triggering clean builds on changes to build system files
+
+        Reviewed by Csaba Osztrogonác.
+
+        Add a line here that can be re-used for recording dummy commits to count how the clean-build-needed
+        logic failed.
+
+        * WebKit.pro:
+
+2012-10-16  Simon Hausmann  <simon.hausmann@digia.com>
+
+        Unreviewed, rolling out r131436.
+        http://trac.webkit.org/changeset/131436
+
+        Broke various Qt bots strangely
+
+        * .qmake.conf:
+
+2012-10-16  Simon Hausmann  <simon.hausmann@digia.com>
+
+        [Qt] Fix support for silent builds
+
+        Reviewed by Tor Arne Vestbø.
+
+        The .qmake.conf file in Qt modules usually contains a load(qt_build_config), which
+        ends up loading qmodule.pri, which contains the CONFIG += silent if Qt was configured
+        with -silent.
+
+        * .qmake.conf:
+
+2012-10-15  Ryuan Choi  <ryuan.choi@samsung.com>
+
+        [EFL] Share resources installed for inspector
+        https://bugs.webkit.org/show_bug.cgi?id=98991
+
+        Reviewed by Gyuyoung Kim.
+
+        Now, WebKit1/Efl and WebKit2/Efl install same resources to different directory
+        when INSPECTOR is enabled.
+
+        This patch changes to install resources one time and share it.
+
+        * Source/PlatformEfl.cmake:
+        Extracted build scripts which install resources from WebKit/PlatformEfl.cmake.
+        * Source/cmake/OptionsEfl.cmake:
+
+2012-10-15  Simon Hausmann  <simon.hausmann@digia.com>
+
+        [Qt] Separate Qt WebKit into Qt WebKit and Qt WebKit Widgets
+        https://bugs.webkit.org/show_bug.cgi?id=88162
+
+        Reviewed by Kenneth Rohde Christiansen.
+
+        Rename the QtWebKit module to QtWebKitWidgets.
+
+        * Source/api.pri:
+        * Source/sync.profile:
+
+2012-10-14  Patrick Gansterer  <paroga@webkit.org>
+
+        Unreviewed, rolling out r130656.
+        http://trac.webkit.org/changeset/130656
+        https://bugs.webkit.org/show_bug.cgi?id=97592
+
+        Broke CMake build on Windows
+
+        * CMakeLists.txt:
+
+2012-10-12  Sheriff Bot  <webkit.review.bot@gmail.com>
+
+        Unreviewed, rolling out r131189.
+        http://trac.webkit.org/changeset/131189
+        https://bugs.webkit.org/show_bug.cgi?id=99187
+
+        Made inspector http tests crash on WK2. (Requested by rakuco
+        on #webkit).
+
+        * Source/PlatformEfl.cmake:
+        * Source/cmake/OptionsEfl.cmake:
+
+2012-10-12  Ryuan Choi  <ryuan.choi@samsung.com>
+
+        [EFL] Share resources installed for inspector
+        https://bugs.webkit.org/show_bug.cgi?id=98991
+
+        Reviewed by Gyuyoung Kim.
+
+        Now, WebKit1/Efl and WebKit2/Efl install same resources to different directory
+        when INSPECTOR is enabled.
+
+        This patch changes to install resources one time and share it.
+
+        * Source/PlatformEfl.cmake:
+        Extracted build scripts which install resources from WebKit/PlatformEfl.cmake.
+        * Source/cmake/OptionsEfl.cmake:
+
+2012-10-12  Balazs Kelemen  <kbalazs@webkit.org>
+
+        Unreviewed, rolling out r130389.
+        http://trac.webkit.org/changeset/130389
+        https://bugs.webkit.org/show_bug.cgi?id=98048
+
+        It broke chromium
+
+        * Source/autotools/symbols.filter:
+
+2012-10-11  Jinwoo Song  <jinwoo7.song@samsung.com>
+
+        [CMAKE] Add HIDDEN_PAGE_DOM_TIMER_THROTTLING feature
+        https://bugs.webkit.org/show_bug.cgi?id=99030
+
+        Reviewed by Laszlo Gombos.
+
+        Add HIDDEN_PAGE_DOM_TIMER_THROTTLING feature which throttles DOM timers
+        on hidden pages to WebKitFeatures.cmake and cmakeconfig.h.cmake.
+
+        * Source/cmake/WebKitFeatures.cmake:
+        * Source/cmakeconfig.h.cmake:
+
+2012-10-11  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Perf-o-matic build fixes.
+
+        Get the password from the first item of the array now that each JSON contains an array as
+        the top-level structure instead of a dictionary, which is the first item in the array.
+
+        Remove spaces after comma to save space in Runs objects to work-around the AppEngine's
+        object size limit. This should buy us a couple of days. We'll implement a proper fix later.
+
+        * Websites/webkit-perf.appspot.com/models.py:
+        (Runs.update_incrementally):
+        * Websites/webkit-perf.appspot.com/models_unittest.py:
+        (RunsTest.test_update_or_insert):
+        * Websites/webkit-perf.appspot.com/report_handler.py:
+        (ReportHandler.post):
+
+2012-10-10  Tony Chang  <tony@chromium.org>
+
+        Unreviewed, rolling out r130937, r130949, r130955, and
+        r130957.
+        http://trac.webkit.org/changeset/130937
+        http://trac.webkit.org/changeset/130949
+        http://trac.webkit.org/changeset/130955
+        http://trac.webkit.org/changeset/130957
+        https://bugs.webkit.org/show_bug.cgi?id=94290
+
+        Breaks Qt build
+
+        * Source/cmake/WebKitMacros.cmake:
+
+2012-10-10  Pablo Flouret  <pablof@motorola.com>
+
+        Pre-process CSSGrammar.y before running through bison.
+        https://bugs.webkit.org/show_bug.cgi?id=94290
+
+        Reviewed by Tony Chang.
+
+        * Source/cmake/WebKitMacros.cmake:
+            Use WebCore/css/makegrammar.pl to generate bison grammar files.
+
+2012-10-10  Simon Fraser  <simon.fraser@apple.com>
+
+        Attempt to fix gtk build which controls exports via this mysteriously-named
+        file.
+        
+        * Source/autotools/symbols.filter:
+
+2012-10-10  Shinya Kawanaka  <shinyak@chromium.org>
+
+        Needs internal API to return distributed nodes for InsertionPoint
+        https://bugs.webkit.org/show_bug.cgi?id=98868
+
+        Reviewed by Hajime Morita.
+
+        * Source/autotools/symbols.filter:
+
+2012-10-10  Yong Li  <yoli@rim.com>
+
+        [BlackBerry] Define WTF_USE_EXTRA_MACROS in cmake rather than Platform.h
+        https://bugs.webkit.org/show_bug.cgi?id=98819
+
+        Reviewed by Rob Buis.
+
+        And make it depend on SHARED_CORE
+        RIM PR# 221339.
+
+        * Source/cmake/OptionsBlackBerry.cmake:
+
+2012-10-10  Keishi Hattori  <keishi@webkit.org>
+
+        REGRESSION (r129738): Calendar picker is too wide when the input is rtl
+        https://bugs.webkit.org/show_bug.cgi?id=98881
+
+        Reviewed by kent Tamura.
+
+        * ManualTests/forms/calendar-picker.html: Added isCalendarRTL parameters.
+
+2012-10-10  Christophe Dumez  <christophe.dumez@intel.com>
+
+        [EFL][WK2] Port MiniBrowser to Elementary
+        https://bugs.webkit.org/show_bug.cgi?id=98748
+
+        Reviewed by Kenneth Rohde Christiansen.
+
+        Bump EFL librairies dependencies to v1.7
+        and add Elementary as optional dependency now
+        that it is needed to build MiniBrowser.
+
+        * Source/cmake/FindEet.cmake: Added.
+        * Source/cmake/FindElementary.cmake: Added.
+        * Source/cmake/OptionsEfl.cmake:
+
+2012-10-09  Simon Pena  <spena@igalia.com>
+
+        [GTK] Add support for running JavaScript from GResources
+        https://bugs.webkit.org/show_bug.cgi?id=98488
+
+        Reviewed by Carlos Garcia Campos.
+
+        GResources allow embedding certain resources, frequently used, in a "bundle"
+        which can be kept separated or stored in the binary. This patch adds
+        support for running JavaScript from GResources.
+
+        * configure.ac: Add support for compiling GResources
+
+2012-10-09  Zan Dobersek  <zandobersek@gmail.com>
+
+        Unreviewed GTK build fix after r130689.
+
+        Adding a required symbol to symbols.filter.
+
+        * Source/autotools/symbols.filter:
+
+2012-10-08  Laszlo Gombos  <l.gombos@samsung.com>
+
+        [EFL] Add minimum version information for tool dependencies
+        https://bugs.webkit.org/show_bug.cgi?id=97592
+
+        Reviewed by Kenneth Rohde Christiansen.
+
+        Capture the minimum version information for the tools that are required
+        to build the EFL port (or more generally WebKit).
+
+        * CMakeLists.txt:
+
+2012-10-08  Dongwoo Joshua Im  <dw.im@samsung.com>
+
+        [EFL] Fix build break when WEB_AUDIO is enabled.
+        https://bugs.webkit.org/show_bug.cgi?id=98635
+
+        Unreviewed build fix.
+
+        Build error is occurred because of the new flag, ENABLE_LEGACY_WEB_AUDIO,
+        which was introduced by https://bugs.webkit.org/show_bug.cgi?id=97050.
+
+        * Source/cmakeconfig.h.cmake: Add ENABLE_LEGACY_WEB_AUDIO.
+
+2012-10-08  Joone Hur  <joone.hur@intel.com>
+
+        [EFL] Add support for -webkit-sticky
+        https://bugs.webkit.org/show_bug.cgi?id=95182
+
+        Reviewed by Kenneth Rohde Christiansen.
+
+        Turn on CSS sticky position by default for WebKitEfl,
+        but most of the CSS sticky position test cases still do not pass on WK1.
+
+        * Source/cmake/OptionsEfl.cmake:
+
+2012-10-05  José Dapena Paz  <jdapena@igalia.com>
+
+        [GTK] Add support for creating EGL contexts
+        https://bugs.webkit.org/show_bug.cgi?id=77921
+
+        Reviewed by Martin Robinson.
+
+        This patch adds support for EGL, using OpenGL and OpenGL ES 2. Both
+        options are set up on compile time, with the configure options
+        --enable-egl and --enable-gles2.
+
+        The implementation only adds support for EGL on top of X11, to
+        isolate the changes to the minimum. More changes should come
+        later to enable EGL for other targets (as Wayland).
+
+        * GNUmakefile.am:
+        * configure.ac: new configure options --enable-egl and --enable-gles2.
+
+2012-10-04  Rob Buis  <rbuis@rim.com>
+
+        [BlackBerry] Sync up CMake files
+        https://bugs.webkit.org/show_bug.cgi?id=98442
+
+        Reviewed by Gyuyoung Kim.
+
+        Amongst others some internal paths changed.
+
+        * Source/cmake/OptionsBlackBerry.cmake:
+
+2012-10-04  Christophe Dumez  <christophe.dumez@intel.com>
+
+        [EFL] Add libxml 2.8.0 to jhbuild
+        https://bugs.webkit.org/show_bug.cgi?id=98418
+
+        Reviewed by Laszlo Gombos.
+
+        Bump dependency for libxml to 2.8.0 to match
+        jhbuild.
+
+        * Source/cmake/OptionsEfl.cmake:
+
+2012-10-04  Balazs Kelemen  <kbalazs@webkit.org>
+
+        Don't allow to disable compositing in forced compositing mode
+        https://bugs.webkit.org/show_bug.cgi?id=98048
+
+        Reviewed by Jocelyn Turcotte.
+
+        Export Settings::setAcceleratedCompositingEnabled because it has been deinlined.
+
+        * Source/autotools/symbols.filter:
+
 2012-10-03  Ryuan Choi  <ryuan.choi@samsung.com>
 
         [EFL] Default.edj should be generated although ENABLE_WEBKIT disabled.

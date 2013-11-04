@@ -32,13 +32,15 @@
 #include "WebViewHost.h"
 
 #include "DRTTestRunner.h"
-#include "EventSender.h"
 #include "MockGrammarCheck.h"
 #include "MockWebSpeechInputController.h"
 #include "MockWebSpeechRecognizer.h"
+#include "Task.h"
 #include "TestNavigationController.h"
 #include "TestShell.h"
 #include "TestWebPlugin.h"
+#include "WebAccessibilityController.h"
+#include "WebAccessibilityObject.h"
 #include "WebConsoleMessage.h"
 #include "WebContextMenuData.h"
 #include "WebDOMMessageEvent.h"
@@ -46,6 +48,7 @@
 #include "WebDeviceOrientationClientMock.h"
 #include "WebDocument.h"
 #include "WebElement.h"
+#include "WebEventSender.h"
 #include "WebFrame.h"
 #include "WebGeolocationClientMock.h"
 #include "WebHistoryItem.h"
@@ -86,6 +89,7 @@
 
 using namespace WebCore;
 using namespace WebKit;
+using namespace WebTestRunner;
 using namespace std;
 
 static const int screenWidth = 1920;
@@ -525,7 +529,7 @@ void WebViewHost::finishLastTextCheck()
         m_spellcheck.spellCheckWord(WebString(text.characters(), text.length()), &misspelledPosition, &misspelledLength);
         if (!misspelledLength)
             break;
-        Vector<WebString> suggestions;
+        WebVector<WebString> suggestions;
         m_spellcheck.fillSuggestionList(WebString(text.characters() + misspelledPosition, misspelledLength), &suggestions);
         results.append(WebTextCheckingResult(WebTextCheckingTypeSpelling, offset + misspelledPosition, misspelledLength,
                                              suggestions.isEmpty() ? WebString() : suggestions[0]));
@@ -575,16 +579,6 @@ bool WebViewHost::runModalBeforeUnloadDialog(WebFrame*, const WebString& message
 void WebViewHost::showContextMenu(WebFrame*, const WebContextMenuData& contextMenuData)
 {
     m_lastContextMenuData = adoptPtr(new WebContextMenuData(contextMenuData));
-}
-
-void WebViewHost::clearContextMenuData()
-{
-    m_lastContextMenuData.clear();
-}
-
-WebContextMenuData* WebViewHost::lastContextMenuData() const
-{
-    return m_lastContextMenuData.get();
 }
 
 void WebViewHost::setStatusText(const WebString& text)
@@ -702,6 +696,12 @@ void WebViewHost::postAccessibilityNotification(const WebAccessibilityObject& ob
     case WebAccessibilityNotificationInvalidStatusChanged:
         notificationName = "InvalidStatusChanged";
         break;
+    case WebAccessibilityNotificationTextChanged:
+        notificationName = "TextChanged";
+        break;
+    case WebAccessibilityNotificationAriaAttributeChanged:
+        notificationName = "AriaAttributeChanged";
+        break;
     default:
         notificationName = "UnknownNotification";
         break;
@@ -770,11 +770,6 @@ WebDeviceOrientationClientMock* WebViewHost::deviceOrientationClientMock()
 MockSpellCheck* WebViewHost::mockSpellCheck()
 {
     return &m_spellcheck;
-}
-
-void WebViewHost::fillSpellingSuggestionList(const WebKit::WebString& word, Vector<WebKit::WebString>* suggestions)
-{
-    mockSpellCheck()->fillSuggestionList(word, suggestions);
 }
 
 WebDeviceOrientationClient* WebViewHost::deviceOrientationClient()
@@ -1457,6 +1452,60 @@ void WebViewHost::deliveredIntentFailure(WebFrame* frame, int id, const WebSeria
     printf("Web intent failure for id %d\n", id);
 }
 
+// WebTestDelegate ------------------------------------------------------------
+
+WebContextMenuData* WebViewHost::lastContextMenuData() const
+{
+    return m_lastContextMenuData.get();
+}
+
+void WebViewHost::clearContextMenuData()
+{
+    m_lastContextMenuData.clear();
+}
+
+void WebViewHost::setEditCommand(const string& name, const string& value)
+{
+    m_editCommandName = name;
+    m_editCommandValue = value;
+}
+
+void WebViewHost::clearEditCommand()
+{
+    m_editCommandName.clear();
+    m_editCommandValue.clear();
+}
+
+void WebViewHost::fillSpellingSuggestionList(const WebKit::WebString& word, WebKit::WebVector<WebKit::WebString>* suggestions)
+{
+    mockSpellCheck()->fillSuggestionList(word, suggestions);
+}
+
+void WebViewHost::setGamepadData(const WebGamepads& pads)
+{
+    webkit_support::SetGamepadData(pads);
+}
+
+void WebViewHost::printMessage(const std::string& message)
+{
+    printf("%s", message.c_str());
+}
+
+void WebViewHost::postTask(WebTask* task)
+{
+    ::postTask(task);
+}
+
+void WebViewHost::postDelayedTask(WebTask* task, long long ms)
+{
+    ::postDelayedTask(task, ms);
+}
+
+WebString WebViewHost::registerIsolatedFileSystem(const WebVector<WebString>& absoluteFilenames)
+{
+    return webkit_support::RegisterIsolatedFileSystem(absoluteFilenames);
+}
+
 // Public functions -----------------------------------------------------------
 
 WebViewHost::WebViewHost(TestShell* shell)
@@ -1590,18 +1639,6 @@ void WebViewHost::waitForPolicyDelegate()
 {
     m_policyDelegateEnabled = true;
     m_policyDelegateShouldNotifyDone = true;
-}
-
-void WebViewHost::setEditCommand(const string& name, const string& value)
-{
-    m_editCommandName = name;
-    m_editCommandValue = value;
-}
-
-void WebViewHost::clearEditCommand()
-{
-    m_editCommandName.clear();
-    m_editCommandValue.clear();
 }
 
 void WebViewHost::loadURLForFrame(const WebURL& url, const WebString& frameName)
@@ -1774,7 +1811,7 @@ void WebViewHost::printFrameUserGestureStatus(WebFrame* webframe, const char* ms
 void WebViewHost::printResourceDescription(unsigned identifier)
 {
     ResourceMap::iterator it = m_resourceIdentifierMap.find(identifier);
-    printf("%s", it != m_resourceIdentifierMap.end() ? it->second.c_str() : "<unknown>");
+    printf("%s", it != m_resourceIdentifierMap.end() ? it->value.c_str() : "<unknown>");
 }
 
 void WebViewHost::setPendingExtraData(PassOwnPtr<TestShellExtraData> extraData)
@@ -1786,11 +1823,6 @@ void WebViewHost::setDeviceScaleFactor(float deviceScaleFactor)
 {
     webView()->setDeviceScaleFactor(deviceScaleFactor);
     discardBackingStore();
-}
-
-void WebViewHost::setGamepadData(const WebGamepads& pads)
-{
-    webkit_support::SetGamepadData(pads);
 }
 
 void WebViewHost::setPageTitle(const WebString&)

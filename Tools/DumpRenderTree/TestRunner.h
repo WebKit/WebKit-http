@@ -100,7 +100,7 @@ public:
     void setAutomaticLinkDetectionEnabled(bool flag);
     void setMainFrameIsFirstResponder(bool flag);
     void setMockDeviceOrientation(bool canProvideAlpha, double alpha, bool canProvideBeta, double beta, bool canProvideGamma, double gamma);
-    void setMockGeolocationPosition(double latitude, double longitude, double accuracy);
+    void setMockGeolocationPosition(double latitude, double longitude, double accuracy, bool providesAltitude, double altitude, bool providesAltitudeAccuracy, double altitudeAccuracy, bool providesHeading, double heading, bool providesSpeed, double speed);
     void setMockGeolocationPositionUnavailableError(JSStringRef message);
     void addMockSpeechInputResult(JSStringRef result, double confidence, JSStringRef language);
     void setMockSpeechInputDumpRect(bool flag);
@@ -335,8 +335,6 @@ public:
 
     // Simulate a request an embedding application could make, populating per-session credential storage.
     void authenticateSession(JSStringRef url, JSStringRef username, JSStringRef password);
-
-    JSRetainPtr<JSStringRef> layerTreeAsText() const;
 
     JSRetainPtr<JSStringRef> markerTextForListItem(JSContextRef, JSValueRef nodeObject) const;
 

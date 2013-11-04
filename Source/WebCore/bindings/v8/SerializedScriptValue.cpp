@@ -108,7 +108,7 @@ public:
     {
         typename HandleToT::iterator result = m_map.find(*handle);
         if (result != m_map.end()) {
-            *valueOut = result->second;
+            *valueOut = result->value;
             return true;
         }
         return false;
@@ -2208,7 +2208,7 @@ SerializedScriptValue::SerializedScriptValue()
 
 static void neuterBinding(void* domObject) 
 {
-    DOMDataList& allStores = DOMDataStore::allStores();
+    Vector<DOMDataStore*>& allStores = V8PerIsolateData::current()->allStores();
     for (size_t i = 0; i < allStores.size(); i++) {
         v8::Handle<v8::Object> obj = allStores[i]->domObjectMap().get(domObject);
         if (!obj.IsEmpty())

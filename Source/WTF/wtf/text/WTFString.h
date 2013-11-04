@@ -40,7 +40,6 @@ typedef const struct __CFString * CFStringRef;
 QT_BEGIN_NAMESPACE
 class QString;
 QT_END_NAMESPACE
-#include <QDataStream>
 #endif
 
 #if PLATFORM(WX)
@@ -53,8 +52,8 @@ class BString;
 
 #if PLATFORM(BLACKBERRY)
 namespace BlackBerry {
-namespace WebKit {
-    class WebString;
+namespace Platform {
+class String;
 }
 }
 #endif
@@ -419,8 +418,8 @@ public:
 #endif
 
 #if PLATFORM(BLACKBERRY)
-    String(const BlackBerry::WebKit::WebString&);
-    operator BlackBerry::WebKit::WebString() const;
+    String(const BlackBerry::Platform::String&);
+    operator BlackBerry::Platform::String() const;
 #endif
 
     WTF_EXPORT_STRING_API static String make8BitFrom16BitSource(const UChar*, size_t);
@@ -468,13 +467,11 @@ public:
     }
 
 private:
+    template <typename CharacterType>
+    void removeInternal(const CharacterType*, unsigned, int);
+
     RefPtr<StringImpl> m_impl;
 };
-
-#if PLATFORM(QT)
-QDataStream& operator<<(QDataStream& stream, const String& str);
-QDataStream& operator>>(QDataStream& stream, String& str);
-#endif
 
 inline bool operator==(const String& a, const String& b) { return equal(a.impl(), b.impl()); }
 inline bool operator==(const String& a, const LChar* b) { return equal(a.impl(), b); }

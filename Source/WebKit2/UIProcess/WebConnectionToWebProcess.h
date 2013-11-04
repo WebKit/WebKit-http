@@ -33,23 +33,21 @@ namespace WebKit {
 
 class WebProcessProxy;
 
-class WebConnectionToWebProcess : public WebConnection, CoreIPC::Connection::Client {
+class WebConnectionToWebProcess : public WebConnection, public CoreIPC::Connection::Client {
 public:
     static PassRefPtr<WebConnectionToWebProcess> create(WebProcessProxy*, CoreIPC::Connection::Identifier, WebCore::RunLoop*);
 
-    CoreIPC::Connection* connection() { return m_connection.get(); }
-
-    void invalidate();
-
+    WebProcessProxy* webProcessProxy() const { return m_process; }
 private:
     WebConnectionToWebProcess(WebProcessProxy*, CoreIPC::Connection::Identifier, WebCore::RunLoop*);
 
     // WebConnection
-    virtual void postMessage(const String&, APIObject*);
+    virtual void encodeMessageBody(CoreIPC::ArgumentEncoder&, APIObject*) OVERRIDE;
+    virtual bool decodeMessageBody(CoreIPC::ArgumentDecoder&, RefPtr<APIObject>&) OVERRIDE;
 
     // CoreIPC::Connection::Client
-    virtual void didReceiveMessage(CoreIPC::Connection*, CoreIPC::MessageID, CoreIPC::ArgumentDecoder*);
-    virtual void didReceiveSyncMessage(CoreIPC::Connection*, CoreIPC::MessageID, CoreIPC::ArgumentDecoder*, OwnPtr<CoreIPC::ArgumentEncoder>&);
+    virtual void didReceiveMessage(CoreIPC::Connection*, CoreIPC::MessageID, CoreIPC::MessageDecoder&);
+    virtual void didReceiveSyncMessage(CoreIPC::Connection*, CoreIPC::MessageID, CoreIPC::MessageDecoder&, OwnPtr<CoreIPC::MessageEncoder>&);
     virtual void didClose(CoreIPC::Connection*);
     virtual void didReceiveInvalidMessage(CoreIPC::Connection*, CoreIPC::MessageID);
 #if PLATFORM(WIN)
@@ -57,7 +55,6 @@ private:
 #endif
 
     WebProcessProxy* m_process;
-    RefPtr<CoreIPC::Connection> m_connection;
 };
 
 } // namespace WebKit

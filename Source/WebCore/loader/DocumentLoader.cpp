@@ -48,8 +48,8 @@
 #include "Logging.h"
 #include "MainResourceLoader.h"
 #include "Page.h"
+#include "ResourceBuffer.h"
 #include "Settings.h"
-#include "SharedBuffer.h"
 #include "TextResourceDecoder.h"
 #include "WebCoreMemoryInstrumentation.h"
 #include <wtf/Assertions.h>
@@ -87,6 +87,7 @@ static void setAllDefersLoading(const ResourceLoaderSet& loaders, bool defers)
 DocumentLoader::DocumentLoader(const ResourceRequest& req, const SubstituteData& substituteData)
     : m_deferMainResourceDataLoad(true)
     , m_frame(0)
+    , m_cachedResourceLoader(CachedResourceLoader::create(this))
     , m_writer(m_frame)
     , m_originalRequest(req)
     , m_substituteData(substituteData)
@@ -118,9 +119,10 @@ DocumentLoader::~DocumentLoader()
         m_iconLoadDecisionCallback->invalidate();
     if (m_iconDataCallback)
         m_iconDataCallback->invalidate();
+    m_cachedResourceLoader->clearDocumentLoader();
 }
 
-PassRefPtr<SharedBuffer> DocumentLoader::mainResourceData() const
+PassRefPtr<ResourceBuffer> DocumentLoader::mainResourceData() const
 {
     if (m_mainResourceData)
         return m_mainResourceData;
@@ -272,12 +274,6 @@ void DocumentLoader::stopLoading()
     m_isStopping = false;
 }
 
-void DocumentLoader::setupForReplace()
-{
-    frameLoader()->setupForReplace();
-    m_committed = false;
-}
-
 void DocumentLoader::commitIfReady()
 {
     if (!m_committed) {
@@ -340,8 +336,8 @@ void DocumentLoader::commitData(const char* bytes, size_t length)
 #endif
 
         // Call receivedFirstData() exactly once per load. We should only reach this point multiple times
-        // for multipart loads, and isReplacing() will be true after the first time.
-        if (!m_mainResourceLoader || !m_mainResourceLoader->isLoadingMultipartContent() || !frameLoader()->isReplacing())
+        // for multipart loads, and FrameLoader::isReplacing() will be true after the first time.
+        if (!isMultipartReplacingLoad())
             frameLoader()->receivedFirstData();
 
         bool userChosen = true;
@@ -385,41 +381,22 @@ void DocumentLoader::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
     info.addMember(m_mainResourceData);
 }
 
-bool DocumentLoader::doesProgressiveLoad(const String& MIMEType) const
-{
-    return !frameLoader()->isReplacing() || MIMEType == "text/html";
-}
-
 void DocumentLoader::receivedData(const char* data, int length)
 {
-    if (doesProgressiveLoad(m_response.mimeType()))
+    if (!isMultipartReplacingLoad())
         commitLoad(data, length);
 }
 
-void DocumentLoader::setupForReplaceByMIMEType(const String& newMIMEType)
+void DocumentLoader::setupForReplace()
 {
     if (!mainResourceData())
         return;
     
-    String oldMIMEType = m_response.mimeType();
-    
-    if (!doesProgressiveLoad(oldMIMEType)) {
-        frameLoader()->client()->revertToProvisionalState(this);
-        setupForReplace();
-        RefPtr<SharedBuffer> resourceData = mainResourceData();
-        commitLoad(resourceData->data(), resourceData->size());
-    }
-    
+    maybeFinishLoadingMultipartContent();
     maybeCreateArchive();
     m_writer.end();
-    
     frameLoader()->setReplacing();
     m_gotFirstByte = false;
-    
-    if (doesProgressiveLoad(newMIMEType)) {
-        frameLoader()->client()->revertToProvisionalState(this);
-        setupForReplace();
-    }
     
     stopLoadingSubresources();
     stopLoadingPlugIns();
@@ -488,7 +465,7 @@ bool DocumentLoader::isLoadingInAPISense() const
         Document* doc = m_frame->document();
         if ((m_mainResourceLoader || !m_frame->document()->loadEventFinished()) && isLoading())
             return true;
-        if (doc->cachedResourceLoader()->requestCount())
+        if (m_cachedResourceLoader->requestCount())
             return true;
         if (DocumentParser* parser = doc->parser())
             if (parser->processingData())
@@ -504,7 +481,8 @@ bool DocumentLoader::maybeCreateArchive()
 #else
     
     // Give the archive machinery a crack at this document. If the MIME type is not an archive type, it will return 0.
-    m_archive = ArchiveFactory::create(m_response.url(), mainResourceData().get(), m_response.mimeType());
+    RefPtr<ResourceBuffer> mainResourceBuffer = mainResourceData();
+    m_archive = ArchiveFactory::create(m_response.url(), mainResourceBuffer ? mainResourceBuffer->sharedBuffer() : 0, m_response.mimeType());
     if (!m_archive)
         return false;
     
@@ -582,11 +560,13 @@ ArchiveResource* DocumentLoader::archiveResourceForURL(const KURL& url) const
 PassRefPtr<ArchiveResource> DocumentLoader::mainResource() const
 {
     const ResourceResponse& r = response();
-    RefPtr<SharedBuffer> mainResourceBuffer = mainResourceData();
-    if (!mainResourceBuffer)
-        mainResourceBuffer = SharedBuffer::create();
+    
+    RefPtr<ResourceBuffer> mainResourceBuffer = mainResourceData();
+    RefPtr<SharedBuffer> data = mainResourceBuffer ? mainResourceBuffer->sharedBuffer() : 0;
+    if (!data)
+        data = SharedBuffer::create();
         
-    return ArchiveResource::create(mainResourceBuffer, r.url(), r.mimeType(), r.textEncodingName(), frame()->tree()->uniqueName());
+    return ArchiveResource::create(data, r.url(), r.mimeType(), r.textEncodingName(), frame()->tree()->uniqueName());
 }
 
 PassRefPtr<ArchiveResource> DocumentLoader::subresource(const KURL& url) const
@@ -594,7 +574,7 @@ PassRefPtr<ArchiveResource> DocumentLoader::subresource(const KURL& url) const
     if (!isCommitted())
         return 0;
     
-    CachedResource* resource = m_frame->document()->cachedResourceLoader()->cachedResource(url);
+    CachedResource* resource = m_cachedResourceLoader->cachedResource(url);
     if (!resource || !resource->isLoaded())
         return archiveResourceForURL(url);
 
@@ -603,11 +583,11 @@ PassRefPtr<ArchiveResource> DocumentLoader::subresource(const KURL& url) const
     if (!resource->makePurgeable(false))
         return 0;
 
-    RefPtr<SharedBuffer> data = resource->data();
+    ResourceBuffer* data = resource->resourceBuffer();
     if (!data)
         return 0;
 
-    return ArchiveResource::create(data.release(), url, resource->response());
+    return ArchiveResource::create(data->sharedBuffer(), url, resource->response());
 }
 
 void DocumentLoader::getSubresources(Vector<PassRefPtr<ArchiveResource> >& subresources) const
@@ -615,12 +595,10 @@ void DocumentLoader::getSubresources(Vector<PassRefPtr<ArchiveResource> >& subre
     if (!isCommitted())
         return;
 
-    Document* document = m_frame->document();
-
-    const CachedResourceLoader::DocumentResourceMap& allResources = document->cachedResourceLoader()->allCachedResources();
+    const CachedResourceLoader::DocumentResourceMap& allResources = m_cachedResourceLoader->allCachedResources();
     CachedResourceLoader::DocumentResourceMap::const_iterator end = allResources.end();
     for (CachedResourceLoader::DocumentResourceMap::const_iterator it = allResources.begin(); it != end; ++it) {
-        RefPtr<ArchiveResource> subresource = this->subresource(KURL(ParsedURLString, it->second->url()));
+        RefPtr<ArchiveResource> subresource = this->subresource(KURL(ParsedURLString, it->value->url()));
         if (subresource)
             subresources.append(subresource.release());
     }
@@ -652,8 +630,8 @@ void DocumentLoader::substituteResourceDeliveryTimerFired(Timer<DocumentLoader>*
 
     SubstituteResourceMap::const_iterator end = copy.end();
     for (SubstituteResourceMap::const_iterator it = copy.begin(); it != end; ++it) {
-        RefPtr<ResourceLoader> loader = it->first;
-        SubstituteResource* resource = it->second.get();
+        RefPtr<ResourceLoader> loader = it->key;
+        SubstituteResource* resource = it->value.get();
         
         if (resource) {
             SharedBuffer* data = resource->data();
@@ -859,10 +837,15 @@ bool DocumentLoader::isLoadingMultipartContent() const
     return m_mainResourceLoader && m_mainResourceLoader->isLoadingMultipartContent();
 }
 
+bool DocumentLoader::isMultipartReplacingLoad() const
+{
+    return isLoadingMultipartContent() && frameLoader()->isReplacing();
+}
+
 void DocumentLoader::startLoadingMainResource()
 {
     m_mainDocumentError = ResourceError();
-    timing()->markNavigationStart(m_frame);
+    timing()->markNavigationStart();
     ASSERT(!m_mainResourceLoader);
     m_mainResourceLoader = MainResourceLoader::create(m_frame);
 
@@ -888,12 +871,13 @@ void DocumentLoader::subresourceLoaderFinishedLoadingOnePart(ResourceLoader* loa
 
 void DocumentLoader::maybeFinishLoadingMultipartContent()
 {
-    if (!doesProgressiveLoad(m_response.mimeType())) {
-        frameLoader()->client()->revertToProvisionalState(this);
-        setupForReplace();
-        RefPtr<SharedBuffer> resourceData = mainResourceData();
-        commitLoad(resourceData->data(), resourceData->size());
-    }
+    if (!frameLoader()->isReplacing())
+        return;
+
+    frameLoader()->setupForReplace();
+    m_committed = false;
+    RefPtr<ResourceBuffer> resourceData = mainResourceData();
+    commitLoad(resourceData->data(), resourceData->size());
 }
 
 void DocumentLoader::iconLoadDecisionAvailable()

@@ -84,6 +84,17 @@ class ServerProcess(object):
         return self._pid
 
     def _reset(self):
+        if getattr(self, '_proc', None):
+            if self._proc.stdin:
+                self._proc.stdin.close()
+                self._proc.stdin = None
+            if self._proc.stdout:
+                self._proc.stdout.close()
+                self._proc.stdout = None
+            if self._proc.stderr:
+                self._proc.stderr.close()
+                self._proc.stderr = None
+
         self._proc = None
         self._output = str()  # bytesarray() once we require Python 2.6
         self._error = str()  # bytesarray() once we require Python 2.6
@@ -320,9 +331,13 @@ class ServerProcess(object):
             self._port.check_for_leaks(self.name(), self.pid())
 
         now = time.time()
-        self._proc.stdin.close()
+        if self._proc.stdin:
+            self._proc.stdin.close()
+            self._proc.stdin = None
+        killed = False
         if not timeout_secs:
             self._kill()
+            killed = True
         elif not self._host.platform.is_win():
             # FIXME: Why aren't we calling this on win?
             deadline = now + timeout_secs
@@ -331,13 +346,15 @@ class ServerProcess(object):
             if self._proc.poll() is None:
                 _log.warning('stopping %s timed out, killing it' % self._name)
                 self._kill()
+                killed = True
                 _log.warning('killed')
 
         # read any remaining data on the pipes and return it.
-        if self._use_win32_apis:
-            self._wait_for_data_and_update_buffers_using_win32_apis(now)
-        else:
-            self._wait_for_data_and_update_buffers_using_select(now, stopping=True)
+        if not killed:
+            if self._use_win32_apis:
+                self._wait_for_data_and_update_buffers_using_win32_apis(now)
+            else:
+                self._wait_for_data_and_update_buffers_using_select(now, stopping=True)
         out, err = self._output, self._error
         self._reset()
         return (out, err)

@@ -360,7 +360,7 @@ bool MediaPlayer::load(const KURL& url, const ContentType& contentType, const St
 
     // If the MIME type is missing or is not meaningful, try to figure it out from the URL.
     if (m_contentMIMEType.isEmpty() || m_contentMIMEType == applicationOctetStream() || m_contentMIMEType == textPlain()) {
-        if (protocolIs(m_url.string(), "data"))
+        if (m_url.protocolIsData())
             m_contentMIMEType = mimeTypeFromDataURL(m_url.string());
         else {
             String lastPathComponent = url.lastPathComponent();
@@ -1078,10 +1078,11 @@ void MediaPlayer::keyMessage(const String& keySystem, const String& sessionId, c
         m_mediaPlayerClient->mediaPlayerKeyMessage(this, keySystem, sessionId, message, messageLength);
 }
 
-void MediaPlayer::keyNeeded(const String& keySystem, const String& sessionId, const unsigned char* initData, unsigned initDataLength)
+bool MediaPlayer::keyNeeded(const String& keySystem, const String& sessionId, const unsigned char* initData, unsigned initDataLength)
 {
     if (m_mediaPlayerClient)
-        m_mediaPlayerClient->mediaPlayerKeyNeeded(this, keySystem, sessionId, initData, initDataLength);
+        return m_mediaPlayerClient->mediaPlayerKeyNeeded(this, keySystem, sessionId, initData, initDataLength);
+    return false;
 }
 #endif
 

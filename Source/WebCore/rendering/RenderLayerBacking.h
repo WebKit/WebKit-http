@@ -39,6 +39,7 @@ namespace WebCore {
 
 class KeyframeList;
 class RenderLayerCompositor;
+class TiledBacking;
 
 enum CompositingLayerType {
     NormalCompositingLayer, // non-tiled layer with backing store
@@ -87,6 +88,9 @@ public:
     bool hasScrollingLayer() const { return m_scrollingLayer; }
     GraphicsLayer* scrollingLayer() const { return m_scrollingLayer.get(); }
     GraphicsLayer* scrollingContentsLayer() const { return m_scrollingContentsLayer.get(); }
+
+    void attachToScrollingCoordinator(RenderLayerBacking* parent);
+    uint64_t scrollLayerID() const { return m_scrollLayerID; }
     
     bool hasMaskLayer() const { return m_maskLayer != 0; }
 
@@ -133,20 +137,25 @@ public:
     void updateAfterWidgetResize();
     void positionOverflowControlsLayers(const IntSize& offsetFromRoot);
 
+    bool usingTileCache() const { return m_usingTiledCacheLayer; }
+    TiledBacking* tiledBacking() const;
+    void adjustTileCacheCoverage();
+    
     // GraphicsLayerClient interface
-    virtual bool shouldUseTileCache(const GraphicsLayer*) const;
-    virtual bool usingTileCache(const GraphicsLayer*) const { return m_usingTiledCacheLayer; }
-    virtual void notifyAnimationStarted(const GraphicsLayer*, double startTime);
-    virtual void notifySyncRequired(const GraphicsLayer*);
+    virtual bool shouldUseTileCache(const GraphicsLayer*) const OVERRIDE;
+    virtual void notifyAnimationStarted(const GraphicsLayer*, double startTime) OVERRIDE;
+    virtual void notifyFlushRequired(const GraphicsLayer*) OVERRIDE;
+    virtual void notifyFlushBeforeDisplayRefresh(const GraphicsLayer*) OVERRIDE;
 
-    virtual void paintContents(const GraphicsLayer*, GraphicsContext&, GraphicsLayerPaintingPhase, const IntRect& clip);
+    virtual void paintContents(const GraphicsLayer*, GraphicsContext&, GraphicsLayerPaintingPhase, const IntRect& clip) OVERRIDE;
 
-    virtual float deviceScaleFactor() const;
-    virtual float pageScaleFactor() const;
-    virtual void didCommitChangesForLayer(const GraphicsLayer*) const;
+    virtual float deviceScaleFactor() const OVERRIDE;
+    virtual float pageScaleFactor() const OVERRIDE;
+    virtual void didCommitChangesForLayer(const GraphicsLayer*) const OVERRIDE;
+    virtual bool getCurrentTransform(const GraphicsLayer*, TransformationMatrix&) const OVERRIDE;
 
-    virtual bool showDebugBorders(const GraphicsLayer*) const;
-    virtual bool showRepaintCounter(const GraphicsLayer*) const;
+    virtual bool showDebugBorders(const GraphicsLayer*) const OVERRIDE;
+    virtual bool showRepaintCounter(const GraphicsLayer*) const OVERRIDE;
 
 #ifndef NDEBUG
     virtual void verifyNotPainting();
@@ -192,6 +201,8 @@ private:
     bool requiresVerticalScrollbarLayer() const;
     bool requiresScrollCornerLayer() const;
     bool updateScrollingLayers(bool scrollingLayers);
+
+    void detachFromScrollingCoordinator();
 
     GraphicsLayerPaintingPhase paintingPhaseForPrimaryLayer() const;
     
@@ -255,6 +266,8 @@ private:
 
     OwnPtr<GraphicsLayer> m_scrollingLayer; // only used if the layer is using composited scrolling.
     OwnPtr<GraphicsLayer> m_scrollingContentsLayer; // only used if the layer is using composited scrolling.
+
+    uint64_t m_scrollLayerID;
 
     IntRect m_compositedBounds;
 

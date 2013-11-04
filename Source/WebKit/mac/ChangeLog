@@ -1,1 +1,506 @@
+2012-10-26  Thiago Marcos P. Santos  <thiago.santos@intel.com>
+
+        Add feature flags for CSS Device Adaptation
+        https://bugs.webkit.org/show_bug.cgi?id=95960
+
+        Reviewed by Kenneth Rohde Christiansen.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2012-10-25  Dominik Röttsches  <dominik.rottsches@intel.com>
+
+        Conditionalize XHR timeout support
+        https://bugs.webkit.org/show_bug.cgi?id=100356
+
+        Reviewed by Adam Barth.
+
+        Adding XHR_TIMEOUT feature to conditionalize this on ports without network backend support.
+        Defaults to ON on Mac since the Mac NSUrlConnection based backend has setTimeoutInterval support.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2012-10-24  Timothy Hatcher  <timothy@apple.com>
+
+        Fix a crash seen during the Inspector tests on the WebKit1 bots.
+
+        Reviewed by Filip Pizlo.
+
+        * WebCoreSupport/WebInspectorClient.mm:
+        (WebInspectorFrontendClient::bringToFront): Use the window from the WebView since m_windowController's window
+        is not the same when the Inspector is docked.
+
+2012-10-24  Brady Eidson  <beidson@apple.com>
+
+        Add a strategy for loader customization.
+        https://bugs.webkit.org/show_bug.cgi?id=100278
+
+        Reviewed by Alexey Proskuryakov.
+
+        * WebCoreSupport/WebPlatformStrategies.h:
+        (WebPlatformStrategies):
+        * WebCoreSupport/WebPlatformStrategies.mm:
+        (WebPlatformStrategies::createLoaderStrategy):
+
+2012-10-24  Timothy Hatcher  <timothy@apple.com>
+
+        Make the Inspector WKView/WebView become the first responder when bringToFront is called.
+
+        https://bugs.webkit.org/show_bug.cgi?id=100209
+
+        Reviewed by Joseph Pecoraro.
+
+        * WebCoreSupport/WebInspectorClient.mm:
+        (WebInspectorFrontendClient::bringToFront): Make the Inspector WebView become the first responder.
+
+2012-10-23  Alexey Proskuryakov  <ap@apple.com>
+
+        Add a strategy for shared workers
+        https://bugs.webkit.org/show_bug.cgi?id=100165
+
+        Reviewed by Brady Eidson.
+
+        * WebCoreSupport/WebPlatformStrategies.h:
+        * WebCoreSupport/WebPlatformStrategies.mm:
+        (WebPlatformStrategies::createPasteboardStrategy):
+        (WebPlatformStrategies::createSharedWorkerStrategy):
+        (WebPlatformStrategies::createVisitedLinkStrategy):
+
+2012-10-24  Eric Carlson  <eric.carlson@apple.com>
+
+        Allow ports to override text track rendering style
+        https://bugs.webkit.org/show_bug.cgi?id=97800
+        <rdar://problem/12044964>
+
+        Reviewed by Maciej Stachowiak.
+
+        * WebCoreSupport/WebSystemInterface.mm:
+        (InitWebCoreSystemInterface): Initialize new WKSI function pointers.
+
+2012-10-23  Dan Bernstein  <mitz@apple.com>
+
+        WebKit/mac part of <rdar://problem/2966974> [mac] Kerning and ligatures are not enabled by default
+        https://bugs.webkit.org/show_bug.cgi?id=100188
+
+        Reviewed by Sam Weinig.
+
+        * WebView/WebView.mm:
+        (+[WebView initialize]): Added a local variable to hold the standard user defaults. Added
+        code to register a value of YES for the WebKitKerningAndLigaturesEnabledByDefault user
+        default. Changed to refer to that default key by name.
+
+2012-10-23  Kenneth Rohde Christiansen  <kenneth@webkit.org>
+
+        Add support for resolution media query
+        https://bugs.webkit.org/show_bug.cgi?id=99077
+
+        Reviewed by Antti Koivisto.
+
+        Add support for the RESOLUTION_MEDIA_QUERY feature flag.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2012-10-21  Andreas Kling  <kling@webkit.org>
+
+        Remove Page::javaScriptURLsAreAllowed setting.
+        <http://webkit.org/b/99944>
+
+        Reviewed by Anders Carlsson.
+
+        * WebKit.order:
+        * WebView/WebView.mm:
+        * WebView/WebViewPrivate.h:
+
+2012-10-19  Dongwoo Joshua Im  <dw.im@samsung.com>
+
+        Rename ENABLE_CSS3_TEXT_DECORATION to ENABLE_CSS3_TEXT
+        https://bugs.webkit.org/show_bug.cgi?id=99804
+
+        Reviewed by Julien Chaffraix.
+
+        CSS3 text related properties will be implemented under this flag,
+        including text decoration, text-align-last, and text-justify.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2012-10-18  Pablo Flouret  <pablof@motorola.com>
+
+        Implement css3-conditional's @supports rule
+        https://bugs.webkit.org/show_bug.cgi?id=86146
+
+        Reviewed by Antti Koivisto.
+
+        * Configurations/FeatureDefines.xcconfig:
+            Add an ENABLE_CSS3_CONDITIONAL_RULES flag.
+
+2012-10-17  Joseph Pecoraro  <pecoraro@apple.com>
+
+        [Mac] Uninitialized Members in WebDataSourcePrivate
+        https://bugs.webkit.org/show_bug.cgi?id=99617
+
+        Reviewed by David Kilzer.
+
+        Initialize BOOL member variables.
+
+        * WebView/WebDataSource.mm:
+        (WebDataSourcePrivate::WebDataSourcePrivate):
+
+2012-10-17  Mark Rowe  <mrowe@apple.com>
+
+        Fix the build with a newer version of clang.
+
+        Reviewed by Dan Bernstein.
+
+        Some of the methods in WebCoreStatistics appear to have been added by someone not familiar with Objective-C.
+        While it's technically valid to have empty components in a selector, it's rarely done and is not consistent
+        with our style guidelines. In this particular case it's also done in such a manner that it's ambiguous and
+        therefore generates a warning in newer versions of the compiler.
+
+        Fixes <rdar://problem/12503709>.
+
+        * Misc/WebCoreStatistics.h: Remove unused methods and rename the two poorly-named methods that remain.
+        * Misc/WebCoreStatistics.mm: Ditto.
+        (-[WebFrame numberOfPagesWithPageWidth:pageHeight:]):
+        (-[WebFrame printToCGContext:pageWidth:pageHeight:]):
+
+2012-10-16  Jian Li  <jianli@chromium.org>
+
+        Rename feature define ENABLE_WIDGET_REGION to ENABLE_DRAGGBALE_REGION
+        https://bugs.webkit.org/show_bug.cgi?id=98975
+
+        Reviewed by Adam Barth.
+
+        Renaming is needed to better match with the draggable region code.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2012-10-15  Dan Bernstein  <mitz@apple.com>
+
+        WebKit/mac part of <rdar://problem/12470680> Font’s fast code path doesn’t support kerning and ligatures
+        https://bugs.webkit.org/show_bug.cgi?id=99113
+
+        Reviewed by Tim Horton.
+
+        * WebCoreSupport/WebSystemInterface.mm:
+        (InitWebCoreSystemInterface): Added wkCTFontTransformGlyphs.
+
+2012-10-15  David Kilzer  <ddkilzer@apple.com>
+
+        Move framework and library linking into WebKit.xcconfig
+        <http://webkit.org/b/99284>
+
+        Reviewed by Mark Rowe.
+
+        * Configurations/WebKit.xcconfig: Move frameworks and libraries
+        link flags to OTHER_LDFLAGS so that they work for iOS and OS X.
+
+2012-10-14  Jon Lee  <jonlee@apple.com>
+
+        Allow notification origin permission request when no js callback is provided
+        https://bugs.webkit.org/show_bug.cgi?id=63615
+        <rdar://problem/11059590>
+
+        Reviewed by Sam Weinig.
+
+        Introduce a boolean to determine whether the request was using the legacy or standard API. This way,
+        we do not fall through to calling the standard API's callback if the legacy API's callback is null.
+
+        * WebCoreSupport/WebNotificationClient.mm:
+        (WebCore):
+        (-[WebNotificationPolicyListener initWithVoidCallback:]):
+        (-[WebNotificationPolicyListener allow]):
+        (-[WebNotificationPolicyListener deny]):
+
+2012-10-14  Sam Weinig  <sam@webkit.org>
+
+        Make UserScript and UserStyleSheet value objects that are copyable
+        https://bugs.webkit.org/show_bug.cgi?id=99275
+
+        Reviewed by Tim Horton.
+
+        * WebView/WebView.mm:
+        (-[WebView _injectMailQuirksScript]):
+        (-[WebView _injectOutlookQuirksScript]):
+        Update for new PageGroup function signatures.
+
+2012-10-10  Brady Eidson  <beidson@apple.com>
+
+        Switch ResourceLoader::resourceData() from SharedBuffer to ResourceBuffer
+        https://bugs.webkit.org/show_bug.cgi?id=98976
+
+        Reviewed by Anders Carlsson.
+
+        * WebView/WebDataSource.mm:
+        (-[WebDataSource data]):
+
+2012-10-10  Jer Noble  <jer.noble@apple.com>
+
+        Disallow full screen mode keyboard access by default.
+        https://bugs.webkit.org/show_bug.cgi?id=98971
+        <rdar://problem/12474226>
+
+        Reviewed by Sam Weinig.
+
+        Only support full screen if keyboard access is not requested.
+
+        * WebView/WebView.mm:
+        (-[WebView _supportsFullScreenForElement:WebCore::withKeyboard:]):
+
+2012-10-10  Jon Lee  <jonlee@apple.com>
+
+        [WK2] Activate plugins when user clicks on snapshot
+        https://bugs.webkit.org/show_bug.cgi?id=98328
+        <rdar://problem/12426681>
+
+        Reviewed by Brady Eidson.
+
+        * WebCoreSupport/WebFrameLoaderClient.h:
+        * WebCoreSupport/WebFrameLoaderClient.mm:
+        (WebFrameLoaderClient::recreatePlugin): Stub implementation of recreatePlugin().
+
+2012-10-10  Brady Eidson  <beidson@apple.com>
+
+        Switch CachedResource over from SharedBuffer to a new ResourceBuffer
+        https://bugs.webkit.org/show_bug.cgi?id=98541
+
+        Reviewed by Anders Carlsson.
+
+        * WebView/WebHTMLView.mm:
+        (-[WebHTMLView namesOfPromisedFilesDroppedAtDestination:]):
+
+2012-10-10  Simon Fraser  <simon.fraser@apple.com>
+
+        Store a visible rect in GraphicsLayers, and optionally dump it in layerTreeAsText
+        https://bugs.webkit.org/show_bug.cgi?id=98839
+
+        Reviewed by Sam Weinig.
+
+        To replace CATiledLayer with TileCaches, we need to be able to compute the visible part of a GraphicsLayer,
+        in order to limit the extent of TileCache tiles. Reuse the existing code in GraphicsLayerCA for this,
+        but store the computed rect in m_visibleRect.
+        
+        Add a flag to layerTreeAsText() so that tests can optionally include this visible rect in
+        layer tree dumps. This output will be platform-specific, so we don't want to do it unconditionally.
+
+        * WebView/WebFrame.mm:
+        (-[WebFrame _layerTreeAsText]):
+
+2012-10-09  Jian Li  <jianli@chromium.org>
+
+        Update the CSS property used to support draggable regions.
+        https://bugs.webkit.org/show_bug.cgi?id=97156
+
+        Reviewed by Adam Barth.
+
+        The CSS property to support draggable regions, guarded under
+        WIDGET_REGION is now disabled from Mac WebKit, in order not to cause
+        confusion with DASHBOARD_SUPPORT feature.
+
+        Also update the code to use the new name annotatedRegions to work for
+        both features.
+
+        * Configurations/FeatureDefines.xcconfig: Disable WIDGET_REGION feature.
+        * WebCoreSupport/WebChromeClient.h: Rename dashboardRegions to annotatedRegions.
+        * WebCoreSupport/WebChromeClient.mm: Rename dashboardRegions to annotatedRegions.
+        (WebChromeClient::annotatedRegionsChanged):
+        * WebView/WebView.mm: Rename dashboardRegions to annotatedRegions.
+        (-[WebView _dashboardRegions]):
+
+2012-10-09  Sheriff Bot  <webkit.review.bot@gmail.com>
+
+        Unreviewed, rolling out r130811 and r130821.
+        http://trac.webkit.org/changeset/130811
+        http://trac.webkit.org/changeset/130821
+        https://bugs.webkit.org/show_bug.cgi?id=98831
+
+        Broke date-suggestion-picker-appearance-with-scroll-bar.html
+        (Requested by abarth|gardening on #webkit).
+
+        * WebView/WebFullScreenController.mm:
+        (screenRectOfContents):
+        * WebView/WebRenderNode.mm:
+        (copyRenderNode):
+
+2012-10-08  Kiran Muppala  <cmuppala@apple.com>
+
+        Throttle DOM timers on hidden pages.
+        https://bugs.webkit.org/show_bug.cgi?id=98474
+
+        Reviewed by Maciej Stachowiak.
+
+        Add HIDDEN_PAGE_DOM_TIMER_THROTTLING feature define and provide a SPI for
+        DumpRenderTree to modify the visibility state of a page.  The latter
+        is needed to test throttling of timers on hidden pages through DumpRenderTree.
+
+        * Configurations/FeatureDefines.xcconfig:
+        * WebView/WebView.mm:
+        (-[WebView _setVisibilityState:isInitialState:]):
+        * WebView/WebViewPrivate.h:
+
+2012-10-07  Caio Marcelo de Oliveira Filho  <caio.oliveira@openbossa.org>
+
+        Rename first/second to key/value in HashMap iterators
+        https://bugs.webkit.org/show_bug.cgi?id=82784
+
+        Reviewed by Eric Seidel.
+
+        * History/WebHistory.mm:
+        (-[WebHistoryPrivate removeItemFromDateCaches:]):
+        (-[WebHistoryPrivate orderedLastVisitedDays]):
+        (WebHistoryWriter::WebHistoryWriter):
+        * Misc/WebCoreStatistics.mm:
+        (+[WebCoreStatistics javaScriptProtectedObjectTypeCounts]):
+        (+[WebCoreStatistics javaScriptObjectTypeCounts]):
+        * Plugins/Hosted/NetscapePluginHostManager.mm:
+        (WebKit::NetscapePluginHostManager::hostForPlugin):
+        (WebKit::NetscapePluginHostManager::pluginHostDied):
+        (WebKit::NetscapePluginHostManager::didCreateWindow):
+        * Plugins/Hosted/NetscapePluginHostProxy.mm:
+        (WebKit::NetscapePluginHostProxy::pluginHostDied):
+        * Plugins/Hosted/NetscapePluginInstanceProxy.mm:
+        (WebKit::NetscapePluginInstanceProxy::LocalObjectMap::idForObject):
+        (WebKit::NetscapePluginInstanceProxy::LocalObjectMap::retain):
+        (WebKit::NetscapePluginInstanceProxy::LocalObjectMap::release):
+        (WebKit::NetscapePluginInstanceProxy::LocalObjectMap::forget):
+        (WebKit::NetscapePluginInstanceProxy::destroy):
+        (WebKit::NetscapePluginInstanceProxy::webFrameDidFinishLoadWithReason):
+        (WebKit::NetscapePluginInstanceProxy::cancelCheckIfAllowedToLoadURL):
+        * Plugins/Hosted/ProxyInstance.mm:
+        (WebKit::ProxyInstance::methodNamed):
+        (WebKit::ProxyInstance::fieldNamed):
+        * Plugins/WebNetscapePluginView.mm:
+        (-[WebNetscapePluginView stopTimers]):
+        (-[WebNetscapePluginView startTimers]):
+        * WebCoreSupport/WebNotificationClient.mm:
+        (WebNotificationClient::show):
+        (WebNotificationClient::clearNotifications):
+        (WebNotificationClient::notificationObjectDestroyed):
+        * WebView/WebHTMLView.mm:
+        (commandNameForSelector):
+
+2012-10-06  Dan Bernstein  <mitz@apple.com>
+
+        WebKit/mac part of <rdar://problem/12446507> [mac] WebKit clients cannot change the behavior of text-rendering: auto
+        https://bugs.webkit.org/show_bug.cgi?id=98601
+
+        Reviewed by Darin Adler.
+
+        * WebView/WebView.mm:
+        (+[WebView initialize]): Added a call to Font::setDefaultTypesettingFeatures() to enable
+        kerning and ligatures if the WebKitKerningAndLigaturesEnabledByDefault user default key has
+        the value YES.
+
+2012-10-05  Sheriff Bot  <webkit.review.bot@gmail.com>
+
+        Unreviewed, rolling out r130556 and r130564.
+        http://trac.webkit.org/changeset/130556
+        http://trac.webkit.org/changeset/130564
+        https://bugs.webkit.org/show_bug.cgi?id=98572
+
+        The patch wasn't reviewed by a reviewer and it is breaking
+        Chromium Windows (Requested by jchaffraix on #webkit).
+
+        * WebCoreSupport/WebSystemInterface.mm:
+        (InitWebCoreSystemInterface):
+
+2012-10-05  Tim Horton  <timothy_horton@apple.com>
+
+        [cg] GraphicsContextCG should ask CG whether the shadow offset workaround is required
+        https://bugs.webkit.org/show_bug.cgi?id=98565
+        <rdar://problem/12436468>
+
+        Reviewed by Simon Fraser.
+
+        Add wkCGContextDrawsWithCorrectShadowOffsets.
+
+        * WebCoreSupport/WebSystemInterface.mm:
+        (InitWebCoreSystemInterface):
+
+2012-10-04  Eric Carlson  <eric.carlson@apple.com>
+
+        Allow ports to override text track rendering style
+        https://bugs.webkit.org/show_bug.cgi?id=97800
+        <rdar://problem/12044964>
+
+        Reviewed by Silvia Pfeiffer.
+
+        Add WCSI support for new WKSI caption functions.
+
+        * WebCoreSupport/WebSystemInterface.mm:
+        (InitWebCoreSystemInterface): Initialize new WKSI function pointers.
+
+2012-10-04  Jon Lee  <jonlee@apple.com>
+
+        Add a setting to enable plugin snapshotting
+        https://bugs.webkit.org/show_bug.cgi?id=98319
+        <rdar://problem/12426480>
+
+        Reviewed by Brady Eidson.
+
+        Expose plugInSnapshottingEnabled preference to WebKit clients.
+
+        * WebView/WebPreferenceKeysPrivate.h: Add WebKitPlugInSnapshottingEnabled key.
+        * WebView/WebPreferences.mm:
+        (+[WebPreferences initialize]): Setting is turned off by default.
+        (-[WebPreferences plugInSnapshottingEnabled]):
+        (-[WebPreferences setPlugInSnapshottingEnabled:]):
+        * WebView/WebPreferencesPrivate.h:
+        * WebView/WebView.mm:
+        (-[WebView _preferencesChanged:]): Update settings based on preference.
+
+2012-10-04  Rik Cabanier  <cabanier@adobe.com>
+
+        Turn Compositing on by default in WebKit build
+        https://bugs.webkit.org/show_bug.cgi?id=98315
+
+        Reviewed by Simon Fraser.
+
+        enable -webkit-blend-mode on trunk.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2012-10-04  Simon Fraser  <simon.fraser@apple.com>
+
+        Final part of "sync" to "flush" renaming
+        https://bugs.webkit.org/show_bug.cgi?id=98430
+
+        Reviewed by Tim Horton.
+
+        Change method names on GraphicsLayer and GraphicsLayerClient that
+        refer to "sync" to use the term "flush" instead, to be consistent
+        with the rest of the code.
+
+        * WebView/WebView.mm:
+
+2012-10-03  Benjamin Poulain  <bpoulain@apple.com>
+
+        [WK2] Support all attributes of GeolocationPosition
+        https://bugs.webkit.org/show_bug.cgi?id=98212
+
+        Reviewed by Sam Weinig.
+
+        Add an internal constructor for the sake of testing.
+        A similar API is used on iOS.
+
+        * WebView/WebGeolocationPosition.mm:
+        (-[WebGeolocationPosition initWithGeolocationPosition:]):
+
+2012-10-04  Simon Fraser  <simon.fraser@apple.com>
+
+        Standardize on "flush" terminology for compositing layer flushing/syncing
+        https://bugs.webkit.org/show_bug.cgi?id=98321
+
+        Reviewed by Simon Fraser.
+
+        Rename compositing-related methods that refer to "syncing" to instead
+        refer to "flushing".
+
+        * WebCoreSupport/WebChromeClient.h:
+        * WebCoreSupport/WebChromeClient.mm:
+        (WebChromeClient::scheduleCompositingLayerFlush):
+        * WebView/WebView.mm:
+        (-[WebView _flushCompositingChanges]):
+        (LayerFlushController::flushLayers):
+        (-[WebView _scheduleCompositingLayerFlush]):
+        * WebView/WebViewInternal.h:
+
 == Rolled over to ChangeLog-2012-10-02 ==

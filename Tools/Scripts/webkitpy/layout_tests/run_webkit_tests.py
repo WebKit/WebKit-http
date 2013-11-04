@@ -67,19 +67,20 @@ def lint(port, options):
     lint_failed = False
 
     for port_to_lint in ports_to_lint:
-        expectations_file = port_to_lint.path_to_test_expectations_file()
-        if expectations_file in files_linted:
-            continue
+        expectations_dict = port_to_lint.expectations_dict()
+        for expectations_file in expectations_dict.keys():
+            if expectations_file in files_linted:
+                continue
 
-        try:
-            test_expectations.TestExpectations(port_to_lint, is_lint_mode=True)
-        except test_expectations.ParseError, e:
-            lint_failed = True
-            _log.error('')
-            for warning in e.warnings:
-                _log.error(warning)
-            _log.error('')
-        files_linted.add(expectations_file)
+            try:
+                test_expectations.TestExpectations(port_to_lint, expectations_to_lint={expectations_file: expectations_dict[expectations_file]})
+            except test_expectations.ParseError, e:
+                lint_failed = True
+                _log.error('')
+                for warning in e.warnings:
+                    _log.error(warning)
+                _log.error('')
+            files_linted.add(expectations_file)
 
     if lint_failed:
         _log.error('Lint failed.')
@@ -129,6 +130,9 @@ def _set_up_derived_options(port, options):
     if not options.child_processes:
         options.child_processes = os.environ.get("WEBKIT_TEST_CHILD_PROCESSES",
                                                  str(port.default_child_processes()))
+    if not options.max_locked_shards:
+        options.max_locked_shards = int(os.environ.get("WEBKIT_TEST_MAX_LOCKED_SHARDS",
+                                                       str(port.default_max_locked_shards())))
 
     if not options.configuration:
         options.configuration = port.default_configuration()
@@ -375,7 +379,11 @@ def parse_args(args=None):
         optparse.make_option("--test-list", action="append",
             help="read list of tests to run from file", metavar="FILE"),
         optparse.make_option("--skipped", action="store", default="default",
-            help="control how tests marked SKIP are run. 'default' == Skip, 'ignore' == Run them anyway, 'only' == only run the SKIP tests."),
+            help=("control how tests marked SKIP are run. "
+                 "'default' == Skip tests unless explicitly listed on the command line, "
+                 "'ignore' == Run them anyway, "
+                 "'only' == only run the SKIP tests, "
+                 "'always' == always skip, even if listed on the command line.")),
         optparse.make_option("--force", dest="skipped", action="store_const", const='ignore',
             help="Run all tests, even those marked SKIP in the test list (same as --skipped=ignore)"),
         optparse.make_option("--time-out-ms",
@@ -412,7 +420,7 @@ def parse_args(args=None):
         optparse.make_option("--no-retry-failures", action="store_false",
             dest="retry_failures",
             help="Don't re-try any tests that produce unexpected results."),
-        optparse.make_option("--max-locked-shards", type="int", default=1,
+        optparse.make_option("--max-locked-shards", type="int", default=0,
             help="Set the maximum number of locked shards"),
         optparse.make_option("--additional-env-var", type="string", action="append", default=[],
             help="Passes that environment variable to the tests (--additional-env-var=NAME=VALUE)"),

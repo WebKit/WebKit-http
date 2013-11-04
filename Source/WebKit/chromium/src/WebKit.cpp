@@ -31,6 +31,7 @@
 #include "config.h"
 #include "WebKit.h"
 
+#include "ImageDecodingStore.h"
 #include "LayoutTestSupport.h"
 #include "Logging.h"
 #include "MutationObserver.h"
@@ -44,10 +45,10 @@
 #include "WebSocket.h"
 #include "WorkerContextExecutionProxy.h"
 #include "platform/WebKitPlatformSupport.h"
-#include "platform/WebThread.h"
 #include "v8.h"
 #include <public/Platform.h>
 #include <public/WebPrerenderingSupport.h>
+#include <public/WebThread.h>
 #include <wtf/Assertions.h>
 #include <wtf/MainThread.h>
 #include <wtf/Threading.h>
@@ -165,6 +166,7 @@ void shutdown()
     }
 #endif
     s_webKitPlatformSupport = 0;
+    WebCore::ImageDecodingStore::shutdown();
     Platform::shutdown();
     WebPrerenderingSupport::shutdown();
 }

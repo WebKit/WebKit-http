@@ -30,6 +30,7 @@
 #include "InspectorInstrumentation.h"
 #include "ScheduledAction.h"
 #include "ScriptExecutionContext.h"
+#include <wtf/CurrentTime.h>
 #include <wtf/HashSet.h>
 #include <wtf/StdLibExtras.h>
 
@@ -40,7 +41,6 @@ namespace WebCore {
 static const int maxIntervalForUserGestureForwarding = 1000; // One second matches Gecko.
 static const int maxTimerNestingLevel = 5;
 static const double oneMillisecond = 0.001;
-double DOMTimer::s_minDefaultTimerInterval = 0.010; // 10 milliseconds
 
 static int timerNestingLevel = 0;
     
@@ -190,6 +190,21 @@ double DOMTimer::intervalClampedToMinimum(int timeout, double minimumTimerInterv
     if (intervalMilliseconds < minimumTimerInterval && m_nestingLevel >= maxTimerNestingLevel)
         intervalMilliseconds = minimumTimerInterval;
     return intervalMilliseconds;
+}
+
+double DOMTimer::alignedFireTime(double fireTime) const
+{
+    double alignmentInterval = scriptExecutionContext()->timerAlignmentInterval();
+    if (alignmentInterval) {
+        double currentTime = monotonicallyIncreasingTime();
+        if (fireTime <= currentTime)
+            return fireTime;
+
+        double alignedTime = ceil(fireTime / alignmentInterval) * alignmentInterval;
+        return alignedTime;
+    }
+
+    return fireTime;
 }
 
 } // namespace WebCore

@@ -28,11 +28,10 @@
 
 #include "WebBackForwardList.h"
 #include "WebKitBackForwardList.h"
-#include <WebKit2/WebKit2_C.h>
 
-WebKitBackForwardList* webkitBackForwardListCreate(WKBackForwardListRef);
-WebKitBackForwardListItem* webkitBackForwardListItemGetOrCreate(WKBackForwardListItemRef);
-WKBackForwardListItemRef webkitBackForwardListItemGetWKItem(WebKitBackForwardListItem*);
-void webkitBackForwardListChanged(WebKitBackForwardList*, WKBackForwardListItemRef wkAddedItem, WKArrayRef wkRemovedItems);
+WebKitBackForwardList* webkitBackForwardListCreate(WebKit::WebBackForwardList*);
+WebKitBackForwardListItem* webkitBackForwardListItemGetOrCreate(WebKit::WebBackForwardListItem*);
+WebKit::WebBackForwardListItem* webkitBackForwardListItemGetItem(WebKitBackForwardListItem*);
+void webkitBackForwardListChanged(WebKitBackForwardList*, WebKit::WebBackForwardListItem* webAddedItem, WebKit::ImmutableArray* webRemovedItems);
 
 #endif // WebKitBackForwardListPrivate_h

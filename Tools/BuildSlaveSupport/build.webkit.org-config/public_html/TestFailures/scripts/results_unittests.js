@@ -84,7 +84,7 @@ unittest.kExampleResultsJSON = {
     "revision": "90430"
 };
 
-test("ResultAnalyzer", 35, function() {
+test("ResultAnalyzer", 55, function() {
     var analyzer;
 
     analyzer = new results.ResultAnalyzer({expected: 'PASS', actual: 'TEXT'});
@@ -130,6 +130,34 @@ test("ResultAnalyzer", 35, function() {
     ok(analyzer.flaky());
 
     analyzer = new results.ResultAnalyzer({expected: 'FAIL', actual: 'TIMEOUT'});
+    ok(!analyzer.expectedToSucceed());
+    ok(analyzer.hasUnexpectedFailures());
+    deepEqual(analyzer.unexpectedResults(), ['TIMEOUT']);
+    ok(!analyzer.succeeded());
+    ok(!analyzer.flaky());
+
+    analyzer = new results.ResultAnalyzer({expected: 'FAIL', actual: 'IMAGE'});
+    ok(!analyzer.expectedToSucceed());
+    ok(analyzer.hasUnexpectedFailures());
+    deepEqual(analyzer.unexpectedResults(), ['IMAGE']);
+    ok(!analyzer.succeeded());
+    ok(!analyzer.flaky());
+
+    analyzer = new results.ResultAnalyzer({expected: 'FAIL', actual: 'AUDIO'});
+    ok(!analyzer.expectedToSucceed());
+    ok(!analyzer.hasUnexpectedFailures());
+    deepEqual(analyzer.unexpectedResults(), []);
+    ok(!analyzer.succeeded());
+    ok(!analyzer.flaky());
+
+    analyzer = new results.ResultAnalyzer({expected: 'FAIL', actual: 'TEXT'});
+    ok(!analyzer.expectedToSucceed());
+    ok(!analyzer.hasUnexpectedFailures());
+    deepEqual(analyzer.unexpectedResults(), []);
+    ok(!analyzer.succeeded());
+    ok(!analyzer.flaky());
+
+    analyzer = new results.ResultAnalyzer({expected: 'FAIL', actual: 'IMAGE+TEXT'});
     ok(!analyzer.expectedToSucceed());
     ok(!analyzer.hasUnexpectedFailures());
     deepEqual(analyzer.unexpectedResults(), []);
@@ -503,6 +531,78 @@ test("fetchResultsURLs", 5, function() {
         "http://build.chromium.org/f/chromium/layout_test_results/Mock_Builder/results/layout-test-results/userscripts/taco-expected.txt",
         "http://build.chromium.org/f/chromium/layout_test_results/Mock_Builder/results/layout-test-results/userscripts/taco-diff.txt",
     ]);
+});
+
+test("fetchResultsByBuilder", 5, function() {
+    var simulator = new NetworkSimulator();
+
+    var probedURLs = [];
+    simulator.jsonp = function(url, callback)
+    {
+        simulator.scheduleCallback(function() {
+            probedURLs.push(url);
+            if (base.endsWith(url, 'MockBuilder2/r1%20(1)/full_results.json'))
+                callback({'MockBuildResults': true});
+            else
+                callback({});
+        });
+    };
+
+    config.currentPlatform = 'gtk';
+
+    var oldCachedBuildInfos = builders.cachedBuildInfos;
+    builders.cachedBuildInfos = function(platform, builderName, callback) {
+        callback(
+        {
+            1: {
+                sourceStamp: {
+                    revision: 1
+                }
+            },
+            2: {
+                sourceStamp: {
+                    revision: 2
+                }
+            }
+
+        });
+    };
+
+    var oldRecentBuildInfos = builders.recentBuildInfos;
+    builders.recentBuildInfos = function(callback) {
+        callback({
+            'MockBuilder1': true,
+            'MockBuilder2': true
+        });
+    };
+
+    simulator.runTest(function() {
+        results.fetchResultsByBuilder(['MockBuilder1', 'MockBuilder2'], function(resultsByBuilder) {
+            deepEqual(resultsByBuilder, {
+                "MockBuilder2": {
+                    "MockBuildResults": true,
+                    "_buildLocation": {
+                        "buildNumber": "1",
+                        "revision": 1,
+                        "url": "http://build.webkit.org/results/MockBuilder2/r1%20(1)/full_results.json"
+                    }
+                }
+            });
+        });
+    });
+
+    deepEqual(probedURLs, [
+        "http://build.webkit.org/results/MockBuilder1/r2%20(2)/full_results.json",
+        "http://build.webkit.org/results/MockBuilder2/r2%20(2)/full_results.json",
+        "http://build.webkit.org/results/MockBuilder1/r1%20(1)/full_results.json",
+        "http://build.webkit.org/results/MockBuilder2/r1%20(1)/full_results.json"
+    ]);
+
+    builders.cachedBuildInfos = oldCachedBuildInfos;
+    equal(builders.cachedBuildInfos, oldCachedBuildInfos, "Failed to restore real base!");
+
+    builders.recentBuildInfos = oldRecentBuildInfos;
+    equal(builders.recentBuildInfos, oldRecentBuildInfos, "Failed to restore real base!");
 });
 
 })();

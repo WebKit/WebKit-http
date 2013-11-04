@@ -48,7 +48,7 @@ namespace WebKit {
 struct WebProcessCreationParameters {
     WebProcessCreationParameters();
 
-    void encode(CoreIPC::ArgumentEncoder*) const;
+    void encode(CoreIPC::ArgumentEncoder&) const;
     static bool decode(CoreIPC::ArgumentDecoder*, WebProcessCreationParameters&);
 
     String injectedBundlePath;
@@ -60,6 +60,10 @@ struct WebProcessCreationParameters {
     SandboxExtension::Handle databaseDirectoryExtensionHandle;
     String localStorageDirectory;
     SandboxExtension::Handle localStorageDirectoryExtensionHandle;
+    String diskCacheDirectory;
+    SandboxExtension::Handle diskCacheDirectoryExtensionHandle;
+    String cookieStorageDirectory;
+    SandboxExtension::Handle cookieStorageDirectoryExtensionHandle;
 
     Vector<String> urlSchemesRegistererdAsEmptyDocument;
     Vector<String> urlSchemesRegisteredAsSecure;
@@ -68,9 +72,6 @@ struct WebProcessCreationParameters {
     Vector<String> urlSchemesRegisteredAsNoAccess;
     Vector<String> urlSchemesRegisteredAsDisplayIsolated;
     Vector<String> urlSchemesRegisteredAsCORSEnabled;
-
-    // MIME types for which the UI process will handle showing the data.
-    Vector<String> mimeTypesWithCustomRepresentation;
 
     CacheModel cacheModel;
     bool shouldTrackVisitedLinks;
@@ -99,10 +100,6 @@ struct WebProcessCreationParameters {
 
     pid_t presenterApplicationPid;
 
-    // FIXME: These should be merged with CFURLCache counterparts below.
-    String nsURLCachePath;
-    SandboxExtension::Handle nsURLCachePathExtensionHandle;
-
     uint64_t nsURLCacheMemoryCapacity;
     uint64_t nsURLCacheDiskCapacity;
 
@@ -112,8 +109,9 @@ struct WebProcessCreationParameters {
     SandboxExtension::Handle uiProcessBundleResourcePathExtensionHandle;
 
     bool shouldForceScreenFontSubstitution;
+    bool shouldEnableKerningAndLigaturesByDefault;
+
 #elif PLATFORM(WIN)
-    String cfURLCachePath;
     uint64_t cfURLCacheDiskCapacity;
     uint64_t cfURLCacheMemoryCapacity;
 
@@ -125,13 +123,13 @@ struct WebProcessCreationParameters {
     RetainPtr<CFDataRef> serializedDefaultStorageSession;
 #endif // USE(CFURLSTORAGESESSIONS)
 #endif // PLATFORM(WIN)
-#if PLATFORM(QT)
-    String cookieStorageDirectory;
-    String diskCacheDirectory;
-#endif
 
 #if ENABLE(NOTIFICATIONS) || ENABLE(LEGACY_NOTIFICATIONS)
     HashMap<String, bool> notificationPermissions;
+#endif
+
+#if ENABLE(NETWORK_PROCESS)
+    bool usesNetworkProcess;
 #endif
 };
 

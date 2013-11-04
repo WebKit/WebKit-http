@@ -37,6 +37,7 @@ SET(JavaScriptCore_SOURCES
     API/JSWeakObjectMapRefPrivate.cpp
     API/OpaqueJSString.cpp
     
+    assembler/MacroAssembler.cpp
     assembler/LinkBuffer.cpp
 
     bytecode/ArrayProfile.cpp
@@ -106,12 +107,15 @@ SET(JavaScriptCore_SOURCES
 
     heap/BlockAllocator.cpp
     heap/CopiedSpace.cpp
+    heap/CopyVisitor.cpp
     heap/ConservativeRoots.cpp
     heap/DFGCodeBlocks.cpp
+    heap/GCThread.cpp
     heap/GCThreadSharedData.cpp
     heap/HandleSet.cpp
     heap/HandleStack.cpp
     heap/Heap.cpp
+    heap/HeapStatistics.cpp
     heap/HeapTimer.cpp
     heap/IncrementalSweeper.cpp
     heap/JITStubRoutineSet.cpp
@@ -132,7 +136,7 @@ SET(JavaScriptCore_SOURCES
     interpreter/AbstractPC.cpp
     interpreter/CallFrame.cpp
     interpreter/Interpreter.cpp
-    interpreter/RegisterFile.cpp
+    interpreter/JSStack.cpp
     interpreter/VMInspector.cpp
 
     jit/ExecutableAllocator.cpp
@@ -190,6 +194,7 @@ SET(JavaScriptCore_SOURCES
     runtime/GCActivityCallback.cpp
     runtime/GetterSetter.cpp
     runtime/Identifier.cpp
+    runtime/IndexingType.cpp
     runtime/InitializeThreading.cpp
     runtime/InternalFunction.cpp
     runtime/JSActivation.cpp
@@ -319,6 +324,7 @@ IF (ENABLE_LLINT)
         offlineasm/opt.rb
         offlineasm/parser.rb
         offlineasm/registers.rb
+        offlineasm/risc.rb
         offlineasm/self_hash.rb
         offlineasm/settings.rb
         offlineasm/transform.rb
@@ -332,8 +338,19 @@ IF (ENABLE_LLINT)
         COMMAND ${RUBY_EXECUTABLE} ${JAVASCRIPTCORE_DIR}/offlineasm/generate_offset_extractor.rb ${JAVASCRIPTCORE_DIR}/llint/LowLevelInterpreter.asm ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/LLIntDesiredOffsets.h
         VERBATIM)
 
-    ADD_SOURCE_DEPENDENCIES(${JAVASCRIPTCORE_DIR}/llint/LLIntOffsetsExtractor.cpp ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/LLIntDesiredOffsets.h)
-    ADD_EXECUTABLE(LLIntOffsetsExtractor ${JAVASCRIPTCORE_DIR}/llint/LLIntOffsetsExtractor.cpp)
+    # We add the header file directly to the ADD_EXECUTABLE call instead of setting the
+    # OBJECT_DEPENDS property in LLIntOffsetsExtractor.cpp because generate_offset_extractor.rb may
+    # not regenerate it in case the hash it calculates does not change.
+    # In this case, if some of the dependencies specified in the ADD_CUSTOM_COMMAND above have
+    # changed the command will always be called because the mtime of LLIntDesiredOffsets.h will
+    # always be older than that of its dependencies.
+    # Additionally, setting the OBJECT_DEPENDS property will make LLIntDesiredOffsets.h a Makefile
+    # dependency of both LLIntOffsetsExtractor and LLIntOffsetsExtractor.cpp, so the command will
+    # actually be run twice!
+    ADD_EXECUTABLE(LLIntOffsetsExtractor
+        ${JAVASCRIPTCORE_DIR}/llint/LLIntOffsetsExtractor.cpp
+        ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/LLIntDesiredOffsets.h
+    )
     TARGET_LINK_LIBRARIES(LLIntOffsetsExtractor ${WTF_LIBRARY_NAME})
 
     ADD_CUSTOM_COMMAND(
@@ -343,7 +360,13 @@ IF (ENABLE_LLINT)
         COMMAND ${RUBY_EXECUTABLE} ${JAVASCRIPTCORE_DIR}/offlineasm/asm.rb ${JAVASCRIPTCORE_DIR}/llint/LowLevelInterpreter.asm $<TARGET_FILE:LLIntOffsetsExtractor> ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/LLIntAssembly.h
         VERBATIM)
 
-    ADD_SOURCE_DEPENDENCIES(${JAVASCRIPTCORE_DIR}/llint/LowLevelInterpreter.cpp ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/LLIntAssembly.h)
+    # The explanation for not making LLIntAssembly.h part of the OBJECT_DEPENDS property of some of
+    # the .cpp files below is similar to the one in the previous comment. However, since these .cpp
+    # files are used to build JavaScriptCore itself, we can just add LLIntAssembly.h to JSC_HEADERS
+    # since it is used in the ADD_LIBRARY() call at the end of this file.
+    LIST(APPEND JavaScriptCore_HEADERS
+        ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/LLIntAssembly.h
+    )
     LIST(APPEND JavaScriptCore_SOURCES
         llint/LLIntCLoop.cpp
         llint/LLIntData.cpp

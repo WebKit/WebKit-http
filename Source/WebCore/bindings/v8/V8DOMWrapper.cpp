@@ -72,17 +72,8 @@ v8::Persistent<v8::Object> V8DOMWrapper::setJSWrapperForDOMNode(PassRefPtr<Node>
 {
     v8::Persistent<v8::Object> wrapperHandle = v8::Persistent<v8::Object>::New(wrapper);
     ASSERT(maybeDOMWrapper(wrapperHandle));
-    ASSERT(!node->isActiveNode());
+    wrapperHandle.SetWrapperClassId(v8DOMSubtreeClassId);
     getDOMNodeMap(isolate).set(node.leakRef(), wrapperHandle);
-    return wrapperHandle;
-}
-
-v8::Persistent<v8::Object> V8DOMWrapper::setJSWrapperForActiveDOMNode(PassRefPtr<Node> node, v8::Handle<v8::Object> wrapper, v8::Isolate* isolate)
-{
-    v8::Persistent<v8::Object> wrapperHandle = v8::Persistent<v8::Object>::New(wrapper);
-    ASSERT(maybeDOMWrapper(wrapperHandle));
-    ASSERT(node->isActiveNode());
-    getActiveDOMNodeMap(isolate).set(node.leakRef(), wrapperHandle);
     return wrapperHandle;
 }
 
@@ -95,7 +86,7 @@ void V8DOMWrapper::setNamedHiddenReference(v8::Handle<v8::Object> parent, const 
 WrapperTypeInfo* V8DOMWrapper::domWrapperType(v8::Handle<v8::Object> object)
 {
     ASSERT(V8DOMWrapper::maybeDOMWrapper(object));
-    return static_cast<WrapperTypeInfo*>(object->GetPointerFromInternalField(v8DOMWrapperTypeIndex));
+    return toWrapperTypeInfo(object);
 }
 
 PassRefPtr<NodeFilter> V8DOMWrapper::wrapNativeNodeFilter(v8::Handle<v8::Value> filter)
@@ -111,14 +102,16 @@ PassRefPtr<NodeFilter> V8DOMWrapper::wrapNativeNodeFilter(v8::Handle<v8::Value> 
     return NodeFilter::create(V8NodeFilterCondition::create(filter));
 }
 
-v8::Local<v8::Object> V8DOMWrapper::instantiateV8Object(Document* document, WrapperTypeInfo* type, void* impl)
+v8::Local<v8::Object> V8DOMWrapper::instantiateV8Object(Document* deprecatedDocument, WrapperTypeInfo* type, void* impl)
 {
     V8PerContextData* perContextData = 0;
 
+    // Please don't add any more uses of deprecatedDocument. We want to remove it.
+
     // If we have a pointer to the frame, we cna get the V8PerContextData
     // directly, which is faster than going through V8.
-    if (document && document->frame())
-        perContextData = perContextDataForCurrentWorld(document->frame());
+    if (deprecatedDocument && deprecatedDocument->frame())
+        perContextData = perContextDataForCurrentWorld(deprecatedDocument->frame());
     else
         perContextData = V8PerContextData::from(v8::Context::GetCurrent());
 

@@ -28,12 +28,45 @@
 
 #if ENABLE(WEB_INTENTS)
 
+#include "WKEinaSharedString.h"
+#include "WKIntentData.h"
+#include "WKRetainPtr.h"
 #include <WebKit2/WKBase.h>
+#include <wtf/PassRefPtr.h>
+#include <wtf/RefCounted.h>
+#include <wtf/text/WTFString.h>
 
-typedef struct _Ewk_Intent Ewk_Intent;
+namespace WebKit {
+class WebIntentData;
+}
 
-Ewk_Intent* ewk_intent_new(WKIntentDataRef intentData);
-WKIntentDataRef ewk_intent_WKIntentDataRef_get(const Ewk_Intent* intent);
+/**
+ * \struct  Ewk_Intent
+ * @brief   Contains the intent data.
+ */
+class Ewk_Intent : public RefCounted<Ewk_Intent> {
+public:
+    static PassRefPtr<Ewk_Intent> create(WKIntentDataRef intentRef)
+    {
+        return adoptRef(new Ewk_Intent(intentRef));
+    }
+
+    WebKit::WebIntentData* webIntentData() const;
+    const char* action() const;
+    const char* type() const;
+    const char* service() const;
+    WKRetainPtr<WKArrayRef> suggestions() const;
+    String extra(const char* key) const;
+    WKRetainPtr<WKArrayRef> extraKeys() const;
+
+private:
+    explicit Ewk_Intent(WKIntentDataRef intentRef);
+
+    WKRetainPtr<WKIntentDataRef> m_wkIntent;
+    WKEinaSharedString m_action;
+    WKEinaSharedString m_type;
+    WKEinaSharedString m_service;
+};
 
 #endif // ENABLE(WEB_INTENTS)
 

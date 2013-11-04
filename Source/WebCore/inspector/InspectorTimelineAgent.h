@@ -105,8 +105,11 @@ public:
     void willRecalculateStyle(Frame*);
     void didRecalculateStyle();
 
-    void willPaint(const LayoutRect&, Frame*);
-    void didPaint();
+    void willPaint(Frame*);
+    void didPaint(const LayoutRect&);
+
+    void willScroll(Frame*);
+    void didScroll();
 
     void willComposite();
     void didComposite();

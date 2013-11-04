@@ -32,6 +32,7 @@
 #define V8DOMWrapper_h
 
 #include "DOMDataStore.h"
+#include "DOMWrapperWorld.h"
 #include "Event.h"
 #include "Node.h"
 #include "NodeFilter.h"
@@ -95,10 +96,7 @@ namespace WebCore {
 
         template<typename T>
         static v8::Persistent<v8::Object> setJSWrapperForDOMObject(PassRefPtr<T>, v8::Handle<v8::Object>, v8::Isolate* = 0);
-        template<typename T>
-        static v8::Persistent<v8::Object> setJSWrapperForActiveDOMObject(PassRefPtr<T>, v8::Handle<v8::Object>, v8::Isolate* = 0);
         static v8::Persistent<v8::Object> setJSWrapperForDOMNode(PassRefPtr<Node>, v8::Handle<v8::Object>, v8::Isolate* = 0);
-        static v8::Persistent<v8::Object> setJSWrapperForActiveDOMNode(PassRefPtr<Node>, v8::Handle<v8::Object>, v8::Isolate* = 0);
 
         static bool isValidDOMObject(v8::Handle<v8::Value>);
 
@@ -113,20 +111,17 @@ namespace WebCore {
         {
             ASSERT(isMainThread());
             if (LIKELY(!DOMWrapperWorld::isolatedWorldsExist())) {
-                v8::Persistent<v8::Object>* wrapper = node->wrapper();
-                if (LIKELY(!!wrapper))
-                    return *wrapper;
+                v8::Persistent<v8::Object> wrapper = node->wrapper();
+                if (LIKELY(!wrapper.IsEmpty()))
+                    return wrapper;
             }
 
             V8DOMWindowShell* context = V8DOMWindowShell::getEntered();
-            if (LIKELY(!context)) {
-                v8::Persistent<v8::Object>* wrapper = node->wrapper();
-                if (!wrapper)
-                    return v8::Handle<v8::Object>();
-                return *wrapper;
-            }
+            if (LIKELY(!context))
+                return node->wrapper();
+
             DOMDataStore* store = context->world()->domDataStore();
-            DOMNodeMapping& domNodeMap = node->isActiveNode() ? store->activeDomNodeMap() : store->domNodeMap();
+            DOMWrapperMap<Node>& domNodeMap = store->domNodeMap();
             return domNodeMap.get(node);
         }
     };
@@ -136,20 +131,10 @@ namespace WebCore {
     {
         v8::Persistent<v8::Object> wrapperHandle = v8::Persistent<v8::Object>::New(wrapper);
         ASSERT(maybeDOMWrapper(wrapperHandle));
-        ASSERT(!domWrapperType(wrapperHandle)->toActiveDOMObjectFunction);
         getDOMObjectMap(isolate).set(object.leakRef(), wrapperHandle);
         return wrapperHandle;
     }
 
-    template<typename T>
-    v8::Persistent<v8::Object> V8DOMWrapper::setJSWrapperForActiveDOMObject(PassRefPtr<T> object, v8::Handle<v8::Object> wrapper, v8::Isolate* isolate)
-    {
-        v8::Persistent<v8::Object> wrapperHandle = v8::Persistent<v8::Object>::New(wrapper);
-        ASSERT(maybeDOMWrapper(wrapperHandle));
-        ASSERT(domWrapperType(wrapperHandle)->toActiveDOMObjectFunction);
-        getActiveDOMObjectMap(isolate).set(object.leakRef(), wrapperHandle);
-        return wrapperHandle;
-    }
 }
 
 #endif // V8DOMWrapper_h

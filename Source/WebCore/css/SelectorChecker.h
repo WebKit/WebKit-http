@@ -52,7 +52,7 @@ public:
 
     enum SelectorMatch { SelectorMatches, SelectorFailsLocally, SelectorFailsAllSiblings, SelectorFailsCompletely };
     enum VisitedMatchType { VisitedMatchDisabled, VisitedMatchEnabled };
-    enum Mode { ResolvingStyle = 0, CollectingRules, QueryingRules };
+    enum Mode { ResolvingStyle = 0, CollectingRules, QueryingRules, SharingRules };
 
     struct SelectorCheckingContext {
         // Initial selector constructor
@@ -61,10 +61,10 @@ public:
             , element(element)
             , scope(0)
             , visitedMatchType(visitedMatchType)
+            , pseudoStyle(NOPSEUDO)
             , elementStyle(0)
             , elementParentStyle(0)
             , isSubSelector(false)
-            , pseudoStyle(NOPSEUDO)
             , hasScrollbarPseudo(false)
             , hasSelectionPseudo(false)
         { }
@@ -73,16 +73,19 @@ public:
         Element* element;
         const ContainerNode* scope;
         VisitedMatchType visitedMatchType;
+        PseudoId pseudoStyle;
         RenderStyle* elementStyle;
         RenderStyle* elementParentStyle;
         bool isSubSelector;
-        PseudoId pseudoStyle;
         bool hasScrollbarPseudo;
         bool hasSelectionPseudo;
     };
 
     bool checkSelector(CSSSelector*, Element*, bool isFastCheckableSelector = false) const;
     SelectorMatch checkSelector(const SelectorCheckingContext&, PseudoId&, bool& hasUnknownPseudoElements) const;
+    template<typename SiblingTraversalStrategy>
+    bool checkOneSelector(const SelectorCheckingContext&, const SiblingTraversalStrategy&) const;
+
     static bool isFastCheckableSelector(const CSSSelector*);
     bool fastCheckSelector(const CSSSelector*, const Element*) const;
 
@@ -116,12 +119,7 @@ public:
     enum LinkMatchMask { MatchLink = 1, MatchVisited = 2, MatchAll = MatchLink | MatchVisited };
     static unsigned determineLinkMatchType(const CSSSelector*);
 
-    // Find the ids or classes selectors are scoped to. The selectors only apply to elements in subtrees where the root element matches the scope.
-    static bool determineSelectorScopes(const CSSSelectorList&, HashSet<AtomicStringImpl*>& idScopes, HashSet<AtomicStringImpl*>& classScopes);
-    static bool elementMatchesSelectorScopes(const StyledElement*, const HashSet<AtomicStringImpl*>& idScopes, const HashSet<AtomicStringImpl*>& classScopes);
-
 private:
-    bool checkOneSelector(const SelectorCheckingContext&) const;
     bool checkScrollbarPseudoClass(CSSSelector*) const;
     static bool isFrameFocused(const Element*);
 
@@ -225,20 +223,6 @@ inline bool SelectorChecker::fastCheckRightmostAttributeSelector(const Element* 
         return checkExactAttribute(element, selector->attribute(), selector->value().impl());
     ASSERT(!selector->isAttributeSelector());
     return true;
-}
-
-inline bool SelectorChecker::elementMatchesSelectorScopes(const StyledElement* element, const HashSet<AtomicStringImpl*>& idScopes, const HashSet<AtomicStringImpl*>& classScopes)
-{
-    if (!idScopes.isEmpty() && element->hasID() && idScopes.contains(element->idForStyleResolution().impl()))
-        return true;
-    if (classScopes.isEmpty() || !element->hasClass())
-        return false;
-    const SpaceSplitString& classNames = element->classNames();
-    for (unsigned i = 0; i < classNames.size(); ++i) {
-        if (classScopes.contains(classNames[i].impl()))
-            return true;
-    }
-    return false;
 }
 
 }

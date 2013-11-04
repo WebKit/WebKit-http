@@ -108,6 +108,8 @@ struct _WebKitWebViewBasePrivate {
     bool isFocused : 1;
     bool isVisible : 1;
 
+    WebKitWebViewBaseDownloadRequestHandler downloadHandler;
+
 #if ENABLE(FULLSCREEN_API)
     bool fullScreenModeActive;
     WebFullScreenClientGtk fullScreenClient;
@@ -303,7 +305,7 @@ static void webkitWebViewBaseContainerForall(GtkContainer* container, gboolean i
     WebKitWebViewChildrenMap children = priv->children;
     WebKitWebViewChildrenMap::const_iterator end = children.end();
     for (WebKitWebViewChildrenMap::const_iterator current = children.begin(); current != end; ++current)
-        (*callback)(current->first, callbackData);
+        (*callback)(current->key, callbackData);
 
     if (includeInternals && priv->inspectorView)
         (*callback)(priv->inspectorView, callbackData);
@@ -977,4 +979,15 @@ bool webkitWebViewBaseIsVisible(WebKitWebViewBase* webViewBase)
 bool webkitWebViewBaseIsInWindow(WebKitWebViewBase* webViewBase)
 {
     return webViewBase->priv->toplevelOnScreenWindow;
+}
+
+void webkitWebViewBaseSetDownloadRequestHandler(WebKitWebViewBase* webViewBase, WebKitWebViewBaseDownloadRequestHandler downloadHandler)
+{
+    webViewBase->priv->downloadHandler = downloadHandler;
+}
+
+void webkitWebViewBaseHandleDownloadRequest(WebKitWebViewBase* webViewBase, DownloadProxy* download)
+{
+    if (webViewBase->priv->downloadHandler)
+        webViewBase->priv->downloadHandler(webViewBase, download);
 }

@@ -37,12 +37,14 @@
 #include <QEvent>
 #include <QEventLoop>
 #include <QGesture>
+#include <QMimeData>
 #include <QMouseEvent>
 #include <QObject>
 #include <QPoint>
 #include <QString>
 #include <QStringList>
 #include <QTouchEvent>
+#include <Qt>
 
 #include <qwebpage.h>
 #include <qwebframe.h>
@@ -86,7 +88,9 @@ public Q_SLOTS:
     void cancelTouchPoint(int index);
 #ifndef QT_NO_GESTURES
     void gestureTap(int x, int y);
+    void gestureLongPress(int x, int y);
 #endif
+    void beginDragWithFiles(const QStringList& files);
 
 protected:
     void timerEvent(QTimerEvent*);
@@ -111,6 +115,8 @@ private:
     int m_currentButton;
     bool m_mouseButtonPressed;
     bool m_drag;
+    QMimeData m_currentDragData;
+    Qt::DropActions m_currentDragActionsAllowed;
     QEventLoop* m_eventLoop;
     QWebFrame* frameUnderMouse() const;
     QBasicTimer m_clickTimer;
@@ -118,6 +124,7 @@ private:
     Qt::KeyboardModifiers m_touchModifiers;
 #ifndef QT_NO_GESTURES
     QTapGesture m_tapGesture;
+    QTapAndHoldGesture m_tapAndHoldGesture;
     QList<QGesture*> m_gestures;
 #endif
     bool m_touchActive;

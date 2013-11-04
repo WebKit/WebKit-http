@@ -66,14 +66,14 @@ void LayerTreeCoordinatorProxy::updateTileForLayer(int layerID, int tileID, cons
 {
     RefPtr<ShareableSurface> surface;
 #if USE(GRAPHICS_SURFACE)
-    uint64_t token = updateInfo.surfaceHandle.graphicsSurfaceToken();
-    if (token) {
-        HashMap<uint64_t, RefPtr<ShareableSurface> >::iterator it = m_surfaces.find(token);
+    GraphicsSurfaceToken token = updateInfo.surfaceHandle.graphicsSurfaceToken();
+    if (token.isValid()) {
+        HashMap<GraphicsSurfaceToken::BufferHandle, RefPtr<ShareableSurface> >::iterator it = m_surfaces.find(token.frontBufferHandle);
         if (it == m_surfaces.end()) {
             surface = ShareableSurface::create(updateInfo.surfaceHandle);
-            m_surfaces.add(token, surface);
+            m_surfaces.add(token.frontBufferHandle, surface);
         } else
-            surface = it->second;
+            surface = it->value;
     } else
         surface = ShareableSurface::create(updateInfo.surfaceHandle);
 #else
@@ -120,7 +120,7 @@ void LayerTreeCoordinatorProxy::didRenderFrame(const WebCore::IntSize& contentsS
 {
     dispatchUpdate(bind(&LayerTreeRenderer::flushLayerChanges, m_renderer.get()));
     updateViewport();
-#if PLATFORM(QT)
+#if USE(TILED_BACKING_STORE)
     m_drawingAreaProxy->page()->didRenderFrame(contentsSize, coveredRect);
 #else
     UNUSED_PARAM(contentsSize);
@@ -144,14 +144,14 @@ void LayerTreeCoordinatorProxy::setContentsSize(const FloatSize& contentsSize)
     dispatchUpdate(bind(&LayerTreeRenderer::setContentsSize, m_renderer.get(), contentsSize));
 }
 
-void LayerTreeCoordinatorProxy::setLayerAnimatedOpacity(uint32_t id, float opacity)
+void LayerTreeCoordinatorProxy::setLayerAnimations(WebLayerID id, const GraphicsLayerAnimations& animations)
 {
-    dispatchUpdate(bind(&LayerTreeRenderer::setAnimatedOpacity, m_renderer.get(), id, opacity));
+    dispatchUpdate(bind(&LayerTreeRenderer::setLayerAnimations, m_renderer.get(), id, animations));
 }
 
-void LayerTreeCoordinatorProxy::setLayerAnimatedTransform(uint32_t id, const WebCore::TransformationMatrix& transform)
+void LayerTreeCoordinatorProxy::setAnimationsLocked(bool locked)
 {
-    dispatchUpdate(bind(&LayerTreeRenderer::setAnimatedTransform, m_renderer.get(), id, transform));
+    dispatchUpdate(bind(&LayerTreeRenderer::setAnimationsLocked, m_renderer.get(), locked));
 }
 
 void LayerTreeCoordinatorProxy::setVisibleContentsRect(const FloatRect& rect, float scale, const FloatPoint& trajectoryVector)
@@ -180,10 +180,12 @@ void LayerTreeCoordinatorProxy::didChangeScrollPosition(const IntPoint& position
     dispatchUpdate(bind(&LayerTreeRenderer::didChangeScrollPosition, m_renderer.get(), position));
 }
 
-void LayerTreeCoordinatorProxy::syncCanvas(uint32_t id, const IntSize& canvasSize, uint64_t graphicsSurfaceToken, uint32_t frontBuffer)
+#if USE(GRAPHICS_SURFACE)
+void LayerTreeCoordinatorProxy::syncCanvas(uint32_t id, const IntSize& canvasSize, const GraphicsSurfaceToken& token, uint32_t frontBuffer)
 {
-    dispatchUpdate(bind(&LayerTreeRenderer::syncCanvas, m_renderer.get(), id, canvasSize, graphicsSurfaceToken, frontBuffer));
+    dispatchUpdate(bind(&LayerTreeRenderer::syncCanvas, m_renderer.get(), id, canvasSize, token, frontBuffer));
 }
+#endif
 
 void LayerTreeCoordinatorProxy::purgeBackingStores()
 {

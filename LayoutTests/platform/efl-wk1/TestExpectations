@@ -26,9 +26,49 @@
 # TESTS EXPECTED TO FAIL
 #////////////////////////////////////////////////////////////////////////////////////////
 
-# CSS Sticky (-webkit-sticky) not supported by EFL.
-# This test passes on WK2, though.
+# CSS Sticky (-webkit-sticky) supported by EFL, these tests fail on WK1.
 webkit.org/b/95182 fast/css/sticky/sticky-overflowing.html [ ImageOnlyFailure ]
+webkit.org/b/95182 fast/css/sticky/inflow-sticky.html [ ImageOnlyFailure ]
+webkit.org/b/95182 fast/css/sticky/replaced-sticky.html [ ImageOnlyFailure ]
+webkit.org/b/95182 fast/css/sticky/sticky-as-positioning-container.html [ ImageOnlyFailure ]
+webkit.org/b/95182 fast/css/sticky/sticky-both-sides.html [ ImageOnlyFailure ]
+webkit.org/b/95182 fast/css/sticky/sticky-left-percentage.html [ ImageOnlyFailure ]
+webkit.org/b/95182 fast/css/sticky/sticky-left.html [ ImageOnlyFailure ]
+webkit.org/b/95182 fast/css/sticky/sticky-margins.html [ ImageOnlyFailure ]
+webkit.org/b/95182 fast/css/sticky/sticky-side-margins.html [ ImageOnlyFailure ]
+webkit.org/b/95182 fast/css/sticky/sticky-top-margins.html [ ImageOnlyFailure ]
+webkit.org/b/95182 fast/css/sticky/sticky-top.html [ ImageOnlyFailure ]
+webkit.org/b/95182 fast/css/sticky/sticky-writing-mode-horizontal-bt.html [ ImageOnlyFailure ]
+webkit.org/b/95182 fast/css/sticky/sticky-writing-mode-vertical-lr.html [ ImageOnlyFailure ]
+webkit.org/b/95182 fast/css/sticky/sticky-writing-mode-vertical-rl.html [ ImageOnlyFailure ]
+
+# EFL's LayoutTestController does not implement setWindowIsKey
+fast/dom/Window/window-onFocus.html
+fast/events/blur-focus-window-should-blur-focus-element.html
+
+# EFL's LayoutTestController does not implement authenticateSession
+http/tests/xmlhttprequest/cross-origin-authorization-with-embedder.html
+
+# EFL DRT doesn't fully support http tests yet. These tests make timeout error.
+http/tests/cache/history-only-cached-subresource-loads-max-age-https.html
+http/tests/cache/subresource-failover-to-network.html
+http/tests/loading/authentication-after-redirect-stores-wrong-credentials/authentication-after-redirect-stores-wrong-credentials.html
+http/tests/misc/401-alternative-content.php
+http/tests/navigation/forward-and-cancel.html
+http/tests/navigation/post-goback-same-url.html
+http/tests/navigation/post-goback2.html
+http/tests/navigation/postredirect-frames.html
+http/tests/navigation/postredirect-goback2.html
+http/tests/navigation/postredirect-reload.html
+http/tests/security/401-logout/401-logout.php
+http/tests/security/cookies/first-party-cookie-allow-xslt.xml
+http/tests/security/cookies/third-party-cookie-blocking-main-frame.html
+http/tests/security/no-referrer.html
+http/tests/security/referrer-policy-redirect-link.html
+http/tests/xmlhttprequest/basic-auth-nopassword.html
+http/tests/xmlhttprequest/basic-auth-nouser.html
+http/tests/xmlhttprequest/failed-auth.html
+http/tests/xmlhttprequest/remember-bad-password.html
 
 #////////////////////////////////////////////////////////////////////////////////////////
 # CRASHES
@@ -41,6 +81,8 @@ webkit.org/b/30724 [ Debug ] fast/loader/opaque-base-url.html [ Crash ]
 # FLAKY TESTS
 #////////////////////////////////////////////////////////////////////////////////////////
 
+editing/selection/doubleclick-whitespace-img-crash.html [ Failure Pass ]
+
 # Test passes, but editing delegates does not match expected ones
 webkit.org/b/96641 media/video-seek-past-end-playing.html [ Failure Pass ]
 webkit.org/b/96642 loader/go-back-to-different-window-size.html [ Failure Pass ]
@@ -50,6 +92,68 @@ webkit.org/b/96977 [ Release ] perf/nested-combined-selectors.html [ Failure Pas
 #////////////////////////////////////////////////////////////////////////////////////////
 # FAILING TESTS
 #////////////////////////////////////////////////////////////////////////////////////////
+
+webkit.org/b/99072 compositing/absolute-position-changed-in-composited-layer.html [ ImageOnlyFailure ]
+webkit.org/b/99072 compositing/absolute-position-changed-with-composited-parent-layer.html [ ImageOnlyFailure ]
+webkit.org/b/99072 compositing/fixed-position-scroll-offset-history-restore.html [ ImageOnlyFailure ]
+webkit.org/b/99072 compositing/geometry/fixed-in-composited.html [ ImageOnlyFailure ]
+webkit.org/b/99072 compositing/geometry/horizontal-scroll-composited.html [ ImageOnlyFailure ]
+webkit.org/b/99072 compositing/geometry/video-fixed-scrolling.html [ ImageOnlyFailure ]
+webkit.org/b/99072 compositing/overflow/fixed-position-ancestor-clip.html [ ImageOnlyFailure ]
+webkit.org/b/99072 fast/block/positioning/rtl-fixed-positioning.html [ ImageOnlyFailure ]
+webkit.org/b/99072 fast/block/positioning/vertical-rl/fixed-positioning.html [ ImageOnlyFailure ]
+webkit.org/b/99072 fast/dynamic/anchor-lock.html [ ImageOnlyFailure ]
+webkit.org/b/99072 fast/events/autoscroll.html [ ImageOnlyFailure ]
+webkit.org/b/99072 fast/events/reveal-link-when-focused.html [ ImageOnlyFailure ]
+webkit.org/b/99072 fast/events/scale-and-scroll-body.html [ ImageOnlyFailure ]
+webkit.org/b/99072 fast/events/scale-and-scroll-iframe-body.html [ ImageOnlyFailure ]
+webkit.org/b/99072 fast/events/scale-and-scroll-iframe-window.html [ ImageOnlyFailure ]
+webkit.org/b/99072 fast/events/scale-and-scroll-window.html [ ImageOnlyFailure ]
+webkit.org/b/99072 fast/layers/scroll-rect-to-visible.html [ ImageOnlyFailure ]
+webkit.org/b/99072 fast/multicol/scrolling-overflow.html [ ImageOnlyFailure ]
+webkit.org/b/99072 fast/overflow/clip-rects-fixed-ancestor.html [ ImageOnlyFailure ]
+webkit.org/b/99072 fast/overflow/paged-x-with-column-gap.html [ ImageOnlyFailure ]
+webkit.org/b/99072 fast/overflow/position-fixed-transform-clipping.html [ ImageOnlyFailure ]
+webkit.org/b/99072 fast/overflow/scrollRevealButton.html [ ImageOnlyFailure ]
+webkit.org/b/99072 fast/repaint/absolute-position-changed.html [ ImageOnlyFailure ]
+webkit.org/b/99072 fast/repaint/fixed-after-scroll.html [ ImageOnlyFailure ]
+webkit.org/b/99072 fast/repaint/fixed-and-absolute-position-scrolled.html [ ImageOnlyFailure ]
+webkit.org/b/99072 fast/repaint/fixed-child-move-after-scroll.html [ ImageOnlyFailure ]
+webkit.org/b/99072 fast/repaint/fixed-child-of-fixed-move-after-scroll.html [ ImageOnlyFailure ]
+webkit.org/b/99072 fast/repaint/fixed-child-of-transformed-move-after-scroll.html [ ImageOnlyFailure ]
+webkit.org/b/99072 fast/repaint/fixed-in-page-scale.html [ ImageOnlyFailure ]
+webkit.org/b/99072 fast/repaint/fixed-move-after-scroll.html [ ImageOnlyFailure ]
+webkit.org/b/99072 fast/repaint/fixed-right-bottom-in-page-scale.html [ ImageOnlyFailure ]
+webkit.org/b/99072 fast/repaint/fixed-right-in-page-scale.html [ ImageOnlyFailure ]
+webkit.org/b/99072 fast/repaint/fixed-scale.html [ ImageOnlyFailure ]
+webkit.org/b/99072 fast/repaint/fixed-scroll-simple.html [ ImageOnlyFailure ]
+webkit.org/b/99072 fast/repaint/fixed-table-cell.html [ ImageOnlyFailure ]
+webkit.org/b/99072 fast/repaint/fixed-table-overflow-zindex.html [ ImageOnlyFailure ]
+webkit.org/b/99072 fast/repaint/fixed-table-overflow.html [ ImageOnlyFailure ]
+webkit.org/b/99072 fast/repaint/fixed-tranformed.html [ ImageOnlyFailure ]
+webkit.org/b/99072 fast/repaint/fixed.html [ ImageOnlyFailure ]
+webkit.org/b/99072 fast/repaint/repaint-during-scroll.html [ ImageOnlyFailure ]
+webkit.org/b/99072 fast/repaint/scroll-absolute-layer-with-reflection.html [ ImageOnlyFailure ]
+webkit.org/b/99072 fast/repaint/scroll-fixed-layer-with-no-visible-content.html [ ImageOnlyFailure ]
+webkit.org/b/99072 fast/repaint/scroll-fixed-layer-with-reflection.html [ ImageOnlyFailure ]
+webkit.org/b/99072 fast/repaint/scroll-fixed-layer-with-transformed-parent-layer.html [ ImageOnlyFailure ]
+webkit.org/b/99072 fast/repaint/scroll-fixed-reflected-layer.html [ ImageOnlyFailure ]
+webkit.org/b/99072 fast/repaint/scroll-in-fixed-layer.html [ ImageOnlyFailure ]
+webkit.org/b/99072 fast/repaint/scroll-relative-table-inside-table-cell.html [ ImageOnlyFailure ]
+
+webkit.org/b/99180 svg/as-image/img-preserveAspectRatio-support-1.html [ ImageOnlyFailure ]
+
+webkit.org/b/99181 svg/dynamic-updates/SVGFEConvolveMatrixElement-dom-kernelUnitLength-attr.html [ ImageOnlyFailure ]
+webkit.org/b/99181 svg/dynamic-updates/SVGFEConvolveMatrixElement-svgdom-kernelUnitLength-prop.html [ ImageOnlyFailure ]
+
+webkit.org/b/99182 svg/dynamic-updates/SVGFEDropShadowElement-dom-shadow-color-attr.html [ ImageOnlyFailure ]
+webkit.org/b/99182 svg/dynamic-updates/SVGFEDropShadowElement-dom-shadow-opacity-attr.html [ ImageOnlyFailure ]
+webkit.org/b/99182 svg/dynamic-updates/SVGFEDropShadowElement-svgdom-shadow-color-prop.html [ ImageOnlyFailure ]
+webkit.org/b/99182 svg/dynamic-updates/SVGFEDropShadowElement-svgdom-shadow-opacity-prop.html [ ImageOnlyFailure ]
+
+webkit.org/b/99183 svg/dynamic-updates/SVGFETurbulenceElement-dom-baseFrequency-attr.html [ ImageOnlyFailure ]
+webkit.org/b/99183 svg/dynamic-updates/SVGFETurbulenceElement-dom-stitchTiles-attr.html [ ImageOnlyFailure ]
+webkit.org/b/99183 svg/dynamic-updates/SVGFETurbulenceElement-svgdom-stitchTiles-prop.html [ ImageOnlyFailure ]
 
 # Frame flattening does not work properly for EFL port
 Bug(EFL) fast/frames/flattening/frameset-flattening-advanced.html [ Failure ]
@@ -108,10 +212,6 @@ webkit.org/b/86182 fast/frames/seamless/seamless-inherited-document-style.html [
 # Passes in some machines and fails on other (such as the bots).
 webkit.org/b/97021 fast/events/dont-loose-last-event.html [ Failure ]
 
-# New windows are created with wrong size
-webkit.org/b/53959 fast/dom/Window/window-resize.html [ Failure ]
-webkit.org/b/53959 fast/dom/Window/window-resize-and-move-arguments.html [ Failure ]
-
 # Feature not mature yet and disabled by default on WebCore
 webkit.org/b/87088 fast/js/names.html [ Failure ]
 
@@ -130,3 +230,80 @@ webkit.org/b/96620 http/tests/loading/text-content-type-with-binary-extension.ht
 
 # Needs custom policy delegate enhancement to log downloads - EFL port is missing api for getting header fields from HTTP responses.
 webkit.org/b/87974 http/tests/download [ Failure ]
+
+webkit.org/b/98570 fast/replaced/object-with-embed-url-param.html [ Failure ]
+
+webkit.org/b/53986 svg/text/caret-in-svg-text.xhtml [ Failure ]
+
+# Relies on WebKit API [WebView _loadBackForwardListFromOtherView:]
+fast/loader/crash-copying-backforwardlist.html
+
+# BUG: No authentication challenge handling
+http/tests/loading/basic-credentials-sent-automatically.html
+http/tests/misc/authentication-redirect-1/authentication-sent-to-redirect-cross-origin.html
+http/tests/misc/authentication-redirect-2/authentication-sent-to-redirect-same-origin.html
+http/tests/misc/authentication-redirect-3/authentication-sent-to-redirect-same-origin-with-location-credentials.html
+
+# The EFL port has no support for user gesture (dumpUserGestureInFrameLoadCallbacks in DRT and in the port itself as well)
+fast/frames/location-redirect-user-gesture.html
+fast/frames/meta-refresh-user-gesture.html
+
+# Incomplete policy delegate dumping
+http/tests/misc/redirect-to-external-url.html
+
+# Probably related to https://bugs.webkit.org/show_bug.cgi?id=27637
+http/tests/loading/basic-auth-resend-wrong-credentials.html
+
+# BUG: wrong test results that need investigation
+editing/selection/5825350-1.html [ Failure ]
+editing/selection/5825350-2.html [ Failure ]
+editing/selection/directionality-after-undo-replace.html [ Failure ]
+editing/selection/doubleclick-beside-cr-span.html [ Failure ]
+editing/selection/doubleclick-whitespace.html [ Failure ]
+editing/selection/extend-selection-after-double-click.html [ Failure ]
+editing/selection/mixed-editability-10.html [ Failure ]
+editing/selection/move-left-right.html [ Failure ]
+editing/selection/select-bidi-run.html [ Failure ]
+http/tests/navigation/go-back-to-error-page.html
+
+# Content Security Policy 1.1 (ENABLE_CSP_NEXT) is not enabled
+# https://bugs.webkit.org/show_bug.cgi?id=85558
+http/tests/security/contentSecurityPolicy/1.1
+
+# Fails, seems like a rounding problem
+svg/animations/animate-text-nested-transforms.html
+
+# This should only be a layer change
+# http://webkit.org/b/82129
+fast/box-shadow/shadow-buffer-partial.html
+fast/block/lineboxcontain/block-font.html
+fast/block/lineboxcontain/block-glyphs.html
+fast/block/lineboxcontain/font.html
+
+# following tests started failing on EFL after r122952.
+inspector/styles/override-screen-size.html
+inspector/console/console-long-eval-crash.html
+inspector/timeline/timeline-paint.html
+
+# Incorrect rendering results after r115846
+webkit.org/b/85599 http/tests/navigation/postredirect-basic.html [ Failure ]
+webkit.org/b/85599 http/tests/navigation/postredirect-goback1.html [ Failure ]
+
+# Consistently times out instead of being flaky.
+webkit.org/b/56567 http/tests/cache/history-only-cached-subresource-loads.html [ Failure ]
+
+# EFL WK1 does not support plugins yet.
+webkit.org/b/96881 fast/frames/sandboxed-iframe-plugins.html [ Failure ]
+webkit.org/b/96881 http/tests/plugins [ Skip ]
+webkit.org/b/96881 plugins [ Skip ]
+webkit.org/b/96881 userscripts/user-script-plugin-document.html [ Failure ]
+
+# EFL WK1 does not support the spellchecker feature
+webkit.org/b/86633 editing/spelling [ Skip ]
+
+# Needs custom policy delegate enhancement to log DOM node info - EFL port is missing DOM node abstraction
+webkit.org/b/87972 fast/loader/policy-delegate-action-hit-test-zoomed.html [ Failure ]
+webkit.org/b/87972 fast/encoding/mailto-always-utf-8.html [ Failure ]
+
+# Frame does not get focus as expected
+webkit.org/b/97077 inspector/extensions/extensions-panel.html [ Failure ]

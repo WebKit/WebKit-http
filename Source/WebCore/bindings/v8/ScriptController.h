@@ -107,10 +107,11 @@ public:
     // FIXME: Get rid of extensionGroup here.
     void evaluateInIsolatedWorld(int worldID, const Vector<ScriptSourceCode>& sources, int extensionGroup, Vector<ScriptValue>* results);
 
-    // Associates an isolated world (see above for description) with a security
-    // origin. XMLHttpRequest instances used in that world will be considered
-    // to come from that origin, not the frame's.
-    void setIsolatedWorldSecurityOrigin(int worldID, PassRefPtr<SecurityOrigin>);
+    // FIXME: Remove references to this call in chromium and delete it.
+    inline static void setIsolatedWorldSecurityOrigin(int worldID, PassRefPtr<SecurityOrigin> origin)
+    {
+        DOMWrapperWorld::setIsolatedWorldSecurityOrigin(worldID, origin);
+    }
 
     // Creates a property of the global object of a frame.
     void bindToWindowObject(Frame*, const String& key, NPObject*);
@@ -166,7 +167,6 @@ public:
     void updatePlatformScriptObjects();
     void cleanupScriptObjectsForPlugin(Widget*);
 
-    void clearForNavigation();
     void clearForClose();
 
     NPObject* createScriptObjectForPluginElement(HTMLPlugInElement*);
@@ -190,9 +190,8 @@ private:
     // reference to the v8 context it contains, which is not made weak until we
     // call world->destroyIsolatedShell().
     typedef HashMap<int, V8DOMWindowShell*> IsolatedWorldMap;
-    typedef HashMap<int, RefPtr<SecurityOrigin> > IsolatedWorldSecurityOriginMap;
 
-    void resetIsolatedWorlds();
+    void reset();
 
     Frame* m_frame;
     const String* m_sourceURL;
@@ -204,7 +203,6 @@ private:
     // here so that they can be used again by future calls to
     // evaluateInIsolatedWorld().
     IsolatedWorldMap m_isolatedWorlds;
-    IsolatedWorldSecurityOriginMap m_isolatedWorldSecurityOrigins;
 
     bool m_paused;
 

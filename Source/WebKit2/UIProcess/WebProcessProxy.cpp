@@ -45,8 +45,15 @@
 #include <wtf/text/CString.h>
 #include <wtf/text/WTFString.h>
 
+#if ENABLE(NETWORK_PROCESS)
+#include "NetworkProcessManager.h"
+#endif
+
 #if PLATFORM(MAC)
-#include "BuiltInPDFView.h"
+#include "SimplePDFPlugin.h"
+#if ENABLE(PDFKIT_PLUGIN)
+#include "PDFPlugin.h"
+#endif
 #endif
 
 using namespace WebCore;
@@ -69,11 +76,13 @@ static uint64_t generatePageID()
     return uniquePageID++;
 }
 
+#if ENABLE(NETSCAPE_PLUGIN_API)
 static WorkQueue& pluginWorkQueue()
 {
     DEFINE_STATIC_LOCAL(WorkQueue, queue, ("com.apple.CoreIPC.PluginQueue"));
     return queue;
 }
+#endif // ENABLE(NETSCAPE_PLUGIN_API)
 
 PassRefPtr<WebProcessProxy> WebProcessProxy::create(PassRefPtr<WebContext> context)
 {
@@ -100,6 +109,16 @@ WebProcessProxy::~WebProcessProxy()
         m_processLauncher->invalidate();
         m_processLauncher = 0;
     }
+}
+
+WebProcessProxy* WebProcessProxy::fromConnection(CoreIPC::Connection* connection)
+{
+    ASSERT(connection);
+    WebConnectionToWebProcess* webConnection = static_cast<WebConnectionToWebProcess*>(connection->client());
+
+    WebProcessProxy* webProcessProxy = webConnection->webProcessProxy();
+    ASSERT(webProcessProxy->connection() == connection);
+    return webProcessProxy;
 }
 
 void WebProcessProxy::connect()
@@ -133,12 +152,12 @@ void WebProcessProxy::disconnect()
     m_context->disconnectProcess(this);
 }
 
-bool WebProcessProxy::sendMessage(CoreIPC::MessageID messageID, PassOwnPtr<CoreIPC::ArgumentEncoder> arguments, unsigned messageSendFlags)
+bool WebProcessProxy::sendMessage(CoreIPC::MessageID messageID, PassOwnPtr<CoreIPC::MessageEncoder> encoder, unsigned messageSendFlags)
 {
     // If we're waiting for the web process to launch, we need to stash away the messages so we can send them once we have
     // a CoreIPC connection.
     if (isLaunching()) {
-        m_pendingMessages.append(make_pair(CoreIPC::Connection::OutgoingMessage(messageID, arguments), messageSendFlags));
+        m_pendingMessages.append(make_pair(CoreIPC::Connection::OutgoingMessage(messageID, encoder), messageSendFlags));
         return true;
     }
 
@@ -146,7 +165,7 @@ bool WebProcessProxy::sendMessage(CoreIPC::MessageID messageID, PassOwnPtr<CoreI
     if (!m_connection)
         return false;
 
-    return connection()->sendMessage(messageID, arguments, messageSendFlags);
+    return connection()->sendMessage(messageID, encoder, messageSendFlags);
 }
 
 bool WebProcessProxy::isLaunching() const
@@ -260,9 +279,9 @@ bool WebProcessProxy::checkURLReceivedFromWebProcess(const KURL& url)
     // Items in back/forward list have been already checked.
     // One case where we don't have sandbox extensions for file URLs in b/f list is if the list has been reinstated after a crash or a browser restart.
     for (WebBackForwardListItemMap::iterator iter = m_backForwardListItemMap.begin(), end = m_backForwardListItemMap.end(); iter != end; ++iter) {
-        if (KURL(KURL(), iter->second->url()).fileSystemPath() == path)
+        if (KURL(KURL(), iter->value->url()).fileSystemPath() == path)
             return true;
-        if (KURL(KURL(), iter->second->originalURL()).fileSystemPath() == path)
+        if (KURL(KURL(), iter->value->originalURL()).fileSystemPath() == path)
             return true;
     }
 
@@ -285,17 +304,18 @@ void WebProcessProxy::addBackForwardItem(uint64_t itemID, const String& original
 
     WebBackForwardListItemMap::AddResult result = m_backForwardListItemMap.add(itemID, 0);
     if (result.isNewEntry) {
-        result.iterator->second = WebBackForwardListItem::create(originalURL, url, title, backForwardData.data(), backForwardData.size(), itemID);
+        result.iterator->value = WebBackForwardListItem::create(originalURL, url, title, backForwardData.data(), backForwardData.size(), itemID);
         return;
     }
 
     // Update existing item.
-    result.iterator->second->setOriginalURL(originalURL);
-    result.iterator->second->setURL(url);
-    result.iterator->second->setTitle(title);
-    result.iterator->second->setBackForwardData(backForwardData.data(), backForwardData.size());
+    result.iterator->value->setOriginalURL(originalURL);
+    result.iterator->value->setURL(url);
+    result.iterator->value->setTitle(title);
+    result.iterator->value->setBackForwardData(backForwardData.data(), backForwardData.size());
 }
 
+#if ENABLE(NETSCAPE_PLUGIN_API)
 void WebProcessProxy::sendDidGetPlugins(uint64_t requestID, PassOwnPtr<Vector<PluginInfo> > pluginInfos)
 {
     ASSERT(isMainThread());
@@ -305,8 +325,12 @@ void WebProcessProxy::sendDidGetPlugins(uint64_t requestID, PassOwnPtr<Vector<Pl
 #if PLATFORM(MAC)
     // Add built-in PDF last, so that it's not used when a real plug-in is installed.
     // NOTE: This has to be done on the main thread as it calls localizedString().
-    if (!m_context->omitPDFSupport())
-        plugins->append(BuiltInPDFView::pluginInfo());
+    if (!m_context->omitPDFSupport()) {
+#if ENABLE(PDFKIT_PLUGIN)
+        plugins->append(PDFPlugin::pluginInfo());
+#endif
+        plugins->append(SimplePDFPlugin::pluginInfo());
+    }
 #endif
 
     send(Messages::WebProcess::DidGetPlugins(requestID, *plugins), 0);
@@ -319,9 +343,11 @@ void WebProcessProxy::handleGetPlugins(uint64_t requestID, bool refresh)
 
     OwnPtr<Vector<PluginInfo> > pluginInfos = adoptPtr(new Vector<PluginInfo>);
 
-    Vector<PluginModuleInfo> plugins = m_context->pluginInfoStore().plugins();
-    for (size_t i = 0; i < plugins.size(); ++i)
-        pluginInfos->append(plugins[i].info);
+    {
+        Vector<PluginModuleInfo> plugins = m_context->pluginInfoStore().plugins();
+        for (size_t i = 0; i < plugins.size(); ++i)
+            pluginInfos->append(plugins[i].info);
+    }
 
     // NOTE: We have to pass the PluginInfo vector to the secondary thread via a pointer as otherwise
     //       we'd end up with a deref() race on all the WTF::Strings it contains.
@@ -351,6 +377,7 @@ void WebProcessProxy::getPluginPath(const String& mimeType, const String& urlStr
 
     pluginPath = plugin.path;
 }
+#endif // ENABLE(NETSCAPE_PLUGIN_API)
 
 #if ENABLE(PLUGIN_PROCESS)
 
@@ -359,7 +386,7 @@ void WebProcessProxy::getPluginProcessConnection(const String& pluginPath, PassR
     PluginProcessManager::shared().getPluginProcessConnection(m_context->pluginInfoStore(), pluginPath, reply);
 }
 
-#else
+#elif ENABLE(NETSCAPE_PLUGIN_API)
 
 void WebProcessProxy::didGetSitesWithPluginData(const Vector<String>& sites, uint64_t callbackID)
 {
@@ -373,42 +400,31 @@ void WebProcessProxy::didClearPluginSiteData(uint64_t callbackID)
 
 #endif
 
-void WebProcessProxy::didReceiveMessage(CoreIPC::Connection* connection, CoreIPC::MessageID messageID, CoreIPC::ArgumentDecoder* arguments)
+#if ENABLE(SHARED_WORKER_PROCESS)
+void WebProcessProxy::getSharedWorkerProcessConnection(const String& /* url */, const String& /* name */, PassRefPtr<Messages::WebProcessProxy::GetSharedWorkerProcessConnection::DelayedReply>)
 {
+    // FIXME: Implement
+}
+#endif // ENABLE(SHARED_WORKER_PROCESS)
+
+#if ENABLE(NETWORK_PROCESS)
+void WebProcessProxy::getNetworkProcessConnection(PassRefPtr<Messages::WebProcessProxy::GetNetworkProcessConnection::DelayedReply> reply)
+{
+    NetworkProcessManager::shared().getNetworkProcessConnection(reply);
+}
+#endif // ENABLE(NETWORK_PROCESS)
+
+void WebProcessProxy::didReceiveMessage(CoreIPC::Connection* connection, CoreIPC::MessageID messageID, CoreIPC::MessageDecoder& decoder)
+{
+    if (m_context->dispatchMessage(connection, messageID, decoder))
+        return;
+
     if (messageID.is<CoreIPC::MessageClassWebProcessProxy>()) {
-        didReceiveWebProcessProxyMessage(connection, messageID, arguments);
+        didReceiveWebProcessProxyMessage(connection, messageID, decoder);
         return;
     }
 
-    if (messageID.is<CoreIPC::MessageClassWebContext>()
-        || messageID.is<CoreIPC::MessageClassWebContextLegacy>()
-        || messageID.is<CoreIPC::MessageClassDownloadProxy>()
-        || messageID.is<CoreIPC::MessageClassWebApplicationCacheManagerProxy>()
-#if ENABLE(BATTERY_STATUS)
-        || messageID.is<CoreIPC::MessageClassWebBatteryManagerProxy>()
-#endif
-        || messageID.is<CoreIPC::MessageClassWebCookieManagerProxy>()
-        || messageID.is<CoreIPC::MessageClassWebDatabaseManagerProxy>()
-        || messageID.is<CoreIPC::MessageClassWebGeolocationManagerProxy>()
-        || messageID.is<CoreIPC::MessageClassWebIconDatabase>()
-        || messageID.is<CoreIPC::MessageClassWebKeyValueStorageManagerProxy>()
-        || messageID.is<CoreIPC::MessageClassWebMediaCacheManagerProxy>()
-#if ENABLE(NETWORK_INFO)
-        || messageID.is<CoreIPC::MessageClassWebNetworkInfoManagerProxy>()
-#endif
-        || messageID.is<CoreIPC::MessageClassWebNotificationManagerProxy>()
-#if USE(SOUP)
-        || messageID.is<CoreIPC::MessageClassWebSoupRequestManagerProxy>()
-#endif
-#if ENABLE(VIBRATION)
-        || messageID.is<CoreIPC::MessageClassWebVibrationProxy>()
-#endif
-        || messageID.is<CoreIPC::MessageClassWebResourceCacheManagerProxy>()) {
-        m_context->didReceiveMessage(this, messageID, arguments);
-        return;
-    }
-
-    uint64_t pageID = arguments->destinationID();
+    uint64_t pageID = decoder.destinationID();
     if (!pageID)
         return;
 
@@ -416,26 +432,20 @@ void WebProcessProxy::didReceiveMessage(CoreIPC::Connection* connection, CoreIPC
     if (!pageProxy)
         return;
     
-    pageProxy->didReceiveMessage(connection, messageID, arguments);
+    pageProxy->didReceiveMessage(connection, messageID, decoder);
 }
 
-void WebProcessProxy::didReceiveSyncMessage(CoreIPC::Connection* connection, CoreIPC::MessageID messageID, CoreIPC::ArgumentDecoder* arguments, OwnPtr<CoreIPC::ArgumentEncoder>& reply)
+void WebProcessProxy::didReceiveSyncMessage(CoreIPC::Connection* connection, CoreIPC::MessageID messageID, CoreIPC::MessageDecoder& decoder, OwnPtr<CoreIPC::MessageEncoder>& replyEncoder)
 {
+    if (m_context->dispatchSyncMessage(connection, messageID, decoder, replyEncoder))
+        return;
+
     if (messageID.is<CoreIPC::MessageClassWebProcessProxy>()) {
-        didReceiveSyncWebProcessProxyMessage(connection, messageID, arguments, reply);
+        didReceiveSyncWebProcessProxyMessage(connection, messageID, decoder, replyEncoder);
         return;
     }
 
-    if (messageID.is<CoreIPC::MessageClassWebContext>() || messageID.is<CoreIPC::MessageClassWebContextLegacy>()
-#if ENABLE(NETWORK_INFO)
-        || messageID.is<CoreIPC::MessageClassWebNetworkInfoManagerProxy>()
-#endif
-        || messageID.is<CoreIPC::MessageClassDownloadProxy>() || messageID.is<CoreIPC::MessageClassWebIconDatabase>()) {
-        m_context->didReceiveSyncMessage(this, messageID, arguments, reply);
-        return;
-    }
-
-    uint64_t pageID = arguments->destinationID();
+    uint64_t pageID = decoder.destinationID();
     if (!pageID)
         return;
     
@@ -443,13 +453,13 @@ void WebProcessProxy::didReceiveSyncMessage(CoreIPC::Connection* connection, Cor
     if (!pageProxy)
         return;
     
-    pageProxy->didReceiveSyncMessage(connection, messageID, arguments, reply);
+    pageProxy->didReceiveSyncMessage(connection, messageID, decoder, replyEncoder);
 }
 
-void WebProcessProxy::didReceiveMessageOnConnectionWorkQueue(CoreIPC::Connection* connection, CoreIPC::MessageID messageID, CoreIPC::ArgumentDecoder* arguments, bool& didHandleMessage)
+void WebProcessProxy::didReceiveMessageOnConnectionWorkQueue(CoreIPC::Connection* connection, CoreIPC::MessageID messageID, CoreIPC::MessageDecoder& decoder, bool& didHandleMessage)
 {
     if (messageID.is<CoreIPC::MessageClassWebProcessProxy>())
-        didReceiveWebProcessProxyMessageOnConnectionWorkQueue(connection, messageID, arguments, didHandleMessage);
+        didReceiveWebProcessProxyMessageOnConnectionWorkQueue(connection, messageID, decoder, didHandleMessage);
 }
 
 void WebProcessProxy::didClose(CoreIPC::Connection*)
@@ -563,7 +573,7 @@ size_t WebProcessProxy::frameCountInPage(WebPageProxy* page) const
 {
     size_t result = 0;
     for (HashMap<uint64_t, RefPtr<WebFrameProxy> >::const_iterator iter = m_frameMap.begin(); iter != m_frameMap.end(); ++iter) {
-        if (iter->second->page() == page)
+        if (iter->value->page() == page)
             ++result;
     }
     return result;

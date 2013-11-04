@@ -116,6 +116,8 @@ static const Ecore_Getopt options = {
         ECORE_GETOPT_CHOICE
             ('b', "backing-store", "choose backing store to use.", backingStores),
         ECORE_GETOPT_STORE_DEF_BOOL
+            ('c', "encoding-detector", "enable/disable encoding detector", 0),
+        ECORE_GETOPT_STORE_DEF_BOOL
             ('f', "flattening", "frame flattening.", 0),
         ECORE_GETOPT_STORE_DEF_BOOL
             ('F', "fullscreen", "fullscreen mode.", 0),
@@ -144,6 +146,7 @@ typedef struct _User_Arguments {
     const char *engine;
     Eina_Bool quitOption;
     const char *backingStore;
+    Eina_Bool enableEncodingDetector;
     Eina_Bool isFlattening;
     Eina_Bool isFullscreen;
     Eina_Rectangle geometry;
@@ -160,9 +163,11 @@ typedef struct _ELauncher {
     User_Arguments *userArgs;
 } ELauncher;
 
-static void browserDestroy(Ecore_Evas *ee);
+static void windowDestroy(Ecore_Evas *ee);
 static void closeWindow(Ecore_Evas *ee);
 static int browserCreate(const char *url, User_Arguments *userArgs);
+static int webInspectorCreate(ELauncher *appBrowser);
+static ELauncher *windowCreate(User_Arguments *userArgs);
 
 static ELauncher *
 find_app_from_ee(Ecore_Evas *ee)
@@ -237,7 +242,7 @@ zoom_level_set(Evas_Object *webview, int level)
 }
 
 static void
-on_ecore_evas_resize(Ecore_Evas *ee)
+on_browser_ecore_evas_resize(Ecore_Evas *ee)
 {
     ELauncher *app;
     Evas_Object *webview;
@@ -252,6 +257,19 @@ on_ecore_evas_resize(Ecore_Evas *ee)
     webview = evas_object_name_find(ecore_evas_get(ee), "browser");
     evas_object_move(webview, 0, URL_BAR_HEIGHT);
     evas_object_resize(webview, w, h - URL_BAR_HEIGHT);
+}
+
+static void
+on_inspector_ecore_evas_resize(Ecore_Evas *ee)
+{
+    Evas_Object *webview;
+    int w, h;
+
+    ecore_evas_geometry_get(ee, NULL, NULL, &w, &h);
+
+    webview = evas_object_name_find(ecore_evas_get(ee), "inspector");
+    evas_object_move(webview, 0, 0);
+    evas_object_resize(webview, w, h);
 }
 
 static void
@@ -561,8 +579,8 @@ on_key_down(void *data, Evas *e, Evas_Object *obj, void *event_info)
         info("Zoom in (F8) was pressed.\n");
         if (currentZoomLevel < MAX_ZOOM_LEVEL && zoom_level_set(obj, currentZoomLevel + 1))
             currentZoomLevel++;
-    } else if (!strcmp(ev->key, "F9")) {
-        info("Create new window (F9) was pressed.\n");
+    } else if (!strcmp(ev->key, "n") && ctrlPressed) {
+        info("Create new window (Ctrl+n) was pressed.\n");
         browserCreate("http://www.google.com", app->userArgs);
     } else if (!strcmp(ev->key, "g") && ctrlPressed ) {
         Evas_Coord x, y, w, h;
@@ -619,6 +637,15 @@ on_key_down(void *data, Evas *e, Evas_Object *obj, void *event_info)
 
         ewk_security_origin_free(origin);
         ewk_web_database_list_free(databaseList);
+    } else if (!strcmp(ev->key, "i") && ctrlPressed) {
+        Evas_Object *inspector_view = ewk_view_inspector_view_get(obj);
+        if (inspector_view) {
+            info("Web Inspector close\n");
+            ewk_view_inspector_close(obj);
+        } else {
+            info("Web Inspector show\n");
+            ewk_view_inspector_show(obj);
+        }
     }
 }
 
@@ -632,6 +659,42 @@ on_browser_del(void *data, Evas *evas, Evas_Object *browser, void *event)
     evas_object_event_callback_del(app->browser, EVAS_CALLBACK_FOCUS_IN, on_focus_in);
     evas_object_event_callback_del(app->browser, EVAS_CALLBACK_FOCUS_OUT, on_focus_out);
     evas_object_event_callback_del(app->browser, EVAS_CALLBACK_DEL, on_browser_del);
+}
+
+static void
+on_inspector_view_create(void *user_data, Evas_Object *webview, void *event_info)
+{
+    ELauncher *app_browser = (ELauncher *)user_data;
+
+    webInspectorCreate(app_browser);
+}
+
+static void
+on_inspector_view_close(void *user_data, Evas_Object *webview, void *event_info)
+{
+    Eina_List *l;
+    void *app;
+    ELauncher *app_browser = (ELauncher *)user_data;
+    Evas_Object *inspector_view = (Evas_Object *)event_info;
+
+    ewk_view_inspector_view_set(app_browser->browser, NULL);
+
+    EINA_LIST_FOREACH(windows, l, app)
+        if (((ELauncher *)app)->browser == inspector_view)
+            break;
+
+    windows = eina_list_remove(windows, app);
+    windowDestroy(((ELauncher *)app)->ee);
+    free(app);
+}
+
+static void
+on_inspector_view_destroyed(Ecore_Evas *ee)
+{
+    ELauncher *app;
+
+    app = find_app_from_ee(ee);
+    evas_object_smart_callback_call(app->browser, "inspector,view,destroy", NULL);
 }
 
 static int
@@ -658,32 +721,106 @@ quit(Eina_Bool success, const char *msg)
 static int
 browserCreate(const char *url, User_Arguments *userArgs)
 {
-    Eina_Rectangle geometry = userArgs->geometry;
-    if ((geometry.w <= 0) && (geometry.h <= 0)) {
-        geometry.w = DEFAULT_WIDTH;
-        geometry.h = DEFAULT_HEIGHT;
+    ELauncher *appBrowser = windowCreate(userArgs);
+    if (!appBrowser)
+        return quit(EINA_FALSE, "ERROR: could not create a browser window\n");
+
+    ecore_evas_title_set(appBrowser->ee, "EFL Test Launcher");
+    ecore_evas_callback_resize_set(appBrowser->ee, on_browser_ecore_evas_resize);
+    ecore_evas_callback_delete_request_set(appBrowser->ee, closeWindow);
+
+    evas_object_name_set(appBrowser->browser, "browser");
+
+    evas_object_smart_callback_add(appBrowser->browser, "inputmethod,changed", on_inputmethod_changed, appBrowser);
+    evas_object_smart_callback_add(appBrowser->browser, "inspector,view,close", on_inspector_view_close, appBrowser);
+    evas_object_smart_callback_add(appBrowser->browser, "inspector,view,create", on_inspector_view_create, appBrowser);
+    evas_object_smart_callback_add(appBrowser->browser, "load,error", on_load_error, appBrowser);
+    evas_object_smart_callback_add(appBrowser->browser, "load,finished", on_load_finished, appBrowser);
+    evas_object_smart_callback_add(appBrowser->browser, "load,progress", on_progress, appBrowser);
+    evas_object_smart_callback_add(appBrowser->browser, "menubar,visible,get", on_menubar_visible_get, appBrowser);
+    evas_object_smart_callback_add(appBrowser->browser, "menubar,visible,set", on_menubar_visible_set, appBrowser);
+    evas_object_smart_callback_add(appBrowser->browser, "scrollbars,visible,get", on_scrollbars_visible_get, appBrowser);
+    evas_object_smart_callback_add(appBrowser->browser, "scrollbars,visible,set", on_scrollbars_visible_set, appBrowser);
+    evas_object_smart_callback_add(appBrowser->browser, "statusbar,visible,get", on_statusbar_visible_get, appBrowser);
+    evas_object_smart_callback_add(appBrowser->browser, "statusbar,visible,set", on_statusbar_visible_set, appBrowser);
+    evas_object_smart_callback_add(appBrowser->browser, "title,changed", on_title_changed, appBrowser);
+    evas_object_smart_callback_add(appBrowser->browser, "toolbars,visible,get", on_toolbars_visible_get, appBrowser);
+    evas_object_smart_callback_add(appBrowser->browser, "toolbars,visible,set", on_toolbars_visible_set, appBrowser);
+    evas_object_smart_callback_add(appBrowser->browser, "tooltip,text,set", on_tooltip_text_set, appBrowser);
+    evas_object_smart_callback_add(appBrowser->browser, "uri,changed", on_url_changed, appBrowser);
+
+    evas_object_event_callback_add(appBrowser->browser, EVAS_CALLBACK_DEL, on_browser_del, appBrowser);
+    evas_object_event_callback_add(appBrowser->browser, EVAS_CALLBACK_FOCUS_IN, on_focus_in, appBrowser);
+    evas_object_event_callback_add(appBrowser->browser, EVAS_CALLBACK_FOCUS_OUT, on_focus_out, appBrowser);
+    evas_object_event_callback_add(appBrowser->browser, EVAS_CALLBACK_KEY_DOWN, on_key_down, appBrowser);
+    evas_object_event_callback_add(appBrowser->browser, EVAS_CALLBACK_MOUSE_DOWN, on_mouse_down, appBrowser);
+
+    ewk_view_setting_enable_developer_extras_set(appBrowser->browser, EINA_TRUE);
+
+    appBrowser->url_bar = url_bar_add(appBrowser->browser, DEFAULT_WIDTH);
+
+    evas_object_move(appBrowser->browser, 0, URL_BAR_HEIGHT);
+    evas_object_resize(appBrowser->browser, userArgs->geometry.w, userArgs->geometry.h - URL_BAR_HEIGHT);
+
+    ewk_view_uri_set(appBrowser->browser, url);
+
+    evas_object_show(appBrowser->browser);
+    ecore_evas_show(appBrowser->ee);
+
+    evas_object_focus_set(appBrowser->browser, EINA_TRUE);
+
+    return 1;
+}
+
+static int
+webInspectorCreate(ELauncher *appBrowser)
+{
+    ELauncher *appInspector = windowCreate(appBrowser->userArgs);
+    if (!appInspector)
+        return quit(EINA_FALSE, "ERROR: could not create an inspector window\n");
+
+    ecore_evas_title_set(appInspector->ee, "Web Inspector");
+    ecore_evas_callback_resize_set(appInspector->ee, on_inspector_ecore_evas_resize);
+    ecore_evas_callback_delete_request_set(appInspector->ee, on_inspector_view_destroyed);
+
+    evas_object_name_set(appInspector->browser, "inspector");
+
+    evas_object_move(appInspector->browser, 0, 0);
+    evas_object_resize(appInspector->browser, appInspector->userArgs->geometry.w, appInspector->userArgs->geometry.h);
+
+    evas_object_show(appInspector->browser);
+    ecore_evas_show(appInspector->ee);
+
+    evas_object_focus_set(appInspector->browser, EINA_TRUE);
+
+    ewk_view_inspector_view_set(appBrowser->browser, appInspector->browser);
+
+    return 1;
+}
+
+static ELauncher *
+windowCreate(User_Arguments *userArgs)
+{
+    ELauncher *app = (ELauncher *)malloc(sizeof(ELauncher));
+    if (!app) {
+        quit(EINA_FALSE, "ERROR: could not create an ELauncher\n");
+        return NULL;
     }
 
-    ELauncher *app = (ELauncher*) malloc(sizeof(ELauncher));
-    if (!app)
-        return quit(EINA_FALSE, "ERROR: could not create EWebLauncher window\n");
-
-    app->ee = ecore_evas_new(userArgs->engine, 0, 0, geometry.w, geometry.h, NULL);
-
-    if (!app->ee)
-        return quit(EINA_FALSE, "ERROR: could not construct evas-ecore\n");
+    app->ee = ecore_evas_new(userArgs->engine, 0, 0, userArgs->geometry.w, userArgs->geometry.h, NULL);
+    if (!app->ee) {
+        quit(EINA_FALSE, "ERROR: could not construct evas-ecore\n");
+        return NULL;
+    }
 
     if (userArgs->isFullscreen)
         ecore_evas_fullscreen_set(app->ee, EINA_TRUE);
 
-    ecore_evas_title_set(app->ee, "EFL Test Launcher");
-    ecore_evas_callback_resize_set(app->ee, on_ecore_evas_resize);
-    ecore_evas_callback_delete_request_set(app->ee, closeWindow);
-
     app->evas = ecore_evas_get(app->ee);
-
-    if (!app->evas)
-        return quit(EINA_FALSE, "ERROR: could not get evas from evas-ecore\n");
+    if (!app->evas) {
+        quit(EINA_FALSE, "ERROR: could not get evas from evas-ecore\n");
+        return NULL;
+    }
 
     if (userArgs->backingStore && !strcasecmp(userArgs->backingStore, "tiled")) {
         app->browser = ewk_view_tiled_add(app->evas);
@@ -696,57 +833,21 @@ browserCreate(const char *url, User_Arguments *userArgs)
     ewk_view_theme_set(app->browser, themePath);
     if (userArgs->userAgent)
         ewk_view_setting_user_agent_set(app->browser, userArgs->userAgent);
+
     ewk_view_setting_local_storage_database_path_set(app->browser, userArgs->databasePath);
     ewk_view_setting_enable_frame_flattening_set(app->browser, userArgs->isFlattening);
-    
+    ewk_view_setting_encoding_detector_set(app->browser, userArgs->enableEncodingDetector);
+
     app->userArgs = userArgs;
-    evas_object_name_set(app->browser, "browser");
-
-    evas_object_smart_callback_add(app->browser, "title,changed", on_title_changed, app);
-    evas_object_smart_callback_add(app->browser, "load,progress", on_progress, app);
-    evas_object_smart_callback_add(app->browser, "load,finished", on_load_finished, app);
-    evas_object_smart_callback_add(app->browser, "load,error", on_load_error, app);
-
-    evas_object_smart_callback_add(app->browser, "toolbars,visible,set", on_toolbars_visible_set, app);
-    evas_object_smart_callback_add(app->browser, "toolbars,visible,get", on_toolbars_visible_get, app);
-    evas_object_smart_callback_add(app->browser, "statusbar,visible,set", on_statusbar_visible_set, app);
-    evas_object_smart_callback_add(app->browser, "statusbar,visible,get", on_statusbar_visible_get, app);
-    evas_object_smart_callback_add(app->browser, "scrollbars,visible,set", on_scrollbars_visible_set, app);
-    evas_object_smart_callback_add(app->browser, "scrollbars,visible,get", on_scrollbars_visible_get, app);
-    evas_object_smart_callback_add(app->browser, "menubar,visible,set", on_menubar_visible_set, app);
-    evas_object_smart_callback_add(app->browser, "menubar,visible,get", on_menubar_visible_get, app);
-    evas_object_smart_callback_add(app->browser, "tooltip,text,set", on_tooltip_text_set, app);
-    evas_object_smart_callback_add(app->browser, "inputmethod,changed", on_inputmethod_changed, app);
-    evas_object_smart_callback_add(app->browser, "uri,changed", on_url_changed, app);
-
-/*     ewk_callback_resize_requested_add(app->browser, on_resize_requested, app->ee); */
-
-    evas_object_event_callback_add(app->browser, EVAS_CALLBACK_KEY_DOWN, on_key_down, app);
-    evas_object_event_callback_add(app->browser, EVAS_CALLBACK_MOUSE_DOWN, on_mouse_down, app);
-    evas_object_event_callback_add(app->browser, EVAS_CALLBACK_FOCUS_IN, on_focus_in, app);
-    evas_object_event_callback_add(app->browser, EVAS_CALLBACK_FOCUS_OUT, on_focus_out, app);
-    evas_object_event_callback_add(app->browser, EVAS_CALLBACK_DEL, on_browser_del, app);
-
-    app->url_bar = url_bar_add(app->browser, DEFAULT_WIDTH);
-
-    evas_object_move(app->browser, 0, URL_BAR_HEIGHT);
-    evas_object_resize(app->browser, geometry.w, geometry.h - URL_BAR_HEIGHT);
-
-    if (url && (url[0] != '\0'))
-        ewk_view_uri_set(app->browser, url);
-
-    evas_object_show(app->browser);
-    ecore_evas_show(app->ee);
-
-    evas_object_focus_set(app->browser, EINA_TRUE);
+    app->url_bar = NULL;
 
     windows = eina_list_append(windows, app);
 
-    return 1;
+    return app;
 }
 
 static void
-browserDestroy(Ecore_Evas *ee)
+windowDestroy(Ecore_Evas *ee)
 {
     ecore_evas_free(ee);
     if (!eina_list_count(windows))
@@ -759,9 +860,11 @@ closeWindow(Ecore_Evas *ee)
     ELauncher *app;
 
     app = find_app_from_ee(ee);
+    ewk_view_inspector_close(app->browser);
+
     windows = eina_list_remove(windows, app);
     url_bar_del(app->url_bar);
-    browserDestroy(ee);
+    windowDestroy(ee);
     free(app);
 }
 
@@ -771,6 +874,8 @@ main_signal_exit(void *data, int ev_type, void *ev)
     ELauncher *app;
     while (windows) {
         app = (ELauncher*) eina_list_data_get(windows);
+        ewk_view_inspector_close(app->browser);
+
         ecore_evas_free(app->ee);
         windows = eina_list_remove(windows, app);
     }
@@ -807,6 +912,7 @@ parseUserArguments(int argc, char *argv[], User_Arguments *userArgs)
     userArgs->engine = NULL;
     userArgs->quitOption = EINA_FALSE;
     userArgs->backingStore = (char *)backingStores[1];
+    userArgs->enableEncodingDetector = EINA_FALSE;
     userArgs->isFlattening = EINA_FALSE;
     userArgs->isFullscreen = EINA_FALSE;
     userArgs->geometry.x = 0;
@@ -820,6 +926,7 @@ parseUserArguments(int argc, char *argv[], User_Arguments *userArgs)
         ECORE_GETOPT_VALUE_STR(userArgs->engine),
         ECORE_GETOPT_VALUE_BOOL(userArgs->quitOption),
         ECORE_GETOPT_VALUE_STR(userArgs->backingStore),
+        ECORE_GETOPT_VALUE_BOOL(userArgs->enableEncodingDetector),
         ECORE_GETOPT_VALUE_BOOL(userArgs->isFlattening),
         ECORE_GETOPT_VALUE_BOOL(userArgs->isFullscreen),
         ECORE_GETOPT_VALUE_PTR_CAST(userArgs->geometry),
@@ -837,6 +944,11 @@ parseUserArguments(int argc, char *argv[], User_Arguments *userArgs)
     args = ecore_getopt_parse(&options, values, argc, argv);
 
     themePath = findThemePath(userArgs->theme);
+
+    if ((userArgs->geometry.w <= 0) || (userArgs->geometry.h <= 0)) {
+        userArgs->geometry.w = DEFAULT_WIDTH;
+        userArgs->geometry.h = DEFAULT_HEIGHT;
+    }
 
     return args;
 }

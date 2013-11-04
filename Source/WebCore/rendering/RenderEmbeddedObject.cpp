@@ -228,6 +228,7 @@ bool RenderEmbeddedObject::getReplacementTextGeometry(const LayoutPoint& accumul
 
 void RenderEmbeddedObject::layout()
 {
+    StackStats::LayoutCheckPoint layoutCheckPoint;
     ASSERT(needsLayout());
 
     updateLogicalWidth();
@@ -322,7 +323,7 @@ bool RenderEmbeddedObject::isInUnavailablePluginIndicator(const LayoutPoint& poi
 
 bool RenderEmbeddedObject::isInUnavailablePluginIndicator(MouseEvent* event) const
 {
-    return isInUnavailablePluginIndicator(roundedLayoutPoint(absoluteToLocal(event->absoluteLocation(), false, true)));
+    return isInUnavailablePluginIndicator(roundedLayoutPoint(absoluteToLocal(event->absoluteLocation(), UseTransforms | SnapOffsetForTransforms)));
 }
 
 static bool shouldUnavailablePluginMessageBeButton(Document* document, RenderEmbeddedObject::PluginUnavailabilityReason pluginUnavailabilityReason)

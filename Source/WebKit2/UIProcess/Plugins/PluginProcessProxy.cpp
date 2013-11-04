@@ -67,13 +67,8 @@ PluginProcessProxy::PluginProcessProxy(PluginProcessManager* PluginProcessManage
 {
     ProcessLauncher::LaunchOptions launchOptions;
     launchOptions.processType = ProcessLauncher::PluginProcess;
-#if PLATFORM(MAC)
-    launchOptions.architecture = pluginInfo.pluginArchitecture;
-    launchOptions.executableHeap = PluginProcessProxy::pluginNeedsExecutableHeap(pluginInfo);
-#if HAVE(XPC)
-    launchOptions.useXPC = false;
-#endif
-#endif
+
+    platformInitializeLaunchOptions(launchOptions, pluginInfo);
 
     m_processLauncher = ProcessLauncher::create(this, launchOptions);
 }
@@ -152,18 +147,18 @@ void PluginProcessProxy::pluginProcessCrashedOrFailedToLaunch()
     }
 
     while (!m_pendingGetSitesReplies.isEmpty())
-        didGetSitesWithData(Vector<String>(), m_pendingGetSitesReplies.begin()->first);
+        didGetSitesWithData(Vector<String>(), m_pendingGetSitesReplies.begin()->key);
 
     while (!m_pendingClearSiteDataReplies.isEmpty())
-        didClearSiteData(m_pendingClearSiteDataReplies.begin()->first);
+        didClearSiteData(m_pendingClearSiteDataReplies.begin()->key);
 
     // Tell the plug-in process manager to forget about this plug-in process proxy. This may cause us to be deleted.
     m_pluginProcessManager->removePluginProcessProxy(this);
 }
 
-void PluginProcessProxy::didReceiveMessage(CoreIPC::Connection* connection, CoreIPC::MessageID messageID, CoreIPC::ArgumentDecoder* arguments)
+void PluginProcessProxy::didReceiveMessage(CoreIPC::Connection* connection, CoreIPC::MessageID messageID, CoreIPC::MessageDecoder& decoder)
 {
-    didReceivePluginProcessProxyMessage(connection, messageID, arguments);
+    didReceivePluginProcessProxyMessage(connection, messageID, decoder);
 }
 
 void PluginProcessProxy::didClose(CoreIPC::Connection*)

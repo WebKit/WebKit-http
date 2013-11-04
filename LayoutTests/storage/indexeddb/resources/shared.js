@@ -37,7 +37,6 @@ function removeVendorPrefixes()
     IDBTransaction = self.IDBTransaction || self.webkitIDBTransaction;
 
     indexedDB = evalAndLog("indexedDB = self.indexedDB || self.webkitIndexedDB || self.mozIndexedDB || self.msIndexedDB || self.OIndexedDB;");
-    shouldBeTrueQuiet("Boolean(indexedDB && IDBCursor && IDBDatabase && IDBDatabaseException && IDBFactory && IDBIndex && IDBKeyRange && IDBObjectStore && IDBRequest && IDBTransaction)");
     debug("");
 }
 
@@ -83,19 +82,21 @@ function unexpectedVersionChangeCallback()
     finishJSTest();
 }
 
-function evalAndExpectException(cmd, exceptionCode, exceptionName)
+function evalAndExpectException(cmd, exceptionCode, exceptionName, _quiet)
 {
-    debug("Expecting exception from " + cmd);
+    if (!_quiet)
+        debug("Expecting exception from " + cmd);
     try {
         eval(cmd);
         testFailed("No exception thrown! Should have been " + exceptionCode);
     } catch (e) {
         code = e.code;
-        testPassed("Exception was thrown.");
-        shouldBe("code", exceptionCode);
+        if (!_quiet)
+            testPassed("Exception was thrown.");
+        shouldBe("code", exceptionCode, _quiet);
         if (exceptionName) {
             ename = e.name;
-            shouldBe("ename", exceptionName);
+            shouldBe("ename", exceptionName, _quiet);
         }
     }
 }

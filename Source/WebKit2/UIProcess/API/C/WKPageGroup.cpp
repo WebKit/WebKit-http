@@ -57,3 +57,23 @@ WKPreferencesRef WKPageGroupGetPreferences(WKPageGroupRef pageGroupRef)
 {
     return toAPI(toImpl(pageGroupRef)->preferences());
 }
+
+void WKPageGroupAddUserStyleSheet(WKPageGroupRef pageGroupRef, WKStringRef sourceRef, WKURLRef baseURL, WKArrayRef whitelistedURLPatterns, WKArrayRef blacklistedURLPatterns, WKUserContentInjectedFrames injectedFrames)
+{
+    toImpl(pageGroupRef)->addUserStyleSheet(toWTFString(sourceRef), toWTFString(baseURL), toImpl(whitelistedURLPatterns), toImpl(blacklistedURLPatterns), toUserContentInjectedFrames(injectedFrames), WebCore::UserStyleUserLevel);
+}
+
+void WKPageGroupRemoveAllUserStyleSheets(WKPageGroupRef pageGroupRef)
+{
+    toImpl(pageGroupRef)->removeAllUserStyleSheets();
+}
+
+void WKPageGroupAddUserScript(WKPageGroupRef pageGroupRef, WKStringRef sourceRef, WKURLRef baseURL, WKArrayRef whitelistedURLPatterns, WKArrayRef blacklistedURLPatterns, WKUserContentInjectedFrames injectedFrames, WKUserScriptInjectionTime injectionTime)
+{
+    toImpl(pageGroupRef)->addUserScript(toWTFString(sourceRef), toWTFString(baseURL), toImpl(whitelistedURLPatterns), toImpl(blacklistedURLPatterns), toUserContentInjectedFrames(injectedFrames), toUserScriptInjectionTime(injectionTime));
+}
+
+void WKPageGroupRemoveAllUserScripts(WKPageGroupRef pageGroupRef)
+{
+    toImpl(pageGroupRef)->removeAllUserScripts();
+}

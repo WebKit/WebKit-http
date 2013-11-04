@@ -32,10 +32,10 @@
 
 namespace WebCore {
 
-ScrollingStateNode::ScrollingStateNode(ScrollingStateTree* scrollingStateTree)
+ScrollingStateNode::ScrollingStateNode(ScrollingStateTree* scrollingStateTree, ScrollingNodeID nodeID)
     : m_scrollingStateTree(scrollingStateTree)
+    , m_nodeID(nodeID)
     , m_parent(0)
-    , m_children(0)
     , m_scrollLayerDidChange(false)
 {
 }
@@ -45,8 +45,8 @@ ScrollingStateNode::ScrollingStateNode(ScrollingStateTree* scrollingStateTree)
 // node.
 ScrollingStateNode::ScrollingStateNode(ScrollingStateNode* stateNode)
     : m_scrollingStateTree(0)
+    , m_nodeID(stateNode->scrollingNodeID())
     , m_parent(0)
-    , m_children(0)
     , m_scrollLayerDidChange(stateNode->scrollLayerDidChange())
 {
     setScrollLayer(stateNode->platformScrollLayer());
@@ -54,7 +54,6 @@ ScrollingStateNode::ScrollingStateNode(ScrollingStateNode* stateNode)
 
 ScrollingStateNode::~ScrollingStateNode()
 {
-    delete m_children;
 }
 
 void ScrollingStateNode::cloneAndResetChildNodes(ScrollingStateNode* clone)
@@ -72,9 +71,25 @@ void ScrollingStateNode::appendChild(PassOwnPtr<ScrollingStateNode> childNode)
     childNode->setParent(this);
 
     if (!m_children)
-        m_children = new Vector<OwnPtr<ScrollingStateNode> >;
+        m_children = adoptPtr(new Vector<OwnPtr<ScrollingStateNode> >);
 
     m_children->append(childNode);
+}
+
+void ScrollingStateNode::removeChild(ScrollingStateNode* node)
+{
+    if (!m_children)
+        return;
+
+    if (size_t index = m_children->find(node)) {
+        m_scrollingStateTree->didRemoveNode(node->scrollingNodeID());
+        m_children->remove(index);
+        return;
+    }
+
+    size_t size = m_children->size();
+    for (size_t i = 0; i < size; ++i)
+        m_children->at(i)->removeChild(node);
 }
 
 } // namespace WebCore

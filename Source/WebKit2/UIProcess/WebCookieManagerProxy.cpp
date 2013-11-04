@@ -27,8 +27,9 @@
 #include "WebCookieManagerProxy.h"
 
 #include "SecurityOriginData.h"
-#include "WebCookieManagerMessages.h"
 #include "WebContext.h"
+#include "WebCookieManagerMessages.h"
+#include "WebCookieManagerProxyMessages.h"
 #include "WebSecurityOrigin.h"
 
 namespace WebKit {
@@ -41,6 +42,7 @@ PassRefPtr<WebCookieManagerProxy> WebCookieManagerProxy::create(WebContext* cont
 WebCookieManagerProxy::WebCookieManagerProxy(WebContext* context)
     : m_webContext(context)
 {
+    m_webContext->addMessageReceiver(Messages::WebCookieManagerProxy::messageReceiverName(), this);
 }
 
 WebCookieManagerProxy::~WebCookieManagerProxy()
@@ -63,9 +65,9 @@ void WebCookieManagerProxy::initializeClient(const WKCookieManagerClient* client
     m_client.initialize(client);
 }
 
-void WebCookieManagerProxy::didReceiveMessage(CoreIPC::Connection* connection, CoreIPC::MessageID messageID, CoreIPC::ArgumentDecoder* arguments)
+void WebCookieManagerProxy::didReceiveMessage(CoreIPC::Connection* connection, CoreIPC::MessageID messageID, CoreIPC::MessageDecoder& decoder)
 {
-    didReceiveWebCookieManagerProxyMessage(connection, messageID, arguments);
+    didReceiveWebCookieManagerProxyMessage(connection, messageID, decoder);
 }
 
 void WebCookieManagerProxy::getHostnamesWithCookies(PassRefPtr<ArrayCallback> prpCallback)

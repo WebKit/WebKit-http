@@ -27,12 +27,15 @@
 #define MessageReceiverMap_h
 
 #include "MessageID.h"
+#include "StringReference.h"
 #include <wtf/HashMap.h>
+#include <wtf/text/CString.h>
 
 namespace CoreIPC {
 
-class ArgumentDecoder;
 class Connection;
+class MessageDecoder;
+class MessageEncoder;
 class MessageReceiver;
 
 class MessageReceiverMap {
@@ -40,13 +43,22 @@ public:
     MessageReceiverMap();
     ~MessageReceiverMap();
 
-    void addMessageReceiver(MessageClass, MessageReceiver*);
+    void addMessageReceiver(StringReference messageReceiverName, MessageReceiver*);
+    void addMessageReceiver(StringReference messageReceiverName, uint64_t destinationID, MessageReceiver*);
 
-    bool dispatchMessage(CoreIPC::Connection*, CoreIPC::MessageID, CoreIPC::ArgumentDecoder*);
+    void removeMessageReceiver(StringReference messageReceiverName);
+    void removeMessageReceiver(StringReference messageReceiverName, uint64_t destinationID);
+
+    void invalidate();
+
+    bool dispatchMessage(Connection*, MessageID, MessageDecoder&);
+    bool dispatchSyncMessage(Connection*, MessageID, MessageDecoder&, OwnPtr<MessageEncoder>&);
 
 private:
     // Message receivers that don't require a destination ID.
-    HashMap<unsigned, MessageReceiver*> m_globalMessageReceiverMap;
+    HashMap<StringReference, MessageReceiver*> m_globalMessageReceivers;
+
+    HashMap<std::pair<StringReference, uint64_t>, MessageReceiver*> m_messageReceivers;
 };
 
 };

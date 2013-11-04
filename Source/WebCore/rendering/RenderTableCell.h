@@ -30,8 +30,8 @@
 
 namespace WebCore {
 
-static const unsigned unsetColumnIndex = 0x3FFFFFFF;
-static const unsigned maxColumnIndex = 0x3FFFFFFE; // 1,073,741,823
+static const unsigned unsetColumnIndex = 0x1FFFFFFF;
+static const unsigned maxColumnIndex = 0x1FFFFFFE; // 536,870,910
 
 enum IncludeBorderColorOrNot { DoNotIncludeBorderColor, IncludeBorderColor };
 
@@ -39,8 +39,18 @@ class RenderTableCell : public RenderBlock {
 public:
     explicit RenderTableCell(Node*);
     
-    unsigned colSpan() const;
-    unsigned rowSpan() const;
+    unsigned colSpan() const
+    {
+        if (!m_hasColSpan)
+            return 1;
+        return parseColSpanFromDOM();
+    }
+    unsigned rowSpan() const
+    {
+        if (!m_hasRowSpan)
+            return 1;
+        return parseRowSpanFromDOM();
+    }
 
     // Called from HTMLTableCellElement.
     void colSpanOrRowSpanChanged();
@@ -70,13 +80,31 @@ public:
         return row()->rowIndex();
     }
 
-    Length styleOrColLogicalWidth() const;
+    Length styleOrColLogicalWidth() const
+    {
+        Length styleWidth = style()->logicalWidth();
+        if (!styleWidth.isAuto())
+            return styleWidth;
+        if (RenderTableCol* firstColumn = table()->colElement(col()))
+            return logicalWidthFromColumns(firstColumn, styleWidth);
+        return styleWidth;
+    }
 
-    LayoutUnit logicalHeightForRowSizing() const;
+    LayoutUnit logicalHeightForRowSizing() const
+    {
+        // FIXME: This function does too much work, and is very hot during table layout!
+        LayoutUnit adjustedLogicalHeight = logicalHeight() - (intrinsicPaddingBefore() + intrinsicPaddingAfter());
+        LayoutUnit styleLogicalHeight = valueForLength(style()->logicalHeight(), 0, view());
+        // In strict mode, box-sizing: content-box do the right thing and actually add in the border and padding.
+        // Call computedCSSPadding* directly to avoid including implicitPadding.
+        if (!document()->inQuirksMode() && style()->boxSizing() != BORDER_BOX)
+            styleLogicalHeight += computedCSSPaddingBefore() + computedCSSPaddingAfter() + borderBefore() + borderAfter();
+        return max(styleLogicalHeight, adjustedLogicalHeight);
+    }
 
     virtual void computePreferredLogicalWidths();
 
-    void setCellLogicalWidth(LayoutUnit);
+    void setCellLogicalWidth(int constrainedLogicalWidth);
 
     virtual int borderLeft() const;
     virtual int borderRight() const;
@@ -99,9 +127,7 @@ public:
 
     LayoutUnit cellBaselinePosition() const;
 
-    void setIntrinsicPaddingBefore(int p) { m_intrinsicPaddingBefore = p; }
-    void setIntrinsicPaddingAfter(int p) { m_intrinsicPaddingAfter = p; }
-    void setIntrinsicPadding(int before, int after) { setIntrinsicPaddingBefore(before); setIntrinsicPaddingAfter(after); }
+    void computeIntrinsicPadding(int rowHeight);
     void clearIntrinsicPadding() { setIntrinsicPadding(0, 0); }
 
     int intrinsicPaddingBefore() const { return m_intrinsicPaddingBefore; }
@@ -210,6 +236,10 @@ private:
     int borderHalfBefore(bool outer) const;
     int borderHalfAfter(bool outer) const;
 
+    void setIntrinsicPaddingBefore(int p) { m_intrinsicPaddingBefore = p; }
+    void setIntrinsicPaddingAfter(int p) { m_intrinsicPaddingAfter = p; }
+    void setIntrinsicPadding(int before, int after) { setIntrinsicPaddingBefore(before); setIntrinsicPaddingAfter(after); }
+
     CollapsedBorderValue collapsedStartBorder(IncludeBorderColorOrNot = IncludeBorderColor) const;
     CollapsedBorderValue collapsedEndBorder(IncludeBorderColorOrNot = IncludeBorderColor) const;
     CollapsedBorderValue collapsedBeforeBorder(IncludeBorderColorOrNot = IncludeBorderColor) const;
@@ -225,9 +255,18 @@ private:
     CollapsedBorderValue computeCollapsedBeforeBorder(IncludeBorderColorOrNot = IncludeBorderColor) const;
     CollapsedBorderValue computeCollapsedAfterBorder(IncludeBorderColorOrNot = IncludeBorderColor) const;
 
-    unsigned m_column : 30;
-    bool m_cellWidthChanged : 1;
-    bool m_hasHTMLTableCellElement : 1;
+    Length logicalWidthFromColumns(RenderTableCol* firstColForThisCell, Length widthFromStyle) const;
+
+    void updateColAndRowSpanFlags();
+
+    unsigned parseRowSpanFromDOM() const;
+    unsigned parseColSpanFromDOM() const;
+
+    // Note MSVC will only pack members if they have identical types, hence we use unsigned instead of bool here.
+    unsigned m_column : 29;
+    unsigned m_cellWidthChanged : 1;
+    unsigned m_hasColSpan: 1;
+    unsigned m_hasRowSpan: 1;
     int m_intrinsicPaddingBefore;
     int m_intrinsicPaddingAfter;
 };

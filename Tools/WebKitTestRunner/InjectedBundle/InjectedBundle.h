@@ -92,8 +92,21 @@ public:
 
     // Geolocation.
     void setGeolocationPermission(bool);
-    void setMockGeolocationPosition(double latitude, double longitude, double accuracy);
+    void setMockGeolocationPosition(double latitude, double longitude, double accuracy, bool providesAltitude, double altitude, bool providesAltitudeAccuracy, double altitudeAccuracy, bool providesHeading, double heading, bool providesSpeed, double speed);
     void setMockGeolocationPositionUnavailableError(WKStringRef errorMessage);
+
+    // Policy delegate.
+    void setCustomPolicyDelegate(bool enabled, bool permissive);
+
+    // Work queue.
+    bool shouldProcessWorkQueue() const;
+    void processWorkQueue();
+    void queueBackNavigation(unsigned howFarBackward);
+    void queueForwardNavigation(unsigned howFarForward);
+    void queueLoad(WKStringRef url, WKStringRef target);
+    void queueReload();
+    void queueLoadingScript(WKStringRef script);
+    void queueNonLoadingScript(WKStringRef script);
 
 private:
     InjectedBundle();
@@ -141,6 +154,7 @@ private:
 
     bool m_dumpPixels;
     bool m_useWaitToDumpWatchdogTimer;
+    bool m_useWorkQueue;
 
     WKRetainPtr<WKImageRef> m_pixelResult;
     WKRetainPtr<WKArrayRef> m_repaintRects;

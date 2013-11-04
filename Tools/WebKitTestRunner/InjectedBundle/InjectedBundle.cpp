@@ -54,6 +54,7 @@ InjectedBundle::InjectedBundle()
     , m_state(Idle)
     , m_dumpPixels(false)
     , m_useWaitToDumpWatchdogTimer(true)
+    , m_useWorkQueue(false)
 {
 }
 
@@ -190,6 +191,11 @@ void InjectedBundle::didReceiveMessage(WKStringRef messageName, WKTypeRef messag
     if (WKStringIsEqualToUTF8CString(messageName, "CallSetBackingScaleFactorCallback")) {
         m_testRunner->callSetBackingScaleFactorCallback();
         return;
+    }   
+    if (WKStringIsEqualToUTF8CString(messageName, "WorkQueueProcessedCallback")) {
+        if (!topLoadingFrame() && !m_testRunner->waitToDump())
+            page()->dump();
+        return;
     }
 
     WKRetainPtr<WKStringRef> errorMessageName(AdoptWK, WKStringCreateWithUTF8CString("Error"));
@@ -246,6 +252,7 @@ void InjectedBundle::beginTesting(WKDictionaryRef settings)
     WKBundleSetPluginsEnabled(m_bundle, m_pageGroup, true);
     WKBundleSetPopupBlockingEnabled(m_bundle, m_pageGroup, false);
     WKBundleSetAlwaysAcceptCookies(m_bundle, false);
+    WKBundleSetSerialLoadingEnabled(m_bundle, false);
 
     WKBundleRemoveAllUserContent(m_bundle, m_pageGroup);
 
@@ -270,6 +277,8 @@ void InjectedBundle::beginTesting(WKDictionaryRef settings)
 void InjectedBundle::done()
 {
     m_state = Stopping;
+
+    m_useWorkQueue = false;
 
     page()->stopLoading();
     setTopLoadingFrame(0);
@@ -369,7 +378,7 @@ void InjectedBundle::setGeolocationPermission(bool enabled)
     WKBundlePostMessage(m_bundle, messageName.get(), messageBody.get());
 }
 
-void InjectedBundle::setMockGeolocationPosition(double latitude, double longitude, double accuracy)
+void InjectedBundle::setMockGeolocationPosition(double latitude, double longitude, double accuracy, bool providesAltitude, double altitude, bool providesAltitudeAccuracy, double altitudeAccuracy, bool providesHeading, double heading, bool providesSpeed, double speed)
 {
     WKRetainPtr<WKStringRef> messageName(AdoptWK, WKStringCreateWithUTF8CString("SetMockGeolocationPosition"));
 
@@ -387,6 +396,38 @@ void InjectedBundle::setMockGeolocationPosition(double latitude, double longitud
     WKRetainPtr<WKDoubleRef> accuracyWK(AdoptWK, WKDoubleCreate(accuracy));
     WKDictionaryAddItem(messageBody.get(), accuracyKeyWK.get(), accuracyWK.get());
 
+    WKRetainPtr<WKStringRef> providesAltitudeKeyWK(AdoptWK, WKStringCreateWithUTF8CString("providesAltitude"));
+    WKRetainPtr<WKBooleanRef> providesAltitudeWK(AdoptWK, WKBooleanCreate(providesAltitude));
+    WKDictionaryAddItem(messageBody.get(), providesAltitudeKeyWK.get(), providesAltitudeWK.get());
+
+    WKRetainPtr<WKStringRef> altitudeKeyWK(AdoptWK, WKStringCreateWithUTF8CString("altitude"));
+    WKRetainPtr<WKDoubleRef> altitudeWK(AdoptWK, WKDoubleCreate(altitude));
+    WKDictionaryAddItem(messageBody.get(), altitudeKeyWK.get(), altitudeWK.get());
+
+    WKRetainPtr<WKStringRef> providesAltitudeAccuracyKeyWK(AdoptWK, WKStringCreateWithUTF8CString("providesAltitudeAccuracy"));
+    WKRetainPtr<WKBooleanRef> providesAltitudeAccuracyWK(AdoptWK, WKBooleanCreate(providesAltitudeAccuracy));
+    WKDictionaryAddItem(messageBody.get(), providesAltitudeAccuracyKeyWK.get(), providesAltitudeAccuracyWK.get());
+
+    WKRetainPtr<WKStringRef> altitudeAccuracyKeyWK(AdoptWK, WKStringCreateWithUTF8CString("altitudeAccuracy"));
+    WKRetainPtr<WKDoubleRef> altitudeAccuracyWK(AdoptWK, WKDoubleCreate(altitudeAccuracy));
+    WKDictionaryAddItem(messageBody.get(), altitudeAccuracyKeyWK.get(), altitudeAccuracyWK.get());
+
+    WKRetainPtr<WKStringRef> providesHeadingKeyWK(AdoptWK, WKStringCreateWithUTF8CString("providesHeading"));
+    WKRetainPtr<WKBooleanRef> providesHeadingWK(AdoptWK, WKBooleanCreate(providesHeading));
+    WKDictionaryAddItem(messageBody.get(), providesHeadingKeyWK.get(), providesHeadingWK.get());
+
+    WKRetainPtr<WKStringRef> headingKeyWK(AdoptWK, WKStringCreateWithUTF8CString("heading"));
+    WKRetainPtr<WKDoubleRef> headingWK(AdoptWK, WKDoubleCreate(heading));
+    WKDictionaryAddItem(messageBody.get(), headingKeyWK.get(), headingWK.get());
+
+    WKRetainPtr<WKStringRef> providesSpeedKeyWK(AdoptWK, WKStringCreateWithUTF8CString("providesSpeed"));
+    WKRetainPtr<WKBooleanRef> providesSpeedWK(AdoptWK, WKBooleanCreate(providesSpeed));
+    WKDictionaryAddItem(messageBody.get(), providesSpeedKeyWK.get(), providesSpeedWK.get());
+
+    WKRetainPtr<WKStringRef> speedKeyWK(AdoptWK, WKStringCreateWithUTF8CString("speed"));
+    WKRetainPtr<WKDoubleRef> speedWK(AdoptWK, WKDoubleCreate(speed));
+    WKDictionaryAddItem(messageBody.get(), speedKeyWK.get(), speedWK.get());
+
     WKBundlePostMessage(m_bundle, messageName.get(), messageBody.get());
 }
 
@@ -394,6 +435,101 @@ void InjectedBundle::setMockGeolocationPositionUnavailableError(WKStringRef erro
 {
     WKRetainPtr<WKStringRef> messageName(AdoptWK, WKStringCreateWithUTF8CString("SetMockGeolocationPositionUnavailableError"));
     WKBundlePostMessage(m_bundle, messageName.get(), errorMessage);
+}
+
+void InjectedBundle::setCustomPolicyDelegate(bool enabled, bool permissive)
+{
+    WKRetainPtr<WKStringRef> messageName(AdoptWK, WKStringCreateWithUTF8CString("SetCustomPolicyDelegate"));
+
+    WKRetainPtr<WKMutableDictionaryRef> messageBody(AdoptWK, WKMutableDictionaryCreate());
+
+    WKRetainPtr<WKStringRef> enabledKeyWK(AdoptWK, WKStringCreateWithUTF8CString("enabled"));
+    WKRetainPtr<WKBooleanRef> enabledWK(AdoptWK, WKBooleanCreate(enabled));
+    WKDictionaryAddItem(messageBody.get(), enabledKeyWK.get(), enabledWK.get());
+
+    WKRetainPtr<WKStringRef> permissiveKeyWK(AdoptWK, WKStringCreateWithUTF8CString("permissive"));
+    WKRetainPtr<WKBooleanRef> permissiveWK(AdoptWK, WKBooleanCreate(permissive));
+    WKDictionaryAddItem(messageBody.get(), permissiveKeyWK.get(), permissiveWK.get());
+
+    WKBundlePostMessage(m_bundle, messageName.get(), messageBody.get());
+}
+
+bool InjectedBundle::shouldProcessWorkQueue() const
+{
+    if (!m_useWorkQueue)
+        return false;
+
+    WKRetainPtr<WKStringRef> messageName(AdoptWK, WKStringCreateWithUTF8CString("IsWorkQueueEmpty"));
+    WKTypeRef resultToPass = 0;
+    WKBundlePostSynchronousMessage(m_bundle, messageName.get(), 0, &resultToPass);
+    WKRetainPtr<WKBooleanRef> isEmpty(AdoptWK, static_cast<WKBooleanRef>(resultToPass));
+
+    return !WKBooleanGetValue(isEmpty.get());
+}
+
+void InjectedBundle::processWorkQueue()
+{
+    WKRetainPtr<WKStringRef> messageName(AdoptWK, WKStringCreateWithUTF8CString("ProcessWorkQueue"));
+    WKBundlePostMessage(m_bundle, messageName.get(), 0);
+}
+
+void InjectedBundle::queueBackNavigation(unsigned howFarBackward)
+{
+    m_useWorkQueue = true;
+
+    WKRetainPtr<WKStringRef> messageName(AdoptWK, WKStringCreateWithUTF8CString("QueueBackNavigation"));
+    WKRetainPtr<WKUInt64Ref> messageBody(AdoptWK, WKUInt64Create(howFarBackward));
+    WKBundlePostMessage(m_bundle, messageName.get(), messageBody.get());
+}
+
+void InjectedBundle::queueForwardNavigation(unsigned howFarForward)
+{
+    m_useWorkQueue = true;
+
+    WKRetainPtr<WKStringRef> messageName(AdoptWK, WKStringCreateWithUTF8CString("QueueForwardNavigation"));
+    WKRetainPtr<WKUInt64Ref> messageBody(AdoptWK, WKUInt64Create(howFarForward));
+    WKBundlePostMessage(m_bundle, messageName.get(), messageBody.get());
+}
+
+void InjectedBundle::queueLoad(WKStringRef url, WKStringRef target)
+{
+    m_useWorkQueue = true;
+
+    WKRetainPtr<WKStringRef> messageName(AdoptWK, WKStringCreateWithUTF8CString("QueueLoad"));
+
+    WKRetainPtr<WKMutableDictionaryRef> loadData(AdoptWK, WKMutableDictionaryCreate());
+
+    WKRetainPtr<WKStringRef> urlKey(AdoptWK, WKStringCreateWithUTF8CString("url"));
+    WKDictionaryAddItem(loadData.get(), urlKey.get(), url);
+
+    WKRetainPtr<WKStringRef> targetKey(AdoptWK, WKStringCreateWithUTF8CString("target"));
+    WKDictionaryAddItem(loadData.get(), targetKey.get(), target);
+
+    WKBundlePostMessage(m_bundle, messageName.get(), loadData.get());
+}
+
+void InjectedBundle::queueReload()
+{
+    m_useWorkQueue = true;
+
+    WKRetainPtr<WKStringRef> messageName(AdoptWK, WKStringCreateWithUTF8CString("QueueReload"));
+    WKBundlePostMessage(m_bundle, messageName.get(), 0);
+}
+
+void InjectedBundle::queueLoadingScript(WKStringRef script)
+{
+    m_useWorkQueue = true;
+
+    WKRetainPtr<WKStringRef> messageName(AdoptWK, WKStringCreateWithUTF8CString("QueueLoadingScript"));
+    WKBundlePostMessage(m_bundle, messageName.get(), script);
+}
+
+void InjectedBundle::queueNonLoadingScript(WKStringRef script)
+{
+    m_useWorkQueue = true;
+
+    WKRetainPtr<WKStringRef> messageName(AdoptWK, WKStringCreateWithUTF8CString("QueueNonLoadingScript"));
+    WKBundlePostMessage(m_bundle, messageName.get(), script);
 }
 
 } // namespace WTR

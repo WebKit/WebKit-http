@@ -60,6 +60,8 @@ ScriptDebugServer::ScriptDebugServer()
     , m_breakpointsActivated(true)
     , m_pauseOnCallFrame(0)
     , m_recompileTimer(this, &ScriptDebugServer::recompileAllJSFunctions)
+    , m_lastExecutedLine(-1)
+    , m_lastExecutedSourceId(-1)
 {
 }
 
@@ -75,11 +77,11 @@ String ScriptDebugServer::setBreakpoint(const String& sourceID, const ScriptBrea
     SourceIdToBreakpointsMap::iterator it = m_sourceIdToBreakpoints.find(sourceIDValue);
     if (it == m_sourceIdToBreakpoints.end())
         it = m_sourceIdToBreakpoints.set(sourceIDValue, LineToBreakpointMap()).iterator;
-    LineToBreakpointMap::iterator breaksIt = it->second.find(scriptBreakpoint.lineNumber + 1);
-    if (breaksIt == it->second.end())
-        breaksIt = it->second.set(scriptBreakpoint.lineNumber + 1, BreakpointsInLine()).iterator;
+    LineToBreakpointMap::iterator breaksIt = it->value.find(scriptBreakpoint.lineNumber + 1);
+    if (breaksIt == it->value.end())
+        breaksIt = it->value.set(scriptBreakpoint.lineNumber + 1, BreakpointsInLine()).iterator;
 
-    BreakpointsInLine& breaksVector = breaksIt->second;
+    BreakpointsInLine& breaksVector = breaksIt->value;
     unsigned breaksCount = breaksVector.size();
     for (unsigned i = 0; i < breaksCount; i++) {
         if (breaksVector.at(i).columnNumber == scriptBreakpoint.columnNumber)
@@ -112,11 +114,11 @@ void ScriptDebugServer::removeBreakpoint(const String& breakpointId)
     SourceIdToBreakpointsMap::iterator it = m_sourceIdToBreakpoints.find(sourceIDValue);
     if (it == m_sourceIdToBreakpoints.end())
         return;
-    LineToBreakpointMap::iterator breaksIt = it->second.find(lineNumber + 1);
-    if (breaksIt == it->second.end())
+    LineToBreakpointMap::iterator breaksIt = it->value.find(lineNumber + 1);
+    if (breaksIt == it->value.end())
         return;
 
-    BreakpointsInLine& breaksVector = breaksIt->second;
+    BreakpointsInLine& breaksVector = breaksIt->value;
     unsigned breaksCount = breaksVector.size();
     for (unsigned i = 0; i < breaksCount; i++) {
         if (breaksVector.at(i).columnNumber == static_cast<int>(columnNumber)) {
@@ -124,44 +126,6 @@ void ScriptDebugServer::removeBreakpoint(const String& breakpointId)
             break;
         }
     }
-}
-
-void ScriptDebugServer::updateCurrentStatementPosition(intptr_t sourceID, int line)
-{
-    if (line < 0)
-        return;
-
-    SourceProvider* source = reinterpret_cast<SourceProvider*>(sourceID);
-
-    if (m_currentSourceID != sourceID) {
-        const String& sourceCode = source->source();
-        m_currentSourceCode.clear();
-        sourceCode.split("\n", true, m_currentSourceCode);
-        m_currentSourceID = sourceID;
-        m_currentStatementPosition.lineNumber = 0;
-        m_currentStatementPosition.columnNumber = 0;
-    }
-
-    if (line != m_currentStatementPosition.lineNumber) {
-        m_currentStatementPosition.lineNumber = line;
-        m_currentStatementPosition.columnNumber = 0;
-        return;
-    }
-
-    int startLine = source->startPosition().m_line.zeroBasedInt();
-    if ((m_currentStatementPosition.lineNumber - startLine - 1) >= static_cast<int>(m_currentSourceCode.size()))
-        return;
-    const String& codeInLine = m_currentSourceCode[m_currentStatementPosition.lineNumber - startLine - 1];
-    if (codeInLine.isEmpty())
-        return;
-    int nextColumn = codeInLine.find(";", m_currentStatementPosition.columnNumber);
-    if (nextColumn != -1) {
-        UChar c = codeInLine[nextColumn + 1];
-        if (c == ' ' || c == '\t')
-            nextColumn += 1;
-        m_currentStatementPosition.columnNumber = nextColumn + 1;
-    } else
-        m_currentStatementPosition.columnNumber = 0;
 }
 
 bool ScriptDebugServer::hasBreakpoint(intptr_t sourceID, const TextPosition& position) const
@@ -178,17 +142,20 @@ bool ScriptDebugServer::hasBreakpoint(intptr_t sourceID, const TextPosition& pos
     if (lineNumber < 0 || columnNumber < 0)
         return false;
 
-    LineToBreakpointMap::const_iterator breaksIt = it->second.find(lineNumber + 1);
-    if (breaksIt == it->second.end())
+    LineToBreakpointMap::const_iterator breaksIt = it->value.find(lineNumber + 1);
+    if (breaksIt == it->value.end())
         return false;
 
     bool hit = false;
-    const BreakpointsInLine& breaksVector = breaksIt->second;
+    const BreakpointsInLine& breaksVector = breaksIt->value;
     unsigned breaksCount = breaksVector.size();
     unsigned i;
     for (i = 0; i < breaksCount; i++) {
         int breakLine = breaksVector.at(i).lineNumber;
-        if (lineNumber == breakLine) {
+        int breakColumn = breaksVector.at(i).columnNumber;
+        // Since frontend truncates the indent, the first statement in a line must match the breakpoint (line,0).
+        if ((lineNumber != m_lastExecutedLine && lineNumber == breakLine && !breakColumn)
+            || (lineNumber == breakLine && columnNumber == breakColumn)) {
             hit = true;
             break;
         }
@@ -433,6 +400,10 @@ void ScriptDebugServer::createCallFrameAndPauseIfNeeded(const DebuggerCallFrame&
 {
     TextPosition textPosition(OrdinalNumber::fromOneBasedInt(lineNumber), OrdinalNumber::fromZeroBasedInt(columnNumber));
     m_currentCallFrame = JavaScriptCallFrame::create(debuggerCallFrame, m_currentCallFrame, sourceID, textPosition);
+    if (m_lastExecutedSourceId != sourceID) {
+        m_lastExecutedLine = -1;
+        m_lastExecutedSourceId = sourceID;
+    }
     pauseIfNeeded(debuggerCallFrame.dynamicGlobalObject());
 }
 
@@ -458,6 +429,7 @@ void ScriptDebugServer::pauseIfNeeded(JSGlobalObject* dynamicGlobalObject)
     bool pauseNow = m_pauseOnNextStatement;
     pauseNow |= (m_pauseOnCallFrame == m_currentCallFrame);
     pauseNow |= hasBreakpoint(m_currentCallFrame->sourceID(), m_currentCallFrame->position());
+    m_lastExecutedLine = m_currentCallFrame->position().m_line.zeroBasedInt();
     if (!pauseNow)
         return;
 

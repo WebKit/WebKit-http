@@ -72,7 +72,7 @@ public:
 
         bool isNull() const { return m_handle.isNull(); }
 
-        void encode(CoreIPC::ArgumentEncoder*) const;
+        void encode(CoreIPC::ArgumentEncoder&) const;
         static bool decode(CoreIPC::ArgumentDecoder*, Handle&);
 
     private:
@@ -143,7 +143,11 @@ private:
     ShareableBitmap(const WebCore::IntSize&, Flags, void*);
     ShareableBitmap(const WebCore::IntSize&, Flags, PassRefPtr<SharedMemory>);
 
+#if USE(CAIRO)
+    static size_t numBytesForSize(const WebCore::IntSize&);
+#else
     static size_t numBytesForSize(const WebCore::IntSize& size) { return size.width() * size.height() * 4; }
+#endif
 
 #if USE(CG)
     RetainPtr<CGImageRef> createCGImage(CGDataProviderRef) const;

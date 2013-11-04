@@ -1,3 +1,203 @@
+2012-10-24  Brady Eidson  <beidson@apple.com>
+
+        Add a strategy for loader customization.
+        https://bugs.webkit.org/show_bug.cgi?id=100278
+
+        Reviewed by Alexey Proskuryakov.
+
+        * WebCoreSupport/PlatformStrategiesGtk.cpp:
+        (PlatformStrategiesGtk::createLoaderStrategy):
+        * WebCoreSupport/PlatformStrategiesGtk.h:
+        (PlatformStrategiesGtk):
+
+2012-10-23  Alexey Proskuryakov  <ap@apple.com>
+
+        Add a strategy for shared workers
+        https://bugs.webkit.org/show_bug.cgi?id=100165
+
+        Reviewed by Brady Eidson.
+
+        * WebCoreSupport/PlatformStrategiesGtk.cpp:
+        (PlatformStrategiesGtk::createPasteboardStrategy):
+        (PlatformStrategiesGtk::createSharedWorkerStrategy):
+        (PlatformStrategiesGtk::createVisitedLinkStrategy):
+        * WebCoreSupport/PlatformStrategiesGtk.h:
+
+2012-10-24  Priit Laes  <plaes@plaes.org>
+
+        [GTK] Typos in user-visible strings: "coordintate"
+        https://bugs.webkit.org/show_bug.cgi?id=100252
+
+        Reviewed by Martin Robinson.
+
+        s/coordintate/coordinate
+
+        * webkit/webkithittestresult.cpp:
+        (webkit_hit_test_result_class_init):
+
+2012-10-23  Martin Robinson  <mrobinson@igalia.com>
+
+        [GTK][Soup] Implement the default authentication dialog via WebCoreSupport
+        https://bugs.webkit.org/show_bug.cgi?id=99351
+
+        Reviewed by Carlos Garcia Campos.
+
+        Instead of using a custom SoupSessionFeature to show the authentication dialog,
+        show it using the corresponding WebCore message.
+
+        * WebCoreSupport/FrameLoaderClientGtk.cpp:
+        (WebKit::FrameLoaderClient::dispatchDidReceiveAuthenticationChallenge):
+        Show the dialog when we need to authenticate. Also, so not show the dialog
+        if we are in DRT mode.
+        * webkit/webkitglobals.cpp:
+        (webkitInit): No longer install our SoupFeature.
+
+2012-10-23  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Update NEWS and configure.ac for 1.11.1 release
+
+        * NEWS: Added release notes for 1.11.1.
+
+2012-10-23  Andras Becsi  <andras.becsi@digia.com>
+
+        Remove devicePixelRatio from ViewportAttributes
+        https://bugs.webkit.org/show_bug.cgi?id=99845
+
+        Reviewed by Adam Barth.
+
+        * webkit/webkitviewportattributes.cpp:
+        (webkitViewportAttributesRecompute):
+        Pass the device pixel ratio as a function argument.
+
+2012-10-22  Jocelyn Turcotte  <jocelyn.turcotte@digia.com>
+
+        [Qt] Fix "ASSERTION FAILED: !document->inPageCache()" when loading a page
+        https://bugs.webkit.org/show_bug.cgi?id=98514
+
+        Reviewed by Kenneth Rohde Christiansen.
+
+        * WebCoreSupport/FrameLoaderClientGtk.cpp:
+        (WebKit::FrameLoaderClient::transitionToCommittedForNewPage):
+
+2012-10-10  Brady Eidson  <beidson@apple.com>
+
+        Switch ResourceLoader::resourceData() from SharedBuffer to ResourceBuffer
+        https://bugs.webkit.org/show_bug.cgi?id=98976
+
+        Reviewed by Anders Carlsson.
+
+        * webkit/webkitwebdatasource.cpp:
+        (webkit_web_data_source_get_data):
+
+2012-10-10  Jon Lee  <jonlee@apple.com>
+
+        [WK2] Activate plugins when user clicks on snapshot
+        https://bugs.webkit.org/show_bug.cgi?id=98328
+        <rdar://problem/12426681>
+
+        Reviewed by Brady Eidson.
+
+        * WebCoreSupport/FrameLoaderClientGtk.h:
+        (WebKit::FrameLoaderClient::recreatePlugin): Stub implementation of recreatePlugin().
+
+2012-10-10  Sheriff Bot  <webkit.review.bot@gmail.com>
+
+        Unreviewed, rolling out r130853.
+        http://trac.webkit.org/changeset/130853
+        https://bugs.webkit.org/show_bug.cgi?id=98873
+
+        The rollout was incorrect (Requested by zdobersek on #webkit).
+
+        * webkit/webkitwebview.cpp:
+        (resizeWebViewFromAllocation):
+        (webkit_web_view_size_allocate):
+        (webkitWebViewMap):
+
+2012-10-09  Sheriff Bot  <webkit.review.bot@gmail.com>
+
+        Unreviewed, rolling out r130838.
+        http://trac.webkit.org/changeset/130838
+        https://bugs.webkit.org/show_bug.cgi?id=98860
+
+        The patch is causing X errors (=> crashes) on GTK 64-bit
+        Release builder (Requested by zdobersek on #webkit).
+
+        * webkit/webkitwebview.cpp:
+        (resizeWebViewFromAllocation):
+        (webkit_web_view_size_allocate):
+        (webkitWebViewMap):
+
+2012-10-09  Daniel Drake  <dsd@laptop.org>
+
+        [GTK] Plugins don't display
+        https://bugs.webkit.org/show_bug.cgi?id=98789
+
+        Reviewed by Martin Robinson.
+
+        Fix a recent regression where plugin content was not being displayed.
+        Bringing webkit_web_view_size_allocate in line with the WebKit2
+        equivalent solves the issue.
+
+        * webkit/webkitwebview.cpp:
+        (resizeWebViewFromAllocation): pass allocation request to children
+        even when the allocation size does not change.
+        (webkit_web_view_size_allocate): don't bail too early if the
+        allocation size does not change.
+
+2012-10-07  Caio Marcelo de Oliveira Filho  <caio.oliveira@openbossa.org>
+
+        Rename first/second to key/value in HashMap iterators
+        https://bugs.webkit.org/show_bug.cgi?id=82784
+
+        Reviewed by Eric Seidel.
+
+        * WebCoreSupport/PlatformStrategiesGtk.cpp:
+        (PlatformStrategiesGtk::getPluginInfo):
+        * webkit/webkitfavicondatabase.cpp:
+        (webkitFaviconDatabaseImportFinished):
+        * webkit/webkitwebplugin.cpp:
+        (webkit_web_plugin_get_mimetypes):
+
+2012-10-04  Simon Fraser  <simon.fraser@apple.com>
+
+        Final part of "sync" to "flush" renaming
+        https://bugs.webkit.org/show_bug.cgi?id=98430
+
+        Reviewed by Tim Horton.
+
+        Change method names on GraphicsLayer and GraphicsLayerClient that
+        refer to "sync" to use the term "flush" instead, to be consistent
+        with the rest of the code.
+
+        * WebCoreSupport/AcceleratedCompositingContext.h:
+        (AcceleratedCompositingContext):
+        * WebCoreSupport/AcceleratedCompositingContextCairo.cpp:
+        (WebKit::AcceleratedCompositingContext::attachRootGraphicsLayer):
+        (WebKit::AcceleratedCompositingContext::resizeRootLayer):
+        (WebKit::AcceleratedCompositingContext::syncLayersNow):
+        (WebKit::AcceleratedCompositingContext::notifyFlushRequired):
+        * WebCoreSupport/AcceleratedCompositingContextClutter.cpp:
+        (WebKit::AcceleratedCompositingContext::flushPendingLayerChanges):
+        (WebKit::AcceleratedCompositingContext::notifyFlushRequired):
+        * WebCoreSupport/AcceleratedCompositingContextGL.cpp:
+        (WebKit::AcceleratedCompositingContext::flushPendingLayerChanges):
+        (WebKit::AcceleratedCompositingContext::notifyFlushRequired):
+
+2012-10-04  Simon Fraser  <simon.fraser@apple.com>
+
+        Standardize on "flush" terminology for compositing layer flushing/syncing
+        https://bugs.webkit.org/show_bug.cgi?id=98321
+
+        Reviewed by Simon Fraser.
+
+        Rename compositing-related methods that refer to "syncing" to instead
+        refer to "flushing".
+
+        * WebCoreSupport/ChromeClientGtk.cpp:
+        (WebKit::ChromeClient::scheduleCompositingLayerFlush):
+        * WebCoreSupport/ChromeClientGtk.h:
+        (ChromeClient):
+
 2012-10-02  Anders Carlsson  <andersca@apple.com>
 
         Change most GraphicsLayer::create calls to use the version that takes a GraphicsLayerFactory

@@ -19,29 +19,26 @@
  * Boston, MA 02110-1301, USA.
  */
 
-module html {
-
-    interface HTMLLinkElement : HTMLElement {
-        attribute [Reflect] boolean disabled;
-        attribute [Reflect] DOMString charset;
-        attribute [Reflect, URL] DOMString href;
-        attribute [Reflect] DOMString hreflang;
-        attribute [Reflect] DOMString media;
-        attribute [Reflect] DOMString rel;
-        attribute [Reflect] DOMString rev;
+interface HTMLLinkElement : HTMLElement {
+    [Reflect] attribute boolean disabled;
+    [Reflect] attribute DOMString charset;
+    [Reflect, URL] attribute DOMString href;
+    [Reflect] attribute DOMString hreflang;
+    [Reflect] attribute DOMString media;
+    [Reflect] attribute DOMString rel;
+    [Reflect] attribute DOMString rev;
 #if defined(LANGUAGE_JAVASCRIPT) && LANGUAGE_JAVASCRIPT
-        attribute [Custom] DOMSettableTokenList sizes;
+    [Custom] attribute DOMSettableTokenList sizes;
 #endif
-        attribute [Reflect] DOMString target;
-        attribute [Reflect] DOMString type;
+    [Reflect] attribute DOMString target;
+    [Reflect] attribute DOMString type;
 
-        // DOM Level 2 Style
-        readonly attribute StyleSheet sheet;
+    // DOM Level 2 Style
+    readonly attribute StyleSheet sheet;
 
 #if defined(LANGUAGE_OBJECTIVE_C) && LANGUAGE_OBJECTIVE_C
-        // Objective-C extension:
-        readonly attribute URL absoluteLinkURL;
+    // Objective-C extension:
+    readonly attribute URL absoluteLinkURL;
 #endif
-    };
+};
 
-}

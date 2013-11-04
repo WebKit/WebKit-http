@@ -29,6 +29,7 @@
 #if ENABLE(BATTERY_STATUS)
 
 #include "WebBatteryManagerMessages.h"
+#include "WebBatteryManagerProxyMessages.h"
 #include "WebContext.h"
 
 namespace WebKit {
@@ -42,6 +43,7 @@ WebBatteryManagerProxy::WebBatteryManagerProxy(WebContext* context)
     : m_isUpdating(false)
     , m_context(context)
 {
+    m_context->addMessageReceiver(Messages::WebBatteryManagerProxy::messageReceiverName(), this);
 }
 
 WebBatteryManagerProxy::~WebBatteryManagerProxy()
@@ -58,9 +60,9 @@ void WebBatteryManagerProxy::initializeProvider(const WKBatteryProvider* provide
     m_provider.initialize(provider);
 }
 
-void WebBatteryManagerProxy::didReceiveMessage(CoreIPC::Connection* connection, CoreIPC::MessageID messageID, CoreIPC::ArgumentDecoder* arguments)
+void WebBatteryManagerProxy::didReceiveMessage(CoreIPC::Connection* connection, CoreIPC::MessageID messageID, CoreIPC::MessageDecoder& decoder)
 {
-    didReceiveWebBatteryManagerProxyMessage(connection, messageID, arguments);
+    didReceiveWebBatteryManagerProxyMessage(connection, messageID, decoder);
 }
 
 void WebBatteryManagerProxy::startUpdating()

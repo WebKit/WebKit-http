@@ -23,13 +23,13 @@
 #include "WebKitPrivate.h"
 #include "WebKitWebResource.h"
 
-WebKitWebResource* webkitWebResourceCreate(WKFrameRef, WebKitURIRequest*, bool isMainResource);
+WebKitWebResource* webkitWebResourceCreate(WebKit::WebFrameProxy*, WebKitURIRequest*, bool isMainResource);
 void webkitWebResourceSentRequest(WebKitWebResource*, WebKitURIRequest*, WebKitURIResponse*);
 void webkitWebResourceSetResponse(WebKitWebResource*, WebKitURIResponse*);
 void webkitWebResourceNotifyProgress(WebKitWebResource*, guint64 bytesReceived);
 void webkitWebResourceFinished(WebKitWebResource*);
 void webkitWebResourceFailed(WebKitWebResource*, GError*);
-WKFrameRef webkitWebResourceGetFrame(WebKitWebResource*);
+WebKit::WebFrameProxy* webkitWebResourceGetFrame(WebKitWebResource*);
 
 
 #endif // WebKitWebResourcePrivate_h

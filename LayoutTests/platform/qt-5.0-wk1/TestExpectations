@@ -1,11 +1,6 @@
 # Tests failing on WK1 only (working on WK2)
 compositing
 
-# [Qt] X11 plugins need to be reworked for Qt5+WK1
-# https://bugs.webkit.org/show_bug.cgi?id=80691
-plugins
-http/tests/plugins
-
 # Fullscreen API is not supported on WK1
 fullscreen
 plugins/fullscreen-plugins-dont-reload.html
@@ -20,8 +15,14 @@ fast/events/click-count.html
 
 # [Qt] http/tests/misc/drag-over-iframe-invalid-source-crash.html and fast/events/drag-selects-image.html fails with timeout
 # https://bugs.webkit.org/show_bug.cgi?id=73901
-http/tests/misc/drag-over-iframe-invalid-source-crash.html
 fast/events/drag-selects-image.html
+
+# https://bugs.webkit.org/show_bug.cgi?id=35973
+fast/multicol/hit-test-above-or-below.html
+
+# New fast/dom/Window/mozilla-focus-blur.html introduced in r118916 fails
+# https://bugs.webkit.org/show_bug.cgi?id=87956
+fast/dom/Window/mozilla-focus-blur.html
 
 # [Qt] http/tests/incremental/slow-utf8-text.pl times out with Qt5-WK1
 # https://bugs.webkit.org/show_bug.cgi?id=79655
@@ -29,21 +30,6 @@ http/tests/incremental/slow-utf8-text.pl
 
 # https://bugs.webkit.org/show_bug.cgi?id=77380
 fast/url/path.html
-
-# [Qt] REGRESSION: 360 tests started to fail with newer Qt5-WK1
-# https://bugs.webkit.org/show_bug.cgi?id=85631
-fast/css/word-space-extra.html
-fast/history/history-back-initial-vs-final-url.html
-fast/repaint/renderer-destruction-by-invalidateSelection-crash.html
-fast/transforms/transformed-focused-text-input.html
-http/tests/navigation/postredirect-frames.html
-http/tests/navigation/postredirect-goback2.html
-
-# [Qt] New failing and flakey tests with newer Qt 5
-# https://bugs.webkit.org/show_bug.cgi?id=86452
-fast/table/table-row-before-child-style-update.html
-fast/table/table-row-style-not-updated.html
-fast/table/table-style-not-updated.html
 
 # [Qt] Tests still fail after the update to new fonts
 # https://bugs.webkit.org/show_bug.cgi?id=91610
@@ -69,5 +55,35 @@ touchadjustment/focusout-on-touch.html
 # https://bugs.webkit.org/show_bug.cgi?id=97389
 xmlviewer/extensions-api.html
 
+# [Qt][WK1] DumpRenderTree converts "file:///" to a path differently (working on WK2)
+# https://bugs.webkit.org/show_bug.cgi?id=76563
+http/tests/misc/drag-over-iframe-invalid-source-crash.html
+http/tests/misc/iframe-invalid-source-crash.html
+
 # [Qt][WK1] ERROR: TestRunner::overridePreference() does not support the 'WebKitStorageBlockingPolicy' preference
 http/tests/security/cross-origin-local-storage-wk1.html
+
+# [Qt] Unidentified plugin failures
+webkit.org/b/98525 platform/qt/plugins/application-plugin-plugins-disabled.html
+webkit.org/b/98525 plugins/frameset-with-plugin-frame.html
+webkit.org/b/98525 plugins/iframe-plugin-bgcolor.html
+webkit.org/b/98525 plugins/netscape-plugin-setwindow-size-2.html
+webkit.org/b/98525 plugins/netscape-plugin-setwindow-size.html
+webkit.org/b/98525 plugins/no-mime-with-valid-extension.html
+webkit.org/b/98525 plugins/npp-set-window-called-during-destruction.html
+webkit.org/b/98525 plugins/pass-different-npp-struct.html
+webkit.org/b/98525 plugins/plugin-document-back-forward.html
+webkit.org/b/98525 plugins/reentrant-update-widget-positions.html
+webkit.org/b/98525 plugins/update-widgets-crash.html
+webkit.org/b/98525 plugins/window-open.html
+
+# [Qt] Unidentified pixel failures
+webkit.org/b/99306 fast/images/gif-loop-count.html [ ImageOnlyFailure ]
+webkit.org/b/99306 fast/repaint/background-scaling.html [ ImageOnlyFailure ]
+webkit.org/b/99306 transforms/3d/point-mapping/3d-point-mapping-coplanar.html [ ImageOnlyFailure ]
+webkit.org/b/99306 transitions/suspend-transform-transition.html [ ImageOnlyFailure ]
+
+# TestRunner::overridePreference() does not support the 'WebKitSupportsMultipleWindows' preference
+fast/dom/HTMLAnchorElement/anchor-no-multiple-windows.html
+fast/dom/Window/window-open-no-multiple-windows.html
+fast/forms/post-popup-no-multiple-windows.html

@@ -45,7 +45,9 @@
 #include "Storage.h"
 #include "StorageArea.h"
 #include "VoidCallback.h"
+#include "WebCoreMemoryInstrumentation.h"
 
+#include <wtf/MemoryInstrumentationHashMap.h>
 #include <wtf/Vector.h>
 
 namespace WebCore {
@@ -77,7 +79,7 @@ void InspectorDOMStorageAgent::clearFrontend()
 {
     DOMStorageResourcesMap::iterator domStorageEnd = m_resources.end();
     for (DOMStorageResourcesMap::iterator it = m_resources.begin(); it != domStorageEnd; ++it)
-        it->second->unbind();
+        it->value->unbind();
     m_frontend = 0;
     disable(0);
 }
@@ -96,7 +98,7 @@ void InspectorDOMStorageAgent::enable(ErrorString*)
 
     DOMStorageResourcesMap::iterator resourcesEnd = m_resources.end();
     for (DOMStorageResourcesMap::iterator it = m_resources.begin(); it != resourcesEnd; ++it)
-        it->second->bind(m_frontend);
+        it->value->bind(m_frontend);
 }
 
 void InspectorDOMStorageAgent::disable(ErrorString*)
@@ -118,11 +120,17 @@ void InspectorDOMStorageAgent::getDOMStorageEntries(ErrorString*, const String& 
     Frame* frame = storageResource->frame();
     if (!frame)
         return;
-        
+
+    // FIXME: Exceptions are not reported here.
+    ExceptionCode ec = 0;
     StorageArea* storageArea = storageResource->storageArea();
-    for (unsigned i = 0; i < storageArea->length(frame); ++i) {
-        String name(storageArea->key(i, frame));
-        String value(storageArea->getItem(name, frame));
+    for (unsigned i = 0; i < storageArea->length(ec, frame); ++i) {
+        String name(storageArea->key(i, ec, frame));
+        if (ec)
+            return;
+        String value(storageArea->getItem(name, ec, frame));
+        if (ec)
+            return;
         RefPtr<TypeBuilder::Array<String> > entry = TypeBuilder::Array<String>::create();
         entry->addItem(name);
         entry->addItem(value);
@@ -145,8 +153,9 @@ void InspectorDOMStorageAgent::removeDOMStorageItem(ErrorString*, const String& 
 {
     InspectorDOMStorageResource* storageResource = getDOMStorageResourceForId(storageId);
     if (storageResource) {
-        storageResource->storageArea()->removeItem(key, storageResource->frame());
-        *success = true;
+        ExceptionCode exception = 0;
+        storageResource->storageArea()->removeItem(key, exception, storageResource->frame());
+        *success = !exception;
     } else
         *success = false;
 }
@@ -165,8 +174,8 @@ String InspectorDOMStorageAgent::storageId(SecurityOrigin* securityOrigin, bool 
     ASSERT(securityOrigin);
     DOMStorageResourcesMap::iterator domStorageEnd = m_resources.end();
     for (DOMStorageResourcesMap::iterator it = m_resources.begin(); it != domStorageEnd; ++it) {
-        if (it->second->isSameOriginAndType(securityOrigin, isLocalStorage))
-            return it->first;
+        if (it->value->isSameOriginAndType(securityOrigin, isLocalStorage))
+            return it->key;
     }
     return String();
 }
@@ -176,14 +185,14 @@ InspectorDOMStorageResource* InspectorDOMStorageAgent::getDOMStorageResourceForI
     DOMStorageResourcesMap::iterator it = m_resources.find(storageId);
     if (it == m_resources.end())
         return 0;
-    return it->second.get();
+    return it->value.get();
 }
 
 void InspectorDOMStorageAgent::didUseDOMStorage(StorageArea* storageArea, bool isLocalStorage, Frame* frame)
 {
     DOMStorageResourcesMap::iterator domStorageEnd = m_resources.end();
     for (DOMStorageResourcesMap::iterator it = m_resources.begin(); it != domStorageEnd; ++it) {
-        if (it->second->isSameOriginAndType(frame->document()->securityOrigin(), isLocalStorage))
+        if (it->value->isSameOriginAndType(frame->document()->securityOrigin(), isLocalStorage))
             return;
     }
 
@@ -214,14 +223,13 @@ void InspectorDOMStorageAgent::clearResources()
     m_resources.clear();
 }
 
-size_t InspectorDOMStorageAgent::memoryBytesUsedByStorageCache() const
+void InspectorDOMStorageAgent::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
 {
-    size_t size = 0;
-    for (DOMStorageResourcesMap::const_iterator it = m_resources.begin(); it != m_resources.end(); ++it)
-        size += it->second->storageArea()->memoryBytesUsedByCache();
-    return size;
+    MemoryClassInfo info(memoryObjectInfo, this, WebCoreMemoryTypes::InspectorDOMStorageAgent);
+    InspectorBaseAgent<InspectorDOMStorageAgent>::reportMemoryUsage(memoryObjectInfo);
+    info.addMember(m_resources);
+    info.addWeakPointer(m_frontend);
 }
-
 
 } // namespace WebCore
 

@@ -31,6 +31,6 @@
 
 WebKitURIResponse* webkitURIResponseCreateForResourceResponse(const WebCore::ResourceResponse&);
 const WebCore::ResourceResponse& webkitURIResponseGetResourceResponse(WebKitURIResponse*);
-void webkitURIResponseSetCertificateInfo(WebKitURIResponse*, WKCertificateInfoRef);
+void webkitURIResponseSetCertificateInfo(WebKitURIResponse*, WebKit::WebCertificateInfo*);
 
 #endif // WebKitURIResponsePrivate_h

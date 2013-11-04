@@ -26,42 +26,41 @@
 #include "config.h"
 #include "ewk_url_response.h"
 
-#include "WKAPICast.h"
-#include "WKEinaSharedString.h"
-#include "WKURLResponse.h"
 #include "ewk_url_response_private.h"
 #include <wtf/text/CString.h>
 
 using namespace WebKit;
 
-/**
- * \struct  _Ewk_Url_Response
- * @brief   Contains the URL response data.
- */
-struct _Ewk_Url_Response {
-    unsigned int __ref; /**< the reference count of the object */
-    WebCore::ResourceResponse coreResponse;
+Ewk_Url_Response::Ewk_Url_Response(const WebCore::ResourceResponse& coreResponse)
+    : m_coreResponse(coreResponse)
+    , m_url(AdoptWK, WKURLResponseCopyURL(WebKit::toAPI(coreResponse)))
+    , m_mimeType(AdoptWK, WKURLResponseCopyMIMEType(WebKit::toAPI(coreResponse)))
+{ }
 
-    WKEinaSharedString url;
-    WKEinaSharedString mimeType;
+int Ewk_Url_Response::httpStatusCode() const
+{
+    return m_coreResponse.httpStatusCode();
+}
 
-    _Ewk_Url_Response(const WebCore::ResourceResponse& _coreResponse)
-        : __ref(1)
-        , coreResponse(_coreResponse)
-        , url(AdoptWK, WKURLResponseCopyURL(toAPI(coreResponse)))
-        , mimeType(AdoptWK, WKURLResponseCopyMIMEType(toAPI(coreResponse)))
-    { }
+const char* Ewk_Url_Response::url() const
+{
+    return m_url;
+}
 
-    ~_Ewk_Url_Response()
-    {
-        ASSERT(!__ref);
-    }
-};
+const char* Ewk_Url_Response::mimeType() const
+{
+    return m_mimeType;
+}
+
+unsigned long Ewk_Url_Response::contentLength() const
+{
+    return m_coreResponse.expectedContentLength();
+}
 
 Ewk_Url_Response* ewk_url_response_ref(Ewk_Url_Response* response)
 {
     EINA_SAFETY_ON_NULL_RETURN_VAL(response, 0);
-    ++response->__ref;
+    response->ref();
 
     return response;
 }
@@ -70,45 +69,33 @@ void ewk_url_response_unref(Ewk_Url_Response* response)
 {
     EINA_SAFETY_ON_NULL_RETURN(response);
 
-    if (--response->__ref)
-        return;
-
-    delete response;
+    response->deref();
 }
 
 const char* ewk_url_response_url_get(const Ewk_Url_Response* response)
 {
     EINA_SAFETY_ON_NULL_RETURN_VAL(response, 0);
 
-    return response->url;
+    return response->url();
 }
 
 int ewk_url_response_status_code_get(const Ewk_Url_Response* response)
 {
     EINA_SAFETY_ON_NULL_RETURN_VAL(response, 0);
 
-    return response->coreResponse.httpStatusCode();
+    return response->httpStatusCode();
 }
 
 const char* ewk_url_response_mime_type_get(const Ewk_Url_Response* response)
 {
     EINA_SAFETY_ON_NULL_RETURN_VAL(response, 0);
 
-    return response->mimeType;
+    return response->mimeType();
 }
 
 unsigned long ewk_url_response_content_length_get(const Ewk_Url_Response* response)
 {
     EINA_SAFETY_ON_NULL_RETURN_VAL(response, 0);
 
-    return response->coreResponse.expectedContentLength();
-}
-
-/**
- * @internal
- * Constructs a Ewk_Url_Response from a WebCore::ResourceResponse.
- */
-Ewk_Url_Response* ewk_url_response_new(const WebCore::ResourceResponse& coreResponse)
-{
-    return new Ewk_Url_Response(coreResponse);
+    return response->contentLength();
 }

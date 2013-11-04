@@ -22,6 +22,8 @@
 #include "config.h"
 #include "PageViewportController.h"
 
+#if USE(TILED_BACKING_STORE)
+
 #include "PageViewportControllerClient.h"
 #include "WebPageProxy.h"
 #include <WebCore/FloatRect.h>
@@ -54,9 +56,6 @@ ViewportUpdateDeferrer::~ViewportUpdateDeferrer()
         return;
 
     m_controller->resumeContent();
-
-    // Make sure that tiles all around the viewport will be requested.
-    m_controller->syncVisibleContents();
 }
 
 PageViewportController::PageViewportController(WebKit::WebPageProxy* proxy, PageViewportControllerClient* client)
@@ -69,7 +68,7 @@ PageViewportController::PageViewportController(WebKit::WebPageProxy* proxy, Page
     , m_hadUserInteraction(false)
     , m_effectiveScale(1)
 {
-    // Initializing Viewport Raw Attributes to avoid random negative scale factors
+    // Initializing Viewport Raw Attributes to avoid random negative or infinity scale factors
     // if there is a race condition between the first layout and setting the viewport attributes for the first time.
     m_rawAttributes.initialScale = 1;
     m_rawAttributes.minimumScale = 1;
@@ -126,8 +125,13 @@ void PageViewportController::didChangeContentsSize(const IntSize& newSize)
 
 void PageViewportController::didRenderFrame(const IntSize& contentsSize, const IntRect& coveredRect)
 {
-    // Only update the viewport's contents dimensions along with its render.
-    m_client->didChangeContentsSize(contentsSize);
+    if (m_clientContentsSize != contentsSize) {
+        m_clientContentsSize = contentsSize;
+        // Only update the viewport's contents dimensions along with its render if the
+        // size actually changed since animations on the page trigger DidRenderFrame
+        // messages without causing dimension changes.
+        m_client->didChangeContentsSize(contentsSize);
+    }
 
     m_lastFrameCoveredRect = coveredRect;
 
@@ -137,7 +141,6 @@ void PageViewportController::didRenderFrame(const IntSize& contentsSize, const I
     // All position and scale changes resulting from a web process event should
     // go through here to be applied on the viewport to avoid showing incomplete
     // tiles to the user during a few milliseconds.
-    ViewportUpdateDeferrer guard(this);
     if (m_effectiveScaleIsLocked) {
         m_client->setContentsScale(m_effectiveScale, false);
         m_effectiveScaleIsLocked = false;
@@ -275,7 +278,7 @@ void PageViewportController::updateMinimumScaleToFit()
     if (m_viewportSize.isEmpty())
         return;
 
-    float minimumScale = WebCore::computeMinimumScaleFactorForContentContained(m_rawAttributes, WebCore::roundedIntSize(m_viewportSize), WebCore::roundedIntSize(m_contentsSize));
+    float minimumScale = WebCore::computeMinimumScaleFactorForContentContained(m_rawAttributes, WebCore::roundedIntSize(m_viewportSize), WebCore::roundedIntSize(m_contentsSize), devicePixelRatio());
 
     if (!fuzzyCompare(minimumScale, m_minimumScaleToFit, 0.001)) {
         m_minimumScaleToFit = minimumScale;
@@ -288,3 +291,5 @@ void PageViewportController::updateMinimumScaleToFit()
 }
 
 } // namespace WebKit
+
+#endif

@@ -23,15 +23,15 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#import "WKWebProcessPlugIn.h"
+#if defined(__LP64__) && defined(__clang__)
 
-namespace WebKit {
-class InjectedBundle;
-}
+#import "WKWebProcessPlugIn.h"
 
 @interface WKWebProcessPlugInController (Internal)
 
 + (WKWebProcessPlugInController *)_shared;
-- (id)_initWithPrincipalClassInstance:(id<WKWebProcessPlugIn>)principalClassInstance injectedBundle:(WebKit::InjectedBundle*)injectedBundle;
+- (id)_initWithPrincipalClassInstance:(id<WKWebProcessPlugIn>)principalClassInstance bundleRef:(WKBundleRef)bundleRef;
 
 @end
+
+#endif // defined(__LP64__) && defined(__clang__)

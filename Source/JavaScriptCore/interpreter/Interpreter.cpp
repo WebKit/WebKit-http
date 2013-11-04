@@ -48,6 +48,7 @@
 #include "JSNameScope.h"
 #include "JSNotAnObject.h"
 #include "JSPropertyNameIterator.h"
+#include "JSStackInlines.h"
 #include "JSString.h"
 #include "JSWithScope.h"
 #include "LLIntCLoop.h"
@@ -65,7 +66,9 @@
 #include "StrongInlines.h"
 #include <limits.h>
 #include <stdio.h>
+#include <wtf/StackStats.h>
 #include <wtf/Threading.h>
+#include <wtf/WTFThreadData.h>
 #include <wtf/text/StringBuilder.h>
 
 #if ENABLE(JIT)
@@ -78,6 +81,123 @@ using namespace std;
 
 namespace JSC {
 
+Interpreter::ErrorHandlingMode::ErrorHandlingMode(ExecState *exec)
+    : m_interpreter(*exec->interpreter())
+{
+    if (!m_interpreter.m_errorHandlingModeReentry)
+        m_interpreter.stack().enableErrorStackReserve();
+    m_interpreter.m_errorHandlingModeReentry++;
+}
+
+Interpreter::ErrorHandlingMode::~ErrorHandlingMode()
+{
+    m_interpreter.m_errorHandlingModeReentry--;
+    ASSERT(m_interpreter.m_errorHandlingModeReentry >= 0);
+    if (!m_interpreter.m_errorHandlingModeReentry)
+        m_interpreter.stack().disableErrorStackReserve();
+}
+
+
+// The Interpreter::StackPolicy class is used to compute a stack capacity
+// requirement to ensure that we have enough room on the native stack for:
+// 1. the max cumulative stack used by the interpreter and all code
+//    paths sub of it up till leaf functions.
+// 2. the max cumulative stack used by the interpreter before it reaches
+//    the next checkpoint (execute...() function) in the interpreter.
+// 
+// The interpreter can be run on different threads and hence, different
+// native stacks (with different sizes) before exiting out of the first
+// frame. Hence, the required capacity needs to be re-computed on every
+// entry into the interpreter.
+//
+// Currently the requiredStack is computed based on a policy. See comments
+// in StackPolicy::StackPolicy() for details.
+
+Interpreter::StackPolicy::StackPolicy(Interpreter& interpreter, const StackBounds& stack)
+    : m_interpreter(interpreter)
+{
+    const size_t size = stack.size();
+
+    const size_t DEFAULT_REQUIRED_STACK = 1024 * 1024;
+    const size_t DEFAULT_MINIMUM_USEABLE_STACK = 128 * 1024;
+    const size_t DEFAULT_ERROR_MODE_REQUIRED_STACK = 32 * 1024;
+
+    // Here's the policy in a nutshell:
+    //
+    // 1. If we have a large stack, let JS use as much stack as possible
+    //    but require that we have at least DEFAULT_REQUIRED_STACK capacity
+    //    remaining on the stack:
+    //
+    //    stack grows this way -->   
+    //    ---------------------------------------------------------
+    //    |         ... | <-- DEFAULT_REQUIRED_STACK --> | ...
+    //    ---------------------------------------------------------
+    //    ^             ^
+    //    start         current sp
+    //
+    // 2. In event that we're re-entering the interpreter to handle
+    //    exceptions (in error mode), we'll be a little more generous and
+    //    require less stack capacity for the interpreter to be re-entered.
+    //
+    //    This is needed because we may have just detected an eminent stack
+    //    overflow based on the normally computed required stack capacity.
+    //    However, the normal required capacity far exceeds what is needed
+    //    for exception handling work. Hence, in error mode, we only require
+    //    DEFAULT_ERROR_MODE_REQUIRED_STACK capacity.
+    //
+    //    stack grows this way -->   
+    //    -----------------------------------------------------------------
+    //    |         ... | <-- DEFAULT_ERROR_MODE_REQUIRED_STACK --> | ...
+    //    -----------------------------------------------------------------
+    //    ^             ^
+    //    start         current sp
+    //
+    //    This smaller required capacity also means that we won't re-trigger
+    //    a stack overflow for processing the exception caused by the original
+    //    StackOverflowError.
+    //
+    // 3. If the stack is not large enough, give JS at least a minimum
+    //    amount of useable stack:
+    //
+    //    stack grows this way -->   
+    //    --------------------------------------------------------------------
+    //    | <-- DEFAULT_MINIMUM_USEABLE_STACK --> | <-- requiredCapacity --> |
+    //    --------------------------------------------------------------------
+    //    ^             ^
+    //    start         current sp
+    //
+    //    The minimum useable capacity is DEFAULT_MINIMUM_USEABLE_STACK.
+    //    In this case, the requiredCapacity is whatever is left of the
+    //    total stack capacity after we have give JS its minimum stack
+    //    i.e. requiredCapacity can even be 0 if there's not enough stack.
+
+
+    // Policy 1: Normal mode: required = DEFAULT_REQUIRED_STACK.
+    // Policy 2: Error mode: required = DEFAULT_ERROR_MODE_REQUIRED_STACK.
+    size_t requiredCapacity = !m_interpreter.m_errorHandlingModeReentry ?
+        DEFAULT_REQUIRED_STACK : DEFAULT_ERROR_MODE_REQUIRED_STACK;
+
+    size_t useableStack = (requiredCapacity <= size) ?
+        size - requiredCapacity : DEFAULT_MINIMUM_USEABLE_STACK;
+
+    // Policy 3: Ensure the useable stack is not too small:
+    if (useableStack < DEFAULT_MINIMUM_USEABLE_STACK)
+        useableStack = DEFAULT_MINIMUM_USEABLE_STACK;
+
+    // Sanity check: Make sure we do not use more space than the stack's
+    // total capacity:
+    if (useableStack > size)
+        useableStack = size;
+
+    // Re-compute the requiredCapacity based on the adjusted useable stack
+    // size:
+    requiredCapacity = size - useableStack;
+    ASSERT(requiredCapacity < size);
+
+    m_requiredCapacity = requiredCapacity;    
+}
+
+
 static CallFrame* getCallerInfo(JSGlobalData*, CallFrame*, int& lineNumber, unsigned& bytecodeOffset);
 
 // Returns the depth of the scope chain within a given call frame.
@@ -86,33 +206,6 @@ static int depth(CodeBlock* codeBlock, JSScope* sc)
     if (!codeBlock->needsFullScopeChain())
         return 0;
     return sc->localDepth();
-}
-
-ALWAYS_INLINE CallFrame* Interpreter::slideRegisterWindowForCall(CodeBlock* newCodeBlock, RegisterFile* registerFile, CallFrame* callFrame, size_t registerOffset, int argumentCountIncludingThis)
-{
-    // This ensures enough space for the worst case scenario of zero arguments passed by the caller.
-    if (!registerFile->grow(callFrame->registers() + registerOffset + newCodeBlock->numParameters() + newCodeBlock->m_numCalleeRegisters))
-        return 0;
-
-    if (argumentCountIncludingThis >= newCodeBlock->numParameters()) {
-        Register* newCallFrame = callFrame->registers() + registerOffset;
-        return CallFrame::create(newCallFrame);
-    }
-
-    // Too few arguments -- copy arguments, then fill in missing arguments with undefined.
-    size_t delta = newCodeBlock->numParameters() - argumentCountIncludingThis;
-    CallFrame* newCallFrame = CallFrame::create(callFrame->registers() + registerOffset + delta);
-
-    Register* dst = &newCallFrame->uncheckedR(CallFrame::thisArgumentOffset());
-    Register* end = dst - argumentCountIncludingThis;
-    for ( ; dst != end; --dst)
-        *dst = *(dst - delta);
-
-    end -= delta;
-    for ( ; dst != end; --dst)
-        *dst = jsUndefined();
-
-    return newCallFrame;
 }
 
 JSValue eval(CallFrame* callFrame)
@@ -163,15 +256,15 @@ JSValue eval(CallFrame* callFrame)
     JSValue thisValue = callerFrame->thisValue();
     ASSERT(isValidThisObject(thisValue, callFrame));
     Interpreter* interpreter = callFrame->globalData().interpreter;
-    return interpreter->execute(eval, callFrame, thisValue, callerScopeChain, callFrame->registers() - interpreter->registerFile().begin() + 1 + RegisterFile::CallFrameHeaderSize);
+    return interpreter->execute(eval, callFrame, thisValue, callerScopeChain);
 }
 
-CallFrame* loadVarargs(CallFrame* callFrame, RegisterFile* registerFile, JSValue thisValue, JSValue arguments, int firstFreeRegister)
+CallFrame* loadVarargs(CallFrame* callFrame, JSStack* stack, JSValue thisValue, JSValue arguments, int firstFreeRegister)
 {
     if (!arguments) { // f.apply(x, arguments), with arguments unmodified.
         unsigned argumentCountIncludingThis = callFrame->argumentCountIncludingThis();
-        CallFrame* newCallFrame = CallFrame::create(callFrame->registers() + firstFreeRegister + argumentCountIncludingThis + RegisterFile::CallFrameHeaderSize);
-        if (argumentCountIncludingThis > Arguments::MaxArguments + 1 || !registerFile->grow(newCallFrame->registers())) {
+        CallFrame* newCallFrame = CallFrame::create(callFrame->registers() + firstFreeRegister + argumentCountIncludingThis + JSStack::CallFrameHeaderSize);
+        if (argumentCountIncludingThis > Arguments::MaxArguments + 1 || !stack->grow(newCallFrame->registers())) {
             callFrame->globalData().exception = createStackOverflowError(callFrame);
             return 0;
         }
@@ -184,8 +277,8 @@ CallFrame* loadVarargs(CallFrame* callFrame, RegisterFile* registerFile, JSValue
     }
 
     if (arguments.isUndefinedOrNull()) {
-        CallFrame* newCallFrame = CallFrame::create(callFrame->registers() + firstFreeRegister + 1 + RegisterFile::CallFrameHeaderSize);
-        if (!registerFile->grow(newCallFrame->registers())) {
+        CallFrame* newCallFrame = CallFrame::create(callFrame->registers() + firstFreeRegister + 1 + JSStack::CallFrameHeaderSize);
+        if (!stack->grow(newCallFrame->registers())) {
             callFrame->globalData().exception = createStackOverflowError(callFrame);
             return 0;
         }
@@ -203,7 +296,7 @@ CallFrame* loadVarargs(CallFrame* callFrame, RegisterFile* registerFile, JSValue
         Arguments* argsObject = asArguments(arguments);
         unsigned argCount = argsObject->length(callFrame);
         CallFrame* newCallFrame = CallFrame::create(callFrame->registers() + firstFreeRegister + CallFrame::offsetFor(argCount + 1));
-        if (argCount > Arguments::MaxArguments || !registerFile->grow(newCallFrame->registers())) {
+        if (argCount > Arguments::MaxArguments || !stack->grow(newCallFrame->registers())) {
             callFrame->globalData().exception = createStackOverflowError(callFrame);
             return 0;
         }
@@ -217,7 +310,7 @@ CallFrame* loadVarargs(CallFrame* callFrame, RegisterFile* registerFile, JSValue
         JSArray* array = asArray(arguments);
         unsigned argCount = array->length();
         CallFrame* newCallFrame = CallFrame::create(callFrame->registers() + firstFreeRegister + CallFrame::offsetFor(argCount + 1));
-        if (argCount > Arguments::MaxArguments || !registerFile->grow(newCallFrame->registers())) {
+        if (argCount > Arguments::MaxArguments || !stack->grow(newCallFrame->registers())) {
             callFrame->globalData().exception = createStackOverflowError(callFrame);
             return 0;
         }
@@ -230,7 +323,7 @@ CallFrame* loadVarargs(CallFrame* callFrame, RegisterFile* registerFile, JSValue
     JSObject* argObject = asObject(arguments);
     unsigned argCount = argObject->get(callFrame, callFrame->propertyNames().length).toUInt32(callFrame);
     CallFrame* newCallFrame = CallFrame::create(callFrame->registers() + firstFreeRegister + CallFrame::offsetFor(argCount + 1));
-    if (argCount > Arguments::MaxArguments || !registerFile->grow(newCallFrame->registers())) {
+    if (argCount > Arguments::MaxArguments || !stack->grow(newCallFrame->registers())) {
         callFrame->globalData().exception = createStackOverflowError(callFrame);
         return 0;
     }
@@ -244,9 +337,10 @@ CallFrame* loadVarargs(CallFrame* callFrame, RegisterFile* registerFile, JSValue
     return newCallFrame;
 }
 
-Interpreter::Interpreter()
+Interpreter::Interpreter(JSGlobalData& globalData)
     : m_sampleEntryDepth(0)
-    , m_reentryDepth(0)
+    , m_stack(globalData)
+    , m_errorHandlingModeReentry(0)
 #if !ASSERT_DISABLED
     , m_initialized(false)
 #endif
@@ -301,17 +395,13 @@ void Interpreter::dumpRegisters(CallFrame* callFrame)
     const Register* it;
     const Register* end;
 
-    it = callFrame->registers() - RegisterFile::CallFrameHeaderSize - callFrame->argumentCountIncludingThis();
-    end = callFrame->registers() - RegisterFile::CallFrameHeaderSize;
+    it = callFrame->registers() - JSStack::CallFrameHeaderSize - callFrame->argumentCountIncludingThis();
+    end = callFrame->registers() - JSStack::CallFrameHeaderSize;
     while (it < end) {
         JSValue v = it->jsValue();
         int registerNumber = it - callFrame->registers();
         String name = codeBlock->nameForRegister(registerNumber);
-#if USE(JSVALUE32_64)
-        dataLog("[r% 3d %14s]      | %10p | %-16s 0x%llx \n", registerNumber, name.ascii().data(), it, v.description(), JSValue::encode(v));
-#else
-        dataLog("[r% 3d %14s]      | %10p | %-16s %p \n", registerNumber, name.ascii().data(), it, v.description(), JSValue::encode(v));
-#endif
+        dataLog("[r% 3d %14s]      | %10p | %-16s 0x%lld \n", registerNumber, name.ascii().data(), it, v.description(), (long long)JSValue::encode(v));
         it++;
     }
     
@@ -346,11 +436,7 @@ void Interpreter::dumpRegisters(CallFrame* callFrame)
             JSValue v = it->jsValue();
             int registerNumber = it - callFrame->registers();
             String name = codeBlock->nameForRegister(registerNumber);
-#if USE(JSVALUE32_64)
-            dataLog("[r% 3d %14s]      | %10p | %-16s 0x%llx \n", registerNumber, name.ascii().data(), it, v.description(), JSValue::encode(v));
-#else
-            dataLog("[r% 3d %14s]      | %10p | %-16s %p \n", registerNumber, name.ascii().data(), it, v.description(), JSValue::encode(v));
-#endif
+            dataLog("[r% 3d %14s]      | %10p | %-16s 0x%lld \n", registerNumber, name.ascii().data(), it, v.description(), (long long)JSValue::encode(v));
             ++it;
             ++registerCount;
         } while (it != end);
@@ -361,11 +447,7 @@ void Interpreter::dumpRegisters(CallFrame* callFrame)
     if (it != end) {
         do {
             JSValue v = (*it).jsValue();
-#if USE(JSVALUE32_64)
-            dataLog("[r% 3d]                     | %10p | %-16s 0x%llx \n", registerCount, it, v.description(), JSValue::encode(v));
-#else
-            dataLog("[r% 3d]                     | %10p | %-16s %p \n", registerCount, it, v.description(), JSValue::encode(v));
-#endif
+            dataLog("[r% 3d]                     | %10p | %-16s 0x%lld \n", registerCount, it, v.description(), (long long)JSValue::encode(v));
             ++it;
             ++registerCount;
         } while (it != end);
@@ -692,25 +774,12 @@ NEVER_INLINE HandlerInfo* Interpreter::throwException(CallFrame*& callFrame, JSV
         if (!unwindCallFrame(callFrame, exceptionValue, bytecodeOffset, codeBlock)) {
             if (Profiler* profiler = callFrame->globalData().enabledProfiler())
                 profiler->exceptionUnwind(callFrame);
-            callFrame->globalData().topCallFrame = callFrame;
             return 0;
         }
     }
-    callFrame->globalData().topCallFrame = callFrame;
 
     if (Profiler* profiler = callFrame->globalData().enabledProfiler())
         profiler->exceptionUnwind(callFrame);
-
-    // Shrink the JS stack, in case stack overflow made it huge.
-    Register* highWaterMark = 0;
-    for (CallFrame* callerFrame = callFrame; callerFrame; callerFrame = callerFrame->callerFrame()->removeHostCallFrameFlag()) {
-        CodeBlock* codeBlock = callerFrame->codeBlock();
-        if (!codeBlock)
-            continue;
-        Register* callerHighWaterMark = callerFrame->registers() + codeBlock->m_numCalleeRegisters;
-        highWaterMark = max(highWaterMark, callerHighWaterMark);
-    }
-    m_registerFile.shrink(highWaterMark);
 
     // Unwind the scope chain within the exception handler's call frame.
     JSScope* scope = callFrame->scope();
@@ -738,22 +807,44 @@ static inline JSObject* checkedReturn(JSObject* returnValue)
     return returnValue;
 }
 
+class SamplingScope {
+public:
+    SamplingScope(Interpreter* interpreter)
+        : m_interpreter(interpreter)
+    {
+        interpreter->startSampling();
+    }
+    ~SamplingScope()
+    {
+        m_interpreter->stopSampling();
+    }
+private:
+    Interpreter* m_interpreter;
+};
+
 JSValue Interpreter::execute(ProgramExecutable* program, CallFrame* callFrame, JSObject* thisObj)
 {
+    SamplingScope samplingScope(this);
+    
     JSScope* scope = callFrame->scope();
+    JSGlobalData& globalData = *scope->globalData();
+
     ASSERT(isValidThisObject(thisObj, callFrame));
-    ASSERT(!scope->globalData()->exception);
-    ASSERT(!callFrame->globalData().isCollectorBusy());
-    if (callFrame->globalData().isCollectorBusy())
+    ASSERT(!globalData.exception);
+    ASSERT(!globalData.isCollectorBusy());
+    if (globalData.isCollectorBusy())
         CRASH();
 
-    if (m_reentryDepth >= MaxSmallThreadReentryDepth && m_reentryDepth >= callFrame->globalData().maxReentryDepth)
+    StackStats::CheckPoint stackCheckPoint;
+    const StackBounds& nativeStack = wtfThreadData().stack();
+    StackPolicy policy(*this, nativeStack);
+    if (!nativeStack.isSafeToRecurse(policy.requiredCapacity()))
         return checkedReturn(throwStackOverflowError(callFrame));
 
     // First check if the "program" is actually just a JSON object. If so,
     // we'll handle the JSON object here. Else, we'll handle real JS code
     // below at failedJSONP.
-    DynamicGlobalObjectScope globalObjectScope(*scope->globalData(), scope->globalObject());
+    DynamicGlobalObjectScope globalObjectScope(globalData, scope->globalObject());
     Vector<JSONPData> JSONPData;
     bool parseResult;
     const String programSource = program->source().toString();
@@ -862,20 +953,16 @@ failedJSONP:
         return checkedReturn(throwError(callFrame, error));
     CodeBlock* codeBlock = &program->generatedBytecode();
 
-    // Reserve stack space for this invocation:
-    Register* oldEnd = m_registerFile.end();
-    Register* newEnd = oldEnd + codeBlock->numParameters() + RegisterFile::CallFrameHeaderSize + codeBlock->m_numCalleeRegisters;
-    if (!m_registerFile.grow(newEnd))
+    // Push the call frame for this invocation:
+    ASSERT(codeBlock->numParameters() == 1); // 1 parameter for 'this'.
+    CallFrame* newCallFrame = m_stack.pushFrame(callFrame, codeBlock, scope, 1, 0);
+    if (UNLIKELY(!newCallFrame))
         return checkedReturn(throwStackOverflowError(callFrame));
 
-    // Push the call frame for this invocation:
-    CallFrame* newCallFrame = CallFrame::create(oldEnd + codeBlock->numParameters() + RegisterFile::CallFrameHeaderSize);
-    ASSERT(codeBlock->numParameters() == 1); // 1 parameter for 'this'.
-    newCallFrame->init(codeBlock, 0, scope, CallFrame::noCaller(), codeBlock->numParameters(), 0);
+    // Set the arguments for the callee:
     newCallFrame->setThisValue(thisObj);
-    TopCallFrameSetter topCallFrame(callFrame->globalData(), newCallFrame);
 
-    if (Profiler* profiler = callFrame->globalData().enabledProfiler())
+    if (Profiler* profiler = globalData.enabledProfiler())
         profiler->willExecute(callFrame, program->sourceURL(), program->lineNo());
 
     // Execute the code:
@@ -883,211 +970,168 @@ failedJSONP:
     {
         SamplingTool::CallRecord callRecord(m_sampler.get());
 
-        m_reentryDepth++;  
 #if ENABLE(LLINT_C_LOOP)
         result = LLInt::CLoop::execute(newCallFrame, llint_program_prologue);
 #elif ENABLE(JIT)
-        result = program->generatedJITCode().execute(&m_registerFile, newCallFrame, scope->globalData());
+        result = program->generatedJITCode().execute(&m_stack, newCallFrame, &globalData);
 #endif // ENABLE(JIT)
-
-        m_reentryDepth--;
     }
 
-    if (Profiler* profiler = callFrame->globalData().enabledProfiler())
+    if (Profiler* profiler = globalData.enabledProfiler())
         profiler->didExecute(callFrame, program->sourceURL(), program->lineNo());
 
-    m_registerFile.shrink(oldEnd);
+    m_stack.popFrame(newCallFrame);
 
     return checkedReturn(result);
 }
 
 JSValue Interpreter::executeCall(CallFrame* callFrame, JSObject* function, CallType callType, const CallData& callData, JSValue thisValue, const ArgList& args)
 {
+    JSGlobalData& globalData = callFrame->globalData();
     ASSERT(isValidThisObject(thisValue, callFrame));
     ASSERT(!callFrame->hadException());
-    ASSERT(!callFrame->globalData().isCollectorBusy());
-    if (callFrame->globalData().isCollectorBusy())
+    ASSERT(!globalData.isCollectorBusy());
+    if (globalData.isCollectorBusy())
         return jsNull();
 
-    if (m_reentryDepth >= MaxSmallThreadReentryDepth && m_reentryDepth >= callFrame->globalData().maxReentryDepth)
+    StackStats::CheckPoint stackCheckPoint;
+    const StackBounds& nativeStack = wtfThreadData().stack();
+    StackPolicy policy(*this, nativeStack);
+    if (!nativeStack.isSafeToRecurse(policy.requiredCapacity()))
         return checkedReturn(throwStackOverflowError(callFrame));
 
-    Register* oldEnd = m_registerFile.end();
-    ASSERT(callFrame->frameExtent() <= oldEnd || callFrame == callFrame->scope()->globalObject()->globalExec());
-    int argCount = 1 + args.size(); // implicit "this" parameter
-    size_t registerOffset = argCount + RegisterFile::CallFrameHeaderSize;
+    bool isJSCall = (callType == CallTypeJS);
+    JSScope* scope;
+    CodeBlock* newCodeBlock;
+    size_t argsCount = 1 + args.size(); // implicit "this" parameter
 
-    CallFrame* newCallFrame = CallFrame::create(oldEnd + registerOffset);
-    if (!m_registerFile.grow(newCallFrame->registers()))
+    if (isJSCall)
+        scope = callData.js.scope;
+    else {
+        ASSERT(callType == CallTypeHost);
+        scope = callFrame->scope();
+    }
+    DynamicGlobalObjectScope globalObjectScope(globalData, scope->globalObject());
+
+    if (isJSCall) {
+        // Compile the callee:
+        JSObject* compileError = callData.js.functionExecutable->compileForCall(callFrame, scope);
+        if (UNLIKELY(!!compileError)) {
+            return checkedReturn(throwError(callFrame, compileError));
+        }
+        newCodeBlock = &callData.js.functionExecutable->generatedBytecodeForCall();
+        ASSERT(!!newCodeBlock);
+    } else
+        newCodeBlock = 0;
+
+    CallFrame* newCallFrame = m_stack.pushFrame(callFrame, newCodeBlock, scope, argsCount, function);
+    if (UNLIKELY(!newCallFrame))
         return checkedReturn(throwStackOverflowError(callFrame));
 
+    // Set the arguments for the callee:
     newCallFrame->setThisValue(thisValue);
     for (size_t i = 0; i < args.size(); ++i)
         newCallFrame->setArgument(i, args.at(i));
 
-    if (callType == CallTypeJS) {
-        JSScope* callDataScope = callData.js.scope;
-
-        DynamicGlobalObjectScope globalObjectScope(*callDataScope->globalData(), callDataScope->globalObject());
-
-        JSObject* compileError = callData.js.functionExecutable->compileForCall(callFrame, callDataScope);
-        if (UNLIKELY(!!compileError)) {
-            m_registerFile.shrink(oldEnd);
-            return checkedReturn(throwError(callFrame, compileError));
-        }
-
-        CodeBlock* newCodeBlock = &callData.js.functionExecutable->generatedBytecodeForCall();
-        newCallFrame = slideRegisterWindowForCall(newCodeBlock, &m_registerFile, newCallFrame, 0, argCount);
-        if (UNLIKELY(!newCallFrame)) {
-            m_registerFile.shrink(oldEnd);
-            return checkedReturn(throwStackOverflowError(callFrame));
-        }
-
-        newCallFrame->init(newCodeBlock, 0, callDataScope, callFrame->addHostCallFrameFlag(), argCount, function);
-
-        TopCallFrameSetter topCallFrame(callFrame->globalData(), newCallFrame);
-
-        if (Profiler* profiler = callFrame->globalData().enabledProfiler())
-            profiler->willExecute(callFrame, function);
-
-        JSValue result;
-        {
-            SamplingTool::CallRecord callRecord(m_sampler.get());
-
-            m_reentryDepth++;  
-#if ENABLE(LLINT_C_LOOP)
-            result = LLInt::CLoop::execute(newCallFrame, llint_function_for_call_prologue);
-#elif ENABLE(JIT)
-            result = callData.js.functionExecutable->generatedJITCodeForCall().execute(&m_registerFile, newCallFrame, callDataScope->globalData());
-#endif // ENABLE(JIT)
-
-            m_reentryDepth--;
-        }
-
-        if (Profiler* profiler = callFrame->globalData().enabledProfiler())
-            profiler->didExecute(callFrame, function);
-
-        m_registerFile.shrink(oldEnd);
-        return checkedReturn(result);
-    }
-
-    ASSERT(callType == CallTypeHost);
-    JSScope* scope = callFrame->scope();
-    newCallFrame->init(0, 0, scope, callFrame->addHostCallFrameFlag(), argCount, function);
-
-    TopCallFrameSetter topCallFrame(callFrame->globalData(), newCallFrame);
-
-    DynamicGlobalObjectScope globalObjectScope(*scope->globalData(), scope->globalObject());
-
-    if (Profiler* profiler = callFrame->globalData().enabledProfiler())
+    if (Profiler* profiler = globalData.enabledProfiler())
         profiler->willExecute(callFrame, function);
 
     JSValue result;
     {
-        SamplingTool::HostCallRecord callRecord(m_sampler.get());
-        result = JSValue::decode(callData.native.function(newCallFrame));
+        SamplingTool::CallRecord callRecord(m_sampler.get(), !isJSCall);
+
+        // Execute the code:
+        if (isJSCall) {
+#if ENABLE(LLINT_C_LOOP)
+            result = LLInt::CLoop::execute(newCallFrame, llint_function_for_call_prologue);
+#elif ENABLE(JIT)
+            result = callData.js.functionExecutable->generatedJITCodeForCall().execute(&m_stack, newCallFrame, &globalData);
+#endif // ENABLE(JIT)
+        } else
+            result = JSValue::decode(callData.native.function(newCallFrame));
     }
 
-    if (Profiler* profiler = callFrame->globalData().enabledProfiler())
+    if (Profiler* profiler = globalData.enabledProfiler())
         profiler->didExecute(callFrame, function);
 
-    m_registerFile.shrink(oldEnd);
+    m_stack.popFrame(newCallFrame);
     return checkedReturn(result);
 }
 
 JSObject* Interpreter::executeConstruct(CallFrame* callFrame, JSObject* constructor, ConstructType constructType, const ConstructData& constructData, const ArgList& args)
 {
+    JSGlobalData& globalData = callFrame->globalData();
     ASSERT(!callFrame->hadException());
-    ASSERT(!callFrame->globalData().isCollectorBusy());
+    ASSERT(!globalData.isCollectorBusy());
     // We throw in this case because we have to return something "valid" but we're
     // already in an invalid state.
-    if (callFrame->globalData().isCollectorBusy())
+    if (globalData.isCollectorBusy())
         return checkedReturn(throwStackOverflowError(callFrame));
 
-    if (m_reentryDepth >= MaxSmallThreadReentryDepth && m_reentryDepth >= callFrame->globalData().maxReentryDepth)
+    StackStats::CheckPoint stackCheckPoint;
+    const StackBounds& nativeStack = wtfThreadData().stack();
+    StackPolicy policy(*this, nativeStack);
+    if (!nativeStack.isSafeToRecurse(policy.requiredCapacity()))
         return checkedReturn(throwStackOverflowError(callFrame));
 
-    Register* oldEnd = m_registerFile.end();
-    int argCount = 1 + args.size(); // implicit "this" parameter
-    size_t registerOffset = argCount + RegisterFile::CallFrameHeaderSize;
+    bool isJSConstruct = (constructType == ConstructTypeJS);
+    JSScope* scope;
+    CodeBlock* newCodeBlock;
+    size_t argsCount = 1 + args.size(); // implicit "this" parameter
 
-    if (!m_registerFile.grow(oldEnd + registerOffset))
+    if (isJSConstruct)
+        scope = constructData.js.scope;
+    else {
+        ASSERT(constructType == ConstructTypeHost);
+        scope = callFrame->scope();
+    }
+
+    DynamicGlobalObjectScope globalObjectScope(globalData, scope->globalObject());
+
+    if (isJSConstruct) {
+        // Compile the callee:
+        JSObject* compileError = constructData.js.functionExecutable->compileForConstruct(callFrame, scope);
+        if (UNLIKELY(!!compileError)) {
+            return checkedReturn(throwError(callFrame, compileError));
+        }
+        newCodeBlock = &constructData.js.functionExecutable->generatedBytecodeForConstruct();
+        ASSERT(!!newCodeBlock);
+    } else
+        newCodeBlock = 0;
+
+    CallFrame* newCallFrame = m_stack.pushFrame(callFrame, newCodeBlock, scope, argsCount, constructor);
+    if (UNLIKELY(!newCallFrame))
         return checkedReturn(throwStackOverflowError(callFrame));
 
-    CallFrame* newCallFrame = CallFrame::create(oldEnd + registerOffset);
+    // Set the arguments for the callee:
     newCallFrame->setThisValue(jsUndefined());
     for (size_t i = 0; i < args.size(); ++i)
         newCallFrame->setArgument(i, args.at(i));
 
-    if (constructType == ConstructTypeJS) {
-        JSScope* constructDataScope = constructData.js.scope;
-
-        DynamicGlobalObjectScope globalObjectScope(*constructDataScope->globalData(), constructDataScope->globalObject());
-
-        JSObject* compileError = constructData.js.functionExecutable->compileForConstruct(callFrame, constructDataScope);
-        if (UNLIKELY(!!compileError)) {
-            m_registerFile.shrink(oldEnd);
-            return checkedReturn(throwError(callFrame, compileError));
-        }
-
-        CodeBlock* newCodeBlock = &constructData.js.functionExecutable->generatedBytecodeForConstruct();
-        newCallFrame = slideRegisterWindowForCall(newCodeBlock, &m_registerFile, newCallFrame, 0, argCount);
-        if (UNLIKELY(!newCallFrame)) {
-            m_registerFile.shrink(oldEnd);
-            return checkedReturn(throwStackOverflowError(callFrame));
-        }
-
-        newCallFrame->init(newCodeBlock, 0, constructDataScope, callFrame->addHostCallFrameFlag(), argCount, constructor);
-
-        TopCallFrameSetter topCallFrame(callFrame->globalData(), newCallFrame);
-
-        if (Profiler* profiler = callFrame->globalData().enabledProfiler())
-            profiler->willExecute(callFrame, constructor);
-
-        JSValue result;
-        {
-            SamplingTool::CallRecord callRecord(m_sampler.get());
-
-            m_reentryDepth++;  
-#if ENABLE(LLINT_C_LOOP)
-            result = LLInt::CLoop::execute(newCallFrame, llint_function_for_construct_prologue);
-#elif ENABLE(JIT)
-            result = constructData.js.functionExecutable->generatedJITCodeForConstruct().execute(&m_registerFile, newCallFrame, constructDataScope->globalData());
-#endif // ENABLE(JIT)
-            m_reentryDepth--;
-        }
-
-        if (Profiler* profiler = callFrame->globalData().enabledProfiler())
-            profiler->didExecute(callFrame, constructor);
-
-        m_registerFile.shrink(oldEnd);
-        if (callFrame->hadException())
-            return 0;
-        ASSERT(result.isObject());
-        return checkedReturn(asObject(result));
-    }
-
-    ASSERT(constructType == ConstructTypeHost);
-    JSScope* scope = callFrame->scope();
-    newCallFrame->init(0, 0, scope, callFrame->addHostCallFrameFlag(), argCount, constructor);
-
-    TopCallFrameSetter topCallFrame(callFrame->globalData(), newCallFrame);
-
-    DynamicGlobalObjectScope globalObjectScope(*scope->globalData(), scope->globalObject());
-
-    if (Profiler* profiler = callFrame->globalData().enabledProfiler())
+    if (Profiler* profiler = globalData.enabledProfiler())
         profiler->willExecute(callFrame, constructor);
 
     JSValue result;
     {
-        SamplingTool::HostCallRecord callRecord(m_sampler.get());
-        result = JSValue::decode(constructData.native.function(newCallFrame));
+        SamplingTool::CallRecord callRecord(m_sampler.get(), !isJSConstruct);
+
+        // Execute the code.
+        if (isJSConstruct) {
+#if ENABLE(LLINT_C_LOOP)
+            result = LLInt::CLoop::execute(newCallFrame, llint_function_for_construct_prologue);
+#elif ENABLE(JIT)
+            result = constructData.js.functionExecutable->generatedJITCodeForConstruct().execute(&m_stack, newCallFrame, &globalData);
+#endif // ENABLE(JIT)
+        } else {
+            result = JSValue::decode(constructData.native.function(newCallFrame));
+        }
     }
 
-    if (Profiler* profiler = callFrame->globalData().enabledProfiler())
+    if (Profiler* profiler = globalData.enabledProfiler())
         profiler->didExecute(callFrame, constructor);
 
-    m_registerFile.shrink(oldEnd);
+    m_stack.popFrame(newCallFrame);
+
     if (callFrame->hadException())
         return 0;
     ASSERT(result.isObject());
@@ -1096,93 +1140,118 @@ JSObject* Interpreter::executeConstruct(CallFrame* callFrame, JSObject* construc
 
 CallFrameClosure Interpreter::prepareForRepeatCall(FunctionExecutable* functionExecutable, CallFrame* callFrame, JSFunction* function, int argumentCountIncludingThis, JSScope* scope)
 {
-    ASSERT(!scope->globalData()->exception);
+    JSGlobalData& globalData = *scope->globalData();
+    ASSERT(!globalData.exception);
     
-    if (callFrame->globalData().isCollectorBusy())
+    if (globalData.isCollectorBusy())
         return CallFrameClosure();
 
-    if (m_reentryDepth >= MaxSmallThreadReentryDepth && m_reentryDepth >= callFrame->globalData().maxReentryDepth) {
+    StackStats::CheckPoint stackCheckPoint;
+    const StackBounds& nativeStack = wtfThreadData().stack();
+    StackPolicy policy(*this, nativeStack);
+    if (!nativeStack.isSafeToRecurse(policy.requiredCapacity())) {
         throwStackOverflowError(callFrame);
         return CallFrameClosure();
     }
 
-    Register* oldEnd = m_registerFile.end();
-    size_t registerOffset = argumentCountIncludingThis + RegisterFile::CallFrameHeaderSize;
-
-    CallFrame* newCallFrame = CallFrame::create(oldEnd + registerOffset);
-    if (!m_registerFile.grow(newCallFrame->registers())) {
-        throwStackOverflowError(callFrame);
-        return CallFrameClosure();
-    }
-
+    // Compile the callee:
     JSObject* error = functionExecutable->compileForCall(callFrame, scope);
     if (error) {
         throwError(callFrame, error);
-        m_registerFile.shrink(oldEnd);
         return CallFrameClosure();
     }
-    CodeBlock* codeBlock = &functionExecutable->generatedBytecodeForCall();
+    CodeBlock* newCodeBlock = &functionExecutable->generatedBytecodeForCall();
 
-    newCallFrame = slideRegisterWindowForCall(codeBlock, &m_registerFile, newCallFrame, 0, argumentCountIncludingThis);
+    size_t argsCount = argumentCountIncludingThis;
+
+    CallFrame* newCallFrame = m_stack.pushFrame(callFrame, newCodeBlock, scope, argsCount, function);  
     if (UNLIKELY(!newCallFrame)) {
         throwStackOverflowError(callFrame);
-        m_registerFile.shrink(oldEnd);
         return CallFrameClosure();
     }
-    newCallFrame->init(codeBlock, 0, scope, callFrame->addHostCallFrameFlag(), argumentCountIncludingThis, function);  
-    scope->globalData()->topCallFrame = newCallFrame;
-    CallFrameClosure result = { callFrame, newCallFrame, function, functionExecutable, scope->globalData(), oldEnd, scope, codeBlock->numParameters(), argumentCountIncludingThis };
+
+    if (UNLIKELY(!newCallFrame)) {
+        throwStackOverflowError(callFrame);
+        return CallFrameClosure();
+    }
+
+    // Return the successful closure:
+    CallFrameClosure result = { callFrame, newCallFrame, function, functionExecutable, &globalData, scope, newCodeBlock->numParameters(), argumentCountIncludingThis };
     return result;
 }
 
 JSValue Interpreter::execute(CallFrameClosure& closure) 
 {
-    ASSERT(!closure.oldCallFrame->globalData().isCollectorBusy());
-    if (closure.oldCallFrame->globalData().isCollectorBusy())
+    JSGlobalData& globalData = *closure.globalData;
+    SamplingScope samplingScope(this);
+    
+    ASSERT(!globalData.isCollectorBusy());
+    if (globalData.isCollectorBusy())
         return jsNull();
+
+    StackStats::CheckPoint stackCheckPoint;
+    m_stack.validateFence(closure.newCallFrame, "BEFORE");
     closure.resetCallFrame();
-    if (Profiler* profiler = closure.oldCallFrame->globalData().enabledProfiler())
+    m_stack.validateFence(closure.newCallFrame, "STEP 1");
+
+    if (Profiler* profiler = globalData.enabledProfiler())
         profiler->willExecute(closure.oldCallFrame, closure.function);
 
-    TopCallFrameSetter topCallFrame(*closure.globalData, closure.newCallFrame);
+    // The code execution below may push more frames and point the topCallFrame
+    // to those newer frames, or it may pop to the top frame to the caller of
+    // the current repeat frame, or it may leave the top frame pointing to the
+    // current repeat frame.
+    //
+    // Hence, we need to preserve the topCallFrame here ourselves before
+    // repeating this call on a second callback function.
 
+    TopCallFrameSetter topCallFrame(globalData, closure.newCallFrame);
+
+    // Execute the code:
     JSValue result;
     {
         SamplingTool::CallRecord callRecord(m_sampler.get());
         
-        m_reentryDepth++;  
 #if ENABLE(LLINT_C_LOOP)
         result = LLInt::CLoop::execute(closure.newCallFrame, llint_function_for_call_prologue);
 #elif ENABLE(JIT)
-        result = closure.functionExecutable->generatedJITCodeForCall().execute(&m_registerFile, closure.newCallFrame, closure.globalData);
+        result = closure.functionExecutable->generatedJITCodeForCall().execute(&m_stack, closure.newCallFrame, &globalData);
 #endif // ENABLE(JIT)
-        m_reentryDepth--;
     }
 
-    if (Profiler* profiler = closure.oldCallFrame->globalData().enabledProfiler())
+    if (Profiler* profiler = globalData.enabledProfiler())
         profiler->didExecute(closure.oldCallFrame, closure.function);
+
+    m_stack.validateFence(closure.newCallFrame, "AFTER");
     return checkedReturn(result);
 }
 
 void Interpreter::endRepeatCall(CallFrameClosure& closure)
 {
-    closure.globalData->topCallFrame = closure.oldCallFrame;
-    m_registerFile.shrink(closure.oldEnd);
+    m_stack.popFrame(closure.newCallFrame);
 }
 
-JSValue Interpreter::execute(EvalExecutable* eval, CallFrame* callFrame, JSValue thisValue, JSScope* scope, int globalRegisterOffset)
+JSValue Interpreter::execute(EvalExecutable* eval, CallFrame* callFrame, JSValue thisValue, JSScope* scope)
 {
+    JSGlobalData& globalData = *scope->globalData();
+    SamplingScope samplingScope(this);
+    
+    ASSERT(scope->globalData() == &callFrame->globalData());
     ASSERT(isValidThisObject(thisValue, callFrame));
-    ASSERT(!scope->globalData()->exception);
-    ASSERT(!callFrame->globalData().isCollectorBusy());
-    if (callFrame->globalData().isCollectorBusy())
+    ASSERT(!globalData.exception);
+    ASSERT(!globalData.isCollectorBusy());
+    if (globalData.isCollectorBusy())
         return jsNull();
 
-    DynamicGlobalObjectScope globalObjectScope(*scope->globalData(), scope->globalObject());
+    DynamicGlobalObjectScope globalObjectScope(globalData, scope->globalObject());
 
-    if (m_reentryDepth >= MaxSmallThreadReentryDepth && m_reentryDepth >= callFrame->globalData().maxReentryDepth)
+    StackStats::CheckPoint stackCheckPoint;
+    const StackBounds& nativeStack = wtfThreadData().stack();
+    StackPolicy policy(*this, nativeStack);
+    if (!nativeStack.isSafeToRecurse(policy.requiredCapacity()))
         return checkedReturn(throwStackOverflowError(callFrame));
 
+    // Compile the callee:
     JSObject* compileError = eval->compile(callFrame, scope);
     if (UNLIKELY(!!compileError))
         return checkedReturn(throwError(callFrame, compileError));
@@ -1205,7 +1274,7 @@ JSValue Interpreter::execute(EvalExecutable* eval, CallFrame* callFrame, JSValue
             variableObject = scope;
         }
         // Scope for BatchedTransitionOptimizer
-        BatchedTransitionOptimizer optimizer(callFrame->globalData(), variableObject);
+        BatchedTransitionOptimizer optimizer(globalData, variableObject);
 
         for (unsigned i = 0; i < numVariables; ++i) {
             const Identifier& ident = codeBlock->variable(i);
@@ -1222,40 +1291,34 @@ JSValue Interpreter::execute(EvalExecutable* eval, CallFrame* callFrame, JSValue
         }
     }
 
-    Register* oldEnd = m_registerFile.end();
-    Register* newEnd = m_registerFile.begin() + globalRegisterOffset + codeBlock->m_numCalleeRegisters;
-    if (!m_registerFile.grow(newEnd))
+    // Push the frame:
+    ASSERT(codeBlock->numParameters() == 1); // 1 parameter for 'this'.
+    CallFrame* newCallFrame = m_stack.pushFrame(callFrame, codeBlock, scope, 1, 0);
+    if (UNLIKELY(!newCallFrame))
         return checkedReturn(throwStackOverflowError(callFrame));
 
-    CallFrame* newCallFrame = CallFrame::create(m_registerFile.begin() + globalRegisterOffset);
-
-    ASSERT(codeBlock->numParameters() == 1); // 1 parameter for 'this'.
-    newCallFrame->init(codeBlock, 0, scope, callFrame->addHostCallFrameFlag(), codeBlock->numParameters(), 0);
+    // Set the arguments for the callee:
     newCallFrame->setThisValue(thisValue);
 
-    TopCallFrameSetter topCallFrame(callFrame->globalData(), newCallFrame);
-
-    if (Profiler* profiler = callFrame->globalData().enabledProfiler())
+    if (Profiler* profiler = globalData.enabledProfiler())
         profiler->willExecute(callFrame, eval->sourceURL(), eval->lineNo());
 
+    // Execute the code:
     JSValue result;
     {
         SamplingTool::CallRecord callRecord(m_sampler.get());
-
-        m_reentryDepth++;
         
 #if ENABLE(LLINT_C_LOOP)
         result = LLInt::CLoop::execute(newCallFrame, llint_eval_prologue);
 #elif ENABLE(JIT)
-        result = eval->generatedJITCode().execute(&m_registerFile, newCallFrame, scope->globalData());
+        result = eval->generatedJITCode().execute(&m_stack, newCallFrame, &globalData);
 #endif // ENABLE(JIT)
-        m_reentryDepth--;
     }
 
-    if (Profiler* profiler = callFrame->globalData().enabledProfiler())
+    if (Profiler* profiler = globalData.enabledProfiler())
         profiler->didExecute(callFrame, eval->sourceURL(), eval->lineNo());
 
-    m_registerFile.shrink(oldEnd);
+    m_stack.popFrame(newCallFrame);
     return checkedReturn(result);
 }
 

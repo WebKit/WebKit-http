@@ -31,14 +31,6 @@
 
 namespace JSC {
 
-/* Deprecated: Please use JITStubCall instead. */
-
-ALWAYS_INLINE void JIT::emitGetJITStubArg(unsigned argumentNumber, RegisterID dst)
-{
-    unsigned argumentStackOffset = (argumentNumber * (sizeof(JSValue) / sizeof(void*))) + JITSTACKFRAME_ARGS_INDEX;
-    peek(dst, argumentStackOffset);
-}
-
 ALWAYS_INLINE bool JIT::isOperandConstantImmediateDouble(unsigned src)
 {
     return m_codeBlock->isConstantRegisterIndex(src) && getConstantOperand(src).isDouble();
@@ -50,37 +42,63 @@ ALWAYS_INLINE JSValue JIT::getConstantOperand(unsigned src)
     return m_codeBlock->getConstant(src);
 }
 
-ALWAYS_INLINE void JIT::emitPutToCallFrameHeader(RegisterID from, RegisterFile::CallFrameHeaderEntry entry)
-{
-    storePtr(from, payloadFor(entry, callFrameRegister));
-}
-
-ALWAYS_INLINE void JIT::emitPutCellToCallFrameHeader(RegisterID from, RegisterFile::CallFrameHeaderEntry entry)
+ALWAYS_INLINE void JIT::emitPutCellToCallFrameHeader(RegisterID from, JSStack::CallFrameHeaderEntry entry)
 {
 #if USE(JSVALUE32_64)
     store32(TrustedImm32(JSValue::CellTag), tagFor(entry, callFrameRegister));
+    store32(from, payloadFor(entry, callFrameRegister));
+#else
+    store64(from, addressFor(entry, callFrameRegister));
 #endif
-    storePtr(from, payloadFor(entry, callFrameRegister));
 }
 
-ALWAYS_INLINE void JIT::emitPutIntToCallFrameHeader(RegisterID from, RegisterFile::CallFrameHeaderEntry entry)
+ALWAYS_INLINE void JIT::emitPutIntToCallFrameHeader(RegisterID from, JSStack::CallFrameHeaderEntry entry)
 {
+#if USE(JSVALUE32_64)
     store32(TrustedImm32(Int32Tag), intTagFor(entry, callFrameRegister));
     store32(from, intPayloadFor(entry, callFrameRegister));
+#else
+    store64(from, addressFor(entry, callFrameRegister));
+#endif
 }
 
-ALWAYS_INLINE void JIT::emitPutImmediateToCallFrameHeader(void* value, RegisterFile::CallFrameHeaderEntry entry)
+ALWAYS_INLINE void JIT::emitPutToCallFrameHeader(RegisterID from, JSStack::CallFrameHeaderEntry entry)
+{
+#if USE(JSVALUE32_64)
+    storePtr(from, payloadFor(entry, callFrameRegister));
+#else
+    store64(from, addressFor(entry, callFrameRegister));
+#endif
+}
+
+ALWAYS_INLINE void JIT::emitPutImmediateToCallFrameHeader(void* value, JSStack::CallFrameHeaderEntry entry)
 {
     storePtr(TrustedImmPtr(value), Address(callFrameRegister, entry * sizeof(Register)));
 }
 
-ALWAYS_INLINE void JIT::emitGetFromCallFrameHeaderPtr(RegisterFile::CallFrameHeaderEntry entry, RegisterID to, RegisterID from)
+ALWAYS_INLINE void JIT::emitGetFromCallFrameHeaderPtr(JSStack::CallFrameHeaderEntry entry, RegisterID to, RegisterID from)
 {
     loadPtr(Address(from, entry * sizeof(Register)), to);
 #if USE(JSVALUE64)
     killLastResultRegister();
 #endif
 }
+
+ALWAYS_INLINE void JIT::emitGetFromCallFrameHeader32(JSStack::CallFrameHeaderEntry entry, RegisterID to, RegisterID from)
+{
+    load32(Address(from, entry * sizeof(Register)), to);
+#if USE(JSVALUE64)
+    killLastResultRegister();
+#endif
+}
+
+#if USE(JSVALUE64)
+ALWAYS_INLINE void JIT::emitGetFromCallFrameHeader64(JSStack::CallFrameHeaderEntry entry, RegisterID to, RegisterID from)
+{
+    load64(Address(from, entry * sizeof(Register)), to);
+    killLastResultRegister();
+}
+#endif
 
 ALWAYS_INLINE void JIT::emitLoadCharacterString(RegisterID src, RegisterID dst, JumpList& failures)
 {
@@ -99,14 +117,6 @@ ALWAYS_INLINE void JIT::emitLoadCharacterString(RegisterID src, RegisterID dst, 
     is16Bit.link(this);
     load16(MacroAssembler::Address(dst, 0), dst);
     cont8Bit.link(this);
-}
-
-ALWAYS_INLINE void JIT::emitGetFromCallFrameHeader32(RegisterFile::CallFrameHeaderEntry entry, RegisterID to, RegisterID from)
-{
-    load32(Address(from, entry * sizeof(Register)), to);
-#if USE(JSVALUE64)
-    killLastResultRegister();
-#endif
 }
 
 ALWAYS_INLINE JIT::Call JIT::emitNakedCall(CodePtr function)
@@ -265,9 +275,9 @@ ALWAYS_INLINE void JIT::updateTopCallFrame()
     ASSERT(static_cast<int>(m_bytecodeOffset) >= 0);
     if (m_bytecodeOffset) {
 #if USE(JSVALUE32_64)
-        storePtr(TrustedImmPtr(m_codeBlock->instructions().begin() + m_bytecodeOffset + 1), intTagFor(RegisterFile::ArgumentCount));
+        storePtr(TrustedImmPtr(m_codeBlock->instructions().begin() + m_bytecodeOffset + 1), intTagFor(JSStack::ArgumentCount));
 #else
-        store32(TrustedImm32(m_bytecodeOffset + 1), intTagFor(RegisterFile::ArgumentCount));
+        store32(TrustedImm32(m_bytecodeOffset + 1), intTagFor(JSStack::ArgumentCount));
 #endif
     }
     storePtr(callFrameRegister, &m_globalData->topCallFrame);
@@ -407,13 +417,14 @@ ALWAYS_INLINE bool JIT::isOperandConstantImmediateChar(unsigned src)
 
 template <typename ClassType, MarkedBlock::DestructorType destructorType, typename StructureType> inline void JIT::emitAllocateBasicJSObject(StructureType structure, RegisterID result, RegisterID storagePtr)
 {
+    size_t size = ClassType::allocationSize(INLINE_STORAGE_CAPACITY);
     MarkedAllocator* allocator = 0;
     if (destructorType == MarkedBlock::Normal)
-        allocator = &m_globalData->heap.allocatorForObjectWithNormalDestructor(sizeof(ClassType));
+        allocator = &m_globalData->heap.allocatorForObjectWithNormalDestructor(size);
     else if (destructorType == MarkedBlock::ImmortalStructure)
-        allocator = &m_globalData->heap.allocatorForObjectWithImmortalStructureDestructor(sizeof(ClassType));
+        allocator = &m_globalData->heap.allocatorForObjectWithImmortalStructureDestructor(size);
     else
-        allocator = &m_globalData->heap.allocatorForObjectWithoutDestructor(sizeof(ClassType));
+        allocator = &m_globalData->heap.allocatorForObjectWithoutDestructor(size);
     loadPtr(&allocator->m_freeList.head, result);
     addSlowCase(branchTestPtr(Zero, result));
 
@@ -433,55 +444,6 @@ template <typename T> inline void JIT::emitAllocateJSFinalObject(T structure, Re
     emitAllocateBasicJSObject<JSFinalObject, MarkedBlock::None, T>(structure, result, scratch);
 }
 
-inline void JIT::emitAllocateBasicStorage(size_t size, ptrdiff_t offsetFromBase, RegisterID result)
-{
-    CopiedAllocator* allocator = &m_globalData->heap.storageAllocator();
-
-    loadPtr(&allocator->m_currentRemaining, result);
-    addSlowCase(branchSubPtr(Signed, TrustedImm32(size), result));
-    storePtr(result, &allocator->m_currentRemaining);
-    negPtr(result);
-    addPtr(AbsoluteAddress(&allocator->m_currentPayloadEnd), result);
-    subPtr(TrustedImm32(size - offsetFromBase), result);
-}
-
-inline void JIT::emitAllocateJSArray(unsigned valuesRegister, unsigned length, RegisterID cellResult, RegisterID storageResult, RegisterID storagePtr, RegisterID scratch)
-{
-    unsigned initialLength = std::max(length, 4U);
-    size_t initialStorage = Butterfly::totalSize(0, 0, true, ArrayStorage::sizeFor(initialLength));
-
-    // We allocate the backing store first to ensure that garbage collection 
-    // doesn't happen during JSArray initialization.
-    emitAllocateBasicStorage(initialStorage, sizeof(IndexingHeader), storageResult);
-
-    // Allocate the cell for the array.
-    loadPtr(m_codeBlock->globalObject()->addressOfArrayStructure(), scratch);
-    emitAllocateBasicJSObject<JSArray, MarkedBlock::None>(scratch, cellResult, storagePtr);
-
-    // Store all the necessary info in the ArrayStorage.
-    store32(Imm32(length), Address(storageResult, ArrayStorage::lengthOffset()));
-    store32(Imm32(length), Address(storageResult, ArrayStorage::numValuesInVectorOffset()));
-    store32(Imm32(initialLength), Address(storageResult, ArrayStorage::vectorLengthOffset()));
-    store32(TrustedImm32(0), Address(storageResult, ArrayStorage::indexBiasOffset()));
-    storePtr(TrustedImmPtr(0), Address(storageResult, ArrayStorage::sparseMapOffset()));
-
-    // Store the newly allocated ArrayStorage.
-    storePtr(storageResult, Address(cellResult, JSObject::butterflyOffset()));
-
-    // Store the values we have.
-    for (unsigned i = 0; i < length; i++) {
-#if USE(JSVALUE64)
-        loadPtr(Address(callFrameRegister, (valuesRegister + i) * sizeof(Register)), storagePtr);
-        storePtr(storagePtr, Address(storageResult, ArrayStorage::vectorOffset() + sizeof(WriteBarrier<Unknown>) * i));
-#else
-        load32(Address(callFrameRegister, (valuesRegister + i) * sizeof(Register)), storagePtr);
-        store32(storagePtr, Address(storageResult, ArrayStorage::vectorOffset() + sizeof(WriteBarrier<Unknown>) * i));
-        load32(Address(callFrameRegister, (valuesRegister + i) * sizeof(Register) + sizeof(uint32_t)), storagePtr);
-        store32(storagePtr, Address(storageResult, ArrayStorage::vectorOffset() + sizeof(WriteBarrier<Unknown>) * i + sizeof(uint32_t)));
-#endif
-    }
-}
-
 #if ENABLE(VALUE_PROFILER)
 inline void JIT::emitValueProfilingSite(ValueProfile* valueProfile)
 {
@@ -498,7 +460,7 @@ inline void JIT::emitValueProfilingSite(ValueProfile* valueProfile)
         // We're in a simple configuration: only one bucket, so we can just do a direct
         // store.
 #if USE(JSVALUE64)
-        storePtr(value, valueProfile->m_buckets);
+        store64(value, valueProfile->m_buckets);
 #else
         EncodedValueDescriptor* descriptor = bitwise_cast<EncodedValueDescriptor*>(valueProfile->m_buckets);
         store32(value, &descriptor->asBits.payload);
@@ -514,7 +476,7 @@ inline void JIT::emitValueProfilingSite(ValueProfile* valueProfile)
     and32(TrustedImm32(ValueProfile::bucketIndexMask), bucketCounterRegister);
     move(TrustedImmPtr(valueProfile->m_buckets), scratch);
 #if USE(JSVALUE64)
-    storePtr(value, BaseIndex(scratch, bucketCounterRegister, TimesEight));
+    store64(value, BaseIndex(scratch, bucketCounterRegister, TimesEight));
 #elif USE(JSVALUE32_64)
     store32(value, BaseIndex(scratch, bucketCounterRegister, TimesEight, OBJECT_OFFSETOF(JSValue, u.asBits.payload)));
     store32(valueTag, BaseIndex(scratch, bucketCounterRegister, TimesEight, OBJECT_OFFSETOF(JSValue, u.asBits.tag)));
@@ -536,17 +498,15 @@ inline void JIT::emitValueProfilingSite()
 
 inline void JIT::emitArrayProfilingSite(RegisterID structureAndIndexingType, RegisterID scratch, ArrayProfile* arrayProfile)
 {
+    UNUSED_PARAM(scratch); // We had found this scratch register useful here before, so I will keep it for now.
+    
     RegisterID structure = structureAndIndexingType;
     RegisterID indexingType = structureAndIndexingType;
     
-    if (canBeOptimized()) {
+    if (canBeOptimized())
         storePtr(structure, arrayProfile->addressOfLastSeenStructure());
-        load8(Address(structure, Structure::indexingTypeOffset()), indexingType);
-        move(TrustedImm32(1), scratch);
-        lshift32(indexingType, scratch);
-        or32(scratch, AbsoluteAddress(arrayProfile->addressOfArrayModes()));
-    } else
-        load8(Address(structure, Structure::indexingTypeOffset()), indexingType);
+
+    load8(Address(structure, Structure::indexingTypeOffset()), indexingType);
 }
 
 inline void JIT::emitArrayProfilingSiteForBytecodeIndex(RegisterID structureAndIndexingType, RegisterID scratch, unsigned bytecodeIndex)
@@ -561,10 +521,29 @@ inline void JIT::emitArrayProfilingSiteForBytecodeIndex(RegisterID structureAndI
 
 inline void JIT::emitArrayProfileStoreToHoleSpecialCase(ArrayProfile* arrayProfile)
 {
-    if (!canBeOptimized())
-        return;
-    
+#if ENABLE(VALUE_PROFILER)    
     store8(TrustedImm32(1), arrayProfile->addressOfMayStoreToHole());
+#else
+    UNUSED_PARAM(arrayProfile);
+#endif
+}
+
+static inline bool arrayProfileSaw(ArrayProfile* profile, IndexingType capability)
+{
+#if ENABLE(VALUE_PROFILER)
+    return !!(profile->observedArrayModes() & (asArrayModes(NonArray | capability) | asArrayModes(ArrayClass | capability)));
+#else
+    UNUSED_PARAM(profile);
+    UNUSED_PARAM(capability);
+    return false;
+#endif
+}
+
+inline JITArrayMode JIT::chooseArrayMode(ArrayProfile* profile)
+{
+    if (arrayProfileSaw(profile, ArrayStorageShape))
+        return JITArrayStorage;
+    return JITContiguous;
 }
 
 #if USE(JSVALUE32_64)
@@ -757,7 +736,7 @@ inline void JIT::unmap(RegisterID registerID)
 inline void JIT::unmap()
 {
     m_mappedBytecodeOffset = (unsigned)-1;
-    m_mappedVirtualRegisterIndex = RegisterFile::ReturnPC;
+    m_mappedVirtualRegisterIndex = JSStack::ReturnPC;
     m_mappedTag = (RegisterID)-1;
     m_mappedPayload = (RegisterID)-1;
 }
@@ -839,6 +818,14 @@ ALWAYS_INLINE bool JIT::getOperandConstantImmediateInt(unsigned op1, unsigned op
 
 #else // USE(JSVALUE32_64)
 
+/* Deprecated: Please use JITStubCall instead. */
+
+ALWAYS_INLINE void JIT::emitGetJITStubArg(unsigned argumentNumber, RegisterID dst)
+{
+    unsigned argumentStackOffset = (argumentNumber * (sizeof(JSValue) / sizeof(void*))) + JITSTACKFRAME_ARGS_INDEX;
+    peek64(dst, argumentStackOffset);
+}
+
 ALWAYS_INLINE void JIT::killLastResultRegister()
 {
     m_lastResultBytecodeRegister = std::numeric_limits<int>::max();
@@ -853,9 +840,9 @@ ALWAYS_INLINE void JIT::emitGetVirtualRegister(int src, RegisterID dst)
     if (m_codeBlock->isConstantRegisterIndex(src)) {
         JSValue value = m_codeBlock->getConstant(src);
         if (!value.isNumber())
-            move(TrustedImmPtr(JSValue::encode(value)), dst);
+            move(TrustedImm64(JSValue::encode(value)), dst);
         else
-            move(ImmPtr(JSValue::encode(value)), dst);
+            move(Imm64(JSValue::encode(value)), dst);
         killLastResultRegister();
         return;
     }
@@ -868,7 +855,7 @@ ALWAYS_INLINE void JIT::emitGetVirtualRegister(int src, RegisterID dst)
         return;
     }
 
-    loadPtr(Address(callFrameRegister, src * sizeof(Register)), dst);
+    load64(Address(callFrameRegister, src * sizeof(Register)), dst);
     killLastResultRegister();
 }
 
@@ -895,28 +882,24 @@ ALWAYS_INLINE bool JIT::isOperandConstantImmediateInt(unsigned src)
 
 ALWAYS_INLINE void JIT::emitPutVirtualRegister(unsigned dst, RegisterID from)
 {
-    storePtr(from, Address(callFrameRegister, dst * sizeof(Register)));
+    store64(from, Address(callFrameRegister, dst * sizeof(Register)));
     m_lastResultBytecodeRegister = (from == cachedResultRegister) ? static_cast<int>(dst) : std::numeric_limits<int>::max();
 }
 
 ALWAYS_INLINE void JIT::emitInitRegister(unsigned dst)
 {
-    storePtr(TrustedImmPtr(JSValue::encode(jsUndefined())), Address(callFrameRegister, dst * sizeof(Register)));
+    store64(TrustedImm64(JSValue::encode(jsUndefined())), Address(callFrameRegister, dst * sizeof(Register)));
 }
 
 ALWAYS_INLINE JIT::Jump JIT::emitJumpIfJSCell(RegisterID reg)
 {
-#if USE(JSVALUE64)
-    return branchTestPtr(Zero, reg, tagMaskRegister);
-#else
-    return branchTest32(Zero, reg, TrustedImm32(TagMask));
-#endif
+    return branchTest64(Zero, reg, tagMaskRegister);
 }
 
 ALWAYS_INLINE JIT::Jump JIT::emitJumpIfBothJSCells(RegisterID reg1, RegisterID reg2, RegisterID scratch)
 {
     move(reg1, scratch);
-    orPtr(reg2, scratch);
+    or64(reg2, scratch);
     return emitJumpIfJSCell(scratch);
 }
 
@@ -927,11 +910,7 @@ ALWAYS_INLINE void JIT::emitJumpSlowCaseIfJSCell(RegisterID reg)
 
 ALWAYS_INLINE JIT::Jump JIT::emitJumpIfNotJSCell(RegisterID reg)
 {
-#if USE(JSVALUE64)
-    return branchTestPtr(NonZero, reg, tagMaskRegister);
-#else
-    return branchTest32(NonZero, reg, TrustedImm32(TagMask));
-#endif
+    return branchTest64(NonZero, reg, tagMaskRegister);
 }
 
 ALWAYS_INLINE void JIT::emitJumpSlowCaseIfNotJSCell(RegisterID reg)
@@ -944,8 +923,6 @@ ALWAYS_INLINE void JIT::emitJumpSlowCaseIfNotJSCell(RegisterID reg, int vReg)
     if (!m_codeBlock->isKnownNotImmediate(vReg))
         emitJumpSlowCaseIfNotJSCell(reg);
 }
-
-#if USE(JSVALUE64)
 
 inline void JIT::emitLoadDouble(int index, FPRegisterID value)
 {
@@ -964,30 +941,21 @@ inline void JIT::emitLoadInt32ToDouble(int index, FPRegisterID value)
     } else
         convertInt32ToDouble(addressFor(index), value);
 }
-#endif
 
 ALWAYS_INLINE JIT::Jump JIT::emitJumpIfImmediateInteger(RegisterID reg)
 {
-#if USE(JSVALUE64)
-    return branchPtr(AboveOrEqual, reg, tagTypeNumberRegister);
-#else
-    return branchTest32(NonZero, reg, TrustedImm32(TagTypeNumber));
-#endif
+    return branch64(AboveOrEqual, reg, tagTypeNumberRegister);
 }
 
 ALWAYS_INLINE JIT::Jump JIT::emitJumpIfNotImmediateInteger(RegisterID reg)
 {
-#if USE(JSVALUE64)
-    return branchPtr(Below, reg, tagTypeNumberRegister);
-#else
-    return branchTest32(Zero, reg, TrustedImm32(TagTypeNumber));
-#endif
+    return branch64(Below, reg, tagTypeNumberRegister);
 }
 
 ALWAYS_INLINE JIT::Jump JIT::emitJumpIfNotImmediateIntegers(RegisterID reg1, RegisterID reg2, RegisterID scratch)
 {
     move(reg1, scratch);
-    andPtr(reg2, scratch);
+    and64(reg2, scratch);
     return emitJumpIfNotImmediateInteger(scratch);
 }
 
@@ -1006,41 +974,17 @@ ALWAYS_INLINE void JIT::emitJumpSlowCaseIfNotImmediateNumber(RegisterID reg)
     addSlowCase(emitJumpIfNotImmediateNumber(reg));
 }
 
-#if USE(JSVALUE32_64)
-ALWAYS_INLINE void JIT::emitFastArithDeTagImmediate(RegisterID reg)
-{
-    subPtr(TrustedImm32(TagTypeNumber), reg);
-}
-
-ALWAYS_INLINE JIT::Jump JIT::emitFastArithDeTagImmediateJumpIfZero(RegisterID reg)
-{
-    return branchSubPtr(Zero, TrustedImm32(TagTypeNumber), reg);
-}
-#endif
-
 ALWAYS_INLINE void JIT::emitFastArithReTagImmediate(RegisterID src, RegisterID dest)
 {
-#if USE(JSVALUE64)
     emitFastArithIntToImmNoCheck(src, dest);
-#else
-    if (src != dest)
-        move(src, dest);
-    addPtr(TrustedImm32(TagTypeNumber), dest);
-#endif
 }
 
 // operand is int32_t, must have been zero-extended if register is 64-bit.
 ALWAYS_INLINE void JIT::emitFastArithIntToImmNoCheck(RegisterID src, RegisterID dest)
 {
-#if USE(JSVALUE64)
     if (src != dest)
         move(src, dest);
-    orPtr(tagTypeNumberRegister, dest);
-#else
-    signExtend32ToPtr(src, dest);
-    addPtr(dest, dest);
-    emitFastArithReTagImmediate(dest, dest);
-#endif
+    or64(tagTypeNumberRegister, dest);
 }
 
 ALWAYS_INLINE void JIT::emitTagAsBoolImmediate(RegisterID reg)

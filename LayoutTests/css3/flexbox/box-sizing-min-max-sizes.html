@@ -2,20 +2,12 @@
 <html>
 <style>
 .flexbox {
-    display: -webkit-flex;
     background-color: teal;
 }
 .flexbox > div {
     box-sizing: border-box;
 }
-.column {
-    -webkit-flex-flow: column;
-}
 </style>
-<script>
-if (window.testRunner)
-    testRunner.dumpAsText();
-</script>
 <script src="../../resources/check-layout.js"></script>
 <body onload="checkLayout('.flexbox')">
 

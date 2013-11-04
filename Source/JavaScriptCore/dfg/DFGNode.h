@@ -59,6 +59,11 @@ struct StructureTransitionData {
     }
 };
 
+struct NewArrayBufferData {
+    unsigned startConstant;
+    unsigned numConstants;
+};
+
 // This type used in passing an immediate argument to Node constructor;
 // distinguishes an immediate value (typically an index into a CodeBlock data structure - 
 // a constant index, argument, or identifier) from a NodeIndex.
@@ -352,9 +357,6 @@ struct Node {
         case GetByIdFlush:
         case PutById:
         case PutByIdDirect:
-        case Resolve:
-        case ResolveBase:
-        case ResolveBaseStrictPut:
             return true;
         default:
             return false;
@@ -370,6 +372,12 @@ struct Node {
     unsigned resolveGlobalDataIndex()
     {
         ASSERT(op() == ResolveGlobal);
+        return m_opInfo;
+    }
+
+    unsigned resolveOperationsDataIndex()
+    {
+        ASSERT(op() == Resolve || op() == ResolveBase || op() == ResolveBaseStrictPut);
         return m_opInfo;
     }
 
@@ -409,16 +417,20 @@ struct Node {
         return op() == NewArrayBuffer;
     }
     
-    unsigned startConstant()
+    NewArrayBufferData* newArrayBufferData()
     {
         ASSERT(hasConstantBuffer());
-        return m_opInfo;
+        return reinterpret_cast<NewArrayBufferData*>(m_opInfo);
+    }
+    
+    unsigned startConstant()
+    {
+        return newArrayBufferData()->startConstant;
     }
     
     unsigned numConstants()
     {
-        ASSERT(hasConstantBuffer());
-        return m_opInfo2;
+        return newArrayBufferData()->numConstants;
     }
     
     bool hasRegexpIndex()

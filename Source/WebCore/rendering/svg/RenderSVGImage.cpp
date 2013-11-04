@@ -79,6 +79,7 @@ bool RenderSVGImage::updateImageViewport()
 
 void RenderSVGImage::layout()
 {
+    StackStats::LayoutCheckPoint layoutCheckPoint;
     ASSERT(needsLayout());
 
     LayoutRepainter repainter(*this, checkForRepaintDuringLayout() && selfNeedsLayout());
@@ -177,6 +178,11 @@ void RenderSVGImage::imageChanged(WrappedImagePtr, const IntRect*)
 
     // Eventually notify parent resources, that we've changed.
     RenderSVGResource::markForLayoutAndParentResourceInvalidation(this, false);
+
+    // Update the SVGImageCache sizeAndScales entry in case image loading finished after layout.
+    // (https://bugs.webkit.org/show_bug.cgi?id=99489)
+    m_objectBoundingBox = FloatRect();
+    updateImageViewport();
 
     repaint();
 }

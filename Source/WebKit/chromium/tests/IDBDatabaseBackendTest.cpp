@@ -57,12 +57,12 @@ TEST(IDBDatabaseBackendTest, BackingStoreRetention)
     EXPECT_GT(backingStore->refCount(), 1);
 
     const bool autoIncrement = false;
-    RefPtr<IDBObjectStoreBackendImpl> store = IDBObjectStoreBackendImpl::create(db.get(), "store", IDBKeyPath("keyPath"), autoIncrement);
+    RefPtr<IDBObjectStoreBackendImpl> store = IDBObjectStoreBackendImpl::create(db.get(), IDBObjectStoreMetadata("store", 1, IDBKeyPath("keyPath"), autoIncrement, 0));
     EXPECT_GT(backingStore->refCount(), 1);
 
     const bool unique = false;
     const bool multiEntry = false;
-    RefPtr<IDBIndexBackendImpl> index = IDBIndexBackendImpl::create(db.get(), store.get(), "index", IDBKeyPath("keyPath"), unique, multiEntry);
+    RefPtr<IDBIndexBackendImpl> index = IDBIndexBackendImpl::create(db.get(), store.get(), IDBIndexMetadata("index", -1, IDBKeyPath("keyPath"), unique, multiEntry));
     EXPECT_GT(backingStore->refCount(), 1);
 
     db.clear();
@@ -91,6 +91,8 @@ public:
     virtual void onSuccess(PassRefPtr<IDBTransactionBackendInterface>) OVERRIDE { }
     virtual void onSuccess(PassRefPtr<SerializedScriptValue>) OVERRIDE { }
     virtual void onSuccess(PassRefPtr<SerializedScriptValue>, PassRefPtr<IDBKey>, const IDBKeyPath&) OVERRIDE { };
+    virtual void onSuccess(int64_t) OVERRIDE { }
+    virtual void onSuccess() OVERRIDE { }
     virtual void onSuccess(PassRefPtr<IDBKey>, PassRefPtr<IDBKey>, PassRefPtr<SerializedScriptValue>) OVERRIDE { };
     virtual void onSuccessWithPrefetch(const Vector<RefPtr<IDBKey> >&, const Vector<RefPtr<IDBKey> >&, const Vector<RefPtr<SerializedScriptValue> >&) OVERRIDE { }
     virtual void onBlocked() OVERRIDE { }
@@ -148,7 +150,7 @@ public:
     }
 
     virtual IDBDatabaseMetadata metadata() const { return IDBDatabaseMetadata(); }
-    virtual PassRefPtr<IDBObjectStoreBackendInterface> createObjectStore(const String& name, const IDBKeyPath&, bool autoIncrement, IDBTransactionBackendInterface*, ExceptionCode&) { return 0; }
+    virtual PassRefPtr<IDBObjectStoreBackendInterface> createObjectStore(int64_t, const String& name, const IDBKeyPath&, bool autoIncrement, IDBTransactionBackendInterface*, ExceptionCode&) { return 0; }
     virtual void deleteObjectStore(const String& name, IDBTransactionBackendInterface*, ExceptionCode&) { }
     virtual void setVersion(const String& version, PassRefPtr<IDBCallbacks>, PassRefPtr<IDBDatabaseCallbacks>, ExceptionCode&) { }
     virtual PassRefPtr<IDBTransactionBackendInterface> transaction(DOMStringList* storeNames, unsigned short mode, ExceptionCode&) { return 0; }

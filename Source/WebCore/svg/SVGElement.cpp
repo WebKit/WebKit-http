@@ -68,7 +68,7 @@ SVGElement::~SVGElement()
         SVGElementRareData::SVGElementRareDataMap::iterator it = rareDataMap.find(this);
         ASSERT(it != rareDataMap.end());
 
-        SVGElementRareData* rareData = it->second;
+        SVGElementRareData* rareData = it->value;
         rareData->destroyAnimatedSMILStyleProperties();
         if (SVGCursorElement* cursorElement = rareData->cursorElement())
             cursorElement->removeClient(this);
@@ -527,9 +527,9 @@ bool SVGElement::childShouldCreateRenderer(const NodeRenderingContext& childCont
     return false;
 }
 
-void SVGElement::attributeChanged(const Attribute& attribute)
+void SVGElement::attributeChanged(const QualifiedName& name, const AtomicString& newValue)
 {
-    StyledElement::attributeChanged(attribute);
+    StyledElement::attributeChanged(name, newValue);
 
     // When an animated SVG property changes through SVG DOM, svgAttributeChanged() is called, not attributeChanged().
     // Next time someone tries to access the XML attributes, the synchronization code starts. During that synchronization
@@ -539,15 +539,15 @@ void SVGElement::attributeChanged(const Attribute& attribute)
     if (isSynchronizingSVGAttributes())
         return;
 
-    if (isIdAttributeName(attribute.name())) {
+    if (isIdAttributeName(name)) {
         document()->accessSVGExtensions()->removeAllAnimationElementsFromTarget(this);
         document()->accessSVGExtensions()->removeAllElementReferencesForTarget(this);
     }
 
     // Changes to the style attribute are processed lazily (see Element::getAttribute() and related methods),
     // so we don't want changes to the style attribute to result in extra work here.
-    if (attribute.name() != HTMLNames::styleAttr)
-        svgAttributeChanged(attribute.name());
+    if (name != HTMLNames::styleAttr)
+        svgAttributeChanged(name);
 }
 
 void SVGElement::updateAnimatedSVGAttribute(const QualifiedName& name) const

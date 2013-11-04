@@ -29,7 +29,6 @@
 #include "PageVisibilityState.h"
 #include "Pagination.h"
 #include "PlatformScreen.h"
-#include "PluginViewBase.h"
 #include "Region.h"
 #include "Supplementable.h"
 #include "ViewportArguments.h"
@@ -78,6 +77,7 @@ namespace WebCore {
     class Node;
     class PageGroup;
     class PluginData;
+    class PluginViewBase;
     class PointerLockController;
     class ProgressTracker;
     class Range;
@@ -308,9 +308,6 @@ namespace WebCore {
         void setMemoryCacheClientCallsEnabled(bool);
         bool areMemoryCacheClientCallsEnabled() const { return m_areMemoryCacheClientCallsEnabled; }
 
-        void setJavaScriptURLsAreAllowed(bool);
-        bool javaScriptURLsAreAllowed() const;
-
         // Don't allow more than a certain number of frames in a page.
         // This seems like a reasonable upper bound, and otherwise mutually
         // recursive frameset pages can quickly bring the program to its knees
@@ -322,6 +319,8 @@ namespace WebCore {
 
 #if ENABLE(PAGE_VISIBILITY_API)
         PageVisibilityState visibilityState() const;
+#endif
+#if ENABLE(PAGE_VISIBILITY_API) || ENABLE(HIDDEN_PAGE_DOM_TIMER_THROTTLING)
         void setVisibilityState(PageVisibilityState, bool);
 #endif
 
@@ -350,6 +349,13 @@ namespace WebCore {
         void sawPlugin(const String& serviceType);
         void resetSeenPlugins();
 
+        bool hasSeenMediaEngine(const String& engineName) const;
+        bool hasSeenAnyMediaEngine() const;
+        void sawMediaEngine(const String& engineName);
+        void resetSeenMediaEngines();
+
+        void reportMemoryUsage(MemoryObjectInfo*) const;
+
     private:
         void initGroup();
 
@@ -363,6 +369,9 @@ namespace WebCore {
 
         void setMinimumTimerInterval(double);
         double minimumTimerInterval() const;
+
+        void setTimerAlignmentInterval(double);
+        double timerAlignmentInterval() const;
 
         void collectPluginViews(Vector<RefPtr<PluginViewBase>, 32>& pluginViewBases);
 
@@ -419,8 +428,6 @@ namespace WebCore {
 
         Pagination m_pagination;
 
-        bool m_javaScriptURLsAreAllowed;
-
         String m_userStyleSheetPath;
         mutable String m_userStyleSheet;
         mutable bool m_didLoadUserStyleSheet;
@@ -441,6 +448,8 @@ namespace WebCore {
         ViewMode m_viewMode;
 
         double m_minimumTimerInterval;
+
+        double m_timerAlignmentInterval;
 
         bool m_isEditable;
         bool m_isOnscreen;
@@ -464,6 +473,7 @@ namespace WebCore {
         bool m_scriptedAnimationsSuspended;
 
         HashSet<String> m_seenPlugins;
+        HashSet<String> m_seenMediaEngines;
     };
 
 } // namespace WebCore

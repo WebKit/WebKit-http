@@ -45,9 +45,9 @@ namespace WebCore {
 class StyleCustomFilterProgram : public CustomFilterProgram, public CachedResourceClient {
     WTF_MAKE_FAST_ALLOCATED;
 public:
-    static PassRefPtr<StyleCustomFilterProgram> create(PassRefPtr<StyleShader> vertexShader, PassRefPtr<StyleShader> fragmentShader, CustomFilterProgramMixSettings mixSettings)
+    static PassRefPtr<StyleCustomFilterProgram> create(PassRefPtr<StyleShader> vertexShader, PassRefPtr<StyleShader> fragmentShader, CustomFilterProgramType programType, const CustomFilterProgramMixSettings& mixSettings)
     {
-        return adoptRef(new StyleCustomFilterProgram(vertexShader, fragmentShader, mixSettings));
+        return adoptRef(new StyleCustomFilterProgram(vertexShader, fragmentShader, programType, mixSettings));
     }
     
     void setVertexShader(PassRefPtr<StyleShader> shader) { m_vertexShader = shader; }
@@ -120,14 +120,18 @@ public:
     
     virtual bool operator==(const CustomFilterProgram& o) const 
     {
+        // We don't use the != operator because that would recursively call this method.
+        if (!CustomFilterProgram::operator==(o))
+            return false;
+
         // The following cast is ugly, but StyleCustomFilterProgram is the single implementation of CustomFilterProgram.
         const StyleCustomFilterProgram* other = static_cast<const StyleCustomFilterProgram*>(&o);
         return cachedVertexShader() == other->cachedVertexShader() && cachedFragmentShader() == other->cachedFragmentShader();
     }
 
 private:
-    StyleCustomFilterProgram(PassRefPtr<StyleShader> vertexShader, PassRefPtr<StyleShader> fragmentShader, CustomFilterProgramMixSettings mixSettings)
-        : CustomFilterProgram(mixSettings)
+    StyleCustomFilterProgram(PassRefPtr<StyleShader> vertexShader, PassRefPtr<StyleShader> fragmentShader, CustomFilterProgramType programType, const CustomFilterProgramMixSettings& mixSettings)
+        : CustomFilterProgram(programType, mixSettings)
         , m_vertexShader(vertexShader)
         , m_fragmentShader(fragmentShader)
         , m_isVertexShaderLoaded(false)

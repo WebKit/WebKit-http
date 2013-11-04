@@ -1,3 +1,342 @@
+2012-10-26  Zoltan Horvath  <zoltan@webkit.org>
+
+        Turn PageLoad tests into simple performancetests, commit #6 
+        https://bugs.webkit.org/show_bug.cgi?id=99899
+
+        Reviewed by Ryosuke Niwa.
+
+        We cannot provide an elegant way to measure the memory consumption of the PageLoad tests, but we can turn them into simple
+        performance tests and measure their memory footprint and performance that way. This change moves and renames the related files
+        to their new location and adds html/js wrappers for them.
+
+        This is the #6 commit of the whole patch.
+
+        * PageLoad/svg/files/gearflowers.svg: Removed.
+        * PageLoad/svg/files/hereGear4.svg: Removed.
+        * PageLoad/svg/files/worldcup.svg: Removed.
+        * SVG/GearFlowers.html: Added.
+        * SVG/HereGear.html: Added.
+        * SVG/Worldcup.html: Added.
+        * SVG/resources/GearFlowers.svg: Copied from PerformanceTests/PageLoad/svg/files/gearflowers.svg.
+        * SVG/resources/HereGear.svg: Copied from PerformanceTests/PageLoad/svg/files/hereGear4.svg.
+        * SVG/resources/Worldcup.svg: Copied from PerformanceTests/PageLoad/svg/files/worldcup.svg.
+        * Skipped: Rename the files on the skipped list also.
+
+2012-10-26  Zoltan Horvath  <zoltan@webkit.org>
+
+        Turn PageLoad tests into simple performancetests, commit #5 
+        https://bugs.webkit.org/show_bug.cgi?id=99899
+
+        Reviewed by Ryosuke Niwa.
+
+        We cannot provide an elegant way to measure the memory consumption of the PageLoad tests, but we can turn them into simple
+        performance tests and measure their memory footprint and performance that way. This change moves and renames the related files
+        to their new location and adds html/js wrappers for them.
+
+        This is the #5 commit of the whole patch.
+
+        * PageLoad/svg/files/Harvey_Rayner.svg: Removed.
+        * PageLoad/svg/files/Sierpinski_carpet_6.svg: Removed.
+        * PageLoad/svg/files/mtsthelens.svg: Removed.
+        * PageLoad/svg/files/mtsthelens0.jpg: Removed.
+        * SVG/HarveyRayner.html: Added.
+        * SVG/MtSaintHelens.html: Added.
+        * SVG/SierpinskiCarpet.html: Added.
+        * SVG/resources/HarveyRayner.svg: Copied from PerformanceTests/PageLoad/svg/files/Harvey_Rayner.svg.
+        * SVG/resources/MtSaintHelens.svg: Copied from PerformanceTests/PageLoad/svg/files/mtsthelens.svg.
+        * SVG/resources/SierpinskiCarpet.svg: Copied from PerformanceTests/PageLoad/svg/files/Sierpinski_carpet_6.svg.
+        * SVG/resources/mtsthelens0.jpg: Copied from PerformanceTests/PageLoad/svg/files/mtsthelens0.jpg.
+        * Skipped: Rename the files on the skipped list also.
+
+2012-10-25  Zoltan Horvath  <zoltan@webkit.org>
+
+        Turn PageLoad tests into simple performancetests, commit #4 
+        https://bugs.webkit.org/show_bug.cgi?id=99899
+
+        Reviewed by Ryosuke Niwa.
+
+        We cannot provide an elegant way to measure the memory consumption of the PageLoad tests, but we can turn them into simple
+        performance tests and measure their memory footprint and performance that way. This change moves and renames the related files
+        to their new location and adds html/js wrappers for them.
+
+        This is the #4 commit of the whole patch.
+
+        * PageLoad/svg/files/france.svg: Removed.
+        * PageLoad/svg/files/francobollo_gnome_ezechi_02.svg: Removed.
+        * SVG/France.html: Added.
+        * SVG/FrancoBolloGnomeEzechi.html: Added.
+        * SVG/resources/France.svg: Copied from PerformanceTests/PageLoad/svg/files/france.svg.
+        * SVG/resources/FrancoBolloGnomeEzechi.svg: Copied from PerformanceTests/PageLoad/svg/files/francobollo_gnome_ezechi_02.svg.
+        * Skipped: Rename the files on the skipped list also.
+
+2012-10-25  Zoltan Horvath  <zoltan@webkit.org>
+
+        Turn PageLoad tests into simple performancetests, commit #3 
+        https://bugs.webkit.org/show_bug.cgi?id=99899
+
+        Reviewed by Ryosuke Niwa.
+
+        We cannot provide an elegant way to measure the memory consumption of the PageLoad tests, but we can turn them into simple
+        performance tests and measure their memory footprint and performance that way. This change moves and renames the related files
+        to their new location and adds html/js wrappers for them.
+
+        This is the #3 commit of the whole patch.
+
+        * PageLoad/svg/files/42470-flower_from_my_garden_v2.svg: Removed.
+        * PageLoad/svg/files/44057-drops on a blade.svg: Removed.
+        * PageLoad/svg/files/deb9frac1.svg: Removed.
+        * PageLoad/svg/files/food_leif_lodahl_01.svg: Removed.
+        * SVG/Debian.html: Added.
+        * SVG/DropsOnABlade.html: Added.
+        * SVG/FlowerFromMyGarden.html: Added.
+        * SVG/FoodLeifLodahl.html: Added.
+        * SVG/resources/Debian.svg: Copied from PerformanceTests/PageLoad/svg/files/deb9frac1.svg.
+        * SVG/resources/DropsOnABlade.svg: Copied from PerformanceTests/PageLoad/svg/files/44057-drops%20on%20a%20blade.svg.
+        * SVG/resources/FlowerFromMyGarden.svg: Copied from PerformanceTests/PageLoad/svg/files/42470-flower_from_my_garden_v2.svg.
+        * SVG/resources/FoodLeifLodahl.svg: Copied from PerformanceTests/PageLoad/svg/files/food_leif_lodahl_01.svg.
+
+2012-10-24  Zoltan Horvath  <zoltan@webkit.org>
+
+        Turn PageLoad tests into simple performancetests, commit #2 
+        https://bugs.webkit.org/show_bug.cgi?id=99899
+
+        Reviewed by Ryosuke Niwa.
+
+        We cannot provide an elegant way to measure the memory consumption of the PageLoad tests, but we can turn them into simple
+        performance tests and measure their memory footprint and performance that way. This change moves and renames the related files
+        to their new location and adds html/js wrappers for them.
+
+        This is the #2 commit of the whole patch.
+
+        * PageLoad/svg/files/cacuts_01.svg: Removed.
+        * PageLoad/svg/files/cowboy.svg: Removed.
+        * PageLoad/svg/files/crawfish2_ganson.svg: Removed.
+        * SVG/Cactus.html: Added.
+        * SVG/Cowboy.html: Added.
+        * SVG/CrawFishGanson.html: Added.
+        * SVG/resources/Cactus.svg: Copied from PerformanceTests/PageLoad/svg/files/cacuts_01.svg.
+        * SVG/resources/Cowboy.svg: Copied from PerformanceTests/PageLoad/svg/files/cowboy.svg.
+        * SVG/resources/CrawFishGanson.svg: Copied from PerformanceTests/PageLoad/svg/files/crawfish2_ganson.svg.
+        * Skipped: Remove az-lizard_benji_park_01.svg from the skipped list.
+
+2012-10-24  Zoltan Horvath  <zoltan@webkit.org>
+
+        Turn PageLoad tests into simple performancetests, commit #1 
+        https://bugs.webkit.org/show_bug.cgi?id=99899
+
+        Reviewed by Ryosuke Niwa.
+
+        We cannot provide an elegant way to measure the memory consumption of the PageLoad tests, but we can turn them into simple
+        performance tests and measure their memory footprint and performance that way. This change moves and renames the related files
+        to their new location and adds html/js wrappers for them.
+
+        This is the #1 commit of the whole patch.
+
+        * PageLoad/svg/files/az-lizard_benji_park_01.svg: Removed.
+        * PageLoad/svg/files/bamboo_01.svg: Removed.
+        * SVG/AzLizardBenjiPark.html: Added.
+        * SVG/Bamboo.html: Added.
+        * SVG/resources: Added.
+        * SVG/resources/AzLizardBenjiPark.svg: Copied from PerformanceTests/PageLoad/svg/files/az-lizard_benji_park_01.svg.
+        * SVG/resources/Bamboo.svg: Copied from PerformanceTests/PageLoad/svg/files/bamboo_01.svg.
+
+2012-10-24  Zoltan Horvath  <zoltan@webkit.org>
+
+        REGRESSION(r131982): Skip SVG/SvgNestedUse.html performancetest since it is crashing
+        https://bugs.webkit.org/show_bug.cgi?id=100262
+
+        Unreviewed.
+
+        Skip until proper fix.
+
+        * Skipped: Add SVG/SvgNestedUse.html
+
+2012-10-23  Zoltan Horvath  <zoltan@webkit.org>
+
+        Store the loaded file locally in measurePageLoadTime
+        https://bugs.webkit.org/show_bug.cgi?id=100172
+
+        Reviewed by Csaba Osztrogonác.
+
+        Store the loaded file as a local variable instead of attaching it to the test object.
+        Handle chunkSize inside test.run.
+
+        * resources/runner.js:
+        (.):
+
+2012-10-23  Zoltan Horvath  <zoltan@webkit.org>
+
+        Add measurePageLoadTime function to PerfTestRunner
+        https://bugs.webkit.org/show_bug.cgi?id=100029
+
+        Reviewed by Ryosuke Niwa.
+
+        Adopt chunk based loading logic from html5-full-render.html into measurePageLoadTime function,
+        this is needed to measure the performance and the memory consumption of the PageLoadTests as
+        we do it for all other performancetests.
+
+        * Parser/html5-full-render.html: Move the behavior to runner.js.
+        * resources/runner.js:
+        (.): Add measurePageLoadTime function.
+
+2012-10-22  Adam Barth  <abarth@webkit.org>
+
+        [V8] Vastly simplify V8GCController's NodeVisitor
+        https://bugs.webkit.org/show_bug.cgi?id=99884
+
+        Reviewed by Kentaro Hara.
+
+        Adds some performance tests for the garbage collector.
+
+        * Bindings/gc-forest.html: Added.
+        * Bindings/gc-mini-tree.html: Added.
+        * Bindings/gc-tree.html: Added.
+
+2012-10-17  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Bump up the number of iterations of html5-full-render to 5
+        https://bugs.webkit.org/show_bug.cgi?id=99657
+
+        Reviewed by Andreas Kling.
+
+        Now that html5-full-render.html runs in less than 15 seconds after r131553,
+        we can afford to get 5 instead of 2 samples.
+
+        * Parser/html5-full-render.html:
+
+2012-10-17  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Rename PerfTestRunner.runPerSecond to PerfTestRunner.measureRunsPerSecond for consistency
+        https://bugs.webkit.org/show_bug.cgi?id=99642
+
+        Reviewed by Dirk Pranke.
+
+        Renamed the method.
+
+        * Bindings/append-child.html:
+        * Bindings/create-element.html:
+        * Bindings/event-target-wrapper.html:
+        * Bindings/first-child.html:
+        * Bindings/get-attribute.html:
+        * Bindings/get-element-by-id.html:
+        * Bindings/get-elements-by-tag-name.html:
+        * Bindings/id-getter.html:
+        * Bindings/id-setter.html:
+        * Bindings/insert-before.html:
+        * Bindings/node-list-access.html:
+        * Bindings/scroll-top.html:
+        * Bindings/set-attribute.html:
+        * Bindings/typed-array-construct-from-array.html:
+        * Bindings/typed-array-construct-from-same-type.html:
+        * Bindings/typed-array-construct-from-typed.html:
+        * Bindings/typed-array-set-from-typed.html:
+        * Bindings/undefined-first-child.html:
+        * Bindings/undefined-get-element-by-id.html:
+        * Bindings/undefined-id-getter.html:
+        * CSS/CSSPropertySetterGetter.html:
+        * CSS/CSSPropertyUpdateValue.html:
+        * CSS/PseudoClassSelectors.html:
+        * DOM/textarea-dom.html:
+        * DOM/textarea-edit.html:
+        * Interactive/resources/window-resize.js:
+        * Layout/flexbox-column-nowrap.html:
+        * Layout/flexbox-column-wrap.html:
+        * Layout/flexbox-row-nowrap.html:
+        * Layout/flexbox-row-wrap.html:
+        * Layout/line-layout.html:
+        * Parser/css-parser-yui.html:
+        * Parser/innerHTML-setter.html:
+        * Parser/query-selector-deep.html:
+        * Parser/query-selector-first.html:
+        * Parser/query-selector-last.html:
+        * Parser/simple-url.html:
+        * Parser/textarea-parsing.html:
+        * Parser/tiny-innerHTML.html:
+        * Parser/url-parser.html:
+        * Parser/xml-parser.html:
+        * SVG/SvgNestedUse.html:
+        * resources/runner.js:
+
+2012-10-17  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Performance test should support asynchronous tests
+        https://bugs.webkit.org/show_bug.cgi?id=95668
+
+        Reviewed by Dirk Pranke.
+
+        Added PerfTestRunner.prepareToMeasureValuesAsync and PerfTestRunner.measureValueAsync,
+        and deployed it in Animation/balls.
+
+        * Animation/balls.html:
+        * resources/runner.js:
+
+2012-10-16  Elliott Sprehn  <esprehn@chromium.org>
+
+        html5-full-render.html test uses substring but meant substr
+        https://bugs.webkit.org/show_bug.cgi?id=99495
+
+        Reviewed by Adam Barth.
+
+        This test intended to chunk up the HTML5 spec into chunks of 500k chars, but used
+        substring(to,from) instead of substr(from,length) so it actually loaded 5x more
+        content than was in the HTML5 spec.
+
+        * Parser/html5-full-render.html:
+
+2012-10-11  James Simonsen  <simonjam@chromium.org>
+
+        unprefix window.performance.webkitNow()
+        https://bugs.webkit.org/show_bug.cgi?id=88278
+
+        Reviewed by Tony Gentilcore.
+
+        * resources/runner.js: Bind to proper object to avoid invalid invocation errors.
+
+2012-10-08  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Skip Layout/subtree-detaching.html temporarily as it's very noisy and
+        takes 112s to run on Chromium Mac. This is tracked by the bug 98708.
+
+        * Skipped:
+
+2012-10-08  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Perf. test results page is broken when runs have different sets of tests
+        https://bugs.webkit.org/show_bug.cgi?id=98691
+
+        Reviewed by Daniel Bates.
+
+        Add "missing" columns for tests that are missing some runs.
+
+        Also fix regressions from the previous patch:
+        - Make reference run switch work again
+        - Load jquery plugins from the remote server when the jquery is loaded from the remote server.
+
+        * resources/results-template.html:
+
+2012-10-08  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Perf test pesults page takes forever to load on a machine with a slow Internet connection
+        https://bugs.webkit.org/show_bug.cgi?id=98561
+
+        Reviewed by Ojan Vafai.
+
+        Try loading jquery both locally and remotely, and use the same method to load the remaining
+        jquery plugins when either one succeeds.
+
+        * resources/results-template.html:
+
+2012-10-04  Hayato Ito  <hayato@chromium.org>
+
+        [Refactoring] Introduce a traversal strategy in SelectorChecker
+        https://bugs.webkit.org/show_bug.cgi?id=97298
+
+        Reviewed by Antti Koivisto.
+
+        Introduces querySelector() performance tests to check SelectorChecker performance.
+
+        * CSS/PseudoClassSelectors.html: Added.
+
 2012-10-03  Philip Rogers  <pdr@google.com>
 
         Force GC between PageLoad tests.

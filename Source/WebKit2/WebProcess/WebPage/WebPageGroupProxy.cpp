@@ -28,6 +28,8 @@
 
 #include "WebProcess.h"
 #include "InjectedBundle.h"
+#include <WebCore/DOMWrapperWorld.h>
+#include <WebCore/PageGroup.h>
 
 namespace WebKit {
 
@@ -45,15 +47,44 @@ WebPageGroupProxy::~WebPageGroupProxy()
 {
 }
     
-void WebPageGroupProxy::didReceiveMessage(CoreIPC::Connection* connection, CoreIPC::MessageID messageID, CoreIPC::ArgumentDecoder* arguments)
+void WebPageGroupProxy::didReceiveMessage(CoreIPC::Connection* connection, CoreIPC::MessageID messageID, CoreIPC::MessageDecoder& decoder)
 {
-    didReceiveWebPageGroupProxyMessage(connection, messageID, arguments);
+    didReceiveWebPageGroupProxyMessage(connection, messageID, decoder);
+}
+    
+WebPageGroupProxy::WebPageGroupProxy(const WebPageGroupData& data)
+    : m_data(data)
+    , m_pageGroup(WebCore::PageGroup::pageGroup(m_data.identifer))
+{
+    for (size_t i = 0; i < data.userStyleSheets.size(); ++i)
+        addUserStyleSheet(data.userStyleSheets[i]);
+    for (size_t i = 0; i < data.userScripts.size(); ++i)
+        addUserScript(data.userScripts[i]);
 }
 
-void WebPageGroupProxy::didReceiveWebPageGroupProxyMessage(CoreIPC::Connection*, CoreIPC::MessageID, CoreIPC::ArgumentDecoder*)
+void WebPageGroupProxy::addUserStyleSheet(const WebCore::UserStyleSheet& userStyleSheet)
 {
-    // FIXME: Remove this once WebPageGroupProxy.messages.in contains messages,
-    // in which case this method will be auto-generated.
+    m_pageGroup->addUserStyleSheetToWorld(WebCore::mainThreadNormalWorld(), userStyleSheet.source(), userStyleSheet.url(), userStyleSheet.whitelist(), userStyleSheet.blacklist(), userStyleSheet.injectedFrames(), userStyleSheet.level());
+}
+
+void WebPageGroupProxy::addUserScript(const WebCore::UserScript& userScript)
+{
+    m_pageGroup->addUserScriptToWorld(WebCore::mainThreadNormalWorld(), userScript.source(), userScript.url(), userScript.whitelist(), userScript.blacklist(), userScript.injectionTime(), userScript.injectedFrames());
+}
+
+void WebPageGroupProxy::removeAllUserStyleSheets()
+{
+    m_pageGroup->removeUserStyleSheetsFromWorld(WebCore::mainThreadNormalWorld());
+}
+
+void WebPageGroupProxy::removeAllUserScripts()
+{
+    m_pageGroup->removeUserScriptsFromWorld(WebCore::mainThreadNormalWorld());
+}
+
+void WebPageGroupProxy::removeAllUserContent()
+{
+    m_pageGroup->removeAllUserContent();
 }
 
 } // namespace WebKit

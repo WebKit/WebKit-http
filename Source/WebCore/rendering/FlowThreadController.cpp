@@ -153,9 +153,9 @@ void FlowThreadController::unregisterNamedFlowContentNode(Node* contentNode)
     ASSERT(contentNode && contentNode->isElementNode());
     HashMap<Node*, RenderNamedFlowThread*>::iterator it = m_mapNamedFlowContentNodes.find(contentNode);
     ASSERT(it != m_mapNamedFlowContentNodes.end());
-    ASSERT(it->second);
-    ASSERT(it->second->hasContentNode(contentNode));
-    it->second->unregisterNamedFlowContentNode(contentNode);
+    ASSERT(it->value);
+    ASSERT(it->value->hasContentNode(contentNode));
+    it->value->unregisterNamedFlowContentNode(contentNode);
     m_mapNamedFlowContentNodes.remove(contentNode);
 }
 
@@ -175,5 +175,19 @@ bool FlowThreadController::isAutoLogicalHeightRegionsFlagConsistent() const
     return autoLogicalHeightRegions == m_autoLogicalHeightRegionsCount;
 }
 #endif
+
+void FlowThreadController::resetRegionsOverrideLogicalContentHeight()
+{
+    ASSERT(m_view->normalLayoutPhase());
+    for (RenderNamedFlowThreadList::iterator iter = m_renderNamedFlowThreadList->begin(); iter != m_renderNamedFlowThreadList->end(); ++iter)
+        (*iter)->resetRegionsOverrideLogicalContentHeight();
+}
+
+void FlowThreadController::markAutoLogicalHeightRegionsForLayout()
+{
+    ASSERT(m_view->constrainedFlowThreadsLayoutPhase());
+    for (RenderNamedFlowThreadList::iterator iter = m_renderNamedFlowThreadList->begin(); iter != m_renderNamedFlowThreadList->end(); ++iter)
+        (*iter)->markAutoLogicalHeightRegionsForLayout();
+}
 
 } // namespace WebCore

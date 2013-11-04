@@ -28,47 +28,39 @@
 
 #include "WKAPICast.h"
 #include "WKBackForwardListItem.h"
-#include "WKEinaSharedString.h"
+#include "ewk_back_forward_list_item_private.h"
 
 using namespace WebKit;
 
-/**
- * \struct  _Ewk_Back_Forward_List
- * @brief   Contains the Back Forward List data.
- */
-struct _Ewk_Back_Forward_List_Item {
-    unsigned int __ref; /**< the reference count of the object */
-    WKRetainPtr<WKBackForwardListItemRef> wkItem;
-    mutable WKEinaSharedString uri;
-    mutable WKEinaSharedString title;
-    mutable WKEinaSharedString originalUri;
+Ewk_Back_Forward_List_Item::Ewk_Back_Forward_List_Item(WKBackForwardListItemRef itemRef)
+    : m_wkItem(itemRef)
+{ }
 
-    _Ewk_Back_Forward_List_Item(WKBackForwardListItemRef itemRef)
-        : __ref(1)
-        , wkItem(itemRef)
-    { }
+const char* Ewk_Back_Forward_List_Item::url() const
+{
+    m_url = WKEinaSharedString(AdoptWK, WKBackForwardListItemCopyURL(m_wkItem.get()));
 
-    ~_Ewk_Back_Forward_List_Item()
-    {
-        ASSERT(!__ref);
-    }
-};
+    return m_url;
+}
 
-#define EWK_BACK_FORWARD_LIST_ITEM_WK_GET_OR_RETURN(item, wkItem_, ...)    \
-    if (!(item)) {                                                         \
-        EINA_LOG_CRIT("item is NULL.");                                    \
-        return __VA_ARGS__;                                                \
-    }                                                                      \
-    if (!(item)->wkItem) {                                                 \
-        EINA_LOG_CRIT("item->wkItem is NULL.");                            \
-        return __VA_ARGS__;                                                \
-    }                                                                      \
-    WKBackForwardListItemRef wkItem_ = (item)->wkItem.get()
+const char* Ewk_Back_Forward_List_Item::title() const
+{
+    m_title = WKEinaSharedString(AdoptWK, WKBackForwardListItemCopyTitle(m_wkItem.get()));
+
+    return m_title;
+}
+
+const char* Ewk_Back_Forward_List_Item::originalURL() const
+{
+    m_originalURL = WKEinaSharedString(AdoptWK, WKBackForwardListItemCopyOriginalURL(m_wkItem.get()));
+
+    return m_originalURL;
+}
 
 Ewk_Back_Forward_List_Item* ewk_back_forward_list_item_ref(Ewk_Back_Forward_List_Item* item)
 {
     EINA_SAFETY_ON_NULL_RETURN_VAL(item, 0);
-    ++item->__ref;
+    item->ref();
 
     return item;
 }
@@ -77,42 +69,26 @@ void ewk_back_forward_list_item_unref(Ewk_Back_Forward_List_Item* item)
 {
     EINA_SAFETY_ON_NULL_RETURN(item);
 
-    if (--item->__ref)
-        return;
-
-    delete item;
+    item->deref();
 }
 
-const char* ewk_back_forward_list_item_uri_get(const Ewk_Back_Forward_List_Item* item)
+const char* ewk_back_forward_list_item_url_get(const Ewk_Back_Forward_List_Item* item)
 {
-    EWK_BACK_FORWARD_LIST_ITEM_WK_GET_OR_RETURN(item, wkItem, 0);
+    EINA_SAFETY_ON_NULL_RETURN_VAL(item, 0);
 
-    item->uri = WKEinaSharedString(AdoptWK, WKBackForwardListItemCopyURL(wkItem));
-
-    return item->uri;
+    return item->url();
 }
 
 const char* ewk_back_forward_list_item_title_get(const Ewk_Back_Forward_List_Item* item)
 {
-    EWK_BACK_FORWARD_LIST_ITEM_WK_GET_OR_RETURN(item, wkItem, 0);
+    EINA_SAFETY_ON_NULL_RETURN_VAL(item, 0);
 
-    item->title = WKEinaSharedString(AdoptWK, WKBackForwardListItemCopyTitle(wkItem));
-
-    return item->title;
+    return item->title();
 }
 
-const char* ewk_back_forward_list_item_original_uri_get(const Ewk_Back_Forward_List_Item* item)
+const char* ewk_back_forward_list_item_original_url_get(const Ewk_Back_Forward_List_Item* item)
 {
-    EWK_BACK_FORWARD_LIST_ITEM_WK_GET_OR_RETURN(item, wkItem, 0);
+    EINA_SAFETY_ON_NULL_RETURN_VAL(item, 0);
 
-    item->originalUri = WKEinaSharedString(AdoptWK, WKBackForwardListItemCopyOriginalURL(wkItem));
-
-    return item->originalUri;
-}
-
-Ewk_Back_Forward_List_Item* ewk_back_forward_list_item_new(WKBackForwardListItemRef backForwardListItemData)
-{
-    EINA_SAFETY_ON_NULL_RETURN_VAL(backForwardListItemData, 0);
-
-    return new Ewk_Back_Forward_List_Item(backForwardListItemData);
+    return item->originalURL();
 }

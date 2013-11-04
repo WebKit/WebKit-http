@@ -23,11 +23,8 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-module svg {
+[
+    Conditional=SVG&SVG_FONTS
+] interface SVGFontFaceNameElement : SVGElement {
+};
 
-    interface [
-        Conditional=SVG&SVG_FONTS
-    ] SVGFontFaceNameElement : SVGElement {
-    };
-
-}

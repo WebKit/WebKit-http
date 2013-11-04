@@ -27,9 +27,7 @@
 #include "config.h"
 #include "RedirectedXCompositeWindow.h"
 
-#if USE(GLX)
-#include "GLContextGLX.h"
-#include <GL/glx.h>
+#if PLATFORM(X11)
 #include <X11/extensions/Xcomposite.h>
 #include <X11/extensions/Xdamage.h>
 #include <cairo-xlib.h>
@@ -60,7 +58,7 @@ static GdkFilterReturn filterXDamageEvent(GdkXEvent* gdkXEvent, GdkEvent* event,
     if (i == windowHashMap.end())
         return GDK_FILTER_CONTINUE;
 
-    i->second->callDamageNotifyCallback();
+    i->value->callDamageNotifyCallback();
     XDamageSubtract(GDK_DISPLAY_XDISPLAY(gdk_display_get_default()), damageEvent->damage, None, None);
     return GDK_FILTER_REMOVE;
 }
@@ -105,26 +103,26 @@ RedirectedXCompositeWindow::RedirectedXCompositeWindow(const IntSize& size)
     , m_parentWindow(0)
     , m_pixmap(0)
     , m_surface(0)
-    , m_pendingResizeSourceId(0)
     , m_needsNewPixmapAfterResize(false)
     , m_damage(0)
     , m_damageNotifyCallback(0)
     , m_damageNotifyData(0)
 {
-    Display* display = GDK_DISPLAY_XDISPLAY(gdk_display_get_default());
+    Display* display = GLContext::sharedX11Display();
+    Screen* screen = DefaultScreenOfDisplay(display);
 
     // This is based on code from Chromium: src/content/common/gpu/image_transport_surface_linux.cc
     XSetWindowAttributes windowAttributes;
     windowAttributes.override_redirect = True;
     m_parentWindow = XCreateWindow(display,
-                                   RootWindow(display, DefaultScreen(display)),
-                                   -100, -100, 1, 1,
-                                   0,
-                                   CopyFromParent,
-                                   InputOutput,
-                                   CopyFromParent,
-                                   CWOverrideRedirect,
-                                   &windowAttributes);
+        RootWindowOfScreen(screen),
+        WidthOfScreen(screen) + 1, 0, 1, 1,
+        0,
+        CopyFromParent,
+        InputOutput,
+        CopyFromParent,
+        CWOverrideRedirect,
+        &windowAttributes);
     XMapWindow(display, m_parentWindow);
 
     windowAttributes.event_mask = StructureNotifyMask;
@@ -165,7 +163,7 @@ RedirectedXCompositeWindow::~RedirectedXCompositeWindow()
     if (getWindowHashMap().isEmpty())
         gdk_window_remove_filter(0, reinterpret_cast<GdkFilterFunc>(filterXDamageEvent), 0);
 
-    Display* display = GDK_DISPLAY_XDISPLAY(gdk_display_get_default());
+    Display* display = GLContext::sharedX11Display();
     XDamageDestroy(display, m_damage);
     XDestroyWindow(display, m_window);
     XDestroyWindow(display, m_parentWindow);
@@ -174,11 +172,11 @@ RedirectedXCompositeWindow::~RedirectedXCompositeWindow()
 
 void RedirectedXCompositeWindow::resize(const IntSize& size)
 {
-    Display* display = GDK_DISPLAY_XDISPLAY(gdk_display_get_default());
+    Display* display = GLContext::sharedX11Display();
     XResizeWindow(display, m_window, size.width(), size.height());
 
     XFlush(display);
-    glXWaitX();
+    context()->waitNative();
 
     // This swap is based on code in Chromium. It tries to work-around a bug in the Intel drivers
     // where a swap is necessary to ensure the front and back buffers are properly resized.
@@ -263,4 +261,4 @@ void RedirectedXCompositeWindow::callDamageNotifyCallback()
 
 } // namespace WebCore
 
-#endif // USE(GLX)
+#endif // PLATFORM(X11)

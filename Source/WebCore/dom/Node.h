@@ -258,8 +258,7 @@ public:
     Node* enclosingLinkEventParentOrSelf();
 
     bool isBlockFlow() const;
-    bool isBlockFlowOrBlockTable() const;
-    
+
     // These low-level calls give the caller responsibility for maintaining the integrity of the tree.
     void setPreviousSibling(Node* previous) { m_previous = previous; }
     void setNextSibling(Node* next) { m_next = next; }
@@ -530,7 +529,6 @@ public:
     
     // Wrapper for nodes that don't have a renderer, but still cache the style (like HTMLOptionElement).
     RenderStyle* renderStyle() const;
-    virtual void setRenderStyle(PassRefPtr<RenderStyle>);
 
     RenderStyle* computedStyle(PseudoId pseudoElementSpecifier = NOPSEUDO) { return virtualComputedStyle(pseudoElementSpecifier); }
 
@@ -663,11 +661,13 @@ public:
     void notifyMutationObserversNodeWillDetach();
 #endif // ENABLE(MUTATION_OBSERVERS)
 
-    void registerScopedHTMLStyleChild();
-    void unregisterScopedHTMLStyleChild();
+    virtual void registerScopedHTMLStyleChild();
+    virtual void unregisterScopedHTMLStyleChild();
     size_t numberOfScopedHTMLStyleChildren() const;
 
     virtual void reportMemoryUsage(MemoryObjectInfo*) const;
+
+    void textRects(Vector<IntRect>&) const;
 
 private:
     enum NodeFlags {
@@ -782,7 +782,7 @@ private:
     virtual OwnPtr<NodeRareData> createRareData();
     bool rareDataFocused() const;
 
-    virtual RenderStyle* nonRendererRenderStyle() const;
+    virtual RenderStyle* nonRendererStyle() const { return 0; }
 
     virtual const AtomicString& virtualPrefix() const;
     virtual const AtomicString& virtualLocalName() const;

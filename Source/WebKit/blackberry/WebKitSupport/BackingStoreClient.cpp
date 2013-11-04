@@ -51,90 +51,33 @@ static inline IntSize pointToSize(const IntPoint& point)
 
 BackingStoreClient* BackingStoreClient::create(Frame* frame, Frame* parentFrame, WebPage* parentPage)
 {
-    ASSERT(parentPage);
-    ASSERT(frame->view());
-
-    // FIXME: We do not support inner frames for now.
-    if (parentFrame)
-        return 0;
-
-    BackingStoreClient* parentBackingStoreClient
-        = parentFrame
-        ? parentPage->d->backingStoreClientForFrame(parentFrame)
-        : 0;
-
-    // If this frame has a parent with no backingstore then just stop since
-    // our frame heirarchy is done.
-    if (parentFrame && !parentBackingStoreClient)
-        return 0;
-
-    BackingStoreClient* it = new BackingStoreClient(frame, parentFrame, parentPage);
-    ASSERT(it);
-
-    // Frame -> BackingStoreClient mapping is controlled by the Page.
-    parentPage->d->addBackingStoreClientForFrame(frame, it);
-
-    // Add the backing store client to the child list of its parent.
-    if (parentBackingStoreClient)
-        parentBackingStoreClient->addChild(it);
-
+    ASSERT(!parentFrame);
+    BackingStoreClient* it = new BackingStoreClient(frame, parentPage);
     return it;
 }
 
-BackingStoreClient::BackingStoreClient(Frame* frame, Frame* parentFrame, WebPage* parentPage)
+BackingStoreClient::BackingStoreClient(Frame* frame, WebPage* parentPage)
     : m_frame(frame)
     , m_webPage(parentPage)
     , m_backingStore(0)
-    , m_parent(0)
     , m_isClientGeneratedScroll(false)
     , m_isScrollNotificationSuppressed(false)
 {
-    UNUSED_PARAM(parentFrame);
     m_backingStore = new BackingStore(m_webPage, this);
 }
 
 BackingStoreClient::~BackingStoreClient()
 {
-    m_webPage->d->removeBackingStoreClientForFrame(m_frame);
-
     delete m_backingStore;
     m_backingStore = 0;
     m_frame = 0;
-}
-
-void BackingStoreClient::addChild(BackingStoreClient* child)
-{
-    ASSERT(child);
-    child->m_parent = this;
-}
-
-WTF::Vector <BackingStoreClient*> BackingStoreClient::children() const
-{
-    WTF::Vector<BackingStoreClient*> children;
-    for (Frame* child = m_frame->tree()->firstChild(); child; child = child->tree()->nextSibling()) {
-        BlackBerry::WebKit::BackingStoreClient* client =
-            m_webPage->d->backingStoreClientForFrame(child);
-
-        if (client)
-            children.append(client);
-    }
-
-    return children;
 }
 
 IntRect BackingStoreClient::absoluteRect() const
 {
     IntRect rect = IntRect(IntPoint::zero(), viewportSize());
 
-    if (!isMainFrame()) {
-        // It is possible that the owner HTML element has been removed at this point,
-        // especially when the frame is loading a JavaScript URL.
-        if (Element* elt = m_frame->ownerElement()) {
-            if (RenderBox* obj = elt->renderBox())
-                rect.move(obj->borderLeft() + obj->paddingLeft(), obj->borderTop() + obj->paddingTop());
-        }
-    }
-
+    // FIXME: Speed it up!
     Frame* frame = m_frame;
     while (frame) {
         if (Element* element = static_cast<Element*>(frame->ownerElement())) {
@@ -221,10 +164,8 @@ IntSize BackingStoreClient::actualVisibleSize() const
 
 IntSize BackingStoreClient::transformedActualVisibleSize() const
 {
-    if (isMainFrame())
-        return m_webPage->d->transformedActualVisibleSize();
-
-    return transformedViewportSize();
+    ASSERT(isMainFrame());
+    return m_webPage->d->transformedActualVisibleSize();
 }
 
 IntSize BackingStoreClient::viewportSize() const
@@ -233,10 +174,8 @@ IntSize BackingStoreClient::viewportSize() const
     if (!m_frame->view())
         return IntSize();
 
-    if (isMainFrame())
-        return m_webPage->d->viewportSize();
-
-    return m_frame->view()->visibleContentRect().size();
+    ASSERT(isMainFrame());
+    return m_webPage->d->viewportSize();
 }
 
 IntSize BackingStoreClient::transformedViewportSize() const
@@ -245,13 +184,8 @@ IntSize BackingStoreClient::transformedViewportSize() const
     if (!m_frame->view())
         return IntSize();
 
-    if (isMainFrame())
-        return m_webPage->d->transformedViewportSize();
-
-    const IntSize untransformedViewportSize = m_frame->view()->visibleContentRect().size();
-    const FloatPoint transformedBottomRight = m_webPage->d->m_transformationMatrix->mapPoint(
-        FloatPoint(untransformedViewportSize.width(), untransformedViewportSize.height()));
-    return IntSize(floorf(transformedBottomRight.x()), floorf(transformedBottomRight.y()));
+    ASSERT(isMainFrame());
+    return m_webPage->d->transformedViewportSize();
 }
 
 IntRect BackingStoreClient::visibleContentsRect() const
@@ -261,14 +195,7 @@ IntRect BackingStoreClient::visibleContentsRect() const
         return IntRect();
 
     IntRect visibleContentRect = m_frame->view()->visibleContentRect();
-    if (isMainFrame())
-        return visibleContentRect;
-
-    IntPoint offset = absoluteLocation();
-    visibleContentRect.move(offset.x(), offset.y());
-    if (m_parent)
-        visibleContentRect.intersect(m_parent->visibleContentsRect());
-
+    ASSERT(isMainFrame());
     return visibleContentRect;
 }
 
@@ -281,11 +208,7 @@ IntRect BackingStoreClient::transformedVisibleContentsRect() const
     // viewport size as it is, which ensures that e.g. blitting operations
     // always cover the whole widget/screen.
     IntRect visibleContentsRect = IntRect(transformedScrollPosition(), transformedViewportSize());
-    if (isMainFrame())
-        return visibleContentsRect;
-
-    IntPoint offset = transformedAbsoluteLocation();
-    visibleContentsRect.move(offset.x(), offset.y());
+    ASSERT(isMainFrame());
     return visibleContentsRect;
 }
 
@@ -410,10 +333,8 @@ void BackingStoreClient::checkOriginOfCurrentScrollOperation()
     if (isScrollNotificationSuppressed())
         return;
 
-    if (isMainFrame())
-        m_webPage->d->notifyTransformedScrollChanged();
-    else
-        m_backingStore->d->scrollChanged(transformedScrollPosition());
+    ASSERT(isMainFrame());
+    m_webPage->d->notifyTransformedScrollChanged();
 }
 
 }

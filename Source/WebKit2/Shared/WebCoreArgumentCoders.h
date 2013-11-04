@@ -49,6 +49,8 @@ namespace WebCore {
     class ResourceError;
     class ResourceRequest;
     class ResourceResponse;
+    class UserStyleSheet;
+    class UserScript;
     struct CompositionUnderline;
     struct DictationAlternative;
     struct DragSession;
@@ -65,20 +67,6 @@ namespace WebCore {
 namespace WebCore {
     struct KeypressCommand;
 }
-#endif
-
-#if USE(COORDINATED_GRAPHICS)
-namespace WebCore {
-    class FloatPoint3D;
-    class TransformationMatrix;
-    struct Length;
-}
-
-#if ENABLE(CSS_FILTERS)
-namespace WebCore {
-    class FilterOperations;
-}
-#endif
 #endif
 
 namespace CoreIPC {
@@ -159,17 +147,42 @@ template<> struct ArgumentCoder<WebCore::Cursor> {
 };
 
 template<> struct ArgumentCoder<WebCore::ResourceRequest> {
+#if PLATFORM(MAC) || PLATFORM(WIN)
+    static const bool kShouldSerializeWebCoreData = false;
+#else
+    static const bool kShouldSerializeWebCoreData = true;
+#endif
+
     static void encode(ArgumentEncoder*, const WebCore::ResourceRequest&);
     static bool decode(ArgumentDecoder*, WebCore::ResourceRequest&);
+    static void encodePlatformData(ArgumentEncoder*, const WebCore::ResourceRequest&);
+    static bool decodePlatformData(ArgumentDecoder*, WebCore::ResourceRequest&);
 };
 
 template<> struct ArgumentCoder<WebCore::ResourceResponse> {
+#if PLATFORM(MAC) || PLATFORM(WIN)
+    static const bool kShouldSerializeWebCoreData = false;
+#else
+    static const bool kShouldSerializeWebCoreData = true;
+#endif
+
     static void encode(ArgumentEncoder*, const WebCore::ResourceResponse&);
     static bool decode(ArgumentDecoder*, WebCore::ResourceResponse&);
+    static void encodePlatformData(ArgumentEncoder*, const WebCore::ResourceResponse&);
+    static bool decodePlatformData(ArgumentDecoder*, WebCore::ResourceResponse&);
 };
+
 template<> struct ArgumentCoder<WebCore::ResourceError> {
+#if PLATFORM(MAC)
+    static const bool kShouldSerializeWebCoreData = false;
+#else
+    static const bool kShouldSerializeWebCoreData = true;
+#endif
+
     static void encode(ArgumentEncoder*, const WebCore::ResourceError&);
     static bool decode(ArgumentDecoder*, WebCore::ResourceError&);
+    static void encodePlatformData(ArgumentEncoder*, const WebCore::ResourceError&);
+    static bool decodePlatformData(ArgumentDecoder*, WebCore::ResourceError&);
 };
 
 template<> struct ArgumentCoder<WebCore::WindowFeatures> {
@@ -229,30 +242,15 @@ template<> struct ArgumentCoder<WebCore::KURL> {
     static bool decode(ArgumentDecoder*, WebCore::KURL&);
 };
 
-#if USE(COORDINATED_GRAPHICS)
-template<> struct ArgumentCoder<WebCore::FloatPoint3D> {
-    static void encode(ArgumentEncoder*, const WebCore::FloatPoint3D&);
-    static bool decode(ArgumentDecoder*, WebCore::FloatPoint3D&);
+template<> struct ArgumentCoder<WebCore::UserStyleSheet> {
+    static void encode(ArgumentEncoder*, const WebCore::UserStyleSheet&);
+    static bool decode(ArgumentDecoder*, WebCore::UserStyleSheet&);
 };
 
-template<> struct ArgumentCoder<WebCore::Length> {
-    static void encode(ArgumentEncoder*, const WebCore::Length&);
-    static bool decode(ArgumentDecoder*, WebCore::Length&);
+template<> struct ArgumentCoder<WebCore::UserScript> {
+    static void encode(ArgumentEncoder*, const WebCore::UserScript&);
+    static bool decode(ArgumentDecoder*, WebCore::UserScript&);
 };
-
-template<> struct ArgumentCoder<WebCore::TransformationMatrix> {
-    static void encode(ArgumentEncoder*, const WebCore::TransformationMatrix&);
-    static bool decode(ArgumentDecoder*, WebCore::TransformationMatrix&);
-};
-
-#if ENABLE(CSS_FILTERS)
-template<> struct ArgumentCoder<WebCore::FilterOperations> {
-    static void encode(ArgumentEncoder*, const WebCore::FilterOperations&);
-    static bool decode(ArgumentDecoder*, WebCore::FilterOperations&);
-};
-#endif
-#endif
-
 
 } // namespace CoreIPC
 

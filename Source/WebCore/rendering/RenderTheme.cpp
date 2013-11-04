@@ -523,7 +523,7 @@ String RenderTheme::formatMediaControlsRemainingTime(float currentTime, float du
 IntPoint RenderTheme::volumeSliderOffsetFromMuteButton(RenderBox* muteButtonBox, const IntSize& size) const
 {
     int y = -size.height();
-    FloatPoint absPoint = muteButtonBox->localToAbsolute(FloatPoint(muteButtonBox->pixelSnappedOffsetLeft(), y), true, true);
+    FloatPoint absPoint = muteButtonBox->localToAbsolute(FloatPoint(muteButtonBox->pixelSnappedOffsetLeft(), y), IsFixed | UseTransforms | SnapOffsetForTransforms);
     if (absPoint.y() < 0)
         y = muteButtonBox->height();
     return IntPoint(0, y);
@@ -639,7 +639,7 @@ CString RenderTheme::extraCalendarPickerStyleSheet()
 }
 #endif
 
-LayoutUnit RenderTheme::baselinePosition(const RenderObject* o) const
+int RenderTheme::baselinePosition(const RenderObject* o) const
 {
     if (!o->isBox())
         return 0;
@@ -1272,6 +1272,11 @@ String RenderTheme::fileListNameForWidth(const FileList* fileList, const Font& f
         return StringTruncator::rightTruncate(multipleFileUploadText(fileList->length()), width, font, StringTruncator::EnableRoundingHacks);
 
     return StringTruncator::centerTruncate(string, width, font, StringTruncator::EnableRoundingHacks);
+}
+
+bool RenderTheme::shouldOpenPickerWithF4Key() const
+{
+    return false;
 }
 
 } // namespace WebCore

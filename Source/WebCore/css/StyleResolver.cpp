@@ -61,6 +61,7 @@
 #include "CounterContent.h"
 #include "CursorList.h"
 #include "DocumentStyleSheetCollection.h"
+#include "ElementShadow.h"
 #include "FontFeatureValue.h"
 #include "FontValue.h"
 #include "Frame.h"
@@ -74,6 +75,7 @@
 #include "HTMLProgressElement.h"
 #include "HTMLStyleElement.h"
 #include "HTMLTextAreaElement.h"
+#include "InsertionPoint.h"
 #include "InspectorInstrumentation.h"
 #include "KeyframeList.h"
 #include "LinkHash.h"
@@ -98,6 +100,7 @@
 #include "RenderTheme.h"
 #include "RenderView.h"
 #include "RotateTransformOperation.h"
+#include "RuleSet.h"
 #include "SVGDocumentExtensions.h"
 #include "SVGFontFaceElement.h"
 #include "ScaleTransformOperation.h"
@@ -106,6 +109,7 @@
 #include "ShadowData.h"
 #include "ShadowRoot.h"
 #include "ShadowValue.h"
+#include "SiblingTraversalStrategies.h"
 #include "SkewTransformOperation.h"
 #include "StyleBuilder.h"
 #include "StyleCachedImage.h"
@@ -137,12 +141,13 @@
 #include "WebKitCSSFilterValue.h"
 #endif
 
-#if ENABLE(DASHBOARD_SUPPORT) || ENABLE(WIDGET_REGION)
+#if ENABLE(DASHBOARD_SUPPORT)
 #include "DashboardRegion.h"
 #endif
 
 #if ENABLE(SVG)
 #include "CachedSVGDocument.h"
+#include "CachedSVGDocumentReference.h"
 #include "SVGDocument.h"
 #include "SVGElement.h"
 #include "SVGNames.h"
@@ -169,11 +174,6 @@
 #include "StyleCachedImageSet.h"
 #endif
 
-#if PLATFORM(BLACKBERRY)
-#define FIXED_POSITION_CREATES_STACKING_CONTEXT 1
-#endif
-
-
 using namespace std;
 
 namespace WebCore {
@@ -199,119 +199,6 @@ if (isInitial) { \
     m_style->set##Prop(RenderStyle::initial##Value());\
     return;\
 }
-
-#define HANDLE_INHERIT_AND_INITIAL_AND_PRIMITIVE(prop, Prop) \
-HANDLE_INHERIT_AND_INITIAL(prop, Prop) \
-if (primitiveValue) \
-    m_style->set##Prop(*primitiveValue);
-
-class RuleData {
-public:
-    RuleData(StyleRule*, unsigned selectorIndex, unsigned position, bool hasDocumentSecurityOrigin, bool canUseFastCheckSelector, bool inRegionRule);
-
-    unsigned position() const { return m_position; }
-    StyleRule* rule() const { return m_rule; }
-    CSSSelector* selector() const { return m_rule->selectorList().selectorAt(m_selectorIndex); }
-    unsigned selectorIndex() const { return m_selectorIndex; }
-
-    bool hasFastCheckableSelector() const { return m_hasFastCheckableSelector; }
-    bool hasMultipartSelector() const { return m_hasMultipartSelector; }
-    bool hasRightmostSelectorMatchingHTMLBasedOnRuleHash() const { return m_hasRightmostSelectorMatchingHTMLBasedOnRuleHash; }
-    bool containsUncommonAttributeSelector() const { return m_containsUncommonAttributeSelector; }
-    unsigned specificity() const { return m_specificity; }
-    unsigned linkMatchType() const { return m_linkMatchType; }
-    bool hasDocumentSecurityOrigin() const { return m_hasDocumentSecurityOrigin; }
-    bool isInRegionRule() const { return m_isInRegionRule; }
-
-    // Try to balance between memory usage (there can be lots of RuleData objects) and good filtering performance.
-    static const unsigned maximumIdentifierCount = 4;
-    const unsigned* descendantSelectorIdentifierHashes() const { return m_descendantSelectorIdentifierHashes; }
-
-    void reportMemoryUsage(MemoryObjectInfo*) const;
-
-private:
-    StyleRule* m_rule;
-    unsigned m_selectorIndex : 12;
-    // This number was picked fairly arbitrarily. We can probably lower it if we need to.
-    // Some simple testing showed <100,000 RuleData's on large sites.
-    unsigned m_position : 20;
-    unsigned m_specificity : 24;
-    unsigned m_hasFastCheckableSelector : 1;
-    unsigned m_hasMultipartSelector : 1;
-    unsigned m_hasRightmostSelectorMatchingHTMLBasedOnRuleHash : 1;
-    unsigned m_containsUncommonAttributeSelector : 1;
-    unsigned m_linkMatchType : 2; //  SelectorChecker::LinkMatchMask
-    unsigned m_hasDocumentSecurityOrigin : 1;
-    unsigned m_isInRegionRule : 1;
-    // Use plain array instead of a Vector to minimize memory overhead.
-    unsigned m_descendantSelectorIdentifierHashes[maximumIdentifierCount];
-};
-    
-struct SameSizeAsRuleData {
-    void* a;
-    unsigned b;
-    unsigned c;
-    unsigned d[4];
-};
-
-COMPILE_ASSERT(sizeof(RuleData) == sizeof(SameSizeAsRuleData), RuleData_should_stay_small);
-
-class RuleSet {
-    WTF_MAKE_NONCOPYABLE(RuleSet); WTF_MAKE_FAST_ALLOCATED;
-public:
-    static PassOwnPtr<RuleSet> create() { return adoptPtr(new RuleSet); }
-
-    typedef HashMap<AtomicStringImpl*, OwnPtr<Vector<RuleData> > > AtomRuleMap;
-
-    void addRulesFromSheet(StyleSheetContents*, const MediaQueryEvaluator&, StyleResolver* = 0, const ContainerNode* = 0);
-
-    void addStyleRule(StyleRule*, bool hasDocumentSecurityOrigin, bool canUseFastCheckSelector, bool isInRegionRule = false);
-    void addRule(StyleRule*, unsigned selectorIndex, bool hasDocumentSecurityOrigin, bool canUseFastCheckSelector, bool isInRegionRule = false);
-    void addPageRule(StyleRulePage*);
-    void addToRuleSet(AtomicStringImpl* key, AtomRuleMap&, const RuleData&);
-    void addRegionRule(StyleRuleRegion*, bool hasDocumentSecurityOrigin);
-    void shrinkToFit();
-    void disableAutoShrinkToFit() { m_autoShrinkToFitEnabled = false; }
-
-    const StyleResolver::Features& features() const { return m_features; }
-
-    const Vector<RuleData>* idRules(AtomicStringImpl* key) const { return m_idRules.get(key); }
-    const Vector<RuleData>* classRules(AtomicStringImpl* key) const { return m_classRules.get(key); }
-    const Vector<RuleData>* tagRules(AtomicStringImpl* key) const { return m_tagRules.get(key); }
-    const Vector<RuleData>* shadowPseudoElementRules(AtomicStringImpl* key) const { return m_shadowPseudoElementRules.get(key); }
-    const Vector<RuleData>* linkPseudoClassRules() const { return &m_linkPseudoClassRules; }
-    const Vector<RuleData>* focusPseudoClassRules() const { return &m_focusPseudoClassRules; }
-    const Vector<RuleData>* universalRules() const { return &m_universalRules; }
-    const Vector<StyleRulePage*>& pageRules() const { return m_pageRules; }
-
-    void reportMemoryUsage(MemoryObjectInfo*) const;
-
-public:
-    RuleSet();
-
-    AtomRuleMap m_idRules;
-    AtomRuleMap m_classRules;
-    AtomRuleMap m_tagRules;
-    AtomRuleMap m_shadowPseudoElementRules;
-    Vector<RuleData> m_linkPseudoClassRules;
-    Vector<RuleData> m_focusPseudoClassRules;
-    Vector<RuleData> m_universalRules;
-    Vector<StyleRulePage*> m_pageRules;
-    unsigned m_ruleCount;
-    bool m_autoShrinkToFitEnabled;
-    StyleResolver::Features m_features;
-
-    struct RuleSetSelectorPair {
-        RuleSetSelectorPair(CSSSelector* selector, PassOwnPtr<RuleSet> ruleSet) : selector(selector), ruleSet(ruleSet) { }
-        RuleSetSelectorPair(const RuleSetSelectorPair& rs) : selector(rs.selector), ruleSet(const_cast<RuleSetSelectorPair*>(&rs)->ruleSet.release()) { }
-        void reportMemoryUsage(MemoryObjectInfo*) const;
-
-        CSSSelector* selector;
-        OwnPtr<RuleSet> ruleSet;
-    };
-
-    Vector<RuleSetSelectorPair> m_regionSelectorsAndRuleSets;
-};
 
 static RuleSet* defaultStyle;
 static RuleSet* defaultQuirksStyle;
@@ -372,6 +259,7 @@ StyleResolver::StyleResolver(Document* document, bool matchAuthorAndUserStyles)
     : m_hasUAAppearance(false)
     , m_backgroundData(BackgroundFillLayer)
     , m_matchedPropertiesCacheAdditionsSinceLastSweep(0)
+    , m_matchedPropertiesCacheSweepTimer(this, &StyleResolver::sweepMatchedPropertiesCache)
     , m_checker(document, !document->inQuirksMode())
     , m_parentStyle(0)
     , m_rootElementStyle(0)
@@ -392,10 +280,6 @@ StyleResolver::StyleResolver(Document* document, bool matchAuthorAndUserStyles)
     , m_styleBuilder(StyleBuilder::sharedStyleBuilder())
 #if ENABLE(CSS_SHADERS)
     , m_hasPendingShaders(false)
-#endif
-#if ENABLE(STYLE_SCOPED)
-    , m_scopeStackParent(0)
-    , m_scopeStackParentBoundsIndex(0)
 #endif
     , m_styleMap(this)
 {
@@ -448,7 +332,7 @@ StyleResolver::StyleResolver(Document* document, bool matchAuthorAndUserStyles)
 #endif
 
     addStylesheetsFromSeamlessParents();
-    appendAuthorStylesheets(0, styleSheetCollection->authorStyleSheets());
+    appendAuthorStyleSheets(0, styleSheetCollection->activeAuthorStyleSheets());
 }
 
 void StyleResolver::addStylesheetsFromSeamlessParents()
@@ -456,14 +340,14 @@ void StyleResolver::addStylesheetsFromSeamlessParents()
     // Build a list of stylesheet lists from our ancestors, and walk that
     // list in reverse order so that the root-most sheets are appended first.
     Document* childDocument = document();
-    Vector<const Vector<RefPtr<StyleSheet> >* > ancestorSheets;
+    Vector<const Vector<RefPtr<CSSStyleSheet> >* > ancestorSheets;
     while (HTMLIFrameElement* parentIFrame = childDocument->seamlessParentIFrame()) {
         Document* parentDocument = parentIFrame->document();
-        ancestorSheets.append(&parentDocument->styleSheetCollection()->authorStyleSheets());
+        ancestorSheets.append(&parentDocument->styleSheetCollection()->activeAuthorStyleSheets());
         childDocument = parentDocument;
     }
     for (int i = ancestorSheets.size() - 1; i >= 0; i--)
-        appendAuthorStylesheets(0, *ancestorSheets[i]);
+        appendAuthorStyleSheets(0, *ancestorSheets[i]);
 }
 
 void StyleResolver::addAuthorRulesAndCollectUserRulesFromSheets(const Vector<RefPtr<CSSStyleSheet> >* userSheets, RuleSet& userStyle)
@@ -481,14 +365,14 @@ void StyleResolver::addAuthorRulesAndCollectUserRulesFromSheets(const Vector<Ref
     }
 }
 
-static PassOwnPtr<RuleSet> makeRuleSet(const Vector<StyleResolver::RuleFeature>& rules)
+static PassOwnPtr<RuleSet> makeRuleSet(const Vector<RuleFeature>& rules)
 {
     size_t size = rules.size();
     if (!size)
         return nullptr;
     OwnPtr<RuleSet> ruleSet = RuleSet::create();
     for (size_t i = 0; i < size; ++i)
-        ruleSet->addRule(rules[i].rule, rules[i].selectorIndex, rules[i].hasDocumentSecurityOrigin, false);
+        ruleSet->addRule(rules[i].rule, rules[i].selectorIndex, rules[i].hasDocumentSecurityOrigin ? RuleHasDocumentSecurityOrigin : RuleHasNoSpecialState);
     ruleSet->shrinkToFit();
     return ruleSet.release();
 }
@@ -501,10 +385,8 @@ void StyleResolver::collectFeatures()
     // sharing candidates.
     m_features.add(defaultStyle->features());
     m_features.add(m_authorStyle->features());
-#if ENABLE(STYLE_SCOPED)
-    for (ScopedRuleSetMap::iterator it = m_scopedAuthorStyles.begin(); it != m_scopedAuthorStyles.end(); ++it)
-        m_features.add(it->second->features());
-#endif
+    if (m_scopeResolver)
+        m_scopeResolver->collectFeaturesTo(m_features);
     if (m_userStyle)
         m_features.add(m_userStyle->features());
 
@@ -512,68 +394,30 @@ void StyleResolver::collectFeatures()
     m_uncommonAttributeRuleSet = makeRuleSet(m_features.uncommonAttributeRules);
 }
 
-#if ENABLE(STYLE_SCOPED)
-const ContainerNode* StyleResolver::determineScope(const CSSStyleSheet* sheet)
-{
-    ASSERT(sheet);
-
-    if (!ContextFeatures::styleScopedEnabled(document()))
-        return 0;
-
-    Node* ownerNode = sheet->ownerNode();
-    if (!ownerNode || !ownerNode->isHTMLElement() || !ownerNode->hasTagName(HTMLNames::styleTag))
-        return 0;
-
-    HTMLStyleElement* styleElement = static_cast<HTMLStyleElement*>(ownerNode);
-    if (!styleElement->scoped())
-        return styleElement->isInShadowTree()? styleElement->shadowRoot() : 0;
-
-    ContainerNode* parent = styleElement->parentNode();
-    if (!parent)
-        return 0;
-
-    return (parent->isElementNode() || parent->isShadowRoot()) ? parent : 0;
-}
-
-inline RuleSet* StyleResolver::ruleSetForScope(const ContainerNode* scope) const
-{
-    if (!scope->hasScopedHTMLStyleChild())
-        return 0;
-    ScopedRuleSetMap::const_iterator it = m_scopedAuthorStyles.find(scope);
-    return it != m_scopedAuthorStyles.end() ? it->second.get() : 0; 
-}
-#endif
-
 void StyleResolver::resetAuthorStyle()
 {
     m_authorStyle = RuleSet::create();
     m_authorStyle->disableAutoShrinkToFit();
 }
 
-void StyleResolver::appendAuthorStylesheets(unsigned firstNew, const Vector<RefPtr<StyleSheet> >& stylesheets)
+void StyleResolver::appendAuthorStyleSheets(unsigned firstNew, const Vector<RefPtr<CSSStyleSheet> >& styleSheets)
 {
     // This handles sheets added to the end of the stylesheet list only. In other cases the style resolver
     // needs to be reconstructed. To handle insertions too the rule order numbers would need to be updated.
-    unsigned size = stylesheets.size();
+    unsigned size = styleSheets.size();
     for (unsigned i = firstNew; i < size; ++i) {
-        if (!stylesheets[i]->isCSSStyleSheet())
-            continue;
-        CSSStyleSheet* cssSheet = static_cast<CSSStyleSheet*>(stylesheets[i].get());
-        if (cssSheet->disabled())
-            continue;
+        CSSStyleSheet* cssSheet = styleSheets[i].get();
+        ASSERT(!cssSheet->disabled());
         if (cssSheet->mediaQueries() && !m_medium->eval(cssSheet->mediaQueries(), this))
             continue;
         StyleSheetContents* sheet = cssSheet->contents();
-#if ENABLE(STYLE_SCOPED)
-        const ContainerNode* scope = determineScope(cssSheet);
-        if (scope) {
-            ScopedRuleSetMap::AddResult addResult = m_scopedAuthorStyles.add(scope, nullptr);
-            if (addResult.isNewEntry)
-                addResult.iterator->second = RuleSet::create();
-            addResult.iterator->second->addRulesFromSheet(sheet, *m_medium, this, scope);
+#if ENABLE(STYLE_SCOPED) || ENABLE(SHADOW_DOM)
+        if (const ContainerNode* scope = StyleScopeResolver::scopeFor(cssSheet)) {
+            ensureScopeResolver()->ensureRuleSetFor(scope)->addRulesFromSheet(sheet, *m_medium, this, scope);
             continue;
         }
 #endif
+
         m_authorStyle->addRulesFromSheet(sheet, *m_medium, this);
         if (!m_styleRuleToCSSOMWrapperMap.isEmpty())
             collectCSSOMWrappers(m_styleRuleToCSSOMWrapperMap, cssSheet);
@@ -584,62 +428,6 @@ void StyleResolver::appendAuthorStylesheets(unsigned firstNew, const Vector<RefP
     if (document()->renderer() && document()->renderer()->style())
         document()->renderer()->style()->font().update(fontSelector());
 }
-
-#if ENABLE(STYLE_SCOPED)
-void StyleResolver::setupScopeStack(const ContainerNode* parent)
-{
-    // The scoping element stack shouldn't be used if <style scoped> isn't used anywhere.
-    ASSERT(!m_scopedAuthorStyles.isEmpty());
-
-    m_scopeStack.shrink(0);
-    int authorStyleBoundsIndex = 0;
-    for (const ContainerNode* scope = parent; scope; scope = scope->parentOrHostNode()) {
-        RuleSet* ruleSet = ruleSetForScope(scope);
-        if (ruleSet)
-            m_scopeStack.append(ScopeStackFrame(scope, authorStyleBoundsIndex, ruleSet));
-        if (scope->isShadowRoot() && !toShadowRoot(scope)->applyAuthorStyles())
-            --authorStyleBoundsIndex;
-    }
-    m_scopeStack.reverse();
-    m_scopeStackParent = parent;
-    m_scopeStackParentBoundsIndex = 0;
-}
-
-void StyleResolver::pushScope(const ContainerNode* scope, const ContainerNode* scopeParent)
-{
-    // Shortcut: Don't bother with the scoping element stack if <style scoped> isn't used anywhere.
-    if (m_scopedAuthorStyles.isEmpty()) {
-        ASSERT(!m_scopeStackParent);
-        ASSERT(m_scopeStack.isEmpty());
-        return;
-    }
-    // In some wacky cases during style resolve we may get invoked for random elements.
-    // Recreate the whole scoping element stack in such cases.
-    if (!scopeStackIsConsistent(scopeParent)) {
-        setupScopeStack(scope);
-        return;
-    }
-    if (scope->isShadowRoot() && !toShadowRoot(scope)->applyAuthorStyles())
-        ++m_scopeStackParentBoundsIndex;
-    // Otherwise just push the parent onto the stack.
-    RuleSet* ruleSet = ruleSetForScope(scope);
-    if (ruleSet)
-        m_scopeStack.append(ScopeStackFrame(scope, m_scopeStackParentBoundsIndex, ruleSet));
-    m_scopeStackParent = scope;
-}
-
-void StyleResolver::popScope(const ContainerNode* scope)
-{
-    // Only bother to update the scoping element stack if it is consistent.
-    if (scopeStackIsConsistent(scope)) {
-        if (!m_scopeStack.isEmpty() && m_scopeStack.last().m_scope == scope)
-            m_scopeStack.removeLast();
-        if (scope->isShadowRoot() && !toShadowRoot(scope)->applyAuthorStyles())
-            --m_scopeStackParentBoundsIndex;
-        m_scopeStackParent = scope->parentOrHostNode();
-    }
-}
-#endif
 
 void StyleResolver::pushParentElement(Element* parent)
 {
@@ -655,7 +443,8 @@ void StyleResolver::pushParentElement(Element* parent)
         m_checker.pushParent(parent);
 
     // Note: We mustn't skip ShadowRoot nodes for the scope stack.
-    pushScope(parent, parent->parentOrHostNode());
+    if (m_scopeResolver)
+        m_scopeResolver->push(parent, parent->parentOrHostNode());
 }
 
 void StyleResolver::popParentElement(Element* parent)
@@ -664,19 +453,22 @@ void StyleResolver::popParentElement(Element* parent)
     // Pause maintaining the stack in this case.
     if (m_checker.parentStackIsConsistent(parent))
         m_checker.popParent();
-    popScope(parent);
+    if (m_scopeResolver)
+        m_scopeResolver->pop(parent);
 }
 
 void StyleResolver::pushParentShadowRoot(const ShadowRoot* shadowRoot)
 {
     ASSERT(shadowRoot->host());
-    pushScope(shadowRoot, shadowRoot->host());
+    if (m_scopeResolver)
+        m_scopeResolver->push(shadowRoot, shadowRoot->host());
 }
 
 void StyleResolver::popParentShadowRoot(const ShadowRoot* shadowRoot)
 {
     ASSERT(shadowRoot->host());
-    popScope(shadowRoot);
+    if (m_scopeResolver)
+        m_scopeResolver->pop(shadowRoot);
 }
 
 // This is a simplified style setting function for keyframe styles
@@ -691,68 +483,27 @@ StyleResolver::~StyleResolver()
     m_fontSelector->clearDocument();
 }
 
-void StyleResolver::sweepMatchedPropertiesCache()
+void StyleResolver::sweepMatchedPropertiesCache(Timer<StyleResolver>*)
 {
     // Look for cache entries containing a style declaration with a single ref and remove them.
-    // This may happen when an element attribute mutation causes it to swap out its Attribute::decl()
-    // for another CSSMappedAttributeDeclaration, potentially leaving this cache with the last ref.
+    // This may happen when an element attribute mutation causes it to generate a new attributeStyle(),
+    // potentially leaving this cache with the last ref on the old one.
     Vector<unsigned, 16> toRemove;
     MatchedPropertiesCache::iterator it = m_matchedPropertiesCache.begin();
     MatchedPropertiesCache::iterator end = m_matchedPropertiesCache.end();
     for (; it != end; ++it) {
-        Vector<MatchedProperties>& matchedProperties = it->second.matchedProperties;
+        Vector<MatchedProperties>& matchedProperties = it->value.matchedProperties;
         for (size_t i = 0; i < matchedProperties.size(); ++i) {
             if (matchedProperties[i].properties->hasOneRef()) {
-                toRemove.append(it->first);
+                toRemove.append(it->key);
                 break;
             }
         }
     }
     for (size_t i = 0; i < toRemove.size(); ++i)
         m_matchedPropertiesCache.remove(toRemove[i]);
-}
 
-StyleResolver::Features::Features()
-    : usesFirstLineRules(false)
-    , usesBeforeAfterRules(false)
-{
-}
-
-StyleResolver::Features::~Features()
-{
-}
-    
-void StyleResolver::Features::add(const StyleResolver::Features& other)
-{
-    HashSet<AtomicStringImpl*>::iterator end = other.idsInRules.end();
-    for (HashSet<AtomicStringImpl*>::iterator it = other.idsInRules.begin(); it != end; ++it)
-        idsInRules.add(*it);
-    end = other.attrsInRules.end();
-    for (HashSet<AtomicStringImpl*>::iterator it = other.attrsInRules.begin(); it != end; ++it)
-        attrsInRules.add(*it);
-    siblingRules.append(other.siblingRules);
-    uncommonAttributeRules.append(other.uncommonAttributeRules);
-    usesFirstLineRules = usesFirstLineRules || other.usesFirstLineRules;
-    usesBeforeAfterRules = usesBeforeAfterRules || other.usesBeforeAfterRules;
-}
-
-void StyleResolver::Features::clear()
-{
-    idsInRules.clear();
-    attrsInRules.clear();
-    siblingRules.clear();
-    uncommonAttributeRules.clear();
-    usesFirstLineRules = false;
-    usesBeforeAfterRules = false;
-}
-
-void StyleResolver::Features::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
-{
-    MemoryClassInfo info(memoryObjectInfo, this, WebCoreMemoryTypes::CSS);
-    info.addMember(idsInRules);
-    info.addMember(attrsInRules);
-    info.addMember(siblingRules);
-    info.addMember(uncommonAttributeRules);
+    m_matchedPropertiesCacheAdditionsSinceLastSweep = 0;
 }
 
 static StyleSheetContents* parseUASheet(const String& str)
@@ -958,27 +709,30 @@ void StyleResolver::sortAndTransferMatchedRules(MatchResult& result)
 
 void StyleResolver::matchScopedAuthorRules(MatchResult& result, bool includeEmptyRules)
 {
-#if ENABLE(STYLE_SCOPED)
-    if (m_scopedAuthorStyles.isEmpty())
+#if ENABLE(STYLE_SCOPED) || ENABLE(SHADOW_DOM)
+    if (!m_scopeResolver)
+        return;
+
+    matchHostRules(result, includeEmptyRules);
+
+    if (!m_scopeResolver->hasScopedStyles())
         return;
 
     // Match scoped author rules by traversing the scoped element stack (rebuild it if it got inconsistent).
-    if (!scopeStackIsConsistent(m_element))
-        setupScopeStack(m_element);
-    if (m_scopeStack.isEmpty())
+    if (!m_scopeResolver->ensureStackConsistency(m_element))
         return;
 
     bool applyAuthorStyles = m_element->treeScope()->applyAuthorStyles();
     bool documentScope = true;
-    unsigned scopeSize = m_scopeStack.size();
+    unsigned scopeSize = m_scopeResolver->stackSize();
     for (unsigned i = 0; i < scopeSize; ++i) {
-        const ScopeStackFrame& frame = m_scopeStack[i];
+        const StyleScopeResolver::StackFrame& frame = m_scopeResolver->stackFrameAt(i);
         documentScope = documentScope && !frame.m_scope->isInShadowTree();
         if (documentScope) {
             if (!applyAuthorStyles)
                 continue;
         } else {
-            if (frame.m_authorStyleBoundsIndex != m_scopeStackParentBoundsIndex)
+            if (!m_scopeResolver->matchesStyleBounds(frame))
                 continue;
         }
            
@@ -987,6 +741,35 @@ void StyleResolver::matchScopedAuthorRules(MatchResult& result, bool includeEmpt
         collectMatchingRulesForRegion(frame.m_ruleSet, result.ranges.firstAuthorRule, result.ranges.lastAuthorRule, options);
     }
 
+#else
+    UNUSED_PARAM(result);
+    UNUSED_PARAM(includeEmptyRules);
+#endif
+}
+
+inline bool StyleResolver::styleSharingCandidateMatchesHostRules()
+{
+#if ENABLE(SHADOW_DOM)
+    return m_scopeResolver && m_scopeResolver->styleSharingCandidateMatchesHostRules(m_element);
+#else
+    return false;
+#endif
+}
+
+void StyleResolver::matchHostRules(MatchResult& result, bool includeEmptyRules)
+{
+#if ENABLE(SHADOW_DOM)
+    ASSERT(m_scopeResolver);
+
+    Vector<RuleSet*> matchedRules;
+    m_scopeResolver->matchHostRules(m_element, matchedRules);
+    if (matchedRules.isEmpty())
+        return;
+
+    MatchOptions options(includeEmptyRules);
+    options.scope = m_element;
+    for (unsigned i = matchedRules.size(); i > 0; --i)
+        collectMatchingRules(matchedRules.at(i-1), result.ranges.firstAuthorRule, result.ranges.lastAuthorRule, options);
 #else
     UNUSED_PARAM(result);
     UNUSED_PARAM(includeEmptyRules);
@@ -1083,11 +866,7 @@ void StyleResolver::collectMatchingRulesForList(const Vector<RuleData>* rules, i
 
         StyleRule* rule = ruleData.rule();
         InspectorInstrumentationCookie cookie = InspectorInstrumentation::willMatchRule(document(), rule);
-#if ENABLE(STYLE_SCOPED)
         if (checkSelector(ruleData, options.scope)) {
-#else
-        if (checkSelector(ruleData)) {
-#endif
             // Check whether the rule is applicable in the current tree scope. Criteria for this:
             // a) it's a UA rule
             // b) the tree scope allows author rules
@@ -1095,9 +874,7 @@ void StyleResolver::collectMatchingRulesForList(const Vector<RuleData>* rules, i
             // d) the rule contains shadow-ID pseudo elements
             if (!MatchingUARulesScope::isMatchingUARules()
                 && !treeScope->applyAuthorStyles()
-#if ENABLE(STYLE_SCOPED)
                 && (!options.scope || options.scope->treeScope() != treeScope)
-#endif
                 && !m_hasUnknownPseudoElements) {
 
                 InspectorInstrumentation::didMatchRule(cookie, false);
@@ -1211,6 +988,28 @@ inline void StyleResolver::initElement(Element* e)
     }
 }
 
+inline bool shouldResetStyleInheritance(NodeRenderingContext& context)
+{
+    if (context.resetStyleInheritance())
+        return true;
+
+    InsertionPoint* insertionPoint = context.insertionPoint();
+    if (!insertionPoint)
+        return false;
+
+    ASSERT(parentElementForDistribution(context.node()));
+    ElementShadow* shadow = parentElementForDistribution(context.node())->shadow();
+    ASSERT(shadow);
+
+    for ( ; insertionPoint; ) {
+        InsertionPoint* youngerInsertionPoint = shadow->insertionPointFor(insertionPoint);
+        if (!youngerInsertionPoint)
+            break;
+        insertionPoint = youngerInsertionPoint;
+    }
+    return insertionPoint->resetStyleInheritance();
+}
+
 inline void StyleResolver::initForStyleResolve(Element* e, RenderStyle* parentStyle, PseudoId pseudoID)
 {
     m_pseudoStyle = pseudoID;
@@ -1218,7 +1017,7 @@ inline void StyleResolver::initForStyleResolve(Element* e, RenderStyle* parentSt
     if (e) {
         NodeRenderingContext context(e);
         m_parentNode = context.parentNodeForRenderingAndStyle();
-        m_parentStyle = context.resetStyleInheritance()? 0 :
+        m_parentStyle = shouldResetStyleInheritance(context) ? 0 :
             parentStyle ? parentStyle :
             m_parentNode ? m_parentNode->renderStyle() : 0;
         m_distributedToInsertionPoint = context.insertionPoint();
@@ -1250,10 +1049,8 @@ Node* StyleResolver::locateCousinList(Element* parent, unsigned& visitedNodeCoun
         return 0;
     if (!parent || !parent->isStyledElement())
         return 0;
-#if ENABLE(STYLE_SCOPED)
     if (parent->hasScopedHTMLStyleChild())
         return 0;
-#endif
     StyledElement* p = static_cast<StyledElement*>(parent);
     if (p->inlineStyle())
         return 0;
@@ -1291,15 +1088,16 @@ Node* StyleResolver::locateCousinList(Element* parent, unsigned& visitedNodeCoun
     return 0;
 }
 
-bool StyleResolver::matchesRuleSet(RuleSet* ruleSet)
+bool StyleResolver::styleSharingCandidateMatchesRuleSet(RuleSet* ruleSet)
 {
     if (!ruleSet)
         return false;
     m_matchedRules.clear();
 
     int firstRuleIndex = -1, lastRuleIndex = -1;
+    m_checker.setMode(SelectorChecker::SharingRules);
     collectMatchingRules(ruleSet, firstRuleIndex, lastRuleIndex, false);
-
+    m_checker.setMode(SelectorChecker::ResolvingStyle);
     if (m_matchedRules.isEmpty())
         return false;
     m_matchedRules.clear();
@@ -1433,14 +1231,10 @@ bool StyleResolver::canShareStyleWithElement(StyledElement* element) const
         return false;
     if (element->fastGetAttribute(cellpaddingAttr) != m_element->fastGetAttribute(cellpaddingAttr))
         return false;
-
     if (element->hasID() && m_features.idsInRules.contains(element->idForStyleResolution().impl()))
         return false;
-
-#if ENABLE(STYLE_SCOPED)
     if (element->hasScopedHTMLStyleChild())
         return false;
-#endif
 
 #if ENABLE(PROGRESS_ELEMENT)
     if (element->hasTagName(progressTag)) {
@@ -1547,10 +1341,8 @@ RenderStyle* StyleResolver::locateSharedStyle()
         return 0;
     if (parentStylePreventsSharing(m_parentStyle))
         return 0;
-#if ENABLE(STYLE_SCOPED)
     if (m_styledElement->hasScopedHTMLStyleChild())
         return 0;
-#endif
 
     // Check previous siblings and their cousins.
     unsigned count = 0;
@@ -1569,10 +1361,13 @@ RenderStyle* StyleResolver::locateSharedStyle()
         return 0;
 
     // Can't share if sibling rules apply. This is checked at the end as it should rarely fail.
-    if (matchesRuleSet(m_siblingRuleSet.get()))
+    if (styleSharingCandidateMatchesRuleSet(m_siblingRuleSet.get()))
         return 0;
     // Can't share if attribute rules apply.
-    if (matchesRuleSet(m_uncommonAttributeRuleSet.get()))
+    if (styleSharingCandidateMatchesRuleSet(m_uncommonAttributeRuleSet.get()))
+        return 0;
+    // Can't share if @host @-rules apply.
+    if (styleSharingCandidateMatchesHostRules())
         return 0;
     // Tracking child index requires unique style for each node. This may get set by the sibling rule match above.
     if (parentStylePreventsSharing(m_parentStyle))
@@ -1778,6 +1573,13 @@ PassRefPtr<RenderStyle> StyleResolver::styleForElement(Element* element, RenderS
         cloneForParent = RenderStyle::clone(style());
         m_parentStyle = cloneForParent.get();
     }
+    // contenteditable attribute (implemented by -webkit-user-modify) should
+    // be propagated from shadow host to distributed node.
+    if (m_distributedToInsertionPoint) {
+        ASSERT(element->parentElement());
+        if (RenderStyle* styleOfShadowHost = element->parentElement()->renderStyle())
+            m_style->setUserModify(styleOfShadowHost->userModify());
+    }
 
     if (element->isLink()) {
         m_style->setIsLink(true);
@@ -1872,7 +1674,7 @@ void StyleResolver::keyframeStylesForAnimation(Element* e, const RenderStyle* el
     if (it == m_keyframesRuleMap.end())
         return;
 
-    const StyleRuleKeyframes* keyframesRule = it->second.get();
+    const StyleRuleKeyframes* keyframesRule = it->value.get();
 
     // Construct and populate the style for each keyframe
     const Vector<RefPtr<StyleKeyframe> >& keyframes = keyframesRule->keyframes();
@@ -2192,11 +1994,7 @@ void StyleResolver::adjustRenderStyle(RenderStyle* style, RenderStyle* parentSty
         || style->hasFilter()
         || style->hasBlendMode()
         || style->position() == StickyPosition
-#ifdef FIXED_POSITION_CREATES_STACKING_CONTEXT
-        || style->position() == FixedPosition
-#else
         || (style->position() == FixedPosition && e && e->document()->page() && e->document()->page()->settings()->fixedPositionCreatesStackingContext())
-#endif
 #if ENABLE(ACCELERATED_OVERFLOW_SCROLLING)
         // Touch overflow scrolling creates a stacking context.
         || ((style->overflowX() != OHIDDEN || style->overflowY() != OHIDDEN) && style->useTouchOverflowScrolling())
@@ -2444,366 +2242,6 @@ bool StyleResolver::checkRegionSelector(CSSSelector* regionSelector, Element* re
 
     return false;
 }
-    
-bool StyleResolver::determineStylesheetSelectorScopes(StyleSheetContents* stylesheet, HashSet<AtomicStringImpl*>& idScopes, HashSet<AtomicStringImpl*>& classScopes)
-{
-    ASSERT(!stylesheet->isLoading());
-
-    const Vector<RefPtr<StyleRuleImport> >& importRules = stylesheet->importRules();
-    for (unsigned i = 0; i < importRules.size(); ++i) {
-        if (!importRules[i]->styleSheet())
-            continue;
-        if (!determineStylesheetSelectorScopes(importRules[i]->styleSheet(), idScopes, classScopes))
-            return false;
-    }
-
-    const Vector<RefPtr<StyleRuleBase> >& rules = stylesheet->childRules();
-    for (unsigned i = 0; i < rules.size(); i++) {
-        StyleRuleBase* rule = rules[i].get();
-        if (rule->isStyleRule()) {
-            StyleRule* styleRule = static_cast<StyleRule*>(rule);
-            if (!SelectorChecker::determineSelectorScopes(styleRule->selectorList(), idScopes, classScopes))
-                return false;
-            continue;
-        } 
-        // FIXME: Media rules and maybe some others could be allowed.
-        return false;
-    }
-    return true;
-}
-
-// -----------------------------------------------------------------
-
-static inline bool isSelectorMatchingHTMLBasedOnRuleHash(const CSSSelector* selector)
-{
-    const AtomicString& selectorNamespace = selector->tag().namespaceURI();
-    if (selectorNamespace != starAtom && selectorNamespace != xhtmlNamespaceURI)
-        return false;
-    if (selector->m_match == CSSSelector::None)
-        return true;
-    if (selector->tag() != starAtom)
-        return false;
-    if (SelectorChecker::isCommonPseudoClassSelector(selector))
-        return true;
-    return selector->m_match == CSSSelector::Id || selector->m_match == CSSSelector::Class;
-}
-
-static inline bool selectorListContainsUncommonAttributeSelector(const CSSSelector* selector)
-{
-    CSSSelectorList* selectorList = selector->selectorList();
-    if (!selectorList)
-        return false;
-    for (CSSSelector* subSelector = selectorList->first(); subSelector; subSelector = CSSSelectorList::next(subSelector)) {
-        if (subSelector->isAttributeSelector())
-            return true;
-    }
-    return false;
-}
-
-static inline bool isCommonAttributeSelectorAttribute(const QualifiedName& attribute)
-{
-    // These are explicitly tested for equality in canShareStyleWithElement.
-    return attribute == typeAttr || attribute == readonlyAttr;
-}
-
-static inline bool containsUncommonAttributeSelector(const CSSSelector* selector)
-{
-    for (; selector; selector = selector->tagHistory()) {
-        // Allow certain common attributes (used in the default style) in the selectors that match the current element.
-        if (selector->isAttributeSelector() && !isCommonAttributeSelectorAttribute(selector->attribute()))
-            return true;
-        if (selectorListContainsUncommonAttributeSelector(selector))
-            return true;
-        if (selector->relation() != CSSSelector::SubSelector) {
-            selector = selector->tagHistory();
-            break;
-        }
-    }
-
-    for (; selector; selector = selector->tagHistory()) {
-        if (selector->isAttributeSelector())
-            return true;
-        if (selectorListContainsUncommonAttributeSelector(selector))
-            return true;
-    }
-    return false;
-}
-
-RuleData::RuleData(StyleRule* rule, unsigned selectorIndex, unsigned position, bool hasDocumentSecurityOrigin, bool canUseFastCheckSelector, bool inRegionRule)
-    : m_rule(rule)
-    , m_selectorIndex(selectorIndex)
-    , m_position(position)
-    , m_specificity(selector()->specificity())
-    , m_hasFastCheckableSelector(canUseFastCheckSelector && SelectorChecker::isFastCheckableSelector(selector()))
-    , m_hasMultipartSelector(!!selector()->tagHistory())
-    , m_hasRightmostSelectorMatchingHTMLBasedOnRuleHash(isSelectorMatchingHTMLBasedOnRuleHash(selector()))
-    , m_containsUncommonAttributeSelector(WebCore::containsUncommonAttributeSelector(selector()))
-    , m_linkMatchType(SelectorChecker::determineLinkMatchType(selector()))
-    , m_hasDocumentSecurityOrigin(hasDocumentSecurityOrigin)
-    , m_isInRegionRule(inRegionRule)
-{
-    ASSERT(m_position == position);
-    ASSERT(m_selectorIndex == selectorIndex);
-    SelectorChecker::collectIdentifierHashes(selector(), m_descendantSelectorIdentifierHashes, maximumIdentifierCount);
-}
-
-void RuleData::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
-{
-    MemoryClassInfo info(memoryObjectInfo, this, WebCoreMemoryTypes::CSS);
-}
-
-RuleSet::RuleSet()
-    : m_ruleCount(0)
-    , m_autoShrinkToFitEnabled(true)
-{
-}
-
-static void reportAtomRuleMap(MemoryClassInfo* info, const RuleSet::AtomRuleMap& atomicRuleMap)
-{
-    info->addMember(atomicRuleMap);
-    for (RuleSet::AtomRuleMap::const_iterator it = atomicRuleMap.begin(); it != atomicRuleMap.end(); ++it)
-        info->addMember(*it->second);
-}
-
-void RuleSet::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
-{
-    MemoryClassInfo info(memoryObjectInfo, this, WebCoreMemoryTypes::CSS);
-    reportAtomRuleMap(&info, m_idRules);
-    reportAtomRuleMap(&info, m_classRules);
-    reportAtomRuleMap(&info, m_tagRules);
-    reportAtomRuleMap(&info, m_shadowPseudoElementRules);
-    info.addMember(m_linkPseudoClassRules);
-    info.addMember(m_focusPseudoClassRules);
-    info.addMember(m_universalRules);
-    info.addMember(m_pageRules);
-    info.addMember(m_regionSelectorsAndRuleSets);
-}
-
-void RuleSet::RuleSetSelectorPair::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
-{
-    MemoryClassInfo info(memoryObjectInfo, this, WebCoreMemoryTypes::CSS);
-    info.addMember(ruleSet);
-}
-
-static inline void collectFeaturesFromSelector(StyleResolver::Features& features, const CSSSelector* selector)
-{
-    if (selector->m_match == CSSSelector::Id)
-        features.idsInRules.add(selector->value().impl());
-    if (selector->isAttributeSelector())
-        features.attrsInRules.add(selector->attribute().localName().impl());
-    switch (selector->pseudoType()) {
-    case CSSSelector::PseudoFirstLine:
-        features.usesFirstLineRules = true;
-        break;
-    case CSSSelector::PseudoBefore:
-    case CSSSelector::PseudoAfter:
-        features.usesBeforeAfterRules = true;
-        break;
-    default:
-        break;
-    }
-}
-
-static void collectFeaturesFromRuleData(StyleResolver::Features& features, const RuleData& ruleData)
-{
-    bool foundSiblingSelector = false;
-    for (CSSSelector* selector = ruleData.selector(); selector; selector = selector->tagHistory()) {
-        collectFeaturesFromSelector(features, selector);
-        
-        if (CSSSelectorList* selectorList = selector->selectorList()) {
-            for (CSSSelector* subSelector = selectorList->first(); subSelector; subSelector = CSSSelectorList::next(subSelector)) {
-                if (!foundSiblingSelector && selector->isSiblingSelector())
-                    foundSiblingSelector = true;
-                collectFeaturesFromSelector(features, subSelector);
-            }
-        } else if (!foundSiblingSelector && selector->isSiblingSelector())
-            foundSiblingSelector = true;
-    }
-    if (foundSiblingSelector)
-        features.siblingRules.append(StyleResolver::RuleFeature(ruleData.rule(), ruleData.selectorIndex(), ruleData.hasDocumentSecurityOrigin()));
-    if (ruleData.containsUncommonAttributeSelector())
-        features.uncommonAttributeRules.append(StyleResolver::RuleFeature(ruleData.rule(), ruleData.selectorIndex(), ruleData.hasDocumentSecurityOrigin()));
-}
-    
-void RuleSet::addToRuleSet(AtomicStringImpl* key, AtomRuleMap& map, const RuleData& ruleData)
-{
-    if (!key)
-        return;
-    OwnPtr<Vector<RuleData> >& rules = map.add(key, nullptr).iterator->second;
-    if (!rules)
-        rules = adoptPtr(new Vector<RuleData>);
-    rules->append(ruleData);
-}
-
-void RuleSet::addRule(StyleRule* rule, unsigned selectorIndex, bool hasDocumentSecurityOrigin, bool canUseFastCheckSelector, bool inRegionRule)
-{
-    RuleData ruleData(rule, selectorIndex, m_ruleCount++, hasDocumentSecurityOrigin, canUseFastCheckSelector, inRegionRule);
-    collectFeaturesFromRuleData(m_features, ruleData);
-
-    CSSSelector* selector = ruleData.selector();
-
-    if (selector->m_match == CSSSelector::Id) {
-        addToRuleSet(selector->value().impl(), m_idRules, ruleData);
-        return;
-    }
-    if (selector->m_match == CSSSelector::Class) {
-        addToRuleSet(selector->value().impl(), m_classRules, ruleData);
-        return;
-    }
-    if (selector->isUnknownPseudoElement()) {
-        addToRuleSet(selector->value().impl(), m_shadowPseudoElementRules, ruleData);
-        return;
-    }
-    if (SelectorChecker::isCommonPseudoClassSelector(selector)) {
-        switch (selector->pseudoType()) {
-        case CSSSelector::PseudoLink:
-        case CSSSelector::PseudoVisited:
-        case CSSSelector::PseudoAnyLink:
-            m_linkPseudoClassRules.append(ruleData);
-            return;
-        case CSSSelector::PseudoFocus:
-            m_focusPseudoClassRules.append(ruleData);
-            return;
-        default:
-            ASSERT_NOT_REACHED();
-        }
-        return;
-    }
-    const AtomicString& localName = selector->tag().localName();
-    if (localName != starAtom) {
-        addToRuleSet(localName.impl(), m_tagRules, ruleData);
-        return;
-    }
-    m_universalRules.append(ruleData);
-}
-
-void RuleSet::addPageRule(StyleRulePage* rule)
-{
-    m_pageRules.append(rule);
-}
-
-void RuleSet::addRegionRule(StyleRuleRegion* regionRule, bool hasDocumentSecurityOrigin)
-{
-    OwnPtr<RuleSet> regionRuleSet = RuleSet::create();
-    // The region rule set should take into account the position inside the parent rule set.
-    // Otherwise, the rules inside region block might be incorrectly positioned before other similar rules from
-    // the stylesheet that contains the region block.
-    regionRuleSet->m_ruleCount = m_ruleCount;
-
-    // Collect the region rules into a rule set
-    const Vector<RefPtr<StyleRuleBase> >& childRules = regionRule->childRules();
-    for (unsigned i = 0; i < childRules.size(); ++i) {
-        StyleRuleBase* regionStylingRule = childRules[i].get();
-        if (regionStylingRule->isStyleRule())
-            regionRuleSet->addStyleRule(static_cast<StyleRule*>(regionStylingRule), hasDocumentSecurityOrigin, true, true);
-    }
-    // Update the "global" rule count so that proper order is maintained
-    m_ruleCount = regionRuleSet->m_ruleCount;
-
-    m_regionSelectorsAndRuleSets.append(RuleSetSelectorPair(regionRule->selectorList().first(), regionRuleSet.release()));
-}
-
-void RuleSet::addRulesFromSheet(StyleSheetContents* sheet, const MediaQueryEvaluator& medium, StyleResolver* resolver, const ContainerNode* scope)
-{
-    ASSERT(sheet);
-    
-    const Vector<RefPtr<StyleRuleImport> >& importRules = sheet->importRules();
-    for (unsigned i = 0; i < importRules.size(); ++i) {
-        StyleRuleImport* importRule = importRules[i].get();
-        if (importRule->styleSheet() && (!importRule->mediaQueries() || medium.eval(importRule->mediaQueries(), resolver)))
-            addRulesFromSheet(importRule->styleSheet(), medium, resolver, scope);
-    }
-    bool hasDocumentSecurityOrigin = resolver && resolver->document()->securityOrigin()->canRequest(sheet->baseURL());
-
-    const Vector<RefPtr<StyleRuleBase> >& rules = sheet->childRules();
-    for (unsigned i = 0; i < rules.size(); ++i) {
-        StyleRuleBase* rule = rules[i].get();
-
-        ASSERT(!rule->isImportRule());
-        if (rule->isStyleRule())
-            addStyleRule(static_cast<StyleRule*>(rule), hasDocumentSecurityOrigin, !scope);
-        else if (rule->isPageRule())
-            addPageRule(static_cast<StyleRulePage*>(rule));
-        else if (rule->isMediaRule()) {
-            StyleRuleMedia* mediaRule = static_cast<StyleRuleMedia*>(rule);
-
-            if ((!mediaRule->mediaQueries() || medium.eval(mediaRule->mediaQueries(), resolver))) {
-                // Traverse child elements of the @media rule.
-                const Vector<RefPtr<StyleRuleBase> >& childRules = mediaRule->childRules();
-                for (unsigned j = 0; j < childRules.size(); ++j) {
-                    StyleRuleBase* childRule = childRules[j].get();
-                    if (childRule->isStyleRule())
-                        addStyleRule(static_cast<StyleRule*>(childRule), hasDocumentSecurityOrigin, !scope);
-                    else if (childRule->isPageRule())
-                        addPageRule(static_cast<StyleRulePage*>(childRule));
-                    else if (childRule->isFontFaceRule() && resolver) {
-                        // Add this font face to our set.
-                        // FIXME(BUG 72461): We don't add @font-face rules of scoped style sheets for the moment.
-                        if (scope)
-                            continue;
-                        const StyleRuleFontFace* fontFaceRule = static_cast<StyleRuleFontFace*>(childRule);
-                        resolver->fontSelector()->addFontFaceRule(fontFaceRule);
-                        resolver->invalidateMatchedPropertiesCache();
-                    } else if (childRule->isKeyframesRule() && resolver) {
-                        // Add this keyframe rule to our set.
-                        // FIXME(BUG 72462): We don't add @keyframe rules of scoped style sheets for the moment.
-                        if (scope)
-                            continue;
-                        resolver->addKeyframeStyle(static_cast<StyleRuleKeyframes*>(childRule));
-                    }
-                } // for rules
-            } // if rules
-        } else if (rule->isFontFaceRule() && resolver) {
-            // Add this font face to our set.
-            // FIXME(BUG 72461): We don't add @font-face rules of scoped style sheets for the moment.
-            if (scope)
-                continue;
-            const StyleRuleFontFace* fontFaceRule = static_cast<StyleRuleFontFace*>(rule);
-            resolver->fontSelector()->addFontFaceRule(fontFaceRule);
-            resolver->invalidateMatchedPropertiesCache();
-        } else if (rule->isKeyframesRule() && resolver) {
-            // FIXME (BUG 72462): We don't add @keyframe rules of scoped style sheets for the moment.
-            if (scope)
-                continue;
-            resolver->addKeyframeStyle(static_cast<StyleRuleKeyframes*>(rule));
-        }
-#if ENABLE(CSS_REGIONS)
-        else if (rule->isRegionRule() && resolver) {
-            // FIXME (BUG 72472): We don't add @-webkit-region rules of scoped style sheets for the moment.
-            if (scope)
-                continue;
-            addRegionRule(static_cast<StyleRuleRegion*>(rule), hasDocumentSecurityOrigin);
-        }
-#endif
-    }
-    if (m_autoShrinkToFitEnabled)
-        shrinkToFit();
-}
-
-void RuleSet::addStyleRule(StyleRule* rule, bool hasDocumentSecurityOrigin, bool canUseFastCheckSelector, bool isInRegionRule)
-{
-    for (size_t selectorIndex = 0; selectorIndex != notFound; selectorIndex = rule->selectorList().indexOfNextSelectorAfter(selectorIndex))
-        addRule(rule, selectorIndex, hasDocumentSecurityOrigin, canUseFastCheckSelector, isInRegionRule);
-}
-
-static inline void shrinkMapVectorsToFit(RuleSet::AtomRuleMap& map)
-{
-    RuleSet::AtomRuleMap::iterator end = map.end();
-    for (RuleSet::AtomRuleMap::iterator it = map.begin(); it != end; ++it)
-        it->second->shrinkToFit();
-}
-
-void RuleSet::shrinkToFit()
-{
-    shrinkMapVectorsToFit(m_idRules);
-    shrinkMapVectorsToFit(m_classRules);
-    shrinkMapVectorsToFit(m_tagRules);
-    shrinkMapVectorsToFit(m_shadowPseudoElementRules);
-    m_linkPseudoClassRules.shrinkToFit();
-    m_focusPseudoClassRules.shrinkToFit();
-    m_universalRules.shrinkToFit();
-    m_pageRules.shrinkToFit();
-}
 
 // -------------------------------------------------------------------------------------
 // this is mostly boring stuff on how to apply a certain rule to the renderstyle...
@@ -2936,7 +2374,7 @@ const StyleResolver::MatchedPropertiesCacheItem* StyleResolver::findFromMatchedP
     MatchedPropertiesCache::iterator it = m_matchedPropertiesCache.find(hash);
     if (it == m_matchedPropertiesCache.end())
         return 0;
-    MatchedPropertiesCacheItem& cacheItem = it->second;
+    MatchedPropertiesCacheItem& cacheItem = it->value;
 
     size_t size = matchResult.matchedProperties.size();
     if (size != cacheItem.matchedProperties.size())
@@ -2952,10 +2390,10 @@ const StyleResolver::MatchedPropertiesCacheItem* StyleResolver::findFromMatchedP
 
 void StyleResolver::addToMatchedPropertiesCache(const RenderStyle* style, const RenderStyle* parentStyle, unsigned hash, const MatchResult& matchResult)
 {
-    static unsigned matchedDeclarationCacheAdditionsBetweenSweeps = 100;
+    static const unsigned matchedDeclarationCacheAdditionsBetweenSweeps = 100;
     if (++m_matchedPropertiesCacheAdditionsSinceLastSweep >= matchedDeclarationCacheAdditionsBetweenSweeps) {
-        sweepMatchedPropertiesCache();
-        m_matchedPropertiesCacheAdditionsSinceLastSweep = 0;
+        static const unsigned matchedDeclarationCacheSweepTimeInSeconds = 60;
+        m_matchedPropertiesCacheSweepTimer.startOneShot(matchedDeclarationCacheSweepTimeInSeconds);
     }
 
     ASSERT(hash);
@@ -3173,13 +2611,10 @@ static void collectCSSOMWrappers(HashMap<StyleRule*, RefPtr<CSSStyleRule> >& wra
 
 static void collectCSSOMWrappers(HashMap<StyleRule*, RefPtr<CSSStyleRule> >& wrapperMap, DocumentStyleSheetCollection* styleSheetCollection)
 {
-    const Vector<RefPtr<StyleSheet> >& styleSheets = styleSheetCollection->authorStyleSheets();
-    for (unsigned i = 0; i < styleSheets.size(); ++i) {
-        StyleSheet* styleSheet = styleSheets[i].get();
-        if (!styleSheet->isCSSStyleSheet())
-            continue;
-        collectCSSOMWrappers(wrapperMap, static_cast<CSSStyleSheet*>(styleSheet));
-    }
+    const Vector<RefPtr<CSSStyleSheet> >& styleSheets = styleSheetCollection->activeAuthorStyleSheets();
+    for (unsigned i = 0; i < styleSheets.size(); ++i)
+        collectCSSOMWrappers(wrapperMap, styleSheets[i].get());
+
     collectCSSOMWrappers(wrapperMap, styleSheetCollection->pageUserSheet());
     {
         const Vector<RefPtr<CSSStyleSheet> >* pageGroupUserSheets = styleSheetCollection->pageGroupUserSheets();
@@ -3807,9 +3242,6 @@ void StyleResolver::applyProperty(CSSPropertyID id, CSSValue* value)
         m_style->setBoxReflect(reflection.release());
         return;
     }
-    case CSSPropertyOpacity:
-        HANDLE_INHERIT_AND_INITIAL_AND_PRIMITIVE(opacity, Opacity)
-        return;
     case CSSPropertySrc: // Only used in @font-face rules.
         return;
     case CSSPropertyUnicodeRange: // Only used in @font-face rules.
@@ -3886,9 +3318,6 @@ void StyleResolver::applyProperty(CSSPropertyID id, CSSValue* value)
         }
         return;
     }
-    case CSSPropertyWebkitLineClamp:
-        HANDLE_INHERIT_AND_INITIAL_AND_PRIMITIVE(lineClamp, LineClamp)
-        return;
     case CSSPropertyWebkitLocale: {
         HANDLE_INHERIT_AND_INITIAL(locale, Locale);
         if (!primitiveValue)
@@ -3909,13 +3338,8 @@ void StyleResolver::applyProperty(CSSPropertyID id, CSSValue* value)
         setTextSizeAdjust(primitiveValue->getIdent() == CSSValueAuto);
         return;
     }
-#if ENABLE(DASHBOARD_SUPPORT) || ENABLE(WIDGET_REGION)
 #if ENABLE(DASHBOARD_SUPPORT)
     case CSSPropertyWebkitDashboardRegion:
-#endif
-#if ENABLE(WIDGET_REGION)
-    case CSSPropertyWebkitWidgetRegion:
-#endif
     {
         HANDLE_INHERIT_AND_INITIAL(dashboardRegions, DashboardRegions)
         if (!primitiveValue)
@@ -3953,8 +3377,17 @@ void StyleResolver::applyProperty(CSSPropertyID id, CSSValue* value)
             region = region->m_next.get();
         }
 
-        m_element->document()->setHasDashboardRegions(true);
+        m_element->document()->setHasAnnotatedRegions(true);
 
+        return;
+    }
+#endif
+#if ENABLE(DRAGGABLE_REGION)
+    case CSSPropertyWebkitAppRegion: {
+        if (!primitiveValue || !primitiveValue->getIdent())
+            return;
+        m_style->setDraggableRegionMode(primitiveValue->getIdent() == CSSValueDrag ? DraggableRegionDrag : DraggableRegionNoDrag);
+        m_element->document()->setHasAnnotatedRegions(true);
         return;
     }
 #endif
@@ -4023,11 +3456,6 @@ void StyleResolver::applyProperty(CSSPropertyID id, CSSValue* value)
         else if (isInherit)
             m_style->inheritTransitions(m_parentStyle->transitions());
         return;
-    case CSSPropertyPointerEvents:
-    {
-        HANDLE_INHERIT_AND_INITIAL_AND_PRIMITIVE(pointerEvents, PointerEvents)
-        return;
-    }
 #if ENABLE(TOUCH_EVENTS)
     case CSSPropertyWebkitTapHighlightColor: {
         HANDLE_INHERIT_AND_INITIAL(tapHighlightColor, TapHighlightColor);
@@ -4116,9 +3544,13 @@ void StyleResolver::applyProperty(CSSPropertyID id, CSSValue* value)
 
     // CSS Text Layout Module Level 3: Vertical writing support
     case CSSPropertyWebkitWritingMode: {
-        HANDLE_INHERIT_AND_INITIAL_AND_PRIMITIVE(writingMode, WritingMode)
+        HANDLE_INHERIT_AND_INITIAL(writingMode, WritingMode);
+        
+        if (primitiveValue)
+            m_style->setWritingMode(*primitiveValue);
+        
         // FIXME: It is not ok to modify document state while applying style.
-        if (!isInherit && !isInitial && m_element && m_element == m_element->document()->documentElement())
+        if (m_element && m_element == m_element->document()->documentElement())
             m_element->document()->setWritingModeSetOnDocumentElement(true);
         FontDescription fontDescription = m_style->fontDescription();
         fontDescription.setOrientation(m_style->isHorizontalWritingMode() ? Horizontal : Vertical);
@@ -4292,6 +3724,7 @@ void StyleResolver::applyProperty(CSSPropertyID id, CSSValue* value)
     case CSSPropertyMaxWidth:
     case CSSPropertyMinHeight:
     case CSSPropertyMinWidth:
+    case CSSPropertyOpacity:
     case CSSPropertyOrphans:
     case CSSPropertyOutline:
     case CSSPropertyOutlineColor:
@@ -4310,6 +3743,7 @@ void StyleResolver::applyProperty(CSSPropertyID id, CSSValue* value)
     case CSSPropertyPageBreakAfter:
     case CSSPropertyPageBreakBefore:
     case CSSPropertyPageBreakInside:
+    case CSSPropertyPointerEvents:
     case CSSPropertyPosition:
     case CSSPropertyResize:
     case CSSPropertyRight:
@@ -4402,6 +3836,7 @@ void StyleResolver::applyProperty(CSSPropertyID id, CSSValue* value)
     case CSSPropertyWebkitHyphens:
     case CSSPropertyWebkitLineAlign:
     case CSSPropertyWebkitLineBreak:
+    case CSSPropertyWebkitLineClamp:
     case CSSPropertyWebkitLineGrid:
     case CSSPropertyWebkitLineSnap:
     case CSSPropertyWebkitMarqueeDirection:
@@ -4437,10 +3872,10 @@ void StyleResolver::applyProperty(CSSPropertyID id, CSSValue* value)
 #endif
     case CSSPropertyWebkitRtlOrdering:
     case CSSPropertyWebkitTextCombine:
-#if ENABLE(CSS3_TEXT_DECORATION)
+#if ENABLE(CSS3_TEXT)
     case CSSPropertyWebkitTextDecorationLine:
     case CSSPropertyWebkitTextDecorationStyle:
-#endif // CSS3_TEXT_DECORATION
+#endif // CSS3_TEXT
     case CSSPropertyWebkitTextEmphasisColor:
     case CSSPropertyWebkitTextEmphasisPosition:
     case CSSPropertyWebkitTextEmphasisStyle:
@@ -4842,6 +4277,13 @@ bool StyleResolver::hasSelectorForAttribute(const AtomicString &attrname) const
     return m_features.attrsInRules.contains(attrname.impl());
 }
 
+bool StyleResolver::hasSelectorForId(const AtomicString& idValue) const
+{
+    if (idValue.isEmpty())
+        return false;
+    return m_features.idsInRules.contains(idValue.impl());
+}
+
 void StyleResolver::addViewportDependentMediaQueryResult(const MediaQueryExp* expr, bool result)
 {
     m_viewportDependentMediaQueryResults.append(adoptPtr(new MediaQueryResult(*expr, result)));
@@ -5188,7 +4630,7 @@ void StyleResolver::loadPendingSVGDocuments()
                 continue;
 
             // Stash the CachedSVGDocument on the reference filter.
-            referenceFilter->setData(cachedDocument);
+            referenceFilter->setData(adoptPtr(new CachedSVGDocumentReference(cachedDocument)));
         }
     }
     m_pendingSVGDocuments.clear();
@@ -5371,11 +4813,12 @@ PassRefPtr<CustomFilterOperation> StyleResolver::createCustomFilterOperation(Web
     RefPtr<StyleShader> vertexShader = styleShader(shadersList->itemWithoutBoundsCheck(0));
 
     RefPtr<StyleShader> fragmentShader;
+    CustomFilterProgramType programType = PROGRAM_TYPE_NO_ELEMENT_TEXTURE;
     CustomFilterProgramMixSettings mixSettings;
     if (shadersList->length() > 1) {
         CSSValue* fragmentShaderOrMixFunction = shadersList->itemWithoutBoundsCheck(1);
         if (fragmentShaderOrMixFunction->isWebKitCSSMixFunctionValue()) {
-            mixSettings.enabled = true;
+            programType = PROGRAM_TYPE_BLENDS_ELEMENT_TEXTURE;
             WebKitCSSMixFunctionValue* mixFunction = static_cast<WebKitCSSMixFunctionValue*>(fragmentShaderOrMixFunction);
             CSSValueListIterator iterator(mixFunction);
 
@@ -5417,14 +4860,14 @@ PassRefPtr<CustomFilterOperation> StyleResolver::createCustomFilterOperation(Web
             if (primitiveValue->isNumber()) {
                 // If only one integer value is specified, it will set both
                 // the rows and the columns.
-                meshRows = meshColumns = primitiveValue->getIntValue();
+                meshColumns = meshRows = primitiveValue->getIntValue();
                 iterator.advance();
                 
-                // Try to match another number for the columns.
+                // Try to match another number for the rows.
                 if (iterator.hasMore() && iterator.isPrimitiveValue()) {
                     CSSPrimitiveValue* primitiveValue = static_cast<CSSPrimitiveValue*>(iterator.value());
                     if (primitiveValue->isNumber()) {
-                        meshColumns = primitiveValue->getIntValue();
+                        meshRows = primitiveValue->getIntValue();
                         iterator.advance();
                     }
                 }
@@ -5465,7 +4908,7 @@ PassRefPtr<CustomFilterOperation> StyleResolver::createCustomFilterOperation(Web
     if (parametersValue && !parseCustomFilterParameterList(parametersValue, parameterList))
         return 0;
     
-    RefPtr<StyleCustomFilterProgram> program = StyleCustomFilterProgram::create(vertexShader.release(), fragmentShader.release(), mixSettings);
+    RefPtr<StyleCustomFilterProgram> program = StyleCustomFilterProgram::create(vertexShader.release(), fragmentShader.release(), programType, mixSettings);
     return CustomFilterOperation::create(program.release(), parameterList, meshRows, meshColumns, meshBoxType, meshType);
 }
 #endif
@@ -5523,7 +4966,7 @@ bool StyleResolver::createFilterOperations(CSSValue* inValue, RenderStyle* style
                 if (!svgDocumentValue->loadRequested())
                     m_pendingSVGDocuments.set(operation.get(), svgDocumentValue);
                 else
-                    operation->setData(svgDocumentValue->cachedSVGDocument());
+                    operation->setData(adoptPtr(new CachedSVGDocumentReference(svgDocumentValue->cachedSVGDocument())));
             }
             operations.operations().append(operation);
 #endif
@@ -5785,10 +5228,7 @@ void StyleResolver::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
 #if ENABLE(CSS_FILTERS) && ENABLE(SVG)
     info.addMember(m_pendingSVGDocuments);
 #endif
-#if ENABLE(STYLE_SCOPED)
-    info.addMember(m_scopedAuthorStyles);
-    info.addMember(m_scopeStack);
-#endif
+    info.addMember(m_scopeResolver);
 
     // FIXME: move this to a place where it would be called only once?
     info.addMember(defaultStyle);

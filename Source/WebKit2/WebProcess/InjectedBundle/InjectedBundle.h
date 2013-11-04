@@ -168,8 +168,6 @@ public:
     void didReceiveMessage(const String&, APIObject*);
     void didReceiveMessageToPage(WebPage*, const String&, APIObject*);
 
-    void didReceiveMessage(CoreIPC::Connection*, CoreIPC::MessageID, CoreIPC::ArgumentDecoder*);
-
     static void reportException(JSContextRef, JSValueRef exception);
 
     static bool isProcessingUserGesture();
@@ -179,6 +177,8 @@ public:
     static size_t workerThreadCount();
 
     void setTabKeyCyclesThroughElements(WebPage*, bool enabled);
+    void setSerialLoadingEnabled(bool);
+    void dispatchPendingLoadRequests();
 
 private:
     explicit InjectedBundle(const String&);

@@ -39,6 +39,7 @@
 #include "InspectorInstrumentation.h"
 #include "Page.h"
 #include "ProgressTracker.h"
+#include "ResourceBuffer.h"
 #include "ResourceError.h"
 #include "ResourceHandle.h"
 #include "ResourceLoadScheduler.h"
@@ -48,7 +49,7 @@
 
 namespace WebCore {
 
-PassRefPtr<SharedBuffer> ResourceLoader::resourceData()
+PassRefPtr<ResourceBuffer> ResourceLoader::resourceData()
 {
     return m_resourceData;
 }
@@ -88,9 +89,9 @@ void ResourceLoader::releaseResources()
     // the resources to prevent a double dealloc of WebView <rdar://problem/4372628>
     m_reachedTerminalState = true;
 
-    m_identifier = 0;
-
     resourceLoadScheduler()->remove(this);
+
+    m_identifier = 0;
 
     if (m_handle) {
         // Clear out the ResourceHandle's client so that it doesn't try to call
@@ -198,12 +199,12 @@ void ResourceLoader::addData(const char* data, int length, bool allAtOnce)
         return;
 
     if (allAtOnce) {
-        m_resourceData = SharedBuffer::create(data, length);
+        m_resourceData = ResourceBuffer::create(data, length);
         return;
     }
         
     if (!m_resourceData)
-        m_resourceData = SharedBuffer::create(data, length);
+        m_resourceData = ResourceBuffer::create(data, length);
     else
         m_resourceData->append(data, length);
 }
@@ -238,6 +239,7 @@ void ResourceLoader::willSendRequest(ResourceRequest& request, const ResourceRes
 
     if (!redirectResponse.isNull())
         resourceLoadScheduler()->crossOriginRedirectReceived(this, request.url());
+
     m_request = request;
 }
 
@@ -288,7 +290,7 @@ void ResourceLoader::willStopBufferingData(const char* data, int length)
         return;
 
     ASSERT(!m_resourceData);
-    m_resourceData = SharedBuffer::create(data, length);
+    m_resourceData = ResourceBuffer::create(data, length);
 }
 
 void ResourceLoader::didFinishLoading(double finishTime)
@@ -482,7 +484,7 @@ void ResourceLoader::didReceiveAuthenticationChallenge(const AuthenticationChall
     }
     // Only these platforms provide a way to continue without credentials.
     // If we can't continue with credentials, we need to cancel the load altogether.
-#if PLATFORM(MAC) || USE(CFNETWORK) || USE(CURL)
+#if PLATFORM(MAC) || USE(CFNETWORK) || USE(CURL) || PLATFORM(GTK)
     handle()->receivedRequestToContinueWithoutCredential(challenge);
     ASSERT(!handle()->hasAuthenticationChallenge());
 #else

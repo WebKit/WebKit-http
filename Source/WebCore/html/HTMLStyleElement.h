@@ -41,12 +41,17 @@ public:
 
     void setType(const AtomicString&);
 
-#if ENABLE(STYLE_SCOPED)
     bool scoped() const;
     void setScoped(bool);
     Element* scopingElement() const;
-    bool isRegisteredAsScoped() const;
-#endif
+    bool isRegisteredAsScoped() const
+    {
+        // Note: We cannot rely on the 'scoped' attribute still being present when this method is invoked.
+        // Therefore we cannot rely on scoped()!
+        if (m_scopedStyleRegistrationState == NotRegistered)
+            return false;
+        return true;
+    }
 
     using StyleElement::sheet;
 
@@ -77,23 +82,19 @@ private:
     virtual const AtomicString& media() const;
     virtual const AtomicString& type() const;
 
-#if ENABLE(STYLE_SCOPED)
     void scopedAttributeChanged(bool);
     void registerWithScopingNode(bool);
     void unregisterWithScopingNode(ContainerNode*);
-#endif
 
     bool m_firedLoad;
     bool m_loadedSheet;
 
-#if ENABLE(STYLE_SCOPED)
     enum ScopedStyleRegistrationState {
         NotRegistered,
         RegisteredAsScoped,
         RegisteredInShadowRoot
     };
     ScopedStyleRegistrationState m_scopedStyleRegistrationState;
-#endif
 };
 
 } //namespace

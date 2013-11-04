@@ -45,6 +45,7 @@ DOMWindowPagePopup::DOMWindowPagePopup(PagePopupClient* popupClient)
 
 DOMWindowPagePopup::~DOMWindowPagePopup()
 {
+    m_controller->clearPagePopupClient();
 }
 
 const AtomicString& DOMWindowPagePopup::supplementName()
@@ -65,6 +66,12 @@ void DOMWindowPagePopup::install(DOMWindow* window, PagePopupClient* popupClient
     ASSERT(window);
     ASSERT(popupClient);
     provideTo(window, supplementName(), adoptPtr(new DOMWindowPagePopup(popupClient)));
+}
+
+void DOMWindowPagePopup::uninstall(DOMWindow* window)
+{
+    ASSERT(window);
+    window->removeSupplement(supplementName());
 }
 
 }

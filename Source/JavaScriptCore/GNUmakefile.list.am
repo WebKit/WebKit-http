@@ -67,6 +67,7 @@ javascriptcore_sources += \
 	Source/JavaScriptCore/assembler/CodeLocation.h \
 	Source/JavaScriptCore/assembler/LinkBuffer.cpp \
 	Source/JavaScriptCore/assembler/LinkBuffer.h \
+	Source/JavaScriptCore/assembler/MacroAssembler.cpp \
 	Source/JavaScriptCore/assembler/MacroAssembler.h \
 	Source/JavaScriptCore/assembler/MacroAssemblerARM.cpp \
 	Source/JavaScriptCore/assembler/MacroAssemblerARM.h \
@@ -84,6 +85,7 @@ javascriptcore_sources += \
 	Source/JavaScriptCore/assembler/X86Assembler.h \
 	Source/JavaScriptCore/bytecode/ArrayProfile.cpp \
 	Source/JavaScriptCore/bytecode/ArrayProfile.h \
+	Source/JavaScriptCore/bytecode/ByValInfo.h \
 	Source/JavaScriptCore/bytecode/BytecodeConventions.h \
 	Source/JavaScriptCore/bytecode/CallLinkInfo.cpp \
 	Source/JavaScriptCore/bytecode/CallLinkInfo.h \
@@ -104,7 +106,6 @@ javascriptcore_sources += \
 	Source/JavaScriptCore/bytecode/ExpressionRangeInfo.h \
 	Source/JavaScriptCore/bytecode/GetByIdStatus.cpp \
 	Source/JavaScriptCore/bytecode/GetByIdStatus.h \
-	Source/JavaScriptCore/bytecode/GlobalResolveInfo.h \
 	Source/JavaScriptCore/bytecode/HandlerInfo.h \
 	Source/JavaScriptCore/bytecode/Instruction.h \
 	Source/JavaScriptCore/bytecode/JumpTable.cpp \
@@ -131,6 +132,7 @@ javascriptcore_sources += \
 	Source/JavaScriptCore/bytecode/PutKind.h \
 	Source/JavaScriptCore/bytecode/ResolveGlobalStatus.cpp \
 	Source/JavaScriptCore/bytecode/ResolveGlobalStatus.h \
+	Source/JavaScriptCore/bytecode/ResolveOperation.h \
 	Source/JavaScriptCore/bytecode/SamplingTool.cpp \
 	Source/JavaScriptCore/bytecode/SamplingTool.h \
 	Source/JavaScriptCore/bytecode/SpecialPointer.cpp \
@@ -168,6 +170,7 @@ javascriptcore_sources += \
 	Source/JavaScriptCore/dfg/DFGCCallHelpers.h \
 	Source/JavaScriptCore/dfg/DFGCFGSimplificationPhase.cpp \
 	Source/JavaScriptCore/dfg/DFGCFGSimplificationPhase.h \
+	Source/JavaScriptCore/dfg/DFGCallArrayAllocatorSlowPathGenerator.h \
 	Source/JavaScriptCore/dfg/DFGCapabilities.cpp \
 	Source/JavaScriptCore/dfg/DFGCapabilities.h \
 	Source/JavaScriptCore/dfg/DFGCFAPhase.cpp \
@@ -254,6 +257,9 @@ javascriptcore_sources += \
 	Source/JavaScriptCore/heap/CopiedSpace.cpp \
 	Source/JavaScriptCore/heap/CopiedSpace.h \
 	Source/JavaScriptCore/heap/CopiedSpaceInlineMethods.h \
+    Source/JavaScriptCore/heap/CopyVisitor.h \
+    Source/JavaScriptCore/heap/CopyVisitorInlineMethods.h \
+    Source/JavaScriptCore/heap/CopyVisitor.cpp \
 	Source/JavaScriptCore/heap/CardSet.h \
 	Source/JavaScriptCore/heap/ConservativeRoots.cpp \
 	Source/JavaScriptCore/heap/ConservativeRoots.h \
@@ -278,8 +284,12 @@ javascriptcore_sources += \
 	Source/JavaScriptCore/heap/BlockAllocator.h \
     Source/JavaScriptCore/heap/GCThreadSharedData.cpp \
     Source/JavaScriptCore/heap/GCThreadSharedData.h \
+    Source/JavaScriptCore/heap/GCThread.cpp \
+    Source/JavaScriptCore/heap/GCThread.h \
 	Source/JavaScriptCore/heap/Heap.cpp \
 	Source/JavaScriptCore/heap/Heap.h \
+    Source/JavaScriptCore/heap/HeapStatistics.cpp \
+    Source/JavaScriptCore/heap/HeapStatistics.h \
 	Source/JavaScriptCore/heap/JITStubRoutineSet.cpp \
 	Source/JavaScriptCore/heap/JITStubRoutineSet.h \
 	Source/JavaScriptCore/heap/ListableHandler.h \
@@ -365,8 +375,9 @@ javascriptcore_sources += \
 	Source/JavaScriptCore/interpreter/CallFrame.h \
 	Source/JavaScriptCore/interpreter/Interpreter.cpp \
 	Source/JavaScriptCore/interpreter/Interpreter.h \
-	Source/JavaScriptCore/interpreter/RegisterFile.cpp \
-	Source/JavaScriptCore/interpreter/RegisterFile.h \
+	Source/JavaScriptCore/interpreter/JSStack.cpp \
+	Source/JavaScriptCore/interpreter/JSStack.h \
+	Source/JavaScriptCore/interpreter/JSStackInlines.h \
 	Source/JavaScriptCore/interpreter/Register.h \
 	Source/JavaScriptCore/interpreter/VMInspector.cpp \
 	Source/JavaScriptCore/interpreter/VMInspector.h \
@@ -519,6 +530,7 @@ javascriptcore_sources += \
 	Source/JavaScriptCore/runtime/Identifier.h \
 	Source/JavaScriptCore/runtime/IndexingHeaderInlineMethods.h \
 	Source/JavaScriptCore/runtime/IndexingHeader.h \
+	Source/JavaScriptCore/runtime/IndexingType.cpp \
 	Source/JavaScriptCore/runtime/IndexingType.h \
 	Source/JavaScriptCore/runtime/InitializeThreading.cpp \
 	Source/JavaScriptCore/runtime/InitializeThreading.h \
@@ -673,6 +685,7 @@ javascriptcore_sources += \
 	Source/JavaScriptCore/runtime/TimeoutChecker.cpp \
 	Source/JavaScriptCore/runtime/TimeoutChecker.h \
 	Source/JavaScriptCore/runtime/Tracing.h \
+	Source/JavaScriptCore/runtime/TypedArrayDescriptor.h \
 	Source/JavaScriptCore/runtime/Uint16WithFraction.h \
 	Source/JavaScriptCore/runtime/WeakGCMap.h \
 	Source/JavaScriptCore/runtime/WeakRandom.h \
@@ -720,6 +733,7 @@ offlineasm_nosources += \
 	Source/JavaScriptCore/offlineasm/opt.rb \
 	Source/JavaScriptCore/offlineasm/parser.rb \
 	Source/JavaScriptCore/offlineasm/registers.rb \
+	Source/JavaScriptCore/offlineasm/risc.rb \
 	Source/JavaScriptCore/offlineasm/self_hash.rb \
 	Source/JavaScriptCore/offlineasm/settings.rb \
 	Source/JavaScriptCore/offlineasm/transform.rb \

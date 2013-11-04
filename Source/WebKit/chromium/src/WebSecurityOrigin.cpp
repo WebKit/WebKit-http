@@ -33,8 +33,8 @@
 
 #include "KURL.h"
 #include "SecurityOrigin.h"
-#include "platform/WebString.h"
-#include "platform/WebURL.h"
+#include <public/WebString.h>
+#include <public/WebURL.h>
 #include <wtf/PassRefPtr.h>
 
 using namespace WebCore;
@@ -154,6 +154,11 @@ void WebSecurityOrigin::assign(WebSecurityOriginPrivate* p)
     if (m_private)
         m_private->deref();
     m_private = p;
+}
+
+void WebSecurityOrigin::grantLoadLocalResources() const
+{
+    get()->grantLoadLocalResources();
 }
 
 } // namespace WebKit

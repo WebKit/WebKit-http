@@ -29,11 +29,14 @@
 #include "platform/WebCommon.h"
 
 namespace WebKit {
+
+class WebIDBDatabaseError;
+
 class WebIDBTransactionCallbacks {
 public:
     virtual ~WebIDBTransactionCallbacks() { }
 
-    virtual void onAbort() { WEBKIT_ASSERT_NOT_REACHED(); }
+    virtual void onAbort(const WebIDBDatabaseError&) { WEBKIT_ASSERT_NOT_REACHED(); }
     virtual void onComplete() { WEBKIT_ASSERT_NOT_REACHED(); }
 };
 

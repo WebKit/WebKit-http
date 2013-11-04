@@ -93,25 +93,27 @@ inline void CopiedSpace::pinIfNecessary(void* opaquePointer)
         pin(block);
 }
 
-inline void CopiedSpace::startedCopying()
+inline void CopiedSpace::recycleEvacuatedBlock(CopiedBlock* block)
 {
-    std::swap(m_fromSpace, m_toSpace);
-
-    m_blockFilter.reset();
-    m_allocator.resetCurrentBlock();
-
-    ASSERT(!m_inCopyingPhase);
-    ASSERT(!m_numberOfLoanedBlocks);
-    m_inCopyingPhase = true;
+    ASSERT(block);
+    ASSERT(block->canBeRecycled());
+    ASSERT(!block->m_isPinned);
+    {
+        SpinLockHolder locker(&m_toSpaceLock);
+        m_blockSet.remove(block);
+        m_fromSpace->remove(block);
+    }
+    m_heap->blockAllocator().deallocate(CopiedBlock::destroy(block));
 }
 
-inline void CopiedSpace::recycleBlock(CopiedBlock* block)
+inline void CopiedSpace::recycleBorrowedBlock(CopiedBlock* block)
 {
     m_heap->blockAllocator().deallocate(CopiedBlock::destroy(block));
 
     {
         MutexLocker locker(m_loanedBlocksLock);
         ASSERT(m_numberOfLoanedBlocks > 0);
+        ASSERT(m_inCopyingPhase);
         m_numberOfLoanedBlocks--;
         if (!m_numberOfLoanedBlocks)
             m_loanedBlocksCondition.signal();
@@ -121,7 +123,7 @@ inline void CopiedSpace::recycleBlock(CopiedBlock* block)
 inline CopiedBlock* CopiedSpace::allocateBlockForCopyingPhase()
 {
     ASSERT(m_inCopyingPhase);
-    CopiedBlock* block = CopiedBlock::createNoZeroFill(m_heap->blockAllocator().allocate());
+    CopiedBlock* block = CopiedBlock::createNoZeroFill(m_heap->blockAllocator().allocate<CopiedBlock>());
 
     {
         MutexLocker locker(m_loanedBlocksLock);
@@ -139,7 +141,7 @@ inline void CopiedSpace::allocateBlock()
 
     m_allocator.resetCurrentBlock();
     
-    CopiedBlock* block = CopiedBlock::create(m_heap->blockAllocator().allocate());
+    CopiedBlock* block = CopiedBlock::create(m_heap->blockAllocator().allocate<CopiedBlock>());
         
     m_toSpace->push(block);
     m_blockFilter.add(reinterpret_cast<Bits>(block));

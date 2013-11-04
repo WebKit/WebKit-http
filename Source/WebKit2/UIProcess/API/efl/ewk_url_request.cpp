@@ -26,44 +26,35 @@
 #include "config.h"
 #include "ewk_url_request.h"
 
-#include "WKAPICast.h"
-#include "WKEinaSharedString.h"
-#include "WKURL.h"
-#include "WKURLRequest.h"
-#include "WebURLRequest.h"
 #include "ewk_url_request_private.h"
-#include <wtf/text/CString.h>
 
 using namespace WebKit;
 
-/**
- * \struct  _Ewk_Url_Request
- * @brief   Contains the URL request data.
- */
-struct _Ewk_Url_Request {
-    unsigned int __ref; /**< the reference count of the object */
+Ewk_Url_Request::Ewk_Url_Request(WKURLRequestRef requestRef)
+    : m_url(AdoptWK, WKURLRequestCopyURL(requestRef))
+    , m_firstParty(AdoptWK, WKURLRequestCopyFirstPartyForCookies(requestRef))
+    , m_httpMethod(AdoptWK, WKURLRequestCopyHTTPMethod(requestRef))
+{ }
 
-    WKEinaSharedString url;
-    WKEinaSharedString first_party;
-    WKEinaSharedString http_method;
+const char* Ewk_Url_Request::url() const
+{
+    return m_url;
+}
 
-    _Ewk_Url_Request(WKURLRequestRef requestRef)
-        : __ref(1)
-        , url(AdoptWK, WKURLRequestCopyURL(requestRef))
-        , first_party(AdoptWK, WKURLRequestCopyFirstPartyForCookies(requestRef))
-        , http_method(AdoptWK, WKURLRequestCopyHTTPMethod(requestRef))
-    { }
+const char* Ewk_Url_Request::firstParty() const
+{
+    return m_firstParty;
+}
 
-    ~_Ewk_Url_Request()
-    {
-        ASSERT(!__ref);
-    }
-};
+const char* Ewk_Url_Request::httpMethod() const
+{
+    return m_httpMethod;
+}
 
 Ewk_Url_Request* ewk_url_request_ref(Ewk_Url_Request* request)
 {
     EINA_SAFETY_ON_NULL_RETURN_VAL(request, 0);
-    ++request->__ref;
+    request->ref();
 
     return request;
 }
@@ -72,40 +63,26 @@ void ewk_url_request_unref(Ewk_Url_Request* request)
 {
     EINA_SAFETY_ON_NULL_RETURN(request);
 
-    if (--request->__ref)
-        return;
-
-    delete request;
+    request->deref();
 }
 
 const char* ewk_url_request_url_get(const Ewk_Url_Request* request)
 {
     EINA_SAFETY_ON_NULL_RETURN_VAL(request, 0);
 
-    return request->url;
+    return request->url();
 }
 
 const char* ewk_request_cookies_first_party_get(const Ewk_Url_Request* request)
 {
     EINA_SAFETY_ON_NULL_RETURN_VAL(request, 0);
 
-    return request->first_party;
+    return request->firstParty();
 }
 
 const char* ewk_url_request_http_method_get(const Ewk_Url_Request* request)
 {
     EINA_SAFETY_ON_NULL_RETURN_VAL(request, 0);
 
-    return request->http_method;
-}
-
-/**
- * @internal
- * Constructs a Ewk_Url_Request from a WKURLRequest.
- */
-Ewk_Url_Request* ewk_url_request_new(WKURLRequestRef wkUrlRequest)
-{
-    EINA_SAFETY_ON_NULL_RETURN_VAL(wkUrlRequest, 0);
-
-    return new Ewk_Url_Request(wkUrlRequest);
+    return request->httpMethod();
 }

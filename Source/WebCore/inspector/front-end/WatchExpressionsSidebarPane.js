@@ -52,16 +52,18 @@ WebInspector.WatchExpressionsSidebarPane.prototype = {
 
         this.section = new WebInspector.WatchExpressionsSection();
         this.bodyElement.appendChild(this.section.element);
-    
+
         var refreshButton = document.createElement("button");
         refreshButton.className = "pane-title-button refresh";
         refreshButton.addEventListener("click", this._refreshButtonClicked.bind(this), false);
+        refreshButton.title = WebInspector.UIString("Refresh");
         this.titleElement.appendChild(refreshButton);
-    
+
         var addButton = document.createElement("button");
         addButton.className = "pane-title-button add";
         addButton.addEventListener("click", this._addButtonClicked.bind(this), false);
         this.titleElement.appendChild(addButton);
+        addButton.title = WebInspector.UIString("Add watch expression");
         this._requiresUpdate = true;
 
         if (WebInspector.settings.watchExpressions.get().length > 0)
@@ -125,6 +127,10 @@ WebInspector.WatchExpressionsSection = function()
 
     WebInspector.ObjectPropertiesSection.call(this, WebInspector.RemoteObject.fromPrimitiveValue(""));
 
+    this.treeElementConstructor = WebInspector.WatchedPropertyTreeElement;
+    this._expandedExpressions = {};
+    this._expandedProperties = {};
+
     this.emptyElement = document.createElement("div");
     this.emptyElement.className = "info";
     this.emptyElement.textContent = WebInspector.UIString("No Watch Expressions");
@@ -139,6 +145,7 @@ WebInspector.WatchExpressionsSection = function()
     this.element.addEventListener("mousemove", this._mouseMove.bind(this), true);
     this.element.addEventListener("mouseout", this._mouseOut.bind(this), true);
     this.element.addEventListener("dblclick", this._sectionDoubleClick.bind(this), false);
+    this.emptyElement.addEventListener("contextmenu", this._emptyElementContextMenu.bind(this), false);
 }
 
 WebInspector.WatchExpressionsSection.NewWatchExpression = "\xA0";
@@ -322,6 +329,13 @@ WebInspector.WatchExpressionsSection.prototype = {
         this._lastMouseMovePageY = pageY;
     },
 
+    _emptyElementContextMenu: function(event)
+    {
+        var contextMenu = new WebInspector.ContextMenu(event);
+        contextMenu.appendItem(WebInspector.UIString("Add watch expression"), this.addNewExpressionAndEdit.bind(this));
+        contextMenu.show();
+    },
+
     __proto__: WebInspector.ObjectPropertiesSection.prototype
 }
 
@@ -338,6 +352,7 @@ WebInspector.WatchExpressionsSection.CompareProperties = function(propertyA, pro
 /**
  * @constructor
  * @extends {WebInspector.ObjectPropertyTreeElement}
+ * @param {WebInspector.RemoteObjectProperty} property
  */
 WebInspector.WatchExpressionTreeElement = function(property)
 {
@@ -345,6 +360,30 @@ WebInspector.WatchExpressionTreeElement = function(property)
 }
 
 WebInspector.WatchExpressionTreeElement.prototype = {
+    onexpand: function()
+    {
+        WebInspector.ObjectPropertyTreeElement.prototype.onexpand.call(this);
+        this.treeOutline.section._expandedExpressions[this._expression()] = true;
+    },
+
+    oncollapse: function()
+    {
+        WebInspector.ObjectPropertyTreeElement.prototype.oncollapse.call(this);
+        delete this.treeOutline.section._expandedExpressions[this._expression()];
+    },
+
+    onattach: function()
+    {
+        WebInspector.ObjectPropertyTreeElement.prototype.onattach.call(this);
+        if (this.treeOutline.section._expandedExpressions[this._expression()])
+            this.expanded = true;
+    },
+
+    _expression: function()
+    {
+        return this.property.name;
+    },
+
     update: function()
     {
         WebInspector.ObjectPropertyTreeElement.prototype.update.call(this);
@@ -361,16 +400,28 @@ WebInspector.WatchExpressionTreeElement.prototype = {
         this.listItemElement.addEventListener("contextmenu", this._contextMenu.bind(this), false);
         this.listItemElement.insertBefore(deleteButton, this.listItemElement.firstChild);
     },
-    
-    _contextMenu: function(event)
+
+    /**
+     * @param {WebInspector.ContextMenu} contextMenu
+     * @override
+     */
+    populateContextMenu: function(contextMenu)
     {
-        var contextMenu = new WebInspector.ContextMenu();
-        contextMenu.appendItem(WebInspector.UIString("Delete watch expression"), this._deleteButtonClicked.bind(this));
+        if (!this.isEditing()) {
+            contextMenu.appendItem(WebInspector.UIString("Add watch expression"), this.treeOutline.section.addNewExpressionAndEdit.bind(this.treeOutline.section));
+            contextMenu.appendItem(WebInspector.UIString("Delete watch expression"), this._deleteButtonClicked.bind(this));
+        }
         if (this.treeOutline.section.watchExpressions.length > 1)
             contextMenu.appendItem(WebInspector.UIString("Delete all watch expressions"), this._deleteAllButtonClicked.bind(this));
-        contextMenu.show(event);
     },
-    
+
+    _contextMenu: function(event)
+    {
+        var contextMenu = new WebInspector.ContextMenu(event);
+        this.populateContextMenu(contextMenu);
+        contextMenu.show();
+    },
+
     _deleteAllButtonClicked: function()
     {
         this.treeOutline.section._deleteAllExpressions();
@@ -411,6 +462,40 @@ WebInspector.WatchExpressionTreeElement.prototype = {
 
         this.property.name = expression;
         this.treeOutline.section.updateExpression(this, expression);
+    },
+
+    __proto__: WebInspector.ObjectPropertyTreeElement.prototype
+}
+
+
+/**
+ * @constructor
+ * @extends {WebInspector.ObjectPropertyTreeElement}
+ * @param {WebInspector.RemoteObjectProperty} property
+ */
+WebInspector.WatchedPropertyTreeElement = function(property)
+{
+    WebInspector.ObjectPropertyTreeElement.call(this, property);
+}
+
+WebInspector.WatchedPropertyTreeElement.prototype = {
+    onattach: function()
+    {
+        WebInspector.ObjectPropertyTreeElement.prototype.onattach.call(this);
+        if (this.hasChildren && this.propertyPath() in this.treeOutline.section._expandedProperties)
+            this.expand();
+    },
+
+    onexpand: function()
+    {
+        WebInspector.ObjectPropertyTreeElement.prototype.onexpand.call(this);
+        this.treeOutline.section._expandedProperties[this.propertyPath()] = true;
+    },
+
+    oncollapse: function()
+    {
+        WebInspector.ObjectPropertyTreeElement.prototype.oncollapse.call(this);
+        delete this.treeOutline.section._expandedProperties[this.propertyPath()];
     },
 
     __proto__: WebInspector.ObjectPropertyTreeElement.prototype

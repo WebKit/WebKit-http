@@ -195,7 +195,7 @@ void JSValue::putToPrimitiveByIndex(ExecState* exec, unsigned propertyName, JSVa
 
 char* JSValue::description() const
 {
-    static const size_t size = 128;
+    static const size_t size = 256;
     static char description[size];
 
     if (!*this)
@@ -204,7 +204,7 @@ char* JSValue::description() const
         snprintf(description, size, "Int32: %d", asInt32());
     else if (isDouble()) {
 #if USE(JSVALUE64)
-        snprintf(description, size, "Double: %lx, %lf", reinterpretDoubleToIntptr(asDouble()), asDouble());
+        snprintf(description, size, "Double: %lld, %lf", (long long)reinterpretDoubleToInt64(asDouble()), asDouble());
 #else
         union {
             double asDouble;
@@ -213,9 +213,12 @@ char* JSValue::description() const
         u.asDouble = asDouble();
         snprintf(description, size, "Double: %08x:%08x, %lf", u.asTwoInt32s[1], u.asTwoInt32s[0], asDouble());
 #endif
-    } else if (isCell())
-        snprintf(description, size, "Cell: %p", asCell());
-    else if (isTrue())
+    } else if (isCell()) {
+        snprintf(
+            description, size, "Cell: %p (%p: %s, %s)",
+            asCell(), asCell()->structure(), asCell()->structure()->classInfo()->className,
+            indexingTypeToString(asCell()->structure()->indexingTypeIncludingHistory()));
+    } else if (isTrue())
         snprintf(description, size, "True");
     else if (isFalse())
         snprintf(description, size, "False");

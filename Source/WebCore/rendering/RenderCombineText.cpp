@@ -41,8 +41,10 @@ void RenderCombineText::styleDidChange(StyleDifference diff, const RenderStyle* 
     setStyleInternal(RenderStyle::clone(style()));
     RenderText::styleDidChange(diff, oldStyle);
 
-    if (m_isCombined)
+    if (m_isCombined) {
         RenderText::setTextInternal(originalText()); // This RenderCombineText has been combined once. Restore the original text for the next combineText().
+        m_isCombined = false;
+    }
 
     m_needsFontUpdate = true;
 }
@@ -71,15 +73,17 @@ void RenderCombineText::adjustTextOrigin(FloatPoint& textOrigin, const FloatRect
         textOrigin.move(boxRect.height() / 2 - ceilf(m_combinedTextWidth) / 2, style()->font().pixelSize());
 }
 
-void RenderCombineText::charactersToRender(int start, const UChar*& characters, int& length) const
+void RenderCombineText::getStringToRender(int start, String& string, int& length) const
 {
+    ASSERT(start >= 0);
     if (m_isCombined) {
-        length = originalText()->length();
-        characters = originalText()->characters();
+        string = originalText();
+        length = string.length();
         return;
     }
  
-    characters = text()->characters() + start;
+    string = text();
+    string = string.substringSharingImpl(static_cast<unsigned>(start), length);
 }
 
 void RenderCombineText::combineText()
@@ -94,7 +98,7 @@ void RenderCombineText::combineText()
     if (style()->isHorizontalWritingMode())
         return;
 
-    TextRun run = RenderBlock::constructTextRun(this, originalFont(), String(text()), style());
+    TextRun run = RenderBlock::constructTextRun(this, originalFont(), this, style());
     FontDescription description = originalFont().fontDescription();
     float emWidth = description.computedSize() * textCombineMargin;
     bool shouldUpdateFont = false;
@@ -102,6 +106,8 @@ void RenderCombineText::combineText()
     description.setOrientation(Horizontal); // We are going to draw combined text horizontally.
     m_combinedTextWidth = originalFont().width(run);
     m_isCombined = m_combinedTextWidth <= emWidth;
+
+    FontSelector* fontSelector = style()->font().fontSelector();
 
     if (m_isCombined)
         shouldUpdateFont = style()->setFontDescription(description); // Need to change font orientation to horizontal.
@@ -111,7 +117,7 @@ void RenderCombineText::combineText()
         for (size_t i = 0 ; i < WTF_ARRAY_LENGTH(widthVariants) ; ++i) {
             description.setWidthVariant(widthVariants[i]);
             Font compressedFont = Font(description, style()->font().letterSpacing(), style()->font().wordSpacing());
-            compressedFont.update(style()->font().fontSelector());
+            compressedFont.update(fontSelector);
             float runWidth = compressedFont.width(run);
             if (runWidth <= emWidth) {
                 m_combinedTextWidth = runWidth;
@@ -128,7 +134,7 @@ void RenderCombineText::combineText()
         shouldUpdateFont = style()->setFontDescription(originalFont().fontDescription());
 
     if (shouldUpdateFont)
-        style()->font().update(style()->font().fontSelector());
+        style()->font().update(fontSelector);
 
     if (m_isCombined) {
         DEFINE_STATIC_LOCAL(String, objectReplacementCharacterString, (&objectReplacementCharacter, 1));

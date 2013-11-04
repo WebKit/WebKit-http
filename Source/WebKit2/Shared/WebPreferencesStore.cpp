@@ -59,12 +59,13 @@ WebPreferencesStore::WebPreferencesStore()
 {
 }
 
-void WebPreferencesStore::encode(CoreIPC::ArgumentEncoder* encoder) const
+void WebPreferencesStore::encode(CoreIPC::ArgumentEncoder& encoder) const
 {
-    encoder->encode(m_stringValues);
-    encoder->encode(m_boolValues);
-    encoder->encode(m_uint32Values);
-    encoder->encode(m_doubleValues);
+    encoder.encode(m_stringValues);
+    encoder.encode(m_boolValues);
+    encoder.encode(m_uint32Values);
+    encoder.encode(m_doubleValues);
+    encoder.encode(m_floatValues);
 }
 
 bool WebPreferencesStore::decode(CoreIPC::ArgumentDecoder* decoder, WebPreferencesStore& result)
@@ -76,6 +77,8 @@ bool WebPreferencesStore::decode(CoreIPC::ArgumentDecoder* decoder, WebPreferenc
     if (!decoder->decode(result.m_uint32Values))
         return false;
     if (!decoder->decode(result.m_doubleValues))
+        return false;
+    if (!decoder->decode(result.m_floatValues))
         return false;
     return true;
 }
@@ -146,12 +149,25 @@ double defaultValueForKey(const String& key)
     return defaults.get(key);
 }
 
+template<>
+float defaultValueForKey(const String& key)
+{
+    static HashMap<String, float>& defaults = *new HashMap<String, float>;
+    if (defaults.isEmpty()) {
+#define DEFINE_FLOAT_DEFAULTS(KeyUpper, KeyLower, TypeName, Type, DefaultValue) defaults.set(WebPreferencesKey::KeyLower##Key(), DefaultValue);
+        FOR_EACH_WEBKIT_FLOAT_PREFERENCE(DEFINE_FLOAT_DEFAULTS)
+#undef DEFINE_FLOAT_DEFAULTS
+    }
+
+    return defaults.get(key);
+}
+
 template<typename MapType>
 static typename MapType::MappedType valueForKey(const MapType& map, const typename MapType::KeyType& key)
 {
     typename MapType::const_iterator it = map.find(key);
     if (it != map.end())
-        return it->second;
+        return it->value;
 
     return defaultValueForKey<typename MapType::MappedType>(key);
 }
@@ -187,7 +203,7 @@ bool WebPreferencesStore::getBoolValueForKey(const String& key) const
     // FIXME: Extend overriding to other key types used from TestRunner.
     BoolOverridesMap::const_iterator it = boolTestRunnerOverridesMap().find(key);
     if (it != boolTestRunnerOverridesMap().end())
-        return it->second;
+        return it->value;
     return valueForKey(m_boolValues, key);
 }
 
@@ -209,6 +225,16 @@ bool WebPreferencesStore::setDoubleValueForKey(const String& key, double value)
 double WebPreferencesStore::getDoubleValueForKey(const String& key) const
 {
     return valueForKey(m_doubleValues, key);
+}
+
+bool WebPreferencesStore::setFloatValueForKey(const String& key, float value) 
+{
+    return setValueForKey(m_floatValues, key, value);
+}
+
+float WebPreferencesStore::getFloatValueForKey(const String& key) const
+{
+    return valueForKey(m_floatValues, key);
 }
 
 } // namespace WebKit

@@ -486,8 +486,6 @@ Could be worth adding to the API.
 - (void)setMemoryCacheDelegateCallsEnabled:(BOOL)suspend;
 - (BOOL)areMemoryCacheDelegateCallsEnabled;
 
-- (void)_setJavaScriptURLsAreAllowed:(BOOL)setJavaScriptURLsAreAllowed;
-
 + (NSCursor *)_pointingHandCursor;
 
 // SPI for DumpRenderTree
@@ -641,6 +639,9 @@ Could be worth adding to the API.
     @param enabled The new HTTP pipelining status.
  */
 + (void)_setHTTPPipeliningEnabled:(BOOL)enabled;
+
+// SPI for DumpRenderTree
+- (void)_setVisibilityState:(int)visibilityState isInitialState:(BOOL)isInitialState;
 
 @end
 

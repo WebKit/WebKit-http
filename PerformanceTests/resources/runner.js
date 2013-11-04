@@ -42,7 +42,7 @@ if (window.testRunner) {
         return (randomSeed & 0xfffffff) / 0x10000000;
     };
 
-    PerfTestRunner.now = window.performance && window.performance.webkitNow ? function () { return window.performance.webkitNow(); } : Date.now;
+    PerfTestRunner.now = window.performance && window.performance.now ? function () { return window.performance.now(); } : Date.now;
 
     PerfTestRunner.logInfo = function (text) {
         if (!window.testRunner)
@@ -170,7 +170,8 @@ if (window.testRunner) {
         runCount = test.runCount || 20;
         logLines = window.testRunner ? [] : null;
         PerfTestRunner.log("Running " + runCount + " times");
-        scheduleNextRun(runner);
+        if (runner)
+            scheduleNextRun(runner);
     }
 
     function scheduleNextRun(runner) {
@@ -234,6 +235,25 @@ if (window.testRunner) {
             testRunner.notifyDone();
     }
 
+    PerfTestRunner.prepareToMeasureValuesAsync = function (test) {
+        PerfTestRunner.unit = test.unit;
+        start(test);
+    }
+
+    PerfTestRunner.measureValueAync = function (measuredValue) {
+        completedRuns++;
+
+        try {
+            ignoreWarmUpAndLog(measuredValue);
+        } catch (exception) {
+            logFatalError("Got an exception while logging the result with name=" + exception.name + ", message=" + exception.message);
+            return;
+        }
+
+        if (completedRuns >= runCount)
+            finish();
+    }
+
     PerfTestRunner.measureTime = function (test) {
         PerfTestRunner.unit = "ms";
         start(test, measureTimeOnce);
@@ -253,7 +273,7 @@ if (window.testRunner) {
         return end - start;
     }
 
-    PerfTestRunner.runPerSecond = function (test) {
+    PerfTestRunner.measureRunsPerSecond = function (test) {
         PerfTestRunner.unit = "runs/s";
         start(test, measureRunsPerSecondOnce);
     }
@@ -281,6 +301,51 @@ if (window.testRunner) {
         for (var i = 0; i < callsPerIteration; i++)
             currentTest.run();
         return PerfTestRunner.now() - startTime;
+    }
+
+
+    PerfTestRunner.measurePageLoadTime = function(test) {
+        test.run = function() {
+            var file = PerfTestRunner.loadFile(test.path);
+            if (!test.chunkSize)
+                this.chunkSize = 50000;
+
+            var chunks = [];
+            // The smaller the chunks the more style resolves we do.
+            // Smaller chunk sizes will show more samples in style resolution.
+            // Larger chunk sizes will show more samples in line layout.
+            // Smaller chunk sizes run slower overall, as the per-chunk overhead is high.
+            var chunkCount = Math.ceil(file.length / this.chunkSize);
+            for (var chunkIndex = 0; chunkIndex < chunkCount; chunkIndex++) {
+                var chunk = file.substr(chunkIndex * this.chunkSize, this.chunkSize);
+                chunks.push(chunk);
+            }
+
+            PerfTestRunner.logInfo("Testing " + file.length + " byte document in " + chunkCount + " " + this.chunkSize + " byte chunks.");
+
+            var iframe = document.createElement("iframe");
+            document.body.appendChild(iframe);
+
+            iframe.sandbox = '';  // Prevent external loads which could cause write() to return before completing the parse.
+            iframe.style.width = "600px"; // Have a reasonable size so we're not line-breaking on every character.
+            iframe.style.height = "800px";
+            iframe.contentDocument.open();
+
+            for (var chunkIndex = 0; chunkIndex < chunks.length; chunkIndex++) {
+                iframe.contentDocument.write(chunks[chunkIndex]);
+                // Note that we won't cause a style resolve until we've encountered the <body> element.
+                // Thus the number of chunks counted above is not exactly equal to the number of style resolves.
+                if (iframe.contentDocument.body)
+                    iframe.contentDocument.body.clientHeight; // Force a full layout/style-resolve.
+                else if (iframe.documentElement.localName == 'html')
+                    iframe.contentDocument.documentElement.offsetWidth; // Force the painting.
+            }
+
+            iframe.contentDocument.close();
+            document.body.removeChild(iframe);
+        };
+
+        PerfTestRunner.measureTime(test);
     }
 
     window.PerfTestRunner = PerfTestRunner;

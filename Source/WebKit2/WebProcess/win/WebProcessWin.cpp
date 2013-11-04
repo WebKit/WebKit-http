@@ -133,7 +133,7 @@ void WebProcess::platformClearResourceCaches(ResourceCachesToClear cachesToClear
 #endif // USE(CFNETWORK)
 }
 
-void WebProcess::platformInitializeWebProcess(const WebProcessCreationParameters& parameters, CoreIPC::ArgumentDecoder*)
+void WebProcess::platformInitializeWebProcess(const WebProcessCreationParameters& parameters, CoreIPC::MessageDecoder&)
 {
     setShouldPaintNativeControls(parameters.shouldPaintNativeControls);
 
@@ -148,7 +148,7 @@ void WebProcess::platformInitializeWebProcess(const WebProcessCreationParameters
     if (defaultStorageSession)
         return;
 
-    RetainPtr<CFStringRef> cachePath(AdoptCF, parameters.cfURLCachePath.createCFString());
+    RetainPtr<CFStringRef> cachePath(AdoptCF, parameters.diskCacheDirectory.createCFString());
     if (!cachePath)
         return;
 

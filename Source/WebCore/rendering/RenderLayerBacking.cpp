@@ -60,6 +60,9 @@
 
 #if ENABLE(CSS_FILTERS)
 #include "FilterEffectRenderer.h"
+#if ENABLE(CSS_SHADERS)
+#include "CustomFilterOperation.h"
+#endif
 #endif
 
 #if ENABLE(WEBGL) || ENABLE(ACCELERATED_2D_CANVAS)
@@ -95,6 +98,7 @@ bool RenderLayerBacking::m_creatingPrimaryGraphicsLayer = false;
 
 RenderLayerBacking::RenderLayerBacking(RenderLayer* layer)
     : m_owningLayer(layer)
+    , m_scrollLayerID(0)
     , m_artificiallyInflatedBounds(false)
     , m_isMainFrameRenderViewLayer(false)
     , m_usingTiledCacheLayer(false)
@@ -103,7 +107,7 @@ RenderLayerBacking::RenderLayerBacking(RenderLayer* layer)
     , m_canCompositeFilters(false)
 #endif
 {
-    if (renderer()->isRenderView()) {
+    if (layer->isRootLayer()) {
         Frame* frame = toRenderView(renderer())->frameView()->frame();
         Page* page = frame ? frame->page() : 0;
         if (page && frame && page->mainFrame() == frame) {
@@ -120,13 +124,12 @@ RenderLayerBacking::RenderLayerBacking(RenderLayer* layer)
     createPrimaryGraphicsLayer();
 
     if (m_usingTiledCacheLayer) {
+        TiledBacking* tiledBacking = this->tiledBacking();
         if (Page* page = renderer()->frame()->page()) {
-            if (TiledBacking* tiledBacking = m_graphicsLayer->tiledBacking()) {
-                Frame* frame = renderer()->frame();
-                tiledBacking->setIsInWindow(page->isOnscreen());
-                tiledBacking->setTileCoverage(frame->view()->canHaveScrollbars() ? TiledBacking::CoverageForScrolling : TiledBacking::CoverageForVisibleArea);
-                tiledBacking->setScrollingPerformanceLoggingEnabled(frame->settings() && frame->settings()->scrollingPerformanceLoggingEnabled());
-            }
+            Frame* frame = renderer()->frame();
+            tiledBacking->setIsInWindow(page->isOnscreen());
+            tiledBacking->setScrollingPerformanceLoggingEnabled(frame->settings() && frame->settings()->scrollingPerformanceLoggingEnabled());
+            adjustTileCacheCoverage();
         }
     }
 }
@@ -138,6 +141,7 @@ RenderLayerBacking::~RenderLayerBacking()
     updateForegroundLayer(false);
     updateMaskLayer(false);
     updateScrollingLayers(false);
+    detachFromScrollingCoordinator();
     destroyGraphicsLayers();
 }
 
@@ -166,6 +170,37 @@ PassOwnPtr<GraphicsLayer> RenderLayerBacking::createGraphicsLayer(const String& 
 bool RenderLayerBacking::shouldUseTileCache(const GraphicsLayer*) const
 {
     return m_usingTiledCacheLayer && m_creatingPrimaryGraphicsLayer;
+}
+
+TiledBacking* RenderLayerBacking::tiledBacking() const
+{
+    return m_graphicsLayer->tiledBacking();
+}
+
+void RenderLayerBacking::adjustTileCacheCoverage()
+{
+    if (!m_usingTiledCacheLayer)
+        return;
+
+    TiledBacking::TileCoverage tileCoverage = TiledBacking::CoverageForVisibleArea;
+
+    // FIXME: When we use TiledBacking for overflow, this should look at RenderView scrollability.
+    Frame* frame = renderer()->frame();
+    if (frame) {
+        FrameView* frameView = frame->view();
+        if (frameView->horizontalScrollbarMode() != ScrollbarAlwaysOff)
+            tileCoverage |= TiledBacking::CoverageForHorizontalScrolling;
+
+        if (frameView->verticalScrollbarMode() != ScrollbarAlwaysOff)
+            tileCoverage |= TiledBacking::CoverageForVerticalScrolling;
+
+        if (ScrollingCoordinator* scrollingCoordinator = frame->page()->scrollingCoordinator()) {
+            if (scrollingCoordinator->shouldUpdateScrollLayerPositionOnMainThread())
+                tileCoverage |= TiledBacking::CoverageForSlowScrolling;
+        }
+    }
+
+    tiledBacking()->setTileCoverage(tileCoverage);
 }
 
 void RenderLayerBacking::createPrimaryGraphicsLayer()
@@ -249,6 +284,18 @@ void RenderLayerBacking::updateTransform(const RenderStyle* style)
 #if ENABLE(CSS_FILTERS)
 void RenderLayerBacking::updateFilters(const RenderStyle* style)
 {
+#if ENABLE(CSS_SHADERS)
+    const FilterOperations& filters = style->filter();
+    if (filters.hasCustomFilter()) {
+        const CustomFilterOperation* customOperation;
+        for (size_t i = 0; i < filters.size(); ++i) {
+            customOperation = static_cast<const CustomFilterOperation*>(filters.at(i));
+            // We have to wait until the program of CSS Shaders is loaded before setting it on the layer.
+            if (customOperation->getOperationType() == FilterOperation::CUSTOM && !customOperation->program()->isLoaded())
+                return;
+        }
+    }
+#endif
     m_canCompositeFilters = m_graphicsLayer->setFilters(style->filter());
 }
 #endif
@@ -963,6 +1010,42 @@ bool RenderLayerBacking::updateScrollingLayers(bool needsScrollingLayers)
     return layerChanged;
 }
 
+void RenderLayerBacking::attachToScrollingCoordinator(RenderLayerBacking* parent)
+{
+    // If m_scrollLayerID non-zero, then this backing is already attached to the ScrollingCoordinator.
+    if (m_scrollLayerID)
+        return;
+
+    Page* page = renderer()->frame()->page();
+    if (!page)
+        return;
+
+    ScrollingCoordinator* scrollingCoordinator = page->scrollingCoordinator();
+    if (!scrollingCoordinator)
+        return;
+
+    ScrollingNodeID parentID = parent ? parent->scrollLayerID() : 0;
+    m_scrollLayerID = scrollingCoordinator->attachToStateTree(scrollingCoordinator->uniqueScrollLayerID(), parentID);
+}
+
+void RenderLayerBacking::detachFromScrollingCoordinator()
+{
+    // If m_scrollLayerID is 0, then this backing is not attached to the ScrollingCoordinator.
+    if (!m_scrollLayerID)
+        return;
+
+    Page* page = renderer()->frame()->page();
+    if (!page)
+        return;
+
+    ScrollingCoordinator* scrollingCoordinator = page->scrollingCoordinator();
+    if (!scrollingCoordinator)
+        return;
+
+    scrollingCoordinator->detachFromStateTree(m_scrollLayerID);
+    m_scrollLayerID = 0;
+}
+
 GraphicsLayerPaintingPhase RenderLayerBacking::paintingPhaseForPrimaryLayer() const
 {
     unsigned phase = GraphicsLayerPaintBackground;
@@ -1336,10 +1419,12 @@ void RenderLayerBacking::setRequiresOwnBackingStore(bool requiresOwnBacking)
     if (requiresOwnBacking == m_requiresOwnBackingStore)
         return;
     
+    m_requiresOwnBackingStore = requiresOwnBacking;
+
     // This affects the answer to paintsIntoCompositedAncestor(), which in turn affects
     // cached clip rects, so when it changes we have to clear clip rects on descendants.
     m_owningLayer->clearClipRectsIncludingDescendants(PaintingClipRects);
-    m_requiresOwnBackingStore = requiresOwnBacking;
+    m_owningLayer->computeRepaintRectsIncludingDescendants();
     
     compositor()->repaintInCompositedAncestor(m_owningLayer, compositedBounds());
 }
@@ -1451,7 +1536,7 @@ void RenderLayerBacking::paintContents(const GraphicsLayer* graphicsLayer, Graph
 #endif
 
     if (graphicsLayer == m_graphicsLayer.get() || graphicsLayer == m_foregroundLayer.get() || graphicsLayer == m_maskLayer.get() || graphicsLayer == m_scrollingContentsLayer.get()) {
-        InspectorInstrumentationCookie cookie = InspectorInstrumentation::willPaint(m_owningLayer->renderer()->frame(), &context, clip);
+        InspectorInstrumentationCookie cookie = InspectorInstrumentation::willPaint(m_owningLayer->renderer()->frame());
 
         // The dirtyRect is in the coords of the painting root.
         IntRect dirtyRect = clip;
@@ -1464,7 +1549,7 @@ void RenderLayerBacking::paintContents(const GraphicsLayer* graphicsLayer, Graph
         if (m_usingTiledCacheLayer)
             m_owningLayer->renderer()->frame()->view()->setLastPaintTime(currentTime());
 
-        InspectorInstrumentation::didPaint(cookie);
+        InspectorInstrumentation::didPaint(cookie, &context, clip);
     } else if (graphicsLayer == layerForHorizontalScrollbar()) {
         paintScrollbar(m_owningLayer->horizontalScrollbar(), context, clip);
     } else if (graphicsLayer == layerForVerticalScrollbar()) {
@@ -1498,6 +1583,18 @@ float RenderLayerBacking::deviceScaleFactor() const
 void RenderLayerBacking::didCommitChangesForLayer(const GraphicsLayer*) const
 {
     compositor()->didFlushChangesForLayer(m_owningLayer);
+}
+
+bool RenderLayerBacking::getCurrentTransform(const GraphicsLayer* graphicsLayer, TransformationMatrix& transform) const
+{
+    if (graphicsLayer != m_graphicsLayer)
+        return false;
+
+    if (m_owningLayer->hasTransform()) {
+        transform = m_owningLayer->currentTransform(RenderStyle::ExcludeTransformOrigin);
+        return true;
+    }
+    return false;
 }
 
 bool RenderLayerBacking::showDebugBorders(const GraphicsLayer*) const
@@ -1676,10 +1773,15 @@ void RenderLayerBacking::notifyAnimationStarted(const GraphicsLayer*, double tim
     renderer()->animation()->notifyAnimationStarted(renderer(), time);
 }
 
-void RenderLayerBacking::notifySyncRequired(const GraphicsLayer*)
+void RenderLayerBacking::notifyFlushRequired(const GraphicsLayer*)
 {
     if (!renderer()->documentBeingDestroyed())
         compositor()->scheduleLayerFlush();
+}
+
+void RenderLayerBacking::notifyFlushBeforeDisplayRefresh(const GraphicsLayer* layer)
+{
+    compositor()->notifyFlushBeforeDisplayRefresh(layer);
 }
 
 // This is used for the 'freeze' API, for testing only.
@@ -1828,7 +1930,7 @@ bool RenderLayerBacking::contentsVisible(const GraphicsLayer*, const IntRect& lo
         return false;
 
     IntRect visibleContentRect(view->visibleContentRect());
-    FloatQuad absoluteContentQuad = renderer()->localToAbsoluteQuad(FloatRect(localContentRect));
+    FloatQuad absoluteContentQuad = renderer()->localToAbsoluteQuad(FloatRect(localContentRect), SnapOffsetForTransforms);
     return absoluteContentQuad.enclosingBoundingBox().intersects(visibleContentRect);
 }
 #endif

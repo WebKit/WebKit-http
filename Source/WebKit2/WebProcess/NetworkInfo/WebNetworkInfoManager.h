@@ -28,24 +28,19 @@
 
 #if ENABLE(NETWORK_INFO)
 
-#include "MessageID.h"
+#include "MessageReceiver.h"
 #include "WebCoreArgumentCoders.h"
 #include "WebNetworkInfo.h"
 #include <wtf/HashSet.h>
 #include <wtf/Noncopyable.h>
 #include <wtf/text/AtomicString.h>
 
-namespace CoreIPC {
-class ArgumentDecoder;
-class Connection;
-}
-
 namespace WebKit {
 
 class WebProcess;
 class WebPage;
 
-class WebNetworkInfoManager {
+class WebNetworkInfoManager : private CoreIPC::MessageReceiver {
     WTF_MAKE_NONCOPYABLE(WebNetworkInfoManager);
 public:
     explicit WebNetworkInfoManager(WebProcess*);
@@ -56,12 +51,12 @@ public:
 
     double bandwidth(WebPage*) const;
     bool metered(WebPage*) const;
-
-    void didReceiveMessage(CoreIPC::Connection*, CoreIPC::MessageID, CoreIPC::ArgumentDecoder*);
-
 private:
+    // CoreIPC::MessageReceiver
+    void didReceiveMessage(CoreIPC::Connection*, CoreIPC::MessageID, CoreIPC::MessageDecoder&) OVERRIDE;
+
     // Implemented in generated WebNetworkInfoManagerMessageReceiver.cpp
-    void didReceiveWebNetworkInfoManagerMessage(CoreIPC::Connection*, CoreIPC::MessageID, CoreIPC::ArgumentDecoder*);
+    void didReceiveWebNetworkInfoManagerMessage(CoreIPC::Connection*, CoreIPC::MessageID, CoreIPC::MessageDecoder&);
 
     void didChangeNetworkInformation(const AtomicString& eventType, const WebNetworkInfo::Data&);
 

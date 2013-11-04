@@ -70,9 +70,11 @@ WebInspector.StylesSourceMapping.prototype = {
         var uiSourceCode = /** @type {WebInspector.UISourceCode} */ event.data;
         if (!uiSourceCode.url || this._uiSourceCodeForURL[uiSourceCode.url])
             return;
-        if (uiSourceCode.contentType() !== WebInspector.resourceTypes.StyleSheet)
+        if (uiSourceCode.contentType() !== WebInspector.resourceTypes.Stylesheet)
             return;
-            
+        if (!WebInspector.resourceForURL(uiSourceCode.url))
+            return;
+
         this._addUISourceCode(uiSourceCode);
     },
 
@@ -83,6 +85,8 @@ WebInspector.StylesSourceMapping.prototype = {
     {
         this._uiSourceCodeForURL[uiSourceCode.url] = uiSourceCode;
         uiSourceCode.setSourceMapping(this);
+        var styleFile = new WebInspector.StyleFile(uiSourceCode);
+        uiSourceCode.setStyleFile(styleFile);
         WebInspector.cssModel.setSourceMapping(uiSourceCode.url, this);
     },
 
@@ -92,6 +96,78 @@ WebInspector.StylesSourceMapping.prototype = {
         WebInspector.cssModel.resetSourceMappings();
     }
 }
+
+/**
+ * @constructor
+ * @param {WebInspector.UISourceCode} uiSourceCode
+ */
+WebInspector.StyleFile = function(uiSourceCode)
+{
+    this._uiSourceCode = uiSourceCode;
+    this._uiSourceCode.addEventListener(WebInspector.UISourceCode.Events.WorkingCopyChanged, this._workingCopyChanged, this);
+    this._uiSourceCode.addEventListener(WebInspector.UISourceCode.Events.WorkingCopyCommitted, this._workingCopyCommitted, this);
+}
+
+WebInspector.StyleFile.updateTimeout = 200;
+
+WebInspector.StyleFile.prototype = {
+    _workingCopyCommitted: function(event)
+    {
+        if (this._isAddingRevision)
+            return;
+
+        this._commitIncrementalEdit(true);
+    },
+
+    _workingCopyChanged: function(event)
+    {
+        if (this._isAddingRevision)
+            return;
+
+        // FIXME: Extensions tests override updateTimeout because extensions don't have any control over applying changes to domain specific bindings.
+        if (WebInspector.StyleFile.updateTimeout >= 0) {
+            this._incrementalUpdateTimer = setTimeout(this._commitIncrementalEdit.bind(this, false), WebInspector.StyleFile.updateTimeout)
+        } else
+            this._commitIncrementalEdit(false);
+    },
+
+    /**
+     * @param {boolean} majorChange
+     */
+    _commitIncrementalEdit: function(majorChange)
+    {
+        this._clearIncrementalUpdateTimer();
+        WebInspector.styleContentBinding.setStyleContent(this._uiSourceCode, this._uiSourceCode.workingCopy(), majorChange, this._styleContentSet.bind(this));
+    },
+
+    /**
+     * @param {?string} error
+     */
+    _styleContentSet: function(error)
+    {
+        if (error)
+            WebInspector.showErrorMessage(error);
+    },
+
+    _clearIncrementalUpdateTimer: function()
+    {
+        if (!this._incrementalUpdateTimer)
+            return;
+        clearTimeout(this._incrementalUpdateTimer);
+        delete this._incrementalUpdateTimer;
+    },
+
+    /**
+     * @param {string} content
+     */
+    addRevision: function(content)
+    {
+        this._isAddingRevision = true;
+        this._uiSourceCode.addRevision(content);
+        delete this._isAddingRevision;
+    },
+}
+
 
 /**
  * @constructor
@@ -105,14 +181,19 @@ WebInspector.StyleContentBinding = function(cssModel)
 
 WebInspector.StyleContentBinding.prototype = {
     /**
-     * @param {WebInspector.StyleSource} styleSource
+     * @param {WebInspector.UISourceCode} uiSourceCode
      * @param {string} content
      * @param {boolean} majorChange
      * @param {function(?string)} userCallback
      */
-    setStyleContent: function(styleSource, content, majorChange, userCallback)
+    setStyleContent: function(uiSourceCode, content, majorChange, userCallback)
     {
-        var resource = WebInspector.resourceForURL(styleSource.url);
+        var resource = WebInspector.resourceForURL(uiSourceCode.url);
+        if (!resource) {
+            userCallback("No resource found: " + uiSourceCode.url);
+            return;
+        }
+            
         this._cssModel.resourceBinding().requestStyleSheetIdForResource(resource, callback.bind(this));
 
         /**
@@ -187,8 +268,8 @@ WebInspector.StyleContentBinding.prototype = {
             if (!uiSourceCode)
                 return;
 
-            if (uiSourceCode.contentType() === WebInspector.resourceTypes.Stylesheet)
-                uiSourceCode.addRevision(content);
+            if (uiSourceCode.styleFile())
+                uiSourceCode.styleFile().addRevision(content);
         }
 
         this._cssModel.resourceBinding().requestResourceURLForStyleSheetId(styleSheetId, callback.bind(this));

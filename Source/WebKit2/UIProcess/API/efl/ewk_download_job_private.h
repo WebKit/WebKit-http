@@ -27,28 +27,61 @@
 #define ewk_download_job_private_h
 
 #include "WKBase.h"
+#include "WKEinaSharedString.h"
+#include "ewk_download_job.h"
+#include "ewk_url_request_private.h"
+#include "ewk_url_response_private.h"
 #include <Evas.h>
-
-typedef struct _Ewk_Download_Job Ewk_Download_Job;
-typedef struct _Ewk_Url_Response Ewk_Url_Response;
-typedef struct _Ewk_Web_Error Ewk_Web_Error;
+#include <wtf/PassRefPtr.h>
 
 namespace WebKit {
 class DownloadProxy;
 }
 
-Ewk_Download_Job* ewk_download_job_new(WebKit::DownloadProxy*, Evas_Object* ewkView);
-uint64_t ewk_download_job_id_get(const Ewk_Download_Job*);
-Evas_Object* ewk_download_job_view_get(const Ewk_Download_Job*);
+class EwkViewImpl;
 
-void ewk_download_job_state_set(Ewk_Download_Job*, Ewk_Download_Job_State);
-void ewk_download_job_cancelled(Ewk_Download_Job*);
-void ewk_download_job_failed(Ewk_Download_Job*);
-void ewk_download_job_finished(Ewk_Download_Job*);
-void ewk_download_job_started(Ewk_Download_Job*);
+class Ewk_Download_Job : public RefCounted<Ewk_Download_Job> {
+public:
+    static PassRefPtr<Ewk_Download_Job> create(WebKit::DownloadProxy* download, EwkViewImpl* viewImpl)
+    {
+        return adoptRef(new Ewk_Download_Job(download, viewImpl));
+    }
 
-void ewk_download_job_received_data(Ewk_Download_Job*, uint64_t length);
-void ewk_download_job_response_set(Ewk_Download_Job*, Ewk_Url_Response*);
-void ewk_download_job_suggested_filename_set(Ewk_Download_Job*, const char* suggestedFilename);
+    uint64_t id() const;
+    EwkViewImpl* viewImpl() const;
+
+    Ewk_Download_Job_State state() const;
+    void setState(Ewk_Download_Job_State);
+
+    Ewk_Url_Request* request() const;
+    Ewk_Url_Response* response() const;
+    void setResponse(PassRefPtr<Ewk_Url_Response>);
+
+    const char* destination() const;
+    void setDestination(const char* destination);
+
+    const char* suggestedFileName() const;
+    void setSuggestedFileName(const char* fileName);
+
+    bool cancel();
+
+    double estimatedProgress() const;
+    double elapsedTime() const;
+    void incrementReceivedData(uint64_t length);
+
+private:
+    Ewk_Download_Job(WebKit::DownloadProxy* download, EwkViewImpl* viewImpl);
+
+    WebKit::DownloadProxy* m_downloadProxy;
+    EwkViewImpl* m_viewImpl;
+    Ewk_Download_Job_State m_state;
+    mutable RefPtr<Ewk_Url_Request> m_request;
+    RefPtr<Ewk_Url_Response> m_response;
+    double m_startTime;
+    double m_endTime;
+    uint64_t m_downloaded; // length already downloaded
+    WKEinaSharedString m_destination;
+    WKEinaSharedString m_suggestedFilename;
+};
 
 #endif // ewk_download_job_private_h

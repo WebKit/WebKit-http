@@ -27,8 +27,11 @@
 
 #include "TestInvocation.h"
 
+#include "PlatformWebView.h"
+#include "TestController.h"
 #include <QBuffer>
 #include <QCryptographicHash>
+#include <QtGui/QPainter>
 #include <WebKit2/WKImageQt.h>
 #include <stdio.h>
 #include <wtf/Assertions.h>
@@ -62,12 +65,49 @@ static void dumpImage(const QImage& image)
     fflush(stdout);
 }
 
+void TestInvocation::forceRepaintDoneCallback(WKErrorRef, void *context)
+{
+    static_cast<TestInvocation*>(context)->m_gotRepaint = true;
+    TestController::shared().notifyDone();
+}
+
 void TestInvocation::dumpPixelsAndCompareWithExpected(WKImageRef imageRef, WKArrayRef repaintRects)
 {
-    //FIXME: https://bugs.webkit.org/show_bug.cgi?id=68870
-    UNUSED_PARAM(repaintRects);
+    QImage image;
+    if (PlatformWebView::windowShapshotEnabled()) {
+        WKPageRef page = TestController::shared().mainWebView()->page();
+        WKPageForceRepaint(page, this, &forceRepaintDoneCallback);
 
-    QImage image = WKImageCreateQImage(imageRef);
+        TestController::shared().runUntil(m_gotRepaint, TestController::ShortTimeout);
+
+        if (m_gotRepaint)
+            image = WKImageCreateQImage(TestController::shared().mainWebView()->windowSnapshotImage().get());
+        else {
+            // The test harness expects an image so we output an empty one.
+            WKRect windowRect = TestController::shared().mainWebView()->windowFrame();
+            image = QImage(QSize(windowRect.size.width, windowRect.size.height), QImage::Format_ARGB32_Premultiplied);
+            image.fill(Qt::red);
+        }
+    } else
+        image = WKImageCreateQImage(imageRef);
+
+    if (repaintRects) {
+        QImage mask(image.size(), image.format());
+        mask.fill(QColor(0, 0, 0, 0.66 * 255));
+
+        QPainter maskPainter(&mask);
+        maskPainter.setCompositionMode(QPainter::CompositionMode_Source);
+        size_t count = WKArrayGetSize(repaintRects);
+        for (size_t i = 0; i < count; ++i) {
+            WKRect wkRect = WKRectGetValue(static_cast<WKRectRef>(WKArrayGetItemAtIndex(repaintRects, i)));
+            QRectF rect(wkRect.origin.x, wkRect.origin.y, wkRect.size.width, wkRect.size.height);
+            maskPainter.fillRect(rect, Qt::transparent);
+        }
+
+        QPainter painter(&image);
+        painter.drawImage(image.rect(), mask);
+    }
+
     QCryptographicHash hash(QCryptographicHash::Md5);
     for (unsigned row = 0; row < image.height(); ++row)
         hash.addData(reinterpret_cast<const char*>(image.constScanLine(row)), image.bytesPerLine());

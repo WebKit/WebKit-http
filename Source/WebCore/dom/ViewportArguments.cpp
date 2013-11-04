@@ -52,14 +52,12 @@ ViewportAttributes computeViewportAttributes(ViewportArguments args, int desktop
 
     ASSERT(availableWidth > 0 && availableHeight > 0);
 
-    result.devicePixelRatio = devicePixelRatio;
-
     // Resolve non-'auto' width and height to pixel values.
-    if (result.devicePixelRatio != 1.0) {
-        availableWidth /= result.devicePixelRatio;
-        availableHeight /= result.devicePixelRatio;
-        deviceWidth /= result.devicePixelRatio;
-        deviceHeight /= result.devicePixelRatio;
+    if (devicePixelRatio != 1.0) {
+        availableWidth /= devicePixelRatio;
+        availableHeight /= devicePixelRatio;
+        deviceWidth /= devicePixelRatio;
+        deviceHeight /= devicePixelRatio;
     }
 
     switch (int(args.width)) {
@@ -158,27 +156,27 @@ ViewportAttributes computeViewportAttributes(ViewportArguments args, int desktop
     return result;
 }
 
-float computeMinimumScaleFactorForContentContained(const ViewportAttributes& result, const IntSize& viewportSize, const IntSize& contentsSize)
+float computeMinimumScaleFactorForContentContained(const ViewportAttributes& result, const IntSize& viewportSize, const IntSize& contentsSize, float devicePixelRatio)
 {
     float availableWidth = viewportSize.width();
     float availableHeight = viewportSize.height();
 
-    if (result.devicePixelRatio != 1.0) {
-        availableWidth /= result.devicePixelRatio;
-        availableHeight /= result.devicePixelRatio;
+    if (devicePixelRatio != 1.0) {
+        availableWidth /= devicePixelRatio;
+        availableHeight /= devicePixelRatio;
     }
 
     return max<float>(result.minimumScale, max(availableWidth / contentsSize.width(), availableHeight / contentsSize.height()));
 }
 
-void restrictMinimumScaleFactorToViewportSize(ViewportAttributes& result, IntSize visibleViewport)
+void restrictMinimumScaleFactorToViewportSize(ViewportAttributes& result, IntSize visibleViewport, float devicePixelRatio)
 {
     float availableWidth = visibleViewport.width();
     float availableHeight = visibleViewport.height();
 
-    if (result.devicePixelRatio != 1.0) {
-        availableWidth /= result.devicePixelRatio;
-        availableHeight /= result.devicePixelRatio;
+    if (devicePixelRatio != 1.0) {
+        availableWidth /= devicePixelRatio;
+        availableHeight /= devicePixelRatio;
     }
 
     result.minimumScale = max<float>(result.minimumScale, max(availableWidth / result.layoutSize.width(), availableHeight / result.layoutSize.height()));
@@ -362,6 +360,9 @@ void reportViewportWarning(Document* document, ViewportErrorCode errorCode, cons
         message.replace("%replacement1", replacement1);
     if (!replacement2.isNull())
         message.replace("%replacement2", replacement2);
+
+    if ((errorCode == UnrecognizedViewportArgumentValueError || errorCode == TruncatedViewportArgumentValueError) && replacement1.find(';') != WTF::notFound)
+        message.append(" Note that ';' is not a separator in viewport values. The list should be comma-separated.");
 
     document->domWindow()->console()->addMessage(HTMLMessageSource, LogMessageType, viewportErrorMessageLevel(errorCode), message, document->url().string(), parserLineNumber(document));
 }

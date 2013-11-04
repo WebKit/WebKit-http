@@ -53,6 +53,14 @@ TEST_F(EWK2UnitTestBase, ewk_context_cookie_manager_get)
     ASSERT_EQ(cookieManager, ewk_context_cookie_manager_get(context));
 }
 
+TEST_F(EWK2UnitTestBase, ewk_context_favicon_database_get)
+{
+    Ewk_Context* context = ewk_view_context_get(webView());
+    Ewk_Favicon_Database* faviconDatabase = ewk_context_favicon_database_get(context);
+    ASSERT_TRUE(faviconDatabase);
+    ASSERT_EQ(faviconDatabase, ewk_context_favicon_database_get(context));
+}
+
 static void schemeRequestCallback(Ewk_Url_Scheme_Request* request, void* userData)
 {
     const char* scheme = ewk_url_scheme_request_scheme_get(request);
@@ -64,10 +72,10 @@ static void schemeRequestCallback(Ewk_Url_Scheme_Request* request, void* userDat
     ASSERT_TRUE(ewk_url_scheme_request_finish(request, htmlReply, strlen(htmlReply), "text/html"));
 }
 
-TEST_F(EWK2UnitTestBase, ewk_context_uri_scheme_register)
+TEST_F(EWK2UnitTestBase, ewk_context_url_scheme_register)
 {
-    ewk_context_uri_scheme_register(ewk_view_context_get(webView()), "fooscheme", schemeRequestCallback, 0);
-    loadUrlSync("fooscheme:MyPath");
+    ewk_context_url_scheme_register(ewk_view_context_get(webView()), "fooscheme", schemeRequestCallback, 0);
+    ASSERT_TRUE(loadUrlSync("fooscheme:MyPath"));
     ASSERT_STREQ("Foo", ewk_view_title_get(webView()));
 }
 
@@ -151,6 +159,22 @@ TEST_F(EWK2UnitTestBase, ewk_context_vibration_client_callbacks_set)
     ASSERT_FALSE(data.didReceiveCancelVibrationCallback);
 }
 
+TEST_F(EWK2UnitTestBase, ewk_context_cache_model)
+{
+    Ewk_Context* context = ewk_view_context_get(webView());
+
+    ASSERT_EQ(EWK_CACHE_MODEL_DOCUMENT_VIEWER, ewk_context_cache_model_get(context));
+
+    ASSERT_TRUE(ewk_context_cache_model_set(context, EWK_CACHE_MODEL_DOCUMENT_BROWSER));
+    ASSERT_EQ(EWK_CACHE_MODEL_DOCUMENT_BROWSER, ewk_context_cache_model_get(context));
+
+    ASSERT_TRUE(ewk_context_cache_model_set(context, EWK_CACHE_MODEL_PRIMARY_WEBBROWSER));
+    ASSERT_EQ(EWK_CACHE_MODEL_PRIMARY_WEBBROWSER, ewk_context_cache_model_get(context));
+
+    ASSERT_TRUE(ewk_context_cache_model_set(context, EWK_CACHE_MODEL_DOCUMENT_VIEWER));
+    ASSERT_EQ(EWK_CACHE_MODEL_DOCUMENT_VIEWER, ewk_context_cache_model_get(context));
+}
+
 TEST_F(EWK2UnitTestBase, ewk_context_new)
 {
     Ewk_Context* context = ewk_context_new();
@@ -172,3 +196,4 @@ TEST_F(EWK2UnitTestBase, ewk_context_ref)
     ewk_context_unref(context);
     ewk_context_unref(context);
 }
+

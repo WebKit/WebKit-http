@@ -28,10 +28,13 @@
 #include "config.h"
 #include "MediaQueryEvaluator.h"
 
+#include "CSSAspectRatioValue.h"
+#include "CSSPrimitiveValue.h"
+#include "CSSValueKeywords.h"
+#include "CSSValueList.h"
 #include "Chrome.h"
 #include "ChromeClient.h"
-#include "CSSPrimitiveValue.h"
-#include "CSSValueList.h"
+#include "DOMWindow.h"
 #include "FloatRect.h"
 #include "Frame.h"
 #include "FrameView.h"
@@ -43,8 +46,9 @@
 #include "NodeRenderStyle.h"
 #include "Page.h"
 #include "PlatformScreen.h"
-#include "RenderView.h"
 #include "RenderStyle.h"
+#include "RenderView.h"
+#include "Screen.h"
 #include "Settings.h"
 #include "StyleResolver.h"
 #include <wtf/HashMap.h>
@@ -64,15 +68,13 @@ typedef HashMap<AtomicStringImpl*, EvalFunc> FunctionMap;
 static FunctionMap* gFunctionMap;
 
 /*
- * FIXME: following media features are not implemented: color_index, scan, resolution
+ * FIXME: following media features are not implemented: color_index, scan
  *
  * color_index, min-color-index, max_color_index: It's unknown how to retrieve
  * the information if the display mode is indexed
  * scan: The "scan" media feature describes the scanning process of
  * tv output devices. It's unknown how to retrieve this information from
  * the platform
- * resolution, min-resolution, max-resolution: css parser doesn't seem to
- * support CSS_DIMENSION
  */
 
 MediaQueryEvaluator::MediaQueryEvaluator(bool mediaFeatureResult)
@@ -171,29 +173,6 @@ bool MediaQueryEvaluator::eval(const MediaQuerySet* querySet, StyleResolver* sty
     return result;
 }
 
-static bool parseAspectRatio(CSSValue* value, int& h, int& v)
-{
-    if (value->isValueList()) {
-        CSSValueList* valueList = static_cast<CSSValueList*>(value);
-        if (valueList->length() == 3) {
-            CSSValue* i0 = valueList->itemWithoutBoundsCheck(0);
-            CSSValue* i1 = valueList->itemWithoutBoundsCheck(1);
-            CSSValue* i2 = valueList->itemWithoutBoundsCheck(2);
-            if (i0->isPrimitiveValue() && static_cast<CSSPrimitiveValue*>(i0)->isNumber()
-                && i1->isPrimitiveValue() && static_cast<CSSPrimitiveValue*>(i1)->isString()
-                && i2->isPrimitiveValue() && static_cast<CSSPrimitiveValue*>(i2)->isNumber()) {
-                String str = static_cast<CSSPrimitiveValue*>(i1)->getStringValue();
-                if (!str.isNull() && str.length() == 1 && str[0] == '/') {
-                    h = static_cast<CSSPrimitiveValue*>(i0)->getIntValue(CSSPrimitiveValue::CSS_NUMBER);
-                    v = static_cast<CSSPrimitiveValue*>(i2)->getIntValue(CSSPrimitiveValue::CSS_NUMBER);
-                    return true;
-                }
-            }
-        }
-    }
-    return false;
-}
-
 template<typename T>
 bool compareValue(T a, T b, MediaFeaturePrefix op)
 {
@@ -207,6 +186,33 @@ bool compareValue(T a, T b, MediaFeaturePrefix op)
     }
     return false;
 }
+
+static bool compareAspectRatioValue(CSSValue* value, int width, int height, MediaFeaturePrefix op)
+{
+    if (value->isAspectRatioValue()) {
+        CSSAspectRatioValue* aspectRatio = static_cast<CSSAspectRatioValue*>(value);
+        return compareValue(width * static_cast<int>(aspectRatio->denominatorValue()), height * static_cast<int>(aspectRatio->numeratorValue()), op);
+    }
+
+    return false;
+}
+
+#if ENABLE(RESOLUTION_MEDIA_QUERY)
+static bool compareResolution(float min, float max, float value, MediaFeaturePrefix op)
+{
+    switch (op) {
+    case NoPrefix:
+        // A 'resolution' (without a "min-" or "max-" prefix) query
+        // never matches a device with non-square pixels.
+        return value == min && value == max;
+    case MinPrefix:
+        return min >= value;
+    case MaxPrefix:
+        return max <= value;
+    }
+    return false;
+}
+#endif
 
 static bool numberValue(CSSValue* value, float& result)
 {
@@ -243,29 +249,25 @@ static bool monochromeMediaFeatureEval(CSSValue* value, RenderStyle* style, Fram
 
 static bool orientationMediaFeatureEval(CSSValue* value, RenderStyle*, Frame* frame, MediaFeaturePrefix)
 {
-    // A missing parameter should fail
-    if (!value)
-        return false;
-
     FrameView* view = frame->view();
     int width = view->layoutWidth();
     int height = view->layoutHeight();
-    if (width > height) // Square viewport is portrait
-        return "landscape" == static_cast<CSSPrimitiveValue*>(value)->getStringValue();
-    return "portrait" == static_cast<CSSPrimitiveValue*>(value)->getStringValue();
+    if (value && value->isPrimitiveValue()) {
+        const int id = static_cast<CSSPrimitiveValue*>(value)->getIdent();
+        if (width > height) // Square viewport is portrait.
+            return CSSValueLandscape == id;
+        return CSSValuePortrait == id;
+    }
+
+    // Expression (orientation) evaluates to true if width and height >= 0.
+    return height >= 0 && width >= 0;
 }
 
 static bool aspect_ratioMediaFeatureEval(CSSValue* value, RenderStyle*, Frame* frame, MediaFeaturePrefix op)
 {
     if (value) {
         FrameView* view = frame->view();
-        int width = view->layoutWidth();
-        int height = view->layoutHeight();
-        int h = 0;
-        int v = 0;
-        if (parseAspectRatio(value, h, v))
-            return v != 0 && compareValue(width * v, height * h, op);
-        return false;
+        return compareAspectRatioValue(value, view->layoutWidth(), view->layoutHeight(), op);
     }
 
     // ({,min-,max-}aspect-ratio)
@@ -277,11 +279,7 @@ static bool device_aspect_ratioMediaFeatureEval(CSSValue* value, RenderStyle*, F
 {
     if (value) {
         FloatRect sg = screenRect(frame->page()->mainFrame()->view());
-        int h = 0;
-        int v = 0;
-        if (parseAspectRatio(value, h, v))
-            return v != 0  && compareValue(static_cast<int>(sg.width()) * v, static_cast<int>(sg.height()) * h, op);
-        return false;
+        return compareAspectRatioValue(value, static_cast<int>(sg.width()), static_cast<int>(sg.height()), op);
     }
 
     // ({,min-,max-}device-aspect-ratio)
@@ -291,10 +289,128 @@ static bool device_aspect_ratioMediaFeatureEval(CSSValue* value, RenderStyle*, F
 
 static bool device_pixel_ratioMediaFeatureEval(CSSValue *value, RenderStyle*, Frame* frame, MediaFeaturePrefix op)
 {
-    if (value)
-        return value->isPrimitiveValue() && compareValue(frame->page()->deviceScaleFactor(), static_cast<CSSPrimitiveValue*>(value)->getFloatValue(), op);
+    // FIXME: Possible handle other media types than 'screen' and 'print'.
+    float deviceScaleFactor = 0;
 
-    return frame->page()->deviceScaleFactor() != 0;
+    // This checks the actual media type applied to the document, and we know
+    // this method only got called if this media type matches the one defined
+    // in the query. Thus, if if the document's media type is "print", the
+    // media type of the query will either be "print" or "all".
+    String mediaType = frame->view()->mediaType();
+    if (equalIgnoringCase(mediaType, "screen"))
+        deviceScaleFactor = frame->page()->deviceScaleFactor();
+    else if (equalIgnoringCase(mediaType, "print")) {
+        // The resolution of images while printing should not depend on the dpi
+        // of the screen. Until we support proper ways of querying this info
+        // we use 300px which is considered minimum for current printers.
+        deviceScaleFactor = 3.125; // 300dpi / 96dpi;
+    }
+
+    if (!value)
+        return !!deviceScaleFactor;
+
+    return value->isPrimitiveValue() && compareValue(deviceScaleFactor, static_cast<CSSPrimitiveValue*>(value)->getFloatValue(), op);
+}
+
+static bool resolutionMediaFeatureEval(CSSValue* value, RenderStyle*, Frame* frame, MediaFeaturePrefix op)
+{
+#if ENABLE(RESOLUTION_MEDIA_QUERY)
+    // The DPI below is dots per CSS inch and thus not device inch. The
+    // functions should respect this.
+    //
+    // For square pixels, it is simply the device scale factor (dppx) times 96,
+    // per definition.
+    //
+    // The device scale factor is a predefined value which is calculated per
+    // device given the preferred distance in arms length (considered one arms
+    // length for desktop computers and usually 0.6 arms length for phones).
+    //
+    // The value can be calculated as follows (rounded to quarters):
+    //     round((deviceDotsPerInch * distanceInArmsLength / 96) * 4) / 4.
+    // Example (mid-range resolution phone):
+    //     round((244 * 0.6 / 96) * 4) / 4 = 1.5
+    // Example (high-range resolution laptop):
+    //     round((220 * 1.0 / 96) * 4) / 4 = 2.0
+
+    float horiDPI;
+    float vertDPI;
+
+    // This checks the actual media type applied to the document, and we know
+    // this method only got called if this media type matches the one defined
+    // in the query. Thus, if if the document's media type is "print", the
+    // media type of the query will either be "print" or "all".
+    String mediaType = frame->view()->mediaType();
+    if (equalIgnoringCase(mediaType, "screen")) {
+        Screen* screen = frame->document()->domWindow()->screen();
+        horiDPI = screen->horizontalDPI();
+        vertDPI = screen->verticalDPI();
+    } else if (equalIgnoringCase(mediaType, "print")) {
+        // The resolution of images while printing should not depend on the dpi
+        // of the screen. Until we support proper ways of querying this info
+        // we use 300px which is considered minimum for current printers.
+        horiDPI = vertDPI = 300;
+    } else {
+        // FIXME: Possible handle other media types than 'screen' and 'print'.
+        // For now, do not match.
+        return false;
+    }
+
+    float leastDenseDPI = std::min(horiDPI, vertDPI);
+    float mostDenseDPI = std::max(horiDPI, vertDPI);
+
+    // According to spec, (resolution) will evaluate to true if (resolution:x)
+    // will evaluate to true for a value x other than zero or zero followed by
+    // a valid unit identifier (i.e., other than 0, 0dpi, 0dpcm, or 0dppx.),
+    // which is always the case. But the spec special cases 'resolution' to
+    // never matches a device with non-square pixels.
+    if (!value) {
+        ASSERT(op == NoPrefix);
+        return leastDenseDPI == mostDenseDPI;
+    }
+
+    if (!value->isPrimitiveValue())
+        return false;
+
+    // http://dev.w3.org/csswg/css3-values/#resolution defines resolution as a
+    // dimension, which contains a number (decimal point allowed), not just an
+    // integer. Also, http://dev.w3.org/csswg/css3-values/#numeric-types says
+    // "CSS theoretically supports infinite precision and infinite ranges for
+    // all value types;
+    CSSPrimitiveValue* rawValue = static_cast<CSSPrimitiveValue*>(value);
+
+    if (rawValue->isDotsPerPixel()) {
+        // http://dev.w3.org/csswg/css3-values/#absolute-lengths recommends
+        // "that the pixel unit refer to the whole number of device pixels that
+        // best approximates the reference pixel". We compare with 3 decimal
+        // points, which aligns with current device-pixel-ratio's in use.
+        float leastDenseDensity = floorf(leastDenseDPI * 1000 / 96) / 1000;
+        float mostDenseDensity = floorf(leastDenseDPI * 1000 / 96) / 1000;
+        float testedDensity = rawValue->getFloatValue(CSSPrimitiveValue::CSS_DPPX);
+        return compareResolution(leastDenseDensity, mostDenseDensity, testedDensity, op);
+    }
+
+    if (rawValue->isDotsPerInch()) {
+        unsigned testedDensity = rawValue->getFloatValue(CSSPrimitiveValue::CSS_DPI);
+        return compareResolution(leastDenseDPI, mostDenseDPI, testedDensity, op);
+    }
+
+    // http://dev.w3.org/csswg/css3-values/#absolute-lengths recommends "that
+    // the pixel unit refer to the whole number of device pixels that best
+    // approximates the reference pixel".
+    float leastDenseDPCM = roundf(leastDenseDPI / 2.54); // (2.54 cm/in)
+    float mostDenseDPCM = roundf(mostDenseDPI / 2.54);
+
+    if (rawValue->isDotsPerCentimeter()) {
+        float testedDensity = rawValue->getFloatValue(CSSPrimitiveValue::CSS_DPCM);
+        return compareResolution(leastDenseDPCM, mostDenseDPCM, testedDensity, op);
+    }
+#else
+    UNUSED_PARAM(value);
+    UNUSED_PARAM(frame);
+    UNUSED_PARAM(op);
+#endif
+
+    return false;
 }
 
 static bool gridMediaFeatureEval(CSSValue* value, RenderStyle*, Frame*, MediaFeaturePrefix op)
@@ -475,6 +591,16 @@ static bool max_device_widthMediaFeatureEval(CSSValue* value, RenderStyle* style
     return device_widthMediaFeatureEval(value, style, frame, MaxPrefix);
 }
 
+static bool min_resolutionMediaFeatureEval(CSSValue* value, RenderStyle* style, Frame* frame, MediaFeaturePrefix)
+{
+    return resolutionMediaFeatureEval(value, style, frame, MinPrefix);
+}
+
+static bool max_resolutionMediaFeatureEval(CSSValue* value, RenderStyle* style, Frame* frame, MediaFeaturePrefix)
+{
+    return resolutionMediaFeatureEval(value, style, frame, MaxPrefix);
+}
+
 static bool animationMediaFeatureEval(CSSValue* value, RenderStyle*, Frame*, MediaFeaturePrefix op)
 {
     if (value) {
@@ -534,7 +660,32 @@ static bool view_modeMediaFeatureEval(CSSValue* value, RenderStyle*, Frame* fram
     UNUSED_PARAM(op);
     if (!value)
         return true;
-    return Page::stringToViewMode(static_cast<CSSPrimitiveValue*>(value)->getStringValue()) == frame->page()->viewMode();
+
+    const int viewModeCSSKeywordID = static_cast<CSSPrimitiveValue*>(value)->getIdent();
+    const Page::ViewMode viewMode = frame->page()->viewMode();
+    bool result = false;
+    switch (viewMode) {
+    case Page::ViewModeWindowed:
+        result = viewModeCSSKeywordID == CSSValueWindowed;
+        break;
+    case Page::ViewModeFloating:
+        result = viewModeCSSKeywordID == CSSValueFloating;
+        break;
+    case Page::ViewModeFullscreen:
+        result = viewModeCSSKeywordID == CSSValueFullscreen;
+        break;
+    case Page::ViewModeMaximized:
+        result = viewModeCSSKeywordID == CSSValueMaximized;
+        break;
+    case Page::ViewModeMinimized:
+        result = viewModeCSSKeywordID == CSSValueMinimized;
+        break;
+    default:
+        result = false;
+        break;
+    }
+
+    return result;
 }
 
 enum PointerDeviceType { TouchPointer, MousePointer, NoPointer, UnknownPointer };
@@ -591,10 +742,10 @@ static bool pointerMediaFeatureEval(CSSValue* value, RenderStyle*, Frame* frame,
     if (!value->isPrimitiveValue())
         return false;
 
-    String str = static_cast<CSSPrimitiveValue*>(value)->getStringValue();
-    return (pointer == NoPointer && str == "none")
-        || (pointer == TouchPointer && str == "coarse")
-        || (pointer == MousePointer && str == "fine");
+    const int id = static_cast<CSSPrimitiveValue*>(value)->getIdent();
+    return (pointer == NoPointer && id == CSSValueNone)
+        || (pointer == TouchPointer && id == CSSValueCoarse)
+        || (pointer == MousePointer && id == CSSValueFine);
 }
 
 static void createFunctionMap()

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010 Apple Inc. All rights reserved.
+ * Copyright (C) 2010, 2012 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -60,6 +60,8 @@ WK_EXPORT void WKContextSetIconDatabasePath(WKContextRef context, WKStringRef ic
 // we should really change these settings to be on WebPreferences and changeable at runtime.
 WK_EXPORT void WKContextSetDatabaseDirectory(WKContextRef context, WKStringRef databaseDirectory);
 WK_EXPORT void WKContextSetLocalStorageDirectory(WKContextRef context, WKStringRef localStorageDirectory);
+WK_EXPORT void WKContextSetDiskCacheDirectory(WKContextRef context, WKStringRef diskCacheDirectory);
+WK_EXPORT void WKContextSetCookieStorageDirectory(WKContextRef context, WKStringRef cookieStorageDirectory);
 
 // FIXME: This is a workaround for testing purposes only and should be removed once a better
 // solution has been found for testing.
@@ -69,6 +71,10 @@ WK_EXPORT void WKContextEnableProcessTermination(WKContextRef context);
 WK_EXPORT void WKContextSetHTTPPipeliningEnabled(WKContextRef context, bool enabled);
 
 WK_EXPORT void WKContextWarmInitialProcess(WKContextRef context);
+
+// FIXME: This function is temporary and useful during the development of the NetworkProcess feature.
+// At some point it should be removed.
+WK_EXPORT void WKContextSetUsesNetworkProcess(WKContextRef context, bool usesNetworkProcess);
 
 #ifdef __cplusplus
 }

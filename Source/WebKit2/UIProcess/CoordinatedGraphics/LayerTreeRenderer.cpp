@@ -88,6 +88,7 @@ LayerTreeRenderer::LayerTreeRenderer(LayerTreeCoordinatorProxy* layerTreeCoordin
     : m_layerTreeCoordinatorProxy(layerTreeCoordinatorProxy)
     , m_rootLayerID(InvalidWebLayerID)
     , m_isActive(false)
+    , m_animationsLocked(false)
 {
 }
 
@@ -95,7 +96,7 @@ LayerTreeRenderer::~LayerTreeRenderer()
 {
 }
 
-PassOwnPtr<GraphicsLayer> LayerTreeRenderer::createLayer(WebLayerID layerID)
+PassOwnPtr<GraphicsLayer> LayerTreeRenderer::createLayer(WebLayerID)
 {
     GraphicsLayer* newLayer = new GraphicsLayerTextureMapper(this);
     TextureMapperLayer* layer = toTextureMapperLayer(newLayer);
@@ -120,18 +121,23 @@ void LayerTreeRenderer::paintToCurrentGLContext(const TransformationMatrix& matr
         return;
 
     layer->setTextureMapper(m_textureMapper.get());
+    if (!m_animationsLocked)
+        layer->applyAnimationsRecursively();
     m_textureMapper->beginPainting(PaintFlags);
     m_textureMapper->beginClip(TransformationMatrix(), clipRect);
 
     if (currentRootLayer->opacity() != opacity || currentRootLayer->transform() != matrix) {
         currentRootLayer->setOpacity(opacity);
         currentRootLayer->setTransform(matrix);
-        currentRootLayer->syncCompositingStateForThisLayerOnly();
+        currentRootLayer->flushCompositingStateForThisLayerOnly();
     }
 
     layer->paint();
     m_textureMapper->endClip();
     m_textureMapper->endPainting();
+
+    if (layer->descendantsOrSelfHaveRunningAnimations())
+        dispatchOnMainThread(bind(&LayerTreeRenderer::updateViewport, this));
 }
 
 void LayerTreeRenderer::paintToGraphicsContext(BackingStore::PlatformGraphicsContext painter)
@@ -183,7 +189,7 @@ void LayerTreeRenderer::adjustPositionForFixedLayers()
 
     LayerMap::iterator end = m_fixedLayers.end();
     for (LayerMap::iterator it = m_fixedLayers.begin(); it != end; ++it)
-        toTextureMapperLayer(it->second)->setScrollPositionDeltaIfNeeded(delta);
+        toTextureMapperLayer(it->value)->setScrollPositionDeltaIfNeeded(delta);
 }
 
 void LayerTreeRenderer::didChangeScrollPosition(const IntPoint& position)
@@ -191,12 +197,12 @@ void LayerTreeRenderer::didChangeScrollPosition(const IntPoint& position)
     m_pendingRenderedContentsScrollPosition = position;
 }
 
-void LayerTreeRenderer::syncCanvas(WebLayerID id, const WebCore::IntSize& canvasSize, uint64_t graphicsSurfaceToken, uint32_t frontBuffer)
+#if USE(GRAPHICS_SURFACE)
+void LayerTreeRenderer::syncCanvas(WebLayerID id, const WebCore::IntSize& canvasSize, const GraphicsSurfaceToken& token, uint32_t frontBuffer)
 {
     if (canvasSize.isEmpty() || !m_textureMapper)
         return;
 
-#if USE(GRAPHICS_SURFACE)
     ensureLayer(id);
     GraphicsLayer* layer = layerByID(id);
 
@@ -206,18 +212,18 @@ void LayerTreeRenderer::syncCanvas(WebLayerID id, const WebCore::IntSize& canvas
         canvasBackingStore = TextureMapperSurfaceBackingStore::create();
         m_surfaceBackingStores.set(id, canvasBackingStore);
     } else
-        canvasBackingStore = it->second;
+        canvasBackingStore = it->value;
 
-    canvasBackingStore->setGraphicsSurface(graphicsSurfaceToken, canvasSize, frontBuffer);
+    canvasBackingStore->setGraphicsSurface(token, canvasSize, frontBuffer);
     layer->setContentsToMedia(canvasBackingStore.get());
-#endif
 }
+#endif
 
 void LayerTreeRenderer::setLayerChildren(WebLayerID id, const Vector<WebLayerID>& childIDs)
 {
     ensureLayer(id);
     LayerMap::iterator it = m_layers.find(id);
-    GraphicsLayer* layer = it->second;
+    GraphicsLayer* layer = it->value;
     Vector<GraphicsLayer*> children;
 
     for (size_t i = 0; i < childIDs.size(); ++i) {
@@ -239,7 +245,7 @@ void LayerTreeRenderer::setLayerFilters(WebLayerID id, const FilterOperations& f
     LayerMap::iterator it = m_layers.find(id);
     ASSERT(it != m_layers.end());
 
-    GraphicsLayer* layer = it->second;
+    GraphicsLayer* layer = it->value;
     layer->setFilters(filters);
 }
 #endif
@@ -250,7 +256,7 @@ void LayerTreeRenderer::setLayerState(WebLayerID id, const WebLayerInfo& layerIn
     LayerMap::iterator it = m_layers.find(id);
     ASSERT(it != m_layers.end());
 
-    GraphicsLayer* layer = it->second;
+    GraphicsLayer* layer = it->value;
 
     layer->setReplicatedByLayer(layerByID(layerInfo.replica));
     layer->setMaskLayer(layerByID(layerInfo.mask));
@@ -360,7 +366,7 @@ void LayerTreeRenderer::createImage(int64_t imageID, PassRefPtr<ShareableBitmap>
     RefPtr<ShareableBitmap> bitmap = weakBitmap;
     RefPtr<TextureMapperTiledBackingStore> backingStore = TextureMapperTiledBackingStore::create();
     m_directlyCompositedImages.set(imageID, backingStore);
-    backingStore->updateContents(m_textureMapper.get(), bitmap->createImage().get());
+    backingStore->updateContents(m_textureMapper.get(), bitmap->createImage().get(), BitmapTexture::UpdateCannotModifyOriginalImageData);
 }
 
 void LayerTreeRenderer::destroyImage(int64_t imageID)
@@ -377,7 +383,7 @@ void LayerTreeRenderer::assignImageToLayer(GraphicsLayer* layer, int64_t imageID
 
     HashMap<int64_t, RefPtr<TextureMapperBackingStore> >::iterator it = m_directlyCompositedImages.find(imageID);
     ASSERT(it != m_directlyCompositedImages.end());
-    layer->setContentsToMedia(it->second.get());
+    layer->setContentsToMedia(it->value.get());
 }
 
 void LayerTreeRenderer::commitTileOperations()
@@ -393,7 +399,10 @@ void LayerTreeRenderer::flushLayerChanges()
 {
     m_renderedContentsScrollPosition = m_pendingRenderedContentsScrollPosition;
 
-    m_rootLayer->syncCompositingState(FloatRect());
+    // Since the frame has now been rendered, we can safely unlock the animations until the next layout.
+    setAnimationsLocked(false);
+
+    m_rootLayer->flushCompositingState(FloatRect());
     commitTileOperations();
 
     // The pending tiles state is on its way for the screen, tell the web process to render the next one.
@@ -461,20 +470,17 @@ void LayerTreeRenderer::purgeGLResources()
     dispatchOnMainThread(bind(&LayerTreeRenderer::purgeBackingStores, this));
 }
 
-void LayerTreeRenderer::setAnimatedOpacity(uint32_t id, float opacity)
+void LayerTreeRenderer::setLayerAnimations(WebLayerID id, const GraphicsLayerAnimations& animations)
 {
-    GraphicsLayer* layer = layerByID(id);
-    ASSERT(layer);
-
-    layer->setOpacity(opacity);
+    GraphicsLayerTextureMapper* layer = toGraphicsLayerTextureMapper(layerByID(id));
+    if (!layer)
+        return;
+    layer->setAnimations(animations);
 }
 
-void LayerTreeRenderer::setAnimatedTransform(uint32_t id, const WebCore::TransformationMatrix& transform)
+void LayerTreeRenderer::setAnimationsLocked(bool locked)
 {
-    GraphicsLayer* layer = layerByID(id);
-    ASSERT(layer);
-
-    layer->setTransform(transform);
+    m_animationsLocked = locked;
 }
 
 void LayerTreeRenderer::purgeBackingStores()

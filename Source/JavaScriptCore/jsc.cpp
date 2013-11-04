@@ -27,6 +27,7 @@
 #include "Completion.h"
 #include "CopiedSpaceInlineMethods.h"
 #include "ExceptionHelpers.h"
+#include "HeapStatistics.h"
 #include "InitializeThreading.h"
 #include "Interpreter.h"
 #include "JSArray.h"
@@ -250,7 +251,6 @@ protected:
 };
 
 COMPILE_ASSERT(!IsInteger<GlobalObject>::value, WTF_IsInteger_GlobalObject_false);
-ASSERT_CLASS_FITS_IN_CELL(GlobalObject);
 
 const ClassInfo GlobalObject::s_info = { "global", &JSGlobalObject::s_info, 0, ExecState::globalObjectTable, CREATE_METHOD_TABLE(GlobalObject) };
 const GlobalObjectMethodTable GlobalObject::s_globalObjectMethodTable = { &allowsAccessFrom, &supportsProfiling, &supportsRichSourceInfo, &shouldInterruptScript, &javaScriptExperimentsEnabled };
@@ -528,6 +528,8 @@ int main(int argc, char** argv)
     TRY
         res = jscmain(argc, argv);
     EXCEPT(res = 3)
+    if (Options::logHeapStatisticsAtExit())
+        HeapStatistics::reportSuccess();
     return res;
 }
 
@@ -744,7 +746,7 @@ int jscmain(int argc, char** argv)
     // Note that the options parsing can affect JSGlobalData creation, and thus
     // comes first.
     CommandLine options(argc, argv);
-    RefPtr<JSGlobalData> globalData = JSGlobalData::create(ThreadStackTypeLarge, LargeHeap);
+    RefPtr<JSGlobalData> globalData = JSGlobalData::create(LargeHeap);
     JSLockHolder lock(globalData.get());
     int result;
 

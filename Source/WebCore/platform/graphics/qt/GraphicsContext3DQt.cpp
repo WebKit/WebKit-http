@@ -69,7 +69,7 @@ public:
 #endif
 #if USE(GRAPHICS_SURFACE)
     virtual uint32_t copyToGraphicsSurface();
-    virtual uint64_t graphicsSurfaceToken() const;
+    virtual GraphicsSurfaceToken graphicsSurfaceToken() const;
 #endif
 
     QRectF boundingRect() const;
@@ -99,13 +99,6 @@ bool GraphicsContext3D::isGLES2Compliant() const
     return false;
 #endif
 }
-
-#if !USE(OPENGL_ES_2)
-void GraphicsContext3D::releaseShaderCompiler()
-{
-    notImplemented();
-}
-#endif
 
 GraphicsContext3DPrivate::GraphicsContext3DPrivate(GraphicsContext3D* context, HostWindow* hostWindow, GraphicsContext3D::RenderStyle renderStyle)
     : m_context(context)
@@ -151,7 +144,7 @@ GraphicsContext3DPrivate::GraphicsContext3DPrivate(GraphicsContext3D* context, H
                     | GraphicsSurface::SupportsSharing;
 
     if (!surfaceSize.isEmpty()) {
-        m_graphicsSurface = GraphicsSurface::create(surfaceSize, m_surfaceFlags);
+        m_graphicsSurface = GraphicsSurface::create(surfaceSize, m_surfaceFlags, m_platformContext);
     }
 #endif
 }
@@ -206,6 +199,11 @@ void GraphicsContext3DPrivate::initializeANGLE()
 
     // Always set to 1 for OpenGL ES.
     ANGLEResources.MaxDrawBuffers = 1;
+
+    Extensions3D* extensions = m_context->getExtensions();
+    if (extensions->supports("GL_ARB_texture_rectangle"))
+        ANGLEResources.ARB_texture_rectangle = 1;
+
     m_context->m_compiler.setResources(ANGLEResources);
 }
 
@@ -286,12 +284,12 @@ uint32_t GraphicsContext3DPrivate::copyToGraphicsSurface()
 
     blitMultisampleFramebufferAndRestoreContext();
     makeCurrentIfNeeded();
-    m_graphicsSurface->copyFromFramebuffer(m_context->m_fbo, IntRect(0, 0, m_context->m_currentWidth, m_context->m_currentHeight));
+    m_graphicsSurface->copyFromTexture(m_context->m_texture, IntRect(0, 0, m_context->m_currentWidth, m_context->m_currentHeight));
     uint32_t frontBuffer = m_graphicsSurface->swapBuffers();
     return frontBuffer;
 }
 
-uint64_t GraphicsContext3DPrivate::graphicsSurfaceToken() const
+GraphicsSurfaceToken GraphicsContext3DPrivate::graphicsSurfaceToken() const
 {
     return m_graphicsSurface->exportToken();
 }
@@ -344,7 +342,7 @@ void GraphicsContext3DPrivate::createGraphicsSurfaces(const IntSize& size)
     if (size.isEmpty())
         m_graphicsSurface.clear();
     else
-        m_graphicsSurface = GraphicsSurface::create(size, m_surfaceFlags);
+        m_graphicsSurface = GraphicsSurface::create(size, m_surfaceFlags, m_platformContext);
 #endif
 }
 
@@ -492,16 +490,18 @@ bool GraphicsContext3D::getImageData(Image* image,
     if (!image)
         return false;
 
-    QImage nativeImage;
+    QImage qtImage;
     // Is image already loaded? If not, load it.
     if (image->data())
-        nativeImage = QImage::fromData(reinterpret_cast<const uchar*>(image->data()->data()), image->data()->size());
-    else
-        nativeImage = *image->nativeImageForCurrentFrame();
-
+        qtImage = QImage::fromData(reinterpret_cast<const uchar*>(image->data()->data()), image->data()->size());
+    else {
+        QPixmap* nativePixmap = image->nativeImageForCurrentFrame();
+        // With QPA, we can avoid a deep copy.
+        qtImage = *nativePixmap->handle()->buffer();
+    }
 
     AlphaOp alphaOp = AlphaDoNothing;
-    switch (nativeImage.format()) {
+    switch (qtImage.format()) {
     case QImage::Format_RGB32:
         // For opaque images, we should not premultiply or unmultiply alpha.
         break;
@@ -515,7 +515,7 @@ bool GraphicsContext3D::getImageData(Image* image,
         break;
     default:
         // The image has a format that is not supported in packPixels. We have to convert it here.
-        nativeImage = nativeImage.convertToFormat(premultiplyAlpha ? QImage::Format_ARGB32_Premultiplied : QImage::Format_ARGB32);
+        qtImage = qtImage.convertToFormat(premultiplyAlpha ? QImage::Format_ARGB32_Premultiplied : QImage::Format_ARGB32);
         break;
     }
 
@@ -526,7 +526,7 @@ bool GraphicsContext3D::getImageData(Image* image,
 
     outputVector.resize(packedSize);
 
-    return packPixels(nativeImage.constBits(), SourceFormatBGRA8, image->width(), image->height(), 0, format, type, alphaOp, outputVector.data());
+    return packPixels(qtImage.constBits(), SourceFormatBGRA8, image->width(), image->height(), 0, format, type, alphaOp, outputVector.data());
 }
 
 void GraphicsContext3D::setContextLostCallback(PassOwnPtr<ContextLostCallback>)

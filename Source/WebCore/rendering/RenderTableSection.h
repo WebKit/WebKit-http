@@ -70,11 +70,10 @@ public:
 
     virtual void addChild(RenderObject* child, RenderObject* beforeChild = 0);
 
-    virtual LayoutUnit firstLineBoxBaseline() const;
+    virtual int firstLineBoxBaseline() const OVERRIDE;
 
     void addCell(RenderTableCell*, RenderTableRow* row);
 
-    void setCellLogicalWidths();
     int calcRowLogicalHeight();
     void layoutRows();
 
@@ -173,7 +172,7 @@ public:
     bool needsCellRecalc() const { return m_needsCellRecalc; }
     void setNeedsCellRecalc();
 
-    LayoutUnit getBaseline(unsigned row) { return m_grid[row].baseline; }
+    LayoutUnit rowBaseline(unsigned row) { return m_grid[row].baseline; }
 
     void rowLogicalHeightChanged(unsigned rowIndex);
 

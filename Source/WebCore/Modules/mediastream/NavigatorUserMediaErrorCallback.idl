@@ -22,12 +22,10 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-module window {
-    interface [
-        Conditional=MEDIA_STREAM,
-        Callback
-    ] NavigatorUserMediaErrorCallback {
-        boolean handleEvent(in NavigatorUserMediaError error);
-    };
+[
+    Conditional=MEDIA_STREAM,
+    Callback
+] interface NavigatorUserMediaErrorCallback {
+    boolean handleEvent(in NavigatorUserMediaError error);
+};
 
-}

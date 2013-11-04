@@ -27,6 +27,9 @@
 #include <glib/gi18n-lib.h>
 #include <wtf/text/CString.h>
 
+using namespace WebKit;
+using namespace WebCore;
+
 enum {
     PROP_0,
 
@@ -37,13 +40,10 @@ enum {
     PROP_SUGGESTED_FILENAME
 };
 
-using namespace WebKit;
-using namespace WebCore;
-
 G_DEFINE_TYPE(WebKitURIResponse, webkit_uri_response, G_TYPE_OBJECT)
 
 struct _WebKitURIResponsePrivate {
-    WebCore::ResourceResponse resourceResponse;
+    ResourceResponse resourceResponse;
     CString uri;
     CString mimeType;
     CString suggestedFilename;
@@ -282,9 +282,9 @@ const WebCore::ResourceResponse& webkitURIResponseGetResourceResponse(WebKitURIR
     return uriResponse->priv->resourceResponse;
 }
 
-void webkitURIResponseSetCertificateInfo(WebKitURIResponse* response, WKCertificateInfoRef wkCertificate)
+void webkitURIResponseSetCertificateInfo(WebKitURIResponse* response, WebCertificateInfo* certificate)
 {
-    const PlatformCertificateInfo& certificateInfo = toImpl(wkCertificate)->platformCertificateInfo();
+    const PlatformCertificateInfo& certificateInfo = certificate->platformCertificateInfo();
     response->priv->resourceResponse.setSoupMessageCertificate(certificateInfo.certificate());
     response->priv->resourceResponse.setSoupMessageTLSErrors(certificateInfo.tlsErrors());
 }

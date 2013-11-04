@@ -28,24 +28,19 @@
 
 #if ENABLE(BATTERY_STATUS)
 
-#include "MessageID.h"
+#include "MessageReceiver.h"
 #include "WebBatteryStatus.h"
 #include "WebCoreArgumentCoders.h"
 #include <wtf/HashSet.h>
 #include <wtf/Noncopyable.h>
 #include <wtf/text/AtomicString.h>
 
-namespace CoreIPC {
-class ArgumentDecoder;
-class Connection;
-}
-
 namespace WebKit {
 
 class WebPage;
 class WebProcess;
 
-class WebBatteryManager {
+class WebBatteryManager : private CoreIPC::MessageReceiver {
     WTF_MAKE_NONCOPYABLE(WebBatteryManager);
 
 public:
@@ -58,11 +53,12 @@ public:
     void didChangeBatteryStatus(const WTF::AtomicString& eventType, const WebBatteryStatus::Data&);
     void updateBatteryStatus(const WebBatteryStatus::Data&);
 
-    void didReceiveMessage(CoreIPC::Connection*, CoreIPC::MessageID, CoreIPC::ArgumentDecoder*);
-
 private:
+    // CoreIPC::MessageReceiver
+    void didReceiveMessage(CoreIPC::Connection*, CoreIPC::MessageID, CoreIPC::MessageDecoder&) OVERRIDE;
+
     // Implemented in generated WebBatteryManagerMessageReceiver.cpp
-    void didReceiveWebBatteryManagerMessage(CoreIPC::Connection*, CoreIPC::MessageID, CoreIPC::ArgumentDecoder*);
+    void didReceiveWebBatteryManagerMessage(CoreIPC::Connection*, CoreIPC::MessageID, CoreIPC::MessageDecoder&);
 
     WebProcess* m_process;
     HashSet<WebPage*> m_pageSet;

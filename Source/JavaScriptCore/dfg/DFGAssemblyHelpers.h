@@ -93,16 +93,20 @@ public:
     }
 #endif
 
-    void emitGetFromCallFrameHeaderPtr(RegisterFile::CallFrameHeaderEntry entry, GPRReg to)
+    void emitGetFromCallFrameHeaderPtr(JSStack::CallFrameHeaderEntry entry, GPRReg to)
     {
         loadPtr(Address(GPRInfo::callFrameRegister, entry * sizeof(Register)), to);
     }
-    void emitPutToCallFrameHeader(GPRReg from, RegisterFile::CallFrameHeaderEntry entry)
+    void emitPutToCallFrameHeader(GPRReg from, JSStack::CallFrameHeaderEntry entry)
     {
-        storePtr(from, Address(GPRInfo::callFrameRegister, entry * sizeof(Register)));
+#if USE(JSVALUE64)
+        store64(from, Address(GPRInfo::callFrameRegister, entry * sizeof(Register)));
+#else
+        store32(from, Address(GPRInfo::callFrameRegister, entry * sizeof(Register)));
+#endif
     }
 
-    void emitPutImmediateToCallFrameHeader(void* value, RegisterFile::CallFrameHeaderEntry entry)
+    void emitPutImmediateToCallFrameHeader(void* value, JSStack::CallFrameHeaderEntry entry)
     {
         storePtr(TrustedImmPtr(value), Address(GPRInfo::callFrameRegister, entry * sizeof(Register)));
     }
@@ -110,7 +114,7 @@ public:
     Jump branchIfNotCell(GPRReg reg)
     {
 #if USE(JSVALUE64)
-        return branchTestPtr(MacroAssembler::NonZero, reg, GPRInfo::tagMaskRegister);
+        return branchTest64(MacroAssembler::NonZero, reg, GPRInfo::tagMaskRegister);
 #else
         return branch32(MacroAssembler::NotEqual, reg, TrustedImm32(JSValue::CellTag));
 #endif
@@ -172,8 +176,14 @@ public:
         ScratchBuffer* scratchBuffer = m_globalData->scratchBufferForSize(scratchSize);
         EncodedJSValue* buffer = static_cast<EncodedJSValue*>(scratchBuffer->dataBuffer());
 
-        for (unsigned i = 0; i < GPRInfo::numberOfRegisters; ++i)
-            storePtr(GPRInfo::toRegister(i), buffer + i);
+        for (unsigned i = 0; i < GPRInfo::numberOfRegisters; ++i) {
+#if USE(JSVALUE64)
+            store64(GPRInfo::toRegister(i), buffer + i);
+#else
+            store32(GPRInfo::toRegister(i), buffer + i);
+#endif
+        }
+
         for (unsigned i = 0; i < FPRInfo::numberOfRegisters; ++i) {
             move(TrustedImmPtr(buffer + GPRInfo::numberOfRegisters + i), GPRInfo::regT0);
             storeDouble(FPRInfo::toRegister(i), GPRInfo::regT0);
@@ -204,8 +214,13 @@ public:
             move(TrustedImmPtr(buffer + GPRInfo::numberOfRegisters + i), GPRInfo::regT0);
             loadDouble(GPRInfo::regT0, FPRInfo::toRegister(i));
         }
-        for (unsigned i = 0; i < GPRInfo::numberOfRegisters; ++i)
-            loadPtr(buffer + i, GPRInfo::toRegister(i));
+        for (unsigned i = 0; i < GPRInfo::numberOfRegisters; ++i) {
+#if USE(JSVALUE64)
+            load64(buffer + i, GPRInfo::toRegister(i));
+#else
+            load32(buffer + i, GPRInfo::toRegister(i));
+#endif
+        }
     }
 
     // These methods JIT generate dynamic, debug-only checks - akin to ASSERTs.
@@ -229,47 +244,28 @@ public:
 #if USE(JSVALUE64)
     GPRReg boxDouble(FPRReg fpr, GPRReg gpr)
     {
-        moveDoubleToPtr(fpr, gpr);
-        subPtr(GPRInfo::tagTypeNumberRegister, gpr);
+        moveDoubleTo64(fpr, gpr);
+        sub64(GPRInfo::tagTypeNumberRegister, gpr);
         jitAssertIsJSDouble(gpr);
         return gpr;
     }
     FPRReg unboxDouble(GPRReg gpr, FPRReg fpr)
     {
         jitAssertIsJSDouble(gpr);
-        addPtr(GPRInfo::tagTypeNumberRegister, gpr);
-        movePtrToDouble(gpr, fpr);
+        add64(GPRInfo::tagTypeNumberRegister, gpr);
+        move64ToDouble(gpr, fpr);
         return fpr;
     }
 #endif
 
-#if USE(JSVALUE32_64) && CPU(X86)
+#if USE(JSVALUE32_64)
     void boxDouble(FPRReg fpr, GPRReg tagGPR, GPRReg payloadGPR)
     {
-        movePackedToInt32(fpr, payloadGPR);
-        rshiftPacked(TrustedImm32(32), fpr);
-        movePackedToInt32(fpr, tagGPR);
+        moveDoubleToInts(fpr, payloadGPR, tagGPR);
     }
     void unboxDouble(GPRReg tagGPR, GPRReg payloadGPR, FPRReg fpr, FPRReg scratchFPR)
     {
-        jitAssertIsJSDouble(tagGPR);
-        moveInt32ToPacked(payloadGPR, fpr);
-        moveInt32ToPacked(tagGPR, scratchFPR);
-        lshiftPacked(TrustedImm32(32), scratchFPR);
-        orPacked(scratchFPR, fpr);
-    }
-#endif
-
-#if USE(JSVALUE32_64) && CPU(ARM)
-    void boxDouble(FPRReg fpr, GPRReg tagGPR, GPRReg payloadGPR)
-    {
-        m_assembler.vmov(payloadGPR, tagGPR, fpr);
-    }
-    void unboxDouble(GPRReg tagGPR, GPRReg payloadGPR, FPRReg fpr, FPRReg scratchFPR)
-    {
-        jitAssertIsJSDouble(tagGPR);
-        UNUSED_PARAM(scratchFPR);
-        m_assembler.vmov(fpr, payloadGPR, tagGPR);
+        moveIntsToDouble(payloadGPR, tagGPR, fpr, scratchFPR);
     }
 #endif
     
@@ -277,7 +273,7 @@ public:
     Jump emitExceptionCheck(ExceptionCheckKind kind = NormalExceptionCheck)
     {
 #if USE(JSVALUE64)
-        return branchTestPtr(kind == NormalExceptionCheck ? NonZero : Zero, AbsoluteAddress(&globalData()->exception));
+        return branchTest64(kind == NormalExceptionCheck ? NonZero : Zero, AbsoluteAddress(&globalData()->exception));
 #elif USE(JSVALUE32_64)
         return branch32(kind == NormalExceptionCheck ? NotEqual : Equal, AbsoluteAddress(reinterpret_cast<char*>(&globalData()->exception) + OBJECT_OFFSETOF(JSValue, u.asBits.tag)), TrustedImm32(JSValue::EmptyValueTag));
 #endif
@@ -364,8 +360,6 @@ public:
 
     Vector<BytecodeAndMachineOffset>& decodedCodeMapFor(CodeBlock*);
     
-    static const double twoToThe32;
-
 protected:
     JSGlobalData* m_globalData;
     CodeBlock* m_codeBlock;

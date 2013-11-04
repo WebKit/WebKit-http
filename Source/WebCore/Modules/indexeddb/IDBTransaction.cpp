@@ -39,6 +39,8 @@
 #include "IDBOpenDBRequest.h"
 #include "IDBPendingTransactionMonitor.h"
 #include "IDBTracing.h"
+#include "ScriptCallStack.h"
+#include "ScriptExecutionContext.h"
 
 namespace WebCore {
 
@@ -151,7 +153,7 @@ PassRefPtr<IDBObjectStore> IDBTransaction::objectStore(const String& name, Excep
 
     IDBObjectStoreMap::iterator it = m_objectStoreMap.find(name);
     if (it != m_objectStoreMap.end())
-        return it->second;
+        return it->value;
 
     RefPtr<IDBObjectStoreBackendInterface> objectStoreBackend = m_backend->objectStore(name, ec);
     ASSERT(!objectStoreBackend != !ec); // If we didn't get a store, we should have gotten an exception code. And vice versa.
@@ -162,7 +164,7 @@ PassRefPtr<IDBObjectStore> IDBTransaction::objectStore(const String& name, Excep
     IDBDatabaseMetadata::ObjectStoreMap::const_iterator mdit = metadata.objectStores.find(name);
     ASSERT(mdit != metadata.objectStores.end());
 
-    RefPtr<IDBObjectStore> objectStore = IDBObjectStore::create(mdit->second, objectStoreBackend, this);
+    RefPtr<IDBObjectStore> objectStore = IDBObjectStore::create(mdit->value, objectStoreBackend, this);
     objectStoreCreated(name, objectStore);
     return objectStore.release();
 }
@@ -182,7 +184,7 @@ void IDBTransaction::objectStoreDeleted(const String& name)
     ASSERT(isVersionChange());
     IDBObjectStoreMap::iterator it = m_objectStoreMap.find(name);
     if (it != m_objectStoreMap.end()) {
-        RefPtr<IDBObjectStore> objectStore = it->second;
+        RefPtr<IDBObjectStore> objectStore = it->value;
         m_objectStoreMap.remove(name);
         objectStore->markDeleted();
         m_objectStoreCleanupMap.set(objectStore, objectStore->metadata());
@@ -280,14 +282,14 @@ void IDBTransaction::unregisterRequest(IDBRequest* request)
     m_requestList.remove(request);
 }
 
-void IDBTransaction::onAbort()
+void IDBTransaction::onAbort(PassRefPtr<IDBDatabaseError> error)
 {
     IDB_TRACE("IDBTransaction::onAbort");
     ASSERT(m_state != Finished);
 
     if (m_state != Finishing) {
-        // FIXME: Propagate true cause from back end (e.g. QuotaError, UnknownError, etc.)
-        setError(DOMError::create(IDBDatabaseException::getErrorName(IDBDatabaseException::UNKNOWN_ERR)));
+        ASSERT(error.get());
+        setError(DOMError::create(error->name()));
 
         // Abort was not triggered by front-end, so outstanding requests must
         // be aborted now.
@@ -301,7 +303,7 @@ void IDBTransaction::onAbort()
 
     if (isVersionChange()) {
         for (IDBObjectStoreMetadataMap::iterator it = m_objectStoreCleanupMap.begin(); it != m_objectStoreCleanupMap.end(); ++it)
-            it->first->setMetadata(it->second);
+            it->key->setMetadata(it->value);
     }
     m_objectStoreCleanupMap.clear();
     closeOpenCursors();
@@ -332,13 +334,22 @@ bool IDBTransaction::hasPendingActivity() const
     return m_hasPendingActivity || ActiveDOMObject::hasPendingActivity();
 }
 
-IDBTransaction::Mode IDBTransaction::stringToMode(const String& modeString, ExceptionCode& ec)
+IDBTransaction::Mode IDBTransaction::stringToMode(const String& modeString, ScriptExecutionContext* context, ExceptionCode& ec)
 {
     if (modeString.isNull()
         || modeString == IDBTransaction::modeReadOnly())
         return IDBTransaction::READ_ONLY;
     if (modeString == IDBTransaction::modeReadWrite())
         return IDBTransaction::READ_WRITE;
+
+    // FIXME: Remove legacy constants. http://webkit.org/b/85315
+    // FIXME: This is not thread-safe.
+    DEFINE_STATIC_LOCAL(String, consoleMessage, (ASCIILiteral("Numeric transaction modes are deprecated in IDBDatabase.transaction. Use \"readonly\" or \"readwrite\".")));
+    if (modeString == "0" || modeString == "1") {
+        context->addConsoleMessage(JSMessageSource, LogMessageType, WarningMessageLevel, consoleMessage);
+        return static_cast<IDBTransaction::Mode>(IDBTransaction::READ_ONLY + (modeString[0] - '0'));
+    }
+
     ec = NATIVE_TYPE_ERR;
     return IDBTransaction::READ_ONLY;
 }
@@ -385,7 +396,7 @@ bool IDBTransaction::dispatchEvent(PassRefPtr<Event> event)
 
     // Break reference cycles.
     for (IDBObjectStoreMap::iterator it = m_objectStoreMap.begin(); it != m_objectStoreMap.end(); ++it)
-        it->second->transactionFinished();
+        it->value->transactionFinished();
     m_objectStoreMap.clear();
     for (IDBObjectStoreSet::iterator it = m_deletedObjectStores.begin(); it != m_deletedObjectStores.end(); ++it)
         (*it)->transactionFinished();

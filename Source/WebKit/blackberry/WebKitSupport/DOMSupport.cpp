@@ -54,7 +54,11 @@ void visibleTextQuads(const VisibleSelection& selection, Vector<FloatQuad>& quad
 {
     if (!selection.isRange())
         return;
-    ASSERT(selection.firstRange());
+
+    // Make sure that both start and end have valid nodes associated otherwise
+    // this can crash. See PR 220628.
+    if (!selection.start().anchorNode() || !selection.end().anchorNode())
+        return;
 
     visibleTextQuads(*(selection.firstRange()), quads, true /* useSelectionHeight */);
 }
@@ -554,6 +558,20 @@ bool isEmptyRangeOrAllSpaces(VisiblePosition startPosition, VisiblePosition endP
 
         if (startPosition == endPosition)
             return true;
+    }
+
+    return false;
+}
+
+bool isFixedPositionOrHasFixedPositionAncestor(RenderObject* renderer)
+{
+    RenderObject* currentRenderer = renderer;
+    while (currentRenderer) {
+
+        if (currentRenderer->isOutOfFlowPositioned() && currentRenderer->style()->position() == FixedPosition)
+            return true;
+
+        currentRenderer = currentRenderer->parent();
     }
 
     return false;

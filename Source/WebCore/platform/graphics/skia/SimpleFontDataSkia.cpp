@@ -112,16 +112,18 @@ void SimpleFontData::platformInit()
     m_fontMetrics.setDescent(descent);
 
     float xHeight;
-    if (metrics.fXHeight)
+    if (metrics.fXHeight) {
         xHeight = metrics.fXHeight;
-    else {
-        // hack taken from the Windows port
-        xHeight = ascent * 0.56f;
+        m_fontMetrics.setXHeight(xHeight);
+    } else {
+        xHeight = ascent * 0.56; // Best guess from Windows font metrics.
+        m_fontMetrics.setXHeight(xHeight);
+        m_fontMetrics.setHasXHeight(false);
     }
+
 
     float lineGap = SkScalarToFloat(metrics.fLeading);
     m_fontMetrics.setLineGap(lineGap);
-    m_fontMetrics.setXHeight(xHeight);
     m_fontMetrics.setLineSpacing(lroundf(ascent) + lroundf(descent) + lroundf(lineGap));
 
     if (platformData().orientation() == Vertical && !isTextOrientationFallback()) {
@@ -161,6 +163,9 @@ void SimpleFontData::platformInit()
             }
         }
     }
+
+    if (int unitsPerEm = paint.getTypeface()->getUnitsPerEm())
+        m_fontMetrics.setUnitsPerEm(unitsPerEm);
 }
 
 void SimpleFontData::platformCharWidthInit()
@@ -260,7 +265,7 @@ bool SimpleFontData::canRenderCombiningCharacterSequence(const UChar* characters
 
     WTF::HashMap<String, bool>::AddResult addResult = m_combiningCharacterSequenceSupport->add(String(characters, length), false);
     if (!addResult.isNewEntry)
-        return addResult.iterator->second;
+        return addResult.iterator->value;
 
     UErrorCode error = U_ZERO_ERROR;
     Vector<UChar, 4> normalizedCharacters(length);
@@ -273,7 +278,7 @@ bool SimpleFontData::canRenderCombiningCharacterSequence(const UChar* characters
     m_platformData.setupPaint(&paint);
     paint.setTextEncoding(SkPaint::kUTF16_TextEncoding);
     if (paint.textToGlyphs(&normalizedCharacters[0], normalizedLength * 2, 0)) {
-        addResult.iterator->second = true;
+        addResult.iterator->value = true;
         return true;
     }
     return false;

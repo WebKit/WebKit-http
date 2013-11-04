@@ -35,6 +35,7 @@
 
 namespace WebCore {
 
+class CSSStyleSheet;
 class Element;
 class FileList;
 class HTMLInputElement;
@@ -46,7 +47,7 @@ class RenderMeter;
 #if ENABLE(PROGRESS_ELEMENT)
 class RenderProgress;
 #endif
-class CSSStyleSheet;
+class RenderSnapshottedPlugIn;
 
 class RenderTheme : public RefCounted<RenderTheme> {
 protected:
@@ -101,7 +102,7 @@ public:
     // A method to obtain the baseline position for a "leaf" control.  This will only be used if a baseline
     // position cannot be determined by examining child content. Checkboxes and radio buttons are examples of
     // controls that need to do this.
-    virtual LayoutUnit baselinePosition(const RenderObject*) const;
+    virtual int baselinePosition(const RenderObject*) const;
 
     // A method for asking if a control is a container or not.  Leaf controls have to have some special behavior (like
     // the baseline position API above).
@@ -240,6 +241,10 @@ public:
 
     virtual String fileListDefaultLabel(bool multipleFilesAllowed) const;
     virtual String fileListNameForWidth(const FileList*, const Font&, int width, bool multipleFilesAllowed) const;
+
+    virtual void paintPlugInSnapshotOverlay(RenderSnapshottedPlugIn*, const PaintInfo&, const LayoutPoint&) const { }
+
+    virtual bool shouldOpenPickerWithF4Key() const;
 
 protected:
     // The platform selection color.

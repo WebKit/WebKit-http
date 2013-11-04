@@ -64,10 +64,11 @@ public:
     bool isSerialLoadingEnabled() const { return m_isSerialLoadingEnabled; }
     void setSerialLoadingEnabled(bool b) { m_isSerialLoadingEnabled = b; }
 
-private:
+protected:
     ResourceLoadScheduler();
-    ~ResourceLoadScheduler();
+    virtual ~ResourceLoadScheduler();
 
+private:
     void scheduleLoad(ResourceLoader*, ResourceLoadPriority);
     void scheduleServePendingRequests();
     void requestTimerFired(Timer<ResourceLoadScheduler>*);
@@ -103,6 +104,8 @@ private:
     
     HostInformation* hostForURL(const KURL&, CreateHostPolicy = FindOnly);
     void servePendingRequests(HostInformation*, ResourceLoadPriority);
+
+    static ResourceLoadScheduler* defaultResourceLoadScheduler();
 
     typedef HashMap<String, HostInformation*, StringHash> HostMap;
     HostMap m_hosts;

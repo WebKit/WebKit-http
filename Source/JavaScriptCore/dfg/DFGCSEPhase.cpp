@@ -177,6 +177,7 @@ private:
                 if (!m_graph.byValIsPure(node))
                     return NoNode;
                 switch (node.arrayMode()) {
+                case CONTIGUOUS_TO_TAIL_MODES:
                 case ARRAY_STORAGE_TO_HOLE_MODES:
                     return NoNode;
                 default:
@@ -197,6 +198,8 @@ private:
         for (unsigned i = m_indexInBlock; i--;) {
             NodeIndex index = m_currentBlock->at(i);
             Node& node = m_graph[index];
+            if (!node.shouldGenerate())
+                continue;
             switch (node.op()) {
             case GetGlobalVar:
                 if (node.registerPointer() == registerPointer)
@@ -220,6 +223,8 @@ private:
         for (unsigned i = m_indexInBlock; i--;) {
             NodeIndex index = m_currentBlock->at(i);
             Node& node = m_graph[index];
+            if (!node.shouldGenerate())
+                continue;
             switch (node.op()) {
             case GetScopedVar: {
                 Node& getScopeRegisters = m_graph[node.child1()];
@@ -248,6 +253,8 @@ private:
         for (unsigned i = m_indexInBlock; i--;) {
             NodeIndex index = m_currentBlock->at(i);
             Node& node = m_graph[index];
+            if (!node.shouldGenerate())
+                continue;
             switch (node.op()) {
             case GlobalVarWatchpoint:
                 if (node.registerPointer() == registerPointer)
@@ -334,6 +341,8 @@ private:
                 break;
 
             Node& node = m_graph[index];
+            if (!node.shouldGenerate())
+                continue;
             switch (node.op()) {
             case GetByVal:
                 if (!m_graph.byValIsPure(node))
@@ -358,9 +367,6 @@ private:
                 // array with an integer index, which means that it's impossible
                 // for a structure change or a put to property storage to affect
                 // the GetByVal.
-                break;
-            case ArrayPush:
-                // A push cannot affect previously existing elements in the array.
                 break;
             default:
                 if (m_graph.clobbersWorld(index))
@@ -393,6 +399,8 @@ private:
                 break;
 
             Node& node = m_graph[index];
+            if (!node.shouldGenerate())
+                continue;
             switch (node.op()) {
             case CheckStructure:
             case ForwardCheckStructure:
@@ -447,6 +455,8 @@ private:
                 break;
 
             Node& node = m_graph[index];
+            if (!node.shouldGenerate())
+                continue;
             switch (node.op()) {
             case CheckStructure:
             case ForwardCheckStructure:
@@ -549,6 +559,8 @@ private:
                 break;
 
             Node& node = m_graph[index];
+            if (!node.shouldGenerate())
+                continue;
             switch (node.op()) {
             case GetByOffset:
                 if (node.child1() == child1
@@ -1222,9 +1234,7 @@ private:
         case PutByVal: {
             Edge child1 = m_graph.varArgChild(node, 0);
             Edge child2 = m_graph.varArgChild(node, 1);
-            if (isActionableMutableArraySpeculation(m_graph[child1].prediction())
-                && m_graph[child2].shouldSpeculateInteger()
-                && !m_graph[child1].shouldSpeculateArguments()) {
+            if (canCSEStorage(node.arrayMode())) {
                 NodeIndex nodeIndex = getByValLoadElimination(child1.index(), child2.index());
                 if (nodeIndex == NoNode)
                     break;

@@ -200,18 +200,27 @@ void HarfBuzzShaper::setDrawRange(int from, int to)
 
 void HarfBuzzShaper::setFontFeatures()
 {
-    FontFeatureSettings* settings = m_font->fontDescription().featureSettings();
+    const FontDescription& description = m_font->fontDescription();
+    if (description.orientation() == Vertical) {
+        static hb_feature_t vert = { HarfBuzzNGFace::vertTag, 1, 0, static_cast<unsigned>(-1) };
+        static hb_feature_t vrt2 = { HarfBuzzNGFace::vrt2Tag, 1, 0, static_cast<unsigned>(-1) };
+        m_features.append(vert);
+        m_features.append(vrt2);
+    }
+
+    FontFeatureSettings* settings = description.featureSettings();
     if (!settings)
         return;
 
     unsigned numFeatures = settings->size();
-    m_features.resize(numFeatures);
     for (unsigned i = 0; i < numFeatures; ++i) {
+        hb_feature_t feature;
         const UChar* tag = settings->at(i).tag().characters();
-        m_features[i].tag = HB_TAG(tag[0], tag[1], tag[2], tag[3]);
-        m_features[i].value = settings->at(i).value();
-        m_features[i].start = 0;
-        m_features[i].end = static_cast<unsigned>(-1);
+        feature.tag = HB_TAG(tag[0], tag[1], tag[2], tag[3]);
+        feature.value = settings->at(i).value();
+        feature.start = 0;
+        feature.end = static_cast<unsigned>(-1);
+        m_features.append(feature);
     }
 }
 
@@ -225,8 +234,8 @@ bool HarfBuzzShaper::shape(GlyphBuffer* glyphBuffer)
         return false;
     m_totalWidth = roundf(m_totalWidth);
 
-    if (glyphBuffer)
-        fillGlyphBuffer(glyphBuffer);
+    if (glyphBuffer && !fillGlyphBuffer(glyphBuffer))
+        return false;
 
     return true;
 }
@@ -325,7 +334,12 @@ bool HarfBuzzShaper::shapeHarfBuzzRuns()
         HarfBuzzNGFace* face = platformData->harfbuzzFace();
         if (!face)
             return false;
+
+        if (m_font->fontDescription().orientation() == Vertical)
+            face->setScriptForVerticalGlyphSubstitution(harfbuzzBuffer.get());
+
         HarfBuzzScopedPtr<hb_font_t> harfbuzzFont(face->createFont(), hb_font_destroy);
+
         hb_shape(harfbuzzFont.get(), harfbuzzBuffer.get(), m_features.isEmpty() ? 0 : m_features.data(), m_features.size());
 
         currentRun->applyShapeResult(harfbuzzBuffer.get());
@@ -418,7 +432,7 @@ void HarfBuzzShaper::fillGlyphBufferFromHarfBuzzRun(GlyphBuffer* glyphBuffer, Ha
     }
 }
 
-void HarfBuzzShaper::fillGlyphBuffer(GlyphBuffer* glyphBuffer)
+bool HarfBuzzShaper::fillGlyphBuffer(GlyphBuffer* glyphBuffer)
 {
     unsigned numRuns = m_harfbuzzRuns.size();
     if (m_run.rtl()) {
@@ -436,6 +450,7 @@ void HarfBuzzShaper::fillGlyphBuffer(GlyphBuffer* glyphBuffer)
             fillGlyphBufferFromHarfBuzzRun(glyphBuffer, currentRun, firstOffsetOfNextRun);
         }
     }
+    return glyphBuffer->size();
 }
 
 int HarfBuzzShaper::offsetForPosition(float targetX)

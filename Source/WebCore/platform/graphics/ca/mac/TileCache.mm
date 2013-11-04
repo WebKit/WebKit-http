@@ -45,15 +45,18 @@ using namespace std;
 
 namespace WebCore {
 
-PassOwnPtr<TileCache> TileCache::create(WebTileCacheLayer* tileCacheLayer, const IntSize& tileSize)
+static const int defaultTileCacheWidth = 512;
+static const int defaultTileCacheHeight = 512;
+
+PassOwnPtr<TileCache> TileCache::create(WebTileCacheLayer* tileCacheLayer)
 {
-    return adoptPtr(new TileCache(tileCacheLayer, tileSize));
+    return adoptPtr(new TileCache(tileCacheLayer));
 }
 
-TileCache::TileCache(WebTileCacheLayer* tileCacheLayer, const IntSize& tileSize)
+TileCache::TileCache(WebTileCacheLayer* tileCacheLayer)
     : m_tileCacheLayer(tileCacheLayer)
     , m_tileContainerLayer(adoptCF([[CALayer alloc] init]))
-    , m_tileSize(tileSize)
+    , m_tileSize(defaultTileCacheWidth, defaultTileCacheHeight)
     , m_tileRevalidationTimer(this, &TileCache::tileRevalidationTimerFired)
     , m_scale(1)
     , m_deviceScaleFactor(1)
@@ -61,6 +64,7 @@ TileCache::TileCache(WebTileCacheLayer* tileCacheLayer, const IntSize& tileSize)
     , m_isInWindow(false)
     , m_scrollingPerformanceLoggingEnabled(false)
     , m_acceleratesDrawing(false)
+    , m_tilesAreOpaque(false)
     , m_tileDebugBorderWidth(0)
 {
     [CATransaction begin];
@@ -77,7 +81,7 @@ TileCache::~TileCache()
     ASSERT(isMainThread());
 
     for (TileMap::iterator it = m_tiles.begin(), end = m_tiles.end(); it != end; ++it) {
-        WebTileLayer* tileLayer = it->second.get();
+        WebTileLayer* tileLayer = it->value.get();
         [tileLayer setTileCache:0];
     }
 }
@@ -97,7 +101,7 @@ void TileCache::tileCacheLayerBoundsChanged()
 void TileCache::setNeedsDisplay()
 {
     for (TileMap::const_iterator it = m_tiles.begin(), end = m_tiles.end(); it != end; ++it)
-        [it->second.get() setNeedsDisplay];
+        [it->value.get() setNeedsDisplay];
 }
 
 void TileCache::setNeedsDisplayInRect(const IntRect& rect)
@@ -178,9 +182,9 @@ void TileCache::setScale(CGFloat scale)
     revalidateTiles();
 
     for (TileMap::const_iterator it = m_tiles.begin(), end = m_tiles.end(); it != end; ++it) {
-        [it->second.get() setContentsScale:deviceScaleFactor];
+        [it->value.get() setContentsScale:deviceScaleFactor];
 
-        IntRect tileRect = rectForTileIndex(it->first);
+        IntRect tileRect = rectForTileIndex(it->key);
         FloatRect scaledTileRect = tileRect;
 
         scaledTileRect.scale(1 / m_scale);
@@ -200,13 +204,26 @@ void TileCache::setAcceleratesDrawing(bool acceleratesDrawing)
     m_acceleratesDrawing = acceleratesDrawing;
 
     for (TileMap::const_iterator it = m_tiles.begin(), end = m_tiles.end(); it != end; ++it)
-        [it->second.get() setAcceleratesDrawing:m_acceleratesDrawing];
+        [it->value.get() setAcceleratesDrawing:m_acceleratesDrawing];
 #else
     UNUSED_PARAM(acceleratesDrawing);
 #endif
 }
 
-void TileCache::visibleRectChanged(const IntRect& visibleRect)
+void TileCache::setTilesOpaque(bool opaque)
+{
+    if (opaque == m_tilesAreOpaque)
+        return;
+
+    m_tilesAreOpaque = opaque;
+
+    for (TileMap::iterator it = m_tiles.begin(), end = m_tiles.end(); it != end; ++it) {
+        WebTileLayer* tileLayer = it->value.get();
+        [tileLayer setOpaque:opaque];
+    }
+}
+
+void TileCache::setVisibleRect(const IntRect& visibleRect)
 {
     if (m_visibleRect == visibleRect)
         return;
@@ -249,7 +266,7 @@ void TileCache::setTileDebugBorderWidth(float borderWidth)
 
     m_tileDebugBorderWidth = borderWidth;
     for (TileMap::const_iterator it = m_tiles.begin(), end = m_tiles.end(); it != end; ++it)
-        [it->second.get() setBorderWidth:m_tileDebugBorderWidth];
+        [it->value.get() setBorderWidth:m_tileDebugBorderWidth];
 }
 
 void TileCache::setTileDebugBorderColor(CGColorRef borderColor)
@@ -259,7 +276,7 @@ void TileCache::setTileDebugBorderColor(CGColorRef borderColor)
 
     m_tileDebugBorderColor = borderColor;
     for (TileMap::const_iterator it = m_tiles.begin(), end = m_tiles.end(); it != end; ++it)
-        [it->second.get() setBorderColor:m_tileDebugBorderColor.get()];
+        [it->value.get() setBorderColor:m_tileDebugBorderColor.get()];
 }
 
 IntRect TileCache::bounds() const
@@ -286,29 +303,40 @@ void TileCache::getTileIndexRangeForRect(const IntRect& rect, TileIndex& topLeft
 
     topLeft.setX(max(clampedRect.x() / m_tileSize.width(), 0));
     topLeft.setY(max(clampedRect.y() / m_tileSize.height(), 0));
-    bottomRight.setX(max(clampedRect.maxX() / m_tileSize.width(), 0));
-    bottomRight.setY(max(clampedRect.maxY() / m_tileSize.height(), 0));
+
+    int bottomXRatio = ceil((float)clampedRect.maxX() / m_tileSize.width());
+    bottomRight.setX(max(bottomXRatio - 1, 0));
+
+    int bottomYRatio = ceil((float)clampedRect.maxY() / m_tileSize.height());
+    bottomRight.setY(max(bottomYRatio - 1, 0));
 }
 
-IntRect TileCache::tileCoverageRect() const
+IntRect TileCache::computeTileCoverageRect() const
 {
     IntRect tileCoverageRect = m_visibleRect;
 
     // If the page is not in a window (for example if it's in a background tab), we limit the tile coverage rect to the visible rect.
     // Furthermore, if the page can't have scrollbars (for example if its body element has overflow:hidden) it's very unlikely that the
     // page will ever be scrolled so we limit the tile coverage rect as well.
-    if (m_isInWindow) {
+    if (m_isInWindow && !(m_tileCoverage & CoverageForSlowScrolling)) {
         // Inflate the coverage rect so that it covers 2x of the visible width and 3x of the visible height.
         // These values were chosen because it's more common to have tall pages and to scroll vertically,
         // so we keep more tiles above and below the current area.
-        if (m_tileCoverage && CoverageForHorizontalScrolling)
+        if (m_tileCoverage & CoverageForHorizontalScrolling)
             tileCoverageRect.inflateX(tileCoverageRect.width() / 2);
 
-        if (m_tileCoverage && CoverageForVerticalScrolling)
+        if (m_tileCoverage & CoverageForVerticalScrolling)
             tileCoverageRect.inflateY(tileCoverageRect.height());
     }
 
     return tileCoverageRect;
+}
+
+IntSize TileCache::tileSizeForCoverageRect(const IntRect& coverageRect) const
+{
+    if (m_tileCoverage & CoverageForSlowScrolling)
+        return coverageRect.size();
+    return IntSize(defaultTileCacheWidth, defaultTileCacheHeight);
 }
 
 void TileCache::scheduleTileRevalidation(double interval)
@@ -363,16 +391,22 @@ void TileCache::revalidateTiles()
     if (m_visibleRect.isEmpty() || bounds().isEmpty())
         return;
 
-    IntRect tileCoverageRect = this->tileCoverageRect();
+    IntRect tileCoverageRect = computeTileCoverageRect();
+    IntRect coverageRectInTileCoords(tileCoverageRect);
+    coverageRectInTileCoords.scale(m_scale);
+
+    IntSize oldTileSize = m_tileSize;
+    m_tileSize = tileSizeForCoverageRect(tileCoverageRect);
+    bool tileSizeChanged = m_tileSize != oldTileSize;
 
     Vector<TileIndex> tilesToRemove;
 
     for (TileMap::iterator it = m_tiles.begin(), end = m_tiles.end(); it != end; ++it) {
-        const TileIndex& tileIndex = it->first;
+        const TileIndex& tileIndex = it->key;
 
-        WebTileLayer* tileLayer = it->second.get();
+        WebTileLayer* tileLayer = it->value.get();
 
-        if (!rectForTileIndex(tileIndex).intersects(tileCoverageRect)) {
+        if (!rectForTileIndex(tileIndex).intersects(coverageRectInTileCoords) || tileSizeChanged) {
             // Remove this layer.
             [tileLayer removeFromSuperlayer];
             [tileLayer setTileCache:0];
@@ -389,7 +423,7 @@ void TileCache::revalidateTiles()
 
     TileIndex topLeft;
     TileIndex bottomRight;
-    getTileIndexRangeForRect(tileCoverageRect, topLeft, bottomRight);
+    getTileIndexRangeForRect(coverageRectInTileCoords, topLeft, bottomRight);
 
     Vector<FloatRect> dirtyRects;
 
@@ -398,7 +432,7 @@ void TileCache::revalidateTiles()
             TileIndex tileIndex(x, y);
 
             IntRect tileRect = rectForTileIndex(tileIndex);
-            RetainPtr<WebTileLayer>& tileLayer = m_tiles.add(tileIndex, 0).iterator->second;
+            RetainPtr<WebTileLayer>& tileLayer = m_tiles.add(tileIndex, 0).iterator->value;
             if (!tileLayer) {
                 tileLayer = createTileLayer(tileRect);
                 [m_tileContainerLayer.get() addSublayer:tileLayer.get()];
@@ -418,7 +452,7 @@ void TileCache::revalidateTiles()
 
     m_tileCoverageRect = IntRect();
     for (TileMap::iterator it = m_tiles.begin(), end = m_tiles.end(); it != end; ++it) {
-        const TileIndex& tileIndex = it->first;
+        const TileIndex& tileIndex = it->key;
 
         m_tileCoverageRect.unite(rectForTileIndex(tileIndex));
     }
@@ -426,6 +460,14 @@ void TileCache::revalidateTiles()
     if (dirtyRects.isEmpty())
         return;
     platformLayer->owner()->platformCALayerDidCreateTiles(dirtyRects);
+}
+
+// Return the rect in layer coords, not tile coords.
+IntRect TileCache::tileCoverageRect() const
+{
+    IntRect coverageRectInLayerCoords(m_tileCoverageRect);
+    coverageRectInLayerCoords.scale(1 / m_scale);
+    return coverageRectInLayerCoords;
 }
 
 WebTileLayer* TileCache::tileLayerAtIndex(const TileIndex& index) const
@@ -442,7 +484,7 @@ RetainPtr<WebTileLayer> TileCache::createTileLayer(const IntRect& tileRect)
     [layer.get() setBorderColor:m_tileDebugBorderColor.get()];
     [layer.get() setBorderWidth:m_tileDebugBorderWidth];
     [layer.get() setEdgeAntialiasingMask:0];
-    [layer.get() setOpaque:YES];
+    [layer.get() setOpaque:m_tilesAreOpaque];
 #ifndef NDEBUG
     [layer.get() setName:@"Tile"];
 #endif
@@ -466,7 +508,7 @@ bool TileCache::shouldShowRepaintCounters() const
     if (!layerContents)
         return false;
 
-    return layerContents->platformCALayerShowRepaintCounter();
+    return layerContents->platformCALayerShowRepaintCounter(0);
 }
 
 void TileCache::drawRepaintCounter(WebTileLayer *layer, CGContextRef context)

@@ -64,6 +64,38 @@ fast/forms/legend-access-key.html
 fast/loader/policy-delegate-action-hit-test-zoomed.html
 # eventSender.gestureTap
 fast/events/touch/gesture/gesture-click.html
+# eventSender.gestureLongPress
+fast/events/touch/gesture/context-menu-on-long-press.html
+touchadjustment/touch-links-longpress.html
+# eventSender.beginDragWithFiles
+fast/dom/Window/window-postmessage-clone-frames.html
+fast/dom/Window/window-postmessage-clone.html
+fast/events/drag-file-crash.html
+fast/events/drag-to-navigate.html
+fast/events/file-input-hidden-in-ondrop.html
+fast/events/input-element-display-none-in-dragleave-crash.html
+fast/events/prevent-drag-to-navigate.html
+fast/files/apply-blob-url-to-img.html
+fast/files/apply-blob-url-to-xhr.html
+fast/files/file-list-test.html
+fast/files/file-reader-abort.html
+fast/files/file-reader-directory-crash.html
+fast/files/file-reader-event-listener.html
+fast/files/read-blob-async.html
+fast/files/read-file-async.html
+fast/files/null-origin-string.html
+fast/files/workers/worker-apply-blob-url-to-xhr.html
+fast/files/workers/worker-read-blob-async.html
+fast/files/workers/worker-read-blob-sync.html
+fast/files/workers/worker-read-file-async.html
+fast/files/workers/worker-read-file-sync.html
+fast/forms/file/get-file-upload.html
+fast/forms/file/input-file-write-files.html
+fast/forms/file/file-input-change-event.html
+fast/forms/file/recover-file-input-in-unposted-form.html
+fast/forms/file/selected-files-from-history-state.html
+http/tests/local/blob/send-hybrid-blob.html
+http/tests/local/formdata
 
 svg/custom/use-events-crash.svg
 
@@ -201,10 +233,6 @@ fast/events/drag-selects-image.html
 # https://bugs.webkit.org/show_bug.cgi?id=70915
 svg/as-object/svg-embedded-in-html-in-iframe.html
 
-# [Qt][WK2] fast/transforms/scrollIntoView-transformed.html is flaky
-# https://bugs.webkit.org/show_bug.cgi?id=70935
-fast/transforms/scrollIntoView-transformed.html
-
 # [Qt][WK2] css3/unicode-bidi-isolate-aharon-failing.html fails
 # https://bugs.webkit.org/show_bug.cgi?id=74505
 css3/unicode-bidi-isolate-aharon-failing.html
@@ -223,7 +251,6 @@ svg/custom/getscreenctm-in-scrollable-svg-area.xhtml
 svg/custom/getscreenctm-in-scrollable-div-area.xhtml
 
 # Failing tests on qt-wk2 after unskipping qt-5.0/Skipped tests, need more investigation
-editing/selection/click-in-margins-inside-editable-div.html
 fast/block/basic/020.html
 fast/history/visited-link-background-color.html
 fast/layers/layer-visibility-sublayer.html
@@ -250,6 +277,10 @@ http/tests/xmlhttprequest/workers/abort-exception-assert.html
 # [Qt][WK2]fast/loader/submit-form-while-parsing-2.html fails intermittently
 # https://bugs.webkit.org/show_bug.cgi?id=75950
 fast/loader/submit-form-while-parsing-2.html
+
+# New test hangs QT bot
+# Discussed in https://bugs.webkit.org/show_bug.cgi?id=38928
+fast/loader/recursive-before-unload-crash.html
 
 # [Qt][WK2] css3/filters/should-not-have-compositing-layer.html is failing since added in 104622
 # https://bugs.webkit.org/show_bug.cgi?id=76061
@@ -303,7 +334,6 @@ compositing/geometry/limit-layer-bounds-transformed.html
 compositing/layer-creation/overflow-scroll-overlap.html
 compositing/layer-creation/scroll-partial-update.html
 compositing/layer-creation/spanOverlapsCanvas.html
-compositing/tiling/crash-reparent-tiled-layer.html
 
 # The following tests doesnt match both expected image and text.
 compositing/geometry/ancestor-overflow-change.html
@@ -330,6 +360,9 @@ compositing/overflow/overflow-visible-with-touch.html
 compositing/overflow/scrolling-content-clip-to-viewport.html
 compositing/overflow/textarea-scroll-touch.html
 
+# [Qt][WK2] New compositing/tiling/tile-cache-zoomed.html introduced in r132542 fails
+webkit.org/b/100490 compositing/tiling/tile-cache-zoomed.html
+
 # [Qt] [WK2] Some fullscreen layout tests are timing out on the bot
 # https://bugs.webkit.org/show_bug.cgi?id=92543
 fullscreen/video-controls-timeline.html
@@ -351,10 +384,6 @@ http/tests/plugins/npapi-response-headers.html
 http/tests/plugins/post-url-file.html
 http/tests/plugins/third-party-cookie-accept-policy.html
 
-# [Qt][WK2] All plugin tests fail on buildbot
-# https://bugs.webkit.org/show_bug.cgi?id=83024
-plugins
-
 # [Qt][WK2] fast/frames/iframe-window-focus.html fails
 # https://bugs.webkit.org/show_bug.cgi?id=83575
 fast/frames/iframe-window-focus.html
@@ -362,29 +391,9 @@ fast/frames/iframe-window-focus.html
 # Missing layoutTestController.numberOfPendingGeolocationPermissionRequests() implementation
 fast/dom/Geolocation/page-reload-cancel-permission-requests.html
 
-# [Qt] New failing and flakey tests with newer Qt 5
-# https://bugs.webkit.org/show_bug.cgi?id=86452
-fast/ruby/ruby-inline-style-not-updated.html
-fast/table/table-row-before-child-style-update.html
-fast/table/table-row-style-not-updated-with-before-content.html
-fast/table/table-row-style-not-updated.html
-fast/table/table-style-not-updated.html
-
 # [Qt][WK2] fast/forms/ValidityState-valueMissing-002.html fails
 # https://bugs.webkit.org/show_bug.cgi?id=87395
 fast/forms/ValidityState-valueMissing-002.html
-
-# [Qt][WK2] REGRESSION(r118761): It made 2 tests crash
-# https://bugs.webkit.org/show_bug.cgi?id=87750
-fast/backgrounds/multiple-backgrounds-computed-style.html
-fast/css/getComputedStyle/computed-style-cross-fade.html
-
-# [Qt][WK2] REGRESSION(r119127): It made 2 fast/multicol tests crash
-# https://bugs.webkit.org/show_bug.cgi?id=88064
-fast/multicol/pagination-v-horizontal-bt.html
-fast/multicol/pagination-h-vertical-lr.html
-fast/multicol/pagination-h-vertical-rl.html
-fast/multicol/pagination-v-horizontal-tb.html
 
 # REGRESSION(r118618): fast/dom/beforeload/image-object-before-load* fail
 # https://bugs.webkit.org/show_bug.cgi?id=87631
@@ -529,6 +538,16 @@ fast/dom/Geolocation/watch.html
 # https://bugs.webkit.org/show_bug.cgi?id=97598
 fast/events/popup-blocked-from-fake-user-gesture.html
 
+# [Qt][WK2] fast/events/tabindex-focus-blur-all.html fails. (only 64 bit)
+# https://bugs.webkit.org/show_bug.cgi?id=98412
+fast/events/tabindex-focus-blur-all.html
+
+# This test consistently fails if run with --singly flag
+inspector/timeline/timeline-paint.html
+
+# [Qt] New fails caused by change(s) between r79317-r79320.
+inspector/debugger/open-close-open.html
+
 # [Qt][WK2] inspector/extensions/extensions-network.html times out
 # https://bugs.webkit.org/show_bug.cgi?id=98136
 inspector/extensions/extensions-network.html
@@ -538,3 +557,210 @@ webkit.org/b/98343 fast/dom/Geolocation/window-close-crash.html
 
 # [Qt][WK2] fast/parser/document-open-in-unload.html makes the following test crash
 webkit.org/b/98345 fast/parser/document-open-in-unload.html
+
+# [Qt] Unidentified plugin failures
+webkit.org/b/98525 http/tests/inspector/network/network-content-replacement-embed.html
+webkit.org/b/98525 http/tests/inspector/network/network-embed.html
+webkit.org/b/98525 http/tests/security/frameNavigation/xss-DENIED-plugin-navigation.html
+webkit.org/b/98525 plugins/document-open.html
+webkit.org/b/98525 plugins/embed-inside-object.html
+webkit.org/b/98525 plugins/evaluate-js-after-removing-plugin-element.html
+webkit.org/b/98525 plugins/keyboard-events.html
+webkit.org/b/98525 plugins/mouse-events-fixedpos.html
+webkit.org/b/98525 plugins/mouse-events.html
+webkit.org/b/98525 plugins/npruntime/browser-object-identity.html
+webkit.org/b/98525 plugins/npruntime/embed-property-equality.html
+webkit.org/b/98525 plugins/refcount-leaks.html
+
+# [Qt][WK2] Ruby DOM tests differ on WK1 and WK2
+webkit.org/b/98688 fast/ruby/rubyDOM-insert-rt.html
+webkit.org/b/98688 fast/ruby/rubyDOM-insert-text1.html
+webkit.org/b/98688 fast/ruby/rubyDOM-insert-text2.html
+webkit.org/b/98688 fast/ruby/rubyDOM-insert-text3.html
+webkit.org/b/98688 fast/ruby/rubyDOM-remove-rt1.html
+webkit.org/b/98688 fast/ruby/rubyDOM-remove-rt2.html
+webkit.org/b/98688 fast/ruby/rubyDOM-remove-text1.html
+webkit.org/b/98688 fast/ruby/rubyDOM-remove-text2.html
+
+# [Qt][WK2]REGRESSION(r130826): It made fast/js/sparse-array.html crash on 64 bit
+webkit.org/b/98859 fast/js/sort-stability.html
+webkit.org/b/98859 fast/js/sort-with-side-effecting-comparisons.html
+
+# [Qt][WK2] Tests producing bad repaint rects in pixel results
+webkit.org/b/98897 compositing/clip-change.html [ ImageOnlyFailure ]
+webkit.org/b/98897 compositing/geometry/foreground-offset-change.html [ ImageOnlyFailure ]
+webkit.org/b/98897 compositing/iframes/iframe-content-flipping.html [ ImageOnlyFailure ]
+webkit.org/b/98897 compositing/iframes/repaint-after-losing-scrollbars.html [ ImageOnlyFailure ]
+webkit.org/b/98897 compositing/iframes/scroll-grandchild-iframe.html [ ImageOnlyFailure ]
+webkit.org/b/98897 compositing/iframes/scroll-grandchild-iframe.html [ ImageOnlyFailure ]
+webkit.org/b/98897 compositing/overflow/repaint-after-losing-scrollbars.html [ ImageOnlyFailure ]
+webkit.org/b/98897 compositing/repaint/transform-style-change.html [ ImageOnlyFailure ]
+webkit.org/b/98897 compositing/video-page-visibility.html [ ImageOnlyFailure ]
+webkit.org/b/98897 css3/filters/filter-change-repaint-composited.html [ ImageOnlyFailure ]
+webkit.org/b/98897 css3/filters/filter-repaint-composited-fallback-crash.html [ ImageOnlyFailure ]
+webkit.org/b/98897 css3/filters/filter-repaint-composited-fallback.html [ ImageOnlyFailure ]
+webkit.org/b/98897 fast/canvas/canvas-as-image-incremental-repaint.html [ ImageOnlyFailure ]
+webkit.org/b/98897 fast/dynamic/containing-block-change.html [ ImageOnlyFailure ]
+webkit.org/b/98897 fast/frames/inline-object-inside-frameset.html [ ImageOnlyFailure ]
+webkit.org/b/98897 fast/repaint/overflow-flipped-writing-mode-block-in-regions.html [ ImageOnlyFailure ]
+webkit.org/b/98897 fast/repaint/textarea-set-disabled.html [ ImageOnlyFailure ]
+
+# Will need rebaselining after bug 98527 fixed
+webkit.org/b/98994 http/tests/loading/text-content-type-with-binary-extension.html [ Failure ]
+
+# [Qt] some tests fail after unskipped in r131044
+# https://bugs.webkit.org/show_bug.cgi?id=99034
+http/tests/cookies/third-party-cookie-relaxing.html
+http/tests/security/cookies/third-party-cookie-blocking-user-action.html
+http/tests/security/cookies/third-party-cookie-blocking-xslt.xml
+http/tests/security/cookies/third-party-cookie-blocking.html
+
+# [Qt][WK2] Skip tests that depend on disabling accelerated compositing
+webkit.org/b/99167 css3/filters/effect-blur.html
+webkit.org/b/99167 css3/filters/effect-brightness.html
+webkit.org/b/99167 css3/filters/effect-sepia.html
+webkit.org/b/99167 css3/filters/blur-filter-page-scroll.html
+webkit.org/b/99167 css3/filters/blur-filter-page-scroll-self.html
+webkit.org/b/99167 css3/filters/filter-repaint.html
+webkit.org/b/99167 css3/filters/effect-drop-shadow.html
+webkit.org/b/99167 css3/filters/effect-grayscale.html
+webkit.org/b/99167 css3/filters/effect-saturate.html
+webkit.org/b/99167 css3/filters/blur-filter-page-scroll-parents.html
+webkit.org/b/99167 css3/filters/effect-hue-rotate.html
+webkit.org/b/99167 css3/filters/effect-contrast.html
+webkit.org/b/99167 css3/filters/effect-combined.html
+webkit.org/b/99167 css3/filters/effect-brightness-clamping.html
+webkit.org/b/99167 css3/filters/effect-opacity.html
+webkit.org/b/99167 css3/filters/effect-invert.html
+webkit.org/b/99167 css3/filters/null-effect-check.html
+
+# [Qt][WK2] http/tests/misc/willCacheResponse-delegate-callback.html fails
+webkit.org/b/99148 http/tests/misc/willCacheResponse-delegate-callback.html
+
+# [Qt][WK2] REGRESSION(r131057): It made plugins/plugin-document-back-forward.html timeout
+webkit.org/b/99152 plugins/plugin-document-back-forward.html
+
+# [Qt][WK2] http/tests/navigation/ping-cross-origin-from-https.html fails
+webkit.org/b/99155 http/tests/navigation/ping-cross-origin-from-https.html
+
+# User Timing is not enabled
+webkit.org/b/84893 http/tests/w3c/webperf/submission/Intel/user-timing
+
+# Resource Timing is not enable yet, skip it.
+webkit.org/b/61138 http/tests/w3c/webperf/submission/Intel/resource-timing
+
+# [Qt] Unidentified pixel failures
+webkit.org/b/99306 animations/3d/state-at-end-event-transform.html [ ImageOnlyFailure ]
+webkit.org/b/99306 animations/additive-transform-animations.html [ ImageOnlyFailure ]
+webkit.org/b/99306 compositing/absolute-position-changed-in-composited-layer.html [ ImageOnlyFailure ]
+webkit.org/b/99306 compositing/animation/state-at-end-event-transform-layer.html [ ImageOnlyFailure ]
+webkit.org/b/99306 compositing/checkerboard.html [ ImageOnlyFailure ]
+webkit.org/b/99306 compositing/culling/filter-occlusion-alpha-large.html [ ImageOnlyFailure ]
+webkit.org/b/99306 compositing/culling/filter-occlusion-alpha.html [ ImageOnlyFailure ]
+webkit.org/b/99306 compositing/culling/filter-occlusion-blur-large.html [ ImageOnlyFailure ]
+webkit.org/b/99306 compositing/culling/filter-occlusion-blur.html [ ImageOnlyFailure ]
+webkit.org/b/99306 compositing/fixed-position-scroll-offset-history-restore.html [ ImageOnlyFailure ]
+webkit.org/b/99306 compositing/geometry/fixed-in-composited.html [ ImageOnlyFailure ]
+webkit.org/b/99306 compositing/geometry/fixed-position-composited-page-scale-down.html [ ImageOnlyFailure ]
+webkit.org/b/99306 compositing/geometry/fixed-position-composited-page-scale.html [ ImageOnlyFailure ]
+webkit.org/b/99306 compositing/geometry/fixed-position-iframe-composited-page-scale-down.html [ ImageOnlyFailure ]
+webkit.org/b/99306 compositing/geometry/fixed-position-iframe-composited-page-scale.html [ ImageOnlyFailure ]
+webkit.org/b/99306 compositing/geometry/fixed-position-transform-composited-page-scale-down.html [ ImageOnlyFailure ]
+webkit.org/b/99306 compositing/geometry/fixed-position-transform-composited-page-scale.html [ ImageOnlyFailure ]
+webkit.org/b/99306 compositing/geometry/horizontal-scroll-composited.html [ ImageOnlyFailure ]
+webkit.org/b/99306 compositing/geometry/vertical-scroll-composited.html [ ImageOnlyFailure ]
+webkit.org/b/99306 compositing/geometry/video-fixed-scrolling.html [ ImageOnlyFailure ]
+webkit.org/b/99306 compositing/images/content-image-change.html [ ImageOnlyFailure ]
+webkit.org/b/99306 compositing/images/direct-pdf-image.html [ ImageOnlyFailure ]
+webkit.org/b/99306 compositing/layer-creation/fixed-position-and-transform.html [ ImageOnlyFailure ]
+webkit.org/b/99306 compositing/layer-creation/fixed-position-scroll.html [ ImageOnlyFailure ]
+webkit.org/b/99306 compositing/layer-creation/fixed-position-under-transform.html [ ImageOnlyFailure ]
+webkit.org/b/99306 compositing/overflow/fixed-position-ancestor-clip.html [ ImageOnlyFailure ]
+webkit.org/b/99306 compositing/overflow/overflow-scaled-descendant-overlapping.html [ ImageOnlyFailure ]
+webkit.org/b/99306 compositing/reflections/masked-reflection-on-composited.html [ ImageOnlyFailure ]
+webkit.org/b/99306 compositing/rtl/rtl-fixed-overflow-scrolled.html [ ImageOnlyFailure ]
+webkit.org/b/99306 compositing/rtl/rtl-iframe-absolute-overflow-scrolled.html [ ImageOnlyFailure ]
+webkit.org/b/99306 compositing/rtl/rtl-iframe-fixed-overflow-scrolled.html [ ImageOnlyFailure ]
+webkit.org/b/99306 compositing/scaling/tiled-layer-recursion.html [ ImageOnlyFailure ]
+webkit.org/b/99306 compositing/transitions/singular-scale-transition.html [ ImageOnlyFailure ]
+webkit.org/b/99306 css3/filters/blur-filter-page-scroll-parents.html [ ImageOnlyFailure ]
+webkit.org/b/99306 css3/filters/blur-filter-page-scroll-self.html [ ImageOnlyFailure ]
+webkit.org/b/99306 css3/filters/blur-filter-page-scroll.html [ ImageOnlyFailure ]
+webkit.org/b/99306 css3/filters/effect-brightness-clamping.html [ ImageOnlyFailure ]
+webkit.org/b/99306 css3/filters/effect-combined-hw.html [ ImageOnlyFailure ]
+webkit.org/b/99306 css3/filters/effect-drop-shadow.html [ ImageOnlyFailure ]
+webkit.org/b/99306 css3/filters/effect-opacity-hw.html [ ImageOnlyFailure ]
+webkit.org/b/99306 css3/filters/filter-change-repaint.html [ ImageOnlyFailure ]
+webkit.org/b/99306 css3/filters/filtered-compositing-descendant.html [ ImageOnlyFailure ]
+webkit.org/b/99306 fast/dynamic/anchor-lock.html [ ImageOnlyFailure ]
+webkit.org/b/99306 fast/events/scale-and-scroll-iframe-body.html [ ImageOnlyFailure ]
+webkit.org/b/99306 fast/events/scale-and-scroll-iframe-window.html [ ImageOnlyFailure ]
+webkit.org/b/99306 fast/events/scale-and-scroll-window.html [ ImageOnlyFailure ]
+webkit.org/b/99306 fast/frames/flattening/iframe-flattening-out-of-view.html [ ImageOnlyFailure ]
+webkit.org/b/99306 fast/frames/flattening/iframe-flattening-out-of-view-scroll-and-relayout.html [ ImageOnlyFailure ]
+webkit.org/b/99306 fast/multicol/pagination-h-horizontal-bt.html [ ImageOnlyFailure ]
+webkit.org/b/99306 fast/multicol/pagination-h-horizontal-tb.html [ ImageOnlyFailure ]
+webkit.org/b/99306 fast/multicol/pagination-h-vertical-rl.html [ ImageOnlyFailure ]
+webkit.org/b/99306 fast/multicol/pagination-v-horizontal-bt.html [ ImageOnlyFailure ]
+webkit.org/b/99306 fast/multicol/pagination-v-horizontal-tb.html [ ImageOnlyFailure ]
+webkit.org/b/99306 fast/multicol/pagination-v-vertical-lr.html [ ImageOnlyFailure ]
+webkit.org/b/99306 fast/multicol/pagination-v-vertical-rl.html [ ImageOnlyFailure ]
+webkit.org/b/99306 fast/multicol/scrolling-overflow.html [ ImageOnlyFailure ]
+webkit.org/b/99306 fast/regions/autowidth-normalflow-maxwidth.html [ ImageOnlyFailure ]
+webkit.org/b/99306 fast/repaint/fixed-child-move-after-scroll.html [ ImageOnlyFailure ]
+webkit.org/b/99306 fast/repaint/fixed-child-of-transformed-move-after-scroll.html [ ImageOnlyFailure ]
+webkit.org/b/99306 fast/repaint/fixed-in-page-scale.html [ ImageOnlyFailure ]
+webkit.org/b/99306 fast/repaint/fixed-move-after-scroll.html [ ImageOnlyFailure ]
+webkit.org/b/99306 fast/repaint/fixed-right-bottom-in-page-scale.html [ ImageOnlyFailure ]
+webkit.org/b/99306 fast/repaint/fixed-right-in-page-scale.html [ ImageOnlyFailure ]
+webkit.org/b/99306 fast/repaint/fixed-scale.html [ ImageOnlyFailure ]
+webkit.org/b/99306 fast/repaint/fixed-scroll-simple.html [ ImageOnlyFailure ]
+webkit.org/b/99306 fast/repaint/fixed-table-cell.html [ ImageOnlyFailure ]
+webkit.org/b/99306 fast/repaint/fixed-table-overflow-zindex.html [ ImageOnlyFailure ]
+webkit.org/b/99306 fast/repaint/fixed-table-overflow.html [ ImageOnlyFailure ]
+webkit.org/b/99306 fast/repaint/repaint-during-scroll.html [ ImageOnlyFailure ]
+webkit.org/b/99306 fast/repaint/scale-page-shrink.html [ ImageOnlyFailure ]
+webkit.org/b/99306 fast/spatial-navigation/snav-multiple-select-focusring.html [ ImageOnlyFailure ]
+webkit.org/b/99306 fast/text/international/hebrew-selection.html [ ImageOnlyFailure ]
+webkit.org/b/99306 http/tests/images/png-partial-load-no-alpha.html [ ImageOnlyFailure ]
+webkit.org/b/99306 svg/as-image/image-respects-pageScaleFactor.html [ ImageOnlyFailure ]
+webkit.org/b/99306 svg/custom/dasharrayOrigin.svg [ ImageOnlyFailure ]
+webkit.org/b/99306 svg/custom/gradient-stroke-width.svg [ ImageOnlyFailure ]
+webkit.org/b/99306 svg/custom/invalid-dasharray.svg [ ImageOnlyFailure ]
+webkit.org/b/99306 svg/custom/scrolling-embedded-svg-file-image-repaint-problem.html [ ImageOnlyFailure ]
+webkit.org/b/99306 transforms/2d/transform-fixed-container.html [ ImageOnlyFailure ]
+webkit.org/b/99306 transforms/3d/general/transform-origin-z-change.html [ ImageOnlyFailure ]
+webkit.org/b/99306 transitions/move-after-transition.html [ ImageOnlyFailure ]
+webkit.org/b/99306 compositing/absolute-position-changed-with-composited-parent-layer.html [ ImageOnlyFailure ]
+webkit.org/b/99306 compositing/culling/tile-occlusion-boundaries.html [ ImageOnlyFailure ]
+webkit.org/b/99306 compositing/geometry/fixed-position.html [ ImageOnlyFailure ]
+webkit.org/b/99306 compositing/reflections/become-simple-composited-reflection.html [ ImageOnlyFailure ]
+webkit.org/b/99306 css2.1/20110323/abspos-containing-block-initial-001.htm [ ImageOnlyFailure ]
+webkit.org/b/99306 css3/filters/effect-brightness-clamping-hw.html [ ImageOnlyFailure ]
+webkit.org/b/99306 editing/selection/select-missing-image.html [ ImageOnlyFailure ]
+webkit.org/b/99306 fast/block/positioning/rtl-fixed-positioning.html [ ImageOnlyFailure ]
+webkit.org/b/99306 fast/css/sticky/inflow-sticky.html [ ImageOnlyFailure ]
+webkit.org/b/99306 fast/css/sticky/replaced-sticky.html [ ImageOnlyFailure ]
+webkit.org/b/99306 fast/css/sticky/sticky-as-positioning-container.html [ ImageOnlyFailure ]
+webkit.org/b/99306 fast/css/sticky/sticky-both-sides.html [ ImageOnlyFailure ]
+webkit.org/b/99306 fast/css/sticky/sticky-left.html [ ImageOnlyFailure ]
+webkit.org/b/99306 fast/css/sticky/sticky-margins.html [ ImageOnlyFailure ]
+webkit.org/b/99306 fast/css/sticky/sticky-overflowing.html [ ImageOnlyFailure ]
+webkit.org/b/99306 fast/css/sticky/sticky-side-margins.html [ ImageOnlyFailure ]
+webkit.org/b/99306 fast/css/sticky/sticky-top-margins.html [ ImageOnlyFailure ]
+webkit.org/b/99306 fast/css/sticky/sticky-top.html [ ImageOnlyFailure ]
+webkit.org/b/99306 fast/css/sticky/sticky-writing-mode-horizontal-bt.html [ ImageOnlyFailure ]
+webkit.org/b/99306 fast/events/reveal-link-when-focused.html [ ImageOnlyFailure ]
+webkit.org/b/99306 fast/events/scale-and-scroll-body.html [ ImageOnlyFailure ]
+webkit.org/b/99306 fast/frames/flattening/iframe-flattening-out-of-view-and-scroll.html [ ImageOnlyFailure ]
+webkit.org/b/99306 fast/frames/frame-set-rotation-hit.html [ ImageOnlyFailure ]
+webkit.org/b/99306 fast/frames/frame-set-scaling-hit.html [ ImageOnlyFailure ]
+webkit.org/b/99306 fast/frames/transparent-scrollbar.html [ ImageOnlyFailure ]
+webkit.org/b/99306 fast/multicol/pagination-h-vertical-lr.html [ ImageOnlyFailure ]
+webkit.org/b/99306 fast/multicol/shrink-to-column-height-for-pagination.html [ ImageOnlyFailure ]
+webkit.org/b/99306 fast/multicol/vertical-rl/rule-style.html [ ImageOnlyFailure ]
+webkit.org/b/99306 fast/overflow/paged-x-with-column-gap.html [ ImageOnlyFailure ]
+webkit.org/b/99306 fast/repaint/fixed-child-of-fixed-move-after-scroll.html [ ImageOnlyFailure ]
+webkit.org/b/99306 fast/replaced/border-radius-clip.html [ ImageOnlyFailure ]
+webkit.org/b/99306 transitions/opacity-transition-zindex.html [ ImageOnlyFailure ]
+webkit.org/b/99306 transitions/suspend-transform-transition.html [ ImageOnlyFailure ]

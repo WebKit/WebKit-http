@@ -39,6 +39,93 @@ inline static int getValidationResultValue(const ShHandle compiler, ShShaderInfo
     return value;
 }
 
+static bool getSymbolInfo(ShHandle compiler, ShShaderInfo symbolType, Vector<ANGLEShaderSymbol>& symbols)
+{
+    ShShaderInfo symbolMaxNameLengthType;
+
+    switch (symbolType) {
+    case SH_ACTIVE_ATTRIBUTES:
+        symbolMaxNameLengthType = SH_ACTIVE_ATTRIBUTE_MAX_LENGTH;
+        break;
+    case SH_ACTIVE_UNIFORMS:
+        symbolMaxNameLengthType = SH_ACTIVE_UNIFORM_MAX_LENGTH;
+        break;
+    default:
+        ASSERT_NOT_REACHED();
+        return false;
+    }
+
+    int numSymbols = getValidationResultValue(compiler, symbolType);
+    if (numSymbols < 0)
+        return false;
+
+    int maxNameLength = getValidationResultValue(compiler, symbolMaxNameLengthType);
+    if (maxNameLength <= 1)
+        return false;
+
+    int maxMappedNameLength = getValidationResultValue(compiler, SH_MAPPED_NAME_MAX_LENGTH);
+    if (maxMappedNameLength <= 1)
+        return false;
+
+    // The maximum allowed symbol name length is 256 characters.
+    Vector<char, 256> nameBuffer(maxNameLength);
+    Vector<char, 256> mappedNameBuffer(maxMappedNameLength);
+    
+    for (int i = 0; i < numSymbols; ++i) {
+        ANGLEShaderSymbol symbol;
+        int nameLength = -1;
+        switch (symbolType) {
+        case SH_ACTIVE_ATTRIBUTES:
+            symbol.symbolType = SHADER_SYMBOL_TYPE_ATTRIBUTE;
+            ShGetActiveAttrib(compiler, i, &nameLength, &symbol.size, &symbol.dataType, nameBuffer.data(), mappedNameBuffer.data());
+            break;
+        case SH_ACTIVE_UNIFORMS:
+            symbol.symbolType = SHADER_SYMBOL_TYPE_UNIFORM;
+            ShGetActiveUniform(compiler, i, &nameLength, &symbol.size, &symbol.dataType, nameBuffer.data(), mappedNameBuffer.data());
+            break;
+        default:
+            ASSERT_NOT_REACHED();
+            return false;
+        }
+        if (nameLength <= 0)
+            return false;
+        
+        // The ShGetActive* calls above are guaranteed to produce null-terminated strings for
+        // nameBuffer and mappedNameBuffer. Also, the character set for symbol names
+        // is a subset of Latin-1 as specified by the OpenGL ES Shading Language, Section 3.1 and
+        // WebGL, Section "Characters Outside the GLSL Source Character Set".
+
+        String name = String(nameBuffer.data());
+        String mappedName = String(mappedNameBuffer.data());
+        
+        // ANGLE returns array names in the format "array[0]".
+        // The only way to know if a symbol is an array is to check if it ends with "[0]".
+        // We can't check the size because regular symbols and arrays of length 1 both have a size of 1.
+        symbol.isArray = name.endsWith("[0]") && mappedName.endsWith("[0]");
+        if (symbol.isArray) {
+            // Add a symbol for the array name without the "[0]" suffix.
+            name.truncate(name.length() - 3);
+            mappedName.truncate(mappedName.length() - 3);
+        }
+
+        symbol.name = name;
+        symbol.mappedName = mappedName;
+        symbols.append(symbol);
+    
+        if (symbol.isArray) {
+            // Add symbols for each array element.
+            symbol.isArray = false;
+            for (int i = 0; i < symbol.size; i++) {
+                String arrayBrackets = "[" + String::number(i) + "]";
+                symbol.name = name + arrayBrackets;
+                symbol.mappedName = mappedName + arrayBrackets;
+                symbols.append(symbol);
+            }
+        }
+    }
+    return true;
+}
+
 ANGLEWebKitBridge::ANGLEWebKitBridge(ShShaderOutput shaderOutput, ShShaderSpec shaderSpec)
     : builtCompilers(false)
     , m_fragmentCompiler(0)
@@ -75,7 +162,7 @@ void ANGLEWebKitBridge::setResources(ShBuiltInResources resources)
     m_resources = resources;
 }
 
-bool ANGLEWebKitBridge::validateShaderSource(const char* shaderSource, ANGLEShaderType shaderType, String& translatedShaderSource, String& shaderValidationLog, int extraCompileOptions)
+bool ANGLEWebKitBridge::compileShaderSource(const char* shaderSource, ANGLEShaderType shaderType, String& translatedShaderSource, String& shaderValidationLog, Vector<ANGLEShaderSymbol>& symbols, int extraCompileOptions)
 {
     if (!builtCompilers) {
         m_fragmentCompiler = ShConstructCompiler(SH_FRAGMENT_SHADER, m_shaderSpec, m_shaderOutput, &m_resources);
@@ -97,7 +184,13 @@ bool ANGLEWebKitBridge::validateShaderSource(const char* shaderSource, ANGLEShad
 
     const char* const shaderSourceStrings[] = { shaderSource };
 
-    bool validateSuccess = ShCompile(compiler, shaderSourceStrings, 1, SH_OBJECT_CODE | extraCompileOptions);
+#if !PLATFORM(CHROMIUM)
+    // Chromium does not use the ANGLE bundled in WebKit source, and thus
+    // does not yet have the symbol SH_CLAMP_INDIRECT_ARRAY_BOUNDS.
+    extraCompileOptions |= SH_CLAMP_INDIRECT_ARRAY_BOUNDS;
+#endif
+
+    bool validateSuccess = ShCompile(compiler, shaderSourceStrings, 1, SH_OBJECT_CODE | SH_ATTRIBUTES_UNIFORMS | extraCompileOptions);
     if (!validateSuccess) {
         int logSize = getValidationResultValue(compiler, SH_INFO_LOG_LENGTH);
         if (logSize > 1) {
@@ -118,35 +211,11 @@ bool ANGLEWebKitBridge::validateShaderSource(const char* shaderSource, ANGLEShad
         ShGetObjectCode(compiler, translationBuffer.get());
         translatedShaderSource = translationBuffer.get();
     }
-
-    return true;
-}
-
-bool ANGLEWebKitBridge::getUniforms(ShShaderType shaderType, Vector<ANGLEShaderSymbol> &symbols)
-{
-    const ShHandle compiler = (shaderType == SH_VERTEX_SHADER ? m_vertexCompiler : m_fragmentCompiler);
-
-    int numUniforms = getValidationResultValue(compiler, SH_ACTIVE_UNIFORMS);
-    if (numUniforms < 0)
+    
+    if (!getSymbolInfo(compiler, SH_ACTIVE_ATTRIBUTES, symbols))
         return false;
-    if (!numUniforms)
-        return true;
-
-    int maxNameLength = getValidationResultValue(compiler, SH_ACTIVE_UNIFORM_MAX_LENGTH);
-    if (maxNameLength <= 1)
+    if (!getSymbolInfo(compiler, SH_ACTIVE_UNIFORMS, symbols))
         return false;
-    OwnArrayPtr<char> nameBuffer = adoptArrayPtr(new char[maxNameLength]);
-
-    for (int i = 0; i < numUniforms; ++i) {
-        ANGLEShaderSymbol symbol;
-        symbol.symbolType = SHADER_SYMBOL_TYPE_UNIFORM;
-        int nameLength = -1;
-        ShGetActiveUniform(compiler, i, &nameLength, &symbol.size, &symbol.dataType, nameBuffer.get(), 0);
-        if (nameLength <= 0)
-            return false;
-        symbol.name = String::fromUTF8(nameBuffer.get(), nameLength);
-        symbols.append(symbol);
-    }
 
     return true;
 }

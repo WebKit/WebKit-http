@@ -61,6 +61,7 @@ public:
     String webkitErrorMessage(ExceptionCode&) const;
     PassRefPtr<IDBAny> source() const;
     PassRefPtr<IDBTransaction> transaction() const;
+    void preventPropagation() { m_preventPropagation = true; }
 
     // Defined in the IDL
     enum ReadyState {
@@ -88,6 +89,8 @@ public:
     virtual void onSuccess(PassRefPtr<IDBTransactionBackendInterface>);
     virtual void onSuccess(PassRefPtr<SerializedScriptValue>);
     virtual void onSuccess(PassRefPtr<SerializedScriptValue>, PassRefPtr<IDBKey>, const IDBKeyPath&);
+    virtual void onSuccess(int64_t);
+    virtual void onSuccess();
     virtual void onSuccess(PassRefPtr<IDBKey>, PassRefPtr<IDBKey> primaryKey, PassRefPtr<SerializedScriptValue>);
     virtual void onSuccessWithPrefetch(const Vector<RefPtr<IDBKey> >&, const Vector<RefPtr<IDBKey> >&, const Vector<RefPtr<SerializedScriptValue> >&) { ASSERT_NOT_REACHED(); } // Not implemented. Callback should not reach the renderer side.
 
@@ -149,6 +152,7 @@ private:
     RefPtr<IDBKey> m_cursorPrimaryKey;
     ScriptValue m_cursorValue;
     bool m_didFireUpgradeNeededEvent;
+    bool m_preventPropagation;
 
     EventTargetData m_eventTargetData;
 };

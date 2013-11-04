@@ -32,6 +32,8 @@
 #include "IDBBackingStore.h"
 #include "IDBCursor.h"
 #include "IDBCursorBackendInterface.h"
+#include "IDBTransactionBackendImpl.h"
+#include "SerializedScriptValue.h"
 #include <wtf/OwnPtr.h>
 #include <wtf/PassOwnPtr.h>
 #include <wtf/RefPtr.h>
@@ -42,8 +44,6 @@ class IDBDatabaseBackendImpl;
 class IDBIndexBackendImpl;
 class IDBKeyRange;
 class IDBObjectStoreBackendImpl;
-class IDBTransactionBackendImpl;
-class SerializedScriptValue;
 
 class IDBCursorBackendImpl : public IDBCursorBackendInterface {
 public:
@@ -67,7 +67,7 @@ public:
 
     PassRefPtr<IDBKey> key() const { return m_cursor->key(); }
     PassRefPtr<IDBKey> primaryKey() const { return m_cursor->primaryKey(); }
-    PassRefPtr<SerializedScriptValue> value() const { return (m_cursorType == IndexKeyCursor) ? SerializedScriptValue::nullValue() : SerializedScriptValue::createFromWire(m_cursor->value()); }
+    PassRefPtr<SerializedScriptValue> value() const { return (m_cursorType == IndexKeyCursor) ? 0 : SerializedScriptValue::createFromWire(m_cursor->value()); }
     void close();
 
 private:

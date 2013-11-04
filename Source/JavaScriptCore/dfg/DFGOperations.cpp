@@ -556,9 +556,7 @@ void DFG_OPERATION operationPutByValBeyondArrayBoundsStrict(ExecState* exec, JSO
     NativeCallFrameTracer tracer(globalData, exec);
     
     if (index >= 0) {
-        // We should only get here if index is outside the existing vector.
-        ASSERT(!array->canSetIndexQuickly(index));
-        array->methodTable()->putByIndex(array, exec, index, JSValue::decode(encodedValue), true);
+        array->putByIndexInline(exec, index, JSValue::decode(encodedValue), true);
         return;
     }
     
@@ -573,9 +571,7 @@ void DFG_OPERATION operationPutByValBeyondArrayBoundsNonStrict(ExecState* exec, 
     NativeCallFrameTracer tracer(globalData, exec);
     
     if (index >= 0) {
-        // We should only get here if index is outside the existing vector.
-        ASSERT(!array->canSetIndexQuickly(index));
-        array->methodTable()->putByIndex(array, exec, index, JSValue::decode(encodedValue), false);
+        array->putByIndexInline(exec, index, JSValue::decode(encodedValue), false);
         return;
     }
     
@@ -597,6 +593,16 @@ EncodedJSValue DFG_OPERATION operationArrayPop(ExecState* exec, JSArray* array)
 {
     JSGlobalData* globalData = &exec->globalData();
     NativeCallFrameTracer tracer(globalData, exec);
+    
+    return JSValue::encode(array->pop(exec));
+}
+        
+EncodedJSValue DFG_OPERATION operationArrayPopAndRecoverLength(ExecState* exec, JSArray* array)
+{
+    JSGlobalData* globalData = &exec->globalData();
+    NativeCallFrameTracer tracer(globalData, exec);
+    
+    array->butterfly()->setPublicLength(array->butterfly()->publicLength() + 1);
     
     return JSValue::encode(array->pop(exec));
 }
@@ -1053,35 +1059,38 @@ void DFG_OPERATION operationNotifyGlobalVarWrite(WatchpointSet* watchpointSet)
     watchpointSet->notifyWrite();
 }
 
-EncodedJSValue DFG_OPERATION operationResolve(ExecState* exec, Identifier* propertyName)
+EncodedJSValue DFG_OPERATION operationResolve(ExecState* exec, Identifier* propertyName, ResolveOperations* operations)
 {
     JSGlobalData* globalData = &exec->globalData();
     NativeCallFrameTracer tracer(globalData, exec);
-    return JSValue::encode(JSScope::resolve(exec, *propertyName));
+    return JSValue::encode(JSScope::resolve(exec, *propertyName, operations));
 }
 
-EncodedJSValue DFG_OPERATION operationResolveBase(ExecState* exec, Identifier* propertyName)
+EncodedJSValue DFG_OPERATION operationResolveBase(ExecState* exec, Identifier* propertyName, ResolveOperations* operations, PutToBaseOperation* putToBaseOperations)
 {
     JSGlobalData* globalData = &exec->globalData();
     NativeCallFrameTracer tracer(globalData, exec);
     
-    return JSValue::encode(JSScope::resolveBase(exec, *propertyName, false));
+    return JSValue::encode(JSScope::resolveBase(exec, *propertyName, false, operations, putToBaseOperations));
 }
 
-EncodedJSValue DFG_OPERATION operationResolveBaseStrictPut(ExecState* exec, Identifier* propertyName)
+EncodedJSValue DFG_OPERATION operationResolveBaseStrictPut(ExecState* exec, Identifier* propertyName, ResolveOperations* operations, PutToBaseOperation* putToBaseOperations)
 {
     JSGlobalData* globalData = &exec->globalData();
     NativeCallFrameTracer tracer(globalData, exec);
     
-    return JSValue::encode(JSScope::resolveBase(exec, *propertyName, true));
+    return JSValue::encode(JSScope::resolveBase(exec, *propertyName, true, operations, putToBaseOperations));
 }
 
-EncodedJSValue DFG_OPERATION operationResolveGlobal(ExecState* exec, GlobalResolveInfo* resolveInfo, JSGlobalObject* globalObject, Identifier* propertyName)
+EncodedJSValue DFG_OPERATION operationResolveGlobal(ExecState* exec, ResolveOperation* resolveOperation, JSGlobalObject* globalObject, Identifier* propertyName)
 {
     JSGlobalData* globalData = &exec->globalData();
     NativeCallFrameTracer tracer(globalData, exec);
-
-    return JSValue::encode(JSScope::resolveGlobal(exec, *propertyName, globalObject, &resolveInfo->structure, &resolveInfo->offset));
+    ASSERT(globalObject);
+    UNUSED_PARAM(resolveOperation);
+    UNUSED_PARAM(globalObject);
+    ASSERT(resolveOperation->m_operation == ResolveOperation::GetAndReturnGlobalProperty);
+    return JSValue::encode(JSScope::resolveGlobal(exec, *propertyName, globalObject, resolveOperation));
 }
 
 EncodedJSValue DFG_OPERATION operationToPrimitive(ExecState* exec, EncodedJSValue value)
@@ -1100,29 +1109,35 @@ EncodedJSValue DFG_OPERATION operationStrCat(ExecState* exec, void* buffer, size
     return JSValue::encode(jsString(exec, static_cast<Register*>(buffer), size));
 }
 
-EncodedJSValue DFG_OPERATION operationNewArray(ExecState* exec, Structure* arrayStructure, void* buffer, size_t size)
+char* DFG_OPERATION operationNewArray(ExecState* exec, Structure* arrayStructure, void* buffer, size_t size)
 {
     JSGlobalData* globalData = &exec->globalData();
     NativeCallFrameTracer tracer(globalData, exec);
-
-    return JSValue::encode(constructArray(exec, arrayStructure, static_cast<JSValue*>(buffer), size));
+    
+    return bitwise_cast<char*>(constructArray(exec, arrayStructure, static_cast<JSValue*>(buffer), size));
 }
 
-EncodedJSValue DFG_OPERATION operationNewEmptyArray(ExecState* exec, Structure* arrayStructure)
+char* DFG_OPERATION operationNewEmptyArray(ExecState* exec, Structure* arrayStructure)
 {
-    return JSValue::encode(JSArray::create(exec->globalData(), arrayStructure));
+    JSGlobalData* globalData = &exec->globalData();
+    NativeCallFrameTracer tracer(globalData, exec);
+    
+    return bitwise_cast<char*>(JSArray::create(*globalData, arrayStructure));
 }
 
-EncodedJSValue DFG_OPERATION operationNewArrayWithSize(ExecState* exec, Structure* arrayStructure, int32_t size)
+char* DFG_OPERATION operationNewArrayWithSize(ExecState* exec, Structure* arrayStructure, int32_t size)
 {
-    return JSValue::encode(JSArray::create(exec->globalData(), arrayStructure, size));
+    JSGlobalData* globalData = &exec->globalData();
+    NativeCallFrameTracer tracer(globalData, exec);
+    
+    return bitwise_cast<char*>(JSArray::create(*globalData, arrayStructure, size));
 }
 
-EncodedJSValue DFG_OPERATION operationNewArrayBuffer(ExecState* exec, size_t start, size_t size)
+char* DFG_OPERATION operationNewArrayBuffer(ExecState* exec, Structure* arrayStructure, size_t start, size_t size)
 {
     JSGlobalData& globalData = exec->globalData();
     NativeCallFrameTracer tracer(&globalData, exec);
-    return JSValue::encode(constructArray(exec, exec->codeBlock()->constantBuffer(start), size));
+    return bitwise_cast<char*>(constructArray(exec, arrayStructure, exec->codeBlock()->constantBuffer(start), size));
 }
 
 EncodedJSValue DFG_OPERATION operationNewRegexp(ExecState* exec, void* regexpPtr)
@@ -1150,20 +1165,24 @@ JSCell* DFG_OPERATION operationCreateActivation(ExecState* exec)
 
 JSCell* DFG_OPERATION operationCreateArguments(ExecState* exec)
 {
+    JSGlobalData& globalData = exec->globalData();
+    NativeCallFrameTracer tracer(&globalData, exec);
     // NB: This needs to be exceedingly careful with top call frame tracking, since it
     // may be called from OSR exit, while the state of the call stack is bizarre.
-    Arguments* result = Arguments::create(exec->globalData(), exec);
-    ASSERT(!exec->globalData().exception);
+    Arguments* result = Arguments::create(globalData, exec);
+    ASSERT(!globalData.exception);
     return result;
 }
 
 JSCell* DFG_OPERATION operationCreateInlinedArguments(
     ExecState* exec, InlineCallFrame* inlineCallFrame)
 {
+    JSGlobalData& globalData = exec->globalData();
+    NativeCallFrameTracer tracer(&globalData, exec);
     // NB: This needs to be exceedingly careful with top call frame tracking, since it
     // may be called from OSR exit, while the state of the call stack is bizarre.
-    Arguments* result = Arguments::create(exec->globalData(), exec, inlineCallFrame);
-    ASSERT(!exec->globalData().exception);
+    Arguments* result = Arguments::create(globalData, exec, inlineCallFrame);
+    ASSERT(!globalData.exception);
     return result;
 }
 
@@ -1309,12 +1328,30 @@ char* DFG_OPERATION operationReallocateButterflyToGrowPropertyStorage(ExecState*
     return reinterpret_cast<char*>(result);
 }
 
+char* DFG_OPERATION operationEnsureContiguous(ExecState* exec, JSObject* object)
+{
+    JSGlobalData& globalData = exec->globalData();
+    NativeCallFrameTracer tracer(&globalData, exec);
+    
+    return reinterpret_cast<char*>(object->ensureContiguous(globalData));
+}
+
 char* DFG_OPERATION operationEnsureArrayStorage(ExecState* exec, JSObject* object)
 {
     JSGlobalData& globalData = exec->globalData();
     NativeCallFrameTracer tracer(&globalData, exec);
 
     return reinterpret_cast<char*>(object->ensureArrayStorage(globalData));
+}
+
+char* DFG_OPERATION operationEnsureContiguousOrArrayStorage(ExecState* exec, JSObject* object, int32_t index)
+{
+    JSGlobalData& globalData = exec->globalData();
+    NativeCallFrameTracer tracer(&globalData, exec);
+
+    if (static_cast<unsigned>(index) >= MIN_SPARSE_ARRAY_INDEX)
+        return reinterpret_cast<char*>(object->ensureArrayStorage(globalData));
+    return reinterpret_cast<char*>(object->ensureIndexedStorage(globalData));
 }
 
 double DFG_OPERATION operationFModOnInts(int32_t a, int32_t b)

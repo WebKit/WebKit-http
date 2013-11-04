@@ -40,6 +40,8 @@
 #define ENABLE_PLUGIN_PROCESS 1
 #endif
 
+#define ENABLE_NETWORK_PROCESS 1
+
 #define ENABLE_MEMORY_SAMPLER 1
 
 #include <CoreFoundation/CoreFoundation.h>
@@ -54,6 +56,16 @@
 #endif
 
 #endif // PLATFORM(MAC)
+
+#if PLATFORM(MAC)
+
+#if ENABLE(PLUGIN_PROCESS)
+#define ENABLE_SHARED_WORKER_PROCESS 1
+#endif
+
+#elif !PLATFORM(WIN)
+#define ENABLE_SHARED_WORKER_PROCESS 1
+#endif
 
 /* When C++ exceptions are disabled, the C++ library defines |try| and |catch|
 * to allow C++ code that expects exceptions to build. These definitions

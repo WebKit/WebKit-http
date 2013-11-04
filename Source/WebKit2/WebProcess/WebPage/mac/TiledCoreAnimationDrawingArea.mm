@@ -43,7 +43,6 @@
 #import <WebCore/GraphicsContext.h>
 #import <WebCore/GraphicsLayerCA.h>
 #import <WebCore/Page.h>
-#import <WebCore/RenderLayerCompositor.h>
 #import <WebCore/RenderView.h>
 #import <WebCore/ScrollingCoordinator.h>
 #import <WebCore/ScrollingThread.h>
@@ -174,7 +173,7 @@ bool TiledCoreAnimationDrawingArea::layerTreeStateIsFrozen() const
     return m_layerTreeStateIsFrozen;
 }
 
-void TiledCoreAnimationDrawingArea::scheduleCompositingLayerSync()
+void TiledCoreAnimationDrawingArea::scheduleCompositingLayerFlush()
 {
     m_layerFlushScheduler.schedule();
 }
@@ -184,7 +183,7 @@ void TiledCoreAnimationDrawingArea::didInstallPageOverlay()
     m_webPage->corePage()->scrollingCoordinator()->setForceMainThreadScrollLayerPositionUpdates(true);
 
     createPageOverlayLayer();
-    scheduleCompositingLayerSync();
+    scheduleCompositingLayerFlush();
 }
 
 void TiledCoreAnimationDrawingArea::didUninstallPageOverlay()
@@ -193,14 +192,14 @@ void TiledCoreAnimationDrawingArea::didUninstallPageOverlay()
         page->scrollingCoordinator()->setForceMainThreadScrollLayerPositionUpdates(false);
 
     destroyPageOverlayLayer();
-    scheduleCompositingLayerSync();
+    scheduleCompositingLayerFlush();
 }
 
 void TiledCoreAnimationDrawingArea::setPageOverlayNeedsDisplay(const IntRect& rect)
 {
     ASSERT(m_pageOverlayLayer);
     m_pageOverlayLayer->setNeedsDisplayInRect(rect);
-    scheduleCompositingLayerSync();
+    scheduleCompositingLayerFlush();
 }
 
 void TiledCoreAnimationDrawingArea::updatePreferences(const WebPreferencesStore&)
@@ -263,7 +262,7 @@ void TiledCoreAnimationDrawingArea::notifyAnimationStarted(const GraphicsLayer*,
 {
 }
 
-void TiledCoreAnimationDrawingArea::notifySyncRequired(const GraphicsLayer*)
+void TiledCoreAnimationDrawingArea::notifyFlushRequired(const GraphicsLayer*)
 {
 }
 
@@ -305,10 +304,10 @@ bool TiledCoreAnimationDrawingArea::flushLayers()
 
     if (m_pageOverlayLayer) {
         m_pageOverlayLayer->setNeedsDisplay();
-        m_pageOverlayLayer->syncCompositingStateForThisLayerOnly();
+        m_pageOverlayLayer->flushCompositingStateForThisLayerOnly();
     }
 
-    bool returnValue = m_webPage->corePage()->mainFrame()->view()->syncCompositingStateIncludingSubframes();
+    bool returnValue = m_webPage->corePage()->mainFrame()->view()->flushCompositingStateIncludingSubframes();
 
     [pool drain];
     return returnValue;

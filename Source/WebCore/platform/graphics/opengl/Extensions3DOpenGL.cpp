@@ -102,6 +102,8 @@ void Extensions3DOpenGL::bindVertexArrayOES(Platform3DObject array)
     m_context->makeContextCurrent();
 #if !PLATFORM(GTK) && !PLATFORM(QT) && !PLATFORM(EFL) && defined(GL_APPLE_vertex_array_object) && GL_APPLE_vertex_array_object
     glBindVertexArrayAPPLE(array);
+#else
+    UNUSED_PARAM(array);
 #endif
 }
 
@@ -153,6 +155,10 @@ bool Extensions3DOpenGL::supportsExtension(const String& name)
 
     // Desktop GL always supports the standard derivative functions
     if (name == "GL_OES_standard_derivatives")
+        return true;
+
+    // Desktop GL always supports UNSIGNED_INT indices
+    if (name == "GL_OES_element_index_uint")
         return true;
 
     if (name == "GL_EXT_texture_filter_anisotropic")

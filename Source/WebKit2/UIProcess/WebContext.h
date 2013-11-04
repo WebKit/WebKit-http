@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010, 2011 Apple Inc. All rights reserved.
+ * Copyright (C) 2010, 2011, 2012 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -28,11 +28,13 @@
 
 #include "APIObject.h"
 #include "GenericCallback.h"
+#include "MessageReceiver.h"
+#include "MessageReceiverMap.h"
 #include "PluginInfoStore.h"
 #include "ProcessModel.h"
 #include "VisitedLinkProvider.h"
-#include "WebContextInjectedBundleClient.h"
 #include "WebContextConnectionClient.h"
+#include "WebContextInjectedBundleClient.h"
 #include "WebDownloadClient.h"
 #include "WebHistoryClient.h"
 #include "WebProcessProxy.h"
@@ -75,7 +77,7 @@ struct WebProcessCreationParameters;
     
 typedef GenericCallback<WKDictionaryRef> DictionaryCallback;
 
-class WebContext : public APIObject {
+class WebContext : public APIObject, private CoreIPC::MessageReceiver {
 public:
     static const Type APIType = TypeContext;
 
@@ -83,6 +85,13 @@ public:
     virtual ~WebContext();
 
     static const Vector<WebContext*>& allContexts();
+
+    void addMessageReceiver(CoreIPC::StringReference messageReceiverName, CoreIPC::MessageReceiver*);
+    void addMessageReceiver(CoreIPC::StringReference messageReceiverName, uint64_t destinationID, CoreIPC::MessageReceiver*);
+    void removeMessageReceiver(CoreIPC::StringReference messageReceiverName, uint64_t destinationID);
+
+    bool dispatchMessage(CoreIPC::Connection*, CoreIPC::MessageID, CoreIPC::MessageDecoder&);
+    bool dispatchSyncMessage(CoreIPC::Connection*, CoreIPC::MessageID, CoreIPC::MessageDecoder&, OwnPtr<CoreIPC::MessageEncoder>&);
 
     void initializeInjectedBundleClient(const WKContextInjectedBundleClient*);
     void initializeConnectionClient(const WKContextConnectionClient*);
@@ -120,10 +129,12 @@ public:
     void didReceiveSynchronousMessageFromInjectedBundle(const String&, APIObject*, RefPtr<APIObject>& returnData);
 
     void populateVisitedLinks();
-    
+
+#if ENABLE(NETSCAPE_PLUGIN_API)
     void setAdditionalPluginsDirectory(const String&);
 
     PluginInfoStore& pluginInfoStore() { return m_pluginInfoStore; }
+#endif
     String applicationCacheDirectory();
 
     void setAlwaysUsesComplexTextCodePath(bool);
@@ -140,8 +151,9 @@ public:
     void addVisitedLink(const String&);
     void addVisitedLinkHash(WebCore::LinkHash);
 
-    void didReceiveMessage(WebProcessProxy*, CoreIPC::MessageID, CoreIPC::ArgumentDecoder*);
-    void didReceiveSyncMessage(WebProcessProxy*, CoreIPC::MessageID, CoreIPC::ArgumentDecoder*, OwnPtr<CoreIPC::ArgumentEncoder>&);
+    // MessageReceiver.
+    virtual void didReceiveMessage(CoreIPC::Connection*, CoreIPC::MessageID, CoreIPC::MessageDecoder&) OVERRIDE;
+    virtual void didReceiveSyncMessage(CoreIPC::Connection*, CoreIPC::MessageID, CoreIPC::MessageDecoder&, OwnPtr<CoreIPC::MessageEncoder>&) OVERRIDE;
 
     void setCacheModel(CacheModel);
     CacheModel cacheModel() const { return m_cacheModel; }
@@ -184,7 +196,9 @@ public:
     WebNetworkInfoManagerProxy* networkInfoManagerProxy() const { return m_networkInfoManagerProxy.get(); }
 #endif
     WebNotificationManagerProxy* notificationManagerProxy() const { return m_notificationManagerProxy.get(); }
+#if ENABLE(NETSCAPE_PLUGIN_API)
     WebPluginSiteDataManager* pluginSiteDataManager() const { return m_pluginSiteDataManager.get(); }
+#endif
     WebResourceCacheManagerProxy* resourceCacheManagerProxy() const { return m_resourceCacheManagerProxy.get(); }
 #if USE(SOUP)
     WebSoupRequestManagerProxy* soupRequestManagerProxy() const { return m_soupRequestManagerProxy.get(); }
@@ -204,6 +218,8 @@ public:
     void setIconDatabasePath(const String&);
     String iconDatabasePath() const;
     void setLocalStorageDirectory(const String& dir) { m_overrideLocalStorageDirectory = dir; }
+    void setDiskCacheDirectory(const String& dir) { m_overrideDiskCacheDirectory = dir; }
+    void setCookieStorageDirectory(const String& dir) { m_overrideCookieStorageDirectory = dir; }
 
     void ensureSharedWebProcess();
     PassRefPtr<WebProcessProxy> createNewWebProcess();
@@ -230,6 +246,8 @@ public:
 
     void textCheckerStateChanged();
 
+    void setUsesNetworkProcess(bool);
+
 private:
     WebContext(ProcessModel, const String& injectedBundlePath);
 
@@ -237,7 +255,7 @@ private:
 
     void platformInitializeWebProcess(WebProcessCreationParameters&);
     void platformInvalidateContext();
-    
+
 #if PLATFORM(MAC)
     void getPasteboardTypes(const String& pasteboardName, Vector<String>& pasteboardTypes);
     void getPasteboardPathnamesForType(const String& pasteboardName, const String& pasteboardType, Vector<String>& pathnames);
@@ -264,8 +282,8 @@ private:
     void didGetWebCoreStatistics(const StatisticsData&, uint64_t callbackID);
         
     // Implemented in generated WebContextMessageReceiver.cpp
-    void didReceiveWebContextMessage(CoreIPC::Connection*, CoreIPC::MessageID, CoreIPC::ArgumentDecoder*);
-    void didReceiveSyncWebContextMessage(CoreIPC::Connection*, CoreIPC::MessageID, CoreIPC::ArgumentDecoder*, OwnPtr<CoreIPC::ArgumentEncoder>&);
+    void didReceiveWebContextMessage(CoreIPC::Connection*, CoreIPC::MessageID, CoreIPC::MessageDecoder&);
+    void didReceiveSyncWebContextMessage(CoreIPC::Connection*, CoreIPC::MessageID, CoreIPC::MessageDecoder&, OwnPtr<CoreIPC::MessageEncoder>&);
 
     static void languageChanged(void* context);
     void languageChanged();
@@ -277,6 +295,12 @@ private:
 
     String localStorageDirectory() const;
     String platformDefaultLocalStorageDirectory() const;
+
+    String diskCacheDirectory() const;
+    String platformDefaultDiskCacheDirectory() const;
+
+    String cookieStorageDirectory() const;
+    String platformDefaultCookieStorageDirectory() const;
 
     ProcessModel m_processModel;
     
@@ -290,10 +314,12 @@ private:
     WebContextInjectedBundleClient m_injectedBundleClient;
 
     WebContextConnectionClient m_connectionClient;
-    
+
     WebHistoryClient m_historyClient;
 
+#if ENABLE(NETSCAPE_PLUGIN_API)
     PluginInfoStore m_pluginInfoStore;
+#endif
     VisitedLinkProvider m_visitedLinkProvider;
         
     HashSet<String> m_schemesToRegisterAsEmptyDocument;
@@ -335,7 +361,9 @@ private:
     RefPtr<WebNetworkInfoManagerProxy> m_networkInfoManagerProxy;
 #endif
     RefPtr<WebNotificationManagerProxy> m_notificationManagerProxy;
+#if ENABLE(NETSCAPE_PLUGIN_API)
     RefPtr<WebPluginSiteDataManager> m_pluginSiteDataManager;
+#endif
     RefPtr<WebResourceCacheManagerProxy> m_resourceCacheManagerProxy;
 #if USE(SOUP)
     RefPtr<WebSoupRequestManagerProxy> m_soupRequestManagerProxy;
@@ -356,10 +384,18 @@ private:
     String m_overrideDatabaseDirectory;
     String m_overrideIconDatabasePath;
     String m_overrideLocalStorageDirectory;
+    String m_overrideDiskCacheDirectory;
+    String m_overrideCookieStorageDirectory;
 
     bool m_processTerminationEnabled;
+
+#if ENABLE(NETWORK_PROCESS)
+    bool m_usesNetworkProcess;
+#endif
     
     HashMap<uint64_t, RefPtr<DictionaryCallback> > m_dictionaryCallbacks;
+
+    CoreIPC::MessageReceiverMap m_messageReceiverMap;
 };
 
 template<typename U> inline void WebContext::sendToAllProcesses(const U& message)

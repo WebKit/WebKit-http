@@ -94,6 +94,14 @@ void WebPage::platformPreferencesDidChange(const WebPreferencesStore& store)
 {
     if (WebInspector* inspector = this->inspector())
         inspector->setInspectorUsesWebKitUserInterface(store.getBoolValueForKey(WebPreferencesKey::inspectorUsesWebKitUserInterfaceKey()));
+
+    BOOL omitPDFSupport = [[NSUserDefaults standardUserDefaults] boolForKey:@"WebKitOmitPDFSupport"];
+    if (!pdfPluginEnabled() && !omitPDFSupport) {
+        // We want to use a PDF view in the UI process for PDF MIME types.
+        HashSet<String, CaseFoldingHash> mimeTypes = pdfAndPostScriptMIMETypes();
+        for (HashSet<String, CaseFoldingHash>::iterator it = mimeTypes.begin(); it != mimeTypes.end(); ++it)
+            m_mimeTypesWithCustomRepresentations.add(*it);
+    }
 }
 
 typedef HashMap<String, String> SelectorNameMap;
@@ -121,7 +129,7 @@ static String commandNameForSelectorName(const String& selectorName)
     static const SelectorNameMap* exceptionMap = createSelectorExceptionMap();
     SelectorNameMap::const_iterator it = exceptionMap->find(selectorName);
     if (it != exceptionMap->end())
-        return it->second;
+        return it->value;
 
     // Remove the trailing colon.
     // No need to capitalize the command name since Editor command names are not case sensitive.
@@ -864,6 +872,18 @@ void WebPage::drawPagesToPDFFromPDFDocument(CGContextRef context, PDFDocument *p
         drawPDFPage(pdfDocument, page, context, printInfo.pageSetupScaleFactor, CGSizeMake(printInfo.availablePaperWidth, printInfo.availablePaperHeight));
         CGPDFContextEndPage(context);
     }
+}
+
+// FIXME: This is not the ideal place for this function (and now it's duplicated here and in WebContextMac).
+HashSet<String, CaseFoldingHash> WebPage::pdfAndPostScriptMIMETypes()
+{
+    HashSet<String, CaseFoldingHash> mimeTypes;
+    
+    mimeTypes.add("application/pdf");
+    mimeTypes.add("application/postscript");
+    mimeTypes.add("text/pdf");
+    
+    return mimeTypes;
 }
 
 } // namespace WebKit

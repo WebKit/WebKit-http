@@ -111,7 +111,7 @@ void RenderSVGText::computeFloatRectForRepaint(RenderLayerModelObject* repaintCo
     SVGRenderSupport::computeFloatRectForRepaint(this, repaintContainer, repaintRect, fixed);
 }
 
-void RenderSVGText::mapLocalToContainer(RenderLayerModelObject* repaintContainer, TransformState& transformState, MapLocalToContainerFlags mode, bool* wasFixed) const
+void RenderSVGText::mapLocalToContainer(RenderLayerModelObject* repaintContainer, TransformState& transformState, MapCoordinatesFlags mode, bool* wasFixed) const
 {
     SVGRenderSupport::mapLocalToContainer(this, repaintContainer, transformState, mode & SnapOffsetForTransforms, wasFixed);
 }
@@ -347,6 +347,7 @@ static inline void updateFontInAllDescendants(RenderObject* start, SVGTextLayout
 
 void RenderSVGText::layout()
 {
+    StackStats::LayoutCheckPoint layoutCheckPoint;
     ASSERT(needsLayout());
     LayoutRepainter repainter(*this, checkForRepaintDuringLayout());
 
@@ -484,7 +485,7 @@ VisiblePosition RenderSVGText::positionForPoint(const LayoutPoint& pointInConten
 
 void RenderSVGText::absoluteQuads(Vector<FloatQuad>& quads, bool* wasFixed) const
 {
-    quads.append(localToAbsoluteQuad(strokeBoundingBox(), false, wasFixed));
+    quads.append(localToAbsoluteQuad(strokeBoundingBox(), 0 /* mode */, wasFixed));
 }
 
 void RenderSVGText::paint(PaintInfo& paintInfo, const LayoutPoint&)

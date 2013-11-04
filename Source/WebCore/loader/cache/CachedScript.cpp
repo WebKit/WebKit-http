@@ -30,7 +30,7 @@
 #include "MemoryCache.h"
 #include "CachedResourceClient.h"
 #include "CachedResourceClientWalker.h"
-#include "SharedBuffer.h"
+#include "ResourceBuffer.h"
 #include "TextResourceDecoder.h"
 #include "WebCoreMemoryInstrumentation.h"
 #include <wtf/Vector.h>
@@ -79,7 +79,7 @@ const String& CachedScript::script()
     return m_script;
 }
 
-void CachedScript::data(PassRefPtr<SharedBuffer> data, bool allDataReceived)
+void CachedScript::data(PassRefPtr<ResourceBuffer> data, bool allDataReceived)
 {
     if (!allDataReceived)
         return;

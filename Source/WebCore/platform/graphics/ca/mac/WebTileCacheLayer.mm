@@ -40,8 +40,7 @@ using namespace WebCore;
     if (!self)
         return nil;
 
-    // FIXME: The tile size should be configurable.
-    _tileCache = TileCache::create(self, IntSize(512, 512));
+    _tileCache = TileCache::create(self);
 #ifndef NDEBUG
     [self setName:@"WebTileCacheLayer"];
 #endif
@@ -76,6 +75,16 @@ using namespace WebCore;
     [super setBounds:bounds];
 
     _tileCache->tileCacheLayerBoundsChanged();
+}
+
+- (void)setOpaque:(BOOL)opaque
+{
+    _tileCache->setTilesOpaque(opaque);
+}
+
+- (BOOL)isOpaque
+{
+    return _tileCache->tilesAreOpaque();
 }
 
 - (void)setNeedsDisplay
@@ -127,7 +136,8 @@ using namespace WebCore;
 
 - (void)setBorderWidth:(CGFloat)borderWidth
 {
-    _tileCache->setTileDebugBorderWidth(borderWidth);
+    // Tiles adjoin, so halve the border width.
+    _tileCache->setTileDebugBorderWidth(borderWidth / 2);
 }
 
 @end

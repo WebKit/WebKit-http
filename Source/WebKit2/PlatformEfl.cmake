@@ -41,41 +41,49 @@ LIST(APPEND WebKit2_SOURCES
     UIProcess/API/C/soup/WKContextSoup.cpp
     UIProcess/API/C/soup/WKSoupRequestManager.cpp
 
-    UIProcess/API/efl/BatteryProvider.cpp
-    UIProcess/API/efl/EflViewportHandler.cpp
-    UIProcess/API/efl/NetworkInfoProvider.cpp
-    UIProcess/API/efl/PageClientImpl.cpp
-    UIProcess/API/efl/VibrationProvider.cpp
+    UIProcess/API/efl/EwkViewImpl.cpp
     UIProcess/API/efl/ewk_back_forward_list.cpp
     UIProcess/API/efl/ewk_back_forward_list_item.cpp
+    UIProcess/API/efl/ewk_color_picker.cpp
     UIProcess/API/efl/ewk_context.cpp
-    UIProcess/API/efl/ewk_context_download_client.cpp
-    UIProcess/API/efl/ewk_context_request_manager_client.cpp
     UIProcess/API/efl/ewk_cookie_manager.cpp
     UIProcess/API/efl/ewk_download_job.cpp
+    UIProcess/API/efl/ewk_error.cpp
+    UIProcess/API/efl/ewk_favicon_database.cpp
     UIProcess/API/efl/ewk_form_submission_request.cpp
     UIProcess/API/efl/ewk_intent.cpp
     UIProcess/API/efl/ewk_intent_service.cpp
     UIProcess/API/efl/ewk_main.cpp
+    UIProcess/API/efl/ewk_navigation_data.cpp
     UIProcess/API/efl/ewk_navigation_policy_decision.cpp
+    UIProcess/API/efl/ewk_popup_menu.cpp
     UIProcess/API/efl/ewk_popup_menu_item.cpp
+    UIProcess/API/efl/ewk_resource.cpp
     UIProcess/API/efl/ewk_settings.cpp
+    UIProcess/API/efl/ewk_text_checker.cpp
     UIProcess/API/efl/ewk_url_request.cpp
     UIProcess/API/efl/ewk_url_response.cpp
     UIProcess/API/efl/ewk_url_scheme_request.cpp
     UIProcess/API/efl/ewk_view.cpp
-    UIProcess/API/efl/ewk_view_find_client.cpp
-    UIProcess/API/efl/ewk_view_form_client.cpp
-    UIProcess/API/efl/ewk_view_loader_client.cpp
-    UIProcess/API/efl/ewk_view_policy_client.cpp
-    UIProcess/API/efl/ewk_view_resource_load_client.cpp
-    UIProcess/API/efl/ewk_view_ui_client.cpp
-    UIProcess/API/efl/ewk_web_error.cpp
-    UIProcess/API/efl/ewk_web_resource.cpp
 
     UIProcess/cairo/BackingStoreCairo.cpp
 
+    UIProcess/efl/BatteryProvider.cpp
+    UIProcess/efl/ContextHistoryClientEfl.cpp
+    UIProcess/efl/DownloadManagerEfl.cpp
+    UIProcess/efl/FindClientEfl.cpp
+    UIProcess/efl/FormClientEfl.cpp
+    UIProcess/efl/InputMethodContextEfl.cpp
+    UIProcess/efl/NetworkInfoProvider.cpp
+    UIProcess/efl/PageClientImpl.cpp
+    UIProcess/efl/PageLoadClientEfl.cpp
+    UIProcess/efl/PagePolicyClientEfl.cpp
+    UIProcess/efl/PageUIClientEfl.cpp
+    UIProcess/efl/PageViewportControllerClientEfl.cpp
+    UIProcess/efl/RequestManagerClientEfl.cpp
+    UIProcess/efl/ResourceLoadClientEfl.cpp
     UIProcess/efl/TextCheckerEfl.cpp
+    UIProcess/efl/VibrationProvider.cpp
     UIProcess/efl/WebContextEfl.cpp
     UIProcess/efl/WebFullScreenManagerProxyEfl.cpp
     UIProcess/efl/WebInspectorProxyEfl.cpp
@@ -133,6 +141,7 @@ LIST(APPEND WebKit2_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/platform/efl"
     "${WEBCORE_DIR}/platform/graphics/cairo"
     "${WEBCORE_DIR}/platform/network/soup"
+    "${WEBCORE_DIR}/platform/text/enchant"
     "${WEBCORE_DIR}/svg/graphics"
     "${WEBKIT2_DIR}/Shared/efl"
     "${WEBKIT2_DIR}/Shared/soup"
@@ -147,6 +156,7 @@ LIST(APPEND WebKit2_INCLUDE_DIRECTORIES
     "${WEBKIT2_DIR}/WebProcess/soup"
     "${WEBKIT2_DIR}/WebProcess/WebCoreSupport/efl"
     "${WEBKIT2_DIR}/WebProcess/WebCoreSupport/soup"
+    "${WTF_DIR}/wtf/efl/"
     "${WTF_DIR}/wtf/gobject"
     ${CAIRO_INCLUDE_DIRS}
     ${ECORE_INCLUDE_DIRS}
@@ -200,7 +210,7 @@ LIST (APPEND WebProcess_SOURCES
 
 LIST (APPEND WebProcess_LIBRARIES
     ${CAIRO_LIBRARIES}
-    ${ECORE_X_LIBRARIES}
+    ${ECORE_IMF_LIBRARIES}
     ${EDJE_LIBRARIES}
     ${EFLDEPS_LIBRARIES}
     ${EVAS_LIBRARIES}
@@ -209,6 +219,12 @@ LIST (APPEND WebProcess_LIBRARIES
     ${OPENGL_LIBRARIES}
     ${SQLITE_LIBRARIES}
 )
+
+IF (ENABLE_ECORE_X)
+    LIST(APPEND WebProcess_LIBRARIES
+        ${ECORE_X_LIBRARIES}
+        ${X11_Xext_LIB})
+ENDIF ()
 
 ADD_CUSTOM_TARGET(forwarding-headerEfl
     COMMAND ${PERL_EXECUTABLE} ${WEBKIT2_DIR}/Scripts/generate-forwarding-headers.pl ${WEBKIT2_DIR} ${DERIVED_SOURCES_WEBKIT2_DIR}/include efl
@@ -225,23 +241,28 @@ SET (EWebKit2_HEADERS
     "${CMAKE_CURRENT_SOURCE_DIR}/UIProcess/API/efl/EWebKit2.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/UIProcess/API/efl/ewk_back_forward_list.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/UIProcess/API/efl/ewk_back_forward_list_item.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/UIProcess/API/efl/ewk_color_picker.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/UIProcess/API/efl/ewk_context.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/UIProcess/API/efl/ewk_cookie_manager.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/UIProcess/API/efl/ewk_download_job.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/UIProcess/API/efl/ewk_error.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/UIProcess/API/efl/ewk_favicon_database.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/UIProcess/API/efl/ewk_form_submission_request.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/UIProcess/API/efl/ewk_intent.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/UIProcess/API/efl/ewk_intent_service.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/UIProcess/API/efl/ewk_main.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/UIProcess/API/efl/ewk_navigation_data.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/UIProcess/API/efl/ewk_navigation_policy_decision.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/UIProcess/API/efl/ewk_popup_menu.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/UIProcess/API/efl/ewk_popup_menu_item.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/UIProcess/API/efl/ewk_resource.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/UIProcess/API/efl/ewk_settings.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/UIProcess/API/efl/ewk_text_checker.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/UIProcess/API/efl/ewk_touch.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/UIProcess/API/efl/ewk_url_request.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/UIProcess/API/efl/ewk_url_response.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/UIProcess/API/efl/ewk_url_scheme_request.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/UIProcess/API/efl/ewk_view.h"
-    "${CMAKE_CURRENT_SOURCE_DIR}/UIProcess/API/efl/ewk_web_error.h"
-    "${CMAKE_CURRENT_SOURCE_DIR}/UIProcess/API/efl/ewk_web_resource.h"
 )
 
 INSTALL(FILES ${CMAKE_BINARY_DIR}/WebKit2/efl/ewebkit2.pc DESTINATION lib/pkgconfig)
@@ -321,13 +342,18 @@ TARGET_LINK_LIBRARIES(ewk2UnitTestUtils ${EWK2UnitTests_LIBRARIES})
 # will clash with tests from the WebKit 1 test suite.
 SET(EWK2UnitTests_BINARIES
     test_ewk2_back_forward_list
+    test_ewk2_color_picker
     test_ewk2_context
+    test_ewk2_context_history_callbacks
     test_ewk2_cookie_manager
     test_ewk2_download_job
     test_ewk2_eina_shared_string
+    test_ewk2_favicon_database
     test_ewk2_refptr_evas_object
     test_ewk2_intents
+    test_ewk2_popup_menu
     test_ewk2_settings
+    test_ewk2_text_checker
     test_ewk2_view
 )
 
@@ -343,23 +369,11 @@ IF (ENABLE_API_TESTS)
     TARGET_LINK_LIBRARIES(ewk2UnitTestInjectedBundleSample ${WebKit2_LIBRARY_NAME})
 ENDIF ()
 
-IF (ENABLE_INSPECTOR)
-    SET(WK2_WEB_INSPECTOR_DIR ${CMAKE_BINARY_DIR}/WebKit2/efl/webinspector)
-    SET(WK2_WEB_INSPECTOR_INSTALL_DIR ${CMAKE_INSTALL_PREFIX}/${WebKit2_LIBRARY_NAME}-${PROJECT_VERSION_MAJOR})
-    ADD_DEFINITIONS(-DWK2_WEB_INSPECTOR_DIR="${WK2_WEB_INSPECTOR_DIR}")
-    ADD_DEFINITIONS(-DWK2_WEB_INSPECTOR_INSTALL_DIR="${WK2_WEB_INSPECTOR_INSTALL_DIR}/webinspector")
-    ADD_CUSTOM_TARGET(
-        wk2-web-inspector-resources ALL
-        COMMAND ${CMAKE_COMMAND} -E copy_directory ${WEBCORE_DIR}/inspector/front-end ${WK2_WEB_INSPECTOR_DIR}
-        COMMAND ${CMAKE_COMMAND} -E copy ${WEBCORE_DIR}/English.lproj/localizedStrings.js ${WK2_WEB_INSPECTOR_DIR}
-        COMMAND ${CMAKE_COMMAND} -E copy ${DERIVED_SOURCES_WEBCORE_DIR}/InspectorBackendCommands.js ${WK2_WEB_INSPECTOR_DIR}/InspectorBackendCommands.js
-        DEPENDS ${WebCore_LIBRARY_NAME}
+IF (ENABLE_SPELLCHECK)
+    LIST(APPEND WebKit2_INCLUDE_DIRECTORIES
+        ${ENCHANT_INCLUDE_DIRS}
     )
-    INSTALL(DIRECTORY ${WK2_WEB_INSPECTOR_DIR}
-        DESTINATION ${WK2_WEB_INSPECTOR_INSTALL_DIR}
-        FILES_MATCHING PATTERN "*.js"
-                       PATTERN "*.html"
-                       PATTERN "*.css"
-                       PATTERN "*.gif"
-                       PATTERN "*.png")
-ENDIF ()
+    LIST(APPEND WebKit2_LIBRARIES
+        ${ENCHANT_LIBRARIES}
+    )
+ENDIF()

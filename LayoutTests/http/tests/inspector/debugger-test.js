@@ -158,18 +158,24 @@ InspectorTest._resumedScript = function()
     }
 };
 
+InspectorTest.showUISourceCode = function(uiSourceCode, callback)
+{
+    var panel = WebInspector.showPanel("scripts");
+    panel.showUISourceCode(uiSourceCode);
+    var sourceFrame = panel.visibleView;
+    if (sourceFrame.loaded)
+        callback(sourceFrame);
+    else
+        InspectorTest.addSniffer(sourceFrame, "onTextEditorContentLoaded", callback.bind(null, sourceFrame));
+};
+
 InspectorTest.showScriptSource = function(scriptName, callback)
 {
-    var panel = WebInspector.panel("scripts");
+    var panel = WebInspector.showPanel("scripts");
     var uiSourceCodes = panel._workspace.uiSourceCodes();
     for (var i = 0; i < uiSourceCodes.length; ++i) {
         if (uiSourceCodes[i].parsedURL.lastPathComponent === scriptName) {
-            panel.showUISourceCode(uiSourceCodes[i]);
-            var sourceFrame = panel.visibleView;
-            if (sourceFrame.loaded)
-                callback(sourceFrame);
-            else
-                InspectorTest.addSniffer(sourceFrame, "onTextEditorContentLoaded", callback.bind(null, sourceFrame));
+            InspectorTest.showUISourceCode(uiSourceCodes[i], callback);
             return;
         }
     }
@@ -219,7 +225,7 @@ InspectorTest.setBreakpoint = function(sourceFrame, lineNumber, condition, enabl
 
 InspectorTest.removeBreakpoint = function(sourceFrame, lineNumber)
 {
-    sourceFrame._breakpointManager.findBreakpoint(sourceFrame._javaScriptSource, lineNumber).remove();
+    sourceFrame._breakpointManager.findBreakpoint(sourceFrame._uiSourceCode, lineNumber).remove();
 };
 
 

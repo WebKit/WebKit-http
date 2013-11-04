@@ -36,6 +36,10 @@
 
 namespace WebCore {
 
+#if ENABLE(VIDEO_TRACK)
+    class CaptionPreferencesChangedListener;
+    class CaptionUserPreferences;
+#endif
     class KURL;
     class GroupSettings;
     class IDBFactoryBackendInterface;
@@ -83,10 +87,10 @@ namespace WebCore {
         bool hasLocalStorage() { return m_localStorage; }
 
         void addUserScriptToWorld(DOMWrapperWorld*, const String& source, const KURL&,
-                                  PassOwnPtr<Vector<String> > whitelist, PassOwnPtr<Vector<String> > blacklist,
+                                  const Vector<String>& whitelist, const Vector<String>& blacklist,
                                   UserScriptInjectionTime, UserContentInjectedFrames);
         void addUserStyleSheetToWorld(DOMWrapperWorld*, const String& source, const KURL&,
-                                      PassOwnPtr<Vector<String> > whitelist, PassOwnPtr<Vector<String> > blacklist,
+                                      const Vector<String>& whitelist, const Vector<String>& blacklist,
                                       UserContentInjectedFrames,
                                       UserStyleLevel level = UserStyleUserLevel,
                                       UserStyleInjectionTime injectionTime = InjectInExistingDocuments);
@@ -103,12 +107,23 @@ namespace WebCore {
 
         GroupSettings* groupSettings() const { return m_groupSettings.get(); }
 
+#if ENABLE(VIDEO_TRACK)
+        bool userPrefersCaptions();
+        bool userHasCaptionPreferences();
+        float captionFontSizeScale();
+        void registerForCaptionPreferencesChangedCallbacks(CaptionPreferencesChangedListener*);
+        void unregisterForCaptionPreferencesChangedCallbacks(CaptionPreferencesChangedListener*);
+#endif
+
     private:
         PageGroup(Page*);
 
         void addVisitedLink(LinkHash stringHash);
         void resetUserStyleCacheInAllFrames();
   
+#if ENABLE(VIDEO_TRACK)
+        CaptionUserPreferences* captionPreferences();
+#endif
         String m_name;
 
         HashSet<Page*> m_pages;
@@ -123,6 +138,10 @@ namespace WebCore {
         OwnPtr<UserStyleSheetMap> m_userStyleSheets;
 
         OwnPtr<GroupSettings> m_groupSettings;
+
+#if ENABLE(VIDEO_TRACK)
+        OwnPtr<CaptionUserPreferences> m_captionPreferences;
+#endif
     };
 
 } // namespace WebCore

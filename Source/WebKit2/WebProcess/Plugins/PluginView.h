@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010 Apple Inc. All rights reserved.
+ * Copyright (C) 2010, 2012 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -30,11 +30,13 @@
 #include "Plugin.h"
 #include "PluginController.h"
 #include "WebFrame.h"
+#include <WebCore/Image.h>
 #include <WebCore/MediaCanStartListener.h>
 #include <WebCore/PluginViewBase.h>
 #include <WebCore/ResourceError.h>
 #include <WebCore/ResourceResponse.h>
 #include <WebCore/RunLoop.h>
+#include <WebCore/Timer.h>
 #include <wtf/Deque.h>
 
 // FIXME: Eventually this should move to WebCore.
@@ -50,6 +52,8 @@ namespace WebKit {
 class PluginView : public WebCore::PluginViewBase, public PluginController, private WebCore::MediaCanStartListener, private WebFrame::LoadListener {
 public:
     static PassRefPtr<PluginView> create(PassRefPtr<WebCore::HTMLPlugInElement>, PassRefPtr<Plugin>, const Plugin::Parameters&);
+
+    void recreateAndInitialize(PassRefPtr<Plugin>);
 
     WebCore::Frame* frame() const;
 
@@ -70,11 +74,21 @@ public:
     RetainPtr<PDFDocument> pdfDocumentForPrinting() const { return m_plugin->pdfDocumentForPrinting(); }
 #endif
 
+    WebCore::HTMLPlugInElement* pluginElement() const { return m_pluginElement.get(); }
+    const Plugin::Parameters& initialParameters() const { return m_parameters; }
+
     // FIXME: Remove this; nobody should have to know about the plug-in view's renderer except the plug-in view itself.
     WebCore::RenderBoxModelObject* renderer() const;
+    
+    void setPageScaleFactor(double scaleFactor, WebCore::IntPoint origin);
+    double pageScaleFactor();
+    bool handlesPageScaleFactor() { return m_plugin->handlesPageScaleFactor(); }
 
     void pageScaleFactorDidChange();
     void webPageDestroyed();
+
+    virtual bool handleEditingCommand(const String& commandName, const String& argument);
+    virtual bool isEditingCommandEnabled(const String& commandName);
 
 private:
     PluginView(PassRefPtr<WebCore::HTMLPlugInElement>, PassRefPtr<Plugin>, const Plugin::Parameters& parameters);
@@ -103,6 +117,8 @@ private:
     void cancelAllStreams();
 
     void redeliverManualStream();
+
+    void pluginSnapshotTimerFired(WebCore::DeferrableOneShotTimer<PluginView>*);
 
     // WebCore::PluginViewBase
 #if PLATFORM(MAC)
@@ -177,6 +193,7 @@ private:
 
     virtual void didInitializePlugin();
     virtual void didFailToInitializePlugin();
+    void destroyPluginAndReset();
 
     // WebFrame::LoadListener
     virtual void didFinishLoad(WebFrame*);
@@ -222,7 +239,12 @@ private:
     WebCore::ResourceError m_manualStreamError;
     RefPtr<WebCore::SharedBuffer> m_manualStreamData;
     
-    RefPtr<ShareableBitmap> m_snapshot;
+    // This snapshot is used to avoid side effects should the plugin run JS during painting.
+    RefPtr<ShareableBitmap> m_transientPaintingSnapshot;
+    // This timer is used when plugin snapshotting is enabled, to capture a plugin placeholder.
+    WebCore::DeferrableOneShotTimer<PluginView> m_pluginSnapshotTimer;
+
+    double m_pageScaleFactor;
 };
 
 } // namespace WebKit

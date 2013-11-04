@@ -24,7 +24,7 @@ SVG_NAMES = $$PWD/svg/svgtags.in
 
 XLINK_NAMES = $$PWD/svg/xlinkattrs.in
 
-CSSBISON = $$PWD/css/CSSGrammar.y
+CSSBISON = $$PWD/css/CSSGrammar.y.in
 
 enable?(XSLT) {
     XMLVIEWER_CSS = $$PWD/xml/XMLViewer.css
@@ -139,15 +139,15 @@ IDL_BINDINGS += \
     $$PWD/Modules/webaudio/AudioBuffer.idl \
     $$PWD/Modules/webaudio/AudioBufferCallback.idl \
     $$PWD/Modules/webaudio/AudioBufferSourceNode.idl \
-    $$PWD/Modules/webaudio/AudioChannelMerger.idl \
-    $$PWD/Modules/webaudio/AudioChannelSplitter.idl \
+    $$PWD/Modules/webaudio/ChannelMergerNode.idl \
+    $$PWD/Modules/webaudio/ChannelSplitterNode.idl \
     $$PWD/Modules/webaudio/AudioContext.idl \
     $$PWD/Modules/webaudio/AudioDestinationNode.idl \
     $$PWD/Modules/webaudio/AudioGain.idl \
-    $$PWD/Modules/webaudio/AudioGainNode.idl \
+    $$PWD/Modules/webaudio/GainNode.idl \
     $$PWD/Modules/webaudio/AudioListener.idl \
     $$PWD/Modules/webaudio/AudioNode.idl \
-    $$PWD/Modules/webaudio/AudioPannerNode.idl \
+    $$PWD/Modules/webaudio/PannerNode.idl \
     $$PWD/Modules/webaudio/AudioParam.idl \
     $$PWD/Modules/webaudio/AudioProcessingEvent.idl \
     $$PWD/Modules/webaudio/AudioSourceNode.idl \
@@ -156,12 +156,12 @@ IDL_BINDINGS += \
     $$PWD/Modules/webaudio/DelayNode.idl \
     $$PWD/Modules/webaudio/DOMWindowWebAudio.idl \
     $$PWD/Modules/webaudio/DynamicsCompressorNode.idl \
-    $$PWD/Modules/webaudio/JavaScriptAudioNode.idl \
+    $$PWD/Modules/webaudio/ScriptProcessorNode.idl \
     $$PWD/Modules/webaudio/MediaElementAudioSourceNode.idl \
     $$PWD/Modules/webaudio/MediaStreamAudioSourceNode.idl \
     $$PWD/Modules/webaudio/OfflineAudioCompletionEvent.idl \
-    $$PWD/Modules/webaudio/Oscillator.idl \
-    $$PWD/Modules/webaudio/RealtimeAnalyserNode.idl \
+    $$PWD/Modules/webaudio/OscillatorNode.idl \
+    $$PWD/Modules/webaudio/AnalyserNode.idl \
     $$PWD/Modules/webaudio/WaveShaperNode.idl \
     $$PWD/Modules/webaudio/WaveTable.idl \
     $$PWD/Modules/webdatabase/DOMWindowWebDatabase.idl \
@@ -301,6 +301,7 @@ IDL_BINDINGS += \
     $$PWD/html/canvas/OESStandardDerivatives.idl \
     $$PWD/html/canvas/OESTextureFloat.idl \
     $$PWD/html/canvas/OESVertexArrayObject.idl \
+    $$PWD/html/canvas/OESElementIndexUint.idl \
     $$PWD/html/canvas/WebGLActiveInfo.idl \
     $$PWD/html/canvas/WebGLBuffer.idl \
     $$PWD/html/canvas/WebGLCompressedTextureS3TC.idl \
@@ -801,10 +802,10 @@ InjectedScriptCanvasModuleSource.add_output_to_sources = false
 GENERATORS += InjectedScriptCanvasModuleSource
 
 # GENERATOR 4: CSS grammar
-cssbison.output = ${QMAKE_FILE_BASE}.cpp
+cssbison.output = CSSGrammar.cpp
 cssbison.input = CSSBISON
 cssbison.script = $$PWD/css/makegrammar.pl
-cssbison.commands = perl $$cssbison.script ${QMAKE_FILE_NAME} ${QMAKE_FUNC_FILE_OUT_PATH}/${QMAKE_FILE_BASE}
+cssbison.commands = perl -I $$PWD/bindings/scripts $$cssbison.script --outputDir ${QMAKE_FUNC_FILE_OUT_PATH} --extraDefines \"$${DEFINES} $$configDefines()\" --preprocessor \"$${QMAKE_MOC} -E\" --symbolsPrefix cssyy ${QMAKE_FILE_NAME}
 cssbison.depends = ${QMAKE_FILE_NAME}
 GENERATORS += cssbison
 

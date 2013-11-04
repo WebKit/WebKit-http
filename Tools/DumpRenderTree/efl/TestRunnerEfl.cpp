@@ -117,13 +117,6 @@ JSValueRef TestRunner::computedStyleIncludingVisitedInfo(JSContextRef context, J
     return DumpRenderTreeSupportEfl::computedStyleIncludingVisitedInfo(context, value);
 }
 
-JSRetainPtr<JSStringRef> TestRunner::layerTreeAsText() const
-{
-    String result = DumpRenderTreeSupportEfl::layerTreeAsText(browser->mainFrame());
-
-    return JSRetainPtr<JSStringRef>(Adopt, JSStringCreateWithUTF8CString(result.utf8().data()));
-}
-
 size_t TestRunner::webHistoryItemCount()
 {
     const Ewk_History* history = ewk_view_history_get(browser->mainView());
@@ -372,7 +365,7 @@ void TestRunner::setMockDeviceOrientation(bool, double, bool, double, bool, doub
     notImplemented();
 }
 
-void TestRunner::setMockGeolocationPosition(double, double, double)
+void TestRunner::setMockGeolocationPosition(double, double, double, bool, double, bool, double, bool, double, bool, double)
 {
     // FIXME: Implement for Geolocation layout tests.
     // See https://bugs.webkit.org/show_bug.cgi?id=28264.
@@ -739,13 +732,13 @@ void TestRunner::setAsynchronousSpellCheckingEnabled(bool)
 
 void TestRunner::showWebInspector()
 {
-    ewk_view_web_inspector_show(browser->mainView());
+    ewk_view_inspector_show(browser->mainView());
     browser->waitInspectorLoadFinished();
 }
 
 void TestRunner::closeWebInspector()
 {
-    ewk_view_web_inspector_close(browser->mainView());
+    ewk_view_inspector_close(browser->mainView());
 }
 
 void TestRunner::evaluateInWebInspector(long callId, JSStringRef script)

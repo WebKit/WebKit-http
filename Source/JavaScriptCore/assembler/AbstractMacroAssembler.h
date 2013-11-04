@@ -261,6 +261,50 @@ public:
 
     };
     
+    // TrustedImm64:
+    //
+    // A 64bit immediate operand to an instruction - this is wrapped in a
+    // class requiring explicit construction in order to prevent RegisterIDs
+    // (which are implemented as an enum) from accidentally being passed as
+    // immediate values.
+    struct TrustedImm64 {
+        TrustedImm64() { }
+        
+        explicit TrustedImm64(int64_t value)
+            : m_value(value)
+        {
+        }
+
+#if CPU(X86_64)
+        explicit TrustedImm64(TrustedImmPtr ptr)
+            : m_value(ptr.asIntptr())
+        {
+        }
+#endif
+
+        int64_t m_value;
+    };
+
+    struct Imm64 : 
+#if ENABLE(JIT_CONSTANT_BLINDING)
+        private TrustedImm64 
+#else
+        public TrustedImm64
+#endif
+    {
+        explicit Imm64(int64_t value)
+            : TrustedImm64(value)
+        {
+        }
+#if CPU(X86_64)
+        explicit Imm64(TrustedImmPtr ptr)
+            : TrustedImm64(ptr)
+        {
+        }
+#endif
+        const TrustedImm64& asTrustedImm64() const { return *this; }
+    };
+    
     // Section 2: MacroAssembler code buffer handles
     //
     // The following types are used to reference items in the code buffer
@@ -564,7 +608,7 @@ public:
             m_jumps.append(jump);
         }
         
-        void append(JumpList& other)
+        void append(const JumpList& other)
         {
             m_jumps.append(other.m_jumps.begin(), other.m_jumps.size());
         }
@@ -579,7 +623,7 @@ public:
             m_jumps.clear();
         }
         
-        const JumpVector& jumps() { return m_jumps; }
+        const JumpVector& jumps() const { return m_jumps; }
 
     private:
         JumpVector m_jumps;

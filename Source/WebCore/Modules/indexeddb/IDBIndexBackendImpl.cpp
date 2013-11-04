@@ -43,25 +43,10 @@
 
 namespace WebCore {
 
-IDBIndexBackendImpl::IDBIndexBackendImpl(const IDBDatabaseBackendImpl* database, IDBObjectStoreBackendImpl* objectStoreBackend, int64_t id, const String& name, const IDBKeyPath& keyPath, bool unique, bool multiEntry)
+IDBIndexBackendImpl::IDBIndexBackendImpl(const IDBDatabaseBackendImpl* database, IDBObjectStoreBackendImpl* objectStoreBackend, const IDBIndexMetadata& metadata)
     : m_database(database)
     , m_objectStoreBackend(objectStoreBackend)
-    , m_id(id)
-    , m_name(name)
-    , m_keyPath(keyPath)
-    , m_unique(unique)
-    , m_multiEntry(multiEntry)
-{
-}
-
-IDBIndexBackendImpl::IDBIndexBackendImpl(const IDBDatabaseBackendImpl* database, IDBObjectStoreBackendImpl* objectStoreBackend, const String& name, const IDBKeyPath& keyPath, bool unique, bool multiEntry)
-    : m_database(database)
-    , m_objectStoreBackend(objectStoreBackend)
-    , m_id(InvalidId)
-    , m_name(name)
-    , m_keyPath(keyPath)
-    , m_unique(unique)
-    , m_multiEntry(multiEntry)
+    , m_metadata(metadata)
 {
 }
 
@@ -71,7 +56,7 @@ IDBIndexBackendImpl::~IDBIndexBackendImpl()
 
 IDBIndexMetadata IDBIndexBackendImpl::metadata() const
 {
-    return IDBIndexMetadata(m_name, m_keyPath, m_unique, m_multiEntry);
+    return m_metadata;
 }
 
 void IDBIndexBackendImpl::openCursorInternal(ScriptExecutionContext*, PassRefPtr<IDBIndexBackendImpl> index, PassRefPtr<IDBKeyRange> range, unsigned short untypedDirection, IDBCursorBackendInterface::CursorType cursorType, PassRefPtr<IDBCallbacks> callbacks, PassRefPtr<IDBTransactionBackendImpl> transaction)
@@ -95,7 +80,7 @@ void IDBIndexBackendImpl::openCursorInternal(ScriptExecutionContext*, PassRefPtr
     }
 
     if (!backingStoreCursor) {
-        callbacks->onSuccess(SerializedScriptValue::nullValue());
+        callbacks->onSuccess(static_cast<SerializedScriptValue*>(0));
         return;
     }
 
@@ -134,7 +119,7 @@ void IDBIndexBackendImpl::countInternal(ScriptExecutionContext*, PassRefPtr<IDBI
 
     RefPtr<IDBBackingStore::Cursor> backingStoreCursor = index->backingStore()->openIndexKeyCursor(transaction->backingStoreTransaction(), index->databaseId(), index->m_objectStoreBackend->id(), index->id(), range.get(), IDBCursor::NEXT);
     if (!backingStoreCursor) {
-        callbacks->onSuccess(SerializedScriptValue::numberValue(count));
+        callbacks->onSuccess(count);
         return;
     }
 
@@ -142,7 +127,7 @@ void IDBIndexBackendImpl::countInternal(ScriptExecutionContext*, PassRefPtr<IDBI
         ++count;
     } while (backingStoreCursor->continueFunction(0));
     backingStoreCursor->close();
-    callbacks->onSuccess(SerializedScriptValue::numberValue(count));
+    callbacks->onSuccess(count);
 }
 
 void IDBIndexBackendImpl::count(PassRefPtr<IDBKeyRange> range, PassRefPtr<IDBCallbacks> callbacks, IDBTransactionBackendInterface* transactionPtr, ExceptionCode&)
@@ -166,7 +151,7 @@ void IDBIndexBackendImpl::getInternal(ScriptExecutionContext*, PassRefPtr<IDBInd
         RefPtr<IDBBackingStore::Cursor> backingStoreCursor = index->backingStore()->openIndexCursor(transaction->backingStoreTransaction(), index->databaseId(), index->m_objectStoreBackend->id(), index->id(), keyRange.get(), IDBCursor::NEXT);
 
         if (!backingStoreCursor) {
-            callbacks->onSuccess(SerializedScriptValue::undefinedValue());
+            callbacks->onSuccess();
             return;
         }
         key = backingStoreCursor->key();
@@ -178,7 +163,7 @@ void IDBIndexBackendImpl::getInternal(ScriptExecutionContext*, PassRefPtr<IDBInd
     String value = index->backingStore()->getObjectStoreRecord(transaction->backingStoreTransaction(), index->databaseId(), index->m_objectStoreBackend->id(), *primaryKey);
 
     if (value.isNull()) {
-        callbacks->onSuccess(SerializedScriptValue::undefinedValue());
+        callbacks->onSuccess();
         return;
     }
     if (index->m_objectStoreBackend->autoIncrement() && !index->m_objectStoreBackend->keyPath().isNull()) {

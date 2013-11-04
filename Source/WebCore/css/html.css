@@ -396,7 +396,7 @@ button {
 
 /* Form controls don't go vertical. */
 input, textarea, keygen, select, button, isindex, meter, progress {
-    -webkit-block-flow: tb !important;
+    -webkit-writing-mode: horizontal-tb !important;
 }
 
 input, textarea, keygen, select, button, isindex {
@@ -410,7 +410,7 @@ input, textarea, keygen, select, button, isindex {
     text-indent: 0;
     text-shadow: none;
     display: inline-block;
-    text-align: -webkit-auto;
+    text-align: start;
 }
 
 input[type="hidden"] {
@@ -477,100 +477,82 @@ datalist {
 #endif
 
 #if defined(ENABLE_INPUT_MULTIPLE_FIELDS_UI) && ENABLE_INPUT_MULTIPLE_FIELDS_UI
-input[type="datetime"],
-input[type="datetime-local"],
-input[type="month"],
-input[type="time"],
-input[type="week"] {
+#if defined(ENABLE_INPUT_TYPE_DATE) && ENABLE_INPUT_TYPE_DATE
+input[type="date"] {
+    -webkit-align-items: stretch;
+    display: -webkit-inline-flex;
     font-family: monospace;
+    padding: 0;
+    -webkit-padding-start: 1px;
 }
+#endif
+#if defined(ENABLE_INPUT_TYPE_DATETIME) && ENABLE_INPUT_TYPE_DATETIME
+input[type="datetime"] {
+    -webkit-align-items: stretch;
+    display: -webkit-inline-flex;
+    font-family: monospace;
+    padding: 0;
+    -webkit-padding-start: 1px;
+}
+#endif
+#if defined(ENABLE_INPUT_TYPE_DATETIMELOCAL) && ENABLE_INPUT_TYPE_DATETIMELOCAL
+input[type="datetime-local"] {
+    -webkit-align-items: stretch;
+    display: -webkit-inline-flex;
+    font-family: monospace;
+    padding: 0;
+    -webkit-padding-start: 1px;
+}
+#endif
+#if defined(ENABLE_INPUT_TYPE_MONTH) && ENABLE_INPUT_TYPE_MONTH
+input[type="month"] {
+    -webkit-align-items: stretch;
+    display: -webkit-inline-flex;
+    font-family: monospace;
+    padding: 0;
+    -webkit-padding-start: 1px;
+}
+#endif
+#if defined(ENABLE_INPUT_TYPE_TIME) && ENABLE_INPUT_TYPE_TIME
+input[type="time"] {
+    -webkit-align-items: stretch;
+    display: -webkit-inline-flex;
+    font-family: monospace;
+    padding: 0;
+    -webkit-padding-start: 1px;
+}
+#endif
+#if defined(ENABLE_INPUT_TYPE_WEEK) && ENABLE_INPUT_TYPE_WEEK
+input[type="week"] {
+    -webkit-align-items: stretch;
+    display: -webkit-inline-flex;
+    font-family: monospace;
+    padding: 0;
+    -webkit-padding-start: 1px;
+}
+#endif
 
 input::-webkit-datetime-edit {
-    -webkit-user-modify: read-only !important;
-    display: -webkit-box;
-    -webkit-box-align: center;
-}
-
-input::-webkit-datetime-edit-ampm-field {
-    -webkit-user-modify: read-only !important;
-    border: none;
-    padding: 0.15em;
-    display: inline-block;
-    text-align: center;
-}
-
-input::-webkit-datetime-edit-day-field {
+    -webkit-flex: 1;
     -webkit-user-modify: read-only !important;
     display: inline-block;
-    border: none;
-    text-align: center;
-    padding: 0.15em;
+    white-space: pre;
 }
 
-input::-webkit-datetime-edit-hour-field {
-    -webkit-user-modify: read-only !important;
-    display: inline-block;
-    border: none;
-    text-align: center;
-    padding: 0.15em;
-}
-
-input::-webkit-datetime-edit-millisecond-field {
-    -webkit-user-modify: read-only !important;
-    display: inline-block;
-    border: none;
-    text-align: center;
-    padding: 0.15em;
-}
-
-input::-webkit-datetime-edit-minute-field {
-    -webkit-user-modify: read-only !important;
-    display: inline-block;
-    border: none;
-    text-align: center;
-    padding: 0.15em;
-}
-
-input::-webkit-datetime-edit-month-field {
-    -webkit-user-modify: read-only !important;
-    display: inline-block;
-    border: none;
-    text-align: center;
-    padding: 0.15em;
-}
-
-/* This selector is used when step >= 3600 second but format contains minute field. */
-input::-webkit-datetime-edit-minute-field[readonly] {
-    color: GrayText;
-}
-
-input::-webkit-datetime-edit-second-field {
-    -webkit-user-modify: read-only !important;
-    display: inline-block;
-    border: none;
-    text-align: center;
-    padding: 0.15em;
-}
-
-input::-webkit-datetime-edit-week-field {
-    -webkit-user-modify: read-only !important;
-    display: inline-block;
-    border: none;
-    text-align: center;
-    padding: 0.15em;
-}
-
+input::-webkit-datetime-edit-ampm-field,
+input::-webkit-datetime-edit-day-field,
+input::-webkit-datetime-edit-hour-field,
+input::-webkit-datetime-edit-millisecond-field,
+input::-webkit-datetime-edit-minute-field,
+input::-webkit-datetime-edit-month-field,
+input::-webkit-datetime-edit-second-field,
+input::-webkit-datetime-edit-week-field,
 input::-webkit-datetime-edit-year-field {
     -webkit-user-modify: read-only !important;
-    display: inline-block;
     border: none;
+    display: inline-block;
+    margin: 1px;
     text-align: center;
-    padding: 0.15em;
-}
-
-input::-webkit-date-and-time-container {
-    display: -webkit-flex;
-    -webkit-align-items: center;
 }
 
 /* Remove focus ring from fields and use highlight color */
@@ -583,9 +565,14 @@ input::-webkit-datetime-edit-month-field:focus,
 input::-webkit-datetime-edit-second-field:focus,
 input::-webkit-datetime-edit-week-field:focus,
 input::-webkit-datetime-edit-year-field:focus {
-  background-color: highlight;
-  color: highlighttext;
-  outline: none;
+    background-color: highlight;
+    color: highlighttext;
+    outline: none;
+}
+
+/* This selector is used when step >= 3600 second but format contains minute field. */
+input::-webkit-datetime-edit-minute-field[readonly] {
+    color: GrayText;
 }
 
 /* This selector is used when step >= 60 second but format contains second field. */
@@ -593,9 +580,26 @@ input::-webkit-datetime-edit-second-field[readonly] {
     color: GrayText;
 }
 
+input::-webkit-datetime-edit-text {
+    -webkit-user-modify: read-only !important;
+    display: inline-block;
+}
+
+input::-webkit-date-and-time-container {
+    -webkit-align-items: center;
+    -webkit-flex: 1;
+    display: -webkit-inline-flex;
+}
+
+input[type="date"]::-webkit-inner-spin-button,
+input[type="datetime"]::-webkit-inner-spin-button,
+input[type="datetime-local"]::-webkit-inner-spin-button,
 input[type="month"]::-webkit-inner-spin-button,
-input[type="time"]::-webkit-inner-spin-button {
-    margin-left: 0.2em;
+input[type="time"]::-webkit-inner-spin-button,
+input[type="week"]::-webkit-inner-spin-button {
+    display: inline-block;
+    position: static;
+    -webkit-margin-start: 2px;
 }
 #endif
 
@@ -625,7 +629,7 @@ input::-webkit-input-speech-button {
 #endif
 
 keygen, select {
-    -webkit-border-radius: 5px;
+    border-radius: 5px;
 }
 
 keygen::-webkit-keygen-select {
@@ -723,17 +727,20 @@ input[type="range"] {
 }
 
 input[type="range"]::-webkit-slider-container, input[type="range"]::-webkit-media-slider-container {
-    -webkit-box-align: center;
-    -webkit-box-orient: horizontal; /* This property is updated by C++ code. */
+    -webkit-flex: 1;
+    min-width: 0;
+
     box-sizing: border-box;
     -webkit-user-modify: read-only !important;
-    display: -webkit-box;
-    height: 100%;
-    width: 100%;
+    display: -webkit-flex;
+    -webkit-align-contents: center;
 }
 
 input[type="range"]::-webkit-slider-runnable-track {
-    -webkit-box-flex: 1;
+    -webkit-flex: 1;
+    min-width: 0;
+    -webkit-align-self: center;
+
     box-sizing: border-box;
     -webkit-user-modify: read-only !important;
     display: block;
@@ -744,7 +751,6 @@ input[type="range"]::-webkit-slider-thumb, input[type="range"]::-webkit-media-sl
     box-sizing: border-box;
     -webkit-user-modify: read-only !important;
     display: block;
-    position: relative;
 }
 
 input[type="button"]:disabled, input[type="submit"]:disabled, input[type="reset"]:disabled,
@@ -852,7 +858,7 @@ select[size][multiple] {
     -webkit-appearance: listbox;
     -webkit-box-align: start;
     border: 1px inset gray;
-    -webkit-border-radius: initial;
+    border-radius: initial;
     white-space: initial;
 }
 
@@ -861,7 +867,7 @@ select[size="1"] {
     -webkit-appearance: menulist;
     -webkit-box-align: center;
     border: 1px solid;
-    -webkit-border-radius: 5px;
+    border-radius: 5px;
     white-space: pre;
 }
 
@@ -902,7 +908,7 @@ output {
     border: solid 2px #400;
     background: -webkit-gradient(linear, left top, left bottom, from(#f8ecec), to(#e8cccc));
     padding: 8px;
-    -webkit-border-radius: 8px;
+    border-radius: 8px;
     -webkit-box-shadow: 4px 4px 4px rgba(100,100,100,0.6),
         inset -2px -2px 1px #d0c4c4,
         inset 2px 2px 1px white;
@@ -1149,7 +1155,7 @@ rt {
 ruby > rt {
     display: block;
     font-size: 50%;
-    text-align: -webkit-auto;
+    text-align: start;
 }
 
 ruby > rp {

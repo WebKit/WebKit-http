@@ -94,6 +94,7 @@ WebInspector.StylesSidebarPane = function(computedStylePane, setPseudoClassCallb
     this.bodyElement.appendChild(this._sectionsContainer);
 
     this._spectrum = new WebInspector.Spectrum();
+    this._linkifier = new WebInspector.Linkifier(new WebInspector.Linkifier.DefaultCSSFormatter());
 
     WebInspector.cssModel.addEventListener(WebInspector.CSSStyleModel.Events.StyleSheetChanged, this._styleSheetOrMediaQueryResultChanged, this);
     WebInspector.cssModel.addEventListener(WebInspector.CSSStyleModel.Events.MediaQueryResultChanged, this._styleSheetOrMediaQueryResultChanged, this);
@@ -135,9 +136,9 @@ WebInspector.StylesSidebarPane.prototype = {
     {
         // We start editing upon click -> default navigation to resources panel is not available
         // Hence we add a soft context menu for hrefs.
-        var contextMenu = new WebInspector.ContextMenu();
+        var contextMenu = new WebInspector.ContextMenu(event);
         contextMenu.appendApplicableItems(event.target);
-        contextMenu.show(event);
+        contextMenu.show();
     },
 
     get _forcedPseudoClasses()
@@ -353,6 +354,7 @@ WebInspector.StylesSidebarPane.prototype = {
     {
         this._sectionsContainer.removeChildren();
         this._computedStylePane.bodyElement.removeChildren();
+        this._linkifier.reset();
 
         var styleRules = this._rebuildStyleRules(node, styles);
         var usedProperties = {};
@@ -400,7 +402,7 @@ WebInspector.StylesSidebarPane.prototype = {
                 continue;
             if (section.computedStyle)
                 section.styleRule.style = nodeComputedStyle;
-            var styleRule = { section: section, style: section.styleRule.style, computedStyle: section.computedStyle, rule: section.rule, editable: !!(section.styleRule.style && section.styleRule.style.id), isAttribute: section.styleRule.isAttribute };
+            var styleRule = { section: section, style: section.styleRule.style, computedStyle: section.computedStyle, rule: section.rule, editable: !!(section.styleRule.style && section.styleRule.style.id), isAttribute: section.styleRule.isAttribute, isInherited: section.styleRule.isInherited };
             styleRules.push(styleRule);
         }
         return styleRules;
@@ -511,7 +513,11 @@ WebInspector.StylesSidebarPane.prototype = {
                 var property = allProperties[j];
                 if (!property.isLive || !property.parsedOk)
                     continue;
+
                 var canonicalName = WebInspector.StylesSidebarPane.canonicalPropertyName(property.name);
+                // Do not pick non-inherited properties from inherited styles.
+                if (styleRule.isInherited && !WebInspector.CSSKeywordCompletions.InheritedProperties[canonicalName])
+                    continue;
 
                 if (foundImportantProperties.hasOwnProperty(canonicalName))
                     continue;
@@ -1045,7 +1051,7 @@ WebInspector.StylePropertiesSection.prototype = {
 
                 var isShorthand = !!WebInspector.CSSCompletions.cssPropertiesMetainfo.longhands(property.name);
                 var inherited = this.isPropertyInherited(property.name);
-                var overloaded = this.isPropertyOverloaded(property.name);
+                var overloaded = property.inactive || this.isPropertyOverloaded(property.name);
                 var item = new WebInspector.StylePropertyTreeElement(this, this._parentPane, this.styleRule, style, property, isShorthand, inherited, overloaded);
                 this.propertiesTreeOutline.appendChild(item);
             }
@@ -1079,7 +1085,7 @@ WebInspector.StylePropertiesSection.prototype = {
 
                 // Generate synthetic shorthand we have a value for.
                 var shorthandProperty = new WebInspector.CSSProperty(style, style.allProperties.length, shorthand, style.shorthandValue(shorthand), "", "style", true, true, undefined);
-                var overloaded = this.isPropertyOverloaded(property.name, true);
+                var overloaded = property.inactive || this.isPropertyOverloaded(property.name, true);
                 var item = new WebInspector.StylePropertyTreeElement(this, this._parentPane, this.styleRule, style, shorthandProperty,  /* isShorthand */ true, /* inherited */ false, overloaded);
                 this.propertiesTreeOutline.appendChild(item);
                 generatedShorthands[shorthand] = shorthandProperty;
@@ -1089,7 +1095,7 @@ WebInspector.StylePropertiesSection.prototype = {
                 continue;  // Shorthand for the property found.
 
             var inherited = this.isPropertyInherited(property.name);
-            var overloaded = this.isPropertyOverloaded(property.name, isShorthand);
+            var overloaded = property.inactive || this.isPropertyOverloaded(property.name, isShorthand);
             var item = new WebInspector.StylePropertyTreeElement(this, this._parentPane, this.styleRule, style, property, isShorthand, inherited, overloaded);
             this.propertiesTreeOutline.appendChild(item);
         }
@@ -1187,13 +1193,8 @@ WebInspector.StylePropertiesSection.prototype = {
             return link;
         }
 
-        if (this.styleRule.sourceURL) {
-            var uiLocation = this.rule.uiLocation();
-            if (uiLocation)
-                return linkifyUncopyable(uiLocation.url(), uiLocation.lineNumber);
-            else
-                return linkifyUncopyable(this.styleRule.sourceURL, this.rule.sourceLine);
-        }
+        if (this.styleRule.sourceURL)
+            return this._parentPane._linkifier.linkifyCSSRuleLocation(this.rule) || linkifyUncopyable(this.styleRule.sourceURL, this.rule.sourceLine);
 
         if (!this.rule)
             return document.createTextNode("");
@@ -1228,6 +1229,9 @@ WebInspector.StylePropertiesSection.prototype = {
     _handleEmptySpaceClick: function(event)
     {
         if (!this.editable)
+            return;
+
+        if (!window.getSelection().isCollapsed)
             return;
 
         if (this._checkWillCancelEditing())
@@ -1450,7 +1454,7 @@ WebInspector.ComputedStylePropertiesSection.prototype = {
                     subtitle.appendChild(section._createRuleOriginNode());
                     var childElement = new TreeElement(fragment, null, false);
                     treeElement.appendChild(childElement);
-                    if (section.isPropertyOverloaded(property.name))
+                    if (property.inactive || section.isPropertyOverloaded(property.name))
                         childElement.listItemElement.addStyleClass("overloaded");
                     if (!property.parsedOk)
                         childElement.listItemElement.addStyleClass("not-parsed-ok");
@@ -2044,6 +2048,9 @@ WebInspector.StylePropertyTreeElement.prototype = {
 
     _mouseClick: function(event)
     {
+        if (!window.getSelection().isCollapsed)
+            return;
+
         event.consume(true);
 
         if (event.target === this.listItemElement) {

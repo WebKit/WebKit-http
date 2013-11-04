@@ -85,6 +85,7 @@ void WebPreferences::reset()
     javaEnabled = false;
     javaScriptCanAccessClipboard = true;
     javaScriptCanOpenWindowsAutomatically = true;
+    supportsMultipleWindows = true;
     javaScriptEnabled = true;
     loadsImagesAutomatically = true;
     localStorageEnabled = true;
@@ -116,9 +117,11 @@ void WebPreferences::reset()
     deferred2dCanvasEnabled = false;
     acceleratedPaintingEnabled = false;
     forceCompositingMode = false;
+    deferredImageDecodingEnabled = false;
     mediaPlaybackRequiresUserGesture = false;
     mockScrollbarsEnabled = false;
     cssCustomFilterEnabled = false;
+    shouldRespectImageOrientation = false;
 }
 
 static void setStandardFontFamilyWrapper(WebSettings* settings, const WebKit::WebString& font, UScriptCode script)
@@ -156,9 +159,9 @@ typedef void (*SetFontFamilyWrapper)(WebSettings*, const WebString&, UScriptCode
 static void applyFontMap(WebSettings* settings, const WebPreferences::ScriptFontFamilyMap& map, SetFontFamilyWrapper setter)
 {
     for (WebPreferences::ScriptFontFamilyMap::const_iterator iter = map.begin(); iter != map.end(); ++iter) {
-        const WebString& font = iter->second;
+        const WebString& font = iter->value;
         if (!font.isNull() && !font.isEmpty())
-            (*setter)(settings, font, static_cast<UScriptCode>(iter->first));
+            (*setter)(settings, font, static_cast<UScriptCode>(iter->key));
     }
 }
 
@@ -200,6 +203,7 @@ void WebPreferences::applyTo(WebView* webView)
     settings->setJavaEnabled(javaEnabled);
     settings->setJavaScriptCanAccessClipboard(javaScriptCanAccessClipboard);
     settings->setJavaScriptCanOpenWindowsAutomatically(javaScriptCanOpenWindowsAutomatically);
+    settings->setSupportsMultipleWindows(supportsMultipleWindows);
     settings->setJavaScriptEnabled(javaScriptEnabled);
     settings->setLoadsImagesAutomatically(loadsImagesAutomatically);
     settings->setLocalStorageEnabled(localStorageEnabled);
@@ -224,9 +228,11 @@ void WebPreferences::applyTo(WebView* webView)
     settings->setAccelerated2dCanvasEnabled(accelerated2dCanvasEnabled);
     settings->setDeferred2dCanvasEnabled(deferred2dCanvasEnabled);
     settings->setAcceleratedPaintingEnabled(acceleratedPaintingEnabled);
+    settings->setDeferredImageDecodingEnabled(deferredImageDecodingEnabled);
     settings->setMediaPlaybackRequiresUserGesture(mediaPlaybackRequiresUserGesture);
     settings->setMockScrollbarsEnabled(mockScrollbarsEnabled);
     settings->setApplyDefaultDeviceScaleFactorInCompositor(forceCompositingMode);
+    settings->setShouldRespectImageOrientation(shouldRespectImageOrientation);
 
     // Fixed values.
     settings->setTextDirectionSubmenuInclusionBehaviorNeverIncluded();

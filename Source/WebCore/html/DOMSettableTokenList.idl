@@ -22,13 +22,10 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-module core {
+[
+    IndexedGetter,
+    JSGenerateToJSObject
+] interface DOMSettableTokenList : DOMTokenList {
+    attribute DOMString value;
+};
 
-    interface [
-        IndexedGetter,
-        JSGenerateToJSObject
-    ] DOMSettableTokenList : DOMTokenList {
-        attribute DOMString value;
-    };
-
-}

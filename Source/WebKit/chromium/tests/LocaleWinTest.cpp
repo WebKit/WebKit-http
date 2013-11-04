@@ -120,9 +120,21 @@ protected:
         OwnPtr<LocaleWin> locale = LocaleWin::create(lcid);
         return locale->weekDayShortLabels()[index];
     }
+
+    bool isRTL(LCID lcid)
+    {
+        OwnPtr<LocaleWin> locale = LocaleWin::create(lcid);
+        return locale->isRTL();
+    }
 #endif
 
 #if ENABLE(INPUT_MULTIPLE_FIELDS_UI)
+    String monthFormat(LCID lcid)
+    {
+        OwnPtr<LocaleWin> locale = LocaleWin::create(lcid);
+        return locale->monthFormat();
+    }
+
     String timeFormat(LCID lcid)
     {
         OwnPtr<LocaleWin> locale = LocaleWin::create(lcid);
@@ -133,6 +145,12 @@ protected:
     {
         OwnPtr<LocaleWin> locale = LocaleWin::create(lcid);
         return locale->shortTimeFormat();
+    }
+
+    String shortMonthLabel(LCID lcid, unsigned index)
+    {
+        OwnPtr<LocaleWin> locale = LocaleWin::create(lcid);
+        return locale->shortMonthLabels()[index];
     }
 
     String timeAMPMLabel(LCID lcid, unsigned index)
@@ -161,68 +179,6 @@ TEST_F(LocaleWinTest, TestLocalizedDateFormatText)
     EXPECT_STREQ("month-day aaa'bbb year", LocaleWin::dateFormatText("MM-dd 'aaa''bbb' yyy", "year", "month", "day").utf8().data());
     EXPECT_STREQ("year/month/day/year/month/day", LocaleWin::dateFormatText("yyyy/MMMM/dddd/yyyy/MMMM/dddd", "year", "month", "day").utf8().data());
     EXPECT_STREQ("YY/mm/DD", LocaleWin::dateFormatText("YY/mm/DD", "year", "month", "day").utf8().data());
-}
-
-TEST_F(LocaleWinTest, TestFormat)
-{
-    OwnPtr<LocaleWin> locale = LocaleWin::create(EnglishUS);
-
-    EXPECT_STREQ("4/7/2", locale->formatDate("M/d/y", 2012, 2012, April, 7).utf8().data());
-    EXPECT_STREQ("4/7/2007", locale->formatDate("M/d/y", 2012, 2007, April, 7).utf8().data());
-    EXPECT_STREQ("4/7/8", locale->formatDate("M/d/y", 2012, 2008, April, 7).utf8().data());
-    EXPECT_STREQ("4/7/7", locale->formatDate("M/d/y", 2012, 2017, April, 7).utf8().data());
-    EXPECT_STREQ("4/7/2018", locale->formatDate("M/d/y", 2012, 2018, April, 7).utf8().data());
-    EXPECT_STREQ("12/31/2062", locale->formatDate("M/d/y", 2012, 2062, December, 31).utf8().data());
-    EXPECT_STREQ("4/7/0002", locale->formatDate("M/d/y", 2012, 2, April, 7).utf8().data());
-
-    EXPECT_STREQ("04/27/12", locale->formatDate("MM/dd/yy", 2012, 2012, April, 27).utf8().data());
-    EXPECT_STREQ("04/07/1962", locale->formatDate("MM/dd/yy", 2012, 1962, April, 7).utf8().data());
-    EXPECT_STREQ("04/07/63", locale->formatDate("MM/dd/yy", 2012, 1963, April, 7).utf8().data());
-    EXPECT_STREQ("01/31/00", locale->formatDate("MM/dd/yy", 2012, 2000, January, 31).utf8().data());
-    EXPECT_STREQ("04/07/62", locale->formatDate("MM/dd/yy", 2012, 2062, April, 7).utf8().data());
-    EXPECT_STREQ("04/07/2063", locale->formatDate("MM/dd/yy", 2012, 2063, April, 7).utf8().data());
-    EXPECT_STREQ("04/07/0001", locale->formatDate("MM/dd/yy", 2012, 1, April, 7).utf8().data());
-
-    EXPECT_STREQ("Jan/7/2012", locale->formatDate("MMM/d/yyyy", 2012, 2012, January, 7).utf8().data());
-    EXPECT_STREQ("Feb/7/2008", locale->formatDate("MMM/d/yyyy", 2012, 2008, February, 7).utf8().data());
-    EXPECT_STREQ("Mar/7/2017", locale->formatDate("MMM/d/yyyy", 2012, 2017, March, 7).utf8().data());
-    EXPECT_STREQ("Apr/7/2012", locale->formatDate("MMM/d/yyyy", 2012, 2012, April, 7).utf8().data());
-    EXPECT_STREQ("May/7/0002", locale->formatDate("MMM/d/yyyy", 2012, 2, May, 7).utf8().data());
-    EXPECT_STREQ("Jun/7/2008", locale->formatDate("MMM/d/yyyy", 2012, 2008, June, 7).utf8().data());
-    EXPECT_STREQ("Jul/7/2017", locale->formatDate("MMM/d/yyyy", 2012, 2017, July, 7).utf8().data());
-    EXPECT_STREQ("Aug/31/2062", locale->formatDate("MMM/d/yyyy", 2012, 2062, August, 31).utf8().data());
-    EXPECT_STREQ("Sep/7/0002", locale->formatDate("MMM/d/yyyy", 2012, 2, September, 7).utf8().data());
-    EXPECT_STREQ("Oct/7/2012", locale->formatDate("MMM/d/yyyy", 2012, 2012, October, 7).utf8().data());
-    EXPECT_STREQ("Nov/7/2008", locale->formatDate("MMM/d/yyyy", 2012, 2008, November, 7).utf8().data());
-    EXPECT_STREQ("Dec/31/2062", locale->formatDate("MMM/d/yyyy", 2012, 2062, December, 31).utf8().data());
-
-    EXPECT_STREQ("January-7-2017", locale->formatDate("MMMM-d-yyyy", 2012, 2017, January, 7).utf8().data());
-    EXPECT_STREQ("February-31-2062", locale->formatDate("MMMM-d-yyyy", 2012, 2062, February, 31).utf8().data());
-    EXPECT_STREQ("March-7-0002", locale->formatDate("MMMM-d-yyyy", 2012, 2, March, 7).utf8().data());
-    EXPECT_STREQ("April-7-22012", locale->formatDate("MMMM-d-yyyy", 2012, 22012, April, 7).utf8().data());
-    EXPECT_STREQ("May-7-12008", locale->formatDate("MMMM-d-yyyy", 2012, 12008, May, 7).utf8().data());
-    EXPECT_STREQ("June-7-22012", locale->formatDate("MMMM-d-yyyy", 2012, 22012, June, 7).utf8().data());
-    EXPECT_STREQ("July-7-12008", locale->formatDate("MMMM-d-yyyy", 2012, 12008, July, 7).utf8().data());
-    EXPECT_STREQ("August-7-2017", locale->formatDate("MMMM-d-yyyy", 2012, 2017, August, 7).utf8().data());
-    EXPECT_STREQ("September-31-2062", locale->formatDate("MMMM-d-yyyy", 2012, 2062, September, 31).utf8().data());
-    EXPECT_STREQ("October-7-0002", locale->formatDate("MMMM-d-yyyy", 2012, 2, October, 7).utf8().data());
-    EXPECT_STREQ("November-7-22012", locale->formatDate("MMMM-d-yyyy", 2012, 22012, November, 7).utf8().data());
-    EXPECT_STREQ("December-7-12008", locale->formatDate("MMMM-d-yyyy", 2012, 12008, December, 7).utf8().data());
-
-    EXPECT_STREQ("Jan-1-0001", locale->formatDate("MMM-d-yyyy", 2012, 1, January, 1).utf8().data());
-    EXPECT_STREQ("Sep-13-275760", locale->formatDate("MMM-d-yyyy", 2012, 275760, September, 13).utf8().data());
-
-    OwnPtr<LocaleWin> persian = LocaleWin::create(Persian);
-    // U+06F0 U+06F1 / U+06F0 U+06F8 / U+06F0 U+06F0 U+06F0 U+06F2
-    EXPECT_STREQ("\xDB\xB0\xDB\xB1/\xDB\xB0\xDB\xB8/\xDB\xB0\xDB\xB0\xDB\xB0\xDB\xB1", persian->formatDate("dd/MM/yyyy", 2012, 1, August, 1).utf8().data());
-
-    // For the following test, we'd like to confirm they don't crash and their
-    // results are not important because we can assume invalid arguments are
-    // never passed.
-    EXPECT_STREQ("2012-13-00", locale->formatDate("yyyy-MM-dd", -1, 2012, December + 1, 0).utf8().data());
-    EXPECT_STREQ("-1-00--1", locale->formatDate("y-MM-dd", -1, -1, -1, -1).utf8().data());
-    EXPECT_STREQ("-1-124-33", locale->formatDate("y-MM-dd", 2012, -1, 123, 33).utf8().data());
-    
 }
 
 TEST_F(LocaleWinTest, TestParse)
@@ -266,7 +222,7 @@ TEST_F(LocaleWinTest, TestParse)
 
 TEST_F(LocaleWinTest, formatDate)
 {
-    EXPECT_STREQ("4/27/2005", formatDate(EnglishUS, 2005, April, 27).utf8().data());
+    EXPECT_STREQ("04/27/2005", formatDate(EnglishUS, 2005, April, 27).utf8().data());
     EXPECT_STREQ("27/04/2005", formatDate(FrenchFR, 2005, April, 27).utf8().data());
     EXPECT_STREQ("2005/04/27", formatDate(JapaneseJP, 2005, April, 27).utf8().data());
 }
@@ -322,6 +278,13 @@ TEST_F(LocaleWinTest, weekDayShortLabels)
     EXPECT_STREQ("\xE6\xB0\xB4", weekDayShortLabel(JapaneseJP, Wednesday).utf8().data());
     EXPECT_STREQ("\xE5\x9C\x9F", weekDayShortLabel(JapaneseJP, Saturday).utf8().data());
 }
+
+TEST_F(LocaleWinTest, isRTL)
+{
+    EXPECT_TRUE(isRTL(ArabicEG));
+    EXPECT_FALSE(isRTL(EnglishUS));
+}
+
 #endif
 
 #if ENABLE(INPUT_MULTIPLE_FIELDS_UI)
@@ -333,6 +296,13 @@ TEST_F(LocaleWinTest, dateFormat)
     EXPECT_STREQ("yyyy'-'''''MMMM'-'dd", LocaleWin::dateFormat("yyyy-''''MMMM-dd").utf8().data());
 }
 
+TEST_F(LocaleWinTest, monthFormat)
+{
+    EXPECT_STREQ("MMMM', 'yyyy", monthFormat(EnglishUS).utf8().data());
+    EXPECT_STREQ("MMMM' 'yyyy", monthFormat(FrenchFR).utf8().data());
+    EXPECT_STREQ("yyyy'\xE5\xB9\xB4'M'\xE6\x9C\x88'", monthFormat(JapaneseJP).utf8().data());
+}
+
 TEST_F(LocaleWinTest, timeFormat)
 {
     EXPECT_STREQ("h:mm:ss a", timeFormat(EnglishUS).utf8().data());
@@ -342,9 +312,19 @@ TEST_F(LocaleWinTest, timeFormat)
 
 TEST_F(LocaleWinTest, shortTimeFormat)
 {
-    EXPECT_STREQ("h:mm:ss a", shortTimeFormat(EnglishUS).utf8().data());
-    EXPECT_STREQ("HH:mm:ss", shortTimeFormat(FrenchFR).utf8().data());
-    EXPECT_STREQ("H:mm:ss", shortTimeFormat(JapaneseJP).utf8().data());
+    EXPECT_STREQ("h:mm a", shortTimeFormat(EnglishUS).utf8().data());
+    EXPECT_STREQ("HH:mm", shortTimeFormat(FrenchFR).utf8().data());
+    EXPECT_STREQ("H:mm", shortTimeFormat(JapaneseJP).utf8().data());
+}
+
+TEST_F(LocaleWinTest, shortMonthLabels)
+{
+    EXPECT_STREQ("Jan", shortMonthLabel(EnglishUS, 0).utf8().data());
+    EXPECT_STREQ("Dec", shortMonthLabel(EnglishUS, 11).utf8().data());
+    EXPECT_STREQ("janv.", shortMonthLabel(FrenchFR, 0).utf8().data());
+    EXPECT_STREQ("d\xC3\xA9" "c.", shortMonthLabel(FrenchFR, 11).utf8().data());
+    EXPECT_STREQ("1", shortMonthLabel(JapaneseJP, 0).utf8().data());
+    EXPECT_STREQ("12", shortMonthLabel(JapaneseJP, 11).utf8().data());
 }
 
 TEST_F(LocaleWinTest, timeAMPMLabels)

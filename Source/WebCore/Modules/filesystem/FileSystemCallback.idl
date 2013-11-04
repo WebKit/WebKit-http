@@ -28,11 +28,9 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-module storage {
-    interface [
-        Conditional=FILE_SYSTEM,
-        Callback
-    ] FileSystemCallback {
-        boolean handleEvent(in DOMFileSystem fileSystem);
-    };
-}
+[
+    Conditional=FILE_SYSTEM,
+    Callback
+] interface FileSystemCallback {
+    boolean handleEvent(in DOMFileSystem fileSystem);
+};

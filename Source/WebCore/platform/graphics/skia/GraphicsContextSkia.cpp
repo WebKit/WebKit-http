@@ -116,6 +116,89 @@ void addCornerArc(SkPath* path, const SkRect& rect, const IntSize& size, int sta
     path->arcTo(r, SkIntToScalar(startAngle), SkIntToScalar(90), false);
 }
 
+void draw2xMarker(SkBitmap* bitmap, int index)
+{
+
+    static const SkPMColor lineColors[2] = {
+        SkPreMultiplyARGB(0xFF, 0xFF, 0x00, 0x00), // Opaque red.
+        SkPreMultiplyARGB(0xFF, 0xC0, 0xC0, 0xC0), // Opaque gray.
+    };
+    static const SkPMColor antiColors1[2] = {
+        SkPreMultiplyARGB(0xB0, 0xFF, 0x00, 0x00), // Semitransparent red
+        SkPreMultiplyARGB(0xB0, 0xC0, 0xC0, 0xC0), // Semitransparent gray
+    };
+    static const SkPMColor antiColors2[2] = {
+        SkPreMultiplyARGB(0x60, 0xFF, 0x00, 0x00), // More transparent red
+        SkPreMultiplyARGB(0x60, 0xC0, 0xC0, 0xC0), // More transparent gray
+    };
+
+    const SkPMColor lineColor = lineColors[index];
+    const SkPMColor antiColor1 = antiColors1[index];
+    const SkPMColor antiColor2 = antiColors2[index];
+
+    uint32_t* row1 = bitmap->getAddr32(0, 0);
+    uint32_t* row2 = bitmap->getAddr32(0, 1);
+    uint32_t* row3 = bitmap->getAddr32(0, 2);
+    uint32_t* row4 = bitmap->getAddr32(0, 3);
+
+    // Pattern: X0o   o0X0o   o0
+    //          XX0o o0XXX0o o0X
+    //           o0XXX0o o0XXX0o
+    //            o0X0o   o0X0o
+    const SkPMColor row1Color[] = { lineColor, antiColor1, antiColor2, 0,          0,         0,          antiColor2, antiColor1 };
+    const SkPMColor row2Color[] = { lineColor, lineColor,  antiColor1, antiColor2, 0,         antiColor2, antiColor1, lineColor };
+    const SkPMColor row3Color[] = { 0,         antiColor2, antiColor1, lineColor,  lineColor, lineColor,  antiColor1, antiColor2 };
+    const SkPMColor row4Color[] = { 0,         0,          antiColor2, antiColor1, lineColor, antiColor1, antiColor2, 0 };
+
+    for (int x = 0; x < bitmap->width() + 8; x += 8) {
+        int count = min(bitmap->width() - x, 8);
+        if (count > 0) {
+            memcpy(row1 + x, row1Color, count * sizeof(SkPMColor));
+            memcpy(row2 + x, row2Color, count * sizeof(SkPMColor));
+            memcpy(row3 + x, row3Color, count * sizeof(SkPMColor));
+            memcpy(row4 + x, row4Color, count * sizeof(SkPMColor));
+        }
+    }
+}
+
+void draw1xMarker(SkBitmap* bitmap, int index)
+{
+    static const uint32_t lineColors[2] = {
+        0xFF << SK_A32_SHIFT | 0xFF << SK_R32_SHIFT, // Opaque red.
+        0xFF << SK_A32_SHIFT | 0xC0 << SK_R32_SHIFT | 0xC0 << SK_G32_SHIFT | 0xC0 << SK_B32_SHIFT, // Opaque gray.
+    };
+    static const uint32_t antiColors[2] = {
+        0x60 << SK_A32_SHIFT | 0x60 << SK_R32_SHIFT, // Semitransparent red
+        0xFF << SK_A32_SHIFT | 0xC0 << SK_R32_SHIFT | 0xC0 << SK_G32_SHIFT | 0xC0 << SK_B32_SHIFT, // Semitransparent gray
+    };
+
+    const uint32_t lineColor = lineColors[index];
+    const uint32_t antiColor = antiColors[index];
+
+    // Pattern: X o   o X o   o X
+    //            o X o   o X o
+    uint32_t* row1 = bitmap->getAddr32(0, 0);
+    uint32_t* row2 = bitmap->getAddr32(0, 1);
+    for (int x = 0; x < bitmap->width(); x++) {
+        switch (x % 4) {
+        case 0:
+            row1[x] = lineColor;
+            break;
+        case 1:
+            row1[x] = antiColor;
+            row2[x] = antiColor;
+            break;
+        case 2:
+            row2[x] = lineColor;
+            break;
+        case 3:
+            row1[x] = antiColor;
+            row2[x] = antiColor;
+            break;
+        }
+    }
+}
+
 // -----------------------------------------------------------------------------
 
 // This may be called with a NULL pointer to create a graphics context that has
@@ -517,92 +600,106 @@ void GraphicsContext::drawLineForDocumentMarker(const FloatPoint& pt, float widt
     if (paintingDisabled())
         return;
 
+    int deviceScaleFactor = SkScalarRoundToInt(WebCoreFloatToSkScalar(platformContext()->deviceScaleFactor()));
+    ASSERT(deviceScaleFactor == 1 || deviceScaleFactor == 2);
+
     // Create the pattern we'll use to draw the underline.
     int index = style == DocumentMarkerGrammarLineStyle ? 1 : 0;
-    static SkBitmap* misspellBitmap[2] = { 0, 0 };
+    static SkBitmap* misspellBitmap1x[2] = { 0, 0 };
+    static SkBitmap* misspellBitmap2x[2] = { 0, 0 };
+    SkBitmap** misspellBitmap = deviceScaleFactor == 2 ? misspellBitmap2x : misspellBitmap1x;
     if (!misspellBitmap[index]) {
 #if PLATFORM(CHROMIUM) && OS(DARWIN)
         // Match the artwork used by the Mac.
-        const int rowPixels = 4;
-        const int colPixels = 3;
-#else
-        // We use a 2-pixel-high misspelling indicator because that seems to be
-        // what WebKit is designed for, and how much room there is in a typical
-        // page for it.
-        const int rowPixels = 32;  // Must be multiple of 4 for pattern below.
-        const int colPixels = 2;
-#endif
+        const int rowPixels = 4 * deviceScaleFactor;
+        const int colPixels = 3 * deviceScaleFactor;
         misspellBitmap[index] = new SkBitmap;
         misspellBitmap[index]->setConfig(SkBitmap::kARGB_8888_Config,
                                          rowPixels, colPixels);
         misspellBitmap[index]->allocPixels();
 
         misspellBitmap[index]->eraseARGB(0, 0, 0, 0);
-#if PLATFORM(CHROMIUM) && OS(DARWIN)
-        const uint32_t colors[2][6] = {
-            { 0x2A2A0600, 0x57571000, 0xA8A81B00, 0xBFBF1F00, 0x70701200, 0xE0E02400 },
-            { 0x2A001503, 0x57002A08, 0xA800540D, 0xBF005F0F, 0x70003809, 0xE0007012 }
-        };
         const uint32_t transparentColor = 0x00000000;
 
-        // Pattern: a b a   a b a
-        //          c d c   c d c
-        //          e f e   e f e
-        for (int x = 0; x < colPixels; ++x) {
-            uint32_t* row = misspellBitmap[index]->getAddr32(0, x);
-            row[0] = colors[index][x * 2];
-            row[1] = colors[index][x * 2 + 1];
-            row[2] = colors[index][x * 2];
-            row[3] = transparentColor;
-        }
-#else
-        static const uint32_t lineColors[2] = {
-            0xFF << SK_A32_SHIFT | 0xFF << SK_R32_SHIFT, // Opaque red.
-            0xFF << SK_A32_SHIFT | 0xC0 << SK_R32_SHIFT | 0xC0 << SK_G32_SHIFT | 0xC0 << SK_B32_SHIFT, // Opaque gray.
-        };
-        static const uint32_t antiColors[2] = {
-            0x60 << SK_A32_SHIFT | 0x60 << SK_R32_SHIFT, // Semitransparent red
-            0xFF << SK_A32_SHIFT | 0xC0 << SK_R32_SHIFT | 0xC0 << SK_G32_SHIFT | 0xC0 << SK_B32_SHIFT, // Semitransparent gray
-        };
-        const uint32_t lineColor = lineColors[index];
-        const uint32_t antiColor = antiColors[index];
+        if (deviceScaleFactor == 1) {
+            const uint32_t colors[2][6] = {
+                { 0x2A2A0600, 0x57571000,  0xA8A81B00, 0xBFBF1F00,  0x70701200, 0xE0E02400 },
+                { 0x2A001503, 0x57002A08,  0xA800540D, 0xBF005F0F,  0x70003809, 0xE0007012 }
+            };
 
-        // Pattern:  X o   o X o   o X
-        //             o X o   o X o
-        uint32_t* row1 = misspellBitmap[index]->getAddr32(0, 0);
-        uint32_t* row2 = misspellBitmap[index]->getAddr32(0, 1);
-        for (int x = 0; x < rowPixels; x++) {
-            switch (x % 4) {
-            case 0:
-                row1[x] = lineColor;
-                break;
-            case 1:
-                row1[x] = antiColor;
-                row2[x] = antiColor;
-                break;
-            case 2:
-                row2[x] = lineColor;
-                break;
-            case 3:
-                row1[x] = antiColor;
-                row2[x] = antiColor;
-                break;
+            // Pattern: a b a   a b a
+            //          c d c   c d c
+            //          e f e   e f e
+            for (int x = 0; x < colPixels; ++x) {
+                uint32_t* row = misspellBitmap[index]->getAddr32(0, x);
+                row[0] = colors[index][x * 2];
+                row[1] = colors[index][x * 2 + 1];
+                row[2] = colors[index][x * 2];
+                row[3] = transparentColor;
             }
-        }
+        } else if (deviceScaleFactor == 2) {
+            const uint32_t colors[2][18] = {
+                { 0x0a090101, 0x33320806, 0x55540f0a,  0x37360906, 0x6e6c120c, 0x6e6c120c,  0x7674140d, 0x8d8b1810, 0x8d8b1810,
+                  0x96941a11, 0xb3b01f15, 0xb3b01f15,  0x6d6b130c, 0xd9d62619, 0xd9d62619,  0x19180402, 0x7c7a150e, 0xcecb2418 },
+                { 0x0a000400, 0x33031b06, 0x55062f0b,  0x37041e06, 0x6e083d0d, 0x6e083d0d,  0x7608410e, 0x8d094e11, 0x8d094e11,
+                  0x960a5313, 0xb30d6417, 0xb30d6417,  0x6d073c0d, 0xd90f781c, 0xd90f781c,  0x19010d03, 0x7c094510, 0xce0f731a }
+            };
+
+            // Pattern: a b c c b a
+            //          d e f f e d
+            //          g h j j h g
+            //          k l m m l k
+            //          n o p p o n
+            //          q r s s r q
+            for (int x = 0; x < colPixels; ++x) {
+                uint32_t* row = misspellBitmap[index]->getAddr32(0, x);
+                row[0] = colors[index][x * 3];
+                row[1] = colors[index][x * 3 + 1];
+                row[2] = colors[index][x * 3 + 2];
+                row[3] = colors[index][x * 3 + 2];
+                row[4] = colors[index][x * 3 + 1];
+                row[5] = colors[index][x * 3];
+                row[6] = transparentColor;
+                row[7] = transparentColor;
+            }
+        } else
+            ASSERT_NOT_REACHED();
+#else
+        // We use a 2-pixel-high misspelling indicator because that seems to be
+        // what WebKit is designed for, and how much room there is in a typical
+        // page for it.
+        const int rowPixels = 32 * deviceScaleFactor; // Must be multiple of 4 for pattern below.
+        const int colPixels = 2 * deviceScaleFactor;
+        misspellBitmap[index] = new SkBitmap;
+        misspellBitmap[index]->setConfig(SkBitmap::kARGB_8888_Config, rowPixels, colPixels);
+        misspellBitmap[index]->allocPixels();
+
+        misspellBitmap[index]->eraseARGB(0, 0, 0, 0);
+        if (deviceScaleFactor == 1)
+            draw1xMarker(misspellBitmap[index], index);
+        else if (deviceScaleFactor == 2)
+            draw2xMarker(misspellBitmap[index], index);
+        else
+            ASSERT_NOT_REACHED();
 #endif
     }
 
-    SkScalar originX = WebCoreFloatToSkScalar(pt.x());
 #if PLATFORM(CHROMIUM) && OS(DARWIN)
-    SkScalar originY = WebCoreFloatToSkScalar(pt.y());
+    SkScalar originX = WebCoreFloatToSkScalar(pt.x()) * deviceScaleFactor;
+    SkScalar originY = WebCoreFloatToSkScalar(pt.y()) * deviceScaleFactor;
+
     // Make sure to draw only complete dots.
     int rowPixels = misspellBitmap[index]->width();
-    float widthMod = fmodf(width, rowPixels);
-    if (rowPixels - widthMod > 1)
-        width -= widthMod;
+    float widthMod = fmodf(width * deviceScaleFactor, rowPixels);
+    if (rowPixels - widthMod > deviceScaleFactor)
+        width -= widthMod / deviceScaleFactor;
 #else
+    SkScalar originX = WebCoreFloatToSkScalar(pt.x());
+
     // Offset it vertically by 1 so that there's some space under the text.
     SkScalar originY = WebCoreFloatToSkScalar(pt.y()) + 1;
+    originX *= deviceScaleFactor;
+    originY *= deviceScaleFactor;
 #endif
 
     // Make a shader for the bitmap with an origin of the box we'll draw. This
@@ -611,23 +708,26 @@ void GraphicsContext::drawLineForDocumentMarker(const FloatPoint& pt, float widt
         *misspellBitmap[index], SkShader::kRepeat_TileMode,
         SkShader::kRepeat_TileMode);
     SkMatrix matrix;
-    matrix.reset();
-    matrix.postTranslate(originX, originY);
+    matrix.setTranslate(originX, originY);
     shader->setLocalMatrix(matrix);
 
     // Assign the shader to the paint & release our reference. The paint will
     // now own the shader and the shader will be destroyed when the paint goes
     // out of scope.
     SkPaint paint;
-    paint.setShader(shader);
-    shader->unref();
+    paint.setShader(shader)->unref();
 
     SkRect rect;
-    rect.set(originX,
-             originY,
-             originX + WebCoreFloatToSkScalar(width),
-             originY + SkIntToScalar(misspellBitmap[index]->height()));
+    rect.set(originX, originY, originX + WebCoreFloatToSkScalar(width) * deviceScaleFactor, originY + SkIntToScalar(misspellBitmap[index]->height()));
+
+    if (deviceScaleFactor == 2) {
+        platformContext()->canvas()->save();
+        platformContext()->canvas()->scale(SK_ScalarHalf, SK_ScalarHalf);
+    }
     platformContext()->canvas()->drawRect(rect, paint);
+    if (deviceScaleFactor == 2)
+        platformContext()->canvas()->restore();
+
     platformContext()->didDrawRect(rect, paint);
 }
 

@@ -21,6 +21,8 @@
 #define StringRecursionChecker_h
 
 #include "Interpreter.h"
+#include <wtf/StackStats.h>
+#include <wtf/WTFThreadData.h>
 
 namespace JSC {
 
@@ -41,12 +43,14 @@ private:
     ExecState* m_exec;
     JSObject* m_thisObject;
     JSValue m_earlyReturnValue;
+
+    StackStats::CheckPoint stackCheckpoint;
 };
 
 inline JSValue StringRecursionChecker::performCheck()
 {
-    int size = m_exec->globalData().stringRecursionCheckVisitedObjects.size();
-    if (size >= MaxSmallThreadReentryDepth && size >= m_exec->globalData().maxReentryDepth)
+    const StackBounds& nativeStack = wtfThreadData().stack();
+    if (!nativeStack.isSafeToRecurse())
         return throwStackOverflowError();
     bool alreadyVisited = !m_exec->globalData().stringRecursionCheckVisitedObjects.add(m_thisObject).isNewEntry;
     if (alreadyVisited)

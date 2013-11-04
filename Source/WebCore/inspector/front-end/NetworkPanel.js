@@ -934,7 +934,7 @@ WebInspector.NetworkLogView.prototype = {
 
     _contextMenu: function(event)
     {
-        var contextMenu = new WebInspector.ContextMenu();
+        var contextMenu = new WebInspector.ContextMenu(event);
         var gridNode = this._dataGrid.dataGridNodeFromNode(event.target);
         var request = gridNode && gridNode._request;
 
@@ -968,7 +968,7 @@ WebInspector.NetworkLogView.prototype = {
             contextMenu.appendSeparator();
         }
 
-        contextMenu.show(event);
+        contextMenu.show();
     },
     
     _replayXHR: function(requestId)
@@ -1508,7 +1508,7 @@ WebInspector.NetworkPanel.prototype = {
      * @param {WebInspector.ContextMenu} contextMenu
      * @param {Object} target
      */
-    appendApplicableItems: function(contextMenu, target)
+    appendApplicableItems: function(event, contextMenu, target)
     {
         if (!(target instanceof WebInspector.NetworkRequest))
             return;
@@ -1943,8 +1943,8 @@ WebInspector.NetworkDataGridNode.prototype = {
     _fileName: function()
     {
         var fileName = this._request.displayName;
-        if (this._request.queryString)
-            fileName += "?" + this._request.queryString;
+        if (this._request.queryString())
+            fileName += "?" + this._request.queryString();
         return fileName;
     },
 
@@ -2173,8 +2173,8 @@ WebInspector.NetworkDataGridNode.prototype = {
 
 WebInspector.NetworkDataGridNode.NameComparator = function(a, b)
 {
-    var aFileName = a._request.displayName + (a._request.queryString ? a._request.queryString : "");
-    var bFileName = b._request.displayName + (b._request.queryString ? b._request.queryString : "");
+    var aFileName = a._request.displayName + (a._request.queryString() ? a._request.queryString() : "");
+    var bFileName = b._request.displayName + (b._request.queryString() ? b._request.queryString() : "");
     if (aFileName > bFileName)
         return 1;
     if (bFileName > aFileName)

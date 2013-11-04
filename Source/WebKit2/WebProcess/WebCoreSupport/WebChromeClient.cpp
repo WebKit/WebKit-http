@@ -562,7 +562,7 @@ void WebChromeClient::reachedApplicationCacheOriginQuota(SecurityOrigin* origin,
 }
 
 #if ENABLE(DASHBOARD_SUPPORT)
-void WebChromeClient::dashboardRegionsChanged()
+void WebChromeClient::annotatedRegionsChanged()
 {
     notImplemented();
 }
@@ -709,10 +709,10 @@ void WebChromeClient::setNeedsOneShotDrawingSynchronization()
     notImplemented();
 }
 
-void WebChromeClient::scheduleCompositingLayerSync()
+void WebChromeClient::scheduleCompositingLayerFlush()
 {
     if (m_page->drawingArea())
-        m_page->drawingArea()->scheduleCompositingLayerSync();
+        m_page->drawingArea()->scheduleCompositingLayerFlush();
 }
 
 #endif

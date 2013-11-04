@@ -36,6 +36,7 @@
 #include "DRTDevToolsAgent.h"
 #include "MockWebSpeechInputController.h"
 #include "MockWebSpeechRecognizer.h"
+#include "Task.h"
 #include "TestShell.h"
 #include "WebAnimationController.h"
 #include "WebBindings.h"
@@ -83,6 +84,7 @@
 
 using namespace WebCore;
 using namespace WebKit;
+using namespace WebTestRunner;
 using namespace std;
 
 class EmptyWebDeliveredIntentClient : public WebKit::WebDeliveredIntentClient {
@@ -166,7 +168,6 @@ DRTTestRunner::DRTTestRunner(TestShell* shell)
     bindMethod("findString", &DRTTestRunner::findString);
     bindMethod("isCommandEnabled", &DRTTestRunner::isCommandEnabled);
     bindMethod("hasCustomPageSizeStyle", &DRTTestRunner::hasCustomPageSizeStyle);
-    bindMethod("layerTreeAsText", &DRTTestRunner::layerTreeAsText);
     bindMethod("loseCompositorContext", &DRTTestRunner::loseCompositorContext);
     bindMethod("markerTextForListItem", &DRTTestRunner::markerTextForListItem);
     bindMethod("notifyDone", &DRTTestRunner::notifyDone);
@@ -1393,12 +1394,13 @@ void DRTTestRunner::setIsolatedWorldSecurityOrigin(const CppArgumentList& argume
 {
     result->setNull();
 
-    if (arguments.size() != 2 || !arguments[0].isNumber() || !arguments[1].isString())
+    if (arguments.size() != 2 || !arguments[0].isNumber() || !(arguments[1].isString() || arguments[1].isNull()))
         return;
 
-    m_shell->webView()->focusedFrame()->setIsolatedWorldSecurityOrigin(
-        arguments[0].toInt32(),
-        WebSecurityOrigin::createFromString(cppVariantToWebString(arguments[1])));
+    WebSecurityOrigin origin;
+    if (arguments[1].isString())
+        origin = WebSecurityOrigin::createFromString(cppVariantToWebString(arguments[1]));
+    m_shell->webView()->focusedFrame()->setIsolatedWorldSecurityOrigin(arguments[0].toInt32(), origin);
 }
 
 void DRTTestRunner::setAllowUniversalAccessFromFileURLs(const CppArgumentList& arguments, CppVariant* result)
@@ -1558,6 +1560,8 @@ void DRTTestRunner::overridePreference(const CppArgumentList& arguments, CppVari
         prefs->webSecurityEnabled = cppVariantToBool(value);
     else if (key == "WebKitJavaScriptCanOpenWindowsAutomatically")
         prefs->javaScriptCanOpenWindowsAutomatically = cppVariantToBool(value);
+    else if (key == "WebKitSupportsMultipleWindows")
+        prefs->supportsMultipleWindows = cppVariantToBool(value);
     else if (key == "WebKitDisplayImagesKey")
         prefs->loadsImagesAutomatically = cppVariantToBool(value);
     else if (key == "WebKitPluginsEnabled")
@@ -1602,6 +1606,8 @@ void DRTTestRunner::overridePreference(const CppArgumentList& arguments, CppVari
         prefs->allowRunningOfInsecureContent = cppVariantToBool(value);
     else if (key == "WebKitCSSCustomFilterEnabled")
         prefs->cssCustomFilterEnabled = cppVariantToBool(value);
+    else if (key == "WebKitShouldRespectImageOrientation")
+        prefs->shouldRespectImageOrientation = cppVariantToBool(value);
     else if (key == "WebKitWebAudioEnabled") {
         ASSERT(cppVariantToBool(value));
     } else {
@@ -1904,11 +1910,6 @@ void DRTTestRunner::startSpeechInput(const CppArgumentList& arguments, CppVarian
     input->startSpeechInput();
 }
 
-void DRTTestRunner::layerTreeAsText(const CppArgumentList& args, CppVariant* result)
-{
-    result->set(m_shell->webView()->mainFrame()->layerTreeAsText(m_showDebugLayerTree).utf8());
-}
-
 void DRTTestRunner::loseCompositorContext(const CppArgumentList& args, CppVariant*)
 {
     int numTimes;
@@ -2119,10 +2120,10 @@ void DRTTestRunner::setTextSubpixelPositioning(const CppArgumentList& arguments,
     result->setNull();
 }
 
-class InvokeCallbackTask : public MethodTask<DRTTestRunner> {
+class InvokeCallbackTask : public WebMethodTask<DRTTestRunner> {
 public:
     InvokeCallbackTask(DRTTestRunner* object, PassOwnArrayPtr<CppVariant> callbackArguments, uint32_t numberOfArguments)
-        : MethodTask<DRTTestRunner>(object)
+        : WebMethodTask<DRTTestRunner>(object)
         , m_callbackArguments(callbackArguments)
         , m_numberOfArguments(numberOfArguments)
     {

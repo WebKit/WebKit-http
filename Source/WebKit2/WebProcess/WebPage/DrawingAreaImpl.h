@@ -70,7 +70,7 @@ private:
 
     virtual WebCore::GraphicsLayerFactory* graphicsLayerFactory() OVERRIDE;
     virtual void setRootCompositingLayer(WebCore::GraphicsLayer*) OVERRIDE;
-    virtual void scheduleCompositingLayerSync() OVERRIDE;
+    virtual void scheduleCompositingLayerFlush() OVERRIDE;
 
 #if PLATFORM(WIN)
     virtual void scheduleChildWindowGeometryUpdate(const WindowGeometry&);
@@ -81,7 +81,7 @@ private:
 #endif
 
 #if USE(COORDINATED_GRAPHICS)
-    virtual void didReceiveLayerTreeCoordinatorMessage(CoreIPC::Connection*, CoreIPC::MessageID, CoreIPC::ArgumentDecoder*);
+    virtual void didReceiveLayerTreeCoordinatorMessage(CoreIPC::Connection*, CoreIPC::MessageID, CoreIPC::MessageDecoder&);
 #endif
 
     // CoreIPC message handlers.

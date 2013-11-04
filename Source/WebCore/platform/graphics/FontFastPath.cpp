@@ -42,9 +42,38 @@ using namespace std;
 
 namespace WebCore {
 
-GlyphData Font::glyphDataForCharacter(UChar32 c, bool mirror, FontDataVariant variant) const
+static inline std::pair<GlyphData, GlyphPage*> glyphDataAndPageForCharacterWithTextOrientation(UChar32 character, TextOrientation orientation, GlyphData& data, GlyphPage* page, unsigned pageNumber)
 {
-    return glyphDataAndPageForCharacter(c, mirror, variant).first;
+    if (orientation == TextOrientationVerticalRight) {
+        RefPtr<SimpleFontData> verticalRightFontData = data.fontData->verticalRightOrientationFontData();
+        GlyphPageTreeNode* verticalRightNode = GlyphPageTreeNode::getRootChild(verticalRightFontData.get(), pageNumber);
+        GlyphPage* verticalRightPage = verticalRightNode->page();
+        if (verticalRightPage) {
+            GlyphData verticalRightData = verticalRightPage->glyphDataForCharacter(character);
+            // If the glyphs are distinct, we will make the assumption that the font has a vertical-right glyph baked
+            // into it.
+            if (data.glyph != verticalRightData.glyph)
+                return make_pair(data, page);
+            // The glyphs are identical, meaning that we should just use the horizontal glyph.
+            if (verticalRightData.fontData)
+                return make_pair(verticalRightData, verticalRightPage);
+        }
+    } else if (orientation == TextOrientationUpright) {
+        RefPtr<SimpleFontData> uprightFontData = data.fontData->uprightOrientationFontData();
+        GlyphPageTreeNode* uprightNode = GlyphPageTreeNode::getRootChild(uprightFontData.get(), pageNumber);
+        GlyphPage* uprightPage = uprightNode->page();
+        if (uprightPage) {
+            GlyphData uprightData = uprightPage->glyphDataForCharacter(character);
+            // If the glyphs are the same, then we know we can just use the horizontal glyph rotated vertically to be upright.
+            if (data.glyph == uprightData.glyph)
+                return make_pair(data, page);
+            // The glyphs are distinct, meaning that the font has a vertical-right glyph baked into it. We can't use that
+            // glyph, so we fall back to the upright data and use the horizontal glyph.
+            if (uprightData.fontData)
+                return make_pair(uprightData, uprightPage);
+        }
+    }
+    return make_pair(data, page);
 }
 
 std::pair<GlyphData, GlyphPage*> Font::glyphDataAndPageForCharacter(UChar32 c, bool mirror, FontDataVariant variant) const
@@ -95,40 +124,9 @@ std::pair<GlyphData, GlyphPage*> Font::glyphDataAndPageForCharacter(UChar32 c, b
                             variant = BrokenIdeographVariant;
                             break;
                         }
-                    } else {
-                        if (m_fontDescription.textOrientation() == TextOrientationVerticalRight) {
-                            RefPtr<SimpleFontData> verticalRightFontData = data.fontData->verticalRightOrientationFontData();
-                            GlyphPageTreeNode* verticalRightNode = GlyphPageTreeNode::getRootChild(verticalRightFontData.get(), pageNumber);
-                            GlyphPage* verticalRightPage = verticalRightNode->page();
-                            if (verticalRightPage) {
-                                GlyphData verticalRightData = verticalRightPage->glyphDataForCharacter(c);
-                                // If the glyphs are distinct, we will make the assumption that the font has a vertical-right glyph baked
-                                // into it.
-                                if (data.glyph != verticalRightData.glyph)
-                                    return make_pair(data, page);
-                                // The glyphs are identical, meaning that we should just use the horizontal glyph.
-                                if (verticalRightData.fontData)
-                                    return make_pair(verticalRightData, verticalRightPage);
-                            }
-                        } else if (m_fontDescription.textOrientation() == TextOrientationUpright) {
-                            RefPtr<SimpleFontData> uprightFontData = data.fontData->uprightOrientationFontData();
-                            GlyphPageTreeNode* uprightNode = GlyphPageTreeNode::getRootChild(uprightFontData.get(), pageNumber);
-                            GlyphPage* uprightPage = uprightNode->page();
-                            if (uprightPage) {
-                                GlyphData uprightData = uprightPage->glyphDataForCharacter(c);
-                                // If the glyphs are the same, then we know we can just use the horizontal glyph rotated vertically to be upright.
-                                if (data.glyph == uprightData.glyph)
-                                    return make_pair(data, page);
-                                // The glyphs are distinct, meaning that the font has a vertical-right glyph baked into it. We can't use that
-                                // glyph, so we fall back to the upright data and use the horizontal glyph.
-                                if (uprightData.fontData)
-                                    return make_pair(uprightData, uprightPage);
-                            }
-                        }
+                    } else
+                        return glyphDataAndPageForCharacterWithTextOrientation(c, m_fontDescription.textOrientation(), data, page, pageNumber);
 
-                        // Shouldn't be possible to even reach this point.
-                        ASSERT_NOT_REACHED();
-                    }
                     return make_pair(data, page);
                 }
 
@@ -222,6 +220,8 @@ std::pair<GlyphData, GlyphPage*> Font::glyphDataAndPageForCharacter(UChar32 c, b
 #else
             page->setGlyphDataForCharacter(c, data.glyph, data.fontData);
             data.fontData->setMaxGlyphPageTreeLevel(max(data.fontData->maxGlyphPageTreeLevel(), node->level()));
+            if (!isCJKIdeographOrSymbol(c) && data.fontData->platformData().orientation() != Horizontal && !data.fontData->isTextOrientationFallback())
+                return glyphDataAndPageForCharacterWithTextOrientation(c, m_fontDescription.textOrientation(), data, fallbackPage, pageNumber);
 #endif
         }
         return make_pair(data, page);
@@ -328,7 +328,10 @@ float Font::getGlyphsAndAdvancesForSimpleText(const TextRun& run, int from, int 
     float initialAdvance;
 
     WidthIterator it(this, run, 0, false, forTextEmphasis);
-    it.advance(from);
+    // FIXME: Using separate glyph buffers for the prefix and the suffix is incorrect when kerning or
+    // ligatures are enabled.
+    GlyphBuffer localGlyphBuffer;
+    it.advance(from, &localGlyphBuffer);
     float beforeWidth = it.m_runWidthSoFar;
     it.advance(to, &glyphBuffer);
 
@@ -339,15 +342,13 @@ float Font::getGlyphsAndAdvancesForSimpleText(const TextRun& run, int from, int 
 
     if (run.rtl()) {
         float finalRoundingWidth = it.m_finalRoundingWidth;
-        it.advance(run.length());
+        it.advance(run.length(), &localGlyphBuffer);
         initialAdvance = finalRoundingWidth + it.m_runWidthSoFar - afterWidth;
     } else
         initialAdvance = beforeWidth;
 
-    if (run.rtl()) {
-        for (int i = 0, end = glyphBuffer.size() - 1; i < glyphBuffer.size() / 2; ++i, --end)
-            glyphBuffer.swap(i, end);
-    }
+    if (run.rtl())
+        glyphBuffer.reverse(0, glyphBuffer.size());
 
     return initialAdvance;
 }
@@ -466,10 +467,11 @@ void Font::drawEmphasisMarks(GraphicsContext* context, const TextRun& run, const
     drawGlyphBuffer(context, run, markBuffer, startPoint);
 }
 
-float Font::floatWidthForSimpleText(const TextRun& run, GlyphBuffer* glyphBuffer, HashSet<const SimpleFontData*>* fallbackFonts, GlyphOverflow* glyphOverflow) const
+float Font::floatWidthForSimpleText(const TextRun& run, HashSet<const SimpleFontData*>* fallbackFonts, GlyphOverflow* glyphOverflow) const
 {
     WidthIterator it(this, run, fallbackFonts, glyphOverflow);
-    it.advance(run.length(), glyphBuffer);
+    GlyphBuffer glyphBuffer;
+    it.advance(run.length(), (typesettingFeatures() & (Kerning | Ligatures)) ? &glyphBuffer : 0);
 
     if (glyphOverflow) {
         glyphOverflow->top = max<int>(glyphOverflow->top, ceilf(-it.minGlyphBoundingBoxY()) - (glyphOverflow->computeBounds ? 0 : fontMetrics().ascent()));
@@ -483,15 +485,16 @@ float Font::floatWidthForSimpleText(const TextRun& run, GlyphBuffer* glyphBuffer
 
 FloatRect Font::selectionRectForSimpleText(const TextRun& run, const FloatPoint& point, int h, int from, int to) const
 {
+    GlyphBuffer glyphBuffer;
     WidthIterator it(this, run);
-    it.advance(from);
+    it.advance(from, &glyphBuffer);
     float beforeWidth = it.m_runWidthSoFar;
-    it.advance(to);
+    it.advance(to, &glyphBuffer);
     float afterWidth = it.m_runWidthSoFar;
 
     // Using roundf() rather than ceilf() for the right edge as a compromise to ensure correct caret positioning.
     if (run.rtl()) {
-        it.advance(run.length());
+        it.advance(run.length(), &glyphBuffer);
         float totalWidth = it.m_runWidthSoFar;
         return FloatRect(floorf(point.x() + totalWidth - afterWidth), point.y(), roundf(point.x() + totalWidth - beforeWidth) - floorf(point.x() + totalWidth - afterWidth), h);
     }
@@ -507,11 +510,11 @@ int Font::offsetForPositionForSimpleText(const TextRun& run, float x, bool inclu
     GlyphBuffer localGlyphBuffer;
     unsigned offset;
     if (run.rtl()) {
-        delta -= floatWidthForSimpleText(run, 0);
+        delta -= floatWidthForSimpleText(run);
         while (1) {
             offset = it.m_currentCharacter;
             float w;
-            if (!it.advanceOneCharacter(w, &localGlyphBuffer))
+            if (!it.advanceOneCharacter(w, localGlyphBuffer))
                 break;
             delta += w;
             if (includePartialGlyphs) {
@@ -526,7 +529,7 @@ int Font::offsetForPositionForSimpleText(const TextRun& run, float x, bool inclu
         while (1) {
             offset = it.m_currentCharacter;
             float w;
-            if (!it.advanceOneCharacter(w, &localGlyphBuffer))
+            if (!it.advanceOneCharacter(w, localGlyphBuffer))
                 break;
             delta -= w;
             if (includePartialGlyphs) {

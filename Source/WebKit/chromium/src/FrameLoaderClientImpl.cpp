@@ -78,16 +78,16 @@
 #include "WebPluginLoadObserver.h"
 #include "WebPluginParams.h"
 #include "WebSecurityOrigin.h"
-#include "platform/WebSocketStreamHandle.h"
 #include "WebViewClient.h"
 #include "WebViewImpl.h"
 #include "WindowFeatures.h"
 #include "WrappedResourceRequest.h"
 #include "WrappedResourceResponse.h"
-#include "platform/WebURL.h"
-#include "platform/WebURLError.h"
 #include <public/Platform.h>
 #include <public/WebMimeRegistry.h>
+#include <public/WebSocketStreamHandle.h>
+#include <public/WebURL.h>
+#include <public/WebURLError.h>
 #include <public/WebVector.h>
 #include <wtf/StringExtras.h>
 #include <wtf/text/CString.h>
@@ -892,6 +892,9 @@ Frame* FrameLoaderClientImpl::dispatchCreatePage(const NavigationAction& action)
     // it to WebViewClient::createView.
     ChromeClientImpl* chromeClient = static_cast<ChromeClientImpl*>(m_webFrame->frame()->page()->chrome()->client());
     chromeClient->setNewWindowNavigationPolicy(policy);
+
+    if (m_webFrame->frame()->settings() && !m_webFrame->frame()->settings()->supportsMultipleWindows())
+        return m_webFrame->frame();
 
     struct WindowFeatures features;
     Page* newPage = m_webFrame->frame()->page()->chrome()->createWindow(

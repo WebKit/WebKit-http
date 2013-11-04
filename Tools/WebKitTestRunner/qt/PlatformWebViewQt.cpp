@@ -34,6 +34,8 @@
 #include <QEventLoop>
 #include <QQmlProperty>
 #include <QtQuick/QQuickView>
+#include <QtQuick/private/qquickwindow_p.h>
+#include <WebKit2/WKImageQt.h>
 #include <qpa/qwindowsysteminterface.h>
 
 namespace WTR {
@@ -60,6 +62,13 @@ private Q_SLOTS:
         m_view->setParentItem(rootObject());
         QQmlProperty::write(m_view, "anchors.fill", qVariantFromValue(rootObject()));
 
+        if (PlatformWebView::windowShapshotEnabled()) {
+            setSurfaceType(OpenGLSurface);
+            create();
+            QQuickWindowPrivate::get(this)->setRenderWithoutShowing(true);
+        } else
+            m_view->experimental()->setRenderToOffscreenBuffer(true);
+
         QWindowSystemInterface::handleWindowActivated(this);
         m_view->page()->setFocus(true);
     }
@@ -68,14 +77,12 @@ private:
     QQuickWebView* m_view;
 };
 
-PlatformWebView::PlatformWebView(WKContextRef contextRef, WKPageGroupRef pageGroupRef)
+PlatformWebView::PlatformWebView(WKContextRef contextRef, WKPageGroupRef pageGroupRef, WKDictionaryRef /*options*/)
     : m_view(new QQuickWebView(contextRef, pageGroupRef))
     , m_window(new WrapperWindow(m_view))
     , m_windowIsKey(true)
     , m_modalEventLoop(0)
 {
-    QQuickWebViewExperimental experimental(m_view);
-    experimental.setRenderToOffscreenBuffer(true);
     m_view->setAllowAnyHTTPSCertificateForLocalHost(true);
     m_view->componentComplete();
 }
@@ -94,7 +101,8 @@ void PlatformWebView::resizeTo(unsigned width, unsigned height)
     // resized to what the layout test expects.
     if (!m_window->handle()) {
         QRect newGeometry(m_window->x(), m_window->y(), width, height);
-        QWindowSystemInterface::handleSynchronousGeometryChange(m_window, newGeometry);
+        QWindowSystemInterface::handleGeometryChange(m_window, newGeometry);
+        QWindowSystemInterface::flushWindowSystemEvents();
     }
 
     m_window->resize(width, height);
@@ -150,9 +158,18 @@ void PlatformWebView::makeWebViewFirstResponder()
 
 WKRetainPtr<WKImageRef> PlatformWebView::windowSnapshotImage()
 {
-    // FIXME: implement to capture pixels in the UI process,
-    // which may be necessary to capture things like 3D transforms.
-    return 0;
+    return adoptWK(WKImageCreateFromQImage(m_window->grabWindow()));
+}
+
+bool PlatformWebView::windowShapshotEnabled()
+{
+    // We need a way to disable UI side rendering for tests because it is
+    // too slow without appropriate hardware.
+    static bool result;
+    static bool hasChecked = false;
+    if (!hasChecked)
+        result = qgetenv("QT_WEBKIT_DISABLE_UIPROCESS_DUMPPIXELS") != "1";
+    return result;
 }
 
 } // namespace WTR

@@ -32,14 +32,7 @@
 #include <limits>
 #include <utility>
 
-#if PLATFORM(QT)
-#include <QDataStream>
-#endif
-
 namespace WTF {
-
-    using std::min;
-    using std::max;
 
     template <bool needsDestruction, typename T>
     struct VectorDestructor;
@@ -282,14 +275,7 @@ namespace WTF {
 
         bool shouldReallocateBuffer(size_t newCapacity) const
         {
-#if PLATFORM(BLACKBERRY)
-            // Tested on BlackBerry.
             return VectorTraits<T>::canMoveWithMemcpy && m_capacity && newCapacity;
-#else
-            // FIXME: Return true on the platforms where realloc() gives better performance.
-            UNUSED_PARAM(newCapacity);
-            return false;
-#endif
         }
 
         void reallocateBuffer(size_t newCapacity)
@@ -316,7 +302,6 @@ namespace WTF {
 
         T* buffer() { return m_buffer; }
         const T* buffer() const { return m_buffer; }
-        T** bufferSlot() { return &m_buffer; }
         size_t capacity() const { return m_capacity; }
 
         T* releaseBuffer()
@@ -389,7 +374,6 @@ namespace WTF {
         using Base::deallocateBuffer;
 
         using Base::buffer;
-        using Base::bufferSlot;
         using Base::capacity;
 
         using Base::releaseBuffer;
@@ -490,7 +474,6 @@ namespace WTF {
         }
 
         using Base::buffer;
-        using Base::bufferSlot;
         using Base::capacity;
 
         T* releaseBuffer()
@@ -517,8 +500,6 @@ namespace WTF {
     private:
         typedef VectorBuffer<T, inlineCapacity> Buffer;
         typedef VectorTypeOperations<T> TypeOperations;
-
-        class VectorReverseProxy;
 
     public:
         typedef T ValueType;
@@ -592,9 +573,6 @@ namespace WTF {
         const_reverse_iterator rbegin() const { return const_reverse_iterator(end()); }
         const_reverse_iterator rend() const { return const_reverse_iterator(begin()); }
 
-        VectorReverseProxy& reversed() { return static_cast<VectorReverseProxy&>(*this); }
-        const VectorReverseProxy& reversed() const { return static_cast<const VectorReverseProxy&>(*this); }
-
         T& first() { return at(0); }
         const T& first() const { return at(0); }
         T& last() { return at(size() - 1); }
@@ -619,6 +597,7 @@ namespace WTF {
         template<typename U> void append(const U&);
         template<typename U> void uncheckedAppend(const U& val);
         template<size_t otherCapacity> void append(const Vector<T, otherCapacity>&);
+        template<typename U, size_t otherCapacity> void appendVector(const Vector<U, otherCapacity>&);
         template<typename U> bool tryAppend(const U*, size_t);
 
         template<typename U> void insert(size_t position, const U*, size_t);
@@ -671,55 +650,9 @@ namespace WTF {
         template<typename U> U* expandCapacity(size_t newMinCapacity, U*); 
         template<typename U> void appendSlowCase(const U&);
 
-        class VectorReverseProxy : private Vector {
-        public:
-            typedef typename Vector::reverse_iterator iterator;
-            typedef typename Vector::const_reverse_iterator const_iterator;
-            
-            iterator begin() { return Vector::rbegin(); }
-            iterator end() { return Vector::rend(); }
-            const_iterator begin() const { return Vector::rbegin(); }
-            const_iterator end() const { return Vector::rend(); }
-
-        private:
-            friend class Vector;
-
-            // These are intentionally not implemented.
-            VectorReverseProxy();
-            VectorReverseProxy(const VectorReverseProxy&);
-            VectorReverseProxy& operator=(const VectorReverseProxy&);
-            ~VectorReverseProxy();
-        };
-
         size_t m_size;
         Buffer m_buffer;
     };
-
-#if PLATFORM(QT)
-    template<typename T>
-    QDataStream& operator<<(QDataStream& stream, const Vector<T>& data)
-    {
-        stream << qint64(data.size());
-        foreach (const T& i, data)
-            stream << i;
-        return stream;
-    }
-
-    template<typename T>
-    QDataStream& operator>>(QDataStream& stream, Vector<T>& data)
-    {
-        data.clear();
-        qint64 count;
-        T item;
-        stream >> count;
-        data.reserveCapacity(count);
-        for (qint64 i = 0; i < count; ++i) {
-            stream >> item;
-            data.append(item);
-        }
-        return stream;
-    }
-#endif
 
     template<typename T, size_t inlineCapacity>
     Vector<T, inlineCapacity>::Vector(const Vector& other)
@@ -877,7 +810,7 @@ namespace WTF {
     template<typename T, size_t inlineCapacity>
     void Vector<T, inlineCapacity>::expandCapacity(size_t newMinCapacity)
     {
-        reserveCapacity(max(newMinCapacity, max(static_cast<size_t>(16), capacity() + capacity() / 4 + 1)));
+        reserveCapacity(std::max(newMinCapacity, std::max(static_cast<size_t>(16), capacity() + capacity() / 4 + 1)));
     }
     
     template<typename T, size_t inlineCapacity>
@@ -895,7 +828,7 @@ namespace WTF {
     template<typename T, size_t inlineCapacity>
     bool Vector<T, inlineCapacity>::tryExpandCapacity(size_t newMinCapacity)
     {
-        return tryReserveCapacity(max(newMinCapacity, max(static_cast<size_t>(16), capacity() + capacity() / 4 + 1)));
+        return tryReserveCapacity(std::max(newMinCapacity, std::max(static_cast<size_t>(16), capacity() + capacity() / 4 + 1)));
     }
     
     template<typename T, size_t inlineCapacity>
@@ -1099,6 +1032,12 @@ namespace WTF {
     // appendRange(val.begin(), val.end()).
     template<typename T, size_t inlineCapacity> template<size_t otherCapacity>
     inline void Vector<T, inlineCapacity>::append(const Vector<T, otherCapacity>& val)
+    {
+        append(val.begin(), val.size());
+    }
+
+    template<typename T, size_t inlineCapacity> template<typename U, size_t otherCapacity>
+    inline void Vector<T, inlineCapacity>::appendVector(const Vector<U, otherCapacity>& val)
     {
         append(val.begin(), val.size());
     }

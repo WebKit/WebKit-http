@@ -52,10 +52,12 @@ namespace WebCore {
 #endif
     class ArchiveResource;
     class ArchiveResourceCollection;
+    class CachedResourceLoader;
     class Frame;
     class FrameLoader;
     class MainResourceLoader;
     class Page;
+    class ResourceBuffer;
     class ResourceLoader;
     class SchedulePair;
     class SharedBuffer;
@@ -80,7 +82,7 @@ namespace WebCore {
 
         FrameLoader* frameLoader() const;
         MainResourceLoader* mainResourceLoader() const { return m_mainResourceLoader.get(); }
-        PassRefPtr<SharedBuffer> mainResourceData() const;
+        PassRefPtr<ResourceBuffer> mainResourceData() const;
         
         DocumentWriter* writer() const { return &m_writer; }
 
@@ -90,6 +92,8 @@ namespace WebCore {
         const ResourceRequest& request() const;
         ResourceRequest& request();
         void setRequest(const ResourceRequest&);
+
+        CachedResourceLoader* cachedResourceLoader() const { return m_cachedResourceLoader.get(); }
 
         const SubstituteData& substituteData() const { return m_substituteData; }
 
@@ -112,7 +116,7 @@ namespace WebCore {
         bool isCommitted() const { return m_committed; }
         bool isLoading() const { return isLoadingMainResource() || !m_subresourceLoaders.isEmpty() || !m_plugInStreamLoaders.isEmpty(); }
         void receivedData(const char*, int);
-        void setupForReplaceByMIMEType(const String& newMIMEType);
+        void setupForReplace();
         void finishedLoading();
         const ResourceResponse& response() const { return m_response; }
         const ResourceError& mainDocumentError() const { return m_mainDocumentError; }
@@ -250,11 +254,9 @@ namespace WebCore {
         bool m_deferMainResourceDataLoad;
 
     private:
-        void setupForReplace();
         void commitIfReady();
         void setMainDocumentError(const ResourceError&);
         void commitLoad(const char*, int);
-        bool doesProgressiveLoad(const String& MIMEType) const;
         void checkLoadComplete();
         void clearMainResourceLoader();
         
@@ -263,17 +265,20 @@ namespace WebCore {
         void clearArchiveResources();
 #endif
 
+        bool isMultipartReplacingLoad() const;
+
         void deliverSubstituteResourcesAfterDelay();
         void substituteResourceDeliveryTimerFired(Timer<DocumentLoader>*);
                 
         Frame* m_frame;
+        RefPtr<CachedResourceLoader> m_cachedResourceLoader;
 
         RefPtr<MainResourceLoader> m_mainResourceLoader;
         ResourceLoaderSet m_subresourceLoaders;
         ResourceLoaderSet m_multipartSubresourceLoaders;
         ResourceLoaderSet m_plugInStreamLoaders;
 
-        RefPtr<SharedBuffer> m_mainResourceData;
+        RefPtr<ResourceBuffer> m_mainResourceData;
         
         mutable DocumentWriter m_writer;
 

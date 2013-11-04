@@ -40,6 +40,7 @@
 #include "NotImplemented.h"
 #include "Page.h"
 #include "RawDataDocumentParser.h"
+#include "ResourceBuffer.h"
 #include "Settings.h"
 
 using std::min;
@@ -141,7 +142,7 @@ void ImageDocumentParser::finish()
 {
     if (!isStopped() && document()->imageElement()) {
         CachedImage* cachedImage = document()->cachedImage();
-        RefPtr<SharedBuffer> data = document()->frame()->loader()->documentLoader()->mainResourceData();
+        RefPtr<ResourceBuffer> data = document()->frame()->loader()->documentLoader()->mainResourceData();
 
         // If this is a multipart image, make a copy of the current part, since the resource data
         // will be overwritten by the next part.

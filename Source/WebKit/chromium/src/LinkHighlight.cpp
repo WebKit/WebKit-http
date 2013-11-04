@@ -65,6 +65,7 @@ LinkHighlight::LinkHighlight(Node* node, WebViewImpl* owningWebViewImpl)
     , m_owningWebViewImpl(owningWebViewImpl)
     , m_currentGraphicsLayer(0)
     , m_geometryNeedsUpdate(false)
+    , m_isAnimating(false)
 {
     ASSERT(m_node);
     ASSERT(owningWebViewImpl);
@@ -73,12 +74,11 @@ LinkHighlight::LinkHighlight(Node* node, WebViewImpl* owningWebViewImpl)
     m_clipLayer = adoptPtr(compositorSupport->createLayer());
     m_clipLayer->setAnchorPoint(WebFloatPoint());
     m_clipLayer->addChild(m_contentLayer->layer());
-    m_contentLayer->layer()->setDrawsContent(false);
-
-    // We don't want to show the highlight until startAnimation is called, even though the highlight
-    // layer may be added to the tree immediately.
-    m_contentLayer->layer()->setOpacity(0);
     m_contentLayer->layer()->setAnimationDelegate(this);
+    m_contentLayer->layer()->setDrawsContent(true);
+    m_contentLayer->layer()->setOpacity(1);
+    m_geometryNeedsUpdate = true;
+    updateGeometry();
 }
 
 LinkHighlight::~LinkHighlight()
@@ -143,40 +143,84 @@ RenderLayer* LinkHighlight::computeEnclosingCompositingLayer()
     return renderLayer;
 }
 
+static void convertTargetSpaceQuadToCompositedLayer(const FloatQuad& targetSpaceQuad, RenderObject* targetRenderer, RenderObject* compositedRenderer, FloatQuad& compositedSpaceQuad)
+{
+    ASSERT(targetRenderer);
+    ASSERT(compositedRenderer);
+
+    for (unsigned i = 0; i < 4; ++i) {
+        IntPoint point;
+        switch (i) {
+        case 0: point = roundedIntPoint(targetSpaceQuad.p1()); break;
+        case 1: point = roundedIntPoint(targetSpaceQuad.p2()); break;
+        case 2: point = roundedIntPoint(targetSpaceQuad.p3()); break;
+        case 3: point = roundedIntPoint(targetSpaceQuad.p4()); break;
+        }
+
+        point = targetRenderer->frame()->view()->contentsToWindow(point);
+        point = compositedRenderer->frame()->view()->windowToContents(point);
+        FloatPoint floatPoint = compositedRenderer->absoluteToLocal(point, UseTransforms | SnapOffsetForTransforms);
+
+        switch (i) {
+        case 0: compositedSpaceQuad.setP1(floatPoint); break;
+        case 1: compositedSpaceQuad.setP2(floatPoint); break;
+        case 2: compositedSpaceQuad.setP3(floatPoint); break;
+        case 3: compositedSpaceQuad.setP4(floatPoint); break;
+        }
+    }
+}
+
+static void addQuadToPath(const FloatQuad& quad, Path& path)
+{
+    // FIXME: Make this create rounded quad-paths, just like the axis-aligned case.
+    path.moveTo(quad.p1());
+    path.addLineTo(quad.p2());
+    path.addLineTo(quad.p3());
+    path.addLineTo(quad.p4());
+    path.closeSubpath();
+}
+
 bool LinkHighlight::computeHighlightLayerPathAndPosition(RenderLayer* compositingLayer)
 {
     if (!m_node || !m_node->renderer())
         return false;
 
-    bool pathHasChanged = false;
-    FloatRect boundingRect = m_node->pixelSnappedBoundingBox();
+    ASSERT(compositingLayer);
 
-    // FIXME: If we ever use a more sophisticated highlight path, we'll need
-    // to devise a way of detecting when it changes.
-    if (boundingRect.size() != m_path.boundingRect().size()) {
-        FloatSize rectRoundingRadii(3, 3);
-        m_path.clear();
-        m_path.addRoundedRect(boundingRect, rectRoundingRadii);
-        // Always treat the path as being at the origin of this layer.
-        m_path.translate(FloatPoint() - boundingRect.location());
-        pathHasChanged = true;
+    // Get quads for node in absolute coordinates.
+    Vector<FloatQuad> quads;
+    m_node->renderer()->absoluteQuads(quads);
+    ASSERT(quads.size());
+
+    Path newPath;
+    for (unsigned quadIndex = 0; quadIndex < quads.size(); ++quadIndex) {
+
+        FloatQuad transformedQuad;
+
+        // Transform node quads in target absolute coords to local coordinates in the compositor layer.
+        convertTargetSpaceQuadToCompositedLayer(quads[quadIndex], m_node->renderer(), compositingLayer->renderer(), transformedQuad);
+
+        // FIXME: for now, we'll only use rounded paths if we have a single node quad. The reason for this is that
+        // we may sometimes get a chain of adjacent boxes (e.g. for text nodes) which end up looking like sausage
+        // links: these should ideally be merged into a single rect before creating the path, but that's
+        // another CL.
+        if (quads.size() == 1 && transformedQuad.isRectilinear()) {
+            FloatSize rectRoundingRadii(3, 3);
+            newPath.addRoundedRect(transformedQuad.boundingBox(), rectRoundingRadii);
+        } else
+            addQuadToPath(transformedQuad, newPath);
     }
 
-    FloatRect nodeBounds = boundingRect;
+    FloatRect boundingRect = newPath.boundingRect();
+    newPath.translate(FloatPoint() - boundingRect.location());
 
-    // This is a simplified, but basically correct, transformation of the target location, converted
-    // from its containing frame view to window coordinates and then back to the containing frame view
-    // of the composited layer.
-    // FIXME: We also need to transform the target's size in case of scaling. This can be done by also transforming
-    //        the full rects in the xToY calls, and transforming both the upper-left and lower right corners
-    //        to local coordinates at the end..
-    ASSERT(compositingLayer);
-    IntPoint targetWindow = m_node->renderer()->frame()->view()->contentsToWindow(enclosingIntRect(nodeBounds).location());
-    IntPoint targetCompositorAbsolute = compositingLayer->renderer()->frame()->view()->windowToContents(targetWindow);
-    FloatPoint targetCompositorLocal = compositingLayer->renderer()->absoluteToLocal(targetCompositorAbsolute, false, true);
+    bool pathHasChanged = !m_path.platformPath() || !(*newPath.platformPath() == *m_path.platformPath());
+    if (pathHasChanged) {
+        m_path = newPath;
+        m_contentLayer->layer()->setBounds(enclosingIntRect(boundingRect).size());
+    }
 
-    m_contentLayer->layer()->setBounds(WebSize(enclosingIntRect(nodeBounds).size()));
-    m_contentLayer->layer()->setPosition(WebFloatPoint(targetCompositorLocal));
+    m_contentLayer->layer()->setPosition(boundingRect.location());
 
     return pathHasChanged;
 }
@@ -194,8 +238,12 @@ void LinkHighlight::paintContents(WebCanvas* canvas, const WebRect& webClipRect,
     gc.fillPath(m_path);
 }
 
-void LinkHighlight::startHighlightAnimation()
+void LinkHighlight::startHighlightAnimationIfNeeded()
 {
+    if (m_isAnimating)
+        return;
+
+    m_isAnimating = true;
     const float startOpacity = 1;
     // FIXME: Should duration be configurable?
     const float duration = 0.1f;

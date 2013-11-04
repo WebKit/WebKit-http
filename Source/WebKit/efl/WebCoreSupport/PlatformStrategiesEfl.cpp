@@ -44,19 +44,12 @@ PlatformStrategiesEfl::PlatformStrategiesEfl()
 {
 }
 
-// CookiesStrategy
 CookiesStrategy* PlatformStrategiesEfl::createCookiesStrategy()
 {
     return this;
 }
 
-// PluginStrategy
-PluginStrategy* PlatformStrategiesEfl::createPluginStrategy()
-{
-    return this;
-}
-
-VisitedLinkStrategy* PlatformStrategiesEfl::createVisitedLinkStrategy()
+LoaderStrategy* PlatformStrategiesEfl::createLoaderStrategy()
 {
     return this;
 }
@@ -65,6 +58,21 @@ PasteboardStrategy* PlatformStrategiesEfl::createPasteboardStrategy()
 {
     notImplemented();
     return 0;
+}
+
+PluginStrategy* PlatformStrategiesEfl::createPluginStrategy()
+{
+    return this;
+}
+
+SharedWorkerStrategy* PlatformStrategiesEfl::createSharedWorkerStrategy()
+{
+    return this;
+}
+
+VisitedLinkStrategy* PlatformStrategiesEfl::createVisitedLinkStrategy()
+{
+    return this;
 }
 
 // CookiesStrategy
@@ -99,8 +107,8 @@ void PlatformStrategiesEfl::getPluginInfo(const Page*, Vector<PluginInfo>& outPl
         for (MIMEToDescriptionsMap::const_iterator it = mimeToDescriptions.begin(); it != end; ++it) {
             MimeClassInfo mime;
 
-            mime.type = it->first;
-            mime.desc = it->second;
+            mime.type = it->key;
+            mime.desc = it->value;
             mime.extensions = package->mimeToExtensions().get(mime.type);
             pluginInfo.mimes.append(mime);
         }

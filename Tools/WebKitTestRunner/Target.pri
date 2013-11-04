@@ -15,7 +15,8 @@ HEADERS += \
     StringFunctions.h \
     TestController.h \
     TestInvocation.h \
-    WebNotificationProvider.h
+    WebNotificationProvider.h \
+    WorkQueueManager.h
 
 SOURCES += \
     $${ROOT_WEBKIT_DIR}/Tools/DumpRenderTree/qt/QtInitializeTestFonts.cpp \
@@ -27,11 +28,12 @@ SOURCES += \
     GeolocationProviderMock.cpp \
     TestController.cpp \
     TestInvocation.cpp \
-    WebNotificationProvider.cpp
+    WebNotificationProvider.cpp \
+    WorkQueueManager.cpp
 
 DESTDIR = $${ROOT_BUILD_DIR}/bin
 
-QT = core gui gui-private widgets network testlib quick quick-private webkit
+QT = core core-private gui gui-private widgets network testlib quick quick-private webkitwidgets qml-private v8-private
 
 WEBKIT += wtf javascriptcore webkit2
 

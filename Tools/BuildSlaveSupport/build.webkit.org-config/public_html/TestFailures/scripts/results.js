@@ -42,7 +42,7 @@ var IMAGE_TEXT = 'IMAGE+TEXT';
 var AUDIO = 'AUDIO';
 var MISSING = 'MISSING';
 
-var kFailingResults = [TIMEOUT, TEXT, CRASH, IMAGE, IMAGE_TEXT, AUDIO];
+var kFailingResults = [TEXT, IMAGE_TEXT, AUDIO];
 
 var kExpectedImageSuffix = '-expected.png';
 var kActualImageSuffix = '-actual.png';
@@ -626,6 +626,11 @@ results.fetchResultsForMostRecentCompletedBuildOnBuilder = function(builderName,
         var resultsCallback = function(buildResults) {
             if ($.isEmptyObject(buildResults)) {
                 ++currentIndex;
+                if (currentIndex >= buildLocations.length) {
+                    callback(null);
+                    return;
+                }
+
                 net.jsonp(buildLocations[currentIndex].url, resultsCallback);
                 return;
             }
@@ -658,7 +663,8 @@ results.fetchResultsByBuilder = function(builderNameList, callback)
                     // FIXME: use RequestTracker
                     ++requestsInFlight;
                     results.fetchResultsForMostRecentCompletedBuildOnBuilder(builderName, function(resultsTree) {
-                        resultsByBuilder[builderName] = resultsTree;
+                        if (resultsTree)
+                            resultsByBuilder[builderName] = resultsTree;
                         --requestsInFlight;
                         if (!requestsInFlight)
                             callback(resultsByBuilder);

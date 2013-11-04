@@ -35,9 +35,9 @@
 #include "JSFunction.h"
 #include "JSValue.h"
 #include "JSObject.h"
+#include "JSStack.h"
 #include "LLIntData.h"
 #include "Opcode.h"
-#include "RegisterFile.h"
 
 #include <wtf/HashMap.h>
 #include <wtf/text/StringBuilder.h>
@@ -48,6 +48,7 @@ namespace JSC {
     class EvalExecutable;
     class ExecutableBase;
     class FunctionExecutable;
+    class JSGlobalData;
     class JSGlobalObject;
     class LLIntOffsetsExtractor;
     class ProgramExecutable;
@@ -170,26 +171,27 @@ namespace JSC {
         }
     };
 
-    // We use a smaller reentrancy limit on iPhone because of the high amount of
-    // stack space required on the web thread.
-#if PLATFORM(IOS)
-    enum { MaxLargeThreadReentryDepth = 64, MaxSmallThreadReentryDepth = 16 };
-#else
-    enum { MaxLargeThreadReentryDepth = 256, MaxSmallThreadReentryDepth = 16 };
-#endif // PLATFORM(IOS)
-
     class Interpreter {
         WTF_MAKE_FAST_ALLOCATED;
         friend class CachedCall;
         friend class LLIntOffsetsExtractor;
         friend class JIT;
+
     public:
-        Interpreter();
+        class ErrorHandlingMode {
+        public:
+            JS_EXPORT_PRIVATE ErrorHandlingMode(ExecState*);
+            JS_EXPORT_PRIVATE ~ErrorHandlingMode();
+        private:
+            Interpreter& m_interpreter;
+        };
+
+        Interpreter(JSGlobalData &);
         ~Interpreter();
         
         void initialize(bool canUseJIT);
 
-        RegisterFile& registerFile() { return m_registerFile; }
+        JSStack& stack() { return m_stack; }
         
         Opcode getOpcode(OpcodeID id)
         {
@@ -218,7 +220,6 @@ namespace JSC {
         JSValue executeCall(CallFrame*, JSObject* function, CallType, const CallData&, JSValue thisValue, const ArgList&);
         JSObject* executeConstruct(CallFrame*, JSObject* function, ConstructType, const ConstructData&, const ArgList&);
         JSValue execute(EvalExecutable*, CallFrame*, JSValue thisValue, JSScope*);
-        JSValue execute(EvalExecutable*, CallFrame*, JSValue thisValue, JSScope*, int globalRegisterOffset);
 
         JSValue retrieveArgumentsFromVMCode(CallFrame*, JSFunction*) const;
         JSValue retrieveCallerFromVMCode(CallFrame*, JSFunction*) const;
@@ -241,6 +242,16 @@ namespace JSC {
         JS_EXPORT_PRIVATE void dumpCallFrame(CallFrame*);
 
     private:
+        class StackPolicy {
+        public:
+            StackPolicy(Interpreter&, const StackBounds&);
+            inline size_t requiredCapacity() { return m_requiredCapacity; }
+
+        private:
+            Interpreter& m_interpreter;
+            size_t m_requiredCapacity;
+        };
+
         enum ExecutionFlag { Normal, InitializeAndReturn };
 
         CallFrameClosure prepareForRepeatCall(FunctionExecutable*, CallFrame*, JSFunction*, int argumentCountIncludingThis, JSScope*);
@@ -249,13 +260,7 @@ namespace JSC {
 
         NEVER_INLINE bool unwindCallFrame(CallFrame*&, JSValue, unsigned& bytecodeOffset, CodeBlock*&);
 
-        static ALWAYS_INLINE CallFrame* slideRegisterWindowForCall(CodeBlock*, RegisterFile*, CallFrame*, size_t registerOffset, int argc);
-
         static CallFrame* findFunctionCallFrameFromVMCode(CallFrame*, JSFunction*);
-
-#if !ENABLE(LLINT_C_LOOP)
-        JSValue privateExecute(ExecutionFlag, RegisterFile*, CallFrame*);
-#endif
 
         void dumpRegisters(CallFrame*);
         
@@ -265,9 +270,8 @@ namespace JSC {
         int m_sampleEntryDepth;
         OwnPtr<SamplingTool> m_sampler;
 
-        int m_reentryDepth;
-
-        RegisterFile m_registerFile;
+        JSStack m_stack;
+        int m_errorHandlingModeReentry;
         
 #if ENABLE(COMPUTED_GOTO_OPCODES) && ENABLE(LLINT)
         Opcode* m_opcodeTable; // Maps OpcodeID => Opcode for compiling
@@ -285,13 +289,8 @@ namespace JSC {
         return !thisValue.isObject() || thisValue.toThisObject(exec) == thisValue;
     }
 
-    inline JSValue Interpreter::execute(EvalExecutable* eval, CallFrame* callFrame, JSValue thisValue, JSScope* scope)
-    {
-        return execute(eval, callFrame, thisValue, scope, m_registerFile.size() + 1 + RegisterFile::CallFrameHeaderSize);
-    }
-
     JSValue eval(CallFrame*);
-    CallFrame* loadVarargs(CallFrame*, RegisterFile*, JSValue thisValue, JSValue arguments, int firstFreeRegister);
+    CallFrame* loadVarargs(CallFrame*, JSStack*, JSValue thisValue, JSValue arguments, int firstFreeRegister);
 
 } // namespace JSC
 

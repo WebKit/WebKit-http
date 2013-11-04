@@ -276,6 +276,8 @@ WebInspector.GenericSettingsTab = function()
     p.appendChild(this._createCheckboxSetting(WebInspector.UIString("Show folders"), WebInspector.settings.showScriptFolders));
     p.appendChild(this._createCheckboxSetting(WebInspector.UIString("Search in content scripts"), WebInspector.settings.searchInContentScripts));
     p.appendChild(this._createCheckboxSetting(WebInspector.UIString("Enable source maps"), WebInspector.settings.sourceMapsEnabled));
+    if (WebInspector.experimentsSettings.isEnabled("sass"))
+        p.appendChild(this._createCSSAutoReloadControls());
     p.appendChild(this._createSelectSetting(WebInspector.UIString("Indentation"), [
             [ WebInspector.UIString("2 spaces"), WebInspector.TextEditorModel.Indent.TwoSpaces ],
             [ WebInspector.UIString("4 spaces"), WebInspector.TextEditorModel.Indent.FourSpaces ],
@@ -333,6 +335,46 @@ WebInspector.GenericSettingsTab.prototype = {
         PageAgent.setScriptExecutionDisabled(WebInspector.settings.javaScriptDisabled.get(), this._updateScriptDisabledCheckbox.bind(this));
     },
 
+    _createCSSAutoReloadControls: function()
+    {
+        var fragment = document.createDocumentFragment();
+        var labelElement = fragment.createChild("label");
+        var checkboxElement = labelElement.createChild("input");
+        checkboxElement.type = "checkbox";
+        checkboxElement.checked = WebInspector.settings.cssReloadEnabled.get();
+        checkboxElement.addEventListener("click", checkboxClicked, false);
+        labelElement.appendChild(document.createTextNode(WebInspector.UIString("Auto-reload CSS upon SASS save")));
+
+        var fieldsetElement = fragment.createChild("fieldset");
+        fieldsetElement.disabled = !checkboxElement.checked;
+        var p = fieldsetElement.createChild("p");
+        p.appendChild(document.createTextNode(WebInspector.UIString("Timeout (ms)")));
+        p.appendChild(document.createTextNode(" "));
+        var timeoutInput = p.createChild("input");
+        timeoutInput.value = WebInspector.settings.cssReloadTimeout.get();
+        timeoutInput.style.width = "60px";
+        timeoutInput.maxLength = 8;
+        timeoutInput.addEventListener("blur", blurListener, false);
+        return fragment;
+
+        function checkboxClicked()
+        {
+            var reloadEnabled = checkboxElement.checked;
+            WebInspector.settings.cssReloadEnabled.set(reloadEnabled);
+            fieldsetElement.disabled = !reloadEnabled;
+        }
+
+        function blurListener()
+        {
+            var value = timeoutInput.value;
+            if (!isFinite(value) || value <= 0) {
+                timeoutInput.value = WebInspector.settings.cssReloadTimeout.get();
+                return;
+            }
+            WebInspector.settings.cssReloadTimeout.set(Number(value));
+        }
+    },
+
     __proto__: WebInspector.SettingsTab.prototype
 }
 
@@ -348,9 +390,9 @@ WebInspector.UserAgentSettingsTab = function()
     p.appendChild(this._createUserAgentControl());
     if (Capabilities.canOverrideDeviceMetrics)
         p.appendChild(this._createDeviceMetricsControl());
-    if (Capabilities.canOverrideGeolocation && WebInspector.experimentsSettings.geolocationOverride.isEnabled())
+    if (Capabilities.canOverrideGeolocation)
         p.appendChild(this._createGeolocationOverrideControl());
-    if (Capabilities.canOverrideDeviceOrientation && WebInspector.experimentsSettings.deviceOrientationOverride.isEnabled())
+    if (Capabilities.canOverrideDeviceOrientation)
         p.appendChild(this._createDeviceOrientationOverrideControl());
     p.appendChild(this._createCheckboxSetting(WebInspector.UIString("Emulate touch events"), WebInspector.settings.emulateTouchEvents));
 }
@@ -364,8 +406,8 @@ WebInspector.UserAgentSettingsTab.prototype = {
         var labelElement = p.createChild("label");
         var checkboxElement = labelElement.createChild("input");
         checkboxElement.type = "checkbox";
-        checkboxElement.checked = !!userAgent;
-        labelElement.appendChild(document.createTextNode("User Agent"));
+        checkboxElement.checked = false;
+        labelElement.appendChild(document.createTextNode(WebInspector.UIString("User Agent")));
         p.appendChild(this._createUserAgentSelectRowElement(checkboxElement));
         return p;
     },
@@ -454,8 +496,8 @@ WebInspector.UserAgentSettingsTab.prototype = {
             } else {
                 this._selectElement.disabled = true;
                 this._otherUserAgentElement.disabled = true;
-                WebInspector.settings.userAgent.set("");
             }
+            WebInspector.userAgentSupport.toggleUserAgentOverride(checkboxElement.checked);
         }
         checkboxElement.addEventListener("click", checkboxClicked.bind(this), false);
 
@@ -750,11 +792,14 @@ WebInspector.UserAgentSettingsTab.prototype = {
         var cellElement = rowElement.createChild("td");
         cellElement.appendChild(document.createTextNode(WebInspector.UIString("Geolocation Position") + ":"));
         cellElement = rowElement.createChild("td");
+        cellElement.appendChild(document.createTextNode(WebInspector.UIString("Lat = ")));
         this._latitudeElement = this._createInput(cellElement, "geolocation-override-latitude", String(geolocation.latitude), this._applyGeolocationUserInput.bind(this));
         cellElement.appendChild(document.createTextNode(" , "));
+        cellElement.appendChild(document.createTextNode(WebInspector.UIString("Lon = ")));
         this._longitudeElement = this._createInput(cellElement, "geolocation-override-longitude", String(geolocation.longitude), this._applyGeolocationUserInput.bind(this));
         rowElement = tableElement.createChild("tr");
         cellElement = rowElement.createChild("td");
+        cellElement.colSpan = 2;
         var geolocationErrorLabelElement = document.createElement("label");
         var geolocationErrorCheckboxElement = geolocationErrorLabelElement.createChild("input");
         geolocationErrorCheckboxElement.id = "geolocation-error";

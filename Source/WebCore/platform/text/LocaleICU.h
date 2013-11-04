@@ -47,29 +47,32 @@ namespace WebCore {
 class LocaleICU : public Localizer {
 public:
     static PassOwnPtr<LocaleICU> create(const char* localeString);
-    static LocaleICU* currentLocale();
     virtual ~LocaleICU();
 
     // For LocalizedDate
     virtual double parseDateTime(const String&, DateComponents::Type) OVERRIDE;
-    virtual String formatDateTime(const DateComponents&, FormatType = FormatTypeUnspecified) OVERRIDE;
 #if ENABLE(CALENDAR_PICKER)
     virtual String dateFormatText() OVERRIDE;
 
-    virtual const Vector<String>& monthLabels() OVERRIDE;
     virtual const Vector<String>& weekDayShortLabels() OVERRIDE;
     virtual unsigned firstDayOfWeek() OVERRIDE;
+    virtual bool isRTL() OVERRIDE;
 #endif
-
+#if ENABLE(CALENDAR_PICKER) || ENABLE(INPUT_MULTIPLE_FIELDS_UI)
+    virtual const Vector<String>& monthLabels() OVERRIDE;
+#endif
 #if ENABLE(INPUT_MULTIPLE_FIELDS_UI)
     virtual String dateFormat() OVERRIDE;
+    virtual String monthFormat() OVERRIDE;
     virtual String timeFormat() OVERRIDE;
     virtual String shortTimeFormat() OVERRIDE;
+    virtual const Vector<String>& shortMonthLabels() OVERRIDE;
+    virtual const Vector<String>& standAloneMonthLabels() OVERRIDE;
+    virtual const Vector<String>& shortStandAloneMonthLabels() OVERRIDE;
     virtual const Vector<String>& timeAMPMLabels() OVERRIDE;
 #endif
 
 private:
-    static PassOwnPtr<LocaleICU> createForCurrentLocale();
     explicit LocaleICU(const char*);
     String decimalSymbol(UNumberFormatSymbol);
     String decimalTextAttribute(UNumberFormatTextAttribute);
@@ -102,15 +105,22 @@ private:
 
 #if ENABLE(CALENDAR_PICKER)
     String m_localizedDateFormatText;
-    OwnPtr<Vector<String> > m_monthLabels;
     OwnPtr<Vector<String> > m_weekDayShortLabels;
     unsigned m_firstDayOfWeek;
 #endif
-
+#if ENABLE(CALENDAR_PICKER) || ENABLE(INPUT_MULTIPLE_FIELDS_UI)
+    OwnPtr<Vector<String> > m_monthLabels;
+#endif
 #if ENABLE(INPUT_MULTIPLE_FIELDS_UI)
     String m_dateFormat;
+    String m_monthFormat;
+    String m_timeFormatWithSeconds;
+    String m_timeFormatWithoutSeconds;
     UDateFormat* m_mediumTimeFormat;
     UDateFormat* m_shortTimeFormat;
+    Vector<String> m_shortMonthLabels;
+    Vector<String> m_standAloneMonthLabels;
+    Vector<String> m_shortStandAloneMonthLabels;
     Vector<String> m_timeAMPMLabels;
     bool m_didCreateTimeFormat;
 #endif

@@ -20,19 +20,83 @@
 #ifndef ewk_context_private_h
 #define ewk_context_private_h
 
-#include <WebKit2/WKBase.h>
+#include "DownloadManagerEfl.h"
+#include "WKAPICast.h"
+#include "WKRetainPtr.h"
+#include "ewk_context.h"
 
-typedef struct _Ewk_Context Ewk_Context;
-typedef struct _Ewk_Download_Job Ewk_Download_Job;
-typedef struct _Ewk_Url_Scheme_Request Ewk_Url_Scheme_Request;
+class Ewk_Url_Scheme_Request;
+class Ewk_Cookie_Manager;
+class Ewk_Favicon_Database;
 
-WKContextRef ewk_context_WKContext_get(const Ewk_Context*);
-Ewk_Context* ewk_context_new_from_WKContext(WKContextRef);
-WKSoupRequestManagerRef ewk_context_request_manager_get(const Ewk_Context*);
-void ewk_context_url_scheme_request_received(Ewk_Context*, Ewk_Url_Scheme_Request*);
+namespace WebKit {
+class ContextHistoryClientEfl;
+class RequestManagerClientEfl;
+#if ENABLE(BATTERY_STATUS)
+class BatteryProvider;
+#endif
+#if ENABLE(NETWORK_INFO)
+class NetworkInfoProvider;
+#endif
+#if ENABLE(VIBRATION)
+class VibrationProvider;
+#endif
+}
 
-void ewk_context_download_job_add(Ewk_Context*, Ewk_Download_Job*);
-Ewk_Download_Job* ewk_context_download_job_get(const Ewk_Context*, uint64_t downloadId);
-void ewk_context_download_job_remove(Ewk_Context*, uint64_t downloadId);
+class Ewk_Context : public RefCounted<Ewk_Context> {
+public:
+    static PassRefPtr<Ewk_Context> create(WKContextRef context);
+    static PassRefPtr<Ewk_Context> create();
+    static PassRefPtr<Ewk_Context> create(const String& injectedBundlePath);
+
+    static PassRefPtr<Ewk_Context> defaultContext();
+
+    ~Ewk_Context();
+
+    Ewk_Cookie_Manager* cookieManager();
+
+    Ewk_Favicon_Database* faviconDatabase();
+
+    WebKit::RequestManagerClientEfl* requestManager();
+
+#if ENABLE(VIBRATION)
+    PassRefPtr<WebKit::VibrationProvider> vibrationProvider();
+#endif
+
+    void addVisitedLink(const String& visitedURL);
+
+    void setCacheModel(Ewk_Cache_Model);
+
+    Ewk_Cache_Model cacheModel() const;
+
+    WKContextRef wkContext();
+
+    void urlSchemeRequestReceived(Ewk_Url_Scheme_Request*);
+
+    WebKit::DownloadManagerEfl* downloadManager() const;
+
+    WebKit::ContextHistoryClientEfl* historyClient();
+
+private:
+    explicit Ewk_Context(WKContextRef);
+
+    WKRetainPtr<WKContextRef> m_context;
+
+    OwnPtr<Ewk_Cookie_Manager> m_cookieManager;
+    OwnPtr<Ewk_Favicon_Database> m_faviconDatabase;
+#if ENABLE(BATTERY_STATUS)
+    RefPtr<WebKit::BatteryProvider> m_batteryProvider;
+#endif
+#if ENABLE(NETWORK_INFO)
+    RefPtr<WebKit::NetworkInfoProvider> m_networkInfoProvider;
+#endif
+#if ENABLE(VIBRATION)
+    RefPtr<WebKit::VibrationProvider> m_vibrationProvider;
+#endif
+    OwnPtr<WebKit::DownloadManagerEfl> m_downloadManager;
+    OwnPtr<WebKit::RequestManagerClientEfl> m_requestManagerClient;
+
+    OwnPtr<WebKit::ContextHistoryClientEfl> m_historyClient;
+};
 
 #endif // ewk_context_private_h

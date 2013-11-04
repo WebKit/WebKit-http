@@ -138,7 +138,6 @@ protected:
 };
 
 COMPILE_ASSERT(!IsInteger<GlobalObject>::value, WTF_IsInteger_GlobalObject_false);
-ASSERT_CLASS_FITS_IN_CELL(GlobalObject);
 
 const ClassInfo GlobalObject::s_info = { "global", &JSGlobalObject::s_info, 0, ExecState::globalObjectTable, CREATE_METHOD_TABLE(GlobalObject) };
 
@@ -499,7 +498,7 @@ static void parseArguments(int argc, char** argv, CommandLine& options)
 
 int realMain(int argc, char** argv)
 {
-    RefPtr<JSGlobalData> globalData = JSGlobalData::create(ThreadStackTypeLarge, LargeHeap);
+    RefPtr<JSGlobalData> globalData = JSGlobalData::create(LargeHeap);
     JSLockHolder lock(globalData.get());
 
     CommandLine options;

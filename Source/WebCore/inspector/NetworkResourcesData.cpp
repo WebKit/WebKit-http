@@ -35,6 +35,7 @@
 #include "DOMImplementation.h"
 #include "SharedBuffer.h"
 #include "TextResourceDecoder.h"
+#include <wtf/MemoryInstrumentationHashMap.h>
 
 namespace {
 // 100MB
@@ -64,6 +65,15 @@ XHRReplayData::XHRReplayData(const String &method, const KURL& url, bool async, 
     , m_formData(formData)
     , m_includeCredentials(includeCredentials)
 {
+}
+
+void XHRReplayData::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
+{
+    MemoryClassInfo info(memoryObjectInfo, this);
+    info.addMember(m_method);
+    info.addMember(m_url);
+    info.addMember(m_formData);
+    info.addMember(m_headers);
 }
 
 // ResourceData
@@ -135,6 +145,22 @@ size_t NetworkResourcesData::ResourceData::decodeDataToContent()
     m_content.append(m_decoder->flush());
     m_dataBuffer = nullptr;
     return contentSizeInBytes(m_content) - dataLength;
+}
+
+void NetworkResourcesData::ResourceData::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
+{
+    MemoryClassInfo info(memoryObjectInfo, this);
+    info.addMember(m_requestId);
+    info.addMember(m_loaderId);
+    info.addMember(m_frameId);
+    info.addMember(m_url);
+    info.addMember(m_content);
+    info.addMember(m_xhrReplayData);
+    info.addMember(m_dataBuffer);
+    info.addMember(m_textEncodingName);
+    info.addMember(m_decoder);
+    info.addMember(m_buffer);
+    info.addMember(m_cachedResource);
 }
 
 // NetworkResourcesData
@@ -291,8 +317,8 @@ void NetworkResourcesData::setXHRReplayData(const String& requestId, XHRReplayDa
         ReusedRequestIds::iterator it;
         ReusedRequestIds::iterator end = m_reusedXHRReplayDataRequestIds.end();
         for (it = m_reusedXHRReplayDataRequestIds.begin(); it != end; ++it) {
-            if (it->second == requestId)
-                setXHRReplayData(it->first, xhrReplayData);
+            if (it->value == requestId)
+                setXHRReplayData(it->key, xhrReplayData);
         }
         return;
     }
@@ -318,10 +344,10 @@ Vector<String> NetworkResourcesData::removeCachedResource(CachedResource* cached
     ResourceDataMap::iterator it;
     ResourceDataMap::iterator end = m_requestIdToResourceDataMap.end();
     for (it = m_requestIdToResourceDataMap.begin(); it != end; ++it) {
-        ResourceData* resourceData = it->second;
+        ResourceData* resourceData = it->value;
         if (resourceData->cachedResource() == cachedResource) {
             resourceData->setCachedResource(0);
-            result.append(it->first);
+            result.append(it->key);
         }
     }
 
@@ -338,9 +364,9 @@ void NetworkResourcesData::clear(const String& preservedLoaderId)
     ResourceDataMap::iterator it;
     ResourceDataMap::iterator end = m_requestIdToResourceDataMap.end();
     for (it = m_requestIdToResourceDataMap.begin(); it != end; ++it) {
-        ResourceData* resourceData = it->second;
+        ResourceData* resourceData = it->value;
         if (!preservedLoaderId.isNull() && resourceData->loaderId() == preservedLoaderId)
-            preservedMap.set(it->first, it->second);
+            preservedMap.set(it->key, it->value);
         else
             delete resourceData;
     }
@@ -380,6 +406,14 @@ bool NetworkResourcesData::ensureFreeSpace(size_t size)
             m_contentSize -= resourceData->purgeContent();
     }
     return true;
+}
+
+void NetworkResourcesData::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
+{
+    MemoryClassInfo info(memoryObjectInfo, this);
+    info.addMember(m_requestIdsDeque);
+    info.addMember(m_reusedXHRReplayDataRequestIds);
+    info.addMember(m_requestIdToResourceDataMap);
 }
 
 } // namespace WebCore

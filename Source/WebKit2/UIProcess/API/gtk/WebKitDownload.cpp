@@ -53,10 +53,11 @@ enum {
 };
 
 struct _WebKitDownloadPrivate {
-    WKRetainPtr<WKDownloadRef> wkDownload;
+    RefPtr<DownloadProxy> download;
 
     GRefPtr<WebKitURIRequest> request;
     GRefPtr<WebKitURIResponse> response;
+    WebKitWebView* webView;
     CString destinationURI;
     guint64 currentSize;
     bool isCancelled;
@@ -71,7 +72,10 @@ G_DEFINE_TYPE(WebKitDownload, webkit_download, G_TYPE_OBJECT)
 
 static void webkitDownloadFinalize(GObject* object)
 {
-    WEBKIT_DOWNLOAD(object)->priv->~WebKitDownloadPrivate();
+    WebKitDownloadPrivate* priv = WEBKIT_DOWNLOAD(object)->priv;
+    if (priv->webView)
+        g_object_remove_weak_pointer(G_OBJECT(priv->webView), reinterpret_cast<void**>(&priv->webView));
+    priv->~WebKitDownloadPrivate();
     G_OBJECT_CLASS(webkit_download_parent_class)->finalize(object);
 }
 
@@ -264,11 +268,11 @@ static void webkit_download_class_init(WebKitDownloadClass* downloadClass)
     g_type_class_add_private(downloadClass, sizeof(WebKitDownloadPrivate));
 }
 
-WebKitDownload* webkitDownloadCreate(WKDownloadRef wkDownload)
+WebKitDownload* webkitDownloadCreate(DownloadProxy* downloadProxy)
 {
-    ASSERT(wkDownload);
+    ASSERT(downloadProxy);
     WebKitDownload* download = WEBKIT_DOWNLOAD(g_object_new(WEBKIT_TYPE_DOWNLOAD, NULL));
-    download->priv->wkDownload = wkDownload;
+    download->priv->download = downloadProxy;
     return download;
 }
 
@@ -276,6 +280,12 @@ void webkitDownloadSetResponse(WebKitDownload* download, WebKitURIResponse* resp
 {
     download->priv->response = response;
     g_object_notify(G_OBJECT(download), "response");
+}
+
+void webkitDownloadSetWebView(WebKitDownload* download, WebKitWebView* webView)
+{
+    download->priv->webView = webView;
+    g_object_add_weak_pointer(G_OBJECT(webView), reinterpret_cast<void**>(&download->priv->webView));
 }
 
 bool webkitDownloadIsCancelled(WebKitDownload* download)
@@ -379,8 +389,8 @@ WebKitURIRequest* webkit_download_get_request(WebKitDownload* download)
 
     WebKitDownloadPrivate* priv = download->priv;
     if (!priv->request)
-        priv->request = adoptGRef(webkitURIRequestCreateForResourceRequest(toImpl(priv->wkDownload.get())->request()));
-    return download->priv->request.get();
+        priv->request = adoptGRef(webkitURIRequestCreateForResourceRequest(priv->download->request()));
+    return priv->request.get();
 }
 
 /**
@@ -465,7 +475,7 @@ void webkit_download_cancel(WebKitDownload* download)
     g_return_if_fail(WEBKIT_IS_DOWNLOAD(download));
 
     download->priv->isCancelled = true;
-    WKDownloadCancel(download->priv->wkDownload.get());
+    download->priv->download->cancel();
 }
 
 /**
@@ -529,4 +539,20 @@ guint64 webkit_download_get_received_data_length(WebKitDownload* download)
     g_return_val_if_fail(WEBKIT_IS_DOWNLOAD(download), 0);
 
     return download->priv->currentSize;
+}
+
+/**
+ * webkit_download_get_web_view:
+ * @download: a #WebKitDownload
+ *
+ * Get the #WebKitWebView that initiated the download.
+ *
+ * Returns: (transfer none): the #WebKitWebView that initiated @download,
+ *    or %NULL if @download was not initiated by a #WebKitWebView.
+ */
+WebKitWebView* webkit_download_get_web_view(WebKitDownload* download)
+{
+    g_return_val_if_fail(WEBKIT_IS_DOWNLOAD(download), 0);
+
+    return download->priv->webView;
 }

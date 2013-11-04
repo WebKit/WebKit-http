@@ -102,8 +102,11 @@ public:
     virtual void onSuccess(PassRefPtr<IDBTransactionBackendInterface>) OVERRIDE { }
     virtual void onSuccess(PassRefPtr<SerializedScriptValue>) OVERRIDE { }
     virtual void onSuccess(PassRefPtr<SerializedScriptValue>, PassRefPtr<IDBKey>, const IDBKeyPath&) OVERRIDE { }
+    virtual void onSuccess(int64_t value) OVERRIDE { return onSuccess(SerializedScriptValue::numberValue(value)); }
+    virtual void onSuccess() OVERRIDE { return onSuccess(SerializedScriptValue::undefinedValue()); }
     virtual void onSuccess(PassRefPtr<IDBKey>, PassRefPtr<IDBKey>, PassRefPtr<SerializedScriptValue>) OVERRIDE { }
     virtual void onSuccessWithPrefetch(const Vector<RefPtr<IDBKey> >&, const Vector<RefPtr<IDBKey> >&, const Vector<RefPtr<SerializedScriptValue> >&) OVERRIDE { }
+    virtual void onUpgradeNeeded(int64_t, PassRefPtr<WebCore::IDBTransactionBackendInterface>, PassRefPtr<WebCore::IDBDatabaseBackendInterface>) OVERRIDE { }
     virtual void onBlocked() OVERRIDE { }
 };
 
@@ -133,7 +136,7 @@ public:
 
     virtual ~InspectorIDBTransactionCallback() { }
 
-    virtual void onAbort() { }
+    virtual void onAbort(PassRefPtr<IDBDatabaseError>) { }
     virtual void onComplete() { }
 private:
     InspectorIDBTransactionCallback() { }
@@ -305,12 +308,12 @@ public:
         RefPtr<TypeBuilder::Array<TypeBuilder::IndexedDB::ObjectStore> > objectStores = TypeBuilder::Array<TypeBuilder::IndexedDB::ObjectStore>::create();
 
         for (IDBDatabaseMetadata::ObjectStoreMap::const_iterator it = databaseMetadata.objectStores.begin(); it != databaseMetadata.objectStores.end(); ++it) {
-            const IDBObjectStoreMetadata& objectStoreMetadata = it->second;
+            const IDBObjectStoreMetadata& objectStoreMetadata = it->value;
 
             RefPtr<TypeBuilder::Array<TypeBuilder::IndexedDB::ObjectStoreIndex> > indexes = TypeBuilder::Array<TypeBuilder::IndexedDB::ObjectStoreIndex>::create();
 
             for (IDBObjectStoreMetadata::IndexMap::const_iterator it = objectStoreMetadata.indexes.begin(); it != objectStoreMetadata.indexes.end(); ++it) {
-                const IDBIndexMetadata& indexMetadata = it->second;
+                const IDBIndexMetadata& indexMetadata = it->value;
 
                 RefPtr<ObjectStoreIndex> objectStoreIndex = ObjectStoreIndex::create()
                     .setName(indexMetadata.name)
@@ -329,6 +332,7 @@ public:
         }
         RefPtr<DatabaseWithObjectStores> result = DatabaseWithObjectStores::create()
             .setName(databaseMetadata.name)
+            .setIntVersion(databaseMetadata.intVersion)
             .setVersion(databaseMetadata.version)
             .setObjectStores(objectStores);
 

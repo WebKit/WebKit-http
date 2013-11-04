@@ -289,6 +289,10 @@ public:
     virtual LayoutUnit minPreferredLogicalWidth() const;
     virtual LayoutUnit maxPreferredLogicalWidth() const;
 
+    // FIXME: We should rename these back to overrideLogicalHeight/Width and have them store
+    // the border-box height/width like the regular height/width accessors on RenderBox.
+    // Right now, these are different than contentHeight/contentWidth because they still
+    // include the scrollbar height/width.
     LayoutUnit overrideLogicalContentWidth() const;
     LayoutUnit overrideLogicalContentHeight() const;
     bool hasOverrideHeight() const;
@@ -296,6 +300,8 @@ public:
     void setOverrideLogicalContentHeight(LayoutUnit);
     void setOverrideLogicalContentWidth(LayoutUnit);
     void clearOverrideSize();
+    void clearOverrideLogicalContentHeight();
+    void clearOverrideLogicalContentWidth();
 
     virtual LayoutSize offsetFromContainer(RenderObject*, const LayoutPoint&, bool* offsetDependsOnPoint = 0) const;
     
@@ -466,8 +472,8 @@ public:
     
     RenderLayer* enclosingFloatPaintingLayer() const;
     
-    virtual LayoutUnit firstLineBoxBaseline() const { return -1; }
-    virtual LayoutUnit lastLineBoxBaseline() const { return -1; }
+    virtual int firstLineBoxBaseline() const { return -1; }
+    virtual int inlineBlockBaseline(LineDirectionMode) const { return -1; } // Returns -1 if we should skip this box when computing the baseline of an inline-block.
 
     bool shrinkToAvoidFloats() const;
     virtual bool avoidsFloats() const;
@@ -479,7 +485,7 @@ public:
     bool isDeprecatedFlexItem() const { return !isInline() && !isFloatingOrOutOfFlowPositioned() && parent() && parent()->isDeprecatedFlexibleBox(); }
     
     virtual LayoutUnit lineHeight(bool firstLine, LineDirectionMode, LinePositionMode = PositionOnContainingLine) const;
-    virtual LayoutUnit baselinePosition(FontBaseline, bool firstLine, LineDirectionMode, LinePositionMode = PositionOnContainingLine) const;
+    virtual int baselinePosition(FontBaseline, bool firstLine, LineDirectionMode, LinePositionMode = PositionOnContainingLine) const OVERRIDE;
 
     virtual LayoutUnit offsetLeft() const OVERRIDE;
     virtual LayoutUnit offsetTop() const OVERRIDE;
@@ -570,9 +576,9 @@ protected:
     
     virtual bool shouldComputeSizeAsReplaced() const { return isReplaced() && !isInlineBlockOrInlineTable(); }
 
-    virtual void mapLocalToContainer(RenderLayerModelObject* repaintContainer, TransformState&, MapLocalToContainerFlags mode = ApplyContainerFlip | SnapOffsetForTransforms, bool* wasFixed = 0) const OVERRIDE;
+    virtual void mapLocalToContainer(RenderLayerModelObject* repaintContainer, TransformState&, MapCoordinatesFlags = ApplyContainerFlip | SnapOffsetForTransforms, bool* wasFixed = 0) const OVERRIDE;
     virtual const RenderObject* pushMappingToContainer(const RenderLayerModelObject*, RenderGeometryMap&) const OVERRIDE;
-    virtual void mapAbsoluteToLocalPoint(bool fixed, bool useTransforms, TransformState&) const;
+    virtual void mapAbsoluteToLocalPoint(MapCoordinatesFlags, TransformState&) const;
 
     void paintRootBoxFillLayers(const PaintInfo&);
 

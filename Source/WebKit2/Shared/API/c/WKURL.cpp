@@ -40,6 +40,11 @@ WKURLRef WKURLCreateWithUTF8CString(const char* string)
     return toAPI(WebURL::create(String::fromUTF8(string)).leakRef());
 }
 
+WKURLRef WKURLCreateWithBaseURL(WKURLRef baseURL, const char* relative)
+{
+    return toAPI(WebURL::create(toImpl(baseURL), String::fromUTF8(relative)).leakRef());
+}
+
 WKStringRef WKURLCopyString(WKURLRef url)
 {
     return toCopiedAPI(toImpl(url)->string());

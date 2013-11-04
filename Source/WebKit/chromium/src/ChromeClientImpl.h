@@ -60,10 +60,11 @@ class WebColorChooser;
 class WebColorChooserClient;
 class WebViewImpl;
 struct WebCursorInfo;
+struct WebScreenInfo;
 struct WebPopupMenuInfo;
 
 // Handles window-level notifications from WebCore on behalf of a WebView.
-class ChromeClientImpl : public WebCore::ChromeClientChromium {
+class ChromeClientImpl : public WebCore::ChromeClientChromium, public WebCore::PageClientChromium {
 public:
     explicit ChromeClientImpl(WebViewImpl* webView);
     virtual ~ChromeClientImpl();
@@ -123,7 +124,7 @@ public:
         const WebCore::IntRect& clipRect);
     virtual WebCore::IntPoint screenToRootView(const WebCore::IntPoint&) const;
     virtual WebCore::IntRect rootViewToScreen(const WebCore::IntRect&) const;
-    virtual PlatformPageClient platformPageClient() const { return 0; }
+    virtual PlatformPageClient platformPageClient() const { return PlatformPageClient(this); }
     virtual void contentsSizeChanged(WebCore::Frame*, const WebCore::IntSize&) const;
     virtual void layoutUpdated(WebCore::Frame*) const;
     virtual void scrollRectIntoView(
@@ -138,8 +139,8 @@ public:
         WebCore::Frame*, const WTF::String& databaseName);
     virtual void reachedMaxAppCacheSize(int64_t spaceNeeded);
     virtual void reachedApplicationCacheOriginQuota(WebCore::SecurityOrigin*, int64_t totalSpaceNeeded);
-#if ENABLE(WIDGET_REGION)
-    virtual void dashboardRegionsChanged();
+#if ENABLE(DRAGGABLE_REGION)
+    virtual void annotatedRegionsChanged();
 #endif
     virtual bool paintCustomOverhangArea(WebCore::GraphicsContext*, const WebCore::IntRect&, const WebCore::IntRect&, const WebCore::IntRect&);
 #if ENABLE(INPUT_TYPE_COLOR)
@@ -171,7 +172,7 @@ public:
 
     // Sets a flag to specify that the view needs to be updated, so we need
     // to do an eager layout before the drawing.
-    virtual void scheduleCompositingLayerSync();
+    virtual void scheduleCompositingLayerFlush();
 
     virtual CompositingTriggerFlags allowedCompositingTriggers() const;
 #endif
@@ -193,6 +194,9 @@ public:
                              bool handleExternally);
     virtual void popupClosed(WebCore::PopupContainer* popupContainer);
     virtual void postAccessibilityNotification(WebCore::AccessibilityObject*, WebCore::AXObjectCache::AXNotification);
+
+    // PageClientChromium methods:
+    virtual WebScreenInfo screenInfo();
 
     // ChromeClientImpl:
     void setCursorForPlugin(const WebCursorInfo&);

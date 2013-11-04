@@ -72,6 +72,7 @@ AccessibilityObject::AccessibilityObject()
     : m_id(0)
     , m_haveChildren(false)
     , m_role(UnknownRole)
+    , m_cachedIsIgnoredValue(DefaultBehavior)
 #if PLATFORM(GTK)
     , m_wrapper(0)
 #elif PLATFORM(CHROMIUM)
@@ -1417,7 +1418,6 @@ static ARIARoleMap* createARIARoleMap()
         { "radiogroup", RadioGroupRole },
         { "region", DocumentRegionRole },
         { "row", RowRole },
-        { "range", SliderRole },
         { "scrollbar", ScrollBarRole },
         { "search", LandmarkSearchRole },
         { "separator", SplitterRole },
@@ -1771,11 +1771,46 @@ void AccessibilityObject::scrollToGlobalPoint(const IntPoint& globalPoint) const
     }
 }
 
+bool AccessibilityObject::cachedIsIgnoredValue()
+{
+    if (m_cachedIsIgnoredValue == DefaultBehavior)
+        m_cachedIsIgnoredValue = accessibilityIsIgnored() ? IgnoreObject : IncludeObject;
+
+    return m_cachedIsIgnoredValue == IgnoreObject;
+}
+
+void AccessibilityObject::setCachedIsIgnoredValue(bool isIgnored)
+{
+    m_cachedIsIgnoredValue = isIgnored ? IgnoreObject : IncludeObject;
+}
+
+void AccessibilityObject::notifyIfIgnoredValueChanged()
+{
+    bool isIgnored = accessibilityIsIgnored();
+    if (cachedIsIgnoredValue() != isIgnored) {
+        axObjectCache()->childrenChanged(parentObject());
+        setCachedIsIgnoredValue(isIgnored);
+    }
+}
+
 bool AccessibilityObject::ariaPressedIsPresent() const
 {
     return !getAttribute(aria_pressedAttr).isEmpty();
 }
 
+TextIteratorBehavior AccessibilityObject::textIteratorBehaviorForTextRange() const
+{
+    TextIteratorBehavior behavior = TextIteratorIgnoresStyleVisibility;
+    
+#if PLATFORM(GTK)
+    // We need to emit replaced elements for GTK, and present
+    // them with the 'object replacement character' (0xFFFC).
+    behavior = static_cast<TextIteratorBehavior>(behavior | TextIteratorEmitsObjectReplacementCharacters);
+#endif
+    
+    return behavior;
+}
+    
 AccessibilityRole AccessibilityObject::buttonRoleType() const
 {
     // If aria-pressed is present, then it should be exposed as a toggle button.

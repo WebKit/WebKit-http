@@ -62,34 +62,53 @@ public:
     // [1] LDML http://unicode.org/reports/tr35/#Date_Format_Patterns
     virtual String dateFormat() = 0;
 
+    // Returns a year-month format in Unicode TR35 LDML.
+    virtual String monthFormat() = 0;
+
     // Returns time format in Unicode TR35 LDML[1] containing hour, minute, and
     // second with optional period(AM/PM), e.g. "h:mm:ss a"
     // [1] LDML http://unicode.org/reports/tr35/#Date_Format_Patterns
-    virtual String timeFormat();
+    virtual String timeFormat() = 0;
 
     // Returns time format in Unicode TR35 LDML containing hour, and minute
     // with optional period(AM/PM), e.g. "h:mm a"
     // Note: Some platforms return same value as timeFormat().
-    virtual String shortTimeFormat();
+    virtual String shortTimeFormat() = 0;
 
-    // Returns a date-time format in Unicode TR35 LDML. It should have a second
+    // Returns a date-time format in Unicode TR35 LDML. It should have a seconds
     // field.
-    String dateTimeFormatWithSecond();
+    String dateTimeFormatWithSeconds();
 
-    // Returns a date-time format in Unicode TR35 LDML. It should have no second
+    // Returns a date-time format in Unicode TR35 LDML. It should have no seconds
     // field.
-    String dateTimeFormatWithoutSecond();
+    String dateTimeFormatWithoutSeconds();
+
+    // Returns a vector of string of which size is 12. The first item is a
+    // localized string of Jan and the last item is a localized string of
+    // Dec. These strings should be short.
+    virtual const Vector<String>& shortMonthLabels() = 0;
+
+    // Returns a vector of string of which size is 12. The first item is a
+    // stand-alone localized string of January and the last item is a
+    // stand-alone localized string of December. These strings should not be
+    // abbreviations.
+    virtual const Vector<String>& standAloneMonthLabels() = 0;
+
+    // Stand-alone month version of shortMonthLabels.
+    virtual const Vector<String>& shortStandAloneMonthLabels() = 0;
 
     // Returns localized period field(AM/PM) strings.
-    virtual const Vector<String>& timeAMPMLabels();
+    virtual const Vector<String>& timeAMPMLabels() = 0;
 #endif
 
-#if ENABLE(CALENDAR_PICKER)
+#if ENABLE(CALENDAR_PICKER) || ENABLE(INPUT_MULTIPLE_FIELDS_UI)
     // Returns a vector of string of which size is 12. The first item is a
     // localized string of January, and the last item is a localized string of
     // December. These strings should not be abbreviations.
     virtual const Vector<String>& monthLabels() = 0;
+#endif
 
+#if ENABLE(CALENDAR_PICKER)
     // Returns a vector of string of which size is 7. The first item is a
     // localized short string of Monday, and the last item is a localized
     // short string of Saturday. These strings should be short.
@@ -99,6 +118,10 @@ public:
     virtual unsigned firstDayOfWeek() = 0;
 
     virtual String dateFormatText() = 0;
+
+    // Returns true if people use right-to-left writing in the locale for this
+    // object.
+    virtual bool isRTL() = 0;
 #endif
 
     // Parses a string representation of a date/time string localized
@@ -114,7 +137,7 @@ public:
     // Serializes the specified date into a formatted date string to
     // display to the user. If an implementation doesn't support
     // localized dates the function should return an empty string.
-    virtual String formatDateTime(const DateComponents&, FormatType = FormatTypeUnspecified);
+    String formatDateTime(const DateComponents&, FormatType = FormatTypeUnspecified);
 
     virtual ~Localizer();
 
@@ -127,9 +150,8 @@ protected:
     };
 
 #if ENABLE(INPUT_MULTIPLE_FIELDS_UI)
-    String m_localizedTimeFormatText;
-    String m_localizedShortTimeFormatText;
-    Vector<String> m_timeAMPMLabels;
+    String m_dateTimeFormatWithSeconds;
+    String m_dateTimeFormatWithoutSeconds;
 #endif
 
     Localizer() : m_hasLocalizerData(false) { }

@@ -46,6 +46,7 @@ class Frame;
 class InspectorFrontendChannelDummy;
 class InternalSettings;
 class Node;
+class Page;
 class PagePopupController;
 class Range;
 class ScriptExecutionContext;
@@ -60,6 +61,8 @@ class Internals : public RefCounted<Internals>
 public:
     static PassRefPtr<Internals> create(Document*);
     virtual ~Internals();
+
+    static void resetToConsistentState(Page*);
 
     String elementRenderTreeAsText(Element*, ExceptionCode&);
 
@@ -187,6 +190,15 @@ public:
     void suspendAnimations(Document*, ExceptionCode&) const;
     void resumeAnimations(Document*, ExceptionCode&) const;
 
+    enum {
+        // Values need to be kept in sync with Internals.idl.
+        LAYER_TREE_INCLUDES_VISIBLE_RECTS = 1,
+        LAYER_TREE_INCLUDES_TILE_CACHES = 2
+        
+    };
+    String layerTreeAsText(Document*, unsigned flags, ExceptionCode&) const;
+    String layerTreeAsText(Document*, ExceptionCode&) const;
+
     void garbageCollectDocumentResources(Document*, ExceptionCode&) const;
 
     void allowRoundingHacks() const;
@@ -197,6 +209,8 @@ public:
     Vector<String> consoleMessageArgumentCounts(Document*) const;
     PassRefPtr<DOMWindow> openDummyInspectorFrontend(const String& url);
     void closeDummyInspectorFrontend();
+    void setInspectorResourcesDataSizeLimits(int maximumResourcesContentSize, int maximumSingleResourceContentSize, ExceptionCode&);
+    void setJavaScriptProfilingEnabled(bool enabled, ExceptionCode&);
 #endif
 
     String counterValue(Element*);

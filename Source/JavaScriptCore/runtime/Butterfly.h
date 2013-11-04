@@ -35,7 +35,7 @@
 namespace JSC {
 
 class JSGlobalData;
-class SlotVisitor;
+class CopyVisitor;
 struct ArrayStorage;
 
 class Butterfly {
@@ -56,6 +56,15 @@ public:
         return reinterpret_cast<Butterfly*>(static_cast<EncodedJSValue*>(base) + preCapacity + propertyCapacity + 1);
     }
     
+    // This method is here not just because it's handy, but to remind you that
+    // the whole point of butterflies is to do evil pointer arithmetic.
+    static Butterfly* fromPointer(char* ptr)
+    {
+        return reinterpret_cast<Butterfly*>(ptr);
+    }
+    
+    char* pointer() { return reinterpret_cast<char*>(this); }
+    
     static ptrdiff_t offsetOfIndexingHeader() { return IndexingHeader::offsetOfIndexingHeader(); }
     static ptrdiff_t offsetOfPublicLength() { return offsetOfIndexingHeader() + IndexingHeader::offsetOfPublicLength(); }
     static ptrdiff_t offsetOfVectorLength() { return offsetOfIndexingHeader() + IndexingHeader::offsetOfVectorLength(); }
@@ -64,15 +73,27 @@ public:
 
     static Butterfly* create(JSGlobalData&, size_t preCapacity, size_t propertyCapacity, bool hasIndexingHeader, const IndexingHeader&, size_t indexingPayloadSizeInBytes);
     static Butterfly* create(JSGlobalData&, Structure*);
-    static Butterfly* createUninitializedDuringCollection(SlotVisitor&, size_t preCapacity, size_t propertyCapacity, bool hasIndexingHeader, size_t indexingPayloadSizeInBytes);
+    static Butterfly* createUninitializedDuringCollection(CopyVisitor&, size_t preCapacity, size_t propertyCapacity, bool hasIndexingHeader, size_t indexingPayloadSizeInBytes);
     
     IndexingHeader* indexingHeader() { return IndexingHeader::from(this); }
     const IndexingHeader* indexingHeader() const { return IndexingHeader::from(this); }
     PropertyStorage propertyStorage() { return indexingHeader()->propertyStorage(); }
     ConstPropertyStorage propertyStorage() const { return indexingHeader()->propertyStorage(); }
+    
+    uint32_t publicLength() { return indexingHeader()->publicLength(); }
+    uint32_t vectorLength() { return indexingHeader()->vectorLength(); }
+    void setPublicLength(uint32_t value) { indexingHeader()->setPublicLength(value); }
+    void setVectorLength(uint32_t value) { indexingHeader()->setVectorLength(value); }
+    
     template<typename T>
     T* indexingPayload() { return reinterpret_cast<T*>(this); }
     ArrayStorage* arrayStorage() { return indexingPayload<ArrayStorage>(); }
+    WriteBarrier<Unknown>* contiguous() { return indexingPayload<WriteBarrier<Unknown> >(); }
+    
+    static Butterfly* fromContiguous(WriteBarrier<Unknown>* contiguous)
+    {
+        return reinterpret_cast<Butterfly*>(contiguous);
+    }
     
     static ptrdiff_t offsetOfPropertyStorage() { return -static_cast<ptrdiff_t>(sizeof(IndexingHeader)); }
     static int indexOfPropertyStorage()

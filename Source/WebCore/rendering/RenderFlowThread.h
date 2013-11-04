@@ -80,13 +80,12 @@ public:
     bool hitTestFlowThreadPortionInRegion(RenderRegion*, LayoutRect flowThreadPortionRect, LayoutRect flowThreadPortionOverflowRect, const HitTestRequest&, HitTestResult&, const HitTestLocation& locationInContainer, const LayoutPoint& accumulatedOffset) const;
 
     bool hasRegions() const { return m_regionList.size(); }
-    bool hasValidRegions() const { ASSERT(!m_regionsInvalidated); return m_hasValidRegions; }
     // Check if the content is flown into at least a region with region styling rules.
     bool hasRegionsWithStyling() const { return m_hasRegionsWithStyling; }
     void checkRegionsWithStyling();
 
     void invalidateRegions() { m_regionsInvalidated = true; setNeedsLayout(true); }
-    bool hasValidRegionInfo() const { return !m_regionsInvalidated && hasValidRegions(); }
+    bool hasValidRegionInfo() const { return !m_regionsInvalidated && !m_regionList.isEmpty(); }
 
     static PassRefPtr<RenderStyle> createFlowThreadStyle(RenderStyle* parentStyle);
 
@@ -119,8 +118,8 @@ public:
     void getRegionRangeForBox(const RenderBox*, RenderRegion*& startRegion, RenderRegion*& endRegion) const;
 
     void clearRenderObjectCustomStyle(const RenderObject*,
-                                      const RenderRegion* oldStartRegion = 0, const RenderRegion* oldEndRegion = 0,
-                                      const RenderRegion* newStartRegion = 0, const RenderRegion* newEndRegion = 0);
+        const RenderRegion* oldStartRegion = 0, const RenderRegion* oldEndRegion = 0,
+        const RenderRegion* newStartRegion = 0, const RenderRegion* newEndRegion = 0);
     
     void computeOverflowStateForRegions(LayoutUnit oldClientAfterEdge);
 
@@ -128,6 +127,11 @@ public:
 
     // Check if the object is in region and the region is part of this flow thread.
     bool objectInFlowRegion(const RenderObject*, const RenderRegion*) const;
+
+    void resetRegionsOverrideLogicalContentHeight();
+    void markAutoLogicalHeightRegionsForLayout();
+
+    bool addForcedRegionBreak(LayoutUnit, RenderObject* breakChild, bool isBefore, LayoutUnit* offsetBreakAdjustment = 0);
 
     bool pageLogicalHeightChanged() const { return m_pageLogicalHeightChanged; }
 
@@ -138,6 +142,7 @@ public:
 protected:
     virtual const char* renderName() const = 0;
 
+    void updateRegionsFlowThreadPortionRect();
     bool shouldRepaint(const LayoutRect&) const;
     bool regionInRange(const RenderRegion* targetRegion, const RenderRegion* startRegion, const RenderRegion* endRegion) const;
     
@@ -146,6 +151,8 @@ protected:
     
     // Override if the flow thread implementation supports dispatching events when the flow layout is updated (e.g. for named flows)
     virtual void dispatchRegionLayoutUpdateEvent() { m_dispatchRegionLayoutUpdateEvent = false; }
+
+    void clearOverrideLogicalContentHeightInRegions(RenderRegion* startRegion = 0);
 
     RenderRegionList m_regionList;
 
@@ -179,7 +186,10 @@ protected:
     typedef HashMap<const RenderBox*, RenderRegionRange> RenderRegionRangeMap;
     RenderRegionRangeMap m_regionRangeMap;
 
-    bool m_hasValidRegions : 1;
+    typedef HashMap<RenderObject*, RenderRegion*> RenderObjectToRegionMap;
+    RenderObjectToRegionMap m_breakBeforeToRegionMap;
+    RenderObjectToRegionMap m_breakAfterToRegionMap;
+
     bool m_regionsInvalidated : 1;
     bool m_regionsHaveUniformLogicalWidth : 1;
     bool m_regionsHaveUniformLogicalHeight : 1;

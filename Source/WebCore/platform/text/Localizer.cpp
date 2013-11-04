@@ -94,6 +94,18 @@ void DateTimeStringBuilder::appendNumber(int number, size_t width)
 void DateTimeStringBuilder::visitField(DateTimeFormat::FieldType fieldType, int numberOfPatternCharacters)
 {
     switch (fieldType) {
+    case DateTimeFormat::FieldTypeYear:
+        // Always use padding width of 4 so it matches DateTimeEditElement.
+        appendNumber(m_date.fullYear(), 4);
+        return;
+    case DateTimeFormat::FieldTypeMonth:
+        // Always use padding width of 2 so it matches DateTimeEditElement.
+        appendNumber(m_date.month() + 1, 2);
+        return;
+    case DateTimeFormat::FieldTypeDayOfMonth:
+        // Always use padding width of 2 so it matches DateTimeEditElement.
+        appendNumber(m_date.monthDay(), 2);
+        return;
     case DateTimeFormat::FieldTypePeriod:
         m_builder.append(m_localizer.timeAMPMLabels()[(m_date.hour() >= 12 ? 1 : 0)]);
         return;
@@ -303,60 +315,43 @@ String Localizer::localizedDecimalSeparator()
     return m_decimalSymbols[DecimalSeparatorIndex];
 }
 
-String Localizer::timeFormat()
+String Localizer::dateTimeFormatWithSeconds()
 {
-    if (!m_localizedTimeFormatText.isEmpty())
-        return m_localizedTimeFormatText;
-    m_localizedTimeFormatText = "hh:mm:ss";
-    return m_localizedTimeFormatText;
-}
-
-String Localizer::shortTimeFormat()
-{
-    if (!m_localizedShortTimeFormatText.isEmpty())
-        return m_localizedShortTimeFormatText;
-    m_localizedTimeFormatText = "hh:mm";
-    return m_localizedShortTimeFormatText;
-}
-
-String Localizer::dateTimeFormatWithSecond()
-{
-    // FIXME: We should retreive the separator and the order from the system.
+    if (!m_dateTimeFormatWithSeconds.isNull())
+        return m_dateTimeFormatWithSeconds;
+    // FIXME: We should retrieve the separator and the order from the system.
     StringBuilder builder;
     builder.append(dateFormat());
     builder.append(' ');
     builder.append(timeFormat());
-    return builder.toString();
+    m_dateTimeFormatWithSeconds = builder.toString();
+    return m_dateTimeFormatWithSeconds;
 }
 
-String Localizer::dateTimeFormatWithoutSecond()
+String Localizer::dateTimeFormatWithoutSeconds()
 {
-    // FIXME: We should retreive the separator and the order from the system.
+    if (!m_dateTimeFormatWithoutSeconds.isNull())
+        return m_dateTimeFormatWithoutSeconds;
+    // FIXME: We should retrieve the separator and the order from the system.
     StringBuilder builder;
     builder.append(dateFormat());
     builder.append(' ');
     builder.append(shortTimeFormat());
-    return builder.toString();
-}
-
-const Vector<String>& Localizer::timeAMPMLabels()
-{
-    if (!m_timeAMPMLabels.isEmpty())
-        return m_timeAMPMLabels;
-    m_timeAMPMLabels.reserveCapacity(2);
-    m_timeAMPMLabels.append("AM");
-    m_timeAMPMLabels.append("PM");
-    return m_timeAMPMLabels;
+    m_dateTimeFormatWithoutSeconds = builder.toString();
+    return m_dateTimeFormatWithoutSeconds;
 }
 #endif
 
 String Localizer::formatDateTime(const DateComponents& date, FormatType formatType)
 {
 #if ENABLE(INPUT_MULTIPLE_FIELDS_UI)
-    if (date.type() != DateComponents::Time)
+    if (date.type() != DateComponents::Time && date.type() != DateComponents::Date)
         return String();
     DateTimeStringBuilder builder(*this, date);
-    builder.build(formatType == FormatTypeShort ? shortTimeFormat() : timeFormat());
+    if (date.type() == DateComponents::Time)
+        builder.build(formatType == FormatTypeShort ? shortTimeFormat() : timeFormat());
+    else if (date.type() == DateComponents::Date)
+        builder.build(dateFormat());
     return builder.toString();
 #else
     UNUSED_PARAM(date);

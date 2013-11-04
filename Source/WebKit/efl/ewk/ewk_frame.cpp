@@ -1621,7 +1621,7 @@ void ewk_frame_view_create_for_view(Evas_Object* ewkFrame, Evas_Object* view)
     else
         background = WebCore::Color(red * 255 / alpha, green * 255 / alpha, blue * 255 / alpha, alpha);
 
-    smartData->frame->createView(size, background, !alpha, WebCore::IntSize(), false);
+    smartData->frame->createView(size, background, !alpha);
     if (!smartData->frame->view())
         return;
 
@@ -1640,6 +1640,9 @@ ssize_t ewk_frame_source_get(const Evas_Object* ewkFrame, char** frameSource)
 
     StringBuilder builder;
     *frameSource = 0; // Saves 0 to pointer until it's not allocated.
+
+    if (!ewk_frame_uri_get(ewkFrame))
+        return -1;
 
     if (!smartData->frame->document()->isHTMLDocument()) {
         // FIXME: Support others documents.

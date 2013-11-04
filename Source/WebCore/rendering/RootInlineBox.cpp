@@ -100,7 +100,7 @@ bool RootInlineBox::isHyphenated() const
     return false;
 }
 
-LayoutUnit RootInlineBox::baselinePosition(FontBaseline baselineType) const
+int RootInlineBox::baselinePosition(FontBaseline baselineType) const
 {
     return boxModelObject()->baselinePosition(baselineType, isFirstLineStyle(), isHorizontal() ? HorizontalLine : VerticalLine, PositionOfInteriorLineBoxes);
 }
@@ -261,8 +261,8 @@ LayoutUnit RootInlineBox::alignBoxesInBlockDirection(LayoutUnit heightOfBlock, G
 
     LayoutUnit maxPositionTop = 0;
     LayoutUnit maxPositionBottom = 0;
-    LayoutUnit maxAscent = 0;
-    LayoutUnit maxDescent = 0;
+    int maxAscent = 0;
+    int maxDescent = 0;
     bool setMaxAscent = false;
     bool setMaxDescent = false;
 
@@ -755,8 +755,8 @@ void RootInlineBox::ascentAndDescentForBox(InlineBox* box, GlyphOverflowAndFallb
     GlyphOverflow* glyphOverflow = 0;
     if (box->isText()) {
         GlyphOverflowAndFallbackFontsMap::iterator it = textBoxDataMap.find(toInlineTextBox(box));
-        usedFonts = it == textBoxDataMap.end() ? 0 : &it->second.first;
-        glyphOverflow = it == textBoxDataMap.end() ? 0 : &it->second.second;
+        usedFonts = it == textBoxDataMap.end() ? 0 : &it->value.first;
+        glyphOverflow = it == textBoxDataMap.end() ? 0 : &it->value.second;
     }
         
     bool includeLeading = includeLeadingForBox(box);

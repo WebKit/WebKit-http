@@ -23,6 +23,6 @@
 #include "WebKitCookieManager.h"
 #include "WebKitPrivate.h"
 
-WebKitCookieManager* webkitCookieManagerCreate(WKCookieManagerRef);
+WebKitCookieManager* webkitCookieManagerCreate(WebKit::WebCookieManagerProxy*);
 
 #endif // WebKitCookieManagerPrivate_h

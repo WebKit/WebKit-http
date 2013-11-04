@@ -31,6 +31,7 @@
 #include "WebContext.h"
 #include "WebNotification.h"
 #include "WebNotificationManagerMessages.h"
+#include "WebNotificationManagerProxyMessages.h"
 #include "WebPageProxy.h"
 #include "WebSecurityOrigin.h"
 
@@ -47,6 +48,7 @@ PassRefPtr<WebNotificationManagerProxy> WebNotificationManagerProxy::create(WebC
 WebNotificationManagerProxy::WebNotificationManagerProxy(WebContext* context)
     : m_context(context)
 {
+    m_context->addMessageReceiver(Messages::WebNotificationManagerProxy::messageReceiverName(), this);
 }
 
 void WebNotificationManagerProxy::invalidate()
@@ -71,9 +73,9 @@ void WebNotificationManagerProxy::populateCopyOfNotificationPermissions(HashMap<
     }
 }
 
-void WebNotificationManagerProxy::didReceiveMessage(CoreIPC::Connection* connection, CoreIPC::MessageID messageID, CoreIPC::ArgumentDecoder* arguments)
+void WebNotificationManagerProxy::didReceiveMessage(CoreIPC::Connection* connection, CoreIPC::MessageID messageID, CoreIPC::MessageDecoder& decoder)
 {
-    didReceiveWebNotificationManagerProxyMessage(connection, messageID, arguments);
+    didReceiveWebNotificationManagerProxyMessage(connection, messageID, decoder);
 }
 
 void WebNotificationManagerProxy::show(WebPageProxy* page, const String& title, const String& body, const String& iconURL, const String& tag, const String& lang, const String& dir, const String& originString, uint64_t notificationID)

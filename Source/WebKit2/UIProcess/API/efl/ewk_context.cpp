@@ -22,7 +22,9 @@
 #include "ewk_context.h"
 
 #include "BatteryProvider.h"
+#include "ContextHistoryClientEfl.h"
 #include "NetworkInfoProvider.h"
+#include "RequestManagerClientEfl.h"
 #include "VibrationProvider.h"
 #include "WKAPICast.h"
 #include "WKContextSoup.h"
@@ -30,103 +32,165 @@
 #include "WKRetainPtr.h"
 #include "WKString.h"
 #include "WebContext.h"
-#include "ewk_context_download_client_private.h"
+#include "WebIconDatabase.h"
+#include "WebSoupRequestManagerProxy.h"
 #include "ewk_context_private.h"
-#include "ewk_context_request_manager_client_private.h"
 #include "ewk_cookie_manager_private.h"
-#include "ewk_download_job.h"
-#include "ewk_download_job_private.h"
+#include "ewk_favicon_database_private.h"
+#include "ewk_private.h"
+#include "ewk_url_scheme_request_private.h"
 #include <WebCore/FileSystem.h>
+#include <WebCore/IconDatabase.h>
 #include <wtf/HashMap.h>
 #include <wtf/text/WTFString.h>
+
+#if ENABLE(SPELLCHECK)
+#include "ewk_settings.h"
+#include "ewk_text_checker_private.h"
+#endif
 
 using namespace WebCore;
 using namespace WebKit;
 
-struct _Ewk_Url_Scheme_Handler {
-    Ewk_Url_Scheme_Request_Cb callback;
-    void* userData;
+typedef HashMap<WKContextRef, Ewk_Context*> ContextMap;
 
-    _Ewk_Url_Scheme_Handler()
-        : callback(0)
-        , userData(0)
-    { }
+static inline ContextMap& contextMap()
+{
+    DEFINE_STATIC_LOCAL(ContextMap, map, ());
+    return map;
+}
 
-    _Ewk_Url_Scheme_Handler(Ewk_Url_Scheme_Request_Cb callback, void* userData)
-        : callback(callback)
-        , userData(userData)
-    { }
-};
-
-typedef HashMap<String, _Ewk_Url_Scheme_Handler> URLSchemeHandlerMap;
-
-struct _Ewk_Context {
-    unsigned __ref; /**< the reference count of the object */
-    WKRetainPtr<WKContextRef> context;
-
-    Ewk_Cookie_Manager* cookieManager;
+Ewk_Context::Ewk_Context(WKContextRef context)
+    : m_context(context)
 #if ENABLE(BATTERY_STATUS)
-    RefPtr<BatteryProvider> batteryProvider;
+    , m_batteryProvider(BatteryProvider::create(context))
 #endif
 #if ENABLE(NETWORK_INFO)
-    RefPtr<NetworkInfoProvider> networkInfoProvider;
+    , m_networkInfoProvider(NetworkInfoProvider::create(context))
 #endif
 #if ENABLE(VIBRATION)
-    RefPtr<VibrationProvider> vibrationProvider;
+    , m_vibrationProvider(VibrationProvider::create(context))
 #endif
-    HashMap<uint64_t, Ewk_Download_Job*> downloadJobs;
-
-    WKRetainPtr<WKSoupRequestManagerRef> requestManager;
-    URLSchemeHandlerMap urlSchemeHandlers;
-
-    _Ewk_Context(WKRetainPtr<WKContextRef> contextRef)
-        : __ref(1)
-        , context(contextRef)
-        , cookieManager(0)
-        , requestManager(WKContextGetSoupRequestManager(contextRef.get()))
-    {
-#if ENABLE(BATTERY_STATUS)
-        batteryProvider = BatteryProvider::create(context.get());
-#endif
-
-#if ENABLE(NETWORK_INFO)
-        networkInfoProvider = NetworkInfoProvider::create(context.get());
-#endif
-
-#if ENABLE(VIBRATION)
-        vibrationProvider = VibrationProvider::create(context.get());
-#endif
+    , m_downloadManager(DownloadManagerEfl::create(this))
+    , m_requestManagerClient(RequestManagerClientEfl::create(this))
+    , m_historyClient(ContextHistoryClientEfl::create(context))
+{
+    ContextMap::AddResult result = contextMap().add(context, this);
+    ASSERT_UNUSED(result, result.isNewEntry);
 
 #if ENABLE(MEMORY_SAMPLER)
-        static bool initializeMemorySampler = false;
-        static const char environmentVariable[] = "SAMPLE_MEMORY";
+    static bool initializeMemorySampler = false;
+    static const char environmentVariable[] = "SAMPLE_MEMORY";
 
-        if (!initializeMemorySampler && getenv(environmentVariable)) {
-            WKRetainPtr<WKDoubleRef> interval(AdoptWK, WKDoubleCreate(0.0));
-            WKContextStartMemorySampler(context.get(), interval.get());
-            initializeMemorySampler = true;
-        }
+    if (!initializeMemorySampler && getenv(environmentVariable)) {
+        WKRetainPtr<WKDoubleRef> interval(AdoptWK, WKDoubleCreate(0.0));
+        WKContextStartMemorySampler(context, interval.get());
+        initializeMemorySampler = true;
+    }
 #endif
-        ewk_context_request_manager_client_attach(this);
-        ewk_context_download_client_attach(this);
+
+#if ENABLE(SPELLCHECK)
+    Ewk_Text_Checker::initialize();
+    if (ewk_settings_continuous_spell_checking_enabled_get()) {
+        // Load the default language.
+        ewk_settings_spell_checking_languages_set(0);
+    }
+#endif
+}
+
+Ewk_Context::~Ewk_Context()
+{
+    ASSERT(contextMap().get(m_context.get()) == this);
+    contextMap().remove(m_context.get());
+}
+
+PassRefPtr<Ewk_Context> Ewk_Context::create(WKContextRef context)
+{
+    if (contextMap().contains(context))
+        return contextMap().get(context); // Will be ref-ed automatically.
+
+    return adoptRef(new Ewk_Context(context));
+}
+
+PassRefPtr<Ewk_Context> Ewk_Context::create()
+{
+    return create(adoptWK(WKContextCreate()).get());
+}
+
+PassRefPtr<Ewk_Context> Ewk_Context::create(const String& injectedBundlePath)
+{   
+    if (!fileExists(injectedBundlePath))
+        return 0;
+
+    WKRetainPtr<WKStringRef> injectedBundlePathWK = adoptWK(toCopiedAPI(injectedBundlePath));
+    WKRetainPtr<WKContextRef> contextWK = adoptWK(WKContextCreateWithInjectedBundlePath(injectedBundlePathWK.get()));
+
+    return create(contextWK.get());
+}
+
+PassRefPtr<Ewk_Context> Ewk_Context::defaultContext()
+{
+    static RefPtr<Ewk_Context> defaultInstance = create(adoptWK(WKContextCreate()).get());
+
+    return defaultInstance;
+}
+
+Ewk_Cookie_Manager* Ewk_Context::cookieManager()
+{
+    if (!m_cookieManager)
+        m_cookieManager = Ewk_Cookie_Manager::create(WKContextGetCookieManager(m_context.get()));
+
+    return m_cookieManager.get();
+}
+
+Ewk_Favicon_Database* Ewk_Context::faviconDatabase()
+{
+    if (!m_faviconDatabase) {
+        WKRetainPtr<WKIconDatabaseRef> iconDatabase = WKContextGetIconDatabase(m_context.get());
+        // Set the database path if it is not open yet.
+        if (!toImpl(iconDatabase.get())->isOpen()) {
+            WebContext* webContext = toImpl(m_context.get());
+            String databasePath = webContext->iconDatabasePath() + "/" + WebCore::IconDatabase::defaultDatabaseFilename();
+            webContext->setIconDatabasePath(databasePath);
+        }
+        m_faviconDatabase = Ewk_Favicon_Database::create(iconDatabase.get());
     }
 
-    ~_Ewk_Context()
-    {
-        if (cookieManager)
-            ewk_cookie_manager_free(cookieManager);
+    return m_faviconDatabase.get();
+}
 
-        HashMap<uint64_t, Ewk_Download_Job*>::iterator it = downloadJobs.begin();
-        HashMap<uint64_t, Ewk_Download_Job*>::iterator end = downloadJobs.end();
-        for ( ; it != end; ++it)
-            ewk_download_job_unref(it->second);
-    }
-};
+RequestManagerClientEfl* Ewk_Context::requestManager()
+{
+    return m_requestManagerClient.get();
+}
+
+#if ENABLE(VIBRATION)
+PassRefPtr<VibrationProvider> Ewk_Context::vibrationProvider()
+{
+    return m_vibrationProvider;
+}
+#endif
+
+void Ewk_Context::addVisitedLink(const String& visitedURL)
+{
+    toImpl(m_context.get())->addVisitedLink(visitedURL);
+}
+
+void Ewk_Context::setCacheModel(Ewk_Cache_Model cacheModel)
+{
+    WKContextSetCacheModel(m_context.get(), static_cast<Ewk_Cache_Model>(cacheModel));
+}
+
+Ewk_Cache_Model Ewk_Context::cacheModel() const
+{
+    return static_cast<Ewk_Cache_Model>(WKContextGetCacheModel(m_context.get()));
+}
 
 Ewk_Context* ewk_context_ref(Ewk_Context* ewkContext)
 {
     EINA_SAFETY_ON_NULL_RETURN_VAL(ewkContext, 0);
-    ++ewkContext->__ref;
+
+    ewkContext->ref();
 
     return ewkContext;
 }
@@ -134,142 +198,63 @@ Ewk_Context* ewk_context_ref(Ewk_Context* ewkContext)
 void ewk_context_unref(Ewk_Context* ewkContext)
 {
     EINA_SAFETY_ON_NULL_RETURN(ewkContext);
-    EINA_SAFETY_ON_FALSE_RETURN(ewkContext->__ref > 0);
 
-    if (--ewkContext->__ref)
-        return;
-
-    delete ewkContext;
+    ewkContext->deref();
 }
 
 Ewk_Cookie_Manager* ewk_context_cookie_manager_get(const Ewk_Context* ewkContext)
 {
     EINA_SAFETY_ON_NULL_RETURN_VAL(ewkContext, 0);
 
-    if (!ewkContext->cookieManager)
-        const_cast<Ewk_Context*>(ewkContext)->cookieManager = ewk_cookie_manager_new(WKContextGetCookieManager(ewkContext->context.get()));
-
-    return ewkContext->cookieManager;
+    return const_cast<Ewk_Context*>(ewkContext)->cookieManager();
 }
 
-WKContextRef ewk_context_WKContext_get(const Ewk_Context* ewkContext)
-{
-    return ewkContext->context.get();
-}
-
-/**
- * @internal
- * Create Ewk_Context from WKContext.
- */
-Ewk_Context* ewk_context_new_from_WKContext(WKContextRef contextRef)
-{
-    EINA_SAFETY_ON_NULL_RETURN_VAL(contextRef, 0);
-
-    return new Ewk_Context(contextRef);
-}
-
-/**
- * @internal
- * Registers that a new download has been requested.
- */
-void ewk_context_download_job_add(Ewk_Context* ewkContext, Ewk_Download_Job* ewkDownload)
-{
-    EINA_SAFETY_ON_NULL_RETURN(ewkContext);
-    EINA_SAFETY_ON_NULL_RETURN(ewkDownload);
-
-    uint64_t downloadId = ewk_download_job_id_get(ewkDownload);
-    if (ewkContext->downloadJobs.contains(downloadId))
-        return;
-
-    ewkContext->downloadJobs.add(downloadId, ewk_download_job_ref(ewkDownload));
-}
-
-/**
- * @internal
- * Returns the #Ewk_Download_Job with the given @a downloadId, or
- * @c 0 in case of failure.
- */
-Ewk_Download_Job* ewk_context_download_job_get(const Ewk_Context* ewkContext, uint64_t downloadId)
+Ewk_Favicon_Database* ewk_context_favicon_database_get(const Ewk_Context* ewkContext)
 {
     EINA_SAFETY_ON_NULL_RETURN_VAL(ewkContext, 0);
 
-    return ewkContext->downloadJobs.get(downloadId);
+    return const_cast<Ewk_Context*>(ewkContext)->faviconDatabase();
 }
 
-/**
- * @internal
- * Removes the #Ewk_Download_Job with the given @a downloadId from the internal
- * HashMap.
- */
-void ewk_context_download_job_remove(Ewk_Context* ewkContext, uint64_t downloadId)
+WKContextRef Ewk_Context::wkContext()
 {
-    EINA_SAFETY_ON_NULL_RETURN(ewkContext);
-    Ewk_Download_Job* download = ewkContext->downloadJobs.take(downloadId);
-    if (download)
-        ewk_download_job_unref(download);
+    return m_context.get();
 }
 
-/**
- * Retrieve the request manager for @a ewkContext.
- *
- * @param ewkContext a #Ewk_Context object.
- */
-WKSoupRequestManagerRef ewk_context_request_manager_get(const Ewk_Context* ewkContext)
+DownloadManagerEfl* Ewk_Context::downloadManager() const
 {
-    return ewkContext->requestManager.get();
+    return m_downloadManager.get();
 }
 
-/**
- * @internal
- * A new URL request was received.
- *
- * @param ewkContext a #Ewk_Context object.
- * @param schemeRequest a #Ewk_Url_Scheme_Request object.
- */
-void ewk_context_url_scheme_request_received(Ewk_Context* ewkContext, Ewk_Url_Scheme_Request* schemeRequest)
+ContextHistoryClientEfl* Ewk_Context::historyClient()
 {
-    EINA_SAFETY_ON_NULL_RETURN(ewkContext);
-    EINA_SAFETY_ON_NULL_RETURN(schemeRequest);
-
-    _Ewk_Url_Scheme_Handler handler = ewkContext->urlSchemeHandlers.get(ewk_url_scheme_request_scheme_get(schemeRequest));
-    if (!handler.callback)
-        return;
-
-    handler.callback(schemeRequest, handler.userData);
+    return m_historyClient.get();
 }
 
 Ewk_Context* ewk_context_default_get()
 {
-    static Ewk_Context defaultContext(adoptWK(WKContextCreate()));
-
-    return &defaultContext;
+    return Ewk_Context::defaultContext().get();
 }
 
 Ewk_Context* ewk_context_new()
 {
-    return new Ewk_Context(adoptWK(WKContextCreate()));
+    return Ewk_Context::create().leakRef();
 }
 
 Ewk_Context* ewk_context_new_with_injected_bundle_path(const char* path)
 {
     EINA_SAFETY_ON_NULL_RETURN_VAL(path, 0);
 
-    WKRetainPtr<WKStringRef> pathRef(AdoptWK, WKStringCreateWithUTF8CString(path));
-    if (!fileExists(toImpl(pathRef.get())->string()))
-        return 0;
-
-    return new Ewk_Context(adoptWK(WKContextCreateWithInjectedBundlePath(pathRef.get())));
+    return Ewk_Context::create(String::fromUTF8(path)).leakRef();
 }
 
-Eina_Bool ewk_context_uri_scheme_register(Ewk_Context* ewkContext, const char* scheme, Ewk_Url_Scheme_Request_Cb callback, void* userData)
+Eina_Bool ewk_context_url_scheme_register(Ewk_Context* ewkContext, const char* scheme, Ewk_Url_Scheme_Request_Cb callback, void* userData)
 {
     EINA_SAFETY_ON_NULL_RETURN_VAL(ewkContext, false);
     EINA_SAFETY_ON_NULL_RETURN_VAL(scheme, false);
     EINA_SAFETY_ON_NULL_RETURN_VAL(callback, false);
 
-    ewkContext->urlSchemeHandlers.set(String::fromUTF8(scheme), _Ewk_Url_Scheme_Handler(callback, userData));
-    WKRetainPtr<WKStringRef> wkScheme(AdoptWK, WKStringCreateWithUTF8CString(scheme));
-    WKSoupRequestManagerRegisterURIScheme(ewkContext->requestManager.get(), wkScheme.get());
+    ewkContext->requestManager()->registerURLSchemeHandler(String::fromUTF8(scheme), callback, userData);
 
     return true;
 }
@@ -279,6 +264,43 @@ void ewk_context_vibration_client_callbacks_set(Ewk_Context* ewkContext, Ewk_Vib
     EINA_SAFETY_ON_NULL_RETURN(ewkContext);
 
 #if ENABLE(VIBRATION)
-    ewkContext->vibrationProvider->setVibrationClientCallbacks(vibrate, cancel, data);
+    ewkContext->vibrationProvider()->setVibrationClientCallbacks(vibrate, cancel, data);
 #endif
 }
+
+void ewk_context_history_callbacks_set(Ewk_Context* ewkContext, Ewk_History_Navigation_Cb navigate, Ewk_History_Client_Redirection_Cb clientRedirect, Ewk_History_Server_Redirection_Cb serverRedirect, Ewk_History_Title_Update_Cb titleUpdate, Ewk_History_Populate_Visited_Links_Cb populateVisitedLinks, void* data)
+{
+    EINA_SAFETY_ON_NULL_RETURN(ewkContext);
+
+    ewkContext->historyClient()->setCallbacks(navigate, clientRedirect, serverRedirect, titleUpdate, populateVisitedLinks, data);
+}
+
+void ewk_context_visited_link_add(Ewk_Context* ewkContext, const char* visitedURL)
+{
+    EINA_SAFETY_ON_NULL_RETURN(ewkContext);
+    EINA_SAFETY_ON_NULL_RETURN(visitedURL);
+
+    ewkContext->addVisitedLink(visitedURL);
+}
+
+// Ewk_Cache_Model enum validation
+COMPILE_ASSERT_MATCHING_ENUM(EWK_CACHE_MODEL_DOCUMENT_VIEWER, kWKCacheModelDocumentViewer);
+COMPILE_ASSERT_MATCHING_ENUM(EWK_CACHE_MODEL_DOCUMENT_BROWSER, kWKCacheModelDocumentBrowser);
+COMPILE_ASSERT_MATCHING_ENUM(EWK_CACHE_MODEL_PRIMARY_WEBBROWSER, kWKCacheModelPrimaryWebBrowser);
+
+Eina_Bool ewk_context_cache_model_set(Ewk_Context* ewkContext, Ewk_Cache_Model cacheModel)
+{
+    EINA_SAFETY_ON_NULL_RETURN_VAL(ewkContext, false);
+
+    ewkContext->setCacheModel(cacheModel);
+
+    return true;
+}
+
+Ewk_Cache_Model ewk_context_cache_model_get(const Ewk_Context* ewkContext)
+{
+    EINA_SAFETY_ON_NULL_RETURN_VAL(ewkContext, EWK_CACHE_MODEL_DOCUMENT_VIEWER);
+
+    return ewkContext->cacheModel();
+}
+

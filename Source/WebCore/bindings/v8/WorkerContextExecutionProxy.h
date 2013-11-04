@@ -49,7 +49,11 @@ namespace WebCore {
     struct WrapperTypeInfo;
 
     struct WorkerContextExecutionState {
-        WorkerContextExecutionState() : hadException(false), lineNumber(0) { }
+        WorkerContextExecutionState()
+            : hadException(false)
+            , lineNumber(0)
+        {
+        }
 
         bool hadException;
         ScriptValue exception;
@@ -60,40 +64,29 @@ namespace WebCore {
 
     class WorkerContextExecutionProxy {
     public:
-        WorkerContextExecutionProxy(WorkerContext*);
+        explicit WorkerContextExecutionProxy(WorkerContext*);
         ~WorkerContextExecutionProxy();
 
-        // Track the event so that we can detach it from the JS wrapper when a worker
-        // terminates. This is needed because we need to be able to dispose these
-        // events and releases references to their event targets: WorkerContext.
-        void trackEvent(Event*);
-
         // Alow use of eval() and is equivalents in scripts.
-        void setEvalAllowed(bool enable);
+        void setEvalAllowed(bool enable, const String& errorMessage);
 
         // Evaluate a script file in the current execution environment.
         ScriptValue evaluate(const String& script, const String& fileName, const TextPosition& scriptStartPosition, WorkerContextExecutionState*);
 
         // Returns a local handle of the context.
-        v8::Local<v8::Context> context() { return v8::Local<v8::Context>::New(m_context); }
+        v8::Local<v8::Context> context() { return v8::Local<v8::Context>::New(m_context.get()); }
 
     private:
         void initIsolate();
         bool initializeIfNeeded();
         void dispose();
 
-        static bool forgetV8EventObject(Event*);
-
         static const int kWorkerMaxStackSize = 500 * 1024;
 
         WorkerContext* m_workerContext;
-        v8::Persistent<v8::Context> m_context;
-
-        Vector<Event*> m_events;
-
+        ScopedPersistent<v8::Context> m_context;
         OwnPtr<V8PerContextData> m_perContextData;
-
-        bool m_disableEvalPending;
+        String m_disableEvalPending;
     };
 
 } // namespace WebCore

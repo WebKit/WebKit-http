@@ -28,7 +28,6 @@
 
 #include "ComposedShadowTreeWalker.h"
 #include "ContainerNode.h"
-#include "ContextFeatures.h"
 #include "DOMSelection.h"
 #include "DOMWindow.h"
 #include "Document.h"
@@ -37,11 +36,13 @@
 #include "Frame.h"
 #include "HTMLAnchorElement.h"
 #include "HTMLFrameOwnerElement.h"
+#include "HTMLLabelElement.h"
 #include "HTMLMapElement.h"
 #include "HTMLNames.h"
 #include "IdTargetObserverRegistry.h"
 #include "InsertionPoint.h"
 #include "Page.h"
+#include "RuntimeEnabledFeatures.h"
 #include "ShadowRoot.h"
 #include "TreeScopeAdopter.h"
 #include <wtf/Vector.h>
@@ -55,6 +56,7 @@ using namespace HTMLNames;
 TreeScope::TreeScope(ContainerNode* rootNode)
     : m_rootNode(rootNode)
     , m_parentTreeScope(0)
+    , m_shouldCacheLabelsByForAttribute(false)
     , m_idTargetObserverRegistry(IdTargetObserverRegistry::create())
 {
     ASSERT(rootNode);
@@ -72,6 +74,7 @@ void TreeScope::destroyTreeScopeData()
 {
     m_elementsById.clear();
     m_imageMapsByName.clear();
+    m_labelsByForAttribute.clear();
 }
 
 void TreeScope::setParentTreeScope(TreeScope* newParentScope)
@@ -144,6 +147,36 @@ HTMLMapElement* TreeScope::getImageMap(const String& url) const
     return static_cast<HTMLMapElement*>(m_imageMapsByName.getElementByMapName(AtomicString(name).impl(), this));
 }
 
+void TreeScope::addLabel(const AtomicString& forAttributeValue, HTMLLabelElement* element)
+{
+    m_labelsByForAttribute.add(forAttributeValue.impl(), element);
+}
+
+void TreeScope::removeLabel(const AtomicString& forAttributeValue, HTMLLabelElement* element)
+{
+    m_labelsByForAttribute.remove(forAttributeValue.impl(), element);
+}
+
+HTMLLabelElement* TreeScope::labelElementForId(const AtomicString& forAttributeValue)
+{
+    if (!m_shouldCacheLabelsByForAttribute) {
+        m_shouldCacheLabelsByForAttribute = true;
+        for (Node* node = rootNode(); node; node = node->traverseNextNode()) {
+            if (node->hasTagName(labelTag)) {
+                HTMLLabelElement* label = static_cast<HTMLLabelElement*>(node);
+                const AtomicString& forValue = label->fastGetAttribute(forAttr);
+                if (!forValue.isEmpty())
+                    addLabel(forValue, label);
+            }
+        }
+    }
+
+    if (forAttributeValue.isEmpty())
+        return 0;
+
+    return static_cast<HTMLLabelElement*>(m_labelsByForAttribute.getElementByLabelForAttribute(forAttributeValue.impl(), this));
+}
+
 DOMSelection* TreeScope::getSelection() const
 {
     if (!rootNode()->document()->frame())
@@ -156,7 +189,7 @@ DOMSelection* TreeScope::getSelection() const
     // as a container. It is now enabled only if runtime Shadow DOM feature is enabled.
     // See https://bugs.webkit.org/show_bug.cgi?id=82697
 #if ENABLE(SHADOW_DOM)
-    if (ContextFeatures::shadowDOMEnabled(rootNode()->document())) {
+    if (RuntimeEnabledFeatures::shadowDOMEnabled()) {
         m_selection = DOMSelection::create(this);
         return m_selection.get();
     }
@@ -231,16 +264,14 @@ Node* TreeScope::focusedNode()
     if (!node)
         return 0;
     Vector<Node*> targetStack;
-    Node* last = 0;
-    for (ComposedShadowTreeParentWalker walker(node); walker.get(); walker.parentIncludingInsertionPointAndShadowRoot()) {
+    for (AncestorChainWalker walker(node); walker.get(); walker.parent()) {
         Node* node = walker.get();
         if (targetStack.isEmpty())
             targetStack.append(node);
-        else if (isInsertionPoint(node) && toInsertionPoint(node)->contains(last))
+        else if (walker.crossingInsertionPoint())
             targetStack.append(targetStack.last());
         if (node == rootNode())
             return targetStack.last();
-        last = node;
         if (node->isShadowRoot()) {
             ASSERT(!targetStack.isEmpty());
             targetStack.removeLast();
@@ -283,4 +314,3 @@ TreeScope* commonTreeScope(Node* nodeA, Node* nodeB)
 }
 
 } // namespace WebCore
-

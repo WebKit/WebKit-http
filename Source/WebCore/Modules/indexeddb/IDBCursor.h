@@ -30,6 +30,7 @@
 
 #include "IDBKey.h"
 #include "IDBTransaction.h"
+#include "ScriptValue.h"
 #include <wtf/PassRefPtr.h>
 #include <wtf/RefCounted.h>
 #include <wtf/RefPtr.h>
@@ -58,7 +59,7 @@ public:
     static const AtomicString& directionPrev();
     static const AtomicString& directionPrevUnique();
 
-    static IDBCursor::Direction stringToDirection(const String& modeString, ExceptionCode&);
+    static IDBCursor::Direction stringToDirection(const String& modeString, ScriptExecutionContext*, ExceptionCode&);
     static const AtomicString& directionToString(unsigned short mode, ExceptionCode&);
 
     static PassRefPtr<IDBCursor> create(PassRefPtr<IDBCursorBackendInterface>, Direction, IDBRequest*, IDBAny* source, IDBTransaction*);
@@ -69,24 +70,21 @@ public:
 
     // Implement the IDL
     const String& direction() const;
-    PassRefPtr<IDBKey> key() const;
-    PassRefPtr<IDBKey> primaryKey() const;
-    PassRefPtr<IDBAny> value();
+    const ScriptValue& key() const;
+    const ScriptValue& primaryKey() const;
+    const ScriptValue& value() const;
     IDBAny* source() const;
 
     PassRefPtr<IDBRequest> update(ScriptExecutionContext*, ScriptValue&, ExceptionCode&);
-    void advance(unsigned long, ExceptionCode&);
+    // FIXME: Make this unsigned long once webkit.org/b/96798 lands.
+    void advance(long long, ExceptionCode&);
     void continueFunction(PassRefPtr<IDBKey>, ExceptionCode&);
     PassRefPtr<IDBRequest> deleteFunction(ScriptExecutionContext*, ExceptionCode&);
 
     void postSuccessHandlerCallback();
     void close();
-    void setValueReady(PassRefPtr<IDBKey>, PassRefPtr<IDBKey> primaryKey, ScriptValue&);
-
-    // The spec requires that the script object that wraps the value
-    // be unchanged until the value changes as a result of the cursor
-    // advancing.
-    bool valueIsDirty() { return m_valueIsDirty; }
+    void setValueReady(ScriptExecutionContext*, PassRefPtr<IDBKey>, PassRefPtr<IDBKey> primaryKey, ScriptValue&);
+    PassRefPtr<IDBKey> idbPrimaryKey() { return m_currentPrimaryKey; }
 
 protected:
     IDBCursor(PassRefPtr<IDBCursorBackendInterface>, Direction, IDBRequest*, IDBAny* source, IDBTransaction*);
@@ -104,10 +102,11 @@ private:
     bool m_gotValue;
     // These values are held because m_backend may advance while they
     // are still valid for the current success handlers.
+    ScriptValue m_currentKeyValue;
+    ScriptValue m_currentPrimaryKeyValue;
     RefPtr<IDBKey> m_currentKey;
     RefPtr<IDBKey> m_currentPrimaryKey;
-    RefPtr<IDBAny> m_currentValue;
-    bool m_valueIsDirty;
+    ScriptValue m_currentValue;
 };
 
 } // namespace WebCore

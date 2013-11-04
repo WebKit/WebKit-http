@@ -53,6 +53,7 @@ struct PaintInfo;
 class LineInfo;
 class RenderRubyRun;
 class TextLayout;
+class WordMeasurement;
 
 template <class Iterator, class Run> class BidiResolver;
 template <class Run> class BidiRunList;
@@ -62,6 +63,7 @@ typedef MidpointState<InlineIterator> LineMidpointState;
 typedef WTF::ListHashSet<RenderBox*, 16> TrackedRendererListHashSet;
 typedef WTF::HashMap<const RenderBlock*, TrackedRendererListHashSet*> TrackedDescendantsMap;
 typedef WTF::HashMap<const RenderBox*, HashSet<RenderBlock*>*> TrackedContainerMap;
+typedef Vector<WordMeasurement, 64> WordMeasurements;
 
 enum CaretType { CursorCaret, DragCaret };
 
@@ -91,7 +93,7 @@ public:
 
     // These two functions are overridden for inline-block.
     virtual LayoutUnit lineHeight(bool firstLine, LineDirectionMode, LinePositionMode = PositionOnContainingLine) const;
-    virtual LayoutUnit baselinePosition(FontBaseline, bool firstLine, LineDirectionMode, LinePositionMode = PositionOnContainingLine) const;
+    virtual int baselinePosition(FontBaseline, bool firstLine, LineDirectionMode, LinePositionMode = PositionOnContainingLine) const;
 
     RenderLineBoxList* lineBoxes() { return &m_lineBoxes; }
     const RenderLineBoxList* lineBoxes() const { return &m_lineBoxes; }
@@ -263,11 +265,25 @@ public:
     
     static void appendRunsForObject(BidiRunList<BidiRun>&, int start, int end, RenderObject*, InlineBidiResolver&);
 
-    static TextRun constructTextRun(RenderObject* context, const Font&, const String&, RenderStyle*,
-                                    TextRun::ExpansionBehavior = TextRun::AllowTrailingExpansion | TextRun::ForbidLeadingExpansion, TextRunFlags = DefaultTextRunFlags);
+    static TextRun constructTextRun(RenderObject* context, const Font& font, const String& string, RenderStyle* style,
+        TextRun::ExpansionBehavior = TextRun::AllowTrailingExpansion | TextRun::ForbidLeadingExpansion, TextRunFlags = DefaultTextRunFlags);
 
-    static TextRun constructTextRun(RenderObject* context, const Font&, const UChar*, int length, RenderStyle*,
-                                    TextRun::ExpansionBehavior = TextRun::AllowTrailingExpansion | TextRun::ForbidLeadingExpansion, TextRunFlags = DefaultTextRunFlags);
+    static TextRun constructTextRun(RenderObject* context, const Font& font, const RenderText* text, RenderStyle* style,
+        TextRun::ExpansionBehavior = TextRun::AllowTrailingExpansion | TextRun::ForbidLeadingExpansion);
+
+    static TextRun constructTextRun(RenderObject* context, const Font& font, const RenderText* text, unsigned offset, unsigned length, RenderStyle* style,
+        TextRun::ExpansionBehavior = TextRun::AllowTrailingExpansion | TextRun::ForbidLeadingExpansion);
+
+    static TextRun constructTextRun(RenderObject* context, const Font& font, const RenderText* text, unsigned offset, RenderStyle* style,
+        TextRun::ExpansionBehavior = TextRun::AllowTrailingExpansion | TextRun::ForbidLeadingExpansion);
+
+#if ENABLE(8BIT_TEXTRUN)
+    static TextRun constructTextRun(RenderObject* context, const Font& font, const LChar* characters, int length, RenderStyle* style,
+        TextRun::ExpansionBehavior = TextRun::AllowTrailingExpansion | TextRun::ForbidLeadingExpansion);
+#endif
+
+    static TextRun constructTextRun(RenderObject* context, const Font& font, const UChar* characters, int length, RenderStyle* style,
+        TextRun::ExpansionBehavior = TextRun::AllowTrailingExpansion | TextRun::ForbidLeadingExpansion);
 
     ColumnInfo* columnInfo() const;
     int columnGap() const;
@@ -447,8 +463,9 @@ protected:
 
     virtual void computePreferredLogicalWidths();
 
-    virtual LayoutUnit firstLineBoxBaseline() const;
-    virtual LayoutUnit lastLineBoxBaseline() const;
+    virtual int firstLineBoxBaseline() const;
+    virtual int inlineBlockBaseline(LineDirectionMode) const OVERRIDE;
+    int lastLineBoxBaseline(LineDirectionMode) const;
 
     virtual void updateHitTestResult(HitTestResult&, const LayoutPoint&);
 
@@ -729,7 +746,7 @@ private:
             reset();
         }
 
-        InlineIterator nextLineBreak(InlineBidiResolver&, LineInfo&, RenderTextInfo&, FloatingObject* lastFloatFromPreviousLine, unsigned consecutiveHyphenatedLines);
+        InlineIterator nextLineBreak(InlineBidiResolver&, LineInfo&, RenderTextInfo&, FloatingObject* lastFloatFromPreviousLine, unsigned consecutiveHyphenatedLines, WordMeasurements&);
 
         bool lineWasHyphenated() { return m_hyphenated; }
         const Vector<RenderBox*>& positionedObjects() { return m_positionedObjects; }
@@ -757,7 +774,7 @@ private:
 
     void setMarginsForRubyRun(BidiRun*, RenderRubyRun*, RenderObject*, const LineInfo&);
 
-    void computeInlineDirectionPositionsForLine(RootInlineBox*, const LineInfo&, BidiRun* firstRun, BidiRun* trailingSpaceRun, bool reachedEnd, GlyphOverflowAndFallbackFontsMap&, VerticalPositionCache&);
+    void computeInlineDirectionPositionsForLine(RootInlineBox*, const LineInfo&, BidiRun* firstRun, BidiRun* trailingSpaceRun, bool reachedEnd, GlyphOverflowAndFallbackFontsMap&, VerticalPositionCache&, WordMeasurements&);
     void computeBlockDirectionPositionsForLine(RootInlineBox*, BidiRun*, GlyphOverflowAndFallbackFontsMap&, VerticalPositionCache&);
     void deleteEllipsisLineBoxes();
     void checkLinesForTextOverflow();
@@ -963,7 +980,7 @@ private:
     // End helper functions and structs used by layoutBlockChildren.
 
     // Helper function for layoutInlineChildren()
-    RootInlineBox* createLineBoxesFromBidiRuns(BidiRunList<BidiRun>&, const InlineIterator& end, LineInfo&, VerticalPositionCache&, BidiRun* trailingSpaceRun);
+    RootInlineBox* createLineBoxesFromBidiRuns(BidiRunList<BidiRun>&, const InlineIterator& end, LineInfo&, VerticalPositionCache&, BidiRun* trailingSpaceRun, WordMeasurements&);
     void layoutRunsAndFloats(LineLayoutState&, bool hasInlineChild);
     void layoutRunsAndFloatsInRange(LineLayoutState&, InlineBidiResolver&, const InlineIterator& cleanLineStart, const BidiStatus& cleanLineBidiStatus, unsigned consecutiveHyphenatedLines);
     void linkToEndLineIfNeeded(LineLayoutState&);

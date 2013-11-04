@@ -39,32 +39,63 @@ class DataReference;
 
 class ArgumentEncoder {
 public:
-    static PassOwnPtr<ArgumentEncoder> create(uint64_t destinationID);
-    ~ArgumentEncoder();
+    static PassOwnPtr<ArgumentEncoder> create();
+    virtual ~ArgumentEncoder();
 
     void encodeFixedLengthData(const uint8_t*, size_t, unsigned alignment);
     void encodeVariableLengthByteArray(const DataReference&);
 
-    void encodeBool(bool);
-    void encodeUInt16(uint16_t);
-    void encodeUInt32(uint32_t);
-    void encodeUInt64(uint64_t);
-    void encodeInt32(int32_t);
-    void encodeInt64(int64_t);
-    void encodeFloat(float);
-    void encodeDouble(double);
+    void encode(bool);
+    void encode(uint16_t);
+    void encode(uint32_t);
+    void encode(uint64_t);
+    void encode(int32_t);
+    void encode(int64_t);
+    void encode(float);
+    void encode(double);
 
     template<typename T> void encodeEnum(T t)
     {
         COMPILE_ASSERT(sizeof(T) <= sizeof(uint64_t), enum_type_must_not_be_larger_than_64_bits);
 
-        encodeUInt64(static_cast<uint64_t>(t));
+        encode(static_cast<uint64_t>(t));
     }
+
+    template<bool B, typename T = void>
+    struct EnableIf { };
+
+    template<typename T>
+    struct EnableIf<true, T> { typedef T Type; };
     
-    // Generic type encode function.
-    template<typename T> void encode(const T& t)
+    template<typename T> class UsesDeprecatedEncodeFunction {
+        typedef char YesType;
+        struct NoType {
+            char padding[8];
+        };
+
+        static YesType checkEncode(void (*)(ArgumentEncoder*, const T&));
+        static NoType checkEncode(...);
+
+    public:
+        static const bool value = sizeof(checkEncode(ArgumentCoder<T>::encode)) == sizeof(YesType);
+    };
+
+    // FIXME: This is the function that gets chosen if the argument coder takes the ArgumentEncoder as a pointer.
+    // This is the deprecated form - get rid of it.
+    template<typename T> void encode(const T& t, typename EnableIf<UsesDeprecatedEncodeFunction<T>::value>::Type* = 0)
     {
         ArgumentCoder<T>::encode(this, t);
+    }
+
+    template<typename T> void encode(const T& t, typename EnableIf<!UsesDeprecatedEncodeFunction<T>::value>::Type* = 0)
+    {
+        ArgumentCoder<T>::encode(*this, t);
+    }
+
+    template<typename T> ArgumentEncoder& operator<<(const T& t)
+    {
+        encode(t);
+        return *this;
     }
 
     uint8_t* buffer() const { return m_buffer; }
@@ -73,12 +104,10 @@ public:
     void addAttachment(const Attachment&);
     Vector<Attachment> releaseAttachments();
 
-#ifndef NDEBUG
-    void debug();
-#endif
+protected:
+    ArgumentEncoder();
 
 private:
-    explicit ArgumentEncoder(uint64_t destinationID);
     uint8_t* grow(unsigned alignment, size_t size);
     
     uint8_t* m_buffer;
@@ -89,46 +118,6 @@ private:
 
     Vector<Attachment> m_attachments;
 };
-
-template<> inline void ArgumentEncoder::encode(const bool& n)
-{
-    encodeBool(n);
-}
-
-template<> inline void ArgumentEncoder::encode(const uint16_t& n)
-{
-    encodeUInt16(n);
-}
-
-template<> inline void ArgumentEncoder::encode(const uint32_t& n)
-{
-    encodeUInt32(n);
-}
-
-template<> inline void ArgumentEncoder::encode(const uint64_t& n)
-{
-    encodeUInt64(n);
-}
-
-template<> inline void ArgumentEncoder::encode(const int32_t& n)
-{
-    encodeInt32(n);
-}
-
-template<> inline void ArgumentEncoder::encode(const int64_t& n)
-{
-    encodeInt64(n);
-}
-
-template<> inline void ArgumentEncoder::encode(const float& n)
-{
-    encodeFloat(n);
-}
-
-template<> inline void ArgumentEncoder::encode(const double& n)
-{
-    encodeDouble(n);
-}
 
 } // namespace CoreIPC
 

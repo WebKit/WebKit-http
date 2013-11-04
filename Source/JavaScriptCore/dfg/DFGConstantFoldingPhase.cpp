@@ -111,6 +111,16 @@ private:
                 break;
             }
                 
+            case Arrayify: {
+                if (!modeAlreadyChecked(m_state.forNode(node.child1()), node.arrayMode()))
+                    break;
+                ASSERT(node.refCount() >= 1);
+                node.setOpAndDefaultFlags(GetButterfly);
+                m_graph.deref(nodeIndex);
+                eliminated = true;
+                break;
+            }
+
             default:
                 break;
             }

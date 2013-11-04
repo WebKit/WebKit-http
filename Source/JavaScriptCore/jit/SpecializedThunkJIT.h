@@ -40,7 +40,7 @@ namespace JSC {
         SpecializedThunkJIT(int expectedArgCount)
         {
             // Check that we have the expected number of arguments
-            m_failures.append(branch32(NotEqual, payloadFor(RegisterFile::ArgumentCount), TrustedImm32(expectedArgCount + 1)));
+            m_failures.append(branch32(NotEqual, payloadFor(JSStack::ArgumentCount), TrustedImm32(expectedArgCount + 1)));
         }
         
         void loadDoubleArgument(int argument, FPRegisterID dst, RegisterID scratch)
@@ -83,16 +83,16 @@ namespace JSC {
         {
             if (src != regT0)
                 move(src, regT0);
-            loadPtr(payloadFor(RegisterFile::CallerFrame, callFrameRegister), callFrameRegister);
+            loadPtr(payloadFor(JSStack::CallerFrame, callFrameRegister), callFrameRegister);
             ret();
         }
         
         void returnDouble(FPRegisterID src)
         {
 #if USE(JSVALUE64)
-            moveDoubleToPtr(src, regT0);
-            Jump zero = branchTestPtr(Zero, regT0);
-            subPtr(tagTypeNumberRegister, regT0);
+            moveDoubleTo64(src, regT0);
+            Jump zero = branchTest64(Zero, regT0);
+            sub64(tagTypeNumberRegister, regT0);
             Jump done = jump();
             zero.link(this);
             move(tagTypeNumberRegister, regT0);
@@ -108,7 +108,7 @@ namespace JSC {
             lowNonZero.link(this);
             highNonZero.link(this);
 #endif
-            loadPtr(payloadFor(RegisterFile::CallerFrame, callFrameRegister), callFrameRegister);
+            loadPtr(payloadFor(JSStack::CallerFrame, callFrameRegister), callFrameRegister);
             ret();
         }
 
@@ -117,7 +117,7 @@ namespace JSC {
             if (src != regT0)
                 move(src, regT0);
             tagReturnAsInt32();
-            loadPtr(payloadFor(RegisterFile::CallerFrame, callFrameRegister), callFrameRegister);
+            loadPtr(payloadFor(JSStack::CallerFrame, callFrameRegister), callFrameRegister);
             ret();
         }
 
@@ -126,7 +126,7 @@ namespace JSC {
             if (src != regT0)
                 move(src, regT0);
             tagReturnAsJSCell();
-            loadPtr(payloadFor(RegisterFile::CallerFrame, callFrameRegister), callFrameRegister);
+            loadPtr(payloadFor(JSStack::CallerFrame, callFrameRegister), callFrameRegister);
             ret();
         }
         
@@ -151,7 +151,7 @@ namespace JSC {
         void tagReturnAsInt32()
         {
 #if USE(JSVALUE64)
-            orPtr(tagTypeNumberRegister, regT0);
+            or64(tagTypeNumberRegister, regT0);
 #else
             move(TrustedImm32(JSValue::Int32Tag), regT1);
 #endif

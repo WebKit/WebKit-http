@@ -148,6 +148,7 @@ public:
     void setType(const String&);
 
     String value() const;
+    void setValue(const String&, ExceptionCode&, TextFieldEventBehavior = DispatchNoEvent);
     void setValue(const String&, TextFieldEventBehavior = DispatchNoEvent);
     void setValueForUser(const String&);
     // Checks if the specified string would be a valid value.
@@ -208,6 +209,7 @@ public:
     String alt() const;
 
     void setSize(unsigned);
+    void setSize(unsigned, ExceptionCode&);
 
     KURL src() const;
 
@@ -285,6 +287,9 @@ public:
     virtual const AtomicString& name() const OVERRIDE;
 
     static Vector<FileChooserFileInfo> filesFromFileInputFormControlState(const FormControlState&);
+
+    virtual void setRangeText(const String& replacement, ExceptionCode&) OVERRIDE;
+    virtual void setRangeText(const String& replacement, unsigned start, unsigned end, const String& selectionMode, ExceptionCode&) OVERRIDE;
 
 protected:
     HTMLInputElement(const QualifiedName&, Document*, HTMLFormElement*, bool createdByParser);

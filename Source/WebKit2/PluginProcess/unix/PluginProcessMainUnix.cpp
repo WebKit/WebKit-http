@@ -28,6 +28,8 @@
 #include "config.h"
 #include "PluginProcessMainUnix.h"
 
+#if ENABLE(PLUGIN_PROCESS)
+
 #include "Logging.h"
 #include "NetscapePlugin.h"
 #include "PluginProcess.h"
@@ -71,9 +73,9 @@ static int webkitXError(Display* xdisplay, XErrorEvent* error)
 
 WK_EXPORT int PluginProcessMainUnix(int argc, char* argv[])
 {
-    ASSERT(argc == 2 || argc == 3);
+    ASSERT_UNUSED(argc, argc == 2 || argc == 3);
     bool scanPlugin = !strcmp(argv[1], "-scanPlugin");
-    ASSERT(argc == 2 || (argc == 3 && scanPlugin));
+    ASSERT_UNUSED(argc, argc == 2 || (argc == 3 && scanPlugin));
 
 #if PLATFORM(GTK)
     gtk_init(&argc, &argv);
@@ -111,3 +113,5 @@ WK_EXPORT int PluginProcessMainUnix(int argc, char* argv[])
 }
 
 } // namespace WebKit
+
+#endif

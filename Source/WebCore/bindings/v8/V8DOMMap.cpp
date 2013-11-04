@@ -31,114 +31,69 @@
 #include "config.h"
 #include "V8DOMMap.h"
 
-#include "DOMData.h"
 #include "DOMDataStore.h"
-#include "ScopedDOMDataStore.h"
 #include "V8Binding.h"
+#include "V8Node.h"
 #include <wtf/MainThread.h>
 
 namespace WebCore {
 
-DOMDataStoreHandle::DOMDataStoreHandle(bool initialize)
-    : m_store(adoptPtr(!initialize ? 0 : new ScopedDOMDataStore()))
+NodeWrapperVisitor::~NodeWrapperVisitor()
 {
-    if (m_store)
-        V8PerIsolateData::current()->registerDOMDataStore(m_store.get());
 }
 
-DOMDataStoreHandle::~DOMDataStoreHandle()
+DOMWrapperMap<Node>& getDOMNodeMap(v8::Isolate* isolate)
 {
-    if (m_store)
-        V8PerIsolateData::current()->unregisterDOMDataStore(m_store.get());
-}
-
-DOMNodeMapping& getDOMNodeMap(v8::Isolate* isolate)
-{
-    return DOMData::getCurrentStore(isolate).domNodeMap();
-}
-
-DOMNodeMapping& getActiveDOMNodeMap(v8::Isolate* isolate)
-{
-    return DOMData::getCurrentStore(isolate).activeDomNodeMap();
+    if (!isolate)
+        isolate = v8::Isolate::GetCurrent();
+    return DOMDataStore::current(isolate)->domNodeMap();
 }
 
 DOMWrapperMap<void>& getDOMObjectMap(v8::Isolate* isolate)
 {
-    return DOMData::getCurrentStore(isolate).domObjectMap();
+    if (!isolate)
+        isolate = v8::Isolate::GetCurrent();
+    return DOMDataStore::current(isolate)->domObjectMap();
 }
 
-DOMWrapperMap<void>& getActiveDOMObjectMap(v8::Isolate* isolate)
-{
-    return DOMData::getCurrentStore(isolate).activeDomObjectMap();
-}
-
-void removeAllDOMObjects()
-{
-    DOMDataStore& store = DOMData::getCurrentStore();
-
-    v8::HandleScope scope;
-
-    // The DOM objects with the following types only exist on the main thread.
-    if (isMainThread()) {
-        // Remove all DOM nodes.
-        DOMData::removeObjectsFromWrapperMap<Node>(&store, store.domNodeMap());
-
-        // Remove all active DOM nodes.
-        DOMData::removeObjectsFromWrapperMap<Node>(&store, store.activeDomNodeMap());
-    }
-
-    // Remove all DOM objects in the wrapper map.
-    DOMData::removeObjectsFromWrapperMap<void>(&store, store.domObjectMap());
-
-    // Remove all active DOM objects in the wrapper map.
-    DOMData::removeObjectsFromWrapperMap<void>(&store, store.activeDomObjectMap());
-}
-
-void visitDOMNodes(DOMWrapperMap<Node>::Visitor* visitor)
+void visitAllDOMNodes(NodeWrapperVisitor* visitor)
 {
     v8::HandleScope scope;
 
-    DOMDataList& list = DOMDataStore::allStores();
-    for (size_t i = 0; i < list.size(); ++i) {
-        DOMDataStore* store = list[i];
+    class VisitorAdapter : public v8::PersistentHandleVisitor {
+    public:
+        explicit VisitorAdapter(NodeWrapperVisitor* visitor)
+            : m_visitor(visitor)
+        {
+        }
 
-        store->domNodeMap().visit(store, visitor);
-    }
+        virtual void VisitPersistentHandle(v8::Persistent<v8::Value> value, uint16_t classId)
+        {
+            if (classId != v8DOMSubtreeClassId)
+                return;
+            ASSERT(V8Node::HasInstance(value));
+            ASSERT(value->IsObject());
+            ASSERT(!value.IsIndependent());
+            v8::Persistent<v8::Object> wrapper = v8::Persistent<v8::Object>::Cast(value);
+            m_visitor->visitNodeWrapper(V8Node::toNative(wrapper), wrapper);
+        }
+
+    private:
+        NodeWrapperVisitor* m_visitor;
+    } visitorAdapter(visitor);
+
+    v8::V8::VisitHandlesWithClassIds(&visitorAdapter);
 }
 
-void visitActiveDOMNodes(DOMWrapperMap<Node>::Visitor* visitor)
+void visitDOMObjects(DOMWrapperVisitor<void>* visitor)
 {
     v8::HandleScope scope;
 
-    DOMDataList& list = DOMDataStore::allStores();
-    for (size_t i = 0; i < list.size(); ++i) {
-        DOMDataStore* store = list[i];
-
-        store->activeDomNodeMap().visit(store, visitor);
-    }
-}
-
-void visitDOMObjects(DOMWrapperMap<void>::Visitor* visitor)
-{
-    v8::HandleScope scope;
-
-    DOMDataList& list = DOMDataStore::allStores();
+    Vector<DOMDataStore*>& list = V8PerIsolateData::current()->allStores();
     for (size_t i = 0; i < list.size(); ++i) {
         DOMDataStore* store = list[i];
 
         store->domObjectMap().visit(store, visitor);
-    }
-}
-
-void visitActiveDOMObjects(DOMWrapperMap<void>::Visitor* visitor)
-{
-    v8::HandleScope scope;
-
-    DOMDataList& list = DOMDataStore::allStores();
-    for (size_t i = 0; i < list.size(); ++i) {
-        DOMDataStore* store = list[i];
-
-        store->activeDomObjectMap().visit(store, visitor);
     }
 }
 

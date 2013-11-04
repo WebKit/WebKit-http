@@ -107,11 +107,17 @@ static void webkit_favicon_database_class_init(WebKitFaviconDatabaseClass* favic
 }
 
 struct GetFaviconSurfaceAsyncData {
+    ~GetFaviconSurfaceAsyncData()
+    {
+        if (shouldReleaseIconForPageURL)
+            faviconDatabase->priv->iconDatabase->releaseIconForPageURL(pageURL);
+    }
+
     GRefPtr<WebKitFaviconDatabase> faviconDatabase;
     String pageURL;
     RefPtr<cairo_surface_t> icon;
-    GOwnPtr<GError> error;
     GRefPtr<GCancellable> cancellable;
+    bool shouldReleaseIconForPageURL;
 };
 WEBKIT_DEFINE_ASYNC_DATA_STRUCT(GetFaviconSurfaceAsyncData)
 
@@ -142,21 +148,30 @@ static void deletePendingIconRequests(WebKitFaviconDatabase* database, PendingIc
     delete requests;
 }
 
-static void processPendingIconsForURI(WebKitFaviconDatabase* database, const String& pageURL)
+static void processPendingIconsForPageURL(WebKitFaviconDatabase* database, const String& pageURL)
 {
-    PendingIconRequestVector* icons = database->priv->pendingIconRequests.get(pageURL);
-    if (!icons)
+    PendingIconRequestVector* pendingIconRequests = database->priv->pendingIconRequests.get(pageURL);
+    if (!pendingIconRequests)
         return;
 
-    for (size_t i = 0; i < icons->size(); ++i) {
-        GSimpleAsyncResult* result = icons->at(i).get();
+    GOwnPtr<GError> error;
+    RefPtr<cairo_surface_t> icon = getIconSurfaceSynchronously(database, pageURL, &error.outPtr());
+
+    for (size_t i = 0; i < pendingIconRequests->size(); ++i) {
+        GSimpleAsyncResult* result = pendingIconRequests->at(i).get();
         GetFaviconSurfaceAsyncData* data = static_cast<GetFaviconSurfaceAsyncData*>(g_simple_async_result_get_op_res_gpointer(result));
-        if (!g_cancellable_is_cancelled(data->cancellable.get()))
-            data->icon = getIconSurfaceSynchronously(database, pageURL, &data->error.outPtr());
+        if (!g_cancellable_is_cancelled(data->cancellable.get())) {
+            if (error)
+                g_simple_async_result_take_error(result, error.release());
+            else {
+                data->icon = icon;
+                data->shouldReleaseIconForPageURL = false;
+            }
+        }
 
         g_simple_async_result_complete(result);
     }
-    deletePendingIconRequests(database, icons, pageURL);
+    deletePendingIconRequests(database, pendingIconRequests, pageURL);
 }
 
 static void iconDataReadyForPageURLCallback(WKIconDatabaseRef wkIconDatabase, WKURLRef wkPageURL, const void* clientInfo)
@@ -164,11 +179,10 @@ static void iconDataReadyForPageURLCallback(WKIconDatabaseRef wkIconDatabase, WK
     ASSERT(isMainThread());
 
     WebKitFaviconDatabase* database = WEBKIT_FAVICON_DATABASE(clientInfo);
-    String pageURLString = toImpl(wkPageURL)->string();
+    String pageURL = toImpl(wkPageURL)->string();
 
-    database->priv->iconDatabase->retainIconForPageURL(pageURLString);
-    processPendingIconsForURI(database, pageURLString);
-    g_signal_emit(database, signals[ICON_READY], 0, pageURLString.utf8().data());
+    processPendingIconsForPageURL(database, pageURL);
+    g_signal_emit(database, signals[ICON_READY], 0, pageURL.utf8().data());
 }
 
 WebKitFaviconDatabase* webkitFaviconDatabaseCreate(WebIconDatabase* iconDatabase)
@@ -282,6 +296,8 @@ void webkit_favicon_database_get_favicon(WebKitFaviconDatabase* database, const 
         return;
     }
 
+    priv->iconDatabase->retainIconForPageURL(data->pageURL);
+
     // We ask for the icon directly. If we don't get the icon data now,
     // we'll be notified later (even if the database is still importing icons).
     GOwnPtr<GError> error;
@@ -290,6 +306,9 @@ void webkit_favicon_database_get_favicon(WebKitFaviconDatabase* database, const 
         g_simple_async_result_complete_in_idle(result.get());
         return;
     }
+
+    // At this point we still don't know whether we will get a valid icon for pageURL.
+    data->shouldReleaseIconForPageURL = true;
 
     if (g_error_matches(error.get(), WEBKIT_FAVICON_DATABASE_ERROR, WEBKIT_FAVICON_DATABASE_ERROR_FAVICON_NOT_FOUND)) {
         g_simple_async_result_take_error(result.get(), error.release());
@@ -335,11 +354,6 @@ cairo_surface_t* webkit_favicon_database_get_favicon_finish(WebKitFaviconDatabas
 
     GetFaviconSurfaceAsyncData* data = static_cast<GetFaviconSurfaceAsyncData*>(g_simple_async_result_get_op_res_gpointer(simpleResult));
     ASSERT(data);
-    if (data->error) {
-        g_propagate_error(error, data->error.release());
-        return 0;
-    }
-
     return cairo_surface_reference(data->icon.get());
 }
 

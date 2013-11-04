@@ -34,13 +34,16 @@ class TiledBacking {
 public:
     virtual ~TiledBacking() { }
 
-    virtual void visibleRectChanged(const IntRect&) = 0;
+    virtual void setVisibleRect(const IntRect&) = 0;
+    virtual IntRect visibleRect() const = 0;
+
     virtual void setIsInWindow(bool) = 0;
 
     enum {
         CoverageForVisibleArea = 0,
         CoverageForVerticalScrolling = 1 << 0,
         CoverageForHorizontalScrolling = 1 << 1,
+        CoverageForSlowScrolling = 1 << 2, // Indicates that we expect to paint a lot on scrolling.
         CoverageForScrolling = CoverageForVerticalScrolling | CoverageForHorizontalScrolling
     };
     typedef unsigned TileCoverage;
@@ -48,10 +51,16 @@ public:
     virtual void setTileCoverage(TileCoverage) = 0;
     virtual TileCoverage tileCoverage() const = 0;
 
+    virtual IntSize tileSize() const = 0;
+
     virtual void forceRepaint() = 0;
 
     virtual void setScrollingPerformanceLoggingEnabled(bool) = 0;
     virtual bool scrollingPerformanceLoggingEnabled() const = 0;
+    
+    // Exposed for testing
+    virtual IntRect tileCoverageRect() const = 0;
+
 };
 
 } // namespace WebCore

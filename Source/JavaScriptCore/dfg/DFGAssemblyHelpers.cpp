@@ -30,8 +30,6 @@
 
 namespace JSC { namespace DFG {
 
-const double AssemblyHelpers::twoToThe32 = (double)0x100000000ull;
-
 ExecutableBase* AssemblyHelpers::executableFor(const CodeOrigin& codeOrigin)
 {
     if (!codeOrigin.inlineCallFrame)
@@ -49,9 +47,9 @@ Vector<BytecodeAndMachineOffset>& AssemblyHelpers::decodedCodeMapFor(CodeBlock* 
     HashMap<CodeBlock*, Vector<BytecodeAndMachineOffset> >::AddResult result = m_decodedCodeMaps.add(codeBlock, Vector<BytecodeAndMachineOffset>());
     
     if (result.isNewEntry)
-        codeBlock->jitCodeMap()->decode(result.iterator->second);
+        codeBlock->jitCodeMap()->decode(result.iterator->value);
     
-    return result.iterator->second;
+    return result.iterator->value;
 }
 
 #if ENABLE(SAMPLING_FLAGS)
@@ -75,7 +73,7 @@ void AssemblyHelpers::clearSamplingFlag(int32_t flag)
 void AssemblyHelpers::jitAssertIsInt32(GPRReg gpr)
 {
 #if CPU(X86_64)
-    Jump checkInt32 = branchPtr(BelowOrEqual, gpr, TrustedImmPtr(reinterpret_cast<void*>(static_cast<uintptr_t>(0xFFFFFFFFu))));
+    Jump checkInt32 = branch64(BelowOrEqual, gpr, TrustedImm64(static_cast<uintptr_t>(0xFFFFFFFFu)));
     breakpoint();
     checkInt32.link(this);
 #else
@@ -85,22 +83,22 @@ void AssemblyHelpers::jitAssertIsInt32(GPRReg gpr)
 
 void AssemblyHelpers::jitAssertIsJSInt32(GPRReg gpr)
 {
-    Jump checkJSInt32 = branchPtr(AboveOrEqual, gpr, GPRInfo::tagTypeNumberRegister);
+    Jump checkJSInt32 = branch64(AboveOrEqual, gpr, GPRInfo::tagTypeNumberRegister);
     breakpoint();
     checkJSInt32.link(this);
 }
 
 void AssemblyHelpers::jitAssertIsJSNumber(GPRReg gpr)
 {
-    Jump checkJSNumber = branchTestPtr(MacroAssembler::NonZero, gpr, GPRInfo::tagTypeNumberRegister);
+    Jump checkJSNumber = branchTest64(MacroAssembler::NonZero, gpr, GPRInfo::tagTypeNumberRegister);
     breakpoint();
     checkJSNumber.link(this);
 }
 
 void AssemblyHelpers::jitAssertIsJSDouble(GPRReg gpr)
 {
-    Jump checkJSInt32 = branchPtr(AboveOrEqual, gpr, GPRInfo::tagTypeNumberRegister);
-    Jump checkJSNumber = branchTestPtr(MacroAssembler::NonZero, gpr, GPRInfo::tagTypeNumberRegister);
+    Jump checkJSInt32 = branch64(AboveOrEqual, gpr, GPRInfo::tagTypeNumberRegister);
+    Jump checkJSNumber = branchTest64(MacroAssembler::NonZero, gpr, GPRInfo::tagTypeNumberRegister);
     checkJSInt32.link(this);
     breakpoint();
     checkJSNumber.link(this);
@@ -108,7 +106,7 @@ void AssemblyHelpers::jitAssertIsJSDouble(GPRReg gpr)
 
 void AssemblyHelpers::jitAssertIsCell(GPRReg gpr)
 {
-    Jump checkCell = branchTestPtr(MacroAssembler::Zero, gpr, GPRInfo::tagMaskRegister);
+    Jump checkCell = branchTest64(MacroAssembler::Zero, gpr, GPRInfo::tagMaskRegister);
     breakpoint();
     checkCell.link(this);
 }

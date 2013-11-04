@@ -56,13 +56,13 @@ v8::Handle<v8::Value> V8XMLHttpRequest::constructorCallback(const v8::Arguments&
 
     RefPtr<SecurityOrigin> securityOrigin;
     if (V8DOMWindowShell* isolatedWorldShell = V8DOMWindowShell::getEntered())
-        securityOrigin = isolatedWorldShell->isolatedWorldSecurityOrigin();
+        securityOrigin = isolatedWorldShell->world()->isolatedWorldSecurityOrigin();
 
     RefPtr<XMLHttpRequest> xmlHttpRequest = XMLHttpRequest::create(context, securityOrigin);
 
     v8::Handle<v8::Object> wrapper = args.Holder();
     V8DOMWrapper::setDOMWrapper(wrapper, &info, xmlHttpRequest.get());
-    V8DOMWrapper::setJSWrapperForActiveDOMObject(xmlHttpRequest.release(), wrapper);
+    V8DOMWrapper::setJSWrapperForDOMObject(xmlHttpRequest.release(), wrapper);
     return wrapper;
 }
 

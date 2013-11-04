@@ -42,6 +42,8 @@ class ImageBufferData {
 public:
     ImageBufferData(const IntSize&);
 
+    void reportMemoryUsage(MemoryObjectInfo*) const;
+
     OwnPtr<SkCanvas> m_canvas;
     PlatformContextSkia m_platformContext;
 #if USE(ACCELERATED_COMPOSITING)

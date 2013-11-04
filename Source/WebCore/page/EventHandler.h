@@ -89,6 +89,7 @@ extern const int GeneralDragHysteresis;
 #endif // ENABLE(DRAG_SUPPORT)
 
 enum HitTestScrollbars { ShouldHitTestScrollbars, DontHitTestScrollbars };
+enum AppendTrailingWhitespace { ShouldAppendTrailingWhitespace, DontAppendTrailingWhitespace };
 
 class EventHandler {
     WTF_MAKE_NONCOPYABLE(EventHandler);
@@ -166,6 +167,8 @@ public:
 #if ENABLE(GESTURE_EVENTS)
     bool handleGestureEvent(const PlatformGestureEvent&);
     bool handleGestureTap(const PlatformGestureEvent&);
+    bool handleGestureLongPress(const PlatformGestureEvent&);
+    bool handleGestureTwoFingerTap(const PlatformGestureEvent&);
     bool handleGestureScrollUpdate(const PlatformGestureEvent&);
 #endif
 
@@ -241,6 +244,7 @@ private:
 
     bool eventActivatedView(const PlatformMouseEvent&) const;
     bool updateSelectionForMouseDownDispatchingSelectStart(Node*, const VisibleSelection&, TextGranularity);
+    void selectClosestWordFromHitTestResult(const HitTestResult&, AppendTrailingWhitespace);
     void selectClosestWordFromMouseEvent(const MouseEventWithHitTestResults&);
     void selectClosestWordOrLinkFromMouseEvent(const MouseEventWithHitTestResults&);
 
@@ -361,6 +365,7 @@ private:
 #if ENABLE(GESTURE_EVENTS)
     bool handleGestureScrollCore(const PlatformGestureEvent&, PlatformWheelEventGranularity, bool latchedWheel);
     bool handleGestureTapDown();
+    bool handleGestureForTextSelectionOrContextMenu(const PlatformGestureEvent&);
 #endif
 
     Frame* m_frame;

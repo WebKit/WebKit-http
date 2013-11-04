@@ -61,8 +61,8 @@ public:
     bool initialize(const PluginCreationParameters&);
     void destroy();
 
-    void didReceivePluginControllerProxyMessage(CoreIPC::Connection*, CoreIPC::MessageID, CoreIPC::ArgumentDecoder*);
-    void didReceiveSyncPluginControllerProxyMessage(CoreIPC::Connection*, CoreIPC::MessageID, CoreIPC::ArgumentDecoder*, OwnPtr<CoreIPC::ArgumentEncoder>&);
+    void didReceivePluginControllerProxyMessage(CoreIPC::Connection*, CoreIPC::MessageID, CoreIPC::MessageDecoder&);
+    void didReceiveSyncPluginControllerProxyMessage(CoreIPC::Connection*, CoreIPC::MessageID, CoreIPC::MessageDecoder&, OwnPtr<CoreIPC::MessageEncoder>&);
 
     bool wantsWheelEvents() const;
 
@@ -137,6 +137,9 @@ private:
     void handleMouseEnterEvent(const WebMouseEvent&, bool& handled);
     void handleMouseLeaveEvent(const WebMouseEvent&, bool& handled);
     void handleKeyboardEvent(const WebKeyboardEvent&, bool& handled);
+    void handleEditingCommand(const String&, const String&, bool&);
+    void isEditingCommandEnabled(const String&, bool&);
+    void handlesPageScaleFactor(bool&);
     void paintEntirePlugin();
     void snapshot(ShareableBitmap::Handle& backingStoreHandle);
     void setFocus(bool);

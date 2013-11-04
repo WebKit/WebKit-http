@@ -52,7 +52,7 @@ static IntRect screenRectOfContents(Element* element)
 #if USE(ACCELERATED_COMPOSITING)
     if (element->renderer() && element->renderer()->hasLayer() && element->renderer()->enclosingLayer()->isComposited()) {
         FloatQuad contentsBox = static_cast<FloatRect>(element->renderer()->enclosingLayer()->backing()->contentsBox());
-        contentsBox = element->renderer()->localToAbsoluteQuad(contentsBox);
+        contentsBox = element->renderer()->localToAbsoluteQuad(contentsBox, SnapOffsetForTransforms);
         return element->renderer()->view()->frameView()->contentsToScreen(contentsBox.enclosingBoundingBox());
     }
 #endif
@@ -78,9 +78,9 @@ WebCore::Element* WebFullScreenManager::element()
     return m_element.get(); 
 }
 
-void WebFullScreenManager::didReceiveMessage(CoreIPC::Connection* connection, CoreIPC::MessageID messageID, CoreIPC::ArgumentDecoder* arguments)
+void WebFullScreenManager::didReceiveMessage(CoreIPC::Connection* connection, CoreIPC::MessageID messageID, CoreIPC::MessageDecoder& decoder)
 {
-    didReceiveWebFullScreenManagerMessage(connection, messageID, arguments);
+    didReceiveWebFullScreenManagerMessage(connection, messageID, decoder);
 }
 
 bool WebFullScreenManager::supportsFullScreen(bool withKeyboard)

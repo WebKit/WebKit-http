@@ -243,6 +243,11 @@ static void testWebKitSettings(Test*, gconstpointer)
     webkit_settings_set_enable_page_cache(settings, FALSE);
     g_assert(!webkit_settings_get_enable_page_cache(settings));
 
+    // By default, smooth scrolling is disabled.
+    g_assert(!webkit_settings_get_enable_smooth_scrolling(settings));
+    webkit_settings_set_enable_smooth_scrolling(settings, TRUE);
+    g_assert(webkit_settings_get_enable_smooth_scrolling(settings));
+
     g_object_unref(G_OBJECT(settings));
 }
 
@@ -315,10 +320,13 @@ static void serverCallback(SoupServer* server, SoupMessage* message, const char*
         return;
     }
 
-    soup_message_set_status(message, SOUP_STATUS_OK);
-    const char* userAgent = soup_message_headers_get_one(message->request_headers, "User-Agent");
-    soup_message_body_append(message->response_body, SOUP_MEMORY_COPY, userAgent, strlen(userAgent));
-    soup_message_body_complete(message->response_body);
+    if (g_str_equal(path, "/")) {
+        const char* userAgent = soup_message_headers_get_one(message->request_headers, "User-Agent");
+        soup_message_set_status(message, SOUP_STATUS_OK);
+        soup_message_body_append(message->response_body, SOUP_MEMORY_COPY, userAgent, strlen(userAgent));
+        soup_message_body_complete(message->response_body);
+    } else
+        soup_message_set_status(message, SOUP_STATUS_NOT_FOUND);
 }
 
 void beforeAll()

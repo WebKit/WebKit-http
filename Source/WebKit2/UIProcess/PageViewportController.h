@@ -22,6 +22,8 @@
 #ifndef PageViewportController_h
 #define PageViewportController_h
 
+#if USE(TILED_BACKING_STORE)
+
 #include <WebCore/FloatPoint.h>
 #include <WebCore/FloatRect.h>
 #include <WebCore/FloatSize.h>
@@ -126,6 +128,7 @@ private:
     WebCore::FloatPoint m_viewportPos;
     WebCore::FloatSize m_viewportSize;
     WebCore::FloatSize m_contentsSize;
+    WebCore::IntSize m_clientContentsSize;
     float m_effectiveScale; // Should always be cssScale * devicePixelRatio.
 
     bool m_viewportPosIsLocked;
@@ -138,5 +141,7 @@ private:
 bool fuzzyCompare(float, float, float epsilon);
 
 } // namespace WebKit
+
+#endif
 
 #endif // PageViewportController_h

@@ -1,3 +1,350 @@
+2012-10-26  Christopher Cameron  <ccameron@chromium.org>
+
+        [chromium] Add additional memory management fields to WebGraphicsContext3D
+        https://bugs.webkit.org/show_bug.cgi?id=99703
+
+        Reviewed by James Robinson.
+
+        Add new fields to WebGraphicsMemoryAllocation to allow for specifying
+        limits for when visible and not, and to allow for specifying priority
+        cutoffs (e.g, to allow specifying that backgrounded tabs should
+        retain only their visible textures).
+
+        Add sendManagedMemoryStatsCHROMIUM to WebGraphicsContext3D, and
+        add WebGraphicsManagedMemoryStats structure, to allow the GPU memory
+        manager to make more informed choices.
+
+        * chromium/public/WebGraphicsContext3D.h:
+        (WebKit::WebGraphicsContext3D::sendManagedMemoryStatsCHROMIUM):
+        * chromium/public/WebGraphicsMemoryAllocation.h:
+        (WebGraphicsMemoryAllocation):
+        (WebKit::WebGraphicsMemoryAllocation::WebGraphicsMemoryAllocation):
+        (WebKit):
+        (WebGraphicsManagedMemoryStats):
+        (WebKit::WebGraphicsManagedMemoryStats::WebGraphicsManagedMemoryStats):
+
+2012-10-26  Dana Jansens  <danakj@chromium.org>
+
+        [chromium] Add implicit conversions between WebFloatPoint and gfx::PointF
+        https://bugs.webkit.org/show_bug.cgi?id=100435
+
+        Reviewed by James Robinson.
+
+        This is similar to other Web geometry types, but the WebFloatPoint is
+        missing it.
+
+        * chromium/public/WebFloatPoint.h:
+        (WebFloatPoint):
+        (WebKit::WebFloatPoint::WebFloatPoint):
+        (WebKit::WebFloatPoint::operator=):
+        (WebKit::WebFloatPoint::operator gfx::PointF):
+
+2012-10-25  Jonathan Backer  <backer@chromium.org>
+
+        CHROMIUM: Add a method to WebLayerTreeView API
+        https://bugs.webkit.org/show_bug.cgi?id=100291
+
+        Reviewed by James Robinson.
+
+        Used to support browser compositor commit locks (crbug.com/136366).
+
+        * chromium/public/WebLayerTreeView.h:
+        (WebLayerTreeView):
+        (WebKit::WebLayerTreeView::setDeferCommits):
+
+2012-10-24  John Sheu  <sheu@google.com>
+
+        [chromium] Add textureWidth() and textureHeight() to WebVideoFrame
+        https://bugs.webkit.org/show_bug.cgi?id=100042
+
+        Reviewed by James Robinson.
+
+        It might be the case that the visible portion of a video frame isn't the
+        entire texture size, e.g. for cropping.  We'll need accessors in
+        WebVideoFrame to be able to query both the underlying texture dimensions
+        and the subrect which is supposed to be visible.
+
+        This is presently a no-op change.  Once Chromium changes are in, I will
+        remove the superseded parts of the WebVideoFrame interface.
+
+        * chromium/public/WebVideoFrame.h:
+        (WebKit::WebVideoFrame::visibleRect);
+        (WebKit::WebVideoFrame::textureSize);
+
+2012-10-24  Mark Pilgrim  <pilgrim@chromium.org>
+
+        [Chromium] Remove screen-related functions from PlatformSupport
+        https://bugs.webkit.org/show_bug.cgi?id=97474
+
+        Reviewed by Adam Barth.
+
+        Screen-related functions like screenHorizontalDPI that
+        used to be on PlatformSupport are now accessed through a new
+        PlatformPageClient attached to Widget in WebCore-land, which is
+        implemented by ChromeClientImpl in WebKit-land, which proxies
+        calls to WebWidgetClient, which is actually implemented in
+        Chromium-land.
+
+        * Platform.gypi:
+        * chromium/public/WebScreenInfo.h: Added.
+        (WebKit):
+        (WebScreenInfo):
+        (WebKit::WebScreenInfo::WebScreenInfo):
+
+2012-10-23  David Reveman  <reveman@chromium.org>
+
+        [Chromium] Add CHROMIUM_texture_from_image extension support.
+        https://bugs.webkit.org/show_bug.cgi?id=99894
+
+        Reviewed by James Robinson.
+
+        Add bindTexImage2DCHROMIUM and releaseTexImage2DCHROMIUM prototypes to
+        WebGraphicsContext3D.h.
+
+        * chromium/public/WebGraphicsContext3D.h:
+        (WebGraphicsContext3D):
+        (WebKit::WebGraphicsContext3D::bindTexImage2DCHROMIUM):
+        (WebKit::WebGraphicsContext3D::releaseTexImage2DCHROMIUM):
+
+2012-10-23  Dana Jansens  <danakj@chromium.org>
+
+        [chromium] Expose setAutomaticallyComputeRasterScale on the WebLayer API
+        https://bugs.webkit.org/show_bug.cgi?id=100013
+
+        Reviewed by James Robinson.
+
+        This allows web content to opt-in to having their contentsScale
+        determined from their CSS transforms, without having this behaviour
+        unconditionally enabled globally.
+
+        Supports http://crbug.com/149943
+
+        * chromium/public/WebLayer.h:
+        (WebLayer):
+
+2012-10-22  Keishi Hattori  <keishi@webkit.org>
+
+        Remove monthFormatInLDML
+        https://bugs.webkit.org/show_bug.cgi?id=99971
+
+        Reviewed by Kent Tamura.
+
+        * chromium/public/WebLocalizedString.h:
+
+2012-10-22  Keishi Hattori  <keishi@webkit.org>
+
+        [Chromium] Rename WeekFormatInLDML to WeekFormatTemplate
+        https://bugs.webkit.org/show_bug.cgi?id=99972
+
+        Reviewed by Kent Tamura.
+
+        Renaming because Chromium won't be returning a week format in LDML.
+
+        * chromium/public/WebLocalizedString.h:
+
+2012-10-19  Sheriff Bot  <webkit.review.bot@gmail.com>
+
+        Unreviewed, rolling out r131944.
+        http://trac.webkit.org/changeset/131944
+        https://bugs.webkit.org/show_bug.cgi?id=99891
+
+        On second thoughts, not such a great idea (Requested by jamesr
+        on #webkit).
+
+        * chromium/public/WebCompositorSupport.h:
+        (WebCompositorSupport):
+
+2012-10-19  Alexandre Elias  <aelias@chromium.org>
+
+        [chromium] API to pass impl thread via WebLayerTreeView
+        https://bugs.webkit.org/show_bug.cgi?id=99863
+
+        Reviewed by James Robinson.
+
+        This adds an API to pass the compositor impl thread via WebView and
+        WebLayerTreeView. This is currently a no-op change, but in the future
+        this codepath will supercede WebCompositor. The goal is to avoid statics
+        in compositor initialization.
+
+        * chromium/public/WebCompositorSupport.h:
+        (WebKit::WebCompositorSupport::createLayerTreeView):
+        (WebCompositorSupport):
+        * chromium/public/WebLayerTreeView.h:
+        (WebKit):
+        (WebLayerTreeView):
+
+2012-10-18  Tommy Widenflycht  <tommyw@google.com>
+
+        MediaStream API: Do some cleanup in the chromium WebKit API
+        https://bugs.webkit.org/show_bug.cgi?id=99713
+
+        Reviewed by Adam Barth.
+
+        Removing the deprecated version of WebMediaStreamDescriptor::initialize and making
+        the two constructSDP functions in WebMediaStreamCenter optional to override.
+        This is part of the preparation to remove PeerConnection00.
+
+        * chromium/public/WebMediaStreamCenter.h:
+        (WebKit::WebMediaStreamCenter::constructSDP):
+        * chromium/public/WebMediaStreamDescriptor.h:
+        (WebMediaStreamDescriptor):
+
+2012-10-17  Adrienne Walker  <enne@chromium.org>
+
+        [chromium] Make WebContentLayer include what it uses
+        https://bugs.webkit.org/show_bug.cgi?id=99664
+
+        Reviewed by James Robinson.
+
+        * chromium/public/WebContentLayer.h:
+
+2012-10-17  Harald Alvestrand  <hta@google.com>
+
+        Implement the Selector argument to RTCPeerConnection.getStats
+        https://bugs.webkit.org/show_bug.cgi?id=99460
+
+        Reviewed by Adam Barth.
+
+        * chromium/public/WebRTCStatsRequest.h:
+        (WebKit):
+        (WebRTCStatsRequest):
+
+2012-10-16  Tommy Widenflycht  <tommyw@google.com>
+
+        MediaStream API: Add the chromium API for RTCDataChannel
+        https://bugs.webkit.org/show_bug.cgi?id=99435
+
+        Reviewed by Adam Barth.
+
+        Adding WebRTCDataChannel.
+
+        * Platform.gypi:
+        * chromium/public/WebRTCDataChannel.h: Added.
+        (WebCore):
+        (WebKit):
+        (WebRTCDataChannel):
+        (ExtraData):
+        (WebKit::WebRTCDataChannel::ExtraData::~ExtraData):
+        (WebKit::WebRTCDataChannel::WebRTCDataChannel):
+        (WebKit::WebRTCDataChannel::~WebRTCDataChannel):
+        (WebKit::WebRTCDataChannel::operator=):
+        (WebKit::WebRTCDataChannel::isNull):
+        * chromium/public/WebRTCPeerConnectionHandler.h:
+        (WebKit):
+        (WebRTCPeerConnectionHandler):
+        (WebKit::WebRTCPeerConnectionHandler::openDataChannel):
+        (WebKit::WebRTCPeerConnectionHandler::sendStringData):
+        (WebKit::WebRTCPeerConnectionHandler::sendRawData):
+        (WebKit::WebRTCPeerConnectionHandler::closeDataChannel):
+
+2012-10-13  Chris Rogers  <crogers@google.com>
+
+        WebAudioBus needs support for resizing bus to a smaller size
+        https://bugs.webkit.org/show_bug.cgi?id=99215
+
+        Reviewed by Dimitri Glazkov.
+
+        Upgrade AudioBus and WebAudioBus to support resizing to a smaller size, once it has been created.
+        This is useful, for example, when decoding VBR formats and the actual length can't be exactly determined
+        until the entire file is decoded.
+
+        * chromium/public/WebAudioBus.h:
+        (WebAudioBus):
+
+2012-10-10  Scott Violet  <sky@google.com>
+
+        Expose background color in WebLayer https://bugs.webkit.org/show_bug.cgi?id=98707
+
+        Reviewed by James Robinson.
+
+        * chromium/public/WebLayer.h:
+        (WebLayer): Adds backgroundColor.
+
+2012-10-10  Antoine Labour  <piman@chromium.org>
+
+        [chromium] Add entrypoints to set frame contents and recycle resources in WebDelegatedRendererLayer
+        https://bugs.webkit.org/show_bug.cgi?id=98833
+
+        Reviewed by James Robinson.
+
+        This is needed for https://codereview.chromium.org/10915298
+
+        * chromium/public/WebDelegatedRendererLayer.h:
+        (cc):
+        (WebKit):
+        (WebDelegatedRendererLayer):
+
+2012-10-10  Antoine Labour  <piman@chromium.org>
+
+        [chromium] Add empty WebCompositorFrame/WebCompositorFrameAck
+        https://bugs.webkit.org/show_bug.cgi?id=98841
+
+        Reviewed by James Robinson.
+
+        These were used in the WebKit API but never defined.
+
+        * chromium/public/WebCompositorFrame.h: Added.
+        (WebKit):
+        * chromium/public/WebCompositorFrameAck.h: Added.
+        (WebKit):
+
+2012-10-10  John Bauman  <jbauman@chromium.org>
+
+        [chromium] Add attribute for disabling automatic flushes
+        https://bugs.webkit.org/show_bug.cgi?id=98834
+
+        Reviewed by Kenneth Russell.
+
+        This attribute allows the compositor context to specify that it wants
+        to handle flushing itself.
+
+        * chromium/public/WebGraphicsContext3D.h:
+        (WebKit::WebGraphicsContext3D::Attributes::Attributes):
+        (Attributes):
+
+2012-10-09  Harald Alvestrand  <hta@google.com>
+
+        Change PeerConnection getStats function to single value local / remote
+        elements in RTCStatsReport.
+        https://bugs.webkit.org/show_bug.cgi?id=98753
+
+        Reviewed by Adam Barth.
+
+        * chromium/public/WebRTCStatsResponse.h:
+        (WebRTCStatsResponse):
+
+2012-10-04  Harald Alvestrand  <hta@google.com>
+
+        Change RTCPeerConnection GetStats to use Date timestamp format
+        https://bugs.webkit.org/show_bug.cgi?id=98263
+
+        Reviewed by Yury Semikhatsky.
+
+        * chromium/public/WebRTCStatsResponse.h:
+        (WebRTCStatsResponse):
+
+2012-10-04  Sheriff Bot  <webkit.review.bot@gmail.com>
+
+        Unreviewed, rolling out r130377.
+        http://trac.webkit.org/changeset/130377
+        https://bugs.webkit.org/show_bug.cgi?id=98392
+
+        Chromium Win compilation is broken (Requested by yurys on
+        #webkit).
+
+        * chromium/public/WebRTCStatsResponse.h:
+        (WebRTCStatsResponse):
+
+2012-10-04  Harald Alvestrand  <hta@google.com>
+
+        Change RTCPeerConnection GetStats to use Date timestamp format
+        https://bugs.webkit.org/show_bug.cgi?id=98263
+
+        Reviewed by Adam Barth.
+
+        * chromium/public/WebRTCStatsResponse.h:
+        (WebRTCStatsResponse):
+
 2012-10-03  Glenn Hartmann  <hartmanng@chromium.org>
 
         Adding total pixels painted and rasterized stats.

@@ -73,10 +73,7 @@ BitmapImage::BitmapImage(NativeImageCairo* nativeImage, ImageObserver* observer)
 
 void BitmapImage::draw(GraphicsContext* context, const FloatRect& dst, const FloatRect& src, ColorSpace styleColorSpace, CompositeOperator op)
 {
-    FloatRect srcRect(src);
-    FloatRect dstRect(dst);
-
-    if (!dstRect.width() || !dstRect.height() || !srcRect.width() || !srcRect.height())
+    if (!dst.width() || !dst.height() || !src.width() || !src.height())
         return;
 
     startAnimation();
@@ -86,7 +83,7 @@ void BitmapImage::draw(GraphicsContext* context, const FloatRect& dst, const Flo
         return;
 
     if (mayFillWithSolidColor()) {
-        fillWithSolidColor(context, dstRect, solidColor(), styleColorSpace, op);
+        fillWithSolidColor(context, dst, solidColor(), styleColorSpace, op);
         return;
     }
 
@@ -97,7 +94,16 @@ void BitmapImage::draw(GraphicsContext* context, const FloatRect& dst, const Flo
         context->setCompositeOperation(CompositeCopy);
     else
         context->setCompositeOperation(op);
-    context->platformContext()->drawSurfaceToContext(nativeImage->surface(), dstRect, srcRect, context);
+
+#if ENABLE(IMAGE_DECODER_DOWN_SAMPLING)
+    cairo_surface_t* surface = nativeImage->surface();
+    IntSize scaledSize(cairo_image_surface_get_width(surface), cairo_image_surface_get_height(surface));
+    FloatRect adjustedSrcRect = adjustSourceRectForDownSampling(src, scaledSize);
+#else
+    FloatRect adjustedSrcRect(src);
+#endif
+
+    context->platformContext()->drawSurfaceToContext(nativeImage->surface(), dst, adjustedSrcRect, context);
 
     context->restore();
 

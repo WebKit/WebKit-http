@@ -94,6 +94,7 @@
 #include "PageClientQt.h"
 #include "PageGroup.h"
 #include "Pasteboard.h"
+#include "PlatformGestureEvent.h"
 #include "PlatformKeyboardEvent.h"
 #include "PlatformTouchEvent.h"
 #include "PlatformWheelEvent.h"
@@ -131,6 +132,7 @@
 #include <QDragMoveEvent>
 #include <QDropEvent>
 #include <QFileDialog>
+#include <QGestureEvent>
 #include <QInputDialog>
 #include <QLabel>
 #include <QMenu>
@@ -1333,6 +1335,37 @@ bool QWebPagePrivate::touchEvent(QTouchEvent* event)
 #endif
 }
 
+bool QWebPagePrivate::gestureEvent(QGestureEvent* event)
+{
+#if ENABLE(GESTURE_EVENTS)
+    WebCore::Frame* frame = QWebFramePrivate::core(mainFrame.data());
+    if (!frame->view())
+        return false;
+
+    // QGestureEvents can contain updates for multiple gestures.
+    bool handled = false;
+    QGesture* gesture = event->gesture(Qt::TapGesture);
+    // Beware that gestures send by DumpRenderTree will have state Qt::NoGesture,
+    // due to not originating from a GestureRecognizer.
+    if (gesture && (gesture->state() == Qt::GestureStarted || gesture->state() == Qt::NoGesture)) {
+        frame->eventHandler()->handleGestureEvent(convertGesture(event, gesture));
+        event->setAccepted(true);
+        handled = true;
+    }
+    gesture = event->gesture(Qt::TapAndHoldGesture);
+    if (gesture && (gesture->state() == Qt::GestureStarted || gesture->state() == Qt::NoGesture)) {
+        frame->eventHandler()->sendContextMenuEventForGesture(convertGesture(event, gesture));
+        event->setAccepted(true);
+        handled = true;
+    }
+
+    return handled;
+#else
+    event->ignore();
+    return false;
+#endif
+}
+
 /*!
   This method is used by the input method to query a set of properties of the page
   to be able to support complex input method operations as support for surrounding
@@ -2237,7 +2270,7 @@ static void extractContentTypeFromPluginVector(const Vector<PluginPackage*>& plu
         MIMEToDescriptionsMap::const_iterator map_it = plugins[i]->mimeToDescriptions().begin();
         MIMEToDescriptionsMap::const_iterator map_end = plugins[i]->mimeToDescriptions().end();
         for (; map_it != map_end; ++map_it)
-            *list << map_it->first;
+            *list << map_it->key;
     }
 }
 
@@ -2548,8 +2581,10 @@ QWebPage::ViewportAttributes QWebPage::viewportAttributesForSize(const QSize& av
         deviceHeight = size.height();
     }
 
-    WebCore::ViewportAttributes conf = WebCore::computeViewportAttributes(d->viewportArguments(), desktopWidth, deviceWidth, deviceHeight, qt_defaultDpi() / WebCore::ViewportArguments::deprecatedTargetDPI, availableSize);
-    WebCore::restrictMinimumScaleFactorToViewportSize(conf, availableSize);
+    float devicePixelRatio = qt_defaultDpi() / WebCore::ViewportArguments::deprecatedTargetDPI;
+
+    WebCore::ViewportAttributes conf = WebCore::computeViewportAttributes(d->viewportArguments(), desktopWidth, deviceWidth, deviceHeight, devicePixelRatio, availableSize);
+    WebCore::restrictMinimumScaleFactorToViewportSize(conf, availableSize, devicePixelRatio);
     WebCore::restrictScaleFactorToInitialScaleIfNotUserScalable(conf);
 
     result.m_isValid = true;
@@ -2557,10 +2592,10 @@ QWebPage::ViewportAttributes QWebPage::viewportAttributesForSize(const QSize& av
     result.m_initialScaleFactor = conf.initialScale;
     result.m_minimumScaleFactor = conf.minimumScale;
     result.m_maximumScaleFactor = conf.maximumScale;
-    result.m_devicePixelRatio = conf.devicePixelRatio;
+    result.m_devicePixelRatio = devicePixelRatio;
     result.m_isUserScalable = static_cast<bool>(conf.userScalable);
 
-    d->page->setDeviceScaleFactor(conf.devicePixelRatio);
+    d->page->setDeviceScaleFactor(devicePixelRatio);
 
     return result;
 }
@@ -3143,6 +3178,11 @@ bool QWebPage::event(QEvent *ev)
     case QEvent::TouchCancel:
         // Return whether the default action was cancelled in the JS event handler
         return d->touchEvent(static_cast<QTouchEvent*>(ev));
+#ifndef QT_NO_GESTURES
+    case QEvent::Gesture:
+        d->gestureEvent(static_cast<QGestureEvent*>(ev));
+        break;
+#endif
 #ifndef QT_NO_PROPERTIES
     case QEvent::DynamicPropertyChange:
         d->dynamicPropertyChangeEvent(static_cast<QDynamicPropertyChangeEvent*>(ev));

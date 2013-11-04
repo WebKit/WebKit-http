@@ -44,6 +44,7 @@
 #include <WebCore/Frame.h>
 #include <WebCore/FrameLoader.h>
 #include <WebCore/KURL.h>
+#include <WebCore/ResourceBuffer.h>
 
 using namespace WebCore;
 
@@ -179,7 +180,8 @@ HRESULT STDMETHODCALLTYPE WebDataSource::data(
     if (!m_loader)
         return E_FAIL;
 
-    return MemoryStream::createInstance(m_loader->mainResourceData()).copyRefTo(stream);
+    RefPtr<ResourceBuffer> buffer = m_loader->mainResourceData();
+    return MemoryStream::createInstance(buffer ? buffer->sharedBuffer() : 0).copyRefTo(stream);
 }
 
 HRESULT STDMETHODCALLTYPE WebDataSource::representation( 
@@ -302,7 +304,8 @@ HRESULT STDMETHODCALLTYPE WebDataSource::subresourceForURL(
     if (!cachedResource)
         return E_FAIL;
 
-    *resource = WebResource::createInstance(cachedResource->data(), cachedResource->response());
+    ResourceBuffer* buffer = cachedResource->resourceBuffer();
+    *resource = WebResource::createInstance(buffer ? buffer->sharedBuffer() : 0, cachedResource->response());
     return S_OK;
 }
 

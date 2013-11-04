@@ -33,6 +33,9 @@ void (*wkCALayerEnumerateRectsBeingDrawnWithBlock)(CALayer *, CGContextRef conte
 #endif
 BOOL (*wkCGContextGetShouldSmoothFonts)(CGContextRef);
 void (*wkCGContextResetClip)(CGContextRef);
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1080
+bool (*wkCGContextDrawsWithCorrectShadowOffsets)(CGContextRef);
+#endif
 CGPatternRef (*wkCGPatternCreateWithImageAndTransform)(CGImageRef, CGAffineTransform, int);
 CFStringRef (*wkCopyCFLocalizationPreferredName)(CFStringRef);
 NSString* (*wkCopyNSURLResponseStatusLine)(NSURLResponse*);
@@ -133,6 +136,10 @@ int (*wkGetNSEventMomentumPhase)(NSEvent *);
 #endif
 
 CTLineRef (*wkCreateCTLineWithUniCharProvider)(const UniChar* (*provide)(CFIndex stringIndex, CFIndex* charCount, CFDictionaryRef* attributes, void*), void (*dispose)(const UniChar* chars, void*), void*);
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1090
+bool (*wkCTFontTransformGlyphs)(CTFontRef font, CGGlyph glyphs[], CGSize advances[], CFIndex count, wkCTFontTransformOptions options);
+#endif
+
 #if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1070
 CTTypesetterRef (*wkCreateCTTypesetterWithUniCharProviderAndOptions)(const UniChar* (*provide)(CFIndex stringIndex, CFIndex* charCount, CFDictionaryRef* attributes, void*), void (*dispose)(const UniChar* chars, void*), void*, CFDictionaryRef options);
 
@@ -209,3 +216,15 @@ CGFloat (*wkNSElasticDeltaForReboundDelta)(CGFloat delta);
 CGFloat (*wkNSReboundDeltaForElasticDelta)(CGFloat delta);
 #endif
 
+bool (*wkCaptionAppearanceHasUserPreferences)(void);
+bool (*wkCaptionAppearanceShowCaptionsWhenAvailable)(void);
+CGColorRef(*wkCaptionAppearanceCopyForegroundColor)(void);
+CGColorRef(*wkCaptionAppearanceCopyBackgroundColor)(void);
+CGColorRef(*wkCaptionAppearanceCopyWindowColor)(void);
+bool(*wkCaptionAppearanceGetForegroundOpacity)(CGFloat*);
+bool(*wkCaptionAppearanceGetBackgroundOpacity)(CGFloat*);
+bool(*wkCaptionAppearanceGetWindowOpacity)(CGFloat*);
+CGFontRef(*wkCaptionAppearanceCopyFontForStyle)(int);
+bool(*wkCaptionAppearanceGetRelativeCharacterSize)(CGFloat*);
+int(*wkCaptionAppearanceGetTextEdgeStyle)(void);
+CFStringRef(*wkCaptionAppearanceGetSettingsChangedNotification)(void);

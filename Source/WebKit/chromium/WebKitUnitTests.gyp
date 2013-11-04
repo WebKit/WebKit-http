@@ -121,6 +121,11 @@
                         '<(chromium_src_dir)/testing/android/native_test.gyp:native_test_native_code',
                     ],
                 }],
+                ['OS=="mac"', {
+                    'include_dirs': [
+                        'public/mac',
+                    ],
+                }],
             ],
         }                
     ], # targets
@@ -196,7 +201,6 @@
                         '-DPRODUCT_DIR=<(ant_build_out)',
                         '--ant-args',
                         '-DCHROMIUM_SRC=<(ant_build_to_chromium_src)',
-                        '--sdk-build=<(sdk_build)',
                         '--app_abi',
                         '<(android_app_abi)',
                     ],

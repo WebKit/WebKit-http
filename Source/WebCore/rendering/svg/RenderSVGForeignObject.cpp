@@ -112,15 +112,18 @@ void RenderSVGForeignObject::updateLogicalWidth()
     setWidth(static_cast<int>(roundf(m_viewport.width())));
 }
 
-void RenderSVGForeignObject::updateLogicalHeight()
+void RenderSVGForeignObject::computeLogicalHeight(LayoutUnit, LayoutUnit logicalTop, LogicalExtentComputedValues& computedValues) const
 {
     // FIXME: Investigate in size rounding issues
     // FIXME: Remove unnecessary rounding when layout is off ints: webkit.org/b/63656
-    setHeight(static_cast<int>(roundf(m_viewport.height())));
+    // FIXME: Is this correct for vertical writing mode?
+    computedValues.m_extent = static_cast<int>(roundf(m_viewport.height()));
+    computedValues.m_position = logicalTop;
 }
 
 void RenderSVGForeignObject::layout()
 {
+    StackStats::LayoutCheckPoint layoutCheckPoint;
     ASSERT(needsLayout());
     ASSERT(!view()->layoutStateEnabled()); // RenderSVGRoot disables layoutState for the SVG rendering tree.
 
@@ -190,7 +193,7 @@ bool RenderSVGForeignObject::nodeAtPoint(const HitTestRequest&, HitTestResult&, 
     return false;
 }
 
-void RenderSVGForeignObject::mapLocalToContainer(RenderLayerModelObject* repaintContainer, TransformState& transformState, MapLocalToContainerFlags mode, bool* wasFixed) const
+void RenderSVGForeignObject::mapLocalToContainer(RenderLayerModelObject* repaintContainer, TransformState& transformState, MapCoordinatesFlags mode, bool* wasFixed) const
 {
     SVGRenderSupport::mapLocalToContainer(this, repaintContainer, transformState, mode & SnapOffsetForTransforms, wasFixed);
 }

@@ -85,6 +85,7 @@ wtf_sources += \
     Source/WTF/wtf/MemoryInstrumentationHashCountedSet.h \
     Source/WTF/wtf/MemoryInstrumentationHashMap.h \
     Source/WTF/wtf/MemoryInstrumentationHashSet.h \
+    Source/WTF/wtf/MemoryInstrumentationListHashSet.h \
     Source/WTF/wtf/MemoryInstrumentationParsedURL.h \
     Source/WTF/wtf/MemoryInstrumentationSequence.h \
     Source/WTF/wtf/MemoryInstrumentationString.h \
@@ -146,6 +147,7 @@ wtf_sources += \
     Source/WTF/wtf/Spectrum.h \
     Source/WTF/wtf/StackBounds.cpp \
     Source/WTF/wtf/StackBounds.h \
+    Source/WTF/wtf/StackStats.h \
     Source/WTF/wtf/StaticConstructors.h \
     Source/WTF/wtf/StdLibExtras.h \
     Source/WTF/wtf/StreamBuffer.h \

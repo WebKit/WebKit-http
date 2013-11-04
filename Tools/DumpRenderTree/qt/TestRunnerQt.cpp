@@ -236,6 +236,7 @@ void TestRunner::simulateLegacyWebNotificationClick(const QString& title)
 
 void TestRunner::display()
 {
+    DumpRenderTreeSupportQt::setTrackRepaintRects(m_topLoadingFrame, true);
     emit showPage();
 }
 
@@ -938,11 +939,6 @@ void TestRunner::setPageVisibility(const char*)
 void TestRunner::setAutomaticLinkDetectionEnabled(bool)
 {
     // FIXME: Implement this.
-}
-
-QString TestRunner::layerTreeAsText()
-{
-    return DumpRenderTreeSupportQt::layerTreeAsText(m_drt->webPage()->mainFrame());
 }
 
 void TestRunner::setTextDirection(const QString& directionName)

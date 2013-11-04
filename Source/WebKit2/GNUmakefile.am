@@ -219,6 +219,7 @@ BUILT_SOURCES += $(GENSOURCES_WEBKIT2)/webkit2gtk/include/webkit2
 
 vpath %.messages.in = \
 	$(WebKit2)/PluginProcess \
+	$(WebKit2)/Shared \
 	$(WebKit2)/Shared/Plugins \
 	$(WebKit2)/UIProcess \
 	$(WebKit2)/UIProcess/ApplicationCache \
@@ -528,6 +529,7 @@ EXTRA_DIST += \
 	$(WebKit2)/UIProcess/API/gtk/webkit2marshal.list \
 	$(WebKit2)/Scripts/generate-forwarding-headers.pl \
 	$(shell ls $(WebKit2)/PluginProcess/*.in) \
+	$(shell ls $(WebKit2)/Shared/*.in) \
 	$(shell ls $(WebKit2)/Shared/Plugins/*.in) \
 	$(shell ls $(WebKit2)/UIProcess/*.in) \
 	$(shell ls $(WebKit2)/UIProcess/Downloads/*.in) \

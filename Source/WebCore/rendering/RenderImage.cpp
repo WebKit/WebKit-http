@@ -219,22 +219,19 @@ void RenderImage::imageDimensionsChanged(bool imageSizeChanged, const IntRect* r
 
     bool shouldRepaint = true;
     if (intrinsicSizeChanged) {
-        // lets see if we need to relayout at all..
-        LayoutUnit oldwidth = width();
-        LayoutUnit oldheight = height();
         if (!preferredLogicalWidthsDirty())
             setPreferredLogicalWidthsDirty(true);
-        updateLogicalWidth();
-        updateLogicalHeight();
+        LogicalExtentComputedValues computedValues;
+        computeLogicalWidthInRegion(computedValues);
+        LayoutUnit newWidth = computedValues.m_extent;
+        computeLogicalHeight(height(), 0, computedValues);
+        LayoutUnit newHeight = computedValues.m_extent;
 
-        if (imageSizeChanged || width() != oldwidth || height() != oldheight) {
+        if (imageSizeChanged || width() != newWidth || height() != newHeight) {
             shouldRepaint = false;
             if (!selfNeedsLayout())
                 setNeedsLayout(true);
         }
-
-        setWidth(oldwidth);
-        setHeight(oldheight);
     }
 
     if (shouldRepaint) {
@@ -536,6 +533,7 @@ void RenderImage::updateAltText()
 
 void RenderImage::layout()
 {
+    StackStats::LayoutCheckPoint layoutCheckPoint;
     RenderReplaced::layout();
 
     // Propagate container size to image resource.

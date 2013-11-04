@@ -200,7 +200,7 @@ void NPRemoteObjectMap::pluginDestroyed(Plugin* plugin)
 
     // Gather the receivers associated with this plug-in.
     for (HashMap<uint64_t, NPObjectMessageReceiver*>::const_iterator it = m_registeredNPObjects.begin(), end = m_registeredNPObjects.end(); it != end; ++it) {
-        NPObjectMessageReceiver* npObjectMessageReceiver = it->second;
+        NPObjectMessageReceiver* npObjectMessageReceiver = it->value;
         if (npObjectMessageReceiver->plugin() == plugin)
             messageReceivers.append(npObjectMessageReceiver);
     }
@@ -227,13 +227,13 @@ void NPRemoteObjectMap::pluginDestroyed(Plugin* plugin)
     }
 }
 
-void NPRemoteObjectMap::didReceiveSyncMessage(CoreIPC::Connection* connection, CoreIPC::MessageID messageID, CoreIPC::ArgumentDecoder* arguments, OwnPtr<CoreIPC::ArgumentEncoder>& reply)
+void NPRemoteObjectMap::didReceiveSyncMessage(CoreIPC::Connection* connection, CoreIPC::MessageID messageID, CoreIPC::MessageDecoder& decoder, OwnPtr<CoreIPC::MessageEncoder>& replyEncoder)
 {
-    NPObjectMessageReceiver* messageReceiver = m_registeredNPObjects.get(arguments->destinationID());
+    NPObjectMessageReceiver* messageReceiver = m_registeredNPObjects.get(decoder.destinationID());
     if (!messageReceiver)
         return;
 
-    messageReceiver->didReceiveSyncNPObjectMessageReceiverMessage(connection, messageID, arguments, reply);
+    messageReceiver->didReceiveSyncNPObjectMessageReceiverMessage(connection, messageID, decoder, replyEncoder);
 }
 
 } // namespace WebKit

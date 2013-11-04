@@ -64,7 +64,7 @@ namespace WTR {
 
 class PlatformWebView {
 public:
-    PlatformWebView(WKContextRef, WKPageGroupRef);
+    PlatformWebView(WKContextRef, WKPageGroupRef, WKDictionaryRef options = 0);
     ~PlatformWebView();
 
     WKPageRef page();
@@ -77,6 +77,7 @@ public:
     bool sendEvent(QEvent*);
     void postEvent(QEvent*);
     void setModalEventLoop(QEventLoop* eventLoop) { m_modalEventLoop = eventLoop; }
+    static bool windowShapshotEnabled();
 #endif
 
     WKRect windowFrame();
@@ -87,7 +88,13 @@ public:
     void makeWebViewFirstResponder();
     void setWindowIsKey(bool isKey) { m_windowIsKey = isKey; }
     bool windowIsKey() const { return m_windowIsKey; }
-    
+
+#if PLATFORM(MAC)
+    bool viewSupportsOptions(WKDictionaryRef) const;
+#else
+    bool viewSupportsOptions(WKDictionaryRef) const { return true; }
+#endif
+
     WKRetainPtr<WKImageRef> windowSnapshotImage();
 
 private:

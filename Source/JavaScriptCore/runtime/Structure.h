@@ -140,6 +140,8 @@ namespace JSC {
         bool isDictionary() const { return m_dictionaryKind != NoneDictionaryKind; }
         bool isUncacheableDictionary() const { return m_dictionaryKind == UncachedDictionaryKind; }
 
+        bool propertyAccessesAreCacheable() { return m_dictionaryKind != UncachedDictionaryKind && !typeInfo().prohibitsPropertyCaching(); }
+
         // Type accessors.
         const TypeInfo& typeInfo() const { ASSERT(structure()->classInfo() == &s_info); return m_typeInfo; }
         bool isObject() const { return typeInfo().isObject(); }
@@ -154,7 +156,8 @@ namespace JSC {
         
         bool anyObjectInChainMayInterceptIndexedAccesses() const;
         
-        NonPropertyTransition suggestedIndexingTransition() const;
+        bool needsSlowPutIndexing() const;
+        NonPropertyTransition suggestedArrayStorageTransition() const;
         
         JSGlobalObject* globalObject() const { return m_globalObject.get(); }
         void setGlobalObject(JSGlobalData& globalData, JSGlobalObject* globalObject) { m_globalObject.set(globalData, this, globalObject); }

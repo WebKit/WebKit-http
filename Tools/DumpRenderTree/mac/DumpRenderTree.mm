@@ -57,6 +57,8 @@
 #import "WorkQueueItem.h"
 #import <Carbon/Carbon.h>
 #import <CoreFoundation/CoreFoundation.h>
+#import <JavaScriptCore/HeapStatistics.h>
+#import <JavaScriptCore/Options.h>
 #import <WebCore/FoundationExtras.h>
 #import <WebKit/DOMElement.h>
 #import <WebKit/DOMExtensions.h>
@@ -87,6 +89,7 @@
 #import <getopt.h>
 #import <objc/objc-runtime.h>
 #import <wtf/Assertions.h>
+#import <wtf/FastMalloc.h>
 #import <wtf/RetainPtr.h>
 #import <wtf/Threading.h>
 #import <wtf/ObjcRuntimeExtras.h>
@@ -325,6 +328,7 @@ static NSSet *allowedFontFamilySet()
         @"STFangsong",
         @"STHeiti",
         @"STIXGeneral",
+        @"STIXSizeOneSym",
         @"STKaiti",
         @"STSong",
         @"Symbol",
@@ -610,6 +614,8 @@ static void resetDefaultsToConsistentValues()
     [defaults setObject:[path stringByAppendingPathComponent:@"Databases"] forKey:WebDatabaseDirectoryDefaultsKey];
     [defaults setObject:[path stringByAppendingPathComponent:@"LocalStorage"] forKey:WebStorageDirectoryDefaultsKey];
     [defaults setObject:[path stringByAppendingPathComponent:@"LocalCache"] forKey:WebKitLocalCacheDefaultsKey];
+
+    [defaults setBool:NO forKey:@"WebKitKerningAndLigaturesEnabledByDefault"];
 
     WebPreferences *preferences = [WebPreferences standardPreferences];
 
@@ -917,7 +923,9 @@ int main(int argc, const char *argv[])
     [DumpRenderTreeApplication sharedApplication]; // Force AppKit to init itself
     dumpRenderTree(argc, argv);
     [WebCoreStatistics garbageCollectJavaScriptObjects];
-    [WebCoreStatistics emptyCache]; // Otherwise SVGImages trigger false positives for Frame/Node counts    
+    [WebCoreStatistics emptyCache]; // Otherwise SVGImages trigger false positives for Frame/Node counts
+    if (JSC::Options::logHeapStatisticsAtExit())
+        JSC::HeapStatistics::reportSuccess();
     [pool release];
     return 0;
 }
@@ -1178,6 +1186,9 @@ void dump()
 
         if (gTestRunner->dumpAsAudio())
             printf("Content-Transfer-Encoding: base64\n");
+
+        WTF::FastMallocStatistics mallocStats = WTF::fastMallocStatistics();
+        printf("DumpMalloc: %li\n", mallocStats.committedVMBytes);
 
         if (resultData) {
             fwrite([resultData bytes], 1, [resultData length], stdout);

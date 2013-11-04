@@ -44,8 +44,13 @@ MacroAssemblerCodeRef osrExitGenerationThunkGenerator(JSGlobalData* globalData)
     ScratchBuffer* scratchBuffer = globalData->scratchBufferForSize(scratchSize);
     EncodedJSValue* buffer = static_cast<EncodedJSValue*>(scratchBuffer->dataBuffer());
     
-    for (unsigned i = 0; i < GPRInfo::numberOfRegisters; ++i)
-        jit.storePtr(GPRInfo::toRegister(i), buffer + i);
+    for (unsigned i = 0; i < GPRInfo::numberOfRegisters; ++i) {
+#if USE(JSVALUE64)
+        jit.store64(GPRInfo::toRegister(i), buffer + i);
+#else
+        jit.store32(GPRInfo::toRegister(i), buffer + i);
+#endif
+    }
     for (unsigned i = 0; i < FPRInfo::numberOfRegisters; ++i) {
         jit.move(MacroAssembler::TrustedImmPtr(buffer + GPRInfo::numberOfRegisters + i), GPRInfo::regT0);
         jit.storeDouble(FPRInfo::toRegister(i), GPRInfo::regT0);
@@ -71,8 +76,13 @@ MacroAssemblerCodeRef osrExitGenerationThunkGenerator(JSGlobalData* globalData)
         jit.move(MacroAssembler::TrustedImmPtr(buffer + GPRInfo::numberOfRegisters + i), GPRInfo::regT0);
         jit.loadDouble(GPRInfo::regT0, FPRInfo::toRegister(i));
     }
-    for (unsigned i = 0; i < GPRInfo::numberOfRegisters; ++i)
-        jit.loadPtr(buffer + i, GPRInfo::toRegister(i));
+    for (unsigned i = 0; i < GPRInfo::numberOfRegisters; ++i) {
+#if USE(JSVALUE64)
+        jit.load64(buffer + i, GPRInfo::toRegister(i));
+#else
+        jit.load32(buffer + i, GPRInfo::toRegister(i));
+#endif
+    }
     
     jit.jump(MacroAssembler::AbsoluteAddress(&globalData->osrExitJumpDestination));
     
@@ -113,9 +123,13 @@ MacroAssemblerCodeRef throwExceptionFromCallSlowPathGenerator(JSGlobalData* glob
     jit.loadPtr(
         CCallHelpers::Address(
             GPRInfo::callFrameRegister,
-            static_cast<ptrdiff_t>(sizeof(Register)) * RegisterFile::CallerFrame),
+            static_cast<ptrdiff_t>(sizeof(Register)) * JSStack::CallerFrame),
         GPRInfo::callFrameRegister);
+#if USE(JSVALUE64)
+    jit.peek64(GPRInfo::nonPreservedNonReturnGPR, JITSTACKFRAME_ARGS_INDEX);
+#else
     jit.peek(GPRInfo::nonPreservedNonReturnGPR, JITSTACKFRAME_ARGS_INDEX);
+#endif
     jit.setupArgumentsWithExecState(GPRInfo::nonPreservedNonReturnGPR);
     jit.move(CCallHelpers::TrustedImmPtr(bitwise_cast<void*>(lookupExceptionHandler)), GPRInfo::nonArgGPR0);
     emitPointerValidation(jit, GPRInfo::nonArgGPR0);
@@ -136,9 +150,13 @@ static void slowPathFor(
         GPRInfo::nonArgGPR2,
         CCallHelpers::Address(
             GPRInfo::callFrameRegister,
-            static_cast<ptrdiff_t>(sizeof(Register)) * RegisterFile::ReturnPC));
+            static_cast<ptrdiff_t>(sizeof(Register)) * JSStack::ReturnPC));
     jit.storePtr(GPRInfo::callFrameRegister, &globalData->topCallFrame);
+#if USE(JSVALUE64)
+    jit.poke64(GPRInfo::nonPreservedNonReturnGPR, JITSTACKFRAME_ARGS_INDEX);
+#else
     jit.poke(GPRInfo::nonPreservedNonReturnGPR, JITSTACKFRAME_ARGS_INDEX);
+#endif
     jit.setupArgumentsExecState();
     jit.move(CCallHelpers::TrustedImmPtr(bitwise_cast<void*>(slowPathFunction)), GPRInfo::nonArgGPR0);
     emitPointerValidation(jit, GPRInfo::nonArgGPR0);
@@ -151,13 +169,13 @@ static void slowPathFor(
     jit.loadPtr(
         CCallHelpers::Address(
             GPRInfo::callFrameRegister,
-            static_cast<ptrdiff_t>(sizeof(Register)) * RegisterFile::ReturnPC),
+            static_cast<ptrdiff_t>(sizeof(Register)) * JSStack::ReturnPC),
         GPRInfo::nonPreservedNonReturnGPR);
     jit.storePtr(
         CCallHelpers::TrustedImmPtr(0),
         CCallHelpers::Address(
             GPRInfo::callFrameRegister,
-            static_cast<ptrdiff_t>(sizeof(Register)) * RegisterFile::ReturnPC));
+            static_cast<ptrdiff_t>(sizeof(Register)) * JSStack::ReturnPC));
     emitPointerValidation(jit, GPRInfo::nonPreservedNonReturnGPR);
     jit.restoreReturnAddressBeforeReturn(GPRInfo::nonPreservedNonReturnGPR);
     emitPointerValidation(jit, GPRInfo::returnValueGPR);
@@ -211,7 +229,7 @@ static MacroAssemblerCodeRef virtualForThunkGenerator(
     
 #if USE(JSVALUE64)
     slowCase.append(
-        jit.branchTestPtr(
+        jit.branchTest64(
             CCallHelpers::NonZero, GPRInfo::nonArgGPR0, GPRInfo::tagMaskRegister));
 #else
     slowCase.append(
@@ -245,23 +263,23 @@ static MacroAssemblerCodeRef virtualForThunkGenerator(
         CCallHelpers::Address(GPRInfo::nonArgGPR0, JSFunction::offsetOfScopeChain()),
         GPRInfo::nonArgGPR1);
 #if USE(JSVALUE64)
-    jit.storePtr(
+    jit.store64(
         GPRInfo::nonArgGPR1,
         CCallHelpers::Address(
             GPRInfo::callFrameRegister,
-            static_cast<ptrdiff_t>(sizeof(Register)) * RegisterFile::ScopeChain));
+            static_cast<ptrdiff_t>(sizeof(Register)) * JSStack::ScopeChain));
 #else
     jit.storePtr(
         GPRInfo::nonArgGPR1,
         CCallHelpers::Address(
             GPRInfo::callFrameRegister,
-            static_cast<ptrdiff_t>(sizeof(Register)) * RegisterFile::ScopeChain +
+            static_cast<ptrdiff_t>(sizeof(Register)) * JSStack::ScopeChain +
             OBJECT_OFFSETOF(EncodedValueDescriptor, asBits.payload)));
     jit.store32(
         CCallHelpers::TrustedImm32(JSValue::CellTag),
         CCallHelpers::Address(
             GPRInfo::callFrameRegister,
-            static_cast<ptrdiff_t>(sizeof(Register)) * RegisterFile::ScopeChain +
+            static_cast<ptrdiff_t>(sizeof(Register)) * JSStack::ScopeChain +
             OBJECT_OFFSETOF(EncodedValueDescriptor, asBits.tag)));
 #endif
     

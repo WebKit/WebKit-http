@@ -177,20 +177,25 @@ void ScriptProfiler::initialize()
     v8::HeapProfiler::DefineWrapperClass(v8DOMSubtreeClassId, &retainedDOMInfo);
 }
 
-void ScriptProfiler::visitNodeWrappers(NodeWrapperVisitor* visitor)
+void ScriptProfiler::visitNodeWrappers(WrappedNodeVisitor* visitor)
 {
-    class VisitorAdapter : public DOMWrapperMap<Node>::Visitor {
+    class VisitorAdapter : public NodeWrapperVisitor {
     public:
-        VisitorAdapter(NodeWrapperVisitor* visitor) : m_visitor(visitor) { }
+        VisitorAdapter(WrappedNodeVisitor* visitor)
+            : m_visitor(visitor)
+        {
+        }
 
-        virtual void visitDOMWrapper(DOMDataStore*, Node* node, v8::Persistent<v8::Object>)
+        virtual void visitNodeWrapper(Node* node, v8::Persistent<v8::Object>)
         {
             m_visitor->visitNode(node);
         }
+
     private:
-        NodeWrapperVisitor* m_visitor;
+        WrappedNodeVisitor* m_visitor;
     } adapter(visitor);
-    visitDOMNodes(&adapter);
+
+    visitAllDOMNodes(&adapter);
 }
 
 void ScriptProfiler::visitExternalStrings(ExternalStringVisitor* visitor)
@@ -200,7 +205,7 @@ void ScriptProfiler::visitExternalStrings(ExternalStringVisitor* visitor)
 
 void ScriptProfiler::visitExternalArrays(ExternalArrayVisitor* visitor)
 {
-    class VisitorAdapter : public DOMWrapperMap<void>::Visitor {
+    class VisitorAdapter : public DOMWrapperVisitor<void> {
     public:
         VisitorAdapter(ExternalArrayVisitor* visitor) : m_visitor(visitor) { }
 
