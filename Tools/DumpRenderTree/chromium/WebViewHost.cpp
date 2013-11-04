@@ -65,6 +65,7 @@
 #include "WebUserMediaClientMock.h"
 #include "WebView.h"
 #include "WebViewHostOutputSurface.h"
+#include "WebViewHostSoftwareOutputDevice.h"
 #include "WebWindowFeatures.h"
 #include "platform/WebSerializedScriptValue.h"
 #include "skia/ext/platform_canvas.h"
@@ -288,11 +289,14 @@ WebStorageNamespace* WebViewHost::createSessionStorageNamespace(unsigned quota)
     return webkit_support::CreateSessionStorageNamespace(quota);
 }
 
-WebKit::WebCompositorOutputSurface* WebViewHost::createOutputSurface()
+WebCompositorOutputSurface* WebViewHost::createOutputSurface()
 {
     if (!webView())
         return 0;
-    return new WebKit::WebViewHostOutputSurface(adoptPtr(webkit_support::CreateGraphicsContext3D(WebKit::WebGraphicsContext3D::Attributes(), webView())));
+
+    if (m_shell->softwareCompositingEnabled())
+        return WebViewHostOutputSurface::createSoftware(adoptPtr(new WebViewHostSoftwareOutputDevice)).leakPtr();
+    return WebViewHostOutputSurface::create3d(adoptPtr(webkit_support::CreateGraphicsContext3D(WebGraphicsContext3D::Attributes(), webView()))).leakPtr();
 }
 
 void WebViewHost::didAddMessageToConsole(const WebConsoleMessage& message, const WebString& sourceName, unsigned sourceLine)
@@ -546,6 +550,7 @@ WebString WebViewHost::autoCorrectWord(const WebString&)
 void WebViewHost::runModalAlertDialog(WebFrame*, const WebString& message)
 {
     printf("ALERT: %s\n", message.utf8().data());
+    fflush(stdout);
 }
 
 bool WebViewHost::runModalConfirmDialog(WebFrame*, const WebString& message)
@@ -1095,7 +1100,7 @@ void WebViewHost::unableToImplementPolicyWithError(WebFrame* frame, const WebURL
 {
     printf("Policy delegate: unable to implement policy with error domain '%s', "
            "error code %d, in frame '%s'\n",
-           error.domain.utf8().data(), error.reason, frame->name().utf8().data());
+            error.domain.utf8().data(), error.reason, frame->uniqueName().utf8().data());
 }
 
 void WebViewHost::willPerformClientRedirect(WebFrame* frame, const WebURL& from, const WebURL& to,
@@ -1192,7 +1197,7 @@ void WebViewHost::didReceiveTitle(WebFrame* frame, const WebString& title, WebTe
     }
 
     if (testRunner()->shouldDumpTitleChanges())
-        printf("TITLE CHANGED: %s\n", title8.data());
+        printf("TITLE CHANGED: '%s'\n", title8.data());
 
     setPageTitle(title);
     testRunner()->setTitleTextDirection(direction);
@@ -1398,7 +1403,7 @@ void WebViewHost::deleteFileSystem(WebKit::WebFrame* frame, WebKit::WebFileSyste
     webkit_support::DeleteFileSystem(frame, type, callbacks);
 }
 
-bool WebViewHost::willCheckAndDispatchMessageEvent(WebFrame* source, WebSecurityOrigin target, WebDOMMessageEvent event)
+bool WebViewHost::willCheckAndDispatchMessageEvent(WebFrame* sourceFrame, WebFrame* targetFrame, WebSecurityOrigin target, WebDOMMessageEvent event)
 {
     if (m_shell->testRunner()->shouldInterceptPostMessage()) {
         fputs("intercepted postMessage\n", stdout);
@@ -1744,7 +1749,7 @@ void WebViewHost::updateSessionHistory(WebFrame* frame)
 
 void WebViewHost::printFrameDescription(WebFrame* webframe)
 {
-    string name8 = webframe->name().utf8();
+    string name8 = webframe->uniqueName().utf8();
     if (webframe == webView()->mainFrame()) {
         if (!name8.length()) {
             fputs("main frame", stdout);

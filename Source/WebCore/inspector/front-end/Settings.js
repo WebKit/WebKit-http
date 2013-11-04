@@ -92,9 +92,9 @@ WebInspector.Settings = function()
     this.deviceMetrics = this.createSetting("deviceMetrics", "");
     this.deviceFitWindow = this.createSetting("deviceFitWindow", false);
     this.showScriptFolders = this.createSetting("showScriptFolders", true);
-    this.dockToRight = this.createSetting("dockToRight", false);
     this.emulateTouchEvents = this.createSetting("emulateTouchEvents", false);
     this.showPaintRects = this.createSetting("showPaintRects", false);
+    this.showShadowDOM = this.createSetting("showShadowDOM", false);
     this.zoomLevel = this.createSetting("zoomLevel", 0);
     this.savedURLs = this.createSetting("savedURLs", {});
     this.javaScriptDisabled = this.createSetting("javaScriptDisabled", false);
@@ -103,6 +103,7 @@ WebInspector.Settings = function()
     this.showHeapSnapshotObjectsHiddenProperties = this.createSetting("showHeaSnapshotObjectsHiddenProperties", false);
     this.searchInContentScripts = this.createSetting("searchInContentScripts", false);
     this.textEditorIndent = this.createSetting("textEditorIndent", "    ");
+    this.lastDockState = this.createSetting("lastDockState", "");
 
     // If there are too many breakpoints in a storage, it is likely due to a recent bug that caused
     // periodical breakpoints duplication leading to inspector slowness.
@@ -186,12 +187,11 @@ WebInspector.ExperimentsSettings = function()
     this._enabledForTest = {};
     
     // Add currently running experiments here.
-    this.showShadowDOM = this._createExperiment("showShadowDOM", "Show shadow DOM");
     this.snippetsSupport = this._createExperiment("snippetsSupport", "Snippets support");
     this.nativeMemorySnapshots = this._createExperiment("nativeMemorySnapshots", "Native memory profiling");
     this.liveNativeMemoryChart = this._createExperiment("liveNativeMemoryChart", "Live native memory chart");
     this.fileSystemInspection = this._createExperiment("fileSystemInspection", "FileSystem inspection");
-    this.webGLInspection = this._createExperiment("webGLInspection ", "WebGL inspection");
+    this.canvasInspection = this._createExperiment("canvasInspection ", "Canvas inspection");
     this.mainThreadMonitoring = this._createExperiment("mainThreadMonitoring", "Show CPU activity in Timeline");
     this.geolocationOverride = this._createExperiment("geolocationOverride", "Override Device Geolocation");
     this.deviceOrientationOverride = this._createExperiment("deviceOrientationOverride", "Override Device Orientation");

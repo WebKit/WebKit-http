@@ -34,8 +34,9 @@
  * @param {number} endColumn
  * @param {boolean} isContentScript
  * @param {string=} sourceMapURL
+ * @param {boolean=} hasSourceURL
  */
-WebInspector.Script = function(scriptId, sourceURL, startLine, startColumn, endLine, endColumn, isContentScript, sourceMapURL)
+WebInspector.Script = function(scriptId, sourceURL, startLine, startColumn, endLine, endColumn, isContentScript, sourceMapURL, hasSourceURL)
 {
     this.scriptId = scriptId;
     this.sourceURL = sourceURL;
@@ -45,12 +46,13 @@ WebInspector.Script = function(scriptId, sourceURL, startLine, startColumn, endL
     this.endColumn = endColumn;
     this.isContentScript = isContentScript;
     this.sourceMapURL = sourceMapURL;
+    this.hasSourceURL = hasSourceURL;
     this._locations = [];
 }
 
 WebInspector.Script.prototype = {
     /**
-     * @return {?string}
+     * @return {string}
      */
     contentURL: function()
     {
@@ -230,7 +232,7 @@ WebInspector.Script.Location.prototype = {
     {
         WebInspector.LiveLocation.prototype.dispose.call(this);
         this._script._locations.remove(this);
-    }
-}
+    },
 
-WebInspector.Script.Location.prototype.__proto__ = WebInspector.LiveLocation.prototype;
+    __proto__: WebInspector.LiveLocation.prototype
+}

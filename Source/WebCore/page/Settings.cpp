@@ -90,6 +90,7 @@ bool Settings::gAVFoundationEnabled(false);
 #endif
 
 bool Settings::gMockScrollbarsEnabled = false;
+bool Settings::gUsesOverlayScrollbars = false;
 
 #if PLATFORM(WIN) || (OS(WINDOWS) && PLATFORM(WX))
 bool Settings::gShouldUseHighResolutionTimers = true;
@@ -131,6 +132,7 @@ Settings::Settings(Page* page)
     , m_minimumLogicalFontSize(0)
     , m_defaultFontSize(0)
     , m_defaultFixedFontSize(0)
+    , m_screenFontSubstitutionEnabled(true)
     , m_validationMessageTimerMagnification(50)
     , m_minimumAccelerated2dCanvasSize(257 * 256)
     , m_layoutFallbackWidth(980)
@@ -291,6 +293,7 @@ Settings::Settings(Page* page)
     , m_windowFocusRestricted(true)
     , m_diagnosticLoggingEnabled(false)
     , m_scrollingPerformanceLoggingEnabled(false)
+    , m_applyPageScaleFactorInCompositor(false)
     , m_setImageLoadingSettingsTimer(this, &Settings::imageLoadingSettingsTimerFired)
     , m_incrementalRenderingSuppressionTimeoutInSeconds(defaultIncrementalRenderingSuppressionTimeoutInSeconds)
 {
@@ -416,6 +419,15 @@ void Settings::setDefaultFixedFontSize(int defaultFontSize)
         return;
 
     m_defaultFixedFontSize = defaultFontSize;
+    m_page->setNeedsRecalcStyleInAllFrames();
+}
+
+void Settings::setScreenFontSubstitutionEnabled(bool screenFontSubstitutionEnabled)
+{
+    if (m_screenFontSubstitutionEnabled == screenFontSubstitutionEnabled)
+        return;
+
+    m_screenFontSubstitutionEnabled = screenFontSubstitutionEnabled;
     m_page->setNeedsRecalcStyleInAllFrames();
 }
 
@@ -973,6 +985,16 @@ void Settings::setMockScrollbarsEnabled(bool flag)
 bool Settings::mockScrollbarsEnabled()
 {
     return gMockScrollbarsEnabled;
+}
+
+void Settings::setUsesOverlayScrollbars(bool flag)
+{
+    gUsesOverlayScrollbars = flag;
+}
+
+bool Settings::usesOverlayScrollbars()
+{
+    return gUsesOverlayScrollbars;
 }
 
 #if USE(JSC)

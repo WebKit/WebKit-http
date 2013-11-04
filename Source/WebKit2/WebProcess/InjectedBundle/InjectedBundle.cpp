@@ -52,7 +52,6 @@
 #include <WebCore/FrameView.h>
 #include <WebCore/GCController.h>
 #include <WebCore/GeolocationClient.h>
-#include <WebCore/GeolocationClientMock.h>
 #include <WebCore/GeolocationController.h>
 #include <WebCore/GeolocationPosition.h>
 #include <WebCore/JSDOMWindow.h>
@@ -183,7 +182,8 @@ void InjectedBundle::overrideBoolPreferenceForTestRunner(WebPageGroupProxy* page
     macro(WebKitWebGLEnabled, WebGLEnabled, webGLEnabled) \
     macro(WebKitXSSAuditorEnabled, XSSAuditorEnabled, xssAuditorEnabled) \
     macro(WebKitShouldRespectImageOrientation, ShouldRespectImageOrientation, shouldRespectImageOrientation) \
-    macro(WebKitEnableCaretBrowsing, CaretBrowsingEnabled, caretBrowsingEnabled)
+    macro(WebKitEnableCaretBrowsing, CaretBrowsingEnabled, caretBrowsingEnabled) \
+    macro(WebKitDisplayImagesKey, LoadsImagesAutomatically, loadsImagesAutomatically)
 
     if (preference == "WebKitAcceleratedCompositingEnabled")
         enabled = enabled && LayerTreeHost::supportsAcceleratedCompositing();
@@ -246,15 +246,6 @@ void InjectedBundle::setPluginsEnabled(WebPageGroupProxy* pageGroup, bool enable
     const HashSet<Page*>& pages = PageGroup::pageGroup(pageGroup->identifier())->pages();
     for (HashSet<Page*>::iterator iter = pages.begin(); iter != pages.end(); ++iter)
         (*iter)->settings()->setPluginsEnabled(enabled);
-}
-
-void InjectedBundle::setGeoLocationPermission(WebPageGroupProxy* pageGroup, bool enabled)
-{
-#if ENABLE(GEOLOCATION)
-    const HashSet<Page*>& pages = PageGroup::pageGroup(pageGroup->identifier())->pages();
-    for (HashSet<Page*>::iterator iter = pages.begin(); iter != pages.end(); ++iter)
-        static_cast<GeolocationClientMock*>(GeolocationController::from(*iter)->client())->setPermission(enabled);
-#endif // ENABLE(GEOLOCATION)
 }
 
 void InjectedBundle::setJavaScriptCanAccessClipboard(WebPageGroupProxy* pageGroup, bool enabled)
@@ -549,7 +540,7 @@ void InjectedBundle::didReceiveMessageToPage(WebPage* page, const String& messag
     m_client.didReceiveMessageToPage(this, page, messageName, messageBody);
 }
 
-void InjectedBundle::didReceiveMessage(CoreIPC::Connection* connection, CoreIPC::MessageID messageID, CoreIPC::ArgumentDecoder* arguments)
+void InjectedBundle::didReceiveMessage(CoreIPC::Connection*, CoreIPC::MessageID messageID, CoreIPC::ArgumentDecoder* arguments)
 {
     switch (messageID.get<InjectedBundleMessage::Kind>()) {
         case InjectedBundleMessage::PostMessage: {
@@ -644,6 +635,8 @@ uint64_t InjectedBundle::webNotificationID(JSContextRef jsContext, JSValueRef js
         return 0;
     return WebProcess::shared().notificationManager().notificationIDForTesting(notification);
 #else
+    UNUSED_PARAM(jsContext);
+    UNUSED_PARAM(jsNotification);
     return 0;
 #endif
 }

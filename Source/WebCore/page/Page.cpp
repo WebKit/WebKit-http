@@ -29,6 +29,7 @@
 #include "ContextMenuController.h"
 #include "DOMWindow.h"
 #include "DocumentMarkerController.h"
+#include "DocumentStyleSheetCollection.h"
 #include "DragController.h"
 #include "EditorClient.h"
 #include "Event.h"
@@ -133,7 +134,7 @@ Page::Page(PageClients& pageClients)
     , m_theme(RenderTheme::themeForPage(this))
     , m_editorClient(pageClients.editorClient)
     , m_validationMessageClient(pageClients.validationMessageClient)
-    , m_frameCount(0)
+    , m_subframeCount(0)
     , m_openedByDOM(false)
     , m_tabKeyCyclesThroughElements(true)
     , m_defersLoading(false)
@@ -161,6 +162,7 @@ Page::Page(PageClients& pageClients)
     , m_visibilityState(PageVisibilityStateVisible)
 #endif
     , m_displayID(0)
+    , m_layoutMilestones(0)
     , m_isCountingRelevantRepaintedObjects(false)
 #ifndef NDEBUG
     , m_isPainting(false)
@@ -649,7 +651,7 @@ void Page::setPageScaleFactor(float scale, const IntPoint& origin)
     FrameView* view = document->view();
 
     if (scale == m_pageScaleFactor) {
-        if (view && view->scrollPosition() != origin) {
+        if (view && (view->scrollPosition() != origin || view->delegatesScrolling())) {
             document->updateLayoutIgnorePendingStylesheets();
             view->setScrollPosition(origin);
         }
@@ -838,7 +840,7 @@ void Page::userStyleSheetLocationChanged()
 
     for (Frame* frame = mainFrame(); frame; frame = frame->tree()->traverseNext()) {
         if (frame->document())
-            frame->document()->updatePageUserSheet();
+            frame->document()->styleSheetCollection()->updatePageUserSheet();
     }
 }
 
@@ -1079,15 +1081,15 @@ void Page::privateBrowsingStateChanged()
 }
 
 #if !ASSERT_DISABLED
-void Page::checkFrameCountConsistency() const
+void Page::checkSubframeCountConsistency() const
 {
-    ASSERT(m_frameCount >= 0);
+    ASSERT(m_subframeCount >= 0);
 
-    int frameCount = 0;
+    int subframeCount = 0;
     for (Frame* frame = mainFrame(); frame; frame = frame->tree()->traverseNext())
-        ++frameCount;
+        ++subframeCount;
 
-    ASSERT(m_frameCount + 1 == frameCount);
+    ASSERT(m_subframeCount + 1 == subframeCount);
 }
 #endif
 
@@ -1114,25 +1116,19 @@ PageVisibilityState Page::visibilityState() const
 }
 #endif
 
-// FIXME: gPaintedObjectCounterThreshold is no longer used for calculating relevant repainted areas,
-// and it should be removed. For the time being, it is useful because it allows us to avoid doing
-// any of this work for ports that don't make sure of didNewFirstVisuallyNonEmptyLayout. We should
-// remove this when we resolve <rdar://problem/10791680> Need to merge didFirstVisuallyNonEmptyLayout 
-// and didNewFirstVisuallyNonEmptyLayout
-static uint64_t gPaintedObjectCounterThreshold = 0;
+void Page::addLayoutMilestones(LayoutMilestones milestones)
+{
+    // In the future, we may want a function that replaces m_layoutMilestones instead of just adding to it.
+    m_layoutMilestones |= milestones;
+}
 
 // These are magical constants that might be tweaked over time.
 static double gMinimumPaintedAreaRatio = 0.1;
 static double gMaximumUnpaintedAreaRatio = 0.04;
 
-void Page::setRelevantRepaintedObjectsCounterThreshold(uint64_t threshold)
-{
-    gPaintedObjectCounterThreshold = threshold;
-}
-
 bool Page::isCountingRelevantRepaintedObjects() const
 {
-    return m_isCountingRelevantRepaintedObjects && gPaintedObjectCounterThreshold > 0;
+    return m_isCountingRelevantRepaintedObjects && (m_layoutMilestones & DidHitRelevantRepaintedObjectsAreaThreshold);
 }
 
 void Page::startCountingRelevantRepaintedObjects()
@@ -1186,7 +1182,7 @@ void Page::addRelevantRepaintedObject(RenderObject* object, const LayoutRect& ob
         m_isCountingRelevantRepaintedObjects = false;
         resetRelevantPaintedObjectCounter();
         if (Frame* frame = mainFrame())
-            frame->loader()->didNewFirstVisuallyNonEmptyLayout();
+            frame->loader()->didLayout(DidHitRelevantRepaintedObjectsAreaThreshold);
     }
 }
 

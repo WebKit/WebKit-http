@@ -1,5 +1,6 @@
 /*
  *  Copyright (C) Research In Motion Limited 2010. All rights reserved.
+ *  Copyright (C) 2012 Apple Inc. All Rights Reserved.
  *
  *  This library is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU Lesser General Public
@@ -111,12 +112,15 @@ public:
     static void resetGeolocationClientMock(WebKitWebView*);
     static void setMockGeolocationPermission(WebKitWebView*, bool allowed);
     static void setMockGeolocationPosition(WebKitWebView*, double latitude, double longitude, double accuracy);
-    static void setMockGeolocationError(WebKitWebView*, int errorCode, const gchar* errorMessage);
+    static void setMockGeolocationPositionUnavailableError(WebKitWebView*, const gchar* errorMessage);
     static int numberOfPendingGeolocationPermissionRequests(WebKitWebView*);
 
     static void setPageCacheSupportsPlugins(WebKitWebView*, bool enabled);
     static void setCSSGridLayoutEnabled(WebKitWebView*, bool enabled);
     static void setCSSRegionsEnabled(WebKitWebView*, bool enabled);
+    static void setCSSCustomFilterEnabled(WebKitWebView*, bool enabled);
+    static void setShadowDOMEnabled(bool);
+    static void setStyleScopedEnabled(bool);
 
     static void deliverAllMutationsIfNecessary();
     static void setDomainRelaxationForbiddenForURLScheme(bool forbidden, const char* urlScheme);

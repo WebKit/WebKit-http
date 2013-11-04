@@ -35,7 +35,8 @@
 #include "DOMStringList.h"
 #include "Element.h"
 #include "Frame.h"
-#include "PlatformSupport.h"
+#include "FrameLoader.h"
+#include "FrameLoaderClient.h"
 #include "QualifiedName.h"
 #include "Settings.h"
 #include "V8DOMStringList.h"
@@ -51,6 +52,7 @@
 #include "XPathNSResolver.h"
 #include <wtf/MathExtras.h>
 #include <wtf/MainThread.h>
+#include <wtf/MemoryInstrumentationHashMap.h>
 #include <wtf/StdLibExtras.h>
 #include <wtf/Threading.h>
 #include <wtf/text/AtomicString.h>
@@ -220,7 +222,7 @@ v8::Persistent<v8::FunctionTemplate> createRawTemplate()
 void StringCache::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
 {
     MemoryClassInfo info(memoryObjectInfo, this, WebCoreMemoryTypes::Binding);
-    info.addHashMap(m_stringCache);
+    info.addMember(m_stringCache);
 }
     
 PassRefPtr<DOMStringList> toDOMStringList(v8::Handle<v8::Value> value)
@@ -332,7 +334,7 @@ bool handleOutOfMemory()
     frame->script()->windowShell()->destroyGlobal();
 
 #if PLATFORM(CHROMIUM)
-    PlatformSupport::notifyJSOutOfMemory(frame);
+    frame->loader()->client()->didExhaustMemoryAvailableForScript();
 #endif
 
     if (Settings* settings = frame->settings())

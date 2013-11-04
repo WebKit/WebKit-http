@@ -38,6 +38,9 @@ class RenderBlock;
 class RenderBox;
 class RenderObject;
 class RenderFlowThread;
+#if ENABLE(CSS_EXCLUSIONS)
+class ExclusionShapeInsideInfo;
+#endif
 
 class LayoutState {
     WTF_MAKE_NONCOPYABLE(LayoutState);
@@ -52,6 +55,9 @@ public:
         , m_next(0)
 #ifndef NDEBUG
         , m_renderer(0)
+#endif
+#if ENABLE(CSS_EXCLUSIONS)
+        , m_exclusionShapeInsideInfo(0)
 #endif
     {
     }
@@ -88,6 +94,9 @@ public:
 
     bool needsBlockDirectionLocationSetBeforeLayout() const { return m_lineGrid || (m_isPaginated && m_pageLogicalHeight); }
 
+#if ENABLE(CSS_EXCLUSIONS)
+    ExclusionShapeInsideInfo* exclusionShapeInsideInfo() const { return m_exclusionShapeInsideInfo; }
+#endif
 private:
     // The normal operator new is disallowed.
     void* operator new(size_t) throw();
@@ -128,6 +137,9 @@ public:
     LayoutState* m_next;
 #ifndef NDEBUG
     RenderObject* m_renderer;
+#endif
+#if ENABLE(CSS_EXCLUSIONS)
+    ExclusionShapeInsideInfo* m_exclusionShapeInsideInfo;
 #endif
 };
 

@@ -14,6 +14,7 @@
     <file>BreakpointManager.js</file>
     <file>BreakpointsSidebarPane.js</file>
     <file>CallStackSidebarPane.js</file>
+    <file>CanvasProfileView.js</file>
     <file>Checkbox.js</file>
     <file>CodeMirrorTextEditor.js</file>
     <file>Color.js</file>
@@ -57,6 +58,7 @@
     <file>DOMStorage.js</file>
     <file>DOMStorageItemsView.js</file>
     <file>DOMSyntaxHighlighter.js</file>
+    <file>DockController.js</file>
     <file>Drawer.js</file>
     <file>ElementsPanel.js</file>
     <file>ElementsPanelDescriptor.js</file>
@@ -127,7 +129,8 @@
     <file>ProfileDataGridTree.js</file>
     <file>ProfileLauncherView.js</file>
     <file>ProfilesPanel.js</file>
-    <file>ProgressBar.js</file>
+    <file>Progress.js</file>
+    <file>ProgressIndicator.js</file>
     <file>PropertiesSection.js</file>
     <file>PropertiesSidebarPane.js</file>
     <file>RemoteObject.js</file>
@@ -210,13 +213,13 @@
     <file>utilities.js</file>
     <file>View.js</file>
     <file>WatchExpressionsSidebarPane.js</file>
-    <file>WebGLProfileView.js</file>
     <file>WorkerManager.js</file>
     <file>WorkersSidebarPane.js</file>
     <file>Workspace.js</file>
     <file>UglifyJS/parse-js.js</file>
     <file>auditsPanel.css</file>
     <file>breadcrumbList.css</file>
+    <file>canvasProfiler.css</file>
     <file>cssNamedFlows.css</file>
     <file>dataGrid.css</file>
     <file>cmdevtools.css</file>
@@ -245,7 +248,6 @@
     <file>textEditor.css</file>
     <file>textPrompt.css</file>
     <file>timelinePanel.css</file>
-    <file>webGLProfiler.css</file>
     <file>Images/applicationCache.png</file>
     <file>Images/back.png</file>
     <file>Images/breakpointBorder.png</file>

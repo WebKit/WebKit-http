@@ -55,8 +55,12 @@ static WTF::String urlSuitableForTestResult(const WTF::String& uriString)
     return (index == WTF::notFound) ? uriString : uriString.substring(index + 1);
 }
 
-static void onConsoleMessage(Ewk_View_Smart_Data*, const char* message, unsigned int lineNumber, const char*)
+static void onConsoleMessage(Ewk_View_Smart_Data* smartData, const char* message, unsigned lineNumber, const char*)
 {
+    Evas_Object* evasObject = smartData->self;
+    if (evas_object_data_get(evasObject, "ignore-console-messages"))
+        return;
+
     // Tests expect only the filename part of local URIs
     WTF::String newMessage = WTF::String::fromUTF8(message);
     if (!newMessage.isEmpty()) {
@@ -78,6 +82,7 @@ static void onConsoleMessage(Ewk_View_Smart_Data*, const char* message, unsigned
 static void onJavaScriptAlert(Ewk_View_Smart_Data*, Evas_Object*, const char* message)
 {
     printf("ALERT: %s\n", message);
+    fflush(stdout);
 }
 
 static Eina_Bool onJavaScriptConfirm(Ewk_View_Smart_Data*, Evas_Object*, const char* message)

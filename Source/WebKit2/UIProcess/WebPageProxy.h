@@ -356,6 +356,7 @@ public:
     bool maintainsInactiveSelection() const { return m_maintainsInactiveSelection; }
     void setMaintainsInactiveSelection(bool);
 #if PLATFORM(QT)
+    void didRenderFrame(const WebCore::IntSize& contentsSize, const WebCore::IntRect& coveredRect);
     void registerApplicationScheme(const String& scheme);
     void resolveApplicationSchemeRequest(QtNetworkRequestData);
     void sendApplicationSchemeReply(const QQuickNetworkReply*);
@@ -418,6 +419,7 @@ public:
 #endif
 #if USE(TILED_BACKING_STORE)
     void setViewportSize(const WebCore::IntSize&);
+    void commitPageTransitionViewport();
 #endif
 
     void handleMouseEvent(const NativeWebMouseEvent&);
@@ -483,6 +485,8 @@ public:
     void setFixedLayoutSize(const WebCore::IntSize&);
     bool useFixedLayout() const { return m_useFixedLayout; };
     const WebCore::IntSize& fixedLayoutSize() const { return m_fixedLayoutSize; };
+
+    void listenForLayoutMilestones(WebCore::LayoutMilestones);
 
     bool hasHorizontalScrollbar() const { return m_mainFrameHasHorizontalScrollbar; }
     bool hasVerticalScrollbar() const { return m_mainFrameHasVerticalScrollbar; }
@@ -619,6 +623,8 @@ public:
 
     bool isValid();
 
+    PassRefPtr<ImmutableArray> relatedPages() const;
+
     const String& urlAtProcessExit() const { return m_urlAtProcessExit; }
     WebFrameProxy::LoadState loadStateAtProcessExit() const { return m_loadStateAtProcessExit; }
 
@@ -714,7 +720,7 @@ public:
     virtual NativeWebMouseEvent* currentlyProcessedMouseDownEvent();
 
 #if PLATFORM(GTK) && USE(TEXTURE_MAPPER_GL)
-    void widgetMapped(uint64_t nativeWindowId);
+    void setAcceleratedCompositingWindowId(uint64_t nativeWindowId);
 #endif
 
     void setSuppressVisibilityUpdates(bool flag) { m_suppressVisibilityUpdates = flag; }
@@ -764,6 +770,7 @@ private:
     void didFirstLayoutForFrame(uint64_t frameID, CoreIPC::ArgumentDecoder*);
     void didFirstVisuallyNonEmptyLayoutForFrame(uint64_t frameID, CoreIPC::ArgumentDecoder*);
     void didNewFirstVisuallyNonEmptyLayout(CoreIPC::ArgumentDecoder*);
+    void didLayout(uint32_t layoutMilestones, CoreIPC::ArgumentDecoder*);
     void didRemoveFrameFromHierarchy(uint64_t frameID, CoreIPC::ArgumentDecoder*);
     void didDisplayInsecureContentForFrame(uint64_t frameID, CoreIPC::ArgumentDecoder*);
     void didRunInsecureContentForFrame(uint64_t frameID, CoreIPC::ArgumentDecoder*);
@@ -846,6 +853,7 @@ private:
 #endif
 
 #if PLATFORM(QT)
+    void pageTransitionViewportReady();
     void didFindZoomableArea(const WebCore::IntPoint&, const WebCore::IntRect&);
 #endif
 
@@ -990,6 +998,10 @@ private:
     void dictationAlternatives(uint64_t dictationContext, Vector<String>& result);
 #endif
 #endif // PLATFORM(MAC)
+
+#if USE(SOUP)
+    void didReceiveURIRequest(String uriString, uint64_t requestID);
+#endif
 
     void clearLoadDependentCallbacks();
 

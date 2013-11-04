@@ -32,7 +32,6 @@
 #include "IDBFakeBackingStore.h"
 #include "IDBIndexBackendImpl.h"
 #include "IDBObjectStoreBackendImpl.h"
-#include "IDBTransactionCoordinator.h"
 #include "WebIDBDatabaseCallbacksImpl.h"
 #include "WebIDBDatabaseImpl.h"
 
@@ -53,9 +52,8 @@ TEST(IDBDatabaseBackendTest, BackingStoreRetention)
     RefPtr<IDBFakeBackingStore> backingStore = adoptRef(new IDBFakeBackingStore());
     EXPECT_TRUE(backingStore->hasOneRef());
 
-    IDBTransactionCoordinator* coordinator = 0;
     IDBFactoryBackendImpl* factory = 0;
-    RefPtr<IDBDatabaseBackendImpl> db = IDBDatabaseBackendImpl::create("db", backingStore.get(), coordinator, factory, "uniqueid");
+    RefPtr<IDBDatabaseBackendImpl> db = IDBDatabaseBackendImpl::create("db", backingStore.get(), factory, "uniqueid");
     EXPECT_GT(backingStore->refCount(), 1);
 
     const bool autoIncrement = false;
@@ -118,18 +116,17 @@ TEST(IDBDatabaseBackendTest, ConnectionLifecycle)
     RefPtr<IDBFakeBackingStore> backingStore = adoptRef(new IDBFakeBackingStore());
     EXPECT_TRUE(backingStore->hasOneRef());
 
-    IDBTransactionCoordinator* coordinator = 0;
     IDBFactoryBackendImpl* factory = 0;
-    RefPtr<IDBDatabaseBackendImpl> db = IDBDatabaseBackendImpl::create("db", backingStore.get(), coordinator, factory, "uniqueid");
+    RefPtr<IDBDatabaseBackendImpl> db = IDBDatabaseBackendImpl::create("db", backingStore.get(), factory, "uniqueid");
     EXPECT_GT(backingStore->refCount(), 1);
 
     RefPtr<MockIDBCallbacks> request1 = MockIDBCallbacks::create();
     RefPtr<FakeIDBDatabaseCallbacks> connection1 = FakeIDBDatabaseCallbacks::create();
-    db->openConnection(request1, connection1);
+    db->openConnectionWithVersion(request1, connection1, IDBDatabaseMetadata::NoIntVersion);
 
     RefPtr<MockIDBCallbacks> request2 = MockIDBCallbacks::create();
     RefPtr<FakeIDBDatabaseCallbacks> connection2 = FakeIDBDatabaseCallbacks::create();
-    db->openConnection(request2, connection2);
+    db->openConnectionWithVersion(request2, connection2, IDBDatabaseMetadata::NoIntVersion);
 
     db->close(connection1);
     EXPECT_GT(backingStore->refCount(), 1);
@@ -177,9 +174,8 @@ TEST(IDBDatabaseBackendTest, ForcedClose)
     RefPtr<IDBFakeBackingStore> backingStore = adoptRef(new IDBFakeBackingStore());
     EXPECT_TRUE(backingStore->hasOneRef());
 
-    IDBTransactionCoordinator* coordinator = 0;
     IDBFactoryBackendImpl* factory = 0;
-    RefPtr<IDBDatabaseBackendImpl> backend = IDBDatabaseBackendImpl::create("db", backingStore.get(), coordinator, factory, "uniqueid");
+    RefPtr<IDBDatabaseBackendImpl> backend = IDBDatabaseBackendImpl::create("db", backingStore.get(), factory, "uniqueid");
     EXPECT_GT(backingStore->refCount(), 1);
 
     RefPtr<FakeIDBDatabaseCallbacks> connection = FakeIDBDatabaseCallbacks::create();
@@ -188,7 +184,7 @@ TEST(IDBDatabaseBackendTest, ForcedClose)
 
     RefPtr<MockIDBDatabaseBackendProxy> proxy = MockIDBDatabaseBackendProxy::create(webDatabase);
     RefPtr<MockIDBCallbacks> request = MockIDBCallbacks::create();
-    backend->openConnection(request, connectionProxy);
+    backend->openConnectionWithVersion(request, connectionProxy, IDBDatabaseMetadata::NoIntVersion);
 
     ScriptExecutionContext* context = 0;
     RefPtr<IDBDatabase> idbDatabase = IDBDatabase::create(context, proxy, connection);

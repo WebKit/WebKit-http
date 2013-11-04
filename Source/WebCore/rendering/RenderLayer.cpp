@@ -109,9 +109,7 @@
 #include "SVGNames.h"
 #endif
 
-#if PLATFORM(CHROMIUM) || PLATFORM(BLACKBERRY)
-// FIXME: border radius clipping triggers too-slow path on Chromium
-// https://bugs.webkit.org/show_bug.cgi?id=69866
+#if PLATFORM(BLACKBERRY)
 #define DISABLE_ROUNDED_CORNER_CLIPPING
 #endif
 
@@ -131,7 +129,7 @@ bool ClipRect::intersects(const HitTestLocation& hitTestLocation)
     return hitTestLocation.intersects(m_rect);
 }
 
-RenderLayer::RenderLayer(RenderBoxModelObject* renderer)
+RenderLayer::RenderLayer(RenderLayerModelObject* renderer)
     : m_inResizeMode(false)
     , m_scrollDimensionsDirty(true)
     , m_normalFlowListDirty(true)
@@ -154,6 +152,7 @@ RenderLayer::RenderLayer(RenderBoxModelObject* renderer)
     , m_indirectCompositingReason(NoIndirectCompositingReason)
 #endif
     , m_containsDirtyOverlayScrollbars(false)
+    , m_updatingMarqueePosition(false)
 #if !ASSERT_DISABLED
     , m_layerListMutationAllowed(true)
 #endif
@@ -391,7 +390,7 @@ void RenderLayer::updateLayerPositions(LayoutPoint* offsetFromRoot, UpdateLayerP
         // LayoutState outside the layout() phase and use it here.
         ASSERT(!view->layoutStateEnabled());
 
-        RenderBoxModelObject* repaintContainer = renderer()->containerForRepaint();
+        RenderLayerModelObject* repaintContainer = renderer()->containerForRepaint();
         LayoutRect oldRepaintRect = m_repaintRect;
         LayoutRect oldOutlineBox = m_outlineBox;
         computeRepaintRects(offsetFromRoot);
@@ -435,8 +434,13 @@ void RenderLayer::updateLayerPositions(LayoutPoint* offsetFromRoot, UpdateLayerP
 #endif
         
     // With all our children positioned, now update our marquee if we need to.
-    if (m_marquee)
+    if (m_marquee) {
+        // FIXME: would like to use TemporaryChange<> but it doesn't work with bitfields.
+        bool oldUpdatingMarqueePosition = m_updatingMarqueePosition;
+        m_updatingMarqueePosition = true;
         m_marquee->updateMarqueePosition();
+        m_updatingMarqueePosition = oldUpdatingMarqueePosition;
+    }
 
     if (offsetFromRoot)
         *offsetFromRoot = oldOffsetFromRoot;
@@ -483,7 +487,7 @@ void RenderLayer::computeRepaintRects(LayoutPoint* offsetFromRoot)
 {
     ASSERT(!m_visibleContentStatusDirty);
 
-    RenderBoxModelObject* repaintContainer = renderer()->containerForRepaint();
+    RenderLayerModelObject* repaintContainer = renderer()->containerForRepaint();
     m_repaintRect = renderer()->clippedOverflowRectForRepaint(repaintContainer);
     m_outlineBox = renderer()->outlineBoundsForRepaint(repaintContainer, offsetFromRoot);
 }
@@ -542,8 +546,12 @@ void RenderLayer::updateLayerPositionsAfterScroll(UpdateLayerPositionsAfterScrol
     // of an object, thus RenderReplica will still repaint itself properly as the layer position was
     // updated above.
 
-    if (m_marquee)
+    if (m_marquee) {
+        bool oldUpdatingMarqueePosition = m_updatingMarqueePosition;
+        m_updatingMarqueePosition = true;
         m_marquee->updateMarqueePosition();
+        m_updatingMarqueePosition = oldUpdatingMarqueePosition;
+    }
 }
 
 #if ENABLE(CSS_COMPOSITING)
@@ -620,10 +628,10 @@ TransformationMatrix RenderLayer::renderableTransform(PaintBehavior paintBehavio
     return *m_transform;
 }
 
-static bool checkContainingBlockChainForPagination(RenderBoxModelObject* renderer, RenderBox* ancestorColumnsRenderer)
+static bool checkContainingBlockChainForPagination(RenderLayerModelObject* renderer, RenderBox* ancestorColumnsRenderer)
 {
     RenderView* view = renderer->view();
-    RenderBoxModelObject* prevBlock = renderer;
+    RenderLayerModelObject* prevBlock = renderer;
     RenderBlock* containingBlock;
     for (containingBlock = renderer->containingBlock();
          containingBlock && containingBlock != view && containingBlock != ancestorColumnsRenderer;
@@ -884,7 +892,7 @@ void RenderLayer::updateLayerPosition()
     }
     
     if (renderer()->isInFlowPositioned()) {
-        m_offsetForInFlowPosition = renderer()->offsetForInFlowPosition();
+        m_offsetForInFlowPosition = toRenderBoxModelObject(renderer())->offsetForInFlowPosition();
         localPoint.move(m_offsetForInFlowPosition);
     } else {
         m_offsetForInFlowPosition = LayoutSize();
@@ -947,7 +955,7 @@ RenderLayer* RenderLayer::stackingContext() const
 
 static inline bool isPositionedContainer(RenderLayer* layer)
 {
-    RenderBoxModelObject* layerRenderer = layer->renderer();
+    RenderLayerModelObject* layerRenderer = layer->renderer();
     return layer->isRootLayer() || layerRenderer->isPositioned() || layer->hasTransform();
 }
 
@@ -1125,7 +1133,7 @@ void RenderLayer::setFilterBackendNeedsRepaintingInRect(const LayoutRect& rect, 
 bool RenderLayer::hasAncestorWithFilterOutsets() const
 {
     for (const RenderLayer* curr = this; curr; curr = curr->parent()) {
-        RenderBoxModelObject* renderer = curr->renderer();
+        RenderLayerModelObject* renderer = curr->renderer();
         if (renderer->style()->hasFilterOutsets())
             return true;
     }
@@ -1717,9 +1725,15 @@ void RenderLayer::scrollTo(int x, int y)
         view->updateWidgetPositions();
     }
 
-    updateCompositingLayersAfterScroll();
+    if (!m_updatingMarqueePosition) {
+        // Avoid updating compositing layers if, higher on the stack, we're already updating layer
+        // positions. Updating layer positions requires a full walk of up-to-date RenderLayers, and
+        // in this case we're still updating their positions; we'll update compositing layers later
+        // when that completes.
+        updateCompositingLayersAfterScroll();
+    }
 
-    RenderBoxModelObject* repaintContainer = renderer()->containerForRepaint();
+    RenderLayerModelObject* repaintContainer = renderer()->containerForRepaint();
     Frame* frame = renderer()->frame();
     if (frame) {
         // The caret rect needs to be invalidated after scrolling
@@ -1790,7 +1804,8 @@ void RenderLayer::scrollRectToVisible(const LayoutRect& rect, const ScrollAlignm
                 if (ownerElement->hasTagName(frameTag) || ownerElement->hasTagName(iframeTag))
                     frameElement = static_cast<HTMLFrameElement*>(ownerElement);
 
-                if (frameElement && frameElement->scrollingMode() != ScrollbarAlwaysOff) {
+                if ((frameElement && frameElement->scrollingMode() != ScrollbarAlwaysOff)
+                    || (!frameView->frame()->eventHandler()->autoscrollInProgress() && !frameView->wasScrolledByUser())) {
                     LayoutRect viewRect = frameView->visibleContentRect();
                     LayoutRect exposeRect = getRectToExpose(viewRect, rect, alignX, alignY);
 
@@ -3114,12 +3129,15 @@ void RenderLayer::paintLayerContents(RenderLayer* rootLayer, GraphicsContext* co
     updateLayerListsIfNeeded();
 
     // Apply clip-path to context.
+    bool hasClipPath = false;
     RenderStyle* style = renderer()->style();
     if (renderer()->hasClipPath() && !context->paintingDisabled() && style) {
         ASSERT(style->clipPath());
         if (style->clipPath()->getOperationType() == ClipPathOperation::SHAPE) {
+            hasClipPath = true;
+            context->save();
             ShapeClipPathOperation* clipPath = static_cast<ShapeClipPathOperation*>(style->clipPath());
-            transparencyLayerContext->clipPath(clipPath->path(calculateLayerBounds(this, rootLayer, 0)), clipPath->windRule());
+            context->clipPath(clipPath->path(calculateLayerBounds(this, rootLayer, 0)), clipPath->windRule());
         }
     }
 
@@ -3158,6 +3176,8 @@ void RenderLayer::paintLayerContents(RenderLayer* rootLayer, GraphicsContext* co
         calculateRects(rootLayer, region, (localPaintFlags & PaintLayerTemporaryClipRects) ? TemporaryClipRects : PaintingClipRects, paintDirtyRect, layerBounds, damageRect, clipRectToApply, outlineRect,
             IgnoreOverlayScrollbarSize, localPaintFlags & PaintLayerPaintingOverflowContents ? IgnoreOverflowClip : RespectOverflowClip);
         paintOffset = toPoint(layerBounds.location() - renderBoxLocation() + subPixelAccumulation);
+        if (this == rootLayer)
+            paintOffset = roundedIntPoint(paintOffset);
     }
 
     bool forceBlackText = paintBehavior & PaintBehaviorForceBlackText;
@@ -3289,6 +3309,9 @@ void RenderLayer::paintLayerContents(RenderLayer* rootLayer, GraphicsContext* co
         context->restore();
         m_usedTransparency = false;
     }
+
+    if (hasClipPath)
+        context->restore();
 }
 
 void RenderLayer::paintList(Vector<RenderLayer*>* list, RenderLayer* rootLayer, GraphicsContext* context,
@@ -4682,7 +4705,7 @@ void RenderLayer::setBackingNeedsRepaintInRect(const LayoutRect& r)
 }
 
 // Since we're only painting non-composited layers, we know that they all share the same repaintContainer.
-void RenderLayer::repaintIncludingNonCompositingDescendants(RenderBoxModelObject* repaintContainer)
+void RenderLayer::repaintIncludingNonCompositingDescendants(RenderLayerModelObject* repaintContainer)
 {
     renderer()->repaintUsingContainer(repaintContainer, pixelSnappedIntRect(renderer()->clippedOverflowRectForRepaint(repaintContainer)));
 
@@ -4860,10 +4883,6 @@ void RenderLayer::styleChanged(StyleDifference, const RenderStyle* oldStyle)
     updateScrollCornerStyle();
     updateResizerStyle();
 
-#if ENABLE(CSS_FILTERS)
-    bool backingDidCompositeLayers = isComposited() && backing()->canCompositeFilters();
-#endif
-
     updateDescendantDependentFlags();
     updateTransform();
 #if ENABLE(CSS_COMPOSITING)
@@ -4885,11 +4904,14 @@ void RenderLayer::styleChanged(StyleDifference, const RenderStyle* oldStyle)
 
 #if ENABLE(CSS_FILTERS)
     updateOrRemoveFilterEffect();
+#if USE(ACCELERATED_COMPOSITING)
+    bool backingDidCompositeLayers = isComposited() && backing()->canCompositeFilters();
     if (isComposited() && backingDidCompositeLayers && !backing()->canCompositeFilters()) {
         // The filters used to be drawn by platform code, but now the platform cannot draw them anymore.
         // Fallback to drawing them in software.
         setBackingNeedsRepaint();
     }
+#endif
 #endif
 }
 

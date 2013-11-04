@@ -8,6 +8,8 @@
             'chromium/DumpRenderTree.cpp',
             'chromium/DRTTestRunner.cpp',
             'chromium/DRTTestRunner.h',
+            'chromium/MockConstraints.cpp',
+            'chromium/MockConstraints.h',
             'chromium/MockGrammarCheck.cpp',
             'chromium/MockGrammarCheck.h',
             'chromium/MockSpellCheck.cpp',
@@ -56,6 +58,8 @@
             'chromium/WebViewHost.h',
             'chromium/WebViewHostOutputSurface.cpp',
             'chromium/WebViewHostOutputSurface.h',
+            'chromium/WebViewHostSoftwareOutputDevice.cpp',
+            'chromium/WebViewHostSoftwareOutputDevice.h',
         ],
         'test_runner_files': [
             'DumpRenderTree.h',

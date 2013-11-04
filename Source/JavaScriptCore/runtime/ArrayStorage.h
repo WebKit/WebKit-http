@@ -41,6 +41,8 @@ namespace JSC {
 // setStorage() methods. It is important to note that there may be space before the ArrayStorage that 
 // is used to quick unshift / shift operation. The actual allocated pointer is available by using:
 //     getStorage() - m_indexBias * sizeof(JSValue)
+// All slots in ArrayStorage (slots from 0 to vectorLength) are expected to be initialized to a JSValue or,
+// for hole slots, JSValue().
 struct ArrayStorage {
     WTF_MAKE_NONCOPYABLE(ArrayStorage);
 private:
@@ -64,10 +66,6 @@ public:
         m_sparseMap.copyFrom(other.m_sparseMap);
         m_indexBias = other.m_indexBias;
         m_numValuesInVector = other.m_numValuesInVector;
-#if CHECK_ARRAY_CONSISTENCY
-        m_initializationIndex = other.m_initializationIndex;
-        m_inCompactInitialization = other.m_inCompactInitialization;
-#endif
     }
     
     bool inSparseMode()
@@ -78,11 +76,7 @@ public:
     WriteBarrier<SparseArrayValueMap> m_sparseMap;
     unsigned m_indexBias;
     unsigned m_numValuesInVector;
-#if CHECK_ARRAY_CONSISTENCY
-    // Needs to be a uintptr_t for alignment purposes.
-    uintptr_t m_initializationIndex;
-    uintptr_t m_inCompactInitialization;
-#elif USE(JSVALUE32_64)
+#if USE(JSVALUE32_64)
     uintptr_t m_padding;
 #endif
     WriteBarrier<Unknown> m_vector[1];

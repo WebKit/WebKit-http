@@ -39,7 +39,7 @@
 #include "HTMLParserIdioms.h"
 #include "InputTypeNames.h"
 #include "KeyboardEvent.h"
-#include "LocalizedNumber.h"
+#include "Localizer.h"
 #include "RenderTextControl.h"
 #include <limits>
 #include <wtf/ASCIICType.h>
@@ -235,7 +235,7 @@ String NumberInputType::localizeValue(const String& proposedValue) const
     // We don't localize scientific notations.
     if (proposedValue.find(isE) != notFound)
         return proposedValue;
-    return convertToLocalizedNumber(proposedValue);
+    return element()->localizer().convertToLocalizedNumber(proposedValue);
 }
 
 String NumberInputType::visibleValue() const
@@ -250,7 +250,7 @@ String NumberInputType::convertFromVisibleValue(const String& visibleValue) cons
     // We don't localize scientific notations.
     if (visibleValue.find(isE) != notFound)
         return visibleValue;
-    return convertFromLocalizedNumber(visibleValue);
+    return element()->localizer().convertFromLocalizedNumber(visibleValue);
 }
 
 bool NumberInputType::isAcceptableValue(const String& proposedValue)

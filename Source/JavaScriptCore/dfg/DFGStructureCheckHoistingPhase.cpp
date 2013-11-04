@@ -122,12 +122,18 @@ public:
                         if (!subNode.shouldGenerate())
                             continue;
                         switch (subNode.op()) {
-                        case CheckStructure:
-                        case StructureTransitionWatchpoint: {
+                        case CheckStructure: {
                             if (subNode.child1().index() != source)
                                 break;
                             
                             noticeStructureCheck(variable, subNode.structureSet());
+                            break;
+                        }
+                        case StructureTransitionWatchpoint: {
+                            if (subNode.child1().index() != source)
+                                break;
+                            
+                            noticeStructureCheck(variable, subNode.structure());
                             break;
                         }
                         default:
@@ -315,6 +321,9 @@ public:
                 case ResolveBase:
                 case ResolveBaseStrictPut:
                 case ResolveGlobal:
+                case ArrayPush:
+                case ArrayPop:
+                case Arrayify:
                     clobber(live);
                     break;
                     

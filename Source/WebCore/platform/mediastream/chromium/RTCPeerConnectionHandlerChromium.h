@@ -49,7 +49,7 @@ namespace WebCore {
 
 class RTCPeerConnectionHandlerChromium : public RTCPeerConnectionHandler, public WebKit::WebRTCPeerConnectionHandlerClient {
 public:
-    RTCPeerConnectionHandlerChromium(RTCPeerConnectionHandlerClient*);
+    explicit RTCPeerConnectionHandlerChromium(RTCPeerConnectionHandlerClient*);
     virtual ~RTCPeerConnectionHandlerChromium();
 
     virtual bool initialize(PassRefPtr<RTCConfiguration>, PassRefPtr<MediaConstraints>) OVERRIDE;
@@ -64,6 +64,7 @@ public:
     virtual bool addIceCandidate(PassRefPtr<RTCIceCandidateDescriptor>) OVERRIDE;
     virtual bool addStream(PassRefPtr<MediaStreamDescriptor>, PassRefPtr<MediaConstraints>) OVERRIDE;
     virtual void removeStream(PassRefPtr<MediaStreamDescriptor>) OVERRIDE;
+    virtual void getStats(PassRefPtr<RTCStatsRequest>) OVERRIDE;
     virtual void stop() OVERRIDE;
 
     // WebKit::WebRTCPeerConnectionHandlerClient implementation.
@@ -73,6 +74,8 @@ public:
     virtual void didChangeICEState(WebKit::WebRTCPeerConnectionHandlerClient::ICEState) OVERRIDE;
     virtual void didAddRemoteStream(const WebKit::WebMediaStreamDescriptor&) OVERRIDE;
     virtual void didRemoveRemoteStream(const WebKit::WebMediaStreamDescriptor&) OVERRIDE;
+
+    static WebKit::WebRTCPeerConnectionHandler* toWebRTCPeerConnectionHandler(RTCPeerConnectionHandler*);
 
 private:
     OwnPtr<WebKit::WebRTCPeerConnectionHandler> m_webHandler;

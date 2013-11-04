@@ -55,7 +55,6 @@
 #include "platform/WebSerializedScriptValue.h"
 #include "platform/WebString.h"
 #include "platform/WebURL.h"
-#include "platform/WebVector.h"
 
 #if OS(WINDOWS)
 #include "platform/WebRect.h"
@@ -93,6 +92,7 @@
 #include <public/WebCookie.h>
 #include <public/WebCookieJar.h>
 #include <public/WebMimeRegistry.h>
+#include <public/WebVector.h>
 #include <wtf/Assertions.h>
 
 // We are part of the WebKit implementation.
@@ -217,44 +217,6 @@ bool PlatformSupport::ensureFontLoaded(HFONT font)
 }
 #endif
 
-#if OS(DARWIN)
-bool PlatformSupport::loadFont(NSFont* srcFont, CGFontRef* out, uint32_t* fontID)
-{
-    WebSandboxSupport* ss = WebKit::Platform::current()->sandboxSupport();
-    if (ss)
-        return ss->loadFont(srcFont, out, fontID);
-
-    // This function should only be called in response to an error loading a
-    // font due to being blocked by the sandbox.
-    // This by definition shouldn't happen if there is no sandbox support.
-    ASSERT_NOT_REACHED();
-    *out = 0;
-    *fontID = 0;
-    return false;
-}
-#elif OS(UNIX)
-void PlatformSupport::getFontFamilyForCharacters(const UChar* characters, size_t numCharacters, const char* preferredLocale, FontFamily* family)
-{
-#if OS(ANDROID)
-    // FIXME: We do not use fontconfig on Android, so use simple logic for now.
-    // https://bugs.webkit.org/show_bug.cgi?id=67587
-    family->name = "Arial";
-    family->isBold = false;
-    family->isItalic = false;
-#else
-    WebFontFamily webFamily;
-    if (WebKit::Platform::current()->sandboxSupport())
-        WebKit::Platform::current()->sandboxSupport()->getFontFamilyForCharacters(characters, numCharacters, preferredLocale, &webFamily);
-    else
-        WebFontInfo::familyForChars(characters, numCharacters, preferredLocale, &webFamily);
-    family->name = String::fromUTF8(webFamily.name.data(), webFamily.name.length());
-    family->isBold = webFamily.isBold;
-    family->isItalic = webFamily.isItalic;
-#endif
-}
-
-#endif
-
 // Indexed Database -----------------------------------------------------------
 
 PassRefPtr<IDBFactoryBackendInterface> PlatformSupport::idbFactory()
@@ -362,153 +324,11 @@ void PlatformSupport::paintProgressBar(
         gc->platformContext()->canvas(), barRect, valueRect, determinate, animatedSeconds);
 }
 
-#elif OS(DARWIN)
-
-void PlatformSupport::paintScrollbarThumb(
-    GraphicsContext* gc, ThemePaintState state, ThemePaintSize size, const IntRect& rect, const ThemePaintScrollbarInfo& scrollbarInfo)
-{
-    WebThemeEngine::ScrollbarInfo webThemeScrollbarInfo;
-
-    webThemeScrollbarInfo.orientation = static_cast<WebThemeEngine::ScrollbarOrientation>(scrollbarInfo.orientation);
-    webThemeScrollbarInfo.parent = static_cast<WebThemeEngine::ScrollbarParent>(scrollbarInfo.parent);
-    webThemeScrollbarInfo.maxValue = scrollbarInfo.maxValue;
-    webThemeScrollbarInfo.currentValue = scrollbarInfo.currentValue;
-    webThemeScrollbarInfo.visibleSize = scrollbarInfo.visibleSize;
-    webThemeScrollbarInfo.totalSize = scrollbarInfo.totalSize;
-
-    WebKit::WebCanvas* webCanvas = gc->platformContext()->canvas();
-    WebKit::Platform::current()->themeEngine()->paintScrollbarThumb(
-        webCanvas,
-        static_cast<WebThemeEngine::State>(state),
-        static_cast<WebThemeEngine::Size>(size),
-        rect,
-        webThemeScrollbarInfo);
-}
-
-#elif OS(UNIX)
-
-static WebThemeEngine::Part WebThemePart(PlatformSupport::ThemePart part)
-{
-    switch (part) {
-    case PlatformSupport::PartScrollbarDownArrow: return WebThemeEngine::PartScrollbarDownArrow;
-    case PlatformSupport::PartScrollbarLeftArrow: return WebThemeEngine::PartScrollbarLeftArrow;
-    case PlatformSupport::PartScrollbarRightArrow: return WebThemeEngine::PartScrollbarRightArrow;
-    case PlatformSupport::PartScrollbarUpArrow: return WebThemeEngine::PartScrollbarUpArrow;
-    case PlatformSupport::PartScrollbarHorizontalThumb: return WebThemeEngine::PartScrollbarHorizontalThumb;
-    case PlatformSupport::PartScrollbarVerticalThumb: return WebThemeEngine::PartScrollbarVerticalThumb;
-    case PlatformSupport::PartScrollbarHorizontalTrack: return WebThemeEngine::PartScrollbarHorizontalTrack;
-    case PlatformSupport::PartScrollbarVerticalTrack: return WebThemeEngine::PartScrollbarVerticalTrack;
-    case PlatformSupport::PartCheckbox: return WebThemeEngine::PartCheckbox;
-    case PlatformSupport::PartRadio: return WebThemeEngine::PartRadio;
-    case PlatformSupport::PartButton: return WebThemeEngine::PartButton;
-    case PlatformSupport::PartTextField: return WebThemeEngine::PartTextField;
-    case PlatformSupport::PartMenuList: return WebThemeEngine::PartMenuList;
-    case PlatformSupport::PartSliderTrack: return WebThemeEngine::PartSliderTrack;
-    case PlatformSupport::PartSliderThumb: return WebThemeEngine::PartSliderThumb;
-    case PlatformSupport::PartInnerSpinButton: return WebThemeEngine::PartInnerSpinButton;
-    case PlatformSupport::PartProgressBar: return WebThemeEngine::PartProgressBar;
-    }
-    ASSERT_NOT_REACHED();
-    return WebThemeEngine::PartScrollbarDownArrow;
-}
-
-static WebThemeEngine::State WebThemeState(PlatformSupport::ThemePaintState state)
-{
-    switch (state) {
-    case PlatformSupport::StateDisabled: return WebThemeEngine::StateDisabled;
-    case PlatformSupport::StateHover: return WebThemeEngine::StateHover;
-    case PlatformSupport::StateNormal: return WebThemeEngine::StateNormal;
-    case PlatformSupport::StatePressed: return WebThemeEngine::StatePressed;
-    }
-    ASSERT_NOT_REACHED();
-    return WebThemeEngine::StateDisabled;
-}
-
-static void GetWebThemeExtraParams(PlatformSupport::ThemePart part, PlatformSupport::ThemePaintState state, const PlatformSupport::ThemePaintExtraParams* extraParams, WebThemeEngine::ExtraParams* webThemeExtraParams)
-{
-    switch (part) {
-    case PlatformSupport::PartScrollbarHorizontalTrack:
-    case PlatformSupport::PartScrollbarVerticalTrack:
-        webThemeExtraParams->scrollbarTrack.trackX = extraParams->scrollbarTrack.trackX;
-        webThemeExtraParams->scrollbarTrack.trackY = extraParams->scrollbarTrack.trackY;
-        webThemeExtraParams->scrollbarTrack.trackWidth = extraParams->scrollbarTrack.trackWidth;
-        webThemeExtraParams->scrollbarTrack.trackHeight = extraParams->scrollbarTrack.trackHeight;
-        break;
-    case PlatformSupport::PartCheckbox:
-        webThemeExtraParams->button.checked = extraParams->button.checked;
-        webThemeExtraParams->button.indeterminate = extraParams->button.indeterminate;
-        break;
-    case PlatformSupport::PartRadio:
-        webThemeExtraParams->button.checked = extraParams->button.checked;
-        break;
-    case PlatformSupport::PartButton:
-        webThemeExtraParams->button.isDefault = extraParams->button.isDefault;
-        webThemeExtraParams->button.hasBorder = extraParams->button.hasBorder;
-        webThemeExtraParams->button.backgroundColor = extraParams->button.backgroundColor;
-        break;
-    case PlatformSupport::PartTextField:
-        webThemeExtraParams->textField.isTextArea = extraParams->textField.isTextArea;
-        webThemeExtraParams->textField.isListbox = extraParams->textField.isListbox;
-        webThemeExtraParams->textField.backgroundColor = extraParams->textField.backgroundColor;
-        break;
-    case PlatformSupport::PartMenuList:
-        webThemeExtraParams->menuList.hasBorder = extraParams->menuList.hasBorder;
-        webThemeExtraParams->menuList.hasBorderRadius = extraParams->menuList.hasBorderRadius;
-        webThemeExtraParams->menuList.arrowX = extraParams->menuList.arrowX;
-        webThemeExtraParams->menuList.arrowY = extraParams->menuList.arrowY;
-        webThemeExtraParams->menuList.backgroundColor = extraParams->menuList.backgroundColor;
-        break;
-    case PlatformSupport::PartSliderTrack:
-    case PlatformSupport::PartSliderThumb:
-        webThemeExtraParams->slider.vertical = extraParams->slider.vertical;
-        webThemeExtraParams->slider.inDrag = extraParams->slider.inDrag;
-        break;
-    case PlatformSupport::PartInnerSpinButton:
-        webThemeExtraParams->innerSpin.spinUp = extraParams->innerSpin.spinUp;
-        webThemeExtraParams->innerSpin.readOnly = extraParams->innerSpin.readOnly;
-        break;
-    case PlatformSupport::PartProgressBar:
-        webThemeExtraParams->progressBar.determinate = extraParams->progressBar.determinate;
-        webThemeExtraParams->progressBar.valueRectX = extraParams->progressBar.valueRectX;
-        webThemeExtraParams->progressBar.valueRectY = extraParams->progressBar.valueRectY;
-        webThemeExtraParams->progressBar.valueRectWidth = extraParams->progressBar.valueRectWidth;
-        webThemeExtraParams->progressBar.valueRectHeight = extraParams->progressBar.valueRectHeight;
-        break;
-    default:
-        break; // Parts that have no extra params get here.
-    }
-}
-
-IntSize PlatformSupport::getThemePartSize(ThemePart part)
-{
-     return WebKit::Platform::current()->themeEngine()->getSize(WebThemePart(part));
-}
-
-void PlatformSupport::paintThemePart(
-    GraphicsContext* gc, ThemePart part, ThemePaintState state, const IntRect& rect, const ThemePaintExtraParams* extraParams)
-{
-    WebThemeEngine::ExtraParams webThemeExtraParams;
-    GetWebThemeExtraParams(part, state, extraParams, &webThemeExtraParams);
-    WebKit::Platform::current()->themeEngine()->paint(
-        gc->platformContext()->canvas(), WebThemePart(part), WebThemeState(state), rect, &webThemeExtraParams);
-}
-
 #endif
 
 // These are temporary methods that the WebKit layer can use to call to the
 // Glue layer. Once the Glue layer moves entirely into the WebKit layer, these
 // methods will be deleted.
-
-void PlatformSupport::notifyJSOutOfMemory(Frame* frame)
-{
-    if (!frame)
-        return;
-
-    WebFrameImpl* webFrame = WebFrameImpl::fromFrame(frame);
-    if (!webFrame->client())
-        return;
-    webFrame->client()->didExhaustMemoryAvailableForScript(webFrame);
-}
 
 int PlatformSupport::screenHorizontalDPI(Widget* widget)
 {
@@ -564,12 +384,6 @@ IntRect PlatformSupport::screenAvailableRect(Widget* widget)
     if (!client)
         return IntRect();
     return client->screenInfo().availableRect;
-}
-
-bool PlatformSupport::popupsAllowed(NPP npp)
-{
-    // FIXME: Give the embedder a way to control this.
-    return false;
 }
 
 #if ENABLE(WORKERS)

@@ -32,7 +32,6 @@
 #include "CachedResourceLoader.h"
 #include "CrossOriginAccessControl.h"
 #include "Document.h"
-#include "Frame.h"
 #include "FrameLoaderClient.h"
 #include "InspectorInstrumentation.h"
 #include "KURL.h"
@@ -45,6 +44,8 @@
 #include "WebCoreMemoryInstrumentation.h"
 #include <wtf/CurrentTime.h>
 #include <wtf/MathExtras.h>
+#include <wtf/MemoryInstrumentationHashCountedSet.h>
+#include <wtf/MemoryInstrumentationHashSet.h>
 #include <wtf/RefCountedLeakCounter.h>
 #include <wtf/StdLibExtras.h>
 #include <wtf/text/CString.h>
@@ -805,7 +806,7 @@ void CachedResource::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
 {
     MemoryClassInfo info(memoryObjectInfo, this, WebCoreMemoryTypes::CachedResource);
     info.addMember(m_resourceRequest);
-    info.addHashSet(m_clients);
+    info.addMember(m_clients);
     info.addMember(m_accept);
     info.addMember(m_loader);
     info.addMember(m_response);
@@ -818,7 +819,7 @@ void CachedResource::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
     info.addMember(m_owningCachedResourceLoader);
     info.addMember(m_resourceToRevalidate);
     info.addMember(m_proxyResource);
-    info.addInstrumentedHashSet(m_handlesToRevalidate);
+    info.addMember(m_handlesToRevalidate);
 
     if (m_purgeableData && !m_purgeableData->wasPurged())
         info.addRawBuffer(m_purgeableData.get(), m_purgeableData->size());

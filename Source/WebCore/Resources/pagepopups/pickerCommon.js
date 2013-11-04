@@ -1,3 +1,4 @@
+"use strict";
 /*
  * Copyright (C) 2012 Google Inc. All rights reserved.
  *
@@ -57,6 +58,9 @@ function resizeWindow(width, height) {
     }
 }
 
+/**
+ * @return {!number}
+ */
 function getScrollbarWidth() {
     if (typeof window.scrollbarWidth === "undefined") {
         var scrollDiv = document.createElement("div");
@@ -70,6 +74,19 @@ function getScrollbarWidth() {
     }
     return window.scrollbarWidth;
 }
+
+/**
+ * @param {!string} className
+ * @return {?Element}
+ */
+function enclosingNodeOrSelfWithClass(selfNode, className)
+{
+    for (var node = selfNode; node && node !== selfNode.ownerDocument; node = node.parentNode) {
+        if (node.nodeType === Node.ELEMENT_NODE && node.classList.contains(className))
+            return node;
+    }
+    return null;
+};
 
 /**
  * @constructor
@@ -104,3 +121,5 @@ Picker.prototype.handleCancel = function() {
 Picker.prototype.chooseOtherColor = function() {
     window.pagePopupController.setValueAndClosePopup(Picker.Actions.ChooseOtherColor, "");
 }
+
+Picker.prototype.cleanup = function() {};

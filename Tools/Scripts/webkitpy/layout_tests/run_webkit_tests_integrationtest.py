@@ -260,7 +260,7 @@ class LintTest(unittest.TestCase, StreamTestingMixin):
         options, parsed_args = parse_args(['--lint-test-files'])
         host = MockHost()
         port_obj = host.port_factory.get(options.platform, options=options)
-        port_obj.expectations_dict = lambda: {'': '# syntax error'}
+        port_obj.expectations_dict = lambda: {'': '-- syntax error'}
         res, out, err = run_and_capture(port_obj, options, parsed_args)
 
         self.assertEqual(res, -1)
@@ -310,7 +310,7 @@ class MainTest(unittest.TestCase, StreamTestingMixin):
     def test_child_processes_min(self):
         if self.should_test_processes:
             _, _, regular_output, _ = logging_run(
-                ['--debug-rwt-logging', '--child-processes', '2', 'passes'],
+                ['--debug-rwt-logging', '--child-processes', '2', '-i', 'passes/passes', 'passes'],
                 tests_included=True, shared_port=False)
             self.assertTrue(any(['Running 1 ' in line for line in regular_output.buflist]))
 
@@ -347,7 +347,9 @@ class MainTest(unittest.TestCase, StreamTestingMixin):
         res, out, err, user = logging_run(['--run-singly', '--time-out-ms=50',
                                           'failures/expected/hang.html'],
                                           tests_included=True)
-        self.assertEqual(res, 0)
+        # Note that hang.html is marked as WontFix and all WontFix tests are
+        # expected to Pass, so that actually running them generates an "unexpected" error.
+        self.assertEqual(res, 1)
         self.assertNotEmpty(out)
         self.assertNotEmpty(err)
 
@@ -472,7 +474,7 @@ class MainTest(unittest.TestCase, StreamTestingMixin):
         # This tests that we skip both known failing and known flaky tests. Because there are
         # no known flaky tests in the default test_expectations, we add additional expectations.
         host = MockHost()
-        host.filesystem.write_text_file('/tmp/overrides.txt', 'BUGX : passes/image.html = IMAGE PASS\n')
+        host.filesystem.write_text_file('/tmp/overrides.txt', 'Bug(x) passes/image.html [ ImageOnlyFailure Pass ]\n')
 
         batches = get_tests_run(['--skip-failing-tests', '--additional-expectations', '/tmp/overrides.txt'], host=host)
         has_passes_text = False
@@ -764,7 +766,7 @@ class MainTest(unittest.TestCase, StreamTestingMixin):
         self.assertEquals(res, 1)
         self.assertTrue('Clobbering old results' in err.getvalue())
         self.assertTrue('flaky/text.html' in err.getvalue())
-        self.assertTrue('Unexpected text failures' in out.getvalue())
+        self.assertTrue('Unexpected text-only failures' in out.getvalue())
         self.assertFalse('Unexpected flakiness' in out.getvalue())
         self.assertTrue(host.filesystem.exists('/tmp/layout-test-results/failures/flaky/text-actual.txt'))
         self.assertFalse(host.filesystem.exists('retries'))
@@ -773,7 +775,7 @@ class MainTest(unittest.TestCase, StreamTestingMixin):
         # These next tests test that we run the tests in ascending alphabetical
         # order per directory. HTTP tests are sharded separately from other tests,
         # so we have to test both.
-        tests_run = get_tests_run(['passes'], tests_included=True, flatten_batches=True)
+        tests_run = get_tests_run(['-i', 'passes/passes', 'passes'], tests_included=True, flatten_batches=True)
         self.assertEquals(tests_run, sorted(tests_run))
 
         tests_run = get_tests_run(['http/tests/passes'], tests_included=True, flatten_batches=True)
@@ -849,13 +851,11 @@ class MainTest(unittest.TestCase, StreamTestingMixin):
         self.assertTrue(passing_run(['--additional-platform-directory', '/tmp/foo']))
         self.assertTrue(passing_run(['--additional-platform-directory', '/tmp/../foo']))
         self.assertTrue(passing_run(['--additional-platform-directory', '/tmp/foo', '--additional-platform-directory', '/tmp/bar']))
-
-        res, buildbot_output, regular_output, user = logging_run(['--additional-platform-directory', 'foo'])
-        self.assertContains(regular_output, '--additional-platform-directory=foo is ignored since it is not absolute\n')
+        self.assertTrue(passing_run(['--additional-platform-directory', 'foo']))
 
     def test_additional_expectations(self):
         host = MockHost()
-        host.filesystem.write_text_file('/tmp/overrides.txt', 'BUGX : failures/unexpected/mismatch.html = IMAGE\n')
+        host.filesystem.write_text_file('/tmp/overrides.txt', 'Bug(x) failures/unexpected/mismatch.html [ ImageOnlyFailure ]\n')
         self.assertTrue(passing_run(['--additional-expectations', '/tmp/overrides.txt', 'failures/unexpected/mismatch.html'],
                                      tests_included=True, host=host))
 
@@ -964,11 +964,11 @@ class EndToEndTest(unittest.TestCase):
         self.assertTrue("multiple-mismatch-success.html" not in json["tests"]["reftests"]["foo"])
         self.assertTrue("multiple-both-success.html" not in json["tests"]["reftests"]["foo"])
         self.assertEqual(json["tests"]["reftests"]["foo"]["multiple-match-failure.html"],
-            {"expected": "PASS", "actual": "IMAGE", "image_diff_percent": 1, 'is_reftest': True})
+            {"expected": "PASS", "actual": "IMAGE", "reftest_type": ["=="], "image_diff_percent": 1})
         self.assertEqual(json["tests"]["reftests"]["foo"]["multiple-mismatch-failure.html"],
-            {"expected": "PASS", "actual": "IMAGE", "is_mismatch_reftest": True})
+            {"expected": "PASS", "actual": "IMAGE", "reftest_type": ["!="]})
         self.assertEqual(json["tests"]["reftests"]["foo"]["multiple-both-failure.html"],
-            {"expected": "PASS", "actual": "IMAGE", "is_mismatch_reftest": True})
+            {"expected": "PASS", "actual": "IMAGE", "reftest_type": ["==", "!="]})
 
 
 class RebaselineTest(unittest.TestCase, StreamTestingMixin):

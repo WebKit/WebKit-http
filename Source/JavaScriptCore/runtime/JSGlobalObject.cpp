@@ -228,7 +228,7 @@ void JSGlobalObject::reset(JSValue prototype)
     m_callbackFunctionStructure.set(exec->globalData(), this, JSCallbackFunction::createStructure(exec->globalData(), this, m_functionPrototype.get()));
     m_argumentsStructure.set(exec->globalData(), this, Arguments::createStructure(exec->globalData(), this, m_objectPrototype.get()));
     m_callbackConstructorStructure.set(exec->globalData(), this, JSCallbackConstructor::createStructure(exec->globalData(), this, m_objectPrototype.get()));
-    m_callbackObjectStructure.set(exec->globalData(), this, JSCallbackObject<JSNonFinalObject>::createStructure(exec->globalData(), this, m_objectPrototype.get()));
+    m_callbackObjectStructure.set(exec->globalData(), this, JSCallbackObject<JSDestructibleObject>::createStructure(exec->globalData(), this, m_objectPrototype.get()));
 
     m_arrayPrototype.set(exec->globalData(), this, ArrayPrototype::create(exec, this, ArrayPrototype::createStructure(exec->globalData(), this, m_objectPrototype.get())));
     m_arrayStructure.set(exec->globalData(), this, JSArray::createStructure(exec->globalData(), this, m_arrayPrototype.get(), ArrayWithArrayStorage));
@@ -310,14 +310,17 @@ void JSGlobalObject::reset(JSValue prototype)
     putDirectWithoutTransition(exec->globalData(), exec->propertyNames().eval, m_evalFunction.get(), DontEnum);
 
     putDirectWithoutTransition(exec->globalData(), Identifier(exec, "JSON"), JSONObject::create(exec, this, JSONObject::createStructure(exec->globalData(), this, m_objectPrototype.get())), DontEnum);
+    putDirectWithoutTransition(exec->globalData(), Identifier(exec, "Math"), MathObject::create(exec, this, MathObject::createStructure(exec->globalData(), this, m_objectPrototype.get())), DontEnum);
 
     GlobalPropertyInfo staticGlobals[] = {
-        GlobalPropertyInfo(Identifier(exec, "Math"), MathObject::create(exec, this, MathObject::createStructure(exec->globalData(), this, m_objectPrototype.get())), DontEnum | DontDelete),
         GlobalPropertyInfo(Identifier(exec, "NaN"), jsNaN(), DontEnum | DontDelete | ReadOnly),
         GlobalPropertyInfo(Identifier(exec, "Infinity"), jsNumber(std::numeric_limits<double>::infinity()), DontEnum | DontDelete | ReadOnly),
         GlobalPropertyInfo(Identifier(exec, "undefined"), jsUndefined(), DontEnum | DontDelete | ReadOnly)
     };
     addStaticGlobals(staticGlobals, WTF_ARRAY_LENGTH(staticGlobals));
+    
+    m_specialPointers[Special::CallFunction] = m_callFunction.get();
+    m_specialPointers[Special::ApplyFunction] = m_applyFunction.get();
 
     if (m_experimentsEnabled) {
         NamePrototype* privateNamePrototype = NamePrototype::create(exec, NamePrototype::createStructure(exec->globalData(), this, m_objectPrototype.get()));
@@ -373,7 +376,7 @@ void ObjectsWithBrokenIndexingFinder::operator()(JSCell* cell)
     // a different global object that have prototypes from our global object.
     bool foundGlobalObject = false;
     for (JSObject* current = object; ;) {
-        if (current->unwrappedGlobalObject() == m_globalObject) {
+        if (current->globalObject() == m_globalObject) {
             foundGlobalObject = true;
             break;
         }
@@ -482,6 +485,7 @@ void JSGlobalObject::visitChildren(JSCell* cell, SlotVisitor& visitor)
     visitor.append(&thisObject->m_nameScopeStructure);
     visitor.append(&thisObject->m_argumentsStructure);
     visitor.append(&thisObject->m_arrayStructure);
+    visitor.append(&thisObject->m_arrayStructureForSlowPut);
     visitor.append(&thisObject->m_booleanObjectStructure);
     visitor.append(&thisObject->m_callbackConstructorStructure);
     visitor.append(&thisObject->m_callbackFunctionStructure);
@@ -499,6 +503,11 @@ void JSGlobalObject::visitChildren(JSCell* cell, SlotVisitor& visitor)
     visitor.append(&thisObject->m_regExpStructure);
     visitor.append(&thisObject->m_stringObjectStructure);
     visitor.append(&thisObject->m_internalFunctionStructure);
+}
+
+JSObject* JSGlobalObject::toThisObject(JSCell* cell, ExecState*)
+{
+    return jsCast<JSGlobalObject*>(cell)->globalThis();
 }
 
 ExecState* JSGlobalObject::globalExec()

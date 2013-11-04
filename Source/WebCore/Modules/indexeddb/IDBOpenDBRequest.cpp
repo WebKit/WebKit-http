@@ -71,6 +71,13 @@ void IDBOpenDBRequest::onBlocked(int64_t oldVersion)
 void IDBOpenDBRequest::onUpgradeNeeded(int64_t oldVersion, PassRefPtr<IDBTransactionBackendInterface> prpTransactionBackend, PassRefPtr<IDBDatabaseBackendInterface> prpDatabaseBackend)
 {
     IDB_TRACE("IDBOpenDBRequest::onUpgradeNeeded()");
+    if (m_contextStopped || !scriptExecutionContext()) {
+        RefPtr<IDBTransactionBackendInterface> transaction = prpTransactionBackend;
+        transaction->abort();
+        RefPtr<IDBDatabaseBackendInterface> db = prpDatabaseBackend;
+        db->close(m_databaseCallbacks);
+        return;
+    }
     if (!shouldEnqueueEvent())
         return;
 
@@ -88,9 +95,11 @@ void IDBOpenDBRequest::onUpgradeNeeded(int64_t oldVersion, PassRefPtr<IDBTransac
     m_result = IDBAny::create(idbDatabase.release());
 
     if (oldVersion == IDBDatabaseMetadata::NoIntVersion) {
-      // This database hasn't had an integer version before.
-      oldVersion = IDBDatabaseMetadata::DefaultIntVersion;
+        // This database hasn't had an integer version before.
+        oldVersion = IDBDatabaseMetadata::DefaultIntVersion;
     }
+    if (m_version == IDBDatabaseMetadata::NoIntVersion)
+        m_version = 1;
     enqueueEvent(IDBUpgradeNeededEvent::create(oldVersion, m_version, eventNames().upgradeneededEvent));
 }
 

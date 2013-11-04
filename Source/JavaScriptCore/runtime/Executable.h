@@ -81,6 +81,8 @@ namespace JSC {
         typedef JSCell Base;
 
 #if ENABLE(JIT)
+        static const bool needsDestruction = true;
+        static const bool hasImmortalStructure = true;
         static void destroy(JSCell*);
 #endif
 
@@ -266,7 +268,6 @@ namespace JSC {
 #if ENABLE(JIT)
         static NativeExecutable* create(JSGlobalData& globalData, MacroAssemblerCodeRef callThunk, NativeFunction function, MacroAssemblerCodeRef constructThunk, NativeFunction constructor, Intrinsic intrinsic)
         {
-            ASSERT(!globalData.interpreter->classicEnabled());
             NativeExecutable* executable;
             if (!callThunk) {
                 executable = new (NotNull, allocateCell<NativeExecutable>(globalData.heap)) NativeExecutable(globalData, function, constructor);
@@ -279,7 +280,7 @@ namespace JSC {
         }
 #endif
 
-#if ENABLE(CLASSIC_INTERPRETER) || ENABLE(LLINT_C_LOOP)
+#if ENABLE(LLINT_C_LOOP)
         static NativeExecutable* create(JSGlobalData& globalData, NativeFunction function, NativeFunction constructor)
         {
             ASSERT(!globalData.canUseJIT());
@@ -306,22 +307,12 @@ namespace JSC {
 #if ENABLE(JIT)
         void finishCreation(JSGlobalData& globalData, JITCode callThunk, JITCode constructThunk, Intrinsic intrinsic)
         {
-            ASSERT(!globalData.interpreter->classicEnabled());
             Base::finishCreation(globalData);
             m_jitCodeForCall = callThunk;
             m_jitCodeForConstruct = constructThunk;
             m_jitCodeForCallWithArityCheck = callThunk.addressForCall();
             m_jitCodeForConstructWithArityCheck = constructThunk.addressForCall();
             m_intrinsic = intrinsic;
-        }
-#endif
-
-#if ENABLE(CLASSIC_INTERPRETER)
-        void finishCreation(JSGlobalData& globalData)
-        {
-            ASSERT(!globalData.canUseJIT());
-            Base::finishCreation(globalData);
-            m_intrinsic = NoIntrinsic;
         }
 #endif
 
@@ -692,7 +683,6 @@ namespace JSC {
         const Identifier& inferredName() { return m_inferredName; }
         JSString* nameValue() const { return m_nameValue.get(); }
         size_t parameterCount() const { return m_parameters->size(); } // Excluding 'this'!
-        unsigned capturedVariableCount() const { return m_numCapturedVariables; }
         String paramString() const;
         SharedSymbolTable* symbolTable() const { return m_symbolTable.get(); }
 
@@ -742,8 +732,7 @@ namespace JSC {
         }
 
         static const unsigned StructureFlags = OverridesVisitChildren | ScriptExecutable::StructureFlags;
-        unsigned m_numCapturedVariables : 31;
-        bool m_forceUsesArguments : 1;
+        bool m_forceUsesArguments;
 
         RefPtr<FunctionParameters> m_parameters;
         OwnPtr<FunctionCodeBlock> m_codeBlockForCall;

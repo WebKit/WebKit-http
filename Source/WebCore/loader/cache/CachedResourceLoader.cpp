@@ -46,9 +46,10 @@
 #include "MemoryCache.h"
 #include "PingLoader.h"
 #include "ResourceLoadScheduler.h"
-#include "SchemeRegistry.h"
 #include "SecurityOrigin.h"
 #include "Settings.h"
+#include <wtf/MemoryInstrumentationHashMap.h>
+#include <wtf/MemoryInstrumentationHashSet.h>
 #include <wtf/UnusedParam.h>
 #include <wtf/text/CString.h>
 #include <wtf/text/WTFString.h>
@@ -161,10 +162,7 @@ CachedResourceHandle<CachedImage> CachedResourceLoader::requestImage(ResourceReq
             return 0;
         }
     }
-    CachedResourceHandle<CachedImage> resource(static_cast<CachedImage*>(requestResource(CachedResource::ImageResource, request, String(), defaultCachedResourceOptions()).get()));
-    if (!shouldDeferImageLoad(request.url()) && resource && resource->stillNeedsLoad())
-        resource->load(this, defaultCachedResourceOptions());
-    return resource;
+    return static_cast<CachedImage*>(requestResource(CachedResource::ImageResource, request, String(), defaultCachedResourceOptions(), ResourceLoadPriorityUnresolved, false, clientDefersImage(request.url()) ? DeferredByClient : NoDefer).get());
 }
 
 CachedResourceHandle<CachedFont> CachedResourceLoader::requestFont(ResourceRequest& request)
@@ -397,7 +395,7 @@ bool CachedResourceLoader::canRequest(CachedResource::Type type, const KURL& url
     return true;
 }
 
-CachedResourceHandle<CachedResource> CachedResourceLoader::requestResource(CachedResource::Type type, ResourceRequest& request, const String& charset, const ResourceLoaderOptions& options, ResourceLoadPriority priority, bool forPreload)
+CachedResourceHandle<CachedResource> CachedResourceLoader::requestResource(CachedResource::Type type, ResourceRequest& request, const String& charset, const ResourceLoaderOptions& options, ResourceLoadPriority priority, bool forPreload, DeferOption defer)
 {
     KURL url = request.url();
     
@@ -426,16 +424,16 @@ CachedResourceHandle<CachedResource> CachedResourceLoader::requestResource(Cache
     if (request.url() != url)
         request.setURL(url);
 
-    switch (determineRevalidationPolicy(type, request, forPreload, resource.get())) {
-    case Load:
-        resource = loadResource(type, request, charset, priority, options);
-        break;
+    const RevalidationPolicy policy = determineRevalidationPolicy(type, request, forPreload, resource.get(), defer);
+    switch (policy) {
     case Reload:
         memoryCache()->remove(resource.get());
-        resource = loadResource(type, request, charset, priority, options);
+        // Fall through
+    case Load:
+        resource = loadResource(type, request, charset);
         break;
     case Revalidate:
-        resource = revalidateResource(resource.get(), priority, options);
+        resource = revalidateResource(resource.get());
         break;
     case Use:
         memoryCache()->resourceAccessed(resource.get());
@@ -446,12 +444,27 @@ CachedResourceHandle<CachedResource> CachedResourceLoader::requestResource(Cache
     if (!resource)
         return 0;
 
+    resource->setLoadPriority(priority);
+    if ((policy != Use || resource->stillNeedsLoad()) && NoDefer == defer) {
+        resource->load(this, options);
+
+        // We don't support immediate loads, but we do support immediate failure.
+        if (resource->errorOccurred()) {
+            if (resource->inCache())
+                memoryCache()->remove(resource.get());
+            return 0;
+        }
+    }
+
+    if (!request.url().protocolIsData())
+        m_validatedURLs.add(request.url());
+
     ASSERT(resource->url() == url.string());
     m_documentResources.set(resource->url(), resource);
     return resource;
 }
 
-CachedResourceHandle<CachedResource> CachedResourceLoader::revalidateResource(CachedResource* resource, ResourceLoadPriority priority, const ResourceLoaderOptions& options)
+CachedResourceHandle<CachedResource> CachedResourceLoader::revalidateResource(CachedResource* resource)
 {
     ASSERT(resource);
     ASSERT(resource->inCache());
@@ -461,7 +474,6 @@ CachedResourceHandle<CachedResource> CachedResourceLoader::revalidateResource(Ca
     
     // Copy the URL out of the resource to be revalidated in case it gets deleted by the remove() call below.
     String url = resource->url();
-    bool urlProtocolIsData = resource->url().protocolIsData();
     CachedResourceHandle<CachedResource> newResource = createResource(resource->type(), resource->resourceRequest(), resource->encoding());
     
     LOG(ResourceLoading, "Resource %p created to revalidate %p", newResource.get(), resource);
@@ -469,16 +481,10 @@ CachedResourceHandle<CachedResource> CachedResourceLoader::revalidateResource(Ca
     
     memoryCache()->remove(resource);
     memoryCache()->add(newResource.get());
-    
-    newResource->setLoadPriority(priority);
-    newResource->load(this, options);
-
-    if (!urlProtocolIsData)
-        m_validatedURLs.add(url);
     return newResource;
 }
 
-CachedResourceHandle<CachedResource> CachedResourceLoader::loadResource(CachedResource::Type type, ResourceRequest& request, const String& charset, ResourceLoadPriority priority, const ResourceLoaderOptions& options)
+CachedResourceHandle<CachedResource> CachedResourceLoader::loadResource(CachedResource::Type type, ResourceRequest& request, const String& charset)
 {
     ASSERT(!memoryCache()->resourceForURL(request.url()));
     
@@ -486,27 +492,12 @@ CachedResourceHandle<CachedResource> CachedResourceLoader::loadResource(CachedRe
     
     CachedResourceHandle<CachedResource> resource = createResource(type, request, charset);
     
-    bool inCache = memoryCache()->add(resource.get());
-    
-    resource->setLoadPriority(priority);
-    resource->load(this, options);
-    
-    if (!inCache)
+    if (!memoryCache()->add(resource.get()))
         resource->setOwningCachedResourceLoader(this);
-
-    // We don't support immediate loads, but we do support immediate failure.
-    if (resource->errorOccurred()) {
-        if (inCache)
-            memoryCache()->remove(resource.get());
-        return 0;
-    }
-
-    if (!request.url().protocolIsData())
-        m_validatedURLs.add(request.url());
     return resource;
 }
 
-CachedResourceLoader::RevalidationPolicy CachedResourceLoader::determineRevalidationPolicy(CachedResource::Type type, ResourceRequest& request, bool forPreload, CachedResource* existingResource) const
+CachedResourceLoader::RevalidationPolicy CachedResourceLoader::determineRevalidationPolicy(CachedResource::Type type, ResourceRequest& request, bool forPreload, CachedResource* existingResource, DeferOption defer) const
 {
     if (!existingResource)
         return Load;
@@ -531,8 +522,8 @@ CachedResourceLoader::RevalidationPolicy CachedResourceLoader::determineRevalida
         return Reload;
 
     // Do not load from cache if images are not enabled. The load for this image will be blocked
-    // in requestImage.
-    if (existingResource->type() == CachedResource::ImageResource && !clientAllowsImage(existingResource->url()))
+    // in CachedImage::load.
+    if (DeferredByClient == defer)
         return Reload;
     
     // Don't reload resources while pasting.
@@ -646,14 +637,14 @@ void CachedResourceLoader::setImagesEnabled(bool enable)
     reloadImagesIfNotDeferred();
 }
 
-bool CachedResourceLoader::clientAllowsImage(const KURL& url) const
+bool CachedResourceLoader::clientDefersImage(const KURL& url) const
 {
-    return !frame() || frame()->loader()->client()->allowImage(m_imagesEnabled, url);
+    return frame() && !frame()->loader()->client()->allowImage(m_imagesEnabled, url);
 }
 
 bool CachedResourceLoader::shouldDeferImageLoad(const KURL& url) const
 {
-    return !clientAllowsImage(url) || !m_autoLoadImages;
+    return clientDefersImage(url) || !m_autoLoadImages;
 }
 
 void CachedResourceLoader::reloadImagesIfNotDeferred()
@@ -661,12 +652,8 @@ void CachedResourceLoader::reloadImagesIfNotDeferred()
     DocumentResourceMap::iterator end = m_documentResources.end();
     for (DocumentResourceMap::iterator it = m_documentResources.begin(); it != end; ++it) {
         CachedResource* resource = it->second.get();
-        if (resource->type() == CachedResource::ImageResource) {
-            CachedImage* image = const_cast<CachedImage*>(static_cast<const CachedImage*>(resource));
-
-            if (image->stillNeedsLoad() && !shouldDeferImageLoad(image->url()))
-                image->load(this, defaultCachedResourceOptions());
-        }
+        if (resource->type() == CachedResource::ImageResource && resource->stillNeedsLoad() && !clientDefersImage(resource->url()))
+            const_cast<CachedResource*>(resource)->load(this, defaultCachedResourceOptions());
     }
 }
 
@@ -762,7 +749,7 @@ void CachedResourceLoader::preload(CachedResource::Type type, ResourceRequest& r
     UNUSED_PARAM(referencedFromBody);
 
     bool delaySubresourceLoad = true;
-#if PLATFORM(IOS)
+#if PLATFORM(IOS) || PLATFORM(CHROMIUM)
     delaySubresourceLoad = false;
 #endif
     if (delaySubresourceLoad) {
@@ -910,12 +897,8 @@ void CachedResourceLoader::printPreloadStats()
 void CachedResourceLoader::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
 {
     MemoryClassInfo info(memoryObjectInfo, this, WebCoreMemoryTypes::Loader);
-    info.addHashMap(m_documentResources);
-    for (DocumentResourceMap::const_iterator i = m_documentResources.begin(); i != m_documentResources.end(); ++i) {
-        info.addMember(i->first);
-        info.addMember(i->second);
-    }
-    info.addHashSet(m_validatedURLs);
+    info.addMember(m_documentResources);
+    info.addMember(m_validatedURLs);
     if (m_preloads)
         info.addListHashSet(*m_preloads);
     info.addMember(m_pendingPreloads);

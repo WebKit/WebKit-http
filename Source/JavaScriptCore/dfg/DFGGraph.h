@@ -469,11 +469,18 @@ public:
         return isNumberSpeculation(left) && isNumberSpeculation(right);
     }
     
+    // Note that a 'true' return does not actually mean that the ByVal access clobbers nothing.
+    // It really means that it will not clobber the entire world. It's still up to you to
+    // carefully consider things like:
+    // - PutByVal definitely changes the array it stores to, and may even change its length.
+    // - PutByOffset definitely changes the object it stores to.
+    // - and so on.
     bool byValIsPure(Node& node)
     {
         switch (node.arrayMode()) {
         case Array::Generic:
         case OUT_OF_BOUNDS_ARRAY_STORAGE_MODES:
+        case ALL_EFFECTFUL_ARRAY_STORAGE_MODES:
             return false;
         case Array::String:
             return node.op() == GetByVal;

@@ -131,8 +131,8 @@ bool JSValueIsObjectOfClass(JSContextRef ctx, JSValueRef value, JSClassRef jsCla
     if (JSObject* o = jsValue.getObject()) {
         if (o->inherits(&JSCallbackObject<JSGlobalObject>::s_info))
             return jsCast<JSCallbackObject<JSGlobalObject>*>(o)->inherits(jsClass);
-        if (o->inherits(&JSCallbackObject<JSNonFinalObject>::s_info))
-            return jsCast<JSCallbackObject<JSNonFinalObject>*>(o)->inherits(jsClass);
+        if (o->inherits(&JSCallbackObject<JSDestructibleObject>::s_info))
+            return jsCast<JSCallbackObject<JSDestructibleObject>*>(o)->inherits(jsClass);
     }
     return false;
 }
@@ -175,7 +175,7 @@ bool JSValueIsInstanceOfConstructor(JSContextRef ctx, JSValueRef value, JSObject
     JSObject* jsConstructor = toJS(constructor);
     if (!jsConstructor->structure()->typeInfo().implementsHasInstance())
         return false;
-    bool result = jsConstructor->methodTable()->hasInstance(jsConstructor, exec, jsValue, jsConstructor->get(exec, exec->propertyNames().prototype)); // false if an exception is thrown
+    bool result = jsConstructor->hasInstance(exec, jsValue); // false if an exception is thrown
     if (exec->hadException()) {
         if (exception)
             *exception = toRef(exec, exec->exception());

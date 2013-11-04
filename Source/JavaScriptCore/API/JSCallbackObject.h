@@ -133,12 +133,10 @@ public:
         callbackObject->finishCreation(exec);
         return callbackObject;
     }
-    static JSCallbackObject* create(JSGlobalData& globalData, JSClassRef classRef, Structure* structure)
-    {
-        JSCallbackObject* callbackObject = new (NotNull, allocateCell<JSCallbackObject>(globalData.heap)) JSCallbackObject(globalData, classRef, structure);
-        callbackObject->finishCreation(globalData);
-        return callbackObject;
-    }
+    static JSCallbackObject<Parent>* create(JSGlobalData&, JSClassRef, Structure*);
+
+    static const bool needsDestruction;
+    static void destroy(JSCell*);
 
     void setPrivate(void* data);
     void* getPrivate();
@@ -173,8 +171,6 @@ protected:
 private:
     static String className(const JSObject*);
 
-    static void destroy(JSCell*);
-
     static JSValue defaultValue(const JSObject*, ExecState*, PreferredPrimitiveType);
 
     static bool getOwnPropertySlot(JSCell*, ExecState*, PropertyName, PropertySlot&);
@@ -186,7 +182,7 @@ private:
     static bool deleteProperty(JSCell*, ExecState*, PropertyName);
     static bool deletePropertyByIndex(JSCell*, ExecState*, unsigned);
 
-    static bool hasInstance(JSObject*, ExecState*, JSValue, JSValue proto);
+    static bool customHasInstance(JSObject*, ExecState*, JSValue);
 
     static void getOwnNonIndexPropertyNames(JSObject*, ExecState*, PropertyNameArray&, EnumerationMode);
 

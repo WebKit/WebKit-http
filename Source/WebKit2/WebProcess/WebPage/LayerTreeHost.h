@@ -41,6 +41,7 @@ class FloatPoint;
 class IntRect;
 class IntSize;
 class GraphicsLayer;
+class GraphicsLayerFactory;
 
 #if PLATFORM(WIN) && USE(AVFOUNDATION)
 struct GraphicsDeviceAdapter;
@@ -73,7 +74,7 @@ public:
     virtual void setNonCompositedContentsNeedDisplay(const WebCore::IntRect&) = 0;
     virtual void scrollNonCompositedContents(const WebCore::IntRect& scrollRect, const WebCore::IntSize& scrollOffset) = 0;
     virtual void forceRepaint() = 0;
-    virtual bool forceRepaintAsync(uint64_t callbackID) { return false; }
+    virtual bool forceRepaintAsync(uint64_t /*callbackID*/) { return false; }
     virtual void sizeDidChange(const WebCore::IntSize& newSize) = 0;
     virtual void deviceScaleFactorDidChange() = 0;
 
@@ -85,6 +86,8 @@ public:
 
     virtual void pauseRendering() { }
     virtual void resumeRendering() { }
+
+    virtual WebCore::GraphicsLayerFactory* graphicsLayerFactory() { return 0; }
 
 #if USE(COORDINATED_GRAPHICS)
     virtual void setVisibleContentsRect(const WebCore::IntRect&, float scale, const WebCore::FloatPoint&) { }

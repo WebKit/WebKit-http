@@ -132,6 +132,10 @@ public:
     void registerURLSchemeAsEmptyDocument(const String&);
     void registerURLSchemeAsSecure(const String&);
     void setDomainRelaxationForbiddenForURLScheme(const String&);
+    void registerURLSchemeAsLocal(const String&);
+    void registerURLSchemeAsNoAccess(const String&);
+    void registerURLSchemeAsDisplayIsolated(const String&);
+    void registerURLSchemeAsCORSEnabled(const String&);
 
     void addVisitedLink(const String&);
     void addVisitedLinkHash(WebCore::LinkHash);
@@ -295,11 +299,17 @@ private:
     HashSet<String> m_schemesToRegisterAsEmptyDocument;
     HashSet<String> m_schemesToRegisterAsSecure;
     HashSet<String> m_schemesToSetDomainRelaxationForbiddenFor;
+    HashSet<String> m_schemesToRegisterAsLocal;
+    HashSet<String> m_schemesToRegisterAsNoAccess;
+    HashSet<String> m_schemesToRegisterAsDisplayIsolated;
+    HashSet<String> m_schemesToRegisterAsCORSEnabled;
 
     bool m_alwaysUsesComplexTextCodePath;
     bool m_shouldUseFontSmoothing;
 
-    Vector<pair<String, RefPtr<APIObject> > > m_pendingMessagesToPostToInjectedBundle;
+    // Messages that were posted before any pages were created.
+    // The client should use initialization messages instead, so that a restarted process would get the same state.
+    Vector<pair<String, RefPtr<APIObject> > > m_messagesToInjectedBundlePostedToEmptyContext;
 
     CacheModel m_cacheModel;
 
@@ -364,7 +374,9 @@ template<typename U> inline void WebContext::sendToAllProcesses(const U& message
 
 template<typename U> void WebContext::sendToAllProcessesRelaunchingThemIfNecessary(const U& message)
 {
-    relaunchProcessIfNecessary();
+// FIXME (Multi-WebProcess): WebContext doesn't track processes that have exited, so it cannot relaunch these. Perhaps this functionality won't be needed in this mode.
+    if (m_processModel == ProcessModelSharedSecondaryProcess)
+        relaunchProcessIfNecessary();
     sendToAllProcesses(message);
 }
 

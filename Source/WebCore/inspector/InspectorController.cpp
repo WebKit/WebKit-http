@@ -44,6 +44,7 @@
 #include "InspectorBackendDispatcher.h"
 #include "InspectorBaseAgent.h"
 #include "InspectorCSSAgent.h"
+#include "InspectorCanvasAgent.h"
 #include "InspectorClient.h"
 #include "InspectorDOMAgent.h"
 #include "InspectorDOMDebuggerAgent.h"
@@ -62,7 +63,6 @@
 #include "InspectorResourceAgent.h"
 #include "InspectorState.h"
 #include "InspectorTimelineAgent.h"
-#include "InspectorWebGLAgent.h"
 #include "InspectorWorkerAgent.h"
 #include "InstrumentingAgents.h"
 #include "PageConsoleAgent.h"
@@ -114,7 +114,7 @@ InspectorController::InspectorController(Page* page, InspectorClient* inspectorC
     OwnPtr<InspectorDOMStorageAgent> domStorageAgentPtr(InspectorDOMStorageAgent::create(m_instrumentingAgents.get(), m_state.get()));
     InspectorDOMStorageAgent* domStorageAgent = domStorageAgentPtr.get();
     m_agents.append(domStorageAgentPtr.release());
-    m_agents.append(InspectorMemoryAgent::create(m_instrumentingAgents.get(), m_state.get(), m_page, domStorageAgent));
+    m_agents.append(InspectorMemoryAgent::create(m_instrumentingAgents.get(), inspectorClient, m_state.get(), m_page, domStorageAgent));
     m_agents.append(InspectorTimelineAgent::create(m_instrumentingAgents.get(), pageAgent, m_state.get(), InspectorTimelineAgent::PageInspector,
        inspectorClient));
     m_agents.append(InspectorApplicationCacheAgent::create(m_instrumentingAgents.get(), m_state.get(), pageAgent));
@@ -147,9 +147,7 @@ InspectorController::InspectorController(Page* page, InspectorClient* inspectorC
     m_agents.append(InspectorWorkerAgent::create(m_instrumentingAgents.get(), m_state.get()));
 #endif
 
-#if ENABLE(WEBGL)
-    m_agents.append(InspectorWebGLAgent::create(m_instrumentingAgents.get(), m_state.get(), page, m_injectedScriptManager.get()));
-#endif
+    m_agents.append(InspectorCanvasAgent::create(m_instrumentingAgents.get(), m_state.get(), page, m_injectedScriptManager.get()));
 
     ASSERT_ARG(inspectorClient, inspectorClient);
     m_injectedScriptManager->injectedScriptHost()->init(m_inspectorAgent
@@ -225,8 +223,6 @@ void InspectorController::connectFrontend(InspectorFrontendChannel* frontendChan
     for (Agents::iterator it = m_agents.begin(); it != m_agents.end(); ++it)
         (*it)->setFrontend(frontend);
 
-    if (!InspectorInstrumentation::hasFrontends())
-        ScriptController::setCaptureCallStackForUncaughtExceptions(true);
     InspectorInstrumentation::frontendCreated();
 
     ASSERT(m_inspectorClient);
@@ -254,8 +250,6 @@ void InspectorController::disconnectFrontend()
     m_inspectorFrontend.clear();
 
     InspectorInstrumentation::frontendDeleted();
-    if (!InspectorInstrumentation::hasFrontends())
-        ScriptController::setCaptureCallStackForUncaughtExceptions(false);
 }
 
 void InspectorController::show()
@@ -293,6 +287,11 @@ void InspectorController::reconnectFrontend(InspectorFrontendChannel* frontendCh
 void InspectorController::setProcessId(long processId)
 {
     IdentifiersFactory::setProcessId(processId);
+}
+
+void InspectorController::webViewResized(const IntSize& size)
+{
+    m_overlay->resize(size);
 }
 
 void InspectorController::evaluateForTestInFrontend(long callId, const String& script)

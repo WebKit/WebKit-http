@@ -172,6 +172,15 @@ namespace JSC {
         JS_EXPORT_PRIVATE static void put(JSCell*, ExecState*, PropertyName, JSValue, PutPropertySlot&);
         JS_EXPORT_PRIVATE static void putByIndex(JSCell*, ExecState*, unsigned propertyName, JSValue, bool shouldThrow);
         
+        void putByIndexInline(ExecState* exec, unsigned propertyName, JSValue value, bool shouldThrow)
+        {
+            if (canSetIndexQuickly(propertyName)) {
+                setIndexQuickly(exec->globalData(), propertyName, value);
+                return;
+            }
+            methodTable()->putByIndex(this, exec, propertyName, value, shouldThrow);
+        }
+        
         // This is similar to the putDirect* methods:
         //  - the prototype chain is not consulted
         //  - accessors are not called.
@@ -179,7 +188,7 @@ namespace JSC {
         // This method creates a property with attributes writable, enumerable and configurable all set to true.
         bool putDirectIndex(ExecState* exec, unsigned propertyName, JSValue value, unsigned attributes, PutDirectIndexMode mode)
         {
-            if (!attributes && canSetIndexQuickly(propertyName)) {
+            if (!attributes && canSetIndexQuicklyForPutDirect(propertyName)) {
                 setIndexQuickly(exec->globalData(), propertyName, value);
                 return true;
             }
@@ -191,7 +200,7 @@ namespace JSC {
         }
 
         // A non-throwing version of putDirect and putDirectIndex.
-        void putDirectMayBeIndex(ExecState*, PropertyName, JSValue);
+        JS_EXPORT_PRIVATE void putDirectMayBeIndex(ExecState*, PropertyName, JSValue);
         
         bool canGetIndexQuickly(unsigned i)
         {
@@ -217,6 +226,42 @@ namespace JSC {
             }
         }
         
+        JSValue tryGetIndexQuickly(unsigned i)
+        {
+            switch (structure()->indexingType()) {
+            case ALL_BLANK_INDEXING_TYPES:
+                break;
+            case ALL_ARRAY_STORAGE_INDEXING_TYPES:
+                if (i < m_butterfly->arrayStorage()->vectorLength()) {
+                    JSValue v = m_butterfly->arrayStorage()->m_vector[i].get();
+                    if (v)
+                        return v;
+                }
+                break;
+            default:
+                ASSERT_NOT_REACHED();
+                break;
+            }
+            return JSValue();
+        }
+        
+        JSValue getDirectIndex(ExecState* exec, unsigned i)
+        {
+            if (JSValue result = tryGetIndexQuickly(i))
+                return result;
+            PropertySlot slot(this);
+            if (methodTable()->getOwnPropertySlotByIndex(this, exec, i, slot))
+                return slot.getValue(exec, i);
+            return JSValue();
+        }
+        
+        JSValue getIndex(ExecState* exec, unsigned i)
+        {
+            if (JSValue result = tryGetIndexQuickly(i))
+                return result;
+            return get(exec, i);
+        }
+        
         bool canSetIndexQuickly(unsigned i)
         {
             switch (structure()->indexingType()) {
@@ -229,6 +274,19 @@ namespace JSC {
             case ArrayWithSlowPutArrayStorage:
                 return i < m_butterfly->arrayStorage()->vectorLength()
                     && !!m_butterfly->arrayStorage()->m_vector[i];
+            default:
+                ASSERT_NOT_REACHED();
+                return false;
+            }
+        }
+        
+        bool canSetIndexQuicklyForPutDirect(unsigned i)
+        {
+            switch (structure()->indexingType()) {
+            case ALL_BLANK_INDEXING_TYPES:
+                return false;
+            case ALL_ARRAY_STORAGE_INDEXING_TYPES:
+                return i < m_butterfly->arrayStorage()->vectorLength();
             default:
                 ASSERT_NOT_REACHED();
                 return false;
@@ -259,15 +317,6 @@ namespace JSC {
             switch (structure()->indexingType()) {
             case ALL_ARRAY_STORAGE_INDEXING_TYPES: {
                 ArrayStorage* storage = m_butterfly->arrayStorage();
-#if CHECK_ARRAY_CONSISTENCY
-                ASSERT(storage->m_inCompactInitialization);
-                // Check that we are initializing the next index in sequence.
-                ASSERT(i == storage->m_initializationIndex);
-                // tryCreateUninitialized set m_numValuesInVector to the initialLength,
-                // check we do not try to initialize more than this number of properties.
-                ASSERT(storage->m_initializationIndex < storage->m_numValuesInVector);
-                storage->m_initializationIndex++;
-#endif
                 ASSERT(i < storage->length());
                 ASSERT(i < storage->m_numValuesInVector);
                 storage->m_vector[i].set(globalData, this, v);
@@ -278,24 +327,16 @@ namespace JSC {
             }
         }
         
-        void completeInitialization(unsigned newLength)
+        bool hasSparseMap()
         {
             switch (structure()->indexingType()) {
-            case ALL_ARRAY_STORAGE_INDEXING_TYPES: {
-                ArrayStorage* storage = m_butterfly->arrayStorage();
-                // Check that we have initialized as meny properties as we think we have.
-                UNUSED_PARAM(storage);
-                ASSERT_UNUSED(newLength, newLength == storage->length());
-#if CHECK_ARRAY_CONSISTENCY
-                // Check that the number of propreties initialized matches the initialLength.
-                ASSERT(storage->m_initializationIndex == m_storage->m_numValuesInVector);
-                ASSERT(storage->m_inCompactInitialization);
-                storage->m_inCompactInitialization = false;
-#endif
-                break;
-            }
+            case ALL_BLANK_INDEXING_TYPES:
+                return false;
+            case ALL_ARRAY_STORAGE_INDEXING_TYPES:
+                return m_butterfly->arrayStorage()->m_sparseMap;
             default:
                 ASSERT_NOT_REACHED();
+                return false;
             }
         }
         
@@ -336,7 +377,8 @@ namespace JSC {
 
         JS_EXPORT_PRIVATE static JSValue defaultValue(const JSObject*, ExecState*, PreferredPrimitiveType);
 
-        JS_EXPORT_PRIVATE static bool hasInstance(JSObject*, ExecState*, JSValue, JSValue prototypeProperty);
+        bool hasInstance(ExecState*, JSValue);
+        static bool defaultHasInstance(ExecState*, JSValue, JSValue prototypeProperty);
 
         JS_EXPORT_PRIVATE static void getOwnPropertyNames(JSObject*, ExecState*, PropertyNameArray&, EnumerationMode);
         JS_EXPORT_PRIVATE static void getOwnNonIndexPropertyNames(JSObject*, ExecState*, PropertyNameArray&, EnumerationMode);
@@ -350,7 +392,6 @@ namespace JSC {
         // NOTE: JSObject and its subclasses must be able to gracefully handle ExecState* = 0,
         // because this call may come from inside the compiler.
         JS_EXPORT_PRIVATE static JSObject* toThisObject(JSCell*, ExecState*);
-        JSObject* unwrappedObject();
 
         bool getPropertySpecificValue(ExecState*, PropertyName, JSCell*& specificFunction) const;
 
@@ -420,10 +461,10 @@ namespace JSC {
         {
             PropertyOffset result;
             size_t offsetInInlineStorage = location - inlineStorageUnsafe();
-            if (offsetInInlineStorage < static_cast<size_t>(inlineStorageCapacity))
+            if (offsetInInlineStorage < static_cast<size_t>(firstOutOfLineOffset))
                 result = offsetInInlineStorage;
             else
-                result = outOfLineStorage() - location + (inlineStorageCapacity - 1);
+                result = outOfLineStorage() - location + (firstOutOfLineOffset - 1);
             validateOffset(result, structure()->typeInfo().type());
             return result;
         }
@@ -453,7 +494,7 @@ namespace JSC {
         bool isNameScopeObject() const;
         bool isActivationObject() const;
         bool isErrorInstance() const;
-        bool isGlobalThis() const;
+        bool isProxy() const;
 
         void seal(JSGlobalData&);
         void freeze(JSGlobalData&);
@@ -489,11 +530,6 @@ namespace JSC {
             return structure()->globalObject();
         }
         
-        // Does everything possible to return the global object. If it encounters an object
-        // that does not have a global object, it returns 0 instead (for example
-        // JSNotAnObject).
-        JSGlobalObject* unwrappedGlobalObject();
-        
         void switchToSlowPutArrayStorage(JSGlobalData&);
         
         // The receiver is the prototype in this case. The following:
@@ -504,6 +540,18 @@ namespace JSC {
         //
         // foo->attemptToInterceptPutByIndexOnHole(...);
         bool attemptToInterceptPutByIndexOnHoleForPrototype(ExecState*, JSValue thisValue, unsigned propertyName, JSValue, bool shouldThrow);
+        
+        // Ensure that the object is in a mode where it has array storage. Use
+        // this if you're about to perform actions that would have required the
+        // object to be converted to have array storage, if it didn't have it
+        // already.
+        ArrayStorage* ensureArrayStorage(JSGlobalData& globalData)
+        {
+            if (LIKELY(hasArrayStorage(structure()->indexingType())))
+                return m_butterfly->arrayStorage();
+            
+            return ensureArrayStorageSlow(globalData);
+        }
         
         static size_t offsetOfInlineStorage();
         
@@ -565,25 +613,6 @@ namespace JSC {
             }
         }
 
-        // Ensure that the object is in a mode where it has array storage. Use
-        // this if you're about to perform actions that would have required the
-        // object to be converted to have array storage, if it didn't have it
-        // already.
-        ArrayStorage* ensureArrayStorage(JSGlobalData& globalData)
-        {
-            switch (structure()->indexingType()) {
-            case ALL_ARRAY_STORAGE_INDEXING_TYPES:
-                return m_butterfly->arrayStorage();
-                
-            case ALL_BLANK_INDEXING_TYPES:
-                return createInitialArrayStorage(globalData);
-                
-            default:
-                ASSERT_NOT_REACHED();
-                return 0;
-            }
-        }
-        
         ArrayStorage* createArrayStorage(JSGlobalData&, unsigned length, unsigned vectorLength);
         ArrayStorage* createInitialArrayStorage(JSGlobalData&);
         
@@ -591,13 +620,6 @@ namespace JSC {
         
         bool defineOwnNonIndexProperty(ExecState*, PropertyName, PropertyDescriptor&, bool throwException);
 
-        enum ConsistencyCheckType { NormalConsistencyCheck, DestructorConsistencyCheck, SortConsistencyCheck };
-#if !CHECK_ARRAY_CONSISTENCY
-        void checkIndexingConsistency(ConsistencyCheckType = NormalConsistencyCheck) { }
-#else
-        void checkIndexingConsistency(ConsistencyCheckType = NormalConsistencyCheck);
-#endif
-        
         void putByIndexBeyondVectorLengthWithArrayStorage(ExecState*, unsigned propertyName, JSValue, bool shouldThrow, ArrayStorage*);
 
         bool increaseVectorLength(JSGlobalData&, unsigned newLength);
@@ -642,6 +664,8 @@ namespace JSC {
 
         JS_EXPORT_PRIVATE bool getOwnPropertySlotSlow(ExecState*, PropertyName, PropertySlot&);
         
+        ArrayStorage* ensureArrayStorageSlow(JSGlobalData&);
+        
     protected:
         Butterfly* m_butterfly;
     };
@@ -659,11 +683,6 @@ namespace JSC {
         static Structure* createStructure(JSGlobalData& globalData, JSGlobalObject* globalObject, JSValue prototype)
         {
             return Structure::create(globalData, globalObject, prototype, TypeInfo(ObjectType, StructureFlags), &s_info);
-        }
-
-        static bool hasInlineStorage()
-        {
-            return false;
         }
 
     protected:
@@ -693,17 +712,13 @@ namespace JSC {
         static JSFinalObject* create(ExecState*, Structure*);
         static Structure* createStructure(JSGlobalData& globalData, JSGlobalObject* globalObject, JSValue prototype)
         {
-            return Structure::create(globalData, globalObject, prototype, TypeInfo(FinalObjectType, StructureFlags), &s_info);
+            return Structure::create(globalData, globalObject, prototype, TypeInfo(FinalObjectType, StructureFlags), &s_info, NonArray, INLINE_STORAGE_CAPACITY);
         }
 
         JS_EXPORT_PRIVATE static void visitChildren(JSCell*, SlotVisitor&);
 
         static JS_EXPORTDATA const ClassInfo s_info;
 
-        static bool hasInlineStorage()
-        {
-            return true;
-        }
     protected:
         void visitChildrenCommon(SlotVisitor&);
         
@@ -711,8 +726,7 @@ namespace JSC {
         {
             Base::finishCreation(globalData);
             ASSERT(!(OBJECT_OFFSETOF(JSFinalObject, m_inlineStorage) % sizeof(double)));
-            ASSERT(this->structure()->inlineCapacity() == static_cast<unsigned>(inlineStorageCapacity));
-            ASSERT(this->structure()->totalStorageCapacity() == static_cast<unsigned>(inlineStorageCapacity));
+            ASSERT(structure()->totalStorageCapacity() == structure()->inlineCapacity());
             ASSERT(classInfo());
         }
 
@@ -776,9 +790,9 @@ inline bool JSObject::isErrorInstance() const
     return structure()->typeInfo().type() == ErrorInstanceType;
 }
 
-inline bool JSObject::isGlobalThis() const
+inline bool JSObject::isProxy() const
 {
-    return structure()->typeInfo().type() == GlobalThisType;
+    return structure()->typeInfo().type() == ProxyType;
 }
 
 inline void JSObject::setButterfly(JSGlobalData& globalData, Butterfly* butterfly, Structure* structure)

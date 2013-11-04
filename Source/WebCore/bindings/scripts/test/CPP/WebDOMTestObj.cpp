@@ -26,12 +26,14 @@
 #include "HTMLNames.h"
 #include "IDBKey.h"
 #include "KURL.h"
+#include "Node.h"
 #include "SVGPoint.h"
 #include "SerializedScriptValue.h"
 #include "TestObj.h"
 #include "WebDOMDictionary.h"
 #include "WebDOMDocument.h"
 #include "WebDOMIDBKey.h"
+#include "WebDOMNode.h"
 #include "WebDOMSVGPoint.h"
 #include "WebDOMString.h"
 #include "WebDOMa.h"
@@ -153,20 +155,20 @@ void WebDOMTestObj::setUnsignedShortAttr(unsigned short newUnsignedShortAttr)
     impl()->setUnsignedShortAttr(newUnsignedShortAttr);
 }
 
-long long WebDOMTestObj::Attr() const
+int WebDOMTestObj::longAttr() const
 {
     if (!impl())
         return 0;
 
-    return impl()->attr();
+    return impl()->longAttr();
 }
 
-void WebDOMTestObj::setAttr(long long newAttr)
+void WebDOMTestObj::setLongAttr(int newLongAttr)
 {
     if (!impl())
         return;
 
-    impl()->setAttr(newAttr);
+    impl()->setLongAttr(newLongAttr);
 }
 
 long long WebDOMTestObj::longLongAttr() const
@@ -425,9 +427,7 @@ void WebDOMTestObj::setAttrWithGetterException(int newAttrWithGetterException)
     if (!impl())
         return;
 
-    WebCore::ExceptionCode ec = 0;
-    impl()->setAttrWithGetterException(newAttrWithGetterException, ec);
-    webDOMRaiseError(static_cast<WebDOMExceptionCode>(ec));
+    impl()->setAttrWithGetterException(newAttrWithGetterException);
 }
 
 int WebDOMTestObj::attrWithSetterException() const
@@ -464,9 +464,7 @@ void WebDOMTestObj::setStringAttrWithGetterException(const WebDOMString& newStri
     if (!impl())
         return;
 
-    WebCore::ExceptionCode ec = 0;
-    impl()->setStringAttrWithGetterException(newStringAttrWithGetterException, ec);
-    webDOMRaiseError(static_cast<WebDOMExceptionCode>(ec));
+    impl()->setStringAttrWithGetterException(newStringAttrWithGetterException);
 }
 
 WebDOMString WebDOMTestObj::stringAttrWithSetterException() const
@@ -677,28 +675,28 @@ void WebDOMTestObj::voidMethod()
     impl()->voidMethod();
 }
 
-void WebDOMTestObj::voidMethodWithArgs(long long Arg, const WebDOMString& strArg, const WebDOMTestObj& objArg)
+void WebDOMTestObj::voidMethodWithArgs(int longArg, const WebDOMString& strArg, const WebDOMTestObj& objArg)
 {
     if (!impl())
         return;
 
-    impl()->voidMethodWithArgs(Arg, strArg, toWebCore(objArg));
+    impl()->voidMethodWithArgs(longArg, strArg, toWebCore(objArg));
 }
 
-long long WebDOMTestObj::Method()
+int WebDOMTestObj::longMethod()
 {
     if (!impl())
         return 0;
 
-    return impl()->method();
+    return impl()->longMethod();
 }
 
-long long WebDOMTestObj::MethodWithArgs(long long Arg, const WebDOMString& strArg, const WebDOMTestObj& objArg)
+int WebDOMTestObj::longMethodWithArgs(int longArg, const WebDOMString& strArg, const WebDOMTestObj& objArg)
 {
     if (!impl())
         return 0;
 
-    return impl()->methodWithArgs(Arg, strArg, toWebCore(objArg));
+    return impl()->longMethodWithArgs(longArg, strArg, toWebCore(objArg));
 }
 
 WebDOMTestObj WebDOMTestObj::objMethod()
@@ -709,12 +707,12 @@ WebDOMTestObj WebDOMTestObj::objMethod()
     return toWebKit(WTF::getPtr(impl()->objMethod()));
 }
 
-WebDOMTestObj WebDOMTestObj::objMethodWithArgs(long long Arg, const WebDOMString& strArg, const WebDOMTestObj& objArg)
+WebDOMTestObj WebDOMTestObj::objMethodWithArgs(int longArg, const WebDOMString& strArg, const WebDOMTestObj& objArg)
 {
     if (!impl())
         return WebDOMTestObj();
 
-    return toWebKit(WTF::getPtr(impl()->objMethodWithArgs(Arg, strArg, toWebCore(objArg))));
+    return toWebKit(WTF::getPtr(impl()->objMethodWithArgs(longArg, strArg, toWebCore(objArg))));
 }
 
 WebDOMTestObj WebDOMTestObj::methodThatRequiresAllArgsAndThrows(const WebDOMString& strArg, const WebDOMTestObj& objArg)
@@ -902,36 +900,36 @@ void WebDOMTestObj::overloadedMethod1(const WebDOMString& type)
 
 #endif
 
-void WebDOMTestObj::convert1(const WebDOMa& )
+void WebDOMTestObj::convert1(const WebDOMa& value)
 {
     if (!impl())
         return;
 
-    impl()->convert1(toWebCore());
+    impl()->convert1(toWebCore(value));
 }
 
-void WebDOMTestObj::convert2(const WebDOMb& )
+void WebDOMTestObj::convert2(const WebDOMb& value)
 {
     if (!impl())
         return;
 
-    impl()->convert2(toWebCore());
+    impl()->convert2(toWebCore(value));
 }
 
-void WebDOMTestObj::convert4(const WebDOMd& )
+void WebDOMTestObj::convert4(const WebDOMd& value)
 {
     if (!impl())
         return;
 
-    impl()->convert4(toWebCore());
+    impl()->convert4(toWebCore(value));
 }
 
-void WebDOMTestObj::convert5(const WebDOMe& )
+void WebDOMTestObj::convert5(const WebDOMe& value)
 {
     if (!impl())
         return;
 
-    impl()->convert5(toWebCore());
+    impl()->convert5(toWebCore(value));
 }
 
 WebDOMSVGPoint WebDOMTestObj::mutablePointFunction()
@@ -967,6 +965,30 @@ WebDOMbool WebDOMTestObj::strictFunction(const WebDOMString& str, float a, int b
     WebDOMbool result = toWebKit(WTF::getPtr(impl()->strictFunction(str, a, b, ec)));
     webDOMRaiseError(static_cast<WebDOMExceptionCode>(ec));
     return result;
+}
+
+void WebDOMTestObj::variadicStringMethod(const WebDOMString& head, const WebDOMString& tail)
+{
+    if (!impl())
+        return;
+
+    impl()->variadicStringMethod(head, tail);
+}
+
+void WebDOMTestObj::variadicDoubleMethod(double head, double tail)
+{
+    if (!impl())
+        return;
+
+    impl()->variadicDoubleMethod(head, tail);
+}
+
+void WebDOMTestObj::variadicNodeMethod(const WebDOMNode& head, const WebDOMNode& tail)
+{
+    if (!impl())
+        return;
+
+    impl()->variadicNodeMethod(toWebCore(head), toWebCore(tail));
 }
 
 WebCore::TestObj* toWebCore(const WebDOMTestObj& wrapper)

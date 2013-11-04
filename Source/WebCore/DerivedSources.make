@@ -275,7 +275,6 @@ BINDING_IDLS = \
     $(WebCore)/fileapi/FileList.idl \
     $(WebCore)/fileapi/FileReader.idl \
     $(WebCore)/fileapi/FileReaderSync.idl \
-    $(WebCore)/fileapi/WebKitBlobBuilder.idl \
     $(WebCore)/html/DOMFormData.idl \
     $(WebCore)/html/DOMSettableTokenList.idl \
     $(WebCore)/html/DOMTokenList.idl \
@@ -1044,10 +1043,10 @@ all : InjectedScriptSource.h
 InjectedScriptSource.h : InjectedScriptSource.js
 	perl $(WebCore)/inspector/xxd.pl InjectedScriptSource_js $(WebCore)/inspector/InjectedScriptSource.js InjectedScriptSource.h
 
-all : InjectedScriptWebGLModuleSource.h
+all : InjectedScriptCanvasModuleSource.h
 
-InjectedScriptWebGLModuleSource.h : InjectedScriptWebGLModuleSource.js
-	perl $(WebCore)/inspector/xxd.pl InjectedScriptWebGLModuleSource_js $(WebCore)/inspector/InjectedScriptWebGLModuleSource.js InjectedScriptWebGLModuleSource.h
+InjectedScriptCanvasModuleSource.h : InjectedScriptCanvasModuleSource.js
+	perl $(WebCore)/inspector/xxd.pl InjectedScriptCanvasModuleSource_js $(WebCore)/inspector/InjectedScriptCanvasModuleSource.js InjectedScriptCanvasModuleSource.h
 
 -include $(JS_DOM_HEADERS:.h=.dep)
 

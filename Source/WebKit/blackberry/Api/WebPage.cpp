@@ -25,7 +25,6 @@
 #include "BackForwardController.h"
 #include "BackForwardListImpl.h"
 #include "BackingStoreClient.h"
-#include "BackingStoreCompositingSurface.h"
 #include "BackingStore_p.h"
 #if ENABLE(BATTERY_STATUS)
 #include "BatteryClientBlackBerry.h"
@@ -81,6 +80,9 @@
 #include "JavaScriptDebuggerBlackBerry.h"
 #include "JavaScriptVariant_p.h"
 #include "LayerWebKitThread.h"
+#if ENABLE(NETWORK_INFO)
+#include "NetworkInfoClientBlackBerry.h"
+#endif
 #include "NetworkManager.h"
 #include "NodeRenderStyle.h"
 #if ENABLE(NOTIFICATIONS) || ENABLE(LEGACY_NOTIFICATIONS)
@@ -125,6 +127,7 @@
 #include "VibrationClientBlackBerry.h"
 #endif
 #include "VisiblePosition.h"
+#include "WebCookieJar.h"
 #if ENABLE(WEBDOM)
 #include "WebDOMDocument.h"
 #endif
@@ -350,6 +353,7 @@ WebPagePrivate::WebPagePrivate(WebPage* webPage, WebPageClient* client, const In
     , m_mainFrame(0) // Initialized by init.
     , m_currentContextNode(0)
     , m_webSettings(0) // Initialized by init.
+    , m_cookieJar(0)
     , m_visible(false)
     , m_activationState(ActivationActive)
     , m_shouldResetTilesWhenShown(false)
@@ -389,7 +393,6 @@ WebPagePrivate::WebPagePrivate(WebPage* webPage, WebPageClient* client, const In
 #if ENABLE(FULLSCREEN_API)
 #if ENABLE(VIDEO)
     , m_scaleBeforeFullScreen(-1.0)
-    , m_xScrollOffsetBeforeFullScreen(-1)
 #endif
     , m_isTogglingFullScreenState(false)
 #endif
@@ -446,6 +449,9 @@ WebPagePrivate::~WebPagePrivate()
 
     delete m_webSettings;
     m_webSettings = 0;
+
+    delete m_cookieJar;
+    m_cookieJar = 0;
 
     delete m_backingStoreClient;
     m_backingStoreClient = 0;
@@ -545,12 +551,18 @@ void WebPagePrivate::init(const WebString& pageGroupName)
     WebCore::provideNotification(m_page, NotificationPresenterImpl::instance());
 #endif
 
+#if ENABLE(NETWORK_INFO)
+    WebCore::provideNetworkInfoTo(m_page, new WebCore::NetworkInfoClientBlackBerry(this));
+#endif
+
     m_page->setCustomHTMLTokenizerChunkSize(256);
     m_page->setCustomHTMLTokenizerTimeDelay(0.3);
 
     m_webSettings = WebSettings::createFromStandardSettings();
     m_webSettings->setUserAgentString(defaultUserAgent());
     m_page->setDeviceScaleFactor(m_webSettings->devicePixelRatio());
+
+    m_page->addLayoutMilestones(DidFirstVisuallyNonEmptyLayout);
 
 #if USE(ACCELERATED_COMPOSITING)
     m_tapHighlight = DefaultTapHighlight::create(this);
@@ -1130,10 +1142,6 @@ void WebPagePrivate::setLoadState(LoadState state)
             // Update cursor status.
             updateCursor();
 
-#if USE(ACCELERATED_COMPOSITING)
-            // Don't render compositing contents from previous page.
-            resetCompositingSurface();
-#endif
             break;
         }
     case Finished:
@@ -2056,6 +2064,11 @@ bool WebPagePrivate::setViewMode(ViewMode mode)
     m_mainFrame->view()->setUseFixedLayout(useFixedLayout());
     m_mainFrame->view()->setFixedLayoutSize(newSize);
     return true; // Needs re-layout!
+}
+
+int WebPagePrivate::playerID() const
+{
+    return m_client ? m_client->getInstanceId() : 0;
 }
 
 void WebPagePrivate::setCursor(PlatformCursor handle)
@@ -3187,6 +3200,14 @@ WebSettings* WebPage::settings() const
     return d->m_webSettings;
 }
 
+WebCookieJar* WebPage::cookieJar() const
+{
+    if (!d->m_cookieJar)
+        d->m_cookieJar = new WebCookieJar();
+
+    return d->m_cookieJar;
+}
+
 bool WebPage::isVisible() const
 {
     return d->m_visible;
@@ -3224,6 +3245,11 @@ void WebPagePrivate::setPageVisibilityState()
 void WebPagePrivate::setVisible(bool visible)
 {
     m_visible = visible;
+
+    if (visible && m_page->scriptedAnimationsSuspended())
+        m_page->resumeScriptedAnimations();
+    if (!visible && !m_page->scriptedAnimationsSuspended())
+        m_page->suspendScriptedAnimations();
 
 #if ENABLE(PAGE_VISIBILITY_API)
     setPageVisibilityState();
@@ -3454,6 +3480,7 @@ IntSize WebPagePrivate::recomputeVirtualViewportFromViewportArguments()
     int deviceWidth = Platform::Graphics::Screen::primaryScreen()->width();
     int deviceHeight = Platform::Graphics::Screen::primaryScreen()->height();
     ViewportAttributes result = computeViewportAttributes(m_viewportArguments, desktopWidth, deviceWidth, deviceHeight, m_webSettings->devicePixelRatio(), m_defaultLayoutSize);
+    m_page->setDeviceScaleFactor(result.devicePixelRatio);
 
     setUserScalable(m_webSettings->isUserScalable() && result.userScalable);
     if (result.initialScale > 0)
@@ -3536,8 +3563,6 @@ void WebPagePrivate::suspendBackingStore()
 
         return;
     }
-
-    resetCompositingSurface();
 #endif
 }
 
@@ -3627,9 +3652,6 @@ void WebPagePrivate::resizeSurfaceIfNeeded()
             Platform::createMethodCallMessage(&WebPagePrivate::resizeSurfaceIfNeeded, this));
         return;
     }
-
-    if (m_pendingOrientation != -1)
-        SurfacePool::globalSurfacePool()->notifyScreenRotated();
 
     m_client->resizeSurfaceIfNeeded();
 }
@@ -3865,6 +3887,22 @@ void WebPagePrivate::setViewportSize(const IntSize& transformedActualVisibleSize
 
 #if ENABLE(FULLSCREEN_API)
     if (m_isTogglingFullScreenState) {
+        if (!m_fullscreenVideoNode) {
+            // When leaving fullscreen mode, we need to restore the scroll position and
+            // zoom level it was at before fullscreen.
+            // FIXME: The cached values might get imprecise if user have rotated the
+            // device while in fullscreen.
+            if (m_scaleBeforeFullScreen > 0) {
+                // Restore the scale when leaving fullscreen. We can't use TransformationMatrix::scale(double) here, as it
+                // will multiply the scale rather than set the scale.
+                // FIXME: We can refactor this into setCurrentScale(double) if it is useful in the future.
+                m_transformationMatrix->setM11(m_scaleBeforeFullScreen);
+                m_transformationMatrix->setM22(m_scaleBeforeFullScreen);
+                m_scaleBeforeFullScreen = -1.0;
+            }
+            m_mainFrame->view()->setScrollPosition(m_scrollOffsetBeforeFullScreen);
+        }
+
         m_backingStore->d->resumeScreenAndBackingStoreUpdates(BackingStore::RenderAndBlit);
         m_isTogglingFullScreenState = false;
     }
@@ -5493,7 +5531,7 @@ LayerRenderingResults WebPagePrivate::lastCompositingResults() const
 GraphicsLayer* WebPagePrivate::overlayLayer()
 {
     if (!m_overlayLayer)
-        m_overlayLayer = GraphicsLayer::create(this);
+        m_overlayLayer = GraphicsLayer::create(0, this);
 
     return m_overlayLayer.get();
 }
@@ -5668,6 +5706,8 @@ void WebPagePrivate::rootLayerCommitTimerFired(Timer<WebPagePrivate>*)
     Platform::log(Platform::LogLevelCritical, "%s", WTF_PRETTY_FUNCTION);
 #endif
 
+    m_backingStore->d->instrumentBeginFrame();
+
     // The commit timer may have fired just before the layout timer, or for some
     // other reason we need layout. It's not allowed to commit when a layout is
     // pending, becaues a commit can cause parts of the web page to be rendered
@@ -5681,14 +5721,11 @@ void WebPagePrivate::rootLayerCommitTimerFired(Timer<WebPagePrivate>*)
     // backing store is never necessary, because the backing store draws
     // nothing.
     if (!compositorDrawsRootLayer()) {
-        bool isSingleTargetWindow = SurfacePool::globalSurfacePool()->compositingSurface()
-            || m_backingStore->d->isOpenGLCompositing();
-
         // If we are doing direct rendering and have a single rendering target,
         // committing is equivalent to a one shot drawing synchronization.
         // We need to re-render the web page, re-render the layers, and
         // then blit them on top of the re-rendered web page.
-        if (isSingleTargetWindow && m_backingStore->d->shouldDirectRenderingToWindow())
+        if (m_backingStore->d->isOpenGLCompositing() && m_backingStore->d->shouldDirectRenderingToWindow())
             setNeedsOneShotDrawingSynchronization();
 
         if (needsOneShotDrawingSynchronization()) {
@@ -5703,19 +5740,6 @@ void WebPagePrivate::rootLayerCommitTimerFired(Timer<WebPagePrivate>*)
     }
 
     commitRootLayerIfNeeded();
-}
-
-void WebPagePrivate::resetCompositingSurface()
-{
-    if (!Platform::userInterfaceThreadMessageClient()->isCurrentThread()) {
-        Platform::userInterfaceThreadMessageClient()->dispatchMessage(
-            Platform::createMethodCallMessage(
-                &WebPagePrivate::resetCompositingSurface, this));
-        return;
-    }
-
-    if (m_compositor)
-        m_compositor->setLastCompositingResults(LayerRenderingResults());
 }
 
 void WebPagePrivate::setRootLayerWebKitThread(Frame* frame, LayerWebKitThread* layer)
@@ -5756,12 +5780,7 @@ void WebPagePrivate::setRootLayerCompositingThread(LayerCompositingThread* layer
         return;
     }
 
-    if (!layer) {
-        // Keep the compositor around, a single web page will frequently enter
-        // and leave compositing mode many times. Instead we destroy it when
-        // navigating to a new page.
-        resetCompositingSurface();
-    } else if (!m_compositor)
+    if (layer && !m_compositor)
         createCompositor();
 
     // Don't ASSERT(m_compositor) here because setIsAcceleratedCompositingActive(true)
@@ -5962,8 +5981,7 @@ void WebPagePrivate::enterFullScreenForElement(Element* element)
         // When an element goes fullscreen, the viewport size changes and the scroll
         // position might change. So we keep track of it here, in order to restore it
         // once element leaves fullscreen.
-        WebCore::IntPoint scrollPosition = m_mainFrame->view()->scrollPosition();
-        m_xScrollOffsetBeforeFullScreen = scrollPosition.x();
+        m_scrollOffsetBeforeFullScreen = m_mainFrame->view()->scrollPosition();
 
         // The current scale can be clamped to a greater minimum scale when we relayout contents during
         // the change of the viewport size. Cache the current scale so that we can restore it when
@@ -5990,24 +6008,6 @@ void WebPagePrivate::exitFullScreenForElement(Element* element)
         // The Browser chrome has its own fullscreen video widget.
         exitFullscreenForNode(element);
     } else {
-        // When leaving fullscreen mode, we need to restore the 'x' scroll position
-        // before fullscreen.
-        // FIXME: We may need to respect 'y' position as well, because the web page always scrolls to
-        // the top when leaving fullscreen mode.
-        WebCore::IntPoint scrollPosition = m_mainFrame->view()->scrollPosition();
-        m_mainFrame->view()->setScrollPosition(
-            WebCore::IntPoint(m_xScrollOffsetBeforeFullScreen, scrollPosition.y()));
-        m_xScrollOffsetBeforeFullScreen = -1;
-
-        if (m_scaleBeforeFullScreen > 0) {
-            // Restore the scale when leaving fullscreen. We can't use TransformationMatrix::scale(double) here, as it
-            // will multiply the scale rather than set the scale.
-            // FIXME: We can refactor this into setCurrentScale(double) if it is useful in the future.
-            m_transformationMatrix->setM11(m_scaleBeforeFullScreen);
-            m_transformationMatrix->setM22(m_scaleBeforeFullScreen);
-            m_scaleBeforeFullScreen = -1.0;
-        }
-
         // This is where we would restore the browser's chrome
         // if hidden above.
         client()->fullscreenStop();
@@ -6122,6 +6122,8 @@ void WebPagePrivate::didChangeSettings(WebSettings* webSettings)
         Platform::userInterfaceThreadMessageClient()->dispatchMessage(
             createMethodCallMessage(&WebPagePrivate::setCompositorBackgroundColor, this, backgroundColor));
     }
+
+    m_page->setDeviceScaleFactor(webSettings->devicePixelRatio());
 }
 
 WebString WebPage::textHasAttribute(const WebString& query) const

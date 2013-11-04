@@ -28,6 +28,7 @@
 #include "Timer.h"
 #include "UpdateAtlas.h"
 #include <WebCore/GraphicsLayerClient.h>
+#include <WebCore/GraphicsLayerFactory.h>
 #include <wtf/OwnPtr.h>
 
 namespace WebKit {
@@ -36,7 +37,8 @@ class UpdateInfo;
 class WebPage;
 
 class LayerTreeCoordinator : public LayerTreeHost, WebCore::GraphicsLayerClient
-                           , public CoordinatedGraphicsLayerClient {
+                           , public CoordinatedGraphicsLayerClient
+                           , public WebCore::GraphicsLayerFactory {
 public:
     static PassRefPtr<LayerTreeCoordinator> create(WebPage*);
     virtual ~LayerTreeCoordinator();
@@ -77,6 +79,7 @@ public:
     virtual bool layerTreeTileUpdatesAllowed() const;
     virtual void setVisibleContentsRect(const WebCore::IntRect&, float scale, const WebCore::FloatPoint&);
     virtual void didReceiveLayerTreeCoordinatorMessage(CoreIPC::Connection*, CoreIPC::MessageID, CoreIPC::ArgumentDecoder*);
+    virtual WebCore::GraphicsLayerFactory* graphicsLayerFactory() OVERRIDE;
 
     virtual void syncLayerState(WebLayerID, const WebLayerInfo&);
     virtual void syncLayerChildren(WebLayerID, const Vector<WebLayerID>&);
@@ -104,6 +107,9 @@ private:
     virtual bool showDebugBorders(const WebCore::GraphicsLayer*) const;
     virtual bool showRepaintCounter(const WebCore::GraphicsLayer*) const;
 
+    // GraphicsLayerFactory
+    virtual PassOwnPtr<WebCore::GraphicsLayer> createGraphicsLayer(WebCore::GraphicsLayerClient*) OVERRIDE;
+
     // LayerTreeCoordinator
     void createPageOverlayLayer();
     void destroyPageOverlayLayer();
@@ -127,6 +133,7 @@ private:
     OwnPtr<WebCore::GraphicsLayer> m_pageOverlayLayer;
 
     HashSet<WebCore::CoordinatedGraphicsLayer*> m_registeredLayers;
+    Vector<WebLayerID> m_detachedLayers;
     HashMap<int64_t, int> m_directlyCompositedImageRefCounts;
     Vector<OwnPtr<UpdateAtlas> > m_updateAtlases;
 

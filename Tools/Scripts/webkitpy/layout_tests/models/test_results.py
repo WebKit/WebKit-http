@@ -38,11 +38,12 @@ class TestResult(object):
     def loads(string):
         return cPickle.loads(string)
 
-    def __init__(self, test_name, failures=None, test_run_time=None, has_stderr=False):
+    def __init__(self, test_name, failures=None, test_run_time=None, has_stderr=False, reftest_type=[]):
         self.test_name = test_name
         self.failures = failures or []
         self.test_run_time = test_run_time or 0
         self.has_stderr = has_stderr
+        self.reftest_type = reftest_type
         # FIXME: Setting this in the constructor makes this class hard to mutate.
         self.type = test_failures.determine_result_type(failures)
 

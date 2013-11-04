@@ -410,11 +410,14 @@ Node::~Node()
     if (hasRareData())
         clearRareData();
 
+    if (hasEventTargetData())
+        clearEventTargetData();
+
     if (renderer())
         detach();
 
     Document* doc = m_document;
-    if (AXObjectCache::accessibilityEnabled() && doc && doc->axObjectCacheExists())
+    if (AXObjectCache::accessibilityEnabled() && doc && doc->axObjectCacheExists() && !isContainerNode())
         doc->axObjectCache()->remove(this);
     
     if (m_previous)
@@ -630,8 +633,6 @@ void Node::remove(ExceptionCode& ec)
 {
     if (ContainerNode* parent = parentNode())
         parent->removeChild(this, ec);
-    else
-        ec = HIERARCHY_REQUEST_ERR;
 }
 
 void Node::normalize()
@@ -2411,14 +2412,32 @@ bool Node::removeEventListener(const AtomicString& eventType, EventListener* lis
     return tryRemoveEventListener(this, eventType, listener, useCapture);
 }
 
+typedef HashMap<Node*, OwnPtr<EventTargetData> > EventTargetDataMap;
+
+static EventTargetDataMap& eventTargetDataMap()
+{
+    DEFINE_STATIC_LOCAL(EventTargetDataMap, map, ());
+    return map;
+}
+
 EventTargetData* Node::eventTargetData()
 {
-    return hasRareData() ? rareData()->eventTargetData() : 0;
+    return hasEventTargetData() ? eventTargetDataMap().get(this) : 0;
 }
 
 EventTargetData* Node::ensureEventTargetData()
 {
-    return ensureRareData()->ensureEventTargetData();
+    if (hasEventTargetData())
+        return eventTargetDataMap().get(this);
+    setHasEventTargetData(true);
+    EventTargetData* data = new EventTargetData;
+    eventTargetDataMap().set(this, adoptPtr(data));
+    return data;
+}
+
+void Node::clearEventTargetData()
+{
+    eventTargetDataMap().remove(this);
 }
 
 #if ENABLE(MUTATION_OBSERVERS)
@@ -2432,32 +2451,18 @@ HashSet<MutationObserverRegistration*>* Node::transientMutationObserverRegistry(
     return hasRareData() ? rareData()->transientMutationObserverRegistry() : 0;
 }
 
-void Node::collectMatchingObserversForMutation(HashMap<MutationObserver*, MutationRecordDeliveryOptions>& observers, Node* fromNode, MutationObserver::MutationType type, const QualifiedName* attributeName)
+template<typename Registry>
+static inline void collectMatchingObserversForMutation(HashMap<MutationObserver*, MutationRecordDeliveryOptions>& observers, Registry* registry, Node* target, MutationObserver::MutationType type, const QualifiedName* attributeName)
 {
-    ASSERT((type == MutationObserver::Attributes && attributeName) || !attributeName);
-    if (Vector<OwnPtr<MutationObserverRegistration> >* registry = fromNode->mutationObserverRegistry()) {
-        const size_t size = registry->size();
-        for (size_t i = 0; i < size; ++i) {
-            MutationObserverRegistration* registration = registry->at(i).get();
-            if (registration->shouldReceiveMutationFrom(this, type, attributeName)) {
-                MutationRecordDeliveryOptions deliveryOptions = registration->deliveryOptions();
-                HashMap<MutationObserver*, MutationRecordDeliveryOptions>::AddResult result = observers.add(registration->observer(), deliveryOptions);
-                if (!result.isNewEntry)
-                    result.iterator->second |= deliveryOptions;
-
-            }
-        }
-    }
-
-    if (HashSet<MutationObserverRegistration*>* transientRegistry = fromNode->transientMutationObserverRegistry()) {
-        for (HashSet<MutationObserverRegistration*>::iterator iter = transientRegistry->begin(); iter != transientRegistry->end(); ++iter) {
-            MutationObserverRegistration* registration = *iter;
-            if (registration->shouldReceiveMutationFrom(this, type, attributeName)) {
-                MutationRecordDeliveryOptions deliveryOptions = registration->deliveryOptions();
-                HashMap<MutationObserver*, MutationRecordDeliveryOptions>::AddResult result = observers.add(registration->observer(), deliveryOptions);
-                if (!result.isNewEntry)
-                    result.iterator->second |= deliveryOptions;
-            }
+    if (!registry)
+        return;
+    for (typename Registry::iterator iter = registry->begin(); iter != registry->end(); ++iter) {
+        const MutationObserverRegistration& registration = **iter;
+        if (registration.shouldReceiveMutationFrom(target, type, attributeName)) {
+            MutationRecordDeliveryOptions deliveryOptions = registration.deliveryOptions();
+            HashMap<MutationObserver*, MutationRecordDeliveryOptions>::AddResult result = observers.add(registration.observer(), deliveryOptions);
+            if (!result.isNewEntry)
+                result.iterator->second |= deliveryOptions;
         }
     }
 }
@@ -2465,23 +2470,31 @@ void Node::collectMatchingObserversForMutation(HashMap<MutationObserver*, Mutati
 void Node::getRegisteredMutationObserversOfType(HashMap<MutationObserver*, MutationRecordDeliveryOptions>& observers, MutationObserver::MutationType type, const QualifiedName* attributeName)
 {
     ASSERT((type == MutationObserver::Attributes && attributeName) || !attributeName);
-    collectMatchingObserversForMutation(observers, this, type, attributeName);
-    for (Node* node = parentNode(); node; node = node->parentNode())
-        collectMatchingObserversForMutation(observers, node, type, attributeName);
+    collectMatchingObserversForMutation(observers, mutationObserverRegistry(), this, type, attributeName);
+    collectMatchingObserversForMutation(observers, transientMutationObserverRegistry(), this, type, attributeName);
+    for (Node* node = parentNode(); node; node = node->parentNode()) {
+        collectMatchingObserversForMutation(observers, node->mutationObserverRegistry(), this, type, attributeName);
+        collectMatchingObserversForMutation(observers, node->transientMutationObserverRegistry(), this, type, attributeName);
+    }
 }
 
-MutationObserverRegistration* Node::registerMutationObserver(PassRefPtr<MutationObserver> observer)
+void Node::registerMutationObserver(MutationObserver* observer, MutationObserverOptions options, const HashSet<AtomicString>& attributeFilter)
 {
+    MutationObserverRegistration* registration = 0;
     Vector<OwnPtr<MutationObserverRegistration> >* registry = ensureRareData()->ensureMutationObserverRegistry();
     for (size_t i = 0; i < registry->size(); ++i) {
-        if (registry->at(i)->observer() == observer)
-            return registry->at(i).get();
+        if (registry->at(i)->observer() == observer) {
+            registration = registry->at(i).get();
+            registration->resetObservation(options, attributeFilter);
+        }
     }
 
-    OwnPtr<MutationObserverRegistration> registration = MutationObserverRegistration::create(observer, this);
-    MutationObserverRegistration* registrationPtr = registration.get();
-    registry->append(registration.release());
-    return registrationPtr;
+    if (!registration) {
+        registry->append(MutationObserverRegistration::create(observer, this, options, attributeFilter));
+        registration = registry->last().get();
+    }
+
+    document()->addMutationObserverTypes(registration->mutationTypes());
 }
 
 void Node::unregisterMutationObserver(MutationObserverRegistration* registration)
@@ -2537,7 +2550,7 @@ void Node::notifyMutationObserversNodeWillDetach()
 
 void Node::handleLocalEvents(Event* event)
 {
-    if (!hasRareData() || !rareData()->eventTargetData())
+    if (!hasEventTargetData())
         return;
 
     if (disabled() && event->isMouseEvent())
@@ -2566,7 +2579,7 @@ void Node::dispatchSubtreeModifiedEvent()
     if (isInShadowTree())
         return;
 
-    ASSERT(!eventDispatchForbidden());
+    ASSERT(!NoEventDispatchAssertion::isEventDispatchForbidden());
 
     if (!document()->hasListenerType(Document::DOMSUBTREEMODIFIED_LISTENER))
         return;
@@ -2576,21 +2589,21 @@ void Node::dispatchSubtreeModifiedEvent()
 
 void Node::dispatchFocusInEvent(const AtomicString& eventType, PassRefPtr<Node> oldFocusedNode)
 {
-    ASSERT(!eventDispatchForbidden());
+    ASSERT(!NoEventDispatchAssertion::isEventDispatchForbidden());
     ASSERT(eventType == eventNames().focusinEvent || eventType == eventNames().DOMFocusInEvent);
     dispatchScopedEventDispatchMediator(FocusInEventDispatchMediator::create(UIEvent::create(eventType, true, false, document()->defaultView(), 0), oldFocusedNode));
 }
 
 void Node::dispatchFocusOutEvent(const AtomicString& eventType, PassRefPtr<Node> newFocusedNode)
 {
-    ASSERT(!eventDispatchForbidden());
+    ASSERT(!NoEventDispatchAssertion::isEventDispatchForbidden());
     ASSERT(eventType == eventNames().focusoutEvent || eventType == eventNames().DOMFocusOutEvent);
     dispatchScopedEventDispatchMediator(FocusOutEventDispatchMediator::create(UIEvent::create(eventType, true, false, document()->defaultView(), 0), newFocusedNode));
 }
 
 bool Node::dispatchDOMActivateEvent(int detail, PassRefPtr<Event> underlyingEvent)
 {
-    ASSERT(!eventDispatchForbidden());
+    ASSERT(!NoEventDispatchAssertion::isEventDispatchForbidden());
     RefPtr<UIEvent> event = UIEvent::create(eventNames().DOMActivateEvent, true, true, document()->defaultView(), detail);
     event->setUnderlyingEvent(underlyingEvent);
     dispatchScopedEvent(event);

@@ -20,6 +20,7 @@ function run() {
     shouldBeTrue("speechReco.grammars.length === 0");
     shouldBeTrue("'lang' in speechReco");
     shouldBeTrue("'continuous' in speechReco");
+    shouldBeTrue("'interimResults' in speechReco");
     shouldBeTrue("'maxAlternatives' in speechReco");
     shouldBeTrue("'start' in speechReco");
     shouldBeTrue("'stop' in speechReco");
@@ -32,7 +33,6 @@ function run() {
     shouldBeTrue("'onaudioend' in speechReco");
     shouldBeTrue("'onresult' in speechReco");
     shouldBeTrue("'onnomatch' in speechReco");
-    shouldBeTrue("'onresultdeleted' in speechReco");
     shouldBeTrue("'onerror' in speechReco");
     shouldBeTrue("'onstart' in speechReco");
     shouldBeTrue("'onend' in speechReco");

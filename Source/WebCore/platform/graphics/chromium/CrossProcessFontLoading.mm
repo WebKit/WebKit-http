@@ -30,8 +30,10 @@
 #import "CrossProcessFontLoading.h"
 
 #import "../graphics/FontPlatformData.h"
-#import "PlatformSupport.h"
+#include "LinkHash.h"
 #import <AppKit/NSFont.h>
+#import <public/Platform.h>
+#import <public/mac/WebSandboxSupport.h>
 #import <wtf/HashMap.h>
 
 namespace WebCore {
@@ -87,17 +89,6 @@ WTF::String hashKeyFromNSFont(NSFont* srcFont)
     return WTF::String::format("%s %x", [[srcFont fontName] UTF8String], traits);
 }
 
-ATSFontContainerRef fontContainerRefFromNSFont(NSFont* srcFont)
-{
-    ATSFontRef fontRef = CTFontGetPlatformFont(toCTFontRef(srcFont), 0);
-    if (!fontRef)
-        return kATSFontContainerRefUnspecified;
-    ATSFontContainerRef fontContainer = kATSFontContainerRefUnspecified;
-    if (ATSFontGetContainer(fontRef, 0, &fontContainer) != noErr)
-        return kATSFontContainerRefUnspecified;
-    return fontContainer;
-}
-
 // The only way we can tell that an in-process font has failed to load
 // is if CTFontCopyGraphicsFont() returns the LastResort font.
 bool isLastResortFont(CGFontRef cgFont)
@@ -121,7 +112,15 @@ PassRefPtr<MemoryActivatedFont> loadFontFromBrowserProcess(NSFont* nsFont)
     CGFontRef tmpCGFont;
     uint32_t fontID;
     // Send cross-process request to load font.
-    if (!PlatformSupport::loadFont(nsFont, &tmpCGFont, &fontID))
+    WebKit::WebSandboxSupport* sandboxSupport = WebKit::Platform::current()->sandboxSupport();
+    if (!sandboxSupport) {
+        // This function should only be called in response to an error loading a
+        // font due to being blocked by the sandbox.
+        // This by definition shouldn't happen if there is no sandbox support.
+        ASSERT_NOT_REACHED();
+        return 0;
+    }
+    if (!sandboxSupport->loadFont(nsFont, &tmpCGFont, &fontID))
         return 0;
 
     RetainPtr<CGFontRef> cgFont(tmpCGFont);
@@ -129,7 +128,7 @@ PassRefPtr<MemoryActivatedFont> loadFontFromBrowserProcess(NSFont* nsFont)
     // the ID cache.
     font = fontCacheByFontID().get(fontID);
     if (font)
-        // FIXME: PlatformSupport::loadFont() should consult the id cache
+        // FIXME: WebSandboxSupport::loadFont() should consult the id cache
         // before activating the font.
         return font;
 

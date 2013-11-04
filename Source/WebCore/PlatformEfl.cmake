@@ -15,6 +15,7 @@ LIST(APPEND WebCore_SOURCES
   page/efl/DragControllerEfl.cpp
   page/efl/EventHandlerEfl.cpp
   platform/Cursor.cpp
+  platform/efl/AsyncFileSystemEfl.cpp
   platform/efl/BatteryProviderEfl.cpp
   platform/efl/ClipboardEfl.cpp
   platform/efl/ContextMenuEfl.cpp
@@ -180,10 +181,6 @@ IF (WTF_USE_TEXTURE_MAPPER)
   LIST(APPEND WebCore_SOURCES
     platform/graphics/texmap/GraphicsLayerTextureMapper.cpp
   )
-ELSE ()
-  LIST(APPEND WebCore_SOURCES
-    platform/graphics/efl/GraphicsLayerEfl.cpp
-  )
 ENDIF ()
 
 LIST(APPEND WebCore_LIBRARIES
@@ -328,4 +325,3 @@ IF (ENABLE_WEB_AUDIO)
   INSTALL(FILES ${WEB_AUDIO_DATA} DESTINATION ${WEB_AUDIO_DIR})
   ADD_DEFINITIONS(-DUNINSTALLED_AUDIO_RESOURCES_DIR="${WEBCORE_DIR}/platform/audio/resources")
 ENDIF ()
-

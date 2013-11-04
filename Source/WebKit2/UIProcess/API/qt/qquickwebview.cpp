@@ -268,11 +268,11 @@ QQuickWebViewPrivate::QQuickWebViewPrivate(QQuickWebView* viewport)
     , filePicker(0)
     , databaseQuotaDialog(0)
     , colorChooser(0)
+    , m_betweenLoadCommitAndFirstFrame(false)
     , m_useDefaultContentItemSize(true)
     , m_navigatorQtObjectEnabled(false)
     , m_renderToOffscreenBuffer(false)
     , m_allowAnyHTTPSCertificateForLocalHost(false)
-    , m_customDevicePixelRatio(0)
     , m_loadProgress(0)
 {
     viewport->setClip(true);
@@ -371,6 +371,7 @@ void QQuickWebViewPrivate::loadDidCommit()
     Q_Q(QQuickWebView);
     ASSERT(q->loading());
 
+    m_betweenLoadCommitAndFirstFrame = true;
     emit q->navigationHistoryChanged();
     emit q->titleChanged();
 }
@@ -454,6 +455,10 @@ void QQuickWebViewPrivate::setNeedsDisplay()
         return;
     }
 
+    if (m_betweenLoadCommitAndFirstFrame) {
+        emit q->experimental()->loadVisuallyCommitted();
+        m_betweenLoadCommitAndFirstFrame = false;
+    }
     q->page()->update();
 }
 
@@ -479,8 +484,6 @@ void QQuickWebViewPrivate::didRelaunchProcess()
 {
     qWarning("WARNING: The web process has been successfully restarted.");
 
-    // Reset to default so that the later update can reach the web process.
-    webPageProxy->setCustomDeviceScaleFactor(0);
     webPageProxy->drawingArea()->setSize(viewSize(), IntSize());
 
     updateViewportSize();
@@ -798,20 +801,6 @@ void QQuickWebViewPrivate::didReceiveMessageFromNavigatorQtObject(const String& 
     emit q_ptr->experimental()->messageReceived(variantMap);
 }
 
-void QQuickWebViewPrivate::didChangeContentsSize(const QSize& newSize)
-{
-    if (newSize.isEmpty() || !m_customDevicePixelRatio || webPageProxy->deviceScaleFactor() == m_customDevicePixelRatio)
-        return;
-
-    // DrawingAreaProxy returns early if the page size is empty
-    // and the device pixel ratio property is propagated from QML
-    // before the QML page item has a valid size yet, thus the
-    // information would not reach the web process.
-    // Set the custom device pixel ratio requested from QML as soon
-    // as the content item has a valid size.
-    webPageProxy->setCustomDeviceScaleFactor(m_customDevicePixelRatio);
-}
-
 QQuickWebViewLegacyPrivate::QQuickWebViewLegacyPrivate(QQuickWebView* viewport)
     : QQuickWebViewPrivate(viewport)
 {
@@ -840,7 +829,7 @@ void QQuickWebViewLegacyPrivate::updateViewportSize()
     // whether its fixed or not. We still need to tell the drawing area which part of it
     // has to be rendered on tiles, and in desktop mode it's all of it.
     webPageProxy->drawingArea()->setSize(viewportSize.toSize(), IntSize());
-    webPageProxy->drawingArea()->setVisibleContentsRect(FloatRect(FloatPoint(), viewportSize), 1, FloatPoint());
+    webPageProxy->drawingArea()->setVisibleContentsRect(FloatRect(FloatPoint(), FloatSize(viewportSize)), 1, FloatPoint());
 }
 
 qreal QQuickWebViewLegacyPrivate::zoomFactor() const
@@ -883,20 +872,13 @@ void QQuickWebViewFlickablePrivate::updateViewportSize()
     Q_Q(QQuickWebView);
 
     if (m_pageViewportController)
-        m_pageViewportController->setViewportSize(QSizeF(q->width(), q->height()));
+        m_pageViewportController->didChangeViewportSize(FloatSize(q->width(), q->height()));
 }
 
 void QQuickWebViewFlickablePrivate::pageDidRequestScroll(const QPoint& pos)
 {
     if (m_pageViewportController)
         m_pageViewportController->pageDidRequestScroll(pos);
-}
-
-void QQuickWebViewFlickablePrivate::didChangeContentsSize(const QSize& newSize)
-{
-    pageView->setContentsSize(newSize); // emits contentsSizeChanged()
-    QQuickWebViewPrivate::didChangeContentsSize(newSize);
-    m_pageViewportController->didChangeContentsSize(newSize);
 }
 
 void QQuickWebViewFlickablePrivate::handleMouseEvent(QMouseEvent* event)
@@ -1239,10 +1221,6 @@ void QQuickWebViewExperimental::setUserAgent(const QString& userAgent)
 qreal QQuickWebViewExperimental::devicePixelRatio() const
 {
     Q_D(const QQuickWebView);
-
-    if (d->m_customDevicePixelRatio)
-        return d->m_customDevicePixelRatio;
-
     return d->webPageProxy->deviceScaleFactor();
 }
 
@@ -1252,7 +1230,7 @@ void QQuickWebViewExperimental::setDevicePixelRatio(qreal devicePixelRatio)
     if (0 >= devicePixelRatio || devicePixelRatio == this->devicePixelRatio())
         return;
 
-    d->m_customDevicePixelRatio = devicePixelRatio;
+    d->webPageProxy->setIntrinsicDeviceScaleFactor(devicePixelRatio);
     emit devicePixelRatioChanged();
 }
 
@@ -1857,10 +1835,15 @@ void QQuickWebView::focusInEvent(QFocusEvent* event)
     d->pageView->eventHandler()->handleFocusInEvent(event);
 }
 
-void QQuickWebView::focusOutEvent(QFocusEvent* event)
+void QQuickWebView::itemChange(ItemChange change, const ItemChangeData &value)
 {
     Q_D(QQuickWebView);
-    d->pageView->eventHandler()->handleFocusOutEvent(event);
+    if (change == ItemActiveFocusHasChanged) {
+        bool focus = value.boolValue;
+        if (!focus)
+            d->pageView->eventHandler()->handleFocusLost();
+    }
+    QQuickFlickable::itemChange(change, value);
 }
 
 void QQuickWebView::touchEvent(QTouchEvent* event)

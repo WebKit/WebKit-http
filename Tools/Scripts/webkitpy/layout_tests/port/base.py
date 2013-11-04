@@ -786,17 +786,20 @@ class Port(object):
         return self._filesystem.join(self._webkit_baseline_path(port_name), 'TestExpectations')
 
     def relative_test_filename(self, filename):
-        """Returns a test_name a realtive unix-style path for a filename under the LayoutTests
-        directory. Filenames outside the LayoutTests directory should raise
-        an error."""
+        """Returns a test_name a relative unix-style path for a filename under the LayoutTests
+        directory. Ports may legitimately return abspaths here if no relpath makes sense."""
         # Ports that run on windows need to override this method to deal with
         # filenames with backslashes in them.
-        assert filename.startswith(self.layout_tests_dir()), "%s did not start with %s" % (filename, self.layout_tests_dir())
-        return filename[len(self.layout_tests_dir()) + 1:]
+        if filename.startswith(self.layout_tests_dir()):
+            return self.host.filesystem.relpath(filename, self.layout_tests_dir())
+        else:
+            return self.host.filesystem.abspath(filename)
 
     def relative_perf_test_filename(self, filename):
-        assert filename.startswith(self.perf_tests_dir()), "%s did not start with %s" % (filename, self.perf_tests_dir())
-        return filename[len(self.perf_tests_dir()) + 1:]
+        if filename.startswith(self.perf_tests_dir()):
+            return self.host.filesystem.relpath(filename, self.perf_tests_dir())
+        else:
+            return self.host.filesystem.abspath(filename)
 
     @memoized
     def abspath_for_test(self, test_name):
@@ -994,6 +997,9 @@ class Port(object):
         # some ports have Skipped files which are returned as part of test_expectations().
         return self._filesystem.exists(self.path_to_test_expectations_file())
 
+    def warn_if_bug_missing_in_test_expectations(self):
+        return False
+
     def expectations_dict(self):
         """Returns an OrderedDict of name -> expectations strings.
         The names are expected to be (but not required to be) paths in the filesystem.
@@ -1159,9 +1165,18 @@ class Port(object):
         return "apache2-httpd.conf"
 
     def _path_to_apache_config_file(self):
-        """Returns the full path to the apache binary.
+        """Returns the full path to the apache configuration file.
+
+        If the WEBKIT_HTTP_SERVER_CONF_PATH environment variable is set, its
+        contents will be used instead.
 
         This is needed only by ports that use the apache_http_server module."""
+        config_file_from_env = os.environ.get('WEBKIT_HTTP_SERVER_CONF_PATH')
+        if config_file_from_env:
+            if not self._filesystem.exists(config_file_from_env):
+                raise IOError('%s was not found on the system' % config_file_from_env)
+            return config_file_from_env
+
         config_file_name = self._apache_config_file_name_for_platform(sys.platform)
         return self._filesystem.join(self.layout_tests_dir(), 'http', 'conf', config_file_name)
 
@@ -1220,11 +1235,15 @@ class Port(object):
         This is needed only by ports that use the http_server.py module."""
         raise NotImplementedError('Port._path_to_lighttpd_php')
 
+    @memoized
     def _path_to_wdiff(self):
         """Returns the full path to the wdiff binary, or None if it is not available.
 
         This is likely used only by wdiff_text()"""
-        return 'wdiff'
+        for path in ("/usr/bin/wdiff", "/usr/bin/dwdiff"):
+            if self._filesystem.exists(path):
+                return path
+        return None
 
     def _webkit_baseline_path(self, platform):
         """Return the  full path to the top of the baseline tree for a
@@ -1272,7 +1291,7 @@ class Port(object):
             base_tests = self._real_tests([suite.base])
             suite.tests = {}
             for test in base_tests:
-                suite.tests[test.replace(suite.base, suite.name)] = test
+                suite.tests[test.replace(suite.base, suite.name, 1)] = test
         return suites
 
     def _virtual_tests(self, paths, suites):
@@ -1289,7 +1308,7 @@ class Port(object):
     def lookup_virtual_test_base(self, test_name):
         for suite in self.populated_virtual_test_suites():
             if test_name.startswith(suite.name):
-                return test_name.replace(suite.name, suite.base)
+                return test_name.replace(suite.name, suite.base, 1)
         return None
 
     def lookup_virtual_test_args(self, test_name):

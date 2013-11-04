@@ -45,7 +45,6 @@
 #include "Image.h"
 #include "MIMETypeRegistry.h"
 #include "NamedNodeMap.h"
-#include "PlatformSupport.h"
 #include "Range.h"
 #include "RenderImage.h"
 #include "StringCallback.h"
@@ -227,6 +226,8 @@ ClipboardChromium::ClipboardChromium(ClipboardType clipboardType,
 
 ClipboardChromium::~ClipboardChromium()
 {
+    if (m_dragImage)
+        m_dragImage->removeClient(this);
 }
 
 PassRefPtr<ClipboardChromium> ClipboardChromium::create(ClipboardType clipboardType,

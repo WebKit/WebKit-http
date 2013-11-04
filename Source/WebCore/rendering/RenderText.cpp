@@ -955,7 +955,7 @@ void RenderText::computePreferredLogicalWidths(float leadWidth, HashSet<const Si
     float wordSpacing = styleToUse->wordSpacing();
     int len = textLength();
     const UChar* txt = characters();
-    LazyLineBreakIterator breakIterator(txt, len, styleToUse->locale());
+    LazyLineBreakIterator breakIterator(m_text, styleToUse->locale());
     bool needsWordSpacing = false;
     bool ignoringSpaces = false;
     bool isSpace = false;
@@ -966,7 +966,7 @@ void RenderText::computePreferredLogicalWidths(float leadWidth, HashSet<const Si
 
     // Non-zero only when kerning is enabled, in which case we measure words with their trailing
     // space, then subtract its width.
-    float wordTrailingSpaceWidth = f.typesettingFeatures() & Kerning ? f.width(RenderBlock::constructTextRun(this, f, &space, 1, styleToUse)) : 0;
+    float wordTrailingSpaceWidth = f.typesettingFeatures() & Kerning ? f.width(RenderBlock::constructTextRun(this, f, &space, 1, styleToUse)) + wordSpacing : 0;
 
     // If automatic hyphenation is allowed, we keep track of the width of the widest word (or word
     // fragment) encountered so far, and only try hyphenating words that are wider.
@@ -1256,6 +1256,9 @@ void RenderText::setSelectionState(SelectionState state)
 
 void RenderText::setTextWithOffset(PassRefPtr<StringImpl> text, unsigned offset, unsigned len, bool force)
 {
+    if (!force && equal(m_text.impl(), text.get()))
+        return;
+
     unsigned oldLen = textLength();
     unsigned newLen = text->length();
     int delta = newLen - oldLen;
@@ -1268,6 +1271,7 @@ void RenderText::setTextWithOffset(PassRefPtr<StringImpl> text, unsigned offset,
 
     // Dirty all text boxes that include characters in between offset and offset+len.
     for (InlineTextBox* curr = firstTextBox(); curr; curr = curr->nextTextBox()) {
+        // FIXME: This shouldn't rely on the end of a dirty line box. See https://bugs.webkit.org/show_bug.cgi?id=97264
         // Text run is entirely before the affected range.
         if (curr->end() < offset)
             continue;
@@ -1327,7 +1331,7 @@ void RenderText::setTextWithOffset(PassRefPtr<StringImpl> text, unsigned offset,
     }
 
     m_linesDirty = dirtiedLines;
-    setText(text, force);
+    setText(text, force || dirtiedLines);
 }
 
 void RenderText::transformText()
@@ -1619,7 +1623,7 @@ LayoutRect RenderText::linesVisualOverflowBoundingBox() const
     return rect;
 }
 
-LayoutRect RenderText::clippedOverflowRectForRepaint(RenderBoxModelObject* repaintContainer) const
+LayoutRect RenderText::clippedOverflowRectForRepaint(RenderLayerModelObject* repaintContainer) const
 {
     RenderObject* rendererToRepaint = containingBlock();
 
@@ -1635,7 +1639,7 @@ LayoutRect RenderText::clippedOverflowRectForRepaint(RenderBoxModelObject* repai
     return rendererToRepaint->clippedOverflowRectForRepaint(repaintContainer);
 }
 
-LayoutRect RenderText::selectionRectForRepaint(RenderBoxModelObject* repaintContainer, bool clipToVisibleContent)
+LayoutRect RenderText::selectionRectForRepaint(RenderLayerModelObject* repaintContainer, bool clipToVisibleContent)
 {
     ASSERT(!needsLayout());
 

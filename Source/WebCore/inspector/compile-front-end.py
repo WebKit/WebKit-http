@@ -46,8 +46,10 @@ modules = [
         "dependencies": [],
         "sources": [
             "Color.js",
+            "DOMExtension.js",
             "Object.js",
             "ParsedURL.js",
+            "Progress.js",
             "Settings.js",
             "UIString.js",
             "UserMetrics.js",
@@ -84,6 +86,7 @@ modules = [
             "NetworkLog.js",
             "NetworkUISourceCodeProvider.js",
             "PresentationConsoleMessageHelper.js",
+            "RuntimeModel.js",
             "SASSSourceMapping.js",
             "Script.js",
             "ScriptFormatter.js",
@@ -113,7 +116,6 @@ modules = [
         "sources": [
             "Checkbox.js",
             "ContextMenu.js",
-            "DOMExtension.js",
             "DOMSyntaxHighlighter.js",
             "DataGrid.js",
             "DefaultTextEditor.js",
@@ -128,7 +130,7 @@ modules = [
             "PanelEnablerView.js",
             "Placard.js",
             "Popover.js",
-            "ProgressBar.js",
+            "ProgressIndicator.js",
             "PropertiesSection.js",
             "SearchController.js",
             "Section.js",
@@ -170,7 +172,6 @@ modules = [
             "NativeBreakpointsSidebarPane.js",
             "ObjectPopoverHelper.js",
             "ObjectPropertiesSection.js",
-            "RuntimeModel.js",
             "SourceFrame.js",
             "ResourceView.js",
         ]
@@ -224,8 +225,15 @@ modules = [
         ]
     },
     {
-        "name": "scripts",
+        "name": "workers",
         "dependencies": ["components"],
+        "sources": [
+            "WorkerManager.js",
+        ]
+    },
+    {
+        "name": "scripts",
+        "dependencies": ["components", "workers"],
         "sources": [
             "BreakpointsSidebarPane.js",
             "CallStackSidebarPane.js",
@@ -299,13 +307,6 @@ modules = [
         ]
     },
     {
-        "name": "workers",
-        "dependencies": ["components"],
-        "sources": [
-            "WorkerManager.js",
-        ]
-    },
-    {
         "name": "tests",
         "dependencies": ["components"],
         "sources": [
@@ -332,14 +333,22 @@ modules = [
             "ProfilesPanel.js",
             "ProfileLauncherView.js",
             "TopDownProfileDataGridTree.js",
-            "WebGLProfileView.js",
+            "CanvasProfileView.js",
         ]
     },
     {
         "name": "host_stub",
         "dependencies": ["ui"],
         "sources": [
+            "InspectorFrontendAPI.js",
             "InspectorFrontendHostStub.js",
+        ]
+    },
+    {
+        "name": "inspector",
+        "dependencies": ["components"],
+        "sources": [
+            "DockController.js",
         ]
     },
 ]
@@ -407,15 +416,15 @@ if not process_recursively:
     os.system(command)
     os.system("rm " + inspector_path + "/" + "InjectedScriptSourceTmp.js")
 
-    print "Compiling InjectedScriptWebGLModuleSource.js..."
-    os.system("echo \"var injectedScriptWebGLModuleValue = \" > " + inspector_path + "/" + "InjectedScriptWebGLModuleSourceTmp.js")
-    os.system("cat  " + inspector_path + "/" + "InjectedScriptWebGLModuleSource.js" + " >> " + inspector_path + "/" + "InjectedScriptWebGLModuleSourceTmp.js")
+    print "Compiling InjectedScriptCanvasModuleSource.js..."
+    os.system("echo \"var injectedScriptCanvasModuleValue = \" > " + inspector_path + "/" + "InjectedScriptCanvasModuleSourceTmp.js")
+    os.system("cat  " + inspector_path + "/" + "InjectedScriptCanvasModuleSource.js" + " >> " + inspector_path + "/" + "InjectedScriptCanvasModuleSourceTmp.js")
     command = compiler_command
     command += "    --externs " + inspector_path + "/" + "InjectedScriptExterns.js" + " \\\n"
     command += "    --module " + jsmodule_name_prefix + "injected_script" + ":" + "1" + " \\\n"
-    command += "        --js " + inspector_path + "/" + "InjectedScriptWebGLModuleSourceTmp.js" + " \\\n"
+    command += "        --js " + inspector_path + "/" + "InjectedScriptCanvasModuleSourceTmp.js" + " \\\n"
     command += "\n"
     os.system(command)
-    os.system("rm " + inspector_path + "/" + "InjectedScriptWebGLModuleSourceTmp.js")
+    os.system("rm " + inspector_path + "/" + "InjectedScriptCanvasModuleSourceTmp.js")
 
 shutil.rmtree(modules_dir)

@@ -84,7 +84,7 @@ public:
     inline bool isOpaque() const { return !(m_flags & SupportsAlpha); }
 
 #if ENABLE(CSS_FILTERS)
-    virtual PassRefPtr<BitmapTexture> applyFilters(const BitmapTexture& contentTexture, const FilterOperations&) { return this; }
+    virtual PassRefPtr<BitmapTexture> applyFilters(TextureMapper*, const BitmapTexture& contentTexture, const FilterOperations&) { return this; }
 #endif
 
 protected:

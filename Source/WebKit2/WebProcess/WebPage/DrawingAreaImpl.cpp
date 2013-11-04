@@ -70,7 +70,11 @@ DrawingAreaImpl::DrawingAreaImpl(WebPage* webPage, const WebPageCreationParamete
 {
     if (webPage->corePage()->settings()->acceleratedDrawingEnabled() || webPage->corePage()->settings()->forceCompositingMode())
         m_alwaysUseCompositing = true;
-        
+
+#if USE(COORDINATED_GRAPHICS)
+    m_alwaysUseCompositing = true;
+#endif
+
     if (m_alwaysUseCompositing)
         enterAcceleratedCompositingMode(0);
 }
@@ -115,6 +119,9 @@ void DrawingAreaImpl::scroll(const IntRect& scrollRect, const IntSize& scrollOff
     }
 
     if (m_webPage->mainFrameHasCustomRepresentation())
+        return;
+
+    if (scrollRect.isEmpty())
         return;
 
     if (!m_scrollRect.isEmpty() && scrollRect != m_scrollRect) {
@@ -298,6 +305,14 @@ void DrawingAreaImpl::layerHostDidFlushLayers()
         m_compositingAccordingToProxyMessages = true;
     }
 #endif
+}
+
+GraphicsLayerFactory* DrawingAreaImpl::graphicsLayerFactory()
+{
+    if (m_layerTreeHost)
+        return m_layerTreeHost->graphicsLayerFactory();
+
+    return 0;
 }
 
 void DrawingAreaImpl::setRootCompositingLayer(GraphicsLayer* graphicsLayer)

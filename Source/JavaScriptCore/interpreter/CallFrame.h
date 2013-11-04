@@ -148,9 +148,6 @@ namespace JSC  {
             return 0;
         }
 #endif
-#if ENABLE(CLASSIC_INTERPRETER)
-        Instruction* returnVPC() const { return this[RegisterFile::ReturnPC].vPC(); }
-#endif
 #if USE(JSVALUE32_64)
         Instruction* currentVPC() const
         {
@@ -192,6 +189,15 @@ namespace JSC  {
         size_t argumentCountIncludingThis() const { return this[RegisterFile::ArgumentCount].payload(); }
         static int argumentOffset(int argument) { return s_firstArgumentOffset - argument; }
         static int argumentOffsetIncludingThis(int argument) { return s_thisArgumentOffset - argument; }
+
+        // In the following (argument() and setArgument()), the 'argument'
+        // parameter is the index of the arguments of the target function of
+        // this frame. The index starts at 0 for the first arg, 1 for the
+        // second, etc.
+        //
+        // The arguments (in this case) do not include the 'this' value.
+        // arguments(0) will not fetch the 'this' value. To get/set 'this',
+        // use thisValue() and setThisValue() below.
 
         JSValue argument(size_t argument)
         {

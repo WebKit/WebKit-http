@@ -35,6 +35,7 @@
 #include <wtf/PageBlock.h>
 #include <wtf/StdLibExtras.h>
 #include <wtf/StringExtras.h>
+#include <wtf/UnusedParam.h>
 
 #if OS(DARWIN) && ENABLE(PARALLEL_GC)
 #include <sys/sysctl.h>
@@ -101,6 +102,8 @@ static unsigned computeNumberOfGCMarkers(int maxNumberOfGCMarkers)
     ASSERT(cpusToUse >= 1);
     if (cpusToUse < 1)
         cpusToUse = 1;
+#else
+    UNUSED_PARAM(maxNumberOfGCMarkers);
 #endif
 
     return cpusToUse;
@@ -124,6 +127,11 @@ void Options::initialize()
     JSC_OPTIONS(FOR_EACH_OPTION)
 #undef FOR_EACH_OPTION
         
+#if USE(CF) || OS(UNIX)
+    objectsAreImmortal() = !!getenv("JSImmortalZombieEnabled");
+    useZombieMode() = !!getenv("JSImmortalZombieEnabled") || !!getenv("JSZombieEnabled");
+#endif
+
     // Allow environment vars to override options if applicable.
     // The evn var should be the name of the option prefixed with
     // "JSC_".
@@ -144,11 +152,6 @@ void Options::initialize()
 #endif
 #if !ENABLE(YARR_JIT)
     useRegExpJIT() = false;
-#endif
-
-#if USE(CF) || OS(UNIX)
-    zombiesAreImmortal() = !!getenv("JSImmortalZombieEnabled");
-    useZombieMode() = zombiesAreImmortal() || !!getenv("JSZombieEnabled");
 #endif
 
     // Do range checks where needed and make corrections to the options:

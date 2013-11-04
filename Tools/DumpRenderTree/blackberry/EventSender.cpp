@@ -140,13 +140,18 @@ static JSValueRef keyDownCallback(JSContextRef context, JSObjectRef function, JS
         charCode = KEYCODE_BACKSPACE;
     else {
         charCode = JSStringGetCharactersPtr(character)[0];
-        if (WTF::isASCIIUpper(charCode))
+        if (0x8 == charCode)
+            charCode = KEYCODE_BACKSPACE;
+        else if (0x7F == charCode)
+            charCode = KEYCODE_DELETE;
+        else if (WTF::isASCIIUpper(charCode))
             needsShiftKeyModifier = true;
     }
     JSStringRelease(character);
 
     static const JSStringRef lengthProperty = JSStringCreateWithUTF8CString("length");
     bool needsAltKeyModifier = false;
+    bool needsCtrlKeyModifier = false;
     if (argumentCount > 1) {
         if (JSObjectRef modifiersArray = JSValueToObject(context, arguments[1], 0)) {
             int modifiersCount = JSValueToNumber(context, JSObjectGetProperty(context, modifiersArray, lengthProperty, 0), 0);
@@ -156,6 +161,8 @@ static JSValueRef keyDownCallback(JSContextRef context, JSObjectRef function, JS
                     needsShiftKeyModifier = true;
                 else if (JSStringIsEqualToUTF8CString(string, "altKey"))
                     needsAltKeyModifier = true;
+                else if (JSStringIsEqualToUTF8CString(string, "ctrlKey"))
+                    needsCtrlKeyModifier = true;
                 JSStringRelease(string);
             }
         }
@@ -168,6 +175,8 @@ static JSValueRef keyDownCallback(JSContextRef context, JSObjectRef function, JS
         modifiers |= KEYMOD_SHIFT;
     if (needsAltKeyModifier)
         modifiers |= KEYMOD_ALT;
+    if (needsCtrlKeyModifier)
+        modifiers |= KEYMOD_CTRL;
 
     page->keyEvent(BlackBerry::Platform::KeyboardEvent(charCode, BlackBerry::Platform::KeyboardEvent::KeyChar, modifiers));
 

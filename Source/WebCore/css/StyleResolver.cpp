@@ -60,6 +60,7 @@
 #include "Counter.h"
 #include "CounterContent.h"
 #include "CursorList.h"
+#include "DocumentStyleSheetCollection.h"
 #include "FontFeatureValue.h"
 #include "FontValue.h"
 #include "Frame.h"
@@ -125,6 +126,9 @@
 #include "WebKitCSSTransformValue.h"
 #include "WebKitFontFamilyNames.h"
 #include "XMLNames.h"
+#include <wtf/MemoryInstrumentationHashMap.h>
+#include <wtf/MemoryInstrumentationHashSet.h>
+#include <wtf/MemoryInstrumentationVector.h>
 #include <wtf/StdLibExtras.h>
 #include <wtf/Vector.h>
 
@@ -422,18 +426,15 @@ StyleResolver::StyleResolver(Document* document, bool matchAuthorAndUserStyles)
     if (m_rootDefaultStyle && view)
         m_medium = adoptPtr(new MediaQueryEvaluator(view->mediaType(), view->frame(), m_rootDefaultStyle.get()));
 
-    m_authorStyle = RuleSet::create();
-    // Adding rules from multiple sheets, shrink at the end.
-    // Adding global rules from multiple sheets, shrink at the end.
-    // Note that there usually is only 1 sheet for scoped rules, so auto-shrink-to-fit is fine.
-    m_authorStyle->disableAutoShrinkToFit();
+    resetAuthorStyle();
 
+    DocumentStyleSheetCollection* styleSheetCollection = document->styleSheetCollection();
     // FIXME: This sucks! The user sheet is reparsed every time!
     OwnPtr<RuleSet> tempUserStyle = RuleSet::create();
-    if (CSSStyleSheet* pageUserSheet = document->pageUserSheet())
+    if (CSSStyleSheet* pageUserSheet = styleSheetCollection->pageUserSheet())
         tempUserStyle->addRulesFromSheet(pageUserSheet->contents(), *m_medium, this);
-    addAuthorRulesAndCollectUserRulesFromSheets(document->pageGroupUserSheets(), *tempUserStyle);
-    addAuthorRulesAndCollectUserRulesFromSheets(document->documentUserSheets(), *tempUserStyle);
+    addAuthorRulesAndCollectUserRulesFromSheets(styleSheetCollection->pageGroupUserSheets(), *tempUserStyle);
+    addAuthorRulesAndCollectUserRulesFromSheets(styleSheetCollection->documentUserSheets(), *tempUserStyle);
     if (tempUserStyle->m_ruleCount > 0 || tempUserStyle->m_pageRules.size() > 0)
         m_userStyle = tempUserStyle.release();
 
@@ -447,7 +448,7 @@ StyleResolver::StyleResolver(Document* document, bool matchAuthorAndUserStyles)
 #endif
 
     addStylesheetsFromSeamlessParents();
-    appendAuthorStylesheets(0, document->styleSheets()->vector());
+    appendAuthorStylesheets(0, styleSheetCollection->authorStyleSheets());
 }
 
 void StyleResolver::addStylesheetsFromSeamlessParents()
@@ -455,14 +456,14 @@ void StyleResolver::addStylesheetsFromSeamlessParents()
     // Build a list of stylesheet lists from our ancestors, and walk that
     // list in reverse order so that the root-most sheets are appended first.
     Document* childDocument = document();
-    Vector<StyleSheetList*> ancestorSheets;
+    Vector<const Vector<RefPtr<StyleSheet> >* > ancestorSheets;
     while (HTMLIFrameElement* parentIFrame = childDocument->seamlessParentIFrame()) {
         Document* parentDocument = parentIFrame->document();
-        ancestorSheets.append(parentDocument->styleSheets());
+        ancestorSheets.append(&parentDocument->styleSheetCollection()->authorStyleSheets());
         childDocument = parentDocument;
     }
     for (int i = ancestorSheets.size() - 1; i >= 0; i--)
-        appendAuthorStylesheets(0, ancestorSheets.at(i)->vector());
+        appendAuthorStylesheets(0, *ancestorSheets[i]);
 }
 
 void StyleResolver::addAuthorRulesAndCollectUserRulesFromSheets(const Vector<RefPtr<CSSStyleSheet> >* userSheets, RuleSet& userStyle)
@@ -542,6 +543,12 @@ inline RuleSet* StyleResolver::ruleSetForScope(const ContainerNode* scope) const
     return it != m_scopedAuthorStyles.end() ? it->second.get() : 0; 
 }
 #endif
+
+void StyleResolver::resetAuthorStyle()
+{
+    m_authorStyle = RuleSet::create();
+    m_authorStyle->disableAutoShrinkToFit();
+}
 
 void StyleResolver::appendAuthorStylesheets(unsigned firstNew, const Vector<RefPtr<StyleSheet> >& stylesheets)
 {
@@ -708,7 +715,6 @@ void StyleResolver::sweepMatchedPropertiesCache()
 StyleResolver::Features::Features()
     : usesFirstLineRules(false)
     , usesBeforeAfterRules(false)
-    , usesLinkRules(false)
 {
 }
 
@@ -728,7 +734,6 @@ void StyleResolver::Features::add(const StyleResolver::Features& other)
     uncommonAttributeRules.append(other.uncommonAttributeRules);
     usesFirstLineRules = usesFirstLineRules || other.usesFirstLineRules;
     usesBeforeAfterRules = usesBeforeAfterRules || other.usesBeforeAfterRules;
-    usesLinkRules = usesLinkRules || other.usesLinkRules;
 }
 
 void StyleResolver::Features::clear()
@@ -739,16 +744,15 @@ void StyleResolver::Features::clear()
     uncommonAttributeRules.clear();
     usesFirstLineRules = false;
     usesBeforeAfterRules = false;
-    usesLinkRules = false;
 }
 
 void StyleResolver::Features::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
 {
     MemoryClassInfo info(memoryObjectInfo, this, WebCoreMemoryTypes::CSS);
-    info.addHashSet(idsInRules);
-    info.addHashSet(attrsInRules);
-    info.addVector(siblingRules);
-    info.addVector(uncommonAttributeRules);
+    info.addMember(idsInRules);
+    info.addMember(attrsInRules);
+    info.addMember(siblingRules);
+    info.addMember(uncommonAttributeRules);
 }
 
 static StyleSheetContents* parseUASheet(const String& str)
@@ -958,41 +962,31 @@ void StyleResolver::matchScopedAuthorRules(MatchResult& result, bool includeEmpt
     if (m_scopedAuthorStyles.isEmpty())
         return;
 
-    MatchOptions options(includeEmptyRules);
-
     // Match scoped author rules by traversing the scoped element stack (rebuild it if it got inconsistent).
     if (!scopeStackIsConsistent(m_element))
         setupScopeStack(m_element);
-
-    unsigned int firstShadowScopeIndex = 0;
-    if (m_element->treeScope()->applyAuthorStyles()) {
-        unsigned i;
-        for (i = 0; i < m_scopeStack.size() && !m_scopeStack[i].m_scope->isInShadowTree(); ++i) {
-            const ScopeStackFrame& frame = m_scopeStack[i];
-            options.scope = frame.m_scope;
-            collectMatchingRules(frame.m_ruleSet, result.ranges.firstAuthorRule, result.ranges.lastAuthorRule, options);
-            collectMatchingRulesForRegion(frame.m_ruleSet, result.ranges.firstAuthorRule, result.ranges.lastAuthorRule, options);
-        }
-        firstShadowScopeIndex = i;
-    }
-
-    if (!m_element->isInShadowTree() || m_scopeStack.isEmpty())
+    if (m_scopeStack.isEmpty())
         return;
 
-    unsigned scopedIndex = m_scopeStack.size();
-    int authorStyleBoundsIndex = m_scopeStackParentBoundsIndex;
-    for ( ; scopedIndex > firstShadowScopeIndex; --scopedIndex) {
-        if (authorStyleBoundsIndex != m_scopeStack[scopedIndex - 1].m_authorStyleBoundsIndex)
-            break;
-    }
-
-    // Ruleset for ancestor nodes should be applied first.
-    for (unsigned i = scopedIndex; i < m_scopeStack.size(); ++i) {
+    bool applyAuthorStyles = m_element->treeScope()->applyAuthorStyles();
+    bool documentScope = true;
+    unsigned scopeSize = m_scopeStack.size();
+    for (unsigned i = 0; i < scopeSize; ++i) {
         const ScopeStackFrame& frame = m_scopeStack[i];
-        options.scope = frame.m_scope;
+        documentScope = documentScope && !frame.m_scope->isInShadowTree();
+        if (documentScope) {
+            if (!applyAuthorStyles)
+                continue;
+        } else {
+            if (frame.m_authorStyleBoundsIndex != m_scopeStackParentBoundsIndex)
+                continue;
+        }
+           
+        MatchOptions options(includeEmptyRules, frame.m_scope);
         collectMatchingRules(frame.m_ruleSet, result.ranges.firstAuthorRule, result.ranges.lastAuthorRule, options);
         collectMatchingRulesForRegion(frame.m_ruleSet, result.ranges.firstAuthorRule, result.ranges.lastAuthorRule, options);
     }
+
 #else
     UNUSED_PARAM(result);
     UNUSED_PARAM(includeEmptyRules);
@@ -1480,7 +1474,7 @@ bool StyleResolver::canShareStyleWithElement(StyledElement* element) const
 #if USE(ACCELERATED_COMPOSITING)
     // Turn off style sharing for elements that can gain layers for reasons outside of the style system.
     // See comments in RenderObject::setStyle().
-    if (element->hasTagName(iframeTag) || element->hasTagName(frameTag) || element->hasTagName(embedTag) || element->hasTagName(objectTag) || element->hasTagName(appletTag)
+    if (element->hasTagName(iframeTag) || element->hasTagName(frameTag) || element->hasTagName(embedTag) || element->hasTagName(objectTag) || element->hasTagName(appletTag) || element->hasTagName(canvasTag)
 #if ENABLE(PLUGIN_PROXY_FOR_VIDEO)
         // With proxying, the media elements are backed by a RenderEmbeddedObject.
         || element->hasTagName(videoTag) || element->hasTagName(audioTag)
@@ -1712,9 +1706,9 @@ PassRefPtr<RenderStyle> StyleResolver::styleForDocument(Document* document, CSSF
         return documentStyle.release();
 
     FontDescription fontDescription;
-    fontDescription.setUsePrinterFont(document->printing());
     fontDescription.setScript(localeToScriptCodeForFontSelection(documentStyle->locale()));
     if (Settings* settings = document->settings()) {
+        fontDescription.setUsePrinterFont(document->printing() || !settings->screenFontSubstitutionEnabled());
         fontDescription.setRenderingMode(settings->fontRenderingMode());
         const AtomicString& standardFont = settings->standardFontFamily(fontDescription.script());
         if (!standardFont.isEmpty()) {
@@ -1727,7 +1721,8 @@ PassRefPtr<RenderStyle> StyleResolver::styleForDocument(Document* document, CSSF
         fontDescription.setSpecifiedSize(size);
         bool useSVGZoomRules = document->isSVGDocument();
         fontDescription.setComputedSize(StyleResolver::getComputedSizeFromSpecifiedSize(document, documentStyle.get(), fontDescription.isAbsoluteSize(), size, useSVGZoomRules));
-    }
+    } else
+        fontDescription.setUsePrinterFont(document->printing());
 
     documentStyle->setFontDescription(fontDescription);
     documentStyle->font().update(fontSelector);
@@ -2192,6 +2187,7 @@ void StyleResolver::adjustRenderStyle(RenderStyle* style, RenderStyle* parentSty
         || style->opacity() < 1.0f
         || style->hasTransformRelatedProperty()
         || style->hasMask()
+        || style->clipPath()
         || style->boxReflect()
         || style->hasFilter()
         || style->hasBlendMode()
@@ -2564,9 +2560,9 @@ RuleSet::RuleSet()
 
 static void reportAtomRuleMap(MemoryClassInfo* info, const RuleSet::AtomRuleMap& atomicRuleMap)
 {
-    info->addHashMap(atomicRuleMap);
+    info->addMember(atomicRuleMap);
     for (RuleSet::AtomRuleMap::const_iterator it = atomicRuleMap.begin(); it != atomicRuleMap.end(); ++it)
-        info->addInstrumentedVector(*it->second);
+        info->addMember(*it->second);
 }
 
 void RuleSet::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
@@ -2576,11 +2572,11 @@ void RuleSet::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
     reportAtomRuleMap(&info, m_classRules);
     reportAtomRuleMap(&info, m_tagRules);
     reportAtomRuleMap(&info, m_shadowPseudoElementRules);
-    info.addInstrumentedVector(m_linkPseudoClassRules);
-    info.addInstrumentedVector(m_focusPseudoClassRules);
-    info.addInstrumentedVector(m_universalRules);
-    info.addVector(m_pageRules);
-    info.addInstrumentedVector(m_regionSelectorsAndRuleSets);
+    info.addMember(m_linkPseudoClassRules);
+    info.addMember(m_focusPseudoClassRules);
+    info.addMember(m_universalRules);
+    info.addMember(m_pageRules);
+    info.addMember(m_regionSelectorsAndRuleSets);
 }
 
 void RuleSet::RuleSetSelectorPair::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
@@ -2602,10 +2598,6 @@ static inline void collectFeaturesFromSelector(StyleResolver::Features& features
     case CSSSelector::PseudoBefore:
     case CSSSelector::PseudoAfter:
         features.usesBeforeAfterRules = true;
-        break;
-    case CSSSelector::PseudoLink:
-    case CSSSelector::PseudoVisited:
-        features.usesLinkRules = true;
         break;
     default:
         break;
@@ -3179,25 +3171,25 @@ static void collectCSSOMWrappers(HashMap<StyleRule*, RefPtr<CSSStyleRule> >& wra
     collectCSSOMWrappers(wrapperMap, styleSheetWrapper.get());
 }
 
-static void collectCSSOMWrappers(HashMap<StyleRule*, RefPtr<CSSStyleRule> >& wrapperMap, Document* document)
+static void collectCSSOMWrappers(HashMap<StyleRule*, RefPtr<CSSStyleRule> >& wrapperMap, DocumentStyleSheetCollection* styleSheetCollection)
 {
-    const Vector<RefPtr<StyleSheet> >& styleSheets = document->styleSheets()->vector();
+    const Vector<RefPtr<StyleSheet> >& styleSheets = styleSheetCollection->authorStyleSheets();
     for (unsigned i = 0; i < styleSheets.size(); ++i) {
         StyleSheet* styleSheet = styleSheets[i].get();
         if (!styleSheet->isCSSStyleSheet())
             continue;
         collectCSSOMWrappers(wrapperMap, static_cast<CSSStyleSheet*>(styleSheet));
     }
-    collectCSSOMWrappers(wrapperMap, document->pageUserSheet());
+    collectCSSOMWrappers(wrapperMap, styleSheetCollection->pageUserSheet());
     {
-        const Vector<RefPtr<CSSStyleSheet> >* pageGroupUserSheets = document->pageGroupUserSheets();
+        const Vector<RefPtr<CSSStyleSheet> >* pageGroupUserSheets = styleSheetCollection->pageGroupUserSheets();
         if (pageGroupUserSheets) {
             for (size_t i = 0, size = pageGroupUserSheets->size(); i < size; ++i)
                 collectCSSOMWrappers(wrapperMap, pageGroupUserSheets->at(i).get());
         }
     }
     {
-        const Vector<RefPtr<CSSStyleSheet> >* documentUserSheets = document->documentUserSheets();
+        const Vector<RefPtr<CSSStyleSheet> >* documentUserSheets = styleSheetCollection->documentUserSheets();
         if (documentUserSheets) {
             for (size_t i = 0, size = documentUserSheets->size(); i < size; ++i)
                 collectCSSOMWrappers(wrapperMap, documentUserSheets->at(i).get());
@@ -3216,7 +3208,7 @@ CSSStyleRule* StyleResolver::ensureFullCSSOMWrapperForInspector(StyleRule* rule)
         collectCSSOMWrappers(m_styleRuleToCSSOMWrapperMap, m_styleSheetCSSOMWrapperSet, mediaControlsStyleSheet);
         collectCSSOMWrappers(m_styleRuleToCSSOMWrapperMap, m_styleSheetCSSOMWrapperSet, fullscreenStyleSheet);
 
-        collectCSSOMWrappers(m_styleRuleToCSSOMWrapperMap, document());
+        collectCSSOMWrappers(m_styleRuleToCSSOMWrapperMap, document()->styleSheetCollection());
     }
     return m_styleRuleToCSSOMWrapperMap.get(rule).get();
 }
@@ -3361,9 +3353,7 @@ static bool hasVariableReference(CSSValue* value)
 {
     if (value->isPrimitiveValue()) {
         CSSPrimitiveValue* primitiveValue = static_cast<CSSPrimitiveValue*>(value);
-        if (CSSCalcValue* calcValue = primitiveValue->cssCalcValue())
-            return calcValue->hasVariableReference();
-        return primitiveValue->isVariableName();
+        return primitiveValue->hasVariableReference();
     }
 
     if (value->isCalculationValue())
@@ -3728,7 +3718,7 @@ void StyleResolver::applyProperty(CSSPropertyID id, CSSValue* value)
                 if (!settings)
                     return;
                 fontDescription.setRenderingMode(settings->fontRenderingMode());
-                fontDescription.setUsePrinterFont(m_checker.document()->printing());
+                fontDescription.setUsePrinterFont(m_checker.document()->printing() || !settings->screenFontSubstitutionEnabled());
 
                 // Handle the zoom factor.
                 fontDescription.setComputedSize(getComputedSizeFromSpecifiedSize(m_checker.document(), m_style.get(), fontDescription.isAbsoluteSize(), fontDescription.specifiedSize(), useSVGZoomRules()));
@@ -4609,7 +4599,7 @@ void StyleResolver::initializeFontStyle(Settings* settings)
     FontDescription fontDescription;
     fontDescription.setGenericFamily(FontDescription::StandardFamily);
     fontDescription.setRenderingMode(settings->fontRenderingMode());
-    fontDescription.setUsePrinterFont(m_checker.document()->printing());
+    fontDescription.setUsePrinterFont(m_checker.document()->printing() || !settings->screenFontSubstitutionEnabled());
     const AtomicString& standardFontFamily = documentSettings()->standardFontFamily();
     if (!standardFontFamily.isEmpty()) {
         fontDescription.firstFamily().setFamily(standardFontFamily);
@@ -5190,7 +5180,7 @@ void StyleResolver::loadPendingSVGDocuments()
         if (filterOperation->getOperationType() == FilterOperation::REFERENCE) {
             ReferenceFilterOperation* referenceFilter = static_cast<ReferenceFilterOperation*>(filterOperation.get());
 
-            WebKitCSSSVGDocumentValue* value = m_pendingSVGDocuments.get(referenceFilter);
+            WebKitCSSSVGDocumentValue* value = m_pendingSVGDocuments.get(referenceFilter).get();
             if (!value)
                 continue;
             CachedSVGDocument* cachedDocument = value->load(cachedResourceLoader);
@@ -5765,7 +5755,7 @@ void StyleResolver::MatchedProperties::reportMemoryUsage(MemoryObjectInfo* memor
 void StyleResolver::MatchedPropertiesCacheItem::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
 {
     MemoryClassInfo info(memoryObjectInfo, this, WebCoreMemoryTypes::CSS);
-    info.addInstrumentedVector(matchedProperties);
+    info.addMember(matchedProperties);
 }
 
 void MediaQueryResult::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
@@ -5782,26 +5772,22 @@ void StyleResolver::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
     info.addMember(m_userStyle);
     info.addMember(m_siblingRuleSet);
     info.addMember(m_uncommonAttributeRuleSet);
-    info.addHashMap(m_keyframesRuleMap);
-    info.addHashMap(m_matchedPropertiesCache);
-    info.addInstrumentedMapValues(m_matchedPropertiesCache);
-    info.addVector(m_matchedRules);
+    info.addMember(m_keyframesRuleMap);
+    info.addMember(m_matchedPropertiesCache);
+    info.addMember(m_matchedRules);
 
     info.addMember(m_ruleList);
-    info.addHashMap(m_pendingImageProperties);
-    info.addInstrumentedMapValues(m_pendingImageProperties);
+    info.addMember(m_pendingImageProperties);
     info.addMember(m_lineHeightValue);
-    info.addInstrumentedVector(m_viewportDependentMediaQueryResults);
-    info.addHashMap(m_styleRuleToCSSOMWrapperMap);
-    info.addInstrumentedMapEntries(m_styleRuleToCSSOMWrapperMap);
-    info.addInstrumentedHashSet(m_styleSheetCSSOMWrapperSet);
+    info.addMember(m_viewportDependentMediaQueryResults);
+    info.addMember(m_styleRuleToCSSOMWrapperMap);
+    info.addMember(m_styleSheetCSSOMWrapperSet);
 #if ENABLE(CSS_FILTERS) && ENABLE(SVG)
-    info.addHashMap(m_pendingSVGDocuments);
+    info.addMember(m_pendingSVGDocuments);
 #endif
 #if ENABLE(STYLE_SCOPED)
-    info.addHashMap(m_scopedAuthorStyles);
-    info.addInstrumentedMapEntries(m_scopedAuthorStyles);
-    info.addVector(m_scopeStack);
+    info.addMember(m_scopedAuthorStyles);
+    info.addMember(m_scopeStack);
 #endif
 
     // FIXME: move this to a place where it would be called only once?

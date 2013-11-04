@@ -159,7 +159,8 @@ public:
     void setEffectiveZoom(float f) { m_fontDirty |= style()->setEffectiveZoom(f); }
     void setTextSizeAdjust(bool b) { m_fontDirty |= style()->setTextSizeAdjust(b); }
     bool hasParentNode() const { return m_parentNode; }
-    
+
+    void resetAuthorStyle();
     void appendAuthorStylesheets(unsigned firstNew, const Vector<RefPtr<StyleSheet> >&);
     
     // Find the ids or classes the selectors on a stylesheet are scoped to. The selectors only apply to elements in subtrees where the root element matches the scope.
@@ -231,7 +232,7 @@ public:
     CSSFontSelector* fontSelector() const { return m_fontSelector.get(); }
 
     void addViewportDependentMediaQueryResult(const MediaQueryExp*, bool result);
-
+    bool hasViewportDependentMediaQueries() const { return !m_viewportDependentMediaQueryResults.isEmpty(); }
     bool affectedByViewportChange() const;
 
     void allVisitedStateChanged() { m_checker.allVisitedStateChanged(); }
@@ -244,7 +245,6 @@ public:
     bool usesSiblingRules() const { return !m_features.siblingRules.isEmpty(); }
     bool usesFirstLineRules() const { return m_features.usesFirstLineRules; }
     bool usesBeforeAfterRules() const { return m_features.usesBeforeAfterRules; }
-    bool usesLinkRules() const { return m_features.usesLinkRules; }
 
     static bool createTransformOperations(CSSValue* inValue, RenderStyle* inStyle, RenderStyle* rootStyle, TransformOperations& outOperations);
     
@@ -297,7 +297,6 @@ public:
         Vector<RuleFeature> uncommonAttributeRules;
         bool usesFirstLineRules;
         bool usesBeforeAfterRules;
-        bool usesLinkRules;
     };
 
 private:
@@ -515,7 +514,7 @@ private:
 #endif
 
 #if ENABLE(CSS_FILTERS) && ENABLE(SVG)
-    HashMap<FilterOperation*, WebKitCSSSVGDocumentValue*> m_pendingSVGDocuments;
+    HashMap<FilterOperation*, RefPtr<WebKitCSSSVGDocumentValue> > m_pendingSVGDocuments;
 #endif
 
 #if ENABLE(STYLE_SCOPED)

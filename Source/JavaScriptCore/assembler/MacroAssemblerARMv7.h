@@ -737,6 +737,18 @@ public:
         store8(src, setupArmAddress(address));
     }
     
+    void store8(RegisterID src, void* address)
+    {
+        move(TrustedImmPtr(address), addressTempRegister);
+        store8(src, ArmAddress(addressTempRegister, 0));
+    }
+    
+    void store8(TrustedImm32 imm, void* address)
+    {
+        move(imm, dataTempRegister);
+        store8(dataTempRegister, address);
+    }
+    
     void store16(RegisterID src, BaseIndex address)
     {
         store16(src, setupArmAddress(address));

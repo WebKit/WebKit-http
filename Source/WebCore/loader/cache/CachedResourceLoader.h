@@ -126,13 +126,14 @@ public:
     void reportMemoryUsage(MemoryObjectInfo*) const;
 
 private:
-    CachedResourceHandle<CachedResource> requestResource(CachedResource::Type, ResourceRequest&, const String& charset, const ResourceLoaderOptions&, ResourceLoadPriority = ResourceLoadPriorityUnresolved, bool isPreload = false);
-    CachedResourceHandle<CachedResource> revalidateResource(CachedResource*, ResourceLoadPriority, const ResourceLoaderOptions&);
-    CachedResourceHandle<CachedResource> loadResource(CachedResource::Type, ResourceRequest&, const String& charset, ResourceLoadPriority, const ResourceLoaderOptions&);
+    enum DeferOption { NoDefer, DeferredByClient };
+    CachedResourceHandle<CachedResource> requestResource(CachedResource::Type, ResourceRequest&, const String& charset, const ResourceLoaderOptions&, ResourceLoadPriority = ResourceLoadPriorityUnresolved, bool isPreload = false, DeferOption = NoDefer);
+    CachedResourceHandle<CachedResource> revalidateResource(CachedResource*);
+    CachedResourceHandle<CachedResource> loadResource(CachedResource::Type, ResourceRequest&, const String& charset);
     void requestPreload(CachedResource::Type, ResourceRequest&, const String& charset);
 
     enum RevalidationPolicy { Use, Revalidate, Reload, Load };
-    RevalidationPolicy determineRevalidationPolicy(CachedResource::Type, ResourceRequest&, bool forPreload, CachedResource* existingResource) const;
+    RevalidationPolicy determineRevalidationPolicy(CachedResource::Type, ResourceRequest&, bool forPreload, CachedResource* existingResource, DeferOption) const;
     
     void notifyLoadedFromMemoryCache(CachedResource*);
     bool checkInsecureContent(CachedResource::Type, const KURL&) const;
@@ -140,7 +141,7 @@ private:
     void garbageCollectDocumentResourcesTimerFired(Timer<CachedResourceLoader>*);
     void performPostLoadActions();
 
-    bool clientAllowsImage(const KURL&) const;
+    bool clientDefersImage(const KURL&) const;
     void reloadImagesIfNotDeferred();
     
     HashSet<String> m_validatedURLs;

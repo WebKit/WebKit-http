@@ -24,16 +24,23 @@ build?(webkit2): QMAKE_INTERNAL_INCLUDED_FILES *= WebKit2/Target.pri
 
 use?(3D_GRAPHICS): WEBKIT += angle
 
-# We load the relevant modules here, so that the effects of each module
-# on the QT variable can be picked up when we later load(qt_module).
-load(webkit_modules)
-
 MODULE = webkit
 
 # This is the canonical list of dependencies for the public API of
 # the QtWebKit library, and will end up in the library's prl file.
 QT_API_DEPENDS = core gui network
 build?(webkit1): QT_API_DEPENDS += widgets
+
+qmakeVersion=$$[QMAKE_VERSION]
+equals(qmakeVersion, 3.0) {
+    # We want the QtWebKit API forwarding includes to live in the root build dir.
+    MODULE_BASE_DIR = $$_PRO_FILE_PWD_
+    MODULE_BASE_OUTDIR = $$ROOT_BUILD_DIR
+}
+
+# We load the relevant modules here, so that the effects of each module
+# on the QT variable can be picked up when we later load(qt_module).
+load(webkit_modules)
 
 # ---------------- Custom developer-build handling -------------------
 #

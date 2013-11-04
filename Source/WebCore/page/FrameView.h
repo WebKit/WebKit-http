@@ -176,7 +176,7 @@ public:
     virtual IntRect windowResizerRect() const;
 
     virtual void setFixedVisibleContentRect(const IntRect&) OVERRIDE;
-    void setScrollPosition(const IntPoint&);
+    virtual void setScrollPosition(const IntPoint&) OVERRIDE;
     void scrollPositionChangedViaPlatformWidget();
     virtual void repaintFixedElementsAfterScrolling();
     virtual void updateFixedElementsAfterScrolling();
@@ -360,6 +360,9 @@ public:
     // distinguish between the two.
     const Pagination& pagination() const;
     void setPagination(const Pagination&);
+    
+    bool inProgrammaticScroll() const { return m_inProgrammaticScroll; }
+    void setInProgrammaticScroll(bool programmaticScroll) { m_inProgrammaticScroll = programmaticScroll; }
 
 protected:
     virtual bool scrollContentsFastPath(const IntSize& scrollDelta, const IntRect& rectToScroll, const IntRect& clipRect);

@@ -47,11 +47,11 @@ public:
     PageViewportControllerClientQt(QQuickWebView*, QQuickWebPage*);
     ~PageViewportControllerClientQt();
 
-    virtual void setContentsPosition(const WebCore::FloatPoint& localPoint);
-    virtual void setContentsScale(float localScale, bool treatAsInitialValue);
+    virtual void setViewportPosition(const WebCore::FloatPoint& contentsPoint);
+    virtual void setContentsScale(float scale, bool treatAsInitialValue);
 
     virtual void didResumeContent();
-    virtual void didChangeContentsSize();
+    virtual void didChangeContentsSize(const WebCore::IntSize&);
     virtual void didChangeVisibleContents();
     virtual void didChangeViewportAttributes();
 
@@ -121,7 +121,6 @@ private:
     QQuickWebPage* const m_pageItem;
 
     float viewportScaleForRect(const QRectF&) const;
-    QRectF visibleContentsRect() const;
     QRectF nearestValidVisibleContentsRect() const;
 
     void setContentsRectToNearestValidBounds();

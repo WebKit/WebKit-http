@@ -123,9 +123,8 @@ RenderLayerBacking::RenderLayerBacking(RenderLayer* layer)
         if (Page* page = renderer()->frame()->page()) {
             if (TiledBacking* tiledBacking = m_graphicsLayer->tiledBacking()) {
                 Frame* frame = renderer()->frame();
-
                 tiledBacking->setIsInWindow(page->isOnscreen());
-                tiledBacking->setCanHaveScrollbars(frame->view()->canHaveScrollbars());
+                tiledBacking->setTileCoverage(frame->view()->canHaveScrollbars() ? TiledBacking::CoverageForScrolling : TiledBacking::CoverageForVisibleArea);
                 tiledBacking->setScrollingPerformanceLoggingEnabled(frame->settings() && frame->settings()->scrollingPerformanceLoggingEnabled());
             }
         }
@@ -144,7 +143,12 @@ RenderLayerBacking::~RenderLayerBacking()
 
 PassOwnPtr<GraphicsLayer> RenderLayerBacking::createGraphicsLayer(const String& name)
 {
-    OwnPtr<GraphicsLayer> graphicsLayer = GraphicsLayer::create(this);
+    GraphicsLayerFactory* graphicsLayerFactory = 0;
+    if (Page* page = renderer()->frame()->page())
+        graphicsLayerFactory = page->chrome()->client()->graphicsLayerFactory();
+
+    OwnPtr<GraphicsLayer> graphicsLayer = GraphicsLayer::create(graphicsLayerFactory, this);
+
 #ifndef NDEBUG
     graphicsLayer->setName(name);
 #else

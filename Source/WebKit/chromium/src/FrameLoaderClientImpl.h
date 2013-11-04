@@ -61,6 +61,9 @@ public:
     virtual void dispatchDidClearWindowObjectInWorld(WebCore::DOMWrapperWorld*);
     virtual void documentElementAvailable();
 
+    // Script in the page tried to allocate too much memory.
+    virtual void didExhaustMemoryAvailableForScript();
+
 #if USE(V8)
     virtual void didCreateScriptContext(v8::Handle<v8::Context>, int extensionGroup, int worldId);
     virtual void willReleaseScriptContext(v8::Handle<v8::Context>, int worldId);
@@ -107,8 +110,7 @@ public:
     virtual void dispatchDidFailLoad(const WebCore::ResourceError&);
     virtual void dispatchDidFinishDocumentLoad();
     virtual void dispatchDidFinishLoad();
-    virtual void dispatchDidFirstLayout();
-    virtual void dispatchDidFirstVisuallyNonEmptyLayout();
+    virtual void dispatchDidLayout(WebCore::LayoutMilestones);
     virtual WebCore::Frame* dispatchCreatePage(const WebCore::NavigationAction&);
     virtual void dispatchShow();
     virtual void dispatchDecidePolicyForResponse(WebCore::FramePolicyFunction function, const WebCore::ResourceResponse&, const WebCore::ResourceRequest&);
@@ -217,6 +219,10 @@ public:
 #endif
 
     virtual void dispatchWillOpenSocketStream(WebCore::SocketStreamHandle*) OVERRIDE;
+
+#if ENABLE(MEDIA_STREAM)
+    virtual void dispatchWillStartUsingPeerConnectionHandler(WebCore::RTCPeerConnectionHandler*) OVERRIDE;
+#endif
 
 private:
     void makeDocumentView();

@@ -239,6 +239,11 @@ layer at (0,0) size 800x34
         actual_image='image_not_in_pixeldir-pngtEXtchecksum\x00checksum_fail',
         expected_image='image_not_in_pixeldir-pngtEXtchecksum\x00checksum-png')
 
+    # For testing that virtual test suites don't expand names containing themselves
+    # See webkit.org/b/97925 and base_unittest.PortTest.test_tests().
+    tests.add('passes/test-virtual-passes.html')
+    tests.add('passes/passes/test-virtual-passes.html')
+
     return tests
 
 
@@ -258,25 +263,25 @@ def add_unit_tests_to_mock_filesystem(filesystem):
     filesystem.maybe_make_directory(LAYOUT_TEST_DIR + '/platform/test')
     if not filesystem.exists(LAYOUT_TEST_DIR + '/platform/test/TestExpectations'):
         filesystem.write_text_file(LAYOUT_TEST_DIR + '/platform/test/TestExpectations', """
-WONTFIX : failures/expected/crash.html = CRASH
-WONTFIX : failures/expected/image.html = IMAGE
-WONTFIX : failures/expected/audio.html = AUDIO
-WONTFIX : failures/expected/image_checksum.html = IMAGE
-WONTFIX : failures/expected/mismatch.html = IMAGE
-WONTFIX : failures/expected/missing_check.html = MISSING PASS
-WONTFIX : failures/expected/missing_image.html = MISSING PASS
-WONTFIX : failures/expected/missing_audio.html = MISSING PASS
-WONTFIX : failures/expected/missing_text.html = MISSING PASS
-WONTFIX : failures/expected/newlines_leading.html = TEXT
-WONTFIX : failures/expected/newlines_trailing.html = TEXT
-WONTFIX : failures/expected/newlines_with_excess_CR.html = TEXT
-WONTFIX : failures/expected/reftest.html = IMAGE
-WONTFIX : failures/expected/text.html = TEXT
-WONTFIX : failures/expected/timeout.html = TIMEOUT
-WONTFIX SKIP : failures/expected/hang.html = TIMEOUT
-WONTFIX SKIP : failures/expected/keyboard.html = CRASH
-WONTFIX SKIP : failures/expected/exception.html = CRASH
-WONTFIX SKIP : passes/skipped/skip.html = PASS
+Bug(test) failures/expected/crash.html [ Crash ]
+Bug(test) failures/expected/image.html [ ImageOnlyFailure ]
+Bug(test) failures/expected/audio.html [ Failure ]
+Bug(test) failures/expected/image_checksum.html [ ImageOnlyFailure ]
+Bug(test) failures/expected/mismatch.html [ ImageOnlyFailure ]
+Bug(test) failures/expected/missing_check.html [ Missing Pass ]
+Bug(test) failures/expected/missing_image.html [ Missing Pass ]
+Bug(test) failures/expected/missing_audio.html [ Missing Pass ]
+Bug(test) failures/expected/missing_text.html [ Missing Pass ]
+Bug(test) failures/expected/newlines_leading.html [ Failure ]
+Bug(test) failures/expected/newlines_trailing.html [ Failure ]
+Bug(test) failures/expected/newlines_with_excess_CR.html [ Failure ]
+Bug(test) failures/expected/reftest.html [ ImageOnlyFailure ]
+Bug(test) failures/expected/text.html [ Failure ]
+Bug(test) failures/expected/timeout.html [ Timeout ]
+Bug(test) failures/expected/hang.html [ WontFix ]
+Bug(test) failures/expected/keyboard.html [ WontFix ]
+Bug(test) failures/expected/exception.html [ WontFix ]
+Bug(test) passes/skipped/skip.html [ Skip ]
 """)
 
     filesystem.maybe_make_directory(LAYOUT_TEST_DIR + '/reftests/foo')
@@ -405,6 +410,10 @@ class TestPort(Port):
 
     def diff_image(self, expected_contents, actual_contents, tolerance=None):
         diffed = actual_contents != expected_contents
+        if not actual_contents and not expected_contents:
+            return (None, 0, None)
+        if not actual_contents or not expected_contents:
+            return (True, 0, None)
         if 'ref' in expected_contents:
             assert tolerance == 0
         if diffed:
@@ -537,7 +546,7 @@ class TestDriver(Driver):
         if test.exception:
             raise ValueError('exception from ' + test_name)
         if test.hang:
-            time.sleep((float(test_input.timeout) * 4) / 1000.0)
+            time.sleep((float(test_input.timeout) * 4) / 1000.0 + 1.0)  # The 1.0 comes from thread_padding_sec in layout_test_runnery.
 
         audio = None
         actual_text = test.actual_text
@@ -568,7 +577,11 @@ class TestDriver(Driver):
         if stop_when_done:
             self.stop()
 
-        return DriverOutput(actual_text, test.actual_image, test.actual_checksum, audio,
+        if test.actual_checksum == test_input.image_hash:
+            image = None
+        else:
+            image = test.actual_image
+        return DriverOutput(actual_text, image, test.actual_checksum, audio,
             crash=test.crash or test.web_process_crash, crashed_process_name=crashed_process_name,
             crashed_pid=crashed_pid, crash_log=crash_log,
             test_time=time.time() - start_time, timeout=test.timeout, error=test.error)

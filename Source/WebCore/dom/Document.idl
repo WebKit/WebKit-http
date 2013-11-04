@@ -167,8 +167,6 @@ module core {
                      setter raises (DOMException),
                      getter raises (DOMException);
 
-        // FIXME: the DOM spec does NOT have this attribute
-        // raising an exception.
                  attribute HTMLElement body
                      setter raises (DOMException);
 
@@ -268,7 +266,6 @@ module core {
         [Conditional=POINTER_LOCK, V8EnabledAtRuntime=pointerLock] void webkitExitPointerLock();
         readonly attribute [Conditional=POINTER_LOCK, V8EnabledAtRuntime=pointerLock] Element webkitPointerLockElement;
 
-        [Conditional=CSS_REGIONS] WebKitNamedFlow webkitGetFlowByName(in DOMString name);
         [Conditional=CSS_REGIONS] DOMNamedFlowCollection webkitGetNamedFlows();
 
 #if !defined(LANGUAGE_OBJECTIVE_C) || !LANGUAGE_OBJECTIVE_C

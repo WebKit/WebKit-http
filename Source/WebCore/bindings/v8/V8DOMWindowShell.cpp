@@ -41,7 +41,6 @@
 #include "MemoryUsageSupport.h"
 #include "Page.h"
 #include "PageGroup.h"
-#include "PlatformSupport.h"
 #include "RuntimeEnabledFeatures.h"
 #include "ScriptCallStack.h"
 #include "ScriptCallStackFactory.h"
@@ -612,7 +611,7 @@ void V8DOMWindowShell::setIsolatedWorldSecurityOrigin(PassRefPtr<SecurityOrigin>
 {
     ASSERT(!m_world->isMainWorld());
     // FIXME: Should this be here?
-    if (!m_isolatedWorldShellSecurityOrigin && !context().IsEmpty() && InspectorInstrumentation::hasFrontends()) {
+    if (!m_isolatedWorldShellSecurityOrigin && !context().IsEmpty() && InspectorInstrumentation::runtimeAgentEnabled(m_frame)) {
         v8::HandleScope handleScope;
         ScriptState* scriptState = ScriptState::forContext(v8::Local<v8::Context>::New(context()));
         InspectorInstrumentation::didCreateIsolatedContext(m_frame, scriptState, securityOrigin.get());

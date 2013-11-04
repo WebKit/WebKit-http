@@ -29,6 +29,7 @@
 #include "WKView.h"
 
 #include "WKAPICast.h"
+#include "WKViewPrivate.h"
 #include "WebKitWebViewBasePrivate.h"
 
 using namespace WebKit;
@@ -44,4 +45,7 @@ WKPageRef WKViewGetPage(WKViewRef viewRef)
     return toAPI(webkitWebViewBaseGetPage(toImpl(viewRef)));
 }
 
-
+void WKViewSetFocus(WKViewRef viewRef, bool focused)
+{
+    webkitWebViewBaseSetFocus(toImpl(viewRef), focused);
+}

@@ -104,6 +104,7 @@ webkit2gtk_h_api += \
 	$(WebKit2)/UIProcess/API/gtk/WebKitDownload.h \
 	$(WebKit2)/UIProcess/API/gtk/WebKitEditingCommands.h \
 	$(WebKit2)/UIProcess/API/gtk/WebKitError.h \
+	$(WebKit2)/UIProcess/API/gtk/WebKitFaviconDatabase.h \
 	$(WebKit2)/UIProcess/API/gtk/WebKitFileChooserRequest.h \
 	$(WebKit2)/UIProcess/API/gtk/WebKitFindController.h \
 	$(WebKit2)/UIProcess/API/gtk/WebKitFormSubmissionRequest.h \
@@ -118,6 +119,7 @@ webkit2gtk_h_api += \
 	$(WebKit2)/UIProcess/API/gtk/WebKitPrintOperation.h \
 	$(WebKit2)/UIProcess/API/gtk/WebKitResponsePolicyDecision.h \
 	$(WebKit2)/UIProcess/API/gtk/WebKitScriptDialog.h \
+	$(WebKit2)/UIProcess/API/gtk/WebKitSecurityManager.h \
 	$(WebKit2)/UIProcess/API/gtk/WebKitSettings.h \
 	$(WebKit2)/UIProcess/API/gtk/WebKitURIRequest.h \
 	$(WebKit2)/UIProcess/API/gtk/WebKitURIResponse.h \
@@ -203,6 +205,8 @@ webkit2_built_sources += \
 	DerivedSources/WebKit2/WebNotificationManagerMessages.h \
 	DerivedSources/WebKit2/WebNotificationManagerProxyMessageReceiver.cpp \
 	DerivedSources/WebKit2/WebNotificationManagerProxyMessages.h \
+	DerivedSources/WebKit2/WebPageGroupProxyMessageReceiver.cpp \
+	DerivedSources/WebKit2/WebPageGroupProxyMessages.h \
 	DerivedSources/WebKit2/WebPageProxyMessageReceiver.cpp \
 	DerivedSources/WebKit2/WebPageProxyMessages.h \
 	DerivedSources/WebKit2/WebPageMessageReceiver.cpp \
@@ -252,6 +256,9 @@ webkit2_sources += \
 	Source/WebKit2/Platform/CoreIPC/DataReference.h \
 	Source/WebKit2/Platform/CoreIPC/HandleMessage.h \
 	Source/WebKit2/Platform/CoreIPC/MessageID.h \
+	Source/WebKit2/Platform/CoreIPC/MessageReceiver.h \
+	Source/WebKit2/Platform/CoreIPC/MessageReceiverMap.cpp \
+	Source/WebKit2/Platform/CoreIPC/MessageReceiverMap.h \
 	Source/WebKit2/Platform/CoreIPC/MessageSender.h \
 	Source/WebKit2/Platform/CoreIPC/unix/AttachmentUnix.cpp \
 	Source/WebKit2/Platform/CoreIPC/unix/ConnectionUnix.cpp \
@@ -276,8 +283,8 @@ webkit2_sources += \
 	Source/WebKit2/PluginProcess/PluginProcessMain.h \
 	Source/WebKit2/PluginProcess/WebProcessConnection.cpp \
 	Source/WebKit2/PluginProcess/WebProcessConnection.h \
-	Source/WebKit2/PluginProcess/gtk/PluginControllerProxyGtk.cpp \
-	Source/WebKit2/PluginProcess/gtk/PluginProcessGtk.cpp \
+	Source/WebKit2/PluginProcess/unix/PluginControllerProxyUnix.cpp \
+	Source/WebKit2/PluginProcess/unix/PluginProcessUnix.cpp \
 	Source/WebKit2/Shared/DragControllerAction.h \
 	Source/WebKit2/Shared/FontInfo.h \
 	Source/WebKit2/Shared/HTTPCookieAcceptPolicy.h \
@@ -510,6 +517,7 @@ webkit2_sources += \
 	Source/WebKit2/UIProcess/API/C/gtk/WKInspectorClientGtk.h \
 	Source/WebKit2/UIProcess/API/C/gtk/WKView.cpp \
 	Source/WebKit2/UIProcess/API/C/gtk/WKView.h \
+	Source/WebKit2/UIProcess/API/C/gtk/WKViewPrivate.h \
 	Source/WebKit2/UIProcess/API/C/soup/WKAPICastSoup.h \
 	Source/WebKit2/UIProcess/API/C/soup/WKContextSoup.cpp \
 	Source/WebKit2/UIProcess/API/C/soup/WKContextSoup.h \
@@ -641,6 +649,9 @@ webkit2_sources += \
 	Source/WebKit2/UIProcess/API/gtk/WebKitEditingCommands.h \
 	Source/WebKit2/UIProcess/API/gtk/WebKitError.h \
 	Source/WebKit2/UIProcess/API/gtk/WebKitError.cpp \
+	Source/WebKit2/UIProcess/API/gtk/WebKitFaviconDatabase.h \
+	Source/WebKit2/UIProcess/API/gtk/WebKitFaviconDatabase.cpp \
+	Source/WebKit2/UIProcess/API/gtk/WebKitFaviconDatabasePrivate.h \
 	Source/WebKit2/UIProcess/API/gtk/WebKitFileChooserRequest.cpp \
 	Source/WebKit2/UIProcess/API/gtk/WebKitFileChooserRequest.h \
 	Source/WebKit2/UIProcess/API/gtk/WebKitFileChooserRequestPrivate.h \
@@ -697,6 +708,9 @@ webkit2_sources += \
 	Source/WebKit2/UIProcess/API/gtk/WebKitScriptDialog.cpp \
 	Source/WebKit2/UIProcess/API/gtk/WebKitScriptDialog.h \
 	Source/WebKit2/UIProcess/API/gtk/WebKitScriptDialogPrivate.h \
+	Source/WebKit2/UIProcess/API/gtk/WebKitSecurityManager.cpp \
+	Source/WebKit2/UIProcess/API/gtk/WebKitSecurityManager.h \
+	Source/WebKit2/UIProcess/API/gtk/WebKitSecurityManagerPrivate.h \
 	Source/WebKit2/UIProcess/API/gtk/WebKitSettings.cpp \
 	Source/WebKit2/UIProcess/API/gtk/WebKitSettings.h \
 	Source/WebKit2/UIProcess/API/gtk/WebKitSettingsPrivate.h \
@@ -774,6 +788,7 @@ webkit2_sources += \
 	Source/WebKit2/UIProcess/gtk/WebPopupMenuProxyGtk.cpp \
 	Source/WebKit2/UIProcess/gtk/WebPopupMenuProxyGtk.h \
 	Source/WebKit2/UIProcess/gtk/WebPreferencesGtk.cpp \
+	Source/WebKit2/UIProcess/gtk/WebProcessProxyGtk.cpp \
 	Source/WebKit2/UIProcess/Launcher/gtk/ProcessLauncherGtk.cpp \
 	Source/WebKit2/UIProcess/Launcher/ProcessLauncher.cpp \
 	Source/WebKit2/UIProcess/Launcher/ProcessLauncher.h \
@@ -796,8 +811,8 @@ webkit2_sources += \
 	Source/WebKit2/UIProcess/Plugins/PluginProcessProxy.h \
 	Source/WebKit2/UIProcess/Plugins/WebPluginSiteDataManager.h \
 	Source/WebKit2/UIProcess/Plugins/WebPluginSiteDataManager.cpp \
-	Source/WebKit2/UIProcess/Plugins/gtk/PluginProcessProxyGtk.cpp \
 	Source/WebKit2/UIProcess/Plugins/unix/PluginInfoStoreUnix.cpp \
+	Source/WebKit2/UIProcess/Plugins/unix/PluginProcessProxyUnix.cpp \
 	Source/WebKit2/UIProcess/ProcessModel.h \
 	Source/WebKit2/UIProcess/ResponsivenessTimer.cpp \
 	Source/WebKit2/UIProcess/ResponsivenessTimer.h \
@@ -1056,7 +1071,7 @@ webkit2_sources += \
 	Source/WebKit2/WebProcess/Plugins/Netscape/NPRuntimeObjectMap.h \
 	Source/WebKit2/WebProcess/Plugins/Netscape/NPRuntimeUtilities.cpp \
 	Source/WebKit2/WebProcess/Plugins/Netscape/NPRuntimeUtilities.h \
-	Source/WebKit2/WebProcess/Plugins/Netscape/gtk/PluginProxyGtk.cpp \
+	Source/WebKit2/WebProcess/Plugins/Netscape/unix/PluginProxyUnix.cpp \
 	Source/WebKit2/WebProcess/Plugins/Netscape/x11/NetscapePluginX11.cpp \
 	Source/WebKit2/WebProcess/Plugins/PluginController.h \
 	Source/WebKit2/WebProcess/Plugins/Plugin.cpp \
@@ -1204,6 +1219,9 @@ webkit2_plugin_process_sources += \
 	Source/WebKit2/Platform/CoreIPC/DataReference.h \
 	Source/WebKit2/Platform/CoreIPC/HandleMessage.h \
 	Source/WebKit2/Platform/CoreIPC/MessageID.h \
+	Source/WebKit2/Platform/CoreIPC/MessageReceiver.h \
+	Source/WebKit2/Platform/CoreIPC/MessageReceiverMap.cpp \
+	Source/WebKit2/Platform/CoreIPC/MessageReceiverMap.h \
 	Source/WebKit2/Platform/CoreIPC/MessageSender.h \
 	Source/WebKit2/Platform/CoreIPC/unix/AttachmentUnix.cpp \
 	Source/WebKit2/Platform/CoreIPC/unix/ConnectionUnix.cpp \
@@ -1226,10 +1244,10 @@ webkit2_plugin_process_sources += \
 	Source/WebKit2/PluginProcess/WebProcessConnection.h \
 	Source/WebKit2/Shared/Plugins/PluginProcessCreationParameters.cpp \
 	Source/WebKit2/Shared/Plugins/PluginProcessCreationParameters.h \
-	Source/WebKit2/PluginProcess/gtk/PluginControllerProxyGtk.cpp \
-	Source/WebKit2/PluginProcess/gtk/PluginProcessGtk.cpp \
-	Source/WebKit2/PluginProcess/gtk/PluginProcessMainGtk.h \
-	Source/WebKit2/PluginProcess/gtk/PluginProcessMainGtk.cpp \
+	Source/WebKit2/PluginProcess/unix/PluginControllerProxyUnix.cpp \
+	Source/WebKit2/PluginProcess/unix/PluginProcessMainUnix.h \
+	Source/WebKit2/PluginProcess/unix/PluginProcessMainUnix.cpp \
+	Source/WebKit2/PluginProcess/unix/PluginProcessUnix.cpp \
 	Source/WebKit2/Shared/ChildProcess.cpp \
 	Source/WebKit2/Shared/ChildProcess.h \
 	Source/WebKit2/Shared/ProcessExecutablePath.h \
@@ -1262,7 +1280,7 @@ webkit2_plugin_process_sources += \
 	Source/WebKit2/Shared/gtk/WebEventFactory.cpp \
 	Source/WebKit2/Shared/cairo/ShareableBitmapCairo.cpp \
 	Source/WebKit2/Shared/soup/WebCoreArgumentCodersSoup.cpp \
-	Source/WebKit2/UIProcess/Plugins/gtk/PluginProcessProxyGtk.cpp \
+	Source/WebKit2/UIProcess/Plugins/unix/PluginProcessProxyUnix.cpp \
 	Source/WebKit2/WebProcess/Plugins/Plugin.cpp \
 	Source/WebKit2/WebProcess/Plugins/Plugin.h \
 	Source/WebKit2/WebProcess/Plugins/Netscape/NPRuntimeUtilities.cpp \
@@ -1274,6 +1292,6 @@ webkit2_plugin_process_sources += \
 	Source/WebKit2/WebProcess/Plugins/Netscape/NetscapePluginStream.cpp \
 	Source/WebKit2/WebProcess/Plugins/Netscape/NetscapePluginStream.h \
 	Source/WebKit2/WebProcess/Plugins/Netscape/x11/NetscapePluginX11.cpp \
-	Source/WebKit2/gtk/PluginMainGtk.cpp
+	Source/WebKit2/unix/PluginMainUnix.cpp
 
 endif # ENABLE_PLUGIN_PROCESS

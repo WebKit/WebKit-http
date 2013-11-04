@@ -57,6 +57,7 @@
 #include "DocumentFragment.h"
 #include "DocumentLoader.h"
 #include "DocumentMarkerController.h"
+#include "DocumentStyleSheetCollection.h"
 #include "DocumentType.h"
 #include "EditingText.h"
 #include "Editor.h"
@@ -108,6 +109,7 @@
 #include "Language.h"
 #include "Localizer.h"
 #include "Logging.h"
+#include "MediaCanStartListener.h"
 #include "MediaQueryList.h"
 #include "MediaQueryMatcher.h"
 #include "MouseEventWithHitTestResults.h"
@@ -127,6 +129,7 @@
 #include "PointerLockController.h"
 #include "PopStateEvent.h"
 #include "ProcessingInstruction.h"
+#include "QualifiedName.h"
 #include "RegisteredEventListener.h"
 #include "RenderArena.h"
 #include "RenderNamedFlowThread.h"
@@ -172,6 +175,9 @@
 #include <wtf/CurrentTime.h>
 #include <wtf/HashFunctions.h>
 #include <wtf/MainThread.h>
+#include <wtf/MemoryInstrumentationHashMap.h>
+#include <wtf/MemoryInstrumentationHashSet.h>
+#include <wtf/MemoryInstrumentationVector.h>
 #include <wtf/PassRefPtr.h>
 #include <wtf/StdLibExtras.h>
 #include <wtf/text/StringBuffer.h>
@@ -436,8 +442,7 @@ Document::Document(Frame* frame, const KURL& url, bool isXHTML, bool isHTML)
 #if ENABLE(MUTATION_OBSERVERS)
     , m_mutationObserverTypes(0)
 #endif
-    , m_styleSheets(StyleSheetList::create(this))
-    , m_hadActiveLoadingStylesheet(false)
+    , m_styleSheetCollection(adoptPtr(new DocumentStyleSheetCollection(this)))
     , m_readyState(Complete)
     , m_styleRecalcTimer(this, &Document::styleRecalcTimerFired)
     , m_pendingStyleRecalcShouldForce(false)
@@ -503,8 +508,6 @@ Document::Document(Frame* frame, const KURL& url, bool isXHTML, bool isHTML)
 {
     m_document = this;
 
-    m_pageGroupUserSheetCacheValid = false;
-
     m_printing = false;
     m_paginatedForScreen = false;
 
@@ -542,20 +545,9 @@ Document::Document(Frame* frame, const KURL& url, bool isXHTML, bool isHTML)
     m_inStyleRecalc = false;
     m_closeAfterStyleRecalc = false;
 
-    m_usesSiblingRules = false;
-    m_usesSiblingRulesOverride = false;
-    m_usesFirstLineRules = false;
-    m_usesFirstLetterRules = false;
-    m_usesBeforeAfterRules = false;
-    m_usesBeforeAfterRulesOverride = false;
-    m_usesRemUnits = false;
-    m_usesLinkRules = false;
-
     m_gotoAnchorNeededAfterStylesheetsLoad = false;
 
     m_didCalculateStyleResolver = false;
-    m_hasDirtyStyleResolver = false;
-    m_pendingStylesheets = 0;
     m_ignorePendingStylesheets = false;
     m_needsNotifyRemoveAllPendingStylesheet = false;
     m_hasNodesWithPlaceholderStyle = false;
@@ -642,26 +634,16 @@ Document::~Document()
 
     m_decoder = 0;
 
-    if (m_styleSheets)
-        m_styleSheets->documentDestroyed();
+    if (m_styleSheetList)
+        m_styleSheetList->detachFromDocument();
+
+    m_styleSheetCollection.clear();
 
     if (m_namedFlows)
         m_namedFlows->documentDestroyed();
 
     if (m_elemSheet)
         m_elemSheet->clearOwnerNode();
-    if (m_pageUserSheet)
-        m_pageUserSheet->clearOwnerNode();
-    if (m_pageGroupUserSheets) {
-        for (size_t i = 0; i < m_pageGroupUserSheets->size(); ++i)
-            (*m_pageGroupUserSheets)[i]->clearOwnerNode();
-    }
-    if (m_userSheets) {
-        for (size_t i = 0; i < m_userSheets->size(); ++i)
-            (*m_userSheets)[i]->clearOwnerNode();
-    }
-
-    deleteCustomFonts();
 
     m_weakReference->clear();
 
@@ -801,14 +783,14 @@ void Document::setCompatibilityMode(CompatibilityMode mode)
 {
     if (m_compatibilityModeLocked || mode == m_compatibilityMode)
         return;
-    ASSERT(!m_styleSheets->length());
+    ASSERT(m_styleSheetCollection->authorStyleSheets().isEmpty());
     bool wasInQuirksMode = inQuirksMode();
     m_compatibilityMode = mode;
     selectorQueryCache()->invalidate();
     if (inQuirksMode() != wasInQuirksMode) {
         // All user stylesheets have to reparse using the different mode.
-        clearPageUserSheet();
-        clearPageGroupUserSheets();
+        m_styleSheetCollection->clearPageUserSheet();
+        m_styleSheetCollection->clearPageGroupUserSheets();
     }
 }
 
@@ -1068,8 +1050,11 @@ PassRefPtr<Node> Document::adoptNode(PassRefPtr<Node> source, ExceptionCode& ec)
                 return 0;
             }
         }
-        if (source->parentNode())
+        if (source->parentNode()) {
             source->parentNode()->removeChild(source.get(), ec);
+            if (ec)
+                return 0;
+        }
     }
 
     this->adoptIfNeeded(source.get());
@@ -1155,17 +1140,6 @@ bool Document::cssGridLayoutEnabled() const
 }
 
 #if ENABLE(CSS_REGIONS)
-
-PassRefPtr<WebKitNamedFlow> Document::webkitGetFlowByName(const String& flowName)
-{
-    if (!cssRegionsEnabled() || !renderer())
-        return 0;
-
-    // It's possible to have pending styles not applied that affect the existing flows.
-    updateStyleIfNeeded();
-
-    return namedFlows()->flowByName(flowName);
-}
 
 PassRefPtr<DOMNamedFlowCollection> Document::webkitGetNamedFlows()
 {
@@ -1789,9 +1763,14 @@ void Document::unscheduleStyleRecalc()
     m_pendingStyleRecalcShouldForce = false;
 }
 
-bool Document::isPendingStyleRecalc() const
+bool Document::hasPendingStyleRecalc() const
 {
     return m_styleRecalcTimer.isActive() && !m_inStyleRecalc;
+}
+
+bool Document::hasPendingForcedStyleRecalc() const
+{
+    return m_styleRecalcTimer.isActive() && m_pendingStyleRecalcShouldForce;
 }
 
 void Document::styleRecalcTimerFired(Timer<Document>*)
@@ -1821,75 +1800,76 @@ void Document::recalcStyle(StyleChange change)
     // re-attaching our containing iframe, which when asked HTMLFrameElementBase::isURLAllowed
     // hits a null-dereference due to security code always assuming the document has a SecurityOrigin.
 
-    if (m_hasDirtyStyleResolver)
-        updateActiveStylesheets(RecalcStyleImmediately);
+    if (m_styleSheetCollection->needsUpdateActiveStylesheetsOnStyleRecalc())
+        m_styleSheetCollection->updateActiveStyleSheets(DocumentStyleSheetCollection::FullUpdate);
 
     InspectorInstrumentationCookie cookie = InspectorInstrumentation::willRecalculateStyle(this);
 
     if (m_elemSheet && m_elemSheet->contents()->usesRemUnits())
-        m_usesRemUnits = true;
+        m_styleSheetCollection->setUsesRemUnit(true);
 
     m_inStyleRecalc = true;
     suspendPostAttachCallbacks();
-    RenderWidget::suspendWidgetHierarchyUpdates();
-    
-    RefPtr<FrameView> frameView = view();
-    if (frameView) {
-        frameView->pauseScheduledEvents();
-        frameView->beginDeferredRepaints();
+    {
+        WidgetHierarchyUpdatesSuspensionScope suspendWidgetHierarchyUpdates;
+
+        RefPtr<FrameView> frameView = view();
+        if (frameView) {
+            frameView->pauseScheduledEvents();
+            frameView->beginDeferredRepaints();
+        }
+
+        ASSERT(!renderer() || renderArena());
+        if (!renderer() || !renderArena())
+            goto bailOut;
+
+        if (m_pendingStyleRecalcShouldForce)
+            change = Force;
+
+        // Recalculating the root style (on the document) is not needed in the common case.
+        if ((change == Force) || (shouldDisplaySeamlesslyWithParent() && (change >= Inherit))) {
+            // style selector may set this again during recalc
+            m_hasNodesWithPlaceholderStyle = false;
+            
+            RefPtr<RenderStyle> documentStyle = StyleResolver::styleForDocument(this, m_styleResolver ? m_styleResolver->fontSelector() : 0);
+            StyleChange ch = Node::diff(documentStyle.get(), renderer()->style(), this);
+            if (ch != NoChange)
+                renderer()->setStyle(documentStyle.release());
+        }
+
+        for (Node* n = firstChild(); n; n = n->nextSibling()) {
+            if (!n->isElementNode())
+                continue;
+            Element* element = static_cast<Element*>(n);
+            if (change >= Inherit || element->childNeedsStyleRecalc() || element->needsStyleRecalc())
+                element->recalcStyle(change);
+        }
+
+    #if USE(ACCELERATED_COMPOSITING)
+        if (view()) {
+            bool layoutPending = view()->layoutPending() || renderer()->needsLayout();
+            // If we didn't update compositing layers because of layout(), we need to do so here.
+            if (!layoutPending)
+                view()->updateCompositingLayersAfterStyleChange();
+        }
+    #endif
+
+    bailOut:
+        clearNeedsStyleRecalc();
+        clearChildNeedsStyleRecalc();
+        unscheduleStyleRecalc();
+
+        m_inStyleRecalc = false;
+
+        // Pseudo element removal and similar may only work with these flags still set. Reset them after the style recalc.
+        if (m_styleResolver)
+            m_styleSheetCollection->resetCSSFeatureFlags();
+
+        if (frameView) {
+            frameView->resumeScheduledEvents();
+            frameView->endDeferredRepaints();
+        }
     }
-
-    ASSERT(!renderer() || renderArena());
-    if (!renderer() || !renderArena())
-        goto bail_out;
-
-    if (m_pendingStyleRecalcShouldForce)
-        change = Force;
-
-    // Recalculating the root style (on the document) is not needed in the common case.
-    if ((change == Force) || (shouldDisplaySeamlesslyWithParent() && (change >= Inherit))) {
-        // style selector may set this again during recalc
-        m_hasNodesWithPlaceholderStyle = false;
-        
-        RefPtr<RenderStyle> documentStyle = StyleResolver::styleForDocument(this, m_styleResolver ? m_styleResolver->fontSelector() : 0);
-        StyleChange ch = Node::diff(documentStyle.get(), renderer()->style(), this);
-        if (ch != NoChange)
-            renderer()->setStyle(documentStyle.release());
-    }
-
-    for (Node* n = firstChild(); n; n = n->nextSibling()) {
-        if (!n->isElementNode())
-            continue;
-        Element* element = static_cast<Element*>(n);
-        if (change >= Inherit || element->childNeedsStyleRecalc() || element->needsStyleRecalc())
-            element->recalcStyle(change);
-    }
-
-#if USE(ACCELERATED_COMPOSITING)
-    if (view()) {
-        bool layoutPending = view()->layoutPending() || renderer()->needsLayout();
-        // If we didn't update compositing layers because of layout(), we need to do so here.
-        if (!layoutPending)
-            view()->updateCompositingLayersAfterStyleChange();
-    }
-#endif
-
-bail_out:
-    clearNeedsStyleRecalc();
-    clearChildNeedsStyleRecalc();
-    unscheduleStyleRecalc();
-
-    m_inStyleRecalc = false;
-    
-    // Pseudo element removal and similar may only work with these flags still set. Reset them after the style recalc.
-    if (m_styleResolver)
-        resetCSSFeatureFlags();
-
-    if (frameView) {
-        frameView->resumeScheduledEvents();
-        frameView->endDeferredRepaints();
-    }
-    RenderWidget::resumeWidgetHierarchyUpdates();
     resumePostAttachCallbacks();
 
     // If we wanted to call implicitClose() during recalcStyle, do so now that we're finished.
@@ -1992,20 +1972,6 @@ PassRefPtr<RenderStyle> Document::styleForPage(int pageIndex)
     return style.release();
 }
 
-void Document::registerCustomFont(PassOwnPtr<FontData> fontData)
-{
-    m_customFonts.append(fontData);
-}
-
-void Document::deleteCustomFonts()
-{
-    size_t size = m_customFonts.size();
-    for (size_t i = 0; i < size; ++i)
-        GlyphPageTreeNode::pruneTreeCustomFontData(m_customFonts[i].get());
-
-    m_customFonts.clear();
-}
-
 bool Document::isPageBoxVisible(int pageIndex)
 {
     RefPtr<RenderStyle> style = styleForPage(pageIndex);
@@ -2066,33 +2032,16 @@ void Document::setIsViewSource(bool isViewSource)
     didUpdateSecurityOrigin();
 }
 
-void Document::combineCSSFeatureFlags()
-{
-    // Delay resetting the flags until after next style recalc since unapplying the style may not work without these set (this is true at least with before/after).
-    m_usesSiblingRules = m_usesSiblingRules || m_styleResolver->usesSiblingRules();
-    m_usesFirstLineRules = m_usesFirstLineRules || m_styleResolver->usesFirstLineRules();
-    m_usesBeforeAfterRules = m_usesBeforeAfterRules || m_styleResolver->usesBeforeAfterRules();
-    m_usesLinkRules = m_usesLinkRules || m_styleResolver->usesLinkRules();
-}
-
-void Document::resetCSSFeatureFlags()
-{
-    m_usesSiblingRules = m_styleResolver->usesSiblingRules();
-    m_usesFirstLineRules = m_styleResolver->usesFirstLineRules();
-    m_usesBeforeAfterRules = m_styleResolver->usesBeforeAfterRules();
-    m_usesLinkRules = m_styleResolver->usesLinkRules();
-}
-
 void Document::createStyleResolver()
 {
     bool matchAuthorAndUserStyles = true;
     if (Settings* docSettings = settings())
         matchAuthorAndUserStyles = docSettings->authorAndUserStylesEnabled();
     m_styleResolver = adoptPtr(new StyleResolver(this, matchAuthorAndUserStyles));
-    combineCSSFeatureFlags();
+    m_styleSheetCollection->combineCSSFeatureFlags();
 }
 
-inline void Document::clearStyleResolver()
+void Document::clearStyleResolver()
 {
     m_styleResolver.clear();
 }
@@ -2902,105 +2851,23 @@ Frame* Document::findUnsafeParentScrollPropagationBoundary()
     return 0;
 }
 
-CSSStyleSheet* Document::pageUserSheet()
-{
-    if (m_pageUserSheet)
-        return m_pageUserSheet.get();
-    
-    Page* owningPage = page();
-    if (!owningPage)
-        return 0;
-    
-    String userSheetText = owningPage->userStyleSheet();
-    if (userSheetText.isEmpty())
-        return 0;
-    
-    // Parse the sheet and cache it.
-    m_pageUserSheet = CSSStyleSheet::createInline(this, settings()->userStyleSheetLocation());
-    m_pageUserSheet->contents()->setIsUserStyleSheet(true);
-    m_pageUserSheet->contents()->parseString(userSheetText);
-    return m_pageUserSheet.get();
-}
-
-void Document::clearPageUserSheet()
-{
-    if (m_pageUserSheet) {
-        m_pageUserSheet = 0;
-        styleResolverChanged(DeferRecalcStyle);
-    }
-}
-
-void Document::updatePageUserSheet()
-{
-    clearPageUserSheet();
-    if (pageUserSheet())
-        styleResolverChanged(RecalcStyleImmediately);
-}
-
-const Vector<RefPtr<CSSStyleSheet> >* Document::pageGroupUserSheets() const
-{
-    if (m_pageGroupUserSheetCacheValid)
-        return m_pageGroupUserSheets.get();
-    
-    m_pageGroupUserSheetCacheValid = true;
-    
-    Page* owningPage = page();
-    if (!owningPage)
-        return 0;
-        
-    const PageGroup& pageGroup = owningPage->group();
-    const UserStyleSheetMap* sheetsMap = pageGroup.userStyleSheets();
-    if (!sheetsMap)
-        return 0;
-
-    UserStyleSheetMap::const_iterator end = sheetsMap->end();
-    for (UserStyleSheetMap::const_iterator it = sheetsMap->begin(); it != end; ++it) {
-        const UserStyleSheetVector* sheets = it->second.get();
-        for (unsigned i = 0; i < sheets->size(); ++i) {
-            const UserStyleSheet* sheet = sheets->at(i).get();
-            if (sheet->injectedFrames() == InjectInTopFrameOnly && ownerElement())
-                continue;
-            if (!UserContentURLPattern::matchesPatterns(url(), sheet->whitelist(), sheet->blacklist()))
-                continue;
-            RefPtr<CSSStyleSheet> groupSheet = CSSStyleSheet::createInline(const_cast<Document*>(this), sheet->url());
-            if (!m_pageGroupUserSheets)
-                m_pageGroupUserSheets = adoptPtr(new Vector<RefPtr<CSSStyleSheet> >);
-            m_pageGroupUserSheets->append(groupSheet);
-            groupSheet->contents()->setIsUserStyleSheet(sheet->level() == UserStyleUserLevel);
-            groupSheet->contents()->parseString(sheet->source());
-        }
-    }
-
-    return m_pageGroupUserSheets.get();
-}
-
-void Document::clearPageGroupUserSheets()
-{
-    m_pageGroupUserSheetCacheValid = false;
-    if (m_pageGroupUserSheets && m_pageGroupUserSheets->size()) {
-        m_pageGroupUserSheets->clear();
-        styleResolverChanged(DeferRecalcStyle);
-    }
-}
-
-void Document::updatePageGroupUserSheets()
-{
-    clearPageGroupUserSheets();
-    if (pageGroupUserSheets() && pageGroupUserSheets()->size())
-        styleResolverChanged(RecalcStyleImmediately);
-}
-
-void Document::addUserSheet(PassRefPtr<StyleSheetContents> userSheet)
-{
-    if (!m_userSheets)
-        m_userSheets = adoptPtr(new Vector<RefPtr<CSSStyleSheet> >);
-    m_userSheets->append(CSSStyleSheet::create(userSheet, this));
-    styleResolverChanged(RecalcStyleImmediately);
-}
 
 void Document::seamlessParentUpdatedStylesheets()
 {
     styleResolverChanged(RecalcStyleImmediately);
+}
+
+void Document::didRemoveAllPendingStylesheet()
+{
+    m_needsNotifyRemoveAllPendingStylesheet = false;
+
+    styleResolverChanged(RecalcStyleIfNeeded);
+
+    if (ScriptableDocumentParser* parser = scriptableDocumentParser())
+        parser->executeScriptsWaitingForStylesheets();
+
+    if (m_gotoAnchorNeededAfterStylesheetsLoad && view())
+        view()->scrollToFragment(m_url);
 }
 
 CSSStyleSheet* Document::elementSheet()
@@ -3041,8 +2908,8 @@ void Document::processHttpEquiv(const String& equiv, const String& content)
         // For more info, see the test at:
         // http://www.hixie.ch/tests/evil/css/import/main/preferred.html
         // -dwh
-        m_selectedStylesheetSet = content;
-        m_preferredStylesheetSet = content;
+        m_styleSheetCollection->setSelectedStylesheetSetName(content);
+        m_styleSheetCollection->setPreferredStylesheetSetName(content);
         styleResolverChanged(DeferRecalcStyle);
     } else if (equalIgnoringCase(equiv, "refresh")) {
         double delay;
@@ -3314,62 +3181,26 @@ PassRefPtr<Node> Document::cloneNode(bool /*deep*/)
 
 StyleSheetList* Document::styleSheets()
 {
-    return m_styleSheets.get();
+    if (!m_styleSheetList)
+        m_styleSheetList = StyleSheetList::create(this);
+    return m_styleSheetList.get();
 }
 
 String Document::preferredStylesheetSet() const
 {
-    return m_preferredStylesheetSet;
+    return m_styleSheetCollection->preferredStylesheetSetName();
 }
 
 String Document::selectedStylesheetSet() const
 {
-    return m_selectedStylesheetSet;
+    return m_styleSheetCollection->selectedStylesheetSetName();
 }
 
 void Document::setSelectedStylesheetSet(const String& aString)
 {
-    m_selectedStylesheetSet = aString;
+    m_styleSheetCollection->setSelectedStylesheetSetName(aString);
     styleResolverChanged(DeferRecalcStyle);
 }
-
-// This method is called whenever a top-level stylesheet has finished loading.
-void Document::removePendingSheet(RemovePendingSheetNotificationType notification)
-{
-    // Make sure we knew this sheet was pending, and that our count isn't out of sync.
-    ASSERT(m_pendingStylesheets > 0);
-
-    m_pendingStylesheets--;
-    
-#ifdef INSTRUMENT_LAYOUT_SCHEDULING
-    if (!ownerElement())
-        printf("Stylesheet loaded at time %d. %d stylesheets still remain.\n", elapsedTime(), m_pendingStylesheets);
-#endif
-
-    if (m_pendingStylesheets)
-        return;
-
-    if (notification == RemovePendingSheetNotifyLater) {
-        setNeedsNotifyRemoveAllPendingStylesheet();
-        return;
-    }
-    
-    didRemoveAllPendingStylesheet();
-}
-
-void Document::didRemoveAllPendingStylesheet()
-{
-    m_needsNotifyRemoveAllPendingStylesheet = false;
-
-    styleResolverChanged(RecalcStyleIfNeeded);
-
-    if (ScriptableDocumentParser* parser = scriptableDocumentParser())
-        parser->executeScriptsWaitingForStylesheets();
-
-    if (m_gotoAnchorNeededAfterStylesheetsLoad && view())
-        view()->scrollToFragment(m_url);
-}
-
 
 void Document::evaluateMediaQueryList()
 {
@@ -3385,20 +3216,24 @@ void Document::styleResolverChanged(StyleResolverUpdateFlag updateFlag)
         m_styleResolver.clear();
         return;
     }
+    m_didCalculateStyleResolver = true;
 
 #ifdef INSTRUMENT_LAYOUT_SCHEDULING
     if (!ownerElement())
         printf("Beginning update of style selector at time %d.\n", elapsedTime());
 #endif
 
-    bool stylesheetChangeRequiresStyleRecalc = updateActiveStylesheets(updateFlag);
+    DocumentStyleSheetCollection::UpdateFlag styleSheetUpdate = (updateFlag == RecalcStyleIfNeeded)
+        ? DocumentStyleSheetCollection::OptimizedUpdate
+        : DocumentStyleSheetCollection::FullUpdate;
+    bool stylesheetChangeRequiresStyleRecalc = m_styleSheetCollection->updateActiveStyleSheets(styleSheetUpdate);
 
     if (updateFlag == DeferRecalcStyle) {
         scheduleForcedStyleRecalc();
         return;
     }
 
-    if (didLayoutWithPendingStylesheets() && m_pendingStylesheets <= 0) {
+    if (didLayoutWithPendingStylesheets() && !m_styleSheetCollection->hasPendingSheets()) {
         m_pendingSheetLayout = IgnoreLayoutWithPendingSheets;
         if (renderer())
             renderer()->repaint();
@@ -3428,219 +3263,6 @@ void Document::styleResolverChanged(StyleResolverUpdateFlag updateFlag)
     evaluateMediaQueryList();
 }
 
-void Document::addStyleSheetCandidateNode(Node* node, bool createdByParser)
-{
-    if (!node->inDocument())
-        return;
-    
-    // Until the <body> exists, we have no choice but to compare document positions,
-    // since styles outside of the body and head continue to be shunted into the head
-    // (and thus can shift to end up before dynamically added DOM content that is also
-    // outside the body).
-    if ((createdByParser && body()) || m_styleSheetCandidateNodes.isEmpty()) {
-        m_styleSheetCandidateNodes.add(node);
-        return;
-    }
-
-    // Determine an appropriate insertion point.
-    StyleSheetCandidateListHashSet::iterator begin = m_styleSheetCandidateNodes.begin();
-    StyleSheetCandidateListHashSet::iterator end = m_styleSheetCandidateNodes.end();
-    StyleSheetCandidateListHashSet::iterator it = end;
-    Node* followingNode = 0;
-    do {
-        --it;
-        Node* n = *it;
-        unsigned short position = n->compareDocumentPosition(node);
-        if (position == DOCUMENT_POSITION_FOLLOWING) {
-            m_styleSheetCandidateNodes.insertBefore(followingNode, node);
-            return;
-        }
-        followingNode = n;
-    } while (it != begin);
-    
-    m_styleSheetCandidateNodes.insertBefore(followingNode, node);
-}
-
-void Document::removeStyleSheetCandidateNode(Node* node)
-{
-    m_styleSheetCandidateNodes.remove(node);
-}
-
-void Document::collectActiveStylesheets(Vector<RefPtr<StyleSheet> >& sheets)
-{
-    if (settings() && !settings()->authorAndUserStylesEnabled())
-        return;
-
-    StyleSheetCandidateListHashSet::iterator begin = m_styleSheetCandidateNodes.begin();
-    StyleSheetCandidateListHashSet::iterator end = m_styleSheetCandidateNodes.end();
-    for (StyleSheetCandidateListHashSet::iterator it = begin; it != end; ++it) {
-        Node* n = *it;
-        StyleSheet* sheet = 0;
-        if (n->nodeType() == PROCESSING_INSTRUCTION_NODE) {
-            // Processing instruction (XML documents only).
-            // We don't support linking to embedded CSS stylesheets, see <https://bugs.webkit.org/show_bug.cgi?id=49281> for discussion.
-            ProcessingInstruction* pi = static_cast<ProcessingInstruction*>(n);
-            sheet = pi->sheet();
-#if ENABLE(XSLT)
-            // Don't apply XSL transforms to already transformed documents -- <rdar://problem/4132806>
-            if (pi->isXSL() && !transformSourceDocument()) {
-                // Don't apply XSL transforms until loading is finished.
-                if (!parsing())
-                    applyXSLTransform(pi);
-                return;
-            }
-#endif
-        } else if ((n->isHTMLElement() && (n->hasTagName(linkTag) || n->hasTagName(styleTag)))
-#if ENABLE(SVG)
-                   ||  (n->isSVGElement() && n->hasTagName(SVGNames::styleTag))
-#endif
-                   ) {
-            Element* e = static_cast<Element*>(n);
-            AtomicString title = e->getAttribute(titleAttr);
-            bool enabledViaScript = false;
-            if (e->hasLocalName(linkTag)) {
-                // <LINK> element
-                HTMLLinkElement* linkElement = static_cast<HTMLLinkElement*>(n);
-                if (linkElement->isDisabled())
-                    continue;
-                enabledViaScript = linkElement->isEnabledViaScript();
-                if (linkElement->styleSheetIsLoading()) {
-                    // it is loading but we should still decide which style sheet set to use
-                    if (!enabledViaScript && !title.isEmpty() && m_preferredStylesheetSet.isEmpty()) {
-                        const AtomicString& rel = e->getAttribute(relAttr);
-                        if (!rel.contains("alternate")) {
-                            m_preferredStylesheetSet = title;
-                            m_selectedStylesheetSet = title;
-                        }
-                    }
-                    continue;
-                }
-                if (!linkElement->sheet())
-                    title = nullAtom;
-            }
-            // Get the current preferred styleset.  This is the
-            // set of sheets that will be enabled.
-#if ENABLE(SVG)
-            if (n->isSVGElement() && n->hasTagName(SVGNames::styleTag))
-                sheet = static_cast<SVGStyleElement*>(n)->sheet();
-            else
-#endif
-            if (e->hasLocalName(linkTag))
-                sheet = static_cast<HTMLLinkElement*>(n)->sheet();
-            else
-                // <STYLE> element
-                sheet = static_cast<HTMLStyleElement*>(n)->sheet();
-            // Check to see if this sheet belongs to a styleset
-            // (thus making it PREFERRED or ALTERNATE rather than
-            // PERSISTENT).
-            AtomicString rel = e->getAttribute(relAttr);
-            if (!enabledViaScript && !title.isEmpty()) {
-                // Yes, we have a title.
-                if (m_preferredStylesheetSet.isEmpty()) {
-                    // No preferred set has been established.  If
-                    // we are NOT an alternate sheet, then establish
-                    // us as the preferred set.  Otherwise, just ignore
-                    // this sheet.
-                    if (e->hasLocalName(styleTag) || !rel.contains("alternate"))
-                        m_preferredStylesheetSet = m_selectedStylesheetSet = title;
-                }
-                if (title != m_preferredStylesheetSet)
-                    sheet = 0;
-            }
-
-            if (rel.contains("alternate") && title.isEmpty())
-                sheet = 0;
-        }
-        if (sheet)
-            sheets.append(sheet);
-    }
-}
-
-bool Document::testAddedStylesheetRequiresStyleRecalc(StyleSheetContents* stylesheet)
-{
-    // See if all rules on the sheet are scoped to some specific ids or classes.
-    // Then test if we actually have any of those in the tree at the moment.
-    HashSet<AtomicStringImpl*> idScopes; 
-    HashSet<AtomicStringImpl*> classScopes;
-    if (!StyleResolver::determineStylesheetSelectorScopes(stylesheet, idScopes, classScopes))
-        return true;
-    // Invalidate the subtrees that match the scopes.
-    Node* node = firstChild();
-    while (node) {
-        if (!node->isStyledElement()) {
-            node = node->traverseNextNode();
-            continue;
-        }
-        StyledElement* element = static_cast<StyledElement*>(node);
-        if (SelectorChecker::elementMatchesSelectorScopes(element, idScopes, classScopes)) {
-            element->setNeedsStyleRecalc();
-            // The whole subtree is now invalidated, we can skip to the next sibling.
-            node = node->traverseNextSibling();
-            continue;
-        }
-        node = node->traverseNextNode();
-    }
-    return false;
-}
-
-void Document::analyzeStylesheetChange(StyleResolverUpdateFlag updateFlag, const Vector<RefPtr<StyleSheet> >& newStylesheets, bool& requiresStyleResolverReset, bool& requiresFullStyleRecalc)
-{
-    requiresStyleResolverReset = true;
-    requiresFullStyleRecalc = true;
-    
-    // Stylesheets of <style> elements that @import stylesheets are active but loading. We need to trigger a full recalc when such loads are done.
-    bool hasActiveLoadingStylesheet = false;
-    unsigned newStylesheetCount = newStylesheets.size();
-    for (unsigned i = 0; i < newStylesheetCount; ++i) {
-        if (newStylesheets[i]->isLoading())
-            hasActiveLoadingStylesheet = true;
-    }
-    if (m_hadActiveLoadingStylesheet && !hasActiveLoadingStylesheet) {
-        m_hadActiveLoadingStylesheet = false;
-        return;
-    }
-    m_hadActiveLoadingStylesheet = hasActiveLoadingStylesheet;
-
-    if (updateFlag != RecalcStyleIfNeeded)
-        return;
-    if (!m_styleResolver)
-        return;
-
-    // See if we are just adding stylesheets.
-    unsigned oldStylesheetCount = m_styleSheets->length();
-    if (newStylesheetCount < oldStylesheetCount)
-        return;
-    for (unsigned i = 0; i < oldStylesheetCount; ++i) {
-        if (m_styleSheets->item(i) != newStylesheets[i])
-            return;
-    }
-    requiresStyleResolverReset = false;
-
-    // If we are already parsing the body and so may have significant amount of elements, put some effort into trying to avoid style recalcs.
-    if (!body() || m_hasNodesWithPlaceholderStyle)
-        return;
-    for (unsigned i = oldStylesheetCount; i < newStylesheetCount; ++i) {
-        if (!newStylesheets[i]->isCSSStyleSheet())
-            return;
-        if (newStylesheets[i]->disabled())
-            continue;
-        if (testAddedStylesheetRequiresStyleRecalc(static_cast<CSSStyleSheet*>(newStylesheets[i].get())->contents()))
-            return;
-    }
-    requiresFullStyleRecalc = false;
-}
-
-static bool styleSheetsUseRemUnits(const Vector<RefPtr<StyleSheet> >& sheets)
-{
-    for (unsigned i = 0; i < sheets.size(); ++i) {
-        if (!sheets[i]->isCSSStyleSheet())
-            continue;
-        if (static_cast<CSSStyleSheet*>(sheets[i].get())->contents()->usesRemUnits())
-            return true;
-    }
-    return false;
-}
-
 void Document::notifySeamlessChildDocumentsOfStylesheetUpdate() const
 {
     // If we're not in a frame yet any potential child documents won't have a StyleResolver to update.
@@ -3655,43 +3277,6 @@ void Document::notifySeamlessChildDocumentsOfStylesheetUpdate() const
             childDocument->seamlessParentUpdatedStylesheets();
         }
     }
-}
-
-bool Document::updateActiveStylesheets(StyleResolverUpdateFlag updateFlag)
-{
-    if (m_inStyleRecalc) {
-        // SVG <use> element may manage to invalidate style selector in the middle of a style recalc.
-        // https://bugs.webkit.org/show_bug.cgi?id=54344
-        // FIXME: This should be fixed in SVG and this code replaced with ASSERT(!m_inStyleRecalc).
-        m_hasDirtyStyleResolver = true;
-        scheduleForcedStyleRecalc();
-        return false;
-    }
-    if (!renderer() || !attached())
-        return false;
-
-    StyleSheetVector newStylesheets;
-    collectActiveStylesheets(newStylesheets);
-
-    bool requiresStyleResolverReset;
-    bool requiresFullStyleRecalc;
-    analyzeStylesheetChange(updateFlag, newStylesheets, requiresStyleResolverReset, requiresFullStyleRecalc);
-
-    if (requiresStyleResolverReset)
-        clearStyleResolver();
-    else {
-        m_styleResolver->appendAuthorStylesheets(m_styleSheets->length(), newStylesheets);
-        resetCSSFeatureFlags();
-    }
-    m_styleSheets->swap(newStylesheets);
-
-    m_usesRemUnits = styleSheetsUseRemUnits(m_styleSheets->vector());
-    m_didCalculateStyleResolver = true;
-    m_hasDirtyStyleResolver = false;
-
-    notifySeamlessChildDocumentsOfStylesheetUpdate();
-
-    return requiresFullStyleRecalc;
 }
 
 void Document::setHoverNode(PassRefPtr<Node> newHoverNode)
@@ -3713,12 +3298,16 @@ void Document::removeFocusedNodeOfSubtree(Node* node, bool amongChildrenOnly)
 {
     if (!m_focusedNode || this->inPageCache()) // If the document is in the page cache, then we don't need to clear out the focused node.
         return;
-        
+
+    Node* focusedNode = node->treeScope()->focusedNode();
+    if (!focusedNode)
+        return;
+
     bool nodeInSubtree = false;
     if (amongChildrenOnly)
-        nodeInSubtree = m_focusedNode->isDescendantOf(node);
+        nodeInSubtree = focusedNode->isDescendantOf(node);
     else
-        nodeInSubtree = (m_focusedNode == node) || m_focusedNode->isDescendantOf(node);
+        nodeInSubtree = (focusedNode == node) || focusedNode->isDescendantOf(node);
     
     if (nodeInSubtree)
         document()->focusedNodeRemoved();
@@ -4102,7 +3691,7 @@ EventListener* Document::getWindowAttributeEventListener(const AtomicString& eve
 
 void Document::dispatchWindowEvent(PassRefPtr<Event> event,  PassRefPtr<EventTarget> target)
 {
-    ASSERT(!eventDispatchForbidden());
+    ASSERT(!NoEventDispatchAssertion::isEventDispatchForbidden());
     DOMWindow* domWindow = this->domWindow();
     if (!domWindow)
         return;
@@ -4111,7 +3700,7 @@ void Document::dispatchWindowEvent(PassRefPtr<Event> event,  PassRefPtr<EventTar
 
 void Document::dispatchWindowLoadEvent()
 {
-    ASSERT(!eventDispatchForbidden());
+    ASSERT(!NoEventDispatchAssertion::isEventDispatchForbidden());
     DOMWindow* domWindow = this->domWindow();
     if (!domWindow)
         return;
@@ -4159,8 +3748,6 @@ void Document::addListenerTypeIfNeeded(const AtomicString& eventType)
         addMutationEventListenerTypeIfEnabled(DOMNODEREMOVEDFROMDOCUMENT_LISTENER);
     else if (eventType == eventNames().DOMNodeInsertedIntoDocumentEvent)
         addMutationEventListenerTypeIfEnabled(DOMNODEINSERTEDINTODOCUMENT_LISTENER);
-    else if (eventType == eventNames().DOMAttrModifiedEvent)
-        addMutationEventListenerTypeIfEnabled(DOMATTRMODIFIED_LISTENER);
     else if (eventType == eventNames().DOMCharacterDataModifiedEvent)
         addMutationEventListenerTypeIfEnabled(DOMCHARACTERDATAMODIFIED_LISTENER);
     else if (eventType == eventNames().overflowchangedEvent)
@@ -5768,6 +5355,10 @@ void Document::setFullScreenRendererBackgroundColor(Color backgroundColor)
     
 void Document::fullScreenChangeDelayTimerFired(Timer<Document>*)
 {
+    // Since we dispatch events in this function, it's possible that the
+    // document will be detached and GC'd. We protect it here to make sure we
+    // can finish the function successfully.
+    RefPtr<Document> protectDocument(this);
     Deque<RefPtr<Node> > changeQueue;
     m_fullScreenChangeEventTargetQueue.swap(changeQueue);
 
@@ -5775,6 +5366,9 @@ void Document::fullScreenChangeDelayTimerFired(Timer<Document>*)
         RefPtr<Node> node = changeQueue.takeFirst();
         if (!node)
             node = documentElement();
+        // The dispatchEvent below may have blown away our documentElement.
+        if (!node)
+            continue;
 
         // If the element was removed from our tree, also message the documentElement. Since we may
         // have a document hierarchy, check that node isn't in another document.
@@ -5791,6 +5385,9 @@ void Document::fullScreenChangeDelayTimerFired(Timer<Document>*)
         RefPtr<Node> node = errorQueue.takeFirst();
         if (!node)
             node = documentElement();
+        // The dispatchEvent below may have blown away our documentElement.
+        if (!node)
+            continue;
         
         // If the element was removed from our tree, also message the documentElement. Since we may
         // have a document hierarchy, check that node isn't in another document.
@@ -6249,9 +5846,8 @@ void Document::updateHoverActiveState(const HitTestRequest& request, HitTestResu
 void Document::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
 {
     MemoryClassInfo info(memoryObjectInfo, this, WebCoreMemoryTypes::DOM);
-    info.addMember(m_styleResolver);
     ContainerNode::reportMemoryUsage(memoryObjectInfo);
-    info.addVector(m_customFonts);
+    info.addMember(m_styleResolver);
     info.addMember(m_url);
     info.addMember(m_baseURL);
     info.addMember(m_baseURLOverride);
@@ -6260,38 +5856,35 @@ void Document::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
     info.addMember(m_firstPartyForCookies);
     info.addMember(m_documentURI);
     info.addMember(m_baseTarget);
+    info.addMember(m_docType);
+    info.addMember(m_implementation);
+    info.addMember(m_elemSheet);
     info.addMember(m_frame);
     info.addMember(m_cachedResourceLoader);
-    info.addMember(m_elemSheet);
-    info.addMember(m_pageUserSheet);
-    if (m_pageGroupUserSheets)
-        info.addInstrumentedVectorPtr(m_pageGroupUserSheets);
-    if (m_userSheets)
-        info.addInstrumentedVectorPtr(m_userSheets);
-    info.addHashSet(m_nodeIterators);
-    info.addHashSet(m_ranges);
-    info.addListHashSet(m_styleSheetCandidateNodes);
-    info.addMember(m_preferredStylesheetSet);
-    info.addMember(m_selectedStylesheetSet);
+    info.addMember(m_styleSheetCollection);
+    info.addMember(m_styleSheetList);
+    info.addMember(m_formController);
+    info.addMember(m_nodeIterators);
+    info.addMember(m_ranges);
     info.addMember(m_title.string());
     info.addMember(m_rawTitle.string());
     info.addMember(m_xmlEncoding);
     info.addMember(m_xmlVersion);
     info.addMember(m_contentLanguage);
-    info.addHashMap(m_documentNamedItemCollections);
-    info.addHashMap(m_windowNamedItemCollections);
+    info.addMember(m_documentNamedItemCollections);
+    info.addMember(m_windowNamedItemCollections);
 #if ENABLE(DASHBOARD_SUPPORT)
-    info.addVector(m_dashboardRegions);
+    info.addMember(m_dashboardRegions);
 #endif
-    info.addHashMap(m_cssCanvasElements);
-    info.addVector(m_iconURLs);
-    info.addHashSet(m_documentSuspensionCallbackElements);
-    info.addHashSet(m_mediaVolumeCallbackElements);
-    info.addHashSet(m_privateBrowsingStateChangedElements);
-    info.addHashMap(m_elementsByAccessKey);
+    info.addMember(m_cssCanvasElements);
+    info.addMember(m_iconURLs);
+    info.addMember(m_documentSuspensionCallbackElements);
+    info.addMember(m_mediaVolumeCallbackElements);
+    info.addMember(m_privateBrowsingStateChangedElements);
+    info.addMember(m_elementsByAccessKey);
     info.addMember(m_eventQueue);
-    info.addHashSet(m_mediaCanStartListeners);
-    info.addVector(m_pendingTasks);
+    info.addMember(m_mediaCanStartListeners);
+    info.addMember(m_pendingTasks);
 }
 
 #if ENABLE(UNDO_MANAGER)
@@ -6304,23 +5897,16 @@ PassRefPtr<UndoManager> Document::undoManager()
 #endif
 
 class ImmutableAttributeDataCacheKey {
-    WTF_MAKE_FAST_ALLOCATED;
 public:
-    ImmutableAttributeDataCacheKey()
-        : m_localName(0)
-        , m_attributes(0)
-        , m_attributeCount(0)
-    { }
-
-    ImmutableAttributeDataCacheKey(const AtomicString& localName, const Attribute* attributes, unsigned attributeCount)
-        : m_localName(localName.impl())
+    ImmutableAttributeDataCacheKey(const QualifiedName& tagName, const Attribute* attributes, unsigned attributeCount)
+        : m_tagQName(tagName)
         , m_attributes(attributes)
         , m_attributeCount(attributeCount)
     { }
 
     bool operator!=(const ImmutableAttributeDataCacheKey& other) const
     {
-        if (m_localName != other.m_localName)
+        if (m_tagQName != other.m_tagQName)
             return true;
         if (m_attributeCount != other.m_attributeCount)
             return true;
@@ -6330,16 +5916,21 @@ public:
     unsigned hash() const
     {
         unsigned attributeHash = StringHasher::hashMemory(m_attributes, m_attributeCount * sizeof(Attribute));
-        return WTF::pairIntHash(m_localName->existingHash(), attributeHash);
+        return WTF::pairIntHash(m_tagQName.localName().impl()->existingHash(), attributeHash);
     }
 
 private:
-    AtomicStringImpl* m_localName;
+    QualifiedName m_tagQName;
     const Attribute* m_attributes;
     unsigned m_attributeCount;
 };
 
 struct ImmutableAttributeDataCacheEntry {
+    ImmutableAttributeDataCacheEntry(const ImmutableAttributeDataCacheKey& k, PassRefPtr<ElementAttributeData> v)
+        : key(k)
+        , value(v)
+    { }
+
     ImmutableAttributeDataCacheKey key;
     RefPtr<ElementAttributeData> value;
 };
@@ -6348,7 +5939,7 @@ PassRefPtr<ElementAttributeData> Document::cachedImmutableAttributeData(const El
 {
     ASSERT(!attributes.isEmpty());
 
-    ImmutableAttributeDataCacheKey cacheKey(element->localName(), attributes.data(), attributes.size());
+    ImmutableAttributeDataCacheKey cacheKey(element->tagQName(), attributes.data(), attributes.size());
     unsigned cacheHash = cacheKey.hash();
 
     ImmutableAttributeDataCache::iterator cacheIterator = m_immutableAttributeDataCache.add(cacheHash, nullptr).iterator;
@@ -6364,16 +5955,17 @@ PassRefPtr<ElementAttributeData> Document::cachedImmutableAttributeData(const El
     if (!cacheHash || cacheIterator->second)
         return attributeData.release();
 
-    OwnPtr<ImmutableAttributeDataCacheEntry> newEntry = adoptPtr(new ImmutableAttributeDataCacheEntry);
-    newEntry->key = ImmutableAttributeDataCacheKey(element->localName(), const_cast<const ElementAttributeData*>(attributeData.get())->attributeItem(0), attributeData->length());
-    newEntry->value = attributeData;
-
-    cacheIterator->second = newEntry.release();
+    cacheIterator->second = adoptPtr(new ImmutableAttributeDataCacheEntry(ImmutableAttributeDataCacheKey(element->tagQName(), attributeData->immutableAttributeArray(), attributeData->length()), attributeData));
 
     return attributeData.release();
 }
 
-Localizer& Document::getLocalizer(const AtomicString& locale)
+bool Document::haveStylesheetsLoaded() const
+{
+    return !m_styleSheetCollection->hasPendingSheets() || m_ignorePendingStylesheets;
+}
+
+Localizer& Document::getCachedLocalizer(const AtomicString& locale)
 {
     AtomicString localeKey = locale;
     if (locale.isEmpty() || !RuntimeEnabledFeatures::langAttributeAwareFormControlUIEnabled())

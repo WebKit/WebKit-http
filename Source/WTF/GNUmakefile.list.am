@@ -20,6 +20,7 @@ wtf_sources += \
     Source/WTF/wtf/BloomFilter.h \
     Source/WTF/wtf/BoundsCheckedPointer.h \
     Source/WTF/wtf/BumpPointerAllocator.h \
+    Source/WTF/wtf/ByteOrder.h \
     Source/WTF/wtf/CheckedArithmetic.h \
     Source/WTF/wtf/CheckedBoolean.h \
     Source/WTF/wtf/Compiler.h \
@@ -80,6 +81,14 @@ wtf_sources += \
     Source/WTF/wtf/MediaTime.h \
     Source/WTF/wtf/MediaTime.cpp \
     Source/WTF/wtf/MemoryInstrumentation.h \
+    Source/WTF/wtf/MemoryInstrumentationArrayBufferView.h \
+    Source/WTF/wtf/MemoryInstrumentationHashCountedSet.h \
+    Source/WTF/wtf/MemoryInstrumentationHashMap.h \
+    Source/WTF/wtf/MemoryInstrumentationHashSet.h \
+    Source/WTF/wtf/MemoryInstrumentationParsedURL.h \
+    Source/WTF/wtf/MemoryInstrumentationSequence.h \
+    Source/WTF/wtf/MemoryInstrumentationString.h \
+    Source/WTF/wtf/MemoryInstrumentationVector.h \
     Source/WTF/wtf/MessageQueue.h \
     Source/WTF/wtf/MetaAllocator.cpp \
     Source/WTF/wtf/MetaAllocator.h \
@@ -229,7 +238,9 @@ wtf_sources += \
     Source/WTF/wtf/unicode/CollatorDefault.cpp \
     Source/WTF/wtf/unicode/UTF8.cpp \
     Source/WTF/wtf/unicode/UTF8.h \
-    Source/WTF/wtf/unicode/Unicode.h
+    Source/WTF/wtf/unicode/Unicode.h \
+    Source/WTF/wtf/url/api/URLBuffer.h \
+    Source/WTF/wtf/url/api/URLQueryCharsetConverter.h
 
 if TARGET_WIN32
 wtf_sources += \

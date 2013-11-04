@@ -41,6 +41,42 @@ namespace Private {
     void addChildNodesToDeletionQueue(GenericNode*& head, GenericNode*& tail, GenericNodeContainer*);
 };
 
+class NoEventDispatchAssertion {
+public:
+    NoEventDispatchAssertion()
+    {
+#ifndef NDEBUG
+        if (!isMainThread())
+            return;
+        s_count++;
+#endif
+    }
+
+    ~NoEventDispatchAssertion()
+    {
+#ifndef NDEBUG
+        if (!isMainThread())
+            return;
+        ASSERT(s_count);
+        s_count--;
+#endif
+    }
+
+#ifndef NDEBUG
+    static bool isEventDispatchForbidden()
+    {
+        if (!isMainThread())
+            return false;
+        return s_count;
+    }
+#endif
+
+private:
+#ifndef NDEBUG
+    static unsigned s_count;
+#endif
+};
+
 class ContainerNode : public Node {
 public:
     virtual ~ContainerNode();
@@ -60,7 +96,7 @@ public:
     // These methods are only used during parsing.
     // They don't send DOM mutation events or handle reparenting.
     // However, arbitrary code may be run by beforeload handlers.
-    void parserAddChild(PassRefPtr<Node>);
+    void parserAppendChild(PassRefPtr<Node>);
     void parserRemoveChild(Node*);
     void parserInsertBefore(PassRefPtr<Node> newChild, Node* refChild);
 

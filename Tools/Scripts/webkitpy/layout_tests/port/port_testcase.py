@@ -30,6 +30,7 @@
 
 import errno
 import logging
+import os
 import socket
 import sys
 import time
@@ -513,9 +514,9 @@ class PortTestCase(unittest.TestCase):
         # Check that we read the expectations file
         host = MockSystemHost()
         host.filesystem.write_text_file('/mock-checkout/LayoutTests/platform/testwebkitport/TestExpectations',
-            'BUG_TESTEXPECTATIONS SKIP : fast/html/article-element.html = TEXT\n')
+            'BUG_TESTEXPECTATIONS SKIP : fast/html/article-element.html = FAIL\n')
         port = TestWebKitPort(host=host)
-        self.assertEqual(''.join(port.expectations_dict().values()), 'BUG_TESTEXPECTATIONS SKIP : fast/html/article-element.html = TEXT\n')
+        self.assertEqual(''.join(port.expectations_dict().values()), 'BUG_TESTEXPECTATIONS SKIP : fast/html/article-element.html = FAIL\n')
 
     def test_build_driver(self):
         output = OutputCapture()
@@ -582,9 +583,28 @@ class PortTestCase(unittest.TestCase):
 
     def test_path_to_apache_config_file(self):
         port = TestWebKitPort()
+
+        saved_environ = os.environ.copy()
+        try:
+            os.environ['WEBKIT_HTTP_SERVER_CONF_PATH'] = '/path/to/httpd.conf'
+            self.assertRaises(IOError, port._path_to_apache_config_file)
+            port._filesystem.write_text_file('/existing/httpd.conf', 'Hello, world!')
+            os.environ['WEBKIT_HTTP_SERVER_CONF_PATH'] = '/existing/httpd.conf'
+            self.assertEquals(port._path_to_apache_config_file(), '/existing/httpd.conf')
+        finally:
+            os.environ = saved_environ.copy()
+
         # Mock out _apache_config_file_name_for_platform to ignore the passed sys.platform value.
         port._apache_config_file_name_for_platform = lambda platform: 'httpd.conf'
         self.assertEquals(port._path_to_apache_config_file(), '/mock-checkout/LayoutTests/http/conf/httpd.conf')
+
+        # Check that even if we mock out _apache_config_file_name, the environment variable takes precedence.
+        saved_environ = os.environ.copy()
+        try:
+            os.environ['WEBKIT_HTTP_SERVER_CONF_PATH'] = '/existing/httpd.conf'
+            self.assertEquals(port._path_to_apache_config_file(), '/existing/httpd.conf')
+        finally:
+            os.environ = saved_environ.copy()
 
     def test_check_build(self):
         port = self.make_port(options=MockOptions(build=True))

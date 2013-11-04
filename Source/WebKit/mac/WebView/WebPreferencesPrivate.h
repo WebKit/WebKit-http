@@ -43,6 +43,12 @@ typedef enum {
     WebTextDirectionSubmenuAlwaysIncluded
 } WebTextDirectionSubmenuInclusionBehavior;
 
+typedef enum {
+    WebAllowAllStorage = 0,
+    WebBlockThirdPartyStorage,
+    WebBlockAllStorage
+} WebStorageBlockingPolicy;
+
 extern NSString *WebPreferencesChangedNotification;
 extern NSString *WebPreferencesRemovedNotification;
 extern NSString *WebPreferencesChangedInternalNotification;
@@ -304,5 +310,11 @@ extern NSString *WebPreferencesCacheModelChangedInternalNotification;
 
 - (BOOL)diagnosticLoggingEnabled;
 - (void)setDiagnosticLoggingEnabled:(BOOL)enabled;
+
+- (BOOL)screenFontSubstitutionEnabled;
+- (void)setScreenFontSubstitutionEnabled:(BOOL)enabled;
+
+- (void)setStorageBlockingPolicy:(WebStorageBlockingPolicy)storageBlockingPolicy;
+- (WebStorageBlockingPolicy)storageBlockingPolicy;
 
 @end

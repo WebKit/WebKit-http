@@ -88,6 +88,11 @@ using namespace HTMLNames;
 
 %{
 
+#if YYDEBUG > 0
+#define YYPRINT(File,Type,Value) print_token_value(File,Type,Value)
+static void print_token_value(FILE * yyoutput, int yytype, YYSTYPE const &yyvalue);
+#endif
+
 static inline int cssyyerror(void*, const char*)
 {
     return 1;
@@ -685,7 +690,7 @@ key_list:
     ;
 
 key:
-    PERCENTAGE { $$.id = 0; $$.isInt = false; $$.fValue = $1; $$.unit = CSSPrimitiveValue::CSS_NUMBER; }
+    maybe_unary_operator PERCENTAGE { $$.id = 0; $$.isInt = false; $$.fValue = $1 * $2; $$.unit = CSSPrimitiveValue::CSS_NUMBER; }
     | IDENT {
         $$.id = 0; $$.isInt = false; $$.unit = CSSPrimitiveValue::CSS_NUMBER;
         CSSParserString& str = $1;
@@ -1729,3 +1734,31 @@ invalid_block_list:
 ;
 
 %%
+
+#if YYDEBUG > 0
+static void print_token_value(FILE * yyoutput, int yytype, YYSTYPE const &yyvalue)
+{
+    switch (yytype) {
+    case IDENT:
+    case STRING:
+    case NTH:
+    case HEX:
+    case IDSEL:
+    case DIMEN:
+    case INVALIDDIMEN:
+    case URI:
+    case FUNCTION:
+    case ANYFUNCTION:
+    case NOTFUNCTION:
+    case CALCFUNCTION:
+    case MINFUNCTION:
+    case MAXFUNCTION:
+    case VAR_DEFINITION:
+    case UNICODERANGE:
+        YYFPRINTF(yyoutput, "%s", String(yyvalue.string).utf8().data());
+        break;
+    default:
+        break;
+    }
+}
+#endif

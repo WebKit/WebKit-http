@@ -54,7 +54,7 @@ void SpeechRecognition::start(ExceptionCode& ec)
     }
 
     setPendingActivity(this);
-    m_controller->start(this, m_grammars.get(), m_lang, m_continuous, m_maxAlternatives);
+    m_controller->start(this, m_grammars.get(), m_lang, m_continuous, m_interimResults, m_maxAlternatives);
     m_started = true;
 }
 
@@ -110,11 +110,6 @@ void SpeechRecognition::didReceiveNoMatch(PassRefPtr<SpeechRecognitionResult> re
     dispatchEvent(SpeechRecognitionEvent::createNoMatch(result));
 }
 
-void SpeechRecognition::didDeleteResult(unsigned resultIndex, PassRefPtr<SpeechRecognitionResultList> resultHistory)
-{
-    dispatchEvent(SpeechRecognitionEvent::createResultDeleted(resultIndex, resultHistory));
-}
-
 void SpeechRecognition::didReceiveError(PassRefPtr<SpeechRecognitionError> error)
 {
     dispatchEvent(error);
@@ -155,6 +150,7 @@ SpeechRecognition::SpeechRecognition(ScriptExecutionContext* context)
     : ActiveDOMObject(context, this)
     , m_grammars(SpeechGrammarList::create()) // FIXME: The spec is not clear on the default value for the grammars attribute.
     , m_continuous(false)
+    , m_interimResults(false)
     , m_maxAlternatives(1)
     , m_controller(0)
     , m_stoppedByActiveDOMObject(false)

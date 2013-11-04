@@ -67,7 +67,7 @@ class TestExpectationsChecker(object):
 
         # FIXME: host should be a required parameter, not an optional one.
         host = host or Host()
-        host._initialize_scm()
+        host.initialize_scm()
 
         self._port_obj = self._determine_port_from_expectations_path(host, file_path)
 
@@ -94,8 +94,6 @@ class TestExpectationsChecker(object):
         expectations = '\n'.join(lines)
         if self._port_obj:
             self.check_test_expectations(expectations_str=expectations, tests=None)
-        else:
-            self._handle_style_error(1, 'test/expectations', 5,
-                                     'No port uses path %s for test_expectations' % self._file_path)
+
         # Warn tabs in lines as well
         self.check_tabs(lines)

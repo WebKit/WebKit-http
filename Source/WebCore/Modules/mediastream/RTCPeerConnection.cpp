@@ -35,8 +35,11 @@
 #include "RTCPeerConnection.h"
 
 #include "ArrayValue.h"
+#include "Document.h"
 #include "Event.h"
 #include "ExceptionCode.h"
+#include "Frame.h"
+#include "FrameLoaderClient.h"
 #include "MediaConstraintsImpl.h"
 #include "MediaStreamEvent.h"
 #include "RTCConfiguration.h"
@@ -48,6 +51,8 @@
 #include "RTCSessionDescriptionCallback.h"
 #include "RTCSessionDescriptionDescriptor.h"
 #include "RTCSessionDescriptionRequestImpl.h"
+#include "RTCStatsCallback.h"
+#include "RTCStatsRequestImpl.h"
 #include "RTCVoidRequestImpl.h"
 #include "ScriptExecutionContext.h"
 #include "VoidCallback.h"
@@ -83,13 +88,13 @@ PassRefPtr<RTCConfiguration> RTCPeerConnection::parseConfiguration(const Diction
             return 0;
         }
 
-        String uri, credential;
-        ok = iceServer.get("uri", uri);
+        String urlString, credential;
+        ok = iceServer.get("url", urlString);
         if (!ok) {
             ec = TYPE_MISMATCH_ERR;
             return 0;
         }
-        KURL url(KURL(), uri);
+        KURL url(KURL(), urlString);
         if (!url.isValid() || !(url.protocolIs("turn") || url.protocolIs("stun"))) {
             ec = TYPE_MISMATCH_ERR;
             return 0;
@@ -128,9 +133,26 @@ RTCPeerConnection::RTCPeerConnection(ScriptExecutionContext* context, PassRefPtr
     , m_localStreams(MediaStreamList::create())
     , m_remoteStreams(MediaStreamList::create())
 {
-    m_peerHandler = RTCPeerConnectionHandler::create(this);
-    if (!m_peerHandler || !m_peerHandler->initialize(configuration, constraints))
+    ASSERT(m_scriptExecutionContext->isDocument());
+    Document* document = static_cast<Document*>(m_scriptExecutionContext);
+
+    if (!document->frame()) {
         ec = NOT_SUPPORTED_ERR;
+        return;
+    }
+
+    m_peerHandler = RTCPeerConnectionHandler::create(this);
+    if (!m_peerHandler) {
+        ec = NOT_SUPPORTED_ERR;
+        return;
+    }
+
+    document->frame()->loader()->client()->dispatchWillStartUsingPeerConnectionHandler(m_peerHandler.get());
+
+    if (!m_peerHandler->initialize(configuration, constraints)) {
+        ec = NOT_SUPPORTED_ERR;
+        return;
+    }
 }
 
 RTCPeerConnection::~RTCPeerConnection()
@@ -379,6 +401,13 @@ MediaStreamList* RTCPeerConnection::remoteStreams() const
     return m_remoteStreams.get();
 }
 
+void RTCPeerConnection::getStats(PassRefPtr<RTCStatsCallback> successCallback, PassRefPtr<MediaStreamTrack> selector)
+{
+    RefPtr<RTCStatsRequestImpl> statsRequest = RTCStatsRequestImpl::create(scriptExecutionContext(), successCallback);
+    // FIXME: Add passing selector as part of the statsRequest.
+    m_peerHandler->getStats(statsRequest.release());
+}
+
 void RTCPeerConnection::close(ExceptionCode& ec)
 {
     if (m_readyState == ReadyStateClosing || m_readyState == ReadyStateClosed) {
@@ -393,7 +422,7 @@ void RTCPeerConnection::close(ExceptionCode& ec)
 
 void RTCPeerConnection::negotiationNeeded()
 {
-    dispatchEvent(Event::create(eventNames().negotationneededEvent, false, false));
+    dispatchEvent(Event::create(eventNames().negotiationneededEvent, false, false));
 }
 
 void RTCPeerConnection::didGenerateIceCandidate(PassRefPtr<RTCIceCandidateDescriptor> iceCandidateDescriptor)

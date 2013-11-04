@@ -1,3 +1,4 @@
+CONSOLE MESSAGE: The setVersion() method is non-standard and will be removed. Use the "upgradeneeded" event instead.
 CONSOLE MESSAGE: Numeric direction values are deprecated in IDBObjectStore.openCursor. Use "next", "nextunique", "prev", or "prevunique".
 CONSOLE MESSAGE: Numeric direction values are deprecated in IDBObjectStore.openCursor. Use "next", "nextunique", "prev", or "prevunique".
 CONSOLE MESSAGE: Numeric direction values are deprecated in IDBObjectStore.openCursor. Use "next", "nextunique", "prev", or "prevunique".
@@ -33,7 +34,7 @@ dbname = 'cursor-overloads'
 indexedDB.deleteDatabase(dbname)
 indexedDB.open(dbname)
 db = request.result
-PASS db.version is ""
+PASS db.version is 1
 db.setVersion('1')
 store = db.createObjectStore('store')
 index = store.createIndex('index', 'value')

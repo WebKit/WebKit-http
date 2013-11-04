@@ -149,6 +149,7 @@ public:
     WebPageGroupProxy* webPageGroup(const WebPageGroupData&);
 #if PLATFORM(MAC)
     pid_t presenterApplicationPid() const { return m_presenterApplicationPid; }
+    bool shouldForceScreenFontSubstitution() const { return m_shouldForceScreenFontSubstitution; }
 #endif 
     
 #if PLATFORM(QT)
@@ -181,7 +182,6 @@ public:
 
 #if ENABLE(PLUGIN_PROCESS)
     PluginProcessConnectionManager& pluginProcessConnectionManager() { return m_pluginProcessConnectionManager; }
-    bool disablePluginProcessMessageTimeout() const { return m_disablePluginProcessMessageTimeout; }
 #endif
 
     EventDispatcher& eventDispatcher() { return m_eventDispatcher; }
@@ -199,6 +199,10 @@ private:
     void registerURLSchemeAsEmptyDocument(const String&);
     void registerURLSchemeAsSecure(const String&) const;
     void setDomainRelaxationForbiddenForURLScheme(const String&) const;
+    void registerURLSchemeAsLocal(const String&) const;
+    void registerURLSchemeAsNoAccess(const String&) const;
+    void registerURLSchemeAsDisplayIsolated(const String&) const;
+    void registerURLSchemeAsCORSEnabled(const String&) const;
     void setDefaultRequestTimeoutInterval(double);
     void setAlwaysUsesComplexTextCodePath(bool);
     void setShouldUseFontSmoothing(bool);
@@ -261,7 +265,6 @@ private:
     virtual void didReceiveSyncMessage(CoreIPC::Connection*, CoreIPC::MessageID, CoreIPC::ArgumentDecoder*, OwnPtr<CoreIPC::ArgumentEncoder>&);
     virtual void didClose(CoreIPC::Connection*);
     virtual void didReceiveInvalidMessage(CoreIPC::Connection*, CoreIPC::MessageID);
-    virtual void syncMessageSendTimedOut(CoreIPC::Connection*);
 #if PLATFORM(WIN)
     virtual Vector<HWND> windowsToReceiveSentMessagesWhileWaitingForSyncReply();
 #endif
@@ -300,6 +303,7 @@ private:
 #if PLATFORM(MAC)
     pid_t m_presenterApplicationPid;
     dispatch_group_t m_clearResourceCachesDispatchGroup;
+    bool m_shouldForceScreenFontSubstitution;
 #endif
 
     bool m_fullKeyboardAccessEnabled;
@@ -333,7 +337,6 @@ private:
 
 #if ENABLE(PLUGIN_PROCESS)
     PluginProcessConnectionManager m_pluginProcessConnectionManager;
-    bool m_disablePluginProcessMessageTimeout;
 #endif
 
 #if USE(SOUP)

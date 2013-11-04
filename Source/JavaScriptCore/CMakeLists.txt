@@ -57,6 +57,7 @@ SET(JavaScriptCore_SOURCES
     bytecode/PutByIdStatus.cpp
     bytecode/ResolveGlobalStatus.cpp
     bytecode/SamplingTool.cpp
+    bytecode/SpecialPointer.cpp
     bytecode/StructureStubClearingWatchpoint.cpp
     bytecode/StructureStubInfo.cpp
     bytecode/Watchpoint.cpp
@@ -201,7 +202,7 @@ SET(JavaScriptCore_SOURCES
     runtime/JSGlobalData.cpp
     runtime/JSGlobalObject.cpp
     runtime/JSGlobalObjectFunctions.cpp
-    runtime/JSGlobalThis.cpp
+    runtime/JSProxy.cpp
     runtime/JSLock.cpp
     runtime/JSNotAnObject.cpp
     runtime/JSObject.cpp

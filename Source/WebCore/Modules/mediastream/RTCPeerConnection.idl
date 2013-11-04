@@ -72,10 +72,12 @@ module mediastream {
         [StrictTypeChecking] void removeStream(in MediaStream stream)
             raises(DOMException);
 
+        void getStats(in [Callback] RTCStatsCallback successCallback, in [Optional=DefaultIsUndefined] MediaStreamTrack selector);
+
         void close()
             raises(DOMException);
 
-        attribute EventListener onnegotationneeded;
+        attribute EventListener onnegotiationneeded;
         attribute EventListener onicecandidate;
         attribute EventListener onopen;
         attribute EventListener onstatechange;

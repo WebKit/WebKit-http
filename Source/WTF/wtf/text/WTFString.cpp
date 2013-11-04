@@ -26,8 +26,8 @@
 #include <stdarg.h>
 #include <wtf/ASCIICType.h>
 #include <wtf/DataLog.h>
+#include <wtf/HexNumber.h>
 #include <wtf/MathExtras.h>
-#include <wtf/MemoryInstrumentation.h>
 #include <wtf/text/CString.h>
 #include <wtf/StringExtras.h>
 #include <wtf/Vector.h>
@@ -167,7 +167,7 @@ void String::insert(const String& str, unsigned pos)
     insert(str.characters(), str.length(), pos);
 }
 
-void String::append(const UChar* charactersToAppend, unsigned lengthToAppend)
+void String::append(const LChar* charactersToAppend, unsigned lengthToAppend)
 {
     if (!m_impl) {
         if (!charactersToAppend)
@@ -180,14 +180,56 @@ void String::append(const UChar* charactersToAppend, unsigned lengthToAppend)
         return;
 
     ASSERT(charactersToAppend);
-    UChar* data;
-    if (lengthToAppend > numeric_limits<unsigned>::max() - length())
+
+    unsigned strLength = m_impl->length();
+
+    if (m_impl->is8Bit()) {
+        if (lengthToAppend > numeric_limits<unsigned>::max() - strLength)
+            CRASH();
+        LChar* data;
+        RefPtr<StringImpl> newImpl = StringImpl::createUninitialized(strLength + lengthToAppend, data);
+        StringImpl::copyChars(data, m_impl->characters8(), strLength);
+        StringImpl::copyChars(data + strLength, charactersToAppend, lengthToAppend);
+        m_impl = newImpl.release();
+        return;
+    }
+
+    if (lengthToAppend > numeric_limits<unsigned>::max() - strLength)
         CRASH();
+    UChar* data;
     RefPtr<StringImpl> newImpl = StringImpl::createUninitialized(length() + lengthToAppend, data);
-    memcpy(data, characters(), length() * sizeof(UChar));
-    memcpy(data + length(), charactersToAppend, lengthToAppend * sizeof(UChar));
+    StringImpl::copyChars(data, m_impl->characters16(), strLength);
+    StringImpl::copyChars(data + strLength, charactersToAppend, lengthToAppend);
     m_impl = newImpl.release();
 }
+
+void String::append(const UChar* charactersToAppend, unsigned lengthToAppend)
+{
+    if (!m_impl) {
+        if (!charactersToAppend)
+            return;
+        m_impl = StringImpl::create(charactersToAppend, lengthToAppend);
+        return;
+    }
+
+    if (!lengthToAppend)
+        return;
+
+    unsigned strLength = m_impl->length();
+    
+    ASSERT(charactersToAppend);
+    if (lengthToAppend > numeric_limits<unsigned>::max() - strLength)
+        CRASH();
+    UChar* data;
+    RefPtr<StringImpl> newImpl = StringImpl::createUninitialized(strLength + lengthToAppend, data);
+    if (m_impl->is8Bit())
+        StringImpl::copyChars(data, characters8(), strLength);
+    else
+        StringImpl::copyChars(data, characters16(), strLength);
+    StringImpl::copyChars(data + strLength, charactersToAppend, lengthToAppend);
+    m_impl = newImpl.release();
+}
+
 
 void String::insert(const UChar* charactersToInsert, unsigned lengthToInsert, unsigned position)
 {
@@ -449,22 +491,22 @@ String String::number(unsigned long long number)
     return numberToStringUnsigned<String>(number);
 }
 
-String String::number(double number, unsigned flags, unsigned precision)
+String String::number(double number, unsigned precision, TrailingZerosTruncatingPolicy trailingZerosTruncatingPolicy)
 {
     NumberToStringBuffer buffer;
-
-    // Mimic String::format("%.[precision]g", ...), but use dtoas rounding facilities.
-    if (flags & ShouldRoundSignificantFigures)
-        return String(numberToFixedPrecisionString(number, precision, buffer, flags & ShouldTruncateTrailingZeros));
-
-    // Mimic String::format("%.[precision]f", ...), but use dtoas rounding facilities.
-    return String(numberToFixedWidthString(number, precision, buffer));
+    return String(numberToFixedPrecisionString(number, precision, buffer, trailingZerosTruncatingPolicy == TruncateTrailingZeros));
 }
 
 String String::numberToStringECMAScript(double number)
 {
     NumberToStringBuffer buffer;
     return String(numberToString(number, buffer));
+}
+
+String String::numberToStringFixedWidth(double number, unsigned decimalPlaces)
+{
+    NumberToStringBuffer buffer;
+    return String(numberToFixedWidthString(number, decimalPlaces, buffer));
 }
 
 int String::toIntStrict(bool* ok, int base) const
@@ -777,6 +819,19 @@ String String::make8BitFrom16BitSource(const UChar* source, size_t length)
     return result;
 }
 
+String String::make16BitFrom8BitSource(const LChar* source, size_t length)
+{
+    if (!length)
+        return String();
+    
+    UChar* destination;
+    String result = String::createUninitialized(length, destination);
+    
+    StringImpl::copyChars(destination, source, length);
+    
+    return result;
+}
+
 String String::fromUTF8(const LChar* stringStart, size_t length)
 {
     if (length > numeric_limits<unsigned>::max())
@@ -819,12 +874,6 @@ String String::fromUTF8WithLatin1Fallback(const LChar* string, size_t size)
     if (!utf8)
         return String(string, size);
     return utf8;
-}
-
-void String::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
-{
-    MemoryClassInfo info(memoryObjectInfo, this);
-    info.addMember(m_impl);
 }
 
 // String Operations
@@ -1135,16 +1184,19 @@ Vector<char> asciiDebug(StringImpl* impl)
         return asciiDebug(String("[null]").impl());
 
     Vector<char> buffer;
-    unsigned length = impl->length();
-    const UChar* characters = impl->characters();
-
-    buffer.resize(length + 1);
-    for (unsigned i = 0; i < length; ++i) {
-        UChar ch = characters[i];
-        buffer[i] = ch && (ch < 0x20 || ch > 0x7f) ? '?' : ch;
+    for (unsigned i = 0; i < impl->length(); ++i) {
+        UChar ch = (*impl)[i];
+        if (isASCIIPrintable(ch)) {
+            if (ch == '\\')
+                buffer.append(ch);
+            buffer.append(ch);
+        } else {
+            buffer.append('\\');
+            buffer.append('u');
+            appendUnsignedAsHexFixedSize(ch, buffer, 4);
+        }
     }
-    buffer[length] = '\0';
-
+    buffer.append('\0');
     return buffer;
 }
 

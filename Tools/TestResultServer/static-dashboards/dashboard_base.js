@@ -147,6 +147,7 @@ var TEST_TYPES = [
     'ui_tests',
     'unit_tests',
     'views_unittests',
+    'webkit_unit_tests',
 ];
 
 var RELOAD_REQUIRING_PARAMETERS = ['showAllRuns', 'group', 'testType'];
@@ -456,6 +457,9 @@ function currentBuilderGroupCategory()
         return CHROMIUM_GPU_TESTS_BUILDER_GROUPS;
     case 'layout-tests':
         return LAYOUT_TESTS_BUILDER_GROUPS;
+    case 'test_shell_tests':
+    case 'webkit_unit_tests':
+        return TEST_SHELL_TESTS_BUILDER_GROUPS;
     default:
         return CHROMIUM_GTESTS_BUILDER_GROUPS;
     }

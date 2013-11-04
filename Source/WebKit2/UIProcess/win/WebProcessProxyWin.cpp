@@ -33,4 +33,8 @@ Vector<HWND> WebProcessProxy::windowsToReceiveSentMessagesWhileWaitingForSyncRep
     return Vector<HWND>();
 }
 
+void WebProcessProxy::platformConnect(ProcessLauncher::LaunchOptions&)
+{
+}
+
 } // namespace WebKit

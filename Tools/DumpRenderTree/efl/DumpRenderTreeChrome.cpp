@@ -145,6 +145,10 @@ Evas_Object* DumpRenderTreeChrome::createWebInspectorView()
     if (!inspectorView)
         return 0;
 
+    // Inspector-related views are not expected to have their output logged.
+    const bool ignoreMessages = true;
+    evas_object_data_set(inspectorView, "ignore-console-messages", &ignoreMessages);
+
     ewk_view_theme_set(inspectorView, DATA_DIR"/default.edj");
 
     Evas_Object* mainFrame = ewk_view_frame_main_get(inspectorView);
@@ -292,6 +296,8 @@ void DumpRenderTreeChrome::resetDefaultsToConsistentValues()
 
     ewk_history_clear(ewk_view_history_get(mainView()));
 
+    ewk_frame_feed_focus_in(mainFrame());
+
     ewk_cookies_clear();
     ewk_cookies_policy_set(EWK_COOKIE_JAR_ACCEPT_NO_THIRD_PARTY);
 
@@ -311,6 +317,8 @@ void DumpRenderTreeChrome::resetDefaultsToConsistentValues()
     DumpRenderTreeSupportEfl::setLoadsSiteIconsIgnoringImageLoadingSetting(mainView(), false);
     DumpRenderTreeSupportEfl::setSerializeHTTPLoads(false);
     DumpRenderTreeSupportEfl::setMinimumLogicalFontSize(mainView(), 9);
+    DumpRenderTreeSupportEfl::setCSSRegionsEnabled(mainView(), true);
+    DumpRenderTreeSupportEfl::setShouldTrackVisitedLinks(false);
 
     // Reset capacities for the memory cache for dead objects.
     static const unsigned cacheTotalCapacity =  8192 * 1024;
@@ -513,7 +521,7 @@ void DumpRenderTreeChrome::onFrameTitleChanged(void*, Evas_Object* frame, void* 
     }
 
     if (!done && gTestRunner->dumpTitleChanges())
-        printf("TITLE CHANGED: %s\n", (titleText && titleText->string) ? titleText->string : "");
+        printf("TITLE CHANGED: '%s'\n", (titleText && titleText->string) ? titleText->string : "");
 
     if (!done && gTestRunner->dumpHistoryDelegateCallbacks())
         printf("WebView updated the title for history URL \"%s\" to \"%s\".\n", ewk_frame_uri_get(frame)

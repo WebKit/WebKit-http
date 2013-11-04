@@ -149,29 +149,6 @@ WebInspector.NavigatorView.prototype = {
     },
 
     /**
-     * @param {WebInspector.UISourceCode} oldUISourceCode
-     * @param {WebInspector.UISourceCode} uiSourceCode
-     */
-    replaceUISourceCode: function(oldUISourceCode, uiSourceCode)
-    {
-        var added = false;
-        var selected = false;
-        if (this._scriptTreeElementsByUISourceCode.get(oldUISourceCode)) {
-            added = true;
-
-            if (this._lastSelectedUISourceCode === oldUISourceCode)
-                selected = true;
-            this.removeUISourceCode(oldUISourceCode);
-        }
-
-        if (!added)
-            return;
-        this.addUISourceCode(uiSourceCode);
-        if (selected)
-            this.revealUISourceCode(uiSourceCode);
-    },
-
-    /**
      * @param {WebInspector.UISourceCode} uiSourceCode
      * @param {boolean} focusSource
      */
@@ -347,10 +324,10 @@ WebInspector.NavigatorView.prototype = {
         var contextMenu = new WebInspector.ContextMenu();
         contextMenu.appendApplicableItems(uiSourceCode);
         contextMenu.show(event);
-    }
-}
+    },
 
-WebInspector.NavigatorView.prototype.__proto__ = WebInspector.View.prototype;
+    __proto__: WebInspector.View.prototype
+}
 
 /**
  * @constructor
@@ -429,10 +406,10 @@ WebInspector.NavigatorTreeOutline.prototype = {
    {
        this._treeSearchBoxElement.removeChild(this.searchInputElement);
        this._treeSearchBoxElement.removeStyleClass("visible");
-   }
-}
+   },
 
-WebInspector.NavigatorTreeOutline.prototype.__proto__ = TreeOutline.prototype;
+    __proto__: TreeOutline.prototype
+}
 
 /**
  * @constructor
@@ -505,10 +482,10 @@ WebInspector.BaseNavigatorTreeElement.prototype = {
     matchesSearchText: function(searchText)
     {
         return this.titleText.match(new RegExp("^" + searchText.escapeForRegExp(), "i"));
-    }
-}
+    },
 
-WebInspector.BaseNavigatorTreeElement.prototype.__proto__ = TreeElement.prototype;
+    __proto__: TreeElement.prototype
+}
 
 /**
  * @constructor
@@ -553,10 +530,10 @@ WebInspector.NavigatorFolderTreeElement.prototype = {
             this.collapse();
         else
             this.expand();
-    }
-}
+    },
 
-WebInspector.NavigatorFolderTreeElement.prototype.__proto__ = WebInspector.BaseNavigatorTreeElement.prototype;
+    __proto__: WebInspector.BaseNavigatorTreeElement.prototype
+}
 
 /**
  * @constructor
@@ -645,7 +622,7 @@ WebInspector.NavigatorSourceTreeElement.prototype = {
     _handleContextMenuEvent: function(event)
     {
         this._navigatorView.handleContextMenu(event, this._uiSourceCode);
-    }
-}
+    },
 
-WebInspector.NavigatorSourceTreeElement.prototype.__proto__ = WebInspector.BaseNavigatorTreeElement.prototype;
+    __proto__: WebInspector.BaseNavigatorTreeElement.prototype
+}

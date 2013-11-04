@@ -42,6 +42,9 @@ LayoutState::LayoutState(LayoutState* prev, RenderBox* renderer, const LayoutSiz
 #ifndef NDEBUG
     , m_renderer(renderer)
 #endif
+#if ENABLE(CSS_EXCLUSIONS)
+    , m_exclusionShapeInsideInfo(0)
+#endif
 {
     ASSERT(m_next);
 
@@ -107,6 +110,14 @@ LayoutState::LayoutState(LayoutState* prev, RenderBox* renderer, const LayoutSiz
     if (!m_columnInfo)
         m_columnInfo = m_next->m_columnInfo;
 
+#if ENABLE(CSS_EXCLUSIONS)
+    if (renderer->isRenderBlock()) {
+        m_exclusionShapeInsideInfo = toRenderBlock(renderer)->exclusionShapeInsideInfo();
+        if (!m_exclusionShapeInsideInfo)
+            m_exclusionShapeInsideInfo = m_next->m_exclusionShapeInsideInfo;
+    }
+#endif
+
     m_layoutDelta = m_next->m_layoutDelta;
     
     m_isPaginated = m_pageLogicalHeight || m_columnInfo || renderer->isRenderFlowThread();
@@ -131,6 +142,9 @@ LayoutState::LayoutState(RenderObject* root)
     , m_next(0)
 #ifndef NDEBUG
     , m_renderer(root)
+#endif
+#if ENABLE(CSS_EXCLUSIONS)
+    , m_exclusionShapeInsideInfo(0)
 #endif
 {
     RenderObject* container = root->container();

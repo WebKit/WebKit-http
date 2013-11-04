@@ -48,8 +48,11 @@ const v8::StackTrace::StackTraceOptions stackTraceOptions = static_cast<v8::Stac
 
 PassRefPtr<ScriptCallStack> createScriptCallStack(v8::Handle<v8::StackTrace>, size_t maxStackSize);
 PassRefPtr<ScriptCallStack> createScriptCallStack(size_t maxStackSize, bool emptyStackIsAllowed = false);
-PassRefPtr<ScriptCallStack> createScriptCallStackForInspector();
+PassRefPtr<ScriptCallStack> createScriptCallStackForConsole();
 PassRefPtr<ScriptArguments> createScriptArguments(const v8::Arguments& v8arguments, unsigned skipArgumentCount);
+
+// This is just an alias to 'createScriptCallStackForConsole();' for compat with JSC.
+PassRefPtr<ScriptCallStack> createScriptCallStackForConsole(ScriptState*);
 
 } // namespace WebCore
 

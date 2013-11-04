@@ -120,6 +120,10 @@ module core {
         readonly attribute Element nextElementSibling;
         readonly attribute unsigned long childElementCount;
 
+        // DOM 4
+        void remove()
+            raises(DOMException);
+
 #if defined(LANGUAGE_JAVASCRIPT) && LANGUAGE_JAVASCRIPT
         // CSSOM View Module API
         ClientRectList getClientRects();
@@ -143,7 +147,7 @@ module core {
         [Conditional=POINTER_LOCK, V8EnabledAtRuntime=pointerLock] void webkitRequestPointerLock();
 
         // CSS Regions API
-        readonly attribute DOMString webkitRegionOverset;
+        readonly attribute [Conditional=CSS_REGIONS] DOMString webkitRegionOverset;
         [Conditional=CSS_REGIONS] sequence<Range> webkitGetRegionFlowRanges();
 
 #if !defined(LANGUAGE_OBJECTIVE_C) || !LANGUAGE_OBJECTIVE_C

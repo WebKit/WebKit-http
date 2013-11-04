@@ -47,7 +47,7 @@ class IDBTransactionCoordinator;
 
 class IDBDatabaseBackendImpl : public IDBDatabaseBackendInterface {
 public:
-    static PassRefPtr<IDBDatabaseBackendImpl> create(const String& name, IDBBackingStore* database, IDBTransactionCoordinator*, IDBFactoryBackendImpl*, const String& uniqueIdentifier);
+    static PassRefPtr<IDBDatabaseBackendImpl> create(const String& name, IDBBackingStore* database, IDBFactoryBackendImpl*, const String& uniqueIdentifier);
     virtual ~IDBDatabaseBackendImpl();
 
     PassRefPtr<IDBBackingStore> backingStore() const;
@@ -75,7 +75,7 @@ public:
     void transactionFinishedAndAbortFired(PassRefPtr<IDBTransactionBackendImpl>);
 
 private:
-    IDBDatabaseBackendImpl(const String& name, IDBBackingStore* database, IDBTransactionCoordinator*, IDBFactoryBackendImpl*, const String& uniqueIdentifier);
+    IDBDatabaseBackendImpl(const String& name, IDBBackingStore* database, IDBFactoryBackendImpl*, const String& uniqueIdentifier);
 
     bool openInternal();
     void runIntVersionChangeTransaction(int64_t requestedVersion, PassRefPtr<IDBCallbacks>, PassRefPtr<IDBDatabaseCallbacks>);
@@ -86,13 +86,12 @@ private:
     static void createObjectStoreInternal(ScriptExecutionContext*, PassRefPtr<IDBDatabaseBackendImpl>, PassRefPtr<IDBObjectStoreBackendImpl>, PassRefPtr<IDBTransactionBackendImpl>);
     static void deleteObjectStoreInternal(ScriptExecutionContext*, PassRefPtr<IDBDatabaseBackendImpl>, PassRefPtr<IDBObjectStoreBackendImpl>, PassRefPtr<IDBTransactionBackendImpl>);
     static void setVersionInternal(ScriptExecutionContext*, PassRefPtr<IDBDatabaseBackendImpl>, const String& version, PassRefPtr<IDBCallbacks>, PassRefPtr<IDBTransactionBackendImpl>);
-    static void setIntVersionInternal(ScriptExecutionContext*, PassRefPtr<IDBDatabaseBackendImpl>, int64_t version, PassRefPtr<IDBCallbacks>, PassRefPtr<IDBTransactionBackendInterface>);
+    static void setIntVersionInternal(ScriptExecutionContext*, PassRefPtr<IDBDatabaseBackendImpl>, int64_t version, PassRefPtr<IDBCallbacks>, PassRefPtr<IDBTransactionBackendImpl>);
 
     // These are used as setVersion transaction abort tasks.
     static void removeObjectStoreFromMap(ScriptExecutionContext*, PassRefPtr<IDBDatabaseBackendImpl>, PassRefPtr<IDBObjectStoreBackendImpl>);
     static void addObjectStoreToMap(ScriptExecutionContext*, PassRefPtr<IDBDatabaseBackendImpl>, PassRefPtr<IDBObjectStoreBackendImpl>);
-    static void resetVersion(ScriptExecutionContext*, PassRefPtr<IDBDatabaseBackendImpl>, const String& version);
-    static void resetIntVersion(ScriptExecutionContext*, PassRefPtr<IDBDatabaseBackendImpl>, int64_t intVersion);
+    static void resetVersion(ScriptExecutionContext*, PassRefPtr<IDBDatabaseBackendImpl>, const String& version, int64_t intVersion);
 
     RefPtr<IDBBackingStore> m_backingStore;
     int64_t m_id;
@@ -107,27 +106,29 @@ private:
     typedef HashMap<String, RefPtr<IDBObjectStoreBackendImpl> > ObjectStoreMap;
     ObjectStoreMap m_objectStores;
 
-    RefPtr<IDBTransactionCoordinator> m_transactionCoordinator;
+    OwnPtr<IDBTransactionCoordinator> m_transactionCoordinator;
     RefPtr<IDBTransactionBackendImpl> m_runningVersionChangeTransaction;
 
     typedef HashSet<IDBTransactionBackendImpl*> TransactionSet;
     TransactionSet m_transactions;
 
     class PendingSetVersionCall;
-    Deque<RefPtr<PendingSetVersionCall> > m_pendingSetVersionCalls;
+    Deque<OwnPtr<PendingSetVersionCall> > m_pendingSetVersionCalls;
 
     class PendingOpenCall;
-    Deque<RefPtr<PendingOpenCall> > m_pendingOpenCalls;
+    Deque<OwnPtr<PendingOpenCall> > m_pendingOpenCalls;
 
     class PendingOpenWithVersionCall;
-    Deque<RefPtr<PendingOpenWithVersionCall> > m_pendingOpenWithVersionCalls;
-    Deque<RefPtr<PendingOpenWithVersionCall> > m_pendingSecondHalfOpenWithVersionCalls;
+    Deque<OwnPtr<PendingOpenWithVersionCall> > m_pendingOpenWithVersionCalls;
+    OwnPtr<PendingOpenWithVersionCall> m_pendingSecondHalfOpenWithVersion;
 
     class PendingDeleteCall;
-    Deque<RefPtr<PendingDeleteCall> > m_pendingDeleteCalls;
+    Deque<OwnPtr<PendingDeleteCall> > m_pendingDeleteCalls;
 
     typedef ListHashSet<RefPtr<IDBDatabaseCallbacks> > DatabaseCallbacksSet;
     DatabaseCallbacksSet m_databaseCallbacksSet;
+
+    bool m_closingConnection;
 };
 
 } // namespace WebCore

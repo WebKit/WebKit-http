@@ -35,6 +35,14 @@ public:
 
 private:
     virtual void initializeLocalizerData() OVERRIDE FINAL;
+    virtual double parseDateTime(const String&, DateComponents::Type) OVERRIDE;
+    virtual String formatDateTime(const DateComponents&, FormatType = FormatTypeUnspecified) OVERRIDE;
+#if ENABLE(CALENDAR_PICKER)
+    virtual String dateFormatText() OVERRIDE;
+#endif
+#if ENABLE(INPUT_MULTIPLE_FIELDS_UI)
+    virtual String dateFormat() OVERRIDE;
+#endif
 };
 
 PassOwnPtr<Localizer> Localizer::create(const AtomicString&)
@@ -49,5 +57,29 @@ LocaleNone::~LocaleNone()
 void LocaleNone::initializeLocalizerData()
 {
 }
+
+double LocaleNone::parseDateTime(const String&, DateComponents::Type)
+{
+    return std::numeric_limits<double>::quiet_NaN();
+}
+
+String LocaleNone::formatDateTime(const DateComponents&, FormatType)
+{
+    return String();
+}
+
+#if ENABLE(CALENDAR_PICKER)
+String LocaleNone::dateFormatText()
+{
+    return ASCIILiteral("Year-Month-Day");
+}
+#endif
+
+#if ENABLE(INPUT_MULTIPLE_FIELDS_UI)
+String LocaleNone::dateFormat()
+{
+    return ASCIILiteral("dd/MM/yyyyy");
+}
+#endif
 
 } // namespace WebCore

@@ -97,9 +97,7 @@ private:
     virtual void dispatchDidFinishDocumentLoad() OVERRIDE;
     virtual void dispatchDidFinishLoad() OVERRIDE;
 
-    virtual void dispatchDidFirstLayout() OVERRIDE;
-    virtual void dispatchDidFirstVisuallyNonEmptyLayout() OVERRIDE;
-    virtual void dispatchDidNewFirstVisuallyNonEmptyLayout() OVERRIDE;
+    virtual void dispatchDidLayout(WebCore::LayoutMilestones) OVERRIDE;
     virtual void dispatchDidLayout() OVERRIDE;
 
     virtual WebCore::Frame* dispatchCreatePage(const WebCore::NavigationAction&) OVERRIDE;
@@ -218,9 +216,6 @@ private:
 #if PLATFORM(MAC)
     virtual RemoteAXObjectRef accessibilityRemoteObject() OVERRIDE;
     
-#if ENABLE(MAC_JAVA_BRIDGE)
-    virtual jobject javaApplet(NSView*) OVERRIDE;
-#endif
     virtual NSCachedURLResponse* willCacheResponse(WebCore::DocumentLoader*, unsigned long identifier, NSCachedURLResponse*) const OVERRIDE;
 #endif
 #if PLATFORM(WIN) && USE(CFNETWORK)
@@ -246,6 +241,7 @@ private:
     WebFrame* m_frame;
     RefPtr<PluginView> m_pluginView;
     bool m_hasSentResponseToPluginView;
+    bool m_didCompletePageTransitionAlready;
     bool m_frameHasCustomRepresentation;
     bool m_frameCameFromPageCache;
 };

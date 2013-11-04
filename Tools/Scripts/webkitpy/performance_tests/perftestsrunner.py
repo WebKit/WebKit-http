@@ -29,19 +29,17 @@
 
 """Run Inspector's perf tests in perf mode."""
 
+import os
 import json
 import logging
 import optparse
-import re
-import sys
 import time
 
 from webkitpy.common import find_files
+from webkitpy.common.checkout.scm.detection import SCMDetector
 from webkitpy.common.host import Host
 from webkitpy.common.net.file_uploader import FileUploader
-from webkitpy.layout_tests.views import printing
 from webkitpy.performance_tests.perftest import PerfTestFactory
-from webkitpy.performance_tests.perftest import ReplayPerfTest
 
 
 _log = logging.getLogger(__name__)
@@ -65,7 +63,7 @@ class PerfTestsRunner(object):
         else:
             self._host = Host()
             self._port = self._host.port_factory.get(self._options.platform, self._options)
-        self._host._initialize_scm()
+        self._host.initialize_scm()
         self._webkit_base_dir_len = len(self._port.webkit_base())
         self._base_path = self._port.perf_tests_dir()
         self._results = {}
@@ -73,6 +71,9 @@ class PerfTestsRunner(object):
 
     @staticmethod
     def _parse_args(args=None):
+        def _expand_path(option, opt_str, value, parser):
+            path = os.path.expandvars(os.path.expanduser(value))
+            setattr(parser.values, option.dest, path)
         perf_option_list = [
             optparse.make_option('--debug', action='store_const', const='Debug', dest="configuration",
                 help='Set the configuration to Debug'),
@@ -98,9 +99,11 @@ class PerfTestsRunner(object):
                 help="Pause before running the tests to let user attach a performance monitor."),
             optparse.make_option("--no-results", action="store_false", dest="generate_results", default=True,
                 help="Do no generate results JSON and results page."),
-            optparse.make_option("--output-json-path",
+            optparse.make_option("--output-json-path", action='callback', callback=_expand_path, type="str",
                 help="Path to generate a JSON file at; may contain previous results if it already exists."),
-            optparse.make_option("--source-json-path",  # FIXME: Rename it to signify the fact it's a slave configuration.
+            optparse.make_option("--reset-results", action="store_true",
+                help="Clears the content in the generated JSON file before adding the results."),
+            optparse.make_option("--slave-config-json-path", action='callback', callback=_expand_path, type="str",
                 help="Only used on bots. Path to a slave configuration file."),
             optparse.make_option("--description",
                 help="Add a description to the output JSON file if one is generated"),
@@ -179,25 +182,23 @@ class PerfTestsRunner(object):
         output_json_path = self._output_json_path()
         output = self._generate_results_dict(self._timestamp, options.description, options.platform, options.builder_name, options.build_number)
 
-        if options.source_json_path:
-            output = self._merge_slave_config_json(options.source_json_path, output)
+        if options.slave_config_json_path:
+            output = self._merge_slave_config_json(options.slave_config_json_path, output)
             if not output:
                 return self.EXIT_CODE_BAD_SOURCE_JSON
 
-        test_results_server = options.test_results_server
-        results_page_path = None
-        if not test_results_server:
-            output = self._merge_outputs(output_json_path, output)
-            if not output:
-                return self.EXIT_CODE_BAD_MERGE
-            results_page_path = self._host.filesystem.splitext(output_json_path)[0] + '.html'
+        output = self._merge_outputs_if_needed(output_json_path, output)
+        if not output:
+            return self.EXIT_CODE_BAD_MERGE
 
+        results_page_path = self._host.filesystem.splitext(output_json_path)[0] + '.html'
         self._generate_output_files(output_json_path, results_page_path, output)
 
-        if test_results_server:
-            if not self._upload_json(test_results_server, output_json_path):
+        if options.test_results_server:
+            if not self._upload_json(options.test_results_server, output_json_path):
                 return self.EXIT_CODE_FAILED_UPLOADING
-        elif options.show_results:
+
+        if options.show_results:
             self._port.show_results_html_file(results_page_path)
 
     def _generate_results_dict(self, timestamp, description, platform, builder_name, build_number):
@@ -205,7 +206,8 @@ class PerfTestsRunner(object):
         if description:
             contents['description'] = description
         for (name, path) in self._port.repository_paths():
-            contents[name + '-revision'] = self._host.scm().svn_revision(path)
+            scm = SCMDetector(self._host.filesystem, self._host.executive).detect_scm_system(path) or self._host.scm()
+            contents[name + '-revision'] = scm.svn_revision(path)
 
         # FIXME: Add --branch or auto-detect the branch we're in
         for key, value in {'timestamp': int(timestamp), 'branch': self._default_branch, 'platform': platform,
@@ -228,8 +230,8 @@ class PerfTestsRunner(object):
             _log.error("Failed to merge slave configuration JSON file %s: %s" % (slave_config_json_path, error))
         return None
 
-    def _merge_outputs(self, output_json_path, output):
-        if not self._host.filesystem.isfile(output_json_path):
+    def _merge_outputs_if_needed(self, output_json_path, output):
+        if self._options.reset_results or not self._host.filesystem.isfile(output_json_path):
             return [output]
         try:
             existing_outputs = json.loads(self._host.filesystem.read_text_file(output_json_path))
@@ -317,6 +319,6 @@ class PerfTestsRunner(object):
         else:
             _log.error('FAILED')
 
-        _log.debug("Finished: %f s" % (time.time() - start_time))
+        _log.info("Finished: %f s" % (time.time() - start_time))
 
         return new_results != None

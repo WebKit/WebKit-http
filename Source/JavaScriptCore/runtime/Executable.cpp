@@ -135,7 +135,6 @@ const ClassInfo FunctionExecutable::s_info = { "FunctionExecutable", &ScriptExec
 
 FunctionExecutable::FunctionExecutable(JSGlobalData& globalData, FunctionBodyNode* node)
     : ScriptExecutable(globalData.functionExecutableStructure.get(), globalData, node->source(), node->isStrictMode())
-    , m_numCapturedVariables(0)
     , m_forceUsesArguments(node->usesArguments())
     , m_parameters(node->parameters())
     , m_name(node->ident())
@@ -232,11 +231,6 @@ JSObject* EvalExecutable::compileInternal(ExecState* exec, JSScope* scope, JITCo
 #endif
 
 #if ENABLE(JIT)
-#if ENABLE(CLASSIC_INTERPRETER)
-    if (!m_jitCodeForCall)
-        Heap::heap(this)->reportExtraMemoryCost(sizeof(*m_evalCodeBlock));
-    else
-#endif
     Heap::heap(this)->reportExtraMemoryCost(sizeof(*m_evalCodeBlock) + m_jitCodeForCall.size());
 #else
     Heap::heap(this)->reportExtraMemoryCost(sizeof(*m_evalCodeBlock));
@@ -357,12 +351,7 @@ JSObject* ProgramExecutable::compileInternal(ExecState* exec, JSScope* scope, JI
 #endif
 
 #if ENABLE(JIT)
-#if ENABLE(CLASSIC_INTERPRETER)
-    if (!m_jitCodeForCall)
-        Heap::heap(this)->reportExtraMemoryCost(sizeof(*m_programCodeBlock));
-    else
-#endif
-        Heap::heap(this)->reportExtraMemoryCost(sizeof(*m_programCodeBlock) + m_jitCodeForCall.size());
+    Heap::heap(this)->reportExtraMemoryCost(sizeof(*m_programCodeBlock) + m_jitCodeForCall.size());
 #else
     Heap::heap(this)->reportExtraMemoryCost(sizeof(*m_programCodeBlock));
 #endif
@@ -527,7 +516,6 @@ JSObject* FunctionExecutable::compileForCallInternal(ExecState* exec, JSScope* s
     
     m_numParametersForCall = m_codeBlockForCall->numParameters();
     ASSERT(m_numParametersForCall);
-    m_numCapturedVariables = m_codeBlockForCall->m_numCapturedVars;
     m_symbolTable.set(exec->globalData(), this, m_codeBlockForCall->symbolTable());
 
 #if ENABLE(JIT)
@@ -536,12 +524,7 @@ JSObject* FunctionExecutable::compileForCallInternal(ExecState* exec, JSScope* s
 #endif
 
 #if ENABLE(JIT)
-#if ENABLE(CLASSIC_INTERPRETER)
-    if (!m_jitCodeForCall)
-        Heap::heap(this)->reportExtraMemoryCost(sizeof(*m_codeBlockForCall));
-    else
-#endif
-        Heap::heap(this)->reportExtraMemoryCost(sizeof(*m_codeBlockForCall) + m_jitCodeForCall.size());
+    Heap::heap(this)->reportExtraMemoryCost(sizeof(*m_codeBlockForCall) + m_jitCodeForCall.size());
 #else
     Heap::heap(this)->reportExtraMemoryCost(sizeof(*m_codeBlockForCall));
 #endif
@@ -570,7 +553,6 @@ JSObject* FunctionExecutable::compileForConstructInternal(ExecState* exec, JSSco
     
     m_numParametersForConstruct = m_codeBlockForConstruct->numParameters();
     ASSERT(m_numParametersForConstruct);
-    m_numCapturedVariables = m_codeBlockForConstruct->m_numCapturedVars;
     m_symbolTable.set(exec->globalData(), this, m_codeBlockForConstruct->symbolTable());
 
 #if ENABLE(JIT)
@@ -579,11 +561,6 @@ JSObject* FunctionExecutable::compileForConstructInternal(ExecState* exec, JSSco
 #endif
 
 #if ENABLE(JIT)
-#if ENABLE(CLASSIC_INTERPRETER)
-    if (!m_jitCodeForConstruct)
-        Heap::heap(this)->reportExtraMemoryCost(sizeof(*m_codeBlockForConstruct));
-    else
-#endif
     Heap::heap(this)->reportExtraMemoryCost(sizeof(*m_codeBlockForConstruct) + m_jitCodeForConstruct.size());
 #else
     Heap::heap(this)->reportExtraMemoryCost(sizeof(*m_codeBlockForConstruct));

@@ -110,7 +110,8 @@ DOMApplicationCache.prototype.DOWNLOADING = 3;
 DOMApplicationCache.prototype.UPDATEREADY = 4;
 DOMApplicationCache.prototype.OBSOLETE = 5;
 
-
+/** @type {Node} */
+Range.prototype.startContainer;
 
 // Inspector Backend
 var InspectorBackend = {}
@@ -176,6 +177,8 @@ SourceMapV3.Offset = function()
 // FIXME: remove everything below.
 var WebInspector = {}
 
+WebInspector.queryParamsObject = {}
+WebInspector.toggleSearchingForNode = function() {}
 WebInspector.panels = {};
 
 /**
@@ -261,8 +264,6 @@ WebInspector.showPanel = function(panel)
  * @type {string} 
  */
 WebInspector.inspectedPageDomain;
-
-WebInspector.isCompactMode = function() { return false; }
 
 WebInspector.SourceJavaScriptTokenizer = {}
 WebInspector.SourceJavaScriptTokenizer.Keywords = {}

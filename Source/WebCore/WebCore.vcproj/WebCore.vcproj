@@ -590,11 +590,11 @@
 				>
 			</File>
 			<File
-				RelativePath="$(ConfigurationBuildDir)\obj\$(ProjectName)\DerivedSources\InjectedScriptSource.h"
+				RelativePath="$(ConfigurationBuildDir)\obj\$(ProjectName)\DerivedSources\InjectedScriptCanvasModuleSource.h"
 				>
 			</File>
 			<File
-				RelativePath="$(ConfigurationBuildDir)\obj\$(ProjectName)\DerivedSources\InjectedScriptWebGLModuleSource.h"
+				RelativePath="$(ConfigurationBuildDir)\obj\$(ProjectName)\DerivedSources\InjectedScriptSource.h"
 				>
 			</File>
 			<File
@@ -22955,62 +22955,6 @@
 				>
 			</File>
 			<File
-				RelativePath="$(ConfigurationBuildDir)\obj\$(ProjectName)\DerivedSources\JSWebKitBlobBuilder.cpp"
-				>
-				<FileConfiguration
-					Name="Debug|Win32"
-					ExcludedFromBuild="true"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="Release|Win32"
-					ExcludedFromBuild="true"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="Debug_Cairo_CFLite|Win32"
-					ExcludedFromBuild="true"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="Release_Cairo_CFLite|Win32"
-					ExcludedFromBuild="true"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="Debug_All|Win32"
-					ExcludedFromBuild="true"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="Production|Win32"
-					ExcludedFromBuild="true"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-					/>
-				</FileConfiguration>
-			</File>
-			<File
-				RelativePath="$(ConfigurationBuildDir)\obj\$(ProjectName)\DerivedSources\JSWebKitBlobBuilder.h"
-				>
-			</File>
-			<File
 				RelativePath="$(ConfigurationBuildDir)\obj\$(ProjectName)\DerivedSources\JSWebKitCSSFilterValue.cpp"
 				>
 				<FileConfiguration
@@ -33718,28 +33662,12 @@
 					>
 				</File>
 				<File
-					RelativePath="..\platform\text\LocalizedDate.h"
-					>
-				</File>
-				<File
-					RelativePath="..\platform\text\LocalizedDateNone.cpp"
-					>
-				</File>
-				<File
-					RelativePath="..\platform\text\LocalizedNumber.h"
-					>
-				</File>
-				<File
-					RelativePath="..\platform\text\LocalizedNumberNone.cpp"
-					>
-				<File
 					RelativePath="..\platform\text\Localizer.cpp"
 					>
 				</File>
 				<File
 					RelativePath="..\platform\text\Localizer.h"
 					>
-				</File>
 				</File>
 				<File
 					RelativePath="..\platform\text\ParserUtilities.h"
@@ -36331,10 +36259,6 @@
 				>
 			</File>
 			<File
-				RelativePath="..\css\CSSNamespace.h"
-				>
-			</File>
-			<File
 				RelativePath="..\css\CSSOMUtils.cpp"
 				>
 				<FileConfiguration
@@ -38446,6 +38370,14 @@
                                 RelativePath="..\rendering\ExclusionShape.h"
                                 >
                         </File>
+			<File
+				RelativePath="..\rendering\ExclusionShapeInsideInfo.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\rendering\ExclusionShapeInsideInfo.h"
+				>
+			</File>
 			<File
 				RelativePath="..\rendering\FilterEffectRenderer.cpp"
 				>
@@ -42219,14 +42151,6 @@
 				>
 			</File>
 			<File
-				RelativePath="..\rendering\WrapShapeInfo.cpp"
-				>
-			</File>
-			<File
-				RelativePath="..\rendering\WrapShapeInfo.h"
-				>
-			</File>
-			<File
 				RelativePath="..\rendering\svg\RenderSVGAllInOne.cpp"
 				>
 			</File>
@@ -44215,6 +44139,62 @@
 						Name="VCCustomBuildTool"
 					/>
 				</FileConfiguration>
+			</File>
+			<File
+				RelativePath="..\rendering\RenderLayerModelObject.cpp"
+				>
+				<FileConfiguration
+					Name="Debug|Win32"
+					ExcludedFromBuild="true"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="Release|Win32"
+					ExcludedFromBuild="true"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="Debug_Cairo_CFLite|Win32"
+					ExcludedFromBuild="true"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="Release_Cairo_CFLite|Win32"
+					ExcludedFromBuild="true"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+				Name="Debug_All|Win32"
+					ExcludedFromBuild="true"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="Production|Win32"
+					ExcludedFromBuild="true"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+					/>
+				</FileConfiguration>
+			</File>
+			<File
+				RelativePath="..\rendering\RenderLayerModelObject.h"
+				>
 			</File>
 			<File
 				RelativePath="..\rendering\RenderTreeAsText.cpp"
@@ -50404,6 +50384,14 @@
 			</File>
 			<File
 				RelativePath="..\dom\DocumentParser.h"
+				>
+			</File>
+            <File
+				RelativePath="..\dom\DocumentStyleSheetCollection.cpp"
+				>
+			</File>
+            <File
+				RelativePath="..\dom\DocumentStyleSheetCollection.h"
 				>
 			</File>
 			<File
@@ -59083,6 +59071,14 @@
 				>
 			</File>
 			<File
+				RelativePath="..\html\BaseMultipleFieldsDateAndTimeInputType.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\html\BaseMultipleFieldsDateAndTimeInputType.h"
+				>
+			</File>
+			<File
 				RelativePath="..\html\BaseTextInputType.cpp"
 				>
 			</File>
@@ -64091,6 +64087,46 @@
 				</File>
 				<File
 					RelativePath="..\html\shadow\ContentSelectorQuery.h"
+					>
+				</File>
+				<File
+					RelativePath="..\html\shadow\DateTimeEditElement.cpp"
+					>
+				</File>
+				<File
+					RelativePath="..\html\shadow\DateTimeEditElement.h"
+					>
+				</File>
+				<File
+					RelativePath="..\html\shadow\DateTimeFieldElement.cpp"
+					>
+				</File>
+				<File
+					RelativePath="..\html\shadow\DateTimeFieldElement.h"
+					>
+				</File>
+				<File
+					RelativePath="..\html\shadow\DateTimeFieldElements.cpp"
+					>
+				</File>
+				<File
+					RelativePath="..\html\shadow\DateTimeFieldElements.h"
+					>
+				</File>
+				<File
+					RelativePath="..\html\shadow\DateTimeNumericFieldElement.cpp"
+					>
+				</File>
+				<File
+					RelativePath="..\html\shadow\DateTimeNumericFieldElement.h"
+					>
+				</File>
+				<File
+					RelativePath="..\html\shadow\DateTimeSymbolicFieldElement.cpp"
+					>
+				</File>
+				<File
+					RelativePath="..\html\shadow\DateTimeSymbolicFieldElement.h"
 					>
 				</File>
 				<File
@@ -74587,6 +74623,30 @@
 				>
 			</File>
 			<File
+				RelativePath="..\inspector\InjectedScriptCanvasModule.cpp"
+				>
+				<FileConfiguration
+					Name="Release|Win32"
+					ExcludedFromBuild="true"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="Production|Win32"
+					ExcludedFromBuild="true"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+					/>
+				</FileConfiguration>
+			</File>
+			<File
+				RelativePath="..\inspector\InjectedScriptCanvasModule.h"
+				>
+			</File>
+			<File
 				RelativePath="..\inspector\InjectedScriptHost.cpp"
 				>
 				<FileConfiguration
@@ -74656,30 +74716,6 @@
 			</File>
 			<File
 				RelativePath="..\inspector\InjectedScriptModule.h"
-				>
-			</File>
-			<File
-				RelativePath="..\inspector\InjectedScriptWebGLModule.cpp"
-				>
-				<FileConfiguration
-					Name="Release|Win32"
-					ExcludedFromBuild="true"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="Production|Win32"
-					ExcludedFromBuild="true"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-					/>
-				</FileConfiguration>
-			</File>
-			<File
-				RelativePath="..\inspector\InjectedScriptWebGLModule.h"
 				>
 			</File>
 			<File
@@ -74788,6 +74824,34 @@
 			</File>
 			<File
 				RelativePath="..\inspector\InspectorBaseAgent.h"
+				>
+			</File>
+			<File
+				RelativePath="..\inspector\InspectorCanvasAgent.cpp"
+				>
+				<FileConfiguration
+					Name="Release|Win32"
+					ExcludedFromBuild="true"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="Production|Win32"
+					ExcludedFromBuild="true"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+					/>
+				</FileConfiguration>
+			</File>
+			<File
+				RelativePath="..\inspector\InspectorCanvasAgent.h"
+				>
+			</File>
+			<File
+				RelativePath="..\inspector\InspectorCanvasInstrumentation.h"
 				>
 			</File>
 			<File
@@ -75507,34 +75571,6 @@
 				>
 			</File>
 			<File
-				RelativePath="..\inspector\InspectorWebGLAgent.cpp"
-				>
-				<FileConfiguration
-					Name="Release|Win32"
-					ExcludedFromBuild="true"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="Production|Win32"
-					ExcludedFromBuild="true"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-					/>
-				</FileConfiguration>
-			</File>
-			<File
-				RelativePath="..\inspector\InspectorWebGLAgent.h"
-				>
-			</File>
-			<File
-				RelativePath="..\inspector\InspectorWebGLInstrumentation.h"
-				>
-			</File>
-			<File
 				RelativePath="..\inspector\InspectorWorkerAgent.cpp"
 				>
 				<FileConfiguration
@@ -75970,6 +76006,14 @@
 					>
 				</File>
 				<File
+					RelativePath="..\inspector\front-end\canvasProfiler.css"
+					>
+				</File>
+				<File
+					RelativePath="..\inspector\front-end\CanvasProfileView.js"
+					>
+				</File>
+				<File
 					RelativePath="..\inspector\front-end\Checkbox.js"
 					>
 				</File>
@@ -76155,6 +76199,10 @@
 				</File>
 				<File
 					RelativePath="..\inspector\front-end\DOMSyntaxHighlighter.js"
+					>
+				</File>
+				<File
+					RelativePath="..\inspector\front-end\DockController.js"
 					>
 				</File>
 				<File
@@ -76502,7 +76550,11 @@
 					>
 				</File>
 				<File
-					RelativePath="..\inspector\front-end\ProgressBar.js"
+					RelativePath="..\inspector\front-end\Progress.js"
+					>
+				</File>
+				<File
+					RelativePath="..\inspector\front-end\ProgressIndicator.js"
 					>
 				</File>
 				<File
@@ -76871,14 +76923,6 @@
 				</File>
 				<File
 					RelativePath="..\inspector\front-end\WatchExpressionsSidebarPane.js"
-					>
-				</File>
-				<File
-					RelativePath="..\inspector\front-end\webGLProfiler.css"
-					>
-				</File>
-				<File
-					RelativePath="..\inspector\front-end\WebGLProfileView.js"
 					>
 				</File>
 				<File

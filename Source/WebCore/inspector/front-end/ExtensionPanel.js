@@ -41,12 +41,13 @@ WebInspector.ExtensionPanel = function(id, pageURL)
     this._statusBarItems = [];
     var extensionView = new WebInspector.ExtensionView(id, pageURL, "extension panel");
     extensionView.show(this.element);
+    this.setDefaultFocusedElement(extensionView.defaultFocusedElement());
 }
 
 WebInspector.ExtensionPanel.prototype = {
     defaultFocusedElement: function()
     {
-        return this.sidebarTreeElement || this.element;
+        return WebInspector.View.prototype.defaultFocusedElement.call(this);
     },
 
     get statusBarItems()
@@ -87,10 +88,10 @@ WebInspector.ExtensionPanel.prototype = {
     {
         WebInspector.extensionServer.notifySearchAction(this.name, WebInspector.extensionAPI.panels.SearchAction.PreviousSearchResult);
         WebInspector.Panel.prototype.jumpToPreviousSearchResult.call(this);
-    }
-}
+    },
 
-WebInspector.ExtensionPanel.prototype.__proto__ = WebInspector.Panel.prototype;
+    __proto__: WebInspector.Panel.prototype
+}
 
 /**
  * @constructor
@@ -239,7 +240,7 @@ WebInspector.ExtensionSidebarPane.prototype = {
         section.editable = false;
         this._objectPropertiesView.element.appendChild(section.element);
         callback();
-    }
-}
+    },
 
-WebInspector.ExtensionSidebarPane.prototype.__proto__ = WebInspector.SidebarPane.prototype;
+    __proto__: WebInspector.SidebarPane.prototype
+}

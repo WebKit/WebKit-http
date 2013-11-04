@@ -45,7 +45,6 @@ class CachedMetadata;
 class CachedResourceClient;
 class CachedResourceHandleBase;
 class CachedResourceLoader;
-class Frame;
 class InspectorResource;
 class PurgeableBuffer;
 class SecurityOrigin;

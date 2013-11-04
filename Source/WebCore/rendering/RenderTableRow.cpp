@@ -55,7 +55,7 @@ void RenderTableRow::willBeRemovedFromTree()
 
 void RenderTableRow::updateBeforeAndAfterContent()
 {
-    if (!isAnonymous() && document()->usesBeforeAfterRules()) {
+    if (!isAnonymous() && document()->styleSheetCollection()->usesBeforeAfterRules()) {
         children()->updateBeforeAfterContent(this, BEFORE);
         children()->updateBeforeAfterContent(this, AFTER);
     }
@@ -80,6 +80,20 @@ void RenderTableRow::styleDidChange(StyleDifference diff, const RenderStyle* old
         if (table && !table->selfNeedsLayout() && !table->normalChildNeedsLayout() && oldStyle && oldStyle->border() != style()->border())
             table->invalidateCollapsedBorders();
     }
+}
+
+const BorderValue& RenderTableRow::borderAdjoiningStartCell(const RenderTableCell* cell) const
+{
+    ASSERT_UNUSED(cell, !table()->cellBefore(cell));
+    // FIXME: https://webkit.org/b/79272 - Add support for mixed directionality at the cell level.
+    return style()->borderStart();
+}
+
+const BorderValue& RenderTableRow::borderAdjoiningEndCell(const RenderTableCell* cell) const
+{
+    ASSERT_UNUSED(cell, !table()->cellAfter(cell));
+    // FIXME: https://webkit.org/b/79272 - Add support for mixed directionality at the cell level.
+    return style()->borderEnd();
 }
 
 void RenderTableRow::addChild(RenderObject* child, RenderObject* beforeChild)
@@ -174,7 +188,7 @@ void RenderTableRow::layout()
     setNeedsLayout(false);
 }
 
-LayoutRect RenderTableRow::clippedOverflowRectForRepaint(RenderBoxModelObject* repaintContainer) const
+LayoutRect RenderTableRow::clippedOverflowRectForRepaint(RenderLayerModelObject* repaintContainer) const
 {
     ASSERT(parent());
 

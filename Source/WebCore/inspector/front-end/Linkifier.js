@@ -121,13 +121,11 @@ WebInspector.Linkifier.DefaultFormatter.prototype = {
      */
     formatLiveAnchor: function(anchor, uiLocation)
     {
-        anchor.textContent = WebInspector.formatLinkText(uiLocation.uiSourceCode.url, uiLocation.lineNumber);
-
         var text = WebInspector.formatLinkText(uiLocation.uiSourceCode.url, uiLocation.lineNumber);
         if (this._maxLength)
             text = text.trimMiddle(this._maxLength);
         anchor.textContent = text;
-    }
-}
+    },
 
-WebInspector.Linkifier.DefaultFormatter.prototype.__proto__ = WebInspector.LinkifierFormatter.prototype;
+    __proto__: WebInspector.LinkifierFormatter.prototype
+}

@@ -102,6 +102,7 @@
 #include "WindowFeatures.h"
 #include "XMLDocumentParser.h"
 #include <wtf/CurrentTime.h>
+#include <wtf/MemoryInstrumentationHashSet.h>
 #include <wtf/StdLibExtras.h>
 #include <wtf/text/CString.h>
 #include <wtf/text/WTFString.h>
@@ -647,8 +648,10 @@ void FrameLoader::didBeginDocument(bool dispatch)
     m_frame->document()->initContentSecurityPolicy();
 
     Settings* settings = m_frame->document()->settings();
-    m_frame->document()->cachedResourceLoader()->setImagesEnabled(!settings || settings->areImagesEnabled());
-    m_frame->document()->cachedResourceLoader()->setAutoLoadImages(settings && settings->loadsImagesAutomatically());
+    if (settings) {
+        m_frame->document()->cachedResourceLoader()->setImagesEnabled(settings->areImagesEnabled());
+        m_frame->document()->cachedResourceLoader()->setAutoLoadImages(settings->loadsImagesAutomatically());
+    }
 
     if (m_documentLoader) {
         String dnsPrefetchControl = m_documentLoader->response().httpHeaderField("X-DNS-Prefetch-Control");
@@ -1712,7 +1715,7 @@ void FrameLoader::commitProvisionalLoad()
 
     transitionToCommitted(cachedPage);
 
-    if (pdl) {
+    if (pdl && m_documentLoader) {
         // Check if the destination page is allowed to access the previous page's timing information.
         RefPtr<SecurityOrigin> securityOrigin = SecurityOrigin::create(pdl->request().url());
         m_documentLoader->timing()->setHasSameOriginAsPreviousDocument(securityOrigin->canRequest(m_previousUrl));
@@ -2283,6 +2286,11 @@ void FrameLoader::setOriginalURLForDownloadRequest(ResourceRequest& request)
     }
 }
 
+void FrameLoader::didLayout(LayoutMilestones milestones)
+{
+    m_client->dispatchDidLayout(milestones);
+}
+
 void FrameLoader::didFirstLayout()
 {
     if (m_frame->page() && isBackForwardLoadType(m_loadType))
@@ -2290,18 +2298,6 @@ void FrameLoader::didFirstLayout()
 
     if (m_stateMachine.committedFirstRealDocumentLoad() && !m_stateMachine.isDisplayingInitialEmptyDocument() && !m_stateMachine.firstLayoutDone())
         m_stateMachine.advanceTo(FrameLoaderStateMachine::FirstLayoutDone);
-
-    m_client->dispatchDidFirstLayout();
-}
-
-void FrameLoader::didFirstVisuallyNonEmptyLayout()
-{
-    m_client->dispatchDidFirstVisuallyNonEmptyLayout();
-}
-
-void FrameLoader::didNewFirstVisuallyNonEmptyLayout()
-{
-    m_client->dispatchDidNewFirstVisuallyNonEmptyLayout();
 }
 
 void FrameLoader::frameLoadCompleted()
@@ -2336,7 +2332,7 @@ void FrameLoader::closeAndRemoveChild(Frame* child)
 
     child->setView(0);
     if (child->ownerElement() && child->page())
-        child->page()->decrementFrameCount();
+        child->page()->decrementSubframeCount();
     child->willDetachPage();
     child->detachFromPage();
 
@@ -3284,7 +3280,7 @@ void FrameLoader::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
     info.addMember(m_provisionalDocumentLoader);
     info.addMember(m_policyDocumentLoader);
     info.addMember(m_outgoingReferrer);
-    info.addInstrumentedHashSet(m_openedFrames);
+    info.addMember(m_openedFrames);
 }
 
 bool FrameLoaderClient::hasHTMLView() const

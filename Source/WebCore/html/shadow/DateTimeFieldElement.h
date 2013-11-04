@@ -26,7 +26,7 @@
 #ifndef DateTimeFieldElement_h
 #define DateTimeFieldElement_h
 
-#if ENABLE(INPUT_TYPE_TIME_MULTIPLE_FIELDS)
+#if ENABLE(INPUT_MULTIPLE_FIELDS_UI)
 
 #include "HTMLDivElement.h"
 
@@ -55,6 +55,7 @@ public:
         virtual void fieldValueChanged() = 0;
         virtual bool focusOnNextField(const DateTimeFieldElement&) = 0;
         virtual bool focusOnPreviousField(const DateTimeFieldElement&) = 0;
+        virtual AtomicString localeIdentifier() const = 0;
     };
 
     virtual void defaultEventHandler(Event*) OVERRIDE;
@@ -70,7 +71,6 @@ public:
     virtual void stepDown() = 0;
     virtual void stepUp() = 0;
     virtual String value() const = 0;
-    double valueAsDouble() const;
     virtual int valueAsInteger() const = 0;
     virtual String visibleValue() const = 0;
 
@@ -81,9 +81,9 @@ protected:
     void focusOnNextField();
     virtual void handleKeyboardEvent(KeyboardEvent*) = 0;
     void initialize(const AtomicString& shadowPseudoId, const String& axHelpText);
+    AtomicString localeIdentifier() const;
     virtual int maximum() const = 0;
     virtual int minimum() const = 0;
-    virtual double unitInMillisecond() const = 0;
     void updateVisibleValue(EventBehavior);
 
 private:

@@ -84,12 +84,11 @@ void WebIconDatabase::startUpIconDatabase()
 
     iconDatabase().setClient(this);
 
-    BSTR prefDatabasePath = 0;
+    BString prefDatabasePath;
     if (FAILED(standardPrefs->iconDatabaseLocation(&prefDatabasePath)))
         LOG_ERROR("Unable to get icon database location preference");
 
     String databasePath(prefDatabasePath, SysStringLen(prefDatabasePath));
-    SysFreeString(prefDatabasePath);
 
     if (databasePath.isEmpty()) {
         databasePath = localUserSpecificStorageDirectory();
@@ -316,12 +315,6 @@ HBITMAP WebIconDatabase::getOrCreateDefaultIconBitmap(LPSIZE size)
 }
 
 // IconDatabaseClient
-
-bool WebIconDatabase::performImport()
-{
-    // Windows doesn't do any old-style database importing.
-    return true;
-}
 
 void WebIconDatabase::didRemoveAllIcons()
 {

@@ -26,18 +26,18 @@
 #include "ResourceHandle.h"
 #include "ResourceHandleClient.h"
 #include "ResourceHandleInternal.h"
-#include "ResourceResponse.h"
 #include "ResourceRequest.h"
+#include "ResourceResponse.h"
 #include <QDateTime>
 #include <QFile>
 #include <QFileInfo>
-#include <QNetworkReply>
 #include <QNetworkCookie>
+#include <QNetworkReply>
 
 #include <wtf/text/CString.h>
 
-#include <QDebug>
 #include <QCoreApplication>
+#include <QDebug>
 
 // In Qt 4.8, the attribute for sending a request synchronously will be made public,
 // for now, use this hackish solution for setting the internal attribute.
@@ -581,6 +581,12 @@ void QNetworkReplyHandler::uploadProgress(qint64 bytesSent, qint64 bytesTotal)
     ResourceHandleClient* client = m_resourceHandle->client();
     if (!client)
         return;
+
+    if (!bytesTotal) {
+        // When finished QNetworkReply emits a progress of 0 bytes.
+        // Ignore that, to avoid firing twice.
+        return;
+    }
 
     client->didSendData(m_resourceHandle, bytesSent, bytesTotal);
 }

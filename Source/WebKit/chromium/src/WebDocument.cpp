@@ -35,6 +35,7 @@
 #include "CSSParserMode.h"
 #include "Document.h"
 #include "DocumentLoader.h"
+#include "DocumentStyleSheetCollection.h"
 #include "DocumentType.h"
 #include "Element.h"
 #include "HTMLAllCollection.h"
@@ -78,6 +79,11 @@ WebSecurityOrigin WebDocument::securityOrigin() const
 WebString WebDocument::encoding() const
 {
     return constUnwrap<Document>()->encoding();
+}
+
+WebString WebDocument::contentLanguage() const
+{
+    return constUnwrap<Document>()->contentLanguage();
 }
 
 WebURL WebDocument::openSearchDescriptionURL() const
@@ -196,7 +202,7 @@ void WebDocument::insertUserStyleSheet(const WebString& sourceCode, UserStyleLev
     RefPtr<StyleSheetContents> parsedSheet = StyleSheetContents::create(document.get());
     parsedSheet->setIsUserStyleSheet(level == UserStyleUserLevel);
     parsedSheet->parseString(sourceCode);
-    document->addUserSheet(parsedSheet.release());
+    document->styleSheetCollection()->addUserSheet(parsedSheet.release());
 }
 
 void WebDocument::cancelFullScreen()

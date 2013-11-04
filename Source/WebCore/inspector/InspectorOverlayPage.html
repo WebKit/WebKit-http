@@ -89,11 +89,30 @@ body.platform-linux {
 #node-id {
     color: rgb(26, 26, 166);
 }
+
+#right-gutter {
+    display: none;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    position: absolute;
+    background-color: darkgray;
+}
+
+#bottom-gutter {
+    display: none;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    position: absolute;
+    background-color: darkgray;
+}
 </style>
 <script>
 const lightGridColor = "rgba(0,0,0,0.2)";
 const darkGridColor = "rgba(0,0,0,0.5)";
 const transparentColor = "rgba(0, 0, 0, 0)";
+const gridBackgroundColor = "rgba(255, 255, 255, 0.6)";
 
 function drawPausedInDebuggerMessage(message)
 {
@@ -103,74 +122,119 @@ function drawPausedInDebuggerMessage(message)
     document.body.classList.add("dimmed");
 }
 
-function _drawGrid(highlight)
+function _drawGrid(highlight, rulerAtRight, rulerAtBottom)
 {
     context.save();
 
     var width = canvas.width;
     var height = canvas.height;
 
-    context.fillStyle = "rgba(255, 255, 255, 0.6)";
-    context.fillRect(0, 0, canvas.width, 15);
-    context.fillRect(0, 15, 15, canvas.height);
-    
-    context.translate(-highlight.scrollX, 0.5 - highlight.scrollY);
-    context.lineWidth = 1;
-
     const gridSubStep = 5;
     const gridStep = 50;
 
-    context.strokeStyle = lightGridColor;
+    {
+        // Draw X grid background
+        context.save();
+        context.fillStyle = gridBackgroundColor;
+        if (rulerAtBottom)
+            context.fillRect(0, height - 15, width, height);
+        else
+            context.fillRect(0, 0, width, 15);
 
-    for (var y = gridSubStep; y < highlight.scrollY + height; y += gridSubStep) {
-        if (!(y % gridStep))
-            continue;
-        context.beginPath();
-        context.moveTo(highlight.scrollX, y);
-        context.lineTo(highlight.scrollX + gridSubStep, y);
-        context.stroke();
+        // Clip out backgrounds intersection
+        context.globalCompositeOperation = "destination-out";
+        context.fillStyle = "red";
+        if (rulerAtRight)
+            context.fillRect(width - 15, 0, width, height);
+        else
+            context.fillRect(0, 0, 15, height);
+        context.restore();
+
+        // Draw Y grid background
+        context.fillStyle = gridBackgroundColor;
+        if (rulerAtRight)
+            context.fillRect(width - 15, 0, width, height);
+        else
+            context.fillRect(0, 0, 15, height);
     }
 
+    context.lineWidth = 1;
     context.strokeStyle = darkGridColor;
     context.fillStyle = darkGridColor;
-    for (var y = gridStep; y < height + highlight.scrollY; y += gridStep) {
-        context.beginPath();
-        context.moveTo(highlight.scrollX, y);
-        var markLength = (y % (gridStep * 2)) ? 5 : 8;
-        context.lineTo(highlight.scrollX + markLength, y);
-        context.stroke();
-        if (!(y % (gridStep * 2))) {
+    {
+        // Draw labels.
+        context.save();
+        context.translate(-highlight.scrollX, 0.5 - highlight.scrollY);
+        for (var y = 2 * gridStep; y < height + highlight.scrollY; y += 2 * gridStep) {
             context.save();
             context.translate(highlight.scrollX, y);
             context.rotate(-Math.PI / 2);
-            context.fillText(y, 2, 13);
+            context.fillText(y, 2, rulerAtRight ? width - 7 : 13);
             context.restore();
         }
+        context.translate(0.5, -0.5);
+        for (var x = 2 * gridStep; x < width + highlight.scrollX; x += 2 * gridStep) {
+            context.save();
+            context.fillText(x, x + 2, rulerAtBottom ? highlight.scrollY + height - 7 : highlight.scrollY + 13);
+            context.restore();
+        }
+        context.restore();
     }
 
-    context.translate(0.5, -0.5);
-
-    context.strokeStyle = lightGridColor;
-    for (var x = gridSubStep; x < highlight.scrollX + width; x += gridSubStep) {
-        if (!(x % gridStep))
-            continue;
-        context.beginPath();
-        context.moveTo(x, highlight.scrollY);
-        context.lineTo(x, highlight.scrollY + gridSubStep);
-        context.stroke();
+    {   
+        // Draw vertical grid
+        context.save();
+        if (rulerAtRight) {
+            context.translate(width, 0);
+            context.scale(-1, 1);
+        }
+        context.translate(-highlight.scrollX, 0.5 - highlight.scrollY);
+        for (var y = gridStep; y < height + highlight.scrollY; y += gridStep) {
+            context.beginPath();
+            context.moveTo(highlight.scrollX, y);
+            var markLength = (y % (gridStep * 2)) ? 5 : 8;
+            context.lineTo(highlight.scrollX + markLength, y);
+            context.stroke();
+        }  
+        context.strokeStyle = lightGridColor;
+        for (var y = gridSubStep; y < highlight.scrollY + height; y += gridSubStep) {
+            if (!(y % gridStep))
+                continue;
+            context.beginPath();
+            context.moveTo(highlight.scrollX, y);
+            context.lineTo(highlight.scrollX + gridSubStep, y);
+            context.stroke();
+        }
+        context.restore();
     }
 
-    context.strokeStyle = darkGridColor;
-    context.fillStyle = darkGridColor;
-    for (var x = gridStep; x < width + highlight.scrollX; x += gridStep) {
-        context.beginPath();
-        context.moveTo(x, highlight.scrollY);
-        var markLength = (x % (gridStep * 2)) ? 5 : 8;
-        context.lineTo(x, highlight.scrollY + markLength);
-        context.stroke();
-        if (!(x % (gridStep * 2)))
-            context.fillText(x, x + 2, highlight.scrollY + 13);
+    {
+        // Draw horizontal grid
+        context.save();
+        if (rulerAtBottom) {
+            context.translate(0, height);
+            context.scale(1, -1);
+        }
+        context.translate(0.5 - highlight.scrollX, -highlight.scrollY);
+        for (var x = gridStep; x < width + highlight.scrollX; x += gridStep) {
+            context.beginPath();
+            context.moveTo(x, highlight.scrollY);
+            var markLength = (x % (gridStep * 2)) ? 5 : 8;
+            context.lineTo(x, highlight.scrollY + markLength);
+            context.stroke();
+        }
+        context.strokeStyle = lightGridColor;
+        for (var x = gridSubStep; x < highlight.scrollX + width; x += gridSubStep) {
+            if (!(x % gridStep))
+                continue;
+            context.beginPath();
+            context.moveTo(x, highlight.scrollY);
+            context.lineTo(x, highlight.scrollY + gridSubStep);
+            context.stroke();
+        }
+        context.restore();
     }
+
     context.restore();
 }
 
@@ -220,14 +284,41 @@ function quadEquals(quad1, quad2)
         quad1[3].x === quad2[3].x && quad1[3].y === quad2[3].y;
 }
 
-function reset(deviceScaleFactor)
+function drawGutter()
 {
+    var frameWidth = frameViewFullSize.width;
+    var frameHeight = frameViewFullSize.height;
+
+    if (!frameWidth || document.body.offsetWidth <= frameWidth)
+        rightGutter.style.removeProperty("display");
+    else {
+        rightGutter.style.display = "block";
+        rightGutter.style.left = frameWidth + "px";
+    }
+
+    if (!frameHeight || document.body.offsetHeight <= frameHeight)
+        bottomGutter.style.removeProperty("display");
+    else {
+        bottomGutter.style.display = "block";
+        bottomGutter.style.top = frameHeight + "px";
+    }
+}
+
+function reset(resetData)
+{
+    var deviceScaleFactor = resetData.deviceScaleFactor;
+    var viewportSize = resetData.viewportSize;
+    window.frameViewFullSize = resetData.frameViewFullSize;
+
     window.canvas = document.getElementById("canvas");
     window.context = canvas.getContext("2d");
-    canvas.width = deviceScaleFactor * document.body.offsetWidth;
-    canvas.height = deviceScaleFactor * document.body.offsetHeight;
-    canvas.style.width = document.body.offsetWidth + "px";
-    canvas.style.height = document.body.offsetHeight + "px";
+    window.rightGutter = document.getElementById("right-gutter");
+    window.bottomGutter = document.getElementById("bottom-gutter");
+
+    canvas.width = deviceScaleFactor * viewportSize.width;
+    canvas.height = deviceScaleFactor * viewportSize.height;
+    canvas.style.width = viewportSize.width + "px";
+    canvas.style.height = viewportSize.height + "px";
     context.scale(deviceScaleFactor, deviceScaleFactor);
 
     document.getElementById("paused-in-debugger").style.visibility = "hidden";
@@ -310,38 +401,62 @@ function _drawElementTitle(highlight)
     elementTitle.style.left = (boxX + 3) + "px";
 }
 
-function _drawRulers(highlight)
+function _drawRulers(highlight, rulerAtRight, rulerAtBottom)
 {
     context.save();
+    var width = canvas.width;
+    var height = canvas.height;
     context.strokeStyle = "rgba(128, 128, 128, 0.3)";
     context.lineWidth = 1;
     context.translate(0.5, 0.5);
     var leftmostXForY = {};
+    var rightmostXForY = {};
     var topmostYForX = {};
+    var bottommostYForX = {};
 
     for (var i = 0; i < highlight.quads.length; ++i) {
         var quad = highlight.quads[i];
         for (var j = 0; j < quad.length; ++j) {
             var x = quad[j].x;
             var y = quad[j].y;
-            topmostYForX[Math.round(x)] = Math.min(topmostYForX[x] || Number.MAX_VALUE, Math.round(quad[j].y));
             leftmostXForY[Math.round(y)] = Math.min(leftmostXForY[y] || Number.MAX_VALUE, Math.round(quad[j].x));
+            rightmostXForY[Math.round(y)] = Math.max(rightmostXForY[y] || Number.MIN_VALUE, Math.round(quad[j].x));
+            topmostYForX[Math.round(x)] = Math.min(topmostYForX[x] || Number.MAX_VALUE, Math.round(quad[j].y));
+            bottommostYForX[Math.round(x)] = Math.max(bottommostYForX[x] || Number.MIN_VALUE, Math.round(quad[j].y));
         }
     }
 
-    for (var y in leftmostXForY) {
-        context.beginPath();
-        context.moveTo(0, y);
-        context.lineTo(leftmostXForY[y], y);
-        context.stroke();
+    if (rulerAtRight) {
+        for (var y in rightmostXForY) {
+            context.beginPath();
+            context.moveTo(width, y);
+            context.lineTo(rightmostXForY[y], y);
+            context.stroke();
+        }
+    } else {
+        for (var y in leftmostXForY) {
+            context.beginPath();
+            context.moveTo(0, y);
+            context.lineTo(leftmostXForY[y], y);
+            context.stroke();
+        }
     }
 
-    for (var x in topmostYForX) {
-        context.beginPath();
-        context.moveTo(x, 0);
-        context.lineTo(x, topmostYForX[x]);
-        context.stroke();
-  }
+    if (rulerAtBottom) {
+        for (var x in bottommostYForX) {
+            context.beginPath();
+            context.moveTo(x, height);
+            context.lineTo(x, topmostYForX[x]);
+            context.stroke();
+        }
+    } else {
+        for (var x in topmostYForX) {
+            context.beginPath();
+            context.moveTo(x, 0);
+            context.lineTo(x, topmostYForX[x]);
+            context.stroke();
+        }
+    }
 
     context.restore();
 }
@@ -349,7 +464,7 @@ function _drawRulers(highlight)
 function drawNodeHighlight(highlight)
 {
     if (!highlight.quads.length) {
-        _drawGrid(highlight);
+        _drawGrid(highlight, false, false);
         return;
     }
 
@@ -390,9 +505,25 @@ function drawNodeHighlight(highlight)
     if (hasContent)
         drawOutlinedQuad(contentQuad, highlight.contentColor, highlight.contentOutlineColor);
 
-    _drawGrid(highlight);
+    var width = canvas.width;
+    var height = canvas.height;
+    var minX = Number.MAX_VALUE, minY = Number.MAX_VALUE, maxX = Number.MIN_VALUE; maxY = Number.MIN_VALUE;
+    for (var i = 0; i < highlight.quads.length; ++i) {
+        var quad = highlight.quads[i];
+        for (var j = 0; j < quad.length; ++j) {
+            minX = Math.min(minX, quad[j].x);
+            maxX = Math.max(maxX, quad[j].x);
+            minY = Math.min(minY, quad[j].y);
+            maxY = Math.max(maxY, quad[j].y);
+        }
+    }
+
+    var rulerAtRight = minX < 20 && maxX + 20 < width;
+    var rulerAtBottom = minY < 20 && maxY + 20 < height;
+
+    _drawGrid(highlight, rulerAtRight, rulerAtBottom);
+    _drawRulers(highlight, rulerAtRight, rulerAtBottom);
     _drawElementTitle(highlight);
-    _drawRulers(highlight);
     context.restore();
 }
 
@@ -431,5 +562,7 @@ function log(text)
   <span id="tag-name"></span><span id="node-id"></span><span id="class-name"></span>
   <span id="node-width"></span><span class="px">px</span><span class="px"> &#xD7; </span><span id="node-height"></span><span class="px">px</span>
 </div>
+<div id="right-gutter"></div>
+<div id="bottom-gutter"></div>
 <div id="log"></div>
 </html>

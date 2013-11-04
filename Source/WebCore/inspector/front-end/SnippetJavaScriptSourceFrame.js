@@ -54,8 +54,8 @@ WebInspector.SnippetJavaScriptSourceFrame.prototype = {
 
     _runButtonClicked: function()
     {
-        this._snippetJavaScriptSource.evaluate();
-    }
-}
+        WebInspector.scriptSnippetModel.evaluateScriptSnippet(this._snippetJavaScriptSource);
+    },
 
-WebInspector.SnippetJavaScriptSourceFrame.prototype.__proto__ = WebInspector.JavaScriptSourceFrame.prototype;
+    __proto__: WebInspector.JavaScriptSourceFrame.prototype
+}

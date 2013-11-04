@@ -83,7 +83,6 @@ public:
 
     virtual bool isImage() const { return true; }
     virtual bool stillNeedsLoad() const OVERRIDE { return !errorOccurred() && status() == Unknown && !isLoading(); }
-    void load();
 
     // ImageObserver
     virtual void decodedSizeChanged(const Image* image, int delta);

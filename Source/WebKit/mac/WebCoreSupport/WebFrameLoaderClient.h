@@ -108,8 +108,7 @@ private:
     virtual void dispatchDidFailLoad(const WebCore::ResourceError&) OVERRIDE;
     virtual void dispatchDidFinishDocumentLoad() OVERRIDE;
     virtual void dispatchDidFinishLoad() OVERRIDE;
-    virtual void dispatchDidFirstLayout() OVERRIDE;
-    virtual void dispatchDidFirstVisuallyNonEmptyLayout() OVERRIDE;
+    virtual void dispatchDidLayout(WebCore::LayoutMilestones) OVERRIDE;
 
     virtual WebCore::Frame* dispatchCreatePage(const WebCore::NavigationAction&) OVERRIDE;
     virtual void dispatchShow() OVERRIDE;
@@ -219,10 +218,6 @@ private:
     virtual void didPerformFirstNavigation() const OVERRIDE;
 
     virtual void registerForIconNotification(bool listen) OVERRIDE;
-
-#if ENABLE(JAVA_BRIDGE)
-    virtual jobject javaApplet(NSView*) OVERRIDE;
-#endif
 
 #if PLATFORM(MAC)
     virtual RemoteAXObjectRef accessibilityRemoteObject() OVERRIDE { return 0; }

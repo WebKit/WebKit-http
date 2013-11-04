@@ -53,6 +53,8 @@
 
 @end
 
+NSString * const WebKit2PlugInSandboxProfileDirectoryPathKey = @"WebKit2PlugInSandboxProfileDirectoryPath";
+
 using namespace WebCore;
 
 namespace WebKit {
@@ -132,12 +134,25 @@ void PluginProcessProxy::platformInitializePluginProcess(PluginProcessCreationPa
     if (renderServerPort != MACH_PORT_NULL)
         parameters.acceleratedCompositingPort = CoreIPC::MachPort(renderServerPort, MACH_MSG_TYPE_COPY_SEND);
 #endif
+
+    // FIXME: We should rip this out once we have a good place to install plug-in
+    // sandbox profiles.
+    NSString* sandboxProfileDirectoryPath = [[NSUserDefaults standardUserDefaults] stringForKey:WebKit2PlugInSandboxProfileDirectoryPathKey];
+    if (sandboxProfileDirectoryPath)
+        parameters.sandboxProfileDirectoryPath = String(sandboxProfileDirectoryPath);
 }
 
 bool PluginProcessProxy::getPluginProcessSerialNumber(ProcessSerialNumber& pluginProcessSerialNumber)
 {
     pid_t pluginProcessPID = m_processLauncher->processIdentifier();
+#if COMPILER(CLANG)
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+#endif
     return GetProcessForPID(pluginProcessPID, &pluginProcessSerialNumber) == noErr;
+#if COMPILER(CLANG)
+#pragma clang diagnostic pop
+#endif
 }
 
 void PluginProcessProxy::makePluginProcessTheFrontProcess()
@@ -146,14 +161,28 @@ void PluginProcessProxy::makePluginProcessTheFrontProcess()
     if (!getPluginProcessSerialNumber(pluginProcessSerialNumber))
         return;
 
+#if COMPILER(CLANG)
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+#endif
     SetFrontProcess(&pluginProcessSerialNumber);
+#if COMPILER(CLANG)
+#pragma clang diagnostic pop
+#endif
 }
 
 void PluginProcessProxy::makeUIProcessTheFrontProcess()
 {
     ProcessSerialNumber processSerialNumber;
+#if COMPILER(CLANG)
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+#endif
     GetCurrentProcess(&processSerialNumber);
     SetFrontProcess(&processSerialNumber);            
+#if COMPILER(CLANG)
+#pragma clang diagnostic pop
+#endif
 }
 
 void PluginProcessProxy::setFullscreenWindowIsShowing(bool fullscreenWindowIsShowing)
@@ -185,7 +214,14 @@ void PluginProcessProxy::exitFullscreen()
 {
     // If the plug-in host is the current application then we should bring ourselves to the front when it exits full-screen mode.
     ProcessSerialNumber frontProcessSerialNumber;
+#if COMPILER(CLANG)
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+#endif
     GetFrontProcess(&frontProcessSerialNumber);
+#if COMPILER(CLANG)
+#pragma clang diagnostic pop
+#endif
 
     // The UI process must be the front process in order to change the presentation mode.
     makeUIProcessTheFrontProcess();
@@ -198,9 +234,24 @@ void PluginProcessProxy::exitFullscreen()
     // If the plug-in process was not the front process, switch back to the previous front process.
     // (Otherwise we'll keep the UI process as the front process).
     Boolean isPluginProcessFrontProcess;
+#if COMPILER(CLANG)
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+#endif
     SameProcess(&frontProcessSerialNumber, &pluginProcessSerialNumber, &isPluginProcessFrontProcess);
-    if (!isPluginProcessFrontProcess)
+#if COMPILER(CLANG)
+#pragma clang diagnostic pop
+#endif
+    if (!isPluginProcessFrontProcess) {
+#if COMPILER(CLANG)
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+#endif
         SetFrontProcess(&frontProcessSerialNumber);
+#if COMPILER(CLANG)
+#pragma clang diagnostic pop
+#endif
+    }
 }
 
 void PluginProcessProxy::setModalWindowIsShowing(bool modalWindowIsShowing)

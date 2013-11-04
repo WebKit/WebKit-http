@@ -226,6 +226,9 @@ webkit_web_view_load_request                       (WebKitWebView             *w
 WEBKIT_API void
 webkit_web_view_stop_loading                       (WebKitWebView             *web_view);
 
+WEBKIT_API gboolean
+webkit_web_view_is_loading                         (WebKitWebView             *web_view);
+
 WEBKIT_API const gchar *
 webkit_web_view_get_title                          (WebKitWebView             *web_view);
 
@@ -258,6 +261,9 @@ webkit_web_view_go_to_back_forward_list_item       (WebKitWebView             *w
                                                     WebKitBackForwardListItem *list_item);
 WEBKIT_API const gchar *
 webkit_web_view_get_uri                            (WebKitWebView             *web_view);
+
+WEBKIT_API cairo_surface_t *
+webkit_web_view_get_favicon                        (WebKitWebView             *web_view);
 
 WEBKIT_API const gchar *
 webkit_web_view_get_custom_charset                 (WebKitWebView             *web_view);

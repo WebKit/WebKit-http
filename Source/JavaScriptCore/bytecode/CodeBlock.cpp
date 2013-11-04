@@ -532,8 +532,8 @@ void CodeBlock::dump(ExecState* exec)
         static_cast<unsigned long>(instructions().size() * sizeof(Instruction)),
         this, codeTypeToString(codeType()), m_numParameters, m_numCalleeRegisters,
         m_numVars);
-    if (m_numCapturedVars)
-        dataLog("; %d captured var(s)", m_numCapturedVars);
+    if (m_symbolTable->captureCount())
+        dataLog("; %d captured var(s)", m_symbolTable->captureCount());
     if (usesArguments()) {
         dataLog(
             "; uses arguments, in r%d, r%d",
@@ -586,25 +586,6 @@ void CodeBlock::dump(ExecState* exec)
              printGlobalResolveInfo(m_globalResolveInfos[i], instructionOffsetForNth(exec, instructions(), i + 1, isGlobalResolve));
              ++i;
         } while (i < m_globalResolveInfos.size());
-    }
-#endif
-#if ENABLE(CLASSIC_INTERPRETER)
-    if (!m_globalResolveInstructions.isEmpty() || !m_propertyAccessInstructions.isEmpty())
-        dataLog("\nStructures:\n");
-
-    if (!m_globalResolveInstructions.isEmpty()) {
-        size_t i = 0;
-        do {
-             printStructures(&instructions()[m_globalResolveInstructions[i]]);
-             ++i;
-        } while (i < m_globalResolveInstructions.size());
-    }
-    if (!m_propertyAccessInstructions.isEmpty()) {
-        size_t i = 0;
-        do {
-            printStructures(&instructions()[m_propertyAccessInstructions[i]]);
-             ++i;
-        } while (i < m_propertyAccessInstructions.size());
     }
 #endif
 
@@ -873,8 +854,11 @@ void CodeBlock::dump(ExecState* exec, const Vector<Instruction>::const_iterator&
             break;
         }
         case op_check_has_instance: {
-            int base = (++it)->u.operand;
-            dataLog("[%4d] check_has_instance\t\t %s", location, registerName(exec, base).data());
+            int r0 = (++it)->u.operand;
+            int r1 = (++it)->u.operand;
+            int r2 = (++it)->u.operand;
+            int offset = (++it)->u.operand;
+            dataLog("[%4d] check_has_instance\t\t %s, %s, %s, %d(->%d)", location, registerName(exec, r0).data(), registerName(exec, r1).data(), registerName(exec, r2).data(), offset, location + offset);
             dumpBytecodeCommentAndNewLine(location);
             break;
         }
@@ -882,8 +866,7 @@ void CodeBlock::dump(ExecState* exec, const Vector<Instruction>::const_iterator&
             int r0 = (++it)->u.operand;
             int r1 = (++it)->u.operand;
             int r2 = (++it)->u.operand;
-            int r3 = (++it)->u.operand;
-            dataLog("[%4d] instanceof\t\t %s, %s, %s, %s", location, registerName(exec, r0).data(), registerName(exec, r1).data(), registerName(exec, r2).data(), registerName(exec, r3).data());
+            dataLog("[%4d] instanceof\t\t %s, %s, %s", location, registerName(exec, r0).data(), registerName(exec, r1).data(), registerName(exec, r2).data());
             dumpBytecodeCommentAndNewLine(location);
             break;
         }
@@ -1707,7 +1690,6 @@ CodeBlock::CodeBlock(CopyParsedBlockTag, CodeBlock& other)
     , m_heap(other.m_heap)
     , m_numCalleeRegisters(other.m_numCalleeRegisters)
     , m_numVars(other.m_numVars)
-    , m_numCapturedVars(other.m_numCapturedVars)
     , m_isConstructor(other.m_isConstructor)
     , m_ownerExecutable(*other.m_globalData, other.m_ownerExecutable.get(), other.m_ownerExecutable.get())
     , m_globalData(other.m_globalData)
@@ -1773,7 +1755,6 @@ CodeBlock::CodeBlock(ScriptExecutable* ownerExecutable, CodeType codeType, JSGlo
     , m_heap(&m_globalObject->globalData().heap)
     , m_numCalleeRegisters(0)
     , m_numVars(0)
-    , m_numCapturedVars(0)
     , m_isConstructor(isConstructor)
     , m_numParameters(0)
     , m_ownerExecutable(globalObject->globalData(), ownerExecutable, ownerExecutable)
@@ -2065,9 +2046,7 @@ void CodeBlock::finalizeUnconditionally()
 {
 #if ENABLE(LLINT)
     Interpreter* interpreter = m_globalData->interpreter;
-    // interpreter->classicEnabled() returns true if the old C++ interpreter is enabled. If that's enabled
-    // then we're not using LLInt.
-    if (!interpreter->classicEnabled() && !!numberOfInstructions()) {
+    if (!!numberOfInstructions()) {
         for (size_t size = m_propertyAccessInstructions.size(), i = 0; i < size; ++i) {
             Instruction* curInstruction = &instructions()[m_propertyAccessInstructions[i]];
             switch (interpreter->getOpcodeID(curInstruction[0].u.opcode)) {
@@ -2260,14 +2239,6 @@ void CodeBlock::stronglyVisitStrongReferences(SlotVisitor& visitor)
         visitor.append(&m_functionExprs[i]);
     for (size_t i = 0; i < m_functionDecls.size(); ++i)
         visitor.append(&m_functionDecls[i]);
-#if ENABLE(CLASSIC_INTERPRETER)
-    if (m_globalData->interpreter->classicEnabled() && !!numberOfInstructions()) {
-        for (size_t size = m_propertyAccessInstructions.size(), i = 0; i < size; ++i)
-            visitStructures(visitor, &instructions()[m_propertyAccessInstructions[i]]);
-        for (size_t size = m_globalResolveInstructions.size(), i = 0; i < size; ++i)
-            visitStructures(visitor, &instructions()[m_globalResolveInstructions[i]]);
-    }
-#endif
 
     updateAllPredictions(Collection);
 }
@@ -2444,27 +2415,6 @@ void CodeBlock::expressionRangeForBytecodeOffset(unsigned bytecodeOffset, int& d
     return;
 }
 
-#if ENABLE(CLASSIC_INTERPRETER)
-bool CodeBlock::hasGlobalResolveInstructionAtBytecodeOffset(unsigned bytecodeOffset)
-{
-    if (m_globalResolveInstructions.isEmpty())
-        return false;
-
-    int low = 0;
-    int high = m_globalResolveInstructions.size();
-    while (low < high) {
-        int mid = low + (high - low) / 2;
-        if (m_globalResolveInstructions[mid] <= bytecodeOffset)
-            low = mid + 1;
-        else
-            high = mid;
-    }
-
-    if (!low || m_globalResolveInstructions[low - 1] != bytecodeOffset)
-        return false;
-    return true;
-}
-#endif
 #if ENABLE(JIT)
 bool CodeBlock::hasGlobalResolveInfoAtBytecodeOffset(unsigned bytecodeOffset)
 {

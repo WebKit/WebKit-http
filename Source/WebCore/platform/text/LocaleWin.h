@@ -47,16 +47,17 @@ public:
     static PassOwnPtr<LocaleWin> create(LCID);
     static LocaleWin* currentLocale();
     ~LocaleWin();
-    double parseDate(const String&);
-    String formatDate(const DateComponents&);
+    virtual double parseDateTime(const String&, DateComponents::Type) OVERRIDE;
+    virtual String formatDateTime(const DateComponents&, FormatType = FormatTypeUnspecified) OVERRIDE;
 #if ENABLE(CALENDAR_PICKER)
-    String dateFormatText();
-    const Vector<String>& monthLabels();
-    const Vector<String>& weekDayShortLabels();
-    unsigned firstDayOfWeek() { return m_firstDayOfWeek; }
+    virtual String dateFormatText() OVERRIDE;
+    virtual const Vector<String>& monthLabels() OVERRIDE;
+    virtual const Vector<String>& weekDayShortLabels() OVERRIDE;
+    virtual unsigned firstDayOfWeek() OVERRIDE;
 #endif
 
-#if ENABLE(INPUT_TYPE_TIME_MULTIPLE_FIELDS)
+#if ENABLE(INPUT_MULTIPLE_FIELDS_UI)
+    virtual String dateFormat() OVERRIDE;
     virtual String timeFormat() OVERRIDE;
     virtual String shortTimeFormat() OVERRIDE;
     virtual const Vector<String>& timeAMPMLabels() OVERRIDE;
@@ -66,6 +67,9 @@ public:
     double parseDate(const String& format, int baseYear, const String& input);
     String formatDate(const String& format, int baseYear, int year, int month, int day);
     static String dateFormatText(const String& format, const String& yearText, const String& monthText, const String& dayText);
+#if ENABLE(INPUT_MULTIPLE_FIELDS_UI)
+    static String dateFormat(const String&);
+#endif
 
 private:
     explicit LocaleWin(LCID);
@@ -93,6 +97,9 @@ private:
     Vector<DateFormatToken> m_shortDateTokens;
     Vector<String> m_shortMonthLabels;
     Vector<String> m_monthLabels;
+#if ENABLE(INPUT_MULTIPLE_FIELDS_UI)
+    String m_dateFormat;
+#endif
 #if ENABLE(CALENDAR_PICKER)
     Vector<String> m_weekDayShortLabels;
     unsigned m_firstDayOfWeek;

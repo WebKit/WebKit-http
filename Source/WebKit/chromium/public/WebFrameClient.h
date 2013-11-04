@@ -62,6 +62,7 @@ class WebMediaPlayer;
 class WebMediaPlayerClient;
 class WebNode;
 class WebPlugin;
+class WebRTCPeerConnectionHandler;
 class WebSharedWorker;
 class WebSharedWorkerClient;
 class WebSocketStreamHandle;
@@ -398,28 +399,25 @@ public:
     // A WebSocket object is going to open new stream connection.
     virtual void willOpenSocketStream(WebSocketStreamHandle*) { }
 
+    // MediaStream -----------------------------------------------------
+
+    // A new WebRTCPeerConnectionHandler is created.
+    virtual void willStartUsingPeerConnectionHandler(WebFrame*, WebRTCPeerConnectionHandler*) { }
+
     // Messages ------------------------------------------------------
 
     // Notifies the embedder that a postMessage was issued on this frame, and
     // gives the embedder a chance to handle it instead of WebKit. Returns true
     // if the embedder handled it.
     virtual bool willCheckAndDispatchMessageEvent(
-        WebFrame* source,
-        WebSecurityOrigin target,
-        WebDOMMessageEvent) { return false; }
-
-    virtual bool willCheckAndDispatchMessageEvent(
         WebFrame* sourceFrame,
         WebFrame* targetFrame,
         WebSecurityOrigin target,
-        WebDOMMessageEvent event)
-    {
-        return willCheckAndDispatchMessageEvent(sourceFrame, target, event);
-    }
+        WebDOMMessageEvent event) { return false; }
 
     // Asks the embedder if a specific user agent should be used for the given
     // URL. Non-empty strings indicate an override should be used. Otherwise,
-    // WebKitPlatformSupport::userAgent() will be called to provide one.
+    // Platform::current()->userAgent() will be called to provide one.
     virtual WebString userAgentOverride(WebFrame*, const WebURL& url) { return WebString(); }
 
 protected:

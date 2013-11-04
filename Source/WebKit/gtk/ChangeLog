@@ -1,3 +1,295 @@
+2012-10-02  Anders Carlsson  <andersca@apple.com>
+
+        Change most GraphicsLayer::create calls to use the version that takes a GraphicsLayerFactory
+        https://bugs.webkit.org/show_bug.cgi?id=98217
+
+        Reviewed by Andreas Kling.
+
+        * WebCoreSupport/AcceleratedCompositingContextGL.cpp:
+        (WebKit::AcceleratedCompositingContext::initialize):
+
+2012-10-02  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Add API to get the web view that initiated a custom URI request to WebKit2 GTK+
+        https://bugs.webkit.org/show_bug.cgi?id=97895
+
+        Reviewed by Martin Robinson.
+
+        * WebCoreSupport/FrameNetworkingContextGtk.cpp:
+        (WebKit::FrameNetworkingContextGtk::initiatingPageID): Stub
+        implementation.
+        * WebCoreSupport/FrameNetworkingContextGtk.h:
+        (FrameNetworkingContextGtk): Added.
+
+2012-10-02  Adrian Perez de Castro  <aperez@igalia.com>
+
+        [GTK] Value not returned warning with geolocation disabled
+        https://bugs.webkit.org/show_bug.cgi?id=98148
+
+        Reviewed by Xan Lopez.
+
+        With geolocation disabled in the build, return a sensible value from
+        DumpRenderTreeSupportGtk::numberOfPendingGeolocationPermissionRequests.
+        This also avoids a compiler warning.
+
+        * WebCoreSupport/DumpRenderTreeSupportGtk.cpp:
+        (DumpRenderTreeSupportGtk::numberOfPendingGeolocationPermissionRequests):
+
+2012-10-01  Brady Eidson  <beidson@apple.com>
+
+        Remove the Safari 2 -> Safari 3 icon database import code.
+        https://bugs.webkit.org/show_bug.cgi?id=98113
+
+        Reviewed by Maciej Stachowiak.
+
+        Nuke the performImport() IconDatabaseClient method.
+
+        * webkit/webkitfavicondatabase.cpp:
+        (IconDatabaseClientGtk):
+
+2012-10-01  Arnaud Renevier  <a.renevier@sisa.samsung.com>
+
+        [Gtk] crash when accelerated composition is turned off
+        https://bugs.webkit.org/show_bug.cgi?id=98099
+
+        Reviewed by Martin Robinson.
+
+        frame->view()->updateLayoutAndStyleIfNeededRecursive() may reset root
+        compositing layer in flushAndRenderLayers. So, we check if compositing
+        is enabled afterwards, and return if it is not.
+
+        This bug is handled by LayoutTests/compositing/toggle-compositing.html
+
+        * WebCoreSupport/AcceleratedCompositingContextGL.cpp:
+        (WebKit::AcceleratedCompositingContext::flushAndRenderLayers):
+
+2012-10-01  Claudio Saavedra  <csaavedra@igalia.com>
+
+        [GTK] Save original uri for downloaded files
+        https://bugs.webkit.org/show_bug.cgi?id=95188
+
+        Reviewed by Carlos Garcia Campos.
+
+        gvfs stores metadata locally, and this information can later be
+        used by file management applications. Based on a patch by
+        Alexander Larsson <alexl@redhat.com>.
+
+        * webkit/webkitdownload.cpp:
+        (webkit_download_open_stream_for_uri): Save the download-uri as
+        file metadata.
+
+2012-10-01  Claudio Saavedra  <csaavedra@igalia.com>
+
+        [GTK] WebKitDownload: use more of GOwnPtr/GRefPtr
+        https://bugs.webkit.org/show_bug.cgi?id=98009
+
+        Reviewed by Carlos Garcia Campos.
+
+        Use more GOwnPtr/GRefPtr in WebKitDownload
+
+        * webkit/webkitdownload.cpp:
+        (webkit_download_open_stream_for_uri): Use GRefPtr
+        for a GFile and GOwnPtr for GError.
+        (webkit_download_set_destination_uri): Ditto.
+        (webkit_download_received_data): Use GOwnPtr for GError.
+
+2012-09-28  Mikhail Pozdnyakov  <mikhail.pozdnyakov@intel.com>
+
+        Code inside FrameLoaderClient::canShowMIMEType() implementations can be shared among different WK ports
+        https://bugs.webkit.org/show_bug.cgi?id=97547
+
+        Reviewed by Adam Barth.
+
+        Newly added WebCore::MIMETypeRegistry::canShowMIMEType() function is used
+        inside WebKit::FrameLoaderClient::canShowMIMEType().
+
+        * WebCoreSupport/FrameLoaderClientGtk.cpp:
+        (WebKit::FrameLoaderClient::canShowMIMEType):
+
+2012-09-28  Huang Dongsung  <luxtella@company100.net>
+
+        [GTK] Enable CSS Shaders layout LayoutTests on GTK+
+        https://bugs.webkit.org/show_bug.cgi?id=97821
+
+        Reviewed by Martin Robinson.
+
+        * WebCoreSupport/DumpRenderTreeSupportGtk.cpp:
+        (DumpRenderTreeSupportGtk::setCSSCustomFilterEnabled): Pass through to Settings object.
+        * WebCoreSupport/DumpRenderTreeSupportGtk.h:
+        (DumpRenderTreeSupportGtk):
+
+2012-09-27  Allan Sandfeld Jensen  <allan.jensen@digia.com>
+
+        Unify event handling of middle mouse button.
+        https://bugs.webkit.org/show_bug.cgi?id=97690
+
+        Reviewed by Tony Chang.
+
+        Remove port specific handling of middle mouse button press.
+
+        * WebCoreSupport/EditorClientGtk.cpp:
+        (WebKit::EditorClient::supportsGlobalSelection):
+        * WebCoreSupport/EditorClientGtk.h:
+        (EditorClient):
+        * webkit/webkitwebview.cpp:
+        (webkit_web_view_button_press_event):
+
+2012-09-26  Gustavo Noronha Silva  <gns@gnome.org>
+
+        Unreviewed build fix after 129707.
+
+        * webkit/webkitwebview.cpp:
+        (webkit_web_view_forward_context_menu_event):
+
+2012-09-26  Martin Robinson  <mrobinson@igalia.com>
+
+        [GTK] Use XDamage to simplify RedirectedXCompositeWindow
+        https://bugs.webkit.org/show_bug.cgi?id=97267
+
+        Reviewed by Alejandro G. Castro.
+
+        Use XDamage to queue redraws of the widget when redirecting accelerated compositing
+        to an offscreen window. This allows removing a finicky timer-based approach, improves
+        performance, and allows simplifying things greatly.
+
+        * GNUmakefile.am: Add the XDamage CFLAGS and LIBS.
+        * WebCoreSupport/AcceleratedCompositingContext.h:
+        (AcceleratedCompositingContext): Change the signature of compositeLayersToContext
+        to accept an enum that explains the composite purpose.
+        * WebCoreSupport/AcceleratedCompositingContextGL.cpp:
+        (WebKit::redirectedWindowDamagedCallback): Added.
+        (WebKit::AcceleratedCompositingContext::initialize): Handle the situation where
+        the RedirectedXCompositeWindow returns a null pointer.
+        (WebKit::AcceleratedCompositingContext::enabled): Ditto.
+        (WebKit::AcceleratedCompositingContext::renderLayersToWindow): Remove the code handling
+        the usable size of the RedirectedXCompositeWindow. The usable size is now always equal
+        to the size.
+        (WebKit::AcceleratedCompositingContext::compositeLayersToContext): When drawing for a
+        resize, first clear the entire context. Remove the double swap-buffer, as it's no
+        longer necessary.
+        (WebKit::AcceleratedCompositingContext::setRootCompositingLayer): Handle the case that
+        the redirected window is null.
+        (WebKit::AcceleratedCompositingContext::resizeRootLayer): Instead of doing another
+        immediate layer flush, just recomposite the current layer state and schedule a new
+        flush. This should make resizing faster.
+        (WebKit::AcceleratedCompositingContext::flushAndRenderLayers): We no longer need to
+        queue a redraw, unless we want to force one.
+
+2012-09-26  Zan Dobersek  <zandobersek@gmail.com>
+
+        [GTK] Enable some of the unstable CSS features
+        https://bugs.webkit.org/show_bug.cgi?id=97572
+
+        Reviewed by Martin Robinson.
+
+        Add a helper DumpRenderTreeSupportGtk method for enabling
+        the <style scoped> support in WebCore. This is used in DumpRenderTree.
+
+        * WebCoreSupport/DumpRenderTreeSupportGtk.cpp:
+        (DumpRenderTreeSupportGtk::setShadowDOMEnabled): Add missing
+        ENABLE(SHADOW_DOM) compilation guards.
+        (DumpRenderTreeSupportGtk::setStyleScopedEnabled):
+        * WebCoreSupport/DumpRenderTreeSupportGtk.h:
+        (DumpRenderTreeSupportGtk): Remove the 'enabled' parameter name from both
+        setShadowDOMEnabled and setStyleScopedEnabled method declarations as it adds
+        no information and is causing style warnings.
+
+2012-09-25  Beth Dakin  <bdakin@apple.com>
+
+        https://bugs.webkit.org/show_bug.cgi?id=95397
+        Need to merge didFirstVisuallyNonEmptyLayout and 
+        didNewFirstVisuallyNonEmptyLayout
+        -and corresponding-
+        <rdar://problem/10791680>
+
+        Reviewed by Sam Weinig.
+
+        Remove dispatchDidFirstLayout, 
+        dispatchDidFirstVisuallyNonEmptyLayout, and 
+        dispatchDidNewFirstVisuallyNonEmptyLayout. Their functionality 
+        is now replaced by dispatchDidLayout(LayoutMilestoneOptions)
+        * WebCoreSupport/FrameLoaderClientGtk.cpp:
+        (WebKit::FrameLoaderClient::dispatchDidLayout):
+        * WebCoreSupport/FrameLoaderClientGtk.h:
+        (FrameLoaderClient):
+
+        It is now necessary to opt into getting any of the 
+        "layout milestone" notifications.
+        * webkit/webkitwebview.cpp:
+        (webkit_web_view_init):
+
+2012-09-25  Paweł Forysiuk  <tuxator@o2.pl>
+
+        [GTK] Webkit 1.8.2 fails to build with MinGW with spellchecking enabled
+        https://bugs.webkit.org/show_bug.cgi?id=93255
+
+        Reviewed by Martin Robinson.
+
+        Build dies because of invalid cast. Additionaly word "interface" is in use with MinGW compiler.
+
+        * WebCoreSupport/TextCheckerClientGtk.cpp:
+        (WebKit::TextCheckerClientGtk::checkSpellingOfString): Use String to avoid unneded casting
+        * webkit/webkitspellcheckerenchant.cpp:
+        (webkit_spell_checker_enchant_spell_checker_interface_init): rename interface -> checkerInterface
+
+2012-09-24  Benjamin Poulain  <bpoulain@apple.com>
+
+        Fix Geolocation error reporting in the test support
+        https://bugs.webkit.org/show_bug.cgi?id=97386
+
+        Reviewed by Sam Weinig.
+
+        * WebCoreSupport/DumpRenderTreeSupportGtk.cpp:
+        (DumpRenderTreeSupportGtk::setMockGeolocationPositionUnavailableError):
+        * WebCoreSupport/DumpRenderTreeSupportGtk.h:
+        (DumpRenderTreeSupportGtk):
+
+2012-09-24  Zan Dobersek  <zandobersek@gmail.com>
+
+        [Gtk] Unskip the Shadow DOM layout tests
+        https://bugs.webkit.org/show_bug.cgi?id=90776
+
+        Reviewed by Ryosuke Niwa.
+
+        Add a method for enabling the Shadow DOM through RuntimeEnabledFeatures.
+        The method is called from DumpRenderTree when resetting state.
+
+        * WebCoreSupport/DumpRenderTreeSupportGtk.cpp:
+        (DumpRenderTreeSupportGtk::setShadowDOMEnabled):
+        * WebCoreSupport/DumpRenderTreeSupportGtk.h:
+        (DumpRenderTreeSupportGtk):
+
+2012-09-24  Joone Hur  <joone.hur@intel.com>
+
+        [GTK] Implement GraphicsLayer using Clutter
+        https://bugs.webkit.org/show_bug.cgi?id=73767
+
+        Reviewed by Martin Robinson.
+
+        This patch is needed for enabling Accelerated Compositing(Clutter backend)
+        with the patches submitted in bug 92045 and 91940.
+
+        * WebCoreSupport/AcceleratedCompositingContextClutter.cpp:
+        (WebKit::AcceleratedCompositingContext::scrollNonCompositedContents): Added to fix bulid break.
+        (WebKit):
+
+2012-09-19  Danilo Cesar Lemes de Paula  <danilo.cesar@collabora.co.uk>
+
+        [gtk] add enable-media-stream to websettings
+        https://bugs.webkit.org/show_bug.cgi?id=94361
+
+        Reviewed by Martin Robinson.
+
+        Applications should be allowed to enable/disable MediaStream on webkitwebsettings.
+
+        * webkit/webkitwebsettings.cpp:
+        (webkit_web_settings_class_init):
+        (webkit_web_settings_set_property):
+        (webkit_web_settings_get_property):
+        * webkit/webkitwebsettingsprivate.h:
+        * webkit/webkitwebview.cpp:
+        (webkit_web_view_update_settings):
+
 2012-09-14  Zan Dobersek  <zandobersek@gmail.com>
 
         [GTK] Clear application cache between tests in DumpRenderTree

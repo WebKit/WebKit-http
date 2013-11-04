@@ -37,6 +37,7 @@
 #include "platform/WebRect.h"
 #include "platform/WebString.h"
 #include <wtf/Assertions.h>
+#include <wtf/StringExtras.h>
 
 using namespace WebKit;
 using namespace std;
@@ -348,6 +349,7 @@ AccessibilityUIElement::AccessibilityUIElement(const WebAccessibilityObject& obj
     bindProperty("isCollapsed", &AccessibilityUIElement::isCollapsedGetterCallback);
     bindProperty("hasPopup", &AccessibilityUIElement::hasPopupGetterCallback);
     bindProperty("isValid", &AccessibilityUIElement::isValidGetterCallback);
+    bindProperty("isReadOnly", &AccessibilityUIElement::isReadOnlyGetterCallback);
     bindProperty("orientation", &AccessibilityUIElement::orientationGetterCallback);
 
     //
@@ -494,19 +496,23 @@ void AccessibilityUIElement::childrenCountGetterCallback(CppVariant* result)
 
 void AccessibilityUIElement::insertionPointLineNumberGetterCallback(CppVariant* result)
 {
-    WebVector<int> lineBreaks;
-    accessibilityObject().lineBreaks(lineBreaks);
-    int cursor = accessibilityObject().selectionEnd();
-    int line = 0;
-    while (line < static_cast<int>(lineBreaks.size()) && lineBreaks[line] <= cursor)
-        line++;
-    result->set(line);
+    if (!accessibilityObject().isFocused()) {
+        result->set(-1);
+        return;
+    }
+
+    int lineNumber = accessibilityObject().selectionEndLineNumber();
+    result->set(lineNumber);
 }
 
 void AccessibilityUIElement::selectedTextRangeGetterCallback(CppVariant* result)
 {
-    // FIXME: Implement this.
-    result->set(std::string());
+    unsigned selectionStart = accessibilityObject().selectionStart();
+    unsigned selectionEnd = accessibilityObject().selectionEnd();
+    char buffer[100];
+    snprintf(buffer, sizeof(buffer), "{%d, %d}", selectionStart, selectionEnd - selectionStart);
+
+    result->set(std::string(buffer));
 }
 
 void AccessibilityUIElement::isEnabledGetterCallback(CppVariant* result)
@@ -584,6 +590,11 @@ void AccessibilityUIElement::isValidGetterCallback(CppVariant* result)
     result->set(!accessibilityObject().isDetached());
 }
 
+void AccessibilityUIElement::isReadOnlyGetterCallback(CppVariant* result)
+{
+    result->set(accessibilityObject().isReadOnly());
+}
+
 void AccessibilityUIElement::orientationGetterCallback(CppVariant* result)
 {
     result->set(getOrientation(accessibilityObject()));
@@ -622,9 +633,22 @@ void AccessibilityUIElement::parametrizedAttributeNamesCallback(const CppArgumen
     result->setNull();
 }
 
-void AccessibilityUIElement::lineForIndexCallback(const CppArgumentList&, CppVariant* result)
+void AccessibilityUIElement::lineForIndexCallback(const CppArgumentList& arguments, CppVariant* result)
 {
-    result->setNull();
+    if (!arguments.size() || !arguments[0].isNumber()) {
+        result->setNull();
+        return;
+    }
+
+    int index = arguments[0].toInt32();
+
+    WebVector<int> lineBreaks;
+    accessibilityObject().lineBreaks(lineBreaks);
+    int line = 0;
+    int vectorSize = static_cast<int>(lineBreaks.size());
+    while (line < vectorSize && lineBreaks[line] <= index)
+        line++;
+    result->set(line);
 }
 
 void AccessibilityUIElement::boundsForRangeCallback(const CppArgumentList&, CppVariant* result)
@@ -713,9 +737,15 @@ void AccessibilityUIElement::titleUIElementCallback(const CppArgumentList&, CppV
     result->setNull();
 }
 
-void AccessibilityUIElement::setSelectedTextRangeCallback(const CppArgumentList&, CppVariant* result)
+void AccessibilityUIElement::setSelectedTextRangeCallback(const CppArgumentList&arguments, CppVariant* result)
 {
     result->setNull();
+    if (arguments.size() != 2 || !arguments[0].isNumber() || !arguments[1].isNumber())
+        return;
+
+    int selectionStart = arguments[0].toInt32();
+    int selectionEnd = selectionStart + arguments[1].toInt32();
+    accessibilityObject().setSelectedTextRange(selectionStart, selectionEnd);
 }
 
 void AccessibilityUIElement::attributeValueCallback(const CppArgumentList&, CppVariant* result)

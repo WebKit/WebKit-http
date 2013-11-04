@@ -351,6 +351,9 @@ public:
     bool hasScopedHTMLStyleChild() const { return getFlag(HasScopedHTMLStyleChildFlag); }
     void setHasScopedHTMLStyleChild(bool flag) { setFlag(flag, HasScopedHTMLStyleChildFlag); }
 
+    bool hasEventTargetData() const { return getFlag(HasEventTargetDataFlag); }
+    void setHasEventTargetData(bool flag) { setFlag(flag, HasEventTargetDataFlag); }
+
     enum ShouldSetAttached {
         SetAttached,
         DoNotSetAttached
@@ -426,8 +429,8 @@ public:
         ASSERT(this);
         // FIXME: below ASSERT is useful, but prevents the use of document() in the constructor or destructor
         // due to the virtual function call to nodeType().
-        ASSERT(m_document || (nodeType() == DOCUMENT_TYPE_NODE && !inDocument()));
-        return m_document;
+        ASSERT(documentInternal() || (nodeType() == DOCUMENT_TYPE_NODE && !inDocument()));
+        return documentInternal();
     }
 
     TreeScope* treeScope() const;
@@ -653,7 +656,7 @@ public:
 
 #if ENABLE(MUTATION_OBSERVERS)
     void getRegisteredMutationObserversOfType(HashMap<MutationObserver*, MutationRecordDeliveryOptions>&, MutationObserver::MutationType, const QualifiedName* attributeName);
-    MutationObserverRegistration* registerMutationObserver(PassRefPtr<MutationObserver>);
+    void registerMutationObserver(MutationObserver*, MutationObserverOptions, const HashSet<AtomicString>& attributeFilter);
     void unregisterMutationObserver(MutationObserverRegistration*);
     void registerTransientMutationObserver(MutationObserverRegistration*);
     void unregisterTransientMutationObserver(MutationObserverRegistration*);
@@ -710,10 +713,11 @@ private:
         InNamedFlowFlag = 1 << 26,
         HasAttrListFlag = 1 << 27,
         HasCustomCallbacksFlag = 1 << 28,
-        HasScopedHTMLStyleChildFlag = 1 << 29
+        HasScopedHTMLStyleChildFlag = 1 << 29,
+        HasEventTargetDataFlag = 1 << 30,
     };
 
-    // 3 bits remaining
+    // 2 bits remaining
 
     bool getFlag(NodeFlags mask) const { return m_nodeFlags & mask; }
     void setFlag(bool f, NodeFlags mask) const { m_nodeFlags = (m_nodeFlags & ~mask) | (-(int32_t)f & mask); } 
@@ -747,7 +751,11 @@ protected:
     NodeRareData* ensureRareData();
     void clearRareData();
 
+    void clearEventTargetData();
+
     void setHasCustomCallbacks() { setFlag(true, HasCustomCallbacksFlag); }
+
+    Document* documentInternal() const { return m_document; }
 
 private:
     friend class TreeShared<Node, ContainerNode>;
@@ -797,7 +805,6 @@ private:
 #if ENABLE(MUTATION_OBSERVERS)
     Vector<OwnPtr<MutationObserverRegistration> >* mutationObserverRegistry();
     HashSet<MutationObserverRegistration*>* transientMutationObserverRegistry();
-    void collectMatchingObserversForMutation(HashMap<MutationObserver*, MutationRecordDeliveryOptions>&, Node* fromNode, MutationObserver::MutationType, const QualifiedName* attributeName);
 #endif
 
     mutable uint32_t m_nodeFlags;

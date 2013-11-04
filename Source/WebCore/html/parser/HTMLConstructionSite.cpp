@@ -80,7 +80,7 @@ static inline void executeTask(HTMLConstructionSiteTask& task)
     if (task.nextChild)
         task.parent->parserInsertBefore(task.child.get(), task.nextChild.get());
     else
-        task.parent->parserAddChild(task.child.get());
+        task.parent->parserAppendChild(task.child.get());
 
     // JavaScript run from beforeload (or DOM Mutation or event handlers)
     // might have removed the child, in which case we should not attach it.
@@ -368,7 +368,7 @@ void HTMLConstructionSite::insertTextNode(const String& characters, WhitespaceMo
         // FIXME: We're only supposed to append to this text node if it
         // was the last text node inserted by the parser.
         CharacterData* textNode = static_cast<CharacterData*>(previousChild);
-        currentPosition = textNode->parserAppendData(characters.characters(), characters.length(), Text::defaultLengthLimit);
+        currentPosition = textNode->parserAppendData(characters, 0, Text::defaultLengthLimit);
     }
 
     while (currentPosition < characters.length()) {

@@ -204,15 +204,6 @@ bool WebRuntimeFeatures::isWebAudioEnabled()
 #endif
 }
 
-void WebRuntimeFeatures::enablePushState(bool)
-{
-}
-
-bool WebRuntimeFeatures::isPushStateEnabled(bool enable)
-{
-    return true;
-}
-
 void WebRuntimeFeatures::enableTouch(bool enable)
 {
 #if ENABLE(TOUCH_EVENTS)
@@ -363,6 +354,24 @@ bool WebRuntimeFeatures::isPeerConnectionEnabled()
 {
 #if ENABLE(MEDIA_STREAM)
     return RuntimeEnabledFeatures::peerConnectionEnabled();
+#else
+    return false;
+#endif
+}
+
+void WebRuntimeFeatures::enableDeprecatedPeerConnection(bool enable)
+{
+#if ENABLE(MEDIA_STREAM)
+    RuntimeEnabledFeatures::setDeprecatedPeerConnectionEnabled(enable);
+#else
+    UNUSED_PARAM(enable);
+#endif
+}
+
+bool WebRuntimeFeatures::isDeprecatedPeerConnectionEnabled()
+{
+#if ENABLE(MEDIA_STREAM)
+    return RuntimeEnabledFeatures::deprecatedPeerConnectionEnabled();
 #else
     return false;
 #endif

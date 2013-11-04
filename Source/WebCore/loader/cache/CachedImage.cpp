@@ -29,7 +29,6 @@
 #include "CachedResourceClient.h"
 #include "CachedResourceClientWalker.h"
 #include "CachedResourceLoader.h"
-#include "Frame.h"
 #include "FrameLoaderClient.h"
 #include "FrameLoaderTypes.h"
 #include "FrameView.h"
@@ -79,7 +78,7 @@ CachedImage::~CachedImage()
 
 void CachedImage::load(CachedResourceLoader* cachedResourceLoader, const ResourceLoaderOptions& options)
 {
-    if (!cachedResourceLoader || !cachedResourceLoader->shouldDeferImageLoad(m_resourceRequest.url()))
+    if (!cachedResourceLoader || cachedResourceLoader->autoLoadImages())
         CachedResource::load(cachedResourceLoader, options);
     else
         setLoading(false);
@@ -264,7 +263,12 @@ IntSize CachedImage::imageSizeForRenderer(const RenderObject* renderer, float mu
     float widthScale = m_image->hasRelativeWidth() ? 1.0f : multiplier;
     float heightScale = m_image->hasRelativeHeight() ? 1.0f : multiplier;
     IntSize minimumSize(imageSize.width() > 0 ? 1 : 0, imageSize.height() > 0 ? 1 : 0);
+#if ENABLE(SUBPIXEL_LAYOUT)
+    imageSize.setWidth(lroundf(imageSize.width() * widthScale));
+    imageSize.setHeight(lroundf(imageSize.height() * heightScale));
+#else
     imageSize.scale(widthScale, heightScale);
+#endif
     imageSize.clampToMinimumSize(minimumSize);
     return imageSize;
 }

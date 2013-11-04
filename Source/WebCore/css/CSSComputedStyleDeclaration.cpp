@@ -49,6 +49,7 @@
 #include "FontFeatureSettings.h"
 #include "FontFeatureValue.h"
 #include "FontValue.h"
+#include "HTMLFrameOwnerElement.h"
 #include "Pair.h"
 #include "Rect.h"
 #include "RenderBox.h"
@@ -58,6 +59,7 @@
 #include "StyleInheritedData.h"
 #include "StylePropertySet.h"
 #include "StylePropertyShorthand.h"
+#include "StyleResolver.h"
 #include "WebCoreMemoryInstrumentation.h"
 #include "WebKitCSSTransformValue.h"
 #include "WebKitFontFamilyNames.h"
@@ -377,6 +379,7 @@ static const CSSPropertyID computedProperties[] = {
     CSSPropertyMarkerEnd,
     CSSPropertyMarkerMid,
     CSSPropertyMarkerStart,
+    CSSPropertyMaskType,
     CSSPropertyShapeRendering,
     CSSPropertyStroke,
     CSSPropertyStrokeDasharray,
@@ -1383,15 +1386,57 @@ static PassRefPtr<CSSPrimitiveValue> fontWeightFromStyle(RenderStyle* style)
     return cssValuePool().createIdentifierValue(CSSValueNormal);
 }
 
+static bool isLayoutDependentProperty(CSSPropertyID propertyID)
+{
+    switch (propertyID) {
+    case CSSPropertyWidth:
+    case CSSPropertyHeight:
+    case CSSPropertyMargin:
+    case CSSPropertyMarginTop:
+    case CSSPropertyMarginBottom:
+    case CSSPropertyMarginLeft:
+    case CSSPropertyMarginRight:
+    case CSSPropertyPadding:
+    case CSSPropertyPaddingTop:
+    case CSSPropertyPaddingBottom:
+    case CSSPropertyPaddingLeft:
+    case CSSPropertyPaddingRight:
+    case CSSPropertyWebkitPerspectiveOrigin:
+    case CSSPropertyWebkitTransformOrigin:
+    case CSSPropertyWebkitTransform:
+#if ENABLE(CSS_FILTERS)
+    case CSSPropertyWebkitFilter:
+#endif
+        return true;
+    default:
+        return false;
+    }
+}
+
 PassRefPtr<CSSValue> CSSComputedStyleDeclaration::getPropertyCSSValue(CSSPropertyID propertyID, EUpdateLayout updateLayout) const
 {
     Node* node = m_node.get();
     if (!node)
         return 0;
 
-    // Make sure our layout is up to date before we allow a query on these attributes.
-    if (updateLayout)
-        node->document()->updateLayoutIgnorePendingStylesheets();
+    if (updateLayout) {
+        Document* document = m_node->document();
+        // FIXME: Some of these cases could be narrowed down or optimized better.
+        bool forceFullLayout = isLayoutDependentProperty(propertyID)
+            || node->isInShadowTree()
+            || (document->styleResolverIfExists() && document->styleResolverIfExists()->hasViewportDependentMediaQueries() && document->ownerElement())
+            || document->seamlessParentIFrame();
+
+        if (forceFullLayout)
+            document->updateLayoutIgnorePendingStylesheets();
+        else {
+            bool needsStyleRecalc = document->hasPendingForcedStyleRecalc();
+            for (Node* n = m_node.get(); n && !needsStyleRecalc; n = n->parentNode())
+                needsStyleRecalc = n->needsStyleRecalc();
+            if (needsStyleRecalc)
+                document->updateStyleIfNeeded();
+        }
+    }
 
     RenderObject* renderer = node->renderer();
 
@@ -2299,7 +2344,10 @@ PassRefPtr<CSSValue> CSSComputedStyleDeclaration::getPropertyCSSValue(CSSPropert
         case CSSPropertyWebkitPerspectiveOrigin: {
             RefPtr<CSSValueList> list = CSSValueList::createSpaceSeparated();
             if (renderer) {
-                LayoutRect box = sizingBox(renderer);
+                LayoutRect box;
+                if (renderer->isBox())
+                    box = toRenderBox(renderer)->borderBoxRect();
+
                 RenderView* renderView = m_node->document()->renderView();
                 list->append(zoomAdjustedPixelValue(minimumValueForLength(style->perspectiveOriginX(), box.width(), renderView), style.get()));
                 list->append(zoomAdjustedPixelValue(minimumValueForLength(style->perspectiveOriginY(), box.height(), renderView), style.get()));
@@ -2442,13 +2490,13 @@ PassRefPtr<CSSValue> CSSComputedStyleDeclaration::getPropertyCSSValue(CSSPropert
         case CSSPropertyWebkitWrapPadding:
             return cssValuePool().createValue(style->wrapPadding());
         case CSSPropertyWebkitShapeInside:
-            if (!style->wrapShapeInside())
+            if (!style->shapeInside())
                 return cssValuePool().createIdentifierValue(CSSValueAuto);
-            return valueForBasicShape(style->wrapShapeInside());
+            return valueForBasicShape(style->shapeInside());
         case CSSPropertyWebkitShapeOutside:
-            if (!style->wrapShapeOutside())
+            if (!style->shapeOutside())
                 return cssValuePool().createIdentifierValue(CSSValueAuto);
-            return valueForBasicShape(style->wrapShapeOutside());
+            return valueForBasicShape(style->shapeOutside());
         case CSSPropertyWebkitWrapThrough:
             return cssValuePool().createValue(style->wrapThrough());
 #endif
@@ -2613,6 +2661,7 @@ PassRefPtr<CSSValue> CSSComputedStyleDeclaration::getPropertyCSSValue(CSSPropert
         case CSSPropertyMarkerEnd:
         case CSSPropertyMarkerMid:
         case CSSPropertyMarkerStart:
+        case CSSPropertyMaskType:
         case CSSPropertyShapeRendering:
         case CSSPropertyStroke:
         case CSSPropertyStrokeDasharray:

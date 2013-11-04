@@ -42,6 +42,8 @@
 #include "SkTypeface.h"
 #include "SkTypes.h"
 #include "VDMXParser.h"
+#include <unicode/normlzr.h>
+#include <wtf/unicode/Unicode.h>
 
 namespace WebCore {
 
@@ -170,30 +172,30 @@ void SimpleFontData::platformDestroy()
 {
 }
 
-PassOwnPtr<SimpleFontData> SimpleFontData::createScaledFontData(const FontDescription& fontDescription, float scaleFactor) const
+PassRefPtr<SimpleFontData> SimpleFontData::createScaledFontData(const FontDescription& fontDescription, float scaleFactor) const
 {
     const float scaledSize = lroundf(fontDescription.computedSize() * scaleFactor);
-    return adoptPtr(new SimpleFontData(FontPlatformData(m_platformData, scaledSize), isCustomFont(), false));
+    return SimpleFontData::create(FontPlatformData(m_platformData, scaledSize), isCustomFont(), false);
 }
 
-SimpleFontData* SimpleFontData::smallCapsFontData(const FontDescription& fontDescription) const
+PassRefPtr<SimpleFontData> SimpleFontData::smallCapsFontData(const FontDescription& fontDescription) const
 {
     if (!m_derivedFontData)
         m_derivedFontData = DerivedFontData::create(isCustomFont());
     if (!m_derivedFontData->smallCaps)
         m_derivedFontData->smallCaps = createScaledFontData(fontDescription, smallCapsFraction);
 
-    return m_derivedFontData->smallCaps.get();
+    return m_derivedFontData->smallCaps;
 }
 
-SimpleFontData* SimpleFontData::emphasisMarkFontData(const FontDescription& fontDescription) const
+PassRefPtr<SimpleFontData> SimpleFontData::emphasisMarkFontData(const FontDescription& fontDescription) const
 {
     if (!m_derivedFontData)
         m_derivedFontData = DerivedFontData::create(isCustomFont());
     if (!m_derivedFontData->emphasisMark)
         m_derivedFontData->emphasisMark = createScaledFontData(fontDescription, emphasisMarkFraction);
 
-    return m_derivedFontData->emphasisMark.get();
+    return m_derivedFontData->emphasisMark;
 }
 
 bool SimpleFontData::containsCharacters(const UChar* characters, int length) const
@@ -249,5 +251,33 @@ float SimpleFontData::platformWidthForGlyph(Glyph glyph) const
         width = SkScalarRound(width);
     return SkScalarToFloat(width);
 }
+
+#if USE(HARFBUZZ_NG)
+bool SimpleFontData::canRenderCombiningCharacterSequence(const UChar* characters, size_t length) const
+{
+    if (!m_combiningCharacterSequenceSupport)
+        m_combiningCharacterSequenceSupport = adoptPtr(new HashMap<String, bool>);
+
+    WTF::HashMap<String, bool>::AddResult addResult = m_combiningCharacterSequenceSupport->add(String(characters, length), false);
+    if (!addResult.isNewEntry)
+        return addResult.iterator->second;
+
+    UErrorCode error = U_ZERO_ERROR;
+    Vector<UChar, 4> normalizedCharacters(length);
+    int32_t normalizedLength = unorm_normalize(characters, length, UNORM_NFC, UNORM_UNICODE_3_2, &normalizedCharacters[0], length, &error);
+    // Can't render if we have an error or no composition occurred.
+    if (U_FAILURE(error) || (static_cast<size_t>(normalizedLength) == length))
+        return false;
+
+    SkPaint paint;
+    m_platformData.setupPaint(&paint);
+    paint.setTextEncoding(SkPaint::kUTF16_TextEncoding);
+    if (paint.textToGlyphs(&normalizedCharacters[0], normalizedLength * 2, 0)) {
+        addResult.iterator->second = true;
+        return true;
+    }
+    return false;
+}
+#endif
 
 } // namespace WebCore

@@ -358,6 +358,8 @@ QWebPagePrivate::QWebPagePrivate(QWebPage *qq)
     // as expected out of the box, we use a default group similar to what other ports are doing.
     page->setGroupName("Default Group");
 
+    page->addLayoutMilestones(DidFirstVisuallyNonEmptyLayout);
+
     settings = new QWebSettings(page->settings());
 
     history.d = new QWebHistoryPrivate(static_cast<WebCore::BackForwardListImpl*>(page->backForwardList()));
@@ -755,21 +757,6 @@ void QWebPagePrivate::mouseTripleClickEvent(T *ev)
     ev->setAccepted(accepted);
 }
 
-void QWebPagePrivate::handleClipboard(QEvent* ev, Qt::MouseButton button)
-{
-#ifndef QT_NO_CLIPBOARD
-    if (QApplication::clipboard()->supportsSelection()) {
-        WebCore::Frame* focusFrame = page->focusController()->focusedOrMainFrame();
-        if (button == Qt::MidButton) {
-            if (focusFrame) {
-                focusFrame->editor()->command(AtomicString("PasteGlobalSelection")).execute();
-                ev->setAccepted(true);
-            }
-        }
-    }
-#endif
-}
-
 template<class T>
 void QWebPagePrivate::mouseReleaseEvent(T *ev)
 {
@@ -785,8 +772,6 @@ void QWebPagePrivate::mouseReleaseEvent(T *ev)
         accepted = frame->eventHandler()->handleMouseReleaseEvent(mev);
     ev->setAccepted(accepted);
 
-    if (!ev->isAccepted())
-        handleClipboard(ev, ev->button());
     handleSoftwareInputPanel(ev->button(), QPointF(ev->pos()).toPoint());
 }
 

@@ -49,15 +49,6 @@ typedef struct NPObject NPObject;
 typedef struct _NPP NPP_t;
 typedef NPP_t* NPP;
 
-#if OS(DARWIN)
-typedef struct CGFont* CGFontRef;
-#ifdef __OBJC__
-@class NSFont;
-#else
-class NSFont;
-#endif
-#endif // OS(DARWIN)
-
 #if OS(WINDOWS)
 typedef struct HFONT__* HFONT;
 #endif
@@ -99,27 +90,13 @@ public:
 #if OS(WINDOWS)
     static bool ensureFontLoaded(HFONT);
 #endif
-#if OS(DARWIN)
-    static bool loadFont(NSFont* srcFont, CGFontRef*, uint32_t* fontID);
-#elif OS(UNIX)
-    struct FontFamily {
-        String name;
-        bool isBold;
-        bool isItalic;
-    };
-    static void getFontFamilyForCharacters(const UChar*, size_t numCharacters, const char* preferredLocale, FontFamily*);
-#endif
 
     // IndexedDB ----------------------------------------------------------
     static PassRefPtr<IDBFactoryBackendInterface> idbFactory();
 
-    // JavaScript ---------------------------------------------------------
-    static void notifyJSOutOfMemory(Frame*);
-
     // Plugin -------------------------------------------------------------
     static bool plugins(bool refresh, Vector<PluginInfo>*);
     static NPObject* pluginScriptableObject(Widget*);
-    static bool popupsAllowed(NPP);
 
     // Screen -------------------------------------------------------------
     static int screenHorizontalDPI(Widget*);
@@ -150,136 +127,6 @@ public:
         GraphicsContext*, int part, int state, int classicState, const IntRect&);
     static void paintProgressBar(
         GraphicsContext*, const IntRect& barRect, const IntRect& valueRect, bool determinate, double animatedSeconds);
-#elif OS(DARWIN)
-    enum ThemePaintState {
-        StateDisabled,
-        StateInactive,
-        StateActive,
-        StatePressed,
-    };
-
-    enum ThemePaintSize {
-        SizeRegular,
-        SizeSmall,
-    };
-
-    enum ThemePaintScrollbarOrientation {
-        ScrollbarOrientationHorizontal,
-        ScrollbarOrientationVertical,
-    };
-
-    enum ThemePaintScrollbarParent {
-        ScrollbarParentScrollView,
-        ScrollbarParentRenderLayer,
-    };
-
-    struct ThemePaintScrollbarInfo {
-        ThemePaintScrollbarOrientation orientation;
-        ThemePaintScrollbarParent parent;
-        int maxValue;
-        int currentValue;
-        int visibleSize;
-        int totalSize;
-    };
-
-    static void paintScrollbarThumb(GraphicsContext*, ThemePaintState, ThemePaintSize, const IntRect&, const ThemePaintScrollbarInfo&);
-#elif OS(UNIX)
-    // The UI part which is being accessed.
-    enum ThemePart {
-        // ScrollbarTheme parts
-        PartScrollbarDownArrow,
-        PartScrollbarLeftArrow,
-        PartScrollbarRightArrow,
-        PartScrollbarUpArrow,
-        PartScrollbarHorizontalThumb,
-        PartScrollbarVerticalThumb,
-        PartScrollbarHorizontalTrack,
-        PartScrollbarVerticalTrack,
-
-        // RenderTheme parts
-        PartCheckbox,
-        PartRadio,
-        PartButton,
-        PartTextField,
-        PartMenuList,
-        PartSliderTrack,
-        PartSliderThumb,
-        PartInnerSpinButton,
-        PartProgressBar
-    };
-
-    // The current state of the associated Part.
-    enum ThemePaintState {
-        StateDisabled,
-        StateHover,
-        StateNormal,
-        StatePressed
-    };
-
-    struct ScrollbarTrackExtraParams {
-        // The bounds of the entire track, as opposed to the part being painted.
-        int trackX;
-        int trackY;
-        int trackWidth;
-        int trackHeight;
-    };
-
-    struct ButtonExtraParams {
-        bool checked;
-        bool indeterminate; // Whether the button state is indeterminate.
-        bool isDefault; // Whether the button is default button.
-        bool hasBorder;
-        unsigned backgroundColor;
-    };
-
-    struct TextFieldExtraParams {
-        bool isTextArea;
-        bool isListbox;
-        unsigned backgroundColor;
-    };
-
-    struct MenuListExtraParams {
-        bool hasBorder;
-        bool hasBorderRadius;
-        int arrowX;
-        int arrowY;
-        unsigned backgroundColor;
-    };
-
-    struct SliderExtraParams {
-        bool vertical;
-        bool inDrag;
-    };
-
-    struct InnerSpinButtonExtraParams {
-        bool spinUp;
-        bool readOnly;
-    };
-
-    struct ProgressBarExtraParams {
-        bool determinate;
-        int valueRectX;
-        int valueRectY;
-        int valueRectWidth;
-        int valueRectHeight;
-    };
-
-    union ThemePaintExtraParams {
-        ScrollbarTrackExtraParams scrollbarTrack;
-        ButtonExtraParams button;
-        TextFieldExtraParams textField;
-        MenuListExtraParams menuList;
-        SliderExtraParams slider;
-        InnerSpinButtonExtraParams innerSpin;
-        ProgressBarExtraParams progressBar;
-    };
-
-    // Gets the size of the given theme part. For variable sized items
-    // like vertical scrollbar thumbs, the width will be the required width of
-    // the track while the height will be the minimum height.
-    static IntSize getThemePartSize(ThemePart);
-    // Paint the given the given theme part.
-    static void paintThemePart(GraphicsContext*, ThemePart, ThemePaintState, const IntRect&, const ThemePaintExtraParams*);
 #endif
 };
 

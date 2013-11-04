@@ -30,19 +30,16 @@
 
 #include "config.h"
 #include "FontCache.h"
-
 #include "Font.h"
 #include "FontDescription.h"
+#include "FontFamily.h"
 #include "FontPlatformData.h"
 #include "Logging.h"
 #include "NotImplemented.h"
-#include "PlatformSupport.h"
 #include "SimpleFontData.h"
-
 #include "SkPaint.h"
 #include "SkTypeface.h"
 #include "SkUtils.h"
-
 #include <unicode/locid.h>
 #include <wtf/Assertions.h>
 #include <wtf/text/AtomicString.h>
@@ -54,13 +51,11 @@ void FontCache::platformInit()
 {
 }
 
-const SimpleFontData* FontCache::getFontDataForCharacters(const Font& font,
-                                                          const UChar* characters,
-                                                          int length)
+PassRefPtr<SimpleFontData> FontCache::getFontDataForCharacters(const Font& font, const UChar* characters, int length)
 {
     icu::Locale locale = icu::Locale::getDefault();
-    PlatformSupport::FontFamily family;
-    PlatformSupport::getFontFamilyForCharacters(characters, length, locale.getLanguage(), &family);
+    FontCache::SimpleFontFamily family;
+    FontCache::getFontFamilyForCharacters(characters, length, locale.getLanguage(), &family);
     if (family.name.isEmpty())
         return 0;
 
@@ -93,12 +88,12 @@ const SimpleFontData* FontCache::getFontDataForCharacters(const Font& font,
     return getCachedFontData(&platformData, DoNotRetain);
 }
 
-SimpleFontData* FontCache::getSimilarFontPlatformData(const Font& font)
+PassRefPtr<SimpleFontData> FontCache::getSimilarFontPlatformData(const Font& font)
 {
     return 0;
 }
 
-SimpleFontData* FontCache::getLastResortFallbackFont(const FontDescription& description, ShouldRetain shouldRetain)
+PassRefPtr<SimpleFontData> FontCache::getLastResortFallbackFont(const FontDescription& description, ShouldRetain shouldRetain)
 {
     DEFINE_STATIC_LOCAL(const AtomicString, sansStr, ("Sans"));
     DEFINE_STATIC_LOCAL(const AtomicString, serifStr, ("Serif"));

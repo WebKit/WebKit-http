@@ -32,26 +32,39 @@
 
 namespace JSC { namespace DFG {
 
-Array::Mode fromObserved(ArrayModes modes, bool makeSafe)
+Array::Mode fromObserved(ArrayProfile* profile, Array::Action action, bool makeSafe)
 {
-    // FIXME: we may want to add some polymorphic support in the future. That's why this
-    // is a switch statement right now.
-    
-    switch (modes) {
+    switch (profile->observedArrayModes()) {
     case 0:
+        return Array::Unprofiled;
+    case asArrayModes(NonArray):
+        if (action == Array::Write && !profile->mayInterceptIndexedAccesses())
+            return Array::BlankToArrayStorage; // FIXME: we don't know whether to go to slow put mode, or not. This is a decent guess.
         return Array::Undecided;
     case asArrayModes(NonArrayWithArrayStorage):
-        return makeSafe ? Array::ArrayStorageOutOfBounds : Array::ArrayStorage;
+        return makeSafe ? Array::ArrayStorageOutOfBounds : (profile->mayStoreToHole() ? Array::ArrayStorageToHole : Array::ArrayStorage);
     case asArrayModes(NonArrayWithSlowPutArrayStorage):
+    case asArrayModes(NonArrayWithArrayStorage) | asArrayModes(NonArrayWithSlowPutArrayStorage):
         return Array::SlowPutArrayStorage;
     case asArrayModes(ArrayWithArrayStorage):
-        return makeSafe ? Array::ArrayWithArrayStorageOutOfBounds : Array::ArrayWithArrayStorage;
+        return makeSafe ? Array::ArrayWithArrayStorageOutOfBounds : (profile->mayStoreToHole() ? Array::ArrayWithArrayStorageToHole : Array::ArrayWithArrayStorage);
     case asArrayModes(ArrayWithSlowPutArrayStorage):
+    case asArrayModes(ArrayWithArrayStorage) | asArrayModes(ArrayWithSlowPutArrayStorage):
         return Array::ArrayWithSlowPutArrayStorage;
     case asArrayModes(NonArrayWithArrayStorage) | asArrayModes(ArrayWithArrayStorage):
-        return makeSafe ? Array::PossiblyArrayWithArrayStorageOutOfBounds : Array::PossiblyArrayWithArrayStorage;
+        return makeSafe ? Array::PossiblyArrayWithArrayStorageOutOfBounds : (profile->mayStoreToHole() ? Array::PossiblyArrayWithArrayStorageToHole : Array::PossiblyArrayWithArrayStorage);
     case asArrayModes(NonArrayWithSlowPutArrayStorage) | asArrayModes(ArrayWithSlowPutArrayStorage):
+    case asArrayModes(NonArrayWithArrayStorage) | asArrayModes(ArrayWithArrayStorage) | asArrayModes(NonArrayWithSlowPutArrayStorage) | asArrayModes(ArrayWithSlowPutArrayStorage):
         return Array::PossiblyArrayWithSlowPutArrayStorage;
+    case asArrayModes(NonArray) | asArrayModes(NonArrayWithArrayStorage):
+        if (action == Array::Write && !profile->mayInterceptIndexedAccesses())
+            return Array::BlankToArrayStorage;
+        return Array::Undecided;
+    case asArrayModes(NonArray) | asArrayModes(NonArrayWithSlowPutArrayStorage):
+    case asArrayModes(NonArray) | asArrayModes(NonArrayWithArrayStorage) | asArrayModes(NonArrayWithSlowPutArrayStorage):
+        if (action == Array::Write && !profile->mayInterceptIndexedAccesses())
+            return Array::BlankToSlowPutArrayStorage;
+        return Array::Undecided;
     default:
         // We know that this is possibly a kind of array for which, though there is no
         // useful data in the array profile, we may be able to extract useful data from
@@ -59,11 +72,6 @@ Array::Mode fromObserved(ArrayModes modes, bool makeSafe)
         // the predictions propagator decide later.
         return Array::Undecided;
     }
-}
-
-Array::Mode fromStructure(Structure* structure, bool makeSafe)
-{
-    return fromObserved(arrayModeFromStructure(structure), makeSafe);
 }
 
 Array::Mode refineArrayMode(Array::Mode arrayMode, SpeculatedType base, SpeculatedType index)
@@ -78,6 +86,12 @@ Array::Mode refineArrayMode(Array::Mode arrayMode, SpeculatedType base, Speculat
     
     if (!isInt32Speculation(index) || !isCellSpeculation(base))
         return Array::Generic;
+    
+    if (arrayMode == Array::Unprofiled) {
+        // If the indexing type wasn't recorded in the array profile but the values are
+        // base=cell property=int, then we know that this access didn't execute.
+        return Array::ForceExit;
+    }
     
     if (arrayMode != Array::Undecided)
         return arrayMode;
@@ -131,8 +145,10 @@ bool modeAlreadyChecked(AbstractValue& value, Array::Mode arrayMode)
         return isStringSpeculation(value.m_type);
         
     case Array::ArrayStorage:
+    case Array::ArrayStorageToHole:
     case Array::ArrayStorageOutOfBounds:
     case Array::PossiblyArrayWithArrayStorage:
+    case Array::PossiblyArrayWithArrayStorageToHole:
     case Array::PossiblyArrayWithArrayStorageOutOfBounds:
         return value.m_currentKnownStructure.hasSingleton()
             && (value.m_currentKnownStructure.singleton()->indexingType() & HasArrayStorage);
@@ -140,9 +156,10 @@ bool modeAlreadyChecked(AbstractValue& value, Array::Mode arrayMode)
     case Array::SlowPutArrayStorage:
     case Array::PossiblyArrayWithSlowPutArrayStorage:
         return value.m_currentKnownStructure.hasSingleton()
-            && (value.m_currentKnownStructure.singleton()->indexingType() & HasSlowPutArrayStorage);
+            && (value.m_currentKnownStructure.singleton()->indexingType() & (HasArrayStorage | HasSlowPutArrayStorage));
         
     case Array::ArrayWithArrayStorage:
+    case Array::ArrayWithArrayStorageToHole:
     case Array::ArrayWithArrayStorageOutOfBounds:
         return value.m_currentKnownStructure.hasSingleton()
             && (value.m_currentKnownStructure.singleton()->indexingType() & HasArrayStorage)
@@ -150,8 +167,11 @@ bool modeAlreadyChecked(AbstractValue& value, Array::Mode arrayMode)
         
     case Array::ArrayWithSlowPutArrayStorage:
         return value.m_currentKnownStructure.hasSingleton()
-            && (value.m_currentKnownStructure.singleton()->indexingType() & HasSlowPutArrayStorage)
+            && (value.m_currentKnownStructure.singleton()->indexingType() & (HasArrayStorage | HasSlowPutArrayStorage))
             && (value.m_currentKnownStructure.singleton()->indexingType() & IsArray);
+        
+    case ALL_EFFECTFUL_ARRAY_STORAGE_MODES:
+        return false;
         
     case Array::Arguments:
         return isArgumentsSpeculation(value.m_type);
@@ -184,6 +204,7 @@ bool modeAlreadyChecked(AbstractValue& value, Array::Mode arrayMode)
         return isFloat64ArraySpeculation(value.m_type);
         
     case Array::Undecided:
+    case Array::Unprofiled:
         break;
     }
     
@@ -196,6 +217,8 @@ const char* modeToString(Array::Mode mode)
     switch (mode) {
     case Array::Undecided:
         return "Undecided";
+    case Array::Unprofiled:
+        return "Unprofiled";
     case Array::Generic:
         return "Generic";
     case Array::ForceExit:
@@ -204,22 +227,32 @@ const char* modeToString(Array::Mode mode)
         return "String";
     case Array::ArrayStorage:
         return "ArrayStorage";
+    case Array::ArrayStorageToHole:
+        return "ArrayStorageToHole";
     case Array::SlowPutArrayStorage:
         return "SlowPutArrayStorage";
     case Array::ArrayStorageOutOfBounds:
         return "ArrayStorageOutOfBounds";
     case Array::ArrayWithArrayStorage:
         return "ArrayWithArrayStorage";
+    case Array::ArrayWithArrayStorageToHole:
+        return "ArrayWithArrayStorageToHole";
     case Array::ArrayWithSlowPutArrayStorage:
         return "ArrayWithSlowPutArrayStorage";
     case Array::ArrayWithArrayStorageOutOfBounds:
         return "ArrayWithArrayStorageOutOfBounds";
     case Array::PossiblyArrayWithArrayStorage:
         return "PossiblyArrayWithArrayStorage";
+    case Array::PossiblyArrayWithArrayStorageToHole:
+        return "PossiblyArrayWithArrayStorageToHole";
     case Array::PossiblyArrayWithSlowPutArrayStorage:
         return "PossiblyArrayWithSlowPutArrayStorage";
     case Array::PossiblyArrayWithArrayStorageOutOfBounds:
         return "PossiblyArrayWithArrayStorageOutOfBounds";
+    case Array::BlankToArrayStorage:
+        return "BlankToArrayStorage";
+    case Array::BlankToSlowPutArrayStorage:
+        return "BlankToSlowPutArrayStorage";
     case Array::Arguments:
         return "Arguments";
     case Array::Int8Array:

@@ -1,3 +1,91 @@
+2012-10-03  Ryuan Choi  <ryuan.choi@samsung.com>
+
+        [EFL] Default.edj should be generated although ENABLE_WEBKIT disabled.
+        https://bugs.webkit.org/show_bug.cgi?id=97753
+
+        Reviewed by Laszlo Gombos.
+
+        default.edj is used in both webkit/efl and webkit2/efl.
+        However, it has been generated only when ENABLE_WEBKIT is enabled.
+
+        This patch separates the script which generates default.edj
+        from source/webkit/platformefl.cmake.
+
+        * PlatformEfl.cmake: Extracted codes which is related to default.edj.
+
+2012-10-03  Otto Derek Cheung  <otcheung@rim.com>
+
+        [BlackBerry] Implementing the NetworkInfo API for BB port
+        https://bugs.webkit.org/show_bug.cgi?id=98273
+
+        Reviewed by Rob Buis.
+
+        Adding new classes to support NetworkInfo API in the
+        BlackBerry Port.
+
+        * PlatformBlackBerry.cmake:
+
+2012-10-02  Krzysztof Czech  <k.czech@samsung.com>
+
+        [EFL] Add file EWKTestEnvironment.cpp to build system.
+        https://bugs.webkit.org/show_bug.cgi?id=94925
+
+        Reviewed by Gyuyoung Kim.
+
+        Change is related to modifications in wk1 unit tests.
+
+        * PlatformEfl.cmake:
+
+2012-09-27  Anders Carlsson  <andersca@apple.com>
+
+        Get rid of more unused WK1 plug-in code
+        https://bugs.webkit.org/show_bug.cgi?id=97835
+
+        Reviewed by Mark Rowe.
+
+        Remove WebNetscapeDeprecatedFunctions.c and WebNetscapeDeprecatedFunctions.h from the Xcode project.
+
+        * WebKit.xcodeproj/project.pbxproj:
+
+2012-09-27  Christophe Dumez  <christophe.dumez@intel.com>
+
+        [EFL][CMAKE] Default theme files are outdated in PlatformEfl.cmake
+        https://bugs.webkit.org/show_bug.cgi?id=97769
+
+        Reviewed by Kenneth Rohde Christiansen.
+
+        Update Default theme files in PlatformEfl.cmake so that
+        changes to those files are properly picked up by CMake
+        when building incrementally.
+
+        * PlatformEfl.cmake:
+
+2012-09-24  Arvid Nilsson  <anilsson@rim.com>
+
+        [BlackBerry] Add cookie database API
+        https://bugs.webkit.org/show_bug.cgi?id=97102
+
+        Reviewed by Antonio Gomes.
+
+        Add cookie database file to build system.
+
+        Reviewed internally by Otto D. Cheung.
+
+        * PlatformBlackBerry.cmake:
+
+2012-09-21  Arvid Nilsson  <anilsson@rim.com>
+
+        [BlackBerry] Remove obsolete compositing surface code
+        https://bugs.webkit.org/show_bug.cgi?id=97314
+
+        Reviewed by Antonio Gomes.
+
+        Remove compositing surface code from build system.
+
+        PR 208038.
+
+        * PlatformBlackBerry.cmake:
+
 2012-09-14  Tor Arne Vestbø  <tor.arne.vestbo@nokia.com>
 
         [Qt] Make force_static_libs_as_shared work on Mac OS

@@ -25,6 +25,8 @@ ROOT_WEBKIT_DIR = $$replace(PWD, /Tools/qmake/mkspecs/features$,)
 WEBKIT_SUBDIR = $$replace(_PRO_FILE_PWD_, $${ROOT_WEBKIT_DIR},)
 ROOT_BUILD_DIR = $$replace(OUT_PWD, $${WEBKIT_SUBDIR}$,)
 
+# ### FIXME: Remove this after Qt 5 beta 2. Syncqt is not called from default_pre.prf
+# anymore, so this was moved to api.pri.
 # We want the QtWebKit API forwarding includes to live in the root build dir.
 MODULE_BASE_DIR = $$ROOT_WEBKIT_DIR
 MODULE_BASE_OUTDIR = $$ROOT_BUILD_DIR
@@ -88,8 +90,6 @@ unix:config_gccdepends {
     # teambuilder nor icecream is messing up the .d file output).
     CONFIG += GNUmake gcc_MD_depends
 }
-
-!haveQt(5):!recursive_include: error("Building WebKit with Qt versions older than 5.0 is not supported.")
 
 # We use private_tests to detect developer build, since the destdir will
 # always be our webkit build dir. This might change as configure changes.

@@ -79,6 +79,7 @@ public:
     static bool findString(const Evas_Object* ewkView, const String& text, WebCore::FindOptions);
     static bool isCommandEnabled(const Evas_Object* ewkView, const char* name);
     static void setCSSGridLayoutEnabled(const Evas_Object* ewkView, bool enabled);
+    static void setCSSRegionsEnabled(const Evas_Object* ewkView, bool enabled);
     static void setSmartInsertDeleteEnabled(Evas_Object* ewkView, bool enabled);
     static void setSelectTrailingWhitespaceEnabled(Evas_Object* ewkView, bool enabled);
 
@@ -106,6 +107,7 @@ public:
     static void setAuthorAndUserStylesEnabled(Evas_Object* ewkView, bool);
     static void setDomainRelaxationForbiddenForURLScheme(bool forbidden, const String& scheme);
     static void setSerializeHTTPLoads(bool);
+    static void setShouldTrackVisitedLinks(bool);
     
     // Web Intents
     static void sendWebIntentResponse(Ewk_Intent_Request*, JSStringRef response);

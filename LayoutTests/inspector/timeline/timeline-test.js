@@ -168,7 +168,6 @@ InspectorTest.FakeFileReader = function(input, delegate, callback)
 InspectorTest.FakeFileReader.prototype = {
     start: function(output)
     {
-        output.startTransfer();
         this._delegate.onTransferStarted(this);
 
         var length = this._input.length;
@@ -176,15 +175,15 @@ InspectorTest.FakeFileReader.prototype = {
 
         var chunk = this._input.substring(0, half);
         this._loadedSize += chunk.length;
-        output.transferChunk(chunk);
+        output.write(chunk);
         this._delegate.onChunkTransferred(this);
 
         chunk = this._input.substring(half);
         this._loadedSize += chunk.length;
-        output.transferChunk(chunk);
+        output.write(chunk);
         this._delegate.onChunkTransferred(this);
 
-        output.finishTransfer();
+        output.close();
         this._delegate.onTransferFinished(this);
 
         this._callback();
@@ -206,34 +205,6 @@ InspectorTest.FakeFileReader.prototype = {
     {
         return "fakeFile";
     }
-};
-
-InspectorTest.FakeFileWriter = function(delegate, callback)
-{
-    this._delegate = delegate;
-    this._callback = callback;
-    this._buffer = "";
-};
-
-InspectorTest.FakeFileWriter.prototype = {
-    startTransfer: function()
-    {
-        this._delegate.onTransferStarted(this);
-    },
-
-    transferChunk: function(chunk)
-    {
-        this._buffer += chunk;
-        this._delegate.onChunkTransferred(this);
-    },
-
-    finishTransfer: function()
-    {
-        this._delegate.onTransferFinished(this);
-        this._callback(this._buffer);
-    },
-
-    dispose: function() { }
 };
 
 };

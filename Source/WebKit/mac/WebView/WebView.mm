@@ -392,6 +392,20 @@ FindOptions coreOptions(WebFindOptions options)
         | (options & WebFindOptionsStartInSelection ? StartInSelection : 0);
 }
 
+LayoutMilestones coreLayoutMilestones(WebLayoutMilestones milestones)
+{
+    return (milestones & WebDidFirstLayout ? DidFirstLayout : 0)
+        | (milestones & WebDidFirstVisuallyNonEmptyLayout ? DidFirstVisuallyNonEmptyLayout : 0)
+        | (milestones & WebDidHitRelevantRepaintedObjectsAreaThreshold ? DidHitRelevantRepaintedObjectsAreaThreshold : 0);
+}
+
+WebLayoutMilestones kitLayoutMilestones(LayoutMilestones milestones)
+{
+    return (milestones & DidFirstLayout ? WebDidFirstLayout : 0)
+        | (milestones & DidFirstVisuallyNonEmptyLayout ? WebDidFirstVisuallyNonEmptyLayout : 0)
+        | (milestones & DidHitRelevantRepaintedObjectsAreaThreshold ? WebDidHitRelevantRepaintedObjectsAreaThreshold : 0);
+}
+
 @interface WebView (WebFileInternal)
 - (float)_deviceScaleFactor;
 - (BOOL)_isLoading;
@@ -1430,6 +1444,12 @@ static bool needsSelfRetainWhileLoadingQuirk()
     settings->setUsesEncodingDetector([preferences usesEncodingDetector]);
     settings->setFantasyFontFamily([preferences fantasyFontFamily]);
     settings->setFixedFontFamily([preferences fixedFontFamily]);
+    settings->setScreenFontSubstitutionEnabled(
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1090
+        [[NSUserDefaults standardUserDefaults] boolForKey:@"NSFontDefaultScreenFontSubstitutionEnabled"] ||
+#endif
+        [preferences screenFontSubstitutionEnabled]
+    );
     settings->setForceFTPDirectoryListings([preferences _forceFTPDirectoryListings]);
     settings->setFTPDirectoryTemplatePath([preferences _ftpDirectoryTemplatePath]);
     settings->setLocalStorageDatabasePath([preferences _localStorageDatabasePath]);
@@ -1548,6 +1568,18 @@ static bool needsSelfRetainWhileLoadingQuirk()
     settings->setNeedsDidFinishLoadOrderQuirk(needsDidFinishLoadOrderQuirk());
     settings->setDiagnosticLoggingEnabled([preferences diagnosticLoggingEnabled]);
 
+    switch ([preferences storageBlockingPolicy]) {
+    case WebAllowAllStorage:
+        settings->setStorageBlockingPolicy(SecurityOrigin::AllowAllStorage);
+        break;
+    case WebBlockThirdPartyStorage:
+        settings->setStorageBlockingPolicy(SecurityOrigin::BlockThirdPartyStorage);
+        break;
+    case WebBlockAllStorage:
+        settings->setStorageBlockingPolicy(SecurityOrigin::BlockAllStorage);
+        break;
+    }
+
     // We have enabled this setting in WebKit2 for the sake of some ScrollingCoordinator work.
     // To avoid possible rendering differences, we should enable it for WebKit1 too.
     settings->setFixedPositionCreatesStackingContext(true);
@@ -1622,6 +1654,7 @@ static inline IMP getMethod(id o, SEL s)
     cache->didFinishLoadForFrameFunc = getMethod(delegate, @selector(webView:didFinishLoadForFrame:));
     cache->didFirstLayoutInFrameFunc = getMethod(delegate, @selector(webView:didFirstLayoutInFrame:));
     cache->didFirstVisuallyNonEmptyLayoutInFrameFunc = getMethod(delegate, @selector(webView:didFirstVisuallyNonEmptyLayoutInFrame:));
+    cache->didLayoutFunc = getMethod(delegate, @selector(webView:didLayout:));
     cache->didHandleOnloadEventsForFrameFunc = getMethod(delegate, @selector(webView:didHandleOnloadEventsForFrame:));
     cache->didReceiveIconForFrameFunc = getMethod(delegate, @selector(webView:didReceiveIcon:forFrame:));
     cache->didReceiveServerRedirectForProvisionalLoadForFrameFunc = getMethod(delegate, @selector(webView:didReceiveServerRedirectForProvisionalLoadForFrame:));
@@ -1633,6 +1666,19 @@ static inline IMP getMethod(id o, SEL s)
     cache->didDisplayInsecureContentFunc = getMethod(delegate, @selector(webViewDidDisplayInsecureContent:));
     cache->didRunInsecureContentFunc = getMethod(delegate, @selector(webView:didRunInsecureContent:));
     cache->didDetectXSSFunc = getMethod(delegate, @selector(webView:didDetectXSS:));
+
+    // It would be nice to get rid of this code and transition all clients to using didLayout instead of
+    // didFirstLayoutInFrame and didFirstVisuallyNonEmptyLayoutInFrame. In the meantime, this is required
+    // for backwards compatibility.
+    Page* page = core(self);
+    if (page) {
+        unsigned milestones = 0;
+        if (cache->didFirstLayoutInFrameFunc)
+            milestones |= DidFirstLayout;
+        if (cache->didFirstVisuallyNonEmptyLayoutInFrameFunc)
+            milestones |= DidFirstVisuallyNonEmptyLayout;
+        page->addLayoutMilestones(static_cast<LayoutMilestones>(milestones));
+    }
 }
 
 - (void)_cacheScriptDebugDelegateImplementations
@@ -2860,6 +2906,24 @@ static PassOwnPtr<Vector<String> > toStringVector(NSArray* patterns)
 
     ASSERT_NOT_REACHED();
     return WebPaginationModeUnpaginated;
+}
+
+- (void)_listenForLayoutMilestones:(WebLayoutMilestones)layoutMilestones
+{
+    Page* page = core(self);
+    if (!page)
+        return;
+
+    page->addLayoutMilestones(coreLayoutMilestones(layoutMilestones));
+}
+
+- (WebLayoutMilestones)_layoutMilestones
+{
+    Page* page = core(self);
+    if (!page)
+        return 0;
+
+    return kitLayoutMilestones(page->layoutMilestones());
 }
 
 - (void)_setPaginationBehavesLikeColumns:(BOOL)behavesLikeColumns
@@ -6510,11 +6574,11 @@ static void glibContextIterationCallback(CFRunLoopObserverRef, CFRunLoopActivity
 #endif // ENABLE(GEOLOCATION)
 }
 
-- (void)_geolocationDidFailWithError:(NSError *)error
+- (void)_geolocationDidFailWithMessage:(NSString *)errorMessage
 {
 #if ENABLE(GEOLOCATION)
     if (_private && _private->page) {
-        RefPtr<GeolocationError> geolocatioError = GeolocationError::create(GeolocationError::PositionUnavailable, [error localizedDescription]);
+        RefPtr<GeolocationError> geolocatioError = GeolocationError::create(GeolocationError::PositionUnavailable, errorMessage);
         WebCore::GeolocationController::from(_private->page)->errorOccurred(geolocatioError.get());
     }
 #endif // ENABLE(GEOLOCATION)

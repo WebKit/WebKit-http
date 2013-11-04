@@ -46,7 +46,7 @@
 #include <wtf/unicode/CharacterNames.h>
 
 #if ENABLE(CSS_EXCLUSIONS)
-#include "WrapShapeInfo.h"
+#include "ExclusionShapeInsideInfo.h"
 #endif
 
 #if ENABLE(SVG)
@@ -62,6 +62,13 @@ namespace WebCore {
 
 // We don't let our line box tree for a single line get any deeper than this.
 const unsigned cMaxLineDepth = 200;
+
+#if ENABLE(CSS_EXCLUSIONS)
+static inline ExclusionShapeInsideInfo* layoutExclusionShapeInsideInfo(const RenderBlock* block)
+{
+    return block->view()->layoutState()->exclusionShapeInsideInfo();
+}
+#endif
 
 class LineWidth {
 public:
@@ -80,19 +87,16 @@ public:
     {
         ASSERT(block);
 #if ENABLE(CSS_EXCLUSIONS)
-        WrapShapeInfo* wrapShapeInfo = m_block->wrapShapeInfo();
+        ExclusionShapeInsideInfo* exclusionShapeInsideInfo = layoutExclusionShapeInsideInfo(m_block);
         // FIXME: Bug 91878: Add support for multiple segments, currently we only support one
-        if (wrapShapeInfo && wrapShapeInfo->lineState() == WrapShapeInfo::LINE_INSIDE_SHAPE) {
-            // All interior shape positions should have at least one segment
-            ASSERT(wrapShapeInfo->hasSegments());
-            m_segment = &wrapShapeInfo->segments()[0];
-        }
+        if (exclusionShapeInsideInfo && exclusionShapeInsideInfo->hasSegments())
+            m_segment = &exclusionShapeInsideInfo->segments()[0];
 #endif
         updateAvailableWidth();
     }
 #if ENABLE(SUBPIXEL_LAYOUT)
-    bool fitsOnLine() const { return currentWidth() <= m_availableWidth + LayoutUnit::epsilon(); }
-    bool fitsOnLine(float extra) const { return currentWidth() + extra <= m_availableWidth + LayoutUnit::epsilon(); }
+    bool fitsOnLine() const { return currentWidth() <= m_availableWidth; }
+    bool fitsOnLine(float extra) const { return currentWidth() + extra <= m_availableWidth; }
 #else
     bool fitsOnLine() const { return currentWidth() <= m_availableWidth; }
     bool fitsOnLine(float extra) const { return currentWidth() + extra <= m_availableWidth; }
@@ -804,10 +808,10 @@ void RenderBlock::computeInlineDirectionPositionsForLine(RootInlineBox* lineBox,
     float logicalLeft = pixelSnappedLogicalLeftOffsetForLine(logicalHeight(), firstLine, lineLogicalHeight);
     float logicalRight = pixelSnappedLogicalRightOffsetForLine(logicalHeight(), firstLine, lineLogicalHeight);
 #if ENABLE(CSS_EXCLUSIONS)
-    WrapShapeInfo* wrapShapeInfo = this->wrapShapeInfo();
-    if (wrapShapeInfo && wrapShapeInfo->lineState() == WrapShapeInfo::LINE_INSIDE_SHAPE) {
-        logicalLeft = max<float>(roundToInt(wrapShapeInfo->segments()[0].logicalLeft), logicalLeft);
-        logicalRight = min<float>(floorToInt(wrapShapeInfo->segments()[0].logicalRight), logicalRight);
+    ExclusionShapeInsideInfo* exclusionShapeInsideInfo = layoutExclusionShapeInsideInfo(this);
+    if (exclusionShapeInsideInfo && exclusionShapeInsideInfo->hasSegments()) {
+        logicalLeft = max<float>(roundToInt(exclusionShapeInsideInfo->segments()[0].logicalLeft), logicalLeft);
+        logicalRight = min<float>(floorToInt(exclusionShapeInsideInfo->segments()[0].logicalRight), logicalRight);
     }
 #endif
     float availableLogicalWidth = logicalRight - logicalLeft;
@@ -1296,10 +1300,18 @@ void RenderBlock::layoutRunsAndFloatsInRange(LineLayoutState& layoutState, Inlin
     LineBreaker lineBreaker(this);
 
 #if ENABLE(CSS_EXCLUSIONS)
-    WrapShapeInfo* wrapShapeInfo = this->wrapShapeInfo();
-    // Move to the top of the shape inside to begin layout
-    if (wrapShapeInfo && logicalHeight() < wrapShapeInfo->shapeLogicalTop())
-        setLogicalHeight(wrapShapeInfo->shapeLogicalTop());
+    LayoutUnit absoluteLogicalTop;
+    ExclusionShapeInsideInfo* exclusionShapeInsideInfo = layoutExclusionShapeInsideInfo(this);
+    if (exclusionShapeInsideInfo) {
+        if (exclusionShapeInsideInfo != this->exclusionShapeInsideInfo()) {
+            // FIXME: If layout state is disabled, the offset will be incorrect.
+            LayoutSize layoutOffset = view()->layoutState()->layoutOffset();
+            absoluteLogicalTop = logicalTop() + (isHorizontalWritingMode() ? layoutOffset.height() : layoutOffset.width());
+        }
+        // Begin layout at the logical top of our shape inside.
+        if (logicalHeight() + absoluteLogicalTop < exclusionShapeInsideInfo->shapeLogicalTop())
+            setLogicalHeight(exclusionShapeInsideInfo->shapeLogicalTop() - absoluteLogicalTop);
+    }
 #endif
 
     while (!end.atEnd()) {
@@ -1321,10 +1333,13 @@ void RenderBlock::layoutRunsAndFloatsInRange(LineLayoutState& layoutState, Inlin
         bool isNewUBAParagraph = layoutState.lineInfo().previousLineBrokeCleanly();
         FloatingObject* lastFloatFromPreviousLine = (m_floatingObjects && !m_floatingObjects->set().isEmpty()) ? m_floatingObjects->set().last() : 0;
 #if ENABLE(CSS_EXCLUSIONS)
-        // FIXME: Bug 89993: If the wrap shape comes from a parent, we will need to adjust
-        // the height coordinate
-        if (wrapShapeInfo)
-            wrapShapeInfo->computeSegmentsForLine(logicalHeight());
+        // FIXME: Bug 95361: It is possible for a line to grow beyond lineHeight, in which
+        // case these segments may be incorrect.
+        if (exclusionShapeInsideInfo) {
+            LayoutUnit lineTop = logicalHeight() + absoluteLogicalTop;
+            LayoutUnit lineBottom = lineTop + lineHeight(layoutState.lineInfo().isFirstLine(), isHorizontalWritingMode() ? HorizontalLine : VerticalLine, PositionOfInteriorLineBoxes);
+            exclusionShapeInsideInfo->computeSegmentsForLine(lineTop, lineBottom);
+        }
 #endif
         end = lineBreaker.nextLineBreak(resolver, layoutState.lineInfo(), renderTextInfo, lastFloatFromPreviousLine, consecutiveHyphenatedLines);
         if (resolver.position().atEnd()) {
@@ -2414,10 +2429,6 @@ InlineIterator RenderBlock::LineBreaker::nextLineBreak(InlineBidiResolver& resol
             float wordSpacing = currentStyle->wordSpacing();
             float lastSpaceWordSpacing = 0;
 
-            // Non-zero only when kerning is enabled, in which case we measure words with their trailing
-            // space, then subtract its width.
-            float wordTrailingSpaceWidth = f.typesettingFeatures() & Kerning ? f.width(constructTextRun(t, f, &space, 1, style)) + wordSpacing : 0;
-
             float wrapW = width.uncommittedWidth() + inlineLogicalWidth(current.m_obj, !appliedStartWidth, true);
             float charWidth = 0;
             bool breakNBSP = autoWrap && currentStyle->nbspMode() == SPACE;
@@ -2439,13 +2450,17 @@ InlineIterator RenderBlock::LineBreaker::nextLineBreak(InlineBidiResolver& resol
                 renderTextInfo.m_text = t;
                 renderTextInfo.m_font = &f;
                 renderTextInfo.m_layout = f.createLayout(t, width.currentWidth(), collapseWhiteSpace);
-                renderTextInfo.m_lineBreakIterator.reset(t->characters(), t->textLength(), style->locale());
+                renderTextInfo.m_lineBreakIterator.reset(t->text(), style->locale());
             } else if (renderTextInfo.m_layout && renderTextInfo.m_font != &f) {
                 renderTextInfo.m_font = &f;
                 renderTextInfo.m_layout = f.createLayout(t, width.currentWidth(), collapseWhiteSpace);
             }
 
             TextLayout* textLayout = renderTextInfo.m_layout.get();
+
+            // Non-zero only when kerning is enabled and TextLayout isn't used, in which case we measure
+            // words with their trailing space, then subtract its width.
+            float wordTrailingSpaceWidth = (f.typesettingFeatures() & Kerning) && !textLayout ? f.width(constructTextRun(t, f, &space, 1, style)) + wordSpacing : 0;
 
             for (; current.m_pos < t->textLength(); current.fastIncrementInTextNode()) {
                 bool previousCharacterIsSpace = currentCharacterIsSpace;

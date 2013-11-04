@@ -51,17 +51,18 @@ public:
     virtual ~LocaleICU();
 
     // For LocalizedDate
-    double parseLocalizedDate(const String&);
-    String formatLocalizedDate(const DateComponents&);
+    virtual double parseDateTime(const String&, DateComponents::Type) OVERRIDE;
+    virtual String formatDateTime(const DateComponents&, FormatType = FormatTypeUnspecified) OVERRIDE;
 #if ENABLE(CALENDAR_PICKER)
-    String localizedDateFormatText();
+    virtual String dateFormatText() OVERRIDE;
 
-    const Vector<String>& monthLabels();
-    const Vector<String>& weekDayShortLabels();
-    unsigned firstDayOfWeek();
+    virtual const Vector<String>& monthLabels() OVERRIDE;
+    virtual const Vector<String>& weekDayShortLabels() OVERRIDE;
+    virtual unsigned firstDayOfWeek() OVERRIDE;
 #endif
 
-#if ENABLE(INPUT_TYPE_TIME_MULTIPLE_FIELDS)
+#if ENABLE(INPUT_MULTIPLE_FIELDS_UI)
+    virtual String dateFormat() OVERRIDE;
     virtual String timeFormat() OVERRIDE;
     virtual String shortTimeFormat() OVERRIDE;
     virtual const Vector<String>& timeAMPMLabels() OVERRIDE;
@@ -85,11 +86,11 @@ private:
     void initializeCalendar();
 #endif
 
-#if ENABLE(CALENDAR_PICKER) || ENABLE(INPUT_TYPE_TIME_MULTIPLE_FIELDS)
+#if ENABLE(CALENDAR_PICKER) || ENABLE(INPUT_MULTIPLE_FIELDS_UI)
     PassOwnPtr<Vector<String> > createLabelVector(const UDateFormat*, UDateFormatSymbolType, int32_t startIndex, int32_t size);
 #endif
 
-#if ENABLE(INPUT_TYPE_TIME_MULTIPLE_FIELDS)
+#if ENABLE(INPUT_MULTIPLE_FIELDS_UI)
     void initializeDateTimeFormat();
 #endif
 
@@ -106,7 +107,8 @@ private:
     unsigned m_firstDayOfWeek;
 #endif
 
-#if ENABLE(INPUT_TYPE_TIME_MULTIPLE_FIELDS)
+#if ENABLE(INPUT_MULTIPLE_FIELDS_UI)
+    String m_dateFormat;
     UDateFormat* m_mediumTimeFormat;
     UDateFormat* m_shortTimeFormat;
     Vector<String> m_timeAMPMLabels;

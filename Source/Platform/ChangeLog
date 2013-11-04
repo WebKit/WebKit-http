@@ -1,3 +1,350 @@
+2012-10-03  Glenn Hartmann  <hartmanng@chromium.org>
+
+        Adding total pixels painted and rasterized stats.
+        https://bugs.webkit.org/show_bug.cgi?id=98269
+
+        Reviewed by James Robinson.
+
+        * chromium/public/WebRenderingStats.h:
+        (WebRenderingStats):
+        (WebKit::WebRenderingStats::WebRenderingStats):
+        (WebKit::WebRenderingStats::enumerateFields):
+
+2012-10-03  Jeff Timanus  <twiz@chromium.org>
+
+        [chromium] Expose settings value to conditionally enable pinch-zoom scaling in the Chromium compositor.  The
+        flag defaults to disabled, so this change should be a no-op for scaling/scrolling behaviour.
+        https://bugs.webkit.org/show_bug.cgi?id=93292
+
+        Reviewed by James Robinson.
+
+        * chromium/public/WebCompositor.h:
+        (WebCompositor):
+        * chromium/public/WebCompositorSupport.h:
+        (WebKit::WebCompositorSupport::setPageScalePinchZoomEnabled):
+
+2012-10-03  Harald Alvestrand  <hta@google.com>
+
+        Add data passing to the GetStats interface of RTCPeerConnection
+        https://bugs.webkit.org/show_bug.cgi?id=98003
+
+        Reviewed by Adam Barth.
+
+        * Platform.gypi:
+        * chromium/public/WebRTCStatsRequest.h:
+        (WebKit):
+        (WebRTCStatsRequest):
+        * chromium/public/WebRTCStatsResponse.h: Added.
+        (WebCore):
+        (WebKit):
+        (WebRTCStatsResponse):
+        (WebKit::WebRTCStatsResponse::WebRTCStatsResponse):
+        (WebKit::WebRTCStatsResponse::~WebRTCStatsResponse):
+        (WebKit::WebRTCStatsResponse::operator=):
+
+2012-10-02  Terry Anderson  <tdanderson@chromium.org>
+
+        [chromium] Add field to WebRenderingStats to track if we have impl-thread scrolled
+        https://bugs.webkit.org/show_bug.cgi?id=97919
+
+        Reviewed by James Robinson.
+
+        Add two new members |numImplThreadScrolls| and |numMainThreadScrolls| to track
+        the total number of times we have impl-thread scrolled and main-thread scrolled,
+        respectively.
+
+        * chromium/public/WebRenderingStats.h:
+        (WebRenderingStats):
+        (WebKit::WebRenderingStats::WebRenderingStats):
+        (WebKit::WebRenderingStats::enumerateFields):
+
+2012-09-28  Harald Tveit Alvestrand  <harald@alvestrand.no>
+
+        Implement the GetStats interface on PeerConnection
+        https://bugs.webkit.org/show_bug.cgi?id=95193
+
+        Reviewed by Adam Barth.
+
+        * chromium/public/WebRTCPeerConnectionHandler.h:
+        (WebKit):
+        (WebRTCPeerConnectionHandler):
+        (WebKit::WebRTCPeerConnectionHandler::getStats):
+        * chromium/public/WebRTCStatsRequest.h: added.
+        (WebCore):
+        (WebKit):
+        (WebRTCStatsRequest):
+        (WebKit::WebRTCStatsRequest::WebRTCStatsRequest):
+        (WebKit::WebRTCStatsRequest::~WebRTCStatsRequest):
+        (WebKit::WebRTCStatsRequest::operator=):
+
+2012-09-28  Kentaro Hara  <haraken@chromium.org>
+
+        Unreviewed, rolling out r129825.
+        http://trac.webkit.org/changeset/129825
+        https://bugs.webkit.org/show_bug.cgi?id=97474
+
+        DOMWindow.resizeTo() is broken. Asked by Mark Pilgrim.
+
+        * Platform.gypi:
+        * chromium/public/WebScreenInfo.h: Removed.
+
+2012-09-28  Yoshifumi Inoue  <yosin@chromium.org>
+
+        [Forms] Add localized strings for multiple fields date/time input UI
+        https://bugs.webkit.org/show_bug.cgi?id=97878
+
+        Reviewed by Kent Tamura.
+
+        This patch introduces following localized string identifier for
+        month, time and week pickers:
+            - OtherMonthLabel - appeared at the last entry in suggestion list.
+            - OtherTimeLabel - ditto
+            - OtherWeekLabel - ditto
+            - ThisMonthButtonLabel - used in month picker
+            - ThisWeekButtonLabel - used in week picker
+
+        * chromium/public/WebLocalizedString.h: Added OtherMonthLabel, OtherTimeLabel, OtherWeekLabel, ThiMonthkButtonLabel, and ThisWeekButtonLabel.
+
+2012-09-27  Mark Pilgrim  <pilgrim@chromium.org>
+
+        [Chromium] Remove screen-related functions from PlatformSupport
+        https://bugs.webkit.org/show_bug.cgi?id=97474
+
+        Reviewed by Adam Barth.
+
+        Screen-related functions like screenHorizontalDPI that
+        used to be on PlatformSupport are now accessed through a new
+        PlatformPageClient attached to Widget in WebCore-land, which is
+        implemented by ChromeClientImpl in WebKit-land, which proxies
+        calls to WebWidgetClient, which is actually implemented in
+        Chromium-land.
+
+        * Platform.gypi:
+        * chromium/public/WebScreenInfo.h: Added.
+        (WebKit):
+        (WebScreenInfo):
+        (WebKit::WebScreenInfo::WebScreenInfo):
+
+2012-09-27  Tommy Widenflycht  <tommyw@google.com>
+
+        MediaStream API: Enhance MediaConstraints to make it easier to get the constraint data
+        https://bugs.webkit.org/show_bug.cgi?id=97559
+
+        Reviewed by Adam Barth.
+
+        Refactored to mimic the new MediaConstraints api.
+
+        * chromium/public/WebMediaConstraints.h:
+        (WebCore):
+        (WebKit::WebMediaConstraint::WebMediaConstraint):
+        (WebMediaConstraint):
+        (WebKit):
+        (WebMediaConstraints):
+
+2012-09-27  Tommy Widenflycht  <tommyw@google.com>
+
+        MediaStream API: Update getUserMedia to match the latest specification
+        https://bugs.webkit.org/show_bug.cgi?id=97540
+
+        Reviewed by Adam Barth.
+
+        * chromium/public/WebMediaConstraints.h:
+        (WebMediaConstraints):
+
+2012-09-26  Yoshifumi Inoue  <yosin@chromium.org>
+
+        [Forms] Adding localization texts for multiple fields date/time input UI
+        https://bugs.webkit.org/show_bug.cgi?id=97633
+
+        Reviewed by Kent Tamura.
+
+        This patch adds localized string enum fields for getting localized
+        strings used in multiple fields date/time input UI.
+
+        * chromium/public/WebLocalizedString.h: Added PlaceholderForDayOfMonthField,
+        PlaceholderForMonthField, PlaceholderForYearField, MonthFormatInLDML,
+        and WeekFormatInLDML.
+
+2012-09-26  Sheriff Bot  <webkit.review.bot@gmail.com>
+
+        Unreviewed, rolling out r129654.
+        http://trac.webkit.org/changeset/129654
+        https://bugs.webkit.org/show_bug.cgi?id=97702
+
+        breaks chromium windows build (Requested by schenney on
+        #webkit).
+
+        * chromium/public/WebRTCPeerConnectionHandler.h:
+        (WebKit):
+        (WebRTCPeerConnectionHandler):
+        * chromium/public/WebRTCStatsRequest.h: Removed.
+
+2012-09-26  Harald Tveit Alvestrand  <harald@alvestrand.no>
+
+        Implement the GetStats interface on PeerConnection
+        https://bugs.webkit.org/show_bug.cgi?id=95193
+
+        Reviewed by Adam Barth.
+
+        * chromium/public/WebRTCPeerConnectionHandler.h:
+        (WebKit):
+        (WebRTCPeerConnectionHandler):
+        (WebKit::WebRTCPeerConnectionHandler::getStats):
+        * chromium/public/WebRTCStatsRequest.h: added.
+        (WebCore):
+        (WebKit):
+        (WebRTCStatsRequest):
+        (WebKit::WebRTCStatsRequest::WebRTCStatsRequest):
+        (WebKit::WebRTCStatsRequest::~WebRTCStatsRequest):
+        (WebKit::WebRTCStatsRequest::operator=):
+
+2012-09-25  Sheriff Bot  <webkit.review.bot@gmail.com>
+
+        Unreviewed, rolling out r129517.
+        http://trac.webkit.org/changeset/129517
+        https://bugs.webkit.org/show_bug.cgi?id=97582
+
+        Link errors in chromium (Requested by alecf on #webkit).
+
+        * chromium/public/WebMediaConstraints.h:
+        (WebMediaConstraints):
+
+2012-09-25  Tommy Widenflycht  <tommyw@google.com>
+
+        MediaStream API: Update getUserMedia to match the latest specification
+        https://bugs.webkit.org/show_bug.cgi?id=97540
+
+        Reviewed by Adam Barth.
+
+        * chromium/public/WebMediaConstraints.h:
+        (WebMediaConstraints):
+
+2012-09-24  Dana Jansens  <danakj@chromium.org>
+
+        [chromium] Add setters to WebFilterOperation for IPC pickling
+        https://bugs.webkit.org/show_bug.cgi?id=97147
+
+        Reviewed by James Robinson.
+
+        These methods allow us to restore a WebFilterOperation from a blob
+        of opaque data. The pickling code needs to be able to create an
+        empty object and then fill in the pieces, so these setters allow it
+        to do so.
+
+        Test: WebFilterOperationsTest.saveAndRestore
+
+        * chromium/public/WebFilterOperation.h:
+        (WebKit::WebFilterOperation::amount):
+        (WebKit::WebFilterOperation::dropShadowOffset):
+        (WebKit::WebFilterOperation::matrix):
+        (WebKit::WebFilterOperation::zoomRect):
+        (WebFilterOperation):
+        (WebKit::WebFilterOperation::createEmptyFilter):
+        (WebKit::WebFilterOperation::setType):
+        (WebKit::WebFilterOperation::setAmount):
+        (WebKit::WebFilterOperation::setDropShadowOffset):
+        (WebKit::WebFilterOperation::setDropShadowColor):
+        (WebKit::WebFilterOperation::setMatrix):
+        (WebKit::WebFilterOperation::setZoomRect):
+        * chromium/src/WebFilterOperation.cpp:
+
+2012-09-24  Yury Semikhatsky  <yurys@chromium.org>
+
+        Unreviewed, rolling out r122243.
+        http://trac.webkit.org/changeset/129243
+        https://bugs.webkit.org/show_bug.cgi?id=97441
+
+        WebFilterOperationsTest.saveAndRestore added in the change is failing.
+
+        * chromium/public/WebFilterOperation.h:
+        (WebKit::WebFilterOperation::amount):
+        (WebKit::WebFilterOperation::dropShadowOffset):
+        (WebKit::WebFilterOperation::matrix):
+        (WebKit::WebFilterOperation::zoomRect):
+        (WebFilterOperation):
+
+2012-09-21  Alexandre Elias  <aelias@chromium.org>
+
+        [chromium] Forward-declare WebSize as a struct
+        https://bugs.webkit.org/show_bug.cgi?id=97381
+
+        Reviewed by James Robinson.
+
+        The mismatched "class" forward-declaration for WebSize in this file
+        will cause a Clang error when it's included in Chromium.
+
+        * chromium/public/WebCompositorSoftwareOutputDevice.h:
+        (WebKit):
+
+2012-09-21  Brandon Jones  <bajones@google.com>
+
+        Add support for OES_vertex_array_object in chromium
+        https://bugs.webkit.org/show_bug.cgi?id=96578
+
+        Reviewed by Kenneth Russell.
+
+        Added code to allow calls to the OES_vertex_array_object extension to interface
+        properly with the chromium WebGL implementation. 
+
+        * chromium/public/WebGraphicsContext3D.h:
+        (WebGraphicsContext3D):
+        (WebKit::WebGraphicsContext3D::createVertexArrayOES):
+        (WebKit::WebGraphicsContext3D::deleteVertexArrayOES):
+        (WebKit::WebGraphicsContext3D::isVertexArrayOES):
+        (WebKit::WebGraphicsContext3D::bindVertexArrayOES):
+
+2012-09-21  Dana Jansens  <danakj@chromium.org>
+
+        [chromium] Add setters to WebFilterOperation for IPC pickling
+        https://bugs.webkit.org/show_bug.cgi?id=97147
+
+        Reviewed by James Robinson.
+
+        These methods allow us to restore a WebFilterOperation from a blob
+        of opaque data. The pickling code needs to be able to create an
+        empty object and then fill in the pieces, so these setters allow it
+        to do so.
+
+        Test: WebFilterOperationsTest.saveAndRestore
+
+        * chromium/public/WebFilterOperation.h:
+        (WebKit::WebFilterOperation::amount):
+        (WebKit::WebFilterOperation::dropShadowOffset):
+        (WebKit::WebFilterOperation::matrix):
+        (WebKit::WebFilterOperation::zoomRect):
+        (WebFilterOperation):
+        (WebKit::WebFilterOperation::createEmptyFilter):
+        (WebKit::WebFilterOperation::setType):
+        (WebKit::WebFilterOperation::setAmount):
+        (WebKit::WebFilterOperation::setDropShadowOffset):
+        (WebKit::WebFilterOperation::setDropShadowColor):
+        (WebKit::WebFilterOperation::setMatrix):
+        (WebKit::WebFilterOperation::setZoomRect):
+        * chromium/src/WebFilterOperation.cpp:
+
+2012-09-20  Keishi Hattori  <keishi@webkit.org>
+
+        [Chromium ] Add new localized string, OtherDateLabel, to be used in input type=date datalist UI
+        https://bugs.webkit.org/show_bug.cgi?id=97200
+
+        Reviewed by Kent Tamura.
+
+        Adding new localized string to be used in the SuggestionPicker for input type=date.
+
+        * chromium/public/WebLocalizedString.h:
+
+2012-09-18  Sailesh Agrawal  <sail@chromium.org>
+
+        Chromium: Scrollbar with tickmarks doesn't respond to clicks
+        https://bugs.webkit.org/show_bug.cgi?id=96049
+
+        Reviewed by Beth Dakin.
+
+        Added isAlphaLocked and setIsAlphaLocked.
+
+        * chromium/public/WebScrollbar.h:
+        (WebScrollbar):
+
 2012-09-17  Brian Anderson  <brianderson@chromium.org>
 
         [chromium] Add rendering commit statistics

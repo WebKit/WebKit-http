@@ -203,7 +203,6 @@ Connection::Connection(Identifier identifier, bool isServer, Client* client, Run
     , m_inDispatchMessageCount(0)
     , m_inDispatchMessageMarkedDispatchWhenWaitingForSyncReplyCount(0)
     , m_didReceiveInvalidMessage(false)
-    , m_defaultSyncMessageTimeout(NoTimeout)
     , m_syncMessageState(SyncMessageState::getOrCreate(clientRunLoop))
     , m_shouldWaitForSyncReplies(true)
 {
@@ -282,13 +281,6 @@ void Connection::markCurrentlyDispatchedMessageAsInvalid()
     ASSERT(m_inDispatchMessageCount > 0);
 
     m_didReceiveInvalidMessage = true;
-}
-
-void Connection::setDefaultSyncMessageTimeout(double defaultSyncMessageTimeout)
-{
-    ASSERT(defaultSyncMessageTimeout != DefaultTimeout);
-
-    m_defaultSyncMessageTimeout = defaultSyncMessageTimeout;
 }
 
 PassOwnPtr<ArgumentEncoder> Connection::createSyncMessageArgumentEncoder(uint64_t destinationID, uint64_t& syncRequestID)
@@ -427,9 +419,6 @@ PassOwnPtr<ArgumentDecoder> Connection::sendSyncMessage(MessageID messageID, uin
 
 PassOwnPtr<ArgumentDecoder> Connection::waitForSyncReply(uint64_t syncRequestID, double timeout, unsigned syncSendFlags)
 {
-    if (timeout == DefaultTimeout)
-        timeout = m_defaultSyncMessageTimeout;
-
     // Use a really long timeout.
     if (timeout == NoTimeout)
         timeout = 1e10;
@@ -448,7 +437,7 @@ PassOwnPtr<ArgumentDecoder> Connection::waitForSyncReply(uint64_t syncRequestID,
             ASSERT(!m_pendingSyncReplies.isEmpty());
             
             PendingSyncReply& pendingSyncReply = m_pendingSyncReplies.last();
-            ASSERT(pendingSyncReply.syncRequestID == syncRequestID);
+            ASSERT_UNUSED(syncRequestID, pendingSyncReply.syncRequestID == syncRequestID);
             
             // We found the sync reply, or the connection was closed.
             if (pendingSyncReply.didReceiveReply || !m_shouldWaitForSyncReplies)
@@ -481,10 +470,6 @@ PassOwnPtr<ArgumentDecoder> Connection::waitForSyncReply(uint64_t syncRequestID,
 #endif
         
     }
-
-    // We timed out.
-    if (m_client)
-        m_client->syncMessageSendTimedOut(this);
 
     return nullptr;
 }
@@ -668,6 +653,15 @@ void Connection::enqueueIncomingMessage(IncomingMessage& incomingMessage)
     m_clientRunLoop->dispatch(WTF::bind(&Connection::dispatchOneMessage, this));
 }
 
+void Connection::dispatchMessage(MessageID messageID, ArgumentDecoder* argumentDecoder)
+{
+    // Try the message receiver map first.
+    if (m_messageReceiverMap.dispatchMessage(this, messageID, argumentDecoder))
+        return;
+
+    m_client->didReceiveMessage(this, messageID, argumentDecoder);
+}
+
 void Connection::dispatchMessage(IncomingMessage& message)
 {
     OwnPtr<ArgumentDecoder> arguments = message.releaseArguments();
@@ -688,7 +682,7 @@ void Connection::dispatchMessage(IncomingMessage& message)
     if (message.messageID().isSync())
         dispatchSyncMessage(message.messageID(), arguments.get());
     else
-        m_client->didReceiveMessage(this, message.messageID(), arguments.get());
+        dispatchMessage(message.messageID(), arguments.get());
 
     m_didReceiveInvalidMessage |= arguments->isInvalid();
     m_inDispatchMessageCount--;

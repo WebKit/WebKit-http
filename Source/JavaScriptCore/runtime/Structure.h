@@ -69,7 +69,7 @@ namespace JSC {
 
         typedef JSCell Base;
 
-        static Structure* create(JSGlobalData&, JSGlobalObject*, JSValue prototype, const TypeInfo&, const ClassInfo*, IndexingType = 0);
+        static Structure* create(JSGlobalData&, JSGlobalObject*, JSValue prototype, const TypeInfo&, const ClassInfo*, IndexingType = NonArray, PropertyOffset inlineCapacity = 0);
 
     protected:
         void finishCreation(JSGlobalData& globalData)
@@ -128,6 +128,8 @@ namespace JSC {
 
         Structure* flattenDictionaryStructure(JSGlobalData&, JSObject*);
 
+        static const bool needsDestruction = true;
+        static const bool hasImmortalStructure = true;
         static void destroy(JSCell*);
 
         // These should be used with caution.  
@@ -177,24 +179,6 @@ namespace JSC {
             ASSERT(structure()->classInfo() == &s_info);
             return m_outOfLineCapacity;
         }
-        unsigned outOfLineSizeForKnownFinalObject() const
-        {
-            ASSERT(m_typeInfo.type() == FinalObjectType);
-            if (m_propertyTable) {
-                unsigned totalSize = m_propertyTable->propertyStorageSize();
-                if (totalSize < static_cast<unsigned>(inlineStorageCapacity))
-                    return 0;
-                return totalSize - inlineStorageCapacity;
-            }
-            return numberOfOutOfLineSlotsForLastOffset(m_offset);
-        }
-        unsigned outOfLineSizeForKnownNonFinalObject() const
-        {
-            ASSERT(m_typeInfo.type() != FinalObjectType);
-            if (m_propertyTable)
-                return m_propertyTable->propertyStorageSize();
-            return numberOfOutOfLineSlotsForLastOffset(m_offset);
-        }
         unsigned outOfLineSize() const
         {
             ASSERT(structure()->classInfo() == &s_info);
@@ -209,31 +193,20 @@ namespace JSC {
         }
         bool hasInlineStorage() const
         {
-            return m_typeInfo.type() == FinalObjectType;
+            return !!m_inlineCapacity;
         }
         unsigned inlineCapacity() const
         {
-            if (hasInlineStorage())
-                return inlineStorageCapacity;
-            return 0;
+            return m_inlineCapacity;
         }
-        unsigned inlineSizeForKnownFinalObject() const
+        unsigned inlineSize() const
         {
-            ASSERT(m_typeInfo.type() == FinalObjectType);
             unsigned result;
             if (m_propertyTable)
                 result = m_propertyTable->propertyStorageSize();
             else
                 result = m_offset + 1;
-            if (result > static_cast<unsigned>(inlineStorageCapacity))
-                return inlineStorageCapacity;
-            return result;
-        }
-        unsigned inlineSize() const
-        {
-            if (!hasInlineStorage())
-                return 0;
-            return inlineSizeForKnownFinalObject();
+            return std::min<unsigned>(result, m_inlineCapacity);
         }
         unsigned totalStorageSize() const
         {
@@ -251,16 +224,12 @@ namespace JSC {
         {
             if (hasInlineStorage())
                 return 0;
-            return inlineStorageCapacity;
+            return firstOutOfLineOffset;
         }
         PropertyOffset lastValidOffset() const
         {
-            if (m_propertyTable) {
-                PropertyOffset size = m_propertyTable->propertyStorageSize();
-                if (!hasInlineStorage())
-                    size += inlineStorageCapacity;
-                return size - 1;
-            }
+            if (m_propertyTable)
+                return propertyOffsetFor(m_propertyTable->propertyStorageSize() - 1, m_inlineCapacity);
             return m_offset;
         }
         bool isValidOffset(PropertyOffset offset) const
@@ -381,7 +350,7 @@ namespace JSC {
     private:
         friend class LLIntOffsetsExtractor;
 
-        JS_EXPORT_PRIVATE Structure(JSGlobalData&, JSGlobalObject*, JSValue prototype, const TypeInfo&, const ClassInfo*, IndexingType = 0);
+        JS_EXPORT_PRIVATE Structure(JSGlobalData&, JSGlobalObject*, JSValue prototype, const TypeInfo&, const ClassInfo*, IndexingType, PropertyOffset inlineCapacity);
         Structure(JSGlobalData&);
         Structure(JSGlobalData&, const Structure*);
 
@@ -457,6 +426,8 @@ namespace JSC {
         mutable InlineWatchpointSet m_transitionWatchpointSet;
 
         uint32_t m_outOfLineCapacity;
+        uint8_t m_inlineCapacity;
+        COMPILE_ASSERT(firstOutOfLineOffset < 256, firstOutOfLineOffset_fits);
 
         // m_offset does not account for anonymous slots
         PropertyOffset m_offset;
@@ -473,22 +444,11 @@ namespace JSC {
         unsigned m_staticFunctionReified;
     };
 
-    template <> inline void* allocateCell<Structure>(Heap& heap)
-    {
-#if ENABLE(GC_VALIDATION)
-        ASSERT(!heap.globalData()->isInitializingObject());
-        heap.globalData()->setInitializingObjectClass(&Structure::s_info);
-#endif
-        JSCell* result = static_cast<JSCell*>(heap.allocateStructure(sizeof(Structure)));
-        result->clearStructure();
-        return result;
-    }
-
-    inline Structure* Structure::create(JSGlobalData& globalData, JSGlobalObject* globalObject, JSValue prototype, const TypeInfo& typeInfo, const ClassInfo* classInfo, IndexingType indexingType)
+    inline Structure* Structure::create(JSGlobalData& globalData, JSGlobalObject* globalObject, JSValue prototype, const TypeInfo& typeInfo, const ClassInfo* classInfo, IndexingType indexingType, PropertyOffset inlineCapacity)
     {
         ASSERT(globalData.structureStructure);
         ASSERT(classInfo);
-        Structure* structure = new (NotNull, allocateCell<Structure>(globalData.heap)) Structure(globalData, globalObject, prototype, typeInfo, classInfo, indexingType);
+        Structure* structure = new (NotNull, allocateCell<Structure>(globalData.heap)) Structure(globalData, globalObject, prototype, typeInfo, classInfo, indexingType, inlineCapacity);
         structure->finishCreation(globalData);
         return structure;
     }
@@ -626,15 +586,6 @@ namespace JSC {
             m_structure.setEarlyValue(globalData, this, structure);
         // Very first set of allocations won't have a real structure.
         ASSERT(m_structure || !globalData.structureStructure);
-    }
-
-    inline const ClassInfo* JSCell::classInfo() const
-    {
-#if ENABLE(GC_VALIDATION)
-        return m_structure.unvalidatedGet()->classInfo();
-#else
-        return m_structure->classInfo();
-#endif
     }
 
 } // namespace JSC

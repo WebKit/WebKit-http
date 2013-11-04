@@ -72,8 +72,8 @@ var ClassNames = {
  */
 var global = {
     argumentsReceived: false,
-    hadKeyEvent: false,
-    params: null
+    params: null,
+    picker: null
 };
 
 // ----------------------------------------------------------------
@@ -234,31 +234,32 @@ function handleArgumentsTimeout() {
         cancelLabel : "Cancel",
         currentValue : "",
         weekStartDay : 0,
-        step : 1
+        step : CalendarPicker.DefaultStepScaleFactor,
+        stepBase: CalendarPicker.DefaultStepBase
     };
     initialize(args);
 }
 
 /**
- * @param {!Object} args
+ * @param {!Object} config
  * @return {?string} An error message, or null if the argument has no errors.
  */
-function validateArguments(args) {
-    if (!args.monthLabels)
+CalendarPicker.validateConfig = function(config) {
+    if (!config.monthLabels)
         return "No monthLabels.";
-    if (args.monthLabels.length != 12)
+    if (config.monthLabels.length != 12)
         return "monthLabels is not an array with 12 elements.";
-    if (!args.dayLabels)
+    if (!config.dayLabels)
         return "No dayLabels.";
-    if (args.dayLabels.length != 7)
+    if (config.dayLabels.length != 7)
         return "dayLabels is not an array with 7 elements.";
-    if (!args.clearLabel)
+    if (!config.clearLabel)
         return "No clearLabel.";
-    if (!args.todayLabel)
+    if (!config.todayLabel)
         return "No todayLabel.";
-    if (args.weekStartDay) {
-        if (args.weekStartDay < 0 || args.weekStartDay > 6)
-            return "Invalid weekStartDay: " + args.weekStartDay;
+    if (config.weekStartDay) {
+        if (config.weekStartDay < 0 || config.weekStartDay > 6)
+            return "Invalid weekStartDay: " + config.weekStartDay;
     }
     return null;
 }
@@ -267,28 +268,38 @@ function validateArguments(args) {
  * @param {!Object} args
  */
 function initialize(args) {
-    var main = $("main");
-    main.classList.add(ClassNames.NoFocusRing);
-
-    var errorString = validateArguments(args);
+    var errorString = CalendarPicker.validateConfig(args);
+    if (args.suggestionValues)
+        errorString = errorString || SuggestionPicker.validateConfig(args)
     if (errorString) {
+        var main = $("main");
         main.textContent = "Internal error: " + errorString;
         resizeWindow(main.offsetWidth, main.offsetHeight);
     } else {
         global.params = args;
-        openCalendarPicker();
+        if (global.params.suggestionValues && global.params.suggestionValues.length)
+            openSuggestionPicker();
+        else
+            openCalendarPicker();
     }
 }
 
-function resetMain() {
+function closePicker() {
+    if (global.picker)
+        global.picker.cleanup();
     var main = $("main");
     main.innerHTML = "";
     main.className = "";
 };
 
+function openSuggestionPicker() {
+    closePicker();
+    global.picker = new SuggestionPicker($("main"), global.params);
+};
+
 function openCalendarPicker() {
-    resetMain();
-    new CalendarPicker($("main"), global.params);
+    closePicker();
+    global.picker = new CalendarPicker($("main"), global.params);
 };
 
 /**
@@ -298,13 +309,16 @@ function openCalendarPicker() {
  */
 function CalendarPicker(element, config) {
     Picker.call(this, element, config);
+    this._element.classList.add("calendar-picker");
     // We assume this._config.min is a valid date.
     this.minimumDate = (typeof this._config.min !== "undefined") ? parseDateString(this._config.min) : CalendarPicker.MinimumPossibleDate;
     // We assume this._config.max is a valid date.
     this.maximumDate = (typeof this._config.max !== "undefined") ? parseDateString(this._config.max) : CalendarPicker.MaximumPossibleDate;
-    this.step = (typeof this._config.step !== undefined) ? this._config.step * CalendarPicker.BaseStep : CalendarPicker.BaseStep;
+    this.step = (typeof this._config.step !== undefined) ? Number(this._config.step) : CalendarPicker.DefaultStepScaleFactor;
+    this.stepBase = (typeof this._config.stepBase !== "undefined") ? Number(this._config.stepBase) : CalendarPicker.DefaultStepBase;
     this.yearMonthController = new YearMonthController(this);
     this.daysTable = new DaysTable(this);
+    this._hadKeyEvent = false;
     this._layout();
     var initialDate = parseDateString(this._config.currentValue);
     if (initialDate < this.minimumDate)
@@ -313,7 +327,8 @@ function CalendarPicker(element, config) {
         initialDate = this.maximumDate;
     this.daysTable.selectDate(initialDate);
     this.fixWindowSize();
-    document.body.addEventListener("keydown", this._handleBodyKeyDown.bind(this), false);
+    this._handleBodyKeyDownBound = this._handleBodyKeyDown.bind(this);
+    document.body.addEventListener("keydown", this._handleBodyKeyDownBound, false);
 }
 CalendarPicker.prototype = Object.create(Picker.prototype);
 
@@ -321,13 +336,21 @@ CalendarPicker.prototype = Object.create(Picker.prototype);
 CalendarPicker.MinimumPossibleDate = new Date(-62135596800000.0);
 CalendarPicker.MaximumPossibleDate = new Date(8640000000000000.0);
 // See WebCore/html/DateInputType.cpp.
-CalendarPicker.BaseStep = 86400000;
+CalendarPicker.DefaultStepScaleFactor = 86400000;
+CalendarPicker.DefaultStepBase = 0.0;
+
+CalendarPicker.prototype.cleanup = function() {
+    document.body.removeEventListener("keydown", this._handleBodyKeyDownBound, false);
+};
 
 CalendarPicker.prototype._layout = function() {
-    this._element.style.direction = global.params.isRTL ? "rtl" : "ltr";
+    if (this._config.isCalendarRTL)
+        this._element.classList.add("rtl");
     this.yearMonthController.attachTo(this._element);
     this.daysTable.attachTo(this._element);
     this._layoutButtons();
+    // DaysTable will have focus but we don't want to show its focus ring until the first key event.
+    this._element.classList.add(ClassNames.NoFocusRing);
 };
 
 CalendarPicker.prototype.handleToday = function() {
@@ -460,7 +483,7 @@ YearMonthController.prototype.attachTo = function(element) {
     }
     this._month.style.minWidth = maxWidth + 'px';
 
-    global.firstFocusableControl = this._left2; // FIXME: Should it be this.month?
+    this.picker.firstFocusableControl = this._left2; // FIXME: Should it be this.month?
 };
 
 YearMonthController.addTenYearsButtons = false;
@@ -844,7 +867,7 @@ DaysTable.prototype.attachTo = function(element) {
  * @return {!boolean}
  */
 CalendarPicker.prototype.stepMismatch = function(time) {
-    return (time - this.minimumDate.getTime()) % this.step != 0;
+    return (time - this.stepBase) % this.step != 0;
 }
 
 /**
@@ -985,10 +1008,10 @@ DaysTable.prototype.selectDate = function(date) {
  * @return {!boolean}
  */
 DaysTable.prototype._maybeSetPreviousMonth = function() {
-    var year = global.yearMonthController.year();
-    var month = global.yearMonthController.month();
+    var year = this.picker.yearMonthController.year();
+    var month = this.picker.yearMonthController.month();
     var thisMonthStartTime = createUTCDate(year, month, 1).getTime();
-    if (this.minimumDate.getTime() >= thisMonthStartTime)
+    if (this.picker.minimumDate.getTime() >= thisMonthStartTime)
         return false;
     if (month == 0) {
         year--;
@@ -1003,8 +1026,8 @@ DaysTable.prototype._maybeSetPreviousMonth = function() {
  * @return {!boolean}
  */
 DaysTable.prototype._maybeSetNextMonth = function() {
-    var year = global.yearMonthController.year();
-    var month = global.yearMonthController.month();
+    var year = this.picker.yearMonthController.year();
+    var month = this.picker.yearMonthController.month();
     if (month == 11) {
         year++;
         month = 0;
@@ -1056,7 +1079,7 @@ DaysTable.prototype._handleMouseOut = function(event) {
  * @param {Event} event
  */
 DaysTable.prototype._handleKey = function(event) {
-    maybeUpdateFocusStyle();
+    this.picker.maybeUpdateFocusStyle();
     var x = this._x;
     var y = this._y;
     var key = event.keyIdentifier;
@@ -1156,14 +1179,14 @@ DaysTable.prototype.updateSelection = function(event, x, y) {
  * @param {!Event} event
  */
 CalendarPicker.prototype._handleBodyKeyDown = function(event) {
-    maybeUpdateFocusStyle();
+    this.maybeUpdateFocusStyle();
     var key = event.keyIdentifier;
     if (key == "U+0009") {
-        if (!event.shiftKey && document.activeElement == global.lastFocusableControl) {
+        if (!event.shiftKey && document.activeElement == this.lastFocusableControl) {
             event.stopPropagation();
             event.preventDefault();
             this.firstFocusableControl.focus();
-        } else if (event.shiftKey && document.activeElement == global.firstFocusableControl) {
+        } else if (event.shiftKey && document.activeElement == this.firstFocusableControl) {
             event.stopPropagation();
             event.preventDefault();
             this.lastFocusableControl.focus();
@@ -1178,11 +1201,11 @@ CalendarPicker.prototype._handleBodyKeyDown = function(event) {
         this.handleCancel();
 }
 
-function maybeUpdateFocusStyle() {
-    if (global.hadKeyEvent)
+CalendarPicker.prototype.maybeUpdateFocusStyle = function() {
+    if (this._hadKeyEvent)
         return;
-    global.hadKeyEvent = true;
-    $("main").classList.remove(ClassNames.NoFocusRing);
+    this._hadKeyEvent = true;
+    this._element.classList.remove(ClassNames.NoFocusRing);
 }
 
 if (window.dialogArguments) {

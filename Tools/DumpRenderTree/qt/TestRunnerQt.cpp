@@ -677,6 +677,8 @@ void TestRunner::overridePreference(const QString& name, const QVariant& value)
         settings->setAttribute(QWebSettings::HyperlinkAuditingEnabled, value.toBool());
     else if (name == "WebKitAcceleratedCompositingEnabled")
         settings->setAttribute(QWebSettings::AcceleratedCompositingEnabled, value.toBool());
+    else if (name == "WebKitDisplayImagesKey")
+        settings->setAttribute(QWebSettings::AutoLoadImages, value.toBool());
     else
         printf("ERROR: TestRunner::overridePreference() does not support the '%s' preference\n",
             name.toLatin1().data());
@@ -834,11 +836,11 @@ void TestRunner::setGeolocationPermissionCommon(bool allow)
      m_geolocationPermission = allow;
 }
 
-void TestRunner::setMockGeolocationError(int code, const QString& message)
+void TestRunner::setMockGeolocationPositionUnavailableError(const QString& message)
 {
     QList<WebCore::WebPage*> pages = m_drt->getAllPages();
     foreach (WebCore::WebPage* page, pages)
-        DumpRenderTreeSupportQt::setMockGeolocationError(page, code, message);
+        DumpRenderTreeSupportQt::setMockGeolocationPositionUnavailableError(page, message);
 }
 
 void TestRunner::setMockGeolocationPosition(double latitude, double longitude, double accuracy)

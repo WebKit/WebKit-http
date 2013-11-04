@@ -31,9 +31,9 @@
 #include "ArgumentDecoder.h"
 #include "ArgumentEncoder.h"
 #include "Arguments.h"
-#include "MessageID.h"
+#include "MessageReceiver.h"
+#include "MessageReceiverMap.h"
 #include "WorkQueue.h"
-#include <wtf/HashMap.h>
 #include <wtf/PassRefPtr.h>
 #include <wtf/OwnPtr.h>
 #include <wtf/Threading.h>
@@ -85,20 +85,10 @@ while (0)
 
 class Connection : public ThreadSafeRefCounted<Connection> {
 public:
-    class MessageReceiver {
-    public:
-        virtual void didReceiveMessage(Connection*, MessageID, ArgumentDecoder*) = 0;
-        virtual void didReceiveSyncMessage(Connection*, MessageID, ArgumentDecoder*, OwnPtr<ArgumentEncoder>&) { ASSERT_NOT_REACHED(); }
-
-    protected:
-        virtual ~MessageReceiver() { }
-    };
-    
     class Client : public MessageReceiver {
     public:
         virtual void didClose(Connection*) = 0;
         virtual void didReceiveInvalidMessage(Connection*, MessageID) = 0;
-        virtual void syncMessageSendTimedOut(Connection*) = 0;
 
 #if PLATFORM(WIN)
         virtual Vector<HWND> windowsToReceiveSentMessagesWhileWaitingForSyncReply() = 0;
@@ -181,19 +171,21 @@ public:
     void addQueueClient(QueueClient*);
     void removeQueueClient(QueueClient*);
 
+    void addMessageReceiver(MessageClass messageClass, MessageReceiver* messageReceiver)
+    {
+        m_messageReceiverMap.addMessageReceiver(messageClass, messageReceiver);
+    }
+
     bool open();
     void invalidate();
     void markCurrentlyDispatchedMessageAsInvalid();
 
-    void setDefaultSyncMessageTimeout(double);
-
     void postConnectionDidCloseOnConnectionWorkQueue();
 
-    static const int DefaultTimeout = 0;
     static const int NoTimeout = -1;
 
     template<typename T> bool send(const T& message, uint64_t destinationID, unsigned messageSendFlags = 0);
-    template<typename T> bool sendSync(const T& message, const typename T::Reply& reply, uint64_t destinationID, double timeout = DefaultTimeout, unsigned syncSendFlags = 0);
+    template<typename T> bool sendSync(const T& message, const typename T::Reply& reply, uint64_t destinationID, double timeout = NoTimeout, unsigned syncSendFlags = 0);
     template<typename T> bool waitForAndDispatchImmediately(uint64_t destinationID, double timeout);
 
     PassOwnPtr<ArgumentEncoder> createSyncMessageArgumentEncoder(uint64_t destinationID, uint64_t& syncRequestID);
@@ -279,8 +271,9 @@ private:
 
     // Called on the listener thread.
     void dispatchConnectionDidClose();
-    void dispatchMessage(IncomingMessage&);
     void dispatchOneMessage();
+    void dispatchMessage(IncomingMessage&);
+    void dispatchMessage(MessageID, ArgumentDecoder*);
     void dispatchSyncMessage(MessageID, ArgumentDecoder*);
     void didFailToSendSyncMessage();
 
@@ -305,11 +298,11 @@ private:
     unsigned m_inDispatchMessageMarkedDispatchWhenWaitingForSyncReplyCount;
     bool m_didReceiveInvalidMessage;
 
-    double m_defaultSyncMessageTimeout;
-
     // Incoming messages.
     Mutex m_incomingMessagesLock;
     Deque<IncomingMessage> m_incomingMessages;
+
+    MessageReceiverMap m_messageReceiverMap;
 
     // Outgoing messages.
     Mutex m_outgoingMessagesLock;

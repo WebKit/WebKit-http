@@ -34,6 +34,7 @@ module core {
         attribute SpeechGrammarList grammars;
         attribute DOMString lang;
         attribute boolean continuous;
+        attribute boolean interimResults;
         attribute unsigned long maxAlternatives;
 
         void start() raises (DOMException);
@@ -48,7 +49,6 @@ module core {
         attribute EventListener onaudioend;
         attribute EventListener onresult;
         attribute EventListener onnomatch;
-        attribute EventListener onresultdeleted;
         attribute EventListener onerror;
         attribute EventListener onstart;
         attribute EventListener onend;

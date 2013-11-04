@@ -108,6 +108,10 @@
 #include "ArgumentCodersGtk.h"
 #endif
 
+#if USE(SOUP)
+#include "WebSoupRequestManagerProxy.h"
+#endif
+
 #ifndef NDEBUG
 #include <wtf/RefCountedLeakCounter.h>
 #endif
@@ -277,12 +281,41 @@ bool WebPageProxy::isValid()
     return m_isValid;
 }
 
+PassRefPtr<ImmutableArray> WebPageProxy::relatedPages() const
+{
+    Vector<WebPageProxy*> pages = m_process->pages();
+    ASSERT(pages.contains(this));
+
+    Vector<RefPtr<APIObject> > result;
+    result.reserveCapacity(pages.size() - 1);
+    for (size_t i = 0; i < pages.size(); ++i) {
+        if (pages[i] != this)
+            result.append(pages[i]);
+    }
+
+    return ImmutableArray::adopt(result);
+}
+
 void WebPageProxy::initializeLoaderClient(const WKPageLoaderClient* loadClient)
 {
     m_loaderClient.initialize(loadClient);
     
     if (!loadClient)
         return;
+
+    // It would be nice to get rid of this code and transition all clients to using didLayout instead of
+    // didFirstLayoutInFrame and didFirstVisuallyNonEmptyLayoutInFrame. In the meantime, this is required
+    // for backwards compatibility.
+    WebCore::LayoutMilestones milestones = 0;
+    if (loadClient->didFirstLayoutForFrame)
+        milestones |= WebCore::DidFirstLayout;
+    if (loadClient->didFirstVisuallyNonEmptyLayoutForFrame)
+        milestones |= WebCore::DidFirstVisuallyNonEmptyLayout;
+    if (loadClient->didNewFirstVisuallyNonEmptyLayout)
+        milestones |= WebCore::DidHitRelevantRepaintedObjectsAreaThreshold;
+
+    if (milestones)
+        m_process->send(Messages::WebPage::ListenForLayoutMilestones(milestones), m_pageID);
 
     m_process->send(Messages::WebPage::SetWillGoToBackForwardItemCallbackEnabled(loadClient->version > 0), m_pageID);
 }
@@ -328,10 +361,13 @@ void WebPageProxy::initializeContextMenuClient(const WKPageContextMenuClient* cl
 void WebPageProxy::reattachToWebProcess()
 {
     ASSERT(!isValid());
+    ASSERT(m_process);
+    ASSERT(!m_process->isValid());
+    ASSERT(!m_process->isLaunching());
 
     m_isValid = true;
 
-    m_process = m_process->context()->relaunchProcessIfNecessary();
+    m_process = m_process->context()->createNewWebProcess();
     m_process->addExistingWebPage(this, m_pageID);
 
     initializeWebPage();
@@ -731,14 +767,8 @@ String WebPageProxy::committedURL() const
 
 bool WebPageProxy::canShowMIMEType(const String& mimeType) const
 {
-    if (MIMETypeRegistry::isSupportedNonImageMIMEType(mimeType))
+    if (MIMETypeRegistry::canShowMIMEType(mimeType))
         return true;
-
-    if (MIMETypeRegistry::isSupportedImageMIMEType(mimeType))
-        return true;
-
-    if (mimeType.startsWith("text/", false))
-        return !MIMETypeRegistry::isUnsupportedTextMIMEType(mimeType);
 
     String newMimeType = mimeType;
     PluginModuleInfo plugin = m_process->context()->pluginInfoStore().findPlugin(newMimeType, KURL());
@@ -918,6 +948,14 @@ void WebPageProxy::setViewportSize(const IntSize& size)
         return;
 
     m_process->send(Messages::WebPage::SetViewportSize(size), m_pageID);
+}
+
+void WebPageProxy::commitPageTransitionViewport()
+{
+    if (!isValid())
+        return;
+
+    process()->send(Messages::WebPage::CommitPageTransitionViewport(), m_pageID);
 }
 #endif
 
@@ -1352,7 +1390,7 @@ void WebPageProxy::terminateProcess()
 }
 
 #if !USE(CF) || defined(BUILDING_QT__)
-PassRefPtr<WebData> WebPageProxy::sessionStateData(WebPageProxySessionStateFilterCallback, void* context) const
+PassRefPtr<WebData> WebPageProxy::sessionStateData(WebPageProxySessionStateFilterCallback, void* /*context*/) const
 {
     // FIXME: Return session state data for saving Page state.
     return 0;
@@ -1507,6 +1545,14 @@ void WebPageProxy::setFixedLayoutSize(const IntSize& size)
 
     m_fixedLayoutSize = size;
     m_process->send(Messages::WebPage::SetFixedLayoutSize(size), m_pageID);
+}
+
+void WebPageProxy::listenForLayoutMilestones(WebCore::LayoutMilestones milestones)
+{
+    if (!isValid())
+        return;
+
+    m_process->send(Messages::WebPage::ListenForLayoutMilestones(milestones), m_pageID);
 }
 
 void WebPageProxy::setSuppressScrollbarAnimations(bool suppressAnimations)
@@ -2161,6 +2207,16 @@ void WebPageProxy::didNewFirstVisuallyNonEmptyLayout(CoreIPC::ArgumentDecoder* a
     m_loaderClient.didNewFirstVisuallyNonEmptyLayout(this, userData.get());
 }
 
+void WebPageProxy::didLayout(uint32_t layoutMilestones, CoreIPC::ArgumentDecoder* arguments)
+{
+    RefPtr<APIObject> userData;
+    WebContextUserMessageDecoder messageDecoder(userData, m_process.get());
+    if (!arguments->decode(messageDecoder))
+        return;
+
+    m_loaderClient.didLayout(this, static_cast<LayoutMilestones>(layoutMilestones), userData.get());
+}
+
 void WebPageProxy::didRemoveFrameFromHierarchy(uint64_t frameID, CoreIPC::ArgumentDecoder* arguments)
 {
     RefPtr<APIObject> userData;
@@ -2668,41 +2724,6 @@ void WebPageProxy::setMediaVolume(float volume)
     
     m_process->send(Messages::WebPage::SetMediaVolume(volume), m_pageID);    
 }
-
-#if PLATFORM(QT)
-void WebPageProxy::didFindZoomableArea(const IntPoint& target, const IntRect& area)
-{
-    m_pageClient->didFindZoomableArea(target, area);
-}
-
-void WebPageProxy::findZoomableAreaForPoint(const IntPoint& point, const IntSize& area)
-{
-    if (!isValid())
-        return;
-
-    m_process->send(Messages::WebPage::FindZoomableAreaForPoint(point, area), m_pageID);
-}
-
-void WebPageProxy::didReceiveMessageFromNavigatorQtObject(const String& contents)
-{
-    m_pageClient->didReceiveMessageFromNavigatorQtObject(contents);
-}
-
-void WebPageProxy::authenticationRequiredRequest(const String& hostname, const String& realm, const String& prefilledUsername, String& username, String& password)
-{
-    m_pageClient->handleAuthenticationRequiredRequest(hostname, realm, prefilledUsername, username, password);
-}
-
-void WebPageProxy::proxyAuthenticationRequiredRequest(const String& hostname, uint16_t port, const String& prefilledUsername, String& username, String& password)
-{
-    m_pageClient->handleProxyAuthenticationRequiredRequest(hostname, port, prefilledUsername, username, password);
-}
-
-void WebPageProxy::certificateVerificationRequest(const String& hostname, bool& ignoreErrors)
-{
-    m_pageClient->handleCertificateVerificationRequest(hostname, ignoreErrors);
-}
-#endif // PLATFORM(QT).
 
 #if PLATFORM(QT) || PLATFORM(EFL)
 void WebPageProxy::handleDownloadRequest(DownloadProxy* download)
@@ -3815,6 +3836,8 @@ void WebPageProxy::recommendedScrollbarStyleDidChange(int32_t newStyle)
 {
 #if PLATFORM(MAC)
     m_pageClient->recommendedScrollbarStyleDidChange(newStyle);
+#else
+    UNUSED_PARAM(newStyle);
 #endif
 }
 
@@ -3853,6 +3876,8 @@ void WebPageProxy::didBlockInsecurePluginVersion(const String& mimeType, const S
 
     pluginIdentifier = plugin.bundleIdentifier;
     pluginVersion = plugin.versionString;
+#else
+    UNUSED_PARAM(urlString);
 #endif
 
     m_loaderClient.didBlockInsecurePluginVersion(this, newMimeType, pluginIdentifier, pluginVersion);
@@ -4063,5 +4088,12 @@ void WebPageProxy::dictationAlternatives(uint64_t dictationContext, Vector<Strin
 #endif
 
 #endif // PLATFORM(MAC)
+
+#if USE(SOUP)
+void WebPageProxy::didReceiveURIRequest(String uriString, uint64_t requestID)
+{
+    m_process->context()->soupRequestManagerProxy()->didReceiveURIRequest(uriString, this, requestID);
+}
+#endif
 
 } // namespace WebKit

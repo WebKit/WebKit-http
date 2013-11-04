@@ -73,6 +73,11 @@ void QtPageClient::setViewNeedsDisplay(const WebCore::IntRect& rect)
     QQuickWebViewPrivate::get(m_webView)->setNeedsDisplay();
 }
 
+void QtPageClient::didRenderFrame(const WebCore::IntSize& contentsSize, const WebCore::IntRect& coveredRect)
+{
+    QQuickWebViewPrivate::get(m_webView)->viewportController()->didRenderFrame(contentsSize, coveredRect);
+}
+
 void QtPageClient::pageDidRequestScroll(const IntPoint& pos)
 {
     QQuickWebViewPrivate::get(m_webView)->pageDidRequestScroll(pos);
@@ -90,7 +95,7 @@ void QtPageClient::didRelaunchProcess()
 
 void QtPageClient::didChangeContentsSize(const IntSize& newSize)
 {
-    QQuickWebViewPrivate::get(m_webView)->didChangeContentsSize(newSize);
+    QQuickWebViewPrivate::get(m_webView)->viewportController()->didChangeContentsSize(newSize);
 }
 
 void QtPageClient::didChangeViewportProperties(const WebCore::ViewportAttributes& attr)
@@ -218,6 +223,11 @@ PassRefPtr<WebColorChooserProxy> QtPageClient::createColorChooserProxy(WebPagePr
 void QtPageClient::flashBackingStoreUpdates(const Vector<IntRect>&)
 {
     notImplemented();
+}
+
+void QtPageClient::pageTransitionViewportReady()
+{
+    QQuickWebViewPrivate::get(m_webView)->viewportController()->pageTransitionViewportReady();
 }
 
 void QtPageClient::didFindZoomableArea(const IntPoint& target, const IntRect& area)

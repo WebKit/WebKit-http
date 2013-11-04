@@ -328,7 +328,8 @@ InjectedBundlePage::InjectedBundlePage(WKBundlePageRef page)
         didFinishProgress, // didFinishProgress
         0, // shouldForceUniversalAccessFromLocalURL
         didReceiveIntentForFrame, // didReceiveIntentForFrame
-        registerIntentServiceForFrame // registerIntentServiceForFrame
+        registerIntentServiceForFrame, // registerIntentServiceForFrame
+        0, // didLayout
     };
     WKBundlePageSetPageLoaderClient(m_page, &loaderClient);
 
@@ -742,6 +743,8 @@ void InjectedBundlePage::didStartProvisionalLoadForFrame(WKBundleFrameRef frame)
     if (!InjectedBundle::shared().isTestRunning())
         return;
 
+    platformDidStartProvisionalLoadForFrame(frame);
+
     if (InjectedBundle::shared().testRunner()->shouldDumpFrameLoadCallbacks()) {
         dumpFrameDescriptionSuitableForTestResult(frame);
         InjectedBundle::shared().stringBuilder()->appendLiteral(" - didStartProvisionalLoadForFrame\n");
@@ -981,6 +984,11 @@ void InjectedBundlePage::didFailLoadWithErrorForFrame(WKBundleFrameRef frame, WK
     if (!InjectedBundle::shared().isTestRunning())
         return;
 
+    if (InjectedBundle::shared().testRunner()->shouldDumpFrameLoadCallbacks()) {
+        dumpFrameDescriptionSuitableForTestResult(frame);
+        InjectedBundle::shared().stringBuilder()->appendLiteral(" - didFailLoadWithError\n");
+    }
+
     if (frame != InjectedBundle::shared().topLoadingFrame())
         return;
     InjectedBundle::shared().setTopLoadingFrame(0);
@@ -1006,9 +1014,9 @@ void InjectedBundlePage::didReceiveTitleForFrame(WKStringRef title, WKBundleFram
     if (!InjectedBundle::shared().testRunner()->shouldDumpTitleChanges())
         return;
 
-    InjectedBundle::shared().stringBuilder()->appendLiteral("TITLE CHANGED: ");
+    InjectedBundle::shared().stringBuilder()->appendLiteral("TITLE CHANGED: '");
     InjectedBundle::shared().stringBuilder()->append(toWTFString(title));
-    InjectedBundle::shared().stringBuilder()->append('\n');
+    InjectedBundle::shared().stringBuilder()->appendLiteral("'\n");
 }
 
 void InjectedBundlePage::didClearWindowForFrame(WKBundleFrameRef frame, WKBundleScriptWorldRef world)
@@ -1142,9 +1150,6 @@ static inline bool isHTTPOrHTTPSScheme(WKStringRef scheme)
 
 WKURLRequestRef InjectedBundlePage::willSendRequestForFrame(WKBundlePageRef, WKBundleFrameRef frame, uint64_t identifier, WKURLRequestRef request, WKURLResponseRef response)
 {
-    if (InjectedBundle::shared().isTestRunning() && InjectedBundle::shared().testRunner()->willSendRequestReturnsNull())
-        return 0;
-
     if (InjectedBundle::shared().isTestRunning()
         && InjectedBundle::shared().testRunner()->shouldDumpResourceLoadCallbacks()) {
         dumpResourceURL(identifier);
@@ -1153,6 +1158,15 @@ WKURLRequestRef InjectedBundlePage::willSendRequestForFrame(WKBundlePageRef, WKB
         InjectedBundle::shared().stringBuilder()->appendLiteral(" redirectResponse ");
         dumpResponseDescriptionSuitableForTestResult(response);
         InjectedBundle::shared().stringBuilder()->append('\n');
+    }
+
+    if (InjectedBundle::shared().isTestRunning() && InjectedBundle::shared().testRunner()->willSendRequestReturnsNull())
+        return 0;
+
+    WKRetainPtr<WKURLRef> redirectURL = adoptWK(WKURLResponseCopyURL(response));
+    if (InjectedBundle::shared().isTestRunning() && InjectedBundle::shared().testRunner()->willSendRequestReturnsNullOnRedirect() && redirectURL) {
+        InjectedBundle::shared().stringBuilder()->appendLiteral("Returning null for this redirect\n");
+        return 0;
     }
 
     WKRetainPtr<WKURLRef> url = adoptWK(WKURLRequestCopyURL(request));
@@ -1314,9 +1328,17 @@ WKBundlePagePolicyAction InjectedBundlePage::decidePolicyForNewWindowAction(WKBu
     return WKBundlePagePolicyActionUse;
 }
 
-WKBundlePagePolicyAction InjectedBundlePage::decidePolicyForResponse(WKBundlePageRef, WKBundleFrameRef, WKURLResponseRef, WKURLRequestRef, WKTypeRef*)
+WKBundlePagePolicyAction InjectedBundlePage::decidePolicyForResponse(WKBundlePageRef page, WKBundleFrameRef, WKURLResponseRef response, WKURLRequestRef, WKTypeRef*)
 {
-    return WKBundlePagePolicyActionUse;
+    if (WKURLResponseIsAttachment(response)) {
+        WKRetainPtr<WKStringRef> filename = adoptWK(WKURLResponseCopySuggestedFilename(response));
+        InjectedBundle::shared().stringBuilder()->appendLiteral("Policy delegate: resource is an attachment, suggested file name \'");
+        InjectedBundle::shared().stringBuilder()->append(toWTFString(filename));
+        InjectedBundle::shared().stringBuilder()->appendLiteral("\'\n");
+    }
+
+    WKRetainPtr<WKStringRef> mimeType = adoptWK(WKURLResponseCopyMIMEType(response));
+    return WKBundlePageCanShowMIMEType(page, mimeType.get()) ? WKBundlePagePolicyActionUse : WKBundlePagePolicyActionPassThrough;
 }
 
 void InjectedBundlePage::unableToImplementPolicy(WKBundlePageRef, WKBundleFrameRef, WKErrorRef, WKTypeRef*)
@@ -1856,5 +1878,11 @@ void InjectedBundlePage::dumpBackForwardList()
 
     InjectedBundle::shared().stringBuilder()->appendLiteral("===============================================\n");
 }
+
+#if !PLATFORM(MAC)
+void InjectedBundlePage::platformDidStartProvisionalLoadForFrame(WKBundleFrameRef)
+{
+}
+#endif
 
 } // namespace WTR

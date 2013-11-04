@@ -57,6 +57,9 @@
 #include "ProgressTracker.h"
 #include "ResourceHandleInternal.h"
 #include "ResourceLoader.h"
+#if ENABLE(MEDIA_STREAM)
+#include "RTCPeerConnectionHandlerChromium.h"
+#endif
 #include "Settings.h"
 #include "SocketStreamHandleInternal.h"
 #include "WebDOMEvent.h"
@@ -83,10 +86,9 @@
 #include "WrappedResourceResponse.h"
 #include "platform/WebURL.h"
 #include "platform/WebURLError.h"
-#include "platform/WebVector.h"
 #include <public/Platform.h>
 #include <public/WebMimeRegistry.h>
-
+#include <public/WebVector.h>
 #include <wtf/StringExtras.h>
 #include <wtf/text/CString.h>
 #include <wtf/text/WTFString.h>
@@ -126,7 +128,7 @@ void FrameLoaderClientImpl::frameLoaderDestroyed()
     // serves to keep us alive until the FrameLoader is done with us.  The
     // FrameLoader calls this method when it's going away.  Therefore, we balance
     // out that extra reference, which may cause 'this' to be deleted.
-    m_webFrame->closing();
+    ASSERT(!m_webFrame->frame());
     m_webFrame->deref();
 }
 
@@ -140,6 +142,12 @@ void FrameLoaderClientImpl::documentElementAvailable()
 {
     if (m_webFrame->client())
         m_webFrame->client()->didCreateDocumentElement(m_webFrame);
+}
+
+void FrameLoaderClientImpl::didExhaustMemoryAvailableForScript()
+{
+    if (m_webFrame->client())
+        m_webFrame->client()->didExhaustMemoryAvailableForScript(m_webFrame);
 }
 
 #if USE(V8)
@@ -861,15 +869,14 @@ void FrameLoaderClientImpl::dispatchDidFinishLoad()
     // provisional load succeeds or fails, not the "real" one.
 }
 
-void FrameLoaderClientImpl::dispatchDidFirstLayout()
+void FrameLoaderClientImpl::dispatchDidLayout(LayoutMilestones milestones)
 {
-    if (m_webFrame->client())
-        m_webFrame->client()->didFirstLayout(m_webFrame);
-}
+    if (!m_webFrame->client())
+        return;
 
-void FrameLoaderClientImpl::dispatchDidFirstVisuallyNonEmptyLayout()
-{
-    if (m_webFrame->client())
+    if (milestones & DidFirstLayout)
+        m_webFrame->client()->didFirstLayout(m_webFrame);
+    if (milestones & DidFirstVisuallyNonEmptyLayout)
         m_webFrame->client()->didFirstVisuallyNonEmptyLayout(m_webFrame);
 }
 
@@ -1633,5 +1640,13 @@ void FrameLoaderClientImpl::dispatchWillOpenSocketStream(SocketStreamHandle* han
 {
     m_webFrame->client()->willOpenSocketStream(SocketStreamHandleInternal::toWebSocketStreamHandle(handle));
 }
+
+#if ENABLE(MEDIA_STREAM)
+void FrameLoaderClientImpl::dispatchWillStartUsingPeerConnectionHandler(RTCPeerConnectionHandler* handler)
+{
+    m_webFrame->client()->willStartUsingPeerConnectionHandler(webFrame(), RTCPeerConnectionHandlerChromium::toWebRTCPeerConnectionHandler(handler));
+}
+#endif
+
 
 } // namespace WebKit

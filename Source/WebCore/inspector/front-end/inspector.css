@@ -44,7 +44,7 @@ input[type="search"]:focus, input[type="text"]:focus {
 }
 
 .nowrap {
-    white-space: nowrap;
+    white-space: nowrap !important;
 }
 
 #toolbar {
@@ -66,8 +66,8 @@ body.inactive #toolbar {
     border-bottom: 1px solid rgb(64%, 64%, 64%);
 }
 
-body.detached.platform-mac-leopard #toolbar,
-body.detached.platform-mac-snowleopard #toolbar {
+body.undocked.platform-mac-leopard #toolbar,
+body.undocked.platform-mac-snowleopard #toolbar {
     background: transparent;
 }
 
@@ -194,8 +194,8 @@ body.compact #toolbar-dropdown-arrow {
     background-image: inherit;
 }
 
-body.detached.platform-mac-leopard #toolbar-dropdown,
-body.detached.platform-mac-snowleopard #toolbar-dropdown {
+body.undocked.platform-mac-leopard #toolbar-dropdown,
+body.undocked.platform-mac-snowleopard #toolbar-dropdown {
     background-image: -webkit-gradient(linear, left top, left bottom, from(rgb(191, 191, 191)), to(rgb(151, 151, 151)));
 }
 
@@ -2348,6 +2348,7 @@ li.breakpoint-hit .breakpoint-hit-marker {
     -webkit-border-radius: 7px;
     border: 2px solid rgb(169, 172, 203);
     width: 90%;
+    pointer-events: auto;
 }
 
 .source-frame-breakpoint-message {

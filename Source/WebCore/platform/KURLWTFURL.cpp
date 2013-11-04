@@ -26,7 +26,11 @@
 #include "config.h"
 #include "KURL.h"
 
+#include <TextEncoding.h>
 #include <wtf/DataLog.h>
+#include <wtf/text/CString.h>
+#include <wtf/url/api/URLBuffer.h>
+#include <wtf/url/api/URLQueryCharsetConverter.h>
 
 #if USE(WTFURL)
 
@@ -51,29 +55,55 @@ static inline void detach(RefPtr<KURLWTFURLImpl>& urlImpl)
 KURL::KURL(ParsedURLStringTag, const String& urlString)
     : m_urlImpl(adoptRef(new KURLWTFURLImpl()))
 {
-    m_urlImpl->m_parsedURL = ParsedURL(urlString);
+    m_urlImpl->m_parsedURL = ParsedURL(urlString, ParsedURL::ParsedURLString);
 
     // FIXME: Frame::init() actually create empty URL, investigate why not just null URL.
     // ASSERT(m_urlImpl->m_parsedURL.isValid());
 }
+
+class CharsetConverter : public URLQueryCharsetConverter {
+public:
+    CharsetConverter(const TextEncoding& encoding)
+        : m_encoding(encoding)
+    {
+    }
+
+    virtual void convertFromUTF16(const UChar* input, unsigned inputLength, URLBuffer<char>& output) OVERRIDE
+    {
+        CString encoded = m_encoding.encode(input, inputLength, URLEncodedEntitiesForUnencodables);
+        output.append(encoded.data(), static_cast<int>(encoded.length()));
+    }
+
+private:
+    const TextEncoding& m_encoding;
+};
 
 KURL::KURL(const KURL& baseURL, const String& relative)
     : m_urlImpl(adoptRef(new KURLWTFURLImpl()))
 {
     // FIXME: the case with a null baseURL is common. We should have a separate constructor in KURL.
     // FIXME: the case of an empty Base is useless, we should get rid of empty URLs.
+    CharsetConverter charsetConverter(UTF8Encoding());
     if (baseURL.isEmpty())
-        m_urlImpl->m_parsedURL = ParsedURL(relative);
+        m_urlImpl->m_parsedURL = ParsedURL(relative, &charsetConverter);
     else
-        m_urlImpl->m_parsedURL = ParsedURL(baseURL.m_urlImpl->m_parsedURL, relative);
+        m_urlImpl->m_parsedURL = ParsedURL(baseURL.m_urlImpl->m_parsedURL, relative, &charsetConverter);
 
     if (!m_urlImpl->m_parsedURL.isValid())
         m_urlImpl->m_invalidUrlString = relative;
 }
 
-KURL::KURL(const KURL&, const String&, const TextEncoding&)
+KURL::KURL(const KURL& baseURL, const String& relative, const TextEncoding& encoding)
+    : m_urlImpl(adoptRef(new KURLWTFURLImpl()))
 {
-    // FIXME: Add WTFURL Implementation.
+    CharsetConverter charsetConverter(encoding.encodingForFormSubmission());
+    if (baseURL.isEmpty())
+        m_urlImpl->m_parsedURL = ParsedURL(relative, &charsetConverter);
+    else
+        m_urlImpl->m_parsedURL = ParsedURL(baseURL.m_urlImpl->m_parsedURL, relative, &charsetConverter);
+
+    if (!m_urlImpl->m_parsedURL.isValid())
+        m_urlImpl->m_invalidUrlString = relative;
 }
 
 KURL KURL::copy() const
@@ -141,7 +171,10 @@ String KURL::host() const
 
 bool KURL::hasPort() const
 {
-    ASSERT(isValid());
+    // This should be an ASSERT. HTMLAnchorElement::port() does not check the validity of the URL.
+    if (!isValid())
+        return false;
+
     return !m_urlImpl->m_parsedURL.port().isNull();
 }
 
@@ -164,25 +197,37 @@ unsigned short KURL::port() const
 
 String KURL::user() const
 {
-    ASSERT(isValid());
+    // FIXME: this should be an ASSERT(), call site should not use invalid URLs.
+    if (!isValid())
+        return String();
+
     return m_urlImpl->m_parsedURL.username();
 }
 
 String KURL::pass() const
 {
-    ASSERT(isValid());
+    // FIXME: this should be an ASSERT(), call site should not use invalid URLs.
+    if (!isValid())
+        return String();
+
     return m_urlImpl->m_parsedURL.password();
 }
 
 bool KURL::hasPath() const
 {
-    ASSERT(isValid());
+    // FIXME: this should be an ASSERTION, call site should not use invalid URLs.
+    if (!isValid())
+        return false;
+
     return !path().isEmpty();
 }
 
 String KURL::path() const
 {
-    ASSERT(isValid());
+    // FIXME: this should be an ASSERTION, HTMLAnchorElement should not use invalid URLs.
+    if (!isValid())
+        return String();
+
     return m_urlImpl->m_parsedURL.path();
 }
 
@@ -201,7 +246,10 @@ String KURL::lastPathComponent() const
 
 String KURL::query() const
 {
-    ASSERT(isValid());
+    // FIXME: this should be an ASSERTION, HTMLAnchorElement should not use invalid URLs.
+    if (!isValid())
+        return String();
+
     return m_urlImpl->m_parsedURL.query();
 }
 
@@ -221,6 +269,7 @@ String KURL::fragmentIdentifier() const
     // ASSERT(isValid());
     if (!isValid())
         return String();
+
     return m_urlImpl->m_parsedURL.fragment();
 }
 
@@ -234,7 +283,7 @@ String KURL::baseAsString() const
 // FIXME: Get rid of this function from KURL.
 String KURL::fileSystemPath() const
 {
-    return String();
+    return string();
 }
 
 bool KURL::protocolIs(const char* testProtocol) const

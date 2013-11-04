@@ -98,7 +98,6 @@ public:
     void setAllowFileAccessFromFileURLs(bool);
     void setFrameFlatteningEnabled(bool);
     void setPluginsEnabled(bool);
-    void setGeolocationPermission(bool);
     void setJavaScriptCanAccessClipboard(bool);
     void setPrivateBrowsingEnabled(bool);
     void setPopupBlockingEnabled(bool);
@@ -200,8 +199,10 @@ public:
 
     void setPOSIXLocale(JSStringRef);
 
-    bool willSendRequestReturnsNull() { return m_willSendRequestReturnsNull; }
+    bool willSendRequestReturnsNull() const { return m_willSendRequestReturnsNull; }
     void setWillSendRequestReturnsNull(bool f) { m_willSendRequestReturnsNull = f; }
+    bool willSendRequestReturnsNullOnRedirect() const { return m_willSendRequestReturnsNullOnRedirect; }
+    void setWillSendRequestReturnsNullOnRedirect(bool f) { m_willSendRequestReturnsNullOnRedirect = f; }
 
     void setTextDirection(JSStringRef);
 
@@ -229,7 +230,7 @@ public:
     void callFocusWebViewCallback();
     void callSetBackingScaleFactorCallback();
 
-    void overridePreference(JSStringRef preference, bool value);
+    void overridePreference(JSStringRef preference, JSStringRef value);
 
     // Web intents testing.
     void sendWebIntentResponse(JSStringRef reply);
@@ -247,6 +248,11 @@ public:
     void denyWebNotificationPermission(JSStringRef origin);
     void removeAllWebNotificationPermissions();
     void simulateWebNotificationClick(JSValueRef notification);
+
+    // Geolocation.
+    void setGeolocationPermission(bool);
+    void setMockGeolocationPosition(double latitude, double longitude, double accuracy);
+    void setMockGeolocationPositionUnavailableError(JSStringRef message);
 
     JSRetainPtr<JSStringRef> platformName();
 
@@ -288,6 +294,7 @@ private:
     bool m_testRepaintSweepHorizontally;
 
     bool m_willSendRequestReturnsNull;
+    bool m_willSendRequestReturnsNullOnRedirect;
     bool m_shouldStopProvisionalFrameLoads;
 
     bool m_policyDelegateEnabled;

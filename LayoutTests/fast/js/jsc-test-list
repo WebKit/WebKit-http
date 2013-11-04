@@ -46,6 +46,7 @@ fast/js/comparefn-sort-stability
 fast/js/comparison-operators-greater
 fast/js/comparison-operators-less
 fast/js/comparison-operators
+fast/js/concat-while-having-a-bad-time
 fast/js/const-without-initializer
 fast/js/constant-count
 fast/js/constant-encoding
@@ -78,7 +79,13 @@ fast/js/dfg-arguments-mixed-alias
 fast/js/dfg-arguments-osr-exit
 fast/js/dfg-arguments-out-of-bounds
 fast/js/dfg-arguments-unexpected-escape
+fast/js/dfg-arrayify-when-late-prevent-extensions
+fast/js/dfg-arrayify-when-prevent-extensions
 fast/js/dfg-array-length-dead
+fast/js/dfg-array-pop-side-effects
+fast/js/dfg-array-push-bad-time
+fast/js/dfg-array-push-slow-put
+fast/js/dfg-bool-to-int32-reuse
 fast/js/dfg-branch-not-fail
 fast/js/dfg-check-two-structures
 fast/js/dfg-constant-fold-first-local-read-after-block-merge
@@ -99,6 +106,7 @@ fast/js/dfg-get-by-val-clobber
 fast/js/dfg-get-by-val-getter-cse
 fast/js/dfg-getter-throw
 fast/js/dfg-getter
+fast/js/dfg-holy-put-by-val-interferes-with-get-array-length
 fast/js/dfg-inline-arguments-become-double
 fast/js/dfg-inline-arguments-become-int32
 fast/js/dfg-inline-arguments-int32
@@ -140,6 +148,7 @@ fast/js/dfg-poison-fuzz
 fast/js/dfg-proto-access-inline-osr-exit
 fast/js/dfg-put-by-id-prototype-check
 fast/js/dfg-putbyval-cfa-clobber
+fast/js/dfg-redundant-load-of-captured-variable-proven-constant
 fast/js/dfg-string-stricteq
 fast/js/dfg-tear-off-arguments-not-activation
 fast/js/dfg-uint16array
@@ -288,6 +297,7 @@ fast/js/sort-no-jit-code-crash
 fast/js/sort-non-numbers
 fast/js/sort-randomly
 fast/js/sort-stability
+fast/js/sort-with-side-effecting-comparisons
 fast/js/sparse-array
 fast/js/stack-overflow-arrity-catch
 fast/js/stack-overflow-catch
@@ -315,6 +325,7 @@ fast/js/toString-for-var-decl
 fast/js/toString-number-dot-expr
 fast/js/toString-prefix-postfix-preserve-parens
 fast/js/toString-recursion
+fast/js/try-try-return-finally-finally
 fast/js/typeof-codegen-crash
 fast/js/typeof-constant-string
 fast/js/unexpected-constant-crash

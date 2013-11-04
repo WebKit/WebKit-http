@@ -40,15 +40,16 @@
 
 namespace WebCore {
 
-PassOwnPtr<MutationObserverRegistration> MutationObserverRegistration::create(PassRefPtr<MutationObserver> observer, Node* registrationNode)
+PassOwnPtr<MutationObserverRegistration> MutationObserverRegistration::create(PassRefPtr<MutationObserver> observer, Node* registrationNode, MutationObserverOptions options, const HashSet<AtomicString>& attributeFilter)
 {
-    return adoptPtr(new MutationObserverRegistration(observer, registrationNode));
+    return adoptPtr(new MutationObserverRegistration(observer, registrationNode, options, attributeFilter));
 }
 
-MutationObserverRegistration::MutationObserverRegistration(PassRefPtr<MutationObserver> observer, Node* registrationNode)
-     : m_observer(observer)
-     , m_registrationNode(registrationNode)
-     , m_options(0)
+MutationObserverRegistration::MutationObserverRegistration(PassRefPtr<MutationObserver> observer, Node* registrationNode, MutationObserverOptions options, const HashSet<AtomicString>& attributeFilter)
+    : m_observer(observer)
+    , m_registrationNode(registrationNode)
+    , m_options(options)
+    , m_attributeFilter(attributeFilter)
 {
     m_observer->observationStarted(this);
 }
@@ -66,7 +67,7 @@ void MutationObserverRegistration::resetObservation(MutationObserverOptions opti
     m_attributeFilter = attributeFilter;
 }
 
-void MutationObserverRegistration::observedSubtreeNodeWillDetach(PassRefPtr<Node> node)
+void MutationObserverRegistration::observedSubtreeNodeWillDetach(Node* node)
 {
     if (!isSubtree())
         return;
@@ -105,7 +106,7 @@ void MutationObserverRegistration::unregister()
     // The above line will cause this object to be deleted, so don't do any more in this function.
 }
 
-bool MutationObserverRegistration::shouldReceiveMutationFrom(Node* node, MutationObserver::MutationType type, const QualifiedName* attributeName)
+bool MutationObserverRegistration::shouldReceiveMutationFrom(Node* node, MutationObserver::MutationType type, const QualifiedName* attributeName) const
 {
     ASSERT((type == MutationObserver::Attributes && attributeName) || !attributeName);
     if (!(m_options & type))

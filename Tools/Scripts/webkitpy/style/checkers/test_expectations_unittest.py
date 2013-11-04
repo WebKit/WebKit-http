@@ -82,6 +82,10 @@ class TestExpectationsTestCase(unittest.TestCase):
         self._expect_port_for_expectations_path('efl', 'LayoutTests/platform/efl/TestExpectations')
         self._expect_port_for_expectations_path('efl', 'LayoutTests/platform/efl-wk1/TestExpectations')
         self._expect_port_for_expectations_path('efl', 'LayoutTests/platform/efl-wk2/TestExpectations')
+        self._expect_port_for_expectations_path('qt', 'LayoutTests/platform/qt-win/TestExpectations')
+        # FIXME: check-webkit-style doesn't know how to create port objects for all Qt version (4.8, 5.0) and
+        # will only check files based on the installed version of Qt.
+        #self._expect_port_for_expectations_path('qt', 'LayoutTests/platform/qt-5.0-wk2/TestExpectations')
 
     def assert_lines_lint(self, lines, should_pass, expected_output=None):
         self._error_collector.reset_errors()
@@ -107,10 +111,10 @@ class TestExpectationsTestCase(unittest.TestCase):
         self.assertTrue(self._error_collector.turned_off_filtering)
 
     def test_valid_expectations(self):
-        self.assert_lines_lint(["BUGCR1234 MAC : passes/text.html = PASS TEXT"], should_pass=True)
+        self.assert_lines_lint(["crbug.com/1234 [ Mac ] passes/text.html [ Pass Failure ]"], should_pass=True)
 
     def test_invalid_expectations(self):
-        self.assert_lines_lint(["BUG1234 : passes/text.html = GIVE UP"], should_pass=False)
+        self.assert_lines_lint(["Bug(me) passes/text.html [ Give Up]"], should_pass=False)
 
     def test_tab(self):
-        self.assert_lines_lint(["\tBUGWK1 : passes/text.html = PASS"], should_pass=False, expected_output="Line contains tab character.  [whitespace/tab] [5]")
+        self.assert_lines_lint(["\twebkit.org/b/1 passes/text.html [ Pass ]"], should_pass=False, expected_output="Line contains tab character.  [whitespace/tab] [5]")

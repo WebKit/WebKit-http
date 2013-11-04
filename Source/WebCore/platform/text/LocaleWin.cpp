@@ -32,7 +32,7 @@
 #include "LocaleWin.h"
 
 #include "DateComponents.h"
-#if ENABLE(INPUT_TYPE_TIME_MULTIPLE_FIELDS)
+#if ENABLE(INPUT_MULTIPLE_FIELDS_UI)
 #include "DateTimeFormat.h"
 #endif
 #include "Language.h"
@@ -240,14 +240,18 @@ static Vector<DateFormatToken> parseDateFormat(const String format)
     Vector<DateFormatToken> tokens;
     StringBuilder literalBuffer;
     bool inQuote = false;
+    bool lastQuoteCanBeLiteral = false;
     for (unsigned i = 0; i < format.length(); ++i) {
         UChar ch = format[i];
         if (inQuote) {
             if (ch == '\'') {
                 inQuote = false;
                 ASSERT(i);
-                if (format[i - 1] == '\'')
+                if (lastQuoteCanBeLiteral && format[i - 1] == '\'') {
                     literalBuffer.append('\'');
+                    lastQuoteCanBeLiteral = false;
+                } else
+                    lastQuoteCanBeLiteral = true;
             } else
                 literalBuffer.append(ch);
             continue;
@@ -255,8 +259,11 @@ static Vector<DateFormatToken> parseDateFormat(const String format)
 
         if (ch == '\'') {
             inQuote = true;
-            if (i > 0 && format[i - 1] == '\'')
+            if (lastQuoteCanBeLiteral && i > 0 && format[i - 1] == '\'') {
                 literalBuffer.append(ch);
+                lastQuoteCanBeLiteral = false;
+            } else
+                lastQuoteCanBeLiteral = true;
         } else if (isYearSymbol(ch)) {
             commitLiteralToken(literalBuffer, tokens);
             unsigned count = countContinuousLetters(format, i);
@@ -354,8 +361,10 @@ int LocaleWin::parseNumberOrMonth(const String& input, unsigned& index)
     return -1;
 }
 
-double LocaleWin::parseDate(const String& input)
+double LocaleWin::parseDateTime(const String& input, DateComponents::Type type)
 {
+    if (type != DateComponents::Date)
+        return std::numeric_limits<double>::quiet_NaN();
     ensureShortDateTokens();
     return parseDate(m_shortDateTokens, m_baseYear, input);
 }
@@ -478,8 +487,10 @@ void LocaleWin::appendFourDigitsNumber(int value, StringBuilder& buffer)
     buffer.append(convertToLocalizedNumber(numberBuffer.toString()));
 }
 
-String LocaleWin::formatDate(const DateComponents& dateComponents)
+String LocaleWin::formatDateTime(const DateComponents& dateComponents, FormatType formatType)
 {
+    if (dateComponents.type() != DateComponents::Date)
+        return Localizer::formatDateTime(dateComponents, formatType);
     ensureShortDateTokens();
     return formatDate(m_shortDateTokens, m_baseYear, dateComponents.fullYear(), dateComponents.month(), dateComponents.monthDay());
 }
@@ -665,9 +676,84 @@ const Vector<String>& LocaleWin::weekDayShortLabels()
     ensureWeekDayShortLabels();
     return m_weekDayShortLabels;
 }
+
+unsigned LocaleWin::firstDayOfWeek()
+{
+    return m_firstDayOfWeek;
+}
 #endif
 
-#if ENABLE(INPUT_TYPE_TIME_MULTIPLE_FIELDS)
+#if ENABLE(INPUT_MULTIPLE_FIELDS_UI)
+static void appendAsLDMLLiteral(const String& literal, StringBuilder& buffer)
+{
+    if (literal.length() <= 0)
+        return;
+    
+    if (literal.find('\'') == notFound) {
+        buffer.append("'");
+        buffer.append(literal);
+        buffer.append("'");
+        return;
+    }
+
+    for (unsigned i = 0; i < literal.length(); ++i) {
+        if (literal[i] == '\'')
+            buffer.append("''");
+        else {
+            String escaped = literal.substring(i);
+            escaped.replace(ASCIILiteral("'"), ASCIILiteral("''"));
+            buffer.append("'");
+            buffer.append(escaped);
+            buffer.append("'");
+            return;
+        }
+    }
+}
+
+static String convertWindowsDateFormatToLDML(const Vector<DateFormatToken>& tokens)
+{
+    StringBuilder buffer;
+    for (unsigned i = 0; i < tokens.size(); ++i) {
+        switch (tokens[i].type) {
+        case DateFormatToken::Literal:
+            appendAsLDMLLiteral(tokens[i].data, buffer);
+            break;
+
+        case DateFormatToken::Day2:
+            buffer.append(static_cast<char>(DateTimeFormat::FieldTypeDayOfMonth));
+            // Fallthrough.
+        case DateFormatToken::Day1:
+            buffer.append(static_cast<char>(DateTimeFormat::FieldTypeDayOfMonth));
+            break;
+
+        case DateFormatToken::Month4:
+            buffer.append(static_cast<char>(DateTimeFormat::FieldTypeMonth));
+            // Fallthrough.
+        case DateFormatToken::Month3:
+            buffer.append(static_cast<char>(DateTimeFormat::FieldTypeMonth));
+            // Fallthrough.
+        case DateFormatToken::Month2:
+            buffer.append(static_cast<char>(DateTimeFormat::FieldTypeMonth));
+            // Fallthrough.
+        case DateFormatToken::Month1:
+            buffer.append(static_cast<char>(DateTimeFormat::FieldTypeMonth));
+            break;
+
+        case DateFormatToken::Year4:
+            buffer.append(static_cast<char>(DateTimeFormat::FieldTypeYear));
+            buffer.append(static_cast<char>(DateTimeFormat::FieldTypeYear));
+            // Fallthrough.
+        case DateFormatToken::Year2:
+            buffer.append(static_cast<char>(DateTimeFormat::FieldTypeYear));
+            // Fallthrough.
+        case DateFormatToken::Year1:
+            buffer.append(static_cast<char>(DateTimeFormat::FieldTypeYear));
+            break;
+        }
+    }
+    return buffer.toString();
+}
+
 static DateTimeFormat::FieldType mapCharacterToDateTimeFieldType(UChar ch)
 {
     switch (ch) {
@@ -718,6 +804,20 @@ static String convertWindowsTimeFormatToLDML(const String& windowsTimeFormat)
         lastFieldType = fieldType;
     }
     return builder.toString();
+}
+
+String LocaleWin::dateFormat()
+{
+    if (!m_dateFormat.isEmpty())
+        return m_dateFormat;
+    ensureShortDateTokens();
+    m_dateFormat = convertWindowsDateFormatToLDML(m_shortDateTokens);
+    return m_dateFormat;
+}
+
+String LocaleWin::dateFormat(const String& windowsFormat)
+{
+    return convertWindowsDateFormatToLDML(parseDateFormat(windowsFormat));
 }
 
 String LocaleWin::timeFormat()

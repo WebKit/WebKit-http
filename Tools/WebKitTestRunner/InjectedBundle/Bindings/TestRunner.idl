@@ -60,7 +60,6 @@ module WTR {
         void setAllowFileAccessFromFileURLs(in boolean value);
         void setFrameFlatteningEnabled(in boolean value);
         void setPluginsEnabled(in boolean value);
-        void setGeolocationPermission(in boolean value);
         void setJavaScriptCanAccessClipboard(in boolean value);
         void setPrivateBrowsingEnabled(in boolean value);
         void setPopupBlockingEnabled(in boolean value);
@@ -139,6 +138,7 @@ module WTR {
         void setTextDirection(in DOMString direction);
 
         void setWillSendRequestReturnsNull(in boolean flag);
+        void setWillSendRequestReturnsNullOnRedirect(in boolean flag);
         
         void setShouldStayOnPageAfterHandlingBeforeUnload(in boolean flag);
 
@@ -161,8 +161,7 @@ module WTR {
         // Cookies testing
         void setAlwaysAcceptCookies(in boolean accept);
 
-        // FIXME: handle non-boolean preferences.
-        void overridePreference(in DOMString preference, in boolean value);
+        void overridePreference(in DOMString preference, in DOMString value);
 
         // Page Visibility API
         void setPageVisibility(in DOMString state);
@@ -178,6 +177,11 @@ module WTR {
         void denyWebNotificationPermission(in DOMString origin);
         void removeAllWebNotificationPermissions();
         void simulateWebNotificationClick(in object notification);
+
+        // Geolocation
+        void setGeolocationPermission(in boolean value);
+        void setMockGeolocationPosition(in double latitude, in double longitude, in double accuracy);
+        void setMockGeolocationPositionUnavailableError(in DOMString errorMessage);
 
         boolean callShouldCloseOnWebView();
     };

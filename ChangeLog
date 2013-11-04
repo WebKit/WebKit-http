@@ -1,3 +1,391 @@
+2012-10-03  Ryuan Choi  <ryuan.choi@samsung.com>
+
+        [EFL] Default.edj should be generated although ENABLE_WEBKIT disabled.
+        https://bugs.webkit.org/show_bug.cgi?id=97753
+
+        Reviewed by Laszlo Gombos.
+
+        default.edj is used in both webkit/efl and webkit2/efl.
+        However, it has been generated only when ENABLE_WEBKIT is enabled.
+
+        This patch separates the script which generates default.edj
+        from source/webkit/platformefl.cmake.
+
+        * Source/CMakeLists.txt:
+        * Source/PlatformEfl.cmake: Added to generate custom target for default theme.
+        * Source/cmake/OptionsEfl.cmake:
+        Moved directory generation from WebKit/PlatformEfl.cmake
+        because THEME_BINARY_DIR is used for both Default Theme and control theme in Tools.
+
+2012-10-03  Otto Derek Cheung  <otcheung@rim.com>
+
+        [BlackBerry] Implementing the NetworkInfo API for BB port 
+        https://bugs.webkit.org/show_bug.cgi?id=98273
+
+        Reviewed by Rob Buis.
+
+        Adding references to new classes added to support BlackBerry's
+        NetworkInfo implementation.
+
+        * Source/cmake/OptionsBlackBerry.cmake:
+
+2012-10-01  Keishi Hattori  <keishi@webkit.org>
+
+        Calendar picker should use zero as default step base
+        https://bugs.webkit.org/show_bug.cgi?id=97976
+
+        Reviewed by Kent Tamura.
+
+        * ManualTests/forms/calendar-picker.html: Added stepBase parameters.
+
+2012-09-28  Mariusz Grzegorczyk  <mariusz.g@samsung.com>
+
+        [WK2][GTK][EFL] Share WebKit2-GTK plugin process implementation with EFL port
+        https://bugs.webkit.org/show_bug.cgi?id=91844
+
+        Reviewed by Simon Hausmann.
+
+        Turn on Netscape Plugin API by default  for WebKit2-Efl.
+
+        * Source/cmake/OptionsEfl.cmake:
+
+2012-09-28  Alpha Lam  <hclam@chromium.org>
+
+        REGRESSION(r122215) - CachedImage::likelyToBeUsedSoon crashes on accessing a deleted CachedImageClient
+        https://bugs.webkit.org/show_bug.cgi?id=97749
+
+        Reviewed by James Robinson.
+
+        Added a manual test to demonstrate drag image and crashing.
+
+        * ManualTests/drag-image-no-crash.html: Added.
+
+2012-09-27  Keishi Hattori  <keishi@webkit.org>
+
+        SuggestionPicker should support rtl
+        https://bugs.webkit.org/show_bug.cgi?id=97555
+
+        Reviewed by Kent Tamura.
+
+        * ManualTests/forms/calendar-picker.html: Added tests for Arabic with datalist.
+
+2012-09-27  Patrick Gansterer  <paroga@webkit.org>
+
+        [WINCE] Enable JIT by default
+
+        * Source/cmake/OptionsWinCE.cmake:
+
+2012-09-26  Martin Robinson  <mrobinson@igalia.com>
+
+        [GTK] Use XDamage to simplify RedirectedXCompositeWindow
+        https://bugs.webkit.org/show_bug.cgi?id=97267
+
+        Reviewed by Alejandro G. Castro.
+
+        Use XDamage to queue redraws of the widget when redirecting accelerated compositing
+        to an offscreen window. This allows removing a finicky timer-based approach, improves
+        performance, and allows simplifying things greatly.
+
+        * configure.ac: Add support for finding XDamage via pkg-config.
+
+2012-09-26  Simon Hausmann  <simon.hausmann@digia.com>
+
+        [Qt] Remove Qt Quick 1 support
+
+        Reviewed by Kenneth Rohde Christiansen.
+
+        It is being moved to the Qt5 QtQuick1 module.
+
+        * Source/tests.pri:
+
+2012-09-26  Zan Dobersek  <zandobersek@gmail.com>
+
+        [GTK] Enable some of the unstable CSS features
+        https://bugs.webkit.org/show_bug.cgi?id=97572
+
+        Reviewed by Martin Robinson.
+
+        Export the required RuntimeEnabledFeatures symbol.
+
+        * Source/autotools/symbols.filter:
+
+2012-09-25  Cosmin Truta  <ctruta@rim.com>
+
+        [BlackBerry] Enable LLInt
+        https://bugs.webkit.org/show_bug.cgi?id=97604
+
+        Reviewed by Yong Li.
+
+        * Source/cmake/OptionsBlackBerry.cmake:
+
+2012-09-25  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Perf-o-matic should store "values" and support array'ed input
+        https://bugs.webkit.org/show_bug.cgi?id=97601
+
+        Reviewed by Dirk Pranke.
+
+        Support new JSON format where the outermost structure is an array instead of a dictionary and results may
+        contain "values". This change will let us remove some code from run-perf-tests.
+
+        Old: {"webkit-revision": 123456, "results": {"test": {"avg": 123}}
+        New: [{"webkit-revision": 123456, "results": {"test": {"avg": 123, values: [122, 123, 124]}}}]
+
+        * Websites/webkit-perf.appspot.com/app.yaml: Incremented the version number.
+        * Websites/webkit-perf.appspot.com/models.py:
+        (TestResult): Added values property.
+        (TestResult.get_or_insert_from_parsed_json): Pass in "values" to the constructor if the value is present.
+        (ReportLog.get_value): Use the first item in the array if self._parsed uses the new format.
+        (ReportLog.results_are_well_formed): Verifies that items in "values" are floats convertible. Also verify that
+        if the JSON uses new format, there is exactly one set of results. In theory, we could support multiple results
+        but we don't do that now for its complexity.
+        * Websites/webkit-perf.appspot.com/models_unittest.py:
+        (TestResultTests.test_get_or_insert_stat_value): Make sure values is present and is an empty list.
+        (TestResultTests.test_get_or_insert_stat_value_with_values): Added.
+        (ReportLogTests.test_results_are_well_formed):
+        (ReportLogTests.test_chromium_revision): Renamed from chromium_revision so that it actually runs.
+        (ReportLogTests.test_results_in_array):
+
+2012-09-25  Laszlo Gombos  <l.gombos@samsung.com>
+
+        [EFL] Update minimal required versions for dependencies
+        https://bugs.webkit.org/show_bug.cgi?id=97523
+
+        Reviewed by Gyuyoung Kim.
+
+        Use the same versions numbers for dependencies as in Tools/efl/jhbuild.modules.
+
+        * Source/cmake/OptionsEfl.cmake:
+
+2012-09-24  Simon Hausmann  <simon.hausmann@digia.com>
+
+        [Qt] Fix build with latest Qt 5
+        https://bugs.webkit.org/show_bug.cgi?id=97479
+
+        Reviewed by Tor Arne Vestbø.
+
+        Define MODULE_BASE_DIR before loading qt_module.prf, which now calls syncqt. MODULE_BASE_DIR is
+        passed as last parameter (source dir) to syncqt now, so set it to the directory that contains
+        sync.profile.
+
+        * Source/api.pri:
+
+2012-09-24  Bo Liu  <boliu@chromium.org>
+
+        Reland "Add in-place reload behavior to ImagesEnabled setting" with optimizations
+        https://bugs.webkit.org/show_bug.cgi?id=97055
+
+        Reviewed by Adam Barth.
+
+        Relanding 128780, 128676, 128645. Was reverted in 128914 due to
+        performance regression in Chromium.
+
+        New changes in addition to previously reverted patches:
+
+        Refactored CachedResource::requestResource, loadResource, and
+        revalidateResource. Moved CachedResource::load method to end of
+        requestResource so there is one place where load is called for all
+        resources.
+
+        Added a enum parameter for requestResource and
+        determineRevalidationPolicy so that FrameLoaderClient::allowImage call
+        do not need to be called multiple times.
+
+        Removed CachedImage::load call in requestImage so it is not called
+        twice.
+
+        Removed unnecessary Frame.h includes in CachedResource and
+        CachedImage.
+
+        Removed dead load() method declaration in CachedImage.
+
+        Updated text expectation for two image-permissions tests to reflect
+        the removed calls to allowImage.
+
+        * Source/autotools/symbols.filter:
+
+2012-09-24  Byungwoo Lee  <bw80.lee@samsung.com>
+
+        [CMake] Change hardcoded 'lib' and 'bin' in CMakeLists.txt to 'LIB_INSTALL_DIR' and 'EXEC_INSTALL_DIR'.
+        https://bugs.webkit.org/show_bug.cgi?id=97419
+
+        Reviewed by Gyuyoung Kim.
+
+        Use the value of LIB_INSTALL_DIR and EXEC_INSTALL_DIR instead of
+        hardcoding 'lib' and 'bin' for CMAKE_{ARCHIVE,LIBRARY,RUNTIME}_OUTPUT_DIRECTORY.
+
+        * CMakeLists.txt:
+        Use ${LIB_INSTALL_DIR} instead of hardcoding "lib".
+        Use ${EXEC_INSTALL_DIR} instead of hardcoding "bin".
+
+2012-09-24  Sheriff Bot  <webkit.review.bot@gmail.com>
+
+        Unreviewed, rolling out r129343.
+        http://trac.webkit.org/changeset/129343
+        https://bugs.webkit.org/show_bug.cgi?id=97479
+
+        It broke the build (Requested by Ossy_NIGHT on #webkit).
+
+        * Source/api.pri:
+
+2012-09-24  Sheriff Bot  <webkit.review.bot@gmail.com>
+
+        Unreviewed, rolling out r129388.
+        http://trac.webkit.org/changeset/129388
+        https://bugs.webkit.org/show_bug.cgi?id=97477
+
+        Caused an assertion in a WebKit2 unit test (Requested by
+        abarth on #webkit).
+
+        * Source/autotools/symbols.filter:
+
+2012-09-24  Dominik Röttsches  <dominik.rottsches@intel.com>
+
+        [EFL][DRT] Enable Regions support
+        https://bugs.webkit.org/show_bug.cgi?id=83897
+
+        Reviewed by Kenneth Rohde Christiansen.
+
+        Default build setting for CSS regions set to on.
+
+        * Source/cmake/OptionsEfl.cmake:
+
+2012-09-24  Bo Liu  <boliu@chromium.org>
+
+        Reland "Add in-place reload behavior to ImagesEnabled setting" with optimizations
+        https://bugs.webkit.org/show_bug.cgi?id=97055
+
+        Reviewed by Adam Barth.
+
+        Relanding 128780, 128676, 128645. Was reverted in 128914 due to
+        performance regression in Chromium.
+
+        New changes in addition to previously reverted patches:
+
+        Refactored CachedResource::requestResource, loadResource, and
+        revalidateResource. Moved CachedResource::load method to end of
+        requestResource so there is one place where load is called for all
+        resources.
+
+        Added a enum parameter for requestResource and
+        determineRevalidationPolicy so that FrameLoaderClient::allowImage call
+        do not need to be called multiple times.
+
+        Removed CachedImage::load call in requestImage so it is not called
+        twice.
+
+        Removed unnecessary Frame.h includes in CachedResource and
+        CachedImage.
+
+        Removed dead load() method declaration in CachedImage.
+
+        Updated text expectation for two image-permissions tests to reflect
+        the removed calls to allowImage.
+
+        * Source/autotools/symbols.filter:
+
+2012-09-24  Vivek Galatage  <vivekgalatage@gmail.com>
+
+        Web Inspector: implement testing harness for pure protocol tests.
+        https://bugs.webkit.org/show_bug.cgi?id=90675
+
+        Reviewed by Yury Semikhatsky.
+
+        Added export symbols required for Gtk+ to support the Inspector Protocol
+        testing harness.
+
+        * Source/autotools/symbols.filter:
+
+2012-09-24  Simon Hausmann  <simon.hausmann@digia.com>
+
+        [Qt] Fix build with latest Qt 5
+
+        Reviewed by Tor Arne Vestbø.
+
+        Define MODULE_BASE_DIR before loading qt_module.prf, which now calls syncqt. MODULE_BASE_DIR is
+        passed as last parameter (source dir) to syncqt now, so set it to the directory that contains
+        sync.profile.
+
+        * Source/api.pri:
+
+2012-09-23  Keishi Hattori  <keishi@webkit.org>
+
+        Add suggestionPicker to CalendarPicker
+        https://bugs.webkit.org/show_bug.cgi?id=97201
+
+        Reviewed by Kent Tamura.
+
+        * ManualTests/forms/calendar-picker.html: Added tests for SuggestionPicker.
+
+2012-09-21  Ami Fischman  <fischman@chromium.org>
+
+        HTMLMediaElement isn't garbage collected between document reloads
+        https://bugs.webkit.org/show_bug.cgi?id=97020
+
+        Reviewed by Eric Carlson.
+
+        Manual test added: ManualTests/audio-freed-during-reload.html
+
+        * ManualTests/audio-freed-during-reload.html:
+
+2012-09-21  Chris Rogers  <crogers@google.com>
+
+        Add Web Audio support for deprecated/legacy APIs
+        https://bugs.webkit.org/show_bug.cgi?id=97050
+
+        Reviewed by Eric Carlson.
+
+        * Source/cmake/WebKitFeatures.cmake:
+
+2012-09-21  Simon Hausmann  <simon.hausmann@digia.com>
+
+        [Qt] Bail out when trying to build WebKit with Qt != 5
+
+        Reviewed by Tor Arne Vestbø.
+
+        Moved check for Qt version out of default_pre into top-level WebKit.pro,
+        because we never reach default_pre.prf due to the lack of .qmake.conf support
+        in older versions of Qt/QMake.
+
+        * WebKit.pro:
+
+2012-09-20  Simon Hausmann  <simon.hausmann@digia.com>
+
+        [Qt] QtWebKit module header includes private dependencies
+
+        Reviewed by Tor Arne Vestbø.
+
+        Moved loading of webkit_modules.prf a few lines down after the definition
+        of QT_API_DEPENDS, because webkit_modules.prf does the sanitization of the
+        QT variable now and therefore needs QT_API_DEPENDS.
+
+        * Source/api.pri:
+
+2012-09-18  Sailesh Agrawal  <sail@chromium.org>
+
+        Chromium: Scrollbar with tickmarks doesn't respond to clicks
+        https://bugs.webkit.org/show_bug.cgi?id=96049
+
+        Reviewed by Beth Dakin.
+
+        Update exported symbols.
+
+        * Source/autotools/symbols.filter:
+
+2012-09-18  Bo Liu  <boliu@chromium.org>
+
+        Revert 128780, 128676, 128645
+        https://bugs.webkit.org/show_bug.cgi?id=97022
+
+        Reviewed by Adam Barth.
+
+        I made these revisions to add in-place reload behavior to ImagesEnabled setting.
+        Reverting this for now due to them causing performance regression in
+        chromium, possibly caused by increased calls to
+        PermissionClient::imageAllowed.
+
+        * Source/autotools/symbols.filter:
+
 2012-09-18  Ryuan Choi  <ryuan.choi@samsung.com>
 
         [CMAKE] Fix build break because of memory exhausted.

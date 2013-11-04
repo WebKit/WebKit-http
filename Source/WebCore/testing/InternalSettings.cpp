@@ -80,6 +80,7 @@ InternalSettings::Backup::Backup(Page* page, Settings* settings)
     , m_originalAuthorShadowDOMForAnyElementEnabled(RuntimeEnabledFeatures::authorShadowDOMForAnyElementEnabled())
 #endif
     , m_originalEditingBehavior(settings->editingBehaviorType())
+    , m_originalUnifiedSpellCheckerEnabled(settings->unifiedTextCheckerEnabled())
     , m_originalFixedPositionCreatesStackingContext(settings->fixedPositionCreatesStackingContext())
     , m_originalSyncXHRInDocumentsEnabled(settings->syncXHRInDocumentsEnabled())
 #if ENABLE(INSPECTOR) && ENABLE(JAVASCRIPT_DEBUGGER)
@@ -114,6 +115,7 @@ void InternalSettings::Backup::restoreTo(Page* page, Settings* settings)
     RuntimeEnabledFeatures::setAuthorShadowDOMForAnyElementEnabled(m_originalAuthorShadowDOMForAnyElementEnabled);
 #endif
     settings->setEditingBehaviorType(m_originalEditingBehavior);
+    settings->setUnifiedTextCheckerEnabled(m_originalUnifiedSpellCheckerEnabled);
     settings->setFixedPositionCreatesStackingContext(m_originalFixedPositionCreatesStackingContext);
     settings->setSyncXHRInDocumentsEnabled(m_originalSyncXHRInDocumentsEnabled);
 #if ENABLE(INSPECTOR) && ENABLE(JAVASCRIPT_DEBUGGER)
@@ -168,6 +170,7 @@ void InternalSettings::reset()
     setUserPreferredLanguages(Vector<String>());
     page()->setPagination(Pagination());
     page()->setPageScaleFactor(1, IntPoint(0, 0));
+    setUsesOverlayScrollbars(false);
 #if ENABLE(PAGE_POPUP)
     m_pagePopupDriver.clear();
     if (page()->chrome())
@@ -234,6 +237,11 @@ void InternalSettings::setMockScrollbarsEnabled(bool enabled, ExceptionCode& ec)
 {
     InternalSettingsGuardForSettings();
     settings()->setMockScrollbarsEnabled(enabled);
+}
+
+void InternalSettings::setUsesOverlayScrollbars(bool flag)
+{
+    settings()->setUsesOverlayScrollbars(flag);
 }
 
 void InternalSettings::setPasswordEchoEnabled(bool enabled, ExceptionCode& ec)

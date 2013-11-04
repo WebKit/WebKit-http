@@ -407,7 +407,7 @@ void JIT::emitSlow_op_new_object(Instruction* currentInstruction, Vector<SlowCas
 
 void JIT::emit_op_check_has_instance(Instruction* currentInstruction)
 {
-    unsigned baseVal = currentInstruction[1].u.operand;
+    unsigned baseVal = currentInstruction[3].u.operand;
 
     emitGetVirtualRegister(baseVal, regT0);
 
@@ -416,20 +416,18 @@ void JIT::emit_op_check_has_instance(Instruction* currentInstruction)
 
     // Check that baseVal 'ImplementsHasInstance'.
     loadPtr(Address(regT0, JSCell::structureOffset()), regT0);
-    addSlowCase(branchTest8(Zero, Address(regT0, Structure::typeInfoFlagsOffset()), TrustedImm32(ImplementsHasInstance)));
+    addSlowCase(branchTest8(Zero, Address(regT0, Structure::typeInfoFlagsOffset()), TrustedImm32(ImplementsDefaultHasInstance)));
 }
 
 void JIT::emit_op_instanceof(Instruction* currentInstruction)
 {
     unsigned dst = currentInstruction[1].u.operand;
     unsigned value = currentInstruction[2].u.operand;
-    unsigned baseVal = currentInstruction[3].u.operand;
-    unsigned proto = currentInstruction[4].u.operand;
+    unsigned proto = currentInstruction[3].u.operand;
 
     // Load the operands (baseVal, proto, and value respectively) into registers.
     // We use regT0 for baseVal since we will be done with this first, and we can then use it for the result.
     emitGetVirtualRegister(value, regT2);
-    emitGetVirtualRegister(baseVal, regT0);
     emitGetVirtualRegister(proto, regT1);
 
     // Check that proto are cells.  baseVal must be a cell - this is checked by op_check_has_instance.
@@ -440,11 +438,6 @@ void JIT::emit_op_instanceof(Instruction* currentInstruction)
     loadPtr(Address(regT1, JSCell::structureOffset()), regT3);
     addSlowCase(emitJumpIfNotObject(regT3));
     
-    // Fixme: this check is only needed because the JSC API allows HasInstance to be overridden; we should deprecate this.
-    // Check that baseVal 'ImplementsDefaultHasInstance'.
-    loadPtr(Address(regT0, JSCell::structureOffset()), regT0);
-    addSlowCase(branchTest8(Zero, Address(regT0, Structure::typeInfoFlagsOffset()), TrustedImm32(ImplementsDefaultHasInstance)));
-
     // Optimistically load the result true, and start looping.
     // Initially, regT1 still contains proto and regT2 still contains value.
     // As we loop regT2 will be updated with its prototype, recursively walking the prototype chain.
@@ -805,11 +798,11 @@ void JIT::emit_op_jneq_null(Instruction* currentInstruction)
 void JIT::emit_op_jneq_ptr(Instruction* currentInstruction)
 {
     unsigned src = currentInstruction[1].u.operand;
-    JSCell* ptr = currentInstruction[2].u.jsCell.get();
+    Special::Pointer ptr = currentInstruction[2].u.specialPointer;
     unsigned target = currentInstruction[3].u.operand;
     
     emitGetVirtualRegister(src, regT0);
-    addJump(branchPtr(NotEqual, regT0, TrustedImmPtr(JSValue::encode(JSValue(ptr)))), target);            
+    addJump(branchPtr(NotEqual, regT0, TrustedImmPtr(actualPointerFor(m_codeBlock, ptr))), target);
 }
 
 void JIT::emit_op_eq(Instruction* currentInstruction)
@@ -1452,29 +1445,31 @@ void JIT::emitSlow_op_nstricteq(Instruction* currentInstruction, Vector<SlowCase
 
 void JIT::emitSlow_op_check_has_instance(Instruction* currentInstruction, Vector<SlowCaseEntry>::iterator& iter)
 {
-    unsigned baseVal = currentInstruction[1].u.operand;
+    unsigned dst = currentInstruction[1].u.operand;
+    unsigned value = currentInstruction[2].u.operand;
+    unsigned baseVal = currentInstruction[3].u.operand;
 
     linkSlowCaseIfNotJSCell(iter, baseVal);
     linkSlowCase(iter);
     JITStubCall stubCall(this, cti_op_check_has_instance);
+    stubCall.addArgument(value, regT2);
     stubCall.addArgument(baseVal, regT2);
-    stubCall.call();
+    stubCall.call(dst);
+
+    emitJumpSlowToHot(jump(), currentInstruction[4].u.operand);
 }
 
 void JIT::emitSlow_op_instanceof(Instruction* currentInstruction, Vector<SlowCaseEntry>::iterator& iter)
 {
     unsigned dst = currentInstruction[1].u.operand;
     unsigned value = currentInstruction[2].u.operand;
-    unsigned baseVal = currentInstruction[3].u.operand;
-    unsigned proto = currentInstruction[4].u.operand;
+    unsigned proto = currentInstruction[3].u.operand;
 
     linkSlowCaseIfNotJSCell(iter, value);
     linkSlowCaseIfNotJSCell(iter, proto);
     linkSlowCase(iter);
-    linkSlowCase(iter);
     JITStubCall stubCall(this, cti_op_instanceof);
     stubCall.addArgument(value, regT2);
-    stubCall.addArgument(baseVal, regT2);
     stubCall.addArgument(proto, regT2);
     stubCall.call(dst);
 }

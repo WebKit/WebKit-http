@@ -36,13 +36,19 @@ WebInspector.OutputStreamDelegate = function()
 }
 
 WebInspector.OutputStreamDelegate.prototype = {
-    onTransferStarted: function(source) { },
+    onTransferStarted: function() { },
 
-    onChunkTransferred: function(source) { },
+    onTransferFinished: function() { },
 
-    onTransferFinished: function(source) { },
+    /**
+     * @param {WebInspector.ChunkedReader} reader
+     */
+    onChunkTransferred: function(reader) { },
 
-    onError: function(source, event) { }
+    /**
+     * @param {WebInspector.ChunkedReader} reader
+     */
+    onError: function(reader, event) { },
 }
 
 /**
@@ -53,20 +59,44 @@ WebInspector.OutputStream = function()
 }
 
 WebInspector.OutputStream.prototype = {
-    startTransfer: function() { },
+    /**
+     * @param {string} data
+     * @param {function(WebInspector.OutputStream)=} callback
+     */
+    write: function(data, callback) { },
+
+    close: function() { }
+}
+
+/**
+ * @interface
+ */
+WebInspector.ChunkedReader = function()
+{
+}
+
+WebInspector.ChunkedReader.prototype = {
+    /**
+     * @return {number}
+     */
+    fileSize: function() { },
 
     /**
-     * @param {string} chunk
+     * @return {number}
      */
-    transferChunk: function(chunk) { },
+    loadedSize: function() { },
 
-    finishTransfer: function() { },
+    /**
+     * @return {string}
+     */
+    fileName: function() { },
 
-    dispose: function() { }
+    cancel: function() { }
 }
 
 /**
  * @constructor
+ * @implements {WebInspector.ChunkedReader}
  * @param {!File} file
  * @param {number} chunkSize
  * @param {!WebInspector.OutputStreamDelegate} delegate
@@ -92,8 +122,7 @@ WebInspector.ChunkedFileReader.prototype = {
         this._reader = new FileReader();
         this._reader.onload = this._onChunkLoaded.bind(this);
         this._reader.onerror = this._delegate.onError.bind(this._delegate, this);
-        this._output.startTransfer();
-        this._delegate.onTransferStarted(this);
+        this._delegate.onTransferStarted();
         this._loadChunk();
     },
 
@@ -102,16 +131,25 @@ WebInspector.ChunkedFileReader.prototype = {
         this._isCanceled = true;
     },
 
+    /**
+     * @return {number}
+     */
     loadedSize: function()
     {
         return this._loadedSize;
     },
 
+    /**
+     * @return {number}
+     */
     fileSize: function()
     {
         return this._fileSize;
     },
 
+    /**
+     * @return {string}
+     */
     fileName: function()
     {
         return this._file.name;
@@ -131,7 +169,7 @@ WebInspector.ChunkedFileReader.prototype = {
         var data = event.target.result;
         this._loadedSize += data.length;
 
-        this._output.transferChunk(data);
+        this._output.write(data);
         if (this._isCanceled)
             return;
         this._delegate.onChunkTransferred(this);
@@ -139,8 +177,8 @@ WebInspector.ChunkedFileReader.prototype = {
         if (this._loadedSize === this._fileSize) {
             this._file = null;
             this._reader = null;
-            this._output.finishTransfer();
-            this._delegate.onTransferFinished(this);
+            this._output.close();
+            this._delegate.onTransferFinished();
             return;
         }
 
@@ -151,13 +189,14 @@ WebInspector.ChunkedFileReader.prototype = {
     {
         var chunkStart = this._loadedSize;
         var chunkEnd = Math.min(this._fileSize, chunkStart + this._chunkSize)
-        var nextPart = this._file.webkitSlice(chunkStart, chunkEnd);
+        var nextPart = this._file.slice(chunkStart, chunkEnd);
         this._reader.readAsText(nextPart);
     }
 }
 
 /**
  * @constructor
+ * @implements {WebInspector.ChunkedReader}
  * @param {string} url
  * @param {!WebInspector.OutputStreamDelegate} delegate
  */
@@ -185,8 +224,7 @@ WebInspector.ChunkedXHRReader.prototype = {
         this._xhr.onerror = this._delegate.onError.bind(this._delegate, this);
         this._xhr.send(null);
 
-        this._output.startTransfer();
-        this._delegate.onTransferStarted(this);
+        this._delegate.onTransferStarted();
     },
 
     cancel: function()
@@ -195,16 +233,25 @@ WebInspector.ChunkedXHRReader.prototype = {
         this._xhr.abort();
     },
 
+    /**
+     * @return {number}
+     */
     loadedSize: function()
     {
         return this._loadedSize;
     },
 
+    /**
+     * @return {number}
+     */
     fileSize: function()
     {
         return this._fileSize;
     },
 
+    /**
+     * @return {string}
+     */
     fileName: function()
     {
         return this._url;
@@ -226,7 +273,7 @@ WebInspector.ChunkedXHRReader.prototype = {
             return;
 
         this._loadedSize += data.length;
-        this._output.transferChunk(data);
+        this._output.write(data);
         if (this._isCanceled)
             return;
         this._delegate.onChunkTransferred(this);
@@ -242,8 +289,8 @@ WebInspector.ChunkedXHRReader.prototype = {
         if (this._isCanceled)
             return;
 
-        this._output.finishTransfer();
-        this._delegate.onTransferFinished(this);
+        this._output.close();
+        this._delegate.onTransferFinished();
     }
 }
 
@@ -297,66 +344,63 @@ WebInspector.findBalancedCurlyBrackets = function(source, startIndex, lastIndex)
 /**
  * @constructor
  * @implements {WebInspector.OutputStream}
- * @param {string} fileName
- * @param {!WebInspector.OutputStreamDelegate} delegate
  */
-WebInspector.FileOutputStream = function(fileName, delegate)
+WebInspector.FileOutputStream = function()
 {
-    this._fileName = fileName;
-    this._delegate = delegate;
 }
 
 WebInspector.FileOutputStream.prototype = {
     /**
-     * @override
+     * @param {string} fileName
+     * @param {function(WebInspector.FileOutputStream, string=)} callback
      */
-    startTransfer: function()
+    open: function(fileName, callback)
     {
-        WebInspector.fileManager.addEventListener(WebInspector.FileManager.EventTypes.SavedURL, this._onTransferStarted, this);
+        this._closed = false;
+        this._writeCallbacks = [];
+        this._fileName = fileName;
+        function callbackWrapper()
+        {
+            WebInspector.fileManager.removeEventListener(WebInspector.FileManager.EventTypes.SavedURL, callbackWrapper, this);
+            WebInspector.fileManager.addEventListener(WebInspector.FileManager.EventTypes.AppendedToURL, this._onAppendDone, this);
+            callback(this);
+        }
+        WebInspector.fileManager.addEventListener(WebInspector.FileManager.EventTypes.SavedURL, callbackWrapper, this);
         WebInspector.fileManager.save(this._fileName, "", true);
     },
 
     /**
-     * @override
-     * @param {string} chunk
+     * @param {string} data
+     * @param {function(WebInspector.OutputStream)=} callback
      */
-    transferChunk: function(chunk)
+    write: function(data, callback)
     {
-        WebInspector.fileManager.append(this._fileName, chunk);
+        this._writeCallbacks.push(callback);
+        WebInspector.fileManager.append(this._fileName, data);
+    },
+
+    close: function()
+    {
+        this._closed = true;
+        if (this._writeCallbacks.length)
+            return;
+        WebInspector.fileManager.removeEventListener(WebInspector.FileManager.EventTypes.AppendedToURL, this._onAppendDone, this);
     },
 
     /**
-     * @override
+     * @param {Event} event
      */
-    finishTransfer: function()
-    {
-        WebInspector.fileManager.removeEventListener(WebInspector.FileManager.EventTypes.AppendedToURL, this._onChunkTransferred, this);
-        this._delegate.onTransferFinished(this);
-    },
-
-    dispose: function()
-    {
-    },
-
-    /**
-     * @param {WebInspector.Event} event
-     */
-    _onTransferStarted: function(event)
+    _onAppendDone: function(event)
     {
         if (event.data !== this._fileName)
             return;
-        this._delegate.onTransferStarted(this);
-        WebInspector.fileManager.removeEventListener(WebInspector.FileManager.EventTypes.SavedURL, this._onTransferStarted, this);
-        WebInspector.fileManager.addEventListener(WebInspector.FileManager.EventTypes.AppendedToURL, this._onChunkTransferred, this);
-    },
-
-    /**
-     * @param {WebInspector.Event} event
-     */
-    _onChunkTransferred: function(event)
-    {
-        if (event.data !== this._fileName)
+        if (!this._writeCallbacks.length) {
+            if (this._closed)
+                WebInspector.fileManager.removeEventListener(WebInspector.FileManager.EventTypes.AppendedToURL, this._onAppendDone, this);
             return;
-        this._delegate.onChunkTransferred(this);
+        }
+        var callback = this._writeCallbacks.shift();
+        if (callback)
+            callback(this);
     }
 }

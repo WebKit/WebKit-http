@@ -43,6 +43,7 @@ public:
 
     // QQuickWebView.
     virtual void setViewNeedsDisplay(const WebCore::IntRect&);
+    virtual void didRenderFrame(const WebCore::IntSize& contentsSize, const WebCore::IntRect& coveredRect);
     virtual WebCore::IntSize viewSize();
     virtual bool isViewFocused();
     virtual bool isViewVisible();
@@ -99,6 +100,7 @@ public:
     virtual void flashBackingStoreUpdates(const Vector<WebCore::IntRect>& updateRects);
     virtual void findStringInCustomRepresentation(const String&, WebKit::FindOptions, unsigned maxMatchCount) { }
     virtual void countStringMatchesInCustomRepresentation(const String&, WebKit::FindOptions, unsigned maxMatchCount) { }
+    virtual void pageTransitionViewportReady();
     virtual void didFindZoomableArea(const WebCore::IntPoint&, const WebCore::IntRect&);
     virtual void updateTextInputState();
     virtual void doneWithGestureEvent(const WebGestureEvent&, bool wasEventHandled);

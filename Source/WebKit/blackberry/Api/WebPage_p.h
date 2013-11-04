@@ -77,6 +77,7 @@ class InPageSearchManager;
 class InputHandler;
 class SelectionHandler;
 class TouchEventHandler;
+class WebCookieJar;
 class WebPageClient;
 
 #if USE(ACCELERATED_COMPOSITING)
@@ -179,6 +180,7 @@ public:
     WebCore::IntSize absoluteVisibleOverflowSize() const;
 
     // Virtual functions inherited from PageClientBlackBerry.
+    virtual int playerID() const;
     virtual void setCursor(WebCore::PlatformCursor);
     virtual Platform::NetworkStreamFactory* networkStreamFactory();
     virtual Platform::Graphics::Window* platformWindow() const;
@@ -406,9 +408,6 @@ public:
     void setNeedsOneShotDrawingSynchronization();
     void scheduleRootLayerCommit();
 
-    // Thread safe.
-    void resetCompositingSurface();
-
     // Compositing thread.
     void setRootLayerCompositingThread(WebCore::LayerCompositingThread*);
     void commitRootLayer(const WebCore::IntRect&, const WebCore::IntSize&, bool);
@@ -471,6 +470,7 @@ public:
     WebCore::Frame* m_mainFrame;
     RefPtr<WebCore::Node> m_currentContextNode;
     WebSettings* m_webSettings;
+    WebCookieJar* m_cookieJar;
     OwnPtr<WebTapHighlight> m_tapHighlight;
     WebSelectionOverlay* m_selectionOverlay;
 
@@ -523,7 +523,7 @@ public:
 #if ENABLE(FULLSCREEN_API)
 #if ENABLE(VIDEO)
     double m_scaleBeforeFullScreen;
-    int m_xScrollOffsetBeforeFullScreen;
+    WebCore::IntPoint m_scrollOffsetBeforeFullScreen;
 #endif
     bool m_isTogglingFullScreenState;
 #endif

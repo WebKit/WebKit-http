@@ -27,10 +27,12 @@
 #define TestController_h
 
 #include "WebNotificationProvider.h"
+#include <GeolocationProviderMock.h>
 #include <WebKit2/WKRetainPtr.h>
 #include <string>
 #include <vector>
 #include <wtf/OwnPtr.h>
+#include <wtf/Vector.h>
 
 namespace WTR {
 
@@ -65,6 +67,12 @@ public:
 
     void simulateWebNotificationClick(uint64_t notificationID);
 
+    // Geolocation.
+    void setGeolocationPermission(bool);
+    void setMockGeolocationPosition(double latitude, double longitude, double accuracy);
+    void setMockGeolocationPositionUnavailableError(WKStringRef errorMessage);
+    void handleGeolocationPermissionRequest(WKGeolocationPermissionRequestRef);
+
     bool resetStateToConsistentValues();
 
 private:
@@ -80,6 +88,8 @@ private:
     void platformDidCommitLoadForFrame(WKPageRef, WKFrameRef);
     void initializeInjectedBundlePath();
     void initializeTestPluginDirectory();
+
+    void decidePolicyForGeolocationPermissionRequestIfPossible();
 
     // WKContextInjectedBundleClient
     static void didReceiveMessageFromInjectedBundle(WKContextRef, WKStringRef messageName, WKTypeRef messageBody, const void*);
@@ -142,6 +152,11 @@ private:
     bool m_shouldExitWhenWebProcessCrashes;
     
     bool m_beforeUnloadReturnValue;
+
+    OwnPtr<GeolocationProviderMock> m_geolocationProvider;
+    Vector<WKRetainPtr<WKGeolocationPermissionRequestRef> > m_geolocationPermissionRequests;
+    bool m_isGeolocationPermissionSet;
+    bool m_isGeolocationPermissionAllowed;
 
     EventSenderProxy* m_eventSenderProxy;
 };

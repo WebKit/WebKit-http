@@ -24,6 +24,7 @@
 #include "FeatureObserver.h"
 #include "FrameLoaderTypes.h"
 #include "FindOptions.h"
+#include "LayoutMilestones.h"
 #include "LayoutTypes.h"
 #include "PageVisibilityState.h"
 #include "Pagination.h"
@@ -171,9 +172,9 @@ namespace WebCore {
         PageGroup& group() { if (!m_group) initGroup(); return *m_group; }
         PageGroup* groupPtr() { return m_group; } // can return 0
 
-        void incrementFrameCount() { ++m_frameCount; }
-        void decrementFrameCount() { ASSERT(m_frameCount); --m_frameCount; }
-        int frameCount() const { checkFrameCountConsistency(); return m_frameCount; }
+        void incrementSubframeCount() { ++m_subframeCount; }
+        void decrementSubframeCount() { ASSERT(m_subframeCount); --m_subframeCount; }
+        int subframeCount() const { checkSubframeCountConsistency(); return m_subframeCount; }
 
         Chrome* chrome() const { return m_chrome.get(); }
         DragCaretController* dragCaretController() const { return m_dragCaretController.get(); }
@@ -326,8 +327,10 @@ namespace WebCore {
 
         PlatformDisplayID displayID() const { return m_displayID; }
 
+        void addLayoutMilestones(LayoutMilestones);
+        LayoutMilestones layoutMilestones() const { return m_layoutMilestones; }
+
         bool isCountingRelevantRepaintedObjects() const;
-        void setRelevantRepaintedObjectsCounterThreshold(uint64_t);
         void startCountingRelevantRepaintedObjects();
         void resetRelevantPaintedObjectCounter();
         void addRelevantRepaintedObject(RenderObject*, const LayoutRect& objectPaintRect);
@@ -351,9 +354,9 @@ namespace WebCore {
         void initGroup();
 
 #if ASSERT_DISABLED
-        void checkFrameCountConsistency() const { }
+        void checkSubframeCountConsistency() const { }
 #else
-        void checkFrameCountConsistency() const;
+        void checkSubframeCountConsistency() const;
 #endif
 
         MediaCanStartListener* takeAnyMediaCanStartListener();
@@ -396,7 +399,7 @@ namespace WebCore {
 
         FeatureObserver m_featureObserver;
 
-        int m_frameCount;
+        int m_subframeCount;
         String m_groupName;
         bool m_openedByDOM;
 
@@ -446,6 +449,8 @@ namespace WebCore {
         PageVisibilityState m_visibilityState;
 #endif
         PlatformDisplayID m_displayID;
+
+        LayoutMilestones m_layoutMilestones;
 
         HashSet<RenderObject*> m_relevantUnpaintedRenderObjects;
         Region m_relevantPaintedRegion;

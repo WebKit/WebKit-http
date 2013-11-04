@@ -41,6 +41,7 @@ namespace CoreIPC {
 
 namespace WebCore {
     class GraphicsLayer;
+    class GraphicsLayerFactory;
 }
 
 namespace WebKit {
@@ -70,7 +71,7 @@ public:
     // FIXME: These should be pure virtual.
     virtual void pageBackgroundTransparencyChanged() { }
     virtual void forceRepaint() { }
-    virtual bool forceRepaintAsync(uint64_t callbackID) { return false; }
+    virtual bool forceRepaintAsync(uint64_t /*callbackID*/) { return false; }
     virtual void setLayerTreeStateIsFrozen(bool) { }
     virtual bool layerTreeStateIsFrozen() const { return false; }
     virtual LayerTreeHost* layerTreeHost() const { return 0; }
@@ -87,6 +88,7 @@ public:
     virtual void updatePreferences(const WebPreferencesStore&) { }
 
 #if USE(ACCELERATED_COMPOSITING)
+    virtual WebCore::GraphicsLayerFactory* graphicsLayerFactory() { return 0; }
     virtual void setRootCompositingLayer(WebCore::GraphicsLayer*) = 0;
     virtual void scheduleCompositingLayerSync() = 0;
 #endif
@@ -110,7 +112,8 @@ protected:
 private:
     // CoreIPC message handlers.
     // FIXME: These should be pure virtual.
-    virtual void updateBackingStoreState(uint64_t backingStoreStateID, bool respondImmediately, float deviceScaleFactor, const WebCore::IntSize& size, const WebCore::IntSize& scrollOffset) { }
+    virtual void updateBackingStoreState(uint64_t /*backingStoreStateID*/, bool /*respondImmediately*/, float /*deviceScaleFactor*/, const WebCore::IntSize& /*size*/, 
+                                         const WebCore::IntSize& /*scrollOffset*/) { }
     virtual void didUpdate() { }
     virtual void suspendPainting() { }
     virtual void resumePainting() { }

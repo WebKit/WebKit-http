@@ -263,6 +263,8 @@ void WebContext::setProcessModel(ProcessModel processModel)
     // Guard against API misuse.
     if (!m_processes.isEmpty())
         CRASH();
+    if (processModel != ProcessModelSharedSecondaryProcess && !m_messagesToInjectedBundlePostedToEmptyContext.isEmpty())
+        CRASH();
 
 #if !ENABLE(PLUGIN_PROCESS)
     // Plugin process is required for multiple web process mode.
@@ -304,7 +306,7 @@ void WebContext::textCheckerStateChanged()
 void WebContext::ensureSharedWebProcess()
 {
     if (m_processes.isEmpty())
-        m_processes.append(createNewWebProcess());
+        createNewWebProcess();
 }
 
 PassRefPtr<WebProcessProxy> WebContext::createNewWebProcess()
@@ -336,6 +338,10 @@ PassRefPtr<WebProcessProxy> WebContext::createNewWebProcess()
     copyToVector(m_schemesToRegisterAsEmptyDocument, parameters.urlSchemesRegistererdAsEmptyDocument);
     copyToVector(m_schemesToRegisterAsSecure, parameters.urlSchemesRegisteredAsSecure);
     copyToVector(m_schemesToSetDomainRelaxationForbiddenFor, parameters.urlSchemesForWhichDomainRelaxationIsForbidden);
+    copyToVector(m_schemesToRegisterAsLocal, parameters.urlSchemesRegisteredAsLocal);
+    copyToVector(m_schemesToRegisterAsNoAccess, parameters.urlSchemesRegisteredAsNoAccess);
+    copyToVector(m_schemesToRegisterAsDisplayIsolated, parameters.urlSchemesRegisteredAsDisplayIsolated);
+    copyToVector(m_schemesToRegisterAsCORSEnabled, parameters.urlSchemesRegisteredAsCORSEnabled);
 
     parameters.shouldAlwaysUseComplexTextCodePath = m_alwaysUsesComplexTextCodePath;
     parameters.shouldUseFontSmoothing = m_shouldUseFontSmoothing;
@@ -362,12 +368,17 @@ PassRefPtr<WebProcessProxy> WebContext::createNewWebProcess()
         injectedBundleInitializationUserData = m_injectedBundleInitializationUserData;
     process->send(Messages::WebProcess::InitializeWebProcess(parameters, WebContextUserMessageEncoder(injectedBundleInitializationUserData.get())), 0);
 
-    for (size_t i = 0; i != m_pendingMessagesToPostToInjectedBundle.size(); ++i) {
-        pair<String, RefPtr<APIObject> >& message = m_pendingMessagesToPostToInjectedBundle[i];
-        process->deprecatedSend(InjectedBundleMessage::PostMessage, 0, CoreIPC::In(message.first, WebContextUserMessageEncoder(message.second.get())));
-    }
-    // FIXME (Multi-WebProcess) (94368): What does this mean in the brave new world?
-    m_pendingMessagesToPostToInjectedBundle.clear();
+    m_processes.append(process);
+
+    if (m_processModel == ProcessModelSharedSecondaryProcess) {
+        for (size_t i = 0; i != m_messagesToInjectedBundlePostedToEmptyContext.size(); ++i) {
+            pair<String, RefPtr<APIObject> >& message = m_messagesToInjectedBundlePostedToEmptyContext[i];
+            process->deprecatedSend(InjectedBundleMessage::PostMessage, 0, CoreIPC::In(message.first, WebContextUserMessageEncoder(message.second.get())));
+        }
+        m_messagesToInjectedBundlePostedToEmptyContext.clear();
+    } else
+        ASSERT(m_messagesToInjectedBundlePostedToEmptyContext.isEmpty());
+
 
     return process.release();
 }
@@ -379,7 +390,7 @@ void WebContext::warmInitialProcess()
         return;
     }
 
-    m_processes.append(createNewWebProcess());
+    createNewWebProcess();
     m_haveInitialEmptyProcess = true;
 }
 
@@ -517,7 +528,6 @@ PassRefPtr<WebPageProxy> WebContext::createWebPage(PageClient* pageClient, WebPa
         } else {
             // FIXME (Multi-WebProcess): <rdar://problem/12239661> Consider limiting the number of web processes in per-tab process model.
             process = createNewWebProcess();
-            m_processes.append(process);
         }
     }
 
@@ -532,10 +542,10 @@ WebProcessProxy* WebContext::relaunchProcessIfNecessary()
     if (m_processModel == ProcessModelSharedSecondaryProcess) {
         ensureSharedWebProcess();
         return m_processes[0].get();
-    } else {
-        // FIXME (Multi-WebProcess): What should this do in this model?
-        return 0;
     }
+
+    ASSERT_NOT_REACHED();
+    return 0;
 }
 
 DownloadProxy* WebContext::download(WebPageProxy* initiatingPage, const ResourceRequest& request)
@@ -563,17 +573,16 @@ DownloadProxy* WebContext::download(WebPageProxy* initiatingPage, const Resource
 void WebContext::postMessageToInjectedBundle(const String& messageName, APIObject* messageBody)
 {
     if (m_processes.isEmpty()) {
-        m_pendingMessagesToPostToInjectedBundle.append(std::make_pair(messageName, messageBody));
+        if (m_processModel == ProcessModelSharedSecondaryProcess)
+            m_messagesToInjectedBundlePostedToEmptyContext.append(std::make_pair(messageName, messageBody));
         return;
     }
 
+    // FIXME: Return early if the message body contains any references to WKPageRefs/WKFrameRefs etc. since they're local to a process.
+
     for (size_t i = 0; i < m_processes.size(); ++i) {
-        // FIXME (Multi-WebProcess): Evolve m_pendingMessagesToPostToInjectedBundle to work with multiple secondary processes.
-        if (!m_processes[i]->canSendMessage()) {
-            m_pendingMessagesToPostToInjectedBundle.append(std::make_pair(messageName, messageBody));
-            continue;
-        }
         // FIXME: We should consider returning false from this function if the messageBody cannot be encoded.
+        // FIXME: Can we encode the message body outside the loop for all the processes?
         m_processes[i]->deprecatedSend(InjectedBundleMessage::PostMessage, 0, CoreIPC::In(messageName, WebContextUserMessageEncoder(messageBody)));
     }
 }
@@ -638,6 +647,30 @@ void WebContext::setDomainRelaxationForbiddenForURLScheme(const String& urlSchem
 {
     m_schemesToSetDomainRelaxationForbiddenFor.add(urlScheme);
     sendToAllProcesses(Messages::WebProcess::SetDomainRelaxationForbiddenForURLScheme(urlScheme));
+}
+
+void WebContext::registerURLSchemeAsLocal(const String& urlScheme)
+{
+    m_schemesToRegisterAsLocal.add(urlScheme);
+    sendToAllProcesses(Messages::WebProcess::RegisterURLSchemeAsLocal(urlScheme));
+}
+
+void WebContext::registerURLSchemeAsNoAccess(const String& urlScheme)
+{
+    m_schemesToRegisterAsNoAccess.add(urlScheme);
+    sendToAllProcesses(Messages::WebProcess::RegisterURLSchemeAsNoAccess(urlScheme));
+}
+
+void WebContext::registerURLSchemeAsDisplayIsolated(const String& urlScheme)
+{
+    m_schemesToRegisterAsDisplayIsolated.add(urlScheme);
+    sendToAllProcesses(Messages::WebProcess::RegisterURLSchemeAsDisplayIsolated(urlScheme));
+}
+
+void WebContext::registerURLSchemeAsCORSEnabled(const String& urlScheme)
+{
+    m_schemesToRegisterAsCORSEnabled.add(urlScheme);
+    sendToAllProcesses(Messages::WebProcess::RegisterURLSchemeAsCORSEnabled(urlScheme));
 }
 
 void WebContext::setCacheModel(CacheModel cacheModel)
@@ -916,6 +949,8 @@ void WebContext::setHTTPPipeliningEnabled(bool enabled)
 {
 #if PLATFORM(MAC)
     ResourceRequest::setHTTPPipeliningEnabled(enabled);
+#else
+    UNUSED_PARAM(enabled);
 #endif
 }
 

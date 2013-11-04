@@ -37,7 +37,6 @@
 #include "FrameLoaderClientImpl.h"
 #include "Node.h"
 #include "NodeList.h"
-
 #include "EventListenerWrapper.h"
 #include "WebDOMEvent.h"
 #include "WebDOMEventListener.h"
@@ -45,10 +44,9 @@
 #include "WebElement.h"
 #include "WebFrameImpl.h"
 #include "WebNodeList.h"
-#include "platform/WebString.h"
-#include "platform/WebVector.h"
-
 #include "markup.h"
+#include "platform/WebString.h"
+#include <public/WebVector.h>
 
 using namespace WebCore;
 
@@ -223,6 +221,13 @@ WebElement WebNode::rootEditableElement() const
 bool WebNode::focused() const
 {
     return m_private->focused();
+}
+
+bool WebNode::remove()
+{
+    ExceptionCode exceptionCode = 0;
+    m_private->remove(exceptionCode);
+    return !exceptionCode;
 }
 
 bool WebNode::hasNonEmptyBoundingBox() const

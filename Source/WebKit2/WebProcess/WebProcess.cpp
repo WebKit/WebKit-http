@@ -26,7 +26,6 @@
 #include "config.h"
 #include "WebProcess.h"
 
-#include "AuthenticationManager.h"
 #include "DownloadManager.h"
 #include "InjectedBundle.h"
 #include "InjectedBundleMessageKinds.h"
@@ -160,9 +159,6 @@ WebProcess::WebProcess()
     , m_notificationManager(this)
 #endif
     , m_iconDatabaseProxy(this)
-#if ENABLE(PLUGIN_PROCESS)
-    , m_disablePluginProcessMessageTimeout(false)
-#endif
 #if USE(SOUP)
     , m_soupRequestManager(this)
 #endif
@@ -264,10 +260,6 @@ void WebProcess::initializeWebProcess(const WebProcessCreationParameters& parame
     WebCore::ResourceHandle::setPrivateBrowsingStorageSessionIdentifierBase(parameters.uiProcessBundleIdentifier);
 #endif
 
-#if ENABLE(PLUGIN_PROCESS)
-    m_disablePluginProcessMessageTimeout = parameters.disablePluginProcessMessageTimeout;
-#endif
-
     setTerminationTimeout(parameters.terminationTimeout);
 }
 
@@ -290,6 +282,26 @@ void WebProcess::registerURLSchemeAsSecure(const String& urlScheme) const
 void WebProcess::setDomainRelaxationForbiddenForURLScheme(const String& urlScheme) const
 {
     SchemeRegistry::setDomainRelaxationForbiddenForURLScheme(true, urlScheme);
+}
+
+void WebProcess::registerURLSchemeAsLocal(const String& urlScheme) const
+{
+    SchemeRegistry::registerURLSchemeAsLocal(urlScheme);
+}
+
+void WebProcess::registerURLSchemeAsNoAccess(const String& urlScheme) const
+{
+    SchemeRegistry::registerURLSchemeAsNoAccess(urlScheme);
+}
+
+void WebProcess::registerURLSchemeAsDisplayIsolated(const String& urlScheme) const
+{
+    SchemeRegistry::registerURLSchemeAsDisplayIsolated(urlScheme);
+}
+
+void WebProcess::registerURLSchemeAsCORSEnabled(const String& urlScheme) const
+{
+    SchemeRegistry::registerURLSchemeAsCORSEnabled(urlScheme);
 }
 
 void WebProcess::setDefaultRequestTimeoutInterval(double timeoutInterval)
@@ -618,11 +630,6 @@ void WebProcess::didReceiveMessage(CoreIPC::Connection* connection, CoreIPC::Mes
         return;
     }
 
-    if (messageID.is<CoreIPC::MessageClassAuthenticationManager>()) {
-        AuthenticationManager::shared().didReceiveMessage(connection, messageID, arguments);
-        return;
-    }
-
     if (messageID.is<CoreIPC::MessageClassWebApplicationCacheManager>()) {
         WebApplicationCacheManager::shared().didReceiveMessage(connection, messageID, arguments);
         return;
@@ -639,11 +646,6 @@ void WebProcess::didReceiveMessage(CoreIPC::Connection* connection, CoreIPC::Mes
         return;
     }
 #endif
-
-    if (messageID.is<CoreIPC::MessageClassWebGeolocationManager>()) {
-        m_geolocationManager.didReceiveMessage(connection, messageID, arguments);
-        return;
-    }
 
 #if ENABLE(BATTERY_STATUS)
     if (messageID.is<CoreIPC::MessageClassWebBatteryManager>()) {
@@ -699,6 +701,18 @@ void WebProcess::didReceiveMessage(CoreIPC::Connection* connection, CoreIPC::Mes
         m_injectedBundle->didReceiveMessage(connection, messageID, arguments);    
         return;
     }
+    
+    if (messageID.is<CoreIPC::MessageClassWebPageGroupProxy>()) {
+        uint64_t pageGroupID = arguments->destinationID();
+        if (!pageGroupID)
+            return;
+        
+        WebPageGroupProxy* pageGroupProxy = webPageGroup(pageGroupID);
+        if (!pageGroupProxy)
+            return;
+        
+        pageGroupProxy->didReceiveMessage(connection, messageID, arguments);
+    }
 
     uint64_t pageID = arguments->destinationID();
     if (!pageID)
@@ -738,10 +752,6 @@ void WebProcess::didReceiveInvalidMessage(CoreIPC::Connection*, CoreIPC::Message
 {
     // We received an invalid message, but since this is from the UI process (which we trust),
     // we'll let it slide.
-}
-
-void WebProcess::syncMessageSendTimedOut(CoreIPC::Connection*)
-{
 }
 
 void WebProcess::didReceiveMessageOnConnectionWorkQueue(CoreIPC::Connection* connection, CoreIPC::MessageID messageID, CoreIPC::ArgumentDecoder* arguments, bool& didHandleMessage)
@@ -870,6 +880,8 @@ void WebProcess::getSitesWithPluginData(const Vector<String>& pluginPaths, uint6
         for (size_t i = 0; i < sites.size(); ++i)
             sitesSet.add(sites[i]);
     }
+#else
+    UNUSED_PARAM(pluginPaths);
 #endif
 
     Vector<String> sites;
@@ -897,6 +909,11 @@ void WebProcess::clearPluginSiteData(const Vector<String>& pluginPaths, const Ve
         for (size_t i = 0; i < sites.size(); ++i)
             netscapePluginModule->clearSiteData(sites[i], flags, maxAgeInSeconds);
     }
+#else
+    UNUSED_PARAM(pluginPaths);
+    UNUSED_PARAM(sites);
+    UNUSED_PARAM(flags);
+    UNUSED_PARAM(maxAgeInSeconds);
 #endif
 
     connection()->send(Messages::WebProcessProxy::DidClearPluginSiteData(callbackID), 0);

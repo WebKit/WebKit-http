@@ -35,7 +35,7 @@
 #include <wtf/ListHashSet.h>
 
 #if ENABLE(CSS_EXCLUSIONS)
-#include "WrapShapeInfo.h"
+#include "ExclusionShapeInsideInfo.h"
 #endif
 
 namespace WebCore {
@@ -59,7 +59,7 @@ template <class Run> class BidiRunList;
 template <class Iterator> struct MidpointState;
 typedef BidiResolver<InlineIterator, BidiRun> InlineBidiResolver;
 typedef MidpointState<InlineIterator> LineMidpointState;
-typedef WTF::ListHashSet<RenderBox*> TrackedRendererListHashSet;
+typedef WTF::ListHashSet<RenderBox*, 16> TrackedRendererListHashSet;
 typedef WTF::HashMap<const RenderBlock*, TrackedRendererListHashSet*> TrackedDescendantsMap;
 typedef WTF::HashMap<const RenderBox*, HashSet<RenderBlock*>*> TrackedContainerMap;
 
@@ -216,7 +216,7 @@ public:
 
     bool containsNonZeroBidiLevel() const;
 
-    GapRects selectionGapRectsForRepaint(RenderBoxModelObject* repaintContainer);
+    GapRects selectionGapRectsForRepaint(RenderLayerModelObject* repaintContainer);
     LayoutRect logicalLeftSelectionGap(RenderBlock* rootBlock, const LayoutPoint& rootBlockPhysicalPosition, const LayoutSize& offsetFromRootBlock,
                                        RenderObject* selObj, LayoutUnit logicalLeft, LayoutUnit logicalTop, LayoutUnit logicalHeight, const PaintInfo*);
     LayoutRect logicalRightSelectionGap(RenderBlock* rootBlock, const LayoutPoint& rootBlockPhysicalPosition, const LayoutSize& offsetFromRootBlock,
@@ -402,9 +402,9 @@ public:
 #endif
 
 #if ENABLE(CSS_EXCLUSIONS)
-    WrapShapeInfo* wrapShapeInfo() const
+    ExclusionShapeInsideInfo* exclusionShapeInsideInfo() const
     {
-        return style()->wrapShapeInside() && WrapShapeInfo::isWrapShapeInfoEnabledForRenderBlock(this) ? WrapShapeInfo::wrapShapeInfoForRenderBlock(this) : 0;
+        return style()->shapeInside() && ExclusionShapeInsideInfo::isExclusionShapeInsideInfoEnabledForRenderBlock(this) ? ExclusionShapeInsideInfo::exclusionShapeInsideInfoForRenderBlock(this) : 0;
     }
 #endif
 
@@ -460,6 +460,8 @@ protected:
     static void startDelayUpdateScrollInfo();
     static void finishDelayUpdateScrollInfo();
 
+    void updateScrollInfoAfterLayout();
+
     virtual void styleWillChange(StyleDifference, const RenderStyle* newStyle);
     virtual void styleDidChange(StyleDifference, const RenderStyle* oldStyle);
 
@@ -499,7 +501,7 @@ protected:
 private:
 #if ENABLE(CSS_EXCLUSIONS)
     void computeExclusionShapeSize();
-    void updateWrapShapeInfoAfterStyleChange(const BasicShape*, const BasicShape* oldWrapShape);
+    void updateExclusionShapeInsideInfoAfterStyleChange(const BasicShape*, const BasicShape* oldWrapShape);
 #endif
     virtual RenderObjectChildList* virtualChildren() { return children(); }
     virtual const RenderObjectChildList* virtualChildren() const { return children(); }
@@ -809,14 +811,14 @@ private:
     // children.
     virtual RenderBlock* firstLineBlock() const;
 
-    virtual LayoutRect rectWithOutlineForRepaint(RenderBoxModelObject* repaintContainer, LayoutUnit outlineWidth) const;
+    virtual LayoutRect rectWithOutlineForRepaint(RenderLayerModelObject* repaintContainer, LayoutUnit outlineWidth) const OVERRIDE;
     virtual RenderStyle* outlineStyleForRepaint() const;
     
     virtual RenderObject* hoverAncestor() const;
     virtual void updateDragState(bool dragOn);
     virtual void childBecameNonInline(RenderObject* child);
 
-    virtual LayoutRect selectionRectForRepaint(RenderBoxModelObject* repaintContainer, bool /*clipToVisibleContent*/)
+    virtual LayoutRect selectionRectForRepaint(RenderLayerModelObject* repaintContainer, bool /*clipToVisibleContent*/) OVERRIDE
     {
         return selectionGapRectsForRepaint(repaintContainer);
     }
@@ -857,8 +859,6 @@ private:
     void makeChildrenAnonymousColumnBlocks(RenderObject* beforeChild, RenderBlock* newBlockBox, RenderObject* newChild);
 
     bool expandsToEncloseOverhangingFloats() const;
-
-    void updateScrollInfoAfterLayout();
 
     void splitBlocks(RenderBlock* fromBlock, RenderBlock* toBlock, RenderBlock* middleBlock,
                      RenderObject* beforeChild, RenderBoxModelObject* oldCont);

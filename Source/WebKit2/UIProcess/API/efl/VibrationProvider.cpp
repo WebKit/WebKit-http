@@ -29,6 +29,7 @@
 #if ENABLE(VIBRATION)
 
 #include "WKAPICast.h"
+#include "WKContext.h"
 #include "WKVibration.h"
 #include <Evas.h>
 
@@ -55,25 +56,28 @@ static inline VibrationProvider* toVibrationProvider(const void* clientInfo)
     return static_cast<VibrationProvider*>(const_cast<void*>(clientInfo));
 }
 
-static void vibrateCallback(WKVibrationRef vibrationRef, uint64_t vibrationTime, const void* clientInfo)
+static void vibrateCallback(WKVibrationRef, uint64_t vibrationTime, const void* clientInfo)
 {
     toVibrationProvider(clientInfo)->vibrate(vibrationTime);
 }
 
-static void cancelVibrationCallback(WKVibrationRef vibrationRef, const void* clientInfo)
+static void cancelVibrationCallback(WKVibrationRef, const void* clientInfo)
 {
     toVibrationProvider(clientInfo)->cancelVibration();
 }
 
-PassRefPtr<VibrationProvider> VibrationProvider::create(WKVibrationRef wkVibrationRef)
+PassRefPtr<VibrationProvider> VibrationProvider::create(WKContextRef wkContext)
 {
-    return adoptRef(new VibrationProvider(wkVibrationRef));
+    return adoptRef(new VibrationProvider(wkContext));
 }
 
-VibrationProvider::VibrationProvider(WKVibrationRef wkVibrationRef)
-    : m_wkVibrationRef(wkVibrationRef)
+VibrationProvider::VibrationProvider(WKContextRef wkContext)
+    : m_wkContext(wkContext)
 {
-    ASSERT(wkVibrationRef);
+    ASSERT(m_wkContext.get());
+
+    WKVibrationRef wkVibration = WKContextGetVibration(m_wkContext.get());
+    ASSERT(wkVibration);
 
     WKVibrationProvider wkVibrationProvider = {
         kWKVibrationProviderCurrentVersion,
@@ -81,11 +85,15 @@ VibrationProvider::VibrationProvider(WKVibrationRef wkVibrationRef)
         vibrateCallback,
         cancelVibrationCallback
     };
-    WKVibrationSetProvider(m_wkVibrationRef.get(), &wkVibrationProvider);
+    WKVibrationSetProvider(wkVibration, &wkVibrationProvider);
 }
 
 VibrationProvider::~VibrationProvider()
 {
+    WKVibrationRef wkVibration = WKContextGetVibration(m_wkContext.get());
+    ASSERT(wkVibration);
+
+    WKVibrationSetProvider(wkVibration, 0);
 }
 
 void VibrationProvider::vibrate(uint64_t vibrationTime)

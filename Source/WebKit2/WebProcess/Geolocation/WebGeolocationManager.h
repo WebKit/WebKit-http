@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011 Apple Inc. All rights reserved.
+ * Copyright (C) 2011, 2012 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -26,7 +26,7 @@
 #ifndef WebGeolocationManager_h
 #define WebGeolocationManager_h
 
-#include "MessageID.h"
+#include "MessageReceiver.h"
 #include "WebGeolocationPosition.h"
 #include <wtf/HashSet.h>
 #include <wtf/HashMap.h>
@@ -41,12 +41,16 @@ namespace WebCore {
 class Geolocation;
 }
 
+namespace WTF {
+class String;
+}
+
 namespace WebKit {
 
 class WebProcess;
 class WebPage;
 
-class WebGeolocationManager {
+class WebGeolocationManager : private CoreIPC::MessageReceiver {
     WTF_MAKE_NONCOPYABLE(WebGeolocationManager);
 public:
     explicit WebGeolocationManager(WebProcess*);
@@ -57,16 +61,19 @@ public:
 
     void requestPermission(WebCore::Geolocation*);
 
-    void didReceiveMessage(CoreIPC::Connection*, CoreIPC::MessageID, CoreIPC::ArgumentDecoder*);
 
 private:
+    // MessageReceiver
+    virtual void didReceiveMessage(CoreIPC::Connection*, CoreIPC::MessageID, CoreIPC::ArgumentDecoder*) OVERRIDE;
+
     // Implemented in generated WebGeolocationManagerMessageReceiver.cpp
     void didReceiveWebGeolocationManagerMessage(CoreIPC::Connection*, CoreIPC::MessageID, CoreIPC::ArgumentDecoder*);
 
     void didChangePosition(const WebGeolocationPosition::Data&);
-    void didFailToDeterminePosition();
+    void didFailToDeterminePosition(const WTF::String& errorMessage);
 
     WebProcess* m_process;
+    bool m_didAddMessageReceiver;
     HashSet<WebPage*> m_pageSet;
 };
 

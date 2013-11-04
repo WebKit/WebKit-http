@@ -46,10 +46,10 @@
 #include "GraphicsLayerChromium.h"
 
 #include "AnimationTranslationUtil.h"
-#include "ContentLayerChromium.h"
 #include "FloatConversion.h"
 #include "FloatRect.h"
 #include "GraphicsContext.h"
+#include "GraphicsLayerFactory.h"
 #include "Image.h"
 #include "NativeImageSkia.h"
 #include "PlatformContextSkia.h"
@@ -70,12 +70,21 @@
 #include <wtf/HashSet.h>
 #include <wtf/StringExtras.h>
 #include <wtf/text/CString.h>
+#include <wtf/text/StringHash.h>
 #include <wtf/text/WTFString.h>
 
 using namespace std;
 using namespace WebKit;
 
 namespace WebCore {
+
+PassOwnPtr<GraphicsLayer> GraphicsLayer::create(GraphicsLayerFactory* factory, GraphicsLayerClient* client)
+{
+    if (!factory)
+        return adoptPtr(new GraphicsLayerChromium(client));
+
+    return factory->createGraphicsLayer(client);
+}
 
 PassOwnPtr<GraphicsLayer> GraphicsLayer::create(GraphicsLayerClient* client)
 {

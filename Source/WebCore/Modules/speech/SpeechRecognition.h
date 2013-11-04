@@ -56,6 +56,8 @@ public:
     void setLang(const String& lang) { m_lang = lang; }
     bool continuous() { return m_continuous; }
     void setContinuous(bool continuous) { m_continuous = continuous; }
+    bool interimResults() { return m_interimResults; }
+    void setInterimResults(bool interimResults) { m_interimResults = interimResults; }
     unsigned long maxAlternatives() { return m_maxAlternatives; }
     void setMaxAlternatives(unsigned long maxAlternatives) { m_maxAlternatives = maxAlternatives; }
 
@@ -73,7 +75,6 @@ public:
     void didEndAudio();
     void didReceiveResult(PassRefPtr<SpeechRecognitionResult>, unsigned long resultIndex, PassRefPtr<SpeechRecognitionResultList> resultHistory);
     void didReceiveNoMatch(PassRefPtr<SpeechRecognitionResult>);
-    void didDeleteResult(unsigned resultIndex, PassRefPtr<SpeechRecognitionResultList> resultHistory);
     void didReceiveError(PassRefPtr<SpeechRecognitionError>);
     void didStart();
     void didEnd();
@@ -96,7 +97,6 @@ public:
     DEFINE_ATTRIBUTE_EVENT_LISTENER(audioend);
     DEFINE_ATTRIBUTE_EVENT_LISTENER(result);
     DEFINE_ATTRIBUTE_EVENT_LISTENER(nomatch);
-    DEFINE_ATTRIBUTE_EVENT_LISTENER(resultdeleted);
     DEFINE_ATTRIBUTE_EVENT_LISTENER(error);
     DEFINE_ATTRIBUTE_EVENT_LISTENER(start);
     DEFINE_ATTRIBUTE_EVENT_LISTENER(end);
@@ -116,6 +116,7 @@ private:
     RefPtr<SpeechGrammarList> m_grammars;
     String m_lang;
     bool m_continuous;
+    bool m_interimResults;
     unsigned long m_maxAlternatives;
 
     EventTargetData m_eventTargetData;

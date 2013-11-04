@@ -91,6 +91,7 @@ my (
     $javascriptDebuggerSupport,
     $legacyNotificationsSupport,
     $legacyVendorPrefixSupport,
+    $legacyWebAudioSupport,
     $legacyWebKitBlobBuilderSupport,
     $linkPrefetchSupport,
     $linkPrerenderSupport,
@@ -285,8 +286,8 @@ my @features = (
     { option => "legacy-vendor-prefixes", desc => "Toggle Legacy Vendor Prefix support",
       define => "ENABLE_LEGACY_VENDOR_PREFIXES", default => !isChromium(), value => \$legacyVendorPrefixSupport },
 
-    { option => "legacy-webkit-blob-builder", desc => "Toggle Legacy WebKit Blob Builder support",
-      define => "ENABLE_LEGACY_WEBKIT_BLOB_BUILDER", default => (isGtk() || isChromium() || isBlackBerry() || isEfl()), value => \$legacyWebKitBlobBuilderSupport },
+    { option => "legacy-web-audio", desc => "Toggle Legacy Web Audio support",
+      define => "ENABLE_LEGACY_WEB_AUDIO", default => 1, value => \$legacyWebAudioSupport },
 
     { option => "link-prefetch", desc => "Toggle Link Prefetch support",
       define => "ENABLE_LINK_PREFETCH", default => (isGtk() || isEfl()), value => \$linkPrefetchSupport },
@@ -325,10 +326,10 @@ my @features = (
       define => "ENABLE_NAVIGATOR_CONTENT_UTILS", default => (isBlackBerry() || isEfl()), value => \$registerProtocolHandlerSupport },
 
     { option => "netscape-plugin-api", desc => "Toggle Netscape Plugin API support",
-      define => "ENABLE_NETSCAPE_PLUGIN_API", default => (!isEfl() && !isHaiku()), value => \$netscapePluginAPISupport },
+      define => "ENABLE_NETSCAPE_PLUGIN_API", default => !isHaiku(), value => \$netscapePluginAPISupport },
 
     { option => "network-info", desc => "Toggle Network Info support",
-      define => "ENABLE_NETWORK_INFO", default => isEfl(), value => \$networkInfoSupport },
+      define => "ENABLE_NETWORK_INFO", default => (isEfl() || isBlackBerry()), value => \$networkInfoSupport },
 
     { option => "notifications", desc => "Toggle Notifications support",
       define => "ENABLE_NOTIFICATIONS", default => isBlackBerry(), value => \$notificationsSupport },

@@ -225,6 +225,7 @@ void WebPage::javaScriptAlert(QWebFrame*, const QString& message)
         return;
 
     fprintf(stdout, "ALERT: %s\n", message.toUtf8().constData());
+    fflush(stdout);
 }
 
 void WebPage::requestPermission(QWebFrame* frame, QWebPage::Feature feature)
@@ -470,6 +471,8 @@ DumpRenderTree::DumpRenderTree()
 
     DumpRenderTreeSupportQt::setDumpRenderTreeModeEnabled(true);
     DumpRenderTreeSupportQt::setInteractiveFormValidationEnabled(webPage(), true);
+    DumpRenderTreeSupportQt::enableMockScrollbars();
+
     QFocusEvent event(QEvent::FocusIn, Qt::ActiveWindowFocusReason);
     QApplication::sendEvent(m_mainView, &event);
 }
@@ -1002,7 +1005,7 @@ void DumpRenderTree::dump()
 void DumpRenderTree::titleChanged(const QString &s)
 {
     if (m_controller->shouldDumpTitleChanges())
-        printf("TITLE CHANGED: %s\n", s.toUtf8().data());
+        printf("TITLE CHANGED: '%s'\n", s.toUtf8().data());
 }
 
 void DumpRenderTree::connectFrame(QWebFrame *frame)

@@ -133,6 +133,8 @@ javascriptcore_sources += \
 	Source/JavaScriptCore/bytecode/ResolveGlobalStatus.h \
 	Source/JavaScriptCore/bytecode/SamplingTool.cpp \
 	Source/JavaScriptCore/bytecode/SamplingTool.h \
+	Source/JavaScriptCore/bytecode/SpecialPointer.cpp \
+	Source/JavaScriptCore/bytecode/SpecialPointer.h \
 	Source/JavaScriptCore/bytecode/StructureSet.h \
 	Source/JavaScriptCore/bytecode/StructureStubInfo.cpp \
 	Source/JavaScriptCore/bytecode/StructureStubInfo.h \
@@ -533,6 +535,7 @@ javascriptcore_sources += \
 	Source/JavaScriptCore/runtime/JSCell.h \
 	Source/JavaScriptCore/runtime/JSDateMath.cpp \
 	Source/JavaScriptCore/runtime/JSDateMath.h \
+    Source/JavaScriptCore/runtime/JSDestructibleObject.h \
 	Source/JavaScriptCore/runtime/JSFunction.cpp \
 	Source/JavaScriptCore/runtime/JSFunction.h \
 	Source/JavaScriptCore/runtime/JSBoundFunction.cpp \
@@ -544,8 +547,8 @@ javascriptcore_sources += \
 	Source/JavaScriptCore/runtime/JSGlobalObjectFunctions.cpp \
 	Source/JavaScriptCore/runtime/JSGlobalObjectFunctions.h \
 	Source/JavaScriptCore/runtime/JSGlobalObject.h \
-	Source/JavaScriptCore/runtime/JSGlobalThis.cpp \
-	Source/JavaScriptCore/runtime/JSGlobalThis.h \
+	Source/JavaScriptCore/runtime/JSProxy.cpp \
+	Source/JavaScriptCore/runtime/JSProxy.h \
 	Source/JavaScriptCore/runtime/JSLock.cpp \
 	Source/JavaScriptCore/runtime/JSLock.h \
 	Source/JavaScriptCore/runtime/JSNotAnObject.cpp \

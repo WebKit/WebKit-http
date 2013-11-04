@@ -245,6 +245,7 @@ void InjectedBundle::beginTesting(WKDictionaryRef settings)
     WKBundleSetAllowFileAccessFromFileURLs(m_bundle, m_pageGroup, true);
     WKBundleSetPluginsEnabled(m_bundle, m_pageGroup, true);
     WKBundleSetPopupBlockingEnabled(m_bundle, m_pageGroup, false);
+    WKBundleSetAlwaysAcceptCookies(m_bundle, false);
 
     WKBundleRemoveAllUserContent(m_bundle, m_pageGroup);
 
@@ -260,7 +261,10 @@ void InjectedBundle::beginTesting(WKDictionaryRef settings)
     WKBundleClearAllDatabases(m_bundle);
     WKBundleClearApplicationCache(m_bundle);
     WKBundleResetOriginAccessWhitelists(m_bundle);
-    WKBundleSetDatabaseQuota(m_bundle, 5 * 1024 * 1024);
+
+    // [WK2] REGRESSION(r128623): It made layout tests extremely slow
+    // https://bugs.webkit.org/show_bug.cgi?id=96862
+    // WKBundleSetDatabaseQuota(m_bundle, 5 * 1024 * 1024);
 }
 
 void InjectedBundle::done()
@@ -356,6 +360,40 @@ void InjectedBundle::postSimulateWebNotificationClick(uint64_t notificationID)
     WKRetainPtr<WKStringRef> messageName(AdoptWK, WKStringCreateWithUTF8CString("SimulateWebNotificationClick"));
     WKRetainPtr<WKUInt64Ref> messageBody(AdoptWK, WKUInt64Create(notificationID));
     WKBundlePostMessage(m_bundle, messageName.get(), messageBody.get());
+}
+
+void InjectedBundle::setGeolocationPermission(bool enabled)
+{
+    WKRetainPtr<WKStringRef> messageName(AdoptWK, WKStringCreateWithUTF8CString("SetGeolocationPermission"));
+    WKRetainPtr<WKBooleanRef> messageBody(AdoptWK, WKBooleanCreate(enabled));
+    WKBundlePostMessage(m_bundle, messageName.get(), messageBody.get());
+}
+
+void InjectedBundle::setMockGeolocationPosition(double latitude, double longitude, double accuracy)
+{
+    WKRetainPtr<WKStringRef> messageName(AdoptWK, WKStringCreateWithUTF8CString("SetMockGeolocationPosition"));
+
+    WKRetainPtr<WKMutableDictionaryRef> messageBody(AdoptWK, WKMutableDictionaryCreate());
+
+    WKRetainPtr<WKStringRef> latitudeKeyWK(AdoptWK, WKStringCreateWithUTF8CString("latitude"));
+    WKRetainPtr<WKDoubleRef> latitudeWK(AdoptWK, WKDoubleCreate(latitude));
+    WKDictionaryAddItem(messageBody.get(), latitudeKeyWK.get(), latitudeWK.get());
+
+    WKRetainPtr<WKStringRef> longitudeKeyWK(AdoptWK, WKStringCreateWithUTF8CString("longitude"));
+    WKRetainPtr<WKDoubleRef> longitudeWK(AdoptWK, WKDoubleCreate(longitude));
+    WKDictionaryAddItem(messageBody.get(), longitudeKeyWK.get(), longitudeWK.get());
+
+    WKRetainPtr<WKStringRef> accuracyKeyWK(AdoptWK, WKStringCreateWithUTF8CString("accuracy"));
+    WKRetainPtr<WKDoubleRef> accuracyWK(AdoptWK, WKDoubleCreate(accuracy));
+    WKDictionaryAddItem(messageBody.get(), accuracyKeyWK.get(), accuracyWK.get());
+
+    WKBundlePostMessage(m_bundle, messageName.get(), messageBody.get());
+}
+
+void InjectedBundle::setMockGeolocationPositionUnavailableError(WKStringRef errorMessage)
+{
+    WKRetainPtr<WKStringRef> messageName(AdoptWK, WKStringCreateWithUTF8CString("SetMockGeolocationPositionUnavailableError"));
+    WKBundlePostMessage(m_bundle, messageName.get(), errorMessage);
 }
 
 } // namespace WTR

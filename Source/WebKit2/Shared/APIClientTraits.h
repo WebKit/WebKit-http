@@ -29,6 +29,7 @@
 #include "WKBundle.h"
 #include "WKBundlePage.h"
 #include "WKContext.h"
+#include "WKIconDatabase.h"
 #include "WKPage.h"
 
 namespace WebKit {
@@ -43,7 +44,7 @@ template<> struct APIClientTraits<WKBundleClient> {
 };
 
 template<> struct APIClientTraits<WKBundlePageLoaderClient> {
-    static const size_t interfaceSizesByVersion[4];
+    static const size_t interfaceSizesByVersion[5];
 };
 
 template<> struct APIClientTraits<WKBundlePageResourceLoadClient> {
@@ -75,6 +76,10 @@ template<> struct APIClientTraits<WKBundlePageFormClient> {
 };
 
 template<> struct APIClientTraits<WKContextInjectedBundleClient> {
+    static const size_t interfaceSizesByVersion[2];
+};
+
+template<> struct APIClientTraits<WKIconDatabaseClient> {
     static const size_t interfaceSizesByVersion[2];
 };
 

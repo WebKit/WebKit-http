@@ -55,13 +55,13 @@ PassOwnPtr<SpeechRecognitionClientProxy> SpeechRecognitionClientProxy::create(We
     return adoptPtr(new SpeechRecognitionClientProxy(recognizer));
 }
 
-void SpeechRecognitionClientProxy::start(SpeechRecognition* recognition, const SpeechGrammarList* grammarList, const String& lang, bool continuous, unsigned long maxAlternatives)
+void SpeechRecognitionClientProxy::start(SpeechRecognition* recognition, const SpeechGrammarList* grammarList, const String& lang, bool continuous, bool interimResults, unsigned long maxAlternatives)
 {
     WebVector<WebSpeechGrammar> webSpeechGrammars(static_cast<size_t>(grammarList->length()));
     for (unsigned long i = 0; i < grammarList->length(); ++i)
         webSpeechGrammars[i] = grammarList->item(i);
 
-    WebSpeechRecognitionParams params(webSpeechGrammars, lang, continuous, maxAlternatives, WebSecurityOrigin(recognition->scriptExecutionContext()->securityOrigin()));
+    WebSpeechRecognitionParams params(webSpeechGrammars, lang, continuous, interimResults, maxAlternatives, WebSecurityOrigin(recognition->scriptExecutionContext()->securityOrigin()));
     m_recognizer->start(WebSpeechRecognitionHandle(recognition), params, this);
 }
 
@@ -117,17 +117,6 @@ void SpeechRecognitionClientProxy::didReceiveNoMatch(const WebSpeechRecognitionH
 {
     RefPtr<SpeechRecognition> recognition = PassRefPtr<SpeechRecognition>(handle);
     recognition->didReceiveNoMatch(result);
-}
-
-void SpeechRecognitionClientProxy::didDeleteResult(const WebSpeechRecognitionHandle& handle, unsigned resultIndex, const WebVector<WebSpeechRecognitionResult>& resultHistory)
-{
-    RefPtr<SpeechRecognition> recognition = PassRefPtr<SpeechRecognition>(handle);
-
-    Vector<RefPtr<SpeechRecognitionResult> > resultHistoryVector(resultHistory.size());
-    for (size_t i = 0; i < resultHistory.size(); ++i)
-        resultHistoryVector[i] = static_cast<PassRefPtr<SpeechRecognitionResult> >(resultHistory[i]);
-
-    recognition->didDeleteResult(resultIndex, SpeechRecognitionResultList::create(resultHistoryVector));
 }
 
 void SpeechRecognitionClientProxy::didReceiveError(const WebSpeechRecognitionHandle& handle, const WebString& message, WebSpeechRecognizerClient::ErrorCode code)

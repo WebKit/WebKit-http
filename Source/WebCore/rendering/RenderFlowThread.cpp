@@ -222,19 +222,18 @@ void RenderFlowThread::updateLogicalWidth()
     }
 }
 
-void RenderFlowThread::updateLogicalHeight()
+void RenderFlowThread::computeLogicalHeight(LayoutUnit, LayoutUnit logicalTop, LogicalExtentComputedValues& computedValues) const
 {
-    LayoutUnit logicalHeight = 0;
+    computedValues.m_position = logicalTop;
+    computedValues.m_extent = 0;
 
-    for (RenderRegionList::iterator iter = m_regionList.begin(); iter != m_regionList.end(); ++iter) {
+    for (RenderRegionList::const_iterator iter = m_regionList.begin(); iter != m_regionList.end(); ++iter) {
         RenderRegion* region = *iter;
         if (!region->isValid())
             continue;
         ASSERT(!region->needsLayout());
-        logicalHeight += region->logicalHeightOfAllFlowThreadContent();
+        computedValues.m_extent += region->logicalHeightOfAllFlowThreadContent();
     }
-
-    setLogicalHeight(logicalHeight);
 }
 
 void RenderFlowThread::paintFlowThreadPortionInRegion(PaintInfo& paintInfo, RenderRegion* region, LayoutRect flowThreadPortionRect, LayoutRect flowThreadPortionOverflowRect, const LayoutPoint& paintOffset) const
@@ -488,44 +487,26 @@ bool RenderFlowThread::logicalWidthChangedInRegions(const RenderBlock* block, La
 
 LayoutUnit RenderFlowThread::contentLogicalWidthOfFirstRegion() const
 {
-    if (!hasValidRegionInfo())
-        return 0;
-    for (RenderRegionList::const_iterator iter = m_regionList.begin(); iter != m_regionList.end(); ++iter) {
-        RenderRegion* region = *iter;
-        if (!region->isValid())
-            continue;
-        return isHorizontalWritingMode() ? region->contentWidth() : region->contentHeight();
-    }
-    ASSERT_NOT_REACHED();
-    return 0;
+    RenderRegion* firstValidRegionInFlow = firstRegion();
+    if (!firstValidRegionInFlow)
+        return ZERO_LAYOUT_UNIT;
+    return isHorizontalWritingMode() ? firstValidRegionInFlow->contentWidth() : firstValidRegionInFlow->contentHeight();
 }
 
 LayoutUnit RenderFlowThread::contentLogicalHeightOfFirstRegion() const
 {
-    if (!hasValidRegionInfo())
-        return 0;
-    for (RenderRegionList::const_iterator iter = m_regionList.begin(); iter != m_regionList.end(); ++iter) {
-        RenderRegion* region = *iter;
-        if (!region->isValid())
-            continue;
-        return isHorizontalWritingMode() ? region->contentHeight() : region->contentWidth();
-    }
-    ASSERT_NOT_REACHED();
-    return 0;
+    RenderRegion* firstValidRegionInFlow = firstRegion();
+    if (!firstValidRegionInFlow)
+        return ZERO_LAYOUT_UNIT;
+    return isHorizontalWritingMode() ? firstValidRegionInFlow->contentHeight() : firstValidRegionInFlow->contentWidth();
 }
- 
+
 LayoutUnit RenderFlowThread::contentLogicalLeftOfFirstRegion() const
 {
-    if (!hasValidRegionInfo())
-        return 0;
-    for (RenderRegionList::const_iterator iter = m_regionList.begin(); iter != m_regionList.end(); ++iter) {
-        RenderRegion* region = *iter;
-        if (!region->isValid())
-            continue;
-        return isHorizontalWritingMode() ? region->flowThreadPortionRect().x() : region->flowThreadPortionRect().y();
-    }
-    ASSERT_NOT_REACHED();
-    return 0;
+    RenderRegion* firstValidRegionInFlow = firstRegion();
+    if (!firstValidRegionInFlow)
+        return ZERO_LAYOUT_UNIT;
+    return isHorizontalWritingMode() ? firstValidRegionInFlow->flowThreadPortionRect().x() : firstValidRegionInFlow->flowThreadPortionRect().y();
 }
 
 RenderRegion* RenderFlowThread::firstRegion() const
@@ -538,6 +519,7 @@ RenderRegion* RenderFlowThread::firstRegion() const
             continue;
         return region;
     }
+    ASSERT_NOT_REACHED();
     return 0;
 }
 
@@ -551,6 +533,7 @@ RenderRegion* RenderFlowThread::lastRegion() const
             continue;
         return region;
     }
+    ASSERT_NOT_REACHED();
     return 0;
 }
 
@@ -639,8 +622,9 @@ void RenderFlowThread::computeOverflowStateForRegions(LayoutUnit oldClientAfterE
     // might not be taken into account because the render flow thread height is greater that that regions height + its visual overflow
     // because of how computeLogicalHeight is implemented for RenderFlowThread (as a sum of all regions height).
     // This means that the middle region will be marked as fit (even if it has visual overflow flowing into the next region)
-    if (hasRenderOverflow() && ( (isHorizontalWritingMode() && visualOverflowRect().maxY() > clientBoxRect().maxY()) 
-                                || (!isHorizontalWritingMode() && visualOverflowRect().maxX() > clientBoxRect().maxX())))
+    if (hasRenderOverflow()
+        && ( (isHorizontalWritingMode() && visualOverflowRect().maxY() > clientBoxRect().maxY())
+            || (!isHorizontalWritingMode() && visualOverflowRect().maxX() > clientBoxRect().maxX())))
         height = isHorizontalWritingMode() ? visualOverflowRect().maxY() : visualOverflowRect().maxX();
 
     RenderRegion* lastReg = lastRegion();
@@ -723,7 +707,7 @@ bool RenderFlowThread::objectInFlowRegion(const RenderObject* object, const Rend
     RenderRegion* enclosingBoxEndRegion = 0;
     getRegionRangeForBox(enclosingBox, enclosingBoxStartRegion, enclosingBoxEndRegion);
     if (!regionInRange(region, enclosingBoxStartRegion, enclosingBoxEndRegion))
-       return false;
+        return false;
 
     if (object->isBox())
         return true;
@@ -774,7 +758,7 @@ unsigned RenderFlowThread::autoLogicalHeightRegionsCount() const
 #endif
 
 CurrentRenderFlowThreadMaintainer::CurrentRenderFlowThreadMaintainer(RenderFlowThread* renderFlowThread)
-        : m_renderFlowThread(renderFlowThread)
+    : m_renderFlowThread(renderFlowThread)
 {
     if (!m_renderFlowThread)
         return;

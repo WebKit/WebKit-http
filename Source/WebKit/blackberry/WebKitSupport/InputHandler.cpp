@@ -61,6 +61,7 @@
 #include "WebPageClient.h"
 #include "WebPage_p.h"
 #include "WebSettings.h"
+#include "htmlediting.h"
 #include "visible_units.h"
 
 #include <BlackBerryPlatformKeyboardEvent.h>
@@ -136,8 +137,10 @@ InputHandler::InputHandler(WebPagePrivate* page)
     , m_composingTextEnd(0)
     , m_pendingKeyboardVisibilityChange(NoChange)
     , m_delayKeyboardVisibilityChange(false)
+    , m_request(0)
+    , m_processingTransactionId(-1)
+    , m_focusZoomScale(0.0)
 {
-    pthread_mutex_init(&m_sequenceMapMutex, 0);
 }
 
 InputHandler::~InputHandler()
@@ -545,32 +548,25 @@ void InputHandler::learnText()
 
 void InputHandler::requestCheckingOfString(PassRefPtr<WebCore::TextCheckingRequest> textCheckingRequest)
 {
-    RefPtr<WebCore::TextCheckingRequest> request = textCheckingRequest;
+    m_request = textCheckingRequest;
 
-    int32_t sequenceId = request->sequence();
-
-    if (!isActiveTextEdit()) {
-        spellCheckingRequestCancelled(sequenceId, true /* isSequenceId */);
+    if (!m_request) {
+        SpellingLog(LogLevelWarn, "InputHandler::requestCheckingOfString did not receive a valid request.");
         return;
     }
+
+    unsigned requestLength = m_request->text().length();
 
     // Check if the field should be spellchecked.
-    if (!shouldSpellCheckElement(m_currentFocusElement.get())) {
-        spellCheckingRequestCancelled(sequenceId, true /* isSequenceId */);
-        return;
-    }
-
-    unsigned requestLength = request->text().length();
-
-    if (requestLength < 2) {
-        spellCheckingRequestCancelled(sequenceId, true /* isSequenceId */);
+    if (!isActiveTextEdit() || !shouldSpellCheckElement(m_currentFocusElement.get()) || requestLength < 2) {
+        m_request->didCancel();
         return;
     }
 
     if (requestLength > MaxSpellCheckingStringLength) {
         // Cancel this request and send it off in newly created chunks.
-        spellCheckingRequestCancelled(sequenceId, true /* isSequenceId */);
-        if (m_currentFocusElement && m_currentFocusElement->document() && m_currentFocusElement->document()->frame() && m_currentFocusElement->document()->frame()->selection()) {
+        m_request->didCancel();
+        if (m_currentFocusElement->document() && m_currentFocusElement->document()->frame() && m_currentFocusElement->document()->frame()->selection()) {
             // Convert from position back to selection so we can expand the range to include the previous line. This should handle cases when the user hits
             // enter to finish composing a word and create a new line.
             VisiblePosition caretPosition = m_currentFocusElement->document()->frame()->selection()->start();
@@ -583,53 +579,52 @@ void InputHandler::requestCheckingOfString(PassRefPtr<WebCore::TextCheckingReque
     wchar_t* checkingString = (wchar_t*)malloc(sizeof(wchar_t) * (requestLength + 1));
     if (!checkingString) {
         logAlways(LogLevelCritical, "InputHandler::requestCheckingOfString Cannot allocate memory for string.");
-        spellCheckingRequestCancelled(sequenceId, true /* isSequenceId */);
+        m_request->didCancel();
         return;
     }
 
     int paragraphLength = 0;
-    if (!convertStringToWchar(request->text(), checkingString, requestLength + 1, &paragraphLength)) {
+    if (!convertStringToWchar(m_request->text(), checkingString, requestLength + 1, &paragraphLength)) {
         logAlways(LogLevelCritical, "InputHandler::requestCheckingOfString Failed to convert String to wchar type.");
         free(checkingString);
-        spellCheckingRequestCancelled(sequenceId, true /* isSequenceId */);
+        m_request->didCancel();
         return;
     }
 
-    BlackBerry::Platform::MutexLocker lock(&m_sequenceMapMutex);
-    int32_t transactionId = m_webPage->m_client->checkSpellingOfStringAsync(checkingString, paragraphLength);
+    m_processingTransactionId = m_webPage->m_client->checkSpellingOfStringAsync(checkingString, paragraphLength);
     free(checkingString);
 
     // If the call to the input service did not go through, then cancel the request so we don't block endlessly.
     // This should still take transactionId as a parameter to maintain the same behavior as if InputMethodSupport
     // were to cancel a request during processing.
-    if (transactionId == -1) { // Error before sending request to input service.
-        spellCheckingRequestCancelled(sequenceId, true /* isSequenceId */);
+    if (m_processingTransactionId == -1) { // Error before sending request to input service.
+        m_request->didCancel();
         return;
     }
-
-    // map sequenceId to transactionId.
-    m_sequenceMap[transactionId] = sequenceId;
 }
 
-int32_t InputHandler::convertTransactionIdToSequenceId(int32_t transactionId)
+void InputHandler::spellCheckingRequestCancelled(int32_t transactionId)
 {
-    BlackBerry::Platform::MutexLocker lock(&m_sequenceMapMutex);
-    std::map<int32_t, int32_t>::iterator it = m_sequenceMap.find(transactionId);
+    SpellingLog(LogLevelWarn, "InputHandler::spellCheckingRequestCancelled Expected transaction id %d, received %d. %s"
+                , transactionId
+                , m_processingTransactionId
+                , transactionId == m_processingTransactionId ? "" : "We are out of sync with input service.");
 
-    if (it == m_sequenceMap.end())
-        return 0;
-
-    int32_t sequenceId = it->second;
-    // We only convert this value when we have received its response, so its safe to remove it from the map.
-    m_sequenceMap.erase(it);
-
-    return sequenceId;
+    m_request->didCancel();
+    m_processingTransactionId = -1;
 }
 
 void InputHandler::spellCheckingRequestProcessed(int32_t transactionId, spannable_string_t* spannableString)
 {
+    SpellingLog(LogLevelWarn, "InputHandler::spellCheckingRequestProcessed Expected transaction id %d, received %d. %s"
+                , transactionId
+                , m_processingTransactionId
+                , transactionId == m_processingTransactionId ? "" : "We are out of sync with input service.");
+
     if (!spannableString || !isActiveTextEdit()) {
-        spellCheckingRequestCancelled(transactionId, false /* isSequenceId */);
+        SpellingLog(LogLevelWarn, "InputHandler::spellCheckingRequestProcessed Cancelling request with transactionId %d.", transactionId);
+        m_request->didCancel();
+        m_processingTransactionId = -1;
         return;
     }
 
@@ -648,7 +643,7 @@ void InputHandler::spellCheckingRequestProcessed(int32_t transactionId, spannabl
         if (!span)
             break;
         if (span->end < span->start) {
-            spellCheckingRequestCancelled(transactionId, false /* isSequenceId */);
+            m_request->didCancel();
             return;
         }
         if (span->attributes_mask & MISSPELLED_WORD_ATTRIB) {
@@ -662,44 +657,13 @@ void InputHandler::spellCheckingRequestProcessed(int32_t transactionId, spannabl
         span++;
     }
 
-    // transactionId here is for use with the input service. We need to translate this to sequenceId used with SpellChecker.
-    int32_t sequenceId = convertTransactionIdToSequenceId(transactionId);
-
-    SpellChecker* spellChecker = getSpellChecker();
-    if (!spellChecker || !sequenceId) {
-        SpellingLog(LogLevelWarn, "InputHandler::spellCheckingRequestProcessed Failed to process the request with sequenceId %d", sequenceId);
-        spellCheckingRequestCancelled(sequenceId, true /* isSequenceId */);
-        return;
-    }
-    spellChecker->didCheckSucceeded(sequenceId, results);
-}
-
-void InputHandler::cancelAllSpellCheckingRequests()
-{
-    BlackBerry::Platform::MutexLocker lock(&m_sequenceMapMutex);
-    for (std::map<int32_t, int32_t>::iterator it = m_sequenceMap.begin(); it != m_sequenceMap.end(); ++it)
-        spellCheckingRequestCancelled(it->second, true /* isSequenceId */);
-    m_sequenceMap.clear();
-}
-
-void InputHandler::spellCheckingRequestCancelled(int32_t id, bool isSequenceId)
-{
-    if (!isActiveTextEdit())
-        return;
-
-    int32_t sequenceId = isSequenceId ? id : convertTransactionIdToSequenceId(id);
-    SpellChecker* spellChecker = getSpellChecker();
-    if (!spellChecker || !sequenceId) {
-        SpellingLog(LogLevelWarn, "InputHandler::spellCheckingRequestCancelled failed to cancel the request with sequenceId %d", sequenceId);
-        return;
-    }
-    spellChecker->didCheckCanceled(sequenceId);
+    m_request->didSucceed(results);
 }
 
 SpellChecker* InputHandler::getSpellChecker()
 {
-    ASSERT(m_currentFocusElement);
-    ASSERT(m_currentFocusElement->document());
+    if (!m_currentFocusElement || !m_currentFocusElement->document())
+        return 0;
 
     if (Frame* frame = m_currentFocusElement->document()->frame())
         if (Editor* editor = frame->editor())
@@ -737,6 +701,11 @@ bool InputHandler::shouldRequestSpellCheckingOptionsForPoint(Platform::IntPoint&
     spellCheckingOptionRequest.startTextPosition = marker->startOffset();
     spellCheckingOptionRequest.endTextPosition = marker->endOffset();
 
+    SpellingLog(LogLevelInfo, "InputHandler::shouldRequestSpellCheckingOptionsForPoint spellCheckingOptionRequest\ntop %d, %d\nbottom %d %d\nMarker start %d end %d"
+                , spellCheckingOptionRequest.caret_rect.caret_top_x, spellCheckingOptionRequest.caret_rect.caret_top_y
+                , spellCheckingOptionRequest.caret_rect.caret_bottom_x, spellCheckingOptionRequest.caret_rect.caret_bottom_y
+                , spellCheckingOptionRequest.startTextPosition, spellCheckingOptionRequest.endTextPosition);
+
     return true;
 }
 
@@ -772,9 +741,6 @@ void InputHandler::setElementUnfocused(bool refocusOccuring)
         // If the frame selection isn't focused, focus it.
         if (!m_currentFocusElement->document()->frame()->selection()->isFocused())
             m_currentFocusElement->document()->frame()->selection()->setFocused(true);
-
-        // Cancel any spellcheck requests that might be ongoing.
-        cancelAllSpellCheckingRequests();
     }
 
     // Clear the node details.
@@ -927,6 +893,8 @@ void InputHandler::spellCheckBlock(VisibleSelection& visibleSelection, TextCheck
                 return;
             }
             startOfCurrentLine = VisiblePosition(rangeForSpellChecking->endPosition());
+            endOfCurrentLine = endOfLine(startOfCurrentLine);
+            rangeForSpellChecking = DOMSupport::trimWhitespaceFromRange(VisiblePosition(rangeForSpellChecking->startPosition()), VisiblePosition(rangeForSpellChecking->endPosition()));
         }
 
         SpellingLog(LogLevelInfo, "InputHandler::spellCheckBlock Substring text is '%s', of size %d", rangeForSpellChecking->text().latin1().data(), rangeForSpellChecking->text().length());
@@ -945,11 +913,12 @@ PassRefPtr<Range> InputHandler::getRangeForSpellCheckWithFineGranularity(Visible
         // Check the text length within this range.
         if (VisibleSelection(startPosition, endOfCurrentWord).toNormalizedRange()->text().length() >= MaxSpellCheckingStringLength) {
             // If this is not the first word, return a Range with end boundary set to the previous word.
-            if (startOfWord(endOfCurrentWord, LeftWordIfOnBoundary) != startPosition)
+            if (startOfWord(endOfCurrentWord, LeftWordIfOnBoundary) != startPosition && !DOMSupport::isEmptyRangeOrAllSpaces(startPosition, endOfCurrentWord))
                 return VisibleSelection(startPosition, endOfWord(previousWordPosition(endOfCurrentWord), LeftWordIfOnBoundary)).toNormalizedRange();
 
             // Our first word has gone over the character limit. Increment the starting position past an uncheckable word.
             startPosition = endOfCurrentWord;
+            endOfCurrentWord = endOfWord(nextWordPosition(endOfCurrentWord));
         } else if (endOfCurrentWord == endPosition) {
             // Return the last segment if the end of our word lies at the end of the range.
             return VisibleSelection(startPosition, endPosition).toNormalizedRange();
@@ -1081,10 +1050,32 @@ void InputHandler::ensureFocusTextElementVisible(CaretScrollType scrollType)
         break;
     }
     case VisibleSelection::NoSelection:
+        if (m_focusZoomScale) {
+            m_webPage->zoomAboutPoint(m_focusZoomScale, m_focusZoomLocation);
+            m_focusZoomScale = 0.0;
+            m_focusZoomLocation = WebCore::IntPoint();
+        }
         return;
     }
 
     int fontHeight = selectionFocusRect.height();
+
+    m_webPage->suspendBackingStore();
+
+    // If the text is too small, zoom in to make it a minimum size.
+    // The minimum size being defined as 3 mm is a good value based on my observations.
+    static const int s_minimumTextHeightInPixels = Graphics::Screen::primaryScreen()->heightInMMToPixels(3);
+
+    if (fontHeight && fontHeight * m_webPage->currentScale() < s_minimumTextHeightInPixels) {
+        if (!m_focusZoomScale) {
+            m_focusZoomScale = m_webPage->currentScale();
+            m_focusZoomLocation = selectionFocusRect.location();
+        }
+        m_webPage->zoomAboutPoint(s_minimumTextHeightInPixels / fontHeight, m_focusZoomLocation);
+    } else {
+        m_focusZoomScale = 0.0;
+        m_focusZoomLocation = WebCore::IntPoint();
+    }
 
     if (elementFrame != mainFrame) { // Element is in a subframe.
         // Remove any scroll offset within the subframe to get the point relative to the main frame.
@@ -1134,16 +1125,14 @@ void InputHandler::ensureFocusTextElementVisible(CaretScrollType scrollType)
             }
 
             // Pad the rect to improve the visual appearance.
-            // Padding must be large enough to expose the selection / FCC should they exist. Dragging the handle offscreen and releasing
-            // will not trigger an automatic scroll. Using a padding of 40 will fully exposing the width of the current handle and half of
-            // the height making it usable.
-            // FIXME: This will need to be updated when the graphics change.
-            // FIXME: The value of 40 should be calculated as a unit of measure using Graphics::Screen::primaryScreen()->heightInMMToPixels
-            // using a relative value to the size of the handle. We should also consider expanding different amounts horizontally vs vertically.
-            selectionFocusRect.inflate(40 /* padding in pixels */);
-            WebCore::IntRect revealRect = layer->getRectToExpose(actualScreenRect, selectionFocusRect,
+            // Convert the padding back from transformed to ensure a consistent padding regardless of
+            // zoom level as controls do not zoom.
+            static const int s_focusRectPaddingSize = Graphics::Screen::primaryScreen()->heightInMMToPixels(3);
+            selectionFocusRect.inflate(m_webPage->mapFromTransformed(WebCore::IntSize(0, s_focusRectPaddingSize)).height());
+
+            WebCore::IntRect revealRect(layer->getRectToExpose(actualScreenRect, selectionFocusRect,
                                                                  horizontalScrollAlignment,
-                                                                 verticalScrollAlignment);
+                                                                 verticalScrollAlignment));
 
             mainFrameView->setConstrainsScrollingToContentEdge(false);
             // In order to adjust the scroll position to ensure the focused input field is visible,
@@ -1157,12 +1146,7 @@ void InputHandler::ensureFocusTextElementVisible(CaretScrollType scrollType)
             mainFrameView->setConstrainsScrollingToContentEdge(true);
         }
     }
-
-    // If the text is too small, zoom in to make it a minimum size.
-    // The minimum size being defined as 3 mm is a good value based on my observations.
-    static const int s_minimumTextHeightInPixels = Graphics::Screen::primaryScreen()->widthInMMToPixels(3);
-    if (fontHeight && fontHeight < s_minimumTextHeightInPixels)
-        m_webPage->zoomAboutPoint(s_minimumTextHeightInPixels / fontHeight, selectionFocusRect.location());
+    m_webPage->resumeBackingStore();
 }
 
 void InputHandler::ensureFocusPluginElementVisible()
@@ -1269,11 +1253,6 @@ void InputHandler::notifyClientOfKeyboardVisibilityChange(bool visible)
     // If we aren't ready for input, keyboard changes should be ignored.
     if (!isInputModeEnabled() && visible)
         return;
-
-    if (processingChange()) {
-        ASSERT(visible);
-        return;
-    }
 
     if (!m_delayKeyboardVisibilityChange) {
         m_webPage->showVirtualKeyboard(visible);

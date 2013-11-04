@@ -399,6 +399,13 @@ public:
         [NSNumber numberWithBool:YES],  WebKitRequestAnimationFrameEnabledPreferenceKey,
         [NSNumber numberWithBool:NO],   WebKitWantsBalancedSetDefersLoadingBehaviorKey,
         [NSNumber numberWithBool:NO],   WebKitDiagnosticLoggingEnabledKey,
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1090
+        [NSNumber numberWithBool:NO],
+#else
+        [NSNumber numberWithBool:YES],
+#endif
+                                        WebKitScreenFontSubstitutionEnabledKey,
+        [NSNumber numberWithInt:WebAllowAllStorage], WebKitStorageBlockingPolicyKey,
 
         [NSNumber numberWithLongLong:ApplicationCacheStorage::noQuota()], WebKitApplicationCacheTotalQuota,
         [NSNumber numberWithLongLong:ApplicationCacheStorage::noQuota()], WebKitApplicationCacheDefaultOriginQuota,
@@ -1737,6 +1744,26 @@ static NSString *classIBCreatorID = nil;
 - (void)setDiagnosticLoggingEnabled:(BOOL)enabled
 {
     [self _setBoolValue:enabled forKey:WebKitDiagnosticLoggingEnabledKey];
+}
+
+- (BOOL)screenFontSubstitutionEnabled
+{
+    return [self _boolValueForKey:WebKitScreenFontSubstitutionEnabledKey];
+}
+
+- (void)setScreenFontSubstitutionEnabled:(BOOL)enabled
+{
+    [self _setBoolValue:enabled forKey:WebKitScreenFontSubstitutionEnabledKey];
+}
+
+- (void)setStorageBlockingPolicy:(WebStorageBlockingPolicy)storageBlockingPolicy
+{
+    [self _setIntegerValue:storageBlockingPolicy forKey:WebKitStorageBlockingPolicyKey];
+}
+
+- (WebStorageBlockingPolicy)storageBlockingPolicy
+{
+    return static_cast<WebStorageBlockingPolicy>([self _integerValueForKey:WebKitStorageBlockingPolicyKey]);
 }
 
 @end

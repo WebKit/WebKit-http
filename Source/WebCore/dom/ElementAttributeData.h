@@ -46,6 +46,10 @@ public:
     static PassRefPtr<ElementAttributeData> create();
     static PassRefPtr<ElementAttributeData> createImmutable(const Vector<Attribute>&);
 
+    // Override RefCounted's deref() to ensure operator delete is called on
+    // the appropriate subclass type.
+    void deref();
+
     void clearClass() { m_classNames.clear(); }
     void setClass(const AtomicString& className, bool shouldFoldCase) const { m_classNames.set(className, shouldFoldCase); }
     const SpaceSplitString& classNames() const { return m_classNames; }
@@ -97,6 +101,7 @@ public:
     void reportMemoryUsage(MemoryObjectInfo*) const;
 
     bool isMutable() const { return m_isMutable; }
+    const Attribute* immutableAttributeArray() const;
 
 protected:
     ElementAttributeData()
@@ -133,7 +138,6 @@ private:
 
     Vector<Attribute, 4>& mutableAttributeVector();
     const Vector<Attribute, 4>& mutableAttributeVector() const;
-    const Attribute* immutableAttributeArray() const;
 };
 
 class ImmutableElementAttributeData : public ElementAttributeData {
@@ -256,18 +260,15 @@ inline Attribute* ElementAttributeData::attributeItem(unsigned index)
     return &mutableAttributeVector().at(index);
 }
 
-}
-
-namespace WTF {
-
-template <> inline void deleteOwnedPtr<WebCore::ElementAttributeData>(WebCore::ElementAttributeData* ptr)
+inline void ElementAttributeData::deref()
 {
-    if (!ptr)
+    if (!derefBase())
         return;
-    if (ptr->isMutable())
-        delete static_cast<WebCore::MutableElementAttributeData*>(ptr);
+
+    if (m_isMutable)
+        delete static_cast<MutableElementAttributeData*>(this);
     else
-        delete static_cast<WebCore::ImmutableElementAttributeData*>(ptr);
+        delete static_cast<ImmutableElementAttributeData*>(this);
 }
 
 }

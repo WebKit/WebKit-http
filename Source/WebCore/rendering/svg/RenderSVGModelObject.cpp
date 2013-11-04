@@ -33,6 +33,7 @@
 #if ENABLE(SVG)
 #include "RenderSVGModelObject.h"
 
+#include "RenderLayerModelObject.h"
 #include "RenderSVGResource.h"
 #include "SVGNames.h"
 #include "SVGResourcesCache.h"
@@ -45,22 +46,22 @@ RenderSVGModelObject::RenderSVGModelObject(SVGStyledElement* node)
 {
 }
 
-LayoutRect RenderSVGModelObject::clippedOverflowRectForRepaint(RenderBoxModelObject* repaintContainer) const
+LayoutRect RenderSVGModelObject::clippedOverflowRectForRepaint(RenderLayerModelObject* repaintContainer) const
 {
     return SVGRenderSupport::clippedOverflowRectForRepaint(this, repaintContainer);
 }
 
-void RenderSVGModelObject::computeFloatRectForRepaint(RenderBoxModelObject* repaintContainer, FloatRect& repaintRect, bool fixed) const
+void RenderSVGModelObject::computeFloatRectForRepaint(RenderLayerModelObject* repaintContainer, FloatRect& repaintRect, bool fixed) const
 {
     SVGRenderSupport::computeFloatRectForRepaint(this, repaintContainer, repaintRect, fixed);
 }
 
-void RenderSVGModelObject::mapLocalToContainer(RenderBoxModelObject* repaintContainer, TransformState& transformState, MapLocalToContainerFlags mode, bool* wasFixed) const
+void RenderSVGModelObject::mapLocalToContainer(RenderLayerModelObject* repaintContainer, TransformState& transformState, MapLocalToContainerFlags mode, bool* wasFixed) const
 {
     SVGRenderSupport::mapLocalToContainer(this, repaintContainer, transformState, mode & SnapOffsetForTransforms, wasFixed);
 }
 
-const RenderObject* RenderSVGModelObject::pushMappingToContainer(const RenderBoxModelObject* ancestorToStopAt, RenderGeometryMap& geometryMap) const
+const RenderObject* RenderSVGModelObject::pushMappingToContainer(const RenderLayerModelObject* ancestorToStopAt, RenderGeometryMap& geometryMap) const
 {
     return SVGRenderSupport::pushMappingToContainer(this, ancestorToStopAt, geometryMap);
 }
@@ -68,7 +69,7 @@ const RenderObject* RenderSVGModelObject::pushMappingToContainer(const RenderBox
 // Copied from RenderBox, this method likely requires further refactoring to work easily for both SVG and CSS Box Model content.
 // FIXME: This may also need to move into SVGRenderSupport as the RenderBox version depends
 // on borderBoundingBox() which SVG RenderBox subclases (like SVGRenderBlock) do not implement.
-LayoutRect RenderSVGModelObject::outlineBoundsForRepaint(RenderBoxModelObject* repaintContainer, LayoutPoint*) const
+LayoutRect RenderSVGModelObject::outlineBoundsForRepaint(RenderLayerModelObject* repaintContainer, LayoutPoint*) const
 {
     LayoutRect box = enclosingLayoutRect(repaintRectInLocalCoordinates());
     adjustRectForOutlineAndShadow(box);
@@ -164,6 +165,13 @@ static bool isGraphicsElement(RenderObject* renderer)
     return renderer->isSVGShape() || renderer->isSVGText() || renderer->isSVGImage() || renderer->node()->hasTagName(SVGNames::useTag);
 }
 
+// The SVG addFocusRingRects() method adds rects in local coordinates so the default absoluteFocusRingQuads
+// returns incorrect values for SVG objects. Overriding this method provides access to the absolute bounds.
+void RenderSVGModelObject::absoluteFocusRingQuads(Vector<FloatQuad>& quads)
+{
+    quads.append(localToAbsoluteQuad(FloatQuad(repaintRectInLocalCoordinates())));
+}
+    
 bool RenderSVGModelObject::checkIntersection(RenderObject* renderer, const FloatRect& rect)
 {
     if (!renderer || renderer->style()->pointerEvents() == PE_NONE)

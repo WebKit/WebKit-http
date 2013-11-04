@@ -45,6 +45,7 @@
 #import "WorkQueue.h"
 #import "WorkQueueItem.h"
 #import <JavaScriptCore/JavaScriptCore.h>
+#import <WebKitSystemInterface.h>
 #import <WebKit/WebFramePrivate.h>
 #import <WebKit/WebHTMLViewPrivate.h>
 #import <WebKit/WebKit.h>
@@ -154,8 +155,41 @@
     }
 }
 
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1070
+static NSString *testPathFromURL(NSURL* url)
+{
+    if ([url isFileURL]) {
+        NSString *filePath = [url path];
+        NSRange layoutTestsRange = [filePath rangeOfString:@"/LayoutTests/"];
+        if (layoutTestsRange.location == NSNotFound)
+            return nil;
+            
+        return [filePath substringFromIndex:NSMaxRange(layoutTestsRange)];
+    }
+    
+    // HTTP test URLs look like: http://127.0.0.1:8000/inspector/resource-tree/resource-request-content-after-loading-and-clearing-cache.html
+    if (![[url scheme] isEqualToString:@"http"] && ![[url scheme] isEqualToString:@"https"])
+        return nil;
+
+    if ([[url host] isEqualToString:@"127.0.0.1"] && ([[url port] intValue] == 8000 || [[url port] intValue] == 8443))
+        return [url path];
+
+    return nil;
+}
+#endif
+
 - (void)webView:(WebView *)sender didStartProvisionalLoadForFrame:(WebFrame *)frame
 {
+    ASSERT([frame provisionalDataSource]);
+
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1070
+    if (!done && [[sender mainFrame] isEqual:frame]) {
+        NSURL *provisionalLoadURL = [[[frame provisionalDataSource] initialRequest] URL];
+        if (NSString *testPath = testPathFromURL(provisionalLoadURL))
+            WKSetCrashReportApplicationSpecificInformation((CFStringRef)[@"CRASHING TEST: " stringByAppendingString:testPath]);
+    }
+#endif
+
     if (!done && gTestRunner->dumpFrameLoadCallbacks()) {
         NSString *string = [NSString stringWithFormat:@"%@ - didStartProvisionalLoadForFrame", [frame _drt_descriptionSuitableForTestResult]];
         printf ("%s\n", [string UTF8String]);
@@ -166,7 +200,6 @@
         printf ("%s\n", [string UTF8String]);
     }
 
-    ASSERT([frame provisionalDataSource]);
     // Make sure we only set this once per test.  If it gets cleared, and then set again, we might
     // end up doing two dumps for one test.
     if (!topLoadingFrame && !done)
@@ -344,7 +377,7 @@
     }
 
     if (gTestRunner->dumpTitleChanges())
-        printf("TITLE CHANGED: %s\n", [title UTF8String]);
+        printf("TITLE CHANGED: '%s'\n", [title UTF8String]);
 }
 
 - (void)webView:(WebView *)sender didReceiveServerRedirectForProvisionalLoadForFrame:(WebFrame *)frame

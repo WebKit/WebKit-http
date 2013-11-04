@@ -186,6 +186,11 @@ public:
         , m_tabIndexWasSetExplicitly(false)
         , m_isFocused(false)
         , m_needsFocusAppearanceUpdateSoonAfterAttach(false)
+        , m_styleAffectedByEmpty(false)
+        , m_isInCanvasSubtree(false)
+#if ENABLE(FULLSCREEN_API)
+        , m_containsFullScreenElement(false)
+#endif
     {
     }
 
@@ -231,14 +236,6 @@ public:
     void setTabIndexExplicitly(short index) { m_tabIndex = index; m_tabIndexWasSetExplicitly = true; }
     bool tabIndexSetExplicitly() const { return m_tabIndexWasSetExplicitly; }
     void clearTabIndexExplicitly() { m_tabIndex = 0; m_tabIndexWasSetExplicitly = false; }
-
-    EventTargetData* eventTargetData() { return m_eventTargetData.get(); }
-    EventTargetData* ensureEventTargetData()
-    {
-        if (!m_eventTargetData)
-            m_eventTargetData = adoptPtr(new EventTargetData);
-        return m_eventTargetData.get();
-    }
 
 #if ENABLE(MUTATION_OBSERVERS)
     Vector<OwnPtr<MutationObserverRegistration> >* mutationObserverRegistry() { return m_mutationObserverRegistry.get(); }
@@ -315,17 +312,28 @@ protected:
     // for ElementRareData
     bool needsFocusAppearanceUpdateSoonAfterAttach() const { return m_needsFocusAppearanceUpdateSoonAfterAttach; }
     void setNeedsFocusAppearanceUpdateSoonAfterAttach(bool needs) { m_needsFocusAppearanceUpdateSoonAfterAttach = needs; }
+    bool styleAffectedByEmpty() const { return m_styleAffectedByEmpty; }
+    void setStyleAffectedByEmpty(bool value) { m_styleAffectedByEmpty = value; }
+    bool isInCanvasSubtree() const { return m_isInCanvasSubtree; }
+    void setIsInCanvasSubtree(bool value) { m_isInCanvasSubtree = value; }
+#if ENABLE(FULLSCREEN_API)
+    bool containsFullScreenElement() { return m_containsFullScreenElement; }
+    void setContainsFullScreenElement(bool value) { m_containsFullScreenElement = value; }
+#endif
 
 private:
-
     TreeScope* m_treeScope;
     OwnPtr<NodeListsNodeData> m_nodeLists;
     ChildNodeList* m_childNodeList;
-    OwnPtr<EventTargetData> m_eventTargetData;
     short m_tabIndex;
     bool m_tabIndexWasSetExplicitly : 1;
     bool m_isFocused : 1;
     bool m_needsFocusAppearanceUpdateSoonAfterAttach : 1;
+    bool m_styleAffectedByEmpty : 1;
+    bool m_isInCanvasSubtree : 1;
+#if ENABLE(FULLSCREEN_API)
+    bool m_containsFullScreenElement : 1;
+#endif
 
 #if ENABLE(MUTATION_OBSERVERS)
     OwnPtr<Vector<OwnPtr<MutationObserverRegistration> > > m_mutationObserverRegistry;

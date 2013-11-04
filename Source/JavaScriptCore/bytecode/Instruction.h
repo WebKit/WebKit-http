@@ -33,6 +33,7 @@
 #include "MacroAssembler.h"
 #include "Opcode.h"
 #include "PropertySlot.h"
+#include "SpecialPointer.h"
 #include "Structure.h"
 #include "StructureChain.h"
 #include <wtf/VectorTraits.h>
@@ -154,7 +155,7 @@ namespace JSC {
         
         Instruction(Opcode opcode)
         {
-#if !ENABLE(COMPUTED_GOTO_CLASSIC_INTERPRETER)
+#if !ENABLE(COMPUTED_GOTO_OPCODES)
             // We have to initialize one of the pointer members to ensure that
             // the entire struct is initialized, when opcode is not a pointer.
             u.jsCell.clear();
@@ -195,6 +196,8 @@ namespace JSC {
         
         Instruction(WriteBarrier<Unknown>* registerPointer) { u.registerPointer = registerPointer; }
         
+        Instruction(Special::Pointer pointer) { u.specialPointer = pointer; }
+        
         Instruction(bool* predicatePointer) { u.predicatePointer = predicatePointer; }
 
         union {
@@ -204,6 +207,7 @@ namespace JSC {
             WriteBarrierBase<StructureChain> structureChain;
             WriteBarrierBase<JSCell> jsCell;
             WriteBarrier<Unknown>* registerPointer;
+            Special::Pointer specialPointer;
             PropertySlot::GetValueFunc getterFunc;
             LLIntCallLinkInfo* callLinkInfo;
             ValueProfile* profile;

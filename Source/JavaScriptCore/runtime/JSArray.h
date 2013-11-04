@@ -51,7 +51,6 @@ namespace JSC {
         // contents are known at time of creation. Clients of this interface must:
         //   - null-check the result (indicating out of memory, or otherwise unable to allocate vector).
         //   - call 'initializeIndex' for all properties in sequence, for 0 <= i < initialLength.
-        //   - called 'completeInitialization' after all properties have been initialized.
         static JSArray* tryCreateUninitialized(JSGlobalData&, Structure*, unsigned initialLength);
 
         JS_EXPORT_PRIVATE static bool defineOwnProperty(JSObject*, ExecState*, PropertyName, PropertyDescriptor&, bool throwException);
@@ -72,8 +71,8 @@ namespace JSC {
         void push(ExecState*, JSValue);
         JSValue pop(ExecState*);
 
-        bool shiftCount(ExecState*, unsigned count);
-        bool unshiftCount(ExecState*, unsigned count);
+        bool shiftCount(ExecState*, unsigned startIndex, unsigned count);
+        bool unshiftCount(ExecState*, unsigned startIndex, unsigned count);
 
         void fillArgList(ExecState*, MarkedArgumentBuffer&);
         void copyToArguments(ExecState*, CallFrame*, uint32_t length);
@@ -102,9 +101,9 @@ namespace JSC {
 
         void setLengthWritable(ExecState*, bool writable);
 
-        bool unshiftCountSlowCase(JSGlobalData&, unsigned count);
+        bool unshiftCountSlowCase(JSGlobalData&, bool, unsigned);
         
-        unsigned compactForSorting(JSGlobalData&);
+        unsigned compactForSorting();
     };
 
     inline Butterfly* createArrayButterfly(JSGlobalData& globalData, unsigned initialLength)
@@ -115,10 +114,6 @@ namespace JSC {
         storage->m_indexBias = 0;
         storage->m_sparseMap.clear();
         storage->m_numValuesInVector = 0;
-#if CHECK_ARRAY_CONSISTENCY
-        storage->m_initializationIndex = 0;
-        storage->m_inCompactInitialization = 0;
-#endif
         return butterfly;
     }
 
@@ -147,10 +142,6 @@ namespace JSC {
         storage->m_indexBias = 0;
         storage->m_sparseMap.clear();
         storage->m_numValuesInVector = initialLength;
-#if CHECK_ARRAY_CONSISTENCY
-        storage->m_initializationIndex = 0;
-        storage->m_inCompactInitialization = true;
-#endif
         
         JSArray* array = new (NotNull, allocateCell<JSArray>(globalData.heap)) JSArray(globalData, structure, butterfly);
         array->finishCreation(globalData);
@@ -187,7 +178,6 @@ namespace JSC {
 
         for (unsigned i = 0; i < length; ++i)
             array->initializeIndex(globalData, i, values.at(i));
-        array->completeInitialization(length);
         return array;
     }
     
@@ -204,7 +194,6 @@ namespace JSC {
 
         for (unsigned i = 0; i < length; ++i)
             array->initializeIndex(globalData, i, values[i]);
-        array->completeInitialization(length);
         return array;
     }
 

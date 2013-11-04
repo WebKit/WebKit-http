@@ -54,10 +54,10 @@ static NPIdentifier npIdentifierFromIdentifier(PropertyName propertyName)
     return static_cast<NPIdentifier>(IdentifierRep::get(name.utf8().data()));
 }
 
-const ClassInfo JSNPObject::s_info = { "NPObject", &JSNonFinalObject::s_info, 0, 0, CREATE_METHOD_TABLE(JSNPObject) };
+const ClassInfo JSNPObject::s_info = { "NPObject", &Base::s_info, 0, 0, CREATE_METHOD_TABLE(JSNPObject) };
 
 JSNPObject::JSNPObject(JSGlobalObject* globalObject, Structure* structure, NPRuntimeObjectMap* objectMap, NPObject* npObject)
-    : JSNonFinalObject(globalObject->globalData(), structure)
+    : JSDestructibleObject(globalObject->globalData(), structure)
     , m_objectMap(objectMap)
     , m_npObject(npObject)
 {
@@ -404,7 +404,7 @@ bool JSNPObject::deleteProperty(ExecState* exec, NPIdentifier propertyName)
     return true;
 }
 
-void JSNPObject::getOwnPropertyNames(JSObject* object, ExecState* exec, PropertyNameArray& propertyNameArray, EnumerationMode mode)
+void JSNPObject::getOwnPropertyNames(JSObject* object, ExecState* exec, PropertyNameArray& propertyNameArray, EnumerationMode)
 {
     JSNPObject* thisObject = jsCast<JSNPObject*>(object);
     ASSERT_GC_OBJECT_INHERITS(thisObject, &s_info);

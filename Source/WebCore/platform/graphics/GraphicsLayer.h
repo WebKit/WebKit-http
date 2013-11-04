@@ -54,6 +54,7 @@ namespace WebCore {
 
 class FloatPoint3D;
 class GraphicsContext;
+class GraphicsLayerFactory;
 class Image;
 class TextStream;
 class TiledBacking;
@@ -191,6 +192,9 @@ protected:
 class GraphicsLayer {
     WTF_MAKE_NONCOPYABLE(GraphicsLayer); WTF_MAKE_FAST_ALLOCATED;
 public:
+    static PassOwnPtr<GraphicsLayer> create(GraphicsLayerFactory*, GraphicsLayerClient*);
+
+    // FIXME: Replace all uses of this create function with the one that takes a GraphicsLayerFactory.
     static PassOwnPtr<GraphicsLayer> create(GraphicsLayerClient*);
     
     virtual ~GraphicsLayer();
@@ -398,8 +402,8 @@ public:
 #if PLATFORM(QT) || PLATFORM(GTK) || PLATFORM(EFL)
     // This allows several alternative GraphicsLayer implementations in the same port,
     // e.g. if a different GraphicsLayer implementation is needed in WebKit1 vs. WebKit2.
-    typedef PassOwnPtr<GraphicsLayer> GraphicsLayerFactory(GraphicsLayerClient*);
-    static void setGraphicsLayerFactory(GraphicsLayerFactory);
+    typedef PassOwnPtr<GraphicsLayer> GraphicsLayerFactoryCallback(GraphicsLayerClient*);
+    static void setGraphicsLayerFactory(GraphicsLayerFactoryCallback);
 #endif
 
 protected:
@@ -487,7 +491,7 @@ protected:
     int m_repaintCount;
 
 #if PLATFORM(QT) || PLATFORM(GTK) || PLATFORM(EFL)
-    static GraphicsLayer::GraphicsLayerFactory* s_graphicsLayerFactory;
+    static GraphicsLayer::GraphicsLayerFactoryCallback* s_graphicsLayerFactory;
 #endif
 };
 

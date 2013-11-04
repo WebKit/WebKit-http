@@ -82,6 +82,7 @@ public:
 
     virtual void setCursorHiddenUntilMouseMoves(bool hiddenUntilMouseMoves);
     virtual void toolTipChanged(const String&, const String& newTooltip);
+    virtual void pageTransitionViewportReady();
 
     virtual void startDrag(const WebCore::DragData& dragData, PassRefPtr<WebKit::ShareableBitmap> dragImage);
 
@@ -104,6 +105,7 @@ public:
     virtual void didRelaunchProcess();
     virtual void setViewNeedsDisplay(const WebCore::IntRect& rect);
     virtual void didChangeContentsSize(const WebCore::IntSize& newSize);
+    virtual void didRenderFrame(const WebCore::IntSize& contentsSize, const WebCore::IntRect& coveredRect) { }
     virtual void setCursor(const WebCore::Cursor&);
 
     virtual bool isViewFocused() { return m_focused; }

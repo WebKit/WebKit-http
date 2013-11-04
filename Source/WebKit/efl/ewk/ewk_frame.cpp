@@ -262,7 +262,7 @@ static void _ewk_frame_smart_resize(Evas_Object* ewkFrame, Evas_Coord width, Eva
     evas_object_resize(smartData->region, width, height);
     Evas_Coord x, y;
     evas_object_geometry_get(smartData->region, &x, &y, &width, &height);
-    INF("region=%p, visible=%d, geo=%d,%d + %dx%d",
+    INFO("region=%p, visible=%d, geo=%d,%d + %dx%d",
         smartData->region, evas_object_visible_get(smartData->region), x, y, width, height);
     _ewk_frame_debug(ewkFrame);
 #endif
@@ -881,7 +881,7 @@ Eina_Bool ewk_frame_feed_focus_in(Evas_Object* ewkFrame)
     return true;
 }
 
-Eina_Bool ewk_frame_feed_focus_out(Evas_Object* ewkFrame)
+Eina_Bool ewk_frame_feed_focus_out(Evas_Object*)
 {
     // TODO: what to do on focus out?
     ERR("what to do?");
@@ -1334,7 +1334,7 @@ void ewk_frame_did_perform_first_navigation(Evas_Object* ewkFrame)
  *
  * Emits signal: "state,save"
  */
-void ewk_frame_view_state_save(Evas_Object* ewkFrame, WebCore::HistoryItem* item)
+void ewk_frame_view_state_save(Evas_Object* ewkFrame, WebCore::HistoryItem*)
 {
     evas_object_smart_callback_call(ewkFrame, "state,save", 0);
 }
@@ -1643,7 +1643,7 @@ ssize_t ewk_frame_source_get(const Evas_Object* ewkFrame, char** frameSource)
 
     if (!smartData->frame->document()->isHTMLDocument()) {
         // FIXME: Support others documents.
-        WRN("Only HTML documents are supported");
+        WARN("Only HTML documents are supported");
         return -1;
     }
 
@@ -1694,7 +1694,7 @@ Eina_List* ewk_frame_resources_location_get(const Evas_Object* ewkFrame)
         void* data = 0;
         Eina_Bool found = false;
         EINA_LIST_FOREACH(listOfImagesLocation, listIterator, data)
-            if (found = !strcmp(static_cast<char*>(data), imageLocation.utf8().data()))
+            if ((found = !strcmp(static_cast<char*>(data), imageLocation.utf8().data())))
                 break;
         if (found)
             continue;
@@ -1794,7 +1794,7 @@ bool ewk_frame_uri_changed(Evas_Object* ewkFrame)
     EINA_SAFETY_ON_NULL_RETURN_VAL(smartData->frame, false);
     WTF::CString uri(smartData->frame->document()->url().string().utf8());
 
-    INF("uri=%s", uri.data());
+    INFO("uri=%s", uri.data());
     if (!uri.data()) {
         ERR("no uri");
         return false;
@@ -1844,6 +1844,15 @@ WTF::PassRefPtr<WebCore::Widget> ewk_frame_plugin_create(Evas_Object* ewkFrame, 
 
     if (pluginView->status() == WebCore::PluginStatusLoadedSuccessfully)
         return pluginView.release();
+#else
+    UNUSED_PARAM(ewkFrame);
+    UNUSED_PARAM(pluginSize);
+    UNUSED_PARAM(element);
+    UNUSED_PARAM(url);
+    UNUSED_PARAM(paramNames);
+    UNUSED_PARAM(paramValues);
+    UNUSED_PARAM(mimeType);
+    UNUSED_PARAM(loadManually);
 #endif // #if ENABLE(NETSCAPE_PLUGIN_API)
     return 0;
 }

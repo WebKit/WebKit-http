@@ -53,6 +53,9 @@
 #include "TextResourceDecoder.h"
 #include "WebCoreMemoryInstrumentation.h"
 #include <wtf/Assertions.h>
+#include <wtf/MemoryInstrumentationHashMap.h>
+#include <wtf/MemoryInstrumentationHashSet.h>
+#include <wtf/MemoryInstrumentationVector.h>
 #include <wtf/text/CString.h>
 #include <wtf/text/WTFString.h>
 #include <wtf/unicode/Unicode.h>
@@ -362,22 +365,22 @@ void DocumentLoader::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
     MemoryClassInfo info(memoryObjectInfo, this, WebCoreMemoryTypes::Loader);
     info.addMember(m_frame);
     info.addMember(m_mainResourceLoader);
-    info.addInstrumentedHashSet(m_subresourceLoaders);
-    info.addInstrumentedHashSet(m_multipartSubresourceLoaders);
-    info.addInstrumentedHashSet(m_plugInStreamLoaders);
+    info.addMember(m_subresourceLoaders);
+    info.addMember(m_multipartSubresourceLoaders);
+    info.addMember(m_plugInStreamLoaders);
     info.addMember(m_substituteData);
     info.addMember(m_pageTitle.string());
     info.addMember(m_overrideEncoding);
-    info.addVector(m_responses);
+    info.addMember(m_responses);
     info.addMember(m_originalRequest);
     info.addMember(m_originalRequestCopy);
     info.addMember(m_request);
     info.addMember(m_response);
     info.addMember(m_lastCheckedRequest);
-    info.addInstrumentedVector(m_responses);
-    info.addHashMap(m_pendingSubstituteResources);
-    info.addInstrumentedHashSet(m_resourcesClientKnowsAbout);
-    info.addVector(m_resourcesLoadedFromMemoryCacheForClientNotification);
+    info.addMember(m_responses);
+    info.addMember(m_pendingSubstituteResources);
+    info.addMember(m_resourcesClientKnowsAbout);
+    info.addMember(m_resourcesLoadedFromMemoryCacheForClientNotification);
     info.addMember(m_clientRedirectSourceForHistory);
     info.addMember(m_mainResourceData);
 }
@@ -737,14 +740,12 @@ void DocumentLoader::stopRecordingResponses()
 
 void DocumentLoader::setTitle(const StringWithDirection& title)
 {
-    if (title.isEmpty())
+    if (m_pageTitle == title)
         return;
 
-    if (m_pageTitle != title) {
-        frameLoader()->willChangeTitle(this);
-        m_pageTitle = title;
-        frameLoader()->didChangeTitle(this);
-    }
+    frameLoader()->willChangeTitle(this);
+    m_pageTitle = title;
+    frameLoader()->didChangeTitle(this);
 }
 
 KURL DocumentLoader::urlForHistory() const

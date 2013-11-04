@@ -34,6 +34,7 @@ class WebDOMDictionary;
 class WebDOMDocument;
 class WebDOMEventListener;
 class WebDOMIDBKey;
+class WebDOMNode;
 class WebDOMSVGPoint;
 class WebDOMString;
 class WebDOMTestObj;
@@ -77,8 +78,8 @@ public:
     void setShortAttr(short);
     unsigned short unsignedShortAttr() const;
     void setUnsignedShortAttr(unsigned short);
-    long long Attr() const;
-    void setAttr(long long);
+    int longAttr() const;
+    void setLongAttr(int);
     long long longLongAttr() const;
     void setLongLongAttr(long long);
     unsigned long long unsignedLongLongAttr() const;
@@ -147,11 +148,11 @@ public:
     int replaceableAttribute() const;
 
     void voidMethod();
-    void voidMethodWithArgs(long long Arg, const WebDOMString& strArg, const WebDOMTestObj& objArg);
-    long long Method();
-    long long MethodWithArgs(long long Arg, const WebDOMString& strArg, const WebDOMTestObj& objArg);
+    void voidMethodWithArgs(int longArg, const WebDOMString& strArg, const WebDOMTestObj& objArg);
+    int longMethod();
+    int longMethodWithArgs(int longArg, const WebDOMString& strArg, const WebDOMTestObj& objArg);
     WebDOMTestObj objMethod();
-    WebDOMTestObj objMethodWithArgs(long long Arg, const WebDOMString& strArg, const WebDOMTestObj& objArg);
+    WebDOMTestObj objMethodWithArgs(int longArg, const WebDOMString& strArg, const WebDOMTestObj& objArg);
     WebDOMTestObj methodThatRequiresAllArgsAndThrows(const WebDOMString& strArg, const WebDOMTestObj& objArg);
     void serializedValue(const WebDOMString& serializedArg);
     void idbKey(const WebDOMIDBKey& key);
@@ -182,14 +183,17 @@ public:
 #if ENABLE(Condition1)
     void overloadedMethod1(const WebDOMString& type);
 #endif
-    void convert1(const WebDOMa& );
-    void convert2(const WebDOMb& );
-    void convert4(const WebDOMd& );
-    void convert5(const WebDOMe& );
+    void convert1(const WebDOMa& value);
+    void convert2(const WebDOMb& value);
+    void convert4(const WebDOMd& value);
+    void convert5(const WebDOMe& value);
     WebDOMSVGPoint mutablePointFunction();
     WebDOMSVGPoint immutablePointFunction();
     void banana();
     WebDOMbool strictFunction(const WebDOMString& str, float a, int b);
+    void variadicStringMethod(const WebDOMString& head, const WebDOMString& tail);
+    void variadicDoubleMethod(double head, double tail);
+    void variadicNodeMethod(const WebDOMNode& head, const WebDOMNode& tail);
 
     WebCore::TestObj* impl() const;
 

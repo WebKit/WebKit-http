@@ -37,13 +37,8 @@
 #include "Frame.h"
 #include "Page.h"
 #include "ScriptExecutionContext.h"
+#include "ScriptState.h"
 #include "StorageArea.h"
-
-#if USE(JSC)
-namespace JSC {
-class ExecState;
-}
-#endif
 
 namespace WebCore {
 
@@ -81,12 +76,6 @@ class ThreadableLoaderClient;
 class WorkerContext;
 class WorkerContextProxy;
 class XMLHttpRequest;
-
-#if USE(JSC)
-typedef JSC::ExecState ScriptState;
-#else
-class ScriptState;
-#endif
 
 #if ENABLE(WEB_SOCKETS)
 struct WebSocketFrame;
@@ -251,6 +240,7 @@ public:
     static void didReceiveWebSocketFrameError(Document*, unsigned long identifier, const String& errorMessage);
 #endif
 
+    static ScriptObject wrapCanvas2DRenderingContextForInstrumentation(Document*, const ScriptObject&);
 #if ENABLE(WEBGL)
     static ScriptObject wrapWebGLRenderingContextForInstrumentation(Document*, const ScriptObject&);
 #endif
@@ -262,11 +252,17 @@ public:
     static void frontendCreated() { s_frontendCounter += 1; }
     static void frontendDeleted() { s_frontendCounter -= 1; }
     static bool hasFrontends() { return s_frontendCounter; }
-    static bool hasFrontendForScriptContext(ScriptExecutionContext*);
+    static bool canvasAgentEnabled(ScriptExecutionContext*);
+    static bool consoleAgentEnabled(ScriptExecutionContext*);
+    static bool runtimeAgentEnabled(Frame*);
+    static bool timelineAgentEnabled(ScriptExecutionContext*);
     static bool collectingHTMLParseErrors(Page*);
 #else
     static bool hasFrontends() { return false; }
-    static bool hasFrontendForScriptContext(ScriptExecutionContext*) { return false; }
+    static bool canvasAgentEnabled(ScriptExecutionContext*) { return false; }
+    static bool consoleAgentEnabled(ScriptExecutionContext*) { return false; }
+    static bool runtimeAgentEnabled(Frame*) { return false; }
+    static bool timelineAgentEnabled(ScriptExecutionContext*) { return false; }
     static bool collectingHTMLParseErrors(Page*) { return false; }
 #endif
 

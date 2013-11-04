@@ -27,6 +27,7 @@
 
 #include <WebKit2/WKContext.h>
 #include <WebKit2/WKPageGroup.h>
+#include <WebKit2/WKPageLoadTypes.h>
 #include <WebKit2/WKPreferences.h>
 #include <WebKit2/WKPreferencesPrivate.h>
 #include <WebKit2/WKStringQt.h>
@@ -60,15 +61,18 @@ class WebView : public QObject, public QRawWebViewClient {
 public:
     WebView(const QSize& size, bool transparent = false)
     {
-        WKPageLoaderClient loaderClient;
-        memset(&loaderClient, 0, sizeof(WKPageLoaderClient));
-        loaderClient.clientInfo = this;
-        loaderClient.didFirstVisuallyNonEmptyLayoutForFrame = WebView::finishFirstLayoutForFrame;
-
         m_webView = new QRawWebView(webContext(), webPageGroup(QString()), this);
-        WKPageSetPageLoaderClient(m_webView->pageRef(), &loaderClient);
         m_webView->setTransparentBackground(transparent);
         m_webView->create();
+
+        WKPageLoaderClient loaderClient;
+        memset(&loaderClient, 0, sizeof(WKPageLoaderClient));
+        loaderClient.version = kWKPageLoaderClientCurrentVersion;
+        loaderClient.clientInfo = this;
+        loaderClient.didLayout = WebView::didLayout;
+
+        WKPageSetPageLoaderClient(m_webView->pageRef(), &loaderClient);
+        WKPageListenForLayoutMilestones(m_webView->pageRef(), kWKDidFirstVisuallyNonEmptyLayout);
         WKPageSetUseFixedLayout(m_webView->pageRef(), true);
 
         m_webView->setSize(size);
@@ -118,7 +122,7 @@ public:
         static_cast<WebView*>(context)->onRepaintDone();
     }
 
-    static void finishFirstLayoutForFrame(WKPageRef page, WKFrameRef frame, WKTypeRef userData, const void *clientInfo)
+    static void didLayout(WKPageRef page, WKLayoutMilestones milestones, WKTypeRef userData, const void *clientInfo)
     {
         static_cast<WebView*>(const_cast<void*>(clientInfo))->frameLoaded();
     }
@@ -152,7 +156,9 @@ public:
     tst_qrawwebview()
         : m_resourceDir(QString::fromLatin1(TESTS_SOURCE_DIR "/html/resources"))
         , m_baseUrl(QUrl::fromLocalFile(TESTS_SOURCE_DIR "/html").toString())
-    { }
+    {
+        addQtWebProcessToPath();
+    }
 
 private Q_SLOTS:
     void paint() { run(&tst_qrawwebview::doPaint, m_resourceDir + "/qwkview_paint.png"); }

@@ -99,6 +99,7 @@ class PrerendererClientImpl;
 class SpeechInputClientImpl;
 class SpeechRecognitionClientProxy;
 class UserMediaClientImpl;
+class ValidationMessageClientImpl;
 class WebAccessibilityObject;
 class WebCompositorImpl;
 class WebDevToolsAgentClient;
@@ -167,7 +168,7 @@ public:
     virtual void extendSelectionAndDelete(int before, int after);
     virtual bool isSelectionEditable() const;
     virtual WebColor backgroundColor() const;
-    virtual bool selectionBounds(WebRect& start, WebRect& end) const;
+    virtual bool selectionBounds(WebRect& anchor, WebRect& focus) const;
     virtual bool selectionTextDirection(WebTextDirection& start, WebTextDirection& end) const;
     virtual bool caretOrSelectionRange(size_t* location, size_t* length);
     virtual void setTextDirection(WebTextDirection direction);
@@ -560,11 +561,13 @@ public:
     void fullFramePluginZoomLevelChanged(double zoomLevel);
 
 #if ENABLE(GESTURE_EVENTS)
-    void computeScaleAndScrollForHitRect(const WebRect& hitRect, AutoZoomType, float& scale, WebPoint& scroll);
+    void computeScaleAndScrollForHitRect(const WebRect& hitRect, AutoZoomType, float& scale, WebPoint& scroll, bool& isAnchor);
     WebCore::Node* bestTouchLinkNode(WebCore::IntPoint touchEventLocation);
     void enableTouchHighlight(WebCore::IntPoint touchEventLocation);
 #endif
     void animateZoomAroundPoint(const WebCore::IntPoint&, AutoZoomType);
+
+    void shouldUseAnimateDoubleTapTimeZeroForTesting(bool);
 
     void loseCompositorContext(int numTimes);
 
@@ -739,6 +742,12 @@ private:
     float m_savedPageScaleFactor; // 0 means that no page scale factor is saved.
     WebCore::IntSize m_savedScrollOffset;
 
+    // Whether the current scale was achieved by zooming in with double tap.
+    bool m_doubleTapZoomInEffect;
+
+    // Used for testing purposes.
+    bool m_shouldUseDoubleTapTimeZero;
+
     bool m_contextMenuAllowed;
 
     bool m_doingDragAndDrop;
@@ -862,6 +871,7 @@ private:
 #if ENABLE(GESTURE_EVENTS)
     OwnPtr<LinkHighlight> m_linkHighlight;
 #endif
+    OwnPtr<ValidationMessageClientImpl> m_validationMessage;
 };
 
 } // namespace WebKit

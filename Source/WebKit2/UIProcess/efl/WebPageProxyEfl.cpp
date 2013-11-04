@@ -41,7 +41,7 @@ Evas_Object* WebPageProxy::viewWidget()
     return static_cast<PageClientImpl*>(m_pageClient)->viewWidget();
 }
 
-String WebPageProxy::standardUserAgent(const String& applicationNameForUserAgent)
+String WebPageProxy::standardUserAgent(const String& /*applicationNameForUserAgent*/)
 {
     WTF::String platform;
     WTF::String version;
@@ -63,7 +63,7 @@ String WebPageProxy::standardUserAgent(const String& applicationNameForUserAgent
         + " (KHTML, like Gecko) Version/5.0 Safari/" + version;
 }
 
-void WebPageProxy::getEditorCommandsForKeyEvent(Vector<WTF::String>& commandsList)
+void WebPageProxy::getEditorCommandsForKeyEvent(Vector<WTF::String>& /*commandsList*/)
 {
     notImplemented();
 }
@@ -81,6 +81,16 @@ void WebPageProxy::loadRecentSearches(const String&, Vector<String>&)
 void WebPageProxy::setThemePath(const String& themePath)
 {
     process()->send(Messages::WebPage::SetThemePath(themePath), m_pageID, 0);
+}
+
+void WebPageProxy::createPluginContainer(uint64_t&)
+{
+    notImplemented();
+}
+
+void WebPageProxy::windowedPluginGeometryDidChange(const WebCore::IntRect&, const WebCore::IntRect&, uint64_t)
+{
+    notImplemented();
 }
 
 } // namespace WebKit

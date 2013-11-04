@@ -330,6 +330,11 @@ WKSize WKPageFixedLayoutSize(WKPageRef pageRef)
     return toAPI(toImpl(pageRef)->fixedLayoutSize());
 }
 
+void WKPageListenForLayoutMilestones(WKPageRef pageRef, WKLayoutMilestones milestones)
+{
+    toImpl(pageRef)->listenForLayoutMilestones(toLayoutMilestones(milestones));
+}
+
 bool WKPageHasHorizontalScrollbar(WKPageRef pageRef)
 {
     return toImpl(pageRef)->hasHorizontalScrollbar();
@@ -596,6 +601,11 @@ void WKPageGetContentsAsMHTMLData(WKPageRef pageRef, bool useBinaryEncoding, voi
 {
 #if ENABLE(MHTML)
     toImpl(pageRef)->getContentsAsMHTMLData(DataCallback::create(context, callback), useBinaryEncoding);
+#else
+    UNUSED_PARAM(pageRef);
+    UNUSED_PARAM(useBinaryEncoding);
+    UNUSED_PARAM(context);
+    UNUSED_PARAM(callback);
 #endif
 }
 
@@ -728,3 +738,7 @@ void WKPagePostMessageToInjectedBundle(WKPageRef pageRef, WKStringRef messageNam
     toImpl(pageRef)->postMessageToInjectedBundle(toImpl(messageNameRef)->string(), toImpl(messageBodyRef));
 }
 
+WKArrayRef WKPageCopyRelatedPages(WKPageRef pageRef)
+{
+    return toAPI(toImpl(pageRef)->relatedPages().leakRef());
+}

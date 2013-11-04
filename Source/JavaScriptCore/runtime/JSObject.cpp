@@ -32,7 +32,6 @@
 #include "IndexingHeaderInlineMethods.h"
 #include "JSFunction.h"
 #include "JSGlobalObject.h"
-#include "JSGlobalThis.h"
 #include "Lookup.h"
 #include "NativeErrorConstructor.h"
 #include "Nodes.h"
@@ -183,7 +182,7 @@ void JSObject::visitChildren(JSCell* cell, SlotVisitor& visitor)
 
     Butterfly* butterfly = thisObject->butterfly();
     if (butterfly)
-        thisObject->visitButterfly(visitor, butterfly, thisObject->structure()->outOfLineSizeForKnownNonFinalObject());
+        thisObject->visitButterfly(visitor, butterfly, thisObject->structure()->outOfLineSize());
 
 #if !ASSERT_DISABLED
     visitor.m_isCheckingForDefaultMarkViolation = wasCheckingForDefaultMarkViolation;
@@ -203,9 +202,9 @@ void JSFinalObject::visitChildren(JSCell* cell, SlotVisitor& visitor)
 
     Butterfly* butterfly = thisObject->butterfly();
     if (butterfly)
-        thisObject->visitButterfly(visitor, butterfly, thisObject->structure()->outOfLineSizeForKnownFinalObject());
+        thisObject->visitButterfly(visitor, butterfly, thisObject->structure()->outOfLineSize());
 
-    size_t storageSize = thisObject->structure()->inlineSizeForKnownFinalObject();
+    size_t storageSize = thisObject->structure()->inlineSize();
     visitor.appendValues(thisObject->inlineStorage(), storageSize);
 
 #if !ASSERT_DISABLED
@@ -341,7 +340,6 @@ void JSObject::put(JSCell* cell, ExecState* exec, PropertyName propertyName, JSV
 void JSObject::putByIndex(JSCell* cell, ExecState* exec, unsigned propertyName, JSValue value, bool shouldThrow)
 {
     JSObject* thisObject = jsCast<JSObject*>(cell);
-    thisObject->checkIndexingConsistency();
     
     if (propertyName > MAX_ARRAY_INDEX) {
         PutPropertySlot slot(shouldThrow);
@@ -372,7 +370,6 @@ void JSObject::putByIndex(JSCell* cell, ExecState* exec, unsigned propertyName, 
             ++storage->m_numValuesInVector;
         
         valueSlot.set(exec->globalData(), thisObject, value);
-        thisObject->checkIndexingConsistency();
         return;
     }
         
@@ -400,7 +397,6 @@ void JSObject::putByIndex(JSCell* cell, ExecState* exec, unsigned propertyName, 
         }
         
         valueSlot.set(exec->globalData(), thisObject, value);
-        thisObject->checkIndexingConsistency();
         return;
     }
         
@@ -409,7 +405,6 @@ void JSObject::putByIndex(JSCell* cell, ExecState* exec, unsigned propertyName, 
     }
     
     thisObject->putByIndexBeyondVectorLength(exec, propertyName, value, shouldThrow);
-    thisObject->checkIndexingConsistency();
 }
 
 ArrayStorage* JSObject::enterDictionaryIndexingModeWhenArrayStorageAlreadyExists(JSGlobalData& globalData, ArrayStorage* storage)
@@ -485,10 +480,6 @@ ArrayStorage* JSObject::createArrayStorage(JSGlobalData& globalData, unsigned le
     result->m_sparseMap.clear();
     result->m_numValuesInVector = 0;
     result->m_indexBias = 0;
-#if CHECK_ARRAY_CONSISTENCY
-    result->m_initializationIndex = 0;
-    result->m_inCompactInitialization = 0;
-#endif
     Structure* newStructure = Structure::nonPropertyTransition(globalData, structure(), structure()->suggestedIndexingTransition());
     setButterfly(globalData, newButterfly, newStructure);
     return result;
@@ -497,6 +488,20 @@ ArrayStorage* JSObject::createArrayStorage(JSGlobalData& globalData, unsigned le
 ArrayStorage* JSObject::createInitialArrayStorage(JSGlobalData& globalData)
 {
     return createArrayStorage(globalData, 0, BASE_VECTOR_LEN);
+}
+
+ArrayStorage* JSObject::ensureArrayStorageSlow(JSGlobalData& globalData)
+{
+    switch (structure()->indexingType()) {
+    case ALL_BLANK_INDEXING_TYPES:
+        if (UNLIKELY(indexingShouldBeSparse()))
+            return ensureArrayStorageExistsAndEnterDictionaryIndexingMode(globalData);
+        return createInitialArrayStorage(globalData);
+        
+    default:
+        CRASH();
+        return 0;
+    }
 }
 
 ArrayStorage* JSObject::ensureArrayStorageExistsAndEnterDictionaryIndexingMode(JSGlobalData& globalData)
@@ -609,7 +614,7 @@ Structure* JSObject::inheritorID(JSGlobalData& globalData)
 
 bool JSObject::allowsAccessFrom(ExecState* exec)
 {
-    JSGlobalObject* globalObject = unwrappedGlobalObject();
+    JSGlobalObject* globalObject = this->globalObject();
     return globalObject->globalObjectMethodTable()->allowsAccessFrom(globalObject, exec);
 }
 
@@ -717,7 +722,6 @@ bool JSObject::deletePropertyByIndex(JSCell* cell, ExecState* exec, unsigned i)
             }
         }
         
-        thisObject->checkIndexingConsistency();
         return true;
     }
         
@@ -792,7 +796,18 @@ const HashEntry* JSObject::findPropertyHashEntry(ExecState* exec, PropertyName p
     return 0;
 }
 
-bool JSObject::hasInstance(JSObject*, ExecState* exec, JSValue value, JSValue proto)
+bool JSObject::hasInstance(ExecState* exec, JSValue value)
+{
+    TypeInfo info = structure()->typeInfo();
+    if (info.implementsDefaultHasInstance())
+        return defaultHasInstance(exec, value, get(exec, exec->propertyNames().prototype));
+    if (info.implementsHasInstance())
+        return methodTable()->customHasInstance(this, exec, value);
+    throwError(exec, createInvalidParamError(exec, "instanceof" , this));
+    return false;
+}
+
+bool JSObject::defaultHasInstance(ExecState* exec, JSValue value, JSValue proto)
 {
     if (!value.isObject())
         return false;
@@ -922,13 +937,6 @@ JSObject* JSObject::toThisObject(JSCell* cell, ExecState*)
     return jsCast<JSObject*>(cell);
 }
 
-JSObject* JSObject::unwrappedObject()
-{
-    if (isGlobalThis())
-        return jsCast<JSGlobalThis*>(this)->unwrappedObject();
-    return this;
-}
-
 void JSObject::seal(JSGlobalData& globalData)
 {
     if (isSealed(globalData))
@@ -950,13 +958,6 @@ void JSObject::preventExtensions(JSGlobalData& globalData)
     enterDictionaryIndexingMode(globalData);
     if (isExtensible())
         setStructure(globalData, Structure::preventExtensionsTransition(globalData, structure()));
-}
-
-JSGlobalObject* JSObject::unwrappedGlobalObject()
-{
-    if (isGlobalThis())
-        return jsCast<JSGlobalThis*>(this)->unwrappedObject();
-    return structure()->globalObject();
 }
 
 // This presently will flatten to an uncachable dictionary; this is suitable
@@ -1050,7 +1051,7 @@ void JSObject::notifyUsedAsPrototype(JSGlobalData& globalData)
 
 Structure* JSObject::createInheritorID(JSGlobalData& globalData)
 {
-    Structure* inheritorID = createEmptyObjectStructure(globalData, unwrappedGlobalObject(), this);
+    Structure* inheritorID = createEmptyObjectStructure(globalData, globalObject(), this);
     ASSERT(inheritorID->isEmpty());
 
     PutPropertySlot slot;
@@ -1362,10 +1363,13 @@ void JSObject::putByIndexBeyondVectorLength(ExecState* exec, unsigned i, JSValue
     }
         
     case NonArrayWithSlowPutArrayStorage:
-    case ArrayWithSlowPutArrayStorage:
-        if (attemptToInterceptPutByIndexOnHole(exec, i, value, shouldThrow))
+    case ArrayWithSlowPutArrayStorage: {
+        // No own property present in the vector, but there might be in the sparse map!
+        SparseArrayValueMap* map = arrayStorage()->m_sparseMap.get();
+        if (!(map && map->contains(i)) && attemptToInterceptPutByIndexOnHole(exec, i, value, shouldThrow))
             return;
         // Otherwise, fall though.
+    }
 
     case NonArrayWithArrayStorage:
     case ArrayWithArrayStorage:
@@ -1569,49 +1573,6 @@ bool JSObject::increaseVectorLength(JSGlobalData& globalData, unsigned newLength
     newButterfly->arrayStorage()->m_indexBias = newIndexBias;
     return true;
 }
-
-#if CHECK_ARRAY_CONSISTENCY
-void JSObject::checkIndexingConsistency(ConsistencyCheckType type)
-{
-    ArrayStorage* storage = arrayStorageOrNull();
-    if (!storage)
-        return;
-
-    ASSERT(!storage->m_inCompactInitialization);
-
-    ASSERT(storage);
-    if (type == SortConsistencyCheck)
-        ASSERT(!storage->m_sparseMap);
-
-    unsigned numValuesInVector = 0;
-    for (unsigned i = 0; i < storage->vectorLength(); ++i) {
-        if (JSValue value = storage->m_vector[i].get()) {
-            ASSERT(i < storage->length());
-            if (type != DestructorConsistencyCheck)
-                value.isUndefined(); // Likely to crash if the object was deallocated.
-            ++numValuesInVector;
-        } else {
-            if (type == SortConsistencyCheck)
-                ASSERT(i >= storage->m_numValuesInVector);
-        }
-    }
-    ASSERT(numValuesInVector == storage->m_numValuesInVector);
-    ASSERT(numValuesInVector <= storage->length());
-
-    if (m_sparseValueMap) {
-        SparseArrayValueMap::const_iterator end = m_sparseValueMap->end();
-        for (SparseArrayValueMap::const_iterator it = m_sparseValueMap->begin(); it != end; ++it) {
-            unsigned index = it->first;
-            ASSERT(index < storage->length());
-            ASSERT(index >= storage->vectorLength());
-            ASSERT(index <= MAX_ARRAY_INDEX);
-            ASSERT(it->second);
-            if (type != DestructorConsistencyCheck)
-                it->second.getNonSparseMode().isUndefined(); // Likely to crash if the object was deallocated.
-        }
-    }
-}
-#endif // CHECK_ARRAY_CONSISTENCY
 
 Butterfly* JSObject::growOutOfLineStorage(JSGlobalData& globalData, size_t oldSize, size_t newSize)
 {

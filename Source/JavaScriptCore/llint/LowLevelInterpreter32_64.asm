@@ -833,28 +833,21 @@ _llint_op_bitor:
 
 _llint_op_check_has_instance:
     traceExecution()
-    loadi 4[PC], t1
+    loadi 12[PC], t1
     loadConstantOrVariablePayload(t1, CellTag, t0, .opCheckHasInstanceSlow)
     loadp JSCell::m_structure[t0], t0
-    btbz Structure::m_typeInfo + TypeInfo::m_flags[t0], ImplementsHasInstance, .opCheckHasInstanceSlow
-    dispatch(2)
+    btbz Structure::m_typeInfo + TypeInfo::m_flags[t0], ImplementsDefaultHasInstance, .opCheckHasInstanceSlow
+    dispatch(5)
 
 .opCheckHasInstanceSlow:
     callSlowPath(_llint_slow_path_check_has_instance)
-    dispatch(2)
+    dispatch(0)
 
 
 _llint_op_instanceof:
     traceExecution()
-    # Check that baseVal implements the default HasInstance behavior.
-    # FIXME: This should be deprecated.
-    loadi 12[PC], t1
-    loadConstantOrVariablePayloadUnchecked(t1, t0)
-    loadp JSCell::m_structure[t0], t0
-    btbz Structure::m_typeInfo + TypeInfo::m_flags[t0], ImplementsDefaultHasInstance, .opInstanceofSlow
-    
     # Actually do the work.
-    loadi 16[PC], t0
+    loadi 12[PC], t0
     loadi 4[PC], t3
     loadConstantOrVariablePayload(t0, CellTag, t1, .opInstanceofSlow)
     loadp JSCell::m_structure[t1], t2
@@ -874,11 +867,11 @@ _llint_op_instanceof:
 .opInstanceofDone:
     storei BooleanTag, TagOffset[cfr, t3, 8]
     storei t0, PayloadOffset[cfr, t3, 8]
-    dispatch(5)
+    dispatch(4)
 
 .opInstanceofSlow:
     callSlowPath(_llint_slow_path_instanceof)
-    dispatch(5)
+    dispatch(4)
 
 
 _llint_op_is_undefined:
@@ -944,24 +937,24 @@ _llint_op_is_string:
     dispatch(3)
 
 
-macro loadPropertyAtVariableOffsetKnownNotFinal(propertyOffset, objectAndStorage, tag, payload)
-    assert(macro (ok) bigteq propertyOffset, InlineStorageCapacity, ok end)
+macro loadPropertyAtVariableOffsetKnownNotInline(propertyOffset, objectAndStorage, tag, payload)
+    assert(macro (ok) bigteq propertyOffset, firstOutOfLineOffset, ok end)
     negi propertyOffset
     loadp JSObject::m_butterfly[objectAndStorage], objectAndStorage
-    loadi TagOffset + (InlineStorageCapacity - 1) * 8 - sizeof IndexingHeader[objectAndStorage, propertyOffset, 8], tag
-    loadi PayloadOffset + (InlineStorageCapacity - 1) * 8 - sizeof IndexingHeader[objectAndStorage, propertyOffset, 8], payload
+    loadi TagOffset + (firstOutOfLineOffset - 2) * 8[objectAndStorage, propertyOffset, 8], tag
+    loadi PayloadOffset + (firstOutOfLineOffset - 2) * 8[objectAndStorage, propertyOffset, 8], payload
 end
 
 macro loadPropertyAtVariableOffset(propertyOffset, objectAndStorage, tag, payload)
-    bilt propertyOffset, InlineStorageCapacity, .isInline
+    bilt propertyOffset, firstOutOfLineOffset, .isInline
     loadp JSObject::m_butterfly[objectAndStorage], objectAndStorage
     negi propertyOffset
     jmp .ready
 .isInline:
-    addp JSFinalObject::m_inlineStorage - (InlineStorageCapacity - 1) * 8 + sizeof IndexingHeader, objectAndStorage
+    addp JSFinalObject::m_inlineStorage - (firstOutOfLineOffset - 2) * 8, objectAndStorage
 .ready:
-    loadi TagOffset + (InlineStorageCapacity - 1) * 8 - sizeof IndexingHeader[objectAndStorage, propertyOffset, 8], tag
-    loadi PayloadOffset + (InlineStorageCapacity - 1) * 8 - sizeof IndexingHeader[objectAndStorage, propertyOffset, 8], payload
+    loadi TagOffset + (firstOutOfLineOffset - 2) * 8[objectAndStorage, propertyOffset, 8], tag
+    loadi PayloadOffset + (firstOutOfLineOffset - 2) * 8[objectAndStorage, propertyOffset, 8], payload
 end
 
 macro resolveGlobal(size, slow)
@@ -975,7 +968,7 @@ macro resolveGlobal(size, slow)
     loadp JSCell::m_structure[t0], t1
     bpneq t1, 12[PC], slow
     loadi 16[PC], t1
-    loadPropertyAtVariableOffsetKnownNotFinal(t1, t0, t2, t3)
+    loadPropertyAtVariableOffsetKnownNotInline(t1, t0, t2, t3)
     loadi 4[PC], t0
     storei t2, TagOffset[cfr, t0, 8]
     storei t3, PayloadOffset[cfr, t0, 8]
@@ -1371,7 +1364,10 @@ _llint_op_get_by_pname:
     loadi [cfr, t0, 8], t0
     subi 1, t0
     biaeq t0, JSPropertyNameIterator::m_numCacheableSlots[t3], .opGetByPnameSlow
-    addi JSPropertyNameIterator::m_offsetBase[t3], t0
+    bilt t0, JSPropertyNameIterator::m_cachedStructureInlineCapacity[t3], .opGetByPnameInlineProperty
+    addi firstOutOfLineOffset, t0
+    subi JSPropertyNameIterator::m_cachedStructureInlineCapacity[t3], t0
+.opGetByPnameInlineProperty:
     loadPropertyAtVariableOffset(t0, t2, t1, t3)
     loadi 4[PC], t0
     storei t1, TagOffset[cfr, t0, 8]
@@ -1388,8 +1384,8 @@ _llint_op_put_by_val:
     loadi 4[PC], t0
     loadConstantOrVariablePayload(t0, CellTag, t1, .opPutByValSlow)
     loadp JSCell::m_structure[t1], t2
-    loadp 16[PC], t0
-    arrayProfile(t2, t0, t3)
+    loadp 16[PC], t3
+    arrayProfile(t2, t3, t0)
     btiz t2, HasArrayStorage, .opPutByValSlow
     loadi 8[PC], t0
     loadConstantOrVariablePayload(t0, Int32Tag, t2, .opPutByValSlow)
@@ -1405,6 +1401,9 @@ _llint_op_put_by_val:
     dispatch(5)
 
 .opPutByValEmpty:
+    if VALUE_PROFILER
+        storeb 1, ArrayProfile::m_mayStoreToHole[t3]
+    end
     addi 1, ArrayStorage::m_numValuesInVector[t0]
     bib t2, -sizeof IndexingHeader + IndexingHeader::m_publicLength[t0], .opPutByValStoreResult
     addi 1, t2, t1
@@ -1489,7 +1488,10 @@ _llint_op_jneq_ptr:
     traceExecution()
     loadi 4[PC], t0
     loadi 8[PC], t1
+    loadp CodeBlock[cfr], t2
+    loadp CodeBlock::m_globalObject[t2], t2
     bineq TagOffset[cfr, t0, 8], CellTag, .opJneqPtrBranch
+    loadp JSGlobalObject::m_specialPointers[t2, t1, 8], t1
     bpeq PayloadOffset[cfr, t0, 8], t1, .opJneqPtrFallThrough
 .opJneqPtrBranch:
     dispatchBranch(12[PC])

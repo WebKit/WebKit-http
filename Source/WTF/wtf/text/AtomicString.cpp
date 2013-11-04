@@ -26,7 +26,6 @@
 
 #include "StringHash.h"
 #include <wtf/HashSet.h>
-#include <wtf/MemoryInstrumentation.h>
 #include <wtf/Threading.h>
 #include <wtf/WTFThreadData.h>
 #include <wtf/unicode/UTF8.h>
@@ -435,11 +434,5 @@ void AtomicString::show() const
     m_string.show();
 }
 #endif
-
-void AtomicString::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
-{
-    MemoryClassInfo info(memoryObjectInfo, this);
-    info.addMember(m_string);
-}
 
 } // namespace WTF

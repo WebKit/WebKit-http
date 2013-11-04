@@ -31,6 +31,7 @@
 namespace WebCore {
 
 class RenderTable;
+class RenderTableCell;
 
 class RenderTableCol : public RenderBox {
 public:
@@ -67,6 +68,11 @@ public:
     // Returns the next column or column-group.
     RenderTableCol* nextColumn() const;
 
+    const BorderValue& borderAdjoiningCellStartBorder(const RenderTableCell*) const;
+    const BorderValue& borderAdjoiningCellEndBorder(const RenderTableCell*) const;
+    const BorderValue& borderAdjoiningCellBefore(const RenderTableCell*) const;
+    const BorderValue& borderAdjoiningCellAfter(const RenderTableCell*) const;
+
 private:
     virtual RenderObjectChildList* virtualChildren() { return children(); }
     virtual const RenderObjectChildList* virtualChildren() const { return children(); }
@@ -81,7 +87,7 @@ private:
     virtual bool canHaveChildren() const;
     virtual bool requiresLayer() const { return false; }
 
-    virtual LayoutRect clippedOverflowRectForRepaint(RenderBoxModelObject* repaintContainer) const;
+    virtual LayoutRect clippedOverflowRectForRepaint(RenderLayerModelObject* repaintContainer) const OVERRIDE;
     virtual void imageChanged(WrappedImagePtr, const IntRect* = 0);
 
     virtual void styleDidChange(StyleDifference, const RenderStyle* oldStyle);

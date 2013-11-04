@@ -376,12 +376,7 @@ void FrameLoaderClientWinCE::dispatchDidFinishDocumentLoad()
     notImplemented();
 }
 
-void FrameLoaderClientWinCE::dispatchDidFirstLayout()
-{
-    notImplemented();
-}
-
-void FrameLoaderClientWinCE::dispatchDidFirstVisuallyNonEmptyLayout()
+void FrameLoaderClientWinCE::dispatchDidLayout(LayoutMilestones)
 {
     notImplemented();
 }
@@ -419,9 +414,7 @@ bool FrameLoaderClientWinCE::canHandleRequest(const WebCore::ResourceRequest&) c
 
 bool FrameLoaderClientWinCE::canShowMIMEType(const String& type) const
 {
-    return (MIMETypeRegistry::isSupportedImageMIMEType(type)
-            || MIMETypeRegistry::isSupportedNonImageMIMEType(type)
-            || MIMETypeRegistry::isSupportedMediaMIMEType(type)
+    return (MIMETypeRegistry::canShowMIMEType(type)
             || PluginDatabase::installedPlugins()->isMIMETypeRegistered(type));
 }
 

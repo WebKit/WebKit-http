@@ -26,7 +26,7 @@
 #ifndef DateTimeFieldsState_h
 #define DateTimeFieldsState_h
 
-#if ENABLE(INPUT_TYPE_TIME_MULTIPLE_FIELDS)
+#if ENABLE(INPUT_MULTIPLE_FIELDS_UI)
 #include <wtf/text/WTFString.h>
 
 namespace WebCore {
@@ -57,6 +57,7 @@ public:
     AMPMValue ampm() const { return m_ampm; }
     unsigned dayOfMonth() const { return m_dayOfMonth; }
     unsigned hour() const { return m_hour; }
+    unsigned hour23() const;
     unsigned millisecond() const { return m_millisecond; }
     unsigned minute() const { return m_minute; }
     unsigned month() const { return m_month; }
@@ -86,9 +87,9 @@ public:
 
 private:
     unsigned m_year;
-    unsigned m_month;
+    unsigned m_month; // 1 to 12.
     unsigned m_dayOfMonth;
-    unsigned m_hour;
+    unsigned m_hour; // 1 to 12.
     unsigned m_minute;
     unsigned m_second;
     unsigned m_millisecond;

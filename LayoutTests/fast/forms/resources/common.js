@@ -119,3 +119,68 @@ function mouseMoveToIndexInListbox(index, listboxId) {
 function getUserAgentShadowTextContent(element) {
     return internals.youngestShadowRoot(element).textContent;
 };
+
+function cumulativeOffset(element) {
+    var x = 0;
+    var y = 0;
+    var parentFrame = element.ownerDocument.defaultView.frameElement;
+    if (parentFrame) {
+        var parentFrameOffset = cumulativeOffset(parentFrame);
+        x = parentFrameOffset[0];
+        y = parentFrameOffset[1];
+    }
+    if (element.parentNode) {
+        do {
+            x += element.offsetLeft || 0;
+            y += element.offsetTop  || 0;
+            element = element.offsetParent;
+        } while (element);
+    }
+    return [x, y];
+}
+
+function hoverOverElement(element) {
+    var offset = cumulativeOffset(element);
+    var centerX = offset[0] + element.offsetWidth / 2;
+    var centerY = offset[1] + element.offsetHeight / 2;
+    eventSender.mouseMoveTo(centerX, centerY);
+}
+
+function clickElement(element) {
+    hoverOverElement(element);
+    eventSender.mouseDown();
+    eventSender.mouseUp();
+}
+
+function traverseNextNode(node, stayWithin) {
+    var nextNode = node.firstChild;
+    if (nextNode)
+        return nextNode;
+
+    if (stayWithin && node === stayWithin)
+        return null;
+
+    nextNode = node.nextSibling;
+    if (nextNode)
+        return nextNode;
+
+    nextNode = node;
+    while (nextNode && !nextNode.nextSibling && (!stayWithin || !nextNode.parentNode || nextNode.parentNode !== stayWithin))
+        nextNode = nextNode.parentNode;
+    if (!nextNode)
+        return null;
+
+    return nextNode.nextSibling;
+}
+
+function getElementByPseudoId(root, pseudoId) {
+    if (!window.internals)
+        return null;
+    var node = root;
+    while (node) {
+        if (node.nodeType === Node.ELEMENT_NODE && internals.shadowPseudoId(node) === pseudoId)
+            return node;
+        node = traverseNextNode(node, root);
+    }
+    return null;
+}

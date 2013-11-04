@@ -57,10 +57,10 @@ bool waitForSignal(QObject* obj, const char* signal, int timeout)
     return timeoutSpy.isEmpty();
 }
 
-static void messageHandler(QtMsgType type, const char* message)
+static void messageHandler(QtMsgType type, const QMessageLogContext&, const QString& message)
 {
     if (type == QtCriticalMsg) {
-        fprintf(stderr, "%s\n", message);
+        fprintf(stderr, "%s\n", qPrintable(message));
         return;
     }
     // Do nothing
@@ -68,7 +68,7 @@ static void messageHandler(QtMsgType type, const char* message)
 
 void suppressDebugOutput()
 {
-    qInstallMsgHandler(messageHandler); \
+    qInstallMessageHandler(messageHandler); \
     if (qgetenv("QT_WEBKIT_SUPPRESS_WEB_PROCESS_OUTPUT").isEmpty()) \
         qputenv("QT_WEBKIT_SUPPRESS_WEB_PROCESS_OUTPUT", "1");
 }
@@ -124,6 +124,13 @@ bool waitForLoadFailed(QQuickWebView* webView, int timeout)
     }
     loop.exec();
     return timeoutSpy.isEmpty();
+}
+
+bool waitForViewportReady(QQuickWebView* webView, int timeout)
+{
+    // The viewport is locked until the first frame of a page load is rendered.
+    // The QQuickView needs to be shown for this to succeed.
+    return waitForSignal(webView->experimental(), SIGNAL(loadVisuallyCommitted()), timeout);
 }
 
 LoadStartedCatcher::LoadStartedCatcher(QQuickWebView* webView)

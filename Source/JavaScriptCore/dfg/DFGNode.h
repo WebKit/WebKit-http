@@ -466,13 +466,19 @@ struct Node {
 
     bool hasScopeChainDepth()
     {
-        return op() == GetScopeChain;
+        return op() == GetScope;
     }
     
     unsigned scopeChainDepth()
     {
         ASSERT(hasScopeChainDepth());
         return m_opInfo;
+    }
+
+    Edge scope()
+    {
+        ASSERT(op() == GetScopeRegisters);
+        return child1();
     }
 
     bool hasResult()
@@ -740,6 +746,7 @@ struct Node {
         case StringCharAt:
         case StringCharCodeAt:
         case CheckArray:
+        case Arrayify:
         case ArrayPush:
         case ArrayPop:
             return true;
@@ -806,6 +813,7 @@ struct Node {
         case ValueToInt32:
         case UInt32ToNumber:
         case DoubleAsInt32:
+        case PhantomArguments:
             return true;
         case Phantom:
         case Nop:

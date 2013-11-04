@@ -96,6 +96,10 @@ public:
             return;
         }
 
+        GRefPtr<GFileInfo> info = adoptGRef(g_file_info_new());
+        g_file_info_set_attribute_string(info.get(), "metadata::download-uri", response.url().string().utf8().data());
+        g_file_set_attributes_async(file.get(), info.get(), G_FILE_QUERY_INFO_NONE, G_PRIORITY_DEFAULT, 0, 0, 0);
+
         m_download->didCreateDestination(destinationURI);
     }
 
@@ -137,7 +141,7 @@ public:
     GRefPtr<SoupMessage> m_response;
 };
 
-void Download::start(WebPage* initiatingWebPage)
+void Download::start(WebPage*)
 {
     ASSERT(!m_downloadClient);
     ASSERT(!m_resourceHandle);
@@ -146,7 +150,7 @@ void Download::start(WebPage* initiatingWebPage)
     didStart();
 }
 
-void Download::startWithHandle(WebPage* initiatingPage, ResourceHandle* resourceHandle, const ResourceResponse&)
+void Download::startWithHandle(WebPage*, ResourceHandle* resourceHandle, const ResourceResponse&)
 {
     ASSERT(!m_downloadClient);
     ASSERT(!m_resourceHandle);
@@ -179,7 +183,7 @@ void Download::platformInvalidate()
     m_downloadClient.release();
 }
 
-void Download::didDecideDestination(const String& destination, bool allowOverwrite)
+void Download::didDecideDestination(const String& /*destination*/, bool /*allowOverwrite*/)
 {
     notImplemented();
 }
@@ -189,17 +193,17 @@ void Download::platformDidFinish()
     m_resourceHandle = 0;
 }
 
-void Download::receivedCredential(const AuthenticationChallenge& authenticationChallenge, const Credential& credential)
+void Download::receivedCredential(const AuthenticationChallenge&, const Credential&)
 {
     notImplemented();
 }
 
-void Download::receivedRequestToContinueWithoutCredential(const AuthenticationChallenge& authenticationChallenge)
+void Download::receivedRequestToContinueWithoutCredential(const AuthenticationChallenge&)
 {
     notImplemented();
 }
 
-void Download::receivedCancellation(const AuthenticationChallenge& authenticationChallenge)
+void Download::receivedCancellation(const AuthenticationChallenge&)
 {
     notImplemented();
 }

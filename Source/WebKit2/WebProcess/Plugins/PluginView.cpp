@@ -641,7 +641,7 @@ void PluginView::setFrameRect(const WebCore::IntRect& rect)
     viewGeometryDidChange();
 }
 
-void PluginView::paint(GraphicsContext* context, const IntRect& dirtyRect)
+void PluginView::paint(GraphicsContext* context, const IntRect& /*dirtyRect*/)
 {
     if (!m_plugin || !m_isInitialized)
         return;
@@ -854,6 +854,9 @@ void PluginView::pendingURLRequestsTimerFired()
     
 void PluginView::performURLRequest(URLRequest* request)
 {
+    // This protector is needed to make sure the PluginView is not destroyed while it is still needed.
+    RefPtr<PluginView> protect(this);
+
     // First, check if this is a javascript: url.
     if (protocolIsJavaScript(request->request().url())) {
         performJavaScriptURLRequest(request);

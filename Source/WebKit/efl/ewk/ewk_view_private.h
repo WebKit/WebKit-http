@@ -45,7 +45,7 @@ const char ewkViewSingleName[] = "Ewk_View_Single";
 // Define to prevent an application using different view type from calling the function.
 #define EWK_VIEW_TYPE_CHECK_OR_RETURN(ewkView, viewName, ...) \
     if (!evas_object_smart_type_check(ewkView, viewName)) { \
-        INF("ewkView isn't an instance of %s", viewName); \
+        INFO("ewkView isn't an instance of %s", viewName); \
         return __VA_ARGS__; \
     }
 
@@ -154,6 +154,11 @@ void ewk_view_mixed_content_run_set(Evas_Object* ewkView, bool hasRun);
 #if USE(ACCELERATED_COMPOSITING)
 bool ewk_view_accelerated_compositing_object_create(Evas_Object* ewkView, Evas_Native_Surface* nativeSurface, const WebCore::IntRect& rect);
 WebCore::GraphicsContext3D* ewk_view_accelerated_compositing_context_get(Evas_Object* ewkView);
+#endif
+
+#if ENABLE(FULLSCREEN_API)
+void ewk_view_fullscreen_enter(const Evas_Object* ewkView);
+void ewk_view_fullscreen_exit(const Evas_Object* ewkView);
 #endif
 
 namespace EWKPrivate {

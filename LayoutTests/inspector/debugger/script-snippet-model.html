@@ -17,7 +17,6 @@ function test()
     var workspace = new WebInspector.Workspace();
     var workspaceController = new WebInspector.WorkspaceController(workspace);
     WebInspector.scriptSnippetModel = new WebInspector.ScriptSnippetModel(workspace);
-
     InspectorTest.runDebuggerTestSuite([
         function testWorkspaceReset(next)
         {
@@ -66,10 +65,12 @@ function test()
             function evaluateSnippetAndDumpEvaluationDetails(snippetJavaScriptSource, callback)
             {
                 InspectorTest.addSniffer(WebInspector.SnippetScriptMapping.prototype, "addScript", dumpScript);
+                // JSC does not support compile-and-run for snippet evaluation, so different platforms have slightly different codeflow here, hence two sniffers.
                 InspectorTest.addSniffer(WebInspector.ConsoleView.prototype, "_printResult", dumpResult);
+                InspectorTest.addSniffer(WebInspector.ScriptSnippetModel.prototype, "_printRunScriptResult", dumpResult);
                 WebInspector.scriptSnippetModel.evaluateScriptSnippet(snippetJavaScriptSource);
                 var evaluationSourceURL = WebInspector.scriptSnippetModel._evaluationSourceURL(snippetJavaScriptSource);
-                var snippetId = snippetJavaScriptSource.snippetId;
+                var snippetId = WebInspector.scriptSnippetModel._snippetIdForJavaScriptSource.get(snippetJavaScriptSource);
                 InspectorTest.addResult("Last evaluation source url for snippet: " + evaluationSourceURL);
                 InspectorTest.assertEquals(snippetId, WebInspector.scriptSnippetModel._snippetIdForSourceURL(evaluationSourceURL), "Snippet can not be identified by its evaluation sourceURL.");
 

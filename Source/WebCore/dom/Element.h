@@ -42,6 +42,7 @@ class DOMTokenList;
 class ElementRareData;
 class ElementShadow;
 class IntSize;
+class Localizer;
 class RenderRegion;
 class ShadowRoot;
 class WebKitAnimationList;
@@ -291,6 +292,7 @@ public:
     bool isInCanvasSubtree() const;
 
     AtomicString computeInheritedLanguage() const;
+    Localizer& localizer() const;
 
     virtual void accessKeyAction(bool /*sendToAnyEvent*/) { }
 
@@ -426,8 +428,8 @@ public:
     PassRefPtr<RenderStyle> styleForRenderer();
 
     RenderRegion* renderRegion() const;
-    const AtomicString& webkitRegionOverset() const;
 #if ENABLE(CSS_REGIONS)
+    const AtomicString& webkitRegionOverset() const;
     Vector<RefPtr<Range> > webkitGetRegionFlowRanges() const;
 #endif
 

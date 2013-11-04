@@ -136,7 +136,7 @@ DisplayRefreshMonitor* DisplayRefreshMonitorManager::ensureMonitorForClient(Disp
         m_monitors.add(client->m_displayID, monitor.release());
         return result;
     }
-
+    it->second->addClient(client);
     return it->second.get();
 }
 

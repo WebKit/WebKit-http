@@ -73,6 +73,7 @@ messages -> WebPageProxy {
     PageDidRequestScroll(WebCore::IntPoint point)
 #endif
 #if PLATFORM(QT)
+    PageTransitionViewportReady()
     DidFindZoomableArea(WebCore::IntPoint target, WebCore::IntRect area)
     AuthenticationRequiredRequest(WTF::String hostname, WTF::String realm, WTF::String prefilledUsername) -> (WTF::String username, WTF::String password)
     CertificateVerificationRequest(WTF::String hostname) -> (bool ignoreErrors)
@@ -127,6 +128,7 @@ messages -> WebPageProxy {
     DidFirstLayoutForFrame(uint64_t frameID, WebKit::InjectedBundleUserMessageEncoder userData)
     DidFirstVisuallyNonEmptyLayoutForFrame(uint64_t frameID, WebKit::InjectedBundleUserMessageEncoder userData)
     DidNewFirstVisuallyNonEmptyLayout(WebKit::InjectedBundleUserMessageEncoder userData)
+    DidLayout(uint32_t type, WebKit::InjectedBundleUserMessageEncoder userData)
     DidReceiveServerRedirectForProvisionalLoadForFrame(uint64_t frameID, WTF::String url, WebKit::InjectedBundleUserMessageEncoder userData)
     DidRemoveFrameFromHierarchy(uint64_t frameID, WebKit::InjectedBundleUserMessageEncoder userData)
     DidStartProvisionalLoadForFrame(uint64_t frameID, WTF::String url, WTF::String unreachableURL, WebKit::InjectedBundleUserMessageEncoder userData)
@@ -323,4 +325,9 @@ messages -> WebPageProxy {
     # Search popup menus
     SaveRecentSearches(WTF::String name, Vector<String> searchItems)
     LoadRecentSearches(WTF::String name) -> (Vector<String> result)
+
+#if USE(SOUP)
+    # Soup custom URI request messages
+    DidReceiveURIRequest(WTF::String uriString, uint64_t requestID);
+#endif
 }

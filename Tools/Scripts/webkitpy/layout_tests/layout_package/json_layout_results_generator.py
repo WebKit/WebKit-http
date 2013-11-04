@@ -46,8 +46,8 @@ class JSONLayoutResultsGenerator(json_results_generator.JSONResultsGeneratorBase
                        test_expectations.TIMEOUT: "T",
                        test_expectations.IMAGE: "I",
                        test_expectations.TEXT: "F",
-                       test_expectations.MISSING: "O",
                        test_expectations.AUDIO: "A",
+                       test_expectations.MISSING: "O",
                        test_expectations.IMAGE_PLUS_TEXT: "Z"}
 
     def __init__(self, port, builder_name, build_name, build_number,

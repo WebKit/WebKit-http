@@ -28,6 +28,8 @@
 
 #include "ScriptGCEvent.h"
 #include "V8Binding.h"
+#include <wtf/MemoryInstrumentationHashMap.h>
+#include <wtf/MemoryInstrumentationVector.h>
 
 namespace WebCore {
 
@@ -84,10 +86,10 @@ v8::Handle<v8::FunctionTemplate> V8PerIsolateData::toStringTemplate()
 void V8PerIsolateData::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
 {
     MemoryClassInfo info(memoryObjectInfo, this, WebCoreMemoryTypes::Binding);
-    info.addHashMap(m_rawTemplates);
-    info.addHashMap(m_templates);
+    info.addMember(m_rawTemplates);
+    info.addMember(m_templates);
     info.addMember(m_stringCache);
-    info.addVector(m_domDataList);
+    info.addMember(m_domDataList);
 
     for (size_t i = 0; i < m_domDataList.size(); i++)
         info.addMember(m_domDataList[i]);

@@ -118,9 +118,9 @@ RenderInline* RenderInline::inlineElementContinuation() const
     return toRenderBlock(continuation)->inlineElementContinuation();
 }
 
-void RenderInline::updateBoxModelInfoFromStyle()
+void RenderInline::updateFromStyle()
 {
-    RenderBoxModelObject::updateBoxModelInfoFromStyle();
+    RenderBoxModelObject::updateFromStyle();
 
     setInline(true); // Needed for run-ins, since run-in is considered a block display type.
 
@@ -194,7 +194,7 @@ void RenderInline::styleDidChange(StyleDifference diff, const RenderStyle* oldSt
     }
 
     // Update pseudos for :before and :after now.
-    if (!isAnonymous() && document()->usesBeforeAfterRules()) {
+    if (!isAnonymous() && document()->styleSheetCollection()->usesBeforeAfterRules()) {
         children()->updateBeforeAfterContent(this, BEFORE);
         children()->updateBeforeAfterContent(this, AFTER);
     }
@@ -218,7 +218,7 @@ void RenderInline::updateAlwaysCreateLineBoxes(bool fullLayout)
         || parentStyle->lineHeight() != style()->lineHeight()))
         || (inRenderFlowThread() && enclosingRenderFlowThread()->hasRegionsWithStyling());
 
-    if (!alwaysCreateLineBoxes && checkFonts && document()->usesFirstLineRules()) {
+    if (!alwaysCreateLineBoxes && checkFonts && document()->styleSheetCollection()->usesFirstLineRules()) {
         // Have to check the first line style as well.
         parentStyle = parent()->style(true);
         RenderStyle* childStyle = style(true);
@@ -324,7 +324,7 @@ void RenderInline::addChildIgnoringContinuation(RenderObject* newChild, RenderOb
         // has to move into the inline continuation.  Call updateBeforeAfterContent to ensure that our :after
         // content gets properly destroyed.
         bool isLastChild = (beforeChild == lastChild());
-        if (document()->usesBeforeAfterRules())
+        if (document()->styleSheetCollection()->usesBeforeAfterRules())
             children()->updateBeforeAfterContent(this, AFTER);
         if (isLastChild && beforeChild != lastChild())
             beforeChild = 0; // We destroyed the last child, so now we need to update our insertion
@@ -399,7 +399,7 @@ void RenderInline::splitInlines(RenderBlock* fromBlock, RenderBlock* toBlock,
             // Someone may have indirectly caused a <q> to split.  When this happens, the :after content
             // has to move into the inline continuation.  Call updateBeforeAfterContent to ensure that the inline's :after
             // content gets properly destroyed.
-            if (document()->usesBeforeAfterRules())
+            if (document()->styleSheetCollection()->usesBeforeAfterRules())
                 inlineCurr->children()->updateBeforeAfterContent(inlineCurr, AFTER);
 
             // Now we need to take all of the children starting from the first child
@@ -960,7 +960,7 @@ LayoutRect RenderInline::linesVisualOverflowBoundingBox() const
     return rect;
 }
 
-LayoutRect RenderInline::clippedOverflowRectForRepaint(RenderBoxModelObject* repaintContainer) const
+LayoutRect RenderInline::clippedOverflowRectForRepaint(RenderLayerModelObject* repaintContainer) const
 {
     // Only run-ins are allowed in here during layout.
     ASSERT(!view() || !view()->layoutStateEnabled() || isRunIn());
@@ -1011,7 +1011,7 @@ LayoutRect RenderInline::clippedOverflowRectForRepaint(RenderBoxModelObject* rep
     return repaintRect;
 }
 
-LayoutRect RenderInline::rectWithOutlineForRepaint(RenderBoxModelObject* repaintContainer, LayoutUnit outlineWidth) const
+LayoutRect RenderInline::rectWithOutlineForRepaint(RenderLayerModelObject* repaintContainer, LayoutUnit outlineWidth) const
 {
     LayoutRect r(RenderBoxModelObject::rectWithOutlineForRepaint(repaintContainer, outlineWidth));
     for (RenderObject* curr = firstChild(); curr; curr = curr->nextSibling()) {
@@ -1021,7 +1021,7 @@ LayoutRect RenderInline::rectWithOutlineForRepaint(RenderBoxModelObject* repaint
     return r;
 }
 
-void RenderInline::computeRectForRepaint(RenderBoxModelObject* repaintContainer, LayoutRect& rect, bool fixed) const
+void RenderInline::computeRectForRepaint(RenderLayerModelObject* repaintContainer, LayoutRect& rect, bool fixed) const
 {
     if (RenderView* v = view()) {
         // LayoutState is only valid for root-relative repainting
@@ -1103,7 +1103,7 @@ LayoutSize RenderInline::offsetFromContainer(RenderObject* container, const Layo
     return offset;
 }
 
-void RenderInline::mapLocalToContainer(RenderBoxModelObject* repaintContainer, TransformState& transformState, MapLocalToContainerFlags mode, bool* wasFixed) const
+void RenderInline::mapLocalToContainer(RenderLayerModelObject* repaintContainer, TransformState& transformState, MapLocalToContainerFlags mode, bool* wasFixed) const
 {
     if (repaintContainer == this)
         return;
@@ -1155,7 +1155,7 @@ void RenderInline::mapLocalToContainer(RenderBoxModelObject* repaintContainer, T
     o->mapLocalToContainer(repaintContainer, transformState, mode, wasFixed);
 }
 
-const RenderObject* RenderInline::pushMappingToContainer(const RenderBoxModelObject* ancestorToStopAt, RenderGeometryMap& geometryMap) const
+const RenderObject* RenderInline::pushMappingToContainer(const RenderLayerModelObject* ancestorToStopAt, RenderGeometryMap& geometryMap) const
 {
     ASSERT(ancestorToStopAt != this);
 
@@ -1283,7 +1283,7 @@ InlineFlowBox* RenderInline::createAndAppendInlineFlowBox()
 
 LayoutUnit RenderInline::lineHeight(bool firstLine, LineDirectionMode /*direction*/, LinePositionMode /*linePositionMode*/) const
 {
-    if (firstLine && document()->usesFirstLineRules()) {
+    if (firstLine && document()->styleSheetCollection()->usesFirstLineRules()) {
         RenderStyle* s = style(firstLine);
         if (s != style())
             return s->computedLineHeight(view());

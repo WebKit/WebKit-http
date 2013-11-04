@@ -47,7 +47,7 @@ namespace WebCore {
 class IntPoint;
 class ScrollingCoordinator;
 class ScrollingTreeNode;
-class ScrollingTreeState;
+class ScrollingStateTree;
 
 // The ScrollingTree class lives almost exclusively on the scrolling thread and manages the
 // hierarchy of scrollable regions on the page. It's also responsible for dispatching events
@@ -76,7 +76,7 @@ public:
     void handleWheelEvent(const PlatformWheelEvent&);
 
     void invalidate();
-    void commitNewTreeState(PassOwnPtr<ScrollingTreeState>);
+    void commitNewTreeState(PassOwnPtr<ScrollingStateTree>);
 
     void setMainFramePinState(bool pinnedToTheLeft, bool pinnedToTheRight);
 
@@ -120,6 +120,8 @@ private:
     bool m_mainFramePinnedToTheRight;
 
     bool m_scrollingPerformanceLoggingEnabled;
+    
+    bool m_isHandlingProgrammaticScroll;
 
 #if PLATFORM(MAC)
     RetainPtr<CALayer> m_debugInfoLayer;

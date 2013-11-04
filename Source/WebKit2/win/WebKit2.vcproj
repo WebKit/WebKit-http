@@ -2122,6 +2122,10 @@
 					>
 				</File>
 				<File
+					RelativePath="..\WebProcess\WebPage\WebPageGroupProxy.messages.in"
+					>
+				</File>
+				<File
 					RelativePath="..\WebProcess\WebPage\WebUndoStep.cpp"
 					>
 				</File>
@@ -4090,6 +4094,18 @@
 					>
 				</File>
 				<File
+					RelativePath="..\Platform\CoreIPC\MessageReceiver.h"
+					>
+				</File>
+				<File
+					RelativePath="..\Platform\CoreIPC\MessageReceiverMap.cpp"
+					>
+				</File>
+				<File
+					RelativePath="..\Platform\CoreIPC\MessageReceiverMap.h"
+					>
+				</File>
+				<File
 					RelativePath="..\Platform\CoreIPC\MessageSender.h"
 					>
 				</File>
@@ -4428,6 +4444,14 @@
 			</File>
 			<File
 				RelativePath="$(ConfigurationBuildDir)\obj\$(ProjectName)\DerivedSources\WebNotificationManagerProxyMessages.h"
+				>
+			</File>
+			<File
+				RelativePath="$(ConfigurationBuildDir)\obj\$(ProjectName)\DerivedSources\WebPageGroupProxyMessageReceiver.cpp"
+				>
+			</File>
+			<File
+				RelativePath="$(ConfigurationBuildDir)\obj\$(ProjectName)\DerivedSources\WebPageGroupProxyMessages.h"
 				>
 			</File>
 			<File

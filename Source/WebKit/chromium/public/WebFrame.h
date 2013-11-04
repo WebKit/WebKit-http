@@ -132,14 +132,7 @@ public:
 
     // Basic properties ---------------------------------------------------
 
-    // The name of this frame.
-    virtual WebString name() const = 0;
-
     // The unique name of this frame.
-    //
-    // This is temporarily identical to the above name() function. Once this
-    // change makes it over to the Chromium tree, I will change all callers to
-    // use this function and will subsequently move assignedName() to name().
     virtual WebString uniqueName() const = 0;
 
     // The name of this frame. If no name is given, empty string is returned.
@@ -472,29 +465,11 @@ public:
     // there is ranged selection.
     virtual bool selectWordAroundCaret() = 0;
 
-    // DEPRECATED: Use moveSelectionStart / moveSelectionEnd / moveCaret
-    // This method is intended for touch-based UIs, but it's missing some
-    // functionality needed on Android, like preventing collapsed selections.
-    virtual void selectRange(const WebPoint& start, const WebPoint& end) = 0;
+    // Select a range of text, as if by drag-selecting from base to extent
+    // with character granularity.
+    virtual void selectRange(const WebPoint& base, const WebPoint& extent) = 0;
 
     virtual void selectRange(const WebRange&) = 0;
-
-    // The methods below are for adjusting the start and/or end of the current
-    // selection by direct manipulation on a touch-based UI. To enter selection
-    // mode in the first place, call selectRange() or send a fake mouse event.
-
-    // Moves the start of the current selection, keeping the end fixed.
-    // Returns true on success, false if there is no selection to modify.
-    virtual bool moveSelectionStart(const WebPoint&, bool allowCollapsedSelection) = 0;
-
-    // Moves the end of the current selection, keeping the start fixed.
-    // Returns true on success, false if there is no selection to modify.
-    virtual bool moveSelectionEnd(const WebPoint&, bool allowCollapsedSelection) = 0;
-
-    // Move both endpoints of the current selection to the given position.
-    // The caret will remain pinned inside the current editable region.
-    // Returns true on success, false if there is no selection or if we're not editing.
-    virtual bool moveCaret(const WebPoint&) = 0;
 
     // Printing ------------------------------------------------------------
 

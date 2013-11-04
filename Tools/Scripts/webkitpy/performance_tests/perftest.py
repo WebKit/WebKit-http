@@ -114,8 +114,8 @@ class PerfTest(object):
     _description_regex = re.compile(r'^Description: (?P<description>.*)$', re.IGNORECASE)
     _result_classes = ['Time', 'JS Heap', 'Malloc']
     _result_class_regex = re.compile(r'^(?P<resultclass>' + r'|'.join(_result_classes) + '):')
-    _statistics_keys = ['avg', 'median', 'stdev', 'min', 'max', 'unit']
-    _score_regex = re.compile(r'^(?P<key>' + r'|'.join(_statistics_keys) + r')\s+(?P<value>[0-9\.]+)\s*(?P<unit>.*)')
+    _statistics_keys = ['avg', 'median', 'stdev', 'min', 'max', 'unit', 'values']
+    _score_regex = re.compile(r'^(?P<key>' + r'|'.join(_statistics_keys) + r')\s+(?P<value>([0-9\.]+(,\s+)?)+)\s*(?P<unit>.*)')
 
     def parse_output(self, output):
         test_failed = False
@@ -138,7 +138,10 @@ class PerfTest(object):
             score = self._score_regex.match(line)
             if score:
                 key = score.group('key')
-                value = float(score.group('value'))
+                if key == 'values':
+                    value = [float(number) for number in score.group('value').split(', ')]
+                else:
+                    value = float(score.group('value'))
                 unit = score.group('unit')
                 name = test_name
                 if result_class != 'Time':
@@ -154,7 +157,12 @@ class PerfTest(object):
                 test_failed = True
                 _log.error(line)
 
-        if test_failed or set(self._statistics_keys) != set(results[test_name].keys()):
+        if test_failed:
+            return None
+
+        if set(self._statistics_keys) != set(results[test_name].keys() + ['values']):
+            # values is not provided by Dromaeo tests.
+            _log.error("The test didn't report all statistics.")
             return None
 
         for result_name in ordered_results_keys:
@@ -194,8 +202,16 @@ class ChromiumStylePerfTest(PerfTest):
 
 
 class PageLoadingPerfTest(PerfTest):
+    _FORCE_GC_FILE = 'resources/force-gc.html'
+
     def __init__(self, port, test_name, path_or_url):
         super(PageLoadingPerfTest, self).__init__(port, test_name, path_or_url)
+        self.force_gc_test = self._port.host.filesystem.join(self._port.perf_tests_dir(), self._FORCE_GC_FILE)
+
+    def run_single(self, driver, path_or_url, time_out_ms, should_run_pixel_test=False):
+        # Force GC to prevent pageload noise. See https://bugs.webkit.org/show_bug.cgi?id=98203
+        super(PageLoadingPerfTest, self).run_single(driver, self.force_gc_test, time_out_ms, False)
+        return super(PageLoadingPerfTest, self).run_single(driver, path_or_url, time_out_ms, should_run_pixel_test)
 
     def run(self, driver, time_out_ms):
         test_times = []
@@ -208,24 +224,24 @@ class PageLoadingPerfTest(PerfTest):
                 continue
             test_times.append(output.test_time * 1000)
 
-        test_times = sorted(test_times)
+        sorted_test_times = sorted(test_times)
 
-        # Compute the mean and variance using a numerically stable algorithm.
+        # Compute the mean and variance using Knuth's online algorithm (has good numerical stability).
         squareSum = 0
         mean = 0
-        valueSum = sum(test_times)
-        for i, time in enumerate(test_times):
+        for i, time in enumerate(sorted_test_times):
             delta = time - mean
             sweep = i + 1.0
             mean += delta / sweep
-            squareSum += delta * delta * (i / sweep)
+            squareSum += delta * (time - mean)
 
         middle = int(len(test_times) / 2)
-        results = {'avg': mean,
-            'min': min(test_times),
-            'max': max(test_times),
-            'median': test_times[middle] if len(test_times) % 2 else (test_times[middle - 1] + test_times[middle]) / 2,
-            'stdev': math.sqrt(squareSum),
+        results = {'values': test_times,
+            'avg': mean,
+            'min': sorted_test_times[0],
+            'max': sorted_test_times[-1],
+            'median': sorted_test_times[middle] if len(sorted_test_times) % 2 else (sorted_test_times[middle - 1] + sorted_test_times[middle]) / 2,
+            'stdev': math.sqrt(squareSum / (len(sorted_test_times) - 1)),
             'unit': 'ms'}
         self.output_statistics(self.test_name(), results, '')
         return {self.test_name(): results}

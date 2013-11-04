@@ -227,7 +227,10 @@ private:
                 if (nodePtr->op() == GetLocal)
                     nodeIndex = nodePtr->child1().index();
                 
-                return injectLazyOperandSpeculation(addToGraph(GetLocal, OpInfo(nodePtr->variableAccessData()), nodeIndex));
+                NodeIndex newGetLocal = injectLazyOperandSpeculation(
+                    addToGraph(GetLocal, OpInfo(nodePtr->variableAccessData()), nodeIndex));
+                m_currentBlock->variablesAtTail.local(operand) = newGetLocal;
+                return newGetLocal;
             }
             
             if (nodePtr->op() == GetLocal)
@@ -467,8 +470,11 @@ private:
             numArguments = m_inlineStackTop->m_codeBlock->numParameters();
         for (unsigned argument = numArguments; argument-- > 1;)
             flush(argumentToOperand(argument));
-        for (unsigned local = m_inlineStackTop->m_codeBlock->m_numCapturedVars; local--;)
+        for (int local = 0; local < m_inlineStackTop->m_codeBlock->m_numVars; ++local) {
+            if (!m_inlineStackTop->m_codeBlock->isCaptured(local))
+                continue;
             flush(local);
+        }
     }
 
     // Get an operand, and perform a ToInt32/ToNumber conversion on it.
@@ -828,26 +834,29 @@ private:
     Array::Mode getArrayMode(ArrayProfile* profile)
     {
         profile->computeUpdatedPrediction();
-        return fromObserved(profile->observedArrayModes(), false);
+        return fromObserved(profile, Array::Read, false);
     }
     
-    Array::Mode getArrayModeAndEmitChecks(ArrayProfile* profile, NodeIndex base)
+    Array::Mode getArrayModeAndEmitChecks(ArrayProfile* profile, Array::Action action, NodeIndex base)
     {
         profile->computeUpdatedPrediction();
-        if (profile->hasDefiniteStructure())
-            addToGraph(CheckStructure, OpInfo(m_graph.addStructureSet(profile->expectedStructure())), base);
         
 #if DFG_ENABLE(DEBUG_PROPAGATION_VERBOSE)
         if (m_inlineStackTop->m_profiledBlock->numberOfRareCaseProfiles())
             dataLog("Slow case profile for bc#%u: %u\n", m_currentIndex, m_inlineStackTop->m_profiledBlock->rareCaseProfileForBytecodeOffset(m_currentIndex)->m_counter);
-        dataLog("Array profile for bc#%u: %p%s, %u\n", m_currentIndex, profile->expectedStructure(), profile->structureIsPolymorphic() ? " (polymorphic)" : "", profile->observedArrayModes());
+        dataLog("Array profile for bc#%u: %p%s%s, %u\n", m_currentIndex, profile->expectedStructure(), profile->structureIsPolymorphic() ? " (polymorphic)" : "", profile->mayInterceptIndexedAccesses() ? " (may intercept)" : "", profile->observedArrayModes());
 #endif
         
         bool makeSafe =
             m_inlineStackTop->m_profiledBlock->couldTakeSlowCase(m_currentIndex)
             || m_inlineStackTop->m_exitProfile.hasExitSite(m_currentIndex, OutOfBounds);
         
-        return fromObserved(profile->observedArrayModes(), makeSafe);
+        Array::Mode result = fromObserved(profile, action, makeSafe);
+        
+        if (profile->hasDefiniteStructure() && benefitsFromStructureCheck(result))
+            addToGraph(CheckStructure, OpInfo(m_graph.addStructureSet(profile->expectedStructure())), base);
+        
+        return result;
     }
     
     NodeIndex makeSafe(NodeIndex nodeIndex)
@@ -1561,13 +1570,22 @@ bool ByteCodeParser::handleIntrinsic(bool usesResult, int resultOperand, Intrins
             return false;
         
         Array::Mode arrayMode = getArrayMode(m_currentInstruction[5].u.arrayProfile);
-        if (!modeIsJSArray(arrayMode))
+        switch (arrayMode) {
+        case Array::ArrayWithArrayStorageToHole:
+            ASSERT_NOT_REACHED();
+            
+        case Array::ArrayWithArrayStorage:
+        case Array::ArrayWithArrayStorageOutOfBounds: {
+            NodeIndex arrayPush = addToGraph(ArrayPush, OpInfo(arrayMode), OpInfo(prediction), get(registerOffset + argumentToOperand(0)), get(registerOffset + argumentToOperand(1)));
+            if (usesResult)
+                set(resultOperand, arrayPush);
+            
+            return true;
+        }
+            
+        default:
             return false;
-        NodeIndex arrayPush = addToGraph(ArrayPush, OpInfo(arrayMode), OpInfo(prediction), get(registerOffset + argumentToOperand(0)), get(registerOffset + argumentToOperand(1)));
-        if (usesResult)
-            set(resultOperand, arrayPush);
-        
-        return true;
+        }
     }
         
     case ArrayPopIntrinsic: {
@@ -1575,12 +1593,21 @@ bool ByteCodeParser::handleIntrinsic(bool usesResult, int resultOperand, Intrins
             return false;
         
         Array::Mode arrayMode = getArrayMode(m_currentInstruction[5].u.arrayProfile);
-        if (!modeIsJSArray(arrayMode))
+        switch (arrayMode) {
+        case Array::ArrayWithArrayStorageToHole:
+            ASSERT_NOT_REACHED();
+            
+        case Array::ArrayWithArrayStorage:
+        case Array::ArrayWithArrayStorageOutOfBounds: {
+            NodeIndex arrayPop = addToGraph(ArrayPop, OpInfo(arrayMode), OpInfo(prediction), get(registerOffset + argumentToOperand(0)));
+            if (usesResult)
+                set(resultOperand, arrayPop);
+            return true;
+        }
+            
+        default:
             return false;
-        NodeIndex arrayPop = addToGraph(ArrayPop, OpInfo(arrayMode), OpInfo(prediction), get(registerOffset + argumentToOperand(0)));
-        if (usesResult)
-            set(resultOperand, arrayPop);
-        return true;
+        }
     }
 
     case CharCodeAtIntrinsic: {
@@ -2046,14 +2073,13 @@ bool ByteCodeParser::parseBlock(unsigned limit)
         }
 
         case op_check_has_instance:
-            addToGraph(CheckHasInstance, get(currentInstruction[1].u.operand));
+            addToGraph(CheckHasInstance, get(currentInstruction[3].u.operand));
             NEXT_OPCODE(op_check_has_instance);
 
         case op_instanceof: {
             NodeIndex value = get(currentInstruction[2].u.operand);
-            NodeIndex baseValue = get(currentInstruction[3].u.operand);
-            NodeIndex prototype = get(currentInstruction[4].u.operand);
-            set(currentInstruction[1].u.operand, addToGraph(InstanceOf, value, baseValue, prototype));
+            NodeIndex prototype = get(currentInstruction[3].u.operand);
+            set(currentInstruction[1].u.operand, addToGraph(InstanceOf, value, prototype));
             NEXT_OPCODE(op_instanceof);
         }
             
@@ -2188,7 +2214,7 @@ bool ByteCodeParser::parseBlock(unsigned limit)
             SpeculatedType prediction = getPrediction();
             
             NodeIndex base = get(currentInstruction[2].u.operand);
-            Array::Mode arrayMode = getArrayModeAndEmitChecks(currentInstruction[4].u.arrayProfile, base);
+            Array::Mode arrayMode = getArrayModeAndEmitChecks(currentInstruction[4].u.arrayProfile, Array::Read, base);
             NodeIndex property = get(currentInstruction[3].u.operand);
             NodeIndex getByVal = addToGraph(GetByVal, OpInfo(arrayMode), OpInfo(prediction), base, property);
             set(currentInstruction[1].u.operand, getByVal);
@@ -2199,7 +2225,7 @@ bool ByteCodeParser::parseBlock(unsigned limit)
         case op_put_by_val: {
             NodeIndex base = get(currentInstruction[1].u.operand);
 
-            Array::Mode arrayMode = getArrayModeAndEmitChecks(currentInstruction[4].u.arrayProfile, base);
+            Array::Mode arrayMode = getArrayModeAndEmitChecks(currentInstruction[4].u.arrayProfile, Array::Write, base);
             
             NodeIndex property = get(currentInstruction[2].u.operand);
             NodeIndex value = get(currentInstruction[3].u.operand);
@@ -2260,8 +2286,9 @@ bool ByteCodeParser::parseBlock(unsigned limit)
             int dst = currentInstruction[1].u.operand;
             int slot = currentInstruction[2].u.operand;
             int depth = currentInstruction[3].u.operand;
-            NodeIndex getScopeChain = addToGraph(GetScopeChain, OpInfo(depth));
-            NodeIndex getScopedVar = addToGraph(GetScopedVar, OpInfo(slot), OpInfo(prediction), getScopeChain);
+            NodeIndex getScope = addToGraph(GetScope, OpInfo(depth));
+            NodeIndex getScopeRegisters = addToGraph(GetScopeRegisters, getScope);
+            NodeIndex getScopedVar = addToGraph(GetScopedVar, OpInfo(slot), OpInfo(prediction), getScopeRegisters);
             set(dst, getScopedVar);
             NEXT_OPCODE(op_get_scoped_var);
         }
@@ -2269,8 +2296,9 @@ bool ByteCodeParser::parseBlock(unsigned limit)
             int slot = currentInstruction[1].u.operand;
             int depth = currentInstruction[2].u.operand;
             int source = currentInstruction[3].u.operand;
-            NodeIndex getScopeChain = addToGraph(GetScopeChain, OpInfo(depth));
-            addToGraph(PutScopedVar, OpInfo(slot), getScopeChain, get(source));
+            NodeIndex getScope = addToGraph(GetScope, OpInfo(depth));
+            NodeIndex getScopeRegisters = addToGraph(GetScopeRegisters, getScope);
+            addToGraph(PutScopedVar, OpInfo(slot), getScope, getScopeRegisters, get(source));
             NEXT_OPCODE(op_put_scoped_var);
         }
         case op_get_by_id:
@@ -2711,6 +2739,7 @@ bool ByteCodeParser::parseBlock(unsigned limit)
         case op_call_varargs: {
             ASSERT(m_inlineStackTop->m_inlineCallFrame);
             ASSERT(currentInstruction[3].u.operand == m_inlineStackTop->m_codeBlock->argumentsRegister());
+            ASSERT(!m_inlineStackTop->m_codeBlock->symbolTable()->slowArguments());
             // It would be cool to funnel this into handleCall() so that it can handle
             // inlining. But currently that won't be profitable anyway, since none of the
             // uses of call_varargs will be inlineable. So we set this up manually and
@@ -2749,8 +2778,10 @@ bool ByteCodeParser::parseBlock(unsigned limit)
             // Statically speculate for now. It makes sense to let speculate-only jneq_ptr
             // support simmer for a while before making it more general, since it's
             // already gnarly enough as it is.
+            ASSERT(pointerIsFunction(currentInstruction[2].u.specialPointer));
             addToGraph(
-                CheckFunction, OpInfo(currentInstruction[2].u.jsCell.get()),
+                CheckFunction,
+                OpInfo(actualPointerFor(m_inlineStackTop->m_codeBlock, currentInstruction[2].u.specialPointer)),
                 get(currentInstruction[1].u.operand));
             addToGraph(Jump, OpInfo(m_currentIndex + OPCODE_LENGTH(op_jneq_ptr)));
             LAST_OPCODE(op_jneq_ptr);
@@ -3279,10 +3310,10 @@ void ByteCodeParser::parseCodeBlock()
     CodeBlock* codeBlock = m_inlineStackTop->m_codeBlock;
     
 #if DFG_ENABLE(DEBUG_VERBOSE)
-    dataLog("Parsing code block %p. codeType = %s, numCapturedVars = %u, needsFullScopeChain = %s, needsActivation = %s, isStrictMode = %s\n",
+    dataLog("Parsing code block %p. codeType = %s, captureCount = %u, needsFullScopeChain = %s, needsActivation = %s, isStrictMode = %s\n",
             codeBlock,
             codeTypeToString(codeBlock->codeType()),
-            codeBlock->m_numCapturedVars,
+            codeBlock->symbolTable()->captureCount(),
             codeBlock->needsFullScopeChain()?"true":"false",
             codeBlock->ownerExecutable()->needsActivation()?"true":"false",
             codeBlock->ownerExecutable()->isStrictMode()?"true":"false");

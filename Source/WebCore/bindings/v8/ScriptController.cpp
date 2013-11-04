@@ -221,7 +221,7 @@ v8::Local<v8::Value> ScriptController::callFunctionWithInstrumentation(ScriptExe
         return handleMaxRecursionDepthExceeded();
 
     InspectorInstrumentationCookie cookie;
-    if (InspectorInstrumentation::hasFrontends() && context) {
+    if (InspectorInstrumentation::timelineAgentEnabled(context)) {
         String resourceName;
         int lineNumber;
         resourceInfo(function, resourceName, lineNumber);
@@ -281,6 +281,7 @@ v8::Local<v8::Value> ScriptController::compileAndRunScript(const ScriptSourceCod
         // Keep Frame (and therefore ScriptController) alive.
         RefPtr<Frame> protect(m_frame);
         result = ScriptRunner::runCompiledScript(script, m_frame->document());
+        ASSERT(!tryCatch.HasCaught() || result.IsEmpty());
     }
 
     InspectorInstrumentation::didEvaluateScript(cookie);

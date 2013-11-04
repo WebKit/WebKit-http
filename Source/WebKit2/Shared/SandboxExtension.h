@@ -84,10 +84,10 @@ public:
     private:
 #if ENABLE(WEB_PROCESS_SANDBOX)
         Handle* m_data;
+        size_t m_size;
 #else
         Handle m_emptyHandle;
 #endif
-        size_t m_size;
     };
     
     static PassRefPtr<SandboxExtension> create(const Handle&);
@@ -127,7 +127,7 @@ inline bool SandboxExtension::HandleArray::decode(CoreIPC::ArgumentDecoder*, Han
 inline PassRefPtr<SandboxExtension> SandboxExtension::create(const Handle&) { return 0; }
 inline void SandboxExtension::createHandle(const String&, Type, Handle&) { }
 inline void SandboxExtension::createHandleForReadWriteDirectory(const String&, Handle&) { }
-inline String SandboxExtension::createHandleForTemporaryFile(const String& prefix, Type type, Handle&) {return String();}
+inline String SandboxExtension::createHandleForTemporaryFile(const String& /*prefix*/, Type, Handle&) {return String();}
 inline SandboxExtension::~SandboxExtension() { }
 inline bool SandboxExtension::invalidate() { return true; }
 inline bool SandboxExtension::consume() { return true; }

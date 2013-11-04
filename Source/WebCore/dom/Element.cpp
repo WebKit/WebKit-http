@@ -843,13 +843,10 @@ void Element::parserSetAttributes(const Vector<Attribute>& attributeVector, Frag
     }
 
     // When the document is in parsing state, we cache immutable ElementAttributeData objects with the
-    // input attribute vector as key. (This cache is held by Document.)
+    // input attribute vector (and the tag name) as key. (This cache is held by Document.)
     if (!document() || !document()->parsing())
         m_attributeData = ElementAttributeData::createImmutable(filteredAttributes);
-    else if (!isHTMLElement()) {
-        // FIXME: Support attribute data sharing for non-HTML elements.
-        m_attributeData = ElementAttributeData::createImmutable(filteredAttributes);
-    } else
+    else
         m_attributeData = document()->cachedImmutableAttributeData(this, filteredAttributes);
 
     // Iterate over the set of attributes we already have on the stack in case
@@ -1002,7 +999,7 @@ void Element::removedFrom(ContainerNode* insertionPoint)
 void Element::attach()
 {
     suspendPostAttachCallbacks();
-    RenderWidget::suspendWidgetHierarchyUpdates();
+    WidgetHierarchyUpdatesSuspensionScope suspendWidgetHierarchyUpdates;
 
     createRendererIfNeeded();
     StyleResolverParentPusher parentPusher(this);
@@ -1031,7 +1028,6 @@ void Element::attach()
         }
     }
 
-    RenderWidget::resumeWidgetHierarchyUpdates();
     resumePostAttachCallbacks();
 }
 
@@ -1045,12 +1041,13 @@ void Element::unregisterNamedFlowContentNode()
 
 void Element::detach()
 {
-    RenderWidget::suspendWidgetHierarchyUpdates();
+    WidgetHierarchyUpdatesSuspensionScope suspendWidgetHierarchyUpdates;
     unregisterNamedFlowContentNode();
     cancelFocusAppearanceUpdate();
     if (hasRareData()) {
-        setIsInCanvasSubtree(false);
-        elementRareData()->resetComputedStyle();
+        ElementRareData* data = elementRareData();
+        data->setIsInCanvasSubtree(false);
+        data->resetComputedStyle();
     }
 
     if (ElementShadow* shadow = this->shadow()) {
@@ -1058,8 +1055,6 @@ void Element::detach()
         shadow->detach();
     }
     ContainerNode::detach();
-
-    RenderWidget::resumeWidgetHierarchyUpdates();
 }
 
 bool Element::pseudoStyleCacheIsInvalid(const RenderStyle* currentStyle, RenderStyle* newStyle)
@@ -1126,7 +1121,7 @@ void Element::recalcStyle(StyleChange change)
         if (hasRareData()) {
             ElementRareData* data = elementRareData();
             data->resetComputedStyle();
-            data->m_styleAffectedByEmpty = false;
+            data->setStyleAffectedByEmpty(false);
         }
     }
     if (hasParentStyle && (change >= Inherit || needsStyleRecalc())) {
@@ -1179,7 +1174,7 @@ void Element::recalcStyle(StyleChange change)
 
         // If "rem" units are used anywhere in the document, and if the document element's font size changes, then go ahead and force font updating
         // all the way down the tree. This is simpler than having to maintain a cache of objects (and such font size changes should be rare anyway).
-        if (document()->usesRemUnits() && document()->documentElement() == this && ch != NoChange && currentStyle && newStyle && currentStyle->fontSize() != newStyle->fontSize()) {
+        if (document()->styleSheetCollection()->usesRemUnits() && document()->documentElement() == this && ch != NoChange && currentStyle && newStyle && currentStyle->fontSize() != newStyle->fontSize()) {
             // Cached RenderStyles may depend on the rem units.
             document()->styleResolver()->invalidateMatchedPropertiesCache();
             change = Force;
@@ -1246,8 +1241,9 @@ ElementShadow* Element::ensureShadow()
     if (ElementShadow* shadow = ensureElementRareData()->m_shadow.get())
         return shadow;
 
-    elementRareData()->m_shadow = adoptPtr(new ElementShadow());
-    return elementRareData()->m_shadow.get();
+    ElementRareData* data = elementRareData();
+    data->m_shadow = adoptPtr(new ElementShadow());
+    return data->m_shadow.get();
 }
 
 ShadowRoot* Element::userAgentShadowRoot() const
@@ -1737,24 +1733,22 @@ RenderStyle* Element::computedStyle(PseudoId pseudoElementSpecifier)
 
 void Element::setStyleAffectedByEmpty()
 {
-    ElementRareData* data = ensureElementRareData();
-    data->m_styleAffectedByEmpty = true;
+    ensureElementRareData()->setStyleAffectedByEmpty(true);
 }
 
 bool Element::styleAffectedByEmpty() const
 {
-    return hasRareData() && elementRareData()->m_styleAffectedByEmpty;
+    return hasRareData() && elementRareData()->styleAffectedByEmpty();
 }
 
 void Element::setIsInCanvasSubtree(bool isInCanvasSubtree)
 {
-    ElementRareData* data = ensureElementRareData();
-    data->m_isInCanvasSubtree = isInCanvasSubtree;
+    ensureElementRareData()->setIsInCanvasSubtree(isInCanvasSubtree);
 }
 
 bool Element::isInCanvasSubtree() const
 {
-    return hasRareData() && elementRareData()->m_isInCanvasSubtree;
+    return hasRareData() && elementRareData()->isInCanvasSubtree();
 }
 
 AtomicString Element::computeInheritedLanguage() const
@@ -1762,21 +1756,29 @@ AtomicString Element::computeInheritedLanguage() const
     const Node* n = this;
     AtomicString value;
     // The language property is inherited, so we iterate over the parents to find the first language.
-    while (n && value.isNull()) {
+    do {
         if (n->isElementNode()) {
-            // Spec: xml:lang takes precedence -- http://www.w3.org/TR/xhtml1/#C_7
-            value = static_cast<const Element*>(n)->fastGetAttribute(XMLNames::langAttr);
-            if (value.isNull())
-                value = static_cast<const Element*>(n)->fastGetAttribute(HTMLNames::langAttr);
+            if (const ElementAttributeData* attributeData = static_cast<const Element*>(n)->attributeData()) {
+                // Spec: xml:lang takes precedence -- http://www.w3.org/TR/xhtml1/#C_7
+                if (const Attribute* attribute = attributeData->getAttributeItem(XMLNames::langAttr))
+                    value = attribute->value();
+                else if (const Attribute* attribute = attributeData->getAttributeItem(HTMLNames::langAttr))
+                    value = attribute->value();
+            }
         } else if (n->isDocumentNode()) {
             // checking the MIME content-language
             value = static_cast<const Document*>(n)->contentLanguage();
         }
 
         n = n->parentNode();
-    }
+    } while (n && value.isNull());
 
     return value;
+}
+
+Localizer& Element::localizer() const
+{
+    return document()->getCachedLocalizer(computeInheritedLanguage());
 }
 
 void Element::cancelFocusAppearanceUpdate()
@@ -1943,12 +1945,12 @@ void Element::webkitRequestFullScreen(unsigned short flags)
 
 bool Element::containsFullScreenElement() const
 {
-    return hasRareData() ? elementRareData()->m_containsFullScreenElement : false;
+    return hasRareData() && elementRareData()->containsFullScreenElement();
 }
 
 void Element::setContainsFullScreenElement(bool flag)
 {
-    ensureElementRareData()->m_containsFullScreenElement = flag;
+    ensureElementRareData()->setContainsFullScreenElement(flag);
     setNeedsStyleRecalc(SyntheticStyleChange);
 }
 
@@ -2033,6 +2035,8 @@ RenderRegion* Element::renderRegion() const
     return 0;
 }
 
+#if ENABLE(CSS_REGIONS)
+
 const AtomicString& Element::webkitRegionOverset() const
 {
     document()->updateLayoutIgnorePendingStylesheets();
@@ -2061,8 +2065,6 @@ const AtomicString& Element::webkitRegionOverset() const
     ASSERT_NOT_REACHED();
     return undefinedState;
 }
-
-#if ENABLE(CSS_REGIONS)
 
 Vector<RefPtr<Range> > Element::webkitGetRegionFlowRanges() const
 {

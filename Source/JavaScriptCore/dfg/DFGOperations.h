@@ -177,7 +177,6 @@ char* DFG_OPERATION operationLinkConstruct(ExecState*) WTF_INTERNAL;
 JSCell* DFG_OPERATION operationCreateActivation(ExecState*) WTF_INTERNAL;
 JSCell* DFG_OPERATION operationCreateArguments(ExecState*) WTF_INTERNAL;
 JSCell* DFG_OPERATION operationCreateInlinedArguments(ExecState*, InlineCallFrame*) WTF_INTERNAL;
-void DFG_OPERATION operationTearOffActivation(ExecState*, JSCell*) WTF_INTERNAL;
 void DFG_OPERATION operationTearOffArguments(ExecState*, JSCell*, JSCell*) WTF_INTERNAL;
 void DFG_OPERATION operationTearOffInlinedArguments(ExecState*, JSCell*, JSCell*, InlineCallFrame*) WTF_INTERNAL;
 EncodedJSValue DFG_OPERATION operationGetArgumentsLength(ExecState*, int32_t) WTF_INTERNAL;
@@ -193,6 +192,7 @@ char* DFG_OPERATION operationAllocatePropertyStorageWithInitialCapacity(ExecStat
 char* DFG_OPERATION operationAllocatePropertyStorage(ExecState*, size_t newSize) WTF_INTERNAL;
 char* DFG_OPERATION operationReallocateButterflyToHavePropertyStorageWithInitialCapacity(ExecState*, JSObject*) WTF_INTERNAL;
 char* DFG_OPERATION operationReallocateButterflyToGrowPropertyStorage(ExecState*, JSObject*, size_t newSize) WTF_INTERNAL;
+char* DFG_OPERATION operationEnsureArrayStorage(ExecState*, JSObject*);
 
 // This method is used to lookup an exception hander, keyed by faultLocation, which is
 // the return location from one of the calls out to one of the helper operations above.

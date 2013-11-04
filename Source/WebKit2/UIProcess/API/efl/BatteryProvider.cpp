@@ -31,6 +31,7 @@
 #include "WKAPICast.h"
 #include "WKBatteryManager.h"
 #include "WKBatteryStatus.h"
+#include "WKContext.h"
 
 using namespace WebCore;
 using namespace WebKit;
@@ -40,12 +41,12 @@ static inline BatteryProvider* toBatteryProvider(const void* clientInfo)
     return static_cast<BatteryProvider*>(const_cast<void*>(clientInfo));
 }
 
-static void startUpdatingCallback(WKBatteryManagerRef batteryManager, const void* clientInfo)
+static void startUpdatingCallback(WKBatteryManagerRef, const void* clientInfo)
 {
     toBatteryProvider(clientInfo)->startUpdating();
 }
 
-static void stopUpdatingCallback(WKBatteryManagerRef batteryManager, const void* clientInfo)
+static void stopUpdatingCallback(WKBatteryManagerRef, const void* clientInfo)
 {
     toBatteryProvider(clientInfo)->stopUpdating();
 }
@@ -53,17 +54,25 @@ static void stopUpdatingCallback(WKBatteryManagerRef batteryManager, const void*
 BatteryProvider::~BatteryProvider()
 {
     m_provider.stopUpdating();
+
+    WKBatteryManagerRef wkBatteryManager = WKContextGetBatteryManager(m_wkContext.get());
+    ASSERT(wkBatteryManager);
+
+    WKBatteryManagerSetProvider(wkBatteryManager, 0);
 }
 
-PassRefPtr<BatteryProvider> BatteryProvider::create(WKBatteryManagerRef wkBatteryManager)
+PassRefPtr<BatteryProvider> BatteryProvider::create(WKContextRef wkContext)
 {
-    return adoptRef(new BatteryProvider(wkBatteryManager));
+    return adoptRef(new BatteryProvider(wkContext));
 }
 
-BatteryProvider::BatteryProvider(WKBatteryManagerRef wkBatteryManager)
-    : m_wkBatteryManager(wkBatteryManager)
+BatteryProvider::BatteryProvider(WKContextRef wkContext)
+    : m_wkContext(wkContext)
     , m_provider(this)
 {
+    ASSERT(m_wkContext);
+
+    WKBatteryManagerRef wkBatteryManager = WKContextGetBatteryManager(m_wkContext.get());
     ASSERT(wkBatteryManager);
 
     WKBatteryProvider wkBatteryProvider = {
@@ -72,7 +81,7 @@ BatteryProvider::BatteryProvider(WKBatteryManagerRef wkBatteryManager)
         startUpdatingCallback,
         stopUpdatingCallback
     };
-    WKBatteryManagerSetProvider(m_wkBatteryManager.get(), &wkBatteryProvider);
+    WKBatteryManagerSetProvider(wkBatteryManager, &wkBatteryProvider);
 }
 
 void BatteryProvider::startUpdating()
@@ -87,8 +96,11 @@ void BatteryProvider::stopUpdating()
 
 void BatteryProvider::didChangeBatteryStatus(const AtomicString& eventType, PassRefPtr<BatteryStatus> status)
 {
+    WKBatteryManagerRef wkBatteryManager = WKContextGetBatteryManager(m_wkContext.get());
+    ASSERT(wkBatteryManager);
+
     WKRetainPtr<WKBatteryStatusRef> wkBatteryStatus(AdoptWK, WKBatteryStatusCreate(status->charging(), status->chargingTime(), status->dischargingTime(), status->level()));
-    WKBatteryManagerProviderDidChangeBatteryStatus(m_wkBatteryManager.get(), toAPI(eventType.impl()), wkBatteryStatus.get());
+    WKBatteryManagerProviderDidChangeBatteryStatus(wkBatteryManager, toAPI(eventType.impl()), wkBatteryStatus.get());
 }
 
 #endif // ENABLE(BATTERY_STATUS)

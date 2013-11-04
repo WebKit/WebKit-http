@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2007 Apple Inc. All rights reserved.
+ * Copyright (C) 2007, 2012 Apple Inc. All rights reserved.
  * Copyright (C) 2007 Eric Seidel <eric@webkit.org>
  * Copyright (C) 2008 Nuanti Ltd.
  * Copyright (C) 2009 Jan Michael Alonzo <jmalonzo@gmail.com>
@@ -109,7 +109,7 @@ void TestRunner::display()
 
 void TestRunner::keepWebHistory()
 {
-    notImplemented();
+    DumpRenderTreeSupportEfl::setShouldTrackVisitedLinks(true);
 }
 
 JSValueRef TestRunner::computedStyleIncludingVisitedInfo(JSContextRef context, JSValueRef value)
@@ -379,7 +379,7 @@ void TestRunner::setMockGeolocationPosition(double, double, double)
     notImplemented();
 }
 
-void TestRunner::setMockGeolocationError(int, JSStringRef)
+void TestRunner::setMockGeolocationPositionUnavailableError(JSStringRef)
 {
     // FIXME: Implement for Geolocation layout tests.
     // See https://bugs.webkit.org/show_bug.cgi?id=28264.
@@ -707,8 +707,12 @@ void TestRunner::overridePreference(JSStringRef key, JSStringRef value)
         DumpRenderTreeSupportEfl::setLoadsSiteIconsIgnoringImageLoadingSetting(browser->mainView(), toBool(value));
     else if (equals(key, "WebKitCSSGridLayoutEnabled"))
         DumpRenderTreeSupportEfl::setCSSGridLayoutEnabled(browser->mainView(), toBool(value));
+    else if (equals(key, "WebKitCSSRegionsEnabled"))
+        DumpRenderTreeSupportEfl::setCSSRegionsEnabled(browser->mainView(), toBool(value));
     else if (equals(key, "WebKitWebAudioEnabled"))
         ewk_view_setting_web_audio_set(browser->mainView(), toBool(value));
+    else if (equals(key, "WebKitDisplayImagesKey"))
+        ewk_view_setting_auto_load_images_set(browser->mainView(), toBool(value));
     else
         fprintf(stderr, "TestRunner::overridePreference tried to override unknown preference '%s'.\n", value->string().utf8().data());
 }

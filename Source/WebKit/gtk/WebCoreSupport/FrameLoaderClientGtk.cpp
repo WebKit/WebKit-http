@@ -851,17 +851,13 @@ void FrameLoaderClient::dispatchDidFinishDocumentLoad()
     g_signal_emit_by_name(webView, "document-load-finished", m_frame);
 }
 
-void FrameLoaderClient::dispatchDidFirstLayout()
-{
-    notImplemented();
-}
-
-void FrameLoaderClient::dispatchDidFirstVisuallyNonEmptyLayout()
+void FrameLoaderClient::dispatchDidLayout(LayoutMilestones milestones)
 {
     if (m_loadingErrorPage)
         return;
 
-    notifyStatus(m_frame, WEBKIT_LOAD_FIRST_VISUALLY_NON_EMPTY_LAYOUT);
+    if (milestones & DidFirstVisuallyNonEmptyLayout)
+        notifyStatus(m_frame, WEBKIT_LOAD_FIRST_VISUALLY_NON_EMPTY_LAYOUT);
 }
 
 void FrameLoaderClient::dispatchShow()
@@ -901,9 +897,7 @@ bool FrameLoaderClient::canShowMIMETypeAsHTML(const String& MIMEType) const
 
 bool FrameLoaderClient::canShowMIMEType(const String& type) const
 {
-    return (MIMETypeRegistry::isSupportedImageMIMEType(type)
-            || MIMETypeRegistry::isSupportedNonImageMIMEType(type)
-            || MIMETypeRegistry::isSupportedMediaMIMEType(type)
+    return (MIMETypeRegistry::canShowMIMEType(type)
             || PluginDatabase::installedPlugins()->isMIMETypeRegistered(type));
 }
 

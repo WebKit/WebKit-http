@@ -24,7 +24,7 @@
  */
 
 #include "config.h"
-#if ENABLE(INPUT_TYPE_TIME_MULTIPLE_FIELDS)
+#if ENABLE(INPUT_MULTIPLE_FIELDS_UI)
 #include "DateTimeFieldElement.h"
 
 #include "DateComponents.h"
@@ -80,6 +80,8 @@ void DateTimeFieldElement::defaultKeyboardEventHandler(KeyboardEvent* keyboardEv
     const String& keyIdentifier = keyboardEvent->keyIdentifier();
 
     if (keyIdentifier == "Down") {
+        if (keyboardEvent->getModifierState("Alt"))
+            return;
         keyboardEvent->setDefaultHandled();
         stepDown();
         return;
@@ -157,6 +159,11 @@ bool DateTimeFieldElement::isRTL() const
     return renderer() && renderer()->style()->direction() == RTL;
 }
 
+AtomicString DateTimeFieldElement::localeIdentifier() const
+{
+    return m_fieldOwner ? m_fieldOwner->localeIdentifier() : nullAtom;
+}
+
 void DateTimeFieldElement::setReadOnly()
 {
     // Set HTML attribute readonly to change apperance.
@@ -184,11 +191,6 @@ void DateTimeFieldElement::updateVisibleValue(EventBehavior eventBehavior)
 
     if (eventBehavior == DispatchEvent && m_fieldOwner)
         m_fieldOwner->fieldValueChanged();
-}
-
-double DateTimeFieldElement::valueAsDouble() const
-{
-    return hasValue() ? valueAsInteger() * unitInMillisecond() : std::numeric_limits<double>::quiet_NaN();
 }
 
 } // namespace WebCore

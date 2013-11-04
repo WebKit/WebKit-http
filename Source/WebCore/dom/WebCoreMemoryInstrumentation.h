@@ -32,6 +32,7 @@
 #define WebCoreMemoryInstrumentation_h
 
 #include "PlatformMemoryInstrumentation.h"
+#include <wtf/MemoryInstrumentationString.h>
 
 namespace WebCore {
 
@@ -56,6 +57,10 @@ public:
     static MemoryObjectType CachedResourceSVG;
     static MemoryObjectType CachedResourceShader;
     static MemoryObjectType CachedResourceXSLT;
+
+    static MemoryObjectType ExternalResources;
+    static MemoryObjectType ExternalStrings;
+    static MemoryObjectType ExternalArrays;
 };
 
 } // namespace WebCore

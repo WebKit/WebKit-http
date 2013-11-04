@@ -57,6 +57,9 @@
 #include "ProgressTracker.h"
 #include "ProtectionSpace.h"
 #include "ScopePointer.h"
+#if ENABLE(BLACKBERRY_CREDENTIAL_PERSIST)
+#include "Settings.h"
+#endif
 #include "SharedBuffer.h"
 #include "SkData.h"
 #include "SkImageEncoder.h"
@@ -118,9 +121,7 @@ FrameLoaderClientBlackBerry::~FrameLoaderClientBlackBerry()
 
 int FrameLoaderClientBlackBerry::playerId() const
 {
-    if (m_webPagePrivate && m_webPagePrivate->m_client)
-        return m_webPagePrivate->m_client->getInstanceId();
-    return 0;
+    return m_webPagePrivate ? m_webPagePrivate->playerID() : 0;
 }
 
 bool FrameLoaderClientBlackBerry::cookiesEnabled() const
@@ -218,18 +219,20 @@ void FrameLoaderClientBlackBerry::dispatchDecidePolicyForNavigationAction(FrameP
         // Let the client have a chance to say whether this navigation should be ignored or not.
         NetworkRequest platformRequest;
         request.initializePlatformRequest(platformRequest, cookiesEnabled());
-        if (platformRequest.getTargetType() == NetworkRequest::TargetIsUnknown)
-            platformRequest.setTargetType(isMainFrame() ? NetworkRequest::TargetIsMainFrame : NetworkRequest::TargetIsSubframe);
+        if (!platformRequest.getUrlRef().empty()) { // Some invalid URLs will result in empty URL in platformRequest
+            if (platformRequest.getTargetType() == NetworkRequest::TargetIsUnknown)
+                platformRequest.setTargetType(isMainFrame() ? NetworkRequest::TargetIsMainFrame : NetworkRequest::TargetIsSubframe);
 
-        if (!m_webPagePrivate->m_client->acceptNavigationRequest(platformRequest, BlackBerry::Platform::NavigationType(action.type()))) {
-            decision = PolicyIgnore;
-            if (isMainFrame()) {
-                if (action.type() == NavigationTypeFormSubmitted || action.type() == NavigationTypeFormResubmitted)
-                    m_frame->loader()->resetMultipleFormSubmissionProtection();
+            if (!m_webPagePrivate->m_client->acceptNavigationRequest(platformRequest, BlackBerry::Platform::NavigationType(action.type()))) {
+                decision = PolicyIgnore;
+                if (isMainFrame()) {
+                    if (action.type() == NavigationTypeFormSubmitted || action.type() == NavigationTypeFormResubmitted)
+                        m_frame->loader()->resetMultipleFormSubmissionProtection();
 
-                if (action.type() == NavigationTypeLinkClicked && url.hasFragmentIdentifier()) {
-                    ResourceRequest emptyRequest;
-                    m_frame->loader()->activeDocumentLoader()->setLastCheckedRequest(emptyRequest);
+                    if (action.type() == NavigationTypeLinkClicked && url.hasFragmentIdentifier()) {
+                        ResourceRequest emptyRequest;
+                        m_frame->loader()->activeDocumentLoader()->setLastCheckedRequest(emptyRequest);
+                    }
                 }
             }
         }
@@ -429,7 +432,7 @@ void FrameLoaderClientBlackBerry::transitionToCommittedForNewPage()
 
     // In Frame::createView, Frame's FrameView object is set to 0 and recreated.
     // This operation is not atomic, and an attempt to blit contents might happen
-    // in the backing store from another thread (see BackingStorePrivate::blitContents method),
+    // in the backing store from another thread (see BackingStorePrivate::blitVisibleContents method),
     // so we suspend and resume screen update to make sure we do not get a invalid FrameView
     // state.
     BackingStoreClient* backingStoreClientForFrame = m_webPagePrivate->backingStoreClientForFrame(m_frame);
@@ -482,8 +485,8 @@ bool FrameLoaderClientBlackBerry::canShowMIMEType(const String& mimeTypeIn) cons
     String mimeType = MIMETypeRegistry::getNormalizedMIMEType(mimeTypeIn);
 
     // FIXME: Seems no other port checks empty MIME type in this function. Should we do that?
-    return MIMETypeRegistry::isSupportedImageMIMEType(mimeType) || MIMETypeRegistry::isSupportedNonImageMIMEType(mimeType)
-        || MIMETypeRegistry::isSupportedMediaMIMEType(mimeType) || WebSettings::isSupportedObjectMIMEType(mimeType)
+    return MIMETypeRegistry::canShowMIMEType(mimeType)
+        || WebSettings::isSupportedObjectMIMEType(mimeType)
         || (mimeType == "application/x-shockwave-flash");
 }
 
@@ -847,35 +850,37 @@ void FrameLoaderClientBlackBerry::postProgressEstimateChangedNotification()
     m_webPagePrivate->m_client->notifyLoadProgress(m_frame->page()->progress()->estimatedProgress() * 100);
 }
 
-void FrameLoaderClientBlackBerry::dispatchDidFirstVisuallyNonEmptyLayout()
+void FrameLoaderClientBlackBerry::dispatchDidLayout(LayoutMilestones milestones)
 {
     if (!isMainFrame())
         return;
 
-    BlackBerry::Platform::log(BlackBerry::Platform::LogLevelInfo, "dispatchDidFirstVisuallyNonEmptyLayout");
+    if (milestones & DidFirstVisuallyNonEmptyLayout) {
+        BlackBerry::Platform::log(BlackBerry::Platform::LogLevelInfo, "dispatchDidFirstVisuallyNonEmptyLayout");
 
-    readyToRender(true);
+        readyToRender(true);
 
-    // For FrameLoadTypeSame or FrameLoadTypeStandard load, the layout timer can be fired which can call
-    // dispatchDidFirstVisuallyNonEmptyLayout() after the load Finished state, in which case the web page
-    // will have no chance to zoom to initial scale. So we should give it a chance, otherwise the scale of
-    // the web page can be incorrect.
-    FrameLoadType frameLoadType = m_frame->loader()->loadType();
-    if (m_webPagePrivate->loadState() == WebPagePrivate::Finished && (frameLoadType == FrameLoadTypeSame || frameLoadType == FrameLoadTypeStandard))
-        m_webPagePrivate->setShouldZoomToInitialScaleAfterLoadFinished(true);
+        // For FrameLoadTypeSame or FrameLoadTypeStandard load, the layout timer can be fired which can call
+        // dispatchDidFirstVisuallyNonEmptyLayout() after the load Finished state, in which case the web page
+        // will have no chance to zoom to initial scale. So we should give it a chance, otherwise the scale of
+        // the web page can be incorrect.
+        FrameLoadType frameLoadType = m_frame->loader()->loadType();
+        if (m_webPagePrivate->loadState() == WebPagePrivate::Finished && (frameLoadType == FrameLoadTypeSame || frameLoadType == FrameLoadTypeStandard))
+            m_webPagePrivate->setShouldZoomToInitialScaleAfterLoadFinished(true);
 
-    if (m_webPagePrivate->shouldZoomToInitialScaleOnLoad()) {
-        BackingStorePrivate* backingStorePrivate = m_webPagePrivate->m_backingStore->d;
-        m_webPagePrivate->zoomToInitialScaleOnLoad(); // Set the proper zoom level first.
-        backingStorePrivate->clearVisibleZoom(); // Clear the visible zoom since we're explicitly rendering+blitting below.
-        if (backingStorePrivate->renderVisibleContents()) {
-            if (!backingStorePrivate->shouldDirectRenderingToWindow())
-                backingStorePrivate->blitVisibleContents();
-            m_webPagePrivate->m_client->notifyContentRendered(backingStorePrivate->visibleContentsRect());
+        if (m_webPagePrivate->shouldZoomToInitialScaleOnLoad()) {
+            BackingStorePrivate* backingStorePrivate = m_webPagePrivate->m_backingStore->d;
+            m_webPagePrivate->zoomToInitialScaleOnLoad(); // Set the proper zoom level first.
+            backingStorePrivate->clearVisibleZoom(); // Clear the visible zoom since we're explicitly rendering+blitting below.
+            if (backingStorePrivate->renderVisibleContents()) {
+                if (!backingStorePrivate->shouldDirectRenderingToWindow())
+                    backingStorePrivate->blitVisibleContents();
+                m_webPagePrivate->m_client->notifyContentRendered(backingStorePrivate->visibleContentsRect());
+            }
         }
-    }
 
-    m_webPagePrivate->m_client->notifyFirstVisuallyNonEmptyLayout();
+        m_webPagePrivate->m_client->notifyFirstVisuallyNonEmptyLayout();
+    }
 }
 
 void FrameLoaderClientBlackBerry::postProgressFinishedNotification()
@@ -1012,6 +1017,17 @@ void FrameLoaderClientBlackBerry::dispatchWillSendRequest(DocumentLoader* docLoa
         m_historyNavigationSourceURLs.add(docLoader->url());
         m_historyNavigationSourceURLs.add(docLoader->originalURL());
     }
+}
+
+bool FrameLoaderClientBlackBerry::shouldUseCredentialStorage(DocumentLoader* loader, long unsigned identifier)
+{
+#if ENABLE(BLACKBERRY_CREDENTIAL_PERSIST)
+    if (m_frame->page()->settings()->privateBrowsingEnabled())
+        return false;
+    return true;
+#else
+    return false;
+#endif
 }
 
 void FrameLoaderClientBlackBerry::loadIconExternally(const String& originalPageUrl, const String& finalPageUrl, const String& iconUrl)

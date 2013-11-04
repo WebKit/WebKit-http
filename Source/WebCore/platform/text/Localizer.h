@@ -26,21 +26,96 @@
 #ifndef Localizer_h
 #define Localizer_h
 
+#include "DateComponents.h"
+#include "Language.h"
+#include <wtf/PassOwnPtr.h>
 #include <wtf/text/WTFString.h>
 
 namespace WebCore {
 
 class Localizer {
+    WTF_MAKE_NONCOPYABLE(Localizer);
+
 public:
-    static PassOwnPtr<Localizer> create(const AtomicString&);
+    static PassOwnPtr<Localizer> create(const AtomicString& localeIdentifier);
+    static PassOwnPtr<Localizer> createDefault();
+
+    // Converts the specified number string to another number string localized
+    // for this Localizer locale. The input string must conform to HTML
+    // floating-point numbers, and is not empty.
     String convertToLocalizedNumber(const String&);
+
+    // Converts the specified localized number string to a number string in the
+    // HTML floating-point number format. The input string is provided by a end
+    // user, and might not be a number string. It's ok that the function returns
+    // a string which is not conforms to the HTML floating-point number format,
+    // callers of this function are responsible to check the format of the
+    // resultant string.
     String convertFromLocalizedNumber(const String&);
-#if ENABLE(INPUT_TYPE_TIME_MULTIPLE_FIELDS)
+
+#if ENABLE(INPUT_MULTIPLE_FIELDS_UI)
+    // Returns localized decimal separator, e.g. "." for English, "," for French.
     String localizedDecimalSeparator();
+
+    // Returns date format in Unicode TR35 LDML[1] containing day of month,
+    // month, and year, e.g. "dd/mm/yyyy"
+    // [1] LDML http://unicode.org/reports/tr35/#Date_Format_Patterns
+    virtual String dateFormat() = 0;
+
+    // Returns time format in Unicode TR35 LDML[1] containing hour, minute, and
+    // second with optional period(AM/PM), e.g. "h:mm:ss a"
+    // [1] LDML http://unicode.org/reports/tr35/#Date_Format_Patterns
     virtual String timeFormat();
+
+    // Returns time format in Unicode TR35 LDML containing hour, and minute
+    // with optional period(AM/PM), e.g. "h:mm a"
+    // Note: Some platforms return same value as timeFormat().
     virtual String shortTimeFormat();
+
+    // Returns a date-time format in Unicode TR35 LDML. It should have a second
+    // field.
+    String dateTimeFormatWithSecond();
+
+    // Returns a date-time format in Unicode TR35 LDML. It should have no second
+    // field.
+    String dateTimeFormatWithoutSecond();
+
+    // Returns localized period field(AM/PM) strings.
     virtual const Vector<String>& timeAMPMLabels();
 #endif
+
+#if ENABLE(CALENDAR_PICKER)
+    // Returns a vector of string of which size is 12. The first item is a
+    // localized string of January, and the last item is a localized string of
+    // December. These strings should not be abbreviations.
+    virtual const Vector<String>& monthLabels() = 0;
+
+    // Returns a vector of string of which size is 7. The first item is a
+    // localized short string of Monday, and the last item is a localized
+    // short string of Saturday. These strings should be short.
+    virtual const Vector<String>& weekDayShortLabels() = 0;
+
+    // The first day of a week. 0 is Sunday, and 6 is Saturday.
+    virtual unsigned firstDayOfWeek() = 0;
+
+    virtual String dateFormatText() = 0;
+#endif
+
+    // Parses a string representation of a date/time string localized
+    // for this Localizer locale. If the input string is not valid or
+    // an implementation doesn't support localized dates, this
+    // function returns NaN. If the input string is valid this
+    // function returns the number of milliseconds since 1970-01-01
+    // 00:00:00.000 UTC.
+    virtual double parseDateTime(const String&, DateComponents::Type) = 0;
+
+    enum FormatType { FormatTypeUnspecified, FormatTypeShort, FormatTypeMedium };
+
+    // Serializes the specified date into a formatted date string to
+    // display to the user. If an implementation doesn't support
+    // localized dates the function should return an empty string.
+    virtual String formatDateTime(const DateComponents&, FormatType = FormatTypeUnspecified);
+
     virtual ~Localizer();
 
 protected:
@@ -51,7 +126,7 @@ protected:
         DecimalSymbolsSize
     };
 
-#if ENABLE(INPUT_TYPE_TIME_MULTIPLE_FIELDS)
+#if ENABLE(INPUT_MULTIPLE_FIELDS_UI)
     String m_localizedTimeFormatText;
     String m_localizedShortTimeFormatText;
     Vector<String> m_timeAMPMLabels;
@@ -72,6 +147,11 @@ private:
     String m_negativeSuffix;
     bool m_hasLocalizerData;
 };
+
+inline PassOwnPtr<Localizer> Localizer::createDefault()
+{
+    return Localizer::create(defaultLanguage());
+}
 
 }
 #endif

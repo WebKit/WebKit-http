@@ -202,7 +202,7 @@ String AXMenuListActionVerb()
     return String();
 }
     
-#if ENABLE(INPUT_TYPE_TIME_MULTIPLE_FIELDS)
+#if ENABLE(INPUT_MULTIPLE_FIELDS_UI)
 String AXAMPMFieldText()
 {
     return query(WebLocalizedString::AXAMPMFieldText);
@@ -252,6 +252,32 @@ String AXYearFieldText()
 {
     return query(WebLocalizedString::AXYearFieldText);
 }
+
+String placeholderForDayOfMonthField()
+{
+    return query(WebLocalizedString::PlaceholderForDayOfMonthField);
+}
+
+String placeholderForMonthField()
+{
+    return query(WebLocalizedString::PlaceholderForMonthField);
+}
+
+String placeholderForYearField()
+{
+    return query(WebLocalizedString::PlaceholderForYearField);
+}
+
+String monthFormatInLDML()
+{
+    return query(WebLocalizedString::MonthFormatInLDML);
+}
+
+String weekFormatInLDML()
+{
+    return query(WebLocalizedString::WeekFormatInLDML);
+}
+
 #endif
 
 String missingPluginText()

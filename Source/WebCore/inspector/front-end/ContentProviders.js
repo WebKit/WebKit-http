@@ -73,11 +73,11 @@ WebInspector.ConcatenatedScriptsContentProvider.prototype = {
     },
 
     /**
-     * @return {?string}
+     * @return {string}
      */
     contentURL: function()
     {
-        return null;
+        return "";
     },
 
     /**
@@ -177,13 +177,14 @@ WebInspector.ConcatenatedScriptsContentProvider.prototype = {
         }
 
         return content;
-    }
-}
+    },
 
-WebInspector.ConcatenatedScriptsContentProvider.prototype.__proto__ = WebInspector.ContentProvider.prototype;
+    __proto__: WebInspector.ContentProvider.prototype
+}
 
 /**
  * @constructor
+ * @param {string} sourceURL
  * @implements {WebInspector.ContentProvider}
  */
 WebInspector.CompilerSourceMappingContentProvider = function(sourceURL)
@@ -193,7 +194,7 @@ WebInspector.CompilerSourceMappingContentProvider = function(sourceURL)
 
 WebInspector.CompilerSourceMappingContentProvider.prototype = {
     /**
-     * @return {?string}
+     * @return {string}
      */
     contentURL: function()
     {
@@ -232,10 +233,10 @@ WebInspector.CompilerSourceMappingContentProvider.prototype = {
     searchInContent: function(query, caseSensitive, isRegex, callback)
     {
         callback([]);
-    }
-}
+    },
 
-WebInspector.CompilerSourceMappingContentProvider.prototype.__proto__ = WebInspector.ContentProvider.prototype;
+    __proto__: WebInspector.ContentProvider.prototype
+}
 
 /**
  * @constructor
@@ -253,11 +254,11 @@ WebInspector.StaticContentProvider = function(contentType, content, mimeType)
 
 WebInspector.StaticContentProvider.prototype = {
     /**
-     * @return {?string}
+     * @return {string}
      */
     contentURL: function()
     {
-        return null;
+        return "";
     },
 
     /**
@@ -305,7 +306,7 @@ WebInspector.StaticContentProvider.prototype = {
 
         // searchInContent should call back later.
         window.setTimeout(performSearch.bind(this), 0);
-    }
-}
+    },
 
-WebInspector.StaticContentProvider.prototype.__proto__ = WebInspector.ContentProvider.prototype;
+    __proto__: WebInspector.ContentProvider.prototype
+}

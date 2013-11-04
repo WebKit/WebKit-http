@@ -28,15 +28,18 @@
 
 #include "PlatformMemoryInstrumentation.h"
 #include "ResourceRequest.h"
+#include <wtf/MemoryInstrumentationHashMap.h>
+#include <wtf/MemoryInstrumentationVector.h>
 
 using namespace std;
 
 namespace WebCore {
 
-#if !PLATFORM(MAC) || USE(CFNETWORK)
+#if !USE(SOUP) && (!PLATFORM(MAC) || USE(CFNETWORK))
 double ResourceRequestBase::s_defaultTimeoutInterval = INT_MAX;
 #else
 // Will use NSURLRequest default timeout unless set to a non-zero value with setDefaultTimeoutInterval().
+// For libsoup the timeout enabled with integer milliseconds. We set 0 as the default value to avoid integer overflow.
 double ResourceRequestBase::s_defaultTimeoutInterval = 0;
 #endif
 
@@ -450,9 +453,8 @@ void ResourceRequestBase::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) 
     info.addMember(m_url);
     info.addMember(m_firstPartyForCookies);
     info.addMember(m_httpMethod);
-    info.addHashMap(m_httpHeaderFields);
-    info.addInstrumentedMapEntries(m_httpHeaderFields);
-    info.addInstrumentedVector(m_responseContentDispositionEncodingFallbackArray);
+    info.addMember(m_httpHeaderFields);
+    info.addMember(m_responseContentDispositionEncodingFallbackArray);
     info.addMember(m_httpBody);
 }
 

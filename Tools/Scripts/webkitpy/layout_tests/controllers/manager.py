@@ -75,7 +75,7 @@ def interpret_test_failures(port, test_name, failures):
         test_name: test name relative to layout_tests directory
         failures: list of test failures
     Returns:
-        A dictionary like {'is_reftest': True, ...}
+        A dictionary like {'is_missing_text': True, ...}
     """
     test_dict = {}
     failure_types = [type(failure) for failure in failures]
@@ -84,20 +84,16 @@ def interpret_test_failures(port, test_name, failures):
     if test_failures.FailureMissingAudio in failure_types:
         test_dict['is_missing_audio'] = True
 
-    for failure in failures:
-        if isinstance(failure, test_failures.FailureImageHashMismatch):
-            test_dict['image_diff_percent'] = failure.diff_percent
-        elif isinstance(failure, test_failures.FailureReftestMismatch):
-            test_dict['is_reftest'] = True
-            test_dict['image_diff_percent'] = failure.diff_percent
-        elif isinstance(failure, test_failures.FailureReftestMismatchDidNotOccur):
-            test_dict['is_mismatch_reftest'] = True
-
     if test_failures.FailureMissingResult in failure_types:
         test_dict['is_missing_text'] = True
 
     if test_failures.FailureMissingImage in failure_types or test_failures.FailureMissingImageHash in failure_types:
         test_dict['is_missing_image'] = True
+
+    for failure in failures:
+        if isinstance(failure, test_failures.FailureImageHashMismatch) or isinstance(failure, test_failures.FailureReftestMismatch):
+            test_dict['image_diff_percent'] = failure.diff_percent
+
     return test_dict
 
 
@@ -172,6 +168,9 @@ def summarize_results(port_obj, expectations, result_summary, retry_summary, tes
         if result.has_stderr:
             test_dict['has_stderr'] = True
 
+        if result.reftest_type:
+            test_dict.update(reftest_type=list(result.reftest_type))
+
         if expectations.has_modifier(test_name, test_expectations.WONTFIX):
             test_dict['wontfix'] = True
 
@@ -240,8 +239,9 @@ def summarize_results(port_obj, expectations, result_summary, retry_summary, tes
     try:
         # We only use the svn revision for using trac links in the results.html file,
         # Don't do this by default since it takes >100ms.
+        # FIXME: Do we really need to populate this both here and in the json_results_generator?
         if use_trac_links_in_results_html(port_obj):
-            port_obj.host._initialize_scm()
+            port_obj.host.initialize_scm()
             results['revision'] = port_obj.host.scm().head_svn_revision()
     except Exception, e:
         _log.warn("Failed to determine svn revision for checkout (cwd: %s, webkit_base: %s), leaving 'revision' key blank in full_results.json.\n%s" % (port_obj._filesystem.getcwd(), port_obj.path_from_webkit_base(), e))

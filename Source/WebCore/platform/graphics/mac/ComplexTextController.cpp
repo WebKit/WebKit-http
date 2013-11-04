@@ -48,7 +48,7 @@ public:
     }
 
     TextLayout(RenderText* text, const Font& font, float xPos)
-        : m_font(fontWithNoWordSpacing(font))
+        : m_font(font)
         , m_run(constructTextRun(text, font, xPos))
         , m_controller(adoptPtr(new ComplexTextController(&m_font, m_run, true)))
     {
@@ -58,19 +58,14 @@ public:
     {
         m_controller->advance(from, 0, ByWholeGlyphs);
         float beforeWidth = m_controller->runWidthSoFar();
+        if (m_font.wordSpacing() && from && Font::treatAsSpace(m_run[from]))
+            beforeWidth += m_font.wordSpacing();
         m_controller->advance(from + len, 0, ByWholeGlyphs);
         float afterWidth = m_controller->runWidthSoFar();
         return afterWidth - beforeWidth;
     }
 
 private:
-    static Font fontWithNoWordSpacing(const Font& originalFont)
-    {
-        Font font(originalFont);
-        font.setWordSpacing(0);
-        return font;
-    }
-
     static TextRun constructTextRun(RenderText* text, const Font& font, float xPos)
     {
         TextRun run = RenderBlock::constructTextRun(text, font, text->characters(), text->textLength(), text->style());
@@ -147,7 +142,11 @@ ComplexTextController::ComplexTextController(const Font* font, const TextRun& ru
         m_expansionPerOpportunity = 0;
     else {
         bool isAfterExpansion = m_afterExpansion;
-        unsigned expansionOpportunityCount = Font::expansionOpportunityCount(m_run.characters16(), m_end, m_run.ltr() ? LTR : RTL, isAfterExpansion);
+        unsigned expansionOpportunityCount;
+        if (m_run.is8Bit())
+            expansionOpportunityCount = Font::expansionOpportunityCount(m_run.characters8(), m_end, m_run.ltr() ? LTR : RTL, isAfterExpansion);
+         else
+             expansionOpportunityCount = Font::expansionOpportunityCount(m_run.characters16(), m_end, m_run.ltr() ? LTR : RTL, isAfterExpansion);
         if (isAfterExpansion && !m_run.allowsTrailingExpansion())
             expansionOpportunityCount--;
 
@@ -289,7 +288,14 @@ void ComplexTextController::collectComplexTextRuns()
         return;
 
     // We break up glyph run generation for the string by FontData.
-    const UChar* cp = m_run.characters16();
+    const UChar* cp;
+
+    if (m_run.is8Bit()) {
+        String stringFor8BitRun = String::make16BitFrom8BitSource(m_run.characters8(), m_run.length());
+        cp = stringFor8BitRun.characters16();
+        m_stringsFor8BitRuns.append(stringFor8BitRun);
+    } else
+        cp = m_run.characters16();
 
     if (m_font.isSmallCaps())
         m_smallCapsBuffer.resize(m_end);

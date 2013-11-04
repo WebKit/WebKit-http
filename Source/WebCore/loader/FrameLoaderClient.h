@@ -32,6 +32,7 @@
 
 #include "FrameLoaderTypes.h"
 #include "IconURL.h"
+#include "LayoutMilestones.h"
 #include <wtf/Forward.h>
 #include <wtf/Vector.h>
 
@@ -95,6 +96,9 @@ namespace WebCore {
     class ResourceLoader;
     class ResourceRequest;
     class ResourceResponse;
+#if ENABLE(MEDIA_STREAM)
+    class RTCPeerConnectionHandler;
+#endif
     class SecurityOrigin;
     class SharedBuffer;
     class SocketStreamHandle;
@@ -162,10 +166,8 @@ namespace WebCore {
         virtual void dispatchDidFinishDocumentLoad() = 0;
         virtual void dispatchDidFinishLoad() = 0;
 
-        virtual void dispatchDidFirstLayout() = 0;
-        virtual void dispatchDidFirstVisuallyNonEmptyLayout() = 0;
-        virtual void dispatchDidNewFirstVisuallyNonEmptyLayout() { }
         virtual void dispatchDidLayout() { }
+        virtual void dispatchDidLayout(LayoutMilestones) { }
 
         virtual Frame* dispatchCreatePage(const NavigationAction&) = 0;
         virtual void dispatchShow() = 0;
@@ -278,6 +280,8 @@ namespace WebCore {
         virtual void documentElementAvailable() = 0;
         virtual void didPerformFirstNavigation() const = 0; // "Navigation" here means a transition from one page to another that ends up in the back/forward list.
 
+        virtual void didExhaustMemoryAvailableForScript() { };
+
 #if USE(V8)
         virtual void didCreateScriptContext(v8::Handle<v8::Context>, int extensionGroup, int worldId) = 0;
         virtual void willReleaseScriptContext(v8::Handle<v8::Context>, int worldId) = 0;
@@ -289,9 +293,6 @@ namespace WebCore {
 #if PLATFORM(MAC)
         // Allow an accessibility object to retrieve a Frame parent if there's no PlatformWidget.
         virtual RemoteAXObjectRef accessibilityRemoteObject() = 0;
-#if ENABLE(JAVA_BRIDGE)
-        virtual jobject javaApplet(NSView*) { return 0; }
-#endif
         virtual NSCachedURLResponse* willCacheResponse(DocumentLoader*, unsigned long identifier, NSCachedURLResponse*) const = 0;
 #endif
 #if PLATFORM(WIN) && USE(CFNETWORK)
@@ -343,6 +344,10 @@ namespace WebCore {
         virtual void dispatchWillDisconnectDOMWindowExtensionFromGlobalObject(DOMWindowExtension*) { }
         virtual void dispatchDidReconnectDOMWindowExtensionToGlobalObject(DOMWindowExtension*) { }
         virtual void dispatchWillDestroyGlobalObjectForDOMWindowExtension(DOMWindowExtension*) { }
+
+#if ENABLE(MEDIA_STREAM)
+        virtual void dispatchWillStartUsingPeerConnectionHandler(RTCPeerConnectionHandler*) { }
+#endif
     };
 
 } // namespace WebCore

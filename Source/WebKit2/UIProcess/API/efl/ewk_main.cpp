@@ -22,6 +22,7 @@
 #include "config.h"
 #include "ewk_main.h"
 
+#include "ewk_private.h"
 #include <Ecore.h>
 #include <Ecore_Evas.h>
 #include <Edje.h>
@@ -29,6 +30,10 @@
 #include <Evas.h>
 #include <glib-object.h>
 #include <glib.h>
+
+#ifdef HAVE_ECORE_X
+#include <Ecore_X.h>
+#endif
 
 static int _ewkInitCount = 0;
 
@@ -53,29 +58,40 @@ int ewk_init(void)
     }
 
     if (!evas_init()) {
-        EINA_LOG_DOM_CRIT(_ewk_log_dom, "could not init evas.");
+        CRITICAL("could not init evas.");
         goto error_evas;
     }
 
     if (!ecore_init()) {
-        EINA_LOG_DOM_CRIT(_ewk_log_dom, "could not init ecore.");
+        CRITICAL("could not init ecore.");
         goto error_ecore;
     }
 
     if (!ecore_evas_init()) {
-        EINA_LOG_DOM_CRIT(_ewk_log_dom, "could not init ecore_evas.");
+        CRITICAL("could not init ecore_evas.");
         goto error_ecore_evas;
     }
+
+#ifdef HAVE_ECORE_X
+    if (!ecore_x_init(0)) {
+        CRITICAL("could not init ecore_x.");
+        goto error_ecore_x;
+    }
+#endif
 
     g_type_init();
 
     if (!ecore_main_loop_glib_integrate()) {
-        EINA_LOG_DOM_WARN(_ewk_log_dom, "Ecore was not compiled with GLib support, some plugins will not "
+        WARN("Ecore was not compiled with GLib support, some plugins will not "
             "work (ie: Adobe Flash)");
     }
 
     return ++_ewkInitCount;
 
+#ifdef HAVE_ECORE_X
+error_ecore_x:
+    edje_shutdown();
+#endif
 error_ecore_evas:
     ecore_shutdown();
 error_ecore:
@@ -94,6 +110,10 @@ int ewk_shutdown(void)
     if (--_ewkInitCount)
         return _ewkInitCount;
 
+#ifdef HAVE_ECORE_X
+    ecore_x_shutdown();
+#endif
+    edje_shutdown();
     ecore_evas_shutdown();
     ecore_shutdown();
     evas_shutdown();

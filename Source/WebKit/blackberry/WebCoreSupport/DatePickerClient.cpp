@@ -118,12 +118,17 @@ String DatePickerClient::htmlSource()
     return m_source;
 }
 
+Localizer& SelectPopupClient::localizer()
+{
+    return m_element->document()->getCachedLocalizer();
+}
+
 void DatePickerClient::setValueAndClosePopup(int, const String& value)
 {
     // Return -1 if user cancel the selection.
     ASSERT(m_element);
 
-    if (!value.contains("-1"))
+    if (value != "-1")
         m_element->setValue(value);
     closePopup();
 }

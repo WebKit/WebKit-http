@@ -35,17 +35,22 @@
 namespace WTF {
 
 class URLComponent;
+class URLQueryCharsetConverter;
 
 // ParsedURL represents a valid URL decomposed by components.
 class ParsedURL {
 public:
+    enum ParsedURLStringTag { ParsedURLString };
+
     ParsedURL() { };
-    WTF_EXPORT_PRIVATE explicit ParsedURL(const String&);
-    WTF_EXPORT_PRIVATE explicit ParsedURL(const ParsedURL& base, const String& relative);
+    WTF_EXPORT_PRIVATE explicit ParsedURL(const String&, ParsedURLStringTag);
+
+    WTF_EXPORT_PRIVATE explicit ParsedURL(const String&, URLQueryCharsetConverter*);
+    WTF_EXPORT_PRIVATE explicit ParsedURL(const ParsedURL& base, const String& relative, URLQueryCharsetConverter*);
 
     WTF_EXPORT_PRIVATE ParsedURL isolatedCopy() const;
 
-    bool isValid() const { return !m_spec.string().isEmpty(); }
+    bool isValid() const { return !m_spec.string().isNull(); }
 
     // Return a URL component or a null String if the component is undefined for the URL.
     WTF_EXPORT_PRIVATE String scheme() const;
@@ -63,8 +68,6 @@ public:
     WTF_EXPORT_PRIVATE String baseAsString() const;
 
     const URLString& spec() { return m_spec; }
-
-    WTF_EXPORT_PRIVATE void reportMemoryUsage(MemoryObjectInfo*) const;
 
 #ifndef NDEBUG
     WTF_EXPORT_PRIVATE void print() const;

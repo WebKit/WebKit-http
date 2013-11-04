@@ -44,7 +44,7 @@ def determine_result_type(failure_list):
     the list of failures. "Best fits" means we use the worst type of failure.
 
     Returns:
-      one of the test_expectations result types - PASS, TEXT, CRASH, etc."""
+      one of the test_expectations result types - PASS, FAIL, CRASH, etc."""
 
     if not failure_list or len(failure_list) == 0:
         return test_expectations.PASS

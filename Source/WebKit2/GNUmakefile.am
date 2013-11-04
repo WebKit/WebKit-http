@@ -55,7 +55,7 @@ libwebkit2gtk_@WEBKITGTK_API_MAJOR_VERSION@_@WEBKITGTK_API_MINOR_VERSION@_la_CPP
 	-I$(srcdir)/Source/WebKit2/UIProcess/Launcher/gtk \
 	-I$(srcdir)/Source/WebKit2/UIProcess/Notifications \
 	-I$(srcdir)/Source/WebKit2/UIProcess/Plugins \
-	-I$(srcdir)/Source/WebKit2/UIProcess/Plugins/gtk \
+	-I$(srcdir)/Source/WebKit2/UIProcess/Plugins/unix \
 	-I$(srcdir)/Source/WebKit2/UIProcess/soup \
 	-I$(srcdir)/Source/WebKit2/WebProcess \
 	-I$(srcdir)/Source/WebKit2/WebProcess/ApplicationCache \
@@ -82,7 +82,7 @@ libwebkit2gtk_@WEBKITGTK_API_MAJOR_VERSION@_@WEBKITGTK_API_MINOR_VERSION@_la_CPP
 	-I$(srcdir)/Source/WebKit2/WebProcess/soup \
 	-I$(srcdir)/Source/WebKit2/WebProcess/Plugins \
 	-I$(srcdir)/Source/WebKit2/WebProcess/Plugins/Netscape \
-	-I$(srcdir)/Source/WebKit2/WebProcess/Plugins/Netscape/gtk \
+	-I$(srcdir)/Source/WebKit2/WebProcess/Plugins/Netscape/unix \
 	-I$(srcdir)/Source/WebKit2/WebProcess/WebCoreSupport \
 	-I$(srcdir)/Source/WebKit2/WebProcess/WebCoreSupport/gtk \
 	-I$(srcdir)/Source/WebKit2/WebProcess/WebCoreSupport/soup \
@@ -101,6 +101,7 @@ libwebkit2gtk_@WEBKITGTK_API_MAJOR_VERSION@_@WEBKITGTK_API_MINOR_VERSION@_la_CPP
 	$(webcore_cppflags) \
 	$(webcoregtk_cppflags) \
 	$(javascriptcore_cppflags) \
+	$(CLUTTER_CFLAGS) \
 	$(COVERAGE_CFLAGS) \
 	$(GEOCLUE_CFLAGS) \
 	$(GLIB_CFLAGS) \
@@ -109,6 +110,7 @@ libwebkit2gtk_@WEBKITGTK_API_MAJOR_VERSION@_@WEBKITGTK_API_MINOR_VERSION@_la_CPP
 	$(LIBSOUP_CFLAGS) \
 	$(UNICODE_CFLAGS) \
 	$(XCOMPOSITE_CFLAGS) \
+	$(XDAMAGE_CFLAGS) \
 	$(XT_CFLAGS)
 
 libwebkit2gtk_@WEBKITGTK_API_MAJOR_VERSION@_@WEBKITGTK_API_MINOR_VERSION@_la_CXXFLAGS = \
@@ -162,6 +164,7 @@ libwebkit2gtk_@WEBKITGTK_API_MAJOR_VERSION@_@WEBKITGTK_API_MINOR_VERSION@_la_LIB
 	libjavascriptcoregtk-@WEBKITGTK_API_MAJOR_VERSION@.@WEBKITGTK_API_MINOR_VERSION@.la \
 	libWebCoreGtk.la \
 	$(CAIRO_LIBS) \
+	$(CLUTTER_LIBS) \
 	$(COVERAGE_LDFLAGS) \
 	$(FARSTREAM_LIBS) \
 	$(GAIL_LIBS) \
@@ -182,6 +185,7 @@ libwebkit2gtk_@WEBKITGTK_API_MAJOR_VERSION@_@WEBKITGTK_API_MINOR_VERSION@_la_LIB
 	$(UNICODE_LIBS) \
 	$(XRENDER_LIBS) \
 	$(XCOMPOSITE_LIBS) \
+	$(XDAMAGE_LIBS) \
 	$(XT_LIBS) \
 	$(ZLIB_LIBS)
 
@@ -425,7 +429,7 @@ Programs_WebKitPluginProcess_CPPFLAGS = \
 	-I$(srcdir)/Source/WebKit2/Platform \
 	-I$(srcdir)/Source/WebKit2/Platform/CoreIPC/ \
 	-I$(srcdir)/Source/WebKit2/PluginProcess/ \
-	-I$(srcdir)/Source/WebKit2/PluginProcess/gtk \
+	-I$(srcdir)/Source/WebKit2/PluginProcess/unix \
 	-I$(srcdir)/Source/WebKit2/Shared \
 	-I$(srcdir)/Source/WebKit2/Shared/Plugins \
 	-I$(srcdir)/Source/WebKit2/Shared/Plugins/Netscape/ \

@@ -33,6 +33,7 @@
 #include "JSCTypedArrayStubs.h"
 #include "JSFunction.h"
 #include "JSLock.h"
+#include "JSProxy.h"
 #include "JSString.h"
 #include "SamplingTool.h"
 #include <math.h>
@@ -176,8 +177,12 @@ public:
     {
         GlobalObject* object = new (NotNull, allocateCell<GlobalObject>(globalData.heap)) GlobalObject(globalData, structure);
         object->finishCreation(globalData, arguments);
+        globalData.heap.addFinalizer(object, destroy);
+        object->setGlobalThis(globalData, JSProxy::create(globalData, JSProxy::createStructure(globalData, object, object->prototype()), object));
         return object;
     }
+
+    static const bool needsDestruction = false;
 
     static const ClassInfo s_info;
     static const GlobalObjectMethodTable s_globalObjectMethodTable;
@@ -243,6 +248,7 @@ protected:
         putDirect(globalData, identifier, JSFunction::create(globalExec(), this, arguments, identifier.string(), function, NoIntrinsic, function));
     }
 };
+
 COMPILE_ASSERT(!IsInteger<GlobalObject>::value, WTF_IsInteger_GlobalObject_false);
 ASSERT_CLASS_FITS_IN_CELL(GlobalObject);
 

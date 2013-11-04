@@ -637,7 +637,7 @@ void DumpRenderTree::didReceiveTitleForFrame(const String& title, WebCore::Frame
         printf("%s - didReceiveTitle: %s\n", drtFrameDescription(frame).utf8().data(), title.utf8().data());
 
     if (gTestRunner->dumpTitleChanges())
-        printf("TITLE CHANGED: %s\n", title.utf8().data());
+        printf("TITLE CHANGED: '%s'\n", title.utf8().data());
 }
 
 // ChromeClient delegates.
@@ -664,8 +664,10 @@ void DumpRenderTree::addMessageToConsole(const String& message, unsigned int lin
 
 void DumpRenderTree::runJavaScriptAlert(const String& message)
 {
-    if (!testDone)
+    if (!testDone) {
         printf("ALERT: %s\n", message.utf8().data());
+        fflush(stdout);
+    }
 }
 
 bool DumpRenderTree::runJavaScriptConfirm(const String& message)

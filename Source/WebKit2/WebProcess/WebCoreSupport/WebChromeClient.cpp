@@ -263,7 +263,7 @@ void WebChromeClient::setResizable(bool resizable)
     m_page->send(Messages::WebPageProxy::SetIsResizable(resizable));
 }
 
-void WebChromeClient::addMessageToConsole(MessageSource, MessageType, MessageLevel, const String& message, unsigned int lineNumber, const String& sourceID)
+void WebChromeClient::addMessageToConsole(MessageSource, MessageType, MessageLevel, const String& message, unsigned int lineNumber, const String& /*sourceID*/)
 {
     // Notify the bundle client.
     m_page->injectedBundleUIClient().willAddMessageToConsole(m_page, message, lineNumber);
@@ -314,7 +314,7 @@ void WebChromeClient::runJavaScriptAlert(Frame* frame, const String& alertText)
     m_page->injectedBundleUIClient().willRunJavaScriptAlert(m_page, alertText, webFrame);
 
     unsigned syncSendFlags = (WebCore::AXObjectCache::accessibilityEnabled()) ? CoreIPC::SpinRunLoopWhileWaitingForReply : 0;
-    WebProcess::shared().connection()->sendSync(Messages::WebPageProxy::RunJavaScriptAlert(webFrame->frameID(), alertText), Messages::WebPageProxy::RunJavaScriptAlert::Reply(), m_page->pageID(), CoreIPC::Connection::DefaultTimeout, syncSendFlags);
+    WebProcess::shared().connection()->sendSync(Messages::WebPageProxy::RunJavaScriptAlert(webFrame->frameID(), alertText), Messages::WebPageProxy::RunJavaScriptAlert::Reply(), m_page->pageID(), CoreIPC::Connection::NoTimeout, syncSendFlags);
 }
 
 bool WebChromeClient::runJavaScriptConfirm(Frame* frame, const String& message)
@@ -326,7 +326,7 @@ bool WebChromeClient::runJavaScriptConfirm(Frame* frame, const String& message)
 
     unsigned syncSendFlags = (WebCore::AXObjectCache::accessibilityEnabled()) ? CoreIPC::SpinRunLoopWhileWaitingForReply : 0;
     bool result = false;
-    if (!WebProcess::shared().connection()->sendSync(Messages::WebPageProxy::RunJavaScriptConfirm(webFrame->frameID(), message), Messages::WebPageProxy::RunJavaScriptConfirm::Reply(result), m_page->pageID(), CoreIPC::Connection::DefaultTimeout, syncSendFlags))
+    if (!WebProcess::shared().connection()->sendSync(Messages::WebPageProxy::RunJavaScriptConfirm(webFrame->frameID(), message), Messages::WebPageProxy::RunJavaScriptConfirm::Reply(result), m_page->pageID(), CoreIPC::Connection::NoTimeout, syncSendFlags))
         return false;
 
     return result;
@@ -340,7 +340,7 @@ bool WebChromeClient::runJavaScriptPrompt(Frame* frame, const String& message, c
     m_page->injectedBundleUIClient().willRunJavaScriptPrompt(m_page, message, defaultValue, webFrame);
 
     unsigned syncSendFlags = (WebCore::AXObjectCache::accessibilityEnabled()) ? CoreIPC::SpinRunLoopWhileWaitingForReply : 0;
-    if (!WebProcess::shared().connection()->sendSync(Messages::WebPageProxy::RunJavaScriptPrompt(webFrame->frameID(), message, defaultValue), Messages::WebPageProxy::RunJavaScriptPrompt::Reply(result), m_page->pageID(), CoreIPC::Connection::DefaultTimeout, syncSendFlags))
+    if (!WebProcess::shared().connection()->sendSync(Messages::WebPageProxy::RunJavaScriptPrompt(webFrame->frameID(), message, defaultValue), Messages::WebPageProxy::RunJavaScriptPrompt::Reply(result), m_page->pageID(), CoreIPC::Connection::NoTimeout, syncSendFlags))
         return false;
 
     return !result.isNull();
@@ -428,7 +428,7 @@ PlatformPageClient WebChromeClient::platformPageClient() const
     return 0;
 }
 
-void WebChromeClient::contentsSizeChanged(Frame* frame, const IntSize& size) const
+void WebChromeClient::contentsSizeChanged(Frame* frame, const IntSize& /*size*/) const
 {
     if (!m_page->corePage()->settings()->frameFlatteningEnabled()) {
         WebFrame* largestFrame = findLargestFrameInFrameSet(m_page);
@@ -572,14 +572,14 @@ void WebChromeClient::populateVisitedLinks()
 {
 }
 
-FloatRect WebChromeClient::customHighlightRect(Node*, const AtomicString& type, const FloatRect& lineRect)
+FloatRect WebChromeClient::customHighlightRect(Node*, const AtomicString& /*type*/, const FloatRect& /*lineRect*/)
 {
     notImplemented();
     return FloatRect();
 }
 
-void WebChromeClient::paintCustomHighlight(Node*, const AtomicString& type, const FloatRect& boxRect, const FloatRect& lineRect,
-                                  bool behindText, bool entireLine)
+void WebChromeClient::paintCustomHighlight(Node*, const AtomicString& /*type*/, const FloatRect& /*boxRect*/, const FloatRect& /*lineRect*/, 
+                                           bool /*behindText*/, bool /*entireLine*/)
 {
     notImplemented();
 }
@@ -658,7 +658,7 @@ void WebChromeClient::formStateDidChange(const Node*)
 
 bool WebChromeClient::selectItemWritingDirectionIsNatural()
 {
-#if PLATFORM(WIN)
+#if PLATFORM(WIN) || PLATFORM(EFL)
     return true;
 #else
     return false;
@@ -691,6 +691,11 @@ PassRefPtr<WebCore::SearchPopupMenu> WebChromeClient::createSearchPopupMenu(WebC
 }
 
 #if USE(ACCELERATED_COMPOSITING)
+GraphicsLayerFactory* WebChromeClient::graphicsLayerFactory() const
+{
+    return m_page->drawingArea()->graphicsLayerFactory();
+}
+
 void WebChromeClient::attachRootGraphicsLayer(Frame*, GraphicsLayer* layer)
 {
     if (layer)
@@ -735,7 +740,7 @@ void WebChromeClient::setLastSetCursorToCurrentCursor()
 #endif
 
 #if ENABLE(FULLSCREEN_API)
-bool WebChromeClient::supportsFullScreenForElement(const WebCore::Element* element, bool withKeyboard)
+bool WebChromeClient::supportsFullScreenForElement(const WebCore::Element*, bool withKeyboard)
 {
     return m_page->fullScreenManager()->supportsFullScreen(withKeyboard);
 }

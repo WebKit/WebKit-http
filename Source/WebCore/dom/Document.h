@@ -78,6 +78,7 @@ class DocumentFragment;
 class DocumentLoader;
 class DocumentMarkerController;
 class DocumentParser;
+class DocumentStyleSheetCollection;
 class DocumentType;
 class DocumentWeakReference;
 class DynamicNodeListCacheBase;
@@ -89,7 +90,6 @@ class Event;
 class EventListener;
 class FloatRect;
 class FloatQuad;
-class FontData;
 class FormController;
 class Frame;
 class FrameView;
@@ -358,7 +358,6 @@ public:
     bool cssStickyPositionEnabled() const;
     bool cssRegionsEnabled() const;
 #if ENABLE(CSS_REGIONS)
-    PassRefPtr<WebKitNamedFlow> webkitGetFlowByName(const String&);
     PassRefPtr<DOMNamedFlowCollection> webkitGetNamedFlows();
 #endif
 
@@ -485,34 +484,14 @@ public:
         return m_styleResolver.get();
     }
 
-    /**
-     * Updates the pending sheet count and then calls updateActiveStylesheets.
-     */
-    enum RemovePendingSheetNotificationType {
-        RemovePendingSheetNotifyImmediately,
-        RemovePendingSheetNotifyLater
-    };
-
-    void removePendingSheet(RemovePendingSheetNotificationType = RemovePendingSheetNotifyImmediately);
     void notifyRemovePendingSheetIfNeeded();
 
-    /**
-     * This method returns true if all top-level stylesheets have loaded (including
-     * any @imports that they may be loading).
-     */
-    bool haveStylesheetsLoaded() const
-    {
-        return m_pendingStylesheets <= 0 || m_ignorePendingStylesheets;
-    }
+    bool haveStylesheetsLoaded() const;
 
-    /**
-     * Increments the number of pending sheets.  The <link> elements
-     * invoke this to add themselves to the loading list.
-     */
-    void addPendingSheet() { m_pendingStylesheets++; }
+    // This is a DOM function.
+    StyleSheetList* styleSheets();
 
-    void addStyleSheetCandidateNode(Node*, bool createdByParser);
-    void removeStyleSheetCandidateNode(Node*);
+    DocumentStyleSheetCollection* styleSheetCollection() { return m_styleSheetCollection.get(); }
 
     bool gotoAnchorNeededAfterStylesheetsLoad() { return m_gotoAnchorNeededAfterStylesheetsLoad; }
     void setGotoAnchorNeededAfterStylesheetsLoad(bool b) { m_gotoAnchorNeededAfterStylesheetsLoad = b; }
@@ -530,17 +509,6 @@ public:
 
     void evaluateMediaQueryList();
 
-    bool usesSiblingRules() const { return m_usesSiblingRules || m_usesSiblingRulesOverride; }
-    void setUsesSiblingRules(bool b) { m_usesSiblingRulesOverride = b; }
-    bool usesFirstLineRules() const { return m_usesFirstLineRules; }
-    bool usesFirstLetterRules() const { return m_usesFirstLetterRules; }
-    void setUsesFirstLetterRules(bool b) { m_usesFirstLetterRules = b; }
-    bool usesBeforeAfterRules() const { return m_usesBeforeAfterRules || m_usesBeforeAfterRulesOverride; }
-    void setUsesBeforeAfterRules(bool b) { m_usesBeforeAfterRulesOverride = b; }
-    bool usesRemUnits() const { return m_usesRemUnits; }
-    bool usesLinkRules() const { return linkColor() != visitedLinkColor() || m_usesLinkRules; }
-    void setUsesLinkRules(bool b) { m_usesLinkRules = b; }
-
     // Never returns 0.
     FormController* formController();
     Vector<String> formElementsState() const;
@@ -556,7 +524,7 @@ public:
     PassRefPtr<NodeIterator> createNodeIterator(Node* root, unsigned whatToShow,
         PassRefPtr<NodeFilter>, bool expandEntityReferences, ExceptionCode&);
 
-    PassRefPtr<TreeWalker> createTreeWalker(Node* root, unsigned whatToShow, 
+    PassRefPtr<TreeWalker> createTreeWalker(Node* root, unsigned whatToShow,
         PassRefPtr<NodeFilter>, bool expandEntityReferences, ExceptionCode&);
 
     // Special support for editing
@@ -570,8 +538,6 @@ public:
     void updateLayoutIgnorePendingStylesheets();
     PassRefPtr<RenderStyle> styleForElementIgnoringPendingStylesheets(Element*);
     PassRefPtr<RenderStyle> styleForPage(int pageIndex);
-
-    void registerCustomFont(PassOwnPtr<FontData>);
 
     // Returns true if page box (margin boxes and page borders) is visible.
     bool isPageBoxVisible(int pageIndex);
@@ -649,17 +615,6 @@ public:
     bool canNavigate(Frame* targetFrame);
     Frame* findUnsafeParentScrollPropagationBoundary();
 
-    CSSStyleSheet* pageUserSheet();
-    void clearPageUserSheet();
-    void updatePageUserSheet();
-
-    const Vector<RefPtr<CSSStyleSheet> >* pageGroupUserSheets() const;
-    void clearPageGroupUserSheets();
-    void updatePageGroupUserSheets();
-
-    const Vector<RefPtr<CSSStyleSheet> >* documentUserSheets() const { return m_userSheets.get(); }
-    void addUserSheet(PassRefPtr<StyleSheetContents> userSheet);
-
     CSSStyleSheet* elementSheet();
     
     virtual PassRefPtr<DocumentParser> createParser();
@@ -716,8 +671,6 @@ public:
     
     MouseEventWithHitTestResults prepareMouseEvent(const HitTestRequest&, const LayoutPoint&, const PlatformMouseEvent&);
 
-    StyleSheetList* styleSheets();
-
     /* Newly proposed CSS3 mechanism for selecting alternate
        stylesheets using the DOM. May be subject to change as
        spec matures. - dwh
@@ -756,7 +709,8 @@ public:
     void scheduleForcedStyleRecalc();
     void scheduleStyleRecalc();
     void unscheduleStyleRecalc();
-    bool isPendingStyleRecalc() const;
+    bool hasPendingStyleRecalc() const;
+    bool hasPendingForcedStyleRecalc() const;
     void styleRecalcTimerFired(Timer<Document>*);
 
     void registerNodeListCache(DynamicNodeListCacheBase*);
@@ -800,20 +754,20 @@ public:
     // keep track of what types of event listeners are registered, so we don't
     // dispatch events unnecessarily
     enum ListenerType {
-        DOMSUBTREEMODIFIED_LISTENER          = 0x01,
-        DOMNODEINSERTED_LISTENER             = 0x02,
-        DOMNODEREMOVED_LISTENER              = 0x04,
-        DOMNODEREMOVEDFROMDOCUMENT_LISTENER  = 0x08,
-        DOMNODEINSERTEDINTODOCUMENT_LISTENER = 0x10,
-        DOMATTRMODIFIED_LISTENER             = 0x20,
-        DOMCHARACTERDATAMODIFIED_LISTENER    = 0x40,
-        OVERFLOWCHANGED_LISTENER             = 0x80,
-        ANIMATIONEND_LISTENER                = 0x100,
-        ANIMATIONSTART_LISTENER              = 0x200,
-        ANIMATIONITERATION_LISTENER          = 0x400,
-        TRANSITIONEND_LISTENER               = 0x800,
-        BEFORELOAD_LISTENER                  = 0x1000,
-        SCROLL_LISTENER                      = 0x2000
+        DOMSUBTREEMODIFIED_LISTENER          = 1,
+        DOMNODEINSERTED_LISTENER             = 1 << 1,
+        DOMNODEREMOVED_LISTENER              = 1 << 2,
+        DOMNODEREMOVEDFROMDOCUMENT_LISTENER  = 1 << 3,
+        DOMNODEINSERTEDINTODOCUMENT_LISTENER = 1 << 4,
+        DOMCHARACTERDATAMODIFIED_LISTENER    = 1 << 5,
+        OVERFLOWCHANGED_LISTENER             = 1 << 6,
+        ANIMATIONEND_LISTENER                = 1 << 7,
+        ANIMATIONSTART_LISTENER              = 1 << 8,
+        ANIMATIONITERATION_LISTENER          = 1 << 9,
+        TRANSITIONEND_LISTENER               = 1 << 10,
+        BEFORELOAD_LISTENER                  = 1 << 11,
+        SCROLL_LISTENER                      = 1 << 12
+        // 3 bits remaining
     };
 
     bool hasListenerType(ListenerType listenerType) const { return (m_listenerTypes & listenerType); }
@@ -974,7 +928,8 @@ public:
     enum PendingSheetLayout { NoLayoutWithPendingSheets, DidLayoutWithPendingSheets, IgnoreLayoutWithPendingSheets };
 
     bool didLayoutWithPendingStylesheets() const { return m_pendingSheetLayout == DidLayoutWithPendingSheets; }
-    
+
+    bool hasNodesWithPlaceholderStyle() const { return m_hasNodesWithPlaceholderStyle; }
     void setHasNodesWithPlaceholderStyle() { m_hasNodesWithPlaceholderStyle = true; }
 
     const Vector<IconURL>& iconURLs();
@@ -1194,7 +1149,15 @@ public:
 
     PassRefPtr<ElementAttributeData> cachedImmutableAttributeData(const Element*, const Vector<Attribute>&);
 
-    Localizer& getLocalizer(const AtomicString& locale);
+    void didRemoveAllPendingStylesheet();
+    void setNeedsNotifyRemoveAllPendingStylesheet() { m_needsNotifyRemoveAllPendingStylesheet = true; }
+    void clearStyleResolver();
+    void notifySeamlessChildDocumentsOfStylesheetUpdate() const;
+
+    bool inStyleRecalc() { return m_inStyleRecalc; }
+
+    // Return a Localizer for the default locale if the argument is null or empty.
+    Localizer& getCachedLocalizer(const AtomicString& locale = nullAtom);
 
 protected:
     Document(Frame*, const KURL&, bool isXHTML, bool isHTML);
@@ -1241,21 +1204,8 @@ private:
     void buildAccessKeyMap(TreeScope* root);
 
     void createStyleResolver();
-    void clearStyleResolver();
-    void combineCSSFeatureFlags();
-    void resetCSSFeatureFlags();
-    
-    bool updateActiveStylesheets(StyleResolverUpdateFlag);
-    void collectActiveStylesheets(Vector<RefPtr<StyleSheet> >&);
-    bool testAddedStylesheetRequiresStyleRecalc(StyleSheetContents*);
-    void analyzeStylesheetChange(StyleResolverUpdateFlag, const Vector<RefPtr<StyleSheet> >& newStylesheets, bool& requiresStyleResolverReset, bool& requiresFullStyleRecalc);
-    void didRemoveAllPendingStylesheet();
-    void setNeedsNotifyRemoveAllPendingStylesheet() { m_needsNotifyRemoveAllPendingStylesheet = true; }
 
     void seamlessParentUpdatedStylesheets();
-    void notifySeamlessChildDocumentsOfStylesheetUpdate() const;
-
-    void deleteCustomFonts();
 
     PassRefPtr<NodeList> handleZeroPadding(const HitTestRequest&, HitTestResult&) const;
 
@@ -1290,7 +1240,16 @@ private:
     OwnPtr<StyleResolver> m_styleResolver;
     bool m_didCalculateStyleResolver;
     bool m_hasDirtyStyleResolver;
-    Vector<OwnPtr<FontData> > m_customFonts;
+    bool m_hasNodesWithPlaceholderStyle;
+    bool m_needsNotifyRemoveAllPendingStylesheet;
+    // But sometimes you need to ignore pending stylesheet count to
+    // force an immediate layout when requested by JS.
+    bool m_ignorePendingStylesheets;
+
+    // If we do ignore the pending stylesheet count, then we need to add a boolean
+    // to track that this happened so that we can do a full repaint when the stylesheets
+    // do eventually load.
+    PendingSheetLayout m_pendingSheetLayout;
 
     Frame* m_frame;
     RefPtr<DOMWindow> m_domWindow;
@@ -1323,29 +1282,7 @@ private:
     RefPtr<DocumentType> m_docType;
     OwnPtr<DOMImplementation> m_implementation;
 
-    // Track the number of currently loading top-level stylesheets needed for rendering.
-    // Sheets loaded using the @import directive are not included in this count.
-    // We use this count of pending sheets to detect when we can begin attaching
-    // elements and when it is safe to execute scripts.
-    int m_pendingStylesheets;
-
-    // But sometimes you need to ignore pending stylesheet count to
-    // force an immediate layout when requested by JS.
-    bool m_ignorePendingStylesheets : 1;
-    bool m_needsNotifyRemoveAllPendingStylesheet : 1;
-
-    // If we do ignore the pending stylesheet count, then we need to add a boolean
-    // to track that this happened so that we can do a full repaint when the stylesheets
-    // do eventually load.
-    PendingSheetLayout m_pendingSheetLayout;
-    
-    bool m_hasNodesWithPlaceholderStyle;
-
     RefPtr<CSSStyleSheet> m_elemSheet;
-    RefPtr<CSSStyleSheet> m_pageUserSheet;
-    mutable OwnPtr<Vector<RefPtr<CSSStyleSheet> > > m_pageGroupUserSheets;
-    OwnPtr<Vector<RefPtr<CSSStyleSheet> > > m_userSheets;
-    mutable bool m_pageGroupUserSheetCacheValid;
 
     bool m_printing;
     bool m_paginatedForScreen;
@@ -1374,20 +1311,15 @@ private:
     MutationObserverOptions m_mutationObserverTypes;
 #endif
 
-    RefPtr<StyleSheetList> m_styleSheets; // All of the stylesheets that are currently in effect for our media type and stylesheet set.
-    bool m_hadActiveLoadingStylesheet;
-    
-    typedef ListHashSet<Node*, 32> StyleSheetCandidateListHashSet;
-    StyleSheetCandidateListHashSet m_styleSheetCandidateNodes; // All of the nodes that could potentially provide stylesheets to the document (<link>, <style>, <?xml-stylesheet>)
+
+    OwnPtr<DocumentStyleSheetCollection> m_styleSheetCollection;
+    RefPtr<StyleSheetList> m_styleSheetList;
 
     OwnPtr<FormController> m_formController;
 
     Color m_linkColor;
     Color m_visitedLinkColor;
     Color m_activeLinkColor;
-
-    String m_preferredStylesheetSet;
-    String m_selectedStylesheetSet;
 
     bool m_loadingSheet;
     bool m_visuallyOrdered;
@@ -1399,14 +1331,6 @@ private:
     bool m_inStyleRecalc;
     bool m_closeAfterStyleRecalc;
 
-    bool m_usesSiblingRules;
-    bool m_usesSiblingRulesOverride;
-    bool m_usesFirstLineRules;
-    bool m_usesFirstLetterRules;
-    bool m_usesBeforeAfterRules;
-    bool m_usesBeforeAfterRulesOverride;
-    bool m_usesRemUnits;
-    bool m_usesLinkRules;
     bool m_gotoAnchorNeededAfterStylesheetsLoad;
     bool m_isDNSPrefetchEnabled;
     bool m_haveExplicitlyDisabledDNSPrefetch;

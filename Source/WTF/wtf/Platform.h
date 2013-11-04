@@ -548,9 +548,6 @@
 #define WTF_USE_SCROLLBAR_PAINTER 1
 #define HAVE_XPC 1
 #endif
-#if !defined(ENABLE_JAVA_BRIDGE)
-#define ENABLE_JAVA_BRIDGE 1
-#endif
 #if !defined(ENABLE_DASHBOARD_SUPPORT)
 #define ENABLE_DASHBOARD_SUPPORT 1
 #endif
@@ -599,7 +596,6 @@
 #define ENABLE_GEOLOCATION 1
 #define ENABLE_ICONDATABASE 0
 #define ENABLE_INSPECTOR 1
-#define ENABLE_JAVA_BRIDGE 0
 #define ENABLE_NETSCAPE_PLUGIN_API 0
 #define ENABLE_ORIENTATION_EVENTS 1
 #define ENABLE_REPAINT_THROTTLING 1
@@ -612,11 +608,9 @@
 #define WTF_USE_PTHREADS 1
 
 #if PLATFORM(IOS_SIMULATOR)
-    #define ENABLE_CLASSIC_INTERPRETER 1
     #define ENABLE_JIT 0
     #define ENABLE_YARR_JIT 0
 #else
-    #define ENABLE_CLASSIC_INTERPRETER 0
     #define ENABLE_JIT 1
     #define ENABLE_LLINT 1
     #define ENABLE_YARR_JIT 1
@@ -649,7 +643,9 @@
 
 #if PLATFORM(WX)
 #if !CPU(PPC)
+#if !defined(ENABLE_ASSEMBLER)
 #define ENABLE_ASSEMBLER 1
+#endif
 #define ENABLE_JIT 1
 #endif
 #define ENABLE_GLOBAL_FASTMALLOC_NEW 0
@@ -726,7 +722,6 @@
 #define HAVE_LANGINFO_H 1
 #define HAVE_MMAP 1
 #define HAVE_MERGESORT 1
-#define HAVE_SBRK 1
 #define HAVE_STRINGS_H 1
 #define HAVE_SYS_PARAM_H 1
 #define HAVE_SYS_TIME_H 1
@@ -767,7 +762,6 @@
 #define HAVE_MMAP 1
 #define HAVE_MADV_FREE_REUSE 1
 #define HAVE_MADV_FREE 1
-#define HAVE_SBRK 1
 #define HAVE_STRINGS_H 1
 #define HAVE_SYS_PARAM_H 1
 #define HAVE_SYS_TIME_H 1
@@ -777,7 +771,6 @@
 
 #define HAVE_ERRNO_H 1
 #define HAVE_NMAP 1
-#define HAVE_SBRK 1
 #define HAVE_STRINGS_H 1
 #define HAVE_SYS_PARAM_H 1
 #define HAVE_SYS_TIME_H 1
@@ -792,7 +785,6 @@
 #define HAVE_LANGINFO_H 1
 #endif
 #define HAVE_MMAP 1
-#define HAVE_SBRK 1
 #define HAVE_STRINGS_H 1
 #define HAVE_SYS_PARAM_H 1
 #define HAVE_SYS_TIME_H 1
@@ -911,6 +903,7 @@
 /* JIT is not implemented for Windows 64-bit */
 #if !defined(ENABLE_JIT) && OS(WINDOWS) && CPU(X86_64)
 #define ENABLE_JIT 0
+#define ENABLE_YARR_JIT 0
 #endif
 
 #if !defined(ENABLE_JIT) && CPU(SH4) && PLATFORM(QT)
@@ -937,17 +930,25 @@
 #define ENABLE_DISASSEMBLER 1
 #endif
 
+/* On the GTK+ port we take an extra precaution for LLINT support:
+ * We disable it on x86 builds if the build target doesn't support SSE2
+ * instructions (LLINT requires SSE2 on this platform). */
+#if !defined(ENABLE_LLINT) && PLATFORM(GTK) && CPU(X86) && COMPILER(GCC) \
+    && !defined(__SSE2__)
+#define ENABLE_LLINT 0
+#endif
+
 /* On some of the platforms where we have a JIT, we want to also have the 
    low-level interpreter. */
 #if !defined(ENABLE_LLINT) \
     && ENABLE(JIT) \
     && (OS(DARWIN) || OS(LINUX)) \
-    && (PLATFORM(MAC) || PLATFORM(IOS) || PLATFORM(GTK)) \
+    && (PLATFORM(MAC) || PLATFORM(IOS) || PLATFORM(GTK) || (PLATFORM(QT) && OS(LINUX))) \
     && (CPU(X86) || CPU(X86_64) || CPU(ARM_THUMB2))
 #define ENABLE_LLINT 1
 #endif
 
-#if !defined(ENABLE_DFG_JIT) && ENABLE(JIT)
+#if !defined(ENABLE_DFG_JIT) && ENABLE(JIT) && !COMPILER(MSVC)
 /* Enable the DFG JIT on X86 and X86_64.  Only tested on Mac and GNU/Linux. */
 #if (CPU(X86) || CPU(X86_64)) && (PLATFORM(MAC) || OS(LINUX))
 #define ENABLE_DFG_JIT 1
@@ -960,6 +961,22 @@
 #if CPU(ARM_TRADITIONAL)
 #define ENABLE_DFG_JIT 1
 #endif
+#endif
+
+/* If the jit is not available, enable the LLInt C Loop: */
+#if !ENABLE(JIT)
+#undef ENABLE_LLINT        /* Undef so that we can redefine it. */
+#undef ENABLE_LLINT_C_LOOP /* Undef so that we can redefine it. */
+#undef ENABLE_DFG_JIT      /* Undef so that we can redefine it. */
+#define ENABLE_LLINT 1
+#define ENABLE_LLINT_C_LOOP 1
+#define ENABLE_DFG_JIT 0
+#endif
+
+/* Do a sanity check to make sure that we at least have one execution engine in
+   use: */
+#if !(ENABLE(JIT) || ENABLE(LLINT))
+#error You have to have at least one execution model enabled to build JSC
 #endif
 
 /* Profiling of types and values used by JIT code. DFG_JIT depends on it, but you
@@ -984,29 +1001,6 @@
 #define ENABLE_WRITE_BARRIER_PROFILING 0
 #endif
 
-/* Ensure that either the JIT or the interpreter has been enabled. */
-#if !defined(ENABLE_CLASSIC_INTERPRETER) && !ENABLE(JIT) && !ENABLE(LLINT)
-#define ENABLE_CLASSIC_INTERPRETER 1
-#endif
-
-/* If the jit and classic interpreter is not available, enable the LLInt C Loop: */
-#if !ENABLE(JIT) && !ENABLE(CLASSIC_INTERPRETER)
-    #define ENABLE_LLINT 1
-    #define ENABLE_LLINT_C_LOOP 1
-    #define ENABLE_DFG_JIT 0
-#endif
-
-/* Do a sanity check to make sure that we at least have one execution engine in
-   use: */
-#if !(ENABLE(JIT) || ENABLE(CLASSIC_INTERPRETER) || ENABLE(LLINT))
-#error You have to have at least one execution model enabled to build JSC
-#endif
-/* Do a sanity check to make sure that we don't have both the classic interpreter
-   and the llint C loop in use at the same time: */
-#if ENABLE(CLASSIC_INTERPRETER) && ENABLE(LLINT_C_LOOP)
-#error You cannot build both the classic interpreter and the llint C loop together
-#endif
-
 /* Configure the JIT */
 #if CPU(X86) && COMPILER(MSVC)
 #define JSC_HOST_CALL __fastcall
@@ -1020,12 +1014,9 @@
 #if COMPILER(GCC) || (RVCT_VERSION_AT_LEAST(4, 0, 0, 0) && defined(__GNUC__))
 #define HAVE_COMPUTED_GOTO 1
 #endif
-#if HAVE(COMPUTED_GOTO) && ENABLE(CLASSIC_INTERPRETER)
-#define ENABLE_COMPUTED_GOTO_CLASSIC_INTERPRETER 1
-#endif
 
 /* Determine if we need to enable Computed Goto Opcodes or not: */
-#if (HAVE(COMPUTED_GOTO) && ENABLE(LLINT)) || ENABLE(COMPUTED_GOTO_CLASSIC_INTERPRETER)
+#if HAVE(COMPUTED_GOTO) && ENABLE(LLINT)
 #define ENABLE_COMPUTED_GOTO_OPCODES 1
 #endif
 
@@ -1040,8 +1031,15 @@
 #define ENABLE_YARR_JIT_DEBUG 0
 #endif
 
+/* If either the JIT or the RegExp JIT is enabled, then the Assembler must be
+   enabled as well: */
 #if ENABLE(JIT) || ENABLE(YARR_JIT)
+#if defined(ENABLE_ASSEMBLER) && !ENABLE_ASSEMBLER
+#error "Cannot enable the JIT or RegExp JIT without enabling the Assembler"
+#else
+#undef ENABLE_ASSEMBLER
 #define ENABLE_ASSEMBLER 1
+#endif
 #endif
 
 /* Pick which allocator to use; we only need an executable allocator if the assembler is compiled in.
@@ -1210,10 +1208,6 @@
 
 #if !defined(WTF_USE_ZLIB) && !PLATFORM(QT)
 #define WTF_USE_ZLIB 1
-#endif
-
-#if PLATFORM(GTK)
-#define WTF_DEPRECATED_STRING_OPERATORS
 #endif
 
 #if PLATFORM(QT)

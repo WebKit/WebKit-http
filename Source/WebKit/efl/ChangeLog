@@ -1,3 +1,517 @@
+2012-10-03  Ryuan Choi  <ryuan.choi@samsung.com>
+
+        [EFL] Default.edj should be generated although ENABLE_WEBKIT disabled.
+        https://bugs.webkit.org/show_bug.cgi?id=97753
+
+        Reviewed by Laszlo Gombos.
+
+        default.edj is used in both webkit/efl and webkit2/efl.
+        However, it has been generated only when ENABLE_WEBKIT is enabled.
+
+        This patch separates the script which generates default.edj
+        from source/webkit/platformefl.cmake.
+
+        * DefaultTheme/CMakeLists.txt:
+        Extracted from Source/WebKit/PlatformEfl.cmake and sanitized.
+
+2012-10-03  Christophe Dumez  <christophe.dumez@intel.com>
+
+        [EFL] Enable use of X11 in DumpRenderTree / WebKitTestRunner
+        https://bugs.webkit.org/show_bug.cgi?id=98231
+
+        Reviewed by Gyuyoung Kim.
+
+        Initialize ecore_x library in ewk_main since it is used by
+        WebKitEFL.
+
+        * ewk/ewk_main.cpp:
+        (ewk_init):
+        (ewk_shutdown):
+
+2012-10-03  Kangil Han  <kangil.han@samsung.com>
+
+        Fix unused parameter compile warnings.
+        https://bugs.webkit.org/show_bug.cgi?id=98243
+
+        Reviewed by Alexey Proskuryakov.
+
+        Fixed unused parameter compile warning by removing page parameter name and UNUSED_PARAM usage.
+
+        * WebCoreSupport/PlatformStrategiesEfl.cpp:
+        (PlatformStrategiesEfl::getPluginInfo):
+
+2012-10-03  Jinwoo Song  <jinwoo7.song@samsung.com>
+
+        [EFL] Change the reversed expected and actual parameter in WebKit1 unit tests
+        https://bugs.webkit.org/show_bug.cgi?id=98276
+
+        Reviewed by Laszlo Gombos.
+
+        Expected value should be at first and actual value be followed in ASSERT_STREQ().
+
+        * tests/test_ewk_view.cpp:
+        (TEST_F):
+
+2012-10-02  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Add API to get the web view that initiated a custom URI request to WebKit2 GTK+
+        https://bugs.webkit.org/show_bug.cgi?id=97895
+
+        Reviewed by Martin Robinson.
+
+        * WebCoreSupport/FrameNetworkingContextEfl.cpp:
+        (WebCore::FrameNetworkingContextEfl::initiatingPageID): Stub
+        implementation.
+        * WebCoreSupport/FrameNetworkingContextEfl.h:
+        (FrameNetworkingContextEfl): Added.
+
+2012-10-02  Krzysztof Czech  <k.czech@samsung.com>
+
+        [EFL][UT] Refactoring an implementation of testing framework for wk1.
+        https://bugs.webkit.org/show_bug.cgi?id=94925
+
+        Reviewed by Gyuyoung Kim.
+
+        The reason of changing, was to adjust current implementation to use gtest features
+        related to cleaning (SetUp, TearDown), cleaning code in terms of useless methods
+        and lastly to make framework easier to use.
+
+        * tests/UnitTestUtils/EWKTestBase.cpp:
+        (EWKUnitTests::EWKTestBase::EWKTestBase):
+        (EWKUnitTests::EWKTestBase::webView): Returns current webview.
+        (EWKUnitTests::EWKTestBase::SetUp):
+        Before test is started, SetUp is called.
+        Used this to initialize test view.
+        (EWKUnitTests::EWKTestBase::onLoadFinished):
+        (EWKUnitTests::EWKTestBase::waitUntilLoadFinished): It waits till test page will be properly loaded.
+        (EWKUnitTests::EWKTestBase::loadUrl): Starts loading test page.
+        * tests/UnitTestUtils/EWKTestBase.h:
+        * tests/UnitTestUtils/EWKTestEnvironment.cpp:
+        Used to have global SetUp and TearDown.
+        Global SetUp starts initialization of webkit wherease
+        global TearDown shuts it down. Generally we would like to have
+        only one initialization of webkit while tests are executed.
+        (EWKUnitTests):
+        (EWKUnitTests::EWKTestEnvironment::EWKTestEnvironment):
+        (EWKUnitTests::EWKTestEnvironment::SetUp): Starts initialization of webkit.
+        (EWKUnitTests::EWKTestEnvironment::TearDown): Shuts down of webkit.
+        * tests/UnitTestUtils/EWKTestEnvironment.h:
+        (EWKUnitTests):
+        (EWKTestEnvironment):
+        (EWKUnitTests::EWKTestEnvironment::useX11Window):
+        * tests/UnitTestUtils/EWKTestView.cpp:
+        (EWKUnitTests::EWKTestView::EWKTestView):
+        (EWKUnitTests::EWKTestView::init): Starts initialization of test view.
+        * tests/UnitTestUtils/EWKTestView.h:
+        (EWKTestView):
+        * tests/test_ewk_view.cpp: adjusted current unit tests to new implementation.
+        (TEST_F):
+        * tests/test_runner.cpp: entry point of all tests.
+        (parseCustomArguments):
+        (main):
+
+2012-10-01  Brady Eidson  <beidson@apple.com>
+
+        Remove the Safari 2 -> Safari 3 icon database import code.
+        https://bugs.webkit.org/show_bug.cgi?id=98113
+
+        Reviewed by Maciej Stachowiak.
+
+        Nuke the performImport() IconDatabaseClient method.
+
+        * WebCoreSupport/IconDatabaseClientEfl.cpp:
+        * WebCoreSupport/IconDatabaseClientEfl.h:
+
+2012-09-28  Mikhail Pozdnyakov  <mikhail.pozdnyakov@intel.com>
+
+        Code inside FrameLoaderClient::canShowMIMEType() implementations can be shared among different WK ports
+        https://bugs.webkit.org/show_bug.cgi?id=97547
+
+        Reviewed by Adam Barth.
+
+        Newly added WebCore::MIMETypeRegistry::canShowMIMEType() function is used
+        inside WebCore::FrameLoaderClientEfl::canShowMIMEType().
+
+        * WebCoreSupport/FrameLoaderClientEfl.cpp:
+        (WebCore::FrameLoaderClientEfl::canShowMIMEType):
+
+2012-09-28  Mikhail Pozdnyakov  <mikhail.pozdnyakov@intel.com>
+
+        [EFL][DRT] EFL DRT should disable visited links tracking by default
+        https://bugs.webkit.org/show_bug.cgi?id=97881
+
+        Reviewed by Kenneth Rohde Christiansen.
+
+        Added aux DumpRenderTreeSupportEfl::setShouldTrackVisitedLinks() function.
+
+        * WebCoreSupport/DumpRenderTreeSupportEfl.cpp:
+        (DumpRenderTreeSupportEfl::setShouldTrackVisitedLinks):
+        * WebCoreSupport/DumpRenderTreeSupportEfl.h:
+
+2012-09-27  Christophe Dumez  <christophe.dumez@intel.com>
+
+        [EFL] No way to exit video fullscreen mode once entered
+        https://bugs.webkit.org/show_bug.cgi?id=97631
+
+        Reviewed by Kenneth Rohde Christiansen.
+
+        Fix default theme so that we have 2 fullscreen buttons, one
+        to enter fullscreen mode and another to exit it.
+
+        New icon by Alexander Shalamov.
+
+        * DefaultTheme/widget/mediacontrol/fullscreenbutton/enterfullscreenbutton.png: Added.
+        * DefaultTheme/widget/mediacontrol/fullscreenbutton/exitfullscreenbutton.png: Added.
+        * DefaultTheme/widget/mediacontrol/fullscreenbutton/fullscreen_button.edc:
+        * DefaultTheme/widget/mediacontrol/fullscreenbutton/fullscreenbutton.png: Removed.
+
+2012-09-26  Jinwoo Song  <jinwoo7.song@samsung.com>
+
+        [EFL] Fix the typo in the ewk_view_fullscreen_exit()
+        https://bugs.webkit.org/show_bug.cgi?id=97635
+
+        Reviewed by Gyuyoung Kim.
+
+        Fix the silly typo in the ewk_view_fullscreen_exit() API.
+
+        * ewk/ewk_view.cpp:
+        (ewk_view_fullscreen_exit):
+
+2012-09-25  Jinwoo Song  <jinwoo7.song@samsung.com>
+
+        [EFL] Add fullscreen set/get APIs and callbacks
+        https://bugs.webkit.org/show_bug.cgi?id=97421
+
+        Reviewed by Gyuyoung Kim.
+
+        Add setting APIs for JavaScript Fullscreen API and also add two callbacks to ewk_view API,
+        so that UI could customise behavior when fullscreen mode is requested.
+
+        * WebCoreSupport/ChromeClientEfl.cpp:
+        (WebCore::ChromeClientEfl::enterFullScreenForElement):
+        (WebCore::ChromeClientEfl::exitFullScreenForElement):
+        * ewk/ewk_view.cpp:
+        (_Ewk_View_Private_Data):
+        (_ewk_view_priv_new):
+        (ewk_view_setting_enable_fullscreen_get):
+        (ewk_view_setting_enable_fullscreen_set):
+        (ewk_view_fullscreen_enter):
+        (ewk_view_fullscreen_exit):
+        * ewk/ewk_view.h:
+        * ewk/ewk_view_private.h:
+        * tests/test_ewk_view.cpp:
+        (ewkViewEnableFullscreenCb):
+        (TEST):
+
+2012-09-25  Beth Dakin  <bdakin@apple.com>
+
+        https://bugs.webkit.org/show_bug.cgi?id=95397
+        Need to merge didFirstVisuallyNonEmptyLayout and 
+        didNewFirstVisuallyNonEmptyLayout
+        -and corresponding-
+        <rdar://problem/10791680>
+
+        Reviewed by Sam Weinig.
+
+        Remove dispatchDidFirstLayout, 
+        dispatchDidFirstVisuallyNonEmptyLayout, and 
+        dispatchDidNewFirstVisuallyNonEmptyLayout. Their functionality 
+        is now replaced by dispatchDidLayout(LayoutMilestoneOptions)
+        * WebCoreSupport/FrameLoaderClientEfl.cpp:
+        (WebCore::FrameLoaderClientEfl::dispatchDidLayout):
+        * WebCoreSupport/FrameLoaderClientEfl.h:
+        (FrameLoaderClientEfl):
+
+        It is now necessary to opt into getting any of the 
+        "layout milestone" notifications.
+        * ewk/ewk_view.cpp:
+        (_ewk_view_priv_new):
+
+2012-09-24  Dominik Röttsches  <dominik.rottsches@intel.com>
+
+        [EFL][DRT] Enable Regions support
+        https://bugs.webkit.org/show_bug.cgi?id=83897
+
+        Reviewed by Kenneth Rohde Christiansen.
+
+        Activating CSS regions by default for EWK views.
+
+        * ewk/ewk_view.cpp: Switch CSS regions on by default.
+        (_ewk_view_priv_new):
+
+2012-09-23  Byungwoo Lee  <bw80.lee@gmail.com>
+
+        Fix build warnings : -Wunused-parameter, -Wparentheses, -Wuninitialized.
+        https://bugs.webkit.org/show_bug.cgi?id=97306
+
+        Reviewed by Benjamin Poulain.
+
+        Fix build warning about -Wunused-parameter on FrameLoaderClientEfl.cpp
+        by using ASSERT_UNUSED() macro.
+        Fix build warning aboug -Wparentheses on ewk_frame.cpp by adding
+        additional brace for the assign statement.
+
+        * WebCoreSupport/FrameLoaderClientEfl.cpp:
+        (WebCore::FrameLoaderClientEfl::dispatchDidChangeIcons):
+        * ewk/ewk_frame.cpp:
+        (ewk_frame_resources_location_get):
+
+2012-09-21  Christophe Dumez  <christophe.dumez@intel.com>
+
+        [EFL] EventSender should mimic CTRL+o emacs shortcut
+        https://bugs.webkit.org/show_bug.cgi?id=97224
+
+        Reviewed by Kenneth Rohde Christiansen.
+
+        Fix bad use of temporary object causing wrong editing
+        callback dumping.
+
+        * WebCoreSupport/EditorClientEfl.cpp:
+        (WebCore::EditorClientEfl::shouldInsertText):
+
+2012-09-20  Jinwoo Song  <jinwoo7.song@samsung.com>
+
+        [EFL] Change the log macro names to be more consistent with EINA LOG
+        https://bugs.webkit.org/show_bug.cgi?id=97158
+
+        Reviewed by Kenneth Rohde Christiansen.
+
+        Some log macro names in WebKit1 are inconsistent with EINA LOG names
+        such as WRN/INF not WARN/INFO.
+
+          #define WRN(...) EINA_LOG_DOM_WARN(_ewk_log_dom, __VA_ARGS__)
+          #define INF(...) EINA_LOG_DOM_INFO(_ewk_log_dom, __VA_ARGS__)
+
+        This patch changes the such names to be consistent with EINA LOG's names.
+
+        * ewk/ewk_frame.cpp:
+        (_ewk_frame_smart_resize):
+        (ewk_frame_source_get):
+        (ewk_frame_uri_changed):
+        * ewk/ewk_main.cpp:
+        (_ewk_init_body):
+        * ewk/ewk_private.h:
+        * ewk/ewk_tiled_backing_store.cpp:
+        (_ewk_tiled_backing_store_render):
+        (_ewk_tiled_backing_store_recalc_renderers):
+        (_ewk_tiled_backing_store_smart_calculate_offset_force):
+        (_ewk_tiled_backing_store_smart_calculate_offset):
+        (ewk_tiled_backing_store_pre_render_relative_radius):
+        * ewk/ewk_tiled_matrix.cpp:
+        (ewk_tile_matrix_free):
+        (ewk_tile_matrix_tile_exact_get):
+        (_ewk_tile_matrix_slicer_setup):
+        * ewk/ewk_view.cpp:
+        (_ewk_view_smart_add_console_message):
+        (_ewk_view_smart_run_javascript_alert):
+        (_ewk_view_smart_run_javascript_confirm):
+        (_ewk_view_smart_should_interrupt_javascript):
+        (_ewk_view_smart_run_javascript_prompt):
+        (_ewk_view_smart_pre_render_region):
+        (_ewk_view_smart_pre_render_relative_radius):
+        (_ewk_view_smart_pre_render_start):
+        (_ewk_view_smart_pre_render_cancel):
+        (_ewk_view_smart_disable_render):
+        (_ewk_view_smart_enable_render):
+        (ewk_view_bg_color_set):
+        (ewk_view_zoom_set):
+        (ewk_view_zoom_weak_set):
+        (ewk_view_zoom_animated_set):
+        (ewk_view_statusbar_text_set):
+        (ewk_view_exceeded_application_cache_quota):
+        (ewk_view_exceeded_database_quota):
+        (ewk_view_scroll):
+        (ewk_view_popup_new):
+        (ewk_view_popup_destroy):
+        (ewk_view_popup_selected_set):
+        (ewk_view_color_chooser_new):
+        (ewk_view_color_chooser_destroy):
+        (ewk_view_color_chooser_color_set):
+        (ewk_view_color_chooser_changed):
+        (ewk_view_zoom_range_set):
+        * ewk/ewk_view_private.h:
+
+2012-09-19  Jinwoo Song  <jinwoo7.song@samsung.com>
+
+        Fix unused parameter compile warnings in WebKit/WebKit2
+        https://bugs.webkit.org/show_bug.cgi?id=96742
+
+        Reviewed by Gyuyoung Kim.
+
+        Fix unused parameter compile warning messages(-Wunused-parameter) in WebKit during EFL build.
+        WebCore's warning messages were fixed in r128570.
+ 
+        * WebCoreSupport/ChromeClientEfl.cpp:
+        (WebCore::ChromeClientEfl::createWindow):
+        (WebCore::ChromeClientEfl::mouseDidMoveOverElement):
+        (WebCore::ChromeClientEfl::print):
+        (WebCore::ChromeClientEfl::reachedMaxAppCacheSize):
+        (WebCore::ChromeClientEfl::invalidateContents):
+        (WebCore::ChromeClientEfl::invalidateRootView):
+        (WebCore::ChromeClientEfl::invalidateContentsAndRootView):
+        * WebCoreSupport/EditorClientEfl.cpp:
+        (WebCore::EditorClientEfl::handleInputMethodKeydown):
+        (WebCore::EditorClientEfl::getGuessesForWord):
+        * WebCoreSupport/FrameLoaderClientEfl.cpp:
+        (WebCore::FrameLoaderClientEfl::dispatchDidReceiveAuthenticationChallenge):
+        (WebCore::FrameLoaderClientEfl::dispatchDidCancelAuthenticationChallenge):
+        (WebCore::FrameLoaderClientEfl::dispatchDecidePolicyForNewWindowAction):
+        (WebCore::FrameLoaderClientEfl::createFrame):
+        (WebCore::FrameLoaderClientEfl::createJavaAppletWidget):
+        (WebCore::FrameLoaderClientEfl::shouldStopLoadingForHistoryItem):
+        (WebCore::FrameLoaderClientEfl::canShowMIMETypeAsHTML):
+        (WebCore::FrameLoaderClientEfl::setTitle):
+        (WebCore::FrameLoaderClientEfl::dispatchDidReceiveContentLength):
+        (WebCore::FrameLoaderClientEfl::dispatchDidLoadResourceFromMemoryCache):
+        (WebCore::FrameLoaderClientEfl::setMainDocumentError):
+        * WebCoreSupport/FullscreenVideoControllerEfl.cpp:
+        (FullscreenVideoController::showHud):
+        (FullscreenVideoController::setVolume):
+        (FullscreenVideoController::setCurrentTime):
+        * WebCoreSupport/InspectorClientEfl.cpp:
+        (WebCore::notifyWebInspectorDestroy):
+        (WebCore::InspectorFrontendSettingsEfl::getProperty):
+        (WebCore::InspectorFrontendSettingsEfl::setProperty):
+        * WebCoreSupport/PlatformStrategiesEfl.cpp:
+        (PlatformStrategiesEfl::getPluginInfo):
+        * ewk/ewk_auth_soup.cpp:
+        (ewk_auth_soup_dialog_class_init):
+        (ewk_auth_soup_dialog_init):
+        (ewk_auth_soup_dialog_session_feature_init):
+        (session_authenticate):
+        * ewk/ewk_file_chooser.cpp:
+        (ewk_file_chooser_allows_directory_upload_get):
+        * ewk/ewk_frame.cpp:
+        (ewk_frame_feed_focus_out):
+        (ewk_frame_view_state_save):
+        (ewk_frame_plugin_create):
+        * ewk/ewk_js.cpp:
+        (ewk_js_object_new):
+        (ewk_js_object_free):
+        (ewk_js_object_view_get):
+        (ewk_js_object_properties_get):
+        (ewk_js_object_name_get):
+        (ewk_js_object_invoke):
+        (ewk_js_object_type_get):
+        (ewk_js_object_type_set):
+        (ewk_js_variant_free):
+        (ewk_js_variant_array_free):
+        * ewk/ewk_tiled_model.cpp:
+        (tile_account):
+        (_ewk_tile_account_allocated):
+        (_ewk_tile_account_freed):
+        * ewk/ewk_view.cpp:
+        (_ewk_view_smart_add_console_message):
+        (_ewk_view_smart_run_javascript_alert):
+        (_ewk_view_smart_run_javascript_confirm):
+        (_ewk_view_smart_should_interrupt_javascript):
+        (_ewk_view_smart_run_javascript_prompt):
+        (_ewk_view_smart_move):
+        (_ewk_view_smart_contents_resize):
+        (_ewk_view_editor_command_string_get):
+        (ewk_view_popup_new):
+        (ewk_view_js_object_add):
+        (ewk_view_accelerated_compositing_object_create):
+        (ewk_view_accelerated_compositing_context_get):
+        (ewk_view_setting_web_audio_get):
+        (ewk_view_setting_web_audio_set):
+        * ewk/ewk_view_single.cpp:
+        (_ewk_view_single_smart_bg_color_set):
+        * ewk/ewk_view_tiled.cpp:
+        (_ewk_view_tiled_updates_process_pre):
+        (_ewk_view_tiled_contents_size_changed_cb):
+        (_ewk_view_tiled_smart_bg_color_set):
+
+2012-09-19  Sheriff Bot  <webkit.review.bot@gmail.com>
+
+        Unreviewed, rolling out r128995.
+        http://trac.webkit.org/changeset/128995
+        https://bugs.webkit.org/show_bug.cgi?id=97114
+
+        Causes the api tests to segfault. (Requested by rakuco on
+        #webkit).
+
+        * tests/UnitTestUtils/EWKTestBase.cpp:
+        (EWKUnitTests::EWKTestBase::init):
+        (EWKUnitTests::EWKTestBase::shutdownAll):
+        (EWKUnitTests::EWKTestBase::startTest):
+        (EWKUnitTests::EWKTestBase::endTest):
+        (EWKUnitTests::EWKTestBase::createTest):
+        (EWKUnitTests):
+        (EWKUnitTests::EWKTestBase::runTest):
+        * tests/UnitTestUtils/EWKTestBase.h:
+        (EWKUnitTests):
+        (EWKTestBase):
+        * tests/UnitTestUtils/EWKTestView.cpp:
+        (EWKUnitTests::EWKTestEcoreEvas::EWKTestEcoreEvas):
+        (EWKUnitTests::EWKTestEcoreEvas::evas):
+        (EWKUnitTests):
+        (EWKUnitTests::EWKTestEcoreEvas::show):
+        (EWKUnitTests::EWKTestView::EWKTestView):
+        (EWKUnitTests::EWKTestView::init):
+        (EWKUnitTests::EWKTestView::show):
+        (EWKUnitTests::EWKTestView::mainFrame):
+        (EWKUnitTests::EWKTestView::evas):
+        (EWKUnitTests::EWKTestView::bindEvents):
+        * tests/UnitTestUtils/EWKTestView.h:
+        (EWKTestEcoreEvas):
+        (EWKUnitTests):
+        (EWKTestView):
+        * tests/test_ewk_view.cpp:
+        (ewkViewEditableGetCb):
+        (TEST):
+        (ewkViewUriGetCb):
+        * tests/test_runner.cpp:
+        (main):
+
+2012-09-19  Krzysztof Czech  <k.czech@samsung.com>
+
+        [EFL][UT] Refactoring an implementation of testing framework for wk1.
+        https://bugs.webkit.org/show_bug.cgi?id=94925
+
+        Reviewed by Gyuyoung Kim.
+
+        The reason of changing, was to adjust current implementation to use gtest features
+        related to cleaning (SetUp, TearDown), cleaning code in terms of useless methods
+        and lastly to make framework easier to use.
+
+        * tests/UnitTestUtils/EWKTestBase.cpp:
+        (EWKUnitTests::EWKTestBase::EWKTestBase): Added to initialize test view.
+        (EWKUnitTests::EWKTestBase::webView): Returns current webview.
+        (EWKUnitTests::EWKTestBase::SetUp):
+        Before test is started, SetUp is called.
+        Used this to initialize efl and test view.
+        (EWKUnitTests::EWKTestBase::TearDown):
+        TearDown is called as soon as test is completed.
+        Used this to properly shutdown efl and clean test view.
+        (EWKUnitTests::EWKTestBase::onLoadFinished):
+        (EWKUnitTests::EWKTestBase::waitUntilLoadFinished): It waits till test page will be properly loaded.
+        (EWKUnitTests::EWKTestBase::loadUrl): Starts loading test page.
+        * tests/UnitTestUtils/EWKTestBase.h:
+        * tests/UnitTestUtils/EWKTestView.cpp:
+        (EWKUnitTests::EWKTestView::EWKTestView):
+        (EWKUnitTests::EWKTestView::init): Initialize test view.
+        * tests/UnitTestUtils/EWKTestView.h:
+        (EWKTestView):
+        * tests/test_ewk_view.cpp:
+        (TEST_F):
+        * tests/test_runner.cpp:
+        (main):
+
+2012-09-19  Christophe Dumez  <christophe.dumez@intel.com>
+
+        [EFL] EFL's DRT does not support overriding 'WebKitCSSRegionsEnabled' preference
+        https://bugs.webkit.org/show_bug.cgi?id=97100
+
+        Reviewed by Gyuyoung Kim.
+
+        Add DumpRenderTree support method to set the
+        'WebKitCSSRegionsEnabled' preference.
+
+        * WebCoreSupport/DumpRenderTreeSupportEfl.cpp:
+        (DumpRenderTreeSupportEfl::setCSSRegionsEnabled):
+        * WebCoreSupport/DumpRenderTreeSupportEfl.h:
+
 2012-09-13  Kenneth Rohde Christiansen  <kenneth@webkit.org>
 
         Evas_Object* is a ref'ed structure, so tread it as such

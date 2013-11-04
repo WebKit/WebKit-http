@@ -105,15 +105,20 @@ PassRefPtr<ScriptCallStack> createScriptCallStack(size_t maxStackSize, bool empt
     return createScriptCallStack(stackTrace, maxStackSize, emptyStackIsAllowed);
 }
 
-PassRefPtr<ScriptCallStack> createScriptCallStackForInspector()
+PassRefPtr<ScriptCallStack> createScriptCallStackForConsole()
 {
     size_t maxStackSize = 1;
     if (InspectorInstrumentation::hasFrontends()) {
         ScriptExecutionContext* scriptExecutionContext = getScriptExecutionContext();
-        if (InspectorInstrumentation::hasFrontendForScriptContext(scriptExecutionContext))
+        if (InspectorInstrumentation::consoleAgentEnabled(scriptExecutionContext))
             maxStackSize = ScriptCallStack::maxCallStackSizeToCapture;
     }
     return createScriptCallStack(maxStackSize);
+}
+
+PassRefPtr<ScriptCallStack> createScriptCallStackForConsole(ScriptState* /* state */)
+{
+    return createScriptCallStackForConsole();
 }
 
 PassRefPtr<ScriptArguments> createScriptArguments(const v8::Arguments& v8arguments, unsigned skipArgumentCount)

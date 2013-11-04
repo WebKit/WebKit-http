@@ -47,10 +47,12 @@
 namespace WebCore {
 
 class MediaConstraints;
+class MediaStreamTrack;
 class RTCConfiguration;
 class RTCErrorCallback;
 class RTCSessionDescription;
 class RTCSessionDescriptionCallback;
+class RTCStatsCallback;
 class VoidCallback;
 
 class RTCPeerConnection : public RefCounted<RTCPeerConnection>, public RTCPeerConnectionHandlerClient, public EventTarget, public ActiveDOMObject {
@@ -84,9 +86,11 @@ public:
 
     void removeStream(MediaStream*, ExceptionCode&);
 
+    void getStats(PassRefPtr<RTCStatsCallback> successCallback, PassRefPtr<MediaStreamTrack> selector);
+
     void close(ExceptionCode&);
 
-    DEFINE_ATTRIBUTE_EVENT_LISTENER(negotationneeded);
+    DEFINE_ATTRIBUTE_EVENT_LISTENER(negotiationneeded);
     DEFINE_ATTRIBUTE_EVENT_LISTENER(icecandidate);
     DEFINE_ATTRIBUTE_EVENT_LISTENER(open);
     DEFINE_ATTRIBUTE_EVENT_LISTENER(statechange);

@@ -84,12 +84,12 @@ GLContext* LayerTreeHostGtk::glContext()
 
 void LayerTreeHostGtk::initialize()
 {
-    m_rootLayer = GraphicsLayer::create(this);
+    m_rootLayer = GraphicsLayer::create(graphicsLayerFactory(), this);
     m_rootLayer->setDrawsContent(false);
     m_rootLayer->setSize(m_webPage->size());
 
     // The non-composited contents are a child of the root layer.
-    m_nonCompositedContentLayer = GraphicsLayer::create(this);
+    m_nonCompositedContentLayer = GraphicsLayer::create(graphicsLayerFactory(), this);
     m_nonCompositedContentLayer->setDrawsContent(true);
     m_nonCompositedContentLayer->setContentsOpaque(m_webPage->drawsBackground() && !m_webPage->drawsTransparentBackground());
     m_nonCompositedContentLayer->setSize(m_webPage->size());
@@ -203,6 +203,8 @@ void LayerTreeHostGtk::sizeDidChange(const IntSize& newSize)
 
     if (m_pageOverlayLayer)
         m_pageOverlayLayer->setSize(newSize);
+
+    compositeLayersToContext(ForResize);
 }
 
 void LayerTreeHostGtk::deviceScaleFactorDidChange()
@@ -293,7 +295,7 @@ bool LayerTreeHostGtk::flushPendingLayerChanges()
     return m_webPage->corePage()->mainFrame()->view()->syncCompositingStateIncludingSubframes();
 }
 
-void LayerTreeHostGtk::compositeLayersToContext()
+void LayerTreeHostGtk::compositeLayersToContext(CompositePurpose purpose)
 {
     GLContext* context = glContext();
     if (!context || !context->makeContextCurrent())
@@ -304,6 +306,11 @@ void LayerTreeHostGtk::compositeLayersToContext()
     // we set the viewport parameters directly from the window size.
     IntSize contextSize = m_context->defaultFrameBufferSize();
     glViewport(0, 0, contextSize.width(), contextSize.height());
+
+    if (purpose == ForResize) {
+        glClearColor(1, 1, 1, 0);
+        glClear(GL_COLOR_BUFFER_BIT);
+    }
 
     m_textureMapper->beginPainting();
     toTextureMapperLayer(m_rootLayer.get())->paint();
@@ -343,7 +350,7 @@ void LayerTreeHostGtk::createPageOverlayLayer()
 {
     ASSERT(!m_pageOverlayLayer);
 
-    m_pageOverlayLayer = GraphicsLayer::create(this);
+    m_pageOverlayLayer = GraphicsLayer::create(graphicsLayerFactory(), this);
 #ifndef NDEBUG
     m_pageOverlayLayer->setName("LayerTreeHost page overlay content");
 #endif

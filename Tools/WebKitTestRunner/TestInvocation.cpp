@@ -198,8 +198,10 @@ end:
         WKInspectorClose(WKPageGetInspector(TestController::shared().mainWebView()->page()));
 #endif // ENABLE(INSPECTOR)
 
-    if (errorMessage || !TestController::shared().resetStateToConsistentValues())
+    if (errorMessage)
         dumpWebProcessUnresponsiveness(errorMessage);
+    else if (!TestController::shared().resetStateToConsistentValues())
+        dumpWebProcessUnresponsiveness("Timed out loading about:blank before the next test");
 }
 
 void TestInvocation::dumpWebProcessUnresponsiveness(const char* textToStdout)
@@ -343,6 +345,40 @@ void TestInvocation::didReceiveMessageFromInjectedBundle(WKStringRef messageName
         ASSERT(WKGetTypeID(messageBody) == WKUInt64GetTypeID());
         uint64_t notificationID = WKUInt64GetValue(static_cast<WKUInt64Ref>(messageBody));
         TestController::shared().simulateWebNotificationClick(notificationID);
+        return;
+    }
+
+    if (WKStringIsEqualToUTF8CString(messageName, "SetGeolocationPermission")) {
+        ASSERT(WKGetTypeID(messageBody) == WKBooleanGetTypeID());
+        WKBooleanRef enabledWK = static_cast<WKBooleanRef>(messageBody);
+        TestController::shared().setGeolocationPermission(WKBooleanGetValue(enabledWK));
+        return;
+    }
+
+    if (WKStringIsEqualToUTF8CString(messageName, "SetMockGeolocationPosition")) {
+        ASSERT(WKGetTypeID(messageBody) == WKDictionaryGetTypeID());
+        WKDictionaryRef messageBodyDictionary = static_cast<WKDictionaryRef>(messageBody);
+
+        WKRetainPtr<WKStringRef> latitudeKeyWK(AdoptWK, WKStringCreateWithUTF8CString("latitude"));
+        WKDoubleRef latitudeWK = static_cast<WKDoubleRef>(WKDictionaryGetItemForKey(messageBodyDictionary, latitudeKeyWK.get()));
+        double latitude = WKDoubleGetValue(latitudeWK);
+
+        WKRetainPtr<WKStringRef> longitudeKeyWK(AdoptWK, WKStringCreateWithUTF8CString("longitude"));
+        WKDoubleRef longitudeWK = static_cast<WKDoubleRef>(WKDictionaryGetItemForKey(messageBodyDictionary, longitudeKeyWK.get()));
+        double longitude = WKDoubleGetValue(longitudeWK);
+
+        WKRetainPtr<WKStringRef> accuracyKeyWK(AdoptWK, WKStringCreateWithUTF8CString("accuracy"));
+        WKDoubleRef accuracyWK = static_cast<WKDoubleRef>(WKDictionaryGetItemForKey(messageBodyDictionary, accuracyKeyWK.get()));
+        double accuracy = WKDoubleGetValue(accuracyWK);
+
+        TestController::shared().setMockGeolocationPosition(latitude, longitude, accuracy);
+        return;
+    }
+
+    if (WKStringIsEqualToUTF8CString(messageName, "SetMockGeolocationPositionUnavailableError")) {
+        ASSERT(WKGetTypeID(messageBody) == WKStringGetTypeID());
+        WKStringRef errorMessage = static_cast<WKStringRef>(messageBody);
+        TestController::shared().setMockGeolocationPositionUnavailableError(errorMessage);
         return;
     }
 

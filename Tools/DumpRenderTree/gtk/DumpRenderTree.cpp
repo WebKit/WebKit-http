@@ -516,6 +516,9 @@ static void resetDefaultsToConsistentValues()
 
     DumpRenderTreeSupportGtk::setCSSGridLayoutEnabled(webView, false);
     DumpRenderTreeSupportGtk::setCSSRegionsEnabled(webView, true);
+    DumpRenderTreeSupportGtk::setCSSCustomFilterEnabled(webView, false);
+    DumpRenderTreeSupportGtk::setShadowDOMEnabled(true);
+    DumpRenderTreeSupportGtk::setStyleScopedEnabled(true);
 }
 
 static bool useLongRunningServerMode(int argc, char *argv[])
@@ -924,6 +927,7 @@ static gboolean webViewConsoleMessage(WebKitWebView* view, const gchar* message,
 static gboolean webViewScriptAlert(WebKitWebView* view, WebKitWebFrame* frame, const gchar* message, gpointer data)
 {
     fprintf(stdout, "ALERT: %s\n", message);
+    fflush(stdout);
     return TRUE;
 }
 
@@ -943,8 +947,13 @@ static gboolean webViewScriptConfirm(WebKitWebView* view, WebKitWebFrame* frame,
 
 static void webViewTitleChanged(WebKitWebView* view, WebKitWebFrame* frame, const gchar* title, gpointer data)
 {
+    if (gTestRunner->dumpFrameLoadCallbacks() && !done) {
+        GOwnPtr<char> frameName(getFrameNameSuitableForTestResult(view, frame));
+        printf("%s - didReceiveTitle: %s\n", frameName.get(), title ? title : "");
+    }
+
     if (gTestRunner->dumpTitleChanges() && !done)
-        printf("TITLE CHANGED: %s\n", title ? title : "");
+        printf("TITLE CHANGED: '%s'\n", title ? title : "");
 }
 
 static bool webViewNavigationPolicyDecisionRequested(WebKitWebView* view, WebKitWebFrame* frame,

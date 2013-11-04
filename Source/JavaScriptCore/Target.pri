@@ -64,6 +64,7 @@ SOURCES += \
     bytecode/PutByIdStatus.cpp \
     bytecode/ResolveGlobalStatus.cpp \
     bytecode/SamplingTool.cpp \
+    bytecode/SpecialPointer.cpp \
     bytecode/SpeculatedType.cpp \
     bytecode/StructureStubClearingWatchpoint.cpp \
     bytecode/StructureStubInfo.cpp \
@@ -155,6 +156,13 @@ SOURCES += \
     jit/JITStubs.cpp \
     jit/JumpReplacementWatchpoint.cpp \
     jit/ThunkGenerators.cpp \
+    llint/LLIntCLoop.cpp \
+    llint/LLIntData.cpp \
+    llint/LLIntEntrypoints.cpp \
+    llint/LLIntExceptions.cpp \
+    llint/LLIntSlowPaths.cpp \
+    llint/LLIntThunks.cpp \
+    llint/LowLevelInterpreter.cpp \
     parser/Lexer.cpp \
     parser/Nodes.cpp \
     parser/ParserArena.cpp \
@@ -203,7 +211,7 @@ SOURCES += \
     runtime/JSGlobalData.cpp \
     runtime/JSGlobalObject.cpp \
     runtime/JSGlobalObjectFunctions.cpp \
-    runtime/JSGlobalThis.cpp \
+    runtime/JSProxy.cpp \
     runtime/JSLock.cpp \
     runtime/JSNotAnObject.cpp \
     runtime/JSObject.cpp \

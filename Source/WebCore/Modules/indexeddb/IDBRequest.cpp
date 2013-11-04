@@ -174,7 +174,7 @@ void IDBRequest::abort()
     m_error.clear();
     m_errorMessage = String();
     m_result.clear();
-    onError(IDBDatabaseError::create(IDBDatabaseException::IDB_ABORT_ERR, "The transaction was aborted, so the request cannot be fulfilled."));
+    onError(IDBDatabaseError::create(IDBDatabaseException::IDB_ABORT_ERR));
     m_requestAborted = true;
 }
 
@@ -379,7 +379,10 @@ void IDBRequest::onSuccess(PassRefPtr<SerializedScriptValue> prpSerializedScript
 void IDBRequest::onSuccessInternal(const ScriptValue& value)
 {
     m_result = IDBAny::create(value);
-    m_pendingCursor.clear();
+    if (m_pendingCursor) {
+        m_pendingCursor->close();
+        m_pendingCursor.clear();
+    }
     enqueueEvent(createSuccessEvent());
 }
 

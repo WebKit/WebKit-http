@@ -84,6 +84,7 @@ public:
     PassRefPtr<WebPageProxy> createWebPage(PageClient*, WebContext*, WebPageGroup*);
     void addExistingWebPage(WebPageProxy*, uint64_t pageID);
     void removeWebPage(uint64_t pageID);
+    Vector<WebPageProxy*> pages() const;
 
 #if ENABLE(WEB_INTENTS)
     void removeMessagePortChannel(uint64_t channelID);
@@ -123,6 +124,7 @@ private:
 
     // Initializes the process launcher which will begin launching the process.
     void connect();
+    void platformConnect(ProcessLauncher::LaunchOptions&);
 
     // Called when the web process has crashed or we know that it will terminate soon.
     // Will potentially cause the WebProcessProxy object to be freed.
@@ -141,7 +143,6 @@ private:
     void getPluginPath(const String& mimeType, const String& urlString, String& pluginPath, bool& blocked);
 #if ENABLE(PLUGIN_PROCESS)
     void getPluginProcessConnection(const String& pluginPath, PassRefPtr<Messages::WebProcessProxy::GetPluginProcessConnection::DelayedReply>);
-    void pluginSyncMessageSendTimedOut(const String& pluginPath);
 #else
     void didGetSitesWithPluginData(const Vector<String>& sites, uint64_t callbackID);
     void didClearPluginSiteData(uint64_t callbackID);
@@ -161,7 +162,6 @@ private:
     virtual void didReceiveSyncMessage(CoreIPC::Connection*, CoreIPC::MessageID, CoreIPC::ArgumentDecoder*, OwnPtr<CoreIPC::ArgumentEncoder>&);
     virtual void didClose(CoreIPC::Connection*);
     virtual void didReceiveInvalidMessage(CoreIPC::Connection*, CoreIPC::MessageID);
-    virtual void syncMessageSendTimedOut(CoreIPC::Connection*);
 #if PLATFORM(WIN)
     virtual Vector<HWND> windowsToReceiveSentMessagesWhileWaitingForSyncReply();
 #endif

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011 Apple Inc. All rights reserved.
+ * Copyright (C) 2011, 2012 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -41,6 +41,7 @@ namespace WebKit {
 
 WebGeolocationManager::WebGeolocationManager(WebProcess* process)
     : m_process(process)
+    , m_didAddMessageReceiver(false)
 {
 }
 
@@ -55,6 +56,11 @@ void WebGeolocationManager::didReceiveMessage(CoreIPC::Connection* connection, C
 
 void WebGeolocationManager::registerWebPage(WebPage* page)
 {
+    if (!m_didAddMessageReceiver) {
+        m_process->connection()->addMessageReceiver(CoreIPC::MessageClassWebGeolocationManager, this);
+        m_didAddMessageReceiver = true;
+    }
+
     bool wasEmpty = m_pageSet.isEmpty();
 
     m_pageSet.add(page);
@@ -83,14 +89,16 @@ void WebGeolocationManager::didChangePosition(const WebGeolocationPosition::Data
         if (page->corePage())
             GeolocationController::from(page->corePage())->positionChanged(position.get());
     }
+#else
+    UNUSED_PARAM(data);
 #endif // ENABLE(GEOLOCATION)
 }
 
-void WebGeolocationManager::didFailToDeterminePosition()
+void WebGeolocationManager::didFailToDeterminePosition(const String& errorMessage)
 {
 #if ENABLE(GEOLOCATION)
     // FIXME: Add localized error string.
-    RefPtr<GeolocationError> error = GeolocationError::create(GeolocationError::PositionUnavailable, /* Localized error string */ String(""));
+    RefPtr<GeolocationError> error = GeolocationError::create(GeolocationError::PositionUnavailable, errorMessage);
 
     Vector<RefPtr<WebPage> > webPageCopy;
     copyToVector(m_pageSet, webPageCopy);
@@ -99,6 +107,8 @@ void WebGeolocationManager::didFailToDeterminePosition()
         if (page->corePage())
             GeolocationController::from(page->corePage())->errorOccurred(error.get());
     }
+#else
+    UNUSED_PARAM(errorMessage);
 #endif // ENABLE(GEOLOCATION)
 }
 

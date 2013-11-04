@@ -97,9 +97,8 @@ void WebContext::platformInitializeWebProcess(WebProcessCreationParameters& para
     parameters.nsURLCacheMemoryCapacity = [urlCache memoryCapacity];
     parameters.nsURLCacheDiskCapacity = [urlCache diskCapacity];
 
-
-#if ENABLE(PLUGIN_PROCESS)
-    parameters.disablePluginProcessMessageTimeout = [[NSUserDefaults standardUserDefaults] boolForKey:@"WebKitDisablePluginProcessMessageTimeout"];
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1090
+    parameters.shouldForceScreenFontSubstitution = [[NSUserDefaults standardUserDefaults] boolForKey:@"NSFontDefaultScreenFontSubstitutionEnabled"];
 #endif
 
 #if USE(ACCELERATED_COMPOSITING) && HAVE(HOSTED_CORE_ANIMATION)

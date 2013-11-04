@@ -212,9 +212,17 @@ WebInspector.TabbedEditorContainer.prototype = {
      */
     removeUISourceCode: function(uiSourceCode)
     {
+        var wasCurrent = this._currentFile === uiSourceCode;
+
         var tabId = this._tabIds.get(uiSourceCode);
         if (tabId)
             this._tabbedPane.closeTab(tabId);
+        
+        if (wasCurrent && uiSourceCode.isTemporary) {
+            var newUISourceCode = WebInspector.workspace.uiSourceCodeForURL(uiSourceCode.url);
+            if (newUISourceCode)
+                this._innerShowFile(newUISourceCode, false);
+        }
     },
 
     /**
@@ -319,30 +327,6 @@ WebInspector.TabbedEditorContainer.prototype = {
     },
 
     /**
-     * @param {WebInspector.UISourceCode} oldUISourceCode
-     * @param {WebInspector.UISourceCode} uiSourceCode
-     */
-    replaceFile: function(oldUISourceCode, uiSourceCode)
-    {
-        var tabId = this._tabIds.get(oldUISourceCode);
-        
-        if (!tabId)
-            return;
-        
-        delete this._files[this._tabIds.get(oldUISourceCode)]
-        this._tabIds.remove(oldUISourceCode);
-        this._tabIds.put(uiSourceCode, tabId);
-        this._files[tabId] = uiSourceCode;
-
-        this._tabbedPane.changeTabTitle(tabId, this._titleForFile(uiSourceCode));
-        this._tabbedPane.changeTabView(tabId, this._delegate.viewForFile(uiSourceCode));
-        this._tabbedPane.changeTabTooltip(tabId, this._tooltipForFile(uiSourceCode));
-
-        this._removeUISourceCodeListeners(oldUISourceCode);
-        this._addUISourceCodeListeners(uiSourceCode);
-    },
-
-    /**
      * @param {WebInspector.UISourceCode} uiSourceCode
      */
     _addUISourceCodeListeners: function(uiSourceCode)
@@ -416,10 +400,10 @@ WebInspector.TabbedEditorContainer.prototype = {
     currentFile: function()
     {
         return this._currentFile;
-    }
-}
+    },
 
-WebInspector.TabbedEditorContainer.prototype.__proto__ = WebInspector.Object.prototype;
+    __proto__: WebInspector.Object.prototype
+}
 
 /**
  * @constructor
@@ -455,10 +439,10 @@ WebInspector.TabbedEditorContainer.HistoryItem.prototype = {
         serializedHistoryItem.selectionRange = this.selectionRange;
         serializedHistoryItem.scrollLineNumber = this.scrollLineNumber;
         return serializedHistoryItem;
-    }
-}
+    },
 
-WebInspector.TabbedEditorContainer.HistoryItem.prototype.__proto__ = WebInspector.Object.prototype;
+    __proto__: WebInspector.Object.prototype
+}
 
 /**
  * @constructor
@@ -585,7 +569,7 @@ WebInspector.TabbedEditorContainer.History.prototype = {
         for (var i = 0; i < this._items.length; ++i)
             serializedHistory.push(this._items[i].serializeToObject());
         return serializedHistory;
-    }
-}
+    },
 
-WebInspector.TabbedEditorContainer.History.prototype.__proto__ = WebInspector.Object.prototype;
+    __proto__: WebInspector.Object.prototype
+}

@@ -87,6 +87,7 @@ TestRunner::TestRunner()
     , m_testRepaint(false)
     , m_testRepaintSweepHorizontally(false)
     , m_willSendRequestReturnsNull(false)
+    , m_willSendRequestReturnsNullOnRedirect(false)
     , m_shouldStopProvisionalFrameLoads(false)
     , m_policyDelegateEnabled(false)
     , m_policyDelegatePermissive(false)
@@ -393,11 +394,6 @@ void TestRunner::setPluginsEnabled(bool enabled)
     WKBundleSetPluginsEnabled(InjectedBundle::shared().bundle(), InjectedBundle::shared().pageGroup(), enabled);
 }
 
-void TestRunner::setGeolocationPermission(bool enabled)
-{
-    WKBundleSetGeolocationPermission(InjectedBundle::shared().bundle(), InjectedBundle::shared().pageGroup(), enabled);
-}
-
 void TestRunner::setJavaScriptCanAccessClipboard(bool enabled)
 {
      WKBundleSetJavaScriptCanAccessClipboard(InjectedBundle::shared().bundle(), InjectedBundle::shared().pageGroup(), enabled);
@@ -654,9 +650,15 @@ void TestRunner::callSetBackingScaleFactorCallback()
     callTestRunnerCallback(SetBackingScaleFactorCallbackID);
 }
 
-void TestRunner::overridePreference(JSStringRef preference, bool value)
+static inline bool toBool(JSStringRef value)
 {
-    WKBundleOverrideBoolPreferenceForTestRunner(InjectedBundle::shared().bundle(), InjectedBundle::shared().pageGroup(), toWK(preference).get(), value);
+    return JSStringIsEqualToUTF8CString(value, "true") || JSStringIsEqualToUTF8CString(value, "1");
+}
+
+void TestRunner::overridePreference(JSStringRef preference, JSStringRef value)
+{
+    // FIXME: handle non-boolean preferences.
+    WKBundleOverrideBoolPreferenceForTestRunner(InjectedBundle::shared().bundle(), InjectedBundle::shared().pageGroup(), toWK(preference).get(), toBool(value));
 }
 
 void TestRunner::sendWebIntentResponse(JSStringRef reply)
@@ -691,9 +693,14 @@ void TestRunner::deliverWebIntent(JSStringRef action, JSStringRef type, JSString
     WKRetainPtr<WKSerializedScriptValueRef> dataWK(AdoptWK, WKSerializedScriptValueCreate(context, JSValueMakeString(context, data), 0));
 
     WKRetainPtr<WKMutableDictionaryRef> intentInitDict(AdoptWK, WKMutableDictionaryCreate());
-    WKDictionaryAddItem(intentInitDict.get(), WKStringCreateWithUTF8CString("action"), actionWK.get());
-    WKDictionaryAddItem(intentInitDict.get(), WKStringCreateWithUTF8CString("type"), typeWK.get());
-    WKDictionaryAddItem(intentInitDict.get(), WKStringCreateWithUTF8CString("data"), dataWK.get());
+    WKRetainPtr<WKStringRef> actionKey(AdoptWK, WKStringCreateWithUTF8CString("action"));
+    WKDictionaryAddItem(intentInitDict.get(), actionKey.get(), actionWK.get());
+
+    WKRetainPtr<WKStringRef> typeKey(AdoptWK, WKStringCreateWithUTF8CString("type"));
+    WKDictionaryAddItem(intentInitDict.get(), typeKey.get(), typeWK.get());
+
+    WKRetainPtr<WKStringRef> dataKey(AdoptWK, WKStringCreateWithUTF8CString("data"));
+    WKDictionaryAddItem(intentInitDict.get(), dataKey.get(), dataWK.get());
 
     WKRetainPtr<WKBundleIntentRef> wkIntent(AdoptWK, WKBundleIntentCreate(intentInitDict.get()));
     WKBundlePageDeliverIntentToFrame(InjectedBundle::shared().page()->page(), mainFrame, wkIntent.get());
@@ -765,6 +772,23 @@ void TestRunner::simulateWebNotificationClick(JSValueRef notification)
     JSContextRef context = WKBundleFrameGetJavaScriptContext(mainFrame);
     uint64_t notificationID = WKBundleGetWebNotificationID(InjectedBundle::shared().bundle(), context, notification);
     InjectedBundle::shared().postSimulateWebNotificationClick(notificationID);
+}
+
+void TestRunner::setGeolocationPermission(bool enabled)
+{
+    // FIXME: this should be done by frame.
+    InjectedBundle::shared().setGeolocationPermission(enabled);
+}
+
+void TestRunner::setMockGeolocationPosition(double latitude, double longitude, double accuracy)
+{
+    InjectedBundle::shared().setMockGeolocationPosition(latitude, longitude, accuracy);
+}
+
+void TestRunner::setMockGeolocationPositionUnavailableError(JSStringRef message)
+{
+    WKRetainPtr<WKStringRef> messageWK = toWK(message);
+    InjectedBundle::shared().setMockGeolocationPositionUnavailableError(messageWK.get());
 }
 
 bool TestRunner::callShouldCloseOnWebView()

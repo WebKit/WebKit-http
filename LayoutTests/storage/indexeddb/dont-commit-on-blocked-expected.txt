@@ -1,3 +1,5 @@
+CONSOLE MESSAGE: The setVersion() method is non-standard and will be removed. Use the "upgradeneeded" event instead.
+CONSOLE MESSAGE: The setVersion() method is non-standard and will be removed. Use the "upgradeneeded" event instead.
 Regression test for WK82678 - don't commit after a blocked event
 
 On success, you will see a series of "PASS" messages, followed by "TEST COMPLETE".
@@ -10,7 +12,7 @@ request = indexedDB.deleteDatabase('dont-commit-on-blocked')
 request = indexedDB.open('dont-commit-on-blocked')
 db = request.result
 db.onversionchange = onVersionChange
-PASS db.version is ""
+PASS db.version is 1
 db.setVersion('1')
 store = db.createObjectStore('store1')
 

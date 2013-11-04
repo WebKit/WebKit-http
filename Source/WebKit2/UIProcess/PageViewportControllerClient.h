@@ -23,6 +23,11 @@
 
 #include <wtf/Noncopyable.h>
 
+namespace WebCore {
+class FloatPoint;
+class IntSize;
+}
+
 namespace WebKit {
 
 class PageViewportController;
@@ -33,11 +38,11 @@ public:
     PageViewportControllerClient() { }
     virtual ~PageViewportControllerClient() { }
 
-    virtual void setContentsPosition(const WebCore::FloatPoint& localPoint) = 0;
-    virtual void setContentsScale(float localScale, bool treatAsInitialValue) = 0;
+    virtual void setViewportPosition(const WebCore::FloatPoint& contentsPoint) = 0;
+    virtual void setContentsScale(float, bool treatAsInitialValue) = 0;
 
     virtual void didResumeContent() = 0;
-    virtual void didChangeContentsSize() = 0;
+    virtual void didChangeContentsSize(const WebCore::IntSize&) = 0;
     virtual void didChangeVisibleContents() = 0;
     virtual void didChangeViewportAttributes() = 0;
 

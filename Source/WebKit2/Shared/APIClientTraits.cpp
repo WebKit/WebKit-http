@@ -40,6 +40,7 @@ const size_t APIClientTraits<WKBundlePageLoaderClient>::interfaceSizesByVersion[
     offsetof(WKBundlePageLoaderClient, didLayoutForFrame),
     offsetof(WKBundlePageLoaderClient, didFinishProgress),
     offsetof(WKBundlePageLoaderClient, didReceiveIntentForFrame),
+    offsetof(WKBundlePageLoaderClient, registerIntentServiceForFrame),
     sizeof(WKBundlePageLoaderClient)
 };
 
@@ -84,6 +85,11 @@ const size_t APIClientTraits<WKBundlePageUIClient>::interfaceSizesByVersion[] = 
 const size_t APIClientTraits<WKContextInjectedBundleClient>::interfaceSizesByVersion[] = {
     offsetof(WKContextInjectedBundleClient, getInjectedBundleInitializationUserData),
     sizeof(WKContextInjectedBundleClient)
+};
+
+const size_t APIClientTraits<WKIconDatabaseClient>::interfaceSizesByVersion[] = {
+    offsetof(WKIconDatabaseClient, iconDataReadyForPageURL),
+    sizeof(WKIconDatabaseClient)
 };
 
 } // namespace WebKit

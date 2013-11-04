@@ -630,11 +630,17 @@ void InspectorDebuggerAgent::didParseSource(const String& scriptId, const Script
     const bool* isContentScript = script.isContentScript ? &script.isContentScript : 0;
     String sourceMapURL = sourceMapURLForScript(script);
     String* sourceMapURLParam = sourceMapURL.isNull() ? 0 : &sourceMapURL;
-    m_frontend->scriptParsed(scriptId, script.url, script.startLine, script.startColumn, script.endLine, script.endColumn, isContentScript, sourceMapURLParam);
+    String sourceURL;
+    if (!script.startLine && !script.startColumn)
+        sourceURL = ContentSearchUtils::findSourceURL(script.source);
+    bool hasSourceURL = !sourceURL.isEmpty();
+    String scriptURL = hasSourceURL ? sourceURL : script.url;
+    bool* hasSourceURLParam = hasSourceURL ? &hasSourceURL : 0;
+    m_frontend->scriptParsed(scriptId, scriptURL, script.startLine, script.startColumn, script.endLine, script.endColumn, isContentScript, sourceMapURLParam, hasSourceURLParam);
 
     m_scripts.set(scriptId, script);
 
-    if (script.url.isEmpty())
+    if (scriptURL.isEmpty())
         return;
 
     RefPtr<InspectorObject> breakpointsCookie = m_state->getObject(DebuggerAgentState::javaScriptBreakpoints);
@@ -644,7 +650,7 @@ void InspectorDebuggerAgent::didParseSource(const String& scriptId, const Script
         breakpointObject->getBoolean("isRegex", &isRegex);
         String url;
         breakpointObject->getString("url", &url);
-        if (!matches(script.url, url, isRegex))
+        if (!matches(scriptURL, url, isRegex))
             continue;
         ScriptBreakpoint breakpoint;
         breakpointObject->getNumber("lineNumber", &breakpoint.lineNumber);

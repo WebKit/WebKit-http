@@ -242,7 +242,7 @@ void GlyphPageTreeNode::initializePage(const FontData* fontData, unsigned pageNu
                             }
                             zeroFilled = true;
                         }
-                        haveGlyphs |= fill(pageToFill, from, to - from, buffer + from * (start < 0x10000 ? 1 : 2), (to - from) * (start < 0x10000 ? 1 : 2), range.fontData());
+                        haveGlyphs |= fill(pageToFill, from, to - from, buffer + from * (start < 0x10000 ? 1 : 2), (to - from) * (start < 0x10000 ? 1 : 2), range.fontData().get());
                         if (scratchPage) {
                             ASSERT(to <=  static_cast<int>(GlyphPage::size));
                             for (int j = from; j < to; j++) {
@@ -374,8 +374,6 @@ void GlyphPageTreeNode::pruneCustomFontData(const FontData* fontData)
 void GlyphPageTreeNode::pruneFontData(const SimpleFontData* fontData, unsigned level)
 {
     ASSERT(fontData);
-    if (!fontData)
-        return;
 
     // Prune fall back child (if any) of this font.
     if (m_systemFallbackChild && m_systemFallbackChild->m_page)

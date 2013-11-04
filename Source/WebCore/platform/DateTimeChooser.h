@@ -41,11 +41,14 @@ struct DateTimeChooserParameters {
     IntRect anchorRectInRootView;
     String currentValue;
     Vector<String> suggestionValues;
+    Vector<String> localizedSuggestionValues;
     Vector<String> suggestionLabels;
     double minimum;
     double maximum;
     double step;
+    double stepBase;
     bool required;
+    bool isAnchorElementRTL;
 };
 
 // For pickers like color pickers and date pickers.

@@ -19,8 +19,8 @@ webcore_built_sources += \
 	DerivedSources/WebCore/HTMLEntityTable.cpp \
 	DerivedSources/WebCore/HTMLNames.cpp \
 	DerivedSources/WebCore/HTMLNames.h \
+	DerivedSources/WebCore/InjectedScriptCanvasModuleSource.h \
 	DerivedSources/WebCore/InjectedScriptSource.h \
-	DerivedSources/WebCore/InjectedScriptWebGLModuleSource.h \
 	DerivedSources/WebCore/InspectorBackendDispatcher.cpp \
 	DerivedSources/WebCore/InspectorBackendDispatcher.h \
 	DerivedSources/WebCore/InspectorFrontend.cpp \
@@ -639,6 +639,14 @@ webcore_built_sources += \
 	DerivedSources/WebCore/JSRTCSessionDescription.h \
 	DerivedSources/WebCore/JSRTCSessionDescriptionCallback.cpp \
 	DerivedSources/WebCore/JSRTCSessionDescriptionCallback.h \
+	DerivedSources/WebCore/JSRTCStatsCallback.cpp \
+	DerivedSources/WebCore/JSRTCStatsCallback.h \
+	DerivedSources/WebCore/JSRTCStatsElement.cpp \
+	DerivedSources/WebCore/JSRTCStatsElement.h \
+	DerivedSources/WebCore/JSRTCStatsReport.cpp \
+	DerivedSources/WebCore/JSRTCStatsReport.h \
+	DerivedSources/WebCore/JSRTCStatsResponse.cpp \
+	DerivedSources/WebCore/JSRTCStatsResponse.h \
 	DerivedSources/WebCore/JSScreen.cpp \
 	DerivedSources/WebCore/JSScreen.h \
 	DerivedSources/WebCore/JSScriptProfile.cpp \
@@ -1085,8 +1093,6 @@ webcore_built_sources += \
 	DerivedSources/WebCore/JSWebKitAnimationList.h \
 	DerivedSources/WebCore/JSWebKitAnimationList.cpp \
 	DerivedSources/WebCore/JSWebKitAnimationEvent.h \
-	DerivedSources/WebCore/JSWebKitBlobBuilder.cpp \
-	DerivedSources/WebCore/JSWebKitBlobBuilder.h \
 	DerivedSources/WebCore/JSWebKitCSSFilterValue.cpp \
 	DerivedSources/WebCore/JSWebKitCSSFilterValue.h \
 	DerivedSources/WebCore/JSWebKitCSSKeyframeRule.cpp \
@@ -1236,6 +1242,10 @@ dom_binding_idls += \
 	$(WebCore)/Modules/mediastream/RTCPeerConnection.idl \
 	$(WebCore)/Modules/mediastream/RTCSessionDescription.idl \
 	$(WebCore)/Modules/mediastream/RTCSessionDescriptionCallback.idl \
+	$(WebCore)/Modules/mediastream/RTCStatsCallback.idl \
+	$(WebCore)/Modules/mediastream/RTCStatsElement.idl \
+	$(WebCore)/Modules/mediastream/RTCStatsReport.idl \
+	$(WebCore)/Modules/mediastream/RTCStatsResponse.idl \
 	$(WebCore)/Modules/mediastream/SessionDescription.idl \
 	$(WebCore)/Modules/navigatorcontentutils/NavigatorContentUtils.idl \
 	$(WebCore)/Modules/notifications/Notification.idl \
@@ -1398,7 +1408,6 @@ dom_binding_idls += \
 	$(WebCore)/fileapi/FileList.idl \
 	$(WebCore)/fileapi/FileReader.idl \
 	$(WebCore)/fileapi/FileReaderSync.idl \
-	$(WebCore)/fileapi/WebKitBlobBuilder.idl \
 	$(WebCore)/html/DOMFormData.idl \
 	$(WebCore)/html/DOMSettableTokenList.idl \
 	$(WebCore)/html/DOMTokenList.idl \
@@ -1937,6 +1946,15 @@ webcore_modules_sources += \
 	Source/WebCore/Modules/mediastream/RTCSessionDescriptionCallback.h \
 	Source/WebCore/Modules/mediastream/RTCSessionDescriptionRequestImpl.cpp \
 	Source/WebCore/Modules/mediastream/RTCSessionDescriptionRequestImpl.h \
+	Source/WebCore/Modules/mediastream/RTCStatsCallback.h \
+	Source/WebCore/Modules/mediastream/RTCStatsElement.cpp \
+	Source/WebCore/Modules/mediastream/RTCStatsElement.h \
+	Source/WebCore/Modules/mediastream/RTCStatsReport.cpp \
+	Source/WebCore/Modules/mediastream/RTCStatsReport.h \
+	Source/WebCore/Modules/mediastream/RTCStatsRequestImpl.cpp \
+	Source/WebCore/Modules/mediastream/RTCStatsRequestImpl.h \
+	Source/WebCore/Modules/mediastream/RTCStatsResponse.cpp \
+	Source/WebCore/Modules/mediastream/RTCStatsResponse.h \
 	Source/WebCore/Modules/mediastream/RTCVoidRequestImpl.cpp \
 	Source/WebCore/Modules/mediastream/RTCVoidRequestImpl.h \
 	Source/WebCore/Modules/mediastream/SessionDescription.cpp \
@@ -2444,15 +2462,6 @@ webcore_sources += \
 	Source/WebCore/bridge/c/c_utility.h \
 	Source/WebCore/bridge/IdentifierRep.cpp \
 	Source/WebCore/bridge/IdentifierRep.h \
-	Source/WebCore/bridge/jni/JNIUtility.h \
-	Source/WebCore/bridge/jni/JavaType.h \
-	Source/WebCore/bridge/jni/jni_jsobject.h \
-	Source/WebCore/bridge/jni/jsc/JavaArrayJSC.h \
-	Source/WebCore/bridge/jni/jsc/JavaClassJSC.h \
-	Source/WebCore/bridge/jni/jsc/JavaFieldJSC.h \
-	Source/WebCore/bridge/jni/jsc/JavaInstanceJSC.h \
-	Source/WebCore/bridge/jni/jsc/JavaMethodJSC.cpp \
-	Source/WebCore/bridge/jni/jsc/JavaMethodJSC.h \
 	Source/WebCore/bridge/jsc/BridgeJSC.cpp \
 	Source/WebCore/bridge/jsc/BridgeJSC.h \
 	Source/WebCore/bridge/NP_jsobject.cpp \
@@ -2524,7 +2533,6 @@ webcore_sources += \
 	Source/WebCore/css/CSSLineBoxContainValue.h \
 	Source/WebCore/css/CSSMediaRule.cpp \
 	Source/WebCore/css/CSSMediaRule.h \
-	Source/WebCore/css/CSSNamespace.h \
 	Source/WebCore/css/CSSOMUtils.cpp \
 	Source/WebCore/css/CSSOMUtils.h \
 	Source/WebCore/css/CSSPageRule.cpp \
@@ -2734,6 +2742,8 @@ webcore_sources += \
 	Source/WebCore/dom/DocumentOrderedMap.h \
 	Source/WebCore/dom/DocumentParser.cpp \
 	Source/WebCore/dom/DocumentParser.h \
+    Source/WebCore/dom/DocumentStyleSheetCollection.cpp \
+    Source/WebCore/dom/DocumentStyleSheetCollection.h \
 	Source/WebCore/dom/DocumentTiming.h \
 	Source/WebCore/dom/DocumentType.cpp \
 	Source/WebCore/dom/DocumentType.h \
@@ -3136,6 +3146,8 @@ webcore_sources += \
 	Source/WebCore/html/BaseClickableWithKeyInputType.h \
 	Source/WebCore/html/BaseDateAndTimeInputType.cpp \
 	Source/WebCore/html/BaseDateAndTimeInputType.h \
+	Source/WebCore/html/BaseMultipleFieldsDateAndTimeInputType.cpp \
+	Source/WebCore/html/BaseMultipleFieldsDateAndTimeInputType.h \
 	Source/WebCore/html/BaseTextInputType.cpp \
 	Source/WebCore/html/BaseTextInputType.h \
 	Source/WebCore/html/ButtonInputType.cpp \
@@ -3501,12 +3513,22 @@ webcore_sources += \
 	Source/WebCore/html/parser/TextViewSourceParser.h \
 	Source/WebCore/html/parser/XSSAuditor.cpp \
 	Source/WebCore/html/parser/XSSAuditor.h \
-	Source/WebCore/html/shadow/CalendarPickerElement.cpp \
-	Source/WebCore/html/shadow/CalendarPickerElement.h \
+	Source/WebCore/html/shadow/PickerIndicatorElement.cpp \
+	Source/WebCore/html/shadow/PickerIndicatorElement.h \
 	Source/WebCore/html/shadow/ContentDistributor.cpp \
 	Source/WebCore/html/shadow/ContentDistributor.h \
 	Source/WebCore/html/shadow/ContentSelectorQuery.cpp \
 	Source/WebCore/html/shadow/ContentSelectorQuery.h \
+	Source/WebCore/html/shadow/DateTimeEditElement.cpp \
+	Source/WebCore/html/shadow/DateTimeEditElement.h \
+	Source/WebCore/html/shadow/DateTimeFieldElement.cpp \
+	Source/WebCore/html/shadow/DateTimeFieldElement.h \
+	Source/WebCore/html/shadow/DateTimeFieldElements.cpp \
+	Source/WebCore/html/shadow/DateTimeFieldElements.h \
+	Source/WebCore/html/shadow/DateTimeNumericFieldElement.cpp \
+	Source/WebCore/html/shadow/DateTimeNumericFieldElement.h \
+	Source/WebCore/html/shadow/DateTimeSymbolicFieldElement.cpp \
+	Source/WebCore/html/shadow/DateTimeSymbolicFieldElement.h \
 	Source/WebCore/html/shadow/DetailsMarkerControl.cpp \
 	Source/WebCore/html/shadow/DetailsMarkerControl.h \
 	Source/WebCore/html/shadow/HTMLContentElement.cpp \
@@ -3633,20 +3655,23 @@ webcore_sources += \
 	Source/WebCore/inspector/InjectedScript.h \
 	Source/WebCore/inspector/InjectedScriptBase.cpp \
 	Source/WebCore/inspector/InjectedScriptBase.h \
+	Source/WebCore/inspector/InjectedScriptCanvasModule.cpp \
+	Source/WebCore/inspector/InjectedScriptCanvasModule.h \
 	Source/WebCore/inspector/InjectedScriptHost.cpp \
 	Source/WebCore/inspector/InjectedScriptHost.h \
 	Source/WebCore/inspector/InjectedScriptManager.cpp \
 	Source/WebCore/inspector/InjectedScriptManager.h \
 	Source/WebCore/inspector/InjectedScriptModule.cpp \
 	Source/WebCore/inspector/InjectedScriptModule.h \
-	Source/WebCore/inspector/InjectedScriptWebGLModule.cpp \
-	Source/WebCore/inspector/InjectedScriptWebGLModule.h \
 	Source/WebCore/inspector/InspectorAgent.cpp \
 	Source/WebCore/inspector/InspectorAgent.h \
 	Source/WebCore/inspector/InspectorApplicationCacheAgent.cpp \
 	Source/WebCore/inspector/InspectorApplicationCacheAgent.h \
 	Source/WebCore/inspector/InspectorBaseAgent.cpp \
 	Source/WebCore/inspector/InspectorBaseAgent.h \
+	Source/WebCore/inspector/InspectorCanvasAgent.cpp \
+	Source/WebCore/inspector/InspectorCanvasAgent.h \
+	Source/WebCore/inspector/InspectorCanvasInstrumentation.h \
 	Source/WebCore/inspector/InspectorClient.cpp \
 	Source/WebCore/inspector/InspectorClient.h \
 	Source/WebCore/inspector/InspectorController.cpp \
@@ -3710,9 +3735,6 @@ webcore_sources += \
 	Source/WebCore/inspector/InspectorTimelineAgent.h \
 	Source/WebCore/inspector/InspectorValues.cpp \
 	Source/WebCore/inspector/InspectorValues.h \
-	Source/WebCore/inspector/InspectorWebGLAgent.cpp \
-	Source/WebCore/inspector/InspectorWebGLAgent.h \
-	Source/WebCore/inspector/InspectorWebGLInstrumentation.h \
 	Source/WebCore/inspector/InspectorWorkerAgent.cpp \
 	Source/WebCore/inspector/InspectorWorkerAgent.h \
 	Source/WebCore/inspector/InspectorWorkerResource.h \
@@ -3990,6 +4012,7 @@ webcore_sources += \
 	Source/WebCore/page/GroupSettings.h \
 	Source/WebCore/page/History.cpp \
 	Source/WebCore/page/History.h \
+    Source/WebCore/page/LayoutMilestones.h \
 	Source/WebCore/page/Location.cpp \
 	Source/WebCore/page/Location.h \
 	Source/WebCore/page/MediaCanStartListener.h \
@@ -4039,8 +4062,12 @@ webcore_sources += \
 	Source/WebCore/page/scrolling/ScrollingCoordinator.cpp \
 	Source/WebCore/page/scrolling/ScrollingCoordinator.h \
 	Source/WebCore/page/scrolling/ScrollingCoordinatorNone.cpp \
-	Source/WebCore/page/scrolling/ScrollingTreeState.cpp \
-	Source/WebCore/page/scrolling/ScrollingTreeState.h \
+	Source/WebCore/page/scrolling/ScrollingStateNode.cpp \
+	Source/WebCore/page/scrolling/ScrollingStateNode.h \
+	Source/WebCore/page/scrolling/ScrollingStateScrollingNode.cpp \
+	Source/WebCore/page/scrolling/ScrollingStateScrollingNode.h \
+	Source/WebCore/page/scrolling/ScrollingStateTree.cpp \
+	Source/WebCore/page/scrolling/ScrollingStateTree.h \
 	Source/WebCore/page/SecurityOrigin.cpp \
 	Source/WebCore/page/SecurityOrigin.h \
 	Source/WebCore/page/SecurityOriginHash.h \
@@ -4587,6 +4614,7 @@ webcore_sources += \
 	Source/WebCore/platform/mediastream/RTCSessionDescriptionRequest.h \
 	Source/WebCore/platform/mediastream/RTCSessionDescriptionDescriptor.cpp \
 	Source/WebCore/platform/mediastream/RTCSessionDescriptionDescriptor.h \
+	Source/WebCore/platform/mediastream/RTCStatsRequest.h \
 	Source/WebCore/platform/mediastream/RTCVoidRequest.h \
 	Source/WebCore/platform/mediastream/SessionDescriptionDescriptor.cpp \
 	Source/WebCore/platform/mediastream/SessionDescriptionDescriptor.h \
@@ -4776,10 +4804,6 @@ webcore_sources += \
 	Source/WebCore/platform/text/LocaleNone.cpp \
 	Source/WebCore/platform/text/LocaleToScriptMapping.h \
 	Source/WebCore/platform/text/LocaleToScriptMappingDefault.cpp \
-	Source/WebCore/platform/text/LocalizedDate.h \
-	Source/WebCore/platform/text/LocalizedDateNone.cpp \
-	Source/WebCore/platform/text/LocalizedNumber.h \
-	Source/WebCore/platform/text/LocalizedNumberNone.cpp \
 	Source/WebCore/platform/text/Localizer.cpp \
 	Source/WebCore/platform/text/Localizer.h \
 	Source/WebCore/platform/text/ParserUtilities.h \
@@ -4879,6 +4903,7 @@ webcore_sources += \
 	Source/WebCore/rendering/BidiRun.h \
 	Source/WebCore/rendering/break_lines.cpp \
 	Source/WebCore/rendering/break_lines.h \
+	Source/WebCore/rendering/ClipPathOperation.h \
 	Source/WebCore/rendering/ColumnInfo.h \
 	Source/WebCore/rendering/CounterNode.cpp \
 	Source/WebCore/rendering/CounterNode.h \
@@ -4890,6 +4915,8 @@ webcore_sources += \
 	Source/WebCore/rendering/ExclusionRectangle.h \
 	Source/WebCore/rendering/ExclusionShape.cpp \
 	Source/WebCore/rendering/ExclusionShape.h \
+	Source/WebCore/rendering/ExclusionShapeInsideInfo.cpp \
+	Source/WebCore/rendering/ExclusionShapeInsideInfo.h \
 	Source/WebCore/rendering/FilterEffectRenderer.cpp \
 	Source/WebCore/rendering/FilterEffectRenderer.h \
 	Source/WebCore/rendering/FixedTableLayout.cpp \
@@ -4989,6 +5016,8 @@ webcore_sources += \
 	Source/WebCore/rendering/RenderLayerCompositor.h \
 	Source/WebCore/rendering/RenderLayerFilterInfo.cpp \
 	Source/WebCore/rendering/RenderLayerFilterInfo.h \
+	Source/WebCore/rendering/RenderLayerModelObject.cpp \
+	Source/WebCore/rendering/RenderLayerModelObject.h \
 	Source/WebCore/rendering/RenderLineBoxList.cpp \
 	Source/WebCore/rendering/RenderLineBoxList.h \
 	Source/WebCore/rendering/RenderListBox.cpp \
@@ -5093,8 +5122,6 @@ webcore_sources += \
 	Source/WebCore/rendering/ScrollBehavior.cpp \
 	Source/WebCore/rendering/ScrollBehavior.h \
 	Source/WebCore/rendering/VerticalPositionCache.h \
-	Source/WebCore/rendering/WrapShapeInfo.cpp \
-	Source/WebCore/rendering/WrapShapeInfo.h \
 	Source/WebCore/rendering/mathml/RenderMathMLBlock.cpp \
 	Source/WebCore/rendering/mathml/RenderMathMLBlock.h \
 	Source/WebCore/rendering/mathml/RenderMathMLFenced.cpp \
@@ -5119,7 +5146,6 @@ webcore_sources += \
 	Source/WebCore/rendering/style/BasicShapes.h \
 	Source/WebCore/rendering/style/BorderData.h \
 	Source/WebCore/rendering/style/BorderValue.h \
-	Source/WebCore/rendering/style/ClipPathOperation.h \
 	Source/WebCore/rendering/style/CollapsedBorderValue.h \
 	Source/WebCore/rendering/style/ContentData.cpp \
 	Source/WebCore/rendering/style/ContentData.h \
@@ -6238,10 +6264,9 @@ endif  # END ENABLE_WEBGL
 if USE_ACCELERATED_COMPOSITING
 if USE_CLUTTER
 webcore_sources += \
-	Source/WebCore/platform/clutter/GRefPtrClutter.cpp \
-	Source/WebCore/platform/clutter/GRefPtrClutter.h \
 	Source/WebCore/platform/graphics/clutter/GraphicsLayerClutter.cpp \
-	Source/WebCore/platform/graphics/clutter/GraphicsLayerClutter.h
+	Source/WebCore/platform/graphics/clutter/GraphicsLayerClutter.h \
+	Source/WebCore/platform/graphics/clutter/TransformationMatrixClutter.cpp
 endif  # END USE_CLUTTER
 
 if USE_TEXTURE_MAPPER_CAIRO

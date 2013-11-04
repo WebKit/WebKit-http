@@ -505,7 +505,7 @@ function getExpectations(test, platform, buildType)
 
 function filterBugs(modifiers)
 {
-    var bugs = modifiers.match(/\bBUG\S*/g);
+    var bugs = modifiers.match(/\b(Bug|webkit.org|crbug.com|code.google.com)\S*/g);
     if (!bugs)
         return {bugs: '', modifiers: modifiers};
     for (var j = 0; j < bugs.length; j++)
@@ -588,22 +588,99 @@ function parsedExpectations()
     var lines = g_expectations.split('\n');
     lines.forEach(function(line) {
         line = trimString(line);
-        if (!line || startsWith(line, '//'))
+        if (!line || startsWith(line, '#'))
             return;
 
-        // FIXME: Make this robust against not having modifiers and/or expectations.
-        // Right now, run-webkit-tests doesn't allow such lines, but it may in the future.
-        var match = line.match(/([^:]+)*:([^=]+)=(.*)/);
-        if (!match) {
-            console.error('Line could not be parsed: ' + line);
-            return;
+        // This code mimics _tokenize_line_using_new_format() in
+        // Tools/Scripts/webkitpy/layout_tests/models/test_expectations.py
+        //
+        // FIXME: consider doing more error checking here.
+        //
+        // FIXME: Clean this all up once we've fully cut over to the new syntax.
+        var tokens = line.split(/\s+/)
+        var parsed_bugs = [];
+        var parsed_modifiers = [];
+        var parsed_path;
+        var parsed_expectations = [];
+        var state = 'start';
+
+        // This clones _configuration_tokens_list in test_expectations.py.
+        // FIXME: unify with the platforms constants at the top of the file.
+        var configuration_tokens = {
+            'Release': 'RELEASE',
+            'Debug': 'DEBUG',
+            'Mac': 'MAC',
+            'Win': 'WIN',
+            'Linux': 'LINUX',
+            'SnowLeopard': 'SNOWLEOPARD',
+            'Lion': 'LION',
+            'MountainLion': 'MOUNTAINLION',
+            'Win7': 'WIN7',
+            'XP': 'XP',
+            'Vista': 'VISTA',
+            'Android': 'ANDROID',
+        };
+
+        var expectation_tokens = {
+            'Crash': 'CRASH',
+            'Failure': 'FAIL',
+            'ImageOnlyFailure': 'IMAGE',
+            'Missing': 'MISSING',
+            'Pass': 'PASS',
+            'Rebaseline': 'REBASELINE',
+            'Skip': 'SKIP',
+            'Slow': 'SLOW',
+            'Timeout': 'TIMEOUT',
+            'WontFix': 'WONTFIX',
+        };
+
+            
+        tokens.forEach(function(token) {
+          if (token.indexOf('Bug') != -1 ||
+              token.indexOf('webkit.org') != -1 ||
+              token.indexOf('crbug.com') != -1 ||
+              token.indexOf('code.google.com') != -1) {
+              parsed_bugs.push(token);
+          } else if (token == '[') {
+              if (state == 'start') {
+                  state = 'configuration';
+              } else if (state == 'name_found') {
+                  state = 'expectations';
+              }
+          } else if (token == ']') {
+              if (state == 'configuration') {
+                  state = 'name';
+              } else if (state == 'expectations') {
+                  state = 'done';
+              }
+          } else if (state == 'configuration') {
+              parsed_modifiers.push(configuration_tokens[token]);
+          } else if (state == 'expectations') {
+              if (token == 'Rebaseline' || token == 'Skip' || token == 'Slow' || token == 'WontFix') {
+                  parsed_modifiers.push(token.toUpperCase());
+              } else {
+                  parsed_expectations.push(expectation_tokens[token]);
+              }
+          } else if (token == '#') {
+              state = 'done';
+          } else if (state == 'name' || state == 'start') {
+              parsed_path = token;
+              state = 'name_found';
+          }
+        });
+
+        if (!parsed_expectations.length) {
+            if (parsed_modifiers.indexOf('Slow') == -1) {
+                parsed_modifiers.push('Skip');
+                parsed_expectations = ['Pass'];
+            }
         }
 
         // FIXME: Should we include line number and comment lines here?
         expectations.push({
-            modifiers: trimString(match[1]),
-            path: trimString(match[2]),
-            expectations: trimString(match[3])
+            modifiers: parsed_bugs.concat(parsed_modifiers).join(' '),
+            path: parsed_path,
+            expectations: parsed_expectations.join(' '),
         });
     });
     return expectations;
@@ -895,20 +972,16 @@ function processMissingAndExtraExpectations(resultsForTest)
 
 
 var BUG_URL_PREFIX = '<a href="http://';
-var BUG_URL_POSTFIX = '/$2">crbug.com/$2</a> ';
-var WEBKIT_BUG_URL_POSTFIX = '/$2">webkit.org/b/$2</a> ';
+var BUG_URL_POSTFIX = '/$1">crbug.com/$1</a> ';
+var WEBKIT_BUG_URL_POSTFIX = '/$1">webkit.org/b/$1</a> ';
 var INTERNAL_BUG_REPLACE_VALUE = BUG_URL_PREFIX + 'b' + BUG_URL_POSTFIX;
 var EXTERNAL_BUG_REPLACE_VALUE = BUG_URL_PREFIX + 'crbug.com' + BUG_URL_POSTFIX;
 var WEBKIT_BUG_REPLACE_VALUE = BUG_URL_PREFIX + 'webkit.org/b' + WEBKIT_BUG_URL_POSTFIX;
 
 function htmlForBugs(bugs)
 {
-    bugs = bugs.replace(/BUG(CR)?(\d{4})(\ |$)/g, EXTERNAL_BUG_REPLACE_VALUE);
-    bugs = bugs.replace(/BUG(CR)?(\d{5})(\ |$)/g, EXTERNAL_BUG_REPLACE_VALUE);
-    bugs = bugs.replace(/BUG(CR)?(1\d{5})(\ |$)/g, EXTERNAL_BUG_REPLACE_VALUE);
-    bugs = bugs.replace(/BUG(CR)?([2-9]\d{5})(\ |$)/g, INTERNAL_BUG_REPLACE_VALUE);
-    bugs = bugs.replace(/BUG(CR)?(\d{7})(\ |$)/g, INTERNAL_BUG_REPLACE_VALUE);
-    bugs = bugs.replace(/BUG(WK)(\d{5}\d*?)(\ |$)/g, WEBKIT_BUG_REPLACE_VALUE);
+    bugs = bugs.replace(/crbug.com\/(\d+)(\ |$)/g, EXTERNAL_BUG_REPLACE_VALUE);
+    bugs = bugs.replace(/webkit.org\/b\/(\d+)(\ |$)/g, WEBKIT_BUG_REPLACE_VALUE);
     return bugs;
 }
 

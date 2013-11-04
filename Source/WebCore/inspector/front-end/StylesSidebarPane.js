@@ -358,7 +358,6 @@ WebInspector.StylesSidebarPane.prototype = {
         var usedProperties = {};
         this._markUsedProperties(styleRules, usedProperties);
         this.sections[0] = this._rebuildSectionsForStyleRules(styleRules, usedProperties, 0, null);
-        var responsesLeft = this.sections[0].length;
         var anchorElement = this.sections[0].inheritedPropertiesSeparatorElement;
 
         if (styles.computedStyle)        
@@ -381,28 +380,9 @@ WebInspector.StylesSidebarPane.prototype = {
             usedProperties = {};
             this._markUsedProperties(styleRules, usedProperties);
             this.sections[pseudoId] = this._rebuildSectionsForStyleRules(styleRules, usedProperties, pseudoId, anchorElement);
-            responsesLeft += this.sections[pseudoId].length;
         }
 
-        // Mark matching selectors in comma-delimited selector groups.
-        var boundMarkCallback = markCallback.bind(this);
-        for (var id in this.sections) {
-            var sectionsForPseudoId = this.sections[id].slice();
-            for (var j = 0; j < sectionsForPseudoId.length; ++j) {
-                var section = sectionsForPseudoId[j];
-                if (!section.styleRule || section.isBlank || section.styleRule.computedStyle || section.styleRule.isAttribute) {
-                    boundMarkCallback();
-                    continue;
-                }
-                section._markMatchedSelectorsInGroup(boundMarkCallback);
-            }
-        }
-
-        function markCallback()
-        {
-            if (!(--responsesLeft))
-                this._nodeStylesUpdatedForTest(node, true);
-        }
+        this._nodeStylesUpdatedForTest(node, true);
     },
 
     _nodeStylesUpdatedForTest: function(node, rebuild)
@@ -606,8 +586,10 @@ WebInspector.StylesSidebarPane.prototype = {
 
             if (computedStyle)
                 var section = new WebInspector.ComputedStylePropertiesSection(this, styleRule, usedProperties);
-            else
+            else {
                 var section = new WebInspector.StylePropertiesSection(this, styleRule, editable, styleRule.isInherited, lastWasSeparator);
+                section._markSelectorMatches();
+            }
             section.expanded = true;
 
             if (computedStyle) {
@@ -801,10 +783,10 @@ WebInspector.StylesSidebarPane.prototype = {
     {
         if (this._spectrum.visible)
             this._spectrum.hide(false);
-    }
-}
+    },
 
-WebInspector.StylesSidebarPane.prototype.__proto__ = WebInspector.SidebarPane.prototype;
+    __proto__: WebInspector.SidebarPane.prototype
+}
 
 /**
  * @constructor
@@ -844,10 +826,10 @@ WebInspector.ComputedStyleSidebarPane.prototype = {
         }
 
         this._stylesSidebarPane._refreshUpdate(null, true, callback.bind(this));
-    }
-}
+    },
 
-WebInspector.ComputedStyleSidebarPane.prototype.__proto__ = WebInspector.SidebarPane.prototype;
+    __proto__: WebInspector.SidebarPane.prototype
+}
 
 /**
  * @constructor
@@ -1124,89 +1106,38 @@ WebInspector.StylePropertiesSection.prototype = {
         return null;
     },
 
-    /**
-     * @param {function()=} callback
-     */
-    _markMatchedSelectorsInGroup: function(callback)
+    _markSelectorMatches: function()
     {
-        var self = this;
-        function mycallback()
-        {
-            if (callback)
-                callback();
-        }
-
-        var selectorText = this._selectorElement.textContent;
-        if (!selectorText || selectorText.indexOf(",") === -1) {
-            mycallback();
+        var rule = this.styleRule.rule;
+        if (!rule)
             return;
-        }
 
-        var paneNode = this._parentPane.node;
-        var relatedNode = this.styleRule.parentNode || paneNode;
-        if (!relatedNode) {
-            mycallback();
+        var selectors = rule.selectors;
+        var matchingSelectors = rule.matchingSelectors;
+        if (selectors.length < 2 || !matchingSelectors)
             return;
-        }
 
-        function trim(text)
-        {
-            return text.trim();
-        }
-        var selectors = selectorText.split(",").map(trim);
-
-        WebInspector.RemoteObject.resolveNode(relatedNode, "", resolvedCallback);
-        function resolvedCallback(object)
-        {
-            if (!object) {
-                mycallback();
-                return;
-            }
-
-            for (var i = 0, size = selectors.length; i < size; ++i) {
-                var selector = selectors[i];
-                object.callFunctionJSON(matchesSelector, [{ value: selectors[i] }], matchesCallback.bind(this, i));
-            }
-        }
-
-        function matchesSelector(selector)
-        {
-            return this.webkitMatchesSelector(selector);
-        }
-
-        var result = [];
-        var matchFound;
-        function matchesCallback(selectorIndex, matches)
-        {
-            var isLast = selectorIndex === selectors.length - 1;
-            var fragment = document.createDocumentFragment();
-            result[selectorIndex] = fragment;
-
+        var fragment = document.createDocumentFragment();
+        var currentMatch = 0;
+        for (var i = 0, lastSelectorIndex = selectors.length - 1; i <= lastSelectorIndex ; ++i) {
             var selectorNode;
-            if (matches && paneNode === self._parentPane.node) {
+            var textNode = document.createTextNode(selectors[i]);
+            if (matchingSelectors[currentMatch] === i) {
+                ++currentMatch;
                 selectorNode = document.createElement("span");
                 selectorNode.className = "selector-matches";
-                selectorNode.appendChild(document.createTextNode(selectors[selectorIndex]));
-                matchFound = true;
+                selectorNode.appendChild(textNode);
             } else
-                selectorNode = document.createTextNode(selectors[selectorIndex]);
+                selectorNode = textNode;
 
             fragment.appendChild(selectorNode);
-            if (!isLast) {
+            if (i !== lastSelectorIndex)
                 fragment.appendChild(document.createTextNode(", "));
-                return;
-            }
-
-            // This check is here in case the element class has been changed from JS during the roundtrip,
-            // so the element matches none of the distinct selectors. Fall back to "all selectors match".
-            if (matchFound) {
-                self._selectorElement.className = "selector";
-                self._selectorElement.removeChildren();
-                for (var i = 0; i < result.length; ++i)
-                    self._selectorElement.appendChild(result[i]);
-            }
-            mycallback();
         }
+
+        this._selectorElement.className = "selector";
+        this._selectorElement.removeChildren();
+        this._selectorElement.appendChild(fragment);
     },
 
     _checkWillCancelEditing: function()
@@ -1350,32 +1281,27 @@ WebInspector.StylePropertiesSection.prototype = {
 
     _moveEditorFromSelector: function(moveDirection)
     {
+        this._markSelectorMatches();
 
-        if (!moveDirection) {
-            this._markMatchedSelectorsInGroup();
+        if (!moveDirection)
             return;
-        }
 
-        this._markMatchedSelectorsInGroup(markCallback.bind(this));
+        if (moveDirection === "forward") {
+            this.expand();
+            var firstChild = this.propertiesTreeOutline.children[0];
+            while (firstChild && firstChild.inherited)
+                firstChild = firstChild.nextSibling;
+            if (!firstChild)
+                this.addNewBlankProperty().startEditing();
+            else
+                firstChild.startEditing(firstChild.nameElement);
+        } else {
+            var previousSection = this.previousEditableSibling();
+            if (!previousSection)
+                return;
 
-        function markCallback() {
-            if (moveDirection === "forward") {
-                this.expand();
-                var firstChild = this.propertiesTreeOutline.children[0];
-                while (firstChild && firstChild.inherited)
-                    firstChild = firstChild.nextSibling;
-                if (!firstChild)
-                    this.addNewBlankProperty().startEditing();
-                else
-                    firstChild.startEditing(firstChild.nameElement);
-            } else {
-                var previousSection = this.previousEditableSibling();
-                if (!previousSection)
-                    return;
-
-                previousSection.expand();
-                previousSection.addNewBlankProperty().startEditing();
-            }
+            previousSection.expand();
+            previousSection.addNewBlankProperty().startEditing();
         }
     },
 
@@ -1415,11 +1341,11 @@ WebInspector.StylePropertiesSection.prototype = {
     {
         // Do nothing but mark the selectors in group if necessary.
         // This is overridden by BlankStylePropertiesSection.
-        this._markMatchedSelectorsInGroup();
-    }
-}
+        this._markSelectorMatches();
+    },
 
-WebInspector.StylePropertiesSection.prototype.__proto__ = WebInspector.PropertiesSection.prototype;
+    __proto__: WebInspector.PropertiesSection.prototype
+}
 
 /**
  * @constructor
@@ -1537,10 +1463,10 @@ WebInspector.ComputedStylePropertiesSection.prototype = {
             if (name in this._propertyTreeElements)
                 this._propertyTreeElements[name].expand();
         }
-    }
-}
+    },
 
-WebInspector.ComputedStylePropertiesSection.prototype.__proto__ = WebInspector.PropertiesSection.prototype;
+    __proto__: WebInspector.PropertiesSection.prototype
+}
 
 /**
  * @constructor
@@ -1612,10 +1538,10 @@ WebInspector.BlankStylePropertiesSection.prototype = {
 
         // FIXME: replace this instance by a normal WebInspector.StylePropertiesSection.
         this._normal = true;
-    }
-}
+    },
 
-WebInspector.BlankStylePropertiesSection.prototype.__proto__ = WebInspector.StylePropertiesSection.prototype;
+    __proto__: WebInspector.StylePropertiesSection.prototype
+}
 
 /**
  * @constructor
@@ -2579,10 +2505,10 @@ WebInspector.StylePropertyTreeElement.prototype = {
         if (!this.section.computedStyle)
             return event.target === this._expandElement;
         return TreeElement.prototype.isEventWithinDisclosureTriangle.call(this, event);
-    }
-}
+    },
 
-WebInspector.StylePropertyTreeElement.prototype.__proto__ = TreeElement.prototype;
+    __proto__: TreeElement.prototype
+}
 
 /**
  * @constructor
@@ -2657,15 +2583,22 @@ WebInspector.StylesSidebarPane.CSSPropertyPrompt.prototype = {
         return this._cssCompletions.keySet().hasOwnProperty(word);
     },
 
-    _buildPropertyCompletions: function(textPrompt, wordRange, force, completionsReadyCallback)
+    /**
+     * @param {Element} proxyElement
+     * @param {Range} wordRange
+     * @param {boolean} force
+     * @param {function(Array.<string>, number=)} completionsReadyCallback
+     */
+    _buildPropertyCompletions: function(proxyElement, wordRange, force, completionsReadyCallback)
     {
         var prefix = wordRange.toString().toLowerCase();
         if (!prefix && !force)
             return;
 
         var results = this._cssCompletions.startsWith(prefix);
-        completionsReadyCallback(results);
-    }
-}
+        var selectedIndex = this._cssCompletions.mostUsedOf(results);
+        completionsReadyCallback(results, selectedIndex);
+    },
 
-WebInspector.StylesSidebarPane.CSSPropertyPrompt.prototype.__proto__ = WebInspector.TextPrompt.prototype;
+    __proto__: WebInspector.TextPrompt.prototype
+}

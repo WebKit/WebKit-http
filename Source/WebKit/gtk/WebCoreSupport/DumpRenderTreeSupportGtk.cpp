@@ -3,6 +3,7 @@
  *  Copyright (C) 2010 Joone Hur <joone@kldp.org>
  *  Copyright (C) 2009 Google Inc. All rights reserved.
  *  Copyright (C) 2011 Igalia S.L.
+ *  Copyright (C) 2012 Apple Inc. All Rights Reserved.
  *
  *  This library is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU Lesser General Public
@@ -60,6 +61,7 @@
 #include "RenderTreeAsText.h"
 #include "RenderView.h"
 #include "ResourceLoadScheduler.h"
+#include "RuntimeEnabledFeatures.h"
 #include "SchemeRegistry.h"
 #include "SecurityOrigin.h"
 #include "SecurityPolicy.h"
@@ -658,23 +660,11 @@ void DumpRenderTreeSupportGtk::setMockGeolocationPosition(WebKitWebView* webView
 #endif
 }
 
-void DumpRenderTreeSupportGtk::setMockGeolocationError(WebKitWebView* webView, int errorCode, const gchar* errorMessage)
+void DumpRenderTreeSupportGtk::setMockGeolocationPositionUnavailableError(WebKitWebView* webView, const gchar* errorMessage)
 {
 #if ENABLE(GEOLOCATION)
     GeolocationClientMock* mock = static_cast<GeolocationClientMock*>(GeolocationController::from(core(webView))->client());
-
-    GeolocationError::ErrorCode code;
-    switch (errorCode) {
-    case PositionError::PERMISSION_DENIED:
-        code = GeolocationError::PermissionDenied;
-        break;
-    case PositionError::POSITION_UNAVAILABLE:
-    default:
-        code = GeolocationError::PositionUnavailable;
-        break;
-    }
-
-    mock->setError(GeolocationError::create(code, errorMessage));
+    mock->setPositionUnavailableError(errorMessage);
 #endif
 }
 
@@ -683,6 +673,8 @@ int DumpRenderTreeSupportGtk::numberOfPendingGeolocationPermissionRequests(WebKi
 #if ENABLE(GEOLOCATION)
     GeolocationClientMock* mock = static_cast<GeolocationClientMock*>(GeolocationController::from(core(webView))->client());
     return mock->numberOfPendingPermissionRequests();
+#else
+    return 0;
 #endif
 }
 
@@ -699,6 +691,27 @@ void DumpRenderTreeSupportGtk::setCSSGridLayoutEnabled(WebKitWebView* webView, b
 void DumpRenderTreeSupportGtk::setCSSRegionsEnabled(WebKitWebView* webView, bool enabled)
 {
     core(webView)->settings()->setCSSRegionsEnabled(enabled);
+}
+
+void DumpRenderTreeSupportGtk::setCSSCustomFilterEnabled(WebKitWebView* webView, bool enabled)
+{
+#if ENABLE(CSS_SHADERS)
+    core(webView)->settings()->setCSSCustomFilterEnabled(enabled);
+#endif
+}
+
+void DumpRenderTreeSupportGtk::setShadowDOMEnabled(bool enabled)
+{
+#if ENABLE(SHADOW_DOM)
+    RuntimeEnabledFeatures::setShadowDOMEnabled(enabled);
+#endif
+}
+
+void DumpRenderTreeSupportGtk::setStyleScopedEnabled(bool enabled)
+{
+#if ENABLE(STYLE_SCOPED)
+    RuntimeEnabledFeatures::setStyleScopedEnabled(enabled);
+#endif
 }
 
 bool DumpRenderTreeSupportGtk::elementDoesAutoCompleteForElementWithId(WebKitWebFrame* frame, JSStringRef id)

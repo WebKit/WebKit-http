@@ -77,10 +77,12 @@ public:
     void synchronousLoadDecisionForIconURL(const String&, int&) const;
     
     void getLoadDecisionForIconURL(const String&, uint64_t callbackID);
+    void didReceiveIconForPageURL(const String&);
 
     WebCore::Image* imageForPageURL(const String&, const WebCore::IntSize& iconSize = WebCore::IntSize(32, 32));
     WebCore::NativeImagePtr nativeImageForPageURL(const String&, const WebCore::IntSize& iconSize = WebCore::IntSize(32, 32));
     bool isOpen();
+    bool isUrlImportCompleted();
 
     void removeAllIcons();
     void checkIntegrityBeforeOpening();
@@ -89,7 +91,6 @@ public:
     void initializeIconDatabaseClient(const WKIconDatabaseClient*);
 
     // WebCore::IconDatabaseClient
-    virtual bool performImport();
     virtual void didImportIconURLForPageURL(const String&);
     virtual void didImportIconDataForPageURL(const String&);
     virtual void didChangeIconForPageURL(const String&);
@@ -106,6 +107,7 @@ private:
 
     void didReceiveWebIconDatabaseMessage(CoreIPC::Connection*, CoreIPC::MessageID, CoreIPC::ArgumentDecoder*);
     void didReceiveSyncWebIconDatabaseMessage(CoreIPC::Connection*, CoreIPC::MessageID, CoreIPC::ArgumentDecoder*, OwnPtr<CoreIPC::ArgumentEncoder>&);
+    void notifyIconDataReadyForPageURL(const String&);
 
     WebContext* m_webContext;
     

@@ -193,19 +193,22 @@ WebInspector.TimelineModel.prototype = {
         return new WebInspector.ChunkedFileReader(file, WebInspector.TimelineModel.TransferChunkLengthBytes, delegate);
     },
 
+    _createFileWriter: function(fileName, callback)
+    {
+        var stream = new WebInspector.FileOutputStream();
+        stream.open(fileName, callback);
+    },
+
     saveToFile: function()
     {
         var now = new Date();
         var fileName = "TimelineRawData-" + now.toISO8601Compact() + ".json";
-
-        var delegate = new WebInspector.TimelineModelWriteToFileDelegate(this._records, window.navigator.appVersion);
-        var writer = this._createFileWriter(fileName, delegate);
-        writer.startTransfer();
-    },
-
-    _createFileWriter: function(fileName, delegate)
-    {
-        return new WebInspector.FileOutputStream(fileName, delegate);
+        function callback(stream)
+        {
+            var saver = new WebInspector.TimelineSaver(stream);
+            saver.save(this._records, window.navigator.appVersion);
+        }
+        this._createFileWriter(fileName, callback.bind(this));
     },
 
     reset: function()
@@ -244,10 +247,10 @@ WebInspector.TimelineModel.prototype = {
     recordOffsetInSeconds: function(rawRecord)
     {
         return WebInspector.TimelineModel.startTimeInSeconds(rawRecord) - this._minimumRecordTime;
-    }
-}
+    },
 
-WebInspector.TimelineModel.prototype.__proto__ = WebInspector.Object.prototype;
+    __proto__: WebInspector.Object.prototype
+}
 
 /**
  * @constructor
@@ -262,20 +265,14 @@ WebInspector.TimelineModelLoader = function(model, reader, progress)
     this._reader = reader;
     this._progress = progress;
     this._buffer = "";
+    this._firstChunk = true;
 }
 
 WebInspector.TimelineModelLoader.prototype = {
-    startTransfer: function()
-    {
-        this._model.reset();
-        this._firstChunk = true;
-        return true;
-    },
-
     /**
      * @param {string} chunk
      */
-    transferChunk: function(chunk)
+    write: function(chunk)
     {
         var data = this._buffer + chunk;
         var lastIndex = 0;
@@ -309,6 +306,7 @@ WebInspector.TimelineModelLoader.prototype = {
         if (this._firstChunk) {
             this._version = items[0];
             this._firstChunk = false;
+            this._model.reset();
         }
 
         // Skip 0-th element - it is either version or 0.
@@ -316,9 +314,7 @@ WebInspector.TimelineModelLoader.prototype = {
             this._model._addRecord(items[i]);
     },
 
-    finishTransfer: function() { },
-
-    dispose: function() { }
+    close: function() { }
 }
 
 /**
@@ -334,11 +330,14 @@ WebInspector.TimelineModelLoadFromFileDelegate = function(model, progress)
 }
 
 WebInspector.TimelineModelLoadFromFileDelegate.prototype = {
-    onTransferStarted: function(reader)
+    onTransferStarted: function()
     {
         this._progress.setTitle(WebInspector.UIString("Loading\u2026"));
     },
 
+    /**
+     * @param {WebInspector.ChunkedReader} reader
+     */
     onChunkTransferred: function(reader)
     {
         if (this._progress.isCanceled()) {
@@ -355,11 +354,14 @@ WebInspector.TimelineModelLoadFromFileDelegate.prototype = {
         }
     },
 
-    onTransferFinished: function(reader)
+    onTransferFinished: function()
     {
         this._progress.done();
     },
 
+    /**
+     * @param {WebInspector.ChunkedReader} reader
+     */
     onError: function(reader, event)
     {
         this._progress.done();
@@ -381,36 +383,27 @@ WebInspector.TimelineModelLoadFromFileDelegate.prototype = {
 
 /**
  * @constructor
- * @implements WebInspector.OutputStreamDelegate
- * @param {Array} records
- * @param {string} version
  */
-WebInspector.TimelineModelWriteToFileDelegate = function(records, version)
+WebInspector.TimelineSaver = function(stream)
 {
-    this._records = records;
-    this._recordIndex = 0;
-    this._prologue = "[" + JSON.stringify(new String(version));
+    this._stream = stream;
 }
 
-WebInspector.TimelineModelWriteToFileDelegate.prototype = {
-    onTransferStarted: function(writer)
+WebInspector.TimelineSaver.prototype = {
+    /**
+     * @param {Array} records
+     * @param {string} version
+     */
+    save: function(records, version)
     {
-        this._pushChunk(writer);
+        this._records = records;
+        this._recordIndex = 0;
+        this._prologue = "[" + JSON.stringify(version);
+
+        this._writeNextChunk(this._stream);
     },
 
-    onChunkTransferred: function(writer)
-    {
-        if (this._recordIndex === this._records.length)
-            writer.finishTransfer();
-        else
-            this._pushChunk(writer);
-    },
-
-    onTransferFinished: function(writer) { },
-
-    onError: function(writer, event) { },
-
-    _pushChunk: function(writer)
+    _writeNextChunk: function(stream)
     {
         const separator = ",\n";
         var data = [];
@@ -420,9 +413,13 @@ WebInspector.TimelineModelWriteToFileDelegate.prototype = {
             data.push(this._prologue);
             length += this._prologue.length;
             delete this._prologue;
-        } else
+        } else {
+            if (this._recordIndex === this._records.length) {
+                stream.close();
+                return;
+            }
             data.push("");
-
+        }
         while (this._recordIndex < this._records.length) {
             var item = JSON.stringify(this._records[this._recordIndex]);
             var itemLength = item.length + separator.length;
@@ -434,6 +431,6 @@ WebInspector.TimelineModelWriteToFileDelegate.prototype = {
         }
         if (this._recordIndex === this._records.length)
             data.push(data.pop() + "]");
-        writer.transferChunk(data.join(separator));
+        stream.write(data.join(separator), this._writeNextChunk.bind(this));
     }
 }

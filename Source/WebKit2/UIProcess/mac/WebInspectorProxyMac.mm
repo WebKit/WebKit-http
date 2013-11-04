@@ -96,7 +96,7 @@ static const CGFloat windowContentBorderThickness = 55;
     // depend on this for enforcing the height constraints, so a small delay isn't terrible. Most
     // of the time the views will already have the correct frames because of autoresizing masks.
 
-    dispatch_after(DISPATCH_TIME_NOW, dispatch_get_current_queue(), ^{
+    dispatch_after(DISPATCH_TIME_NOW, dispatch_get_main_queue(), ^{
         if (!_inspectorProxy)
             return;
         static_cast<WebInspectorProxy*>(_inspectorProxy)->inspectedViewFrameDidChange();
@@ -185,7 +185,7 @@ WebPageProxy* WebInspectorProxy::platformCreateInspectorPage()
     ASSERT(m_page);
     ASSERT(!m_inspectorView);
 
-    m_inspectorView.adoptNS([[WKWebInspectorWKView alloc] initWithFrame:NSMakeRect(0, 0, initialWindowWidth, initialWindowHeight) contextRef:toAPI(page()->process()->context()) pageGroupRef:toAPI(inspectorPageGroup())]);
+    m_inspectorView.adoptNS([[WKWebInspectorWKView alloc] initWithFrame:NSMakeRect(0, 0, initialWindowWidth, initialWindowHeight) contextRef:toAPI(page()->process()->context()) pageGroupRef:toAPI(inspectorPageGroup()) relatedToPage:toAPI(m_page)]);
     ASSERT(m_inspectorView);
 
     [m_inspectorView.get() setDrawsBackground:NO];

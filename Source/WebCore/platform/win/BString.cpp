@@ -119,9 +119,14 @@ BString::BString(const BString& other)
 
 void BString::adoptBSTR(BSTR bstr)
 {
-    if (m_bstr)
-        SysFreeString(m_bstr);
+    SysFreeString(m_bstr);
     m_bstr = bstr;
+}
+
+void BString::clear()
+{
+    SysFreeString(m_bstr);
+    m_bstr = 0;
 }
 
 BString& BString::operator=(const BString& other)

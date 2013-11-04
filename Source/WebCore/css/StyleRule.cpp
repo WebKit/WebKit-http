@@ -33,6 +33,7 @@
 #include "WebKitCSSKeyframeRule.h"
 #include "WebKitCSSKeyframesRule.h"
 #include "WebKitCSSRegionRule.h"
+#include <wtf/MemoryInstrumentationVector.h>
 
 namespace WebCore {
 
@@ -81,7 +82,10 @@ void StyleRuleBase::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
     case Unknown:
     case Charset:
     case Keyframe:
-        MemoryClassInfo info(memoryObjectInfo, this, WebCoreMemoryTypes::CSS);
+#if !ENABLE(CSS_REGIONS)
+    case Region:
+#endif
+        ASSERT_NOT_REACHED();
         return;
     }
     ASSERT_NOT_REACHED();
@@ -337,7 +341,7 @@ void StyleRuleBlock::wrapperRemoveRule(unsigned index)
 void StyleRuleBlock::reportDescendantMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
 {
     MemoryClassInfo info(memoryObjectInfo, this, WebCoreMemoryTypes::CSS);
-    info.addInstrumentedVector(m_childRules);
+    info.addMember(m_childRules);
 }
 
 StyleRuleMedia::StyleRuleMedia(PassRefPtr<MediaQuerySet> media, Vector<RefPtr<StyleRuleBase> >& adoptRules)

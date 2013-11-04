@@ -248,8 +248,8 @@ WebInspector.ProfilesPanel = function()
         this._registerProfileType(new WebInspector.HeapSnapshotProfileType());
     if (WebInspector.experimentsSettings.nativeMemorySnapshots.isEnabled())
         this._registerProfileType(new WebInspector.NativeMemoryProfileType());
-    if (WebInspector.experimentsSettings.webGLInspection.isEnabled())
-        this._registerProfileType(new WebInspector.WebGLProfileType());
+    if (WebInspector.experimentsSettings.canvasInspection.isEnabled())
+        this._registerProfileType(new WebInspector.CanvasProfileType());
 
     InspectorBackend.registerProfilerDispatcher(new WebInspector.ProfilerDispatcher(this));
 
@@ -428,11 +428,14 @@ WebInspector.ProfilesPanel.prototype = {
             element.treeElement.handleContextMenuEvent(event);
             return;
         }
-        var contextMenu = new WebInspector.ContextMenu();
-        if (this.visibleView instanceof WebInspector.HeapSnapshotView)
-            this.visibleView.populateContextMenu(contextMenu, event);
-        contextMenu.appendItem(WebInspector.UIString("Load profile\u2026"), this._fileSelectorElement.click.bind(this._fileSelectorElement));
-        contextMenu.show(event);
+        if (element !== this.element || event.srcElement === this.sidebarElement) {
+            var contextMenu = new WebInspector.ContextMenu();
+            if (this.visibleView instanceof WebInspector.HeapSnapshotView)
+                this.visibleView.populateContextMenu(contextMenu, event);
+            contextMenu.appendItem(WebInspector.UIString("Load Heap Snapshot\u2026"), this._fileSelectorElement.click.bind(this._fileSelectorElement));
+            contextMenu.show(event);
+        }
+
     },
 
     /**
@@ -671,7 +674,7 @@ WebInspector.ProfilesPanel.prototype = {
         var profile = this._profilesIdMap[this._makeKey(uid, WebInspector.HeapSnapshotProfileType.TypeId)];
         if (!profile)
             return;
-        profile.finishHeapSnapshot(false);
+        profile.finishHeapSnapshot();
     },
 
     /**
@@ -1112,10 +1115,10 @@ WebInspector.ProfilesPanel.prototype = {
 
         contextMenu.appendItem(WebInspector.UIString("Reveal in Dominators View"), revealInView.bind(this, "Dominators"));
         contextMenu.appendItem(WebInspector.UIString("Reveal in Summary View"), revealInView.bind(this, "Summary"));
-    }
-}
+    },
 
-WebInspector.ProfilesPanel.prototype.__proto__ = WebInspector.Panel.prototype;
+    __proto__: WebInspector.Panel.prototype
+}
 
 /**
  * @constructor
@@ -1246,17 +1249,21 @@ WebInspector.ProfileSidebarTreeElement.prototype = {
     {
         var profile = this.profile;
         var contextMenu = new WebInspector.ContextMenu();
-        if (profile.canSaveToFile())
-            contextMenu.appendItem(WebInspector.UIString("Save profile\u2026"), profile.saveToFile.bind(profile));
-        // FIXME: use context menu provider
         var profilesPanel = WebInspector.ProfilesPanel._instance;
-        contextMenu.appendItem(WebInspector.UIString("Load profile\u2026"), profilesPanel._fileSelectorElement.click.bind(profilesPanel._fileSelectorElement));
-        contextMenu.appendItem(WebInspector.UIString("Delete profile"), this.ondelete.bind(this));
+        // FIXME: use context menu provider
+        if (profile.canSaveToFile()) {
+            contextMenu.appendItem(WebInspector.UIString("Save Heap Snapshot\u2026"), profile.saveToFile.bind(profile));
+            contextMenu.appendItem(WebInspector.UIString("Load Heap Snapshot\u2026"), profilesPanel._fileSelectorElement.click.bind(profilesPanel._fileSelectorElement));
+            contextMenu.appendItem(WebInspector.UIString("Delete Heap Snapshot"), this.ondelete.bind(this));
+        } else {
+            contextMenu.appendItem(WebInspector.UIString("Load Heap Snapshot\u2026"), profilesPanel._fileSelectorElement.click.bind(profilesPanel._fileSelectorElement));
+            contextMenu.appendItem(WebInspector.UIString("Delete profile"), this.ondelete.bind(this));
+        }
         contextMenu.show(event);
-    }
-}
+    },
 
-WebInspector.ProfileSidebarTreeElement.prototype.__proto__ = WebInspector.SidebarTreeElement.prototype;
+    __proto__: WebInspector.SidebarTreeElement.prototype
+}
 
 /**
  * @constructor
@@ -1274,10 +1281,10 @@ WebInspector.ProfileGroupSidebarTreeElement.prototype = {
     {
         if (this.children.length > 0)
             WebInspector.ProfilesPanel._instance.showProfile(this.children[this.children.length - 1].profile);
-    }
-}
+    },
 
-WebInspector.ProfileGroupSidebarTreeElement.prototype.__proto__ = WebInspector.SidebarTreeElement.prototype;
+    __proto__: WebInspector.SidebarTreeElement.prototype
+}
 
 /**
  * @constructor
@@ -1300,10 +1307,10 @@ WebInspector.ProfilesSidebarTreeElement.prototype = {
     get selectable()
     {
         return true;
-    }
-}
+    },
 
-WebInspector.ProfilesSidebarTreeElement.prototype.__proto__ = WebInspector.SidebarTreeElement.prototype;
+    __proto__: WebInspector.SidebarTreeElement.prototype
+}
 
 importScript("ProfileDataGridTree.js");
 importScript("BottomUpProfileDataGridTree.js");
@@ -1319,4 +1326,4 @@ importScript("HeapSnapshotWorkerDispatcher.js");
 importScript("NativeMemorySnapshotView.js");
 importScript("ProfileLauncherView.js");
 importScript("TopDownProfileDataGridTree.js");
-importScript("WebGLProfileView.js");
+importScript("CanvasProfileView.js");

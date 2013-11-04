@@ -80,6 +80,7 @@
 #include "ProgressTracker.h"
 #include "RenderView.h"
 #include "ResourceHandle.h"
+#include "RuntimeEnabledFeatures.h"
 #include "ScriptValue.h"
 #include "Settings.h"
 #include "webkit/WebKitDOMDocumentPrivate.h"
@@ -350,7 +351,7 @@ static gboolean webkit_web_view_forward_context_menu_event(WebKitWebView* webVie
         return FALSE;
 
     mainFrame->view()->setCursor(pointerCursor());
-    if (page->frameCount()) {
+    if (page->subframeCount()) {
         MouseEventWithHitTestResults mev = prepareMouseEventForFrame(mainFrame, event);
         Frame* targetFrame = EventHandler::subframeForHitTestResult(mev);
         if (!targetFrame)
@@ -744,21 +745,6 @@ static gboolean webkit_web_view_button_press_event(GtkWidget* widget, GdkEventBu
 
     priv->imFilter.notifyMouseButtonPress();
     gboolean result = frame->eventHandler()->handleMousePressEvent(platformEvent);
-
-#if PLATFORM(X11)
-    /* Copy selection to the X11 selection clipboard */
-    if (event->button == 2) {
-        PasteboardHelper* helper = PasteboardHelper::defaultPasteboardHelper();
-        bool wasUsingPrimary = helper->usePrimarySelectionClipboard();
-        helper->setUsePrimarySelectionClipboard(true);
-
-        Editor* editor = webView->priv->corePage->focusController()->focusedOrMainFrame()->editor();
-        result = result || editor->canPaste() || editor->canDHTMLPaste();
-        editor->paste();
-
-        helper->setUsePrimarySelectionClipboard(wasUsingPrimary);
-    }
-#endif
 
     return result;
 }
@@ -3432,6 +3418,10 @@ static void webkit_web_view_update_settings(WebKitWebView* webView)
     coreSettings->setWebGLEnabled(settingsPrivate->enableWebgl);
 #endif
 
+#if ENABLE(MEDIA_STREAM)
+    WebCore::RuntimeEnabledFeatures::setMediaStreamEnabled(settingsPrivate->enableMediaStream);
+#endif
+
 #if USE(ACCELERATED_COMPOSITING)
     coreSettings->setAcceleratedCompositingEnabled(settingsPrivate->enableAcceleratedCompositing);
 #endif
@@ -3622,6 +3612,8 @@ static void webkit_web_view_init(WebKitWebView* webView)
     pageClients.inspectorClient = new WebKit::InspectorClient(webView);
 
     priv->corePage = new Page(pageClients);
+
+    priv->corePage->addLayoutMilestones(DidFirstVisuallyNonEmptyLayout);
 
 #if ENABLE(GEOLOCATION)
     if (DumpRenderTreeSupportGtk::dumpRenderTreeModeEnabled()) {

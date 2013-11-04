@@ -33,12 +33,35 @@
 #if ENABLE(INSPECTOR)
 
 #include "MemoryInstrumentationImpl.h"
+#include <wtf/Assertions.h>
 
 namespace WebCore {
 
-MemoryInstrumentationImpl::MemoryInstrumentationImpl(VisitedObjects& visitedObjects)
-    : m_visitedObjects(visitedObjects)
+void MemoryInstrumentationClientImpl::countObjectSize(MemoryObjectType objectType, size_t size)
 {
+    ASSERT(objectType);
+    TypeToSizeMap::AddResult result = m_totalSizes.add(objectType, size);
+    if (!result.isNewEntry)
+        result.iterator->second += size;
+    ++m_totalCountedObjects;
+}
+
+bool MemoryInstrumentationClientImpl::visited(const void* object)
+{
+    return !m_visitedObjects.add(object).isNewEntry;
+}
+
+void MemoryInstrumentationClientImpl::checkCountedObject(const void* object)
+{
+    if (!checkInstrumentedObjects())
+        return;
+    if (!m_allocatedObjects->contains(object)) {
+        ++m_totalObjectsNotInAllocatedSet;
+#if 0
+        printf("Found unknown object referenced by pointer: %p\n", object);
+        WTFReportBacktrace();
+#endif
+    }
 }
 
 void MemoryInstrumentationImpl::processDeferredInstrumentedPointers()
@@ -50,27 +73,14 @@ void MemoryInstrumentationImpl::processDeferredInstrumentedPointers()
     }
 }
 
-void MemoryInstrumentationImpl::countObjectSize(MemoryObjectType objectType, size_t size)
-{
-    ASSERT(objectType);
-    TypeToSizeMap::AddResult result = m_totalSizes.add(objectType, size);
-    if (!result.isNewEntry)
-        result.iterator->second += size;
-}
-
 void MemoryInstrumentationImpl::deferInstrumentedPointer(PassOwnPtr<InstrumentedPointerBase> pointer)
 {
     m_deferredInstrumentedPointers.append(pointer);
 }
 
-bool MemoryInstrumentationImpl::visited(const void* object)
-{
-    return !m_visitedObjects.add(object).isNewEntry;
-}
-
 size_t MemoryInstrumentationImpl::selfSize() const
 {
-    return calculateContainerSize(m_visitedObjects) + calculateContainerSize(m_deferredInstrumentedPointers);
+    return calculateContainerSize(m_deferredInstrumentedPointers);
 }
 
 } // namespace WebCore

@@ -198,7 +198,7 @@ class LayoutTestRunner(object):
             exp_str = got_str = 'SKIP'
             expected = True
         else:
-            expected = self._expectations.matches_an_expected_result(result.test_name, result.type, self._options.pixel_tests or test_failures.is_reftest_failure(result.failures))
+            expected = self._expectations.matches_an_expected_result(result.test_name, result.type, self._options.pixel_tests or result.reftest_type)
             exp_str = self._expectations.get_expectations_string(result.test_name)
             got_str = self._expectations.expectation_to_string(result.type)
 
@@ -420,6 +420,7 @@ class Worker(object):
         thread.start()
         thread.join(thread_timeout_sec)
         result = thread.result
+        failures = []
         if thread.isAlive():
             # If join() returned with the thread still running, the
             # DumpRenderTree is completely hung and there's nothing
@@ -430,11 +431,12 @@ class Worker(object):
             # that tradeoff in order to avoid losing the rest of this
             # thread's results.
             _log.error('Test thread hung: killing all DumpRenderTrees')
+            failures = [test_failures.FailureTimeout()]
 
         driver.stop()
 
         if not result:
-            result = test_results.TestResult(test_input.test_name, failures=[], test_run_time=0)
+            result = test_results.TestResult(test_input.test_name, failures=failures, test_run_time=0)
         return result
 
     def _run_test_in_this_thread(self, test_input, stop_when_done):

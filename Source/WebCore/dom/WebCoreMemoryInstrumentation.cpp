@@ -50,4 +50,8 @@ MemoryObjectType WebCoreMemoryTypes::CachedResourceSVG = "MemoryCache.SVG";
 MemoryObjectType WebCoreMemoryTypes::CachedResourceShader = "MemoryCache.Shader";
 MemoryObjectType WebCoreMemoryTypes::CachedResourceXSLT = "MemoryCache.XSLT";
 
+MemoryObjectType WebCoreMemoryTypes::ExternalResources = "JSExternalResources";
+MemoryObjectType WebCoreMemoryTypes::ExternalStrings = "JSExternalResources.Strings";
+MemoryObjectType WebCoreMemoryTypes::ExternalArrays = "JSExternalResources.Arrays";
+
 } // namespace WebCore

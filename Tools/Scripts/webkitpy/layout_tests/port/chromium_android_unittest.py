@@ -30,6 +30,7 @@ import optparse
 import StringIO
 import time
 import unittest
+import sys
 
 from webkitpy.common.system import executive_mock
 from webkitpy.common.system.executive_mock import MockExecutive2
@@ -232,9 +233,8 @@ class ChromiumAndroidDriverTest(unittest.TestCase):
     def test_drt_cmd_line(self):
         cmd_line = self.driver._drt_cmd_line(True, ['--a'])
         self.assertTrue('--a' in cmd_line)
-        self.assertTrue('--in-fifo=' + chromium_android.DEVICE_DRT_DIR + 'DumpRenderTree.in' in cmd_line)
-        self.assertTrue('--out-fifo=' + chromium_android.DEVICE_DRT_DIR + 'DumpRenderTree.out' in cmd_line)
-        self.assertTrue('--err-fifo=' + chromium_android.DEVICE_DRT_DIR + 'DumpRenderTree.err' in cmd_line)
+        self.assertTrue('--create-stdin-fifo' in cmd_line)
+        self.assertTrue('--separate-stderr-fifo' in cmd_line)
 
     def test_read_prompt(self):
         self.driver._server_process = driver_unittest.MockServerProcess(lines=['root@android:/ # '])
@@ -245,7 +245,8 @@ class ChromiumAndroidDriverTest(unittest.TestCase):
     def test_command_from_driver_input(self):
         driver_input = driver.DriverInput('foo/bar/test.html', 10, 'checksum', True)
         expected_command = "/data/local/tmp/third_party/WebKit/LayoutTests/foo/bar/test.html'--pixel-test'checksum\n"
-        self.assertEquals(self.driver._command_from_driver_input(driver_input), expected_command)
+        if (sys.platform != "cygwin"):
+            self.assertEquals(self.driver._command_from_driver_input(driver_input), expected_command)
 
         driver_input = driver.DriverInput('http/tests/foo/bar/test.html', 10, 'checksum', True)
         expected_command = "http://127.0.0.1:8000/foo/bar/test.html'--pixel-test'checksum\n"

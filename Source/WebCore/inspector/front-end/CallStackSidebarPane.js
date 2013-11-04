@@ -155,10 +155,10 @@ WebInspector.CallStackSidebarPane.prototype = {
             this._selectNextCallFrameOnStack();
             event.consume();
         }
-    }
-}
+    },
 
-WebInspector.CallStackSidebarPane.prototype.__proto__ = WebInspector.SidebarPane.prototype;
+    __proto__: WebInspector.SidebarPane.prototype
+}
 
 /**
  * @constructor
@@ -178,7 +178,7 @@ WebInspector.CallStackSidebarPane.Placard = function(callFrame, pane)
 WebInspector.CallStackSidebarPane.Placard.prototype = {
     _update: function(uiLocation)
     {
-        this.subtitle = WebInspector.displayNameForURL(uiLocation.uiSourceCode.url) + ":" + (uiLocation.lineNumber + 1);
+        this.subtitle = WebInspector.formatLinkText(uiLocation.uiSourceCode.url, uiLocation.lineNumber);
     },
 
     _placardContextMenu: function(event)
@@ -197,7 +197,7 @@ WebInspector.CallStackSidebarPane.Placard.prototype = {
     _restartFrame: function()
     {
         this._callFrame.restart(undefined);
-    }
-}
+    },
 
-WebInspector.CallStackSidebarPane.Placard.prototype.__proto__ = WebInspector.Placard.prototype;
+    __proto__: WebInspector.Placard.prototype
+}
