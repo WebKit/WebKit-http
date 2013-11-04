@@ -27,14 +27,21 @@
 #include "ElementAttributeData.h"
 
 #include "Attr.h"
+#include "CSSParser.h"
 #include "CSSStyleSheet.h"
+#include "MemoryInstrumentation.h"
 #include "StyledElement.h"
 
 namespace WebCore {
 
+static size_t immutableElementAttributeDataSize(unsigned count)
+{
+    return sizeof(ElementAttributeData) - sizeof(void*) + sizeof(Attribute) * count;
+}
+
 PassOwnPtr<ElementAttributeData> ElementAttributeData::createImmutable(const Vector<Attribute>& attributes)
 {
-    void* slot = WTF::fastMalloc(sizeof(ElementAttributeData) - sizeof(void*) + sizeof(Attribute) * attributes.size());
+    void* slot = WTF::fastMalloc(immutableElementAttributeDataSize(attributes.size()));
     return adoptPtr(new (slot) ElementAttributeData(attributes));
 }
 
@@ -205,8 +212,9 @@ void ElementAttributeData::updateInlineStyleAvoidingMutation(StyledElement* elem
     if (m_inlineStyleDecl && !m_inlineStyleDecl->isMutable())
         m_inlineStyleDecl.clear();
     if (!m_inlineStyleDecl)
-        m_inlineStyleDecl = StylePropertySet::create(strictToCSSParserMode(element->isHTMLElement() && !element->document()->inQuirksMode()));
-    m_inlineStyleDecl->parseDeclaration(text, element->document()->elementSheet()->contents());
+        m_inlineStyleDecl = CSSParser::parseInlineStyleDeclaration(text, element);
+    else
+        m_inlineStyleDecl->parseDeclaration(text, element->document()->elementSheet()->contents());
 }
 
 void ElementAttributeData::destroyInlineStyle(StyledElement* element) const
@@ -217,20 +225,20 @@ void ElementAttributeData::destroyInlineStyle(StyledElement* element) const
     m_inlineStyleDecl = 0;
 }
 
-void ElementAttributeData::addAttribute(const Attribute& attribute, Element* element, EInUpdateStyleAttribute inUpdateStyleAttribute)
+void ElementAttributeData::addAttribute(const Attribute& attribute, Element* element, SynchronizationOfLazyAttribute inSynchronizationOfLazyAttribute)
 {
     ASSERT(isMutable());
 
-    if (element && inUpdateStyleAttribute == NotInUpdateStyleAttribute)
+    if (element && inSynchronizationOfLazyAttribute == NotInSynchronizationOfLazyAttribute)
         element->willModifyAttribute(attribute.name(), nullAtom, attribute.value());
 
     m_mutableAttributeVector->append(attribute);
 
-    if (element && inUpdateStyleAttribute == NotInUpdateStyleAttribute)
+    if (element && inSynchronizationOfLazyAttribute == NotInSynchronizationOfLazyAttribute)
         element->didAddAttribute(attribute);
 }
 
-void ElementAttributeData::removeAttribute(size_t index, Element* element, EInUpdateStyleAttribute inUpdateStyleAttribute)
+void ElementAttributeData::removeAttribute(size_t index, Element* element, SynchronizationOfLazyAttribute inSynchronizationOfLazyAttribute)
 {
     ASSERT(isMutable());
     ASSERT(index < length());
@@ -238,7 +246,7 @@ void ElementAttributeData::removeAttribute(size_t index, Element* element, EInUp
     Attribute& attribute = m_mutableAttributeVector->at(index);
     QualifiedName name = attribute.name();
 
-    if (element && inUpdateStyleAttribute == NotInUpdateStyleAttribute)
+    if (element && inSynchronizationOfLazyAttribute == NotInSynchronizationOfLazyAttribute)
         element->willRemoveAttribute(name, attribute.value());
 
     if (RefPtr<Attr> attr = attrIfExists(element, name))
@@ -246,7 +254,7 @@ void ElementAttributeData::removeAttribute(size_t index, Element* element, EInUp
 
     m_mutableAttributeVector->remove(index);
 
-    if (element && inUpdateStyleAttribute == NotInUpdateStyleAttribute)
+    if (element && inSynchronizationOfLazyAttribute == NotInSynchronizationOfLazyAttribute)
         element->didRemoveAttribute(name);
 }
 
@@ -281,6 +289,20 @@ void ElementAttributeData::detachAttrObjectsFromElement(Element* element) const
 
     // The loop above should have cleaned out this element's Attr map.
     ASSERT(!element->hasAttrList());
+}
+
+void ElementAttributeData::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
+{
+    size_t actualSize = m_isMutable ? sizeof(ElementAttributeData) : immutableElementAttributeDataSize(m_arraySize);
+    MemoryClassInfo info(memoryObjectInfo, this, MemoryInstrumentation::DOM, actualSize);
+    info.addInstrumentedMember(m_inlineStyleDecl);
+    info.addInstrumentedMember(m_attributeStyle);
+    info.addMember(m_classNames);
+    info.addInstrumentedMember(m_idForStyleResolution);
+    if (m_isMutable)
+        info.addVectorPtr(m_mutableAttributeVector);
+    for (unsigned i = 0, len = length(); i < len; i++)
+        info.addInstrumentedMember(*attributeItem(i));
 }
 
 size_t ElementAttributeData::getAttributeItemIndexSlowCase(const AtomicString& name, bool shouldIgnoreAttributeCase) const
@@ -341,9 +363,7 @@ void ElementAttributeData::cloneDataFrom(const ElementAttributeData& sourceData,
     }
 
     if (targetElement.isStyledElement() && sourceData.m_inlineStyleDecl) {
-        StylePropertySet* inlineStyle = ensureMutableInlineStyle(static_cast<StyledElement*>(&targetElement));
-        inlineStyle->copyPropertiesFrom(*sourceData.m_inlineStyleDecl);
-        inlineStyle->setCSSParserMode(sourceData.m_inlineStyleDecl->cssParserMode());
+        m_inlineStyleDecl = sourceData.m_inlineStyleDecl->copy();
         targetElement.setIsStyleAttributeValid(sourceElement.isStyleAttributeValid());
     }
 }

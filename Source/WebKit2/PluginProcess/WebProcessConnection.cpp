@@ -34,7 +34,9 @@
 #include "PluginCreationParameters.h"
 #include "PluginProcess.h"
 #include "PluginProcessConnectionMessages.h"
+#include "PluginProxyMessages.h"
 #include <WebCore/RunLoop.h>
+#include <unistd.h>
 
 using namespace WebCore;
 
@@ -160,6 +162,11 @@ void WebProcessConnection::didReceiveMessage(CoreIPC::Connection* connection, Co
 {
     ConnectionStack::CurrentConnectionPusher currentConnection(connectionStack(), connection);
 
+    if (messageID.is<CoreIPC::MessageClassWebProcessConnection>()) {
+        didReceiveWebProcessConnectionMessage(connection, messageID, arguments);
+        return;
+    }
+
     if (!arguments->destinationID()) {
         ASSERT_NOT_REACHED();
         return;
@@ -208,11 +215,20 @@ void WebProcessConnection::didClose(CoreIPC::Connection*)
         destroyPluginControllerProxy(pluginControllers[i]);
 }
 
-void WebProcessConnection::destroyPlugin(uint64_t pluginInstanceID)
+void WebProcessConnection::destroyPlugin(uint64_t pluginInstanceID, bool asynchronousCreationIncomplete)
 {
     PluginControllerProxy* pluginControllerProxy = m_pluginControllers.get(pluginInstanceID);
-    ASSERT(pluginControllerProxy);
-
+    
+    // If there is no PluginControllerProxy then this plug-in doesn't exist yet and we probably have nothing to do.
+    if (!pluginControllerProxy) {
+        // If the plugin we're supposed to destroy was requested asynchronously and doesn't exist yet,
+        // we need to flag the instance ID so it is not created later.
+        if (asynchronousCreationIncomplete)
+            m_asynchronousInstanceIDsToIgnore.add(pluginInstanceID);
+        
+        return;
+    }
+    
     destroyPluginControllerProxy(pluginControllerProxy);
 }
 
@@ -225,7 +241,7 @@ void WebProcessConnection::syncMessageSendTimedOut(CoreIPC::Connection*)
 {
 }
 
-void WebProcessConnection::createPlugin(const PluginCreationParameters& creationParameters, bool& result, bool& wantsWheelEvents, uint32_t& remoteLayerClientID)
+void WebProcessConnection::createPluginInternal(const PluginCreationParameters& creationParameters, bool& result, bool& wantsWheelEvents, uint32_t& remoteLayerClientID)
 {
     OwnPtr<PluginControllerProxy> pluginControllerProxy = PluginControllerProxy::create(this, creationParameters);
 
@@ -245,6 +261,86 @@ void WebProcessConnection::createPlugin(const PluginCreationParameters& creation
 #if PLATFORM(MAC)
     remoteLayerClientID = pluginControllerProxyPtr->remoteLayerClientID();
 #endif
+}
+
+void WebProcessConnection::createPlugin(const PluginCreationParameters& creationParameters, PassRefPtr<Messages::WebProcessConnection::CreatePlugin::DelayedReply> reply)
+{
+    PluginControllerProxy* pluginControllerProxy = m_pluginControllers.get(creationParameters.pluginInstanceID);
+
+    // The controller proxy for the plug-in we're being asked to create synchronously might already exist if it was requested asynchronously before.
+    if (pluginControllerProxy) {
+        // It might still be in the middle of initialization in which case we have to let that initialization complete and respond to this message later.
+        if (pluginControllerProxy->isInitializing()) {
+            pluginControllerProxy->setInitializationReply(reply);
+            return;
+        }
+        
+        // If its initialization is complete then we need to respond to this message with the correct information about its creation.
+#if PLATFORM(MAC)
+        reply->send(true, pluginControllerProxy->wantsWheelEvents(), pluginControllerProxy->remoteLayerClientID());
+#else
+        reply->send(true, pluginControllerProxy->wantsWheelEvents(), 0);
+#endif
+        return;
+    }
+    
+    // The plugin we're supposed to create might have been requested asynchronously before.
+    // In that case we need to create it synchronously now but flag the instance ID so we don't recreate it asynchronously later.
+    if (creationParameters.asynchronousCreationIncomplete)
+        m_asynchronousInstanceIDsToIgnore.add(creationParameters.pluginInstanceID);
+    
+    bool result = false;
+    bool wantsWheelEvents = false;
+    uint32_t remoteLayerClientID = 0;
+    createPluginInternal(creationParameters, result, wantsWheelEvents, remoteLayerClientID);
+    
+    reply->send(result, wantsWheelEvents, remoteLayerClientID);
+}
+
+void WebProcessConnection::createPluginAsynchronously(const PluginCreationParameters& creationParameters)
+{
+    // In the time since this plugin was requested asynchronously we might have created it synchronously or destroyed it.
+    // In either of those cases we need to ignore this creation request.
+    if (m_asynchronousInstanceIDsToIgnore.contains(creationParameters.pluginInstanceID)) {
+        m_asynchronousInstanceIDsToIgnore.remove(creationParameters.pluginInstanceID);
+        return;
+    }
+    
+    // This version of CreatePlugin is only used by plug-ins that are known to behave when started asynchronously.
+    bool result = false;
+    bool wantsWheelEvents = false;
+    uint32_t remoteLayerClientID = 0;
+    
+    if (creationParameters.artificialPluginInitializationDelayEnabled) {
+        unsigned artificialPluginInitializationDelay = 5;
+        sleep(artificialPluginInitializationDelay);
+    }
+
+    // Since plug-in creation can often message to the WebProcess synchronously (with NPP_Evaluate for example)
+    // we need to make sure that the web process will handle the plug-in process's synchronous messages,
+    // even if the web process is waiting on a synchronous reply itself.
+    // Normally the plug-in process doesn't give its synchronous messages the special flag to allow for that.
+    // We can force it to do so by incrementing the "DispatchMessageMarkedDispatchWhenWaitingForSyncReply" count.
+    m_connection->incrementDispatchMessageMarkedDispatchWhenWaitingForSyncReplyCount();
+    createPluginInternal(creationParameters, result, wantsWheelEvents, remoteLayerClientID);
+    m_connection->decrementDispatchMessageMarkedDispatchWhenWaitingForSyncReplyCount();
+
+    // If someone asked for this plug-in synchronously while it was in the middle of being created then we need perform the
+    // synchronous reply instead of sending the asynchronous reply.
+    PluginControllerProxy* pluginControllerProxy = m_pluginControllers.get(creationParameters.pluginInstanceID);
+    ASSERT(pluginControllerProxy);
+    if (RefPtr<Messages::WebProcessConnection::CreatePlugin::DelayedReply> delayedSyncReply = pluginControllerProxy->takeInitializationReply()) {
+        delayedSyncReply->send(result, wantsWheelEvents, remoteLayerClientID);
+        return;
+    }
+
+    // Otherwise, send the asynchronous results now.
+    if (!result) {
+        m_connection->sendSync(Messages::PluginProxy::DidFailToCreatePlugin(), Messages::PluginProxy::DidFailToCreatePlugin::Reply(), creationParameters.pluginInstanceID);
+        return;
+    }
+
+    m_connection->sendSync(Messages::PluginProxy::DidCreatePlugin(wantsWheelEvents, remoteLayerClientID), Messages::PluginProxy::DidCreatePlugin::Reply(), creationParameters.pluginInstanceID);
 }
 
 } // namespace WebKit

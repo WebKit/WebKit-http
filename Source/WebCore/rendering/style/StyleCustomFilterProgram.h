@@ -45,9 +45,9 @@ namespace WebCore {
 class StyleCustomFilterProgram : public CustomFilterProgram, public CachedResourceClient {
     WTF_MAKE_FAST_ALLOCATED;
 public:
-    static PassRefPtr<StyleCustomFilterProgram> create(PassRefPtr<StyleShader> vertexShader, PassRefPtr<StyleShader> fragmentShader)
+    static PassRefPtr<StyleCustomFilterProgram> create(PassRefPtr<StyleShader> vertexShader, PassRefPtr<StyleShader> fragmentShader, CustomFilterProgramMixSettings mixSettings)
     {
-        return adoptRef(new StyleCustomFilterProgram(vertexShader, fragmentShader));
+        return adoptRef(new StyleCustomFilterProgram(vertexShader, fragmentShader, mixSettings));
     }
     
     void setVertexShader(PassRefPtr<StyleShader> shader) { m_vertexShader = shader; }
@@ -106,9 +106,10 @@ public:
     {
         if (resource->errorOccurred())
             return;
+        // Note that m_cachedVertexShader might be equal to m_cachedFragmentShader and it would only get one event in that case.
         if (resource == m_cachedVertexShader.get())
             m_isVertexShaderLoaded = true;
-        else if (resource == m_cachedFragmentShader.get())
+        if (resource == m_cachedFragmentShader.get())
             m_isFragmentShaderLoaded = true;
         if (isLoaded())
             notifyClients();
@@ -125,8 +126,9 @@ public:
     }
 
 private:
-    StyleCustomFilterProgram(PassRefPtr<StyleShader> vertexShader, PassRefPtr<StyleShader> fragmentShader)
-        : m_vertexShader(vertexShader)
+    StyleCustomFilterProgram(PassRefPtr<StyleShader> vertexShader, PassRefPtr<StyleShader> fragmentShader, CustomFilterProgramMixSettings mixSettings)
+        : CustomFilterProgram(mixSettings)
+        , m_vertexShader(vertexShader)
         , m_fragmentShader(fragmentShader)
         , m_isVertexShaderLoaded(false)
         , m_isFragmentShaderLoaded(false)

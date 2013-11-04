@@ -30,9 +30,11 @@
 #include "AffineTransform.h"
 #include "BitmapImage.h"
 #include "GraphicsContext.h"
+#include "ImageObserver.h"
 #include "IntRect.h"
 #include "Length.h"
 #include "MIMETypeRegistry.h"
+#include "MemoryInstrumentation.h"
 #include "SharedBuffer.h"
 #include <math.h>
 #include <wtf/MainThread.h>
@@ -80,7 +82,7 @@ bool Image::setData(PassRefPtr<SharedBuffer> data, bool allDataReceived)
 
 void Image::fillWithSolidColor(GraphicsContext* ctxt, const FloatRect& dstRect, const Color& color, ColorSpace styleColorSpace, CompositeOperator op)
 {
-    if (color.alpha() <= 0)
+    if (!color.alpha())
         return;
     
     CompositeOperator previousOperator = ctxt->compositeOperation();
@@ -194,6 +196,13 @@ void Image::computeIntrinsicDimensions(Length& intrinsicWidth, Length& intrinsic
     intrinsicRatio = size();
     intrinsicWidth = Length(intrinsicRatio.width(), Fixed);
     intrinsicHeight = Length(intrinsicRatio.height(), Fixed);
+}
+
+void Image::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
+{
+    MemoryClassInfo info(memoryObjectInfo, this, MemoryInstrumentation::CachedResourceImage);
+    info.addInstrumentedMember(m_data);
+    info.addMember(m_imageObserver);
 }
 
 }

@@ -32,6 +32,7 @@
 #include "WebInputEventConversion.h"
 
 #include "EventNames.h"
+#include "GestureEvent.h"
 #include "KeyboardCodes.h"
 #include "KeyboardEvent.h"
 #include "MouseEvent.h"
@@ -151,7 +152,7 @@ PlatformGestureEventBuilder::PlatformGestureEventBuilder(Widget* widget, const W
         break;
     case WebInputEvent::GestureTap:
         m_type = PlatformEvent::GestureTap;
-        m_area = IntSize(e.deltaX * 2, e.deltaY * 2);
+        m_area = IntSize(e.boundingBox.width, e.boundingBox.height);
         break;
     case WebInputEvent::GestureTapDown:
         m_type = PlatformEvent::GestureTapDown;
@@ -164,6 +165,7 @@ PlatformGestureEventBuilder::PlatformGestureEventBuilder(Widget* widget, const W
         break;
     case WebInputEvent::GestureLongPress:
         m_type = PlatformEvent::GestureLongPress;
+        m_area = IntSize(e.boundingBox.width, e.boundingBox.height);
         break;
     case WebInputEvent::GesturePinchBegin:
         m_type = PlatformEvent::GesturePinchBegin;
@@ -462,6 +464,7 @@ WebKeyboardEventBuilder::WebKeyboardEventBuilder(const KeyboardEvent& event)
         text[i] = event.keyEvent()->text()[i];
         unmodifiedText[i] = event.keyEvent()->unmodifiedText()[i];
     }
+    memcpy(keyIdentifier, event.keyIdentifier().ascii().data(), event.keyIdentifier().length());
 }
 
 #if ENABLE(TOUCH_EVENTS)
@@ -511,5 +514,32 @@ WebTouchEventBuilder::WebTouchEventBuilder(const Widget* widget, const TouchEven
 }
 
 #endif // ENABLE(TOUCH_EVENTS)
+
+#if ENABLE(GESTURE_EVENTS)
+WebGestureEventBuilder::WebGestureEventBuilder(const Widget* widget, const GestureEvent& event)
+{
+    if (event.type() == eventNames().gesturetapEvent)
+        type = GestureTap;
+    else if (event.type() == eventNames().gesturetapdownEvent)
+        type = GestureTapDown;
+    else if (event.type() == eventNames().gesturescrollstartEvent)
+        type = GestureScrollBegin;
+    else if (event.type() == eventNames().gesturescrollendEvent)
+        type = GestureScrollEnd;
+    else if (event.type() == eventNames().gesturescrollupdateEvent)
+        type = GestureScrollUpdate;
+
+    timeStampSeconds = event.timeStamp() / millisPerSecond;
+    modifiers = getWebInputModifiers(event);
+
+    globalX = event.screenX();
+    globalY = event.screenY();
+    x = event.absoluteLocation().x() - widget->location().x();
+    y = event.absoluteLocation().y() - widget->location().y();
+
+    deltaX = event.deltaX();
+    deltaY = event.deltaY();
+}
+#endif // ENABLE(GESTURE_EVENTS)
 
 } // namespace WebKit

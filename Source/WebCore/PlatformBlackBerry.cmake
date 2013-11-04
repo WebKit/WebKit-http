@@ -6,13 +6,14 @@ LIST(INSERT WebCore_INCLUDE_DIRECTORIES 0
 LIST(APPEND WebCore_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/bindings/cpp"
     "${WEBCORE_DIR}/platform/blackberry/CookieDatabaseBackingStore"
-    "${WEBCORE_DIR}/platform/network/blackberry"
     "${WEBCORE_DIR}/platform/graphics/blackberry/skia"
     "${WEBCORE_DIR}/platform/graphics/harfbuzz"
     "${WEBCORE_DIR}/platform/graphics/opentype/"
     "${WEBCORE_DIR}/platform/graphics/skia"
     "${WEBCORE_DIR}/platform/image-decoders/skia"
     "${WEBCORE_DIR}/platform/image-encoders/skia"
+    "${WEBCORE_DIR}/platform/network/blackberry"
+    "${WEBCORE_DIR}/platform/network/blackberry/rss"
 )
 
 # Skia sources
@@ -91,6 +92,7 @@ LIST(APPEND WebCore_SOURCES
     platform/network/MIMESniffing.cpp
     platform/network/ProxyServer.cpp
     platform/network/blackberry/AutofillBackingStore.cpp
+    platform/network/blackberry/DNSBlackBerry.cpp
     platform/network/blackberry/DeferredData.cpp
     platform/network/blackberry/NetworkJob.cpp
     platform/network/blackberry/NetworkManager.cpp
@@ -101,6 +103,12 @@ LIST(APPEND WebCore_SOURCES
     platform/network/blackberry/ResourceRequestBlackBerry.cpp
     platform/network/blackberry/ResourceResponseBlackBerry.cpp
     platform/network/blackberry/SocketStreamHandleBlackBerry.cpp
+    platform/network/blackberry/rss/RSSAtomParser.cpp
+    platform/network/blackberry/rss/RSS10Parser.cpp
+    platform/network/blackberry/rss/RSS20Parser.cpp
+    platform/network/blackberry/rss/RSSFilterStream.cpp
+    platform/network/blackberry/rss/RSSGenerator.cpp
+    platform/network/blackberry/rss/RSSParserBase.cpp
 )
 
 LIST(APPEND WebCore_USER_AGENT_STYLE_SHEETS
@@ -129,7 +137,6 @@ LIST(APPEND WebCore_INCLUDE_DIRECTORIES
 
 # BlackBerry sources
 LIST(APPEND WebCore_SOURCES
-    bindings/js/ScriptControllerBlackBerry.cpp
     editing/blackberry/EditorBlackBerry.cpp
     editing/blackberry/SmartReplaceBlackBerry.cpp
     page/blackberry/AccessibilityObjectBlackBerry.cpp
@@ -269,9 +276,12 @@ IF (WTF_USE_ACCELERATED_COMPOSITING)
     LIST(APPEND WebCore_SOURCES
         ${WEBCORE_DIR}/platform/graphics/GraphicsLayer.cpp
         ${WEBCORE_DIR}/platform/graphics/blackberry/CanvasLayerWebKitThread.cpp
+        ${WEBCORE_DIR}/platform/graphics/blackberry/EGLImageLayerWebKitThread.cpp
+        ${WEBCORE_DIR}/platform/graphics/blackberry/EGLImageLayerCompositingThreadClient.cpp
         ${WEBCORE_DIR}/platform/graphics/blackberry/GraphicsLayerBlackBerry.cpp
         ${WEBCORE_DIR}/platform/graphics/blackberry/LayerAnimation.cpp
         ${WEBCORE_DIR}/platform/graphics/blackberry/LayerCompositingThread.cpp
+        ${WEBCORE_DIR}/platform/graphics/blackberry/LayerFilterRenderer.cpp
         ${WEBCORE_DIR}/platform/graphics/blackberry/LayerRenderer.cpp
         ${WEBCORE_DIR}/platform/graphics/blackberry/LayerRendererSurface.cpp
         ${WEBCORE_DIR}/platform/graphics/blackberry/LayerTile.cpp

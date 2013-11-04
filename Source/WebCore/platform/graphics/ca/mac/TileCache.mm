@@ -28,6 +28,7 @@
 
 #import "IntRect.h"
 #import "PlatformCALayer.h"
+#import "Region.h"
 #import "WebLayer.h"
 #import "WebTileCacheLayer.h"
 #import "WebTileLayer.h"
@@ -73,6 +74,11 @@ TileCache::TileCache(WebTileCacheLayer* tileCacheLayer, const IntSize& tileSize)
 TileCache::~TileCache()
 {
     ASSERT(isMainThread());
+
+    for (TileMap::iterator it = m_tiles.begin(), end = m_tiles.end(); it != end; ++it) {
+        WebTileLayer* tileLayer = it->second.get();
+        [tileLayer setTileCache:0];
+    }
 }
 
 void TileCache::tileCacheLayerBoundsChanged()
@@ -227,6 +233,11 @@ void TileCache::setCanHaveScrollbars(bool canHaveScrollbars)
     scheduleTileRevalidation(0);
 }
 
+void TileCache::forceRepaint()
+{
+    setNeedsDisplay();
+}
+
 void TileCache::setTileDebugBorderWidth(float borderWidth)
 {
     if (m_tileDebugBorderWidth == borderWidth)
@@ -304,6 +315,34 @@ void TileCache::scheduleTileRevalidation(double interval)
 void TileCache::tileRevalidationTimerFired(Timer<TileCache>*)
 {
     revalidateTiles();
+}
+
+unsigned TileCache::blankPixelCount() const
+{
+    WebTileLayerList tiles(m_tiles.size());
+    tiles.appendRange(m_tiles.begin().values(), m_tiles.end().values());
+
+    return blankPixelCountForTiles(tiles, m_visibleRect, IntPoint(0,0));
+}
+
+unsigned TileCache::blankPixelCountForTiles(const WebTileLayerList& tiles, IntRect visibleRect, IntPoint tileTranslation)
+{
+    Region paintedVisibleTiles;
+
+    for (WebTileLayerList::const_iterator it = tiles.begin(), end = tiles.end(); it != end; ++it) {
+        const WebTileLayer* tileLayer = it->get();
+
+        IntRect visiblePart(CGRectOffset([tileLayer frame], tileTranslation.x(), tileTranslation.y()));
+        visiblePart.intersect(visibleRect);
+
+        if (!visiblePart.isEmpty() && [tileLayer repaintCount])
+            paintedVisibleTiles.unite(visiblePart);
+    }
+
+    Region uncoveredRegion(visibleRect);
+    uncoveredRegion.subtract(paintedVisibleTiles);
+
+    return uncoveredRegion.totalArea();
 }
 
 void TileCache::revalidateTiles()

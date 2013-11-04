@@ -736,6 +736,21 @@ WebInspector.DOMNode.prototype = {
     descendantUserPropertyCount: function(name)
     {
         return this._descendantUserPropertyCounters && this._descendantUserPropertyCounters[name] ? this._descendantUserPropertyCounters[name] : 0;
+    },
+
+    /**
+     * @param {string} url
+     * @return {?string}
+     */
+    resolveURL: function(url)
+    {
+        if (!url)
+            return url;
+        for (var frameOwnerCandidate = this; frameOwnerCandidate; frameOwnerCandidate = frameOwnerCandidate.parentNode) {
+            if (frameOwnerCandidate.documentURL)
+                return WebInspector.ParsedURL.completeURL(frameOwnerCandidate.documentURL, url);
+        }
+        return null;
     }
 }
 
@@ -822,6 +837,14 @@ WebInspector.DOMAgent.prototype = {
         }
 
         DOMAgent.getDocument(onDocumentAvailable.bind(this));
+    },
+
+    /**
+     * @return {WebInspector.DOMDocument?}
+     */
+    existingDocument: function()
+    {
+        return this._document;
     },
 
     /**
@@ -1068,7 +1091,7 @@ WebInspector.DOMAgent.prototype = {
     },
 
     /**
-     * @param {DOMAgent.Node} node
+     * @param {WebInspector.DOMNode} node
      */
     _unbind: function(node)
     {
@@ -1278,7 +1301,7 @@ WebInspector.DOMAgent.prototype = {
             this._addTouchEventsScriptId = scriptId;
         }
 
-        DOMAgent.setTouchEmulationEnabled(emulationEnabled);
+        PageAgent.setTouchEmulationEnabled(emulationEnabled);
     },
 
     markUndoableState: function()

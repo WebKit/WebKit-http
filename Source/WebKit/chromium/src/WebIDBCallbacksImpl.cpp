@@ -48,6 +48,7 @@ namespace WebKit {
 
 WebIDBCallbacksImpl::WebIDBCallbacksImpl(PassRefPtr<IDBCallbacks> callbacks)
     : m_callbacks(callbacks)
+    , m_didCreateDatabaseProxy(false)
 {
 }
 
@@ -65,13 +66,17 @@ void WebIDBCallbacksImpl::onSuccess(const WebDOMStringList& domStringList)
     m_callbacks->onSuccess(domStringList);
 }
 
-void WebIDBCallbacksImpl::onSuccess(WebIDBCursor* cursor)
+void WebIDBCallbacksImpl::onSuccess(WebIDBCursor* cursor, const WebIDBKey& key, const WebIDBKey& primaryKey, const WebSerializedScriptValue& value)
 {
-    m_callbacks->onSuccess(IDBCursorBackendProxy::create(adoptPtr(cursor)));
+    m_callbacks->onSuccess(IDBCursorBackendProxy::create(adoptPtr(cursor)), key, primaryKey, value);
 }
 
 void WebIDBCallbacksImpl::onSuccess(WebIDBDatabase* webKitInstance)
 {
+    if (m_didCreateDatabaseProxy) {
+        m_callbacks->onSuccess(IDBDatabaseBackendProxy::create(adoptPtr(static_cast<WebIDBDatabase*>(0))));
+        return;
+    }
     m_callbacks->onSuccess(IDBDatabaseBackendProxy::create(adoptPtr(webKitInstance)));
 }
 
@@ -95,14 +100,25 @@ void WebIDBCallbacksImpl::onSuccess(const WebSerializedScriptValue& serializedSc
     m_callbacks->onSuccess(serializedScriptValue, key, keyPath);
 }
 
-void WebIDBCallbacksImpl::onSuccessWithContinuation()
+void WebIDBCallbacksImpl::onSuccess(const WebIDBKey& key, const WebIDBKey& primaryKey, const WebSerializedScriptValue& value)
 {
-    m_callbacks->onSuccessWithContinuation();
+    m_callbacks->onSuccess(key, primaryKey, value);
 }
 
 void WebIDBCallbacksImpl::onBlocked()
 {
     m_callbacks->onBlocked();
+}
+
+void WebIDBCallbacksImpl::onBlocked(long long oldVersion)
+{
+    m_callbacks->onBlocked(oldVersion);
+}
+
+void WebIDBCallbacksImpl::onUpgradeNeeded(long long oldVersion, WebIDBTransaction* transaction, WebIDBDatabase* database)
+{
+    m_didCreateDatabaseProxy = true;
+    m_callbacks->onUpgradeNeeded(oldVersion, IDBTransactionBackendProxy::create(adoptPtr(transaction)), IDBDatabaseBackendProxy::create(adoptPtr(database)));
 }
 
 } // namespace WebKit

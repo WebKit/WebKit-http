@@ -256,6 +256,8 @@ namespace JSC {
                 && offset <= lastValidOffset();
         }
 
+        bool masqueradesAsUndefined(JSGlobalObject* lexicalGlobalObject);
+
         PropertyOffset get(JSGlobalData&, PropertyName);
         PropertyOffset get(JSGlobalData&, const UString& name);
         JS_EXPORT_PRIVATE PropertyOffset get(JSGlobalData&, PropertyName, unsigned& attributes, JSCell*& specificValue);
@@ -313,6 +315,11 @@ namespace JSC {
             return OBJECT_OFFSETOF(Structure, m_prototype);
         }
 
+        static ptrdiff_t globalObjectOffset()
+        {
+            return OBJECT_OFFSETOF(Structure, m_globalObject);
+        }
+
         static ptrdiff_t typeInfoFlagsOffset()
         {
             return OBJECT_OFFSETOF(Structure, m_typeInfo) + TypeInfo::flagsOffset();
@@ -321,6 +328,11 @@ namespace JSC {
         static ptrdiff_t typeInfoTypeOffset()
         {
             return OBJECT_OFFSETOF(Structure, m_typeInfo) + TypeInfo::typeOffset();
+        }
+        
+        static ptrdiff_t classInfoOffset()
+        {
+            return OBJECT_OFFSETOF(Structure, m_classInfo);
         }
 
         static Structure* createStructure(JSGlobalData&);
@@ -500,6 +512,11 @@ namespace JSC {
         return entry ? entry->offset : invalidOffset;
     }
     
+    inline bool Structure::masqueradesAsUndefined(JSGlobalObject* lexicalGlobalObject)
+    {
+        return typeInfo().masqueradesAsUndefined() && globalObject() == lexicalGlobalObject;
+    }
+
     inline JSValue JSValue::structureOrUndefined() const
     {
         if (isCell())
@@ -550,6 +567,8 @@ namespace JSC {
     ALWAYS_INLINE void MarkStack::internalAppend(JSCell* cell)
     {
         ASSERT(!m_isCheckingForDefaultMarkViolation);
+        if (!cell)
+            return;
 #if ENABLE(GC_VALIDATION)
         validate(cell);
 #endif
@@ -600,6 +619,15 @@ namespace JSC {
         m_classInfo = structure->classInfo();
         // Very first set of allocations won't have a real structure.
         ASSERT(m_structure || !globalData.structureStructure);
+    }
+
+    inline const ClassInfo* JSCell::classInfo() const
+    {
+#if ENABLE(GC_VALIDATION)
+        return m_structure.unvalidatedGet()->classInfo();
+#else
+        return m_structure->classInfo();
+#endif
     }
 
 } // namespace JSC

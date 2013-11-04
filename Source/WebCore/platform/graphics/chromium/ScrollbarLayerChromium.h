@@ -38,34 +38,34 @@ namespace WebCore {
 
 class Scrollbar;
 class ScrollbarThemeComposite;
-class CCTextureUpdater;
+class CCTextureUpdateQueue;
 
 class ScrollbarLayerChromium : public LayerChromium {
 public:
-    virtual PassOwnPtr<CCLayerImpl> createCCLayerImpl();
-    static PassRefPtr<ScrollbarLayerChromium> create(PassOwnPtr<WebKit::WebScrollbar>, WebKit::WebScrollbarThemePainter, WebKit::WebScrollbarThemeGeometry, int scrollLayerId);
+    virtual PassOwnPtr<CCLayerImpl> createCCLayerImpl() OVERRIDE;
+    static PassRefPtr<ScrollbarLayerChromium> create(PassOwnPtr<WebKit::WebScrollbar>, WebKit::WebScrollbarThemePainter, PassOwnPtr<WebKit::WebScrollbarThemeGeometry>, int scrollLayerId);
 
     // LayerChromium interface
     virtual void setTexturePriorities(const CCPriorityCalculator&) OVERRIDE;
-    virtual void update(CCTextureUpdater&, const CCOcclusionTracker*, CCRenderingStats&) OVERRIDE;
+    virtual void update(CCTextureUpdateQueue&, const CCOcclusionTracker*, CCRenderingStats&) OVERRIDE;
     virtual void setLayerTreeHost(CCLayerTreeHost*) OVERRIDE;
     virtual void pushPropertiesTo(CCLayerImpl*) OVERRIDE;
 
     int scrollLayerId() const { return m_scrollLayerId; }
     void setScrollLayerId(int id) { m_scrollLayerId = id; }
 
-    virtual ScrollbarLayerChromium* toScrollbarLayerChromium() { return this; }
+    virtual ScrollbarLayerChromium* toScrollbarLayerChromium() OVERRIDE { return this; }
 
 protected:
-    ScrollbarLayerChromium(PassOwnPtr<WebKit::WebScrollbar>, WebKit::WebScrollbarThemePainter, WebKit::WebScrollbarThemeGeometry, int scrollLayerId);
+    ScrollbarLayerChromium(PassOwnPtr<WebKit::WebScrollbar>, WebKit::WebScrollbarThemePainter, PassOwnPtr<WebKit::WebScrollbarThemeGeometry>, int scrollLayerId);
 
 private:
-    void updatePart(LayerTextureUpdater*, LayerTextureUpdater::Texture*, const IntRect&, CCTextureUpdater&, CCRenderingStats&);
+    void updatePart(LayerTextureUpdater*, LayerTextureUpdater::Texture*, const IntRect&, CCTextureUpdateQueue&, CCRenderingStats&);
     void createTextureUpdaterIfNeeded();
 
     OwnPtr<WebKit::WebScrollbar> m_scrollbar;
     WebKit::WebScrollbarThemePainter m_painter;
-    WebKit::WebScrollbarThemeGeometry m_geometry;
+    OwnPtr<WebKit::WebScrollbarThemeGeometry> m_geometry;
     int m_scrollLayerId;
 
     GC3Denum m_textureFormat;

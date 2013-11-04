@@ -36,6 +36,7 @@
 
 #include "Event.h"
 #include "Frame.h"
+#include "FrameView.h"
 #include "IdentifiersFactory.h"
 #include "InspectorClient.h"
 #include "InspectorCounters.h"
@@ -65,9 +66,13 @@ static const char Program[] = "Program";
 
 static const char EventDispatch[] = "EventDispatch";
 static const char BeginFrame[] = "BeginFrame";
-static const char Layout[] = "Layout";
+static const char ScheduleStyleRecalculation[] = "ScheduleStyleRecalculation";
 static const char RecalculateStyles[] = "RecalculateStyles";
+static const char InvalidateLayout[] = "InvalidateLayout";
+static const char Layout[] = "Layout";
 static const char Paint[] = "Paint";
+static const char DecodeImage[] = "DecodeImage";
+static const char ResizeImage[] = "ResizeImage";
 static const char CompositeLayers[] = "CompositeLayers";
 
 static const char ParseHTML[] = "ParseHTML";
@@ -225,6 +230,13 @@ void InspectorTimelineAgent::didDispatchEvent()
     didCompleteCurrentRecord(TimelineRecordType::EventDispatch);
 }
 
+void InspectorTimelineAgent::didInvalidateLayout(Frame* frame)
+{
+    if (frame->view()->layoutPending())
+        return;
+    appendRecord(InspectorObject::create(), TimelineRecordType::InvalidateLayout, true, frame);
+}
+
 void InspectorTimelineAgent::willLayout(Frame* frame)
 {
     pushCurrentRecord(InspectorObject::create(), TimelineRecordType::Layout, true, frame);
@@ -233,6 +245,11 @@ void InspectorTimelineAgent::willLayout(Frame* frame)
 void InspectorTimelineAgent::didLayout()
 {
     didCompleteCurrentRecord(TimelineRecordType::Layout);
+}
+
+void InspectorTimelineAgent::didScheduleStyleRecalculation(Frame* frame)
+{
+    appendRecord(InspectorObject::create(), TimelineRecordType::ScheduleStyleRecalculation, true, frame);
 }
 
 void InspectorTimelineAgent::willRecalculateStyle(Frame* frame)
@@ -253,6 +270,26 @@ void InspectorTimelineAgent::willPaint(const LayoutRect& rect, Frame* frame)
 void InspectorTimelineAgent::didPaint()
 {
     didCompleteCurrentRecord(TimelineRecordType::Paint);
+}
+
+void InspectorTimelineAgent::willDecodeImage(const String& imageType)
+{
+    pushCurrentRecord(TimelineRecordFactory::createDecodeImageData(imageType), TimelineRecordType::DecodeImage, true, 0);
+}
+
+void InspectorTimelineAgent::didDecodeImage()
+{
+    didCompleteCurrentRecord(TimelineRecordType::DecodeImage);
+}
+
+void InspectorTimelineAgent::willResizeImage(bool shouldCache)
+{
+    pushCurrentRecord(TimelineRecordFactory::createResizeImageData(shouldCache), TimelineRecordType::ResizeImage, true, 0);
+}
+
+void InspectorTimelineAgent::didResizeImage()
+{
+    didCompleteCurrentRecord(TimelineRecordType::ResizeImage);
 }
 
 void InspectorTimelineAgent::willComposite()
@@ -378,19 +415,19 @@ void InspectorTimelineAgent::didFinishLoadingResource(unsigned long identifier, 
     appendRecord(TimelineRecordFactory::createResourceFinishData(IdentifiersFactory::requestId(identifier), didFail, finishTime * 1000), TimelineRecordType::ResourceFinish, false, frame);
 }
 
-void InspectorTimelineAgent::didTimeStamp(const String& message)
+void InspectorTimelineAgent::didTimeStamp(Frame* frame, const String& message)
 {
-    appendRecord(TimelineRecordFactory::createTimeStampData(message), TimelineRecordType::TimeStamp, true, 0);
+    appendRecord(TimelineRecordFactory::createTimeStampData(message), TimelineRecordType::TimeStamp, true, frame);
 }
 
-void InspectorTimelineAgent::time(const String& message)
+void InspectorTimelineAgent::time(Frame* frame, const String& message)
 {
-    appendRecord(TimelineRecordFactory::createTimeStampData(message), TimelineRecordType::Time, true, 0);
+    appendRecord(TimelineRecordFactory::createTimeStampData(message), TimelineRecordType::Time, true, frame);
 }
 
-void InspectorTimelineAgent::timeEnd(const String& message)
+void InspectorTimelineAgent::timeEnd(Frame* frame, const String& message)
 {
-    appendRecord(TimelineRecordFactory::createTimeStampData(message), TimelineRecordType::TimeEnd, true, 0);
+    appendRecord(TimelineRecordFactory::createTimeStampData(message), TimelineRecordType::TimeEnd, true, frame);
 }
 
 void InspectorTimelineAgent::didMarkDOMContentEvent(Frame* frame)
@@ -486,9 +523,9 @@ void InspectorTimelineAgent::didCompleteCurrentRecord(const String& type)
     // An empty stack could merely mean that the timeline agent was turned on in the middle of
     // an event.  Don't treat as an error.
     if (!m_recordStack.isEmpty()) {
-        if (m_orphanEventsEnabledStackMark == m_recordStack.size()) {
-            m_orphanEventsEnabledStackMark = 0;
-            InspectorInstrumentation::setTimelineAgentForOrphanEvents(0);
+        if (m_platformInstrumentationClientInstalledAtStackDepth == m_recordStack.size()) {
+            m_platformInstrumentationClientInstalledAtStackDepth = 0;
+            PlatformInstrumentation::setClient(0);
         }
 
         pushGCEventRecords();
@@ -509,7 +546,7 @@ InspectorTimelineAgent::InspectorTimelineAgent(InstrumentingAgents* instrumentin
     , m_timestampOffset(0)
     , m_id(1)
     , m_maxCallStackDepth(5)
-    , m_orphanEventsEnabledStackMark(0)
+    , m_platformInstrumentationClientInstalledAtStackDepth(0)
     , m_inspectorType(type)
     , m_client(client)
 {
@@ -527,7 +564,7 @@ void InspectorTimelineAgent::appendRecord(PassRefPtr<InspectorObject> data, cons
     addRecordToTimeline(record.release(), type, frameId);
 }
 
-void InspectorTimelineAgent::pushCurrentRecord(PassRefPtr<InspectorObject> data, const String& type, bool captureCallStack, Frame* frame, bool hasOrphanDetails)
+void InspectorTimelineAgent::pushCurrentRecord(PassRefPtr<InspectorObject> data, const String& type, bool captureCallStack, Frame* frame, bool hasLowLevelDetails)
 {
     pushGCEventRecords();
     commitFrameRecord();
@@ -536,9 +573,9 @@ void InspectorTimelineAgent::pushCurrentRecord(PassRefPtr<InspectorObject> data,
     if (frame && m_pageAgent)
         frameId = m_pageAgent->frameId(frame);
     m_recordStack.append(TimelineRecordEntry(record.release(), data, InspectorArray::create(), type, frameId));
-    if (hasOrphanDetails && !m_orphanEventsEnabledStackMark && !InspectorInstrumentation::timelineAgentForOrphanEvents()) {
-        m_orphanEventsEnabledStackMark = m_recordStack.size();
-        InspectorInstrumentation::setTimelineAgentForOrphanEvents(this);
+    if (hasLowLevelDetails && !m_platformInstrumentationClientInstalledAtStackDepth && !PlatformInstrumentation::hasClient()) {
+        m_platformInstrumentationClientInstalledAtStackDepth = m_recordStack.size();
+        PlatformInstrumentation::setClient(this);
     }
 }
 
@@ -553,6 +590,10 @@ void InspectorTimelineAgent::commitFrameRecord()
 
 void InspectorTimelineAgent::clearRecordStack()
 {
+    if (m_platformInstrumentationClientInstalledAtStackDepth) {
+        m_platformInstrumentationClientInstalledAtStackDepth = 0;
+        PlatformInstrumentation::setClient(0);
+    }
     m_pendingFrameRecord.clear();
     m_recordStack.clear();
     m_id++;

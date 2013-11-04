@@ -121,7 +121,6 @@ namespace JSC {
         friend class DFG::OSRExitCompiler;
         friend class DFG::SpeculativeJIT;
 #endif
-        friend class LLInt::Data;
 
     public:
 #if USE(JSVALUE32_64)
@@ -209,7 +208,7 @@ namespace JSC {
         JSValue toPrimitive(ExecState*, PreferredPrimitiveType = NoPreference) const;
         bool getPrimitiveNumber(ExecState*, double& number, JSValue&);
 
-        bool toBoolean() const;
+        bool toBoolean(ExecState*) const;
 
         // toNumber conversion is expected to be side effect free if an exception has
         // been set in the ExecState already.

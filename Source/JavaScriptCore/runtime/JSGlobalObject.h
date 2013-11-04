@@ -30,6 +30,7 @@
 #include "NumberPrototype.h"
 #include "StringPrototype.h"
 #include "StructureChain.h"
+#include "Watchpoint.h"
 #include <wtf/HashSet.h>
 #include <wtf/OwnPtr.h>
 #include <wtf/RandomNumber.h>
@@ -142,11 +143,11 @@ namespace JSC {
 
         Debugger* m_debugger;
 
+        RefPtr<WatchpointSet> m_masqueradesAsUndefinedWatchpoint;
+
         OwnPtr<JSGlobalObjectRareData> m_rareData;
 
         WeakRandom m_weakRandom;
-
-        SymbolTable m_symbolTable;
 
         bool m_evalEnabled;
         bool m_experimentsEnabled;
@@ -270,6 +271,8 @@ namespace JSC {
         Structure* regExpStructure() const { return m_regExpStructure.get(); }
         Structure* stringObjectStructure() const { return m_stringObjectStructure.get(); }
 
+        WatchpointSet* masqueradesAsUndefinedWatchpoint() { return m_masqueradesAsUndefinedWatchpoint.get(); }
+
         void setProfileGroup(unsigned value) { createRareDataIfNeeded(); m_rareData->profileGroup = value; }
         unsigned profileGroup() const
         { 
@@ -371,7 +374,7 @@ namespace JSC {
 
     inline bool JSGlobalObject::symbolTableHasProperty(PropertyName propertyName)
     {
-        SymbolTableEntry entry = symbolTable().inlineGet(propertyName.publicName());
+        SymbolTableEntry entry = symbolTable()->inlineGet(propertyName.publicName());
         return !entry.isNull();
     }
 

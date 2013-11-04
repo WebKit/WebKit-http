@@ -29,9 +29,9 @@
 
 #if USE(ACCELERATED_COMPOSITING)
 
+#include "CCSharedQuadState.h"
 #include "FloatRect.h"
 #include "IntRect.h"
-#include "cc/CCSharedQuadState.h"
 #include <public/WebTransformationMatrix.h>
 #include <wtf/Noncopyable.h>
 #include <wtf/text/WTFString.h>
@@ -41,9 +41,11 @@ namespace WebCore {
 class CCDamageTracker;
 class CCQuadSink;
 class CCRenderPass;
+class CCRenderPassSink;
 class CCLayerImpl;
-class LayerRendererChromium;
 class TextStream;
+
+struct CCAppendQuadsData;
 
 class CCRenderSurface {
     WTF_MAKE_NONCOPYABLE(CCRenderSurface);
@@ -88,9 +90,6 @@ public:
     void setClipRect(const IntRect&);
     const IntRect& clipRect() const { return m_clipRect; }
 
-    void setScissorRect(const IntRect& scissorRect) { m_scissorRect = scissorRect; }
-    const IntRect& scissorRect() const { return m_scissorRect; }
-
     bool contentsChanged() const;
 
     void setContentRect(const IntRect&);
@@ -107,12 +106,8 @@ public:
 
     CCDamageTracker* damageTracker() const { return m_damageTracker.get(); }
 
-    PassOwnPtr<CCSharedQuadState> createSharedQuadState(int id) const;
-    PassOwnPtr<CCSharedQuadState> createReplicaSharedQuadState(int id) const;
-
-    void appendQuads(CCQuadSink&, CCSharedQuadState*, bool forReplica, int renderPassId);
-
-    FloatRect computeRootScissorRectInCurrentSurface(const FloatRect& rootScissorRect) const;
+    void appendRenderPasses(CCRenderPassSink&);
+    void appendQuads(CCQuadSink&, CCAppendQuadsData&, bool forReplica, int renderPassId);
 
 private:
     CCLayerImpl* m_owningLayer;
@@ -132,10 +127,6 @@ private:
 
     // Uses the space of the surface's target surface.
     IntRect m_clipRect;
-
-    // During drawing, identifies the region outside of which nothing should be drawn.
-    // Uses the space of the surface's target surface.
-    IntRect m_scissorRect;
 
     Vector<CCLayerImpl*> m_layerList;
 

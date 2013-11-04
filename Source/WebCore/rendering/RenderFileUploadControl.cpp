@@ -23,6 +23,7 @@
 
 #include "ElementShadow.h"
 #include "FileList.h"
+#include "Font.h"
 #include "GraphicsContext.h"
 #include "HTMLInputElement.h"
 #include "HTMLNames.h"
@@ -58,6 +59,11 @@ RenderFileUploadControl::RenderFileUploadControl(HTMLInputElement* input)
 
 RenderFileUploadControl::~RenderFileUploadControl()
 {
+}
+
+bool RenderFileUploadControl::canBeReplacedWithInlineRunIn() const
+{
+    return false;
 }
 
 void RenderFileUploadControl::updateFromElement()
@@ -141,8 +147,7 @@ void RenderFileUploadControl::paintObject(PaintInfo& paintInfo, const LayoutPoin
         // We want to match the button's baseline
         RenderButton* buttonRenderer = toRenderButton(button->renderer());
         // FIXME: Make this work with transforms.
-        LayoutUnit textY = buttonRenderer->absoluteBoundingBoxRectIgnoringTransforms().y()
-            + buttonRenderer->baselinePosition(AlphabeticBaseline, true, HorizontalLine, PositionOnContainingLine);
+        LayoutUnit textY = paintOffset.y() + buttonRenderer->baselinePosition(AlphabeticBaseline, true, HorizontalLine, PositionOnContainingLine);
 
         paintInfo.context->setFillColor(style()->visitedDependentColor(CSSPropertyColor), style()->colorSpace());
         
@@ -190,7 +195,8 @@ void RenderFileUploadControl::computePreferredLogicalWidths()
         const String label = theme()->fileListDefaultLabel(node()->toInputElement()->multiple());
         float defaultLabelWidth = font.width(constructTextRun(this, font, label, style, TextRun::AllowTrailingExpansion));
         if (HTMLInputElement* button = uploadButton())
-            defaultLabelWidth += button->renderer()->maxPreferredLogicalWidth() + afterButtonSpacing;
+            if (RenderObject* buttonRenderer = button->renderer())
+                defaultLabelWidth += buttonRenderer->maxPreferredLogicalWidth() + afterButtonSpacing;
         m_maxPreferredLogicalWidth = static_cast<int>(ceilf(max(minDefaultLabelWidth, defaultLabelWidth)));
     }
 

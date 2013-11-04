@@ -39,6 +39,7 @@ SET(JavaScriptCore_SOURCES
     
     assembler/LinkBuffer.cpp
 
+    bytecode/ArrayProfile.cpp
     bytecode/CallLinkInfo.cpp
     bytecode/CallLinkStatus.cpp
     bytecode/CodeBlock.cpp
@@ -65,6 +66,7 @@ SET(JavaScriptCore_SOURCES
 
     dfg/DFGAbstractState.cpp
     dfg/DFGArgumentsSimplificationPhase.cpp
+    dfg/DFGArrayMode.cpp
     dfg/DFGAssemblyHelpers.cpp
     dfg/DFGByteCodeParser.cpp
     dfg/DFGCapabilities.cpp
@@ -89,11 +91,11 @@ SET(JavaScriptCore_SOURCES
     dfg/DFGOperations.cpp
     dfg/DFGPhase.cpp
     dfg/DFGPredictionPropagationPhase.cpp
-    dfg/DFGRedundantPhiEliminationPhase.cpp
     dfg/DFGRepatch.cpp
     dfg/DFGSpeculativeJIT.cpp
     dfg/DFGSpeculativeJIT32_64.cpp
     dfg/DFGSpeculativeJIT64.cpp
+    dfg/DFGStructureCheckHoistingPhase.cpp
     dfg/DFGThunks.cpp
     dfg/DFGValueSource.cpp
     dfg/DFGVariableEvent.cpp
@@ -105,6 +107,7 @@ SET(JavaScriptCore_SOURCES
     heap/CopiedSpace.cpp
     heap/ConservativeRoots.cpp
     heap/DFGCodeBlocks.cpp
+    heap/GCThreadSharedData.cpp
     heap/HandleSet.cpp
     heap/HandleStack.cpp
     heap/Heap.cpp
@@ -128,6 +131,7 @@ SET(JavaScriptCore_SOURCES
     interpreter/CallFrame.cpp
     interpreter/Interpreter.cpp
     interpreter/RegisterFile.cpp
+    interpreter/VMInspector.cpp
 
     jit/ExecutableAllocator.cpp
     jit/HostCallReturnValue.cpp
@@ -203,7 +207,9 @@ SET(JavaScriptCore_SOURCES
     runtime/JSONObject.cpp
     runtime/JSPropertyNameIterator.cpp
     runtime/JSSegmentedVariableObject.cpp
-    runtime/JSStaticScopeObject.cpp
+    runtime/JSNameScope.cpp
+    runtime/JSWithScope.cpp
+    runtime/JSScope.cpp
     runtime/JSString.cpp
     runtime/JSStringJoiner.cpp
     runtime/JSSymbolTableObject.cpp

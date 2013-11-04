@@ -34,7 +34,7 @@ extern "C" {
 
 WK_EXPORT WKTypeID WKBundleIntentRequestGetTypeID();
 
-WK_EXPORT WKIntentDataRef WKBundleIntentRequestCopyIntentData(WKBundleIntentRequestRef request);
+WK_EXPORT WKBundleIntentRef WKBundleIntentRequestCopyIntent(WKBundleIntentRequestRef request);
 
 WK_EXPORT void WKBundleIntentRequestPostResult(WKBundleIntentRequestRef request, WKSerializedScriptValueRef serializedData);
 WK_EXPORT void WKBundleIntentRequestPostFailure(WKBundleIntentRequestRef request, WKSerializedScriptValueRef serializedData);

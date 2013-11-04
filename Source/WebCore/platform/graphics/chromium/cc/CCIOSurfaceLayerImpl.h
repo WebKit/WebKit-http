@@ -26,8 +26,8 @@
 #ifndef CCIOSurfaceLayerImpl_h
 #define CCIOSurfaceLayerImpl_h
 
+#include "CCLayerImpl.h"
 #include "IntSize.h"
-#include "cc/CCLayerImpl.h"
 
 namespace WebCore {
 
@@ -41,7 +41,7 @@ public:
 
     void setIOSurfaceProperties(unsigned ioSurfaceId, const IntSize&);
 
-    virtual void appendQuads(CCQuadSink&, const CCSharedQuadState*, bool& hadMissingTiles) OVERRIDE;
+    virtual void appendQuads(CCQuadSink&, CCAppendQuadsData&) OVERRIDE;
 
     virtual void willDraw(CCResourceProvider*) OVERRIDE;
     virtual void didLoseContext() OVERRIDE;

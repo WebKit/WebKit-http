@@ -61,11 +61,10 @@ public:
     const RenderNamedFlowThreadList* renderNamedFlowThreadList() const { return m_renderNamedFlowThreadList.get(); }
     bool hasRenderNamedFlowThreads() const { return m_renderNamedFlowThreadList && !m_renderNamedFlowThreadList->isEmpty(); }
     void layoutRenderNamedFlowThreads();
+    void styleDidChange();
 
     void registerNamedFlowContentNode(Node*, RenderNamedFlowThread*);
     void unregisterNamedFlowContentNode(Node*);
-    
-    void removeFlowThread(RenderNamedFlowThread*);
 
 protected:
     FlowThreadController(RenderView*);

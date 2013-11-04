@@ -41,22 +41,22 @@ WebInspector.StylesSidebarPane = function(computedStylePane, setPseudoClassCallb
     this.settingsSelectElement.className = "select-settings";
 
     var option = document.createElement("option");
-    option.value = WebInspector.StylesSidebarPane.ColorFormat.Original;
+    option.value = WebInspector.Color.Format.Original;
     option.label = WebInspector.UIString(WebInspector.useLowerCaseMenuTitles() ? "As authored" : "As Authored");
     this.settingsSelectElement.appendChild(option);
 
     option = document.createElement("option");
-    option.value = WebInspector.StylesSidebarPane.ColorFormat.HEX;
+    option.value = WebInspector.Color.Format.HEX;
     option.label = WebInspector.UIString("Hex Colors");
     this.settingsSelectElement.appendChild(option);
 
     option = document.createElement("option");
-    option.value = WebInspector.StylesSidebarPane.ColorFormat.RGB;
+    option.value = WebInspector.Color.Format.RGB;
     option.label = WebInspector.UIString("RGB Colors");
     this.settingsSelectElement.appendChild(option);
 
     option = document.createElement("option");
-    option.value = WebInspector.StylesSidebarPane.ColorFormat.HSL;
+    option.value = WebInspector.Color.Format.HSL;
     option.label = WebInspector.UIString("HSL Colors");
     this.settingsSelectElement.appendChild(option);
 
@@ -103,17 +103,6 @@ WebInspector.StylesSidebarPane = function(computedStylePane, setPseudoClassCallb
     WebInspector.settings.showUserAgentStyles.addChangeListener(this._showUserAgentStylesSettingChanged.bind(this));
 }
 
-WebInspector.StylesSidebarPane.ColorFormat = {
-    Original: "original",
-    Nickname: "nickname",
-    HEX: "hex",
-    ShortHEX: "shorthex",
-    RGB: "rgb",
-    RGBA: "rgba",
-    HSL: "hsl",
-    HSLA: "hsla"
-}
-
 // Keep in sync with RenderStyleConstants.h PseudoId enum. Array below contains pseudo id names for corresponding enum indexes.
 // First item is empty due to its artificial NOPSEUDO nature in the enum.
 // FIXME: find a way of generating this mapping or getting it from combination of RenderStyleConstants and CSSSelector.cpp at
@@ -145,12 +134,14 @@ WebInspector.StylesSidebarPane.canonicalPropertyName = function(name)
 WebInspector.StylesSidebarPane.prototype = {
     _contextMenuEventFired: function(event)
     {
+        // We start editing upon click -> default navigation to resources panel is not available
+        // Hence we add a soft context menu for hrefs.
         var contextMenu = new WebInspector.ContextMenu();
-        if (WebInspector.populateHrefContextMenu(contextMenu, this.node, event))
-            contextMenu.show(event);
+        contextMenu.appendApplicableItems(event.target);
+        contextMenu.show(event);
     },
 
-    get forcedPseudoClasses()
+    get _forcedPseudoClasses()
     {
         return this.node ? (this.node.getUserProperty("pseudoState") || undefined) : undefined;
     },
@@ -160,7 +151,7 @@ WebInspector.StylesSidebarPane.prototype = {
         if (!this.node)
             return;
 
-        var nodePseudoState = this.forcedPseudoClasses;
+        var nodePseudoState = this._forcedPseudoClasses;
         if (!nodePseudoState)
             nodePseudoState = [];
 
@@ -236,7 +227,7 @@ WebInspector.StylesSidebarPane.prototype = {
 
         if (this._computedStylePane.expanded || forceFetchComputedStyle) {
             this._refreshUpdateInProgress = true;
-            WebInspector.cssModel.getComputedStyleAsync(node.id, this.forcedPseudoClasses, computedStyleCallback.bind(this));
+            WebInspector.cssModel.getComputedStyleAsync(node.id, computedStyleCallback.bind(this));
         } else {
             this._innerRefreshUpdate(node, null, editedSection);
             if (userCallback)
@@ -294,9 +285,9 @@ WebInspector.StylesSidebarPane.prototype = {
         }
 
         if (this._computedStylePane.expanded)
-            WebInspector.cssModel.getComputedStyleAsync(node.id, this.forcedPseudoClasses, computedCallback.bind(this));
+            WebInspector.cssModel.getComputedStyleAsync(node.id, computedCallback.bind(this));
         WebInspector.cssModel.getInlineStylesAsync(node.id, inlineCallback.bind(this));
-        WebInspector.cssModel.getMatchedStylesAsync(node.id, this.forcedPseudoClasses, true, true, stylesCallback.bind(this));
+        WebInspector.cssModel.getMatchedStylesAsync(node.id, true, true, stylesCallback.bind(this));
     },
 
     /**
@@ -421,7 +412,7 @@ WebInspector.StylesSidebarPane.prototype = {
                 continue;
             if (section.computedStyle)
                 section.styleRule.style = nodeComputedStyle;
-            var styleRule = { section: section, style: section.styleRule.style, computedStyle: section.computedStyle, rule: section.rule, editable: !!(section.styleRule.style && section.styleRule.style.id) };
+            var styleRule = { section: section, style: section.styleRule.style, computedStyle: section.computedStyle, rule: section.rule, editable: !!(section.styleRule.style && section.styleRule.style.id), isAttribute: section.styleRule.isAttribute };
             styleRules.push(styleRule);
         }
         return styleRules;
@@ -515,9 +506,8 @@ WebInspector.StylesSidebarPane.prototype = {
 
     _markUsedProperties: function(styleRules, usedProperties)
     {
-        var priorityUsed = false;
-
-        // Walk the style rules and make a list of all used and overloaded properties.
+        var foundImportantProperties = {};
+        var propertyToEffectiveRule = {};
         for (var i = 0; i < styleRules.length; ++i) {
             var styleRule = styleRules[i];
             if (styleRule.computedStyle || styleRule.isStyleSeparator)
@@ -535,47 +525,22 @@ WebInspector.StylesSidebarPane.prototype = {
                     continue;
                 var canonicalName = WebInspector.StylesSidebarPane.canonicalPropertyName(property.name);
 
-                if (!priorityUsed && property.priority.length)
-                    priorityUsed = true;
-
-                // If the property name is already used by another rule then this rule's
-                // property is overloaded, so don't add it to the rule's usedProperties.
-                if (!(canonicalName in usedProperties))
-                    styleRule.usedProperties[canonicalName] = true;
-            }
-
-            // Add all the properties found in this style to the used properties list.
-            // Do this here so only future rules are affect by properties used in this rule.
-            for (var canonicalName in styleRules[i].usedProperties)
-                usedProperties[canonicalName] = true;
-        }
-
-        if (priorityUsed) {
-            // Walk the properties again and account for !important.
-            var foundPriorityProperties = {};
-
-            // Walk in direct order to detect the active/most specific rule providing a priority
-            // (in this case all subsequent !important values get canceled.)
-            for (var i = 0; i < styleRules.length; ++i) {
-                if (styleRules[i].computedStyle || styleRules[i].isStyleSeparator)
+                if (foundImportantProperties.hasOwnProperty(canonicalName))
                     continue;
 
-                var style = styleRules[i].style;
-                var allProperties = style.allProperties;
-                for (var j = 0; j < allProperties.length; ++j) {
-                    var property = allProperties[j];
-                    if (!property.isLive)
-                        continue;
-                    var canonicalName = WebInspector.StylesSidebarPane.canonicalPropertyName(property.name);
-                    if (property.priority.length) {
-                        if (!(canonicalName in foundPriorityProperties))
-                            styleRules[i].usedProperties[canonicalName] = true;
-                        else
-                            delete styleRules[i].usedProperties[canonicalName];
-                        foundPriorityProperties[canonicalName] = true;
-                    } else if (canonicalName in foundPriorityProperties)
-                        delete styleRules[i].usedProperties[canonicalName];
+                var isImportant = property.priority.length;
+                if (!isImportant && usedProperties.hasOwnProperty(canonicalName))
+                    continue;
+
+                if (isImportant) {
+                    foundImportantProperties[canonicalName] = true;
+                    if (propertyToEffectiveRule.hasOwnProperty(canonicalName))
+                        delete propertyToEffectiveRule[canonicalName].usedProperties[canonicalName];
                 }
+
+                styleRule.usedProperties[canonicalName] = true;
+                usedProperties[canonicalName] = true;
+                propertyToEffectiveRule[canonicalName] = styleRule;
             }
         }
     },
@@ -1332,12 +1297,12 @@ WebInspector.StylePropertiesSection.prototype = {
             this.rule = newRule;
             this.styleRule = { section: this, style: newRule.style, selectorText: newRule.selectorText, media: newRule.media, sourceURL: newRule.sourceURL, rule: newRule };
 
-            this.pane.update();
+            this._parentPane.update();
 
             this._moveEditorFromSelector(moveDirection);
         }
 
-        var selectedNode = WebInspector.panels.elements.selectedDOMNode();
+        var selectedNode = this._parentPane.node;
         WebInspector.cssModel.setRuleSelector(this.rule.id, selectedNode ? selectedNode.id : 0, newContent, successCallback.bind(this), this._moveEditorFromSelector.bind(this, moveDirection));
     },
 
@@ -1693,7 +1658,7 @@ WebInspector.StylePropertyTreeElement.prototype = {
         valueElement.className = "value";
         this.valueElement = valueElement;
 
-        var cf = WebInspector.StylesSidebarPane.ColorFormat;
+        var cf = WebInspector.Color.Format;
 
         if (value) {
             var self = this;
@@ -1728,9 +1693,9 @@ WebInspector.StylePropertyTreeElement.prototype = {
                 var container = document.createDocumentFragment();
                 container.appendChild(document.createTextNode("url("));
                 if (self._styleRule.sourceURL)
-                    hrefUrl = WebInspector.completeURL(self._styleRule.sourceURL, hrefUrl);
-                else if (WebInspector.panels.elements.selectedDOMNode())
-                    hrefUrl = WebInspector.resourceURLForRelatedNode(WebInspector.panels.elements.selectedDOMNode(), hrefUrl);
+                    hrefUrl = WebInspector.ParsedURL.completeURL(self._styleRule.sourceURL, hrefUrl);
+                else if (this._parentPane.node)
+                    hrefUrl = this._parentPane.node.resolveURL(hrefUrl);
                 var hasResource = !!WebInspector.resourceForURL(hrefUrl);
                 // FIXME: WebInspector.linkifyURLAsNode() should really use baseURI.
                 container.appendChild(WebInspector.linkifyURLAsNode(hrefUrl, url, undefined, !hasResource));
@@ -1904,7 +1869,7 @@ WebInspector.StylePropertyTreeElement.prototype = {
             var colorRegex = /((?:rgb|hsl)a?\([^)]+\)|#[0-9a-fA-F]{6}|#[0-9a-fA-F]{3}|\b\w+\b(?!-))/g;
             var colorProcessor = processValue.bind(window, colorRegex, processColor, null);
 
-            valueElement.appendChild(processValue(/url\(\s*([^)\s]+)\s*\)/g, linkifyURL, WebInspector.CSSKeywordCompletions.isColorAwareProperty(self.name) ? colorProcessor : null, value));
+            valueElement.appendChild(processValue(/url\(\s*([^)\s]+)\s*\)/g, linkifyURL.bind(this), WebInspector.CSSKeywordCompletions.isColorAwareProperty(self.name) ? colorProcessor : null, value));
         }
 
         this.listItemElement.removeChildren();
@@ -2439,7 +2404,6 @@ WebInspector.StylePropertyTreeElement.prototype = {
             return;
 
         var section = this.treeOutline.section;
-        var elementsPanel = WebInspector.panels.elements;
         styleText = styleText.replace(/\s/g, " ").trim(); // Replace &nbsp; with whitespace.
         var styleTextLength = styleText.length;
         if (!styleTextLength && updateInterface && !isRevert && this._newProperty && !this._hasBeenModifiedIncrementally()) {
@@ -2535,6 +2499,15 @@ WebInspector.StylesSidebarPane.CSSPropertyPrompt.prototype = {
         }
 
         WebInspector.TextPrompt.prototype.onKeyDown.call(this, event);
+    },
+
+    onMouseWheel: function(event)
+    {
+        if (this._handleNameOrValueUpDown(event)) {
+            event.consume(true);
+            return;
+        }
+        WebInspector.TextPrompt.prototype.onMouseWheel.call(this, event);
     },
 
     tabKeyPressed: function()

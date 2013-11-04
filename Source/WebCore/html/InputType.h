@@ -62,7 +62,6 @@ class RenderArena;
 class RenderObject;
 class RenderStyle;
 class TouchEvent;
-class WheelEvent;
 
 typedef int ExceptionCode;
 
@@ -194,7 +193,6 @@ public:
     virtual void handleKeypressEvent(KeyboardEvent*);
     virtual void handleKeyupEvent(KeyboardEvent*);
     virtual void handleBeforeTextInsertedEvent(BeforeTextInsertedEvent*);
-    virtual void handleWheelEvent(WheelEvent*);
 #if ENABLE(TOUCH_EVENTS)
     virtual void handleTouchEvent(TouchEvent*);
 #endif
@@ -202,6 +200,7 @@ public:
     // Helpers for event handlers.
     virtual bool shouldSubmitImplicitly(Event*);
     virtual PassRefPtr<HTMLFormElement> formForSubmission() const;
+    virtual bool hasCustomFocusLogic() const;
     virtual bool isKeyboardFocusable(KeyboardEvent*) const;
     virtual bool isMouseFocusable() const;
     virtual bool shouldUseInputMethod() const;
@@ -213,6 +212,9 @@ public:
 #if ENABLE(TOUCH_EVENTS)
     virtual bool hasTouchEventHandler() const;
 #endif
+
+    virtual void blur();
+    virtual void focus(bool restorePreviousSelection);
 
     // Shadow tree handling
 
@@ -281,6 +283,7 @@ public:
     virtual String defaultToolTip() const;
 #if ENABLE(DATALIST_ELEMENT)
     virtual void listAttributeTargetChanged();
+    virtual Decimal findClosestTickMarkValue(const Decimal&);
 #endif
 
     // Parses the specified string for the type, and return

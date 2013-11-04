@@ -41,11 +41,11 @@ class WebIDBTransaction {
 public:
     virtual ~WebIDBTransaction() { }
 
-    virtual int mode() const
-    {
-        WEBKIT_ASSERT_NOT_REACHED();
-        return 0;
-    }
+    enum TaskType {
+        NormalTask = 0,
+        PreemptiveTask
+    };
+
     virtual WebIDBObjectStore* objectStore(const WebString& name, WebExceptionCode&)
     {
         WEBKIT_ASSERT_NOT_REACHED();

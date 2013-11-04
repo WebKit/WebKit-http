@@ -1,5 +1,6 @@
 /**
  * Copyright (C) 2011 Nokia Inc.  All rights reserved.
+ * Copyright (C) 2012 Google Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -21,321 +22,344 @@
 #include "config.h"
 #include "RenderQuote.h"
 
-#include "Document.h"
-#include "Element.h"
-#include "HTMLElement.h"
-#include "QuotesData.h"
-#include "RenderStyle.h"
-#include <algorithm>
 #include <wtf/text/AtomicString.h>
-#include <wtf/text/CString.h>
 
-#define UNKNOWN_DEPTH -1
+#define U(x) ((const UChar*)L##x)
 
 namespace WebCore {
-static inline void adjustDepth(int &depth, QuoteType type)
-{
-    switch (type) {
-    case OPEN_QUOTE:
-    case NO_OPEN_QUOTE:
-        ++depth;
-        break;
-    case CLOSE_QUOTE:
-    case NO_CLOSE_QUOTE:
-        if (depth)
-            --depth;
-        break;
-    default:
-        ASSERT_NOT_REACHED();
-    }
-}
 
 RenderQuote::RenderQuote(Document* node, QuoteType quote)
     : RenderText(node, StringImpl::empty())
     , m_type(quote)
-    , m_depth(UNKNOWN_DEPTH)
+    , m_depth(0)
     , m_next(0)
     , m_previous(0)
+    , m_attached(false)
 {
-    view()->addRenderQuote();
 }
 
 RenderQuote::~RenderQuote()
 {
+    ASSERT(!m_attached);
+    ASSERT(!m_next && !m_previous);
 }
 
 void RenderQuote::willBeDestroyed()
 {
-    if (view())
-        view()->removeRenderQuote();
+    detachQuote();
     RenderText::willBeDestroyed();
 }
 
-const char* RenderQuote::renderName() const
+void RenderQuote::willBeRemovedFromTree()
 {
-    return "RenderQuote";
+    RenderText::willBeRemovedFromTree();
+
+    detachQuote();
 }
 
-// This function places a list of quote renderers starting at "this" in the list of quote renderers already
-// in the document's renderer tree.
-// The assumptions are made (for performance):
-// 1. The list of quotes already in the renderers tree of the document is already in a consistent state
-// (All quote renderers are linked and have the correct depth set)
-// 2. The quote renderers of the inserted list are in a tree of renderers of their own which has been just
-// inserted in the main renderer tree with its root as child of some renderer.
-// 3. The quote renderers in the inserted list have depths consistent with their position in the list relative
-// to "this", thus if "this" does not need to change its depth upon insertion, the other renderers in the list don't
-// need to either.
-void RenderQuote::placeQuote()
-{
-    RenderQuote* head = this;
-    ASSERT(!head->m_previous);
-    RenderQuote* tail = 0;
-    for (RenderObject* predecessor = head->previousInPreOrder(); predecessor; predecessor = predecessor->previousInPreOrder()) {
-        if (!predecessor->isQuote())
-            continue;
-        head->m_previous = toRenderQuote(predecessor);
-        if (head->m_previous->m_next) {
-            // We need to splice the list of quotes headed by head into the document's list of quotes.
-            tail = head;
-            while (tail->m_next)
-                 tail = tail->m_next;
-            tail->m_next = head->m_previous->m_next;
-            ASSERT(tail->m_next->m_previous == head->m_previous);
-            tail->m_next->m_previous =  tail;
-            tail = tail->m_next; // This marks the splicing point here there may be a depth discontinuity
-        }
-        head->m_previous->m_next = head;
-        ASSERT(head->m_previous->m_depth != UNKNOWN_DEPTH);
-        break;
-    }
-    int newDepth;
-    if (!head->m_previous) {
-        newDepth = 0;
-        goto skipNewDepthCalc;
-    }
-    newDepth = head->m_previous->m_depth;
-    do {
-        adjustDepth(newDepth, head->m_previous->m_type);
-skipNewDepthCalc:
-        if (head->m_depth == newDepth) { // All remaining depth should be correct except if splicing was done.
-            if (!tail) // We've done the post splicing section already or there was no splicing.
-                break;
-            head = tail; // Continue after the splicing point
-            tail = 0; // Mark the possible splicing point discontinuity fixed.
-            newDepth = head->m_previous->m_depth;
-            continue;
-        }
-        head->m_depth = newDepth;
-        // FIXME: If the width and height of the quotation characters does not change we may only need to
-        // Invalidate the renderer's area not a relayout.
-        head->setNeedsLayoutAndPrefWidthsRecalc();
-        head = head->m_next;
-        if (head == tail) // We are at the splicing point
-            tail = 0; // Mark the possible depth discontinuity fixed.
-    } while (head);
-}
+typedef HashMap<AtomicString, const QuotesData*, CaseFoldingHash> QuotesMap;
 
-#define ARRAY_SIZE(Carray) (sizeof(Carray) / sizeof(*Carray))
-#define LANGUAGE_DATA(name, languageSourceArray) { name, languageSourceArray, ARRAY_SIZE(languageSourceArray) }
-#define U(x) ((const UChar*)L##x)
-
-static const UChar* simpleQuotes[] = {U("\""), U("\""), U("'"), U("'")};
-
-static const UChar* englishQuotes[] = {U("\x201C"), U("\x201D"), U("\x2018"), U("\x2019")};
-static const UChar* norwegianQuotes[] = { U("\x00AB"), U("\x00BB"), U("\x2039"), U("\x203A") };
-static const UChar* romanianQuotes[] = { U("\x201E"), U("\x201D")};
-static const UChar* russianQuotes[] = { U("\x00AB"), U("\x00BB"), U("\x201E"), U("\x201C") };
-#undef U
-
-struct LanguageData {
-    const char *name;
-    const UChar* const* const array;
-    const int arraySize;
-    bool operator<(const LanguageData& compareTo) const
-    {
-        return strcmp(name, compareTo.name);
-    }
-};
-
-// Data mast be alphabetically sorted and in all lower case for fast comparison
-LanguageData languageData[] = {
-    LANGUAGE_DATA("en", englishQuotes),
-    LANGUAGE_DATA("no", norwegianQuotes),
-    LANGUAGE_DATA("ro", romanianQuotes),
-    LANGUAGE_DATA("ru", russianQuotes)
-};
-#undef LANGUAGE_DATA
-const LanguageData* const languageDataEnd = languageData + ARRAY_SIZE(languageData);
-
-#define defaultLanguageQuotesSource simpleQuotes
-#define defaultLanguageQuotesCount ARRAY_SIZE(defaultLanguageQuotesSource)
-
-static QuotesData* defaultLanguageQuotesValue = 0;
-static const QuotesData* defaultLanguageQuotes()
-{
-    if (!defaultLanguageQuotesValue) {
-        defaultLanguageQuotesValue = QuotesData::create(defaultLanguageQuotesCount);
-        if (!defaultLanguageQuotesValue)
-            return 0;
-        String* data = defaultLanguageQuotesValue->data();
-        for (size_t i = 0; i < defaultLanguageQuotesCount; ++i)
-            data[i] = defaultLanguageQuotesSource[i];
-    }
-    return defaultLanguageQuotesValue;
-}
-#undef defaultLanguageQuotesSource
-#undef defaultLanguageQuotesCount
-
-typedef HashMap<RefPtr<AtomicStringImpl>, QuotesData* > QuotesMap;
-
-static QuotesMap& quotesMap()
+static const QuotesMap& quotesDataLanguageMap()
 {
     DEFINE_STATIC_LOCAL(QuotesMap, staticQuotesMap, ());
+    if (staticQuotesMap.size())
+        return staticQuotesMap;
+
+    // Table of quotes from http://www.whatwg.org/specs/web-apps/current-work/multipage/rendering.html#quotes
+    #define QUOTES_LANG(lang, o1, c1, o2, c2) staticQuotesMap.set(lang, QuotesData::create(U(o1), U(c1), U(o2), U(c2)).leakRef())
+    QUOTES_LANG("af",            "\x201c", "\x201d", "\x2018", "\x2019");
+    QUOTES_LANG("agq",           "\x201e", "\x201d", "\x201a", "\x2019");
+    QUOTES_LANG("ak",            "\x201c", "\x201d", "\x2018", "\x2019");
+    QUOTES_LANG("am",            "\x00ab", "\x00bb", "\x2039", "\x203a");
+    QUOTES_LANG("ar",            "\x201d", "\x201c", "\x2019", "\x2018");
+    QUOTES_LANG("asa",           "\x201c", "\x201d", "\x2018", "\x2019");
+    QUOTES_LANG("az-Cyrl",       "\x00ab", "\x00bb", "\x2039", "\x203a");
+    QUOTES_LANG("bas",           "\x00ab", "\x00bb", "\x201e", "\x201c");
+    QUOTES_LANG("bem",           "\x201c", "\x201d", "\x2018", "\x2019");
+    QUOTES_LANG("bez",           "\x201c", "\x201d", "\x2018", "\x2019");
+    QUOTES_LANG("bg",            "\x201e", "\x201c", "\x201a", "\x2018");
+    QUOTES_LANG("bm",            "\x00ab", "\x00bb", "\x201c", "\x201d");
+    QUOTES_LANG("bn",            "\x201c", "\x201d", "\x2018", "\x2019");
+    QUOTES_LANG("br",            "\x00ab", "\x00bb", "\x2039", "\x203a");
+    QUOTES_LANG("brx",           "\x201c", "\x201d", "\x2018", "\x2019");
+    QUOTES_LANG("bs-Cyrl",       "\x201e", "\x201c", "\x201a", "\x2018");
+    QUOTES_LANG("ca",            "\x201c", "\x201d", "\x00ab", "\x00bb");
+    QUOTES_LANG("cgg",           "\x201c", "\x201d", "\x2018", "\x2019");
+    QUOTES_LANG("chr",           "\x201c", "\x201d", "\x2018", "\x2019");
+    QUOTES_LANG("cs",            "\x201e", "\x201c", "\x201a", "\x2018");
+    QUOTES_LANG("da",            "\x201c", "\x201d", "\x2018", "\x2019");
+    QUOTES_LANG("dav",           "\x201c", "\x201d", "\x2018", "\x2019");
+    QUOTES_LANG("de",            "\x201e", "\x201c", "\x201a", "\x2018");
+    QUOTES_LANG("de-CH",         "\x00ab", "\x00bb", "\x2039", "\x203a");
+    QUOTES_LANG("dje",           "\x201c", "\x201d", "\x2018", "\x2019");
+    QUOTES_LANG("dua",           "\x00ab", "\x00bb", "\x2018", "\x2019");
+    QUOTES_LANG("dyo",           "\x00ab", "\x00bb", "\x201c", "\x201d");
+    QUOTES_LANG("dz",            "\x201c", "\x201d", "\x2018", "\x2019");
+    QUOTES_LANG("ebu",           "\x201c", "\x201d", "\x2018", "\x2019");
+    QUOTES_LANG("ee",            "\x201c", "\x201d", "\x2018", "\x2019");
+    QUOTES_LANG("el",            "\x00ab", "\x00bb", "\x201c", "\x201d");
+    QUOTES_LANG("en",            "\x201c", "\x201d", "\x2018", "\x2019");
+    QUOTES_LANG("en-GB",         "\x201c", "\x201d", "\x2018", "\x2019");
+    QUOTES_LANG("es",            "\x201c", "\x201d", "\x00ab", "\x00bb");
+    QUOTES_LANG("et",            "\x201e", "\x201c", "\x201a", "\x2018");
+    QUOTES_LANG("eu",            "\x201c", "\x201d", "\x00ab", "\x00bb");
+    QUOTES_LANG("ewo",           "\x00ab", "\x00bb", "\x201c", "\x201d");
+    QUOTES_LANG("fa",            "\x00ab", "\x00bb", "\x2039", "\x203a");
+    QUOTES_LANG("ff",            "\x201e", "\x201d", "\x201a", "\x2019");
+    QUOTES_LANG("fi",            "\x201d", "\x201d", "\x2019", "\x2019");
+    QUOTES_LANG("fr",            "\x00ab", "\x00bb", "\x00ab", "\x00bb");
+    QUOTES_LANG("fr-CA",         "\x00ab", "\x00bb", "\x2039", "\x203a");
+    QUOTES_LANG("fr-CH",         "\x00ab", "\x00bb", "\x2039", "\x203a");
+    QUOTES_LANG("gsw",           "\x00ab", "\x00bb", "\x2039", "\x203a");
+    QUOTES_LANG("gu",            "\x201c", "\x201d", "\x2018", "\x2019");
+    QUOTES_LANG("guz",           "\x201c", "\x201d", "\x2018", "\x2019");
+    QUOTES_LANG("ha",            "\x201c", "\x201d", "\x2018", "\x2019");
+    QUOTES_LANG("he",            "\x0022", "\x0022", "\x0027", "\x0027");
+    QUOTES_LANG("hi",            "\x201c", "\x201d", "\x2018", "\x2019");
+    QUOTES_LANG("hr",            "\x201e", "\x201c", "\x201a", "\x2018");
+    QUOTES_LANG("hu",            "\x201e", "\x201d", "\x00bb", "\x00ab");
+    QUOTES_LANG("id",            "\x201c", "\x201d", "\x2018", "\x2019");
+    QUOTES_LANG("ig",            "\x201c", "\x201d", "\x2018", "\x2019");
+    QUOTES_LANG("it",            "\x00ab", "\x00bb", "\x201c", "\x201d");
+    QUOTES_LANG("ja",            "\x300c", "\x300d", "\x300e", "\x300f");
+    QUOTES_LANG("jgo",           "\x00ab", "\x00bb", "\x2039", "\x203a");
+    QUOTES_LANG("jmc",           "\x201c", "\x201d", "\x2018", "\x2019");
+    QUOTES_LANG("kab",           "\x00ab", "\x00bb", "\x201c", "\x201d");
+    QUOTES_LANG("kam",           "\x201c", "\x201d", "\x2018", "\x2019");
+    QUOTES_LANG("kde",           "\x201c", "\x201d", "\x2018", "\x2019");
+    QUOTES_LANG("kea",           "\x201c", "\x201d", "\x2018", "\x2019");
+    QUOTES_LANG("khq",           "\x201c", "\x201d", "\x2018", "\x2019");
+    QUOTES_LANG("ki",            "\x201c", "\x201d", "\x2018", "\x2019");
+    QUOTES_LANG("kkj",           "\x00ab", "\x00bb", "\x2039", "\x203a");
+    QUOTES_LANG("kln",           "\x201c", "\x201d", "\x2018", "\x2019");
+    QUOTES_LANG("km",            "\x201c", "\x201d", "\x2018", "\x2019");
+    QUOTES_LANG("kn",            "\x201c", "\x201d", "\x2018", "\x2019");
+    QUOTES_LANG("ko",            "\x201c", "\x201d", "\x2018", "\x2019");
+    QUOTES_LANG("ksb",           "\x201c", "\x201d", "\x2018", "\x2019");
+    QUOTES_LANG("ksf",           "\x00ab", "\x00bb", "\x2018", "\x2019");
+    QUOTES_LANG("lag",           "\x201d", "\x201d", "\x2019", "\x2019");
+    QUOTES_LANG("lg",            "\x201c", "\x201d", "\x2018", "\x2019");
+    QUOTES_LANG("ln",            "\x201c", "\x201d", "\x2018", "\x2019");
+    QUOTES_LANG("lo",            "\x201c", "\x201d", "\x2018", "\x2019");
+    QUOTES_LANG("lt",            "\x201e", "\x201c", "\x201e", "\x201c");
+    QUOTES_LANG("lu",            "\x201c", "\x201d", "\x2018", "\x2019");
+    QUOTES_LANG("luo",           "\x201c", "\x201d", "\x2018", "\x2019");
+    QUOTES_LANG("luy",           "\x201e", "\x201c", "\x201a", "\x2018");
+    QUOTES_LANG("lv",            "\x201c", "\x201d", "\x2018", "\x2019");
+    QUOTES_LANG("mas",           "\x201c", "\x201d", "\x2018", "\x2019");
+    QUOTES_LANG("mer",           "\x201c", "\x201d", "\x2018", "\x2019");
+    QUOTES_LANG("mfe",           "\x201c", "\x201d", "\x2018", "\x2019");
+    QUOTES_LANG("mg",            "\x00ab", "\x00bb", "\x201c", "\x201d");
+    QUOTES_LANG("mgo",           "\x201c", "\x201d", "\x2018", "\x2019");
+    QUOTES_LANG("mk",            "\x201e", "\x201c", "\x201a", "\x2018");
+    QUOTES_LANG("ml",            "\x201c", "\x201d", "\x2018", "\x2019");
+    QUOTES_LANG("mr",            "\x201c", "\x201d", "\x2018", "\x2019");
+    QUOTES_LANG("ms",            "\x201c", "\x201d", "\x2018", "\x2019");
+    QUOTES_LANG("mua",           "\x00ab", "\x00bb", "\x201c", "\x201d");
+    QUOTES_LANG("my",            "\x201c", "\x201d", "\x2018", "\x2019");
+    QUOTES_LANG("naq",           "\x201c", "\x201d", "\x2018", "\x2019");
+    QUOTES_LANG("nb",            "\x00ab", "\x00bb", "\x2018", "\x2019");
+    QUOTES_LANG("nd",            "\x201c", "\x201d", "\x2018", "\x2019");
+    QUOTES_LANG("nl",            "\x201c", "\x201d", "\x2018", "\x2019");
+    QUOTES_LANG("nmg",           "\x201e", "\x201d", "\x00ab", "\x00bb");
+    QUOTES_LANG("nn",            "\x00ab", "\x00bb", "\x2018", "\x2019");
+    QUOTES_LANG("nnh",           "\x00ab", "\x00bb", "\x201c", "\x201d");
+    QUOTES_LANG("nus",           "\x201c", "\x201d", "\x2018", "\x2019");
+    QUOTES_LANG("nyn",           "\x201c", "\x201d", "\x2018", "\x2019");
+    QUOTES_LANG("pl",            "\x201e", "\x201d", "\x00ab", "\x00bb");
+    QUOTES_LANG("pt",            "\x201c", "\x201d", "\x2018", "\x2019");
+    QUOTES_LANG("pt-PT",         "\x00ab", "\x00bb", "\x201c", "\x201d");
+    QUOTES_LANG("rn",            "\x201d", "\x201d", "\x2019", "\x2019");
+    QUOTES_LANG("ro",            "\x201e", "\x201d", "\x00ab", "\x00bb");
+    QUOTES_LANG("rof",           "\x201c", "\x201d", "\x2018", "\x2019");
+    QUOTES_LANG("ru",            "\x00ab", "\x00bb", "\x201e", "\x201c");
+    QUOTES_LANG("rw",            "\x00ab", "\x00bb", "\x2018", "\x2019");
+    QUOTES_LANG("rwk",           "\x201c", "\x201d", "\x2018", "\x2019");
+    QUOTES_LANG("saq",           "\x201c", "\x201d", "\x2018", "\x2019");
+    QUOTES_LANG("sbp",           "\x201c", "\x201d", "\x2018", "\x2019");
+    QUOTES_LANG("seh",           "\x201c", "\x201d", "\x2018", "\x2019");
+    QUOTES_LANG("ses",           "\x201c", "\x201d", "\x2018", "\x2019");
+    QUOTES_LANG("sg",            "\x00ab", "\x00bb", "\x201c", "\x201d");
+    QUOTES_LANG("shi",           "\x00ab", "\x00bb", "\x201e", "\x201d");
+    QUOTES_LANG("shi-Tfng",      "\x00ab", "\x00bb", "\x201e", "\x201d");
+    QUOTES_LANG("si",            "\x201c", "\x201d", "\x2018", "\x2019");
+    QUOTES_LANG("sk",            "\x201e", "\x201c", "\x201a", "\x2018");
+    QUOTES_LANG("sl",            "\x201e", "\x201c", "\x201a", "\x2018");
+    QUOTES_LANG("sn",            "\x201d", "\x201d", "\x2019", "\x2019");
+    QUOTES_LANG("so",            "\x201c", "\x201d", "\x2018", "\x2019");
+    QUOTES_LANG("sq",            "\x201e", "\x201c", "\x201a", "\x2018");
+    QUOTES_LANG("sr",            "\x201e", "\x201c", "\x201a", "\x2018");
+    QUOTES_LANG("sr-Latn",       "\x201e", "\x201c", "\x201a", "\x2018");
+    QUOTES_LANG("sv",            "\x201d", "\x201d", "\x2019", "\x2019");
+    QUOTES_LANG("sw",            "\x201c", "\x201d", "\x2018", "\x2019");
+    QUOTES_LANG("swc",           "\x201c", "\x201d", "\x2018", "\x2019");
+    QUOTES_LANG("ta",            "\x201c", "\x201d", "\x2018", "\x2019");
+    QUOTES_LANG("te",            "\x201c", "\x201d", "\x2018", "\x2019");
+    QUOTES_LANG("teo",           "\x201c", "\x201d", "\x2018", "\x2019");
+    QUOTES_LANG("th",            "\x201c", "\x201d", "\x2018", "\x2019");
+    QUOTES_LANG("ti-ER",         "\x2018", "\x2019", "\x201c", "\x201d");
+    QUOTES_LANG("to",            "\x201c", "\x201d", "\x2018", "\x2019");
+    QUOTES_LANG("tr",            "\x201c", "\x201d", "\x2018", "\x2019");
+    QUOTES_LANG("twq",           "\x201c", "\x201d", "\x2018", "\x2019");
+    QUOTES_LANG("tzm",           "\x201c", "\x201d", "\x2018", "\x2019");
+    QUOTES_LANG("uk",            "\x00ab", "\x00bb", "\x201e", "\x201c");
+    QUOTES_LANG("ur",            "\x201d", "\x201c", "\x2019", "\x2018");
+    QUOTES_LANG("vai",           "\x201c", "\x201d", "\x2018", "\x2019");
+    QUOTES_LANG("vai-Latn",      "\x201c", "\x201d", "\x2018", "\x2019");
+    QUOTES_LANG("vi",            "\x201c", "\x201d", "\x2018", "\x2019");
+    QUOTES_LANG("vun",           "\x201c", "\x201d", "\x2018", "\x2019");
+    QUOTES_LANG("xh",            "\x2018", "\x2019", "\x201c", "\x201d");
+    QUOTES_LANG("xog",           "\x201c", "\x201d", "\x2018", "\x2019");
+    QUOTES_LANG("yav",           "\x00ab", "\x00bb", "\x00ab", "\x00bb");
+    QUOTES_LANG("yo",            "\x201c", "\x201d", "\x2018", "\x2019");
+    QUOTES_LANG("zh",            "\x201c", "\x201d", "\x2018", "\x2019");
+    QUOTES_LANG("zh-Hant",       "\x300c", "\x300d", "\x300e", "\x300f");
+    QUOTES_LANG("zu",            "\x201c", "\x201d", "\x2018", "\x2019");
+    #undef QUOTES_LANG
+
     return staticQuotesMap;
 }
 
-static const QuotesData* quotesForLanguage(AtomicStringImpl* language)
+static const QuotesData* basicQuotesData()
 {
-    QuotesData* returnValue;
-    AtomicString lower(language->lower());
-    returnValue = quotesMap().get(lower.impl());
-    if (returnValue)
-        return returnValue;
-    CString s(static_cast<const String&>(lower).ascii());
-    LanguageData request = { s.buffer()->data(), 0, 0 };
-    const LanguageData* lowerBound = std::lower_bound<const LanguageData*, const LanguageData>(languageData, languageDataEnd, request);
-    if (lowerBound == languageDataEnd)
-        return defaultLanguageQuotes();
-    if (strncmp(lowerBound->name, request.name, strlen(lowerBound->name)))
-        return defaultLanguageQuotes();
-    returnValue = QuotesData::create(lowerBound->arraySize);
-    if (!returnValue)
-        return defaultLanguageQuotes();
-    String* data = returnValue->data();
-    for (int i = 0; i < lowerBound->arraySize; ++i)
-        data[i] = lowerBound->array[i];
-    quotesMap().set(lower.impl(), returnValue);
-    return returnValue;
-}
-#undef ARRAY_SIZE
-
-static const QuotesData* defaultQuotes(const RenderObject* object)
-{
-    DEFINE_STATIC_LOCAL(String, langString, ("lang"));
-    Node* node =  object->generatingNode();
-    Element* element;
-    if (!node) {
-        element = object->document()->body();
-        if (!element)
-            element = object->document()->documentElement();
-    } else if (!node->isElementNode()) {
-        element = node->parentElement();
-        if (!element)
-            return defaultLanguageQuotes();
-    } else
-      element = toElement(node);
-    const AtomicString* language;
-    while ((language = &element->getAttribute(langString)) && language->isNull()) {
-        element = element->parentElement();
-        if (!element)
-            return defaultLanguageQuotes();
-    }
-    return quotesForLanguage(language->impl());
+    // FIXME: The default quotes should be the fancy quotes for "en".
+    static const QuotesData* staticBasicQuotes = QuotesData::create(U("\""), U("\""), U("'"), U("'")).leakRef();
+    return staticBasicQuotes;
 }
 
 PassRefPtr<StringImpl> RenderQuote::originalText() const
 {
-    if (!parent())
-        return 0;
-    ASSERT(m_depth != UNKNOWN_DEPTH);
-    const QuotesData* quotes = style()->quotes();
-    if (!quotes)
-        quotes = defaultQuotes(this);
-    if (!quotes->length)
-        return emptyAtom.impl();
-    int index = m_depth * 2;
     switch (m_type) {
     case NO_OPEN_QUOTE:
     case NO_CLOSE_QUOTE:
-        return emptyString().impl();
+        return StringImpl::empty();
     case CLOSE_QUOTE:
-        if (index)
-            --index;
-        else
-            ++index;
-        break;
+        return quotesData()->getCloseQuote(m_depth - 1).impl();
     case OPEN_QUOTE:
-        break;
-    default:
-        ASSERT_NOT_REACHED();
-        return emptyAtom.impl();
+        return quotesData()->getOpenQuote(m_depth).impl();
     }
-    if (index >= quotes->length)
-        index = (quotes->length-2) | (index & 1);
-    if (index < 0)
-        return emptyAtom.impl();
-    return quotes->data()[index].impl();
+    ASSERT_NOT_REACHED();
+    return StringImpl::empty();
 }
 
 void RenderQuote::computePreferredLogicalWidths(float lead)
 {
+    if (!m_attached)
+        attachQuote();
     setTextInternal(originalText());
     RenderText::computePreferredLogicalWidths(lead);
 }
 
-void RenderQuote::rendererSubtreeAttached(RenderObject* renderer)
+const QuotesData* RenderQuote::quotesData() const
 {
-    ASSERT(renderer->view());
-    if (!renderer->view()->hasRenderQuotes())
-        return;
-    for (RenderObject* descendant = renderer; descendant; descendant = descendant->nextInPreOrder(renderer))
-        if (descendant->isQuote()) {
-            toRenderQuote(descendant)->placeQuote();
-            break;
-        }
+    if (QuotesData* customQuotes = style()->quotes())
+        return customQuotes;
+
+    AtomicString language = style()->locale();
+    if (language.isNull())
+        return basicQuotesData();
+    const QuotesData* quotes = quotesDataLanguageMap().get(language);
+    if (!quotes)
+        return basicQuotesData();
+    return quotes;
 }
 
-void RenderQuote::rendererRemovedFromTree(RenderObject* renderer)
+void RenderQuote::attachQuote()
 {
-    ASSERT(renderer->view());
-    if (!renderer->view()->hasRenderQuotes())
-        return;
-    for (RenderObject* descendant = renderer; descendant; descendant = descendant->nextInPreOrder(renderer))
-        if (descendant->isQuote()) {
-            RenderQuote* removedQuote = toRenderQuote(descendant);
-            RenderQuote* lastQuoteBefore = removedQuote->m_previous;
-            removedQuote->m_previous = 0;
-            int depth = removedQuote->m_depth;
-            for (descendant = descendant->nextInPreOrder(renderer); descendant; descendant = descendant->nextInPreOrder(renderer))
-                if (descendant->isQuote())
-                    removedQuote = toRenderQuote(descendant);
-            RenderQuote* quoteAfter = removedQuote->m_next;
-            removedQuote->m_next = 0;
-            if (lastQuoteBefore)
-                lastQuoteBefore->m_next = quoteAfter;
-            if (quoteAfter) {
-                quoteAfter->m_previous = lastQuoteBefore;
-                do {
-                    if (depth == quoteAfter->m_depth)
-                        break;
-                    quoteAfter->m_depth = depth;
-                    quoteAfter->setNeedsLayoutAndPrefWidthsRecalc();
-                    adjustDepth(depth, quoteAfter->m_type);
-                    quoteAfter = quoteAfter->m_next;
-                } while (quoteAfter);
-            }
-            break;
-        }
-}
+    ASSERT(view());
+    ASSERT(!m_attached);
+    ASSERT(!m_next && !m_previous);
 
-void RenderQuote::styleDidChange(StyleDifference diff, const RenderStyle* oldStyle)
-{
-    const QuotesData* newQuotes = style()->quotes();
-    const QuotesData* oldQuotes = oldStyle ? oldStyle->quotes() : 0;
-    if (!QuotesData::equal(newQuotes, oldQuotes))
+    // FIXME: Don't set pref widths dirty during layout. See updateDepth() for
+    // more detail.
+    if (!isRooted()) {
         setNeedsLayoutAndPrefWidthsRecalc();
-    RenderText::styleDidChange(diff, oldStyle);
+        return;
+    }
+
+    if (!view()->renderQuoteHead()) {
+        view()->setRenderQuoteHead(this);
+        m_attached = true;
+        return;
+    }
+
+    for (RenderObject* predecessor = previousInPreOrder(); predecessor; predecessor = predecessor->previousInPreOrder()) {
+        // Skip unattached predecessors to avoid having stale m_previous pointers
+        // if the previous node is never attached and is then destroyed.
+        if (!predecessor->isQuote() || !toRenderQuote(predecessor)->isAttached())
+            continue;
+        m_previous = toRenderQuote(predecessor);
+        m_next = m_previous->m_next;
+        m_previous->m_next = this;
+        if (m_next)
+            m_next->m_previous = this;
+        break;
+    }
+
+    if (!m_previous) {
+        m_next = view()->renderQuoteHead();
+        view()->setRenderQuoteHead(this);
+        if (m_next)
+            m_next->m_previous = this;
+    }
+    m_attached = true;
+
+    for (RenderQuote* quote = this; quote; quote = quote->m_next)
+        quote->updateDepth();
+
+    ASSERT(!m_next || m_next->m_attached);
+    ASSERT(!m_next || m_next->m_previous == this);
+    ASSERT(!m_previous || m_previous->m_attached);
+    ASSERT(!m_previous || m_previous->m_next == this);
+}
+
+void RenderQuote::detachQuote()
+{
+    ASSERT(!m_next || m_next->m_attached);
+    ASSERT(!m_previous || m_previous->m_attached);
+    if (!m_attached)
+        return;
+    if (m_previous)
+        m_previous->m_next = m_next;
+    else if (view())
+        view()->setRenderQuoteHead(m_next);
+    if (m_next)
+        m_next->m_previous = m_previous;
+    if (!documentBeingDestroyed()) {
+        for (RenderQuote* quote = m_next; quote; quote = quote->m_next)
+            quote->updateDepth();
+    }
+    m_attached = false;
+    m_next = 0;
+    m_previous = 0;
+    m_depth = 0;
+}
+
+void RenderQuote::updateDepth()
+{
+    ASSERT(m_attached);
+    int oldDepth = m_depth;
+    m_depth = 0;
+    if (m_previous) {
+        m_depth = m_previous->m_depth;
+        switch (m_previous->m_type) {
+        case OPEN_QUOTE:
+        case NO_OPEN_QUOTE:
+            m_depth++;
+            break;
+        case CLOSE_QUOTE:
+        case NO_CLOSE_QUOTE:
+            if (m_depth)
+                m_depth--;
+            break;
+        }
+    }
+    // FIXME: Don't call setNeedsLayout or dirty our preferred widths during layout.
+    // This is likely to fail anyway as one of our ancestor will call setNeedsLayout(false),
+    // preventing the future layout to occur on |this|. The solution is to move that to a
+    // pre-layout phase.
+    if (oldDepth != m_depth)
+        setNeedsLayoutAndPrefWidthsRecalc();
 }
 
 } // namespace WebCore

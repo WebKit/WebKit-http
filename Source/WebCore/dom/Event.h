@@ -33,6 +33,8 @@ namespace WebCore {
 
     class EventTarget;
     class EventDispatcher;
+    class HTMLIFrameElement;
+    class MemoryInstrumentation;
 
     struct EventInit {
         EventInit();
@@ -151,6 +153,10 @@ namespace WebCore {
         virtual Clipboard* clipboard() const { return 0; }
 
         bool isBeingDispatched() const { return eventPhase(); }
+
+        virtual void reportMemoryUsage(MemoryObjectInfo*) const;
+
+        virtual PassRefPtr<Event> cloneFor(HTMLIFrameElement*) const;
 
     protected:
         Event();

@@ -31,9 +31,11 @@
 /**
  * @constructor
  * @extends {WebInspector.Object}
+ * @param {WebInspector.Workspace} workspace
  */
-WebInspector.ScriptSnippetModel = function()
+WebInspector.ScriptSnippetModel = function(workspace)
 {
+    this._workspace = workspace;
     this._uiSourceCodeForScriptId = {};
     this._scriptForUISourceCode = new Map();
     this._snippetJavaScriptSourceForSnippetId = {};
@@ -41,6 +43,8 @@ WebInspector.ScriptSnippetModel = function()
     this._snippetStorage = new WebInspector.SnippetStorage("script", "Script snippet #");
     this._lastSnippetEvaluationIndexSetting = WebInspector.settings.createSetting("lastSnippetEvaluationIndex", 0);
     this._snippetScriptMapping = new WebInspector.SnippetScriptMapping(this);
+    this._workspace.addEventListener(WebInspector.Workspace.Events.ProjectWillReset, this._reset, this);
+    this._loadSnippets();
 }
 
 WebInspector.ScriptSnippetModel.snippetSourceURLPrefix = "snippets:///";
@@ -78,7 +82,7 @@ WebInspector.ScriptSnippetModel.prototype = {
     {
         var snippetJavaScriptSource = new WebInspector.SnippetJavaScriptSource(snippet.id, snippet.name, new WebInspector.SnippetContentProvider(snippet), this);
         this._snippetJavaScriptSourceForSnippetId[snippet.id] = snippetJavaScriptSource;
-        this._snippetScriptMapping._fireUISourceCodeAdded(snippetJavaScriptSource);
+        this._workspace.project().addUISourceCode(snippetJavaScriptSource);
         return snippetJavaScriptSource;
     },
 
@@ -92,7 +96,7 @@ WebInspector.ScriptSnippetModel.prototype = {
         this._removeBreakpoints(snippetJavaScriptSource);
         this._releaseSnippetScript(snippetJavaScriptSource);
         delete this._snippetJavaScriptSourceForSnippetId[snippet.id];
-        this._snippetScriptMapping._fireUISourceCodeRemoved(snippetJavaScriptSource);
+        this._workspace.project().removeUISourceCode(snippetJavaScriptSource);
     },
 
     /**
@@ -199,9 +203,7 @@ WebInspector.ScriptSnippetModel.prototype = {
                 var consoleMessage = WebInspector.ConsoleMessage.create(
                         WebInspector.ConsoleMessage.MessageSource.JS,
                         WebInspector.ConsoleMessage.MessageLevel.Error,
-                        syntaxErrorMessage || "",
-                        WebInspector.ConsoleMessage.MessageType.Log,
-                        "", 0, 1, null, null, null);
+                        syntaxErrorMessage || "");
                 WebInspector.console.addMessage(consoleMessage);
                 return;
             }
@@ -236,17 +238,6 @@ WebInspector.ScriptSnippetModel.prototype = {
             return null;
 
         return WebInspector.debuggerModel.createRawLocation(script, lineNumber, columnNumber);
-    },
-
-    /**
-     * @return {Array.<WebInspector.UISourceCode>}
-     */
-    _uiSourceCodes: function()
-    {
-        var result = this._releasedUISourceCodes();
-        for (var snippetId in this._snippetJavaScriptSourceForSnippetId)
-            result.push(this._snippetJavaScriptSourceForSnippetId[snippetId]);
-        return result;
     },
 
     /**
@@ -364,7 +355,8 @@ WebInspector.ScriptSnippetModel.prototype = {
         var removedUISourceCodes = this._releasedUISourceCodes();
         this._uiSourceCodeForScriptId = {};
         this._scriptForUISourceCode = new Map();
-        this._loadSnippets();
+        this._snippetJavaScriptSourceForSnippetId = {};
+        setTimeout(this._loadSnippets.bind(this), 0);
     }
 }
 
@@ -451,9 +443,7 @@ WebInspector.SnippetJavaScriptSource.prototype.__proto__ = WebInspector.JavaScri
 
 /**
  * @constructor
- * @extends {WebInspector.Object}
  * @implements {WebInspector.SourceMapping}
- * @implements {WebInspector.UISourceCodeProvider}
  * @param {WebInspector.ScriptSnippetModel} scriptSnippetModel
  */
 WebInspector.SnippetScriptMapping = function(scriptSnippetModel)
@@ -484,14 +474,6 @@ WebInspector.SnippetScriptMapping.prototype = {
     },
 
     /**
-     * @return {Array.<WebInspector.UISourceCode>}
-     */
-    uiSourceCodes: function()
-    {
-        return this._scriptSnippetModel._uiSourceCodes();
-    },
-
-    /**
      * @param {string} sourceURL
      * @return {string|null}
      */
@@ -506,31 +488,8 @@ WebInspector.SnippetScriptMapping.prototype = {
     addScript: function(script)
     {
         this._scriptSnippetModel._addScript(script);
-    },
-
-    /**
-     * @param {WebInspector.UISourceCode} uiSourceCode
-     */
-    _fireUISourceCodeAdded: function(uiSourceCode)
-    {
-        this.dispatchEventToListeners(WebInspector.UISourceCodeProvider.Events.UISourceCodeAdded, uiSourceCode);
-    },
-
-    /**
-     * @param {WebInspector.UISourceCode} uiSourceCode
-     */
-    _fireUISourceCodeRemoved: function(uiSourceCode)
-    {
-        this.dispatchEventToListeners(WebInspector.UISourceCodeProvider.Events.UISourceCodeRemoved, uiSourceCode);
-    },
-
-    reset: function()
-    {
-        this._scriptSnippetModel._reset();
     }
 }
-
-WebInspector.SnippetScriptMapping.prototype.__proto__ = WebInspector.Object.prototype;
 
 /**
  * @constructor
@@ -548,35 +507,3 @@ WebInspector.SnippetContentProvider.prototype.__proto__ = WebInspector.StaticCon
  * @type {?WebInspector.ScriptSnippetModel}
  */
 WebInspector.scriptSnippetModel = null;
-
-/**
- * @constructor
- * @extends {WebInspector.JavaScriptSourceFrame}
- * @param {WebInspector.ScriptsPanel} scriptsPanel
- * @param {WebInspector.SnippetJavaScriptSource} snippetJavaScriptSource
- */
-WebInspector.SnippetJavaScriptSourceFrame = function(scriptsPanel, snippetJavaScriptSource)
-{
-    WebInspector.JavaScriptSourceFrame.call(this, scriptsPanel, snippetJavaScriptSource);
-    
-    this._snippetJavaScriptSource = snippetJavaScriptSource;
-    this._runButton = new WebInspector.StatusBarButton(WebInspector.UIString("Run"), "evaluate-snippet-status-bar-item");
-    this._runButton.addEventListener("click", this._runButtonClicked, this);
-}
-
-WebInspector.SnippetJavaScriptSourceFrame.prototype = {
-    /**
-     * @return {Array.<Element>}
-     */
-    statusBarItems: function()
-    {
-        return [this._runButton.element];
-    },
-
-    _runButtonClicked: function()
-    {
-        this._snippetJavaScriptSource.evaluate();
-    }
-}
-
-WebInspector.SnippetJavaScriptSourceFrame.prototype.__proto__ = WebInspector.JavaScriptSourceFrame.prototype;

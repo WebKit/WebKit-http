@@ -7,10 +7,12 @@
 
 #if ENABLE(VIDEO)
 
+#include "AudioBus.h"
 #include "AudioSourceProvider.h"
 #include "AudioSourceProviderClient.h"
 #include "Frame.h"
 #include "GraphicsContext.h"
+#include "GraphicsLayerChromium.h"
 #include "HTMLMediaElement.h"
 #include "IntSize.h"
 #include "KURL.h"
@@ -23,18 +25,16 @@
 #include "WebFrameClient.h"
 #include "WebFrameImpl.h"
 #include "WebHelperPluginImpl.h"
-#include "WebKit.h"
 #include "WebMediaPlayer.h"
 #include "WebViewImpl.h"
-#include "cc/CCProxy.h"
-#include "platform/WebCString.h"
-#include "platform/WebCanvas.h"
-#include "platform/WebKitPlatformSupport.h"
-#include "platform/WebRect.h"
-#include "platform/WebSize.h"
-#include "platform/WebString.h"
-#include "platform/WebURL.h"
+#include <public/Platform.h>
+#include <public/WebCString.h>
+#include <public/WebCanvas.h>
 #include <public/WebMimeRegistry.h>
+#include <public/WebRect.h>
+#include <public/WebSize.h>
+#include <public/WebString.h>
+#include <public/WebURL.h>
 
 #if USE(ACCELERATED_COMPOSITING)
 #include "RenderLayerCompositor.h"
@@ -47,13 +47,13 @@ using namespace WebCore;
 
 namespace WebKit {
 
-static PassOwnPtr<WebMediaPlayer> createWebMediaPlayer(WebMediaPlayerClient* client, Frame* frame)
+static PassOwnPtr<WebMediaPlayer> createWebMediaPlayer(WebMediaPlayerClient* client, const WebURL& url, Frame* frame)
 {
     WebFrameImpl* webFrame = WebFrameImpl::fromFrame(frame);
 
     if (!webFrame->client())
         return nullptr;
-    return adoptPtr(webFrame->client()->createMediaPlayer(webFrame, client));
+    return adoptPtr(webFrame->client()->createMediaPlayer(webFrame, url, client));
 }
 
 bool WebMediaPlayerClientImpl::m_isEnabled = false;
@@ -98,6 +98,10 @@ WebMediaPlayerClientImpl::~WebMediaPlayerClientImpl()
 #endif
     if (m_helperPlugin)
         closeHelperPlugin();
+#if USE(ACCELERATED_COMPOSITING)
+    if (m_videoLayer)
+        GraphicsLayerChromium::unregisterContentsLayer(m_videoLayer->layer());
+#endif
 }
 
 void WebMediaPlayerClientImpl::networkStateChanged()
@@ -111,9 +115,10 @@ void WebMediaPlayerClientImpl::readyStateChanged()
     ASSERT(m_mediaPlayer);
     m_mediaPlayer->readyStateChanged();
 #if USE(ACCELERATED_COMPOSITING)
-    if (hasVideo() && supportsAcceleratedRendering() && m_videoLayer.isNull()) {
-        m_videoLayer = WebVideoLayer::create(this);
-        m_videoLayer.setOpaque(m_opaque);
+    if (hasVideo() && supportsAcceleratedRendering() && !m_videoLayer) {
+        m_videoLayer = adoptPtr(WebVideoLayer::create(this));
+        m_videoLayer->layer()->setOpaque(m_opaque);
+        GraphicsLayerChromium::registerContentsLayer(m_videoLayer->layer());
     }
 #endif
 }
@@ -140,8 +145,8 @@ void WebMediaPlayerClientImpl::repaint()
 {
     ASSERT(m_mediaPlayer);
 #if USE(ACCELERATED_COMPOSITING)
-    if (!m_videoLayer.isNull() && supportsAcceleratedRendering())
-        m_videoLayer.invalidate();
+    if (m_videoLayer && supportsAcceleratedRendering())
+        m_videoLayer->layer()->invalidate();
 #endif
     m_mediaPlayer->repaint();
 }
@@ -168,8 +173,8 @@ void WebMediaPlayerClientImpl::setOpaque(bool opaque)
 {
 #if USE(ACCELERATED_COMPOSITING)
     m_opaque = opaque;
-    if (!m_videoLayer.isNull())
-        m_videoLayer.setOpaque(m_opaque);
+    if (m_videoLayer)
+        m_videoLayer->layer()->setOpaque(m_opaque);
 #endif
 }
 
@@ -323,7 +328,7 @@ void WebMediaPlayerClientImpl::loadInternal()
 #endif
 
     Frame* frame = static_cast<HTMLMediaElement*>(m_mediaPlayer->mediaPlayerClient())->document()->frame();
-    m_webMediaPlayer = createWebMediaPlayer(this, frame);
+    m_webMediaPlayer = createWebMediaPlayer(this, KURL(ParsedURLString, m_url), frame);
     if (m_webMediaPlayer) {
 #if ENABLE(WEB_AUDIO)
         // Make sure if we create/re-create the WebMediaPlayer that we update our wrapper.
@@ -342,10 +347,10 @@ void WebMediaPlayerClientImpl::cancelLoad()
 }
 
 #if USE(ACCELERATED_COMPOSITING)
-LayerChromium* WebMediaPlayerClientImpl::platformLayer() const
+WebLayer* WebMediaPlayerClientImpl::platformLayer() const
 {
     ASSERT(m_supportsAcceleratedCompositing);
-    return m_videoLayer.unwrap<LayerChromium>();
+    return m_videoLayer ? m_videoLayer->layer() : 0;
 }
 #endif
 
@@ -436,6 +441,13 @@ void WebMediaPlayerClientImpl::sourceEndOfStream(WebCore::MediaPlayer::EndOfStre
 {
     if (m_webMediaPlayer)
         m_webMediaPlayer->sourceEndOfStream(static_cast<WebMediaPlayer::EndOfStreamStatus>(status));
+}
+
+bool WebMediaPlayerClientImpl::sourceSetTimestampOffset(const String& id, double offset)
+{
+    if (!m_webMediaPlayer)
+        return false;
+    return m_webMediaPlayer->sourceSetTimestampOffset(id, offset);
 }
 #endif
 
@@ -740,7 +752,7 @@ bool WebMediaPlayerClientImpl::supportsAcceleratedRendering() const
 
 bool WebMediaPlayerClientImpl::acceleratedRenderingInUse()
 {
-    return !m_videoLayer.isNull() && m_videoLayer.active();
+    return m_videoLayer && m_videoLayer->active();
 }
 
 void WebMediaPlayerClientImpl::setVideoFrameProviderClient(WebVideoFrameProvider::Client* client)
@@ -841,14 +853,12 @@ void WebMediaPlayerClientImpl::startDelayedLoad()
 void WebMediaPlayerClientImpl::didReceiveFrame()
 {
     // No lock since this gets called on the client's thread.
-    ASSERT(CCProxy::isImplThread());
     m_videoFrameProviderClient->didReceiveFrame();
 }
 
 void WebMediaPlayerClientImpl::didUpdateMatrix(const float* matrix)
 {
     // No lock since this gets called on the client's thread.
-    ASSERT(CCProxy::isImplThread());
     m_videoFrameProviderClient->didUpdateMatrix(matrix);
 }
 

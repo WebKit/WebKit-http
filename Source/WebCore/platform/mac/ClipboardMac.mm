@@ -26,6 +26,7 @@
 #import "config.h"
 #import "ClipboardMac.h"
 
+#import "CachedImageClient.h"
 #import "DOMElementInternal.h"
 #import "DragClient.h"
 #import "DragController.h"
@@ -383,7 +384,7 @@ void ClipboardMac::writeRange(Range* range, Frame* frame)
 void ClipboardMac::writePlainText(const String& text)
 {
     Pasteboard pasteboard(m_pasteboardName);
-    pasteboard.writePlainText(text);
+    pasteboard.writePlainText(text, Pasteboard::CannotSmartReplace);
 }
 
 void ClipboardMac::writeURL(const KURL& url, const String& title, Frame* frame)

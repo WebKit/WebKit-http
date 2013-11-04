@@ -36,6 +36,7 @@
 #include "FrameView.h"
 #include "Image.h"
 #include "Logging.h"
+#include "MemoryInstrumentation.h"
 #include "ResourceHandle.h"
 #include "SecurityOrigin.h"
 #include "SecurityOriginHash.h"
@@ -712,6 +713,19 @@ MemoryCache::Statistics MemoryCache::getStatistics()
         }
     }
     return stats;
+}
+
+void MemoryCache::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
+{
+    MemoryClassInfo info(memoryObjectInfo, this, MemoryInstrumentation::MemoryCacheStructures);
+    info.addHashMap(m_resources);
+    CachedResourceMap::const_iterator e = m_resources.end();
+    for (CachedResourceMap::const_iterator i = m_resources.begin(); i != e; ++i) {
+        info.addInstrumentedMember(i->first);
+        info.addInstrumentedMember(i->second);
+    }
+    info.addVector(m_allResources);
+    info.addMember(m_liveDecodedResources);
 }
 
 void MemoryCache::setDisabled(bool disabled)

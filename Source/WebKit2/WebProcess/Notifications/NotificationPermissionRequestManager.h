@@ -32,6 +32,7 @@
 #include <wtf/HashMap.h>
 #include <wtf/RefCounted.h>
 #include <wtf/RefPtr.h>
+#include <wtf/text/WTFString.h>
 
 namespace WebCore {
 class Notification;    
@@ -55,8 +56,11 @@ public:
 #endif
     void cancelRequest(WebCore::SecurityOrigin*);
     
-    // Synchronous call to retrieve permission level for given security origin
     WebCore::NotificationClient::Permission permissionLevel(WebCore::SecurityOrigin*);
+
+    // For testing purposes only.
+    void setPermissionLevelForTesting(const String& originString, WebCore::NotificationClient::Permission);
+    void removeAllPermissionsForTesting();
     
     void didReceiveNotificationPermissionDecision(uint64_t notificationID, bool allowed);
     
@@ -72,7 +76,9 @@ private:
     HashMap<RefPtr<WebCore::SecurityOrigin>, uint64_t> m_originToIDMap;
     HashMap<uint64_t, RefPtr<WebCore::SecurityOrigin> > m_idToOriginMap;
 
+#if ENABLE(NOTIFICATIONS) || ENABLE(LEGACY_NOTIFICATIONS)
     WebPage* m_page;
+#endif
 };
 
 inline bool isRequestIDValid(uint64_t id)

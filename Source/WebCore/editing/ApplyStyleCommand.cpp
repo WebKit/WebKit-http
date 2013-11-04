@@ -31,7 +31,7 @@
 #include "CSSProperty.h"
 #include "CSSPropertyNames.h"
 #include "CSSValueKeywords.h"
-#include "CSSValueList.h"
+#include "CSSValuePool.h"
 #include "Document.h"
 #include "EditingStyle.h"
 #include "Editor.h"
@@ -50,6 +50,7 @@
 #include "htmlediting.h"
 #include "visible_units.h"
 #include <wtf/StdLibExtras.h>
+#include <wtf/text/StringBuilder.h>
 
 namespace WebCore {
 
@@ -398,7 +399,7 @@ void ApplyStyleCommand::applyRelativeFontStyleChange(EditingStyle* style)
             currentFontSize = computedFontSize(node);
         }
         if (currentFontSize != desiredFontSize) {
-            inlineStyleDecl->setProperty(CSSPropertyFontSize, String::number(desiredFontSize) + "px", false);
+            inlineStyleDecl->setProperty(CSSPropertyFontSize, cssValuePool().createValue(desiredFontSize, CSSPrimitiveValue::CSS_PX), false);
             setNodeAttribute(element.get(), styleAttr, inlineStyleDecl->asText());
         }
         if (inlineStyleDecl->isEmpty()) {
@@ -797,7 +798,11 @@ bool ApplyStyleCommand::removeStyleFromRunBeforeApplyingStyle(EditingStyle* styl
 
     RefPtr<Node> next = runStart;
     for (RefPtr<Node> node = next; node && node->inDocument() && node != pastEndNode; node = next) {
-        next = node->traverseNextNode();
+        if (editingIgnoresContent(node.get())) {
+            ASSERT(!node->contains(pastEndNode.get()));
+            next = node->traverseNextSibling();
+        } else
+            next = node->traverseNextNode();
         if (!node->isHTMLElement())
             continue;
 
@@ -1047,7 +1052,12 @@ void ApplyStyleCommand::removeInlineStyle(EditingStyle* style, const Position &s
 
     Node* node = start.deprecatedNode();
     while (node) {
-        RefPtr<Node> next = node->traverseNextNode();
+        RefPtr<Node> next;
+        if (editingIgnoresContent(node)) {
+            ASSERT(node == end.deprecatedNode() || !node->contains(end.deprecatedNode()));
+            next = node->traverseNextSibling();
+        } else
+            next = node->traverseNextNode();
         if (node->isHTMLElement() && nodeFullySelected(node, start, end)) {
             RefPtr<HTMLElement> elem = toHTMLElement(node);
             RefPtr<Node> prev = elem->traversePreviousNodePostOrder();
@@ -1313,10 +1323,15 @@ void ApplyStyleCommand::addBlockStyle(const StyleChange& styleChange, HTMLElemen
     if (!block)
         return;
         
-    String cssText = styleChange.cssStyle();
-    if (const StylePropertySet* decl = block->inlineStyle())
-        cssText += decl->asText();
-    setNodeAttribute(block, styleAttr, cssText);
+    String cssStyle = styleChange.cssStyle();
+    StringBuilder cssText;
+    cssText.append(cssStyle);
+    if (const StylePropertySet* decl = block->inlineStyle()) {
+        if (!cssStyle.isEmpty())
+            cssText.append(' ');
+        cssText.append(decl->asText());
+    }
+    setNodeAttribute(block, styleAttr, cssText.toString());
 }
 
 void ApplyStyleCommand::addInlineStyleIfNeeded(EditingStyle* style, PassRefPtr<Node> passedStart, PassRefPtr<Node> passedEnd, EAddStyledElement addStyledElement)
@@ -1379,9 +1394,15 @@ void ApplyStyleCommand::addInlineStyleIfNeeded(EditingStyle* style, PassRefPtr<N
 
     if (styleChange.cssStyle().length()) {
         if (styleContainer) {
-            if (const StylePropertySet* existingStyle = styleContainer->inlineStyle())
-                setNodeAttribute(styleContainer, styleAttr, existingStyle->asText() + styleChange.cssStyle());
-            else
+            if (const StylePropertySet* existingStyle = styleContainer->inlineStyle()) {
+                String existingText = existingStyle->asText();
+                StringBuilder cssText;
+                cssText.append(existingText);
+                if (!existingText.isEmpty())
+                    cssText.append(' ');
+                cssText.append(styleChange.cssStyle());
+                setNodeAttribute(styleContainer, styleAttr, cssText.toString());
+            } else
                 setNodeAttribute(styleContainer, styleAttr, styleChange.cssStyle());
         } else {
             RefPtr<Element> styleElement = createStyleSpanElement(document());

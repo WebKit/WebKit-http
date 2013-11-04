@@ -38,9 +38,11 @@
 #include "CustomFilterNumberParameter.h"
 #include "CustomFilterParameter.h"
 #include "CustomFilterProgram.h"
+#include "CustomFilterTransformParameter.h"
 #include "DrawingBuffer.h"
 #include "GraphicsContext3D.h"
 #include "ImageData.h"
+#include "NotImplemented.h"
 #include "RenderTreeAsText.h"
 #include "TextStream.h"
 #include "Texture.h"
@@ -107,6 +109,9 @@ void FECustomFilter::deleteRenderBuffers()
         return;
     m_context->makeContextCurrent();
     if (m_frameBuffer) {
+        // Make sure to unbind any framebuffer from the context first, otherwise
+        // some platforms might refuse to bind the same buffer id again.
+        m_context->bindFramebuffer(GraphicsContext3D::FRAMEBUFFER, 0);
         m_context->deleteFramebuffer(m_frameBuffer);
         m_frameBuffer = 0;
     }
@@ -122,30 +127,51 @@ void FECustomFilter::deleteRenderBuffers()
 
 void FECustomFilter::platformApplySoftware()
 {
-    Uint8ClampedArray* dstPixelArray = createPremultipliedImageResult();
+    if (!applyShader())
+        clearShaderResult();
+}
+
+void FECustomFilter::clearShaderResult()
+{
+    clearResult();
+    Uint8ClampedArray* dstPixelArray = createUnmultipliedImageResult();
     if (!dstPixelArray)
         return;
 
     FilterEffect* in = inputEffect(0);
+    setIsAlphaImage(in->isAlphaImage());
     IntRect effectDrawingRect = requestedRegionOfInputImageData(in->absolutePaintRect());
-    RefPtr<Uint8ClampedArray> srcPixelArray = in->asPremultipliedImage(effectDrawingRect);
+    in->copyUnmultipliedImage(dstPixelArray, effectDrawingRect);
+}
+
+bool FECustomFilter::applyShader()
+{
+    Uint8ClampedArray* dstPixelArray = createUnmultipliedImageResult();
+    if (!dstPixelArray)
+        return false;
+
+    FilterEffect* in = inputEffect(0);
+    IntRect effectDrawingRect = requestedRegionOfInputImageData(in->absolutePaintRect());
+    RefPtr<Uint8ClampedArray> srcPixelArray = in->asUnmultipliedImage(effectDrawingRect);
     
     IntSize newContextSize(effectDrawingRect.size());
     bool hadContext = m_context;
     if (!m_context && !initializeContext())
-        return;
+        return false;
     m_context->makeContextCurrent();
     
     if (!hadContext || m_contextSize != newContextSize)
         resizeContext(newContextSize);
 
+#if !PLATFORM(BLACKBERRY) // BlackBerry defines its own Texture class.
     // Do not draw the filter if the input image cannot fit inside a single GPU texture.
     if (m_inputTexture->tiles().numTilesX() != 1 || m_inputTexture->tiles().numTilesY() != 1)
-        return;
+        return false;
+#endif
     
     // The shader had compiler errors. We cannot draw anything.
     if (!m_compiledProgram->isInitialized())
-        return;
+        return false;
 
     m_context->bindFramebuffer(GraphicsContext3D::FRAMEBUFFER, m_frameBuffer);
     m_context->viewport(0, 0, newContextSize.width(), newContextSize.height());
@@ -159,6 +185,8 @@ void FECustomFilter::platformApplySoftware()
     
     ASSERT(static_cast<size_t>(newContextSize.width() * newContextSize.height() * 4) == dstPixelArray->length());
     m_context->readPixels(0, 0, newContextSize.width(), newContextSize.height(), GraphicsContext3D::RGBA, GraphicsContext3D::UNSIGNED_BYTE, dstPixelArray->data());
+
+    return true;
 }
 
 bool FECustomFilter::initializeContext()
@@ -168,11 +196,7 @@ bool FECustomFilter::initializeContext()
     if (!m_context)
         return false;
     m_context->makeContextCurrent();
-    
-    // FIXME: The shader and the mesh can be shared across multiple elements when possible.
-    // Sharing the shader means it's no need to analyze / compile and upload to GPU again.
-    // https://bugs.webkit.org/show_bug.cgi?id=88427
-    m_compiledProgram = m_program->compileProgramWithContext(m_context.get());
+    m_compiledProgram = m_globalContext->getCompiledProgram(m_program->programInfo());
 
     // FIXME: Sharing the mesh would just save the time needed to upload it to the GPU, so I assume we could
     // benchmark that for performance.
@@ -185,7 +209,11 @@ bool FECustomFilter::initializeContext()
 
 void FECustomFilter::resizeContext(const IntSize& newContextSize)
 {
+#if !PLATFORM(BLACKBERRY) // BlackBerry defines its own Texture class
     m_inputTexture = Texture::create(m_context.get(), Texture::RGBA8, newContextSize.width(), newContextSize.height());
+#else
+    m_inputTexture = Texture::create(true);
+#endif
     
     if (!m_frameBuffer)
         m_frameBuffer = m_context->createFramebuffer();
@@ -242,6 +270,24 @@ void FECustomFilter::bindProgramNumberParameters(int uniformLocation, CustomFilt
     }
 }
 
+void FECustomFilter::bindProgramTransformParameter(int uniformLocation, CustomFilterTransformParameter* transformParameter)
+{
+    TransformationMatrix matrix;
+    if (m_contextSize.width() && m_contextSize.height()) {
+        // The viewport is a box with the size of 1 unit, so we are scalling up here to make sure that translations happen using real pixel
+        // units. At the end we scale back down in order to map it back to the original box. Note that transforms come in reverse order, because it is 
+        // supposed to multiply to the left of the coordinates of the vertices.
+        // Note that the origin (0, 0) of the viewport is in the middle of the context, so there's no need to change the origin of the transform
+        // in order to rotate around the middle of mesh.
+        matrix.scale3d(1.0 / m_contextSize.width(), 1.0 / m_contextSize.height(), 1);
+        transformParameter->applyTransform(matrix, m_contextSize);
+        matrix.scale3d(m_contextSize.width(), m_contextSize.height(), 1);
+    }
+    float glMatrix[16];
+    matrix.toColumnMajorFloatArray(glMatrix);
+    m_context->uniformMatrix4fv(uniformLocation, 1, false, &glMatrix[0]);
+}
+
 void FECustomFilter::bindProgramParameters()
 {
     // FIXME: Find a way to reset uniforms that are not specified in CSS. This is needed to avoid using values
@@ -258,6 +304,9 @@ void FECustomFilter::bindProgramParameters()
         case CustomFilterParameter::NUMBER:
             bindProgramNumberParameters(uniformLocation, static_cast<CustomFilterNumberParameter*>(parameter));
             break;
+        case CustomFilterParameter::TRANSFORM:
+            bindProgramTransformParameter(uniformLocation, static_cast<CustomFilterTransformParameter*>(parameter));
+            break;
         }
     }
 }
@@ -269,8 +318,12 @@ void FECustomFilter::bindProgramAndBuffers(Uint8ClampedArray* srcPixelArray)
     if (m_compiledProgram->samplerLocation() != -1) {
         m_context->activeTexture(GraphicsContext3D::TEXTURE0);
         m_context->uniform1i(m_compiledProgram->samplerLocation(), 0);
+#if !PLATFORM(BLACKBERRY)
         m_inputTexture->load(srcPixelArray->data());
         m_inputTexture->bindTile(0);
+#else
+        notImplemented();
+#endif
     }
     
     if (m_compiledProgram->projectionMatrixLocation() != -1) {

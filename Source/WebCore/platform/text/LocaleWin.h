@@ -31,6 +31,7 @@
 #ifndef LocaleWin_h
 #define LocaleWin_h
 
+#include "NumberLocalizer.h"
 #include <windows.h>
 #include <wtf/Forward.h>
 #include <wtf/Vector.h>
@@ -41,7 +42,7 @@ namespace WebCore {
 class DateComponents;
 struct DateFormatToken;
 
-class LocaleWin {
+class LocaleWin : public NumberLocalizer {
 public:
     static PassOwnPtr<LocaleWin> create(LCID);
     static LocaleWin* currentLocale();
@@ -69,15 +70,23 @@ public:
 private:
     explicit LocaleWin(LCID);
     String getLocaleInfoString(LCTYPE);
+    void getLocaleInfo(LCTYPE, DWORD&);
     void ensureShortMonthLabels();
     void ensureMonthLabels();
     void ensureShortDateTokens();
+    bool isLocalizedDigit(UChar);
+    int parseNumber(const String&, unsigned& index);
     int parseNumberOrMonth(const String&, unsigned& index);
     double parseDate(const Vector<DateFormatToken>&, int baseYear, const String&);
+    void appendNumber(int, StringBuilder&);
+    void appendTwoDigitsNumber(int, StringBuilder&);
+    void appendFourDigitsNumber(int, StringBuilder&);
     String formatDate(const Vector<DateFormatToken>&, int baseYear, int year, int month, int day);
 #if ENABLE(CALENDAR_PICKER)
     void ensureWeekDayShortLabels();
 #endif
+    // NumberLocalizer function:
+    virtual void initializeNumberLocalizerData() OVERRIDE;
 
     LCID m_lcid;
     int m_baseYear;
@@ -92,7 +101,8 @@ private:
     String m_timeFormatText;
     Vector<String> m_timeAMPMLabels;
 #endif
+    bool m_didInitializeNumberData;
 };
 
-}
+} // namespace WebCore
 #endif

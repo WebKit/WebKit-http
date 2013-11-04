@@ -34,6 +34,22 @@ testInvalidFilterRule("Too many shaders 1", "custom(url(shader1) url(shader2) ur
 testInvalidFilterRule("Too many shaders 2", "custom(none none none)");
 testInvalidFilterRule("Too many shaders 3", "custom(none url(shader1) url(shader2) url(shader2))");
 
+testInvalidFilterRule("Mix function as vertex shader", "custom(mix(url(shader)))");
+testInvalidFilterRule("Mix function with wrong name", "custom(none fn(url(shader)))");
+testInvalidFilterRule("Mix function with 0 args", "custom(none mix())");
+testInvalidFilterRule("Mix function with first arg not a URI", "custom(none mix(none))");
+testInvalidFilterRule("Mix function with second arg not a blend mode or alpha compositing mode", "custom(none mix(url(shader) 0))");
+testInvalidFilterRule("Mix function with third arg not a blend mode or alpha compositing mode", "custom(none mix(url(shader) normal 0))");
+testInvalidFilterRule("Mix function with two blend modes", "custom(none mix(url(shader) multiply screen))");
+testInvalidFilterRule("Mix function with two alpha compositing modes", "custom(none mix(url(shader) source-over destination-over))");
+testInvalidFilterRule("Mix function with alpha compositing mode 'plus-darker', which should only apply to -webkit-background-composite", "custom(none mix(url(shader) plus-darker))");
+testInvalidFilterRule("Mix function with alpha compositing mode 'plus-lighter', which should only apply to -webkit-background-composite", "custom(none mix(url(shader) plus-lighter))");
+testInvalidFilterRule("Mix function with alpha compositing mode 'highlight', which should only apply to -webkit-background-composite", "custom(none mix(url(shader) highlight))");
+testInvalidFilterRule("Mix function with 4 args", "custom(none mix(url(shader) multiply clear normal))");
+testInvalidFilterRule("Mix function with comma separators", "custom(none mix(url(shader), multiply, clear))");
+testInvalidFilterRule("Mix function with comma terminator", "custom(none mix(url(shader), multiply clear,))");
+testInvalidFilterRule("Mix function with one comma", "custom(none mix(,))");
+
 testInvalidFilterRule("No shader", "custom(none, 10 20)");
 testInvalidFilterRule("Too many mesh sizes", "custom(none, 10 20 30)");
 testInvalidFilterRule("Wrong mesh-box type - 'padding'", "custom(url(shader), padding)");
@@ -61,3 +77,16 @@ testInvalidFilterRule("Invalid parameter types", "custom(url(shader), p1 1.0 2.0
 testInvalidFilterRule("No parameter value 1", "custom(url(shader), p1)");
 testInvalidFilterRule("No parameter value 2", "custom(url(shader), p1, p2, p3)");
 
+testInvalidFilterRule("One invalid transform", "custom(none url(shader), someId invalid_rotate(0deg))");
+testInvalidFilterRule("Multiple invalid transforms", "custom(none url(shader), someId invalid_rotate(0deg) invalid_perspective(0))");
+testInvalidFilterRule("Invalid transform between valid ones", "custom(none url(shader), someId rotate(0deg) invalid_rotate(0deg) perspective(0))");
+testInvalidFilterRule("Valid transform between invalid ones", "custom(none url(shader), someId invalid_rotate(0deg) perspective(0) another_invalid(0))");
+testInvalidFilterRule("Valid transform without leading comma", "custom(none url(shader) someId perspective(0))");
+testInvalidFilterRule("Valid transform with trailing comma", "custom(none url(shader), someId perspective(0),)");
+testInvalidFilterRule("Valid transform with trailing comma and without leading comma", "custom(none url(shader) someId perspective(0),)");
+testInvalidFilterRule("Invalid transform with trailing comma", "custom(none url(shader), someId invalid_rotate(0deg),)");
+testInvalidFilterRule("Invalid transform without leading comma", "custom(none url(shader) someId invalid_rotate(0deg))");
+testInvalidFilterRule("Empty transform (only the id)", "custom(none url(shader), someId)");
+testInvalidFilterRule("Empty transform (without the id)", "custom(none url(shader),)");
+testInvalidFilterRule("Empty transform (two empty commas)", "custom(none url(shader),,)");
+testInvalidFilterRule("Valid transform with invalid characters", "custom(none url(shader),someId rotate(0deg) *.-,)");

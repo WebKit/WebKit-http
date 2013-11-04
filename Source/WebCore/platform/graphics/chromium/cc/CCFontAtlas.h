@@ -27,32 +27,31 @@
 
 #if USE(ACCELERATED_COMPOSITING)
 
-#include "ImageBuffer.h"
+#include "IntRect.h"
+#include "SkBitmap.h"
 #include <wtf/OwnPtr.h>
 #include <wtf/PassOwnPtr.h>
 #include <wtf/text/WTFString.h>
+
+class SkCanvas;
 
 namespace WebCore {
 
 class Color;
 class FontDescription;
-class IntPoint;
-class IntRect;
 class GraphicsContext;
+class IntPoint;
+class IntSize;
 
 // This class provides basic ability to draw text onto the heads-up display.
-// It must be initialized on the main thread, and it can only draw text on the impl thread.
 class CCFontAtlas {
     WTF_MAKE_NONCOPYABLE(CCFontAtlas);
 public:
-    static PassOwnPtr<CCFontAtlas> create()
+    static PassOwnPtr<CCFontAtlas> create(SkBitmap bitmap, IntRect asciiToRectTable[128], int fontHeight)
     {
-        return adoptPtr(new CCFontAtlas());
+        return adoptPtr(new CCFontAtlas(bitmap, asciiToRectTable, fontHeight));
     }
-
-    // Creates the font atlas.
-    // - Should only be called on the main thread.
-    void initialize();
+    ~CCFontAtlas();
 
     // Draws multiple lines of text where each line of text is separated by '\n'.
     // - Correct glyphs will be drawn for ASCII codes in the range 32-127; any characters
@@ -60,24 +59,18 @@ public:
     // - IntSize clip is used to avoid wasting time drawing things that are outside the
     //   target canvas bounds.
     // - Should only be called only on the impl thread.
-    void drawText(GraphicsContext*, const String& text, const IntPoint& destPosition, const IntSize& clip) const;
+    void drawText(SkCanvas*, const SkPaint&, const String& text, const IntPoint& destPosition, const IntSize& clip) const;
 
     // Draws the entire atlas at the specified position, just for debugging purposes.
-    void drawDebugAtlas(GraphicsContext*, const IntPoint& destPosition) const;
+    void drawDebugAtlas(SkCanvas*, const IntPoint& destPosition) const;
 
 private:
-    CCFontAtlas();
+    CCFontAtlas(SkBitmap, IntRect asciiToRectTable[128], int fontHeight);
 
-    // Paints the font into the atlas, from left-to-right, top-to-bottom, starting at
-    // startingPosition. At the same time, it updates the ascii-to-IntRect mapping for
-    // each character. By doing things this way, it is possible to support variable-width
-    // fonts and multiple fonts on the same atlas.
-    void generateAtlasForFont(GraphicsContext*, const FontDescription&, const Color& fontColor, const IntPoint& startingPosition, IntRect asciiToAtlasTable[128]);
-
-    void drawOneLineOfTextInternal(GraphicsContext*, const String&, const IntPoint& destPosition) const;
+    void drawOneLineOfTextInternal(SkCanvas*, const SkPaint&, const String&, const IntPoint& destPosition) const;
 
     // The actual texture atlas containing all the pre-rendered glyphs.
-    OwnPtr<ImageBuffer> m_atlas;
+    SkBitmap m_atlas;
 
     // The look-up tables mapping ascii characters to their IntRect locations on the atlas.
     IntRect m_asciiToRectTable[128];

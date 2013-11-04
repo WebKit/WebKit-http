@@ -24,14 +24,14 @@
 
 #include "config.h"
 
-#include "cc/CCDamageTracker.h"
+#include "CCDamageTracker.h"
 
+#include "CCLayerImpl.h"
+#include "CCLayerSorter.h"
+#include "CCLayerTreeHostCommon.h"
 #include "CCLayerTreeTestCommon.h"
-#include "cc/CCLayerImpl.h"
-#include "cc/CCLayerSorter.h"
-#include "cc/CCLayerTreeHostCommon.h"
-#include "cc/CCMathUtil.h"
-#include "cc/CCSingleThreadProxy.h"
+#include "CCMathUtil.h"
+#include "CCSingleThreadProxy.h"
 #include <gtest/gtest.h>
 #include <public/WebFilterOperation.h>
 #include <public/WebFilterOperations.h>
@@ -55,7 +55,7 @@ void executeCalculateDrawTransformsAndVisibility(CCLayerImpl* root, Vector<CCLay
     ASSERT_FALSE(renderSurfaceLayerList.size());
 
     CCLayerTreeHostCommon::calculateDrawTransforms(root, root->bounds(), 1, &layerSorter, dummyMaxTextureSize, renderSurfaceLayerList);
-    CCLayerTreeHostCommon::calculateVisibleAndScissorRects(renderSurfaceLayerList, root->renderSurface()->contentRect());
+    CCLayerTreeHostCommon::calculateVisibleRects(renderSurfaceLayerList);
 }
 
 void clearDamageForAllSurfaces(CCLayerImpl* layer)

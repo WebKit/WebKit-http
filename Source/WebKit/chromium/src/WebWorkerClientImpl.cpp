@@ -59,13 +59,11 @@
 #include "PlatformMessagePortChannel.h"
 #include "WebFrameClient.h"
 #include "WebFrameImpl.h"
-#include "WebKit.h"
-#include "platform/WebKitPlatformSupport.h"
 #include "WebMessagePortChannel.h"
 #include "WebPermissionClient.h"
-#include "platform/WebString.h"
-#include "platform/WebURL.h"
 #include "WebViewImpl.h"
+#include <public/WebString.h>
+#include <public/WebURL.h>
 
 using namespace WebCore;
 
@@ -95,8 +93,9 @@ void WebWorkerClientImpl::startWorkerContext(const KURL& scriptURL, const String
     if (document->page())
         settings = document->page()->group().groupSettings();
     RefPtr<DedicatedWorkerThread> thread = DedicatedWorkerThread::create(scriptURL, userAgent, settings, sourceCode, *this, *this, startMode,
-                                                                         m_scriptExecutionContext->contentSecurityPolicy()->deprecatedHeader(),
-                                                                         m_scriptExecutionContext->contentSecurityPolicy()->deprecatedHeaderType());
+                                                                         document->contentSecurityPolicy()->deprecatedHeader(),
+                                                                         document->contentSecurityPolicy()->deprecatedHeaderType(),
+                                                                         document->topDocument()->securityOrigin());
     m_proxy->workerThreadCreated(thread);
     thread->start();
     InspectorInstrumentation::didStartWorkerContext(m_scriptExecutionContext.get(), m_proxy, scriptURL);

@@ -88,6 +88,7 @@ public:
 #if ENABLE(TOUCH_EVENTS)
     void doneWithTouchEvent(const NativeWebTouchEvent&, bool wasEventHandled);
 #endif
+    void handleInputEvent(const QInputEvent*);
     void resetGestureRecognizers();
 
     QtViewportHandler* viewportHandler() { return m_viewportHandler; }
@@ -103,7 +104,7 @@ protected:
     QQuickWebPage* m_webPage;
     QQuickWebView* m_webView;
 
-private slots:
+private Q_SLOTS:
     void inputPanelVisibleChanged();
 
 private:
@@ -115,6 +116,7 @@ private:
     int m_clickCount;
     bool m_postponeTextInputStateChanged;
     bool m_isTapHighlightActive;
+    bool m_isMouseButtonPressed;
 };
 
 } // namespace WebKit

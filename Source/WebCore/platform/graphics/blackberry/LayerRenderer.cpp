@@ -37,11 +37,13 @@
 #include "LayerRenderer.h"
 
 #include "LayerCompositingThread.h"
+#include "LayerFilterRenderer.h"
 #include "PlatformString.h"
 #include "TextureCacheCompositingThread.h"
 
 #include <BlackBerryPlatformGraphics.h>
 #include <BlackBerryPlatformLog.h>
+#include <EGL/egl.h>
 #include <limits>
 #include <wtf/text/CString.h>
 
@@ -64,7 +66,7 @@ static void checkGLError()
 #endif
 }
 
-static GLuint loadShader(GLenum type, const char* shaderSource)
+GLuint LayerRenderer::loadShader(GLenum type, const char* shaderSource)
 {
     GLuint shader = glCreateShader(type);
     if (!shader)
@@ -86,7 +88,7 @@ static GLuint loadShader(GLenum type, const char* shaderSource)
     return shader;
 }
 
-static GLuint loadShaderProgram(const char* vertexShaderSource, const char* fragmentShaderSource)
+GLuint LayerRenderer::loadShaderProgram(const char* vertexShaderSource, const char* fragmentShaderSource)
 {
     GLuint vertexShader;
     GLuint fragmentShader;
@@ -158,8 +160,15 @@ LayerRenderer::LayerRenderer(GLES2Context* context)
     , m_currentLayerRendererSurface(0)
     , m_clearSurfaceOnDrawLayers(true)
     , m_context(context)
+    , m_isRobustnessSupported(false)
     , m_needsCommit(false)
 {
+    if (makeContextCurrent()) {
+        m_isRobustnessSupported = String(reinterpret_cast<const char*>(::glGetString(GL_EXTENSIONS))).contains("GL_EXT_robustness");
+        if (m_isRobustnessSupported)
+            m_glGetGraphicsResetStatusEXT = reinterpret_cast<PFNGLGETGRAPHICSRESETSTATUSEXTPROC>(eglGetProcAddress("glGetGraphicsResetStatusEXT"));
+    }
+
     for (int i = 0; i < LayerData::NumberOfLayerProgramShaders; ++i)
         m_layerProgramObject[i] = 0;
 
@@ -500,6 +509,17 @@ void LayerRenderer::drawLayersOnSurfaces(const Vector<RefPtr<LayerCompositingThr
         int currentStencilValue = 0;
         FloatRect clipRect(-1, -1, 2, 2);
         compositeLayersRecursive(surfaceLayers[i].get(), currentStencilValue, clipRect);
+
+#if ENABLE(CSS_FILTERS)
+        if (!m_filterRenderer)
+            m_filterRenderer = LayerFilterRenderer::create(m_positionLocation, m_texCoordLocation);
+        if (layer->filterOperationsChanged()) {
+            layer->setFilterOperationsChanged(false);
+            layer->setFilterActions(m_filterRenderer->actionsForOperations(surface, layer->filters().operations()));
+        }
+        m_filterRenderer->applyActions(m_fbo, layer, layer->filterActions());
+        glClearColor(0, 0, 0, 0);
+#endif
     }
 
     // If there are layers drawed on surfaces, we need to switch to default framebuffer.
@@ -712,7 +732,11 @@ void LayerRenderer::updateLayersRecursive(LayerCompositingThread* layer, const T
     // Calculate the layer's opacity.
     opacity *= layer->opacity();
 
+#if ENABLE(CSS_FILTERS)
+    bool useLayerRendererSurface = layer->maskLayer() || layer->replicaLayer() || layer->filters().size();
+#else
     bool useLayerRendererSurface = layer->maskLayer() || layer->replicaLayer();
+#endif
     if (!useLayerRendererSurface) {
         layer->setDrawOpacity(opacity);
         layer->clearLayerRendererSurface();
@@ -784,6 +808,7 @@ void LayerRenderer::updateLayersRecursive(LayerCompositingThread* layer, const T
     // The matrix passed down to the sublayers is therefore:
     // M[s] = M * Tr[-center]
     localMatrix.translate3d(-bounds.width() * 0.5, -bounds.height() * 0.5, 0);
+    localMatrix.translate(-layer->boundsOrigin().x(), -layer->boundsOrigin().y());
 
     const Vector<RefPtr<LayerCompositingThread> >& sublayers = layer->getSublayers();
     for (size_t i = 0; i < sublayers.size(); i++)
@@ -981,10 +1006,17 @@ void LayerRenderer::updateScissorIfNeeded(const FloatRect& clipRect)
 
 bool LayerRenderer::makeContextCurrent()
 {
-    return m_context->makeCurrent();
+    bool ret = m_context->makeCurrent();
+    if (ret && m_isRobustnessSupported) {
+        if (m_glGetGraphicsResetStatusEXT() != GL_NO_ERROR) {
+            BlackBerry::Platform::logAlways(BlackBerry::Platform::LogLevelCritical, "Robust OpenGL context has been reset. Aborting.");
+            CRASH();
+        }
+    }
+    return ret;
 }
 
-// Binds the given attribute name to a common location across all three programs
+// Binds the given attribute name to a common location across all programs
 // used by the compositor. This allows the code to bind the attributes only once
 // even when switching between programs.
 void LayerRenderer::bindCommonAttribLocation(int location, const char* attribName)
@@ -1052,7 +1084,6 @@ bool LayerRenderer::initializeSharedGLObjects()
         "  lowp vec4 maskColor = texture2D(s_mask, v_texCoord).bgra;          \n"
         "  gl_FragColor = vec4(texColor.x, texColor.y, texColor.z, texColor.w) * alpha * maskColor.w;         \n"
         "}                                                               \n";
-
 
     // Shaders for drawing the debug borders around the layers.
     char colorVertexShaderString[] =
@@ -1139,7 +1170,7 @@ bool LayerRenderer::initializeSharedGLObjects()
         return false;
     }
 
-    // Specify the attrib location for the position and make it the same for all three programs to
+    // Specify the attrib location for the position and make it the same for all programs to
     // avoid binding re-binding the vertex attributes.
     bindCommonAttribLocation(m_positionLocation, "a_position");
     bindCommonAttribLocation(m_texCoordLocation, "a_texCoord");

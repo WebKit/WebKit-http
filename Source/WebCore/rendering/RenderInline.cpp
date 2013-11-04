@@ -36,10 +36,11 @@
 #include "RenderLayer.h"
 #include "RenderTheme.h"
 #include "RenderView.h"
+#include "StyleInheritedData.h"
 #include "TransformState.h"
 #include "VisiblePosition.h"
 
-#if ENABLE(DASHBOARD_SUPPORT)
+#if ENABLE(DASHBOARD_SUPPORT) || ENABLE(WIDGET_REGION)
 #include "Frame.h"
 #endif
 
@@ -128,14 +129,14 @@ void RenderInline::updateBoxModelInfoFromStyle()
     setHasReflection(false);    
 }
 
-static bool hasRelPositionedInlineAncestor(RenderObject* p)
+static RenderObject* inFlowPositionedInlineAncestor(RenderObject* p)
 {
     while (p && p->isRenderInline()) {
-        if (p->isRelPositioned())
-            return true;
+        if (p->isInFlowPositioned())
+            return p;
         p = p->parent();
     }
-    return false;
+    return 0;
 }
 
 static void updateStyleOfAnonymousBlockContinuations(RenderObject* block, const RenderStyle* newStyle, const RenderStyle* oldStyle)
@@ -143,15 +144,32 @@ static void updateStyleOfAnonymousBlockContinuations(RenderObject* block, const 
     for (;block && block->isAnonymousBlock(); block = block->nextSibling()) {
         if (!toRenderBlock(block)->isAnonymousBlockContinuation() || block->style()->position() == newStyle->position())
             continue;
-        // If we are no longer relatively positioned but our descendant block(s) still have a relatively positioned ancestor then 
-        // their containing anonymous block should keep its relative positioning. 
+        // If we are no longer in-flow positioned but our descendant block(s) still have an in-flow positioned ancestor then
+        // their containing anonymous block should keep its in-flow positioning. 
         RenderInline* cont = toRenderBlock(block)->inlineElementContinuation();
-        if (oldStyle->position() == RelativePosition && hasRelPositionedInlineAncestor(cont))
+        if (oldStyle->hasInFlowPosition() && inFlowPositionedInlineAncestor(cont))
             continue;
         RefPtr<RenderStyle> blockStyle = RenderStyle::createAnonymousStyleWithDisplay(block->style(), BLOCK);
         blockStyle->setPosition(newStyle->position());
         block->setStyle(blockStyle);
     }
+}
+
+void RenderInline::styleWillChange(StyleDifference diff, const RenderStyle* newStyle)
+{
+    if (FrameView *frameView = view()->frameView()) {
+        RenderStyle* oldStyle = style();
+        bool newStyleIsSticky = newStyle && newStyle->position() == StickyPosition;
+        bool oldStyleIsSticky = oldStyle && oldStyle->position() == StickyPosition;
+        if (newStyleIsSticky != oldStyleIsSticky) {
+            if (newStyleIsSticky)
+                frameView->addFixedObject(this);
+            else
+                frameView->removeFixedObject(this);
+        }
+    }
+
+    RenderBoxModelObject::styleWillChange(diff, newStyle);
 }
 
 void RenderInline::styleDidChange(StyleDifference diff, const RenderStyle* oldStyle)
@@ -173,10 +191,10 @@ void RenderInline::styleDidChange(StyleDifference diff, const RenderStyle* oldSt
         currCont->setContinuation(nextCont);
     }
 
-    // If an inline's relative positioning has changed then any descendant blocks will need to change their relative positioning accordingly.
+    // If an inline's in-flow positioning has changed then any descendant blocks will need to change their in-flow positioning accordingly.
     // Do this by updating the position of the descendant blocks' containing anonymous blocks - there may be more than one.
-    if (continuation && oldStyle && newStyle->position() != oldStyle->position() 
-        && (newStyle->position() == RelativePosition || (oldStyle->position() == RelativePosition))) {
+    if (continuation && oldStyle && newStyle->position() != oldStyle->position()
+        && (newStyle->hasInFlowPosition() || oldStyle->hasInFlowPosition())) {
         // If any descendant blocks exist then they will be in the next anonymous block and its siblings.
         RenderObject* block = containingBlock()->nextSibling();
         ASSERT(block && block->isAnonymousBlock());
@@ -309,10 +327,10 @@ void RenderInline::addChildIgnoringContinuation(RenderObject* newChild, RenderOb
         // the children after |beforeChild| and put them in a clone of this object.
         RefPtr<RenderStyle> newStyle = RenderStyle::createAnonymousStyleWithDisplay(style(), BLOCK);
         
-        // If inside an inline affected by relative positioning the block needs to be affected by it too.
+        // If inside an inline affected by in-flow positioning the block needs to be affected by it too.
         // Giving the block a layer like this allows it to collect the x/y offsets from inline parents later.
-        if (hasRelPositionedInlineAncestor(this))
-            newStyle->setPosition(RelativePosition);
+        if (RenderObject* positionedAncestor = inFlowPositionedInlineAncestor(this))
+            newStyle->setPosition(positionedAncestor->style()->position());
 
         RenderBlock* newBox = new (renderArena()) RenderBlock(document() /* anonymous box */);
         newBox->setStyle(newStyle.release());
@@ -338,11 +356,12 @@ void RenderInline::addChildIgnoringContinuation(RenderObject* newChild, RenderOb
     newChild->setNeedsLayoutAndPrefWidthsRecalc();
 }
 
-RenderInline* RenderInline::cloneInline(RenderInline* src)
+RenderInline* RenderInline::clone() const
 {
-    RenderInline* o = new (src->renderArena()) RenderInline(src->node());
-    o->setStyle(src->style());
-    return o;
+    RenderInline* cloneInline = new (renderArena()) RenderInline(node());
+    cloneInline->setStyle(style());
+    cloneInline->setInRenderFlowThread(inRenderFlowThread());
+    return cloneInline;
 }
 
 void RenderInline::splitInlines(RenderBlock* fromBlock, RenderBlock* toBlock,
@@ -350,8 +369,8 @@ void RenderInline::splitInlines(RenderBlock* fromBlock, RenderBlock* toBlock,
                                 RenderObject* beforeChild, RenderBoxModelObject* oldCont)
 {
     // Create a clone of this inline.
-    RenderInline* clone = cloneInline(this);
-    clone->setContinuation(oldCont);
+    RenderInline* cloneInline = clone();
+    cloneInline->setContinuation(oldCont);
 
     // Now take all of the children from beforeChild to the end and remove
     // them from |this| and place them in the clone.
@@ -359,12 +378,12 @@ void RenderInline::splitInlines(RenderBlock* fromBlock, RenderBlock* toBlock,
     while (o) {
         RenderObject* tmp = o;
         o = tmp->nextSibling();
-        clone->addChildIgnoringContinuation(children()->removeChildNode(this, tmp), 0);
+        cloneInline->addChildIgnoringContinuation(children()->removeChildNode(this, tmp), 0);
         tmp->setNeedsLayoutAndPrefWidthsRecalc();
     }
 
     // Hook |clone| up as the continuation of the middle block.
-    middleBlock->setContinuation(clone);
+    middleBlock->setContinuation(cloneInline);
 
     // We have been reparented and are now under the fromBlock.  We need
     // to walk up our inline parent chain until we hit the containing block.
@@ -382,17 +401,17 @@ void RenderInline::splitInlines(RenderBlock* fromBlock, RenderBlock* toBlock,
         ASSERT(curr->isRenderInline());
         if (splitDepth < cMaxSplitDepth) {
             // Create a new clone.
-            RenderInline* cloneChild = clone;
-            clone = cloneInline(toRenderInline(curr));
+            RenderInline* cloneChild = cloneInline;
+            cloneInline = toRenderInline(curr)->clone();
 
             // Insert our child clone as the first child.
-            clone->addChildIgnoringContinuation(cloneChild, 0);
+            cloneInline->addChildIgnoringContinuation(cloneChild, 0);
 
             // Hook the clone up as a continuation of |curr|.
             RenderInline* inlineCurr = toRenderInline(curr);
             oldCont = inlineCurr->continuation();
-            inlineCurr->setContinuation(clone);
-            clone->setContinuation(oldCont);
+            inlineCurr->setContinuation(cloneInline);
+            cloneInline->setContinuation(oldCont);
 
             // Someone may have indirectly caused a <q> to split.  When this happens, the :after content
             // has to move into the inline continuation.  Call updateBeforeAfterContent to ensure that the inline's :after
@@ -406,7 +425,7 @@ void RenderInline::splitInlines(RenderBlock* fromBlock, RenderBlock* toBlock,
             while (o) {
                 RenderObject* tmp = o;
                 o = tmp->nextSibling();
-                clone->addChildIgnoringContinuation(inlineCurr->children()->removeChildNode(curr, tmp), 0);
+                cloneInline->addChildIgnoringContinuation(inlineCurr->children()->removeChildNode(curr, tmp), 0);
                 tmp->setNeedsLayoutAndPrefWidthsRecalc();
             }
         }
@@ -418,7 +437,7 @@ void RenderInline::splitInlines(RenderBlock* fromBlock, RenderBlock* toBlock,
     }
 
     // Now we are at the block level. We need to put the clone into the toBlock.
-    toBlock->children()->appendChildNode(toBlock, clone);
+    toBlock->children()->appendChildNode(toBlock, cloneInline);
 
     // Now take all the children after currChild and remove them from the fromBlock
     // and put them in the toBlock.
@@ -748,6 +767,8 @@ const char* RenderInline::renderName() const
 {
     if (isRelPositioned())
         return "RenderInline (relative positioned)";
+    if (isStickyPositioned())
+        return "RenderInline (sticky positioned)";
     if (isAnonymous())
         return "RenderInline (generated)";
     if (isRunIn())
@@ -756,14 +777,14 @@ const char* RenderInline::renderName() const
 }
 
 bool RenderInline::nodeAtPoint(const HitTestRequest& request, HitTestResult& result,
-                                const HitTestPoint& pointInContainer, const LayoutPoint& accumulatedOffset, HitTestAction hitTestAction)
+                                const HitTestLocation& locationInContainer, const LayoutPoint& accumulatedOffset, HitTestAction hitTestAction)
 {
-    return m_lineBoxes.hitTest(this, request, result, pointInContainer, accumulatedOffset, hitTestAction);
+    return m_lineBoxes.hitTest(this, request, result, locationInContainer, accumulatedOffset, hitTestAction);
 }
 
 VisiblePosition RenderInline::positionForPoint(const LayoutPoint& point)
 {
-    // FIXME: Does not deal with relative positioned inlines (should it?)
+    // FIXME: Does not deal with relative or sticky positioned inlines (should it?)
     RenderBlock* cb = containingBlock();
     if (firstLineBox()) {
         // This inline actually has a line box.  We must have clicked in the border/padding of one of these boxes.  We
@@ -967,7 +988,7 @@ LayoutRect RenderInline::clippedOverflowRectForRepaint(RenderBoxModelObject* rep
     LayoutRect repaintRect(linesVisualOverflowBoundingBox());
     bool hitRepaintContainer = false;
 
-    // We need to add in the relative position offsets of any inlines (including us) up to our
+    // We need to add in the in-flow position offsets of any inlines (including us) up to our
     // containing block.
     RenderBlock* cb = containingBlock();
     for (const RenderObject* inlineFlow = this; inlineFlow && inlineFlow->isRenderInline() && inlineFlow != cb;
@@ -976,8 +997,8 @@ LayoutRect RenderInline::clippedOverflowRectForRepaint(RenderBoxModelObject* rep
             hitRepaintContainer = true;
             break;
         }
-        if (inlineFlow->style()->position() == RelativePosition && inlineFlow->hasLayer())
-            repaintRect.move(toRenderInline(inlineFlow)->layer()->relativePositionOffset());
+        if (inlineFlow->style()->hasInFlowPosition() && inlineFlow->hasLayer())
+            repaintRect.move(toRenderInline(inlineFlow)->layer()->offsetForInFlowPosition());
     }
 
     LayoutUnit outlineSize = style()->outlineSize();
@@ -1030,8 +1051,8 @@ void RenderInline::computeRectForRepaint(RenderBoxModelObject* repaintContainer,
         // LayoutState is only valid for root-relative repainting
         if (v->layoutStateEnabled() && !repaintContainer) {
             LayoutState* layoutState = v->layoutState();
-            if (style()->position() == RelativePosition && layer())
-                rect.move(layer()->relativePositionOffset());
+            if (style()->hasInFlowPosition() && layer())
+                rect.move(layer()->offsetForInFlowPosition());
             rect.move(layoutState->m_paintOffset);
             if (layoutState->m_clipped)
                 rect.intersect(layoutState->m_clipRect);
@@ -1049,7 +1070,7 @@ void RenderInline::computeRectForRepaint(RenderBoxModelObject* repaintContainer,
 
     LayoutPoint topLeft = rect.location();
 
-    if (o->isBlockFlow() && !style()->isOutOfFlowPositioned()) {
+    if (o->isBlockFlow() && !style()->hasOutOfFlowPosition()) {
         RenderBlock* cb = toRenderBlock(o);
         if (cb->hasColumns()) {
             LayoutRect repaintRect(topLeft, rect.size());
@@ -1059,12 +1080,12 @@ void RenderInline::computeRectForRepaint(RenderBoxModelObject* repaintContainer,
         }
     }
 
-    if (style()->position() == RelativePosition && layer()) {
-        // Apply the relative position offset when invalidating a rectangle.  The layer
+    if (style()->hasInFlowPosition() && layer()) {
+        // Apply the in-flow position offset when invalidating a rectangle. The layer
         // is translated, but the render box isn't, so we need to do this to get the
-        // right dirty rect.  Since this is called from RenderObject::setStyle, the relative position
+        // right dirty rect. Since this is called from RenderObject::setStyle, the relative or sticky position
         // flag on the RenderObject has been cleared, so use the one on the style().
-        topLeft += layer()->relativePositionOffset();
+        topLeft += layer()->offsetForInFlowPosition();
     }
     
     // FIXME: We ignore the lightweight clipping rect that controls use, since if |o| is in mid-layout,
@@ -1100,8 +1121,8 @@ LayoutSize RenderInline::offsetFromContainer(RenderObject* container, const Layo
     ASSERT(container == this->container());
     
     LayoutSize offset;    
-    if (isRelPositioned())
-        offset += relativePositionOffset();
+    if (isInFlowPositioned())
+        offset += offsetForInFlowPosition();
 
     container->adjustForColumns(offset, point);
 
@@ -1114,7 +1135,7 @@ LayoutSize RenderInline::offsetFromContainer(RenderObject* container, const Layo
     return offset;
 }
 
-void RenderInline::mapLocalToContainer(RenderBoxModelObject* repaintContainer, bool fixed, bool useTransforms, TransformState& transformState, ApplyContainerFlipOrNot applyContainerFlip, bool* wasFixed) const
+void RenderInline::mapLocalToContainer(RenderBoxModelObject* repaintContainer, TransformState& transformState, MapLocalToContainerFlags mode, bool* wasFixed) const
 {
     if (repaintContainer == this)
         return;
@@ -1123,8 +1144,8 @@ void RenderInline::mapLocalToContainer(RenderBoxModelObject* repaintContainer, b
         if (v->layoutStateEnabled() && !repaintContainer) {
             LayoutState* layoutState = v->layoutState();
             LayoutSize offset = layoutState->m_paintOffset;
-            if (style()->position() == RelativePosition && layer())
-                offset += layer()->relativePositionOffset();
+            if (style()->hasInFlowPosition() && layer())
+                offset += layer()->offsetForInFlowPosition();
             transformState.move(offset);
             return;
         }
@@ -1135,18 +1156,20 @@ void RenderInline::mapLocalToContainer(RenderBoxModelObject* repaintContainer, b
     if (!o)
         return;
 
-    if (applyContainerFlip && o->isBox()) {
+    if (mode & ApplyContainerFlip && o->isBox()) {
         if (o->style()->isFlippedBlocksWritingMode()) {
             IntPoint centerPoint = roundedIntPoint(transformState.mappedPoint());
             transformState.move(toRenderBox(o)->flipForWritingModeIncludingColumns(centerPoint) - centerPoint);
         }
-        applyContainerFlip = DoNotApplyContainerFlip;
+        mode &= ~ApplyContainerFlip;
     }
 
     LayoutSize containerOffset = offsetFromContainer(o, roundedLayoutPoint(transformState.mappedPoint()));
+    if (mode & SnapOffsetForTransforms)
+        containerOffset = roundedIntSize(containerOffset);
 
-    bool preserve3D = useTransforms && (o->style()->preserves3D() || style()->preserves3D());
-    if (useTransforms && shouldUseTransformFromContainer(o)) {
+    bool preserve3D = mode & UseTransforms && (o->style()->preserves3D() || style()->preserves3D());
+    if (mode & UseTransforms && shouldUseTransformFromContainer(o)) {
         TransformationMatrix t;
         getTransformFromContainer(o, containerOffset, t);
         transformState.applyTransform(t, preserve3D ? TransformState::AccumulateTransform : TransformState::FlattenTransform);
@@ -1161,7 +1184,7 @@ void RenderInline::mapLocalToContainer(RenderBoxModelObject* repaintContainer, b
         return;
     }
 
-    o->mapLocalToContainer(repaintContainer, fixed, useTransforms, transformState, applyContainerFlip, wasFixed);
+    o->mapLocalToContainer(repaintContainer, transformState, mode, wasFixed);
 }
 
 const RenderObject* RenderInline::pushMappingToContainer(const RenderBoxModelObject* ancestorToStopAt, RenderGeometryMap& geometryMap) const
@@ -1307,12 +1330,12 @@ LayoutUnit RenderInline::baselinePosition(FontBaseline baselineType, bool firstL
     return fontMetrics.ascent(baselineType) + (lineHeight(firstLine, direction, linePositionMode) - fontMetrics.height()) / 2;
 }
 
-LayoutSize RenderInline::relativePositionedInlineOffset(const RenderBox* child) const
+LayoutSize RenderInline::offsetForInFlowPositionedInline(const RenderBox* child) const
 {
     // FIXME: This function isn't right with mixed writing modes.
 
-    ASSERT(isRelPositioned());
-    if (!isRelPositioned())
+    ASSERT(isInFlowPositioned());
+    if (!isInFlowPositioned())
         return LayoutSize();
 
     // When we have an enclosing relpositioned inline, we need to add in the offset of the first line
@@ -1534,7 +1557,7 @@ void RenderInline::paintOutlineForLine(GraphicsContext* graphicsContext, const L
             antialias);
 }
 
-#if ENABLE(DASHBOARD_SUPPORT)
+#if ENABLE(DASHBOARD_SUPPORT) || ENABLE(WIDGET_REGION)
 void RenderInline::addDashboardRegions(Vector<DashboardRegionValue>& regions)
 {
     // Convert the style regions to absolute coordinates.

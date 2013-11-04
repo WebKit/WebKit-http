@@ -37,16 +37,17 @@
 
 #include "DedicatedWorkerContext.h"
 #include "Event.h"
-#include "SafeAllocation.h"
 #include "ScriptCallStack.h"
+#include "ScriptSourceCode.h"
 #include "SharedWorker.h"
 #include "SharedWorkerContext.h"
 #include "V8Binding.h"
-#include "V8BindingPerContextData.h"
 #include "V8DOMMap.h"
 #include "V8DOMWindowShell.h"
 #include "V8DedicatedWorkerContext.h"
-#include "V8Proxy.h"
+#include "V8GCController.h"
+#include "V8ObjectConstructor.h"
+#include "V8PerContextData.h"
 #include "V8RecursionScope.h"
 #include "V8SharedWorkerContext.h"
 #include "Worker.h"
@@ -85,6 +86,7 @@ static void v8MessageHandler(v8::Handle<v8::Message> message, v8::Handle<v8::Val
 
 WorkerContextExecutionProxy::WorkerContextExecutionProxy(WorkerContext* workerContext)
     : m_workerContext(workerContext)
+    , m_disableEvalPending(false)
 {
     initIsolate();
 }
@@ -122,15 +124,19 @@ void WorkerContextExecutionProxy::initIsolate()
     v8::V8::SetGlobalGCPrologueCallback(&V8GCController::gcPrologue);
     v8::V8::SetGlobalGCEpilogueCallback(&V8GCController::gcEpilogue);
 
+    // FIXME: Remove the following 2 lines when V8 default has changed.
+    const char es5ReadonlyFlag[] = "--es5_readonly";
+    v8::V8::SetFlagsFromString(es5ReadonlyFlag, sizeof(es5ReadonlyFlag));
+
     v8::ResourceConstraints resource_constraints;
     uint32_t here;
     resource_constraints.set_stack_limit(&here - kWorkerMaxStackSize / sizeof(uint32_t*));
     v8::SetResourceConstraints(&resource_constraints);
 
-    V8BindingPerIsolateData::ensureInitialized(v8::Isolate::GetCurrent());
+    V8PerIsolateData::ensureInitialized(v8::Isolate::GetCurrent());
 }
 
-bool WorkerContextExecutionProxy::initContextIfNeeded()
+bool WorkerContextExecutionProxy::initializeIfNeeded()
 {
     // Bail out if the context has already been initialized.
     if (!m_context.IsEmpty())
@@ -153,7 +159,7 @@ bool WorkerContextExecutionProxy::initContextIfNeeded()
 
     v8::Context::Scope scope(context);
 
-    m_perContextData = V8BindingPerContextData::create(m_context);
+    m_perContextData = V8PerContextData::create(m_context);
     if (!m_perContextData->init()) {
         dispose();
         return false;
@@ -169,7 +175,7 @@ bool WorkerContextExecutionProxy::initContextIfNeeded()
         contextType = &V8SharedWorkerContext::info;
 #endif
     v8::Handle<v8::Function> workerContextConstructor = m_perContextData->constructorForType(contextType);
-    v8::Local<v8::Object> jsWorkerContext = SafeAllocation::newInstance(workerContextConstructor);
+    v8::Local<v8::Object> jsWorkerContext = V8ObjectConstructor::newInstance(workerContextConstructor);
     // Bail out if allocation failed.
     if (jsWorkerContext.IsEmpty()) {
         dispose();
@@ -179,7 +185,7 @@ bool WorkerContextExecutionProxy::initContextIfNeeded()
     // Wrap the object.
     V8DOMWrapper::setDOMWrapper(jsWorkerContext, contextType, m_workerContext);
 
-    V8DOMWrapper::setJSWrapperForDOMObject(PassRefPtr<WorkerContext>(m_workerContext), v8::Persistent<v8::Object>::New(jsWorkerContext));
+    V8DOMWrapper::setJSWrapperForDOMObject(PassRefPtr<WorkerContext>(m_workerContext), jsWorkerContext);
 
     // Insert the object instance as the prototype of the shadow object.
     v8::Handle<v8::Object> globalObject = v8::Handle<v8::Object>::Cast(m_context->Global()->GetPrototype());
@@ -201,15 +207,20 @@ ScriptValue WorkerContextExecutionProxy::evaluate(const String& script, const St
 {
     v8::HandleScope hs;
 
-    if (!initContextIfNeeded())
+    if (!initializeIfNeeded())
         return ScriptValue();
+
+    if (m_disableEvalPending) {
+        m_context->AllowCodeGenerationFromStrings(false);
+        m_disableEvalPending = false;
+    }
 
     v8::Context::Scope scope(m_context);
 
     v8::TryCatch exceptionCatcher;
 
     v8::Local<v8::String> scriptString = v8ExternalString(script);
-    v8::Handle<v8::Script> compiledScript = V8Proxy::compileScript(scriptString, fileName, scriptStartPosition);
+    v8::Handle<v8::Script> compiledScript = ScriptSourceCode::compileScript(scriptString, fileName, scriptStartPosition);
     v8::Local<v8::Value> result = runScript(compiledScript);
 
     if (!exceptionCatcher.CanContinue()) {
@@ -224,7 +235,7 @@ ScriptValue WorkerContextExecutionProxy::evaluate(const String& script, const St
         state->lineNumber = message->GetLineNumber();
         state->sourceURL = toWebCoreString(message->GetScriptResourceName());
         if (m_workerContext->sanitizeScriptError(state->errorMessage, state->lineNumber, state->sourceURL))
-            state->exception = V8Proxy::throwError(V8Proxy::GeneralError, state->errorMessage.utf8().data());
+            state->exception = throwError(GeneralError, state->errorMessage.utf8().data());
         else
             state->exception = ScriptValue(exceptionCatcher.Exception());
 
@@ -238,6 +249,11 @@ ScriptValue WorkerContextExecutionProxy::evaluate(const String& script, const St
     return ScriptValue(result);
 }
 
+void WorkerContextExecutionProxy::setEvalAllowed(bool enable)
+{
+    m_disableEvalPending = !enable;
+}
+
 v8::Local<v8::Value> WorkerContextExecutionProxy::runScript(v8::Handle<v8::Script> script)
 {
     if (script.IsEmpty())
@@ -246,10 +262,10 @@ v8::Local<v8::Value> WorkerContextExecutionProxy::runScript(v8::Handle<v8::Scrip
     // Compute the source string and prevent against infinite recursion.
     if (V8RecursionScope::recursionLevel() >= kMaxRecursionDepth) {
         v8::Local<v8::String> code = v8ExternalString("throw RangeError('Recursion too deep')");
-        script = V8Proxy::compileScript(code, "", TextPosition::minimumPosition());
+        script = ScriptSourceCode::compileScript(code, "", TextPosition::minimumPosition());
     }
 
-    if (V8Proxy::handleOutOfMemory())
+    if (handleOutOfMemory())
         ASSERT(script.IsEmpty());
 
     if (script.IsEmpty())

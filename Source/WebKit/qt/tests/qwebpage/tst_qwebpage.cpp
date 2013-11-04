@@ -82,12 +82,12 @@ public:
     tst_QWebPage();
     virtual ~tst_QWebPage();
 
-public slots:
+public Q_SLOTS:
     void init();
     void cleanup();
     void cleanupFiles();
 
-private slots:
+private Q_SLOTS:
     void initTestCase();
     void cleanupTestCase();
     void thirdPartyCookiePolicy();
@@ -262,7 +262,7 @@ public:
     JSTestPage(QObject* parent = 0)
     : QWebPage(parent) {}
 
-public slots:
+public Q_SLOTS:
     bool shouldInterruptJavaScript() {
         return true;
     }
@@ -2946,7 +2946,7 @@ void tst_QWebPage::findText()
     foreach (QString subString, words) {
         m_page->findText(subString, QWebPage::FindWrapsAroundDocument);
         QCOMPARE(m_page->selectedText(), subString);
-        QCOMPARE(m_page->selectedHtml().trimmed().replace(regExp, ""), QString("<span>%1</span>").arg(subString));
+        QCOMPARE(m_page->selectedHtml().trimmed().replace(regExp, ""), subString);
         m_page->findText("");
         QVERIFY(m_page->selectedText().isEmpty());
         QVERIFY(m_page->selectedHtml().isEmpty());
@@ -3170,10 +3170,10 @@ public:
         connect(m_page, SIGNAL(repaintRequested(QRect)), this, SLOT(onRepaintRequested(QRect)));
     }
 
-signals:
+Q_SIGNALS:
     void finished();
 
-private slots:
+private Q_SLOTS:
     void onRepaintRequested(const QRect& rect)
     {
         QCOMPARE(m_recursionCount, 0);
@@ -3238,7 +3238,7 @@ public Q_SLOTS:
         if (progress == 100)
             emit lastLoadProgress();
     }
-signals:
+Q_SIGNALS:
     void lastLoadProgress();
 };
 

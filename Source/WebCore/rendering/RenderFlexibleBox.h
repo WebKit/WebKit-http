@@ -44,6 +44,8 @@ public:
     virtual const char* renderName() const OVERRIDE;
 
     virtual bool isFlexibleBox() const OVERRIDE { return true; }
+    virtual bool avoidsFloats() const OVERRIDE { return true; }
+    virtual bool canCollapseAnonymousBlockChild() const OVERRIDE { return false; }
     virtual void computePreferredLogicalWidths() OVERRIDE;
     virtual void layoutBlock(bool relayoutChildren, LayoutUnit pageLogicalHeight = 0) OVERRIDE;
 
@@ -62,7 +64,8 @@ private:
         NoFlipForRowReverse,
     };
 
-    typedef HashSet<float> OrderHashSet;
+    struct OrderHashTraits;
+    typedef HashSet<int, DefaultHash<int>::Hash, OrderHashTraits> OrderHashSet;
 
     class OrderIterator;
     typedef WTF::HashMap<const RenderBox*, LayoutUnit> InflexibleFlexItemSize;
@@ -75,7 +78,6 @@ private:
     bool isColumnFlow() const;
     bool isLeftToRightFlow() const;
     bool isMultiline() const;
-    Length crossAxisLength() const;
     Length flexBasisForChild(RenderBox* child) const;
     void setCrossAxisExtent(LayoutUnit);
     LayoutUnit crossAxisExtentForChild(RenderBox* child);
@@ -84,6 +86,7 @@ private:
     LayoutUnit mainAxisExtent() const;
     LayoutUnit crossAxisContentExtent() const;
     LayoutUnit mainAxisContentExtent();
+    LayoutUnit computeMainAxisExtentForChild(RenderBox* child, SizeType, const Length& size, LayoutUnit maximumValue);
     WritingMode transformedWritingMode() const;
     LayoutUnit flowAwareBorderStart() const;
     LayoutUnit flowAwareBorderEnd() const;
@@ -117,6 +120,7 @@ private:
     LayoutUnit availableAlignmentSpaceForChild(LayoutUnit lineCrossAxisExtent, RenderBox*);
     LayoutUnit marginBoxAscentForChild(RenderBox*);
 
+    LayoutUnit computeMarginValue(Length margin, LayoutUnit availableSize, RenderView*);
     void computeMainAxisPreferredSizes(bool relayoutChildren, OrderHashSet&);
     LayoutUnit lineBreakLength();
     LayoutUnit adjustChildSizeForMinAndMax(RenderBox*, LayoutUnit childSize, LayoutUnit flexboxAvailableContentExtent);

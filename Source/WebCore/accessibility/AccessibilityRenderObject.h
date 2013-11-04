@@ -57,7 +57,7 @@ class Widget;
     
 class AccessibilityRenderObject : public AccessibilityNodeObject {
 protected:
-    AccessibilityRenderObject(RenderObject*);
+    explicit AccessibilityRenderObject(RenderObject*);
 public:
     static PassRefPtr<AccessibilityRenderObject> create(RenderObject*);
     virtual ~AccessibilityRenderObject();
@@ -257,6 +257,8 @@ public:
     virtual String descriptionForMSAA() const;
     virtual AccessibilityRole roleValueForMSAA() const;
 
+    virtual String passwordFieldValue() const;
+
 protected:
     RenderObject* m_renderer;
     
@@ -298,6 +300,8 @@ private:
     bool renderObjectIsObservable(RenderObject*) const;
     RenderObject* renderParentObject() const;
     bool isDescendantOfElementType(const QualifiedName& tagName) const;
+    // This returns true if it's focusable but it's not content editable and it's not a control or ARIA control.
+    bool isGenericFocusableElement() const;
 
     void addTextFieldChildren();
     void addImageMapChildren();

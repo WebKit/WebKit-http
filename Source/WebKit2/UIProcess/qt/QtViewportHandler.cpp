@@ -171,6 +171,14 @@ QtViewportHandler::QtViewportHandler(WebKit::WebPageProxy* proxy, QQuickWebView*
     m_scaleAnimation->setDuration(kScaleAnimationDurationMillis);
     m_scaleAnimation->setEasingCurve(QEasingCurve::OutCubic);
 
+    // Initializing Viewport Raw Attributes to avoid random negative scale factors
+    // if there is a race condition between the first layout and setting the viewport attributes for the first time.
+    m_rawAttributes.devicePixelRatio = m_devicePixelRatio;
+    m_rawAttributes.initialScale = 1;
+    m_rawAttributes.minimumScale = m_minimumScale;
+    m_rawAttributes.maximumScale = m_maximumScale;
+    m_rawAttributes.userScalable = m_allowsUserScaling;
+
     connect(m_viewportItem, SIGNAL(movementStarted()), SLOT(flickMoveStarted()), Qt::DirectConnection);
     connect(m_viewportItem, SIGNAL(movementEnded()), SLOT(flickMoveEnded()), Qt::DirectConnection);
 
@@ -225,7 +233,11 @@ void QtViewportHandler::viewportAttributesChanged(const WebCore::ViewportAttribu
     m_rawAttributes = newAttributes;
     WebCore::restrictScaleFactorToInitialScaleIfNotUserScalable(m_rawAttributes);
 
-    m_devicePixelRatio = m_rawAttributes.devicePixelRatio; // Should return value from the webPageProxy.
+    if (!qFuzzyCompare(m_devicePixelRatio, static_cast<qreal>(m_rawAttributes.devicePixelRatio))) {
+        m_devicePixelRatio = m_rawAttributes.devicePixelRatio; // Should return value from the webPageProxy.
+        emit m_viewportItem->experimental()->test()->devicePixelRatioChanged();
+    }
+
     m_allowsUserScaling = !!m_rawAttributes.userScalable;
     m_minimumScale = m_rawAttributes.minimumScale;
     m_maximumScale = m_rawAttributes.maximumScale;

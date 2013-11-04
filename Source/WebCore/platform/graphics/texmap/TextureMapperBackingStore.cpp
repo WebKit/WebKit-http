@@ -34,16 +34,19 @@
 namespace WebCore {
 
 #if USE(GRAPHICS_SURFACE)
-void TextureMapperSurfaceBackingStore::setGraphicsSurface(uint32_t graphicsSurfaceToken, const IntSize& surfaceSize)
+void TextureMapperSurfaceBackingStore::setGraphicsSurface(uint64_t graphicsSurfaceToken, const IntSize& surfaceSize, uint32_t frontBuffer)
 {
-    if (graphicsSurfaceToken != m_backBufferGraphicsSurfaceData.m_graphicsSurfaceToken) {
+    if (graphicsSurfaceToken != m_graphicsSurfaceToken) {
         GraphicsSurface::Flags surfaceFlags = GraphicsSurface::SupportsTextureTarget
                                             | GraphicsSurface::SupportsSharing;
-        m_backBufferGraphicsSurfaceData.setSurface(GraphicsSurface::create(surfaceSize, surfaceFlags, graphicsSurfaceToken));
+        setSurface(GraphicsSurface::create(surfaceSize, surfaceFlags, graphicsSurfaceToken));
         m_graphicsSurfaceSize = surfaceSize;
     }
 
-    std::swap(m_backBufferGraphicsSurfaceData, m_frontBufferGraphicsSurfaceData);
+    RefPtr<WebCore::GraphicsSurface> surface = graphicsSurface();
+    if (surface->frontBuffer() != frontBuffer)
+        surface->swapBuffers();
+
 }
 
 PassRefPtr<BitmapTexture> TextureMapperSurfaceBackingStore::texture() const
@@ -55,16 +58,18 @@ PassRefPtr<BitmapTexture> TextureMapperSurfaceBackingStore::texture() const
 
 void TextureMapperSurfaceBackingStore::paintToTextureMapper(TextureMapper* textureMapper, const FloatRect& targetRect, const TransformationMatrix& transform, float opacity, BitmapTexture* mask)
 {
-    TransformationMatrix adjustedTransform = transform;
-    adjustedTransform.multiply(TransformationMatrix::rectToRect(FloatRect(FloatPoint::zero(), m_graphicsSurfaceSize), targetRect));
-#if OS(DARWIN)
-    // This is specific to the Mac implementation of GraphicsSurface. IOSurface requires GL_TEXTURE_RECTANGLE_ARB to be used.
-    static_cast<TextureMapperGL*>(textureMapper)->drawTextureRectangleARB(m_frontBufferGraphicsSurfaceData.m_textureID, 0, m_graphicsSurfaceSize, targetRect, adjustedTransform, opacity, mask);
-#else
-    UNUSED_PARAM(textureMapper);
-    UNUSED_PARAM(opacity);
-    UNUSED_PARAM(mask);
-#endif
+    m_graphicsSurface->paintToTextureMapper(textureMapper, targetRect, transform, opacity, mask);
+}
+
+void TextureMapperSurfaceBackingStore::setSurface(PassRefPtr<GraphicsSurface> surface)
+{
+    if (surface) {
+        m_graphicsSurface = surface;
+        m_graphicsSurfaceToken = m_graphicsSurface->exportToken();
+    } else {
+        m_graphicsSurface = RefPtr<GraphicsSurface>();
+        m_graphicsSurfaceToken = 0;
+    }
 }
 #endif
 

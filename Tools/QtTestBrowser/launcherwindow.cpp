@@ -51,6 +51,9 @@
 #ifndef QT_NO_SHORTCUT
 #include <QMenuBar>
 #endif
+#if !defined(QT_NO_PRINTER) && HAVE(QTPRINTSUPPORT)
+#include <QPrintPreviewDialog>
+#endif
 #include <QSlider>
 #include <QSplitter>
 #include <QStatusBar>
@@ -66,11 +69,7 @@
 #endif
 
 #if !defined(QT_NO_NETWORKDISKCACHE) && !defined(QT_NO_DESKTOPSERVICES)
-#if HAVE(QT5)
 #include <QStandardPaths>
-#else
-#include <QDesktopServices>
-#endif
 #include <QtNetwork/QNetworkDiskCache>
 #endif
 
@@ -241,7 +240,7 @@ void LauncherWindow::createChrome()
     fileMenu->addAction("Close Window", this, SLOT(close()), QKeySequence::Close);
     fileMenu->addSeparator();
     fileMenu->addAction("Take Screen Shot...", this, SLOT(screenshot()));
-#ifndef QT_NO_PRINTER
+#if !defined(QT_NO_PRINTER) && HAVE(QTPRINTSUPPORT)
     fileMenu->addAction(tr("Print..."), this, SLOT(print()), QKeySequence::Print);
 #endif
     fileMenu->addSeparator();
@@ -469,6 +468,14 @@ void LauncherWindow::createChrome()
     QAction* togglePlugins = settingsMenu->addAction("Disable Plugins", this, SLOT(togglePlugins(bool)));
     togglePlugins->setCheckable(true);
     togglePlugins->setChecked(false);
+
+    QAction* toggleScrollAnimator = settingsMenu->addAction("Enable Scroll Animator", this, SLOT(toggleScrollAnimator(bool)));
+#if ENABLE(SMOOTH_SCROLLING)
+    toggleScrollAnimator->setCheckable(true);
+#else
+    toggleScrollAnimator->setCheckable(false);
+#endif
+    toggleScrollAnimator->setChecked(false);
 
     QAction* toggleInterruptingJavaScripteEnabled = settingsMenu->addAction("Enable interrupting js scripts", this, SLOT(toggleInterruptingJavaScriptEnabled(bool)));
     toggleInterruptingJavaScripteEnabled->setCheckable(true);
@@ -728,7 +735,7 @@ void LauncherWindow::toggleZoomTextOnly(bool b)
 
 void LauncherWindow::print()
 {
-#if !defined(QT_NO_PRINTER)
+#if !defined(QT_NO_PRINTER) && HAVE(QTPRINTSUPPORT)
     QPrintPreviewDialog dlg(this);
     connect(&dlg, SIGNAL(paintRequested(QPrinter*)),
             page()->mainFrame(), SLOT(print(QPrinter*)));
@@ -808,11 +815,7 @@ void LauncherWindow::setDiskCache(bool enable)
     QNetworkDiskCache* cache = 0;
     if (enable) {
         cache = new QNetworkDiskCache();
-#if HAVE(QT5)
         QString cacheLocation = QStandardPaths::writableLocation(QStandardPaths::CacheLocation);
-#else
-        QString cacheLocation = QDesktopServices::storageLocation(QDesktopServices::CacheLocation);
-#endif
         cache->setCacheDirectory(cacheLocation);
     }
     page()->networkAccessManager()->setCache(cache);
@@ -1088,6 +1091,12 @@ void LauncherWindow::setOfflineStorageDefaultQuota()
             page()->settings()->setOfflineStorageDefaultQuota(quotaSize);
 #endif
     }
+}
+
+void LauncherWindow::toggleScrollAnimator(bool toggle)
+{
+    m_windowOptions.enableScrollAnimator = toggle;
+    page()->settings()->setAttribute(QWebSettings::ScrollAnimatorEnabled, toggle);
 }
 
 LauncherWindow* LauncherWindow::newWindow()

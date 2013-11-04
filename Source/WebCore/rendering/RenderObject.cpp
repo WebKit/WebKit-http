@@ -151,7 +151,7 @@ RenderObject* RenderObject::createObject(Node* node, RenderStyle* style)
     if (node->hasTagName(rtTag) && style->display() == BLOCK)
         return new (arena) RenderRubyText(node);
     if (doc->cssRegionsEnabled() && style->isDisplayRegionType() && !style->regionThread().isEmpty() && doc->renderView())
-        return new (arena) RenderRegion(node, doc->renderView()->flowThreadController()->ensureRenderFlowThreadWithName(style->regionThread()));
+        return new (arena) RenderRegion(node, 0);
     switch (style->display()) {
     case NONE:
         return 0;
@@ -586,6 +586,15 @@ RenderFlowThread* RenderObject::enclosingRenderFlowThread() const
     return 0;
 }
 
+RenderNamedFlowThread* RenderObject::enclosingRenderNamedFlowThread() const
+{
+    RenderObject* object = const_cast<RenderObject*>(this);
+    while (object && object->isAnonymousBlock() && !object->isRenderNamedFlowThread())
+        object = object->parent();
+
+    return object && object->isRenderNamedFlowThread() ? toRenderNamedFlowThread(object) : 0;
+}
+
 RenderBlock* RenderObject::firstLineBlock() const
 {
     return 0;
@@ -630,7 +639,7 @@ void RenderObject::markContainingBlocksForLayout(bool scheduleRelayout, RenderOb
         RenderObject* container = object->container();
         if (!container && !object->isRenderView())
             return;
-        if (!last->isText() && last->style()->isOutOfFlowPositioned()) {
+        if (!last->isText() && last->style()->hasOutOfFlowPosition()) {
             bool willSkipRelativelyPositionedInlines = !object->isRenderBlock() || object->isAnonymousBlock();
             // Skip relatively positioned inlines and anonymous blocks to get to the enclosing RenderBlock.
             while (object && (!object->isRenderBlock() || object->isAnonymousBlock()))
@@ -681,7 +690,7 @@ void RenderObject::setPreferredLogicalWidthsDirty(bool shouldBeDirty, MarkingBeh
 {
     bool alreadyDirty = preferredLogicalWidthsDirty();
     m_bitfields.setPreferredLogicalWidthsDirty(shouldBeDirty);
-    if (shouldBeDirty && !alreadyDirty && markParents == MarkContainingBlockChain && (isText() || !style()->isOutOfFlowPositioned()))
+    if (shouldBeDirty && !alreadyDirty && markParents == MarkContainingBlockChain && (isText() || !style()->hasOutOfFlowPosition()))
         invalidateContainerPreferredLogicalWidths();
 }
 
@@ -698,7 +707,7 @@ void RenderObject::invalidateContainerPreferredLogicalWidths()
             break;
 
         o->m_bitfields.setPreferredLogicalWidthsDirty(true);
-        if (o->style()->isOutOfFlowPositioned())
+        if (o->style()->hasOutOfFlowPosition())
             // A positioned object has no effect on the min/max width of its containing block ever.
             // We can optimize this case and not go up any further.
             break;
@@ -755,7 +764,7 @@ RenderBlock* RenderObject::containingBlock() const
             if (o->hasTransform() && o->isRenderBlock())
                 break;
 
-            if (o->style()->position() == RelativePosition && o->isInline() && !o->isReplaced()) {
+            if (o->style()->hasInFlowPosition() && o->isInline() && !o->isReplaced()) {
                 o = o->containingBlock();
                 break;
             }
@@ -1195,6 +1204,24 @@ void RenderObject::absoluteFocusRingQuads(Vector<FloatQuad>& quads)
     }
 }
 
+FloatRect RenderObject::absoluteBoundingBoxRectForRange(const Range* range)
+{
+    if (!range || !range->startContainer())
+        return FloatRect();
+
+    if (range->ownerDocument())
+        range->ownerDocument()->updateLayout();
+
+    Vector<FloatQuad> quads;
+    range->textQuads(quads);
+
+    FloatRect result;
+    for (size_t i = 0; i < quads.size(); ++i)
+        result.unite(quads[i].boundingBox());
+
+    return result;
+}
+
 void RenderObject::addAbsoluteRectForLayer(LayoutRect& result)
 {
     if (hasLayer())
@@ -1453,10 +1480,7 @@ void RenderObject::repaintOverhangingFloats(bool)
 
 bool RenderObject::checkForRepaintDuringLayout() const
 {
-    // FIXME: <https://bugs.webkit.org/show_bug.cgi?id=20885> It is probably safe to also require
-    // m_everHadLayout. Currently, only RenderBlock::layoutBlock() adds this condition. See also
-    // <https://bugs.webkit.org/show_bug.cgi?id=15129>.
-    return !document()->view()->needsFullRepaint() && !hasLayer();
+    return !document()->view()->needsFullRepaint() && !hasLayer() && everHadLayout();
 }
 
 LayoutRect RenderObject::rectWithOutlineForRepaint(RenderBoxModelObject* repaintContainer, LayoutUnit outlineWidth) const
@@ -1796,7 +1820,7 @@ void RenderObject::styleWillChange(StyleDifference diff, const RenderStyle* newS
             bool visibilityChanged = m_style->visibility() != newStyle->visibility() 
                 || m_style->zIndex() != newStyle->zIndex() 
                 || m_style->hasAutoZIndex() != newStyle->hasAutoZIndex();
-#if ENABLE(DASHBOARD_SUPPORT)
+#if ENABLE(DASHBOARD_SUPPORT) || ENABLE(WIDGET_REGION)
             if (visibilityChanged)
                 document()->setDashboardRegionsDirty(true);
 #endif
@@ -1829,7 +1853,7 @@ void RenderObject::styleWillChange(StyleDifference diff, const RenderStyle* newS
             toRenderBox(this)->removeFloatingOrPositionedChildFromBlockLists();
 
         s_affectsParentBlock = isFloatingOrOutOfFlowPositioned()
-            && (!newStyle->isFloating() && newStyle->position() != AbsolutePosition && newStyle->position() != FixedPosition)
+            && (!newStyle->isFloating() && !newStyle->hasOutOfFlowPosition())
             && parent() && (parent()->isBlockFlow() || parent()->isRenderInline());
 
         // reset style flags
@@ -1837,6 +1861,7 @@ void RenderObject::styleWillChange(StyleDifference diff, const RenderStyle* newS
             setFloating(false);
             setPositioned(false);
             setRelPositioned(false);
+            setStickyPositioned(false);
         }
         setHorizontalWritingMode(true);
         setPaintBackground(false);
@@ -1942,9 +1967,9 @@ void RenderObject::propagateStyleToAnonymousChildren(bool blockChildrenOnly)
                 newStyle->setColumnSpan(ColumnSpanAll);
         }
 
-        // Preserve the position style of anonymous block continuations as they can have relative position when
-        // they contain block descendants of relative positioned inlines.
-        if (child->isRelPositioned() && toRenderBlock(child)->isAnonymousBlockContinuation())
+        // Preserve the position style of anonymous block continuations as they can have relative or sticky position when
+        // they contain block descendants of relative or sticky positioned inlines.
+        if (child->isInFlowPositioned() && toRenderBlock(child)->isAnonymousBlockContinuation())
             newStyle->setPosition(child->style()->position());
 
         child->setStyle(newStyle.release());
@@ -1987,7 +2012,12 @@ LayoutRect RenderObject::viewRect() const
 FloatPoint RenderObject::localToAbsolute(const FloatPoint& localPoint, bool fixed, bool useTransforms) const
 {
     TransformState transformState(TransformState::ApplyTransformDirection, localPoint);
-    mapLocalToContainer(0, fixed, useTransforms, transformState);
+    MapLocalToContainerFlags mode = ApplyContainerFlip;
+    if (fixed)
+        mode |= IsFixed;
+    if (useTransforms)
+        mode |= UseTransforms;
+    mapLocalToContainer(0, transformState, mode);
     transformState.flatten();
     
     return transformState.lastPlanarPoint();
@@ -2002,7 +2032,7 @@ FloatPoint RenderObject::absoluteToLocal(const FloatPoint& containerPoint, bool 
     return transformState.lastPlanarPoint();
 }
 
-void RenderObject::mapLocalToContainer(RenderBoxModelObject* repaintContainer, bool fixed, bool useTransforms, TransformState& transformState, ApplyContainerFlipOrNot applyContainerFlip, bool* wasFixed) const
+void RenderObject::mapLocalToContainer(RenderBoxModelObject* repaintContainer, TransformState& transformState, MapLocalToContainerFlags mode, bool* wasFixed) const
 {
     if (repaintContainer == this)
         return;
@@ -2013,10 +2043,10 @@ void RenderObject::mapLocalToContainer(RenderBoxModelObject* repaintContainer, b
 
     // FIXME: this should call offsetFromContainer to share code, but I'm not sure it's ever called.
     LayoutPoint centerPoint = roundedLayoutPoint(transformState.mappedPoint());
-    if (applyContainerFlip && o->isBox()) {
+    if (mode & ApplyContainerFlip && o->isBox()) {
         if (o->style()->isFlippedBlocksWritingMode())
             transformState.move(toRenderBox(o)->flipForWritingModeIncludingColumns(roundedLayoutPoint(transformState.mappedPoint())) - centerPoint);
-        applyContainerFlip = DoNotApplyContainerFlip;
+        mode &= ~ApplyContainerFlip;
     }
 
     LayoutSize columnOffset;
@@ -2027,7 +2057,7 @@ void RenderObject::mapLocalToContainer(RenderBoxModelObject* repaintContainer, b
     if (o->hasOverflowClip())
         transformState.move(-toRenderBox(o)->scrolledContentOffset());
 
-    o->mapLocalToContainer(repaintContainer, fixed, useTransforms, transformState, applyContainerFlip, wasFixed);
+    o->mapLocalToContainer(repaintContainer, transformState, mode, wasFixed);
 }
 
 const RenderObject* RenderObject::pushMappingToContainer(const RenderBoxModelObject* ancestorToStopAt, RenderGeometryMap& geometryMap) const
@@ -2096,21 +2126,31 @@ void RenderObject::getTransformFromContainer(const RenderObject* containerObject
 #endif
 }
 
-FloatQuad RenderObject::localToContainerQuad(const FloatQuad& localQuad, RenderBoxModelObject* repaintContainer, bool fixed, bool* wasFixed) const
+FloatQuad RenderObject::localToContainerQuad(const FloatQuad& localQuad, RenderBoxModelObject* repaintContainer, bool snapOffsetForTransforms, bool fixed, bool* wasFixed) const
 {
     // Track the point at the center of the quad's bounding box. As mapLocalToContainer() calls offsetFromContainer(),
     // it will use that point as the reference point to decide which column's transform to apply in multiple-column blocks.
     TransformState transformState(TransformState::ApplyTransformDirection, localQuad.boundingBox().center(), localQuad);
-    mapLocalToContainer(repaintContainer, fixed, true, transformState, ApplyContainerFlip, wasFixed);
+    MapLocalToContainerFlags mode = ApplyContainerFlip | UseTransforms;
+    if (fixed)
+        mode |= IsFixed;
+    if (snapOffsetForTransforms)
+        mode |= SnapOffsetForTransforms;
+    mapLocalToContainer(repaintContainer, transformState, mode, wasFixed);
     transformState.flatten();
     
     return transformState.lastPlanarQuad();
 }
 
-FloatPoint RenderObject::localToContainerPoint(const FloatPoint& localPoint, RenderBoxModelObject* repaintContainer, bool fixed, bool* wasFixed) const
+FloatPoint RenderObject::localToContainerPoint(const FloatPoint& localPoint, RenderBoxModelObject* repaintContainer, bool snapOffsetForTransforms, bool fixed, bool* wasFixed) const
 {
     TransformState transformState(TransformState::ApplyTransformDirection, localPoint);
-    mapLocalToContainer(repaintContainer, fixed, true, transformState, ApplyContainerFlip, wasFixed);
+    MapLocalToContainerFlags mode = ApplyContainerFlip | UseTransforms;
+    if (fixed)
+        mode |= IsFixed;
+    if (snapOffsetForTransforms)
+        mode |= SnapOffsetForTransforms;
+    mapLocalToContainer(repaintContainer, transformState, mode, wasFixed);
     transformState.flatten();
 
     return transformState.lastPlanarPoint();
@@ -2346,6 +2386,69 @@ void RenderObject::willBeDestroyed()
     clearLayoutRootIfNeeded();
 }
 
+void RenderObject::insertedIntoTree()
+{
+    // FIXME: We should ASSERT(isRooted()) here but generated content makes some out-of-order insertion.
+
+    // Keep our layer hierarchy updated. Optimize for the common case where we don't have any children
+    // and don't have a layer attached to ourselves.
+    RenderLayer* layer = 0;
+    if (firstChild() || hasLayer()) {
+        layer = parent()->enclosingLayer();
+        addLayers(layer);
+    }
+
+    // If |this| is visible but this object was not, tell the layer it has some visible content
+    // that needs to be drawn and layer visibility optimization can't be used
+    if (parent()->style()->visibility() != VISIBLE && style()->visibility() == VISIBLE && !hasLayer()) {
+        if (!layer)
+            layer = parent()->enclosingLayer();
+        if (layer)
+            layer->setHasVisibleContent();
+    }
+
+    if (!isFloating() && parent()->childrenInline())
+        parent()->dirtyLinesFromChangedChild(this);
+
+    if (RenderNamedFlowThread* containerFlowThread = parent()->enclosingRenderNamedFlowThread())
+        containerFlowThread->addFlowChild(this);
+}
+
+void RenderObject::willBeRemovedFromTree()
+{
+    // FIXME: We should ASSERT(isRooted()) but we have some out-of-order removals which would need to be fixed first.
+
+    // If we remove a visible child from an invisible parent, we don't know the layer visibility any more.
+    RenderLayer* layer = 0;
+    if (parent()->style()->visibility() != VISIBLE && style()->visibility() == VISIBLE && !hasLayer()) {
+        if ((layer = parent()->enclosingLayer()))
+            layer->dirtyVisibleContentStatus();
+    }
+
+    // Keep our layer hierarchy updated.
+    if (firstChild() || hasLayer()) {
+        if (!layer)
+            layer = parent()->enclosingLayer();
+        removeLayers(layer);
+    }
+
+    if (isOutOfFlowPositioned() && parent()->childrenInline())
+        parent()->dirtyLinesFromChangedChild(this);
+
+    if (inRenderFlowThread()) {
+        ASSERT(enclosingRenderFlowThread());
+        enclosingRenderFlowThread()->removeFlowChildInfo(this);
+    }
+
+    if (RenderNamedFlowThread* containerFlowThread = parent()->enclosingRenderNamedFlowThread())
+        containerFlowThread->removeFlowChild(this);
+
+#if ENABLE(SVG)
+    // Update cached boundaries in SVG renderers, if a child is removed.
+    parent()->setNeedsBoundariesUpdate();
+#endif
+}
+
 void RenderObject::destroyAndCleanupAnonymousWrappers()
 {
     RenderObject* parent = this->parent();
@@ -2432,25 +2535,25 @@ bool RenderObject::isComposited() const
     return hasLayer() && toRenderBoxModelObject(this)->layer()->isComposited();
 }
 
-bool RenderObject::hitTest(const HitTestRequest& request, HitTestResult& result, const HitTestPoint& pointInContainer, const LayoutPoint& accumulatedOffset, HitTestFilter hitTestFilter)
+bool RenderObject::hitTest(const HitTestRequest& request, HitTestResult& result, const HitTestLocation& locationInContainer, const LayoutPoint& accumulatedOffset, HitTestFilter hitTestFilter)
 {
     bool inside = false;
     if (hitTestFilter != HitTestSelf) {
         // First test the foreground layer (lines and inlines).
-        inside = nodeAtPoint(request, result, pointInContainer, accumulatedOffset, HitTestForeground);
+        inside = nodeAtPoint(request, result, locationInContainer, accumulatedOffset, HitTestForeground);
 
         // Test floats next.
         if (!inside)
-            inside = nodeAtPoint(request, result, pointInContainer, accumulatedOffset, HitTestFloat);
+            inside = nodeAtPoint(request, result, locationInContainer, accumulatedOffset, HitTestFloat);
 
         // Finally test to see if the mouse is in the background (within a child block's background).
         if (!inside)
-            inside = nodeAtPoint(request, result, pointInContainer, accumulatedOffset, HitTestChildBlockBackgrounds);
+            inside = nodeAtPoint(request, result, locationInContainer, accumulatedOffset, HitTestChildBlockBackgrounds);
     }
 
     // See if the mouse is inside us but not any of our descendants
     if (hitTestFilter != HitTestDescendants && !inside)
-        inside = nodeAtPoint(request, result, pointInContainer, accumulatedOffset, HitTestBlockBackground);
+        inside = nodeAtPoint(request, result, locationInContainer, accumulatedOffset, HitTestBlockBackground);
 
     return inside;
 }
@@ -2469,7 +2572,7 @@ void RenderObject::updateHitTestResult(HitTestResult& result, const LayoutPoint&
     }
 }
 
-bool RenderObject::nodeAtPoint(const HitTestRequest&, HitTestResult&, const HitTestPoint& /*pointInContainer*/, const LayoutPoint& /*accumulatedOffset*/, HitTestAction)
+bool RenderObject::nodeAtPoint(const HitTestRequest&, HitTestResult&, const HitTestLocation& /*locationInContainer*/, const LayoutPoint& /*accumulatedOffset*/, HitTestAction)
 {
     return false;
 }
@@ -2641,7 +2744,7 @@ void RenderObject::getTextDecorationColors(int decorations, Color& underline, Co
     }
 }
 
-#if ENABLE(DASHBOARD_SUPPORT)
+#if ENABLE(DASHBOARD_SUPPORT) || ENABLE(WIDGET_REGION)
 void RenderObject::addDashboardRegions(Vector<DashboardRegionValue>& regions)
 {
     // Convert the style regions to absolute coordinates.
@@ -2796,10 +2899,10 @@ RenderBoxModelObject* RenderObject::offsetParent() const
     //       is one of the following HTML elements: td, th, or table.
     //     * Our own extension: if there is a difference in the effective zoom
 
-    bool skipTables = isOutOfFlowPositioned() || isRelPositioned();
+    bool skipTables = isPositioned();
     float currZoom = style()->effectiveZoom();
     RenderObject* curr = parent();
-    while (curr && (!curr->node() || (!curr->isOutOfFlowPositioned() && !curr->isRelPositioned() && !curr->isBody()))) {
+    while (curr && (!curr->node() || (!curr->isPositioned() && !curr->isBody()))) {
         Node* element = curr->node();
         if (!skipTables && element && (element->hasTagName(tableTag) || element->hasTagName(tdTag) || element->hasTagName(thTag)))
             break;
@@ -2897,6 +3000,11 @@ bool RenderObject::canUpdateSelectionOnRootLineBoxes()
 bool RenderObject::canHaveGeneratedChildren() const
 {
     return canHaveChildren();
+}
+
+bool RenderObject::canBeReplacedWithInlineRunIn() const
+{
+    return true;
 }
 
 #if ENABLE(SVG)

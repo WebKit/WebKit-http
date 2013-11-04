@@ -70,15 +70,6 @@ static bool hasImpliedEndTag(const HTMLStackItem* item)
         || item->hasTagName(rtTag);
 }
 
-static bool causesFosterParenting(const HTMLStackItem* item)
-{
-    return item->hasTagName(tableTag)
-        || item->hasTagName(tbodyTag)
-        || item->hasTagName(tfootTag)
-        || item->hasTagName(theadTag)
-        || item->hasTagName(trTag);
-}
-
 static inline bool isAllWhitespace(const String& string)
 {
     return string.isAllSpecialCharacters<isHTMLSpace>();
@@ -277,9 +268,9 @@ void HTMLConstructionSite::insertCommentOnHTMLHtmlElement(AtomicHTMLToken* token
 void HTMLConstructionSite::insertHTMLHeadElement(AtomicHTMLToken* token)
 {
     ASSERT(!shouldFosterParent());
-    m_head = createHTMLElement(token);
-    attachLater(currentNode(), m_head);
-    m_openElements.pushHTMLHeadElement(HTMLStackItem::create(m_head, token));
+    m_head = HTMLStackItem::create(createHTMLElement(token), token);
+    attachLater(currentNode(), m_head->element());
+    m_openElements.pushHTMLHeadElement(m_head);
 }
 
 void HTMLConstructionSite::insertHTMLBodyElement(AtomicHTMLToken* token)
@@ -476,7 +467,10 @@ void HTMLConstructionSite::findFosterSite(HTMLConstructionSiteTask& task)
     HTMLElementStack::ElementRecord* lastTableElementRecord = m_openElements.topmost(tableTag.localName());
     if (lastTableElementRecord) {
         Element* lastTableElement = lastTableElementRecord->element();
-        if (ContainerNode* parent = lastTableElement->parentNode()) {
+        ContainerNode* parent = lastTableElement->parentNode();
+        // When parsing HTML fragments, we skip step 4.2 ("Let root be a new html element with no attributes") for efficiency,
+        // and instead use the DocumentFragment as a root node. So we must treat the root node (DocumentFragment) as if it is a html element here.
+        if (parent && (parent->isElementNode() || (m_isParsingFragment && parent == m_openElements.rootNode()))) {
             task.parent = parent;
             task.nextChild = lastTableElement;
             return;
@@ -492,7 +486,7 @@ bool HTMLConstructionSite::shouldFosterParent() const
 {
     return m_redirectAttachToFosterParent
         && currentStackItem()->isElementNode()
-        && causesFosterParenting(currentStackItem());
+        && currentStackItem()->causesFosterParenting();
 }
 
 void HTMLConstructionSite::fosterParent(PassRefPtr<Node> node)

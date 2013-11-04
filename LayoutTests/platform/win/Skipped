@@ -959,6 +959,7 @@ http/tests/security/xss-DENIED-window-open-javascript-url.html
 # Skip frame flattening tests until it can be tested by this DRT
 # https://bugs.webkit.org/show_bug.cgi?id=32717
 fast/frames/flattening/
+fast/text-autosizing/narrow-iframe-flattened.html
 
 # https://bugs.webkit.org/show_bug.cgi?id=34933
 media/video-display-aspect-ratio.html
@@ -1090,6 +1091,10 @@ fast/dom/HTMLLinkElement/prefetch-too-many-clients.html
 http/tests/misc/link-rel-prefetch-and-subresource.html
 fast/dom/HTMLLinkElement/subresource.html
 http/tests/misc/prefetch-purpose.html
+
+# link prerender is disabled.
+fast/dom/HTMLLinkElement/prerender-insert-after-stop.html
+fast/dom/HTMLLinkElement/prerender-remove-after-stop.html
 
 # LayoutTestController::pageProperty is not implemented for WIN yet.
 printing/page-rule-selection.html
@@ -1295,6 +1300,7 @@ fast/parser/pre-html5-parser-quirks.html
 fast/filesystem
 http/tests/filesystem
 http/tests/inspector/filesystem
+http/tests/security/contentSecurityPolicy/filesystem-urls-match-self.html
 http/tests/security/filesystem-iframe-from-remote.html
 http/tests/websocket/tests/hybi/send-file-blob.html
 http/tests/websocket/tests/hybi/send-file-blob-fail.html
@@ -1307,6 +1313,8 @@ plugins/iframe-shims.html
 # Requires WebP support.
 fast/canvas/canvas-toDataURL-webp.html
 fast/images/webp-image-decoding.html
+http/tests/images/webp-partial-load.html
+http/tests/images/webp-progressive-load.html
 
 # Missing layoutTestController.findString() http://webkit.org/b/50234
 editing/text-iterator/findString.html
@@ -1460,6 +1468,7 @@ loader/navigation-while-deferring-loads.html
 http/tests/security/isolatedWorld/cross-origin-xhr.html
 
 # ENABLE(WEBGL) is disabled
+compositing/backface-visibility/backface-visibility-webgl.html
 compositing/visibility/visibility-simple-webgl-layer.html
 compositing/webgl
 fast/canvas/webgl
@@ -1733,6 +1742,7 @@ fast/sub-pixel/file-upload-control-at-fractional-offset.html
 fast/sub-pixel/float-containing-block-with-margin.html
 fast/sub-pixel/float-with-right-margin-zoom.html
 fast/sub-pixel/float-wrap-with-subpixel-top.html
+fast/sub-pixel/inline-block-should-not-wrap.html
 fast/sub-pixel/inline-block-with-margin.html
 fast/sub-pixel/inline-block-with-padding.html
 fast/sub-pixel/layout-boxes-with-zoom.html
@@ -1740,6 +1750,7 @@ fast/sub-pixel/position-right-aligns-with-container.html
 fast/sub-pixel/selection/selection-gaps-at-fractional-offsets.html
 fast/sub-pixel/size-of-box-with-zoom.html
 fast/sub-pixel/table-rows-no-gaps.html
+fast/sub-pixel/sub-pixel-accumulates-to-layers.html
 
 # No CORS support for media elements is implemented yet.
 http/tests/security/video-cross-origin-readback.html
@@ -1951,3 +1962,190 @@ http/tests/security/contentSecurityPolicy/1.1
 
 # Skip tests in fast/text/shaping
 fast/text/shaping
+
+# ENABLE(WIDGET_REGION) is disabled
+fast/css/widget-region-parser.html
+
+# CSS image-orientation property not yet supported
+fast/css/image-orientation/
+
+# Test uses "required" form element property which currently does not work on Safari
+fast/forms/validation-message-user-modify.html
+
+# The textInputController.setComposition() implementation is missing
+fast/forms/input-set-composition-scroll.html
+
+# https://bugs.webkit.org/show_bug.cgi?id=93667
+# Test times out
+fast/forms/select/menulist-popup-crash.html
+
+# This test causes any following plugins test to crash
+plugins/nested-plugin-objects.html
+
+#Require rebaselining after  https://bugs.webkit.org/show_bug.cgi?id=89826
+fast/css/word-space-extra.html
+
+# ENABLE(INPUT_TYPE_TIME_MULTIPLE_FIELDS) is disabled
+fast/forms/time-multiple-fields
+
+# Require rebaseline after https://bugs.webkit.org/show_bug.cgi?id=84286
+fast/block/float/avoidance-rtl.html
+fast/borders/border-radius-wide-border-01.html
+fast/borders/only-one-border-with-width.html
+fast/multicol/progression-reverse.html
+fast/multicol/vertical-lr/rules-with-border-before.html
+fast/multicol/vertical-rl/rules-with-border-before.html
+css1/box_properties/border_bottom-expected.png
+css2.1/t0805-c5519-brdr-r-00-a.html
+css2.1/t0805-c5519-brdr-r-01-e.html
+css2.1/t0805-c5520-brdr-b-01-e.html
+css2.1/t0805-c5521-brdr-l-00-a.html
+css2.1/t0805-c5521-brdr-l-01-e.html
+css2.1/t0805-c5521-ibrdr-l-00-a.html
+fast/css/line-height-determined-by-primary-font.html
+animations/cross-fade-border-image-source.html
+css1/box_properties/border_bottom.html
+css1/box_properties/border_bottom_inline.html
+css1/box_properties/border_left.html
+css1/box_properties/border_left_inline.html
+css1/box_properties/border_right.html
+css1/box_properties/border_right_inline.html
+css1/units/length_units.html
+css2.1/20110323/absolute-replaced-height-036.htm
+css2.1/20110323/block-non-replaced-height-007.htm
+css2.1/20110323/block-non-replaced-height-008.htm
+css2.1/20110323/block-non-replaced-height-009.htm
+css2.1/20110323/block-non-replaced-height-010.htm
+css2.1/20110323/block-non-replaced-width-001.htm
+css2.1/20110323/block-non-replaced-width-002.htm
+css2.1/20110323/block-non-replaced-width-003.htm
+css2.1/20110323/block-non-replaced-width-004.htm
+css2.1/20110323/block-non-replaced-width-008.htm
+css2.1/20110323/margin-applies-to-008.htm
+css2.1/20110323/width-non-replaced-inline-001.htm
+css2.1/t040302-c61-phys-len-00-b.html
+css2.1/t0804-c5507-padn-r-02-f.html
+css2.1/t0804-c5508-ipadn-b-03-b-a.html
+css2.1/t0804-c5509-padn-l-02-f.html
+css2.1/t0805-c5519-brdr-r-02-e.html
+css2.1/t0805-c5519-ibrdr-r-00-a.html
+css2.1/t0805-c5520-brdr-b-00-a.html
+css2.1/t0805-c5520-ibrdr-b-00-a.html
+css2.1/t0805-c5521-brdr-l-02-e.html
+editing/deleting/type-delete-after-quote.html
+editing/execCommand/4580583-1.html
+editing/execCommand/4580583-2.html
+editing/inserting/5418891.html
+editing/inserting/5510537.html
+editing/inserting/6703873.html
+editing/inserting/break-blockquote-after-delete.html
+editing/pasteboard/5006779.html
+editing/pasteboard/paste-blockquote-after-blockquote.html
+editing/pasteboard/paste-blockquote-into-blockquote-4.html
+fast/block/float/012.html
+fast/block/float/013.html
+fast/block/float/016.html
+fast/block/margin-collapse/041.html
+fast/block/margin-collapse/043.html
+fast/block/margin-collapse/057.html
+fast/css/acid2.html
+fast/css/acid2-pixel.html
+fast/css/border-height.html
+fast/frames/viewsource-attribute.html
+fast/frames/viewsource-on-image-file.html
+fast/inline/inline-padding-disables-text-quirk.html
+fast/inline/inline-text-quirk-bpm.html
+fast/layers/scroll-rect-to-visible.html
+fast/lists/007.html
+fast/multicol/block-axis-horizontal-bt.html
+fast/multicol/block-axis-vertical-lr.html
+fast/multicol/block-axis-vertical-rl.html
+fast/overflow/overflow-rtl.html
+fast/overflow/overflow-rtl-inline-scrollbar.html
+fast/repaint/repaint-across-writing-mode-boundary.html
+fast/table/border-collapsing/003.html
+fast/table/border-collapsing/003-vertical.html
+fast/table/border-collapsing/rtl-border-collapsing.html
+fast/table/colgroup-spanning-groups-rules.html
+fast/text/basic/015.html
+fast/text/monospace-width-cache.html
+http/tests/misc/acid2.html
+http/tests/misc/acid2-pixel.html
+ietestcenter/css3/bordersbackgrounds/border-radius-applies-to-009.htm
+ietestcenter/css3/bordersbackgrounds/border-radius-applies-to-012.htm
+ietestcenter/css3/bordersbackgrounds/border-radius-applies-to-013.htm
+ietestcenter/css3/bordersbackgrounds/border-radius-applies-to-014.htm
+ietestcenter/css3/bordersbackgrounds/border-radius-applies-to-015.htm
+ietestcenter/css3/bordersbackgrounds/border-radius-applies-to-016.htm
+ietestcenter/css3/bordersbackgrounds/border-top-left-radius-values-001.htm
+tables/mozilla/core/table_rules.html
+tables/mozilla/marvin/x_table_rules_groups.xml
+tables/mozilla_expected_failures/collapsing_borders/bug41262-1.html
+tables/mozilla_expected_failures/other/test4.html
+transforms/2d/transform-borderbox.html
+transforms/2d/transform-origin-borderbox.html
+transitions/cross-fade-border-image.html
+fast/css/pseudo-first-line-border-width.html
+css2.1/20110323/abspos-non-replaced-width-margin-000.htm
+css2.1/20110323/abspos-replaced-width-margin-000.htm
+fast/css/caption-width-absolute-position.htm
+fast/css/caption-width-absolute-position-offset-top.htm
+fast/css/caption-width-fixed-position.htm
+fast/css/caption-width-fixed-position-offset-top.htm
+fast/table/border-collapsing/equal-precedence-resolution.html
+fast/table/border-collapsing/equal-precedence-resolution-vertical.html
+fast/text/apply-start-width-after-skipped-text.html
+compositing/iframes/invisible-nested-iframe-show.html 
+compositing/overflow/overflow-auto-with-touch.html
+compositing/overflow/overflow-overlay-with-touch.html 
+compositing/overflow/scrolling-content-clip-to-viewport.html  
+compositing/overflow/textarea-scroll-touch.html
+compositing/plugins/no-backing-store.html 
+compositing/rtl/rtl-iframe-absolute-overflow-scrolled.html
+compositing/rtl/rtl-iframe-absolute-overflow.html 
+compositing/rtl/rtl-iframe-fixed-overflow-scrolled.html
+compositing/rtl/rtl-iframe-fixed-overflow.html
+css2.1/20110323/abspos-replaced-width-margin-000-ref.htm  
+fast/block/positioning/inline-block-relposition.html  
+fast/css/rtl-ordering.html
+fast/dom/HTMLTableColElement/resize-table-using-col-width.html
+fast/dynamic/positioned-movement-with-positioned-children.html
+fast/forms/basic-buttons.html 
+fast/forms/box-shadow-override.html
+fast/forms/button-align.html  
+fast/forms/button-cannot-be-nested.html
+fast/forms/button-generated-content.html  
+fast/forms/button-inner-block-reuse.html  
+fast/forms/button-positioned.html 
+fast/forms/button-sizes.html  
+fast/forms/button-style-color.html
+fast/forms/button-text-transform.html 
+fast/forms/button-white-space.html
+fast/forms/control-clip-overflow.html 
+fast/forms/select-baseline.html
+fast/repaint/control-clip.html
+fast/selectors/064.html
+fast/table/append-cells2.html 
+fast/table/remove-td-display-none.html
+fast/writing-mode/broken-ideograph-small-caps.html
+fast/writing-mode/broken-ideographic-font.html
+fast/writing-mode/vertical-font-fallback.html 
+svg/custom/inline-svg-in-xhtml.xml
+svg/custom/use-on-symbol-inside-pattern.svg
+tables/mozilla/bugs/bug68912.html 
+tables/mozilla_expected_failures/collapsing_borders/bug41262-6.html
+http/tests/security/referrer-policy-https-origin.html 
+
+# Rebaseline after bug 77754
+fast/inline/left-right-center-inline-alignment-in-ltr-and-rtl-blocks.html
+fast/inline/absolute-positioned-inline-in-centred-block.html
+fast/css/absolute-child-with-percent-height-inside-relative-parent.html
+
+# These tests have different results for NRWT and ORWT, skipping on OWRT for now
+editing/deleting/delete-br-004.html
+editing/deleting/delete-br-005.html
+editing/deleting/delete-br-006.html
+
+# https://bugs.webkit.org/show_bug.cgi?id=95405
+# Test times out
+platform/win/accessibility/single-select-children.html

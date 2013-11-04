@@ -49,7 +49,7 @@ class Range;
 class ScriptExecutionContext;
 class ShadowRoot;
 class WebKitPoint;
-class FastMallocStatistics;
+class MallocStatistics;
 
 typedef int ExceptionCode;
 
@@ -81,8 +81,6 @@ public:
     Element* includerFor(Node*, ExceptionCode&);
     String shadowPseudoId(Element*, ExceptionCode&);
     void setShadowPseudoId(Element*, const String&, ExceptionCode&);
-
-    void setAuthorShadowDOMForAnyElementEnabled(bool isEnabled);
 
     PassRefPtr<Element> createContentElement(Document*, ExceptionCode&);
     Element* getElementByIdInShadowRoot(Node* shadowRoot, const String& id, ExceptionCode&);
@@ -144,6 +142,8 @@ public:
 #if ENABLE(TOUCH_ADJUSTMENT)
     PassRefPtr<WebKitPoint> touchPositionAdjustedToBestClickableNode(long x, long y, long width, long height, Document*, ExceptionCode&);
     Node* touchNodeAdjustedToBestClickableNode(long x, long y, long width, long height, Document*, ExceptionCode&);
+    PassRefPtr<WebKitPoint> touchPositionAdjustedToBestContextMenuNode(long x, long y, long width, long height, Document*, ExceptionCode&);
+    Node* touchNodeAdjustedToBestContextMenuNode(long x, long y, long width, long height, Document*, ExceptionCode&);
     PassRefPtr<ClientRect> bestZoomableAreaForTouchPoint(long x, long y, long width, long height, Document*, ExceptionCode&);
 #endif
 
@@ -158,7 +158,6 @@ public:
 
     unsigned wheelEventHandlerCount(Document*, ExceptionCode&);
     unsigned touchEventHandlerCount(Document*, ExceptionCode&);
-    bool hasTouchEventListener(Document*, ExceptionCode&);
 
     PassRefPtr<NodeList> nodesFromRect(Document*, int x, int y, unsigned topPadding, unsigned rightPadding,
         unsigned bottomPadding, unsigned leftPadding, bool ignoreClipping, bool allowShadowContent, ExceptionCode&) const;
@@ -210,7 +209,9 @@ public:
     void registerURLSchemeAsBypassingContentSecurityPolicy(const String& scheme);
     void removeURLSchemeRegisteredAsBypassingContentSecurityPolicy(const String& scheme);
 
-    PassRefPtr<FastMallocStatistics> fastMallocStatistics() const;
+    PassRefPtr<MallocStatistics> mallocStatistics() const;
+
+    PassRefPtr<DOMStringList> getReferencedFilePaths() const;
 
 private:
     explicit Internals(Document*);

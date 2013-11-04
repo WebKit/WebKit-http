@@ -21,14 +21,14 @@
 #include "config.h"
 #include "V8TestNode.h"
 
+#include "BindingState.h"
 #include "ContextFeatures.h"
+#include "Frame.h"
 #include "RuntimeEnabledFeatures.h"
 #include "V8Binding.h"
-#include "V8BindingState.h"
 #include "V8DOMWrapper.h"
 #include "V8IsolatedContext.h"
 #include "V8Node.h"
-#include "V8Proxy.h"
 #include <wtf/UnusedParam.h>
 
 namespace WebCore {
@@ -46,7 +46,7 @@ v8::Handle<v8::Value> V8TestNode::constructorCallback(const v8::Arguments& args)
     INC_STATS("DOM.TestNode.Constructor");
 
     if (!args.IsConstructCall())
-        return V8Proxy::throwTypeError("DOM object constructor cannot be called as a function.");
+        return throwTypeError("DOM object constructor cannot be called as a function.");
 
     if (ConstructorMode::current() == ConstructorMode::WrapExistingObject)
         return args.Holder();
@@ -55,8 +55,8 @@ v8::Handle<v8::Value> V8TestNode::constructorCallback(const v8::Arguments& args)
     v8::Handle<v8::Object> wrapper = args.Holder();
 
     V8DOMWrapper::setDOMWrapper(wrapper, &info, impl.get());
-    V8DOMWrapper::setJSWrapperForDOMNode(impl.release(), v8::Persistent<v8::Object>::New(wrapper), args.GetIsolate());
-    return args.Holder();
+    V8DOMWrapper::setJSWrapperForDOMNode(impl.release(), wrapper, args.GetIsolate());
+    return wrapper;
 }
 
 static v8::Persistent<v8::FunctionTemplate> ConfigureV8TestNodeTemplate(v8::Persistent<v8::FunctionTemplate> desc)
@@ -64,7 +64,7 @@ static v8::Persistent<v8::FunctionTemplate> ConfigureV8TestNodeTemplate(v8::Pers
     desc->ReadOnlyPrototype();
 
     v8::Local<v8::Signature> defaultSignature;
-    defaultSignature = configureTemplate(desc, "TestNode", V8Node::GetTemplate(), V8TestNode::internalFieldCount,
+    defaultSignature = V8DOMConfiguration::configureTemplate(desc, "TestNode", V8Node::GetTemplate(), V8TestNode::internalFieldCount,
         0, 0,
         0, 0);
     UNUSED_PARAM(defaultSignature); // In some cases, it will not be used.
@@ -72,14 +72,14 @@ static v8::Persistent<v8::FunctionTemplate> ConfigureV8TestNodeTemplate(v8::Pers
     
 
     // Custom toString template
-    desc->Set(getToStringName(), getToStringTemplate());
+    desc->Set(v8::String::NewSymbol("toString"), V8PerIsolateData::current()->toStringTemplate());
     return desc;
 }
 
 v8::Persistent<v8::FunctionTemplate> V8TestNode::GetRawTemplate()
 {
-    V8BindingPerIsolateData* data = V8BindingPerIsolateData::current();
-    V8BindingPerIsolateData::TemplateMap::iterator result = data->rawTemplateMap().find(&info);
+    V8PerIsolateData* data = V8PerIsolateData::current();
+    V8PerIsolateData::TemplateMap::iterator result = data->rawTemplateMap().find(&info);
     if (result != data->rawTemplateMap().end())
         return result->second;
 
@@ -91,8 +91,8 @@ v8::Persistent<v8::FunctionTemplate> V8TestNode::GetRawTemplate()
 
 v8::Persistent<v8::FunctionTemplate> V8TestNode::GetTemplate()
 {
-    V8BindingPerIsolateData* data = V8BindingPerIsolateData::current();
-    V8BindingPerIsolateData::TemplateMap::iterator result = data->templateMap().find(&info);
+    V8PerIsolateData* data = V8PerIsolateData::current();
+    V8PerIsolateData::TemplateMap::iterator result = data->templateMap().find(&info);
     if (result != data->templateMap().end())
         return result->second;
 
@@ -112,30 +112,31 @@ bool V8TestNode::HasInstance(v8::Handle<v8::Value> value)
 v8::Handle<v8::Object> V8TestNode::wrapSlow(PassRefPtr<TestNode> impl, v8::Isolate* isolate)
 {
     v8::Handle<v8::Object> wrapper;
-    V8Proxy* proxy = V8Proxy::retrieve(impl->document()->frame());
+    ASSERT(static_cast<void*>(static_cast<Node*>(impl.get())) == static_cast<void*>(impl.get()));
+    Frame* frame = impl->document()->frame();
 
     // Enter the node's context and create the wrapper in that context.
     v8::Handle<v8::Context> context;
-    if (proxy && !proxy->matchesCurrentContext()) {
-        // For performance, we enter the context only if the currently running context
-        // is different from the context that we are about to enter.
-        context = proxy->context();
-        if (!context.IsEmpty())
-            context->Enter();
+    if (frame) {
+        v8::Handle<v8::Context> underlyingHandle = frame->script()->unsafeHandleToCurrentWorldContext();
+        if (v8::Context::GetCurrent() != underlyingHandle) {
+            // For performance, we enter the context only if the currently running context
+            // is different from the context that we are about to enter.
+            context = v8::Local<v8::Context>::New(underlyingHandle);
+            if (!context.IsEmpty())
+                context->Enter();
+        }
     }
-    wrapper = V8DOMWrapper::instantiateV8Object(proxy, &info, impl.get());
+    wrapper = V8DOMWrapper::instantiateV8Object(frame, &info, impl.get());
     // Exit the node's context if it was entered.
     if (!context.IsEmpty())
         context->Exit();
     if (UNLIKELY(wrapper.IsEmpty()))
         return wrapper;
-
-    v8::Persistent<v8::Object> wrapperHandle = v8::Persistent<v8::Object>::New(wrapper);
-
+    v8::Persistent<v8::Object> wrapperHandle = V8DOMWrapper::setJSWrapperForDOMNode(impl, wrapper, isolate);
     if (!hasDependentLifetime)
         wrapperHandle.MarkIndependent();
     wrapperHandle.SetWrapperClassId(v8DOMSubtreeClassId);
-    V8DOMWrapper::setJSWrapperForDOMNode(impl, wrapperHandle, isolate);
     return wrapper;
 }
 

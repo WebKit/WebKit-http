@@ -8,6 +8,21 @@ TimeStamp Properties:
         message : "TIME STAMP"
     }
     type : "TimeStamp"
+    frameId : <string>
+    usedHeapSize : <number>
+    totalHeapSize : <number>
+    counters : <object>
+}
+Timestamp records: 
+TimeStamp Properties:
+{
+    startTime : <number>
+    stackTrace : <object>
+    data : {
+        message : "TIME STAMP"
+    }
+    type : "TimeStamp"
+    frameId : <string>
     usedHeapSize : <number>
     totalHeapSize : <number>
     counters : <object>

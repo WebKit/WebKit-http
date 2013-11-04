@@ -42,12 +42,14 @@
 #include "PlatformSupport.h"
 #include "RetainedDOMInfo.h"
 #include "RetainedObjectInfo.h"
+#include "V8AbstractEventListener.h"
 #include "V8Binding.h"
 #include "V8CSSRule.h"
 #include "V8CSSRuleList.h"
 #include "V8CSSStyleDeclaration.h"
 #include "V8DOMImplementation.h"
 #include "V8MessagePort.h"
+#include "V8RecursionScope.h"
 #include "V8StyleSheet.h"
 #include "V8StyleSheetList.h"
 #include "WrapperTypeInfo.h"
@@ -89,7 +91,7 @@ namespace WebCore {
 
 static GlobalHandleMap& currentGlobalHandleMap()
 {
-    return V8BindingPerIsolateData::current()->globalHandleMap();
+    return V8PerIsolateData::current()->globalHandleMap();
 }
 
 // The function is the place to set the break point to inspect
@@ -418,7 +420,7 @@ void V8GCController::gcPrologue()
     grouperVisitor.applyGrouping();
 
     // Clean single element cache for string conversions.
-    V8BindingPerIsolateData* data = V8BindingPerIsolateData::current();
+    V8PerIsolateData* data = V8PerIsolateData::current();
     data->stringCache()->clearOnGC();
 }
 
@@ -519,5 +521,35 @@ void V8GCController::checkMemoryUsage()
 #endif
 }
 
+void V8GCController::hintForCollectGarbage()
+{
+    V8PerIsolateData* data = V8PerIsolateData::current();
+    if (!data->shouldCollectGarbageSoon())
+        return;
+    const int longIdlePauseInMS = 1000;
+    data->clearShouldCollectGarbageSoon();
+    v8::V8::ContextDisposedNotification();
+    v8::V8::IdleNotification(longIdlePauseInMS);
+}
+
+void V8GCController::collectGarbage()
+{
+    v8::HandleScope handleScope;
+
+    v8::Persistent<v8::Context> context = v8::Context::New();
+    if (context.IsEmpty())
+        return;
+    {
+        v8::Context::Scope scope(context);
+        v8::Local<v8::String> source = v8::String::New("if (gc) gc();");
+        v8::Local<v8::String> name = v8::String::New("gc");
+        v8::Handle<v8::Script> script = v8::Script::Compile(source, name);
+        if (!script.IsEmpty()) {
+            V8RecursionScope::MicrotaskSuppression scope;
+            script->Run();
+        }
+    }
+    context.Dispose();
+}
 
 }  // namespace WebCore

@@ -24,7 +24,7 @@
 
 #include "config.h"
 
-#include "cc/CCMathUtil.h"
+#include "CCMathUtil.h"
 
 #include "FloatPoint.h"
 #include "FloatQuad.h"
@@ -57,17 +57,17 @@ static HomogeneousCoordinate projectHomogeneousPoint(const WebTransformationMatr
     return HomogeneousCoordinate(outX, outY, outZ, outW);
 }
 
-static HomogeneousCoordinate mapHomogeneousPoint(const WebTransformationMatrix& transform, const FloatPoint& p)
+static HomogeneousCoordinate mapHomogeneousPoint(const WebTransformationMatrix& transform, const FloatPoint3D& p)
 {
     double x = p.x();
     double y = p.y();
-    // implicit definition of z = 0;
+    double z = p.z();
     // implicit definition of w = 1;
 
-    double outX = x * transform.m11() + y * transform.m21() + transform.m41();
-    double outY = x * transform.m12() + y * transform.m22() + transform.m42();
-    double outZ = x * transform.m13() + y * transform.m23() + transform.m43();
-    double outW = x * transform.m14() + y * transform.m24() + transform.m44();
+    double outX = x * transform.m11() + y * transform.m21() + z * transform.m31() + transform.m41();
+    double outY = x * transform.m12() + y * transform.m22() + z * transform.m32() + transform.m42();
+    double outZ = x * transform.m13() + y * transform.m23() + z * transform.m33() + transform.m43();
+    double outW = x * transform.m14() + y * transform.m24() + z * transform.m34() + transform.m44();
 
     return HomogeneousCoordinate(outX, outY, outZ, outW);
 }
@@ -274,6 +274,52 @@ FloatQuad CCMathUtil::mapQuad(const WebTransformationMatrix& transform, const Fl
     return FloatQuad(h1.cartesianPoint2d(), h2.cartesianPoint2d(), h3.cartesianPoint2d(), h4.cartesianPoint2d());
 }
 
+FloatPoint CCMathUtil::mapPoint(const WebTransformationMatrix& transform, const FloatPoint& p, bool& clipped)
+{
+    HomogeneousCoordinate h = mapHomogeneousPoint(transform, p);
+
+    if (h.w > 0) {
+        clipped = false;
+        return h.cartesianPoint2d();
+    }
+
+    // The cartesian coordinates will be invalid after dividing by w.
+    clipped = true;
+
+    // Avoid dividing by w if w == 0.
+    if (!h.w)
+        return FloatPoint();
+
+    // This return value will be invalid because clipped == true, but (1) users of this
+    // code should be ignoring the return value when clipped == true anyway, and (2) this
+    // behavior is more consistent with existing behavior of WebKit transforms if the user
+    // really does not ignore the return value.
+    return h.cartesianPoint2d();
+}
+
+FloatPoint3D CCMathUtil::mapPoint(const WebTransformationMatrix& transform, const FloatPoint3D& p, bool& clipped)
+{
+    HomogeneousCoordinate h = mapHomogeneousPoint(transform, p);
+
+    if (h.w > 0) {
+        clipped = false;
+        return h.cartesianPoint3d();
+    }
+
+    // The cartesian coordinates will be invalid after dividing by w.
+    clipped = true;
+
+    // Avoid dividing by w if w == 0.
+    if (!h.w)
+        return FloatPoint3D();
+
+    // This return value will be invalid because clipped == true, but (1) users of this
+    // code should be ignoring the return value when clipped == true anyway, and (2) this
+    // behavior is more consistent with existing behavior of WebKit transforms if the user
+    // really does not ignore the return value.
+    return h.cartesianPoint3d();
+}
+
 FloatQuad CCMathUtil::projectQuad(const WebTransformationMatrix& transform, const FloatQuad& q, bool& clipped)
 {
     FloatQuad projectedQuad;
@@ -314,5 +360,40 @@ FloatPoint CCMathUtil::projectPoint(const WebTransformationMatrix& transform, co
     return h.cartesianPoint2d();
 }
 
+void CCMathUtil::flattenTransformTo2d(WebTransformationMatrix& transform)
+{
+    // Set both the 3rd row and 3rd column to (0, 0, 1, 0).
+    //
+    // One useful interpretation of doing this operation:
+    //  - For x and y values, the new transform behaves effectively like an orthographic
+    //    projection was added to the matrix sequence.
+    //  - For z values, the new transform overrides any effect that the transform had on
+    //    z, and instead it preserves the z value for any points that are transformed.
+    //  - Because of linearity of transforms, this flattened transform also preserves the
+    //    effect that any subsequent (post-multiplied) transforms would have on z values.
+    //
+    transform.setM13(0);
+    transform.setM23(0);
+    transform.setM31(0);
+    transform.setM32(0);
+    transform.setM33(1);
+    transform.setM34(0);
+    transform.setM43(0);
+}
+
+float CCMathUtil::smallestAngleBetweenVectors(const FloatSize& v1, const FloatSize& v2)
+{
+    float dotProduct = (v1.width() * v2.width() + v1.height() * v2.height()) / (v1.diagonalLength() * v2.diagonalLength());
+    // Clamp to compensate for rounding errors.
+    dotProduct = std::max(-1.f, std::min(1.f, dotProduct));
+    return rad2deg(acosf(dotProduct));
+}
+
+FloatSize CCMathUtil::projectVector(const FloatSize& source, const FloatSize& destination)
+{
+    float sourceDotDestination = source.width() * destination.width() + source.height() * destination.height();
+    float projectedLength = sourceDotDestination / destination.diagonalLengthSquared();
+    return FloatSize(projectedLength * destination.width(), projectedLength * destination.height());
+}
 
 } // namespace WebCore

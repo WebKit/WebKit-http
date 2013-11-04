@@ -36,14 +36,10 @@
 #include <wtf/unicode/CharacterNames.h>
 
 #if PLATFORM(QT)
-#if HAVE(QRAWFONT)
 #include <QRawFont>
 QT_BEGIN_NAMESPACE
 class QTextLayout;
 QT_END_NAMESPACE
-#else
-#include <QFont>
-#endif
 #endif
 
 namespace WebCore {
@@ -57,6 +53,8 @@ class FontSelector;
 class GlyphBuffer;
 class GlyphPageTreeNode;
 class GraphicsContext;
+class RenderText;
+class TextLayout;
 class TextRun;
 
 struct GlyphData;
@@ -105,6 +103,10 @@ public:
 
     float width(const TextRun&, HashSet<const SimpleFontData*>* fallbackFonts = 0, GlyphOverflow* = 0) const;
     float width(const TextRun&, int& charsConsumed, String& glyphName) const;
+
+    PassOwnPtr<TextLayout> createLayout(RenderText*, float xPos, bool collapseWhiteSpace) const;
+    static void deleteLayout(TextLayout*);
+    static float width(TextLayout&, unsigned from, unsigned len);
 
     int offsetForPosition(const TextRun&, float position, bool includePartialGlyphs) const;
     FloatRect selectionRectForText(const TextRun&, const FloatPoint&, int h, int from = 0, int to = -1) const;
@@ -184,11 +186,7 @@ public:
     static unsigned expansionOpportunityCount(const UChar*, size_t length, TextDirection, bool& isAfterExpansion);
 
 #if PLATFORM(QT)
-#if HAVE(QRAWFONT)
     QRawFont rawFont() const;
-#else
-    QFont font() const;
-#endif
     QFont syntheticFont() const;
 #endif
 
@@ -268,7 +266,8 @@ private:
     {
         return m_fontList && m_fontList->loadingCustomFonts();
     }
-#if PLATFORM(QT) && HAVE(QRAWFONT)
+
+#if PLATFORM(QT)
     void initFormatForTextLayout(QTextLayout*) const;
 #endif
 
@@ -314,6 +313,12 @@ inline float Font::tabWidth(const SimpleFontData& fontData, unsigned tabSize, fl
     float tabWidth = tabSize * fontData.spaceWidth() + letterSpacing();
     return tabWidth - fmodf(position, tabWidth);
 }
+
+}
+
+namespace WTF {
+
+template <> void deleteOwnedPtr<WebCore::TextLayout>(WebCore::TextLayout*);
 
 }
 

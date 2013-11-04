@@ -27,18 +27,18 @@
 
 #if USE(ACCELERATED_COMPOSITING)
 
-#include "cc/CCRenderSurface.h"
+#include "CCRenderSurface.h"
 
-#include "GraphicsContext3D.h"
-#include "LayerRendererChromium.h"
+#include "CCDamageTracker.h"
+#include "CCDebugBorderDrawQuad.h"
+#include "CCLayerImpl.h"
+#include "CCMathUtil.h"
+#include "CCQuadSink.h"
+#include "CCRenderPass.h"
+#include "CCRenderPassDrawQuad.h"
+#include "CCRenderPassSink.h"
+#include "CCSharedQuadState.h"
 #include "TextStream.h"
-#include "cc/CCDamageTracker.h"
-#include "cc/CCDebugBorderDrawQuad.h"
-#include "cc/CCLayerImpl.h"
-#include "cc/CCMathUtil.h"
-#include "cc/CCQuadSink.h"
-#include "cc/CCRenderPassDrawQuad.h"
-#include "cc/CCSharedQuadState.h"
 #include <public/WebTransformationMatrix.h>
 #include <wtf/text/CString.h>
 
@@ -161,34 +161,50 @@ bool CCRenderSurface::surfacePropertyChangedOnlyFromDescendant() const
     return m_surfacePropertyChanged && !m_owningLayer->layerPropertyChanged();
 }
 
-PassOwnPtr<CCSharedQuadState> CCRenderSurface::createSharedQuadState(int id) const
+static inline IntRect computeClippedRectInTarget(const CCLayerImpl* owningLayer)
 {
-    bool isOpaque = false;
-    return CCSharedQuadState::create(id, m_drawTransform, m_contentRect, m_scissorRect, m_drawOpacity, isOpaque);
+    ASSERT(owningLayer->parent());
+
+    const CCLayerImpl* renderTarget = owningLayer->parent()->renderTarget();
+    const CCRenderSurface* self = owningLayer->renderSurface();
+
+    IntRect clippedRectInTarget = self->clipRect();
+    if (owningLayer->backgroundFilters().hasFilterThatMovesPixels()) {
+        // If the layer has background filters that move pixels, we cannot scissor as tightly.
+        // FIXME: this should be able to be a tighter scissor, perhaps expanded by the filter outsets?
+        clippedRectInTarget = renderTarget->renderSurface()->contentRect();
+    } else if (clippedRectInTarget.isEmpty()) {
+        // For surfaces, empty clipRect means that the surface does not clip anything.
+        clippedRectInTarget = enclosingIntRect(intersection(renderTarget->renderSurface()->contentRect(), self->drawableContentRect()));
+    } else
+        clippedRectInTarget.intersect(enclosingIntRect(self->drawableContentRect()));
+    return clippedRectInTarget;
 }
 
-PassOwnPtr<CCSharedQuadState> CCRenderSurface::createReplicaSharedQuadState(int id) const
+void CCRenderSurface::appendRenderPasses(CCRenderPassSink& passSink)
 {
-    bool isOpaque = false;
-    return CCSharedQuadState::create(id, m_replicaDrawTransform, m_contentRect, m_scissorRect, m_drawOpacity, isOpaque);
+    OwnPtr<CCRenderPass> pass = CCRenderPass::create(m_owningLayer->id(), m_contentRect, m_screenSpaceTransform);
+    pass->setDamageRect(m_damageTracker->currentDamageRect());
+    pass->setFilters(m_owningLayer->filters());
+    pass->setBackgroundFilters(m_owningLayer->backgroundFilters());
+    passSink.appendRenderPass(pass.release());
 }
 
-FloatRect CCRenderSurface::computeRootScissorRectInCurrentSurface(const FloatRect& rootScissorRect) const
-{
-    WebTransformationMatrix inverseScreenSpaceTransform = m_screenSpaceTransform.inverse();
-    return CCMathUtil::projectClippedRect(inverseScreenSpaceTransform, rootScissorRect);
-}
-
-void CCRenderSurface::appendQuads(CCQuadSink& quadList, CCSharedQuadState* sharedQuadState, bool forReplica, int renderPassId)
+void CCRenderSurface::appendQuads(CCQuadSink& quadSink, CCAppendQuadsData& appendQuadsData, bool forReplica, int renderPassId)
 {
     ASSERT(!forReplica || m_owningLayer->hasReplica());
+
+    IntRect clippedRectInTarget = computeClippedRectInTarget(m_owningLayer);
+    bool isOpaque = false;
+    const WebTransformationMatrix& drawTransform = forReplica ? m_replicaDrawTransform : m_drawTransform;
+    CCSharedQuadState* sharedQuadState = quadSink.useSharedQuadState(CCSharedQuadState::create(drawTransform, m_contentRect, clippedRectInTarget, m_drawOpacity, isOpaque));
 
     if (m_owningLayer->hasDebugBorders()) {
         int red = forReplica ? debugReplicaBorderColorRed : debugSurfaceBorderColorRed;
         int green = forReplica ?  debugReplicaBorderColorGreen : debugSurfaceBorderColorGreen;
         int blue = forReplica ? debugReplicaBorderColorBlue : debugSurfaceBorderColorBlue;
         SkColor color = SkColorSetARGB(debugSurfaceBorderAlpha, red, green, blue);
-        quadList.append(CCDebugBorderDrawQuad::create(sharedQuadState, contentRect(), color, debugSurfaceBorderWidth));
+        quadSink.append(CCDebugBorderDrawQuad::create(sharedQuadState, contentRect(), color, debugSurfaceBorderWidth), appendQuadsData);
     }
 
     // FIXME: By using the same RenderSurface for both the content and its reflection,
@@ -207,10 +223,22 @@ void CCRenderSurface::appendQuads(CCQuadSink& quadList, CCSharedQuadState* share
             maskLayer = 0;
     }
 
+    float maskTexCoordScaleX = 1;
+    float maskTexCoordScaleY = 1;
+    float maskTexCoordOffsetX = 1;
+    float maskTexCoordOffsetY = 1;
+    if (maskLayer) {
+        maskTexCoordScaleX = static_cast<float>(contentRect().width()) / maskLayer->contentBounds().width();
+        maskTexCoordScaleY = static_cast<float>(contentRect().height()) / maskLayer->contentBounds().height();
+        maskTexCoordOffsetX = static_cast<float>(contentRect().x()) / contentRect().width() * maskTexCoordScaleX;
+        maskTexCoordOffsetY = static_cast<float>(contentRect().y()) / contentRect().height() * maskTexCoordScaleY;
+    }
+
     CCResourceProvider::ResourceId maskResourceId = maskLayer ? maskLayer->contentsResourceId() : 0;
     IntRect contentsChangedSinceLastFrame = contentsChanged() ? m_contentRect : IntRect();
 
-    quadList.append(CCRenderPassDrawQuad::create(sharedQuadState, contentRect(), renderPassId, forReplica, maskResourceId, contentsChangedSinceLastFrame));
+    quadSink.append(CCRenderPassDrawQuad::create(sharedQuadState, contentRect(), renderPassId, forReplica, maskResourceId, contentsChangedSinceLastFrame,
+                                                 maskTexCoordScaleX, maskTexCoordScaleY, maskTexCoordOffsetX, maskTexCoordOffsetY), appendQuadsData);
 }
 
 }

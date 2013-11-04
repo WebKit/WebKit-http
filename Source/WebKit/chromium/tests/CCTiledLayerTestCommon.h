@@ -25,6 +25,11 @@
 #ifndef CCTiledLayerTestCommon_h
 #define CCTiledLayerTestCommon_h
 
+#include "CCGraphicsContext.h"
+#include "CCPrioritizedTexture.h"
+#include "CCResourceProvider.h"
+#include "CCTextureUpdateQueue.h"
+#include "CCTiledLayerImpl.h"
 #include "IntRect.h"
 #include "IntSize.h"
 #include "LayerTextureUpdater.h"
@@ -32,11 +37,6 @@
 #include "TextureCopier.h"
 #include "TextureUploader.h"
 #include "TiledLayerChromium.h"
-#include "cc/CCGraphicsContext.h"
-#include "cc/CCPrioritizedTexture.h"
-#include "cc/CCResourceProvider.h"
-#include "cc/CCTextureUpdater.h"
-#include "cc/CCTiledLayerImpl.h"
 
 namespace WebKitTests {
 
@@ -49,7 +49,7 @@ public:
         Texture(FakeLayerTextureUpdater*, PassOwnPtr<WebCore::CCPrioritizedTexture>);
         virtual ~Texture();
 
-        virtual void updateRect(WebCore::CCResourceProvider* , const WebCore::IntRect&, const WebCore::IntRect&) OVERRIDE;
+        virtual void updateRect(WebCore::CCResourceProvider* , const WebCore::IntRect&, const WebCore::IntSize&) OVERRIDE;
         virtual void prepareRect(const WebCore::IntRect&, WebCore::CCRenderingStats&) OVERRIDE;
 
     private:
@@ -112,7 +112,6 @@ public:
     static WebCore::IntSize tileSize() { return WebCore::IntSize(100, 100); }
 
     using WebCore::TiledLayerChromium::invalidateContentRect;
-    using WebCore::TiledLayerChromium::updateContentRect;
     using WebCore::TiledLayerChromium::needsIdlePaint;
     using WebCore::TiledLayerChromium::skipsDraw;
     using WebCore::TiledLayerChromium::numPaintedTiles;
@@ -120,9 +119,6 @@ public:
 
     virtual void setNeedsDisplayRect(const WebCore::FloatRect&) OVERRIDE;
     const WebCore::FloatRect& lastNeedsDisplayRect() const { return m_lastNeedsDisplayRect; }
-
-    // Updates the visibleContentRect().
-    virtual void update(WebCore::CCTextureUpdater&, const WebCore::CCOcclusionTracker*, WebCore::CCRenderingStats&) OVERRIDE;
 
     virtual void setTexturePriorities(const WebCore::CCPriorityCalculator&) OVERRIDE;
 
@@ -153,7 +149,7 @@ protected:
 
 class FakeTextureCopier : public WebCore::TextureCopier {
 public:
-    virtual void copyTexture(unsigned, unsigned, const WebCore::IntSize&) { }
+    virtual void copyTexture(Parameters) { }
     virtual void flush() { }
 };
 
@@ -162,7 +158,7 @@ public:
     virtual bool isBusy() { return false; }
     virtual void beginUploads() { }
     virtual void endUploads() { }
-    virtual void uploadTexture(WebCore::LayerTextureUpdater::Texture* texture, WebCore::CCResourceProvider* resourceProvider, const WebCore::IntRect sourceRect, const WebCore::IntRect destRect) { texture->updateRect(resourceProvider, sourceRect, destRect); }
+    virtual void uploadTexture(WebCore::CCResourceProvider* resourceProvider, Parameters upload) { upload.texture->updateRect(resourceProvider, upload.sourceRect, upload.destOffset); }
 };
 
 }

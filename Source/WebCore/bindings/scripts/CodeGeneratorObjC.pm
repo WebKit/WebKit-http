@@ -78,8 +78,6 @@ my %baseTypeHash = ("Object" => 1, "Node" => 1, "NodeList" => 1, "NamedNodeMap" 
                     "SVGStringList" => 1, "SVGTransform" => 1, "SVGTransformList" => 1, "SVGUnitTypes" => 1);
 
 # Constants
-my $buildingForTigerOrEarlier = 1 if $ENV{"MACOSX_DEPLOYMENT_TARGET"} and $ENV{"MACOSX_DEPLOYMENT_TARGET"} <= 10.4;
-my $buildingForLeopardOrLater = 1 if $ENV{"MACOSX_DEPLOYMENT_TARGET"} and $ENV{"MACOSX_DEPLOYMENT_TARGET"} >= 10.5;
 my $exceptionInit = "WebCore::ExceptionCode ec = 0;";
 my $jsContextSetter = "WebCore::JSMainThreadNullState state;";
 my $exceptionRaiseOnError = "WebCore::raiseOnDOMError(ec);";
@@ -469,6 +467,7 @@ sub SkipAttribute
 
     $codeGenerator->AssertNotSequenceType($attribute->signature->type);
     return 1 if $codeGenerator->GetArrayType($attribute->signature->type);
+    return 1 if $codeGenerator->IsTypedArrayType($attribute->signature->type);
 
     # This is for DynamicsCompressorNode.idl
     if ($attribute->signature->name eq "release") {
@@ -816,8 +815,6 @@ sub GenerateHeader
                 $availabilityMacro = $publicInterfaces{$publicInterfaceKey};
             }
 
-            $availabilityMacro = "WEBKIT_OBJC_METHOD_ANNOTATION($availabilityMacro)" if length $availabilityMacro and $buildingForTigerOrEarlier;
-
             my $declarationSuffix = ";\n";
             $declarationSuffix = " $availabilityMacro;\n" if length $availabilityMacro;
 
@@ -840,34 +837,9 @@ sub GenerateHeader
                 $fatalError = 1;
             }
 
-            if ($buildingForLeopardOrLater) {
-                $property .= $declarationSuffix;
-                push(@headerAttributes, $property) if $public;
-                push(@privateHeaderAttributes, $property) unless $public;
-            } else {
-                my $attributeConditionalString = $codeGenerator->GenerateConditionalString($attribute->signature);
-                if ($attributeConditionalString) {
-                    push(@headerAttributes, "#if ${attributeConditionalString}\n") if $public;
-                    push(@privateHeaderAttributes, "#if ${attributeConditionalString}\n") unless $public;
-                }
-
-                # - GETTER
-                my $getter = "- (" . $attributeType . ")" . $attributeName . $declarationSuffix;
-                push(@headerAttributes, $getter) if $public;
-                push(@privateHeaderAttributes, $getter) unless $public;
-
-                # - SETTER
-                if (!$attributeIsReadonly) {
-                    my $setter = "- (void)$setterName(" . $attributeType . ")new" . ucfirst($attributeName) . $declarationSuffix;
-                    push(@headerAttributes, $setter) if $public;
-                    push(@privateHeaderAttributes, $setter) unless $public;
-                }
-
-                if ($attributeConditionalString) {
-                    push(@headerAttributes, "#endif\n") if $public;
-                    push(@privateHeaderAttributes, "#endif\n") unless $public;
-                }
-            }
+            $property .= $declarationSuffix;
+            push(@headerAttributes, $property) if $public;
+            push(@privateHeaderAttributes, $property) unless $public;
         }
 
         push(@headerContent, @headerAttributes) if @headerAttributes > 0;
@@ -881,6 +853,7 @@ sub GenerateHeader
     if ($numFunctions > 0) {
         foreach my $function (@{$dataNode->functions}) {
             next if SkipFunction($function);
+            next if ($function->signature->name eq "set" and $dataNode->extendedAttributes->{"TypedArray"});
             my $functionName = $function->signature->name;
 
             my $returnType = GetObjCType($function->signature->type);
@@ -926,8 +899,6 @@ sub GenerateHeader
                 $availabilityMacro = $publicInterfaces{$publicInterfaceKey};
             }
 
-            $availabilityMacro = "WEBKIT_OBJC_METHOD_ANNOTATION($availabilityMacro)" if length $availabilityMacro and $buildingForTigerOrEarlier;
-
             my $functionDeclaration = $functionSig;
             $functionDeclaration .= " " . $availabilityMacro if length $availabilityMacro;
             $functionDeclaration .= ";\n";
@@ -963,8 +934,6 @@ sub GenerateHeader
                     $availabilityMacro = $publicInterfaces{$publicInterfaceKey};
                 }
 
-                $availabilityMacro = "WEBKIT_OBJC_METHOD_ANNOTATION($availabilityMacro)" if $buildingForTigerOrEarlier;
-
                 $functionDeclaration = "$deprecatedFunctionSig $availabilityMacro;\n";
 
                 push(@deprecatedHeaderFunctions, $functionDeclaration);
@@ -985,7 +954,7 @@ sub GenerateHeader
         }
 
         if (@headerFunctions > 0) {
-            push(@headerContent, "\n") if $buildingForLeopardOrLater and @headerAttributes > 0;
+            push(@headerContent, "\n") if @headerAttributes > 0;
             push(@headerContent, @headerFunctions);
         }
     }
@@ -1020,7 +989,7 @@ sub GenerateHeader
         @privateHeaderContent = ();
         push(@privateHeaderContent, "\@interface $className (" . $className . "Private)\n");
         push(@privateHeaderContent, @privateHeaderAttributes) if @privateHeaderAttributes > 0;
-        push(@privateHeaderContent, "\n") if $buildingForLeopardOrLater and @privateHeaderAttributes > 0 and @privateHeaderFunctions > 0;
+        push(@privateHeaderContent, "\n") if @privateHeaderAttributes > 0 and @privateHeaderFunctions > 0;
         push(@privateHeaderContent, @privateHeaderFunctions) if @privateHeaderFunctions > 0;
         push(@privateHeaderContent, "\@end\n");
 
@@ -1501,6 +1470,7 @@ sub GenerateImplementation
     if ($numFunctions > 0) {
         foreach my $function (@{$dataNode->functions}) {
             next if SkipFunction($function);
+            next if ($function->signature->name eq "set" and $dataNode->extendedAttributes->{"TypedArray"});
             AddIncludesForType($function->signature->type);
 
             my $functionName = $function->signature->name;

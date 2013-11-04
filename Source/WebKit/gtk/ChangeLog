@@ -1,3 +1,488 @@
+2012-08-29  José Dapena Paz  <jdapena@igalia.com>
+
+        [Gtk] Process Gtk 3.4 smooth scroll events properly.
+        https://bugs.webkit.org/show_bug.cgi?id=88070
+
+        Gtk 3.3.18 added smooth scroll events, adding a new scroll direction that
+        provides detailed delta information.
+
+        Added GDK_SMOOTH_SCROLL_MASK to the events listened, and added
+        code to process properly the new direction GDK_SCROLL_SMOOTH and
+        its deltas.
+
+        Reviewed by Martin Robinson.
+
+        * webkit/webkitwebview.cpp:
+        (webkit_web_view_realize):
+
+2012-08-28  Martin Robinson  <mrobinson@igalia.com>
+
+        [GTK] Enable the edge distance anti-aliasing for accelerated compositing layers
+        https://bugs.webkit.org/show_bug.cgi?id=95272
+
+        Reviewed by No'am Rosenthal.
+
+        Turn on edge-distance anti-aliasing for GTK+ WebKit1. This
+        improves the quality of layer rendering.
+
+        * WebCoreSupport/AcceleratedCompositingContextGL.cpp:
+        (WebKit::AcceleratedCompositingContext::initialize):
+
+2012-08-28  Sheriff Bot  <webkit.review.bot@gmail.com>
+
+        Unreviewed, rolling out r126914.
+        http://trac.webkit.org/changeset/126914
+        https://bugs.webkit.org/show_bug.cgi?id=95239
+
+        it breaks everything and fixes nothing (Requested by pizlo on
+        #webkit).
+
+        * WebCoreSupport/PlatformStrategiesGtk.cpp:
+        (PlatformStrategiesGtk::getPluginInfo):
+        * webkit/webkitfavicondatabase.cpp:
+        (webkitFaviconDatabaseImportFinished):
+        * webkit/webkitwebplugin.cpp:
+        (webkit_web_plugin_get_mimetypes):
+
+2012-08-28  Caio Marcelo de Oliveira Filho  <caio.oliveira@openbossa.org>
+
+        Rename first/second to key/value in HashMap iterators
+        https://bugs.webkit.org/show_bug.cgi?id=82784
+
+        Reviewed by Eric Seidel.
+
+        * WebCoreSupport/PlatformStrategiesGtk.cpp:
+        (PlatformStrategiesGtk::getPluginInfo):
+        * webkit/webkitfavicondatabase.cpp:
+        (webkitFaviconDatabaseImportFinished):
+        * webkit/webkitwebplugin.cpp:
+        (webkit_web_plugin_get_mimetypes):
+
+2012-08-27  Zan Dobersek  <zandobersek@gmail.com>
+
+        [GTK] Memory cache should be cleared in between test runs
+        https://bugs.webkit.org/show_bug.cgi?id=95105
+
+        Reviewed by Martin Robinson.
+
+        Add a DumpRenderTreeSupportGtk helper method that clears the
+        memory cache when called.
+
+        * WebCoreSupport/DumpRenderTreeSupportGtk.cpp:
+        (DumpRenderTreeSupportGtk::clearMemoryCache):
+        * WebCoreSupport/DumpRenderTreeSupportGtk.h:
+        (DumpRenderTreeSupportGtk):
+
+2012-08-27  Sheriff Bot  <webkit.review.bot@gmail.com>
+
+        Unreviewed, rolling out r126836.
+        http://trac.webkit.org/changeset/126836
+        https://bugs.webkit.org/show_bug.cgi?id=95163
+
+        Broke all Apple ports, EFL, and Qt. (Requested by tkent on
+        #webkit).
+
+        * WebCoreSupport/PlatformStrategiesGtk.cpp:
+        (PlatformStrategiesGtk::getPluginInfo):
+        * webkit/webkitfavicondatabase.cpp:
+        (webkitFaviconDatabaseImportFinished):
+        * webkit/webkitwebplugin.cpp:
+        (webkit_web_plugin_get_mimetypes):
+
+2012-08-27  Caio Marcelo de Oliveira Filho  <caio.oliveira@openbossa.org>
+
+        Rename first/second to key/value in HashMap iterators
+        https://bugs.webkit.org/show_bug.cgi?id=82784
+
+        Reviewed by Eric Seidel.
+
+        * WebCoreSupport/PlatformStrategiesGtk.cpp:
+        (PlatformStrategiesGtk::getPluginInfo):
+        * webkit/webkitfavicondatabase.cpp:
+        (webkitFaviconDatabaseImportFinished):
+        * webkit/webkitwebplugin.cpp:
+        (webkit_web_plugin_get_mimetypes):
+
+2012-08-27  Mikhail Pozdnyakov  <mikhail.pozdnyakov@intel.com>
+
+        Rename RegisterProtocolHandler API to NavigatorContentUtils
+        https://bugs.webkit.org/show_bug.cgi?id=94920
+
+        Reviewed by Adam Barth.
+
+        Renaming whatever RegisterProtocolHandler-prefixed to NavigatorContentUtils-prefixed.
+        RegisterProtocolHandlerClientGtk is renamed to NavigatorContentUtilsClientGtk.
+
+        * GNUmakefile.am:
+        * WebCoreSupport/NavigatorContentUtilsClientGtk.cpp: Renamed from Source/WebKit/gtk/WebCoreSupport/RegisterProtocolHandlerClientGtk.cpp.
+        (WebKit):
+        (WebKit::NavigatorContentUtilsClient::create):
+        (WebKit::NavigatorContentUtilsClient::NavigatorContentUtilsClient):
+        (WebKit::NavigatorContentUtilsClient::registerProtocolHandler):
+        * WebCoreSupport/NavigatorContentUtilsClientGtk.h: Renamed from Source/WebKit/gtk/WebCoreSupport/RegisterProtocolHandlerClientGtk.h.
+        (WebKit):
+        (NavigatorContentUtilsClient):
+        (WebKit::NavigatorContentUtilsClient::~NavigatorContentUtilsClient):
+        * webkit/webkitwebview.cpp:
+        (webkit_web_view_init):
+        * webkit/webkitwebviewprivate.h:
+
+2012-08-23  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        REGRESSION(r126306): it broke the plugin process
+        https://bugs.webkit.org/show_bug.cgi?id=94797
+
+        Reviewed by Xan Lopez.
+
+        * GNUmakefile.am:
+
+2012-08-22  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Crash when finalizing WebKitWebView
+        https://bugs.webkit.org/show_bug.cgi?id=94699
+
+        Reviewed by Martin Robinson.
+
+        Create the offscreen window the first time accelerated compositing
+        is enabled, so that if it's never enabled the window won't be
+        created.
+
+        * WebCoreSupport/AcceleratedCompositingContextGL.cpp:
+        (WebKit::AcceleratedCompositingContext::AcceleratedCompositingContext):
+        (WebKit::AcceleratedCompositingContext::initialize):
+        (WebKit::AcceleratedCompositingContext::setRootCompositingLayer):
+
+2012-08-22  Gustavo Noronha Silva  <gns@gnome.org>
+
+        [GTK] Split WebCore/platform into a separate library
+        https://bugs.webkit.org/show_bug.cgi?id=94435
+
+        Reviewed by Martin Robinson.
+
+        More people have been reporting problems when linking WebCore because
+        the command line limit is being exceeded. Splitting WebCore a bit more
+        is in order.
+
+        * GNUmakefile.am: link libWebCorePlatform into libwebkitgtk
+
+2012-08-22  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Preferred languages and spellchecker APIs are not consistent in WebKit2
+        https://bugs.webkit.org/show_bug.cgi?id=94683
+
+        Reviewed by Alejandro G. Castro.
+
+        * webkit/webkitspellcheckerenchant.cpp:
+        (updateSpellCheckingLanguages): Split the languages string to pass a
+        Vector to updateSpellCheckingLanguages().
+
+2012-08-21  Joanmarie Diggs  <jdiggs@igalia.com>
+        [Gtk] No accessible caret-moved events found in certain content
+        https://bugs.webkit.org/show_bug.cgi?id=72811
+
+        Reviewed by Chris Fleizach.
+
+        Part of the bug is due to objects which should claim to implement AtkText
+        failed to do so as a result of containing a mixture of inline and block
+        spans.
+
+        An updated unit test was provided.
+
+        * tests/testatk.c:
+        (testWebkitAtkCaretOffsets): Added instances of objects containing a
+        mixture of inline and block spans and tested that they implement AtkText
+        and contain the right textual contents.
+
+2012-08-21  Kihong Kwon  <kihong.kwon@samsung.com>
+
+        [EFL][GTK][BlackBerry] Fix build error in the DeviceOrientationClient
+        https://bugs.webkit.org/show_bug.cgi?id=94586
+
+        Reviewed by Kentaro Hara.
+
+        Fix build error in the DeviceOrientationClientGtk.cpp.
+        It is occured because DeviceOrientation is changed to DeviceOrientationData in the WebCore.
+
+        * WebCoreSupport/DeviceOrientationClientGtk.cpp:
+        (WebKit::DeviceOrientationClientGtk::lastOrientation):
+
+2012-08-21  Martin Robinson  <mrobinson@igalia.com>
+
+        [GTK] Using a native window for the WebView breaks GtkOverlay
+        https://bugs.webkit.org/show_bug.cgi?id=90085
+
+        Reviewed by Alejandro G. Castro.
+
+        Rewrite AcceleratedCompositingContext for TextureMapperGL to be more similar to
+        the WebKit2 LayerTreeHost and switch from rendering directly to the widget window
+        to a window redirected to a pixmap via XComposite. The AcceleratedCompositingContext
+        now handles painting the non-composited content itself and no longer relies on the
+        ChromeClient backing store.
+
+        This fixes issues with using GtkOverlay WebKitWebView as well as making it possible
+        to run pixel tests with accelerated compositing turned on.
+
+        * WebCoreSupport/AcceleratedCompositingContext.h:
+        (AcceleratedCompositingContext):
+        * WebCoreSupport/AcceleratedCompositingContextGL.cpp:
+        Rename some methods to make them more similar to LayerTreeHost. Now we wait to render
+        the OpenGL context to the window until the widget's draw signal. Escape out of all
+        methods early if accelerated compositing is disabled.
+        * WebCoreSupport/ChromeClientGtk.cpp: Always check if accelerated compositing is on
+        before calling into AcceleratedCompositingContext methods. When AC is on, never paint
+        the backing store, deferring immediately to the AcceleratedCompositingContext. When
+        AC is turned on the backing store now shrinks to a small size to save memory.
+        * webkit/webkitwebview.cpp:
+        (resizeWebViewFromAllocation): ChromeClient is now responsible for talking to the
+        AcceleratedCompositingContext directly.
+        (webkit_web_view_size_allocate): Exit early if the allocation is not a resize. This
+        makes some deeper logic a bit simpler and avoids accidentally doing too much work for
+        widget movement.
+        (webkit_web_view_realize): We no longer need a native window.
+
+2012-08-15  Joanmarie Diggs  <jdiggs@igalia.com>
+
+        [Gtk] atk_text_set_caret_offset() fails for table cells
+        https://bugs.webkit.org/show_bug.cgi?id=83501
+
+        Reviewed by Chris Fleizach.
+
+        Update unit test to include setting the caret in a table cell via the AtkText interface.
+
+        * tests/testatk.c:
+        (testWebkitAtkCaretOffsets): Add setting the caret inside the text of a table cell.
+
+2012-08-15  Joanmarie Diggs  <jdiggs@igalia.com>
+
+        [Gtk] atk_text_get_text_at_offset() fails to provide the correct line for paragraphs in list items whose text wraps
+        https://bugs.webkit.org/show_bug.cgi?id=83435
+
+        Reviewed by Chris Fleizach.
+
+        Updated unit test to include a paragraph in a list item when testing atk_text_get_text_at_offset().
+
+        * tests/testatk.c:
+        (testWebkitAtkGetTextAtOffsetWithSpecialCharacters):
+
+2012-08-14  Adam Barth  <abarth@webkit.org>
+
+        Delete Frame::domWindow() and Frame::existingDOMWindow()
+        https://bugs.webkit.org/show_bug.cgi?id=93990
+
+        Reviewed by Eric Seidel.
+
+        * WebCoreSupport/DumpRenderTreeSupportGtk.cpp:
+        (DumpRenderTreeSupportGtk::getPendingUnloadEventCount):
+
+2012-08-13  Tom Sepez  <tsepez@chromium.org>
+
+        [chromium] release FrameLoaderClientImpl::m_pluginWidget refptr upon Plugin Document detach.
+        https://bugs.webkit.org/show_bug.cgi?id=93283
+
+        Reviewed by Eric Seidel.
+
+        Change the client redirectDataToPlugin method(s) to expect the possibility of
+        a NULL argument, keeping existing behaviour otherwise.
+
+        * WebCoreSupport/FrameLoaderClientGtk.cpp:
+        (WebKit::FrameLoaderClient::redirectDataToPlugin):
+
+2012-08-13  Martin Robinson  <mrobinson@igalia.com>
+
+        [GTK] Default signal handler for WebKitWebView::should-show-delete-interface-for-element overrides default result
+        https://bugs.webkit.org/show_bug.cgi?id=93600
+
+        Reviewed by Xan Lopez.
+
+        Instead of using the default editing signal handler for ::should-show-delete-interface-for-element,
+        do not use a default signal handler. This means that the result of the signal defaults to FALSE,
+        which is the expected value to ensure that the delete interface is not shown.
+
+        * webkit/webkitwebview.cpp:
+        (webkit_web_view_class_init): Do not install a default signal handler.
+
+2012-08-13  Mario Sanchez Prada  <msanchez@igalia.com>
+
+        [GTK] Implementation of atk_editable_text_insert_text ignores 'length' parameter
+        https://bugs.webkit.org/show_bug.cgi?id=93804
+
+        Reviewed by Carlos Garcia Campos.
+
+        Update unit tests to also check inserting a partial string.
+
+        * tests/testatk.c:
+        (testWebkitAtkTextChangedNotifications): Update test.
+
+2012-08-10  Alice Cheng  <alice_cheng@apple.com>
+
+        Part 1 of: Extend -webkit-user-select with a new value "all"
+        <rdar://problem/10161404>
+        https://bugs.webkit.org/show_bug.cgi?id=93562
+
+        Reviewed by Dan Bernstein.
+
+        Modify the enum to resolve ambiguous reference
+
+        * webkit/webkitwebview.cpp:
+        (webkit_web_view_class_init): Modify the ambiguous enum
+        (webkit_web_view_select_all): Modify the ambiguous enum
+
+2012-08-10  Mario Sanchez Prada  <msanchez@igalia.com>
+
+        [GTK] Broken implementation of AtkText and AtkEditableText for password fields
+        https://bugs.webkit.org/show_bug.cgi?id=93621
+
+        Reviewed by Chris Fleizach.
+
+        Update unit test to ensure that password input fields behave
+        as expected when inserting and removing characters in them.
+
+        * tests/testatk.c:
+        (testWebkitAtkTextChangedNotifications): Updated unit test to
+        cover the special case of password input fields.
+
+2012-08-09  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Handle SSL errors for SOUP
+        https://bugs.webkit.org/show_bug.cgi?id=90267
+
+        Reviewed by Martin Robinson.
+
+        Ignore SSL errors by default for compatibility.
+
+        * webkit/webkitglobals.cpp:
+        (webkitInit):
+
+2012-08-07  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Fix GTK+ build with GTK2 after r120918.
+
+        * tests/testwebview.c:
+
+2012-08-06  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Update NEWS and configure.ac for 1.9.6 release
+
+        * NEWS: Added release notes for 1.9.6.
+
+2012-08-06  Mikhail Pozdnyakov  <mikhail.pozdnyakov@intel.com>
+
+        [EFL] [GTK] Register Protocol Handler Client is never deleted
+        https://bugs.webkit.org/show_bug.cgi?id=92745
+
+        Reviewed by Gustavo Noronha Silva.
+
+        Added usage of OwnPtr to manage register protocol handler client pointer.
+
+        * WebCoreSupport/RegisterProtocolHandlerClientGtk.cpp:
+        (WebKit::RegisterProtocolHandlerClient::create): Factory function returning smart pointer.
+        (WebKit):
+        * WebCoreSupport/RegisterProtocolHandlerClientGtk.h:
+        (RegisterProtocolHandlerClient):
+        * webkit/webkitwebview.cpp:
+        (webkit_web_view_init):
+        * webkit/webkitwebviewprivate.h:
+
+2012-08-03  Mario Sanchez Prada  <msanchez@igalia.com>
+
+        [GTK] Add a new and reusable enchant-based spellchecker in WebCore
+        https://bugs.webkit.org/show_bug.cgi?id=90269
+
+        Reviewed by Martin Robinson.
+
+        Remove enchant specific code from WebKitSpellCheckerEnchant and
+        implement it relying in the new TextCheckerEnchant class in WebCore.
+
+        * webkit/webkitspellcheckerenchant.cpp:
+        (_WebKitSpellCheckerEnchantPrivate):
+        (webkit_spell_checker_enchant_finalize):
+        (webkit_spell_checker_enchant_class_init):
+        (webkit_spell_checker_enchant_init):
+        (checkSpellingOfString):
+        (getGuessesForWord):
+        (updateSpellCheckingLanguages):
+        (learnWord):
+        (ignoreWord):
+
+2012-08-02  Claudio Saavedra  <csaavedra@igalia.com>
+
+        [GTK] Add WebKitNetworkResponse::suggested-filename property
+        https://bugs.webkit.org/show_bug.cgi?id=92878
+
+        Reviewed by Carlos Garcia Campos.
+
+        Webcore has API the suggested filename for a response, add
+        a property and getter for it in WebKitNetworkResponse.
+
+        * docs/webkitgtk-sections.txt: Add the symbols
+        * webkit/webkitnetworkresponse.cpp:
+        (_WebKitNetworkResponsePrivate): Add suggested_filename.
+        (webkit_network_response_finalize): Free it on finalize
+        (webkit_network_response_get_property): Add the getter call.
+        (webkit_network_response_class_init): Install the property.
+        (webkit_network_response_get_suggested_filename): New getter.
+        * webkit/webkitnetworkresponse.h: Add the declaration to header
+        file.
+
+2012-07-31  Sheriff Bot  <webkit.review.bot@gmail.com>
+
+        Unreviewed, rolling out r124207.
+        http://trac.webkit.org/changeset/124207
+        https://bugs.webkit.org/show_bug.cgi?id=92773
+
+        Patch causes crashes on the 64-bit debug builder (and other
+        builders likely) (Requested by zdobersek on #webkit).
+
+        * webkit/webkitspellcheckerenchant.cpp:
+        (_WebKitSpellCheckerEnchantPrivate):
+        (createEnchantBrokerIfNeeded):
+        (freeSpellCheckingLanguage):
+        (webkit_spell_checker_enchant_finalize):
+        (webkit_spell_checker_enchant_class_init):
+        (webkit_spell_checker_enchant_init):
+        (wordEndIsAContractionApostrophe):
+        (checkSpellingOfString):
+        (getGuessesForWord):
+        (getAvailableDictionariesCallback):
+        (updateSpellCheckingLanguages):
+        (learnWord):
+        (ignoreWord):
+
+2012-07-31  Mario Sanchez Prada  <msanchez@igalia.com>
+
+        [GTK] Add a new and reusable enchant-based spellchecker in WebCore
+        https://bugs.webkit.org/show_bug.cgi?id=90269
+
+        Reviewed by Martin Robinson.
+
+        Remove enchant specific code from WebKitSpellCheckerEnchant and
+        implement it relying in the new TextCheckerEnchant class in WebCore.
+
+        * webkit/webkitspellcheckerenchant.cpp:
+        (_WebKitSpellCheckerEnchantPrivate):
+        (webkit_spell_checker_enchant_finalize):
+        (webkit_spell_checker_enchant_class_init):
+        (webkit_spell_checker_enchant_init):
+        (checkSpellingOfString):
+        (getGuessesForWord):
+        (updateSpellCheckingLanguages):
+        (learnWord):
+        (ignoreWord):
+
+2012-07-30  Martin Robinson  <mrobinson@igalia.com>
+
+        [GTK] New lines automatically and repeatedly added to list items in Etherpad
+        https://bugs.webkit.org/show_bug.cgi?id=89971
+
+        Reviewed by Ryosuke Niwa.
+
+        Disable the deletion UI by default. This UI, which was enabled as a side-effect
+        of the addition of the private editing API, seems to expose a bug in Etherpad
+        which causes the continuous insertion of bullet points.
+
+        * WebCoreSupport/EditorClientGtk.cpp:
+        (WebKit::EditorClient::shouldShowDeleteInterface): Disable the deletion UI by default.
+
 2012-07-30  Sheriff Bot  <webkit.review.bot@gmail.com>
 
         Unreviewed, rolling out r123966 and r123967.

@@ -50,10 +50,11 @@
 #include "JSArray.h"
 #include "JSFunction.h"
 #include "JSGlobalObjectFunctions.h"
+#include "JSNameScope.h"
 #include "JSNotAnObject.h"
 #include "JSPropertyNameIterator.h"
-#include "JSStaticScopeObject.h"
 #include "JSString.h"
+#include "JSWithScope.h"
 #include "NameInstance.h"
 #include "ObjectPrototype.h"
 #include "Operations.h"
@@ -1430,15 +1431,19 @@ DEFINE_STUB_FUNCTION(void, op_put_by_id)
     CallFrame* callFrame = stackFrame.callFrame;
     Identifier& ident = stackFrame.args[1].identifier();
     
+    CodeBlock* codeBlock = stackFrame.callFrame->codeBlock();
+    StructureStubInfo* stubInfo = &codeBlock->getStubInfo(STUB_RETURN_ADDRESS);
+    AccessType accessType = static_cast<AccessType>(stubInfo->accessType);
+
     PutPropertySlot slot(callFrame->codeBlock()->isStrictMode());
     stackFrame.args[0].jsValue().put(callFrame, ident, stackFrame.args[2].jsValue(), slot);
     
-    CodeBlock* codeBlock = stackFrame.callFrame->codeBlock();
-    StructureStubInfo* stubInfo = &codeBlock->getStubInfo(STUB_RETURN_ADDRESS);
-    if (!stubInfo->seenOnce())
-        stubInfo->setSeen();
-    else
-        JITThunks::tryCachePutByID(callFrame, codeBlock, STUB_RETURN_ADDRESS, stackFrame.args[0].jsValue(), slot, stubInfo, false);
+    if (accessType == static_cast<AccessType>(stubInfo->accessType)) {
+        if (!stubInfo->seenOnce())
+            stubInfo->setSeen();
+        else
+            JITThunks::tryCachePutByID(callFrame, codeBlock, STUB_RETURN_ADDRESS, stackFrame.args[0].jsValue(), slot, stubInfo, false);
+    }
     
     CHECK_FOR_EXCEPTION_AT_END();
 }
@@ -1449,18 +1454,22 @@ DEFINE_STUB_FUNCTION(void, op_put_by_id_direct)
     CallFrame* callFrame = stackFrame.callFrame;
     Identifier& ident = stackFrame.args[1].identifier();
     
+    CodeBlock* codeBlock = stackFrame.callFrame->codeBlock();
+    StructureStubInfo* stubInfo = &codeBlock->getStubInfo(STUB_RETURN_ADDRESS);
+    AccessType accessType = static_cast<AccessType>(stubInfo->accessType);
+
     PutPropertySlot slot(callFrame->codeBlock()->isStrictMode());
     JSValue baseValue = stackFrame.args[0].jsValue();
     ASSERT(baseValue.isObject());
     
     asObject(baseValue)->putDirect(callFrame->globalData(), ident, stackFrame.args[2].jsValue(), slot);
     
-    CodeBlock* codeBlock = stackFrame.callFrame->codeBlock();
-    StructureStubInfo* stubInfo = &codeBlock->getStubInfo(STUB_RETURN_ADDRESS);
-    if (!stubInfo->seenOnce())
-        stubInfo->setSeen();
-    else
-        JITThunks::tryCachePutByID(callFrame, codeBlock, STUB_RETURN_ADDRESS, stackFrame.args[0].jsValue(), slot, stubInfo, true);
+    if (accessType == static_cast<AccessType>(stubInfo->accessType)) {
+        if (!stubInfo->seenOnce())
+            stubInfo->setSeen();
+        else
+            JITThunks::tryCachePutByID(callFrame, codeBlock, STUB_RETURN_ADDRESS, stackFrame.args[0].jsValue(), slot, stubInfo, true);
+    }
     
     CHECK_FOR_EXCEPTION_AT_END();
 }
@@ -1521,14 +1530,18 @@ DEFINE_STUB_FUNCTION(EncodedJSValue, op_get_by_id_method_check)
     CallFrame* callFrame = stackFrame.callFrame;
     Identifier& ident = stackFrame.args[1].identifier();
 
+    CodeBlock* codeBlock = stackFrame.callFrame->codeBlock();
+    MethodCallLinkInfo& methodCallLinkInfo = codeBlock->getMethodCallLinkInfo(STUB_RETURN_ADDRESS);
+    StructureStubInfo& stubInfo = codeBlock->getStubInfo(STUB_RETURN_ADDRESS);
+    AccessType accessType = static_cast<AccessType>(stubInfo.accessType);
+
     JSValue baseValue = stackFrame.args[0].jsValue();
     PropertySlot slot(baseValue);
     JSValue result = baseValue.get(callFrame, ident, slot);
     CHECK_FOR_EXCEPTION();
-
-    CodeBlock* codeBlock = stackFrame.callFrame->codeBlock();
-    MethodCallLinkInfo& methodCallLinkInfo = codeBlock->getMethodCallLinkInfo(STUB_RETURN_ADDRESS);
-    StructureStubInfo& stubInfo = codeBlock->getStubInfo(STUB_RETURN_ADDRESS);
+    
+    if (accessType != static_cast<AccessType>(stubInfo.accessType))
+        return JSValue::encode(result);
 
     if (!methodCallLinkInfo.seenOnce()) {
         methodCallLinkInfo.setSeen();
@@ -1595,14 +1608,18 @@ DEFINE_STUB_FUNCTION(EncodedJSValue, op_get_by_id_method_check_update)
     CallFrame* callFrame = stackFrame.callFrame;
     Identifier& ident = stackFrame.args[1].identifier();
 
+    CodeBlock* codeBlock = stackFrame.callFrame->codeBlock();
+    MethodCallLinkInfo& methodCallLinkInfo = codeBlock->getMethodCallLinkInfo(STUB_RETURN_ADDRESS);
+    StructureStubInfo& stubInfo = codeBlock->getStubInfo(STUB_RETURN_ADDRESS);
+    AccessType accessType = static_cast<AccessType>(stubInfo.accessType);
+
     JSValue baseValue = stackFrame.args[0].jsValue();
     PropertySlot slot(baseValue);
     JSValue result = baseValue.get(callFrame, ident, slot);
     CHECK_FOR_EXCEPTION();
-
-    CodeBlock* codeBlock = stackFrame.callFrame->codeBlock();
-    MethodCallLinkInfo& methodCallLinkInfo = codeBlock->getMethodCallLinkInfo(STUB_RETURN_ADDRESS);
-    StructureStubInfo& stubInfo = codeBlock->getStubInfo(STUB_RETURN_ADDRESS);
+    
+    if (accessType != static_cast<AccessType>(stubInfo.accessType))
+        return JSValue::encode(result);
 
     ASSERT(methodCallLinkInfo.seenOnce());
 
@@ -1684,12 +1701,17 @@ DEFINE_STUB_FUNCTION(EncodedJSValue, op_get_by_id)
     CallFrame* callFrame = stackFrame.callFrame;
     Identifier& ident = stackFrame.args[1].identifier();
 
+    CodeBlock* codeBlock = stackFrame.callFrame->codeBlock();
+    StructureStubInfo* stubInfo = &codeBlock->getStubInfo(STUB_RETURN_ADDRESS);
+    AccessType accessType = static_cast<AccessType>(stubInfo->accessType);
+
     JSValue baseValue = stackFrame.args[0].jsValue();
     PropertySlot slot(baseValue);
     JSValue result = baseValue.get(callFrame, ident, slot);
+    
+    if (accessType != static_cast<AccessType>(stubInfo->accessType))
+        return JSValue::encode(result);
 
-    CodeBlock* codeBlock = stackFrame.callFrame->codeBlock();
-    StructureStubInfo* stubInfo = &codeBlock->getStubInfo(STUB_RETURN_ADDRESS);
     if (!stubInfo->seenOnce())
         stubInfo->setSeen();
     else
@@ -1706,9 +1728,16 @@ DEFINE_STUB_FUNCTION(EncodedJSValue, op_get_by_id_self_fail)
     CallFrame* callFrame = stackFrame.callFrame;
     Identifier& ident = stackFrame.args[1].identifier();
 
+    CodeBlock* codeBlock = callFrame->codeBlock();
+    StructureStubInfo* stubInfo = &codeBlock->getStubInfo(STUB_RETURN_ADDRESS);
+    AccessType accessType = static_cast<AccessType>(stubInfo->accessType);
+
     JSValue baseValue = stackFrame.args[0].jsValue();
     PropertySlot slot(baseValue);
     JSValue result = baseValue.get(callFrame, ident, slot);
+    
+    if (accessType != static_cast<AccessType>(stubInfo->accessType))
+        return JSValue::encode(result);
 
     CHECK_FOR_EXCEPTION();
 
@@ -1716,9 +1745,6 @@ DEFINE_STUB_FUNCTION(EncodedJSValue, op_get_by_id_self_fail)
         && slot.isCacheable()
         && !baseValue.asCell()->structure()->isUncacheableDictionary()
         && slot.slotBase() == baseValue) {
-
-        CodeBlock* codeBlock = callFrame->codeBlock();
-        StructureStubInfo* stubInfo = &codeBlock->getStubInfo(STUB_RETURN_ADDRESS);
 
         ASSERT(slot.slotBase().isObject());
 
@@ -1813,20 +1839,26 @@ DEFINE_STUB_FUNCTION(EncodedJSValue, op_get_by_id_proto_list)
     CallFrame* callFrame = stackFrame.callFrame;
     const Identifier& propertyName = stackFrame.args[1].identifier();
 
+    CodeBlock* codeBlock = callFrame->codeBlock();
+    StructureStubInfo* stubInfo = &codeBlock->getStubInfo(STUB_RETURN_ADDRESS);
+    AccessType accessType = static_cast<AccessType>(stubInfo->accessType);
+
     JSValue baseValue = stackFrame.args[0].jsValue();
     PropertySlot slot(baseValue);
     JSValue result = baseValue.get(callFrame, propertyName, slot);
 
     CHECK_FOR_EXCEPTION();
 
-    if (!baseValue.isCell() || !slot.isCacheable() || baseValue.asCell()->structure()->isDictionary() || baseValue.asCell()->structure()->typeInfo().prohibitsPropertyCaching()) {
+    if (accessType != static_cast<AccessType>(stubInfo->accessType)
+        || !baseValue.isCell()
+        || !slot.isCacheable()
+        || baseValue.asCell()->structure()->isDictionary()
+        || baseValue.asCell()->structure()->typeInfo().prohibitsPropertyCaching()) {
         ctiPatchCallByReturnAddress(callFrame->codeBlock(), STUB_RETURN_ADDRESS, FunctionPtr(cti_op_get_by_id_proto_fail));
         return JSValue::encode(result);
     }
 
     Structure* structure = baseValue.asCell()->structure();
-    CodeBlock* codeBlock = callFrame->codeBlock();
-    StructureStubInfo* stubInfo = &codeBlock->getStubInfo(STUB_RETURN_ADDRESS);
 
     ASSERT(slot.slotBase().isObject());
     JSObject* slotBaseObject = asObject(slot.slotBase());
@@ -1991,8 +2023,7 @@ DEFINE_STUB_FUNCTION(void, optimize)
         }
         
         ScopeChainNode* scopeChain = callFrame->scopeChain();
-        
-        JSObject* error = codeBlock->compileOptimized(callFrame, scopeChain);
+        JSObject* error = codeBlock->compileOptimized(callFrame, scopeChain, bytecodeIndex);
 #if ENABLE(JIT_VERBOSE_OSR)
         if (error)
             dataLog("WARNING: optimized compilation failed.\n");
@@ -2363,7 +2394,7 @@ DEFINE_STUB_FUNCTION(EncodedJSValue, op_resolve)
 
     CallFrame* callFrame = stackFrame.callFrame;
 
-    JSValue result = CommonSlowPaths::opResolve(callFrame, stackFrame.args[0].identifier());
+    JSValue result = JSScope::resolve(callFrame, stackFrame.args[0].identifier());
     CHECK_FOR_EXCEPTION_AT_END();
     return JSValue::encode(result);
 }
@@ -2594,18 +2625,16 @@ DEFINE_STUB_FUNCTION(EncodedJSValue, op_resolve_base)
 {
     STUB_INIT_STACK_FRAME(stackFrame);
 
-    return JSValue::encode(JSC::resolveBase(stackFrame.callFrame, stackFrame.args[0].identifier(), stackFrame.callFrame->scopeChain(), false));
+    return JSValue::encode(JSScope::resolveBase(stackFrame.callFrame, stackFrame.args[0].identifier(), false));
 }
 
 DEFINE_STUB_FUNCTION(EncodedJSValue, op_resolve_base_strict_put)
 {
     STUB_INIT_STACK_FRAME(stackFrame);
-    JSValue base = JSC::resolveBase(stackFrame.callFrame, stackFrame.args[0].identifier(), stackFrame.callFrame->scopeChain(), true);
-    if (!base) {
-        stackFrame.globalData->exception = createErrorForInvalidGlobalAssignment(stackFrame.callFrame, stackFrame.args[0].identifier().ustring());
-        VM_THROW_EXCEPTION();
-    }
-    return JSValue::encode(base);
+
+    if (JSValue result = JSScope::resolveBase(stackFrame.callFrame, stackFrame.args[0].identifier(), true))
+        return JSValue::encode(result);
+    VM_THROW_EXCEPTION();
 }
 
 DEFINE_STUB_FUNCTION(EncodedJSValue, op_ensure_property_exists)
@@ -2627,7 +2656,7 @@ DEFINE_STUB_FUNCTION(EncodedJSValue, op_resolve_skip)
 {
     STUB_INIT_STACK_FRAME(stackFrame);
 
-    JSValue result = CommonSlowPaths::opResolveSkip(stackFrame.callFrame, stackFrame.args[0].identifier(), stackFrame.args[1].int32());
+    JSValue result = JSScope::resolveSkip(stackFrame.callFrame, stackFrame.args[0].identifier(), stackFrame.args[1].int32());
     CHECK_FOR_EXCEPTION_AT_END();
     return JSValue::encode(result);
 }
@@ -2637,28 +2666,20 @@ DEFINE_STUB_FUNCTION(EncodedJSValue, op_resolve_global)
     STUB_INIT_STACK_FRAME(stackFrame);
 
     CallFrame* callFrame = stackFrame.callFrame;
-    CodeBlock* codeBlock = callFrame->codeBlock();
-    JSGlobalObject* globalObject = codeBlock->globalObject();
     Identifier& ident = stackFrame.args[0].identifier();
+    CodeBlock* codeBlock = callFrame->codeBlock();
     unsigned globalResolveInfoIndex = stackFrame.args[1].int32();
-    ASSERT(globalObject->isGlobalObject());
+    GlobalResolveInfo& globalResolveInfo = codeBlock->globalResolveInfo(globalResolveInfoIndex);
 
-    PropertySlot slot(globalObject);
-    if (globalObject->getPropertySlot(callFrame, ident, slot)) {
-        JSValue result = slot.getValue(callFrame, ident);
-        if (slot.isCacheableValue() && !globalObject->structure()->isUncacheableDictionary() && slot.slotBase() == globalObject) {
-            GlobalResolveInfo& globalResolveInfo = codeBlock->globalResolveInfo(globalResolveInfoIndex);
-            globalResolveInfo.structure.set(callFrame->globalData(), codeBlock->ownerExecutable(), globalObject->structure());
-            globalResolveInfo.offset = slot.cachedOffset();
-            return JSValue::encode(result);
-        }
-
-        CHECK_FOR_EXCEPTION_AT_END();
-        return JSValue::encode(result);
-    }
-
-    stackFrame.globalData->exception = createUndefinedVariableError(callFrame, ident);
-    VM_THROW_EXCEPTION();
+    JSValue result = JSScope::resolveGlobal(
+        callFrame,
+        ident,
+        callFrame->lexicalGlobalObject(),
+        &globalResolveInfo.structure,
+        &globalResolveInfo.offset
+    );
+    CHECK_FOR_EXCEPTION();
+    return JSValue::encode(result);
 }
 
 DEFINE_STUB_FUNCTION(EncodedJSValue, op_div)
@@ -2747,7 +2768,7 @@ DEFINE_STUB_FUNCTION(EncodedJSValue, op_not)
 
     JSValue src = stackFrame.args[0].jsValue();
 
-    JSValue result = jsBoolean(!src.toBoolean());
+    JSValue result = jsBoolean(!src.toBoolean(stackFrame.callFrame));
     CHECK_FOR_EXCEPTION_AT_END();
     return JSValue::encode(result);
 }
@@ -2758,7 +2779,7 @@ DEFINE_STUB_FUNCTION(int, op_jtrue)
 
     JSValue src1 = stackFrame.args[0].jsValue();
 
-    bool result = src1.toBoolean();
+    bool result = src1.toBoolean(stackFrame.callFrame);
     CHECK_FOR_EXCEPTION_AT_END();
     return result;
 }
@@ -2789,13 +2810,13 @@ DEFINE_STUB_FUNCTION(int, op_eq)
     start:
     if (src2.isUndefined()) {
         return src1.isNull() || 
-               (src1.isCell() && src1.asCell()->structure()->typeInfo().masqueradesAsUndefined())
+               (src1.isCell() && src1.asCell()->structure()->masqueradesAsUndefined(stackFrame.callFrame->lexicalGlobalObject()))
                || src1.isUndefined();
     }
     
     if (src2.isNull()) {
         return src1.isUndefined() || 
-               (src1.isCell() && src1.asCell()->structure()->typeInfo().masqueradesAsUndefined())
+               (src1.isCell() && src1.asCell()->structure()->masqueradesAsUndefined(stackFrame.callFrame->lexicalGlobalObject()))
                || src1.isNull();
     }
 
@@ -2832,10 +2853,10 @@ DEFINE_STUB_FUNCTION(int, op_eq)
     }
     
     if (src1.isUndefined())
-        return src2.isCell() && src2.asCell()->structure()->typeInfo().masqueradesAsUndefined();
+        return src2.isCell() && src2.asCell()->structure()->masqueradesAsUndefined(stackFrame.callFrame->lexicalGlobalObject());
     
     if (src1.isNull())
-        return src2.isCell() && src2.asCell()->structure()->typeInfo().masqueradesAsUndefined();
+        return src2.isCell() && src2.asCell()->structure()->masqueradesAsUndefined(stackFrame.callFrame->lexicalGlobalObject());
 
     JSCell* cell1 = src1.asCell();
 
@@ -2940,7 +2961,7 @@ DEFINE_STUB_FUNCTION(EncodedJSValue, op_resolve_with_base)
     STUB_INIT_STACK_FRAME(stackFrame);
 
     CallFrame* callFrame = stackFrame.callFrame;
-    JSValue result = CommonSlowPaths::opResolveWithBase(callFrame, stackFrame.args[0].identifier(), callFrame->registers()[stackFrame.args[1].int32()]);
+    JSValue result = JSScope::resolveWithBase(callFrame, stackFrame.args[0].identifier(), &callFrame->registers()[stackFrame.args[1].int32()]);
     CHECK_FOR_EXCEPTION_AT_END();
     return JSValue::encode(result);
 }
@@ -2950,7 +2971,7 @@ DEFINE_STUB_FUNCTION(EncodedJSValue, op_resolve_with_this)
     STUB_INIT_STACK_FRAME(stackFrame);
 
     CallFrame* callFrame = stackFrame.callFrame;
-    JSValue result = CommonSlowPaths::opResolveWithThis(callFrame, stackFrame.args[0].identifier(), callFrame->registers()[stackFrame.args[1].int32()]);
+    JSValue result = JSScope::resolveWithThis(callFrame, stackFrame.args[0].identifier(), &callFrame->registers()[stackFrame.args[1].int32()]);
     CHECK_FOR_EXCEPTION_AT_END();
     return JSValue::encode(result);
 }
@@ -2972,7 +2993,7 @@ DEFINE_STUB_FUNCTION(JSObject*, op_new_func_exp)
         does not affect the scope enclosing the FunctionExpression.
      */
     if (!function->name().isNull()) {
-        JSStaticScopeObject* functionScopeObject = JSStaticScopeObject::create(callFrame, function->name(), func, ReadOnly | DontDelete);
+        JSNameScope* functionScopeObject = JSNameScope::create(callFrame, function->name(), func, ReadOnly | DontDelete);
         func->setScope(callFrame->globalData(), func->scope()->push(functionScopeObject));
     }
 
@@ -3126,7 +3147,7 @@ DEFINE_STUB_FUNCTION(JSObject*, op_push_scope)
 
     JSObject* o = stackFrame.args[0].jsValue().toObject(stackFrame.callFrame);
     CHECK_FOR_EXCEPTION();
-    stackFrame.callFrame->setScopeChain(stackFrame.callFrame->scopeChain()->push(o));
+    stackFrame.callFrame->setScopeChain(stackFrame.callFrame->scopeChain()->push(JSWithScope::create(stackFrame.callFrame, o)));
     return o;
 }
 
@@ -3148,7 +3169,7 @@ DEFINE_STUB_FUNCTION(EncodedJSValue, op_is_object)
 {
     STUB_INIT_STACK_FRAME(stackFrame);
 
-    return JSValue::encode(jsBoolean(jsIsObjectType(stackFrame.args[0].jsValue())));
+    return JSValue::encode(jsBoolean(jsIsObjectType(stackFrame.callFrame, stackFrame.args[0].jsValue())));
 }
 
 DEFINE_STUB_FUNCTION(EncodedJSValue, op_is_function)
@@ -3241,7 +3262,7 @@ DEFINE_STUB_FUNCTION(JSObject*, op_push_new_scope)
 {
     STUB_INIT_STACK_FRAME(stackFrame);
 
-    JSObject* scope = JSStaticScopeObject::create(stackFrame.callFrame, stackFrame.args[0].identifier(), stackFrame.args[1].jsValue(), DontDelete);
+    JSObject* scope = JSNameScope::create(stackFrame.callFrame, stackFrame.args[0].identifier(), stackFrame.args[1].jsValue(), DontDelete);
 
     CallFrame* callFrame = stackFrame.callFrame;
     callFrame->setScopeChain(callFrame->scopeChain()->push(scope));
@@ -3403,8 +3424,9 @@ DEFINE_STUB_FUNCTION(void, op_debug)
     int debugHookID = stackFrame.args[0].int32();
     int firstLine = stackFrame.args[1].int32();
     int lastLine = stackFrame.args[2].int32();
+    int column = stackFrame.args[3].int32();
 
-    stackFrame.globalData->interpreter->debug(callFrame, static_cast<DebugHookID>(debugHookID), firstLine, lastLine);
+    stackFrame.globalData->interpreter->debug(callFrame, static_cast<DebugHookID>(debugHookID), firstLine, lastLine, column);
 }
 
 DEFINE_STUB_FUNCTION(void*, vm_throw)

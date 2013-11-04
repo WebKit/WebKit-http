@@ -60,6 +60,7 @@ public:
     virtual void setPreserves3D(bool b);
     virtual void setMasksToBounds(bool b);
     virtual void setDrawsContent(bool b);
+    virtual void setContentsVisible(bool);
     virtual void setContentsOpaque(bool b);
     virtual void setBackfaceVisibility(bool b);
     virtual void setOpacity(float opacity);
@@ -99,8 +100,8 @@ private:
     virtual void willBeDestroyed();
 
     OwnPtr<TextureMapperLayer> m_layer;
-    RefPtr<TextureMapperBackingStore> m_compositedImage;
-    RefPtr<Image> m_image;
+    RefPtr<TextureMapperTiledBackingStore> m_compositedImage;
+    NativeImagePtr m_compositedNativeImagePtr;
     int m_changeMask;
     bool m_needsDisplay;
     bool m_fixedToViewport;

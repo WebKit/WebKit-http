@@ -77,6 +77,7 @@ InternalSettings::Backup::Backup(Page* page, Settings* settings)
     , m_originalCSSExclusionsEnabled(RuntimeEnabledFeatures::cssExclusionsEnabled())
 #if ENABLE(SHADOW_DOM)
     , m_originalShadowDOMEnabled(RuntimeEnabledFeatures::shadowDOMEnabled())
+    , m_originalAuthorShadowDOMForAnyElementEnabled(RuntimeEnabledFeatures::authorShadowDOMForAnyElementEnabled())
 #endif
     , m_originalEditingBehavior(settings->editingBehaviorType())
     , m_originalFixedPositionCreatesStackingContext(settings->fixedPositionCreatesStackingContext())
@@ -90,10 +91,12 @@ InternalSettings::Backup::Backup(Page* page, Settings* settings)
 #if ENABLE(TEXT_AUTOSIZING)
     , m_originalTextAutosizingEnabled(settings->textAutosizingEnabled())
     , m_originalTextAutosizingWindowSizeOverride(settings->textAutosizingWindowSizeOverride())
+    , m_originalTextAutosizingFontScaleFactor(settings->textAutosizingFontScaleFactor())
 #endif
 #if ENABLE(DIALOG_ELEMENT)
     , m_originalDialogElementEnabled(RuntimeEnabledFeatures::dialogElementEnabled())
 #endif
+    , m_canStartMedia(page->canStartMedia())
 {
 }
 
@@ -105,6 +108,7 @@ void InternalSettings::Backup::restoreTo(Page* page, Settings* settings)
     RuntimeEnabledFeatures::setCSSExclusionsEnabled(m_originalCSSExclusionsEnabled);
 #if ENABLE(SHADOW_DOM)
     RuntimeEnabledFeatures::setShadowDOMEnabled(m_originalShadowDOMEnabled);
+    RuntimeEnabledFeatures::setAuthorShadowDOMForAnyElementEnabled(m_originalAuthorShadowDOMForAnyElementEnabled);
 #endif
     settings->setEditingBehaviorType(m_originalEditingBehavior);
     settings->setFixedPositionCreatesStackingContext(m_originalFixedPositionCreatesStackingContext);
@@ -119,10 +123,12 @@ void InternalSettings::Backup::restoreTo(Page* page, Settings* settings)
 #if ENABLE(TEXT_AUTOSIZING)
     settings->setTextAutosizingEnabled(m_originalTextAutosizingEnabled);
     settings->setTextAutosizingWindowSizeOverride(m_originalTextAutosizingWindowSizeOverride);
+    settings->setTextAutosizingFontScaleFactor(m_originalTextAutosizingFontScaleFactor);
 #endif
 #if ENABLE(DIALOG_ELEMENT)
     RuntimeEnabledFeatures::setDialogElementEnabled(m_originalDialogElementEnabled);
 #endif
+    page->setCanStartMedia(m_canStartMedia);
 }
 
 InternalSettings* InternalSettings::from(Page* page)
@@ -154,7 +160,7 @@ void InternalSettings::reset()
 {
     TextRun::setAllowsRoundingHacks(false);
     setUserPreferredLanguages(Vector<String>());
-    page()->setPagination(Page::Pagination());
+    page()->setPagination(Pagination());
     page()->setPageScaleFactor(1, IntPoint(0, 0));
 #if ENABLE(PAGE_POPUP)
     m_pagePopupDriver.clear();
@@ -273,6 +279,15 @@ void InternalSettings::setShadowDOMEnabled(bool enabled, ExceptionCode& ec)
 #endif
 }
 
+void InternalSettings::setAuthorShadowDOMForAnyElementEnabled(bool isEnabled)
+{
+#if ENABLE(SHADOW_DOM)
+    RuntimeEnabledFeatures::setAuthorShadowDOMForAnyElementEnabled(isEnabled);
+#else
+    UNUSED_PARAM(isEnabled);
+#endif
+}
+
 void InternalSettings::setTouchEventEmulationEnabled(bool enabled, ExceptionCode& ec)
 {
 #if ENABLE(TOUCH_EVENTS)
@@ -369,6 +384,17 @@ void InternalSettings::setTextAutosizingWindowSizeOverride(int width, int height
 #endif
 }
 
+void InternalSettings::setTextAutosizingFontScaleFactor(float fontScaleFactor, ExceptionCode& ec)
+{
+#if ENABLE(TEXT_AUTOSIZING)
+    InternalSettingsGuardForSettings();
+    settings()->setTextAutosizingFontScaleFactor(fontScaleFactor);
+#else
+    UNUSED_PARAM(fontScaleFactor);
+    UNUSED_PARAM(ec);
+#endif
+}
+
 void InternalSettings::setEnableScrollAnimator(bool enabled, ExceptionCode& ec)
 {
 #if ENABLE(SMOOTH_SCROLLING)
@@ -407,6 +433,12 @@ bool InternalSettings::cssVariablesEnabled(ExceptionCode& ec)
 {
     InternalSettingsGuardForSettingsReturn(false);
     return settings()->cssVariablesEnabled();
+}
+
+void InternalSettings::setCanStartMedia(bool enabled, ExceptionCode& ec)
+{
+    InternalSettingsGuardForSettings();
+    m_page->setCanStartMedia(enabled);
 }
 
 void InternalSettings::setMediaPlaybackRequiresUserGesture(bool enabled, ExceptionCode& ec)
@@ -533,17 +565,17 @@ void InternalSettings::setPagination(const String& mode, int gap, int pageLength
         return;
     }
 
-    Page::Pagination pagination;
+    Pagination pagination;
     if (mode == "Unpaginated")
-        pagination.mode = Page::Pagination::Unpaginated;
+        pagination.mode = Pagination::Unpaginated;
     else if (mode == "LeftToRightPaginated")
-        pagination.mode = Page::Pagination::LeftToRightPaginated;
+        pagination.mode = Pagination::LeftToRightPaginated;
     else if (mode == "RightToLeftPaginated")
-        pagination.mode = Page::Pagination::RightToLeftPaginated;
+        pagination.mode = Pagination::RightToLeftPaginated;
     else if (mode == "TopToBottomPaginated")
-        pagination.mode = Page::Pagination::TopToBottomPaginated;
+        pagination.mode = Pagination::TopToBottomPaginated;
     else if (mode == "BottomToTopPaginated")
-        pagination.mode = Page::Pagination::BottomToTopPaginated;
+        pagination.mode = Pagination::BottomToTopPaginated;
     else {
         ec = SYNTAX_ERR;
         return;
@@ -594,6 +626,12 @@ void InternalSettings::setMemoryInfoEnabled(bool enabled, ExceptionCode& ec)
 {
     InternalSettingsGuardForSettings();
     settings()->setMemoryInfoEnabled(enabled);
+}
+
+void InternalSettings::setThirdPartyStorageBlockingEnabled(bool enabled, ExceptionCode& ec)
+{
+    InternalSettingsGuardForSettings();
+    settings()->setThirdPartyStorageBlockingEnabled(enabled);
 }
 
 }

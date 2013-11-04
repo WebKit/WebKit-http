@@ -82,6 +82,7 @@ SET(WTF_HEADERS
     RefPtr.h
     RefPtrHashMap.h
     RetainPtr.h
+    SaturatedArithmetic.h
     SegmentedVector.h
     SHA1.h
     StackBounds.h
@@ -122,6 +123,7 @@ SET(WTF_HEADERS
     text/AtomicStringImpl.h
     text/Base64.h
     text/CString.h
+    text/IntegerToStringConversion.h
     text/StringBuffer.h
     text/StringHash.h
     text/StringImpl.h
@@ -147,6 +149,7 @@ SET(WTF_SOURCES
     DecimalNumber.cpp
     DynamicAnnotations.cpp
     FastMalloc.cpp
+    GregorianDateTime.cpp
     HashTable.cpp
     MD5.cpp
     MainThread.cpp
@@ -180,6 +183,7 @@ SET(WTF_SOURCES
     text/AtomicString.cpp
     text/Base64.cpp
     text/CString.cpp
+    text/IntegerToStringConversion.cpp
     text/StringBuilder.cpp
     text/StringImpl.cpp
     text/StringStatics.cpp

@@ -174,21 +174,7 @@ public:
 
 #if ENABLE(MEDIA_SOURCE)
 //  Media Source.
-    const KURL& webkitMediaSourceURL() const { return m_mediaSourceURL; }
-    void webkitSourceAddId(const String&, const String&, ExceptionCode&);
-    void webkitSourceRemoveId(const String&, ExceptionCode&);
-    PassRefPtr<TimeRanges> webkitSourceBuffered(const String&, ExceptionCode&);
-    void webkitSourceAppend(const String&, PassRefPtr<Uint8Array> data, ExceptionCode&);
-    void webkitSourceAbort(const String&, ExceptionCode&);
-    enum EndOfStreamStatus { EOS_NO_ERROR, EOS_NETWORK_ERR, EOS_DECODE_ERR };
-    void webkitSourceEndOfStream(unsigned short, ExceptionCode&);
-    enum SourceState { SOURCE_CLOSED, SOURCE_OPEN, SOURCE_ENDED };
-    SourceState webkitSourceState() const;
-    void setSourceState(SourceState);
-
-    DEFINE_ATTRIBUTE_EVENT_LISTENER(webkitsourceopen);
-    DEFINE_ATTRIBUTE_EVENT_LISTENER(webkitsourceended);
-    DEFINE_ATTRIBUTE_EVENT_LISTENER(webkitsourceclose);
+    void setSourceState(const String&);
 #endif 
 
 #if ENABLE(ENCRYPTED_MEDIA)
@@ -250,12 +236,13 @@ public:
     };
 
     void configureTextTrackGroupForLanguage(const TrackGroup&) const;
-    void configureNewTextTracks();
+    void configureTextTracks();
     void configureTextTrackGroup(const TrackGroup&) const;
 
     bool userIsInterestedInThisTrackKind(String) const;
     bool textTracksAreReady() const;
     void configureTextTrackDisplay();
+    void updateClosedCaptionsControls();
 
     // TextTrackClient
     virtual void textTrackReadyStateChanged(TextTrack*);
@@ -368,6 +355,7 @@ protected:
 private:
     void createMediaPlayer();
 
+    virtual bool hasCustomFocusLogic() const OVERRIDE;
     virtual bool supportsFocus() const;
     virtual bool isMouseFocusable() const;
     virtual bool rendererIsNeeded(const NodeRenderingContext&);
@@ -420,7 +408,6 @@ private:
 #if ENABLE(MEDIA_SOURCE)
     virtual void mediaPlayerSourceOpened();
     virtual String mediaPlayerSourceURL() const;
-    bool isValidSourceId(const String&, ExceptionCode&) const;
 #endif
 
 #if ENABLE(ENCRYPTED_MEDIA)
@@ -436,6 +423,16 @@ private:
 
     virtual bool mediaPlayerNeedsSiteSpecificHacks() const OVERRIDE;
     virtual String mediaPlayerDocumentHost() const OVERRIDE;
+
+    virtual void mediaPlayerExitFullscreen() OVERRIDE;
+    virtual bool mediaPlayerIsVideo() const OVERRIDE;
+    virtual LayoutRect mediaPlayerContentBoxRect() const OVERRIDE;
+    virtual void mediaPlayerSetSize(const IntSize&) OVERRIDE;
+    virtual void mediaPlayerPause() OVERRIDE;
+    virtual void mediaPlayerPlay() OVERRIDE;
+    virtual bool mediaPlayerIsPaused() const OVERRIDE;
+    virtual HostWindow* mediaPlayerHostWindow() OVERRIDE;
+    virtual IntRect mediaPlayerWindowClipRect() OVERRIDE;
 
 #if PLATFORM(WIN) && USE(AVFOUNDATION)
     virtual GraphicsDeviceAdapter* mediaPlayerGraphicsDeviceAdapter(const MediaPlayer*) const OVERRIDE;
@@ -598,8 +595,7 @@ private:
 
 #if ENABLE(MEDIA_SOURCE)
     KURL m_mediaSourceURL;
-    SourceState m_sourceState;
-    HashSet<String> m_sourceIDs;
+    RefPtr<MediaSource> m_mediaSource;
 #endif
 
     mutable float m_cachedTime;
@@ -659,6 +655,7 @@ private:
 
     CueList m_currentlyActiveCues;
     int m_ignoreTrackDisplayUpdate;
+    bool m_disableCaptions;
 #endif
 
 #if ENABLE(WEB_AUDIO)

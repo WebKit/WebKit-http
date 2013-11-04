@@ -75,7 +75,7 @@ module core {
         Node               adoptNode(in [Optional=DefaultIsUndefined] Node source)
             raises (DOMException);
 
-#if defined(LANGUAGE_OBJECTIVE_C) && LANGUAGE_OBJECTIVE_C
+#if defined(LANGUAGE_OBJECTIVE_C) && LANGUAGE_OBJECTIVE_C || defined(LANGUAGE_GOBJECT) && LANGUAGE_GOBJECT
         // document.documentURI was writable in DOM3 Core, but is read-only in DOM4
         // (see http://www.w3.org/TR/2011/WD-dom-20110915/#document). We need to keep
         // the writable version around for Objective C clients, but are moving to
@@ -268,9 +268,8 @@ module core {
         [Conditional=POINTER_LOCK, V8EnabledAtRuntime=pointerLock] void webkitExitPointerLock();
         readonly attribute [Conditional=POINTER_LOCK, V8EnabledAtRuntime=pointerLock] Element webkitPointerLockElement;
 
-#if defined(ENABLE_CSS_REGIONS) && ENABLE_CSS_REGIONS
-        WebKitNamedFlow webkitGetFlowByName(in DOMString name);
-#endif
+        [Conditional=CSS_REGIONS] WebKitNamedFlow webkitGetFlowByName(in DOMString name);
+        [Conditional=CSS_REGIONS] DOMNamedFlowCollection webkitGetNamedFlows();
 
 #if !defined(LANGUAGE_OBJECTIVE_C) || !LANGUAGE_OBJECTIVE_C
         // Event handler DOM attributes

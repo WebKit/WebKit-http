@@ -70,6 +70,12 @@
 
 namespace WebCore {
 
+PassRefPtr<GraphicsContext3D> GraphicsContext3D::createForCurrentGLContext()
+{
+    RefPtr<GraphicsContext3D> context = adoptRef(new GraphicsContext3D(Attributes(), 0, GraphicsContext3D::RenderToCurrentGLContext));
+    return context->m_private ? context.release() : 0;
+}
+
 void GraphicsContext3D::validateDepthStencil(const char* packedDepthStencilExtension)
 {
     Extensions3D* extensions = getExtensions();
@@ -155,6 +161,7 @@ PassRefPtr<ImageData> GraphicsContext3D::paintRenderingResultsToImageData(Drawin
     return imageData.release();
 }
 
+#if !PLATFORM(BLACKBERRY)
 void GraphicsContext3D::prepareTexture()
 {
     if (m_layerComposited)
@@ -166,22 +173,7 @@ void GraphicsContext3D::prepareTexture()
 
     ::glBindFramebufferEXT(GraphicsContext3D::FRAMEBUFFER, m_fbo);
     ::glActiveTexture(GL_TEXTURE0);
-#if PLATFORM(BLACKBERRY)
-    if (!platformTexture()) {
-        GLuint tex = 0;
-        ::glGenTextures(1, &tex);
-        ::glBindTexture(GL_TEXTURE_2D, tex);
-        ::glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-        ::glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-        ::glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-        ::glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-        ::glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, m_currentWidth, m_currentHeight, 0, GL_RGBA, GL_UNSIGNED_BYTE, 0);
-        m_compositingLayer->setTextureID(tex);
-    }
-    ::glBindTexture(GL_TEXTURE_2D, platformTexture());
-#else
     ::glBindTexture(GL_TEXTURE_2D, m_compositorTexture);
-#endif
     ::glCopyTexImage2D(GL_TEXTURE_2D, 0, m_internalColorFormat, 0, 0, m_currentWidth, m_currentHeight, 0);
     ::glBindTexture(GL_TEXTURE_2D, m_boundTexture0);
     ::glActiveTexture(m_activeTexture);
@@ -190,6 +182,7 @@ void GraphicsContext3D::prepareTexture()
     ::glFinish();
     m_layerComposited = true;
 }
+#endif
 
 void GraphicsContext3D::readRenderingResults(unsigned char *pixels, int pixelsSize)
 {
@@ -1335,6 +1328,11 @@ void GraphicsContext3D::deleteBuffer(Platform3DObject buffer)
 void GraphicsContext3D::deleteFramebuffer(Platform3DObject framebuffer)
 {
     makeContextCurrent();
+    if (framebuffer == m_boundFBO) {
+        // Make sure the framebuffer is not going to be used for drawing
+        // operations after it gets deleted.
+        bindFramebuffer(FRAMEBUFFER, 0);
+    }
     glDeleteFramebuffersEXT(1, &framebuffer);
 }
 
@@ -1380,6 +1378,12 @@ void GraphicsContext3D::markLayerComposited()
 bool GraphicsContext3D::layerComposited() const
 {
     return m_layerComposited;
+}
+
+void GraphicsContext3D::texImage2DDirect(GC3Denum target, GC3Dint level, GC3Denum internalformat, GC3Dsizei width, GC3Dsizei height, GC3Dint border, GC3Denum format, GC3Denum type, const void* pixels)
+{
+    makeContextCurrent();
+    ::glTexImage2D(target, level, internalformat, width, height, border, format, type, pixels);
 }
 
 }

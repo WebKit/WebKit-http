@@ -36,6 +36,7 @@
 #include "Document.h"
 #include "EventNames.h"
 #include "ExceptionCode.h"
+#include "FileInputType.h"
 #include "FileList.h"
 #include "FormController.h"
 #include "Frame.h"
@@ -56,7 +57,6 @@
 #include "SearchInputType.h"
 #include "ShadowRoot.h"
 #include "ScriptEventListener.h"
-#include "WheelEvent.h"
 #include <wtf/MathExtras.h>
 #include <wtf/StdLibExtras.h>
 
@@ -111,6 +111,9 @@ HTMLInputElement::HTMLInputElement(const QualifiedName& tagName, Document* docum
     , m_isActivatedSubmit(false)
     , m_autocomplete(Uninitialized)
     , m_isAutofilled(false)
+#if ENABLE(DATALIST_ELEMENT)
+    , m_hasNonEmptyList(false)
+#endif
     , m_stateRestored(false)
     , m_parsingInProgress(createdByParser)
     , m_valueAttributeWasUpdatedAfterParsing(false)
@@ -158,6 +161,11 @@ HTMLInputElement::~HTMLInputElement()
 const AtomicString& HTMLInputElement::name() const
 {
     return m_name.isNull() ? emptyAtom : m_name;
+}
+
+Vector<FileChooserFileInfo> HTMLInputElement::filesFromFileInputFormControlState(const FormControlState& state)
+{
+    return FileInputType::filesFromFormControlState(state);
 }
 
 HTMLElement* HTMLInputElement::containerElement() const
@@ -313,6 +321,13 @@ StepRange HTMLInputElement::createStepRange(AnyStepHandling anyStepHandling) con
     return m_inputType->createStepRange(anyStepHandling);
 }
 
+#if ENABLE(DATALIST_ELEMENT)
+Decimal HTMLInputElement::findClosestTickMarkValue(const Decimal& value)
+{
+    return m_inputType->findClosestTickMarkValue(value);
+}
+#endif
+
 void HTMLInputElement::stepUp(int n, ExceptionCode& ec)
 {
     m_inputType->stepUp(n, ec);
@@ -321,6 +336,31 @@ void HTMLInputElement::stepUp(int n, ExceptionCode& ec)
 void HTMLInputElement::stepDown(int n, ExceptionCode& ec)
 {
     m_inputType->stepUp(-n, ec);
+}
+
+void HTMLInputElement::blur()
+{
+    m_inputType->blur();
+}
+
+void HTMLInputElement::defaultBlur()
+{
+    HTMLTextFormControlElement::blur();
+}
+
+void HTMLInputElement::defaultFocus(bool restorePreviousSelection)
+{
+    HTMLTextFormControlElement::focus(restorePreviousSelection);
+}
+
+void HTMLInputElement::focus(bool restorePreviousSelection)
+{
+    m_inputType->focus(restorePreviousSelection);
+}
+
+bool HTMLInputElement::hasCustomFocusLogic() const
+{
+    return m_inputType->hasCustomFocusLogic();
 }
 
 bool HTMLInputElement::isKeyboardFocusable(KeyboardEvent* event) const
@@ -432,10 +472,9 @@ void HTMLInputElement::updateType()
 #if ENABLE(TOUCH_EVENTS)
     bool hasTouchEventHandler = m_inputType->hasTouchEventHandler();
     if (hasTouchEventHandler != m_hasTouchEventHandler) {
-      if (hasTouchEventHandler) {
+      if (hasTouchEventHandler)
         document()->didAddTouchEventHandler();
-        document()->addListenerType(Document::TOUCH_LISTENER);
-      } else
+      else
         document()->didRemoveTouchEventHandler();
       m_hasTouchEventHandler = hasTouchEventHandler;
     }
@@ -619,6 +658,12 @@ void HTMLInputElement::parseAttribute(const Attribute& attribute)
     } else if (attribute.name() == typeAttr) {
         updateType();
     } else if (attribute.name() == valueAttr) {
+        // Changes to the value attribute may change whether or not this element has a default value.
+        // If this field is autocomplete=off that might affect the return value of needsSuspensionCallback.
+        if (m_autocomplete == Off) {
+            unregisterForSuspensionCallbackIfNeeded();
+            registerForSuspensionCallbackIfNeeded();
+        }
         // We only need to setChanged if the form is looking at the default value right now.
         if (!hasDirtyValue()) {
             updatePlaceholderVisibility(false);
@@ -837,7 +882,7 @@ void HTMLInputElement::setChecked(bool nowChecked, TextFieldEventBehavior eventB
     // RenderTextView), but it's not possible to do it at the moment
     // because of the way the code is structured.
     if (renderer() && AXObjectCache::accessibilityEnabled())
-        renderer()->document()->axObjectCache()->checkedStateChanged(renderer());
+        renderer()->document()->axObjectCache()->checkedStateChanged(this);
 
     // Only send a change event for items in the document (avoid firing during
     // parsing) and don't send a change event for a radio button that's getting
@@ -1142,12 +1187,6 @@ void HTMLInputElement::defaultEventHandler(Event* evt)
     if (evt->isBeforeTextInsertedEvent())
         m_inputType->handleBeforeTextInsertedEvent(static_cast<BeforeTextInsertedEvent*>(evt));
 
-    if (evt->hasInterface(eventNames().interfaceForWheelEvent)) {
-        m_inputType->handleWheelEvent(static_cast<WheelEvent*>(evt));
-        if (evt->defaultHandled())
-            return;
-    }
-
     if (evt->isMouseEvent() && evt->type() == eventNames().mousedownEvent) {
         m_inputType->handleMouseDownEvent(static_cast<MouseEvent*>(evt));
         if (evt->defaultHandled())
@@ -1372,7 +1411,17 @@ bool HTMLInputElement::isOutOfRange() const
 
 bool HTMLInputElement::needsSuspensionCallback()
 {
-    return m_autocomplete == Off || m_inputType->shouldResetOnDocumentActivation();
+    if (m_inputType->shouldResetOnDocumentActivation())
+        return true;
+
+    // Sensitive input elements are marked with autocomplete=off, and we want to wipe them out
+    // when going back; returning true here arranges for us to call reset at the time
+    // the page is restored. Non-empty textual default values indicate that the field
+    // is not really sensitive -- there's no default value for an account number --
+    // and we would see unexpected results if we reset to something other than blank.
+    bool isSensitive = m_autocomplete == Off && !(m_inputType->isTextType() && !defaultValue().isEmpty());
+
+    return isSensitive;
 }
 
 void HTMLInputElement::registerForSuspensionCallbackIfNeeded()

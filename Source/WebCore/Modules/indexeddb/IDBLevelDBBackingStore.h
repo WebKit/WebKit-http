@@ -45,9 +45,10 @@ public:
     virtual ~IDBLevelDBBackingStore();
 
     virtual void getDatabaseNames(Vector<String>& foundNames);
-    virtual bool getIDBDatabaseMetaData(const String& name, String& foundVersion, int64_t& foundId);
-    virtual bool createIDBDatabaseMetaData(const String& name, const String& version, int64_t& rowId);
+    virtual bool getIDBDatabaseMetaData(const String& name, String& foundVersion, int64_t& foundIntVersion, int64_t& foundId);
+    virtual bool createIDBDatabaseMetaData(const String& name, const String& version, int64_t intVersion, int64_t& rowId);
     virtual bool updateIDBDatabaseMetaData(int64_t rowId, const String& version);
+    virtual bool updateIDBDatabaseIntVersion(int64_t rowId, int64_t intVersion);
     virtual bool deleteDatabase(const String& name);
 
     virtual void getObjectStores(int64_t databaseId, Vector<int64_t>& foundIds, Vector<String>& foundNames, Vector<IDBKeyPath>& foundKeyPaths, Vector<bool>& foundAutoIncrementFlags);
@@ -84,6 +85,8 @@ protected:
     IDBLevelDBBackingStore(const String& identifier, IDBFactoryBackendImpl*, PassOwnPtr<LevelDBDatabase>);
 
 private:
+    bool findKeyInIndex(int64_t databaseId, int64_t objectStoreId, int64_t indexId, const IDBKey&, Vector<char>& foundEncodedPrimaryKey);
+
     String m_identifier;
     RefPtr<IDBFactoryBackendImpl> m_factory;
     OwnPtr<LevelDBDatabase> m_db;

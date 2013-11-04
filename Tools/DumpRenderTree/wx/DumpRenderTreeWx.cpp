@@ -29,7 +29,7 @@
 #include "config.h"
 #include "DumpRenderTree.h"
 
-#include "LayoutTestController.h"
+#include "TestRunner.h"
 #include "WorkQueue.h"
 #include "WorkQueueItem.h"
 
@@ -50,7 +50,7 @@
 volatile bool done = true;
 volatile bool notified = false;
 static bool printSeparators = true;
-static int dumpPixels;
+static int dumpPixelsForCurrentTest;
 static int dumpTree = 1;
 time_t startTime; // to detect timeouts / failed tests
 
@@ -59,7 +59,7 @@ using namespace WebKit;
 
 FILE* logOutput;
 
-RefPtr<LayoutTestController> gLayoutTestController;
+RefPtr<TestRunner> gTestRunner;
 static WebView* webView;
 static wxTimer* idleTimer;
 
@@ -95,7 +95,7 @@ public:
         if (event.GetState() == WEBVIEW_LOAD_ONLOAD_HANDLED) {
             done = true;
             
-            if (!gLayoutTestController->waitToDump() || notified) {
+            if (!gTestRunner->waitToDump() || notified) {
                 dump();
             }
         }
@@ -128,14 +128,14 @@ public:
     
     void OnReceivedTitleEvent(WebViewReceivedTitleEvent& event)
     {
-        if (gLayoutTestController->dumpTitleChanges() && !done)
+        if (gTestRunner->dumpTitleChanges() && !done)
             wxFprintf(stdout, "TITLE CHANGED: %S\n", event.GetTitle());
     }
     
     void OnWindowObjectClearedEvent(WebViewWindowObjectClearedEvent& event)
     {
         JSValueRef exception = 0;
-        gLayoutTestController->makeWindowObject(event.GetJSContext(), event.GetWindowObject(), &exception);
+        gTestRunner->makeWindowObject(event.GetJSContext(), event.GetWindowObject(), &exception);
     }
     
 private:
@@ -155,7 +155,7 @@ LayoutWebViewEventHandler* eventHandler = 0;
 static wxString dumpFramesAsText(WebFrame* frame)
 {
     // TODO: implement this. leaving this here so we don't forget this case.
-    if (gLayoutTestController->dumpChildFramesAsText()) {
+    if (gTestRunner->dumpChildFramesAsText()) {
     }
     
     return frame->GetInnerText();
@@ -166,15 +166,15 @@ void dump()
     if (!done)
         return;
     
-    if (gLayoutTestController->waitToDump() && !notified)
+    if (gTestRunner->waitToDump() && !notified)
         return;
         
     if (dumpTree) {
         const char* result = 0;
 
-        bool dumpAsText = gLayoutTestController->dumpAsText();
+        bool dumpAsText = gTestRunner->dumpAsText();
         wxString str;
-        if (gLayoutTestController->dumpAsText())
+        if (gTestRunner->dumpAsText())
             str = dumpFramesAsText(webView->GetMainFrame());
         else 
             str = webView->GetMainFrame()->GetExternalRepresentation();
@@ -182,7 +182,7 @@ void dump()
         result = str.ToUTF8();
         if (!result) {
             const char* errorMessage;
-            if (gLayoutTestController->dumpAsText())
+            if (gTestRunner->dumpAsText())
                 errorMessage = "WebFrame::GetInnerText";
             else
                 errorMessage = "WebFrame::GetExternalRepresentation";
@@ -191,7 +191,7 @@ void dump()
             printf("%s\n", result);
         }
 
-        if (gLayoutTestController->dumpBackForwardList()) {
+        if (gTestRunner->dumpBackForwardList()) {
             // FIXME: not implemented
         }
 
@@ -203,10 +203,10 @@ void dump()
         }
     }
 
-    if (dumpPixels
-        && gLayoutTestController->generatePixelResults()
-        && !gLayoutTestController->dumpDOMAsWebArchive()
-        && !gLayoutTestController->dumpSourceAsWebArchive()) {
+    if (dumpPixelsForCurrentTest
+        && gTestRunner->generatePixelResults()
+        && !gTestRunner->dumpDOMAsWebArchive()
+        && !gTestRunner->dumpSourceAsWebArchive()) {
         // FIXME: Add support for dumping pixels
         fflush(stdout);
     }
@@ -215,30 +215,25 @@ void dump()
     fflush(stdout);
     fflush(stderr);
 
-    gLayoutTestController.clear();
+    gTestRunner.clear();
 }
 
-static void runTest(const wxString testPathOrURL)
+static void runTest(const wxString inputLine)
 {
     done = false;
     time(&startTime);
-    string pathOrURLString(testPathOrURL.char_str());
-    string pathOrURL(pathOrURLString);
-    string expectedPixelHash;
 
-    size_t separatorPos = pathOrURL.find("'");
-    if (separatorPos != string::npos) {
-        pathOrURL = string(pathOrURLString, 0, separatorPos);
-        expectedPixelHash = string(pathOrURLString, separatorPos + 1);
-    }
+    TestCommand command = parseInputLine(std::string(inputLine.ToAscii()));
+    string& pathOrURL = command.pathOrURL;
+    dumpPixelsForCurrentTest = command.shouldDumpPixels;
     
     // CURL isn't happy if we don't have a protocol.
     size_t http = pathOrURL.find("http://");
     if (http == string::npos)
         pathOrURL.insert(0, "file://");
     
-    gLayoutTestController = LayoutTestController::create(pathOrURL, expectedPixelHash);
-    if (!gLayoutTestController) {
+    gTestRunner = TestRunner::create(pathOrURL, command.expectedPixelHash);
+    if (!gTestRunner) {
         wxTheApp->ExitMainLoop();
     }
 
@@ -282,11 +277,6 @@ bool MyApp::OnInit()
             continue;
         }
         
-        if (!option.CmpNoCase(_T("--pixel-tests"))) {
-            dumpPixels = true;
-            continue;
-        }
-        
         if (!option.CmpNoCase(_T("--tree"))) {
             dumpTree = true;
             continue;
@@ -323,7 +313,7 @@ bool MyApp::OnInit()
         }
     
     } else {
-        printSeparators = (optind < argc-1 || (dumpPixels && dumpTree));
+        printSeparators = (optind < argc - 1 || (dumpPixelsForCurrentTest && dumpTree));
         for (int i = optind; i != argc; ++i) {
             runTest(wxTheApp->argv[1]);
         }

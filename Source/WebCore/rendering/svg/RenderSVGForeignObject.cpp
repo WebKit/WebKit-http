@@ -178,21 +178,21 @@ bool RenderSVGForeignObject::nodeAtFloatPoint(const HitTestRequest& request, Hit
         return false;
 
     // FOs establish a stacking context, so we need to hit-test all layers.
-    HitTestPoint hitTestPoint(roundedLayoutPoint(localPoint));
-    return RenderBlock::nodeAtPoint(request, result, hitTestPoint, LayoutPoint(), HitTestForeground)
-        || RenderBlock::nodeAtPoint(request, result, hitTestPoint, LayoutPoint(), HitTestFloat)
-        || RenderBlock::nodeAtPoint(request, result, hitTestPoint, LayoutPoint(), HitTestChildBlockBackgrounds);
+    HitTestLocation hitTestLocation(roundedLayoutPoint(localPoint));
+    return RenderBlock::nodeAtPoint(request, result, hitTestLocation, LayoutPoint(), HitTestForeground)
+        || RenderBlock::nodeAtPoint(request, result, hitTestLocation, LayoutPoint(), HitTestFloat)
+        || RenderBlock::nodeAtPoint(request, result, hitTestLocation, LayoutPoint(), HitTestChildBlockBackgrounds);
 }
 
-bool RenderSVGForeignObject::nodeAtPoint(const HitTestRequest&, HitTestResult&, const HitTestPoint&, const LayoutPoint&, HitTestAction)
+bool RenderSVGForeignObject::nodeAtPoint(const HitTestRequest&, HitTestResult&, const HitTestLocation&, const LayoutPoint&, HitTestAction)
 {
     ASSERT_NOT_REACHED();
     return false;
 }
 
-void RenderSVGForeignObject::mapLocalToContainer(RenderBoxModelObject* repaintContainer, bool /* fixed */, bool /* useTransforms */, TransformState& transformState, ApplyContainerFlipOrNot, bool* wasFixed) const
+void RenderSVGForeignObject::mapLocalToContainer(RenderBoxModelObject* repaintContainer, TransformState& transformState, MapLocalToContainerFlags mode, bool* wasFixed) const
 {
-    SVGRenderSupport::mapLocalToContainer(this, repaintContainer, transformState, wasFixed);
+    SVGRenderSupport::mapLocalToContainer(this, repaintContainer, transformState, mode & SnapOffsetForTransforms, wasFixed);
 }
 
 const RenderObject* RenderSVGForeignObject::pushMappingToContainer(const RenderBoxModelObject* ancestorToStopAt, RenderGeometryMap& geometryMap) const

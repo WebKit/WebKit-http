@@ -34,6 +34,7 @@
 #include "RenderTableCol.h"
 #include "RenderTableRow.h"
 #include "RenderView.h"
+#include "StyleInheritedData.h"
 #include <limits>
 #include <wtf/HashSet.h>
 #include <wtf/Vector.h>
@@ -114,16 +115,13 @@ void RenderTableSection::styleDidChange(StyleDifference diff, const RenderStyle*
         table->invalidateCollapsedBorders();
 }
 
-void RenderTableSection::willBeDestroyed()
+void RenderTableSection::willBeRemovedFromTree()
 {
-    RenderTable* recalcTable = table();
-    
-    RenderBox::willBeDestroyed();
-    
-    // recalc cell info because RenderTable has unguarded pointers
-    // stored that point to this RenderTableSection.
-    if (recalcTable)
-        recalcTable->setNeedsSectionRecalc();
+    RenderBox::willBeRemovedFromTree();
+
+    // Preventively invalidate our cells as we may be re-inserted into
+    // a new table which would require us to rebuild our structure.
+    setNeedsCellRecalc();
 }
 
 void RenderTableSection::addChild(RenderObject* child, RenderObject* beforeChild)
@@ -189,12 +187,6 @@ void RenderTableSection::addChild(RenderObject* child, RenderObject* beforeChild
     ASSERT(!beforeChild || beforeChild->isTableRow());
     RenderBox::addChild(child, beforeChild);
     toRenderTableRow(child)->updateBeforeAndAfterContent();
-}
-
-void RenderTableSection::removeChild(RenderObject* oldChild)
-{
-    setNeedsCellRecalc();
-    RenderBox::removeChild(oldChild);
 }
 
 void RenderTableSection::ensureRows(unsigned numRows)
@@ -587,9 +579,9 @@ void RenderTableSection::layoutRows()
                 }
             }
 
-            if (HashSet<RenderBox*>* percentHeightDescendants = cell->percentHeightDescendants()) {
-                HashSet<RenderBox*>::iterator end = percentHeightDescendants->end();
-                for (HashSet<RenderBox*>::iterator it = percentHeightDescendants->begin(); it != end; ++it) {
+            if (ListHashSet<RenderBox*>* percentHeightDescendants = cell->percentHeightDescendants()) {
+                ListHashSet<RenderBox*>::iterator end = percentHeightDescendants->end();
+                for (ListHashSet<RenderBox*>::iterator it = percentHeightDescendants->begin(); it != end; ++it) {
                     RenderBox* box = *it;
                     if (!box->isReplaced() && !box->scrollsOverflow() && !flexAllChildren)
                         continue;
@@ -1092,8 +1084,6 @@ CellSpan RenderTableSection::dirtiedColumns(const LayoutRect& damageRect) const
 CellSpan RenderTableSection::spannedRows(const LayoutRect& flippedRect) const
 {
     // Find the first row that starts after rect top.
-    // FIXME: Upper_bound might not be the correct algorithm here since it might skip empty rows, but it is
-    // consistent with behavior in the former point based hit-testing (but inconsistent with spannedColumns).
     unsigned nextRow = std::upper_bound(m_rowPos.begin(), m_rowPos.end(), flippedRect.y()) - m_rowPos.begin();
 
     if (nextRow == m_rowPos.size())
@@ -1118,20 +1108,24 @@ CellSpan RenderTableSection::spannedColumns(const LayoutRect& flippedRect) const
 {
     const Vector<int>& columnPos = table()->columnPositions();
 
-    // Find the first columnt that starts after rect left.
-    unsigned nextColumn = std::lower_bound(columnPos.begin(), columnPos.end(), flippedRect.x()) - columnPos.begin();
+    // Find the first column that starts after rect left.
+    // lower_bound doesn't handle the edge between two cells properly as it would wrongly return the
+    // cell on the logical top/left.
+    // upper_bound on the other hand properly returns the cell on the logical bottom/right, which also
+    // matches the behavior of other browsers.
+    unsigned nextColumn = std::upper_bound(columnPos.begin(), columnPos.end(), flippedRect.x()) - columnPos.begin();
 
     if (nextColumn == columnPos.size())
         return CellSpan(columnPos.size() - 1, columnPos.size() - 1); // After all columns.
 
     unsigned startColumn = nextColumn > 0 ? nextColumn - 1 : 0;
 
-    // Find the first row that starts after rect right.
+    // Find the first column that starts after rect right.
     unsigned endColumn;
     if (columnPos[nextColumn] >= flippedRect.maxX())
         endColumn = nextColumn;
     else {
-        endColumn = std::lower_bound(columnPos.begin() + nextColumn, columnPos.end(), flippedRect.maxX()) - columnPos.begin();
+        endColumn = std::upper_bound(columnPos.begin() + nextColumn, columnPos.end(), flippedRect.maxX()) - columnPos.begin();
         if (endColumn == columnPos.size())
             endColumn = columnPos.size() - 1;
     }
@@ -1369,7 +1363,7 @@ void RenderTableSection::splitColumn(unsigned pos, unsigned first)
 }
 
 // Hit Testing
-bool RenderTableSection::nodeAtPoint(const HitTestRequest& request, HitTestResult& result, const HitTestPoint& pointInContainer, const LayoutPoint& accumulatedOffset, HitTestAction action)
+bool RenderTableSection::nodeAtPoint(const HitTestRequest& request, HitTestResult& result, const HitTestLocation& locationInContainer, const LayoutPoint& accumulatedOffset, HitTestAction action)
 {
     // If we have no children then we have nothing to do.
     if (!firstChild())
@@ -1379,7 +1373,7 @@ bool RenderTableSection::nodeAtPoint(const HitTestRequest& request, HitTestResul
     // Just forward to our children always.
     LayoutPoint adjustedLocation = accumulatedOffset + location();
 
-    if (hasOverflowClip() && !pointInContainer.intersects(overflowClipRect(adjustedLocation, pointInContainer.region())))
+    if (hasOverflowClip() && !locationInContainer.intersects(overflowClipRect(adjustedLocation, locationInContainer.region())))
         return false;
 
     if (hasOverflowingCell()) {
@@ -1390,8 +1384,8 @@ bool RenderTableSection::nodeAtPoint(const HitTestRequest& request, HitTestResul
             // then we can remove this check.
             if (child->isBox() && !toRenderBox(child)->hasSelfPaintingLayer()) {
                 LayoutPoint childPoint = flipForWritingModeForChild(toRenderBox(child), adjustedLocation);
-                if (child->nodeAtPoint(request, result, pointInContainer, childPoint, action)) {
-                    updateHitTestResult(result, toLayoutPoint(pointInContainer.point() - childPoint));
+                if (child->nodeAtPoint(request, result, locationInContainer, childPoint, action)) {
+                    updateHitTestResult(result, toLayoutPoint(locationInContainer.point() - childPoint));
                     return true;
                 }
             }
@@ -1401,7 +1395,7 @@ bool RenderTableSection::nodeAtPoint(const HitTestRequest& request, HitTestResul
 
     recalcCellsIfNeeded();
 
-    LayoutRect hitTestRect = pointInContainer.boundingBox();
+    LayoutRect hitTestRect = locationInContainer.boundingBox();
     hitTestRect.moveBy(-adjustedLocation);
 
     LayoutRect tableAlignedRect = logicalRectForWritingModeAndDirection(hitTestRect);
@@ -1421,8 +1415,8 @@ bool RenderTableSection::nodeAtPoint(const HitTestRequest& request, HitTestResul
                 --i;
                 RenderTableCell* cell = current.cells[i];
                 LayoutPoint cellPoint = flipForWritingModeForChild(cell, adjustedLocation);
-                if (static_cast<RenderObject*>(cell)->nodeAtPoint(request, result, pointInContainer, cellPoint, action)) {
-                    updateHitTestResult(result, pointInContainer.point() - toLayoutSize(cellPoint));
+                if (static_cast<RenderObject*>(cell)->nodeAtPoint(request, result, locationInContainer, cellPoint, action)) {
+                    updateHitTestResult(result, locationInContainer.point() - toLayoutSize(cellPoint));
                     return true;
                 }
             }

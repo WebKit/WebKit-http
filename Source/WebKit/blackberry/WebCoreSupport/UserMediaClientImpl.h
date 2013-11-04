@@ -47,6 +47,8 @@ public:
 
 private:
     UserMediaClientImpl();
+
+    BlackBerry::WebKit::WebPage* m_page;
 };
 
 }

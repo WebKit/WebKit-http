@@ -26,6 +26,7 @@
 #include "config.h"
 #include "MarkedBlock.h"
 
+#include "IncrementalSweeper.h"
 #include "JSCell.h"
 #include "JSObject.h"
 #include "ScopeChain.h"
@@ -37,17 +38,8 @@ MarkedBlock* MarkedBlock::create(const PageAllocationAligned& allocation, Heap* 
     return new (NotNull, allocation.base()) MarkedBlock(allocation, heap, cellSize, cellsNeedDestruction, onlyContainsStructures);
 }
 
-PageAllocationAligned MarkedBlock::destroy(MarkedBlock* block)
-{
-    PageAllocationAligned allocation;
-    swap(allocation, block->m_allocation);
-
-    block->~MarkedBlock();
-    return allocation;
-}
-
 MarkedBlock::MarkedBlock(const PageAllocationAligned& allocation, Heap* heap, size_t cellSize, bool cellsNeedDestruction, bool onlyContainsStructures)
-    : HeapBlock(allocation)
+    : HeapBlock<MarkedBlock>(allocation)
     , m_atomsPerCell((cellSize + atomSize - 1) / atomSize)
     , m_endAtom(atomsPerBlock - m_atomsPerCell + 1)
     , m_cellsNeedDestruction(cellsNeedDestruction)
@@ -67,10 +59,6 @@ inline void MarkedBlock::callDestructor(JSCell* cell)
 
 #if ENABLE(SIMPLE_HEAP_PROFILING)
     m_heap->m_destroyedTypeCounts.countVPtr(vptr);
-#endif
-
-#if !ASSERT_DISABLED || ENABLE(GC_VALIDATION)
-    cell->clearStructure();
 #endif
 
     cell->methodTable()->destroy(cell);
@@ -140,10 +128,12 @@ MarkedBlock::FreeList MarkedBlock::sweepHelper(SweepMode sweepMode)
         ASSERT_NOT_REACHED();
         return FreeList();
     case Marked:
+        ASSERT(!m_onlyContainsStructures || heap()->isSafeToSweepStructures());
         return sweepMode == SweepToFreeList
             ? specializedSweep<Marked, SweepToFreeList, destructorCallNeeded>()
             : specializedSweep<Marked, SweepOnly, destructorCallNeeded>();
     case Zapped:
+        ASSERT(!m_onlyContainsStructures || heap()->isSafeToSweepStructures());
         return sweepMode == SweepToFreeList
             ? specializedSweep<Zapped, SweepToFreeList, destructorCallNeeded>()
             : specializedSweep<Zapped, SweepOnly, destructorCallNeeded>();

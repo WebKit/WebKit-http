@@ -78,8 +78,8 @@ PASS store.indexNames.contains('') is false
 PASS store.indexNames.contains('indexFail') is false
 PASS store.indexNames.contains('indexName') is true
 PASS store.indexNames[0] is "indexName"
-PASS store.indexNames[1] is null
-PASS store.indexNames[100] is null
+PASS store.indexNames[1] is undefined.
+PASS store.indexNames[100] is undefined.
 PASS store.indexNames.item(1) is null
 PASS store.indexNames.item(100) is null
 transaction = db.transaction(['storeName'], 'readwrite')
@@ -96,8 +96,8 @@ addSuccess():
 PASS event.target.result is "key"
 event.target.source.add({x: 'foo'}, 'zzz')
 addAgainFailure():
-PASS event.target.errorCode is IDBDatabaseException.DATA_ERR
-PASS event.target.error.name is 'DataError'
+PASS event.target.errorCode is IDBDatabaseException.CONSTRAINT_ERR
+PASS event.target.error.name is 'ConstraintError'
 event.preventDefault()
 db.transaction(['storeName'], 'readwrite')
 store = transaction.objectStore('storeName')

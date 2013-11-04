@@ -48,9 +48,7 @@ public:
     virtual void ref() OVERRIDE;
     virtual void deref() OVERRIDE;
 
-protected:
-    const StylePropertySet* propertySet() const { return m_propertySet; }
-    virtual StylePropertySet* ensureMutablePropertySet() { return m_propertySet; }
+    virtual void reportMemoryUsage(MemoryObjectInfo*) const OVERRIDE;
 
 private:
     virtual CSSRule* parentRule() const OVERRIDE { return 0; };
@@ -99,6 +97,8 @@ public:
 
     void reattach(StylePropertySet*);
 
+    virtual void reportMemoryUsage(MemoryObjectInfo*) const OVERRIDE;
+
 private:
     StyleRuleCSSStyleDeclaration(StylePropertySet*, CSSRule*);
     virtual ~StyleRuleCSSStyleDeclaration();
@@ -109,8 +109,6 @@ private:
 
     virtual void willMutate() OVERRIDE;
     virtual void didMutate(MutationType) OVERRIDE;
-
-    virtual StylePropertySet* ensureMutablePropertySet() OVERRIDE { return m_propertySet; }
 
     unsigned m_refCount;
     CSSRule* m_parentRule;
@@ -124,6 +122,8 @@ public:
         , m_parentElement(parentElement) 
     {
     }
+
+    virtual void reportMemoryUsage(MemoryObjectInfo*) const OVERRIDE;
     
 private:
     virtual CSSStyleSheet* parentStyleSheet() const OVERRIDE;
@@ -132,8 +132,6 @@ private:
 
     virtual void didMutate(MutationType) OVERRIDE;
 
-    virtual StylePropertySet* ensureMutablePropertySet() OVERRIDE;
-    
     StyledElement* m_parentElement;
 };
 

@@ -397,6 +397,17 @@ static void testWebResourceMimeType(SingleResourceLoadTest* test, gconstpointer)
     g_assert_cmpstr(webkit_uri_response_get_mime_type(response), ==, "text/css");
 }
 
+static void testWebResourceSuggestedFilename(SingleResourceLoadTest* test, gconstpointer)
+{
+    test->loadURI(kServer->getURIForPath("/javascript.html").data());
+    WebKitURIResponse* response = test->waitUntilResourceLoadFinishedAndReturnURIResponse();
+    g_assert_cmpstr(webkit_uri_response_get_suggested_filename(response), ==, "JavaScript.js");
+
+    test->loadURI(kServer->getURIForPath("/image.html").data());
+    response = test->waitUntilResourceLoadFinishedAndReturnURIResponse();
+    g_assert(!webkit_uri_response_get_suggested_filename(response));
+}
+
 class ResourceURITrackingTest: public SingleResourceLoadTest {
 public:
     MAKE_GLIB_TEST_FIXTURE(ResourceURITrackingTest);
@@ -494,32 +505,6 @@ static void testWebResourceGetData(ResourcesTest* test, gconstpointer)
         test->checkResourceData(WEBKIT_WEB_RESOURCE(item->data));
 }
 
-static void replacedContentResourceLoadStartedCallback()
-{
-    g_assert_not_reached();
-}
-
-static void testWebViewResourcesReplacedContent(ResourcesTest* test, gconstpointer)
-{
-    test->loadURI(kServer->getURIForPath("/").data());
-    // FIXME: this should be 4 instead of 3, but we don't get the css image resource
-    // due to bug https://bugs.webkit.org/show_bug.cgi?id=78510.
-    test->waitUntilResourcesLoaded(3);
-
-    static const char* replacedHtml =
-        "<html><head>"
-        " <title>Content Replaced</title>"
-        " <link rel='stylesheet' href='data:text/css,body { margin: 0px; padding: 0px; }' type='text/css'>"
-        " <script language='javascript' src='data:application/javascript,function foo () { var a = 1; }'></script>"
-        "</head><body onload='document.title=\"Loaded\"'>WebKitGTK+ resources on replaced content test</body></html>";
-    g_signal_connect(test->m_webView, "resource-load-started", G_CALLBACK(replacedContentResourceLoadStartedCallback), test);
-    test->replaceContent(replacedHtml, "http://error-page.foo", 0);
-    test->waitUntilTitleChangedTo("Loaded");
-
-    g_assert(!webkit_web_view_get_main_resource(test->m_webView));
-    g_assert(!webkit_web_view_get_subresources(test->m_webView));
-}
-
 static void testWebViewResourcesHistoryCache(SingleResourceLoadTest* test, gconstpointer)
 {
     test->loadURI(kServer->getURIForPath("/").data());
@@ -588,6 +573,7 @@ static void serverCallback(SoupServer* server, SoupMessage* message, const char*
     } else if (g_str_equal(path, "/javascript.js")) {
         soup_message_body_append(message->response_body, SOUP_MEMORY_STATIC, kJavascript, strlen(kJavascript));
         soup_message_headers_append(message->response_headers, "Content-Type", "text/javascript");
+        soup_message_headers_append(message->response_headers, "Content-Disposition", "filename=JavaScript.js");
     } else if (g_str_equal(path, "/blank.ico")) {
         GOwnPtr<char> filePath(g_build_filename(Test::getWebKit1TestResoucesDir().data(), path, NULL));
         char* contents;
@@ -620,9 +606,9 @@ void beforeAll()
     SingleResourceLoadTest::add("WebKitWebResource", "loading", testWebResourceLoading);
     SingleResourceLoadTest::add("WebKitWebResource", "response", testWebResourceResponse);
     SingleResourceLoadTest::add("WebKitWebResource", "mime-type", testWebResourceMimeType);
+    SingleResourceLoadTest::add("WebKitWebResource", "suggested-filename", testWebResourceSuggestedFilename);
     ResourceURITrackingTest::add("WebKitWebResource", "active-uri", testWebResourceActiveURI);
     ResourcesTest::add("WebKitWebResource", "get-data", testWebResourceGetData);
-    ResourcesTest::add("WebKitWebView", "replaced-content", testWebViewResourcesReplacedContent);
     SingleResourceLoadTest::add("WebKitWebView", "history-cache", testWebViewResourcesHistoryCache);
 }
 

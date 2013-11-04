@@ -32,7 +32,7 @@
 #include "DateExtension.h"
 
 #include "V8HiddenPropertyName.h"
-#include "V8Proxy.h"
+#include "V8Binding.h"
 #include "V8RecursionScope.h"
 
 namespace WebCore {
@@ -76,7 +76,7 @@ DateExtension* DateExtension::get()
 
 void DateExtension::setAllowSleep(bool allow)
 {
-    v8::Local<v8::Value> result = V8Proxy::currentContext()->Global()->Get(v8::String::New("Date"));
+    v8::Local<v8::Value> result = v8::Context::GetCurrent()->Global()->Get(v8::String::New("Date"));
     if (result.IsEmpty() || !result->IsObject())
         return;
 
@@ -118,7 +118,7 @@ v8::Handle<v8::Value> DateExtension::Setup(const v8::Arguments& args)
 
 v8::Handle<v8::Value> DateExtension::OnSleepDetected(const v8::Arguments& args)
 {
-    return V8Proxy::throwError(V8Proxy::GeneralError, "Too much time spent in unload handler.", args.GetIsolate());
+    return throwError(GeneralError, "Too much time spent in unload handler.", args.GetIsolate());
 }
 
 }  // namespace WebCore

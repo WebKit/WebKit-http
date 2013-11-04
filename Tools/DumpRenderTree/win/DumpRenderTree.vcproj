@@ -438,15 +438,15 @@
 				>
 			</File>
 			<File
-				RelativePath="..\LayoutTestController.cpp"
+				RelativePath="..\TestRunner.cpp"
 				>
 			</File>
 			<File
-				RelativePath="..\LayoutTestController.h"
+				RelativePath="..\TestRunner.h"
 				>
 			</File>
 			<File
-				RelativePath=".\LayoutTestControllerWin.cpp"
+				RelativePath=".\TestRunnerWin.cpp"
 				>
 			</File>
 			<File
@@ -560,6 +560,10 @@
 		</File>
 		<File
 			RelativePath="..\DumpRenderTree.h"
+			>
+		</File>
+		<File
+			RelativePath="..\DumpRenderTreeCommon.cpp"
 			>
 		</File>
 		<File

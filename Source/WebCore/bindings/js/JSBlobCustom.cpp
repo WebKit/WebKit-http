@@ -76,7 +76,7 @@ EncodedJSValue JSC_HOST_CALL JSBlobConstructor::constructJSBlob(ExecState* exec)
         return throwVMError(exec, createTypeError(exec, "First argument of the constructor is not of type Array"));
 
     String type;
-    String endings = "transparent";
+    String endings = ASCIILiteral("transparent");
 
     if (exec->argumentCount() > 1) {
         JSValue blobPropertyBagValue = exec->argument(1);
@@ -136,7 +136,7 @@ EncodedJSValue JSC_HOST_CALL JSBlobConstructor::constructJSBlob(ExecState* exec)
         }
     }
 
-    RefPtr<Blob> blob = blobBuilder->getBlob(type);
+    RefPtr<Blob> blob = blobBuilder->getBlob(type, BlobConstructedByConstructor);
     return JSValue::encode(CREATE_DOM_WRAPPER(exec, jsConstructor->globalObject(), Blob, blob.get()));
 }
 

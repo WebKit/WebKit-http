@@ -24,10 +24,12 @@
 #include "CSSValueKeywords.h"
 #include "Frame.h"
 #include "HTMLMediaElement.h"
+#include "HostWindow.h"
 #include "MediaControlElements.h"
 #include "MediaPlayerPrivateBlackBerry.h"
 #include "Page.h"
 #include "PaintInfo.h"
+#include "RenderFullScreen.h"
 #include "RenderProgress.h"
 #include "RenderSlider.h"
 #include "RenderView.h"
@@ -39,13 +41,13 @@ namespace WebCore {
 const unsigned smallRadius = 1;
 const unsigned largeRadius = 3;
 const unsigned lineWidth = 1;
-const int marginSize = 4;
-const int mediaControlsHeight = 32;
-const int mediaSliderThumbWidth = 40;
-const int mediaSliderThumbHeight = 13;
-const int mediaSliderThumbRadius = 5;
-const int sliderThumbWidth = 15;
-const int sliderThumbHeight = 25;
+const float marginSize = 4;
+const float mediaControlsHeight = 32;
+const float mediaSliderThumbWidth = 40;
+const float mediaSliderThumbHeight = 13;
+const float mediaSliderThumbRadius = 5;
+const float sliderThumbWidth = 15;
+const float sliderThumbHeight = 25;
 
 // Checkbox check scalers
 const float checkboxLeftX = 7 / 40.0;
@@ -121,7 +123,7 @@ float RenderThemeBlackBerry::defaultFontSize = 16;
 // sizes (e.g. 15px). So we just use Arial for now.
 const String& RenderThemeBlackBerry::defaultGUIFont()
 {
-    DEFINE_STATIC_LOCAL(String, fontFace, ("Arial"));
+    DEFINE_STATIC_LOCAL(String, fontFace, (ASCIILiteral("Arial")));
     return fontFace;
 }
 
@@ -158,13 +160,23 @@ static RenderSlider* determineRenderSlider(RenderObject* object)
     return toRenderSlider(object);
 }
 
-static int determineFullScreenMultiplier(Element* element)
+static float determineFullScreenMultiplier(Element* element)
 {
-    int fullScreenMultiplier = 1;
+    float fullScreenMultiplier = 1.0;
 #if ENABLE(FULLSCREEN_API) && ENABLE(VIDEO)
     if (element && element->document()->webkitIsFullScreen() && element->document()->webkitCurrentFullScreenElement() == toParentMediaElement(element)) {
         if (element->document()->page()->deviceScaleFactor() < scaleFactorThreshold)
             fullScreenMultiplier = fullScreenEnlargementFactor;
+
+        // The way the BlackBerry port implements the FULLSCREEN_API for media elements
+        // might result in the controls being oversized, proportionally to the current page
+        // scale. That happens because the fullscreen element gets sized to be as big as the
+        // viewport size, and the viewport size might get outstretched to fit to the screen dimensions.
+        // To fix that, lets strips out the Page scale factor from the media controls multiplier.
+        float scaleFactor = element->document()->view()->hostWindow()->platformPageClient()->currentZoomFactor();
+        static ViewportArguments defaultViewportArguments;
+        float scaleFactorFudge = 1 / element->document()->page()->deviceScaleFactor();
+        fullScreenMultiplier /= scaleFactor * scaleFactorFudge;
     }
 #endif
     return fullScreenMultiplier;
@@ -629,7 +641,7 @@ bool RenderThemeBlackBerry::paintMenuListButton(RenderObject* object, const Pain
 
 void RenderThemeBlackBerry::adjustSliderThumbSize(RenderStyle* style, Element* element) const
 {
-    int fullScreenMultiplier = 1;
+    float fullScreenMultiplier = 1;
     ControlPart part = style->appearance();
 
     if (part == MediaSliderThumbPart || part == MediaVolumeSliderThumbPart) {
@@ -750,14 +762,19 @@ bool RenderThemeBlackBerry::paintSliderThumb(RenderObject* object, const PaintIn
 
 void RenderThemeBlackBerry::adjustMediaControlStyle(StyleResolver*, RenderStyle* style, Element* element) const
 {
-    int fullScreenMultiplier = determineFullScreenMultiplier(element);
+    float fullScreenMultiplier = determineFullScreenMultiplier(element);
+    HTMLMediaElement* mediaElement = toParentMediaElement(element);
+    if (!mediaElement)
+        return;
 
     // We use multiples of mediaControlsHeight to make all objects scale evenly
+    Length zero(0, Fixed);
     Length controlsHeight(mediaControlsHeight * fullScreenMultiplier, Fixed);
     Length timeWidth(mediaControlsHeight * 3 / 2 * fullScreenMultiplier, Fixed);
     Length volumeHeight(mediaControlsHeight * 4 * fullScreenMultiplier, Fixed);
     Length padding(mediaControlsHeight / 8 * fullScreenMultiplier, Fixed);
-    int fontSize = mediaControlsHeight / 2 * fullScreenMultiplier;
+    float fontSize = mediaControlsHeight / 2 * fullScreenMultiplier;
+
     switch (style->appearance()) {
     case MediaPlayButtonPart:
     case MediaEnterFullscreenButtonPart:
@@ -771,7 +788,7 @@ void RenderThemeBlackBerry::adjustMediaControlStyle(StyleResolver*, RenderStyle*
         style->setWidth(timeWidth);
         style->setHeight(controlsHeight);
         style->setPaddingRight(padding);
-        style->setBlendedFontSize(fontSize);
+        style->setFontSize(static_cast<int>(fontSize));
         break;
     case MediaVolumeSliderContainerPart:
         style->setWidth(controlsHeight);
@@ -781,11 +798,33 @@ void RenderThemeBlackBerry::adjustMediaControlStyle(StyleResolver*, RenderStyle*
     default:
         break;
     }
+
+    if (!isfinite(mediaElement->duration())) {
+        // Live streams have infinite duration with no timeline. Force the mute
+        // and fullscreen buttons to the right. This is needed when webkit does
+        // not render the timeline container because it has a webkit-box-flex
+        // of 1 and normally allows those buttons to be on the right.
+        switch (style->appearance()) {
+        case MediaEnterFullscreenButtonPart:
+        case MediaExitFullscreenButtonPart:
+            style->setPosition(AbsolutePosition);
+            style->setBottom(zero);
+            style->setRight(controlsHeight);
+            break;
+        case MediaMuteButtonPart:
+            style->setPosition(AbsolutePosition);
+            style->setBottom(zero);
+            style->setRight(zero);
+            break;
+        default:
+            break;
+        }
+    }
 }
 
 void RenderThemeBlackBerry::adjustSliderTrackStyle(StyleResolver*, RenderStyle* style, Element* element) const
 {
-    int fullScreenMultiplier = determineFullScreenMultiplier(element);
+    float fullScreenMultiplier = determineFullScreenMultiplier(element);
 
     // We use multiples of mediaControlsHeight to make all objects scale evenly
     Length controlsHeight(mediaControlsHeight * fullScreenMultiplier, Fixed);
@@ -881,23 +920,23 @@ bool RenderThemeBlackBerry::paintMediaSliderTrack(RenderObject* object, const Pa
     if (!mediaElement)
         return false;
 
-    int fullScreenMultiplier = determineFullScreenMultiplier(mediaElement);
+    float fullScreenMultiplier = determineFullScreenMultiplier(mediaElement);
     float loaded = 0;
     // FIXME: replace loaded with commented out one when buffer bug is fixed (see comment in
     // MediaPlayerPrivateMMrenderer::percentLoaded).
     // loaded = mediaElement->percentLoaded();
-    if (mediaElement->player())
+    if (mediaElement->player() && mediaElement->player()->implementation())
         loaded = static_cast<MediaPlayerPrivate *>(mediaElement->player()->implementation())->percentLoaded();
     float position = mediaElement->duration() > 0 ? (mediaElement->currentTime() / mediaElement->duration()) : 0;
 
-    int x = rect.x() + 2 * fullScreenMultiplier - fullScreenMultiplier / 2;
-    int y = rect.y() + 14 * fullScreenMultiplier + fullScreenMultiplier / 2;
-    int w = rect.width() - 4 * fullScreenMultiplier + fullScreenMultiplier / 2;
-    int h = 2 * fullScreenMultiplier;
+    int x = ceil(rect.x() + 2 * fullScreenMultiplier - fullScreenMultiplier / 2);
+    int y = ceil(rect.y() + 14 * fullScreenMultiplier + fullScreenMultiplier / 2);
+    int w = ceil(rect.width() - 4 * fullScreenMultiplier + fullScreenMultiplier / 2);
+    int h = ceil(2 * fullScreenMultiplier);
     IntRect rect2(x, y, w, h);
 
-    int wPlayed = (w * position);
-    int wLoaded = (w - mediaSliderThumbWidth * fullScreenMultiplier) * loaded + mediaSliderThumbWidth * fullScreenMultiplier;
+    int wPlayed = ceil(w * position);
+    int wLoaded = ceil((w - mediaSliderThumbWidth * fullScreenMultiplier) * loaded + mediaSliderThumbWidth * fullScreenMultiplier);
 
     IntRect played(x, y, wPlayed, h);
     IntRect buffered(x, y, wLoaded, h);
@@ -929,7 +968,7 @@ bool RenderThemeBlackBerry::paintMediaSliderThumb(RenderObject* object, const Pa
     if (!slider)
         return false;
 
-    int fullScreenMultiplier = determineFullScreenMultiplier(toElement(slider->node()));
+    float fullScreenMultiplier = determineFullScreenMultiplier(toElement(slider->node()));
 
     paintInfo.context->save();
     Path mediaThumbRoundedRectangle;

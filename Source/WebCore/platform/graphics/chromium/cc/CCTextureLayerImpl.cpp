@@ -27,12 +27,12 @@
 
 #if USE(ACCELERATED_COMPOSITING)
 
-#include "cc/CCTextureLayerImpl.h"
+#include "CCTextureLayerImpl.h"
 
+#include "CCQuadSink.h"
+#include "CCRenderer.h"
+#include "CCTextureDrawQuad.h"
 #include "TextStream.h"
-#include "cc/CCQuadSink.h"
-#include "cc/CCRenderer.h"
-#include "cc/CCTextureDrawQuad.h"
 
 namespace WebCore {
 
@@ -52,20 +52,28 @@ CCTextureLayerImpl::~CCTextureLayerImpl()
 
 void CCTextureLayerImpl::willDraw(CCResourceProvider* resourceProvider)
 {
+    if (!m_textureId)
+        return;
     ASSERT(!m_externalTextureResource);
     m_externalTextureResource = resourceProvider->createResourceFromExternalTexture(m_textureId);
 }
 
-void CCTextureLayerImpl::appendQuads(CCQuadSink& quadList, const CCSharedQuadState* sharedQuadState, bool&)
+void CCTextureLayerImpl::appendQuads(CCQuadSink& quadSink, CCAppendQuadsData& appendQuadsData)
 {
-    ASSERT(m_externalTextureResource);
+    if (!m_externalTextureResource)
+        return;
+
+    CCSharedQuadState* sharedQuadState = quadSink.useSharedQuadState(createSharedQuadState());
+    appendDebugBorderQuad(quadSink, sharedQuadState, appendQuadsData);
+
     IntRect quadRect(IntPoint(), contentBounds());
-    quadList.append(CCTextureDrawQuad::create(sharedQuadState, quadRect, m_externalTextureResource, m_premultipliedAlpha, m_uvRect, m_flipped));
+    quadSink.append(CCTextureDrawQuad::create(sharedQuadState, quadRect, m_externalTextureResource, m_premultipliedAlpha, m_uvRect, m_flipped), appendQuadsData);
 }
 
 void CCTextureLayerImpl::didDraw(CCResourceProvider* resourceProvider)
 {
-    ASSERT(m_externalTextureResource);
+    if (!m_externalTextureResource)
+        return;
     // FIXME: the following assert will not be true when sending resources to a
     // parent compositor. A synchronization scheme (double-buffering or
     // pipelining of updates) for the client will need to exist to solve this.
@@ -84,6 +92,7 @@ void CCTextureLayerImpl::dumpLayerProperties(TextStream& ts, int indent) const
 void CCTextureLayerImpl::didLoseContext()
 {
     m_textureId = 0;
+    m_externalTextureResource = 0;
 }
 
 }

@@ -39,12 +39,13 @@
 #include "Document.h"
 #include "EventListenerMap.h"
 #include "Frame.h"
+#include "InspectorDOMStorageAgent.h"
 #include "InspectorFrontend.h"
 #include "InspectorState.h"
 #include "InspectorValues.h"
 #include "InstrumentingAgents.h"
 #include "MemoryCache.h"
-#include "MemoryInstrumentation.h"
+#include "MemoryInstrumentationImpl.h"
 #include "MemoryUsageSupport.h"
 #include "Node.h"
 #include "Page.h"
@@ -80,14 +81,20 @@ static const char jsExternalStrings[] = "JSExternalStrings";
 static const char inspectorData[] = "InspectorData";
 static const char inspectorDOMData[] = "InspectorDOMData";
 static const char inspectorJSHeapData[] = "InspectorJSHeapData";
-static const char memoryCache[] = "MemoryCache";
 static const char processPrivateMemory[] = "ProcessPrivateMemory";
 
-static const char cachedImages[] = "CachedImages";
-static const char cachedCssStyleSheets[] = "CachedCssStyleSheets";
-static const char cachedScripts[] = "CachedScripts";
-static const char cachedXslStyleSheets[] = "CachedXslStyleSheets";
-static const char cachedFonts[] = "CachedFonts";
+static const char memoryCache[] = "MemoryCache";
+static const char memoryCacheStructures[] = "MemoryCacheStructures";
+static const char cachedResource[] = "CachedResource";
+static const char cachedResourceImage[] = "CachedImages";
+static const char cachedResourceCSS[] = "CachedCssStyleSheets";
+static const char cachedResourceScript[] = "CachedScripts";
+static const char cachedResourceXSL[] = "CachedXslStyleSheets";
+static const char cachedResourceFont[] = "CachedFonts";
+static const char cachedResourceSVG[] = "CachedSVGGraphics";
+static const char cachedResourceShader[] = "CachedShaders";
+static const char cachedResourceXSLT[] = "CachedShadersXSLT";
+
 static const char renderTreeUsed[] = "RenderTreeUsed";
 static const char renderTreeAllocated[] = "RenderTreeAllocated";
 
@@ -97,11 +104,11 @@ static const char domTreeDOM[] = "DOMTreeDOM";
 static const char domTreeCSS[] = "DOMTreeCSS";
 static const char domTreeBinding[] = "DOMTreeBinding";
 static const char domTreeLoader[] = "DOMTreeLoader";
+
+static const char domStorageCache[] = "DOMStorageCache";
 }
 
 namespace {
-
-typedef HashSet<const void*> VisitedObjects;
 
 String nodeName(Node* node)
 {
@@ -442,70 +449,6 @@ static void addMemoryBlockFor(TypeBuilder::Array<InspectorMemoryBlock>* array, s
 
 namespace {
 
-class MemoryInstrumentationImpl : public MemoryInstrumentation {
-public:
-    explicit MemoryInstrumentationImpl(VisitedObjects& visitedObjects)
-        : m_visitedObjects(visitedObjects)
-    {
-        for (int i = 0; i < LastTypeEntry; ++i)
-            m_totalSizes[i] = 0;
-    }
-
-    PassRefPtr<InspectorMemoryBlock> dumpStatistics(InspectorDataCounter* inspectorData)
-    {
-        size_t inspectorSize
-            = calculateContainerSize(m_visitedObjects)
-            + calculateContainerSize(m_deferredInstrumentedPointers);
-        inspectorData->addComponent(MemoryBlockName::inspectorDOMData, inspectorSize);
-
-        size_t totalSize = 0;
-        for (int i = Other; i < LastTypeEntry; ++i)
-            totalSize += m_totalSizes[i];
-
-        RefPtr<TypeBuilder::Array<InspectorMemoryBlock> > domChildren = TypeBuilder::Array<InspectorMemoryBlock>::create();
-        addMemoryBlockFor(domChildren.get(), m_totalSizes[Other], MemoryBlockName::domTreeOther);
-        addMemoryBlockFor(domChildren.get(), m_totalSizes[DOM], MemoryBlockName::domTreeDOM);
-        addMemoryBlockFor(domChildren.get(), m_totalSizes[CSS], MemoryBlockName::domTreeCSS);
-        addMemoryBlockFor(domChildren.get(), m_totalSizes[Binding], MemoryBlockName::domTreeBinding);
-        addMemoryBlockFor(domChildren.get(), m_totalSizes[Loader], MemoryBlockName::domTreeLoader);
-
-        RefPtr<InspectorMemoryBlock> dom = InspectorMemoryBlock::create().setName(MemoryBlockName::dom);
-        dom->setSize(totalSize);
-        dom->setChildren(domChildren.release());
-        return dom.release();
-    }
-
-    void processDeferredInstrumentedPointers()
-    {
-        while (!m_deferredInstrumentedPointers.isEmpty()) {
-            OwnPtr<InstrumentedPointerBase> pointer = m_deferredInstrumentedPointers.last().release();
-            m_deferredInstrumentedPointers.removeLast();
-            pointer->process(this);
-        }
-    }
-
-private:
-    virtual void countObjectSize(ObjectType objectType, size_t size) OVERRIDE
-    {
-        ASSERT(objectType >= 0 && objectType < LastTypeEntry);
-        m_totalSizes[objectType] += size;
-    }
-
-    virtual void deferInstrumentedPointer(PassOwnPtr<InstrumentedPointerBase> pointer) OVERRIDE
-    {
-        m_deferredInstrumentedPointers.append(pointer);
-    }
-
-    virtual bool visited(const void* object) OVERRIDE
-    {
-        return !m_visitedObjects.add(object).isNewEntry;
-    }
-
-    size_t m_totalSizes[LastTypeEntry];
-    VisitedObjects& m_visitedObjects;
-    Vector<OwnPtr<InstrumentedPointerBase> > m_deferredInstrumentedPointers;
-};
-
 class DOMTreesIterator : public NodeWrapperVisitor {
 public:
     DOMTreesIterator(Page* page, VisitedObjects& visitedObjects)
@@ -519,25 +462,73 @@ public:
         if (node->document() && node->document()->frame() && m_page != node->document()->frame()->page())
             return;
 
-        m_domMemoryUsage.addInstrumentedObject(node);
-        m_domMemoryUsage.processDeferredInstrumentedPointers();
+        m_domMemoryUsage.addRootObject(node);
     }
 
     void visitFrame(Frame* frame)
     {
-        m_domMemoryUsage.addInstrumentedObject(frame);
-        m_domMemoryUsage.processDeferredInstrumentedPointers();
+        m_domMemoryUsage.addRootObject(frame);
     }
 
     void visitBindings()
     {
         ScriptProfiler::collectBindingMemoryInfo(&m_domMemoryUsage);
-        m_domMemoryUsage.processDeferredInstrumentedPointers();
     }
 
-    PassRefPtr<InspectorMemoryBlock> dumpStatistics(InspectorDataCounter* inspectorData)
+    void visitMemoryCache()
     {
-        return m_domMemoryUsage.dumpStatistics(inspectorData);
+        m_domMemoryUsage.addRootObject(memoryCache());
+    }
+
+    PassRefPtr<InspectorMemoryBlock> buildObjectForMemoryCache() const
+    {
+        size_t totalSize = 0;
+
+        COMPILE_ASSERT(MemoryInstrumentation::LastTypeEntry == MemoryInstrumentation::CachedResourceXSLT + 1, object_type_enum_was_changed_please_fix_the_implementation);
+        for (int i = MemoryInstrumentation::MemoryCacheStructures; i < MemoryInstrumentation::LastTypeEntry; ++i)
+            totalSize += m_domMemoryUsage.totalSize(static_cast<MemoryInstrumentation::ObjectType>(i));
+
+        RefPtr<TypeBuilder::Array<InspectorMemoryBlock> > children = TypeBuilder::Array<InspectorMemoryBlock>::create();
+        addMemoryBlockFor(children.get(), m_domMemoryUsage.totalSize(MemoryInstrumentation::MemoryCacheStructures), MemoryBlockName::memoryCacheStructures);
+        addMemoryBlockFor(children.get(), m_domMemoryUsage.totalSize(MemoryInstrumentation::CachedResource), MemoryBlockName::cachedResource);
+        addMemoryBlockFor(children.get(), m_domMemoryUsage.totalSize(MemoryInstrumentation::CachedResourceCSS), MemoryBlockName::cachedResourceCSS);
+        addMemoryBlockFor(children.get(), m_domMemoryUsage.totalSize(MemoryInstrumentation::CachedResourceFont), MemoryBlockName::cachedResourceFont);
+        addMemoryBlockFor(children.get(), m_domMemoryUsage.totalSize(MemoryInstrumentation::CachedResourceImage), MemoryBlockName::cachedResourceImage);
+        addMemoryBlockFor(children.get(), m_domMemoryUsage.totalSize(MemoryInstrumentation::CachedResourceScript), MemoryBlockName::cachedResourceScript);
+        addMemoryBlockFor(children.get(), m_domMemoryUsage.totalSize(MemoryInstrumentation::CachedResourceSVG), MemoryBlockName::cachedResourceSVG);
+        addMemoryBlockFor(children.get(), m_domMemoryUsage.totalSize(MemoryInstrumentation::CachedResourceShader), MemoryBlockName::cachedResourceShader);
+        addMemoryBlockFor(children.get(), m_domMemoryUsage.totalSize(MemoryInstrumentation::CachedResourceXSLT), MemoryBlockName::cachedResourceXSLT);
+
+        RefPtr<InspectorMemoryBlock> block = InspectorMemoryBlock::create().setName(MemoryBlockName::memoryCache);
+        block->setSize(totalSize);
+        block->setChildren(children.release());
+        return block.release();
+    }
+
+    PassRefPtr<InspectorMemoryBlock> buildObjectForDOM() const
+    {
+        size_t totalSize = 0;
+        for (int i = MemoryInstrumentation::Other; i < MemoryInstrumentation::MemoryCacheStructures; ++i)
+            totalSize += m_domMemoryUsage.totalSize(static_cast<MemoryInstrumentation::ObjectType>(i));
+
+        RefPtr<TypeBuilder::Array<InspectorMemoryBlock> > domChildren = TypeBuilder::Array<InspectorMemoryBlock>::create();
+        addMemoryBlockFor(domChildren.get(), m_domMemoryUsage.totalSize(MemoryInstrumentation::Other), MemoryBlockName::domTreeOther);
+        addMemoryBlockFor(domChildren.get(), m_domMemoryUsage.totalSize(MemoryInstrumentation::DOM), MemoryBlockName::domTreeDOM);
+        addMemoryBlockFor(domChildren.get(), m_domMemoryUsage.totalSize(MemoryInstrumentation::CSS), MemoryBlockName::domTreeCSS);
+        addMemoryBlockFor(domChildren.get(), m_domMemoryUsage.totalSize(MemoryInstrumentation::Binding), MemoryBlockName::domTreeBinding);
+        addMemoryBlockFor(domChildren.get(), m_domMemoryUsage.totalSize(MemoryInstrumentation::Loader), MemoryBlockName::domTreeLoader);
+
+        RefPtr<InspectorMemoryBlock> dom = InspectorMemoryBlock::create().setName(MemoryBlockName::dom);
+        dom->setSize(totalSize);
+        dom->setChildren(domChildren.release());
+        return dom.release();
+    }
+
+    void dumpStatistics(TypeBuilder::Array<InspectorMemoryBlock>* children, InspectorDataCounter* inspectorData)
+    {
+        children->addItem(buildObjectForMemoryCache());
+        children->addItem(buildObjectForDOM());
+        inspectorData->addComponent(MemoryBlockName::inspectorDOMData, m_domMemoryUsage.selfSize());
     }
 
 private:
@@ -547,9 +538,10 @@ private:
 
 }
 
-static PassRefPtr<InspectorMemoryBlock> domTreeInfo(Page* page, VisitedObjects& visitedObjects, InspectorDataCounter* inspectorData)
+static void collectDomTreeInfo(Page* page, VisitedObjects& visitedObjects, TypeBuilder::Array<InspectorMemoryBlock>* children, InspectorDataCounter* inspectorData)
 {
     DOMTreesIterator domTreesIterator(page, visitedObjects);
+
     ScriptProfiler::visitNodeWrappers(&domTreesIterator);
 
     // Make sure all documents reachable from the main frame are accounted.
@@ -561,29 +553,20 @@ static PassRefPtr<InspectorMemoryBlock> domTreeInfo(Page* page, VisitedObjects& 
     }
 
     domTreesIterator.visitBindings();
+    domTreesIterator.visitMemoryCache();
 
-    return domTreesIterator.dumpStatistics(inspectorData);
+    domTreesIterator.dumpStatistics(children, inspectorData);
 }
 
-static PassRefPtr<InspectorMemoryBlock> memoryCacheInfo()
+static void addPlatformComponentsInfo(PassRefPtr<TypeBuilder::Array<InspectorMemoryBlock> > children)
 {
-    MemoryCache::Statistics stats = memoryCache()->getStatistics();
-    int totalSize = stats.images.size +
-                    stats.cssStyleSheets.size +
-                    stats.scripts.size +
-                    stats.xslStyleSheets.size +
-                    stats.fonts.size;
-    RefPtr<InspectorMemoryBlock> memoryCacheStats = InspectorMemoryBlock::create().setName(MemoryBlockName::memoryCache);
-    memoryCacheStats->setSize(totalSize);
-
-    RefPtr<TypeBuilder::Array<InspectorMemoryBlock> > children = TypeBuilder::Array<InspectorMemoryBlock>::create();
-    addMemoryBlockFor(children.get(), stats.images.size, MemoryBlockName::cachedImages);
-    addMemoryBlockFor(children.get(), stats.cssStyleSheets.size, MemoryBlockName::cachedCssStyleSheets);
-    addMemoryBlockFor(children.get(), stats.scripts.size, MemoryBlockName::cachedScripts);
-    addMemoryBlockFor(children.get(), stats.xslStyleSheets.size, MemoryBlockName::cachedXslStyleSheets);
-    addMemoryBlockFor(children.get(), stats.fonts.size, MemoryBlockName::cachedFonts);
-    memoryCacheStats->setChildren(children.get());
-    return memoryCacheStats.release();
+    Vector<MemoryUsageSupport::ComponentInfo> components;
+    MemoryUsageSupport::memoryUsageByComponents(components);
+    for (Vector<MemoryUsageSupport::ComponentInfo>::iterator it = components.begin(); it != components.end(); ++it) {
+        RefPtr<InspectorMemoryBlock> block = InspectorMemoryBlock::create().setName(it->m_name);
+        block->setSize(it->m_sizeInBytes);
+        children->addItem(block);
+    }
 }
 
 static PassRefPtr<InspectorMemoryBlock> jsExternalResourcesInfo(VisitedObjects& visitedObjects)
@@ -607,6 +590,13 @@ static PassRefPtr<InspectorMemoryBlock> jsExternalResourcesInfo(VisitedObjects& 
     return externalResourcesStats.release();
 }
 
+static PassRefPtr<InspectorMemoryBlock> dumpDOMStorageCache(size_t cacheSize)
+{
+    RefPtr<InspectorMemoryBlock> domStorageCache = InspectorMemoryBlock::create().setName(MemoryBlockName::domStorageCache);
+    domStorageCache->setSize(cacheSize);
+    return domStorageCache;
+}
+
 void InspectorMemoryAgent::getProcessMemoryDistribution(ErrorString*, RefPtr<InspectorMemoryBlock>& processMemory)
 {
     processMemory = InspectorMemoryBlock::create().setName(MemoryBlockName::processPrivateMemory);
@@ -617,11 +607,12 @@ void InspectorMemoryAgent::getProcessMemoryDistribution(ErrorString*, RefPtr<Ins
     VisitedObjects visitedObjects;
     RefPtr<TypeBuilder::Array<InspectorMemoryBlock> > children = TypeBuilder::Array<InspectorMemoryBlock>::create();
     children->addItem(jsHeapInfo());
-    children->addItem(memoryCacheInfo());
     children->addItem(renderTreeInfo(m_page)); // FIXME: collect for all pages?
-    children->addItem(domTreeInfo(m_page, visitedObjects, &inspectorData)); // FIXME: collect for all pages?
     children->addItem(jsExternalResourcesInfo(visitedObjects));
+    collectDomTreeInfo(m_page, visitedObjects, children.get(), &inspectorData); // FIXME: collect for all pages?
     children->addItem(inspectorData.dumpStatistics());
+    children->addItem(dumpDOMStorageCache(m_domStorageAgent->memoryBytesUsedByStorageCache()));
+    addPlatformComponentsInfo(children);
     processMemory->setChildren(children);
 
     size_t privateBytes = 0;
@@ -630,9 +621,10 @@ void InspectorMemoryAgent::getProcessMemoryDistribution(ErrorString*, RefPtr<Ins
     processMemory->setSize(privateBytes);
 }
 
-InspectorMemoryAgent::InspectorMemoryAgent(InstrumentingAgents* instrumentingAgents, InspectorState* state, Page* page, InspectorDOMAgent*)
+InspectorMemoryAgent::InspectorMemoryAgent(InstrumentingAgents* instrumentingAgents, InspectorState* state, Page* page, InspectorDOMStorageAgent* domStorageAgent)
     : InspectorBaseAgent<InspectorMemoryAgent>("Memory", instrumentingAgents, state)
     , m_page(page)
+    , m_domStorageAgent(domStorageAgent)
 {
 }
 

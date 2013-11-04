@@ -36,6 +36,10 @@
 #include <stdlib.h>
 #include <wtf/text/CString.h>
 
+#if PLATFORM(BLACKBERRY)
+#include <BlackBerryPlatformSettings.h>
+#endif
+
 namespace WebCore {
 
 typedef HashMap<String, RefPtr<PluginPackage> > PluginPackageByNameMap;
@@ -429,7 +433,7 @@ bool PluginDatabase::isPreferredPluginDirectory(const String& path)
     String preferredPath = homeDirectoryPath();
 
 #if PLATFORM(BLACKBERRY)
-    preferredPath = BlackBerry::Platform::Client::get()->getApplicationPluginDirectory().c_str();
+    preferredPath = BlackBerry::Platform::Settings::instance()->applicationPluginDirectory().c_str();
 #elif defined(XP_UNIX)
     preferredPath.append(String("/.mozilla/plugins"));
 #elif defined(XP_MACOSX)
@@ -510,7 +514,8 @@ static bool readTime(time_t& resultTime, char*& start, const char* end)
     if (start + sizeof(time_t) >= end)
         return false;
 
-    resultTime = *reinterpret_cast_ptr<time_t*>(start);
+    // The stream is not necessary aligned.
+    memcpy(&resultTime, start, sizeof(time_t));
     start += sizeof(time_t);
 
     return true;

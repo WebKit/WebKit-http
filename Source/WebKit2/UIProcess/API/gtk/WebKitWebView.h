@@ -118,6 +118,17 @@ typedef enum {
     WEBKIT_LOAD_FINISHED
 } WebKitLoadEvent;
 
+/**
+ * WebKitSaveMode:
+ * @WEBKIT_SAVE_MODE_MHTML: Save the current page using the MHTML format.
+ *
+ * Enum values to specify the different ways in which a #WebKitWebView
+ * can save its current web page into a self-contained file.
+ */
+typedef enum {
+    WEBKIT_SAVE_MODE_MHTML
+} WebKitSaveMode;
+
 struct _WebKitWebView {
     WebKitWebViewBase parent;
 
@@ -151,7 +162,7 @@ struct _WebKitWebViewClass {
     void       (* mouse_target_changed)   (WebKitWebView               *web_view,
                                            WebKitHitTestResult         *hit_test_result,
                                            guint                        modifiers);
-    gboolean   (* print_requested)        (WebKitWebView               *web_view,
+    gboolean   (* print)                  (WebKitWebView               *web_view,
                                            WebKitPrintOperation        *print_operation);
     void       (* resource_load_started)  (WebKitWebView               *web_view,
                                            WebKitWebResource           *resource,
@@ -199,7 +210,11 @@ WEBKIT_API void
 webkit_web_view_load_html                          (WebKitWebView             *web_view,
                                                     const gchar               *content,
                                                     const gchar               *base_uri);
-
+WEBKIT_API void
+webkit_web_view_load_alternate_html                (WebKitWebView             *web_view,
+                                                    const gchar               *content,
+                                                    const gchar               *content_uri,
+                                                    const gchar               *base_uri);
 WEBKIT_API void
 webkit_web_view_load_plain_text                    (WebKitWebView             *web_view,
                                                     const gchar               *plain_text);
@@ -210,12 +225,6 @@ webkit_web_view_load_request                       (WebKitWebView             *w
 
 WEBKIT_API void
 webkit_web_view_stop_loading                       (WebKitWebView             *web_view);
-
-WEBKIT_API void
-webkit_web_view_replace_content                    (WebKitWebView             *web_view,
-                                                    const gchar               *content,
-                                                    const gchar               *content_uri,
-                                                    const gchar               *base_uri);
 
 WEBKIT_API const gchar *
 webkit_web_view_get_title                          (WebKitWebView             *web_view);
@@ -318,6 +327,31 @@ webkit_web_view_get_inspector                      (WebKitWebView             *w
 WEBKIT_API gboolean
 webkit_web_view_can_show_mime_type                 (WebKitWebView             *web_view,
                                                     const gchar               *mime_type);
+
+WEBKIT_API void
+webkit_web_view_save                               (WebKitWebView             *web_view,
+                                                    WebKitSaveMode             save_mode,
+                                                    GCancellable              *cancellable,
+                                                    GAsyncReadyCallback        callback,
+                                                    gpointer                   user_data);
+
+WEBKIT_API GInputStream *
+webkit_web_view_save_finish                        (WebKitWebView             *web_view,
+                                                    GAsyncResult              *result,
+                                                    GError                   **error);
+
+WEBKIT_API void
+webkit_web_view_save_to_file                       (WebKitWebView             *web_view,
+                                                    GFile                     *file,
+                                                    WebKitSaveMode             save_mode,
+                                                    GCancellable              *cancellable,
+                                                    GAsyncReadyCallback        callback,
+                                                    gpointer                   user_data);
+
+WEBKIT_API gboolean
+webkit_web_view_save_to_file_finish                (WebKitWebView             *web_view,
+                                                    GAsyncResult              *result,
+                                                    GError                   **error);
 
 G_END_DECLS
 

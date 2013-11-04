@@ -34,6 +34,7 @@
 #define LayerData_h
 
 #include "Color.h"
+#include "FilterOperations.h"
 #include "FloatPoint.h"
 #include "FloatRect.h"
 #include "IntRect.h"
@@ -59,6 +60,25 @@ public:
                               LayerProgramShaderBGRA,
                               NumberOfLayerProgramShaders };
 
+#if ENABLE(CSS_FILTERS)
+    enum CSSFilterShaders { CSSFilterShaderGrayscale = 0,
+                            CSSFilterShaderSepia,
+                            CSSFilterShaderSaturate,
+                            CSSFilterShaderHueRotate,
+                            CSSFilterShaderInvert,
+                            CSSFilterShaderBrightness,
+                            CSSFilterShaderContrast,
+                            CSSFilterShaderOpacity,
+                            CSSFilterShaderBlurY,
+                            CSSFilterShaderBlurX,
+                            CSSFilterShaderShadow,
+                            CSSFilterShaderPassthrough,
+#if ENABLE(CSS_SHADERS)
+                            CSSFilterShaderCustom,
+#endif
+                            NumberOfCSSFilterShaders };
+#endif
+
     LayerData(LayerType type)
         : m_layerType(type)
         , m_anchorPoint(0.5, 0.5)
@@ -72,8 +92,6 @@ public:
 #if ENABLE(VIDEO)
         , m_mediaPlayer(0)
 #endif
-        , m_texID(0)
-        , m_frontBufferLock(0)
         , m_suspendTime(0)
         , m_doubleSided(true)
         , m_masksToBounds(false)
@@ -115,9 +133,15 @@ public:
 
     float opacity() const { return m_opacity; }
 
+#if ENABLE(CSS_FILTERS)
+    FilterOperations filters() const { return m_filters; }
+#endif
+
     bool isOpaque() const { return m_isOpaque; }
 
     FloatPoint position() const { return m_position; }
+
+    FloatPoint boundsOrigin() const { return m_boundsOrigin; }
 
     // This is currently only used for perspective transform, see GraphicsLayer::setChildrenTransform()
     const TransformationMatrix& sublayerTransform() const { return m_sublayerTransform; }
@@ -125,9 +149,6 @@ public:
     const TransformationMatrix& transform() const { return m_transform; }
 
     bool preserves3D() const { return m_preserves3D; }
-
-    unsigned getTextureID() const { return m_texID; }
-    void setTextureID(unsigned int value) { m_texID = value; }
 
     bool needsTexture() const { return m_layerType == WebGLLayer || m_layerType == CanvasLayer || m_needsTexture; }
 
@@ -169,6 +190,7 @@ protected:
     IntSize m_bounds;
     FloatPoint m_position;
     FloatPoint m_anchorPoint;
+    FloatPoint m_boundsOrigin;
     Color m_backgroundColor;
     Color m_borderColor;
 
@@ -177,6 +199,9 @@ protected:
     TransformationMatrix m_sublayerTransform;
 
     float m_opacity;
+#if ENABLE(CSS_FILTERS)
+    FilterOperations m_filters;
+#endif
     float m_anchorPointZ;
     float m_borderWidth;
 
@@ -188,10 +213,6 @@ protected:
     IntRect m_holePunchClipRect;
 #endif
     IntRect m_holePunchRect;
-
-    unsigned m_texID;
-
-    pthread_mutex_t* m_frontBufferLock;
 
     double m_suspendTime;
 

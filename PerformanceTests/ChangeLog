@@ -1,3 +1,150 @@
+2012-08-23  Ilya Tikhonovsky  <loislo@chromium.org>
+
+        WebInspector: unreviewed single line test fix.
+
+        The test has to open profiles panel explicitly because it is creating lazily.
+
+        * inspector/heap-snapshot-performance-test.js:
+
+2012-08-15  Scott Graham  <scottmg@chromium.org>
+
+        Rename window.internals.fastMallocStatistics to mallocStatistics
+        https://bugs.webkit.org/show_bug.cgi?id=94033
+
+        Reviewed by Adam Barth.
+
+        * resources/runner.js:
+        (PerfTestRunner.storeHeapResults):
+        (PerfTestRunner.getUsedMallocHeap):
+        (PerfTestRunner.getAndPrintMemoryStatistics):
+        (PerfTestRunner.initAndStartLoop):
+
+2012-08-10  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Unreviewed; fix an insanely silly typo.
+
+        * resources/results-template.html:
+
+2012-08-09  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Another build fix after r125178.
+
+        * resources/runner.js:
+
+2012-08-09  Zoltan Horvath  <zoltan@webkit.org>
+
+        Add memory measurement to balls.html and dromaeorunner.js
+        https://bugs.webkit.org/show_bug.cgi?id=93617
+
+        Reviewed by Adam Barth.
+
+        Since we added memory measurement support to performance tests we need to modify these tests.
+
+        * Animation/balls.html:
+        * Dromaeo/resources/dromaeorunner.js:
+
+2012-08-09  Zoltan Horvath  <zoltan@webkit.org>
+
+        JSHeap and FastMallocStatistics based memory measurement for performance-tests
+        https://bugs.webkit.org/show_bug.cgi?id=90858
+
+        Reviewed Ryosuke Niwa.
+
+        Measure the memory usage of the performancetests with the help of the windows.memory.usedJSHeapSize
+        object and the window.internals.fastMallocStatistics() function call.
+
+        * resources/runner.js:
+        (PerfTestRunner.logStatistics):
+        (PerfTestRunner.printStatistics):
+        (PerfTestRunner.storeHeapResults):
+        (PerfTestRunner.getUsedFastMallocHeap):
+        (PerfTestRunner.getUsedJSHeap):
+        (PerfTestRunner.getAndPrintMemoryStatistics):
+        (PerfTestRunner.ignoreWarmUpAndLog):
+        (PerfTestRunner.initAndStartLoop):
+
+2012-08-08  Benjamin Poulain  <benjamin@webkit.org>
+
+        Calling internals from the performance test runner prevents manual running
+        https://bugs.webkit.org/show_bug.cgi?id=93527
+
+        Reviewed by Ryosuke Niwa.
+
+        Since r125065, it is impossible to run the Performance tests manually. The problem is
+        "internals" is not defined when running outside the test runner, so the whole script
+        evaluation fails.
+
+        * resources/runner.js: Verify is window.internals is available before invoking something on it.
+
+2012-08-08  Zoltan Horvath  <zoltan@webkit.org>
+
+        Set access to MemoryInfo enabled for the performance tests
+        https://bugs.webkit.org/show_bug.cgi?id=92498
+
+        Reviewed by Ryosuke Niwa.
+
+        We need access to console.memory for the memory measurements.
+
+        * resources/runner.js:
+
+2012-08-07  Ryosuke Niwa  <rniwa@webkit.org>
+
+        run-perf-tests should support --no-show-results
+        https://bugs.webkit.org/show_bug.cgi?id=93409
+
+        Reviewed by Dirk Pranke.
+
+        Add a flot as a separate file and load it as an external resource.
+
+        Also include scripts as external resources from both local filesystem and webkit.org
+        so that it continues to work regardless of where you put it.
+
+        It breaks when someone else receives the file and save it somewhere and doesn't have
+        a network connection but that seems like a scenario we don't care that much.
+
+        * resources/jquery.flot.min.js: Added.
+        * resources/results-template.html:
+
+2012-08-06  Ryosuke Niwa  <rniwa@webkit.org>
+
+        run-webkit-tests should have ability to add description to its JSON output
+        https://bugs.webkit.org/show_bug.cgi?id=93296
+
+        Reviewed by Dirk Pranke.
+
+        Parse description and show it with the WebKit revision on the results page. Also use bar graphs
+        instead of line graphs since we're not depicting the time series here per arv's suggestion.
+        Finally, add the ability to adjust y-axis between the adjusted value and 0 (plot even doesn't adjust
+        y-axis automatically now) by a mouse click.
+
+        * resources/results-template.html:
+
+2012-08-04  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Use testRunner instead of layoutTestController in performance tests
+        https://bugs.webkit.org/show_bug.cgi?id=93184
+
+        Reviewed by Adam Barth.
+
+        * Animation/balls.html:
+        * Dromaeo/resources/dromaeorunner.js:
+        * inspector/console-300-lines.html:
+        * inspector/inspector-startup-time.html:
+        * inspector/network-append-30-requests.html.broken:
+        * inspector/show-panel.html.broken:
+        * resources/runner.js:
+        (PerfTestRunner.logInfo):
+        (PerfTestRunner.initAndStartLoop):
+
+2012-08-02  Arnaud Renevier  <a.renevier@sisa.samsung.com>
+
+        TypedArray set method is slow when called with another typed array
+        https://bugs.webkit.org/show_bug.cgi?id=92556
+
+        Reviewed by Kenneth Russell.
+
+        * Bindings/typed-array-set-from-typed.html: Added.
+
 2012-07-28  Ryosuke Niwa  <rniwa@webkit.org>
 
         run-perf-tests should generate a results page

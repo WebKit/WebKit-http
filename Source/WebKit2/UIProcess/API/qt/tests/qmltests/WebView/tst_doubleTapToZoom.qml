@@ -13,8 +13,6 @@ Item {
 
         property variant result
 
-        experimental.test.onContentsScaleCommitted: scaleChanged()
-
         property variant content: "data:text/html," +
             "<head>" +
             "    <meta name='viewport' content='width=device-width'>" +
@@ -26,7 +24,6 @@ Item {
             "</body>"
 
         signal resultReceived
-        signal scaleChanged
     }
 
     SignalSpy {
@@ -37,8 +34,8 @@ Item {
 
     SignalSpy {
         id: scaleSpy
-        target: webView
-        signalName: "scaleChanged"
+        target: webView.experimental.test
+        signalName: "contentsScaleCommitted"
     }
 
     TestCase {
@@ -67,8 +64,8 @@ Item {
             var result;
 
              webView.experimental.evaluateJavaScript(
-                "document.getElementById('" + id + "').getBoundingClientRect();",
-                function(rect) { webView.resultReceived(); result = rect });
+                "JSON.stringify(document.getElementById('" + id + "').getBoundingClientRect());",
+                function(rect) { webView.resultReceived(); result = JSON.parse(rect); });
             resultSpy.wait();
             return result;
         }

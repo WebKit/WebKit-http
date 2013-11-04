@@ -31,6 +31,7 @@
 #define AccessibilityObject_h
 
 #include "FloatQuad.h"
+#include "FractionalLayoutRect.h"
 #include "LayoutTypes.h"
 #include "VisiblePosition.h"
 #include "VisibleSelection.h"
@@ -103,6 +104,7 @@ enum AccessibilityRole {
     BrowserRole,
     BusyIndicatorRole,
     ButtonRole,
+    CanvasRole,
     CellRole, 
     CheckBoxRole,
     ColorWellRole,
@@ -187,6 +189,7 @@ enum AccessibilityRole {
     TreeGridRole,
     TreeItemRole,
     TextFieldRole,
+    ToggleButtonRole,
     ToolbarRole,
     UnknownRole,
     UserInterfaceTooltipRole,
@@ -379,6 +382,7 @@ public:
     bool isListItem() const { return roleValue() == ListItemRole; }
     bool isCheckboxOrRadio() const { return isCheckbox() || isRadioButton(); }
     bool isScrollView() const { return roleValue() == ScrollAreaRole; }
+    bool isCanvas() const { return roleValue() == CanvasRole; }
     bool isBlockquote() const;
     bool isLandmark() const;
     
@@ -451,10 +455,12 @@ public:
     virtual bool supportsARIAFlowTo() const { return false; }
     virtual void ariaFlowToElements(AccessibilityChildrenVector&) const { }
     virtual bool ariaHasPopup() const { return false; }
+    virtual bool ariaPressedIsPresent() const;
     bool ariaIsMultiline() const;
     virtual const AtomicString& invalidStatus() const;
     bool supportsARIAExpanded() const;
     AccessibilitySortDirection sortDirection() const;
+    virtual bool canvasHasFallbackContent() const { return false; }
     
     // ARIA drag and drop
     virtual bool supportsARIADropping() const { return false; }
@@ -557,6 +563,7 @@ public:
 
     virtual void childrenChanged() { }
     virtual void contentChanged() { }
+    virtual void updateAccessibilityRole() { }
     const AccessibilityChildrenVector& children();
     virtual void addChildren() { }
     virtual bool canHaveChildren() const { return true; }
@@ -581,6 +588,7 @@ public:
     bool isAncestorOfObject(const AccessibilityObject*) const;
     
     static AccessibilityRole ariaRoleToWebCoreRole(const String&);
+    bool hasAttribute(const QualifiedName&) const;
     const AtomicString& getAttribute(const QualifiedName&) const;
 
     virtual VisiblePositionRange visiblePositionRange() const { return VisiblePositionRange(); }
@@ -638,6 +646,8 @@ public:
     virtual String nameForMSAA() const { return String(); }
     virtual String descriptionForMSAA() const { return String(); }
     virtual AccessibilityRole roleValueForMSAA() const { return roleValue(); }
+
+    virtual String passwordFieldValue() const { return String(); }
 
     // Used by an ARIA tree to get all its rows.
     void ariaTreeRows(AccessibilityChildrenVector&);
@@ -712,6 +722,7 @@ protected:
     static bool isAccessibilityObjectSearchMatch(AccessibilityObject*, AccessibilitySearchCriteria*);
     static bool isAccessibilityTextSearchMatch(AccessibilityObject*, AccessibilitySearchCriteria*);
     static bool objectMatchesSearchCriteriaWithResultLimit(AccessibilityObject*, AccessibilitySearchCriteria*, AccessibilityChildrenVector&);
+    virtual AccessibilityRole buttonRoleType() const;
     
 #if PLATFORM(GTK)
     bool allowsTextRanges() const;

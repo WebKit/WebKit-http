@@ -31,17 +31,20 @@
 module core {
 
     interface [
-        Conditional=UNDO_MANAGER
+        Conditional=UNDO_MANAGER,
+        V8GenerateIsReachable=ImplOwnerNodeRoot
     ] UndoManager {
-        void transact(in Dictionary transaction, in boolean merge)
-            raises(DOMException);
+        [Custom] void transact(in Dictionary transaction, in boolean merge);
 
         void undo()
             raises(DOMException);
         void redo()
             raises(DOMException);
 
+        [Custom] sequence<DOMTransaction> item(in unsigned long index);
+
         readonly attribute unsigned long length;
+        readonly attribute unsigned long position;
 
         void clearUndo()
             raises(DOMException);

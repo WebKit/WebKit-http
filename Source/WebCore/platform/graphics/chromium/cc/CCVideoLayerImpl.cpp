@@ -27,20 +27,20 @@
 
 #if USE(ACCELERATED_COMPOSITING)
 
-#include "cc/CCVideoLayerImpl.h"
+#include "CCVideoLayerImpl.h"
 
+#include "CCIOSurfaceDrawQuad.h"
+#include "CCLayerTreeHostImpl.h"
+#include "CCProxy.h"
+#include "CCQuadSink.h"
+#include "CCResourceProvider.h"
+#include "CCStreamVideoDrawQuad.h"
+#include "CCTextureDrawQuad.h"
+#include "CCYUVVideoDrawQuad.h"
 #include "Extensions3DChromium.h"
 #include "GraphicsContext3D.h"
 #include "NotImplemented.h"
 #include "TextStream.h"
-#include "cc/CCIOSurfaceDrawQuad.h"
-#include "cc/CCLayerTreeHostImpl.h"
-#include "cc/CCProxy.h"
-#include "cc/CCQuadSink.h"
-#include "cc/CCResourceProvider.h"
-#include "cc/CCStreamVideoDrawQuad.h"
-#include "cc/CCTextureDrawQuad.h"
-#include "cc/CCYUVVideoDrawQuad.h"
 #include <public/WebVideoFrame.h>
 #include <wtf/text/WTFString.h>
 
@@ -177,12 +177,15 @@ void CCVideoLayerImpl::willDrawInternal(CCResourceProvider* resourceProvider)
         m_externalTextureResource = resourceProvider->createResourceFromExternalTexture(m_frame->textureId());
 }
 
-void CCVideoLayerImpl::appendQuads(CCQuadSink& quadList, const CCSharedQuadState* sharedQuadState, bool&)
+void CCVideoLayerImpl::appendQuads(CCQuadSink& quadSink, CCAppendQuadsData& appendQuadsData)
 {
     ASSERT(CCProxy::isImplThread());
 
     if (!m_frame)
         return;
+
+    CCSharedQuadState* sharedQuadState = quadSink.useSharedQuadState(createSharedQuadState());
+    appendDebugBorderQuad(quadSink, sharedQuadState, appendQuadsData);
 
     // FIXME: When we pass quads out of process, we need to double-buffer, or
     // otherwise synchonize use of all textures in the quad.
@@ -196,7 +199,7 @@ void CCVideoLayerImpl::appendQuads(CCQuadSink& quadList, const CCSharedQuadState
         const FramePlane& uPlane = m_framePlanes[WebKit::WebVideoFrame::uPlane];
         const FramePlane& vPlane = m_framePlanes[WebKit::WebVideoFrame::vPlane];
         OwnPtr<CCYUVVideoDrawQuad> yuvVideoQuad = CCYUVVideoDrawQuad::create(sharedQuadState, quadRect, yPlane, uPlane, vPlane);
-        quadList.append(yuvVideoQuad.release());
+        quadSink.append(yuvVideoQuad.release(), appendQuadsData);
         break;
     }
     case GraphicsContext3D::RGBA: {
@@ -208,34 +211,28 @@ void CCVideoLayerImpl::appendQuads(CCQuadSink& quadList, const CCSharedQuadState
         FloatRect uvRect(0, 0, widthScaleFactor, 1);
         bool flipped = false;
         OwnPtr<CCTextureDrawQuad> textureQuad = CCTextureDrawQuad::create(sharedQuadState, quadRect, plane.resourceId, premultipliedAlpha, uvRect, flipped);
-        quadList.append(textureQuad.release());
+        quadSink.append(textureQuad.release(), appendQuadsData);
         break;
     }
     case GraphicsContext3D::TEXTURE_2D: {
         // NativeTexture hardware decoder.
         bool premultipliedAlpha = true;
         FloatRect uvRect(0, 0, 1, 1);
-#if defined(OS_CHROMEOS) && defined(__ARMEL__)
-        bool flipped = true; // Under the covers, implemented by OpenMAX IL.
-#elif OS(WINDOWS)
-        bool flipped = false; // Under the covers, implemented by DXVA.
-#else
-        bool flipped = false; // LibVA (cros/intel), MacOS.
-#endif
+        bool flipped = false;
         OwnPtr<CCTextureDrawQuad> textureQuad = CCTextureDrawQuad::create(sharedQuadState, quadRect, m_externalTextureResource, premultipliedAlpha, uvRect, flipped);
-        quadList.append(textureQuad.release());
+        quadSink.append(textureQuad.release(), appendQuadsData);
         break;
     }
     case Extensions3D::TEXTURE_RECTANGLE_ARB: {
         IntSize textureSize(m_frame->width(), m_frame->height()); 
         OwnPtr<CCIOSurfaceDrawQuad> ioSurfaceQuad = CCIOSurfaceDrawQuad::create(sharedQuadState, quadRect, textureSize, m_frame->textureId(), CCIOSurfaceDrawQuad::Unflipped);
-        quadList.append(ioSurfaceQuad.release());
+        quadSink.append(ioSurfaceQuad.release(), appendQuadsData);
         break;
     }
     case Extensions3DChromium::GL_TEXTURE_EXTERNAL_OES: {
         // StreamTexture hardware decoder.
         OwnPtr<CCStreamVideoDrawQuad> streamVideoQuad = CCStreamVideoDrawQuad::create(sharedQuadState, quadRect, m_frame->textureId(), m_streamTextureMatrix);
-        quadList.append(streamVideoQuad.release());
+        quadSink.append(streamVideoQuad.release(), appendQuadsData);
         break;
     }
     default:
@@ -357,7 +354,7 @@ bool CCVideoLayerImpl::copyPlaneData(CCResourceProvider* resourceProvider)
         CCVideoLayerImpl::FramePlane& plane = m_framePlanes[softwarePlaneIndex];
         const uint8_t* softwarePlanePixels = static_cast<const uint8_t*>(m_frame->data(softwarePlaneIndex));
         IntRect planeRect(IntPoint(), plane.size);
-        resourceProvider->upload(plane.resourceId, softwarePlanePixels, planeRect, planeRect, planeRect);
+        resourceProvider->upload(plane.resourceId, softwarePlanePixels, planeRect, planeRect, IntSize());
     }
     return true;
 }

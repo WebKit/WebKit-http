@@ -49,11 +49,12 @@ class MainTest(unittest.TestCase):
             'Running 20 times',
             'Ignoring warm-up run (1115)',
             '',
-            'avg 1100',
-            'median 1101',
-            'stdev 11',
-            'min 1080',
-            'max 1120']), image=None, image_hash=None, audio=None)
+            'Time:',
+            'avg 1100 ms',
+            'median 1101 ms',
+            'stdev 11 ms',
+            'min 1080 ms',
+            'max 1120 ms']), image=None, image_hash=None, audio=None)
         output_capture = OutputCapture()
         output_capture.capture_output()
         try:
@@ -61,6 +62,7 @@ class MainTest(unittest.TestCase):
             self.assertEqual(test.parse_output(output),
                 {'some-test': {'avg': 1100.0, 'median': 1101.0, 'min': 1080.0, 'max': 1120.0, 'stdev': 11.0, 'unit': 'ms'}})
         finally:
+            pass
             actual_stdout, actual_stderr, actual_logs = output_capture.restore_output()
         self.assertEqual(actual_stdout, '')
         self.assertEqual(actual_stderr, '')
@@ -73,11 +75,12 @@ class MainTest(unittest.TestCase):
             '',
             'some-unrecognizable-line',
             '',
-            'avg 1100',
-            'median 1101',
-            'stdev 11',
-            'min 1080',
-            'max 1120']), image=None, image_hash=None, audio=None)
+            'Time:'
+            'avg 1100 ms',
+            'median 1101 ms',
+            'stdev 11 ms',
+            'min 1080 ms',
+            'max 1120 ms']), image=None, image_hash=None, audio=None)
         output_capture = OutputCapture()
         output_capture.capture_output()
         try:
@@ -96,7 +99,7 @@ class TestPageLoadingPerfTest(unittest.TestCase):
             self._values = values
             self._index = 0
 
-        def run_test(self, input):
+        def run_test(self, input, stop_when_done):
             value = self._values[self._index]
             self._index += 1
             if isinstance(value, str):
@@ -138,8 +141,8 @@ class TestReplayPerfTest(unittest.TestCase):
         def __init__(self, custom_run_test=None):
 
             class ReplayTestDriver(TestDriver):
-                def run_test(self, text_input):
-                    return custom_run_test(text_input) if custom_run_test else None
+                def run_test(self, text_input, stop_when_done):
+                    return custom_run_test(text_input, stop_when_done) if custom_run_test else None
 
             self._custom_driver_class = ReplayTestDriver
             super(self.__class__, self).__init__(host=MockHost())
@@ -171,7 +174,7 @@ class TestReplayPerfTest(unittest.TestCase):
 
         loaded_pages = []
 
-        def run_test(test_input):
+        def run_test(test_input, stop_when_done):
             if test_input.test_name != "about:blank":
                 self.assertEqual(test_input.test_name, 'http://some-test/')
             loaded_pages.append(test_input)
@@ -189,9 +192,8 @@ class TestReplayPerfTest(unittest.TestCase):
         finally:
             actual_stdout, actual_stderr, actual_logs = output_capture.restore_output()
 
-        self.assertEqual(len(loaded_pages), 2)
-        self.assertEqual(loaded_pages[0].test_name, 'about:blank')
-        self.assertEqual(loaded_pages[1].test_name, 'http://some-test/')
+        self.assertEqual(len(loaded_pages), 1)
+        self.assertEqual(loaded_pages[0].test_name, 'http://some-test/')
         self.assertEqual(actual_stdout, '')
         self.assertEqual(actual_stderr, '')
         self.assertEqual(actual_logs, '')
@@ -240,7 +242,7 @@ class TestReplayPerfTest(unittest.TestCase):
 
         loaded_pages = []
 
-        def run_test(test_input):
+        def run_test(test_input, stop_when_done):
             loaded_pages.append(test_input)
             self._add_file(port, '/path/some-dir', 'some-test.wpr', 'wpr content')
             return DriverOutput('actual text', 'actual image', 'actual checksum',
@@ -256,9 +258,8 @@ class TestReplayPerfTest(unittest.TestCase):
         finally:
             actual_stdout, actual_stderr, actual_logs = output_capture.restore_output()
 
-        self.assertEqual(len(loaded_pages), 2)
-        self.assertEqual(loaded_pages[0].test_name, 'about:blank')
-        self.assertEqual(loaded_pages[1].test_name, 'http://some-test/')
+        self.assertEqual(len(loaded_pages), 1)
+        self.assertEqual(loaded_pages[0].test_name, 'http://some-test/')
         self.assertEqual(actual_stdout, '')
         self.assertEqual(actual_stderr, '')
         self.assertEqual(actual_logs, 'error: some-test.replay\nsome error\n')
@@ -267,7 +268,7 @@ class TestReplayPerfTest(unittest.TestCase):
         output_capture = OutputCapture()
         output_capture.capture_output()
 
-        def run_test(test_input):
+        def run_test(test_input, stop_when_done):
             self._add_file(port, '/path/some-dir', 'some-test.wpr', 'wpr content')
             return DriverOutput('actual text', 'actual image', 'actual checksum',
                 audio=None, crash=False, timeout=False, error=False)

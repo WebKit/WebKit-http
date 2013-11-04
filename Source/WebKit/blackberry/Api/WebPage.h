@@ -20,6 +20,7 @@
 #define WebPage_h
 
 #include "BlackBerryGlobal.h"
+#include "JavaScriptVariant.h"
 #include "WebString.h"
 
 #include <BlackBerryPlatformGuardedPointer.h>
@@ -63,6 +64,7 @@ namespace WebKit {
 class BackingStore;
 class BackingStoreClient;
 class BackingStorePrivate;
+class InRegionScroller;
 class RenderQueue;
 class WebOverlay;
 class WebPageClient;
@@ -105,7 +107,7 @@ public:
     // Takes a UTF16 encoded script that is used explicitly by the pattern matching code
     bool executeJavaScriptInIsolatedWorld(const std::wstring& script, JavaScriptDataType& returnType, WebString& returnValue);
 
-    bool executeJavaScriptFunction(const std::vector<std::string> &script, const std::vector<std::string> &args, JavaScriptDataType& returnType, WebString& returnValue);
+    void executeJavaScriptFunction(const std::vector<std::string> &function, const std::vector<JavaScriptVariant> &args, JavaScriptVariant& returnValue);
 
     void initializeIconDataBase();
 
@@ -117,6 +119,8 @@ public:
     void prepareToDestroy();
 
     void enableCrossSiteXHR();
+    void addOriginAccessWhitelistEntry(const char* sourceOrigin, const char* destinationOrigin, bool allowDestinationSubdomains);
+    void removeOriginAccessWhitelistEntry(const char* sourceOrigin, const char* destinationOrigin, bool allowDestinationSubdomains);
 
     void reload();
     void reloadFromCache();
@@ -171,17 +175,20 @@ public:
     Platform::IntPoint scrollPosition() const;
     // Scroll position provided should be in transformed coordinates.
     void setScrollPosition(const Platform::IntPoint&);
-    bool scrollBy(const Platform::IntSize&, bool scrollMainFrame = true);
-    void notifyInRegionScrollStatusChanged(bool status);
+    void scrollBy(const Platform::IntSize&);
+    void notifyInRegionScrollStopped();
     void setScrollOriginPoint(const Platform::IntPoint&);
 
     BackingStore* backingStore() const;
+
+    InRegionScroller* inRegionScroller() const;
 
     bool zoomToFit();
     bool zoomToOneOne();
     void zoomToInitialScale();
     bool blockZoom(int x, int y);
     void blockZoomAnimationFinished();
+    void resetBlockZoom();
     bool isAtInitialZoom() const;
     bool isMaxZoomed() const;
     bool isMinZoomed() const;
@@ -316,8 +323,6 @@ public:
 
     bool defersLoading() const;
 
-    bool willFireTimer();
-
     bool isEnableLocalAccessToAllCookies() const;
     void setEnableLocalAccessToAllCookies(bool);
 
@@ -373,6 +378,8 @@ public:
     WebCore::PagePopupBlackBerry* popup();
 
     void autofillTextField(const std::string&);
+
+    void enableQnxJavaScriptObject(bool);
 
 private:
     virtual ~WebPage();

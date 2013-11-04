@@ -89,7 +89,7 @@ String ScriptDebugServer::setBreakpoint(const String& sourceID, const ScriptBrea
         return "";
     *actualLineNumber = args->Get(v8::String::New("lineNumber"))->Int32Value();
     *actualColumnNumber = args->Get(v8::String::New("columnNumber"))->Int32Value();
-    return v8StringToWebCoreString(breakpointId->ToString());
+    return toWebCoreString(breakpointId->ToString());
 }
 
 void ScriptDebugServer::removeBreakpoint(const String& breakpointId)
@@ -137,7 +137,7 @@ ScriptDebugServer::PauseOnExceptionsState ScriptDebugServer::pauseOnExceptionsSt
     v8::HandleScope scope;
     v8::Context::Scope contextScope(v8::Debug::GetDebugContext());
 
-    v8::Handle<v8::Value> argv[] = { v8::Handle<v8::Value>() };
+    v8::Handle<v8::Value> argv[] = { v8Undefined() };
     v8::Handle<v8::Value> result = callDebuggerMethod("pauseOnExceptionsState", 0, argv);
     return static_cast<ScriptDebugServer::PauseOnExceptionsState>(result->Int32Value());
 }
@@ -363,7 +363,7 @@ void ScriptDebugServer::handleV8DebugEvent(const v8::Debug::EventDetails& eventD
                 v8::Handle<v8::Object> eventData = eventDetails.GetEventData();
                 v8::Handle<v8::Value> exceptionGetterValue = eventData->Get(v8::String::New("exception"));
                 ASSERT(!exceptionGetterValue.IsEmpty() && exceptionGetterValue->IsFunction());
-                v8::Handle<v8::Value> argv[] = { v8::Handle<v8::Value>() };
+                v8::Handle<v8::Value> argv[] = { v8Undefined() };
                 V8RecursionScope::MicrotaskSuppression scope;
                 exception = v8::Handle<v8::Function>::Cast(exceptionGetterValue)->Call(eventData, 0, argv);
             }
@@ -441,7 +441,7 @@ void ScriptDebugServer::compileScript(ScriptState* state, const String& expressi
         return;
 
     *scriptId = toWebCoreStringWithNullOrUndefinedCheck(script->Id());
-    m_compiledScripts.set(*scriptId, adoptPtr(new OwnHandle<v8::Script>(script)));
+    m_compiledScripts.set(*scriptId, adoptPtr(new ScopedPersistent<v8::Script>(script)));
 }
 
 void ScriptDebugServer::clearCompiledScripts()
@@ -454,8 +454,8 @@ void ScriptDebugServer::runScript(ScriptState* state, const String& scriptId, Sc
     if (!m_compiledScripts.contains(scriptId))
         return;
     v8::HandleScope handleScope;
-    OwnHandle<v8::Script>* scriptOwnHandle = m_compiledScripts.get(scriptId);
-    v8::Local<v8::Script> script = v8::Local<v8::Script>::New(scriptOwnHandle->get());
+    ScopedPersistent<v8::Script>* scriptHandle = m_compiledScripts.get(scriptId);
+    v8::Local<v8::Script> script = v8::Local<v8::Script>::New(scriptHandle->get());
     m_compiledScripts.remove(scriptId);
     if (script.IsEmpty())
         return;

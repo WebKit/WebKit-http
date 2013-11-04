@@ -30,6 +30,7 @@
 #ifndef CodeBlock_h
 #define CodeBlock_h
 
+#include "ArrayProfile.h"
 #include "BytecodeConventions.h"
 #include "CallLinkInfo.h"
 #include "CallReturnOffsetToBytecodeOffset.h"
@@ -117,9 +118,9 @@ namespace JSC {
     public:
         enum CopyParsedBlockTag { CopyParsedBlock };
     protected:
-        CodeBlock(CopyParsedBlockTag, CodeBlock& other, SymbolTable*);
+        CodeBlock(CopyParsedBlockTag, CodeBlock& other);
         
-        CodeBlock(ScriptExecutable* ownerExecutable, CodeType, JSGlobalObject*, PassRefPtr<SourceProvider>, unsigned sourceOffset, SymbolTable*, bool isConstructor, PassOwnPtr<CodeBlock> alternative);
+        CodeBlock(ScriptExecutable* ownerExecutable, CodeType, JSGlobalObject*, PassRefPtr<SourceProvider>, unsigned sourceOffset, bool isConstructor, PassOwnPtr<CodeBlock> alternative);
 
         WriteBarrier<JSGlobalObject> m_globalObject;
         Heap* m_heap;
@@ -229,6 +230,9 @@ namespace JSC {
             return *(binarySearch<MethodCallLinkInfo, unsigned, getMethodCallLinkInfoBytecodeIndex>(m_methodCallLinkInfos.begin(), m_methodCallLinkInfos.size(), bytecodeIndex));
         }
 
+#if ENABLE(LLINT)
+        Instruction* adjustPCIfAtCallSite(Instruction*);
+#endif
         unsigned bytecodeOffset(ExecState*, ReturnAddressPtr);
 
         unsigned bytecodeOffsetForCallAtIndex(unsigned index)
@@ -441,7 +445,7 @@ namespace JSC {
         MacroAssemblerCodePtr getJITCodeWithArityCheck() { return m_jitCodeWithArityCheck; }
         JITCode::JITType getJITType() { return m_jitCode.jitType(); }
         ExecutableMemoryHandle* executableMemory() { return getJITCode().getExecutableMemory(); }
-        virtual JSObject* compileOptimized(ExecState*, ScopeChainNode*) = 0;
+        virtual JSObject* compileOptimized(ExecState*, ScopeChainNode*, unsigned bytecodeIndex) = 0;
         virtual void jettison() = 0;
         enum JITCompilationResult { AlreadyCompiled, CouldNotCompile, CompiledSuccessfully };
         JITCompilationResult jitCompile(ExecState* exec)
@@ -751,8 +755,18 @@ namespace JSC {
         }
         
         unsigned executionEntryCount() const { return m_executionEntryCount; }
-#endif
 
+        unsigned numberOfArrayProfiles() const { return m_arrayProfiles.size(); }
+        const ArrayProfileVector& arrayProfiles() { return m_arrayProfiles; }
+        ArrayProfile* addArrayProfile(unsigned bytecodeOffset)
+        {
+            m_arrayProfiles.append(ArrayProfile(bytecodeOffset));
+            return &m_arrayProfiles.last();
+        }
+        ArrayProfile* getArrayProfile(unsigned bytecodeOffset);
+        ArrayProfile* getOrAddArrayProfile(unsigned bytecodeOffset);
+#endif
+        
         unsigned globalResolveInfoCount() const
         {
 #if ENABLE(JIT)    
@@ -935,8 +949,7 @@ namespace JSC {
         StringJumpTable& stringSwitchJumpTable(int tableIndex) { ASSERT(m_rareData); return m_rareData->m_stringSwitchJumpTables[tableIndex]; }
 
 
-        SymbolTable* symbolTable() { return m_symbolTable; }
-        SharedSymbolTable* sharedSymbolTable() { ASSERT(m_codeType == FunctionCode); return static_cast<SharedSymbolTable*>(m_symbolTable); }
+        SharedSymbolTable* symbolTable() { return m_symbolTable.get(); }
 
         EvalCodeCache& evalCodeCache() { createRareDataIfNecessary(); return m_rareData->m_evalCodeCache; }
 
@@ -1333,6 +1346,7 @@ namespace JSC {
         SegmentedVector<ValueProfile, 8> m_valueProfiles;
         SegmentedVector<RareCaseProfile, 8> m_rareCaseProfiles;
         SegmentedVector<RareCaseProfile, 8> m_specialFastCaseProfiles;
+        ArrayProfileVector m_arrayProfiles;
         unsigned m_executionEntryCount;
 #endif
 
@@ -1346,7 +1360,7 @@ namespace JSC {
         Vector<WriteBarrier<FunctionExecutable> > m_functionDecls;
         Vector<WriteBarrier<FunctionExecutable> > m_functionExprs;
 
-        SymbolTable* m_symbolTable;
+        WriteBarrier<SharedSymbolTable> m_symbolTable;
 
         OwnPtr<CodeBlock> m_alternative;
         
@@ -1408,18 +1422,14 @@ namespace JSC {
     class GlobalCodeBlock : public CodeBlock {
     protected:
         GlobalCodeBlock(CopyParsedBlockTag, GlobalCodeBlock& other)
-            : CodeBlock(CopyParsedBlock, other, &m_unsharedSymbolTable)
-            , m_unsharedSymbolTable(other.m_unsharedSymbolTable)
+            : CodeBlock(CopyParsedBlock, other)
         {
         }
         
         GlobalCodeBlock(ScriptExecutable* ownerExecutable, CodeType codeType, JSGlobalObject* globalObject, PassRefPtr<SourceProvider> sourceProvider, unsigned sourceOffset, PassOwnPtr<CodeBlock> alternative)
-            : CodeBlock(ownerExecutable, codeType, globalObject, sourceProvider, sourceOffset, &m_unsharedSymbolTable, false, alternative)
+            : CodeBlock(ownerExecutable, codeType, globalObject, sourceProvider, sourceOffset, false, alternative)
         {
         }
-
-    private:
-        SymbolTable m_unsharedSymbolTable;
     };
 
     class ProgramCodeBlock : public GlobalCodeBlock {
@@ -1436,7 +1446,7 @@ namespace JSC {
         
 #if ENABLE(JIT)
     protected:
-        virtual JSObject* compileOptimized(ExecState*, ScopeChainNode*);
+        virtual JSObject* compileOptimized(ExecState*, ScopeChainNode*, unsigned bytecodeIndex);
         virtual void jettison();
         virtual bool jitCompileImpl(ExecState*);
         virtual CodeBlock* replacement();
@@ -1471,7 +1481,7 @@ namespace JSC {
         
 #if ENABLE(JIT)
     protected:
-        virtual JSObject* compileOptimized(ExecState*, ScopeChainNode*);
+        virtual JSObject* compileOptimized(ExecState*, ScopeChainNode*, unsigned bytecodeIndex);
         virtual void jettison();
         virtual bool jitCompileImpl(ExecState*);
         virtual CodeBlock* replacement();
@@ -1486,30 +1496,18 @@ namespace JSC {
     class FunctionCodeBlock : public CodeBlock {
     public:
         FunctionCodeBlock(CopyParsedBlockTag, FunctionCodeBlock& other)
-            : CodeBlock(CopyParsedBlock, other, other.sharedSymbolTable())
+            : CodeBlock(CopyParsedBlock, other)
         {
-            // The fact that we have to do this is yucky, but is necessary because of the
-            // class hierarchy issues described in the comment block for the main
-            // constructor, below.
-            sharedSymbolTable()->ref();
         }
 
-        // Rather than using the usual RefCounted::create idiom for SharedSymbolTable we just use new
-        // as we need to initialise the CodeBlock before we could initialise any RefPtr to hold the shared
-        // symbol table, so we just pass as a raw pointer with a ref count of 1.  We then manually deref
-        // in the destructor.
         FunctionCodeBlock(FunctionExecutable* ownerExecutable, CodeType codeType, JSGlobalObject* globalObject, PassRefPtr<SourceProvider> sourceProvider, unsigned sourceOffset, bool isConstructor, PassOwnPtr<CodeBlock> alternative = nullptr)
-            : CodeBlock(ownerExecutable, codeType, globalObject, sourceProvider, sourceOffset, SharedSymbolTable::create().leakRef(), isConstructor, alternative)
+            : CodeBlock(ownerExecutable, codeType, globalObject, sourceProvider, sourceOffset, isConstructor, alternative)
         {
-        }
-        ~FunctionCodeBlock()
-        {
-            sharedSymbolTable()->deref();
         }
         
 #if ENABLE(JIT)
     protected:
-        virtual JSObject* compileOptimized(ExecState*, ScopeChainNode*);
+        virtual JSObject* compileOptimized(ExecState*, ScopeChainNode*, unsigned bytecodeIndex);
         virtual void jettison();
         virtual bool jitCompileImpl(ExecState*);
         virtual CodeBlock* replacement();

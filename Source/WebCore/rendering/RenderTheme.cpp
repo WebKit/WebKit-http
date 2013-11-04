@@ -41,6 +41,7 @@
 #include "RenderStyle.h"
 #include "RenderView.h"
 #include "Settings.h"
+#include "SpinButtonElement.h"
 #include "StringTruncator.h"
 #include "TextControlInnerElements.h"
 
@@ -828,7 +829,7 @@ bool RenderTheme::isReadOnlyControl(const RenderObject* o) const
     Node* node = o->node();
     if (!node || !node->isElementNode())
         return false;
-    return static_cast<Element*>(node)->isReadOnlyFormControl();
+    return static_cast<Element*>(node)->shouldMatchReadOnlySelector();
 }
 
 bool RenderTheme::isHovered(const RenderObject* o) const
@@ -963,6 +964,11 @@ bool RenderTheme::paintMeter(RenderObject*, const PaintInfo&, const IntRect&)
 #endif
 
 #if ENABLE(DATALIST_ELEMENT)
+LayoutUnit RenderTheme::sliderTickSnappingThreshold() const
+{
+    return 0;
+}
+
 void RenderTheme::paintSliderTicks(RenderObject* o, const PaintInfo& paintInfo, const IntRect& rect)
 {
     Node* node = o->node();
@@ -1024,13 +1030,13 @@ void RenderTheme::paintSliderTicks(RenderObject* o, const PaintInfo& paintInfo, 
         if (!input->isValidValue(value))
             continue;
         double parsedValue = parseToDoubleForNumberType(input->sanitizeValue(value));
-        double tickPosition = (parsedValue - min) / (max - min);
-        if (!o->style()->isLeftToRightDirection())
-            tickPosition = 1.0 - tickPosition;
+        double tickFraction = (parsedValue - min) / (max - min);
+        double tickRatio = isHorizontal && o->style()->isLeftToRightDirection() ? tickFraction : 1.0 - tickFraction;
+        double tickPosition = round(tickRegionSideMargin + tickRegionWidth * tickRatio);
         if (isHorizontal)
-            tickRect.setX(floor(tickRegionSideMargin + tickRegionWidth * tickPosition));
+            tickRect.setX(tickPosition);
         else
-            tickRect.setY(floor(tickRegionSideMargin + tickRegionWidth * tickPosition));
+            tickRect.setY(tickPosition);
         paintInfo.context->fillRect(tickRect);
     }
 }

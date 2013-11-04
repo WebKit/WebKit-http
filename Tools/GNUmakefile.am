@@ -43,7 +43,7 @@ noinst_LTLIBRARIES += libWebCoreInternals.la
 libWebCoreInternals_la_SOURCES = \
 	Source/WebCore/bindings/js/JSDOMWrapper.cpp \
 	Source/WebCore/bindings/js/JSDOMWrapper.h \
-	Source/WebCore/testing/FastMallocStatistics.h \
+	Source/WebCore/testing/MallocStatistics.h \
 	Source/WebCore/testing/Internals.cpp \
 	Source/WebCore/testing/Internals.h \
 	Source/WebCore/testing/InternalSettings.cpp \
@@ -54,8 +54,8 @@ libWebCoreInternals_la_SOURCES = \
 	Source/WebCore/testing/js/WebCoreTestSupport.h
 
 libwebcoreinternals_built_sources += \
-	DerivedSources/WebCore/JSFastMallocStatistics.cpp \
-	DerivedSources/WebCore/JSFastMallocStatistics.h   \
+	DerivedSources/WebCore/JSMallocStatistics.cpp \
+	DerivedSources/WebCore/JSMallocStatistics.h   \
 	DerivedSources/WebCore/JSInternals.cpp \
 	DerivedSources/WebCore/JSInternals.h   \
 	DerivedSources/WebCore/JSInternalSettings.cpp \
@@ -106,6 +106,7 @@ endif
 
 Programs_DumpRenderTree_SOURCES = \
 	Tools/DumpRenderTree/DumpRenderTree.h \
+	Tools/DumpRenderTree/DumpRenderTreeCommon.cpp \
 	Tools/DumpRenderTree/DumpRenderTreePrefix.h \
 	Tools/DumpRenderTree/AccessibilityController.cpp \
 	Tools/DumpRenderTree/AccessibilityController.h \
@@ -118,8 +119,8 @@ Programs_DumpRenderTree_SOURCES = \
 	Tools/DumpRenderTree/GCController.cpp \
 	Tools/DumpRenderTree/GCController.h \
 	Tools/DumpRenderTree/JavaScriptThreading.h \
-	Tools/DumpRenderTree/LayoutTestController.cpp \
-	Tools/DumpRenderTree/LayoutTestController.h \
+	Tools/DumpRenderTree/TestRunner.cpp \
+	Tools/DumpRenderTree/TestRunner.h \
 	Tools/DumpRenderTree/PixelDumpSupport.cpp \
 	Tools/DumpRenderTree/PixelDumpSupport.h \
 	Tools/DumpRenderTree/WorkQueue.cpp \
@@ -139,7 +140,7 @@ Programs_DumpRenderTree_SOURCES = \
 	Tools/DumpRenderTree/gtk/EventSender.h \
 	Tools/DumpRenderTree/gtk/EventSender.cpp \
 	Tools/DumpRenderTree/gtk/GCControllerGtk.cpp \
-	Tools/DumpRenderTree/gtk/LayoutTestControllerGtk.cpp \
+	Tools/DumpRenderTree/gtk/TestRunnerGtk.cpp \
 	Tools/DumpRenderTree/gtk/PixelDumpSupportGtk.cpp \
 	Tools/DumpRenderTree/gtk/SelfScrollingWebKitWebView.cpp \
 	Tools/DumpRenderTree/gtk/SelfScrollingWebKitWebView.h \
@@ -255,6 +256,7 @@ EXTRA_DIST += \
 	Tools/gtk/common.py \
 	Tools/gtk/generate-gtkdoc \
 	Tools/gtk/gtkdoc.py \
+	Tools/jhbuild/jhbuildutils.py \
 	Tools/Scripts/VCSUtils.pm \
 	Tools/Scripts/run-gtk-tests \
 	Tools/Scripts/webkit-build-directory \

@@ -254,7 +254,7 @@ void Notification::taskTimerFired(Timer<Notification>* timer)
 
 
 #if ENABLE(NOTIFICATIONS)
-const String& Notification::permissionLevel(ScriptExecutionContext* context)
+const String& Notification::permission(ScriptExecutionContext* context)
 {
     ASSERT(context->isDocument());
     ASSERT(static_cast<Document*>(context)->page());
@@ -263,9 +263,10 @@ const String& Notification::permissionLevel(ScriptExecutionContext* context)
 
 const String& Notification::permissionString(NotificationClient::Permission permission)
 {
-    DEFINE_STATIC_LOCAL(const String, allowedPermission, ("granted"));
-    DEFINE_STATIC_LOCAL(const String, deniedPermission, ("denied"));
-    DEFINE_STATIC_LOCAL(const String, defaultPermission, ("default"));
+    DEFINE_STATIC_LOCAL(const String, allowedPermission, (ASCIILiteral("granted")));
+    DEFINE_STATIC_LOCAL(const String, deniedPermission, (ASCIILiteral("denied")));
+    DEFINE_STATIC_LOCAL(const String, defaultPermission, (ASCIILiteral("default")));
+
     switch (permission) {
     case NotificationClient::PermissionAllowed:
         return allowedPermission;

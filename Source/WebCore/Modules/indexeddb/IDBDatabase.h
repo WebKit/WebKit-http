@@ -78,6 +78,7 @@ public:
     DEFINE_ATTRIBUTE_EVENT_LISTENER(versionchange);
 
     // IDBDatabaseCallbacks
+    virtual void onVersionChange(int64_t oldVersion, int64_t newVersion);
     virtual void onVersionChange(const String& requestedVersion);
 
     // ActiveDOMObject
@@ -87,6 +88,7 @@ public:
     virtual const AtomicString& interfaceName() const;
     virtual ScriptExecutionContext* scriptExecutionContext() const;
 
+    void forceClose();
     void registerFrontendCallbacks();
     const IDBDatabaseMetadata metadata() const { return m_metadata; }
     void enqueueEvent(PassRefPtr<Event>);

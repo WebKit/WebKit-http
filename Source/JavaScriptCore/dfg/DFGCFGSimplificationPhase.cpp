@@ -101,7 +101,7 @@ public:
                     // Branch on constant -> jettison the not-taken block and merge.
                     if (m_graph[m_graph[block->last()].child1()].hasConstant()) {
                         bool condition =
-                            m_graph.valueOfJSConstant(m_graph[block->last()].child1().index()).toBoolean();
+                            m_graph.valueOfJSConstant(m_graph[block->last()].child1().index()).toBoolean(m_graph.globalObjectFor(m_graph[block->last()].codeOrigin)->globalExec());
                         BasicBlock* targetBlock = m_graph.m_blocks[
                             m_graph.successorForCondition(block, condition)].get();
                         if (targetBlock->m_predecessors.size() == 1) {
@@ -613,7 +613,9 @@ private:
                 
                 ASSERT(node.shouldGenerate());
                 Node& possibleLocalOp = m_graph[node.child1()];
-                if (possibleLocalOp.hasLocal() && !possibleLocalOp.variableAccessData()->isCaptured()) {
+                if (possibleLocalOp.op() != GetLocal
+                    && possibleLocalOp.hasLocal()
+                    && !possibleLocalOp.variableAccessData()->isCaptured()) {
                     NodeIndex setLocalIndex =
                         firstBlock->variablesAtTail.operand(possibleLocalOp.local());
                     Node& setLocal = m_graph[setLocalIndex];
@@ -657,8 +659,10 @@ private:
                 if (node.flags() & NodeHasVarArgs) {
                     for (unsigned childIdx = node.firstChild();
                          childIdx < node.firstChild() + node.numChildren();
-                         ++childIdx)
-                        fixPossibleGetLocal(firstBlock, m_graph.m_varArgChildren[childIdx], changeRef);
+                         ++childIdx) {
+                        if (!!m_graph.m_varArgChildren[childIdx])
+                            fixPossibleGetLocal(firstBlock, m_graph.m_varArgChildren[childIdx], changeRef);
+                    }
                 } else if (!!node.child1()) {
                     fixPossibleGetLocal(firstBlock, node.children.child1(), changeRef);
                     if (!!node.child2()) {

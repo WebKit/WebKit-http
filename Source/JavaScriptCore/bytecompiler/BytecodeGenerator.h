@@ -75,6 +75,7 @@ namespace JSC {
         unsigned scopeContextStackSize;
         unsigned switchContextStackSize;
         unsigned forInContextStackSize;
+        unsigned tryContextStackSize;
         unsigned labelScopesSize;
         int finallyDepth;
         int dynamicScopeDepth;
@@ -90,6 +91,22 @@ namespace JSC {
         RefPtr<RegisterID> iterRegister;
         RefPtr<RegisterID> indexRegister;
         RefPtr<RegisterID> propertyRegister;
+    };
+
+    struct TryData {
+        RefPtr<Label> target;
+        unsigned targetScopeDepth;
+    };
+
+    struct TryContext {
+        RefPtr<Label> start;
+        TryData* tryData;
+    };
+
+    struct TryRange {
+        RefPtr<Label> start;
+        RefPtr<Label> end;
+        TryData* tryData;
     };
 
     class ResolveResult {
@@ -492,7 +509,11 @@ namespace JSC {
         RegisterID* emitGetPropertyNames(RegisterID* dst, RegisterID* base, RegisterID* i, RegisterID* size, Label* breakTarget);
         RegisterID* emitNextPropertyName(RegisterID* dst, RegisterID* base, RegisterID* i, RegisterID* size, RegisterID* iter, Label* target);
 
-        RegisterID* emitCatch(RegisterID*, Label* start, Label* end);
+        // Start a try block. 'start' must have been emitted.
+        TryData* pushTry(Label* start);
+        // End a try block. 'end' must have been emitted.
+        RegisterID* popTryAndEmitCatch(TryData*, RegisterID* targetRegister, Label* end);
+
         void emitThrow(RegisterID* exc)
         { 
             m_usesExceptions = true;
@@ -506,7 +527,7 @@ namespace JSC {
         RegisterID* emitPushScope(RegisterID* scope);
         void emitPopScope();
 
-        void emitDebugHook(DebugHookID, int firstLine, int lastLine);
+        void emitDebugHook(DebugHookID, int firstLine, int lastLine, int column);
 
         int scopeDepth() { return m_dynamicScopeDepth + m_finallyDepth; }
         bool hasFinaliser() { return m_finallyDepth != 0; }
@@ -555,6 +576,7 @@ namespace JSC {
 #endif
 
         void emitOpcode(OpcodeID);
+        ArrayProfile* newArrayProfile();
         ValueProfile* emitProfiledOpcode(OpcodeID);
         void retrieveLastBinaryOp(int& dstIndex, int& src1Index, int& src2Index);
         void retrieveLastUnaryOp(int& dstIndex, int& srcIndex);
@@ -633,7 +655,9 @@ namespace JSC {
 
         RegisterID* emitInitLazyRegister(RegisterID*);
 
+    public:
         Vector<Instruction>& instructions() { return m_instructions; }
+
         SymbolTable& symbolTable() { return *m_symbolTable; }
 #if ENABLE(BYTECODE_COMMENTS)
         Vector<Comment>& comments() { return m_comments; }
@@ -707,6 +731,10 @@ namespace JSC {
         Vector<ControlFlowContext> m_scopeContextStack;
         Vector<SwitchInfo> m_switchContextStack;
         Vector<ForInContext> m_forInContextStack;
+        Vector<TryContext> m_tryContextStack;
+        
+        Vector<TryRange> m_tryRanges;
+        SegmentedVector<TryData, 8> m_tryData;
 
         int m_firstConstantIndex;
         int m_nextConstantOffset;

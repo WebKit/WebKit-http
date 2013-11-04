@@ -71,12 +71,13 @@ InjectedScript.prototype = {
      * @param {*} object
      * @param {string} groupName
      * @param {boolean} canAccessInspectedWindow
+     * @param {boolean} generatePreview
      * @return {Object}
      */
-    wrapObject: function(object, groupName, canAccessInspectedWindow)
+    wrapObject: function(object, groupName, canAccessInspectedWindow, generatePreview)
     {
         if (canAccessInspectedWindow)
-            return this._wrapObject(object, groupName);
+            return this._wrapObject(object, groupName, false, generatePreview);
 
         var result = {};
         result.type = typeof object;
@@ -128,12 +129,13 @@ InjectedScript.prototype = {
      * @param {*} object
      * @param {string=} objectGroupName
      * @param {boolean=} forceValueType
+     * @param {boolean=} generatePreview
      * @return {InjectedScript.RemoteObject}
      */
-    _wrapObject: function(object, objectGroupName, forceValueType)
+    _wrapObject: function(object, objectGroupName, forceValueType, generatePreview)
     {
         try {
-            return new InjectedScript.RemoteObject(object, objectGroupName, forceValueType);
+            return new InjectedScript.RemoteObject(object, objectGroupName, forceValueType, generatePreview);
         } catch (e) {
             try {
                 var description = injectedScript._describe(e);
@@ -172,7 +174,7 @@ InjectedScript.prototype = {
      */
     _parseObjectId: function(objectId)
     {
-        return eval("(" + objectId + ")");
+        return InjectedScriptHost.evaluate("(" + objectId + ")");
     },
 
     /**
@@ -195,7 +197,7 @@ InjectedScript.prototype = {
      */
     dispatch: function(methodName, args)
     {
-        var argsArray = eval("(" + args + ")");
+        var argsArray = InjectedScriptHost.evaluate("(" + args + ")");
         var result = this[methodName].apply(this, argsArray);
         if (typeof result === "undefined") {
             inspectedWindow.console.error("Web Inspector error: InjectedScript.%s returns undefined", methodName);
@@ -220,12 +222,6 @@ InjectedScript.prototype = {
         var descriptors = this._propertyDescriptors(object, ownProperties);
 
         // Go over properties, wrap object values.
-        if (descriptors.length === 0 && "arguments" in object) {
-            // Fill in JSC scope object.
-            for (var key in object)
-                descriptors.push({ name: key, value: object[key], writable: false, configurable: false, enumerable: true});
-        }
-
         for (var i = 0; i < descriptors.length; ++i) {
             var descriptor = descriptors[i];
             if ("get" in descriptor)
@@ -340,7 +336,7 @@ InjectedScript.prototype = {
      */
     evaluate: function(expression, objectGroup, injectCommandLineAPI, returnByValue)
     {
-        return this._evaluateAndWrap(inspectedWindow.eval, inspectedWindow, expression, objectGroup, false, injectCommandLineAPI, returnByValue);
+        return this._evaluateAndWrap(InjectedScriptHost.evaluate, InjectedScriptHost, expression, objectGroup, false, injectCommandLineAPI, returnByValue);
     },
 
     /**
@@ -358,7 +354,7 @@ InjectedScript.prototype = {
 
         if (args) {
             var resolvedArgs = [];
-            args = eval(args);
+            args = InjectedScriptHost.evaluate(args);
             for (var i = 0; i < args.length; ++i) {
                 objectId = args[i].objectId;
                 if (objectId) {
@@ -380,7 +376,7 @@ InjectedScript.prototype = {
 
         try {
             var objectGroup = this._idToObjectGroupName[parsedObjectId.id];
-            var func = eval("(" + expression + ")");
+            var func = InjectedScriptHost.evaluate("(" + expression + ")");
             if (typeof func !== "function")
                 return "Given expression does not evaluate to a function";
 
@@ -404,7 +400,7 @@ InjectedScript.prototype = {
     {
         try {
             return { wasThrown: false,
-                     result: this._wrapObject(this._evaluateOn(evalFunction, object, expression, isEvalOnCallFrame, injectCommandLineAPI), objectGroup, returnByValue) };
+                     result: this._wrapObject(this._evaluateOn(evalFunction, object, objectGroup, expression, isEvalOnCallFrame, injectCommandLineAPI), objectGroup, returnByValue, false) };
         } catch (e) {
             return this._createThrownValue(e, objectGroup);
         }
@@ -428,12 +424,13 @@ InjectedScript.prototype = {
     /**
      * @param {Function} evalFunction
      * @param {Object} object
+     * @param {string} objectGroup
      * @param {string} expression
      * @param {boolean} isEvalOnCallFrame
      * @param {boolean} injectCommandLineAPI
      * @return {*}
      */
-    _evaluateOn: function(evalFunction, object, expression, isEvalOnCallFrame, injectCommandLineAPI)
+    _evaluateOn: function(evalFunction, object, objectGroup, expression, isEvalOnCallFrame, injectCommandLineAPI)
     {
         // Only install command line api object for the time of evaluation.
         // Surround the expression in with statements to inject our command line API so that
@@ -444,7 +441,10 @@ InjectedScript.prototype = {
                 inspectedWindow.console._commandLineAPI = new CommandLineAPI(this._commandLineAPIImpl, isEvalOnCallFrame ? object : null);
                 expression = "with ((window && window.console && window.console._commandLineAPI) || {}) {\n" + expression + "\n}";
             }
-            return evalFunction.call(object, expression);
+            var result = evalFunction.call(object, expression);
+            if (objectGroup === "console")
+                this._lastResult = result;
+            return result;
         } finally {
             if (injectCommandLineAPI && inspectedWindow.console)
                 delete inspectedWindow.console._commandLineAPI;
@@ -509,7 +509,7 @@ InjectedScript.prototype = {
      */
     _callFrameForId: function(topCallFrame, callFrameId)
     {
-        var parsedCallFrameId = eval("(" + callFrameId + ")");
+        var parsedCallFrameId = InjectedScriptHost.evaluate("(" + callFrameId + ")");
         var ordinal = parsedCallFrameId["ordinal"];
         var callFrame = topCallFrame;
         while (--ordinal >= 0 && callFrame)
@@ -548,15 +548,29 @@ InjectedScript.prototype = {
         return object;
     },
 
+    /**
+     * @param {string} name
+     * @return {Object}
+     */ 
     module: function(name)
     {
         return this._modules[name];
     },
- 
+
+    /**
+     * @param {string} name
+     * @param {string} source
+     * @return {Object}
+     */ 
     injectModule: function(name, source)
     {
         delete this._modules[name];
-        var module = eval("(" + source + ")");
+        var moduleFunction = InjectedScriptHost.evaluate("(" + source + ")");
+        if (typeof moduleFunction !== "function") {
+            inspectedWindow.console.error("Web Inspector error: A function was expected for module %s evaluation", name);
+            return null;
+        }
+        var module = moduleFunction.call(inspectedWindow, InjectedScriptHost, inspectedWindow, injectedScriptId);
         this._modules[name] = module;
         return module;
     },
@@ -631,6 +645,19 @@ InjectedScript.prototype = {
         if (subtype === "date")
             return this._toString(obj);
 
+        if (subtype === "node") {
+            var description = obj.nodeName.toLowerCase();
+            switch (obj.nodeType) {
+            case 1 /* Node.ELEMENT_NODE */:
+                description =  "<" + description + ">";
+                break;
+            case 10 /*Node.DOCUMENT_TYPE_NODE */:
+                description = "<!DOCTYPE " + description + ">";
+                break;
+            }
+            return description;
+        }
+
         var className = InjectedScriptHost.internalConstructorName(obj);
         if (subtype === "array") {
             if (typeof obj.length === "number")
@@ -674,8 +701,9 @@ var injectedScript = new InjectedScript();
  * @param {*} object
  * @param {string=} objectGroupName
  * @param {boolean=} forceValueType
+ * @param {boolean=} generatePreview
  */
-InjectedScript.RemoteObject = function(object, objectGroupName, forceValueType)
+InjectedScript.RemoteObject = function(object, objectGroupName, forceValueType, generatePreview)
 {
     this.type = typeof object;
     if (injectedScript.isPrimitiveValue(object) || object === null || forceValueType) {
@@ -694,13 +722,104 @@ InjectedScript.RemoteObject = function(object, objectGroupName, forceValueType)
     }
 
     this.objectId = injectedScript._bind(object, objectGroupName);
-    var subtype = injectedScript._subtype(object)
+    var subtype = injectedScript._subtype(object);
     if (subtype)
         this.subtype = subtype;
     this.className = InjectedScriptHost.internalConstructorName(object);
     this.description = injectedScript._describe(object);
+
+    if (generatePreview && (this.type === "object" || injectedScript._isHTMLAllCollection(object)))
+        this._generatePreview(/** @type {!Object} */ object);
 }
 
+InjectedScript.RemoteObject.prototype = {
+    /**
+     * @param {!Object} object
+     */
+    _generatePreview: function(object)
+    {
+        var preview = {};
+        var isArray = this.subtype === "array";
+        var elementsToDump = isArray ? 100 : 5;
+  
+        var propertyNames = Object.getOwnPropertyNames(object);
+        preview.lossless = true;
+        preview.overflow = false;
+        var properties = preview.properties = [];
+
+        try {
+            for (var i = 0; i < propertyNames.length; ++i) {
+                if (properties.length >= elementsToDump) {
+                    preview.overflow = true;
+                    preview.lossless = false;
+                    break;
+                }
+                var name = propertyNames[i];
+                if (isArray && name === "length")
+                    continue;
+
+                var descriptor = Object.getOwnPropertyDescriptor(object, name);
+                if (!("value" in descriptor) || !descriptor.enumerable) {
+                    preview.lossless = false;
+                    continue;
+                }
+
+                var value = descriptor.value;
+                if (value === null) {
+                    properties.push({ name: name, type: "object", value: "null" });
+                    continue;
+                }
+    
+                const maxLength = 100;
+                var type = typeof value;
+
+                if (InjectedScript.primitiveTypes[type]) {
+                    if (type === "string") {
+                        if (value.length > maxLength) {
+                            value = this._abbreviateString(value, maxLength, true);
+                            preview.lossless = false;
+                        }
+                        value = "\"" + value.replace(/\n/g, "\u21B5") + "\"";
+                    }
+                    properties.push({ name: name, type: type, value: value + "" });
+                    continue;
+                }
+    
+                preview.lossless = false;
+
+                if (type === "function")
+                    continue;
+
+                var subtype = injectedScript._subtype(value);
+                var property = { name: name, type: type, value: this._abbreviateString(injectedScript._describe(value), maxLength, subtype === "regexp") };
+                if (subtype)
+                    property.subtype = subtype;
+                properties.push(property);
+            }
+            if (properties.length)
+                this.preview = preview;
+        } catch (e) {
+        }
+    },
+
+    /**
+     * @param {string} string
+     * @param {number} maxLength
+     * @param {boolean=} middle
+     * @returns
+     */
+    _abbreviateString: function(string, maxLength, middle)
+    {
+        if (string.length <= maxLength)
+            return string;
+        if (middle) {
+            var leftHalf = maxLength >> 1;
+            var rightHalf = maxLength - leftHalf - 1;
+            return string.substr(0, leftHalf) + "\u2026" + string.substr(string.length - rightHalf, rightHalf);
+        }
+        return string.substr(0, maxLength) + "\u2026";
+    }
+}
 /**
  * @constructor
  * @param {number} ordinal
@@ -797,6 +916,8 @@ function CommandLineAPI(commandLineAPIImpl, callFrame)
 
         this.__defineGetter__("$" + i, commandLineAPIImpl._inspectedObject.bind(commandLineAPIImpl, i));
     }
+
+    this.$_ = injectedScript._lastResult;
 }
 
 /**

@@ -83,12 +83,12 @@ void InspectorConsoleAgent::enable(ErrorString*)
 
     if (m_expiredConsoleMessageCount) {
         ConsoleMessage expiredMessage(OtherMessageSource, LogMessageType, WarningMessageLevel, String::format("%d console messages are not shown.", m_expiredConsoleMessageCount), "", 0, "");
-        expiredMessage.addToFrontend(m_frontend, m_injectedScriptManager);
+        expiredMessage.addToFrontend(m_frontend, m_injectedScriptManager, false);
     }
 
     size_t messageCount = m_consoleMessages.size();
     for (size_t i = 0; i < messageCount; ++i)
-        m_consoleMessages[i]->addToFrontend(m_frontend, m_injectedScriptManager);
+        m_consoleMessages[i]->addToFrontend(m_frontend, m_injectedScriptManager, false);
 }
 
 void InspectorConsoleAgent::disable(ErrorString*)
@@ -163,7 +163,7 @@ void InspectorConsoleAgent::startTiming(const String& title)
     if (title.isNull())
         return;
 
-    m_times.add(title, currentTime() * 1000);
+    m_times.add(title, monotonicallyIncreasingTime());
 }
 
 void InspectorConsoleAgent::stopTiming(const String& title, PassRefPtr<ScriptCallStack> callStack)
@@ -180,8 +180,8 @@ void InspectorConsoleAgent::stopTiming(const String& title, PassRefPtr<ScriptCal
     double startTime = it->second;
     m_times.remove(it);
 
-    double elapsed = currentTime() * 1000 - startTime;
-    String message = title + String::format(": %.0fms", elapsed);
+    double elapsed = monotonicallyIncreasingTime() - startTime;
+    String message = title + String::format(": %.3fms", elapsed * 1000);
     const ScriptCallFrame& lastCaller = callStack->at(0);
     addMessageToConsole(JSMessageSource, LogMessageType, LogMessageLevel, message, lastCaller.sourceURL(), lastCaller.lineNumber());
 }
@@ -249,7 +249,7 @@ void InspectorConsoleAgent::didFailLoading(unsigned long identifier, const Resou
         return;
     if (error.isCancellation()) // Report failures only.
         return;
-    String message = "Failed to load resource";
+    String message = ASCIILiteral("Failed to load resource");
     if (!error.localizedDescription().isEmpty())
         message += ": " + error.localizedDescription();
     String requestId = IdentifiersFactory::requestId(identifier);
@@ -281,7 +281,7 @@ void InspectorConsoleAgent::addConsoleMessage(PassOwnPtr<ConsoleMessage> console
         m_previousMessage = consoleMessage.get();
         m_consoleMessages.append(consoleMessage);
         if (m_frontend && m_state->getBoolean(ConsoleAgentState::consoleMessagesEnabled))
-            m_previousMessage->addToFrontend(m_frontend, m_injectedScriptManager);
+            m_previousMessage->addToFrontend(m_frontend, m_injectedScriptManager, true);
     }
 
     if (!m_frontend && m_consoleMessages.size() >= maximumConsoleMessages) {

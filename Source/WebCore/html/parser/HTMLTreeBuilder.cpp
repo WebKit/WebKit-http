@@ -110,98 +110,6 @@ static bool isTableBodyContextTag(const AtomicString& tagName)
         || tagName == theadTag;
 }
 
-// http://www.whatwg.org/specs/web-apps/current-work/multipage/parsing.html#special
-static bool isSpecialNode(const HTMLStackItem* item)
-{
-    if (item->hasTagName(MathMLNames::miTag)
-        || item->hasTagName(MathMLNames::moTag)
-        || item->hasTagName(MathMLNames::mnTag)
-        || item->hasTagName(MathMLNames::msTag)
-        || item->hasTagName(MathMLNames::mtextTag)
-        || item->hasTagName(MathMLNames::annotation_xmlTag)
-        || item->hasTagName(SVGNames::foreignObjectTag)
-        || item->hasTagName(SVGNames::descTag)
-        || item->hasTagName(SVGNames::titleTag))
-        return true;
-    if (item->isDocumentFragmentNode())
-        return true;
-    if (!isInHTMLNamespace(item))
-        return false;
-    const AtomicString& tagName = item->localName();
-    return tagName == addressTag
-        || tagName == appletTag
-        || tagName == areaTag
-        || tagName == articleTag
-        || tagName == asideTag
-        || tagName == baseTag
-        || tagName == basefontTag
-        || tagName == bgsoundTag
-        || tagName == blockquoteTag
-        || tagName == bodyTag
-        || tagName == brTag
-        || tagName == buttonTag
-        || tagName == captionTag
-        || tagName == centerTag
-        || tagName == colTag
-        || tagName == colgroupTag
-        || tagName == commandTag
-        || tagName == ddTag
-        || tagName == detailsTag
-        || tagName == dirTag
-        || tagName == divTag
-        || tagName == dlTag
-        || tagName == dtTag
-        || tagName == embedTag
-        || tagName == fieldsetTag
-        || tagName == figcaptionTag
-        || tagName == figureTag
-        || tagName == footerTag
-        || tagName == formTag
-        || tagName == frameTag
-        || tagName == framesetTag
-        || isNumberedHeaderTag(tagName)
-        || tagName == headTag
-        || tagName == headerTag
-        || tagName == hgroupTag
-        || tagName == hrTag
-        || tagName == htmlTag
-        || tagName == iframeTag
-        || tagName == imgTag
-        || tagName == inputTag
-        || tagName == isindexTag
-        || tagName == liTag
-        || tagName == linkTag
-        || tagName == listingTag
-        || tagName == marqueeTag
-        || tagName == menuTag
-        || tagName == metaTag
-        || tagName == navTag
-        || tagName == noembedTag
-        || tagName == noframesTag
-        || tagName == noscriptTag
-        || tagName == objectTag
-        || tagName == olTag
-        || tagName == pTag
-        || tagName == paramTag
-        || tagName == plaintextTag
-        || tagName == preTag
-        || tagName == scriptTag
-        || tagName == sectionTag
-        || tagName == selectTag
-        || tagName == styleTag
-        || tagName == summaryTag
-        || tagName == tableTag
-        || isTableBodyContextTag(tagName)
-        || tagName == tdTag
-        || tagName == textareaTag
-        || tagName == thTag
-        || tagName == titleTag
-        || tagName == trTag
-        || tagName == ulTag
-        || tagName == wbrTag
-        || tagName == xmpTag;
-}
-
 static bool isNonAnchorNonNobrFormattingTag(const AtomicString& tagName)
 {
     return tagName == bTag
@@ -249,6 +157,7 @@ public:
     explicit ExternalCharacterTokenBuffer(AtomicHTMLToken* token)
         : m_current(token->characters().data())
         , m_end(m_current + token->characters().size())
+        , m_isAll8BitData(token->isAll8BitData())
     {
         ASSERT(!isEmpty());
     }
@@ -256,6 +165,7 @@ public:
     explicit ExternalCharacterTokenBuffer(const String& string)
         : m_current(string.characters())
         , m_end(m_current + string.length())
+        , m_isAll8BitData(string.length() && string.is8Bit())
     {
         ASSERT(!isEmpty());
     }
@@ -266,6 +176,8 @@ public:
     }
 
     bool isEmpty() const { return m_current == m_end; }
+
+    bool isAll8BitData() const { return m_isAll8BitData; }
 
     void skipAtMostOneLeadingNewline()
     {
@@ -294,7 +206,12 @@ public:
         ASSERT(!isEmpty());
         const UChar* start = m_current;
         m_current = m_end;
-        return String(start, m_current - start);
+        size_t length = m_current - start;
+
+        if (isAll8BitData())
+            return String::make8BitFrom16BitSource(start, length);
+
+        return String(start, length);
     }
 
     void giveRemainingTo(StringBuilder& recipient)
@@ -344,6 +261,7 @@ private:
 
     const UChar* m_current;
     const UChar* m_end;
+    bool m_isAll8BitData;
 };
 
 
@@ -471,7 +389,7 @@ void HTMLTreeBuilder::constructTreeFromAtomicToken(AtomicHTMLToken* token)
         processToken(token);
 
     bool inForeignContent = !m_tree.isEmpty()
-        && !isInHTMLNamespace(m_tree.currentStackItem())
+        && !m_tree.currentStackItem()->isInHTMLNamespace()
         && !HTMLElementStack::isHTMLIntegrationPoint(m_tree.currentStackItem())
         && !HTMLElementStack::isMathMLTextIntegrationPoint(m_tree.currentStackItem());
 
@@ -630,7 +548,7 @@ void HTMLTreeBuilder::processCloseWhenNestedTag(AtomicHTMLToken* token)
             processFakeEndTag(item->localName());
             break;
         }
-        if (isSpecialNode(item.get()) && !item->hasTagName(addressTag) && !item->hasTagName(divTag) && !item->hasTagName(pTag))
+        if (item->isSpecialNode() && !item->hasTagName(addressTag) && !item->hasTagName(divTag) && !item->hasTagName(pTag))
             break;
         nodeRecord = nodeRecord->next();
     }
@@ -710,14 +628,15 @@ static void adjustForeignAttributes(AtomicHTMLToken* token)
     static PrefixedNameToQualifiedNameMap* map = 0;
     if (!map) {
         map = new PrefixedNameToQualifiedNameMap;
+
         QualifiedName** attrs = XLinkNames::getXLinkAttrs();
-        addNamesWithPrefix(map, "xlink", attrs, XLinkNames::XLinkAttrsCount);
+        addNamesWithPrefix(map, xlinkAtom, attrs, XLinkNames::XLinkAttrsCount);
 
         attrs = XMLNames::getXMLAttrs();
-        addNamesWithPrefix(map, "xml", attrs, XMLNames::XMLAttrsCount);
+        addNamesWithPrefix(map, xmlAtom, attrs, XMLNames::XMLAttrsCount);
 
-        map->add("xmlns", XMLNSNames::xmlnsAttr);
-        map->add("xmlns:xlink", QualifiedName("xmlns", "xlink", XMLNSNames::xmlnsNamespaceURI));
+        map->add(WTF::xmlnsAtom, XMLNSNames::xmlnsAttr);
+        map->add("xmlns:xlink", QualifiedName(xmlnsAtom, xlinkAtom, XMLNSNames::xmlnsNamespaceURI));
     }
 
     for (unsigned i = 0; i < token->attributes().size(); ++i) {
@@ -805,7 +724,7 @@ void HTMLTreeBuilder::processStartTagForInBody(AtomicHTMLToken* token)
     }
     if (isNumberedHeaderTag(token->name())) {
         processFakePEndTagIfPInButtonScope();
-        if (isNumberedHeaderTag(m_tree.currentStackItem()->localName())) {
+        if (m_tree.currentStackItem()->isNumberedHeaderElement()) {
             parseError(token);
             m_tree.openElements()->pop();
         }
@@ -1189,7 +1108,7 @@ void HTMLTreeBuilder::processStartTag(AtomicHTMLToken* token)
             || token->name() == titleTag) {
             parseError(token);
             ASSERT(m_tree.head());
-            m_tree.openElements()->pushHTMLHeadElement(HTMLStackItem::create(m_tree.head(), token));
+            m_tree.openElements()->pushHTMLHeadElement(m_tree.headStackItem());
             processStartTagForInHead(token);
             m_tree.openElements()->removeHTMLHeadElement(m_tree.head());
             return;
@@ -1483,27 +1402,12 @@ void HTMLTreeBuilder::processAnyOtherEndTagForInBody(AtomicHTMLToken* token)
             m_tree.openElements()->popUntilPopped(item->element());
             return;
         }
-        if (isSpecialNode(item.get())) {
+        if (item->isSpecialNode()) {
             parseError(token);
             return;
         }
         record = record->next();
     }
-}
-
-// FIXME: This probably belongs on HTMLElementStack.
-HTMLElementStack::ElementRecord* HTMLTreeBuilder::furthestBlockForFormattingElement(Element* formattingElement)
-{
-    HTMLElementStack::ElementRecord* furthestBlock = 0;
-    HTMLElementStack::ElementRecord* record = m_tree.openElements()->topRecord();
-    for (; record; record = record->next()) {
-        if (record->element() == formattingElement)
-            return furthestBlock;
-        if (isSpecialNode(record->stackItem().get()))
-            furthestBlock = record;
-    }
-    ASSERT_NOT_REACHED();
-    return 0;
 }
 
 // http://www.whatwg.org/specs/web-apps/current-work/multipage/tokenization.html#parsing-main-inbody
@@ -1533,7 +1437,7 @@ void HTMLTreeBuilder::callTheAdoptionAgency(AtomicHTMLToken* token)
         if (formattingElement != m_tree.currentElement())
             parseError(token);
         // 2.
-        HTMLElementStack::ElementRecord* furthestBlock = furthestBlockForFormattingElement(formattingElement);
+        HTMLElementStack::ElementRecord* furthestBlock = m_tree.openElements()->furthestBlockForFormattingElement(formattingElement);
         // 3.
         if (!furthestBlock) {
             m_tree.openElements()->popUntilPopped(formattingElement);
@@ -1542,7 +1446,7 @@ void HTMLTreeBuilder::callTheAdoptionAgency(AtomicHTMLToken* token)
         }
         // 4.
         ASSERT(furthestBlock->isAbove(formattingElementRecord));
-        RefPtr<ContainerNode> commonAncestor = formattingElementRecord->next()->node();
+        RefPtr<HTMLStackItem> commonAncestor = formattingElementRecord->next()->stackItem();
         // 5.
         HTMLFormattingElementList::Bookmark bookmark = m_tree.activeFormattingElements()->bookmarkFor(formattingElement);
         // 6.
@@ -1584,17 +1488,12 @@ void HTMLTreeBuilder::callTheAdoptionAgency(AtomicHTMLToken* token)
             lastNode = node;
         }
         // 7
-        const AtomicString& commonAncestorTag = commonAncestor->localName();
         if (ContainerNode* parent = lastNode->element()->parentNode())
             parent->parserRemoveChild(lastNode->element());
-        // FIXME: If this moves to HTMLConstructionSite, this check should use
-        // causesFosterParenting(tagName) instead.
-        if (commonAncestorTag == tableTag
-            || commonAncestorTag == trTag
-            || isTableBodyContextTag(commonAncestorTag))
+        if (commonAncestor->causesFosterParenting())
             m_tree.fosterParent(lastNode->element());
         else {
-            commonAncestor->parserAddChild(lastNode->element());
+            commonAncestor->node()->parserAddChild(lastNode->element());
             ASSERT(lastNode->stackItem()->isElementNode());
             ASSERT(lastNode->element()->parentNode());
             if (lastNode->element()->parentNode()->attached() && !lastNode->element()->attached())
@@ -2650,7 +2549,7 @@ bool HTMLTreeBuilder::shouldProcessTokenInForeignContent(AtomicHTMLToken* token)
     if (m_tree.isEmpty())
         return false;
     HTMLStackItem* item = m_tree.currentStackItem();
-    if (isInHTMLNamespace(item))
+    if (item->isInHTMLNamespace())
         return false;
     if (HTMLElementStack::isMathMLTextIntegrationPoint(item)) {
         if (token->type() == HTMLTokenTypes::StartTag
@@ -2750,7 +2649,7 @@ void HTMLTreeBuilder::processTokenInForeignContent(AtomicHTMLToken* token)
             m_tree.openElements()->pop();
             return;
         }
-        if (!isInHTMLNamespace(m_tree.currentStackItem())) {
+        if (!m_tree.currentStackItem()->isInHTMLNamespace()) {
             // FIXME: This code just wants an Element* iterator, instead of an ElementRecord*
             HTMLElementStack::ElementRecord* nodeRecord = m_tree.openElements()->topRecord();
             if (!nodeRecord->stackItem()->hasLocalName(token->name()))
@@ -2762,7 +2661,7 @@ void HTMLTreeBuilder::processTokenInForeignContent(AtomicHTMLToken* token)
                 }
                 nodeRecord = nodeRecord->next();
 
-                if (isInHTMLNamespace(nodeRecord->stackItem().get()))
+                if (nodeRecord->stackItem()->isInHTMLNamespace())
                     break;
             }
         }

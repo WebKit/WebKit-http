@@ -34,6 +34,7 @@
 #include "EmptyClients.h"
 #include "FrameView.h"
 #include "ImageBuffer.h"
+#include "ImageObserver.h"
 #include "RenderSVGRoot.h"
 #include "SVGDocument.h"
 #include "SVGSVGElement.h"
@@ -352,6 +353,15 @@ bool SVGImage::dataChanged(bool allDataReceived)
 String SVGImage::filenameExtension() const
 {
     return "svg";
+}
+
+void SVGImage::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
+{
+    MemoryClassInfo info(memoryObjectInfo, this, MemoryInstrumentation::CachedResourceImage);
+    Image::reportMemoryUsage(memoryObjectInfo);
+    info.addMember(m_chromeClient);
+    info.addMember(m_page);
+    info.addInstrumentedMember(m_frameCache);
 }
 
 }

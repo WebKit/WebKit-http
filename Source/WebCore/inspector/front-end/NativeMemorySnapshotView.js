@@ -82,11 +82,11 @@ WebInspector.NativeMemoryProfileType.prototype = {
 
     /**
      * @override
+     * @param {WebInspector.ProfilesPanel} profilesPanel
      * @return {boolean}
      */
-    buttonClicked: function()
+    buttonClicked: function(profilesPanel)
     {
-        var profilesPanel = WebInspector.panels.profiles;
         var profileHeader = new WebInspector.NativeMemoryProfileHeader(this, WebInspector.UIString("Snapshot %d", this._nextProfileUid), this._nextProfileUid);
         ++this._nextProfileUid;
         profileHeader.isTemporary = true;
@@ -178,8 +178,9 @@ WebInspector.NativeMemoryProfileHeader.prototype = {
 
     /**
      * @override
+     * @param {WebInspector.ProfilesPanel} profilesPanel
      */
-    createView: function()
+    createView: function(profilesPanel)
     {
         return new WebInspector.NativeMemorySnapshotView(this);
     }
@@ -224,6 +225,8 @@ WebInspector.MemoryBlockViewProperties._initialize = function()
     addBlock("hsl( 90, 50%,  80%)", "JSExternalStrings", "JavaScript external strings");
     addBlock("hsl(210, 60%,  80%)", "InspectorData", "Inspector data");
     addBlock("hsl( 30, 60%,  80%)", "MemoryCache", "Memory cache resources");
+    addBlock("hsl( 40, 60%,  80%)", "GlyphCache", "Glyph cache resources");
+    addBlock("hsl( 35, 60%,  80%)", "DOMStorageCache", "DOM storage cache");
     addBlock("hsl( 60, 60%,  80%)", "RenderTreeAllocated", "Render tree");
     addBlock("hsl( 60, 60%,  80%)", "RenderTreeUsed", "Render tree used");
 }

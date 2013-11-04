@@ -215,6 +215,8 @@ public:
 #endif
 
 #if ENABLE(DATALIST_ELEMENT)
+    // Returns the threshold distance for snapping to a slider tick mark.
+    virtual LayoutUnit sliderTickSnappingThreshold() const;
     // Returns size of one slider tick mark for a horizontal track.
     // For vertical tracks we rotate it and use it. i.e. Width is always length along the track.
     virtual IntSize sliderTickSize() const = 0;
@@ -363,7 +365,9 @@ private:
     mutable Color m_inactiveListBoxSelectionForegroundColor;
 
 #if ENABLE(TOUCH_EVENTS)
-    static const RGBA32 defaultTapHighlightColor = 0x33000000;
+    // This color is expected to be drawn on a semi-transparent overlay,
+    // making it more transparent than its alpha value indicates.
+    static const RGBA32 defaultTapHighlightColor = 0x66000000;
 #endif
 
 #if USE(NEW_THEME)

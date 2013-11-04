@@ -93,13 +93,11 @@
 #include <qevent.h>
 #include <qfileinfo.h>
 #include <qpainter.h>
+#if HAVE(QTPRINTSUPPORT)
 #include <qprinter.h>
+#endif
 #include <qregion.h>
 #include <qnetworkrequest.h>
-
-#if ENABLE(ORIENTATION_EVENTS) && !HAVE(QT5)
-QTM_USE_NAMESPACE
-#endif
 
 using namespace WebCore;
 
@@ -492,43 +490,7 @@ void QWebFramePrivate::_q_orientationChanged()
 
 void QWebFramePrivate::didClearWindowObject()
 {
-    if (page->settings()->testAttribute(QWebSettings::JavascriptEnabled))
-        addQtSenderToGlobalObject();
     emit q->javaScriptWindowObjectCleared();
-}
-
-static JSValueRef qtSenderCallback(JSContextRef context, JSObjectRef, JSObjectRef, size_t, const JSValueRef[], JSValueRef*)
-{
-    QObject* sender = JSC::Bindings::QtInstance::qtSenderStack()->top();
-    if (!sender)
-        return JSValueMakeUndefined(context);
-
-    JSC::ExecState* exec = ::toJS(context);
-    RefPtr<JSC::Bindings::RootObject> rootObject = JSC::Bindings::findRootObject(exec->dynamicGlobalObject());
-    JSC::JSObject* jsSender = JSC::Bindings::QtInstance::getQtInstance(sender, rootObject, JSC::Bindings::QtInstance::QtOwnership)->createRuntimeObject(exec);
-    return ::toRef(jsSender);
-}
-
-void QWebFramePrivate::addQtSenderToGlobalObject()
-{
-    JSDOMWindow* window = toJSDOMWindow(frame, mainThreadNormalWorld());
-    Q_ASSERT(window);
-
-    JSC::ExecState* exec = window->globalExec();
-    Q_ASSERT(exec);
-    JSC::JSLockHolder lock(exec);
-
-    JSContextRef context = ::toRef(exec);
-    JSRetainPtr<JSStringRef> propertyName(Adopt, JSStringCreateWithUTF8CString("__qt_sender__"));
-    JSObjectRef function = JSObjectMakeFunctionWithCallback(context, propertyName.get(), qtSenderCallback);
-
-    // JSC public API doesn't support setting a Getter for a property of a given object, https://bugs.webkit.org/show_bug.cgi?id=61374.
-    JSC::PropertyDescriptor descriptor;
-    descriptor.setGetter(::toJS(function));
-    descriptor.setSetter(JSC::jsUndefined());
-    descriptor.setEnumerable(false);
-    descriptor.setConfigurable(false);
-    window->methodTable()->defineOwnProperty(window, exec, propertyName.get()->identifier(&exec->globalData()), descriptor, false);
 }
 
 /*!
@@ -650,11 +612,7 @@ QWebFrame::~QWebFrame()
 
     The ownership of \a object is specified using \a own.
 */
-#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
 void QWebFrame::addToJavaScriptWindowObject(const QString &name, QObject *object, ValueOwnership ownership)
-#else
-void QWebFrame::addToJavaScriptWindowObject(const QString &name, QObject *object, QScriptEngine::ValueOwnership ownership)
-#endif
 {
     if (!page()->settings()->testAttribute(QWebSettings::JavascriptEnabled))
         return;
@@ -1471,6 +1429,7 @@ bool QWebFrame::event(QEvent *e)
 */
 void QWebFrame::print(QPrinter *printer) const
 {
+#if HAVE(QTPRINTSUPPORT)
     QPainter painter;
     if (!painter.begin(printer))
         return;
@@ -1558,6 +1517,7 @@ void QWebFrame::print(QPrinter *printer) const
     }
 
     printContext.end();
+#endif // HAVE(PRINTSUPPORT)
 }
 #endif // QT_NO_PRINTER
 

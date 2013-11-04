@@ -39,6 +39,7 @@
 #include "Page.h"
 #include "PageClientBlackBerry.h"
 #include "PageGroup.h"
+#include "ReadOnlyLatin1String.h"
 #include "SocketStreamError.h"
 #include "SocketStreamHandleClient.h"
 
@@ -64,16 +65,15 @@ SocketStreamHandle::SocketStreamHandle(const String& groupName, const KURL& url,
     // Create a platform socket stream
     BlackBerry::Platform::NetworkStreamFactory* factory = page->chrome()->platformPageClient()->networkStreamFactory();
     ASSERT(factory);
-    m_socketStream = adoptPtr(factory->createSocketStream(playerId));
-    ASSERT(m_socketStream);
-    m_socketStream->setListener(this);
 
     // Open the socket
     BlackBerry::Platform::NetworkRequest request;
-    request.setRequestUrl(url.string().latin1().data(), "CONNECT");
+    ReadOnlyLatin1String latin1URL(url.string());
+    request.setRequestUrl(latin1URL.data(), latin1URL.length(), "CONNECT", 7);
+    m_socketStream = adoptPtr(factory->createNetworkStream(request, playerId));
+    ASSERT(m_socketStream);
 
-    m_socketStream->setRequest(request);
-
+    m_socketStream->setListener(this);
     m_socketStream->streamOpen();
 }
 

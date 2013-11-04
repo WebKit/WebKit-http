@@ -46,6 +46,7 @@ private:
     void notifyNodeInsertedIntoTree(ContainerNode*);
 
     ContainerNode* m_insertionPoint;
+    Vector< RefPtr<Node> > m_postInsertionNotificationTargets;
 };
 
 class ChildNodeRemovalNotifier {
@@ -192,13 +193,10 @@ inline void ChildNodeInsertionNotifier::notifyNodeInsertedIntoDocument(Node* nod
 {
     ASSERT(m_insertionPoint->inDocument());
     RefPtr<Node> protect(node);
-    Node::InsertionNotificationRequest request = node->insertedInto(m_insertionPoint);
-
+    if (Node::InsertionShouldCallDidNotifySubtreeInsertions == node->insertedInto(m_insertionPoint))
+        m_postInsertionNotificationTargets.append(node);
     if (node->isContainerNode())
         notifyDescendantInsertedIntoDocument(toContainerNode(node));
-
-    if (request == Node::InsertionShouldCallDidNotifyDescendantInsertions)
-        node->didNotifyDescendantInsertions(m_insertionPoint);
 }
 
 inline void ChildNodeInsertionNotifier::notifyNodeInsertedIntoTree(ContainerNode* node)
@@ -206,11 +204,9 @@ inline void ChildNodeInsertionNotifier::notifyNodeInsertedIntoTree(ContainerNode
     ASSERT(!m_insertionPoint->inDocument());
     forbidEventDispatch();
 
-    Node::InsertionNotificationRequest request = node->insertedInto(m_insertionPoint);
-
+    if (Node::InsertionShouldCallDidNotifySubtreeInsertions == node->insertedInto(m_insertionPoint))
+        m_postInsertionNotificationTargets.append(node);
     notifyDescendantInsertedIntoTree(node);
-    if (request == Node::InsertionShouldCallDidNotifyDescendantInsertions)
-        node->didNotifyDescendantInsertions(m_insertionPoint);
 
     allowEventDispatch();
 }
@@ -235,6 +231,9 @@ inline void ChildNodeInsertionNotifier::notify(Node* node)
         notifyNodeInsertedIntoDocument(node);
     else if (node->isContainerNode())
         notifyNodeInsertedIntoTree(toContainerNode(node));
+
+    for (size_t i = 0; i < m_postInsertionNotificationTargets.size(); ++i)
+        m_postInsertionNotificationTargets[i]->didNotifySubtreeInsertions(m_insertionPoint);
 }
 
 
@@ -260,9 +259,10 @@ inline void ChildNodeRemovalNotifier::notifyNodeRemovedFromTree(ContainerNode* n
 
 inline void ChildNodeRemovalNotifier::notify(Node* node)
 {
-    if (node->inDocument())
+    if (node->inDocument()) {
         notifyNodeRemovedFromDocument(node);
-    else if (node->isContainerNode())
+        node->document()->notifyRemovePendingSheetIfNeeded();
+    } else if (node->isContainerNode())
         notifyNodeRemovedFromTree(toContainerNode(node));
 }
 

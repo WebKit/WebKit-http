@@ -136,8 +136,6 @@ bool HTMLFormElement::rendererIsNeeded(const NodeRenderingContext& context)
 Node::InsertionNotificationRequest HTMLFormElement::insertedInto(ContainerNode* insertionPoint)
 {
     HTMLElement::insertedInto(insertionPoint);
-    if (insertionPoint->inDocument())
-        return InsertionShouldCallDidNotifyDescendantInsertions;
     return InsertionDone;
 }
 
@@ -252,7 +250,7 @@ bool HTMLFormElement::validateInteractively(Event* event)
         }
     }
     // Warn about all of unfocusable controls.
-    if (Frame* frame = document()->frame()) {
+    if (document()->frame()) {
         for (unsigned i = 0; i < unhandledInvalidControls.size(); ++i) {
             FormAssociatedElement* unhandledAssociatedElement = unhandledInvalidControls[i].get();
             HTMLElement* unhandled = toHTMLElement(unhandledAssociatedElement);
@@ -260,7 +258,7 @@ bool HTMLFormElement::validateInteractively(Event* event)
                 continue;
             String message("An invalid form control with name='%name' is not focusable.");
             message.replace("%name", unhandledAssociatedElement->name());
-            frame->domWindow()->console()->addMessage(HTMLMessageSource, LogMessageType, ErrorMessageLevel, message, document()->url().string());
+            document()->domWindow()->console()->addMessage(HTMLMessageSource, LogMessageType, ErrorMessageLevel, message, document()->url().string());
         }
     }
     return false;

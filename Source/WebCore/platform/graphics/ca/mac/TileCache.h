@@ -45,6 +45,8 @@ class FloatRect;
 class IntPoint;
 class IntRect;
 
+typedef Vector<RetainPtr<WebTileLayer> > WebTileLayerList;
+
 class TileCache : public TiledBacking {
     WTF_MAKE_NONCOPYABLE(TileCache);
 
@@ -68,6 +70,11 @@ public:
     void setTileDebugBorderWidth(float);
     void setTileDebugBorderColor(CGColorRef);
 
+    IntRect visibleRect() const { return m_visibleRect; }
+
+    unsigned blankPixelCount() const;
+    static unsigned blankPixelCountForTiles(const WebTileLayerList&, IntRect, IntPoint);
+
 private:
     TileCache(WebTileCacheLayer*, const IntSize& tileSize);
 
@@ -75,7 +82,8 @@ private:
     virtual void visibleRectChanged(const IntRect&) OVERRIDE;
     virtual void setIsInWindow(bool) OVERRIDE;
     virtual void setCanHaveScrollbars(bool) OVERRIDE;
-
+    virtual void forceRepaint() OVERRIDE;
+    
     IntRect bounds() const;
 
     typedef IntPoint TileIndex;

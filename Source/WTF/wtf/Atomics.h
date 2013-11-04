@@ -72,7 +72,7 @@
 #elif OS(ANDROID)
 #include <sys/atomics.h>
 #elif COMPILER(GCC)
-#if (__GNUC__ > 4) || ((__GNUC__ == 4) && (__GNUC_MINOR__ >= 2))
+#if ((__GNUC__ > 4) || ((__GNUC__ == 4) && (__GNUC_MINOR__ >= 2))) && !defined(__LSB_VERSION__)
 #include <ext/atomicity.h>
 #else
 #include <bits/atomicity.h>
@@ -108,8 +108,9 @@ inline int atomicDecrement(int volatile* addend) { return static_cast<int>(atomi
 #elif OS(ANDROID)
 #define WTF_USE_LOCKFREE_THREADSAFEREFCOUNTED 1
 
-inline int atomicIncrement(int volatile* addend) { return __atomic_inc(addend); }
-inline int atomicDecrement(int volatile* addend) { return __atomic_dec(addend); }
+// Note, __atomic_{inc, dec}() return the previous value of addend's content.
+inline int atomicIncrement(int volatile* addend) { return __atomic_inc(addend) + 1; }
+inline int atomicDecrement(int volatile* addend) { return __atomic_dec(addend) - 1; }
 
 #elif COMPILER(GCC) && !CPU(SPARC64) // sizeof(_Atomic_word) != sizeof(int) on sparc64 gcc
 #define WTF_USE_LOCKFREE_THREADSAFEREFCOUNTED 1

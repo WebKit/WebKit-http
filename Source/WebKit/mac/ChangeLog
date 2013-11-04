@@ -1,3 +1,431 @@
+2012-08-29  Jon Lee  <jonlee@apple.com>
+
+        [Mac] Add iconURL to WebNotification
+        https://bugs.webkit.org/show_bug.cgi?id=95249
+        <rdar://problem/12192060>
+
+        Reviewed by Jessie Berlin.
+
+        * WebView/WebNotification.h: Expose iconURL.
+        * WebView/WebNotification.mm: Remove unnecessary ASSERTs.
+        (-[WebNotification title]):
+        (-[WebNotification body]):
+        (-[WebNotification tag]):
+        (-[WebNotification iconURL]): Added.
+        (-[WebNotification origin]):
+        (-[WebNotification notificationID]):
+        (-[WebNotification dispatchShowEvent]):
+        (-[WebNotification dispatchCloseEvent]):
+        (-[WebNotification dispatchClickEvent]):
+        (-[WebNotification dispatchErrorEvent]):
+
+2012-08-28  Geoffrey Garen  <ggaren@apple.com>
+
+        Added JSScope::objectInScope(), and refactored callers to use it
+        https://bugs.webkit.org/show_bug.cgi?id=95281
+
+        Reviewed by Gavin Barraclough.
+
+        * WebView/WebScriptDebugDelegate.mm:
+        (-[WebScriptCallFrame scopeChain]):
+
+2012-08-28  Sheriff Bot  <webkit.review.bot@gmail.com>
+
+        Unreviewed, rolling out r126914.
+        http://trac.webkit.org/changeset/126914
+        https://bugs.webkit.org/show_bug.cgi?id=95239
+
+        it breaks everything and fixes nothing (Requested by pizlo on
+        #webkit).
+
+        * History/WebHistory.mm:
+        (-[WebHistoryPrivate removeItemFromDateCaches:]):
+        (-[WebHistoryPrivate orderedLastVisitedDays]):
+        (WebHistoryWriter::WebHistoryWriter):
+        * Misc/WebCoreStatistics.mm:
+        (+[WebCoreStatistics javaScriptProtectedObjectTypeCounts]):
+        (+[WebCoreStatistics javaScriptObjectTypeCounts]):
+        * Plugins/Hosted/NetscapePluginHostManager.mm:
+        (WebKit::NetscapePluginHostManager::hostForPlugin):
+        (WebKit::NetscapePluginHostManager::pluginHostDied):
+        (WebKit::NetscapePluginHostManager::didCreateWindow):
+        * Plugins/Hosted/NetscapePluginHostProxy.mm:
+        (WebKit::NetscapePluginHostProxy::pluginHostDied):
+        * Plugins/Hosted/NetscapePluginInstanceProxy.mm:
+        (WebKit::NetscapePluginInstanceProxy::LocalObjectMap::idForObject):
+        (WebKit::NetscapePluginInstanceProxy::LocalObjectMap::retain):
+        (WebKit::NetscapePluginInstanceProxy::LocalObjectMap::release):
+        (WebKit::NetscapePluginInstanceProxy::LocalObjectMap::forget):
+        (WebKit::NetscapePluginInstanceProxy::destroy):
+        (WebKit::NetscapePluginInstanceProxy::webFrameDidFinishLoadWithReason):
+        (WebKit::NetscapePluginInstanceProxy::cancelCheckIfAllowedToLoadURL):
+        * Plugins/Hosted/ProxyInstance.mm:
+        (WebKit::ProxyInstance::methodsNamed):
+        (WebKit::ProxyInstance::fieldNamed):
+        * Plugins/WebNetscapePluginView.mm:
+        (-[WebNetscapePluginView stopTimers]):
+        (-[WebNetscapePluginView startTimers]):
+        * WebCoreSupport/WebNotificationClient.mm:
+        (WebNotificationClient::show):
+        (WebNotificationClient::clearNotifications):
+        (WebNotificationClient::notificationObjectDestroyed):
+        * WebView/WebHTMLView.mm:
+        (commandNameForSelector):
+
+2012-08-28  Jon Lee  <jonlee@apple.com>
+
+        Second build fix to r126909.
+
+        Added needed #else clause.
+
+        * WebView/WebView.mm:
+        (-[WebView _notificationIDForTesting:]):
+
+2012-08-28  Jon Lee  <jonlee@apple.com>
+
+        Build fix to r126909.
+
+        Needed ENABLE(NOTIFICATIONS) guards.
+
+        * WebView/WebView.mm:
+        (-[WebView _notificationIDForTesting:]):
+
+2012-08-28  Caio Marcelo de Oliveira Filho  <caio.oliveira@openbossa.org>
+
+        Rename first/second to key/value in HashMap iterators
+        https://bugs.webkit.org/show_bug.cgi?id=82784
+
+        Reviewed by Eric Seidel.
+
+        * History/WebHistory.mm:
+        (-[WebHistoryPrivate removeItemFromDateCaches:]):
+        (-[WebHistoryPrivate orderedLastVisitedDays]):
+        (WebHistoryWriter::WebHistoryWriter):
+        * Misc/WebCoreStatistics.mm:
+        (+[WebCoreStatistics javaScriptProtectedObjectTypeCounts]):
+        (+[WebCoreStatistics javaScriptObjectTypeCounts]):
+        * Plugins/Hosted/NetscapePluginHostManager.mm:
+        (WebKit::NetscapePluginHostManager::hostForPlugin):
+        (WebKit::NetscapePluginHostManager::pluginHostDied):
+        (WebKit::NetscapePluginHostManager::didCreateWindow):
+        * Plugins/Hosted/NetscapePluginHostProxy.mm:
+        (WebKit::NetscapePluginHostProxy::pluginHostDied):
+        * Plugins/Hosted/NetscapePluginInstanceProxy.mm:
+        (WebKit::NetscapePluginInstanceProxy::LocalObjectMap::idForObject):
+        (WebKit::NetscapePluginInstanceProxy::LocalObjectMap::retain):
+        (WebKit::NetscapePluginInstanceProxy::LocalObjectMap::release):
+        (WebKit::NetscapePluginInstanceProxy::LocalObjectMap::forget):
+        (WebKit::NetscapePluginInstanceProxy::destroy):
+        (WebKit::NetscapePluginInstanceProxy::webFrameDidFinishLoadWithReason):
+        (WebKit::NetscapePluginInstanceProxy::cancelCheckIfAllowedToLoadURL):
+        * Plugins/Hosted/ProxyInstance.mm:
+        (WebKit::ProxyInstance::methodsNamed):
+        (WebKit::ProxyInstance::fieldNamed):
+        * Plugins/WebNetscapePluginView.mm:
+        (-[WebNetscapePluginView stopTimers]):
+        (-[WebNetscapePluginView startTimers]):
+        * WebCoreSupport/WebNotificationClient.mm:
+        (WebNotificationClient::show):
+        (WebNotificationClient::clearNotifications):
+        (WebNotificationClient::notificationObjectDestroyed):
+        * WebView/WebHTMLView.mm:
+        (commandNameForSelector):
+
+2012-08-28  Jon Lee  <jonlee@apple.com>
+
+        [Mac] Add SPI to WK1 to retrieve internal IDs for web notifications
+        https://bugs.webkit.org/show_bug.cgi?id=95099
+        <rdar://problem/12180186>
+
+        Reviewed by Jessie Berlin.
+
+        This is work toward providing Mac support for web notifications in DRT and WTR (77969).
+
+        Add function to retrieve the internal ID for a notification. This is needed by layout tests to support simulating
+        a user click on a notification.
+
+        * WebCoreSupport/WebNotificationClient.h:
+        (WebNotificationClient):
+        * WebCoreSupport/WebNotificationClient.mm:
+        (WebNotificationClient::notificationIDForTesting): Converts the JS notification to a WebCore notification, and passes
+        that to [WebView _notificationIDForTesting:].
+        * WebView/WebView.mm:
+        (-[WebView _notificationIDForTesting:]): Retrieves the notification ID based on the WebCore notification instance.
+        * WebView/WebViewPrivate.h:
+
+2012-08-27  Sheriff Bot  <webkit.review.bot@gmail.com>
+
+        Unreviewed, rolling out r126836.
+        http://trac.webkit.org/changeset/126836
+        https://bugs.webkit.org/show_bug.cgi?id=95163
+
+        Broke all Apple ports, EFL, and Qt. (Requested by tkent on
+        #webkit).
+
+        * History/WebHistory.mm:
+        (-[WebHistoryPrivate removeItemFromDateCaches:]):
+        (-[WebHistoryPrivate orderedLastVisitedDays]):
+        (WebHistoryWriter::WebHistoryWriter):
+        * Misc/WebCoreStatistics.mm:
+        (+[WebCoreStatistics javaScriptProtectedObjectTypeCounts]):
+        (+[WebCoreStatistics javaScriptObjectTypeCounts]):
+        * Plugins/Hosted/NetscapePluginHostManager.mm:
+        (WebKit::NetscapePluginHostManager::hostForPlugin):
+        (WebKit::NetscapePluginHostManager::pluginHostDied):
+        (WebKit::NetscapePluginHostManager::didCreateWindow):
+        * Plugins/Hosted/NetscapePluginHostProxy.mm:
+        (WebKit::NetscapePluginHostProxy::pluginHostDied):
+        * Plugins/Hosted/NetscapePluginInstanceProxy.mm:
+        (WebKit::NetscapePluginInstanceProxy::LocalObjectMap::idForObject):
+        (WebKit::NetscapePluginInstanceProxy::LocalObjectMap::retain):
+        (WebKit::NetscapePluginInstanceProxy::LocalObjectMap::release):
+        (WebKit::NetscapePluginInstanceProxy::LocalObjectMap::forget):
+        (WebKit::NetscapePluginInstanceProxy::destroy):
+        (WebKit::NetscapePluginInstanceProxy::webFrameDidFinishLoadWithReason):
+        (WebKit::NetscapePluginInstanceProxy::cancelCheckIfAllowedToLoadURL):
+        * Plugins/Hosted/ProxyInstance.mm:
+        (WebKit::ProxyInstance::methodsNamed):
+        (WebKit::ProxyInstance::fieldNamed):
+        * Plugins/WebNetscapePluginView.mm:
+        (-[WebNetscapePluginView stopTimers]):
+        (-[WebNetscapePluginView startTimers]):
+        * WebCoreSupport/WebNotificationClient.mm:
+        (WebNotificationClient::show):
+        (WebNotificationClient::clearNotifications):
+        (WebNotificationClient::notificationObjectDestroyed):
+        * WebView/WebHTMLView.mm:
+        (commandNameForSelector):
+
+2012-08-27  Caio Marcelo de Oliveira Filho  <caio.oliveira@openbossa.org>
+
+        Rename first/second to key/value in HashMap iterators
+        https://bugs.webkit.org/show_bug.cgi?id=82784
+
+        Reviewed by Eric Seidel.
+
+        * History/WebHistory.mm:
+        (-[WebHistoryPrivate removeItemFromDateCaches:]):
+        (-[WebHistoryPrivate orderedLastVisitedDays]):
+        (WebHistoryWriter::WebHistoryWriter):
+        * Misc/WebCoreStatistics.mm:
+        (+[WebCoreStatistics javaScriptProtectedObjectTypeCounts]):
+        (+[WebCoreStatistics javaScriptObjectTypeCounts]):
+        * Plugins/Hosted/NetscapePluginHostManager.mm:
+        (WebKit::NetscapePluginHostManager::hostForPlugin):
+        (WebKit::NetscapePluginHostManager::pluginHostDied):
+        (WebKit::NetscapePluginHostManager::didCreateWindow):
+        * Plugins/Hosted/NetscapePluginHostProxy.mm:
+        (WebKit::NetscapePluginHostProxy::pluginHostDied):
+        * Plugins/Hosted/NetscapePluginInstanceProxy.mm:
+        (WebKit::NetscapePluginInstanceProxy::LocalObjectMap::idForObject):
+        (WebKit::NetscapePluginInstanceProxy::LocalObjectMap::retain):
+        (WebKit::NetscapePluginInstanceProxy::LocalObjectMap::release):
+        (WebKit::NetscapePluginInstanceProxy::LocalObjectMap::forget):
+        (WebKit::NetscapePluginInstanceProxy::destroy):
+        (WebKit::NetscapePluginInstanceProxy::webFrameDidFinishLoadWithReason):
+        (WebKit::NetscapePluginInstanceProxy::cancelCheckIfAllowedToLoadURL):
+        * Plugins/Hosted/ProxyInstance.mm:
+        (WebKit::ProxyInstance::methodsNamed):
+        (WebKit::ProxyInstance::fieldNamed):
+        * Plugins/WebNetscapePluginView.mm:
+        (-[WebNetscapePluginView stopTimers]):
+        (-[WebNetscapePluginView startTimers]):
+        * WebCoreSupport/WebNotificationClient.mm:
+        (WebNotificationClient::show):
+        (WebNotificationClient::clearNotifications):
+        (WebNotificationClient::notificationObjectDestroyed):
+        * WebView/WebHTMLView.mm:
+        (commandNameForSelector):
+
+2012-08-27  Mikhail Pozdnyakov  <mikhail.pozdnyakov@intel.com>
+
+        Rename RegisterProtocolHandler API to NavigatorContentUtils
+        https://bugs.webkit.org/show_bug.cgi?id=94920
+
+        Reviewed by Adam Barth.
+
+        ENABLE_REGISTER_PROTOCOL_HANDLER is renamed to ENABLE_NAVIGATOR_CONTENT_UTILS.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2012-08-24  Pratik Solanki  <psolanki@apple.com>
+
+        Don't create a new ResourceRequest if delegate returns the same NSURLRequest we passed it
+        https://bugs.webkit.org/show_bug.cgi?id=94962
+
+        Reviewed by Geoffrey Garen.
+
+        If the NSURLRequest returned from the delegate callback is the same as the one we passed to
+        it, then avoid creating a new ResourceRequest object. This reduces the number of calls to
+        ResourceRequest::doUpdateResourceRequest().
+
+        * WebCoreSupport/WebFrameLoaderClient.mm:
+        (WebFrameLoaderClient::dispatchWillSendRequest):
+
+2012-08-23  Mark Hahnenberg  <mhahnenberg@apple.com>
+
+        Change behavior of MasqueradesAsUndefined to better accommodate DFG changes
+        https://bugs.webkit.org/show_bug.cgi?id=93884
+
+        Reviewed by Filip Pizlo.
+
+        With some upcoming changes to the DFG to remove uses of ClassInfo, we will be changing the behavior of  
+        MasqueradesAsUndefined. In order to make this change consistent across all of our execution engines,  
+        we will make this change to MasqueradesAsUndefined as a separate patch. After this patch, MasqueradesAsUndefined  
+        objects will only masquerade as undefined in their original context (i.e. their original JSGlobalObject).  
+        For example, if an object that masquerades as undefined in frame A is passed to frame B, it will not  
+        masquerade as undefined within frame B, but it will continue to masquerade in frame A. 
+
+        * Plugins/Hosted/NetscapePluginInstanceProxy.mm:
+        (WebKit::NetscapePluginInstanceProxy::addValueToArray): Passing ExecState to toBoolean call.
+
+2012-08-22  Beth Dakin  <bdakin@apple.com>
+
+        https://bugs.webkit.org/show_bug.cgi?id=94401
+        Add support for making a web site become paginated using overflow: 
+        paged-x | paged-y
+        -and corresponding-
+        <rdar://problem/11831783> 
+
+        Reviewed by Dave Hyatt.
+
+        WebCore::Page::Pagination is now just WebCore::Pagination.
+        * WebView/WebView.mm:
+        (-[WebView _setPaginationMode:]):
+        (-[WebView _paginationMode]):
+        (-[WebView _setPaginationBehavesLikeColumns:]):
+        (-[WebView _setPageLength:]):
+        (-[WebView _setGapBetweenPages:]):
+
+2012-08-15  Bruno de Oliveira Abinader  <bruno.abinader@basyskom.com>
+
+        [css3-text] Add CSS3 Text decoration compile flag
+        https://bugs.webkit.org/show_bug.cgi?id=93863
+
+        Reviewed by Julien Chaffraix.
+
+        This patch handles the compile flag implementation, which will come disabled by
+        default, thus not exposing the CSS3 text decoration features to the web, unless
+        when explicitly enabling it with "--css3-text-decoration" build parameter.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2012-08-15  Sheriff Bot  <webkit.review.bot@gmail.com>
+
+        Unreviewed, rolling out r125687.
+        http://trac.webkit.org/changeset/125687
+        https://bugs.webkit.org/show_bug.cgi?id=94147
+
+        It broke the whole world (Requested by Ossy_night on #webkit).
+
+        * Plugins/Hosted/NetscapePluginInstanceProxy.mm:
+        (WebKit::NetscapePluginInstanceProxy::addValueToArray):
+
+2012-08-14  Mark Hahnenberg  <mhahnenberg@apple.com>
+
+        Change behavior of MasqueradesAsUndefined to better accommodate DFG changes
+        https://bugs.webkit.org/show_bug.cgi?id=93884
+
+        Reviewed by Geoffrey Garen.
+
+        With some upcoming changes to the DFG to remove uses of ClassInfo, we will be changing the behavior of 
+        MasqueradesAsUndefined. In order to make this change consistent across all of our execution engines, 
+        we will make this change to MasqueradesAsUndefined as a separate patch. After this patch, MasqueradesAsUndefined 
+        objects will only masquerade as undefined in their original context (i.e. their original JSGlobalObject). 
+        For example, if an object that masquerades as undefined in frame A is passed to frame B, it will not 
+        masquerade as undefined within frame B, but it will continue to masquerade in frame A.
+
+        * Plugins/Hosted/NetscapePluginInstanceProxy.mm:
+        (WebKit::NetscapePluginInstanceProxy::addValueToArray): Passing ExecState to toBoolean call.
+
+2012-08-14  Adam Barth  <abarth@webkit.org>
+
+        Delete Frame::domWindow() and Frame::existingDOMWindow()
+        https://bugs.webkit.org/show_bug.cgi?id=93990
+
+        Reviewed by Eric Seidel.
+
+        * WebView/WebFrame.mm:
+        (-[WebFrame _pendingFrameUnloadEventCount]):
+        (-[WebFrame _cacheabilityDictionary]):
+
+2012-08-14  Tom Sepez  <tsepez@chromium.org>
+
+        REGRESSION r125500: 7 tests crashing on Mac bots
+        https://bugs.webkit.org/show_bug.cgi?id=93970
+
+        Reviewed by Eric Seidel.
+
+        Make WebFrameLoaderClient::redirectDataToPlugin expect the now real possibility
+        of a NULL pluginWidget argument.
+
+        * WebCoreSupport/WebFrameLoaderClient.mm:
+        (WebFrameLoaderClient::redirectDataToPlugin)
+        
+2012-08-09  Kinuko Yasuda  <kinuko@chromium.org>
+
+        http/tests/security/mixedContent/blob-url-in-iframe.html fails on Mac
+        https://bugs.webkit.org/show_bug.cgi?id=88736
+
+        Reviewed by Alexey Proskuryakov.
+
+        WebView::_canHandleRequest should return true for "blob:" URL so that it can be shown in iframe.
+
+        * WebView/WebView.mm:
+        (+[WebView _canHandleRequest:forMainFrame:]):
+
+2012-08-08  Shane Stephens  <shanestephens@google.com>
+
+        Compile flag for CSS Hierarchies
+        https://bugs.webkit.org/show_bug.cgi?id=92433
+
+        Reviewed by Tony Chang.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2012-08-05  Peter Wang  <peter.wang@torchmobile.com.cn>
+
+        Web Inspector: [JSC] implement setting breakpoints by line:column
+        https://bugs.webkit.org/show_bug.cgi?id=53003
+
+        Unreviewed, just changed the interface according the changes of base class JSC::Debugger.
+
+        No JSC can provide the column info of current JS statement, mac porting can use it to support
+        "Pretty Print" debug mode.
+
+        * WebView/WebScriptDebugger.h:
+        (WebScriptDebugger):
+        * WebView/WebScriptDebugger.mm:
+        (WebScriptDebugger::callEvent):
+        (WebScriptDebugger::atStatement):
+        (WebScriptDebugger::returnEvent):
+        (WebScriptDebugger::exception):
+        (WebScriptDebugger::willExecuteProgram):
+        (WebScriptDebugger::didExecuteProgram):
+        (WebScriptDebugger::didReachBreakpoint):
+
+2012-08-01  Jian Li  <jianli@chromium.org>
+
+        Add new CSS property "-webkit-widget-region" to expose dashboard region support for other port
+        https://bugs.webkit.org/show_bug.cgi?id=90298
+
+        Reviewed by Adam Barth.
+
+        * Configurations/FeatureDefines.xcconfig: Add ENABLE_WIDGET_REGION define.
+
+2012-08-01  Antti Koivisto  <antti@apple.com>
+
+        Assertion failure in inspector/profiler/heap-snapshot-containment-show-all.html on Lion bot
+        https://bugs.webkit.org/show_bug.cgi?id=92888
+
+        Reviewed by Andreas Kling.
+
+        Protect the WebInspectorWindowController so it doesn't get destroyed during [WebView close] and cause
+        unsafe [WebView dealloc].
+
+        * WebCoreSupport/WebInspectorClient.mm:
+        (-[WebInspectorWindowController destroyInspectorView:]):
+
 2012-07-29  Rik Cabanier  <cabanier@adobe.com>
 
         Add ENABLE_CSS_COMPOSITING flag

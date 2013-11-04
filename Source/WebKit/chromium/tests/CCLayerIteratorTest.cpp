@@ -24,10 +24,10 @@
 
 #include "config.h"
 
-#include "cc/CCLayerIterator.h"
+#include "CCLayerIterator.h"
 
+#include "CCLayerTreeHostCommon.h"
 #include "LayerChromium.h"
-#include "cc/CCLayerTreeHostCommon.h"
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <public/WebTransformationMatrix.h>
@@ -148,7 +148,7 @@ TEST(CCLayerIteratorTest, simpleTree)
 
     Vector<RefPtr<LayerChromium> > renderSurfaceLayerList;
     CCLayerTreeHostCommon::calculateDrawTransforms(rootLayer.get(), rootLayer->bounds(), 1, 256, renderSurfaceLayerList);
-    CCLayerTreeHostCommon::calculateVisibleAndScissorRects(renderSurfaceLayerList, rootLayer->renderSurface()->contentRect());
+    CCLayerTreeHostCommon::calculateVisibleRects(renderSurfaceLayerList);
 
     iterateBackToFront(&renderSurfaceLayerList);
     EXPECT_COUNT(rootLayer, 0, -1, 1);
@@ -191,7 +191,7 @@ TEST(CCLayerIteratorTest, complexTree)
 
     Vector<RefPtr<LayerChromium> > renderSurfaceLayerList;
     CCLayerTreeHostCommon::calculateDrawTransforms(rootLayer.get(), rootLayer->bounds(), 1, 256, renderSurfaceLayerList);
-    CCLayerTreeHostCommon::calculateVisibleAndScissorRects(renderSurfaceLayerList, rootLayer->renderSurface()->contentRect());
+    CCLayerTreeHostCommon::calculateVisibleRects(renderSurfaceLayerList);
 
     iterateBackToFront(&renderSurfaceLayerList);
     EXPECT_COUNT(rootLayer, 0, -1, 1);
@@ -247,7 +247,7 @@ TEST(CCLayerIteratorTest, complexTreeMultiSurface)
 
     Vector<RefPtr<LayerChromium> > renderSurfaceLayerList;
     CCLayerTreeHostCommon::calculateDrawTransforms(rootLayer.get(), rootLayer->bounds(), 1, 256, renderSurfaceLayerList);
-    CCLayerTreeHostCommon::calculateVisibleAndScissorRects(renderSurfaceLayerList, rootLayer->renderSurface()->contentRect());
+    CCLayerTreeHostCommon::calculateVisibleRects(renderSurfaceLayerList);
 
     iterateBackToFront(&renderSurfaceLayerList);
     EXPECT_COUNT(rootLayer, 0, -1, 1);

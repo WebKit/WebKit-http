@@ -458,10 +458,12 @@ public:
     virtual void transferActiveWheelFlingAnimation(const WebActiveWheelFlingParameters&) = 0;
 
     virtual bool setEditableSelectionOffsets(int start, int end) = 0;
+    virtual bool setCompositionFromExistingText(int compositionStart, int compositionEnd, const WebVector<WebCompositionUnderline>& underlines) = 0;
+    virtual void extendSelectionAndDelete(int before, int after) = 0;
 
     virtual bool isSelectionEditable() const = 0;
 
-    // Benchmarking support --------------------------------------------
+    // Benchmarking support -------------------------------------------------
 
     virtual WebViewBenchmarkSupport* benchmarkSupport() { return 0; }
 
@@ -491,7 +493,7 @@ public:
     // level is changed in this update from the previous update).
     virtual void updateBatteryStatus(const WebBatteryStatus&) { }
 
-    // Testing functionality for LayoutTestController -----------------------
+    // Testing functionality for TestRunner ---------------------------------
 
     // Simulates a compositor lost context.
     virtual void loseCompositorContext(int numTimes) = 0;

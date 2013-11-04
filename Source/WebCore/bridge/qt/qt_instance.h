@@ -21,8 +21,8 @@
 #define qt_instance_h
 
 #include "BridgeJSC.h"
+#include "JSWeakObjectMapRefPrivate.h"
 #include <QPointer>
-#include <QStack>
 #include "Weak.h"
 #include "runtime_root.h"
 #include <qhash.h>
@@ -34,7 +34,28 @@ namespace Bindings {
 
 class QtClass;
 class QtField;
-class QtRuntimeMetaMethod;
+class QtRuntimeMethod;
+
+class WeakMapImpl : public RefCounted<WeakMapImpl> {
+public:
+    WeakMapImpl(JSContextGroupRef);
+    ~WeakMapImpl();
+
+    JSGlobalContextRef m_context;
+    JSWeakObjectMapRef m_map;
+};
+
+class WeakMap {
+public:
+    ~WeakMap();
+
+    void set(JSContextRef, void* key, JSObjectRef);
+    JSObjectRef get(void* key);
+    void remove(void* key);
+
+private:
+    RefPtr<WeakMapImpl> m_impl;
+};
 
 class QtInstance : public Instance {
 public:
@@ -72,56 +93,9 @@ public:
     virtual bool getOwnPropertySlot(JSObject*, ExecState*, PropertyName, PropertySlot&);
     virtual void put(JSObject*, ExecState*, PropertyName, JSValue, PutPropertySlot&);
 
-    void removeUnusedMethods();
-
     static QtInstance* getInstance(JSObject*);
 
-    class QtSenderStack {
-    public:
-        QObject* top() const { return m_stack.isEmpty() ? 0 : m_stack.top(); }
-        void push(QObject* object) { m_stack.push(object); }
-        void pop() { Q_ASSERT(!m_stack.isEmpty()); m_stack.pop(); }
-    private:
-        QStack<QObject*> m_stack;
-    };
-
-    // Used to implement '__qt_sender__'.
-    static QtSenderStack* qtSenderStack();
-
 private:
-
-    class QtWeakObjectReference {
-    public:
-        QtWeakObjectReference(JSObject* reference)
-            : m_reference(reference)
-        {
-        }
-
-        QtWeakObjectReference(const QtWeakObjectReference& source)
-            : m_reference(source.m_reference.get())
-        {
-        }
-
-        QtWeakObjectReference()
-            : m_reference()
-        {
-        }
-
-        QtWeakObjectReference& operator=(const QtWeakObjectReference& source)
-        {
-            m_reference = PassWeak<JSObject>(source.m_reference.get());
-            return *this;
-        }
-
-        JSObject* get() const
-        {
-            return m_reference.get();
-        }
-
-    private:
-        Weak<JSObject> m_reference;
-    };
-
     static PassRefPtr<QtInstance> create(QObject *instance, PassRefPtr<RootObject> rootObject, ValueOwnership ownership)
     {
         return adoptRef(new QtInstance(instance, rootObject, ownership));
@@ -129,11 +103,12 @@ private:
 
     friend class QtClass;
     friend class QtField;
+    friend class QtRuntimeMethod;
     QtInstance(QObject*, PassRefPtr<RootObject>, ValueOwnership); // Factory produced only..
     mutable QtClass* m_class;
     QPointer<QObject> m_object;
     QObject* m_hashkey;
-    mutable QHash<QByteArray, QtWeakObjectReference> m_methods;
+    mutable QHash<QByteArray, QtRuntimeMethod*> m_methods;
     mutable QHash<QString, QtField*> m_fields;
     ValueOwnership m_ownership;
 };

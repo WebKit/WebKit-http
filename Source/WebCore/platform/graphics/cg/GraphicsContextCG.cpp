@@ -732,7 +732,7 @@ static inline bool calculateDrawingMode(const GraphicsContextState& state, CGPat
 
 void GraphicsContext::drawPath(const Path& path)
 {
-    if (paintingDisabled())
+    if (paintingDisabled() || path.isEmpty())
         return;
 
     CGContextRef context = platformContext();
@@ -769,7 +769,7 @@ static inline void fillPathWithFillRule(CGContextRef context, WindRule fillRule)
 
 void GraphicsContext::fillPath(const Path& path)
 {
-    if (paintingDisabled())
+    if (paintingDisabled() || path.isEmpty())
         return;
 
     CGContextRef context = platformContext();
@@ -824,7 +824,7 @@ void GraphicsContext::fillPath(const Path& path)
 
 void GraphicsContext::strokePath(const Path& path)
 {
-    if (paintingDisabled())
+    if (paintingDisabled() || path.isEmpty())
         return;
 
     CGContextRef context = platformContext();
@@ -1085,6 +1085,8 @@ void GraphicsContext::clipPath(const Path& path, WindRule clipRule)
     if (paintingDisabled())
         return;
 
+    // Why does clipping to an empty path do nothing?
+    // Why is this different from GraphicsContext::clip(const Path&).
     if (path.isEmpty())
         return;
 
@@ -1362,7 +1364,8 @@ void GraphicsContext::clipOut(const Path& path)
 
     CGContextBeginPath(platformContext());
     CGContextAddRect(platformContext(), CGContextGetClipBoundingBox(platformContext()));
-    CGContextAddPath(platformContext(), path.platformPath());
+    if (!path.isEmpty())
+        CGContextAddPath(platformContext(), path.platformPath());
     CGContextEOClip(platformContext());
 }
 
@@ -1643,12 +1646,8 @@ void GraphicsContext::setPlatformTextDrawingMode(TextDrawingModeFlags mode)
     if (paintingDisabled())
         return;
 
-    // Wow, wish CG had used bits here.
     CGContextRef context = platformContext();
     switch (mode) {
-    case TextModeInvisible:
-        CGContextSetTextDrawingMode(context, kCGTextInvisible);
-        break;
     case TextModeFill:
         CGContextSetTextDrawingMode(context, kCGTextFill);
         break;
@@ -1657,18 +1656,6 @@ void GraphicsContext::setPlatformTextDrawingMode(TextDrawingModeFlags mode)
         break;
     case TextModeFill | TextModeStroke:
         CGContextSetTextDrawingMode(context, kCGTextFillStroke);
-        break;
-    case TextModeClip:
-        CGContextSetTextDrawingMode(context, kCGTextClip);
-        break;
-    case TextModeFill | TextModeClip:
-        CGContextSetTextDrawingMode(context, kCGTextFillClip);
-        break;
-    case TextModeStroke | TextModeClip:
-        CGContextSetTextDrawingMode(context, kCGTextStrokeClip);
-        break;
-    case TextModeFill | TextModeStroke | TextModeClip:
-        CGContextSetTextDrawingMode(context, kCGTextFillStrokeClip);
         break;
     default:
         break;

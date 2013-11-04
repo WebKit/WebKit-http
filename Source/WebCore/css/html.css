@@ -435,6 +435,7 @@ input[type="search"] {
 input::-webkit-textfield-decoration-container {
     display: -webkit-box;
     -webkit-box-align: center;
+    -webkit-user-modify: read-only !important;
 }
 
 input[type="search"]::-webkit-textfield-decoration-container {
@@ -445,24 +446,28 @@ input[type="search"]::-webkit-search-cancel-button {
     -webkit-appearance: searchfield-cancel-button;
     display: block;
     -webkit-box-flex: 0;
+    -webkit-user-modify: read-only !important;
 }
 
 input[type="search"]::-webkit-search-decoration {
     -webkit-appearance: searchfield-decoration;
     display: block;
     -webkit-box-flex: 0;
+    -webkit-user-modify: read-only !important;
 }
 
 input[type="search"]::-webkit-search-results-decoration {
     -webkit-appearance: searchfield-results-decoration;
     display: block;
     -webkit-box-flex: 0;
+    -webkit-user-modify: read-only !important;
 }
 
 input[type="search"]::-webkit-search-results-button {
     -webkit-appearance: searchfield-results-button;
     display: block;
     -webkit-box-flex: 0;
+    -webkit-user-modify: read-only !important;
 }
 
 #if defined(ENABLE_DATALIST_ELEMENT) && ENABLE_DATALIST_ELEMENT
@@ -471,14 +476,94 @@ datalist {
 }
 #endif
 
+#if defined(ENABLE_INPUT_TYPE_TIME_MULTIPLE_FIELDS) && ENABLE_INPUT_TYPE_TIME_MULTIPLE_FIELDS
+input[type="time"] {
+    font-family: monospace;
+}
+
+input::-webkit-datetime-edit {
+    -webkit-user-modify: read-only !important;
+    display: -webkit-box;
+    -webkit-box-align: center;
+}
+
+input::-webkit-datetime-edit-ampm-field {
+    -webkit-user-modify: read-only !important;
+    border: none;
+    padding: 0.15em;
+}
+
+input::-webkit-datetime-edit-hour-field {
+    -webkit-user-modify: read-only !important;
+    display: inline-block;
+    border: none;
+    text-align: center;
+    padding: 0.15em;
+}
+
+input::-webkit-datetime-edit-millisecond-field {
+    -webkit-user-modify: read-only !important;
+    display: inline-block;
+    border: none;
+    text-align: center;
+    padding: 0.15em;
+}
+
+input::-webkit-datetime-edit-minute-field {
+    -webkit-user-modify: read-only !important;
+    display: inline-block;
+    border: none;
+    text-align: center;
+    padding: 0.15em;
+}
+
+/* This selector is used when step >= 3600 second but format contains minute field. */
+input::-webkit-datetime-edit-minute-field[readonly] {
+    color: GrayText;
+}
+
+input::-webkit-datetime-edit-second-field {
+    -webkit-user-modify: read-only !important;
+    display: inline-block;
+    border: none;
+    text-align: center;
+    padding: 0.15em;
+}
+
+/* Remove focus ring from fields and use highlight color */
+input::-webkit-datetime-edit-ampm-field:focus,
+input::-webkit-datetime-edit-hour-field:focus,
+input::-webkit-datetime-edit-millisecond-field:focus,
+input::-webkit-datetime-edit-minute-field:focus,
+input::-webkit-datetime-edit-second-field:focus {
+  background-color: highlight;
+  color: highlighttext;
+  outline: none;
+}
+
+/* This selector is used when step >= 60 second but format contains second field. */
+input::-webkit-datetime-edit-second-field[readonly] {
+    color: GrayText;
+}
+
+input[type="time"]::-webkit-inner-spin-button {
+    margin-left: 0.2em;
+}
+#endif
+
 input::-webkit-inner-spin-button {
     -webkit-appearance: inner-spin-button;
     display: block;
     position: relative;
     cursor: default;
+    /* This height property is ignored for input type "number" and others which
+     * use RenderTextControlSingleLine as renderer which sets height of spin
+     * button in layout(). */
+    height: 1.5em;
     vertical-align: top;
     -webkit-box-flex: 0;
     -webkit-user-select: none;
+    -webkit-user-modify: read-only !important;
 }
 
 #if defined(ENABLE_INPUT_SPEECH) && ENABLE_INPUT_SPEECH
@@ -487,6 +572,7 @@ input::-webkit-input-speech-button {
     display: block;
     vertical-align: top;
     -webkit-box-flex: 0;
+    -webkit-user-modify: read-only !important;
 }
 #endif
 
@@ -523,6 +609,7 @@ input::-webkit-input-placeholder, isindex::-webkit-input-placeholder {
     white-space: pre;
     word-wrap: normal;
     overflow: hidden;
+    -webkit-user-modify: read-only !important;
 }
 
 input[type="password"] {
@@ -562,6 +649,7 @@ input[type="button"], input[type="submit"], input[type="reset"] {
 
 input[type="file"]::-webkit-file-upload-button {
     -webkit-appearance: push-button;
+    -webkit-user-modify: read-only !important;
     white-space: nowrap;
     margin: 0;
     font-size: inherit;
@@ -590,6 +678,7 @@ input[type="range"]::-webkit-slider-container, input[type="range"]::-webkit-medi
     -webkit-box-align: center;
     -webkit-box-orient: horizontal; /* This property is updated by C++ code. */
     -webkit-box-sizing: border-box;
+    -webkit-user-modify: read-only !important;
     display: -webkit-box;
     height: 100%;
     width: 100%;
@@ -598,19 +687,22 @@ input[type="range"]::-webkit-slider-container, input[type="range"]::-webkit-medi
 input[type="range"]::-webkit-slider-runnable-track {
     -webkit-box-flex: 1;
     -webkit-box-sizing: border-box;
+    -webkit-user-modify: read-only !important;
     display: block;
 }
 
 input[type="range"]::-webkit-slider-thumb, input[type="range"]::-webkit-media-slider-thumb {
     -webkit-appearance: sliderthumb-horizontal;
     -webkit-box-sizing: border-box;
+    -webkit-user-modify: read-only !important;
     display: block;
     position: relative;
 }
 
 input[type="button"]:disabled, input[type="submit"]:disabled, input[type="reset"]:disabled,
 input[type="file"]:disabled::-webkit-file-upload-button, button:disabled,
-select:disabled, keygen:disabled, optgroup:disabled, option:disabled {
+select:disabled, keygen:disabled, optgroup:disabled, option:disabled,
+select[disabled]>option {
     color: GrayText
 }
 
@@ -648,6 +740,7 @@ input[type="color"]::-webkit-color-swatch-wrapper {
     display:-webkit-box;
     padding: 4px 2px;
     -webkit-box-sizing: border-box;
+    -webkit-user-modify: read-only !important;
     width: 100%;
     height: 100%
 }
@@ -656,6 +749,7 @@ input[type="color"]::-webkit-color-swatch {
     background-color: #000000;
     border: 1px solid #777777;
     -webkit-box-flex: 1;
+    -webkit-user-modify: read-only !important;
 }
 
 #if defined(ENABLE_DATALIST_ELEMENT) && ENABLE_DATALIST_ELEMENT
@@ -684,6 +778,7 @@ input::-webkit-calendar-picker-indicator {
     width: 0.66em;
     height: 0.66em;
     padding: 0.17em 0.34em;
+    -webkit-user-modify: read-only !important;
 }
 
 input::-webkit-calendar-picker-indicator:hover {
@@ -809,10 +904,18 @@ output {
 meter {
     -webkit-appearance: meter;
     -webkit-box-sizing: border-box;
-    display: inline-box;
+    display: inline-block;
     height: 1em;
     width: 5em;
     vertical-align: -0.2em;
+}
+
+meter::-webkit-meter-inner-element {
+    -webkit-appearance: inherit;
+    -webkit-box-sizing: inherit;
+    -webkit-user-modify: read-only !important;
+    height: 100%;
+    width: 100%;
 }
 
 meter::-webkit-meter-bar {
@@ -855,6 +958,14 @@ progress {
     height: 1em;
     width: 10em;
     vertical-align: -0.2em;
+}
+
+progress::-webkit-progress-inner-element {
+    -webkit-appearance: inherit;
+    -webkit-box-sizing: inherit;
+    -webkit-user-modify: read-only;
+    height: 100%;
+    width: 100%;
 }
 
 progress::-webkit-progress-bar {

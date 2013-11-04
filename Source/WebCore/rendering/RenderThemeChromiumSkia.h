@@ -54,6 +54,9 @@ class RenderThemeChromiumSkia : public RenderTheme {
 
         virtual bool supportsDataListUI(const AtomicString& type) const OVERRIDE;
 
+#if ENABLE(VIDEO_TRACK)
+        virtual bool supportsClosedCaptioning() const OVERRIDE;
+#endif
         // The platform selection color.
         virtual Color platformActiveSelectionBackgroundColor() const;
         virtual Color platformInactiveSelectionBackgroundColor() const;
@@ -173,6 +176,10 @@ class RenderThemeChromiumSkia : public RenderTheme {
 private:
     virtual Color disabledTextColor(const Color& textColor, const Color&) const OVERRIDE { return textColor; }
     virtual bool shouldShowPlaceholderWhenFocused() const OVERRIDE;
+
+#if ENABLE(DATALIST_ELEMENT)
+    virtual LayoutUnit sliderTickSnappingThreshold() const OVERRIDE;
+#endif
 
     int menuListInternalPadding(RenderStyle*, int paddingType) const;
     bool paintMediaButtonInternal(GraphicsContext*, const IntRect&, Image*);

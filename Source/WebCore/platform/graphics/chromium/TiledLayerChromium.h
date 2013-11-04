@@ -28,9 +28,9 @@
 
 #if USE(ACCELERATED_COMPOSITING)
 
+#include "CCLayerTilingData.h"
 #include "LayerChromium.h"
 #include "LayerTextureUpdater.h"
-#include "cc/CCLayerTilingData.h"
 
 namespace WebCore {
 class UpdatableTile;
@@ -52,13 +52,15 @@ public:
 
     virtual void setNeedsDisplayRect(const FloatRect&) OVERRIDE;
 
-    virtual void setIsNonCompositedContent(bool) OVERRIDE;
+    virtual void setUseLCDText(bool) OVERRIDE;
 
     virtual void setLayerTreeHost(CCLayerTreeHost*) OVERRIDE;
 
     virtual void setTexturePriorities(const CCPriorityCalculator&) OVERRIDE;
 
     virtual Region visibleContentOpaqueRegion() const OVERRIDE;
+
+    virtual void update(CCTextureUpdateQueue&, const CCOcclusionTracker*, CCRenderingStats&) OVERRIDE;
 
 protected:
     TiledLayerChromium();
@@ -82,13 +84,9 @@ protected:
     // Reset state on tiles that will be used for updating the layer.
     void resetUpdateState();
 
-    // Prepare data needed to update textures that intersect with contentRect.
-    void updateContentRect(CCTextureUpdater&, const IntRect& contentRect, const CCOcclusionTracker*, CCRenderingStats&);
-
     // After preparing an update, returns true if more painting is needed.
-    bool needsIdlePaint(const IntRect& visibleContentRect);
-
-    IntRect idlePaintRect(const IntRect& visibleContentRect);
+    bool needsIdlePaint();
+    IntRect idlePaintRect();
 
     bool skipsDraw() const { return m_skipsDraw; }
 
@@ -104,20 +102,20 @@ private:
     bool tileOnlyNeedsPartialUpdate(UpdatableTile*);
     bool tileNeedsBufferedUpdate(UpdatableTile*);
 
-    void setTexturePrioritiesInRect(const CCPriorityCalculator&, const IntRect& visibleContentRect);
+    void markOcclusionsAndRequestTextures(int left, int top, int right, int bottom, const CCOcclusionTracker*);
 
-    void updateTiles(bool idle, int left, int top, int right, int bottom, CCTextureUpdater&, const CCOcclusionTracker*, CCRenderingStats&);
+    bool updateTiles(int left, int top, int right, int bottom, CCTextureUpdateQueue&, const CCOcclusionTracker*, CCRenderingStats&, bool& didPaint);
+    bool haveTexturesForTiles(int left, int top, int right, int bottom, bool ignoreOcclusions);
+    IntRect markTilesForUpdate(int left, int top, int right, int bottom, bool ignoreOcclusions);
+    void updateTileTextures(const IntRect& paintRect, int left, int top, int right, int bottom, CCTextureUpdateQueue&, const CCOcclusionTracker*, CCRenderingStats&);
 
     UpdatableTile* tileAt(int, int) const;
     UpdatableTile* createTile(int, int);
 
     GC3Denum m_textureFormat;
     bool m_skipsDraw;
-    bool m_skipsIdlePaint;
+    bool m_failedUpdate;
     LayerTextureUpdater::SampledTexelFormat m_sampledTexelFormat;
-
-    // Tracks if we've done any painting on this update cycle.
-    bool m_didPaint;
 
     TilingOption m_tilingOption;
     OwnPtr<CCLayerTilingData> m_tiler;

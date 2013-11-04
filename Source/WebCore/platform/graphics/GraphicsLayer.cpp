@@ -31,10 +31,11 @@
 
 #include "FloatPoint.h"
 #include "GraphicsContext.h"
-#include "LayoutTypes.h"
+#include "LayoutTypesInlineMethods.h"
 #include "RotateTransformOperation.h"
 #include "TextStream.h"
 #include <wtf/text/CString.h>
+#include <wtf/text/StringBuilder.h>
 #include <wtf/text/WTFString.h>
 
 #ifndef NDEBUG
@@ -80,7 +81,7 @@ GraphicsLayer::GraphicsLayer(GraphicsLayerClient* client)
     , m_maintainsPixelAlignment(false)
     , m_appliesPageScale(false)
     , m_usingTileCache(false)
-    , m_paintingPhase(GraphicsLayerPaintAll)
+    , m_paintingPhase(GraphicsLayerPaintAllWithOverflowClip)
     , m_contentsOrientation(CompositingCoordinatesTopDown)
     , m_parent(0)
     , m_maskLayer(0)
@@ -323,10 +324,11 @@ void GraphicsLayer::paintGraphicsLayerContents(GraphicsContext& context, const I
 String GraphicsLayer::animationNameForTransition(AnimatedPropertyID property)
 {
     // | is not a valid identifier character in CSS, so this can never conflict with a keyframe identifier.
-    String id = "-|transition";
+    StringBuilder id;
+    id.appendLiteral("-|transition");
     id.append(static_cast<char>(property));
     id.append('-');
-    return id;
+    return id.toString();
 }
 
 void GraphicsLayer::suspendAnimations(double)

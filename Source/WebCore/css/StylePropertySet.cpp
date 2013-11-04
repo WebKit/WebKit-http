@@ -50,9 +50,14 @@ static PropertySetCSSOMWrapperMap& propertySetCSSOMWrapperMap()
     return propertySetCSSOMWrapperMapInstance;
 }
 
+static size_t immutableStylePropertySetSize(unsigned count)
+{
+    return sizeof(StylePropertySet) - sizeof(void*) + sizeof(CSSProperty) * count;
+}
+
 PassRefPtr<StylePropertySet> StylePropertySet::createImmutable(const CSSProperty* properties, unsigned count, CSSParserMode cssParserMode)
 {
-    void* slot = WTF::fastMalloc(sizeof(StylePropertySet) - sizeof(void*) + sizeof(CSSProperty) * count);
+    void* slot = WTF::fastMalloc(immutableStylePropertySetSize(count));
     return adoptRef(new (slot) StylePropertySet(properties, count, cssParserMode, /* makeMutable */ false));
 }
 
@@ -82,15 +87,22 @@ StylePropertySet::StylePropertySet(const CSSProperty* properties, unsigned count
     }
 }
 
-StylePropertySet::StylePropertySet(const StylePropertySet& o)
+StylePropertySet::StylePropertySet(const StylePropertySet& other)
     : RefCounted<StylePropertySet>()
-    , m_cssParserMode(o.m_cssParserMode)
+    , m_cssParserMode(other.m_cssParserMode)
     , m_ownsCSSOMWrapper(false)
     , m_isMutable(true)
     , m_arraySize(0)
     , m_mutablePropertyVector(new Vector<CSSProperty>)
 {
-    copyPropertiesFrom(o);
+    if (other.isMutable())
+        *m_mutablePropertyVector = *other.m_mutablePropertyVector;
+    else {
+        m_mutablePropertyVector->clear();
+        m_mutablePropertyVector->reserveCapacity(other.m_arraySize);
+        for (unsigned i = 0; i < other.m_arraySize; ++i)
+            m_mutablePropertyVector->uncheckedAppend(other.array()[i]);
+    }
 }
 
 StylePropertySet::~StylePropertySet()
@@ -104,27 +116,6 @@ StylePropertySet::~StylePropertySet()
         for (unsigned i = 0; i < m_arraySize; ++i)
             array()[i].~CSSProperty();
     }
-}
-
-void StylePropertySet::setCSSParserMode(CSSParserMode cssParserMode)
-{
-    ASSERT(isMutable());
-    m_cssParserMode = cssParserMode;
-}
-
-void StylePropertySet::copyPropertiesFrom(const StylePropertySet& other)
-{
-    ASSERT(isMutable());
-
-    if (other.isMutable()) {
-        *m_mutablePropertyVector = *other.m_mutablePropertyVector;
-        return;
-    }
-
-    ASSERT(m_mutablePropertyVector->isEmpty());
-    m_mutablePropertyVector->reserveInitialCapacity(other.m_arraySize);
-    for (unsigned i = 0; i < other.m_arraySize; ++i)
-        m_mutablePropertyVector->uncheckedAppend(other.array()[i]);
 }
 
 String StylePropertySet::getPropertyValue(CSSPropertyID propertyID) const
@@ -325,7 +316,7 @@ String StylePropertySet::getLayeredShorthandValue(const StylePropertyShorthand& 
     for (unsigned i = 0; i < size; ++i) {
         values[i] = getPropertyCSSValue(shorthand.properties()[i]);
         if (values[i]) {
-            if (values[i]->isValueList()) {
+            if (values[i]->isBaseValueList()) {
                 CSSValueList* valueList = static_cast<CSSValueList*>(values[i].get());
                 numLayers = max(valueList->length(), numLayers);
             } else
@@ -344,7 +335,7 @@ String StylePropertySet::getLayeredShorthandValue(const StylePropertyShorthand& 
         for (unsigned j = 0; j < size; j++) {
             RefPtr<CSSValue> value;
             if (values[j]) {
-                if (values[j]->isValueList())
+                if (values[j]->isBaseValueList())
                     value = static_cast<CSSValueList*>(values[j].get())->item(i);
                 else {
                     value = values[j];
@@ -654,6 +645,7 @@ String StylePropertySet::asText() const
     BitArray<numCSSProperties> shorthandPropertyAppeared;
 
     unsigned size = propertyCount();
+    unsigned numDecls = 0;
     for (unsigned n = 0; n < size; ++n) {
         const CSSProperty& prop = propertyAt(n);
         CSSPropertyID propertyID = prop.id();
@@ -664,6 +656,8 @@ String StylePropertySet::asText() const
         switch (propertyID) {
 #if ENABLE(CSS_VARIABLES)
         case CSSPropertyVariable:
+            if (numDecls++)
+                result.append(' ');
             result.append(prop.cssText());
             continue;
 #endif
@@ -820,11 +814,14 @@ String StylePropertySet::asText() const
         if (value == "initial" && !CSSProperty::isInheritedProperty(propertyID))
             continue;
 
+        if (numDecls++)
+            result.append(' ');
         result.append(getPropertyName(propertyID));
-        result.append(": ");
+        result.appendLiteral(": ");
         result.append(value);
-        result.append(prop.isImportant() ? " !important" : "");
-        result.append("; ");
+        if (prop.isImportant())
+            result.appendLiteral(" !important");
+        result.append(';');
     }
 
     // FIXME: This is a not-so-nice way to turn x/y positions into single background-position in output.
@@ -832,44 +829,61 @@ String StylePropertySet::asText() const
     // would not work in Firefox (<rdar://problem/5143183>)
     // It would be a better solution if background-position was CSS_PAIR.
     if (positionXProp && positionYProp && positionXProp->isImportant() == positionYProp->isImportant()) {
-        result.append("background-position: ");
+        if (numDecls++)
+            result.append(' ');
+        result.appendLiteral("background-position: ");
         if (positionXProp->value()->isValueList() || positionYProp->value()->isValueList())
             result.append(getLayeredShorthandValue(backgroundPositionShorthand()));
         else {
             result.append(positionXProp->value()->cssText());
-            result.append(" ");
+            result.append(' ');
             result.append(positionYProp->value()->cssText());
         }
         if (positionXProp->isImportant())
-            result.append(" !important");
-        result.append("; ");
+            result.appendLiteral(" !important");
+        result.append(';');
     } else {
-        if (positionXProp)
+        if (positionXProp) {
+            if (numDecls++)
+                result.append(' ');
             result.append(positionXProp->cssText());
-        if (positionYProp)
+        }
+        if (positionYProp) {
+            if (numDecls++)
+                result.append(' ');
             result.append(positionYProp->cssText());
+        }
     }
 
     // FIXME: We need to do the same for background-repeat.
     if (repeatXProp && repeatYProp && repeatXProp->isImportant() == repeatYProp->isImportant()) {
-        result.append("background-repeat: ");
+        if (numDecls++)
+            result.append(' ');
+        result.appendLiteral("background-repeat: ");
         if (repeatXProp->value()->isValueList() || repeatYProp->value()->isValueList())
             result.append(getLayeredShorthandValue(backgroundRepeatShorthand()));
         else {
             result.append(repeatXProp->value()->cssText());
-            result.append(" ");
+            result.append(' ');
             result.append(repeatYProp->value()->cssText());
         }
         if (repeatXProp->isImportant())
-            result.append(" !important");
-        result.append("; ");
+            result.appendLiteral(" !important");
+        result.append(';');
     } else {
-        if (repeatXProp)
+        if (repeatXProp) {
+            if (numDecls++)
+                result.append(' ');
             result.append(repeatXProp->cssText());
-        if (repeatYProp)
+        }
+        if (repeatYProp) {
+            if (numDecls++)
+                result.append(' ');
             result.append(repeatYProp->cssText());
+        }
     }
 
+    ASSERT(!numDecls ^ !result.isEmpty());
     return result.toString();
 }
 
@@ -892,6 +906,16 @@ void StylePropertySet::addSubresourceStyleURLs(ListHashSet<KURL>& urls, StyleShe
     unsigned size = propertyCount();
     for (unsigned i = 0; i < size; ++i)
         propertyAt(i).value()->addSubresourceStyleURLs(urls, contextStyleSheet);
+}
+
+bool StylePropertySet::hasFailedOrCanceledSubresources() const
+{
+    unsigned size = propertyCount();
+    for (unsigned i = 0; i < size; ++i) {
+        if (propertyAt(i).value()->hasFailedOrCanceledSubresources())
+            return true;
+    }
+    return false;
 }
 
 // This is the list of properties we want to copy in the copyBlockProperties() function.
@@ -1036,8 +1060,10 @@ PassRefPtr<StylePropertySet> StylePropertySet::copyPropertiesInSet(const CSSProp
     return StylePropertySet::create(list.data(), list.size());
 }
 
-CSSStyleDeclaration* StylePropertySet::ensureCSSStyleDeclaration() const
+CSSStyleDeclaration* StylePropertySet::ensureCSSStyleDeclaration()
 {
+    ASSERT(isMutable());
+
     if (m_ownsCSSOMWrapper) {
         ASSERT(!static_cast<CSSStyleDeclaration*>(propertySetCSSOMWrapperMap().get(this))->parentRule());
         ASSERT(!propertySetCSSOMWrapperMap().get(this)->parentElement());
@@ -1049,8 +1075,10 @@ CSSStyleDeclaration* StylePropertySet::ensureCSSStyleDeclaration() const
     return cssomWrapper;
 }
 
-CSSStyleDeclaration* StylePropertySet::ensureInlineCSSStyleDeclaration(const StyledElement* parentElement) const
+CSSStyleDeclaration* StylePropertySet::ensureInlineCSSStyleDeclaration(const StyledElement* parentElement)
 {
+    ASSERT(isMutable());
+
     if (m_ownsCSSOMWrapper) {
         ASSERT(propertySetCSSOMWrapperMap().get(this)->parentElement() == parentElement);
         return propertySetCSSOMWrapperMap().get(this);
@@ -1073,6 +1101,18 @@ unsigned StylePropertySet::averageSizeInBytes()
 {
     // Please update this if the storage scheme changes so that this longer reflects the actual size.
     return sizeof(StylePropertySet) + sizeof(CSSProperty) * 2;
+}
+
+void StylePropertySet::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
+{
+    size_t actualSize = m_isMutable ? sizeof(StylePropertySet) : immutableStylePropertySetSize(m_arraySize);
+    MemoryClassInfo info(memoryObjectInfo, this, MemoryInstrumentation::CSS, actualSize);
+    if (m_isMutable)
+        info.addVectorPtr(m_mutablePropertyVector);
+
+    unsigned count = propertyCount();
+    for (unsigned i = 0; i < count; ++i)
+        info.addInstrumentedMember(propertyAt(i));
 }
 
 // See the function above if you need to update this.

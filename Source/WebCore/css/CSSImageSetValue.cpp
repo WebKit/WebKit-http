@@ -30,8 +30,10 @@
 
 #include "CSSImageValue.h"
 #include "CSSPrimitiveValue.h"
+#include "CachedImage.h"
 #include "CachedResourceLoader.h"
 #include "Document.h"
+#include "MemoryInstrumentation.h"
 #include "Page.h"
 #include "StyleCachedImageSet.h"
 #include "StylePendingImage.h"
@@ -139,6 +141,16 @@ String CSSImageSetValue::customCssText() const
     return "-webkit-image-set(" + CSSValueList::customCssText() + ")";
 }
 
+bool CSSImageSetValue::hasFailedOrCanceledSubresources() const
+{
+    if (!m_imageSet || !m_imageSet->isCachedImageSet())
+        return false;
+    CachedResource* cachedResource = static_cast<StyleCachedImageSet*>(m_imageSet.get())->cachedImage();
+    if (!cachedResource)
+        return true;
+    return cachedResource->loadFailedOrCanceled();
+}
+
 CSSImageSetValue::CSSImageSetValue(const CSSImageSetValue& cloneFrom)
     : CSSValueList(cloneFrom)
     , m_accessedBestFitImage(false)
@@ -150,6 +162,19 @@ CSSImageSetValue::CSSImageSetValue(const CSSImageSetValue& cloneFrom)
 PassRefPtr<CSSImageSetValue> CSSImageSetValue::cloneForCSSOM() const
 {
     return adoptRef(new CSSImageSetValue(*this));
+}
+
+void CSSImageSetValue::reportDescendantMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
+{
+    MemoryClassInfo info(memoryObjectInfo, this, MemoryInstrumentation::CSS);
+    CSSValueList::reportDescendantMemoryUsage(memoryObjectInfo);
+    info.addInstrumentedVector(m_imagesInSet);
+}
+
+void CSSImageSetValue::ImageWithScale::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
+{
+    MemoryClassInfo info(memoryObjectInfo, this, MemoryInstrumentation::CSS);
+    info.addInstrumentedMember(imageURL);
 }
 
 } // namespace WebCore

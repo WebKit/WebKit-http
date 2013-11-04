@@ -28,6 +28,8 @@
 #ifndef EWebKit2_h
 #define EWebKit2_h
 
+#include "ewk_back_forward_list.h"
+#include "ewk_back_forward_list_item.h"
 #include "ewk_context.h"
 #include "ewk_cookie_manager.h"
 #include "ewk_download_job.h"
@@ -36,6 +38,7 @@
 #include "ewk_intent_service.h"
 #include "ewk_main.h"
 #include "ewk_navigation_policy_decision.h"
+#include "ewk_popup_menu_item.h"
 #include "ewk_url_request.h"
 #include "ewk_url_response.h"
 #include "ewk_url_scheme_request.h"

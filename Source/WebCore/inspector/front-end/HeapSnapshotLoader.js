@@ -30,7 +30,7 @@
 
 /**
  * @constructor
- * @implements {WebInspector.HeapSnapshotReceiver}
+ * @implements {WebInspector.OutputStream}
  */
 WebInspector.HeapSnapshotLoader = function()
 {
@@ -38,13 +38,8 @@ WebInspector.HeapSnapshotLoader = function()
 }
 
 WebInspector.HeapSnapshotLoader.prototype = {
-    /**
-     * @param {function(WebInspector.HeapSnapshotProxy)} callback
-     * @return {boolean}
-     */
-    startLoading: function(callback)
+    startTransfer: function()
     {
-        return true;
     },
 
     dispose: function()
@@ -59,27 +54,14 @@ WebInspector.HeapSnapshotLoader.prototype = {
         this._snapshot = {};
     },
 
-    _findBalancedCurlyBrackets: function()
+    finishTransfer: function()
     {
-        var counter = 0;
-        var openingBracket = "{".charCodeAt(0), closingBracket = "}".charCodeAt(0);
-        for (var i = 0, l = this._json.length; i < l; ++i) {
-            var character = this._json.charCodeAt(i);
-            if (character === openingBracket)
-                ++counter;
-            else if (character === closingBracket) {
-                if (--counter === 0)
-                    return i + 1;
-            }
-        }
-        return -1;
+        if (this._json)
+            this._parseStringsArray();
     },
 
-    finishLoading: function()
+    buildSnapshot: function()
     {
-        if (!this._json)
-            return null;
-        this._parseStringsArray();
         var result = new WebInspector.HeapSnapshot(this._snapshot);
         this._reset();
         return result;
@@ -135,7 +117,7 @@ WebInspector.HeapSnapshotLoader.prototype = {
     /**
      * @param {string} chunk
      */
-    pushJSONChunk: function(chunk)
+    transferChunk: function(chunk)
     {
         this._json += chunk;
         switch (this._state) {
@@ -146,17 +128,17 @@ WebInspector.HeapSnapshotLoader.prototype = {
                 throw new Error("Snapshot token not found");
             this._json = this._json.slice(snapshotTokenIndex + snapshotToken.length + 1);
             this._state = "parse-snapshot-info";
-            this.pushJSONChunk("");
+            this.transferChunk("");
             break;
         }
         case "parse-snapshot-info": {
-            var closingBracketIndex = this._findBalancedCurlyBrackets();
+            var closingBracketIndex = WebInspector.findBalancedCurlyBrackets(this._json);
             if (closingBracketIndex === -1)
                 return;
             this._snapshot.snapshot = /** @type {HeapSnapshotHeader} */JSON.parse(this._json.slice(0, closingBracketIndex));
             this._json = this._json.slice(closingBracketIndex);
             this._state = "find-nodes";
-            this.pushJSONChunk("");
+            this.transferChunk("");
             break;
         }
         case "find-nodes": {
@@ -173,7 +155,7 @@ WebInspector.HeapSnapshotLoader.prototype = {
             this._array = new Uint32Array(nodes_length);
             this._arrayIndex = 0;
             this._state = "parse-nodes";
-            this.pushJSONChunk("");
+            this.transferChunk("");
             break;
         }
         case "parse-nodes": {
@@ -182,7 +164,7 @@ WebInspector.HeapSnapshotLoader.prototype = {
             this._snapshot.nodes = this._array;
             this._state = "find-edges";
             this._array = null;
-            this.pushJSONChunk("");
+            this.transferChunk("");
             break;
         }
         case "find-edges": {
@@ -199,7 +181,7 @@ WebInspector.HeapSnapshotLoader.prototype = {
             this._array = new Uint32Array(edges_length);
             this._arrayIndex = 0;
             this._state = "parse-edges";
-            this.pushJSONChunk("");
+            this.transferChunk("");
             break;
         }
         case "parse-edges": {
@@ -208,7 +190,7 @@ WebInspector.HeapSnapshotLoader.prototype = {
             this._snapshot.edges = this._array;
             this._array = null;
             this._state = "find-strings";
-            this.pushJSONChunk("");
+            this.transferChunk("");
             break;
         }
         case "find-strings": {

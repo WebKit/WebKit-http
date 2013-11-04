@@ -47,6 +47,7 @@ class CachedResourceHandleBase;
 class CachedResourceLoader;
 class Frame;
 class InspectorResource;
+class MemoryObjectInfo;
 class PurgeableBuffer;
 class SecurityOrigin;
 class SubresourceLoader;
@@ -205,6 +206,7 @@ public:
 
     bool wasCanceled() const { return m_status == Canceled; }
     bool errorOccurred() const { return (m_status == LoadError || m_status == DecodeError); }
+    bool loadFailedOrCanceled() { return m_status == Canceled || m_status == LoadError; }
 
     bool sendResourceLoadCallbacks() const { return m_options.sendLoadCallbacks == SendCallbacks; }
     
@@ -248,6 +250,8 @@ public:
 
     void setLoadFinishTime(double finishTime) { m_loadFinishTime = finishTime; }
     double loadFinishTime() const { return m_loadFinishTime; }
+
+    virtual void reportMemoryUsage(MemoryObjectInfo*) const;
 
 protected:
     void checkNotify();

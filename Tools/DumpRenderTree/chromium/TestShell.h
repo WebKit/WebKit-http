@@ -31,10 +31,9 @@
 #ifndef TestShell_h
 #define TestShell_h
 
-#include "AccessibilityController.h"
-#include "EventSender.h"
+#include "AccessibilityControllerChromium.h"
+#include "DRTTestRunner.h"
 #include "GamepadController.h"
-#include "LayoutTestController.h"
 #include "NotificationPresenter.h"
 #include "TestEventPrinter.h"
 #include "TestInterfaces.h"
@@ -64,7 +63,6 @@ class WebPermissions;
 
 struct TestParams {
     bool dumpTree;
-    bool dumpPixels;
     bool debugRenderTree;
     bool debugLayerTree;
     bool printSeparators;
@@ -73,7 +71,6 @@ struct TestParams {
 
     TestParams()
         : dumpTree(true)
-        , dumpPixels(false)
         , debugRenderTree(false)
         , debugLayerTree(false)
         , printSeparators(false) { }
@@ -90,8 +87,8 @@ public:
     WebKit::WebView* webView() const { return m_webView; }
     // Returns the host for the main WebView.
     WebViewHost* webViewHost() const { return m_webViewHost.get(); }
-    LayoutTestController* layoutTestController() const { return m_layoutTestController.get(); }
-    EventSender* eventSender() const { return m_eventSender.get(); }
+    DRTTestRunner* testRunner() const { return m_testRunner.get(); }
+    EventSender* eventSender() const { return m_testInterfaces->eventSender(); }
     AccessibilityController* accessibilityController() const { return m_testInterfaces->accessibilityController(); }
 #if ENABLE(NOTIFICATIONS)
     NotificationPresenter* notificationPresenter() const { return m_notificationPresenter.get(); }
@@ -104,7 +101,7 @@ public:
     WebPermissions* webPermissions() { return m_webPermissions.get(); }
 
     void bindJSObjectsToWindow(WebKit::WebFrame*);
-    void runFileTest(const TestParams&);
+    void runFileTest(const TestParams&, bool shouldDumpPixelTests);
     void callJSGC();
     void resetTestController();
     void waitTestFinished();
@@ -116,15 +113,15 @@ public:
     int navigationEntryCount() const;
 
     void setFocus(WebKit::WebWidget*, bool enable);
-    bool shouldDumpFrameLoadCallbacks() const { return (m_testIsPreparing || m_testIsPending) && layoutTestController()->shouldDumpFrameLoadCallbacks(); }
-    bool shouldDumpUserGestureInFrameLoadCallbacks() const { return (m_testIsPreparing || m_testIsPending) && layoutTestController()->shouldDumpUserGestureInFrameLoadCallbacks(); }
-    bool shouldDumpResourceLoadCallbacks() const  { return (m_testIsPreparing || m_testIsPending) && layoutTestController()->shouldDumpResourceLoadCallbacks(); }
-    bool shouldDumpResourceResponseMIMETypes() const  { return (m_testIsPreparing || m_testIsPending) && layoutTestController()->shouldDumpResourceResponseMIMETypes(); }
+    bool shouldDumpFrameLoadCallbacks() const { return (m_testIsPreparing || m_testIsPending) && testRunner()->shouldDumpFrameLoadCallbacks(); }
+    bool shouldDumpUserGestureInFrameLoadCallbacks() const { return (m_testIsPreparing || m_testIsPending) && testRunner()->shouldDumpUserGestureInFrameLoadCallbacks(); }
+    bool shouldDumpResourceLoadCallbacks() const  { return (m_testIsPreparing || m_testIsPending) && testRunner()->shouldDumpResourceLoadCallbacks(); }
+    bool shouldDumpResourceResponseMIMETypes() const  { return (m_testIsPreparing || m_testIsPending) && testRunner()->shouldDumpResourceResponseMIMETypes(); }
     void setIsLoading(bool flag) { m_isLoading = flag; }
 
-    // Called by the LayoutTestController to signal test completion.
+    // Called by the DRTTestRunner to signal test completion.
     void testFinished();
-    // Called by LayoutTestController when a test hits the timeout, but does not
+    // Called by DRTTestRunner when a test hits the timeout, but does not
     // cause a hang. We can avoid killing TestShell in this case and still dump
     // the test results.
     void testTimedOut();
@@ -214,8 +211,7 @@ private:
     OwnPtr<DRTDevToolsAgent> m_drtDevToolsAgent;
     OwnPtr<DRTDevToolsClient> m_drtDevToolsClient;
     OwnPtr<TestInterfaces> m_testInterfaces;
-    OwnPtr<EventSender> m_eventSender;
-    OwnPtr<LayoutTestController> m_layoutTestController;
+    OwnPtr<DRTTestRunner> m_testRunner;
 #if ENABLE(NOTIFICATIONS) || ENABLE(LEGACY_NOTIFICATIONS)
     OwnPtr<NotificationPresenter> m_notificationPresenter;
 #endif
@@ -226,6 +222,7 @@ private:
 #endif
 
     TestParams m_params;
+    bool m_dumpPixelsForCurrentTest;
     int m_timeout; // timeout value in millisecond
     bool m_allowExternalPages;
     bool m_acceleratedCompositingForVideoEnabled;

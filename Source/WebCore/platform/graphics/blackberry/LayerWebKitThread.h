@@ -98,9 +98,16 @@ public:
 
     void setOpacity(float opacity) { m_opacity = opacity; setNeedsCommit(); }
 
+#if ENABLE(CSS_FILTERS)
+    void setFilters(const FilterOperations& filters) { m_filters = filters; m_filtersChanged = true; setNeedsCommit(); }
+    static bool filtersCanBeComposited(const FilterOperations& filters);
+#endif
+
     void setOpaque(bool isOpaque) { m_isOpaque = isOpaque; setNeedsCommit(); }
 
     void setPosition(const FloatPoint& position) { m_position = position; setNeedsCommit(); }
+
+    void setBoundsOrigin(const FloatPoint& boundsOrigin) { m_boundsOrigin = boundsOrigin; setNeedsCommit(); }
 
     const LayerWebKitThread* rootLayer() const;
 
@@ -126,6 +133,8 @@ public:
     Image* contents() const { return m_contents.get(); }
 
     void setOwner(GraphicsLayerBlackBerry* owner) { m_owner = owner; }
+    // NOTE: Can be 0.
+    GraphicsLayerBlackBerry* owner() const { return m_owner; }
 
     bool drawsContent() const { return m_owner && m_owner->drawsContent(); }
     void setDrawable(bool);
@@ -151,12 +160,15 @@ public:
     // Allows you to clear the LayerCompositingThread::overrides from the WK thread
     void clearOverride() { m_clearOverrideOnCommit = true; setNeedsCommit(); }
 
+    void releaseLayerResources();
+
+    static IntRect mapFromTransformed(const IntRect&, double scale);
+
 protected:
     LayerWebKitThread(LayerType, GraphicsLayerBlackBerry* owner);
 
     void setNeedsTexture(bool needsTexture) { m_needsTexture = needsTexture; }
     void setLayerProgramShader(LayerData::LayerProgramShader shader) { m_layerProgramShader = shader; }
-    void createFrontBufferLock();
     bool isDrawable() const { return m_isDrawable; }
 
     void startAnimations(double time);
@@ -165,6 +177,8 @@ protected:
 
     virtual void boundsChanged() { }
     virtual void updateTextureContentsIfNeeded();
+    virtual void commitPendingTextureUploads();
+    virtual void deleteTextures() { }
 
 private:
     void updateLayerHierarchy();
@@ -202,6 +216,9 @@ private:
     unsigned m_isMask : 1;
     unsigned m_animationsChanged : 1;
     unsigned m_clearOverrideOnCommit : 1;
+#if ENABLE(CSS_FILTERS)
+    unsigned m_filtersChanged : 1;
+#endif
 };
 
 }

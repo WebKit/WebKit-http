@@ -97,11 +97,6 @@ def run(port, options, args, regular_output=sys.stderr, buildbot_output=sys.stdo
         for warning in warnings:
             _log.warning(warning)
 
-        if options.help_printing:
-            printer.help_printing()
-            printer.cleanup()
-            return 0
-
         if options.lint_test_files:
             return lint(port, options)
 
@@ -182,6 +177,9 @@ def _set_up_derived_options(port, options):
 
         options.pixel_test_directories = list(varified_dirs)
 
+    if options.run_singly:
+        options.verbose = True
+
     return warnings
 
 
@@ -246,8 +244,9 @@ def parse_args(args=None):
         optparse.make_option("--per-tile-painting",
             action="store_true",
             help="Use per-tile painting of composited pages"),
-        optparse.make_option("--adb-args", type="string",
-            help="Arguments parsed to Android adb, to select device, etc."),
+        optparse.make_option("--adb-device",
+            action="append", default=[],
+            help="Run Android layout tests on these devices."),
     ]))
 
     option_group_definitions.append(("EFL-specific Options", [
@@ -332,6 +331,8 @@ def parse_args(args=None):
         optparse.make_option("--additional-expectations", action="append", default=[],
             help="Path to a test_expectations file that will override previous expectations. "
                  "Specify multiple times for multiple sets of overrides."),
+        optparse.make_option("--compare-port", action="store", default=None,
+            help="Use the specified port's baselines first"),
         optparse.make_option("--no-show-results", action="store_false",
             default=True, dest="show_results",
             help="Don't launch a browser with results after the tests "
@@ -368,7 +369,6 @@ def parse_args(args=None):
         optparse.make_option("-n", "--dry-run", action="store_true",
             default=False,
             help="Do everything but actually run the tests or upload results."),
-        # old-run-webkit-tests has --valgrind instead of wrapper.
         optparse.make_option("--wrapper",
             help="wrapper command to insert before invocations of "
                  "DumpRenderTree; option is split on whitespace before "
@@ -383,7 +383,6 @@ def parse_args(args=None):
             help="Run all tests, even those marked SKIP in the test list (same as --skipped=ignore)"),
         optparse.make_option("--time-out-ms",
             help="Set the timeout for each test"),
-        # old-run-webkit-tests calls --randomize-order --random:
         optparse.make_option("--randomize-order", action="store_true",
             default=False, help=("Run tests in random order (useful "
                                 "for tracking down corruption)")),
@@ -392,15 +391,11 @@ def parse_args(args=None):
                  "of the layout tests")),
         optparse.make_option("--run-part", help=("Run a specified part (n:m), "
                   "the nth of m parts, of the layout tests")),
-        # old-run-webkit-tests calls --batch-size: --nthly n
-        #   Restart DumpRenderTree every n tests (default: 1000)
         optparse.make_option("--batch-size",
             help=("Run a the tests in batches (n), after every n tests, "
                   "DumpRenderTree is relaunched."), type="int", default=None),
-        # old-run-webkit-tests calls --run-singly: -1|--singly
-        # Isolate each test case run (implies --nthly 1 --verbose)
         optparse.make_option("--run-singly", action="store_true",
-            default=False, help="run a separate DumpRenderTree for each test"),
+            default=False, help="run a separate DumpRenderTree for each test (implies --verbose)"),
         optparse.make_option("--child-processes",
             help="Number of DumpRenderTrees to run in parallel."),
         # FIXME: Display default number of child processes that will run.
@@ -412,21 +407,16 @@ def parse_args(args=None):
         optparse.make_option("--exit-after-n-crashes-or-timeouts", type="int",
             default=None, help="Exit after the first N crashes instead of "
             "running all tests"),
-        optparse.make_option("--iterations", type="int", help="Number of times to run the set of tests (e.g. ABCABCABC)"),
-        optparse.make_option("--repeat-each", type="int", help="Number of times to run each test (e.g. AAABBBCCC)"),
+        optparse.make_option("--iterations", type="int", default=1, help="Number of times to run the set of tests (e.g. ABCABCABC)"),
+        optparse.make_option("--repeat-each", type="int", default=1, help="Number of times to run each test (e.g. AAABBBCCC)"),
         optparse.make_option("--retry-failures", action="store_true",
             default=True,
             help="Re-try any tests that produce unexpected results (default)"),
         optparse.make_option("--no-retry-failures", action="store_false",
             dest="retry_failures",
             help="Don't re-try any tests that produce unexpected results."),
-        optparse.make_option("--max-locked-shards", type="int",
+        optparse.make_option("--max-locked-shards", type="int", default=1,
             help="Set the maximum number of locked shards"),
-        # For chromium-android to reduce the cost of restarting the driver.
-        # FIXME: Remove the option once per-test arg is supported:
-        # https://bugs.webkit.org/show_bug.cgi?id=91539.
-        optparse.make_option("--shard-ref-tests", action="store_true",
-            help="Run ref tests in dedicated shard(s). Enabled on Android by default."),
         optparse.make_option("--additional-env-var", type="string", action="append", default=[],
             help="Passes that environment variable to the tests (--additional-env-var=NAME=VALUE)"),
     ]))
@@ -484,7 +474,7 @@ def main(argv=None):
         traceback.print_exc(file=sys.stderr)
         raise
 
-    logging.getLogger().setLevel(logging.DEBUG if options.verbose else logging.INFO)
+    logging.getLogger().setLevel(logging.DEBUG if options.debug_rwt_logging else logging.INFO)
     return run(port, options, args)
 
 

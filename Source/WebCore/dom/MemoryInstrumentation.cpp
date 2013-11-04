@@ -31,16 +31,42 @@
 #include "config.h"
 #include "MemoryInstrumentation.h"
 
+#include "KURL.h"
 #include <wtf/text/StringImpl.h>
 #include <wtf/text/WTFString.h>
 
 namespace WebCore {
 
-void MemoryInstrumentation::addString(const String& string, ObjectType objectType)
+void MemoryInstrumentation::addInstrumentedObjectImpl(const String* const& string, ObjectType objectType, OwningType owningType)
 {
-    if (string.isNull() || visited(string.impl()))
+    if (!string || visited(string))
         return;
-    countObjectSize(objectType, string.impl()->sizeInBytes());
+    if (owningType == byPointer)
+        countObjectSize(objectType, sizeof(String));
+    addInstrumentedObjectImpl(string->impl(), objectType, byPointer);
+}
+
+void MemoryInstrumentation::addInstrumentedObjectImpl(const StringImpl* const& stringImpl, ObjectType objectType, OwningType)
+{
+    if (!stringImpl || visited(stringImpl))
+        return;
+    countObjectSize(objectType, stringImpl->sizeInBytes());
+}
+
+void MemoryInstrumentation::addInstrumentedObjectImpl(const KURL* const& url, ObjectType objectType, OwningType owningType)
+{
+    if (!url || visited(url))
+        return;
+    if (owningType == byPointer)
+        countObjectSize(objectType, sizeof(KURL));
+    addInstrumentedObject(url->string(), objectType);
+    if (url->innerURL())
+        addInstrumentedObject(url->innerURL(), objectType);
+}
+
+void MemoryInstrumentation::addInstrumentedObjectImpl(const AtomicString* const& atomicString, ObjectType objectType, OwningType owningType)
+{
+    addInstrumentedObjectImpl(reinterpret_cast<const String* const>(atomicString), objectType, owningType);
 }
 
 } // namespace WebCore

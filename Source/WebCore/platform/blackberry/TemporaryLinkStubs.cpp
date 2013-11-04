@@ -24,11 +24,6 @@
 
 namespace WebCore {
 
-void prefetchDNS(String const&)
-{
-    notImplemented();
-}
-
 void setCookieStoragePrivateBrowsingEnabled(bool)
 {
     notImplemented();

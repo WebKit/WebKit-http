@@ -57,7 +57,7 @@ class Widget;
     
 class AccessibilityNodeObject : public AccessibilityObject {
 protected:
-    AccessibilityNodeObject(Node*);
+    explicit AccessibilityNodeObject(Node*);
 public:
     static PassRefPtr<AccessibilityNodeObject> create(Node*);
     virtual ~AccessibilityNodeObject();
@@ -65,6 +65,8 @@ public:
     virtual void init();
     
     virtual bool isAccessibilityNodeObject() const { return true; }
+
+    virtual bool canvasHasFallbackContent() const;
 
     virtual bool canSetFocusAttribute() const;
     
@@ -81,7 +83,7 @@ public:
 
     virtual void detach();
     virtual void childrenChanged();
-    void updateAccessibilityRole();
+    virtual void updateAccessibilityRole();
 
     virtual LayoutRect elementRect() const;
 
@@ -98,6 +100,7 @@ protected:
     AccessibilityRole ariaRoleAttribute() const;
     AccessibilityRole determineAriaRoleAttribute() const;
     AccessibilityRole remapAriaRoleDueToParent(AccessibilityRole) const;
+    bool hasContentEditableAttributeSet() const;
 
 private:
     Node* m_node;

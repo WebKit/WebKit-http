@@ -45,7 +45,6 @@ public:
     virtual ~WebSettingsImpl() { }
 
     virtual bool deviceSupportsTouch();
-    virtual bool forceSoftwareCompositing() const { return m_forceSoftwareCompositing; }
     virtual bool scrollAnimatorEnabled() const;
     virtual bool viewportEnabled() const { return m_viewportEnabled; }
     virtual void setAccelerated2dCanvasEnabled(bool);
@@ -94,9 +93,9 @@ public:
     virtual void setFixedPositionCreatesStackingContext(bool);
     virtual void setFontRenderingModeNormal();
     virtual void setForceCompositingMode(bool);
-    virtual void setForceSoftwareCompositing(bool);
     virtual void setFrameFlatteningEnabled(bool);
     virtual void setFullScreenEnabled(bool);
+    virtual void setGestureTapHighlightEnabled(bool);
     virtual void setHyperlinkAuditingEnabled(bool);
     virtual void setImagesEnabled(bool);
     virtual void setInteractiveFormValidationEnabled(bool);
@@ -124,6 +123,7 @@ public:
     virtual void setPictographFontFamily(const WebString&, UScriptCode = USCRIPT_COMMON);
     virtual void setPluginsEnabled(bool);
     virtual void setPrivilegedWebGLExtensionsEnabled(bool);
+    virtual void setRenderVSyncEnabled(bool);
     virtual void setSansSerifFontFamily(const WebString&, UScriptCode = USCRIPT_COMMON);
     virtual void setSerifFontFamily(const WebString&, UScriptCode = USCRIPT_COMMON);
     virtual void setShouldDisplayCaptions(bool);
@@ -139,6 +139,7 @@ public:
     virtual void setSyncXHRInDocumentsEnabled(bool);
     virtual void setTextAreasAreResizable(bool);
     virtual void setTextAutosizingEnabled(bool);
+    virtual void setTextAutosizingFontScaleFactor(float);
     virtual void setTextDirectionSubmenuInclusionBehaviorNeverIncluded();
     virtual void setUnifiedTextCheckerEnabled(bool);
     virtual void setUserStyleSheetLocation(const WebURL&);
@@ -155,18 +156,21 @@ public:
     bool showFPSCounter() const { return m_showFPSCounter; }
     bool showPlatformLayerTree() const { return m_showPlatformLayerTree; }
     bool showPaintRects() const { return m_showPaintRects; }
+    bool renderVSyncEnabled() const { return m_renderVSyncEnabled; }
     bool applyDefaultDeviceScaleFactorInCompositor() const { return m_applyDefaultDeviceScaleFactorInCompositor; }
+    bool gestureTapHighlightEnabled() { return m_gestureTapHighlightEnabled; }
     WebSize defaultTileSize() const { return m_defaultTileSize; }
     WebSize maxUntiledLayerSize() const { return m_maxUntiledLayerSize; }
 
 private:
     WebCore::Settings* m_settings;
-    bool m_forceSoftwareCompositing;
     bool m_showFPSCounter;
     bool m_showPlatformLayerTree;
     bool m_showPaintRects;
+    bool m_renderVSyncEnabled;
     bool m_viewportEnabled;
     bool m_applyDefaultDeviceScaleFactorInCompositor;
+    bool m_gestureTapHighlightEnabled;
     WebSize m_defaultTileSize;
     WebSize m_maxUntiledLayerSize;
 };

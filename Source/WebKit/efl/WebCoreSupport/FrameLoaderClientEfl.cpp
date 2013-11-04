@@ -45,6 +45,7 @@
 #include "FrameTree.h"
 #include "FrameView.h"
 #include "HTMLFormElement.h"
+#include "HTTPStatusCodes.h"
 #include "IntentRequest.h"
 #include "MIMETypeRegistry.h"
 #include "NotImplemented.h"
@@ -297,6 +298,12 @@ void FrameLoaderClientEfl::dispatchDecidePolicyForResponse(FramePolicyFunction f
         return;
     }
 
+    // Ignore responses with an HTTP status code of 204 (No Content)
+    if (response.httpStatusCode() == HTTPNoContent) {
+        callPolicyFunction(function, PolicyIgnore);
+        return;
+    }
+
     if (canShowMIMEType(response.mimeType()))
         callPolicyFunction(function, PolicyUse);
     else
@@ -371,9 +378,9 @@ PassRefPtr<Frame> FrameLoaderClientEfl::createFrame(const KURL& url, const Strin
 
 void FrameLoaderClientEfl::redirectDataToPlugin(Widget* pluginWidget)
 {
-    ASSERT(!m_pluginView);
     m_pluginView = static_cast<PluginView*>(pluginWidget);
-    m_hasSentResponseToPlugin = false;
+    if (pluginWidget)
+        m_hasSentResponseToPlugin = false;
 }
 
 PassRefPtr<Widget> FrameLoaderClientEfl::createJavaAppletWidget(const IntSize&, HTMLAppletElement*, const KURL& baseURL,

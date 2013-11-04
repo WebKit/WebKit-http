@@ -54,7 +54,7 @@ public:
     virtual bool eventFilter(QObject* watched, QEvent* event);
     void resetClickCount() { m_clickCount = 0; }
 
-public slots:
+public Q_SLOTS:
     void mouseDown(int button = 0, const QStringList& modifiers = QStringList());
     void mouseUp(int button = 0);
     void mouseMoveTo(int x, int y);
@@ -74,9 +74,7 @@ public slots:
     void touchStart();
     void touchMove();
     void touchEnd();
-#if QT_VERSION >= 0x050000
     void touchCancel();
-#endif
     void zoomPageIn();
     void zoomPageOut();
     void textZoomIn();

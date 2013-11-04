@@ -22,10 +22,10 @@
 #include "qquickwebpage_p.h"
 
 #include "LayerTreeCoordinatorProxy.h"
+#include "LayerTreeRenderer.h"
 #include "QtWebPageEventHandler.h"
 #include "QtWebPageSGNode.h"
 #include "TransformationMatrix.h"
-#include "WebLayerTreeRenderer.h"
 #include "WebPageProxy.h"
 #include "qquickwebpage_p_p.h"
 #include "qquickwebview_p.h"
@@ -55,7 +55,6 @@ QQuickWebPagePrivate::QQuickWebPagePrivate(QQuickWebPage* q, QQuickWebView* view
     , viewportItem(viewportItem)
     , webPageProxy(0)
     , paintingIsInitialized(false)
-    , m_paintNode(0)
     , contentsScale(1)
 {
 }
@@ -82,7 +81,7 @@ QSGNode* QQuickWebPage::updatePaintNode(QSGNode* oldNode, UpdatePaintNodeData*)
         return oldNode;
 
     LayerTreeCoordinatorProxy* layerTreeCoordinatorProxy = d->webPageProxy->drawingArea()->layerTreeCoordinatorProxy();
-    WebLayerTreeRenderer* renderer = layerTreeCoordinatorProxy->layerTreeRenderer();
+    LayerTreeRenderer* renderer = layerTreeCoordinatorProxy->layerTreeRenderer();
 
     QtWebPageSGNode* node = static_cast<QtWebPageSGNode*>(oldNode);
     if (!node)

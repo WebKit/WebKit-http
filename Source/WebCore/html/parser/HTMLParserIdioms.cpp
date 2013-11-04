@@ -34,13 +34,13 @@
 
 namespace WebCore {
 
-String stripLeadingAndTrailingHTMLSpaces(const String& string)
+template <typename CharType>
+static String stripLeadingAndTrailingHTMLSpaces(String string, CharType characters, unsigned length)
 {
-    const UChar* characters = string.characters();
-    unsigned length = string.length();
+    unsigned numLeadingSpaces = 0;
+    unsigned numTrailingSpaces = 0;
 
-    unsigned numLeadingSpaces;
-    for (numLeadingSpaces = 0; numLeadingSpaces < length; ++numLeadingSpaces) {
+    for (; numLeadingSpaces < length; ++numLeadingSpaces) {
         if (isNotHTMLSpace(characters[numLeadingSpaces]))
             break;
     }
@@ -48,15 +48,30 @@ String stripLeadingAndTrailingHTMLSpaces(const String& string)
     if (numLeadingSpaces == length)
         return string.isNull() ? string : emptyAtom.string();
 
-    unsigned numTrailingSpaces;
-    for (numTrailingSpaces = 0; numTrailingSpaces < length; ++numTrailingSpaces) {
+    for (; numTrailingSpaces < length; ++numTrailingSpaces) {
         if (isNotHTMLSpace(characters[length - numTrailingSpaces - 1]))
             break;
     }
 
     ASSERT(numLeadingSpaces + numTrailingSpaces < length);
 
+    if (!(numLeadingSpaces | numTrailingSpaces))
+        return string;
+
     return string.substring(numLeadingSpaces, length - (numLeadingSpaces + numTrailingSpaces));
+}
+
+String stripLeadingAndTrailingHTMLSpaces(const String& string)
+{
+    unsigned length = string.length();
+
+    if (!length)
+        return string.isNull() ? string : emptyAtom.string();
+
+    if (string.is8Bit())
+        return stripLeadingAndTrailingHTMLSpaces(string, string.characters8(), length);
+
+    return stripLeadingAndTrailingHTMLSpaces(string, string.characters(), length);
 }
 
 String serializeForNumberType(const Decimal& number)
@@ -135,84 +150,6 @@ double parseToDoubleForNumberType(const String& string, double fallbackValue)
 double parseToDoubleForNumberType(const String& string)
 {
     return parseToDoubleForNumberType(string, std::numeric_limits<double>::quiet_NaN());
-}
-
-double parseToDoubleForNumberTypeWithDecimalPlaces(const String& string, unsigned *decimalPlaces, double fallbackValue)
-{
-    if (decimalPlaces)
-        *decimalPlaces = 0;
-
-    double value = parseToDoubleForNumberType(string, std::numeric_limits<double>::quiet_NaN());
-    if (!isfinite(value))
-        return fallbackValue;
-
-    if (!decimalPlaces)
-        return value;
-
-    size_t dotIndex = string.find('.');
-    size_t eIndex = string.find('e');
-    if (eIndex == notFound) 
-        eIndex = string.find('E');
-
-    unsigned baseDecimalPlaces = 0;
-    if (dotIndex != notFound) {
-        if (eIndex == notFound)
-            baseDecimalPlaces = string.length() - dotIndex - 1;
-        else
-            baseDecimalPlaces = eIndex - dotIndex - 1;
-    }
-
-    int exponent = 0;
-    if (eIndex != notFound) {
-        unsigned cursor = eIndex + 1, cursorSaved;
-        int digit, exponentSign;
-        int32_t exponent32;
-        size_t length = string.length();
-
-        // Not using String.toInt() in order to perform the same computation as dtoa() does.
-        exponentSign = 0;
-        switch (digit = string[cursor]) {
-        case '-':
-            exponentSign = 1;
-        case '+':
-            digit = string[++cursor];
-        }
-        if (digit >= '0' && digit <= '9') {
-            while (cursor < length && digit == '0')
-                digit = string[++cursor];
-            if (digit > '0' && digit <= '9') {
-                exponent32 = digit - '0';
-                cursorSaved = cursor;
-                while (cursor < length && (digit = string[++cursor]) >= '0' && digit <= '9')
-                    exponent32 = (10 * exponent32) + digit - '0';
-                if (cursor - cursorSaved > 8 || exponent32 > 19999)
-                    /* Avoid confusion from exponents
-                     * so large that e might overflow.
-                     */
-                    exponent = 19999; /* safe for 16 bit ints */
-                else
-                    exponent = static_cast<int>(exponent32);
-                if (exponentSign)
-                    exponent = -exponent;
-            } else
-                exponent = 0;
-        }
-    }
-
-    int intDecimalPlaces = baseDecimalPlaces - exponent;
-    if (intDecimalPlaces < 0)
-        *decimalPlaces = 0;
-    else if (intDecimalPlaces > 19999)
-        *decimalPlaces = 19999;
-    else
-        *decimalPlaces = static_cast<unsigned>(intDecimalPlaces);
-
-    return value;
-}
-
-double parseToDoubleForNumberTypeWithDecimalPlaces(const String& string, unsigned *decimalPlaces)
-{
-    return parseToDoubleForNumberTypeWithDecimalPlaces(string, decimalPlaces, std::numeric_limits<double>::quiet_NaN());
 }
 
 // http://www.whatwg.org/specs/web-apps/current-work/#rules-for-parsing-integers

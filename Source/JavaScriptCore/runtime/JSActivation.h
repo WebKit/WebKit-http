@@ -30,9 +30,10 @@
 #define JSActivation_h
 
 #include "CodeBlock.h"
+#include "CopiedSpaceInlineMethods.h"
 #include "JSVariableObject.h"
-#include "SymbolTable.h"
 #include "Nodes.h"
+#include "SymbolTable.h"
 
 namespace JSC {
 
@@ -49,11 +50,9 @@ namespace JSC {
         static JSActivation* create(JSGlobalData& globalData, CallFrame* callFrame, FunctionExecutable* funcExec)
         {
             JSActivation* activation = new (NotNull, allocateCell<JSActivation>(globalData.heap)) JSActivation(callFrame, funcExec);
-            activation->finishCreation(callFrame);
+            activation->finishCreation(callFrame, funcExec);
             return activation;
         }
-
-        static void finalize(JSCell*);
 
         static void visitChildren(JSCell*, SlotVisitor&);
 
@@ -61,6 +60,7 @@ namespace JSC {
 
         static bool getOwnPropertySlot(JSCell*, ExecState*, PropertyName, PropertySlot&);
         static void getOwnPropertyNames(JSObject*, ExecState*, PropertyNameArray&, EnumerationMode);
+        JS_EXPORT_PRIVATE static bool getOwnPropertyDescriptor(JSObject*, ExecState*, PropertyName, PropertyDescriptor&);
 
         static void put(JSCell*, ExecState*, PropertyName, JSValue, PutPropertySlot&);
 
@@ -78,8 +78,8 @@ namespace JSC {
         bool isValidScopedLookup(int index) { return index < m_numCapturedVars; }
 
     protected:
-        void finishCreation(CallFrame*);
-        static const unsigned StructureFlags = IsEnvironmentRecord | OverridesGetOwnPropertySlot | OverridesVisitChildren | OverridesGetPropertyNames | JSVariableObject::StructureFlags;
+        void finishCreation(CallFrame*, FunctionExecutable*);
+        static const unsigned StructureFlags = OverridesGetOwnPropertySlot | OverridesVisitChildren | OverridesGetPropertyNames | Base::StructureFlags;
 
     private:
         bool symbolTableGet(PropertyName, PropertySlot&);
@@ -91,6 +91,11 @@ namespace JSC {
         static JSValue argumentsGetter(ExecState*, JSValue, PropertyName);
         NEVER_INLINE PropertySlot::GetValueFunc getArgumentsGetter();
 
+        size_t registerOffset();
+        size_t registerArraySize();
+        size_t registerArraySizeInBytes();
+
+        StorageBarrier m_registerArray; // Independent copy of registers, used when a variable object copies its registers out of the register file.
         int m_numCapturedArgs;
         int m_numCapturedVars : 30;
         bool m_isTornOff : 1;
@@ -117,23 +122,50 @@ namespace JSC {
         return false;
     }
 
+    inline size_t JSActivation::registerOffset()
+    {
+        if (!m_numCapturedArgs)
+            return 0;
+
+        size_t capturedArgumentCountIncludingThis = m_numCapturedArgs + 1;
+        return CallFrame::offsetFor(capturedArgumentCountIncludingThis);
+    }
+
+    inline size_t JSActivation::registerArraySize()
+    {
+        return registerOffset() + m_numCapturedVars;
+    }
+
+    inline size_t JSActivation::registerArraySizeInBytes()
+    {
+        return registerArraySize() * sizeof(WriteBarrierBase<Unknown>);
+    }
+
     inline void JSActivation::tearOff(JSGlobalData& globalData)
     {
         ASSERT(!m_registerArray);
         ASSERT(m_numCapturedVars + m_numCapturedArgs);
 
-        int registerOffset = CallFrame::offsetFor(m_numCapturedArgs + 1);
-        size_t registerArraySize = registerOffset + m_numCapturedVars;
+        void* allocation = 0;
+        if (!globalData.heap.tryAllocateStorage(registerArraySizeInBytes(), &allocation))
+            CRASH();
+        PropertyStorage registerArray = static_cast<PropertyStorage>(allocation);
+        PropertyStorage registers = registerArray + registerOffset();
 
-        OwnArrayPtr<WriteBarrier<Unknown> > registerArray = adoptArrayPtr(new WriteBarrier<Unknown>[registerArraySize]);
-        WriteBarrier<Unknown>* registers = registerArray.get() + registerOffset;
-
+        // arguments
         int from = CallFrame::argumentOffset(m_numCapturedArgs - 1);
-        int to = m_numCapturedVars;
+        int to = CallFrame::thisArgumentOffset(); // Skip 'this' because it's not lexically accessible.
         for (int i = from; i < to; ++i)
             registers[i].set(globalData, this, m_registers[i].get());
 
-        setRegisters(registers, registerArray.release());
+        // vars
+        from = 0;
+        to = m_numCapturedVars;
+        for (int i = from; i < to; ++i)
+            registers[i].set(globalData, this, m_registers[i].get());
+
+        m_registerArray.set(globalData, this, registerArray);
+        m_registers = registers;
         m_isTornOff = true;
     }
 

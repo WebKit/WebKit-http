@@ -62,10 +62,11 @@
 
          teardown: function(data) {
              var scores = DRT.computeScores(data.result);
-             PerfTestRunner.printStatistics(scores);
+             PerfTestRunner.printStatistics(scores, "Time:");
+             PerfTestRunner.getAndPrintMemoryStatistics();
              window.setTimeout(function() {
-                 if (window.layoutTestController)
-                     layoutTestController.notifyDone();
+                 if (window.testRunner)
+                     testRunner.notifyDone();
              }, 0);
          },
 

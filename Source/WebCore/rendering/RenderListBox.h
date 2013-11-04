@@ -36,6 +36,8 @@
 
 namespace WebCore {
 
+class HTMLSelectElement;
+
 class RenderListBox : public RenderBlock, private ScrollableArea {
 public:
     RenderListBox(Element*);
@@ -56,17 +58,19 @@ public:
     int size() const;
 
 private:
+    HTMLSelectElement* selectElement() const;
+
     virtual const char* renderName() const { return "RenderListBox"; }
 
     virtual bool isListBox() const { return true; }
 
     virtual void updateFromElement();
-
+    virtual bool canBeReplacedWithInlineRunIn() const OVERRIDE;
     virtual bool hasControlClip() const { return true; }
     virtual void paintObject(PaintInfo&, const LayoutPoint&);
     virtual LayoutRect controlClipRect(const LayoutPoint&) const;
 
-    virtual bool isPointInOverflowControl(HitTestResult&, const LayoutPoint& pointInContainer, const LayoutPoint& accumulatedOffset);
+    virtual bool isPointInOverflowControl(HitTestResult&, const LayoutPoint& locationInContainer, const LayoutPoint& accumulatedOffset);
 
     virtual bool scroll(ScrollDirection, ScrollGranularity, float multiplier = 1, Node** stopNode = 0);
     virtual bool logicalScroll(ScrollLogicalDirection, ScrollGranularity, float multiplier = 1, Node** stopNode = 0);
@@ -94,30 +98,30 @@ private:
     virtual void setScrollLeft(int);
     virtual void setScrollTop(int);
 
-    virtual bool nodeAtPoint(const HitTestRequest&, HitTestResult&, const HitTestPoint& pointInContainer, const LayoutPoint& accumulatedOffset, HitTestAction) OVERRIDE;
+    virtual bool nodeAtPoint(const HitTestRequest&, HitTestResult&, const HitTestLocation& locationInContainer, const LayoutPoint& accumulatedOffset, HitTestAction) OVERRIDE;
 
     // ScrollableArea interface.
-    virtual int scrollSize(ScrollbarOrientation) const;
-    virtual int scrollPosition(Scrollbar*) const;
-    virtual void setScrollOffset(const IntPoint&);
-    virtual void invalidateScrollbarRect(Scrollbar*, const IntRect&);
-    virtual bool isActive() const;
-    virtual bool isScrollCornerVisible() const { return false; } // We don't support resize on list boxes yet. If we did these would have to change.
-    virtual IntRect scrollCornerRect() const { return IntRect(); }
-    virtual void invalidateScrollCornerRect(const IntRect&) { }
-    virtual IntRect convertFromScrollbarToContainingView(const Scrollbar*, const IntRect&) const;
-    virtual IntRect convertFromContainingViewToScrollbar(const Scrollbar*, const IntRect&) const;
-    virtual IntPoint convertFromScrollbarToContainingView(const Scrollbar*, const IntPoint&) const;
-    virtual IntPoint convertFromContainingViewToScrollbar(const Scrollbar*, const IntPoint&) const;
-    virtual Scrollbar* verticalScrollbar() const { return m_vBar.get(); }
-    virtual IntSize contentsSize() const;
-    virtual int visibleHeight() const;
-    virtual int visibleWidth() const;
-    virtual IntPoint currentMousePosition() const;
-    virtual bool shouldSuspendScrollAnimations() const;
-    virtual bool isOnActivePage() const;
+    virtual int scrollSize(ScrollbarOrientation) const OVERRIDE;
+    virtual int scrollPosition(Scrollbar*) const OVERRIDE;
+    virtual void setScrollOffset(const IntPoint&) OVERRIDE;
+    virtual void invalidateScrollbarRect(Scrollbar*, const IntRect&) OVERRIDE;
+    virtual bool isActive() const OVERRIDE;
+    virtual bool isScrollCornerVisible() const OVERRIDE { return false; } // We don't support resize on list boxes yet. If we did these would have to change.
+    virtual IntRect scrollCornerRect() const OVERRIDE { return IntRect(); }
+    virtual void invalidateScrollCornerRect(const IntRect&) OVERRIDE { }
+    virtual IntRect convertFromScrollbarToContainingView(const Scrollbar*, const IntRect&) const OVERRIDE;
+    virtual IntRect convertFromContainingViewToScrollbar(const Scrollbar*, const IntRect&) const OVERRIDE;
+    virtual IntPoint convertFromScrollbarToContainingView(const Scrollbar*, const IntPoint&) const OVERRIDE;
+    virtual IntPoint convertFromContainingViewToScrollbar(const Scrollbar*, const IntPoint&) const OVERRIDE;
+    virtual Scrollbar* verticalScrollbar() const OVERRIDE { return m_vBar.get(); }
+    virtual IntSize contentsSize() const OVERRIDE;
+    virtual int visibleHeight() const OVERRIDE;
+    virtual int visibleWidth() const OVERRIDE;
+    virtual IntPoint currentMousePosition() const OVERRIDE;
+    virtual bool shouldSuspendScrollAnimations() const OVERRIDE;
+    virtual bool isOnActivePage() const OVERRIDE;
 
-    virtual ScrollableArea* enclosingScrollableArea() const;
+    virtual ScrollableArea* enclosingScrollableArea() const OVERRIDE;
     virtual IntRect scrollableAreaBoundingBox() const OVERRIDE;
 
     // NOTE: This should only be called by the overriden setScrollOffset from ScrollableArea.

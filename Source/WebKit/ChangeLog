@@ -1,3 +1,214 @@
+2012-08-29  Ryuan Choi  <ryuan.choi@samsung.com>
+
+        [EFL] Move several files to remove webkit1 dependency from WebCore.
+        https://bugs.webkit.org/show_bug.cgi?id=95264
+
+        Reviewed by Gyuyoung Kim.
+
+        * PlatformEfl.cmake: Added files which is moved.
+
+2012-08-28  Thiago Marcos P. Santos  <thiago.santos@intel.com>
+
+        [EFL] Rename knob images to thumb on the default theme
+        https://bugs.webkit.org/show_bug.cgi?id=95186
+
+        Reviewed by Kenneth Rohde Christiansen.
+
+        Updated buildsystem after renaming theme images.
+
+        * PlatformEfl.cmake:
+
+2012-08-27  Mikhail Pozdnyakov  <mikhail.pozdnyakov@intel.com>
+
+        Rename RegisterProtocolHandler API to NavigatorContentUtils
+        https://bugs.webkit.org/show_bug.cgi?id=94920
+
+        Reviewed by Adam Barth.
+
+        Modified PlatformEfl.cmake so that it includes the renamed files.
+
+        * PlatformEfl.cmake:
+
+2012-08-20  Dominik Röttsches  <dominik.rottsches@intel.com>
+
+        [EFL] Get rid of pango backend support once harfbuzz-ng is working
+        https://bugs.webkit.org/show_bug.cgi?id=92102
+
+        Reviewed by Kenneth Rohde Christiansen.
+
+        Removing pango-specific includes and libraries.
+
+        * PlatformEfl.cmake: Pango sections removed.
+
+2012-08-17  Rob Buis  <rbuis@rim.com>
+
+        [BlackBerry] Remove some shared libraries from linking
+        https://bugs.webkit.org/show_bug.cgi?id=94253
+
+        Reviewed by Yong Li.
+
+        Remove some shared libraries.
+
+        * PlatformBlackBerry.cmake:
+
+2012-08-15  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Update manual tests and comments to refer to TestRunner instead of LayoutTestController
+        https://bugs.webkit.org/show_bug.cgi?id=94168
+
+        Reviewed by Kent Tamura.
+
+        * PlatformBlackBerry.cmake:
+
+2012-08-14  Christophe Dumez  <christophe.dumez@intel.com>
+
+        [EFL] undefined reference to 'g_type_init' with gold linker
+        https://bugs.webkit.org/show_bug.cgi?id=93935
+
+        Unreviewed build fix. Link against glib-gobject to
+        fix linking error with gold linker.
+
+        * PlatformEfl.cmake:
+
+2012-08-11  Raphael Kubo da Costa  <rakuco@webkit.org>
+
+        [CMake] Rewrite FindLibSoup2.cmake.
+        https://bugs.webkit.org/show_bug.cgi?id=93191
+
+        Reviewed by Rob Buis.
+
+        * PlatformEfl.cmake: Use LIBSOUP_FOO instead of LIBSOUP24_FOO.
+
+2012-08-13  Raphael Kubo da Costa  <rakuco@webkit.org>
+
+        [CMake] Remove glib-related Find modules and write single new one instead.
+        https://bugs.webkit.org/show_bug.cgi?id=93786
+
+        Reviewed by Rob Buis.
+
+        * PlatformEfl.cmake: Use GLIB_* instead of Glib_*.
+
+2012-08-12  Loïc Yhuel  <loic.yhuel@softathome.com>
+
+        [Qt] Make it possible to build without QtTest/QtPrintSupport
+        https://bugs.webkit.org/show_bug.cgi?id=93492
+
+        Reviewed by Tor Arne Vestbø.
+
+        * WebKit1.pri: Optional printsupport
+
+2012-08-10  Joshua Netterfield  <jnetterfield@rim.com>
+
+        [WebGL] Add support for EXT_robustness
+        https://bugs.webkit.org/show_bug.cgi?id=93379
+
+        Reviewed by George Staikos.
+
+        RIM PR# 147510
+        Internally reviewed by Arvid Nilsson.
+
+        * CMakeLists.txt: Build system adaptation.
+
+2012-08-10  Benjamin C Meyer  <bmeyer@rim.com>
+
+        Introduce JavaScriptVariant object.
+        https://bugs.webkit.org/show_bug.cgi?id=93644
+
+        The JavaScriptVariant can be used for functions that return results from
+        JavaScript such as executeJavaScript or functions that take arguments
+        to pass a variable to JavaScript and they want to make sure the type
+        is correct.
+
+        Convert executeJavaScriptFunction() to use this data type as the
+        example, other functions will be converted in the future.
+
+        PR 14929
+
+        Internally reviewed by Joe Mason
+        Reviewed by Adam Treat
+
+        * PlatformBlackBerry.cmake:
+
+2012-08-10  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
+
+        [BlackBerry] Fix wrong include path for notifications.
+        https://bugs.webkit.org/show_bug.cgi?id=93714
+
+        Reviewed by Rob Buis.
+
+        * PlatformBlackBerry.cmake: Change path from notifications to Modules/notifications.
+
+2012-08-08  Antonio Gomes  <agomes@rim.com>
+
+        [BlackBerry] Tie up the scrolling machinery to the graphics tree when applicable for in-region scroll
+        https://bugs.webkit.org/show_bug.cgi?id=93482
+
+        Reviewed by Rob Buis.
+
+        * PlatformBlackBerry.cmake: Build system adaptation.
+
+2012-08-07  Ryuan Choi  <ryuan.choi@samsung.com>
+
+        [EFL] Remove PlatformTouchEventEfl and PlatformTouchPointEfl
+        https://bugs.webkit.org/show_bug.cgi?id=93270
+
+        Reviewed by Eric Seidel.
+
+        * PlatformEfl.cmake: Added ewk_touch_event.cpp
+
+2012-08-07  Konrad Piascik  <kpiascik@rim.com>
+
+        [BlackBerry] InspectorOverlay class duplicated in WebCore
+        https://bugs.webkit.org/show_bug.cgi?id=93124
+
+        Reviewed by Rob Buis.
+
+        Updated InspectorOverlay build path.
+
+        * PlatformBlackBerry.cmake:
+
+2012-08-07  No'am Rosenthal  <noam.rosenthal@nokia.com>
+
+        [Qt] Make it possible to build without QtQuick
+
+        Reviewed by Simon Hausmann.
+
+        * WebKit1.pri:
+
+2012-07-19  Simon Hausmann  <simon.hausmann@nokia.com>
+
+        [Qt] Remove Qt 4 specific code paths
+        https://bugs.webkit.org/show_bug.cgi?id=88161
+
+        Reviewed by Kenneth Rohde Christiansen.
+
+        * WebKit.pri:
+        * WebKit1.pri:
+        * WebKit1.pro:
+
+2012-08-07  Mikhail Pozdnyakov  <mikhail.pozdnyakov@intel.com>
+
+        CUSTOM_SCHEME_HANDLER flag should depend on REGISTER_PROTOCOL_HANDLER
+        https://bugs.webkit.org/show_bug.cgi?id=93081
+
+        Reviewed by Adam Barth.
+
+        Modified PlatformEfl.cmake so that CUSTOM_SCHEME_HANDLER flag cannot act without REGISTER_PROTOCOL_HANDLER being set.
+
+        * PlatformEfl.cmake:
+
+2012-08-01  Antonio Gomes  <agomes@rim.com>
+
+        [BlackBerry] Implement InRegionScroller class as a in-region scroll controller
+        https://bugs.webkit.org/show_bug.cgi?id=92889
+        PR #186587
+
+        Reviewed by Yong Li.
+
+        Internally reviewed by Arvid Nilsson.
+
+        * PlatformBlackBerry.cmake: Added InRegionScroller.cpp|h to the build system.
+
 2012-07-30  Simon Hausmann  <simon.hausmann@nokia.com>
 
         Unreviewed Qt/Mac build fix: Use libWebKitSystemInterfaceMountainLion.a

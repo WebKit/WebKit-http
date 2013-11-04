@@ -49,11 +49,13 @@
 #include "GeolocationError.h"
 #include "GeolocationPosition.h"
 #include "HTMLInputElement.h"
+#include "IDBCursor.h"
 #include "IDBDatabaseException.h"
 #include "IDBFactoryBackendInterface.h"
 #include "IDBKey.h"
 #include "IDBKeyPath.h"
 #include "IDBMetadata.h"
+#include "IDBTransactionBackendInterface.h"
 #include "IceOptions.h"
 #include "IconURL.h"
 #include "MediaPlayer.h"
@@ -62,6 +64,7 @@
 #include "PageVisibilityState.h"
 #include "PeerConnection00.h"
 #include "PlatformCursor.h"
+#include "RTCPeerConnectionHandlerClient.h"
 #include "ReferrerPolicy.h"
 #include "ResourceResponse.h"
 #include "Settings.h"
@@ -84,11 +87,13 @@
 #include "WebFontDescription.h"
 #include "WebGeolocationError.h"
 #include "WebGeolocationPosition.h"
+#include "WebIDBCursor.h"
 #include "WebIDBDatabaseException.h"
 #include "WebIDBFactory.h"
 #include "WebIDBKey.h"
 #include "WebIDBKeyPath.h"
 #include "WebIDBMetadata.h"
+#include "WebIDBTransaction.h"
 #include "WebIconURL.h"
 #include "WebInputElement.h"
 #include "WebMediaPlayer.h"
@@ -111,6 +116,8 @@
 #include <public/WebClipboard.h>
 #include <public/WebFileSystem.h>
 #include <public/WebFilterOperation.h>
+#include <public/WebRTCPeerConnectionHandler.h>
+#include <public/WebRTCPeerConnectionHandlerClient.h>
 #include <public/WebReferrerPolicy.h>
 #include <public/WebScrollbar.h>
 #include <public/WebURLResponse.h>
@@ -253,6 +260,8 @@ COMPILE_ASSERT_MATCHING_ENUM(WebAccessibilityRoleDocumentMath, DocumentMathRole)
 COMPILE_ASSERT_MATCHING_ENUM(WebAccessibilityRoleDocumentNote, DocumentNoteRole);
 COMPILE_ASSERT_MATCHING_ENUM(WebAccessibilityRoleDocumentRegion, DocumentRegionRole);
 COMPILE_ASSERT_MATCHING_ENUM(WebAccessibilityRoleUserInterfaceTooltip, UserInterfaceTooltipRole);
+COMPILE_ASSERT_MATCHING_ENUM(WebAccessibilityRoleToggleButton, ToggleButtonRole);
+COMPILE_ASSERT_MATCHING_ENUM(WebAccessibilityRoleCanvas, CanvasRole);
 
 COMPILE_ASSERT_MATCHING_ENUM(WebApplicationCacheHost::Uncached, ApplicationCacheHost::UNCACHED);
 COMPILE_ASSERT_MATCHING_ENUM(WebApplicationCacheHost::Idle, ApplicationCacheHost::IDLE);
@@ -482,6 +491,14 @@ COMPILE_ASSERT_MATCHING_ENUM(WebIDBKeyPath::StringType, IDBKeyPath::StringType);
 COMPILE_ASSERT_MATCHING_ENUM(WebIDBKeyPath::ArrayType, IDBKeyPath::ArrayType);
 
 COMPILE_ASSERT_MATCHING_ENUM(WebIDBMetadata::NoIntVersion, IDBDatabaseMetadata::NoIntVersion);
+
+COMPILE_ASSERT_MATCHING_ENUM(WebIDBCursor::Next, IDBCursor::NEXT);
+COMPILE_ASSERT_MATCHING_ENUM(WebIDBCursor::NextNoDuplicate, IDBCursor::NEXT_NO_DUPLICATE);
+COMPILE_ASSERT_MATCHING_ENUM(WebIDBCursor::Prev, IDBCursor::PREV);
+COMPILE_ASSERT_MATCHING_ENUM(WebIDBCursor::PrevNoDuplicate, IDBCursor::PREV_NO_DUPLICATE);
+
+COMPILE_ASSERT_MATCHING_ENUM(WebIDBTransaction::PreemptiveTask, IDBTransactionBackendInterface::PreemptiveTask);
+COMPILE_ASSERT_MATCHING_ENUM(WebIDBTransaction::NormalTask, IDBTransactionBackendInterface::NormalTask);
 #endif
 
 #if ENABLE(FILE_SYSTEM)
@@ -579,6 +596,12 @@ COMPILE_ASSERT_MATCHING_ENUM(WebPeerConnection00HandlerClient::ICEStateConnected
 COMPILE_ASSERT_MATCHING_ENUM(WebPeerConnection00HandlerClient::ICEStateCompleted, PeerConnection00::ICE_COMPLETED);
 COMPILE_ASSERT_MATCHING_ENUM(WebPeerConnection00HandlerClient::ICEStateFailed, PeerConnection00::ICE_FAILED);
 COMPILE_ASSERT_MATCHING_ENUM(WebPeerConnection00HandlerClient::ICEStateClosed, PeerConnection00::ICE_CLOSED);
+
+COMPILE_ASSERT_MATCHING_ENUM(WebRTCPeerConnectionHandlerClient::ReadyStateNew, RTCPeerConnectionHandlerClient::ReadyStateNew);
+COMPILE_ASSERT_MATCHING_ENUM(WebRTCPeerConnectionHandlerClient::ReadyStateOpening, RTCPeerConnectionHandlerClient::ReadyStateOpening);
+COMPILE_ASSERT_MATCHING_ENUM(WebRTCPeerConnectionHandlerClient::ReadyStateActive, RTCPeerConnectionHandlerClient::ReadyStateActive);
+COMPILE_ASSERT_MATCHING_ENUM(WebRTCPeerConnectionHandlerClient::ReadyStateClosing, RTCPeerConnectionHandlerClient::ReadyStateClosing);
+COMPILE_ASSERT_MATCHING_ENUM(WebRTCPeerConnectionHandlerClient::ReadyStateClosed, RTCPeerConnectionHandlerClient::ReadyStateClosed);
 #endif
 
 #if ENABLE(SCRIPTED_SPEECH)

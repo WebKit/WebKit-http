@@ -31,6 +31,7 @@
 #define RenderRegion_h
 
 #include "RenderReplaced.h"
+#include "StyleInheritedData.h"
 
 namespace WebCore {
 
@@ -46,13 +47,13 @@ public:
     virtual bool isRenderRegion() const { return true; }
 
     virtual void paintReplaced(PaintInfo&, const LayoutPoint&);
-    virtual bool nodeAtPoint(const HitTestRequest&, HitTestResult&, const HitTestPoint& pointInContainer, const LayoutPoint& accumulatedOffset, HitTestAction) OVERRIDE;
+    virtual bool nodeAtPoint(const HitTestRequest&, HitTestResult&, const HitTestLocation& locationInContainer, const LayoutPoint& accumulatedOffset, HitTestAction) OVERRIDE;
 
     virtual void styleDidChange(StyleDifference, const RenderStyle* oldStyle);
 
-    void setRegionRect(const LayoutRect& rect) { m_regionRect = rect; }
-    LayoutRect regionRect() const { return m_regionRect; }
-    LayoutRect regionOverflowRect() const;
+    void setFlowThreadPortionRect(const LayoutRect& rect) { m_flowThreadPortionRect = rect; }
+    LayoutRect flowThreadPortionRect() const { return m_flowThreadPortionRect; }
+    LayoutRect flowThreadPortionOverflowRect() const;
 
     void attachRegion();
     void detachRegion();
@@ -88,33 +89,55 @@ public:
         RegionUndefined,
         RegionEmpty,
         RegionFit,
-        RegionOverflow
+        RegionOverset
     };
 
     RegionState regionState() const { return isValid() ? m_regionState : RegionUndefined; }
     void setRegionState(RegionState regionState) { m_regionState = regionState; }
-    void setDispatchRegionLayoutUpdateEvent(bool value) { m_dispatchRegionLayoutUpdateEvent = value; }
-    bool shouldDispatchRegionLayoutUpdateEvent() { return m_dispatchRegionLayoutUpdateEvent; }
     
-    virtual LayoutUnit logicalWidthForFlowThreadContent() const;
-    virtual LayoutUnit logicalHeightForFlowThreadContent() const;
+    // These methods represent the width and height of a "page" and for a RenderRegion they are just the
+    // content width and content height of a region. For RenderRegionSets, however, they will be the width and
+    // height of a single column or page in the set.
+    virtual LayoutUnit pageLogicalWidth() const;
+    virtual LayoutUnit pageLogicalHeight() const;
+    
+    // This method represents the logical height of the entire flow thread portion used by the region or set.
+    // For RenderRegions it matches logicalPaginationHeight(), but for sets it is the height of all the pages
+    // or columns added together.
+    virtual LayoutUnit logicalHeightOfAllFlowThreadContent() const;
+
+    virtual void expandToEncompassFlowThreadContentsIfNeeded() {};
+
+protected:
+    void setRegionObjectsRegionStyle();
+    void restoreRegionObjectsOriginalStyle();
+
+    LayoutRect overflowRectForFlowThreadPortion(LayoutRect flowThreadPortionRect, bool isFirstPortion, bool isLastPortion) const;
 
 private:
     virtual const char* renderName() const { return "RenderRegion"; }
 
+    virtual void insertedIntoTree() OVERRIDE;
+    virtual void willBeRemovedFromTree() OVERRIDE;
+
+    virtual void installFlowThread();
+
     PassRefPtr<RenderStyle> computeStyleInRegion(const RenderObject*);
     void computeChildrenStyleInRegion(const RenderObject*);
-    void setRegionObjectsRegionStyle();
-    void restoreRegionObjectsOriginalStyle();
     void setObjectStyleInRegion(RenderObject*, PassRefPtr<RenderStyle>, bool objectRegionStyleCached);
     void printRegionObjectsStyles();
+
+    void checkRegionStyle();
+
+protected:
     RenderFlowThread* m_flowThread;
 
+private:
     // If this RenderRegion is displayed as part of another named flow,
     // we need to create a dependency tree, so that layout of the
     // regions is always done before the regions themselves.
     RenderNamedFlowThread* m_parentNamedFlowThread;
-    LayoutRect m_regionRect;
+    LayoutRect m_flowThreadPortionRect;
 
     // This map holds unique information about a block that is split across regions.
     // A RenderBoxRegionInfo* tells us about any layout information for a RenderBox that
@@ -139,7 +162,6 @@ private:
     bool m_isValid;
     bool m_hasCustomRegionStyle;
     RegionState m_regionState;
-    bool m_dispatchRegionLayoutUpdateEvent;
 };
 
 inline RenderRegion* toRenderRegion(RenderObject* object)

@@ -44,13 +44,8 @@ class FileSystem(object):
 
     Unless otherwise noted, all paths are allowed to be either absolute
     or relative."""
-    def __init__(self):
-        self._sep = os.sep
-
-    def _get_sep(self):
-        return self._sep
-
-    sep = property(_get_sep, doc="pathname separator")
+    sep = os.sep
+    pardir = os.pardir
 
     def abspath(self, path):
         return os.path.abspath(path)
@@ -261,6 +256,9 @@ class FileSystem(object):
     def rmtree(self, path):
         """Delete the directory rooted at path, whether empty or not."""
         shutil.rmtree(path, ignore_errors=True)
+
+    def copytree(self, source, destination):
+        shutil.copytree(source, destination)
 
     def split(self, path):
         """Return (dirname, basename + '.' + ext)"""

@@ -2,7 +2,7 @@ var initialize_NetworkTest = function() {
 
 InspectorTest.dumpNetworkRequests = function()
 {
-    var requests = WebInspector.panels.network.requests.slice();
+    var requests = WebInspector.panel("network").requests.slice();
     requests.sort(function(a, b) {return a.url.localeCompare(b.url);});
     InspectorTest.addResult("resources count = " + requests.length);
     for (i = 0; i < requests.length; i++)
@@ -27,6 +27,11 @@ InspectorTest.resetInspectorResourcesData = function(callback)
 
 function doXHR(method, url, async, callback)
 {
+    doXHRWithPayload(method, url, async, null, callback);
+}
+
+function doXHRWithPayload(method, url, async, payload, callback)
+{
     var xhr = new XMLHttpRequest();
     xhr.onreadystatechange = function()
     {
@@ -34,9 +39,9 @@ function doXHR(method, url, async, callback)
             if (typeof(callback) === "function")
                 callback();
         }
-    };
+    }
     xhr.open(method, url, async);
-    xhr.send(null);
+    xhr.send(payload);
 }
 
 function resetInspectorResourcesData()

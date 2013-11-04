@@ -68,18 +68,13 @@ typedef unsigned int GLuint;
 #if PLATFORM(MAC)
 typedef CGLContextObj PlatformGraphicsContext3D;
 #elif PLATFORM(QT)
-#if HAVE(QT5)
 typedef QOpenGLContext* PlatformGraphicsContext3D;
 typedef QSurface* PlatformGraphicsSurface3D;
-#else
-typedef QGLContext* PlatformGraphicsContext3D;
-typedef QGLWidget* PlatformGraphicsSurface3D;
-#endif
 #else
 typedef void* PlatformGraphicsContext3D;
 #endif
 
-#if PLATFORM(CHROMIUM) && USE(SKIA)
+#if (PLATFORM(CHROMIUM) || PLATFORM(BLACKBERRY)) && USE(SKIA)
 class GrContext;
 #endif
 
@@ -255,6 +250,7 @@ public:
         ALPHA = 0x1906,
         RGB = 0x1907,
         RGBA = 0x1908,
+        BGRA = 0x80E1,
         LUMINANCE = 0x1909,
         LUMINANCE_ALPHA = 0x190A,
         UNSIGNED_SHORT_4_4_4_4 = 0x8033,
@@ -463,7 +459,8 @@ public:
 
     enum RenderStyle {
         RenderOffscreen,
-        RenderDirectlyToHostWindow
+        RenderDirectlyToHostWindow,
+        RenderToCurrentGLContext
     };
 
     class ContextLostCallback {
@@ -482,13 +479,14 @@ public:
     void setErrorMessageCallback(PassOwnPtr<ErrorMessageCallback>);
 
     static PassRefPtr<GraphicsContext3D> create(Attributes, HostWindow*, RenderStyle = RenderOffscreen);
+    static PassRefPtr<GraphicsContext3D> createForCurrentGLContext();
     ~GraphicsContext3D();
 
 #if PLATFORM(MAC)
     PlatformGraphicsContext3D platformGraphicsContext3D() const { return m_contextObj; }
     Platform3DObject platformTexture() const { return m_compositorTexture; }
     CALayer* platformLayer() const { return reinterpret_cast<CALayer*>(m_webGLLayer.get()); }
-#elif PLATFORM(CHROMIUM)
+#elif PLATFORM(CHROMIUM) || PLATFORM(BLACKBERRY)
     PlatformGraphicsContext3D platformGraphicsContext3D() const;
     Platform3DObject platformTexture() const;
 #if USE(SKIA)
@@ -524,10 +522,13 @@ public:
 #endif
     bool makeContextCurrent();
 
-#if PLATFORM(MAC) || PLATFORM(CHROMIUM) || PLATFORM(GTK) || PLATFORM(QT) || PLATFORM(EFL)
+#if PLATFORM(MAC) || PLATFORM(CHROMIUM) || PLATFORM(GTK) || PLATFORM(QT) || PLATFORM(EFL) || PLATFORM(BLACKBERRY)
     // With multisampling on, blit from multisampleFBO to regular FBO.
     void prepareTexture();
 #endif
+
+    // Equivalent to ::glTexImage2D(). Allows pixels==0 with no allocation.
+    void texImage2DDirect(GC3Denum target, GC3Dint level, GC3Denum internalformat, GC3Dsizei width, GC3Dsizei height, GC3Dint border, GC3Denum format, GC3Denum type, const void* pixels);
 
     // Helper to texImage2D with pixel==0 case: pixels are initialized to 0.
     // Return true if no GL error is synthesized.
@@ -818,6 +819,10 @@ public:
     PassRefPtr<ImageData> paintRenderingResultsToImageData(DrawingBuffer*);
     bool paintCompositedResultsToCanvas(ImageBuffer*);
 
+#if PLATFORM(BLACKBERRY)
+    bool paintsIntoCanvasBuffer() const;
+#endif
+
     // Support for buffer creation and deletion
     Platform3DObject createBuffer();
     Platform3DObject createFramebuffer();
@@ -868,7 +873,7 @@ public:
     static unsigned getChannelBitsByFormat(GC3Denum);
 
   private:
-    GraphicsContext3D(Attributes attrs, HostWindow* hostWindow, bool renderDirectlyToHostWindow);
+    GraphicsContext3D(Attributes, HostWindow*, RenderStyle = RenderOffscreen);
 
     // Each platform must provide an implementation of this method.
     //
@@ -920,7 +925,7 @@ public:
                     AlphaOp alphaOp,
                     void* destinationData);
 
-#if PLATFORM(MAC) || PLATFORM(GTK) || PLATFORM(QT) || PLATFORM(EFL)
+#if PLATFORM(MAC) || PLATFORM(GTK) || PLATFORM(QT) || PLATFORM(EFL) || PLATFORM(BLACKBERRY)
     // Take into account the user's requested context creation attributes,
     // in particular stencil and antialias, and determine which could or
     // could not be honored based on the capabilities of the OpenGL
@@ -959,11 +964,15 @@ public:
 #endif
 
 #if PLATFORM(MAC) || PLATFORM(GTK) || PLATFORM(QT) || PLATFORM(EFL) || PLATFORM(BLACKBERRY)
-    typedef struct {
+    struct ShaderSourceEntry {
         String source;
         String log;
         bool isValid;
-    } ShaderSourceEntry;
+        ShaderSourceEntry()
+            : isValid(0)
+        {
+        }
+    };
     HashMap<Platform3DObject, ShaderSourceEntry> m_shaderSourceMap;
 
     ANGLEWebKitBridge m_compiler;
@@ -979,6 +988,7 @@ public:
     friend class Extensions3DOpenGLCommon;
 
     Attributes m_attrs;
+    RenderStyle m_renderStyle;
     Vector<Vector<float> > m_vertexArray;
 
     GC3Duint m_texture;

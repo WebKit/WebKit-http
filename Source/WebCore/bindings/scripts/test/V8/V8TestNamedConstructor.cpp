@@ -21,15 +21,14 @@
 #include "config.h"
 #include "V8TestNamedConstructor.h"
 
+#include "BindingState.h"
 #include "ContextFeatures.h"
 #include "ExceptionCode.h"
+#include "Frame.h"
 #include "RuntimeEnabledFeatures.h"
 #include "V8Binding.h"
-#include "V8BindingMacros.h"
-#include "V8BindingState.h"
 #include "V8DOMWrapper.h"
 #include "V8IsolatedContext.h"
-#include "V8Proxy.h"
 #include <wtf/UnusedParam.h>
 
 namespace WebCore {
@@ -49,14 +48,14 @@ static v8::Handle<v8::Value> V8TestNamedConstructorConstructorCallback(const v8:
     INC_STATS("DOM.TestNamedConstructor.Constructor");
 
     if (!args.IsConstructCall())
-        return V8Proxy::throwTypeError("DOM object constructor cannot be called as a function.");
+        return throwTypeError("DOM object constructor cannot be called as a function.");
 
     if (ConstructorMode::current() == ConstructorMode::WrapExistingObject)
         return args.Holder();
 
-    Frame* frame = V8Proxy::retrieveFrameForCurrentContext();
+    Frame* frame = currentFrame(BindingState::instance());
     if (!frame)
-        return V8Proxy::throwError(V8Proxy::ReferenceError, "TestNamedConstructor constructor associated frame is unavailable", args.GetIsolate());
+        return throwError(ReferenceError, "TestNamedConstructor constructor associated frame is unavailable", args.GetIsolate());
 
     Document* document = frame->document();
 
@@ -65,7 +64,7 @@ static v8::Handle<v8::Value> V8TestNamedConstructorConstructorCallback(const v8:
     toV8(document, args.GetIsolate());
 
     if (args.Length() < 1)
-        return V8Proxy::throwNotEnoughArgumentsError(args.GetIsolate());
+        return throwNotEnoughArgumentsError(args.GetIsolate());
 
     ExceptionCode ec = 0;
     STRING_TO_V8PARAMETER_EXCEPTION_BLOCK(V8Parameter<>, str1, MAYBE_MISSING_PARAMETER(args, 0, DefaultIsUndefined));
@@ -78,10 +77,10 @@ static v8::Handle<v8::Value> V8TestNamedConstructorConstructorCallback(const v8:
         goto fail;
 
     V8DOMWrapper::setDOMWrapper(wrapper, &V8TestNamedConstructorConstructor::info, impl.get());
-    V8DOMWrapper::setJSWrapperForActiveDOMObject(impl.release(), v8::Persistent<v8::Object>::New(wrapper), args.GetIsolate());
-    return args.Holder();
+    V8DOMWrapper::setJSWrapperForActiveDOMObject(impl.release(), wrapper, args.GetIsolate());
+    return wrapper;
   fail:
-    return throwError(ec, args.GetIsolate());
+    return setDOMException(ec, args.GetIsolate());
 }
 
 v8::Persistent<v8::FunctionTemplate> V8TestNamedConstructorConstructor::GetTemplate()
@@ -95,7 +94,7 @@ v8::Persistent<v8::FunctionTemplate> V8TestNamedConstructorConstructor::GetTempl
 
     v8::Local<v8::ObjectTemplate> instance = result->InstanceTemplate();
     instance->SetInternalFieldCount(V8TestNamedConstructor::internalFieldCount);
-    result->SetClassName(v8::String::New("TestNamedConstructor"));
+    result->SetClassName(v8::String::NewSymbol("TestNamedConstructor"));
     result->Inherit(V8TestNamedConstructor::GetTemplate());
 
     cachedTemplate = v8::Persistent<v8::FunctionTemplate>::New(result);
@@ -107,21 +106,21 @@ static v8::Persistent<v8::FunctionTemplate> ConfigureV8TestNamedConstructorTempl
     desc->ReadOnlyPrototype();
 
     v8::Local<v8::Signature> defaultSignature;
-    defaultSignature = configureTemplate(desc, "TestNamedConstructor", v8::Persistent<v8::FunctionTemplate>(), V8TestNamedConstructor::internalFieldCount,
+    defaultSignature = V8DOMConfiguration::configureTemplate(desc, "TestNamedConstructor", v8::Persistent<v8::FunctionTemplate>(), V8TestNamedConstructor::internalFieldCount,
         0, 0,
         0, 0);
     UNUSED_PARAM(defaultSignature); // In some cases, it will not be used.
     
 
     // Custom toString template
-    desc->Set(getToStringName(), getToStringTemplate());
+    desc->Set(v8::String::NewSymbol("toString"), V8PerIsolateData::current()->toStringTemplate());
     return desc;
 }
 
 v8::Persistent<v8::FunctionTemplate> V8TestNamedConstructor::GetRawTemplate()
 {
-    V8BindingPerIsolateData* data = V8BindingPerIsolateData::current();
-    V8BindingPerIsolateData::TemplateMap::iterator result = data->rawTemplateMap().find(&info);
+    V8PerIsolateData* data = V8PerIsolateData::current();
+    V8PerIsolateData::TemplateMap::iterator result = data->rawTemplateMap().find(&info);
     if (result != data->rawTemplateMap().end())
         return result->second;
 
@@ -133,8 +132,8 @@ v8::Persistent<v8::FunctionTemplate> V8TestNamedConstructor::GetRawTemplate()
 
 v8::Persistent<v8::FunctionTemplate> V8TestNamedConstructor::GetTemplate()
 {
-    V8BindingPerIsolateData* data = V8BindingPerIsolateData::current();
-    V8BindingPerIsolateData::TemplateMap::iterator result = data->templateMap().find(&info);
+    V8PerIsolateData* data = V8PerIsolateData::current();
+    V8PerIsolateData::TemplateMap::iterator result = data->templateMap().find(&info);
     if (result != data->templateMap().end())
         return result->second;
 
@@ -158,16 +157,13 @@ ActiveDOMObject* V8TestNamedConstructor::toActiveDOMObject(v8::Handle<v8::Object
 v8::Handle<v8::Object> V8TestNamedConstructor::wrapSlow(PassRefPtr<TestNamedConstructor> impl, v8::Isolate* isolate)
 {
     v8::Handle<v8::Object> wrapper;
-    V8Proxy* proxy = 0;
-    wrapper = V8DOMWrapper::instantiateV8Object(proxy, &info, impl.get());
+    Frame* frame = 0;
+    wrapper = V8DOMWrapper::instantiateV8Object(frame, &info, impl.get());
     if (UNLIKELY(wrapper.IsEmpty()))
         return wrapper;
-
-    v8::Persistent<v8::Object> wrapperHandle = v8::Persistent<v8::Object>::New(wrapper);
-
+    v8::Persistent<v8::Object> wrapperHandle = V8DOMWrapper::setJSWrapperForActiveDOMObject(impl, wrapper, isolate);
     if (!hasDependentLifetime)
         wrapperHandle.MarkIndependent();
-    V8DOMWrapper::setJSWrapperForActiveDOMObject(impl, wrapperHandle, isolate);
     return wrapper;
 }
 

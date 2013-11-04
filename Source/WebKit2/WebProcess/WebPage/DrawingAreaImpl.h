@@ -57,6 +57,7 @@ private:
     virtual bool layerTreeStateIsFrozen() const { return m_layerTreeStateIsFrozen; }
     virtual LayerTreeHost* layerTreeHost() const { return m_layerTreeHost.get(); }
     virtual void forceRepaint();
+    virtual bool forceRepaintAsync(uint64_t callbackID);
 
     virtual void didInstallPageOverlay();
     virtual void didUninstallPageOverlay();
@@ -77,7 +78,7 @@ private:
     virtual void setLayerHostingMode(uint32_t) OVERRIDE;
 #endif
 
-#if USE(UI_SIDE_COMPOSITING)
+#if USE(COORDINATED_GRAPHICS)
     virtual void didReceiveLayerTreeCoordinatorMessage(CoreIPC::Connection*, CoreIPC::MessageID, CoreIPC::ArgumentDecoder*);
 #endif
 

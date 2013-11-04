@@ -43,14 +43,16 @@
 
 #elif defined(WIN32) || defined(_WIN32)
 
+#ifndef NOMINMAX
 #define NOMINMAX
+#endif
 
 #endif
 
 #include <stdint.h>
 
 #if !PLATFORM(CHROMIUM) || (PLATFORM(GTK) && defined(BUILDING_WEBKIT2__))
-#include <WebKit2/WebKit2.h>
+#include <WebKit2/WebKit2_C.h>
 #endif
 
 #ifdef __clang__

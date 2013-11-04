@@ -26,9 +26,11 @@
 #include "config.h"
 #include "WebKitCSSKeyframeRule.h"
 
+#include "MemoryInstrumentation.h"
 #include "PropertySetCSSStyleDeclaration.h"
 #include "StylePropertySet.h"
 #include "WebKitCSSKeyframesRule.h"
+#include <wtf/text/StringBuilder.h>
 
 namespace WebCore {
 
@@ -76,13 +78,22 @@ void StyleKeyframe::parseKeyString(const String& s, Vector<float>& keys)
 
 String StyleKeyframe::cssText() const
 {
-    String result = keyText();
+    StringBuilder result;
+    result.append(keyText());
+    result.appendLiteral(" { ");
+    String decls = m_properties->asText();
+    result.append(decls);
+    if (!decls.isEmpty())
+        result.append(' ');
+    result.append('}');
+    return result.toString();
+}
 
-    result += " { ";
-    result += m_properties->asText();
-    result += "}";
-
-    return result;
+void StyleKeyframe::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
+{
+    MemoryClassInfo info(memoryObjectInfo, this, MemoryInstrumentation::CSS);
+    info.addInstrumentedMember(m_properties);
+    info.addInstrumentedMember(m_key);
 }
 
 WebKitCSSKeyframeRule::WebKitCSSKeyframeRule(StyleKeyframe* keyframe, WebKitCSSKeyframesRule* parent)
@@ -103,6 +114,14 @@ CSSStyleDeclaration* WebKitCSSKeyframeRule::style() const
     if (!m_propertiesCSSOMWrapper)
         m_propertiesCSSOMWrapper = StyleRuleCSSStyleDeclaration::create(m_keyframe->mutableProperties(), const_cast<WebKitCSSKeyframeRule*>(this));
     return m_propertiesCSSOMWrapper.get();
+}
+
+void WebKitCSSKeyframeRule::reportDescendantMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
+{
+    MemoryClassInfo info(memoryObjectInfo, this, MemoryInstrumentation::CSS);
+    CSSRule::reportBaseClassMemoryUsage(memoryObjectInfo);
+    info.addInstrumentedMember(m_keyframe);
+    info.addInstrumentedMember(m_propertiesCSSOMWrapper);
 }
 
 } // namespace WebCore

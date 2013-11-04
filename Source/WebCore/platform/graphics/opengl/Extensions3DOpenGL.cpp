@@ -99,9 +99,6 @@ GC3Dboolean Extensions3DOpenGL::isVertexArrayOES(Platform3DObject array)
 
 void Extensions3DOpenGL::bindVertexArrayOES(Platform3DObject array)
 {
-    if (!array)
-        return;
-
     m_context->makeContextCurrent();
 #if !PLATFORM(GTK) && !PLATFORM(QT) && !PLATFORM(EFL) && defined(GL_APPLE_vertex_array_object) && GL_APPLE_vertex_array_object
     glBindVertexArrayAPPLE(array);
@@ -111,6 +108,24 @@ void Extensions3DOpenGL::bindVertexArrayOES(Platform3DObject array)
 void Extensions3DOpenGL::copyTextureCHROMIUM(GC3Denum, Platform3DObject, Platform3DObject, GC3Dint, GC3Denum)
 {
     // FIXME: implement this function and add GL_CHROMIUM_copy_texture in supports().
+    return;
+}
+
+void Extensions3DOpenGL::insertEventMarkerEXT(const String&)
+{
+    // FIXME: implement this function and add GL_EXT_debug_marker in supports().
+    return;
+}
+
+void Extensions3DOpenGL::pushGroupMarkerEXT(const String&)
+{
+    // FIXME: implement this function and add GL_EXT_debug_marker in supports().
+    return;
+}
+
+void Extensions3DOpenGL::popGroupMarkerEXT(void)
+{
+    // FIXME: implement this function and add GL_EXT_debug_marker in supports().
     return;
 }
 

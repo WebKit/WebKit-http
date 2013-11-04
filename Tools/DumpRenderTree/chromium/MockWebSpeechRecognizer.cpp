@@ -118,7 +118,6 @@ void MockWebSpeechRecognizer::start(const WebSpeechRecognitionHandle& handle, co
     m_taskQueue.append(adoptPtr(new ClientCallTask(this, &WebSpeechRecognizerClient::didStart)));
     m_taskQueue.append(adoptPtr(new ClientCallTask(this, &WebSpeechRecognizerClient::didStartAudio)));
     m_taskQueue.append(adoptPtr(new ClientCallTask(this, &WebSpeechRecognizerClient::didStartSound)));
-    m_taskQueue.append(adoptPtr(new ClientCallTask(this, &WebSpeechRecognizerClient::didStartSpeech)));
 
     if (!m_mockTranscripts.isEmpty()) {
         ASSERT(m_mockTranscripts.size() == m_mockConfidences.size());
@@ -131,7 +130,6 @@ void MockWebSpeechRecognizer::start(const WebSpeechRecognitionHandle& handle, co
     } else
         m_taskQueue.append(adoptPtr(new NoMatchTask(this)));
 
-    m_taskQueue.append(adoptPtr(new ClientCallTask(this, &WebSpeechRecognizerClient::didEndSpeech)));
     m_taskQueue.append(adoptPtr(new ClientCallTask(this, &WebSpeechRecognizerClient::didEndSound)));
     m_taskQueue.append(adoptPtr(new ClientCallTask(this, &WebSpeechRecognizerClient::didEndAudio)));
     m_taskQueue.append(adoptPtr(new ClientCallTask(this, &WebSpeechRecognizerClient::didEnd)));
@@ -153,7 +151,7 @@ void MockWebSpeechRecognizer::abort(const WebSpeechRecognitionHandle& handle, We
     m_handle = handle;
     m_client = client;
 
-    m_taskQueue.clear();
+    clearTaskQueue();
     m_wasAborted = true;
     m_taskQueue.append(adoptPtr(new ClientCallTask(this, &WebSpeechRecognizerClient::didEnd)));
     startTaskQueue();
@@ -167,7 +165,7 @@ void MockWebSpeechRecognizer::addMockResult(const WebString& transcript, float c
 
 void MockWebSpeechRecognizer::setError(int code, const WebString& message)
 {
-    m_taskQueue.clear();
+    clearTaskQueue();
     m_taskQueue.append(adoptPtr(new ErrorTask(this, code, message)));
     m_taskQueue.append(adoptPtr(new ClientCallTask(this, &WebSpeechRecognizerClient::didEnd)));
     startTaskQueue();
@@ -191,17 +189,22 @@ void MockWebSpeechRecognizer::startTaskQueue()
     m_taskQueueRunning = true;
 }
 
+void MockWebSpeechRecognizer::clearTaskQueue()
+{
+    m_taskQueue.clear();
+    m_taskQueueRunning = false;
+}
+
 void MockWebSpeechRecognizer::StepTask::runIfValid()
 {
-    ASSERT(m_object->m_taskQueueRunning);
-
     if (m_object->m_taskQueue.isEmpty()) {
         m_object->m_taskQueueRunning = false;
         return;
     }
 
-    m_object->m_taskQueue[0]->run();
+    OwnPtr<Task> task = m_object->m_taskQueue[0].release();
     m_object->m_taskQueue.remove(0);
+    task->run();
 
     if (m_object->m_taskQueue.isEmpty()) {
         m_object->m_taskQueueRunning = false;

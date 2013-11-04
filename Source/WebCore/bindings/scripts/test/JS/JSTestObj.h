@@ -209,7 +209,6 @@ JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionStringArrayFunction(
 JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionGetSVGDocument(JSC::ExecState*);
 JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionConvert1(JSC::ExecState*);
 JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionConvert2(JSC::ExecState*);
-JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionConvert3(JSC::ExecState*);
 JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionConvert4(JSC::ExecState*);
 JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionConvert5(JSC::ExecState*);
 JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionMutablePointFunction(JSC::ExecState*);
@@ -261,6 +260,8 @@ JSC::JSValue jsTestObjReflectedCustomBooleanAttr(JSC::ExecState*, JSC::JSValue, 
 void setJSTestObjReflectedCustomBooleanAttr(JSC::ExecState*, JSC::JSObject*, JSC::JSValue);
 JSC::JSValue jsTestObjReflectedCustomURLAttr(JSC::ExecState*, JSC::JSValue, JSC::PropertyName);
 void setJSTestObjReflectedCustomURLAttr(JSC::ExecState*, JSC::JSObject*, JSC::JSValue);
+JSC::JSValue jsTestObjTypedArrayAttr(JSC::ExecState*, JSC::JSValue, JSC::PropertyName);
+void setJSTestObjTypedArrayAttr(JSC::ExecState*, JSC::JSObject*, JSC::JSValue);
 JSC::JSValue jsTestObjAttrWithGetterException(JSC::ExecState*, JSC::JSValue, JSC::PropertyName);
 void setJSTestObjAttrWithGetterException(JSC::ExecState*, JSC::JSObject*, JSC::JSValue);
 JSC::JSValue jsTestObjAttrWithSetterException(JSC::ExecState*, JSC::JSValue, JSC::PropertyName);

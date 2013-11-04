@@ -173,7 +173,7 @@ class AbstractPatchQueueTest(CommandsTest):
         queue._options = Mock()
         queue._options.port = None
         patch = queue._tool.bugs.fetch_attachment(10001)
-        expected_stderr = """MOCK add_attachment_to_bug: bug_id=50000, description=Archive of layout-test-results from bot filename=layout-test-results.zip
+        expected_stderr = """MOCK add_attachment_to_bug: bug_id=50000, description=Archive of layout-test-results from bot filename=layout-test-results.zip mimetype=None
 -- Begin comment --
 The attached test failures were seen while running run-webkit-tests on the mock-queue.
 Port: MockPort  Platform: MockPlatform 1.0
@@ -324,7 +324,7 @@ MOCK run_and_throw_if_fail: ['echo', '--status-host=example.com', 'apply-attachm
 MOCK: update_status: commit-queue Applied patch
 MOCK run_and_throw_if_fail: ['echo', '--status-host=example.com', 'validate-changelog', '--non-interactive', 10000, '--port=%(port_name)s'], cwd=/mock-checkout
 MOCK: update_status: commit-queue ChangeLog validated
-MOCK run_and_throw_if_fail: ['echo', '--status-host=example.com', 'build', '--no-clean', '--no-update', '--build-style=both', '--port=%(port_name)s'], cwd=/mock-checkout
+MOCK run_and_throw_if_fail: ['echo', '--status-host=example.com', 'build', '--no-clean', '--no-update', '--build-style=release', '--port=%(port_name)s'], cwd=/mock-checkout
 MOCK: update_status: commit-queue Built patch
 MOCK run_and_throw_if_fail: ['echo', '--status-host=example.com', 'build-and-test', '--no-clean', '--no-update', '--test', '--non-interactive', '--port=%(port_name)s'], cwd=/mock-checkout
 MOCK: update_status: commit-queue Passed tests
@@ -405,14 +405,14 @@ The commit-queue just saw foo/bar.html flake (Text diff mismatch) while processi
 Port: MockPort  Platform: MockPlatform 1.0
 --- End comment ---
 
-MOCK add_attachment_to_bug: bug_id=50002, description=Failure diff from bot filename=failure.diff
+MOCK add_attachment_to_bug: bug_id=50002, description=Failure diff from bot filename=failure.diff mimetype=None
 MOCK bug comment: bug_id=50002, cc=None
 --- Begin comment ---
 The commit-queue just saw bar/baz.html flake (Text diff mismatch) while processing attachment 10000 on bug 50000.
 Port: MockPort  Platform: MockPlatform 1.0
 --- End comment ---
 
-MOCK add_attachment_to_bug: bug_id=50002, description=Archive of layout-test-results from bot filename=layout-test-results.zip
+MOCK add_attachment_to_bug: bug_id=50002, description=Archive of layout-test-results from bot filename=layout-test-results.zip mimetype=None
 MOCK bug comment: bug_id=50000, cc=None
 --- Begin comment ---
 The commit-queue encountered the following flaky tests while processing attachment 10000:
@@ -449,11 +449,7 @@ The commit-queue is continuing to process your patch.
 class StyleQueueTest(QueuesTest):
     def test_style_queue_with_style_exception(self):
         expected_stderr = {
-            "begin_work_queue": self._default_begin_work_queue_stderr("style-queue") + """MOCK: update_status: style-queue Cleaning review queue
-MOCK run_and_throw_if_fail: ['echo', '--status-host=example.com', 'clean-review-queue'], cwd=/mock-checkout
-MOCK: update_status: style-queue Cleaning pending commit
-MOCK run_and_throw_if_fail: ['echo', '--status-host=example.com', 'clean-pending-commit'], cwd=/mock-checkout
-""",
+            "begin_work_queue": self._default_begin_work_queue_stderr("style-queue"),
             "next_work_item": "",
             "process_work_item": """MOCK run_and_throw_if_fail: ['echo', '--status-host=example.com', 'clean'], cwd=/mock-checkout
 MOCK: update_status: style-queue Cleaned working directory
@@ -476,11 +472,7 @@ MOCK: release_work_item: style-queue 10000
 
     def test_style_queue_with_watch_list_exception(self):
         expected_stderr = {
-            "begin_work_queue": self._default_begin_work_queue_stderr("style-queue") + """MOCK: update_status: style-queue Cleaning review queue
-MOCK run_and_throw_if_fail: ['echo', '--status-host=example.com', 'clean-review-queue'], cwd=/mock-checkout
-MOCK: update_status: style-queue Cleaning pending commit
-MOCK run_and_throw_if_fail: ['echo', '--status-host=example.com', 'clean-pending-commit'], cwd=/mock-checkout
-""",
+            "begin_work_queue": self._default_begin_work_queue_stderr("style-queue"),
             "next_work_item": "",
             "process_work_item": """MOCK run_and_throw_if_fail: ['echo', '--status-host=example.com', 'clean'], cwd=/mock-checkout
 MOCK: update_status: style-queue Cleaned working directory

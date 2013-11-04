@@ -30,13 +30,13 @@
 #include "qbitmap.h"
 #include "qevent.h"
 #include "qpainter.h"
+#if HAVE(QTPRINTSUPPORT)
 #include "qprinter.h"
+#endif
 #include "qdir.h"
 #include "qfile.h"
 #ifndef QT_NO_ACCESSIBILITY
-#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
 #include "qwebviewaccessible_p.h"
-#endif
 #endif
 
 class QWebViewPrivate {
@@ -154,7 +154,6 @@ void QWebViewPrivate::_q_pageDestroyed()
 */
 
 #ifndef QT_NO_ACCESSIBILITY
-#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
 static QAccessibleInterface* accessibleInterfaceFactory(const QString& key, QObject* object)
 {
     Q_UNUSED(key)
@@ -167,7 +166,6 @@ static QAccessibleInterface* accessibleInterfaceFactory(const QString& key, QObj
         return new QWebFrameAccessible(frame);
     return 0;
 }
-#endif
 #endif
 
 /*!
@@ -191,9 +189,7 @@ QWebView::QWebView(QWidget *parent)
     setFocusPolicy(Qt::WheelFocus);
 
 #ifndef QT_NO_ACCESSIBILITY
-#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
     QAccessible::installFactory(accessibleInterfaceFactory);
-#endif
 #endif
 }
 
@@ -732,9 +728,7 @@ bool QWebView::event(QEvent *e)
         } else if (e->type() == QEvent::TouchBegin 
                    || e->type() == QEvent::TouchEnd 
                    || e->type() == QEvent::TouchUpdate
-#if HAVE(QT5)
                    || e->type() == QEvent::TouchCancel
-#endif
                   ) {
             d->page->event(e);
 
@@ -754,7 +748,7 @@ bool QWebView::event(QEvent *e)
 */
 void QWebView::print(QPrinter *printer) const
 {
-#ifndef QT_NO_PRINTER
+#if !defined(QT_NO_PRINTER) && HAVE(QTPRINTSUPPORT)
     page()->mainFrame()->print(printer);
 #endif
 }

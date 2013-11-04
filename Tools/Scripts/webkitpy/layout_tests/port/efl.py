@@ -27,6 +27,8 @@
 
 """WebKit Efl implementation of the Port interface."""
 
+import os
+
 from webkitpy.layout_tests.models.test_configuration import TestConfiguration
 from webkitpy.layout_tests.port.base import Port
 from webkitpy.layout_tests.port.pulseaudio_sanitizer import PulseAudioSanitizer
@@ -51,6 +53,10 @@ class EflPort(Port, PulseAudioSanitizer):
 
     def setup_environ_for_server(self, server_name=None):
         env = super(EflPort, self).setup_environ_for_server(server_name)
+        # If DISPLAY environment variable is unset in the system
+        # e.g. on build bot, remove DISPLAY variable from the dictionary
+        if not 'DISPLAY' in os.environ:
+            del env['DISPLAY']
         env['TEST_RUNNER_INJECTED_BUNDLE_FILENAME'] = self._build_path('lib', 'libTestRunnerInjectedBundle.so')
         env['TEST_RUNNER_PLUGIN_PATH'] = self._build_path('lib')
         if self.webprocess_cmd_prefix:
@@ -87,6 +93,16 @@ class EflPort(Port, PulseAudioSanitizer):
         static_path = self._build_path('lib', 'libwebcore_efl.a')
         dyn_path = self._build_path('lib', 'libwebcore_efl.so')
         return static_path if self._filesystem.exists(static_path) else dyn_path
+
+    def _search_paths(self):
+        search_paths = []
+        if self.get_option('webkit_test_runner'):
+            search_paths.append(self.port_name + '-wk2')
+        search_paths.append(self.port_name)
+        return search_paths
+
+    def expectations_files(self):
+        return list(reversed([self._filesystem.join(self._webkit_baseline_path(p), 'TestExpectations') for p in self._search_paths()]))
 
     def show_results_html_file(self, results_filename):
         # FIXME: We should find a way to share this implmentation with Gtk,

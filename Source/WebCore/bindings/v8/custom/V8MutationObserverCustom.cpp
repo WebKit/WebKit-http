@@ -34,12 +34,11 @@
 
 #include "V8MutationObserver.h"
 
+#include "ExceptionCode.h"
 #include "MutationObserver.h"
 #include "V8Binding.h"
-#include "V8BindingMacros.h"
 #include "V8DOMWrapper.h"
 #include "V8MutationCallback.h"
-#include "V8Proxy.h"
 #include "V8Utilities.h"
 
 namespace WebCore {
@@ -49,28 +48,29 @@ v8::Handle<v8::Value> V8MutationObserver::constructorCallback(const v8::Argument
     INC_STATS("DOM.MutationObserver.Constructor");
 
     if (!args.IsConstructCall())
-        return V8Proxy::throwTypeError("DOM object constructor cannot be called as a function.", args.GetIsolate());
+        return throwTypeError("DOM object constructor cannot be called as a function.", args.GetIsolate());
 
     if (ConstructorMode::current() == ConstructorMode::WrapExistingObject)
         return args.Holder();
 
     if (args.Length() < 1)
-        return V8Proxy::throwNotEnoughArgumentsError(args.GetIsolate());
+        return throwNotEnoughArgumentsError(args.GetIsolate());
 
     v8::Local<v8::Value> arg = args[0];
     if (!arg->IsObject())
-        return throwError(TYPE_MISMATCH_ERR, args.GetIsolate());
+        return setDOMException(TYPE_MISMATCH_ERR, args.GetIsolate());
 
     ScriptExecutionContext* context = getScriptExecutionContext();
     if (!context)
-        return V8Proxy::throwError(V8Proxy::ReferenceError, "MutationObserver constructor's associated frame unavailable", args.GetIsolate());
+        return throwError(ReferenceError, "MutationObserver constructor's associated frame unavailable", args.GetIsolate());
 
     RefPtr<MutationCallback> callback = V8MutationCallback::create(arg, context);
     RefPtr<MutationObserver> observer = MutationObserver::create(callback.release());
 
-    V8DOMWrapper::setDOMWrapper(args.Holder(), &info, observer.get());
-    V8DOMWrapper::setJSWrapperForDOMObject(observer.release(), v8::Persistent<v8::Object>::New(args.Holder()));
-    return args.Holder();
+    v8::Handle<v8::Object> wrapper = args.Holder();
+    V8DOMWrapper::setDOMWrapper(wrapper, &info, observer.get());
+    V8DOMWrapper::setJSWrapperForDOMObject(observer.release(), wrapper);
+    return wrapper;
 }
 
 } // namespace WebCore

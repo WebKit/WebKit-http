@@ -49,6 +49,7 @@
 #import <WebCore/ScrollingThread.h>
 #import <WebCore/ScrollingTree.h>
 #import <WebCore/Settings.h>
+#import <WebCore/TiledBacking.h>
 #import <wtf/MainThread.h>
 
 @interface CATransaction (Details)
@@ -134,6 +135,14 @@ void TiledCoreAnimationDrawingArea::forceRepaint()
     if (m_layerTreeStateIsFrozen)
         return;
 
+    for (Frame* frame = m_webPage->corePage()->mainFrame(); frame; frame = frame->tree()->traverseNext()) {
+        FrameView* frameView = frame->view();
+        if (!frameView || !frameView->tiledBacking())
+            continue;
+
+        frameView->tiledBacking()->forceRepaint();
+    }
+
     flushLayers();
     [CATransaction flush];
     [CATransaction synchronize];
@@ -212,7 +221,10 @@ void TiledCoreAnimationDrawingArea::updatePreferences()
         m_debugInfoLayer = nullptr;
     }
 
+    bool scrollingPerformanceLoggingEnabled = m_webPage->scrollingPerformanceLoggingEnabled();
+
     ScrollingThread::dispatch(bind(&ScrollingTree::setDebugRootLayer, m_webPage->corePage()->scrollingCoordinator()->scrollingTree(), m_debugInfoLayer));
+    ScrollingThread::dispatch(bind(&ScrollingTree::setScrollingPerformanceLoggingEnabled, m_webPage->corePage()->scrollingCoordinator()->scrollingTree(), scrollingPerformanceLoggingEnabled));
 }
 
 void TiledCoreAnimationDrawingArea::dispatchAfterEnsuringUpdatedScrollPosition(const Function<void ()>& functionRef)

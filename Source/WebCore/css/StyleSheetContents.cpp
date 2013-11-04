@@ -26,6 +26,7 @@
 #include "CSSStyleSheet.h"
 #include "CachedCSSStyleSheet.h"
 #include "Document.h"
+#include "MemoryInstrumentation.h"
 #include "Node.h"
 #include "SecurityOrigin.h"
 #include "StylePropertySet.h"
@@ -53,12 +54,9 @@ unsigned StyleSheetContents::estimatedSizeInBytes() const
     return size;
 }
 
-StyleSheetContents::StyleSheetContents(StyleRuleImport* ownerRule, const String& originalURL, const KURL& finalURL, const CSSParserContext& context)
-    : m_ownerRule(ownerRule)
-    , m_originalURL(originalURL)
-    , m_finalURL(finalURL)
+StyleSheetContents::StyleSheetContents(const String& originalURL, const CSSParserContext& context)
+    : m_originalURL(originalURL)
     , m_loadCompleted(false)
-    , m_isUserStyleSheet(ownerRule && ownerRule->parentStyleSheet() && ownerRule->parentStyleSheet()->isUserStyleSheet())
     , m_hasSyntacticallyValidCSSHeader(true)
     , m_didLoadErrorOccur(false)
     , m_usesRemUnits(false)
@@ -70,9 +68,7 @@ StyleSheetContents::StyleSheetContents(StyleRuleImport* ownerRule, const String&
 
 StyleSheetContents::StyleSheetContents(const StyleSheetContents& o)
     : RefCounted<StyleSheetContents>()
-    , m_ownerRule(0)
     , m_originalURL(o.m_originalURL)
-    , m_finalURL(o.m_finalURL)
     , m_encodingFromCharsetRule(o.m_encodingFromCharsetRule)
     , m_importRules(o.m_importRules.size())
     , m_childRules(o.m_childRules.size())
@@ -105,9 +101,6 @@ bool StyleSheetContents::isCacheable() const
     // FIXME: Support copying import rules.
     if (!m_importRules.isEmpty())
         return false;
-    // FIXME: Support cached stylesheets in import rules.
-    if (m_ownerRule)
-        return false;
     // This would require dealing with multiple clients for load callbacks.
     if (!m_loadCompleted)
         return false;
@@ -130,8 +123,6 @@ void StyleSheetContents::parserAppendRule(PassRefPtr<StyleRuleBase> rule)
         // Parser enforces that @import rules come before anything else except @charset.
         ASSERT(m_childRules.isEmpty());
         m_importRules.append(static_cast<StyleRuleImport*>(rule.get()));
-        m_importRules.last()->setParentStyleSheet(this);
-        m_importRules.last()->requestStyleSheet();
         return;
     }
     m_childRules.append(rule);
@@ -170,10 +161,6 @@ void StyleSheetContents::clearCharsetRule()
 
 void StyleSheetContents::clearRules()
 {
-    for (unsigned i = 0; i < m_importRules.size(); ++i) {
-        ASSERT(m_importRules.at(i)->parentStyleSheet() == this);
-        m_importRules[i]->clearParentStyleSheet();
-    }
     m_importRules.clear();
     m_childRules.clear();
     clearCharsetRule();
@@ -208,9 +195,6 @@ bool StyleSheetContents::wrapperInsertRule(PassRefPtr<StyleRuleBase> rule, unsig
         if (!rule->isImportRule())
             return false;
         m_importRules.insert(childVectorIndex, static_cast<StyleRuleImport*>(rule.get()));
-        m_importRules[childVectorIndex]->setParentStyleSheet(this);
-        m_importRules[childVectorIndex]->requestStyleSheet();
-        // FIXME: Stylesheet doesn't actually change meaningfully before the imported sheets are loaded.
         return true;
     }
     // Inserting @import rule after a non-import rule is not allowed.
@@ -236,7 +220,6 @@ void StyleSheetContents::wrapperDeleteRule(unsigned index)
         --childVectorIndex;
     }
     if (childVectorIndex < m_importRules.size()) {
-        m_importRules[childVectorIndex]->clearParentStyleSheet();
         m_importRules.remove(childVectorIndex);
         return;
     }
@@ -249,7 +232,10 @@ void StyleSheetContents::parserAddNamespace(const AtomicString& prefix, const At
 {
     if (uri.isNull() || prefix.isNull())
         return;
-    m_namespaces.add(prefix, uri);
+    PrefixNamespaceURIMap::AddResult result = m_namespaces.add(prefix, uri);
+    if (result.isNewEntry)
+        return;
+    result.iterator->second = uri;
 }
 
 const AtomicString& StyleSheetContents::determineNamespace(const AtomicString& prefix)
@@ -264,8 +250,22 @@ const AtomicString& StyleSheetContents::determineNamespace(const AtomicString& p
     return it->second;
 }
 
-void StyleSheetContents::parseAuthorStyleSheet(const CachedCSSStyleSheet* cachedStyleSheet, const SecurityOrigin* securityOrigin)
+void StyleSheetContents::requestImportedStyleSheets(CSSStyleSheet* rootSheet)
 {
+    ASSERT(!rootSheet->parentStyleSheet());
+    for (unsigned i = 0; i < m_importRules.size(); ++i)
+        m_importRules[i]->requestStyleSheet(rootSheet, parserContext());
+}
+
+void StyleSheetContents::parseAuthorStyleSheet(const CachedCSSStyleSheet* cachedStyleSheet, CSSStyleSheet* rootSheet)
+{
+    if (cachedStyleSheet->errorOccurred()) {
+        m_didLoadErrorOccur = true;
+        return;
+    }
+    Document* ownerDocument = rootSheet->ownerDocument();
+    if (!ownerDocument)
+        return;
     // Check to see if we should enforce the MIME type of the CSS resource in strict mode.
     // Running in iWeb 2 is one example of where we don't want to - <rdar://problem/6099748>
     bool enforceMIMEType = isStrictParserMode(m_parserContext.mode) && m_parserContext.enforcesCSSMIMETypeInNoQuirksMode;
@@ -279,7 +279,8 @@ void StyleSheetContents::parseAuthorStyleSheet(const CachedCSSStyleSheet* cached
     // to at least start with a syntactically valid CSS rule.
     // This prevents an attacker playing games by injecting CSS strings into HTML, XML, JSON, etc. etc.
     if (!hasValidMIMEType && !hasSyntacticallyValidCSSHeader()) {
-        bool isCrossOriginCSS = !securityOrigin || !securityOrigin->canRequest(finalURL());
+        const SecurityOrigin* securityOrigin = ownerDocument->securityOrigin();
+        bool isCrossOriginCSS = !securityOrigin || !securityOrigin->canRequest(baseURL());
         if (isCrossOriginCSS) {
             clearRules();
             return;
@@ -287,14 +288,17 @@ void StyleSheetContents::parseAuthorStyleSheet(const CachedCSSStyleSheet* cached
     }
     if (m_parserContext.needsSiteSpecificQuirks && isStrictParserMode(m_parserContext.mode)) {
         // Work around <https://bugs.webkit.org/show_bug.cgi?id=28350>.
-        DEFINE_STATIC_LOCAL(const String, slashKHTMLFixesDotCss, ("/KHTMLFixes.css"));
-        DEFINE_STATIC_LOCAL(const String, mediaWikiKHTMLFixesStyleSheet, ("/* KHTML fix stylesheet */\n/* work around the horizontal scrollbars */\n#column-content { margin-left: 0; }\n\n"));
+        DEFINE_STATIC_LOCAL(const String, mediaWikiKHTMLFixesStyleSheet, (ASCIILiteral("/* KHTML fix stylesheet */\n/* work around the horizontal scrollbars */\n#column-content { margin-left: 0; }\n\n")));
         // There are two variants of KHTMLFixes.css. One is equal to mediaWikiKHTMLFixesStyleSheet,
         // while the other lacks the second trailing newline.
-        if (finalURL().string().endsWith(slashKHTMLFixesDotCss) && !sheetText.isNull() && mediaWikiKHTMLFixesStyleSheet.startsWith(sheetText)
-            && sheetText.length() >= mediaWikiKHTMLFixesStyleSheet.length() - 1)
+        if (baseURL().string().endsWith("/KHTMLFixes.css") && !sheetText.isNull() && mediaWikiKHTMLFixesStyleSheet.startsWith(sheetText)
+            && sheetText.length() >= mediaWikiKHTMLFixesStyleSheet.length() - 1) {
             clearRules();
+            return;
+        }
     }
+
+    requestImportedStyleSheets(rootSheet);
 }
 
 bool StyleSheetContents::parseString(const String& sheetText)
@@ -307,6 +311,10 @@ bool StyleSheetContents::parseStringAtLine(const String& sheetText, int startLin
     CSSParser p(parserContext());
     p.parseSheet(this, sheetText, startLineNumber);
 
+    if (!m_clients.isEmpty()) {
+        ASSERT(m_clients.size() == 1);
+        requestImportedStyleSheets(m_clients[0]);
+    }
     return true;
 }
 
@@ -319,64 +327,70 @@ bool StyleSheetContents::isLoading() const
     return false;
 }
 
-void StyleSheetContents::checkLoaded()
+bool StyleSheetContents::checkImportedSheetLoadCompleted()
 {
-    if (isLoading())
+    for (unsigned i = 0; i < m_importRules.size(); ++i) {
+        StyleRuleImport* importRule = m_importRules[i].get();
+        if (importRule->isLoading())
+            return false;
+        if (importRule->styleSheet() && !importRule->styleSheet()->checkImportedSheetLoadCompleted())
+            return false;
+        if (importRule->hadLoadError())
+            m_didLoadErrorOccur = true;
+    }
+    m_loadCompleted = true;
+    return true;
+}
+
+void StyleSheetContents::checkLoadCompleted()
+{
+    if (m_clients.isEmpty())
+        return;
+    if (!checkImportedSheetLoadCompleted())
         return;
 
-    // Avoid |this| being deleted by scripts that run via
-    // ScriptableDocumentParser::executeScriptsWaitingForStylesheets().
-    // See <rdar://problem/6622300>.
-    RefPtr<StyleSheetContents> protector(this);
-    StyleSheetContents* parentSheet = parentStyleSheet();
-    if (parentSheet) {
-        parentSheet->checkLoaded();
-        m_loadCompleted = true;
+    RefPtr<StyleSheetContents> protect(this);
+
+    ASSERT(hasOneClient());
+    ASSERT(!m_clients[0]->parentStyleSheet());
+    RefPtr<Node> ownerNode = m_clients[0]->ownerNode();
+    if (!ownerNode)
         return;
-    }
-    RefPtr<Node> ownerNode = singleOwnerNode();
-    if (!ownerNode) {
-        m_loadCompleted = true;
-        return;
-    }
+    
     m_loadCompleted = ownerNode->sheetLoaded();
     if (m_loadCompleted)
         ownerNode->notifyLoadedSheetAndAllCriticalSubresources(m_didLoadErrorOccur);
 }
 
-void StyleSheetContents::notifyLoadedSheet(const CachedCSSStyleSheet* sheet)
+bool StyleSheetContents::getAncestors(const StyleRuleImport* importRule, Vector<const StyleSheetContents*>& result) const
 {
-    ASSERT(sheet);
-    m_didLoadErrorOccur |= sheet->errorOccurred();
+    result.append(this);
+    for (unsigned i = 0; i < m_importRules.size(); ++i) {
+        if (m_importRules[i] == importRule)
+            return true;
+    }
+    for (unsigned i = 0; i < m_importRules.size(); ++i) {
+        if (m_importRules[i]->styleSheet() && m_importRules[i]->styleSheet()->getAncestors(importRule, result))
+            return true;
+    }
+    result.removeLast();
+    return false;
 }
 
-void StyleSheetContents::startLoadingDynamicSheet()
+bool StyleSheetContents::hasImportCycle(const StyleRuleImport* importRule, const KURL& importURL, const KURL& documentBaseURL) const
 {
-    if (Node* owner = singleOwnerNode())
-        owner->startLoadingDynamicSheet();
-}
+    Vector<const StyleSheetContents*> ancestors;
+    getAncestors(importRule, ancestors);
 
-StyleSheetContents* StyleSheetContents::rootStyleSheet() const
-{
-    const StyleSheetContents* root = this;
-    while (root->parentStyleSheet())
-        root = root->parentStyleSheet();
-    return const_cast<StyleSheetContents*>(root);
-}
-
-Node* StyleSheetContents::singleOwnerNode() const
-{
-    StyleSheetContents* root = rootStyleSheet();
-    if (root->m_clients.isEmpty())
-        return 0;
-    ASSERT(root->m_clients.size() == 1);
-    return root->m_clients[0]->ownerNode();
-}
-
-Document* StyleSheetContents::singleOwnerDocument() const
-{
-    Node* ownerNode = singleOwnerNode();
-    return ownerNode ? ownerNode->document() : 0;
+    KURL parentBaseURL = documentBaseURL;
+    for (unsigned i = 0; i < ancestors.size(); ++i) {
+        if (equalIgnoringFragmentIdentifier(importURL, ancestors[i]->baseURL()))
+            return true;
+        if (equalIgnoringFragmentIdentifier(importURL, KURL(parentBaseURL, ancestors[i]->originalURL())))
+            return true;
+        parentBaseURL = ancestors[i]->baseURL();
+    }
+    return false;
 }
 
 KURL StyleSheetContents::completeURL(const String& url) const
@@ -409,9 +423,44 @@ void StyleSheetContents::addSubresourceStyleURLs(ListHashSet<KURL>& urls)
     }
 }
 
-StyleSheetContents* StyleSheetContents::parentStyleSheet() const
+static bool childRulesHaveFailedOrCanceledSubresources(const Vector<RefPtr<StyleRuleBase> >& rules)
 {
-    return m_ownerRule ? m_ownerRule->parentStyleSheet() : 0;
+    for (unsigned i = 0; i < rules.size(); ++i) {
+        const StyleRuleBase* rule = rules[i].get();
+        switch (rule->type()) {
+        case StyleRuleBase::Style:
+            if (static_cast<const StyleRule*>(rule)->properties()->hasFailedOrCanceledSubresources())
+                return true;
+            break;
+        case StyleRuleBase::FontFace:
+            if (static_cast<const StyleRuleFontFace*>(rule)->properties()->hasFailedOrCanceledSubresources())
+                return true;
+            break;
+        case StyleRuleBase::Media:
+            if (childRulesHaveFailedOrCanceledSubresources(static_cast<const StyleRuleMedia*>(rule)->childRules()))
+                return true;
+            break;
+        case StyleRuleBase::Region:
+            if (childRulesHaveFailedOrCanceledSubresources(static_cast<const StyleRuleRegion*>(rule)->childRules()))
+                return true;
+            break;
+        case StyleRuleBase::Import:
+            ASSERT_NOT_REACHED();
+        case StyleRuleBase::Page:
+        case StyleRuleBase::Keyframes:
+        case StyleRuleBase::Unknown:
+        case StyleRuleBase::Charset:
+        case StyleRuleBase::Keyframe:
+            break;
+        }
+    }
+    return false;
+}
+
+bool StyleSheetContents::hasFailedOrCanceledSubresources() const
+{
+    ASSERT(isCacheable());
+    return childRulesHaveFailedOrCanceledSubresources(m_childRules);
 }
 
 void StyleSheetContents::registerClient(CSSStyleSheet* sheet)
@@ -439,6 +488,17 @@ void StyleSheetContents::removedFromMemoryCache()
     ASSERT(m_isInMemoryCache);
     ASSERT(isCacheable());
     m_isInMemoryCache = false;
+}
+
+void StyleSheetContents::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
+{
+    MemoryClassInfo info(memoryObjectInfo, this, MemoryInstrumentation::CSS);
+    info.addInstrumentedMember(m_originalURL);
+    info.addInstrumentedMember(m_encodingFromCharsetRule);
+    info.addVector(m_importRules);
+    info.addInstrumentedVector(m_childRules);
+    info.addHashMap(m_namespaces);
+    info.addVector(m_clients);
 }
 
 }

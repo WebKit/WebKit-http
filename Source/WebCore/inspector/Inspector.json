@@ -373,6 +373,37 @@
                     { "name": "result", "type": "boolean", "description": "True if browser can ovrride Geolocation." }
                 ],
                 "hidden": true
+            },
+            {
+                "name": "setDeviceOrientationOverride",
+                "description": "Overrides the Device Orientation.",
+                "parameters": [
+                    { "name": "alpha", "type": "number", "description": "Mock alpha"},
+                    { "name": "beta", "type": "number", "description": "Mock beta"},
+                    { "name": "gamma", "type": "number", "description": "Mock gamma"}
+                ],
+                "hidden": true
+            },
+            {
+                "name": "clearDeviceOrientationOverride",
+                "description": "Clears the overridden Device Orientation.",
+                "hidden": true
+            },
+            {
+                "name": "canOverrideDeviceOrientation",
+                "description": "Check the backend if Web Inspector can override the device orientation.",
+                "returns": [
+                    { "name": "result", "type": "boolean", "description": "If true, <code>setDeviceOrientationOverride</code> can safely be invoked on the agent." }
+                ],
+                "hidden": true
+            },
+            {
+                "name": "setTouchEmulationEnabled",
+                "parameters": [
+                    { "name": "enabled", "type": "boolean", "description": "Whether the touch event emulation should be enabled." }
+                ],
+                "description": "Toggles mouse event-based touch event emulation.",
+                "hidden": true
             }
         ],
         "events": [
@@ -425,7 +456,30 @@
                     { "name": "className", "type": "string", "optional": true, "description": "Object class (constructor) name. Specified for <code>object</code> type values only." },
                     { "name": "value", "type": "any", "optional": true, "description": "Remote object value (in case of primitive values or JSON values if it was requested)." },
                     { "name": "description", "type": "string", "optional": true, "description": "String representation of the object." },
-                    { "name": "objectId", "$ref": "RemoteObjectId", "optional": true, "description": "Unique object identifier (for non-primitive values)." }
+                    { "name": "objectId", "$ref": "RemoteObjectId", "optional": true, "description": "Unique object identifier (for non-primitive values)." },
+                    { "name": "preview", "$ref": "ObjectPreview", "optional": true, "description": "Preview containsing abbreviated property values.", "hidden": true }
+                ]
+            },
+            {
+                "id": "ObjectPreview",
+                "type": "object",
+                "hidden": true,
+                "description": "Object containing abbreviated remote object value.",
+                "properties": [
+                    { "name": "lossless", "type": "boolean", "description": "Determines whether preview is lossless (contains all information of the original object)." },
+                    { "name": "overflow", "type": "boolean", "description": "True iff some of the properties of the original did not fit." },
+                    { "name": "properties", "type": "array", "items": { "$ref": "PropertyPreview" }, "description": "List of the properties." }
+                ]
+            },
+            {
+                "id": "PropertyPreview",
+                "type": "object",
+                "hidden": true,
+                "properties": [
+                    { "name": "name", "type": "string", "description": "Property name." },
+	                { "name": "type", "type": "string", "enum": ["object", "function", "undefined", "string", "number", "boolean"], "description": "Object type." },
+	                { "name": "value", "type": "string", "optional": true, "description": "User-friendly property value string." },
+	                { "name": "subtype", "type": "string", "optional": true, "enum": ["array", "null", "node", "regexp", "date"], "description": "Object subtype hint. Specified for <code>object</code> type values only." }
                 ]
             },
             {
@@ -1255,7 +1309,7 @@
                 "description": "DOM Storage entry.",
                 "hidden": true,
                 "properties": [
-                    { "name": "host", "type": "string", "description": "Domain name." },
+                    { "name": "origin", "type": "string", "description": "Document origin." },
                     { "name": "isLocalStorage", "type": "boolean", "description": "True for local storage." },
                     { "name": "id", "$ref": "StorageId", "description": "Entry id for further reference." }
                 ]
@@ -1495,6 +1549,16 @@
                     { "name": "requestId", "$ref": "RequestId", "description": "Request identifier. Corresponding fileContentReceived event should have same requestId with this." }
                 ],
                 "description": "Returns content of the file as fileContentReceived event. Result should be sliced into [start, end)."
+            },
+            {
+                "name": "deleteEntry",
+                "parameters": [
+                    { "name": "url", "type": "string", "description": "URL of the entry to delete." }
+                ],
+                "returns": [
+                    { "name": "requestId", "$ref": "RequestId", "description": "Request identifier. Corresponding deletionCompleted event should have same requestId with this." }
+                ],
+                "description": "Deletes specified entry. If the entry is a directory, the agent deletes children recursively."
             }
         ],
         "events": [
@@ -1503,7 +1567,7 @@
                 "parameters": [
                     { "name": "requestId", "type": "integer", "description": "Request Identifier that was returned by corresponding requestFileSystemRoot command." },
                     { "name": "errorCode", "type": "integer", "description": "0, if no error. Otherwise, errorCode is set to FileError::ErrorCode value." },
-                    { "name": "root", "$ref": "FileSystem.Entry", "optional": true, "description": "Contains root of the requested FileSystem if the command completed successfully." }
+                    { "name": "root", "$ref": "Entry", "optional": true, "description": "Contains root of the requested FileSystem if the command completed successfully." }
                 ],
                 "description": "Completion event of requestFileSystemRoot command."
             },
@@ -1512,7 +1576,7 @@
                 "parameters": [
                     { "name": "requestId", "type": "integer", "description": "Request Identifier that was returned by corresponding requestDirectoryContent command." },
                     { "name": "errorCode", "type": "integer", "description": "0, if no error. Otherwise, errorCode is set to FileError::ErrorCode value." },
-                    { "name": "entries", "type": "array", "items": { "$ref": "FileSystem.Entry" }, "optional": true, "description": "Contains all entries on directory if the command completed successfully." }
+                    { "name": "entries", "type": "array", "items": { "$ref": "Entry" }, "optional": true, "description": "Contains all entries on directory if the command completed successfully." }
                 ],
                 "description": "Completion event of requestDirectoryContent command."
             },
@@ -1521,7 +1585,7 @@
                 "parameters": [
                     { "name": "requestId", "type": "integer", "description": "Request Identifier that was returned in response to the corresponding requestMetadata command." },
                     { "name": "errorCode", "type": "integer", "description": "0, if no error. Otherwise, errorCode is set to FileError::ErrorCode value." },
-                    { "name": "metadata", "$ref": "FileSystem.Metadata", "optional": true, "description": "Contains metadata of the entry if the command completed successfully." }
+                    { "name": "metadata", "$ref": "Metadata", "optional": true, "description": "Contains metadata of the entry if the command completed successfully." }
                 ],
                 "description": "Completion event of requestMetadata command."
             },
@@ -1534,6 +1598,14 @@
                     { "name": "charset", "type": "string", "optional": true, "description": "Charset of the content if it is served as text." }
                 ],
                 "description": "Completion event of requestFileContent command."
+            },
+            {
+                "name": "deletionCompleted",
+                "parameters": [
+                    { "name": "requestId", "type": "integer", "description": "Request Identifier that was returned in response to the corresponding deleteEntry command." },
+                    { "name": "errorCode", "type": "integer", "description": "0, if no error. Otherwise errorCode is set to FileError::ErrorCode value." }
+                ],
+                "description": "Completion event of deleteEntry command."
             }
         ]
     },
@@ -1857,14 +1929,6 @@
                 "description": "Moves node into the new container, places it before the given anchor."
             },
             {
-                "name": "setTouchEmulationEnabled",
-                "parameters": [
-                    { "name": "enabled", "type": "boolean", "description": "Whether the touch event emulation should be enabled." }
-                ],
-                "description": "Toggles mouse event-based touch event emulation.",
-                "hidden": true
-            },
-            {
                 "name": "undo",
                 "description": "Undoes the last performed action.",
                 "hidden": true
@@ -2080,7 +2144,11 @@
             },
             {
                 "id": "ShorthandEntry",
-                "type": "object"
+                "type": "object",
+                "properties": [
+                    { "name": "name", "type": "string", "description": "Shorthand name." },
+                    { "name": "value", "type": "string", "description": "Shorthand value." }
+                ]
             },
             {
                 "id": "CSSPropertyInfo",
@@ -2160,12 +2228,24 @@
                 ]
             },
             {
+                "id": "Region",
+                "type": "object",
+                "properties": [
+                    { "name": "regionOverset", "type": "string", "enum": ["overset", "fit", "empty"], "description": "The \"overset\" attribute of a Named Flow." },
+                    { "name": "nodeId", "$ref": "DOM.NodeId", "description": "The corresponding DOM node id." }
+                ],
+                "description": "This object represents a region that flows from a Named Flow.",
+                "hidden": true
+            },
+            {
                 "id": "NamedFlow",
                 "type": "object",
                 "properties": [
-                    { "name": "nodeId", "$ref": "DOM.NodeId", "description": "The document node id." },
+                    { "name": "documentNodeId", "$ref": "DOM.NodeId", "description": "The document node id." },
                     { "name": "name", "type": "string", "description": "Named Flow identifier." },
-                    { "name": "overset", "type": "boolean", "description": "The \"overset\" attribute of a Named Flow." }
+                    { "name": "overset", "type": "boolean", "description": "The \"overset\" attribute of a Named Flow." },
+                    { "name": "content", "type": "array", "items": { "$ref": "DOM.NodeId" }, "description": "An array of nodes that flow into the Named Flow." },
+                    { "name": "regions", "type": "array", "items": { "$ref": "Region" }, "description": "An array of regions associated with the Named Flow." }
                 ],
                 "description": "This object represents a Named Flow.",
                 "hidden": true
@@ -2184,7 +2264,6 @@
                 "name": "getMatchedStylesForNode",
                 "parameters": [
                     { "name": "nodeId", "$ref": "DOM.NodeId" },
-                    { "name": "forcedPseudoClasses", "type": "array", "items": { "type": "string", "enum": ["active", "focus", "hover", "visited"] }, "optional": true, "description": "Element pseudo classes to force when computing applicable style rules." },
                     { "name": "includePseudo", "type": "boolean", "optional": true, "description": "Whether to include pseudo styles (default: true)." },
                     { "name": "includeInherited", "type": "boolean", "optional": true, "description": "Whether to include inherited styles (default: true)." }
                 ],
@@ -2209,8 +2288,7 @@
             {
                 "name": "getComputedStyleForNode",
                 "parameters": [
-                    { "name": "nodeId", "$ref": "DOM.NodeId" },
-                    { "name": "forcedPseudoClasses", "type": "array", "items": { "type": "string", "enum": ["active", "focus", "hover", "visited"] }, "optional": true, "description": "Element pseudo classes to force when computing applicable style rules." }
+                    { "name": "nodeId", "$ref": "DOM.NodeId" }
                 ],
                 "returns": [
                     { "name": "computedStyle", "type": "array", "items": { "$ref": "CSSComputedStyleProperty" }, "description": "Computed style for the specified DOM node." }
@@ -2307,6 +2385,14 @@
                 "description": "Returns all supported CSS property names."
             },
             {
+                "name": "forcePseudoState",
+                "parameters": [
+                    { "name": "nodeId", "$ref": "DOM.NodeId", "description": "The element id for which to force the pseudo state." },
+                    { "name": "forcedPseudoClasses", "type": "array", "items": { "type": "string", "enum": ["active", "focus", "hover", "visited"] }, "description": "Element pseudo classes to force when computing the element's style." }
+                ],
+                "description": "Ensures that the given node will have specified pseudo-classes whenever its style is computed by the browser."
+            },
+            {
                 "name": "startSelectorProfiler"
             },
             {
@@ -2318,10 +2404,10 @@
             {
                 "name": "getNamedFlowCollection",
                 "parameters": [
-                    { "name": "nodeId", "$ref": "DOM.NodeId", "description": "The document node id for which to get the Named Flow Collection." }
+                    { "name": "documentNodeId", "$ref": "DOM.NodeId", "description": "The document node id for which to get the Named Flow Collection." }
                 ],
                 "returns": [
-                    { "name": "namedFlows", "type": "array", "items": { "type": "string" }, "description": "An array containing the Named Flows in the document." }
+                    { "name": "namedFlows", "type": "array", "items": { "$ref": "NamedFlow" }, "description": "An array containing the Named Flows in the document." }
                 ],
                 "description": "Returns the Named Flows from the document.",
                 "hidden": true
@@ -2329,7 +2415,7 @@
             {
                 "name": "getFlowByName",
                 "parameters": [
-                    { "name": "nodeId", "$ref": "DOM.NodeId", "description": "The document node id." },
+                    { "name": "documentNodeId", "$ref": "DOM.NodeId", "description": "The document node id." },
                     { "name": "name", "type": "string", "description": "Named Flow identifier." }
                 ],
                 "returns": [
@@ -2350,6 +2436,24 @@
                     { "name": "styleSheetId", "$ref": "StyleSheetId" }
                 ],
                 "description": "Fired whenever a stylesheet is changed as a result of the client operation."
+            },
+            {
+                "name": "namedFlowCreated",
+                "parameters": [
+                    { "name": "documentNodeId", "$ref": "DOM.NodeId", "description": "The document node id." },
+                    { "name": "namedFlow", "type": "string", "description": "Identifier of the new Named Flow." }
+                ],
+                "description": "Fires when a Named Flow is created.",
+                "hidden": true
+            },
+            {
+                "name": "namedFlowRemoved",
+                "parameters": [
+                    { "name": "documentNodeId", "$ref": "DOM.NodeId", "description": "The document node id." },
+                    { "name": "namedFlow", "type": "string", "description": "Identifier of the removed Named Flow." }
+                ],
+                "description": "Fires when a Named Flow is removed: has no associated content nodes and regions.",
+                "hidden": true
             }
         ]
     },
@@ -2732,7 +2836,7 @@
                 "name": "paused",
                 "parameters": [
                     { "name": "callFrames", "type": "array", "items": { "$ref": "CallFrame" }, "description": "Call stack the virtual machine stopped on." },
-                    { "name": "reason", "type": "string", "enum": [ "XHR", "DOM", "EventListener", "exception", "other" ], "description": "Pause reason." },
+                    { "name": "reason", "type": "string", "enum": [ "XHR", "DOM", "EventListener", "exception", "assert", "other" ], "description": "Pause reason." },
                     { "name": "data", "type": "object", "optional": true, "description": "Object containing break-specific auxiliary properties." }
                 ],
                 "description": "Fired when the virtual machine stopped on breakpoint or exception or any other stop criteria."
@@ -2974,10 +3078,10 @@
         "types": [],
         "commands": [
             {
-                "name": "setWorkerInspectionEnabled",
-                "parameters": [
-                    { "name": "value", "type": "boolean" }
-                ]
+                "name": "enable"
+            },
+            {
+                "name": "disable"
             },
             {
                 "name": "sendMessageToWorker",
@@ -3035,7 +3139,28 @@
     {
         "domain": "WebGL",
         "hidden": true,
-        "types": [],
+        "types": [
+            {
+                "id": "TraceLogId",
+                "type": "string",
+                "description": "Unique object identifier."
+            },
+            {
+                "id": "Call",
+                "type": "object",
+                "properties": [
+                    { "name": "functionName", "type": "string" }
+                ]
+            },
+            {
+                "id": "TraceLog",
+                "type": "object",
+                "properties": [
+                    { "name": "id", "$ref": "TraceLogId" },
+                    { "name": "calls", "type": "array", "items": { "$ref": "Call" }}
+                ]
+            }
+        ],
         "commands": [
             {
                 "name": "enable",
@@ -3044,6 +3169,37 @@
             {
                 "name": "disable",
                 "description": "Disables WebGL inspection."
+            },
+            {
+                "name": "dropTraceLog",
+                "parameters": [
+                    { "name": "traceLogId", "$ref": "TraceLogId" }
+                ]
+            },
+            {
+                "name": "captureFrame",
+                "returns": [
+                    { "name": "traceLogId", "$ref": "TraceLogId" }
+                ]
+            },
+            {
+                "name": "getTraceLog",
+                "parameters": [
+                    { "name": "traceLogId", "$ref": "TraceLogId" }
+                ],
+                "returns": [
+                    { "name": "traceLog", "$ref": "TraceLog" }
+                ]
+            },
+            {
+                "name": "replayTraceLog",
+                "parameters": [
+                    { "name": "traceLogId", "$ref": "TraceLogId" },
+                    { "name": "stepNo", "type": "integer" }
+                ],
+                "returns": [
+                    { "name": "screenshotDataUrl", "type": "string" }
+                ]
             }
         ],
         "events": []

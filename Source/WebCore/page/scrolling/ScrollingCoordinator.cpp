@@ -288,6 +288,23 @@ void ScrollingCoordinator::updateMainFrameScrollPosition(const IntPoint& scrollP
     frameView->setConstrainsScrollingToContentEdge(true);
 }
 
+void ScrollingCoordinator::updateMainFrameScrollLayerPosition()
+{
+#if USE(ACCELERATED_COMPOSITING) && ENABLE(THREADED_SCROLLING)
+    ASSERT(isMainThread());
+
+    if (!m_page)
+        return;
+
+    FrameView* frameView = m_page->mainFrame()->view();
+    if (!frameView)
+        return;
+
+    if (GraphicsLayer* scrollLayer = scrollLayerForFrameView(frameView))
+        scrollLayer->setPosition(-frameView->scrollPosition());
+#endif
+}
+
 void ScrollingCoordinator::updateMainFrameScrollPositionAndScrollLayerPosition()
 {
 #if USE(ACCELERATED_COMPOSITING) && ENABLE(THREADED_SCROLLING)
@@ -415,6 +432,11 @@ void ScrollingCoordinator::setWheelEventHandlerCount(unsigned wheelEventHandlerC
 
 void ScrollingCoordinator::setShouldUpdateScrollLayerPositionOnMainThread(bool shouldUpdateScrollLayerPositionOnMainThread)
 {
+    // The FrameView's GraphicsLayer is likely to be out-of-synch with the PlatformLayer
+    // at this point. So we'll update it before we switch back to main thread scrolling
+    // in order to avoid layer positioning bugs.
+    if (shouldUpdateScrollLayerPositionOnMainThread)
+        updateMainFrameScrollLayerPosition();
     m_scrollingTreeState->setShouldUpdateScrollLayerPositionOnMainThread(shouldUpdateScrollLayerPositionOnMainThread);
     scheduleTreeStateCommit();
 }

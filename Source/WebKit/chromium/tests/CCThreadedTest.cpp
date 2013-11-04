@@ -26,31 +26,28 @@
 
 #include "CCThreadedTest.h"
 
-#include "AnimationIdVendor.h"
+#include "CCActiveAnimation.h"
 #include "CCAnimationTestCommon.h"
+#include "CCLayerAnimationController.h"
+#include "CCLayerImpl.h"
+#include "CCLayerTreeHostImpl.h"
 #include "CCOcclusionTrackerTestCommon.h"
+#include "CCScopedThreadProxy.h"
+#include "CCSingleThreadProxy.h"
+#include "CCTextureUpdateQueue.h"
+#include "CCThreadTask.h"
 #include "CCTiledLayerTestCommon.h"
+#include "CCTimingFunction.h"
 #include "ContentLayerChromium.h"
+#include "FakeWebCompositorOutputSurface.h"
 #include "FakeWebGraphicsContext3D.h"
-#include "GraphicsContext3DPrivate.h"
 #include "LayerChromium.h"
-#include "WebCompositor.h"
-#include "WebKit.h"
-#include "cc/CCActiveAnimation.h"
-#include "cc/CCLayerAnimationController.h"
-#include "cc/CCLayerAnimationDelegate.h"
-#include "cc/CCLayerImpl.h"
-#include "cc/CCLayerTreeHostImpl.h"
-#include "cc/CCScopedThreadProxy.h"
-#include "cc/CCSingleThreadProxy.h"
-#include "cc/CCTextureUpdater.h"
-#include "cc/CCThreadTask.h"
-#include "cc/CCTimingFunction.h"
-#include "platform/WebThread.h"
 #include <gmock/gmock.h>
 #include <public/Platform.h>
+#include <public/WebCompositor.h>
 #include <public/WebFilterOperation.h>
 #include <public/WebFilterOperations.h>
+#include <public/WebThread.h>
 #include <wtf/Locker.h>
 #include <wtf/MainThread.h>
 #include <wtf/PassRefPtr.h>
@@ -59,7 +56,6 @@
 
 using namespace WebCore;
 using namespace WebKit;
-using namespace WTF;
 
 namespace WebKitTests {
 
@@ -102,9 +98,9 @@ CompositorFakeWebGraphicsContext3DWithTextureTracking::CompositorFakeWebGraphics
 {
 }
 
-PassOwnPtr<WebGraphicsContext3D> TestHooks::createContext()
+PassOwnPtr<WebCompositorOutputSurface> TestHooks::createOutputSurface()
 {
-    return CompositorFakeWebGraphicsContext3DWithTextureTracking::create(WebGraphicsContext3D::Attributes());
+    return FakeWebCompositorOutputSurface::create(CompositorFakeWebGraphicsContext3DWithTextureTracking::create(WebGraphicsContext3D::Attributes()));
 }
 
 PassOwnPtr<MockLayerTreeHostImpl> MockLayerTreeHostImpl::create(TestHooks* testHooks, const CCLayerTreeSettings& settings, CCLayerTreeHostImplClient* client)
@@ -167,7 +163,7 @@ public:
         layerTreeHost->setRootLayer(rootLayer);
 
         // LayerTreeHostImpl won't draw if it has 1x1 viewport.
-        layerTreeHost->setViewportSize(IntSize(1, 1));
+        layerTreeHost->setViewportSize(IntSize(1, 1), IntSize(1, 1));
 
         layerTreeHost->rootLayer()->setLayerAnimationDelegate(testHooks);
 
@@ -211,9 +207,9 @@ public:
     {
     }
 
-    virtual void updateAnimations(double monotonicTime) OVERRIDE
+    virtual void animate(double monotonicTime) OVERRIDE
     {
-        m_testHooks->updateAnimations(monotonicTime);
+        m_testHooks->animate(monotonicTime);
     }
 
     virtual void layout() OVERRIDE
@@ -226,9 +222,9 @@ public:
         m_testHooks->applyScrollAndScale(scrollDelta, scale);
     }
 
-    virtual PassOwnPtr<WebGraphicsContext3D> createContext3D() OVERRIDE
+    virtual PassOwnPtr<WebCompositorOutputSurface> createOutputSurface() OVERRIDE
     {
-        return m_testHooks->createContext();
+        return m_testHooks->createOutputSurface();
     }
 
     virtual void willCommit() OVERRIDE
@@ -249,9 +245,9 @@ public:
     {
     }
 
-    virtual void didRecreateContext(bool succeeded) OVERRIDE
+    virtual void didRecreateOutputSurface(bool succeeded) OVERRIDE
     {
-        m_testHooks->didRecreateContext(succeeded);
+        m_testHooks->didRecreateOutputSurface(succeeded);
     }
 
     virtual void scheduleComposite() OVERRIDE
@@ -614,6 +610,8 @@ void CCThreadedTest::runTest(bool threaded)
 
     ASSERT(CCProxy::isMainThread());
     m_mainThreadProxy = CCScopedThreadProxy::create(CCProxy::mainThread());
+
+    initializeSettings(m_settings);
 
     m_beginTask = new BeginTask(this);
     WebKit::Platform::current()->currentThread()->postDelayedTask(m_beginTask, 0); // postDelayedTask takes ownership of the task

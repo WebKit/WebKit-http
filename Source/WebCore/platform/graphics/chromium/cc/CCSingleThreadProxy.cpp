@@ -24,14 +24,14 @@
 
 #include "config.h"
 
-#include "cc/CCSingleThreadProxy.h"
+#include "CCSingleThreadProxy.h"
 
+#include "CCDrawQuad.h"
+#include "CCGraphicsContext.h"
+#include "CCLayerTreeHost.h"
+#include "CCTextureUpdateController.h"
+#include "CCTimer.h"
 #include "TraceEvent.h"
-#include "cc/CCDrawQuad.h"
-#include "cc/CCGraphicsContext.h"
-#include "cc/CCLayerTreeHost.h"
-#include "cc/CCTextureUpdater.h"
-#include "cc/CCTimer.h"
 #include <wtf/CurrentTime.h>
 
 using namespace WTF;
@@ -47,7 +47,7 @@ CCSingleThreadProxy::CCSingleThreadProxy(CCLayerTreeHost* layerTreeHost)
     : m_layerTreeHost(layerTreeHost)
     , m_contextLost(false)
     , m_compositorIdentifier(-1)
-    , m_layerRendererInitialized(false)
+    , m_rendererInitialized(false)
     , m_nextFrameIsNewlyCommittedFrame(false)
 {
     TRACE_EVENT0("cc", "CCSingleThreadProxy::CCSingleThreadProxy");
@@ -127,16 +127,16 @@ void CCSingleThreadProxy::setVisible(bool visible)
     m_layerTreeHostImpl->setVisible(visible);
 }
 
-bool CCSingleThreadProxy::initializeLayerRenderer()
+bool CCSingleThreadProxy::initializeRenderer()
 {
     ASSERT(CCProxy::isMainThread());
     ASSERT(m_contextBeforeInitialization);
     {
         DebugScopedSetImplThread impl;
-        bool ok = m_layerTreeHostImpl->initializeLayerRenderer(m_contextBeforeInitialization.release(), UnthrottledUploader);
+        bool ok = m_layerTreeHostImpl->initializeRenderer(m_contextBeforeInitialization.release(), UnthrottledUploader);
         if (ok) {
-            m_layerRendererInitialized = true;
-            m_layerRendererCapabilitiesForMainThread = m_layerTreeHostImpl->layerRendererCapabilities();
+            m_rendererInitialized = true;
+            m_RendererCapabilitiesForMainThread = m_layerTreeHostImpl->rendererCapabilities();
         }
 
         return ok;
@@ -156,10 +156,11 @@ bool CCSingleThreadProxy::recreateContext()
     bool initialized;
     {
         DebugScopedSetImplThread impl;
-        m_layerTreeHost->deleteContentsTexturesOnImplThread(m_layerTreeHostImpl->resourceProvider());
-        initialized = m_layerTreeHostImpl->initializeLayerRenderer(context.release(), UnthrottledUploader);
+        if (!m_layerTreeHostImpl->contentsTexturesPurged())
+            m_layerTreeHost->deleteContentsTexturesOnImplThread(m_layerTreeHostImpl->resourceProvider());
+        initialized = m_layerTreeHostImpl->initializeRenderer(context.release(), UnthrottledUploader);
         if (initialized) {
-            m_layerRendererCapabilitiesForMainThread = m_layerTreeHostImpl->layerRendererCapabilities();
+            m_RendererCapabilitiesForMainThread = m_layerTreeHostImpl->rendererCapabilities();
         }
     }
 
@@ -174,11 +175,11 @@ void CCSingleThreadProxy::implSideRenderingStats(CCRenderingStats& stats)
     m_layerTreeHostImpl->renderingStats(stats);
 }
 
-const LayerRendererCapabilities& CCSingleThreadProxy::layerRendererCapabilities() const
+const RendererCapabilities& CCSingleThreadProxy::rendererCapabilities() const
 {
-    ASSERT(m_layerRendererInitialized);
+    ASSERT(m_rendererInitialized);
     // Note: this gets called during the commit by the "impl" thread
-    return m_layerRendererCapabilitiesForMainThread;
+    return m_RendererCapabilitiesForMainThread;
 }
 
 void CCSingleThreadProxy::loseContext()
@@ -194,7 +195,7 @@ void CCSingleThreadProxy::setNeedsAnimate()
     ASSERT_NOT_REACHED();
 }
 
-void CCSingleThreadProxy::doCommit(CCTextureUpdater& updater)
+void CCSingleThreadProxy::doCommit(CCTextureUpdateQueue& queue)
 {
     ASSERT(CCProxy::isMainThread());
     // Commit immediately
@@ -206,12 +207,13 @@ void CCSingleThreadProxy::doCommit(CCTextureUpdater& updater)
 
         m_layerTreeHost->beginCommitOnImplThread(m_layerTreeHostImpl.get());
 
-        // CCTextureUpdater is non-blocking and will return without updating
-        // any textures if the uploader is busy. This shouldn't be a problem
-        // here as the throttled uploader isn't used in single thread mode.
-        // For correctness, loop until no more updates are pending.
-        while (updater.hasMoreUpdates())
-            updater.update(m_layerTreeHostImpl->resourceProvider(), m_layerTreeHostImpl->layerRenderer()->textureCopier(), m_layerTreeHostImpl->layerRenderer()->textureUploader(), maxPartialTextureUpdates());
+        // CCTextureUpdateController::updateTextures is non-blocking and will
+        // return without updating any textures if the uploader is busy. This
+        // shouldn't be a problem here as the throttled uploader isn't used in
+        // single thread mode. For correctness, loop until no more updates are
+        // pending.
+        while (queue.hasMoreUpdates())
+            CCTextureUpdateController::updateTextures(m_layerTreeHostImpl->resourceProvider(), m_layerTreeHostImpl->renderer()->textureCopier(), m_layerTreeHostImpl->renderer()->textureUploader(), &queue, maxPartialTextureUpdates());
 
         m_layerTreeHost->finishCommitOnImplThread(m_layerTreeHostImpl.get());
 
@@ -259,7 +261,7 @@ void CCSingleThreadProxy::stop()
         DebugScopedSetMainThreadBlocked mainThreadBlocked;
         DebugScopedSetImplThread impl;
 
-        if (!m_layerTreeHostImpl->contentsTexturesWerePurgedSinceLastCommit())
+        if (!m_layerTreeHostImpl->contentsTexturesPurged())
             m_layerTreeHost->deleteContentsTexturesOnImplThread(m_layerTreeHostImpl->resourceProvider());
         m_layerTreeHostImpl.clear();
     }
@@ -286,8 +288,8 @@ void CCSingleThreadProxy::forceSerializeOnSwapBuffers()
 {
     {
         DebugScopedSetImplThread impl;
-        if (m_layerRendererInitialized)
-            m_layerTreeHostImpl->layerRenderer()->doNoOp();
+        if (m_rendererInitialized)
+            m_layerTreeHostImpl->renderer()->doNoOp();
     }
 }
 
@@ -296,17 +298,18 @@ bool CCSingleThreadProxy::commitAndComposite()
     ASSERT(CCProxy::isMainThread());
 
 
-    if (!m_layerTreeHost->initializeLayerRendererIfNeeded())
+    if (!m_layerTreeHost->initializeRendererIfNeeded())
         return false;
 
-    if (m_layerTreeHostImpl->contentsTexturesWerePurgedSinceLastCommit())
+    if (m_layerTreeHostImpl->contentsTexturesPurged())
         m_layerTreeHost->evictAllContentTextures();
 
-    CCTextureUpdater updater;
-    m_layerTreeHost->updateLayers(updater, m_layerTreeHostImpl->memoryAllocationLimitBytes());
+    CCTextureUpdateQueue queue;
+    m_layerTreeHost->updateLayers(queue, m_layerTreeHostImpl->memoryAllocationLimitBytes());
+    m_layerTreeHostImpl->resetContentsTexturesPurged();
 
     m_layerTreeHost->willCommit();
-    doCommit(updater);
+    doCommit(queue);
     bool result = doComposite();
     m_layerTreeHost->didBeginFrame();
     return result;

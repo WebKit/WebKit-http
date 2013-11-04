@@ -27,7 +27,6 @@
 #define ElementAttributeData_h
 
 #include "Attribute.h"
-#include "MemoryInstrumentation.h"
 #include "SpaceSplitString.h"
 #include "StylePropertySet.h"
 #include <wtf/NotFound.h>
@@ -36,8 +35,9 @@ namespace WebCore {
 
 class Attr;
 class Element;
+class MemoryObjectInfo;
 
-enum EInUpdateStyleAttribute { NotInUpdateStyleAttribute, InUpdateStyleAttribute };
+enum SynchronizationOfLazyAttribute { NotInSynchronizationOfLazyAttribute, InSynchronizationOfLazyAttribute };
 
 class ElementAttributeData {
     WTF_MAKE_FAST_ALLOCATED;
@@ -60,7 +60,7 @@ public:
     void updateInlineStyleAvoidingMutation(StyledElement*, const String& text) const;
     void destroyInlineStyle(StyledElement*) const;
 
-    StylePropertySet* attributeStyle() const { return m_attributeStyle.get(); }
+    const StylePropertySet* attributeStyle() const { return m_attributeStyle.get(); }
     void setAttributeStyle(PassRefPtr<StylePropertySet> style) const { m_attributeStyle = style; }
 
     size_t length() const;
@@ -78,9 +78,8 @@ public:
     size_t getAttributeItemIndex(const AtomicString& name, bool shouldIgnoreAttributeCase) const;
 
     // These functions do no error checking.
-    void addAttribute(const Attribute&, Element*, EInUpdateStyleAttribute = NotInUpdateStyleAttribute);
-    void removeAttribute(const QualifiedName&, Element*);
-    void removeAttribute(size_t index, Element*, EInUpdateStyleAttribute = NotInUpdateStyleAttribute);
+    void addAttribute(const Attribute&, Element*, SynchronizationOfLazyAttribute = NotInSynchronizationOfLazyAttribute);
+    void removeAttribute(size_t index, Element*, SynchronizationOfLazyAttribute = NotInSynchronizationOfLazyAttribute);
     PassRefPtr<Attr> takeAttribute(size_t index, Element*);
 
     bool hasID() const { return !m_idForStyleResolution.isNull(); }
@@ -94,16 +93,7 @@ public:
     PassRefPtr<Attr> ensureAttr(Element*, const QualifiedName&) const;
     void detachAttrObjectsFromElement(Element*) const;
 
-    void reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
-    {
-        MemoryClassInfo<ElementAttributeData> info(memoryObjectInfo, this, MemoryInstrumentation::DOM, m_arraySize * sizeof(Attribute));
-        info.addInstrumentedMember(m_inlineStyleDecl.get());
-        info.addInstrumentedMember(m_attributeStyle.get());
-        info.addMember(m_classNames);
-        info.addString(m_idForStyleResolution);
-        if (m_isMutable)
-            info.addVector(*m_mutableAttributeVector);
-    }
+    void reportMemoryUsage(MemoryObjectInfo*) const;
 
 private:
     friend class Element;
@@ -142,15 +132,6 @@ inline size_t ElementAttributeData::length() const
     if (isMutable())
         return m_mutableAttributeVector->size();
     return m_arraySize;
-}
-
-inline void ElementAttributeData::removeAttribute(const QualifiedName& name, Element* element)
-{
-    size_t index = getAttributeItemIndex(name);
-    if (index == notFound)
-        return;
-
-    removeAttribute(index, element);
 }
 
 inline Attribute* ElementAttributeData::getAttributeItem(const AtomicString& name, bool shouldIgnoreAttributeCase)

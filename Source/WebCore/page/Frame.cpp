@@ -288,28 +288,30 @@ void Frame::setView(PassRefPtr<FrameView> view)
 
 void Frame::setDocument(PassRefPtr<Document> newDoc)
 {
-    ASSERT(!newDoc || newDoc->frame());
+    ASSERT(!newDoc || newDoc->frame() == this);
     if (m_doc && m_doc->attached() && !m_doc->inPageCache()) {
         // FIXME: We don't call willRemove here. Why is that OK?
         m_doc->detach();
     }
 
     m_doc = newDoc;
+    ASSERT(!m_doc || m_doc->domWindow());
+    ASSERT(!m_doc || m_doc->domWindow()->frame() == this);
+
     selection()->updateSecureKeyboardEntryIfActive();
 
     if (m_doc && !m_doc->attached())
         m_doc->attach();
 
-    // Update the cached 'document' property, which is now stale.
-    m_script.updateDocument();
-
-    if (m_doc)
+    if (m_doc) {
+        m_script.updateDocument();
         m_doc->updateViewportArguments();
+    }
 
     if (m_page && m_page->mainFrame() == this) {
         notifyChromeClientWheelEventHandlerCountChanged();
 #if ENABLE(TOUCH_EVENTS)
-        if (m_doc && m_doc->hasListenerType(Document::TOUCH_LISTENER))
+        if (m_doc && m_doc->touchEventHandlerCount())
             m_page->chrome()->client()->needTouchEvents(true);
 #endif
     }
@@ -601,15 +603,6 @@ void Frame::injectUserScriptsForWorld(DOMWrapperWorld* world, const UserScriptVe
     }
 }
 
-void Frame::clearDOMWindow()
-{
-    if (m_domWindow) {
-        InspectorInstrumentation::frameWindowDiscarded(this, m_domWindow.get());
-        m_domWindow->clear();
-    }
-    m_domWindow = 0;
-}
-
 RenderView* Frame::contentRenderer() const
 {
     Document* doc = document();
@@ -669,15 +662,6 @@ void Frame::clearTimers()
     clearTimers(m_view.get(), document());
 }
 
-void Frame::setDOMWindow(DOMWindow* domWindow)
-{
-    if (m_domWindow) {
-        InspectorInstrumentation::frameWindowDiscarded(this, m_domWindow.get());
-        m_domWindow->clear();
-    }
-    m_domWindow = domWindow;
-}
-
 #if ENABLE(PAGE_VISIBILITY_API)
 void Frame::dispatchVisibilityStateChangeEvent()
 {
@@ -690,17 +674,9 @@ void Frame::dispatchVisibilityStateChangeEvent()
 
 void Frame::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
 {
-    MemoryClassInfo<Frame> info(memoryObjectInfo, this, MemoryInstrumentation::DOM);
+    MemoryClassInfo info(memoryObjectInfo, this, MemoryInstrumentation::DOM);
     info.addInstrumentedMember(m_doc.get());
     info.addInstrumentedMember(m_loader);
-}
-
-DOMWindow* Frame::domWindow() const
-{
-    if (!m_domWindow)
-        m_domWindow = DOMWindow::create(const_cast<Frame*>(this));
-
-    return m_domWindow.get();
 }
 
 void Frame::willDetachPage()

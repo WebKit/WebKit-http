@@ -64,7 +64,7 @@
 //
 // Object store meta-data:
 //
-//     The prefix is followed by a type byte, then a variable-length integer, and then another variable-length integer (FIXME: this should be a byte).
+//     The prefix is followed by a type byte, then a variable-length integer, and then another type byte.
 //
 //     <database id, 0, 0, 50, object store id, 0> => utf16 object store name [ObjectStoreMetaDataKey]
 //     <database id, 0, 0, 50, object store id, 1> => utf16 key path [ObjectStoreMetaDataKey]
@@ -162,14 +162,25 @@ static const unsigned char IndexFreeListTypeByte = 151;
 static const unsigned char ObjectStoreNamesTypeByte = 200;
 static const unsigned char IndexNamesKeyTypeByte = 201;
 
-static const int64_t ObjectMetaDataTypeMaximum = INT64_MAX;
+static const unsigned char ObjectMetaDataTypeMaximum = 255;
 static const unsigned char IndexMetaDataTypeMaximum = 255;
 
 Vector<char> encodeByte(unsigned char c)
 {
-    Vector<char> v;
+    Vector<char, DefaultInlineBufferSize> v;
     v.append(c);
+
+    ASSERT(v.size() <= DefaultInlineBufferSize);
     return v;
+}
+
+const char* decodeByte(const char* p, const char* limit, unsigned char& foundChar)
+{
+    if (p >= limit)
+        return 0;
+
+    foundChar = *p++;
+    return p;
 }
 
 Vector<char> maxIDBKey()
@@ -184,8 +195,10 @@ Vector<char> minIDBKey()
 
 Vector<char> encodeBool(bool b)
 {
-    Vector<char> ret(1);
-    ret[0] = b ? 1 : 0;
+    Vector<char, DefaultInlineBufferSize> ret;
+    ret.append(b ? 1 : 0);
+
+    ASSERT(ret.size() <= DefaultInlineBufferSize);
     return ret;
 }
 
@@ -199,7 +212,7 @@ Vector<char> encodeInt(int64_t nParam)
 {
     ASSERT(nParam >= 0);
     uint64_t n = static_cast<uint64_t>(nParam);
-    Vector<char> ret; // FIXME: Size this at creation.
+    Vector<char, DefaultInlineBufferSize> ret;
 
     do {
         unsigned char c = n;
@@ -207,6 +220,7 @@ Vector<char> encodeInt(int64_t nParam)
         n >>= 8;
     } while (n);
 
+    ASSERT(ret.size() <= DefaultInlineBufferSize);
     return ret;
 }
 
@@ -242,7 +256,7 @@ Vector<char> encodeVarInt(int64_t nParam)
 {
     ASSERT(nParam >= 0);
     uint64_t n = static_cast<uint64_t>(nParam);
-    Vector<char> ret; // FIXME: Size this at creation.
+    Vector<char, DefaultInlineBufferSize> ret;
 
     do {
         unsigned char c = n & 0x7f;
@@ -252,6 +266,7 @@ Vector<char> encodeVarInt(int64_t nParam)
         ret.append(c);
     } while (n);
 
+    ASSERT(ret.size() <= DefaultInlineBufferSize);
     return ret;
 }
 
@@ -274,14 +289,14 @@ const char* decodeVarInt(const char* p, const char* limit, int64_t& foundInt)
 
 Vector<char> encodeString(const String& s)
 {
-    Vector<char> ret; // FIXME: Size this at creation.
+    Vector<char> ret(s.length() * 2);
 
     for (unsigned i = 0; i < s.length(); ++i) {
         UChar u = s[i];
         unsigned char hi = u >> 8;
         unsigned char lo = u;
-        ret.append(hi);
-        ret.append(lo);
+        ret[2 * i] = hi;
+        ret[2 * i + 1] = lo;
     }
 
     return ret;
@@ -364,9 +379,10 @@ Vector<char> encodeDouble(double x)
 {
     // FIXME: It would be nice if we could be byte order independent.
     const char* p = reinterpret_cast<char*>(&x);
-    Vector<char> v;
+    Vector<char, DefaultInlineBufferSize> v;
     v.append(p, sizeof(x));
-    ASSERT(v.size() == sizeof(x));
+
+    ASSERT(v.size() <= DefaultInlineBufferSize);
     return v;
 }
 
@@ -383,12 +399,12 @@ const char* decodeDouble(const char* p, const char* limit, double* d)
 
 Vector<char> encodeIDBKey(const IDBKey& key)
 {
-    Vector<char> ret;
+    Vector<char, DefaultInlineBufferSize> ret;
     encodeIDBKey(key, ret);
     return ret;
 }
 
-void encodeIDBKey(const IDBKey& key, Vector<char>& into)
+void encodeIDBKey(const IDBKey& key, Vector<char, DefaultInlineBufferSize>& into)
 {
     size_t previousSize = into.size();
     ASSERT(key.isValid());
@@ -640,7 +656,7 @@ Vector<char> encodeIDBKeyPath(const IDBKeyPath& keyPath)
     // May be typed, or may be a raw string. An invalid leading
     // byte is used to identify typed coding. New records are
     // always written as typed.
-    Vector<char> ret;
+    Vector<char, DefaultInlineBufferSize> ret;
     ret.append(IDBKeyPathTypeCodedByte1);
     ret.append(IDBKeyPathTypeCodedByte2);
     ret.append(static_cast<char>(keyPath.type()));
@@ -884,12 +900,13 @@ Vector<char> KeyPrefix::encode() const
 
 
     unsigned char firstByte = (databaseIdString.size() - 1) << 5 | (objectStoreIdString.size() - 1) << 2 | (indexIdString.size() - 1);
-    Vector<char> ret;
+    Vector<char, DefaultInlineBufferSize> ret;
     ret.append(firstByte);
     ret.append(databaseIdString);
     ret.append(objectStoreIdString);
     ret.append(indexIdString);
 
+    ASSERT(ret.size() <= DefaultInlineBufferSize);
     return ret;
 }
 
@@ -961,7 +978,8 @@ const char* DatabaseFreeListKey::decode(const char* start, const char* limit, Da
     ASSERT(!prefix.m_indexId);
     if (p == limit)
         return 0;
-    unsigned char typeByte = *p++;
+    unsigned char typeByte = 0;
+    p = decodeByte(p, limit, typeByte);
     ASSERT_UNUSED(typeByte, typeByte == DatabaseFreeListTypeByte);
     if (p == limit)
         return 0;
@@ -1005,7 +1023,8 @@ const char* DatabaseNameKey::decode(const char* start, const char* limit, Databa
     ASSERT(!prefix.m_indexId);
     if (p == limit)
         return 0;
-    unsigned char typeByte = *p++;
+    unsigned char typeByte = 0;
+    p = decodeByte(p, limit, typeByte);
     ASSERT_UNUSED(typeByte, typeByte == DatabaseNameTypeByte);
     if (p == limit)
         return 0;
@@ -1068,7 +1087,8 @@ const char* ObjectStoreMetaDataKey::decode(const char* start, const char* limit,
     ASSERT(!prefix.m_indexId);
     if (p == limit)
         return 0;
-    unsigned char typeByte = *p++;
+    unsigned char typeByte = 0;
+    p = decodeByte(p, limit, typeByte);
     ASSERT_UNUSED(typeByte, typeByte == ObjectStoreMetaDataTypeByte);
     if (p == limit)
         return 0;
@@ -1078,16 +1098,16 @@ const char* ObjectStoreMetaDataKey::decode(const char* start, const char* limit,
     ASSERT(result->m_objectStoreId);
     if (p == limit)
         return 0;
-    return decodeVarInt(p, limit, result->m_metaDataType);
+    return decodeByte(p, limit, result->m_metaDataType);
 }
 
-Vector<char> ObjectStoreMetaDataKey::encode(int64_t databaseId, int64_t objectStoreId, int64_t metaDataType)
+Vector<char> ObjectStoreMetaDataKey::encode(int64_t databaseId, int64_t objectStoreId, unsigned char metaDataType)
 {
     KeyPrefix prefix(databaseId, 0, 0);
     Vector<char> ret = prefix.encode();
     ret.append(encodeByte(ObjectStoreMetaDataTypeByte));
     ret.append(encodeVarInt(objectStoreId));
-    ret.append(encodeVarInt(metaDataType));
+    ret.append(encodeByte(metaDataType));
     return ret;
 }
 
@@ -1106,7 +1126,7 @@ int64_t ObjectStoreMetaDataKey::objectStoreId() const
     ASSERT(m_objectStoreId >= 0);
     return m_objectStoreId;
 }
-int64_t ObjectStoreMetaDataKey::metaDataType() const
+unsigned char ObjectStoreMetaDataKey::metaDataType() const
 {
     ASSERT(m_metaDataType >= 0);
     return m_metaDataType;
@@ -1142,7 +1162,8 @@ const char* IndexMetaDataKey::decode(const char* start, const char* limit, Index
     ASSERT(!prefix.m_indexId);
     if (p == limit)
         return 0;
-    unsigned char typeByte = *p++;
+    unsigned char typeByte = 0;
+    p = decodeByte(p, limit, typeByte);
     ASSERT_UNUSED(typeByte, typeByte == IndexMetaDataTypeByte);
     if (p == limit)
         return 0;
@@ -1154,8 +1175,7 @@ const char* IndexMetaDataKey::decode(const char* start, const char* limit, Index
         return 0;
     if (p == limit)
         return 0;
-    result->m_metaDataType = *p++;
-    return p;
+    return decodeByte(p, limit, result->m_metaDataType);
 }
 
 Vector<char> IndexMetaDataKey::encode(int64_t databaseId, int64_t objectStoreId, int64_t indexId, unsigned char metaDataType)
@@ -1213,7 +1233,8 @@ const char* ObjectStoreFreeListKey::decode(const char* start, const char* limit,
     ASSERT(!prefix.m_indexId);
     if (p == limit)
         return 0;
-    unsigned char typeByte = *p++;
+    unsigned char typeByte = 0;
+    p = decodeByte(p, limit, typeByte);
     ASSERT_UNUSED(typeByte, typeByte == ObjectStoreFreeListTypeByte);
     if (p == limit)
         return 0;
@@ -1266,7 +1287,8 @@ const char* IndexFreeListKey::decode(const char* start, const char* limit, Index
     ASSERT(!prefix.m_indexId);
     if (p == limit)
         return 0;
-    unsigned char typeByte = *p++;
+    unsigned char typeByte = 0;
+    p = decodeByte(p, limit, typeByte);
     ASSERT_UNUSED(typeByte, typeByte == IndexFreeListTypeByte);
     if (p == limit)
         return 0;
@@ -1326,7 +1348,8 @@ const char* ObjectStoreNamesKey::decode(const char* start, const char* limit, Ob
     ASSERT(!prefix.m_indexId);
     if (p == limit)
         return 0;
-    unsigned char typeByte = *p++;
+    unsigned char typeByte = 0;
+    p = decodeByte(p, limit, typeByte);
     ASSERT_UNUSED(typeByte, typeByte == ObjectStoreNamesTypeByte);
     return decodeStringWithLength(p, limit, result->m_objectStoreName);
 }
@@ -1363,7 +1386,8 @@ const char* IndexNamesKey::decode(const char* start, const char* limit, IndexNam
     ASSERT(!prefix.m_indexId);
     if (p == limit)
         return 0;
-    unsigned char typeByte = *p++;
+    unsigned char typeByte = 0;
+    p = decodeByte(p, limit, typeByte);
     ASSERT_UNUSED(typeByte, typeByte == IndexNamesKeyTypeByte);
     if (p == limit)
         return 0;

@@ -47,7 +47,6 @@
 #include "Cookie.h"
 #include "CookieJar.h"
 #include "DOMEditor.h"
-#include "DOMNodeHighlighter.h"
 #include "DOMPatchSupport.h"
 #include "DOMWindow.h"
 #include "Document.h"
@@ -68,6 +67,7 @@
 #include "InjectedScriptManager.h"
 #include "InspectorFrontend.h"
 #include "InspectorHistory.h"
+#include "InspectorOverlay.h"
 #include "InspectorPageAgent.h"
 #include "InspectorState.h"
 #include "InstrumentingAgents.h"
@@ -104,10 +104,6 @@ using namespace HTMLNames;
 
 namespace DOMAgentState {
 static const char documentRequested[] = "documentRequested";
-
-#if ENABLE(TOUCH_EVENTS)
-static const char touchEventEmulationEnabled[] = "touchEventEmulationEnabled";
-#endif
 };
 
 static const size_t maxTextSize = 10000;
@@ -232,17 +228,14 @@ void InspectorDOMAgent::clearFrontend()
 
     m_history.clear();
     m_domEditor.clear();
-    setSearchingForNode(false, 0);
 
     ErrorString error;
+    setSearchingForNode(&error, false, 0);
     hideHighlight(&error);
 
     m_frontend = 0;
     m_instrumentingAgents->setInspectorDOMAgent(0);
     m_state->setBoolean(DOMAgentState::documentRequested, false);
-#if ENABLE(TOUCH_EVENTS)
-    updateTouchEventEmulationInPage(false);
-#endif
     reset();
 }
 
@@ -251,9 +244,6 @@ void InspectorDOMAgent::restore()
     // Reset document to avoid early return from setDocument.
     m_document = 0;
     setDocument(m_pageAgent->mainFrame()->document());
-#if ENABLE(TOUCH_EVENTS)
-    updateTouchEventEmulationInPage(m_state->getBoolean(DOMAgentState::touchEventEmulationEnabled));
-#endif
 }
 
 Vector<Document*> InspectorDOMAgent::documents()
@@ -459,14 +449,18 @@ void InspectorDOMAgent::discardBindings()
     m_childrenRequested.clear();
 }
 
-#if ENABLE(TOUCH_EVENTS)
-void InspectorDOMAgent::updateTouchEventEmulationInPage(bool enabled)
+int InspectorDOMAgent::pushNodeToFrontend(ErrorString* errorString, int documentNodeId, Node* nodeToPush)
 {
-    m_state->setBoolean(DOMAgentState::touchEventEmulationEnabled, enabled);
-    if (m_pageAgent->mainFrame() && m_pageAgent->mainFrame()->settings())
-        m_pageAgent->mainFrame()->settings()->setTouchEventEmulationEnabled(enabled);
+    Document* document = assertDocument(errorString, documentNodeId);
+    if (!document)
+        return 0;
+    if (nodeToPush->document() != document) {
+        *errorString = "Node is not part of the document with given id";
+        return 0;
+    }
+
+    return pushNodePathToFrontend(nodeToPush);
 }
-#endif
 
 Node* InspectorDOMAgent::nodeForId(int id)
 {
@@ -815,12 +809,20 @@ void InspectorDOMAgent::performSearch(ErrorString*, const String& whitespaceTrim
     unsigned queryLength = whitespaceTrimmedQuery.length();
     bool startTagFound = !whitespaceTrimmedQuery.find('<');
     bool endTagFound = whitespaceTrimmedQuery.reverseFind('>') + 1 == queryLength;
+    bool startQuoteFound = !whitespaceTrimmedQuery.find('"');
+    bool endQuoteFound = whitespaceTrimmedQuery.reverseFind('"') + 1 == queryLength;
+    bool exactAttributeMatch = startQuoteFound && endQuoteFound;
 
     String tagNameQuery = whitespaceTrimmedQuery;
+    String attributeQuery = whitespaceTrimmedQuery;
     if (startTagFound)
         tagNameQuery = tagNameQuery.right(tagNameQuery.length() - 1);
     if (endTagFound)
         tagNameQuery = tagNameQuery.left(tagNameQuery.length() - 1);
+    if (startQuoteFound)
+        attributeQuery = attributeQuery.right(attributeQuery.length() - 1);
+    if (endQuoteFound)
+        attributeQuery = attributeQuery.left(attributeQuery.length() - 1);
 
     Vector<Document*> docs = documents();
     ListHashSet<Node*> resultCollector;
@@ -860,9 +862,12 @@ void InspectorDOMAgent::performSearch(ErrorString*, const String& whitespaceTrim
                         resultCollector.add(node);
                         break;
                     }
-                    if (attribute->value().find(whitespaceTrimmedQuery) != notFound) {
-                        resultCollector.add(node);
-                        break;
+                    size_t foundPosition = attribute->value().find(attributeQuery);
+                    if (foundPosition != notFound) {
+                        if (!exactAttributeMatch || (!foundPosition && attribute->value().length() == attributeQuery.length())) {
+                            resultCollector.add(node);
+                            break;
+                        }
                     }
                 }
                 break;
@@ -953,7 +958,8 @@ bool InspectorDOMAgent::handleMousePress()
 
 void InspectorDOMAgent::inspect(Node* node)
 {
-    setSearchingForNode(false, 0);
+    ErrorString error;
+    setSearchingForNode(&error, false, 0);
 
     if (node->nodeType() != Node::ELEMENT_NODE && node->nodeType() != Node::DOCUMENT_NODE)
         node = node->parentNode();
@@ -994,66 +1000,69 @@ void InspectorDOMAgent::mouseDidMoveOverElement(const HitTestResult& result, uns
     Node* node = result.innerNode();
     while (node && node->nodeType() == Node::TEXT_NODE)
         node = node->parentNode();
-    if (node)
-        m_overlay->highlightNode(node);
+    if (node && m_inspectModeHighlightConfig)
+        m_overlay->highlightNode(node, *m_inspectModeHighlightConfig);
 }
 
-void InspectorDOMAgent::setSearchingForNode(bool enabled, InspectorObject* highlightConfig)
+void InspectorDOMAgent::setSearchingForNode(ErrorString* errorString, bool enabled, InspectorObject* highlightInspectorObject)
 {
     if (m_searchingForNode == enabled)
         return;
     m_searchingForNode = enabled;
-    if (enabled)
-        setHighlightDataFromConfig(highlightConfig);
-    else {
-        ErrorString error;
-        hideHighlight(&error);
-        m_overlay->clearHighlightData();
-    }
+    if (enabled) {
+        m_inspectModeHighlightConfig = highlightConfigFromInspectorObject(errorString, highlightInspectorObject);
+        if (!m_inspectModeHighlightConfig)
+            return;
+    } else
+        hideHighlight(errorString);
 }
 
-bool InspectorDOMAgent::setHighlightDataFromConfig(InspectorObject* highlightConfig)
+PassOwnPtr<HighlightConfig> InspectorDOMAgent::highlightConfigFromInspectorObject(ErrorString* errorString, InspectorObject* highlightInspectorObject)
 {
-    if (!highlightConfig) {
-        m_overlay->clearHighlightData();
-        return false;
+    if (!highlightInspectorObject) {
+        *errorString = "Internal error: highlight configuration parameter is missing";
+        return nullptr;
     }
 
-    OwnPtr<HighlightData> highlightData = adoptPtr(new HighlightData());
+    OwnPtr<HighlightConfig> highlightConfig = adoptPtr(new HighlightConfig());
     bool showInfo = false; // Default: false (do not show a tooltip).
-    highlightConfig->getBoolean("showInfo", &showInfo);
-    highlightData->showInfo = showInfo;
-    highlightData->content = parseConfigColor("contentColor", highlightConfig);
-    highlightData->contentOutline = parseConfigColor("contentOutlineColor", highlightConfig);
-    highlightData->padding = parseConfigColor("paddingColor", highlightConfig);
-    highlightData->border = parseConfigColor("borderColor", highlightConfig);
-    highlightData->margin = parseConfigColor("marginColor", highlightConfig);
-    m_overlay->setHighlightData(highlightData.release());
-    return true;
+    highlightInspectorObject->getBoolean("showInfo", &showInfo);
+    highlightConfig->showInfo = showInfo;
+    highlightConfig->content = parseConfigColor("contentColor", highlightInspectorObject);
+    highlightConfig->contentOutline = parseConfigColor("contentOutlineColor", highlightInspectorObject);
+    highlightConfig->padding = parseConfigColor("paddingColor", highlightInspectorObject);
+    highlightConfig->border = parseConfigColor("borderColor", highlightInspectorObject);
+    highlightConfig->margin = parseConfigColor("marginColor", highlightInspectorObject);
+    return highlightConfig.release();
 }
 
-void InspectorDOMAgent::setInspectModeEnabled(ErrorString*, bool enabled, const RefPtr<InspectorObject>* highlightConfig)
+void InspectorDOMAgent::setInspectModeEnabled(ErrorString* errorString, bool enabled, const RefPtr<InspectorObject>* highlightConfig)
 {
-    setSearchingForNode(enabled, highlightConfig ? highlightConfig->get() : 0);
+    setSearchingForNode(errorString, enabled, highlightConfig ? highlightConfig->get() : 0);
 }
 
 void InspectorDOMAgent::highlightRect(ErrorString*, int x, int y, int width, int height, const RefPtr<InspectorObject>* color, const RefPtr<InspectorObject>* outlineColor)
 {
-    OwnPtr<HighlightData> highlightData = adoptPtr(new HighlightData());
-    highlightData->rect = adoptPtr(new IntRect(x, y, width, height));
-    highlightData->content = parseColor(color);
-    highlightData->contentOutline = parseColor(outlineColor);
-    m_overlay->setHighlightData(highlightData.release());
+    OwnPtr<HighlightConfig> highlightConfig = adoptPtr(new HighlightConfig());
+    highlightConfig->content = parseColor(color);
+    highlightConfig->contentOutline = parseColor(outlineColor);
+    m_overlay->highlightRect(adoptPtr(new IntRect(x, y, width, height)), *highlightConfig);
 }
 
 void InspectorDOMAgent::highlightNode(
-    ErrorString*,
+    ErrorString* errorString,
     int nodeId,
-    const RefPtr<InspectorObject>& highlightConfig)
+    const RefPtr<InspectorObject>& highlightInspectorObject)
 {
-    if (Node* node = nodeForId(nodeId))
-        if (setHighlightDataFromConfig(highlightConfig.get()))
-            m_overlay->highlightNode(node);
+    Node* node = nodeForId(nodeId);
+    if (!node)
+        return;
+
+    OwnPtr<HighlightConfig> highlightConfig = highlightConfigFromInspectorObject(errorString, highlightInspectorObject.get());
+    if (!highlightConfig)
+        return;
+
+    m_overlay->highlightNode(node, *highlightConfig);
 }
 
 void InspectorDOMAgent::highlightFrame(
@@ -1064,12 +1073,11 @@ void InspectorDOMAgent::highlightFrame(
 {
     Frame* frame = m_pageAgent->frameForId(frameId);
     if (frame && frame->ownerElement()) {
-        OwnPtr<HighlightData> highlightData = adoptPtr(new HighlightData());
-        highlightData->node = frame->ownerElement();
-        highlightData->showInfo = true; // Always show tooltips for frames.
-        highlightData->content = parseColor(color);
-        highlightData->contentOutline = parseColor(outlineColor);
-        m_overlay->setHighlightData(highlightData.release());
+        OwnPtr<HighlightConfig> highlightConfig = adoptPtr(new HighlightConfig());
+        highlightConfig->showInfo = true; // Always show tooltips for frames.
+        highlightConfig->content = parseColor(color);
+        highlightConfig->contentOutline = parseColor(outlineColor);
+        m_overlay->highlightNode(frame->ownerElement(), *highlightConfig);
     }
 }
 
@@ -1103,19 +1111,6 @@ void InspectorDOMAgent::moveTo(ErrorString* errorString, int nodeId, int targetE
         return;
 
     *newNodeId = pushNodePathToFrontend(node);
-}
-
-void InspectorDOMAgent::setTouchEmulationEnabled(ErrorString* error, bool enabled)
-{
-#if ENABLE(TOUCH_EVENTS)
-    if (m_state->getBoolean(DOMAgentState::touchEventEmulationEnabled) == enabled)
-        return;
-    UNUSED_PARAM(error);
-    updateTouchEventEmulationInPage(enabled);
-#else
-    *error = "Touch events emulation not supported";
-    UNUSED_PARAM(enabled);
-#endif
 }
 
 void InspectorDOMAgent::undo(ErrorString* errorString)
@@ -1277,15 +1272,17 @@ PassRefPtr<TypeBuilder::Array<String> > InspectorDOMAgent::buildArrayForElementA
 PassRefPtr<TypeBuilder::Array<TypeBuilder::DOM::Node> > InspectorDOMAgent::buildArrayForContainerChildren(Node* container, int depth, NodeToIdMap* nodesMap)
 {
     RefPtr<TypeBuilder::Array<TypeBuilder::DOM::Node> > children = TypeBuilder::Array<TypeBuilder::DOM::Node>::create();
-    Node* child = innerFirstChild(container);
-
     if (depth == 0) {
         // Special-case the only text child - pretend that container's children have been requested.
-        if (child && child->nodeType() == Node::TEXT_NODE && !innerNextSibling(child))
-            return buildArrayForContainerChildren(container, 1, nodesMap);
+        Node* firstChild = container->firstChild();
+        if (firstChild && firstChild->nodeType() == Node::TEXT_NODE && !firstChild->nextSibling()) {
+            children->addItem(buildObjectForNode(firstChild, 0, nodesMap));
+            m_childrenRequested.add(bind(container, nodesMap));
+        }
         return children.release();
     }
 
+    Node* child = innerFirstChild(container);
     depth--;
     m_childrenRequested.add(bind(container, nodesMap));
 

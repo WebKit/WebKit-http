@@ -202,6 +202,14 @@ RenderObject* HTMLImageElement::createRenderer(RenderArena* arena, RenderStyle* 
     return createRendererForImage(this, arena);
 }
 
+bool HTMLImageElement::canStartSelection() const
+{
+    if (shadow())
+        return HTMLElement::canStartSelection();
+
+    return false;
+}
+
 void HTMLImageElement::attach()
 {
     HTMLElement::attach();
@@ -411,6 +419,14 @@ inline ImageInnerElement* HTMLImageElement::innerElement() const
 {
     ASSERT(userAgentShadowRoot());
     return toImageInnerElement(userAgentShadowRoot()->firstChild());
+}
+
+void HTMLImageElement::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
+{
+    MemoryClassInfo info(memoryObjectInfo, this, MemoryInstrumentation::DOM);
+    HTMLElement::reportMemoryUsage(memoryObjectInfo);
+    info.addMember(m_imageLoader);
+    info.addInstrumentedMember(m_form);
 }
 
 }

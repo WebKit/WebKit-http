@@ -250,7 +250,7 @@ AccessibilityRole AccessibilityNodeObject::determineAccessibilityRole()
     if (node()->isTextNode())
         return StaticTextRole;
     if (node()->hasTagName(buttonTag))
-        return ariaHasPopup() ? PopUpButtonRole : ButtonRole;
+        return buttonRoleType();
     if (node()->hasTagName(inputTag)) {
         HTMLInputElement* input = static_cast<HTMLInputElement*>(node());
         if (input->isCheckbox())
@@ -258,7 +258,7 @@ AccessibilityRole AccessibilityNodeObject::determineAccessibilityRole()
         if (input->isRadioButton())
             return RadioButtonRole;
         if (input->isTextButton())
-            return ariaHasPopup() ? PopUpButtonRole : ButtonRole;
+            return buttonRoleType();
         return TextFieldRole;
     }
     if (node()->hasTagName(selectTag)) {
@@ -306,6 +306,23 @@ bool AccessibilityNodeObject::accessibilityIsIgnored() const
     return m_role == UnknownRole;
 }
 
+bool AccessibilityNodeObject::canvasHasFallbackContent() const
+{
+    Node* node = this->node();
+    if (!node || !node->hasTagName(canvasTag))
+        return false;
+
+    // If it has any children that are elements, we'll assume it might be fallback
+    // content. If it has no children or its only children are not elements
+    // (e.g. just text nodes), it doesn't have fallback content.
+    for (Node* child = node->firstChild(); child; child = child->nextSibling()) {
+        if (child->isElementNode())
+            return true;
+    }
+
+    return false;
+}
+
 bool AccessibilityNodeObject::canSetFocusAttribute() const
 {
     Node* node = this->node();
@@ -336,9 +353,9 @@ AccessibilityRole AccessibilityNodeObject::determineAriaRoleAttribute() const
     // ARIA states if an item can get focus, it should not be presentational.
     if (role == PresentationalRole && canSetFocusAttribute())
         return UnknownRole;
-    
-    if (role == ButtonRole && ariaHasPopup())
-        role = PopUpButtonRole;
+
+    if (role == ButtonRole)
+        role = buttonRoleType();
 
     if (role == TextAreaRole && !ariaIsMultiline())
         role = TextFieldRole;
@@ -383,5 +400,16 @@ AccessibilityRole AccessibilityNodeObject::remapAriaRoleDueToParent(Accessibilit
     
     return role;
 }   
+
+// If you call node->rendererIsEditable() since that will return true if an ancestor is editable.
+// This only returns true if this is the element that actually has the contentEditable attribute set.
+bool AccessibilityNodeObject::hasContentEditableAttributeSet() const
+{
+    if (!hasAttribute(contenteditableAttr))
+        return false;
+    const AtomicString& contentEditableValue = getAttribute(contenteditableAttr);
+    // Both "true" (case-insensitive) and the empty string count as true.
+    return contentEditableValue.isEmpty() || equalIgnoringCase(contentEditableValue, "true");
+}
 
 } // namespace WebCore

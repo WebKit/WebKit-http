@@ -432,7 +432,7 @@ static StylePropertySet* leakBorderStyle(int value)
     return style.release().leakRef();
 }
 
-StylePropertySet* HTMLTableElement::additionalAttributeStyle()
+const StylePropertySet* HTMLTableElement::additionalAttributeStyle()
 {
     if (m_frameAttr)
         return 0;
@@ -508,7 +508,7 @@ PassRefPtr<StylePropertySet> HTMLTableElement::createSharedCellStyle()
         style->setProperty(CSSPropertyBorderColor, cssValuePool().createInheritedValue());
         break;
     case NoBorders:
-        style->setProperty(CSSPropertyBorderWidth, cssValuePool().createValue(0, CSSPrimitiveValue::CSS_PX));
+        // If 'rules=none' then allow any borders set at cell level to take effect. 
         break;
     }
 
@@ -518,7 +518,7 @@ PassRefPtr<StylePropertySet> HTMLTableElement::createSharedCellStyle()
     return style.release();
 }
 
-StylePropertySet* HTMLTableElement::additionalCellStyle()
+const StylePropertySet* HTMLTableElement::additionalCellStyle()
 {
     if (!m_sharedCellStyle)
         m_sharedCellStyle = createSharedCellStyle();
@@ -542,7 +542,7 @@ static StylePropertySet* leakGroupBorderStyle(int rows)
     return style.release().leakRef();
 }
 
-StylePropertySet* HTMLTableElement::additionalGroupStyle(bool rows)
+const StylePropertySet* HTMLTableElement::additionalGroupStyle(bool rows)
 {
     if (m_rulesAttr != GroupsRules)
         return 0;

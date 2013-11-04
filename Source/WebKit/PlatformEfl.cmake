@@ -26,8 +26,8 @@ LIST(APPEND WebKit_INCLUDE_DIRECTORIES
     ${LIBXML2_INCLUDE_DIR}
     ${LIBXSLT_INCLUDE_DIR}
     ${SQLITE_INCLUDE_DIR}
-    ${Glib_INCLUDE_DIRS}
-    ${LIBSOUP24_INCLUDE_DIRS}
+    ${GLIB_INCLUDE_DIRS}
+    ${LIBSOUP_INCLUDE_DIRS}
 )
 
 IF (ENABLE_SVG)
@@ -60,16 +60,6 @@ IF (WTF_USE_FREETYPE)
   )
 ENDIF ()
 
-IF (WTF_USE_PANGO)
-  LIST(APPEND WebKit_INCLUDE_DIRECTORIES
-    "${WEBCORE_DIR}/platform/graphics/pango"
-    ${Pango_INCLUDE_DIRS}
-  )
-  LIST(APPEND WebKit_LIBRARIES
-    ${Pango_LIBRARIES}
-  )
-ENDIF ()
-
 IF (ENABLE_NOTIFICATIONS)
   LIST(APPEND WebKit_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/Modules/notifications"
@@ -88,9 +78,9 @@ IF (ENABLE_BATTERY_STATUS)
   )
 ENDIF ()
 
-IF (ENABLE_REGISTER_PROTOCOL_HANDLER OR ENABLE_CUSTOM_SCHEME_HANDLER)
+IF (ENABLE_NAVIGATOR_CONTENT_UTILS)
   LIST(APPEND WebKit_INCLUDE_DIRECTORIES
-    "${WEBCORE_DIR}/Modules/protocolhandler"
+    "${WEBCORE_DIR}/Modules/navigatorcontentutils"
   )
 ENDIF ()
 
@@ -98,6 +88,7 @@ LIST(APPEND WebKit_SOURCES
     efl/WebCoreSupport/AssertMatchingEnums.cpp
     efl/WebCoreSupport/BatteryClientEfl.cpp
     efl/WebCoreSupport/ChromeClientEfl.cpp
+    efl/WebCoreSupport/ColorChooserEfl.cpp
     efl/WebCoreSupport/DeviceOrientationClientEfl.cpp
     efl/WebCoreSupport/DeviceMotionClientEfl.cpp
     efl/WebCoreSupport/DragClientEfl.cpp
@@ -108,11 +99,13 @@ LIST(APPEND WebKit_SOURCES
     efl/WebCoreSupport/FullscreenVideoControllerEfl.cpp
     efl/WebCoreSupport/IconDatabaseClientEfl.cpp
     efl/WebCoreSupport/InspectorClientEfl.cpp
+    efl/WebCoreSupport/NavigatorContentUtilsClientEfl.cpp 
     efl/WebCoreSupport/NetworkInfoClientEfl.cpp
     efl/WebCoreSupport/NotificationPresenterClientEfl.cpp
     efl/WebCoreSupport/PageClientEfl.cpp
     efl/WebCoreSupport/PlatformStrategiesEfl.cpp 
-    efl/WebCoreSupport/RegisterProtocolHandlerClientEfl.cpp 
+    efl/WebCoreSupport/PopupMenuEfl.cpp
+    efl/WebCoreSupport/SearchPopupMenuEfl.cpp
     efl/WebCoreSupport/StorageTrackerClientEfl.cpp
     efl/WebCoreSupport/VibrationClientEfl.cpp
 
@@ -136,6 +129,7 @@ LIST(APPEND WebKit_SOURCES
     efl/ewk/ewk_tiled_backing_store.cpp
     efl/ewk/ewk_tiled_matrix.cpp
     efl/ewk/ewk_tiled_model.cpp
+    efl/ewk/ewk_touch_event.cpp
     efl/ewk/ewk_util.cpp
     efl/ewk/ewk_view.cpp
     efl/ewk/ewk_view_single.cpp
@@ -158,8 +152,9 @@ LIST(APPEND WebKit_LIBRARIES
     ${PNG_LIBRARY}
     ${JPEG_LIBRARY}
     ${CMAKE_DL_LIBS}
-    ${Glib_LIBRARIES}
-    ${LIBSOUP24_LIBRARIES}
+    ${GLIB_LIBRARIES}
+    ${GLIB_GOBJECT_LIBRARIES}
+    ${LIBSOUP_LIBRARIES}
 )
 
 SET(WebKit_THEME_DEFINITION "")
@@ -174,15 +169,15 @@ ADD_CUSTOM_COMMAND(
   COMMAND ${EDJE_CC_EXECUTABLE} -v -id ${WEBKIT_DIR}/efl/DefaultTheme ${WebKit_THEME_DEFINITION} ${WEBKIT_DIR}/efl/DefaultTheme/default.edc ${WebKit_THEME}
   DEPENDS
     ${WEBKIT_DIR}/efl/DefaultTheme/default.edc
-    ${WEBKIT_DIR}/efl/DefaultTheme/widget/slider/slider_knob_v.png
-    ${WEBKIT_DIR}/efl/DefaultTheme/widget/slider/slider_knob_press_v.png
-    ${WEBKIT_DIR}/efl/DefaultTheme/widget/slider/slider_v.png
     ${WEBKIT_DIR}/efl/DefaultTheme/widget/slider/slider.edc
-    ${WEBKIT_DIR}/efl/DefaultTheme/widget/slider/slider_knob_press_h.png
-    ${WEBKIT_DIR}/efl/DefaultTheme/widget/slider/slider_knob_h.png
     ${WEBKIT_DIR}/efl/DefaultTheme/widget/slider/slider_fill_v.png
     ${WEBKIT_DIR}/efl/DefaultTheme/widget/slider/slider_fill_h.png
     ${WEBKIT_DIR}/efl/DefaultTheme/widget/slider/slider_h.png
+    ${WEBKIT_DIR}/efl/DefaultTheme/widget/slider/slider_thumb_h.png
+    ${WEBKIT_DIR}/efl/DefaultTheme/widget/slider/slider_thumb_press_h.png
+    ${WEBKIT_DIR}/efl/DefaultTheme/widget/slider/slider_thumb_press_v.png
+    ${WEBKIT_DIR}/efl/DefaultTheme/widget/slider/slider_thumb_v.png
+    ${WEBKIT_DIR}/efl/DefaultTheme/widget/slider/slider_v.png
     ${WEBKIT_DIR}/efl/DefaultTheme/widget/combo/combo_focus_button.png
     ${WEBKIT_DIR}/efl/DefaultTheme/widget/combo/combo_press.png
     ${WEBKIT_DIR}/efl/DefaultTheme/widget/combo/icon.png
@@ -323,8 +318,8 @@ SET(EWKUnitTests_LINK_FLAGS
 IF (ENABLE_GLIB_SUPPORT)
     LIST(APPEND EWKUnitTests_INCLUDE_DIRECTORIES "${WTF_DIR}/wtf/gobject")
     LIST(APPEND EWKUnitTests_LIBRARIES
-        ${Glib_LIBRARIES}
-        ${Gthread_LIBRARIES}
+        ${GLIB_LIBRARIES}
+        ${GLIB_GTHREAD_LIBRARIES}
     )
 ENDIF ()
 

@@ -136,7 +136,7 @@ namespace WebCore {
 
         virtual void reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const OVERRIDE
         {
-            MemoryClassInfo<WeakReferenceMap<KeyType, ValueType> > info(memoryObjectInfo, this, MemoryInstrumentation::Binding);
+            MemoryClassInfo info(memoryObjectInfo, this, MemoryInstrumentation::Binding);
             info.addHashMap(m_map);
         }
 
@@ -152,7 +152,7 @@ namespace WebCore {
     // A utility class to manage the lifetime of set of DOM wrappers.
     class DOMDataStoreHandle {
     public:
-        DOMDataStoreHandle();
+        DOMDataStoreHandle(bool initialize);
         ~DOMDataStoreHandle();
 
         DOMDataStore* getStore() const { return m_store.get(); }

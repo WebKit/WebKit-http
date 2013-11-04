@@ -26,7 +26,7 @@
 #ifndef CCTextureLayerImpl_h
 #define CCTextureLayerImpl_h
 
-#include "cc/CCLayerImpl.h"
+#include "CCLayerImpl.h"
 
 namespace WebCore {
 
@@ -39,7 +39,7 @@ public:
     virtual ~CCTextureLayerImpl();
 
     virtual void willDraw(CCResourceProvider*) OVERRIDE;
-    virtual void appendQuads(CCQuadSink&, const CCSharedQuadState*, bool& hadMissingTiles) OVERRIDE;
+    virtual void appendQuads(CCQuadSink&, CCAppendQuadsData&) OVERRIDE;
     virtual void didDraw(CCResourceProvider*) OVERRIDE;
 
     virtual void didLoseContext() OVERRIDE;

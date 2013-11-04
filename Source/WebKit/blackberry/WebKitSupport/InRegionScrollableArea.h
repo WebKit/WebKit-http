@@ -24,6 +24,8 @@
 #include <interaction/ScrollViewBase.h>
 
 namespace WebCore {
+class LayerWebKitThread;
+class Node;
 class RenderLayer;
 }
 
@@ -37,6 +39,7 @@ public:
 
     InRegionScrollableArea();
     InRegionScrollableArea(WebPagePrivate*, WebCore::RenderLayer*);
+    virtual ~InRegionScrollableArea();
 
     void setVisibleWindowRect(const WebCore::IntRect&);
     Platform::IntRect visibleWindowRect() const;
@@ -46,6 +49,12 @@ public:
 private:
     WebPagePrivate* m_webPage;
     WebCore::RenderLayer* m_layer;
+
+    // We either cache one here: in case of a composited scrollable layer
+    // cache the LayerWebKitThread. Otherwise, the Node.
+    RefPtr<WebCore::LayerWebKitThread> m_cachedCompositedScrollableLayer;
+    RefPtr<WebCore::Node> m_cachedNonCompositedScrollableNode;
+
     bool m_hasWindowVisibleRectCalculated;
 };
 

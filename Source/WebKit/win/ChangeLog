@@ -1,3 +1,222 @@
+2012-08-29  Dominic Mazzoni  <dmazzoni@google.com>
+
+        AX: Canvas should have a distinct role
+        https://bugs.webkit.org/show_bug.cgi?id=95248
+
+        Reviewed by Chris Fleizach.
+
+        Map new CanvasRole to the same as ImageRole.
+
+        * AccessibleBase.cpp:
+        (MSAARole):
+
+2012-08-29  Sheriff Bot  <webkit.review.bot@gmail.com>
+
+        Unreviewed, rolling out r126972.
+        http://trac.webkit.org/changeset/126972
+        https://bugs.webkit.org/show_bug.cgi?id=95349
+
+        accessibility/canvas-description-and-role.html has been
+        failing consistently on several bots and Dominic needs some
+        time to investigate why (Requested by jchaffraix on #webkit).
+
+        * AccessibleBase.cpp:
+        (MSAARole):
+
+2012-08-29  Dominic Mazzoni  <dmazzoni@google.com>
+
+        AX: Canvas should have a distinct role
+        https://bugs.webkit.org/show_bug.cgi?id=95248
+
+        Reviewed by Chris Fleizach.
+
+        Map new CanvasRole to the same as ImageRole.
+
+        * AccessibleBase.cpp:
+        (MSAARole):
+
+2012-08-28  Sheriff Bot  <webkit.review.bot@gmail.com>
+
+        Unreviewed, rolling out r126914.
+        http://trac.webkit.org/changeset/126914
+        https://bugs.webkit.org/show_bug.cgi?id=95239
+
+        it breaks everything and fixes nothing (Requested by pizlo on
+        #webkit).
+
+        * COMPropertyBag.h:
+        (::Read):
+        (::GetPropertyInfo):
+        * WebCoreStatistics.cpp:
+        (WebCoreStatistics::javaScriptProtectedObjectTypeCounts):
+        * WebCoreSupport/WebPlatformStrategies.cpp:
+        (WebPlatformStrategies::getPluginInfo):
+        * WebHistory.cpp:
+        (WebHistory::removeItemFromDateCaches):
+        * WebKitCOMAPI.cpp:
+        (classFactory):
+        * WebKitStatistics.cpp:
+        (WebKitStatistics::comClassNameCounts):
+        * WebNotificationCenter.cpp:
+        (WebNotificationCenter::postNotificationInternal):
+        (WebNotificationCenter::addObserver):
+        (WebNotificationCenter::removeObserver):
+
+2012-08-28  Caio Marcelo de Oliveira Filho  <caio.oliveira@openbossa.org>
+
+        Rename first/second to key/value in HashMap iterators
+        https://bugs.webkit.org/show_bug.cgi?id=82784
+
+        Reviewed by Eric Seidel.
+
+        * COMPropertyBag.h:
+        (::Read):
+        (::GetPropertyInfo):
+        * WebCoreStatistics.cpp:
+        (WebCoreStatistics::javaScriptProtectedObjectTypeCounts):
+        * WebCoreSupport/WebPlatformStrategies.cpp:
+        (WebPlatformStrategies::getPluginInfo):
+        * WebHistory.cpp:
+        (WebHistory::removeItemFromDateCaches):
+        * WebKitCOMAPI.cpp:
+        (classFactory):
+        * WebKitStatistics.cpp:
+        (WebKitStatistics::comClassNameCounts):
+        * WebNotificationCenter.cpp:
+        (WebNotificationCenter::postNotificationInternal):
+        (WebNotificationCenter::addObserver):
+        (WebNotificationCenter::removeObserver):
+
+2012-08-27  Sheriff Bot  <webkit.review.bot@gmail.com>
+
+        Unreviewed, rolling out r126836.
+        http://trac.webkit.org/changeset/126836
+        https://bugs.webkit.org/show_bug.cgi?id=95163
+
+        Broke all Apple ports, EFL, and Qt. (Requested by tkent on
+        #webkit).
+
+        * COMPropertyBag.h:
+        (::Read):
+        (::GetPropertyInfo):
+        * WebCoreStatistics.cpp:
+        (WebCoreStatistics::javaScriptProtectedObjectTypeCounts):
+        * WebCoreSupport/WebPlatformStrategies.cpp:
+        (WebPlatformStrategies::getPluginInfo):
+        * WebHistory.cpp:
+        (WebHistory::removeItemFromDateCaches):
+        * WebKitCOMAPI.cpp:
+        (classFactory):
+        * WebKitStatistics.cpp:
+        (WebKitStatistics::comClassNameCounts):
+        * WebNotificationCenter.cpp:
+        (WebNotificationCenter::postNotificationInternal):
+        (WebNotificationCenter::addObserver):
+        (WebNotificationCenter::removeObserver):
+
+2012-08-27  Caio Marcelo de Oliveira Filho  <caio.oliveira@openbossa.org>
+
+        Rename first/second to key/value in HashMap iterators
+        https://bugs.webkit.org/show_bug.cgi?id=82784
+
+        Reviewed by Eric Seidel.
+
+        * COMPropertyBag.h:
+        (::Read):
+        (::GetPropertyInfo):
+        * WebCoreStatistics.cpp:
+        (WebCoreStatistics::javaScriptProtectedObjectTypeCounts):
+        * WebCoreSupport/WebPlatformStrategies.cpp:
+        (WebPlatformStrategies::getPluginInfo):
+        * WebHistory.cpp:
+        (WebHistory::removeItemFromDateCaches):
+        * WebKitCOMAPI.cpp:
+        (classFactory):
+        * WebKitStatistics.cpp:
+        (WebKitStatistics::comClassNameCounts):
+        * WebNotificationCenter.cpp:
+        (WebNotificationCenter::postNotificationInternal):
+        (WebNotificationCenter::addObserver):
+        (WebNotificationCenter::removeObserver):
+
+2012-08-23  Adrienne Walker  <enne@google.com>
+
+        Convert ScrollableArea ASSERT_NOT_REACHED virtuals
+        https://bugs.webkit.org/show_bug.cgi?id=93306
+
+        Reviewed by Darin Adler.
+
+        Add implementations where necessary to make derived classes concrete.
+        Add OVERRIDE for ScrollableArea functions.
+
+        * WebScrollBar.cpp:
+        (WebScrollBar::visibleHeight):
+        (WebScrollBar::visibleWidth):
+        (WebScrollBar::contentsSize):
+        (WebScrollBar::isOnActivePage):
+        (WebScrollBar::scrollableAreaBoundingBox):
+        * WebScrollBar.h:
+        (WebScrollBar):
+
+2012-08-22  Nikhil Bhargava  <nbhargava@google.com>
+
+        Reduce Font.h includes across project -- improves RenderObject.h compile time
+        https://bugs.webkit.org/show_bug.cgi?id=93629
+
+        Reviewed by Eric Seidel.
+
+        Adds includes due to change in RenderStyle.h
+
+        * DOMCoreClasses.cpp:
+
+2012-08-15  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Update manual tests and comments to refer to TestRunner instead of LayoutTestController
+        https://bugs.webkit.org/show_bug.cgi?id=94168
+
+        Reviewed by Kent Tamura.
+
+        * Interfaces/IWebPreferencesPrivate.idl:
+
+2012-08-14  Adam Barth  <abarth@webkit.org>
+
+        Delete Frame::domWindow() and Frame::existingDOMWindow()
+        https://bugs.webkit.org/show_bug.cgi?id=93990
+
+        Reviewed by Eric Seidel.
+
+        * WebFrame.cpp:
+        (WebFrame::DOMWindow):
+        (WebFrame::pendingFrameUnloadEventCount):
+
+2012-08-13  Tom Sepez  <tsepez@chromium.org>
+
+        [chromium] release FrameLoaderClientImpl::m_pluginWidget refptr upon Plugin Document detach.
+        https://bugs.webkit.org/show_bug.cgi?id=93283
+
+        Reviewed by Eric Seidel.
+
+        Change the client redirectDataToPlugin method(s) to expect the possibility of
+        a NULL argument, keeping existing behaviour otherwise.
+
+        * WebCoreSupport/WebFrameLoaderClient.cpp:
+        (WebFrameLoaderClient::redirectDataToPlugin):
+
+2012-08-05  Patrick Gansterer  <paroga@webkit.org>
+
+        [WIN] Use sizeof() for cbWndExtra values
+        https://bugs.webkit.org/show_bug.cgi?id=93179
+
+        Reviewed by Eric Carlson.
+
+        Using sizof() instead of hardcoding the pointer size of
+        the 32bit platform allows us to use the code on 64bit too.
+
+        * FullscreenVideoController.cpp:
+        (FullscreenVideoController::registerHUDWindowClass):
+        * WebView.cpp:
+        (WebView::registerWebViewWindowClass):
+
 2012-07-26  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
 
         [Mac] Fix build break on Apple win bot after r123711

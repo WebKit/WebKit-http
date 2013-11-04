@@ -105,15 +105,32 @@ static PassRefPtr<RenderStyle> createFullScreenStyle()
     return fullscreenStyle.release();
 }
 
-RenderObject* RenderFullScreen::wrapRenderer(RenderObject* object, Document* document)
+RenderObject* RenderFullScreen::wrapRenderer(RenderObject* object, RenderObject* parent, Document* document)
 {
     RenderFullScreen* fullscreenRenderer = new (document->renderArena()) RenderFullScreen(document);
     fullscreenRenderer->setStyle(createFullScreenStyle());
+    if (parent && !parent->isChildAllowed(fullscreenRenderer, fullscreenRenderer->style())) {
+        fullscreenRenderer->destroy();
+        return 0;
+    }
     if (object) {
+        // |object->parent()| can be null if the object is not yet attached
+        // to |parent|.
         if (RenderObject* parent = object->parent()) {
+            RenderBlock* containingBlock = object->containingBlock();
+            ASSERT(containingBlock);
+            // Since we are moving the |object| to a new parent |fullscreenRenderer|,
+            // the line box tree underneath our |containingBlock| is not longer valid.
+            containingBlock->deleteLineBoxTree();
+
             parent->addChild(fullscreenRenderer, object);
             object->remove();
+            
+            // Always just do a full layout to ensure that line boxes get deleted properly.
+            // Because objects moved from |parent| to |fullscreenRenderer|, we want to
+            // make new line boxes instead of leaving the old ones around.
             parent->setNeedsLayoutAndPrefWidthsRecalc();
+            containingBlock->setNeedsLayoutAndPrefWidthsRecalc();
         }
         fullscreenRenderer->addChild(object);
         fullscreenRenderer->setNeedsLayoutAndPrefWidthsRecalc();

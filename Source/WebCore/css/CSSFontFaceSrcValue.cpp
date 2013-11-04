@@ -29,7 +29,9 @@
 #include "CachedResourceLoader.h"
 #include "Document.h"
 #include "FontCustomPlatformData.h"
+#include "MemoryInstrumentation.h"
 #include "Node.h"
+#include "SVGFontFaceElement.h"
 #include "StyleSheetContents.h"
 
 namespace WebCore {
@@ -79,6 +81,13 @@ void CSSFontFaceSrcValue::addSubresourceStyleURLs(ListHashSet<KURL>& urls, const
         addSubresourceURL(urls, styleSheet->completeURL(m_resource));
 }
 
+bool CSSFontFaceSrcValue::hasFailedOrCanceledSubresources() const
+{
+    if (!m_cachedFont)
+        return false;
+    return m_cachedFont->loadFailedOrCanceled();
+}
+
 CachedFont* CSSFontFaceSrcValue::cachedFont(Document* document)
 {
     if (!m_cachedFont) {
@@ -86,6 +95,17 @@ CachedFont* CSSFontFaceSrcValue::cachedFont(Document* document)
         m_cachedFont = document->cachedResourceLoader()->requestFont(request);
     }
     return m_cachedFont.get();
+}
+
+void CSSFontFaceSrcValue::reportDescendantMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
+{
+    MemoryClassInfo info(memoryObjectInfo, this, MemoryInstrumentation::CSS);
+    info.addInstrumentedMember(m_resource);
+    info.addInstrumentedMember(m_format);
+    // FIXME: add m_cachedFont when MemoryCache is instrumented.
+#if ENABLE(SVG_FONTS)
+    info.addInstrumentedMember(m_svgFontFaceElement);
+#endif
 }
 
 }

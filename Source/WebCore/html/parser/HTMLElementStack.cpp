@@ -38,16 +38,6 @@ namespace WebCore {
 
 using namespace HTMLNames;
 
-static inline bool isNumberedHeaderElement(HTMLStackItem* item)
-{
-    return item->hasTagName(h1Tag)
-        || item->hasTagName(h2Tag)
-        || item->hasTagName(h3Tag)
-        || item->hasTagName(h4Tag)
-        || item->hasTagName(h5Tag)
-        || item->hasTagName(h6Tag);
-}
-    
 static inline bool isRootNode(HTMLStackItem* item)
 {
     return item->isDocumentFragmentNode()
@@ -108,7 +98,7 @@ inline bool isForeignContentScopeMarker(HTMLStackItem* item)
 {
     return HTMLElementStack::isMathMLTextIntegrationPoint(item)
         || HTMLElementStack::isHTMLIntegrationPoint(item)
-        || isInHTMLNamespace(item);
+        || item->isInHTMLNamespace();
 }
 
 inline bool isButtonScopeMarker(HTMLStackItem* item)
@@ -210,13 +200,13 @@ void HTMLElementStack::popAll()
 
 void HTMLElementStack::pop()
 {
-    ASSERT(!top()->hasTagName(HTMLNames::headTag));
+    ASSERT(!topStackItem()->hasTagName(HTMLNames::headTag));
     popCommon();
 }
 
 void HTMLElementStack::popUntil(const AtomicString& tagName)
 {
-    while (!top()->hasLocalName(tagName)) {
+    while (!topStackItem()->hasLocalName(tagName)) {
         // pop() will ASSERT at <body> if callers fail to check that there is an
         // element with localName |tagName| on the stack of open elements.
         pop();
@@ -231,7 +221,7 @@ void HTMLElementStack::popUntilPopped(const AtomicString& tagName)
 
 void HTMLElementStack::popUntilNumberedHeaderElementPopped()
 {
-    while (!isNumberedHeaderElement(topStackItem()))
+    while (!topStackItem()->isNumberedHeaderElement())
         pop();
     pop();
 }
@@ -314,7 +304,7 @@ void HTMLElementStack::pushRootNode(PassRefPtr<HTMLStackItem> rootItem)
 
 void HTMLElementStack::pushHTMLHtmlElement(PassRefPtr<HTMLStackItem> item)
 {
-    ASSERT(item->element()->hasTagName(HTMLNames::htmlTag));
+    ASSERT(item->hasTagName(HTMLNames::htmlTag));
     pushRootNodeCommon(item);
 }
     
@@ -328,7 +318,7 @@ void HTMLElementStack::pushRootNodeCommon(PassRefPtr<HTMLStackItem> rootItem)
 
 void HTMLElementStack::pushHTMLHeadElement(PassRefPtr<HTMLStackItem> item)
 {
-    ASSERT(item->element()->hasTagName(HTMLNames::headTag));
+    ASSERT(item->hasTagName(HTMLNames::headTag));
     ASSERT(!m_headElement);
     m_headElement = item->element();
     pushCommon(item);
@@ -336,7 +326,7 @@ void HTMLElementStack::pushHTMLHeadElement(PassRefPtr<HTMLStackItem> item)
 
 void HTMLElementStack::pushHTMLBodyElement(PassRefPtr<HTMLStackItem> item)
 {
-    ASSERT(item->element()->hasTagName(HTMLNames::bodyTag));
+    ASSERT(item->hasTagName(HTMLNames::bodyTag));
     ASSERT(!m_bodyElement);
     m_bodyElement = item->element();
     pushCommon(item);
@@ -344,9 +334,9 @@ void HTMLElementStack::pushHTMLBodyElement(PassRefPtr<HTMLStackItem> item)
 
 void HTMLElementStack::push(PassRefPtr<HTMLStackItem> item)
 {
-    ASSERT(!item->element()->hasTagName(HTMLNames::htmlTag));
-    ASSERT(!item->element()->hasTagName(HTMLNames::headTag));
-    ASSERT(!item->element()->hasTagName(HTMLNames::bodyTag));
+    ASSERT(!item->hasTagName(HTMLNames::htmlTag));
+    ASSERT(!item->hasTagName(HTMLNames::headTag));
+    ASSERT(!item->hasTagName(HTMLNames::bodyTag));
     ASSERT(m_rootNode);
     pushCommon(item);
 }
@@ -356,9 +346,9 @@ void HTMLElementStack::insertAbove(PassRefPtr<HTMLStackItem> item, ElementRecord
     ASSERT(item);
     ASSERT(recordBelow);
     ASSERT(m_top);
-    ASSERT(!item->element()->hasTagName(HTMLNames::htmlTag));
-    ASSERT(!item->element()->hasTagName(HTMLNames::headTag));
-    ASSERT(!item->element()->hasTagName(HTMLNames::bodyTag));
+    ASSERT(!item->hasTagName(HTMLNames::htmlTag));
+    ASSERT(!item->hasTagName(HTMLNames::headTag));
+    ASSERT(!item->hasTagName(HTMLNames::bodyTag));
     ASSERT(m_rootNode);
     if (recordBelow == m_top) {
         push(item);
@@ -383,19 +373,14 @@ HTMLElementStack::ElementRecord* HTMLElementStack::topRecord() const
     return m_top.get();
 }
 
-Element* HTMLElementStack::oneBelowTop() const
+HTMLStackItem* HTMLElementStack::oneBelowTop() const
 {
     // We should never call this if there are fewer than 2 elements on the stack.
     ASSERT(m_top);
     ASSERT(m_top->next());
     if (m_top->next()->stackItem()->isElementNode())
-        return m_top->next()->element();
+        return m_top->next()->stackItem().get();
     return 0;
-}
-
-Element* HTMLElementStack::bottom() const
-{
-    return htmlElement();
 }
 
 void HTMLElementStack::removeHTMLHeadElement(Element* element)
@@ -465,7 +450,7 @@ bool HTMLElementStack::hasNumberedHeaderElementInScope() const
 {
     for (ElementRecord* record = m_top.get(); record; record = record->next()) {
         HTMLStackItem* item = record->stackItem().get();
-        if (isNumberedHeaderElement(item))
+        if (item->isNumberedHeaderElement())
             return true;
         if (isScopeMarker(item))
             return false;
@@ -576,9 +561,9 @@ void HTMLElementStack::pushCommon(PassRefPtr<HTMLStackItem> item)
 
 void HTMLElementStack::popCommon()
 {
-    ASSERT(!top()->hasTagName(HTMLNames::htmlTag));
-    ASSERT(!top()->hasTagName(HTMLNames::headTag) || !m_headElement);
-    ASSERT(!top()->hasTagName(HTMLNames::bodyTag) || !m_bodyElement);
+    ASSERT(!topStackItem()->hasTagName(HTMLNames::htmlTag));
+    ASSERT(!topStackItem()->hasTagName(HTMLNames::headTag) || !m_headElement);
+    ASSERT(!topStackItem()->hasTagName(HTMLNames::bodyTag) || !m_bodyElement);
     top()->finishParsingChildren();
     m_top = m_top->releaseNext();
 
@@ -601,6 +586,19 @@ void HTMLElementStack::removeNonTopCommon(Element* element)
         }
     }
     ASSERT_NOT_REACHED();
+}
+
+HTMLElementStack::ElementRecord* HTMLElementStack::furthestBlockForFormattingElement(Element* formattingElement) const
+{
+    ElementRecord* furthestBlock = 0;
+    for (ElementRecord* pos = m_top.get(); pos; pos = pos->next()) {
+        if (pos->element() == formattingElement)
+            return furthestBlock;
+        if (pos->stackItem()->isSpecialNode())
+            furthestBlock = pos;
+    }
+    ASSERT_NOT_REACHED();
+    return 0;
 }
 
 #ifndef NDEBUG

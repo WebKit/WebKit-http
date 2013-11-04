@@ -33,19 +33,20 @@ namespace WebCore {
 
 Node* DynamicNodeListCacheBase::rootNode() const
 {
-    if ((isRootedAtDocument() || ownerNodeHasItemRefAttribute()) && m_ownerNode->inDocument())
+    if (isRootedAtDocument() && m_ownerNode->inDocument())
         return m_ownerNode->document();
+
+    if (ownerNodeHasItemRefAttribute()) {
+        if (m_ownerNode->inDocument())
+            return m_ownerNode->document();
+
+        Node* root = m_ownerNode.get();
+        while (Node* parent = root->parentNode())
+            root = parent;
+        return root;
+    }
+
     return m_ownerNode.get();
-}
-
-ALWAYS_INLINE bool DynamicNodeListCacheBase::ownerNodeHasItemRefAttribute() const
-{
-#if ENABLE(MICRODATA)
-    if (m_rootType == NodeListIsRootedAtDocumentIfOwnerHasItemrefAttr)
-        return toElement(ownerNode())->fastHasAttribute(HTMLNames::itemrefAttr);
-#endif
-
-    return false;
 }
 
 void DynamicNodeListCacheBase::invalidateCache() const

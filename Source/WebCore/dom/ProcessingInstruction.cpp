@@ -97,7 +97,7 @@ void ProcessingInstruction::setNodeValue(const String& nodeValue, ExceptionCode&
     setData(nodeValue, ec);
 }
 
-PassRefPtr<Node> ProcessingInstruction::cloneNode(bool /*deep*/)
+PassRefPtr<Node> ProcessingInstruction::cloneNode(bool /*deep*/, ExceptionCode&)
 {
     // FIXME: Is it a problem that this does not copy m_localHref?
     // What about other data members?
@@ -214,7 +214,7 @@ void ProcessingInstruction::setCSSStyleSheet(const String& href, const KURL& bas
     ASSERT(m_isCSS);
     CSSParserContext parserContext(document(), baseURL, charset);
 
-    RefPtr<StyleSheetContents> newSheet = StyleSheetContents::create(href, baseURL, parserContext);
+    RefPtr<StyleSheetContents> newSheet = StyleSheetContents::create(href, parserContext);
 
     RefPtr<CSSStyleSheet> cssSheet = CSSStyleSheet::create(newSheet, this);
     cssSheet->setDisabled(m_alternate);
@@ -254,7 +254,7 @@ void ProcessingInstruction::parseStyleSheet(const String& sheet)
     m_loading = false;
 
     if (m_isCSS)
-        static_cast<CSSStyleSheet*>(m_sheet.get())->contents()->checkLoaded();
+        static_cast<CSSStyleSheet*>(m_sheet.get())->contents()->checkLoadCompleted();
 #if ENABLE(XSLT)
     else if (m_isXSL)
         static_cast<XSLStyleSheet*>(m_sheet.get())->checkLoaded();

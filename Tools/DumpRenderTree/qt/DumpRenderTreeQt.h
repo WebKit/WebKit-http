@@ -55,7 +55,7 @@ QT_END_NAMESPACE
 
 class QWebFrame;
 
-class LayoutTestController;
+class TestRunner;
 class DumpRenderTreeSupportQt;
 class EventSender;
 class TextInputController;
@@ -82,12 +82,10 @@ public:
     void setGraphicsBased(bool flag) { m_graphicsBased = flag; }
     bool isGraphicsBased() { return m_graphicsBased; }
 
-    void setDumpPixelsForAllTests(bool);
-
     void closeRemainingWindows();
     void resetToConsistentStateBeforeTesting(const QUrl&);
 
-    LayoutTestController *layoutTestController() const { return m_controller; }
+    TestRunner *testRunner() const { return m_controller; }
     EventSender *eventSender() const { return m_eventSender; }
     TextInputController *textInputController() const { return m_textInputController; }
     QString persistentStoragePath() const { return m_persistentStoragePath; }
@@ -140,9 +138,8 @@ private:
     QString dumpFramesAsText(QWebFrame* frame);
     QString dumpBackForwardList(QWebPage* page);
     QString dumpFrameScrollPosition(QWebFrame* frame);
-    LayoutTestController *m_controller;
+    TestRunner *m_controller;
 
-    bool m_dumpPixelsForAllTests;
     bool m_dumpPixelsForCurrentTest;
     QString m_expectedHash;
     QStringList m_standAloneModeTestList;
@@ -171,7 +168,7 @@ class NetworkAccessManager : public QNetworkAccessManager {
 public:
     NetworkAccessManager(QObject* parent);
 
-private slots:
+private Q_SLOTS:
 #ifndef QT_NO_OPENSSL
     void sslErrorsEncountered(QNetworkReply*, const QList<QSslError>&);
 #endif
@@ -201,7 +198,7 @@ public:
 
     void permissionSet(QWebPage::Feature feature);
 
-public slots:
+public Q_SLOTS:
     bool shouldInterruptJavaScript() { return false; }
     void requestPermission(QWebFrame* frame, QWebPage::Feature feature);
     void cancelPermission(QWebFrame* frame, QWebPage::Feature feature);
@@ -210,7 +207,7 @@ protected:
     bool acceptNavigationRequest(QWebFrame* frame, const QNetworkRequest& request, NavigationType type);
     bool isTextOutputEnabled() { return m_drt->isTextOutputEnabled(); }
 
-private slots:
+private Q_SLOTS:
     void setViewGeometry(const QRect&);
 
 private:

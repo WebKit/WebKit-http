@@ -187,7 +187,7 @@ namespace JSC {
         Interpreter();
         ~Interpreter();
         
-        void initialize(LLInt::Data*, bool canUseJIT);
+        void initialize(bool canUseJIT);
 
         RegisterFile& registerFile() { return m_registerFile; }
         
@@ -240,7 +240,7 @@ namespace JSC {
         SamplingTool* sampler() { return m_sampler.get(); }
 
         NEVER_INLINE HandlerInfo* throwException(CallFrame*&, JSValue&, unsigned bytecodeOffset);
-        NEVER_INLINE void debug(CallFrame*, DebugHookID, int firstLine, int lastLine);
+        NEVER_INLINE void debug(CallFrame*, DebugHookID, int firstLine, int lastLine, int column);
         static const UString getTraceLine(CallFrame*, StackFrameCodeType, const UString&, int);
         JS_EXPORT_PRIVATE static void getStackTrace(JSGlobalData*, Vector<StackFrame>& results);
         static void addStackTraceIfNecessary(CallFrame*, JSObject* error);
@@ -259,13 +259,6 @@ namespace JSC {
         JSValue execute(CallFrameClosure&);
 
 #if ENABLE(CLASSIC_INTERPRETER)
-        NEVER_INLINE bool resolve(CallFrame*, Instruction*, JSValue& exceptionValue);
-        NEVER_INLINE bool resolveSkip(CallFrame*, Instruction*, JSValue& exceptionValue);
-        NEVER_INLINE bool resolveGlobal(CallFrame*, Instruction*, JSValue& exceptionValue);
-        NEVER_INLINE bool resolveGlobalDynamic(CallFrame*, Instruction*, JSValue& exceptionValue);
-        NEVER_INLINE void resolveBase(CallFrame*, Instruction* vPC);
-        NEVER_INLINE bool resolveBaseAndProperty(CallFrame*, Instruction*, JSValue& exceptionValue);
-        NEVER_INLINE bool resolveThisAndProperty(CallFrame*, Instruction*, JSValue& exceptionValue);
         NEVER_INLINE ScopeChainNode* createExceptionScope(CallFrame*, const Instruction* vPC);
 
         void tryCacheGetByID(CallFrame*, CodeBlock*, Instruction*, JSValue baseValue, const Identifier& propertyName, const PropertySlot&);

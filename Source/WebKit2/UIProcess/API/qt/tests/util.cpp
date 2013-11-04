@@ -18,10 +18,14 @@
 */
 
 #include "util.h"
-#include "private/qquickwebview_p.h"
-#include "private/qwebloadrequest_p.h"
+
 #include <QtTest/QtTest>
 #include <stdio.h>
+
+#if defined(HAVE_QTQUICK) && HAVE_QTQUICK
+#include "private/qquickwebview_p.h"
+#include "private/qwebloadrequest_p.h"
+#endif
 
 void addQtWebProcessToPath()
 {
@@ -53,6 +57,23 @@ bool waitForSignal(QObject* obj, const char* signal, int timeout)
     return timeoutSpy.isEmpty();
 }
 
+static void messageHandler(QtMsgType type, const char* message)
+{
+    if (type == QtCriticalMsg) {
+        fprintf(stderr, "%s\n", message);
+        return;
+    }
+    // Do nothing
+}
+
+void suppressDebugOutput()
+{
+    qInstallMsgHandler(messageHandler); \
+    if (qgetenv("QT_WEBKIT_SUPPRESS_WEB_PROCESS_OUTPUT").isEmpty()) \
+        qputenv("QT_WEBKIT_SUPPRESS_WEB_PROCESS_OUTPUT", "1");
+}
+
+#if defined(HAVE_QTQUICK) && HAVE_QTQUICK
 class LoadSpy : public QEventLoop {
     Q_OBJECT
 public:
@@ -60,10 +81,10 @@ public:
     {
         connect(webView, SIGNAL(loadingChanged(QWebLoadRequest*)), SLOT(onLoadingChanged(QWebLoadRequest*)));
     }
-signals:
+Q_SIGNALS:
     void loadSucceeded();
     void loadFailed();
-private slots:
+private Q_SLOTS:
     void onLoadingChanged(QWebLoadRequest* loadRequest)
     {
         if (loadRequest->status() == QQuickWebView::LoadSucceededStatus)
@@ -105,23 +126,6 @@ bool waitForLoadFailed(QQuickWebView* webView, int timeout)
     return timeoutSpy.isEmpty();
 }
 
-static void messageHandler(QtMsgType type, const char* message)
-{
-    if (type == QtCriticalMsg) {
-        fprintf(stderr, "%s\n", message);
-        return;
-    }
-    // Do nothing
-}
-
-void suppressDebugOutput()
-{
-    qInstallMsgHandler(messageHandler); \
-    if (qgetenv("QT_WEBKIT_SUPPRESS_WEB_PROCESS_OUTPUT").isEmpty()) \
-        qputenv("QT_WEBKIT_SUPPRESS_WEB_PROCESS_OUTPUT", "1");
-}
-
-
 LoadStartedCatcher::LoadStartedCatcher(QQuickWebView* webView)
     : m_webView(webView)
 {
@@ -136,5 +140,6 @@ void LoadStartedCatcher::onLoadingChanged(QWebLoadRequest* loadRequest)
         QCOMPARE(m_webView->loading(), true);
     }
 }
+#endif
 
 #include "util.moc"

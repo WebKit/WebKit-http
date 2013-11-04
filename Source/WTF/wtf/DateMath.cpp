@@ -102,6 +102,11 @@
 #include <sys/timeb.h>
 #endif
 
+#if OS(QNX)
+// qnx6 defines timegm in nbutil.h
+#include <nbutil.h>
+#endif
+
 using namespace WTF;
 
 namespace WTF {
@@ -126,6 +131,19 @@ static const int firstDayOfMonth[2][12] = {
     {0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334},
     {0, 31, 60, 91, 121, 152, 182, 213, 244, 274, 305, 335}
 };
+
+#if !OS(WINCE)
+static inline void getLocalTime(const time_t* localTime, struct tm* localTM)
+{
+#if COMPILER(MSVC7_OR_LOWER) || COMPILER(MINGW)
+    *localTM = *localtime(localTime);
+#elif COMPILER(MSVC)
+    localtime_s(localTM, localTime);
+#else
+    localtime_r(localTime, localTM);
+#endif
+}
+#endif
 
 bool isLeapYear(int year)
 {
@@ -286,9 +304,9 @@ int dayInMonthFromDayInYear(int dayInYear, bool leapYear)
     return d - step;
 }
 
-static inline int monthToDayInYear(int month, bool isLeapYear)
+int dayInYear(int year, int month, int day)
 {
-    return firstDayOfMonth[isLeapYear][month];
+    return firstDayOfMonth[isLeapYear(year)][month] + day - 1;
 }
 
 double dateToDaysFrom1970(int year, int month, int day)
@@ -303,9 +321,7 @@ double dateToDaysFrom1970(int year, int month, int day)
 
     double yearday = floor(daysFrom1970ToYear(year));
     ASSERT((year >= 1970 && yearday >= 0) || (year < 1970 && yearday < 0));
-    int monthday = monthToDayInYear(month, isLeapYear(year));
-
-    return yearday + monthday + day - 1;
+    return yearday + dayInYear(year, month, day);
 }
 
 // There is a hard limit at 2038 that we currently do not have a workaround
@@ -404,6 +420,11 @@ int32_t calculateUTCOffset()
  */
 static double calculateDSTOffsetSimple(double localTimeSeconds, double utcOffset)
 {
+#if OS(WINCE)
+    UNUSED_PARAM(localTimeSeconds);
+    UNUSED_PARAM(utcOffset);
+    return 0;
+#else
     if (localTimeSeconds > maxUnixTime)
         localTimeSeconds = maxUnixTime;
     else if (localTimeSeconds < 0) // Go ahead a day to make localtime work (does not work with 0)
@@ -428,6 +449,7 @@ static double calculateDSTOffsetSimple(double localTimeSeconds, double utcOffset
         diff += secondsPerDay;
 
     return (diff * msPerSecond);
+#endif
 }
 
 // Get the DST offset, given a time in UTC

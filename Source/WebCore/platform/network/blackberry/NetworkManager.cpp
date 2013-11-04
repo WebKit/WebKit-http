@@ -28,7 +28,6 @@
 #include "ResourceHandleInternal.h"
 #include "ResourceRequest.h"
 
-#include <BlackBerryPlatformClient.h>
 #include <BlackBerryPlatformLog.h>
 #include <BuildInformation.h>
 #include <network/FilterStream.h>
@@ -96,6 +95,9 @@ bool NetworkManager::startJob(int playerId, const String& pageGroupName, PassRef
                 break;
             case ProtectionSpaceAuthenticationSchemeHTTPDigest:
                 authType = BlackBerry::Platform::NetworkRequest::AuthHTTPDigest;
+                break;
+            case ProtectionSpaceAuthenticationSchemeNegotiate:
+                authType = BlackBerry::Platform::NetworkRequest::AuthNegotiate;
                 break;
             case ProtectionSpaceAuthenticationSchemeNTLM:
                 authType = BlackBerry::Platform::NetworkRequest::AuthHTTPNTLM;

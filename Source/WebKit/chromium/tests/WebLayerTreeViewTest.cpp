@@ -24,37 +24,23 @@
 
 #include "config.h"
 
-#include "platform/WebLayerTreeView.h"
+#include <public/WebLayerTreeView.h>
 
 #include "CompositorFakeWebGraphicsContext3D.h"
-#include "WebCompositor.h"
-#include "public/WebLayer.h"
-#include "public/WebLayerTreeViewClient.h"
-#include "public/WebThread.h"
+#include "FakeWebCompositorOutputSurface.h"
+#include "WebLayerTreeViewTestCommon.h"
 #include <gmock/gmock.h>
 #include <public/Platform.h>
+#include <public/WebCompositor.h>
+#include <public/WebLayer.h>
+#include <public/WebLayerTreeViewClient.h>
+#include <public/WebThread.h>
 
 using namespace WebKit;
 using testing::Mock;
 using testing::Test;
 
 namespace {
-
-class MockWebLayerTreeViewClient : public WebLayerTreeViewClient {
-public:
-    virtual void scheduleComposite() OVERRIDE { }
-    virtual void updateAnimations(double frameBeginTime) OVERRIDE { }
-    MOCK_METHOD0(willBeginFrame, void());
-    MOCK_METHOD0(didBeginFrame, void());
-    virtual void layout() OVERRIDE { }
-    virtual void applyScrollAndScale(const WebSize& scrollDelta, float scaleFactor) OVERRIDE { }
-    virtual WebGraphicsContext3D* createContext3D() OVERRIDE { return CompositorFakeWebGraphicsContext3D::create(WebGraphicsContext3D::Attributes()).leakPtr(); }
-    virtual void didRebindGraphicsContext(bool success) OVERRIDE { }
-    MOCK_METHOD0(willCommit, void());
-    MOCK_METHOD0(didCommit, void());
-    virtual void didCommitAndDrawFrame() OVERRIDE { }
-    virtual void didCompleteSwapBuffers() OVERRIDE { }
-};
 
 class MockWebLayerTreeViewClientForThreadedTests : public MockWebLayerTreeViewClient {
 public:
@@ -74,31 +60,30 @@ public:
     virtual void SetUp()
     {
         initializeCompositor();
-        m_rootLayer = WebLayer::create();
-        EXPECT_TRUE(m_view.initialize(client(), m_rootLayer, WebLayerTreeView::Settings()));
-        m_view.setSurfaceReady();
+        m_rootLayer = adoptPtr(WebLayer::create());
+        ASSERT_TRUE(m_view = adoptPtr(WebLayerTreeView::create(client(), *m_rootLayer, WebLayerTreeView::Settings())));
+        m_view->setSurfaceReady();
     }
 
     virtual void TearDown()
     {
         Mock::VerifyAndClearExpectations(client());
 
-        m_view.setRootLayer(0);
-        m_rootLayer.reset();
-        m_view.reset();
+        m_rootLayer.clear();
+        m_view.clear();
         WebKit::WebCompositor::shutdown();
     }
 
 protected:
-    WebLayer m_rootLayer;
-    WebLayerTreeView m_view;
+    OwnPtr<WebLayer> m_rootLayer;
+    OwnPtr<WebLayerTreeView> m_view;
 };
 
 class WebLayerTreeViewSingleThreadTest : public WebLayerTreeViewTestBase {
 protected:
     void composite()
     {
-        m_view.composite();
+        m_view->composite();
     }
 
     virtual void initializeCompositor() OVERRIDE
@@ -171,12 +156,12 @@ protected:
 
     void composite()
     {
-        m_view.setNeedsRedraw();
+        m_view->setNeedsRedraw();
         RefPtr<CancelableTaskWrapper> timeoutTask = adoptRef(new CancelableTaskWrapper(adoptPtr(new TimeoutTask())));
         WebKit::Platform::current()->currentThread()->postDelayedTask(timeoutTask->createTask(), 5000);
         WebKit::Platform::current()->currentThread()->enterRunLoop();
         timeoutTask->cancel();
-        m_view.finishAllRendering();
+        m_view->finishAllRendering();
     }
 
     virtual void initializeCompositor() OVERRIDE

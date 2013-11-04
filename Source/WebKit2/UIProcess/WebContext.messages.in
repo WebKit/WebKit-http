@@ -22,23 +22,8 @@
 
 messages -> WebContext {
 
-    # History client messages.
-    DidNavigateWithNavigationData(uint64_t pageID, WebKit::WebNavigationDataStore store, uint64_t frameID)
-    DidPerformClientRedirect(uint64_t pageID, WTF::String sourceURLString, WTF::String destinationURLString, uint64_t frameID)
-    DidPerformServerRedirect(uint64_t pageID, WTF::String sourceURLString, WTF::String destinationURLString, uint64_t frameID)
-    DidUpdateHistoryTitle(uint64_t pageID, WTF::String title, WTF::String url, uint64_t frameID)
-
     # Visited link provider messages.
     AddVisitedLinkHash(uint64_t linkHash)
-    
-    # Plugin messages.
-    GetPlugins(uint64_t requestID, bool refresh) DispatchOnConnectionQueue
-    GetPluginPath(WTF::String mimeType, WTF::String urlString) -> (WTF::String pluginPath, bool blocked)
-
-#if !ENABLE(PLUGIN_PROCESS)
-    void DidGetSitesWithPluginData(Vector<WTF::String> sites, uint64_t callbackID)
-    void DidClearPluginSiteData(uint64_t callbackID)
-#endif
 
     DidGetWebCoreStatistics(WebKit::StatisticsData statisticsData, uint64_t callbackID)
 
@@ -59,5 +44,11 @@ messages -> WebContext {
     SetPasteboardPathnamesForType(WTF::String pasteboardName, WTF::String pasteboardType, Vector<WTF::String> pathnames)
     SetPasteboardStringForType(WTF::String pasteboardName, WTF::String pasteboardType, WTF::String string)
     SetPasteboardBufferForType(WTF::String pasteboardName, WTF::String pasteboardType, WebKit::SharedMemory::Handle handle, uint64_t size)
+#endif
+
+#if !PLATFORM(MAC)
+    // FIXME: This a dummy message, to avoid breaking the build for platforms that don't require
+    // any synchronous messages, and should be removed when <rdar://problem/8775115> is fixed.
+    Dummy() -> (bool dummyReturn)
 #endif
 }

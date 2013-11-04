@@ -27,15 +27,16 @@
 
 #if USE(ACCELERATED_COMPOSITING)
 
-#include "cc/CCQuadCuller.h"
+#include "CCQuadCuller.h"
 
+#include "CCAppendQuadsData.h"
+#include "CCDebugBorderDrawQuad.h"
+#include "CCLayerImpl.h"
+#include "CCOcclusionTracker.h"
+#include "CCOverdrawMetrics.h"
+#include "CCRenderPass.h"
 #include "Region.h"
 #include "SkColor.h"
-#include "cc/CCDebugBorderDrawQuad.h"
-#include "cc/CCLayerImpl.h"
-#include "cc/CCOcclusionTracker.h"
-#include "cc/CCOverdrawMetrics.h"
-#include "cc/CCRenderPass.h"
 #include <public/WebTransformationMatrix.h>
 
 using namespace std;
@@ -48,14 +49,26 @@ static const int debugTileBorderColorRed = 160;
 static const int debugTileBorderColorGreen = 100;
 static const int debugTileBorderColorBlue = 0;
 
-CCQuadCuller::CCQuadCuller(CCQuadList& quadList, CCLayerImpl* layer, const CCOcclusionTrackerImpl* occlusionTracker, bool showCullingWithDebugBorderQuads, bool forSurface)
+CCQuadCuller::CCQuadCuller(CCQuadList& quadList, CCSharedQuadStateList& sharedQuadStateList, CCLayerImpl* layer, const CCOcclusionTrackerImpl* occlusionTracker, bool showCullingWithDebugBorderQuads, bool forSurface)
     : m_quadList(quadList)
+    , m_sharedQuadStateList(sharedQuadStateList)
+    , m_currentSharedQuadState(0)
     , m_layer(layer)
     , m_occlusionTracker(occlusionTracker)
     , m_showCullingWithDebugBorderQuads(showCullingWithDebugBorderQuads)
     , m_forSurface(forSurface)
-    , m_hasOcclusionFromOutsideTargetSurface(false)
 {
+}
+
+CCSharedQuadState* CCQuadCuller::useSharedQuadState(PassOwnPtr<CCSharedQuadState> passSharedQuadState)
+{
+    OwnPtr<CCSharedQuadState> sharedQuadState(passSharedQuadState);
+    sharedQuadState->id = m_sharedQuadStateList.size();
+
+    // FIXME: If all quads are culled for the sharedQuadState, we can drop it from the list.
+    m_currentSharedQuadState = sharedQuadState.get();
+    m_sharedQuadStateList.append(sharedQuadState.release());
+    return m_currentSharedQuadState;
 }
 
 static inline bool appendQuadInternal(PassOwnPtr<CCDrawQuad> passDrawQuad, const IntRect& culledRect, CCQuadList& quadList, const CCOcclusionTrackerImpl& occlusionTracker, bool createDebugBorderQuads)
@@ -80,8 +93,13 @@ static inline bool appendQuadInternal(PassOwnPtr<CCDrawQuad> passDrawQuad, const
     return keepQuad;
 }
 
-bool CCQuadCuller::append(PassOwnPtr<CCDrawQuad> passDrawQuad)
+bool CCQuadCuller::append(PassOwnPtr<CCDrawQuad> passDrawQuad, CCAppendQuadsData& appendQuadsData)
 {
+    ASSERT(passDrawQuad->sharedQuadState() == m_currentSharedQuadState);
+    ASSERT(passDrawQuad->sharedQuadStateId() == m_currentSharedQuadState->id);
+    ASSERT(!m_sharedQuadStateList.isEmpty());
+    ASSERT(m_sharedQuadStateList.last().get() == m_currentSharedQuadState);
+
     IntRect culledRect;
     bool hasOcclusionFromOutsideTargetSurface;
 
@@ -89,7 +107,8 @@ bool CCQuadCuller::append(PassOwnPtr<CCDrawQuad> passDrawQuad)
         culledRect = m_occlusionTracker->unoccludedContributingSurfaceContentRect(m_layer, false, passDrawQuad->quadRect(), &hasOcclusionFromOutsideTargetSurface);
     else
         culledRect = m_occlusionTracker->unoccludedContentRect(m_layer, passDrawQuad->quadRect(), &hasOcclusionFromOutsideTargetSurface);
-    m_hasOcclusionFromOutsideTargetSurface |= hasOcclusionFromOutsideTargetSurface;
+
+    appendQuadsData.hadOcclusionFromOutsideTargetSurface |= hasOcclusionFromOutsideTargetSurface;
 
     return appendQuadInternal(passDrawQuad, culledRect, m_quadList, *m_occlusionTracker, m_showCullingWithDebugBorderQuads);
 }

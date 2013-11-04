@@ -28,11 +28,10 @@
 
 #if USE(ACCELERATED_COMPOSITING)
 
-#include "ScrollbarThemeClient.h"
-#include "cc/CCLayerImpl.h"
+#include "CCLayerImpl.h"
+#include "CCScrollbarGeometryFixedThumb.h"
 #include <public/WebRect.h>
 #include <public/WebScrollbar.h>
-#include <public/WebScrollbarThemeGeometry.h>
 #include <public/WebVector.h>
 
 namespace WebCore {
@@ -43,23 +42,33 @@ class CCScrollbarLayerImpl : public CCLayerImpl {
 public:
     static PassOwnPtr<CCScrollbarLayerImpl> create(int id);
 
-    void setScrollbarData(const WebKit::WebScrollbar*, WebKit::WebScrollbarThemeGeometry);
+    CCScrollbarGeometryFixedThumb* scrollbarGeometry() const { return m_geometry.get(); }
+    void setScrollbarGeometry(PassOwnPtr<CCScrollbarGeometryFixedThumb>);
+    void setScrollbarData(WebKit::WebScrollbar*);
 
     void setBackTrackResourceId(CCResourceProvider::ResourceId id) { m_backTrackResourceId = id; }
     void setForeTrackResourceId(CCResourceProvider::ResourceId id) { m_foreTrackResourceId = id; }
     void setThumbResourceId(CCResourceProvider::ResourceId id) { m_thumbResourceId = id; }
 
-    CCLayerImpl* scrollLayer() const { return m_scrollLayer; }
-    void setScrollLayer(CCLayerImpl* scrollLayer) { m_scrollLayer = scrollLayer; }
+    float currentPos() const { return m_currentPos; }
+    void setCurrentPos(float currentPos) { m_currentPos = currentPos; }
 
-    virtual void appendQuads(CCQuadSink&, const CCSharedQuadState*, bool& hadMissingTiles) OVERRIDE;
+    int totalSize() const { return m_totalSize; }
+    void setTotalSize(int totalSize) { m_totalSize = totalSize; }
+
+    int maximum() const { return m_maximum; }
+    void setMaximum(int maximum) { m_maximum = maximum; }
+
+    WebKit::WebScrollbar::Orientation orientation() const { return m_orientation; }
+
+    virtual void appendQuads(CCQuadSink&, CCAppendQuadsData&) OVERRIDE;
+
+    virtual void didLoseContext() OVERRIDE;
 
 protected:
     explicit CCScrollbarLayerImpl(int id);
 
 private:
-    CCLayerImpl* m_scrollLayer;
-
     // nested class only to avoid namespace problem
     class CCScrollbar : public WebKit::WebScrollbar {
     public:
@@ -87,13 +96,14 @@ private:
         CCScrollbarLayerImpl* m_owner;
 
     };
+
     CCScrollbar m_scrollbar;
 
     CCResourceProvider::ResourceId m_backTrackResourceId;
     CCResourceProvider::ResourceId m_foreTrackResourceId;
     CCResourceProvider::ResourceId m_thumbResourceId;
 
-    WebKit::WebScrollbarThemeGeometry m_geometry;
+    OwnPtr<CCScrollbarGeometryFixedThumb> m_geometry;
 
     // Data to implement CCScrollbar
     WebKit::WebScrollbar::ScrollbarOverlayStyle m_scrollbarOverlayStyle;
@@ -102,6 +112,11 @@ private:
     WebKit::WebScrollbar::ScrollbarControlSize m_controlSize;
     WebKit::WebScrollbar::ScrollbarPart m_pressedPart;
     WebKit::WebScrollbar::ScrollbarPart m_hoveredPart;
+
+    float m_currentPos;
+    int m_totalSize;
+    int m_maximum;
+
     bool m_isScrollableAreaActive;
     bool m_isScrollViewScrollbar;
     bool m_enabled;

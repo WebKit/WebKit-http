@@ -40,7 +40,7 @@ webkit2_h_api += \
 	$(WebKit2)/UIProcess/API/C/soup/WKAPICastSoup.h \
 	$(WebKit2)/UIProcess/API/C/soup/WKContextSoup.h \
 	$(WebKit2)/UIProcess/API/C/soup/WKSoupRequestManager.h \
-	$(WebKit2)/UIProcess/API/C/WebKit2.h \
+	$(WebKit2)/UIProcess/API/C/WebKit2_C.h \
 	$(WebKit2)/UIProcess/API/C/WKAPICast.h \
 	$(WebKit2)/UIProcess/API/C/WKApplicationCacheManager.h \
 	$(WebKit2)/UIProcess/API/C/WKAuthenticationChallenge.h \
@@ -140,8 +140,6 @@ webkit2_built_sources += \
 	DerivedSources/WebKit2/DrawingAreaProxyMessages.h \
 	DerivedSources/WebKit2/EventDispatcherMessageReceiver.cpp \
 	DerivedSources/WebKit2/EventDispatcherMessages.h \
-	DerivedSources/WebKit2/LayerTreeCoordinatorProxyMessageReceiver.cpp \
-	DerivedSources/WebKit2/LayerTreeCoordinatorProxyMessages.h \
 	DerivedSources/WebKit2/NPObjectMessageReceiverMessageReceiver.cpp \
 	DerivedSources/WebKit2/NPObjectMessageReceiverMessages.h \
 	DerivedSources/WebKit2/PluginControllerProxyMessageReceiver.cpp \
@@ -469,8 +467,6 @@ webkit2_sources += \
 	Source/WebKit2/Shared/WebHitTestResult.h \
 	Source/WebKit2/Shared/WebImage.cpp \
 	Source/WebKit2/Shared/WebImage.h \
-	Source/WebKit2/Shared/WebIntentData.cpp \
-	Source/WebKit2/Shared/WebIntentData.h \
 	Source/WebKit2/Shared/WebIntentServiceInfo.cpp \
 	Source/WebKit2/Shared/WebIntentServiceInfo.h \
 	Source/WebKit2/Shared/WebKeyboardEvent.cpp \
@@ -518,7 +514,7 @@ webkit2_sources += \
 	Source/WebKit2/UIProcess/API/C/soup/WKContextSoup.h \
 	Source/WebKit2/UIProcess/API/C/soup/WKSoupRequestManager.cpp \
 	Source/WebKit2/UIProcess/API/C/soup/WKSoupRequestManager.h \
-	Source/WebKit2/UIProcess/API/C/WebKit2.h \
+	Source/WebKit2/UIProcess/API/C/WebKit2_C.h \
 	Source/WebKit2/UIProcess/API/C/WKAPICast.h \
 	Source/WebKit2/UIProcess/API/C/WKApplicationCacheManager.h \
 	Source/WebKit2/UIProcess/API/C/WKApplicationCacheManager.cpp \
@@ -701,6 +697,8 @@ webkit2_sources += \
 	Source/WebKit2/UIProcess/API/gtk/WebKitSettings.cpp \
 	Source/WebKit2/UIProcess/API/gtk/WebKitSettings.h \
 	Source/WebKit2/UIProcess/API/gtk/WebKitSettingsPrivate.h \
+	Source/WebKit2/UIProcess/API/gtk/WebKitTextChecker.cpp \
+	Source/WebKit2/UIProcess/API/gtk/WebKitTextChecker.h \
 	Source/WebKit2/UIProcess/API/gtk/WebKitUIClient.cpp \
 	Source/WebKit2/UIProcess/API/gtk/WebKitUIClient.h \
 	Source/WebKit2/UIProcess/API/gtk/WebKitURIRequest.cpp \
@@ -774,11 +772,8 @@ webkit2_sources += \
 	Source/WebKit2/UIProcess/gtk/WebPopupMenuProxyGtk.h \
 	Source/WebKit2/UIProcess/gtk/WebPreferencesGtk.cpp \
 	Source/WebKit2/UIProcess/Launcher/gtk/ProcessLauncherGtk.cpp \
-	Source/WebKit2/UIProcess/Launcher/gtk/ThreadLauncherGtk.cpp \
 	Source/WebKit2/UIProcess/Launcher/ProcessLauncher.cpp \
 	Source/WebKit2/UIProcess/Launcher/ProcessLauncher.h \
-	Source/WebKit2/UIProcess/Launcher/ThreadLauncher.cpp \
-	Source/WebKit2/UIProcess/Launcher/ThreadLauncher.h \
 	Source/WebKit2/UIProcess/Notifications/NotificationPermissionRequest.cpp \
 	Source/WebKit2/UIProcess/Notifications/NotificationPermissionRequest.h \
 	Source/WebKit2/UIProcess/Notifications/NotificationPermissionRequestManagerProxy.cpp \
@@ -871,6 +866,8 @@ webkit2_sources += \
 	Source/WebKit2/UIProcess/WebIconDatabaseClient.h \
 	Source/WebKit2/UIProcess/WebInspectorProxy.cpp \
 	Source/WebKit2/UIProcess/WebInspectorProxy.h \
+	Source/WebKit2/UIProcess/WebIntentData.cpp \
+	Source/WebKit2/UIProcess/WebIntentData.h \
 	Source/WebKit2/UIProcess/WebKeyValueStorageManagerProxy.cpp \
 	Source/WebKit2/UIProcess/WebKeyValueStorageManagerProxy.h \
 	Source/WebKit2/UIProcess/WebMediaCacheManagerProxy.cpp \
@@ -964,6 +961,8 @@ webkit2_sources += \
 	Source/WebKit2/WebProcess/InjectedBundle/API/c/WKBundleInitialize.h \
 	Source/WebKit2/WebProcess/InjectedBundle/API/c/WKBundleInspector.cpp \
 	Source/WebKit2/WebProcess/InjectedBundle/API/c/WKBundleInspector.h \
+	Source/WebKit2/WebProcess/InjectedBundle/API/c/WKBundleIntent.cpp \
+	Source/WebKit2/WebProcess/InjectedBundle/API/c/WKBundleIntent.h \
 	Source/WebKit2/WebProcess/InjectedBundle/API/c/WKBundleIntentRequest.cpp \
 	Source/WebKit2/WebProcess/InjectedBundle/API/c/WKBundleIntentRequest.h \
 	Source/WebKit2/WebProcess/InjectedBundle/API/c/WKBundleNodeHandle.cpp \
@@ -998,6 +997,8 @@ webkit2_sources += \
 	Source/WebKit2/WebProcess/InjectedBundle/InjectedBundleDOMWindowExtension.h \
 	Source/WebKit2/WebProcess/InjectedBundle/InjectedBundleHitTestResult.cpp \
 	Source/WebKit2/WebProcess/InjectedBundle/InjectedBundleHitTestResult.h \
+	Source/WebKit2/WebProcess/InjectedBundle/InjectedBundleIntent.cpp \
+	Source/WebKit2/WebProcess/InjectedBundle/InjectedBundleIntent.h \
 	Source/WebKit2/WebProcess/InjectedBundle/InjectedBundleIntentRequest.cpp \
 	Source/WebKit2/WebProcess/InjectedBundle/InjectedBundleIntentRequest.h \
 	Source/WebKit2/WebProcess/InjectedBundle/InjectedBundleNavigationAction.cpp \

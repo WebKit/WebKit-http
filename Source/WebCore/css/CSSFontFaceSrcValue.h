@@ -67,7 +67,11 @@ public:
 
     void addSubresourceStyleURLs(ListHashSet<KURL>&, const StyleSheetContents*) const;
 
+    bool hasFailedOrCanceledSubresources() const;
+
     CachedFont* cachedFont(Document*);
+
+    void reportDescendantMemoryUsage(MemoryObjectInfo*) const;
 
 private:
     CSSFontFaceSrcValue(const String& resource, bool local)

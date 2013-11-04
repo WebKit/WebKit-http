@@ -1,3 +1,408 @@
+2012-08-29  Kamil Blank  <k.blank@samsung.com>
+
+        [EFL] Add setting API for allow universal/file access from file URLs.
+        https://bugs.webkit.org/show_bug.cgi?id=83121
+
+        Reviewed by Eric Seidel.
+
+        Make it possible to enable allow universal/file access from file URLs.
+        Default value for both settings is true.
+
+        * ewk/ewk_view.cpp:
+        (_Ewk_View_Private_Data):
+        (_ewk_view_priv_new):
+        (ewk_view_setting_allow_universal_access_from_file_urls_set): Function sets if locally loaded documents
+        are allowed to access remote urls.
+        (ewk_view_setting_allow_universal_access_from_file_urls_get):
+        (ewk_view_setting_allow_file_access_from_file_urls_set): Function sets if locally loaded documents
+        are allowed to access other local urls.
+        (ewk_view_setting_allow_file_access_from_file_urls_get):
+        * ewk/ewk_view.h:
+
+2012-08-29  Ryuan Choi  <ryuan.choi@samsung.com>
+
+        [EFL] Add *explicit* keyword to constructors in WebCoreSupport
+        https://bugs.webkit.org/show_bug.cgi?id=95307
+
+        Reviewed by Kentaro Hara.
+
+        Added explicit keyword in constructors in order to avoid implicit type conversion.
+
+        * WebCoreSupport/ColorChooserEfl.h:
+        (ColorChooserEfl):
+        * WebCoreSupport/PopupMenuEfl.h:
+        (PopupMenuEfl):
+        * WebCoreSupport/SearchPopupMenuEfl.h:
+        (SearchPopupMenuEfl):
+
+2012-08-29  Ryuan Choi  <ryuan.choi@samsung.com>
+
+        [EFL] Move several files to remove webkit1 dependency from WebCore.
+        https://bugs.webkit.org/show_bug.cgi?id=95264
+
+        Reviewed by Gyuyoung Kim.
+
+        ColorChooserEfl.cpp, PopupMenuEfl.cpp and SearchPopupMenuEfl.cpp are WebKit1/Efl
+        specific files and they can not be shared with WebKit2/Efl.
+
+        In order to remove WebKit dependency from WebCore, this patch moves them
+        to WebKit/efl/WebCoreSupport.
+
+        * WebCoreSupport/ColorChooserEfl.cpp: Renamed from Source/WebCore/platform/efl/ColorChooserEfl.cpp.
+        (WebCore):
+        (WebCore::ColorChooserEfl::ColorChooserEfl):
+        (WebCore::ColorChooserEfl::~ColorChooserEfl):
+        (WebCore::ColorChooserEfl::setSelectedColor):
+        (WebCore::ColorChooserEfl::endChooser):
+        * WebCoreSupport/ColorChooserEfl.h: Renamed from Source/WebCore/platform/efl/ColorChooserEfl.h.
+        (WebCore):
+        (ColorChooserEfl):
+        * WebCoreSupport/PopupMenuEfl.cpp: Renamed from Source/WebCore/platform/efl/PopupMenuEfl.cpp.
+        (WebCore):
+        (WebCore::PopupMenuEfl::PopupMenuEfl):
+        (WebCore::PopupMenuEfl::~PopupMenuEfl):
+        (WebCore::PopupMenuEfl::show):
+        (WebCore::PopupMenuEfl::hide):
+        (WebCore::PopupMenuEfl::updateFromElement):
+        (WebCore::PopupMenuEfl::disconnectClient):
+        * WebCoreSupport/PopupMenuEfl.h: Renamed from Source/WebCore/platform/efl/PopupMenuEfl.h.
+        (WebCore):
+        (PopupMenuEfl):
+        (WebCore::PopupMenuEfl::client):
+        * WebCoreSupport/SearchPopupMenuEfl.cpp: Renamed from Source/WebCore/platform/efl/SearchPopupMenuEfl.cpp.
+        (WebCore):
+        (WebCore::SearchPopupMenuEfl::SearchPopupMenuEfl):
+        (WebCore::SearchPopupMenuEfl::popupMenu):
+        (WebCore::SearchPopupMenuEfl::saveRecentSearches):
+        (WebCore::SearchPopupMenuEfl::loadRecentSearches):
+        (WebCore::SearchPopupMenuEfl::enabled):
+        * WebCoreSupport/SearchPopupMenuEfl.h: Renamed from Source/WebCore/platform/efl/SearchPopupMenuEfl.h.
+        (WebCore):
+        (SearchPopupMenuEfl):
+
+2012-08-28  Seokju Kwon  <seokju.kwon@samsung.com>
+
+        [EFL] Add support for localization to the Web Inspector
+        https://bugs.webkit.org/show_bug.cgi?id=92961
+
+        Reviewed by Gyuyoung Kim.
+
+        Implement InspectorFrontendClientEfl::localizedStringsURL()
+        to return the URL of the localizedStrings.js.
+
+        * WebCoreSupport/InspectorClientEfl.cpp:
+        (WebCore::InspectorClientEfl::openInspectorFrontend):
+        (WebCore::InspectorClientEfl::inspectorFilesPath):
+        (WebCore::InspectorFrontendClientEfl::localizedStringsURL):
+
+2012-08-28  Sheriff Bot  <webkit.review.bot@gmail.com>
+
+        Unreviewed, rolling out r126914.
+        http://trac.webkit.org/changeset/126914
+        https://bugs.webkit.org/show_bug.cgi?id=95239
+
+        it breaks everything and fixes nothing (Requested by pizlo on
+        #webkit).
+
+        * WebCoreSupport/DumpRenderTreeSupportEfl.cpp:
+        (DumpRenderTreeSupportEfl::evaluateScriptInIsolatedWorld):
+        * WebCoreSupport/PlatformStrategiesEfl.cpp:
+        (PlatformStrategiesEfl::getPluginInfo):
+        * ewk/ewk_intent.cpp:
+        (ewk_intent_extra_get):
+
+2012-08-28  Caio Marcelo de Oliveira Filho  <caio.oliveira@openbossa.org>
+
+        Rename first/second to key/value in HashMap iterators
+        https://bugs.webkit.org/show_bug.cgi?id=82784
+
+        Reviewed by Eric Seidel.
+
+        * WebCoreSupport/DumpRenderTreeSupportEfl.cpp:
+        (DumpRenderTreeSupportEfl::evaluateScriptInIsolatedWorld):
+        * WebCoreSupport/PlatformStrategiesEfl.cpp:
+        (PlatformStrategiesEfl::getPluginInfo):
+        * ewk/ewk_intent.cpp:
+        (ewk_intent_extra_get):
+
+2012-08-28  Christophe Dumez  <christophe.dumez@intel.com>
+
+        [EFL] WebKit EFL updates view on HTTP 204 response
+        https://bugs.webkit.org/show_bug.cgi?id=95199
+
+        Reviewed by Kenneth Rohde Christiansen.
+
+        Ignore HTTP responses which have status code equal
+        to 204 (No Content).
+
+        * WebCoreSupport/FrameLoaderClientEfl.cpp:
+        (WebCore::FrameLoaderClientEfl::dispatchDecidePolicyForResponse):
+
+2012-08-28  Thiago Marcos P. Santos  <thiago.santos@intel.com>
+
+        [EFL] Rename knob images to thumb on the default theme
+        https://bugs.webkit.org/show_bug.cgi?id=95186
+
+        Reviewed by Kenneth Rohde Christiansen.
+
+        WebKit reefers to these handles as thumb instead of knob. Let's make
+        it coherent on EFL.
+
+        * DefaultTheme/widget/slider/slider.edc:
+        * DefaultTheme/widget/slider/slider_thumb_h.png: Renamed from Source/WebKit/efl/DefaultTheme/widget/slider/slider_knob_h.png.
+        * DefaultTheme/widget/slider/slider_thumb_press_h.png: Renamed from Source/WebKit/efl/DefaultTheme/widget/slider/slider_knob_press_h.png.
+        * DefaultTheme/widget/slider/slider_thumb_press_v.png: Renamed from Source/WebKit/efl/DefaultTheme/widget/slider/slider_knob_press_v.png.
+        * DefaultTheme/widget/slider/slider_thumb_v.png: Renamed from Source/WebKit/efl/DefaultTheme/widget/slider/slider_knob_v.png.
+
+2012-08-28  Thiago Marcos P. Santos  <thiago.santos@intel.com>
+
+        [EFL] Range input ignores padding
+        https://bugs.webkit.org/show_bug.cgi?id=94595
+
+        Reviewed by Kenneth Rohde Christiansen.
+
+        Updated default theme to paint the slider thumb in a different step.
+        This was done by splitting the thumb into a separated group.
+
+        * DefaultTheme/widget/slider/slider.edc:
+
+2012-08-27  Sheriff Bot  <webkit.review.bot@gmail.com>
+
+        Unreviewed, rolling out r126836.
+        http://trac.webkit.org/changeset/126836
+        https://bugs.webkit.org/show_bug.cgi?id=95163
+
+        Broke all Apple ports, EFL, and Qt. (Requested by tkent on
+        #webkit).
+
+        * WebCoreSupport/DumpRenderTreeSupportEfl.cpp:
+        (DumpRenderTreeSupportEfl::evaluateScriptInIsolatedWorld):
+        * WebCoreSupport/PlatformStrategiesEfl.cpp:
+        (PlatformStrategiesEfl::getPluginInfo):
+        * ewk/ewk_intent.cpp:
+        (ewk_intent_extra_get):
+
+2012-08-27  Caio Marcelo de Oliveira Filho  <caio.oliveira@openbossa.org>
+
+        Rename first/second to key/value in HashMap iterators
+        https://bugs.webkit.org/show_bug.cgi?id=82784
+
+        Reviewed by Eric Seidel.
+
+        * WebCoreSupport/DumpRenderTreeSupportEfl.cpp:
+        (DumpRenderTreeSupportEfl::evaluateScriptInIsolatedWorld):
+        * WebCoreSupport/PlatformStrategiesEfl.cpp:
+        (PlatformStrategiesEfl::getPluginInfo):
+        * ewk/ewk_intent.cpp:
+        (ewk_intent_extra_get):
+
+2012-08-27  Mikhail Pozdnyakov  <mikhail.pozdnyakov@intel.com>
+
+        Rename RegisterProtocolHandler API to NavigatorContentUtils
+        https://bugs.webkit.org/show_bug.cgi?id=94920
+
+        Reviewed by Adam Barth.
+
+        Renaming whatever RegisterProtocolHandler-prefixed to NavigatorContentUtils-prefixed.
+        RegisterProtocolHandlerClientEfl is renamed to NavigatorContentUtilsClientEfl.
+
+        * WebCoreSupport/NavigatorContentUtilsClientEfl.cpp: Renamed from Source/WebKit/efl/WebCoreSupport/RegisterProtocolHandlerClientEfl.cpp.
+        (WebCore):
+        (WebCore::customHandlerDataCreate):
+        (WebCore::customHandlerDataDelete):
+        (WebCore::NavigatorContentUtilsClientEfl::create):
+        (WebCore::NavigatorContentUtilsClientEfl::NavigatorContentUtilsClientEfl):
+        (WebCore::NavigatorContentUtilsClientEfl::registerProtocolHandler):
+        (WebCore::NavigatorContentUtilsClientEfl::isProtocolHandlerRegistered):
+        (WebCore::NavigatorContentUtilsClientEfl::unregisterProtocolHandler):
+        * WebCoreSupport/NavigatorContentUtilsClientEfl.h: Renamed from Source/WebKit/efl/WebCoreSupport/RegisterProtocolHandlerClientEfl.h.
+        (NavigatorContentUtilsClientEfl):
+        (WebCore::NavigatorContentUtilsClientEfl::~NavigatorContentUtilsClientEfl):
+        * ewk/ewk_custom_handler.cpp:
+        * ewk/ewk_custom_handler_private.h:
+        * ewk/ewk_view.cpp:
+        (_Ewk_View_Private_Data):
+        (_ewk_view_priv_new):
+
+2012-08-23  Ryuan Choi  <ryuan.choi@samsung.com>
+
+        [EFL] Remove ewk_tile_matrix_tile_update.
+        https://bugs.webkit.org/show_bug.cgi?id=63437
+
+        Reviewed by Gyuyoung Kim.
+
+        * ewk/ewk_tiled_matrix.cpp:
+        Removed ewk_tile_matrix_tile_update and ewk_tile_matrix_tile_update_full
+        which are dead code.
+        * ewk/ewk_tiled_matrix_private.h: Ditto.
+
+2012-08-21  Kihong Kwon  <kihong.kwon@samsung.com>
+
+        [EFL][GTK][BlackBerry] Fix build error in the DeviceOrientationClient
+        https://bugs.webkit.org/show_bug.cgi?id=94586
+
+        Reviewed by Kentaro Hara.
+
+        Fix build error in the DeviceOrientationClientEfl.cpp.
+        It is occured because DeviceOrientation is changed to DeviceOrientationData in the WebCore.
+
+        * WebCoreSupport/DeviceOrientationClientEfl.cpp:
+        (WebCore::DeviceOrientationClientEfl::lastOrientation):
+
+2012-08-20  Thiago Marcos P. Santos  <thiago.santos@intel.com>
+
+        Regression(r124945): Build is broken when touch events is disabled
+        https://bugs.webkit.org/show_bug.cgi?id=94466
+
+        Reviewed by Kenneth Rohde Christiansen.
+
+        Added missing guards around touch events code.
+
+        * ewk/ewk_touch_event.cpp:
+        * ewk/ewk_touch_event_private.h:
+
+2012-08-17  Thiago Marcos P. Santos  <thiago.santos@intel.com>
+
+        [EFL] Change font family/script on layout tests causes flakiness
+        https://bugs.webkit.org/show_bug.cgi?id=94327
+
+        Reviewed by Kenneth Rohde Christiansen.
+
+        Always set the font on WebCore even if the font family is the same. It
+        has to be done because the script value might have also changed.
+        Settings::set*FontFamily() has an implicit UScriptCode
+        parameter that will set the script back to the defaults.
+
+        * ewk/ewk_view.cpp:
+        (ewk_view_font_family_name_set):
+
+2012-08-14  Adam Barth  <abarth@webkit.org>
+
+        Delete Frame::domWindow() and Frame::existingDOMWindow()
+        https://bugs.webkit.org/show_bug.cgi?id=93990
+
+        Reviewed by Eric Seidel.
+
+        * WebCoreSupport/DumpRenderTreeSupportEfl.cpp:
+        (DumpRenderTreeSupportEfl::pendingUnloadEventCount):
+        * ewk/ewk_frame.cpp:
+        (ewk_frame_intent_deliver):
+
+2012-08-13  Tom Sepez  <tsepez@chromium.org>
+
+        [chromium] release FrameLoaderClientImpl::m_pluginWidget refptr upon Plugin Document detach.
+        https://bugs.webkit.org/show_bug.cgi?id=93283
+
+        Reviewed by Eric Seidel.
+
+        Change the client redirectDataToPlugin method(s) to expect the possibility of
+        a NULL argument, keeping existing behaviour otherwise.
+
+        * WebCoreSupport/FrameLoaderClientEfl.cpp:
+        (WebCore::FrameLoaderClientEfl::redirectDataToPlugin):
+
+2012-08-12  Krzysztof Czech  <k.czech@samsung.com>
+
+        [EFL][UT] Delete shutdown method.
+        https://bugs.webkit.org/show_bug.cgi?id=90785
+
+        Reviewed by Eric Seidel.
+
+        EWKTestBase class already has a shutdownAll method that can be used instead of shutdown.
+
+        * tests/UnitTestUtils/EWKTestBase.cpp:
+        * tests/UnitTestUtils/EWKTestBase.h:
+        (EWKTestBase):
+
+2012-08-09  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Handle SSL errors for SOUP
+        https://bugs.webkit.org/show_bug.cgi?id=90267
+
+        Reviewed by Martin Robinson.
+
+        Ignore SSL errors by default for compatibility.
+
+        * ewk/ewk_main.cpp:
+        (_ewk_init_body):
+
+2012-08-07  Ryuan Choi  <ryuan.choi@samsung.com>
+
+        [EFL] Remove PlatformTouchEventEfl and PlatformTouchPointEfl
+        https://bugs.webkit.org/show_bug.cgi?id=93270
+
+        Reviewed by Eric Seidel.
+
+        * ewk/ewk_frame.cpp:
+        (ewk_frame_feed_touch_event):
+        * ewk/ewk_touch_event.cpp: Added.
+        (WebKitPlatformTouchPoint):
+        (WebKitPlatformTouchPoint::WebKitPlatformTouchPoint):
+        Added to initialize members of PlatformTouchPoint.
+        (WebKitPlatformTouchEvent):
+        (WebKitPlatformTouchEvent::WebKitPlatformTouchEvent):
+        Added to initialize members of PlatformTouchEvent.
+        (EWKPrivate):
+        (EWKPrivate::platformTouchEvent):
+        Converted Ewk_Touch_Event to PlatformTouchEvent.
+        * ewk/ewk_touch_event_private.h: 
+        (EWKPrivate):
+
+2012-08-07  Mikhail Pozdnyakov  <mikhail.pozdnyakov@intel.com>
+
+        CUSTOM_SCHEME_HANDLER flag should depend on REGISTER_PROTOCOL_HANDLER
+        https://bugs.webkit.org/show_bug.cgi?id=93081
+
+        Reviewed by Adam Barth.
+
+        CUSTOM_SCHEME_HANDLER #if guards are enclosed in the REGISTER_PROTOCOL_HANDLER guards.
+
+        * WebCoreSupport/RegisterProtocolHandlerClientEfl.cpp:
+        (WebCore::RegisterProtocolHandlerClientEfl::registerProtocolHandler):
+        * WebCoreSupport/RegisterProtocolHandlerClientEfl.h:
+        * ewk/ewk_custom_handler.cpp:
+        (ewk_custom_handler_register_protocol_handler):
+        * ewk/ewk_custom_handler_private.h:
+        * ewk/ewk_view.cpp:
+        (_ewk_view_priv_new):
+
+2012-08-06  Mikhail Pozdnyakov  <mikhail.pozdnyakov@intel.com>
+
+        [EFL] [GTK] Register Protocol Handler Client is never deleted
+        https://bugs.webkit.org/show_bug.cgi?id=92745
+
+        Reviewed by Gustavo Noronha Silva.
+
+        Added usage of OwnPtr to manage register protocol handler client pointer.
+
+        * WebCoreSupport/RegisterProtocolHandlerClientEfl.cpp:
+        (WebCore::RegisterProtocolHandlerClientEfl::create): Factory function returning smart pointer.
+        (WebCore):
+        * WebCoreSupport/RegisterProtocolHandlerClientEfl.h:
+        (RegisterProtocolHandlerClientEfl):
+        * ewk/ewk_view.cpp:
+        (_Ewk_View_Private_Data):
+        (_ewk_view_priv_new):
+
+2012-08-01  Ryuan Choi  <ryuan.choi@samsung.com>
+
+        [EFL][Regression] Build break with NETSCAPE_PLUGIN_API after r123604
+        https://bugs.webkit.org/show_bug.cgi?id=92937
+
+        Unreviewed build fix.
+
+        r123604 replaced strdup to eina_stringshare, but related codes are not
+        changed properly.
+        This patch changes remained code to use eina_stringshare.
+
+        * ewk/ewk_js.cpp:
+        (ewk_js_variant_to_npvariant):
+        (ewk_js_property_free):
+        (ewk_js_npvariant_to_variant):
+        (ewk_js_variant_free):
+        (ewk_js_variant_array_free):
+        * ewk/ewk_js.h:
+
 2012-07-29  YoungTaeck Song  <youngtaeck.song@samsung.com>
 
         [WK2][EFL] TILED_BACKING_STORE support on Efl WebKit2

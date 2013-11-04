@@ -34,7 +34,7 @@
 #endif
 #endif
 
-#if PLATFORM(QT)
+#if USE(COORDINATED_GRAPHICS)
 #include "LayerTreeCoordinator.h"
 #endif
 
@@ -52,7 +52,7 @@ PassRefPtr<LayerTreeHost> LayerTreeHost::create(WebPage* webPage)
     return LayerTreeHostCAMac::create(webPage);
 #elif PLATFORM(WIN) && HAVE(WKQCA)
     return LayerTreeHostCAWin::create(webPage);
-#elif PLATFORM(QT)
+#elif USE(COORDINATED_GRAPHICS)
     return LayerTreeCoordinator::create(webPage);
 #elif PLATFORM(GTK) && USE(TEXTURE_MAPPER_GL)
     return LayerTreeHostGtk::create(webPage);

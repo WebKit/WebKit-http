@@ -34,6 +34,7 @@ namespace WebCore {
 class CSSStyleSheet;
 class CachedCSSStyleSheet;
 class Document;
+class MemoryObjectInfo;
 class Node;
 class SecurityOrigin;
 class StyleRuleBase;
@@ -43,15 +44,11 @@ class StyleSheetContents : public RefCounted<StyleSheetContents> {
 public:
     static PassRefPtr<StyleSheetContents> create(const CSSParserContext& context = CSSParserContext(CSSStrictMode))
     {
-        return adoptRef(new StyleSheetContents(0, String(), KURL(), context));
+        return adoptRef(new StyleSheetContents(String(), context));
     }
-    static PassRefPtr<StyleSheetContents> create(const String& originalURL, const KURL& finalURL, const CSSParserContext& context)
+    static PassRefPtr<StyleSheetContents> create(const String& originalURL, const CSSParserContext& context)
     {
-        return adoptRef(new StyleSheetContents(0, originalURL, finalURL, context));
-    }
-    static PassRefPtr<StyleSheetContents> create(StyleRuleImport* ownerRule, const String& originalURL, const KURL& finalURL, const CSSParserContext& context)
-    {
-        return adoptRef(new StyleSheetContents(ownerRule, originalURL, finalURL, context));
+        return adoptRef(new StyleSheetContents(originalURL, context));
     }
 
     ~StyleSheetContents();
@@ -60,7 +57,7 @@ public:
 
     const AtomicString& determineNamespace(const AtomicString& prefix);
 
-    void parseAuthorStyleSheet(const CachedCSSStyleSheet*, const SecurityOrigin*);
+    void parseAuthorStyleSheet(const CachedCSSStyleSheet*, CSSStyleSheet* rootSheet);
     bool parseString(const String&);
     bool parseStringAtLine(const String&, int startLineNumber);
 
@@ -68,16 +65,12 @@ public:
 
     bool isLoading() const;
 
-    void checkLoaded();
-    void startLoadingDynamicSheet();
-
-    StyleSheetContents* rootStyleSheet() const;
-    Node* singleOwnerNode() const;
-    Document* singleOwnerDocument() const;
+    void checkLoadCompleted();
 
     const String& charset() const { return m_parserContext.charset; }
 
     bool loadCompleted() const { return m_loadCompleted; }
+    bool hasFailedOrCanceledSubresources() const;
 
     KURL completeURL(const String& url) const;
     void addSubresourceStyleURLs(ListHashSet<KURL>&);
@@ -100,18 +93,12 @@ public:
     const Vector<RefPtr<StyleRuleBase> >& childRules() const { return m_childRules; }
     const Vector<RefPtr<StyleRuleImport> >& importRules() const { return m_importRules; }
 
-    void notifyLoadedSheet(const CachedCSSStyleSheet*);
-    
-    StyleSheetContents* parentStyleSheet() const;
-    StyleRuleImport* ownerRule() const { return m_ownerRule; }
-    void clearOwnerRule() { m_ownerRule = 0; }
-    
+    bool hasImportCycle(const StyleRuleImport* importRule, const KURL& importURL, const KURL& documentBaseURL) const;
+
     // Note that href is the URL that started the redirect chain that led to
     // this style sheet. This property probably isn't useful for much except
     // the JavaScript binding (which needs to use this value for security).
     String originalURL() const { return m_originalURL; }
-    
-    const KURL& finalURL() const { return m_finalURL; }
     const KURL& baseURL() const { return m_parserContext.baseURL; }
 
     unsigned ruleCount() const;
@@ -123,6 +110,8 @@ public:
     
     bool wrapperInsertRule(PassRefPtr<StyleRuleBase>, unsigned index);
     void wrapperDeleteRule(unsigned index);
+
+    void requestImportedStyleSheets(CSSStyleSheet* rootSheet);
 
     PassRefPtr<StyleSheetContents> copy() const { return adoptRef(new StyleSheetContents(*this)); }
 
@@ -137,16 +126,18 @@ public:
     void addedToMemoryCache();
     void removedFromMemoryCache();
 
+    void reportMemoryUsage(MemoryObjectInfo*) const;
+
 private:
-    StyleSheetContents(StyleRuleImport* ownerRule, const String& originalURL, const KURL& baseURL, const CSSParserContext&);
+    StyleSheetContents(const String& originalURL, const CSSParserContext&);
     StyleSheetContents(const StyleSheetContents&);
 
     void clearCharsetRule();
 
-    StyleRuleImport* m_ownerRule;
+    bool checkImportedSheetLoadCompleted();
+    bool getAncestors(const StyleRuleImport*, Vector<const StyleSheetContents*>& result) const;
 
     String m_originalURL;
-    KURL m_finalURL;
 
     String m_encodingFromCharsetRule;
     Vector<RefPtr<StyleRuleImport> > m_importRules;

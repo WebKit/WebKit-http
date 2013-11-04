@@ -34,7 +34,6 @@
 
 #include "InspectorController.h"
 
-#include "DOMNodeHighlighter.h"
 #include "Frame.h"
 #include "GraphicsContext.h"
 #include "IdentifiersFactory.h"
@@ -57,6 +56,7 @@
 #include "InspectorIndexedDBAgent.h"
 #include "InspectorInstrumentation.h"
 #include "InspectorMemoryAgent.h"
+#include "InspectorOverlay.h"
 #include "InspectorPageAgent.h"
 #include "InspectorProfilerAgent.h"
 #include "InspectorResourceAgent.h"
@@ -114,7 +114,7 @@ InspectorController::InspectorController(Page* page, InspectorClient* inspectorC
     OwnPtr<InspectorDOMStorageAgent> domStorageAgentPtr(InspectorDOMStorageAgent::create(m_instrumentingAgents.get(), m_state.get()));
     InspectorDOMStorageAgent* domStorageAgent = domStorageAgentPtr.get();
     m_agents.append(domStorageAgentPtr.release());
-    m_agents.append(InspectorMemoryAgent::create(m_instrumentingAgents.get(), m_state.get(), m_page, m_domAgent));
+    m_agents.append(InspectorMemoryAgent::create(m_instrumentingAgents.get(), m_state.get(), m_page, domStorageAgent));
     m_agents.append(InspectorTimelineAgent::create(m_instrumentingAgents.get(), pageAgent, m_state.get(), InspectorTimelineAgent::PageInspector,
        inspectorClient));
     m_agents.append(InspectorApplicationCacheAgent::create(m_instrumentingAgents.get(), m_state.get(), pageAgent));
@@ -148,7 +148,7 @@ InspectorController::InspectorController(Page* page, InspectorClient* inspectorC
 #endif
 
 #if ENABLE(WEBGL)
-    m_agents.append(InspectorWebGLAgent::create(m_instrumentingAgents.get(), m_state.get(), m_injectedScriptManager.get()));
+    m_agents.append(InspectorWebGLAgent::create(m_instrumentingAgents.get(), m_state.get(), page, m_injectedScriptManager.get()));
 #endif
 
     ASSERT_ARG(inspectorClient, inspectorClient);

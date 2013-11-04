@@ -120,13 +120,18 @@ bool StorageAreaProxy::canAccessStorage(Frame* frame) const
     return !webView->permissionClient() || webView->permissionClient()->allowStorage(webFrame, m_storageType == LocalStorage);
 }
 
+size_t StorageAreaProxy::memoryBytesUsedByCache() const
+{
+    return m_storageArea->memoryBytesUsedByCache();
+}
+
 void StorageAreaProxy::dispatchLocalStorageEvent(PageGroup* pageGroup, const String& key, const String& oldValue, const String& newValue,
                                                  SecurityOrigin* securityOrigin, const KURL& pageURL, WebKit::WebStorageArea* sourceAreaInstance, bool originatedInProcess)
 {
     const HashSet<Page*>& pages = pageGroup->pages();
     for (HashSet<Page*>::const_iterator it = pages.begin(); it != pages.end(); ++it) {
         for (Frame* frame = (*it)->mainFrame(); frame; frame = frame->tree()->traverseNext()) {
-            Storage* storage = frame->domWindow()->optionalLocalStorage();
+            Storage* storage = frame->document()->domWindow()->optionalLocalStorage();
             if (storage && frame->document()->securityOrigin()->equal(securityOrigin) && !isEventSource(storage, sourceAreaInstance))
                 frame->document()->enqueueWindowEvent(StorageEvent::create(eventNames().storageEvent, key, oldValue, newValue, pageURL, storage));
         }
@@ -155,7 +160,7 @@ void StorageAreaProxy::dispatchSessionStorageEvent(PageGroup* pageGroup, const S
         return;
 
     for (Frame* frame = page->mainFrame(); frame; frame = frame->tree()->traverseNext()) {
-        Storage* storage = frame->domWindow()->optionalSessionStorage();
+        Storage* storage = frame->document()->domWindow()->optionalSessionStorage();
         if (storage && frame->document()->securityOrigin()->equal(securityOrigin) && !isEventSource(storage, sourceAreaInstance))
             frame->document()->enqueueWindowEvent(StorageEvent::create(eventNames().storageEvent, key, oldValue, newValue, pageURL, storage));
     }

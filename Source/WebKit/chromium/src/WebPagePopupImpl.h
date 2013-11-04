@@ -72,7 +72,7 @@ private:
     virtual void setCompositorSurfaceReady() OVERRIDE;
     virtual void composite(bool) OVERRIDE;
     virtual void layout() OVERRIDE;
-    virtual void paint(WebCanvas*, const WebRect&) OVERRIDE;
+    virtual void paint(WebCanvas*, const WebRect&, PaintOptions = ReadbackFromCompositorIfAvailable) OVERRIDE;
     virtual void resize(const WebSize&) OVERRIDE;
     virtual void close() OVERRIDE;
     virtual bool handleInputEvent(const WebInputEvent&) OVERRIDE;
@@ -87,14 +87,15 @@ private:
 
     explicit WebPagePopupImpl(WebWidgetClient*);
     bool initPage();
+    void reposition(const WebSize&);
 
     WebWidgetClient* m_widgetClient;
     WebRect m_windowRectInScreen;
+    WebCore::IntRect m_originBoundsInRootView;
     WebViewImpl* m_webView;
     OwnPtr<WebCore::Page> m_page;
     OwnPtr<PagePopupChromeClient> m_chromeClient;
     WebCore::PagePopupClient* m_popupClient;
-    bool m_isPutAboveOrigin;
 
     friend class WebPagePopup;
     friend class PagePopupChromeClient;

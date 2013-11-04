@@ -69,7 +69,7 @@ StringImpl::~StringImpl()
         fastFree(const_cast<LChar*>(m_data8));
         return;
     }
-#if PLATFORM(QT) && HAVE(QT5)
+#if PLATFORM(QT)
     if (ownership == BufferAdoptedQString) {
         if (!m_qStringData->ref.deref())
             QStringData::deallocate(m_qStringData);
@@ -82,10 +82,17 @@ StringImpl::~StringImpl()
     m_substringBuffer->deref();
 }
 
-PassRefPtr<StringImpl> StringImpl::createFromLiteral(const LChar* characters, unsigned length)
+PassRefPtr<StringImpl> StringImpl::createFromLiteral(const char* characters, unsigned length)
 {
-    ASSERT(charactersAreAllASCII<LChar>(characters, length));
-    return adoptRef(new StringImpl(characters, length));
+    ASSERT(charactersAreAllASCII<LChar>(reinterpret_cast<const LChar*>(characters), length));
+    return adoptRef(new StringImpl(characters, length, ConstructFromLiteral));
+}
+
+PassRefPtr<StringImpl> StringImpl::createFromLiteral(const char* characters)
+{
+    size_t length = strlen(characters);
+    ASSERT(charactersAreAllASCII<LChar>(reinterpret_cast<const LChar*>(characters), length));
+    return adoptRef(new StringImpl(characters, length, ConstructFromLiteral));
 }
 
 PassRefPtr<StringImpl> StringImpl::createUninitialized(unsigned length, LChar*& data)
@@ -1657,7 +1664,7 @@ PassRefPtr<StringImpl> StringImpl::adopt(StringBuffer<UChar>& buffer)
     return adoptRef(new StringImpl(buffer.release(), length));
 }
 
-#if PLATFORM(QT) && HAVE(QT5)
+#if PLATFORM(QT)
 PassRefPtr<StringImpl> StringImpl::adopt(QStringData* qStringData)
 {
     ASSERT(qStringData);

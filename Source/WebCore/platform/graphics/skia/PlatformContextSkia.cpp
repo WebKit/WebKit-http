@@ -529,9 +529,6 @@ SkXfermode::Mode PlatformContextSkia::getXfermodeMode() const
 
 void PlatformContextSkia::setTextDrawingMode(TextDrawingModeFlags mode)
 {
-    // TextModeClip is never used, so we assert that it isn't set:
-    // https://bugs.webkit.org/show_bug.cgi?id=21898
-    ASSERT(!(mode & TextModeClip));
     m_state->m_textDrawingMode = mode;
 }
 
@@ -583,7 +580,7 @@ void PlatformContextSkia::paintSkPaint(const SkRect& rect,
 const SkBitmap* PlatformContextSkia::bitmap() const
 {
 #if PLATFORM(CHROMIUM)
-    TRACE_EVENT("PlatformContextSkia::bitmap", this, 0);
+    TRACE_EVENT0("skia", "PlatformContextSkia::bitmap");
 #endif
     return &m_canvas->getDevice()->accessBitmap(false);
 }

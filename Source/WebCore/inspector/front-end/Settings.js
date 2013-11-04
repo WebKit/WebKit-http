@@ -41,9 +41,7 @@ var Preferences = {
     sharedWorkersDebugNote: undefined,
     localizeUI: true,
     exposeDisableCache: false,
-    exposeWorkersInspection: false,
     applicationTitle: "Web Inspector - %s",
-    showHeapSnapshotObjectsHiddenProperties: false,
     showDockToRight: false,
     exposeFileSystemInspection: false
 }
@@ -57,6 +55,7 @@ var Capabilities = {
     canOverrideDeviceMetrics: false,
     timelineSupportsFrameInstrumentation: false,
     canOverrideGeolocation: false,
+    canOverrideDeviceOrientation: false,
 }
 
 /**
@@ -100,6 +99,10 @@ WebInspector.Settings = function()
     this.savedURLs = this.createSetting("savedURLs", {});
     this.javaScriptDisabled = this.createSetting("javaScriptDisabled", false);
     this.geolocationOverride = this.createSetting("geolocationOverride", "");
+    this.deviceOrientationOverride = this.createSetting("deviceOrientationOverride", "");
+    this.showHeapSnapshotObjectsHiddenProperties = this.createSetting("showHeaSnapshotObjectsHiddenProperties", false);
+    this.searchInContentScripts = this.createSetting("searchInContentScripts", false);
+    this.textEditorIndent = this.createSetting("textEditorIndent", "    ");
 
     // If there are too many breakpoints in a storage, it is likely due to a recent bug that caused
     // periodical breakpoints duplication leading to inspector slowness.
@@ -188,9 +191,12 @@ WebInspector.ExperimentsSettings = function()
     this.nativeMemorySnapshots = this._createExperiment("nativeMemorySnapshots", "Native memory profiling");
     this.liveNativeMemoryChart = this._createExperiment("liveNativeMemoryChart", "Live native memory chart");
     this.fileSystemInspection = this._createExperiment("fileSystemInspection", "FileSystem inspection");
+    this.webGLInspection = this._createExperiment("webGLInspection ", "WebGL inspection");
     this.mainThreadMonitoring = this._createExperiment("mainThreadMonitoring", "Show CPU activity in Timeline");
     this.geolocationOverride = this._createExperiment("geolocationOverride", "Override Device Geolocation");
+    this.deviceOrientationOverride = this._createExperiment("deviceOrientationOverride", "Override Device Orientation");
     this.sass = this._createExperiment("sass", "Support for SASS");
+    this.codemirror = this._createExperiment("codemirror", "Use CodeMirror editor");
 
     this._cleanUpSetting();
 }

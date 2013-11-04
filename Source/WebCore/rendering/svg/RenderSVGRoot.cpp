@@ -395,12 +395,12 @@ void RenderSVGRoot::computeFloatRectForRepaint(RenderBoxModelObject* repaintCont
 // This method expects local CSS box coordinates.
 // Callers with local SVG viewport coordinates should first apply the localToBorderBoxTransform
 // to convert from SVG viewport coordinates to local CSS box coordinates.
-void RenderSVGRoot::mapLocalToContainer(RenderBoxModelObject* repaintContainer, bool fixed, bool useTransforms, TransformState& transformState, ApplyContainerFlipOrNot, bool* wasFixed) const
+void RenderSVGRoot::mapLocalToContainer(RenderBoxModelObject* repaintContainer, TransformState& transformState, MapLocalToContainerFlags mode, bool* wasFixed) const
 {
-    ASSERT(!fixed); // We should have no fixed content in the SVG rendering tree.
-    ASSERT(useTransforms); // mapping a point through SVG w/o respecting trasnforms is useless.
+    ASSERT(mode & ~IsFixed); // We should have no fixed content in the SVG rendering tree.
+    ASSERT(mode & UseTransforms); // mapping a point through SVG w/o respecting trasnforms is useless.
 
-    RenderReplaced::mapLocalToContainer(repaintContainer, fixed, useTransforms, transformState, ApplyContainerFlip, wasFixed);
+    RenderReplaced::mapLocalToContainer(repaintContainer, transformState, mode | ApplyContainerFlip, wasFixed);
 }
 
 const RenderObject* RenderSVGRoot::pushMappingToContainer(const RenderBoxModelObject* ancestorToStopAt, RenderGeometryMap& geometryMap) const
@@ -415,9 +415,9 @@ void RenderSVGRoot::updateCachedBoundaries()
     m_repaintBoundingBox.inflate(borderAndPaddingWidth());
 }
 
-bool RenderSVGRoot::nodeAtPoint(const HitTestRequest& request, HitTestResult& result, const HitTestPoint& pointInContainer, const LayoutPoint& accumulatedOffset, HitTestAction hitTestAction)
+bool RenderSVGRoot::nodeAtPoint(const HitTestRequest& request, HitTestResult& result, const HitTestLocation& locationInContainer, const LayoutPoint& accumulatedOffset, HitTestAction hitTestAction)
 {
-    LayoutPoint pointInParent = pointInContainer.point() - toLayoutSize(accumulatedOffset);
+    LayoutPoint pointInParent = locationInContainer.point() - toLayoutSize(accumulatedOffset);
     LayoutPoint pointInBorderBox = pointInParent - toLayoutSize(location());
 
     // Only test SVG content if the point is in our content box.
@@ -429,7 +429,7 @@ bool RenderSVGRoot::nodeAtPoint(const HitTestRequest& request, HitTestResult& re
             // FIXME: nodeAtFloatPoint() doesn't handle rect-based hit tests yet.
             if (child->nodeAtFloatPoint(request, result, localPoint, hitTestAction)) {
                 updateHitTestResult(result, pointInBorderBox);
-                if (!result.addNodeToRectBasedTestResult(child->node(), pointInContainer))
+                if (!result.addNodeToRectBasedTestResult(child->node(), locationInContainer))
                     return true;
             }
         }
@@ -442,9 +442,9 @@ bool RenderSVGRoot::nodeAtPoint(const HitTestRequest& request, HitTestResult& re
         // to be able to detect hits on the background of a <div> element. If we'd return true here in the 'Foreground' phase, we are not able 
         // to detect these hits anymore.
         LayoutRect boundsRect(accumulatedOffset + location(), size());
-        if (pointInContainer.intersects(boundsRect)) {
+        if (locationInContainer.intersects(boundsRect)) {
             updateHitTestResult(result, pointInBorderBox);
-            if (!result.addNodeToRectBasedTestResult(node(), pointInContainer, boundsRect))
+            if (!result.addNodeToRectBasedTestResult(node(), locationInContainer, boundsRect))
                 return true;
         }
     }

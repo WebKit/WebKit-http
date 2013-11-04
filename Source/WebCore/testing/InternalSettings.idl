@@ -44,6 +44,7 @@ module window {
         void setDeviceSupportsTouch(in boolean enabled) raises(DOMException);
         void setDeviceSupportsMouse(in boolean enabled) raises(DOMException);
         void setShadowDOMEnabled(in boolean enabled) raises(DOMException);
+        void setAuthorShadowDOMForAnyElementEnabled(in boolean isEnabled);
         void setStandardFontFamily(in DOMString family, in DOMString script) raises(DOMException);
         void setSerifFontFamily(in DOMString family, in DOMString script) raises(DOMException);
         void setSansSerifFontFamily(in DOMString family, in DOMString script) raises(DOMException);
@@ -53,11 +54,13 @@ module window {
         void setPictographFontFamily(in DOMString family, in DOMString script) raises(DOMException);
         void setTextAutosizingEnabled(in boolean enabled) raises(DOMException);
         void setTextAutosizingWindowSizeOverride(in long width, in long height) raises(DOMException);
+        void setTextAutosizingFontScaleFactor(in float fontScaleFactor) raises(DOMException);
         void setEnableScrollAnimator(in boolean enabled) raises(DOMException);
         boolean scrollAnimatorEnabled() raises(DOMException);
         void setCSSExclusionsEnabled(in boolean enabled) raises(DOMException);
         void setCSSVariablesEnabled(in boolean enabled) raises(DOMException);
         boolean cssVariablesEnabled() raises(DOMException);
+        void setCanStartMedia(in boolean enabled) raises(DOMException);
         void setMediaPlaybackRequiresUserGesture(in boolean enabled) raises(DOMException);
         void setEditingBehavior(in DOMString behavior) raises(DOMException);
         void setFixedPositionCreatesStackingContext(in boolean creates) raises(DOMException);
@@ -76,6 +79,7 @@ module window {
         boolean shouldDisplayTrackKind(in DOMString trackKind) raises (DOMException);
 #endif
         void setMemoryInfoEnabled(in boolean enabled) raises(DOMException);
+        void setThirdPartyStorageBlockingEnabled(in boolean enabled) raises(DOMException);
     };
 }
 

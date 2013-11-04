@@ -206,18 +206,16 @@ private:
 
     virtual bool isTableSection() const { return true; }
 
-    virtual void willBeDestroyed();
+    virtual void willBeRemovedFromTree() OVERRIDE;
 
     virtual void layout();
-
-    virtual void removeChild(RenderObject* oldChild);
 
     virtual void paintCell(RenderTableCell*, PaintInfo&, const LayoutPoint&);
     virtual void paintObject(PaintInfo&, const LayoutPoint&);
 
     virtual void imageChanged(WrappedImagePtr, const IntRect* = 0);
 
-    virtual bool nodeAtPoint(const HitTestRequest&, HitTestResult&, const HitTestPoint& pointInContainer, const LayoutPoint& accumulatedOffset, HitTestAction) OVERRIDE;
+    virtual bool nodeAtPoint(const HitTestRequest&, HitTestResult&, const HitTestLocation& locationInContainer, const LayoutPoint& accumulatedOffset, HitTestAction) OVERRIDE;
 
     void ensureRows(unsigned);
 

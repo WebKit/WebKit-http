@@ -26,11 +26,13 @@
 #ifndef CSSSelectorList_h
 #define CSSSelectorList_h
 
+#include "CSSParserValues.h"
 #include "CSSSelector.h"
 
 namespace WebCore {
 
 class CSSParserSelector;
+class MemoryObjectInfo;
 
 class CSSSelectorList {
     WTF_MAKE_FAST_ALLOCATED;
@@ -41,18 +43,31 @@ public:
     ~CSSSelectorList();
 
     void adopt(CSSSelectorList& list);
-    void adoptSelectorVector(Vector<OwnPtr<CSSParserSelector> >& selectorVector);
+    void adoptSelectorVector(CSSSelectorVector&);
 
     CSSSelector* first() const { return m_selectorArray ? m_selectorArray : 0; }
     static CSSSelector* next(CSSSelector*);
     bool hasOneSelector() const { return m_selectorArray && !next(m_selectorArray); }
+    CSSSelector* selectorAt(size_t index) const { return &m_selectorArray[index]; }
+
+    size_t indexOfNextSelectorAfter(size_t index) const
+    {
+        CSSSelector* current = selectorAt(index);
+        current = next(current);
+        if (!current)
+            return notFound;
+        return current - m_selectorArray;
+    }
 
     bool selectorsNeedNamespaceResolution();
     bool hasUnknownPseudoElements() const;
 
     String selectorsText() const;
 
+    void reportMemoryUsage(MemoryObjectInfo*) const;
+
 private:
+    unsigned length() const;
     void deleteSelectors();
 
     // End of a multipart selector is indicated by m_isLastInTagHistory bit in the last item.

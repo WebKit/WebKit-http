@@ -44,6 +44,7 @@ SelectPopupClient::SelectPopupClient(bool multiple, int size, const ScopeArray<B
     , m_size(size)
     , m_webPage(webPage)
     , m_element(element)
+    , m_notifyChangeTimer(this, &SelectPopupClient::notifySelectionChange)
 {
     generateHTML(multiple, size, labels, enableds, itemType, selecteds);
 }
@@ -65,7 +66,7 @@ void SelectPopupClient::generateHTML(bool multiple, int size, const ScopeArray<B
     const int* itemType, bool* selecteds)
 {
     StringBuilder source;
-    source.append("<html><head><meta http-equiv=\"Content-Type\" content=\"text/html; charset=UTF-8\"/><style>\n");
+    source.append("<style>\n");
     // Include CSS file.
     source.append(popupControlBlackBerryCss,
             sizeof(popupControlBlackBerryCss));
@@ -82,7 +83,7 @@ void SelectPopupClient::generateHTML(bool multiple, int size, const ScopeArray<B
     // Add labels.
     source.append("[");
     for (int i = 0; i < size; i++) {
-        source.append("'" + String(labels[i].impl()).replace("'", "\\'") + "'");
+        source.append("'" + String(labels[i].impl()).replace('\\', "\\\\").replace('\'', "\\'") + "'");
         // Don't append ',' to last element.
         if (i != size - 1)
             source.append(", ");
@@ -173,10 +174,10 @@ void SelectPopupClient::setValueAndClosePopup(int, const String& stringValue)
     }
     // Force repaint because we do not send mouse events to the select element
     // and the element doesn't automatically repaint itself.
-    m_element->dispatchFormControlChangeEvent();
     if (m_element->renderer())
         m_element->renderer()->repaint();
-    closePopup();
+
+    m_notifyChangeTimer.startOneShot(0);
 }
 
 void SelectPopupClient::didClosePopup()
@@ -187,10 +188,15 @@ void SelectPopupClient::didClosePopup()
 
 void SelectPopupClient::writeDocument(DocumentWriter& writer)
 {
-    writer.setMIMEType("text/html");
-    writer.begin(KURL());
     writer.addData(m_source.utf8().data(), m_source.utf8().length());
-    writer.end();
 }
+
+void SelectPopupClient::notifySelectionChange(WebCore::Timer<SelectPopupClient>*)
+{
+    if (m_element)
+        m_element->dispatchFormControlChangeEvent();
+    closePopup();
+}
+
 }
 

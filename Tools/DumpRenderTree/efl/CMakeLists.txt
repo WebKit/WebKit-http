@@ -1,7 +1,8 @@
 SET(DumpRenderTree_SOURCES
+    ${TOOLS_DIR}/DumpRenderTree/DumpRenderTreeCommon.cpp
     ${TOOLS_DIR}/DumpRenderTree/CyclicRedundancyCheck.cpp
     ${TOOLS_DIR}/DumpRenderTree/GCController.cpp
-    ${TOOLS_DIR}/DumpRenderTree/LayoutTestController.cpp
+    ${TOOLS_DIR}/DumpRenderTree/TestRunner.cpp
     ${TOOLS_DIR}/DumpRenderTree/PixelDumpSupport.cpp
     ${TOOLS_DIR}/DumpRenderTree/WorkQueue.cpp
     ${TOOLS_DIR}/DumpRenderTree/cairo/PixelDumpSupportCairo.cpp
@@ -14,7 +15,7 @@ SET(DumpRenderTree_SOURCES
     ${TOOLS_DIR}/DumpRenderTree/efl/FontManagement.cpp
     ${TOOLS_DIR}/DumpRenderTree/efl/GCControllerEfl.cpp
     ${TOOLS_DIR}/DumpRenderTree/efl/JSStringUtils.cpp
-    ${TOOLS_DIR}/DumpRenderTree/efl/LayoutTestControllerEfl.cpp
+    ${TOOLS_DIR}/DumpRenderTree/efl/TestRunnerEfl.cpp
     ${TOOLS_DIR}/DumpRenderTree/efl/PixelDumpSupportEfl.cpp
     ${TOOLS_DIR}/DumpRenderTree/efl/TextInputController.cpp
     ${TOOLS_DIR}/DumpRenderTree/efl/WorkQueueItemEfl.cpp
@@ -39,8 +40,8 @@ SET(DumpRenderTree_LIBRARIES
     ${LIBXML2_LIBRARIES}
     ${LIBXSLT_LIBRARIES}
     ${SQLITE_LIBRARIES}
-    ${Glib_LIBRARIES}
-    ${LIBSOUP24_LIBRARIES}
+    ${GLIB_LIBRARIES}
+    ${LIBSOUP_LIBRARIES}
 )
 
 SET(DumpRenderTree_INCLUDE_DIRECTORIES
@@ -99,8 +100,8 @@ SET(DumpRenderTree_INCLUDE_DIRECTORIES
     ${EFLDEPS_INCLUDE_DIRS}
     ${EVAS_INCLUDE_DIRS}
     ${FONTCONFIG_INCLUDE_DIR}
-    ${Glib_INCLUDE_DIRS}
-    ${LIBSOUP24_INCLUDE_DIRS}
+    ${GLIB_INCLUDE_DIRS}
+    ${LIBSOUP_INCLUDE_DIRS}
 )
 
 SET(DumpRenderTree_LINK_FLAGS
@@ -108,7 +109,6 @@ SET(DumpRenderTree_LINK_FLAGS
     ${EDJE_LDFLAGS}
     ${EFLDEPS_LDFLAGS}
     ${EVAS_LDFLAGS}
-    ${LIBSOUP24_LDFLAGS}
 )
 
 # FIXME: DOWNLOADED_FONTS_DIR should not hardcode the directory

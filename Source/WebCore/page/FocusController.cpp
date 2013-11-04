@@ -163,7 +163,7 @@ static inline void dispatchEventsOnWindowAndFocusedNode(Document* document, bool
 
 static inline bool hasCustomFocusLogic(Node* node)
 {
-    return node->hasTagName(inputTag) || node->hasTagName(textareaTag) || node->hasTagName(videoTag) || node->hasTagName(audioTag);
+    return node->isHTMLElement() && toHTMLElement(node)->hasCustomFocusLogic();
 }
 
 static inline bool isNonFocusableShadowHost(Node* node, KeyboardEvent* event)
@@ -285,7 +285,7 @@ bool FocusController::setInitialFocus(FocusDirection direction, KeyboardEvent* e
     // into the web area again, even if focus did not change within WebCore. PostNotification is called instead
     // of handleFocusedUIElementChanged, because this will send the notification even if the element is the same.
     if (AXObjectCache::accessibilityEnabled())
-        focusedOrMainFrame()->document()->axObjectCache()->postNotification(focusedOrMainFrame()->document()->renderer(), AXObjectCache::AXFocusedUIElementChanged, true);
+        focusedOrMainFrame()->document()->axObjectCache()->postNotification(focusedOrMainFrame()->document(), AXObjectCache::AXFocusedUIElementChanged, true);
 
     return didAdvanceFocus;
 }
@@ -352,7 +352,7 @@ bool FocusController::advanceFocusInDocumentOrder(FocusDirection direction, Keyb
         // FIXME: May need a way to focus a document here.
         return false;
 
-    if (node->isFrameOwnerElement()) {
+    if (node->isFrameOwnerElement() && (!node->isPluginElement() || !node->isKeyboardFocusable(event))) {
         // We focus frames rather than frame owners.
         // FIXME: We should not focus frames that have no scrollbars, as focusing them isn't useful to the user.
         HTMLFrameOwnerElement* owner = static_cast<HTMLFrameOwnerElement*>(node.get());

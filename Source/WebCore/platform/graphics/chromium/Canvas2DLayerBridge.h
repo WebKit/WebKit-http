@@ -29,13 +29,12 @@
 #include "GraphicsContext3D.h"
 #include "ImageBuffer.h" // For DeferralMode enum.
 #include "IntSize.h"
+#include "SkDeferredCanvas.h"
 #include <public/WebExternalTextureLayer.h>
 #include <public/WebExternalTextureLayerClient.h>
+#include <wtf/DoublyLinkedList.h>
 #include <wtf/PassOwnPtr.h>
 #include <wtf/RefPtr.h>
-
-class SkCanvas;
-class SkDevice;
 
 namespace WebKit {
 class WebGraphicsContext3D;
@@ -45,7 +44,7 @@ namespace WebCore {
 
 class LayerChromium;
 
-class Canvas2DLayerBridge : public WebKit::WebExternalTextureLayerClient {
+class Canvas2DLayerBridge : public WebKit::WebExternalTextureLayerClient, public SkDeferredCanvas::NotificationClient, public DoublyLinkedListNode<Canvas2DLayerBridge> {
     WTF_MAKE_NONCOPYABLE(Canvas2DLayerBridge);
 public:
     static PassOwnPtr<Canvas2DLayerBridge> create(PassRefPtr<GraphicsContext3D> context, const IntSize& size, DeferralMode deferralMode, unsigned textureId)
@@ -59,14 +58,25 @@ public:
     virtual unsigned prepareTexture(WebKit::WebTextureUpdater&) OVERRIDE;
     virtual WebKit::WebGraphicsContext3D* context() OVERRIDE;
 
+    // SkDeferredCanvas::NotificationClient implementation
+    virtual void prepareForDraw() OVERRIDE;
+    virtual void storageAllocatedForRecordingChanged(size_t) OVERRIDE;
+    virtual void flushedDrawCommands() OVERRIDE;
+
+    // Methods used by Canvas2DLayerManager
+    virtual size_t freeMemoryIfPossible(size_t); // virtual for mocking
+    virtual void flush(); // virtual for mocking
+    size_t bytesAllocated() const {return m_bytesAllocated;}
+
     SkCanvas* skCanvas(SkDevice*);
-    LayerChromium* layer() const;
+    WebKit::WebLayer* layer();
     void contextAcquired();
 
     unsigned backBufferTexture();
 
-private:
+protected:
     Canvas2DLayerBridge(PassRefPtr<GraphicsContext3D>, const IntSize&, DeferralMode, unsigned textureId);
+    SkDeferredCanvas* deferredCanvas();
 
     DeferralMode m_deferralMode;
     bool m_useDoubleBuffering;
@@ -74,8 +84,13 @@ private:
     unsigned m_backBufferTexture;
     IntSize m_size;
     SkCanvas* m_canvas;
-    WebKit::WebExternalTextureLayer m_layer;
+    OwnPtr<WebKit::WebExternalTextureLayer> m_layer;
     RefPtr<GraphicsContext3D> m_context;
+    size_t m_bytesAllocated;
+
+    friend class WTF::DoublyLinkedListNode<Canvas2DLayerBridge>;
+    Canvas2DLayerBridge* m_next;
+    Canvas2DLayerBridge* m_prev;
 };
 
 }

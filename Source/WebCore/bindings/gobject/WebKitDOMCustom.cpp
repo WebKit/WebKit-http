@@ -25,6 +25,7 @@
 #include "WebKitDOMHTMLInputElementPrivate.h"
 #include "WebKitDOMHTMLTextAreaElement.h"
 #include "WebKitDOMHTMLTextAreaElementPrivate.h"
+#include "WebKitDOMWebKitNamedFlow.h"
 
 using namespace WebKit;
 
@@ -47,6 +48,25 @@ WebKitDOMBlob*
 webkit_dom_blob_webkit_slice(WebKitDOMBlob* self, gint64 start, gint64 end, const gchar* content_type)
 {
     return webkit_dom_blob_slice(self, start, end, content_type);
+}
+
+gchar*
+webkit_dom_html_element_get_class_name(WebKitDOMHTMLElement* element)
+{
+    return webkit_dom_element_get_class_name(WEBKIT_DOM_ELEMENT(element));
+}
+
+void
+webkit_dom_html_element_set_class_name(WebKitDOMHTMLElement* element, const gchar* value)
+{
+    webkit_dom_element_set_class_name(WEBKIT_DOM_ELEMENT(element), value);
+}
+
+gboolean
+webkit_dom_webkit_named_flow_get_overflow(WebKitDOMWebKitNamedFlow* flow)
+{
+    g_warning("The WebKitDOMWebKitNamedFlow::overflow property has been renamed to WebKitDOMWebKitNamedFlow::overset. Please update your code to use the new name.");
+    return webkit_dom_webkit_named_flow_get_overset(flow);
 }
 
 void

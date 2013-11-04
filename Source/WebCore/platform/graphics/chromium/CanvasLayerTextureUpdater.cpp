@@ -30,6 +30,7 @@
 
 #include "CanvasLayerTextureUpdater.h"
 
+#include "CCRenderingStats.h"
 #include "FloatRect.h"
 #include "LayerPainterChromium.h"
 #include "SkCanvas.h"
@@ -37,7 +38,6 @@
 #include "SkRect.h"
 #include "SkiaUtils.h"
 #include "TraceEvent.h"
-#include "cc/CCRenderingStats.h"
 #include <wtf/CurrentTime.h>
 
 namespace WebCore {
@@ -70,8 +70,9 @@ void CanvasLayerTextureUpdater::paintContents(SkCanvas* canvas, const IntRect& c
     SkPaint paint;
     paint.setAntiAlias(false);
     paint.setXfermodeMode(SkXfermode::kClear_Mode);
-    canvas->drawRect(layerRect, paint);
-    canvas->clipRect(layerRect);
+    SkRect layerSkRect = SkRect::MakeXYWH(layerRect.x(), layerRect.y(), layerRect.width(), layerRect.height());
+    canvas->drawRect(layerSkRect, paint);
+    canvas->clipRect(layerSkRect);
 
     FloatRect opaqueLayerRect;
     double paintBeginTime = monotonicallyIncreasingTime();

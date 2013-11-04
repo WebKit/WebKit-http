@@ -111,6 +111,9 @@ namespace WebCore {
         void setTextAutosizingEnabled(bool);
         bool textAutosizingEnabled() const { return m_textAutosizingEnabled; }
 
+        void setTextAutosizingFontScaleFactor(float);
+        float textAutosizingFontScaleFactor() const { return m_textAutosizingFontScaleFactor; }
+
         // Only set by Layout Tests, and only used if textAutosizingEnabled() returns true.
         void setTextAutosizingWindowSizeOverride(const IntSize&);
         const IntSize& textAutosizingWindowSizeOverride() const { return m_textAutosizingWindowSizeOverride; }
@@ -598,6 +601,12 @@ namespace WebCore {
         void setWindowFocusRestricted(bool restricted) { m_windowFocusRestricted = restricted; }
         bool windowFocusRestricted() const { return m_windowFocusRestricted; }
 
+        void setThirdPartyStorageBlockingEnabled(bool enabled) { m_thirdPartyStorageBlockingEnabled = enabled; }
+        bool thirdPartyStorageBlockingEnabled() const { return m_thirdPartyStorageBlockingEnabled; }
+
+        void setScrollingPerformanceLoggingEnabled(bool);
+        bool scrollingPerformanceLoggingEnabled() { return m_scrollingPerformanceLoggingEnabled; }
+
 #if USE(JSC)
         static void setShouldRespectPriorityInCSSAttributeSetters(bool);
         static bool shouldRespectPriorityInCSSAttributeSetters();
@@ -644,6 +653,7 @@ namespace WebCore {
         unsigned m_editingBehaviorType;
         unsigned m_maximumHTMLParserDOMTreeDepth;
 #if ENABLE(TEXT_AUTOSIZING)
+        float m_textAutosizingFontScaleFactor;
         IntSize m_textAutosizingWindowSizeOverride;
         bool m_textAutosizingEnabled : 1;
 #endif
@@ -784,6 +794,10 @@ namespace WebCore {
         bool m_windowFocusRestricted : 1;
 
         bool m_diagnosticLoggingEnabled : 1;
+
+        bool m_thirdPartyStorageBlockingEnabled : 1;
+
+        bool m_scrollingPerformanceLoggingEnabled : 1;
 
         Timer<Settings> m_loadsImagesAutomaticallyTimer;
         void loadsImagesAutomaticallyTimerFired(Timer<Settings>*);

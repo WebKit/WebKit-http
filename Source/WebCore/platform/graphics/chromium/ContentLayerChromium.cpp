@@ -36,10 +36,10 @@
 
 #include "BitmapCanvasLayerTextureUpdater.h"
 #include "BitmapSkPictureCanvasLayerTextureUpdater.h"
+#include "CCLayerTreeHost.h"
+#include "CCSettings.h"
 #include "FrameBufferSkPictureCanvasLayerTextureUpdater.h"
 #include "LayerPainterChromium.h"
-#include "cc/CCLayerTreeHost.h"
-#include "cc/CCSettings.h"
 #include <public/Platform.h>
 #include <wtf/CurrentTime.h>
 
@@ -93,26 +93,16 @@ void ContentLayerChromium::setTexturePriorities(const CCPriorityCalculator& prio
     TiledLayerChromium::setTexturePriorities(priorityCalc);
 }
 
-void ContentLayerChromium::update(CCTextureUpdater& updater, const CCOcclusionTracker* occlusion, CCRenderingStats& stats)
+void ContentLayerChromium::update(CCTextureUpdateQueue& queue, const CCOcclusionTracker* occlusion, CCRenderingStats& stats)
 {
     createTextureUpdaterIfNeeded();
-
-    IntRect contentRect;
-
-    // Always call updateContentRect() but with an empty layer rectangle when
-    // layer doesn't draw contents.
-    if (drawsContent())
-        contentRect = visibleContentRect();
-
-    updateContentRect(updater, contentRect, occlusion, stats);
+    TiledLayerChromium::update(queue, occlusion, stats);
     m_needsDisplay = false;
 }
 
 bool ContentLayerChromium::needMoreUpdates()
 {
-    if (!drawsContent())
-        return false;
-    return needsIdlePaint(visibleContentRect());
+    return needsIdlePaint();
 }
 
 void ContentLayerChromium::createTextureUpdaterIfNeeded()
@@ -127,7 +117,7 @@ void ContentLayerChromium::createTextureUpdaterIfNeeded()
         m_textureUpdater = BitmapCanvasLayerTextureUpdater::create(ContentLayerPainter::create(m_delegate));
     m_textureUpdater->setOpaque(opaque());
 
-    GC3Denum textureFormat = layerTreeHost()->layerRendererCapabilities().bestTextureFormat;
+    GC3Denum textureFormat = layerTreeHost()->rendererCapabilities().bestTextureFormat;
     setTextureFormat(textureFormat);
     setSampledTexelFormat(textureUpdater()->sampledTexelFormat(textureFormat));
 }

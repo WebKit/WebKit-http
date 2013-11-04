@@ -32,7 +32,9 @@
 #include "MutationRecord.h"
 #include "NodeRenderingContext.h"
 #include "RenderText.h"
+#include "StyleInheritedData.h"
 #include "TextBreakIterator.h"
+#include "UndoManager.h"
 
 using namespace std;
 
@@ -94,9 +96,9 @@ unsigned CharacterData::parserAppendData(const UChar* data, unsigned dataLength,
 
 void CharacterData::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
 {
-    MemoryClassInfo<CharacterData> info(memoryObjectInfo, this, MemoryInstrumentation::DOM);
-    info.visitBaseClass<Node>(this);
-    info.addString(m_data);
+    MemoryClassInfo info(memoryObjectInfo, this, MemoryInstrumentation::DOM);
+    Node::reportMemoryUsage(memoryObjectInfo);
+    info.addInstrumentedMember(m_data);
 }
 
 void CharacterData::appendData(const String& data, ExceptionCode&)
@@ -183,6 +185,13 @@ void CharacterData::setNodeValue(const String& nodeValue, ExceptionCode& ec)
 
 void CharacterData::setDataAndUpdate(const String& newData, unsigned offsetOfReplacedData, unsigned oldLength, unsigned newLength)
 {
+#if ENABLE(UNDO_MANAGER)
+    if (UndoManager::isRecordingAutomaticTransaction(this)) {
+        const String& replacingData = newData.substring(offsetOfReplacedData, newLength);
+        const String& replacedData = m_data.substring(offsetOfReplacedData, oldLength);
+        UndoManager::addTransactionStep(DataReplacingDOMTransactionStep::create(this, offsetOfReplacedData, oldLength, replacingData, replacedData));
+    }
+#endif
     String oldData = m_data;
     m_data = newData;
 
@@ -209,14 +218,16 @@ void CharacterData::dispatchModifiedEvent(const String& oldData)
     if (OwnPtr<MutationObserverInterestGroup> mutationRecipients = MutationObserverInterestGroup::createForCharacterDataMutation(this))
         mutationRecipients->enqueueMutationRecord(MutationRecord::createCharacterData(this, oldData));
 #endif
-    if (parentNode())
-        parentNode()->childrenChanged();
-    if (document()->hasListenerType(Document::DOMCHARACTERDATAMODIFIED_LISTENER))
-        dispatchScopedEvent(MutationEvent::create(eventNames().DOMCharacterDataModifiedEvent, true, 0, oldData, m_data));
-    dispatchSubtreeModifiedEvent();
+    if (!isInShadowTree()) {
+        if (parentNode())
+            parentNode()->childrenChanged();
+        if (document()->hasListenerType(Document::DOMCHARACTERDATAMODIFIED_LISTENER))
+            dispatchScopedEvent(MutationEvent::create(eventNames().DOMCharacterDataModifiedEvent, true, 0, oldData, m_data));
+        dispatchSubtreeModifiedEvent();
 #if ENABLE(INSPECTOR)
-    InspectorInstrumentation::characterDataModified(document(), this);
+        InspectorInstrumentation::characterDataModified(document(), this);
 #endif
+    }
 }
 
 void CharacterData::checkCharDataOperation(unsigned offset, ExceptionCode& ec)

@@ -30,7 +30,6 @@
 #if ENABLE(SVG)
 
 #include "Image.h"
-#include "LayoutTypes.h"
 
 namespace WebCore {
 
@@ -61,6 +60,8 @@ public:
 
     virtual bool hasRelativeWidth() const;
     virtual bool hasRelativeHeight() const;
+
+    virtual void reportMemoryUsage(MemoryObjectInfo*) const OVERRIDE;
 
 private:
     friend class SVGImageChromeClient;

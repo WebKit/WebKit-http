@@ -30,12 +30,13 @@
  */
 
 #include "config.h"
+#include "DumpRenderTree.h"
 
 #include "DumpRenderTreeQt.h"
 #include "DumpRenderTreeSupportQt.h"
 #include "EventSenderQt.h"
 #include "GCControllerQt.h"
-#include "LayoutTestControllerQt.h"
+#include "TestRunnerQt.h"
 #include "TextInputControllerQt.h"
 #include "QtInitializeTestFonts.h"
 #include "testplugin.h"
@@ -56,7 +57,7 @@
 #include <QNetworkRequest>
 #include <QPaintDevice>
 #include <QPaintEngine>
-#ifndef QT_NO_PRINTER
+#if !defined(QT_NO_PRINTER) && HAVE(QTPRINTSUPPORT)
 #include <QPrinter>
 #endif
 #include <QProgressBar>
@@ -109,7 +110,7 @@ void NetworkAccessManager::sslErrorsEncountered(QNetworkReply* reply, const QLis
 #endif
 
 
-#ifndef QT_NO_PRINTER
+#if !defined(QT_NO_PRINTER) && HAVE(QTPRINTSUPPORT)
 class NullPrinter : public QPrinter {
 public:
     class NullPaintEngine : public QPaintEngine {
@@ -175,7 +176,7 @@ QWebInspector* WebPage::webInspector()
 void WebPage::resetSettings()
 {
     // After each layout test, reset the settings that may have been changed by
-    // layoutTestController.overridePreference() or similar.
+    // testRunner.overridePreference() or similar.
     settings()->resetFontSize(QWebSettings::DefaultFontSize);
     settings()->resetAttribute(QWebSettings::JavascriptCanOpenWindows);
     settings()->resetAttribute(QWebSettings::JavascriptEnabled);
@@ -193,16 +194,16 @@ void WebPage::resetSettings()
     settings()->resetAttribute(QWebSettings::CSSGridLayoutEnabled);
     settings()->resetAttribute(QWebSettings::AcceleratedCompositingEnabled);
 
-    m_drt->layoutTestController()->setCaretBrowsingEnabled(false);
-    m_drt->layoutTestController()->setAuthorAndUserStylesEnabled(true);
-    m_drt->layoutTestController()->setFrameFlatteningEnabled(false);
-    m_drt->layoutTestController()->setMockScrollbarsEnabled(false);
-    m_drt->layoutTestController()->setSmartInsertDeleteEnabled(true);
-    m_drt->layoutTestController()->setSelectTrailingWhitespaceEnabled(false);
-    m_drt->layoutTestController()->setDefersLoading(false);
+    m_drt->testRunner()->setCaretBrowsingEnabled(false);
+    m_drt->testRunner()->setAuthorAndUserStylesEnabled(true);
+    m_drt->testRunner()->setFrameFlatteningEnabled(false);
+    m_drt->testRunner()->setMockScrollbarsEnabled(false);
+    m_drt->testRunner()->setSmartInsertDeleteEnabled(true);
+    m_drt->testRunner()->setSelectTrailingWhitespaceEnabled(false);
+    m_drt->testRunner()->setDefersLoading(false);
 
     // globalSettings must be reset explicitly.
-    m_drt->layoutTestController()->setXSSAuditorEnabled(false);
+    m_drt->testRunner()->setXSSAuditorEnabled(false);
 
     QWebSettings::setMaximumPagesInCache(0); // reset to default
     settings()->setUserStyleSheetUrl(QUrl()); // reset to default
@@ -231,12 +232,12 @@ void WebPage::requestPermission(QWebFrame* frame, QWebPage::Feature feature)
 {
     switch (feature) {
     case Notifications:
-        if (!m_drt->layoutTestController()->ignoreReqestForPermission())
+        if (!m_drt->testRunner()->ignoreReqestForPermission())
             setFeaturePermission(frame, feature, PermissionGrantedByUser);
         break;
     case Geolocation:
-        if (m_drt->layoutTestController()->isGeolocationPermissionSet())
-            if (m_drt->layoutTestController()->geolocationPermission())
+        if (m_drt->testRunner()->isGeolocationPermissionSet())
+            if (m_drt->testRunner()->geolocationPermission())
                 setFeaturePermission(frame, feature, PermissionGrantedByUser);
             else
                 setFeaturePermission(frame, feature, PermissionDeniedByUser);
@@ -264,9 +265,9 @@ void WebPage::permissionSet(QWebPage::Feature feature)
     switch (feature) {
     case Geolocation:
         {
-        Q_ASSERT(m_drt->layoutTestController()->isGeolocationPermissionSet());
+        Q_ASSERT(m_drt->testRunner()->isGeolocationPermissionSet());
         foreach (QWebFrame* frame, m_pendingGeolocationRequests)
-            if (m_drt->layoutTestController()->geolocationPermission())
+            if (m_drt->testRunner()->geolocationPermission())
                 setFeaturePermission(frame, feature, PermissionGrantedByUser);
             else
                 setFeaturePermission(frame, feature, PermissionDeniedByUser);
@@ -329,8 +330,8 @@ bool WebPage::javaScriptPrompt(QWebFrame*, const QString& msg, const QString& de
 
 bool WebPage::acceptNavigationRequest(QWebFrame* frame, const QNetworkRequest& request, NavigationType type)
 {
-    if (m_drt->layoutTestController()->waitForPolicy())
-        m_drt->layoutTestController()->notifyDone();
+    if (m_drt->testRunner()->waitForPolicy())
+        m_drt->testRunner()->notifyDone();
 
     return QWebPage::acceptNavigationRequest(frame, request, type);
 }
@@ -338,7 +339,7 @@ bool WebPage::acceptNavigationRequest(QWebFrame* frame, const QNetworkRequest& r
 bool WebPage::supportsExtension(QWebPage::Extension extension) const
 {
     if (extension == QWebPage::ErrorPageExtension)
-        return m_drt->layoutTestController()->shouldHandleErrorPages();
+        return m_drt->testRunner()->shouldHandleErrorPages();
 
     return false;
 }
@@ -388,8 +389,7 @@ WebViewGraphicsBased::WebViewGraphicsBased(QWidget* parent)
 }
 
 DumpRenderTree::DumpRenderTree()
-    : m_dumpPixelsForAllTests(false)
-    , m_stdin(0)
+    : m_stdin(0)
     , m_enableTextOutput(false)
     , m_standAloneMode(false)
     , m_graphicsBased(false)
@@ -424,7 +424,7 @@ DumpRenderTree::DumpRenderTree()
     DumpRenderTreeSupportQt::webPageSetGroupName(m_page, "org.webkit.qt.DumpRenderTree");
 
     m_mainView->setContextMenuPolicy(Qt::NoContextMenu);
-    m_mainView->resize(QSize(LayoutTestController::maxViewWidth, LayoutTestController::maxViewHeight));
+    m_mainView->resize(QSize(TestRunner::maxViewWidth, TestRunner::maxViewHeight));
 
     // clean up cache by resetting quota.
     qint64 quota = webPage()->settings()->offlineWebApplicationCacheQuota();
@@ -432,7 +432,7 @@ DumpRenderTree::DumpRenderTree()
 
     // create our controllers. This has to be done before connectFrame,
     // as it exports there to the JavaScript DOM window.
-    m_controller = new LayoutTestController(this);
+    m_controller = new TestRunner(this);
     connect(m_controller, SIGNAL(showPage()), this, SLOT(showPage()));
     connect(m_controller, SIGNAL(hidePage()), this, SLOT(hidePage()));
 
@@ -500,7 +500,7 @@ static void clearHistory(QWebPage* page)
 
 void DumpRenderTree::dryRunPrint(QWebFrame* frame)
 {
-#ifndef QT_NO_PRINTER
+#if !defined(QT_NO_PRINTER) && HAVE(QTPRINTSUPPORT)
     NullPrinter printer;
     frame->print(&printer);
 #endif
@@ -509,7 +509,7 @@ void DumpRenderTree::dryRunPrint(QWebFrame* frame)
 void DumpRenderTree::resetToConsistentStateBeforeTesting(const QUrl& url)
 {
     // reset so that any current loads are stopped
-    // NOTE: that this has to be done before the layoutTestController is
+    // NOTE: that this has to be done before the testRunner is
     // reset or we get timeouts for some tests.
     m_page->blockSignals(true);
     m_page->triggerAction(QWebPage::Stop);
@@ -519,7 +519,7 @@ void DumpRenderTree::resetToConsistentStateBeforeTesting(const QUrl& url)
     for (int i = 0; i < knownOrigins.size(); ++i)
         knownOrigins[i].setDatabaseQuota(databaseDefaultQuota);
 
-    // reset the layoutTestController at this point, so that we under no
+    // reset the testRunner at this point, so that we under no
     // circumstance dump (stop the waitUntilDone timer) during the reset
     // of the DRT.
     m_controller->reset();
@@ -563,7 +563,7 @@ void DumpRenderTree::resetToConsistentStateBeforeTesting(const QUrl& url)
 
     QLocale::setDefault(QLocale::c());
 
-    layoutTestController()->setDeveloperExtrasEnabled(true);
+    testRunner()->setDeveloperExtrasEnabled(true);
 #ifndef Q_OS_WINCE
     setlocale(LC_ALL, "");
 #endif
@@ -599,23 +599,21 @@ void DumpRenderTree::open(const QUrl& url)
     resetToConsistentStateBeforeTesting(url);
 
     if (isWebInspectorTest(m_page->mainFrame()->url()))
-        layoutTestController()->closeWebInspector();
+        testRunner()->closeWebInspector();
 
     if (isWebInspectorTest(url))
-        layoutTestController()->showWebInspector();
+        testRunner()->showWebInspector();
 
-    if (isDumpAsTextTest(url)) {
-        layoutTestController()->dumpAsText();
-        setDumpPixelsForAllTests(false);
-    }
+    if (isDumpAsTextTest(url))
+        testRunner()->dumpAsText();
 
     if (isGlobalHistoryTest(url))
-        layoutTestController()->dumpHistoryCallbacks();
+        testRunner()->dumpHistoryCallbacks();
 
     // W3C SVG tests expect to be 480x360
     bool isW3CTest = url.toString().contains("svg/W3C-SVG-1.1");
-    int width = isW3CTest ? 480 : LayoutTestController::maxViewWidth;
-    int height = isW3CTest ? 360 : LayoutTestController::maxViewHeight;
+    int width = isW3CTest ? 480 : TestRunner::maxViewWidth;
+    int height = isW3CTest ? 360 : TestRunner::maxViewHeight;
     m_mainView->resize(QSize(width, height));
     m_page->setPreferredContentsSize(QSize());
     m_page->setViewportSize(QSize(width, height));
@@ -690,44 +688,27 @@ void DumpRenderTree::loadNextTestInStandAloneMode()
 
 void DumpRenderTree::processLine(const QString &input)
 {
-    QString line = input;
+    TestCommand command = parseInputLine(std::string(input.toLatin1().constData()));
+    QString pathOrURL = QLatin1String(command.pathOrURL.c_str());
+    m_dumpPixelsForCurrentTest = command.shouldDumpPixels;
+    m_expectedHash = QLatin1String(command.expectedPixelHash.c_str());
 
-    m_dumpPixelsForCurrentTest = false;
-    m_expectedHash = QString();
-    // single quote marks the pixel dump hash
-    int indexOfFirstSeparator = line.indexOf('\'');
-    int indexOfSecondSeparator = line.indexOf('\'', indexOfFirstSeparator + 1);
-    if (indexOfFirstSeparator > -1) {
-        int indexOfPixelHash = indexOfFirstSeparator + 1;
-
-        // NRWT passes --pixel-test if we should dump pixels for the test.
-        const QString expectedArg(QLatin1String("--pixel-test"));
-        QString argTest = line.mid(indexOfFirstSeparator + 1, expectedArg.length());
-        if (argTest == expectedArg) {
-            m_dumpPixelsForCurrentTest = true;
-            indexOfPixelHash = indexOfSecondSeparator == -1 ? -1 : indexOfSecondSeparator + 1;
-        }
-        if (indexOfPixelHash != -1 && indexOfPixelHash < line.size())
-            m_expectedHash = line.mid(indexOfPixelHash);
-        line.remove(indexOfFirstSeparator, line.length());
-    }
-
-    if (line.startsWith(QLatin1String("http:"))
-            || line.startsWith(QLatin1String("https:"))
-            || line.startsWith(QLatin1String("file:"))
-            || line == QLatin1String("about:blank")) {
-        open(QUrl(line));
+    if (pathOrURL.startsWith(QLatin1String("http:"))
+            || pathOrURL.startsWith(QLatin1String("https:"))
+            || pathOrURL.startsWith(QLatin1String("file:"))
+            || pathOrURL == QLatin1String("about:blank")) {
+        open(QUrl(pathOrURL));
     } else {
-        QFileInfo fi(line);
+        QFileInfo fi(pathOrURL);
 
         if (!fi.exists()) {
             QDir currentDir = QDir::currentPath();
 
             // Try to be smart about where the test is located
             if (currentDir.dirName() == QLatin1String("LayoutTests"))
-                fi = QFileInfo(currentDir, line.replace(QRegExp(".*?LayoutTests/(.*)"), "\\1"));
-            else if (!line.contains(QLatin1String("LayoutTests")))
-                fi = QFileInfo(currentDir, line.prepend(QLatin1String("LayoutTests/")));
+                fi = QFileInfo(currentDir, pathOrURL.replace(QRegExp(".*?LayoutTests/(.*)"), "\\1"));
+            else if (!pathOrURL.contains(QLatin1String("LayoutTests")))
+                fi = QFileInfo(currentDir, pathOrURL.prepend(QLatin1String("LayoutTests/")));
 
             if (!fi.exists()) {
                 emit ready();
@@ -741,11 +722,6 @@ void DumpRenderTree::processLine(const QString &input)
     fflush(stdout);
 }
 
-void DumpRenderTree::setDumpPixelsForAllTests(bool dump)
-{
-    m_dumpPixelsForAllTests = dump;
-}
-
 void DumpRenderTree::closeRemainingWindows()
 {
     foreach (QObject* widget, windows)
@@ -757,7 +733,6 @@ void DumpRenderTree::initJSObjects()
 {
     QWebFrame *frame = qobject_cast<QWebFrame*>(sender());
     Q_ASSERT(frame);
-    frame->addToJavaScriptWindowObject(QLatin1String("layoutTestController"), m_controller);
     frame->addToJavaScriptWindowObject(QLatin1String("testRunner"), m_controller);
     frame->addToJavaScriptWindowObject(QLatin1String("eventSender"), m_eventSender);
     frame->addToJavaScriptWindowObject(QLatin1String("textInputController"), m_textInputController);
@@ -901,7 +876,7 @@ QString DumpRenderTree::dumpBackForwardList(QWebPage* page)
     return result;
 }
 
-static const char *methodNameStringForFailedTest(LayoutTestController *controller)
+static const char *methodNameStringForFailedTest(TestRunner *controller)
 {
     const char *errorMessage;
     if (controller->shouldDumpAsText())
@@ -961,7 +936,7 @@ void DumpRenderTree::dump()
     fputs("#EOF\n", stdout);
     fputs("#EOF\n", stderr);
 
-    if ((m_dumpPixelsForAllTests || m_dumpPixelsForCurrentTest) && !m_controller->shouldDumpAsText()) {
+    if (m_dumpPixelsForCurrentTest && !m_controller->shouldDumpAsText()) {
         QImage image;
         if (!m_controller->isPrinting()) {
             image = QImage(m_page->viewportSize(), QImage::Format_ARGB32);
@@ -1035,7 +1010,7 @@ void DumpRenderTree::connectFrame(QWebFrame *frame)
 {
     connect(frame, SIGNAL(javaScriptWindowObjectCleared()), this, SLOT(initJSObjects()));
     connect(frame, SIGNAL(provisionalLoad()),
-            layoutTestController(), SLOT(provisionalLoad()));
+            testRunner(), SLOT(provisionalLoad()));
 }
 
 void DumpRenderTree::dumpDatabaseQuota(QWebFrame* frame, const QString& dbName)

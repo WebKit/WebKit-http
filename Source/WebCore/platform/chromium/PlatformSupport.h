@@ -133,11 +133,6 @@ public:
     static NPObject* pluginScriptableObject(Widget*);
     static bool popupsAllowed(NPP);
 
-    // Resources ----------------------------------------------------------
-#if ENABLE(WEB_AUDIO)
-    static PassOwnPtr<AudioBus> decodeAudioFileData(const char* data, size_t, double sampleRate);
-#endif
-
     // Screen -------------------------------------------------------------
     static int screenHorizontalDPI(Widget*);
     static int screenVerticalDPI(Widget*);
@@ -302,10 +297,6 @@ public:
     // Paint the given the given theme part.
     static void paintThemePart(GraphicsContext*, ThemePart, ThemePaintState, const IntRect&, const ThemePaintExtraParams*);
 #endif
-
-    // Visited links ------------------------------------------------------
-    static LinkHash visitedLinkHash(const UChar* url, unsigned length);
-    static LinkHash visitedLinkHash(const KURL& base, const AtomicString& attributeURL);
 };
 
 } // namespace WebCore

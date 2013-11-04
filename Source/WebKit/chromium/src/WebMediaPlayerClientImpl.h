@@ -98,7 +98,7 @@ public:
     virtual void load(const WTF::String& url);
     virtual void cancelLoad();
 #if USE(ACCELERATED_COMPOSITING)
-    virtual WebCore::PlatformLayer* platformLayer() const;
+    virtual WebKit::WebLayer* platformLayer() const;
 #endif
     virtual WebCore::PlatformMedia platformMedia() const;
     virtual void play();
@@ -164,6 +164,7 @@ public:
     virtual bool sourceAppend(const String&, const unsigned char* data, unsigned length);
     virtual bool sourceAbort(const String&);
     virtual void sourceEndOfStream(WebCore::MediaPlayer::EndOfStreamStatus);
+    virtual bool sourceSetTimestampOffset(const String&, double offset);
 #endif
 
 #if ENABLE(ENCRYPTED_MEDIA)
@@ -204,7 +205,7 @@ private:
     WebCore::MediaPlayer::Preload m_preload;
     RefPtr<WebHelperPluginImpl> m_helperPlugin;
 #if USE(ACCELERATED_COMPOSITING)
-    WebVideoLayer m_videoLayer;
+    OwnPtr<WebVideoLayer> m_videoLayer;
     bool m_supportsAcceleratedCompositing;
     bool m_opaque;
     WebVideoFrameProvider::Client* m_videoFrameProviderClient;

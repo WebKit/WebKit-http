@@ -67,29 +67,18 @@ namespace WebCore {
 }
 #endif
 
-#if PLATFORM(QT)
+#if USE(COORDINATED_GRAPHICS)
 namespace WebCore {
-    class Animation;
     class FloatPoint3D;
-    class Matrix3DTransformOperation;
-    class MatrixTransformOperation;
-    class PerspectiveTransformOperation;
-    class RotateTransformOperation;
-    class ScaleTransformOperation;
-    class SkewTransformOperation;
-    class TimingFunction;
-    class TransformOperation;
-    class TransformOperations;
     class TransformationMatrix;
-    class TranslateTransformOperation;
     struct Length;
 }
-#endif
 
-#if USE(UI_SIDE_COMPOSITING) && ENABLE(CSS_FILTERS)
+#if ENABLE(CSS_FILTERS)
 namespace WebCore {
     class FilterOperations;
 }
+#endif
 #endif
 
 namespace CoreIPC {
@@ -240,7 +229,7 @@ template<> struct ArgumentCoder<WebCore::KURL> {
     static bool decode(ArgumentDecoder*, WebCore::KURL&);
 };
 
-#if USE(UI_SIDE_COMPOSITING)
+#if USE(COORDINATED_GRAPHICS)
 template<> struct ArgumentCoder<WebCore::FloatPoint3D> {
     static void encode(ArgumentEncoder*, const WebCore::FloatPoint3D&);
     static bool decode(ArgumentDecoder*, WebCore::FloatPoint3D&);

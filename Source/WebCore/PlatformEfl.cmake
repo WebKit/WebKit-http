@@ -13,19 +13,15 @@ LIST(APPEND WebCore_INCLUDE_DIRECTORIES
   "${WEBCORE_DIR}/platform/network/soup"
   "${WEBCORE_DIR}/platform/text/efl"
   "${WEBCORE_DIR}/plugins/efl"
-  "${WEBKIT_DIR}/efl/WebCoreSupport"
-  "${WEBKIT_DIR}/efl/ewk"
 )
 
 LIST(APPEND WebCore_SOURCES
   accessibility/efl/AccessibilityObjectEfl.cpp
-  bindings/js/ScriptControllerEfl.cpp
   page/efl/DragControllerEfl.cpp
   page/efl/EventHandlerEfl.cpp
   platform/Cursor.cpp
   platform/efl/BatteryProviderEfl.cpp
   platform/efl/ClipboardEfl.cpp
-  platform/efl/ColorChooserEfl.cpp
   platform/efl/ContextMenuEfl.cpp
   platform/efl/ContextMenuItemEfl.cpp
   platform/efl/CursorEfl.cpp
@@ -47,17 +43,13 @@ LIST(APPEND WebCore_SOURCES
   platform/efl/PlatformKeyboardEventEfl.cpp
   platform/efl/PlatformMouseEventEfl.cpp
   platform/efl/PlatformScreenEfl.cpp
-  platform/efl/PlatformTouchEventEfl.cpp
-  platform/efl/PlatformTouchPointEfl.cpp
   platform/efl/PlatformWheelEventEfl.cpp
-  platform/efl/PopupMenuEfl.cpp
   platform/efl/RefPtrEfl.cpp
   platform/efl/RenderThemeEfl.cpp
   platform/efl/RunLoopEfl.cpp
   platform/efl/ScrollViewEfl.cpp
   platform/efl/ScrollbarEfl.cpp
   platform/efl/ScrollbarThemeEfl.cpp
-  platform/efl/SearchPopupMenuEfl.cpp
   platform/efl/SharedBufferEfl.cpp
   platform/efl/SharedTimerEfl.cpp
   platform/efl/SoundEfl.cpp
@@ -96,6 +88,11 @@ LIST(APPEND WebCore_SOURCES
   platform/posix/FileSystemPOSIX.cpp
   platform/text/efl/TextBreakIteratorInternalICUEfl.cpp
 )
+
+IF (ENABLE_BATTERY_STATUS)
+    LIST(APPEND WebCore_INCLUDE_DIRECTORIES ${DBUS_INCLUDE_DIRS})
+    LIST(APPEND WebCore_LIBRARIES ${DBUS_LIBRARIES})
+ENDIF ()
 
 IF (ENABLE_NETSCAPE_PLUGIN_API)
   LIST(APPEND WebCore_SOURCES
@@ -154,6 +151,7 @@ IF (WTF_USE_CAIRO)
       "${WEBCORE_DIR}/platform/graphics/freetype"
       "${WEBCORE_DIR}/platform/graphics/harfbuzz/"
       "${WEBCORE_DIR}/platform/graphics/harfbuzz/ng"
+      ${HARFBUZZ_INCLUDE_DIRS}
     )
     LIST(APPEND WebCore_SOURCES
       platform/graphics/WOFFFileFormat.cpp
@@ -170,26 +168,6 @@ IF (WTF_USE_CAIRO)
     )
     LIST(APPEND WebCore_LIBRARIES
       ${HARFBUZZ_LIBRARIES}
-    )
-  ENDIF ()
-
-  IF (WTF_USE_PANGO)
-    LIST(APPEND WebCore_INCLUDE_DIRECTORIES
-      "${WEBCORE_DIR}/platform/graphics/pango"
-      ${Pango_INCLUDE_DIRS}
-    )
-    LIST(APPEND WebCore_SOURCES
-      platform/graphics/pango/FontPango.cpp
-      platform/graphics/pango/FontCachePango.cpp
-      platform/graphics/pango/FontCustomPlatformDataPango.cpp
-      platform/graphics/pango/FontPlatformDataPango.cpp
-      platform/graphics/pango/GlyphPageTreeNodePango.cpp
-      platform/graphics/pango/SimpleFontDataPango.cpp
-      platform/graphics/pango/PangoUtilities.cpp
-    )
-    LIST(APPEND WebCore_LIBRARIES
-      ${Pango_LIBRARY}
-      ${Pango_Cairo_LIBRARY}
     )
   ENDIF ()
 ENDIF ()
@@ -226,8 +204,10 @@ LIST(APPEND WebCore_LIBRARIES
   ${LIBXSLT_LIBRARIES}
   ${PNG_LIBRARY}
   ${SQLITE_LIBRARIES}
-  ${Glib_LIBRARIES}
-  ${LIBSOUP24_LIBRARIES}
+  ${GLIB_LIBRARIES}
+  ${GLIB_GIO_LIBRARIES}
+  ${GLIB_GOBJECT_LIBRARIES}
+  ${LIBSOUP_LIBRARIES}
   ${ZLIB_LIBRARIES}
 )
 
@@ -241,8 +221,8 @@ LIST(APPEND WebCore_INCLUDE_DIRECTORIES
   ${LIBXML2_INCLUDE_DIR}
   ${LIBXSLT_INCLUDE_DIR}
   ${SQLITE_INCLUDE_DIR}
-  ${Glib_INCLUDE_DIRS}
-  ${LIBSOUP24_INCLUDE_DIRS}
+  ${GLIB_INCLUDE_DIRS}
+  ${LIBSOUP_INCLUDE_DIRS}
   ${ZLIB_INCLUDE_DIRS}
 )
 

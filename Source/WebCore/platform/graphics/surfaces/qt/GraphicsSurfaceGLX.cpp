@@ -22,6 +22,7 @@
 
 #if USE(GRAPHICS_SURFACE)
 
+#include "TextureMapperGL.h"
 // Qt headers must be included before glx headers.
 #include <QCoreApplication>
 #include <QOpenGLContext>
@@ -60,6 +61,7 @@ public:
             XChangeWindowAttributes(dpy, window->handle()->winId(), X11OverrideRedirect, &attributes);
             window->show();
         }
+
         return window;
     }
 
@@ -173,6 +175,12 @@ struct GraphicsSurfacePrivate {
 
     void swapBuffers()
     {
+        // If there is a xpixmap, we are on the reading side and do not want to swap any buffers.
+        // The buffers are being switched on the writing side, the reading side just reads
+        // whatever texture the XWindow contains.
+        if (m_xPixmap)
+            return;
+
         if (!m_surface->isVisible())
             return;
 
@@ -182,8 +190,13 @@ struct GraphicsSurfacePrivate {
             QCoreApplication::processEvents();
 
         QOpenGLContext* glContext = QOpenGLContext::currentContext();
-        if (m_surface && glContext)
+        if (m_surface && glContext) {
+            GLint oldFBO;
+            glGetIntegerv(GL_FRAMEBUFFER_BINDING, &oldFBO);
+            pGlBindFramebuffer(GL_FRAMEBUFFER, glContext->defaultFramebufferObject());
             glContext->swapBuffers(m_surface.get());
+            pGlBindFramebuffer(GL_FRAMEBUFFER, oldFBO);
+        }
     }
 
 
@@ -224,22 +237,22 @@ static bool resolveGLMethods(GraphicsSurfacePrivate* p)
     return resolved;
 }
 
-uint32_t GraphicsSurface::platformExport()
+uint64_t GraphicsSurface::platformExport()
 {
     return m_platformSurface;
 }
 
 uint32_t GraphicsSurface::platformGetTextureID()
 {
-    if (!m_texture)
+    if (!m_texture) {
         glGenTextures(1, &m_texture);
-
-    glBindTexture(GL_TEXTURE_2D, m_texture);
-    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    pGlXBindTexImageEXT(m_private->display(), m_private->glxPixmap(), GLX_FRONT_EXT, 0);
+        glBindTexture(GL_TEXTURE_2D, m_texture);
+        glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        pGlXBindTexImageEXT(m_private->display(), m_private->glxPixmap(), GLX_FRONT_EXT, 0);
+    }
 
     return m_texture;
 }
@@ -263,14 +276,33 @@ void GraphicsSurface::platformCopyFromFramebuffer(uint32_t originFbo, const IntR
     pGlBlitFramebuffer(0, 0, width, height, 0, 0, width, height, GL_COLOR_BUFFER_BIT, GL_LINEAR);
     pGlBindFramebuffer(GL_FRAMEBUFFER, oldFBO);
     glPopAttrib();
+}
 
+
+void GraphicsSurface::platformPaintToTextureMapper(TextureMapper* textureMapper, const FloatRect& targetRect, const TransformationMatrix& transform, float opacity, BitmapTexture* mask)
+{
+    TransformationMatrix adjustedTransform = transform;
+    adjustedTransform.multiply(TransformationMatrix::rectToRect(FloatRect(FloatPoint::zero(), m_size), targetRect));
+    static_cast<TextureMapperGL*>(textureMapper)->drawTexture(platformGetTextureID(), 0, m_size, targetRect, adjustedTransform, opacity, mask);
+}
+
+uint32_t GraphicsSurface::platformFrontBuffer() const
+{
+    return 0;
+}
+
+uint32_t GraphicsSurface::platformSwapBuffers()
+{
     m_private->swapBuffers();
+    return 0;
 }
 
 PassRefPtr<GraphicsSurface> GraphicsSurface::platformCreate(const IntSize& size, Flags flags)
 {
     // X11 does not support CopyToTexture, so we do not create a GraphicsSurface if this is requested.
-    if (flags & SupportsCopyToTexture)
+    // GraphicsSurfaceGLX uses an XWindow as native surface. This one always has a front and a back buffer.
+    // Therefore single buffered GraphicsSurfaces are not supported.
+    if (flags & SupportsCopyToTexture || flags & SupportsSingleBuffered)
         return PassRefPtr<GraphicsSurface>();
 
     RefPtr<GraphicsSurface> surface = adoptRef(new GraphicsSurface(size, flags));
@@ -284,10 +316,12 @@ PassRefPtr<GraphicsSurface> GraphicsSurface::platformCreate(const IntSize& size,
     return surface;
 }
 
-PassRefPtr<GraphicsSurface> GraphicsSurface::platformImport(const IntSize& size, Flags flags, uint32_t token)
+PassRefPtr<GraphicsSurface> GraphicsSurface::platformImport(const IntSize& size, Flags flags, uint64_t token)
 {
     // X11 does not support CopyToTexture, so we do not create a GraphicsSurface if this is requested.
-    if (flags & SupportsCopyToTexture)
+    // GraphicsSurfaceGLX uses an XWindow as native surface. This one always has a front and a back buffer.
+    // Therefore single buffered GraphicsSurfaces are not supported.
+    if (flags & SupportsCopyToTexture || flags & SupportsSingleBuffered)
         return PassRefPtr<GraphicsSurface>();
 
     RefPtr<GraphicsSurface> surface = adoptRef(new GraphicsSurface(size, flags));

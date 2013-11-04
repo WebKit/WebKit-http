@@ -79,6 +79,9 @@ LayerCompositingThread::LayerCompositingThread(LayerType type, LayerCompositingT
     , m_visible(false)
     , m_commitScheduled(false)
     , m_client(client)
+#if ENABLE(CSS_FILTERS)
+    , m_filterOperationsChanged(false)
+#endif
 {
 }
 
@@ -246,34 +249,6 @@ void LayerCompositingThread::drawTextures(double scale, int positionLocation, in
         return;
     }
 #endif
-#if ENABLE(WEBGL)
-    if (layerType() == LayerData::WebGLLayer) {
-        m_layerRenderer->addLayerToReleaseTextureResourcesList(this);
-        pthread_mutex_lock(m_frontBufferLock);
-        glVertexAttribPointer(positionLocation, 2, GL_FLOAT, GL_FALSE, 0, &m_transformedBounds);
-        float canvasWidthRatio = 1.0f;
-        float canvasHeightRatio = 1.0f;
-        float upsideDown[4 * 2] = { 0, 1,  0, 1 - canvasHeightRatio,  canvasWidthRatio, 1 - canvasHeightRatio,  canvasWidthRatio, 1 };
-        // Flip the texture Y axis because OpenGL and Skia have different origins
-        glVertexAttribPointer(texCoordLocation, 2, GL_FLOAT, GL_FALSE, 0, upsideDown);
-        glBindTexture(GL_TEXTURE_2D, m_texID);
-        glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
-        // FIXME: If the canvas/texture is larger than 2048x2048, then we'll die here
-        return;
-    }
-#endif
-    if (m_texID) {
-        m_layerRenderer->addLayerToReleaseTextureResourcesList(this);
-        pthread_mutex_lock(m_frontBufferLock);
-
-        glDisable(GL_SCISSOR_TEST);
-        glBindTexture(GL_TEXTURE_2D, m_texID);
-        glVertexAttribPointer(positionLocation, 2, GL_FLOAT, GL_FALSE, 0, &m_transformedBounds);
-        float upsideDown[4 * 2] = { 0, 1,  0, 0,  1, 0,  1, 1 };
-        glVertexAttribPointer(texCoordLocation, 2, GL_FLOAT, GL_FALSE, 0, upsideDown);
-        glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
-        return;
-    }
 
     if (m_client)
         m_client->drawTextures(this, scale, positionLocation, texCoordLocation);
@@ -323,8 +298,6 @@ void LayerCompositingThread::releaseTextureResources()
         m_pluginBuffer = 0;
         m_pluginView->unlockFrontBuffer();
     }
-    if (m_frontBufferLock && (m_texID || layerType() == LayerData::WebGLLayer))
-        pthread_mutex_unlock(m_frontBufferLock);
 }
 
 void LayerCompositingThread::setPluginView(PluginView* pluginView)
@@ -354,21 +327,6 @@ void LayerCompositingThread::setMediaPlayer(MediaPlayer* mediaPlayer)
     m_mediaPlayer = mediaPlayer;
 }
 #endif
-
-void LayerCompositingThread::clearAnimations()
-{
-    // Animations don't use thread safe refcounting, and must only be
-    // touched when the two threads are in sync.
-    if (!isCompositingThread()) {
-        dispatchSyncCompositingMessage(BlackBerry::Platform::createMethodCallMessage(
-            &LayerCompositingThread::clearAnimations,
-            this));
-        return;
-    }
-
-    m_runningAnimations.clear();
-    m_suspendedAnimations.clear();
-}
 
 void LayerCompositingThread::removeSublayer(LayerCompositingThread* sublayer)
 {
@@ -517,6 +475,8 @@ bool LayerCompositingThread::updateAnimations(double currentTime)
             m_transform = m_override->transform();
         if (m_override->isOpacitySet())
             m_opacity = m_override->opacity();
+        if (m_override->isBoundsOriginSet())
+            m_boundsOrigin = m_override->boundsOrigin();
 
         for (size_t i = 0; i < m_override->animations().size(); ++i) {
             LayerAnimation* animation = m_override->animations()[i].get();

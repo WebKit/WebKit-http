@@ -2,14 +2,14 @@
     <body>
         <div id="result"></div>
         <script>
-            if (window.layoutTestController)
+            if (window.testRunner)
             {
-                layoutTestController.dumpAsText();
-                layoutTestController.setCanOpenWindows();
-                layoutTestController.grantDesktopNotificationPermission("file://");
-                layoutTestController.waitUntilDone();
+                testRunner.dumpAsText();
+                testRunner.setCanOpenWindows();
+                testRunner.grantWebNotificationPermission("file://");
+                testRunner.waitUntilDone();
             }
-            
+
             if (!window.webkitNotifications) {
                 log("FAIL: No webkitNotifications interface!");
             }
@@ -28,21 +28,21 @@
                     try
                     {
                         a.push(new WebGLByteArray());
-                    } 
+                    }
                     catch (e) {}
                     a.push(Array(i).join("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"));
                 }
                 delete a;
                 notification.requestPermission();
             }
-            
+
             function finish()
             {
                 clearInterval(timer);
                 document.getElementById("result").innerHTML = "PASS";
                 target.close();
-                if (window.layoutTestController)
-                    layoutTestController.notifyDone();
+                if (window.testRunner)
+                    testRunner.notifyDone();
             }
         </script>
     </body>

@@ -40,6 +40,7 @@
 #include "RenderBox.h"
 #include "RenderTheme.h"
 #include "RootInlineBox.h"
+#include "UndoManager.h"
 #include <wtf/CurrentTime.h>
 #include <wtf/Vector.h>
 
@@ -59,6 +60,8 @@ static NodeCallbackQueue* s_postAttachCallbackQueue;
 
 static size_t s_attachDepth;
 static bool s_shouldReEnableMemoryCacheCallsAfterAttach;
+
+ChildNodesLazySnapshot* ChildNodesLazySnapshot::latestSnapshot = 0;
 
 static void collectTargetNodes(Node* node, NodeVector& nodes)
 {
@@ -271,8 +274,18 @@ bool ContainerNode::replaceChild(PassRefPtr<Node> newChild, Node* oldChild, Exce
     if (next && (next->previousSibling() == newChild || next == newChild)) // nothing to do
         return true;
 
+    // Does this one more time because removeChild() fires a MutationEvent.
+    checkReplaceChild(newChild.get(), oldChild, ec);
+    if (ec)
+        return false;
+
     NodeVector targets;
     collectChildrenAndRemoveFromOldParent(newChild.get(), targets, ec);
+    if (ec)
+        return false;
+
+    // Does this yet another check because collectChildrenAndRemoveFromOldParent() fires a MutationEvent.
+    checkReplaceChild(newChild.get(), oldChild, ec);
     if (ec)
         return false;
 
@@ -315,6 +328,10 @@ static void willRemoveChild(Node* child)
     ChildListMutationScope(child->parentNode()).willRemoveChild(child);
     child->notifyMutationObserversNodeWillDetach();
 #endif
+#if ENABLE(UNDO_MANAGER)
+    if (UndoManager::isRecordingAutomaticTransaction(child->parentNode()))
+        UndoManager::addTransactionStep(NodeRemovingDOMTransactionStep::create(child->parentNode(), child));
+#endif
 
     dispatchChildRemovalEvents(child);
     child->document()->nodeWillBeRemoved(child); // e.g. mutation event listener can create a new range.
@@ -338,6 +355,10 @@ static void willRemoveChildren(ContainerNode* container)
 #if ENABLE(MUTATION_OBSERVERS)
         mutation.willRemoveChild(child);
         child->notifyMutationObserversNodeWillDetach();
+#endif
+#if ENABLE(UNDO_MANAGER)
+        if (UndoManager::isRecordingAutomaticTransaction(container))
+            UndoManager::addTransactionStep(NodeRemovingDOMTransactionStep::create(container, child));
 #endif
 
         // fire removed from document mutation events.
@@ -685,22 +706,16 @@ void ContainerNode::childrenChanged(bool changedByParser, Node*, Node*, int chil
 
 void ContainerNode::cloneChildNodes(ContainerNode *clone)
 {
-    // disable the delete button so it's elements are not serialized into the markup
-    bool isEditorEnabled = false;
-    if (document()->frame() && document()->frame()->editor()->canEdit()) {
-        FrameSelection* selection = document()->frame()->selection();
-        Element* root = selection ? selection->rootEditableElement() : 0;
-        isEditorEnabled = root && isDescendantOf(root);
+    HTMLElement* deleteButtonContainerElement = 0;
+    if (Frame* frame = document()->frame())
+        deleteButtonContainerElement = frame->editor()->deleteButtonController()->containerElement();
 
-        if (isEditorEnabled)
-            document()->frame()->editor()->deleteButtonController()->disable();
-    }
-    
     ExceptionCode ec = 0;
-    for (Node* n = firstChild(); n && !ec; n = n->nextSibling())
+    for (Node* n = firstChild(); n && !ec; n = n->nextSibling()) {
+        if (n == deleteButtonContainerElement)
+            continue;
         clone->appendChild(n->cloneNode(true), ec);
-    if (isEditorEnabled && document()->frame())
-        document()->frame()->editor()->deleteButtonController()->enable();
+    }
 }
 
 bool ContainerNode::getUpperLeftCorner(FloatPoint& point) const
@@ -971,6 +986,11 @@ static void updateTreeAfterInsertion(ContainerNode* parent, Node* child, bool sh
 
 #if ENABLE(MUTATION_OBSERVERS)
     ChildListMutationScope(parent).childAdded(child);
+#endif
+
+#if ENABLE(UNDO_MANAGER)
+    if (UndoManager::isRecordingAutomaticTransaction(parent))
+        UndoManager::addTransactionStep(NodeInsertingDOMTransactionStep::create(parent, child));
 #endif
 
     parent->childrenChanged(false, child->previousSibling(), child->nextSibling(), 1);

@@ -22,6 +22,7 @@
 #include "CSSProperty.h"
 
 #include "CSSValueList.h"
+#include "MemoryInstrumentation.h"
 #include "PlatformString.h"
 #include "RenderStyleConstants.h"
 #include "StylePropertyShorthand.h"
@@ -29,6 +30,8 @@
 #if ENABLE(CSS_VARIABLES)
 #include "CSSVariableValue.h"
 #endif
+
+#include <wtf/text/StringBuilder.h>
 
 namespace WebCore {
 
@@ -47,12 +50,19 @@ String CSSProperty::cssName() const
         return "-webkit-var-" + static_cast<CSSVariableValue*>(value())->name();
     }
 #endif
-    return String(getPropertyName(id()));
+    return getPropertyNameString(id());
 }
 
 String CSSProperty::cssText() const
 {
-    return cssName() + ": " + m_value->cssText() + (isImportant() ? " !important" : "") + "; ";
+    StringBuilder result;
+    result.append(cssName());
+    result.appendLiteral(": ");
+    result.append(m_value->cssText());
+    if (isImportant())
+        result.appendLiteral(" !important");
+    result.append(';');
+    return result.toString();
 }
 
 void CSSProperty::wrapValueInCommaSeparatedList()
@@ -339,6 +349,9 @@ bool CSSProperty::isInheritedProperty(CSSPropertyID propertyID)
     case CSSPropertyWebkitPrintColorAdjust:
     case CSSPropertyWebkitRtlOrdering:
     case CSSPropertyWebkitTextCombine:
+#if ENABLE(CSS3_TEXT_DECORATION)
+    case CSSPropertyWebkitTextDecorationLine:
+#endif // CSS3_TEXT_DECORATION
     case CSSPropertyWebkitTextDecorationsInEffect:
     case CSSPropertyWebkitTextEmphasis:
     case CSSPropertyWebkitTextEmphasisColor:
@@ -565,6 +578,9 @@ bool CSSProperty::isInheritedProperty(CSSPropertyID propertyID)
 #if ENABLE(CSS_FILTERS)
     case CSSPropertyWebkitFilter:
 #endif
+#if ENABLE(CSS_COMPOSITING)
+    case CSSPropertyWebkitBlendMode:
+#endif
 #if ENABLE(CSS3_FLEXBOX)
     case CSSPropertyWebkitAlignContent:
     case CSSPropertyWebkitAlignItems:
@@ -633,6 +649,9 @@ bool CSSProperty::isInheritedProperty(CSSPropertyID propertyID)
     case CSSPropertyWebkitPerspectiveOrigin:
     case CSSPropertyWebkitPerspectiveOriginX:
     case CSSPropertyWebkitPerspectiveOriginY:
+#if ENABLE(CSS3_TEXT_DECORATION)
+    case CSSPropertyWebkitTextDecorationStyle:
+#endif // CSS3_TEXT_DECORATION
     case CSSPropertyWebkitTransform:
     case CSSPropertyWebkitTransformOrigin:
     case CSSPropertyWebkitTransformOriginX:
@@ -682,6 +701,9 @@ bool CSSProperty::isInheritedProperty(CSSPropertyID propertyID)
 #if ENABLE(DASHBOARD_SUPPORT)
     case CSSPropertyWebkitDashboardRegion:
 #endif
+#if ENABLE(WIDGET_REGION)
+    case CSSPropertyWebkitWidgetRegion:
+#endif
         return false;
     case CSSPropertyInvalid:
         ASSERT_NOT_REACHED();
@@ -689,6 +711,12 @@ bool CSSProperty::isInheritedProperty(CSSPropertyID propertyID)
     }
     ASSERT_NOT_REACHED();
     return false;
+}
+
+void CSSProperty::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
+{
+    MemoryClassInfo info(memoryObjectInfo, this, MemoryInstrumentation::CSS);
+    info.addInstrumentedMember(m_value);
 }
 
 } // namespace WebCore

@@ -506,7 +506,7 @@ static int16_t handleEventCarbon(NPP instance, PluginObject* obj, EventRecord* e
             if (obj->testKeyboardFocusForPlugins) {
                 obj->eventLogging = false;
                 obj->testKeyboardFocusForPlugins = FALSE;
-                executeScript(obj, "layoutTestController.notifyDone();");
+                executeScript(obj, "testRunner.notifyDone();");
             }
             break;
         case autoKey:
@@ -599,7 +599,7 @@ static int16_t handleEventCocoa(NPP instance, PluginObject* obj, NPCocoaEvent* e
                 if (obj->testKeyboardFocusForPlugins) {
                     obj->eventLogging = false;
                     obj->testKeyboardFocusForPlugins = FALSE;
-                    executeScript(obj, "layoutTestController.notifyDone();");
+                    executeScript(obj, "testRunner.notifyDone();");
                 }
             }
             return 1;
@@ -671,6 +671,11 @@ static int16_t handleEventX11(NPP instance, PluginObject* obj, XEvent* event)
         // FIXME: extract key code
         if (obj->eventLogging)
             pluginLog(instance, "keyUp '%c'", keyEventToChar(&event->xkey));
+        if (obj->testKeyboardFocusForPlugins) {
+            obj->eventLogging = false;
+            obj->testKeyboardFocusForPlugins = FALSE;
+            executeScript(obj, "testRunner.notifyDone();");
+        }
         break;
     case GraphicsExpose:
         if (obj->eventLogging)
@@ -723,7 +728,7 @@ static int16_t handleEventWin(NPP instance, PluginObject* obj, NPEvent* event)
         if (obj->testKeyboardFocusForPlugins) {
             obj->eventLogging = false;
             obj->testKeyboardFocusForPlugins = FALSE;
-            executeScript(obj, "layoutTestController.notifyDone();");
+            executeScript(obj, "testRunner.notifyDone();");
         }
         break;
     case WM_LBUTTONDOWN:

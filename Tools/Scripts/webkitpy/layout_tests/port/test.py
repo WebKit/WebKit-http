@@ -219,6 +219,10 @@ layer at (0,0) size 800x34
 
     tests.add('websocket/tests/passes/text.html')
 
+    # For testing test are properly included from platform directories.
+    tests.add('platform/test-mac-leopard/http/test.html')
+    tests.add('platform/test-win-win7/http/test.html')
+
     # For --no-http tests, test that platform specific HTTP tests are properly skipped.
     tests.add('platform/test-snow-leopard/http/test.html')
     tests.add('platform/test-snow-leopard/websocket/test.html')
@@ -402,8 +406,8 @@ class TestPort(Port):
     def diff_image(self, expected_contents, actual_contents, tolerance=None):
         diffed = actual_contents != expected_contents
         if diffed:
-            return ["< %s\n---\n> %s\n" % (expected_contents, actual_contents), 1]
-        return (None, 0)
+            return ("< %s\n---\n> %s\n" % (expected_contents, actual_contents), 1, None)
+        return (None, 0, None)
 
     def layout_tests_dir(self):
         return LAYOUT_TEST_DIR
@@ -513,10 +517,6 @@ class TestPort(Port):
             VirtualTestSuite('virtual/skipped', 'failures/expected', ['--virtual-arg2']),
         ]
 
-    def supports_switching_pixel_tests_per_test(self):
-        # Let it true so we can test the --pixel-test-directory option.
-        return True
-
 
 class TestDriver(Driver):
     """Test/Dummy implementation of the DumpRenderTree interface."""
@@ -525,7 +525,7 @@ class TestDriver(Driver):
         pixel_tests_flag = '-p' if pixel_tests else ''
         return [self._port._path_to_driver()] + [pixel_tests_flag] + self._port.get_option('additional_drt_flag', []) + per_test_args
 
-    def run_test(self, test_input):
+    def run_test(self, test_input, stop_when_done):
         start_time = time.time()
         test_name = test_input.test_name
         test_args = test_input.args or []
@@ -562,6 +562,9 @@ class TestDriver(Driver):
         if crashed_process_name:
             crash_logs = CrashLogs(self._port.host)
             crash_log = crash_logs.find_newest_log(crashed_process_name, None) or ''
+
+        if stop_when_done:
+            self.stop()
 
         return DriverOutput(actual_text, test.actual_image, test.actual_checksum, audio,
             crash=test.crash or test.web_process_crash, crashed_process_name=crashed_process_name,

@@ -560,10 +560,21 @@ String crashedPluginText()
     return String::fromUTF8("plugin crashed");
 }
 
+String blockedPluginByContentSecurityPolicyText()
+{
+    notImplemented();
+    return String();
+}
+
 String insecurePluginVersionText()
 {
     notImplemented();
     return String();
+}
+
+String unacceptableTLSCertificate()
+{
+    return String::fromUTF8("Unacceptable TLS certificate");
 }
 
 String localizedString(const char* key)

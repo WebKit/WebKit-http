@@ -313,6 +313,8 @@ module window {
         attribute [Conditional=DEVICE_ORIENTATION,V8EnabledAtRuntime] EventListener ondevicemotion;
         attribute [Conditional=DEVICE_ORIENTATION,V8EnabledAtRuntime] EventListener ondeviceorientation;
 
+        attribute [Conditional=PROXIMITY_EVENTS] EventListener onwebkitdeviceproximity;
+
         // EventTarget interface
         [Custom] void addEventListener(in DOMString type,
                                       in EventListener listener,
@@ -551,6 +553,7 @@ module window {
         attribute StorageEventConstructor StorageEvent;
         attribute [Conditional=INPUT_SPEECH] SpeechInputEventConstructor SpeechInputEvent;
         attribute [Conditional=WEBGL] WebGLContextEventConstructor WebGLContextEvent;
+        attribute [Conditional=PROXIMITY_EVENTS] DeviceProximityEventConstructor DeviceProximityEvent;
 
         attribute EventExceptionConstructor EventException;
 
@@ -778,12 +781,14 @@ module window {
 
         attribute [Conditional=BLOB&LEGACY_WEBKIT_BLOB_BUILDER] WebKitBlobBuilderConstructor WebKitBlobBuilder;
 
-        attribute [Conditional=BLOB] DOMURLConstructor webkitURL;
+        attribute [Conditional=BLOB] DOMURLConstructor URL;
+        attribute [Conditional=BLOB] DOMURLConstructor webkitURL; // FIXME: deprecate this.
 
         attribute [Conditional=MUTATION_OBSERVERS] MutationObserverConstructor WebKitMutationObserver;
 
-        attribute [Conditional=MEDIA_SOURCE, V8EnabledAtRuntime=mediaSource] SourceBufferConstructor SourceBuffer;
-        attribute [Conditional=MEDIA_SOURCE, V8EnabledAtRuntime=mediaSource] SourceBufferListConstructor SourceBufferList;
+        attribute [Conditional=MEDIA_SOURCE, V8EnabledAtRuntime=mediaSource] MediaSourceConstructor WebKitMediaSource;
+        attribute [Conditional=MEDIA_SOURCE, V8EnabledAtRuntime=mediaSource] SourceBufferConstructor WebKitSourceBuffer;
+        attribute [Conditional=MEDIA_SOURCE, V8EnabledAtRuntime=mediaSource] SourceBufferListConstructor WebKitSourceBufferList;
 
 #endif // defined(LANGUAGE_JAVASCRIPT)
 

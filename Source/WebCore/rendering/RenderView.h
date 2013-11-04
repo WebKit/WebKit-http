@@ -32,6 +32,7 @@ namespace WebCore {
 
 class FlowThreadController;
 class RenderWidget;
+class RenderQuote;
 
 #if USE(ACCELERATED_COMPOSITING)
 class RenderLayerCompositor;
@@ -194,19 +195,19 @@ public:
 
     void setFixedPositionedObjectsNeedLayout();
 
-    // FIXME: This is a work around because the current implementation of counters and quotes
+    void setRenderQuoteHead(RenderQuote* head) { m_renderQuoteHead = head; }
+    RenderQuote* renderQuoteHead() const { return m_renderQuoteHead; }
+
+    // FIXME: This is a work around because the current implementation of counters
     // requires walking the entire tree repeatedly and most pages don't actually use either
     // feature so we shouldn't take the performance hit when not needed. Long term we should
     // rewrite the counter and quotes code.
-    void addRenderQuote() { m_renderQuoteCount++; }
-    void removeRenderQuote() { ASSERT(m_renderQuoteCount > 0); m_renderQuoteCount--; }
-    bool hasRenderQuotes() { return m_renderQuoteCount; }
     void addRenderCounter() { m_renderCounterCount++; }
     void removeRenderCounter() { ASSERT(m_renderCounterCount > 0); m_renderCounterCount--; }
     bool hasRenderCounters() { return m_renderCounterCount; }
 
 protected:
-    virtual void mapLocalToContainer(RenderBoxModelObject* repaintContainer, bool useTransforms, bool fixed, TransformState&, ApplyContainerFlipOrNot = ApplyContainerFlip, bool* wasFixed = 0) const;
+    virtual void mapLocalToContainer(RenderBoxModelObject* repaintContainer, TransformState&, MapLocalToContainerFlags mode = ApplyContainerFlip | SnapOffsetForTransforms, bool* wasFixed = 0) const OVERRIDE;
     virtual const RenderObject* pushMappingToContainer(const RenderBoxModelObject* ancestorToStopAt, RenderGeometryMap&) const;
     virtual void mapAbsoluteToLocalPoint(bool fixed, bool useTransforms, TransformState&) const;
     virtual bool requiresColumns(int desiredColumnCount) const OVERRIDE;
@@ -301,7 +302,7 @@ private:
     OwnPtr<FlowThreadController> m_flowThreadController;
     RefPtr<IntervalArena> m_intervalArena;
 
-    unsigned m_renderQuoteCount;
+    RenderQuote* m_renderQuoteHead;
     unsigned m_renderCounterCount;
 };
 

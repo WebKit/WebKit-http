@@ -22,6 +22,9 @@ BUGWK85262 SKIP : fast/css/image-resolution = PASS
 // CSS image-orientation is not yet enabled.
 BUGWK89052 SKIP : fast/css/image-orientation = PASS
 
+// CSS3 Text Decoration support is not yet enabled (needs ENABLE_CSS3_TEXT_DECORATION).
+BUGWK58491 SKIP : fast/css3-text-decoration = PASS
+
 // Our slow tests, in alphabetical order.
 BUGWK57672 : http/tests/local/fileapi/send-sliced-dragged-file.html = TEXT PASS
 
@@ -207,9 +210,6 @@ BUGWK60731 : ietestcenter/css3/grid/grid-column-003.htm = IMAGE
 BUGWK60731 : ietestcenter/css3/grid/grid-items-002.htm = IMAGE
 BUGWK60731 : ietestcenter/css3/grid/grid-items-003.htm = IMAGE
 
-BUGWK85401 : media/video-colorspace-yuv420.html = TEXT
-BUGWK85401 : media/video-colorspace-yuv422.html = TEXT
-
 BUGWK85404 : fast/loader/javascript-url-in-embed.html = TEXT PASS
 
 BUGWK85408 : svg/batik/text/longTextOnPath.svg = TEXT PASS
@@ -242,6 +242,9 @@ BUGWK85565 : fast/css/border-solid-single-edge-antialias.html = IMAGE
 // Interferes with the tests that should pass
 BUGWK85689 SKIP : fast/animation/request-animation-frame-disabled.html = TEXT
 
+// Need rebaseline after https://bugs.webkit.org/show_bug.cgi?id=6033
+BUGWK6033 : svg/filters/color-interpolation-filters.svg = PASS MISSING
+
 // Hits assert https://bugs.webkit.org/show_bug.cgi?id=86208
 BUGWK85308 SKIP : ietestcenter/css3/valuesandunits/units-000.htm = IMAGE
 BUGWK85310 : ietestcenter/css3/valuesandunits/units-010.htm = IMAGE
@@ -257,12 +260,8 @@ BUGWK84167 : editing/selection/iframe.html = TEXT
 BUGWK84167 : editing/selection/inline-table.html = TEXT
 BUGWK84167 : editing/selection/table-caret-3.html = TEXT
 BUGWK84167 : fast/css-generated-content/inline-display-types.html = TEXT
-BUGWK84167 : fast/css-generated-content/nested-tables-with-before-after-content-crash.html = IMAGE+TEXT
 BUGWK84167 : fast/inline-block/001.html = TEXT
 BUGWK84167 : tables/mozilla/bugs/bug2479-2.html = TEXT
-
-// Flaky in transition test framework
-BUGWK90234 : css3/calc/transitions.html = PASS TEXT
 
 // Needs rebaseline after bug 86441
 BUGWK86441 : fast/multicol/shadow-breaking.html = IMAGE
@@ -303,5 +302,64 @@ BUGWK91505 : platform/mac/plugins/root-object-premature-delete-crash.html = CRAS
 // [Mac] REGRESSION (r122651): fast/text/descent-clip-in-scaled-page.html fails
 BUGWK91552 : fast/text/descent-clip-in-scaled-page.html = IMAGE
 
-// Layout Test css3/filters/custom/custom-filter-animation.html is failing
-BUGWK84813 : css3/filters/custom/custom-filter-animation.html = TEXT
+// Needs rebaseline after https://bugs.webkit.org/show_bug.cig?id=91969
+BUGWK91969 : fast/dom/HTMLProgressElement/progress-bar-value-pseudo-element.html = TEXT
+BUGWK91969 : fast/dom/HTMLProgressElement/progress-writing-mode.html = TEXT
+BUGWK91969 : fast/dom/HTMLProgressElement/indeterminate-progress-001.html = TEXT
+
+// Needs new image to be checked in for all platforms.
+BUGWK93859 : compositing/video/video-controls-layer-creation.html = PASS MISSING
+
+// Needs rebaseline after https://bugs.webkit.org/show_bug.cgi?id=91970
+BUGWK91970 : fast/dom/HTMLMeterElement/meter-appearances-capacity.html
+BUGWK91970 : fast/dom/HTMLMeterElement/meter-appearances-rating-relevancy.html
+BUGWK91970 : fast/dom/HTMLMeterElement/meter-boundary-values.html
+BUGWK91970 : fast/dom/HTMLMeterElement/meter-clone.html
+BUGWK91970 : fast/dom/HTMLMeterElement/meter-element-markup.html
+BUGWK91970 : fast/dom/HTMLMeterElement/meter-element-repaint-on-update-value.html
+BUGWK91970 : fast/dom/HTMLMeterElement/meter-element.html
+BUGWK91970 : fast/dom/HTMLMeterElement/meter-optimums.html
+BUGWK91970 : fast/dom/HTMLMeterElement/meter-styles-changing-pseudo.html
+BUGWK91970 : fast/dom/HTMLMeterElement/meter-styles.html
+BUGWK91970 : fast/dom/HTMLMeterElement/meter-writing-mode.html
+
+// Require rebaseline after bug 93148
+BUGWK93148 : tables/mozilla_expected_failures/bugs/bug106966.html = TEXT
+BUGWK93148 : tables/mozilla_expected_failures/marvin/table_overflow_hidden_tbody.html = TEXT
+BUGWK93148 : tables/mozilla_expected_failures/marvin/table_overflow_hidden_tr.html = TEXT
+BUGWK93148 : fast/css/nested-layers-with-hover.html = TEXT
+
+BUGWK93247 DEBUG : fast/lists/list-marker-remove-crash.html = CRASH
+
+// (r124484) inspector/device-orientation-success.html failing on Mac ports
+BUGWK93552 : inspector/device-orientation-success.html = TEXT
+
+// (r125185) http/tests/images/jpg-img-partial-load.html timeout on Lion
+BUGWK93636 : http/tests/images/jpg-img-partial-load.html = TEXT
+
+// Require rebaselining after  https://bugs.webkit.org/show_bug.cgi?id=89826
+BUGWK89826 : fast/css/word-space-extra.html = TEXT
+
+// Added by bug 89826 
+BUGWK94008 : fast/css/word-spacing-characters.html = IMAGE
+BUGWK94003 : fast/css/word-spacing-characters-complex-text.html = IMAGE
+
+// (r125790): Newly added test inspector/timeline/timeline-decode-resize.html is failing on mac
+BUGWK94374 : inspector/timeline/timeline-decode-resize.html = TEXT
+
+// Flakey WebGL tests
+BUGWK93560 : fast/canvas/webgl/tex-image-and-sub-image-2d-with-array-buffer-view.html = PASS TEXT
+BUGWK93560 : fast/canvas/webgl/tex-image-and-sub-image-2d-with-image-data-rgb565.html = PASS TEXT
+BUGWK93560 : fast/canvas/webgl/tex-image-and-sub-image-2d-with-image-data-rgba4444.html = PASS TEXT
+BUGWK93560 : fast/canvas/webgl/tex-image-and-sub-image-2d-with-image-data-rgba5551.html = PASS TEXT
+BUGWK93560 : fast/canvas/webgl/tex-image-and-sub-image-2d-with-image-data.html = PASS TEXT
+
+// Flexbox test failing on Mac.
+BUGWK95366 : css3/flexbox/flexitem-stretch-image.html = TEXT
+
+//Require rebaseline after https://bugs.webkit.org/show_bug.cgi?id=77754
+BUGWK77754 : fast/inline/left-right-center-inline-alignment-in-ltr-and-rtl-blocks.html = TEXT
+BUGWK77754 : fast/inline/absolute-positioned-inline-in-centred-block.html = TEXT
+BUGWK77754 : fast/css/absolute-child-with-percent-height-inside-relative-parent.html = TEXT
+
+BUGWK92464 DEBUG : fast/events/tabindex-focus-blur-all.html = CRASH PASS

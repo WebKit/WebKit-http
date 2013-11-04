@@ -29,6 +29,7 @@
 #include "HTMLOListElement.h"
 #include "RenderListMarker.h"
 #include "RenderView.h"
+#include "StyleInheritedData.h"
 #include <wtf/StdLibExtras.h>
 #include <wtf/text/StringBuilder.h>
 
@@ -74,6 +75,20 @@ void RenderListItem::willBeDestroyed()
         m_marker = 0;
     }
     RenderBlock::willBeDestroyed();
+}
+
+void RenderListItem::insertedIntoTree()
+{
+    RenderBlock::insertedIntoTree();
+
+    updateListMarkerNumbers();
+}
+
+void RenderListItem::willBeRemovedFromTree()
+{
+    RenderBlock::willBeRemovedFromTree();
+
+    updateListMarkerNumbers();
 }
 
 static bool isList(Node* node)

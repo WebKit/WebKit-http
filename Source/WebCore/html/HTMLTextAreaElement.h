@@ -102,6 +102,7 @@ private:
     virtual RenderObject* createRenderer(RenderArena*, RenderStyle*);
     virtual bool appendFormData(FormDataList&, bool);
     virtual void reset();
+    virtual bool hasCustomFocusLogic() const OVERRIDE;
     virtual bool isMouseFocusable() const;
     virtual bool isKeyboardFocusable(KeyboardEvent*) const;
     virtual void updateFocusAppearance(bool restorePreviousSelection);
@@ -117,7 +118,7 @@ private:
     int m_rows;
     int m_cols;
     WrapMethod m_wrap;
-    RefPtr<HTMLElement> m_placeholder;
+    HTMLElement* m_placeholder;
     mutable String m_value;
     mutable bool m_isDirty;
     mutable bool m_wasModifiedByUser;

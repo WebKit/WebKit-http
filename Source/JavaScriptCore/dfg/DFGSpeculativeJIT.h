@@ -306,7 +306,7 @@ public:
     GPRReg fillSpeculateInt(NodeIndex, DataFormat& returnFormat);
     GPRReg fillSpeculateIntStrict(NodeIndex);
     FPRReg fillSpeculateDouble(NodeIndex);
-    GPRReg fillSpeculateCell(NodeIndex);
+    GPRReg fillSpeculateCell(NodeIndex, bool isForwardSpeculation = false);
     GPRReg fillSpeculateBoolean(NodeIndex);
     GeneratedOperandType checkGeneratedTypeForToInt32(NodeIndex);
 
@@ -2082,6 +2082,8 @@ public:
     void compileGetByValOnArguments(Node&);
     void compileGetArgumentsLength(Node&);
     
+    void compileGetArrayLength(Node&);
+    
     void compileValueToInt32(Node&);
     void compileUInt32ToNumber(Node&);
     void compileDoubleAsInt32(Node&);
@@ -2095,12 +2097,6 @@ public:
 #endif
     void compileArithMod(Node&);
     void compileSoftModulo(Node&);
-    void compileGetTypedArrayLength(const TypedArrayDescriptor&, Node&, bool needsSpeculationCheck);
-    enum TypedArraySpeculationRequirements {
-        NoTypedArraySpecCheck,
-        NoTypedArrayTypeSpecCheck,
-        AllTypedArraySpecChecks
-    };
     enum TypedArraySignedness {
         SignedTypedArray,
         UnsignedTypedArray
@@ -2110,10 +2106,10 @@ public:
         ClampRounding
     };
     void compileGetIndexedPropertyStorage(Node&);
-    void compileGetByValOnIntTypedArray(const TypedArrayDescriptor&, Node&, size_t elementSize, TypedArraySpeculationRequirements, TypedArraySignedness);
-    void compilePutByValForIntTypedArray(const TypedArrayDescriptor&, GPRReg base, GPRReg property, Node&, size_t elementSize, TypedArraySpeculationRequirements, TypedArraySignedness, TypedArrayRounding = TruncateRounding);
-    void compileGetByValOnFloatTypedArray(const TypedArrayDescriptor&, Node&, size_t elementSize, TypedArraySpeculationRequirements);
-    void compilePutByValForFloatTypedArray(const TypedArrayDescriptor&, GPRReg base, GPRReg property, Node&, size_t elementSize, TypedArraySpeculationRequirements);
+    void compileGetByValOnIntTypedArray(const TypedArrayDescriptor&, Node&, size_t elementSize, TypedArraySignedness);
+    void compilePutByValForIntTypedArray(const TypedArrayDescriptor&, GPRReg base, GPRReg property, Node&, size_t elementSize, TypedArraySignedness, TypedArrayRounding = TruncateRounding);
+    void compileGetByValOnFloatTypedArray(const TypedArrayDescriptor&, Node&, size_t elementSize);
+    void compilePutByValForFloatTypedArray(const TypedArrayDescriptor&, GPRReg base, GPRReg property, Node&, size_t elementSize);
     void compileNewFunctionNoCheck(Node&);
     void compileNewFunctionExpression(Node&);
     bool compileRegExpExec(Node&);
@@ -2163,130 +2159,45 @@ public:
 #endif
 
     // Add a speculation check without additional recovery.
-    void speculationCheck(ExitKind kind, JSValueSource jsValueSource, NodeIndex nodeIndex, MacroAssembler::Jump jumpToFail)
-    {
-        if (!m_compileOkay)
-            return;
-        ASSERT(at(m_compileIndex).canExit() || m_isCheckingArgumentTypes);
-        m_jit.codeBlock()->appendOSRExit(OSRExit(kind, jsValueSource, m_jit.graph().methodOfGettingAValueProfileFor(nodeIndex), jumpToFail, this, m_stream->size()));
-    }
-    void speculationCheck(ExitKind kind, JSValueSource jsValueSource, Edge nodeUse, MacroAssembler::Jump jumpToFail)
-    {
-        ASSERT(at(m_compileIndex).canExit() || m_isCheckingArgumentTypes);
-        speculationCheck(kind, jsValueSource, nodeUse.index(), jumpToFail);
-    }
+    void speculationCheck(ExitKind, JSValueSource, NodeIndex, MacroAssembler::Jump jumpToFail);
+    void speculationCheck(ExitKind, JSValueSource, Edge, MacroAssembler::Jump jumpToFail);
     // Add a set of speculation checks without additional recovery.
-    void speculationCheck(ExitKind kind, JSValueSource jsValueSource, NodeIndex nodeIndex, MacroAssembler::JumpList& jumpsToFail)
-    {
-        ASSERT(at(m_compileIndex).canExit() || m_isCheckingArgumentTypes);
-        Vector<MacroAssembler::Jump, 16> jumpVector = jumpsToFail.jumps();
-        for (unsigned i = 0; i < jumpVector.size(); ++i)
-            speculationCheck(kind, jsValueSource, nodeIndex, jumpVector[i]);
-    }
-    void speculationCheck(ExitKind kind, JSValueSource jsValueSource, Edge nodeUse, MacroAssembler::JumpList& jumpsToFail)
-    {
-        ASSERT(at(m_compileIndex).canExit() || m_isCheckingArgumentTypes);
-        speculationCheck(kind, jsValueSource, nodeUse.index(), jumpsToFail);
-    }
+    void speculationCheck(ExitKind, JSValueSource, NodeIndex, MacroAssembler::JumpList& jumpsToFail);
+    void speculationCheck(ExitKind, JSValueSource, Edge, MacroAssembler::JumpList& jumpsToFail);
     // Add a speculation check with additional recovery.
-    void speculationCheck(ExitKind kind, JSValueSource jsValueSource, NodeIndex nodeIndex, MacroAssembler::Jump jumpToFail, const SpeculationRecovery& recovery)
-    {
-        if (!m_compileOkay)
-            return;
-        ASSERT(at(m_compileIndex).canExit() || m_isCheckingArgumentTypes);
-        m_jit.codeBlock()->appendSpeculationRecovery(recovery);
-        m_jit.codeBlock()->appendOSRExit(OSRExit(kind, jsValueSource, m_jit.graph().methodOfGettingAValueProfileFor(nodeIndex), jumpToFail, this, m_stream->size(), m_jit.codeBlock()->numberOfSpeculationRecoveries()));
-    }
-    void speculationCheck(ExitKind kind, JSValueSource jsValueSource, Edge nodeUse, MacroAssembler::Jump jumpToFail, const SpeculationRecovery& recovery)
-    {
-        ASSERT(at(m_compileIndex).canExit() || m_isCheckingArgumentTypes);
-        speculationCheck(kind, jsValueSource, nodeUse.index(), jumpToFail, recovery);
-    }
+    void speculationCheck(ExitKind, JSValueSource, NodeIndex, MacroAssembler::Jump jumpToFail, const SpeculationRecovery&);
+    void speculationCheck(ExitKind, JSValueSource, Edge, MacroAssembler::Jump jumpToFail, const SpeculationRecovery&);
     // Use this like you would use speculationCheck(), except that you don't pass it a jump
     // (because you don't have to execute a branch; that's kind of the whole point), and you
     // must register the returned Watchpoint with something relevant. In general, this should
     // be used with extreme care. Use speculationCheck() unless you've got an amazing reason
     // not to.
-    JumpReplacementWatchpoint* speculationWatchpoint(ExitKind kind, JSValueSource jsValueSource, NodeIndex nodeIndex)
-    {
-        if (!m_compileOkay)
-            return 0;
-        ASSERT(at(m_compileIndex).canExit() || m_isCheckingArgumentTypes);
-        OSRExit& exit = m_jit.codeBlock()->osrExit(
-            m_jit.codeBlock()->appendOSRExit(
-                OSRExit(kind, jsValueSource,
-                        m_jit.graph().methodOfGettingAValueProfileFor(nodeIndex),
-                        JITCompiler::Jump(), this, m_stream->size())));
-        exit.m_watchpointIndex = m_jit.codeBlock()->appendWatchpoint(
-            JumpReplacementWatchpoint(m_jit.watchpointLabel()));
-        return &m_jit.codeBlock()->watchpoint(exit.m_watchpointIndex);
-    }
+    JumpReplacementWatchpoint* speculationWatchpoint(ExitKind, JSValueSource, NodeIndex);
     // The default for speculation watchpoints is that they're uncounted, because the
     // act of firing a watchpoint invalidates it. So, future recompilations will not
     // attempt to set this watchpoint again.
-    JumpReplacementWatchpoint* speculationWatchpoint()
-    {
-        return speculationWatchpoint(UncountableWatchpoint, JSValueSource(), NoNode);
-    }
-    void forwardSpeculationCheck(ExitKind kind, JSValueSource jsValueSource, NodeIndex nodeIndex, MacroAssembler::Jump jumpToFail, const ValueRecovery& valueRecovery)
-    {
-        ASSERT(at(m_compileIndex).canExit() || m_isCheckingArgumentTypes);
-        speculationCheck(kind, jsValueSource, nodeIndex, jumpToFail);
-        
-        unsigned setLocalIndexInBlock = m_indexInBlock + 1;
-        
-        Node* setLocal = &at(m_jit.graph().m_blocks[m_block]->at(setLocalIndexInBlock));
-        bool hadInt32ToDouble = false;
-        
-        if (setLocal->op() == Int32ToDouble) {
-            setLocal = &at(m_jit.graph().m_blocks[m_block]->at(++setLocalIndexInBlock));
-            hadInt32ToDouble = true;
-        }
-        if (setLocal->op() == Flush || setLocal->op() == Phantom)
-            setLocal = &at(m_jit.graph().m_blocks[m_block]->at(++setLocalIndexInBlock));
-        
-        if (hadInt32ToDouble)
-            ASSERT(at(setLocal->child1()).child1() == m_compileIndex);
-        else
-            ASSERT(setLocal->child1() == m_compileIndex);
-        ASSERT(setLocal->op() == SetLocal);
-        ASSERT(setLocal->codeOrigin == at(m_compileIndex).codeOrigin);
-
-        Node* nextNode = &at(m_jit.graph().m_blocks[m_block]->at(setLocalIndexInBlock + 1));
-        ASSERT(nextNode->codeOrigin != at(m_compileIndex).codeOrigin);
-        
-        OSRExit& exit = m_jit.codeBlock()->lastOSRExit();
-        exit.m_codeOrigin = nextNode->codeOrigin;
-        exit.m_lastSetOperand = setLocal->local();
-        
-        exit.m_valueRecoveryOverride = adoptRef(
-            new ValueRecoveryOverride(setLocal->local(), valueRecovery));
-    }
-    void forwardSpeculationCheck(ExitKind kind, JSValueSource jsValueSource, NodeIndex nodeIndex, MacroAssembler::JumpList& jumpsToFail, const ValueRecovery& valueRecovery)
-    {
-        ASSERT(at(m_compileIndex).canExit() || m_isCheckingArgumentTypes);
-        Vector<MacroAssembler::Jump, 16> jumpVector = jumpsToFail.jumps();
-        for (unsigned i = 0; i < jumpVector.size(); ++i)
-            forwardSpeculationCheck(kind, jsValueSource, nodeIndex, jumpVector[i], valueRecovery);
-    }
-
+    JumpReplacementWatchpoint* speculationWatchpoint(ExitKind = UncountableWatchpoint);
+    
+    // It is generally a good idea to not use this directly.
+    void convertLastOSRExitToForward(const ValueRecovery& = ValueRecovery());
+    
+    // Note: not specifying the valueRecovery argument (leaving it as ValueRecovery()) implies
+    // that you've ensured that there exists a MovHint prior to your use of forwardSpeculationCheck().
+    void forwardSpeculationCheck(ExitKind, JSValueSource, NodeIndex, MacroAssembler::Jump jumpToFail, const ValueRecovery& = ValueRecovery());
+    void forwardSpeculationCheck(ExitKind, JSValueSource, NodeIndex, MacroAssembler::JumpList& jumpsToFail, const ValueRecovery& = ValueRecovery());
+    void speculationCheckWithConditionalDirection(ExitKind, JSValueSource, NodeIndex, MacroAssembler::Jump jumpToFail, bool isForward);
     // Called when we statically determine that a speculation will fail.
-    void terminateSpeculativeExecution(ExitKind kind, JSValueRegs jsValueRegs, NodeIndex nodeIndex)
-    {
-        ASSERT(at(m_compileIndex).canExit() || m_isCheckingArgumentTypes);
-#if DFG_ENABLE(DEBUG_VERBOSE)
-        dataLog("SpeculativeJIT was terminated.\n");
-#endif
-        if (!m_compileOkay)
-            return;
-        speculationCheck(kind, jsValueRegs, nodeIndex, m_jit.jump());
-        m_compileOkay = false;
-    }
-    void terminateSpeculativeExecution(ExitKind kind, JSValueRegs jsValueRegs, Edge nodeUse)
-    {
-        ASSERT(at(m_compileIndex).canExit() || m_isCheckingArgumentTypes);
-        terminateSpeculativeExecution(kind, jsValueRegs, nodeUse.index());
-    }
+    void terminateSpeculativeExecution(ExitKind, JSValueRegs, NodeIndex);
+    void terminateSpeculativeExecution(ExitKind, JSValueRegs, Edge);
+    void terminateSpeculativeExecutionWithConditionalDirection(ExitKind, JSValueRegs, NodeIndex, bool isForward);
+    // Issue a forward speculation watchpoint, which will exit to the next instruction rather
+    // than the current one.
+    JumpReplacementWatchpoint* forwardSpeculationWatchpoint(ExitKind = UncountableWatchpoint);
+    JumpReplacementWatchpoint* speculationWatchpointWithConditionalDirection(ExitKind, bool isForward);
+    
+    const TypedArrayDescriptor* typedArrayDescriptor(Array::Mode);
+    
+    void checkArray(Node&);
     
     template<bool strict>
     GPRReg fillSpeculateIntInternal(NodeIndex, DataFormat& returnFormat);
@@ -2912,10 +2823,11 @@ private:
 
 class SpeculateCellOperand {
 public:
-    explicit SpeculateCellOperand(SpeculativeJIT* jit, Edge use)
+    explicit SpeculateCellOperand(SpeculativeJIT* jit, Edge use, bool isForwardSpeculation = false)
         : m_jit(jit)
         , m_index(use.index())
         , m_gprOrInvalid(InvalidGPRReg)
+        , m_isForwardSpeculation(isForwardSpeculation)
     {
         ASSERT(m_jit);
         ASSERT(use.useKind() != DoubleUse);
@@ -2937,7 +2849,7 @@ public:
     GPRReg gpr()
     {
         if (m_gprOrInvalid == InvalidGPRReg)
-            m_gprOrInvalid = m_jit->fillSpeculateCell(index());
+            m_gprOrInvalid = m_jit->fillSpeculateCell(index(), m_isForwardSpeculation);
         return m_gprOrInvalid;
     }
     
@@ -2950,6 +2862,7 @@ private:
     SpeculativeJIT* m_jit;
     NodeIndex m_index;
     GPRReg m_gprOrInvalid;
+    bool m_isForwardSpeculation;
 };
 
 class SpeculateBooleanOperand {

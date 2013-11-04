@@ -31,6 +31,7 @@
 #include "AudioContext.h"
 #include "AudioNodeOutput.h"
 #include "AudioUtilities.h"
+#include "ExceptionCode.h"
 #include "VectorMath.h"
 #include "WaveTable.h"
 #include <algorithm>
@@ -41,6 +42,11 @@ using namespace std;
 namespace WebCore {
 
 using namespace VectorMath;
+
+WaveTable* Oscillator::s_waveTableSine = 0;
+WaveTable* Oscillator::s_waveTableSquare = 0;
+WaveTable* Oscillator::s_waveTableSawtooth = 0;
+WaveTable* Oscillator::s_waveTableTriangle = 0;
 
 PassRefPtr<Oscillator> Oscillator::create(AudioContext* context, float sampleRate)
 {
@@ -63,7 +69,8 @@ Oscillator::Oscillator(AudioContext* context, float sampleRate)
     m_detune = AudioParam::create(context, "detune", 0, -4800, 4800);
 
     // Sets up default wavetable.
-    setType(m_type);
+    ExceptionCode ec;
+    setType(m_type, ec);
 
     // An oscillator is always mono.
     addOutput(adoptPtr(new AudioNodeOutput(this, 1)));
@@ -76,32 +83,42 @@ Oscillator::~Oscillator()
     uninitialize();
 }
 
-void Oscillator::setType(unsigned short type)
+void Oscillator::setType(unsigned short type, ExceptionCode& ec)
 {
-    RefPtr<WaveTable> waveTable;
+    WaveTable* waveTable = 0;
     float sampleRate = this->sampleRate();
 
     switch (type) {
     case SINE:
-        waveTable = WaveTable::createSine(sampleRate);
+        if (!s_waveTableSine)
+            s_waveTableSine = WaveTable::createSine(sampleRate).leakRef();
+        waveTable = s_waveTableSine;
         break;
     case SQUARE:
-        waveTable = WaveTable::createSquare(sampleRate);
+        if (!s_waveTableSquare)
+            s_waveTableSquare = WaveTable::createSquare(sampleRate).leakRef();
+        waveTable = s_waveTableSquare;
         break;
     case SAWTOOTH:
-        waveTable = WaveTable::createSawtooth(sampleRate);
+        if (!s_waveTableSawtooth)
+            s_waveTableSawtooth = WaveTable::createSawtooth(sampleRate).leakRef();
+        waveTable = s_waveTableSawtooth;
         break;
     case TRIANGLE:
-        waveTable = WaveTable::createTriangle(sampleRate);
+        if (!s_waveTableTriangle)
+            s_waveTableTriangle = WaveTable::createTriangle(sampleRate).leakRef();
+        waveTable = s_waveTableTriangle;
         break;
     case CUSTOM:
-        // FIXME: throw exception since setWaveTable() method must be called explicitly.
+    default:
+        // Throw exception for invalid types, including CUSTOM since setWaveTable() method must be
+        // called explicitly.
+        ec = NOT_SUPPORTED_ERR;
         return;
-        break;
     }
 
+    setWaveTable(waveTable);
     m_type = type;
-    setWaveTable(waveTable.get());
 }
 
 bool Oscillator::calculateSampleAccuratePhaseIncrements(size_t framesToProcess)

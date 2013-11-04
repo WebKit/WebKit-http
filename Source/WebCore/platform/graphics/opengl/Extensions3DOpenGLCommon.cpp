@@ -121,8 +121,15 @@ String Extensions3DOpenGLCommon::getTranslatedShaderSourceANGLE(Platform3DObject
 
     String translatedShaderSource;
     String shaderInfoLog;
+    int extraCompileOptions = 0;
 
-    bool isValid = compiler.validateShaderSource(entry.source.utf8().data(), shaderType, translatedShaderSource, shaderInfoLog);
+#if PLATFORM(MAC)
+    const char* vendor = reinterpret_cast<const char*>(::glGetString(GL_VENDOR));
+    if (vendor && (std::strstr(vendor, "ATI") || std::strstr(vendor, "AMD")))
+        extraCompileOptions |= SH_EMULATE_BUILT_IN_FUNCTIONS;
+#endif
+
+    bool isValid = compiler.validateShaderSource(entry.source.utf8().data(), shaderType, translatedShaderSource, shaderInfoLog, extraCompileOptions);
 
     entry.log = shaderInfoLog;
     entry.isValid = isValid;
@@ -141,6 +148,21 @@ void Extensions3DOpenGLCommon::initializeAvailableExtensions()
     for (size_t i = 0; i < availableExtensions.size(); ++i)
         m_availableExtensions.add(availableExtensions[i]);
     m_initializedAvailableExtensions = true;
+}
+
+void Extensions3DOpenGLCommon::readnPixelsEXT(int, int, GC3Dsizei, GC3Dsizei, GC3Denum, GC3Denum, GC3Dsizei, void *)
+{
+    m_context->synthesizeGLError(GL_INVALID_OPERATION);
+}
+
+void Extensions3DOpenGLCommon::getnUniformfvEXT(GC3Duint, int, GC3Dsizei, float *)
+{
+    m_context->synthesizeGLError(GL_INVALID_OPERATION);
+}
+
+void Extensions3DOpenGLCommon::getnUniformivEXT(GC3Duint, int, GC3Dsizei, int *)
+{
+    m_context->synthesizeGLError(GL_INVALID_OPERATION);
 }
 
 } // namespace WebCore

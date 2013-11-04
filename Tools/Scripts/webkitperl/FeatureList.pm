@@ -50,9 +50,11 @@ my (
     $channelMessagingSupport,
     $cspNextSupport,
     $css3FlexboxSupport,
+    $css3TextDecorationSupport,
     $cssBoxDecorationBreakSupport,
     $cssExclusionsSupport,
     $cssFiltersSupport,
+    $cssHierarchiesSupport,
     $cssImageOrientationSupport,
     $cssImageResolutionSupport,
     $cssRegionsSupport,
@@ -134,6 +136,7 @@ my (
     $webSocketsSupport,
     $webTimingSupport,
     $workersSupport,
+    $xhrResponseBlobSupport,
     $xsltSupport,
 );
 
@@ -145,7 +148,7 @@ my @features = (
       define => "ENABLE_ACCELERATED_2D_CANVAS", default => 0, value => \$accelerated2DCanvasSupport },
 
     { option => "animation-api", desc => "Toggle Animation API support",
-      define => "ENABLE_ANIMATION_API", default => isBlackBerry(), value => \$animationAPISupport },
+      define => "ENABLE_ANIMATION_API", default => (isBlackBerry() || isEfl()), value => \$animationAPISupport },
 
     { option => "battery-status", desc => "Toggle Battery Status support",
       define => "ENABLE_BATTERY_STATUS", default => (isEfl() || isBlackBerry()), value => \$batteryStatusSupport },
@@ -163,10 +166,16 @@ my @features = (
       define => "ENABLE_CSS_EXCLUSIONS", default => 1, value => \$cssExclusionsSupport },
 
     { option => "css-filters", desc => "Toggle CSS Filters support",
-      define => "ENABLE_CSS_FILTERS", default => isAppleWebKit(), value => \$cssFiltersSupport },
+      define => "ENABLE_CSS_FILTERS", default => isAppleWebKit() || isBlackBerry(), value => \$cssFiltersSupport },
 
     { option => "css3-flexbox", desc => "Toggle CSS3 Flexbox support",
       define => "ENABLE_CSS3_FLEXBOX", default => 1, value => \$css3FlexboxSupport },
+
+    { option => "css3-text-decoration", desc => "Toggle CSS3 Text Decoration support",
+      define => "ENABLE_CSS3_TEXT_DECORATION", default => isEfl(), value => \$css3TextDecorationSupport },
+
+    { option => "css-hierarchies", desc => "Toggle CSS Hierarchy support",
+      define => "ENABLE_CSS_HIERARCHIES", default => 0, value => \$cssHierarchiesSupport },
 
     { option => "css-box-decoration-break", desc => "Toggle CSS box-decoration-break support",
       define => "ENABLE_CSS_BOX_DECORATION_BREAK", default => 1, value => \$cssBoxDecorationBreakSupport },
@@ -187,7 +196,7 @@ my @features = (
       define => "ENABLE_CSS_COMPOSITING", default => 0, value => \$cssCompositingSupport },
 
     { option => "css-variables", desc => "Toggle CSS Variable support",
-      define => "ENABLE_CSS_VARIABLES", default => isEfl(), value => \$cssVariablesSupport },
+      define => "ENABLE_CSS_VARIABLES", default => (isBlackBerry() || isEfl()), value => \$cssVariablesSupport },
 
     { option => "custom-scheme-handler", desc => "Toggle Custom Scheme Handler support",
       define => "ENABLE_CUSTOM_SCHEME_HANDLER", default => (isBlackBerry() || isEfl()), value => \$customSchemeHandlerSupport },
@@ -226,7 +235,7 @@ my @features = (
       define => "ENABLE_FULLSCREEN_API", default => (isAppleMacWebKit() || isEfl() || isGtk() || isBlackBerry() || isQt()), value => \$fullscreenAPISupport },
 
     { option => "gamepad", desc => "Toggle Gamepad support",
-      define => "ENABLE_GAMEPAD", default => (isEfl() || isGtk()), value => \$gamepadSupport },
+      define => "ENABLE_GAMEPAD", default => (isEfl() || isGtk() || isQt()), value => \$gamepadSupport },
 
     { option => "geolocation", desc => "Toggle Geolocation support",
       define => "ENABLE_GEOLOCATION", default => (isAppleWebKit() || isGtk() || isBlackBerry()), value => \$geolocationSupport },
@@ -280,7 +289,7 @@ my @features = (
       define => "ENABLE_LEGACY_WEBKIT_BLOB_BUILDER", default => (isGtk() || isChromium() || isBlackBerry() || isEfl()), value => \$legacyWebKitBlobBuilderSupport },
 
     { option => "link-prefetch", desc => "Toggle Link Prefetch support",
-      define => "ENABLE_LINK_PREFETCH", default => isGtk(), value => \$linkPrefetchSupport },
+      define => "ENABLE_LINK_PREFETCH", default => (isGtk() || isEfl()), value => \$linkPrefetchSupport },
 
     { option => "link-prerender", desc => "Toggle Link Prerender support",
       define => "ENABLE_LINK_PRERENDER", default => 0, value => \$linkPrerenderSupport },
@@ -312,6 +321,9 @@ my @features = (
     { option => "mutation-observers", desc => "Toggle Mutation Observers support",
       define => "ENABLE_MUTATION_OBSERVERS", default => 1, value => \$mutationObserversSupport },
 
+    { option => "navigator-content-utils", desc => "Toggle Navigator Content Utils support",
+      define => "ENABLE_NAVIGATOR_CONTENT_UTILS", default => (isBlackBerry() || isEfl()), value => \$registerProtocolHandlerSupport },
+
     { option => "netscape-plugin-api", desc => "Toggle Netscape Plugin API support",
       define => "ENABLE_NETSCAPE_PLUGIN_API", default => (!isEfl() && !isHaiku()), value => \$netscapePluginAPISupport },
 
@@ -332,9 +344,6 @@ my @features = (
 
     { option => "quota", desc => "Toggle Quota support",
       define => "ENABLE_QUOTA", default => 0, value => \$quotaSupport },
-
-    { option => "register-protocol-handler", desc => "Toggle Register Protocol Handler support",
-      define => "ENABLE_REGISTER_PROTOCOL_HANDLER", default => (isBlackBerry() || isEfl()), value => \$registerProtocolHandlerSupport },
 
     { option => "request-animation-frame", desc => "Toggle Request Animation Frame support",
       define => "ENABLE_REQUEST_ANIMATION_FRAME", default => (isAppleMacWebKit() || isGtk() || isEfl() || isBlackBerry()), value => \$requestAnimationFrameSupport },
@@ -410,6 +419,9 @@ my @features = (
 
     { option => "workers", desc => "Toggle Workers support",
       define => "ENABLE_WORKERS", default => (isAppleWebKit() || isGtk() || isBlackBerry() || isEfl()), value => \$workersSupport },
+
+    { option => "xhr-response-blob", desc => "Toggle XHR Response BLOB support",
+      define => "ENABLE_XHR_RESPONSE_BLOB", default => isBlackBerry(), value => \$xhrResponseBlobSupport },
 
     { option => "xslt", desc => "Toggle XSLT support",
       define => "ENABLE_XSLT", default => 1, value => \$xsltSupport },

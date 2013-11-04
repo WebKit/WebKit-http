@@ -96,6 +96,13 @@ Array.prototype.partition = function(comparator, left, right, pivotIndex) {}
  */
 Array.prototype.qselect = function(k, comparator) {}
 
+/**
+ * @this {Array.<*>}
+ * @param {string} field
+ * @return {Array.<*>}
+ */
+Array.prototype.select = function(field) {}
+
 DOMApplicationCache.prototype.UNCACHED = 0;
 DOMApplicationCache.prototype.IDLE = 1;
 DOMApplicationCache.prototype.CHECKING = 2;
@@ -109,28 +116,70 @@ DOMApplicationCache.prototype.OBSOLETE = 5;
 var InspectorBackend = {}
 InspectorBackend.runAfterPendingDispatches = function(message) {}
 
+/** @interface */
+function InspectorFrontendHostAPI() {}
+InspectorFrontendHostAPI.prototype.platform = function() {}
+InspectorFrontendHostAPI.prototype.port = function() {}
+InspectorFrontendHostAPI.prototype.bringToFront = function() {}
+InspectorFrontendHostAPI.prototype.closeWindow = function() {}
+InspectorFrontendHostAPI.prototype.requestAttachWindow = function() {}
+InspectorFrontendHostAPI.prototype.requestDetachWindow = function() {}
+InspectorFrontendHostAPI.prototype.requestSetDockSide = function() {}
+InspectorFrontendHostAPI.prototype.setAttachedWindowHeight = function(height) {}
+InspectorFrontendHostAPI.prototype.moveWindowBy = function(x, y) {}
+InspectorFrontendHostAPI.prototype.setInjectedScriptForOrigin = function(origin, script) {}
+InspectorFrontendHostAPI.prototype.loaded = function() {}
+InspectorFrontendHostAPI.prototype.localizedStringsURL = function() {}
+InspectorFrontendHostAPI.prototype.hiddenPanels = function() {}
+InspectorFrontendHostAPI.prototype.inspectedURLChanged = function(url) {}
+InspectorFrontendHostAPI.prototype.documentCopy = function(event) {}
+InspectorFrontendHostAPI.prototype.copyText = function(text) {}
+InspectorFrontendHostAPI.prototype.openInNewTab = function(url) {}
+InspectorFrontendHostAPI.prototype.canSave = function() {}
+InspectorFrontendHostAPI.prototype.save = function(url, content, forceSaveAs) {}
+InspectorFrontendHostAPI.prototype.canAppend = function() {}
+InspectorFrontendHostAPI.prototype.append = function(url, content) {}
+InspectorFrontendHostAPI.prototype.sendMessageToBackend = function(message) {}
+InspectorFrontendHostAPI.prototype.recordActionTaken = function(actionCode) {}
+InspectorFrontendHostAPI.prototype.recordPanelShown = function(panelCode) {}
+InspectorFrontendHostAPI.prototype.recordSettingChanged = function(settingCode) {}
+InspectorFrontendHostAPI.prototype.loadResourceSynchronously = function(url) {}
+InspectorFrontendHostAPI.prototype.setZoomFactor = function(zoom) {}
+InspectorFrontendHostAPI.prototype.canInspectWorkers = function() {}
+/** @type {InspectorFrontendHostAPI} */
+var InspectorFrontendHost;
+
+/** @constructor */
+function SourceMapV3()
+{
+    /** @type {number} */ this.version;
+    /** @type {string} */ this.file;
+    /** @type {Array.<string>} */ this.sources;
+    /** @type {Array.<SourceMapV3.Section>} */ this.sections;
+    /** @type {string} */ this.mappings
+}
+
+/** @constructor */
+SourceMapV3.Section = function()
+{
+    /** @type {SourceMapV3} */ this.map;
+    /** @type {SourceMapV3.Offset} */ this.offset;
+}
+
+/** @constructor */
+SourceMapV3.Offset = function()
+{
+    /** @type {number} */ this.line;
+    /** @type {number} */ this.column;
+}
 
 // FIXME: remove everything below.
 var WebInspector = {}
 
-/**
- * @param {NetworkAgent.RequestId} requestId
- * @return {?WebInspector.NetworkRequest}
- */
-WebInspector.networkRequestById = function(requestId)
-{
-}
-  
 WebInspector.panels = {};
 
 /**
- * @type {WebInspector.InspectorView}
- */
-WebInspector.inspectorView;
-
-/**
  * @param {Element} element
- * @param {WebInspector.View} view
  * @param {function()=} onclose
  */
 WebInspector.showViewInDrawer = function(element, view, onclose) {}
@@ -142,6 +191,8 @@ WebInspector.closeViewInDrawer = function() {}
  * @param {boolean=} showConsole
  */
 WebInspector.log = function(message, messageLevel, showConsole) {}
+
+WebInspector.showErrorMessage = function(error) {}
 
 WebInspector.addMainEventListeners = function(doc) {}
 
@@ -202,18 +253,6 @@ function ExtensionReloadOptions() {
     this.userAgent = "";
 }
 
-/**
- * @type {WebInspector.HandlerRegistry}
- */
-WebInspector.openAnchorLocationRegistry = null;
-
-/**
- * @param {WebInspector.Panel} panel
- */
-WebInspector.showPanelForAnchorNavigation = function(panel)
-{
-}
-
 WebInspector.showPanel = function(panel)
 {
 }
@@ -236,3 +275,8 @@ difflib.stringAsLines = function(text) { return []; }
 /** @constructor */
 difflib.SequenceMatcher = function(baseText, newText) { }
 difflib.SequenceMatcher.prototype.get_opcodes = function() { return []; }
+
+/** @constructor */
+WebInspector.CodeMirrorTextEditor = function(url, delegate) { }
+
+WebInspector.ProfileURLRegExp = "";

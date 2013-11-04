@@ -33,8 +33,13 @@
 
 #if ENABLE(UNDO_MANAGER)
 
-#include "ExceptionCode.h"
+#include "ActiveDOMObject.h"
+#include "DOMTransaction.h"
+#include "Document.h"
+#include "ExceptionCodePlaceholder.h"
 #include "UndoStep.h"
+#include <wtf/OwnPtr.h>
+#include <wtf/PassOwnPtr.h>
 #include <wtf/PassRefPtr.h>
 #include <wtf/RefCounted.h>
 #include <wtf/RefPtr.h>
@@ -42,32 +47,52 @@
 
 namespace WebCore {
 
-class Dictionary;
-class Node;
+typedef Vector<RefPtr<UndoStep> > UndoManagerEntry;
+typedef Vector<OwnPtr<UndoManagerEntry> > UndoManagerStack;
 
-class UndoManager : public RefCounted<UndoManager> {
+class UndoManager : public RefCounted<UndoManager>, public ActiveDOMObject {
 public:
-    static PassRefPtr<UndoManager> create(Node* host);
+    static PassRefPtr<UndoManager> create(Document*);
     void disconnect();
+    virtual void stop() OVERRIDE;
+    virtual ~UndoManager();
 
-    void transact(const Dictionary& transaction, bool merge, ExceptionCode&);
+    void transact(PassRefPtr<DOMTransaction>, bool merge, ExceptionCode&);
 
-    void undo(ExceptionCode&);
-    void redo(ExceptionCode&);
+    void undo(ExceptionCode& = ASSERT_NO_EXCEPTION);
+    void redo(ExceptionCode& = ASSERT_NO_EXCEPTION);
+
+    UndoManagerEntry item(unsigned index) const;
 
     unsigned length() const { return m_undoStack.size() + m_redoStack.size(); }
+    unsigned position() const { return m_redoStack.size(); }
 
     void clearUndo(ExceptionCode&);
     void clearRedo(ExceptionCode&);
-    void clearUndoRedo();
+    
+    bool canUndo() const { return !m_undoStack.isEmpty(); }
+    bool canRedo() const { return !m_redoStack.isEmpty(); }
+    
+    void registerUndoStep(PassRefPtr<UndoStep>);
+    void registerRedoStep(PassRefPtr<UndoStep>);
+    
+    Document* document() const { return m_document; }
+    Node* ownerNode() const { return m_document; }
+
+    static void setRecordingDOMTransaction(DOMTransaction* transaction) { s_recordingDOMTransaction = transaction; }
+    static bool isRecordingAutomaticTransaction(Node*);
+    static void addTransactionStep(PassRefPtr<DOMTransactionStep>);
 
 private:
-    explicit UndoManager(Node* host);
-    bool isConnected();
+    explicit UndoManager(Document*);
     
-    Node* m_undoScopeHost;
-    Vector<RefPtr<UndoStep> > m_undoStack;
-    Vector<RefPtr<UndoStep> > m_redoStack;
+    Document* m_document;
+    UndoManagerStack m_undoStack;
+    UndoManagerStack m_redoStack;
+    bool m_isInProgress;
+    OwnPtr<UndoManagerEntry> m_inProgressEntry;
+
+    static DOMTransaction* s_recordingDOMTransaction;
 };
     
 }

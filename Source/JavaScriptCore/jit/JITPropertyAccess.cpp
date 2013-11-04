@@ -56,7 +56,7 @@ JIT::CodeRef JIT::stringGetByValStubGenerator(JSGlobalData* globalData)
 {
     JSInterfaceJIT jit;
     JumpList failures;
-    failures.append(jit.branchPtr(NotEqual, Address(regT0, JSCell::classInfoOffset()), TrustedImmPtr(&JSString::s_info)));
+    failures.append(jit.branchPtr(NotEqual, Address(regT0, JSCell::structureOffset()), TrustedImmPtr(globalData->stringStructure.get())));
 
     // Load string length to regT2, and start the process of loading the data pointer into regT0
     jit.load32(Address(regT0, ThunkHelpers::jsStringLengthOffset()), regT2);
@@ -110,7 +110,11 @@ void JIT::emit_op_get_by_val(Instruction* currentInstruction)
     zeroExtend32ToPtr(regT1, regT1);
 
     emitJumpSlowCaseIfNotJSCell(regT0, base);
-    addSlowCase(branchPtr(NotEqual, Address(regT0, JSCell::classInfoOffset()), TrustedImmPtr(&JSArray::s_info)));
+    loadPtr(Address(regT0, JSCell::structureOffset()), regT2);
+#if ENABLE(VALUE_PROFILER)
+    storePtr(regT2, currentInstruction[4].u.arrayProfile->addressOfLastSeenStructure());
+#endif
+    addSlowCase(branchPtr(NotEqual, Address(regT2, Structure::classInfoOffset()), TrustedImmPtr(&JSArray::s_info)));
 
     loadPtr(Address(regT0, JSArray::storageOffset()), regT2);
     addSlowCase(branch32(AboveOrEqual, regT1, Address(regT0, JSArray::vectorLengthOffset())));
@@ -132,7 +136,7 @@ void JIT::emitSlow_op_get_by_val(Instruction* currentInstruction, Vector<SlowCas
     linkSlowCaseIfNotJSCell(iter, base); // base cell check
     Jump nonCell = jump();
     linkSlowCase(iter); // base array check
-    Jump notString = branchPtr(NotEqual, Address(regT0, JSCell::classInfoOffset()), TrustedImmPtr(&JSString::s_info));
+    Jump notString = branchPtr(NotEqual, Address(regT0, JSCell::structureOffset()), TrustedImmPtr(m_globalData->stringStructure.get()));
     emitNakedCall(CodeLocationLabel(m_globalData->getCTIStub(stringGetByValStubGenerator).code()));
     Jump failed = branchTestPtr(Zero, regT0);
     emitPutVirtualRegister(dst, regT0);
@@ -231,7 +235,11 @@ void JIT::emit_op_put_by_val(Instruction* currentInstruction)
     // See comment in op_get_by_val.
     zeroExtend32ToPtr(regT1, regT1);
     emitJumpSlowCaseIfNotJSCell(regT0, base);
-    addSlowCase(branchPtr(NotEqual, Address(regT0, JSCell::classInfoOffset()), TrustedImmPtr(&JSArray::s_info)));
+    loadPtr(Address(regT0, JSCell::structureOffset()), regT2);
+#if ENABLE(VALUE_PROFILER)
+    storePtr(regT2, currentInstruction[4].u.arrayProfile->addressOfLastSeenStructure());
+#endif
+    addSlowCase(branchPtr(NotEqual, Address(regT2, Structure::classInfoOffset()), TrustedImmPtr(&JSArray::s_info)));
     addSlowCase(branch32(AboveOrEqual, regT1, Address(regT0, JSArray::vectorLengthOffset())));
 
     loadPtr(Address(regT0, JSArray::storageOffset()), regT2);
@@ -485,6 +493,7 @@ void JIT::emitSlow_op_put_by_id(Instruction* currentInstruction, Vector<SlowCase
     stubCall.addArgument(regT0);
     stubCall.addArgument(TrustedImmPtr(ident));
     stubCall.addArgument(regT1);
+    move(regT0, nonArgGPR1);
     Call call = stubCall.call();
 
     // Track the location of the call; this will be used to recover patch information.
@@ -529,6 +538,8 @@ void JIT::compileGetDirectOffset(JSObject* base, RegisterID result, PropertyOffs
 
 void JIT::privateCompilePutByIdTransition(StructureStubInfo* stubInfo, Structure* oldStructure, Structure* newStructure, PropertyOffset cachedOffset, StructureChain* chain, ReturnAddressPtr returnAddress, bool direct)
 {
+    move(nonArgGPR1, regT0);
+
     JumpList failureCases;
     // Check eax is an object of the right Structure.
     failureCases.append(emitJumpIfNotJSCell(regT0));
@@ -645,7 +656,11 @@ void JIT::privateCompilePatchGetArrayLength(ReturnAddressPtr returnAddress)
     StructureStubInfo* stubInfo = &m_codeBlock->getStubInfo(returnAddress);
 
     // Check eax is an array
-    Jump failureCases1 = branchPtr(NotEqual, Address(regT0, JSCell::classInfoOffset()), TrustedImmPtr(&JSArray::s_info));
+    loadPtr(Address(regT0, JSCell::structureOffset()), regT3);
+#if ENABLE(VALUE_PROFILER)
+    storePtr(regT3, m_codeBlock->getOrAddArrayProfile(stubInfo->bytecodeIndex)->addressOfLastSeenStructure());
+#endif
+    Jump failureCases1 = branchPtr(NotEqual, Address(regT3, Structure::classInfoOffset()), TrustedImmPtr(&JSArray::s_info));
 
     // Checks out okay! - get the length from the storage
     loadPtr(Address(regT0, JSArray::storageOffset()), regT3);
@@ -1150,7 +1165,7 @@ void JIT::resetPatchPutById(RepatchBuffer& repatchBuffer, StructureStubInfo* stu
     else
         repatchBuffer.relink(stubInfo->callReturnLocation, cti_op_put_by_id);
     repatchBuffer.repatch(stubInfo->hotPathBegin.dataLabelPtrAtOffset(stubInfo->patch.baseline.u.put.structureToCompare), reinterpret_cast<void*>(-1));
-    repatchBuffer.repatch(stubInfo->hotPathBegin.dataLabelCompactAtOffset(stubInfo->patch.baseline.u.put.displacementLabel), 0);
+    repatchBuffer.repatch(stubInfo->hotPathBegin.dataLabel32AtOffset(stubInfo->patch.baseline.u.put.displacementLabel), 0);
 }
 
 #endif // USE(JSVALUE64)

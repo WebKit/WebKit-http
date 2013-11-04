@@ -24,10 +24,11 @@
 #include "CSSCursorImageValue.h"
 #include "CSSParser.h"
 #include "CSSValueKeywords.h"
-#include "Document.h"
-#include "MemoryCache.h"
 #include "CachedImage.h"
 #include "CachedResourceLoader.h"
+#include "Document.h"
+#include "MemoryCache.h"
+#include "MemoryInstrumentation.h"
 #include "StyleCachedImage.h"
 #include "StylePendingImage.h"
 
@@ -102,6 +103,16 @@ void CSSImageValue::clearCachedImage()
     m_accessedImage = false;
 }
 
+bool CSSImageValue::hasFailedOrCanceledSubresources() const
+{
+    if (!m_image || !m_image->isCachedImage())
+        return false;
+    CachedResource* cachedResource = static_cast<StyleCachedImage*>(m_image.get())->cachedImage();
+    if (!cachedResource)
+        return true;
+    return cachedResource->loadFailedOrCanceled();
+}
+
 String CSSImageValue::customCssText() const
 {
     return "url(" + quoteCSSURLIfNeeded(m_url) + ")";
@@ -113,6 +124,13 @@ PassRefPtr<CSSValue> CSSImageValue::cloneForCSSOM() const
     RefPtr<CSSPrimitiveValue> uriValue = CSSPrimitiveValue::create(m_url, CSSPrimitiveValue::CSS_URI);
     uriValue->setCSSOMSafe();
     return uriValue.release();
+}
+
+void CSSImageValue::reportDescendantMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
+{
+    MemoryClassInfo info(memoryObjectInfo, this, MemoryInstrumentation::CSS);
+    info.addInstrumentedMember(m_url);
+    // No need to report m_image as it is counted as part of RenderArena.
 }
 
 } // namespace WebCore

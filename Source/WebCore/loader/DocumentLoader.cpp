@@ -357,19 +357,26 @@ void DocumentLoader::commitData(const char* bytes, size_t length)
 
 void DocumentLoader::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
 {
-    MemoryClassInfo<DocumentLoader> info(memoryObjectInfo, this, MemoryInstrumentation::Loader);
+    MemoryClassInfo info(memoryObjectInfo, this, MemoryInstrumentation::Loader);
     info.addInstrumentedMember(m_frame);
     info.addInstrumentedMember(m_mainResourceLoader);
     info.addInstrumentedHashSet(m_subresourceLoaders);
     info.addInstrumentedHashSet(m_multipartSubresourceLoaders);
     info.addInstrumentedHashSet(m_plugInStreamLoaders);
-    info.addString(m_pageTitle.string());
-    info.addString(m_overrideEncoding);
+    info.addInstrumentedMember(m_substituteData);
+    info.addInstrumentedMember(m_pageTitle.string());
+    info.addInstrumentedMember(m_overrideEncoding);
     info.addVector(m_responses);
+    info.addInstrumentedMember(m_originalRequest);
+    info.addInstrumentedMember(m_originalRequestCopy);
+    info.addInstrumentedMember(m_request);
+    info.addInstrumentedMember(m_response);
+    info.addInstrumentedMember(m_lastCheckedRequest);
+    info.addInstrumentedVector(m_responses);
     info.addHashMap(m_pendingSubstituteResources);
-    info.addHashSet(m_resourcesClientKnowsAbout);
+    info.addInstrumentedHashSet(m_resourcesClientKnowsAbout);
     info.addVector(m_resourcesLoadedFromMemoryCacheForClientNotification);
-    info.addString(m_clientRedirectSourceForHistory);
+    info.addInstrumentedMember(m_clientRedirectSourceForHistory);
     info.addInstrumentedMember(m_mainResourceData);
 }
 
@@ -421,9 +428,7 @@ void DocumentLoader::checkLoadComplete()
     if (!m_frame || isLoading())
         return;
     ASSERT(this == frameLoader()->activeDocumentLoader());
-
-    if (DOMWindow* window = m_frame->existingDOMWindow())
-        window->finishedLoading();
+    m_frame->document()->domWindow()->finishedLoading();
 }
 
 void DocumentLoader::setFrame(Frame* frame)

@@ -494,11 +494,10 @@ bool RenderLayerCompositor::updateBacking(RenderLayer* layer, CompositingChangeR
 
             layer->ensureBacking();
 
-            // The RenderLayer's needs to update repaint rects here, because the target
-            // repaintContainer may have changed after becoming a composited layer.
-            // https://bugs.webkit.org/show_bug.cgi?id=80641
+            // This layer and all of its descendants have cached repaints rects that are relative to
+            // the repaint container, so change when compositing changes; we need to update them here.
             if (layer->parent())
-                layer->computeRepaintRects();
+                layer->computeRepaintRectsIncludingDescendants();
 
             layerChanged = true;
         }
@@ -518,9 +517,9 @@ bool RenderLayerCompositor::updateBacking(RenderLayer* layer, CompositingChangeR
             layer->clearBacking();
             layerChanged = true;
 
-            // The layer's cached repaints rects are relative to the repaint container, so change when
-            // compositing changes; we need to update them here.
-            layer->computeRepaintRects();
+            // This layer and all of its descendants have cached repaints rects that are relative to
+            // the repaint container, so change when compositing changes; we need to update them here.
+            layer->computeRepaintRectsIncludingDescendants();
 
             // If we need to repaint, do so now that we've removed the backing
             if (shouldRepaint == CompositingChangeRepaintNow)
@@ -744,9 +743,18 @@ void RenderLayerCompositor::computeCompositingRequirements(RenderLayer* ancestor
         haveComputedBounds = true;
         compositingReason = overlapMap->overlapsLayers(absBounds) ? RenderLayer::IndirectCompositingForOverlap : RenderLayer::NoIndirectCompositingReason;
     }
-    
+
+#if ENABLE(VIDEO)
+    // Video is special. It's the only RenderLayer type that can both have
+    // RenderLayer children and whose children can't use its backing to render
+    // into. These children (the controls) always need to be promoted into their
+    // own layers to draw on top of the accelerated video.
+    if (compositingState.m_compositingAncestor && compositingState.m_compositingAncestor->renderer()->isVideo())
+        compositingReason = RenderLayer::IndirectCompositingForOverlap;
+#endif
+
     layer->setIndirectCompositingReason(compositingReason);
-    
+
     // The children of this layer don't need to composite, unless there is
     // a compositing layer among them, so start by inheriting the compositing
     // ancestor with m_subtreeIsCompositing set to false.
@@ -763,14 +771,6 @@ void RenderLayerCompositor::computeCompositingRequirements(RenderLayer* ancestor
         if (overlapMap)
             overlapMap->pushCompositingContainer();
     }
-
-#if ENABLE(VIDEO)
-    // Video is special. It's a replaced element with a content layer, but has shadow content
-    // for the controller that must render in front. Without this, the controls fail to show
-    // when the video element is a stacking context (e.g. due to opacity or transform).
-    if (willBeComposited && layer->renderer()->isVideo())
-        childState.m_subtreeIsCompositing = true;
-#endif
 
 #if !ASSERT_DISABLED
     LayerListMutationDetector mutationChecker(layer);
@@ -1025,7 +1025,7 @@ void RenderLayerCompositor::rebuildCompositingLayerTree(RenderLayer* layer, Vect
 
         // If the layer has a clipping layer the overflow controls layers will be siblings of the clipping layer.
         // Otherwise, the overflow control layers are normal children.
-        if (!layerBacking->hasClippingLayer()) {
+        if (!layerBacking->hasClippingLayer() && !layerBacking->hasScrollingLayer()) {
             if (GraphicsLayer* overflowControlLayer = layerBacking->layerForHorizontalScrollbar()) {
                 overflowControlLayer->removeFromParent();
                 layerBacking->parentForSublayers()->addChild(overflowControlLayer);
@@ -1444,7 +1444,8 @@ bool RenderLayerCompositor::requiresCompositingLayer(const RenderLayer* layer) c
         || clipsCompositingDescendants(layer)
         || requiresCompositingForAnimation(renderer)
         || requiresCompositingForFilters(renderer)
-        || requiresCompositingForPosition(renderer, layer);
+        || requiresCompositingForPosition(renderer, layer)
+        || requiresCompositingForOverflowScrolling(layer);
 }
 
 bool RenderLayerCompositor::canBeComposited(const RenderLayer* layer) const
@@ -1473,6 +1474,7 @@ bool RenderLayerCompositor::requiresOwnBackingStore(const RenderLayer* layer, co
         || requiresCompositingForAnimation(renderer)
         || requiresCompositingForFilters(renderer)
         || requiresCompositingForPosition(renderer, layer)
+        || requiresCompositingForOverflowScrolling(layer)
         || renderer->isTransparent()
         || renderer->hasMask()
         || renderer->hasReflection()
@@ -1529,6 +1531,9 @@ const char* RenderLayerCompositor::reasonForCompositing(const RenderLayer* layer
 
     if (requiresCompositingForPosition(renderer, layer))
         return "position: fixed";
+
+    if (requiresCompositingForOverflowScrolling(layer))
+        return "-webkit-overflow-scrolling: touch";
 
     if (layer->indirectCompositingReason() == RenderLayer::IndirectCompositingForStacking)
         return "stacking";
@@ -1832,6 +1837,11 @@ bool RenderLayerCompositor::requiresCompositingForPosition(RenderObject* rendere
         return false;
 
     return true;
+}
+
+bool RenderLayerCompositor::requiresCompositingForOverflowScrolling(const RenderLayer* layer) const
+{
+    return layer->usesCompositedScrolling();
 }
 
 bool RenderLayerCompositor::isRunningAcceleratedTransformAnimation(RenderObject* renderer) const

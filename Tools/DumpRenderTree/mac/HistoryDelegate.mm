@@ -26,7 +26,7 @@
 #import "HistoryDelegate.h"
 
 #import "DumpRenderTree.h"
-#import "LayoutTestController.h"
+#import "TestRunner.h"
 
 #import <WebKit/WebNavigationData.h>
 #import <WebKit/WebView.h>
@@ -74,7 +74,7 @@
 
 - (void)populateVisitedLinksForWebView:(WebView *)webView
 {
-    if (gLayoutTestController->dumpVisitedLinksCallback())
+    if (gTestRunner->dumpVisitedLinksCallback())
         printf("Asked to populate visited links for WebView \"%s\"\n", [[[NSURL URLWithString:[webView mainFrameURL]] _drt_descriptionSuitableForTestResult] UTF8String]);
 }
 

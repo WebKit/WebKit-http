@@ -40,7 +40,8 @@
 #include <WebKit2/WKSerializedScriptValue.h>
 #include <WebKit2/WKSoupRequestManager.h>
 #include <WebKit2/WKString.h>
-#include <WebKit2/WebKit2.h>
+#include <WebKit2/WKTextChecker.h>
+#include <WebKit2/WebKit2_C.h>
 #include <glib.h>
 #include <wtf/Assertions.h>
 

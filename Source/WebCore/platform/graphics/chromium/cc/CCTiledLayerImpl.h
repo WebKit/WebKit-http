@@ -26,7 +26,7 @@
 #ifndef CCTiledLayerImpl_h
 #define CCTiledLayerImpl_h
 
-#include "cc/CCLayerImpl.h"
+#include "CCLayerImpl.h"
 #include <public/WebTransformationMatrix.h>
 
 namespace WebCore {
@@ -42,7 +42,7 @@ public:
     }
     virtual ~CCTiledLayerImpl();
 
-    virtual void appendQuads(CCQuadSink&, const CCSharedQuadState*, bool& hadMissingTiles) OVERRIDE;
+    virtual void appendQuads(CCQuadSink&, CCAppendQuadsData&) OVERRIDE;
 
     virtual CCResourceProvider::ResourceId contentsResourceId() const OVERRIDE;
 

@@ -41,8 +41,10 @@
 #include "IDBObjectStore.h"
 #include "IDBTracing.h"
 #include "IDBTransaction.h"
+#include "IDBUpgradeNeededEvent.h"
 #include "IDBVersionChangeEvent.h"
 #include "IDBVersionChangeRequest.h"
+#include "ScriptCallStack.h"
 #include "ScriptExecutionContext.h"
 #include <limits>
 
@@ -208,6 +210,7 @@ PassRefPtr<IDBVersionChangeRequest> IDBDatabase::setVersion(ScriptExecutionConte
     }
 
     RefPtr<IDBVersionChangeRequest> request = IDBVersionChangeRequest::create(context, IDBAny::create(this), version);
+    ASSERT(m_backend);
     m_backend->setVersion(version, request, m_databaseCallbacks, ec);
     return request;
 }
@@ -260,13 +263,22 @@ PassRefPtr<IDBTransaction> IDBDatabase::transaction(ScriptExecutionContext* cont
 
 PassRefPtr<IDBTransaction> IDBDatabase::transaction(ScriptExecutionContext* context, PassRefPtr<DOMStringList> prpStoreNames, unsigned short mode, ExceptionCode& ec)
 {
-    DEFINE_STATIC_LOCAL(String, consoleMessage, ("Numeric transaction modes are deprecated in IDBDatabase.transaction. Use \"readonly\" or \"readwrite\"."));
+    // FIXME: Is this thread-safe?
+    DEFINE_STATIC_LOCAL(String, consoleMessage, (ASCIILiteral("Numeric transaction modes are deprecated in IDBDatabase.transaction. Use \"readonly\" or \"readwrite\".")));
     context->addConsoleMessage(JSMessageSource, LogMessageType, WarningMessageLevel, consoleMessage);
     AtomicString modeString = IDBTransaction::modeToString(IDBTransaction::Mode(mode), ec);
     if (ec)
         return 0;
 
     return transaction(context, prpStoreNames, modeString, ec);
+}
+
+void IDBDatabase::forceClose()
+{
+    ExceptionCode ec = 0;
+    for (HashSet<IDBTransaction*>::iterator it = m_transactions.begin(); it != m_transactions.end(); ++it)
+        (*it)->abort(ec);
+    this->close();
 }
 
 void IDBDatabase::close()
@@ -301,6 +313,17 @@ void IDBDatabase::closeConnection()
     }
 }
 
+void IDBDatabase::onVersionChange(int64_t oldVersion, int64_t newVersion)
+{
+    if (m_contextStopped || !scriptExecutionContext())
+        return;
+
+    if (m_closePending)
+        return;
+
+    enqueueEvent(IDBUpgradeNeededEvent::create(oldVersion, newVersion, eventNames().versionchangeEvent));
+}
+
 void IDBDatabase::onVersionChange(const String& version)
 {
     if (m_contextStopped || !scriptExecutionContext())
@@ -314,6 +337,7 @@ void IDBDatabase::onVersionChange(const String& version)
 
 void IDBDatabase::registerFrontendCallbacks()
 {
+    ASSERT(m_backend);
     m_backend->registerFrontendCallbacks(m_databaseCallbacks);
 }
 

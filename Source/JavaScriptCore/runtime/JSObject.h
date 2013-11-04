@@ -254,7 +254,7 @@ namespace JSC {
 
         bool isGlobalObject() const;
         bool isVariableObject() const;
-        bool isStaticScopeObject() const;
+        bool isNameScopeObject() const;
         bool isActivationObject() const;
         bool isErrorInstance() const;
         bool isGlobalThis() const;
@@ -313,8 +313,6 @@ namespace JSC {
         {
             return Structure::create(globalData, globalObject, prototype, TypeInfo(ObjectType, StructureFlags), &s_info);
         }
-
-        static const unsigned StructureFlags = 0;
 
         // To instantiate objects you likely want JSFinalObject, below.
         // To create derived types you likely want JSNonFinalObject, below.
@@ -473,9 +471,9 @@ inline bool JSObject::isVariableObject() const
     return structure()->typeInfo().type() >= VariableObjectType;
 }
 
-inline bool JSObject::isStaticScopeObject() const
+inline bool JSObject::isNameScopeObject() const
 {
-    return structure()->typeInfo().type() == StaticScopeObjectType;
+    return structure()->typeInfo().type() == NameScopeObjectType;
 }
 
 inline bool JSObject::isActivationObject() const

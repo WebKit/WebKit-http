@@ -5,6 +5,7 @@
  * Copyright (C) 2008 INdT - Instituto Nokia de Tecnologia
  * Copyright (C) 2009-2010 ProFUSION embedded systems
  * Copyright (C) 2009-2011 Samsung Electronics
+ * Copyright (c) 2012 Intel Corporation. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -27,8 +28,10 @@
 #include "RenderThemeEfl.h"
 
 #include "CSSValueKeywords.h"
+#include "FontDescription.h"
 #include "GraphicsContext.h"
 #include "HTMLInputElement.h"
+#include "InputType.h"
 #include "NotImplemented.h"
 #include "Page.h"
 #include "PaintInfo.h"
@@ -41,6 +44,7 @@
 
 #include <Ecore_Evas.h>
 #include <Edje.h>
+#include <new>
 #include <wtf/text/CString.h>
 #include <wtf/text/WTFString.h>
 
@@ -67,8 +71,8 @@ float RenderThemeEfl::defaultFontSize = 16.0f;
 static const int progressAnimationFrames = 10;
 static const double progressAnimationInterval = 0.125;
 
-static const int sliderThumbWidth = 12;
-static const int sliderThumbHeight = 12;
+static const int sliderThumbWidth = 29;
+static const int sliderThumbHeight = 11;
 #if ENABLE(VIDEO)
 static const int mediaSliderHeight = 14;
 static const int mediaSliderThumbWidth = 12;
@@ -326,31 +330,39 @@ bool RenderThemeEfl::paintThemePart(RenderObject* object, FormType type, const P
     // Currently, only sliders needs this message; if other widget ever needs special
     // treatment, move them to special functions.
     if (type == SliderVertical || type == SliderHorizontal) {
+        if (!object->isSlider())
+            return true; // probably have -webkit-appearance: slider..
+
         RenderSlider* renderSlider = toRenderSlider(object);
         HTMLInputElement* input = renderSlider->node()->toInputElement();
-        Edje_Message_Float_Set* msg;
         double valueRange = input->maximum() - input->minimum();
 
-        msg = static_cast<Edje_Message_Float_Set*>(alloca(sizeof(Edje_Message_Float_Set) + sizeof(float)));
+        OwnArrayPtr<char> buffer = adoptArrayPtr(new char[sizeof(Edje_Message_Float_Set) + sizeof(double)]);
+        Edje_Message_Float_Set* msg = new(buffer.get()) Edje_Message_Float_Set;
         msg->count = 2;
-        if (valueRange > 0)
-            msg->val[0] = static_cast<float>((input->valueAsNumber() - input->minimum()) / valueRange);
+
+        // The first parameter of the message decides if the progress bar
+        // grows from the end of the slider or from the beginning. On vertical
+        // sliders, it should always be the same and will not be affected by
+        // text direction settings.
+        if (object->style()->direction() == RTL || type == SliderVertical)
+            msg->val[0] = 1;
         else
             msg->val[0] = 0;
-        msg->val[1] = 0.1;
+
+        msg->val[1] = input->valueAsNumber() / valueRange;
         edje_object_message_send(entry->o, EDJE_MESSAGE_FLOAT_SET, 0, msg);
 #if ENABLE(PROGRESS_ELEMENT)
     } else if (type == ProgressBar) {
         RenderProgress* renderProgress = toRenderProgress(object);
-        Edje_Message_Float_Set* msg;
-        int max;
-        double value;
 
-        msg = static_cast<Edje_Message_Float_Set*>(alloca(sizeof(Edje_Message_Float_Set) + sizeof(float)));
-        max = rect.width();
-        value = renderProgress->position();
+        int max = rect.width();
+        double value = renderProgress->position();
 
+        OwnArrayPtr<char> buffer = adoptArrayPtr(new char[sizeof(Edje_Message_Float_Set) + sizeof(double)]);
+        Edje_Message_Float_Set* msg = new(buffer.get()) Edje_Message_Float_Set;
         msg->count = 2;
+
         if (object->style()->direction() == RTL)
             msg->val[0] = (1.0 - value) * max;
         else
@@ -448,8 +460,7 @@ void RenderThemeEfl::createEdje()
         else if (!edje_object_file_set(m_edje, m_themePath.utf8().data(), "webkit/base")) {
             Edje_Load_Error err = edje_object_load_error_get(m_edje);
             const char* errmsg = edje_load_error_str(err);
-            EINA_LOG_ERR("Could not load 'webkit/base' from theme %s: %s",
-                         m_themePath.utf8().data(), errmsg);
+            EINA_LOG_ERR("Could not set file: %s", errmsg);
             evas_object_del(m_edje);
             m_edje = 0;
         } else {
@@ -576,6 +587,8 @@ const char* RenderThemeEfl::edjeGroupFromFormType(FormType type) const
         W("search/cancel_button"),
         W("slider/vertical"),
         W("slider/horizontal"),
+        W("slider/thumb_vertical"),
+        W("slider/thumb_horizontal"),
 #if ENABLE(VIDEO)
         W("mediacontrol/playpause_button"),
         W("mediacontrol/mute_button"),
@@ -744,65 +757,82 @@ LayoutUnit RenderThemeEfl::baselinePosition(const RenderObject* object) const
 bool RenderThemeEfl::paintSliderTrack(RenderObject* object, const PaintInfo& info, const IntRect& rect)
 {
     if (object->style()->appearance() == SliderHorizontalPart)
-        return paintThemePart(object, SliderHorizontal, info, rect);
-    return paintThemePart(object, SliderVertical, info, rect);
+        paintThemePart(object, SliderHorizontal, info, rect);
+    else
+        paintThemePart(object, SliderVertical, info, rect);
+
+#if ENABLE(DATALIST_ELEMENT)
+    paintSliderTicks(object, info, rect);
+#endif
+
+    return false;
 }
 
 void RenderThemeEfl::adjustSliderTrackStyle(StyleResolver* styleResolver, RenderStyle* style, Element* element) const
 {
-    if (!m_page && element && element->document()->page()) {
-        static_cast<RenderThemeEfl*>(element->document()->page()->theme())->adjustSliderTrackStyle(styleResolver, style, element);
-        return;
-    }
-
-    adjustSizeConstraints(style, SliderHorizontal);
-    style->resetBorder();
-
-    const struct ThemePartDesc *desc = m_partDescs + (size_t)SliderHorizontal;
-    if (style->width().value() < desc->min.width().value())
-        style->setWidth(desc->min.width());
-    if (style->height().value() < desc->min.height().value())
-        style->setHeight(desc->min.height());
+    style->setBoxShadow(nullptr);
 }
 
 void RenderThemeEfl::adjustSliderThumbStyle(StyleResolver* styleResolver, RenderStyle* style, Element* element) const
 {
     RenderTheme::adjustSliderThumbStyle(styleResolver, style, element);
-    adjustSliderTrackStyle(styleResolver, style, element);
+    style->setBoxShadow(nullptr);
 }
 
 void RenderThemeEfl::adjustSliderThumbSize(RenderStyle* style, Element*) const
 {
     ControlPart part = style->appearance();
-    if (part == SliderThumbVerticalPart || part == SliderThumbHorizontalPart) {
+    if (part == SliderThumbVerticalPart) {
         style->setWidth(Length(sliderThumbHeight, Fixed));
         style->setHeight(Length(sliderThumbWidth, Fixed));
-    }
+    } else if (part == SliderThumbHorizontalPart) {
+        style->setWidth(Length(sliderThumbWidth, Fixed));
+        style->setHeight(Length(sliderThumbHeight, Fixed));
 #if ENABLE(VIDEO)
-    else if (part == MediaSliderThumbPart) {
+    } else if (part == MediaSliderThumbPart) {
         style->setWidth(Length(mediaSliderThumbWidth, Fixed));
         style->setHeight(Length(mediaSliderThumbHeight, Fixed));
-    }
 #endif
+    }
 }
 
 #if ENABLE(DATALIST_ELEMENT)
 IntSize RenderThemeEfl::sliderTickSize() const
 {
-    // FIXME: We need to set this to the size of one tick mark.
-    return IntSize(0, 0);
+    return IntSize(1, 6);
 }
 
 int RenderThemeEfl::sliderTickOffsetFromTrackCenter() const
 {
-    // FIXME: We need to set this to the position of the tick marks.
-    return 0;
+    static const int sliderTickOffset = -12;
+
+    return sliderTickOffset;
+}
+
+LayoutUnit RenderThemeEfl::sliderTickSnappingThreshold() const
+{
+    // The same threshold value as the Chromium port.
+    return 5;
 }
 #endif
 
+bool RenderThemeEfl::supportsDataListUI(const AtomicString& type) const
+{
+#if ENABLE(DATALIST_ELEMENT)
+    // FIXME: We need to support other types.
+    return type == InputTypeNames::range();
+#else
+    return false;
+#endif
+}
+
 bool RenderThemeEfl::paintSliderThumb(RenderObject* object, const PaintInfo& info, const IntRect& rect)
 {
-    // We've already painted it in paintSliderTrack(), no need to do anything here.
+    if (object->style()->appearance() == SliderThumbHorizontalPart)
+        paintThemePart(object, SliderThumbHorizontal, info, rect);
+    else
+        paintThemePart(object, SliderThumbVertical, info, rect);
+
     return false;
 }
 
@@ -856,12 +886,6 @@ void RenderThemeEfl::adjustButtonStyle(StyleResolver* styleResolver, RenderStyle
     }
 
     adjustSizeConstraints(style, Button);
-
-    if (style->appearance() == PushButtonPart) {
-        style->resetBorder();
-        style->setWhiteSpace(PRE);
-        style->setHeight(Length(Auto));
-    }
 }
 
 bool RenderThemeEfl::paintButton(RenderObject* object, const PaintInfo& info, const IntRect& rect)
@@ -1023,7 +1047,7 @@ void RenderThemeEfl::systemFont(int propId, FontDescription& fontDescription) co
 {
     // It was called by RenderEmbeddedObject::paintReplaced to render alternative string.
     // To avoid cairo_error while rendering, fontDescription should be passed.
-    DEFINE_STATIC_LOCAL(String, fontFace, ("Sans"));
+    DEFINE_STATIC_LOCAL(String, fontFace, (ASCIILiteral("Sans")));
     float fontSize = defaultFontSize;
 
     fontDescription.firstFamily().setFamily(fontFace);
@@ -1052,6 +1076,9 @@ double RenderThemeEfl::animationDurationForProgressBar(RenderProgress*) const
 
 bool RenderThemeEfl::paintProgressBar(RenderObject* object, const PaintInfo& info, const IntRect& rect)
 {
+    if (!object->isProgress())
+        return true;
+
     return paintThemePart(object, ProgressBar, info, rect);
 }
 #endif
@@ -1216,7 +1243,7 @@ bool RenderThemeEfl::paintMediaSliderTrack(RenderObject* object, const PaintInfo
         IntPoint sliderTopRight = sliderTopLeft;
         sliderTopRight.move(0, rangeRect.height());
 
-        context->fillRect(FloatRect(rect), m_mediaPanelColor, ColorSpaceDeviceRGB);
+        context->fillRect(FloatRect(rangeRect), m_mediaPanelColor, ColorSpaceDeviceRGB);
     }
     context->restore();
     return true;

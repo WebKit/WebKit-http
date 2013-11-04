@@ -24,6 +24,23 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+importScript("BreakpointsSidebarPane.js");
+importScript("CallStackSidebarPane.js");
+importScript("FilteredItemSelectionDialog.js");
+importScript("JavaScriptSourceFrame.js");
+importScript("NavigatorOverlayController.js");
+importScript("NavigatorView.js");
+importScript("RevisionHistoryView.js");
+importScript("ScopeChainSidebarPane.js");
+importScript("ScriptsNavigator.js");
+importScript("ScriptsSearchScope.js");
+importScript("SnippetJavaScriptSourceFrame.js");
+importScript("StyleSheetOutlineDialog.js");
+importScript("TabbedEditorContainer.js");
+importScript("UISourceCodeFrame.js");
+importScript("WatchExpressionsSidebarPane.js");
+importScript("WorkersSidebarPane.js");
+
 /**
  * @constructor
  * @implements {WebInspector.TabbedEditorContainerDelegate}
@@ -36,7 +53,6 @@ WebInspector.ScriptsPanel = function(workspaceForTest)
     WebInspector.Panel.call(this, "scripts");
     this.registerRequiredCSS("scriptsPanel.css");
 
-    WebInspector.settings.pauseOnExceptionStateString = WebInspector.settings.createSetting("pauseOnExceptionStateString", WebInspector.ScriptsPanel.PauseOnExceptionsState.DontPauseOnExceptions);
     WebInspector.settings.navigatorWasOnceHidden = WebInspector.settings.createSetting("navigatorWasOnceHidden", false);
     WebInspector.settings.debuggerSidebarHidden = WebInspector.settings.createSetting("debuggerSidebarHidden", false);
 
@@ -101,8 +117,8 @@ WebInspector.ScriptsPanel = function(workspaceForTest)
     this.sidebarPanes.xhrBreakpoints = new WebInspector.XHRBreakpointsSidebarPane();
     this.sidebarPanes.eventListenerBreakpoints = new WebInspector.EventListenerBreakpointsSidebarPane();
 
-    if (Preferences.exposeWorkersInspection && !WebInspector.WorkerManager.isWorkerFrontend()) {
-        WorkerAgent.setWorkerInspectionEnabled(true);
+    if (InspectorFrontendHost.canInspectWorkers() && !WebInspector.WorkerManager.isWorkerFrontend()) {
+        WorkerAgent.enable();
         this.sidebarPanes.workerList = new WebInspector.WorkersSidebarPane(WebInspector.workerManager);
     }
 
@@ -136,10 +152,10 @@ WebInspector.ScriptsPanel = function(workspaceForTest)
     var panelEnablerButton = WebInspector.UIString("Enable Debugging");
 
     this.panelEnablerView = new WebInspector.PanelEnablerView("scripts", panelEnablerHeading, panelEnablerDisclaimer, panelEnablerButton);
-    this.panelEnablerView.addEventListener("enable clicked", this.enableDebugging, this);
+    this.panelEnablerView.addEventListener("enable clicked", this._enableDebugging, this);
 
     this.enableToggleButton = new WebInspector.StatusBarButton("", "enable-toggle-status-bar-item");
-    this.enableToggleButton.addEventListener("click", this.toggleDebugging, this);
+    this.enableToggleButton.addEventListener("click", this._toggleDebugging, this);
     if (!Capabilities.debuggerCausesRecompilation)
         this.enableToggleButton.element.addStyleClass("hidden");
 
@@ -153,12 +169,15 @@ WebInspector.ScriptsPanel = function(workspaceForTest)
     this._scriptViewStatusBarItemsContainer = document.createElement("div");
     this._scriptViewStatusBarItemsContainer.style.display = "inline-block";
 
-    this._debuggerEnabled = !Capabilities.debuggerCausesRecompilation;
     this._installDebuggerSidebarController();
 
     this._sourceFramesByUISourceCode = new Map();
-    this._reset(false);
+    this._updateDebuggerButtons();
+    this._pauseOnExceptionStateChanged();
+    if (WebInspector.debuggerModel.isPaused())
+        this._debuggerPaused();
 
+    WebInspector.settings.pauseOnExceptionStateString.addChangeListener(this._pauseOnExceptionStateChanged, this);
     WebInspector.debuggerModel.addEventListener(WebInspector.DebuggerModel.Events.DebuggerWasEnabled, this._debuggerWasEnabled, this);
     WebInspector.debuggerModel.addEventListener(WebInspector.DebuggerModel.Events.DebuggerWasDisabled, this._debuggerWasDisabled, this);
     WebInspector.debuggerModel.addEventListener(WebInspector.DebuggerModel.Events.DebuggerPaused, this._debuggerPaused, this);
@@ -168,32 +187,21 @@ WebInspector.ScriptsPanel = function(workspaceForTest)
     WebInspector.debuggerModel.addEventListener(WebInspector.DebuggerModel.Events.ExecutionLineChanged, this._executionLineChanged, this);
     WebInspector.debuggerModel.addEventListener(WebInspector.DebuggerModel.Events.BreakpointsActiveStateChanged, this._breakpointsActiveStateChanged, this);
 
-    this._workspace.addEventListener(WebInspector.UISourceCodeProvider.Events.UISourceCodeAdded, this._handleUISourceCodeAdded, this);
+    WebInspector.startBatchUpdate();
+    var uiSourceCodes = this._workspace.uiSourceCodes();
+    for (var i = 0; i < uiSourceCodes.length; ++i)
+        this._addUISourceCode(uiSourceCodes[i]);
+    WebInspector.endBatchUpdate();
+
+    this._workspace.addEventListener(WebInspector.UISourceCodeProvider.Events.UISourceCodeAdded, this._uiSourceCodeAdded, this);
     this._workspace.addEventListener(WebInspector.UISourceCodeProvider.Events.UISourceCodeReplaced, this._uiSourceCodeReplaced, this);
     this._workspace.addEventListener(WebInspector.UISourceCodeProvider.Events.UISourceCodeRemoved, this._uiSourceCodeRemoved, this);
-    this._workspace.addEventListener(WebInspector.Workspace.Events.WorkspaceReset, this._reset.bind(this, false), this);
-
-    var enableDebugger = !Capabilities.debuggerCausesRecompilation || WebInspector.settings.debuggerEnabled.get();
-    if (enableDebugger)
-        WebInspector.debuggerModel.enableDebugger();
+    this._workspace.addEventListener(WebInspector.Workspace.Events.ProjectWillReset, this._reset.bind(this), this);
 
     WebInspector.advancedSearchController.registerSearchScope(new WebInspector.ScriptsSearchScope(this._workspace));
-    WebInspector.ContextMenu.registerProvider(this);
 }
 
-// Keep these in sync with WebCore::ScriptDebugServer
-WebInspector.ScriptsPanel.PauseOnExceptionsState = {
-    DontPauseOnExceptions : "none",
-    PauseOnAllExceptions : "all",
-    PauseOnUncaughtExceptions: "uncaught"
-};
-
 WebInspector.ScriptsPanel.prototype = {
-    get toolbarItemLabel()
-    {
-        return WebInspector.UIString("Sources");
-    },
-
     get statusBarItems()
     {
         return [this.enableToggleButton.element, this._pauseOnExceptionButton.element, this._toggleFormatSourceButton.element, this._scriptViewStatusBarItemsContainer];
@@ -227,26 +235,9 @@ WebInspector.ScriptsPanel.prototype = {
     /**
      * @param {WebInspector.Event} event
      */
-    _handleUISourceCodeAdded: function(event)
+    _uiSourceCodeAdded: function(event)
     {
         var uiSourceCode = /** @type {WebInspector.UISourceCode} */ event.data;
-        if (this._toggleFormatSourceButton.toggled)
-            uiSourceCode.setFormatted(true);
-        this._uiSourceCodeAdded(uiSourceCode);
-    },
-
-    _loadUISourceCodes: function()
-    {
-        var uiSourceCodes = this._workspace.uiSourceCodes();
-        for (var i = 0; i < uiSourceCodes.length; ++i)
-            this._uiSourceCodeAdded(uiSourceCodes[i]);
-    },
-
-    /**
-     * @param {WebInspector.UISourceCode} uiSourceCode
-     */
-    _uiSourceCodeAdded: function(uiSourceCode)
-    {
         this._addUISourceCode(uiSourceCode);
     },
 
@@ -255,6 +246,9 @@ WebInspector.ScriptsPanel.prototype = {
      */
     _addUISourceCode: function(uiSourceCode)
     {
+        if (this._toggleFormatSourceButton.toggled)
+            uiSourceCode.setFormatted(true);
+
         this._navigator.addUISourceCode(uiSourceCode);
         this._editorContainer.addUISourceCode(uiSourceCode);
     },
@@ -272,9 +266,9 @@ WebInspector.ScriptsPanel.prototype = {
         this.sidebarPanes.scopechain.update(WebInspector.debuggerModel.selectedCallFrame());
     },
 
-    _debuggerPaused: function(event)
+    _debuggerPaused: function()
     {
-        var details = /** @type {WebInspector.DebuggerPausedDetails} */ event.data;
+        var details = WebInspector.debuggerModel.debuggerPausedDetails();
 
         this._paused = true;
         this._waitingToPause = false;
@@ -300,9 +294,11 @@ WebInspector.ScriptsPanel.prototype = {
         } else if (details.reason === WebInspector.DebuggerModel.BreakReason.XHR) {
             this.sidebarPanes.xhrBreakpoints.highlightBreakpoint(details.auxData["breakpointURL"]);
             this.sidebarPanes.callstack.setStatus(WebInspector.UIString("Paused on a XMLHttpRequest."));
-        } else if (details.reason === WebInspector.DebuggerModel.BreakReason.Exception) {
+        } else if (details.reason === WebInspector.DebuggerModel.BreakReason.Exception)
             this.sidebarPanes.callstack.setStatus(WebInspector.UIString("Paused on exception: '%s'.", details.auxData.description));
-        } else {
+        else if (details.reason === WebInspector.DebuggerModel.BreakReason.Assert)
+            this.sidebarPanes.callstack.setStatus(WebInspector.UIString("Paused on assertion."));
+        else {
             function didGetUILocation(uiLocation)
             {
                 var breakpoint = WebInspector.breakpointManager.findBreakpoint(uiLocation.uiSourceCode, uiLocation.lineNumber);
@@ -332,25 +328,15 @@ WebInspector.ScriptsPanel.prototype = {
 
     _debuggerWasEnabled: function()
     {
-        this._setPauseOnExceptions(WebInspector.settings.pauseOnExceptionStateString.get());
-
-        if (this._debuggerEnabled)
-            return;
-
-        this._debuggerEnabled = true;
-        this._reset(true);
+        this._updateDebuggerButtons();
     },
 
     _debuggerWasDisabled: function()
     {
-        if (!this._debuggerEnabled)
-            return;
-
-        this._debuggerEnabled = false;
-        this._reset(true);
+        this._reset();
     },
 
-    _reset: function(preserveItems)
+    _reset: function()
     {
         delete this.currentQuery;
         this.searchCanceled();
@@ -367,8 +353,6 @@ WebInspector.ScriptsPanel.prototype = {
         var uiSourceCodes = this._workspace.uiSourceCodes();
         for (var i = 0; i < uiSourceCodes.length; ++i)
             this._removeSourceFrame(uiSourceCodes[i]);
-
-        this._loadUISourceCodes();
     },
 
     get visibleView()
@@ -390,7 +374,7 @@ WebInspector.ScriptsPanel.prototype = {
 
     canShowAnchorLocation: function(anchor)
     {
-        if (this._debuggerEnabled && anchor.uiSourceCode)
+        if (WebInspector.debuggerModel.debuggerEnabled() && anchor.uiSourceCode)
             return true;
         var uiSourceCodes = this._workspace.uiSourceCodes();
         for (var i = 0; i < uiSourceCodes.length; ++i) {
@@ -405,13 +389,6 @@ WebInspector.ScriptsPanel.prototype = {
     showAnchorLocation: function(anchor)
     {
         this._showSourceLine(anchor.uiSourceCode, anchor.lineNumber);
-    },
-
-    showFunctionDefinition: function(functionLocation)
-    {
-        WebInspector.showPanelForAnchorNavigation(this);
-        var uiLocation = WebInspector.debuggerModel.rawLocationToUILocation(functionLocation);
-        this._showSourceLine(uiLocation.uiSourceCode, uiLocation.lineNumber);
     },
 
     /**
@@ -588,29 +565,26 @@ WebInspector.ScriptsPanel.prototype = {
             sourceFrame.focus();
     },
 
-    _setPauseOnExceptions: function(pauseOnExceptionsState)
+    _pauseOnExceptionStateChanged: function()
     {
-        pauseOnExceptionsState = pauseOnExceptionsState || WebInspector.ScriptsPanel.PauseOnExceptionsState.DontPauseOnExceptions;
-        function callback(error)
-        {
-            if (error)
-                return;
-            if (pauseOnExceptionsState == WebInspector.ScriptsPanel.PauseOnExceptionsState.DontPauseOnExceptions)
-                this._pauseOnExceptionButton.title = WebInspector.UIString("Don't pause on exceptions.\nClick to Pause on all exceptions.");
-            else if (pauseOnExceptionsState == WebInspector.ScriptsPanel.PauseOnExceptionsState.PauseOnAllExceptions)
-                this._pauseOnExceptionButton.title = WebInspector.UIString("Pause on all exceptions.\nClick to Pause on uncaught exceptions.");
-            else if (pauseOnExceptionsState == WebInspector.ScriptsPanel.PauseOnExceptionsState.PauseOnUncaughtExceptions)
-                this._pauseOnExceptionButton.title = WebInspector.UIString("Pause on uncaught exceptions.\nClick to Not pause on exceptions.");
-
-            this._pauseOnExceptionButton.state = pauseOnExceptionsState;
-            WebInspector.settings.pauseOnExceptionStateString.set(pauseOnExceptionsState);
+        var pauseOnExceptionsState = WebInspector.settings.pauseOnExceptionStateString.get();
+        switch (pauseOnExceptionsState) {
+        case WebInspector.DebuggerModel.PauseOnExceptionsState.DontPauseOnExceptions:
+            this._pauseOnExceptionButton.title = WebInspector.UIString("Don't pause on exceptions.\nClick to Pause on all exceptions.");
+            break;
+        case WebInspector.DebuggerModel.PauseOnExceptionsState.PauseOnAllExceptions:
+            this._pauseOnExceptionButton.title = WebInspector.UIString("Pause on all exceptions.\nClick to Pause on uncaught exceptions.");
+            break;
+        case WebInspector.DebuggerModel.PauseOnExceptionsState.PauseOnUncaughtExceptions:
+            this._pauseOnExceptionButton.title = WebInspector.UIString("Pause on uncaught exceptions.\nClick to Not pause on exceptions.");
+            break;
         }
-        DebuggerAgent.setPauseOnExceptions(pauseOnExceptionsState, callback.bind(this));
+        this._pauseOnExceptionButton.state = pauseOnExceptionsState;
     },
 
     _updateDebuggerButtons: function()
     {
-        if (this._debuggerEnabled) {
+        if (WebInspector.debuggerModel.debuggerEnabled()) {
             this.enableToggleButton.title = WebInspector.UIString("Debugging enabled. Click to disable.");
             this.enableToggleButton.toggled = true;
             this._pauseOnExceptionButton.visible = true;
@@ -661,32 +635,18 @@ WebInspector.ScriptsPanel.prototype = {
         this._updateDebuggerButtons();
     },
 
-    get debuggingEnabled()
+    _enableDebugging: function()
     {
-        return this._debuggerEnabled;
+        this._toggleDebugging(this.panelEnablerView.alwaysEnabled);
     },
 
-    enableDebugging: function()
-    {
-        if (this._debuggerEnabled)
-            return;
-        this.toggleDebugging(this.panelEnablerView.alwaysEnabled);
-    },
-
-    disableDebugging: function()
-    {
-        if (!this._debuggerEnabled)
-            return;
-        this.toggleDebugging(this.panelEnablerView.alwaysEnabled);
-    },
-
-    toggleDebugging: function(optionalAlways)
+    _toggleDebugging: function(optionalAlways)
     {
         this._paused = false;
         this._waitingToPause = false;
         this._stepping = false;
 
-        if (this._debuggerEnabled) {
+        if (WebInspector.debuggerModel.debuggerEnabled()) {
             WebInspector.settings.debuggerEnabled.set(false);
             WebInspector.debuggerModel.disableDebugger();
         } else {
@@ -698,11 +658,11 @@ WebInspector.ScriptsPanel.prototype = {
     _togglePauseOnExceptions: function()
     {
         var nextStateMap = {};
-        var stateEnum = WebInspector.ScriptsPanel.PauseOnExceptionsState;
+        var stateEnum = WebInspector.DebuggerModel.PauseOnExceptionsState;
         nextStateMap[stateEnum.DontPauseOnExceptions] = stateEnum.PauseOnAllExceptions;
         nextStateMap[stateEnum.PauseOnAllExceptions] = stateEnum.PauseOnUncaughtExceptions;
         nextStateMap[stateEnum.PauseOnUncaughtExceptions] = stateEnum.DontPauseOnExceptions;
-        this._setPauseOnExceptions(nextStateMap[this._pauseOnExceptionButton.state]);
+        WebInspector.settings.pauseOnExceptionStateString.set(nextStateMap[this._pauseOnExceptionButton.state]);
     },
 
     _togglePause: function()
@@ -1030,6 +990,7 @@ WebInspector.ScriptsPanel.prototype = {
         this._toggleDebuggerSidebarButton.state = "shown";
         this._toggleDebuggerSidebarButton.title = WebInspector.UIString("Hide debugger");
         this.splitView.showSidebarElement();
+        this.debugSidebarResizeWidgetElement.removeStyleClass("hidden");
         WebInspector.settings.debuggerSidebarHidden.set(false);
     },
 
@@ -1040,6 +1001,7 @@ WebInspector.ScriptsPanel.prototype = {
         this._toggleDebuggerSidebarButton.state = "hidden";
         this._toggleDebuggerSidebarButton.title = WebInspector.UIString("Show debugger");
         this.splitView.hideSidebarElement();
+        this.debugSidebarResizeWidgetElement.addStyleClass("hidden");
         WebInspector.settings.debuggerSidebarHidden.set(true);
     },
 
@@ -1121,6 +1083,16 @@ WebInspector.ScriptsPanel.prototype = {
      */
     appendApplicableItems: function(contextMenu, target)
     {
+        this._appendUISourceCodeItems(contextMenu, target);
+        this._appendFunctionItems(contextMenu, target);
+    },
+
+    /** 
+     * @param {WebInspector.ContextMenu} contextMenu
+     * @param {Object} target
+     */
+    _appendUISourceCodeItems: function(contextMenu, target)
+    {
         if (!(target instanceof WebInspector.UISourceCode))
             return;
 
@@ -1130,9 +1102,39 @@ WebInspector.ScriptsPanel.prototype = {
             contextMenu.appendApplicableItems(uiSourceCode.resource().request);
     },
 
+    /** 
+     * @param {WebInspector.ContextMenu} contextMenu
+     * @param {Object} target
+     */
+    _appendFunctionItems: function(contextMenu, target)
+    {
+        if (!(target instanceof WebInspector.RemoteObject))
+            return;
+        var remoteObject = /** @type {WebInspector.RemoteObject} */ target;
+        if (remoteObject.type !== "function")
+            return;
+
+        function didGetDetails(error, response)
+        {
+            if (error) {
+                console.error(error);
+                return;
+            }
+            WebInspector.inspectorView.showPanelForAnchorNavigation(this);
+            var uiLocation = WebInspector.debuggerModel.rawLocationToUILocation(response.location);
+            this._showSourceLine(uiLocation.uiSourceCode, uiLocation.lineNumber);
+        }
+
+        function revealFunction()
+        {
+            DebuggerAgent.getFunctionDetails(remoteObject.objectId, didGetDetails.bind(this));
+        }
+
+        contextMenu.appendItem(WebInspector.UIString("Show function definition"), revealFunction.bind(this));
+    },
+
     showGoToSourceDialog: function()
     {
-        WebInspector.inspectorView.setCurrentPanel(this);
         WebInspector.OpenResourceDialog.show(this, this._workspace, this.editorView.mainElement);
     }
 }

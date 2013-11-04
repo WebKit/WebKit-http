@@ -61,6 +61,8 @@ WebInspector.StatusBarButton = function(title, className, states)
     this._visible = true;
 }
 
+WebInspector.StatusBarButton.width = 31;
+
 WebInspector.StatusBarButton.prototype = {
     _clicked: function()
     {
@@ -289,5 +291,13 @@ WebInspector.StatusBarComboBox.prototype = {
         if (this._selectElement.selectedIndex >= 0)
             return this._selectElement[this._selectElement.selectedIndex];
         return null;
+    },
+
+    /**
+     * @param {Element} option
+     */
+    select: function(option)
+    {
+        this._selectElement.selectedIndex = Array.prototype.indexOf.call(this._selectElement, option);
     }
 }

@@ -34,17 +34,19 @@
 #if ENABLE(MEDIA_SOURCE)
 
 #include "EventTarget.h"
-#include "SourceBuffer.h"
 #include <wtf/RefCounted.h>
 #include <wtf/Vector.h>
 
 namespace WebCore {
 
+class SourceBuffer;
+class GenericEventQueue;
+
 class SourceBufferList : public RefCounted<SourceBufferList>, public EventTarget {
 public:
-    static PassRefPtr<SourceBufferList> create(ScriptExecutionContext* context)
+    static PassRefPtr<SourceBufferList> create(ScriptExecutionContext* context, GenericEventQueue* asyncEventQueue)
     {
-        return adoptRef(new SourceBufferList(context));
+        return adoptRef(new SourceBufferList(context, asyncEventQueue));
     }
     virtual ~SourceBufferList() { }
 
@@ -54,6 +56,10 @@ public:
     void add(PassRefPtr<SourceBuffer>);
     bool remove(SourceBuffer*);
     void clear();
+
+    // Generates an id for adding a new SourceBuffer. Returns an empty string
+    // if this SourceBufferList is full.
+    String generateUniqueId();
 
     // EventTarget interface
     virtual const AtomicString& interfaceName() const OVERRIDE;
@@ -67,8 +73,9 @@ protected:
     virtual EventTargetData* ensureEventTargetData() OVERRIDE;
 
 private:
-    explicit SourceBufferList(ScriptExecutionContext*);
+    SourceBufferList(ScriptExecutionContext*, GenericEventQueue*);
 
+    bool contains(size_t id) const;
     void createAndFireEvent(const AtomicString&);
 
     virtual void refEventTarget() OVERRIDE { ref(); }
@@ -76,8 +83,10 @@ private:
 
     EventTargetData m_eventTargetData;
     ScriptExecutionContext* m_scriptExecutionContext;
+    GenericEventQueue* m_asyncEventQueue;
 
     Vector<RefPtr<SourceBuffer> > m_list;
+    size_t m_lastSourceBufferId;
 };
 
 } // namespace WebCore

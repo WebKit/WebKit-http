@@ -31,7 +31,7 @@
 #include <wtf/Vector.h>
 #include <wtf/unicode/Unicode.h>
 
-#if PLATFORM(QT) && HAVE(QT5)
+#if PLATFORM(QT)
 #include <QString>
 #endif
 
@@ -46,7 +46,7 @@ typedef const struct __CFString * CFStringRef;
 // FIXME: This is a temporary layering violation while we move string code to WTF.
 // Landing the file moves in one patch, will follow on with patches to change the namespaces.
 namespace JSC {
-struct IdentifierCStringTranslator;
+struct IdentifierASCIIStringTranslator;
 namespace LLInt { class Data; }
 class LLIntOffsetsExtractor;
 template <typename T> struct IdentifierCharBufferTranslator;
@@ -56,9 +56,10 @@ struct IdentifierLCharFromUCharTranslator;
 namespace WTF {
 
 struct CStringTranslator;
-struct HashAndCharactersTranslator;
+template<typename CharacterType> struct HashAndCharactersTranslator;
 struct HashAndUTF8CharactersTranslator;
-struct LCharBufferFromLiteralDataTranslator;
+struct LCharBufferTranslator;
+struct CharBufferFromLiteralDataTranslator;
 struct SubstringTranslator;
 struct UCharBufferTranslator;
 
@@ -69,14 +70,15 @@ typedef bool (*IsWhiteSpaceFunctionPtr)(UChar);
 
 class StringImpl {
     WTF_MAKE_NONCOPYABLE(StringImpl); WTF_MAKE_FAST_ALLOCATED;
-    friend struct JSC::IdentifierCStringTranslator;
+    friend struct JSC::IdentifierASCIIStringTranslator;
     friend struct JSC::IdentifierCharBufferTranslator<LChar>;
     friend struct JSC::IdentifierCharBufferTranslator<UChar>;
     friend struct JSC::IdentifierLCharFromUCharTranslator;
     friend struct WTF::CStringTranslator;
-    friend struct WTF::HashAndCharactersTranslator;
+    template<typename CharacterType> friend struct WTF::HashAndCharactersTranslator;
     friend struct WTF::HashAndUTF8CharactersTranslator;
-    friend struct WTF::LCharBufferFromLiteralDataTranslator;
+    friend struct WTF::CharBufferFromLiteralDataTranslator;
+    friend struct WTF::LCharBufferTranslator;
     friend struct WTF::SubstringTranslator;
     friend struct WTF::UCharBufferTranslator;
     friend class AtomicStringImpl;
@@ -88,7 +90,7 @@ private:
         BufferInternal,
         BufferOwned,
         BufferSubstring,
-#if PLATFORM(QT) && HAVE(QT5)
+#if PLATFORM(QT)
         BufferAdoptedQString
 #endif
         // NOTE: Adding more ownership types needs to extend m_hashAndFlags as we're at capacity
@@ -165,6 +167,19 @@ private:
         ASSERT(m_length);
     }
 
+    enum ConstructFromLiteralTag { ConstructFromLiteral };
+    StringImpl(const char* characters, unsigned length, ConstructFromLiteralTag)
+        : m_refCount(s_refCountIncrement)
+        , m_length(length)
+        , m_data8(reinterpret_cast<const LChar*>(characters))
+        , m_buffer(0)
+        , m_hashAndFlags(s_hashFlag8BitBuffer | BufferInternal | s_hashFlagHasTerminatingNullCharacter)
+    {
+        ASSERT(m_data8);
+        ASSERT(m_length);
+        ASSERT(!characters[length]);
+    }
+
     // Create a StringImpl adopting ownership of the provided buffer (BufferOwned)
     StringImpl(const UChar* characters, unsigned length)
         : m_refCount(s_refCountIncrement)
@@ -225,7 +240,7 @@ private:
         m_hashAndFlags = hash | BufferInternal;
     }
 
-#if PLATFORM(QT) && HAVE(QT5)
+#if PLATFORM(QT)
     // Used to create new strings that adopt an existing QString's data
     enum ConstructAdoptedQStringTag { ConstructAdoptedQString };
     StringImpl(QStringData* qStringData, ConstructAdoptedQStringTag)
@@ -284,15 +299,16 @@ public:
         return adoptRef(new StringImpl(rep->m_data16 + offset, length, ownerRep));
     }
 
-    WTF_EXPORT_STRING_API static PassRefPtr<StringImpl> createFromLiteral(const LChar* characters, unsigned length);
+    WTF_EXPORT_STRING_API static PassRefPtr<StringImpl> createFromLiteral(const char* characters, unsigned length);
     template<unsigned charactersCount>
     ALWAYS_INLINE static PassRefPtr<StringImpl> createFromLiteral(const char (&characters)[charactersCount])
     {
         COMPILE_ASSERT(charactersCount > 1, StringImplFromLiteralNotEmpty);
         COMPILE_ASSERT((charactersCount - 1 <= ((unsigned(~0) - sizeof(StringImpl)) / sizeof(LChar))), StringImplFromLiteralCannotOverflow);
 
-        return createFromLiteral(reinterpret_cast<const LChar*>(characters), charactersCount - 1);
+        return createFromLiteral(characters, charactersCount - 1);
     }
+    WTF_EXPORT_STRING_API static PassRefPtr<StringImpl> createFromLiteral(const char* characters);
 
     WTF_EXPORT_STRING_API static PassRefPtr<StringImpl> createUninitialized(unsigned length, LChar*& data);
     WTF_EXPORT_STRING_API static PassRefPtr<StringImpl> createUninitialized(unsigned length, UChar*& data);
@@ -351,7 +367,7 @@ public:
     WTF_EXPORT_STRING_API static PassRefPtr<StringImpl> adopt(StringBuffer<UChar>&);
     WTF_EXPORT_STRING_API static PassRefPtr<StringImpl> adopt(StringBuffer<LChar>&);
 
-#if PLATFORM(QT) && HAVE(QT5)
+#if PLATFORM(QT)
     static PassRefPtr<StringImpl> adopt(QStringData*);
 #endif
 
@@ -385,7 +401,7 @@ public:
         return m_length;
     }
 
-    WTF_EXPORT_PRIVATE size_t sizeInBytes() const;
+    WTF_EXPORT_STRING_API size_t sizeInBytes() const;
 
     bool has16BitShadow() const { return m_hashAndFlags & s_hashFlagHas16BitShadow; }
     WTF_EXPORT_STRING_API void upconvertCharacters(unsigned, unsigned) const;
@@ -416,7 +432,7 @@ public:
             m_hashAndFlags &= ~s_hashFlagIsAtomic;
     }
 
-#if PLATFORM(QT) && HAVE(QT5)
+#if PLATFORM(QT)
     QStringData* qStringData() { return bufferOwnership() == BufferAdoptedQString ? m_qStringData : 0; }
 #endif
 
@@ -428,7 +444,7 @@ private:
     {
         ASSERT(!hasHash());
         // Multiple clients assume that StringHasher is the canonical string hash function.
-        ASSERT(hash == (is8Bit() ? StringHasher::computeHash(m_data8, m_length) : StringHasher::computeHash(m_data16, m_length)));
+        ASSERT(hash == (is8Bit() ? StringHasher::computeHashAndMaskTop8Bits(m_data8, m_length) : StringHasher::computeHashAndMaskTop8Bits(m_data16, m_length)));
         ASSERT(!(hash & (s_flagMask << (8 * sizeof(hash) - s_flagCount)))); // Verify that enough high bits are empty.
         
         hash <<= s_flagCount;
@@ -644,7 +660,7 @@ private:
         void* m_buffer;
         StringImpl* m_substringBuffer;
         mutable UChar* m_copyData16;
-#if PLATFORM(QT) && HAVE(QT5)
+#if PLATFORM(QT)
         QStringData* m_qStringData;
 #endif
     };

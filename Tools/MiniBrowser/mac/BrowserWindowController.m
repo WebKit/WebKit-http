@@ -25,6 +25,7 @@
 
 #import "BrowserWindowController.h"
 
+#import "AppDelegate.h"
 #import <WebKit2/WKPagePrivate.h>
 #import <WebKit2/WKStringCF.h>
 #import <WebKit2/WKURLCF.h>
@@ -58,7 +59,10 @@
 
 - (void)dealloc
 {
-    assert(!_context);
+    WKRelease(_context);
+    WKRelease(_pageGroup);
+    [_webView release];
+
     [super dealloc];
 }
 
@@ -163,16 +167,14 @@
 
 - (void)windowWillClose:(NSNotification *)notification
 {
-    WKRelease(_context);
-    _context = 0;
-    WKRelease(_pageGroup);
-    _pageGroup = 0;
+    [(BrowserAppDelegate *)[NSApp delegate] browserWindowWillClose:[self window]];
+    [self autorelease];
 }
 
 - (void)applicationTerminating
 {
+    // FIXME: Why are we bothering to close the page? This doesn't even prevent LEAK output.
     WKPageClose(_webView.pageRef);
-    WKRelease(_webView.pageRef);
 }
 
 #define DefaultMinimumZoomFactor (.5)
@@ -412,7 +414,7 @@ static WKPageRef createNewPage(WKPageRef page, WKURLRequestRef request, WKDictio
     BrowserWindowController *controller = [[BrowserWindowController alloc] initWithContext:WKPageGetContext(page) pageGroup:WKPageGetPageGroup(page)];
     [controller loadWindow];
 
-    return controller->_webView.pageRef;
+    return WKRetain(controller->_webView.pageRef);
 }
 
 static void showPage(WKPageRef page, const void *clientInfo)
@@ -426,7 +428,6 @@ static void closePage(WKPageRef page, const void *clientInfo)
     LOG(@"closePage");
     WKPageClose(page);
     [[(BrowserWindowController *)clientInfo window] close];
-    WKRelease(page);
 }
 
 static void runJavaScriptAlert(WKPageRef page, WKStringRef message, WKFrameRef frame, const void* clientInfo)

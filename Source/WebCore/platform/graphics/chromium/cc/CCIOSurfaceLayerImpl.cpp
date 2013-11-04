@@ -27,15 +27,15 @@
 
 #if USE(ACCELERATED_COMPOSITING)
 
-#include "cc/CCIOSurfaceLayerImpl.h"
+#include "CCIOSurfaceLayerImpl.h"
 
+#include "CCGraphicsContext.h"
+#include "CCIOSurfaceDrawQuad.h"
+#include "CCLayerTreeHostImpl.h"
+#include "CCQuadSink.h"
+#include "CCRendererGL.h" // For the GLC() macro.
 #include "Extensions3D.h"
-#include "LayerRendererChromium.h"
 #include "TextStream.h"
-#include "cc/CCGraphicsContext.h"
-#include "cc/CCIOSurfaceDrawQuad.h"
-#include "cc/CCLayerTreeHostImpl.h"
-#include "cc/CCQuadSink.h"
 #include <public/WebGraphicsContext3D.h>
 
 namespace WebCore {
@@ -96,10 +96,13 @@ void CCIOSurfaceLayerImpl::willDraw(CCResourceProvider* resourceProvider)
     }
 }
 
-void CCIOSurfaceLayerImpl::appendQuads(CCQuadSink& quadList, const CCSharedQuadState* sharedQuadState, bool&)
+void CCIOSurfaceLayerImpl::appendQuads(CCQuadSink& quadSink, CCAppendQuadsData& appendQuadsData)
 {
+    CCSharedQuadState* sharedQuadState = quadSink.useSharedQuadState(createSharedQuadState());
+    appendDebugBorderQuad(quadSink, sharedQuadState, appendQuadsData);
+
     IntRect quadRect(IntPoint(), contentBounds());
-    quadList.append(CCIOSurfaceDrawQuad::create(sharedQuadState, quadRect, m_ioSurfaceSize, m_ioSurfaceTextureId, CCIOSurfaceDrawQuad::Flipped));
+    quadSink.append(CCIOSurfaceDrawQuad::create(sharedQuadState, quadRect, m_ioSurfaceSize, m_ioSurfaceTextureId, CCIOSurfaceDrawQuad::Flipped), appendQuadsData);
 }
 
 void CCIOSurfaceLayerImpl::dumpLayerProperties(TextStream& ts, int indent) const

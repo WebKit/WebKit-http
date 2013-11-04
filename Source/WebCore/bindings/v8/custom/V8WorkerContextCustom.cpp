@@ -33,12 +33,13 @@
 #if ENABLE(WORKERS)
 #include "V8WorkerContext.h"
 
+#include "ContentSecurityPolicy.h"
 #include "DOMTimer.h"
 #include "ExceptionCode.h"
 #include "ScheduledAction.h"
+#include "ScriptCallStack.h"
+#include "ScriptCallStackFactory.h"
 #include "V8Binding.h"
-#include "V8BindingMacros.h"
-#include "V8Proxy.h"
 #include "V8Utilities.h"
 #include "V8WorkerContextEventListener.h"
 #include "WebSocket.h"
@@ -65,6 +66,11 @@ v8::Handle<v8::Value> SetTimeoutOrInterval(const v8::Arguments& args, bool singl
 
     v8::Handle<v8::Context> v8Context = proxy->context();
     if (function->IsString()) {
+        if (ContentSecurityPolicy* policy = workerContext->contentSecurityPolicy()) {
+            RefPtr<ScriptCallStack> callStack = createScriptCallStackForInspector();
+            if (!policy->allowEval(callStack.release()))
+                return v8Integer(0, args.GetIsolate());
+        }
         WTF::String stringFunction = toWebCoreString(function);
         timerId = DOMTimer::install(workerContext, adoptPtr(new ScheduledAction(v8Context, stringFunction, workerContext->url())), timeout, singleShot);
     } else if (function->IsFunction()) {
@@ -107,7 +113,7 @@ v8::Handle<v8::Value> V8WorkerContext::importScriptsCallback(const v8::Arguments
     workerContext->importScripts(urls, ec);
 
     if (ec)
-        return throwError(ec, args.GetIsolate());
+        return setDOMException(ec, args.GetIsolate());
 
     return v8::Undefined();
 }

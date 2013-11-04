@@ -142,6 +142,7 @@ void ScrollableArea::notifyScrollPositionChanged(const IntPoint& position)
 
 void ScrollableArea::scrollPositionChanged(const IntPoint& position)
 {
+    IntPoint oldPosition = scrollPosition();
     // Tell the derived class to scroll its contents.
     setScrollOffset(position);
 
@@ -168,7 +169,8 @@ void ScrollableArea::scrollPositionChanged(const IntPoint& position)
             verticalScrollbar->invalidate();
     }
 
-    scrollAnimator()->notifyContentAreaScrolled();
+    if (scrollPosition() != oldPosition)
+        scrollAnimator()->notifyContentAreaScrolled();
 }
 
 bool ScrollableArea::handleWheelEvent(const PlatformWheelEvent& wheelEvent)
@@ -369,6 +371,41 @@ void ScrollableArea::serviceScrollAnimations()
 {
     if (ScrollAnimator* scrollAnimator = existingScrollAnimator())
         scrollAnimator->serviceScrollAnimations();
+}
+
+IntPoint ScrollableArea::scrollPosition() const
+{
+    int x = horizontalScrollbar() ? horizontalScrollbar()->value() : 0;
+    int y = verticalScrollbar() ? verticalScrollbar()->value() : 0;
+    return IntPoint(x, y);
+}
+
+IntPoint ScrollableArea::minimumScrollPosition() const
+{
+    return IntPoint();
+}
+
+IntPoint ScrollableArea::maximumScrollPosition() const
+{
+    return IntPoint(contentsSize().width() - visibleWidth(), contentsSize().height() - visibleHeight());
+}
+
+IntRect ScrollableArea::visibleContentRect(bool includeScrollbars) const
+{
+    int verticalScrollbarWidth = 0;
+    int horizontalScrollbarHeight = 0;
+
+    if (includeScrollbars) {
+        if (Scrollbar* verticalBar = verticalScrollbar())
+            verticalScrollbarWidth = !verticalBar->isOverlayScrollbar() ? verticalBar->width() : 0;
+        if (Scrollbar* horizontalBar = horizontalScrollbar())
+            horizontalScrollbarHeight = !horizontalBar->isOverlayScrollbar() ? horizontalBar->height() : 0;
+    }
+
+    return IntRect(scrollPosition().x(),
+                   scrollPosition().y(),
+                   std::max(0, visibleWidth() + verticalScrollbarWidth),
+                   std::max(0, visibleHeight() + horizontalScrollbarHeight));
 }
 
 } // namespace WebCore

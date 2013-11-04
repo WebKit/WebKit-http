@@ -32,6 +32,7 @@
 #include "JSDOMStringList.h"
 #include "JSDocument.h"
 #include "JSEventListener.h"
+#include "JSFloat32Array.h"
 #include "JSSVGDocument.h"
 #include "JSSVGPoint.h"
 #include "JSScriptProfile.h"
@@ -40,7 +41,6 @@
 #include "JSa.h"
 #include "JSb.h"
 #include "JSbool.h"
-#include "JSc.h"
 #include "JSd.h"
 #include "JSe.h"
 #include "KURL.h"
@@ -56,6 +56,7 @@
 #include <runtime/Error.h>
 #include <runtime/JSArray.h>
 #include <runtime/JSString.h>
+#include <wtf/Float32Array.h>
 #include <wtf/GetPtr.h>
 
 #if ENABLE(Condition1)
@@ -100,6 +101,7 @@ static const HashTableValue JSTestObjTableValues[] =
     { "reflectedCustomIntegralAttr", DontDelete, (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjReflectedCustomIntegralAttr), (intptr_t)setJSTestObjReflectedCustomIntegralAttr, NoIntrinsic },
     { "reflectedCustomBooleanAttr", DontDelete, (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjReflectedCustomBooleanAttr), (intptr_t)setJSTestObjReflectedCustomBooleanAttr, NoIntrinsic },
     { "reflectedCustomURLAttr", DontDelete, (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjReflectedCustomURLAttr), (intptr_t)setJSTestObjReflectedCustomURLAttr, NoIntrinsic },
+    { "typedArrayAttr", DontDelete, (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjTypedArrayAttr), (intptr_t)setJSTestObjTypedArrayAttr, NoIntrinsic },
     { "attrWithGetterException", DontDelete, (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjAttrWithGetterException), (intptr_t)setJSTestObjAttrWithGetterException, NoIntrinsic },
     { "attrWithSetterException", DontDelete, (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjAttrWithSetterException), (intptr_t)setJSTestObjAttrWithSetterException, NoIntrinsic },
     { "stringAttrWithGetterException", DontDelete, (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjStringAttrWithGetterException), (intptr_t)setJSTestObjStringAttrWithGetterException, NoIntrinsic },
@@ -146,7 +148,7 @@ static const HashTableValue JSTestObjTableValues[] =
     { 0, 0, 0, 0, NoIntrinsic }
 };
 
-static const HashTable JSTestObjTable = { 140, 127, JSTestObjTableValues, 0 };
+static const HashTable JSTestObjTable = { 141, 127, JSTestObjTableValues, 0 };
 /* Hash table for constructor */
 
 static const HashTableValue JSTestObjConstructorTableValues[] =
@@ -311,7 +313,6 @@ static const HashTableValue JSTestObjPrototypeTableValues[] =
     { "getSVGDocument", DontDelete | JSC::Function, (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionGetSVGDocument), (intptr_t)0, NoIntrinsic },
     { "convert1", DontDelete | JSC::Function, (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionConvert1), (intptr_t)1, NoIntrinsic },
     { "convert2", DontDelete | JSC::Function, (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionConvert2), (intptr_t)1, NoIntrinsic },
-    { "convert3", DontDelete | JSC::Function, (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionConvert3), (intptr_t)1, NoIntrinsic },
     { "convert4", DontDelete | JSC::Function, (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionConvert4), (intptr_t)1, NoIntrinsic },
     { "convert5", DontDelete | JSC::Function, (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionConvert5), (intptr_t)1, NoIntrinsic },
     { "mutablePointFunction", DontDelete | JSC::Function, (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionMutablePointFunction), (intptr_t)0, NoIntrinsic },
@@ -321,7 +322,7 @@ static const HashTableValue JSTestObjPrototypeTableValues[] =
     { 0, 0, 0, 0, NoIntrinsic }
 };
 
-static const HashTable JSTestObjPrototypeTable = { 267, 255, JSTestObjPrototypeTableValues, 0 };
+static const HashTable JSTestObjPrototypeTable = { 266, 255, JSTestObjPrototypeTableValues, 0 };
 const ClassInfo JSTestObjPrototype::s_info = { "TestObjectPrototype", &Base::s_info, &JSTestObjPrototypeTable, 0, CREATE_METHOD_TABLE(JSTestObjPrototype) };
 
 JSObject* JSTestObjPrototype::self(ExecState* exec, JSGlobalObject* globalObject)
@@ -616,6 +617,16 @@ JSValue jsTestObjReflectedCustomURLAttr(ExecState* exec, JSValue slotBase, Prope
     UNUSED_PARAM(exec);
     TestObj* impl = static_cast<TestObj*>(castedThis->impl());
     JSValue result = jsString(exec, impl->getURLAttribute(WebCore::HTMLNames::customContentURLAttrAttr));
+    return result;
+}
+
+
+JSValue jsTestObjTypedArrayAttr(ExecState* exec, JSValue slotBase, PropertyName)
+{
+    JSTestObj* castedThis = jsCast<JSTestObj*>(asObject(slotBase));
+    UNUSED_PARAM(exec);
+    TestObj* impl = static_cast<TestObj*>(castedThis->impl());
+    JSValue result = toJS(exec, castedThis->globalObject(), WTF::getPtr(impl->typedArrayAttr()));
     return result;
 }
 
@@ -1037,7 +1048,7 @@ void setJSTestObjCreate(ExecState* exec, JSObject* thisObject, JSValue value)
     UNUSED_PARAM(exec);
     JSTestObj* castedThis = jsCast<JSTestObj*>(thisObject);
     TestObj* impl = static_cast<TestObj*>(castedThis->impl());
-    impl->setCreate(value.toBoolean());
+    impl->setCreate(value.toBoolean(exec));
 }
 
 
@@ -1073,7 +1084,7 @@ void setJSTestObjReflectedBooleanAttr(ExecState* exec, JSObject* thisObject, JSV
     UNUSED_PARAM(exec);
     JSTestObj* castedThis = jsCast<JSTestObj*>(thisObject);
     TestObj* impl = static_cast<TestObj*>(castedThis->impl());
-    impl->setBooleanAttribute(WebCore::HTMLNames::reflectedbooleanattrAttr, value.toBoolean());
+    impl->setBooleanAttribute(WebCore::HTMLNames::reflectedbooleanattrAttr, value.toBoolean(exec));
 }
 
 
@@ -1109,7 +1120,7 @@ void setJSTestObjReflectedCustomBooleanAttr(ExecState* exec, JSObject* thisObjec
     UNUSED_PARAM(exec);
     JSTestObj* castedThis = jsCast<JSTestObj*>(thisObject);
     TestObj* impl = static_cast<TestObj*>(castedThis->impl());
-    impl->setBooleanAttribute(WebCore::HTMLNames::customContentBooleanAttrAttr, value.toBoolean());
+    impl->setBooleanAttribute(WebCore::HTMLNames::customContentBooleanAttrAttr, value.toBoolean(exec));
 }
 
 
@@ -1119,6 +1130,15 @@ void setJSTestObjReflectedCustomURLAttr(ExecState* exec, JSObject* thisObject, J
     JSTestObj* castedThis = jsCast<JSTestObj*>(thisObject);
     TestObj* impl = static_cast<TestObj*>(castedThis->impl());
     impl->setAttribute(WebCore::HTMLNames::customContentURLAttrAttr, valueToStringWithNullCheck(exec, value));
+}
+
+
+void setJSTestObjTypedArrayAttr(ExecState* exec, JSObject* thisObject, JSValue value)
+{
+    UNUSED_PARAM(exec);
+    JSTestObj* castedThis = jsCast<JSTestObj*>(thisObject);
+    TestObj* impl = static_cast<TestObj*>(castedThis->impl());
+    impl->setTypedArrayAttr(toFloat32Array(value));
 }
 
 
@@ -1661,7 +1681,7 @@ EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionAddEventListener(ExecStat
     JSValue listener = exec->argument(1);
     if (!listener.isObject())
         return JSValue::encode(jsUndefined());
-    impl->addEventListener(ustringToAtomicString(exec->argument(0).toString(exec)->value(exec)), JSEventListener::create(asObject(listener), castedThis, false, currentWorld(exec)), exec->argument(2).toBoolean());
+    impl->addEventListener(ustringToAtomicString(exec->argument(0).toString(exec)->value(exec)), JSEventListener::create(asObject(listener), castedThis, false, currentWorld(exec)), exec->argument(2).toBoolean(exec));
     return JSValue::encode(jsUndefined());
 }
 
@@ -1676,7 +1696,7 @@ EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionRemoveEventListener(ExecS
     JSValue listener = exec->argument(1);
     if (!listener.isObject())
         return JSValue::encode(jsUndefined());
-    impl->removeEventListener(ustringToAtomicString(exec->argument(0).toString(exec)->value(exec)), JSEventListener::create(asObject(listener), castedThis, false, currentWorld(exec)).get(), exec->argument(2).toBoolean());
+    impl->removeEventListener(ustringToAtomicString(exec->argument(0).toString(exec)->value(exec)), JSEventListener::create(asObject(listener), castedThis, false, currentWorld(exec)).get(), exec->argument(2).toBoolean(exec));
     return JSValue::encode(jsUndefined());
 }
 
@@ -2273,6 +2293,8 @@ EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionOverloadedMethod(ExecStat
         return jsTestObjPrototypeFunctionOverloadedMethod9(exec);
     if ((argsCount == 1 && (arg0.isObject() && isJSArray(arg0))))
         return jsTestObjPrototypeFunctionOverloadedMethod10(exec);
+    if (argsCount < 1)
+        return throwVMError(exec, createNotEnoughArgumentsError(exec));
     return throwVMTypeError(exec);
 }
 
@@ -2341,6 +2363,8 @@ EncodedJSValue JSC_HOST_CALL jsTestObjConstructorFunctionOverloadedMethod1(ExecS
     JSValue arg0(exec->argument(0));
     if ((argsCount == 1 && (arg0.isUndefinedOrNull() || arg0.isString() || arg0.isObject())))
         return jsTestObjConstructorFunctionOverloadedMethod12(exec);
+    if (argsCount < 1)
+        return throwVMError(exec, createNotEnoughArgumentsError(exec));
     return throwVMTypeError(exec);
 }
 
@@ -2464,23 +2488,6 @@ EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionConvert2(ExecState* exec)
     return JSValue::encode(jsUndefined());
 }
 
-EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionConvert3(ExecState* exec)
-{
-    JSValue thisValue = exec->hostThisValue();
-    if (!thisValue.inherits(&JSTestObj::s_info))
-        return throwVMTypeError(exec);
-    JSTestObj* castedThis = jsCast<JSTestObj*>(asObject(thisValue));
-    ASSERT_GC_OBJECT_INHERITS(castedThis, &JSTestObj::s_info);
-    TestObj* impl = static_cast<TestObj*>(castedThis->impl());
-    if (exec->argumentCount() < 1)
-        return throwVMError(exec, createNotEnoughArgumentsError(exec));
-    c* (toc(MAYBE_MISSING_PARAMETER(exec, 0, DefaultIsUndefined)));
-    if (exec->hadException())
-        return JSValue::encode(jsUndefined());
-    impl->convert3();
-    return JSValue::encode(jsUndefined());
-}
-
 EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionConvert4(ExecState* exec)
 {
     JSValue thisValue = exec->hostThisValue();
@@ -2586,10 +2593,8 @@ void JSTestObj::visitChildren(JSCell* cell, SlotVisitor& visitor)
     COMPILE_ASSERT(StructureFlags & OverridesVisitChildren, OverridesVisitChildrenWithoutSettingFlag);
     ASSERT(thisObject->structure()->typeInfo().overridesVisitChildren());
     Base::visitChildren(thisObject, visitor);
-    if (thisObject->m_cachedAttribute1)
-        visitor.append(&thisObject->m_cachedAttribute1);
-    if (thisObject->m_cachedAttribute2)
-        visitor.append(&thisObject->m_cachedAttribute2);
+    visitor.append(&thisObject->m_cachedAttribute1);
+    visitor.append(&thisObject->m_cachedAttribute2);
 }
 
 // Constant getters

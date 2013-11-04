@@ -39,7 +39,7 @@ namespace WebCore {
 
 class AudioDestinationMac : public AudioDestination {
 public:
-    AudioDestinationMac(AudioSourceProvider&, float sampleRate);
+    AudioDestinationMac(AudioIOCallback&, float sampleRate);
     virtual ~AudioDestinationMac();
 
     virtual void start();
@@ -57,7 +57,7 @@ private:
     OSStatus render(UInt32 numberOfFrames, AudioBufferList* ioData);
 
     AudioUnit m_outputUnit;
-    AudioSourceProvider& m_provider;
+    AudioIOCallback& m_callback;
     AudioBus m_renderBus;
 
     float m_sampleRate;

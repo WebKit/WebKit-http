@@ -21,6 +21,7 @@
 
 #include "BlobRegistryImpl.h"
 #include "CookieManager.h"
+#include "ReadOnlyLatin1String.h"
 #include <LocaleHandler.h>
 #include <network/NetworkRequest.h>
 #include <wtf/HashMap.h>
@@ -148,8 +149,10 @@ void ResourceRequest::initializePlatformRequest(NetworkRequest& platformRequest,
     if (isInitial)
         platformRequest.setRequestInitial(timeoutInterval());
     else {
-        platformRequest.setRequestUrl(url().string().utf8().data(),
-                httpMethod().latin1().data(),
+        ReadOnlyLatin1String latin1URL(url().string());
+        ReadOnlyLatin1String latin1HttpMethod(httpMethod());
+        platformRequest.setRequestUrl(latin1URL.data(), latin1URL.length(),
+                latin1HttpMethod.data(), latin1HttpMethod.length(),
                 platformCachePolicyForRequest(*this),
                 platformTargetTypeForRequest(*this),
                 timeoutInterval());
@@ -171,7 +174,7 @@ void ResourceRequest::initializePlatformRequest(NetworkRequest& platformRequest,
                         platformRequest.addMultipartFilename(element.m_filename.characters(), element.m_filename.length());
 #if ENABLE(BLOB)
                     else if (element.m_type == FormDataElement::encodedBlob) {
-                        RefPtr<BlobStorageData> blobData = static_cast<BlobRegistryImpl&>(blobRegistry()).getBlobDataFromURL(KURL(ParsedURLString, element.m_blobURL));
+                        RefPtr<BlobStorageData> blobData = static_cast<BlobRegistryImpl&>(blobRegistry()).getBlobDataFromURL(KURL(ParsedURLString, element.m_url));
                         if (blobData) {
                             for (size_t j = 0; j < blobData->items().size(); ++j) {
                                 const BlobDataItem& blobItem = blobData->items()[j];
@@ -198,12 +201,19 @@ void ResourceRequest::initializePlatformRequest(NetworkRequest& platformRequest,
             String key = it->first;
             String value = it->second;
             if (!key.isEmpty()) {
-                // We need to check the encoding and encode the cookie's value using latin1 or utf8 to support unicode characters.
-                // We wo't use the old cookies of resourceRequest for new location because these cookies may be changed by redirection.
-                if (!equalIgnoringCase(key, "Cookie"))
-                    platformRequest.addHeader(key.latin1().data(), value.latin1().data());
-                else if (!cookieHeaderMayBeDirty)
-                    platformRequest.addHeader(key.latin1().data(), value.containsOnlyLatin1() ? value.latin1().data() : value.utf8().data());
+                if (equalIgnoringCase(key, "Cookie")) {
+                    // We won't use the old cookies of resourceRequest for new location because these cookies may be changed by redirection.
+                    if (cookieHeaderMayBeDirty)
+                        continue;
+                    // We need to check the encoding and encode the cookie's value using latin1 or utf8 to support unicode data.
+                    if (!value.containsOnlyLatin1()) {
+                        platformRequest.addHeader("Cookie", value.utf8().data());
+                        continue;
+                    }
+                }
+                ReadOnlyLatin1String latin1Key(key);
+                ReadOnlyLatin1String latin1Value(value);
+                platformRequest.addHeader(latin1Key.data(), latin1Key.length(), latin1Value.data(), latin1Value.length());
             }
         }
 

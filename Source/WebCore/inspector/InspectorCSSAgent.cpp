@@ -45,15 +45,16 @@
 #include "InspectorTypeBuilder.h"
 #include "InspectorValues.h"
 #include "InstrumentingAgents.h"
+#include "NamedFlowCollection.h"
 #include "Node.h"
 #include "NodeList.h"
+#include "RenderRegion.h"
 #include "StylePropertySet.h"
 #include "StylePropertyShorthand.h"
 #include "StyleResolver.h"
 #include "StyleRule.h"
 #include "StyleSheetList.h"
 #include "WebKitNamedFlow.h"
-#include "WebKitNamedFlowCollection.h"
 
 #include <wtf/CurrentTime.h>
 #include <wtf/HashSet.h>
@@ -132,10 +133,10 @@ private:
 
 static unsigned computePseudoClassMask(InspectorArray* pseudoClassArray)
 {
-    DEFINE_STATIC_LOCAL(String, active, ("active"));
-    DEFINE_STATIC_LOCAL(String, hover, ("hover"));
-    DEFINE_STATIC_LOCAL(String, focus, ("focus"));
-    DEFINE_STATIC_LOCAL(String, visited, ("visited"));
+    DEFINE_STATIC_LOCAL(String, active, (ASCIILiteral("active")));
+    DEFINE_STATIC_LOCAL(String, hover, (ASCIILiteral("hover")));
+    DEFINE_STATIC_LOCAL(String, focus, (ASCIILiteral("focus")));
+    DEFINE_STATIC_LOCAL(String, visited, (ASCIILiteral("visited")));
     if (!pseudoClassArray || !pseudoClassArray->length())
         return PseudoNone;
 
@@ -467,13 +468,11 @@ InspectorCSSAgent::InspectorCSSAgent(InstrumentingAgents* instrumentingAgents, I
     , m_lastStyleSheetId(1)
 {
     m_domAgent->setDOMListener(this);
-    m_instrumentingAgents->setInspectorCSSAgent(this);
 }
 
 InspectorCSSAgent::~InspectorCSSAgent()
 {
     ASSERT(!m_domAgent);
-    m_instrumentingAgents->setInspectorCSSAgent(0);
     reset();
 }
 
@@ -481,12 +480,14 @@ void InspectorCSSAgent::setFrontend(InspectorFrontend* frontend)
 {
     ASSERT(!m_frontend);
     m_frontend = frontend->css();
+    m_instrumentingAgents->setInspectorCSSAgent(this);
 }
 
 void InspectorCSSAgent::clearFrontend()
 {
     ASSERT(m_frontend);
     m_frontend = 0;
+    m_instrumentingAgents->setInspectorCSSAgent(0);
     resetPseudoStates();
     String errorString;
     stopSelectorProfilerImpl(&errorString, false);
@@ -516,6 +517,7 @@ void InspectorCSSAgent::reset()
     m_cssStyleSheetToInspectorStyleSheet.clear();
     m_nodeToInspectorStyleSheet.clear();
     m_documentToInspectorStyleSheet.clear();
+    m_namedFlowCollectionsRequested.clear();
     resetPseudoStates();
 }
 
@@ -533,6 +535,24 @@ void InspectorCSSAgent::mediaQueryResultChanged()
 {
     if (m_frontend)
         m_frontend->mediaQueryResultChanged();
+}
+
+void InspectorCSSAgent::didCreateNamedFlow(Document* document, const AtomicString& name)
+{
+    int nodeId = m_domAgent->boundNodeId(document);
+    if (!nodeId || !m_namedFlowCollectionsRequested.contains(nodeId))
+        return;
+
+    m_frontend->namedFlowCreated(nodeId, name.string());
+}
+
+void InspectorCSSAgent::didRemoveNamedFlow(Document* document, const AtomicString& name)
+{
+    int nodeId = m_domAgent->boundNodeId(document);
+    if (!nodeId || !m_namedFlowCollectionsRequested.contains(nodeId))
+        return;
+
+    m_frontend->namedFlowRemoved(nodeId, name.string());
 }
 
 bool InspectorCSSAgent::forcePseudoState(Element* element, CSSSelector::PseudoType pseudoType)
@@ -563,33 +583,11 @@ bool InspectorCSSAgent::forcePseudoState(Element* element, CSSSelector::PseudoTy
     }
 }
 
-void InspectorCSSAgent::recalcStyleForPseudoStateIfNeeded(Element* element, InspectorArray* forcedPseudoClasses)
-{
-    int nodeId = m_domAgent->boundNodeId(element);
-    if (!nodeId)
-        return;
-
-    unsigned forcedPseudoState = computePseudoClassMask(forcedPseudoClasses);
-    NodeIdToForcedPseudoState::iterator it = m_nodeIdToForcedPseudoState.find(nodeId);
-    unsigned currentForcedPseudoState = it == m_nodeIdToForcedPseudoState.end() ? 0 : it->second;
-    bool needStyleRecalc = forcedPseudoState != currentForcedPseudoState;
-    if (!needStyleRecalc)
-        return;
-
-    if (forcedPseudoState)
-        m_nodeIdToForcedPseudoState.set(nodeId, forcedPseudoState);
-    else
-        m_nodeIdToForcedPseudoState.remove(nodeId);
-    element->ownerDocument()->styleResolverChanged(RecalcStyleImmediately);
-}
-
-void InspectorCSSAgent::getMatchedStylesForNode(ErrorString* errorString, int nodeId, const RefPtr<InspectorArray>* forcedPseudoClasses, const bool* includePseudo, const bool* includeInherited, RefPtr<TypeBuilder::Array<TypeBuilder::CSS::CSSRule> >& matchedCSSRules, RefPtr<TypeBuilder::Array<TypeBuilder::CSS::PseudoIdRules> >& pseudoIdRules, RefPtr<TypeBuilder::Array<TypeBuilder::CSS::InheritedStyleEntry> >& inheritedEntries)
+void InspectorCSSAgent::getMatchedStylesForNode(ErrorString* errorString, int nodeId, const bool* includePseudo, const bool* includeInherited, RefPtr<TypeBuilder::Array<TypeBuilder::CSS::CSSRule> >& matchedCSSRules, RefPtr<TypeBuilder::Array<TypeBuilder::CSS::PseudoIdRules> >& pseudoIdRules, RefPtr<TypeBuilder::Array<TypeBuilder::CSS::InheritedStyleEntry> >& inheritedEntries)
 {
     Element* element = elementForId(errorString, nodeId);
     if (!element)
         return;
-
-    recalcStyleForPseudoStateIfNeeded(element, forcedPseudoClasses ? forcedPseudoClasses->get() : 0);
 
     // Matched rules.
     StyleResolver* styleResolver = element->ownerDocument()->styleResolver();
@@ -650,13 +648,11 @@ void InspectorCSSAgent::getInlineStylesForNode(ErrorString* errorString, int nod
     attributesStyle = attributes ? attributes.release() : 0;
 }
 
-void InspectorCSSAgent::getComputedStyleForNode(ErrorString* errorString, int nodeId, const RefPtr<InspectorArray>* forcedPseudoClasses, RefPtr<TypeBuilder::Array<TypeBuilder::CSS::CSSComputedStyleProperty> >& style)
+void InspectorCSSAgent::getComputedStyleForNode(ErrorString* errorString, int nodeId, RefPtr<TypeBuilder::Array<TypeBuilder::CSS::CSSComputedStyleProperty> >& style)
 {
     Element* element = elementForId(errorString, nodeId);
     if (!element)
         return;
-
-    recalcStyleForPseudoStateIfNeeded(element, forcedPseudoClasses ? forcedPseudoClasses->get() : 0);
 
     RefPtr<CSSComputedStyleDeclaration> computedStyleInfo = CSSComputedStyleDeclaration::create(element, true);
     RefPtr<InspectorStyle> inspectorStyle = InspectorStyle::create(InspectorCSSId(), computedStyleInfo, 0);
@@ -787,7 +783,7 @@ void InspectorCSSAgent::getSupportedCSSProperties(ErrorString*, RefPtr<TypeBuild
     for (int i = firstCSSProperty; i <= lastCSSProperty; ++i) {
         CSSPropertyID id = convertToCSSPropertyID(i);
         RefPtr<TypeBuilder::CSS::CSSPropertyInfo> property = TypeBuilder::CSS::CSSPropertyInfo::create()
-            .setName(getPropertyName(id));
+            .setName(getPropertyNameString(id));
 
         const StylePropertyShorthand& shorthand = shorthandForProperty(id);
         if (!shorthand.length()) {
@@ -797,7 +793,7 @@ void InspectorCSSAgent::getSupportedCSSProperties(ErrorString*, RefPtr<TypeBuild
         RefPtr<TypeBuilder::Array<String> > longhands = TypeBuilder::Array<String>::create();
         for (unsigned j = 0; j < shorthand.length(); ++j) {
             CSSPropertyID longhandID = shorthand.properties()[j];
-            longhands->addItem(getPropertyName(longhandID));
+            longhands->addItem(getPropertyNameString(longhandID));
         }
         property->setLonghands(longhands);
         properties->addItem(property.release());
@@ -805,37 +801,57 @@ void InspectorCSSAgent::getSupportedCSSProperties(ErrorString*, RefPtr<TypeBuild
     cssProperties = properties.release();
 }
 
-void InspectorCSSAgent::getNamedFlowCollection(ErrorString* errorString, int nodeId, RefPtr<TypeBuilder::Array<String> >& result)
+void InspectorCSSAgent::forcePseudoState(ErrorString* errorString, int nodeId, const RefPtr<InspectorArray>& forcedPseudoClasses)
 {
-    Document* document = m_domAgent->assertDocument(errorString, nodeId);
+    Element* element = m_domAgent->assertElement(errorString, nodeId);
+    if (!element)
+        return;
+
+    unsigned forcedPseudoState = computePseudoClassMask(forcedPseudoClasses.get());
+    NodeIdToForcedPseudoState::iterator it = m_nodeIdToForcedPseudoState.find(nodeId);
+    unsigned currentForcedPseudoState = it == m_nodeIdToForcedPseudoState.end() ? 0 : it->second;
+    bool needStyleRecalc = forcedPseudoState != currentForcedPseudoState;
+    if (!needStyleRecalc)
+        return;
+
+    if (forcedPseudoState)
+        m_nodeIdToForcedPseudoState.set(nodeId, forcedPseudoState);
+    else
+        m_nodeIdToForcedPseudoState.remove(nodeId);
+    element->ownerDocument()->styleResolverChanged(RecalcStyleImmediately);
+}
+
+void InspectorCSSAgent::getNamedFlowCollection(ErrorString* errorString, int documentNodeId, RefPtr<TypeBuilder::Array<TypeBuilder::CSS::NamedFlow> >& result)
+{
+    Document* document = m_domAgent->assertDocument(errorString, documentNodeId);
     if (!document)
         return;
 
-    Vector<String> namedFlowsVector = document->namedFlows()->namedFlowsNames();
-    RefPtr<TypeBuilder::Array<String> > namedFlows = TypeBuilder::Array<String>::create();
+    m_namedFlowCollectionsRequested.add(documentNodeId);
+    Vector<RefPtr<WebKitNamedFlow> > namedFlowsVector = document->namedFlows()->namedFlows();
+    RefPtr<TypeBuilder::Array<TypeBuilder::CSS::NamedFlow> > namedFlows = TypeBuilder::Array<TypeBuilder::CSS::NamedFlow>::create();
 
-    for (Vector<String>::iterator it = namedFlowsVector.begin(); it != namedFlowsVector.end(); ++it)
-        namedFlows->addItem(*it);
+
+    for (Vector<RefPtr<WebKitNamedFlow> >::iterator it = namedFlowsVector.begin(); it != namedFlowsVector.end(); ++it)
+        namedFlows->addItem(buildObjectForNamedFlow(errorString, it->get(), documentNodeId));
 
     result = namedFlows.release();
 }
 
-void InspectorCSSAgent::getFlowByName(ErrorString* errorString, int nodeId, const String& flowName, RefPtr<TypeBuilder::CSS::NamedFlow>& result)
+void InspectorCSSAgent::getFlowByName(ErrorString* errorString, int documentNodeId, const String& flowName, RefPtr<TypeBuilder::CSS::NamedFlow>& result)
 {
-    Document* document = m_domAgent->assertDocument(errorString, nodeId);
+    Document* document = m_domAgent->assertDocument(errorString, documentNodeId);
     if (!document)
         return;
 
-    WebKitNamedFlow* namedFlow = document->namedFlows()->flowByName(flowName);
-    if (!namedFlow) {
+    WebKitNamedFlow* webkitNamedFlow = document->namedFlows()->flowByName(flowName);
+    if (!webkitNamedFlow) {
         *errorString = "No target CSS Named Flow found";
         return;
     }
 
-    result = TypeBuilder::CSS::NamedFlow::create()
-        .setNodeId(nodeId)
-        .setName(flowName)
-        .setOverset(namedFlow->overset());
+    RefPtr<WebKitNamedFlow> protector(webkitNamedFlow);
+    result = buildObjectForNamedFlow(errorString, webkitNamedFlow, documentNodeId);
 }
 
 void InspectorCSSAgent::startSelectorProfiler(ErrorString*)
@@ -1043,12 +1059,67 @@ PassRefPtr<TypeBuilder::CSS::CSSStyle> InspectorCSSAgent::buildObjectForAttribut
     if (!element->isStyledElement())
         return 0;
 
-    StylePropertySet* attributeStyle = static_cast<StyledElement*>(element)->attributeStyle();
+    const StylePropertySet* attributeStyle = static_cast<StyledElement*>(element)->attributeStyle();
     if (!attributeStyle)
         return 0;
 
-    RefPtr<InspectorStyle> inspectorStyle = InspectorStyle::create(InspectorCSSId(), attributeStyle->ensureCSSStyleDeclaration(), 0);
+    RefPtr<InspectorStyle> inspectorStyle = InspectorStyle::create(InspectorCSSId(), const_cast<StylePropertySet*>(attributeStyle)->ensureCSSStyleDeclaration(), 0);
     return inspectorStyle->buildObjectForStyle();
+}
+
+PassRefPtr<TypeBuilder::Array<TypeBuilder::CSS::Region> > InspectorCSSAgent::buildArrayForRegions(ErrorString* errorString, PassRefPtr<NodeList> regionList, int documentNodeId)
+{
+    RefPtr<TypeBuilder::Array<TypeBuilder::CSS::Region> > regions = TypeBuilder::Array<TypeBuilder::CSS::Region>::create();
+
+    for (unsigned i = 0; i < regionList->length(); ++i) {
+        TypeBuilder::CSS::Region::RegionOverset::Enum regionOverset;
+
+        switch (toElement(regionList->item(i))->renderRegion()->regionState()) {
+        case RenderRegion::RegionFit:
+            regionOverset = TypeBuilder::CSS::Region::RegionOverset::Fit;
+            break;
+        case RenderRegion::RegionEmpty:
+            regionOverset = TypeBuilder::CSS::Region::RegionOverset::Empty;
+            break;
+        case RenderRegion::RegionOverset:
+            regionOverset = TypeBuilder::CSS::Region::RegionOverset::Overset;
+            break;
+        case RenderRegion::RegionUndefined:
+            continue;
+        default:
+            ASSERT_NOT_REACHED();
+            continue;
+        }
+
+        RefPtr<TypeBuilder::CSS::Region> region = TypeBuilder::CSS::Region::create()
+            .setRegionOverset(regionOverset)
+            // documentNodeId was previously asserted
+            .setNodeId(m_domAgent->pushNodeToFrontend(errorString, documentNodeId, regionList->item(i)));
+
+        regions->addItem(region);
+    }
+
+    return regions.release();
+}
+
+PassRefPtr<TypeBuilder::CSS::NamedFlow> InspectorCSSAgent::buildObjectForNamedFlow(ErrorString* errorString, WebKitNamedFlow* webkitNamedFlow, int documentNodeId)
+{
+    RefPtr<NodeList> contentList = webkitNamedFlow->getContent();
+    RefPtr<TypeBuilder::Array<int> > content = TypeBuilder::Array<int>::create();
+
+    for (unsigned i = 0; i < contentList->length(); ++i) {
+        // documentNodeId was previously asserted
+        content->addItem(m_domAgent->pushNodeToFrontend(errorString, documentNodeId, contentList->item(i)));
+    }
+
+    RefPtr<TypeBuilder::CSS::NamedFlow> namedFlow = TypeBuilder::CSS::NamedFlow::create()
+        .setDocumentNodeId(documentNodeId)
+        .setName(webkitNamedFlow->name().string())
+        .setOverset(webkitNamedFlow->overset())
+        .setContent(content)
+        .setRegions(buildArrayForRegions(errorString, webkitNamedFlow->getRegions(), documentNodeId));
+
+    return namedFlow.release();
 }
 
 void InspectorCSSAgent::didRemoveDocument(Document* document)

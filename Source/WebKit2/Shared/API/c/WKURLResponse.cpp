@@ -28,6 +28,7 @@
 
 #include "WKAPICast.h"
 #include "WebURLResponse.h"
+#include <WebCore/KURL.h>
 
 using namespace WebKit;
 
@@ -36,3 +37,17 @@ WKTypeID WKURLResponseGetTypeID()
     return toAPI(WebURLResponse::APIType);
 }
 
+WKURLRef WKURLResponseCopyURL(WKURLResponseRef responseRef)
+{
+    return toCopiedURLAPI(toImpl(responseRef)->resourceResponse().url());
+}
+
+WKStringRef WKURLResponseCopyMIMEType(WKURLResponseRef responseRef)
+{
+    return toCopiedAPI(toImpl(responseRef)->resourceResponse().mimeType());
+}
+
+int32_t WKURLResponseHTTPStatusCode(WKURLResponseRef responseRef)
+{
+    return toImpl(responseRef)->resourceResponse().httpStatusCode();
+}

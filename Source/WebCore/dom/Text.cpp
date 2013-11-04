@@ -32,6 +32,7 @@
 #include "SVGNames.h"
 #endif
 
+#include "StyleInheritedData.h"
 #include <wtf/text/CString.h>
 #include <wtf/text/StringBuilder.h>
 
@@ -184,7 +185,7 @@ Node::NodeType Text::nodeType() const
     return TEXT_NODE;
 }
 
-PassRefPtr<Node> Text::cloneNode(bool /*deep*/)
+PassRefPtr<Node> Text::cloneNode(bool /*deep*/, ExceptionCode&)
 {
     return create(document(), data());
 }

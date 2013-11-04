@@ -231,7 +231,7 @@ static void fillMediaListChain(CSSRule* rule, Array<TypeBuilder::CSS::CSSMedia>*
             mediaList = 0;
 
         if (parentStyleSheet) {
-            sourceURL = parentStyleSheet->contents()->finalURL();
+            sourceURL = parentStyleSheet->contents()->baseURL();
             if (sourceURL.isEmpty())
                 sourceURL = InspectorDOMAgent::documentURLString(parentStyleSheet->ownerDocument());
         } else
@@ -250,8 +250,8 @@ static void fillMediaListChain(CSSRule* rule, Array<TypeBuilder::CSS::CSSMedia>*
                     Document* doc = styleSheet->ownerDocument();
                     if (doc)
                         sourceURL = doc->url();
-                    else if (!styleSheet->contents()->finalURL().isEmpty())
-                        sourceURL = styleSheet->contents()->finalURL();
+                    else if (!styleSheet->contents()->baseURL().isEmpty())
+                        sourceURL = styleSheet->contents()->baseURL();
                     else
                         sourceURL = "";
                     mediaArray->addItem(buildMediaObject(mediaList, styleSheet->ownerNode() ? MediaListSourceLinkedSheet : MediaListSourceInlineSheet, sourceURL));
@@ -325,7 +325,7 @@ PassRefPtr<TypeBuilder::Array<TypeBuilder::CSS::CSSComputedStyleProperty> > Insp
 bool InspectorStyle::setPropertyText(unsigned index, const String& propertyText, bool overwrite, String* oldText, ExceptionCode& ec)
 {
     ASSERT(m_parentStyleSheet);
-    DEFINE_STATIC_LOCAL(String, bogusPropertyName, ("-webkit-boguz-propertee"));
+    DEFINE_STATIC_LOCAL(String, bogusPropertyName, (ASCIILiteral("-webkit-boguz-propertee")));
 
     if (!m_parentStyleSheet->ensureParsedDataReady()) {
         ec = NOT_FOUND_ERR;
@@ -493,7 +493,7 @@ PassRefPtr<TypeBuilder::CSS::CSSStyle> InspectorStyle::styleWithProperties() con
     populateAllProperties(&properties);
 
     RefPtr<Array<TypeBuilder::CSS::CSSProperty> > propertiesObject = Array<TypeBuilder::CSS::CSSProperty>::create();
-    RefPtr<Array<InspectorObject> > shorthandEntries = Array<InspectorObject>::create();
+    RefPtr<Array<TypeBuilder::CSS::ShorthandEntry> > shorthandEntries = Array<TypeBuilder::CSS::ShorthandEntry>::create();
     HashMap<String, RefPtr<TypeBuilder::CSS::CSSProperty> > propertyNameToPreviousActiveProperty;
     HashSet<String> foundShorthands;
 
@@ -528,7 +528,7 @@ PassRefPtr<TypeBuilder::CSS::CSSStyle> InspectorStyle::styleWithProperties() con
                 bool shouldInactivate = false;
                 CSSPropertyID propertyId = cssPropertyID(name);
                 // Canonicalize property names to treat non-prefixed and vendor-prefixed property names the same (opacity vs. -webkit-opacity).
-                String canonicalPropertyName = propertyId ? String(getPropertyName(propertyId)) : name;
+                String canonicalPropertyName = propertyId ? getPropertyNameString(propertyId) : name;
                 HashMap<String, RefPtr<TypeBuilder::CSS::CSSProperty> >::iterator activeIt = propertyNameToPreviousActiveProperty.find(canonicalPropertyName);
                 if (activeIt != propertyNameToPreviousActiveProperty.end()) {
                     if (propertyEntry.parsedOk)
@@ -557,10 +557,10 @@ PassRefPtr<TypeBuilder::CSS::CSSStyle> InspectorStyle::styleWithProperties() con
                 if (!shorthand.isEmpty()) {
                     if (!foundShorthands.contains(shorthand)) {
                         foundShorthands.add(shorthand);
-                        RefPtr<InspectorObject> shorthandEntry = InspectorObject::create();
-                        shorthandEntry->setString("name", shorthand);
-                        shorthandEntry->setString("value", shorthandValue(shorthand));
-                        shorthandEntries->addItem(shorthandEntry.release());
+                        RefPtr<TypeBuilder::CSS::ShorthandEntry> entry = TypeBuilder::CSS::ShorthandEntry::create()
+                            .setName(shorthand)
+                            .setValue(shorthandValue(shorthand));
+                        shorthandEntries->addItem(entry);
                     }
                 }
             }
@@ -635,7 +635,7 @@ Vector<String> InspectorStyle::longhandProperties(const String& shorthandPropert
 
 NewLineAndWhitespace& InspectorStyle::newLineAndWhitespaceDelimiters() const
 {
-    DEFINE_STATIC_LOCAL(String, defaultPrefix, ("    "));
+    DEFINE_STATIC_LOCAL(String, defaultPrefix, (ASCIILiteral("    ")));
 
     if (m_formatAcquired)
         return m_format;
@@ -707,8 +707,8 @@ PassRefPtr<InspectorStyleSheet> InspectorStyleSheet::create(InspectorPageAgent* 
 // static
 String InspectorStyleSheet::styleSheetURL(CSSStyleSheet* pageStyleSheet)
 {
-    if (pageStyleSheet && !pageStyleSheet->contents()->finalURL().isEmpty())
-        return pageStyleSheet->contents()->finalURL().string();
+    if (pageStyleSheet && !pageStyleSheet->contents()->baseURL().isEmpty())
+        return pageStyleSheet->contents()->baseURL().string();
     return emptyString();
 }
 
@@ -737,12 +737,18 @@ String InspectorStyleSheet::finalURL() const
 
 void InspectorStyleSheet::reparseStyleSheet(const String& text)
 {
-    CSSStyleSheet::RuleMutationScope mutationScope(m_pageStyleSheet.get());
-    m_pageStyleSheet->contents()->clearRules();
-    m_pageStyleSheet->contents()->parseString(text);
-    m_pageStyleSheet->clearChildRuleCSSOMWrappers();
-    m_inspectorStyles.clear();
-    fireStyleSheetChanged();
+    {
+        // Have a separate scope for clearRules() (bug 95324).
+        CSSStyleSheet::RuleMutationScope mutationScope(m_pageStyleSheet.get());
+        m_pageStyleSheet->contents()->clearRules();
+    }
+    {
+        CSSStyleSheet::RuleMutationScope mutationScope(m_pageStyleSheet.get());
+        m_pageStyleSheet->contents()->parseString(text);
+        m_pageStyleSheet->clearChildRuleCSSOMWrappers();
+        m_inspectorStyles.clear();
+        fireStyleSheetChanged();
+    }
 }
 
 bool InspectorStyleSheet::setText(const String& text)
@@ -949,7 +955,7 @@ PassRefPtr<TypeBuilder::CSS::CSSStyle> InspectorStyleSheet::buildObjectForStyle(
     if (id.isEmpty()) {
         RefPtr<TypeBuilder::CSS::CSSStyle> bogusStyle = TypeBuilder::CSS::CSSStyle::create()
             .setCssProperties(Array<TypeBuilder::CSS::CSSProperty>::create())
-            .setShorthandEntries(Array<InspectorObject>::create());
+            .setShorthandEntries(Array<TypeBuilder::CSS::ShorthandEntry>::create());
         return bogusStyle.release();
     }
     RefPtr<InspectorStyle> inspectorStyle = inspectorStyleForId(id);

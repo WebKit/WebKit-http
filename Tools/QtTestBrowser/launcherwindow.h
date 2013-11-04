@@ -39,10 +39,6 @@
 #include <QtOpenGL/QGLWidget>
 #endif
 
-#if !defined(QT_NO_PRINTER)
-#include <QPrintPreviewDialog>
-#endif
-
 #include <QDebug>
 
 #include <cstdio>
@@ -81,6 +77,7 @@ public:
         , useOfflineStorageDatabase(false)
         , useOfflineWebApplicationCache(false)
         , useDiskCookies(true)
+        , enableScrollAnimator(false)
         , offlineStorageDefaultQuotaSize(0)
 #ifndef QT_NO_OPENGL
         , useQGLWidgetViewport(false)
@@ -104,6 +101,7 @@ public:
     bool useOfflineStorageDatabase;
     bool useOfflineWebApplicationCache;
     bool useDiskCookies;
+    bool enableScrollAnimator;
     quint64 offlineStorageDefaultQuotaSize;
 #ifndef QT_NO_OPENGL
     bool useQGLWidgetViewport;
@@ -125,7 +123,7 @@ public:
 
     bool eventFilter(QObject* obj, QEvent* event);
 
-protected slots:
+protected Q_SLOTS:
     void loadStarted();
     void loadFinished();
 
@@ -166,6 +164,7 @@ protected slots:
     void toggleLocalStorage(bool toggle);
     void toggleOfflineStorageDatabase(bool toggle);
     void toggleOfflineWebApplicationCache(bool toggle);
+    void toggleScrollAnimator(bool toggle);
     void setOfflineStorageDefaultQuota();
 #ifndef QT_NO_LINEEDIT
     void showFindBar();
@@ -188,12 +187,12 @@ protected slots:
     void fileDownloadFinished();
 #endif
 
-public slots:
+public Q_SLOTS:
     LauncherWindow* newWindow();
     LauncherWindow* cloneWindow();
     void updateFPS(int fps);
 
-signals:
+Q_SIGNALS:
     void enteredFullScreenMode(bool on);
 
 private:

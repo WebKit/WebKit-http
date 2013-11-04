@@ -23,7 +23,6 @@
 #include "BackingStore.h"
 #include "BackingStoreClient.h"
 #include "BackingStore_p.h"
-#include "CString.h"
 #include "ColorChooser.h"
 #include "DatabaseTracker.h"
 #include "Document.h"
@@ -70,6 +69,8 @@
 #include <BlackBerryPlatformSettings.h>
 #include <BlackBerryPlatformWindow.h>
 
+#include <wtf/text/CString.h>
+
 #define DEBUG_OVERFLOW_DETECTION 0
 
 using namespace BlackBerry::WebKit;
@@ -78,12 +79,9 @@ using BlackBerry::Platform::Graphics::Window;
 
 namespace WebCore {
 
-static CString frameOrigin(Frame* frame)
+static CString toOriginString(Frame* frame)
 {
-    DOMWindow* window = frame->domWindow();
-    SecurityOrigin* origin = window->securityOrigin();
-    CString latinOrigin = origin->toString().latin1();
-    return latinOrigin;
+    return frame->document()->securityOrigin()->toString().latin1();
 }
 
 ChromeClientBlackBerry::ChromeClientBlackBerry(WebPagePrivate* pagePrivate)
@@ -94,8 +92,10 @@ ChromeClientBlackBerry::ChromeClientBlackBerry(WebPagePrivate* pagePrivate)
 void ChromeClientBlackBerry::addMessageToConsole(MessageSource, MessageType, MessageLevel, const String& message, unsigned int lineNumber, const String& sourceID)
 {
 #if !defined(PUBLIC_BUILD) || !PUBLIC_BUILD
-    if (m_webPagePrivate->m_dumpRenderTree)
+    if (m_webPagePrivate->m_dumpRenderTree) {
         m_webPagePrivate->m_dumpRenderTree->addMessageToConsole(message, lineNumber, sourceID);
+        return;
+    }
 #endif
 
     m_webPagePrivate->m_client->addMessageToConsole(message.characters(), message.length(), sourceID.characters(), sourceID.length(), lineNumber);
@@ -111,7 +111,7 @@ void ChromeClientBlackBerry::runJavaScriptAlert(Frame* frame, const String& mess
 #endif
 
     TimerBase::fireTimersInNestedEventLoop();
-    CString latinOrigin = frameOrigin(frame);
+    CString latinOrigin = toOriginString(frame);
     m_webPagePrivate->m_client->runJavaScriptAlert(message.characters(), message.length(), latinOrigin.data(), latinOrigin.length());
 }
 
@@ -123,7 +123,7 @@ bool ChromeClientBlackBerry::runJavaScriptConfirm(Frame* frame, const String& me
 #endif
 
     TimerBase::fireTimersInNestedEventLoop();
-    CString latinOrigin = frameOrigin(frame);
+    CString latinOrigin = toOriginString(frame);
     return m_webPagePrivate->m_client->runJavaScriptConfirm(message.characters(), message.length(), latinOrigin.data(), latinOrigin.length());
 }
 
@@ -137,7 +137,7 @@ bool ChromeClientBlackBerry::runJavaScriptPrompt(Frame* frame, const String& mes
 #endif
 
     TimerBase::fireTimersInNestedEventLoop();
-    CString latinOrigin = frameOrigin(frame);
+    CString latinOrigin = toOriginString(frame);
     WebString clientResult;
     if (m_webPagePrivate->m_client->runJavaScriptPrompt(message.characters(), message.length(), defaultValue.characters(), defaultValue.length(), latinOrigin.data(), latinOrigin.length(), clientResult)) {
         result = clientResult;
@@ -386,7 +386,7 @@ bool ChromeClientBlackBerry::runBeforeUnloadConfirmPanel(const String& message, 
 #endif
 
     TimerBase::fireTimersInNestedEventLoop();
-    CString latinOrigin = frameOrigin(frame);
+    CString latinOrigin = toOriginString(frame);
     return m_webPagePrivate->m_client->runBeforeUnloadConfirmPanel(message.characters(), message.length(), latinOrigin.data(), latinOrigin.length());
 }
 
@@ -513,14 +513,25 @@ void ChromeClientBlackBerry::runOpenPanel(Frame*, PassRefPtr<FileChooser> choose
     for (unsigned i = 0; i < numberOfInitialFiles; ++i)
         initialFiles[i] = chooser->settings().selectedFiles[i];
 
+    SharedArray<WebString> acceptMIMETypes;
+    unsigned numberOfTypes = chooser->settings().acceptMIMETypes.size();
+    if (numberOfTypes > 0)
+        acceptMIMETypes.reset(new WebString[numberOfTypes], numberOfTypes);
+    for (unsigned i = 0; i < numberOfTypes; ++i)
+        acceptMIMETypes[i] = chooser->settings().acceptMIMETypes[i];
+
+    WebString capture;
+#if ENABLE(MEDIA_CAPTURE)
+    capture = chooser->settings().capture;
+#endif
+
     SharedArray<WebString> chosenFiles;
 
     {
         PageGroupLoadDeferrer deferrer(m_webPagePrivate->m_page, true);
         TimerBase::fireTimersInNestedEventLoop();
 
-        // FIXME: Use chooser->settings().acceptMIMETypes instead of WebString() for the second parameter.
-        if (!m_webPagePrivate->m_client->chooseFilenames(chooser->settings().allowsMultipleFiles, WebString(), initialFiles, chosenFiles))
+        if (!m_webPagePrivate->m_client->chooseFilenames(chooser->settings().allowsMultipleFiles, acceptMIMETypes, initialFiles, capture, chosenFiles))
             return;
     }
 
@@ -757,7 +768,7 @@ void ChromeClientBlackBerry::fullScreenRendererChanged(RenderBox* fullScreenRend
 void ChromeClientBlackBerry::requestWebGLPermission(Frame* frame)
 {
     if (frame) {
-        CString latinOrigin = frameOrigin(frame);
+        CString latinOrigin = toOriginString(frame);
         m_webPagePrivate->m_client->requestWebGLPermission(latinOrigin.data());
     }
 }
@@ -815,6 +826,12 @@ PassOwnPtr<ColorChooser> ChromeClientBlackBerry::createColorChooser(ColorChooser
     return nullptr;
 }
 
+#if ENABLE(NAVIGATOR_CONTENT_UTILS)
+void ChromeClientBlackBerry::registerProtocolHandler(const String& scheme, const String& baseURL, const String& url, const String& title)
+{
+    m_webPagePrivate->m_client->registerProtocolHandler(scheme, baseURL, url, title);
+}
+
 #if ENABLE(CUSTOM_SCHEME_HANDLER)
 ChromeClient::CustomHandlersState ChromeClientBlackBerry::isProtocolHandlerRegistered(const String& scheme, const String& baseURL, const String& url)
 {
@@ -826,12 +843,6 @@ void ChromeClientBlackBerry::unregisterProtocolHandler(const String& scheme, con
     m_webPagePrivate->m_client->unregisterProtocolHandler(scheme, baseURL, url);
 }
 #endif
-
-#if ENABLE(REGISTER_PROTOCOL_HANDLER)
-void ChromeClientBlackBerry::registerProtocolHandler(const String& scheme, const String& baseURL, const String& url, const String& title)
-{
-    m_webPagePrivate->m_client->registerProtocolHandler(scheme, baseURL, url, title);
-}
 #endif
 
 } // namespace WebCore

@@ -4,11 +4,13 @@ import QtWebKit 3.0
 import QtWebKit.experimental 1.0
 import "../common"
 
-Item {
-    TestWebView {
-        id: webView
-        property variant lastResult
-    }
+
+TestWebView {
+    id: webView
+    property variant lastResult
+    width: 400
+    height: 300
+    focus: true
 
     SignalSpy {
         id: resultSpy
@@ -25,10 +27,8 @@ Item {
         }
 
         function test_devicePixelRatio() {
-            expectFail("", "This currently fails since window.devicePixelRatio doesn't return the updated value.")
-
             resultSpy.clear()
-            webView.url = "about:blank"
+            webView.url = Qt.resolvedUrl("../common/test1.html");
             webView.experimental.devicePixelRatio = 2.0
             verify(webView.waitForLoadSucceeded())
 
@@ -44,14 +44,13 @@ Item {
         }
 
         function test_devicePixelRatioMediaQuery() {
-            expectFail("", "This currently fails since the devicePixelRatio from the QML API isn't propagated correctly.")
             resultSpy.clear()
-            webView.url = "about:blank"
+            webView.url = Qt.resolvedUrl("../common/test2.html");
             webView.experimental.devicePixelRatio = 2.0
             verify(webView.waitForLoadSucceeded())
 
             webView.experimental.evaluateJavaScript(
-                "(function() { return window.matchMedia('-webkit-device-pixel-ratio: 2').matches })()",
+                "(function() { return window.matchMedia(\"(-webkit-device-pixel-ratio: 2)\").matches })()",
                 function(result) {
                     webView.lastResult = result
                 })

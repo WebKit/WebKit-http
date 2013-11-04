@@ -424,6 +424,14 @@
 				>
 			</File>
 			<File
+				RelativePath="..\wtf\text\IntegerToStringConversion.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\wtf\text\IntegerToStringConversion.h"
+				>
+			</File>
+			<File
 				RelativePath="..\wtf\text\StringBuffer.h"
 				>
 			</File>
@@ -797,6 +805,10 @@
 			>
 		</File>
 		<File
+			RelativePath="..\wtf\GregorianDateTime.cpp"
+			>
+		</File>
+		<File
 			RelativePath="..\wtf\GregorianDateTime.h"
 			>
 		</File>
@@ -1078,6 +1090,10 @@
 		</File>
 		<File
 			RelativePath="..\wtf\RetainPtr.h"
+			>
+		</File>
+		<File
+			RelativePath="..\wtf\SaturatedArithmetic.h"
 			>
 		</File>
 		<File

@@ -144,7 +144,6 @@ sub GetClassName
     return "WebDOMObject" if $name eq "DOMObject";
     return "bool" if $name eq "boolean";
     return $name if $codeGenerator->IsPrimitiveType($name);
-    return "WebDOMCustomVoidCallback" if $name eq "VoidCallback";
 
     return "WebDOM$name";
 }
@@ -223,6 +222,8 @@ sub SkipAttribute
                 or $attribute->signature->extendedAttributes->{"CustomGetter"};
 
     return 1 if $attribute->signature->type =~ /Constructor$/;
+
+    return 1 if $codeGenerator->IsTypedArrayType($attribute->signature->type);
 
     if ($codeGenerator->GetArrayType($attribute->signature->type)) {
         return 1;
@@ -324,12 +325,7 @@ sub AddIncludesForType
         $implIncludes{"SerializedScriptValue.h"} = 1;
         return;
     }
-    
-    if ($type eq "VoidCallback") {
-        $implIncludes{"WebDOMCustomVoidCallback.h"} = 1;
-        return;
-    }
-    
+
     # Also include CSSImportRule so that the toWebKit methods for subclasses are found
     if ($type eq "CSSRule") {
         $implIncludes{"WebDOMCSSImportRule.h"} = 1;
@@ -491,6 +487,7 @@ sub GenerateHeader
     if ($numFunctions > 0) {
         foreach my $function (@{$dataNode->functions}) {
             next if SkipFunction($function);
+            next if ($function->signature->name eq "set" and $dataNode->extendedAttributes->{"TypedArray"});
             my $functionName = $function->signature->extendedAttributes->{"ImplementedAs"} || $function->signature->name;
 
             my $returnType = GetCPPType($function->signature->type, 0);
@@ -812,6 +809,7 @@ sub GenerateImplementation
         foreach my $function (@{$dataNode->functions}) {
             # Treat CPPPureInterface as Custom as well, since the WebCore versions will take a script context as well
             next if SkipFunction($function) || $dataNode->extendedAttributes->{"CPPPureInterface"};
+            next if ($function->signature->name eq "set" and $dataNode->extendedAttributes->{"TypedArray"});
             AddIncludesForType($function->signature->type);
 
             my $functionName = $function->signature->name;

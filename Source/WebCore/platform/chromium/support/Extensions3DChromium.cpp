@@ -29,7 +29,9 @@
 
 #include "GraphicsContext3D.h"
 #include "GraphicsContext3DPrivate.h"
+#include "NotImplemented.h"
 #include <public/WebGraphicsContext3D.h>
+#include <wtf/text/CString.h>
 
 namespace WebCore {
 
@@ -179,6 +181,36 @@ void Extensions3DChromium::copyTextureCHROMIUM(GC3Denum target, Platform3DObject
 void Extensions3DChromium::shallowFlushCHROMIUM()
 {
     return m_private->webContext()->shallowFlushCHROMIUM();
+}
+
+void Extensions3DChromium::readnPixelsEXT(int x, int y, GC3Dsizei width, GC3Dsizei height, GC3Denum format, GC3Denum type, GC3Dsizei bufSize, void *data)
+{
+    notImplemented();
+}
+
+void Extensions3DChromium::getnUniformfvEXT(GC3Duint program, int location, GC3Dsizei bufSize, float *params)
+{
+    notImplemented();
+}
+
+void Extensions3DChromium::getnUniformivEXT(GC3Duint program, int location, GC3Dsizei bufSize, int *params)
+{
+    notImplemented();
+}
+
+void Extensions3DChromium::insertEventMarkerEXT(const String& marker)
+{
+    m_private->webContext()->insertEventMarkerEXT(marker.utf8().data());
+}
+
+void Extensions3DChromium::pushGroupMarkerEXT(const String& marker)
+{
+    m_private->webContext()->pushGroupMarkerEXT(marker.utf8().data());
+}
+
+void Extensions3DChromium::popGroupMarkerEXT(void)
+{
+    m_private->webContext()->popGroupMarkerEXT();
 }
 
 } // namespace WebCore

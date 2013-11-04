@@ -13,7 +13,7 @@ layer at (0,0) size 800x600
               RenderText {#text} at (3,3) size 38x36
                 text run at (3,3) width 38: "bar"
           RenderTableRow {TR} at (0,41) size 88x41
-            RenderTableCell {TD} at (0,42) size 45x39 [border:] [r=1 c=0 rs=1 cs=1]
+            RenderTableCell {TD} at (0,42) size 45x39 [border: none] [r=1 c=0 rs=1 cs=1]
               RenderText {#text} at (3,1) size 40x36
                 text run at (3,1) width 40: "foo"
             RenderTableCell {TD} at (45,41) size 43x41 [border: (2px solid #000000)] [r=1 c=1 rs=1 cs=1]
@@ -30,7 +30,7 @@ layer at (0,0) size 800x600
                 RenderText {#text} at (3,14) size 38x36
                   text run at (3,14) width 38: "bar"
             RenderTableRow {TR} at (0,52) size 110x52
-              RenderTableCell {TD} at (0,53) size 56x50 [border:] [r=1 c=0 rs=1 cs=1]
+              RenderTableCell {TD} at (0,53) size 56x50 [border: none] [r=1 c=0 rs=1 cs=1]
                 RenderText {#text} at (14,1) size 40x36
                   text run at (14,1) width 40: "foo"
               RenderTableCell {TD} at (56,52) size 54x52 [border: (2px solid #000000)] [r=1 c=1 rs=1 cs=1]
@@ -47,7 +47,7 @@ layer at (0,0) size 800x600
                 RenderText {#text} at (3,26) size 38x36
                   text run at (3,26) width 38: "bar"
             RenderTableRow {TR} at (0,64) size 135x65
-              RenderTableCell {TD} at (0,65) size 68x63 [border:] [r=1 c=0 rs=1 cs=1]
+              RenderTableCell {TD} at (0,65) size 68x63 [border: none] [r=1 c=0 rs=1 cs=1]
                 RenderText {#text} at (26,1) size 40x36
                   text run at (26,1) width 40: "foo"
               RenderTableCell {TD} at (68,64) size 67x65 [border: (2px solid #000000)] [r=1 c=1 rs=1 cs=1]

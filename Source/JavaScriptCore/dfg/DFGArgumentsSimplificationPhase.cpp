@@ -145,7 +145,7 @@ public:
         }
         
         // Figure out which variables alias the arguments and nothing else, and are
-        // used only for GetByVal and GetArgumentsLength accesses. At the same time,
+        // used only for GetByVal and GetArrayLength accesses. At the same time,
         // identify uses of CreateArguments that are not consistent with the arguments
         // being aliased only to variables that satisfy these constraints.
         for (BlockIndex blockIndex = 0; blockIndex < m_graph.m_blocks.size(); ++blockIndex) {
@@ -277,34 +277,25 @@ public:
                 }
                     
                 case GetByVal: {
-                    if (!node.prediction()
-                        || !m_graph[node.child1()].prediction()
-                        || !m_graph[node.child2()].prediction()) {
+                    if (node.arrayMode() != Array::Arguments) {
                         observeBadArgumentsUses(node);
                         break;
                     }
-                    
-                    if (!isActionableArraySpeculation(m_graph[node.child1()].prediction())
-                        || !m_graph[node.child2()].shouldSpeculateInteger()) {
-                        observeBadArgumentsUses(node);
-                        break;
-                    }
-                    
-                    if (m_graph[node.child1()].shouldSpeculateArguments()) {
-                        // If arguments is used as an index, then it's an escaping use.
-                        // That's so awful and pretty much impossible since it would
-                        // imply that the arguments were predicted integer, but it's
-                        // good to be defensive and thorough.
-                        observeBadArgumentsUse(node.child2());
-                        observeProperArgumentsUse(node, node.child1());
-                        break;
-                    }
-                    
-                    observeBadArgumentsUses(node);
+
+                    // That's so awful and pretty much impossible since it would
+                    // imply that the arguments were predicted integer, but it's
+                    // good to be defensive and thorough.
+                    observeBadArgumentsUse(node.child2());
+                    observeProperArgumentsUse(node, node.child1());
                     break;
                 }
                     
-                case GetArgumentsLength: {
+                case GetArrayLength: {
+                    if (node.arrayMode() != Array::Arguments) {
+                        observeBadArgumentsUses(node);
+                        break;
+                    }
+                        
                     observeProperArgumentsUse(node, node.child1());
                     break;
                 }
@@ -315,6 +306,18 @@ public:
                     // CreateArguments - is just being kept alive, then this transformation
                     // will not break this, since the Phantom will now just keep alive a
                     // PhantomArguments and OSR exit will still do the right things.
+                    break;
+                    
+                case CheckStructure:
+                case ForwardCheckStructure:
+                case StructureTransitionWatchpoint:
+                case ForwardStructureTransitionWatchpoint:
+                case CheckArray:
+                    // We don't care about these because if we get uses of the relevant
+                    // variable then we can safely get rid of these, too. This of course
+                    // relies on there not being any information transferred by the CFA
+                    // from a CheckStructure on one variable to the information about the
+                    // structures of another variable.
                     break;
                     
                 default:
@@ -471,39 +474,47 @@ public:
                     break;
                 }
                     
-                case GetByVal: {
-                    if (!node.prediction()
-                        || !m_graph[node.child1()].prediction()
-                        || !m_graph[node.child2()].prediction())
+                case CheckStructure:
+                case ForwardCheckStructure:
+                case StructureTransitionWatchpoint:
+                case ForwardStructureTransitionWatchpoint:
+                case CheckArray: {
+                    // We can just get rid of this node, if it references a phantom argument.
+                    if (!isOKToOptimize(m_graph[node.child1()]))
                         break;
-                    
-                    if (!isActionableArraySpeculation(m_graph[node.child1()].prediction())
-                        || !m_graph[node.child2()].shouldSpeculateInteger())
-                        break;
-                    
-                    if (m_graph[node.child1()].shouldSpeculateArguments()) {
-                        // This can be simplified to GetMyArgumentByVal if we know that
-                        // it satisfies either condition (1) or (2):
-                        // 1) Its first child is a valid ArgumentsAliasingData and the
-                        //    InlineCallFrame* is not marked as creating arguments.
-                        // 2) Its first child is CreateArguments and its InlineCallFrame*
-                        //    is not marked as creating arguments.
-                        
-                        if (!isOKToOptimize(m_graph[node.child1()]))
-                            break;
-                        
-                        m_graph.deref(node.child1());
-                        node.children.child1() = node.children.child2();
-                        node.children.child2() = Edge();
-                        node.setOpAndDefaultFlags(GetMyArgumentByVal);
-                        changed = true;
-                        --indexInBlock; // Force reconsideration of this op now that it's a GetMyArgumentByVal.
-                        break;
-                    }
+                    m_graph.deref(node.child1());
+                    node.setOpAndDefaultFlags(Phantom);
+                    node.children.setChild1(Edge());
                     break;
                 }
                     
-                case GetArgumentsLength: {
+                case GetByVal: {
+                    if (node.arrayMode() != Array::Arguments)
+                        break;
+
+                    // This can be simplified to GetMyArgumentByVal if we know that
+                    // it satisfies either condition (1) or (2):
+                    // 1) Its first child is a valid ArgumentsAliasingData and the
+                    //    InlineCallFrame* is not marked as creating arguments.
+                    // 2) Its first child is CreateArguments and its InlineCallFrame*
+                    //    is not marked as creating arguments.
+                    
+                    if (!isOKToOptimize(m_graph[node.child1()]))
+                        break;
+                    
+                    m_graph.deref(node.child1());
+                    node.children.child1() = node.children.child2();
+                    node.children.child2() = Edge();
+                    node.setOpAndDefaultFlags(GetMyArgumentByVal);
+                    changed = true;
+                    --indexInBlock; // Force reconsideration of this op now that it's a GetMyArgumentByVal.
+                    break;
+                }
+                    
+                case GetArrayLength: {
+                    if (node.arrayMode() != Array::Arguments)
+                        break;
+                    
                     if (!isOKToOptimize(m_graph[node.child1()]))
                         break;
                     

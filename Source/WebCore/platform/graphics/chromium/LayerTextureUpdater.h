@@ -29,8 +29,8 @@
 
 #if USE(ACCELERATED_COMPOSITING)
 
+#include "CCPrioritizedTexture.h"
 #include "GraphicsTypes3D.h"
-#include "cc/CCPrioritizedTexture.h"
 #include <wtf/RefCounted.h>
 
 namespace WebCore {
@@ -50,7 +50,7 @@ public:
         CCPrioritizedTexture* texture() { return m_texture.get(); }
         void swapTextureWith(OwnPtr<CCPrioritizedTexture>& texture) { m_texture.swap(texture); }
         virtual void prepareRect(const IntRect& /* sourceRect */, CCRenderingStats&) { }
-        virtual void updateRect(CCResourceProvider*, const IntRect& sourceRect, const IntRect& destRect) = 0;
+        virtual void updateRect(CCResourceProvider*, const IntRect& sourceRect, const IntSize& destOffset) = 0;
     protected:
         explicit Texture(PassOwnPtr<CCPrioritizedTexture> texture) : m_texture(texture) { }
 

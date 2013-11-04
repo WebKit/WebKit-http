@@ -89,6 +89,8 @@ public:
 
     virtual bool canContainRangeEndPoint() const { return false; }
 
+    virtual void reportMemoryUsage(MemoryObjectInfo*) const OVERRIDE;
+
 protected:
     HTMLImageElement(const QualifiedName&, Document*, HTMLFormElement* = 0);
 
@@ -110,7 +112,7 @@ private:
     virtual void attach();
     virtual RenderObject* createRenderer(RenderArena*, RenderStyle*);
 
-    virtual bool canStartSelection() const { return false; }
+    virtual bool canStartSelection() const;
 
     virtual bool isURLAttribute(const Attribute&) const OVERRIDE;
 

@@ -30,6 +30,7 @@
 #include "StylePropertySet.h"
 #include "StyleRule.h"
 #include <wtf/Vector.h>
+#include <wtf/text/StringBuilder.h>
 
 namespace WebCore {
 
@@ -54,14 +55,17 @@ CSSStyleDeclaration* CSSPageRule::style() const
 
 String CSSPageRule::selectorText() const
 {
-    String text = "@page";
+    StringBuilder text;
+    text.appendLiteral("@page");
     const CSSSelector* selector = m_pageRule->selector();
     if (selector) {
         String pageSpecification = selector->selectorText();
-        if (!pageSpecification.isEmpty() && pageSpecification != starAtom)
-            text += " " + pageSpecification;
+        if (!pageSpecification.isEmpty() && pageSpecification != starAtom) {
+            text.append(' ');
+            text.append(pageSpecification);
+        }
     }
-    return text;
+    return text.toString();
 }
 
 void CSSPageRule::setSelectorText(const String& selectorText)
@@ -74,17 +78,20 @@ void CSSPageRule::setSelectorText(const String& selectorText)
 
     CSSStyleSheet::RuleMutationScope mutationScope(this);
 
-    String oldSelectorText = this->selectorText();
     m_pageRule->wrapperAdoptSelectorList(selectorList);
 }
 
 String CSSPageRule::cssText() const
 {
-    String result = selectorText();
-    result += " { ";
-    result += m_pageRule->properties()->asText();
-    result += "}";
-    return result;
+    StringBuilder result;
+    result.append(selectorText());
+    result.appendLiteral(" { ");
+    String decls = m_pageRule->properties()->asText();
+    result.append(decls);
+    if (!decls.isEmpty())
+        result.append(' ');
+    result.append('}');
+    return result.toString();
 }
 
 void CSSPageRule::reattach(StyleRulePage* rule)
@@ -93,6 +100,14 @@ void CSSPageRule::reattach(StyleRulePage* rule)
     m_pageRule = rule;
     if (m_propertiesCSSOMWrapper)
         m_propertiesCSSOMWrapper->reattach(m_pageRule->mutableProperties());
+}
+
+void CSSPageRule::reportDescendantMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
+{
+    MemoryClassInfo info(memoryObjectInfo, this, MemoryInstrumentation::CSS);
+    CSSRule::reportBaseClassMemoryUsage(memoryObjectInfo);
+    info.addInstrumentedMember(m_pageRule);
+    info.addInstrumentedMember(m_propertiesCSSOMWrapper);
 }
 
 } // namespace WebCore

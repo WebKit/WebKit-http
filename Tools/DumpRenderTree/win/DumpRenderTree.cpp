@@ -32,10 +32,10 @@
 #include "EditingDelegate.h"
 #include "FrameLoadDelegate.h"
 #include "HistoryDelegate.h"
-#include "LayoutTestController.h"
 #include "PixelDumpSupport.h"
 #include "PolicyDelegate.h"
 #include "ResourceLoadDelegate.h"
+#include "TestRunner.h"
 #include "UIDelegate.h"
 #include "WebCoreTestSupport.h"
 #include "WorkQueueItem.h"
@@ -80,7 +80,7 @@ static LPCWSTR fontsEnvironmentVariable = L"WEBKIT_TESTFONTS";
 const LPCWSTR kDumpRenderTreeClassName = L"DumpRenderTreeWindow";
 
 static bool dumpTree = true;
-static bool dumpPixels;
+static bool dumpPixelsForCurrentTest;
 static bool dumpAllPixels;
 static bool printSeparators;
 static bool leakChecking = false;
@@ -105,7 +105,7 @@ COMPtr<HistoryDelegate> sharedHistoryDelegate;
 IWebFrame* frame;
 HWND webViewWindow;
 
-RefPtr<LayoutTestController> gLayoutTestController;
+RefPtr<TestRunner> gTestRunner;
 
 UINT_PTR waitToDumpWatchdog = 0;
 
@@ -424,7 +424,7 @@ void dumpFrameScrollPosition(IWebFrame* frame)
         printf("scrolled to %.f,%.f\n", (double)scrollPosition.cx, (double)scrollPosition.cy);
     }
 
-    if (::gLayoutTestController->dumpChildFrameScrollPositions()) {
+    if (::gTestRunner->dumpChildFrameScrollPositions()) {
         COMPtr<IEnumVARIANT> enumKids;
         if (FAILED(frame->childFrames(&enumKids)))
             return;
@@ -481,7 +481,7 @@ static wstring dumpFramesAsText(IWebFrame* frame)
 
     SysFreeString(innerText);
 
-    if (::gLayoutTestController->dumpChildFramesAsText()) {
+    if (::gTestRunner->dumpChildFramesAsText()) {
         COMPtr<IEnumVARIANT> enumKids;
         if (FAILED(frame->childFrames(&enumKids)))
             return L"";
@@ -713,8 +713,8 @@ void dump()
         if (SUCCEEDED(dataSource->response(&response)) && response) {
             BSTR mimeType;
             if (SUCCEEDED(response->MIMEType(&mimeType)) && !_tcscmp(mimeType, TEXT("text/plain"))) {
-                ::gLayoutTestController->setDumpAsText(true);
-                ::gLayoutTestController->setGeneratePixelResults(false);
+                ::gTestRunner->setDumpAsText(true);
+                ::gTestRunner->setGeneratePixelResults(false);
             }
             SysFreeString(mimeType);
         }
@@ -726,18 +726,18 @@ void dump()
         ::InvalidateRect(webViewWindow, 0, TRUE);
         ::SendMessage(webViewWindow, WM_PAINT, 0, 0);
 
-        if (::gLayoutTestController->dumpAsText()) {
+        if (::gTestRunner->dumpAsText()) {
             wstring result = dumpFramesAsText(frame);
             resultString = SysAllocStringLen(result.data(), result.size());
         } else {
             COMPtr<IWebFramePrivate> framePrivate;
             if (FAILED(frame->QueryInterface(&framePrivate)))
                 goto fail;
-            framePrivate->renderTreeAsExternalRepresentation(gLayoutTestController->isPrinting(), &resultString);
+            framePrivate->renderTreeAsExternalRepresentation(gTestRunner->isPrinting(), &resultString);
         }
         
         if (!resultString)
-            printf("ERROR: nil result from %s", ::gLayoutTestController->dumpAsText() ? "IDOMElement::innerText" : "IFrameViewPrivate::renderTreeAsExternalRepresentation");
+            printf("ERROR: nil result from %s", ::gTestRunner->dumpAsText() ? "IDOMElement::innerText" : "IFrameViewPrivate::renderTreeAsExternalRepresentation");
         else {
             unsigned stringLength = SysStringLen(resultString);
             int bufferSize = ::WideCharToMultiByte(CP_UTF8, 0, resultString, stringLength, 0, 0, 0, 0);
@@ -745,10 +745,10 @@ void dump()
             ::WideCharToMultiByte(CP_UTF8, 0, resultString, stringLength, buffer, bufferSize + 1, 0, 0);
             fwrite(buffer, 1, bufferSize, stdout);
             free(buffer);
-            if (!::gLayoutTestController->dumpAsText())
+            if (!::gTestRunner->dumpAsText())
                 dumpFrameScrollPosition(frame);
         }
-        if (::gLayoutTestController->dumpBackForwardList())
+        if (::gTestRunner->dumpBackForwardList())
             dumpBackForwardListForAllWindows();
     }
 
@@ -759,11 +759,11 @@ void dump()
         fflush(stderr);
     }
 
-    if (dumpPixels
-     && gLayoutTestController->generatePixelResults()
-     && !gLayoutTestController->dumpDOMAsWebArchive()
-     && !gLayoutTestController->dumpSourceAsWebArchive())
-        dumpWebViewAsPixelsAndCompareWithExpected(gLayoutTestController->expectedPixelHash());
+    if (dumpPixelsForCurrentTest
+     && gTestRunner->generatePixelResults()
+     && !gTestRunner->dumpDOMAsWebArchive()
+     && !gTestRunner->dumpSourceAsWebArchive())
+        dumpWebViewAsPixelsAndCompareWithExpected(gTestRunner->expectedPixelHash());
 
     printf("#EOF\n");   // terminate the (possibly empty) pixels block
     fflush(stdout);
@@ -893,7 +893,7 @@ static void resetWebViewToConsistentStateBeforeTesting()
     if (SUCCEEDED(webView->preferences(&preferences)))
         resetDefaultsToConsistentValues(preferences.get());
 
-    if (gLayoutTestController) {
+    if (gTestRunner) {
         JSGlobalContextRef context = frame->globalContext();
         WebCoreTestSupport::resetInternalsObject(context);
     }
@@ -934,34 +934,28 @@ static void resetWebViewToConsistentStateBeforeTesting()
 
 static void sizeWebViewForCurrentTest()
 {
-    bool isSVGW3CTest = (gLayoutTestController->testPathOrURL().find("svg\\W3C-SVG-1.1") != string::npos);
+    bool isSVGW3CTest = (gTestRunner->testPathOrURL().find("svg\\W3C-SVG-1.1") != string::npos);
     unsigned width;
     unsigned height;
     if (isSVGW3CTest) {
         width = 480;
         height = 360;
     } else {
-        width = LayoutTestController::maxViewWidth;
-        height = LayoutTestController::maxViewHeight;
+        width = TestRunner::maxViewWidth;
+        height = TestRunner::maxViewHeight;
     }
 
     ::SetWindowPos(webViewWindow, 0, 0, 0, width, height, SWP_NOMOVE);
 }
 
-static void runTest(const string& testPathOrURL)
+static void runTest(const string& inputLine)
 {
+    TestCommand command = parseInputLine(inputLine);
+    const string& pathOrURL = command.pathOrURL;
+    dumpPixelsForCurrentTest = command.shouldDumpPixels;
+
     static BSTR methodBStr = SysAllocString(TEXT("GET"));
 
-    // Look for "'" as a separator between the path or URL, and the pixel dump hash that follows.
-    string pathOrURL(testPathOrURL);
-    string expectedPixelHash;
-    
-    size_t separatorPos = pathOrURL.find("'");
-    if (separatorPos != string::npos) {
-        pathOrURL = string(testPathOrURL, 0, separatorPos);
-        expectedPixelHash = string(testPathOrURL, separatorPos + 1);
-    }
-    
     BSTR urlBStr;
  
     CFStringRef str = CFStringCreateWithCString(0, pathOrURL.c_str(), kCFStringEncodingWindowsLatin1);
@@ -983,22 +977,22 @@ static void runTest(const string& testPathOrURL)
 
     CFRelease(url);
 
-    ::gLayoutTestController = LayoutTestController::create(pathOrURL, expectedPixelHash);
+    ::gTestRunner = TestRunner::create(pathOrURL, command.expectedPixelHash);
     done = false;
     topLoadingFrame = 0;
 
     sizeWebViewForCurrentTest();
-    gLayoutTestController->setIconDatabaseEnabled(false);
+    gTestRunner->setIconDatabaseEnabled(false);
 
     if (shouldLogFrameLoadDelegates(pathOrURL.c_str()))
-        gLayoutTestController->setDumpFrameLoadCallbacks(true);
+        gTestRunner->setDumpFrameLoadCallbacks(true);
 
     COMPtr<IWebView> webView;
     if (SUCCEEDED(frame->webView(&webView))) {
         COMPtr<IWebViewPrivate> viewPrivate;
         if (SUCCEEDED(webView->QueryInterface(&viewPrivate))) {
             if (shouldLogHistoryDelegates(pathOrURL.c_str())) {
-                gLayoutTestController->setDumpHistoryDelegateCallbacks(true);            
+                gTestRunner->setDumpHistoryDelegateCallbacks(true);            
                 viewPrivate->setHistoryDelegate(sharedHistoryDelegate.get());
             } else
                 viewPrivate->setHistoryDelegate(0);
@@ -1011,13 +1005,13 @@ static void runTest(const string& testPathOrURL)
     resetWebViewToConsistentStateBeforeTesting();
 
     if (shouldEnableDeveloperExtras(pathOrURL.c_str())) {
-        gLayoutTestController->setDeveloperExtrasEnabled(true);
+        gTestRunner->setDeveloperExtrasEnabled(true);
         if (shouldOpenWebInspector(pathOrURL.c_str()))
-            gLayoutTestController->showWebInspector();
+            gTestRunner->showWebInspector();
     }
     if (shouldDumpAsText(pathOrURL.c_str())) {
-        gLayoutTestController->setDumpAsText(true);
-        gLayoutTestController->setGeneratePixelResults(false);
+        gTestRunner->setDumpAsText(true);
+        gTestRunner->setGeneratePixelResults(false);
     }
 
     prevTestBFItem = 0;
@@ -1055,15 +1049,15 @@ static void runTest(const string& testPathOrURL)
     }
 
     if (shouldEnableDeveloperExtras(pathOrURL.c_str())) {
-        gLayoutTestController->closeWebInspector();
-        gLayoutTestController->setDeveloperExtrasEnabled(false);
+        gTestRunner->closeWebInspector();
+        gTestRunner->setDeveloperExtrasEnabled(false);
     }
 
     resetWebViewToConsistentStateBeforeTesting();
 
     frame->stopLoading();
 
-    if (::gLayoutTestController->closeRemainingWindowsWhenComplete()) {
+    if (::gTestRunner->closeRemainingWindowsWhenComplete()) {
         Vector<HWND> windows = openWindows();
         unsigned size = windows.size();
         for (unsigned i = 0; i < size; i++) {
@@ -1079,7 +1073,7 @@ static void runTest(const string& testPathOrURL)
 
 exit:
     SysFreeString(urlBStr);
-    ::gLayoutTestController.clear();
+    ::gTestRunner.clear();
 
     return;
 }
@@ -1203,8 +1197,8 @@ WindowToWebViewMap& windowToWebViewMap()
 
 IWebView* createWebViewAndOffscreenWindow(HWND* webViewWindow)
 {
-    unsigned maxViewWidth = LayoutTestController::maxViewWidth;
-    unsigned maxViewHeight = LayoutTestController::maxViewHeight;
+    unsigned maxViewWidth = TestRunner::maxViewWidth;
+    unsigned maxViewHeight = TestRunner::maxViewHeight;
     HWND hostWindow = CreateWindowEx(WS_EX_TOOLWINDOW, kDumpRenderTreeClassName, TEXT("DumpRenderTree"), WS_POPUP,
       -maxViewWidth, -maxViewHeight, maxViewWidth, maxViewHeight, 0, 0, GetModuleHandle(0), 0);
 
@@ -1334,11 +1328,6 @@ extern "C" __declspec(dllexport) int WINAPI dllLauncherEntryPoint(int argc, cons
 
         if (!stricmp(argv[i], "--dump-all-pixels")) {
             dumpAllPixels = true;
-            continue;
-        }
-
-        if (!stricmp(argv[i], "--pixel-tests")) {
-            dumpPixels = true;
             continue;
         }
 

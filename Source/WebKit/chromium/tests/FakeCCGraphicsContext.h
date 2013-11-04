@@ -26,14 +26,16 @@
 #ifndef FakeCCGraphicsContext_h
 #define FakeCCGraphicsContext_h
 
+#include "CCGraphicsContext.h"
 #include "CompositorFakeWebGraphicsContext3D.h"
-#include "cc/CCGraphicsContext.h"
+#include "FakeWebCompositorOutputSurface.h"
+#include <public/WebCompositorOutputSurface.h>
 
 namespace WebKit {
 
 static inline PassOwnPtr<WebCore::CCGraphicsContext> createFakeCCGraphicsContext()
 {
-    return WebCore::CCGraphicsContext::create3D(CompositorFakeWebGraphicsContext3D::create(WebGraphicsContext3D::Attributes()));
+    return FakeWebCompositorOutputSurface::create(CompositorFakeWebGraphicsContext3D::create(WebGraphicsContext3D::Attributes()));
 }
 
 } // namespace WebKit

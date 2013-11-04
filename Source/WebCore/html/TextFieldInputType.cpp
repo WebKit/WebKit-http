@@ -64,7 +64,7 @@ TextFieldInputType::TextFieldInputType(HTMLInputElement* element)
 TextFieldInputType::~TextFieldInputType()
 {
     if (m_innerSpinButton)
-        m_innerSpinButton->removeStepActionHandler();
+        m_innerSpinButton->removeSpinButtonOwner();
 }
 
 bool TextFieldInputType::isKeyboardFocusable(KeyboardEvent*) const
@@ -163,21 +163,14 @@ void TextFieldInputType::handleKeydownEventForSpinButton(KeyboardEvent* event)
     event->setDefaultHandled();
 }
 
-void TextFieldInputType::handleWheelEventForSpinButton(WheelEvent* event)
-{
-    if (element()->disabled() || element()->readOnly() || !element()->focused())
-        return;
-    if (event->wheelDeltaY() > 0)
-        spinButtonStepUp();
-    else if (event->wheelDeltaY() < 0)
-        spinButtonStepDown();
-    else
-        return;
-    event->setDefaultHandled();
-}
-
 void TextFieldInputType::forwardEvent(Event* event)
 {
+    if (m_innerSpinButton) {
+        m_innerSpinButton->forwardEvent(event);
+        if (event->defaultHandled())
+            return;
+    }
+
     if (element()->renderer() && (event->isMouseEvent() || event->isDragEvent() || event->hasInterface(eventNames().interfaceForWheelEvent) || event->type() == eventNames().blurEvent || event->type() == eventNames().focusEvent)) {
         RenderTextControlSingleLine* renderTextControl = toRenderTextControlSingleLine(element()->renderer());
         if (event->type() == eventNames().blurEvent) {
@@ -319,7 +312,7 @@ void TextFieldInputType::destroyShadowSubtree()
     m_speechButton.clear();
 #endif
     if (m_innerSpinButton)
-        m_innerSpinButton->removeStepActionHandler();
+        m_innerSpinButton->removeSpinButtonOwner();
     m_innerSpinButton.clear();
     m_container.clear();
 }
@@ -461,6 +454,23 @@ void TextFieldInputType::updateInnerTextValue()
         element()->setInnerTextValue(visibleValue());
         element()->updatePlaceholderVisibility(false);
     }
+}
+
+void TextFieldInputType::focusAndSelectSpinButtonOwner()
+{
+    RefPtr<HTMLInputElement> input(element());
+    input->focus();
+    input->select();
+}
+
+bool TextFieldInputType::shouldSpinButtonRespondToMouseEvents()
+{
+    return !element()->disabled() && !element()->readOnly();
+}
+
+bool TextFieldInputType::shouldSpinButtonRespondToWheelEvents()
+{
+    return shouldSpinButtonRespondToMouseEvents() && element()->focused();
 }
 
 } // namespace WebCore

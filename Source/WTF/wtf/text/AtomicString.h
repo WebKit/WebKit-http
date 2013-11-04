@@ -43,6 +43,7 @@ public:
     AtomicString() { }
     AtomicString(const LChar* s) : m_string(add(s)) { }
     AtomicString(const char* s) : m_string(add(s)) { }
+    AtomicString(const LChar* s, unsigned length) : m_string(add(s, length)) { }
     AtomicString(const UChar* s, unsigned length) : m_string(add(s, length)) { }
     AtomicString(const UChar* s, unsigned length, unsigned existingHash) : m_string(add(s, length, existingHash)) { }
     AtomicString(const UChar* s) : m_string(add(s)) { }
@@ -53,12 +54,12 @@ public:
 
     enum ConstructFromLiteralTag { ConstructFromLiteral };
     AtomicString(const char* characters, unsigned length, ConstructFromLiteralTag)
-        : m_string(addFromLiteralData(reinterpret_cast<const LChar*>(characters), length))
+        : m_string(addFromLiteralData(characters, length))
     {
     }
     template<unsigned charactersCount>
     ALWAYS_INLINE AtomicString(const char (&characters)[charactersCount], ConstructFromLiteralTag)
-        : m_string(addFromLiteralData(reinterpret_cast<const LChar*>(characters), charactersCount - 1))
+        : m_string(addFromLiteralData(characters, charactersCount - 1))
     {
         COMPILE_ASSERT(charactersCount > 1, AtomicStringFromLiteralNotEmpty);
         COMPILE_ASSERT((charactersCount - 1 <= ((unsigned(~0) - sizeof(StringImpl)) / sizeof(LChar))), AtomicStringFromLiteralCannotOverflow);
@@ -79,7 +80,7 @@ public:
     AtomicString(WTF::HashTableDeletedValueType) : m_string(WTF::HashTableDeletedValue) { }
     bool isHashTableDeletedValue() const { return m_string.isHashTableDeletedValue(); }
 
-    WTF_EXPORT_STRING_API static AtomicStringImpl* find(const UChar*, unsigned length, unsigned existingHash);
+    WTF_EXPORT_STRING_API static AtomicStringImpl* find(const StringImpl*);
 
     operator const String&() const { return m_string; }
     const String& string() const { return m_string; };
@@ -158,6 +159,7 @@ private:
     
     WTF_EXPORT_STRING_API static PassRefPtr<StringImpl> add(const LChar*);
     ALWAYS_INLINE static PassRefPtr<StringImpl> add(const char* s) { return add(reinterpret_cast<const LChar*>(s)); };
+    WTF_EXPORT_STRING_API static PassRefPtr<StringImpl> add(const LChar*, unsigned length);
     WTF_EXPORT_STRING_API static PassRefPtr<StringImpl> add(const UChar*, unsigned length);
     ALWAYS_INLINE static PassRefPtr<StringImpl> add(const char* s, unsigned length) { return add(reinterpret_cast<const char*>(s), length); };
     WTF_EXPORT_STRING_API static PassRefPtr<StringImpl> add(const UChar*, unsigned length, unsigned existingHash);
@@ -169,7 +171,7 @@ private:
             return r;
         return addSlowCase(r);
     }
-    WTF_EXPORT_STRING_API static PassRefPtr<StringImpl> addFromLiteralData(const LChar *characters, unsigned length);
+    WTF_EXPORT_STRING_API static PassRefPtr<StringImpl> addFromLiteralData(const char* characters, unsigned length);
     WTF_EXPORT_STRING_API static PassRefPtr<StringImpl> addSlowCase(StringImpl*);
     WTF_EXPORT_STRING_API static AtomicString fromUTF8Internal(const char*, const char*);
 };
@@ -210,6 +212,7 @@ extern const WTF_EXPORTDATA AtomicString commentAtom;
 extern const WTF_EXPORTDATA AtomicString starAtom;
 extern const WTF_EXPORTDATA AtomicString xmlAtom;
 extern const WTF_EXPORTDATA AtomicString xmlnsAtom;
+extern const WTF_EXPORTDATA AtomicString xlinkAtom;
 
 inline AtomicString AtomicString::fromUTF8(const char* characters, size_t length)
 {
@@ -247,6 +250,7 @@ using WTF::commentAtom;
 using WTF::starAtom;
 using WTF::xmlAtom;
 using WTF::xmlnsAtom;
+using WTF::xlinkAtom;
 #endif
 
 #include <wtf/text/StringConcatenate.h>

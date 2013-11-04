@@ -28,33 +28,15 @@
 #define ImageSource_h
 
 #include "ImageOrientation.h"
+#include "NativeImagePtr.h"
 
 #include <wtf/Forward.h>
 #include <wtf/Noncopyable.h>
 #include <wtf/Vector.h>
 
-#if PLATFORM(WX)
-class wxBitmap;
-class wxGraphicsBitmap;
-#elif USE(CG)
+#if USE(CG)
 typedef struct CGImageSource* CGImageSourceRef;
-typedef struct CGImage* CGImageRef;
 typedef const struct __CFData* CFDataRef;
-#elif PLATFORM(QT)
-#include <qglobal.h>
-QT_BEGIN_NAMESPACE
-class QImage;
-QT_END_NAMESPACE
-#elif USE(CAIRO)
-#include "NativeImageCairo.h"
-#elif USE(SKIA)
-namespace WebCore {
-class NativeImageSkia;
-}
-#elif PLATFORM(HAIKU)
-class BBitmap;
-#elif OS(WINCE)
-#include "SharedBitmap.h"
 #endif
 
 namespace WebCore {
@@ -66,36 +48,9 @@ class SharedBuffer;
 
 #if USE(CG)
 typedef CGImageSourceRef NativeImageSourcePtr;
-typedef CGImageRef NativeImagePtr;
-#elif PLATFORM(OPENVG)
-class ImageDecoder;
-class TiledImageOpenVG;
-typedef ImageDecoder* NativeImageSourcePtr;
-typedef TiledImageOpenVG* NativeImagePtr;
 #else
 class ImageDecoder;
 typedef ImageDecoder* NativeImageSourcePtr;
-#if PLATFORM(WX)
-#if USE(WXGC)
-typedef wxGraphicsBitmap* NativeImagePtr;
-#else
-typedef wxBitmap* NativeImagePtr;
-#endif
-#elif USE(CAIRO)
-typedef WebCore::NativeImageCairo* NativeImagePtr;
-#elif USE(SKIA)
-typedef WebCore::NativeImageSkia* NativeImagePtr;
-#elif PLATFORM(HAIKU)
-typedef BBitmap* NativeImagePtr;
-#elif OS(WINCE)
-typedef RefPtr<SharedBitmap> NativeImagePtr;
-#elif PLATFORM(BLACKBERRY)
-class ImageDecoder;
-typedef ImageDecoder* NativeImageSourcePtr;
-typedef void* NativeImagePtr;
-#elif PLATFORM(QT)
-typedef QImage* NativeImagePtr;
-#endif
 #endif
 
 // Right now GIFs are the only recognized image format that supports animation.
@@ -191,6 +146,10 @@ public:
     bool frameIsCompleteAtIndex(size_t); // Whether or not the frame is completely decoded.
     ImageOrientation orientationAtIndex(size_t) const; // EXIF image orientation
 
+    // Return the number of bytes in the decoded frame. If the frame is not yet
+    // decoded then return 0.
+    unsigned frameBytesAtIndex(size_t) const;
+
 #if ENABLE(IMAGE_DECODER_DOWN_SAMPLING)
     static unsigned maxPixelsPerDecodedImage() { return s_maxPixelsPerDecodedImage; }
     static void setMaxPixelsPerDecodedImage(unsigned maxPixels) { s_maxPixelsPerDecodedImage = maxPixels; }
@@ -198,8 +157,11 @@ public:
 
 private:
     NativeImageSourcePtr m_decoder;
+
+#if !USE(CG)
     AlphaOption m_alphaOption;
     GammaAndColorProfileOption m_gammaAndColorProfileOption;
+#endif
 #if ENABLE(IMAGE_DECODER_DOWN_SAMPLING)
     static unsigned s_maxPixelsPerDecodedImage;
 #endif

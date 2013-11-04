@@ -118,10 +118,6 @@
 #include "DeviceOrientationClientGtk.h"
 #endif
 
-#if ENABLE(REGISTER_PROTOCOL_HANDLER)
-#include "RegisterProtocolHandlerClientGtk.h"
-#endif
-
 /**
  * SECTION:webkitwebview
  * @short_description: The central class of the WebKitGTK+ API
@@ -683,8 +679,10 @@ static gboolean webkit_web_view_draw(GtkWidget* widget, cairo_t* cr)
 
     WebKitWebViewPrivate* priv = WEBKIT_WEB_VIEW(widget)->priv;
 #if USE(TEXTURE_MAPPER)
-    if (priv->acceleratedCompositingContext->renderLayersToWindow(cr, clipRect))
+    if (priv->acceleratedCompositingContext->renderLayersToWindow(cr, clipRect)) {
+        GTK_WIDGET_CLASS(webkit_web_view_parent_class)->draw(widget, cr);
         return FALSE;
+    }
 #endif
 
     cairo_rectangle_list_t* rectList = cairo_copy_clip_rectangle_list(cr);
@@ -879,15 +877,16 @@ static void resizeWebViewFromAllocation(WebKitWebView* webView, GtkAllocation* a
     WebKit::ChromeClient* chromeClient = static_cast<WebKit::ChromeClient*>(page->chrome()->client());
     chromeClient->widgetSizeChanged(oldSize, IntSize(allocation->width, allocation->height));
     chromeClient->adjustmentWatcher()->updateAdjustmentsFromScrollbars();
-
-#if USE(ACCELERATED_COMPOSITING)
-    webView->priv->acceleratedCompositingContext->resizeRootLayer(IntSize(allocation->width, allocation->height));
-#endif
 }
 
 static void webkit_web_view_size_allocate(GtkWidget* widget, GtkAllocation* allocation)
 {
+    GtkAllocation oldAllocation;
+    gtk_widget_get_allocation(widget, &oldAllocation);
+
     GTK_WIDGET_CLASS(webkit_web_view_parent_class)->size_allocate(widget, allocation);
+    if (allocation->width == oldAllocation.width && allocation->height == oldAllocation.height)
+        return;
 
     WebKitWebView* webView = WEBKIT_WEB_VIEW(widget);
     if (!gtk_widget_get_mapped(widget)) {
@@ -993,6 +992,9 @@ static void webkit_web_view_realize(GtkWidget* widget)
                             | GDK_BUTTON_PRESS_MASK
                             | GDK_BUTTON_RELEASE_MASK
                             | GDK_SCROLL_MASK
+#if GTK_CHECK_VERSION(3, 3, 18)
+                            | GDK_SMOOTH_SCROLL_MASK
+#endif
                             | GDK_POINTER_MOTION_MASK
                             | GDK_KEY_PRESS_MASK
                             | GDK_KEY_RELEASE_MASK
@@ -1007,10 +1009,6 @@ static void webkit_web_view_realize(GtkWidget* widget)
 #endif
     GdkWindow* window = gdk_window_new(gtk_widget_get_parent_window(widget), &attributes, attributes_mask);
 
-#if USE(ACCELERATED_COMPOSITING) && USE(TEXTURE_MAPPER_GL)
-    WebKitWebViewPrivate* priv = WEBKIT_WEB_VIEW(widget)->priv;
-    priv->hasNativeWindow = gdk_window_ensure_native(window);
-#endif
     gtk_widget_set_window(widget, window);
     gdk_window_set_user_data(window, widget);
 
@@ -2294,7 +2292,7 @@ static void webkit_web_view_class_init(WebKitWebViewClass* webViewClass)
      *
      * The default bindings for this signal is Ctrl-a.
      */
-    webkit_web_view_signals[SELECT_ALL] = g_signal_new("select-all",
+    webkit_web_view_signals[::SELECT_ALL] = g_signal_new("select-all",
             G_TYPE_FROM_CLASS(webViewClass),
             (GSignalFlags)(G_SIGNAL_RUN_LAST | G_SIGNAL_ACTION),
             G_STRUCT_OFFSET(WebKitWebViewClass, select_all),
@@ -2659,7 +2657,7 @@ static void webkit_web_view_class_init(WebKitWebViewClass* webViewClass)
 
     webkit_web_view_signals[SHOULD_SHOW_DELETE_INTERFACE_FOR_ELEMENT] = g_signal_new("should-show-delete-interface-for-element",
         G_TYPE_FROM_CLASS(webViewClass), static_cast<GSignalFlags>(G_SIGNAL_RUN_LAST | G_SIGNAL_ACTION),
-        G_STRUCT_OFFSET(WebKitWebViewClass, should_allow_editing_action), g_signal_accumulator_first_wins, 0,
+        0, g_signal_accumulator_first_wins, 0,
         webkit_marshal_BOOLEAN__OBJECT, G_TYPE_BOOLEAN, 1, WEBKIT_TYPE_DOM_HTML_ELEMENT);
 
     webkit_web_view_signals[SHOULD_CHANGE_SELECTED_RANGE] = g_signal_new("should-change-selected-range",
@@ -3634,8 +3632,9 @@ static void webkit_web_view_init(WebKitWebView* webView)
     WebCore::provideUserMediaTo(priv->corePage, priv->userMediaClient.get());
 #endif
 
-#if ENABLE(REGISTER_PROTOCOL_HANDLER)
-    WebCore::provideRegisterProtocolHandlerTo(priv->corePage, new WebKit::RegisterProtocolHandlerClient);
+#if ENABLE(NAVIGATOR_CONTENT_UTILS)
+    priv->navigatorContentUtilsClient = WebKit::NavigatorContentUtilsClient::create();
+    WebCore::provideNavigatorContentUtilsTo(priv->corePage, priv->navigatorContentUtilsClient.get());
 #endif
 
     if (DumpRenderTreeSupportGtk::dumpRenderTreeModeEnabled()) {
@@ -4422,7 +4421,7 @@ void webkit_web_view_select_all(WebKitWebView* webView)
 {
     g_return_if_fail(WEBKIT_IS_WEB_VIEW(webView));
 
-    g_signal_emit(webView, webkit_web_view_signals[SELECT_ALL], 0);
+    g_signal_emit(webView, webkit_web_view_signals[::SELECT_ALL], 0);
 }
 
 /**

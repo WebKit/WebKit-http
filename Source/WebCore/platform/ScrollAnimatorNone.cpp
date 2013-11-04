@@ -34,17 +34,21 @@
 
 #include "ScrollAnimatorNone.h"
 
-#include "ActivePlatformGestureAnimation.h"
 #include "FloatPoint.h"
 #include "NotImplemented.h"
 #include <wtf/OwnArrayPtr.h>
 #include "PlatformGestureEvent.h"
 #include "ScrollableArea.h"
 #include "ScrollbarTheme.h"
-#include "TouchpadFlingPlatformGestureCurve.h"
 #include <algorithm>
 #include <wtf/CurrentTime.h>
 #include <wtf/PassOwnPtr.h>
+
+#if ENABLE(GESTURE_ANIMATION)
+#include "ActivePlatformGestureAnimation.h"
+#include "TouchpadFlingPlatformGestureCurve.h"
+#endif
+
 
 #if PLATFORM(CHROMIUM)
 #include "TraceEvent.h"
@@ -295,9 +299,9 @@ bool ScrollAnimatorNone::PerAxisData::updateDataFromParameters(float step, float
         // This needs to be as minimal as possible while not being intrusive to page up/down.
         double minCoastDelta = m_visibleLength;
 
-        if (abs(remainingDelta) > minCoastDelta) {
+        if (fabs(remainingDelta) > minCoastDelta) {
             double maxCoastDelta = parameters->m_maximumCoastTime * targetMaxCoastVelocity;
-            double coastFactor = min(1., (abs(remainingDelta) - minCoastDelta) / (maxCoastDelta - minCoastDelta));
+            double coastFactor = min(1., (fabs(remainingDelta) - minCoastDelta) / (maxCoastDelta - minCoastDelta));
 
             // We could play with the curve here - linear seems a little soft. Initial testing makes me want to feed into the sustain time more aggressively.
             double coastMinTimeLeft = min(parameters->m_maximumCoastTime, minTimeLeft + coastCurve(parameters->m_coastTimeCurve, coastFactor) * (parameters->m_maximumCoastTime - minTimeLeft));
@@ -401,9 +405,11 @@ ScrollAnimatorNone::~ScrollAnimatorNone()
 
 void ScrollAnimatorNone::fireUpAnAnimation(FloatPoint fp)
 {
+#if ENABLE(GESTURE_ANIMATION)
     if (m_gestureAnimation)
         m_gestureAnimation.clear();
     m_gestureAnimation = ActivePlatformGestureAnimation::create(TouchpadFlingPlatformGestureCurve::create(fp), this);
+#endif
 #if USE(REQUEST_ANIMATION_FRAME_TIMER)
     startNextTimer(0);
 #else
@@ -417,7 +423,7 @@ bool ScrollAnimatorNone::scroll(ScrollbarOrientation orientation, ScrollGranular
         return ScrollAnimator::scroll(orientation, granularity, step, multiplier);
 
 #if PLATFORM(CHROMIUM)
-    TRACE_EVENT("ScrollAnimatorNone::scroll", this, 0);
+    TRACE_EVENT0("webkit", "ScrollAnimatorNone::scroll");
 #endif
 
     // FIXME: get the type passed in. MouseWheel could also be by line, but should still have different
@@ -491,7 +497,9 @@ void ScrollAnimatorNone::scrollToOffsetWithoutAnimation(const FloatPoint& offset
 void ScrollAnimatorNone::cancelAnimations()
 {
     m_animationActive = false;
+#if ENABLE(GESTURE_ANIMATION)
     m_gestureAnimation.clear();
+#endif
 }
 
 void ScrollAnimatorNone::serviceScrollAnimations()
@@ -532,7 +540,7 @@ void ScrollAnimatorNone::animationTimerFired(Timer<ScrollAnimatorNone>* timer)
 void ScrollAnimatorNone::animationTimerFired()
 {
 #if PLATFORM(CHROMIUM)
-    TRACE_EVENT("ScrollAnimatorNone::animationTimerFired", this, 0);
+    TRACE_EVENT0("webkit", "ScrollAnimatorNone::animationTimerFired");
 #endif
 
     double currentTime = WTF::monotonicallyIncreasingTime();
@@ -545,12 +553,14 @@ void ScrollAnimatorNone::animationTimerFired()
     if (m_verticalData.m_startTime && m_verticalData.animateScroll(currentTime))
         continueAnimation = true;
 
+#if ENABLE(GESTURE_ANIMATION)
     if (m_gestureAnimation) {
         if (m_gestureAnimation->animate(currentTime))
             continueAnimation = true;
         else
             m_gestureAnimation.clear();
     }
+#endif
 
     if (continueAnimation)
 #if USE(REQUEST_ANIMATION_FRAME_TIMER)
@@ -562,7 +572,7 @@ void ScrollAnimatorNone::animationTimerFired()
 #endif
 
 #if PLATFORM(CHROMIUM)
-    TRACE_EVENT("ScrollAnimatorNone::notifyPositionChanged", this, 0);
+    TRACE_EVENT0("webkit", "ScrollAnimatorNone::notifyPositionChanged");
 #endif
     notifyPositionChanged();
 

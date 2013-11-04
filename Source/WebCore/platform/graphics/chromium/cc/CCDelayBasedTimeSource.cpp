@@ -24,12 +24,30 @@
 
 #include "config.h"
 
-#include "cc/CCDelayBasedTimeSource.h"
+#include "CCDelayBasedTimeSource.h"
 
+#include "TraceEvent.h"
+#include <algorithm>
 #include <wtf/CurrentTime.h>
 #include <wtf/MathExtras.h>
 
 namespace WebCore {
+
+namespace {
+
+// doubleTickThreshold prevents ticks from running within the specified fraction of an interval.
+// This helps account for jitter in the timebase as well as quick timer reactivation.
+const double doubleTickThreshold = 0.25;
+
+// intervalChangeThreshold is the fraction of the interval that will trigger an immediate interval change.
+// phaseChangeThreshold is the fraction of the interval that will trigger an immediate phase change.
+// If the changes are within the thresholds, the change will take place on the next tick.
+// If either change is outside the thresholds, the next tick will be canceled and reissued immediately.
+const double intervalChangeThreshold = 0.25;
+const double phaseChangeThreshold = 0.25;
+
+}
+
 
 PassRefPtr<CCDelayBasedTimeSource> CCDelayBasedTimeSource::create(double interval, CCThread* thread)
 {
@@ -39,8 +57,9 @@ PassRefPtr<CCDelayBasedTimeSource> CCDelayBasedTimeSource::create(double interva
 CCDelayBasedTimeSource::CCDelayBasedTimeSource(double intervalSeconds, CCThread* thread)
     : m_client(0)
     , m_hasTickTarget(false)
-    , m_intervalSeconds(intervalSeconds)
-    , m_tickTarget(0)
+    , m_lastTickTime(0)
+    , m_currentParameters(intervalSeconds, 0)
+    , m_nextParameters(intervalSeconds, 0)
     , m_state(STATE_INACTIVE)
     , m_timer(thread, this)
 {
@@ -48,6 +67,7 @@ CCDelayBasedTimeSource::CCDelayBasedTimeSource(double intervalSeconds, CCThread*
 
 void CCDelayBasedTimeSource::setActive(bool active)
 {
+    TRACE_EVENT1("cc", "CCDelayBasedTimeSource::setActive", "active", active);
     if (!active) {
         m_state = STATE_INACTIVE;
         m_timer.stop();
@@ -68,19 +88,29 @@ void CCDelayBasedTimeSource::setActive(bool active)
 
     m_state = STATE_ACTIVE;
 
-    double now = monotonicallyIncreasingTime();
+    double now = monotonicTimeNow();
     postNextTickTask(now);
+}
+
+double CCDelayBasedTimeSource::lastTickTime()
+{
+    return m_lastTickTime;
+}
+
+double CCDelayBasedTimeSource::nextTickTimeIfActivated()
+{
+    return active() ? m_currentParameters.tickTarget : nextTickTarget(monotonicTimeNow());
 }
 
 void CCDelayBasedTimeSource::onTimerFired()
 {
     ASSERT(m_state != STATE_INACTIVE);
 
-    double now = monotonicallyIncreasingTime();
+    double now = monotonicTimeNow();
+    m_lastTickTime = now;
 
     if (m_state == STATE_STARTING) {
-        m_hasTickTarget = true;
-        m_tickTarget = now;
+        setTimebaseAndInterval(now, m_currentParameters.interval);
         m_state = STATE_ACTIVE;
     }
 
@@ -91,9 +121,45 @@ void CCDelayBasedTimeSource::onTimerFired()
         m_client->onTimerTick();
 }
 
-double CCDelayBasedTimeSource::monotonicallyIncreasingTime() const
+void CCDelayBasedTimeSource::setTimebaseAndInterval(double timebase, double intervalSeconds)
 {
-    return WTF::monotonicallyIncreasingTime();
+    m_nextParameters.interval = intervalSeconds;
+    m_nextParameters.tickTarget = timebase;
+    m_hasTickTarget = true;
+
+    if (m_state != STATE_ACTIVE) {
+        // If we aren't active, there's no need to reset the timer.
+        return;
+    }
+
+    // If the change in interval is larger than the change threshold,
+    // request an immediate reset.
+    double intervalDelta = std::abs(intervalSeconds - m_currentParameters.interval);
+    double intervalChange = intervalDelta / intervalSeconds;
+    if (intervalChange > intervalChangeThreshold) {
+        setActive(false);
+        setActive(true);
+        return;
+    }
+
+    // If the change in phase is greater than the change threshold in either
+    // direction, request an immediate reset. This logic might result in a false
+    // negative if there is a simultaneous small change in the interval and the
+    // fmod just happens to return something near zero. Assuming the timebase
+    // is very recent though, which it should be, we'll still be ok because the
+    // old clock and new clock just happen to line up.
+    double targetDelta = std::abs(timebase - m_currentParameters.tickTarget);
+    double phaseChange = fmod(targetDelta, intervalSeconds) / intervalSeconds;
+    if (phaseChange > phaseChangeThreshold && phaseChange < (1.0 - phaseChangeThreshold)) {
+        setActive(false);
+        setActive(true);
+        return;
+    }
+}
+
+double CCDelayBasedTimeSource::monotonicTimeNow() const
+{
+    return monotonicallyIncreasingTime();
 }
 
 // This code tries to achieve an average tick rate as close to m_intervalMs as possible.
@@ -141,22 +207,34 @@ double CCDelayBasedTimeSource::monotonicallyIncreasingTime() const
 //      now=37   tickTarget=16.667  newTarget=50.000  --> tick(), postDelayedTask(floor(50.000-37)) --> postDelayedTask(13)
 //
 // Note, that in the above discussion, times are expressed in milliseconds, but in the code, seconds are used.
+double CCDelayBasedTimeSource::nextTickTarget(double now)
+{
+    double newInterval = m_nextParameters.interval;
+    double intervalsElapsed = floor((now - m_nextParameters.tickTarget) / newInterval);
+    double lastEffectiveTick = m_nextParameters.tickTarget + newInterval * intervalsElapsed;
+    double newTickTarget = lastEffectiveTick + newInterval;
+    ASSERT(newTickTarget > now);
+
+    // Avoid double ticks when:
+    // 1) Turning off the timer and turning it right back on.
+    // 2) Jittery data is passed to setTimebaseAndInterval().
+    if (newTickTarget - m_lastTickTime <= newInterval * doubleTickThreshold)
+        newTickTarget += newInterval;
+
+    return newTickTarget;
+}
+
 void CCDelayBasedTimeSource::postNextTickTask(double now)
 {
-    int numIntervalsElapsed = static_cast<int>(floor((now - m_tickTarget) / m_intervalSeconds));
-    double lastEffectiveTick = m_tickTarget + m_intervalSeconds * numIntervalsElapsed;
-    double newTickTarget = lastEffectiveTick + m_intervalSeconds;
-
-    long long delayMs = static_cast<long long>((newTickTarget - now) * 1000.0);
-    if (!delayMs) {
-        newTickTarget = newTickTarget + m_intervalSeconds;
-        delayMs = static_cast<long long>((newTickTarget - now) * 1000.0);
-    }
+    double newTickTarget = nextTickTarget(now);
 
     // Post another task *before* the tick and update state
-    ASSERT(newTickTarget > now);
-    m_timer.startOneShot(delayMs / 1000.0);
-    m_tickTarget = newTickTarget;
+    double delay = newTickTarget - now;
+    ASSERT(delay <= m_nextParameters.interval * (1.0 + doubleTickThreshold));
+    m_timer.startOneShot(delay);
+
+    m_nextParameters.tickTarget = newTickTarget;
+    m_currentParameters = m_nextParameters;
 }
 
 }

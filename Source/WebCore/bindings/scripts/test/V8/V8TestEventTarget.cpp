@@ -21,18 +21,17 @@
 #include "config.h"
 #include "V8TestEventTarget.h"
 
+#include "BindingState.h"
 #include "ContextFeatures.h"
 #include "ExceptionCode.h"
+#include "Frame.h"
 #include "RuntimeEnabledFeatures.h"
 #include "V8Binding.h"
-#include "V8BindingMacros.h"
-#include "V8BindingState.h"
 #include "V8Collection.h"
 #include "V8DOMWrapper.h"
 #include "V8Event.h"
 #include "V8IsolatedContext.h"
 #include "V8Node.h"
-#include "V8Proxy.h"
 #include <wtf/UnusedParam.h>
 
 namespace WebCore {
@@ -47,7 +46,7 @@ static v8::Handle<v8::Value> itemCallback(const v8::Arguments& args)
 {
     INC_STATS("DOM.TestEventTarget.item");
     if (args.Length() < 1)
-        return V8Proxy::throwNotEnoughArgumentsError(args.GetIsolate());
+        return throwNotEnoughArgumentsError(args.GetIsolate());
     TestEventTarget* imp = V8TestEventTarget::toNative(args.Holder());
     ExceptionCode ec = 0;
     {
@@ -59,7 +58,7 @@ static v8::Handle<v8::Value> itemCallback(const v8::Arguments& args)
     return toV8(imp->item(index), args.GetIsolate());
     }
     fail:
-    return V8Proxy::setDOMException(ec, args.GetIsolate());
+    return setDOMException(ec, args.GetIsolate());
 }
 
 static v8::Handle<v8::Value> addEventListenerCallback(const v8::Arguments& args)
@@ -67,10 +66,10 @@ static v8::Handle<v8::Value> addEventListenerCallback(const v8::Arguments& args)
     INC_STATS("DOM.TestEventTarget.addEventListener()");
     RefPtr<EventListener> listener = V8DOMWrapper::getEventListener(args[1], false, ListenerFindOrCreate);
     if (listener) {
-        V8TestEventTarget::toNative(args.Holder())->addEventListener(v8ValueToAtomicWebCoreString(args[0]), listener, args[2]->BooleanValue());
+        V8TestEventTarget::toNative(args.Holder())->addEventListener(toWebCoreAtomicString(args[0]), listener, args[2]->BooleanValue());
         createHiddenDependency(args.Holder(), args[1], V8TestEventTarget::eventListenerCacheIndex);
     }
-    return v8::Undefined();
+    return v8Undefined();
 }
 
 static v8::Handle<v8::Value> removeEventListenerCallback(const v8::Arguments& args)
@@ -78,17 +77,17 @@ static v8::Handle<v8::Value> removeEventListenerCallback(const v8::Arguments& ar
     INC_STATS("DOM.TestEventTarget.removeEventListener()");
     RefPtr<EventListener> listener = V8DOMWrapper::getEventListener(args[1], false, ListenerFindOnly);
     if (listener) {
-        V8TestEventTarget::toNative(args.Holder())->removeEventListener(v8ValueToAtomicWebCoreString(args[0]), listener.get(), args[2]->BooleanValue());
+        V8TestEventTarget::toNative(args.Holder())->removeEventListener(toWebCoreAtomicString(args[0]), listener.get(), args[2]->BooleanValue());
         removeHiddenDependency(args.Holder(), args[1], V8TestEventTarget::eventListenerCacheIndex);
     }
-    return v8::Undefined();
+    return v8Undefined();
 }
 
 static v8::Handle<v8::Value> dispatchEventCallback(const v8::Arguments& args)
 {
     INC_STATS("DOM.TestEventTarget.dispatchEvent");
     if (args.Length() < 1)
-        return V8Proxy::throwNotEnoughArgumentsError(args.GetIsolate());
+        return throwNotEnoughArgumentsError(args.GetIsolate());
     TestEventTarget* imp = V8TestEventTarget::toNative(args.Holder());
     ExceptionCode ec = 0;
     {
@@ -99,12 +98,12 @@ static v8::Handle<v8::Value> dispatchEventCallback(const v8::Arguments& args)
     return v8Boolean(result, args.GetIsolate());
     }
     fail:
-    return V8Proxy::setDOMException(ec, args.GetIsolate());
+    return setDOMException(ec, args.GetIsolate());
 }
 
 } // namespace TestEventTargetV8Internal
 
-static const BatchedCallback TestEventTargetCallbacks[] = {
+static const V8DOMConfiguration::BatchedCallback TestEventTargetCallbacks[] = {
     {"item", TestEventTargetV8Internal::itemCallback},
     {"addEventListener", TestEventTargetV8Internal::addEventListenerCallback},
     {"removeEventListener", TestEventTargetV8Internal::removeEventListenerCallback},
@@ -115,7 +114,7 @@ static v8::Persistent<v8::FunctionTemplate> ConfigureV8TestEventTargetTemplate(v
     desc->ReadOnlyPrototype();
 
     v8::Local<v8::Signature> defaultSignature;
-    defaultSignature = configureTemplate(desc, "TestEventTarget", v8::Persistent<v8::FunctionTemplate>(), V8TestEventTarget::internalFieldCount,
+    defaultSignature = V8DOMConfiguration::configureTemplate(desc, "TestEventTarget", v8::Persistent<v8::FunctionTemplate>(), V8TestEventTarget::internalFieldCount,
         0, 0,
         TestEventTargetCallbacks, WTF_ARRAY_LENGTH(TestEventTargetCallbacks));
     UNUSED_PARAM(defaultSignature); // In some cases, it will not be used.
@@ -132,17 +131,17 @@ static v8::Persistent<v8::FunctionTemplate> ConfigureV8TestEventTargetTemplate(v
     const int dispatchEventArgc = 1;
     v8::Handle<v8::FunctionTemplate> dispatchEventArgv[dispatchEventArgc] = { V8Event::GetRawTemplate() };
     v8::Handle<v8::Signature> dispatchEventSignature = v8::Signature::New(desc, dispatchEventArgc, dispatchEventArgv);
-    proto->Set(v8::String::New("dispatchEvent"), v8::FunctionTemplate::New(TestEventTargetV8Internal::dispatchEventCallback, v8::Handle<v8::Value>(), dispatchEventSignature));
+    proto->Set(v8::String::NewSymbol("dispatchEvent"), v8::FunctionTemplate::New(TestEventTargetV8Internal::dispatchEventCallback, v8Undefined(), dispatchEventSignature));
 
     // Custom toString template
-    desc->Set(getToStringName(), getToStringTemplate());
+    desc->Set(v8::String::NewSymbol("toString"), V8PerIsolateData::current()->toStringTemplate());
     return desc;
 }
 
 v8::Persistent<v8::FunctionTemplate> V8TestEventTarget::GetRawTemplate()
 {
-    V8BindingPerIsolateData* data = V8BindingPerIsolateData::current();
-    V8BindingPerIsolateData::TemplateMap::iterator result = data->rawTemplateMap().find(&info);
+    V8PerIsolateData* data = V8PerIsolateData::current();
+    V8PerIsolateData::TemplateMap::iterator result = data->rawTemplateMap().find(&info);
     if (result != data->rawTemplateMap().end())
         return result->second;
 
@@ -154,8 +153,8 @@ v8::Persistent<v8::FunctionTemplate> V8TestEventTarget::GetRawTemplate()
 
 v8::Persistent<v8::FunctionTemplate> V8TestEventTarget::GetTemplate()
 {
-    V8BindingPerIsolateData* data = V8BindingPerIsolateData::current();
-    V8BindingPerIsolateData::TemplateMap::iterator result = data->templateMap().find(&info);
+    V8PerIsolateData* data = V8PerIsolateData::current();
+    V8PerIsolateData::TemplateMap::iterator result = data->templateMap().find(&info);
     if (result != data->templateMap().end())
         return result->second;
 
@@ -175,16 +174,13 @@ bool V8TestEventTarget::HasInstance(v8::Handle<v8::Value> value)
 v8::Handle<v8::Object> V8TestEventTarget::wrapSlow(PassRefPtr<TestEventTarget> impl, v8::Isolate* isolate)
 {
     v8::Handle<v8::Object> wrapper;
-    V8Proxy* proxy = 0;
-    wrapper = V8DOMWrapper::instantiateV8Object(proxy, &info, impl.get());
+    Frame* frame = 0;
+    wrapper = V8DOMWrapper::instantiateV8Object(frame, &info, impl.get());
     if (UNLIKELY(wrapper.IsEmpty()))
         return wrapper;
-
-    v8::Persistent<v8::Object> wrapperHandle = v8::Persistent<v8::Object>::New(wrapper);
-
+    v8::Persistent<v8::Object> wrapperHandle = V8DOMWrapper::setJSWrapperForDOMObject(impl, wrapper, isolate);
     if (!hasDependentLifetime)
         wrapperHandle.MarkIndependent();
-    V8DOMWrapper::setJSWrapperForDOMObject(impl, wrapperHandle, isolate);
     return wrapper;
 }
 

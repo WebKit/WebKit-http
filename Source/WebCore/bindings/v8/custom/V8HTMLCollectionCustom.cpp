@@ -38,7 +38,6 @@
 #include "V8NamedNodesCollection.h"
 #include "V8Node.h"
 #include "V8NodeList.h"
-#include "V8Proxy.h"
 #include "V8RadioNodeList.h"
 
 namespace WebCore {
@@ -49,7 +48,7 @@ static v8::Handle<v8::Value> getNamedItems(HTMLCollection* collection, AtomicStr
     collection->namedItems(name, namedItems);
 
     if (!namedItems.size())
-        return v8::Handle<v8::Value>();
+        return v8Undefined();
 
     if (namedItems.size() == 1)
         return toV8(namedItems.at(0).release(), isolate);
@@ -65,12 +64,12 @@ v8::Handle<v8::Value> V8HTMLCollection::namedPropertyGetter(v8::Local<v8::String
     INC_STATS("DOM.HTMLCollection.NamedPropertyGetter");
 
     if (!info.Holder()->GetRealNamedPropertyInPrototypeChain(name).IsEmpty())
-        return v8::Handle<v8::Value>();
+        return v8Undefined();
     if (info.Holder()->HasRealNamedCallbackProperty(name))
-        return v8::Handle<v8::Value>();
+        return v8Undefined();
 
     HTMLCollection* imp = V8HTMLCollection::toNative(info.Holder());
-    return getNamedItems(imp, v8StringToAtomicWebCoreString(name), info.GetIsolate());
+    return getNamedItems(imp, toWebCoreAtomicString(name), info.GetIsolate());
 }
 
 v8::Handle<v8::Value> V8HTMLCollection::namedItemCallback(const v8::Arguments& args)

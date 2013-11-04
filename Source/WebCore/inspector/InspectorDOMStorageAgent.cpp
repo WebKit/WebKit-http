@@ -156,13 +156,8 @@ String InspectorDOMStorageAgent::storageId(Storage* storage)
     ASSERT(storage);
     Frame* frame = storage->frame();
     ExceptionCode ec = 0;
-    bool isLocalStorage = (frame->domWindow()->localStorage(ec) == storage && !ec);
-    DOMStorageResourcesMap::iterator domStorageEnd = m_resources.end();
-    for (DOMStorageResourcesMap::iterator it = m_resources.begin(); it != domStorageEnd; ++it) {
-        if (it->second->isSameHostAndType(frame->document()->securityOrigin(), isLocalStorage))
-            return it->first;
-    }
-    return String();
+    bool isLocalStorage = (frame->document()->domWindow()->localStorage(ec) == storage && !ec);
+    return storageId(frame->document()->securityOrigin(), isLocalStorage);
 }
 
 String InspectorDOMStorageAgent::storageId(SecurityOrigin* securityOrigin, bool isLocalStorage)
@@ -170,7 +165,7 @@ String InspectorDOMStorageAgent::storageId(SecurityOrigin* securityOrigin, bool 
     ASSERT(securityOrigin);
     DOMStorageResourcesMap::iterator domStorageEnd = m_resources.end();
     for (DOMStorageResourcesMap::iterator it = m_resources.begin(); it != domStorageEnd; ++it) {
-        if (it->second->isSameHostAndType(securityOrigin, isLocalStorage))
+        if (it->second->isSameOriginAndType(securityOrigin, isLocalStorage))
             return it->first;
     }
     return String();
@@ -188,7 +183,7 @@ void InspectorDOMStorageAgent::didUseDOMStorage(StorageArea* storageArea, bool i
 {
     DOMStorageResourcesMap::iterator domStorageEnd = m_resources.end();
     for (DOMStorageResourcesMap::iterator it = m_resources.begin(); it != domStorageEnd; ++it) {
-        if (it->second->isSameHostAndType(frame->document()->securityOrigin(), isLocalStorage))
+        if (it->second->isSameOriginAndType(frame->document()->securityOrigin(), isLocalStorage))
             return;
     }
 
@@ -217,6 +212,14 @@ void InspectorDOMStorageAgent::didDispatchDOMStorageEvent(const String&, const S
 void InspectorDOMStorageAgent::clearResources()
 {
     m_resources.clear();
+}
+
+size_t InspectorDOMStorageAgent::memoryBytesUsedByStorageCache() const
+{
+    size_t size = 0;
+    for (DOMStorageResourcesMap::const_iterator it = m_resources.begin(); it != m_resources.end(); ++it)
+        size += it->second->storageArea()->memoryBytesUsedByCache();
+    return size;
 }
 
 

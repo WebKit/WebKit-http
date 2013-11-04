@@ -43,7 +43,12 @@ namespace IDBLevelDBCoding {
 
 const unsigned char MinimumIndexId = 30;
 
+// As most of the IDBKeys and encoded values are short, we initialize some Vectors with a default inline buffer size
+// to reduce the memory re-allocations when the Vectors are appended.
+static const size_t DefaultInlineBufferSize = 32;
+
 Vector<char> encodeByte(unsigned char);
+const char* decodeByte(const char* p, const char* limit, unsigned char& foundChar);
 Vector<char> maxIDBKey();
 Vector<char> minIDBKey();
 Vector<char> encodeBool(bool);
@@ -59,7 +64,7 @@ const char* decodeStringWithLength(const char* p, const char* limit, String& fou
 int compareEncodedStringsWithLength(const char*& p, const char* limitP, const char*& q, const char* limitQ);
 Vector<char> encodeDouble(double);
 const char* decodeDouble(const char* p, const char* limit, double*);
-void encodeIDBKey(const IDBKey&, Vector<char>& into);
+void encodeIDBKey(const IDBKey&, Vector<char, DefaultInlineBufferSize>& into);
 Vector<char> encodeIDBKey(const IDBKey&);
 const char* decodeIDBKey(const char* p, const char* limit, RefPtr<IDBKey>& foundKey);
 const char* extractEncodedIDBKey(const char* start, const char* limit, Vector<char>* result);
@@ -140,7 +145,8 @@ public:
         OriginName = 0,
         DatabaseName = 1,
         UserVersion = 2,
-        MaxObjectStoreId = 3
+        MaxObjectStoreId = 3,
+        UserIntVersion = 4
     };
 
     static Vector<char> encode(int64_t databaseId, MetaDataType);
@@ -161,16 +167,16 @@ public:
 
     ObjectStoreMetaDataKey();
     static const char* decode(const char* start, const char* limit, ObjectStoreMetaDataKey* result);
-    static Vector<char> encode(int64_t databaseId, int64_t objectStoreId, int64_t metaDataType);
+    static Vector<char> encode(int64_t databaseId, int64_t objectStoreId, unsigned char metaDataType);
     static Vector<char> encodeMaxKey(int64_t databaseId);
     static Vector<char> encodeMaxKey(int64_t databaseId, int64_t objectStoreId);
     int64_t objectStoreId() const;
-    int64_t metaDataType() const;
+    unsigned char metaDataType() const;
     int compare(const ObjectStoreMetaDataKey& other);
 
 private:
     int64_t m_objectStoreId;
-    int64_t m_metaDataType; // FIXME: Make this a byte.
+    unsigned char m_metaDataType;
 };
 
 class IndexMetaDataKey {

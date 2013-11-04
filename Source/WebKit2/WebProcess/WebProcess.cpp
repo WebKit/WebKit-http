@@ -80,6 +80,10 @@
 #include <wtf/PassRefPtr.h>
 #include <wtf/RandomNumber.h>
 
+#if ENABLE(WEB_INTENTS)
+#include <WebCore/PlatformMessagePortChannel.h>
+#endif
+
 #if ENABLE(NETWORK_INFO)
 #include "WebNetworkInfoManagerMessages.h"
 #endif
@@ -311,6 +315,7 @@ void WebProcess::setShouldUseFontSmoothing(bool useFontSmoothing)
 void WebProcess::userPreferredLanguagesChanged(const Vector<String>& languages) const
 {
     overrideUserPreferredLanguages(languages);
+    languageDidChange();
 }
 
 void WebProcess::fullKeyboardAccessModeChanged(bool fullKeyboardAccessEnabled)
@@ -791,12 +796,32 @@ WebPageGroupProxy* WebProcess::webPageGroup(const WebPageGroupData& pageGroupDat
     return result.iterator->second.get();
 }
 
+#if ENABLE(WEB_INTENTS)
+uint64_t WebProcess::addMessagePortChannel(PassRefPtr<PlatformMessagePortChannel> messagePortChannel)
+{
+    static uint64_t channelID = 0;
+    m_messagePortChannels.add(++channelID, messagePortChannel);
+
+    return channelID;
+}
+
+PlatformMessagePortChannel* WebProcess::messagePortChannel(uint64_t channelID)
+{
+    return m_messagePortChannels.get(channelID).get();
+}
+
+void WebProcess::removeMessagePortChannel(uint64_t channelID)
+{
+    m_messagePortChannels.remove(channelID);
+}
+#endif
+
 static bool canPluginHandleResponse(const ResourceResponse& response)
 {
     String pluginPath;
     bool blocked;
 
-    if (!WebProcess::shared().connection()->sendSync(Messages::WebContext::GetPluginPath(response.mimeType(), response.url().string()), Messages::WebContext::GetPluginPath::Reply(pluginPath, blocked), 0))
+    if (!WebProcess::shared().connection()->sendSync(Messages::WebProcessProxy::GetPluginPath(response.mimeType(), response.url().string()), Messages::WebProcessProxy::GetPluginPath::Reply(pluginPath, blocked), 0))
         return false;
 
     return !blocked && !pluginPath.isEmpty();
@@ -855,7 +880,7 @@ void WebProcess::getSitesWithPluginData(const Vector<String>& pluginPaths, uint6
     Vector<String> sites;
     copyToVector(sitesSet, sites);
 
-    connection()->send(Messages::WebContext::DidGetSitesWithPluginData(sites, callbackID), 0);
+    connection()->send(Messages::WebProcessProxy::DidGetSitesWithPluginData(sites, callbackID), 0);
 }
 
 void WebProcess::clearPluginSiteData(const Vector<String>& pluginPaths, const Vector<String>& sites, uint64_t flags, uint64_t maxAgeInSeconds, uint64_t callbackID)
@@ -879,7 +904,7 @@ void WebProcess::clearPluginSiteData(const Vector<String>& pluginPaths, const Ve
     }
 #endif
 
-    connection()->send(Messages::WebContext::DidClearPluginSiteData(callbackID), 0);
+    connection()->send(Messages::WebProcessProxy::DidClearPluginSiteData(callbackID), 0);
 }
 #endif
     
@@ -892,10 +917,10 @@ static void fromCountedSetToHashMap(TypeCountSet* countedSet, HashMap<String, ui
 
 static void getWebCoreMemoryCacheStatistics(Vector<HashMap<String, uint64_t> >& result)
 {
-    DEFINE_STATIC_LOCAL(String, imagesString, ("Images"));
-    DEFINE_STATIC_LOCAL(String, cssString, ("CSS"));
-    DEFINE_STATIC_LOCAL(String, xslString, ("XSL"));
-    DEFINE_STATIC_LOCAL(String, javaScriptString, ("JavaScript"));
+    DEFINE_STATIC_LOCAL(String, imagesString, (ASCIILiteral("Images")));
+    DEFINE_STATIC_LOCAL(String, cssString, (ASCIILiteral("CSS")));
+    DEFINE_STATIC_LOCAL(String, xslString, (ASCIILiteral("XSL")));
+    DEFINE_STATIC_LOCAL(String, javaScriptString, (ASCIILiteral("JavaScript")));
     
     MemoryCache::Statistics memoryCacheStatistics = memoryCache()->getStatistics();
     
@@ -981,9 +1006,7 @@ void WebProcess::getWebCoreStatistics(uint64_t callbackID)
     data.statisticsNumbers.set("CachedFontDataInactiveCount", fontCache()->inactiveFontDataCount());
     
     // Gather glyph page statistics.
-#if !(PLATFORM(QT) && !HAVE(QRAWFONT)) // Qt doesn't use the glyph page tree currently. See: bug 63467.
     data.statisticsNumbers.set("GlyphPageCount", GlyphPageTreeNode::treeGlyphPageCount());
-#endif
     
     // Get WebCore memory cache statistics
     getWebCoreMemoryCacheStatistics(data.webCoreCacheStatistics);

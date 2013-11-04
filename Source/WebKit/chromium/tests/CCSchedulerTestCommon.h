@@ -25,9 +25,9 @@
 #ifndef CCSchedulerTestCommon_h
 #define CCSchedulerTestCommon_h
 
-#include "cc/CCDelayBasedTimeSource.h"
-#include "cc/CCFrameRateController.h"
-#include "cc/CCThread.h"
+#include "CCDelayBasedTimeSource.h"
+#include "CCFrameRateController.h"
+#include "CCThread.h"
 #include <gtest/gtest.h>
 #include <wtf/OwnPtr.h>
 
@@ -52,6 +52,12 @@ public:
     {
         m_pendingTaskDelay = 0;
         m_pendingTask.clear();
+        m_runPendingTaskOnOverwrite = false;
+    }
+
+    void runPendingTaskOnOverwrite(bool enable)
+    {
+        m_runPendingTaskOnOverwrite = enable;
     }
 
     bool hasPendingTask() const { return m_pendingTask; }
@@ -71,6 +77,9 @@ public:
     virtual void postTask(PassOwnPtr<Task>) { ASSERT_NOT_REACHED(); }
     virtual void postDelayedTask(PassOwnPtr<Task> task, long long delay)
     {
+        if (m_runPendingTaskOnOverwrite && hasPendingTask())
+            runPendingTask();
+
         EXPECT_TRUE(!hasPendingTask());
         m_pendingTask = task;
         m_pendingTaskDelay = delay;
@@ -80,12 +89,14 @@ public:
 protected:
     OwnPtr<Task> m_pendingTask;
     long long m_pendingTaskDelay;
+    bool m_runPendingTaskOnOverwrite;
 };
 
 class FakeCCTimeSource : public WebCore::CCTimeSource {
 public:
     FakeCCTimeSource()
         : m_active(false)
+        , m_nextTickTime(0)
         , m_client(0) { }
 
     virtual ~FakeCCTimeSource() { }
@@ -93,6 +104,9 @@ public:
     virtual void setClient(WebCore::CCTimeSourceClient* client) OVERRIDE { m_client = client; }
     virtual void setActive(bool b) OVERRIDE { m_active = b; }
     virtual bool active() const OVERRIDE { return m_active; }
+    virtual void setTimebaseAndInterval(double timebase, double interval) OVERRIDE { }
+    virtual double lastTickTime() OVERRIDE { return 0; }
+    virtual double nextTickTimeIfActivated() OVERRIDE { return 0; }
 
     void tick()
     {
@@ -101,8 +115,11 @@ public:
             m_client->onTimerTick();
     }
 
+    void setNextTickTime(double nextTickTime) { m_nextTickTime = nextTickTime; }
+
 protected:
     bool m_active;
+    double m_nextTickTime;
     WebCore::CCTimeSourceClient* m_client;
 };
 
@@ -113,15 +130,15 @@ public:
         return adoptRef(new FakeCCDelayBasedTimeSource(interval, thread));
     }
 
-    void setMonotonicallyIncreasingTime(double time) { m_monotonicallyIncreasingTime = time; }
-    virtual double monotonicallyIncreasingTime() const { return m_monotonicallyIncreasingTime; }
+    void setMonotonicTimeNow(double time) { m_monotonicTimeNow = time; }
+    virtual double monotonicTimeNow() const OVERRIDE { return m_monotonicTimeNow; }
 
 protected:
     FakeCCDelayBasedTimeSource(double interval, WebCore::CCThread* thread)
         : CCDelayBasedTimeSource(interval, thread)
-        , m_monotonicallyIncreasingTime(0) { }
+        , m_monotonicTimeNow(0) { }
 
-    double m_monotonicallyIncreasingTime;
+    double m_monotonicTimeNow;
 };
 
 class FakeCCFrameRateController : public WebCore::CCFrameRateController {

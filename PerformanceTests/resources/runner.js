@@ -1,5 +1,9 @@
 // There are tests for computeStatistics() located in LayoutTests/fast/harness/perftests
 
+// We need access to console.memory for the memory measurements
+if (window.internals)
+     internals.settings.setMemoryInfoEnabled(true);
+
 var PerfTestRunner = {};
 
 // To make the benchmark results predictable, we replace Math.random with a
@@ -42,7 +46,7 @@ PerfTestRunner.info = function (text) {
 }
 
 PerfTestRunner.logInfo = function (text) {
-    if (!window.layoutTestController)
+    if (!window.testRunner)
         this.log(text);
 }
 
@@ -85,14 +89,14 @@ PerfTestRunner.computeStatistics = function (times, unit) {
     return result;
 }
 
-PerfTestRunner.logStatistics = function (times) {
-    this.log("");
-    var statistics = this.computeStatistics(times, this.unit);
-    this.printStatistics(statistics);
+PerfTestRunner.logStatistics = function (values, unit, title) {
+    var statistics = this.computeStatistics(values, unit);
+    this.printStatistics(statistics, title);
 }
 
-PerfTestRunner.printStatistics = function (statistics) {
+PerfTestRunner.printStatistics = function (statistics, title) {
     this.log("");
+    this.log(title);
     this.log("avg " + statistics.mean + " " + statistics.unit);
     this.log("median " + statistics.median + " " + statistics.unit);
     this.log("stdev " + statistics.stdev + " " + statistics.unit);
@@ -123,7 +127,11 @@ PerfTestRunner._runLoop = function () {
     } else {
         if (this._description)
             this.log("Description: " + this._description);
-        this.logStatistics(this._results);
+        this.logStatistics(this._results, this.unit, "Time:");
+        if (this._jsHeapResults.length) {
+            this.logStatistics(this._jsHeapResults, "bytes", "JS Heap:");
+            this.logStatistics(this._mallocHeapResults, "bytes", "Malloc:");
+        }
         if (this._logLines) {
             var logLines = this._logLines;
             this._logLines = null;
@@ -131,8 +139,8 @@ PerfTestRunner._runLoop = function () {
             logLines.forEach(function(text) { self.log(text); });
         }
         this._doneFunction();
-        if (window.layoutTestController)
-            layoutTestController.notifyDone();
+        if (window.testRunner)
+            testRunner.notifyDone();
     }
 }
 
@@ -156,6 +164,32 @@ PerfTestRunner._runner = function () {
     this._runLoop();
 }
 
+PerfTestRunner.storeHeapResults = function() {
+    if (!window.internals)
+        return;
+    this._jsHeapResults.push(this.getUsedJSHeap());
+    this._mallocHeapResults.push(this.getUsedMallocHeap());
+}
+
+PerfTestRunner.getUsedMallocHeap = function() {
+    var stats = window.internals.mallocStatistics();
+    return stats.committedVMBytes - stats.freeListBytes;
+}
+
+PerfTestRunner.getUsedJSHeap = function() {
+    return console.memory.usedJSHeapSize;
+}
+
+PerfTestRunner.getAndPrintMemoryStatistics = function() {
+    if (!window.internals)
+        return;
+    var jsMemoryStats = PerfTestRunner.computeStatistics([PerfTestRunner.getUsedJSHeap()], "bytes");
+    PerfTestRunner.printStatistics(jsMemoryStats, "JS Heap:");
+
+    var mallocMemoryStats = PerfTestRunner.computeStatistics([PerfTestRunner.getUsedMallocHeap()], "bytes");
+    PerfTestRunner.printStatistics(mallocMemoryStats, "Malloc:");
+}
+
 PerfTestRunner.ignoreWarmUpAndLog = function (result) {
     this._completedRuns++;
 
@@ -164,6 +198,7 @@ PerfTestRunner.ignoreWarmUpAndLog = function (result) {
         this.log("Ignoring warm-up run (" + labeledResult + ")");
     else {
         this._results.push(result);
+        this.storeHeapResults();
         this.log(labeledResult);
     }
 }
@@ -172,7 +207,9 @@ PerfTestRunner.initAndStartLoop = function() {
     this._completedRuns = -1;
     this.customRunFunction = null;
     this._results = [];
-    this._logLines = window.layoutTestController ? [] : null;
+    this._jsHeapResults = [];
+    this._mallocHeapResults = [];
+    this._logLines = window.testRunner ? [] : null;
     this.log("Running " + this._runCount + " times");
     this._runLoop();
 }
@@ -227,7 +264,7 @@ PerfTestRunner._perSecondRunnerIterator = function (callsPerIteration) {
     return Date.now() - startTime;
 }
 
-if (window.layoutTestController) {
-    layoutTestController.waitUntilDone();
-    layoutTestController.dumpAsText();
+if (window.testRunner) {
+    testRunner.waitUntilDone();
+    testRunner.dumpAsText();
 }

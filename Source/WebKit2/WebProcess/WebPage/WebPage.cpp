@@ -120,6 +120,10 @@
 #include <WebCore/Range.h>
 #include <WebCore/VisiblePosition.h>
 
+#if ENABLE(MHTML)
+#include <WebCore/MHTMLArchive.h>
+#endif
+
 #if ENABLE(PLUGIN_PROCESS)
 #if PLATFORM(MAC)
 #include "MachPort.h"
@@ -136,6 +140,7 @@
 
 #if ENABLE(WEB_INTENTS)
 #include "IntentData.h"
+#include <WebCore/Intent.h>
 #endif
 
 #if ENABLE(VIBRATION)
@@ -207,6 +212,10 @@ WebPage::WebPage(uint64_t pageID, const WebPageCreationParameters& parameters)
     , m_isInRedo(false)
     , m_isClosed(false)
     , m_tabToLinks(false)
+    , m_asynchronousPluginInitializationEnabled(false)
+    , m_asynchronousPluginInitializationEnabledForAllPlugins(false)
+    , m_artificialPluginInitializationDelayEnabled(false)
+    , m_scrollingPerformanceLoggingEnabled(false)
 #if PLATFORM(MAC)
     , m_windowIsVisible(false)
     , m_isSmartInsertDeleteEnabled(parameters.isSmartInsertDeleteEnabled)
@@ -296,13 +305,7 @@ WebPage::WebPage(uint64_t pageID, const WebPageCreationParameters& parameters)
     WebCore::provideVibrationTo(m_page.get(), new WebVibrationClient(this));
 #endif
 
-    // Qt does not yet call setIsInWindow. Until it does, just leave
-    // this line out so plug-ins and video will work. Eventually all platforms
-    // should call setIsInWindow and this comment and #if should be removed,
-    // leaving behind the setCanStartMedia call.
-#if !PLATFORM(QT)
     m_page->setCanStartMedia(false);
-#endif
 
     updatePreferences(parameters.store);
 
@@ -430,8 +433,8 @@ PassRefPtr<Plugin> WebPage::createPlugin(WebFrame* frame, HTMLPlugInElement* plu
     bool blocked;
 
     if (!WebProcess::shared().connection()->sendSync(
-            Messages::WebContext::GetPluginPath(parameters.mimeType, parameters.url.string()), 
-            Messages::WebContext::GetPluginPath::Reply(pluginPath, blocked), 0)) {
+            Messages::WebProcessProxy::GetPluginPath(parameters.mimeType, parameters.url.string()),
+            Messages::WebProcessProxy::GetPluginPath::Reply(pluginPath, blocked), 0)) {
         return 0;
     }
 
@@ -482,7 +485,7 @@ EditorState WebPage::editorState() const
     size_t location = 0;
     size_t length = 0;
 
-    Element* selectionRoot = frame->selection()->rootEditableElement();
+    Element* selectionRoot = frame->selection()->rootEditableElementRespectingShadowTree();
     Element* scope = selectionRoot ? selectionRoot : frame->document()->documentElement();
 
     if (!scope)
@@ -899,6 +902,10 @@ void WebPage::setResizesToContentsUsingLayoutSize(const IntSize& targetLayoutSiz
     m_page->settings()->setAcceleratedCompositingForFixedPositionEnabled(true);
     m_page->settings()->setFixedElementsLayoutRelativeToFrame(true);
     m_page->settings()->setFixedPositionCreatesStackingContext(true);
+#if ENABLE(SMOOTH_SCROLLING)
+    // Ensure we don't do animated scrolling in the WebProcess when scrolling is delegated.
+    m_page->settings()->setEnableScrollAnimator(false);
+#endif
 
     // Always reset even when empty. This also takes care of the relayout.
     setFixedLayoutSize(targetLayoutSize);
@@ -1112,33 +1119,35 @@ void WebPage::setFixedLayoutSize(const IntSize& size)
         return;
 
     view->setFixedLayoutSize(size);
-    view->forceLayout();
+    // Do not force it until the first layout, this would then become our first layout prematurely.
+    if (view->didFirstLayout())
+        view->forceLayout();
 }
 
 void WebPage::setPaginationMode(uint32_t mode)
 {
-    Page::Pagination pagination = m_page->pagination();
-    pagination.mode = static_cast<Page::Pagination::Mode>(mode);
+    Pagination pagination = m_page->pagination();
+    pagination.mode = static_cast<Pagination::Mode>(mode);
     m_page->setPagination(pagination);
 }
 
 void WebPage::setPaginationBehavesLikeColumns(bool behavesLikeColumns)
 {
-    Page::Pagination pagination = m_page->pagination();
+    Pagination pagination = m_page->pagination();
     pagination.behavesLikeColumns = behavesLikeColumns;
     m_page->setPagination(pagination);
 }
 
 void WebPage::setPageLength(double pageLength)
 {
-    Page::Pagination pagination = m_page->pagination();
+    Pagination pagination = m_page->pagination();
     pagination.pageLength = pageLength;
     m_page->setPagination(pagination);
 }
 
 void WebPage::setGapBetweenPages(double gap)
 {
-    Page::Pagination pagination = m_page->pagination();
+    Pagination pagination = m_page->pagination();
     pagination.gap = gap;
     m_page->setPagination(pagination);
 }
@@ -1190,43 +1199,27 @@ void WebPage::uninstallPageOverlay(PageOverlay* pageOverlay, bool fadeOut)
 #endif
 }
 
-PassRefPtr<WebImage> WebPage::snapshotInViewCoordinates(const IntRect& rect, ImageOptions options)
+static ImageOptions snapshotOptionsToImageOptions(SnapshotOptions snapshotOptions)
+{
+    unsigned imageOptions = 0;
+
+    if (snapshotOptions & SnapshotOptionsShareable)
+        imageOptions |= ImageOptionsShareable;
+
+    return static_cast<ImageOptions>(imageOptions);
+}
+
+PassRefPtr<WebImage> WebPage::scaledSnapshotWithOptions(const IntRect& rect, double scaleFactor, SnapshotOptions options)
 {
     FrameView* frameView = m_mainFrame->coreFrame()->view();
     if (!frameView)
         return 0;
 
     IntSize bitmapSize = rect.size();
-    float deviceScaleFactor = corePage()->deviceScaleFactor();
-    bitmapSize.scale(deviceScaleFactor);
-
-    RefPtr<WebImage> snapshot = WebImage::create(bitmapSize, options);
-    if (!snapshot->bitmap())
-        return 0;
-    
-    OwnPtr<WebCore::GraphicsContext> graphicsContext = snapshot->bitmap()->createGraphicsContext();
-    graphicsContext->applyDeviceScaleFactor(deviceScaleFactor);
-    graphicsContext->translate(-rect.x(), -rect.y());
-
-    frameView->updateLayoutAndStyleIfNeededRecursive();
-
-    PaintBehavior oldBehavior = frameView->paintBehavior();
-    frameView->setPaintBehavior(oldBehavior | PaintBehaviorFlattenCompositingLayers);
-    frameView->paint(graphicsContext.get(), rect);
-    frameView->setPaintBehavior(oldBehavior);
-
-    return snapshot.release();
-}
-
-PassRefPtr<WebImage> WebPage::scaledSnapshotInDocumentCoordinates(const IntRect& rect, double scaleFactor, ImageOptions options)
-{
-    FrameView* frameView = m_mainFrame->coreFrame()->view();
-    if (!frameView)
-        return 0;
-
     float combinedScaleFactor = scaleFactor * corePage()->deviceScaleFactor();
-    IntSize size(ceil(rect.width() * combinedScaleFactor), ceil(rect.height() * combinedScaleFactor));
-    RefPtr<WebImage> snapshot = WebImage::create(size, options);
+    bitmapSize.scale(combinedScaleFactor);
+
+    RefPtr<WebImage> snapshot = WebImage::create(bitmapSize, snapshotOptionsToImageOptions(options));
     if (!snapshot->bitmap())
         return 0;
 
@@ -1234,19 +1227,17 @@ PassRefPtr<WebImage> WebPage::scaledSnapshotInDocumentCoordinates(const IntRect&
     graphicsContext->applyDeviceScaleFactor(combinedScaleFactor);
     graphicsContext->translate(-rect.x(), -rect.y());
 
-    frameView->updateLayoutAndStyleIfNeededRecursive();
+    FrameView::SelectionInSnaphot shouldPaintSelection = FrameView::IncludeSelection;
+    if (options & SnapshotOptionsExcludeSelectionHighlighting)
+        shouldPaintSelection = FrameView::ExcludeSelection;
 
-    PaintBehavior oldBehavior = frameView->paintBehavior();
-    frameView->setPaintBehavior(oldBehavior | PaintBehaviorFlattenCompositingLayers);
-    frameView->paintContents(graphicsContext.get(), rect);
-    frameView->setPaintBehavior(oldBehavior);
+    FrameView::CoordinateSpaceForSnapshot coordinateSpace = FrameView::DocumentCoordinates;
+    if (options & SnapshotOptionsInViewCoordinates)
+        coordinateSpace = FrameView::ViewCoordinates;
+
+    frameView->paintContentsForSnapshot(graphicsContext.get(), rect, shouldPaintSelection, coordinateSpace);
 
     return snapshot.release();
-}
-
-PassRefPtr<WebImage> WebPage::snapshotInDocumentCoordinates(const IntRect& rect, ImageOptions options)
-{
-    return scaledSnapshotInDocumentCoordinates(rect, 1, options);
 }
 
 void WebPage::pageDidScroll()
@@ -1854,6 +1845,22 @@ void WebPage::getContentsAsString(uint64_t callbackID)
     send(Messages::WebPageProxy::StringCallback(resultString, callbackID));
 }
 
+#if ENABLE(MHTML)
+void WebPage::getContentsAsMHTMLData(uint64_t callbackID, bool useBinaryEncoding)
+{
+    CoreIPC::DataReference dataReference;
+
+    RefPtr<SharedBuffer> buffer = useBinaryEncoding
+        ? MHTMLArchive::generateMHTMLDataUsingBinaryEncoding(m_page.get())
+        : MHTMLArchive::generateMHTMLData(m_page.get());
+
+    if (buffer)
+        dataReference = CoreIPC::DataReference(reinterpret_cast<const uint8_t*>(buffer->data()), buffer->size());
+
+    send(Messages::WebPageProxy::DataCallback(dataReference, callbackID));
+}
+#endif
+
 void WebPage::getRenderTreeExternalRepresentation(uint64_t callbackID)
 {
     String resultString = renderTreeExternalRepresentation();
@@ -1963,6 +1970,12 @@ void WebPage::deliverIntentToFrame(uint64_t frameID, const IntentData& intentDat
 
     frame->deliverIntent(intentData);
 }
+
+void WebPage::deliverCoreIntentToFrame(uint64_t frameID, Intent* coreIntent)
+{
+    if (WebFrame* frame = WebProcess::shared().webFrame(frameID))
+        frame->deliverIntent(coreIntent);
+}
 #endif
 
 void WebPage::preferencesDidChange(const WebPreferencesStore& store)
@@ -1976,6 +1989,11 @@ void WebPage::updatePreferences(const WebPreferencesStore& store)
     Settings* settings = m_page->settings();
 
     m_tabToLinks = store.getBoolValueForKey(WebPreferencesKey::tabsToLinksKey());
+    m_asynchronousPluginInitializationEnabled = store.getBoolValueForKey(WebPreferencesKey::asynchronousPluginInitializationEnabledKey());
+    m_asynchronousPluginInitializationEnabledForAllPlugins = store.getBoolValueForKey(WebPreferencesKey::asynchronousPluginInitializationEnabledForAllPluginsKey());
+    m_artificialPluginInitializationDelayEnabled = store.getBoolValueForKey(WebPreferencesKey::artificialPluginInitializationDelayEnabledKey());
+
+    m_scrollingPerformanceLoggingEnabled = store.getBoolValueForKey(WebPreferencesKey::scrollingPerformanceLoggingEnabledKey());
 
     // FIXME: This should be generated from macro expansion for all preferences,
     // but we currently don't match the naming of WebCore exactly so we are
@@ -2045,6 +2063,9 @@ void WebPage::updatePreferences(const WebPreferencesStore& store)
     settings->setMockScrollbarsEnabled(store.getBoolValueForKey(WebPreferencesKey::mockScrollbarsEnabledKey()));
     settings->setHyperlinkAuditingEnabled(store.getBoolValueForKey(WebPreferencesKey::hyperlinkAuditingEnabledKey()));
     settings->setRequestAnimationFrameEnabled(store.getBoolValueForKey(WebPreferencesKey::requestAnimationFrameEnabledKey()));
+#if ENABLE(SMOOTH_SCROLLING)
+    settings->setEnableScrollAnimator(store.getBoolValueForKey(WebPreferencesKey::scrollAnimatorEnabledKey()));
+#endif
 
     // <rdar://problem/10697417>: It is necessary to force compositing when accelerate drawing
     // is enabled on Mac so that scrollbars are always in their own layers.
@@ -2090,8 +2111,11 @@ void WebPage::updatePreferences(const WebPreferencesStore& store)
 #endif
 
     settings->setShouldRespectImageOrientation(store.getBoolValueForKey(WebPreferencesKey::shouldRespectImageOrientationKey()));
+    settings->setThirdPartyStorageBlockingEnabled(store.getBoolValueForKey(WebPreferencesKey::thirdPartyStorageBlockingEnabledKey()));
 
     settings->setDiagnosticLoggingEnabled(store.getBoolValueForKey(WebPreferencesKey::diagnosticLoggingEnabledKey()));
+
+    settings->setScrollingPerformanceLoggingEnabled(m_scrollingPerformanceLoggingEnabled);
 
     platformPreferencesDidChange(store);
 
@@ -3285,5 +3309,16 @@ void WebPage::setVisibilityState(int visibilityState, bool isInitialState)
     }
 }
 #endif
+
+void WebPage::setScrollingPerformanceLoggingEnabled(bool enabled)
+{
+    m_scrollingPerformanceLoggingEnabled = enabled;
+
+    FrameView* frameView = m_mainFrame->coreFrame()->view();
+    if (!frameView)
+        return;
+
+    frameView->setScrollingPerformanceLoggingEnabled(enabled);
+}
 
 } // namespace WebKit

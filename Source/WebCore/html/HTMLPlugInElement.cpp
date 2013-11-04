@@ -33,10 +33,12 @@
 #include "FrameTree.h"
 #include "HTMLNames.h"
 #include "Page.h"
+#include "PluginViewBase.h"
 #include "RenderEmbeddedObject.h"
 #include "RenderWidget.h"
 #include "Settings.h"
 #include "Widget.h"
+#include <wtf/UnusedParam.h>
 
 #if ENABLE(NETSCAPE_PLUGIN_API)
 #include "npruntime_impl.h"
@@ -125,7 +127,7 @@ bool HTMLPlugInElement::guardedDispatchBeforeLoadEvent(const String& sourceURL)
     return beforeLoadAllowedLoad;
 }
 
-Widget* HTMLPlugInElement::pluginWidget()
+Widget* HTMLPlugInElement::pluginWidget() const
 {
     if (m_inBeforeLoadEventHandler) {
         // The plug-in hasn't loaded yet, and it makes no sense to try to load if beforeload handler happened to touch the plug-in element.
@@ -188,6 +190,24 @@ void HTMLPlugInElement::defaultEventHandler(Event* event)
     if (event->defaultHandled())
         return;
     HTMLFrameOwnerElement::defaultEventHandler(event);
+}
+
+bool HTMLPlugInElement::isKeyboardFocusable(KeyboardEvent* event) const
+{
+    UNUSED_PARAM(event);
+    if (!document()->page())
+        return false;
+
+    const PluginViewBase* plugin = pluginWidget() && pluginWidget()->isPluginViewBase() ? static_cast<const PluginViewBase*>(pluginWidget()) : 0;
+    if (plugin)
+        return plugin->supportsKeyboardFocus();
+
+    return false;
+}
+
+bool HTMLPlugInElement::isPluginElement() const
+{
+    return true;
 }
 
 #if ENABLE(NETSCAPE_PLUGIN_API)

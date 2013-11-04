@@ -36,13 +36,14 @@ namespace WebCore {
 RenderNamedFlowThread::RenderNamedFlowThread(Node* node, PassRefPtr<WebKitNamedFlow> namedFlow)
     : RenderFlowThread(node)
     , m_namedFlow(namedFlow)
+    , m_regionLayoutUpdateEventTimer(this, &RenderNamedFlowThread::regionLayoutUpdateEventTimerFired)
 {
-    m_namedFlow->setRenderer(this);
 }
 
 RenderNamedFlowThread::~RenderNamedFlowThread()
 {
-    m_namedFlow->setRenderer(0);
+    // The RenderNamedFlowThread may be destroyed because the document is discarded. Leave the NamedFlow object in a consistent state by calling mark for destruction.
+    setMarkForDestruction();
 }
 
 const char* RenderNamedFlowThread::renderName() const
@@ -155,6 +156,8 @@ void RenderNamedFlowThread::addRegionToThread(RenderRegion* renderRegion)
         m_regionList.insertBefore(it, renderRegion);
     }
 
+    resetMarkForDestruction();
+
     ASSERT(!renderRegion->isValid());
     if (renderRegion->parentNamedFlowThread()) {
         if (renderRegion->parentNamedFlowThread()->dependsOn(this)) {
@@ -187,10 +190,12 @@ void RenderNamedFlowThread::removeRegionFromThread(RenderRegion* renderRegion)
         removeDependencyOnFlowThread(renderRegion->parentNamedFlowThread());
     }
 
-    if (canBeDestroyed()) {
-        destroy();
-        return;
-    }
+    if (canBeDestroyed())
+        setMarkForDestruction();
+
+    // After removing all the regions in the flow the following layout needs to dispatch the regionLayoutUpdate event
+    if (m_regionList.isEmpty())
+        setDispatchRegionLayoutUpdateEvent(true);
 
     invalidateRegions();
 }
@@ -263,6 +268,8 @@ void RenderNamedFlowThread::registerNamedFlowContentNode(Node* contentNode)
 
     contentNode->setInNamedFlow();
 
+    resetMarkForDestruction();
+
     // Find the first content node following the new content node.
     for (NamedFlowContentNodes::iterator it = m_contentNodes.begin(); it != m_contentNodes.end(); ++it) {
         Node* node = *it;
@@ -285,7 +292,7 @@ void RenderNamedFlowThread::unregisterNamedFlowContentNode(Node* contentNode)
     m_contentNodes.remove(contentNode);
 
     if (canBeDestroyed())
-        destroy();
+        setMarkForDestruction();
 }
 
 const AtomicString& RenderNamedFlowThread::flowThreadName() const
@@ -293,12 +300,43 @@ const AtomicString& RenderNamedFlowThread::flowThreadName() const
     return m_namedFlow->name();
 }
 
-void RenderNamedFlowThread::willBeDestroyed()
+void RenderNamedFlowThread::dispatchRegionLayoutUpdateEvent()
 {
-    if (!documentBeingDestroyed())
-        view()->flowThreadController()->removeFlowThread(this);
+    RenderFlowThread::dispatchRegionLayoutUpdateEvent();
 
-    RenderFlowThread::willBeDestroyed();
+    if (!m_regionLayoutUpdateEventTimer.isActive() && m_namedFlow->hasEventListeners())
+        m_regionLayoutUpdateEventTimer.startOneShot(0);
+}
+
+void RenderNamedFlowThread::regionLayoutUpdateEventTimerFired(Timer<RenderNamedFlowThread>*)
+{
+    ASSERT(m_namedFlow);
+
+    m_namedFlow->dispatchRegionLayoutUpdateEvent();
+}
+
+void RenderNamedFlowThread::setMarkForDestruction()
+{
+    if (m_namedFlow->flowState() == WebKitNamedFlow::FlowStateNull)
+        return;
+
+    m_namedFlow->setRenderer(0);
+    // After this call ends, the renderer can be safely destroyed.
+    // The NamedFlow object may outlive its renderer if it's referenced from a script and may be reatached to one if the named flow is recreated in the stylesheet.
+}
+
+void RenderNamedFlowThread::resetMarkForDestruction()
+{
+    if (m_namedFlow->flowState() == WebKitNamedFlow::FlowStateCreated)
+        return;
+
+    m_namedFlow->setRenderer(this);
+}
+
+bool RenderNamedFlowThread::isMarkedForDestruction() const
+{
+    // Flow threads in the "NULL" state can be destroyed.
+    return m_namedFlow->flowState() == WebKitNamedFlow::FlowStateNull;
 }
 
 }

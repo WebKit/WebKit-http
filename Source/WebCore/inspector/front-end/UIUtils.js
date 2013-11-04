@@ -50,8 +50,8 @@ WebInspector.installDragHandle = function(element, elementDragStart, elementDrag
  */
 WebInspector._elementDragStart = function(elementDragStart, elementDrag, elementDragEnd, cursor, event)
 {
-    // Only drag upon left button. Right will likely cause a context menu.
-    if (event.button)
+    // Only drag upon left button. Right will likely cause a context menu. So will ctrl-click on mac.
+    if (event.button || (WebInspector.isMac() && event.ctrlKey))
         return;
 
     if (WebInspector._elementDraggingEventListener)
@@ -60,22 +60,38 @@ WebInspector._elementDragStart = function(elementDragStart, elementDrag, element
     if (elementDragStart && !elementDragStart(event))
         return;
 
-    // Install glass pane
-    if (WebInspector._elementDraggingGlassPane)
+    if (WebInspector._elementDraggingGlassPane) {
         WebInspector._elementDraggingGlassPane.dispose();
+        delete WebInspector._elementDraggingGlassPane;
+    }
 
-    WebInspector._elementDraggingGlassPane = new WebInspector.GlassPane();
+    var targetDocument = event.target.ownerDocument;
 
     WebInspector._elementDraggingEventListener = elementDrag;
     WebInspector._elementEndDraggingEventListener = elementDragEnd;
+    WebInspector._mouseOutWhileDraggingTargetDocument = targetDocument;
 
-    var targetDocument = event.target.ownerDocument;
     targetDocument.addEventListener("mousemove", WebInspector._elementDraggingEventListener, true);
     targetDocument.addEventListener("mouseup", WebInspector._elementDragEnd, true);
+    targetDocument.addEventListener("mouseout", WebInspector._mouseOutWhileDragging, true);
 
     targetDocument.body.style.cursor = cursor;
 
     event.preventDefault();
+}
+
+WebInspector._mouseOutWhileDragging = function()
+{
+    WebInspector._unregisterMouseOutWhileDragging();
+    WebInspector._elementDraggingGlassPane = new WebInspector.GlassPane();
+}
+
+WebInspector._unregisterMouseOutWhileDragging = function()
+{
+    if (!WebInspector._mouseOutWhileDraggingTargetDocument)
+        return;
+    WebInspector._mouseOutWhileDraggingTargetDocument.removeEventListener("mouseout", WebInspector._mouseOutWhileDragging, true);
+    delete WebInspector._mouseOutWhileDraggingTargetDocument;
 }
 
 WebInspector._elementDragEnd = function(event)
@@ -83,6 +99,7 @@ WebInspector._elementDragEnd = function(event)
     var targetDocument = event.target.ownerDocument;
     targetDocument.removeEventListener("mousemove", WebInspector._elementDraggingEventListener, true);
     targetDocument.removeEventListener("mouseup", WebInspector._elementDragEnd, true);
+    WebInspector._unregisterMouseOutWhileDragging();
 
     targetDocument.body.style.removeProperty("cursor");
 
@@ -308,22 +325,48 @@ WebInspector.CSSNumberRegex = /^(-?(?:\d+(?:\.\d+)?|\.\d+))$/;
 
 WebInspector.StyleValueDelimiters = " \xA0\t\n\"':;,/()";
 
+
+/**
+  * @param {Event} event
+  * @return {?string}
+  */
+WebInspector._valueModificationDirection = function(event)
+{
+    var direction = null;
+    if (event.type === "mousewheel") {
+        if (event.wheelDeltaY > 0)
+            direction = "Up";
+        else if (event.wheelDeltaY < 0)
+            direction = "Down";
+    } else {
+        if (event.keyIdentifier === "Up" || event.keyIdentifier === "PageUp")
+            direction = "Up";
+        else if (event.keyIdentifier === "Down" || event.keyIdentifier === "PageDown")
+            direction = "Down";        
+    }
+    return direction;
+}
+
 /**
  * @param {string} hexString
  * @param {Event} event
  */
 WebInspector._modifiedHexValue = function(hexString, event)
 {
+    var direction = WebInspector._valueModificationDirection(event);
+    if (!direction)
+        return hexString;
+
     var number = parseInt(hexString, 16);
     if (isNaN(number) || !isFinite(number))
         return hexString;
 
     var maxValue = Math.pow(16, hexString.length) - 1;
-    var arrowKeyPressed = (event.keyIdentifier === "Up" || event.keyIdentifier === "Down");
-
+    var arrowKeyOrMouseWheelEvent = (event.keyIdentifier === "Up" || event.keyIdentifier === "Down" || event.type === "mousewheel");
     var delta;
-    if (arrowKeyPressed)
-        delta = (event.keyIdentifier === "Up") ? 1 : -1;
+
+    if (arrowKeyOrMouseWheelEvent)
+        delta = (direction === "Up") ? 1 : -1;
     else
         delta = (event.keyIdentifier === "PageUp") ? 16 : -16;
 
@@ -349,19 +392,23 @@ WebInspector._modifiedHexValue = function(hexString, event)
  */
 WebInspector._modifiedFloatNumber = function(number, event)
 {
-    var arrowKeyPressed = (event.keyIdentifier === "Up" || event.keyIdentifier === "Down");
+    var direction = WebInspector._valueModificationDirection(event);
+    if (!direction)
+        return number;
+    
+    var arrowKeyOrMouseWheelEvent = (event.keyIdentifier === "Up" || event.keyIdentifier === "Down" || event.type === "mousewheel");
 
     // Jump by 10 when shift is down or jump by 0.1 when Alt/Option is down.
     // Also jump by 10 for page up and down, or by 100 if shift is held with a page key.
     var changeAmount = 1;
-    if (event.shiftKey && !arrowKeyPressed)
+    if (event.shiftKey && !arrowKeyOrMouseWheelEvent)
         changeAmount = 100;
-    else if (event.shiftKey || !arrowKeyPressed)
+    else if (event.shiftKey || !arrowKeyOrMouseWheelEvent)
         changeAmount = 10;
     else if (event.altKey)
         changeAmount = 0.1;
 
-    if (event.keyIdentifier === "Down" || event.keyIdentifier === "PageDown")
+    if (direction === "Down")
         changeAmount *= -1;
 
     // Make the new number and constrain it to a precision of 6, this matches numbers the engine returns.
@@ -382,9 +429,9 @@ WebInspector._modifiedFloatNumber = function(number, event)
  */
 WebInspector.handleElementValueModifications = function(event, element, finishHandler, suggestionHandler, customNumberHandler)
 {
-    var arrowKeyPressed = (event.keyIdentifier === "Up" || event.keyIdentifier === "Down");
+    var arrowKeyOrMouseWheelEvent = (event.keyIdentifier === "Up" || event.keyIdentifier === "Down" || event.type === "mousewheel");
     var pageKeyPressed = (event.keyIdentifier === "PageUp" || event.keyIdentifier === "PageDown");
-    if (!arrowKeyPressed && !pageKeyPressed)
+    if (!arrowKeyOrMouseWheelEvent && !pageKeyPressed)
         return false;
 
     var selection = window.getSelection();
@@ -648,30 +695,6 @@ Number.withThousandsSeparator = function(num)
     while (str.match(re))
         str = str.replace(re, "$1\u2009$2"); // \u2009 is a thin space.
     return str;
-}
-
-WebInspector._missingLocalizedStrings = {};
-
-/**
- * @param {string} string
- * @param {...*} vararg
- */
-WebInspector.UIString = function(string, vararg)
-{
-    if (Preferences.localizeUI) {
-        if (window.localizedStrings && string in window.localizedStrings)
-            string = window.localizedStrings[string];
-        else {
-            if (!(string in WebInspector._missingLocalizedStrings)) {
-                console.warn("Localized string \"" + string + "\" not found.");
-                WebInspector._missingLocalizedStrings[string] = true;
-            }
-    
-            if (Preferences.showMissingLocalizedStrings)
-                string += " (not localized)";
-        }
-    }
-    return String.vsprintf(string, Array.prototype.slice.call(arguments, 1));
 }
 
 WebInspector.useLowerCaseMenuTitles = function()
@@ -1008,27 +1031,49 @@ WebInspector.revertDomChanges = function(domChanges)
     }
 }
 
-/**
- * @param {WebInspector.ContextMenu} contextMenu
- * @param {Node} contextNode
- * @param {Event} event
- */
-WebInspector.populateHrefContextMenu = function(contextMenu, contextNode, event)
+WebInspector._coalescingLevel = 0;
+
+WebInspector.startBatchUpdate = function()
 {
-    var anchorElement = event.target.enclosingNodeOrSelfWithClass("webkit-html-resource-link") || event.target.enclosingNodeOrSelfWithClass("webkit-html-external-link");
-    if (!anchorElement)
-        return false;
+    if (!WebInspector._coalescingLevel)
+        WebInspector._postUpdateHandlers = new Map();
+    WebInspector._coalescingLevel++;
+}
 
-    var resourceURL = WebInspector.resourceURLForRelatedNode(contextNode, anchorElement.href);
-    if (!resourceURL)
-        return false;
+WebInspector.endBatchUpdate = function()
+{
+    if (--WebInspector._coalescingLevel)
+        return;
 
-    // Add resource-related actions.
-    contextMenu.appendItem(WebInspector.openLinkExternallyLabel(), WebInspector.openResource.bind(WebInspector, resourceURL, false));
-    if (WebInspector.resourceForURL(resourceURL))
-        contextMenu.appendItem(WebInspector.UIString(WebInspector.useLowerCaseMenuTitles() ? "Open link in Resources panel" : "Open Link in Resources Panel"), WebInspector.openResource.bind(null, resourceURL, true));
-    contextMenu.appendItem(WebInspector.copyLinkAddressLabel(), InspectorFrontendHost.copyText.bind(InspectorFrontendHost, resourceURL));
-    return true;
+    var handlers = WebInspector._postUpdateHandlers;
+    delete WebInspector._postUpdateHandlers;
+
+    var keys = handlers.keys();
+    for (var i = 0; i < keys.length; ++i) {
+        var object = keys[i];
+        var methods = handlers.get(object).keys();
+        for (var j = 0; j < methods.length; ++j)
+            methods[j].call(object);
+    }
+}
+
+/**
+ * @param {Object} object
+ * @param {function()} method
+ */
+WebInspector.invokeOnceAfterBatchUpdate = function(object, method)
+{
+    if (!WebInspector._coalescingLevel) {
+        method.call(object);
+        return;
+    }
+    
+    var methods = WebInspector._postUpdateHandlers.get(object);
+    if (!methods) {
+        methods = new Map();
+        WebInspector._postUpdateHandlers.put(object, methods);
+    }
+    methods.put(method);
 }
 
 ;(function() {

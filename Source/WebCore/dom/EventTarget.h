@@ -56,6 +56,7 @@ namespace WebCore {
     class JavaScriptAudioNode;
     class LocalMediaStream;
     class MediaController;
+    class MediaSource;
     class MediaStream;
     class MessagePort;
     class Node;
@@ -68,6 +69,7 @@ namespace WebCore {
     class TextTrack;
     class TextTrackCue;
     class WebSocket;
+    class WebKitNamedFlow;
     class Worker;
     class XMLHttpRequest;
     class XMLHttpRequestUpload;

@@ -119,6 +119,7 @@ namespace JSC { namespace DFG {
     macro(PutById, NodeMustGenerate | NodeClobbersWorld) \
     macro(PutByIdDirect, NodeMustGenerate | NodeClobbersWorld) \
     macro(CheckStructure, NodeMustGenerate) \
+    macro(ForwardCheckStructure, NodeMustGenerate) \
     /* Transition watchpoints are a contract between the party setting the watchpoint */\
     /* and the runtime system, where the party promises that the child object once had */\
     /* the structure being watched, and the runtime system in turn promises that the */\
@@ -131,26 +132,17 @@ namespace JSC { namespace DFG {
     /* the object's structure does not need to be rechecked due to side-effecting */\
     /* (clobbering) operations. */\
     macro(StructureTransitionWatchpoint, NodeMustGenerate) \
+    macro(ForwardStructureTransitionWatchpoint, NodeMustGenerate) \
     macro(PutStructure, NodeMustGenerate) \
     macro(PhantomPutStructure, NodeMustGenerate | NodeDoesNotExit) \
     macro(AllocatePropertyStorage, NodeMustGenerate | NodeDoesNotExit | NodeResultStorage) \
     macro(ReallocatePropertyStorage, NodeMustGenerate | NodeDoesNotExit | NodeResultStorage) \
     macro(GetPropertyStorage, NodeResultStorage) \
-    macro(GetIndexedPropertyStorage, NodeMustGenerate | NodeResultStorage) \
+    macro(CheckArray, NodeMustGenerate) \
+    macro(GetIndexedPropertyStorage, NodeResultStorage) \
     macro(GetByOffset, NodeResultJS) \
     macro(PutByOffset, NodeMustGenerate) \
     macro(GetArrayLength, NodeResultInt32) \
-    macro(GetArgumentsLength, NodeResultInt32) \
-    macro(GetStringLength, NodeResultInt32) \
-    macro(GetInt8ArrayLength, NodeResultInt32) \
-    macro(GetInt16ArrayLength, NodeResultInt32) \
-    macro(GetInt32ArrayLength, NodeResultInt32) \
-    macro(GetUint8ArrayLength, NodeResultInt32) \
-    macro(GetUint8ClampedArrayLength, NodeResultInt32) \
-    macro(GetUint16ArrayLength, NodeResultInt32) \
-    macro(GetUint32ArrayLength, NodeResultInt32) \
-    macro(GetFloat32ArrayLength, NodeResultInt32) \
-    macro(GetFloat64ArrayLength, NodeResultInt32) \
     macro(GetScopeChain, NodeResultJS) \
     macro(GetScopedVar, NodeResultJS | NodeMustGenerate) \
     macro(PutScopedVar, NodeMustGenerate | NodeClobbersWorld) \

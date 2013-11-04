@@ -35,18 +35,19 @@
 #include "npruntime_priv.h"
 
 #if USE(V8)
-#include <wtf/ArrayBufferView.h>
+#include "BindingState.h"
 #include "DOMWindow.h"
+#include "Frame.h"
 #include "NPV8Object.h"  // for PrivateIdentifier
 #include "Range.h"
 #include "V8ArrayBuffer.h"
 #include "V8ArrayBufferView.h"
-#include "V8BindingState.h"
 #include "V8DOMWrapper.h"
 #include "V8Element.h"
 #include "V8NPUtils.h"
-#include "V8Proxy.h"
 #include "V8Range.h"
+#include <wtf/ArrayBufferView.h>
+// FIXME: Remove the USE(JSC) ifdefs because we don't support USE(JSC) anymore.
 #elif USE(JSC)
 #include "bridge/c/c_utility.h"
 #endif
@@ -288,7 +289,7 @@ static NPObject* makeIntArrayImpl(const WebVector<int>& data)
     for (size_t i = 0; i < data.size(); ++i)
         result->Set(i, v8::Number::New(data[i]));
 
-    DOMWindow* window = V8Proxy::retrieveWindow(V8Proxy::currentContext());
+    DOMWindow* window = toDOMWindow(v8::Context::GetCurrent());
     return npCreateV8ScriptObject(0, result, window);
 }
 
@@ -299,7 +300,7 @@ static NPObject* makeStringArrayImpl(const WebVector<WebString>& data)
     for (size_t i = 0; i < data.size(); ++i)
         result->Set(i, data[i].data() ? v8::String::New(reinterpret_cast<const uint16_t*>((data[i].data())), data[i].length()) : v8::String::New(""));
 
-    DOMWindow* window = V8Proxy::retrieveWindow(V8Proxy::currentContext());
+    DOMWindow* window = toDOMWindow(v8::Context::GetCurrent());
     return npCreateV8ScriptObject(0, result, window);
 }
 

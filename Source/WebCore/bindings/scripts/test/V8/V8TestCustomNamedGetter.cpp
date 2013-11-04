@@ -21,15 +21,14 @@
 #include "config.h"
 #include "V8TestCustomNamedGetter.h"
 
+#include "BindingState.h"
 #include "ContextFeatures.h"
 #include "ExceptionCode.h"
+#include "Frame.h"
 #include "RuntimeEnabledFeatures.h"
 #include "V8Binding.h"
-#include "V8BindingMacros.h"
-#include "V8BindingState.h"
 #include "V8DOMWrapper.h"
 #include "V8IsolatedContext.h"
-#include "V8Proxy.h"
 #include <wtf/UnusedParam.h>
 
 namespace WebCore {
@@ -44,16 +43,16 @@ static v8::Handle<v8::Value> anotherFunctionCallback(const v8::Arguments& args)
 {
     INC_STATS("DOM.TestCustomNamedGetter.anotherFunction");
     if (args.Length() < 1)
-        return V8Proxy::throwNotEnoughArgumentsError(args.GetIsolate());
+        return throwNotEnoughArgumentsError(args.GetIsolate());
     TestCustomNamedGetter* imp = V8TestCustomNamedGetter::toNative(args.Holder());
     STRING_TO_V8PARAMETER_EXCEPTION_BLOCK(V8Parameter<>, str, MAYBE_MISSING_PARAMETER(args, 0, DefaultIsUndefined));
     imp->anotherFunction(str);
-    return v8::Handle<v8::Value>();
+    return v8Undefined();
 }
 
 } // namespace TestCustomNamedGetterV8Internal
 
-static const BatchedCallback TestCustomNamedGetterCallbacks[] = {
+static const V8DOMConfiguration::BatchedCallback TestCustomNamedGetterCallbacks[] = {
     {"anotherFunction", TestCustomNamedGetterV8Internal::anotherFunctionCallback},
 };
 
@@ -62,7 +61,7 @@ static v8::Persistent<v8::FunctionTemplate> ConfigureV8TestCustomNamedGetterTemp
     desc->ReadOnlyPrototype();
 
     v8::Local<v8::Signature> defaultSignature;
-    defaultSignature = configureTemplate(desc, "TestCustomNamedGetter", v8::Persistent<v8::FunctionTemplate>(), V8TestCustomNamedGetter::internalFieldCount,
+    defaultSignature = V8DOMConfiguration::configureTemplate(desc, "TestCustomNamedGetter", v8::Persistent<v8::FunctionTemplate>(), V8TestCustomNamedGetter::internalFieldCount,
         0, 0,
         TestCustomNamedGetterCallbacks, WTF_ARRAY_LENGTH(TestCustomNamedGetterCallbacks));
     UNUSED_PARAM(defaultSignature); // In some cases, it will not be used.
@@ -74,14 +73,14 @@ static v8::Persistent<v8::FunctionTemplate> ConfigureV8TestCustomNamedGetterTemp
     desc->InstanceTemplate()->SetNamedPropertyHandler(V8TestCustomNamedGetter::namedPropertyGetter, 0, 0, 0, 0);
 
     // Custom toString template
-    desc->Set(getToStringName(), getToStringTemplate());
+    desc->Set(v8::String::NewSymbol("toString"), V8PerIsolateData::current()->toStringTemplate());
     return desc;
 }
 
 v8::Persistent<v8::FunctionTemplate> V8TestCustomNamedGetter::GetRawTemplate()
 {
-    V8BindingPerIsolateData* data = V8BindingPerIsolateData::current();
-    V8BindingPerIsolateData::TemplateMap::iterator result = data->rawTemplateMap().find(&info);
+    V8PerIsolateData* data = V8PerIsolateData::current();
+    V8PerIsolateData::TemplateMap::iterator result = data->rawTemplateMap().find(&info);
     if (result != data->rawTemplateMap().end())
         return result->second;
 
@@ -93,8 +92,8 @@ v8::Persistent<v8::FunctionTemplate> V8TestCustomNamedGetter::GetRawTemplate()
 
 v8::Persistent<v8::FunctionTemplate> V8TestCustomNamedGetter::GetTemplate()
 {
-    V8BindingPerIsolateData* data = V8BindingPerIsolateData::current();
-    V8BindingPerIsolateData::TemplateMap::iterator result = data->templateMap().find(&info);
+    V8PerIsolateData* data = V8PerIsolateData::current();
+    V8PerIsolateData::TemplateMap::iterator result = data->templateMap().find(&info);
     if (result != data->templateMap().end())
         return result->second;
 
@@ -114,16 +113,13 @@ bool V8TestCustomNamedGetter::HasInstance(v8::Handle<v8::Value> value)
 v8::Handle<v8::Object> V8TestCustomNamedGetter::wrapSlow(PassRefPtr<TestCustomNamedGetter> impl, v8::Isolate* isolate)
 {
     v8::Handle<v8::Object> wrapper;
-    V8Proxy* proxy = 0;
-    wrapper = V8DOMWrapper::instantiateV8Object(proxy, &info, impl.get());
+    Frame* frame = 0;
+    wrapper = V8DOMWrapper::instantiateV8Object(frame, &info, impl.get());
     if (UNLIKELY(wrapper.IsEmpty()))
         return wrapper;
-
-    v8::Persistent<v8::Object> wrapperHandle = v8::Persistent<v8::Object>::New(wrapper);
-
+    v8::Persistent<v8::Object> wrapperHandle = V8DOMWrapper::setJSWrapperForDOMObject(impl, wrapper, isolate);
     if (!hasDependentLifetime)
         wrapperHandle.MarkIndependent();
-    V8DOMWrapper::setJSWrapperForDOMObject(impl, wrapperHandle, isolate);
     return wrapper;
 }
 

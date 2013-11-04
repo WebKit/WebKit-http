@@ -33,13 +33,12 @@
 
 #if ENABLE(FILE_SYSTEM)
 
+#include "BindingState.h"
 #include "V8Attr.h"
 #include "V8Binding.h"
-#include "V8BindingState.h"
 #include "V8DirectoryEntrySync.h"
 #include "V8EntrySync.h"
 #include "V8FileEntrySync.h"
-#include "V8Proxy.h"
 #include <wtf/RefPtr.h>
 
 namespace WebCore {

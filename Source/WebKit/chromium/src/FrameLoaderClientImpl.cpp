@@ -52,7 +52,6 @@
 #include "MessageEvent.h"
 #include "MouseEvent.h"
 #include "Page.h"
-#include "PlatformString.h"
 #include "PluginData.h"
 #include "PluginDataChromium.h"
 #include "ProgressTracker.h"
@@ -69,7 +68,6 @@
 #include "WebFrameImpl.h"
 #include "WebIntentRequest.h"
 #include "WebIntentServiceInfo.h"
-#include "WebKit.h"
 #include "WebNode.h"
 #include "WebPermissionClient.h"
 #include "WebPlugin.h"
@@ -83,14 +81,15 @@
 #include "WindowFeatures.h"
 #include "WrappedResourceRequest.h"
 #include "WrappedResourceResponse.h"
-#include "platform/WebKitPlatformSupport.h"
 #include "platform/WebURL.h"
 #include "platform/WebURLError.h"
 #include "platform/WebVector.h"
+#include <public/Platform.h>
 #include <public/WebMimeRegistry.h>
 
 #include <wtf/StringExtras.h>
 #include <wtf/text/CString.h>
+#include <wtf/text/WTFString.h>
 
 #if USE(V8)
 #include <v8.h>
@@ -305,7 +304,7 @@ void FrameLoaderClientImpl::detachedFromParent3()
     // will cause a crash.  If you remove/modify this, just ensure that you can
     // go to a page and then navigate to a new page without getting any asserts
     // or crashes.
-    m_webFrame->frame()->script()->proxy()->clearForClose();
+    m_webFrame->frame()->script()->clearForClose();
 
     // Alert the client that the frame is being detached. This is the last
     // chance we have to communicate with the client.
@@ -1491,9 +1490,8 @@ PassRefPtr<Widget> FrameLoaderClientImpl::createPlugin(
 // (e.g., acrobat reader).
 void FrameLoaderClientImpl::redirectDataToPlugin(Widget* pluginWidget)
 {
-    if (pluginWidget->isPluginContainer())
-        m_pluginWidget = static_cast<WebPluginContainerImpl*>(pluginWidget);
-    ASSERT(m_pluginWidget);
+    ASSERT(!pluginWidget || pluginWidget->isPluginContainer());
+    m_pluginWidget = static_cast<WebPluginContainerImpl*>(pluginWidget);
 }
 
 PassRefPtr<Widget> FrameLoaderClientImpl::createJavaAppletWidget(
@@ -1606,7 +1604,7 @@ bool FrameLoaderClientImpl::willCheckAndDispatchMessageEvent(
     if (event && event->source() && event->source()->document())
         source = WebFrameImpl::fromFrame(event->source()->document()->frame());
     return m_webFrame->client()->willCheckAndDispatchMessageEvent(
-        source, WebSecurityOrigin(target), WebDOMMessageEvent(event));
+        source, m_webFrame, WebSecurityOrigin(target), WebDOMMessageEvent(event));
 }
 
 #if ENABLE(WEB_INTENTS_TAG)

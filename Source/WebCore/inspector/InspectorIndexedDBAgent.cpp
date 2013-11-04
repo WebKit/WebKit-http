@@ -108,13 +108,13 @@ public:
 
     virtual void onError(PassRefPtr<IDBDatabaseError>) OVERRIDE { }
     virtual void onSuccess(PassRefPtr<DOMStringList>) OVERRIDE { }
-    virtual void onSuccess(PassRefPtr<IDBCursorBackendInterface>) OVERRIDE { }
+    virtual void onSuccess(PassRefPtr<IDBCursorBackendInterface>, PassRefPtr<IDBKey>, PassRefPtr<IDBKey>, PassRefPtr<SerializedScriptValue>) OVERRIDE { }
     virtual void onSuccess(PassRefPtr<IDBDatabaseBackendInterface>) OVERRIDE { }
     virtual void onSuccess(PassRefPtr<IDBKey>) OVERRIDE { }
     virtual void onSuccess(PassRefPtr<IDBTransactionBackendInterface>) OVERRIDE { }
     virtual void onSuccess(PassRefPtr<SerializedScriptValue>) OVERRIDE { }
     virtual void onSuccess(PassRefPtr<SerializedScriptValue>, PassRefPtr<IDBKey>, const IDBKeyPath&) OVERRIDE { }
-    virtual void onSuccessWithContinuation() OVERRIDE { }
+    virtual void onSuccess(PassRefPtr<IDBKey>, PassRefPtr<IDBKey>, PassRefPtr<SerializedScriptValue>) OVERRIDE { }
     virtual void onSuccessWithPrefetch(const Vector<RefPtr<IDBKey> >&, const Vector<RefPtr<IDBKey> >&, const Vector<RefPtr<SerializedScriptValue> >&) OVERRIDE { }
     virtual void onBlocked() OVERRIDE { }
 };
@@ -129,6 +129,8 @@ public:
     virtual ~InspectorIDBDatabaseCallbacks() { }
 
     virtual void onVersionChange(const String& version) { }
+    virtual void onVersionChange(int64_t oldVersion, int64_t newVersion) { }
+    virtual void onForcedClose() { }
 private:
     InspectorIDBDatabaseCallbacks() { }
 };
@@ -237,7 +239,7 @@ private:
 void ExecutableWithDatabase::start(IDBFactoryBackendInterface* idbFactory, SecurityOrigin* securityOrigin, ScriptExecutionContext* context, const String& databaseName)
 {
     RefPtr<OpenDatabaseCallback> callback = OpenDatabaseCallback::create(this);
-    idbFactory->open(databaseName, callback.get(), securityOrigin, context, String());
+    idbFactory->open(databaseName, IDBDatabaseMetadata::NoIntVersion, callback.get(), securityOrigin, context, String());
 }
 
 static PassRefPtr<IDBTransactionBackendInterface> transactionForDatabase(IDBDatabaseBackendInterface* idbDatabase, const String& objectStoreName)
@@ -364,10 +366,10 @@ static PassRefPtr<IDBKey> idbKeyFromInspectorObject(InspectorObject* key)
     if (!key->getString("type", &type))
         return 0;
 
-    DEFINE_STATIC_LOCAL(String, number, ("number"));
-    DEFINE_STATIC_LOCAL(String, string, ("string"));
-    DEFINE_STATIC_LOCAL(String, date, ("date"));
-    DEFINE_STATIC_LOCAL(String, array, ("array"));
+    DEFINE_STATIC_LOCAL(String, number, (ASCIILiteral("number")));
+    DEFINE_STATIC_LOCAL(String, string, (ASCIILiteral("string")));
+    DEFINE_STATIC_LOCAL(String, date, (ASCIILiteral("date")));
+    DEFINE_STATIC_LOCAL(String, array, (ASCIILiteral("array")));
 
     if (type == number) {
         double number;
@@ -490,13 +492,13 @@ public:
         end(false);
     }
 
-    virtual void onSuccess(PassRefPtr<IDBCursorBackendInterface> idbCursor)
+    virtual void onSuccess(PassRefPtr<IDBCursorBackendInterface> idbCursor, PassRefPtr<IDBKey> key, PassRefPtr<IDBKey> primaryKey, PassRefPtr<SerializedScriptValue> value)
     {
         m_idbCursor = idbCursor;
-        onSuccessWithContinuation();
+        onSuccess(key, primaryKey, value);
     }
 
-    virtual void onSuccessWithContinuation()
+    virtual void onSuccess(PassRefPtr<IDBKey> key, PassRefPtr<IDBKey> primaryKey, PassRefPtr<SerializedScriptValue> value)
     {
         if (m_skipCount) {
             --m_skipCount;
@@ -509,9 +511,6 @@ public:
             return;
         }
 
-        RefPtr<IDBKey> key = m_idbCursor->key();
-        RefPtr<IDBKey> primaryKey = m_idbCursor->primaryKey();
-        RefPtr<SerializedScriptValue> value = m_idbCursor->value();
         RefPtr<TypeBuilder::Runtime::RemoteObject> wrappedValue = m_injectedScript.wrapSerializedObject(value.get(), String());
         RefPtr<DataEntry> dataEntry = DataEntry::create()
             .setKey(keyFromIDBKey(key.get()))
@@ -612,7 +611,7 @@ public:
             RefPtr<OpenCursorCallback> openCursorCallback = OpenCursorCallback::create(m_frontendProvider, m_injectedScript, this, idbTransaction.get(), OpenCursorCallback::ObjectStoreDataCursor, m_requestId, m_skipCount, m_pageSize);
 
             ExceptionCode ec = 0;
-            idbObjectStore->openCursor(m_idbKeyRange, IDBCursor::NEXT, openCursorCallback, idbTransaction.get(), ec);
+            idbObjectStore->openCursor(m_idbKeyRange, IDBCursor::NEXT, openCursorCallback, IDBTransactionBackendInterface::NormalTask, idbTransaction.get(), ec);
         }
     }
 

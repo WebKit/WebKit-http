@@ -31,9 +31,11 @@
 #include "CachedResourceLoader.h"
 #include "CrossfadeGeneratedImage.h"
 #include "ImageBuffer.h"
+#include "MemoryInstrumentation.h"
 #include "RenderObject.h"
 #include "StyleCachedImage.h"
 #include "StyleGeneratedImage.h"
+#include <wtf/text/StringBuilder.h>
 
 namespace WebCore {
 
@@ -84,12 +86,15 @@ CSSCrossfadeValue::~CSSCrossfadeValue()
 
 String CSSCrossfadeValue::customCssText() const
 {
-    String result = "-webkit-cross-fade(";
-    result += m_fromValue->cssText() + ", ";
-    result += m_toValue->cssText() + ", ";
-    result += m_percentageValue->cssText();
-    result += ")";
-    return result;
+    StringBuilder result;
+    result.appendLiteral("-webkit-cross-fade(");
+    result.append(m_fromValue->cssText());
+    result.appendLiteral(", ");
+    result.append(m_toValue->cssText());
+    result.appendLiteral(", ");
+    result.append(m_percentageValue->cssText());
+    result.append(')');
+    return result.toString();
 }
 
 IntSize CSSCrossfadeValue::fixedSize(const RenderObject* renderer)
@@ -134,6 +139,19 @@ void CSSCrossfadeValue::loadSubimages(CachedResourceLoader* cachedResourceLoader
     m_crossfadeSubimageObserver.setReady(true);
 }
 
+void CSSCrossfadeValue::reportDescendantMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
+{
+    MemoryClassInfo info(memoryObjectInfo, this, MemoryInstrumentation::CSS);
+    CSSImageGeneratorValue::reportBaseClassMemoryUsage(memoryObjectInfo);
+    info.addInstrumentedMember(m_fromValue);
+    info.addInstrumentedMember(m_toValue);
+    info.addInstrumentedMember(m_percentageValue);
+    // FIXME: add instrumentation for
+    // m_cachedFromImage
+    // m_cachedToImage
+    // m_generatedImage
+}
+
 PassRefPtr<Image> CSSCrossfadeValue::image(RenderObject* renderer, const IntSize& size)
 {
     if (size.isEmpty())
@@ -170,6 +188,15 @@ void CSSCrossfadeValue::CrossfadeSubimageObserverProxy::imageChanged(CachedImage
 {
     if (m_ready)
         m_ownerValue->crossfadeChanged(*rect);
+}
+
+bool CSSCrossfadeValue::hasFailedOrCanceledSubresources() const
+{
+    if (m_cachedFromImage && m_cachedFromImage->loadFailedOrCanceled())
+        return true;
+    if (m_cachedToImage && m_cachedToImage->loadFailedOrCanceled())
+        return true;
+    return false;
 }
 
 } // namespace WebCore

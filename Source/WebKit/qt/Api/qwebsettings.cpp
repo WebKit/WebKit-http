@@ -46,11 +46,7 @@
 #include "FileSystem.h"
 
 #include <QApplication>
-#if HAVE(QT5)
 #include <QStandardPaths>
-#else
-#include <QDesktopServices>
-#endif
 #include <QDir>
 #include <QHash>
 #include <QSharedData>
@@ -265,6 +261,12 @@ void QWebSettingsPrivate::apply()
         settings->setTiledBackingStoreEnabled(value);
 #endif
 
+#if ENABLE(SMOOTH_SCROLLING)
+        value = attributes.value(QWebSettings::ScrollAnimatorEnabled,
+                                      global->attributes.value(QWebSettings::ScrollAnimatorEnabled));
+        settings->setEnableScrollAnimator(value);
+#endif
+
         value = attributes.value(QWebSettings::SiteSpecificQuirksEnabled,
                                       global->attributes.value(QWebSettings::SiteSpecificQuirksEnabled));
         settings->setNeedsSiteSpecificQuirks(value);
@@ -477,6 +479,7 @@ QWebSettings* QWebSettings::globalSettings()
         This is disabled by default.
     \value SiteSpecificQuirksEnabled This setting enables WebKit's workaround for broken sites. It is
         enabled by default.
+    \value ScrollAnimatorEnabled This setting enables animated scrolling. It is disabled by default.
 */
 
 /*!
@@ -528,6 +531,7 @@ QWebSettings::QWebSettings()
     d->attributes.insert(QWebSettings::TiledBackingStoreEnabled, false);
     d->attributes.insert(QWebSettings::FrameFlatteningEnabled, false);
     d->attributes.insert(QWebSettings::SiteSpecificQuirksEnabled, true);
+    d->attributes.insert(QWebSettings::ScrollAnimatorEnabled, false);
     d->offlineStorageDefaultQuota = 5 * 1024 * 1024;
     d->defaultTextEncoding = QLatin1String("iso-8859-1");
     d->thirdPartyCookiePolicy = AlwaysAllowThirdPartyCookies;
@@ -1145,11 +1149,7 @@ void QWebSettings::enablePersistentStorage(const QString& path)
 
     if (path.isEmpty()) {
 
-#if HAVE(QT5)
         storagePath = QStandardPaths::writableLocation(QStandardPaths::DataLocation);
-#else
-        storagePath = QDesktopServices::storageLocation(QDesktopServices::DataLocation);
-#endif
         if (storagePath.isEmpty())
             storagePath = WebCore::pathByAppendingComponent(QDir::homePath(), QCoreApplication::applicationName());
     } else
@@ -1168,11 +1168,7 @@ void QWebSettings::enablePersistentStorage(const QString& path)
 #if ENABLE(NETSCAPE_PLUGIN_METADATA_CACHE)
     // All applications can share the common QtWebkit cache file(s).
     // Path is not configurable and uses QDesktopServices::CacheLocation by default.
-#if HAVE(QT5)
     QString cachePath = QStandardPaths::writableLocation(QStandardPaths::CacheLocation);
-#else
-    QString cachePath = QDesktopServices::storageLocation(QDesktopServices::CacheLocation);
-#endif
     WebCore::makeAllDirectories(cachePath);
 
     QFileInfo info(cachePath);

@@ -1,0 +1,15 @@
+Basic test of setting Oscillator node types.
+
+On success, you will see a series of "PASS" messages, followed by "TEST COMPLETE".
+
+PASS Oscillator correctly set to SINE type.
+PASS Oscillator correctly set to SQUARE type.
+PASS Oscillator correctly set to SAWTOOTH type.
+PASS Oscillator correctly set to TRIANGLE type.
+PASS Oscillator correctly set to CUSTOM type using setWaveTable.
+PASS Directly setting oscillator type to CUSTOM correctly throws exception.
+PASS Setting oscillator to invalid type 5 correctly throws exception.
+PASS successfullyParsed is true
+
+TEST COMPLETE
+

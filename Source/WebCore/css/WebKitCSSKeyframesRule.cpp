@@ -29,6 +29,7 @@
 #include "CSSParser.h"
 #include "CSSRuleList.h"
 #include "CSSStyleSheet.h"
+#include "MemoryInstrumentation.h"
 #include "StylePropertySet.h"
 #include "StyleSheet.h"
 #include "WebKitCSSKeyframeRule.h"
@@ -84,6 +85,13 @@ int StyleRuleKeyframes::findKeyframeIndex(const String& key) const
             return i;
     }
     return -1;
+}
+
+void StyleRuleKeyframes::reportDescendantMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
+{
+    MemoryClassInfo info(memoryObjectInfo, this, MemoryInstrumentation::CSS);
+    info.addInstrumentedVector(m_keyframes);
+    info.addInstrumentedMember(m_name);
 }
 
 WebKitCSSKeyframesRule::WebKitCSSKeyframesRule(StyleRuleKeyframes* keyframesRule, CSSStyleSheet* parent)
@@ -196,6 +204,15 @@ void WebKitCSSKeyframesRule::reattach(StyleRuleKeyframes* rule)
 {
     ASSERT(rule);
     m_keyframesRule = rule;
+}
+
+void WebKitCSSKeyframesRule::reportDescendantMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
+{
+    MemoryClassInfo info(memoryObjectInfo, this, MemoryInstrumentation::CSS);
+    CSSRule::reportBaseClassMemoryUsage(memoryObjectInfo);
+    info.addInstrumentedMember(m_keyframesRule);
+    info.addInstrumentedVector(m_childRuleCSSOMWrappers);
+    info.addInstrumentedMember(m_ruleListCSSOMWrapper);
 }
 
 } // namespace WebCore

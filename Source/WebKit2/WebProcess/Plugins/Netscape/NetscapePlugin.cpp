@@ -510,6 +510,20 @@ void NetscapePlugin::callSetWindow()
     m_hasCalledSetWindow = true;
 }
 
+void NetscapePlugin::callSetWindowInvisible()
+{
+    NPWindow invisibleWindow = m_npWindow;
+    
+    invisibleWindow.window = 0;
+    invisibleWindow.clipRect.top = 0;
+    invisibleWindow.clipRect.left = 0;
+    invisibleWindow.clipRect.bottom = 0;
+    invisibleWindow.clipRect.right = 0;
+    
+    NPP_SetWindow(&invisibleWindow);
+    m_hasCalledSetWindow = true;
+}
+
 bool NetscapePlugin::shouldLoadSrcURL()
 {
     // Check if we should cancel the load
@@ -548,6 +562,38 @@ bool NetscapePlugin::allowPopups() const
     return false;
 }
 
+#if PLUGIN_ARCHITECTURE(MAC)
+static bool isTransparentSilverlightBackgroundValue(const String& lowercaseBackgroundValue)
+{
+    // This checks if the background color value is transparent, according to
+    // the forumat documented at http://msdn.microsoft.com/en-us/library/cc838148(VS.95).aspx
+    if (lowercaseBackgroundValue.startsWith('#')) {
+        if (lowercaseBackgroundValue.length() == 5 && lowercaseBackgroundValue[1] != 'f') {
+            // An 8-bit RGB value with alpha transparency, in the form #ARGB.
+            return true;
+        }
+
+        if (lowercaseBackgroundValue.length() == 9 && !(lowercaseBackgroundValue[1] == 'f' && lowercaseBackgroundValue[2] == 'f')) {
+            // A 16-bit RGB value with alpha transparency, in the form #AARRGGBB.
+            return true;
+        }
+    } else if (lowercaseBackgroundValue.startsWith("sc#")) {
+        Vector<String> components;
+        lowercaseBackgroundValue.substring(3).split(",", components);
+
+        // An ScRGB value with alpha transparency, in the form sc#A,R,G,B.
+        if (components.size() == 4) {
+            if (components[0].toDouble() < 1)
+                return true;
+        }
+    } else if (lowercaseBackgroundValue == "transparent")
+        return true;
+
+    // This is an opaque color.
+    return false;
+}
+#endif
+
 bool NetscapePlugin::initialize(const Parameters& parameters)
 {
     uint16_t mode = parameters.isFullFramePlugin ? NP_FULL : NP_EMBED;
@@ -581,10 +627,10 @@ bool NetscapePlugin::initialize(const Parameters& parameters)
     }
 
 #if PLUGIN_ARCHITECTURE(MAC)
-    if (m_pluginModule->pluginQuirks().contains(PluginQuirks::MakeTransparentIfBackgroundAttributeExists)) {
+    if (m_pluginModule->pluginQuirks().contains(PluginQuirks::MakeOpaqueUnlessTransparentSilverlightBackgroundAttributeExists)) {
         for (size_t i = 0; i < parameters.names.size(); ++i) {
             if (equalIgnoringCase(parameters.names[i], "background")) {
-                setIsTransparent(true);
+                setIsTransparent(isTransparentSilverlightBackgroundValue(parameters.values[i].lower()));
                 break;
             }
         }

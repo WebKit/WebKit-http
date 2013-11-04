@@ -50,6 +50,7 @@
 #include "JSLock.h"
 #include "JSNodeList.h"
 #include "JSValue.h"
+#include "MemoryCache.h"
 #include "MutationObserver.h"
 #include "NodeList.h"
 #include "PageGroup.h"
@@ -279,7 +280,7 @@ guint DumpRenderTreeSupportGtk::getPendingUnloadEventCount(WebKitWebFrame* frame
 {
     g_return_val_if_fail(WEBKIT_IS_WEB_FRAME(frame), 0);
 
-    return core(frame)->domWindow()->pendingUnloadEventListeners();
+    return core(frame)->document()->domWindow()->pendingUnloadEventListeners();
 }
 
 bool DumpRenderTreeSupportGtk::pauseAnimation(WebKitWebFrame* frame, const char* name, double time, const char* element)
@@ -866,4 +867,9 @@ void DumpRenderTreeSupportGtk::resetTrackedRepaints(WebKitWebFrame* frame)
     Frame* coreFrame = core(frame);
     if (coreFrame && coreFrame->view())
         coreFrame->view()->resetTrackedRepaints();
+}
+
+void DumpRenderTreeSupportGtk::clearMemoryCache()
+{
+    memoryCache()->evictResources();
 }

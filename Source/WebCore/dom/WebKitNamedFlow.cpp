@@ -30,14 +30,17 @@
 #include "config.h"
 #include "WebKitNamedFlow.h"
 
+#include "EventNames.h"
+#include "NamedFlowCollection.h"
 #include "RenderNamedFlowThread.h"
 #include "RenderRegion.h"
+#include "ScriptExecutionContext.h"
 #include "StaticNodeList.h"
-#include "WebKitNamedFlowCollection.h"
+#include "UIEvent.h"
 
 namespace WebCore {
 
-WebKitNamedFlow::WebKitNamedFlow(PassRefPtr<WebKitNamedFlowCollection> manager, const AtomicString& flowThreadName)
+WebKitNamedFlow::WebKitNamedFlow(PassRefPtr<NamedFlowCollection> manager, const AtomicString& flowThreadName)
     : m_flowThreadName(flowThreadName)
     , m_flowManager(manager)
     , m_parentFlowThread(0)
@@ -50,7 +53,7 @@ WebKitNamedFlow::~WebKitNamedFlow()
     m_flowManager->discardNamedFlow(this);
 }
 
-PassRefPtr<WebKitNamedFlow> WebKitNamedFlow::create(PassRefPtr<WebKitNamedFlowCollection> manager, const AtomicString& flowThreadName)
+PassRefPtr<WebKitNamedFlow> WebKitNamedFlow::create(PassRefPtr<NamedFlowCollection> manager, const AtomicString& flowThreadName)
 {
     return adoptRef(new WebKitNamedFlow(manager, flowThreadName));
 }
@@ -114,11 +117,36 @@ PassRefPtr<NodeList> WebKitNamedFlow::getRegionsByContent(Node* contentNode)
         const RenderRegionList& regionList = m_parentFlowThread->renderRegionList();
         for (RenderRegionList::const_iterator iter = regionList.begin(); iter != regionList.end(); ++iter) {
             const RenderRegion* renderRegion = *iter;
-            if (!renderRegion->isValid())
+            // FIXME: Pseudo-elements are not included in the list.
+            if (!renderRegion->isValid() || !renderRegion->node())
                 continue;
             if (m_parentFlowThread->objectInFlowRegion(contentNode->renderer(), renderRegion))
                 regionNodes.append(renderRegion->node());
         }
+    }
+
+    return StaticNodeList::adopt(regionNodes);
+}
+
+PassRefPtr<NodeList> WebKitNamedFlow::getRegions()
+{
+    Vector<RefPtr<Node> > regionNodes;
+
+    if (m_flowManager->document())
+        m_flowManager->document()->updateLayoutIgnorePendingStylesheets();
+
+    // The renderer may be destroyed or created after the style update.
+    // Because this is called from JS, where the wrapper keeps a reference to the NamedFlow, no guard is necessary.
+    if (!m_parentFlowThread)
+        return StaticNodeList::adopt(regionNodes);
+
+    const RenderRegionList& regionList = m_parentFlowThread->renderRegionList();
+    for (RenderRegionList::const_iterator iter = regionList.begin(); iter != regionList.end(); ++iter) {
+        const RenderRegion* renderRegion = *iter;
+        // FIXME: Pseudo-elements are not included in the list.
+        if (!renderRegion->isValid() || !renderRegion->node())
+            continue;
+        regionNodes.append(renderRegion->node());
     }
 
     return StaticNodeList::adopt(regionNodes);
@@ -151,8 +179,43 @@ void WebKitNamedFlow::setRenderer(RenderNamedFlowThread* parentFlowThread)
     // The named flow can either go from a no_renderer->renderer or renderer->no_renderer state; anything else could indicate a bug.
     ASSERT((!m_parentFlowThread && parentFlowThread) || (m_parentFlowThread && !parentFlowThread));
 
-    // If parentFlowThread is 0, the flow thread will move in the "NULL" state"
+    // If parentFlowThread is 0, the flow thread will move in the "NULL" state.
     m_parentFlowThread = parentFlowThread;
+}
+
+EventTargetData* WebKitNamedFlow::eventTargetData()
+{
+    return &m_eventTargetData;
+}
+
+EventTargetData* WebKitNamedFlow::ensureEventTargetData()
+{
+    return &m_eventTargetData;
+}
+
+void WebKitNamedFlow::dispatchRegionLayoutUpdateEvent()
+{
+    ASSERT(!eventDispatchForbidden());
+    ASSERT(m_parentFlowThread);
+
+    RefPtr<Event> event = UIEvent::create(eventNames().webkitRegionLayoutUpdateEvent, false, false, m_parentFlowThread->document()->defaultView(), 0);
+
+    dispatchEvent(event);
+}
+
+const AtomicString& WebKitNamedFlow::interfaceName() const
+{
+    return eventNames().interfaceForWebKitNamedFlow;
+}
+
+ScriptExecutionContext* WebKitNamedFlow::scriptExecutionContext() const
+{
+    return m_flowManager->document();
+}
+
+Node* WebKitNamedFlow::base() const
+{
+    return m_flowManager->document();
 }
 
 } // namespace WebCore

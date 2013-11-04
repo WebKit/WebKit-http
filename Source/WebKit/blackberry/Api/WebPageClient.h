@@ -26,6 +26,7 @@
 #include <BlackBerryPlatformInputEvents.h>
 #include <BlackBerryPlatformNavigationType.h>
 #include <BlackBerryPlatformPrimitives.h>
+#include <imf/events.h>
 #include <interaction/ScrollViewBase.h>
 #include <vector>
 
@@ -42,6 +43,7 @@ class GeoTrackerListener;
 class IntRectRegion;
 class NetworkRequest;
 class NetworkStreamFactory;
+class WebUserMediaRequest;
 
 namespace Graphics {
 class Window;
@@ -99,8 +101,8 @@ public:
 
     virtual void notifyRunLayoutTestsFinished() = 0;
 
-    // Client is responsible for deleting the vector elements.
-    virtual void notifyInRegionScrollingStartingPointChanged(std::vector<Platform::ScrollViewBase*>) = 0;
+    virtual void notifyInRegionScrollingStartingPointChanged(const std::vector<Platform::ScrollViewBase*>&) = 0;
+    virtual void notifyNoMouseMoveOrTouchMoveHandlers() = 0;
 
     virtual void notifyDocumentOnLoad() = 0;
 
@@ -144,7 +146,7 @@ public:
 
     virtual void showVirtualKeyboard(bool) = 0;
 
-    virtual void requestSpellingSuggestionsForString(unsigned start, unsigned end) = 0;
+    virtual void requestSpellingCheckingOptions(imf_sp_text_t&) = 0;
     virtual int32_t checkSpellingOfStringAsync(wchar_t* text, int length) = 0;
 
     virtual void notifySelectionDetailsChanged(const Platform::IntRect& start, const Platform::IntRect& end, const Platform::IntRectRegion&, bool overrideTouchHandling = false) = 0;
@@ -167,7 +169,7 @@ public:
     virtual void openDateTimePopup(int type, const WebString& value, const WebString& min, const WebString& max, double step) = 0;
     virtual void openColorPopup(const WebString& value) = 0;
 
-    virtual bool chooseFilenames(bool allowMultiple, const WebString& acceptTypes, const SharedArray<WebString>& initialFiles, SharedArray<WebString>& chosenFiles) = 0;
+    virtual bool chooseFilenames(bool allowMultiple, const SharedArray<WebString>& acceptTypes, const SharedArray<WebString>& initialFiles, const WebString& capture, SharedArray<WebString>& chosenFiles) = 0;
 
     virtual void loadPluginForMimetype(int, int width, int height, const SharedArray<WebString>& paramNames, const SharedArray<WebString>& paramValues, const char* url) = 0;
     virtual void notifyPluginRectChanged(int, Platform::IntRect rectChanged) = 0;
@@ -187,7 +189,7 @@ public:
     virtual unsigned long long databaseQuota(const unsigned short* origin, unsigned originLength, const unsigned short* databaseName, unsigned databaseNameLength, unsigned long long totalUsage, unsigned long long originUsage, unsigned long long estimatedSize) = 0;
 
     virtual void setIconForUrl(const char* originalPageUrl, const char* finalPageUrl, const char* iconUrl) = 0;
-    virtual void setFavicon(int width, int height, unsigned char* iconData, const char* url) = 0;
+    virtual void setFavicon(const char* dataInBase64, const char* url) = 0;
     virtual void setLargeIcon(const char* iconUrl) = 0;
     virtual void setWebAppCapable() = 0;
     virtual void setSearchProviderDetails(const char* title, const char* documentUrl) = 0;
@@ -268,6 +270,9 @@ public:
     virtual void registerProtocolHandler(const WebString& /*scheme*/, const WebString& /*baseURL*/, const WebString& /*url*/, const WebString& /*title*/) = 0;
     virtual ProtocolHandlersState isProtocolHandlerRegistered(const WebString& /*scheme*/, const WebString& /*baseURL*/, const WebString& /*url*/) = 0;
     virtual void unregisterProtocolHandler(const WebString& /*scheme*/, const WebString& /*baseURL*/, const WebString& /*url*/) = 0;
+
+    virtual void requestUserMedia(const Platform::WebUserMediaRequest&) = 0;
+    virtual void cancelUserMediaRequest(const Platform::WebUserMediaRequest&) = 0;
 };
 } // namespace WebKit
 } // namespace BlackBerry

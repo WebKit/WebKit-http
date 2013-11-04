@@ -21,18 +21,18 @@
 #include "config.h"
 #include "V8Float64Array.h"
 
+#include "BindingState.h"
 #include "ContextFeatures.h"
 #include "ExceptionCode.h"
+#include "Frame.h"
 #include "RuntimeEnabledFeatures.h"
 #include "V8ArrayBufferView.h"
+#include "V8ArrayBufferViewCustom.h"
 #include "V8Binding.h"
-#include "V8BindingMacros.h"
-#include "V8BindingState.h"
 #include "V8DOMWrapper.h"
 #include "V8Float32Array.h"
 #include "V8Int32Array.h"
 #include "V8IsolatedContext.h"
-#include "V8Proxy.h"
 #include <wtf/Float32Array.h>
 #include <wtf/Float64Array.h>
 #include <wtf/GetPtr.h>
@@ -53,22 +53,48 @@ static v8::Handle<v8::Value> fooCallback(const v8::Arguments& args)
 {
     INC_STATS("DOM.Float64Array.foo");
     if (args.Length() < 1)
-        return V8Proxy::throwNotEnoughArgumentsError(args.GetIsolate());
+        return throwNotEnoughArgumentsError(args.GetIsolate());
     Float64Array* imp = V8Float64Array::toNative(args.Holder());
     EXCEPTION_BLOCK(Float32Array*, array, V8Float32Array::HasInstance(MAYBE_MISSING_PARAMETER(args, 0, DefaultIsUndefined)) ? V8Float32Array::toNative(v8::Handle<v8::Object>::Cast(MAYBE_MISSING_PARAMETER(args, 0, DefaultIsUndefined))) : 0);
     return toV8(imp->foo(array), args.GetIsolate());
 }
 
+static v8::Handle<v8::Value> setCallback(const v8::Arguments& args)
+{
+    INC_STATS("DOM.Float64Array.set");
+    return setWebGLArrayHelper<Float64Array, V8Float64Array>(args);
+}
+
 } // namespace Float64ArrayV8Internal
+
+v8::Handle<v8::Value> toV8(Float64Array* impl, v8::Isolate* isolate)
+{
+    if (!impl)
+        return v8NullWithCheck(isolate);
+    v8::Handle<v8::Object> wrapper = V8Float64Array::wrap(impl, isolate);
+    if (!wrapper.IsEmpty())
+        wrapper->SetIndexedPropertiesToExternalArrayData(impl->baseAddress(), v8::kExternalDoubleArray, impl->length());
+    return wrapper;
+}
+
+static const V8DOMConfiguration::BatchedCallback Float64ArrayCallbacks[] = {
+    {"set", Float64ArrayV8Internal::setCallback},
+};
+
+v8::Handle<v8::Value> V8Float64Array::constructorCallback(const v8::Arguments& args)
+{
+    INC_STATS("DOM.Float64Array.Contructor");
+    return constructWebGLArray<Float64Array, V8Float64Array, double>(args, &info, v8::kExternalDoubleArray);
+}
 
 static v8::Persistent<v8::FunctionTemplate> ConfigureV8Float64ArrayTemplate(v8::Persistent<v8::FunctionTemplate> desc)
 {
     desc->ReadOnlyPrototype();
 
     v8::Local<v8::Signature> defaultSignature;
-    defaultSignature = configureTemplate(desc, "Float64Array", V8ArrayBufferView::GetTemplate(), V8Float64Array::internalFieldCount,
+    defaultSignature = V8DOMConfiguration::configureTemplate(desc, "Float64Array", V8ArrayBufferView::GetTemplate(), V8Float64Array::internalFieldCount,
         0, 0,
-        0, 0);
+        Float64ArrayCallbacks, WTF_ARRAY_LENGTH(Float64ArrayCallbacks));
     UNUSED_PARAM(defaultSignature); // In some cases, it will not be used.
     desc->SetCallHandler(V8Float64Array::constructorCallback);
     v8::Local<v8::ObjectTemplate> instance = desc->InstanceTemplate();
@@ -81,17 +107,17 @@ static v8::Persistent<v8::FunctionTemplate> ConfigureV8Float64ArrayTemplate(v8::
     const int fooArgc = 1;
     v8::Handle<v8::FunctionTemplate> fooArgv[fooArgc] = { V8Float32Array::GetRawTemplate() };
     v8::Handle<v8::Signature> fooSignature = v8::Signature::New(desc, fooArgc, fooArgv);
-    proto->Set(v8::String::New("foo"), v8::FunctionTemplate::New(Float64ArrayV8Internal::fooCallback, v8::Handle<v8::Value>(), fooSignature));
+    proto->Set(v8::String::NewSymbol("foo"), v8::FunctionTemplate::New(Float64ArrayV8Internal::fooCallback, v8Undefined(), fooSignature));
 
     // Custom toString template
-    desc->Set(getToStringName(), getToStringTemplate());
+    desc->Set(v8::String::NewSymbol("toString"), V8PerIsolateData::current()->toStringTemplate());
     return desc;
 }
 
 v8::Persistent<v8::FunctionTemplate> V8Float64Array::GetRawTemplate()
 {
-    V8BindingPerIsolateData* data = V8BindingPerIsolateData::current();
-    V8BindingPerIsolateData::TemplateMap::iterator result = data->rawTemplateMap().find(&info);
+    V8PerIsolateData* data = V8PerIsolateData::current();
+    V8PerIsolateData::TemplateMap::iterator result = data->rawTemplateMap().find(&info);
     if (result != data->rawTemplateMap().end())
         return result->second;
 
@@ -103,8 +129,8 @@ v8::Persistent<v8::FunctionTemplate> V8Float64Array::GetRawTemplate()
 
 v8::Persistent<v8::FunctionTemplate> V8Float64Array::GetTemplate()
 {
-    V8BindingPerIsolateData* data = V8BindingPerIsolateData::current();
-    V8BindingPerIsolateData::TemplateMap::iterator result = data->templateMap().find(&info);
+    V8PerIsolateData* data = V8PerIsolateData::current();
+    V8PerIsolateData::TemplateMap::iterator result = data->templateMap().find(&info);
     if (result != data->templateMap().end())
         return result->second;
 
@@ -124,16 +150,14 @@ bool V8Float64Array::HasInstance(v8::Handle<v8::Value> value)
 v8::Handle<v8::Object> V8Float64Array::wrapSlow(PassRefPtr<Float64Array> impl, v8::Isolate* isolate)
 {
     v8::Handle<v8::Object> wrapper;
-    V8Proxy* proxy = 0;
-    wrapper = V8DOMWrapper::instantiateV8Object(proxy, &info, impl.get());
+    ASSERT(static_cast<void*>(static_cast<ArrayBufferView*>(impl.get())) == static_cast<void*>(impl.get()));
+    Frame* frame = 0;
+    wrapper = V8DOMWrapper::instantiateV8Object(frame, &info, impl.get());
     if (UNLIKELY(wrapper.IsEmpty()))
         return wrapper;
-
-    v8::Persistent<v8::Object> wrapperHandle = v8::Persistent<v8::Object>::New(wrapper);
-
+    v8::Persistent<v8::Object> wrapperHandle = V8DOMWrapper::setJSWrapperForDOMObject(impl, wrapper, isolate);
     if (!hasDependentLifetime)
         wrapperHandle.MarkIndependent();
-    V8DOMWrapper::setJSWrapperForDOMObject(impl, wrapperHandle, isolate);
     return wrapper;
 }
 

@@ -40,7 +40,7 @@ FakeLayerTextureUpdater::Texture::~Texture()
 {
 }
 
-void FakeLayerTextureUpdater::Texture::updateRect(CCResourceProvider* resourceProvider, const IntRect&, const IntRect&)
+void FakeLayerTextureUpdater::Texture::updateRect(CCResourceProvider* resourceProvider, const IntRect&, const IntSize&)
 {
     texture()->acquireBackingTexture(resourceProvider);
     m_layer->updateRect();
@@ -113,11 +113,6 @@ void FakeTiledLayerChromium::setNeedsDisplayRect(const FloatRect& rect)
 {
     m_lastNeedsDisplayRect = rect;
     TiledLayerChromium::setNeedsDisplayRect(rect);
-}
-
-void FakeTiledLayerChromium::update(CCTextureUpdater& updater, const CCOcclusionTracker* occlusion, CCRenderingStats& stats)
-{
-    updateContentRect(updater, visibleContentRect(), occlusion, stats);
 }
 
 void FakeTiledLayerChromium::setTexturePriorities(const CCPriorityCalculator& calculator)

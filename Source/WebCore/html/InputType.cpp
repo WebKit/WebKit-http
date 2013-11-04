@@ -423,10 +423,6 @@ void InputType::handleBeforeTextInsertedEvent(BeforeTextInsertedEvent*)
 {
 }
 
-void InputType::handleWheelEvent(WheelEvent*)
-{
-}
-
 #if ENABLE(TOUCH_EVENTS)
 void InputType::handleTouchEvent(TouchEvent*)
 {
@@ -450,6 +446,16 @@ PassRefPtr<HTMLFormElement> InputType::formForSubmission() const
 RenderObject* InputType::createRenderer(RenderArena*, RenderStyle* style) const
 {
     return RenderObject::createObject(element(), style);
+}
+
+void InputType::blur()
+{
+    element()->defaultBlur();
+}
+
+void InputType::focus(bool restorePreviousSelection)
+{
+    element()->defaultFocus(restorePreviousSelection);
 }
 
 void InputType::createShadowSubtree()
@@ -511,6 +517,11 @@ Chrome* InputType::chrome() const
 }
 
 bool InputType::canSetStringValue() const
+{
+    return true;
+}
+
+bool InputType::hasCustomFocusLogic() const
 {
     return true;
 }
@@ -908,6 +919,12 @@ String InputType::defaultToolTip() const
 void InputType::listAttributeTargetChanged()
 {
 }
+
+Decimal InputType::findClosestTickMarkValue(const Decimal&)
+{
+    ASSERT_NOT_REACHED();
+    return Decimal::nan();
+}
 #endif
 
 bool InputType::supportsIndeterminateAppearance() const
@@ -966,7 +983,7 @@ void InputType::applyStep(int count, AnyStepHandling anyStepHandling, TextFieldE
     setValueAsDecimal(newValue, eventBehavior, ec);
 
     if (AXObjectCache::accessibilityEnabled())
-         element()->document()->axObjectCache()->postNotification(element()->renderer(), AXObjectCache::AXValueChanged, true);
+         element()->document()->axObjectCache()->postNotification(element(), AXObjectCache::AXValueChanged, true);
 }
 
 bool InputType::getAllowedValueStep(Decimal* step) const
@@ -1102,141 +1119,141 @@ namespace InputTypeNames {
 
 const AtomicString& button()
 {
-    DEFINE_STATIC_LOCAL(AtomicString, name, ("button"));
+    DEFINE_STATIC_LOCAL(AtomicString, name, ("button", AtomicString::ConstructFromLiteral));
     return name;
 }
 
 const AtomicString& checkbox()
 {
-    DEFINE_STATIC_LOCAL(AtomicString, name, ("checkbox"));
+    DEFINE_STATIC_LOCAL(AtomicString, name, ("checkbox", AtomicString::ConstructFromLiteral));
     return name;
 }
 
 #if ENABLE(INPUT_TYPE_COLOR)
 const AtomicString& color()
 {
-    DEFINE_STATIC_LOCAL(AtomicString, name, ("color"));
+    DEFINE_STATIC_LOCAL(AtomicString, name, ("color", AtomicString::ConstructFromLiteral));
     return name;
 }
 #endif
 
 const AtomicString& date()
 {
-    DEFINE_STATIC_LOCAL(AtomicString, name, ("date"));
+    DEFINE_STATIC_LOCAL(AtomicString, name, ("date", AtomicString::ConstructFromLiteral));
     return name;
 }
 
 const AtomicString& datetime()
 {
-    DEFINE_STATIC_LOCAL(AtomicString, name, ("datetime"));
+    DEFINE_STATIC_LOCAL(AtomicString, name, ("datetime", AtomicString::ConstructFromLiteral));
     return name;
 }
 
 const AtomicString& datetimelocal()
 {
-    DEFINE_STATIC_LOCAL(AtomicString, name, ("datetime-local"));
+    DEFINE_STATIC_LOCAL(AtomicString, name, ("datetime-local", AtomicString::ConstructFromLiteral));
     return name;
 }
 
 const AtomicString& email()
 {
-    DEFINE_STATIC_LOCAL(AtomicString, name, ("email"));
+    DEFINE_STATIC_LOCAL(AtomicString, name, ("email", AtomicString::ConstructFromLiteral));
     return name;
 }
 
 const AtomicString& file()
 {
-    DEFINE_STATIC_LOCAL(AtomicString, name, ("file"));
+    DEFINE_STATIC_LOCAL(AtomicString, name, ("file", AtomicString::ConstructFromLiteral));
     return name;
 }
 
 const AtomicString& hidden()
 {
-    DEFINE_STATIC_LOCAL(AtomicString, name, ("hidden"));
+    DEFINE_STATIC_LOCAL(AtomicString, name, ("hidden", AtomicString::ConstructFromLiteral));
     return name;
 }
 
 const AtomicString& image()
 {
-    DEFINE_STATIC_LOCAL(AtomicString, name, ("image"));
+    DEFINE_STATIC_LOCAL(AtomicString, name, ("image", AtomicString::ConstructFromLiteral));
     return name;
 }
 
 const AtomicString& month()
 {
-    DEFINE_STATIC_LOCAL(AtomicString, name, ("month"));
+    DEFINE_STATIC_LOCAL(AtomicString, name, ("month", AtomicString::ConstructFromLiteral));
     return name;
 }
 
 const AtomicString& number()
 {
-    DEFINE_STATIC_LOCAL(AtomicString, name, ("number"));
+    DEFINE_STATIC_LOCAL(AtomicString, name, ("number", AtomicString::ConstructFromLiteral));
     return name;
 }
 
 const AtomicString& password()
 {
-    DEFINE_STATIC_LOCAL(AtomicString, name, ("password"));
+    DEFINE_STATIC_LOCAL(AtomicString, name, ("password", AtomicString::ConstructFromLiteral));
     return name;
 }
 
 const AtomicString& radio()
 {
-    DEFINE_STATIC_LOCAL(AtomicString, name, ("radio"));
+    DEFINE_STATIC_LOCAL(AtomicString, name, ("radio", AtomicString::ConstructFromLiteral));
     return name;
 }
 
 const AtomicString& range()
 {
-    DEFINE_STATIC_LOCAL(AtomicString, name, ("range"));
+    DEFINE_STATIC_LOCAL(AtomicString, name, ("range", AtomicString::ConstructFromLiteral));
     return name;
 }
 
 const AtomicString& reset()
 {
-    DEFINE_STATIC_LOCAL(AtomicString, name, ("reset"));
+    DEFINE_STATIC_LOCAL(AtomicString, name, ("reset", AtomicString::ConstructFromLiteral));
     return name;
 }
 
 const AtomicString& search()
 {
-    DEFINE_STATIC_LOCAL(AtomicString, name, ("search"));
+    DEFINE_STATIC_LOCAL(AtomicString, name, ("search", AtomicString::ConstructFromLiteral));
     return name;
 }
 
 const AtomicString& submit()
 {
-    DEFINE_STATIC_LOCAL(AtomicString, name, ("submit"));
+    DEFINE_STATIC_LOCAL(AtomicString, name, ("submit", AtomicString::ConstructFromLiteral));
     return name;
 }
 
 const AtomicString& telephone()
 {
-    DEFINE_STATIC_LOCAL(AtomicString, name, ("tel"));
+    DEFINE_STATIC_LOCAL(AtomicString, name, ("tel", AtomicString::ConstructFromLiteral));
     return name;
 }
 
 const AtomicString& text()
 {
-    DEFINE_STATIC_LOCAL(AtomicString, name, ("text"));
+    DEFINE_STATIC_LOCAL(AtomicString, name, ("text", AtomicString::ConstructFromLiteral));
     return name;
 }
 
 const AtomicString& time()
 {
-    DEFINE_STATIC_LOCAL(AtomicString, name, ("time"));
+    DEFINE_STATIC_LOCAL(AtomicString, name, ("time", AtomicString::ConstructFromLiteral));
     return name;
 }
 
 const AtomicString& url()
 {
-    DEFINE_STATIC_LOCAL(AtomicString, name, ("url"));
+    DEFINE_STATIC_LOCAL(AtomicString, name, ("url", AtomicString::ConstructFromLiteral));
     return name;
 }
 
 const AtomicString& week()
 {
-    DEFINE_STATIC_LOCAL(AtomicString, name, ("week"));
+    DEFINE_STATIC_LOCAL(AtomicString, name, ("week", AtomicString::ConstructFromLiteral));
     return name;
 }
 

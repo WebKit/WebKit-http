@@ -29,13 +29,14 @@ import optparse
 import os
 import StringIO
 import sys
+import time
 import traceback
 import unittest
 
 from webkitpy.common.system.filesystem import FileSystem
 from webkitpy.test.finder import Finder
 from webkitpy.test.printer import Printer
-from webkitpy.test.runner import Runner
+from webkitpy.test.runner import Runner, unit_test_name
 
 _log = logging.getLogger(__name__)
 
@@ -48,7 +49,11 @@ def main():
     tester.add_tree(os.path.join(webkit_root, 'Tools', 'Scripts'), 'webkitpy')
     tester.add_tree(os.path.join(webkit_root, 'Source', 'WebKit2', 'Scripts'), 'webkit2')
 
-    # FIXME: Do we need to be able to test QueueStatusServer on Windows as well?
+    tester.skip(('webkitpy.common.checkout.scm.scm_unittest',), 'are really, really, slow', 31818)
+    if sys.platform == 'win32':
+        tester.skip(('webkitpy.common.checkout', 'webkitpy.common.config', 'webkitpy.tool'), 'fail horribly on win32', 54526)
+
+    # This only needs to run on Unix, so don't worry about win32 for now.
     appengine_sdk_path = '/usr/local/google_appengine'
     if os.path.exists(appengine_sdk_path):
         if not appengine_sdk_path in sys.path:
@@ -73,24 +78,27 @@ class Tester(object):
     def add_tree(self, top_directory, starting_subdirectory=None):
         self.finder.add_tree(top_directory, starting_subdirectory)
 
+    def skip(self, names, reason, bugid):
+        self.finder.skip(names, reason, bugid)
+
     def _parse_args(self):
         parser = optparse.OptionParser(usage='usage: %prog [options] [args...]')
         parser.add_option('-a', '--all', action='store_true', default=False,
                           help='run all the tests')
         parser.add_option('-c', '--coverage', action='store_true', default=False,
                           help='generate code coverage info (requires http://pypi.python.org/pypi/coverage)')
+        parser.add_option('-i', '--integration-tests', action='store_true', default=False,
+                          help='run integration tests as well as unit tests'),
+        parser.add_option('-j', '--child-processes', action='store', type='int', default=(1 if sys.platform == 'win32' else multiprocessing.cpu_count()),
+                          help='number of tests to run in parallel (default=%default)')
+        parser.add_option('-p', '--pass-through', action='store_true', default=False,
+                          help='be debugger friendly by passing captured output through to the system')
         parser.add_option('-q', '--quiet', action='store_true', default=False,
                           help='run quietly (errors, warnings, and progress only)')
         parser.add_option('-t', '--timing', action='store_true', default=False,
                           help='display per-test execution time (implies --verbose)')
         parser.add_option('-v', '--verbose', action='count', default=0,
                           help='verbose output (specify once for individual test results, twice for debug messages)')
-        parser.add_option('--skip-integrationtests', action='store_true', default=False,
-                          help='do not run the integration tests')
-        parser.add_option('-p', '--pass-through', action='store_true', default=False,
-                          help='be debugger friendly by passing captured output through to the system')
-        parser.add_option('-j', '--child-processes', action='store', type='int', default=(1 if sys.platform == 'win32' else multiprocessing.cpu_count()),
-                          help='number of tests to run in parallel (default=%default)')
 
         parser.epilog = ('[args...] is an optional list of modules, test_classes, or individual tests. '
                          'If no args are given, all the tests will be run.')
@@ -103,7 +111,7 @@ class Tester(object):
 
         self.finder.clean_trees()
 
-        names = self.finder.find_names(args, self._options.skip_integrationtests, self._options.all, self._options.child_processes != 1)
+        names = self.finder.find_names(args, self._options.all)
         if not names:
             _log.error('No tests to run')
             return False
@@ -111,22 +119,51 @@ class Tester(object):
         return self._run_tests(names)
 
     def _run_tests(self, names):
-        if self._options.coverage:
-            try:
-                import webkitpy.thirdparty.autoinstalled.coverage as coverage
-            except ImportError:
-                _log.error("Failed to import 'coverage'; can't generate coverage numbers.")
-                return False
-            cov = coverage.coverage()
-            cov.start()
-
         # Make sure PYTHONPATH is set up properly.
         sys.path = self.finder.additional_paths(sys.path) + sys.path
 
-        _log.debug("Loading the tests...")
+        # We autoinstall everything up so that we can run tests concurrently
+        # and not have to worry about autoinstalling packages concurrently.
+        self.printer.write_update("Checking autoinstalled packages ...")
+        from webkitpy.thirdparty import autoinstall_everything
+        installed_something = autoinstall_everything()
 
-        loader = unittest.defaultTestLoader
-        suites = []
+        # FIXME: There appears to be a bug in Python 2.6.1 that is causing multiprocessing
+        # to hang after we install the packages in a clean checkout.
+        if installed_something:
+            _log.warning("We installed new packages, so running things serially at first")
+            self._options.child_processes = 1
+
+        if self._options.coverage:
+            import webkitpy.thirdparty.autoinstalled.coverage as coverage
+            cov = coverage.coverage()
+            cov.start()
+
+        self.printer.write_update("Checking imports ...")
+        if not self._check_imports(names):
+            return False
+
+        self.printer.write_update("Finding the individual test methods ...")
+        loader = _Loader()
+        parallel_tests, serial_tests = self._test_names(loader, names)
+
+        self.printer.write_update("Running the tests ...")
+        self.printer.num_tests = len(parallel_tests) + len(serial_tests)
+        start = time.time()
+        test_runner = Runner(self.printer, loader)
+        test_runner.run(parallel_tests, self._options.child_processes)
+        test_runner.run(serial_tests, 1)
+
+        self.printer.print_result(time.time() - start)
+
+        if self._options.coverage:
+            cov.stop()
+            cov.save()
+            cov.report(show_missing=False)
+
+        return not self.printer.num_errors and not self.printer.num_failures
+
+    def _check_imports(self, names):
         for name in names:
             if self.finder.is_module(name):
                 # if we failed to load a name and it looks like a module,
@@ -138,25 +175,53 @@ class Tester(object):
                     _log.fatal('Failed to import %s:' % name)
                     self._log_exception()
                     return False
+        return True
 
-            suites.append(loader.loadTestsFromName(name, None))
+    def _test_names(self, loader, names):
+        if self._options.integration_tests:
+            loader.test_method_prefixes.append('integration_test_')
 
-        test_suite = unittest.TestSuite(suites)
-        test_runner = Runner(self.printer, self._options, loader)
+        parallel_tests = []
+        if self._options.child_processes > 1:
+            for name in names:
+                parallel_tests.extend(self._all_test_names(loader.loadTestsFromName(name, None)))
+            loader.test_method_prefixes = []
 
-        _log.debug("Running the tests.")
-        result = test_runner.run(test_suite)
-        if self._options.coverage:
-            cov.stop()
-            cov.save()
-            cov.report(show_missing=False)
-        return result.wasSuccessful()
+        serial_tests = []
+        loader.test_method_prefixes.extend(['serial_test_', 'serial_integration_test_'])
+        for name in names:
+            serial_tests.extend(self._all_test_names(loader.loadTestsFromName(name, None)))
+
+        return (parallel_tests, serial_tests)
+
+    def _all_test_names(self, suite):
+        names = []
+        if hasattr(suite, '_tests'):
+            for t in suite._tests:
+                names.extend(self._all_test_names(t))
+        else:
+            names.append(unit_test_name(suite))
+        return names
 
     def _log_exception(self):
         s = StringIO.StringIO()
         traceback.print_exc(file=s)
         for l in s.buflist:
             _log.error('  ' + l.rstrip())
+
+
+class _Loader(unittest.TestLoader):
+    test_method_prefixes = ['test_']
+
+    def getTestCaseNames(self, testCaseClass):
+        def isTestMethod(attrname, testCaseClass=testCaseClass):
+            if not hasattr(getattr(testCaseClass, attrname), '__call__'):
+                return False
+            return (any(attrname.startswith(prefix) for prefix in self.test_method_prefixes))
+        testFnNames = filter(isTestMethod, dir(testCaseClass))
+        testFnNames.sort()
+        return testFnNames
+
 
 if __name__ == '__main__':
     sys.exit(main())

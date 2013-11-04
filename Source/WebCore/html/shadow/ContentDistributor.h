@@ -38,6 +38,7 @@
 
 namespace WebCore {
 
+class ContainerNode;
 class Element;
 class InsertionPoint;
 class Node;
@@ -60,6 +61,8 @@ public:
 
     InsertionPoint* findInsertionPointFor(const Node* key) const;
 
+    void setValidity(Validity validity) { m_validity = validity; }
+
     void distribute(Element* host);
     bool invalidate(Element* host);
     void finishInivalidation();
@@ -67,7 +70,7 @@ public:
     bool needsInvalidation() const { return m_validity != Invalidated; }
 
     void distributeSelectionsTo(InsertionPoint*, ContentDistribution& pool);
-    void distributeShadowChildrenTo(InsertionPoint*, ShadowRoot*);
+    void distributeNodeChildrenTo(InsertionPoint*, ContainerNode*);
     void invalidateDistributionIn(ContentDistribution*);
 
 private:

@@ -25,7 +25,6 @@
 #include "CSSPrimitiveValue.h"
 #include "CSSProperty.h"
 #include "CSSPropertyNames.h"
-#include "MemoryInstrumentation.h"
 #include <wtf/ListHashSet.h>
 #include <wtf/Vector.h>
 #include <wtf/text/WTFString.h>
@@ -35,6 +34,7 @@ namespace WebCore {
 class CSSRule;
 class CSSStyleDeclaration;
 class KURL;
+class MemoryObjectInfo;
 class PropertySetCSSStyleDeclaration;
 class StyledElement;
 class StylePropertyShorthand;
@@ -86,15 +86,11 @@ public:
 
     void mergeAndOverrideOnConflict(const StylePropertySet*);
 
-    void setCSSParserMode(CSSParserMode);
     CSSParserMode cssParserMode() const { return static_cast<CSSParserMode>(m_cssParserMode); }
 
     void addSubresourceStyleURLs(ListHashSet<KURL>&, StyleSheetContents* contextStyleSheet) const;
 
     PassRefPtr<StylePropertySet> copy() const;
-
-    // Used by StyledElement::copyNonAttributeProperties().
-    void copyPropertiesFrom(const StylePropertySet&);
 
     void removeEquivalentProperties(const StylePropertySet*);
     void removeEquivalentProperties(const CSSStyleDeclaration*);
@@ -105,24 +101,20 @@ public:
     
     void clearParentElement(StyledElement*);
 
-    CSSStyleDeclaration* ensureCSSStyleDeclaration() const;
-    CSSStyleDeclaration* ensureInlineCSSStyleDeclaration(const StyledElement* parentElement) const;
+    CSSStyleDeclaration* ensureCSSStyleDeclaration();
+    CSSStyleDeclaration* ensureInlineCSSStyleDeclaration(const StyledElement* parentElement);
 
     bool isMutable() const { return m_isMutable; }
 
+    bool hasFailedOrCanceledSubresources() const;
+
     static unsigned averageSizeInBytes();
+    void reportMemoryUsage(MemoryObjectInfo*) const;
 
 #ifndef NDEBUG
     void showStyle();
 #endif
     
-    void reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
-    {
-        MemoryClassInfo<StylePropertySet> info(memoryObjectInfo, this, MemoryInstrumentation::CSS, m_arraySize * sizeof(CSSProperty));
-        if (m_isMutable)
-            info.addMember(m_mutablePropertyVector);
-    }
-
 private:
     StylePropertySet(CSSParserMode);
     StylePropertySet(const CSSProperty* properties, unsigned count, CSSParserMode, bool makeMutable);

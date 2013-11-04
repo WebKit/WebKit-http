@@ -103,7 +103,7 @@ void TextureMapperLayer::updateBackingStore(TextureMapper* textureMapper, Graphi
     if (!m_shouldUpdateBackingStoreFromLayer)
         return;
 
-    if (!m_state.drawsContent || m_size.isEmpty()) {
+    if (!m_state.drawsContent || !m_state.contentsVisible || m_size.isEmpty()) {
         m_backingStore.clear();
         return;
     }
@@ -157,7 +157,7 @@ void TextureMapperLayer::paint()
 
 void TextureMapperLayer::paintSelf(const TextureMapperPaintOptions& options)
 {
-    if (!m_state.visible)
+    if (!m_state.visible || !m_state.contentsVisible)
         return;
 
     // We apply the following transform to compensate for painting into a surface, and then apply the offset so that the painting fits in the target rect.
@@ -199,7 +199,7 @@ void TextureMapperLayer::paintSelfAndChildren(const TextureMapperPaintOptions& o
     if (shouldClip)
         options.textureMapper->beginClip(TransformationMatrix(options.transform).multiply(m_transform.combined()), layerRect());
 
-    for (int i = 0; i < m_children.size(); ++i)
+    for (size_t i = 0; i < m_children.size(); ++i)
         m_children[i]->paintRecursive(options);
 
     if (shouldClip)
@@ -294,6 +294,8 @@ bool TextureMapperLayer::isVisible() const
         return false;
     if (!m_state.visible && m_children.isEmpty())
         return false;
+    if (!m_state.contentsVisible && m_children.isEmpty())
+        return false;
     if (m_opacity < 0.01)
         return false;
     return true;
@@ -320,7 +322,7 @@ void TextureMapperLayer::paintSelfAndChildrenWithReplica(const TextureMapperPain
 #if ENABLE(CSS_FILTERS)
 static bool shouldKeepContentTexture(const FilterOperations& filters)
 {
-    for (int i = 0; i < filters.size(); ++i) {
+    for (size_t i = 0; i < filters.size(); ++i) {
         switch (filters.operations().at(i)->getOperationType()) {
         // The drop-shadow filter requires the content texture, because it needs to composite it
         // on top of the blurred shadow color.
@@ -472,6 +474,7 @@ void TextureMapperLayer::syncCompositingStateSelf(GraphicsLayerTextureMapper* gr
     m_state.preserves3D = graphicsLayer->preserves3D();
     m_state.masksToBounds = graphicsLayer->masksToBounds();
     m_state.drawsContent = graphicsLayer->drawsContent();
+    m_state.contentsVisible = graphicsLayer->contentsAreVisible();
     m_state.contentsOpaque = graphicsLayer->contentsOpaque();
     m_state.backfaceVisibility = graphicsLayer->backfaceVisibility();
     m_state.childrenTransform = graphicsLayer->childrenTransform();

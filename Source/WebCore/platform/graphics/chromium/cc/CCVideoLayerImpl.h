@@ -26,9 +26,9 @@
 #ifndef CCVideoLayerImpl_h
 #define CCVideoLayerImpl_h
 
+#include "CCLayerImpl.h"
 #include "GraphicsContext3D.h"
 #include "IntSize.h"
-#include "cc/CCLayerImpl.h"
 #include <public/WebTransformationMatrix.h>
 #include <public/WebVideoFrameProvider.h>
 
@@ -51,7 +51,7 @@ public:
     virtual ~CCVideoLayerImpl();
 
     virtual void willDraw(CCResourceProvider*) OVERRIDE;
-    virtual void appendQuads(CCQuadSink&, const CCSharedQuadState*, bool& hadMissingTiles) OVERRIDE;
+    virtual void appendQuads(CCQuadSink&, CCAppendQuadsData&) OVERRIDE;
     virtual void didDraw(CCResourceProvider*) OVERRIDE;
 
     virtual void dumpLayerProperties(TextStream&, int indent) const OVERRIDE;

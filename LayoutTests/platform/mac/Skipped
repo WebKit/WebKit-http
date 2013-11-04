@@ -167,8 +167,6 @@ canvas/philip/tests/2d.composite.operation.clear.html
 # drawing model being different than the spec's current model. There is a current
 # effort out to change the spec to the webkit canvas model.
 canvas/philip/tests/2d.composite.operation.darker.html
-canvas/philip/tests/2d.imageData.object.round.html
-canvas/philip/tests/2d.imageData.object.wrap.html
 
 # This canvas test is skipped because it is out of date with respect to
 # the current spec, and the fix for https://bugs.webkit.org/show_bug.cgi?id=65709
@@ -196,6 +194,10 @@ fast/dom/HTMLLinkElement/prefetch-too-many-clients.html
 fast/dom/HTMLLinkElement/subresource.html
 http/tests/misc/link-rel-prefetch-and-subresource.html
 http/tests/misc/prefetch-purpose.html
+
+# Link prerender is disabled.
+fast/dom/HTMLLinkElement/prerender-insert-after-stop.html
+fast/dom/HTMLLinkElement/prerender-remove-after-stop.html
 
 # Filenames aren't filtered out from edit drags yet, see https://bugs.wekit.org/show_bug.cgi?id=38826
 editing/pasteboard/file-drag-to-editable.html
@@ -337,6 +339,7 @@ http/tests/media/video-buffered.html
 fast/filesystem
 http/tests/filesystem
 http/tests/inspector/filesystem
+http/tests/security/contentSecurityPolicy/filesystem-urls-match-self.html
 http/tests/security/filesystem-iframe-from-remote.html
 http/tests/security/mixedContent/filesystem-url-in-iframe.html
 http/tests/websocket/tests/hybi/send-file-blob.html
@@ -354,6 +357,8 @@ plugins/plugin-initiate-popup-window.html
 # Requires WebP support.
 fast/canvas/canvas-toDataURL-webp.html
 fast/images/webp-image-decoding.html
+http/tests/images/webp-partial-load.html
+http/tests/images/webp-progressive-load.html
 
 # Times out because plugins aren't allowed to execute JS after NPP_Destroy has been called in WebKit1's OOP plugins implementation http://webkit.org/b/48929
 plugins/evaluate-js-after-removing-plugin-element.html
@@ -616,6 +621,10 @@ batterystatus/
 #Network Information is not supported yet. http://webkit.org/b/73528
 networkinformation
 
+# Proximity Events is not supported.
+fast/dom/Proximity
+fast/events/constructors/device-proximity-event-constructor.html
+
 # https://bugs.webkit.org/show_bug.cgi?id=43022
 tables/mozilla_expected_failures/bugs/bug85016.html
 
@@ -759,7 +768,6 @@ plugins/multiple-plugins.html
 
 # https://bugs.webkit.org/show_bug.cgi?id=82976
 media/W3C/video/networkState/networkState_during_progress.html
-media/video-poster-blocked-by-willsendrequest.html
 
 # https://bugs.webkit.org/show_bug.cgi?id=82978
 inspector/styles/svg-style.xhtml
@@ -816,6 +824,7 @@ fast/sub-pixel/file-upload-control-at-fractional-offset.html
 fast/sub-pixel/float-containing-block-with-margin.html
 fast/sub-pixel/float-with-right-margin-zoom.html
 fast/sub-pixel/float-wrap-with-subpixel-top.html
+fast/sub-pixel/inline-block-should-not-wrap.html
 fast/sub-pixel/inline-block-with-margin.html
 fast/sub-pixel/inline-block-with-padding.html
 fast/sub-pixel/layout-boxes-with-zoom.html
@@ -823,6 +832,7 @@ fast/sub-pixel/position-right-aligns-with-container.html
 fast/sub-pixel/selection/selection-gaps-at-fractional-offsets.html
 fast/sub-pixel/size-of-box-with-zoom.html
 fast/sub-pixel/table-rows-no-gaps.html
+fast/sub-pixel/sub-pixel-accumulates-to-layers.html
 
 # No CORS support for media elements is implemented yet.
 http/tests/security/video-cross-origin-readback.html
@@ -861,10 +871,6 @@ plugins/npruntime/delete-plugin-within-setProperty.html
 plugins/npruntime/delete-plugin-within-hasProperty-return-true.html
 plugins/npruntime/delete-plugin-within-hasProperty-return-false.html
 
-# https://bugs.webkit.org/show_bug.cgi?id=86786
-mathml/presentation/mo-stretch.html
-mathml/presentation/mroot-pref-width.html
-
 # https://bugs.webkit.org/show_bug.cgi?id=87199
 compositing/video/video-poster.html
 
@@ -896,9 +902,6 @@ svg/filters/color-space-conversion.svg
 # https://bugs.webkit.org/show_bug.cgi?id=89528
 svg/filters/container-with-filters.svg
 svg/filters/feSpecularLight-premultiplied.svg
-
-# https://bugs.webkit.org/show_bug.cgi?id=88736
-http/tests/security/mixedContent/blob-url-in-iframe.html
 
 # https://bugs.webkit.org/show_bug.cgi?id=89680
 fast/canvas/canvas-imageSmoothingEnabled-repaint.html
@@ -956,3 +959,148 @@ platform/mac/plugins/root-object-premature-delete-crash.html
 # This test depends on subpixel layout.
 # https://bugs.webkit.org/show_bug.cgi?id=92352
 css3/flexbox/flex-rounding.html
+
+# ENABLE(INPUT_TYPE_TIME_MULTIPLE_FIELDS) is disabled
+fast/forms/time-multiple-fields
+
+# <rdar://problem/11224160> Focus not transferring properly in DumpRenderTree in Mountain Lion
+fast/events/show-modal-dialog-onblur-onfocus.html
+platform/mac/fast/forms/listbox-scrollbar-hit-test.html
+
+# <rdar://problem/11224894> Several Japanese vertical text tests failing on Mountain Lion
+fast/dynamic/text-combine.html
+fast/repaint/japanese-rl-selection-clear.html
+fast/repaint/japanese-rl-selection-repaint-in-regions.html
+fast/repaint/japanese-rl-selection-repaint.html
+fast/repaint/repaint-across-writing-mode-boundary.html
+fast/ruby/base-shorter-than-text.html
+fast/text/emphasis-vertical.html
+fast/text/international/text-spliced-font.html
+fast/writing-mode/Kusa-Makura-background-canvas.html
+fast/writing-mode/border-vertical-lr.html
+fast/writing-mode/fallback-orientation.html
+fast/writing-mode/japanese-lr-selection.html
+fast/writing-mode/japanese-lr-text.html
+fast/writing-mode/japanese-rl-selection.html
+fast/writing-mode/japanese-rl-text.html
+
+# <rdar://problem/11076314> A few media and http/tests/media tests time out on Mountain Lion
+http/tests/media/video-play-stall-seek.html
+http/tests/media/video-play-stall.html
+media/media-fullscreen-not-in-document.html
+
+# <rdar://problem/11358748> http/tests/multipart/multipart-wait-before-boundary.html fails on ML as of r115745
+http/tests/multipart/multipart-wait-before-boundary.html
+
+# <rdar://problem/11059031> Many, many Java tests fail on Mountain Lion
+java/
+
+# <rdar://problem/11187491> storage/websql/quota-tracking.html is failing on Mountain Lion
+storage/websql/quota-tracking.html
+
+# <rdar://problem/11229810> SVG square caps on zero-length paths draw incorrectly on Mountain Lion
+svg/W3C-SVG-1.1-SE/painting-control-04-f.svg
+svg/custom/zero-path-square-cap-rendering.svg
+svg/stroke/zero-length-arc-linecaps-rendering.svg
+svg/stroke/zero-length-path-linecap-rendering.svg
+svg/stroke/zero-length-subpaths-linecap-rendering.svg
+
+# https://bugs.webkit.org/show_bug.cgi?id=95009
+compositing/overflow/overflow-auto-with-touch.html
+compositing/overflow/overflow-overlay-with-touch.html
+compositing/overflow/scrolling-content-clip-to-viewport.html
+compositing/overflow/textarea-scroll-touch.html
+
+# https://bugs.webkit.org/show_bug.cgi?id=95027
+fast/block/float/016.html
+
+# https://bugs.webkit.org/show_bug.cgi?id=93878
+# Due to JSC::Bindings::Instance::createRuntimeObject(JSC::ExecState*) crashes:
+editing/pasteboard/paste-TIFF.html
+platform/mac/editing/pasteboard/dataTransfer-set-data-file-url.html
+
+# https://bugs.webkit.org/show_bug.cgi?id=93878 (yes, same bug as the previous)
+# Due to WebCore::JSEventListener::jsFunction(WebCore::ScriptExecutionContext*) crashes:
+fast/events/keyevent-iframe-removed-crash.html
+fullscreen/full-screen-iframe-zIndex.html
+fullscreen/full-screen-restrictions.html
+http/tests/security/MessagePort/event-listener-context.html
+platform/mac/accessibility/search-with-frames.html
+svg/custom/use-instanceRoot-as-event-target.xhtml
+
+# Assorted failures that need investigation
+
+# --- Canvas ---
+canvas/philip/tests/2d.gradient.interpolate.colouralpha.html
+canvas/philip/tests/2d.line.miter.lineedge.html
+canvas/philip/tests/2d.strokeRect.zero.4.html
+
+# --- Compositing ----
+css3/filters/composited-during-transition-layertree.html
+
+# --- Text ---
+fast/forms/text-control-intrinsic-widths.html
+platform/mac/fast/text/combining-character-sequence-fallback.html
+svg/batik/text/textOnPath.svg
+svg/batik/text/verticalTextOnPath.svg
+
+# --- Editing ---
+# Pasting replaces the three periods with an ellipsis on Lion and Mountain Lion
+editing/pasteboard/5478250.html
+
+# Sometimes fail <rdar://problem/9356912>
+platform/mac/editing/spelling/autocorrection-delete.html
+platform/mac/editing/spelling/autocorrection-removing-underline-after-paste.html
+platform/mac/editing/spelling/autocorrection-removing-underline.html
+platform/mac/editing/spelling/autocorrection-simple.html
+platform/mac/editing/spelling/delete-autocorrected-word-1.html
+platform/mac/editing/spelling/delete-autocorrected-word-2.html
+
+# --- WebGL ---
+# Currently failing WebGL tests <rdar://problem/9355460>
+fast/canvas/webgl/tex-image-and-sub-image-2d-with-video.html
+
+# Sending the mouse down event to the scrollbar starts a nested run loop which causes a hang.
+fast/events/mousedown-in-subframe-scrollbar.html
+
+# --- WebKit1 only ---
+http/tests/misc/willCacheResponse-delegate-callback.html
+http/tests/multipart/load-last-non-html-frame.php
+http/tests/xmlhttprequest/basic-auth-nopassword.html
+platform/mac/accessibility/selection-value-changes-for-aria-textbox.html
+
+# --- WebKit2 only ---
+compositing/video/video-background-color.html
+media/video-does-not-loop.html
+media/video-size-intrinsic-scale.html
+
+# -- Flaky tests (WebKit 1 only) ---
+platform/mac/accessibility/search-with-frames.html
+
+# -- Flaky tests (WebKit 2 only) ---
+http/tests/websocket/tests/hybi/httponly-cookie.pl
+
+# --- Media ---
+media/controls-styling.html
+media/media-document-audio-repaint.html
+media/video-zoom-controls.html
+
+# --- Miscellaneous ---
+platform/mac/fast/overflow/overflow-scrollbar-hit-test.html
+
+# --- Plugins ---
+# WebKit1 OOP plug-ins: Can't evaluate JavaScript from NPP_Destroy.
+plugins/document-open.html
+plugins/geturlnotify-during-document-teardown.html
+plugins/nested-plugin-objects.html
+plugins/netscape-destroy-plugin-script-objects.html
+plugins/open-and-close-window-with-plugin.html
+
+# WebKit1 OOP plug-ins: No support for getting the form value.
+plugins/form-value.html
+
+# WebKit1 OOP plug-ins: Exceptions aren't thrown on invoke failure.
+plugins/npruntime/invoke-failure.html
+
+# Unknown failures.
+http/tests/multipart/invalid-image-data-standalone.html

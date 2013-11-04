@@ -60,10 +60,7 @@ from webkitpy.tool.mocktool import MockOptions
 
 def parse_args(extra_args=None, record_results=False, tests_included=False, new_results=False, print_nothing=True):
     extra_args = extra_args or []
-    if print_nothing:
-        args = ['--print', 'nothing']
-    else:
-        args = []
+    args = []
     if not '--platform' in extra_args:
         args.extend(['--platform', 'test'])
     if not record_results:
@@ -95,7 +92,7 @@ def passing_run(extra_args=None, port_obj=None, record_results=False, tests_incl
     buildbot_output = StringIO.StringIO()
     regular_output = StringIO.StringIO()
     res = run_webkit_tests.run(port_obj, options, parsed_args, buildbot_output=buildbot_output, regular_output=regular_output)
-    return res == 0 and not regular_output.getvalue() and not buildbot_output.getvalue()
+    return res == 0
 
 
 def logging_run(extra_args=None, port_obj=None, record_results=False, tests_included=False, host=None, new_results=False, shared_port=True):
@@ -150,7 +147,7 @@ def get_tests_run(extra_args=None, tests_included=False, flatten_batches=False,
         def stop(self):
             self._current_test_batch = None
 
-        def run_test(self, test_input):
+        def run_test(self, test_input, stop_when_done):
             if self._current_test_batch is None:
                 self._current_test_batch = []
                 test_batches.append(self._current_test_batch)
@@ -162,7 +159,7 @@ def get_tests_run(extra_args=None, tests_included=False, flatten_batches=False,
             dirname, filename = filesystem.split(test_name)
             if include_reference_html or not Port.is_reference_html_file(filesystem, dirname, filename):
                 self._current_test_batch.append(test_name)
-            return TestDriver.run_test(self, test_input)
+            return TestDriver.run_test(self, test_input, stop_when_done)
 
     class RecordingTestPort(TestPort):
         def create_driver(self, worker_number):
@@ -185,9 +182,6 @@ unexpected_tests_count = 14
 class StreamTestingMixin(object):
     def assertContains(self, stream, string):
         self.assertTrue(string in stream.getvalue())
-
-    def assertContainsLine(self, stream, string):
-        self.assertTrue(string in stream.buflist)
 
     def assertEmpty(self, stream):
         self.assertFalse(stream.getvalue())
@@ -310,13 +304,13 @@ class MainTest(unittest.TestCase, StreamTestingMixin):
     def test_child_processes_2(self):
         if self.should_test_processes:
             _, _, regular_output, _ = logging_run(
-                ['--print', 'config', '--child-processes', '2'], shared_port=False)
+                ['--debug-rwt-logging', '--child-processes', '2'], shared_port=False)
             self.assertTrue(any(['Running 2 ' in line for line in regular_output.buflist]))
 
     def test_child_processes_min(self):
         if self.should_test_processes:
             _, _, regular_output, _ = logging_run(
-                ['--print', 'config', '--child-processes', '2', 'passes'],
+                ['--debug-rwt-logging', '--child-processes', '2', 'passes'],
                 tests_included=True, shared_port=False)
             self.assertTrue(any(['Running 1 ' in line for line in regular_output.buflist]))
 
@@ -349,12 +343,6 @@ class MainTest(unittest.TestCase, StreamTestingMixin):
         res, out, err, user = logging_run(['--full-results-html'])
         self.assertEqual(res, 0)
 
-    def test_help_printing(self):
-        res, out, err, user = logging_run(['--help-printing'])
-        self.assertEqual(res, 0)
-        self.assertEmpty(out)
-        self.assertNotEmpty(err)
-
     def test_hung_thread(self):
         res, out, err, user = logging_run(['--run-singly', '--time-out-ms=50',
                                           'failures/expected/hang.html'],
@@ -378,13 +366,13 @@ class MainTest(unittest.TestCase, StreamTestingMixin):
         res, out, err, user = logging_run(['resources'], tests_included=True)
         self.assertEqual(res, -1)
         self.assertEmpty(out)
-        self.assertContainsLine(err, 'No tests to run.\n')
+        self.assertContains(err, 'No tests to run.\n')
 
     def test_no_tests_found_2(self):
         res, out, err, user = logging_run(['foo'], tests_included=True)
         self.assertEqual(res, -1)
         self.assertEmpty(out)
-        self.assertContainsLine(err, 'No tests to run.\n')
+        self.assertContains(err, 'No tests to run.\n')
 
     def test_randomize_order(self):
         # FIXME: verify order was shuffled
@@ -439,11 +427,11 @@ class MainTest(unittest.TestCase, StreamTestingMixin):
         host = MockHost()
         res, out, err, _ = logging_run(['--iterations', '2',
                                         '--repeat-each', '4',
-                                        '--print', 'everything',
+                                        '--debug-rwt-logging',
                                         'passes/text.html', 'failures/expected/text.html'],
                                        tests_included=True, host=host, record_results=True)
-        self.assertContainsLine(out, "=> Results: 8/16 tests passed (50.0%)\n")
-        self.assertContainsLine(err, "All 16 tests ran as expected.\n")
+        self.assertContains(out, "=> Results: 8/16 tests passed (50.0%)\n")
+        self.assertContains(err, "All 16 tests ran as expected.\n")
 
     def test_run_chunk(self):
         # Test that we actually select the right chunk
@@ -761,7 +749,7 @@ class MainTest(unittest.TestCase, StreamTestingMixin):
 
     def test_retrying_and_flaky_tests(self):
         host = MockHost()
-        res, out, err, _ = logging_run(['failures/flaky'], tests_included=True, host=host)
+        res, out, err, _ = logging_run(['--debug-rwt-logging', 'failures/flaky'], tests_included=True, host=host)
         self.assertEquals(res, 0)
         self.assertTrue('Retrying' in err.getvalue())
         self.assertTrue('Unexpected flakiness' in out.getvalue())
@@ -776,7 +764,7 @@ class MainTest(unittest.TestCase, StreamTestingMixin):
         self.assertEquals(res, 1)
         self.assertTrue('Clobbering old results' in err.getvalue())
         self.assertTrue('flaky/text.html' in err.getvalue())
-        self.assertTrue('Unexpected text diff' in out.getvalue())
+        self.assertTrue('Unexpected text failures' in out.getvalue())
         self.assertFalse('Unexpected flakiness' in out.getvalue())
         self.assertTrue(host.filesystem.exists('/tmp/layout-test-results/failures/flaky/text-actual.txt'))
         self.assertFalse(host.filesystem.exists('retries'))
@@ -795,7 +783,7 @@ class MainTest(unittest.TestCase, StreamTestingMixin):
         class ImageDiffTestPort(TestPort):
             def diff_image(self, expected_contents, actual_contents, tolerance=None):
                 self.tolerance_used_for_diff_image = self._options.tolerance
-                return (True, 1)
+                return (True, 1, None)
 
         def get_port_for_run(args):
             options, parsed_args = run_webkit_tests.parse_args(args)
@@ -863,7 +851,7 @@ class MainTest(unittest.TestCase, StreamTestingMixin):
         self.assertTrue(passing_run(['--additional-platform-directory', '/tmp/foo', '--additional-platform-directory', '/tmp/bar']))
 
         res, buildbot_output, regular_output, user = logging_run(['--additional-platform-directory', 'foo'])
-        self.assertContainsLine(regular_output, '--additional-platform-directory=foo is ignored since it is not absolute\n')
+        self.assertContains(regular_output, '--additional-platform-directory=foo is ignored since it is not absolute\n')
 
     def test_additional_expectations(self):
         host = MockHost()
@@ -894,8 +882,9 @@ class MainTest(unittest.TestCase, StreamTestingMixin):
         self.assertTrue(MainTest.has_test_of_type(batch_tests_run_http, 'websocket'))
 
     def test_platform_tests_are_found(self):
-        tests_run = get_tests_run(['http'], tests_included=True, flatten_batches=True)
-        self.assertTrue('platform/test-snow-leopard/http/test.html' in tests_run)
+        tests_run = get_tests_run(['--platform', 'test-mac-leopard', 'http'], tests_included=True, flatten_batches=True)
+        self.assertTrue('platform/test-mac-leopard/http/test.html' in tests_run)
+        self.assertFalse('platform/test-win-win7/http/test.html' in tests_run)
 
     def test_output_diffs(self):
         # Test to ensure that we don't generate -wdiff.html or -pretty.html if wdiff and PrettyPatch
@@ -927,6 +916,21 @@ class MainTest(unittest.TestCase, StreamTestingMixin):
 
         # This is empty because we don't even get a chance to configure the logger before failing.
         self.assertEquals(logs, '')
+
+    def test_verbose_in_child_processes(self):
+        # When we actually run multiple processes, we may have to reconfigure logging in the
+        # child process (e.g., on win32) and we need to make sure that works and we still
+        # see the verbose log output. However, we can't use logging_run() because using
+        # outputcapture to capture stdout and stderr latter results in a nonpicklable host.
+        options, parsed_args = parse_args(['--verbose', '--fully-parallel', '--child-processes', '2', 'passes/text.html', 'passes/image.html'], tests_included=True, print_nothing=False)
+        host = MockHost()
+        port_obj = host.port_factory.get(port_name=options.platform, options=options)
+        buildbot_output = StringIO.StringIO()
+        regular_output = StringIO.StringIO()
+        res = run_webkit_tests.run(port_obj, options, parsed_args, buildbot_output=buildbot_output, regular_output=regular_output)
+        self.assertTrue('text.html passed' in regular_output.getvalue())
+        self.assertTrue('image.html passed' in regular_output.getvalue())
+
 
 class EndToEndTest(unittest.TestCase):
     def parse_full_results(self, full_results_text):
@@ -974,7 +978,7 @@ class RebaselineTest(unittest.TestCase, StreamTestingMixin):
             baseline = file + "-expected" + ext
             baseline_msg = 'Writing new expected result "%s"\n' % baseline
             self.assertTrue(any(f.find(baseline) != -1 for f in file_list))
-            self.assertContainsLine(err, baseline_msg)
+            self.assertContains(err, baseline_msg)
 
     # FIXME: Add tests to ensure that we're *not* writing baselines when we're not
     # supposed to be.

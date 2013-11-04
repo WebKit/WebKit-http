@@ -36,7 +36,6 @@ public:
     virtual bool supportsDataListUI(const AtomicString& type) const OVERRIDE;
 
 protected:
-    virtual bool paintTextField(RenderObject*, const PaintInfo&, const IntRect&);
 #if ENABLE(VIDEO)
     virtual void adjustMediaSliderThumbSize(RenderStyle*) const;
     virtual bool paintMediaPlayButton(RenderObject*, const PaintInfo&, const IntRect&);
@@ -71,6 +70,9 @@ private:
     virtual Color disabledTextColor(const Color& textColor, const Color&) const OVERRIDE { return textColor; }
     virtual void updateActiveState(NSCell*, const RenderObject*);
     virtual String extraDefaultStyleSheet();
+#if ENABLE(DATALIST_ELEMENT)
+    virtual LayoutUnit sliderTickSnappingThreshold() const OVERRIDE;
+#endif
 #if ENABLE(CALENDAR_PICKER)
     virtual CString extraCalendarPickerStyleSheet() OVERRIDE;
 #endif

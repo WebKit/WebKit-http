@@ -46,16 +46,19 @@
 #include "FontFeatureSettings.h"
 #include "FontFeatureValue.h"
 #include "FontValue.h"
+#include "MemoryInstrumentation.h"
 #include "Pair.h"
 #include "Rect.h"
 #include "RenderBox.h"
 #include "RenderStyle.h"
 #include "RenderView.h"
 #include "ShadowValue.h"
+#include "StyleInheritedData.h"
 #include "StylePropertySet.h"
 #include "StylePropertyShorthand.h"
 #include "WebKitCSSTransformValue.h"
 #include "WebKitFontFamilyNames.h"
+#include <wtf/text/StringBuilder.h>
 
 #if ENABLE(CSS_EXCLUSIONS)
 #include "CSSWrapShapes.h"
@@ -67,6 +70,8 @@
 #include "CustomFilterNumberParameter.h"
 #include "CustomFilterOperation.h"
 #include "CustomFilterParameter.h"
+#include "CustomFilterTransformParameter.h"
+#include "WebKitCSSMixFunctionValue.h"
 #endif
 
 #if ENABLE(CSS_FILTERS)
@@ -74,7 +79,7 @@
 #include "WebKitCSSFilterValue.h"
 #endif
 
-#if ENABLE(DASHBOARD_SUPPORT)
+#if ENABLE(DASHBOARD_SUPPORT) || ENABLE(WIDGET_REGION)
 #include "DashboardRegion.h"
 #endif
 
@@ -174,6 +179,10 @@ static const CSSPropertyID computedProperties[] = {
     CSSPropertyTabSize,
     CSSPropertyTextAlign,
     CSSPropertyTextDecoration,
+#if ENABLE(CSS3_TEXT_DECORATION)
+    CSSPropertyWebkitTextDecorationLine,
+    CSSPropertyWebkitTextDecorationStyle,
+#endif // CSS3_TEXT_DECORATION
     CSSPropertyTextIndent,
     CSSPropertyTextRendering,
     CSSPropertyTextShadow,
@@ -206,6 +215,9 @@ static const CSSPropertyID computedProperties[] = {
     CSSPropertyWebkitBackgroundComposite,
     CSSPropertyWebkitBackgroundOrigin,
     CSSPropertyWebkitBackgroundSize,
+#if ENABLE(CSS_COMPOSITING)
+    CSSPropertyWebkitBlendMode,
+#endif
     CSSPropertyWebkitBorderFit,
     CSSPropertyWebkitBorderHorizontalSpacing,
     CSSPropertyWebkitBorderImage,
@@ -339,6 +351,9 @@ static const CSSPropertyID computedProperties[] = {
     CSSPropertyWebkitRegionBreakAfter,
     CSSPropertyWebkitRegionBreakBefore,
     CSSPropertyWebkitRegionBreakInside,
+#endif
+#if ENABLE(WIDGET_REGION)
+    CSSPropertyWebkitWidgetRegion,
 #endif
 #if ENABLE(CSS_EXCLUSIONS)
     CSSPropertyWebkitWrapFlow,
@@ -600,7 +615,7 @@ static PassRefPtr<CSSValue> getPositionOffsetValue(RenderStyle* style, CSSProper
             return 0;
     }
 
-    if (style->position() == AbsolutePosition || style->position() == FixedPosition) {
+    if (style->hasOutOfFlowPosition()) {
         if (l.type() == WebCore::Fixed)
             return zoomAdjustedPixelValue(l.value(), style);
         else if (l.isViewportPercentage())
@@ -608,7 +623,7 @@ static PassRefPtr<CSSValue> getPositionOffsetValue(RenderStyle* style, CSSProper
         return cssValuePool().createValue(l);
     }
 
-    if (style->position() == RelativePosition || style->position() == StickyPosition) {
+    if (style->hasInFlowPosition()) {
         // FIXME: It's not enough to simply return "auto" values for one offset if the other side is defined.
         // In other words if left is auto and right is not auto, then left's computed value is negative right().
         // So we should get the opposite length unit and see if it is auto.
@@ -701,61 +716,67 @@ static LayoutRect sizingBox(RenderObject* renderer)
     return box->style()->boxSizing() == BORDER_BOX ? box->borderBoxRect() : box->computedCSSContentBoxRect();
 }
 
+static PassRefPtr<WebKitCSSTransformValue> matrixTransformValue(const TransformationMatrix& transform, const RenderStyle* style)
+{
+    RefPtr<WebKitCSSTransformValue> transformValue;
+    if (transform.isAffine()) {
+        transformValue = WebKitCSSTransformValue::create(WebKitCSSTransformValue::MatrixTransformOperation);
+
+        transformValue->append(cssValuePool().createValue(transform.a(), CSSPrimitiveValue::CSS_NUMBER));
+        transformValue->append(cssValuePool().createValue(transform.b(), CSSPrimitiveValue::CSS_NUMBER));
+        transformValue->append(cssValuePool().createValue(transform.c(), CSSPrimitiveValue::CSS_NUMBER));
+        transformValue->append(cssValuePool().createValue(transform.d(), CSSPrimitiveValue::CSS_NUMBER));
+        transformValue->append(zoomAdjustedNumberValue(transform.e(), style));
+        transformValue->append(zoomAdjustedNumberValue(transform.f(), style));
+    } else {
+        transformValue = WebKitCSSTransformValue::create(WebKitCSSTransformValue::Matrix3DTransformOperation);
+
+        transformValue->append(cssValuePool().createValue(transform.m11(), CSSPrimitiveValue::CSS_NUMBER));
+        transformValue->append(cssValuePool().createValue(transform.m12(), CSSPrimitiveValue::CSS_NUMBER));
+        transformValue->append(cssValuePool().createValue(transform.m13(), CSSPrimitiveValue::CSS_NUMBER));
+        transformValue->append(cssValuePool().createValue(transform.m14(), CSSPrimitiveValue::CSS_NUMBER));
+
+        transformValue->append(cssValuePool().createValue(transform.m21(), CSSPrimitiveValue::CSS_NUMBER));
+        transformValue->append(cssValuePool().createValue(transform.m22(), CSSPrimitiveValue::CSS_NUMBER));
+        transformValue->append(cssValuePool().createValue(transform.m23(), CSSPrimitiveValue::CSS_NUMBER));
+        transformValue->append(cssValuePool().createValue(transform.m24(), CSSPrimitiveValue::CSS_NUMBER));
+
+        transformValue->append(cssValuePool().createValue(transform.m31(), CSSPrimitiveValue::CSS_NUMBER));
+        transformValue->append(cssValuePool().createValue(transform.m32(), CSSPrimitiveValue::CSS_NUMBER));
+        transformValue->append(cssValuePool().createValue(transform.m33(), CSSPrimitiveValue::CSS_NUMBER));
+        transformValue->append(cssValuePool().createValue(transform.m34(), CSSPrimitiveValue::CSS_NUMBER));
+
+        transformValue->append(zoomAdjustedNumberValue(transform.m41(), style));
+        transformValue->append(zoomAdjustedNumberValue(transform.m42(), style));
+        transformValue->append(zoomAdjustedNumberValue(transform.m43(), style));
+        transformValue->append(cssValuePool().createValue(transform.m44(), CSSPrimitiveValue::CSS_NUMBER));
+    }
+
+    return transformValue.release();
+}
+
 static PassRefPtr<CSSValue> computedTransform(RenderObject* renderer, const RenderStyle* style)
 {
-    if (!renderer || style->transform().operations().isEmpty())
+    if (!renderer || !renderer->hasTransform() || !style->hasTransform())
         return cssValuePool().createIdentifierValue(CSSValueNone);
 
-    LayoutRect box = sizingBox(renderer);
+    IntRect box;
+    if (renderer->isBox())
+        box = pixelSnappedIntRect(toRenderBox(renderer)->borderBoxRect());
 
     TransformationMatrix transform;
     style->applyTransform(transform, box.size(), RenderStyle::ExcludeTransformOrigin);
     // Note that this does not flatten to an affine transform if ENABLE(3D_RENDERING) is off, by design.
 
-    RefPtr<WebKitCSSTransformValue> transformVal;
-
     // FIXME: Need to print out individual functions (https://bugs.webkit.org/show_bug.cgi?id=23924)
-    if (transform.isAffine()) {
-        transformVal = WebKitCSSTransformValue::create(WebKitCSSTransformValue::MatrixTransformOperation);
-
-        transformVal->append(cssValuePool().createValue(transform.a(), CSSPrimitiveValue::CSS_NUMBER));
-        transformVal->append(cssValuePool().createValue(transform.b(), CSSPrimitiveValue::CSS_NUMBER));
-        transformVal->append(cssValuePool().createValue(transform.c(), CSSPrimitiveValue::CSS_NUMBER));
-        transformVal->append(cssValuePool().createValue(transform.d(), CSSPrimitiveValue::CSS_NUMBER));
-        transformVal->append(zoomAdjustedNumberValue(transform.e(), style));
-        transformVal->append(zoomAdjustedNumberValue(transform.f(), style));
-    } else {
-        transformVal = WebKitCSSTransformValue::create(WebKitCSSTransformValue::Matrix3DTransformOperation);
-
-        transformVal->append(cssValuePool().createValue(transform.m11(), CSSPrimitiveValue::CSS_NUMBER));
-        transformVal->append(cssValuePool().createValue(transform.m12(), CSSPrimitiveValue::CSS_NUMBER));
-        transformVal->append(cssValuePool().createValue(transform.m13(), CSSPrimitiveValue::CSS_NUMBER));
-        transformVal->append(cssValuePool().createValue(transform.m14(), CSSPrimitiveValue::CSS_NUMBER));
-
-        transformVal->append(cssValuePool().createValue(transform.m21(), CSSPrimitiveValue::CSS_NUMBER));
-        transformVal->append(cssValuePool().createValue(transform.m22(), CSSPrimitiveValue::CSS_NUMBER));
-        transformVal->append(cssValuePool().createValue(transform.m23(), CSSPrimitiveValue::CSS_NUMBER));
-        transformVal->append(cssValuePool().createValue(transform.m24(), CSSPrimitiveValue::CSS_NUMBER));
-
-        transformVal->append(cssValuePool().createValue(transform.m31(), CSSPrimitiveValue::CSS_NUMBER));
-        transformVal->append(cssValuePool().createValue(transform.m32(), CSSPrimitiveValue::CSS_NUMBER));
-        transformVal->append(cssValuePool().createValue(transform.m33(), CSSPrimitiveValue::CSS_NUMBER));
-        transformVal->append(cssValuePool().createValue(transform.m34(), CSSPrimitiveValue::CSS_NUMBER));
-
-        transformVal->append(zoomAdjustedNumberValue(transform.m41(), style));
-        transformVal->append(zoomAdjustedNumberValue(transform.m42(), style));
-        transformVal->append(zoomAdjustedNumberValue(transform.m43(), style));
-        transformVal->append(cssValuePool().createValue(transform.m44(), CSSPrimitiveValue::CSS_NUMBER));
-    }
-
     RefPtr<CSSValueList> list = CSSValueList::createSpaceSeparated();
-    list->append(transformVal);
+    list->append(matrixTransformValue(transform, style));
 
     return list.release();
 }
 
 #if ENABLE(CSS_SHADERS)
-PassRefPtr<CSSValue> CSSComputedStyleDeclaration::valueForCustomFilterNumberParameter(const CustomFilterNumberParameter* numberParameter) const
+static PassRefPtr<CSSValue> valueForCustomFilterNumberParameter(const CustomFilterNumberParameter* numberParameter)
 {
     RefPtr<CSSValueList> numberParameterValue = CSSValueList::createSpaceSeparated();
     for (unsigned i = 0; i < numberParameter->size(); ++i)
@@ -763,13 +784,24 @@ PassRefPtr<CSSValue> CSSComputedStyleDeclaration::valueForCustomFilterNumberPara
     return numberParameterValue.release();
 }
 
-PassRefPtr<CSSValue> CSSComputedStyleDeclaration::valueForCustomFilterParameter(const CustomFilterParameter* parameter) const
+static PassRefPtr<CSSValue> valueForCustomFilterTransformParameter(const RenderObject* renderer, const RenderStyle* style, const CustomFilterTransformParameter* transformParameter)
+{
+    IntSize size = renderer ? pixelSnappedIntRect(toRenderBox(renderer)->borderBoxRect()).size() : IntSize();
+    TransformationMatrix transform;
+    transformParameter->applyTransform(transform, size);
+    // FIXME: Need to print out individual functions (https://bugs.webkit.org/show_bug.cgi?id=23924)
+    return matrixTransformValue(transform, style);
+}
+
+static PassRefPtr<CSSValue> valueForCustomFilterParameter(const RenderObject* renderer, const RenderStyle* style, const CustomFilterParameter* parameter)
 {
     // FIXME: Add here computed style for the other types: boolean, transform, matrix, texture.
     ASSERT(parameter);
     switch (parameter->parameterType()) {
     case CustomFilterParameter::NUMBER:
         return valueForCustomFilterNumberParameter(static_cast<const CustomFilterNumberParameter*>(parameter));
+    case CustomFilterParameter::TRANSFORM:
+        return valueForCustomFilterTransformParameter(renderer, style, static_cast<const CustomFilterTransformParameter*>(parameter));
     }
     
     ASSERT_NOT_REACHED();
@@ -778,8 +810,11 @@ PassRefPtr<CSSValue> CSSComputedStyleDeclaration::valueForCustomFilterParameter(
 #endif // ENABLE(CSS_SHADERS)
 
 #if ENABLE(CSS_FILTERS)
-PassRefPtr<CSSValue> CSSComputedStyleDeclaration::valueForFilter(RenderStyle* style) const
+PassRefPtr<CSSValue> CSSComputedStyleDeclaration::valueForFilter(const RenderObject* renderer, const RenderStyle* style) const
 {
+#if !ENABLE(CSS_SHADERS)
+    UNUSED_PARAM(renderer);
+#endif
     if (style->filter().operations().isEmpty())
         return cssValuePool().createIdentifierValue(CSSValueNone);
 
@@ -874,10 +909,19 @@ PassRefPtr<CSSValue> CSSComputedStyleDeclaration::valueForFilter(RenderStyle* st
                 shadersList->append(program->vertexShader()->cssValue());
             else
                 shadersList->append(cssValuePool().createIdentifierValue(CSSValueNone));
-            if (program->fragmentShader())
+
+            const CustomFilterProgramMixSettings mixSettings = program->mixSettings();
+            if (mixSettings.enabled) {
+                RefPtr<WebKitCSSMixFunctionValue> mixFunction = WebKitCSSMixFunctionValue::create();
+                mixFunction->append(program->fragmentShader()->cssValue());
+                mixFunction->append(cssValuePool().createValue(mixSettings.blendMode));
+                mixFunction->append(cssValuePool().createValue(mixSettings.compositeOperator));
+                shadersList->append(mixFunction.release());
+            } else if (program->fragmentShader())
                 shadersList->append(program->fragmentShader()->cssValue());
             else
                 shadersList->append(cssValuePool().createIdentifierValue(CSSValueNone));
+
             filterValue->append(shadersList.release());
             
             RefPtr<CSSValueList> meshParameters = CSSValueList::createSpaceSeparated();
@@ -901,7 +945,7 @@ PassRefPtr<CSSValue> CSSComputedStyleDeclaration::valueForFilter(RenderStyle* st
                 const CustomFilterParameter* parameter = parameters.at(i).get();
                 RefPtr<CSSValueList> parameterCSSNameAndValue = CSSValueList::createSpaceSeparated();
                 parameterCSSNameAndValue->append(cssValuePool().createValue(parameter->name(), CSSPrimitiveValue::CSS_STRING));
-                parameterCSSNameAndValue->append(valueForCustomFilterParameter(parameter));
+                parameterCSSNameAndValue->append(valueForCustomFilterParameter(renderer, style, parameter));
                 parametersCSSValue->append(parameterCSSNameAndValue.release());
             }
             
@@ -1046,18 +1090,18 @@ void CSSComputedStyleDeclaration::deref()
 
 String CSSComputedStyleDeclaration::cssText() const
 {
-    String result("");
+    StringBuilder result;
 
     for (unsigned i = 0; i < numComputedProperties; i++) {
         if (i)
-            result += " ";
-        result += getPropertyName(computedProperties[i]);
-        result += ": ";
-        result += getPropertyValue(computedProperties[i]);
-        result += ";";
+            result.append(' ');
+        result.append(getPropertyName(computedProperties[i]));
+        result.append(": ", 2);
+        result.append(getPropertyValue(computedProperties[i]));
+        result.append(';');
     }
 
-    return result;
+    return result.toString();
 }
 
 void CSSComputedStyleDeclaration::setCssText(const String&, ExceptionCode& ec)
@@ -1102,7 +1146,7 @@ bool CSSComputedStyleDeclaration::useFixedFontDefaultSize() const
     return style->fontDescription().useFixedDefaultSize();
 }
 
-PassRefPtr<CSSValue> CSSComputedStyleDeclaration::valueForShadow(const ShadowData* shadow, CSSPropertyID propertyID, RenderStyle* style) const
+PassRefPtr<CSSValue> CSSComputedStyleDeclaration::valueForShadow(const ShadowData* shadow, CSSPropertyID propertyID, const RenderStyle* style) const
 {
     if (!shadow)
         return cssValuePool().createIdentifierValue(CSSValueNone);
@@ -1149,33 +1193,9 @@ static PassRefPtr<CSSPrimitiveValue> valueForFamily(const AtomicString& family)
     return cssValuePool().createValue(family.string(), CSSPrimitiveValue::CSS_STRING);
 }
 
-static PassRefPtr<CSSValue> renderUnicodeBidiFlagsToCSSValue(EUnicodeBidi unicodeBidi)
-{
-    switch (unicodeBidi) {
-    case UBNormal:
-        return cssValuePool().createIdentifierValue(CSSValueNormal);
-    case Embed:
-        return cssValuePool().createIdentifierValue(CSSValueEmbed);
-    case Plaintext:
-        return cssValuePool().createIdentifierValue(CSSValueWebkitPlaintext);
-    case Override:
-        return cssValuePool().createIdentifierValue(CSSValueBidiOverride);
-    case Isolate:
-        return cssValuePool().createIdentifierValue(CSSValueWebkitIsolate);
-    case OverrideIsolate:
-    {
-        RefPtr<CSSValueList> list = CSSValueList::createSpaceSeparated();
-        list->append(cssValuePool().createIdentifierValue(CSSValueBidiOverride));
-        list->append(cssValuePool().createIdentifierValue(CSSValueWebkitIsolate));
-        return list;
-    }
-    }
-    ASSERT_NOT_REACHED();
-    return 0;
-}
-
 static PassRefPtr<CSSValue> renderTextDecorationFlagsToCSSValue(int textDecoration)
 {
+    // Blink value is ignored.
     RefPtr<CSSValueList> list = CSSValueList::createSpaceSeparated();
     if (textDecoration & UNDERLINE)
         list->append(cssValuePool().createIdentifierValue(CSSValueUnderline));
@@ -1183,13 +1203,32 @@ static PassRefPtr<CSSValue> renderTextDecorationFlagsToCSSValue(int textDecorati
         list->append(cssValuePool().createIdentifierValue(CSSValueOverline));
     if (textDecoration & LINE_THROUGH)
         list->append(cssValuePool().createIdentifierValue(CSSValueLineThrough));
-    if (textDecoration & BLINK)
-        list->append(cssValuePool().createIdentifierValue(CSSValueBlink));
 
     if (!list->length())
         return cssValuePool().createIdentifierValue(CSSValueNone);
     return list;
 }
+
+#if ENABLE(CSS3_TEXT_DECORATION)
+static PassRefPtr<CSSValue> renderTextDecorationStyleFlagsToCSSValue(TextDecorationStyle textDecorationStyle)
+{
+    switch (textDecorationStyle) {
+    case TextDecorationStyleSolid:
+        return cssValuePool().createIdentifierValue(CSSValueSolid);
+    case TextDecorationStyleDouble:
+        return cssValuePool().createIdentifierValue(CSSValueDouble);
+    case TextDecorationStyleDotted:
+        return cssValuePool().createIdentifierValue(CSSValueDotted);
+    case TextDecorationStyleDashed:
+        return cssValuePool().createIdentifierValue(CSSValueDashed);
+    case TextDecorationStyleWavy:
+        return cssValuePool().createIdentifierValue(CSSValueWavy);
+    }
+
+    ASSERT_NOT_REACHED();
+    return cssValuePool().createExplicitInitialValue();
+}
+#endif // CSS3_TEXT_DECORATION
 
 static PassRefPtr<CSSValue> fillRepeatToCSSValue(EFillRepeat xRepeat, EFillRepeat yRepeat)
 {
@@ -1689,7 +1728,7 @@ PassRefPtr<CSSValue> CSSComputedStyleDeclaration::getPropertyCSSValue(CSSPropert
         case CSSPropertyWebkitJustifyContent:
             return cssValuePool().createValue(style->justifyContent());
         case CSSPropertyWebkitOrder:
-            return cssValuePool().createValue(style->order());
+            return cssValuePool().createValue(style->order(), CSSPrimitiveValue::CSS_NUMBER);
 #endif
         case CSSPropertyFloat:
             return cssValuePool().createValue(style->floating());
@@ -1935,6 +1974,12 @@ PassRefPtr<CSSValue> CSSComputedStyleDeclaration::getPropertyCSSValue(CSSPropert
             return cssValuePool().createValue(style->textAlign());
         case CSSPropertyTextDecoration:
             return renderTextDecorationFlagsToCSSValue(style->textDecoration());
+#if ENABLE(CSS3_TEXT_DECORATION)
+        case CSSPropertyWebkitTextDecorationLine:
+            return renderTextDecorationFlagsToCSSValue(style->textDecoration());
+        case CSSPropertyWebkitTextDecorationStyle:
+            return renderTextDecorationStyleFlagsToCSSValue(style->textDecorationStyle());
+#endif // CSS3_TEXT_DECORATION
         case CSSPropertyWebkitTextDecorationsInEffect:
             return renderTextDecorationFlagsToCSSValue(style->textDecorationsInEffect());
         case CSSPropertyWebkitTextFillColor:
@@ -1988,7 +2033,7 @@ PassRefPtr<CSSValue> CSSComputedStyleDeclaration::getPropertyCSSValue(CSSPropert
         case CSSPropertyTop:
             return getPositionOffsetValue(style.get(), CSSPropertyTop, m_node->document()->renderView());
         case CSSPropertyUnicodeBidi:
-            return renderUnicodeBidiFlagsToCSSValue(style->unicodeBidi());
+            return cssValuePool().createValue(style->unicodeBidi());
         case CSSPropertyVerticalAlign:
             switch (style->verticalAlign()) {
                 case BASELINE:
@@ -2072,8 +2117,13 @@ PassRefPtr<CSSValue> CSSComputedStyleDeclaration::getPropertyCSSValue(CSSPropert
             if (style->boxSizing() == CONTENT_BOX)
                 return cssValuePool().createIdentifierValue(CSSValueContentBox);
             return cssValuePool().createIdentifierValue(CSSValueBorderBox);
+#if ENABLE(DASHBOARD_SUPPORT) || ENABLE(WIDGET_REGION)
 #if ENABLE(DASHBOARD_SUPPORT)
         case CSSPropertyWebkitDashboardRegion:
+#endif
+#if ENABLE(WIDGET_REGION)
+        case CSSPropertyWebkitWidgetRegion:
+#endif
         {
             const Vector<StyleDashboardRegion>& regions = style->dashboardRegions();
             unsigned count = regions.size();
@@ -2289,7 +2339,10 @@ PassRefPtr<CSSValue> CSSComputedStyleDeclaration::getPropertyCSSValue(CSSPropert
         case CSSPropertyWebkitTransformOrigin: {
             RefPtr<CSSValueList> list = CSSValueList::createSpaceSeparated();
             if (renderer) {
-                LayoutRect box = sizingBox(renderer);
+                LayoutRect box;
+                if (renderer->isBox())
+                    box = toRenderBox(renderer)->borderBoxRect();
+
                 RenderView* renderView = m_node->document()->renderView();
                 list->append(zoomAdjustedPixelValue(minimumValueForLength(style->transformOriginX(), box.width(), renderView), style.get()));
                 list->append(zoomAdjustedPixelValue(minimumValueForLength(style->transformOriginY(), box.height(), renderView), style.get()));
@@ -2321,7 +2374,7 @@ PassRefPtr<CSSValue> CSSComputedStyleDeclaration::getPropertyCSSValue(CSSPropert
                     else if (animation->animationMode() == Animation::AnimateAll)
                         propertyValue = cssValuePool().createIdentifierValue(CSSValueAll);
                     else
-                        propertyValue = cssValuePool().createValue(getPropertyName(animation->property()), CSSPrimitiveValue::CSS_STRING);
+                        propertyValue = cssValuePool().createValue(getPropertyNameString(animation->property()), CSSPrimitiveValue::CSS_STRING);
                     list->append(propertyValue);
                 }
             } else
@@ -2388,7 +2441,11 @@ PassRefPtr<CSSValue> CSSComputedStyleDeclaration::getPropertyCSSValue(CSSPropert
 #endif
 #if ENABLE(CSS_FILTERS)
         case CSSPropertyWebkitFilter:
-            return valueForFilter(style.get());
+            return valueForFilter(renderer, style.get());
+#endif
+#if ENABLE(CSS_COMPOSITING)
+        case CSSPropertyWebkitBlendMode:
+            return cssValuePool().createValue(style->blendMode());
 #endif
         case CSSPropertyBackground:
             return getBackgroundShorthandValue();
@@ -2597,7 +2654,7 @@ String CSSComputedStyleDeclaration::item(unsigned i) const
     if (i >= length())
         return "";
 
-    return getPropertyName(computedProperties[i]);
+    return getPropertyNameString(computedProperties[i]);
 }
 
 bool CSSComputedStyleDeclaration::cssPropertyMatches(const CSSProperty* property) const
@@ -2674,6 +2731,12 @@ PassRefPtr<StylePropertySet> CSSComputedStyleDeclaration::copyPropertiesInSet(co
             list.append(CSSProperty(set[i], value.release(), false));
     }
     return StylePropertySet::create(list.data(), list.size());
+}
+
+void CSSComputedStyleDeclaration::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
+{
+    MemoryClassInfo info(memoryObjectInfo, this, MemoryInstrumentation::CSS);
+    info.addInstrumentedMember(m_node);
 }
 
 CSSRule* CSSComputedStyleDeclaration::parentRule() const

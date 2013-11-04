@@ -25,7 +25,7 @@
 #include "CachedImage.h"
 
 #include "BitmapImage.h"
-#include "MemoryCache.h"
+#include "CachedImageClient.h"
 #include "CachedResourceClient.h"
 #include "CachedResourceClientWalker.h"
 #include "CachedResourceLoader.h"
@@ -33,6 +33,7 @@
 #include "FrameLoaderClient.h"
 #include "FrameLoaderTypes.h"
 #include "FrameView.h"
+#include "MemoryCache.h"
 #include "Page.h"
 #include "RenderObject.h"
 #include "Settings.h"
@@ -244,8 +245,14 @@ IntSize CachedImage::imageSizeForRenderer(const RenderObject* renderer, float mu
     if (m_image->isSVGImage()) {
         SVGImageCache::SizeAndScales sizeAndScales = m_svgImageCache->requestedSizeAndScales(renderer);
         if (!sizeAndScales.size.isEmpty()) {
-            imageSize.setWidth(sizeAndScales.size.width() / sizeAndScales.zoom);
-            imageSize.setHeight(sizeAndScales.size.height() / sizeAndScales.zoom);
+            float scale = sizeAndScales.scale;
+            if (!scale) {
+                Page* page = renderer->document()->page();
+                scale = page->deviceScaleFactor() * page->pageScaleFactor();
+            }
+
+            imageSize.setWidth(scale * sizeAndScales.size.width() / sizeAndScales.zoom);
+            imageSize.setHeight(scale * sizeAndScales.size.height() / sizeAndScales.zoom);
         }
     }
 #endif
@@ -465,6 +472,16 @@ void CachedImage::changedInRect(const Image* image, const IntRect& rect)
     }
 #endif
     notifyObservers(&rect);
+}
+
+void CachedImage::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
+{
+    MemoryClassInfo info(memoryObjectInfo, this, MemoryInstrumentation::CachedResourceImage);
+    CachedResource::reportMemoryUsage(memoryObjectInfo);
+    info.addInstrumentedMember(m_image);
+#if ENABLE(SVG)
+    info.addMember(m_svgImageCache);
+#endif
 }
 
 } // namespace WebCore

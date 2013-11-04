@@ -34,6 +34,7 @@
 #include "HTMLNames.h"
 #include "Logging.h"
 #include "RuntimeEnabledFeatures.h"
+#include "ScriptCallStack.h"
 #include "ScriptEventListener.h"
 
 using namespace std;
@@ -233,7 +234,7 @@ bool HTMLTrackElement::canLoadUrl(const KURL& url)
         return false;
 
     if (!document()->contentSecurityPolicy()->allowMediaFromSource(url)) {
-        DEFINE_STATIC_LOCAL(String, consoleMessage, ("Text track load denied by Content Security Policy."));
+        DEFINE_STATIC_LOCAL(String, consoleMessage, (ASCIILiteral("Text track load denied by Content Security Policy.")));
         document()->addConsoleMessage(JSMessageSource, LogMessageType, ErrorMessageLevel, consoleMessage);
         LOG(Media, "HTMLTrackElement::canLoadUrl(%s) -> rejected by Content Security Policy", urlForLogging(url).utf8().data());
         return false;

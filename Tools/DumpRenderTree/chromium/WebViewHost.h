@@ -47,7 +47,7 @@
 #include <wtf/Vector.h>
 #include <wtf/text/WTFString.h>
 
-class LayoutTestController;
+class DRTTestRunner;
 class MockWebSpeechInputController;
 class MockWebSpeechRecognizer;
 class SkCanvas;
@@ -98,6 +98,7 @@ class WebViewHost : public WebKit::WebViewClient, public WebKit::WebFrameClient,
     virtual void setEditCommand(const std::string& name, const std::string& value) OVERRIDE;
     virtual void clearEditCommand() OVERRIDE;
     void setPendingExtraData(PassOwnPtr<TestShellExtraData>);
+    void setDeviceScaleFactor(float);
 
     virtual void setGamepadData(const WebKit::WebGamepads&);
 
@@ -149,7 +150,7 @@ class WebViewHost : public WebKit::WebViewClient, public WebKit::WebFrameClient,
     virtual WebKit::WebWidget* createPopupMenu(WebKit::WebPopupType);
     virtual WebKit::WebWidget* createPopupMenu(const WebKit::WebPopupMenuInfo&);
     virtual WebKit::WebStorageNamespace* createSessionStorageNamespace(unsigned quota);
-    virtual WebKit::WebGraphicsContext3D* createGraphicsContext3D(const WebKit::WebGraphicsContext3D::Attributes&);
+    virtual WebKit::WebCompositorOutputSurface* createOutputSurface();
     virtual void didAddMessageToConsole(const WebKit::WebConsoleMessage&, const WebKit::WebString& sourceName, unsigned sourceLine);
     virtual void didStartLoading();
     virtual void didStopLoading();
@@ -225,7 +226,7 @@ class WebViewHost : public WebKit::WebViewClient, public WebKit::WebFrameClient,
 
     // WebKit::WebFrameClient
     virtual WebKit::WebPlugin* createPlugin(WebKit::WebFrame*, const WebKit::WebPluginParams&);
-    virtual WebKit::WebMediaPlayer* createMediaPlayer(WebKit::WebFrame*, WebKit::WebMediaPlayerClient*);
+    virtual WebKit::WebMediaPlayer* createMediaPlayer(WebKit::WebFrame*, const WebKit::WebURL&, WebKit::WebMediaPlayerClient*);
     virtual WebKit::WebApplicationCacheHost* createApplicationCacheHost(WebKit::WebFrame*, WebKit::WebApplicationCacheHostClient*);
     virtual void loadURLExternally(WebKit::WebFrame*, const WebKit::WebURLRequest&, WebKit::WebNavigationPolicy);
     virtual void loadURLExternally(WebKit::WebFrame*, const WebKit::WebURLRequest&, WebKit::WebNavigationPolicy, const WebKit::WebString& downloadName);
@@ -264,6 +265,7 @@ class WebViewHost : public WebKit::WebViewClient, public WebKit::WebFrameClient,
     virtual void didRunInsecureContent(WebKit::WebFrame*, const WebKit::WebSecurityOrigin&, const WebKit::WebURL&);
     virtual void didDetectXSS(WebKit::WebFrame*, const WebKit::WebURL&, bool didBlockEntirePage);
     virtual void openFileSystem(WebKit::WebFrame*, WebKit::WebFileSystem::Type, long long size, bool create, WebKit::WebFileSystemCallbacks*);
+    virtual void deleteFileSystem(WebKit::WebFrame*, WebKit::WebFileSystem::Type, WebKit::WebFileSystemCallbacks*);
     virtual bool willCheckAndDispatchMessageEvent(WebKit::WebFrame* source, WebKit::WebSecurityOrigin target, WebKit::WebDOMMessageEvent);
     virtual void registerIntentService(WebKit::WebFrame*, const WebKit::WebIntentServiceInfo&);
     virtual void dispatchIntent(WebKit::WebFrame*, const WebKit::WebIntentRequest&);
@@ -277,7 +279,7 @@ class WebViewHost : public WebKit::WebViewClient, public WebKit::WebFrameClient,
     void finishLastTextCheck();
     virtual void fillSpellingSuggestionList(const WebKit::WebString& word, Vector<WebKit::WebString>* suggestions) OVERRIDE;
 
-    // Geolocation client mocks for LayoutTestController
+    // Geolocation client mocks for DRTTestRunner
     WebKit::WebGeolocationClientMock* geolocationClientMock();
 
     // Pending task list, Note taht the method is referred from MethodTask class.
@@ -302,7 +304,7 @@ private:
         CallbackMethodType m_callback;
     };
 
-    LayoutTestController* layoutTestController() const;
+    DRTTestRunner* testRunner() const;
 
     // Called the title of the page changes.
     // Can be used to update the title of the window.

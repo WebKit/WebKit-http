@@ -31,6 +31,7 @@
 #include "WKAPICast.h"
 #include "WKDictionary.h"
 #include "WKString.h"
+#include "WebSerializedScriptValue.h"
 
 #if ENABLE(WEB_INTENTS)
 #include "WebIntentData.h"
@@ -42,27 +43,6 @@ WKTypeID WKIntentDataGetTypeID()
 {
 #if ENABLE(WEB_INTENTS)
     return toAPI(WebIntentData::APIType);
-#else
-    return 0;
-#endif
-}
-
-WKIntentDataRef WKIntentDataCreate(WKDictionaryRef initDictionaryRef)
-{
-#if ENABLE(WEB_INTENTS)
-    IntentData intentData;
-    WKStringRef action = static_cast<WKStringRef>(WKDictionaryGetItemForKey(initDictionaryRef, WKStringCreateWithUTF8CString("action")));
-    ASSERT(action);
-    intentData.action = toImpl(action)->string();
-    WKStringRef type = static_cast<WKStringRef>(WKDictionaryGetItemForKey(initDictionaryRef, WKStringCreateWithUTF8CString("type")));
-    ASSERT(type);
-    intentData.type = toImpl(type)->string();
-    WKSerializedScriptValueRef data = static_cast<WKSerializedScriptValueRef>(WKDictionaryGetItemForKey(initDictionaryRef, WKStringCreateWithUTF8CString("data")));
-    if (data)
-        intentData.data = toImpl(data)->dataReference().vector();
-
-    RefPtr<WebIntentData> webIntentData = WebIntentData::create(intentData);
-    return toAPI(webIntentData.release().leakRef());
 #else
     return 0;
 #endif
@@ -104,7 +84,7 @@ WKArrayRef WKIntentDataCopySuggestions(WKIntentDataRef intentRef)
 #endif
 }
 
-WKStringRef WKIntentDataCopyExtra(WKIntentDataRef intentRef, WKStringRef key)
+WKStringRef WKIntentDataCopyExtraValue(WKIntentDataRef intentRef, WKStringRef key)
 {
 #if ENABLE(WEB_INTENTS)
     return toCopiedAPI(toImpl(intentRef)->extra(toWTFString(key)));

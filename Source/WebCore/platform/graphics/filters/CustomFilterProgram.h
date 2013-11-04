@@ -32,6 +32,8 @@
 
 #if ENABLE(CSS_SHADERS)
 
+#include "CustomFilterProgramInfo.h"
+
 #include <wtf/HashCountedSet.h>
 #include <wtf/RefCounted.h>
 #include <wtf/text/WTFString.h>
@@ -50,12 +52,12 @@ public:
 
     virtual bool isLoaded() const = 0;
     
+    CustomFilterProgramMixSettings mixSettings() const { return m_mixSettings; }
+
     void addClient(CustomFilterProgramClient*);
     void removeClient(CustomFilterProgramClient*);
     
-#if USE(3D_GRAPHICS)
-    PassRefPtr<CustomFilterCompiledProgram> compileProgramWithContext(GraphicsContext3D*);
-#endif
+    CustomFilterProgramInfo programInfo() const;
 
     // StyleCustomFilterProgram has the only implementation for the following method. That means, it casts to StyleCustomFilterProgram
     // withouth checking the type. If you add another implementation, also add a mechanism to check for the correct type.
@@ -73,11 +75,12 @@ protected:
     virtual void didRemoveLastClient() = 0;
 
     // Keep the constructor protected to prevent creating this object directly.
-    CustomFilterProgram();
+    CustomFilterProgram(CustomFilterProgramMixSettings);
 
 private:
     typedef HashCountedSet<CustomFilterProgramClient*> CustomFilterProgramClientList;
     CustomFilterProgramClientList m_clients;
+    CustomFilterProgramMixSettings m_mixSettings;
 };
 
 }

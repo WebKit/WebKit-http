@@ -26,12 +26,10 @@
 #ifndef CCSolidColorLayerImpl_h
 #define CCSolidColorLayerImpl_h
 
-#include "cc/CCLayerImpl.h"
+#include "CCLayerImpl.h"
 #include <public/WebTransformationMatrix.h>
 
 namespace WebCore {
-
-class LayerRendererChromium;
 
 class CCSolidColorLayerImpl : public CCLayerImpl {
 public:
@@ -41,7 +39,7 @@ public:
     }
     virtual ~CCSolidColorLayerImpl();
 
-    virtual void appendQuads(CCQuadSink&, const CCSharedQuadState*, bool& hadMissingTiles) OVERRIDE;
+    virtual void appendQuads(CCQuadSink&, CCAppendQuadsData&) OVERRIDE;
 
 protected:
     explicit CCSolidColorLayerImpl(int id);

@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 # Copyright (c) 2011 Google Inc. All rights reserved.
+# Copyright (c) 2012 Intel Corporation. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are
@@ -31,7 +32,6 @@ import os.path
 import sys
 import string
 import optparse
-from string import join
 try:
     import json
 except ImportError:
@@ -58,7 +58,7 @@ TYPE_NAME_FIX_MAP = {
 
 
 TYPES_WITH_RUNTIME_CAST_SET = frozenset(["Runtime.RemoteObject", "Runtime.PropertyDescriptor",
-                                         "Debugger.FunctionDetails", "Debugger.CallFrame",
+                                         "Debugger.FunctionDetails", "Debugger.CallFrame", "WebGL.TraceLog",
                                          # This should be a temporary hack. TimelineEvent should be created via generated C++ API.
                                          "Timeline.TimelineEvent"])
 
@@ -85,8 +85,10 @@ try:
         raise Exception("Output .h directory must be specified")
     if not output_cpp_dirname:
         raise Exception("Output .cpp directory must be specified")
-except Exception, e:
-    sys.stderr.write("Failed to parse command-line arguments: %s\n\n" % e)
+except Exception:
+    # Work with python 2 and 3 http://docs.python.org/py3k/howto/pyporting.html
+    exc = sys.exc_info()[1]
+    sys.stderr.write("Failed to parse command-line arguments: %s\n\n" % exc)
     sys.stderr.write("Usage: <script> Inspector.json --output_h_dir <output_header_dir> --output_cpp_dir <output_cpp_dir>\n")
     exit(1)
 
@@ -237,29 +239,11 @@ class RawTypes(object):
         @classmethod
         def request_raw_internal_runtime_cast(cls):
             if not cls.need_internal_runtime_cast_:
-                RawTypes.types_to_generate_validator_.append(cls)
                 cls.need_internal_runtime_cast_ = True
 
         @classmethod
-        def generate_validate_method(cls, writer):
-            params = cls.get_validate_method_params()
-            writer.newline("static void assert%s(InspectorValue* value)\n" % params.name)
-            writer.newline("{\n")
-            writer.newline("    ASSERT(value->type() == InspectorValue::Type%s);\n" % params.as_method_name)
-            writer.newline("}\n\n\n")
-
-        @classmethod
         def get_raw_validator_call_text(cls):
-            return "assert%s" % cls.get_validate_method_params().name
-
-    types_to_generate_validator_ = []
-
-    @classmethod
-    def generate_validate_methods(cls, writer):
-        for t in cls.types_to_generate_validator_:
-            if t.need_internal_runtime_cast_:
-                t.generate_validate_method(writer)
-
+            return "RuntimeCastHelper::assertType<InspectorValue::Type%s>" % cls.get_validate_method_params().template_type
 
     class String(BaseType):
         @staticmethod
@@ -279,8 +263,7 @@ class RawTypes(object):
         @staticmethod
         def get_validate_method_params():
             class ValidateMethodParams:
-                name = "String"
-                as_method_name = "String"
+                template_type = "String"
             return ValidateMethodParams
 
         @staticmethod
@@ -317,18 +300,8 @@ class RawTypes(object):
             return "number"
 
         @classmethod
-        def generate_validate_method(cls, writer):
-            writer.newline("static void assertInt(InspectorValue* value)\n")
-            writer.newline("{\n")
-            writer.newline("    double v;\n")
-            writer.newline("    bool castRes = value->asNumber(&v);\n")
-            writer.newline("    ASSERT_UNUSED(castRes, castRes);\n")
-            writer.newline("    ASSERT(static_cast<double>(static_cast<int>(v)) == v);\n")
-            writer.newline("}\n\n\n")
-
-        @classmethod
         def get_raw_validator_call_text(cls):
-            return "assertInt"
+            return "RuntimeCastHelper::assertInt"
 
         @staticmethod
         def get_output_pass_model():
@@ -366,8 +339,7 @@ class RawTypes(object):
         @staticmethod
         def get_validate_method_params():
             class ValidateMethodParams:
-                name = "Double"
-                as_method_name = "Number"
+                template_type = "Number"
             return ValidateMethodParams
 
         @staticmethod
@@ -404,8 +376,7 @@ class RawTypes(object):
         @staticmethod
         def get_validate_method_params():
             class ValidateMethodParams:
-                name = "Boolean"
-                as_method_name = "Boolean"
+                template_type = "Boolean"
             return ValidateMethodParams
 
         @staticmethod
@@ -448,8 +419,7 @@ class RawTypes(object):
         @staticmethod
         def get_validate_method_params():
             class ValidateMethodParams:
-                name = "Object"
-                as_method_name = "Object"
+                template_type = "Object"
             return ValidateMethodParams
 
         @staticmethod
@@ -484,15 +454,8 @@ class RawTypes(object):
             raise Exception("Unsupported")
 
         @staticmethod
-        def generate_validate_method(writer):
-            writer.newline("static void assertAny(InspectorValue*)\n")
-            writer.newline("{\n")
-            writer.newline("    // No-op.\n")
-            writer.newline("}\n\n\n")
-
-        @staticmethod
         def get_raw_validator_call_text():
-            return "assertAny"
+            return "RuntimeCastHelper::assertAny"
 
         @staticmethod
         def get_output_pass_model():
@@ -533,7 +496,9 @@ class RawTypes(object):
 
         @staticmethod
         def get_validate_method_params():
-            raise Exception("TODO")
+            class ValidateMethodParams:
+                template_type = "Array"
+            return ValidateMethodParams
 
         @staticmethod
         def get_output_pass_model():
@@ -833,7 +798,7 @@ class EnumConstants:
         output = []
         for item in cls.constants_:
             output.append("    \"" + item + "\"")
-        return join(output, ",\n") + "\n"
+        return ",\n".join(output) + "\n"
 
 
 # Typebuilder code is generated in several passes: first typedefs, then other classes.
@@ -946,6 +911,12 @@ class TypeBindings:
                                     writer.append("#endif  // %s\n" % VALIDATOR_IFDEF_NAME)
 
                                     validator_writer = generate_context.validator_writer
+
+                                    domain_fixes = DomainNameFixes.get_fixed_data(context_domain_name)
+                                    domain_guard = domain_fixes.get_guard()
+                                    if domain_guard:
+                                        domain_guard.generate_open(validator_writer)
+
                                     validator_writer.newline("void %s%s::assertCorrectValue(InspectorValue* value)\n" % (helper.full_name_prefix_for_impl, enum_name))
                                     validator_writer.newline("{\n")
                                     validator_writer.newline("    WTF::String s;\n")
@@ -956,9 +927,13 @@ class TypeBindings:
                                         for enum_item in enum:
                                             enum_pos = EnumConstants.add_constant(enum_item)
                                             condition_list.append("s == \"%s\"" % enum_item)
-                                        validator_writer.newline("    ASSERT(%s);\n" % join(condition_list, " || "))
-                                    validator_writer.newline("}\n\n\n")
+                                        validator_writer.newline("    ASSERT(%s);\n" % " || ".join(condition_list))
+                                    validator_writer.newline("}\n")
 
+                                    if domain_guard:
+                                        domain_guard.generate_close(validator_writer)
+
+                                    validator_writer.newline("\n\n")
 
                                 writer.newline("}; // struct ")
                                 writer.append(enum_name)
@@ -1325,6 +1300,12 @@ class TypeBindings:
                                     closed_field_set = (context_domain_name + "." + class_name) not in TYPES_WITH_OPEN_FIELD_LIST_SET
 
                                     validator_writer = generate_context.validator_writer
+
+                                    domain_fixes = DomainNameFixes.get_fixed_data(context_domain_name)
+                                    domain_guard = domain_fixes.get_guard()
+                                    if domain_guard:
+                                        domain_guard.generate_open(validator_writer)
+
                                     validator_writer.newline("void %s%s::assertCorrectValue(InspectorValue* value)\n" % (helper.full_name_prefix_for_impl, class_name))
                                     validator_writer.newline("{\n")
                                     validator_writer.newline("    RefPtr<InspectorObject> object;\n")
@@ -1356,7 +1337,12 @@ class TypeBindings:
 
                                     if closed_field_set:
                                         validator_writer.newline("    ASSERT(foundPropertiesCount == object->size());\n")
-                                    validator_writer.newline("}\n\n\n")
+                                    validator_writer.newline("}\n")
+
+                                    if domain_guard:
+                                        domain_guard.generate_close(validator_writer)
+
+                                    validator_writer.newline("\n\n")
 
                                 if is_open_type:
                                     cpp_writer = generate_context.cpp_writer
@@ -1452,7 +1438,7 @@ class TypeBindings:
 
                     @staticmethod
                     def get_validator_call_text():
-                        return "assertObject"
+                        return "RuntimeCastHelper::assertType<InspectorValue::TypeObject>"
 
                     @classmethod
                     def get_array_item_c_type_text(cls):
@@ -2267,6 +2253,19 @@ inline int ExactlyInt::cast_to_int<int>(int i) { return i; }
 template<>
 inline int ExactlyInt::cast_to_int<unsigned int>(unsigned int i) { return i; }
 
+class RuntimeCastHelper {
+public:
+#if !ASSERT_DISABLED
+    template<InspectorValue::Type TYPE>
+    static void assertType(InspectorValue* value)
+    {
+        ASSERT(value->type() == TYPE);
+    }
+    static void assertAny(InspectorValue*);
+    static void assertInt(InspectorValue* value);
+#endif
+};
+
 
 // This class provides "Traits" type for the input type T. It is programmed using C++ template specialization
 // technique. By default it simply takes "ItemTraits" type from T, but it doesn't work with the base types.
@@ -2332,10 +2331,12 @@ struct StructItemTraits {
         array->pushValue(value);
     }
 
+#if """ + VALIDATOR_IFDEF_NAME + """
     template<typename T>
     static void assertCorrectValue(InspectorValue* value) {
         T::assertCorrectValue(value);
     }
+#endif  // !ASSERT_DISABLED
 };
 
 template<>
@@ -2345,6 +2346,13 @@ struct ArrayItemHelper<String> {
         {
             array->pushString(value);
         }
+
+#if """ + VALIDATOR_IFDEF_NAME + """
+        template<typename T>
+        static void assertCorrectValue(InspectorValue* value) {
+            RuntimeCastHelper::assertType<InspectorValue::TypeString>(value);
+        }
+#endif  // !ASSERT_DISABLED
     };
 };
 
@@ -2355,6 +2363,47 @@ struct ArrayItemHelper<int> {
         {
             array->pushInt(value);
         }
+
+#if """ + VALIDATOR_IFDEF_NAME + """
+        template<typename T>
+        static void assertCorrectValue(InspectorValue* value) {
+            RuntimeCastHelper::assertInt(value);
+        }
+#endif  // !ASSERT_DISABLED
+    };
+};
+
+template<>
+struct ArrayItemHelper<double> {
+    struct Traits {
+        static void pushRaw(InspectorArray* array, double value)
+        {
+            array->pushNumber(value);
+        }
+
+#if """ + VALIDATOR_IFDEF_NAME + """
+        template<typename T>
+        static void assertCorrectValue(InspectorValue* value) {
+            RuntimeCastHelper::assertType<InspectorValue::TypeNumber>(value);
+        }
+#endif  // !ASSERT_DISABLED
+    };
+};
+
+template<>
+struct ArrayItemHelper<bool> {
+    struct Traits {
+        static void pushRaw(InspectorArray* array, bool value)
+        {
+            array->pushBoolean(value);
+        }
+
+#if """ + VALIDATOR_IFDEF_NAME + """
+        template<typename T>
+        static void assertCorrectValue(InspectorValue* value) {
+            RuntimeCastHelper::assertType<InspectorValue::TypeBoolean>(value);
+        }
+#endif  // !ASSERT_DISABLED
     };
 };
 
@@ -2365,6 +2414,13 @@ struct ArrayItemHelper<InspectorValue> {
         {
             array->pushValue(value);
         }
+
+#if """ + VALIDATOR_IFDEF_NAME + """
+        template<typename T>
+        static void assertCorrectValue(InspectorValue* value) {
+            RuntimeCastHelper::assertAny(value);
+        }
+#endif  // !ASSERT_DISABLED
     };
 };
 
@@ -2375,6 +2431,30 @@ struct ArrayItemHelper<InspectorObject> {
         {
             array->pushValue(value);
         }
+
+#if """ + VALIDATOR_IFDEF_NAME + """
+        template<typename T>
+        static void assertCorrectValue(InspectorValue* value) {
+            RuntimeCastHelper::assertType<InspectorValue::TypeObject>(value);
+        }
+#endif  // !ASSERT_DISABLED
+    };
+};
+
+template<>
+struct ArrayItemHelper<InspectorArray> {
+    struct Traits {
+        static void pushRefPtr(InspectorArray* array, PassRefPtr<InspectorArray> value)
+        {
+            array->pushArray(value);
+        }
+
+#if """ + VALIDATOR_IFDEF_NAME + """
+        template<typename T>
+        static void assertCorrectValue(InspectorValue* value) {
+            RuntimeCastHelper::assertType<InspectorValue::TypeArray>(value);
+        }
+#endif  // !ASSERT_DISABLED
     };
 };
 
@@ -2385,6 +2465,13 @@ struct ArrayItemHelper<TypeBuilder::Array<T> > {
         {
             array->pushValue(value);
         }
+
+#if """ + VALIDATOR_IFDEF_NAME + """
+        template<typename S>
+        static void assertCorrectValue(InspectorValue* value) {
+            S::assertCorrectValue(value);
+        }
+#endif  // !ASSERT_DISABLED
     };
 };
 
@@ -2428,6 +2515,20 @@ String getEnumConstantValue(int code) {
 $implCode
 
 #if """ + VALIDATOR_IFDEF_NAME + """
+
+void TypeBuilder::RuntimeCastHelper::assertAny(InspectorValue*)
+{
+    // No-op.
+}
+
+
+void TypeBuilder::RuntimeCastHelper::assertInt(InspectorValue* value)
+{
+    double v;
+    bool castRes = value->asNumber(&v);
+    ASSERT_UNUSED(castRes, castRes);
+    ASSERT(static_cast<double>(static_cast<int>(v)) == v);
+}
 
 $validatorCode
 
@@ -2545,14 +2646,11 @@ class Generator:
     type_builder_fragments = []
     type_builder_forwards = []
     validator_impl_list = []
-    validator_impl_raw_types_list = []
     type_builder_impl_list = []
 
 
     @staticmethod
     def go():
-        Generator.validator_impl_list.append(Generator.validator_impl_raw_types_list)
-
         Generator.process_types(type_map)
 
         first_cycle_guardable_list_list = [
@@ -2603,7 +2701,7 @@ class Generator:
             Generator.frontend_domain_class_lines.append(Templates.frontend_domain_class.substitute(None,
                 domainClassName=domain_name,
                 domainFieldName=domain_name_lower,
-                frontendDomainMethodDeclarations=join(flatten_list(frontend_method_declaration_lines), "")))
+                frontendDomainMethodDeclarations="".join(flatten_list(frontend_method_declaration_lines))))
 
             agent_interface_name = Capitalizer.lower_camel_case_to_upper(domain_name) + "CommandHandler"
             Generator.backend_agent_interface_list.append("    class %s {\n" % agent_interface_name)
@@ -2624,8 +2722,6 @@ class Generator:
                 for l in reversed(first_cycle_guardable_list_list):
                     domain_guard.generate_close(l)
             Generator.backend_js_domain_initializer_list.append("\n")
-
-        RawTypes.generate_validate_methods(Writer(Generator.validator_impl_raw_types_list, ""))
 
     @staticmethod
     def process_event(json_event, domain_name, frontend_method_declaration_lines):
@@ -2674,15 +2770,15 @@ class Generator:
                 backend_js_event_param_list.append("\"%s\"" % parameter_name)
             method_line_list.append("    %sMessage->setObject(\"params\", paramsObject);\n" % event_name)
         frontend_method_declaration_lines.append(
-            "        void %s(%s);\n" % (event_name, join(parameter_list, ", ")))
+            "        void %s(%s);\n" % (event_name, ", ".join(parameter_list)))
 
         Generator.frontend_method_list.append(Templates.frontend_method.substitute(None,
             domainName=domain_name, eventName=event_name,
-            parameters=join(parameter_list, ", "),
-            code=join(method_line_list, "")))
+            parameters=", ".join(parameter_list),
+            code="".join(method_line_list)))
 
         Generator.backend_js_domain_initializer_list.append("InspectorBackend.registerEvent(\"%s.%s\", [%s]);\n" % (
-            domain_name, event_name, join(backend_js_event_param_list, ", ")))
+            domain_name, event_name, ", ".join(backend_js_event_param_list)))
 
     @staticmethod
     def process_command(json_command, domain_name, agent_field_name, agent_interface_name):
@@ -2756,7 +2852,7 @@ class Generator:
 
                 js_param_list.append(js_param_text)
 
-            js_parameters_text = join(js_param_list, ", ")
+            js_parameters_text = ", ".join(js_param_list)
 
         response_cook_text = ""
         js_reply_list = "[]"
@@ -2805,9 +2901,9 @@ class Generator:
 
                 backend_js_reply_param_list.append("\"%s\"" % json_return_name)
 
-            js_reply_list = "[%s]" % join(backend_js_reply_param_list, ", ")
+            js_reply_list = "[%s]" % ", ".join(backend_js_reply_param_list)
 
-            response_cook_text = join(response_cook_list, "")
+            response_cook_text = "".join(response_cook_list)
 
             if len(response_cook_text) != 0:
                 response_cook_text = "        if (!error.length()) {\n" + response_cook_text + "        }"
@@ -2817,7 +2913,7 @@ class Generator:
             agentField="m_" + agent_field_name,
             methodInCode=method_in_code,
             methodOutCode=method_out_code,
-            agentCallParams=join(agent_call_param_list, ""),
+            agentCallParams="".join(agent_call_param_list),
             requestMessageObject=request_message_param,
             responseCook=response_cook_text,
             commandNameIndex=cmd_enum_name))
@@ -2995,38 +3091,38 @@ backend_js_file = SmartOutput(output_cpp_dirname + "/InspectorBackendCommands.js
 
 
 backend_h_file.write(Templates.backend_h.substitute(None,
-    virtualSetters=join(Generator.backend_virtual_setters_list, "\n"),
-    agentInterfaces=join(flatten_list(Generator.backend_agent_interface_list), ""),
-    methodNamesEnumContent=join(Generator.method_name_enum_list, "\n")))
+    virtualSetters="\n".join(Generator.backend_virtual_setters_list),
+    agentInterfaces="".join(flatten_list(Generator.backend_agent_interface_list)),
+    methodNamesEnumContent="\n".join(Generator.method_name_enum_list)))
 
 backend_cpp_file.write(Templates.backend_cpp.substitute(None,
-    constructorInit=join(Generator.backend_constructor_init_list, "\n"),
-    setters=join(Generator.backend_setters_list, "\n"),
-    fieldDeclarations=join(Generator.backend_field_list, "\n"),
-    methodNameDeclarations=join(Generator.backend_method_name_declaration_list, "\n"),
-    methods=join(Generator.backend_method_implementation_list, "\n"),
-    methodDeclarations=join(Generator.backend_method_declaration_list, "\n"),
-    messageHandlers=join(Generator.method_handler_list, "\n")))
+    constructorInit="\n".join(Generator.backend_constructor_init_list),
+    setters="\n".join(Generator.backend_setters_list),
+    fieldDeclarations="\n".join(Generator.backend_field_list),
+    methodNameDeclarations="\n".join(Generator.backend_method_name_declaration_list),
+    methods="\n".join(Generator.backend_method_implementation_list),
+    methodDeclarations="\n".join(Generator.backend_method_declaration_list),
+    messageHandlers="\n".join(Generator.method_handler_list)))
 
 frontend_h_file.write(Templates.frontend_h.substitute(None,
-    fieldDeclarations=join(Generator.frontend_class_field_lines, ""),
-    domainClassList=join(Generator.frontend_domain_class_lines, "")))
+    fieldDeclarations="".join(Generator.frontend_class_field_lines),
+    domainClassList="".join(Generator.frontend_domain_class_lines)))
 
 frontend_cpp_file.write(Templates.frontend_cpp.substitute(None,
-    constructorInit=join(Generator.frontend_constructor_init_list, ""),
-    methods=join(Generator.frontend_method_list, "\n")))
+    constructorInit="".join(Generator.frontend_constructor_init_list),
+    methods="\n".join(Generator.frontend_method_list)))
 
 typebuilder_h_file.write(Templates.typebuilder_h.substitute(None,
-    typeBuilders=join(flatten_list(Generator.type_builder_fragments), ""),
-    forwards=join(Generator.type_builder_forwards, "")))
+    typeBuilders="".join(flatten_list(Generator.type_builder_fragments)),
+    forwards="".join(Generator.type_builder_forwards)))
 
 typebuilder_cpp_file.write(Templates.typebuilder_cpp.substitute(None,
     enumConstantValues=EnumConstants.get_enum_constant_code(),
-    implCode=join(flatten_list(Generator.type_builder_impl_list), ""),
-    validatorCode=join(flatten_list(Generator.validator_impl_list), "")))
+    implCode="".join(flatten_list(Generator.type_builder_impl_list)),
+    validatorCode="".join(flatten_list(Generator.validator_impl_list))))
 
 backend_js_file.write(Templates.backend_js.substitute(None,
-    domainInitializers=join(Generator.backend_js_domain_initializer_list, "")))
+    domainInitializers="".join(Generator.backend_js_domain_initializer_list)))
 
 backend_h_file.close()
 backend_cpp_file.close()

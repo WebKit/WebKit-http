@@ -483,25 +483,17 @@ WebInspector.ElementsTreeOutline.prototype = {
         if (textNode && textNode.hasStyleClass("bogus"))
             textNode = null;
         var commentNode = event.target.enclosingNodeOrSelfWithClass("webkit-html-comment");
-        var populated = WebInspector.populateHrefContextMenu(contextMenu, this.selectedDOMNode(), event);
-        if (textNode && treeElement._populateTextContextMenu) {
-            if (populated)
-                contextMenu.appendSeparator();
+        contextMenu.appendApplicableItems(event.target);
+        if (textNode) {
+            contextMenu.appendSeparator();
             treeElement._populateTextContextMenu(contextMenu, textNode);
-            populated = true;
-        } else if (isTag && treeElement._populateTagContextMenu) {
-            if (populated)
-                contextMenu.appendSeparator();
+        } else if (isTag) {
+            contextMenu.appendSeparator();
             treeElement._populateTagContextMenu(contextMenu, event);
-            populated = true;
-        } else if (commentNode && treeElement._populateNodeContextMenu) {
-            if (populated)
-                contextMenu.appendSeparator();
+        } else if (commentNode) {
+            contextMenu.appendSeparator();
             treeElement._populateNodeContextMenu(contextMenu, textNode);
-            populated = true;
         }
-
-        return populated;
     },
 
     adjustCollapsedRange: function()
@@ -1042,7 +1034,7 @@ WebInspector.ElementsTreeElement.prototype = {
         }
     },
 
-    onselect: function(treeElement, selectedByUser)
+    onselect: function(selectedByUser)
     {
         this.treeOutline.suppressRevealAndSelect = true;
         this.treeOutline.selectDOMNode(this.representedObject, selectedByUser);
@@ -1172,7 +1164,6 @@ WebInspector.ElementsTreeElement.prototype = {
         const pseudoClasses = ["active", "hover", "focus", "visited"];
         var node = this.representedObject;
         var forcedPseudoState = (node ? node.getUserProperty("pseudoState") : null) || [];
-        var elementsPanel = WebInspector.panels.elements;
         for (var i = 0; i < pseudoClasses.length; ++i) {
             var pseudoClassForced = forcedPseudoState.indexOf(pseudoClasses[i]) >= 0;
             subMenu.appendCheckboxItem(":" + pseudoClasses[i], this.treeOutline._setPseudoClassCallback.bind(null, node.id, pseudoClasses[i], !pseudoClassForced), pseudoClassForced, false);
@@ -1665,7 +1656,7 @@ WebInspector.ElementsTreeElement.prototype = {
             attrSpanElement.appendChild(document.createTextNode("=\u200B\""));
 
         if (linkify && (name === "src" || name === "href")) {
-            var rewrittenHref = WebInspector.resourceURLForRelatedNode(node, value);
+            var rewrittenHref = node.resolveURL(value);
             value = value.replace(/([\/;:\)\]\}])/g, "$1\u200B");
             if (rewrittenHref === null) {
                 var attrValueElement = attrSpanElement.createChild("span", "webkit-html-attribute-value");

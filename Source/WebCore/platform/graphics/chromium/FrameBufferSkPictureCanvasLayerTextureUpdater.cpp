@@ -30,24 +30,27 @@
 
 #include "FrameBufferSkPictureCanvasLayerTextureUpdater.h"
 
+#include "CCProxy.h"
 #include "LayerPainterChromium.h"
-#include "SharedGraphicsContext3D.h"
 #include "SkCanvas.h"
 #include "SkGpuDevice.h"
-#include "cc/CCProxy.h"
+#include <public/WebGraphicsContext3D.h>
+#include <public/WebSharedGraphicsContext3D.h>
+
+using WebKit::WebGraphicsContext3D;
+using WebKit::WebSharedGraphicsContext3D;
 
 namespace WebCore {
 
-static PassOwnPtr<SkCanvas> createAcceleratedCanvas(GraphicsContext3D* context,
+static PassOwnPtr<SkCanvas> createAcceleratedCanvas(GrContext* grContext,
                                                     IntSize canvasSize,
                                                     unsigned textureId)
 {
-    GrContext* grContext = context->grContext();
     GrPlatformTextureDesc textureDesc;
     textureDesc.fFlags = kRenderTarget_GrPlatformTextureFlag;
     textureDesc.fWidth = canvasSize.width();
     textureDesc.fHeight = canvasSize.height();
-    textureDesc.fConfig = kSkia8888_PM_GrPixelConfig;
+    textureDesc.fConfig = kSkia8888_GrPixelConfig;
     textureDesc.fTextureHandle = textureId;
     SkAutoTUnref<GrTexture> target(grContext->createPlatformTexture(textureDesc));
     SkAutoTUnref<SkDevice> device(new SkGpuDevice(grContext, target.get()));
@@ -64,12 +67,13 @@ FrameBufferSkPictureCanvasLayerTextureUpdater::Texture::~Texture()
 {
 }
 
-void FrameBufferSkPictureCanvasLayerTextureUpdater::Texture::updateRect(CCResourceProvider* resourceProvider, const IntRect& sourceRect, const IntRect& destRect)
+void FrameBufferSkPictureCanvasLayerTextureUpdater::Texture::updateRect(CCResourceProvider* resourceProvider, const IntRect& sourceRect, const IntSize& destOffset)
 {
-    RefPtr<GraphicsContext3D> sharedContext = CCProxy::hasImplThread() ? SharedGraphicsContext3D::getForImplThread() : SharedGraphicsContext3D::get();
-    if (!sharedContext)
+    WebGraphicsContext3D* sharedContext = CCProxy::hasImplThread() ? WebSharedGraphicsContext3D::compositorThreadContext() : WebSharedGraphicsContext3D::mainThreadContext();
+    GrContext* sharedGrContext = CCProxy::hasImplThread() ? WebSharedGraphicsContext3D::compositorThreadGrContext() : WebSharedGraphicsContext3D::mainThreadGrContext();
+    if (!sharedContext || !sharedGrContext)
         return;
-    textureUpdater()->updateTextureRect(sharedContext.release(), resourceProvider, texture(), sourceRect, destRect);
+    textureUpdater()->updateTextureRect(sharedContext, sharedGrContext, resourceProvider, texture(), sourceRect, destOffset);
 }
 
 PassRefPtr<FrameBufferSkPictureCanvasLayerTextureUpdater> FrameBufferSkPictureCanvasLayerTextureUpdater::create(PassOwnPtr<LayerPainterChromium> painter)
@@ -97,33 +101,31 @@ LayerTextureUpdater::SampledTexelFormat FrameBufferSkPictureCanvasLayerTextureUp
     return LayerTextureUpdater::SampledTexelFormatRGBA;
 }
 
-void FrameBufferSkPictureCanvasLayerTextureUpdater::updateTextureRect(PassRefPtr<GraphicsContext3D> prpContext, CCResourceProvider* resourceProvider, CCPrioritizedTexture* texture, const IntRect& sourceRect, const IntRect& destRect)
+void FrameBufferSkPictureCanvasLayerTextureUpdater::updateTextureRect(WebGraphicsContext3D* context, GrContext* grContext, CCResourceProvider* resourceProvider, CCPrioritizedTexture* texture, const IntRect& sourceRect, const IntSize& destOffset)
 {
-    RefPtr<GraphicsContext3D> context(prpContext);
-
     // Make sure ganesh uses the correct GL context.
     context->makeContextCurrent();
 
     texture->acquireBackingTexture(resourceProvider);
-    CCScopedLockResourceForWrite lock(resourceProvider, texture->resourceId());
+    CCResourceProvider::ScopedWriteLockGL lock(resourceProvider, texture->resourceId());
     // Create an accelerated canvas to draw on.
-    OwnPtr<SkCanvas> canvas = createAcceleratedCanvas(context.get(), texture->size(), lock.textureId());
+    OwnPtr<SkCanvas> canvas = createAcceleratedCanvas(grContext, texture->size(), lock.textureId());
 
     // The compositor expects the textures to be upside-down so it can flip
     // the final composited image. Ganesh renders the image upright so we
     // need to do a y-flip.
     canvas->translate(0.0, texture->size().height());
     canvas->scale(1.0, -1.0);
-    // Only the region corresponding to destRect on the texture must be updated.
-    canvas->clipRect(SkRect(destRect));
+    // Clip to the destination on the texture that must be updated.
+    canvas->clipRect(SkRect::MakeXYWH(destOffset.width(), destOffset.height(), sourceRect.width(), sourceRect.height()));
     // Translate the origin of contentRect to that of destRect.
     // Note that destRect is defined relative to sourceRect.
-    canvas->translate(contentRect().x() - sourceRect.x() + destRect.x(),
-                      contentRect().y() - sourceRect.y() + destRect.y());
+    canvas->translate(contentRect().x() - sourceRect.x() + destOffset.width(),
+                      contentRect().y() - sourceRect.y() + destOffset.height());
     drawPicture(canvas.get());
 
     // Flush ganesh context so that all the rendered stuff appears on the texture.
-    context->grContext()->flush();
+    grContext->flush();
 
     // Flush the GL context so rendering results from this context are visible in the compositor's context.
     context->flush();

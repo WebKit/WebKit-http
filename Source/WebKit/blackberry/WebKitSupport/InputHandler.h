@@ -19,10 +19,14 @@
 #ifndef InputHandler_h
 #define InputHandler_h
 
+#include "TextChecking.h"
+
 #include <BlackBerryPlatformInputEvents.h>
 
+#include <imf/events.h>
 #include <imf/input_data.h>
 #include <map>
+#include <pthread.h>
 #include <wtf/RefPtr.h>
 
 namespace WTF {
@@ -37,13 +41,17 @@ class HTMLInputElement;
 class HTMLSelectElement;
 class IntRect;
 class Node;
+class Range;
 class SpellChecker;
 class TextCheckingRequest;
+class VisiblePosition;
+class VisibleSelection;
 }
 
 namespace BlackBerry {
 
 namespace Platform {
+class IntPoint;
 class KeyboardEvent;
 }
 
@@ -128,6 +136,9 @@ public:
     void spellCheckingRequestProcessed(int32_t transactionId, spannable_string_t*);
     void spellCheckingRequestCancelled(int32_t id, bool isSequenceId = false);
 
+    bool shouldRequestSpellCheckingOptionsForPoint(Platform::IntPoint&, const WebCore::Element*, imf_sp_text_t&);
+    void requestSpellingCheckingOptions(imf_sp_text_t&);
+
 private:
     enum PendingKeyboardStateChange { NoChange, Visible, NotVisible };
 
@@ -184,7 +195,11 @@ private:
     void learnText();
     void sendLearnTextDetails(const WTF::String&);
     int32_t convertTransactionIdToSequenceId(int32_t transactionId);
+    void spellCheckBlock(WebCore::VisibleSelection&, WebCore::TextCheckingProcessType);
+    PassRefPtr<WebCore::Range> getRangeForSpellCheckWithFineGranularity(WebCore::VisiblePosition startPosition, WebCore::VisiblePosition endPosition);
+    void cancelAllSpellCheckingRequests();
     WebCore::SpellChecker* getSpellChecker();
+    bool shouldSpellCheckElement(const WebCore::Element*) const;
 
     WebPagePrivate* m_webPage;
 
@@ -204,6 +219,7 @@ private:
     bool m_delayKeyboardVisibilityChange;
 
     std::map<int32_t, int32_t> m_sequenceMap;
+    pthread_mutex_t m_sequenceMapMutex;
 };
 
 }

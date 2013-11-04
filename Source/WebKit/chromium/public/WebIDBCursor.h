@@ -40,23 +40,13 @@ class WebIDBCursor {
 public:
     virtual ~WebIDBCursor() { }
 
-    virtual WebIDBKey key() const
-    {
-        WEBKIT_ASSERT_NOT_REACHED();
-        return WebIDBKey::createInvalid();
-    }
-    virtual WebIDBKey primaryKey() const
-    {
-        WEBKIT_ASSERT_NOT_REACHED();
-        return WebIDBKey::createInvalid();
-    }
-    virtual WebSerializedScriptValue value() const
-    {
-        WEBKIT_ASSERT_NOT_REACHED();
-        return WebSerializedScriptValue();
-    }
+    enum Direction {
+        Next = 0,
+        NextNoDuplicate = 1,
+        Prev = 2,
+        PrevNoDuplicate = 3,
+    };
 
-    virtual void update(const WebSerializedScriptValue&, WebIDBCallbacks*, WebExceptionCode&) { WEBKIT_ASSERT_NOT_REACHED(); }
     virtual void advance(unsigned long, WebIDBCallbacks*, WebExceptionCode&) { WEBKIT_ASSERT_NOT_REACHED(); }
     virtual void continueFunction(const WebIDBKey&, WebIDBCallbacks*, WebExceptionCode&) { WEBKIT_ASSERT_NOT_REACHED(); }
     virtual void deleteFunction(WebIDBCallbacks*, WebExceptionCode&) { WEBKIT_ASSERT_NOT_REACHED(); }

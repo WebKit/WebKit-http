@@ -23,6 +23,7 @@
 #include "Cursor.h"
 #include "DrawingAreaProxyImpl.h"
 #include "LayerTreeCoordinatorProxy.h"
+#include "LayerTreeRenderer.h"
 #include "NativeWebKeyboardEvent.h"
 #include "NativeWebMouseEvent.h"
 #if ENABLE(TOUCH_EVENTS)
@@ -31,7 +32,6 @@
 #include "NativeWebWheelEvent.h"
 #include "NotImplemented.h"
 #include "WebContext.h"
-#include "WebLayerTreeRenderer.h"
 #include "WebPageGroup.h"
 #include "WebPreferences.h"
 #include "qrawwebview_p_p.h"
@@ -353,7 +353,7 @@ void QRawWebView::paint(const QMatrix4x4& transform, float opacity, unsigned pai
     if (!coordinatorProxy)
         return;
 
-    WebKit::WebLayerTreeRenderer* renderer = coordinatorProxy->layerTreeRenderer();
+    WebKit::LayerTreeRenderer* renderer = coordinatorProxy->layerTreeRenderer();
     if (!renderer)
         return;
 
@@ -380,9 +380,9 @@ void QRawWebView::sendWheelEvent(QWheelEvent* event)
     d->m_webPageProxy->handleWheelEvent(WebKit::NativeWebWheelEvent(event, QTransform()));
 }
 
-#if ENABLE(TOUCH_EVENTS)
 void QRawWebView::sendTouchEvent(QTouchEvent* event)
 {
+#if ENABLE(TOUCH_EVENTS)
     d->m_webPageProxy->handleTouchEvent(WebKit::NativeWebTouchEvent(event, QTransform()));
-}
 #endif
+}

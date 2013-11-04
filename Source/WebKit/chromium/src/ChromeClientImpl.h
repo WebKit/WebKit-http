@@ -33,18 +33,17 @@
 #define ChromeClientImpl_h
 
 #include "ChromeClientChromium.h"
+#include "NavigatorContentUtilsClient.h"
 #include "PopupMenu.h"
-#include "RegisterProtocolHandlerClient.h"
 #include "SearchPopupMenu.h"
 #include "WebNavigationPolicy.h"
+#include <public/WebColor.h>
 #include <wtf/PassOwnPtr.h>
 
 namespace WebCore {
 class AccessibilityObject;
-#if ENABLE(INPUT_TYPE_COLOR)
 class ColorChooser;
 class ColorChooserClient;
-#endif
 class Element;
 class FileChooser;
 class PopupContainer;
@@ -55,6 +54,8 @@ struct WindowFeatures;
 }
 
 namespace WebKit {
+class WebColorChooser;
+class WebColorChooserClient;
 class WebViewImpl;
 struct WebCursorInfo;
 struct WebPopupMenuInfo;
@@ -135,9 +136,13 @@ public:
         WebCore::Frame*, const WTF::String& databaseName);
     virtual void reachedMaxAppCacheSize(int64_t spaceNeeded);
     virtual void reachedApplicationCacheOriginQuota(WebCore::SecurityOrigin*, int64_t totalSpaceNeeded);
+#if ENABLE(WIDGET_REGION)
+    virtual void dashboardRegionsChanged();
+#endif
     virtual bool paintCustomOverhangArea(WebCore::GraphicsContext*, const WebCore::IntRect&, const WebCore::IntRect&, const WebCore::IntRect&);
 #if ENABLE(INPUT_TYPE_COLOR)
     virtual PassOwnPtr<WebCore::ColorChooser> createColorChooser(WebCore::ColorChooserClient*, const WebCore::Color&) OVERRIDE;
+    PassOwnPtr<WebColorChooser> createWebColorChooser(WebColorChooserClient*, const WebColor&);
 #endif
     virtual void runOpenPanel(WebCore::Frame*, PassRefPtr<WebCore::FileChooser>);
     virtual void loadIconForFiles(const Vector<WTF::String>&, WebCore::FileIconLoader*);
@@ -232,15 +237,15 @@ private:
 #endif
 };
 
-class RegisterProtocolHandlerClientImpl : public WebCore::RegisterProtocolHandlerClient {
+class NavigatorContentUtilsClientImpl : public WebCore::NavigatorContentUtilsClient {
 public:
-    static PassOwnPtr<RegisterProtocolHandlerClientImpl> create(WebViewImpl*);
-    ~RegisterProtocolHandlerClientImpl() { }
+    static PassOwnPtr<NavigatorContentUtilsClientImpl> create(WebViewImpl*);
+    ~NavigatorContentUtilsClientImpl() { }
 
     virtual void registerProtocolHandler(const String& scheme, const String& baseURL, const String& url, const String& title) OVERRIDE;
 
 private:
-    explicit RegisterProtocolHandlerClientImpl(WebViewImpl*);
+    explicit NavigatorContentUtilsClientImpl(WebViewImpl*);
 
     WebViewImpl* m_webView;
 };

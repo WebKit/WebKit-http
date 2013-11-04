@@ -33,29 +33,20 @@
 
 #include "Node.h"
 #include "NodeFilter.h"
+#include "ScriptController.h"
 #include "ScriptState.h"
 #include "V8Node.h"
-#include "V8Proxy.h"
-
 #include <wtf/OwnArrayPtr.h>
 
 namespace WebCore {
 
 V8NodeFilterCondition::V8NodeFilterCondition(v8::Handle<v8::Value> filter)
-    : m_filter(v8::Persistent<v8::Value>::New(filter))
+    : m_filter(filter)
 {
-#ifndef NDEBUG
-    V8GCController::registerGlobalHandle(NODE_FILTER, this, m_filter);
-#endif
 }
 
 V8NodeFilterCondition::~V8NodeFilterCondition()
 {
-#ifndef NDEBUG
-    V8GCController::unregisterGlobalHandle(this, m_filter);
-#endif
-    m_filter.Dispose();
-    m_filter.Clear();
 }
 
 short V8NodeFilterCondition::acceptNode(ScriptState* state, Node* node) const
@@ -69,11 +60,11 @@ short V8NodeFilterCondition::acceptNode(ScriptState* state, Node* node) const
 
     v8::Handle<v8::Function> callback;
     if (m_filter->IsFunction())
-        callback = v8::Handle<v8::Function>::Cast(m_filter);
+        callback = v8::Handle<v8::Function>::Cast(m_filter.get());
     else {
         v8::Local<v8::Value> value = m_filter->ToObject()->Get(v8::String::New("acceptNode"));
         if (!value->IsFunction()) {
-            V8Proxy::throwTypeError("NodeFilter object does not have an acceptNode function");
+            throwTypeError("NodeFilter object does not have an acceptNode function");
             return NodeFilter::FILTER_REJECT;
         }
         callback = v8::Handle<v8::Function>::Cast(value);
@@ -83,7 +74,7 @@ short V8NodeFilterCondition::acceptNode(ScriptState* state, Node* node) const
     OwnArrayPtr<v8::Handle<v8::Value> > args = adoptArrayPtr(new v8::Handle<v8::Value>[1]);
     args[0] = toV8(node);
 
-    v8::Handle<v8::Value> result = V8Proxy::instrumentedCallFunction(0 /* frame */, callback, object, 1, args.get());
+    v8::Handle<v8::Value> result = ScriptController::callFunctionWithInstrumentation(0, callback, object, 1, args.get());
 
     if (exceptionCatcher.HasCaught()) {
         state->setException(exceptionCatcher.Exception());

@@ -50,6 +50,10 @@ public:
     RenderRegionSet(Node*, RenderFlowThread*);
     
 private:
+    virtual void installFlowThread() OVERRIDE;
+
+    virtual void expandToEncompassFlowThreadContentsIfNeeded() OVERRIDE;
+
     virtual const char* renderName() const = 0;
 };
 

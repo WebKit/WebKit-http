@@ -61,6 +61,9 @@
 #include "ShadowRoot.h"
 #include "TransformState.h"
 #include <wtf/StdLibExtras.h>
+#if ENABLE(CSS_EXCLUSIONS)
+#include "WrapShapeInfo.h"
+#endif
 
 using namespace std;
 using namespace WTF;
@@ -71,7 +74,7 @@ namespace WebCore {
 using namespace HTMLNames;
 
 struct SameSizeAsRenderBlock : public RenderBox {
-    void* pointers[3];
+    void* pointers[2];
     RenderObjectChildList children;
     RenderLineBoxList lineBoxes;
     uint32_t bitfields;
@@ -96,11 +99,11 @@ struct SameSizeAsMarginInfo {
 typedef WTF::HashMap<const RenderBox*, ColumnInfo*> ColumnInfoMap;
 static ColumnInfoMap* gColumnInfoMap = 0;
 
-typedef WTF::HashMap<const RenderBlock*, HashSet<RenderBox*>*> PercentHeightDescendantsMap;
-static PercentHeightDescendantsMap* gPercentHeightDescendantsMap = 0;
+static TrackedDescendantsMap* gPositionedDescendantsMap = 0;
+static TrackedDescendantsMap* gPercentHeightDescendantsMap = 0;
 
-typedef WTF::HashMap<const RenderBox*, HashSet<RenderBlock*>*> PercentHeightContainerMap;
-static PercentHeightContainerMap* gPercentHeightContainerMap = 0;
+static TrackedContainerMap* gPositionedContainerMap = 0;
+static TrackedContainerMap* gPercentHeightContainerMap = 0;
     
 typedef WTF::HashMap<RenderBlock*, ListHashSet<RenderInline*>*> ContinuationOutlineTableMap;
 
@@ -196,6 +199,26 @@ RenderBlock::RenderBlock(Node* node)
     COMPILE_ASSERT(sizeof(RenderBlock::MarginInfo) == sizeof(SameSizeAsMarginInfo), MarginInfo_should_stay_small);
 }
 
+static void removeBlockFromDescendantAndContainerMaps(RenderBlock* block, TrackedDescendantsMap*& descendantMap, TrackedContainerMap*& containerMap)
+{
+    if (TrackedRendererListHashSet* descendantSet = descendantMap->take(block)) {
+        TrackedRendererListHashSet::iterator end = descendantSet->end();
+        for (TrackedRendererListHashSet::iterator descendant = descendantSet->begin(); descendant != end; ++descendant) {
+            HashSet<RenderBlock*>* containerSet = containerMap->get(*descendant);
+            ASSERT(containerSet);
+            if (!containerSet)
+                continue;
+            ASSERT(containerSet->contains(block));
+            containerSet->remove(block);
+            if (containerSet->isEmpty()) {
+                containerMap->remove(*descendant);
+                delete containerSet;
+            }
+        }
+        delete descendantSet;
+    }
+}
+
 RenderBlock::~RenderBlock()
 {
     if (m_floatingObjects)
@@ -204,24 +227,10 @@ RenderBlock::~RenderBlock()
     if (hasColumns())
         delete gColumnInfoMap->take(this);
 
-    if (gPercentHeightDescendantsMap) {
-        if (HashSet<RenderBox*>* descendantSet = gPercentHeightDescendantsMap->take(this)) {
-            HashSet<RenderBox*>::iterator end = descendantSet->end();
-            for (HashSet<RenderBox*>::iterator descendant = descendantSet->begin(); descendant != end; ++descendant) {
-                HashSet<RenderBlock*>* containerSet = gPercentHeightContainerMap->get(*descendant);
-                ASSERT(containerSet);
-                if (!containerSet)
-                    continue;
-                ASSERT(containerSet->contains(this));
-                containerSet->remove(this);
-                if (containerSet->isEmpty()) {
-                    gPercentHeightContainerMap->remove(*descendant);
-                    delete containerSet;
-                }
-            }
-            delete descendantSet;
-        }
-    }
+    if (gPercentHeightDescendantsMap)
+        removeBlockFromDescendantAndContainerMaps(this, gPercentHeightDescendantsMap, gPercentHeightContainerMap);
+    if (gPositionedDescendantsMap)
+        removeBlockFromDescendantAndContainerMaps(this, gPositionedDescendantsMap, gPositionedContainerMap);
 }
 
 void RenderBlock::willBeDestroyed()
@@ -269,6 +278,10 @@ void RenderBlock::willBeDestroyed()
     if (lineGridBox())
         lineGridBox()->destroy(renderArena());
 
+#if ENABLE(CSS_EXCLUSIONS)
+    WrapShapeInfo::removeWrapShapeInfoForRenderBlock(this);
+#endif
+
     if (UNLIKELY(gDelayedUpdateScrollInfoSet != 0))
         gDelayedUpdateScrollInfoSet->remove(this);
 
@@ -303,7 +316,7 @@ void RenderBlock::styleWillChange(StyleDifference diff, const RenderStyle* newSt
                 toRenderBlock(cb)->removePositionedObjects(this);
         }
 
-        if (containsFloats() && !isFloating() && !isOutOfFlowPositioned() && (newStyle->position() == AbsolutePosition || newStyle->position() == FixedPosition))
+        if (containsFloats() && !isFloating() && !isOutOfFlowPositioned() && newStyle->hasOutOfFlowPosition())
             markAllDescendantsWithFloatsForLayout();
     }
 
@@ -313,6 +326,12 @@ void RenderBlock::styleWillChange(StyleDifference diff, const RenderStyle* newSt
 void RenderBlock::styleDidChange(StyleDifference diff, const RenderStyle* oldStyle)
 {
     RenderBox::styleDidChange(diff, oldStyle);
+
+#if ENABLE(CSS_EXCLUSIONS)
+    // FIXME: Bug 89993: Style changes should affect the WrapShapeInfos for other render blocks that
+    // share the same WrapShapeInfo
+    updateWrapShapeInfoAfterStyleChange(style()->wrapShapeInside(), oldStyle ? oldStyle->wrapShapeInside() : 0);
+#endif
 
     if (!isAnonymousBlock()) {
         // Ensure that all of our continuation blocks pick up the new style.
@@ -548,6 +567,7 @@ RenderBlock* RenderBlock::clone() const
         // generated content added yet.
         cloneBlock->setChildrenInline(cloneBlock->firstChild() ? cloneBlock->firstChild()->isInline() : childrenInline());
     }
+    cloneBlock->setInRenderFlowThread(inRenderFlowThread());
     return cloneBlock;
 }
 
@@ -1136,18 +1156,26 @@ void RenderBlock::collapseAnonymousBoxChild(RenderBlock* parent, RenderObject* c
     RenderObject* nextSibling = child->nextSibling();
 
     RenderFlowThread* childFlowThread = child->enclosingRenderFlowThread();
+    CurrentRenderFlowThreadMaintainer flowThreadMaintainer(childFlowThread);
+    
     RenderBlock* anonBlock = toRenderBlock(parent->children()->removeChildNode(parent, child, child->hasLayer()));
     anonBlock->moveAllChildrenTo(parent, nextSibling, child->hasLayer());
     // Delete the now-empty block's lines and nuke it.
-    if (!parent->documentBeingDestroyed())
-        anonBlock->deleteLineBoxTree();
-    if (!parent->documentBeingDestroyed() && childFlowThread && childFlowThread->isRenderNamedFlowThread())
+    anonBlock->deleteLineBoxTree();
+    if (childFlowThread && childFlowThread->isRenderNamedFlowThread())
         toRenderNamedFlowThread(childFlowThread)->removeFlowChildInfo(anonBlock);
     anonBlock->destroy();
 }
 
 void RenderBlock::removeChild(RenderObject* oldChild)
 {
+    // No need to waste time in merging or removing empty anonymous blocks.
+    // We can just bail out if our document is getting destroyed.
+    if (documentBeingDestroyed()) {
+        RenderBox::removeChild(oldChild);
+        return;
+    }
+
     // If this child is a block, and if our previous and next siblings are
     // both anonymous blocks with inline content, then we can go ahead and
     // fold the inline content back together.
@@ -1169,12 +1197,14 @@ void RenderBlock::removeChild(RenderObject* oldChild)
             // column span flag if it is set.
             ASSERT(!inlineChildrenBlock->continuation());
             RefPtr<RenderStyle> newStyle = RenderStyle::createAnonymousStyleWithDisplay(style(), BLOCK);
-            children()->removeChildNode(this, inlineChildrenBlock, inlineChildrenBlock->hasLayer());
+            // Cache this value as it might get changed in setStyle() call.
+            bool inlineChildrenBlockHasLayer = inlineChildrenBlock->hasLayer();
             inlineChildrenBlock->setStyle(newStyle);
+            children()->removeChildNode(this, inlineChildrenBlock, inlineChildrenBlockHasLayer);
             
             // Now just put the inlineChildrenBlock inside the blockChildrenBlock.
             blockChildrenBlock->children()->insertChildNode(blockChildrenBlock, inlineChildrenBlock, prev == inlineChildrenBlock ? blockChildrenBlock->firstChild() : 0,
-                                                            inlineChildrenBlock->hasLayer() || blockChildrenBlock->hasLayer());
+                                                            inlineChildrenBlockHasLayer || blockChildrenBlock->hasLayer());
             next->setNeedsLayoutAndPrefWidthsRecalc();
             
             // inlineChildrenBlock got reparented to blockChildrenBlock, so it is no longer a child
@@ -1198,12 +1228,12 @@ void RenderBlock::removeChild(RenderObject* oldChild)
     RenderBox::removeChild(oldChild);
 
     RenderObject* child = prev ? prev : next;
-    if (canMergeAnonymousBlocks && child && !child->previousSibling() && !child->nextSibling() && !isFlexibleBoxIncludingDeprecated()) {
+    if (canMergeAnonymousBlocks && child && !child->previousSibling() && !child->nextSibling() && canCollapseAnonymousBlockChild()) {
         // The removal has knocked us down to containing only a single anonymous
         // box.  We can go ahead and pull the content right back up into our
         // box.
         collapseAnonymousBoxChild(this, child);
-    } else if (((prev && prev->isAnonymousBlock()) || (next && next->isAnonymousBlock())) && !isFlexibleBoxIncludingDeprecated()) {
+    } else if (((prev && prev->isAnonymousBlock()) || (next && next->isAnonymousBlock())) && canCollapseAnonymousBlockChild()) {
         // It's possible that the removal has knocked us down to a single anonymous
         // block with pseudo-style element siblings (e.g. first-letter). If these
         // are floating, then we need to pull the content up also.
@@ -1215,14 +1245,14 @@ void RenderBlock::removeChild(RenderObject* oldChild)
         }
     }
 
-    if (!firstChild() && !documentBeingDestroyed()) {
+    if (!firstChild()) {
         // If this was our last child be sure to clear out our line boxes.
         if (childrenInline())
             deleteLineBoxTree();
 
         // If we are an empty anonymous block in the continuation chain,
         // we need to remove ourself and fix the continuation chain.
-        if (!beingDestroyed() && isAnonymousBlockContinuation()) {
+        if (!beingDestroyed() && isAnonymousBlockContinuation() && !oldChild->isListMarker()) {
             RenderObject* containingBlockIgnoringAnonymous = containingBlock();
             while (containingBlockIgnoringAnonymous && containingBlockIgnoringAnonymous->isAnonymousBlock())
                 containingBlockIgnoringAnonymous = containingBlockIgnoringAnonymous->containingBlock();
@@ -1349,6 +1379,21 @@ void RenderBlock::layout()
         clearLayoutOverflow();
 }
 
+#if ENABLE(CSS_EXCLUSIONS)
+void RenderBlock::updateWrapShapeInfoAfterStyleChange(const WrapShape* wrapShape, const WrapShape* oldWrapShape)
+{
+    // FIXME: A future optimization would do a deep comparison for equality.
+    if (wrapShape == oldWrapShape)
+        return;
+
+    if (wrapShape) {
+        WrapShapeInfo* wrapShapeInfo = WrapShapeInfo::ensureWrapShapeInfoForRenderBlock(this);
+        wrapShapeInfo->dirtyWrapShapeSize();
+    } else
+        WrapShapeInfo::removeWrapShapeInfoForRenderBlock(this);
+}
+#endif
+
 void RenderBlock::computeInitialRegionRangeForBlock()
 {
     if (inRenderFlowThread()) {
@@ -1418,7 +1463,7 @@ void RenderBlock::layoutBlock(bool relayoutChildren, LayoutUnit pageLogicalHeigh
     if (!relayoutChildren && simplifiedLayout())
         return;
 
-    LayoutRepainter repainter(*this, everHadLayout() && checkForRepaintDuringLayout());
+    LayoutRepainter repainter(*this, checkForRepaintDuringLayout());
 
     if (recomputeLogicalWidth())
         relayoutChildren = true;
@@ -1444,6 +1489,11 @@ void RenderBlock::layoutBlock(bool relayoutChildren, LayoutUnit pageLogicalHeigh
             relayoutChildren = true;
     }
     computeInitialRegionRangeForBlock();
+#if ENABLE(CSS_EXCLUSIONS)
+    // FIXME: Bug 93547: Resolve logical height for percentage based vertical lengths
+    if (WrapShapeInfo* wrapShapeInfo = this->wrapShapeInfo())
+        wrapShapeInfo->computeShapeSize(logicalWidth(), 0);
+#endif
 
     // We use four values, maxTopPos, maxTopNeg, maxBottomPos, and maxBottomNeg, to track
     // our current maximal positive and negative margins.  These values are used when we
@@ -1470,14 +1520,6 @@ void RenderBlock::layoutBlock(bool relayoutChildren, LayoutUnit pageLogicalHeigh
         }
         
         setPaginationStrut(0);
-    }
-
-    // For overflow:scroll blocks, ensure we have both scrollbars in place always.
-    if (scrollsOverflow() && style()->appearance() != ListboxPart) {
-        if (styleToUse->overflowX() == OSCROLL)
-            layer()->setHasHorizontalScrollbar(true);
-        if (styleToUse->overflowY() == OSCROLL)
-            layer()->setHasVerticalScrollbar(true);
     }
 
     LayoutUnit repaintLogicalTop = ZERO_LAYOUT_UNIT;
@@ -1660,17 +1702,22 @@ void RenderBlock::addOverflowFromFloats()
 
 void RenderBlock::addOverflowFromPositionedObjects()
 {
-    if (!m_positionedObjects)
+    TrackedRendererListHashSet* positionedDescendants = positionedObjects();
+    if (!positionedDescendants)
         return;
 
     RenderBox* positionedObject;
-    Iterator end = m_positionedObjects->end();
-    for (Iterator it = m_positionedObjects->begin(); it != end; ++it) {
+    TrackedRendererListHashSet::iterator end = positionedDescendants->end();
+    for (TrackedRendererListHashSet::iterator it = positionedDescendants->begin(); it != end; ++it) {
         positionedObject = *it;
         
         // Fixed positioned elements don't contribute to layout overflow, since they don't scroll with the content.
-        if (positionedObject->style()->position() != FixedPosition)
-            addOverflowFromChild(positionedObject, IntSize(positionedObject->x(), positionedObject->y()));
+        if (positionedObject->style()->position() != FixedPosition) {
+            LayoutUnit x = positionedObject->x();
+            if (style()->shouldPlaceBlockDirectionScrollbarOnLogicalLeft())
+                x -= verticalScrollbarWidth();
+            addOverflowFromChild(positionedObject, LayoutSize(x, positionedObject->y()));
+        }
     }
 }
 
@@ -1699,18 +1746,11 @@ void RenderBlock::adjustPositionedBlock(RenderBox* child, const MarginInfo& marg
     setStaticInlinePositionForChild(child, logicalTop, startOffsetForContent(logicalTop));
 
     if (!marginInfo.canCollapseWithMarginBefore()) {
-        child->computeBlockDirectionMargins(this);
-        LayoutUnit marginBefore = marginBeforeForChild(child);
+        // Positioned blocks don't collapse margins, so add the margin provided by
+        // the container now. The child's own margin is added later when calculating its logical top.
         LayoutUnit collapsedBeforePos = marginInfo.positiveMargin();
         LayoutUnit collapsedBeforeNeg = marginInfo.negativeMargin();
-        if (marginBefore > 0) {
-            if (marginBefore > collapsedBeforePos)
-                collapsedBeforePos = marginBefore;
-        } else {
-            if (-marginBefore > collapsedBeforeNeg)
-                collapsedBeforeNeg = -marginBefore;
-        }
-        logicalTop += (collapsedBeforePos - collapsedBeforeNeg) - marginBefore;
+        logicalTop += collapsedBeforePos - collapsedBeforeNeg;
     }
     
     RenderLayer* childLayer = child->layer();
@@ -1849,11 +1889,7 @@ void RenderBlock::moveRunInUnderSiblingBlockIfNeeded(RenderObject* runIn)
 
     // Check if this node is allowed to run-in. E.g. <select> expects its renderer to
     // be a RenderListBox or RenderMenuList, and hence cannot be a RenderInline run-in.
-    Node* runInNode = runIn->node();
-    if (runInNode && runInNode->hasTagName(selectTag))
-        return;
-
-    if (runInNode && runInNode->hasTagName(progressTag))
+    if (!runIn->canBeReplacedWithInlineRunIn())
         return;
 
     RenderObject* curr = runIn->nextSibling();
@@ -2204,6 +2240,8 @@ LayoutUnit RenderBlock::computeStartPositionDeltaForChildAvoidingFloats(const Re
 void RenderBlock::determineLogicalLeftPositionForChild(RenderBox* child)
 {
     LayoutUnit startPosition = borderStart() + paddingStart();
+    if (style()->shouldPlaceBlockDirectionScrollbarOnLogicalLeft())
+        startPosition -= verticalScrollbarWidth();
     LayoutUnit totalAvailableLogicalWidth = borderAndPaddingLogicalWidth() + availableLogicalWidth();
 
     // Add in our start margin.
@@ -2285,9 +2323,9 @@ void RenderBlock::setLogicalTopForChild(RenderBox* child, LayoutUnit logicalTop,
 void RenderBlock::layoutBlockChildren(bool relayoutChildren, LayoutUnit& maxFloatLogicalBottom)
 {
     if (gPercentHeightDescendantsMap) {
-        if (HashSet<RenderBox*>* descendants = gPercentHeightDescendantsMap->get(this)) {
-            HashSet<RenderBox*>::iterator end = descendants->end();
-            for (HashSet<RenderBox*>::iterator it = descendants->begin(); it != end; ++it) {
+        if (TrackedRendererListHashSet* descendants = gPercentHeightDescendantsMap->get(this)) {
+            TrackedRendererListHashSet::iterator end = descendants->end();
+            for (TrackedRendererListHashSet::iterator it = descendants->begin(); it != end; ++it) {
                 RenderBox* box = *it;
                 while (box != this) {
                     if (box->normalChildNeedsLayout())
@@ -2566,15 +2604,16 @@ bool RenderBlock::simplifiedLayout()
 
 void RenderBlock::layoutPositionedObjects(bool relayoutChildren)
 {
-    if (!m_positionedObjects)
+    TrackedRendererListHashSet* positionedDescendants = positionedObjects();
+    if (!positionedDescendants)
         return;
         
     if (hasColumns())
         view()->layoutState()->clearPaginationInformation(); // Positioned objects are not part of the column flow, so they don't paginate with the columns.
 
     RenderBox* r;
-    Iterator end = m_positionedObjects->end();
-    for (Iterator it = m_positionedObjects->begin(); it != end; ++it) {
+    TrackedRendererListHashSet::iterator end = positionedDescendants->end();
+    for (TrackedRendererListHashSet::iterator it = positionedDescendants->begin(); it != end; ++it) {
         r = *it;
         // When a non-positioned block element moves, it may have positioned children that are implicitly positioned relative to the
         // non-positioned block.  Rather than trying to detect all of these movement cases, we just always lay out positioned
@@ -2609,14 +2648,6 @@ void RenderBlock::layoutPositionedObjects(bool relayoutChildren)
         
         r->layoutIfNeeded();
 
-        // Adjust the static position of a center-aligned inline positioned object with a block child now that the child's width has been computed.
-        if (!r->parent()->isRenderView() && r->parent()->isRenderBlock() && r->firstChild() && r->style()->position() == AbsolutePosition
-            && r->style()->isOriginalDisplayInlineType() && (r->style()->textAlign() == CENTER || r->style()->textAlign() == WEBKIT_CENTER)) {
-            RenderBlock* block = toRenderBlock(r->parent());
-            LayoutUnit blockHeight = block->logicalHeight();
-            block->setStaticInlinePositionForChild(r, blockHeight, block->startAlignedOffsetForLine(r, blockHeight, false));
-        }
-
         // Lay out again if our estimate was wrong.
         if (needsBlockDirectionLocationSetBeforeLayout && logicalTopForChild(r) != oldLogicalTop) {
             r->setChildNeedsLayout(true, MarkOnlyThis);
@@ -2630,10 +2661,11 @@ void RenderBlock::layoutPositionedObjects(bool relayoutChildren)
 
 void RenderBlock::markPositionedObjectsForLayout()
 {
-    if (m_positionedObjects) {
+    TrackedRendererListHashSet* positionedDescendants = positionedObjects();
+    if (positionedDescendants) {
         RenderBox* r;
-        Iterator end = m_positionedObjects->end();
-        for (Iterator it = m_positionedObjects->begin(); it != end; ++it) {
+        TrackedRendererListHashSet::iterator end = positionedDescendants->end();
+        for (TrackedRendererListHashSet::iterator it = positionedDescendants->begin(); it != end; ++it) {
             r = *it;
             r->setChildNeedsLayout(true);
         }
@@ -2969,11 +3001,8 @@ void RenderBlock::paintObject(PaintInfo& paintInfo, const LayoutPoint& paintOffs
 
     // Adjust our painting position if we're inside a scrolled layer (e.g., an overflow:auto div).
     LayoutPoint scrolledOffset = paintOffset;
-    if (hasOverflowClip()) {
+    if (hasOverflowClip())
         scrolledOffset.move(-scrolledContentOffset());
-        if (style()->shouldPlaceBlockDirectionScrollbarOnLogicalLeft())
-            scrolledOffset.move(verticalScrollbarWidth(), 0);
-    }
 
     // 2. paint contents
     if (paintPhase != PaintPhaseSelfOutline) {
@@ -3078,31 +3107,6 @@ void RenderBlock::paintFloats(PaintInfo& paintInfo, const LayoutPoint& paintOffs
     }
 }
 
-void RenderBlock::paintEllipsisBoxes(PaintInfo& paintInfo, const LayoutPoint& paintOffset)
-{
-    if (!paintInfo.shouldPaintWithinRoot(this) || !firstLineBox())
-        return;
-
-    if (style()->visibility() == VISIBLE && paintInfo.phase == PaintPhaseForeground) {
-        // We can check the first box and last box and avoid painting if we don't
-        // intersect.
-        LayoutUnit yPos = paintOffset.y() + firstLineBox()->y();
-        LayoutUnit h = lastLineBox()->y() + lastLineBox()->logicalHeight() - firstLineBox()->y();
-        if (yPos >= paintInfo.rect.maxY() || yPos + h <= paintInfo.rect.y())
-            return;
-
-        // See if our boxes intersect with the dirty rect.  If so, then we paint
-        // them.  Note that boxes can easily overlap, so we can't make any assumptions
-        // based off positions of our first line box or our last line box.
-        for (RootInlineBox* curr = firstRootBox(); curr; curr = curr->nextRootBox()) {
-            yPos = paintOffset.y() + curr->y();
-            h = curr->logicalHeight();
-            if (curr->ellipsisBox() && yPos < paintInfo.rect.maxY() && yPos + h > paintInfo.rect.y())
-                curr->paintEllipsisBox(paintInfo, paintOffset, curr->lineTop(), curr->lineBottom());
-        }
-    }
-}
-
 RenderInline* RenderBlock::inlineElementContinuation() const
 { 
     RenderBoxModelObject* continuation = this->continuation();
@@ -3197,9 +3201,10 @@ bool RenderBlock::isSelectionRoot() const
     if (isTable())
         return false;
         
-    if (isBody() || isRoot() || hasOverflowClip() || isRelPositioned()
-        || isFloatingOrOutOfFlowPositioned() || isTableCell() || isInlineBlockOrInlineTable() || hasTransform()
-        || hasReflection() || hasMask() || isWritingModeRoot())
+    if (isBody() || isRoot() || hasOverflowClip()
+        || isPositioned() || isFloating()
+        || isTableCell() || isInlineBlockOrInlineTable()
+        || hasTransform() || hasReflection() || hasMask() || isWritingModeRoot())
         return true;
     
     if (view() && view()->selectionStart()) {
@@ -3220,7 +3225,7 @@ GapRects RenderBlock::selectionGapRectsForRepaint(RenderBoxModelObject* repaintC
 
     // FIXME: this is broken with transforms
     TransformState transformState(TransformState::ApplyTransformDirection, FloatPoint());
-    mapLocalToContainer(repaintContainer, false, false, transformState);
+    mapLocalToContainer(repaintContainer, transformState);
     LayoutPoint offsetFromRepaintContainer = roundedLayoutPoint(transformState.mappedPoint());
 
     if (hasOverflowClip())
@@ -3258,13 +3263,13 @@ void RenderBlock::paintSelection(PaintInfo& paintInfo, const LayoutPoint& paintO
     }
 }
 
-static void clipOutPositionedObjects(const PaintInfo* paintInfo, const LayoutPoint& offset, RenderBlock::PositionedObjectsListHashSet* positionedObjects)
+static void clipOutPositionedObjects(const PaintInfo* paintInfo, const LayoutPoint& offset, TrackedRendererListHashSet* positionedObjects)
 {
     if (!positionedObjects)
         return;
     
-    RenderBlock::PositionedObjectsListHashSet::const_iterator end = positionedObjects->end();
-    for (RenderBlock::PositionedObjectsListHashSet::const_iterator it = positionedObjects->begin(); it != end; ++it) {
+    TrackedRendererListHashSet::const_iterator end = positionedObjects->end();
+    for (TrackedRendererListHashSet::const_iterator it = positionedObjects->begin(); it != end; ++it) {
         RenderBox* r = *it;
         paintInfo->context->clipOut(IntRect(offset.x() + r->x(), offset.y() + r->y(), r->width(), r->height()));
     }
@@ -3302,10 +3307,10 @@ GapRects RenderBlock::selectionGaps(RenderBlock* rootBlock, const LayoutPoint& r
         LayoutRect flippedBlockRect(offsetFromRootBlock.width(), offsetFromRootBlock.height(), width(), height());
         rootBlock->flipForWritingMode(flippedBlockRect);
         flippedBlockRect.moveBy(rootBlockPhysicalPosition);
-        clipOutPositionedObjects(paintInfo, flippedBlockRect.location(), m_positionedObjects.get());
+        clipOutPositionedObjects(paintInfo, flippedBlockRect.location(), positionedObjects());
         if (isBody() || isRoot()) // The <body> must make sure to examine its containingBlock's positioned objects.
             for (RenderBlock* cb = containingBlock(); cb && !cb->isRenderView(); cb = cb->containingBlock())
-                clipOutPositionedObjects(paintInfo, LayoutPoint(cb->x(), cb->y()), cb->m_positionedObjects.get()); // FIXME: Not right for flipped writing modes.
+                clipOutPositionedObjects(paintInfo, LayoutPoint(cb->x(), cb->y()), cb->positionedObjects()); // FIXME: Not right for flipped writing modes.
         if (m_floatingObjects) {
             const FloatingObjectSet& floatingObjectSet = m_floatingObjects->set();
             FloatingObjectSetIterator end = floatingObjectSet.end();
@@ -3419,10 +3424,10 @@ GapRects RenderBlock::blockSelectionGaps(RenderBlock* rootBlock, const LayoutPoi
         if (curr->isFloatingOrOutOfFlowPositioned())
             continue; // We must be a normal flow object in order to even be considered.
 
-        if (curr->isRelPositioned() && curr->hasLayer()) {
+        if (curr->isInFlowPositioned() && curr->hasLayer()) {
             // If the relposition offset is anything other than 0, then treat this just like an absolute positioned element.
             // Just disregard it completely.
-            LayoutSize relOffset = curr->layer()->relativePositionOffset();
+            LayoutSize relOffset = curr->layer()->offsetForInFlowPosition();
             if (relOffset.width() || relOffset.height())
                 continue;
         }
@@ -3596,6 +3601,74 @@ RenderBlock* RenderBlock::blockBeforeWithinSelectionRoot(LayoutSize& offset) con
     return beforeBlock;
 }
 
+void RenderBlock::insertIntoTrackedRendererMaps(RenderBox* descendant, TrackedDescendantsMap*& descendantsMap, TrackedContainerMap*& containerMap)
+{
+    if (!descendantsMap) {
+        descendantsMap = new TrackedDescendantsMap;
+        containerMap = new TrackedContainerMap;
+    }
+    
+    TrackedRendererListHashSet* descendantSet = descendantsMap->get(this);
+    if (!descendantSet) {
+        descendantSet = new TrackedRendererListHashSet;
+        descendantsMap->set(this, descendantSet);
+    }
+    bool added = descendantSet->add(descendant).isNewEntry;
+    if (!added) {
+        ASSERT(containerMap->get(descendant));
+        ASSERT(containerMap->get(descendant)->contains(this));
+        return;
+    }
+    
+    HashSet<RenderBlock*>* containerSet = containerMap->get(descendant);
+    if (!containerSet) {
+        containerSet = new HashSet<RenderBlock*>;
+        containerMap->set(descendant, containerSet);
+    }
+    ASSERT(!containerSet->contains(this));
+    containerSet->add(this);
+}
+
+void RenderBlock::removeFromTrackedRendererMaps(RenderBox* descendant, TrackedDescendantsMap*& descendantsMap, TrackedContainerMap*& containerMap)
+{
+    if (!descendantsMap)
+        return;
+    
+    HashSet<RenderBlock*>* containerSet = containerMap->take(descendant);
+    if (!containerSet)
+        return;
+    
+    HashSet<RenderBlock*>::iterator end = containerSet->end();
+    for (HashSet<RenderBlock*>::iterator it = containerSet->begin(); it != end; ++it) {
+        RenderBlock* container = *it;
+
+        // FIXME: Disabling this assert temporarily until we fix the layout
+        // bugs associated with positioned objects not properly cleared from
+        // their ancestor chain before being moved. See webkit bug 93766.
+        // ASSERT(descendant->isDescendantOf(container));
+
+        TrackedRendererListHashSet* descendantSet = descendantsMap->get(container);
+        ASSERT(descendantSet);
+        if (!descendantSet)
+            continue;
+        ASSERT(descendantSet->contains(descendant));
+        descendantSet->remove(descendant);
+        if (descendantSet->isEmpty()) {
+            descendantsMap->remove(container);
+            delete descendantSet;
+        }
+    }
+    
+    delete containerSet;
+}
+
+TrackedRendererListHashSet* RenderBlock::positionedObjects() const
+{
+    if (gPositionedDescendantsMap)
+        return gPositionedDescendantsMap->get(this);
+    return 0;
+}
+
 void RenderBlock::insertPositionedObject(RenderBox* o)
 {
     ASSERT(!isAnonymousBlock());
@@ -3603,31 +3676,27 @@ void RenderBlock::insertPositionedObject(RenderBox* o)
     if (o->isRenderFlowThread())
         return;
     
-    // Create the list of special objects if we don't aleady have one
-    if (!m_positionedObjects)
-        m_positionedObjects = adoptPtr(new PositionedObjectsListHashSet);
-
-    m_positionedObjects->add(o);
+    insertIntoTrackedRendererMaps(o, gPositionedDescendantsMap, gPositionedContainerMap);
 }
 
 void RenderBlock::removePositionedObject(RenderBox* o)
 {
-    if (m_positionedObjects)
-        m_positionedObjects->remove(o);
+    removeFromTrackedRendererMaps(o, gPositionedDescendantsMap, gPositionedContainerMap);
 }
 
 void RenderBlock::removePositionedObjects(RenderBlock* o)
 {
-    if (!m_positionedObjects)
+    TrackedRendererListHashSet* positionedDescendants = positionedObjects();
+    if (!positionedDescendants)
         return;
     
     RenderBox* r;
     
-    Iterator end = m_positionedObjects->end();
+    TrackedRendererListHashSet::iterator end = positionedDescendants->end();
     
     Vector<RenderBox*, 16> deadObjects;
 
-    for (Iterator it = m_positionedObjects->begin(); it != end; ++it) {
+    for (TrackedRendererListHashSet::iterator it = positionedDescendants->begin(); it != end; ++it) {
         r = *it;
         if (!o || r->isDescendantOf(o)) {
             if (o)
@@ -3646,7 +3715,7 @@ void RenderBlock::removePositionedObjects(RenderBlock* o)
     }
     
     for (unsigned i = 0; i < deadObjects.size(); i++)
-        m_positionedObjects->remove(deadObjects.at(i));
+        removePositionedObject(deadObjects.at(i));
 }
 
 RenderBlock::FloatingObject* RenderBlock::insertFloatingObject(RenderBox* o)
@@ -3760,7 +3829,8 @@ LayoutPoint RenderBlock::computeLogicalLocationForFloat(const FloatingObject* fl
         LayoutUnit heightRemainingLeft = 1;
         LayoutUnit heightRemainingRight = 1;
         floatLogicalLeft = logicalLeftOffsetForLine(logicalTopOffset, logicalLeftOffset, false, &heightRemainingLeft);
-        while (logicalRightOffsetForLine(logicalTopOffset, logicalRightOffset, false, &heightRemainingRight) - floatLogicalLeft < floatLogicalWidth) {
+        // FIXME: LayoutUnit::epsilon is probably only necessary here due to lost precision elsewhere https://bugs.webkit.org/show_bug.cgi?id=94000
+        while (logicalRightOffsetForLine(logicalTopOffset, logicalRightOffset, false, &heightRemainingRight) - floatLogicalLeft + LayoutUnit::epsilon() < floatLogicalWidth) {
             logicalTopOffset += min(heightRemainingLeft, heightRemainingRight);
             floatLogicalLeft = logicalLeftOffsetForLine(logicalTopOffset, logicalLeftOffset, false, &heightRemainingLeft);
             if (inRenderFlowThread()) {
@@ -3775,7 +3845,8 @@ LayoutPoint RenderBlock::computeLogicalLocationForFloat(const FloatingObject* fl
         LayoutUnit heightRemainingLeft = 1;
         LayoutUnit heightRemainingRight = 1;
         floatLogicalLeft = logicalRightOffsetForLine(logicalTopOffset, logicalRightOffset, false, &heightRemainingRight);
-        while (floatLogicalLeft - logicalLeftOffsetForLine(logicalTopOffset, logicalLeftOffset, false, &heightRemainingLeft) < floatLogicalWidth) {
+        // FIXME: LayoutUnit::epsilon is probably only necessary here due to lost precision elsewhere https://bugs.webkit.org/show_bug.cgi?id=94000
+        while (floatLogicalLeft - logicalLeftOffsetForLine(logicalTopOffset, logicalLeftOffset, false, &heightRemainingLeft) + LayoutUnit::epsilon() < floatLogicalWidth) {
             logicalTopOffset += min(heightRemainingLeft, heightRemainingRight);
             floatLogicalLeft = logicalRightOffsetForLine(logicalTopOffset, logicalRightOffset, false, &heightRemainingRight);
             if (inRenderFlowThread()) {
@@ -3924,60 +3995,15 @@ void RenderBlock::newLine(EClear clear)
 
 void RenderBlock::addPercentHeightDescendant(RenderBox* descendant)
 {
-    if (!gPercentHeightDescendantsMap) {
-        gPercentHeightDescendantsMap = new PercentHeightDescendantsMap;
-        gPercentHeightContainerMap = new PercentHeightContainerMap;
-    }
-
-    HashSet<RenderBox*>* descendantSet = gPercentHeightDescendantsMap->get(this);
-    if (!descendantSet) {
-        descendantSet = new HashSet<RenderBox*>;
-        gPercentHeightDescendantsMap->set(this, descendantSet);
-    }
-    bool added = descendantSet->add(descendant).isNewEntry;
-    if (!added) {
-        ASSERT(gPercentHeightContainerMap->get(descendant));
-        ASSERT(gPercentHeightContainerMap->get(descendant)->contains(this));
-        return;
-    }
-
-    HashSet<RenderBlock*>* containerSet = gPercentHeightContainerMap->get(descendant);
-    if (!containerSet) {
-        containerSet = new HashSet<RenderBlock*>;
-        gPercentHeightContainerMap->set(descendant, containerSet);
-    }
-    ASSERT(!containerSet->contains(this));
-    containerSet->add(this);
+    insertIntoTrackedRendererMaps(descendant, gPercentHeightDescendantsMap, gPercentHeightContainerMap);
 }
 
 void RenderBlock::removePercentHeightDescendant(RenderBox* descendant)
 {
-    if (!gPercentHeightContainerMap)
-        return;
-
-    HashSet<RenderBlock*>* containerSet = gPercentHeightContainerMap->take(descendant);
-    if (!containerSet)
-        return;
-
-    HashSet<RenderBlock*>::iterator end = containerSet->end();
-    for (HashSet<RenderBlock*>::iterator it = containerSet->begin(); it != end; ++it) {
-        RenderBlock* container = *it;
-        HashSet<RenderBox*>* descendantSet = gPercentHeightDescendantsMap->get(container);
-        ASSERT(descendantSet);
-        if (!descendantSet)
-            continue;
-        ASSERT(descendantSet->contains(descendant));
-        descendantSet->remove(descendant);
-        if (descendantSet->isEmpty()) {
-            gPercentHeightDescendantsMap->remove(container);
-            delete descendantSet;
-        }
-    }
-
-    delete containerSet;
+    removeFromTrackedRendererMaps(descendant, gPercentHeightDescendantsMap, gPercentHeightContainerMap);
 }
 
-HashSet<RenderBox*>* RenderBlock::percentHeightDescendants() const
+TrackedRendererListHashSet* RenderBlock::percentHeightDescendants() const
 {
     return gPercentHeightDescendantsMap ? gPercentHeightDescendantsMap->get(this) : 0;
 }
@@ -4640,15 +4666,15 @@ LayoutUnit RenderBlock::getClearDelta(RenderBox* child, LayoutUnit logicalTop)
     return result;
 }
 
-bool RenderBlock::isPointInOverflowControl(HitTestResult& result, const LayoutPoint& pointInContainer, const LayoutPoint& accumulatedOffset)
+bool RenderBlock::isPointInOverflowControl(HitTestResult& result, const LayoutPoint& locationInContainer, const LayoutPoint& accumulatedOffset)
 {
     if (!scrollsOverflow())
         return false;
 
-    return layer()->hitTestOverflowControls(result, roundedIntPoint(pointInContainer - toLayoutSize(accumulatedOffset)));
+    return layer()->hitTestOverflowControls(result, roundedIntPoint(locationInContainer - toLayoutSize(accumulatedOffset)));
 }
 
-bool RenderBlock::nodeAtPoint(const HitTestRequest& request, HitTestResult& result, const HitTestPoint& pointInContainer, const LayoutPoint& accumulatedOffset, HitTestAction hitTestAction)
+bool RenderBlock::nodeAtPoint(const HitTestRequest& request, HitTestResult& result, const HitTestLocation& locationInContainer, const LayoutPoint& accumulatedOffset, HitTestAction hitTestAction)
 {
     LayoutPoint adjustedLocation(accumulatedOffset + location());
     LayoutSize localOffset = toLayoutSize(adjustedLocation);
@@ -4658,21 +4684,21 @@ bool RenderBlock::nodeAtPoint(const HitTestRequest& request, HitTestResult& resu
         LayoutRect overflowBox = visualOverflowRect();
         flipForWritingMode(overflowBox);
         overflowBox.moveBy(adjustedLocation);
-        if (!pointInContainer.intersects(overflowBox))
+        if (!locationInContainer.intersects(overflowBox))
             return false;
     }
 
-    if ((hitTestAction == HitTestBlockBackground || hitTestAction == HitTestChildBlockBackground) && isPointInOverflowControl(result, pointInContainer.point(), adjustedLocation)) {
-        updateHitTestResult(result, pointInContainer.point() - localOffset);
+    if ((hitTestAction == HitTestBlockBackground || hitTestAction == HitTestChildBlockBackground) && isPointInOverflowControl(result, locationInContainer.point(), adjustedLocation)) {
+        updateHitTestResult(result, locationInContainer.point() - localOffset);
         // FIXME: isPointInOverflowControl() doesn't handle rect-based tests yet.
-        if (!result.addNodeToRectBasedTestResult(node(), pointInContainer))
+        if (!result.addNodeToRectBasedTestResult(node(), locationInContainer))
            return true;
     }
 
     // If we have clipping, then we can't have any spillout.
     bool useOverflowClip = hasOverflowClip() && !hasSelfPaintingLayer();
     bool useClip = (hasControlClip() || useOverflowClip);
-    bool checkChildren = !useClip || (hasControlClip() ? pointInContainer.intersects(controlClipRect(adjustedLocation)) : pointInContainer.intersects(overflowClipRect(adjustedLocation, pointInContainer.region(), IncludeOverlayScrollbarSize)));
+    bool checkChildren = !useClip || (hasControlClip() ? locationInContainer.intersects(controlClipRect(adjustedLocation)) : locationInContainer.intersects(overflowClipRect(adjustedLocation, locationInContainer.region(), IncludeOverlayScrollbarSize)));
     if (checkChildren) {
         // Hit test descendants first.
         LayoutSize scrolledOffset(localOffset);
@@ -4681,14 +4707,14 @@ bool RenderBlock::nodeAtPoint(const HitTestRequest& request, HitTestResult& resu
 
         // Hit test contents if we don't have columns.
         if (!hasColumns()) {
-            if (hitTestContents(request, result, pointInContainer, toLayoutPoint(scrolledOffset), hitTestAction)) {
-                updateHitTestResult(result, pointInContainer.point() - localOffset);
+            if (hitTestContents(request, result, locationInContainer, toLayoutPoint(scrolledOffset), hitTestAction)) {
+                updateHitTestResult(result, locationInContainer.point() - localOffset);
                 return true;
             }
-            if (hitTestAction == HitTestFloat && hitTestFloats(request, result, pointInContainer, toLayoutPoint(scrolledOffset)))
+            if (hitTestAction == HitTestFloat && hitTestFloats(request, result, locationInContainer, toLayoutPoint(scrolledOffset)))
                 return true;
-        } else if (hitTestColumns(request, result, pointInContainer, toLayoutPoint(scrolledOffset), hitTestAction)) {
-            updateHitTestResult(result, flipForWritingMode(pointInContainer.point() - localOffset));
+        } else if (hitTestColumns(request, result, locationInContainer, toLayoutPoint(scrolledOffset), hitTestAction)) {
+            updateHitTestResult(result, flipForWritingMode(locationInContainer.point() - localOffset));
             return true;
         }
     }
@@ -4696,9 +4722,9 @@ bool RenderBlock::nodeAtPoint(const HitTestRequest& request, HitTestResult& resu
     // Now hit test our background
     if (hitTestAction == HitTestBlockBackground || hitTestAction == HitTestChildBlockBackground) {
         LayoutRect boundsRect(adjustedLocation, size());
-        if (visibleToHitTesting() && pointInContainer.intersects(boundsRect)) {
-            updateHitTestResult(result, flipForWritingMode(pointInContainer.point() - localOffset));
-            if (!result.addNodeToRectBasedTestResult(node(), pointInContainer, boundsRect))
+        if (visibleToHitTesting() && locationInContainer.intersects(boundsRect)) {
+            updateHitTestResult(result, flipForWritingMode(locationInContainer.point() - localOffset));
+            if (!result.addNodeToRectBasedTestResult(node(), locationInContainer, boundsRect))
                 return true;
         }
     }
@@ -4706,7 +4732,7 @@ bool RenderBlock::nodeAtPoint(const HitTestRequest& request, HitTestResult& resu
     return false;
 }
 
-bool RenderBlock::hitTestFloats(const HitTestRequest& request, HitTestResult& result, const HitTestPoint& pointInContainer, const LayoutPoint& accumulatedOffset)
+bool RenderBlock::hitTestFloats(const HitTestRequest& request, HitTestResult& result, const HitTestLocation& locationInContainer, const LayoutPoint& accumulatedOffset)
 {
     if (!m_floatingObjects)
         return false;
@@ -4725,8 +4751,8 @@ bool RenderBlock::hitTestFloats(const HitTestRequest& request, HitTestResult& re
             LayoutUnit xOffset = xPositionForFloatIncludingMargin(floatingObject) - floatingObject->m_renderer->x();
             LayoutUnit yOffset = yPositionForFloatIncludingMargin(floatingObject) - floatingObject->m_renderer->y();
             LayoutPoint childPoint = flipFloatForWritingModeForChild(floatingObject, adjustedLocation + LayoutSize(xOffset, yOffset));
-            if (floatingObject->m_renderer->hitTest(request, result, pointInContainer, childPoint)) {
-                updateHitTestResult(result, pointInContainer.point() - toLayoutSize(childPoint));
+            if (floatingObject->m_renderer->hitTest(request, result, locationInContainer, childPoint)) {
+                updateHitTestResult(result, locationInContainer.point() - toLayoutSize(childPoint));
                 return true;
             }
         }
@@ -4794,48 +4820,48 @@ private:
     LayoutRect m_colRect;
 };
 
-bool RenderBlock::hitTestColumns(const HitTestRequest& request, HitTestResult& result, const HitTestPoint& pointInContainer, const LayoutPoint& accumulatedOffset, HitTestAction hitTestAction)
+bool RenderBlock::hitTestColumns(const HitTestRequest& request, HitTestResult& result, const HitTestLocation& locationInContainer, const LayoutPoint& accumulatedOffset, HitTestAction hitTestAction)
 {
     // We need to do multiple passes, breaking up our hit testing into strips.
     if (!hasColumns())
         return false;
 
     for (ColumnRectIterator it(*this); it.hasMore(); it.advance()) {
-        LayoutRect hitRect = pointInContainer.boundingBox();
+        LayoutRect hitRect = locationInContainer.boundingBox();
         LayoutRect colRect = it.columnRect();
         colRect.moveBy(accumulatedOffset);
-        if (pointInContainer.intersects(colRect)) {
+        if (locationInContainer.intersects(colRect)) {
             // The point is inside this column.
             // Adjust accumulatedOffset to change where we hit test.
             LayoutSize offset;
             it.adjust(offset);
             LayoutPoint finalLocation = accumulatedOffset + offset;
             if (!result.isRectBasedTest() || colRect.contains(hitRect))
-                return hitTestContents(request, result, pointInContainer, finalLocation, hitTestAction) || (hitTestAction == HitTestFloat && hitTestFloats(request, result, pointInContainer, finalLocation));
+                return hitTestContents(request, result, locationInContainer, finalLocation, hitTestAction) || (hitTestAction == HitTestFloat && hitTestFloats(request, result, locationInContainer, finalLocation));
 
-            hitTestContents(request, result, pointInContainer, finalLocation, hitTestAction);
+            hitTestContents(request, result, locationInContainer, finalLocation, hitTestAction);
         }
     }
 
     return false;
 }
 
-void RenderBlock::adjustForColumnRect(LayoutSize& offset, const LayoutPoint& pointInContainer) const
+void RenderBlock::adjustForColumnRect(LayoutSize& offset, const LayoutPoint& locationInContainer) const
 {
     for (ColumnRectIterator it(*this); it.hasMore(); it.advance()) {
         LayoutRect colRect = it.columnRect();
-        if (colRect.contains(pointInContainer)) {
+        if (colRect.contains(locationInContainer)) {
             it.adjust(offset);
             return;
         }
     }
 }
 
-bool RenderBlock::hitTestContents(const HitTestRequest& request, HitTestResult& result, const HitTestPoint& pointInContainer, const LayoutPoint& accumulatedOffset, HitTestAction hitTestAction)
+bool RenderBlock::hitTestContents(const HitTestRequest& request, HitTestResult& result, const HitTestLocation& locationInContainer, const LayoutPoint& accumulatedOffset, HitTestAction hitTestAction)
 {
     if (childrenInline() && !isTable()) {
         // We have to hit-test our line boxes.
-        if (m_lineBoxes.hitTest(this, request, result, pointInContainer, accumulatedOffset, hitTestAction))
+        if (m_lineBoxes.hitTest(this, request, result, locationInContainer, accumulatedOffset, hitTestAction))
             return true;
     } else {
         // Hit test our children.
@@ -4844,7 +4870,7 @@ bool RenderBlock::hitTestContents(const HitTestRequest& request, HitTestResult& 
             childHitTest = HitTestChildBlockBackground;
         for (RenderBox* child = lastChildBox(); child; child = child->previousSiblingBox()) {
             LayoutPoint childPoint = flipForWritingModeForChild(child, accumulatedOffset);
-            if (!child->hasSelfPaintingLayer() && !child->isFloating() && child->nodeAtPoint(request, result, pointInContainer, childPoint, childHitTest))
+            if (!child->hasSelfPaintingLayer() && !child->isFloating() && child->nodeAtPoint(request, result, locationInContainer, childPoint, childHitTest))
                 return true;
         }
     }
@@ -4881,8 +4907,9 @@ static inline bool isEditingBoundary(RenderObject* ancestor, RenderObject* child
 static VisiblePosition positionForPointRespectingEditingBoundaries(RenderBlock* parent, RenderBox* child, const LayoutPoint& pointInParentCoordinates)
 {
     LayoutPoint childLocation = child->location();
-    if (child->isRelPositioned())
-        childLocation += child->relativePositionOffset();
+    if (child->isInFlowPositioned())
+        childLocation += child->offsetForInFlowPosition();
+
     // FIXME: This is wrong if the child's writing-mode is different from the parent's.
     LayoutPoint pointInChildCoordinates(toLayoutPoint(pointInParentCoordinates - childLocation));
 
@@ -5116,8 +5143,12 @@ void RenderBlock::calcColumnWidth()
 
 bool RenderBlock::requiresColumns(int desiredColumnCount) const
 {
+    // If overflow-y is set to paged-x or paged-y on the body or html element, we'll handle the paginating
+    // in the RenderView instead.
+    bool isPaginated = (style()->overflowY() == OPAGEDX || style()->overflowY() == OPAGEDY) && !(isRoot() || isBody());
+
     return firstChild()
-        && (desiredColumnCount != 1 || !style()->hasAutoColumnWidth() || !style()->hasInlineColumnAxis())
+        && (desiredColumnCount != 1 || !style()->hasAutoColumnWidth() || !style()->hasInlineColumnAxis() || isPaginated)
         && !firstChild()->isAnonymousColumnsBlock()
         && !firstChild()->isAnonymousColumnSpanBlock();
 }
@@ -5146,6 +5177,32 @@ void RenderBlock::setDesiredColumnCountAndWidth(int count, LayoutUnit width)
         info->setProgressionAxis(style()->hasInlineColumnAxis() ? ColumnInfo::InlineAxis : ColumnInfo::BlockAxis);
         info->setProgressionIsReversed(style()->columnProgression() == ReverseColumnProgression);
     }
+}
+
+void RenderBlock::updateColumnInfoFromStyle(RenderStyle* style)
+{
+    if (!hasColumns())
+        return;
+
+    ColumnInfo* info = gColumnInfoMap->get(this);
+
+    bool needsLayout = false;
+    ColumnInfo::Axis oldAxis = info->progressionAxis();
+    ColumnInfo::Axis newAxis = style->hasInlineColumnAxis() ? ColumnInfo::InlineAxis : ColumnInfo::BlockAxis;
+    if (oldAxis != newAxis) {
+        info->setProgressionAxis(newAxis);
+        needsLayout = true;
+    }
+
+    bool oldProgressionIsReversed = info->progressionIsReversed();
+    bool newProgressionIsReversed = style->columnProgression() == ReverseColumnProgression;
+    if (oldProgressionIsReversed != newProgressionIsReversed) {
+        info->setProgressionIsReversed(newProgressionIsReversed);
+        needsLayout = true;
+    }
+
+    if (needsLayout)
+        setNeedsLayoutAndPrefWidthsRecalc();
 }
 
 LayoutUnit RenderBlock::desiredColumnWidth() const
@@ -5641,6 +5698,25 @@ static inline void updatePreferredWidth(LayoutUnit& preferredWidth, float& resul
     preferredWidth = max(snappedResult, preferredWidth);
 }
 
+// With sub-pixel enabled: When converting between floating point and LayoutUnits
+// we risk losing precision with each conversion. When this occurs while
+// accumulating our preferred widths, we can wind up with a line width that's
+// larger than our maxPreferredWidth due to pure float accumulation.
+//
+// With sub-pixel disabled: values from Lengths or the render tree aren't subject
+// to the same loss of precision, as they're always truncated and stored as
+// integers. We mirror that behavior here to prevent over-allocating our preferred
+// width.
+static inline LayoutUnit adjustFloatForSubPixelLayout(float value)
+{
+#if ENABLE(SUBPIXEL_LAYOUT)
+    return ceiledLayoutUnit(value);
+#else
+    return static_cast<int>(value);
+#endif
+}
+
+
 void RenderBlock::computeInlinePreferredLogicalWidths()
 {
     float inlineMax = 0;
@@ -5730,11 +5806,11 @@ void RenderBlock::computeInlinePreferredLogicalWidths()
                     Length startMargin = childStyle->marginStart();
                     Length endMargin = childStyle->marginEnd();
                     if (startMargin.isFixed())
-                        margins += startMargin.value();
+                        margins += adjustFloatForSubPixelLayout(startMargin.value());
                     if (endMargin.isFixed())
-                        margins += endMargin.value();
-                    childMin += margins;
-                    childMax += margins;
+                        margins += adjustFloatForSubPixelLayout(endMargin.value());
+                    childMin += margins.ceilToFloat();
+                    childMax += margins.ceilToFloat();
                 }
             }
 
@@ -5742,8 +5818,8 @@ void RenderBlock::computeInlinePreferredLogicalWidths()
                 // Case (2). Inline replaced elements and floats.
                 // Go ahead and terminate the current line as far as
                 // minwidth is concerned.
-                childMin += child->minPreferredLogicalWidth();
-                childMax += child->maxPreferredLogicalWidth();
+                childMin += child->minPreferredLogicalWidth().ceilToFloat();
+                childMax += child->maxPreferredLogicalWidth().ceilToFloat();
 
                 bool clearPreviousFloat;
                 if (child->isFloating()) {
@@ -5770,11 +5846,11 @@ void RenderBlock::computeInlinePreferredLogicalWidths()
                 LayoutUnit ti = 0;
                 if (!addedTextIndent) {
                     ti = textIndent;
-                    childMin += ti;
-                    childMax += ti;
+                    childMin += ti.ceilToFloat();
+                    childMax += ti.ceilToFloat();
 
                     if (childMin < 0)
-                        textIndent = childMin;
+                        textIndent = adjustFloatForSubPixelLayout(childMin);
                     else
                         addedTextIndent = true;
                 }
@@ -5842,11 +5918,14 @@ void RenderBlock::computeInlinePreferredLogicalWidths()
                     trailingSpaceChild = 0;
 
                 // Add in text-indent.  This is added in only once.
-                LayoutUnit ti = 0;
+                float ti = 0;
                 if (!addedTextIndent) {
-                    ti = textIndent;
-                    childMin+=ti; beginMin += ti;
-                    childMax+=ti; beginMax += ti;
+                    ti = textIndent.ceilToFloat();
+                    
+                    childMin += ti;
+                    childMax += ti;
+                    beginMin += ti;
+                    beginMax += ti;
                     
                     if (childMin < 0)
                         textIndent = childMin;
@@ -6797,7 +6876,7 @@ bool RenderBlock::hasNextPage(LayoutUnit logicalOffset, PageBoundaryRule pageBou
 
     // See if we're in the last region.
     LayoutUnit pageOffset = offsetFromLogicalTopOfFirstPage() + logicalOffset;
-    RenderRegion* region = enclosingRenderFlowThread()->renderRegionForLine(pageOffset, this);
+    RenderRegion* region = enclosingRenderFlowThread()->regionAtBlockOffset(pageOffset, this);
     if (!region)
         return false;
     if (region->isLastRegion())
@@ -6884,7 +6963,7 @@ LayoutUnit RenderBlock::pageLogicalTopForOffset(LayoutUnit offset) const
             return 0;
         return cumulativeOffset - roundToInt(cumulativeOffset - firstPageLogicalTop) % roundToInt(pageLogicalHeight);
     }
-    return enclosingRenderFlowThread()->regionLogicalTopForLine(cumulativeOffset);
+    return enclosingRenderFlowThread()->pageLogicalTopForOffset(cumulativeOffset);
 }
 
 LayoutUnit RenderBlock::pageLogicalHeightForOffset(LayoutUnit offset) const
@@ -6892,7 +6971,7 @@ LayoutUnit RenderBlock::pageLogicalHeightForOffset(LayoutUnit offset) const
     RenderView* renderView = view();
     if (!inRenderFlowThread())
         return renderView->layoutState()->m_pageLogicalHeight;
-    return enclosingRenderFlowThread()->regionLogicalHeightForLine(offset + offsetFromLogicalTopOfFirstPage());
+    return enclosingRenderFlowThread()->pageLogicalHeightForOffset(offset + offsetFromLogicalTopOfFirstPage());
 }
 
 LayoutUnit RenderBlock::pageRemainingLogicalHeightForOffset(LayoutUnit offset, PageBoundaryRule pageBoundaryRule) const
@@ -6902,16 +6981,16 @@ LayoutUnit RenderBlock::pageRemainingLogicalHeightForOffset(LayoutUnit offset, P
     
     if (!inRenderFlowThread()) {
         LayoutUnit pageLogicalHeight = renderView->layoutState()->m_pageLogicalHeight;
-        LayoutUnit remainingHeight = pageLogicalHeight - layoutMod(offset, pageLogicalHeight);
+        LayoutUnit remainingHeight = pageLogicalHeight - intMod(offset, pageLogicalHeight);
         if (pageBoundaryRule == IncludePageBoundary) {
             // If includeBoundaryPoint is true the line exactly on the top edge of a
             // column will act as being part of the previous column.
-            remainingHeight = layoutMod(remainingHeight, pageLogicalHeight);
+            remainingHeight = intMod(remainingHeight, pageLogicalHeight);
         }
         return remainingHeight;
     }
     
-    return enclosingRenderFlowThread()->regionRemainingLogicalHeightForLine(offset, pageBoundaryRule);
+    return enclosingRenderFlowThread()->pageRemainingLogicalHeightForOffset(offset, pageBoundaryRule);
 }
 
 LayoutUnit RenderBlock::adjustForUnsplittableChild(RenderBox* child, LayoutUnit logicalOffset, bool includeMargins)
@@ -7118,7 +7197,7 @@ RenderRegion* RenderBlock::regionAtBlockOffset(LayoutUnit blockOffset) const
     if (!flowThread || !flowThread->hasValidRegionInfo())
         return 0;
 
-    return flowThread->renderRegionForLine(offsetFromLogicalTopOfFirstPage() + blockOffset, true);
+    return flowThread->regionAtBlockOffset(offsetFromLogicalTopOfFirstPage() + blockOffset, true);
 }
 
 void RenderBlock::setStaticInlinePositionForChild(RenderBox* child, LayoutUnit blockOffset, LayoutUnit inlinePosition)
@@ -7275,6 +7354,8 @@ const char* RenderBlock::renderName() const
         return "RenderBlock (generated)";
     if (isRelPositioned())
         return "RenderBlock (relative positioned)";
+    if (isStickyPositioned())
+        return "RenderBlock (sticky positioned)";
     if (isRunIn())
         return "RenderBlock (run-in)";
     return "RenderBlock";
@@ -7438,9 +7519,12 @@ RenderBlock* RenderBlock::createAnonymousColumnSpanWithParentRenderer(const Rend
 #ifndef NDEBUG
 void RenderBlock::checkPositionedObjectsNeedLayout()
 {
-    if (PositionedObjectsListHashSet* positionedObjects = this->positionedObjects()) {
-        PositionedObjectsListHashSet::const_iterator end = positionedObjects->end();
-        for (PositionedObjectsListHashSet::const_iterator it = positionedObjects->begin(); it != end; ++it) {
+    if (!gPositionedDescendantsMap)
+        return;
+
+    if (TrackedRendererListHashSet* positionedDescendantSet = positionedObjects()) {
+        TrackedRendererListHashSet::const_iterator end = positionedDescendantSet->end();
+        for (TrackedRendererListHashSet::const_iterator it = positionedDescendantSet->begin(); it != end; ++it) {
             RenderBox* currBox = *it;
             ASSERT(!currBox->needsLayout());
         }

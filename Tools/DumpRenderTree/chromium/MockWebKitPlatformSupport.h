@@ -44,6 +44,7 @@ public:
 
 #if ENABLE(MEDIA_STREAM)
     virtual WebKit::WebMediaStreamCenter* createMediaStreamCenter(WebKit::WebMediaStreamCenterClient*) OVERRIDE;
+    virtual WebKit::WebRTCPeerConnectionHandler* createRTCPeerConnectionHandler(WebKit::WebRTCPeerConnectionHandlerClient*) OVERRIDE;
 #endif // ENABLE(MEDIA_STREAM)
 
 private:

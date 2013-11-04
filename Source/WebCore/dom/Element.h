@@ -40,9 +40,10 @@ class ClientRectList;
 class DOMStringMap;
 class DOMTokenList;
 class ElementRareData;
-class IntSize;
-class ShadowRoot;
 class ElementShadow;
+class IntSize;
+class RenderRegion;
+class ShadowRoot;
 class WebKitAnimationList;
 
 enum SpellcheckAttributeState {
@@ -113,7 +114,8 @@ public:
 
     bool hasAttribute(const QualifiedName&) const;
     const AtomicString& getAttribute(const QualifiedName&) const;
-    void setAttribute(const QualifiedName&, const AtomicString& value, EInUpdateStyleAttribute = NotInUpdateStyleAttribute);
+    void setAttribute(const QualifiedName&, const AtomicString& value);
+    void setSynchronizedLazyAttribute(const QualifiedName&, const AtomicString& value);
     void removeAttribute(const QualifiedName&);
     void removeAttribute(size_t index);
 
@@ -139,8 +141,8 @@ public:
     // in style attribute or one of the SVG animation attributes.
     bool hasAttributesWithoutUpdate() const;
 
-    bool hasAttribute(const String& name) const;
-    bool hasAttributeNS(const String& namespaceURI, const String& localName) const;
+    bool hasAttribute(const AtomicString& name) const;
+    bool hasAttributeNS(const AtomicString& namespaceURI, const AtomicString& localName) const;
 
     const AtomicString& getAttribute(const AtomicString& name) const;
     const AtomicString& getAttributeNS(const AtomicString& namespaceURI, const AtomicString& localName) const;
@@ -199,13 +201,13 @@ public:
     // Returns the absolute bounding box translated into screen coordinates:
     IntRect screenRect() const;
 
-    void removeAttribute(const String& name);
-    void removeAttributeNS(const String& namespaceURI, const String& localName);
+    void removeAttribute(const AtomicString& name);
+    void removeAttributeNS(const AtomicString& namespaceURI, const AtomicString& localName);
 
     PassRefPtr<Attr> detachAttribute(size_t index);
 
-    PassRefPtr<Attr> getAttributeNode(const String& name);
-    PassRefPtr<Attr> getAttributeNodeNS(const String& namespaceURI, const String& localName);
+    PassRefPtr<Attr> getAttributeNode(const AtomicString& name);
+    PassRefPtr<Attr> getAttributeNodeNS(const AtomicString& namespaceURI, const AtomicString& localName);
     PassRefPtr<Attr> setAttributeNode(Attr*, ExceptionCode&);
     PassRefPtr<Attr> setAttributeNodeNS(Attr*, ExceptionCode&);
     PassRefPtr<Attr> removeAttributeNode(Attr*, ExceptionCode&);
@@ -244,6 +246,7 @@ public:
 
     // This method is called whenever an attribute is added, changed or removed.
     virtual void attributeChanged(const Attribute&);
+    virtual void parseAttribute(const Attribute&);
 
     // Only called by the parser immediately after element construction.
     void parserSetAttributes(const Vector<Attribute>&, FragmentScriptingPermission);
@@ -275,10 +278,6 @@ public:
 
     ShadowRoot* userAgentShadowRoot() const;
 
-    // FIXME: Remove Element::ensureShadowRoot
-    // https://bugs.webkit.org/show_bug.cgi?id=77608
-    ShadowRoot* ensureShadowRoot();
-
     virtual const AtomicString& shadowPseudoId() const;
     void setShadowPseudoId(const AtomicString&, ExceptionCode& = ASSERT_NO_EXCEPTION);
 
@@ -304,7 +303,7 @@ public:
 
     virtual void focus(bool restorePreviousSelection = true);
     virtual void updateFocusAppearance(bool restorePreviousSelection);
-    void blur();
+    virtual void blur();
 
     String innerText();
     String outerText();
@@ -350,6 +349,8 @@ public:
     Element* nextElementSibling() const;
     unsigned childElementCount() const;
 
+    virtual bool shouldMatchReadOnlySelector() const;
+    virtual bool shouldMatchReadWriteSelector() const;
     bool webkitMatchesSelector(const String& selectors, ExceptionCode&);
 
     DOMTokenList* classList();
@@ -373,7 +374,6 @@ public:
 
     virtual bool isFormControlElement() const { return false; }
     virtual bool isEnabledFormControl() const { return true; }
-    virtual bool isReadOnlyFormControl() const { return false; }
     virtual bool isSpinButtonElement() const { return false; }
     virtual bool isTextFormControl() const { return false; }
     virtual bool isOptionalFormControl() const { return false; }
@@ -424,29 +424,23 @@ public:
     
     PassRefPtr<RenderStyle> styleForRenderer();
 
-    const AtomicString& webkitRegionOverflow() const;
+    RenderRegion* renderRegion() const;
+    const AtomicString& webkitRegionOverset() const;
 
     bool hasID() const;
     bool hasClass() const;
+    const SpaceSplitString& classNames() const;
 
     IntSize savedLayerScrollOffset() const;
     void setSavedLayerScrollOffset(const IntSize&);
 
     virtual void reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
     {
-        MemoryClassInfo<Element> info(memoryObjectInfo, this, MemoryInstrumentation::DOM);
-        info.visitBaseClass<ContainerNode>(this);
+        MemoryClassInfo info(memoryObjectInfo, this, MemoryInstrumentation::DOM);
+        ContainerNode::reportMemoryUsage(memoryObjectInfo);
         info.addInstrumentedMember(m_tagName);
-        info.addInstrumentedMember(attributeData());
+        info.addInstrumentedMember(m_attributeData);
     }
-
-#if ENABLE(UNDO_MANAGER)
-    bool undoScope() const;
-    void setUndoScope(bool);
-    PassRefPtr<UndoManager> undoManager();
-    void disconnectUndoManager();
-    void disconnectUndoManagersInSubtree();
-#endif
 
 protected:
     Element(const QualifiedName& tagName, Document* document, ConstructionType type)
@@ -469,6 +463,11 @@ protected:
     PassRefPtr<HTMLCollection> ensureCachedHTMLCollection(CollectionType);
     HTMLCollection* cachedHTMLCollection(CollectionType);
 
+    // classAttributeChanged() exists to share code between
+    // parseAttribute (called via setAttribute()) and
+    // svgAttributeChanged (called when element.className.baseValue is set)
+    void classAttributeChanged(const AtomicString& newClassString);
+
 private:
     void updateInvalidAttributes() const;
 
@@ -478,7 +477,7 @@ private:
     virtual NodeType nodeType() const;
     virtual bool childTypeAllowed(NodeType) const;
 
-    void setAttributeInternal(size_t index, const QualifiedName&, const AtomicString& value, EInUpdateStyleAttribute);
+    void setAttributeInternal(size_t index, const QualifiedName&, const AtomicString& value, SynchronizationOfLazyAttribute);
 
 #ifndef NDEBUG
     virtual void formatForDebugger(char* buffer, unsigned length) const;
@@ -501,7 +500,7 @@ private:
     
     // cloneNode is private so that non-virtual cloneElementWithChildren and cloneElementWithoutChildren
     // are used instead.
-    virtual PassRefPtr<Node> cloneNode(bool deep);
+    virtual PassRefPtr<Node> cloneNode(bool deep, ExceptionCode&);
     virtual PassRefPtr<Element> cloneElementWithoutAttributesAndChildren();
 
     QualifiedName m_tagName;
@@ -693,6 +692,13 @@ inline const AtomicString& Element::getNameAttribute() const
 inline void Element::setIdAttribute(const AtomicString& value)
 {
     setAttribute(document()->idAttributeName(), value);
+}
+
+inline const SpaceSplitString& Element::classNames() const
+{
+    ASSERT(hasClass());
+    ASSERT(attributeData());
+    return attributeData()->classNames();
 }
 
 inline size_t Element::attributeCount() const

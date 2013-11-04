@@ -35,7 +35,6 @@
  */
 WebInspector.ResourceTreeModel = function(networkManager)
 {
-    networkManager.addEventListener(WebInspector.NetworkManager.EventTypes.ResourceTrackingEnabled, this._onResourceTrackingEnabled, this);
     networkManager.addEventListener(WebInspector.NetworkManager.EventTypes.RequestUpdated, this._onRequestUpdated, this);
     networkManager.addEventListener(WebInspector.NetworkManager.EventTypes.RequestFinished, this._onRequestUpdated, this);
     networkManager.addEventListener(WebInspector.NetworkManager.EventTypes.RequestUpdateDropped, this._onRequestUpdateDropped, this);
@@ -68,11 +67,6 @@ WebInspector.ResourceTreeModel.EventTypes = {
 }
 
 WebInspector.ResourceTreeModel.prototype = {
-    _onResourceTrackingEnabled: function()
-    {
-        this._fetchResourceTree();
-    },
-
     _fetchResourceTree: function()
     {
         this._frames = {};
@@ -93,6 +87,11 @@ WebInspector.ResourceTreeModel.prototype = {
         this._dispatchInspectedURLChanged();
         this.dispatchEventToListeners(WebInspector.ResourceTreeModel.EventTypes.CachedResourcesLoaded);
         this._cachedResourcesProcessed = true;
+    },
+
+    cachedResourcesLoaded: function()
+    {
+        return this._cachedResourcesProcessed;
     },
 
     _dispatchInspectedURLChanged: function()
@@ -117,9 +116,6 @@ WebInspector.ResourceTreeModel.prototype = {
      */
     _frameNavigated: function(framePayload)
     {
-        if (this._frontendReused(framePayload))
-            return;
-
         // Do nothing unless cached resource tree is processed - it will overwrite everything.
         if (!this._cachedResourcesProcessed)
             return;
@@ -152,20 +148,6 @@ WebInspector.ResourceTreeModel.prototype = {
 
         if (frame.isMainFrame())
             this._dispatchInspectedURLChanged();
-    },
-
-    /**
-     * @param {PageAgent.Frame} framePayload
-     * @return {boolean}
-     */
-    _frontendReused: function(framePayload)
-    {
-        if (!framePayload.parentId && !WebInspector.networkLog.requests.length) {
-            // We are navigating main frame to the existing loaded backend (no provisioual loaded resources are there). 
-            this._fetchResourceTree();
-            return true;
-        }
-        return false;
     },
 
     /**

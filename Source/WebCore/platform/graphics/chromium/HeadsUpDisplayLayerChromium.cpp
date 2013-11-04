@@ -27,21 +27,32 @@
 
 #include "HeadsUpDisplayLayerChromium.h"
 
+#include "CCHeadsUpDisplayLayerImpl.h"
+#include "CCLayerTreeHost.h"
 #include "TraceEvent.h"
-#include "cc/CCHeadsUpDisplayLayerImpl.h"
-#include "cc/CCLayerTreeHost.h"
 
 namespace WebCore {
 
-PassRefPtr<HeadsUpDisplayLayerChromium> HeadsUpDisplayLayerChromium::create(const CCLayerTreeSettings& settings, int maxTextureSize)
+PassRefPtr<HeadsUpDisplayLayerChromium> HeadsUpDisplayLayerChromium::create()
 {
-    return adoptRef(new HeadsUpDisplayLayerChromium(settings, maxTextureSize));
+    return adoptRef(new HeadsUpDisplayLayerChromium());
 }
 
-HeadsUpDisplayLayerChromium::HeadsUpDisplayLayerChromium(const CCLayerTreeSettings& settings, int maxTextureSize)
+HeadsUpDisplayLayerChromium::HeadsUpDisplayLayerChromium()
     : LayerChromium()
 {
-    OwnPtr<CCFontAtlas> fontAtlas;
+
+    setBounds(IntSize(512, 128));
+}
+
+HeadsUpDisplayLayerChromium::~HeadsUpDisplayLayerChromium()
+{
+}
+
+void HeadsUpDisplayLayerChromium::update(CCTextureUpdateQueue&, const CCOcclusionTracker*, CCRenderingStats&)
+{
+    const CCLayerTreeSettings& settings = layerTreeHost()->settings();
+    int maxTextureSize = layerTreeHost()->rendererCapabilities().maxTextureSize;
 
     IntSize bounds;
     if (settings.showPlatformLayerTree || settings.showDebugRects()) {
@@ -51,23 +62,30 @@ HeadsUpDisplayLayerChromium::HeadsUpDisplayLayerChromium(const CCLayerTreeSettin
         bounds.setWidth(512);
         bounds.setHeight(128);
     }
-    setBounds(bounds);
 
-    // Only allocate the font atlas if we have reason to use the heads-up display.
-    if (settings.showFPSCounter || settings.showPlatformLayerTree) {
-        TRACE_EVENT0("cc", "HeadsUpDisplayLayerChromium::initializeFontAtlas");
-        m_fontAtlas = CCFontAtlas::create();
-        m_fontAtlas->initialize();
-    }
+    setBounds(bounds);
 }
 
-HeadsUpDisplayLayerChromium::~HeadsUpDisplayLayerChromium()
+void HeadsUpDisplayLayerChromium::setFontAtlas(PassOwnPtr<CCFontAtlas> fontAtlas)
 {
+    m_fontAtlas = fontAtlas;
+    setNeedsCommit();
 }
 
 PassOwnPtr<CCLayerImpl> HeadsUpDisplayLayerChromium::createCCLayerImpl()
 {
-    return CCHeadsUpDisplayLayerImpl::create(m_layerId, m_fontAtlas.release());
+    return CCHeadsUpDisplayLayerImpl::create(m_layerId);
+}
+
+void HeadsUpDisplayLayerChromium::pushPropertiesTo(CCLayerImpl* layerImpl)
+{
+    LayerChromium::pushPropertiesTo(layerImpl);
+
+    if (!m_fontAtlas)
+        return;
+
+    CCHeadsUpDisplayLayerImpl* hudLayerImpl = static_cast<CCHeadsUpDisplayLayerImpl*>(layerImpl);
+    hudLayerImpl->setFontAtlas(m_fontAtlas.release());
 }
 
 }

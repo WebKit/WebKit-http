@@ -370,10 +370,40 @@ public:
     int globalX;
     int globalY;
 
-    // NOTE: |deltaX| and |deltaY| represents the amount to scroll for Scroll gesture events. For Pinch gesture events, |deltaX| represents the scaling/magnification factor. For a GestureTap event, |deltaX| and |deltaY| represent the horizontal and vertical radii of the touch region.
+    // FIXME: These are currently overloaded. We're in the process of moving
+    // to the union below. http://wkb.ug/93123
     float deltaX;
     float deltaY;
     WebRect boundingBox;
+
+    union {
+      struct {
+        int tapCount;
+        int width;
+        int height;
+      } tap;
+
+      struct {
+        int width;
+        int height;
+      } longPress;
+
+      struct {
+        float deltaX;
+        float deltaY;
+        float velocityX;
+        float velocityY;
+      } scrollUpdate;
+
+      struct {
+        float velocityX;
+        float velocityY;
+      } flingStart;
+
+      struct {
+        float scale;
+      } pinchUpdate;
+    } data; 
 
     WebGestureEvent(unsigned sizeParam = sizeof(WebGestureEvent))
         : WebInputEvent(sizeParam)
@@ -384,6 +414,7 @@ public:
         , deltaX(0.0f)
         , deltaY(0.0f)
     {
+      memset(&data, 0, sizeof(data)); 
     }
 };
 

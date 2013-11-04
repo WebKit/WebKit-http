@@ -35,15 +35,30 @@
 #include "ExceptionCode.h"
 
 #include "V8ArrayBuffer.h"
+#include "V8ArrayBufferCustom.h"
 #include "V8Binding.h"
-#include "V8Proxy.h"
 
 namespace WebCore {
+
+static const char* tooLargeSize = "Size is too large (or is negative).";
+static const char* outOfRangeLengthAndOffset = "Index is out of range.";
 
 // Copy the elements from the source array to the typed destination array.
 // Returns true if it succeeded, otherwise returns false.
 bool copyElements(v8::Handle<v8::Object> destArray, v8::Handle<v8::Object> srcArray, uint32_t length, uint32_t offset, v8::Isolate*);
 
+template<class ArrayClass>
+v8::Handle<v8::Value> wrapArrayBufferView(const v8::Arguments& args, WrapperTypeInfo* type, ArrayClass array, v8::ExternalArrayType arrayType, bool hasIndexer)
+{
+    // Transform the holder into a wrapper object for the array.
+    V8DOMWrapper::setDOMWrapper(args.Holder(), type, array.get());
+    if (hasIndexer)
+        args.Holder()->SetIndexedPropertiesToExternalArrayData(array.get()->baseAddress(), arrayType, array.get()->length());
+    v8::Handle<v8::Object> wrapper = args.Holder();
+    v8::Persistent<v8::Object> wrapperHandle = V8DOMWrapper::setJSWrapperForDOMObject(array.release(), wrapper);
+    wrapperHandle.MarkIndependent();
+    return wrapper;
+}
 
 // Template function used by the ArrayBufferView*Constructor callbacks.
 template<class ArrayClass, class ElementType>
@@ -51,44 +66,38 @@ v8::Handle<v8::Value> constructWebGLArrayWithArrayBufferArgument(const v8::Argum
 {
     ArrayBuffer* buf = V8ArrayBuffer::toNative(args[0]->ToObject());
     if (!buf)
-        return V8Proxy::throwTypeError("Could not convert argument 0 to a ArrayBuffer", args.GetIsolate());
+        return throwTypeError("Could not convert argument 0 to a ArrayBuffer", args.GetIsolate());
     bool ok;
     uint32_t offset = 0;
     int argLen = args.Length();
     if (argLen > 1) {
         offset = toUInt32(args[1], ok);
         if (!ok)
-            return V8Proxy::throwTypeError("Could not convert argument 1 to a number", args.GetIsolate());
+            return throwTypeError("Could not convert argument 1 to a number", args.GetIsolate());
     }
     uint32_t length = 0;
     if (argLen > 2) {
         length = toUInt32(args[2], ok);
         if (!ok)
-            return V8Proxy::throwTypeError("Could not convert argument 2 to a number", args.GetIsolate());
+            return throwTypeError("Could not convert argument 2 to a number", args.GetIsolate());
     } else {
         if ((buf->byteLength() - offset) % sizeof(ElementType))
-            return V8Proxy::throwError(V8Proxy::RangeError, "ArrayBuffer length minus the byteOffset is not a multiple of the element size.", args.GetIsolate());
+            return throwError(RangeError, "ArrayBuffer length minus the byteOffset is not a multiple of the element size.", args.GetIsolate());
         length = (buf->byteLength() - offset) / sizeof(ElementType);
     }
     RefPtr<ArrayClass> array = ArrayClass::create(buf, offset, length);
     if (!array)
-        return V8Proxy::setDOMException(INDEX_SIZE_ERR, args.GetIsolate());
-    // Transform the holder into a wrapper object for the array.
-    V8DOMWrapper::setDOMWrapper(args.Holder(), type, array.get());
-    if (hasIndexer)
-        args.Holder()->SetIndexedPropertiesToExternalArrayData(array.get()->baseAddress(), arrayType, array.get()->length());
-    v8::Persistent<v8::Object> wrapper = v8::Persistent<v8::Object>::New(args.Holder());
-    wrapper.MarkIndependent();
-    V8DOMWrapper::setJSWrapperForDOMObject(array.release(), wrapper);
-    return args.Holder();
+        return throwError(RangeError, tooLargeSize, args.GetIsolate());
+
+    return wrapArrayBufferView(args, type, array, arrayType, hasIndexer);
 }
 
 // Template function used by the ArrayBufferView*Constructor callbacks.
-template<class ArrayClass, class ElementType>
+template<class ArrayClass, class JavaScriptWrapperArrayType, class ElementType>
 v8::Handle<v8::Value> constructWebGLArray(const v8::Arguments& args, WrapperTypeInfo* type, v8::ExternalArrayType arrayType)
 {
     if (!args.IsConstructCall())
-        return V8Proxy::throwTypeError("DOM object constructor cannot be called as a function.", args.GetIsolate());
+        return throwTypeError("DOM object constructor cannot be called as a function.", args.GetIsolate());
 
     if (ConstructorMode::current() == ConstructorMode::WrapExistingObject)
         return args.Holder();
@@ -104,15 +113,10 @@ v8::Handle<v8::Value> constructWebGLArray(const v8::Arguments& args, WrapperType
         // construct an empty view to avoid crashes when fetching the
         // length.
         RefPtr<ArrayClass> array = ArrayClass::create(0);
-        // Transform the holder into a wrapper object for the array.
-        V8DOMWrapper::setDOMWrapper(args.Holder(), type, array.get());
         // Do not call SetIndexedPropertiesToExternalArrayData on this
         // object. Not only is there no point from a performance
         // perspective, but doing so causes errors in the subset() case.
-        v8::Persistent<v8::Object> wrapper = v8::Persistent<v8::Object>::New(args.Holder());
-        wrapper.MarkIndependent();
-        V8DOMWrapper::setJSWrapperForDOMObject(array.release(), wrapper);
-        return args.Holder();
+        return wrapArrayBufferView(args, type, array, arrayType, false);
     }
 
     // Supported constructors:
@@ -127,12 +131,29 @@ v8::Handle<v8::Value> constructWebGLArray(const v8::Arguments& args, WrapperType
 
     if (args[0]->IsNull()) {
         // Invalid first argument
-        return V8Proxy::throwTypeError(0, args.GetIsolate());
+        return throwTypeError(0, args.GetIsolate());
     }
 
     // See whether the first argument is a ArrayBuffer.
     if (V8ArrayBuffer::HasInstance(args[0]))
       return constructWebGLArrayWithArrayBufferArgument<ArrayClass, ElementType>(args, type, arrayType, true);
+
+    // See whether the first argument is the same type as impl. In that case,
+    // we can simply memcpy data from source to impl.
+    if (JavaScriptWrapperArrayType::HasInstance(args[0])) {
+        ArrayClass* source = JavaScriptWrapperArrayType::toNative(args[0]->ToObject());
+        uint32_t length = source->length();
+        RefPtr<ArrayClass> array = ArrayClass::createUninitialized(length);
+        if (!array.get())
+            return throwError(RangeError, tooLargeSize, args.GetIsolate());
+
+        array->buffer()->setDeallocationObserver(V8ArrayBufferDeallocationObserver::instance());
+        v8::V8::AdjustAmountOfExternalAllocatedMemory(array->byteLength());
+
+        memcpy(array->baseAddress(), source->baseAddress(), length * sizeof(ElementType));
+
+        return wrapArrayBufferView(args, type, array, arrayType, true);
+    }
 
     uint32_t len = 0;
     v8::Handle<v8::Object> srcArray;
@@ -141,7 +162,7 @@ v8::Handle<v8::Value> constructWebGLArray(const v8::Arguments& args, WrapperType
     if (args[0]->IsObject()) {
         srcArray = args[0]->ToObject();
         if (srcArray.IsEmpty())
-            return V8Proxy::throwTypeError("Could not convert argument 0 to an array", args.GetIsolate());
+            return throwTypeError("Could not convert argument 0 to an array", args.GetIsolate());
         len = toUInt32(srcArray->Get(v8::String::New("length")));
         doInstantiation = true;
     } else {
@@ -154,10 +175,20 @@ v8::Handle<v8::Value> constructWebGLArray(const v8::Arguments& args, WrapperType
     }
 
     RefPtr<ArrayClass> array;
-    if (doInstantiation)
-        array = ArrayClass::create(len);
+    if (doInstantiation) {
+        if (srcArray.IsEmpty())
+            array = ArrayClass::create(len);
+        else
+            array = ArrayClass::createUninitialized(len);
+    }
+
     if (!array.get())
-        return V8Proxy::throwError(V8Proxy::RangeError, "ArrayBufferView size is not a small enough positive integer.", args.GetIsolate());
+        return throwError(RangeError, tooLargeSize, args.GetIsolate());
+
+    if (doInstantiation) {
+        array->buffer()->setDeallocationObserver(V8ArrayBufferDeallocationObserver::instance());
+        v8::V8::AdjustAmountOfExternalAllocatedMemory(array->byteLength());
+    }
 
 
     // Transform the holder into a wrapper object for the array.
@@ -172,17 +203,17 @@ v8::Handle<v8::Value> constructWebGLArray(const v8::Arguments& args, WrapperType
         }
     }
 
-    v8::Persistent<v8::Object> wrapper = v8::Persistent<v8::Object>::New(args.Holder());
-    wrapper.MarkIndependent();
-    V8DOMWrapper::setJSWrapperForDOMObject(array.release(), wrapper);
-    return args.Holder();
+    v8::Handle<v8::Object> wrapper = args.Holder();
+    v8::Persistent<v8::Object> wrapperHandle = V8DOMWrapper::setJSWrapperForDOMObject(array.release(), wrapper);
+    wrapperHandle.MarkIndependent();
+    return wrapper;
 }
 
 template <class CPlusPlusArrayType, class JavaScriptWrapperArrayType>
 v8::Handle<v8::Value> setWebGLArrayHelper(const v8::Arguments& args)
 {
     if (args.Length() < 1)
-        return V8Proxy::setDOMException(SYNTAX_ERR, args.GetIsolate());
+        return throwNotEnoughArgumentsError(args.GetIsolate());
 
     CPlusPlusArrayType* impl = JavaScriptWrapperArrayType::toNative(args.Holder());
 
@@ -193,7 +224,7 @@ v8::Handle<v8::Value> setWebGLArrayHelper(const v8::Arguments& args)
         if (args.Length() == 2)
             offset = toUInt32(args[1]);
         if (!impl->set(src, offset))
-            return V8Proxy::setDOMException(INDEX_SIZE_ERR, args.GetIsolate());
+            return throwError(RangeError, outOfRangeLengthAndOffset, args.GetIsolate());
         return v8::Undefined();
     }
 
@@ -204,12 +235,8 @@ v8::Handle<v8::Value> setWebGLArrayHelper(const v8::Arguments& args)
         if (args.Length() == 2)
             offset = toUInt32(args[1]);
         uint32_t length = toUInt32(array->Get(v8::String::New("length")));
-        if (offset > impl->length()
-            || offset + length > impl->length()
-            || offset + length < offset) {
-            // Out of range offset or overflow
-            return V8Proxy::setDOMException(INDEX_SIZE_ERR, args.GetIsolate());
-        }
+        if (!impl->checkInboundData(offset, length))
+            return throwError(RangeError, outOfRangeLengthAndOffset, args.GetIsolate());
         bool copied = copyElements(args.Holder(), array, length, offset, args.GetIsolate());
         if (!copied) {
             for (uint32_t i = 0; i < length; i++)
@@ -218,7 +245,7 @@ v8::Handle<v8::Value> setWebGLArrayHelper(const v8::Arguments& args)
         return v8::Undefined();
     }
 
-    return V8Proxy::setDOMException(SYNTAX_ERR, args.GetIsolate());
+    return throwTypeError("Invalid argument", args.GetIsolate());
 }
 
 }

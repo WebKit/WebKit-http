@@ -134,7 +134,7 @@ void CachedFrameBase::restore()
     m_document->enqueuePopstateEvent(historyItem && historyItem->stateObject() ? historyItem->stateObject() : SerializedScriptValue::nullValue());
     
 #if ENABLE(TOUCH_EVENTS)
-    if (m_document->hasListenerType(Document::TOUCH_LISTENER))
+    if (m_document->touchEventHandlerCount())
         m_document->page()->chrome()->client()->needTouchEvents(true);
 #endif
 
@@ -174,9 +174,7 @@ CachedFrame::CachedFrame(Frame* frame)
     m_document->suspendActiveDOMObjects(ActiveDOMObject::DocumentWillBecomeInactive);
     m_cachedFrameScriptData = adoptPtr(new ScriptCachedFrameData(frame));
 
-    m_domWindow = frame->domWindow();
-    ASSERT(m_domWindow);
-    m_domWindow->suspendForPageCache();
+    m_document->domWindow()->suspendForPageCache();
 
     frame->loader()->client()->savePlatformDataToCachedFrame(this);
 
@@ -250,7 +248,7 @@ void CachedFrame::destroy()
     ASSERT(m_view);
     ASSERT(m_document->frame() == m_view->frame());
 
-    m_domWindow->willDestroyCachedFrame();
+    m_document->domWindow()->willDestroyCachedFrame();
 
     if (!m_isMainFrame) {
         m_view->frame()->detachFromPage();

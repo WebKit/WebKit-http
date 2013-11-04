@@ -27,6 +27,7 @@
 #include "RenderMultiColumnBlock.h"
 #include "RenderMultiColumnFlowThread.h"
 #include "RenderMultiColumnSet.h"
+#include "StyleInheritedData.h"
 
 using namespace std;
 
@@ -144,7 +145,6 @@ void RenderMultiColumnBlock::ensureColumnSets()
         RenderMultiColumnSet* columnSet = new (renderArena()) RenderMultiColumnSet(document(), flowThread());
         columnSet->setStyle(RenderStyle::createAnonymousStyleWithDisplay(style(), BLOCK));
         RenderBlock::addChild(columnSet, firstChild());
-        flowThread()->addRegionToThread(columnSet);
     }
 }
 

@@ -27,9 +27,10 @@
 
 #include "EditingBoundary.h"
 #include "EventTarget.h"
+#include "ExceptionCodePlaceholder.h"
+#include "FractionalLayoutRect.h"
 #include "KURLHash.h"
 #include "LayoutTypes.h"
-#include "MemoryInstrumentation.h"
 #include "MutationObserver.h"
 #include "RenderStyleConstants.h"
 #include "ScriptWrappable.h"
@@ -66,6 +67,7 @@ class Frame;
 class HTMLInputElement;
 class IntRect;
 class KeyboardEvent;
+class MemoryObjectInfo;
 class NSResolver;
 class NamedNodeMap;
 class NameNodeList;
@@ -87,6 +89,10 @@ class RenderStyle;
 class ShadowRoot;
 class TagNodeList;
 class TreeScope;
+
+#if ENABLE(GESTURE_EVENTS)
+class PlatformGestureEvent;
+#endif
 
 #if ENABLE(MICRODATA)
 class HTMLPropertiesCollection;
@@ -182,7 +188,8 @@ public:
 
     void remove(ExceptionCode&);
     bool hasChildNodes() const { return firstChild(); }
-    virtual PassRefPtr<Node> cloneNode(bool deep) = 0;
+    virtual PassRefPtr<Node> cloneNode(bool deep, ExceptionCode&) = 0;
+    PassRefPtr<Node> cloneNode(bool deep) { return cloneNode(deep, ASSERT_NO_EXCEPTION); }
     const AtomicString& localName() const { return virtualLocalName(); }
     const AtomicString& namespaceURI() const { return virtualNamespaceURI(); }
     const AtomicString& prefix() const { return virtualPrefix(); }
@@ -218,6 +225,7 @@ public:
     virtual bool isAttributeNode() const { return false; }
     virtual bool isCharacterDataNode() const { return false; }
     virtual bool isFrameOwnerElement() const { return false; }
+    virtual bool isPluginElement() const { return false; }
     bool isDocumentNode() const;
     bool isShadowRoot() const { return getFlag(IsShadowRootFlag); }
     bool inNamedFlow() const { return getFlag(InNamedFlowFlag); }
@@ -348,6 +356,7 @@ public:
         DoNotSetAttached
     };
     void lazyAttach(ShouldSetAttached = SetAttached);
+    void lazyReattach(ShouldSetAttached = SetAttached);
 
     virtual void setFocus(bool = true);
     virtual void setActive(bool f = true, bool /*pause*/ = false) { setFlag(f, IsActiveFlag); }
@@ -540,11 +549,11 @@ public:
     //
     enum InsertionNotificationRequest {
         InsertionDone,
-        InsertionShouldCallDidNotifyDescendantInsertions
+        InsertionShouldCallDidNotifySubtreeInsertions
     };
 
     virtual InsertionNotificationRequest insertedInto(ContainerNode* insertionPoint);
-    virtual void didNotifyDescendantInsertions(ContainerNode*) { }
+    virtual void didNotifySubtreeInsertions(ContainerNode*) { }
 
     // Notifies the node that it is no longer part of the tree.
     //
@@ -575,6 +584,7 @@ public:
 
     virtual bool willRespondToMouseMoveEvents();
     virtual bool willRespondToMouseClickEvents();
+    virtual bool willRespondToTouchEvents();
 
     PassRefPtr<Element> querySelector(const AtomicString& selectors, ExceptionCode&);
     PassRefPtr<NodeList> querySelectorAll(const AtomicString& selectors, ExceptionCode&);
@@ -602,8 +612,6 @@ public:
 
     virtual void handleLocalEvents(Event*);
 
-    void dispatchRegionLayoutUpdateEvent();
-
     void dispatchSubtreeModifiedEvent();
     bool dispatchDOMActivateEvent(int detail, PassRefPtr<Event> underlyingEvent);
     void dispatchFocusInEvent(const AtomicString& eventType, PassRefPtr<Node> oldFocusedNode);
@@ -612,6 +620,9 @@ public:
     bool dispatchKeyEvent(const PlatformKeyboardEvent&);
     bool dispatchWheelEvent(const PlatformWheelEvent&);
     bool dispatchMouseEvent(const PlatformMouseEvent&, const AtomicString& eventType, int clickCount = 0, Node* relatedTarget = 0);
+#if ENABLE(GESTURE_EVENTS)
+    bool dispatchGestureEvent(const PlatformGestureEvent&);
+#endif
     void dispatchSimulatedClick(PassRefPtr<Event> underlyingEvent, bool sendMouseEvents = false, bool showPressedLook = true);
     bool dispatchBeforeLoadEvent(const String& sourceURL);
 
@@ -866,6 +877,13 @@ inline void Node::reattachIfAttached()
 {
     if (attached())
         reattach();
+}
+
+inline void Node::lazyReattach(ShouldSetAttached shouldSetAttached)
+{
+    if (attached())
+        detach();
+    lazyAttach(shouldSetAttached);
 }
 
 } //namespace

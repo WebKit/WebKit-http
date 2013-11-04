@@ -1,3 +1,485 @@
+2012-08-29  Simon Hausmann  <simon.hausmann@nokia.com>
+
+        [Qt] Fix doc generation with make docs
+        https://bugs.webkit.org/show_bug.cgi?id=95340
+
+        Reviewed by Kenneth Rohde Christiansen.
+
+        Fix doc target, similar to what the other Qt 5 modules are using and comment out the indexes
+        line, because cross-referencing doesn't work right now and the use of the QTDIR environment
+        is wrong, too.
+
+        * docs/docs.pri:
+        * docs/qtwebkit.qdocconf:
+
+2012-08-22  Simon Hausmann  <simon.hausmann@nokia.com>
+
+        [Qt] REGRESSION(r125428): fast/profiler/nested-start-and-stop-profiler.html fails
+        https://bugs.webkit.org/show_bug.cgi?id=93897
+
+        Reviewed by Kenneth Rohde Christiansen.
+
+        Fixed some test expectations.
+
+        * tests/qobjectbridge/tst_qobjectbridge.cpp:
+        (tst_QObjectBridge::objectDeleted): Since runtime methods are real function objects again, we
+        can go back to testing Function.prototype.call, as it was done before r125428.
+        (tst_QObjectBridge::introspectQtMethods_data): Removed tests for the length property.
+        (tst_QObjectBridge::introspectQtMethods): Changed test expectation of the properties of
+        run-time methods back to being non-configurable, as before r125428.
+
+2012-08-28  Sheriff Bot  <webkit.review.bot@gmail.com>
+
+        Unreviewed, rolling out r126914.
+        http://trac.webkit.org/changeset/126914
+        https://bugs.webkit.org/show_bug.cgi?id=95239
+
+        it breaks everything and fixes nothing (Requested by pizlo on
+        #webkit).
+
+        * Api/qwebpage.cpp:
+        (extractContentTypeFromPluginVector):
+        * Api/qwebplugindatabase.cpp:
+        (QWebPluginInfo::mimeTypes):
+        * WebCoreSupport/PlatformStrategiesQt.cpp:
+        (PlatformStrategiesQt::getPluginInfo):
+
+2012-08-28  Caio Marcelo de Oliveira Filho  <caio.oliveira@openbossa.org>
+
+        Rename first/second to key/value in HashMap iterators
+        https://bugs.webkit.org/show_bug.cgi?id=82784
+
+        Reviewed by Eric Seidel.
+
+        * Api/qwebpage.cpp:
+        (extractContentTypeFromPluginVector):
+        * Api/qwebplugindatabase.cpp:
+        (QWebPluginInfo::mimeTypes):
+        * WebCoreSupport/PlatformStrategiesQt.cpp:
+        (PlatformStrategiesQt::getPluginInfo):
+
+2012-08-27  Sheriff Bot  <webkit.review.bot@gmail.com>
+
+        Unreviewed, rolling out r126836.
+        http://trac.webkit.org/changeset/126836
+        https://bugs.webkit.org/show_bug.cgi?id=95163
+
+        Broke all Apple ports, EFL, and Qt. (Requested by tkent on
+        #webkit).
+
+        * Api/qwebpage.cpp:
+        (extractContentTypeFromPluginVector):
+        * Api/qwebplugindatabase.cpp:
+        (QWebPluginInfo::mimeTypes):
+        * WebCoreSupport/PlatformStrategiesQt.cpp:
+        (PlatformStrategiesQt::getPluginInfo):
+
+2012-08-27  Caio Marcelo de Oliveira Filho  <caio.oliveira@openbossa.org>
+
+        Rename first/second to key/value in HashMap iterators
+        https://bugs.webkit.org/show_bug.cgi?id=82784
+
+        Reviewed by Eric Seidel.
+
+        * Api/qwebpage.cpp:
+        (extractContentTypeFromPluginVector):
+        * Api/qwebplugindatabase.cpp:
+        (QWebPluginInfo::mimeTypes):
+        * WebCoreSupport/PlatformStrategiesQt.cpp:
+        (PlatformStrategiesQt::getPluginInfo):
+
+2012-08-22  Sheriff Bot  <webkit.review.bot@gmail.com>
+
+        Unreviewed, rolling out r126287.
+        http://trac.webkit.org/changeset/126287
+        https://bugs.webkit.org/show_bug.cgi?id=94708
+
+        It made WK1 layout testing 3.7x slower (>1hours) (Requested by
+        ossy on #webkit).
+
+        * tests/qobjectbridge/tst_qobjectbridge.cpp:
+        (tst_QObjectBridge::objectDeleted):
+        (tst_QObjectBridge::introspectQtMethods_data):
+        (tst_QObjectBridge::introspectQtMethods):
+
+2012-08-22  Allan Sandfeld Jensen  <allan.jensen@nokia.com>
+
+        [Qt] Optionally support smooth-scrolling on all platforms
+        https://bugs.webkit.org/show_bug.cgi?id=74926
+
+        Reviewed by Simon Hausmann.
+
+        Expose the enable scroll animator setting.
+
+        * Api/qwebsettings.cpp:
+        (QWebSettingsPrivate::apply):
+        (QWebSettings::QWebSettings):
+        * Api/qwebsettings.h:
+
+2012-08-22  Simon Hausmann  <simon.hausmann@nokia.com>
+
+        [Qt] REGRESSION(r125428): fast/profiler/nested-start-and-stop-profiler.html fails
+        https://bugs.webkit.org/show_bug.cgi?id=93897
+
+        Reviewed by Kenneth Rohde Christiansen.
+
+        Fixed some test expectations.
+
+        * tests/qobjectbridge/tst_qobjectbridge.cpp:
+        (tst_QObjectBridge::objectDeleted): Since runtime methods are real function objects again, we
+        can go back to testing Function.prototype.call, as it was done before r125428.
+        (tst_QObjectBridge::introspectQtMethods_data): Removed tests for the length property.
+        (tst_QObjectBridge::introspectQtMethods): Changed test expectation of the properties of
+        run-time methods back to being non-configurable, as before r125428.
+
+2012-08-21  Sheriff Bot  <webkit.review.bot@gmail.com>
+
+        Unreviewed, rolling out r126146.
+        http://trac.webkit.org/changeset/126146
+        https://bugs.webkit.org/show_bug.cgi?id=94606
+
+        It made all tests assert (Requested by Ossy on #webkit).
+
+        * tests/qobjectbridge/tst_qobjectbridge.cpp:
+        (tst_QObjectBridge::objectDeleted):
+        (tst_QObjectBridge::introspectQtMethods_data):
+        (tst_QObjectBridge::introspectQtMethods):
+
+2012-08-17  Simon Hausmann  <simon.hausmann@nokia.com>
+
+        [Qt] REGRESSION(r125428): fast/profiler/nested-start-and-stop-profiler.html fails
+        https://bugs.webkit.org/show_bug.cgi?id=93897
+
+        Reviewed by Kenneth Rohde Christiansen.
+
+        Fixed some test expectations.
+
+        * tests/qobjectbridge/tst_qobjectbridge.cpp:
+        (tst_QObjectBridge::objectDeleted): Since runtime methods are real function objects again, we
+        can go back to testing Function.prototype.call, as it was done before r125428.
+        (tst_QObjectBridge::introspectQtMethods_data): Removed tests for the length property.
+        (tst_QObjectBridge::introspectQtMethods): Changed test expectation of the properties of
+        run-time methods back to being non-configurable, as before r125428.
+
+2012-08-15  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Update manual tests and comments to refer to TestRunner instead of LayoutTestController
+        https://bugs.webkit.org/show_bug.cgi?id=94168
+
+        Reviewed by Kent Tamura.
+
+        * Api/qwebelement.cpp:
+        (convertJSValueToWebElementVariant):
+        * WebCoreSupport/DumpRenderTreeSupportQt.h:
+
+2012-08-14  Adam Barth  <abarth@webkit.org>
+
+        Delete Frame::domWindow() and Frame::existingDOMWindow()
+        https://bugs.webkit.org/show_bug.cgi?id=93990
+
+        Reviewed by Eric Seidel.
+
+        * WebCoreSupport/FrameLoaderClientQt.cpp:
+        (WebCore::FrameLoaderClientQt::dispatchDidFinishDocumentLoad):
+
+2012-08-14  Lauro Neto  <lauro.neto@openbossa.org>
+
+        Convert signals/slots to Q_* macros.
+
+        [Qt] Use Q_SLOTS and Q_SIGNALS instead of slots and signals
+        https://bugs.webkit.org/show_bug.cgi?id=93996
+
+        Reviewed by Kenneth Rohde Christiansen.
+
+        Change usage of keyword-conflicting 'signals' and 'slots' for
+        Q_SIGNALS and Q_SLOTS macro.
+
+        * WebCoreSupport/FrameLoaderClientQt.h:
+        (FrameLoaderClientQt):
+        * WebCoreSupport/FullScreenVideoQt.h:
+        (FullScreenVideoQt):
+        * WebCoreSupport/FullScreenVideoWidget.h:
+        (FullScreenVideoWidget):
+        * WebCoreSupport/IconDatabaseClientQt.h:
+        (IconDatabaseClientQt):
+        * WebCoreSupport/InspectorClientQt.cpp:
+        (InspectorClientWebPage):
+        * WebCoreSupport/InspectorServerQt.h:
+        (InspectorServerQt):
+        (InspectorServerRequestHandlerQt):
+        * WebCoreSupport/PopupMenuQt.h:
+        (PopupMenuQt):
+        * WebCoreSupport/QtFallbackWebPopup.h:
+        (QtFallbackWebPopup):
+        * docs/webkitsnippets/qtwebkit_bridge_snippets.cpp:
+        (wrapInFunction):
+        * docs/webkitsnippets/webpage/main.cpp:
+        (Thumbnailer):
+        * examples/platformplugin/WebPlugin.h:
+        (Popup):
+        (WebPopup):
+        * tests/benchmarks/webgl/tst_webgl.cpp:
+        (tst_WebGlPerformance):
+        * tests/hybridPixmap/tst_hybridPixmap.cpp:
+        (tst_hybridPixmap):
+        * tests/hybridPixmap/widget.h:
+        (Widget):
+        * tests/qdeclarativewebview/tst_qdeclarativewebview.cpp:
+        (tst_QDeclarativeWebView):
+        * tests/qgraphicswebview/tst_qgraphicswebview.cpp:
+        (tst_QGraphicsWebView):
+        (WebPage):
+        (ResizeSpy):
+        * tests/qobjectbridge/tst_qobjectbridge.cpp:
+        (MyWebElementSlotOnlyObject):
+        (tst_QObjectBridge):
+        (TestPluginWidget):
+        * tests/qwebelement/tst_qwebelement.cpp:
+        (tst_QWebElement):
+        * tests/qwebframe/tst_qwebframe.cpp:
+        (tst_QWebFrame):
+        (FakeReply):
+        * tests/qwebhistory/tst_qwebhistory.cpp:
+        * tests/qwebhistoryinterface/tst_qwebhistoryinterface.cpp:
+        (tst_QWebHistoryInterface):
+        * tests/qwebinspector/tst_qwebinspector.cpp:
+        (tst_QWebInspector):
+        * tests/qwebpage/tst_qwebpage.cpp:
+        (tst_QWebPage):
+        (JSTestPage):
+        (RepaintRequestedRenderer):
+        (SpyForLoadSignalsOrder):
+        * tests/qwebplugindatabase/tst_qwebplugindatabase.cpp:
+        (tst_QWebPluginDatabase):
+        * tests/qwebview/tst_qwebview.cpp:
+        (tst_QWebView):
+        (WebViewCrashTest):
+
+2012-08-14  Simon Hausmann  <simon.hausmann@nokia.com>
+
+        [Qt] Fix failing tst_QWebPage::findText unit test
+        https://bugs.webkit.org/show_bug.cgi?id=93951
+
+        Reviewed by Kenneth Rohde Christiansen.
+
+        Adjust the expected text, as the HTML editing code improved to avoid unnecessary tags.
+
+        * tests/qwebpage/tst_qwebpage.cpp:
+        (tst_QWebPage::findText):
+
+2012-08-13  Tom Sepez  <tsepez@chromium.org>
+
+        [chromium] release FrameLoaderClientImpl::m_pluginWidget refptr upon Plugin Document detach.
+        https://bugs.webkit.org/show_bug.cgi?id=93283
+
+        Reviewed by Eric Seidel.
+
+        Change the client redirectDataToPlugin method(s) to expect the possibility of
+        a NULL argument, keeping existing behaviour otherwise.
+
+        * WebCoreSupport/FrameLoaderClientQt.cpp:
+        (WebCore::FrameLoaderClientQt::redirectDataToPlugin):
+
+2012-08-13  Simon Hausmann  <simon.hausmann@nokia.com>
+
+        [Qt] Port meta method/signal/slot handling in run-time bridge to use JSC C API
+        https://bugs.webkit.org/show_bug.cgi?id=93476
+
+        Reviewed by Kenneth Rohde Christiansen.
+
+        Changed semantics of some test expectations. Similarly to r125032 when generating
+        error exceptions for connect/disconnect, we cannot generate explicit type error
+        exceptions but only generic errors. Another change is that the meta-method wrapper
+        doesn't support the call() through Function.prototype anymore. See WebCore changelog
+        for details.
+
+        * tests/qobjectbridge/tst_qobjectbridge.cpp:
+        (tst_QObjectBridge::connectAndDisconnect):
+        (tst_QObjectBridge::objectDeleted):
+        (tst_QObjectBridge::introspectQtMethods):
+
+2012-08-13  Kwang Yul Seo  <skyul@company100.net>
+
+        [Qt] Add gprof.prf to build WebKit with gprof enabled
+        https://bugs.webkit.org/show_bug.cgi?id=90283
+
+        Reviewed by Eric Seidel.
+
+        * tests/MIMESniffing/MIMESniffing.pro:
+        Don't build MIMESniffing.cpp because MIMESniffing test links
+        WebKitQt statically when gprof is enabled.
+
+2012-08-12  Loïc Yhuel  <loic.yhuel@softathome.com>
+
+        [Qt] Make it possible to build without QtTest/QtPrintSupport
+        https://bugs.webkit.org/show_bug.cgi?id=93492
+
+        Reviewed by Tor Arne Vestbø.
+
+        * Api/qwebframe.cpp:
+        (QWebFrame::print): Does nothing if no printsupport
+        * Api/qwebview.cpp:
+        (QWebView::print): Does nothing if no printsupport
+
+2012-08-11  Pierre Rossi  <pierre.rossi@gmail.com>
+
+        [Qt] Add support for HTML5 state object history API in FrameLoaderClientQt
+        https://bugs.webkit.org/show_bug.cgi?id=93648
+
+        Reviewed by Kenneth Rohde Christiansen.
+
+        Add support for push/replace/pop by implementing dispatchDidNavigateWithinPage.
+
+        * WebCoreSupport/FrameLoaderClientQt.cpp:
+        (WebCore::FrameLoaderClientQt::dispatchDidNavigateWithinPage):
+        (WebCore::FrameLoaderClientQt::dispatchDidPushStateWithinPage):
+        (WebCore::FrameLoaderClientQt::dispatchDidReplaceStateWithinPage):
+        (WebCore::FrameLoaderClientQt::dispatchDidPopStateWithinPage):
+        * WebCoreSupport/FrameLoaderClientQt.h:
+        (FrameLoaderClientQt):
+        * tests/qwebframe/tst_qwebframe.cpp:
+        (tst_QWebFrame):
+        (tst_QWebFrame::setUrlUsingStateObject): Added. Tests that the urlChanged signal is fired.
+
+2012-08-10  Simon Hausmann  <simon.hausmann@nokia.com>
+
+        [Qt] Remove QRegExp <> JS RegExp conversion
+        https://bugs.webkit.org/show_bug.cgi?id=93716
+
+        Reviewed by Kenneth Rohde Christiansen.
+
+        Removed tests that cover the automatic QRegExp <> JS RegExp conversion. See WebCore
+        ChangeLog for details.
+
+        * tests/qobjectbridge/tst_qobjectbridge.cpp:
+        (MyQObject::emitMySignalWithDateTimeArg):
+        (MyQObject):
+        (tst_QObjectBridge::overloadedSlots):
+        (tst_QObjectBridge::typeConversion):
+
+2012-08-09  Simon Hausmann  <simon.hausmann@nokia.com>
+
+        [Qt] Remove support for __qt_sender__ in QObject bridge
+        https://bugs.webkit.org/show_bug.cgi?id=93649
+
+        Reviewed by Kenneth Rohde Christiansen.
+
+        Support for __qt_sender__ has also been removed from QtScript/QJSEngine. The right
+        JavaScript solution to the problem is Function.prototype.bind.
+
+        * Api/qwebframe.cpp:
+        (QWebFramePrivate::didClearWindowObject):
+        * Api/qwebframe_p.h:
+        (QWebFramePrivate):
+        * tests/qobjectbridge/tst_qobjectbridge.cpp:
+        (tst_QObjectBridge::connectAndDisconnect):
+
+2012-08-08  Simon Hausmann  <simon.hausmann@nokia.com>
+
+        [Qt] Port internal findMethodIndex method matcher to use JSC C API
+        https://bugs.webkit.org/show_bug.cgi?id=93463
+
+        Reviewed by Kenneth Rohde Christiansen.
+
+        Adjust the expectations of the unit test for some of the exceptions the
+        method throws when signals/slots cannot be found/matched. The C API doesn't allow
+        us to create syntax (type) errors, only generic error exceptions.
+
+        * tests/qobjectbridge/tst_qobjectbridge.cpp:
+        (tst_QObjectBridge::callQtInvokable):
+
+2012-08-08  Simon Hausmann  <simon.hausmann@nokia.com>
+
+        [Qt] Add unit test for QObject bindings for scriptable plugins
+        https://bugs.webkit.org/show_bug.cgi?id=93462
+
+        Reviewed by Kenneth Rohde Christiansen.
+
+        The bindings code is subject to refactoring in the future, so added a unit test to verify that
+        accessing an embedded QWidget from JavaScript goes through the QObject bindings.
+
+        * tests/qobjectbridge/tst_qobjectbridge.cpp:
+        (tst_QObjectBridge):
+        (TestPluginWidget):
+        (TestPluginWidget::TestPluginWidget):
+        (TestPluginWidget::slotWithReturnValue):
+        (TestWebPage):
+        (TestWebPage::TestWebPage):
+        (TestWebPage::createPlugin):
+        (tst_QObjectBridge::scriptablePlugin):
+
+2012-08-07  Simon Hausmann  <simon.hausmann@nokia.com>
+
+        Unreviewed trivial fix: Missed HAVE_QT5 removal as part of r124879
+
+        Fixes failing auto-test.
+
+        * tests/qobjectbridge/tst_qobjectbridge.cpp:
+        (tst_QObjectBridge::enumerate_data):
+
+2012-08-02  Simon Hausmann  <simon.hausmann@nokia.com>
+
+        [Qt] Remove Qt 4 specific code paths
+        https://bugs.webkit.org/show_bug.cgi?id=88161
+
+        Reviewed by Kenneth Rohde Christiansen.
+
+        * Api/qgraphicswebview.cpp:
+        (QGraphicsWebView::sceneEvent):
+        * Api/qgraphicswebview.h:
+        * Api/qwebframe.cpp:
+        * Api/qwebframe.h:
+        * Api/qwebframe_p.h:
+        * Api/qwebpage.cpp:
+        (QWebPage::event):
+        * Api/qwebpage.h:
+        * Api/qwebsettings.cpp:
+        (QWebSettings::enablePersistentStorage):
+        * Api/qwebview.cpp:
+        (QWebView::QWebView):
+        (QWebView::event):
+        * Api/qwebview.h:
+        * WebCoreSupport/ChromeClientQt.cpp:
+        (WebCore::ChromeClientQt::setToolTip):
+        * WebCoreSupport/FrameLoaderClientQt.cpp:
+        (WebCore::FrameLoaderClientQt::createPlugin):
+        * WebCoreSupport/GeolocationClientQt.cpp:
+        * WebCoreSupport/GeolocationClientQt.h:
+        * WebCoreSupport/PageClientQt.cpp:
+        (createPlatformGraphicsContext3DFromWidget):
+        (QWebPageClient::ownerWindow):
+        * WebCoreSupport/WebEventConversion.cpp:
+        (WebCore::WebKitPlatformTouchEvent::WebKitPlatformTouchEvent):
+        * declarative/declarative.pro:
+        * declarative/plugin.cpp:
+        * declarative/public.pri:
+        * examples/platformplugin/WebPlugin.cpp:
+        (WebPlugin::createExtension):
+        * examples/platformplugin/WebPlugin.h:
+        (WebPlugin):
+        * examples/platformplugin/platformplugin.pro:
+        * tests/qobjectbridge/tst_qobjectbridge.cpp:
+        (tst_QObjectBridge::arrayObjectEnumerable):
+        (tst_QObjectBridge::ownership):
+        (tst_QObjectBridge::qObjectWrapperWithSameIdentity):
+        * tests/tests.pri:
+        * tests/util.h:
+
+2012-08-01  Zeno Albisser  <zeno@webkit.org>
+
+        [Qt]REGRESSION(r123786): It made 3 fast/animation tests fail.
+        https://bugs.webkit.org/show_bug.cgi?id=92490
+
+        QAbstractAnimation:start() is implicitly calling updateTime
+        without going through the event loop. This resulted in executing
+        scripted animation callbacks right when registering a first callback.
+
+        Reviewed by Noam Rosenthal.
+
+        * WebCoreSupport/ChromeClientQt.cpp:
+        (WebCore::RefreshAnimation::scheduleAnimation):
+            Invoke QAbstractAnimation::start() method through the event loop.
+
 2012-07-27  Csaba Osztrogonác  <ossy@webkit.org>
 
         [Qt][WK2] REGRESSION(r119127): resetting window.internals settings between tests doesn't work properly

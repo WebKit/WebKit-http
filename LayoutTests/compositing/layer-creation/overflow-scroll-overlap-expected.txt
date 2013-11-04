@@ -1,4 +1,4 @@
- (GraphicsLayer
+(GraphicsLayer
   (bounds 800.00 600.00)
   (children 1
     (GraphicsLayer
@@ -7,7 +7,6 @@
         (GraphicsLayer
           (position 8.00 8.00)
           (bounds 30.00 30.00)
-          (opacity 0.00)
         )
         (GraphicsLayer
           (position 20.00 20.00)

@@ -114,7 +114,7 @@ enum EBoxSizing { CONTENT_BOX, BORDER_BOX };
 // Random visual rendering model attributes. Not inherited.
 
 enum EOverflow {
-    OVISIBLE, OHIDDEN, OSCROLL, OAUTO, OOVERLAY, OMARQUEE
+    OVISIBLE, OHIDDEN, OSCROLL, OAUTO, OOVERLAY, OMARQUEE, OPAGEDX, OPAGEDY
 };
 
 enum EVerticalAlign {
@@ -128,11 +128,6 @@ enum EClear {
 
 enum ETableLayout {
     TAUTO, TFIXED
-};
-
-// CSS Text Layout Module Level 3: Vertical writing support
-enum WritingMode {
-    TopToBottomWritingMode, RightToLeftWritingMode, LeftToRightWritingMode, BottomToTopWritingMode
 };
 
 enum TextCombine {
@@ -198,7 +193,7 @@ enum EUserDrag {
 // CSS3 User Select Values
 
 enum EUserSelect {
-    SELECT_NONE, SELECT_TEXT
+    SELECT_NONE, SELECT_TEXT, SELECT_ALL
 };
 
 // Word Break Values. Matches WinIE, rather than CSS3
@@ -344,6 +339,16 @@ enum ETextDecoration {
 };
 inline ETextDecoration operator|(ETextDecoration a, ETextDecoration b) { return ETextDecoration(int(a) | int(b)); }
 inline ETextDecoration& operator|=(ETextDecoration& a, ETextDecoration b) { return a = a | b; }
+
+#if ENABLE(CSS3_TEXT_DECORATION)
+enum TextDecorationStyle {
+    TextDecorationStyleSolid,
+    TextDecorationStyleDouble,
+    TextDecorationStyleDotted,
+    TextDecorationStyleDashed,
+    TextDecorationStyleWavy
+};
+#endif // CSS3_TEXT_DECORATION
 
 enum EPageBreak {
     PBAUTO, PBALWAYS, PBAVOID

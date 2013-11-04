@@ -25,10 +25,13 @@
 #include "CSSValue.h"
 #include "RenderStyleConstants.h"
 #include "TextDirection.h"
+#include "WritingMode.h"
 #include <wtf/PassRefPtr.h>
 #include <wtf/RefPtr.h>
 
 namespace WebCore {
+
+class MemoryObjectInfo;
 
 class CSSProperty {
 public:
@@ -58,6 +61,8 @@ public:
 
     static CSSPropertyID resolveDirectionAwareProperty(CSSPropertyID, TextDirection, WritingMode);
     static bool isInheritedProperty(CSSPropertyID);
+
+    void reportMemoryUsage(MemoryObjectInfo*) const;
 
 private:
     // Make sure the following fits in 4 bytes. Really.

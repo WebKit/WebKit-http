@@ -1,14 +1,12 @@
 Tests seeking with MediaSource API
 
-EVENT(loadstart)
 EVENT(webkitsourceopen)
 EVENT(webkitsourceended)
 EVENT(playing)
 EVENT(timeupdate) : seeking to 2.78
-EVENT(webkitsourceopen)
 EVENT(seeking)
+EVENT(webkitsourceopen)
 EVENT(webkitsourceended)
-EVENT(seeked)
 EVENT(playing)
 EVENT(ended)
 END OF TEST

@@ -31,7 +31,7 @@
 #ifndef V8IsolatedContext_h
 #define V8IsolatedContext_h
 
-#include "IsolatedWorld.h"
+#include "DOMWrapperWorld.h"
 #include "ScriptSourceCode.h" // for WebCore::ScriptSourceCode
 #include "SharedPersistent.h"
 #include "V8Utilities.h"
@@ -39,9 +39,9 @@
 
 namespace WebCore {
 
+class Frame;
 class SecurityOrigin;
-class V8BindingPerContextData;
-class V8Proxy;
+class V8PerContextData;
 
 // V8IsolatedContext
 //
@@ -59,7 +59,7 @@ class V8IsolatedContext {
 public:
     // Creates an isolated world. To destroy it, call destroy().
     // This will delete the isolated world when the context it owns is GC'd.
-    V8IsolatedContext(V8Proxy*, int extensionGroup, int worldId);
+    V8IsolatedContext(Frame*, PassRefPtr<DOMWrapperWorld>);
     ~V8IsolatedContext();
 
     // Call this to destroy the isolated world. It will be deleted sometime
@@ -82,7 +82,7 @@ public:
         // V8 team to add a real property to v8::Context for isolated worlds.
         // Until then, we optimize the common case of not having any isolated
         // worlds at all.
-        if (!IsolatedWorld::count())
+        if (!DOMWrapperWorld::isolatedWorldsExist())
             return 0;
         if (!v8::Context::InContext())
             return 0;
@@ -92,12 +92,12 @@ public:
     v8::Handle<v8::Context> context() { return m_context->get(); }
     PassRefPtr<SharedPersistent<v8::Context> > sharedContext() { return m_context; }
 
-    IsolatedWorld* world() const { return m_world.get(); }
+    DOMWrapperWorld* world() const { return m_world.get(); }
 
     SecurityOrigin* securityOrigin() const { return m_securityOrigin.get(); }
     void setSecurityOrigin(PassRefPtr<SecurityOrigin>);
 
-    V8BindingPerContextData* perContextData() { return m_perContextData.get(); }
+    V8PerContextData* perContextData() { return m_perContextData.get(); }
 
 private:
     static v8::Handle<v8::Object> getGlobalObject(v8::Handle<v8::Context> context)
@@ -115,13 +115,13 @@ private:
     // long as |m_context| has not been garbage collected.
     RefPtr<SharedPersistent<v8::Context> > m_context;
 
-    RefPtr<IsolatedWorld> m_world;
+    RefPtr<DOMWrapperWorld> m_world;
 
     RefPtr<SecurityOrigin> m_securityOrigin;
 
     Frame* m_frame;
 
-    OwnPtr<V8BindingPerContextData> m_perContextData;
+    OwnPtr<V8PerContextData> m_perContextData;
 };
 
 } // namespace WebCore

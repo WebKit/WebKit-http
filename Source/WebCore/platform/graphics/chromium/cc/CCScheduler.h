@@ -25,8 +25,8 @@
 #ifndef CCScheduler_h
 #define CCScheduler_h
 
-#include "cc/CCFrameRateController.h"
-#include "cc/CCSchedulerStateMachine.h"
+#include "CCFrameRateController.h"
+#include "CCSchedulerStateMachine.h"
 
 #include <wtf/Noncopyable.h>
 #include <wtf/PassOwnPtr.h>
@@ -58,7 +58,7 @@ public:
     virtual void scheduledActionBeginFrame() = 0;
     virtual CCScheduledActionDrawAndSwapResult scheduledActionDrawAndSwapIfPossible() = 0;
     virtual CCScheduledActionDrawAndSwapResult scheduledActionDrawAndSwapForced() = 0;
-    virtual void scheduledActionUpdateMoreResources() = 0;
+    virtual void scheduledActionUpdateMoreResources(double monotonicTimeLimit) = 0;
     virtual void scheduledActionCommit() = 0;
     virtual void scheduledActionBeginContextRecreation() = 0;
     virtual void scheduledActionAcquireLayerTexturesForMainThread() = 0;
@@ -104,6 +104,8 @@ public:
 
     bool commitPending() const { return m_stateMachine.commitPending(); }
     bool redrawPending() const { return m_stateMachine.redrawPending(); }
+
+    void setTimebaseAndInterval(double timebase, double intervalSeconds);
 
     // CCFrameRateControllerClient implementation
     virtual void vsyncTick() OVERRIDE;

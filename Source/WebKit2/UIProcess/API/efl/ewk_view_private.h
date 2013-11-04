@@ -23,12 +23,19 @@
 
 #include "WebPageProxy.h"
 #include <Evas.h>
+#include <WebCore/TextDirection.h>
 #include <WebKit2/WKBase.h>
+#include <wtf/Vector.h>
 
 namespace WebCore {
 class Cursor;
 class IntRect;
 class IntSize;
+}
+
+namespace WebKit {
+class WebPopupItem;
+class WebPopupMenuProxyEfl;
 }
 
 typedef struct _Ewk_Download_Job Ewk_Download_Job;
@@ -61,12 +68,16 @@ void ewk_view_load_provisional_redirect(Evas_Object* ewkView);
 void ewk_view_load_provisional_started(Evas_Object* ewkView);
 void ewk_view_navigation_policy_decision(Evas_Object* ewkView, Ewk_Navigation_Policy_Decision* decision);
 void ewk_view_new_window_policy_decision(Evas_Object* ewkView, Ewk_Navigation_Policy_Decision* decision);
+void ewk_view_page_close(Evas_Object* ewkView);
+WKPageRef ewk_view_page_create(Evas_Object* ewkView);
 void ewk_view_title_changed(Evas_Object* ewkView, const char* title);
 void ewk_view_resource_load_failed(Evas_Object* ewkView, uint64_t resourceIdentifier, Ewk_Web_Error* error);
 void ewk_view_resource_load_finished(Evas_Object* ewkView, uint64_t resourceIdentifier);
 void ewk_view_resource_load_initiated(Evas_Object* ewkView, uint64_t resourceIdentifier, Ewk_Web_Resource* resource, Ewk_Url_Request* request);
 void ewk_view_resource_load_response(Evas_Object* ewkView, uint64_t resourceIdentifier, Ewk_Url_Response* response);
 void ewk_view_resource_request_sent(Evas_Object* ewkView, uint64_t resourceIdentifier, Ewk_Url_Request* request, Ewk_Url_Response* redirectResponse);
+void ewk_view_text_found(Evas_Object* ewkView, unsigned int matchCount);
+void ewk_view_contents_size_changed(const Evas_Object* ewkView, const WebCore::IntSize&);
 
 Evas_Object* ewk_view_base_add(Evas* canvas, WKContextRef, WKPageGroupRef);
 
@@ -84,5 +95,7 @@ WebCore::IntSize ewk_view_size_get(const Evas_Object* ewkView);
 bool ewk_view_accelerated_compositing_mode_enter(const Evas_Object* ewkView);
 bool ewk_view_accelerated_compositing_mode_exit(const Evas_Object* ewkView);
 #endif
+
+void ewk_view_popup_menu_request(Evas_Object* ewkView, WebKit::WebPopupMenuProxyEfl* popupMenu, const WebCore::IntRect&, WebCore::TextDirection, double pageScaleFactor, const Vector<WebKit::WebPopupItem>& items, int32_t selectedIndex);
 
 #endif // ewk_view_private_h

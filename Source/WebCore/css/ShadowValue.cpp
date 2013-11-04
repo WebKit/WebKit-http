@@ -21,7 +21,9 @@
 #include "ShadowValue.h"
 
 #include "CSSPrimitiveValue.h"
+#include "MemoryInstrumentation.h"
 #include "PlatformString.h"
+#include <wtf/text/StringBuilder.h>
 
 namespace WebCore {
 
@@ -44,37 +46,48 @@ ShadowValue::ShadowValue(PassRefPtr<CSSPrimitiveValue> _x,
 
 String ShadowValue::customCssText() const
 {
-    String text("");
+    StringBuilder text;
 
     if (color)
-        text += color->cssText();
+        text.append(color->cssText());
     if (x) {
         if (!text.isEmpty())
-            text += " ";
-        text += x->cssText();
+            text.append(' ');
+        text.append(x->cssText());
     }
     if (y) {
         if (!text.isEmpty())
-            text += " ";
-        text += y->cssText();
+            text.append(' ');
+        text.append(y->cssText());
     }
     if (blur) {
         if (!text.isEmpty())
-            text += " ";
-        text += blur->cssText();
+            text.append(' ');
+        text.append(blur->cssText());
     }
     if (spread) {
         if (!text.isEmpty())
-            text += " ";
-        text += spread->cssText();
+            text.append(' ');
+        text.append(spread->cssText());
     }
     if (style) {
         if (!text.isEmpty())
-            text += " ";
-        text += style->cssText();
+            text.append(' ');
+        text.append(style->cssText());
     }
 
-    return text;
+    return text.toString();
+}
+
+void ShadowValue::reportDescendantMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
+{
+    MemoryClassInfo info(memoryObjectInfo, this, MemoryInstrumentation::CSS);
+    info.addInstrumentedMember(x);
+    info.addInstrumentedMember(y);
+    info.addInstrumentedMember(blur);
+    info.addInstrumentedMember(spread);
+    info.addInstrumentedMember(style);
+    info.addInstrumentedMember(color);
 }
 
 }

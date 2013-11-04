@@ -27,6 +27,7 @@
 #ifndef DOMWindow_h
 #define DOMWindow_h
 
+#include "ContextDestructionObserver.h"
 #include "EventTarget.h"
 #include "FrameDestructionObserver.h"
 #include "KURL.h"
@@ -81,10 +82,24 @@ namespace WebCore {
 
     enum SetLocationLocking { LockHistoryBasedOnGestureState, LockHistoryAndBackForwardList };
 
-    class DOMWindow : public RefCounted<DOMWindow>, public EventTarget, public FrameDestructionObserver, public Supplementable<DOMWindow> {
+    // FIXME: DOMWindow shouldn't subclass FrameDestructionObserver and instead should get to Frame via its Document.
+    class DOMWindow : public RefCounted<DOMWindow>
+                    , public EventTarget
+                    , public ContextDestructionObserver
+                    , public FrameDestructionObserver
+                    , public Supplementable<DOMWindow> {
     public:
-        static PassRefPtr<DOMWindow> create(Frame* frame) { return adoptRef(new DOMWindow(frame)); }
+        static PassRefPtr<DOMWindow> create(Document* document) { return adoptRef(new DOMWindow(document)); }
         virtual ~DOMWindow();
+
+        // In some rare cases, we'll re-used a DOMWindow for a new Document. For example,
+        // when a script calls window.open("..."), the browser gives JavaScript a window
+        // synchronously but kicks off the load in the window asynchronously. Web sites
+        // expect that modifications that they make to the window object synchronously
+        // won't be blown away when the network load commits. To make that happen, we
+        // "securely transition" the existing DOMWindow to the Document that results from
+        // the network load. See also SecurityContext::isSecureTransitionTo.
+        void didSecureTransitionTo(Document*);
 
         virtual const AtomicString& interfaceName() const;
         virtual ScriptExecutionContext* scriptExecutionContext() const;
@@ -94,24 +109,18 @@ namespace WebCore {
         void registerProperty(DOMWindowProperty*);
         void unregisterProperty(DOMWindowProperty*);
 
-        void clear();
+        void resetUnlessSuspendedForPageCache();
         void suspendForPageCache();
         void resumeFromPageCache();
 
         PassRefPtr<MediaQueryList> matchMedia(const String&);
-
-        void setSecurityOrigin(SecurityOrigin*);
-        SecurityOrigin* securityOrigin() const { return m_securityOrigin.get(); }
-
-        void setURL(const KURL& url) { m_url = url; }
-        KURL url() const { return m_url; }
 
         unsigned pendingUnloadEventListeners() const;
 
         static bool dispatchAllPendingBeforeUnloadEvents();
         static void dispatchAllPendingUnloadEvents();
 
-        static void adjustWindowRect(const FloatRect& screen, FloatRect& window, const FloatRect& pendingChanges);
+        void adjustWindowRect(const FloatRect& screen, FloatRect& window, const FloatRect& pendingChanges) const;
 
         // FIXME: We can remove this function once V8 showModalDialog is changed to use DOMWindow.
         static void parseModalDialogFeatures(const String&, HashMap<String, String>&);
@@ -353,6 +362,10 @@ namespace WebCore {
         DEFINE_ATTRIBUTE_EVENT_LISTENER(deviceorientation);
 #endif
 
+#if ENABLE(PROXIMITY_EVENTS)
+        DEFINE_ATTRIBUTE_EVENT_LISTENER(webkitdeviceproximity);
+#endif
+
         // HTML 5 key/value storage
         Storage* sessionStorage(ExceptionCode&) const;
         Storage* localStorage(ExceptionCode&) const;
@@ -392,7 +405,7 @@ namespace WebCore {
         void willDestroyCachedFrame();
 
     private:
-        explicit DOMWindow(Frame*);
+        explicit DOMWindow(Document*);
 
         Page* page();
 
@@ -409,13 +422,10 @@ namespace WebCore {
             PrepareDialogFunction = 0, void* functionContext = 0);
         bool isInsecureScriptAccess(DOMWindow* activeWindow, const String& urlString);
 
-        void clearDOMWindowProperties();
+        void resetDOMWindowProperties();
         void disconnectDOMWindowProperties();
         void reconnectDOMWindowProperties();
         void willDestroyDocumentInFrame();
-
-        RefPtr<SecurityOrigin> m_securityOrigin;
-        KURL m_url;
 
         bool m_shouldPrintWhenFinishedLoading;
         bool m_suspendedForPageCache;
@@ -447,10 +457,6 @@ namespace WebCore {
 
 #if ENABLE(WEB_TIMING)
         mutable RefPtr<Performance> m_performance;
-#endif
-
-#if ENABLE(BLOB)
-        mutable RefPtr<DOMURL> m_domURL;
 #endif
     };
 

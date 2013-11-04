@@ -6,11 +6,11 @@ InspectorTest.startDebuggerTest = function(callback, quiet)
         InspectorTest._quiet = quiet;
     WebInspector.showPanel("scripts");
 
-    if (WebInspector.panels.scripts._debuggerEnabled)
+    if (WebInspector.debuggerModel.debuggerEnabled())
         startTest();
     else {
         InspectorTest.addSniffer(WebInspector.debuggerModel, "_debuggerWasEnabled", startTest);
-        WebInspector.panels.scripts.toggleDebugging(false);
+        WebInspector.debuggerModel.enableDebugger();
     }
 
     function startTest()
@@ -31,11 +31,11 @@ InspectorTest.finishDebuggerTest = function(callback)
 
     function disableDebugger()
     {
-        if (!scriptsPanel._debuggerEnabled)
+        if (!WebInspector.debuggerModel.debuggerEnabled())
             completeTest();
         else {
             InspectorTest.addSniffer(WebInspector.debuggerModel, "_debuggerWasDisabled", debuggerDisabled);
-            scriptsPanel.toggleDebugging(false);
+            WebInspector.debuggerModel.disableDebugger();
         }
     }
 
@@ -128,9 +128,9 @@ InspectorTest.captureStackTrace = function(callFrames, dropLineNumbers)
 InspectorTest.dumpSourceFrameContents = function(sourceFrame)
 {
     InspectorTest.addResult("==Source frame contents start==");
-    var textModel = sourceFrame._textModel;
-    for (var i = 0; i < textModel.linesCount; ++i)
-        InspectorTest.addResult(textModel.line(i));
+    var textEditor = sourceFrame._textEditor;
+    for (var i = 0; i < textEditor.linesCount; ++i)
+        InspectorTest.addResult(textEditor.line(i));
     InspectorTest.addResult("==Source frame contents end==");
 };
 
@@ -158,8 +158,9 @@ InspectorTest._resumedScript = function()
     }
 };
 
-InspectorTest.showScriptSourceOnScriptsPanel = function(panel, scriptName, callback)
+InspectorTest.showScriptSource = function(scriptName, callback)
 {
+    var panel = WebInspector.panel("scripts");
     var uiSourceCodes = panel._workspace.uiSourceCodes();
     for (var i = 0; i < uiSourceCodes.length; ++i) {
         if (uiSourceCodes[i].parsedURL.lastPathComponent === scriptName) {
@@ -172,12 +173,8 @@ InspectorTest.showScriptSourceOnScriptsPanel = function(panel, scriptName, callb
             return;
         }
     }
-    InspectorTest.addSniffer(panel, "_addUISourceCode", InspectorTest.showScriptSource.bind(InspectorTest, scriptName, callback));
-};
 
-InspectorTest.showScriptSource = function(scriptName, callback)
-{
-    InspectorTest.showScriptSourceOnScriptsPanel(WebInspector.panels.scripts, scriptName, callback)
+    InspectorTest.addSniffer(WebInspector.ScriptsPanel.prototype, "_addUISourceCode", InspectorTest.showScriptSource.bind(InspectorTest, scriptName, callback));
 };
 
 InspectorTest.dumpScriptsNavigator = function(navigator)
@@ -294,7 +291,7 @@ InspectorTest.createScriptMock = function(url, startLine, startColumn, isContent
     var endLine = startLine + lineCount - 1;
     var endColumn = lineCount === 1 ? startColumn + source.length : source.length - source.lineEndings()[lineCount - 2];
     var script = new WebInspector.Script(scriptId, url, startLine, startColumn, endLine, endColumn, isContentScript);
-    script.requestContent = function(callback) { callback(source); };
+    script.requestContent = function(callback) { callback(source, false, "text/javascript"); };
     WebInspector.debuggerModel._registerScript(script);
     return script;
 }
@@ -303,16 +300,16 @@ InspectorTest._lastScriptId = 0;
 
 InspectorTest.checkRawLocation = function(script, lineNumber, columnNumber, location)
 {
-    InspectorTest.assertEquals(script.scriptId, location.scriptId);
-    InspectorTest.assertEquals(lineNumber, location.lineNumber);
-    InspectorTest.assertEquals(columnNumber, location.columnNumber);
+    InspectorTest.assertEquals(script.scriptId, location.scriptId, "Incorrect scriptId");
+    InspectorTest.assertEquals(lineNumber, location.lineNumber, "Incorrect lineNumber");
+    InspectorTest.assertEquals(columnNumber, location.columnNumber, "Incorrect columnNumber");
 };
 
 InspectorTest.checkUILocation = function(uiSourceCode, lineNumber, columnNumber, location)
 {
-    InspectorTest.assertEquals(uiSourceCode, location.uiSourceCode);
-    InspectorTest.assertEquals(lineNumber, location.lineNumber);
-    InspectorTest.assertEquals(columnNumber, location.columnNumber);
+    InspectorTest.assertEquals(uiSourceCode, location.uiSourceCode, "Incorrect uiSourceCode");
+    InspectorTest.assertEquals(lineNumber, location.lineNumber, "Incorrect lineNumber");
+    InspectorTest.assertEquals(columnNumber, location.columnNumber, "Incorrect columnNumber");
 };
 
 };

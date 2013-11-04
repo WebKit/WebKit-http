@@ -35,6 +35,7 @@
 #include "IDBDatabaseException.h"
 #include "IDBLevelDBBackingStore.h"
 #include "IDBTransactionCoordinator.h"
+#include "SecurityOrigin.h"
 #include <wtf/Threading.h>
 #include <wtf/UnusedParam.h>
 
@@ -149,32 +150,34 @@ PassRefPtr<IDBBackingStore> IDBFactoryBackendImpl::openBackingStore(PassRefPtr<S
     return 0;
 }
 
-void IDBFactoryBackendImpl::open(const String& name, PassRefPtr<IDBCallbacks> callbacks, PassRefPtr<SecurityOrigin> prpSecurityOrigin, ScriptExecutionContext*, const String& dataDirectory)
+void IDBFactoryBackendImpl::open(const String& name, int64_t version, PassRefPtr<IDBCallbacks> callbacks, PassRefPtr<SecurityOrigin> prpSecurityOrigin, ScriptExecutionContext*, const String& dataDirectory)
 {
     RefPtr<SecurityOrigin> securityOrigin = prpSecurityOrigin;
     const String uniqueIdentifier = computeUniqueIdentifier(name, securityOrigin.get());
 
+    RefPtr<IDBDatabaseBackendImpl> databaseBackend;
     IDBDatabaseBackendMap::iterator it = m_databaseBackendMap.find(uniqueIdentifier);
-    if (it != m_databaseBackendMap.end()) {
-        // If it's already been opened, we have to wait for any pending
-        // setVersion calls to complete.
-        it->second->openConnection(callbacks);
-        return;
-    }
+    if (it == m_databaseBackendMap.end()) {
+        RefPtr<IDBBackingStore> backingStore = openBackingStore(securityOrigin, dataDirectory);
+        if (!backingStore) {
+            callbacks->onError(IDBDatabaseError::create(IDBDatabaseException::UNKNOWN_ERR, "Internal error."));
+            return;
+        }
 
-    // FIXME: Everything from now on should be done on another thread.
-    RefPtr<IDBBackingStore> backingStore = openBackingStore(securityOrigin, dataDirectory);
-    if (!backingStore) {
-        callbacks->onError(IDBDatabaseError::create(IDBDatabaseException::UNKNOWN_ERR, "Internal error."));
-        return;
-    }
-
-    RefPtr<IDBDatabaseBackendImpl> databaseBackend = IDBDatabaseBackendImpl::create(name, backingStore.get(), m_transactionCoordinator.get(), this, uniqueIdentifier);
-    if (databaseBackend) {
-        m_databaseBackendMap.set(uniqueIdentifier, databaseBackend.get());
-        databaseBackend->openConnection(callbacks);
+        databaseBackend = IDBDatabaseBackendImpl::create(name, backingStore.get(), m_transactionCoordinator.get(), this, uniqueIdentifier);
+        if (databaseBackend)
+            m_databaseBackendMap.set(uniqueIdentifier, databaseBackend.get());
+        else {
+            callbacks->onError(IDBDatabaseError::create(IDBDatabaseException::UNKNOWN_ERR, "Internal error."));
+            return;
+        }
     } else
-        callbacks->onError(IDBDatabaseError::create(IDBDatabaseException::UNKNOWN_ERR, "Internal error."));
+        databaseBackend = it->second;
+
+    if (version == IDBDatabaseMetadata::NoIntVersion)
+        databaseBackend->openConnection(callbacks);
+    else
+        databaseBackend->openConnectionWithVersion(callbacks, version);
 }
 
 } // namespace WebCore

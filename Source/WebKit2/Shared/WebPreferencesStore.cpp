@@ -37,7 +37,7 @@ namespace WebPreferencesKey {
 #define DEFINE_KEY_GETTERS(KeyUpper, KeyLower, TypeName, Type, DefaultValue) \
         const String& KeyLower##Key() \
         { \
-            DEFINE_STATIC_LOCAL(String, key, (#KeyUpper)); \
+            DEFINE_STATIC_LOCAL(String, key, (ASCIILiteral(#KeyUpper))); \
             return key; \
         }
 
@@ -184,7 +184,7 @@ bool WebPreferencesStore::setBoolValueForKey(const String& key, bool value)
 
 bool WebPreferencesStore::getBoolValueForKey(const String& key) const
 {
-    // FIXME: Extend overriding to other key types used from LayoutTestController.
+    // FIXME: Extend overriding to other key types used from TestRunner.
     BoolOverridesMap::const_iterator it = boolTestRunnerOverridesMap().find(key);
     if (it != boolTestRunnerOverridesMap().end())
         return it->second;

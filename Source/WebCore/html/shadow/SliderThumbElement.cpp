@@ -51,6 +51,8 @@ using namespace std;
 
 namespace WebCore {
 
+using namespace HTMLNames;
+
 inline static Decimal sliderPosition(HTMLInputElement* element)
 {
     const StepRange stepRange(element->createStepRange(RejectAny));
@@ -79,6 +81,16 @@ SliderThumbElement* sliderThumbElementOf(Node* node)
     Node* thumb = shadow->firstChild()->firstChild()->firstChild();
     ASSERT(thumb);
     return toSliderThumbElement(thumb);
+}
+
+HTMLElement* sliderTrackElementOf(Node* node)
+{
+    ASSERT(node);
+    ShadowRoot* shadow = node->toInputElement()->userAgentShadowRoot();
+    ASSERT(shadow);
+    Node* track = shadow->firstChild()->firstChild();
+    ASSERT(track);
+    return toHTMLElement(track);
 }
 
 // --------------------------------
@@ -214,9 +226,14 @@ bool SliderThumbElement::isEnabledFormControl() const
     return hostInput()->isEnabledFormControl();
 }
 
-bool SliderThumbElement::isReadOnlyFormControl() const
+bool SliderThumbElement::shouldMatchReadOnlySelector() const
 {
-    return hostInput()->isReadOnlyFormControl();
+    return hostInput()->shouldMatchReadOnlySelector();
+}
+
+bool SliderThumbElement::shouldMatchReadWriteSelector() const
+{
+    return hostInput()->shouldMatchReadWriteSelector();
 }
 
 Node* SliderThumbElement::focusDelegate()
@@ -233,13 +250,15 @@ void SliderThumbElement::dragFrom(const LayoutPoint& point)
 void SliderThumbElement::setPositionFromPoint(const LayoutPoint& point)
 {
     HTMLInputElement* input = hostInput();
+    HTMLElement* trackElement = sliderTrackElementOf(input);
 
-    if (!input->renderer() || !renderer())
+    if (!input->renderer() || !renderer() || !trackElement->renderer())
         return;
 
     input->setTextAsOfLastFormControlChangeEvent(input->value());
     LayoutPoint offset = roundedLayoutPoint(input->renderer()->absoluteToLocal(point, false, true));
     bool isVertical = hasVerticalAppearance(input);
+    bool isLeftToRightDirection = renderBox()->style()->isLeftToRightDirection();
     LayoutUnit trackSize;
     LayoutUnit position;
     LayoutUnit currentPosition;
@@ -249,13 +268,17 @@ void SliderThumbElement::setPositionFromPoint(const LayoutPoint& point)
     // FIXME: This should probably respect transforms.
     LayoutPoint absoluteThumbOrigin = renderBox()->absoluteBoundingBoxRectIgnoringTransforms().location();
     LayoutPoint absoluteSliderContentOrigin = roundedLayoutPoint(input->renderer()->localToAbsolute());
+    IntRect trackBoundingBox = trackElement->renderer()->absoluteBoundingBoxRectIgnoringTransforms();
+    IntRect inputBoundingBox = input->renderer()->absoluteBoundingBoxRectIgnoringTransforms();
     if (isVertical) {
-        trackSize = input->renderBox()->contentHeight() - renderBox()->height();
-        position = offset.y() - renderBox()->height() / 2;
+        trackSize = trackElement->renderBox()->contentHeight();
+        position = offset.y() - renderBox()->height() / 2 - trackBoundingBox.y() + inputBoundingBox.y();
         currentPosition = absoluteThumbOrigin.y() - absoluteSliderContentOrigin.y();
     } else {
-        trackSize = input->renderBox()->contentWidth() - renderBox()->width();
-        position = offset.x() - renderBox()->width() / 2;
+        trackSize = trackElement->renderBox()->contentWidth();
+        position = offset.x() - renderBox()->width() / 2 - trackBoundingBox.x() + inputBoundingBox.x();
+        if (!isLeftToRightDirection)
+            position += renderBox()->width();
         currentPosition = absoluteThumbOrigin.x() - absoluteSliderContentOrigin.x();
     }
     position = max<LayoutUnit>(0, min(position, trackSize));
@@ -263,9 +286,23 @@ void SliderThumbElement::setPositionFromPoint(const LayoutPoint& point)
         return;
 
     const Decimal ratio = Decimal::fromDouble(static_cast<double>(position) / trackSize);
-    const Decimal fraction = isVertical || !renderBox()->style()->isLeftToRightDirection() ? Decimal(1) - ratio : ratio;
+    const Decimal fraction = isVertical || !isLeftToRightDirection ? Decimal(1) - ratio : ratio;
     StepRange stepRange(input->createStepRange(RejectAny));
-    const Decimal value = stepRange.clampValue(stepRange.valueFromProportion(fraction));
+    Decimal value = stepRange.clampValue(stepRange.valueFromProportion(fraction));
+
+#if ENABLE(DATALIST_ELEMENT)
+    const LayoutUnit snappingThreshold = renderer()->theme()->sliderTickSnappingThreshold();
+    if (snappingThreshold > 0) {
+        Decimal closest = input->findClosestTickMarkValue(value);
+        if (closest.isFinite()) {
+            double closestFraction = stepRange.proportionFromValue(closest).toDouble();
+            double closestRatio = isVertical || !isLeftToRightDirection ? 1.0 - closestFraction : closestFraction;
+            LayoutUnit closestPosition = trackSize * closestRatio;
+            if ((closestPosition - position).abs() <= snappingThreshold)
+                value = closest;
+        }
+    }
+#endif
 
     // FIXME: This is no longer being set from renderer. Consider updating the method name.
     input->setValueFromRenderer(serializeForNumberType(value));
@@ -303,7 +340,7 @@ void SliderThumbElement::defaultEventHandler(Event* event)
     // FIXME: Should handle this readonly/disabled check in more general way.
     // Missing this kind of check is likely to occur elsewhere if adding it in each shadow element.
     HTMLInputElement* input = hostInput();
-    if (!input || input->isReadOnlyFormControl() || !input->isEnabledFormControl()) {
+    if (!input || input->readOnly() || !input->isEnabledFormControl()) {
         stopDragging();
         HTMLDivElement::defaultEventHandler(event);
         return;
@@ -334,7 +371,7 @@ void SliderThumbElement::defaultEventHandler(Event* event)
 bool SliderThumbElement::willRespondToMouseMoveEvents()
 {
     const HTMLInputElement* input = hostInput();
-    if (input && !input->isReadOnlyFormControl() && input->isEnabledFormControl() && m_inDragMode)
+    if (input && !input->readOnly() && input->isEnabledFormControl() && m_inDragMode)
         return true;
 
     return HTMLDivElement::willRespondToMouseMoveEvents();
@@ -343,7 +380,7 @@ bool SliderThumbElement::willRespondToMouseMoveEvents()
 bool SliderThumbElement::willRespondToMouseClickEvents()
 {
     const HTMLInputElement* input = hostInput();
-    if (input && !input->isReadOnlyFormControl() && input->isEnabledFormControl())
+    if (input && !input->readOnly() && input->isEnabledFormControl())
         return true;
 
     return HTMLDivElement::willRespondToMouseClickEvents();

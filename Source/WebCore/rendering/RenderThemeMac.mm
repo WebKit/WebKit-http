@@ -926,7 +926,7 @@ NSLevelIndicatorCell* RenderThemeMac::levelIndicatorFor(const RenderMeter* rende
         m_levelIndicator.adoptNS([[NSLevelIndicatorCell alloc] initWithLevelIndicatorStyle:NSContinuousCapacityLevelIndicatorStyle]);
     NSLevelIndicatorCell* cell = m_levelIndicator.get();
 
-    HTMLMeterElement* element = static_cast<HTMLMeterElement*>(renderMeter->node());
+    HTMLMeterElement* element = renderMeter->meterElement();
     double value = element->value();
 
     // Because NSLevelIndicatorCell does not support optimum-in-the-middle type coloring,
@@ -1571,7 +1571,7 @@ bool RenderThemeMac::paintSearchFieldCancelButton(RenderObject* o, const PaintIn
 
     NSSearchFieldCell* search = this->search();
 
-    if (input->isEnabledFormControl() && !input->isReadOnlyFormControl()) {
+    if (input->isEnabledFormControl() && (input->isTextFormControl() && !static_cast<HTMLTextFormControlElement*>(input)->readOnly())) {
         updateActiveState([search cancelButtonCell], o);
         updatePressedState([search cancelButtonCell], o);
     }

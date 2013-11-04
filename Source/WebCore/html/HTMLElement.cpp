@@ -235,10 +235,6 @@ void HTMLElement::parseAttribute(const Attribute& attribute)
     } else if (attribute.name() == itemtypeAttr) {
         setItemType(attribute.value());
 #endif
-#if ENABLE(UNDO_MANAGER)
-    } else if (attribute.name() == undoscopeAttr) {
-        setUndoScope(!attribute.isNull());
-#endif
     }
 // standard events
     else if (attribute.name() == onclickAttr) {
@@ -632,6 +628,11 @@ void HTMLElement::applyAlignmentAttributeToStyle(const Attribute& attribute, Sty
         addPropertyToAttributeStyle(style, CSSPropertyVerticalAlign, verticalAlignValue);
 }
 
+bool HTMLElement::hasCustomFocusLogic() const
+{
+    return false;
+}
+
 bool HTMLElement::supportsFocus() const
 {
     return Element::supportsFocus() || (rendererIsEditable() && parentNode() && !parentNode()->rendererIsEditable());
@@ -663,14 +664,8 @@ void HTMLElement::setContentEditable(const String& enabled, ExceptionCode& ec)
         setAttribute(contenteditableAttr, "plaintext-only");
     else if (equalIgnoringCase(enabled, "inherit"))
         removeAttribute(contenteditableAttr);
-    else {
+    else
         ec = SYNTAX_ERR;
-        return;
-    }
-#if ENABLE(UNDO_MANAGER)
-    if (isContentEditable())
-        disconnectUndoManagersInSubtree();
-#endif
 }
 
 bool HTMLElement::draggable() const
@@ -1010,16 +1005,24 @@ void HTMLElement::getItemRefElements(Vector<HTMLElement*>& itemRefElements)
     if (!fastHasAttribute(itemscopeAttr))
         return;
 
-    if (!fastHasAttribute(itemrefAttr)) {
+    if (!fastHasAttribute(itemrefAttr) || !itemRef()->length()) {
         itemRefElements.append(this);
         return;
     }
 
     DOMSettableTokenList* itemRefs = itemRef();
     RefPtr<DOMSettableTokenList> processedItemRef = DOMSettableTokenList::create();
-    Node* rootNode = treeScope()->rootNode();
 
-    for (Node* current = rootNode->firstChild(); current; current = current->traverseNextNode(rootNode)) {
+    Node* rootNode;
+    if (inDocument())
+        rootNode = document();
+    else {
+        rootNode = this;
+        while (Node* parent = rootNode->parentNode())
+            rootNode = parent;
+    }
+
+    for (Node* current = rootNode; current; current = current->traverseNextNode(rootNode)) {
         if (!current->isHTMLElement())
             continue;
         HTMLElement* element = toHTMLElement(current);

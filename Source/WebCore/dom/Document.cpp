@@ -5,7 +5,7 @@
  *           (C) 2006 Alexey Proskuryakov (ap@webkit.org)
  * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2011, 2012 Apple Inc. All rights reserved.
  * Copyright (C) 2008, 2009 Torch Mobile Inc. All rights reserved. (http://www.torchmobile.com/)
- * Copyright (C) 2008, 2009, 2011 Google Inc. All rights reserved.
+ * Copyright (C) 2008, 2009, 2011, 2012 Google Inc. All rights reserved.
  * Copyright (C) 2010 Nokia Corporation and/or its subsidiary(-ies)
  * Copyright (C) Research In Motion Limited 2010-2011. All rights reserved.
  *
@@ -47,13 +47,12 @@
 #include "ContextFeatures.h"
 #include "CookieJar.h"
 #include "DOMImplementation.h"
+#include "DOMNamedFlowCollection.h"
 #include "DOMSelection.h"
 #include "DOMWindow.h"
 #include "DateComponents.h"
 #include "DeviceMotionController.h"
-#include "DeviceMotionEvent.h"
 #include "DeviceOrientationController.h"
-#include "DeviceOrientationEvent.h"
 #include "DocumentEventQueue.h"
 #include "DocumentFragment.h"
 #include "DocumentLoader.h"
@@ -112,6 +111,7 @@
 #include "MemoryInstrumentation.h"
 #include "MouseEventWithHitTestResults.h"
 #include "NameNodeList.h"
+#include "NamedFlowCollection.h"
 #include "NestingLevelIncrementer.h"
 #include "NewXMLDocumentParser.h"
 #include "NodeFilter.h"
@@ -157,7 +157,6 @@
 #include "UndoManager.h"
 #include "UserContentURLPattern.h"
 #include "WebKitNamedFlow.h"
-#include "WebKitNamedFlowCollection.h"
 #include "XMLDocumentParser.h"
 #include "XMLHttpRequest.h"
 #include "XMLNSNames.h"
@@ -387,7 +386,7 @@ static void printNavigationErrorMessage(Frame* frame, const KURL& activeURL)
                      frame->document()->url().string() + " from frame with URL " + activeURL.string() + ".\n";
 
     // FIXME: should we print to the console of the document performing the navigation instead?
-    frame->domWindow()->printErrorMessage(message);
+    frame->document()->domWindow()->printErrorMessage(message);
 }
 
 static HashSet<Document*>* documentsThatNeedStyleRecalc = 0;
@@ -454,7 +453,7 @@ Document::Document(Frame* frame, const KURL& url, bool isXHTML, bool isHTML)
     , m_hasXMLDeclaration(0)
     , m_savedRenderer(0)
     , m_designMode(inherit)
-#if ENABLE(DASHBOARD_SUPPORT)
+#if ENABLE(DASHBOARD_SUPPORT) || ENABLE(WIDGET_REGION)
     , m_hasDashboardRegions(false)
     , m_dashboardRegionsDirty(false)
 #endif
@@ -555,6 +554,7 @@ Document::Document(Frame* frame, const KURL& url, bool isXHTML, bool isHTML)
     m_hasDirtyStyleResolver = false;
     m_pendingStylesheets = 0;
     m_ignorePendingStylesheets = false;
+    m_needsNotifyRemoveAllPendingStylesheet = false;
     m_hasNodesWithPlaceholderStyle = false;
     m_pendingSheetLayout = NoLayoutWithPendingSheets;
 
@@ -614,6 +614,10 @@ Document::~Document()
     ASSERT(!m_parentTreeScope);
     ASSERT(!m_guardRefCount);
 
+    // FIXME: Should we reset m_domWindow when we detach from the Frame?
+    if (m_domWindow)
+        m_domWindow->resetUnlessSuspendedForPageCache();
+
     m_scriptRunner.clear();
 
     histogramMutationEventUsage(m_listenerTypes);
@@ -663,11 +667,6 @@ Document::~Document()
 
     clearStyleResolver(); // We need to destory CSSFontSelector before destroying m_cachedResourceLoader.
     m_cachedResourceLoader.clear();
-
-#if ENABLE(UNDO_MANAGER)
-    if (m_undoManager)
-        m_undoManager->disconnect();
-#endif
 
     // We must call clearRareData() here since a Document class inherits TreeScope
     // as well as Node. See a comment on TreeScope.h for the reason.
@@ -1159,12 +1158,23 @@ PassRefPtr<WebKitNamedFlow> Document::webkitGetFlowByName(const String& flowName
 
     return namedFlows()->flowByName(flowName);
 }
+
+PassRefPtr<DOMNamedFlowCollection> Document::webkitGetNamedFlows()
+{
+    if (!cssRegionsEnabled() || !renderer())
+        return 0;
+
+    updateStyleIfNeeded();
+
+    return namedFlows()->createCSSOMSnapshot();
+}
+
 #endif
 
-WebKitNamedFlowCollection* Document::namedFlows()
+NamedFlowCollection* Document::namedFlows()
 {
     if (!m_namedFlows)
-        m_namedFlows = WebKitNamedFlowCollection::create(this);
+        m_namedFlows = NamedFlowCollection::create(this);
 
     return m_namedFlows.get();
 }
@@ -1186,9 +1196,9 @@ PassRefPtr<Element> Document::createElementNS(const String& namespaceURI, const 
 
 String Document::readyState() const
 {
-    DEFINE_STATIC_LOCAL(const String, loading, ("loading"));
-    DEFINE_STATIC_LOCAL(const String, interactive, ("interactive"));
-    DEFINE_STATIC_LOCAL(const String, complete, ("complete"));
+    DEFINE_STATIC_LOCAL(const String, loading, (ASCIILiteral("loading")));
+    DEFINE_STATIC_LOCAL(const String, interactive, (ASCIILiteral("interactive")));
+    DEFINE_STATIC_LOCAL(const String, complete, (ASCIILiteral("complete")));
 
     switch (m_readyState) {
     case Loading:
@@ -1788,10 +1798,9 @@ bool Document::childNeedsAndNotInStyleRecalc()
 void Document::recalcStyle(StyleChange change)
 {
     // we should not enter style recalc while painting
-    if (view() && view()->isPainting()) {
-        ASSERT(!view()->isPainting());
+    ASSERT(!view() || !view()->isPainting());
+    if (view() && view()->isPainting())
         return;
-    }
     
     if (m_inStyleRecalc)
         return; // Guard against re-entrancy. -dwh
@@ -2045,6 +2054,7 @@ void Document::setIsViewSource(bool isViewSource)
         return;
 
     setSecurityOrigin(SecurityOrigin::createUnique());
+    didUpdateSecurityOrigin();
 }
 
 void Document::combineCSSFeatureFlags()
@@ -2163,7 +2173,7 @@ void Document::detach()
 
     if (render)
         render->destroy();
-    
+
     // This is required, as our Frame might delete itself as soon as it detaches
     // us. However, this violates Node::detach() semantics, as it's never
     // possible to re-attach. Eventually Document::detach() should be renamed,
@@ -3052,7 +3062,7 @@ void Document::processHttpEquiv(const String& equiv, const String& content)
                 frameLoader->stopAllLoaders();
                 frame->navigationScheduler()->scheduleLocationChange(securityOrigin(), blankURL(), String());
 
-                DEFINE_STATIC_LOCAL(String, consoleMessage, ("Refused to display document because display forbidden by X-Frame-Options.\n"));
+                DEFINE_STATIC_LOCAL(String, consoleMessage, (ASCIILiteral("Refused to display document because display forbidden by X-Frame-Options.\n")));
                 addConsoleMessage(JSMessageSource, LogMessageType, ErrorMessageLevel, consoleMessage);
             }
         }
@@ -3286,7 +3296,7 @@ bool Document::canReplaceChild(Node* newChild, Node* oldChild)
     return true;
 }
 
-PassRefPtr<Node> Document::cloneNode(bool /*deep*/)
+PassRefPtr<Node> Document::cloneNode(bool /*deep*/, ExceptionCode&)
 {
     // Spec says cloning Document nodes is "implementation dependent"
     // so we do not support it...
@@ -3315,7 +3325,7 @@ void Document::setSelectedStylesheetSet(const String& aString)
 }
 
 // This method is called whenever a top-level stylesheet has finished loading.
-void Document::removePendingSheet()
+void Document::removePendingSheet(RemovePendingSheetNotificationType notification)
 {
     // Make sure we knew this sheet was pending, and that our count isn't out of sync.
     ASSERT(m_pendingStylesheets > 0);
@@ -3330,6 +3340,18 @@ void Document::removePendingSheet()
     if (m_pendingStylesheets)
         return;
 
+    if (notification == RemovePendingSheetNotifyLater) {
+        setNeedsNotifyRemoveAllPendingStylesheet();
+        return;
+    }
+    
+    didRemoveAllPendingStylesheet();
+}
+
+void Document::didRemoveAllPendingStylesheet()
+{
+    m_needsNotifyRemoveAllPendingStylesheet = false;
+
     styleResolverChanged(RecalcStyleIfNeeded);
 
     if (ScriptableDocumentParser* parser = scriptableDocumentParser())
@@ -3338,6 +3360,7 @@ void Document::removePendingSheet()
     if (m_gotoAnchorNeededAfterStylesheetsLoad && view())
         view()->scrollToFragment(m_url);
 }
+
 
 void Document::evaluateMediaQueryList()
 {
@@ -3714,7 +3737,7 @@ void Document::activeChainNodeDetached(Node* node)
         m_activeNode = m_activeNode->parentNode();
 }
 
-#if ENABLE(DASHBOARD_SUPPORT)
+#if ENABLE(DASHBOARD_SUPPORT) || ENABLE(WIDGET_REGION)
 const Vector<DashboardRegionValue>& Document::dashboardRegions() const
 {
     return m_dashboardRegions;
@@ -3855,17 +3878,8 @@ bool Document::setFocusedNode(PassRefPtr<Node> prpNewFocusedNode)
     }
 
 #if PLATFORM(MAC) || PLATFORM(WIN) || PLATFORM(GTK) || PLATFORM(CHROMIUM)
-    if (!focusChangeBlocked && m_focusedNode && AXObjectCache::accessibilityEnabled()) {
-        RenderObject* oldFocusedRenderer = 0;
-        RenderObject* newFocusedRenderer = 0;
-
-        if (oldFocusedNode)
-            oldFocusedRenderer = oldFocusedNode->renderer();
-        if (newFocusedNode)
-            newFocusedRenderer = newFocusedNode->renderer();
-
-        axObjectCache()->handleFocusedUIElementChanged(oldFocusedRenderer, newFocusedRenderer);
-    }
+    if (!focusChangeBlocked && m_focusedNode && AXObjectCache::accessibilityEnabled())
+        axObjectCache()->handleFocusedUIElementChanged(oldFocusedNode.get(), newFocusedNode.get());
 #endif
     if (!focusChangeBlocked)
         page()->chrome()->focusedNodeChanged(m_focusedNode.get());
@@ -4037,18 +4051,28 @@ void Document::textNodeSplit(Text* oldNode)
     // FIXME: This should update markers for spelling and grammar checking.
 }
 
-// FIXME: eventually, this should return a DOMWindow stored in the document.
-DOMWindow* Document::domWindow() const
+void Document::createDOMWindow()
 {
-    if (!frame())
-        return 0;
+    ASSERT(m_frame);
+    ASSERT(!m_domWindow);
 
-    // The m_frame pointer is not (not always?) zeroed out when the document is put into b/f cache, so the frame can hold an unrelated document/window pair.
-    // FIXME: We should always zero out the frame pointer on navigation to avoid accidentally accessing the new frame content.
-    if (m_frame->document() != this)
-        return 0;
+    m_domWindow = DOMWindow::create(this);
 
-    return frame()->domWindow();
+    ASSERT(m_domWindow->document() == this);
+    ASSERT(m_domWindow->frame() == m_frame);
+}
+
+void Document::takeDOMWindowFrom(Document* document)
+{
+    ASSERT(m_frame);
+    ASSERT(!m_domWindow);
+    ASSERT(document->domWindow());
+
+    m_domWindow = document->m_domWindow.release();
+    m_domWindow->didSecureTransitionTo(this);
+
+    ASSERT(m_domWindow->document() == this);
+    ASSERT(m_domWindow->frame() == m_frame);
 }
 
 void Document::setWindowAttributeEventListener(const AtomicString& eventType, PassRefPtr<EventListener> listener)
@@ -4108,22 +4132,28 @@ PassRefPtr<Event> Document::createEvent(const String& eventType, ExceptionCode& 
     return 0;
 }
 
+void Document::addMutationEventListenerTypeIfEnabled(ListenerType listenerType)
+{
+    if (ContextFeatures::mutationEventsEnabled(this))
+        addListenerType(listenerType);
+}
+
 void Document::addListenerTypeIfNeeded(const AtomicString& eventType)
 {
     if (eventType == eventNames().DOMSubtreeModifiedEvent)
-        addListenerType(DOMSUBTREEMODIFIED_LISTENER);
+        addMutationEventListenerTypeIfEnabled(DOMSUBTREEMODIFIED_LISTENER);
     else if (eventType == eventNames().DOMNodeInsertedEvent)
-        addListenerType(DOMNODEINSERTED_LISTENER);
+        addMutationEventListenerTypeIfEnabled(DOMNODEINSERTED_LISTENER);
     else if (eventType == eventNames().DOMNodeRemovedEvent)
-        addListenerType(DOMNODEREMOVED_LISTENER);
+        addMutationEventListenerTypeIfEnabled(DOMNODEREMOVED_LISTENER);
     else if (eventType == eventNames().DOMNodeRemovedFromDocumentEvent)
-        addListenerType(DOMNODEREMOVEDFROMDOCUMENT_LISTENER);
+        addMutationEventListenerTypeIfEnabled(DOMNODEREMOVEDFROMDOCUMENT_LISTENER);
     else if (eventType == eventNames().DOMNodeInsertedIntoDocumentEvent)
-        addListenerType(DOMNODEINSERTEDINTODOCUMENT_LISTENER);
+        addMutationEventListenerTypeIfEnabled(DOMNODEINSERTEDINTODOCUMENT_LISTENER);
     else if (eventType == eventNames().DOMAttrModifiedEvent)
-        addListenerType(DOMATTRMODIFIED_LISTENER);
+        addMutationEventListenerTypeIfEnabled(DOMATTRMODIFIED_LISTENER);
     else if (eventType == eventNames().DOMCharacterDataModifiedEvent)
-        addListenerType(DOMCHARACTERDATAMODIFIED_LISTENER);
+        addMutationEventListenerTypeIfEnabled(DOMCHARACTERDATAMODIFIED_LISTENER);
     else if (eventType == eventNames().overflowchangedEvent)
         addListenerType(OVERFLOWCHANGED_LISTENER);
     else if (eventType == eventNames().webkitAnimationStartEvent)
@@ -4136,20 +4166,8 @@ void Document::addListenerTypeIfNeeded(const AtomicString& eventType)
         addListenerType(TRANSITIONEND_LISTENER);
     else if (eventType == eventNames().beforeloadEvent)
         addListenerType(BEFORELOAD_LISTENER);
-#if ENABLE(TOUCH_EVENTS)
-    else if (eventType == eventNames().touchstartEvent
-             || eventType == eventNames().touchmoveEvent
-             || eventType == eventNames().touchendEvent
-             || eventType == eventNames().touchcancelEvent) {
-        addListenerType(TOUCH_LISTENER);
-        if (Page* page = this->page())
-            page->chrome()->client()->needTouchEvents(true);
-    }
-#endif
     else if (eventType == eventNames().scrollEvent)
         addListenerType(SCROLL_LISTENER);
-    else if (eventType == eventNames().webkitRegionLayoutUpdateEvent)
-        addListenerType(REGIONLAYOUTUPDATE_LISTENER);
 }
 
 CSSStyleDeclaration* Document::getOverrideStyle(Element*, const String&)
@@ -5018,6 +5036,8 @@ void Document::initSecurityContext()
                 securityOrigin()->enforceFilePathSeparation();
             }
         }
+        if (settings->thirdPartyStorageBlockingEnabled())
+            securityOrigin()->blockThirdPartyStorage();
     }
 
     Document* parentDocument = ownerElement() ? ownerElement()->document() : 0;
@@ -5063,8 +5083,9 @@ void Document::initSecurityContext()
 
 void Document::initContentSecurityPolicy()
 {
-    if (!m_frame->tree()->parent() || !shouldInheritSecurityOriginFromOwner(m_url))
+    if (!m_frame->tree()->parent() || (!shouldInheritSecurityOriginFromOwner(m_url) && !isPluginDocument()))
         return;
+
     contentSecurityPolicy()->copyStateFrom(m_frame->tree()->parent()->document()->contentSecurityPolicy());
 }
 
@@ -5072,9 +5093,6 @@ void Document::didUpdateSecurityOrigin()
 {
     if (!m_frame)
         return;
-    // FIXME: We should remove DOMWindow::m_securityOrigin so that we don't need to keep them in sync.
-    // See <https://bugs.webkit.org/show_bug.cgi?id=75793>.
-    m_frame->domWindow()->setSecurityOrigin(securityOrigin());
     m_frame->script()->updateSecurityOrigin();
 }
 
@@ -5543,15 +5561,14 @@ void Document::webkitExitFullscreen()
 
         // 2. Queue a task to fire an event named fullscreenchange with its bubbles attribute set to true
         // on doc.
-        Node* target = currentDoc->m_fullScreenElement.get();
-        if (!target)
-            target = currentDoc;
         addDocumentToFullScreenChangeEventQueue(currentDoc);
 
         // 3. If doc's fullscreen element stack is empty and doc's browsing context has a browsing context
         // container, set doc to that browsing context container's node document.
-        if (!newTop && currentDoc->ownerElement())
+        if (!newTop && currentDoc->ownerElement()) {
             currentDoc = currentDoc->ownerElement()->document();
+            continue;
+        }
 
         // 4. Otherwise, set doc to null.
         currentDoc = 0;
@@ -5615,7 +5632,7 @@ void Document::webkitWillEnterFullScreenForElement(Element* element)
     }
 
     if (m_fullScreenElement != documentElement())
-        RenderFullScreen::wrapRenderer(renderer, this);
+        RenderFullScreen::wrapRenderer(renderer, renderer ? renderer->parent() : 0, this);
 
     m_fullScreenElement->setContainsFullScreenElementOnAncestorsCrossingFrameBoundaries(true);
     
@@ -5664,7 +5681,13 @@ void Document::webkitDidExitFullScreenForElement(Element*)
     m_fullScreenElement = 0;
     scheduleForcedStyleRecalc();
     
-    m_fullScreenChangeDelayTimer.startOneShot(0);
+    // When webkitCancelFullScreen is called, we call webkitExitFullScreen on the topDocument(). That
+    // means that the events will be queued there. So if we have no events here, start the timer on
+    // the exiting document.
+    Document* exitingDocument = this;
+    if (m_fullScreenChangeEventTargetQueue.isEmpty() && m_fullScreenErrorEventTargetQueue.isEmpty())
+        exitingDocument = topDocument();
+    exitingDocument->m_fullScreenChangeDelayTimer.startOneShot(0);
 }
     
 void Document::setFullScreenRenderer(RenderFullScreen* renderer)
@@ -5735,8 +5758,9 @@ void Document::fullScreenChangeDelayTimerFired(Timer<Document>*)
         if (!node)
             node = documentElement();
 
-        // If the element was removed from our tree, also message the documentElement.
-        if (!contains(node.get()))
+        // If the element was removed from our tree, also message the documentElement. Since we may
+        // have a document hierarchy, check that node isn't in another document.
+        if (!contains(node.get()) && !node->inDocument())
             changeQueue.append(documentElement());
         
         node->dispatchEvent(Event::create(eventNames().webkitfullscreenchangeEvent, true, false));
@@ -5750,8 +5774,9 @@ void Document::fullScreenChangeDelayTimerFired(Timer<Document>*)
         if (!node)
             node = documentElement();
         
-        // If the node was removed from our tree, also message the documentElement.
-        if (!contains(node.get()))
+        // If the element was removed from our tree, also message the documentElement. Since we may
+        // have a document hierarchy, check that node isn't in another document.
+        if (!contains(node.get()) && !node->inDocument())
             errorQueue.append(documentElement());
         
         node->dispatchEvent(Event::create(eventNames().webkitfullscreenerrorEvent, true, false));
@@ -5829,8 +5854,13 @@ void Document::addDocumentToFullScreenChangeEventQueue(Document* doc)
 #if ENABLE(POINTER_LOCK)
 void Document::webkitExitPointerLock()
 {
-    if (page())
-        page()->pointerLockController()->requestPointerUnlock();
+    if (!page())
+        return;
+    if (Element* target = page()->pointerLockController()->element()) {
+        if (target->document() != this)
+            return;
+    }
+    page()->pointerLockController()->requestPointerUnlock();
 }
 
 Element* Document::webkitPointerLockElement() const
@@ -5963,7 +5993,6 @@ void Document::didRemoveTouchEventHandler()
     if (m_touchEventHandlerCount)
         return;
 
-    m_listenerTypes &= ~TOUCH_LISTENER;
     Page* page = this->page();
     if (!page)
         return;
@@ -6016,7 +6045,7 @@ DocumentLoader* Document::loader() const
 PassRefPtr<NodeList> Document::getItems(const String& typeNames)
 {
     // Since documet.getItem() is allowed for microdata, typeNames will be null string.
-    // In this case we need to create an unique string identifier to map such request in the cache.
+    // In this case we need to create an empty string identifier to map such request in the cache.
     String localTypeNames = typeNames.isNull() ? MicroDataItemList::undefinedItemType() : typeNames;
 
     return ensureRareData()->ensureNodeLists()->addCacheWithName<MicroDataItemList>(this, DynamicNodeList::MicroDataItemListType, localTypeNames);
@@ -6087,26 +6116,36 @@ void Document::setContextFeatures(PassRefPtr<ContextFeatures> features)
 
 void Document::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
 {
-    MemoryClassInfo<Document> info(memoryObjectInfo, this, MemoryInstrumentation::DOM);
+    MemoryClassInfo info(memoryObjectInfo, this, MemoryInstrumentation::DOM);
     info.addInstrumentedMember(m_styleResolver);
-    info.visitBaseClass<ContainerNode>(this);
+    ContainerNode::reportMemoryUsage(memoryObjectInfo);
     info.addVector(m_customFonts);
-    info.addString(m_documentURI);
-    info.addString(m_baseTarget);
+    info.addInstrumentedMember(m_url);
+    info.addInstrumentedMember(m_baseURL);
+    info.addInstrumentedMember(m_baseURLOverride);
+    info.addInstrumentedMember(m_baseElementURL);
+    info.addInstrumentedMember(m_cookieURL);
+    info.addInstrumentedMember(m_firstPartyForCookies);
+    info.addInstrumentedMember(m_documentURI);
+    info.addInstrumentedMember(m_baseTarget);
+    info.addInstrumentedMember(m_frame);
+    info.addInstrumentedMember(m_cachedResourceLoader);
+    info.addInstrumentedMember(m_elemSheet);
+    info.addInstrumentedMember(m_pageUserSheet);
     if (m_pageGroupUserSheets)
-        info.addVector(*m_pageGroupUserSheets.get());
+        info.addInstrumentedVectorPtr(m_pageGroupUserSheets);
     if (m_userSheets)
-        info.addVector(*m_userSheets.get());
+        info.addInstrumentedVectorPtr(m_userSheets);
     info.addHashSet(m_nodeIterators);
     info.addHashSet(m_ranges);
     info.addListHashSet(m_styleSheetCandidateNodes);
-    info.addString(m_preferredStylesheetSet);
-    info.addString(m_selectedStylesheetSet);
-    info.addString(m_title.string());
-    info.addString(m_rawTitle.string());
-    info.addString(m_xmlEncoding);
-    info.addString(m_xmlVersion);
-    info.addString(m_contentLanguage);
+    info.addInstrumentedMember(m_preferredStylesheetSet);
+    info.addInstrumentedMember(m_selectedStylesheetSet);
+    info.addInstrumentedMember(m_title.string());
+    info.addInstrumentedMember(m_rawTitle.string());
+    info.addInstrumentedMember(m_xmlEncoding);
+    info.addInstrumentedMember(m_xmlVersion);
+    info.addInstrumentedMember(m_contentLanguage);
     info.addHashMap(m_documentNamedItemCollections);
     info.addHashMap(m_windowNamedItemCollections);
 #if ENABLE(DASHBOARD_SUPPORT)
@@ -6118,6 +6157,7 @@ void Document::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
     info.addHashSet(m_mediaVolumeCallbackElements);
     info.addHashSet(m_privateBrowsingStateChangedElements);
     info.addHashMap(m_elementsByAccessKey);
+    info.addInstrumentedMember(m_eventQueue);
     info.addHashSet(m_mediaCanStartListeners);
     info.addVector(m_pendingTasks);
 }

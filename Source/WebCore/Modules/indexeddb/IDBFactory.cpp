@@ -41,7 +41,7 @@
 #include "IDBFactoryBackendInterface.h"
 #include "IDBKey.h"
 #include "IDBKeyRange.h"
-#include "IDBRequest.h"
+#include "IDBOpenDBRequest.h"
 #include "IDBVersionChangeRequest.h"
 #include "Page.h"
 #include "PageGroup.h"
@@ -105,18 +105,29 @@ PassRefPtr<IDBRequest> IDBFactory::getDatabaseNames(ScriptExecutionContext* cont
     return request;
 }
 
-PassRefPtr<IDBRequest> IDBFactory::open(ScriptExecutionContext* context, const String& name, ExceptionCode& ec)
+PassRefPtr<IDBOpenDBRequest> IDBFactory::open(ScriptExecutionContext* context, const String& name, int64_t version, ExceptionCode& ec)
 {
     if (name.isNull()) {
+        ec = NATIVE_TYPE_ERR;
+        return 0;
+    }
+    // FIXME: We need to throw an error if script passes -1. Somehow refactor
+    // this to avoid wanting to throw an error with the sentinel.
+    if (!version || version < IDBDatabaseMetadata::NoIntVersion) {
         ec = NATIVE_TYPE_ERR;
         return 0;
     }
     if (!isContextValid(context))
         return 0;
 
-    RefPtr<IDBRequest> request = IDBRequest::create(context, IDBAny::create(this), 0);
-    m_backend->open(name, request, context->securityOrigin(), context, getIndexedDBDatabasePath(context));
+    RefPtr<IDBOpenDBRequest> request = IDBOpenDBRequest::create(context, IDBAny::create(this), version);
+    m_backend->open(name, version, request, context->securityOrigin(), context, getIndexedDBDatabasePath(context));
     return request;
+}
+
+PassRefPtr<IDBOpenDBRequest> IDBFactory::open(ScriptExecutionContext* context, const String& name, ExceptionCode& ec)
+{
+    return open(context, name, IDBDatabaseMetadata::NoIntVersion, ec);
 }
 
 PassRefPtr<IDBVersionChangeRequest> IDBFactory::deleteDatabase(ScriptExecutionContext* context, const String& name, ExceptionCode& ec)

@@ -10,15 +10,15 @@ LIST(APPEND WebKit_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/html/canvas"
     "${WEBCORE_DIR}/html/parser" # For HTMLParserIdioms.h
     "${WEBCORE_DIR}/loader/appcache"
-    "${WEBCORE_DIR}/notifications"
     "${WEBCORE_DIR}/platform/blackberry"
     "${WEBCORE_DIR}/platform/graphics/blackberry"
     "${WEBCORE_DIR}/platform/graphics/blackberry/skia"
     "${WEBCORE_DIR}/platform/graphics/skia"
     "${WEBCORE_DIR}/platform/network/blackberry"
-    "${WEBCORE_DIR}/Modules/websockets"
     "${WEBCORE_DIR}/Modules/geolocation"
+    "${WEBCORE_DIR}/Modules/notifications"
     "${WEBCORE_DIR}/Modules/vibration"
+    "${WEBCORE_DIR}/Modules/websockets"
     "${WEBKIT_DIR}/blackberry/Api"
     "${WEBKIT_DIR}/blackberry/WebCoreSupport"
     "${WEBKIT_DIR}/blackberry/WebKitSupport"
@@ -57,6 +57,7 @@ ADD_DEFINITIONS(-DUSER_PROCESSES)
 LIST(APPEND WebKit_SOURCES
     blackberry/Api/BackingStore.cpp
     blackberry/Api/BlackBerryGlobal.cpp
+    blackberry/Api/InRegionScroller.cpp
     blackberry/Api/WebAnimation.cpp
     blackberry/Api/WebKitMIMETypeConverter.cpp
     blackberry/Api/WebKitTextCodec.cpp
@@ -68,6 +69,7 @@ LIST(APPEND WebKit_SOURCES
     blackberry/Api/WebSettings.cpp
     blackberry/Api/WebString.cpp
     blackberry/Api/WebViewportArguments.cpp
+    blackberry/Api/JavaScriptVariant.cpp
     blackberry/WebCoreSupport/AutofillManager.cpp
     blackberry/WebCoreSupport/CacheClientBlackBerry.cpp
     blackberry/WebCoreSupport/ChromeClientBlackBerry.cpp
@@ -84,7 +86,6 @@ LIST(APPEND WebKit_SOURCES
     blackberry/WebCoreSupport/GeolocationControllerClientBlackBerry.cpp
     blackberry/WebCoreSupport/IconDatabaseClientBlackBerry.cpp
     blackberry/WebCoreSupport/InspectorClientBlackBerry.cpp
-    blackberry/WebCoreSupport/InspectorOverlay.cpp
     blackberry/WebCoreSupport/JavaScriptDebuggerBlackBerry.cpp
     blackberry/WebCoreSupport/NotificationPresenterImpl.cpp
     blackberry/WebCoreSupport/VibrationClientBlackBerry.cpp
@@ -100,6 +101,8 @@ LIST(APPEND WebKit_SOURCES
     blackberry/WebKitSupport/FrameLayers.cpp
     blackberry/WebKitSupport/InPageSearchManager.cpp
     blackberry/WebKitSupport/InputHandler.cpp
+    blackberry/WebKitSupport/InRegionScrollableArea.cpp
+    blackberry/WebKitSupport/InspectorOverlay.cpp
     blackberry/WebKitSupport/RenderQueue.cpp
     blackberry/WebKitSupport/SelectionHandler.cpp
     blackberry/WebKitSupport/SelectionOverlay.cpp
@@ -129,14 +132,14 @@ IF (NOT PUBLIC_BUILD)
         ${TOOLS_DIR}/DumpRenderTree/blackberry/DumpRenderTree.cpp
         ${TOOLS_DIR}/DumpRenderTree/blackberry/EventSender.cpp
         ${TOOLS_DIR}/DumpRenderTree/blackberry/GCControllerBlackBerry.cpp
-        ${TOOLS_DIR}/DumpRenderTree/blackberry/LayoutTestControllerBlackBerry.cpp
+        ${TOOLS_DIR}/DumpRenderTree/blackberry/TestRunnerBlackBerry.cpp
         ${TOOLS_DIR}/DumpRenderTree/blackberry/PixelDumpSupportBlackBerry.cpp
         ${TOOLS_DIR}/DumpRenderTree/blackberry/PNGImageEncoder.cpp
         ${TOOLS_DIR}/DumpRenderTree/blackberry/WorkQueueItemBlackBerry.cpp
         ${TOOLS_DIR}/DumpRenderTree/AccessibilityController.cpp
         ${TOOLS_DIR}/DumpRenderTree/AccessibilityUIElement.cpp
         ${TOOLS_DIR}/DumpRenderTree/AccessibilityTextMarker.cpp
-        ${TOOLS_DIR}/DumpRenderTree/LayoutTestController.cpp
+        ${TOOLS_DIR}/DumpRenderTree/TestRunner.cpp
         ${TOOLS_DIR}/DumpRenderTree/CyclicRedundancyCheck.cpp
         ${TOOLS_DIR}/DumpRenderTree/PixelDumpSupport.cpp
         ${TOOLS_DIR}/DumpRenderTree/WorkQueue.cpp
@@ -147,10 +150,7 @@ ENDIF ()
 SET(WebKit_LINK_FLAGS ${BLACKBERRY_LINK_FLAGS})
 
 LIST(APPEND WebKit_LIBRARIES
-    ${AOI_LIBRARY}
-    ${CLIPBOARD_LIBRARY}
     ${CURL_LIBRARY}
-    ${Crypto_LIBRARY}
     ${FONTCONFIG_LIBRARY}
     ${FREETYPE_LIBRARY}
     ${HARFBUZZ_LIBRARY}
@@ -158,23 +158,15 @@ LIST(APPEND WebKit_LIBRARIES
     ${ICUI18N_LIBRARY}
     ${ICUUC_LIBRARY}
     ${INTL_LIBRARY}
-    ${Iconv_LIBRARY}
     ${JPEG_LIBRARY}
     ${JavaScriptCore_LIBRARY_NAME}
-    ${MD_LIBRARY}
     ${MMR_LIBRARY}
     ${M_LIBRARY}
-    ${NBUTIL_LIBRARY}
     ${OTS_LIBRARY}
     ${PNG_LIBRARY}
-    ${PPSCache_LIBRARY}
     ${SQLITE3_LIBRARY}
-    ${SSL_LIBRARY}
-    ${STRM_LIBRARY}
-    ${Screen_LIBRARY}
     ${Skia_LIBRARY}
     ${Skia_QNX_LIBRARY}
-    ${Socket_LIBRARY}
     ${UUID_LIBRARY}
     ${WebKitPlatform_LIBRARY}
     ${XML2_LIBRARY}

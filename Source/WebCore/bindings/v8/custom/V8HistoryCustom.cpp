@@ -31,14 +31,13 @@
 #include "config.h"
 #include "V8History.h"
 
+#include "BindingState.h"
 #include "ExceptionCode.h"
 #include "History.h"
 #include "SerializedScriptValue.h"
 #include "V8Binding.h"
-#include "V8BindingState.h"
 #include "V8DOMWindow.h"
 #include "V8HiddenPropertyName.h"
-#include "V8Proxy.h"
 
 namespace WebCore {
 
@@ -81,7 +80,7 @@ v8::Handle<v8::Value> V8History::pushStateCallback(const v8::Arguments& args)
     History* history = V8History::toNative(args.Holder());
     history->stateObjectAdded(historyState.release(), title, url, History::StateObjectPush, ec);
     args.Holder()->DeleteHiddenValue(V8HiddenPropertyName::state());
-    return throwError(ec, args.GetIsolate());
+    return setDOMException(ec, args.GetIsolate());
 }
 
 v8::Handle<v8::Value> V8History::replaceStateCallback(const v8::Arguments& args)
@@ -106,21 +105,19 @@ v8::Handle<v8::Value> V8History::replaceStateCallback(const v8::Arguments& args)
     History* history = V8History::toNative(args.Holder());
     history->stateObjectAdded(historyState.release(), title, url, History::StateObjectReplace, ec);
     args.Holder()->DeleteHiddenValue(V8HiddenPropertyName::state());
-    return throwError(ec, args.GetIsolate());
+    return setDOMException(ec, args.GetIsolate());
 }
 
 bool V8History::indexedSecurityCheck(v8::Local<v8::Object> host, uint32_t index, v8::AccessType type, v8::Local<v8::Value>)
 {
-    // Only allow same origin access.
     History* history = V8History::toNative(host);
-    return V8BindingSecurity::canAccessFrame(V8BindingState::Only(), history->frame(), false);
+    return BindingSecurity::shouldAllowAccessToFrame(BindingState::instance(), history->frame(), DoNotReportSecurityError);
 }
 
 bool V8History::namedSecurityCheck(v8::Local<v8::Object> host, v8::Local<v8::Value> key, v8::AccessType type, v8::Local<v8::Value>)
 {
-    // Only allow same origin access.
     History* history = V8History::toNative(host);
-    return V8BindingSecurity::canAccessFrame(V8BindingState::Only(), history->frame(), false);
+    return BindingSecurity::shouldAllowAccessToFrame(BindingState::instance(), history->frame(), DoNotReportSecurityError);
 }
 
 } // namespace WebCore

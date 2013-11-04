@@ -882,11 +882,27 @@
 				>
 			</File>
 			<File
-				RelativePath="..\..\runtime\JSStaticScopeObject.cpp"
+				RelativePath="..\..\runtime\JSWithScope.cpp"
 				>
 			</File>
 			<File
-				RelativePath="..\..\runtime\JSStaticScopeObject.h"
+				RelativePath="..\..\runtime\JSWithScope.h"
+				>
+			</File>
+			<File
+				RelativePath="..\..\runtime\JSNameScope.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\..\runtime\JSNameScope.h"
+				>
+			</File>
+			<File
+				RelativePath="..\..\runtime\JSScope.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\..\runtime\JSScope.h"
 				>
 			</File>
 			<File
@@ -1530,6 +1546,14 @@
 			Name="bytecode"
 			>
 			<File
+				RelativePath="..\..\bytecode\ArrayProfile.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\..\bytecode\ArrayProfile.h"
+				>
+			</File>
+			<File
 				RelativePath="..\..\bytecode\CallLinkInfo.cpp"
 				>
 			</File>
@@ -2037,6 +2061,14 @@
 				RelativePath="..\..\interpreter\RegisterFile.h"
 				>
 			</File>
+			<File
+				RelativePath="..\..\interpreter\VMInspector.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\..\interpreter\VMInspector.h"
+				>
+			</File>
 		</Filter>
 		<Filter
 			Name="bytecompiler"
@@ -2310,6 +2342,14 @@
 				>
 			</File>
 			<File
+				RelativePath="..\..\heap\GCThreadSharedData.cpp"
+				>
+			</File>
+			<File
+    			RelativePath="..\..\heap\GCThreadSharedData.h"
+    			>
+			</File>
+			<File
 				RelativePath="..\..\heap\Heap.cpp"
 				>
 			</File>
@@ -2371,6 +2411,10 @@
 			</File>
 			<File
 				RelativePath="..\..\heap\MarkStack.h"
+				>
+			</File>
+			<File
+				RelativePath="..\..\heap\MarkStackInlineMethods.h"
 				>
 			</File>
 			<File

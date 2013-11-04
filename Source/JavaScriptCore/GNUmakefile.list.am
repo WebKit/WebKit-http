@@ -82,6 +82,8 @@ javascriptcore_sources += \
 	Source/JavaScriptCore/assembler/RepatchBuffer.h \
 	Source/JavaScriptCore/assembler/SH4Assembler.h \
 	Source/JavaScriptCore/assembler/X86Assembler.h \
+	Source/JavaScriptCore/bytecode/ArrayProfile.cpp \
+	Source/JavaScriptCore/bytecode/ArrayProfile.h \
 	Source/JavaScriptCore/bytecode/BytecodeConventions.h \
 	Source/JavaScriptCore/bytecode/CallLinkInfo.cpp \
 	Source/JavaScriptCore/bytecode/CallLinkInfo.h \
@@ -153,6 +155,8 @@ javascriptcore_sources += \
 	Source/JavaScriptCore/dfg/DFGArgumentPosition.h \
 	Source/JavaScriptCore/dfg/DFGArgumentsSimplificationPhase.cpp \
 	Source/JavaScriptCore/dfg/DFGArgumentsSimplificationPhase.h \
+	Source/JavaScriptCore/dfg/DFGArrayMode.cpp \
+	Source/JavaScriptCore/dfg/DFGArrayMode.h \
 	Source/JavaScriptCore/dfg/DFGAssemblyHelpers.cpp \
 	Source/JavaScriptCore/dfg/DFGAssemblyHelpers.h \
 	Source/JavaScriptCore/dfg/DFGBasicBlock.h \
@@ -213,8 +217,6 @@ javascriptcore_sources += \
 	Source/JavaScriptCore/dfg/DFGPhase.h \
 	Source/JavaScriptCore/dfg/DFGPredictionPropagationPhase.cpp \
 	Source/JavaScriptCore/dfg/DFGPredictionPropagationPhase.h \
-	Source/JavaScriptCore/dfg/DFGRedundantPhiEliminationPhase.cpp \
-	Source/JavaScriptCore/dfg/DFGRedundantPhiEliminationPhase.h \
 	Source/JavaScriptCore/dfg/DFGRegisterBank.h \
 	Source/JavaScriptCore/dfg/DFGRegisterSet.h \
 	Source/JavaScriptCore/dfg/DFGRepatch.cpp \
@@ -227,6 +229,9 @@ javascriptcore_sources += \
 	Source/JavaScriptCore/dfg/DFGSpeculativeJIT64.cpp \
 	Source/JavaScriptCore/dfg/DFGSpeculativeJIT.cpp \
 	Source/JavaScriptCore/dfg/DFGSpeculativeJIT.h \
+	Source/JavaScriptCore/dfg/DFGStructureAbstractValue.h \
+	Source/JavaScriptCore/dfg/DFGStructureCheckHoistingPhase.cpp \
+	Source/JavaScriptCore/dfg/DFGStructureCheckHoistingPhase.h \
 	Source/JavaScriptCore/dfg/DFGThunks.cpp \
 	Source/JavaScriptCore/dfg/DFGThunks.h \
 	Source/JavaScriptCore/dfg/DFGValueRecoveryOverride.h \
@@ -262,11 +267,14 @@ javascriptcore_sources += \
 	Source/JavaScriptCore/heap/IncrementalSweeper.h \
 	Source/JavaScriptCore/heap/IncrementalSweeper.cpp \
 	Source/JavaScriptCore/heap/SlotVisitor.h \
+	Source/JavaScriptCore/heap/SlotVisitorInlineMethods.h \
 	Source/JavaScriptCore/heap/HandleStack.cpp \
 	Source/JavaScriptCore/heap/HandleStack.h \
 	Source/JavaScriptCore/heap/HandleTypes.h \
 	Source/JavaScriptCore/heap/BlockAllocator.cpp \
 	Source/JavaScriptCore/heap/BlockAllocator.h \
+    Source/JavaScriptCore/heap/GCThreadSharedData.cpp \
+    Source/JavaScriptCore/heap/GCThreadSharedData.h \
 	Source/JavaScriptCore/heap/Heap.cpp \
 	Source/JavaScriptCore/heap/Heap.h \
 	Source/JavaScriptCore/heap/JITStubRoutineSet.cpp \
@@ -278,6 +286,7 @@ javascriptcore_sources += \
 	Source/JavaScriptCore/heap/MachineStackMarker.h \
 	Source/JavaScriptCore/heap/MarkStack.cpp \
 	Source/JavaScriptCore/heap/MarkStack.h \
+    Source/JavaScriptCore/heap/MarkStackInlineMethods.h \
 	Source/JavaScriptCore/heap/HeapRootVisitor.h \
 	Source/JavaScriptCore/heap/MarkedAllocator.cpp \
 	Source/JavaScriptCore/heap/MarkedAllocator.h \
@@ -356,6 +365,8 @@ javascriptcore_sources += \
 	Source/JavaScriptCore/interpreter/RegisterFile.cpp \
 	Source/JavaScriptCore/interpreter/RegisterFile.h \
 	Source/JavaScriptCore/interpreter/Register.h \
+	Source/JavaScriptCore/interpreter/VMInspector.cpp \
+	Source/JavaScriptCore/interpreter/VMInspector.h \
 	Source/JavaScriptCore/JavaScriptCorePrefix.h \
 	Source/JavaScriptCore/jit/CompactJITCodeMap.h \
 	Source/JavaScriptCore/jit/ExecutableAllocator.cpp \
@@ -536,8 +547,11 @@ javascriptcore_sources += \
 	Source/JavaScriptCore/runtime/JSPropertyNameIterator.h \
 	Source/JavaScriptCore/runtime/JSSegmentedVariableObject.cpp \
 	Source/JavaScriptCore/runtime/JSSegmentedVariableObject.h \
-	Source/JavaScriptCore/runtime/JSStaticScopeObject.cpp \
-	Source/JavaScriptCore/runtime/JSStaticScopeObject.h \
+	Source/JavaScriptCore/runtime/JSWithScope.cpp \
+	Source/JavaScriptCore/runtime/JSNameScope.cpp \
+	Source/JavaScriptCore/runtime/JSNameScope.h \
+	Source/JavaScriptCore/runtime/JSScope.cpp \
+	Source/JavaScriptCore/runtime/JSScope.h \
 	Source/JavaScriptCore/runtime/JSStringBuilder.h \
 	Source/JavaScriptCore/runtime/JSStringJoiner.cpp \
 	Source/JavaScriptCore/runtime/JSStringJoiner.h \

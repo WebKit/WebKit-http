@@ -36,6 +36,7 @@
 #include "IDBIndex.h"
 #include "IDBObjectStore.h"
 #include "IDBObjectStoreBackendInterface.h"
+#include "IDBOpenDBRequest.h"
 #include "IDBPendingTransactionMonitor.h"
 #include "IDBTracing.h"
 
@@ -43,7 +44,13 @@ namespace WebCore {
 
 PassRefPtr<IDBTransaction> IDBTransaction::create(ScriptExecutionContext* context, PassRefPtr<IDBTransactionBackendInterface> backend, IDBTransaction::Mode mode, IDBDatabase* db)
 {
-    RefPtr<IDBTransaction> transaction(adoptRef(new IDBTransaction(context, backend, mode, db)));
+    IDBOpenDBRequest* openDBRequest = 0;
+    return create(context, backend, mode, db, openDBRequest);
+}
+
+PassRefPtr<IDBTransaction> IDBTransaction::create(ScriptExecutionContext* context, PassRefPtr<IDBTransactionBackendInterface> backend, IDBTransaction::Mode mode, IDBDatabase* db, IDBOpenDBRequest* openDBRequest)
+{
+    RefPtr<IDBTransaction> transaction(adoptRef(new IDBTransaction(context, backend, mode, db, openDBRequest)));
     transaction->suspendIfNeeded();
     return transaction.release();
 }
@@ -79,13 +86,15 @@ const AtomicString& IDBTransaction::modeReadWriteLegacy()
 }
 
 
-IDBTransaction::IDBTransaction(ScriptExecutionContext* context, PassRefPtr<IDBTransactionBackendInterface> backend, IDBTransaction::Mode mode, IDBDatabase* db)
+IDBTransaction::IDBTransaction(ScriptExecutionContext* context, PassRefPtr<IDBTransactionBackendInterface> backend, IDBTransaction::Mode mode, IDBDatabase* db, IDBOpenDBRequest* openDBRequest)
     : ActiveDOMObject(context, this)
     , m_backend(backend)
     , m_database(db)
+    , m_openDBRequest(openDBRequest)
     , m_mode(mode)
     , m_active(true)
     , m_state(Unused)
+    , m_hasPendingActivity(true)
     , m_contextStopped(false)
 {
     ASSERT(m_backend);
@@ -182,7 +191,7 @@ void IDBTransaction::objectStoreDeleted(const String& name)
 
 void IDBTransaction::setActive(bool active)
 {
-    ASSERT(m_state != Finished);
+    ASSERT_WITH_MESSAGE(m_state != Finished, "A finished transaction tried to setActive(%s)", active ? "true" : "false");
     if (m_state == Finishing)
         return;
     ASSERT(m_state == Unused || m_state == Used);
@@ -262,6 +271,7 @@ void IDBTransaction::unregisterRequest(IDBRequest* request)
 
 void IDBTransaction::onAbort()
 {
+    IDB_TRACE("IDBTransaction::onAbort");
     ASSERT(m_state != Finished);
 
     if (m_state != Finishing) {
@@ -294,6 +304,7 @@ void IDBTransaction::onAbort()
 
 void IDBTransaction::onComplete()
 {
+    IDB_TRACE("IDBTransaction::onComplete");
     ASSERT(m_state != Finished);
     m_state = Finishing;
     m_objectStoreCleanupMap.clear();
@@ -311,7 +322,7 @@ bool IDBTransaction::hasPendingActivity() const
     // FIXME: In an ideal world, we should return true as long as anyone has a or can
     //        get a handle to us or any child request object and any of those have
     //        event listeners. This is  in order to handle user generated events properly.
-    return m_state != Finished || ActiveDOMObject::hasPendingActivity();
+    return m_hasPendingActivity || ActiveDOMObject::hasPendingActivity();
 }
 
 IDBTransaction::Mode IDBTransaction::stringToMode(const String& modeString, ExceptionCode& ec)
@@ -360,6 +371,7 @@ bool IDBTransaction::dispatchEvent(PassRefPtr<Event> event)
 {
     IDB_TRACE("IDBTransaction::dispatchEvent");
     ASSERT(m_state != Finished);
+    ASSERT(m_hasPendingActivity);
     ASSERT(scriptExecutionContext());
     ASSERT(event->target() == this);
     m_state = Finished;
@@ -375,7 +387,15 @@ bool IDBTransaction::dispatchEvent(PassRefPtr<Event> event)
 
     // FIXME: When we allow custom event dispatching, this will probably need to change.
     ASSERT(event->type() == eventNames().completeEvent || event->type() == eventNames().abortEvent);
-    return IDBEventDispatcher::dispatch(event.get(), targets);
+    bool returnValue = IDBEventDispatcher::dispatch(event.get(), targets);
+    // FIXME: Try to construct a test where |this| outlives openDBRequest and we
+    // get a crash.
+    if (m_openDBRequest) {
+        ASSERT(isVersionChange());
+        m_openDBRequest->transactionDidFinishAndDispatch();
+    }
+    m_hasPendingActivity = false;
+    return returnValue;
 }
 
 bool IDBTransaction::canSuspend() const

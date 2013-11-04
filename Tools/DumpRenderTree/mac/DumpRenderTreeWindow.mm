@@ -34,7 +34,7 @@
 #import "DumpRenderTree.h"
 
 // FIXME: This file is ObjC++ only because of this include. :(
-#import "LayoutTestController.h"
+#import "TestRunner.h"
 #import <WebKit/WebViewPrivate.h>
 #import <WebKit/WebTypesInternal.h>
 
@@ -79,7 +79,12 @@ static CFArrayCallBacks NonRetainingArrayCallbacks = {
 
 - (BOOL)isKeyWindow
 {
-    return gLayoutTestController ? gLayoutTestController->windowIsKey() : YES;
+    return gTestRunner ? gTestRunner->windowIsKey() : YES;
+}
+
+- (BOOL)_hasKeyAppearance
+{
+    return [self isKeyWindow];
 }
 
 - (void)keyDown:(NSEvent *)event

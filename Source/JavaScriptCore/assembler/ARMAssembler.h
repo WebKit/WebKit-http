@@ -179,52 +179,50 @@ namespace JSC {
         };
 
         enum {
-            OP2_IMM = (1 << 25),
-            OP2_IMM_HALF = (1 << 22),
-            OP2_INV_IMM = (1 << 26),
-            SET_CC = (1 << 20),
-            OP2_OFSREG = (1 << 25),
+            Op2Immediate = (1 << 25),
+            ImmediateForHalfWordTransfer = (1 << 22),
+            Op2InvertedImmediate = (1 << 26),
+            SetConditionalCodes = (1 << 20),
+            Op2IsRegisterArgument = (1 << 25),
             // Data transfer flags.
-            DT_UP = (1 << 23),
-            DT_WB = (1 << 21),
-            DT_PRE = (1 << 24),
-            DT_LOAD = (1 << 20),
-            DT_BYTE = (1 << 22),
+            DataTransferUp = (1 << 23),
+            DataTransferWriteBack = (1 << 21),
+            DataTransferPostUpdate = (1 << 24),
+            DataTransferLoad = (1 << 20),
+            ByteDataTransfer = (1 << 22),
         };
 
         enum DataTransferTypeA {
-            LoadUint32 = 0x05000000 | DT_LOAD,
-            LoadUint8 = 0x05400000 | DT_LOAD,
+            LoadUint32 = 0x05000000 | DataTransferLoad,
+            LoadUint8 = 0x05400000 | DataTransferLoad,
             StoreUint32 = 0x05000000,
             StoreUint8 = 0x05400000,
         };
 
         enum DataTransferTypeB {
-            LoadUint16 = 0x010000b0 | DT_LOAD,
-            LoadInt16 = 0x010000f0 | DT_LOAD,
-            LoadInt8 = 0x010000d0 | DT_LOAD,
+            LoadUint16 = 0x010000b0 | DataTransferLoad,
+            LoadInt16 = 0x010000f0 | DataTransferLoad,
+            LoadInt8 = 0x010000d0 | DataTransferLoad,
             StoreUint16 = 0x010000b0,
         };
 
         enum DataTransferTypeFloat {
-            LoadFloat = 0x0d000a00 | DT_LOAD,
-            LoadDouble = 0x0d000b00 | DT_LOAD,
+            LoadFloat = 0x0d000a00 | DataTransferLoad,
+            LoadDouble = 0x0d000b00 | DataTransferLoad,
             StoreFloat = 0x0d000a00,
             StoreDouble = 0x0d000b00,
         };
 
         // Masks of ARM instructions
         enum {
-            BRANCH_MASK = 0x00ffffff,
-            NONARM = 0xf0000000,
-            SDT_MASK = 0x0c000000,
-            SDT_OFFSET_MASK = 0xfff,
+            BranchOffsetMask = 0x00ffffff,
+            ConditionalFieldMask = 0xf0000000,
+            DataTransferOffsetMask = 0xfff,
         };
 
         enum {
-            BOFFSET_MIN = -0x00800000,
-            BOFFSET_MAX = 0x007fffff,
-            SDT = 0x04000000,
+            MinimumBranchOffsetDistance = -0x00800000,
+            MaximumBranchOffsetDistance = 0x007fffff,
         };
 
         enum {
@@ -233,19 +231,28 @@ namespace JSC {
             padForAlign32 = 0xe12fff7f // 'bkpt 0xffff' instruction.
         };
 
-        static const ARMWord INVALID_IMM = 0xf0000000;
+        static const ARMWord InvalidImmediate = 0xf0000000;
         static const ARMWord InvalidBranchTarget = 0xffffffff;
-        static const int DefaultPrefetching = 2;
+        static const int DefaultPrefetchOffset = 2;
+
+        static const ARMWord BlxInstructionMask = 0x012fff30;
+        static const ARMWord LdrOrAddInstructionMask = 0x0ff00000;
+        static const ARMWord LdrPcImmediateInstructionMask = 0x0f7f0000;
+
+        static const ARMWord AddImmediateInstruction = 0x02800000;
+        static const ARMWord BlxInstruction = 0x012fff30;
+        static const ARMWord LdrImmediateInstruction = 0x05900000;
+        static const ARMWord LdrPcImmediateInstruction = 0x051f0000;
 
         // Instruction formating
 
-        void emitInst(ARMWord op, int rd, int rn, ARMWord op2)
+        void emitInstruction(ARMWord op, int rd, int rn, ARMWord op2)
         {
-            ASSERT(((op2 & ~OP2_IMM) <= 0xfff) || (((op2 & ~OP2_IMM_HALF) <= 0xfff)));
+            ASSERT(((op2 & ~Op2Immediate) <= 0xfff) || (((op2 & ~ImmediateForHalfWordTransfer) <= 0xfff)));
             m_buffer.putInt(op | RN(rn) | RD(rd) | op2);
         }
 
-        void emitDoublePrecisionInst(ARMWord op, int dd, int dn, int dm)
+        void emitDoublePrecisionInstruction(ARMWord op, int dd, int dn, int dm)
         {
             ASSERT((dd >= 0 && dd <= 31) && (dn >= 0 && dn <= 31) && (dm >= 0 && dm <= 31));
             m_buffer.putInt(op | ((dd & 0xf) << 12) | ((dd & 0x10) << (22 - 4))
@@ -253,7 +260,7 @@ namespace JSC {
                                | (dm & 0xf) | ((dm & 0x10) << (5 - 4)));
         }
 
-        void emitSinglePrecisionInst(ARMWord op, int sd, int sn, int sm)
+        void emitSinglePrecisionInstruction(ARMWord op, int sd, int sn, int sm)
         {
             ASSERT((sd >= 0 && sd <= 31) && (sn >= 0 && sn <= 31) && (sm >= 0 && sm <= 31));
             m_buffer.putInt(op | ((sd >> 1) << 12) | ((sd & 0x1) << 22)
@@ -261,368 +268,368 @@ namespace JSC {
                                | (sm >> 1) | ((sm & 0x1) << 5));
         }
 
-        void and_r(int rd, int rn, ARMWord op2, Condition cc = AL)
+        void bitAnd(int rd, int rn, ARMWord op2, Condition cc = AL)
         {
-            emitInst(static_cast<ARMWord>(cc) | AND, rd, rn, op2);
+            emitInstruction(toARMWord(cc) | AND, rd, rn, op2);
         }
 
-        void ands_r(int rd, int rn, ARMWord op2, Condition cc = AL)
+        void bitAnds(int rd, int rn, ARMWord op2, Condition cc = AL)
         {
-            emitInst(static_cast<ARMWord>(cc) | AND | SET_CC, rd, rn, op2);
+            emitInstruction(toARMWord(cc) | AND | SetConditionalCodes, rd, rn, op2);
         }
 
-        void eor_r(int rd, int rn, ARMWord op2, Condition cc = AL)
+        void eor(int rd, int rn, ARMWord op2, Condition cc = AL)
         {
-            emitInst(static_cast<ARMWord>(cc) | EOR, rd, rn, op2);
+            emitInstruction(toARMWord(cc) | EOR, rd, rn, op2);
         }
 
-        void eors_r(int rd, int rn, ARMWord op2, Condition cc = AL)
+        void eors(int rd, int rn, ARMWord op2, Condition cc = AL)
         {
-            emitInst(static_cast<ARMWord>(cc) | EOR | SET_CC, rd, rn, op2);
+            emitInstruction(toARMWord(cc) | EOR | SetConditionalCodes, rd, rn, op2);
         }
 
-        void sub_r(int rd, int rn, ARMWord op2, Condition cc = AL)
+        void sub(int rd, int rn, ARMWord op2, Condition cc = AL)
         {
-            emitInst(static_cast<ARMWord>(cc) | SUB, rd, rn, op2);
+            emitInstruction(toARMWord(cc) | SUB, rd, rn, op2);
         }
 
-        void subs_r(int rd, int rn, ARMWord op2, Condition cc = AL)
+        void subs(int rd, int rn, ARMWord op2, Condition cc = AL)
         {
-            emitInst(static_cast<ARMWord>(cc) | SUB | SET_CC, rd, rn, op2);
+            emitInstruction(toARMWord(cc) | SUB | SetConditionalCodes, rd, rn, op2);
         }
 
-        void rsb_r(int rd, int rn, ARMWord op2, Condition cc = AL)
+        void rsb(int rd, int rn, ARMWord op2, Condition cc = AL)
         {
-            emitInst(static_cast<ARMWord>(cc) | RSB, rd, rn, op2);
+            emitInstruction(toARMWord(cc) | RSB, rd, rn, op2);
         }
 
-        void rsbs_r(int rd, int rn, ARMWord op2, Condition cc = AL)
+        void rsbs(int rd, int rn, ARMWord op2, Condition cc = AL)
         {
-            emitInst(static_cast<ARMWord>(cc) | RSB | SET_CC, rd, rn, op2);
+            emitInstruction(toARMWord(cc) | RSB | SetConditionalCodes, rd, rn, op2);
         }
 
-        void add_r(int rd, int rn, ARMWord op2, Condition cc = AL)
+        void add(int rd, int rn, ARMWord op2, Condition cc = AL)
         {
-            emitInst(static_cast<ARMWord>(cc) | ADD, rd, rn, op2);
+            emitInstruction(toARMWord(cc) | ADD, rd, rn, op2);
         }
 
-        void adds_r(int rd, int rn, ARMWord op2, Condition cc = AL)
+        void adds(int rd, int rn, ARMWord op2, Condition cc = AL)
         {
-            emitInst(static_cast<ARMWord>(cc) | ADD | SET_CC, rd, rn, op2);
+            emitInstruction(toARMWord(cc) | ADD | SetConditionalCodes, rd, rn, op2);
         }
 
-        void adc_r(int rd, int rn, ARMWord op2, Condition cc = AL)
+        void adc(int rd, int rn, ARMWord op2, Condition cc = AL)
         {
-            emitInst(static_cast<ARMWord>(cc) | ADC, rd, rn, op2);
+            emitInstruction(toARMWord(cc) | ADC, rd, rn, op2);
         }
 
-        void adcs_r(int rd, int rn, ARMWord op2, Condition cc = AL)
+        void adcs(int rd, int rn, ARMWord op2, Condition cc = AL)
         {
-            emitInst(static_cast<ARMWord>(cc) | ADC | SET_CC, rd, rn, op2);
+            emitInstruction(toARMWord(cc) | ADC | SetConditionalCodes, rd, rn, op2);
         }
 
-        void sbc_r(int rd, int rn, ARMWord op2, Condition cc = AL)
+        void sbc(int rd, int rn, ARMWord op2, Condition cc = AL)
         {
-            emitInst(static_cast<ARMWord>(cc) | SBC, rd, rn, op2);
+            emitInstruction(toARMWord(cc) | SBC, rd, rn, op2);
         }
 
-        void sbcs_r(int rd, int rn, ARMWord op2, Condition cc = AL)
+        void sbcs(int rd, int rn, ARMWord op2, Condition cc = AL)
         {
-            emitInst(static_cast<ARMWord>(cc) | SBC | SET_CC, rd, rn, op2);
+            emitInstruction(toARMWord(cc) | SBC | SetConditionalCodes, rd, rn, op2);
         }
 
-        void rsc_r(int rd, int rn, ARMWord op2, Condition cc = AL)
+        void rsc(int rd, int rn, ARMWord op2, Condition cc = AL)
         {
-            emitInst(static_cast<ARMWord>(cc) | RSC, rd, rn, op2);
+            emitInstruction(toARMWord(cc) | RSC, rd, rn, op2);
         }
 
-        void rscs_r(int rd, int rn, ARMWord op2, Condition cc = AL)
+        void rscs(int rd, int rn, ARMWord op2, Condition cc = AL)
         {
-            emitInst(static_cast<ARMWord>(cc) | RSC | SET_CC, rd, rn, op2);
+            emitInstruction(toARMWord(cc) | RSC | SetConditionalCodes, rd, rn, op2);
         }
 
-        void tst_r(int rn, ARMWord op2, Condition cc = AL)
+        void tst(int rn, ARMWord op2, Condition cc = AL)
         {
-            emitInst(static_cast<ARMWord>(cc) | TST | SET_CC, 0, rn, op2);
+            emitInstruction(toARMWord(cc) | TST | SetConditionalCodes, 0, rn, op2);
         }
 
-        void teq_r(int rn, ARMWord op2, Condition cc = AL)
+        void teq(int rn, ARMWord op2, Condition cc = AL)
         {
-            emitInst(static_cast<ARMWord>(cc) | TEQ | SET_CC, 0, rn, op2);
+            emitInstruction(toARMWord(cc) | TEQ | SetConditionalCodes, 0, rn, op2);
         }
 
-        void cmp_r(int rn, ARMWord op2, Condition cc = AL)
+        void cmp(int rn, ARMWord op2, Condition cc = AL)
         {
-            emitInst(static_cast<ARMWord>(cc) | CMP | SET_CC, 0, rn, op2);
+            emitInstruction(toARMWord(cc) | CMP | SetConditionalCodes, 0, rn, op2);
         }
 
-        void cmn_r(int rn, ARMWord op2, Condition cc = AL)
+        void cmn(int rn, ARMWord op2, Condition cc = AL)
         {
-            emitInst(static_cast<ARMWord>(cc) | CMN | SET_CC, 0, rn, op2);
+            emitInstruction(toARMWord(cc) | CMN | SetConditionalCodes, 0, rn, op2);
         }
 
-        void orr_r(int rd, int rn, ARMWord op2, Condition cc = AL)
+        void orr(int rd, int rn, ARMWord op2, Condition cc = AL)
         {
-            emitInst(static_cast<ARMWord>(cc) | ORR, rd, rn, op2);
+            emitInstruction(toARMWord(cc) | ORR, rd, rn, op2);
         }
 
-        void orrs_r(int rd, int rn, ARMWord op2, Condition cc = AL)
+        void orrs(int rd, int rn, ARMWord op2, Condition cc = AL)
         {
-            emitInst(static_cast<ARMWord>(cc) | ORR | SET_CC, rd, rn, op2);
+            emitInstruction(toARMWord(cc) | ORR | SetConditionalCodes, rd, rn, op2);
         }
 
-        void mov_r(int rd, ARMWord op2, Condition cc = AL)
+        void mov(int rd, ARMWord op2, Condition cc = AL)
         {
-            emitInst(static_cast<ARMWord>(cc) | MOV, rd, ARMRegisters::r0, op2);
+            emitInstruction(toARMWord(cc) | MOV, rd, ARMRegisters::r0, op2);
         }
 
 #if WTF_ARM_ARCH_AT_LEAST(7)
-        void movw_r(int rd, ARMWord op2, Condition cc = AL)
+        void movw(int rd, ARMWord op2, Condition cc = AL)
         {
             ASSERT((op2 | 0xf0fff) == 0xf0fff);
-            m_buffer.putInt(static_cast<ARMWord>(cc) | MOVW | RD(rd) | op2);
+            m_buffer.putInt(toARMWord(cc) | MOVW | RD(rd) | op2);
         }
 
-        void movt_r(int rd, ARMWord op2, Condition cc = AL)
+        void movt(int rd, ARMWord op2, Condition cc = AL)
         {
             ASSERT((op2 | 0xf0fff) == 0xf0fff);
-            m_buffer.putInt(static_cast<ARMWord>(cc) | MOVT | RD(rd) | op2);
+            m_buffer.putInt(toARMWord(cc) | MOVT | RD(rd) | op2);
         }
 #endif
 
-        void movs_r(int rd, ARMWord op2, Condition cc = AL)
+        void movs(int rd, ARMWord op2, Condition cc = AL)
         {
-            emitInst(static_cast<ARMWord>(cc) | MOV | SET_CC, rd, ARMRegisters::r0, op2);
+            emitInstruction(toARMWord(cc) | MOV | SetConditionalCodes, rd, ARMRegisters::r0, op2);
         }
 
-        void bic_r(int rd, int rn, ARMWord op2, Condition cc = AL)
+        void bic(int rd, int rn, ARMWord op2, Condition cc = AL)
         {
-            emitInst(static_cast<ARMWord>(cc) | BIC, rd, rn, op2);
+            emitInstruction(toARMWord(cc) | BIC, rd, rn, op2);
         }
 
-        void bics_r(int rd, int rn, ARMWord op2, Condition cc = AL)
+        void bics(int rd, int rn, ARMWord op2, Condition cc = AL)
         {
-            emitInst(static_cast<ARMWord>(cc) | BIC | SET_CC, rd, rn, op2);
+            emitInstruction(toARMWord(cc) | BIC | SetConditionalCodes, rd, rn, op2);
         }
 
-        void mvn_r(int rd, ARMWord op2, Condition cc = AL)
+        void mvn(int rd, ARMWord op2, Condition cc = AL)
         {
-            emitInst(static_cast<ARMWord>(cc) | MVN, rd, ARMRegisters::r0, op2);
+            emitInstruction(toARMWord(cc) | MVN, rd, ARMRegisters::r0, op2);
         }
 
-        void mvns_r(int rd, ARMWord op2, Condition cc = AL)
+        void mvns(int rd, ARMWord op2, Condition cc = AL)
         {
-            emitInst(static_cast<ARMWord>(cc) | MVN | SET_CC, rd, ARMRegisters::r0, op2);
+            emitInstruction(toARMWord(cc) | MVN | SetConditionalCodes, rd, ARMRegisters::r0, op2);
         }
 
-        void mul_r(int rd, int rn, int rm, Condition cc = AL)
+        void mul(int rd, int rn, int rm, Condition cc = AL)
         {
-            m_buffer.putInt(static_cast<ARMWord>(cc) | MUL | RN(rd) | RS(rn) | RM(rm));
+            m_buffer.putInt(toARMWord(cc) | MUL | RN(rd) | RS(rn) | RM(rm));
         }
 
-        void muls_r(int rd, int rn, int rm, Condition cc = AL)
+        void muls(int rd, int rn, int rm, Condition cc = AL)
         {
-            m_buffer.putInt(static_cast<ARMWord>(cc) | MUL | SET_CC | RN(rd) | RS(rn) | RM(rm));
+            m_buffer.putInt(toARMWord(cc) | MUL | SetConditionalCodes | RN(rd) | RS(rn) | RM(rm));
         }
 
-        void mull_r(int rdhi, int rdlo, int rn, int rm, Condition cc = AL)
+        void mull(int rdhi, int rdlo, int rn, int rm, Condition cc = AL)
         {
-            m_buffer.putInt(static_cast<ARMWord>(cc) | MULL | RN(rdhi) | RD(rdlo) | RS(rn) | RM(rm));
+            m_buffer.putInt(toARMWord(cc) | MULL | RN(rdhi) | RD(rdlo) | RS(rn) | RM(rm));
         }
 
-        void vmov_f64_r(int dd, int dm, Condition cc = AL)
+        void vmov_f64(int dd, int dm, Condition cc = AL)
         {
-            emitDoublePrecisionInst(static_cast<ARMWord>(cc) | VMOV_F64, dd, 0, dm);
+            emitDoublePrecisionInstruction(toARMWord(cc) | VMOV_F64, dd, 0, dm);
         }
 
-        void vadd_f64_r(int dd, int dn, int dm, Condition cc = AL)
+        void vadd_f64(int dd, int dn, int dm, Condition cc = AL)
         {
-            emitDoublePrecisionInst(static_cast<ARMWord>(cc) | VADD_F64, dd, dn, dm);
+            emitDoublePrecisionInstruction(toARMWord(cc) | VADD_F64, dd, dn, dm);
         }
 
-        void vdiv_f64_r(int dd, int dn, int dm, Condition cc = AL)
+        void vdiv_f64(int dd, int dn, int dm, Condition cc = AL)
         {
-            emitDoublePrecisionInst(static_cast<ARMWord>(cc) | VDIV_F64, dd, dn, dm);
+            emitDoublePrecisionInstruction(toARMWord(cc) | VDIV_F64, dd, dn, dm);
         }
 
-        void vsub_f64_r(int dd, int dn, int dm, Condition cc = AL)
+        void vsub_f64(int dd, int dn, int dm, Condition cc = AL)
         {
-            emitDoublePrecisionInst(static_cast<ARMWord>(cc) | VSUB_F64, dd, dn, dm);
+            emitDoublePrecisionInstruction(toARMWord(cc) | VSUB_F64, dd, dn, dm);
         }
 
-        void vmul_f64_r(int dd, int dn, int dm, Condition cc = AL)
+        void vmul_f64(int dd, int dn, int dm, Condition cc = AL)
         {
-            emitDoublePrecisionInst(static_cast<ARMWord>(cc) | VMUL_F64, dd, dn, dm);
+            emitDoublePrecisionInstruction(toARMWord(cc) | VMUL_F64, dd, dn, dm);
         }
 
-        void vcmp_f64_r(int dd, int dm, Condition cc = AL)
+        void vcmp_f64(int dd, int dm, Condition cc = AL)
         {
-            emitDoublePrecisionInst(static_cast<ARMWord>(cc) | VCMP_F64, dd, 0, dm);
+            emitDoublePrecisionInstruction(toARMWord(cc) | VCMP_F64, dd, 0, dm);
         }
 
-        void vsqrt_f64_r(int dd, int dm, Condition cc = AL)
+        void vsqrt_f64(int dd, int dm, Condition cc = AL)
         {
-            emitDoublePrecisionInst(static_cast<ARMWord>(cc) | VSQRT_F64, dd, 0, dm);
+            emitDoublePrecisionInstruction(toARMWord(cc) | VSQRT_F64, dd, 0, dm);
         }
 
-        void vabs_f64_r(int dd, int dm, Condition cc = AL)
+        void vabs_f64(int dd, int dm, Condition cc = AL)
         {
-            emitDoublePrecisionInst(static_cast<ARMWord>(cc) | VABS_F64, dd, 0, dm);
+            emitDoublePrecisionInstruction(toARMWord(cc) | VABS_F64, dd, 0, dm);
         }
 
-        void vneg_f64_r(int dd, int dm, Condition cc = AL)
+        void vneg_f64(int dd, int dm, Condition cc = AL)
         {
-            emitDoublePrecisionInst(static_cast<ARMWord>(cc) | VNEG_F64, dd, 0, dm);
+            emitDoublePrecisionInstruction(toARMWord(cc) | VNEG_F64, dd, 0, dm);
         }
 
-        void ldr_imm(int rd, ARMWord imm, Condition cc = AL)
+        void ldrImmediate(int rd, ARMWord imm, Condition cc = AL)
         {
-            m_buffer.putIntWithConstantInt(static_cast<ARMWord>(cc) | LoadUint32 | DT_UP | RN(ARMRegisters::pc) | RD(rd), imm, true);
+            m_buffer.putIntWithConstantInt(toARMWord(cc) | LoadUint32 | DataTransferUp | RN(ARMRegisters::pc) | RD(rd), imm, true);
         }
 
-        void ldr_un_imm(int rd, ARMWord imm, Condition cc = AL)
+        void ldrUniqueImmediate(int rd, ARMWord imm, Condition cc = AL)
         {
-            m_buffer.putIntWithConstantInt(static_cast<ARMWord>(cc) | LoadUint32 | DT_UP | RN(ARMRegisters::pc) | RD(rd), imm);
+            m_buffer.putIntWithConstantInt(toARMWord(cc) | LoadUint32 | DataTransferUp | RN(ARMRegisters::pc) | RD(rd), imm);
         }
 
-        void dtr_u(DataTransferTypeA transferType, int rd, int rb, ARMWord op2, Condition cc = AL)
+        void dtrUp(DataTransferTypeA transferType, int rd, int rb, ARMWord op2, Condition cc = AL)
         {
-            emitInst(static_cast<ARMWord>(cc) | transferType | DT_UP, rd, rb, op2);
+            emitInstruction(toARMWord(cc) | transferType | DataTransferUp, rd, rb, op2);
         }
 
-        void dtr_ur(DataTransferTypeA transferType, int rd, int rb, int rm, Condition cc = AL)
+        void dtrUpRegister(DataTransferTypeA transferType, int rd, int rb, int rm, Condition cc = AL)
         {
-            emitInst(static_cast<ARMWord>(cc) | transferType | DT_UP | OP2_OFSREG, rd, rb, rm);
+            emitInstruction(toARMWord(cc) | transferType | DataTransferUp | Op2IsRegisterArgument, rd, rb, rm);
         }
 
-        void dtr_d(DataTransferTypeA transferType, int rd, int rb, ARMWord op2, Condition cc = AL)
+        void dtrDown(DataTransferTypeA transferType, int rd, int rb, ARMWord op2, Condition cc = AL)
         {
-            emitInst(static_cast<ARMWord>(cc) | transferType, rd, rb, op2);
+            emitInstruction(toARMWord(cc) | transferType, rd, rb, op2);
         }
 
-        void dtr_dr(DataTransferTypeA transferType, int rd, int rb, int rm, Condition cc = AL)
+        void dtrDownRegister(DataTransferTypeA transferType, int rd, int rb, int rm, Condition cc = AL)
         {
-            emitInst(static_cast<ARMWord>(cc) | transferType | OP2_OFSREG, rd, rb, rm);
+            emitInstruction(toARMWord(cc) | transferType | Op2IsRegisterArgument, rd, rb, rm);
         }
 
-        void dtrh_u(DataTransferTypeB transferType, int rd, int rb, ARMWord op2, Condition cc = AL)
+        void halfDtrUp(DataTransferTypeB transferType, int rd, int rb, ARMWord op2, Condition cc = AL)
         {
-            emitInst(static_cast<ARMWord>(cc) | transferType | DT_UP, rd, rb, op2);
+            emitInstruction(toARMWord(cc) | transferType | DataTransferUp, rd, rb, op2);
         }
 
-        void dtrh_ur(DataTransferTypeB transferType, int rd, int rn, int rm, Condition cc = AL)
+        void halfDtrUpRegister(DataTransferTypeB transferType, int rd, int rn, int rm, Condition cc = AL)
         {
-            emitInst(static_cast<ARMWord>(cc) | transferType | DT_UP, rd, rn, rm);
+            emitInstruction(toARMWord(cc) | transferType | DataTransferUp, rd, rn, rm);
         }
 
-        void dtrh_d(DataTransferTypeB transferType, int rd, int rb, ARMWord op2, Condition cc = AL)
+        void halfDtrDown(DataTransferTypeB transferType, int rd, int rb, ARMWord op2, Condition cc = AL)
         {
-            emitInst(static_cast<ARMWord>(cc) | transferType, rd, rb, op2);
+            emitInstruction(toARMWord(cc) | transferType, rd, rb, op2);
         }
 
-        void dtrh_dr(DataTransferTypeB transferType, int rd, int rn, int rm, Condition cc = AL)
+        void halfDtrDownRegister(DataTransferTypeB transferType, int rd, int rn, int rm, Condition cc = AL)
         {
-            emitInst(static_cast<ARMWord>(cc) | transferType, rd, rn, rm);
+            emitInstruction(toARMWord(cc) | transferType, rd, rn, rm);
         }
 
-        void fdtr_u(DataTransferTypeFloat type, int rd, int rb, ARMWord op2, Condition cc = AL)
-        {
-            ASSERT(op2 <= 0xff && rd <= 15);
-            /* Only d0-d15 and s0, s2, s4 ... s30 are supported. */
-            m_buffer.putInt(static_cast<ARMWord>(cc) | DT_UP | type | (rd << 12) | RN(rb) | op2);
-        }
-
-        void fdtr_d(DataTransferTypeFloat type, int rd, int rb, ARMWord op2, Condition cc = AL)
+        void doubleDtrUp(DataTransferTypeFloat type, int rd, int rb, ARMWord op2, Condition cc = AL)
         {
             ASSERT(op2 <= 0xff && rd <= 15);
             /* Only d0-d15 and s0, s2, s4 ... s30 are supported. */
-            m_buffer.putInt(static_cast<ARMWord>(cc) | type | (rd << 12) | RN(rb) | op2);
+            m_buffer.putInt(toARMWord(cc) | DataTransferUp | type | (rd << 12) | RN(rb) | op2);
         }
 
-        void push_r(int reg, Condition cc = AL)
+        void doubleDtrDown(DataTransferTypeFloat type, int rd, int rb, ARMWord op2, Condition cc = AL)
+        {
+            ASSERT(op2 <= 0xff && rd <= 15);
+            /* Only d0-d15 and s0, s2, s4 ... s30 are supported. */
+            m_buffer.putInt(toARMWord(cc) | type | (rd << 12) | RN(rb) | op2);
+        }
+
+        void push(int reg, Condition cc = AL)
         {
             ASSERT(ARMWord(reg) <= 0xf);
-            m_buffer.putInt(static_cast<ARMWord>(cc) | StoreUint32 | DT_WB | RN(ARMRegisters::sp) | RD(reg) | 0x4);
+            m_buffer.putInt(toARMWord(cc) | StoreUint32 | DataTransferWriteBack | RN(ARMRegisters::sp) | RD(reg) | 0x4);
         }
 
-        void pop_r(int reg, Condition cc = AL)
+        void pop(int reg, Condition cc = AL)
         {
             ASSERT(ARMWord(reg) <= 0xf);
-            m_buffer.putInt(static_cast<ARMWord>(cc) | (LoadUint32 ^ DT_PRE) | DT_UP | RN(ARMRegisters::sp) | RD(reg) | 0x4);
+            m_buffer.putInt(toARMWord(cc) | (LoadUint32 ^ DataTransferPostUpdate) | DataTransferUp | RN(ARMRegisters::sp) | RD(reg) | 0x4);
         }
 
-        inline void poke_r(int reg, Condition cc = AL)
+        inline void poke(int reg, Condition cc = AL)
         {
-            dtr_d(StoreUint32, ARMRegisters::sp, 0, reg, cc);
+            dtrDown(StoreUint32, ARMRegisters::sp, 0, reg, cc);
         }
 
-        inline void peek_r(int reg, Condition cc = AL)
+        inline void peek(int reg, Condition cc = AL)
         {
-            dtr_u(LoadUint32, reg, ARMRegisters::sp, 0, cc);
+            dtrUp(LoadUint32, reg, ARMRegisters::sp, 0, cc);
         }
 
-        void vmov_vfp64_r(int sm, int rt, int rt2, Condition cc = AL)
-        {
-            ASSERT(rt != rt2);
-            m_buffer.putInt(static_cast<ARMWord>(cc) | VMOV_VFP64 | RN(rt2) | RD(rt) | (sm & 0xf) | ((sm & 0x10) << (5 - 4)));
-        }
-
-        void vmov_arm64_r(int rt, int rt2, int sm, Condition cc = AL)
+        void vmov_vfp64(int sm, int rt, int rt2, Condition cc = AL)
         {
             ASSERT(rt != rt2);
-            m_buffer.putInt(static_cast<ARMWord>(cc) | VMOV_ARM64 | RN(rt2) | RD(rt) | (sm & 0xf) | ((sm & 0x10) << (5 - 4)));
+            m_buffer.putInt(toARMWord(cc) | VMOV_VFP64 | RN(rt2) | RD(rt) | (sm & 0xf) | ((sm & 0x10) << (5 - 4)));
         }
 
-        void vmov_vfp32_r(int sn, int rt, Condition cc = AL)
+        void vmov_arm64(int rt, int rt2, int sm, Condition cc = AL)
+        {
+            ASSERT(rt != rt2);
+            m_buffer.putInt(toARMWord(cc) | VMOV_ARM64 | RN(rt2) | RD(rt) | (sm & 0xf) | ((sm & 0x10) << (5 - 4)));
+        }
+
+        void vmov_vfp32(int sn, int rt, Condition cc = AL)
         {
             ASSERT(rt <= 15);
-            emitSinglePrecisionInst(static_cast<ARMWord>(cc) | VMOV_VFP32, rt << 1, sn, 0);
+            emitSinglePrecisionInstruction(toARMWord(cc) | VMOV_VFP32, rt << 1, sn, 0);
         }
 
-        void vmov_arm32_r(int rt, int sn, Condition cc = AL)
+        void vmov_arm32(int rt, int sn, Condition cc = AL)
         {
             ASSERT(rt <= 15);
-            emitSinglePrecisionInst(static_cast<ARMWord>(cc) | VMOV_ARM32, rt << 1, sn, 0);
+            emitSinglePrecisionInstruction(toARMWord(cc) | VMOV_ARM32, rt << 1, sn, 0);
         }
 
-        void vcvt_f64_s32_r(int dd, int sm, Condition cc = AL)
+        void vcvt_f64_s32(int dd, int sm, Condition cc = AL)
         {
             ASSERT(!(sm & 0x1)); // sm must be divisible by 2
-            emitDoublePrecisionInst(static_cast<ARMWord>(cc) | VCVT_F64_S32, dd, 0, (sm >> 1));
+            emitDoublePrecisionInstruction(toARMWord(cc) | VCVT_F64_S32, dd, 0, (sm >> 1));
         }
 
-        void vcvt_s32_f64_r(int sd, int dm, Condition cc = AL)
+        void vcvt_s32_f64(int sd, int dm, Condition cc = AL)
         {
             ASSERT(!(sd & 0x1)); // sd must be divisible by 2
-            emitDoublePrecisionInst(static_cast<ARMWord>(cc) | VCVT_S32_F64, (sd >> 1), 0, dm);
+            emitDoublePrecisionInstruction(toARMWord(cc) | VCVT_S32_F64, (sd >> 1), 0, dm);
         }
 
-        void vcvt_u32_f64_r(int sd, int dm, Condition cc = AL)
+        void vcvt_u32_f64(int sd, int dm, Condition cc = AL)
         {
             ASSERT(!(sd & 0x1)); // sd must be divisible by 2
-            emitDoublePrecisionInst(static_cast<ARMWord>(cc) | VCVT_U32_F64, (sd >> 1), 0, dm);
+            emitDoublePrecisionInstruction(toARMWord(cc) | VCVT_U32_F64, (sd >> 1), 0, dm);
         }
 
-        void vcvt_f64_f32_r(int dd, int sm, Condition cc = AL)
+        void vcvt_f64_f32(int dd, int sm, Condition cc = AL)
         {
             ASSERT(dd <= 15 && sm <= 15);
-            emitDoublePrecisionInst(static_cast<ARMWord>(cc) | VCVT_F64_F32, dd, 0, sm);
+            emitDoublePrecisionInstruction(toARMWord(cc) | VCVT_F64_F32, dd, 0, sm);
         }
 
-        void vcvt_f32_f64_r(int dd, int sm, Condition cc = AL)
+        void vcvt_f32_f64(int dd, int sm, Condition cc = AL)
         {
             ASSERT(dd <= 15 && sm <= 15);
-            emitDoublePrecisionInst(static_cast<ARMWord>(cc) | VCVT_F32_F64, dd, 0, sm);
+            emitDoublePrecisionInstruction(toARMWord(cc) | VCVT_F32_F64, dd, 0, sm);
         }
 
         void vmrs_apsr(Condition cc = AL)
         {
-            m_buffer.putInt(static_cast<ARMWord>(cc) | VMRS_APSR);
+            m_buffer.putInt(toARMWord(cc) | VMRS_APSR);
         }
 
-        void clz_r(int rd, int rm, Condition cc = AL)
+        void clz(int rd, int rm, Condition cc = AL)
         {
-            m_buffer.putInt(static_cast<ARMWord>(cc) | CLZ | RD(rd) | RM(rm));
+            m_buffer.putInt(toARMWord(cc) | CLZ | RD(rd) | RM(rm));
         }
 
         void bkpt(ARMWord value)
@@ -637,12 +644,12 @@ namespace JSC {
 
         void bx(int rm, Condition cc = AL)
         {
-            emitInst(static_cast<ARMWord>(cc) | BX, 0, 0, RM(rm));
+            emitInstruction(toARMWord(cc) | BX, 0, 0, RM(rm));
         }
 
         AssemblerLabel blx(int rm, Condition cc = AL)
         {
-            emitInst(static_cast<ARMWord>(cc) | BLX, 0, 0, RM(rm));
+            emitInstruction(toARMWord(cc) | BLX, 0, 0, RM(rm));
             return m_buffer.label();
         }
 
@@ -667,21 +674,21 @@ namespace JSC {
             return reg | (value << 7) | 0x40;
         }
 
-        static ARMWord lsl_r(int reg, int shiftReg)
+        static ARMWord lslRegister(int reg, int shiftReg)
         {
             ASSERT(reg <= ARMRegisters::pc);
             ASSERT(shiftReg <= ARMRegisters::pc);
             return reg | (shiftReg << 8) | 0x10;
         }
 
-        static ARMWord lsr_r(int reg, int shiftReg)
+        static ARMWord lsrRegister(int reg, int shiftReg)
         {
             ASSERT(reg <= ARMRegisters::pc);
             ASSERT(shiftReg <= ARMRegisters::pc);
             return reg | (shiftReg << 8) | 0x30;
         }
 
-        static ARMWord asr_r(int reg, int shiftReg)
+        static ARMWord asrRegister(int reg, int shiftReg)
         {
             ASSERT(reg <= ARMRegisters::pc);
             ASSERT(shiftReg <= ARMRegisters::pc);
@@ -735,7 +742,7 @@ namespace JSC {
         AssemblerLabel align(int alignment)
         {
             while (!m_buffer.isAligned(alignment))
-                mov_r(ARMRegisters::r0, ARMRegisters::r0);
+                mov(ARMRegisters::r0, ARMRegisters::r0);
 
             return label();
         }
@@ -744,7 +751,7 @@ namespace JSC {
         {
             ensureSpace(sizeof(ARMWord), sizeof(ARMWord));
             m_jumps.append(m_buffer.codeSize() | (useConstantPool & 0x1));
-            ldr_un_imm(rd, InvalidBranchTarget, cc);
+            ldrUniqueImmediate(rd, InvalidBranchTarget, cc);
             return m_buffer.label();
         }
 
@@ -760,12 +767,12 @@ namespace JSC {
         // DFG assembly helpers for moving data between fp and registers.
         void vmov(RegisterID rd1, RegisterID rd2, FPRegisterID rn)
         {
-            vmov_arm64_r(rd1, rd2, rn);
+            vmov_arm64(rd1, rd2, rn);
         }
 
         void vmov(FPRegisterID rd, RegisterID rn1, RegisterID rn2)
         {
-            vmov_vfp64_r(rd, rn1, rn2);
+            vmov_vfp64(rd, rn1, rn2);
         }
 
         // Patching helpers
@@ -773,28 +780,28 @@ namespace JSC {
         static ARMWord* getLdrImmAddress(ARMWord* insn)
         {
             // Check for call
-            if ((*insn & 0x0f7f0000) != 0x051f0000) {
+            if ((*insn & LdrPcImmediateInstructionMask) != LdrPcImmediateInstruction) {
                 // Must be BLX
-                ASSERT((*insn & 0x012fff30) == 0x012fff30);
+                ASSERT((*insn & BlxInstructionMask) == BlxInstruction);
                 insn--;
             }
 
             // Must be an ldr ..., [pc +/- imm]
-            ASSERT((*insn & 0x0f7f0000) == 0x051f0000);
+            ASSERT((*insn & LdrPcImmediateInstructionMask) == LdrPcImmediateInstruction);
 
-            ARMWord addr = reinterpret_cast<ARMWord>(insn) + DefaultPrefetching * sizeof(ARMWord);
-            if (*insn & DT_UP)
-                return reinterpret_cast<ARMWord*>(addr + (*insn & SDT_OFFSET_MASK));
-            return reinterpret_cast<ARMWord*>(addr - (*insn & SDT_OFFSET_MASK));
+            ARMWord addr = reinterpret_cast<ARMWord>(insn) + DefaultPrefetchOffset * sizeof(ARMWord);
+            if (*insn & DataTransferUp)
+                return reinterpret_cast<ARMWord*>(addr + (*insn & DataTransferOffsetMask));
+            return reinterpret_cast<ARMWord*>(addr - (*insn & DataTransferOffsetMask));
         }
 
         static ARMWord* getLdrImmAddressOnPool(ARMWord* insn, uint32_t* constPool)
         {
             // Must be an ldr ..., [pc +/- imm]
-            ASSERT((*insn & 0x0f7f0000) == 0x051f0000);
+            ASSERT((*insn & LdrPcImmediateInstructionMask) == LdrPcImmediateInstruction);
 
             if (*insn & 0x1)
-                return reinterpret_cast<ARMWord*>(constPool + ((*insn & SDT_OFFSET_MASK) >> 1));
+                return reinterpret_cast<ARMWord*>(constPool + ((*insn & DataTransferOffsetMask) >> 1));
             return getLdrImmAddress(insn);
         }
 
@@ -808,8 +815,8 @@ namespace JSC {
         static ARMWord patchConstantPoolLoad(ARMWord load, ARMWord value)
         {
             value = (value << 1) + 1;
-            ASSERT(!(value & ~0xfff));
-            return (load & ~0xfff) | value;
+            ASSERT(!(value & ~DataTransferOffsetMask));
+            return (load & ~DataTransferOffsetMask) | value;
         }
 
         static void patchConstantPoolLoad(void* loadAddr, void* constPoolAddr);
@@ -839,7 +846,7 @@ namespace JSC {
             ARMWord* instruction = reinterpret_cast<ARMWord*>(where);
             ASSERT((*instruction & 0x0f700000) == LoadUint32);
             if (value >= 0)
-                *instruction = (*instruction & 0xff7ff000) | DT_UP | value;
+                *instruction = (*instruction & 0xff7ff000) | DataTransferUp | value;
             else
                 *instruction = (*instruction & 0xff7ff000) | -value;
             cacheFlush(instruction, sizeof(ARMWord));
@@ -860,7 +867,7 @@ namespace JSC {
         {
             ARMWord* insn = reinterpret_cast<ARMWord*>(getAbsoluteJumpAddress(m_buffer.data(), from.m_offset));
             ARMWord* addr = getLdrImmAddressOnPool(insn, m_buffer.poolAddress());
-            *addr = static_cast<ARMWord>(to.m_offset);
+            *addr = toARMWord(to.m_offset);
         }
 
         static void linkJump(void* code, AssemblerLabel from, void* to)
@@ -891,13 +898,13 @@ namespace JSC {
         static void replaceWithJump(void* instructionStart, void* to)
         {
             ARMWord* instruction = reinterpret_cast<ARMWord*>(instructionStart) - 1;
-            intptr_t difference = reinterpret_cast<intptr_t>(to) - (reinterpret_cast<intptr_t>(instruction) + DefaultPrefetching * sizeof(ARMWord));
+            intptr_t difference = reinterpret_cast<intptr_t>(to) - (reinterpret_cast<intptr_t>(instruction) + DefaultPrefetchOffset * sizeof(ARMWord));
 
             if (!(difference & 1)) {
                 difference >>= 2;
-                if ((difference <= BOFFSET_MAX && difference >= BOFFSET_MIN)) {
+                if ((difference <= MaximumBranchOffsetDistance && difference >= MinimumBranchOffsetDistance)) {
                      // Direct branch.
-                     instruction[0] = B | AL | (difference & BRANCH_MASK);
+                     instruction[0] = B | AL | (difference & BranchOffsetMask);
                      cacheFlush(instruction, sizeof(ARMWord));
                      return;
                 }
@@ -919,9 +926,9 @@ namespace JSC {
             ARMWord* instruction = reinterpret_cast<ARMWord*>(instructionStart);
             cacheFlush(instruction, sizeof(ARMWord));
 
-            ASSERT((*instruction & 0x0ff00000) == 0x02800000 || (*instruction & 0x0ff00000) == 0x05900000);
-            if ((*instruction & 0x0ff00000) == 0x02800000) {
-                 *instruction = (*instruction & 0xf00fffff) | 0x05900000;
+            ASSERT((*instruction & LdrOrAddInstructionMask) == AddImmediateInstruction || (*instruction & LdrOrAddInstructionMask) == LdrImmediateInstruction);
+            if ((*instruction & LdrOrAddInstructionMask) == AddImmediateInstruction) {
+                 *instruction = (*instruction & ~LdrOrAddInstructionMask) | LdrImmediateInstruction;
                  cacheFlush(instruction, sizeof(ARMWord));
             }
         }
@@ -931,9 +938,9 @@ namespace JSC {
             ARMWord* instruction = reinterpret_cast<ARMWord*>(instructionStart);
             cacheFlush(instruction, sizeof(ARMWord));
 
-            ASSERT((*instruction & 0x0ff00000) == 0x02800000 || (*instruction & 0x0ff00000) == 0x05900000);
-            if ((*instruction & 0x0ff00000) == 0x05900000) {
-                 *instruction = (*instruction & 0xf00fffff) | 0x02800000;
+            ASSERT((*instruction & LdrOrAddInstructionMask) == AddImmediateInstruction || (*instruction & LdrOrAddInstructionMask) == LdrImmediateInstruction);
+            if ((*instruction & LdrOrAddInstructionMask) == LdrImmediateInstruction) {
+                 *instruction = (*instruction & ~LdrOrAddInstructionMask) | AddImmediateInstruction;
                  cacheFlush(instruction, sizeof(ARMWord));
             }
         }
@@ -965,13 +972,13 @@ namespace JSC {
         static ARMWord getOp2Byte(ARMWord imm)
         {
             ASSERT(imm <= 0xff);
-            return OP2_IMM | imm;
+            return Op2Immediate | imm;
         }
 
         static ARMWord getOp2Half(ARMWord imm)
         {
             ASSERT(imm <= 0xff);
-            return OP2_IMM_HALF | (imm & 0x0f) | ((imm & 0xf0) << 4);
+            return ImmediateForHalfWordTransfer | (imm & 0x0f) | ((imm & 0xf0) << 4);
         }
 
 #if WTF_ARM_ARCH_AT_LEAST(7)
@@ -979,7 +986,7 @@ namespace JSC {
         {
             if (imm <= 0xffff)
                 return (imm & 0xf000) << 4 | (imm & 0xfff);
-            return INVALID_IMM;
+            return InvalidImmediate;
         }
 #endif
         ARMWord getImm(ARMWord imm, int tmpReg, bool invert = false);
@@ -1000,8 +1007,8 @@ namespace JSC {
         static ARMWord placeConstantPoolBarrier(int offset)
         {
             offset = (offset - sizeof(ARMWord)) >> 2;
-            ASSERT((offset <= BOFFSET_MAX && offset >= BOFFSET_MIN));
-            return AL | B | (offset & BRANCH_MASK);
+            ASSERT((offset <= MaximumBranchOffsetDistance && offset >= MinimumBranchOffsetDistance));
+            return AL | B | (offset & BranchOffsetMask);
         }
 
 #if OS(LINUX) && COMPILER(RVCT)
@@ -1067,7 +1074,17 @@ namespace JSC {
 
         static ARMWord getConditionalField(ARMWord i)
         {
-            return i & 0xf0000000;
+            return i & ConditionalFieldMask;
+        }
+
+        static ARMWord toARMWord(Condition cc)
+        {
+            return static_cast<ARMWord>(cc);
+        }
+
+        static ARMWord toARMWord(uint32_t u)
+        {
+            return static_cast<ARMWord>(u);
         }
 
         int genInt(int reg, ARMWord imm, bool positive);

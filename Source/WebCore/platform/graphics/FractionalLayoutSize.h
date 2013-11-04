@@ -74,8 +74,8 @@ public:
     
     void scale(float scale)
     {
-        m_width = static_cast<int>(static_cast<float>(m_width) * scale);
-        m_height = static_cast<int>(static_cast<float>(m_height) * scale);
+        m_width *= scale;
+        m_height *= scale;
     }
     
     FractionalLayoutSize expandedTo(const FractionalLayoutSize& other) const
@@ -151,7 +151,7 @@ inline bool operator!=(const FractionalLayoutSize& a, const FractionalLayoutSize
 
 inline IntSize flooredIntSize(const FractionalLayoutSize& s)
 {
-    return IntSize(s.width().toInt(), s.height().toInt());
+    return IntSize(s.width().floor(), s.height().floor());
 }
 
 inline IntSize roundedIntSize(const FractionalLayoutSize& s)

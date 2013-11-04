@@ -46,6 +46,10 @@ public:
 
     PassRefPtr<CSSValue> cloneForCSSOM() const;
 
+    bool hasFailedOrCanceledSubresources() const;
+
+    void reportDescendantMemoryUsage(MemoryObjectInfo*) const;
+
 protected:
     CSSImageValue(ClassType, const String& url);
 

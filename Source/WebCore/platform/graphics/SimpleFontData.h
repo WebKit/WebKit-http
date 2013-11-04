@@ -31,12 +31,15 @@
 #include "FloatRect.h"
 #include "GlyphMetricsMap.h"
 #include "GlyphPageTreeNode.h"
+#if ENABLE(OPENTYPE_VERTICAL)
+#include "OpenTypeVerticalData.h"
+#endif
 #include "TypesettingFeatures.h"
 #include <wtf/OwnPtr.h>
 #include <wtf/PassOwnPtr.h>
 #include <wtf/text/StringHash.h>
 
-#if PLATFORM(MAC) || (PLATFORM(CHROMIUM) && OS(DARWIN))
+#if PLATFORM(MAC) || (PLATFORM(CHROMIUM) && OS(DARWIN)) || (PLATFORM(WX) && OS(DARWIN))
 #include <wtf/RetainPtr.h>
 #endif
 
@@ -50,11 +53,7 @@
 #endif
 
 #if PLATFORM(QT)
-#if !HAVE(QRAWFONT)
-#include <QFont>
-#else
 #include <QRawFont>
-#endif
 #endif
 
 namespace WebCore {
@@ -88,6 +87,9 @@ public:
     virtual ~SimpleFontData();
 
     const FontPlatformData& platformData() const { return m_platformData; }
+#if ENABLE(OPENTYPE_VERTICAL)
+    const OpenTypeVerticalData* verticalData() const { return m_verticalData; }
+#endif
 
     SimpleFontData* smallCapsFontData(const FontDescription&) const;
     SimpleFontData* emphasisMarkFontData(const FontDescription&) const;
@@ -147,6 +149,8 @@ public:
     virtual const SimpleFontData* fontDataForCharacter(UChar32) const;
     virtual bool containsCharacters(const UChar*, int length) const;
 
+    Glyph glyphForCharacter(UChar32) const;
+
     void determinePitch();
     Pitch pitch() const { return m_treatAsFixedPitch ? FixedPitch : VariablePitch; }
 
@@ -172,17 +176,13 @@ public:
     NSFont* getNSFont() const { return m_platformData.nsFont(); }
 #endif
 
-#if PLATFORM(MAC) || (PLATFORM(CHROMIUM) && OS(DARWIN))
+#if PLATFORM(MAC) || (PLATFORM(CHROMIUM) && OS(DARWIN)) || (PLATFORM(WX) && OS(DARWIN))
     CFDictionaryRef getCFStringAttributes(TypesettingFeatures, FontOrientation) const;
     bool canRenderCombiningCharacterSequence(const UChar*, size_t) const;
 #endif
 
 #if PLATFORM(QT)
-#if !HAVE(QRAWFONT)
-    QFont getQtFont() const { return m_platformData.font(); }
-#else
     QRawFont getQtRawFont() const { return m_platformData.rawFont(); }
-#endif // !HAVE(QRAWFONT)
 #endif
 
 #if PLATFORM(WIN) || (OS(WINDOWS) && PLATFORM(WX))
@@ -229,6 +229,9 @@ private:
 
     mutable OwnPtr<GlyphMetricsMap<FloatRect> > m_glyphToBoundsMap;
     mutable GlyphMetricsMap<float> m_glyphToWidthMap;
+#if ENABLE(OPENTYPE_VERTICAL)
+    const OpenTypeVerticalData* m_verticalData;
+#endif
 
     bool m_treatAsFixedPitch;
     bool m_isCustomFont;  // Whether or not we are custom font loaded via @font-face
@@ -273,7 +276,7 @@ private:
     float m_syntheticBoldOffset;
 #endif
 
-#if PLATFORM(MAC) || (PLATFORM(CHROMIUM) && OS(DARWIN))
+#if PLATFORM(MAC) || (PLATFORM(CHROMIUM) && OS(DARWIN)) || (PLATFORM(WX) && OS(DARWIN))
     mutable HashMap<unsigned, RetainPtr<CFDictionaryRef> > m_CFStringAttributes;
     mutable OwnPtr<HashMap<String, bool> > m_combiningCharacterSequenceSupport;
 #endif
@@ -287,7 +290,6 @@ private:
 #endif
 };
 
-#if !(PLATFORM(QT) && !HAVE(QRAWFONT))
 ALWAYS_INLINE FloatRect SimpleFontData::boundsForGlyph(Glyph glyph) const
 {
     if (isZeroWidthSpaceGlyph(glyph))
@@ -318,13 +320,20 @@ ALWAYS_INLINE float SimpleFontData::widthForGlyph(Glyph glyph) const
 
     if (m_fontData)
         width = m_fontData->widthForSVGGlyph(glyph, m_platformData.size());
+#if ENABLE(OPENTYPE_VERTICAL)
+    else if (m_verticalData)
+#if USE(CG) || USE(CAIRO) || PLATFORM(WX) || USE(SKIA_ON_MAC_CHROMIUM)
+        width = m_verticalData->advanceHeight(this, glyph) + m_syntheticBoldOffset;
+#else
+        width = m_verticalData->advanceHeight(this, glyph);
+#endif
+#endif
     else
         width = platformWidthForGlyph(glyph);
 
     m_glyphToWidthMap.setMetricsForGlyph(glyph, width);
     return width;
 }
-#endif // HAVE(QRAWFONT)
 
 } // namespace WebCore
 

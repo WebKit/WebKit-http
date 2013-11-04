@@ -30,12 +30,12 @@
 #include "JSGlobalData.h"
 
 #include "ArgList.h"
-#include "Heap.h"
 #include "CommonIdentifiers.h"
 #include "DebuggerActivation.h"
 #include "FunctionConstructor.h"
 #include "GCActivityCallback.h"
 #include "GetterSetter.h"
+#include "Heap.h"
 #include "HostCallReturnValue.h"
 #include "IncrementalSweeper.h"
 #include "Interpreter.h"
@@ -45,9 +45,10 @@
 #include "JSClassRef.h"
 #include "JSFunction.h"
 #include "JSLock.h"
+#include "JSNameScope.h"
 #include "JSNotAnObject.h"
 #include "JSPropertyNameIterator.h"
-#include "JSStaticScopeObject.h"
+#include "JSWithScope.h"
 #include "Lexer.h"
 #include "Lookup.h"
 #include "Nodes.h"
@@ -119,7 +120,11 @@ static bool enableAssembler(ExecutableAllocator& executableAllocator)
 #endif
 
 JSGlobalData::JSGlobalData(GlobalDataType globalDataType, ThreadStackType threadStackType, HeapType heapType)
-    : heap(this, heapType)
+    :
+#if ENABLE(ASSEMBLER)
+      executableAllocator(*this),
+#endif
+      heap(this, heapType)
     , globalDataType(globalDataType)
     , clientData(0)
     , topCallFrame(CallFrame::noCaller())
@@ -145,9 +150,6 @@ JSGlobalData::JSGlobalData(GlobalDataType globalDataType, ThreadStackType thread
     , identifierTable(globalDataType == Default ? wtfThreadData().currentIdentifierTable() : createIdentifierTable())
     , propertyNames(new CommonIdentifiers(this))
     , emptyList(new MarkedArgumentBuffer)
-#if ENABLE(ASSEMBLER)
-    , executableAllocator(*this)
-#endif
     , parserArena(adoptPtr(new ParserArena))
     , keywords(adoptPtr(new Keywords(this)))
     , interpreter(0)
@@ -189,7 +191,7 @@ JSGlobalData::JSGlobalData(GlobalDataType globalDataType, ThreadStackType thread
     activationStructure.set(*this, JSActivation::createStructure(*this, 0, jsNull()));
     interruptedExecutionErrorStructure.set(*this, InterruptedExecutionError::createStructure(*this, 0, jsNull()));
     terminatedExecutionErrorStructure.set(*this, TerminatedExecutionError::createStructure(*this, 0, jsNull()));
-    staticScopeStructure.set(*this, JSStaticScopeObject::createStructure(*this, 0, jsNull()));
+    nameScopeStructure.set(*this, JSNameScope::createStructure(*this, 0, jsNull()));
     strictEvalActivationStructure.set(*this, StrictEvalActivation::createStructure(*this, 0, jsNull()));
     stringStructure.set(*this, JSString::createStructure(*this, 0, jsNull()));
     notAnObjectStructure.set(*this, JSNotAnObject::createStructure(*this, 0, jsNull()));
@@ -203,7 +205,9 @@ JSGlobalData::JSGlobalData(GlobalDataType globalDataType, ThreadStackType thread
     programExecutableStructure.set(*this, ProgramExecutable::createStructure(*this, 0, jsNull()));
     functionExecutableStructure.set(*this, FunctionExecutable::createStructure(*this, 0, jsNull()));
     regExpStructure.set(*this, RegExp::createStructure(*this, 0, jsNull()));
+    sharedSymbolTableStructure.set(*this, SharedSymbolTable::createStructure(*this, 0, jsNull()));
     structureChainStructure.set(*this, StructureChain::createStructure(*this, 0, jsNull()));
+    withScopeStructure.set(*this, JSWithScope::createStructure(*this, 0, jsNull()));
 
     wtfThreadData().setCurrentIdentifierTable(existingEntryIdentifierTable);
 
@@ -211,21 +215,19 @@ JSGlobalData::JSGlobalData(GlobalDataType globalDataType, ThreadStackType thread
     jitStubs = adoptPtr(new JITThunks(this));
 #endif
     
-    interpreter->initialize(&llintData, this->canUseJIT());
+    interpreter->initialize(this->canUseJIT());
     
     initializeHostCallReturnValue(); // This is needed to convince the linker not to drop host call return support.
 
     heap.notifyIsSafeToCollect();
     
-    llintData.performAssertions(*this);
+    LLInt::Data::performAssertions(*this);
 }
 
 JSGlobalData::~JSGlobalData()
 {
     ASSERT(!m_apiLock.currentThreadIsHoldingLock());
-    heap.activityCallback()->didStartVMShutdown();
-    heap.sweeper()->didStartVMShutdown();
-    heap.lastChanceToFinalize();
+    heap.didStartVMShutdown();
 
     delete interpreter;
 #ifndef NDEBUG

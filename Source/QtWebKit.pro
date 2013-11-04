@@ -23,11 +23,13 @@ include(WebKit/qt/docs/docs.pri)
 
 declarative.file = WebKit/qt/declarative/declarative.pro
 declarative.makefile = Makefile.declarative
-SUBDIRS += declarative
+contains(DEFINES, HAVE_QTQUICK=1): SUBDIRS += declarative
 
 !no_webkit1 {
-    tests.file = tests.pri
-    SUBDIRS += tests
+    contains(DEFINES, HAVE_QTTESTLIB=1) {
+        tests.file = tests.pri
+        SUBDIRS += tests
+    }
 
     examples.file = WebKit/qt/examples/examples.pro
     examples.CONFIG += no_default_target

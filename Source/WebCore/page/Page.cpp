@@ -392,6 +392,7 @@ void Page::setGroupName(const String& name)
 const String& Page::groupName() const
 {
     DEFINE_STATIC_LOCAL(String, nullString, ());
+    // FIXME: Why not just return String()?
     return m_group ? m_group->name() : nullString;
 }
 
@@ -709,13 +710,11 @@ unsigned Page::pageCount() const
         return 0;
 
     FrameView* frameView = mainFrame()->view();
-    if (!frameView->didFirstLayout())
-        return 0;
-
-    mainFrame()->view()->forceLayout();
+    if (frameView->needsLayout())
+        frameView->layout();
 
     RenderView* contentRenderer = mainFrame()->contentRenderer();
-    return contentRenderer->columnCount(contentRenderer->columnInfo());
+    return contentRenderer ? contentRenderer->columnCount(contentRenderer->columnInfo()) : 0;
 }
 
 void Page::didMoveOnscreen()

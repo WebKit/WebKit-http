@@ -68,9 +68,9 @@ void IDBCallbacksProxy::onError(PassRefPtr<IDBDatabaseError> idbDatabaseError)
     m_callbacks->onError(WebIDBDatabaseError(idbDatabaseError));
 }
 
-void IDBCallbacksProxy::onSuccess(PassRefPtr<IDBCursorBackendInterface> idbCursorBackend)
+void IDBCallbacksProxy::onSuccess(PassRefPtr<IDBCursorBackendInterface> idbCursorBackend, PassRefPtr<IDBKey> key, PassRefPtr<IDBKey> primaryKey, PassRefPtr<SerializedScriptValue> value)
 {
-    m_callbacks->onSuccess(new WebIDBCursorImpl(idbCursorBackend));
+    m_callbacks->onSuccess(new WebIDBCursorImpl(idbCursorBackend), key, primaryKey, value);
 }
 
 void IDBCallbacksProxy::onSuccess(PassRefPtr<IDBDatabaseBackendInterface> backend)
@@ -102,9 +102,10 @@ void IDBCallbacksProxy::onSuccess(PassRefPtr<SerializedScriptValue> serializedSc
 {
     m_callbacks->onSuccess(serializedScriptValue, key, keyPath);
 }
-void IDBCallbacksProxy::onSuccessWithContinuation()
+
+void IDBCallbacksProxy::onSuccess(PassRefPtr<IDBKey> key, PassRefPtr<IDBKey> primaryKey, PassRefPtr<SerializedScriptValue> value)
 {
-    m_callbacks->onSuccessWithContinuation();
+    m_callbacks->onSuccess(key, primaryKey, value);
 }
 
 void IDBCallbacksProxy::onSuccessWithPrefetch(const Vector<RefPtr<IDBKey> >& keys, const Vector<RefPtr<IDBKey> >& primaryKeys, const Vector<RefPtr<SerializedScriptValue> >& values)
@@ -127,6 +128,16 @@ void IDBCallbacksProxy::onSuccessWithPrefetch(const Vector<RefPtr<IDBKey> >& key
 void IDBCallbacksProxy::onBlocked()
 {
     m_callbacks->onBlocked();
+}
+
+void IDBCallbacksProxy::onBlocked(int64_t existingVersion)
+{
+    m_callbacks->onBlocked(existingVersion);
+}
+
+void IDBCallbacksProxy::onUpgradeNeeded(int64_t oldVersion, PassRefPtr<IDBTransactionBackendInterface> transaction, PassRefPtr<IDBDatabaseBackendInterface> database)
+{
+    m_callbacks->onUpgradeNeeded(oldVersion, new WebIDBTransactionImpl(transaction), new WebIDBDatabaseImpl(database));
 }
 
 } // namespace WebKit

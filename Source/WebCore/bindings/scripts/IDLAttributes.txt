@@ -30,7 +30,7 @@ Conditional=*
 Constructor
 ConstructorParameters=*
 ConstructorRaisesException
-ConstructorTemplate=Event
+ConstructorTemplate=Event|TypedArray
 Custom
 CustomCall
 CustomConstructor
@@ -104,8 +104,9 @@ Supplemental=*
 SuppressToJSObject
 TransferList=*
 TreatNullAs=NullString
-TreatReturnedNullStringAs=False|Null|Undefined
+TreatReturnedNullStringAs=Null|Undefined
 TreatUndefinedAs=NullString
+TypedArray=*
 URL
 V8Custom
 V8CustomConstructor

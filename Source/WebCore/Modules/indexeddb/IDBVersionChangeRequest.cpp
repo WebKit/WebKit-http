@@ -42,7 +42,7 @@ PassRefPtr<IDBVersionChangeRequest> IDBVersionChangeRequest::create(ScriptExecut
 }
 
 IDBVersionChangeRequest::IDBVersionChangeRequest(ScriptExecutionContext* context, PassRefPtr<IDBAny> source, const String& version)
-    : IDBRequest(context, source, 0)
+    : IDBRequest(context, source, IDBTransactionBackendInterface::NormalTask, 0)
     , m_version(version)
 {
 }
@@ -58,6 +58,8 @@ const AtomicString& IDBVersionChangeRequest::interfaceName() const
 
 void IDBVersionChangeRequest::onBlocked()
 {
+    if (!shouldEnqueueEvent())
+        return;
     ASSERT(!m_errorCode && m_errorMessage.isNull() && !m_result);
     enqueueEvent(IDBVersionChangeEvent::create(m_version, eventNames().blockedEvent));
 }

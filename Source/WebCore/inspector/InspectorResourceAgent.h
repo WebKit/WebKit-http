@@ -62,6 +62,7 @@ class KURL;
 class NetworkResourcesData;
 class Page;
 class ResourceError;
+class ResourceLoader;
 class ResourceRequest;
 class ResourceResponse;
 class SharedBuffer;
@@ -91,7 +92,7 @@ public:
 
     void willSendRequest(unsigned long identifier, DocumentLoader*, ResourceRequest&, const ResourceResponse& redirectResponse);
     void markResourceAsCached(unsigned long identifier);
-    void didReceiveResponse(unsigned long identifier, DocumentLoader* laoder, const ResourceResponse&);
+    void didReceiveResponse(unsigned long identifier, DocumentLoader* laoder, const ResourceResponse&, ResourceLoader*);
     void didReceiveData(unsigned long identifier, const char* data, int dataLength, int encodedDataLength);
     void didFinishLoading(unsigned long identifier, DocumentLoader*, double finishTime);
     void didFailLoading(unsigned long identifier, DocumentLoader*, const ResourceError&);
@@ -133,8 +134,6 @@ public:
     virtual void setUserAgentOverride(ErrorString*, const String& userAgent);
     virtual void setExtraHTTPHeaders(ErrorString*, const RefPtr<InspectorObject>&);
     virtual void getResponseBody(ErrorString*, const String& requestId, String* content, bool* base64Encoded);
-    // FIXME: this seems to be unsued.
-    void clearCache(ErrorString*, const String* const optionalPreservedLoaderId);
 
     virtual void canClearBrowserCache(ErrorString*, bool*);
     virtual void clearBrowserCache(ErrorString*);

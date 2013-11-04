@@ -71,7 +71,7 @@ void SVGRenderSupport::computeFloatRectForRepaint(const RenderObject* object, Re
     object->parent()->computeFloatRectForRepaint(repaintContainer, repaintRect, fixed);
 }
 
-void SVGRenderSupport::mapLocalToContainer(const RenderObject* object, RenderBoxModelObject* repaintContainer, TransformState& transformState, bool* wasFixed)
+void SVGRenderSupport::mapLocalToContainer(const RenderObject* object, RenderBoxModelObject* repaintContainer, TransformState& transformState, bool snapOffsetForTransforms, bool* wasFixed)
 {
     transformState.applyTransform(object->localToParentTransform());
 
@@ -82,8 +82,11 @@ void SVGRenderSupport::mapLocalToContainer(const RenderObject* object, RenderBox
     // RenderSVGRoot's mapLocalToContainer method expects CSS box coordinates.
     if (parent->isSVGRoot())
         transformState.applyTransform(toRenderSVGRoot(parent)->localToBorderBoxTransform());
-    
-    parent->mapLocalToContainer(repaintContainer, false, true, transformState, RenderObject::DoNotApplyContainerFlip, wasFixed);
+
+    MapLocalToContainerFlags mode = UseTransforms;
+    if (snapOffsetForTransforms)
+        mode |= SnapOffsetForTransforms;
+    parent->mapLocalToContainer(repaintContainer, transformState, mode, wasFixed);
 }
 
 const RenderObject* SVGRenderSupport::pushMappingToContainer(const RenderObject* object, const RenderBoxModelObject* ancestorToStopAt, RenderGeometryMap& geometryMap)
@@ -207,6 +210,7 @@ void SVGRenderSupport::layoutChildren(RenderObject* start, bool selfNeedsLayout)
 
     for (RenderObject* child = start->firstChild(); child; child = child->nextSibling()) {
         bool needsLayout = selfNeedsLayout;
+        bool childEverHadLayout = child->everHadLayout();
 
         if (transformChanged) {
             // If the transform changed we need to update the text metrics (note: this also happens for layoutSizeChanged=true).
@@ -232,15 +236,19 @@ void SVGRenderSupport::layoutChildren(RenderObject* start, bool selfNeedsLayout)
             }
         }
 
-        if (needsLayout) {
+        if (needsLayout)
             child->setNeedsLayout(true, MarkOnlyThis);
+
+        if (child->needsLayout()) {
             child->layout();
-        } else {
-            if (child->needsLayout())
-                child->layout();
-            else if (layoutSizeChanged)
-                notlayoutedObjects.add(child);
-        }
+            // Renderers are responsible for repainting themselves when changing, except
+            // for the initial paint to avoid potential double-painting caused by non-sensical "old" bounds.
+            // We could handle this in the individual objects, but for now it's easier to have
+            // parent containers call repaint().  (RenderBlock::layout* has similar logic.)
+            if (!childEverHadLayout)
+                child->repaint();
+        } else if (layoutSizeChanged)
+            notlayoutedObjects.add(child);
 
         ASSERT(!child->needsLayout());
     }

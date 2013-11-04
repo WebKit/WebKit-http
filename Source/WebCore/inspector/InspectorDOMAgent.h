@@ -35,6 +35,7 @@
 #include "InjectedScriptManager.h"
 #include "InspectorBaseAgent.h"
 #include "InspectorFrontend.h"
+#include "InspectorOverlay.h"
 #include "InspectorValues.h"
 #include "Timer.h"
 
@@ -68,6 +69,8 @@ class Node;
 class RevalidateStyleAttributeTask;
 class ScriptValue;
 class ShadowRoot;
+
+struct HighlightConfig;
 
 typedef String ErrorString;
 
@@ -141,7 +144,6 @@ public:
     virtual void highlightNode(ErrorString*, int nodeId, const RefPtr<InspectorObject>& highlightConfig);
     virtual void highlightFrame(ErrorString*, const String& frameId, const RefPtr<InspectorObject>* color, const RefPtr<InspectorObject>* outlineColor);
     virtual void moveTo(ErrorString*, int nodeId, int targetNodeId, const int* anchorNodeId, int* newNodeId);
-    virtual void setTouchEmulationEnabled(ErrorString*, bool);
     virtual void undo(ErrorString*);
     virtual void redo(ErrorString*);
     virtual void markUndoableState(ErrorString*);
@@ -166,6 +168,7 @@ public:
     void didPushShadowRoot(Element* host, ShadowRoot*);
     void willPopShadowRoot(Element* host, ShadowRoot*);
 
+    int pushNodeToFrontend(ErrorString*, int documentNodeId, Node*);
     Node* nodeForId(int nodeId);
     int boundNodeId(Node*);
     void setDOMListener(DOMListener*);
@@ -190,6 +193,7 @@ public:
     static bool isWhitespace(Node*);
 
     Node* assertNode(ErrorString*, int nodeId);
+    Element* assertElement(ErrorString*, int nodeId);
     Document* assertDocument(ErrorString*, int nodeId);
 
     // Methods called from other agents.
@@ -198,15 +202,14 @@ public:
 private:
     InspectorDOMAgent(InstrumentingAgents*, InspectorPageAgent*, InspectorState*, InjectedScriptManager*, InspectorOverlay*);
 
-    void setSearchingForNode(bool enabled, InspectorObject* highlightConfig);
-    bool setHighlightDataFromConfig(InspectorObject* highlightConfig);
+    void setSearchingForNode(ErrorString*, bool enabled, InspectorObject* highlightConfig);
+    PassOwnPtr<HighlightConfig> highlightConfigFromInspectorObject(ErrorString*, InspectorObject* highlightInspectorObject);
 
     // Node-related methods.
     typedef HashMap<RefPtr<Node>, int> NodeToIdMap;
     int bind(Node*, NodeToIdMap*);
     void unbind(Node*, NodeToIdMap*);
 
-    Element* assertElement(ErrorString*, int nodeId);
     Node* assertEditableNode(ErrorString*, int nodeId);
     Element* assertEditableElement(ErrorString*, int nodeId);
 
@@ -226,10 +229,6 @@ private:
 
     void discardBindings();
 
-#if ENABLE(TOUCH_EVENTS)
-    void updateTouchEventEmulationInPage(bool);
-#endif
-
     InspectorPageAgent* m_pageAgent;
     InjectedScriptManager* m_injectedScriptManager;
     InspectorOverlay* m_overlay;
@@ -248,6 +247,7 @@ private:
     OwnPtr<RevalidateStyleAttributeTask> m_revalidateStyleAttrTask;
     RefPtr<Node> m_nodeToFocus;
     bool m_searchingForNode;
+    OwnPtr<HighlightConfig> m_inspectModeHighlightConfig;
     OwnPtr<InspectorHistory> m_history;
     OwnPtr<DOMEditor> m_domEditor;
     bool m_suppressAttributeModifiedEvent;

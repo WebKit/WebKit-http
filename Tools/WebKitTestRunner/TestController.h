@@ -26,6 +26,7 @@
 #ifndef TestController_h
 #define TestController_h
 
+#include "WebNotificationProvider.h"
 #include <WebKit2/WKRetainPtr.h>
 #include <string>
 #include <vector>
@@ -62,6 +63,10 @@ public:
     bool beforeUnloadReturnValue() const { return m_beforeUnloadReturnValue; }
     void setBeforeUnloadReturnValue(bool value) { m_beforeUnloadReturnValue = value; }
 
+    void simulateWebNotificationClick(uint64_t notificationID);
+
+    bool resetStateToConsistentValues();
+
 private:
     void initialize(int argc, const char* argv[]);
     void run();
@@ -75,8 +80,6 @@ private:
     void platformDidCommitLoadForFrame(WKPageRef, WKFrameRef);
     void initializeInjectedBundlePath();
     void initializeTestPluginDirectory();
-
-    bool resetStateToConsistentValues();
 
     // WKContextInjectedBundleClient
     static void didReceiveMessageFromInjectedBundle(WKContextRef, WKStringRef messageName, WKTypeRef messageBody, const void*);
@@ -104,7 +107,6 @@ private:
 
     OwnPtr<TestInvocation> m_currentInvocation;
 
-    bool m_dumpPixelsForAllTests;
     bool m_verbose;
     bool m_printSeparators;
     bool m_usingServerMode;
@@ -112,6 +114,8 @@ private:
     std::vector<std::string> m_paths;
     WKRetainPtr<WKStringRef> m_injectedBundlePath;
     WKRetainPtr<WKStringRef> m_testPluginDirectory;
+
+    WebNotificationProvider m_webNotificationProvider;
 
     OwnPtr<PlatformWebView> m_mainWebView;
     WKRetainPtr<WKContextRef> m_context;

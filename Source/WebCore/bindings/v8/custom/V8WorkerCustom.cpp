@@ -40,7 +40,6 @@
 #include "Frame.h"
 #include "SerializedScriptValue.h"
 #include "V8Binding.h"
-#include "V8Proxy.h"
 #include "V8Utilities.h"
 #include "WorkerContext.h"
 #include "WorkerContextExecutionProxy.h"
@@ -54,7 +53,7 @@ static v8::Handle<v8::Value> handlePostMessageCallback(const v8::Arguments& args
     MessagePortArray ports;
     ArrayBufferArray arrayBuffers;
     if (args.Length() > 1) {
-        if (!extractTransferables(args[1], ports, arrayBuffers))
+        if (!extractTransferables(args[1], ports, arrayBuffers, args.GetIsolate()))
             return v8::Undefined();
     }
     bool didThrow = false;
@@ -68,7 +67,7 @@ static v8::Handle<v8::Value> handlePostMessageCallback(const v8::Arguments& args
         return v8::Undefined();
     ExceptionCode ec = 0;
     worker->postMessage(message.release(), &ports, ec);
-    return throwError(ec, args.GetIsolate());
+    return setDOMException(ec, args.GetIsolate());
 }
 
 v8::Handle<v8::Value> V8Worker::postMessageCallback(const v8::Arguments& args)

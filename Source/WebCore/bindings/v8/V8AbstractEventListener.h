@@ -32,8 +32,8 @@
 #define V8AbstractEventListener_h
 
 #include "EventListener.h"
+#include "ScopedPersistent.h"
 #include "WorldContextHandle.h"
-
 #include <v8.h>
 #include <wtf/PassRefPtr.h>
 #include <wtf/RefCounted.h>
@@ -41,8 +41,6 @@
 namespace WebCore {
 
     class Event;
-    class Frame;
-    class V8Proxy;
 
     // There are two kinds of event listeners: HTML or non-HMTL. onload,
     // onfocus, etc (attributes) are always HTML event handler type; Event
@@ -79,29 +77,31 @@ namespace WebCore {
         // Returns the listener object, either a function or an object.
         v8::Local<v8::Object> getListenerObject(ScriptExecutionContext* context)
         {
+            // prepareListenerObject can potentially deref this event listener
+            // as it may attempt to compile a function (lazy event listener), get an error
+            // and invoke onerror callback which can execute arbitrary JS code.
+            // Protect this event listener to keep it alive.
+            RefPtr<V8AbstractEventListener> guard(this);
             prepareListenerObject(context);
-            return v8::Local<v8::Object>::New(m_listener);
+            return v8::Local<v8::Object>::New(m_listener.get());
         }
 
         v8::Local<v8::Object> getExistingListenerObject()
         {
-            return v8::Local<v8::Object>::New(m_listener);
+            return v8::Local<v8::Object>::New(m_listener.get());
         }
 
         // Provides access to the underlying handle for GC. Returned
         // value is a weak handle and so not guaranteed to stay alive.
         v8::Persistent<v8::Object> existingListenerObjectPersistentHandle()
         {
-            return m_listener;
+            return m_listener.get();
         }
 
         bool hasExistingListenerObject()
         {
-            return !m_listener.IsEmpty();
+            return !m_listener.isEmpty();
         }
-
-        // Dispose listener object and clear the handle.
-        void disposeListenerObject();
 
         const WorldContextHandle& worldContext() const { return m_worldContext; }
 
@@ -118,6 +118,8 @@ namespace WebCore {
         v8::Local<v8::Object> getReceiverObject(Event*);
 
     private:
+        static void weakEventListenerCallback(v8::Persistent<v8::Value>, void* parameter);
+
         // Implementation of EventListener function.
         virtual bool virtualisAttribute() const { return m_isAttribute; }
 
@@ -125,7 +127,7 @@ namespace WebCore {
 
         virtual bool shouldPreventDefault(v8::Local<v8::Value> returnValue);
 
-        v8::Persistent<v8::Object> m_listener;
+        ScopedPersistent<v8::Object> m_listener;
 
         // Indicates if this is an HTML type listener.
         bool m_isAttribute;

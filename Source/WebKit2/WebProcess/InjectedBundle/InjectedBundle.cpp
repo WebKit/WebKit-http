@@ -32,6 +32,7 @@
 #include "InjectedBundleScriptWorld.h"
 #include "InjectedBundleUserMessageCoders.h"
 #include "LayerTreeHost.h"
+#include "NotificationPermissionRequestManager.h"
 #include "WKAPICast.h"
 #include "WKBundleAPICast.h"
 #include "WebApplicationCacheManager.h"
@@ -53,6 +54,7 @@
 #include <WebCore/GeolocationController.h>
 #include <WebCore/GeolocationPosition.h>
 #include <WebCore/JSDOMWindow.h>
+#include <WebCore/JSNotification.h>
 #include <WebCore/Page.h>
 #include <WebCore/PageGroup.h>
 #include <WebCore/PageVisibilityState.h>
@@ -130,6 +132,30 @@ void InjectedBundle::overrideBoolPreferenceForTestRunner(WebPageGroupProxy* page
     const HashSet<Page*>& pages = PageGroup::pageGroup(pageGroup->identifier())->pages();
 
     // FIXME: Need an explicit way to set "WebKitTabToLinksPreferenceKey" directly in WebPage.
+
+    if (preference == "WebKit2AsynchronousPluginInitializationEnabled") {
+        WebPreferencesStore::overrideBoolValueForKey(WebPreferencesKey::asynchronousPluginInitializationEnabledKey(), enabled);
+        for (HashSet<Page*>::iterator i = pages.begin(); i != pages.end(); ++i) {
+            WebPage* webPage = static_cast<WebFrameLoaderClient*>((*i)->mainFrame()->loader()->client())->webFrame()->page();
+            webPage->setAsynchronousPluginInitializationEnabled(enabled);
+        }
+    }
+
+    if (preference == "WebKit2AsynchronousPluginInitializationEnabledForAllPlugins") {
+        WebPreferencesStore::overrideBoolValueForKey(WebPreferencesKey::asynchronousPluginInitializationEnabledForAllPluginsKey(), enabled);
+        for (HashSet<Page*>::iterator i = pages.begin(); i != pages.end(); ++i) {
+            WebPage* webPage = static_cast<WebFrameLoaderClient*>((*i)->mainFrame()->loader()->client())->webFrame()->page();
+            webPage->setAsynchronousPluginInitializationEnabledForAllPlugins(enabled);
+        }
+    }
+
+    if (preference == "WebKit2ArtificialPluginInitializationDelayEnabled") {
+        WebPreferencesStore::overrideBoolValueForKey(WebPreferencesKey::artificialPluginInitializationDelayEnabledKey(), enabled);
+        for (HashSet<Page*>::iterator i = pages.begin(); i != pages.end(); ++i) {
+            WebPage* webPage = static_cast<WebFrameLoaderClient*>((*i)->mainFrame()->loader()->client())->webFrame()->page();
+            webPage->setArtificialPluginInitializationDelayEnabled(enabled);
+        }
+    }
 
     // Map the names used in LayoutTests with the names used in WebCore::Settings and WebPreferencesStore.
 #define FOR_EACH_OVERRIDE_BOOL_PREFERENCE(macro) \
@@ -454,6 +480,11 @@ void InjectedBundle::didReceiveMessage(const String& messageName, APIObject* mes
     m_client.didReceiveMessage(this, messageName, messageBody);
 }
 
+void InjectedBundle::didReceiveMessageToPage(WebPage* page, const String& messageName, APIObject* messageBody)
+{
+    m_client.didReceiveMessageToPage(this, page, messageName, messageBody);
+}
+
 void InjectedBundle::didReceiveMessage(CoreIPC::Connection* connection, CoreIPC::MessageID messageID, CoreIPC::ArgumentDecoder* arguments)
 {
     switch (messageID.get<InjectedBundleMessage::Kind>()) {
@@ -467,6 +498,25 @@ void InjectedBundle::didReceiveMessage(CoreIPC::Connection* connection, CoreIPC:
             didReceiveMessage(messageName, messageBody.get());
             return;
         }
+
+        case InjectedBundleMessage::PostMessageToPage: {
+            uint64_t pageID = arguments->destinationID();
+            if (!pageID)
+                return;
+            
+            WebPage* page = WebProcess::shared().webPage(pageID);
+            if (!page)
+                return;
+
+            String messageName;
+            RefPtr<APIObject> messageBody;
+            InjectedBundleUserMessageDecoder messageDecoder(messageBody);
+            if (!arguments->decode(CoreIPC::Out(messageName, messageDecoder)))
+                return;
+
+            didReceiveMessageToPage(page, messageName, messageBody.get());
+            return;
+        }
     }
 
     ASSERT_NOT_REACHED();
@@ -476,6 +526,45 @@ void InjectedBundle::setPageVisibilityState(WebPage* page, int state, bool isIni
 {
 #if ENABLE(PAGE_VISIBILITY_API)
     page->corePage()->setVisibilityState(static_cast<PageVisibilityState>(state), isInitialState);
+#endif
+}
+
+void InjectedBundle::setUserStyleSheetLocation(WebPageGroupProxy* pageGroup, const String& location)
+{
+    const HashSet<Page*>& pages = PageGroup::pageGroup(pageGroup->identifier())->pages();
+    for (HashSet<Page*>::iterator iter = pages.begin(); iter != pages.end(); ++iter)
+        (*iter)->settings()->setUserStyleSheetLocation(KURL(KURL(), location));
+}
+
+void InjectedBundle::setWebNotificationPermission(WebPage* page, const String& originString, bool allowed)
+{
+#if ENABLE(NOTIFICATIONS) || ENABLE(LEGACY_NOTIFICATIONS)
+    page->notificationPermissionRequestManager()->setPermissionLevelForTesting(originString, allowed ? NotificationClient::PermissionAllowed : NotificationClient::PermissionDenied);
+#else
+    UNUSED_PARAM(page);
+    UNUSED_PARAM(originString);
+    UNUSED_PARAM(allowed);
+#endif
+}
+
+void InjectedBundle::removeAllWebNotificationPermissions(WebPage* page)
+{
+#if ENABLE(NOTIFICATIONS) || ENABLE(LEGACY_NOTIFICATIONS)
+    page->notificationPermissionRequestManager()->removeAllPermissionsForTesting();
+#else
+    UNUSED_PARAM(page);
+#endif
+}
+
+uint64_t InjectedBundle::webNotificationID(JSContextRef jsContext, JSValueRef jsNotification)
+{
+#if ENABLE(NOTIFICATIONS) || ENABLE(LEGACY_NOTIFICATIONS)
+    WebCore::Notification* notification = toNotification(toJS(toJS(jsContext), jsNotification));
+    if (!notification)
+        return 0;
+    return WebProcess::shared().notificationManager().notificationIDForTesting(notification);
+#else
+    return 0;
 #endif
 }
 

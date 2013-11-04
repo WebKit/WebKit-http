@@ -456,19 +456,20 @@ void RenderBoxModelObject::updateBoxModelInfoFromStyle()
     setHasBoxDecorations(hasBackground() || styleToUse->hasBorder() || styleToUse->hasAppearance() || styleToUse->boxShadow());
     setInline(styleToUse->isDisplayInlineType());
     setRelPositioned(styleToUse->position() == RelativePosition);
+    setStickyPositioned(styleToUse->position() == StickyPosition);
     setHorizontalWritingMode(styleToUse->isHorizontalWritingMode());
 }
 
-static LayoutSize accumulateRelativePositionOffsets(const RenderObject* child)
+static LayoutSize accumulateInFlowPositionOffsets(const RenderObject* child)
 {
-    if (!child->isAnonymousBlock() || !child->isRelPositioned())
+    if (!child->isAnonymousBlock() || !child->isInFlowPositioned())
         return LayoutSize();
     LayoutSize offset;
     RenderObject* p = toRenderBlock(child)->inlineElementContinuation();
     while (p && p->isRenderInline()) {
-        if (p->isRelPositioned()) {
+        if (p->isInFlowPositioned()) {
             RenderInline* renderInline = toRenderInline(p);
-            offset += renderInline->relativePositionOffset();
+            offset += renderInline->offsetForInFlowPosition();
         }
         p = p->parent();
     }
@@ -477,7 +478,7 @@ static LayoutSize accumulateRelativePositionOffsets(const RenderObject* child)
 
 LayoutSize RenderBoxModelObject::relativePositionOffset() const
 {
-    LayoutSize offset = accumulateRelativePositionOffsets(this);
+    LayoutSize offset = accumulateInFlowPositionOffsets(this);
 
     RenderBlock* containingBlock = this->containingBlock();
 
@@ -534,6 +535,8 @@ LayoutPoint RenderBoxModelObject::adjustedPositionRelativeToOffsetParent(const L
         if (!isOutOfFlowPositioned()) {
             if (isRelPositioned())
                 referencePoint.move(relativePositionOffset());
+            else if (isStickyPositioned())
+                referencePoint.move(stickyPositionOffset());
             const RenderObject* curr = parent();
             while (curr != offsetParent) {
                 // FIXME: What are we supposed to do inside SVG content?
@@ -542,12 +545,98 @@ LayoutPoint RenderBoxModelObject::adjustedPositionRelativeToOffsetParent(const L
                 referencePoint.move(curr->parent()->offsetForColumns(referencePoint));
                 curr = curr->parent();
             }
-            if (offsetParent->isBox() && offsetParent->isBody() && !offsetParent->isRelPositioned() && !offsetParent->isOutOfFlowPositioned())
+            if (offsetParent->isBox() && offsetParent->isBody() && !offsetParent->isPositioned())
                 referencePoint.moveBy(toRenderBox(offsetParent)->topLeftLocation());
         }
     }
 
     return referencePoint;
+}
+
+LayoutSize RenderBoxModelObject::stickyPositionOffset() const
+{
+    RenderBlock* containingBlock = this->containingBlock();
+
+    LayoutRect viewportRect = view()->frameView()->visibleContentRect();
+    LayoutRect containerContentRect = containingBlock->contentBoxRect();
+
+    LayoutUnit minLeftMargin = minimumValueForLength(style()->marginLeft(), containingBlock->availableLogicalWidth(), view());
+    LayoutUnit minTopMargin = minimumValueForLength(style()->marginTop(), containingBlock->availableLogicalWidth(), view());
+    LayoutUnit minRightMargin = minimumValueForLength(style()->marginRight(), containingBlock->availableLogicalWidth(), view());
+    LayoutUnit minBottomMargin = minimumValueForLength(style()->marginBottom(), containingBlock->availableLogicalWidth(), view());
+
+    // Compute the container-relative area within which the sticky element is allowed to move.
+    containerContentRect.move(minLeftMargin, minTopMargin);
+    containerContentRect.contract(minLeftMargin + minRightMargin, minTopMargin + minBottomMargin);
+    FloatRect absContainerContentRect = containingBlock->localToAbsoluteQuad(FloatRect(containerContentRect)).boundingBox();
+
+    LayoutRect stickyBoxRect = frameRectForStickyPositioning();
+    LayoutRect flippedStickyBoxRect = stickyBoxRect;
+    containingBlock->flipForWritingMode(flippedStickyBoxRect);
+    LayoutPoint stickyLocation = flippedStickyBoxRect.location();
+
+    // FIXME: sucks to call localToAbsolute again, but we can't just offset from the previously computed rect if there are transforms.
+    FloatRect absContainerFrame = containingBlock->localToAbsoluteQuad(FloatRect(FloatPoint(), containingBlock->size())).boundingBox();
+    // We can't call localToAbsolute on |this| because that will recur. FIXME: For now, assume that |this| is not transformed.
+    FloatRect absoluteStickyBoxRect(absContainerFrame.location() + stickyLocation, flippedStickyBoxRect.size());
+
+    FloatPoint originalLocation = absoluteStickyBoxRect.location();
+
+    // Horizontal position.
+    if (!style()->right().isAuto()) {
+        LayoutUnit rightLimit = viewportRect.maxX() - valueForLength(style()->right(), viewportRect.width(), view());
+        LayoutUnit rightDelta = min<float>(0, rightLimit.toFloat() - absoluteStickyBoxRect.maxX());
+        LayoutUnit availableSpace = min<float>(0, absContainerContentRect.x() - absoluteStickyBoxRect.x());
+        if (rightDelta < availableSpace)
+            rightDelta = availableSpace;
+
+        absoluteStickyBoxRect.move(rightDelta, 0);
+    }
+
+    if (!style()->left().isAuto()) {
+        LayoutUnit leftLimit = viewportRect.x() + valueForLength(style()->left(), viewportRect.width(), view());
+        LayoutUnit leftDelta = max<float>(0, leftLimit.toFloat() - absoluteStickyBoxRect.x());
+        LayoutUnit availableSpace = max<float>(0, absContainerContentRect.maxX() - absoluteStickyBoxRect.maxX());
+        if (leftDelta > availableSpace)
+            leftDelta = availableSpace;
+
+        absoluteStickyBoxRect.move(leftDelta, 0);
+    }
+
+    // Vertical position.
+    if (!style()->bottom().isAuto()) {
+        LayoutUnit bottomLimit = viewportRect.maxY() - valueForLength(style()->bottom(), viewportRect.height(), view());
+        LayoutUnit bottomDelta = min<float>(0, bottomLimit.toFloat() - absoluteStickyBoxRect.maxY());
+        LayoutUnit availableSpace = min<float>(0, absContainerContentRect.y() - absoluteStickyBoxRect.y());
+        if (bottomDelta < availableSpace)
+            bottomDelta = availableSpace;
+
+        absoluteStickyBoxRect.move(0, bottomDelta);
+    }
+
+    if (!style()->top().isAuto()) {
+        LayoutUnit topLimit = viewportRect.y() + valueForLength(style()->top(), viewportRect.height(), view());
+        LayoutUnit topDelta = max<float>(0, topLimit.toFloat() - absoluteStickyBoxRect.y());
+        LayoutUnit availableSpace = max<float>(0, absContainerContentRect.maxY() - absoluteStickyBoxRect.maxY());
+        if (topDelta > availableSpace)
+            topDelta = availableSpace;
+
+        absoluteStickyBoxRect.move(0, topDelta);
+    }
+    
+    // The sticky offset is physical, so we can just return the delta computed in absolute coords (though it may be wrong with transforms).
+    return roundedLayoutSize(absoluteStickyBoxRect.location() - originalLocation);
+}
+
+LayoutSize RenderBoxModelObject::offsetForInFlowPosition() const
+{
+    if (isRelPositioned())
+        return relativePositionOffset();
+
+    if (isStickyPositioned())
+        return stickyPositionOffset();
+
+    return LayoutSize();
 }
 
 LayoutUnit RenderBoxModelObject::offsetLeft() const
@@ -745,14 +834,14 @@ void RenderBoxModelObject::paintFillLayerExtended(const PaintInfo& paintInfo, co
     // while rendering.)
     if (forceBackgroundToWhite) {
         // Note that we can't reuse this variable below because the bgColor might be changed
-        bool shouldPaintBackgroundColor = !bgLayer->next() && bgColor.isValid() && bgColor.alpha() > 0;
+        bool shouldPaintBackgroundColor = !bgLayer->next() && bgColor.isValid() && bgColor.alpha();
         if (shouldPaintBackgroundImage || shouldPaintBackgroundColor) {
             bgColor = Color::white;
             shouldPaintBackgroundImage = false;
         }
     }
 
-    bool colorVisible = bgColor.isValid() && bgColor.alpha() > 0;
+    bool colorVisible = bgColor.isValid() && bgColor.alpha();
     
     // Fast path for drawing simple color backgrounds.
     if (!isRoot && !clippedWithLocalScrolling && !shouldPaintBackgroundImage && isBorderFill && !bgLayer->next()) {
@@ -2420,7 +2509,7 @@ bool RenderBoxModelObject::boxShadowShouldBeAppliedToBackground(BackgroundBleedA
         return false;
 
     Color backgroundColor = style()->visitedDependentColor(CSSPropertyBackgroundColor);
-    if (!backgroundColor.isValid() || backgroundColor.alpha() < 255)
+    if (!backgroundColor.isValid() || backgroundColor.hasAlpha())
         return false;
 
     const FillLayer* lastBackgroundLayer = style()->backgroundLayers();
@@ -2526,6 +2615,8 @@ void RenderBoxModelObject::paintBoxShadow(const PaintInfo& info, const LayoutRec
                     context->fillRect(fillRect.rect(), Color::black, s->colorSpace());
                 else {
                     fillRect.expandRadii(shadowSpread);
+                    if (!fillRect.isRenderable())
+                        fillRect.adjustRadii();
                     context->fillRoundedRect(fillRect, Color::black, s->colorSpace());
                 }
             } else {
@@ -2731,7 +2822,7 @@ void RenderBoxModelObject::mapAbsoluteToLocalPoint(bool fixed, bool useTransform
 
     LayoutSize containerOffset = offsetFromContainer(o, LayoutPoint());
 
-    if (!style()->isOutOfFlowPositioned() && o->hasColumns()) {
+    if (!style()->hasOutOfFlowPosition() && o->hasColumns()) {
         RenderBlock* block = static_cast<RenderBlock*>(o);
         LayoutPoint point(roundedLayoutPoint(transformState.mappedPoint()));
         point -= containerOffset;
@@ -2749,9 +2840,8 @@ void RenderBoxModelObject::mapAbsoluteToLocalPoint(bool fixed, bool useTransform
 
 void RenderBoxModelObject::moveChildTo(RenderBoxModelObject* toBoxModelObject, RenderObject* child, RenderObject* beforeChild, bool fullRemoveInsert)
 {
-    // FIXME: We need a performant way to handle clearing positioned objects from our list that are
-    // in |child|'s subtree so we could just clear them here. Because of this, we assume that callers
-    // have cleared their positioned objects list for child moves (!fullRemoveInsert) to avoid any badness.
+    // We assume that callers have cleared their positioned objects list for child moves (!fullRemoveInsert) so the
+    // positioned renderer maps don't become stale. It would be too slow to do the map lookup on each call.
     ASSERT(!fullRemoveInsert || !isRenderBlock() || !toRenderBlock(this)->hasPositionedObjects());
 
     ASSERT(this == child->parent());

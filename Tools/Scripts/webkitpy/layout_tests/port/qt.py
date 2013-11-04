@@ -161,6 +161,7 @@ class QtPort(Port):
         self._copy_value_from_environ_if_set(clean_env, 'QT_WEBKIT_LOG')
         self._copy_value_from_environ_if_set(clean_env, 'DISABLE_NI_WARNING')
         self._copy_value_from_environ_if_set(clean_env, 'QT_WEBKIT_PAUSE_UI_PROCESS')
+        self._copy_value_from_environ_if_set(clean_env, 'QT_QPA_PLATFORM_PLUGIN_PATH')
         return clean_env
 
     # FIXME: We should find a way to share this implmentation with Gtk,
@@ -183,7 +184,4 @@ class QtPort(Port):
             _log.error('Use git to grab the actual fonts from http://gitorious.org/qtwebkit/testfonts')
             return False
         return result
-
-    def _supports_switching_pixel_tests_per_test(self):
-        return True
 

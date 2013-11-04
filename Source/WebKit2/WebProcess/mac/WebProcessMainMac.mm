@@ -47,6 +47,10 @@
 #import <wtf/text/CString.h>
 #import <wtf/text/StringBuilder.h>
 
+#if HAVE(XPC)
+#import <xpc/xpc.h>
+#endif
+
 #if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1070
 extern "C" kern_return_t bootstrap_register2(mach_port_t, name_t, mach_port_t, uint64_t);
 #endif
@@ -61,7 +65,48 @@ extern "C" kern_return_t bootstrap_register2(mach_port_t, name_t, mach_port_t, u
 
 using namespace WebCore;
 
+#if HAVE(XPC)
 namespace WebKit {
+int WebProcessMainXPC(xpc_connection_t xpcConnection, mach_port_t serverPort);
+}
+
+extern "C" WK_EXPORT int WebKitMainXPC(xpc_connection_t xpcConnection, mach_port_t serverPort);
+
+int WebKitMainXPC(xpc_connection_t xpcConnection, mach_port_t serverPort)
+{
+    ASSERT(!objc_collectingEnabled());
+
+    return WebKit::WebProcessMainXPC(xpcConnection, serverPort);
+}
+#endif
+
+namespace WebKit {
+
+#if HAVE(XPC)
+
+int WebProcessMainXPC(xpc_connection_t xpcConnection, mach_port_t serverPort)
+{
+    NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
+
+    InitWebCoreSystemInterface();
+    JSC::initializeThreading();
+    WTF::initializeMainThread();
+    RunLoop::initializeMainRunLoop();
+
+    // Initialize the shim.
+    // FIXME: Make the shim work.
+    WebProcess::shared().initializeShim();
+
+    // Create the connection.
+    WebProcess::shared().initialize(CoreIPC::Connection::Identifier(serverPort, xpcConnection), RunLoop::main());
+
+    WKAXRegisterRemoteApp();
+
+    [pool drain];
+
+    return 0;
+}
+#endif
 
 int WebProcessMain(const CommandLine& commandLine)
 {
@@ -165,7 +210,7 @@ int WebProcessMain(const CommandLine& commandLine)
     WebProcess::shared().initializeShim();
 
     // Create the connection.
-    WebProcess::shared().initialize(serverPort, RunLoop::main());
+    WebProcess::shared().initialize(CoreIPC::Connection::Identifier(serverPort), RunLoop::main());
 
     [pool drain];
 

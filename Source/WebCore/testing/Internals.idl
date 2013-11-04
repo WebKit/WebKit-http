@@ -56,7 +56,6 @@ module window {
         boolean isValidContentSelect(in Element contentElement) raises(DOMException);
         Node treeScopeRootNode(in Node node) raises (DOMException);
         Node parentTreeScope(in Node node) raises (DOMException);
-        void setAuthorShadowDOMForAnyElementEnabled(in boolean isEnabled);
 
         Node nextSiblingByWalker(in Node node) raises(DOMException);
         Node firstChildByWalker(in Node node) raises(DOMException);
@@ -118,6 +117,8 @@ module window {
 #if defined(ENABLE_TOUCH_ADJUSTMENT) && ENABLE_TOUCH_ADJUSTMENT
         WebKitPoint touchPositionAdjustedToBestClickableNode(in long x, in long y, in long width, in long height, in Document document) raises (DOMException);
         Node touchNodeAdjustedToBestClickableNode(in long x, in long y, in long width, in long height, in Document document) raises (DOMException);
+        WebKitPoint touchPositionAdjustedToBestContextMenuNode(in long x, in long y, in long width, in long height, in Document document) raises (DOMException);
+        Node touchNodeAdjustedToBestContextMenuNode(in long x, in long y, in long width, in long height, in Document document) raises (DOMException);
         ClientRect bestZoomableAreaForTouchPoint(in long x, in long y, in long width, in long height, in Document document) raises (DOMException);
 #endif
 
@@ -134,7 +135,6 @@ module window {
 
         unsigned long wheelEventHandlerCount(in Document document) raises (DOMException);
         unsigned long touchEventHandlerCount(in Document document) raises (DOMException);
-        boolean hasTouchEventListener(in Document document) raises (DOMException);
 
         NodeList nodesFromRect(in Document document, in long x, in long y,
             in unsigned long topPadding, in unsigned long rightPadding, in unsigned long bottomPadding, in unsigned long leftPadding,
@@ -186,7 +186,9 @@ module window {
         void registerURLSchemeAsBypassingContentSecurityPolicy(in DOMString scheme);
         void removeURLSchemeRegisteredAsBypassingContentSecurityPolicy(in DOMString scheme);
 
-        FastMallocStatistics fastMallocStatistics();
+        MallocStatistics mallocStatistics();
+
+        DOMString[] getReferencedFilePaths();
     };
 }
 

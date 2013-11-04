@@ -20,7 +20,7 @@
 #ifndef WebLayerTreeInfo_h
 #define WebLayerTreeInfo_h
 
-#if USE(UI_SIDE_COMPOSITING)
+#if USE(COORDINATED_GRAPHICS)
 
 #include "ArgumentDecoder.h"
 #include "ArgumentEncoder.h"
@@ -61,6 +61,7 @@ struct WebLayerInfo {
         struct {
             bool contentsOpaque : 1;
             bool drawsContent : 1;
+            bool contentsVisible : 1;
             bool backfaceVisible : 1;
             bool masksToBounds : 1;
             bool preserves3D : 1;

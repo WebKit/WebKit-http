@@ -118,6 +118,7 @@ fast/filesystem
 fast/forms/file/input-file-entries.html
 http/tests/filesystem
 http/tests/inspector/filesystem
+http/tests/security/contentSecurityPolicy/filesystem-urls-match-self.html
 http/tests/security/filesystem-iframe-from-remote.html
 http/tests/security/mixedContent/filesystem-url-in-iframe.html
 http/tests/websocket/tests/hybi/send-file-blob.html
@@ -148,6 +149,10 @@ fast/dom/HTMLLinkElement/prefetch-too-many-clients.html
 fast/dom/HTMLLinkElement/subresource.html
 http/tests/misc/link-rel-prefetch-and-subresource.html
 http/tests/misc/prefetch-purpose.html
+
+# ENABLE(LINK_PRERENDER) is disabled.
+fast/dom/HTMLLinkElement/prerender-insert-after-stop.html
+fast/dom/HTMLLinkElement/prerender-remove-after-stop.html
 
 # ENABLE(DASHBOARD_SUPPORT) is disabled
 http/tests/xmlhttprequest/default-content-type-dashboard.html
@@ -187,6 +192,7 @@ fast/dom/shadow/form-in-shadow.html
 fast/dom/shadow/get-element-by-id-in-shadow-mutation.html
 fast/dom/shadow/get-element-by-id-in-shadow-root.html
 fast/dom/shadow/iframe-shadow.html
+fast/dom/shadow/invalidate-distribution.html
 fast/dom/shadow/insertion-point-list-menu-crash.html
 fast/dom/shadow/insertion-point-shadow-crash.html
 fast/dom/shadow/insertion-point-video-crash.html
@@ -197,6 +203,8 @@ fast/dom/shadow/multiple-shadowroot-adopt.html
 fast/dom/shadow/parent-tree-scope-in-shadow.html
 fast/dom/shadow/selections-in-shadow.html
 fast/dom/shadow/selection-shouldnt-expose-shadow-dom.html
+fast/dom/shadow/shadowdom-dynamic-styling.html
+fast/dom/shadow/shadowdom-for-button.html
 fast/dom/shadow/shadowdom-for-image-alt-update.html
 fast/dom/shadow/shadowdom-for-image-alt.html
 fast/dom/shadow/shadowdom-for-image-content.html
@@ -210,6 +218,12 @@ fast/dom/shadow/shadowdom-for-image-with-pseudo-id.html
 fast/dom/shadow/shadowdom-for-image-with-width-and-height.html
 fast/dom/shadow/shadowdom-for-image.html
 fast/dom/shadow/shadowdom-for-media.html
+fast/dom/shadow/shadowdom-for-progress-dynamic.html
+fast/dom/shadow/shadowdom-for-progress-multiple.html
+fast/dom/shadow/shadowdom-for-progress-with-style.html
+fast/dom/shadow/shadowdom-for-progress-without-appearance.html
+fast/dom/shadow/shadowdom-for-progress-without-shadow-element.html
+fast/dom/shadow/shadowdom-for-progress.html
 fast/dom/shadow/shadow-and-list-elements.html
 fast/dom/shadow/shadow-boundary-events.html
 fast/dom/shadow/shadow-content-crash.html
@@ -218,6 +232,7 @@ fast/dom/shadow/shadow-contents-fallback.html
 fast/dom/shadow/shadow-dom-event-dispatching.html
 fast/dom/shadow/shadow-dynamic-style-change-via-mutation-and-selector.html
 fast/dom/shadow/shadow-disable.html
+fast/dom/shadow/shadow-div-reflow.html
 fast/dom/shadow/shadow-element.html
 fast/dom/shadow/shadow-element-rendering-single.html
 fast/dom/shadow/shadow-element-rendering-multiple.html
@@ -234,6 +249,7 @@ fast/dom/shadow/shadow-root-new.html
 fast/dom/shadow/shadow-root-resetStyleInheritance.html
 fast/dom/shadow/shadow-ul-li.html
 fast/dom/shadow/tab-order-iframe-and-shadow.html
+fast/dom/shadow/transition-on-shadow-host-with-distributed-node.html
 fast/dom/shadow/user-modify-inheritance.html
 fast/dom/shadow/shadowdom-for-object-complex-shadow.html
 fast/dom/shadow/shadowdom-for-object-only-shadow.html
@@ -256,9 +272,20 @@ fast/dom/shadow/shadowdom-for-fieldset-without-shadow.html
 fast/dom/shadow/shadowdom-for-keygen-complex-shadow.html
 fast/dom/shadow/shadowdom-for-keygen-only-shadow.html
 fast/dom/shadow/shadowdom-for-keygen-without-shadow.html
+fast/dom/shadow/shadowdom-for-textarea-with-placeholder.html
+fast/dom/shadow/shadowdom-for-textarea.html
 fast/dom/shadow/input-with-validation.html
 fast/dom/shadow/input-with-validation-without-shadow.html
 fast/dom/shadow/shadowdom-for-form-associated-element-useragent.html
+fast/dom/shadow/suppress-mutation-events-in-shadow-characterdata.html
+fast/dom/shadow/select-image-with-shadow.html
+fast/dom/shadow/shadowdom-for-meter-dynamic.html
+fast/dom/shadow/shadowdom-for-meter-multiple.html
+fast/dom/shadow/shadowdom-for-meter-with-style.html
+fast/dom/shadow/shadowdom-for-meter-without-appearance.html
+fast/dom/shadow/shadowdom-for-meter-without-shadow-element.html
+fast/dom/shadow/shadowdom-for-meter.html
+fast/dom/shadow/style-of-distributed-node.html
 
 # Fail until SUBPIXEL_LAYOUT is enabled
 # https://bugs.webkit.org/show_bug.cgi?id=85532
@@ -268,6 +295,7 @@ fast/sub-pixel/file-upload-control-at-fractional-offset.html
 fast/sub-pixel/float-containing-block-with-margin.html
 fast/sub-pixel/float-with-right-margin-zoom.html
 fast/sub-pixel/float-wrap-with-subpixel-top.html
+fast/sub-pixel/inline-block-should-not-wrap.html
 fast/sub-pixel/inline-block-with-margin.html
 fast/sub-pixel/inline-block-with-padding.html
 fast/sub-pixel/layout-boxes-with-zoom.html
@@ -275,6 +303,7 @@ fast/sub-pixel/position-right-aligns-with-container.html
 fast/sub-pixel/selection/selection-gaps-at-fractional-offsets.html
 fast/sub-pixel/size-of-box-with-zoom.html
 fast/sub-pixel/table-rows-no-gaps.html
+fast/sub-pixel/sub-pixel-accumulates-to-layers.html
 
 # CSS Regions support not yet enabled. http://webkit.org/b/57312
 fast/regions
@@ -357,6 +386,10 @@ http/tests/inspector/compiler-source-mapping-debug.html
 # https://bugs.webkit.org/show_bug.cgi?id=79068
 inspector/styles/svg-style.xhtml
 
+# REGRESSION(r126717): It made inspector/styles/media-queries.html fail/flakey
+# https://bugs.webkit.org/show_bug.cgi?id=95070
+inspector/styles/media-queries.html
+
 # Microdata DOM API is not yet enabled.
 # https://bugs.webkit.org/show_bug.cgi?id=68610
 fast/dom/MicroData
@@ -409,10 +442,6 @@ css3/filters/filter-property-parsing-invalid.html
 css3/filters/filter-property-parsing.html
 css3/filters/filter-property.html
 css3/filters/filter-repaint.html
-
-# CSS image-set support not yet enabled (needs ENABLE_CSS_IMAGE_SET).
-fast/css/image-set-parsing.html
-fast/css/image-set-parsing-invalid.html
 
 # CSS shaders
 css3/filters/custom
@@ -493,6 +522,10 @@ http/tests/security/video-cross-origin-readback.html
 # https://bugs.webkit.org/show_bug.cgi?id=85558
 http/tests/security/contentSecurityPolicy/1.1
 
+# Proximity Events is now supported.
+fast/dom/Proximity
+fast/events/constructors/device-proximity-event-constructor.html
+
 # =========================================================================== #
 #       Drag and Drop Support in DRT.                                         #
 # =========================================================================== #
@@ -528,6 +561,7 @@ fast/forms/file/recover-file-input-in-unposted-form.html
 fast/forms/file/get-file-upload.html
 fast/forms/file/input-file-re-render.html
 fast/forms/file/input-file-write-files.html
+fast/forms/file/selected-files-from-history-state.html
 http/tests/local/blob/send-hybrid-blob.html
 http/tests/local/blob/send-sliced-data-blob.html
 http/tests/local/formdata
@@ -668,7 +702,7 @@ http/tests/local/blob/send-data-blob.html
 
 # [Qt] XML Viewer fails due to specifics in the parser implementation
 # https://bugs.webkit.org/show_bug.cgi?id=55302
-http/tests/xmlviewer/extensions-api.html
+xmlviewer/extensions-api.html
 http/tests/xmlviewer/dumpAsText/svg.xml
 http/tests/xmlviewer/dumpAsText/xlink.xml
 http/tests/xmlviewer/dumpAsText/xmlviewer-charset-cp1251.xml
@@ -740,6 +774,10 @@ http/tests/cookies/js-get-and-set-http-only-cookie.html
 # https://bugs.webkit.org/show_bug.cgi?id=91218
 http/tests/w3c/webperf/approved/navigation-timing/html/test_performance_attributes_exist_in_object.html
 http/tests/w3c/webperf/approved/navigation-timing/html/test_timing_xserver_redirect.html
+
+# [Qt][GTK] REGRESSION(r126194): http/tests/security/contentSecurityPolicy/register-bypassing-scheme.html fails
+# https://bugs.webkit.org/show_bug.cgi?id=94677
+http/tests/security/contentSecurityPolicy/register-bypassing-scheme.html
 
 # =========================================================================== #
 #       Failing xmlhttprequest tests                                          #
@@ -1470,6 +1508,10 @@ svg/custom/use-on-symbol-inside-pattern.svg
 svg/batik/text/longTextOnPath.svg
 svg/carto.net/tabgroup.svg
 
+# [Qt] svg/css/text-gradient-shadow.svg fails
+# https://bugs.webkit.org/show_bug.cgi?id=92734
+svg/css/text-gradient-shadow.svg
+
 # ============================================================================= #
 # Failing CSS Tests
 # ============================================================================= #
@@ -1514,10 +1556,6 @@ css3/filters/filtered-compositing-descendant.html
 css3/filters/effect-brightness-hw.html
 css3/filters/effect-contrast-hw.html
 
-# [Qt] new test css3/flexbox/line-wrapping.html failing
-# https://bugs.webkit.org/show_bug.cgi?id=72490
-css3/flexbox/line-wrapping.html
-
 # [Qt] New css3/flexbox/flexitem.html fails
 # https://bugs.webkit.org/show_bug.cgi?id=88963
 css3/flexbox/flexitem.html
@@ -1537,6 +1575,10 @@ fast/css/square-button-appearance.html
 # https://bugs.webkit.org/show_bug.cgi?id=75400
 fast/css/absolute-inline-alignment.html
 fast/css/absolute-inline-alignment-2.html
+
+# [Qt] css2.1/t100801-c548-ln-ht-01-b-ag.html fails
+# https://bugs.webkit.org/show_bug.cgi?id=92731
+css2.1/t100801-c548-ln-ht-01-b-ag.html
 
 # ============================================================================= #
 # failing fast tests
@@ -1915,6 +1957,8 @@ fast/writing-mode/japanese-ruby-vertical-rl.html
 # Requires WebP support.
 fast/canvas/canvas-toDataURL-webp.html
 fast/images/webp-image-decoding.html
+http/tests/images/webp-partial-load.html
+http/tests/images/webp-progressive-load.html
 
 # [Qt] fast/text/emphasis-overlap.html fails
 # https://bugs.webkit.org/show_bug.cgi?id=51324
@@ -1958,12 +2002,6 @@ fast/xmlhttprequest/xmlhttprequest-get.xhtml
 # https://bugs.webkit.org/show_bug.cgi?id=84013
 fast/repaint/line-flow-with-floats-in-regions.html
 
-# [Qt]REGRESSION(r123786) It made 3 fast/animation tests fail
-# https://bugs.webkit.org/show_bug.cgi?id=92490
-fast/animation/request-animation-frame-cancel2.html
-fast/animation/request-animation-frame-detach-element.html
-fast/animation/request-animation-frame-during-modal.html
-
 # [Qt] fast/block/positioning/offsetLeft-offsetTop-multicolumn.html is failing
 # https://bugs.webkit.org/show_bug.cgi?id=86130
 fast/block/positioning/offsetLeft-offsetTop-multicolumn.html
@@ -1992,13 +2030,21 @@ fast/dom/gc-attribute-node.html
 # https://bugs.webkit.org/show_bug.cgi?id=89656
 fast/forms/datalist/input-list.html
 
+# [Qt][EFL] new fast/forms/datalist/range-snap-to-datalist.html introduced in r124549 fails
+# https://bugs.webkit.org/show_bug.cgi?id=93074
+fast/forms/datalist/range-snap-to-datalist.html
+
 # [Qt] New fast/forms/number/number-validation-message.html introduced in r121019 fails.
 # https://bugs.webkit.org/show_bug.cgi?id=89760
 fast/forms/number/number-validation-message.html
 
-# [Qt] New fast/css/sticky/parsing-position-sticky.html fails since r123379
-# https://bugs.webkit.org/show_bug.cgi?id=92080
-fast/css/sticky/parsing-position-sticky.html
+# [Qt] fast/block/positioning/002.html fails
+# https://bugs.webkit.org/show_bug.cgi?id=92732
+fast/block/positioning/002.html
+
+# [Qt] fast/block/positioning/056.html fails
+# https://bugs.webkit.org/show_bug.cgi?id=92733
+fast/block/positioning/056.html
 
 # ============================================================================= #
 # failing fonts tests
@@ -2059,11 +2105,6 @@ canvas/philip/tests/2d.gradient.radial.cone.top.html
 canvas/philip/tests/2d.gradient.radial.touch1.html
 canvas/philip/tests/2d.gradient.radial.touch2.html
 canvas/philip/tests/2d.gradient.radial.touch3.html
-canvas/philip/tests/2d.imageData.create1.type.html
-canvas/philip/tests/2d.imageData.create2.type.html
-canvas/philip/tests/2d.imageData.get.type.html
-canvas/philip/tests/2d.imageData.object.round.html
-canvas/philip/tests/2d.imageData.object.wrap.html
 canvas/philip/tests/2d.imageData.put.unchanged.html
 canvas/philip/tests/2d.line.cap.open.html
 canvas/philip/tests/2d.line.join.open.html
@@ -2079,16 +2120,9 @@ canvas/philip/tests/2d.text.draw.baseline.middle.html
 canvas/philip/tests/2d.text.draw.baseline.top.html
 canvas/philip/tests/2d.text.draw.fontface.notinpage.html
 canvas/philip/tests/2d.text.draw.space.collapse.end.html
-canvas/philip/tests/2d.text.draw.space.collapse.nonspace.html
 canvas/philip/tests/2d.text.draw.space.collapse.other.html
 canvas/philip/tests/2d.text.draw.space.collapse.space.html
 canvas/philip/tests/2d.text.draw.space.collapse.start.html
-canvas/philip/tests/2d.text.font.parse.basic.html
-canvas/philip/tests/2d.text.font.parse.complex.html
-canvas/philip/tests/2d.text.font.parse.invalid.html
-canvas/philip/tests/2d.text.font.parse.size.percentage.default.html
-canvas/philip/tests/2d.text.font.parse.size.percentage.html
-canvas/philip/tests/2d.text.font.parse.system.html
 canvas/philip/tests/2d.text.measure.width.space.html
 canvas/philip/tests/2d.transformation.setTransform.skewed.html
 canvas/philip/tests/2d.transformation.transform.skewed.html
@@ -2096,7 +2130,6 @@ canvas/philip/tests/type.prototype.html
 
 # Failing tests after sync with Philip Taylor's upstream tests
 canvas/philip/tests/2d.drawImage.image.incomplete.omitted.html
-canvas/philip/tests/2d.fillStyle.parse.invalid.rgba-6.html
 canvas/philip/tests/2d.fillStyle.parse.rgb-eof.html
 canvas/philip/tests/2d.fillStyle.parse.rgba-eof.html
 canvas/philip/tests/2d.imageData.put.wrongtype.html
@@ -2270,6 +2303,9 @@ css2.1/20110323/inline-table-001.htm
 css2.1/20110323/inline-table-003.htm
 editing/inserting/multiple-lines-selected.html
 
+fast/table/table-row-outline-paint.html
+svg/as-image/animated-svg-repaints-completely-in-hidpi.html
+
 # ============================================================================= #
 # Regressions occured after Qt version update
 # ============================================================================= #
@@ -2376,6 +2412,7 @@ fast/events/selectstart-by-drag.html
 fast/events/touch/gesture/gesture-click.html
 # New tests introduced in https://bugs.webkit.org/show_bug.cgi?id=66272. Needs
 # Qt implementation.
+fast/events/touch/gesture/gesture-dblclick.html
 fast/events/touch/gesture/gesture-scroll.html
 fast/events/touch/gesture/touch-gesture-scroll-sideways.html
 
@@ -2448,10 +2485,6 @@ fast/forms/select/listbox-in-multi-column.html
 # [Qt] fails fast/inline/nested-text-descendants.html
 # https://bugs.webkit.org/show_bug.cgi?id=75321
 fast/inline/nested-text-descendants.html
-
-# [Qt] new test fast/forms/radio/radio-group.html failing after r104668
-# https://bugs.webkit.org/show_bug.cgi?id=76051
-fast/forms/radio/radio-group.html
 
 # Linecaps wrong for zero length lines
 # https://bugs.webkit.org/show_bug.cgi?id=71820
@@ -2546,12 +2579,21 @@ fast/css/empty-cell-baseline.html
 fast/forms/datalist/update-range-with-datalist.html
 fast/multicol/cell-shrinkback.html
 fast/multicol/overflow-into-columngap.html
+fast/overflow/line-clamp-and-columns.html
 fast/table/td-width-fifty-percent-regression.html
+fast/text/descent-clip-in-scaled-page.html
 fast/sub-pixel/block-with-margin-overflow.html
 svg/custom/anchor-on-use.svg
 svg/animations/animateTransform-rotate-around-point.svg
 svg/animations/animateMotion-additive-1.svg
 svg/transforms/transformed-text-fill-gradient.html
+
+# Failing fast/css/sticky/ tests with minor pixel differences
+# https://bugs.webkit.org/show_bug.cgi?id=92080
+fast/css/sticky/inline-sticky-abspos-child.html
+fast/css/sticky/inline-sticky.html
+fast/css/sticky/sticky-writing-mode-vertical-lr.html
+fast/css/sticky/sticky-writing-mode-vertical-rl.html
 
 # REGRESSION(114309) - Exception stack traces aren't complete when the exception starts in native code
 # https://bugs.webkit.org/show_bug.cgi?id=84073
@@ -2596,6 +2638,10 @@ fast/multicol/split-in-top-margin.html
 # https://bugs.webkit.org/show_bug.cgi?id=87367
 fast/block/positioning/fixed-position-stacking-context.html
 
+# [Qt][EFL] New inspector/styles/region-style-crash.html fails since r124186
+# https://bugs.webkit.org/show_bug.cgi?id=91503
+inspector/styles/region-style-crash.html
+
 # [Qt] REGRESSION(r118291) fast/frames/flattening/iframe-tiny.html fails
 # https://bugs.webkit.org/show_bug.cgi?id=87363
 fast/frames/flattening/iframe-tiny.html
@@ -2629,6 +2675,9 @@ fast/block/float/floats-wrap-inside-inline-003.htm
 fast/multicol/table-row-height-increase.html
 css2.1/20110323/vertical-align-boxes-001.htm
 svg/as-image/svg-intrinsic-size-rectangular-vertical.html
+fast/css/word-spacing-characters.html
+css2.1/20110323/c541-word-sp-001.htm
+
 
 # [Qt] css3/filters/huge-region-composited.html makes css3/filters/huge-region.html crash
 # https://bugs.webkit.org/show_bug.cgi?id=90165
@@ -2676,6 +2725,50 @@ svg/repaint/container-repaint.svg
 # https://bugs.webkit.org/show_bug.cgi?id=92352
 css3/flexbox/flex-rounding.html
 
-# [Qt] REGRESSION http/tests/security/contentSecurityPolicy/object-src-none-blocked.html fails after r123978
-# https://bugs.webkit.org/show_bug.cgi?id=92649
-http/tests/security/contentSecurityPolicy/object-src-none-blocked.html
+# ENABLE(WIDGET_REGION) is disabled
+fast/css/widget-region-parser.html
+
+# https://bugs.webkit.org/show_bug.cgi?id=92914
+touchadjustment/touch-links-longpress.html
+
+# New tests introduced in r124555 asserts on 32 bit platforms
+# https://bugs.webkit.org/show_bug.cgi?id=93246
+fast/js/dfg-peephole-compare-final-object-to-final-object-or-other-when-both-proven-final-object.html
+fast/js/dfg-compare-final-object-to-final-object-or-other-when-both-proven-final-object.html
+
+# [Qt][GTK] REGRESSION(r125251): It made svg/custom/use-instanceRoot-as-event-target.xhtml assert and flakey
+# https://bugs.webkit.org/show_bug.cgi?id=93812
+svg/custom/use-instanceRoot-as-event-target.xhtml
+
+# New test introduced in r125648 fast/events/autoscroll-in-textarea.html fails
+# https://bugs.webkit.org/show_bug.cgi?id=94076
+fast/events/autoscroll-in-textarea.html
+
+# ENABLE(INPUT_TYPE_TIME_MULTIPLE_FIELDS) is disabled
+fast/forms/time-multiple-fields
+
+# [Qt] New inspector/timeline/timeline-decode-resize.html introduced in r125790 fails
+# https://bugs.webkit.org/show_bug.cgi?id=?????
+inspector/timeline/timeline-decode-resize.html
+
+# [Qt] New fast/forms/range/range-hit-test-with-padding.html introduced in r126132 fails
+# https://bugs.webkit.org/show_bug.cgi?id=?????
+fast/forms/range/range-hit-test-with-padding.html
+
+# REGRESSION(r126852): It broke inspector tests
+# https://bugs.webkit.org/show_bug.cgi?id=95176
+http/tests/inspector-enabled/console-clear-arguments-on-frame-navigation.html
+http/tests/inspector-enabled/contentSecurityPolicy-blocks-setInterval.html
+http/tests/inspector-enabled/contentSecurityPolicy-blocks-setTimeout.html
+http/tests/inspector/csp-injected-content-warning-contains-stacktrace.html
+http/tests/inspector/csp-inline-warning-contains-stacktrace.html
+
+# [Qt] New inspector/profiler/webgl-profiler-api-changes.html times out
+# https://bugs.webkit.org/show_bug.cgi?id=95183
+inspector/profiler/webgl-profiler-api-changes.html
+
+# [Qt] New svg/custom/clamped-masking-clipping.svg asserts
+# https://bugs.webkit.org/show_bug.cgi?id=95431
+# [Qt][GTK] New svg/custom/clamped-masking-clipping.svg fails
+# https://bugs.webkit.org/show_bug.cgi?id=95432
+svg/custom/clamped-masking-clipping.svg

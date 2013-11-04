@@ -179,6 +179,8 @@ sub SkipAttribute {
         return 1;
     }
 
+    return 1 if $codeGenerator->IsTypedArrayType($propType);
+
     $codeGenerator->AssertNotSequenceType($propType);
 
     if ($codeGenerator->GetArrayType($propType)) {
@@ -799,6 +801,8 @@ sub GenerateFunction {
     if (SkipFunction($function, $decamelize, $prefix)) {
         return;
     }
+
+    return if ($function->signature->name eq "set" and $parentNode->extendedAttributes->{"TypedArray"});
 
     my $functionSigName = $function->signature->name;
     my $functionSigType = $prefix eq "set_" ? "void" : $function->signature->type;

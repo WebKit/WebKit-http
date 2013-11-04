@@ -70,9 +70,19 @@ print GPERF << "EOF";
 #include <string.h>
 
 #include <wtf/ASCIICType.h>
+#include <wtf/text/AtomicString.h>
 #include <wtf/text/WTFString.h>
 
 namespace WebCore {
+EOF
+
+print GPERF "const char* const propertyNameStrings[numCSSProperties] = {\n";
+foreach my $name (@names) {
+  print GPERF "    \"$name\",\n";
+}
+print GPERF "};\n\n";
+
+print GPERF << "EOF";
 %}
 %struct-type
 struct Property;
@@ -120,7 +130,30 @@ const char* getPropertyName(CSSPropertyID id)
     return propertyNameStrings[index];
 }
 
-WTF::String getJSPropertyName(CSSPropertyID id)
+const AtomicString& getPropertyNameAtomicString(CSSPropertyID id)
+{
+    if (id < firstCSSProperty)
+        return nullAtom;
+    int index = id - firstCSSProperty;
+    if (index >= numCSSProperties)
+        return nullAtom;
+
+    static AtomicString* propertyStrings = new AtomicString[numCSSProperties]; // Intentionally never destroyed.
+    AtomicString& propertyString = propertyStrings[index];
+    if (propertyString.isNull()) {
+        const char* propertyName = propertyNameStrings[index];
+        propertyString = AtomicString(propertyName, strlen(propertyName), AtomicString::ConstructFromLiteral);
+    }
+    return propertyString;
+}
+
+String getPropertyNameString(CSSPropertyID id)
+{
+    // We share the StringImpl with the AtomicStrings.
+    return getPropertyNameAtomicString(id).string();
+}
+
+String getJSPropertyName(CSSPropertyID id)
 {
     char result[maxCSSPropertyNameLength + 1];
     const char* cssPropertyName = getPropertyName(id);
@@ -157,6 +190,7 @@ print HEADER << "EOF";
 #include <wtf/HashTraits.h>
 
 namespace WTF {
+class AtomicString;
 class String;
 }
 
@@ -190,15 +224,11 @@ print HEADER "const int numCSSProperties = $num;\n";
 print HEADER "const int lastCSSProperty = $last;\n";
 print HEADER "const size_t maxCSSPropertyNameLength = $maxLen;\n";
 
-print HEADER "const char* const propertyNameStrings[$num] = {\n";
-foreach my $name (@names) {
-  print HEADER "\"$name\",\n";
-}
-print HEADER "};\n";
-
 print HEADER << "EOF";
 
 const char* getPropertyName(CSSPropertyID);
+const WTF::AtomicString& getPropertyNameAtomicString(CSSPropertyID id);
+WTF::String getPropertyNameString(CSSPropertyID id);
 WTF::String getJSPropertyName(CSSPropertyID);
 
 inline CSSPropertyID convertToCSSPropertyID(int value)

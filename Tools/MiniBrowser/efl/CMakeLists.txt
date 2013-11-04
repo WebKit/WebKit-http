@@ -1,6 +1,7 @@
 SET(MiniBrowser_DIR "${TOOLS_DIR}/MiniBrowser/efl")
 
 SET(MiniBrowser_SOURCES
+    ${TOOLS_DIR}/EWebLauncher/url_bar.c
     ${MiniBrowser_DIR}/main.c
 )
 
@@ -10,6 +11,7 @@ SET(MiniBrowser_INCLUDE_DIRECTORIES
     ${EDJE_INCLUDE_DIRS}
     ${EFLDEPS_INCLUDE_DIRS}
     ${EVAS_INCLUDE_DIRS}
+    ${TOOLS_DIR}/EWebLauncher
     ${WEBKIT2_DIR}/UIProcess/API/efl
     ${WEBKIT2_DIR}
     ${CMAKE_SOURCE_DIR}/Source
@@ -25,9 +27,10 @@ SET(MiniBrowser_LIBRARIES
     ${EFLDEPS_LIBRARIES}
     ${EVAS_LIBRARIES}
     ${FONTCONFIG_LIBRARIES}
-    ${LIBSOUP24_LIBRARIES}
+    ${LIBSOUP_LIBRARIES}
     ${LIBXML2_LIBRARIES}
     ${LIBXSLT_LIBRARIES}
+    ${OPENGL_LIBRARIES}
     ${SQLITE_LIBRARIES}
 )
 
@@ -36,13 +39,12 @@ SET(MiniBrowser_LINK_FLAGS
     ${EDJE_LDFLAGS}
     ${EFLDEPS_LDFLAGS}
     ${EVAS_LDFLAGS}
-    ${LIBSOUP24_LDFLAGS}
 )
 
 IF (ENABLE_GLIB_SUPPORT)
     LIST(APPEND MiniBrowser_LIBRARIES
-        ${Glib_LIBRARIES}
-        ${Gthread_LIBRARIES}
+        ${GLIB_LIBRARIES}
+        ${GLIB_GTHREAD_LIBRARIES}
     )
 ENDIF ()
 
@@ -54,3 +56,5 @@ ADD_EXECUTABLE(MiniBrowser ${MiniBrowser_SOURCES})
 TARGET_LINK_LIBRARIES(MiniBrowser ${MiniBrowser_LIBRARIES})
 ADD_TARGET_PROPERTIES(MiniBrowser LINK_FLAGS "${MiniBrowser_LINK_FLAGS}")
 SET_TARGET_PROPERTIES(MiniBrowser PROPERTIES FOLDER "Tools")
+
+ADD_DEPENDENCIES(MiniBrowser ThemeControl)

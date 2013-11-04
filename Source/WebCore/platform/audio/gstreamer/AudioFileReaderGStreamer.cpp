@@ -24,6 +24,13 @@
 #include "AudioFileReader.h"
 
 #include "AudioBus.h"
+
+#if PLATFORM(QT)
+// Clear out offending Qt macro so the following header, gio.h, can be included.
+// https://bugs.webkit.org/show_bug.cgi?id=95081
+#undef signals
+#endif
+
 #include <gio/gio.h>
 #include <gst/app/gstappsink.h>
 #include <gst/audio/multichannel.h>
@@ -305,7 +312,7 @@ void AudioFileReader::decodeAudioForBusCreation()
     if (m_data) {
         ASSERT(m_dataSize);
         source = gst_element_factory_make("giostreamsrc", 0);
-        GRefPtr<GInputStream> memoryStream = g_memory_input_stream_new_from_data(m_data, m_dataSize, 0);
+        GRefPtr<GInputStream> memoryStream = adoptGRef(g_memory_input_stream_new_from_data(m_data, m_dataSize, 0));
         g_object_set(source, "stream", memoryStream.get(), NULL);
     } else {
         source = gst_element_factory_make("filesrc", 0);

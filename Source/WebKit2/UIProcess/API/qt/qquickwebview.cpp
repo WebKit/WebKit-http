@@ -32,10 +32,11 @@
 #include "QtWebPageEventHandler.h"
 #include "QtWebPageLoadClient.h"
 #include "QtWebPagePolicyClient.h"
-#include "UtilsQt.h"
 #include "WebBackForwardList.h"
+#if ENABLE(INSPECTOR_SERVER)
 #include "WebInspectorProxy.h"
 #include "WebInspectorServer.h"
+#endif
 #if ENABLE(FULLSCREEN_API)
 #include "WebFullScreenManagerProxy.h"
 #endif
@@ -185,7 +186,7 @@ static QQuickWebViewPrivate* createPrivateObject(QQuickWebView* publicObject)
 
 QQuickWebViewPrivate::FlickableAxisLocker::FlickableAxisLocker()
     : m_allowedDirection(QQuickFlickable::AutoFlickDirection)
-    , m_sampleCount(0)
+    , m_time(0), m_sampleCount(0)
 {
 }
 
@@ -197,8 +198,8 @@ QVector2D QQuickWebViewPrivate::FlickableAxisLocker::touchVelocity(const QTouchE
     if (touchVelocityAvailable)
         return touchPoint.velocity();
 
-    const QLineF movementLine(touchPoint.screenPos(), m_initialScreenPosition);
-    const qint64 elapsed = m_time.elapsed();
+    const QLineF movementLine(touchPoint.pos(), m_initialPosition);
+    const ulong elapsed = event->timestamp() - m_time;
 
     if (!elapsed)
         return QVector2D(0, 0);
@@ -215,8 +216,8 @@ void QQuickWebViewPrivate::FlickableAxisLocker::update(const QTouchEvent* event)
     ++m_sampleCount;
 
     if (m_sampleCount == 1) {
-        m_initialScreenPosition = touchPoint.screenPos();
-        m_time.restart();
+        m_initialPosition = touchPoint.pos();
+        m_time = event->timestamp();
         return;
     }
 
@@ -270,8 +271,8 @@ QQuickWebViewPrivate::QQuickWebViewPrivate(QQuickWebView* viewport)
     , m_useDefaultContentItemSize(true)
     , m_navigatorQtObjectEnabled(false)
     , m_renderToOffscreenBuffer(false)
-    , m_dialogActive(false)
     , m_allowAnyHTTPSCertificateForLocalHost(false)
+    , m_customDevicePixelRatio(0)
     , m_loadProgress(0)
 {
     viewport->setClip(true);
@@ -297,6 +298,7 @@ void QQuickWebViewPrivate::initialize(WKContextRef contextRef, WKPageGroupRef pa
 
     context = contextRef ? QtWebContext::create(toImpl(contextRef)) : QtWebContext::defaultContext();
     webPageProxy = context->createWebPage(&pageClient, pageGroup.get());
+    webPageProxy->setUseFixedLayout(s_flickableViewportEnabled);
 #if ENABLE(FULLSCREEN_API)
     webPageProxy->fullScreenManager()->setWebView(q_ptr);
 #endif
@@ -319,6 +321,13 @@ void QQuickWebViewPrivate::initialize(WKContextRef contextRef, WKPageGroupRef pa
 
     pageClient.initialize(q_ptr, pageViewPrivate->eventHandler.data(), &undoController);
     webPageProxy->initializeWebPage();
+}
+
+void QQuickWebViewPrivate::onComponentComplete()
+{
+    Q_Q(QQuickWebView);
+    m_viewportHandler.reset(new QtViewportHandler(webPageProxy.get(), q, pageView.data()));
+    pageView->eventHandler()->setViewportHandler(m_viewportHandler.data());
 }
 
 void QQuickWebViewPrivate::setTransparentBackground(bool enable)
@@ -408,6 +417,27 @@ void QQuickWebViewPrivate::loadDidFail(const QtWebError& error)
     emit q->loadingChanged(&loadRequest);
 }
 
+void QQuickWebViewPrivate::handleMouseEvent(QMouseEvent* event)
+{
+    switch (event->type()) {
+    case QEvent::MouseButtonPress:
+    case QEvent::MouseButtonDblClick:
+        // If a MouseButtonDblClick was received then we got a MouseButtonPress before
+        // handleMousePressEvent will take care of double clicks.
+        pageView->eventHandler()->handleMousePressEvent(event);
+        break;
+    case QEvent::MouseMove:
+        pageView->eventHandler()->handleMouseMoveEvent(event);
+        break;
+    case QEvent::MouseButtonRelease:
+        pageView->eventHandler()->handleMouseReleaseEvent(event);
+        break;
+    default:
+        ASSERT_NOT_REACHED();
+        break;
+    }
+}
+
 void QQuickWebViewPrivate::setNeedsDisplay()
 {
     Q_Q(QQuickWebView);
@@ -444,7 +474,10 @@ void QQuickWebViewPrivate::didRelaunchProcess()
 {
     qWarning("WARNING: The web process has been successfully restarted.");
 
+    // Reset to default so that the later update can reach the web process.
+    webPageProxy->setCustomDeviceScaleFactor(0);
     webPageProxy->drawingArea()->setSize(viewSize(), IntSize());
+
     updateViewportSize();
     updateUserScripts();
 }
@@ -760,6 +793,20 @@ void QQuickWebViewPrivate::didReceiveMessageFromNavigatorQtObject(const String& 
     emit q_ptr->experimental()->messageReceived(variantMap);
 }
 
+void QQuickWebViewPrivate::didChangeContentsSize(const QSize& newSize)
+{
+    if (newSize.isEmpty() || !m_customDevicePixelRatio || webPageProxy->deviceScaleFactor() == m_customDevicePixelRatio)
+        return;
+
+    // DrawingAreaProxy returns early if the page size is empty
+    // and the device pixel ratio property is propagated from QML
+    // before the QML page item has a valid size yet, thus the
+    // information would not reach the web process.
+    // Set the custom device pixel ratio requested from QML as soon
+    // as the content item has a valid size.
+    webPageProxy->setCustomDeviceScaleFactor(m_customDevicePixelRatio);
+}
+
 QQuickWebViewLegacyPrivate::QQuickWebViewLegacyPrivate(QQuickWebView* viewport)
     : QQuickWebViewPrivate(viewport)
 {
@@ -767,8 +814,11 @@ QQuickWebViewLegacyPrivate::QQuickWebViewLegacyPrivate(QQuickWebView* viewport)
 
 void QQuickWebViewLegacyPrivate::initialize(WKContextRef contextRef, WKPageGroupRef pageGroupRef)
 {
+    Q_Q(QQuickWebView);
     QQuickWebViewPrivate::initialize(contextRef, pageGroupRef);
-    enableMouseEvents();
+
+    q->setAcceptedMouseButtons(Qt::MouseButtonMask);
+    q->setAcceptHoverEvents(true);
 
     // Trigger setting of correct visibility flags after everything was allocated and initialized.
     _q_onVisibleChanged();
@@ -788,20 +838,6 @@ void QQuickWebViewLegacyPrivate::updateViewportSize()
     webPageProxy->drawingArea()->setVisibleContentsRect(FloatRect(FloatPoint(), viewportSize), 1, FloatPoint());
 }
 
-void QQuickWebViewLegacyPrivate::enableMouseEvents()
-{
-    Q_Q(QQuickWebView);
-    q->setAcceptedMouseButtons(Qt::MouseButtonMask);
-    q->setAcceptHoverEvents(true);
-}
-
-void QQuickWebViewLegacyPrivate::disableMouseEvents()
-{
-    Q_Q(QQuickWebView);
-    q->setAcceptedMouseButtons(Qt::NoButton);
-    q->setAcceptHoverEvents(false);
-}
-
 qreal QQuickWebViewLegacyPrivate::zoomFactor() const
 {
     return webPageProxy->pageZoomFactor();
@@ -815,12 +851,6 @@ void QQuickWebViewLegacyPrivate::setZoomFactor(qreal factor)
 QQuickWebViewFlickablePrivate::QQuickWebViewFlickablePrivate(QQuickWebView* viewport)
     : QQuickWebViewPrivate(viewport)
 {
-    // Disable mouse events on the flickable web view so we do not
-    // select text during pan gestures on platforms which send both
-    // touch and mouse events simultaneously.
-    // FIXME: Temporary workaround code which should be removed when
-    // bug http://codereview.qt-project.org/21896 is fixed.
-    viewport->setAcceptedMouseButtons(Qt::NoButton);
     viewport->setAcceptHoverEvents(false);
 }
 
@@ -832,15 +862,11 @@ QQuickWebViewFlickablePrivate::~QQuickWebViewFlickablePrivate()
 void QQuickWebViewFlickablePrivate::initialize(WKContextRef contextRef, WKPageGroupRef pageGroupRef)
 {
     QQuickWebViewPrivate::initialize(contextRef, pageGroupRef);
-    webPageProxy->setUseFixedLayout(true);
 }
 
 void QQuickWebViewFlickablePrivate::onComponentComplete()
 {
-    Q_Q(QQuickWebView);
-
-    m_viewportHandler.reset(new QtViewportHandler(webPageProxy.get(), q, pageView.data()));
-    pageView->eventHandler()->setViewportHandler(m_viewportHandler.data());
+    QQuickWebViewPrivate::onComponentComplete();
 
     // Trigger setting of correct visibility flags after everything was allocated and initialized.
     _q_onVisibleChanged();
@@ -869,7 +895,17 @@ void QQuickWebViewFlickablePrivate::didChangeContentsSize(const QSize& newSize)
     Q_Q(QQuickWebView);
 
     pageView->setContentsSize(newSize); // emits contentsSizeChanged()
+    QQuickWebViewPrivate::didChangeContentsSize(newSize);
     m_viewportHandler->pageContentsSizeChanged(newSize, q->boundingRect().size().toSize());
+}
+
+void QQuickWebViewFlickablePrivate::handleMouseEvent(QMouseEvent* event)
+{
+    if (!pageView->eventHandler())
+        return;
+
+    // FIXME: Update the axis locker for mouse events as well.
+    pageView->eventHandler()->handleInputEvent(event);
 }
 
 /*!
@@ -1216,19 +1252,23 @@ void QQuickWebViewExperimental::setUserAgent(const QString& userAgent)
     down but still provide a better looking image.
 */
 
-double QQuickWebViewExperimental::devicePixelRatio() const
+qreal QQuickWebViewExperimental::devicePixelRatio() const
 {
     Q_D(const QQuickWebView);
+
+    if (d->m_customDevicePixelRatio)
+        return d->m_customDevicePixelRatio;
+
     return d->webPageProxy->deviceScaleFactor();
 }
 
-void QQuickWebViewExperimental::setDevicePixelRatio(double devicePixelRatio)
+void QQuickWebViewExperimental::setDevicePixelRatio(qreal devicePixelRatio)
 {
     Q_D(QQuickWebView);
-    if (devicePixelRatio == this->devicePixelRatio())
+    if (0 >= devicePixelRatio || devicePixelRatio == this->devicePixelRatio())
         return;
 
-    d->webPageProxy->setCustomDeviceScaleFactor(devicePixelRatio);
+    d->m_customDevicePixelRatio = devicePixelRatio;
     emit devicePixelRatioChanged();
 }
 
@@ -1316,7 +1356,11 @@ void QQuickWebViewExperimental::setUserScripts(const QList<QUrl>& userScripts)
 
 QUrl QQuickWebViewExperimental::remoteInspectorUrl() const
 {
+#if ENABLE(INSPECTOR_SERVER)
     return QUrl(WebInspectorServer::shared().inspectorUrlForPageID(d_ptr->webPageProxy->inspector()->remoteInspectionPageID()));
+#else
+    return QUrl();
+#endif
 }
 
 QQuickUrlSchemeDelegate* QQuickWebViewExperimental::schemeDelegates_At(QQmlListProperty<QQuickUrlSchemeDelegate>* property, int index)
@@ -1406,13 +1450,8 @@ QQuickWebPage* QQuickWebViewExperimental::page()
 }
 
 /*!
-    \qmlclass WebView QWebView
+    \qmltype WebView
     \inqmlmodule QtWebKit 3.0
-*/
-
-/*!
-   \qmlmethod WebView(Item parent)
-   \brief Constructs a WebView with a parent.
 */
 
 QQuickWebView::QQuickWebView(QQuickItem* parent)
@@ -1657,36 +1696,25 @@ void QQuickWebView::platformInitialize()
 
 bool QQuickWebView::childMouseEventFilter(QQuickItem* item, QEvent* event)
 {
-    if (!isVisible() || !isEnabled() || !s_flickableViewportEnabled)
-        return QQuickFlickable::childMouseEventFilter(item, event);
-
-    Q_D(QQuickWebView);
-    if (d->m_dialogActive) {
-        event->ignore();
+    if (!isVisible() || !isEnabled())
         return false;
-    }
 
     // This function is used by MultiPointTouchArea and PinchArea to filter
     // touch events, thus to hinder the canvas from sending synthesized
     // mouse events to the Flickable implementation we need to reimplement
-    // childMouseEventFilter and filter incoming touch events as well.
+    // childMouseEventFilter to ignore touch and mouse events.
 
     switch (event->type()) {
     case QEvent::MouseButtonPress:
-        mousePressEvent(static_cast<QMouseEvent*>(event));
-        return event->isAccepted();
     case QEvent::MouseMove:
-        mouseMoveEvent(static_cast<QMouseEvent*>(event));
-        return event->isAccepted();
     case QEvent::MouseButtonRelease:
-        mouseReleaseEvent(static_cast<QMouseEvent*>(event));
-        return event->isAccepted();
     case QEvent::TouchBegin:
     case QEvent::TouchUpdate:
     case QEvent::TouchEnd:
-        touchEvent(static_cast<QTouchEvent*>(event));
-        return event->isAccepted();
+        // Force all mouse and touch events through the default propagation path.
+        return false;
     default:
+        ASSERT(event->type() == QEvent::UngrabMouse);
         break;
     }
 
@@ -1743,10 +1771,6 @@ void QQuickWebView::focusOutEvent(QFocusEvent* event)
 void QQuickWebView::touchEvent(QTouchEvent* event)
 {
     Q_D(QQuickWebView);
-    if (d->m_dialogActive) {
-        event->ignore();
-        return;
-    }
 
     bool lockingDisabled = flickableDirection() != AutoFlickDirection
                            || event->touchPoints().size() != 1
@@ -1766,29 +1790,26 @@ void QQuickWebView::mousePressEvent(QMouseEvent* event)
 {
     Q_D(QQuickWebView);
     forceActiveFocus();
-    d->pageView->eventHandler()->handleMousePressEvent(event);
+    d->handleMouseEvent(event);
 }
 
 void QQuickWebView::mouseMoveEvent(QMouseEvent* event)
 {
     Q_D(QQuickWebView);
-    d->pageView->eventHandler()->handleMouseMoveEvent(event);
+    d->handleMouseEvent(event);
 }
 
 void QQuickWebView::mouseReleaseEvent(QMouseEvent* event)
 {
     Q_D(QQuickWebView);
-    d->pageView->eventHandler()->handleMouseReleaseEvent(event);
+    d->handleMouseEvent(event);
 }
 
 void QQuickWebView::mouseDoubleClickEvent(QMouseEvent* event)
 {
     Q_D(QQuickWebView);
-
     forceActiveFocus();
-    // If a MouseButtonDblClick was received then we got a MouseButtonPress before
-    // handleMousePressEvent will take care of double clicks.
-    d->pageView->eventHandler()->handleMousePressEvent(event);
+    d->handleMouseEvent(event);
 }
 
 void QQuickWebView::wheelEvent(QWheelEvent* event)

@@ -47,7 +47,7 @@
 #include <WebCore/Page.h>
 
 #if ENABLE(WEB_INTENTS)
-#include "WebIntentData.h"
+#include "InjectedBundleIntent.h"
 #endif
 
 using namespace WebKit;
@@ -287,21 +287,29 @@ bool WKBundlePageFindString(WKBundlePageRef pageRef, WKStringRef target, WKFindO
     return toImpl(pageRef)->findStringFromInjectedBundle(toImpl(target)->string(), toFindOptions(findOptions));
 }
 
+WKImageRef WKBundlePageCreateSnapshotWithOptions(WKBundlePageRef pageRef, WKRect rect, WKSnapshotOptions options)
+{
+    RefPtr<WebImage> webImage = toImpl(pageRef)->scaledSnapshotWithOptions(toIntRect(rect), 1, toSnapshotOptions(options));
+    return toAPI(webImage.release().leakRef());
+}
+
 WKImageRef WKBundlePageCreateSnapshotInViewCoordinates(WKBundlePageRef pageRef, WKRect rect, WKImageOptions options)
 {
-    RefPtr<WebImage> webImage = toImpl(pageRef)->snapshotInViewCoordinates(toIntRect(rect), toImageOptions(options));
+    SnapshotOptions snapshotOptions = snapshotOptionsFromImageOptions(options);
+    snapshotOptions |= SnapshotOptionsInViewCoordinates;
+    RefPtr<WebImage> webImage = toImpl(pageRef)->scaledSnapshotWithOptions(toIntRect(rect), 1, snapshotOptions);
     return toAPI(webImage.release().leakRef());
 }
 
 WKImageRef WKBundlePageCreateSnapshotInDocumentCoordinates(WKBundlePageRef pageRef, WKRect rect, WKImageOptions options)
 {
-    RefPtr<WebImage> webImage = toImpl(pageRef)->snapshotInDocumentCoordinates(toIntRect(rect), toImageOptions(options));
+    RefPtr<WebImage> webImage = toImpl(pageRef)->scaledSnapshotWithOptions(toIntRect(rect), 1, snapshotOptionsFromImageOptions(options));
     return toAPI(webImage.release().leakRef());
 }
 
 WKImageRef WKBundlePageCreateScaledSnapshotInDocumentCoordinates(WKBundlePageRef pageRef, WKRect rect, double scaleFactor, WKImageOptions options)
 {
-    RefPtr<WebImage> webImage = toImpl(pageRef)->scaledSnapshotInDocumentCoordinates(toIntRect(rect), scaleFactor, toImageOptions(options));
+    RefPtr<WebImage> webImage = toImpl(pageRef)->scaledSnapshotWithOptions(toIntRect(rect), scaleFactor, snapshotOptionsFromImageOptions(options));
     return toAPI(webImage.release().leakRef());
 }
 
@@ -310,10 +318,10 @@ double WKBundlePageGetBackingScaleFactor(WKBundlePageRef pageRef)
     return toImpl(pageRef)->deviceScaleFactor();
 }
 
-void WKBundlePageDeliverIntentToFrame(WKBundlePageRef pageRef, WKBundleFrameRef frameRef, WKIntentDataRef intentRef)
+void WKBundlePageDeliverIntentToFrame(WKBundlePageRef pageRef, WKBundleFrameRef frameRef, WKBundleIntentRef intentRef)
 {
 #if ENABLE(WEB_INTENTS)
-    toImpl(pageRef)->deliverIntentToFrame(toImpl(frameRef)->frameID(), toImpl(intentRef)->store());
+    toImpl(pageRef)->deliverCoreIntentToFrame(toImpl(frameRef)->frameID(), toImpl(intentRef)->coreIntent());
 #endif
 }
 

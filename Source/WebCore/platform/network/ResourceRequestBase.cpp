@@ -24,8 +24,9 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 #include "config.h"
-
 #include "ResourceRequestBase.h"
+
+#include "MemoryInstrumentation.h"
 #include "ResourceRequest.h"
 
 using namespace std;
@@ -373,7 +374,7 @@ void ResourceRequestBase::addHTTPHeaderField(const AtomicString& name, const Str
     updateResourceRequest();
     HTTPHeaderMap::AddResult result = m_httpHeaderFields.add(name, value);
     if (!result.isNewEntry)
-        result.iterator->second += "," + value;
+        result.iterator->second = result.iterator->second + ',' + value;
 
     if (url().protocolIsInHTTPFamily())
         m_platformRequestUpdated = false;
@@ -441,6 +442,18 @@ bool ResourceRequestBase::isConditional() const
             m_httpHeaderFields.contains("If-None-Match") ||
             m_httpHeaderFields.contains("If-Range") ||
             m_httpHeaderFields.contains("If-Unmodified-Since"));
+}
+
+void ResourceRequestBase::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
+{
+    MemoryClassInfo info(memoryObjectInfo, this, MemoryInstrumentation::Loader);
+    info.addInstrumentedMember(m_url);
+    info.addInstrumentedMember(m_firstPartyForCookies);
+    info.addInstrumentedMember(m_httpMethod);
+    info.addHashMap(m_httpHeaderFields);
+    info.addInstrumentedMapEntries(m_httpHeaderFields);
+    info.addInstrumentedVector(m_responseContentDispositionEncodingFallbackArray);
+    info.addInstrumentedMember(m_httpBody);
 }
 
 double ResourceRequestBase::defaultTimeoutInterval()

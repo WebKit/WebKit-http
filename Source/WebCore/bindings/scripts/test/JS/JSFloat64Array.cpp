@@ -22,6 +22,7 @@
 #include "JSFloat64Array.h"
 
 #include "ExceptionCode.h"
+#include "JSArrayBufferViewHelper.h"
 #include "JSDOMBinding.h"
 #include "JSFloat32Array.h"
 #include "JSInt32Array.h"
@@ -78,6 +79,26 @@ bool JSFloat64ArrayConstructor::getOwnPropertyDescriptor(JSObject* object, ExecS
     return getStaticValueDescriptor<JSFloat64ArrayConstructor, JSDOMWrapper>(exec, &JSFloat64ArrayConstructorTable, jsCast<JSFloat64ArrayConstructor*>(object), propertyName, descriptor);
 }
 
+EncodedJSValue JSC_HOST_CALL JSFloat64ArrayConstructor::constructJSFloat64Array(ExecState* exec)
+{
+    JSFloat64ArrayConstructor* jsConstructor = jsCast<JSFloat64ArrayConstructor*>(exec->callee());
+    RefPtr<Float64Array> array = constructArrayBufferView<Float64Array, double>(exec);
+    if (!array.get())
+        // Exception has already been thrown.
+        return JSValue::encode(JSValue());
+    return JSValue::encode(asObject(toJS(exec, jsConstructor->globalObject(), array.get())));
+}
+
+JSC::JSValue toJS(JSC::ExecState* exec, JSDOMGlobalObject* globalObject, Float64Array* object)
+{
+    return toJSArrayBufferView<JSFloat64Array>(exec, globalObject, object);
+}
+
+void JSFloat64Array::indexSetter(JSC::ExecState* exec, unsigned index, JSC::JSValue value)
+{
+    impl()->set(index, value.toNumber(exec));
+}
+
 ConstructType JSFloat64ArrayConstructor::getConstructData(JSCell*, ConstructData& constructData)
 {
     constructData.native.function = constructJSFloat64Array;
@@ -89,10 +110,11 @@ ConstructType JSFloat64ArrayConstructor::getConstructData(JSCell*, ConstructData
 static const HashTableValue JSFloat64ArrayPrototypeTableValues[] =
 {
     { "foo", DontDelete | JSC::Function, (intptr_t)static_cast<NativeFunction>(jsFloat64ArrayPrototypeFunctionFoo), (intptr_t)1, NoIntrinsic },
+    { "set", DontDelete | JSC::Function, (intptr_t)static_cast<NativeFunction>(jsFloat64ArrayPrototypeFunctionSet), (intptr_t)0, NoIntrinsic },
     { 0, 0, 0, 0, NoIntrinsic }
 };
 
-static const HashTable JSFloat64ArrayPrototypeTable = { 2, 1, JSFloat64ArrayPrototypeTableValues, 0 };
+static const HashTable JSFloat64ArrayPrototypeTable = { 4, 3, JSFloat64ArrayPrototypeTableValues, 0 };
 static const HashTable* getJSFloat64ArrayPrototypeTable(ExecState* exec)
 {
     return getHashTableForGlobalData(exec->globalData(), &JSFloat64ArrayPrototypeTable);
@@ -235,6 +257,16 @@ EncodedJSValue JSC_HOST_CALL jsFloat64ArrayPrototypeFunctionFoo(ExecState* exec)
 
     JSC::JSValue result = toJS(exec, castedThis->globalObject(), WTF::getPtr(impl->foo(array)));
     return JSValue::encode(result);
+}
+
+EncodedJSValue JSC_HOST_CALL jsFloat64ArrayPrototypeFunctionSet(ExecState* exec)
+{
+    JSValue thisValue = exec->hostThisValue();
+    if (!thisValue.inherits(&JSFloat64Array::s_info))
+        return throwVMTypeError(exec);
+    JSFloat64Array* castedThis = jsCast<JSFloat64Array*>(asObject(thisValue));
+    ASSERT_GC_OBJECT_INHERITS(castedThis, &JSFloat64Array::s_info);
+    return JSValue::encode(setWebGLArrayHelper<Float64Array, double>(exec, castedThis->impl()));
 }
 
 

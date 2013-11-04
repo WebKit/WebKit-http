@@ -32,6 +32,7 @@
 
 #include "Font.h"
 #include "FontCache.h"
+#include "OpenTypeVerticalData.h"
 
 #include <wtf/MathExtras.h>
 #include <wtf/UnusedParam.h>
@@ -49,11 +50,20 @@ SimpleFontData::SimpleFontData(const FontPlatformData& platformData, bool isCust
     , m_isLoading(isLoading)
     , m_isTextOrientationFallback(isTextOrientationFallback)
     , m_isBrokenIdeographFallback(false)
+#if ENABLE(OPENTYPE_VERTICAL)
+    , m_verticalData(0)
+#endif
     , m_hasVerticalGlyphs(false)
 {
     platformInit();
     platformGlyphInit();
     platformCharWidthInit();
+#if ENABLE(OPENTYPE_VERTICAL)
+    if (platformData.orientation() == Vertical && !isTextOrientationFallback) {
+        m_verticalData = platformData.verticalData();
+        m_hasVerticalGlyphs = m_verticalData && m_verticalData->hasVerticalMetrics();
+    }
+#endif
 }
 
 SimpleFontData::SimpleFontData(PassOwnPtr<AdditionalFontData> fontData, float fontSize, bool syntheticBold, bool syntheticItalic)
@@ -64,12 +74,14 @@ SimpleFontData::SimpleFontData(PassOwnPtr<AdditionalFontData> fontData, float fo
     , m_isLoading(false)
     , m_isTextOrientationFallback(false)
     , m_isBrokenIdeographFallback(false)
+#if ENABLE(OPENTYPE_VERTICAL)
+    , m_verticalData(0)
+#endif
     , m_hasVerticalGlyphs(false)
 {
     m_fontData->initializeFontData(this, fontSize);
 }
 
-#if !(PLATFORM(QT) && !HAVE(QRAWFONT))
 // Estimates of avgCharWidth and maxCharWidth for platforms that don't support accessing these values from the font.
 void SimpleFontData::initCharWidths()
 {
@@ -130,7 +142,6 @@ void SimpleFontData::platformGlyphInit()
     m_missingGlyphData.fontData = this;
     m_missingGlyphData.glyph = 0;
 }
-#endif
 
 SimpleFontData::~SimpleFontData()
 {
@@ -146,6 +157,12 @@ SimpleFontData::~SimpleFontData()
 const SimpleFontData* SimpleFontData::fontDataForCharacter(UChar32) const
 {
     return this;
+}
+
+Glyph SimpleFontData::glyphForCharacter(UChar32 character) const
+{
+    GlyphPageTreeNode* node = GlyphPageTreeNode::getRootChild(this, character / GlyphPage::size);
+    return node->page() ? node->page()->glyphAt(character % GlyphPage::size) : 0;
 }
 
 bool SimpleFontData::isSegmented() const

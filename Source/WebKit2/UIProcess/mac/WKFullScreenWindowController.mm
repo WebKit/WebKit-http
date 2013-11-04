@@ -144,8 +144,10 @@ static NSRect convertRectToScreen(NSWindow *window, NSRect rect)
 
     // If the page doesn't respond in DefaultWatchdogTimerInterval seconds, it could be because
     // the WebProcess has hung, so exit anyway.
-    if (!_watchdogTimer)
-        _watchdogTimer = adoptNS([NSTimer scheduledTimerWithTimeInterval:DefaultWatchdogTimerInterval target:self selector:@selector(exitFullScreen) userInfo:nil repeats:NO]);
+    if (!_watchdogTimer) {
+        _watchdogTimer = adoptNS([[NSTimer alloc] initWithFireDate:nil interval:DefaultWatchdogTimerInterval target:self selector:@selector(exitFullScreen) userInfo:nil repeats:NO]);
+        [[NSRunLoop mainRunLoop] addTimer:_watchdogTimer.get() forMode:NSDefaultRunLoopMode];
+    }
 }
 
 #pragma mark -
@@ -550,7 +552,12 @@ static NSRect windowFrameFromApparentFrames(NSRect screenFrame, NSRect initialFr
     finalBounds.origin = [[self window] convertScreenToBase:finalBounds.origin];
     WKWindowSetClipRect([self window], finalBounds);
 
-    [[self window] makeKeyAndOrderFront:self];
+    NSWindow* window = [self window];
+    NSWindowCollectionBehavior behavior = [window collectionBehavior];
+    [window setCollectionBehavior:(behavior | NSWindowCollectionBehaviorCanJoinAllSpaces)];
+    [window makeKeyAndOrderFront:self];
+    [window setCollectionBehavior:behavior];
+
 
     if (!_backgroundWindow)
         _backgroundWindow = createBackgroundFullscreenWindow(screenFrame);

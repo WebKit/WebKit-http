@@ -31,7 +31,7 @@
 #include "config.h"
 #include "V8DOMWindow.h"
 
-#include <wtf/ArrayBuffer.h>
+#include "BindingState.h"
 #include "Chrome.h"
 #include "ContentSecurityPolicy.h"
 #include "DOMTimer.h"
@@ -56,16 +56,14 @@
 #include "SharedWorkerRepository.h"
 #include "Storage.h"
 #include "V8Binding.h"
-#include "V8BindingMacros.h"
-#include "V8BindingState.h"
 #include "V8EventListener.h"
 #include "V8GCForContextDispose.h"
 #include "V8HiddenPropertyName.h"
 #include "V8HTMLCollection.h"
 #include "V8Node.h"
-#include "V8Proxy.h"
 #include "V8Utilities.h"
 #include "WindowFeatures.h"
+#include <wtf/ArrayBuffer.h>
 
 namespace WebCore {
 
@@ -80,7 +78,7 @@ v8::Handle<v8::Value> WindowSetTimeoutImpl(const v8::Arguments& args, bool singl
     ScriptExecutionContext* scriptContext = static_cast<ScriptExecutionContext*>(imp->document());
 
     if (!scriptContext)
-        return V8Proxy::setDOMException(INVALID_ACCESS_ERR, args.GetIsolate());
+        return setDOMException(INVALID_ACCESS_ERR, args.GetIsolate());
 
     v8::Handle<v8::Value> function = args[0];
     WTF::String functionString;
@@ -107,7 +105,7 @@ v8::Handle<v8::Value> WindowSetTimeoutImpl(const v8::Arguments& args, bool singl
     if (argumentCount >= 2)
         timeout = args[1]->Int32Value();
 
-    if (!V8BindingSecurity::canAccessFrame(V8BindingState::Only(), imp->frame(), true))
+    if (!BindingSecurity::shouldAllowAccessToFrame(BindingState::instance(), imp->frame()))
         return v8::Undefined();
 
     int id;
@@ -122,7 +120,8 @@ v8::Handle<v8::Value> WindowSetTimeoutImpl(const v8::Arguments& args, bool singl
         }
 
         // params is passed to action, and released in action's destructor
-        OwnPtr<ScheduledAction> action = adoptPtr(new ScheduledAction(V8Proxy::context(imp->frame()), v8::Handle<v8::Function>::Cast(function), paramCount, params));
+        ASSERT(imp->frame());
+        OwnPtr<ScheduledAction> action = adoptPtr(new ScheduledAction(imp->frame()->script()->currentWorldContext(), v8::Handle<v8::Function>::Cast(function), paramCount, params));
 
         // FIXME: We should use OwnArrayPtr for params.
         delete[] params;
@@ -132,7 +131,8 @@ v8::Handle<v8::Value> WindowSetTimeoutImpl(const v8::Arguments& args, bool singl
         RefPtr<ScriptCallStack> callStack(createScriptCallStackForInspector());
         if (imp->document() && !imp->document()->contentSecurityPolicy()->allowEval(callStack.release()))
             return v8Integer(0, args.GetIsolate());
-        id = DOMTimer::install(scriptContext, adoptPtr(new ScheduledAction(V8Proxy::context(imp->frame()), functionString)), timeout, singleShot);
+        ASSERT(imp->frame());
+        id = DOMTimer::install(scriptContext, adoptPtr(new ScheduledAction(imp->frame()->script()->currentWorldContext(), functionString)), timeout, singleShot);
     }
 
     // Try to do the idle notification before the timeout expires to get better
@@ -152,10 +152,11 @@ v8::Handle<v8::Value> V8DOMWindow::eventAccessorGetter(v8::Local<v8::String> nam
         return v8::Undefined();
 
     Frame* frame = V8DOMWindow::toNative(holder)->frame();
-    if (!V8BindingSecurity::canAccessFrame(V8BindingState::Only(), frame, true))
+    if (!BindingSecurity::shouldAllowAccessToFrame(BindingState::instance(), frame))
         return v8::Undefined();
 
-    v8::Local<v8::Context> context = V8Proxy::context(frame);
+    ASSERT(frame);
+    v8::Local<v8::Context> context = frame->script()->currentWorldContext();
     if (context.IsEmpty())
         return v8::Undefined();
 
@@ -173,10 +174,11 @@ void V8DOMWindow::eventAccessorSetter(v8::Local<v8::String> name, v8::Local<v8::
         return;
 
     Frame* frame = V8DOMWindow::toNative(holder)->frame();
-    if (!V8BindingSecurity::canAccessFrame(V8BindingState::Only(), frame, true))
+    if (!BindingSecurity::shouldAllowAccessToFrame(BindingState::instance(), frame))
         return;
 
-    v8::Local<v8::Context> context = V8Proxy::context(frame);
+    ASSERT(frame);
+    v8::Local<v8::Context> context = frame->script()->currentWorldContext();
     if (context.IsEmpty())
         return;
 
@@ -187,25 +189,25 @@ void V8DOMWindow::eventAccessorSetter(v8::Local<v8::String> name, v8::Local<v8::
 void V8DOMWindow::locationAccessorSetter(v8::Local<v8::String> name, v8::Local<v8::Value> value, const v8::AccessorInfo& info)
 {
     DOMWindow* imp = V8DOMWindow::toNative(info.Holder());
-    State<V8Binding>* state = V8BindingState::Only();
+    BindingState* state = BindingState::instance();
 
-    DOMWindow* activeWindow = state->activeWindow();
-    if (!activeWindow)
+    DOMWindow* active = activeDOMWindow(state);
+    if (!active)
       return;
 
-    DOMWindow* firstWindow = state->firstWindow();
-    if (!firstWindow)
+    DOMWindow* first = firstDOMWindow(state);
+    if (!first)
       return;
 
     if (Location* location = imp->location())
-        location->setHref(toWebCoreString(value), activeWindow, firstWindow);
+        location->setHref(toWebCoreString(value), active, first);
 }
 
 void V8DOMWindow::openerAccessorSetter(v8::Local<v8::String> name, v8::Local<v8::Value> value, const v8::AccessorInfo& info)
 {
     DOMWindow* imp = V8DOMWindow::toNative(info.Holder());
 
-    if (!V8BindingSecurity::canAccessFrame(V8BindingState::Only(), imp->frame(), true))
+    if (!BindingSecurity::shouldAllowAccessToFrame(BindingState::instance(), imp->frame()))
         return;
 
     // Opener can be shadowed if it is in the same domain.
@@ -234,7 +236,7 @@ v8::Handle<v8::Value> V8DOMWindow::addEventListenerCallback(const v8::Arguments&
 
     DOMWindow* imp = V8DOMWindow::toNative(args.Holder());
 
-    if (!V8BindingSecurity::canAccessFrame(V8BindingState::Only(), imp->frame(), true))
+    if (!BindingSecurity::shouldAllowAccessToFrame(BindingState::instance(), imp->frame()))
         return v8::Undefined();
 
     Document* doc = imp->document();
@@ -243,8 +245,7 @@ v8::Handle<v8::Value> V8DOMWindow::addEventListenerCallback(const v8::Arguments&
         return v8::Undefined();
 
     // FIXME: Check if there is not enough arguments
-    V8Proxy* proxy = V8Proxy::retrieve(imp->frame());
-    if (!proxy)
+    if (!imp->frame())
         return v8::Undefined();
 
     RefPtr<EventListener> listener = V8DOMWrapper::getEventListener(args[1], false, ListenerFindOrCreate);
@@ -267,7 +268,7 @@ v8::Handle<v8::Value> V8DOMWindow::removeEventListenerCallback(const v8::Argumen
 
     DOMWindow* imp = V8DOMWindow::toNative(args.Holder());
 
-    if (!V8BindingSecurity::canAccessFrame(V8BindingState::Only(), imp->frame(), true))
+    if (!BindingSecurity::shouldAllowAccessToFrame(BindingState::instance(), imp->frame()))
         return v8::Undefined();
 
     Document* doc = imp->document();
@@ -275,8 +276,7 @@ v8::Handle<v8::Value> V8DOMWindow::removeEventListenerCallback(const v8::Argumen
     if (!doc)
         return v8::Undefined();
 
-    V8Proxy* proxy = V8Proxy::retrieve(imp->frame());
-    if (!proxy)
+    if (!imp->frame())
         return v8::Undefined();
 
     RefPtr<EventListener> listener = V8DOMWrapper::getEventListener(args[1], false, ListenerFindOnly);
@@ -302,11 +302,11 @@ static v8::Handle<v8::Value> handlePostMessageCallback(const v8::Arguments& args
     // None of these need to be RefPtr because args and context are guaranteed
     // to hold on to them.
     DOMWindow* window = V8DOMWindow::toNative(args.Holder());
-    DOMWindow* source = V8Proxy::retrieveWindowForCallingContext();
+    DOMWindow* source = activeDOMWindow(BindingState::instance());
 
     // If called directly by WebCore we don't have a calling context.
     if (!source)
-        return V8Proxy::throwTypeError(0, args.GetIsolate());
+        return throwTypeError(0, args.GetIsolate());
 
     // This function has variable arguments and can be:
     // Per current spec:
@@ -326,7 +326,7 @@ static v8::Handle<v8::Value> handlePostMessageCallback(const v8::Arguments& args
                 targetOriginArgIndex = 2;
                 transferablesArgIndex = 1;
             }
-            if (!extractTransferables(args[transferablesArgIndex], portArray, arrayBufferArray))
+            if (!extractTransferables(args[transferablesArgIndex], portArray, arrayBufferArray, args.GetIsolate()))
                 return v8::Undefined();
         } 
         targetOrigin = toWebCoreStringWithNullOrUndefinedCheck(args[targetOriginArgIndex]);
@@ -348,7 +348,7 @@ static v8::Handle<v8::Value> handlePostMessageCallback(const v8::Arguments& args
 
     ExceptionCode ec = 0;
     window->postMessage(message.release(), &portArray, targetOrigin, source, ec);
-    return throwError(ec, args.GetIsolate());
+    return setDOMException(ec, args.GetIsolate());
 }
 
 v8::Handle<v8::Value> V8DOMWindow::postMessageCallback(const v8::Arguments& args)
@@ -405,7 +405,7 @@ private:
 
 inline void DialogHandler::dialogCreated(DOMWindow* dialogFrame)
 {
-    m_dialogContext = V8Proxy::context(dialogFrame->frame());
+    m_dialogContext = dialogFrame->frame() ? dialogFrame->frame()->script()->currentWorldContext() : v8::Local<v8::Context>();
     if (m_dialogContext.IsEmpty())
         return;
     if (m_dialogArguments.IsEmpty())
@@ -434,8 +434,8 @@ v8::Handle<v8::Value> V8DOMWindow::showModalDialogCallback(const v8::Arguments& 
 {
     INC_STATS("DOM.DOMWindow.showModalDialog()");
     DOMWindow* impl = V8DOMWindow::toNative(args.Holder());
-    V8BindingState* state = V8BindingState::Only();
-    if (!V8BindingSecurity::canAccessFrame(state, impl->frame(), true))
+    BindingState* state = BindingState::instance();
+    if (!BindingSecurity::shouldAllowAccessToFrame(state, impl->frame()))
         return v8::Undefined();
 
     // FIXME: Handle exceptions properly.
@@ -443,9 +443,7 @@ v8::Handle<v8::Value> V8DOMWindow::showModalDialogCallback(const v8::Arguments& 
     DialogHandler handler(args[1]);
     String dialogFeaturesString = toWebCoreStringWithNullOrUndefinedCheck(args[2]);
 
-    DOMWindow* activeWindow = state->activeWindow();
-    DOMWindow* firstWindow = state->firstWindow();
-    impl->showModalDialog(urlString, dialogFeaturesString, activeWindow, firstWindow, setUpDialog, &handler);
+    impl->showModalDialog(urlString, dialogFeaturesString, activeDOMWindow(state), firstDOMWindow(state), setUpDialog, &handler);
 
     return handler.returnValue();
 }
@@ -454,8 +452,8 @@ v8::Handle<v8::Value> V8DOMWindow::openCallback(const v8::Arguments& args)
 {
     INC_STATS("DOM.DOMWindow.open()");
     DOMWindow* impl = V8DOMWindow::toNative(args.Holder());
-    V8BindingState* state = V8BindingState::Only();
-    if (!V8BindingSecurity::canAccessFrame(state, impl->frame(), true))
+    BindingState* state = BindingState::instance();
+    if (!BindingSecurity::shouldAllowAccessToFrame(state, impl->frame()))
         return v8::Undefined();
 
     // FIXME: Handle exceptions properly.
@@ -463,9 +461,7 @@ v8::Handle<v8::Value> V8DOMWindow::openCallback(const v8::Arguments& args)
     AtomicString frameName = (args[1]->IsUndefined() || args[1]->IsNull()) ? "_blank" : AtomicString(toWebCoreString(args[1]));
     String windowFeaturesString = toWebCoreStringWithNullOrUndefinedCheck(args[2]);
 
-    DOMWindow* activeWindow = state->activeWindow();
-    DOMWindow* firstWindow = state->firstWindow();
-    RefPtr<DOMWindow> openedWindow = impl->open(urlString, frameName, windowFeaturesString, activeWindow, firstWindow);
+    RefPtr<DOMWindow> openedWindow = impl->open(urlString, frameName, windowFeaturesString, activeDOMWindow(state), firstDOMWindow(state));
     if (!openedWindow)
         return v8::Undefined();
 
@@ -478,17 +474,17 @@ v8::Handle<v8::Value> V8DOMWindow::indexedPropertyGetter(uint32_t index, const v
 
     DOMWindow* window = V8DOMWindow::toNative(info.Holder());
     if (!window)
-        return v8::Handle<v8::Value>();
+        return v8Undefined();
 
     Frame* frame = window->frame();
     if (!frame)
-        return v8::Handle<v8::Value>();
+        return v8Undefined();
 
     Frame* child = frame->tree()->scopedChild(index);
     if (child)
-        return toV8(child->domWindow(), info.GetIsolate());
+        return toV8(child->document()->domWindow(), info.GetIsolate());
 
-    return v8::Handle<v8::Value>();
+    return v8Undefined();
 }
 
 
@@ -498,22 +494,22 @@ v8::Handle<v8::Value> V8DOMWindow::namedPropertyGetter(v8::Local<v8::String> nam
 
     DOMWindow* window = V8DOMWindow::toNative(info.Holder());
     if (!window)
-        return v8::Handle<v8::Value>();
+        return v8Undefined();
 
     Frame* frame = window->frame();
     // window is detached from a frame.
     if (!frame)
-        return v8::Handle<v8::Value>();
+        return v8Undefined();
 
     // Search sub-frames.
-    AtomicString propName = v8StringToAtomicWebCoreString(name);
+    AtomicString propName = toWebCoreAtomicString(name);
     Frame* child = frame->tree()->scopedChild(propName);
     if (child)
-        return toV8(child->domWindow(), info.GetIsolate());
+        return toV8(child->document()->domWindow(), info.GetIsolate());
 
     // Search IDL functions defined in the prototype
     if (!info.Holder()->GetRealNamedProperty(name).IsEmpty())
-        return v8::Handle<v8::Value>();
+        return v8Undefined();
 
     // Search named items in the document.
     Document* doc = frame->document();
@@ -529,7 +525,7 @@ v8::Handle<v8::Value> V8DOMWindow::namedPropertyGetter(v8::Local<v8::String> nam
         }
     }
 
-    return v8::Handle<v8::Value>();
+    return v8Undefined();
 }
 
 
@@ -576,7 +572,7 @@ bool V8DOMWindow::namedSecurityCheck(v8::Local<v8::Object> host, v8::Local<v8::V
             return true;
     }
 
-    return V8BindingSecurity::canAccessFrame(V8BindingState::Only(), target, false);
+    return BindingSecurity::shouldAllowAccessToFrame(BindingState::instance(), target, DoNotReportSecurityError);
 }
 
 bool V8DOMWindow::indexedSecurityCheck(v8::Local<v8::Object> host, uint32_t index, v8::AccessType type, v8::Local<v8::Value>)
@@ -601,7 +597,7 @@ bool V8DOMWindow::indexedSecurityCheck(v8::Local<v8::Object> host, uint32_t inde
     if (type == v8::ACCESS_GET && childFrame && !host->HasRealIndexedProperty(index))
         return true;
 
-    return V8BindingSecurity::canAccessFrame(V8BindingState::Only(), target, false);
+    return BindingSecurity::shouldAllowAccessToFrame(BindingState::instance(), target, DoNotReportSecurityError);
 }
 
 v8::Handle<v8::Value> toV8(DOMWindow* window, v8::Isolate* isolate)
@@ -612,7 +608,7 @@ v8::Handle<v8::Value> toV8(DOMWindow* window, v8::Isolate* isolate)
     // of the frame.
     Frame* frame = window->frame();
     if (!frame)
-        return v8::Handle<v8::Object>();
+        return v8Undefined();
 
     // Special case: Because of evaluateInIsolatedWorld() one DOMWindow can have
     // multiple contexts and multiple global objects associated with it. When
@@ -628,9 +624,9 @@ v8::Handle<v8::Value> toV8(DOMWindow* window, v8::Isolate* isolate)
     }
 
     // Otherwise, return the global object associated with this frame.
-    v8::Handle<v8::Context> context = V8Proxy::context(frame);
+    v8::Handle<v8::Context> context = frame->script()->currentWorldContext();
     if (context.IsEmpty())
-        return v8::Handle<v8::Object>();
+        return v8Undefined();
 
     v8::Handle<v8::Object> global = context->Global();
     ASSERT(!global.IsEmpty());

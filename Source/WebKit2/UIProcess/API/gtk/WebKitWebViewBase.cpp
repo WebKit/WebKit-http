@@ -101,9 +101,6 @@ struct _WebKitWebViewBasePrivate {
 
 G_DEFINE_TYPE(WebKitWebViewBase, webkit_web_view_base, GTK_TYPE_CONTAINER)
 
-// Keep this in sync with the value minimumAttachedHeight in WebInspectorProxy.
-static const unsigned gMinimumAttachedInspectorHeight = 250;
-
 static void webkitWebViewBaseNotifyResizerSizeForWindow(WebKitWebViewBase* webViewBase, GtkWindow* window)
 {
     gboolean resizerVisible;
@@ -150,6 +147,9 @@ static void webkitWebViewBaseRealize(GtkWidget* widget)
         | GDK_BUTTON_PRESS_MASK
         | GDK_BUTTON_RELEASE_MASK
         | GDK_SCROLL_MASK
+#if GTK_CHECK_VERSION(3, 3, 18)
+        | GDK_SMOOTH_SCROLL_MASK
+#endif
         | GDK_POINTER_MOTION_MASK
         | GDK_KEY_PRESS_MASK
         | GDK_KEY_RELEASE_MASK
@@ -190,7 +190,6 @@ static void webkitWebViewBaseContainerAdd(GtkContainer* container, GtkWidget* wi
         && WebInspectorProxy::isInspectorPage(WEBKIT_WEB_VIEW_BASE(widget)->priv->pageProxy.get())) {
         ASSERT(!priv->inspectorView);
         priv->inspectorView = widget;
-        priv->inspectorViewHeight = gMinimumAttachedInspectorHeight;
     } else {
         GtkAllocation childAllocation;
         gtk_widget_get_allocation(widget, &childAllocation);
@@ -773,12 +772,11 @@ void webkitWebViewBaseInitializeFullScreenClient(WebKitWebViewBase* webkitWebVie
 
 void webkitWebViewBaseSetInspectorViewHeight(WebKitWebViewBase* webkitWebViewBase, unsigned height)
 {
-    if (!webkitWebViewBase->priv->inspectorView)
-        return;
     if (webkitWebViewBase->priv->inspectorViewHeight == height)
         return;
     webkitWebViewBase->priv->inspectorViewHeight = height;
-    gtk_widget_queue_resize_no_redraw(GTK_WIDGET(webkitWebViewBase));
+    if (webkitWebViewBase->priv->inspectorView)
+        gtk_widget_queue_resize_no_redraw(GTK_WIDGET(webkitWebViewBase));
 }
 
 void webkitWebViewBaseSetActiveContextMenuProxy(WebKitWebViewBase* webkitWebViewBase, WebContextMenuProxyGtk* contextMenuProxy)

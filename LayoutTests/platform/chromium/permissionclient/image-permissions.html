@@ -1,9 +1,9 @@
 <html>
 <head>
 <script>
-if (window.layoutTestController) {
-    layoutTestController.dumpAsText();
-    layoutTestController.dumpPermissionClientCallbacks();
+if (window.testRunner) {
+    testRunner.dumpAsText();
+    testRunner.dumpPermissionClientCallbacks();
 }
 
 function log(a)
@@ -14,21 +14,21 @@ function log(a)
 function loaded()
 {
     log("PASS: first image loaded");
-    if (window.layoutTestController && layoutTestController.setImagesAllowed)
-        layoutTestController.setImagesAllowed(false);
+    if (window.testRunner && testRunner.setImagesAllowed)
+        testRunner.setImagesAllowed(false);
     else
-        log("This test requires layoutTestController.setImagesAllowed, so it be can't run in a browser.");
+        log("This test requires testRunner.setImagesAllowed, so it be can't run in a browser.");
 
     // Load an image not in cache.
     var img = document.createElement('img');
-    img.onerror = function () { log("FAIL: error event for not cached image"); }
+    img.onerror = function () { log("PASS: error event for not cached image"); }
     img.onload = function () { log("FAIL: not cached image loaded"); }
     img.src = "resources/boston.gif?nocache";
     document.getElementById("img").appendChild(img);
 
     // Load an image from cache.
     var imgFromCache = document.createElement('img');
-    imgFromCache.onerror = function () { log("FAIL: error event for image from cache"); }
+    imgFromCache.onerror = function () { log("PASS: error event for image from cache"); }
     imgFromCache.onload = function () { log("FAIL: image from cache loaded"); }
     imgFromCache.src = "resources/boston.gif";
     document.getElementById("img").appendChild(imgFromCache);

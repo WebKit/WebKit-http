@@ -35,6 +35,7 @@
 #include "Document.h"
 #include "Logging.h"
 #include "ResourceHandle.h"
+#include "ScriptCallStack.h"
 #include "SecurityOrigin.h"
 #include "SharedBuffer.h"
 #include "WebVTTParser.h"
@@ -113,7 +114,7 @@ void TextTrackLoader::didReceiveData(CachedResource* resource)
 
 void TextTrackLoader::corsPolicyPreventedLoad()
 {
-    DEFINE_STATIC_LOCAL(String, consoleMessage, ("Cross-origin text track load denied by Cross-Origin Resource Sharing policy."));
+    DEFINE_STATIC_LOCAL(String, consoleMessage, (ASCIILiteral("Cross-origin text track load denied by Cross-Origin Resource Sharing policy.")));
     Document* document = static_cast<Document*>(m_scriptExecutionContext);
     document->addConsoleMessage(JSMessageSource, LogMessageType, ErrorMessageLevel, consoleMessage);
     m_state = Failed;

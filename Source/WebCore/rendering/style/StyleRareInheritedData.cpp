@@ -23,6 +23,7 @@
 #include "StyleRareInheritedData.h"
 
 #include "CursorList.h"
+#include "MemoryInstrumentation.h"
 #include "QuotesData.h"
 #include "RenderStyle.h"
 #include "RenderStyleConstants.h"
@@ -233,7 +234,7 @@ bool StyleRareInheritedData::operator==(const StyleRareInheritedData& o) const
         && hyphenationString == o.hyphenationString
         && locale == o.locale
         && textEmphasisCustomMark == o.textEmphasisCustomMark
-        && QuotesData::equal(quotes.get(), o.quotes.get())
+        && QuotesData::equals(quotes.get(), o.quotes.get())
         && m_tabSize == o.m_tabSize
         && m_lineGrid == o.m_lineGrid
 #if ENABLE(CSS_IMAGE_ORIENTATION)
@@ -259,6 +260,22 @@ bool StyleRareInheritedData::shadowDataEquivalent(const StyleRareInheritedData& 
     if (textShadow && o.textShadow && (*textShadow != *o.textShadow))
         return false;
     return true;
+}
+
+void StyleRareInheritedData::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
+{
+    MemoryClassInfo info(memoryObjectInfo, this, MemoryInstrumentation::CSS);
+    info.addMember(textShadow);
+    info.addInstrumentedMember(highlight);
+    info.addMember(cursorData);
+    info.addInstrumentedMember(hyphenationString);
+    info.addInstrumentedMember(locale);
+    info.addInstrumentedMember(textEmphasisCustomMark);
+    info.addMember(quotes);
+    info.addInstrumentedMember(m_lineGrid);
+#if ENABLE(CSS_VARIABLES)
+    info.addMember(m_variables);
+#endif
 }
 
 } // namespace WebCore

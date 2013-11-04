@@ -87,7 +87,7 @@ shouldBeEqualToString('element.className', '');
 
 element = document.createElement('span');
 shouldBeFalse('element.classList.contains(\'x\')');
-shouldBeNull('element.classList[1]');
+shouldBeUndefined('element.classList[1]');
 element.classList.remove('x');
 element.classList.add('x')
 
@@ -100,7 +100,7 @@ shouldBeEqualToString('element.className', 'x y');
 
 createElement('x\t');
 element.classList.add('y');
-shouldBeEqualToString('element.className', 'x\t y');
+shouldBeEqualToString('element.className', 'x\ty');
 
 createElement(' ');
 element.classList.add('y');
@@ -197,11 +197,11 @@ shouldBeEqualToString('element.classList[1]', 'y');
 shouldBeEqualToString('element.classList.item(1)', 'y');
 
 createElement('');
-shouldBeNull('element.classList[0]');
+shouldBeUndefined('element.classList[0]');
 shouldBeNull('element.classList.item(0)');
 
 createElement('x y z');
-shouldBeNull('element.classList[4]');
+shouldBeUndefined('element.classList[4]');
 shouldBeNull('element.classList.item(4)');
 shouldBeUndefined('element.classList[-1]');  // Not a valid index so should not trigger item().
 shouldBeNull('element.classList.item(-1)');
@@ -259,3 +259,9 @@ shouldBeEqualToString('typeof element.classList', 'object');
 shouldEvaluateTo('element.classList.constructor', 'DOMTokenList');
 
 shouldBeTrue('element.classList === element.classList');
+
+// Bug 93628
+document.body.classList.add('FAIL');
+shouldBeTrue('document.body.classList.contains("FAIL")');
+document.body.classList.remove('FAIL');
+shouldBeEqualToString('document.body.className', '');

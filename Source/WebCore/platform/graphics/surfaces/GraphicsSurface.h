@@ -38,6 +38,8 @@ typedef uint32_t PlatformGraphicsSurface;
 
 namespace WebCore {
 
+class BitmapTexture;
+class TextureMapper;
 struct GraphicsSurfacePrivate;
 
 class GraphicsSurface : public RefCounted<GraphicsSurface> {
@@ -50,7 +52,8 @@ public:
         SupportsTextureSource = 0x10,
         SupportsCopyToTexture = 0x20,
         SupportsCopyFromTexture = 0x40,
-        SupportsSharing = 0x80
+        SupportsSharing = 0x80,
+        SupportsSingleBuffered = 0x100
     };
 
     enum LockOption {
@@ -66,10 +69,13 @@ public:
     IntSize size() const { return m_size; }
 
     static PassRefPtr<GraphicsSurface> create(const IntSize&, Flags);
-    static PassRefPtr<GraphicsSurface> create(const IntSize&, Flags, uint32_t token);
+    static PassRefPtr<GraphicsSurface> create(const IntSize&, Flags, uint64_t token);
     void copyToGLTexture(uint32_t target, uint32_t texture, const IntRect& targetRect, const IntPoint& sourceOffset);
     void copyFromFramebuffer(uint32_t fbo, const IntRect& sourceRect);
-    uint32_t exportToken();
+    void paintToTextureMapper(TextureMapper*, const FloatRect& targetRect, const TransformationMatrix&, float opacity, BitmapTexture* mask);
+    uint32_t frontBuffer();
+    uint32_t swapBuffers();
+    uint64_t exportToken();
     uint32_t getTextureID();
     PassOwnPtr<GraphicsContext> beginPaint(const IntRect&, LockOptions);
     PassRefPtr<Image> createReadOnlyImage(const IntRect&);
@@ -77,8 +83,8 @@ public:
 
 protected:
     static PassRefPtr<GraphicsSurface> platformCreate(const IntSize&, Flags);
-    static PassRefPtr<GraphicsSurface> platformImport(const IntSize&, Flags, uint32_t);
-    uint32_t platformExport();
+    static PassRefPtr<GraphicsSurface> platformImport(const IntSize&, Flags, uint64_t);
+    uint64_t platformExport();
     void platformDestroy();
 
     uint32_t platformGetTextureID();
@@ -86,6 +92,9 @@ protected:
     void platformUnlock();
     void platformCopyToGLTexture(uint32_t target, uint32_t texture, const IntRect&, const IntPoint&);
     void platformCopyFromFramebuffer(uint32_t fbo, const IntRect& sourceRect);
+    void platformPaintToTextureMapper(TextureMapper*, const FloatRect& targetRect, const TransformationMatrix&, float opacity, BitmapTexture* mask);
+    uint32_t platformFrontBuffer() const;
+    uint32_t platformSwapBuffers();
 
     PassOwnPtr<GraphicsContext> platformBeginPaint(const IntSize&, char* bits, int stride);
 

@@ -473,6 +473,12 @@ String crashedPluginText()
     return String::fromUTF8(_("Plug-in Failure"));
 }
 
+String blockedPluginByContentSecurityPolicyText()
+{
+    notImplemented();
+    return String();
+}
+
 String insecurePluginVersionText()
 {
     notImplemented();
@@ -715,6 +721,11 @@ String validationMessageRangeOverflowText(const String&)
 String validationMessageStepMismatchText(const String&, const String&)
 {
     return String::fromUTF8(_("step mismatch"));
+}
+
+String unacceptableTLSCertificate()
+{
+    return String::fromUTF8(_("Unacceptable TLS certificate"));
 }
 
 String localizedString(const char* key)

@@ -43,7 +43,6 @@
 #include "V8HTMLFormElement.h"
 #include "V8HiddenPropertyName.h"
 #include "V8Node.h"
-#include "V8Proxy.h"
 #include "V8RecursionScope.h"
 #include "WorldContextHandle.h"
 
@@ -86,13 +85,21 @@ v8::Local<v8::Value> V8LazyEventListener::callListenerFunction(ScriptExecutionCo
 
     v8::Handle<v8::Value> parameters[1] = { jsEvent };
 
-    if (V8Proxy* proxy = V8Proxy::retrieve(context)) {
-        Frame* frame = static_cast<Document*>(context)->frame();
-        if (frame->script()->canExecuteScripts(AboutToExecuteScript))
-            return proxy->callFunction(handlerFunction, receiver, 1, parameters);
-    }
+    // FIXME: Can |context| be 0 here?
+    if (!context)
+        return v8::Local<v8::Value>();
 
-    return v8::Local<v8::Value>();
+    if (!context->isDocument())
+        return v8::Local<v8::Value>();
+
+    Frame* frame = static_cast<Document*>(context)->frame();
+    if (!frame)
+        return v8::Local<v8::Value>();
+
+    if (!frame->script()->canExecuteScripts(AboutToExecuteScript))
+        return v8::Local<v8::Value>();
+
+    return frame->script()->callFunction(handlerFunction, receiver, 1, parameters);
 }
 
 static v8::Handle<v8::Value> V8LazyEventListenerToString(const v8::Arguments& args)
@@ -110,15 +117,13 @@ void V8LazyEventListener::prepareListenerObject(ScriptExecutionContext* context)
 
     v8::HandleScope handleScope;
 
-    V8Proxy* proxy = V8Proxy::retrieve(context);
-    if (!proxy)
-        return;
     ASSERT(context->isDocument());
-    if (!static_cast<Document*>(context)->frame()->script()->canExecuteScripts(NotAboutToExecuteScript))
+    Frame* frame = static_cast<Document*>(context)->frame();
+    ASSERT(frame);
+    if (!frame->script()->canExecuteScripts(NotAboutToExecuteScript))
         return;
-
     // Use the outer scope to hold context.
-    v8::Local<v8::Context> v8Context = worldContext().adjustedContext(proxy);
+    v8::Local<v8::Context> v8Context = worldContext().adjustedContext(frame->script());
     // Bail out if we cannot get the context.
     if (v8Context.IsEmpty())
         return;
@@ -140,10 +145,10 @@ void V8LazyEventListener::prepareListenerObject(ScriptExecutionContext* context)
     // Call with 4 arguments instead of 3, pass additional null as the last parameter.
     // By calling the function with 4 arguments, we create a setter on arguments object
     // which would shadow property "3" on the prototype.
-    String code = "(function() {" \
+    String code = ASCIILiteral("(function() {" \
         "with (this[2]) {" \
         "with (this[1]) {" \
-        "with (this[0]) {";
+        "with (this[0]) {");
     code.append("return function(");
     code.append(m_eventParameterName);
     code.append(") {");
@@ -152,7 +157,7 @@ void V8LazyEventListener::prepareListenerObject(ScriptExecutionContext* context)
     code.append("\n};}}}})");
     v8::Handle<v8::String> codeExternalString = v8ExternalString(code);
 
-    v8::Handle<v8::Script> script = V8Proxy::compileScript(codeExternalString, m_sourceURL, m_position);
+    v8::Handle<v8::Script> script = ScriptSourceCode::compileScript(codeExternalString, m_sourceURL, m_position);
     if (script.IsEmpty())
         return;
 
@@ -207,14 +212,14 @@ void V8LazyEventListener::prepareListenerObject(ScriptExecutionContext* context)
     // other use. That fails miserably if the actual wrapper source is
     // returned.
     v8::Persistent<v8::FunctionTemplate>& toStringTemplate =
-        V8BindingPerIsolateData::current()->lazyEventListenerToStringTemplate();
+        V8PerIsolateData::current()->lazyEventListenerToStringTemplate();
     if (toStringTemplate.IsEmpty())
         toStringTemplate = v8::Persistent<v8::FunctionTemplate>::New(v8::FunctionTemplate::New(V8LazyEventListenerToString));
     v8::Local<v8::Function> toStringFunction;
     if (!toStringTemplate.IsEmpty())
         toStringFunction = toStringTemplate->GetFunction();
     if (!toStringFunction.IsEmpty()) {
-        String toStringResult = "function ";
+        String toStringResult = ASCIILiteral("function ");
         toStringResult.append(m_functionName);
         toStringResult.append("(");
         toStringResult.append(m_eventParameterName);
@@ -225,7 +230,7 @@ void V8LazyEventListener::prepareListenerObject(ScriptExecutionContext* context)
         wrappedFunction->Set(v8::String::NewSymbol("toString"), toStringFunction);
     }
 
-    wrappedFunction->SetName(v8::String::New(fromWebCoreString(m_functionName), m_functionName.length()));
+    wrappedFunction->SetName(v8String(m_functionName));
 
     // FIXME: Remove the following comment-outs.
     // See https://bugs.webkit.org/show_bug.cgi?id=85152 for more details.

@@ -118,6 +118,10 @@ public:
     // While hovering popup menu window, we want to show tool tip message.
     String getSelectedItemToolTip();
 
+    // This is public for testing.
+    static IntRect layoutAndCalculateWidgetRectInternal(IntRect widgetRectInScreen, int targetControlHeight, const FloatRect& windowRect, const FloatRect& screen, bool isRTL, const int rtlOffset, PopupContent*, bool& needToResizeView);
+
+
 private:
     friend class WTF::RefCounted<PopupContainer>;
 
@@ -129,6 +133,8 @@ private:
 
     // Layout and calculate popup widget size and location and returns it as IntRect.
     IntRect layoutAndCalculateWidgetRect(int targetControlHeight, const IntPoint& popupInitialCoordinate);
+
+    void fitToListBox();
 
     // Returns the ChromeClient of the page this popup is associated with.
     ChromeClientChromium* chromeClientChromium();

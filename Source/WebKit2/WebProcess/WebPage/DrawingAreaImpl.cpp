@@ -199,6 +199,11 @@ void DrawingAreaImpl::forceRepaint()
     display();
 }
 
+bool DrawingAreaImpl::forceRepaintAsync(uint64_t callbackID)
+{
+    return m_layerTreeHost && m_layerTreeHost->forceRepaintAsync(callbackID);
+}
+
 void DrawingAreaImpl::didInstallPageOverlay()
 {
     if (m_layerTreeHost)
@@ -688,7 +693,7 @@ void DrawingAreaImpl::display(UpdateInfo& updateInfo)
     m_displayTimer.stop();
 }
 
-#if USE(UI_SIDE_COMPOSITING)
+#if USE(COORDINATED_GRAPHICS)
 void DrawingAreaImpl::didReceiveLayerTreeCoordinatorMessage(CoreIPC::Connection* connection, CoreIPC::MessageID messageID, CoreIPC::ArgumentDecoder* arguments)
 {
     if (m_layerTreeHost)

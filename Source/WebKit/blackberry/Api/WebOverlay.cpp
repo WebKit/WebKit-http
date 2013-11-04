@@ -215,10 +215,13 @@ WebPagePrivate* WebOverlayPrivate::page() const
 
 WebOverlayOverride* WebOverlayPrivate::override()
 {
+    if (!m_override)
+        m_override = adoptPtr(new WebOverlayOverride(this));
+
     // Page might have changed if we were removed from the page and added to
     // some other page.
-    if (m_override)
-        m_override->d->setPage(page());
+    m_override->d->setPage(page());
+
     return m_override.get();
 }
 
@@ -232,31 +235,16 @@ void WebOverlayPrivate::drawContents(SkCanvas* canvas)
 
 void WebOverlayPrivate::scheduleCompositingRun()
 {
-    if (WebPagePrivate* page = this->page()) {
-        if (WebPageCompositorClient* compositorClient = page->compositor()->client()) {
-            double animationTime = compositorClient->requestAnimationFrame();
-            compositorClient->invalidate(animationTime);
-            return;
-        }
+    if (!page())
+        return;
 
-        page->blitVisibleContents();
-    }
+    page()->scheduleCompositingRun();
 }
 
 WebOverlayPrivateWebKitThread::WebOverlayPrivateWebKitThread(GraphicsLayerClient* client)
     : m_layer(GraphicsLayer::create(client ? client : this))
 {
     m_layerCompositingThread = m_layer->platformLayer()->layerCompositingThread();
-}
-
-WebOverlayOverride* WebOverlayPrivateWebKitThread::override()
-{
-    if (!m_override) {
-        WebOverlayPrivate* tmp = new WebOverlayPrivateCompositingThread(m_layerCompositingThread.get());
-        m_override = adoptPtr(new WebOverlayOverride(tmp, true));
-    }
-
-    return WebOverlayPrivate::override();
 }
 
 FloatPoint WebOverlayPrivateWebKitThread::position() const
@@ -502,14 +490,6 @@ void WebOverlayPrivateCompositingThread::setClient(WebOverlayClient* client)
     WebOverlayPrivate::setClient(client);
     if (m_layerCompositingThreadClient)
         m_layerCompositingThreadClient->setClient(q, client);
-}
-
-WebOverlayOverride* WebOverlayPrivateCompositingThread::override()
-{
-    if (!m_override)
-        m_override = adoptPtr(new WebOverlayOverride(this, false));
-
-    return WebOverlayPrivate::override();
 }
 
 FloatPoint WebOverlayPrivateCompositingThread::position() const

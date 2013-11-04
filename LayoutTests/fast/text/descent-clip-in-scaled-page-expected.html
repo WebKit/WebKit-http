@@ -2,14 +2,17 @@
 <html>
 <head>
 <style>
+    body {
+        font-family: SubpixelPositioning;
+    }
     div {
-        font-family: ahem;
-        font-size: 16px;
+        font-family: SubpixelPositioningAhem;
+        border: solid thin blue;
     }
 </style>
 <script>
-    if (window.layoutTestController && window.layoutTestController.setTextSubpixelPositioning)
-        window.layoutTestController.setTextSubpixelPositioning(true);
+    if (window.testRunner && window.testRunner.setTextSubpixelPositioning)
+        window.testRunner.setTextSubpixelPositioning(true);
     if (window.internals)
         window.internals.settings.setPageScaleFactor(1.7, 0, 0);
 </script>
@@ -19,6 +22,12 @@
     If success, the text in the "overflow: hidden" div (the test case) should be displayed
     the same as in a normal div (the ref html).
     'p' is the character in ahem font with only the descent part.
-    <div>&nbsp;pppp&nbsp;</div>
+    <br><br>
+    <div style="font-size: 13px">&nbsp;pppp&nbsp;</div>
+    <div style="font-size: 14px">&nbsp;pppp&nbsp;</div>
+    <div style="font-size: 15px">&nbsp;pppp&nbsp;</div>
+    <div style="font-size: 16px">&nbsp;pppp&nbsp;</div>
+    <div style="font-size: 17px">&nbsp;pppp&nbsp;</div>
+    <div style="font-size: 18px">&nbsp;pppp&nbsp;</div>
 </body>
 </html>

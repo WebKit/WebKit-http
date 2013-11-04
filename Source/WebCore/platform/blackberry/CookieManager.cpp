@@ -36,10 +36,10 @@
 #include "FileSystem.h"
 #include "Logging.h"
 #include "WebSettings.h"
-#include <BlackBerryPlatformClient.h>
 #include <BlackBerryPlatformExecutableMessage.h>
 #include <BlackBerryPlatformMessageClient.h>
 #include <BlackBerryPlatformNavigatorHandler.h>
+#include <BlackBerryPlatformSettings.h>
 #include <stdlib.h>
 #include <wtf/CurrentTime.h>
 #include <wtf/text/CString.h>
@@ -70,11 +70,6 @@ static const unsigned s_maxCookieCountPerHost = 60;
 static const unsigned s_cookiesToDeleteWhenLimitReached = 60;
 static const unsigned s_delayToStartCookieCleanup = 10;
 
-static void flushCookiesOnExit(void)
-{
-    cookieManager().flushCookiesToBackingStore();
-}
-
 CookieManager& cookieManager()
 {
     static CookieManager *cookieManager = 0;
@@ -84,8 +79,6 @@ CookieManager& cookieManager()
         cookieManager->m_cookieBackingStore->open(cookieManager->cookieJar());
         cookieManager->getBackingStoreCookies();
         CookieLog("CookieManager - Backingstore load complete.\n");
-
-        atexit(&flushCookiesOnExit);
     }
     return *cookieManager;
 }
@@ -94,7 +87,7 @@ CookieManager::CookieManager()
     : m_count(0)
     , m_privateMode(false)
     , m_shouldDumpAllCookies(false)
-    , m_cookieJarFileName(pathByAppendingComponent(BlackBerry::Platform::Client::get()->getApplicationDataDirectory().c_str(), "/cookieCollection.db"))
+    , m_cookieJarFileName(pathByAppendingComponent(BlackBerry::Platform::Settings::instance()->applicationDataDirectory().c_str(), "/cookieCollection.db"))
     , m_policy(CookieStorageAcceptPolicyAlways)
     , m_cookieBackingStore(CookieDatabaseBackingStore::create())
     , m_limitTimer(this, &CookieManager::cookieLimitCleanUp)
@@ -572,16 +565,6 @@ void CookieManager::cookieLimitCleanUp(Timer<CookieManager>* timer)
     }
 
     CookieLimitLog("CookieManager - Cookie clean up complete.");
-}
-
-void CookieManager::flushCookiesToBackingStore()
-{
-    CookieLog("CookieManager - flushCookiesToBackingStore starting.\n");
-    // This is called from shutdown, so we need to be sure the OS doesn't kill us before the db write finishes.
-    // Once should be enough since this extends terimination by 2 seconds.
-    BlackBerry::Platform::NavigatorHandler::sendExtendTerminate();
-    m_cookieBackingStore->sendChangesToDatabaseSynchronously();
-    CookieLog("CookieManager - flushCookiesToBackingStore finished.\n");
 }
 
 } // namespace WebCore

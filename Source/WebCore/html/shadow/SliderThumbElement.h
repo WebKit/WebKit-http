@@ -66,7 +66,8 @@ private:
     virtual RenderObject* createRenderer(RenderArena*, RenderStyle*);
     virtual PassRefPtr<Element> cloneElementWithoutAttributesAndChildren();
     virtual bool isEnabledFormControl() const;
-    virtual bool isReadOnlyFormControl() const;
+    virtual bool shouldMatchReadOnlySelector() const OVERRIDE;
+    virtual bool shouldMatchReadWriteSelector() const OVERRIDE;
     virtual Node* focusDelegate();
     void startDragging();
     void stopDragging();
@@ -99,6 +100,7 @@ inline SliderThumbElement* toSliderThumbElement(Node* node)
 // This always return a valid pointer.
 // An assertion fails if the specified node is not a range input.
 SliderThumbElement* sliderThumbElementOf(Node*);
+HTMLElement* sliderTrackElementOf(Node*);
 
 // --------------------------------
 

@@ -23,6 +23,7 @@
 #include "StyleRareNonInheritedData.h"
 
 #include "ContentData.h"
+#include "MemoryInstrumentation.h"
 #include "RenderCounter.h"
 #include "RenderStyle.h"
 #include "ShadowData.h"
@@ -37,8 +38,6 @@ StyleRareNonInheritedData::StyleRareNonInheritedData()
     : opacity(RenderStyle::initialOpacity())
     , m_aspectRatioDenominator(RenderStyle::initialAspectRatioDenominator())
     , m_aspectRatioNumerator(RenderStyle::initialAspectRatioNumerator())
-    , m_counterIncrement(0)
-    , m_counterReset(0)
     , m_perspective(RenderStyle::initialPerspective())
     , m_perspectiveOriginX(RenderStyle::initialPerspectiveOriginX())
     , m_perspectiveOriginY(RenderStyle::initialPerspectiveOriginY())
@@ -71,12 +70,18 @@ StyleRareNonInheritedData::StyleRareNonInheritedData()
     , m_appearance(RenderStyle::initialAppearance())
     , m_borderFit(RenderStyle::initialBorderFit())
     , m_textCombine(RenderStyle::initialTextCombine())
+#if ENABLE(CSS3_TEXT_DECORATION)
+    , m_textDecorationStyle(RenderStyle::initialTextDecorationStyle())
+#endif // CSS3_TEXT_DECORATION
     , m_wrapFlow(RenderStyle::initialWrapFlow())
     , m_wrapThrough(RenderStyle::initialWrapThrough())
 #if USE(ACCELERATED_COMPOSITING)
     , m_runningAcceleratedAnimation(false)
 #endif
     , m_hasAspectRatio(false)
+#if ENABLE(CSS_COMPOSITING)
+    , m_effectiveBlendMode(RenderStyle::initialBlendMode())
+#endif
 {
     m_maskBoxImage.setMaskDefaults();
 }
@@ -86,8 +91,6 @@ StyleRareNonInheritedData::StyleRareNonInheritedData(const StyleRareNonInherited
     , opacity(o.opacity)
     , m_aspectRatioDenominator(o.m_aspectRatioDenominator)
     , m_aspectRatioNumerator(o.m_aspectRatioNumerator)
-    , m_counterIncrement(o.m_counterIncrement)
-    , m_counterReset(o.m_counterReset)
     , m_perspective(o.m_perspective)
     , m_perspectiveOriginX(o.m_perspectiveOriginX)
     , m_perspectiveOriginY(o.m_perspectiveOriginY)
@@ -142,12 +145,18 @@ StyleRareNonInheritedData::StyleRareNonInheritedData(const StyleRareNonInherited
     , m_appearance(o.m_appearance)
     , m_borderFit(o.m_borderFit)
     , m_textCombine(o.m_textCombine)
+#if ENABLE(CSS3_TEXT_DECORATION)
+    , m_textDecorationStyle(o.m_textDecorationStyle)
+#endif // CSS3_TEXT_DECORATION
     , m_wrapFlow(o.m_wrapFlow)
     , m_wrapThrough(o.m_wrapThrough)
 #if USE(ACCELERATED_COMPOSITING)
     , m_runningAcceleratedAnimation(o.m_runningAcceleratedAnimation)
 #endif
     , m_hasAspectRatio(o.m_hasAspectRatio)
+#if ENABLE(CSS_COMPOSITING)
+    , m_effectiveBlendMode(RenderStyle::initialBlendMode())
+#endif
 {
 }
 
@@ -160,13 +169,11 @@ bool StyleRareNonInheritedData::operator==(const StyleRareNonInheritedData& o) c
     return opacity == o.opacity
         && m_aspectRatioDenominator == o.m_aspectRatioDenominator
         && m_aspectRatioNumerator == o.m_aspectRatioNumerator
-        && m_counterIncrement == o.m_counterIncrement
-        && m_counterReset == o.m_counterReset
         && m_perspective == o.m_perspective
         && m_perspectiveOriginX == o.m_perspectiveOriginX
         && m_perspectiveOriginY == o.m_perspectiveOriginY
         && lineClamp == o.lineClamp
-#if ENABLE(DASHBOARD_SUPPORT)
+#if ENABLE(DASHBOARD_SUPPORT) || ENABLE(WIDGET_REGION)
         && m_dashboardRegions == o.m_dashboardRegions
 #endif
         && m_deprecatedFlexibleBox == o.m_deprecatedFlexibleBox
@@ -219,10 +226,16 @@ bool StyleRareNonInheritedData::operator==(const StyleRareNonInheritedData& o) c
         && m_appearance == o.m_appearance
         && m_borderFit == o.m_borderFit
         && m_textCombine == o.m_textCombine
+#if ENABLE(CSS3_TEXT_DECORATION)
+        && m_textDecorationStyle == o.m_textDecorationStyle
+#endif // CSS3_TEXT_DECORATION
         && m_wrapFlow == o.m_wrapFlow
         && m_wrapThrough == o.m_wrapThrough
 #if USE(ACCELERATED_COMPOSITING)
         && !m_runningAcceleratedAnimation && !o.m_runningAcceleratedAnimation
+#endif
+#if ENABLE(CSS_COMPOSITING)
+        && m_effectiveBlendMode == o.m_effectiveBlendMode
 #endif
         && m_hasAspectRatio == o.m_hasAspectRatio;
 }
@@ -284,6 +297,34 @@ bool StyleRareNonInheritedData::transitionDataEquivalent(const StyleRareNonInher
     if (m_transitions && o.m_transitions && (*m_transitions != *o.m_transitions))
         return false;
     return true;
+}
+
+void StyleRareNonInheritedData::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
+{
+    MemoryClassInfo info(memoryObjectInfo, this, MemoryInstrumentation::CSS);
+#if ENABLE(DASHBOARD_SUPPORT)
+    info.addVector(m_dashboardRegions);
+#endif
+    info.addMember(m_deprecatedFlexibleBox);
+    info.addMember(m_flexibleBox);
+    info.addMember(m_marquee);
+    info.addMember(m_multiCol);
+    info.addMember(m_transform);
+#if ENABLE(CSS_FILTERS)
+    info.addMember(m_filter);
+#endif
+    info.addMember(m_grid);
+    info.addMember(m_gridItem);
+    info.addMember(m_content);
+    info.addMember(m_counterDirectives);
+    info.addMember(m_boxShadow);
+    info.addMember(m_boxReflect);
+    info.addMember(m_animations);
+    info.addMember(m_transitions);
+    info.addMember(m_wrapShapeInside);
+    info.addMember(m_wrapShapeOutside);
+    info.addInstrumentedMember(m_flowThread);
+    info.addInstrumentedMember(m_regionThread);
 }
 
 } // namespace WebCore

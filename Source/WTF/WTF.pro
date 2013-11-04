@@ -110,7 +110,6 @@ HEADERS += \
     PassTraits.h \
     Platform.h \
     PossiblyNull.h \
-    qt/UtilsQt.h \
     RandomNumber.h \
     RandomNumberSeed.h \
     RedBlackTree.h \
@@ -120,6 +119,7 @@ HEADERS += \
     RefPtrHashMap.h \
     RetainPtr.h \
     SHA1.h \
+    SaturatedArithmetic.h \
     Spectrum.h \
     StackBounds.h \
     StaticConstructors.h \
@@ -135,6 +135,7 @@ HEADERS += \
     text/AtomicStringImpl.h \
     text/Base64.h \
     text/CString.h \
+    text/IntegerToStringConversion.h \
     text/StringBuffer.h \
     text/StringBuilder.h \
     text/StringConcatenate.h \
@@ -190,6 +191,7 @@ SOURCES += \
     dtoa/fixed-dtoa.cc \
     dtoa/strtod.cc \
     FastMalloc.cpp \
+    GregorianDateTime.cpp \
     gobject/GOwnPtr.cpp \
     gobject/GRefPtr.cpp \
     HashTable.cpp \
@@ -217,6 +219,7 @@ SOURCES += \
     text/AtomicString.cpp \
     text/Base64.cpp \
     text/CString.cpp \
+    text/IntegerToStringConversion.cpp \
     text/StringBuilder.cpp \
     text/StringImpl.cpp \
     text/StringStatics.cpp \

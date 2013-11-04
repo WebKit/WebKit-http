@@ -29,14 +29,10 @@
 #include "Identifier.h"
 #include "Operations.h"
 #include <ctype.h>
-#include <limits.h>
-#include <limits>
-#include <stdio.h>
 #include <stdlib.h>
 #include <wtf/ASCIICType.h>
 #include <wtf/Assertions.h>
 #include <wtf/MathExtras.h>
-#include <wtf/StringExtras.h>
 #include <wtf/Vector.h>
 #include <wtf/dtoa.h>
 #include <wtf/unicode/UTF8.h>
@@ -94,116 +90,7 @@ UString::UString(const char* characters)
 {
 }
 
-UString UString::number(int i)
-{
-    LChar buf[1 + sizeof(i) * 3];
-    LChar* end = buf + WTF_ARRAY_LENGTH(buf);
-    LChar* p = end;
-
-    if (i == 0)
-        *--p = '0';
-    else if (i == INT_MIN) {
-        char minBuf[1 + sizeof(i) * 3];
-        snprintf(minBuf, sizeof(minBuf), "%d", INT_MIN);
-        return UString(minBuf);
-    } else {
-        bool negative = false;
-        if (i < 0) {
-            negative = true;
-            i = -i;
-        }
-        while (i) {
-            *--p = static_cast<unsigned short>((i % 10) + '0');
-            i /= 10;
-        }
-        if (negative)
-            *--p = '-';
-    }
-
-    return UString(p, static_cast<unsigned>(end - p));
-}
-
-UString UString::number(long long i)
-{
-    LChar buf[1 + sizeof(i) * 3];
-    LChar* end = buf + WTF_ARRAY_LENGTH(buf);
-    LChar* p = end;
-
-    if (i == 0)
-        *--p = '0';
-    else if (i == std::numeric_limits<long long>::min()) {
-        char minBuf[1 + sizeof(i) * 3];
-#if OS(WINDOWS)
-        snprintf(minBuf, sizeof(minBuf), "%I64d", std::numeric_limits<long long>::min());
-#else
-        snprintf(minBuf, sizeof(minBuf), "%lld", std::numeric_limits<long long>::min());
-#endif
-        return UString(minBuf);
-    } else {
-        bool negative = false;
-        if (i < 0) {
-            negative = true;
-            i = -i;
-        }
-        while (i) {
-            *--p = static_cast<unsigned short>((i % 10) + '0');
-            i /= 10;
-        }
-        if (negative)
-            *--p = '-';
-    }
-
-    return UString(p, static_cast<unsigned>(end - p));
-}
-
-UString UString::number(unsigned u)
-{
-    LChar buf[sizeof(u) * 3];
-    LChar* end = buf + WTF_ARRAY_LENGTH(buf);
-    LChar* p = end;
-
-    if (u == 0)
-        *--p = '0';
-    else {
-        while (u) {
-            *--p = static_cast<unsigned short>((u % 10) + '0');
-            u /= 10;
-        }
-    }
-
-    return UString(p, static_cast<unsigned>(end - p));
-}
-
-UString UString::number(long l)
-{
-    LChar buf[1 + sizeof(l) * 3];
-    LChar* end = buf + WTF_ARRAY_LENGTH(buf);
-    LChar* p = end;
-
-    if (l == 0)
-        *--p = '0';
-    else if (l == LONG_MIN) {
-        char minBuf[1 + sizeof(l) * 3];
-        snprintf(minBuf, sizeof(minBuf), "%ld", LONG_MIN);
-        return UString(minBuf);
-    } else {
-        bool negative = false;
-        if (l < 0) {
-            negative = true;
-            l = -l;
-        }
-        while (l) {
-            *--p = static_cast<unsigned short>((l % 10) + '0');
-            l /= 10;
-        }
-        if (negative)
-            *--p = '-';
-    }
-
-    return UString(p, end - p);
-}
-
-UString UString::number(double d)
+UString UString::numberToStringECMAScript(double d)
 {
     NumberToStringBuffer buffer;
     return UString(numberToString(d, buffer));

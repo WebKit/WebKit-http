@@ -32,7 +32,6 @@
 
 #include "LayerPainterChromium.h"
 #include "PlatformColor.h"
-#include "PlatformContextSkia.h"
 #include "skia/ext/platform_canvas.h"
 
 namespace WebCore {
@@ -47,9 +46,9 @@ BitmapCanvasLayerTextureUpdater::Texture::~Texture()
 {
 }
 
-void BitmapCanvasLayerTextureUpdater::Texture::updateRect(CCResourceProvider* resourceProvider, const IntRect& sourceRect, const IntRect& destRect)
+void BitmapCanvasLayerTextureUpdater::Texture::updateRect(CCResourceProvider* resourceProvider, const IntRect& sourceRect, const IntSize& destOffset)
 {
-    textureUpdater()->updateTextureRect(resourceProvider, texture(), sourceRect, destRect);
+    textureUpdater()->updateTextureRect(resourceProvider, texture(), sourceRect, destOffset);
 }
 
 PassRefPtr<BitmapCanvasLayerTextureUpdater> BitmapCanvasLayerTextureUpdater::create(PassOwnPtr<LayerPainterChromium> painter)
@@ -89,12 +88,12 @@ void BitmapCanvasLayerTextureUpdater::prepareToUpdate(const IntRect& contentRect
     paintContents(m_canvas.get(), contentRect, contentsWidthScale, contentsHeightScale, resultingOpaqueRect, stats);
 }
 
-void BitmapCanvasLayerTextureUpdater::updateTextureRect(CCResourceProvider* resourceProvider, CCPrioritizedTexture* texture, const IntRect& sourceRect, const IntRect& destRect)
+void BitmapCanvasLayerTextureUpdater::updateTextureRect(CCResourceProvider* resourceProvider, CCPrioritizedTexture* texture, const IntRect& sourceRect, const IntSize& destOffset)
 {
     const SkBitmap& bitmap = m_canvas->getDevice()->accessBitmap(false);
     bitmap.lockPixels();
 
-    texture->upload(resourceProvider, static_cast<const uint8_t*>(bitmap.getPixels()), contentRect(), sourceRect, destRect);
+    texture->upload(resourceProvider, static_cast<const uint8_t*>(bitmap.getPixels()), contentRect(), sourceRect, destOffset);
     bitmap.unlockPixels();
 }
 

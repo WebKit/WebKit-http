@@ -255,3 +255,24 @@ void WKBundleSetPageVisibilityState(WKBundleRef bundleRef, WKBundlePageRef pageR
 {
     toImpl(bundleRef)->setPageVisibilityState(toImpl(pageRef), state, isInitialState);
 }
+
+void WKBundleSetUserStyleSheetLocation(WKBundleRef bundleRef, WKBundlePageGroupRef pageGroupRef, WKStringRef location)
+{
+    toImpl(bundleRef)->setUserStyleSheetLocation(toImpl(pageGroupRef), toImpl(location)->string());
+}
+
+void WKBundleSetWebNotificationPermission(WKBundleRef bundleRef, WKBundlePageRef pageRef, WKStringRef originStringRef, bool allowed)
+{
+    toImpl(bundleRef)->setWebNotificationPermission(toImpl(pageRef), toImpl(originStringRef)->string(), allowed);
+}
+
+void WKBundleRemoveAllWebNotificationPermissions(WKBundleRef bundleRef, WKBundlePageRef pageRef)
+{
+    toImpl(bundleRef)->removeAllWebNotificationPermissions(toImpl(pageRef));
+}
+
+uint64_t WKBundleGetWebNotificationID(WKBundleRef bundleRef, JSContextRef context, JSValueRef notification)
+{
+    return toImpl(bundleRef)->webNotificationID(context, notification);
+}
+

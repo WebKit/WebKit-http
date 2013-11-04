@@ -41,13 +41,13 @@ class TesterTest(unittest.TestCase):
         root_logger.handlers = []
 
         tester.printer.stream = errors
-        tester.finder.find_names = lambda args, skip_integration, run_all, skip_if_parallel: []
+        tester.finder.find_names = lambda args, run_all: []
         oc = OutputCapture()
         try:
             oc.capture_output()
             self.assertFalse(tester.run())
         finally:
-            out, err, logs = oc.restore_output()
+            _, _, logs = oc.restore_output()
             root_logger.handlers = root_handlers
 
         self.assertTrue('No tests to run' in errors.getvalue())

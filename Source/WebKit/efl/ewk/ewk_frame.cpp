@@ -57,6 +57,7 @@
 #include "ewk_intent_private.h"
 #include "ewk_private.h"
 #include "ewk_security_origin_private.h"
+#include "ewk_touch_event_private.h"
 #include "ewk_view_private.h"
 #include <Ecore_Input.h>
 #include <Eina.h>
@@ -765,12 +766,12 @@ void ewk_frame_intent_deliver(const Evas_Object* ewkFrame, Ewk_Intent* ewk_inten
         for (size_t i = 0; i < origChannels->size(); ++i)
             (*channels)[i] = origChannels->at(i).release();
     }
-    OwnPtr<WebCore::MessagePortArray> ports = WebCore::MessagePort::entanglePorts(*(smartData->frame->domWindow()->scriptExecutionContext()), channels.release());
+    OwnPtr<WebCore::MessagePortArray> ports = WebCore::MessagePort::entanglePorts(*(smartData->frame->document()), channels.release());
 
     OwnPtr<WebCore::DeliveredIntentClient> dummyClient;
     RefPtr<WebCore::DeliveredIntent> deliveredIntent = WebCore::DeliveredIntent::create(smartData->frame, dummyClient.release(), intent->action(), intent->type(), intent->data(), ports.release(), intent->extras());
 
-    WebCore::DOMWindowIntents::from(smartData->frame->domWindow())->deliver(deliveredIntent.release());
+    WebCore::DOMWindowIntents::from(smartData->frame->document()->domWindow())->deliver(deliveredIntent.release());
 #endif
 }
 
@@ -990,37 +991,7 @@ Eina_Bool ewk_frame_feed_touch_event(Evas_Object* ewkFrame, Ewk_Touch_Event_Type
     Evas_Coord x, y;
     evas_object_geometry_get(smartData->view, &x, &y, 0, 0);
 
-    WebCore::PlatformEvent::Type type;
-    switch (action) {
-    case EWK_TOUCH_START:
-        type = WebCore::PlatformEvent::TouchStart;
-        break;
-    case EWK_TOUCH_MOVE:
-        type = WebCore::PlatformEvent::TouchMove;
-        break;
-    case EWK_TOUCH_END:
-        type = WebCore::PlatformEvent::TouchEnd;
-        break;
-    case EWK_TOUCH_CANCEL:
-        type = WebCore::PlatformEvent::TouchCancel;
-        break;
-    default:
-        ASSERT_NOT_REACHED();
-        return false;
-    }
-
-    unsigned touchModifiers = 0;
-    if (modifiers & ECORE_EVENT_MODIFIER_ALT)
-        touchModifiers |= WebCore::PlatformEvent::AltKey;
-    if (modifiers & ECORE_EVENT_MODIFIER_CTRL)
-        touchModifiers |= WebCore::PlatformEvent::CtrlKey;
-    if (modifiers & ECORE_EVENT_MODIFIER_SHIFT)
-        touchModifiers |= WebCore::PlatformEvent::ShiftKey;
-    if (modifiers & ECORE_EVENT_MODIFIER_WIN)
-        touchModifiers |= WebCore::PlatformEvent::MetaKey;
-
-    WebCore::PlatformTouchEvent touchEvent(points, WebCore::IntPoint(x, y), type, static_cast<WebCore::PlatformEvent::Modifiers>(touchModifiers));
-    return smartData->frame->eventHandler()->handleTouchEvent(touchEvent);
+    return smartData->frame->eventHandler()->handleTouchEvent(EWKPrivate::platformTouchEvent(x, y, points, action, modifiers));
 #else
     return false;
 #endif

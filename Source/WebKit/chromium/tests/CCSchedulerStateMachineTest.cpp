@@ -24,7 +24,7 @@
 
 #include "config.h"
 
-#include "cc/CCSchedulerStateMachine.h"
+#include "CCSchedulerStateMachine.h"
 
 #include <gtest/gtest.h>
 #include <wtf/text/CString.h>
@@ -830,6 +830,19 @@ TEST(CCSchedulerStateMachineTest, TestGoesInvisibleBeforeBeginFrameCompletes)
     // We should now be back in the idle state as if we didn't start a frame at all.
     EXPECT_EQ(CCSchedulerStateMachine::COMMIT_STATE_IDLE, state.commitState());
     EXPECT_EQ(CCSchedulerStateMachine::ACTION_NONE, state.nextAction());
+
+    // Become visible again
+    state.setVisible(true);
+
+    // We should be beginning a frame now
+    EXPECT_EQ(CCSchedulerStateMachine::COMMIT_STATE_IDLE, state.commitState());
+    EXPECT_EQ(CCSchedulerStateMachine::ACTION_BEGIN_FRAME, state.nextAction());
+
+    // Begin the frame
+    state.updateState(state.nextAction());
+
+    // We should be starting the commit now
+    EXPECT_EQ(CCSchedulerStateMachine::COMMIT_STATE_FRAME_IN_PROGRESS, state.commitState());
 }
 
 TEST(CCSchedulerStateMachineTest, TestContextLostWhenCompletelyIdle)

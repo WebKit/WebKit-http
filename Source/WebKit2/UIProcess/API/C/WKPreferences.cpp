@@ -817,6 +817,16 @@ bool WKPreferencesGetRequestAnimationFrameEnabled(WKPreferencesRef preferencesRe
     return toImpl(preferencesRef)->requestAnimationFrameEnabled();
 }
 
+void WKPreferencesSetThirdPartyStorageBlockingEnabled(WKPreferencesRef preferencesRef, bool flag)
+{
+    toImpl(preferencesRef)->setThirdPartyStorageBlockingEnabled(flag);
+}
+
+bool WKPreferencesGetThirdPartyStorageBlockingEnabled(WKPreferencesRef preferencesRef)
+{
+    return toImpl(preferencesRef)->thirdPartyStorageBlockingEnabled();
+}
+
 void WKPreferencesResetTestRunnerOverrides(WKPreferencesRef preferencesRef)
 {
     // Currently we reset the overrides on the web process when preferencesDidChange() is called. Since WTR preferences
@@ -832,4 +842,44 @@ void WKPreferencesSetDiagnosticLoggingEnabled(WKPreferencesRef preferencesRef, b
 bool WKPreferencesGetDiagnosticLoggingEnabled(WKPreferencesRef preferencesRef)
 {
     return toImpl(preferencesRef)->diagnosticLoggingEnabled();
+}
+
+void WKPreferencesSetAsynchronousPluginInitializationEnabled(WKPreferencesRef preferencesRef, bool enabled)
+{
+    toImpl(preferencesRef)->setAsynchronousPluginInitializationEnabled(enabled);
+}
+
+bool WKPreferencesGetAsynchronousPluginInitializationEnabled(WKPreferencesRef preferencesRef)
+{
+    return toImpl(preferencesRef)->asynchronousPluginInitializationEnabled();
+}
+
+void WKPreferencesSetAsynchronousPluginInitializationEnabledForAllPlugins(WKPreferencesRef preferencesRef, bool enabled)
+{
+    toImpl(preferencesRef)->setAsynchronousPluginInitializationEnabledForAllPlugins(enabled);
+}
+
+bool WKPreferencesGetAsynchronousPluginInitializationEnabledForAllPlugins(WKPreferencesRef preferencesRef)
+{
+    return toImpl(preferencesRef)->asynchronousPluginInitializationEnabledForAllPlugins();
+}
+
+void WKPreferencesSetArtificialPluginInitializationDelayEnabled(WKPreferencesRef preferencesRef, bool enabled)
+{
+    toImpl(preferencesRef)->setArtificialPluginInitializationDelayEnabled(enabled);
+}
+
+bool WKPreferencesGetArtificialPluginInitializationDelayEnabled(WKPreferencesRef preferencesRef)
+{
+    return toImpl(preferencesRef)->artificialPluginInitializationDelayEnabled();
+}
+
+void WKPreferencesSetScrollingPerformanceLoggingEnabled(WKPreferencesRef preferencesRef, bool enabled)
+{
+    toImpl(preferencesRef)->setScrollingPerformanceLoggingEnabled(enabled);
+}
+
+bool WKPreferencesGetScrollingPerformanceLoggingEnabled(WKPreferencesRef preferencesRef)
+{
+    return toImpl(preferencesRef)->scrollingPerformanceLoggingEnabled();
 }

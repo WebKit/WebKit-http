@@ -30,6 +30,8 @@
 #ifndef Opcode_h
 #define Opcode_h
 
+#include "LLIntOpcode.h"
+
 #include <algorithm>
 #include <string.h>
 
@@ -132,10 +134,10 @@ namespace JSC {
         macro(op_put_by_id_replace, 9) \
         macro(op_put_by_id_generic, 9) \
         macro(op_del_by_id, 4) \
-        macro(op_get_by_val, 5) /* has value profiling */ \
-        macro(op_get_argument_by_val, 5) /* must be the same size as op_get_by_val */ \
+        macro(op_get_by_val, 6) /* has value profiling */ \
+        macro(op_get_argument_by_val, 6) /* must be the same size as op_get_by_val */ \
         macro(op_get_by_pname, 7) \
-        macro(op_put_by_val, 4) \
+        macro(op_put_by_val, 5) \
         macro(op_del_by_val, 4) \
         macro(op_put_by_index, 4) \
         macro(op_put_getter_setter, 5) \
@@ -194,9 +196,11 @@ namespace JSC {
         macro(op_throw, 2) \
         macro(op_throw_reference_error, 2) \
         \
-        macro(op_debug, 4) \
+        macro(op_debug, 5) \
         macro(op_profile_will_call, 2) \
         macro(op_profile_did_call, 2) \
+        \
+        FOR_EACH_LLINT_OPCODE_EXTENSION(macro) \
         \
         macro(op_end, 2) // end must be the last opcode in the list
 
@@ -222,11 +226,7 @@ namespace JSC {
     #undef VERIFY_OPCODE_ID
 
 #if ENABLE(COMPUTED_GOTO_CLASSIC_INTERPRETER) || ENABLE(LLINT)
-#if COMPILER(RVCT) || COMPILER(INTEL)
     typedef void* Opcode;
-#else
-    typedef const void* Opcode;
-#endif
 #else
     typedef OpcodeID Opcode;
 #endif

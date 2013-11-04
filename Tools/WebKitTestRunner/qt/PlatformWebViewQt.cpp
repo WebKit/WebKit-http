@@ -48,7 +48,7 @@ public:
         connect(this, SIGNAL(statusChanged(QQuickView::Status)), SLOT(handleStatusChanged(QQuickView::Status)));
     }
 
-private slots:
+private Q_SLOTS:
     void handleStatusChanged(QQuickView::Status status)
     {
         if (status != QQuickView::Ready)
@@ -77,6 +77,7 @@ PlatformWebView::PlatformWebView(WKContextRef contextRef, WKPageGroupRef pageGro
     QQuickWebViewExperimental experimental(m_view);
     experimental.setRenderToOffscreenBuffer(true);
     m_view->setAllowAnyHTTPSCertificateForLocalHost(true);
+    m_view->componentComplete();
 }
 
 PlatformWebView::~PlatformWebView()

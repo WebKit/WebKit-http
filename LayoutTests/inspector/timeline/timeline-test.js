@@ -26,7 +26,8 @@ InspectorTest.timelinePropertyFormatters = {
 InspectorTest.startTimeline = function(callback)
 {
     InspectorTest._timelineRecords = [];
-    WebInspector.panels.timeline.toggleTimelineButton.toggled = true;
+    WebInspector.panel("timeline").toggleTimelineButton.toggled = true;
+    WebInspector.panel("timeline")._model._collectionEnabled = true;
     TimelineAgent.start(callback);
     function addRecord(record)
     {
@@ -61,13 +62,14 @@ InspectorTest.stopTimeline = function(callback)
 {
     function didStop()
     {
-        WebInspector.panels.timeline.toggleTimelineButton.toggled = false;
+        WebInspector.panel("timeline").toggleTimelineButton.toggled = false;
+        WebInspector.panel("timeline")._model._collectionEnabled = false;
         callback(InspectorTest._timelineRecords);
     }
     TimelineAgent.stop(didStop);
 };
 
-InspectorTest.performActionsAndPrint = function(actions, typeName)
+InspectorTest.performActionsAndPrint = function(actions, typeName, includeTimeStamps)
 {
     InspectorTest.startTimeline(step1);
     function step1()
@@ -83,18 +85,31 @@ InspectorTest.performActionsAndPrint = function(actions, typeName)
     function step3()
     {
         InspectorTest.printTimelineRecords(typeName);
+        if (includeTimeStamps) {
+            InspectorTest.addResult("Timestamp records: ");
+            InspectorTest.printTimestampRecords(typeName);
+        }
         InspectorTest.completeTest();
     }
 };
 
 InspectorTest.printTimelineRecords = function(typeName, formatter)
 {
-    for (var i = 0; i < InspectorTest._timelineRecords.length; ++i) {
-        var record = InspectorTest._timelineRecords[i];
-        if (typeName && record.type === WebInspector.TimelineModel.RecordType[typeName])
-            InspectorTest.printTimelineRecordProperties(record);
+    InspectorTest.innerPrintTimelineRecords(InspectorTest._timelineRecords, typeName, formatter);
+};
+
+InspectorTest.printTimestampRecords = function(typeName, formatter)
+{
+    InspectorTest.innerPrintTimelineRecords(WebInspector.panels.timeline._timeStampRecords.select("_record"), typeName, formatter);
+};
+
+InspectorTest.innerPrintTimelineRecords = function(records, typeName, formatter)
+{
+    for (var i = 0; i < records.length; ++i) {
+        if (typeName && records[i].type === WebInspector.TimelineModel.RecordType[typeName])
+            InspectorTest.printTimelineRecordProperties(records[i]);
         if (formatter)
-            formatter(record);
+            formatter(records[i]);
     }
 };
 
@@ -139,6 +154,86 @@ InspectorTest._timelineAgentTypeToString = function(numericType)
             return prop;
     }
     return undefined;
+};
+
+InspectorTest.FakeFileReader = function(input, delegate, callback)
+{
+    this._delegate = delegate;
+    this._callback = callback;
+    this._input = input;
+    this._loadedSize = 0;
+    this._fileSize = input.length;
+};
+
+InspectorTest.FakeFileReader.prototype = {
+    start: function(output)
+    {
+        output.startTransfer();
+        this._delegate.onTransferStarted(this);
+
+        var length = this._input.length;
+        var half = (length + 1) >> 1;
+
+        var chunk = this._input.substring(0, half);
+        this._loadedSize += chunk.length;
+        output.transferChunk(chunk);
+        this._delegate.onChunkTransferred(this);
+
+        chunk = this._input.substring(half);
+        this._loadedSize += chunk.length;
+        output.transferChunk(chunk);
+        this._delegate.onChunkTransferred(this);
+
+        output.finishTransfer();
+        this._delegate.onTransferFinished(this);
+
+        this._callback();
+    },
+
+    cancel: function() { },
+
+    loadedSize: function()
+    {
+        return this._loadedSize;
+    },
+
+    fileSize: function()
+    {
+        return this._fileSize;
+    },
+
+    fileName: function()
+    {
+        return "fakeFile";
+    }
+};
+
+InspectorTest.FakeFileWriter = function(delegate, callback)
+{
+    this._delegate = delegate;
+    this._callback = callback;
+    this._buffer = "";
+};
+
+InspectorTest.FakeFileWriter.prototype = {
+    startTransfer: function()
+    {
+        this._delegate.onTransferStarted(this);
+    },
+
+    transferChunk: function(chunk)
+    {
+        this._buffer += chunk;
+        this._delegate.onChunkTransferred(this);
+    },
+
+    finishTransfer: function()
+    {
+        this._delegate.onTransferFinished(this);
+        this._callback(this._buffer);
+    },
+
+    dispose: function() { }
 };
 
 };

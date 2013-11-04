@@ -24,7 +24,7 @@
 
 #include "config.h"
 
-#include "cc/CCMathUtil.h"
+#include "CCMathUtil.h"
 
 #include "CCLayerTreeTestCommon.h"
 #include "FloatRect.h"
@@ -150,6 +150,53 @@ TEST(CCMathUtilTest, verifyEnclosingRectOfVerticesUsesCorrectInitialBounds)
     FloatRect result = CCMathUtil::computeEnclosingRectOfVertices(vertices, numVertices);
 
     EXPECT_FLOAT_RECT_EQ(FloatRect(FloatPoint(-100, -100), FloatSize(90, 90)), result);
+}
+
+TEST(CCMathUtilTest, smallestAngleBetweenVectors)
+{
+    FloatSize x(1, 0);
+    FloatSize y(0, 1);
+    FloatSize testVector(0.5, 0.5);
+
+    // Orthogonal vectors are at an angle of 90 degress.
+    EXPECT_EQ(90, CCMathUtil::smallestAngleBetweenVectors(x, y));
+
+    // A vector makes a zero angle with itself.
+    EXPECT_EQ(0, CCMathUtil::smallestAngleBetweenVectors(x, x));
+    EXPECT_EQ(0, CCMathUtil::smallestAngleBetweenVectors(y, y));
+    EXPECT_EQ(0, CCMathUtil::smallestAngleBetweenVectors(testVector, testVector));
+
+    // Parallel but reversed vectors are at 180 degrees.
+    EXPECT_FLOAT_EQ(180, CCMathUtil::smallestAngleBetweenVectors(x, -x));
+    EXPECT_FLOAT_EQ(180, CCMathUtil::smallestAngleBetweenVectors(y, -y));
+    EXPECT_FLOAT_EQ(180, CCMathUtil::smallestAngleBetweenVectors(testVector, -testVector));
+
+    // The test vector is at a known angle.
+    EXPECT_FLOAT_EQ(45, floor(CCMathUtil::smallestAngleBetweenVectors(testVector, x)));
+    EXPECT_FLOAT_EQ(45, floor(CCMathUtil::smallestAngleBetweenVectors(testVector, y)));
+}
+
+TEST(CCMathUtilTest, vectorProjection)
+{
+    FloatSize x(1, 0);
+    FloatSize y(0, 1);
+    FloatSize testVector(0.3f, 0.7f);
+
+    // Orthogonal vectors project to a zero vector.
+    EXPECT_EQ(FloatSize(0, 0), CCMathUtil::projectVector(x, y));
+    EXPECT_EQ(FloatSize(0, 0), CCMathUtil::projectVector(y, x));
+
+    // Projecting a vector onto the orthonormal basis gives the corresponding component of the
+    // vector.
+    EXPECT_EQ(FloatSize(testVector.width(), 0), CCMathUtil::projectVector(testVector, x));
+    EXPECT_EQ(FloatSize(0, testVector.height()), CCMathUtil::projectVector(testVector, y));
+
+    // Finally check than an arbitrary vector projected to another one gives a vector parallel to
+    // the second vector.
+    FloatSize targetVector(0.5, 0.2f);
+    FloatSize projectedVector = CCMathUtil::projectVector(testVector, targetVector);
+    EXPECT_EQ(projectedVector.width() / targetVector.width(),
+              projectedVector.height() / targetVector.height());
 }
 
 } // namespace

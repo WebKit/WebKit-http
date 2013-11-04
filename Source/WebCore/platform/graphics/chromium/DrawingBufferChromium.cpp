@@ -36,8 +36,9 @@
 #include "Extensions3DChromium.h"
 #include "GraphicsContext3D.h"
 #include "GraphicsContext3DPrivate.h"
-#include "cc/CCProxy.h"
+#include "GraphicsLayerChromium.h"
 #include <algorithm>
+#include <public/WebCompositor.h>
 #include <public/WebExternalTextureLayer.h>
 #include <public/WebExternalTextureLayerClient.h>
 #include <public/WebGraphicsContext3D.h>
@@ -81,12 +82,13 @@ DrawingBuffer::DrawingBuffer(GraphicsContext3D* context,
     , m_fbo(0)
     , m_colorBuffer(0)
     , m_frontColorBuffer(0)
-    , m_separateFrontTexture(m_preserveDrawingBuffer == Preserve || CCProxy::implThread())
+    , m_separateFrontTexture(m_preserveDrawingBuffer == Preserve || WebKit::WebCompositor::threadingEnabled())
     , m_depthStencilBuffer(0)
     , m_depthBuffer(0)
     , m_stencilBuffer(0)
     , m_multisampleFBO(0)
     , m_multisampleColorBuffer(0)
+    , m_contentsChanged(true)
 {
     initialize(size);
 }
@@ -119,6 +121,9 @@ void DrawingBuffer::initialize(const IntSize& size)
 #if USE(ACCELERATED_COMPOSITING)
 void DrawingBuffer::prepareBackBuffer()
 {
+    if (!m_contentsChanged)
+        return;
+
     m_context->makeContextCurrent();
 
     if (multisample())
@@ -138,6 +143,8 @@ void DrawingBuffer::prepareBackBuffer()
         bind();
     else
         restoreFramebufferBinding();
+
+    m_contentsChanged = false;
 }
 
 bool DrawingBuffer::requiresCopyFromBackToFrontBuffer() const
@@ -156,16 +163,17 @@ class DrawingBufferPrivate : public WebKit::WebExternalTextureLayerClient {
 public:
     explicit DrawingBufferPrivate(DrawingBuffer* drawingBuffer)
         : m_drawingBuffer(drawingBuffer)
-        , m_layer(WebKit::WebExternalTextureLayer::create(this))
+        , m_layer(adoptPtr(WebKit::WebExternalTextureLayer::create(this)))
     {
         GraphicsContext3D::Attributes attributes = m_drawingBuffer->graphicsContext3D()->getContextAttributes();
-        m_layer.setOpaque(!attributes.alpha);
-        m_layer.setPremultipliedAlpha(attributes.premultipliedAlpha);
+        m_layer->setOpaque(!attributes.alpha);
+        m_layer->setPremultipliedAlpha(attributes.premultipliedAlpha);
+        GraphicsLayerChromium::registerContentsLayer(m_layer->layer());
     }
 
     virtual ~DrawingBufferPrivate()
     {
-        m_layer.clearClient();
+        GraphicsLayerChromium::unregisterContentsLayer(m_layer->layer());
     }
 
     virtual unsigned prepareTexture(WebKit::WebTextureUpdater& updater) OVERRIDE
@@ -187,11 +195,11 @@ public:
         return GraphicsContext3DPrivate::extractWebGraphicsContext3D(m_drawingBuffer->graphicsContext3D());
     }
 
-    LayerChromium* layer() const { return m_layer.unwrap<LayerChromium>(); }
+    WebKit::WebLayer* layer() { return m_layer->layer(); }
 
 private:
     DrawingBuffer* m_drawingBuffer;
-    WebKit::WebExternalTextureLayer m_layer;
+    OwnPtr<WebKit::WebExternalTextureLayer> m_layer;
 };
 
 #if USE(ACCELERATED_COMPOSITING)

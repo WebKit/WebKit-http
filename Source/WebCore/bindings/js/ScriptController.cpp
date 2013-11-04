@@ -21,6 +21,7 @@
 #include "config.h"
 #include "ScriptController.h"
 
+#include "ContentSecurityPolicy.h"
 #include "Event.h"
 #include "EventNames.h"
 #include "Frame.h"
@@ -34,6 +35,8 @@
 #include "NP_jsobject.h"
 #include "Page.h"
 #include "PageGroup.h"
+#include "PluginView.h"
+#include "ScriptCallStack.h"
 #include "ScriptSourceCode.h"
 #include "ScriptValue.h"
 #include "ScriptableDocumentParser.h"
@@ -109,7 +112,7 @@ JSDOMWindowShell* ScriptController::createWindowShell(DOMWrapperWorld* world)
 {
     ASSERT(!m_windowShells.contains(world));
     Structure* structure = JSDOMWindowShell::createStructure(*world->globalData(), jsNull());
-    Strong<JSDOMWindowShell> windowShell(*world->globalData(), JSDOMWindowShell::create(m_frame->domWindow(), structure, world));
+    Strong<JSDOMWindowShell> windowShell(*world->globalData(), JSDOMWindowShell::create(m_frame->document()->domWindow(), structure, world));
     Strong<JSDOMWindowShell> windowShell2(windowShell);
     m_windowShells.add(world, windowShell);
     world->didCreateWindowShell(this);
@@ -172,7 +175,7 @@ void ScriptController::getAllWorlds(Vector<RefPtr<DOMWrapperWorld> >& worlds)
     static_cast<WebCoreJSClientData*>(JSDOMWindow::commonJSGlobalData()->clientData)->getAllWorlds(worlds);
 }
 
-void ScriptController::clearWindowShell(bool goingIntoPageCache)
+void ScriptController::clearWindowShell(DOMWindow* newDOMWindow, bool goingIntoPageCache)
 {
     if (m_windowShells.isEmpty())
         return;
@@ -182,11 +185,14 @@ void ScriptController::clearWindowShell(bool goingIntoPageCache)
     for (ShellMap::iterator iter = m_windowShells.begin(); iter != m_windowShells.end(); ++iter) {
         JSDOMWindowShell* windowShell = iter->second.get();
 
+        if (windowShell->window()->impl() == newDOMWindow)
+            continue;
+
         // Clear the debugger from the current window before setting the new window.
         attachDebugger(windowShell, 0);
 
         windowShell->window()->willRemoveFromWindowShell();
-        windowShell->setWindow(m_frame->domWindow());
+        windowShell->setWindow(newDOMWindow);
 
         // An m_cacheableBindingRootObject persists between page navigations
         // so needs to know about the new JSDOMWindow.
@@ -215,6 +221,9 @@ JSDOMWindowShell* ScriptController::initScript(DOMWrapperWorld* world)
 
     windowShell->window()->updateDocument();
 
+    if (m_frame->document())
+        windowShell->window()->setEvalEnabled(m_frame->document()->contentSecurityPolicy()->allowEval(0, ContentSecurityPolicy::SuppressReport));   
+
     if (Page* page = m_frame->page()) {
         attachDebugger(windowShell, page->debugger());
         windowShell->window()->setProfileGroup(page->group().identifier());
@@ -237,13 +246,16 @@ void ScriptController::enableEval()
 {
     JSDOMWindowShell* windowShell = existingWindowShell(mainThreadNormalWorld());
     if (!windowShell)
-        return; // Eval is enabled by default.
+        return;
     windowShell->window()->setEvalEnabled(true);
 }
 
 void ScriptController::disableEval()
 {
-    windowShell(mainThreadNormalWorld())->window()->setEvalEnabled(false);
+    JSDOMWindowShell* windowShell = existingWindowShell(mainThreadNormalWorld());
+    if (!windowShell)
+        return;
+    windowShell->window()->setEvalEnabled(false);
 }
 
 bool ScriptController::processingUserGesture()
@@ -281,9 +293,6 @@ void ScriptController::attachDebugger(JSDOMWindowShell* shell, JSC::Debugger* de
 
 void ScriptController::updateDocument()
 {
-    if (!m_frame->document())
-        return;
-
     for (ShellMap::iterator iter = m_windowShells.begin(); iter != m_windowShells.end(); ++iter) {
         JSLockHolder lock(iter->first->globalData());
         iter->second->window()->updateDocument();
@@ -340,7 +349,7 @@ void ScriptController::collectIsolatedContexts(Vector<std::pair<JSC::ExecState*,
 {
     for (ShellMap::iterator iter = m_windowShells.begin(); iter != m_windowShells.end(); ++iter) {
         JSC::ExecState* exec = iter->second->window()->globalExec();
-        SecurityOrigin* origin = iter->second->window()->impl()->securityOrigin();
+        SecurityOrigin* origin = iter->second->window()->impl()->document()->securityOrigin();
         result.append(std::pair<ScriptState*, SecurityOrigin*>(exec, origin));
     }
 }
@@ -380,6 +389,16 @@ NPObject* ScriptController::createScriptObjectForPluginElement(HTMLPlugInElement
     return _NPN_CreateScriptObject(0, object, bindingRootObject());
 }
 
+#endif
+
+#if !PLATFORM(MAC) && !PLATFORM(QT)
+PassRefPtr<JSC::Bindings::Instance> ScriptController::createScriptInstanceForWidget(Widget* widget)
+{
+    if (!widget->isPluginView())
+        return 0;
+
+    return static_cast<PluginView*>(widget)->bindingInstance();
+}
 #endif
 
 JSObject* ScriptController::jsObjectForPluginElement(HTMLPlugInElement* plugin)

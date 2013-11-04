@@ -59,6 +59,7 @@ public:
         bool m_originalCSSExclusionsEnabled;
 #if ENABLE(SHADOW_DOM)
         bool m_originalShadowDOMEnabled;
+        bool m_originalAuthorShadowDOMForAnyElementEnabled;
 #endif
         EditingBehaviorType m_originalEditingBehavior;
         bool m_originalFixedPositionCreatesStackingContext;
@@ -72,10 +73,12 @@ public:
 #if ENABLE(TEXT_AUTOSIZING)
         bool m_originalTextAutosizingEnabled;
         IntSize m_originalTextAutosizingWindowSizeOverride;
+        float m_originalTextAutosizingFontScaleFactor;
 #endif
 #if ENABLE(DIALOG_ELEMENT)
         bool m_originalDialogElementEnabled;
 #endif
+        bool m_canStartMedia;
     };
 
     typedef RefCountedSupplement<Page, InternalSettings> SuperType;
@@ -104,6 +107,7 @@ public:
     void setDeviceSupportsTouch(bool enabled, ExceptionCode&);
     void setDeviceSupportsMouse(bool enabled, ExceptionCode&);
     void setShadowDOMEnabled(bool enabled, ExceptionCode&);
+    void setAuthorShadowDOMForAnyElementEnabled(bool);
     void setStandardFontFamily(const String& family, const String& script, ExceptionCode&);
     void setSerifFontFamily(const String& family, const String& script, ExceptionCode&);
     void setSansSerifFontFamily(const String& family, const String& script, ExceptionCode&);
@@ -113,11 +117,13 @@ public:
     void setPictographFontFamily(const String& family, const String& script, ExceptionCode&);
     void setTextAutosizingEnabled(bool enabled, ExceptionCode&);
     void setTextAutosizingWindowSizeOverride(int width, int height, ExceptionCode&);
+    void setTextAutosizingFontScaleFactor(float fontScaleFactor, ExceptionCode&);
     void setEnableScrollAnimator(bool enabled, ExceptionCode&);
     bool scrollAnimatorEnabled(ExceptionCode&);
     void setCSSExclusionsEnabled(bool enabled, ExceptionCode&);
     void setCSSVariablesEnabled(bool enabled, ExceptionCode&);
     bool cssVariablesEnabled(ExceptionCode&);
+    void setCanStartMedia(bool, ExceptionCode&);
     void setMediaPlaybackRequiresUserGesture(bool, ExceptionCode&);
     void setEditingBehavior(const String&, ExceptionCode&);
     void setFixedPositionCreatesStackingContext(bool, ExceptionCode&);
@@ -135,6 +141,7 @@ public:
     void setEnableMockPagePopup(bool, ExceptionCode&);
     String configurationForViewport(float devicePixelRatio, int deviceWidth, int deviceHeight, int availableWidth, int availableHeight, ExceptionCode&);
     void setMemoryInfoEnabled(bool, ExceptionCode&);
+    void setThirdPartyStorageBlockingEnabled(bool, ExceptionCode&);
 private:
     explicit InternalSettings(Page*);
     virtual void hostDestroyed() OVERRIDE { m_page = 0; }

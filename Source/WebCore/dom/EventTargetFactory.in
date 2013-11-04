@@ -9,12 +9,14 @@ EventSource
 FileReader conditional=BLOB
 FileWriter conditional=FILE_SYSTEM
 IDBDatabase conditional=INDEXED_DATABASE
+IDBOpenDBRequest conditional=INDEXED_DATABASE
 IDBRequest conditional=INDEXED_DATABASE
 IDBTransaction conditional=INDEXED_DATABASE
 IDBVersionChangeRequest conditional=INDEXED_DATABASE
 JavaScriptAudioNode conditional=WEB_AUDIO
 LocalMediaStream conditional=MEDIA_STREAM
 MediaController conditional=VIDEO
+MediaSource conditional=MEDIA_SOURCE
 MediaStream conditional=MEDIA_STREAM
 MediaStreamTrack conditional=MEDIA_STREAM
 MediaStreamTrackList conditional=MEDIA_STREAM
@@ -24,6 +26,7 @@ Node
 Notification conditional=NOTIFICATIONS|LEGACY_NOTIFICATIONS
 PeerConnection00 conditional=MEDIA_STREAM
 Performance conditional=WEB_TIMING
+RTCPeerConnection conditional=MEDIA_STREAM
 SharedWorker conditional=SHARED_WORKERS
 SharedWorkerContext conditional=SHARED_WORKERS
 SourceBufferList conditional=MEDIA_SOURCE
@@ -32,6 +35,7 @@ SVGElementInstance conditional=SVG
 TextTrack conditional=VIDEO_TRACK
 TextTrackCue conditional=VIDEO_TRACK
 TextTrackList conditional=VIDEO_TRACK
+WebKitNamedFlow
 WebSocket conditional=WEB_SOCKETS
 Worker conditional=WORKERS
 XMLHttpRequest

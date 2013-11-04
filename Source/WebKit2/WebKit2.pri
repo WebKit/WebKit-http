@@ -26,6 +26,7 @@ INCLUDEPATH += \
     $$SOURCE_DIR/UIProcess/API/cpp/qt \
     $$SOURCE_DIR/UIProcess/API/qt \
     $$SOURCE_DIR/UIProcess/Authentication \
+    $$SOURCE_DIR/UIProcess/CoordinatedGraphics \
     $$SOURCE_DIR/UIProcess/Downloads \
     $$SOURCE_DIR/UIProcess/InspectorServer \
     $$SOURCE_DIR/UIProcess/InspectorServer/qt \
@@ -58,7 +59,7 @@ INCLUDEPATH += \
     $$SOURCE_DIR/WebProcess/WebCoreSupport \
     $$SOURCE_DIR/WebProcess/WebCoreSupport/qt \
     $$SOURCE_DIR/WebProcess/WebPage \
-    $$SOURCE_DIR/WebProcess/WebPage/LayerTreeCoordinator \
+    $$SOURCE_DIR/WebProcess/WebPage/CoordinatedGraphics \
     $$SOURCE_DIR/WebProcess/qt \
     $$SOURCE_DIR/PluginProcess
 
@@ -74,6 +75,6 @@ linux-*: {
     LIBS += -lrt
 }
 
-QT += qml quick
+contains(DEFINES, HAVE_QTQUICK=1): QT += qml quick
 
-contains(DEFINES, ENABLE_GEOLOCATION=1):haveQt(5): QT += location
+contains(DEFINES, ENABLE_GEOLOCATION=1): QT += location

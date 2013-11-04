@@ -40,6 +40,9 @@
 
 #if OS(DARWIN)
 #include <mach/mach_port.h>
+#if HAVE(XPC)
+#include <xpc/xpc.h>
+#endif
 #elif PLATFORM(WIN)
 #include <string>
 #elif PLATFORM(QT)
@@ -114,12 +117,44 @@ public:
     };
 
 #if OS(DARWIN)
-    typedef mach_port_t Identifier;
+    struct Identifier {
+        Identifier()
+            : port(MACH_PORT_NULL)
+#if HAVE(XPC)
+            , xpcConnection(0)
+#endif
+        {
+        }
+
+        Identifier(mach_port_t port)
+            : port(port)
+#if HAVE(XPC)
+            , xpcConnection(0)
+#endif
+        {
+        }
+
+#if HAVE(XPC)
+        Identifier(mach_port_t port, xpc_connection_t xpcConnection)
+            : port(port)
+            , xpcConnection(xpcConnection)
+        {
+        }
+#endif
+
+        mach_port_t port;
+#if HAVE(XPC)
+        xpc_connection_t xpcConnection;
+#endif
+    };
+    static bool identifierIsNull(Identifier identifier) { return identifier.port == MACH_PORT_NULL; }
 #elif PLATFORM(WIN)
     typedef HANDLE Identifier;
     static bool createServerAndClientIdentifiers(Identifier& serverIdentifier, Identifier& clientIdentifier);
+    static bool identifierIsNull(Identifier identifier) { return !identifier; }
 #elif USE(UNIX_DOMAIN_SOCKETS)
     typedef int Identifier;
+    static bool identifierIsNull(Identifier identifier) { return !identifier; }
 #endif
 
     static PassRefPtr<Connection> createServerConnection(Identifier, Client*, WebCore::RunLoop* clientRunLoop);
@@ -171,6 +206,9 @@ public:
     template<typename E, typename T, typename U> bool deprecatedSendSync(E messageID, uint64_t destinationID, const T& arguments, const U& reply, double timeout = NoTimeout);
     
     void wakeUpRunLoop();
+
+    void incrementDispatchMessageMarkedDispatchWhenWaitingForSyncReplyCount() { ++m_inDispatchMessageMarkedDispatchWhenWaitingForSyncReplyCount; }
+    void decrementDispatchMessageMarkedDispatchWhenWaitingForSyncReplyCount() { --m_inDispatchMessageMarkedDispatchWhenWaitingForSyncReplyCount; }
 
 private:
     template<typename T> class Message {
@@ -336,6 +374,10 @@ private:
     // If setShouldCloseConnectionOnMachExceptions has been called, this has
     // the exception port that exceptions from the other end will be sent on.
     mach_port_t m_exceptionPort;
+
+#if HAVE(XPC)
+    xpc_connection_t m_xpcConnection;
+#endif
 
 #elif PLATFORM(WIN)
     // Called on the connection queue.

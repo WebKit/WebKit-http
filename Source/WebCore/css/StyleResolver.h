@@ -29,6 +29,7 @@
 #include "MediaQueryExp.h"
 #include "RenderStyle.h"
 #include "SelectorChecker.h"
+#include "StyleInheritedData.h"
 #include <wtf/HashMap.h>
 #include <wtf/HashSet.h>
 #include <wtf/RefPtr.h>
@@ -102,6 +103,7 @@ public:
         , m_result(result)
     {
     }
+    void reportMemoryUsage(MemoryObjectInfo*) const;
 
     MediaQueryExp m_expression;
     bool m_result;
@@ -140,7 +142,7 @@ public:
 
     void keyframeStylesForAnimation(Element*, const RenderStyle*, KeyframeList&);
 
-    PassRefPtr<RenderStyle> pseudoStyleForElement(PseudoId, Element*, RenderStyle* parentStyle = 0);
+    PassRefPtr<RenderStyle> pseudoStyleForElement(PseudoId, Element*, RenderStyle* parentStyle);
 
     PassRefPtr<RenderStyle> styleForPage(int pageIndex);
 
@@ -261,7 +263,9 @@ public:
     StyleShader* styleShader(CSSValue*);
     StyleShader* cachedOrPendingStyleShaderFromValue(WebKitCSSShaderValue*);
     bool parseCustomFilterParameterList(CSSValue*, CustomFilterParameterList&);
-    PassRefPtr<CustomFilterParameter> parseCustomFilterNumberParamter(const String& name, CSSValueList*);
+    PassRefPtr<CustomFilterParameter> parseCustomFilterParameter(const String& name, CSSValue*);
+    PassRefPtr<CustomFilterParameter> parseCustomFilterNumberParameter(const String& name, CSSValueList*);
+    PassRefPtr<CustomFilterParameter> parseCustomFilterTransformParameter(const String& name, CSSValueList*);
     PassRefPtr<CustomFilterOperation> createCustomFilterOperation(WebKitCSSFilterValue*);
     void loadPendingShaders();
 #endif
@@ -273,14 +277,14 @@ public:
     void loadPendingResources();
 
     struct RuleFeature {
-        RuleFeature(StyleRule* rule, CSSSelector* selector, bool hasDocumentSecurityOrigin)
+        RuleFeature(StyleRule* rule, unsigned selectorIndex, bool hasDocumentSecurityOrigin)
             : rule(rule)
-            , selector(selector)
+            , selectorIndex(selectorIndex)
             , hasDocumentSecurityOrigin(hasDocumentSecurityOrigin) 
         { 
         }
         StyleRule* rule;
-        CSSSelector* selector;
+        unsigned selectorIndex;
         bool hasDocumentSecurityOrigin;
     };
     struct Features {
@@ -320,6 +324,7 @@ private:
 
     struct MatchedProperties {
         MatchedProperties() : possiblyPaddedMember(0) { }
+        void reportMemoryUsage(MemoryObjectInfo*) const;
         
         RefPtr<StylePropertySet> properties;
         union {
@@ -347,7 +352,7 @@ private:
     };
 
     static void addMatchedProperties(MatchResult&, const StylePropertySet* properties, StyleRule* = 0, unsigned linkMatchType = SelectorChecker::MatchAll, bool inRegionRule = false);
-    void addElementStyleProperties(MatchResult&, StylePropertySet*, bool isCacheable = true);
+    void addElementStyleProperties(MatchResult&, const StylePropertySet*, bool isCacheable = true);
 
     void matchAllRules(MatchResult&, bool includeSMILProperties);
     void matchUARules(MatchResult&);
@@ -447,6 +452,7 @@ private:
 
     static unsigned computeMatchedPropertiesHash(const MatchedProperties*, unsigned size);
     struct MatchedPropertiesCacheItem {
+        void reportMemoryUsage(MemoryObjectInfo*) const;
         Vector<MatchedProperties> matchedProperties;
         MatchRanges ranges;
         RefPtr<RenderStyle> renderStyle;
@@ -470,7 +476,8 @@ private:
 
     RefPtr<StaticCSSRuleList> m_ruleList;
 
-    HashSet<CSSPropertyID> m_pendingImageProperties;
+    typedef HashMap<CSSPropertyID, RefPtr<CSSValue> > PendingImagePropertyMap;
+    PendingImagePropertyMap m_pendingImageProperties;
 
     OwnPtr<MediaQueryEvaluator> m_medium;
     RefPtr<RenderStyle> m_rootDefaultStyle;
@@ -491,6 +498,7 @@ private:
     bool m_fontDirty;
     bool m_matchAuthorAndUserStyles;
     bool m_sameOriginOnly;
+    bool m_distributedToInsertionPoint;
 
     RefPtr<CSSFontSelector> m_fontSelector;
     Vector<OwnPtr<MediaQueryResult> > m_viewportDependentMediaQueryResults;

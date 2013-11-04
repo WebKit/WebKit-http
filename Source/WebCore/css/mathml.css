@@ -1,13 +1,18 @@
 @namespace "http://www.w3.org/1998/Math/MathML";
 
 math {
+    -webkit-line-box-contain: glyphs replaced;
+    line-height: 0;
+}
+mtext {
+    line-height: 1.0;
+}
+
+math {
     font-family: STIXGeneral, Symbol, "Times New Roman", sans-serif;
     display: inline-block;
     padding: 0px;
-    margin: 0px;
     text-align: left;
-    vertical-align: baseline;
-    line-height: 1.0;
     padding-left: 1px;
     padding-right: 1px;
 }
@@ -21,10 +26,12 @@ math[display="block"] {
     margin-right: auto;
 }
 
-mrow, mfenced {
+mo, mrow, mfenced, mfrac, msub, msup, msubsup, munder, mover, munderover, msqrt, mroot {
     display: inline-block;
+}
+
+mrow, mfenced {
     white-space: nowrap;
-    vertical-align: baseline;
 }
 
 mfenced {
@@ -41,15 +48,6 @@ mi + mrow {
     margin-left: 0.1em;
 }
 
-mfrac {
-    display: inline-block;
-}
-
-msub, msup {
-    display: inline-block;
-    vertical-align: baseline;
-}
-
 msub > * + * {
     vertical-align: sub;
     font-size: 0.75em;
@@ -60,23 +58,12 @@ msup > * + * {
     font-size: 0.75em;
 }
 
-msubsup {
-    display: inline-block;
-    vertical-align: baseline;
-}
-
 msubsup > * {
-    margin: 0px;
     padding: 0px;
 }
 
 msubsup > * + * {
     font-size: 0.75em;
-}
-
-munder, mover, munderover {
-    display: inline-block;
-    vertical-align: baseline;
 }
 
 munderover > * + *, mover > * + *, munder > * + * {
@@ -85,11 +72,6 @@ munderover > * + *, mover > * + *, munder > * + * {
 
 mo, mn, mi, mtext {
     padding: 0px;
-    margin: 0px;
-}
-
-mo {
-    display: inline-block;
 }
 
 math > mo, mrow > mo, mfenced > mo {
@@ -129,7 +111,7 @@ math[mathsize="big"], mstyle[mathsize="big"], mo[mathsize="big"], mn[mathsize="b
 }
  
 annotation, annotation-xml {
-    display:none;
+    display: none;
 }
 
 mphantom {
@@ -144,12 +126,10 @@ merror {
 }
 
 msqrt {
-    display: inline-block;
     white-space: nowrap; /* for the anonymous RenderMathMLRow */
 }
 
 mroot {
-    display: inline-block;
     position: relative;
 }
 
@@ -160,11 +140,7 @@ mroot > * + * {
     top: 0;
     padding-right: 0.4em;
     padding-left: 0.2em;
-    padding-bottom: 0.2em; /* FIXME: change to 0.25em */
-}
-
-mroot > * + mrow, mroot > * + mfenced { /* FIXME: eliminate */
-    padding-bottom: 0.4em;
+    padding-bottom: 0.35em;
 }
 
 mtable {
@@ -179,7 +155,7 @@ mtr {
 
 mtd {
     display: table-cell;
-    padding: 0 0.5ex;
+    padding: 0.5ex;
 }
 
 mtable[columnalign="left"], mtr[columnalign="left"], mtd[columnalign="left"] {

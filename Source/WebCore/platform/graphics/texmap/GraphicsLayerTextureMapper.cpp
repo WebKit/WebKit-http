@@ -84,8 +84,6 @@ void GraphicsLayerTextureMapper::setNeedsDisplay()
 */
 void GraphicsLayerTextureMapper::setContentsNeedsDisplay()
 {
-    if (m_image)
-        setContentsToImage(m_image.get());
     notifyChange(TextureMapperLayer::DisplayChange);
 }
 
@@ -273,6 +271,16 @@ void GraphicsLayerTextureMapper::setDrawsContent(bool value)
 
 /* \reimp (GraphicsLayer.h)
 */
+void GraphicsLayerTextureMapper::setContentsVisible(bool value)
+{
+    if (value == contentsAreVisible())
+        return;
+    notifyChange(TextureMapperLayer::ContentsVisibleChange);
+    GraphicsLayer::setContentsVisible(value);
+}
+
+/* \reimp (GraphicsLayer.h)
+*/
 void GraphicsLayerTextureMapper::setContentsOpaque(bool value)
 {
     if (value == contentsOpaque())
@@ -315,14 +323,21 @@ void GraphicsLayerTextureMapper::setContentsRect(const IntRect& value)
 */
 void GraphicsLayerTextureMapper::setContentsToImage(Image* image)
 {
-    if (image == m_image)
-        return;
+    if (image) {
+        // Make the decision about whether the image has changed.
+        // This code makes the assumption that pointer equality on a NativeImagePtr is a valid way to tell if the image is changed.
+        // This assumption is true in Qt, GTK and EFL.
+        NativeImagePtr newNativeImagePtr = image->nativeImageForCurrentFrame();
+        if (!newNativeImagePtr)
+            return;
 
-    m_image = image;
-    if (m_image) {
-        RefPtr<TextureMapperTiledBackingStore> backingStore = TextureMapperTiledBackingStore::create();
-        backingStore->setContentsToImage(image);
-        m_compositedImage = backingStore;
+        if (newNativeImagePtr == m_compositedNativeImagePtr)
+            return;
+
+        m_compositedNativeImagePtr = newNativeImagePtr;
+        if (!m_compositedImage)
+            m_compositedImage = TextureMapperTiledBackingStore::create();
+        m_compositedImage->setContentsToImage(image);
     } else
         m_compositedImage = 0;
 
@@ -368,7 +383,7 @@ bool GraphicsLayerTextureMapper::addAnimation(const KeyframeValueList& valueList
     if (valueList.property() == AnimatedPropertyWebkitTransform)
         listsMatch = validateTransformOperations(valueList, hasBigRotation) >= 0;
 
-    m_animations.add(keyframesName, GraphicsLayerAnimation(valueList, boxSize, anim, timeOffset, listsMatch));
+    m_animations.add(GraphicsLayerAnimation(keyframesName, valueList, boxSize, anim, timeOffset, listsMatch));
     notifyChange(TextureMapperLayer::AnimationChange);
     m_animationStartedTimer.startOneShot(0);
     return true;

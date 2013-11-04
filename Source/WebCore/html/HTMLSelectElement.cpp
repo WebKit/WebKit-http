@@ -378,7 +378,7 @@ void HTMLSelectElement::childrenChanged(bool changedByParser, Node* beforeChange
     HTMLFormControlElementWithState::childrenChanged(changedByParser, beforeChange, afterChange, childCountDelta);
     
     if (AXObjectCache::accessibilityEnabled() && renderer())
-        renderer()->document()->axObjectCache()->childrenChanged(renderer());
+        renderer()->document()->axObjectCache()->childrenChanged(this);
 }
 
 void HTMLSelectElement::optionElementChildrenChanged()
@@ -387,7 +387,7 @@ void HTMLSelectElement::optionElementChildrenChanged()
     setNeedsValidityCheck();
 
     if (AXObjectCache::accessibilityEnabled() && renderer())
-        renderer()->document()->axObjectCache()->childrenChanged(renderer());
+        renderer()->document()->axObjectCache()->childrenChanged(this);
 }
 
 void HTMLSelectElement::accessKeyAction(bool sendMouseEvents)
@@ -1292,11 +1292,13 @@ void HTMLSelectElement::listBoxDefaultEventHandler(Event* event)
         IntPoint localOffset = roundedIntPoint(renderer()->absoluteToLocal(mouseEvent->absoluteLocation(), false, true));
         int listIndex = toRenderListBox(renderer())->listIndexAtOffset(toSize(localOffset));
         if (listIndex >= 0) {
+            if (!disabled()) {
 #if PLATFORM(MAC) || (PLATFORM(CHROMIUM) && OS(DARWIN))
-            updateSelectedState(listIndex, mouseEvent->metaKey(), mouseEvent->shiftKey());
+                updateSelectedState(listIndex, mouseEvent->metaKey(), mouseEvent->shiftKey());
 #else
-            updateSelectedState(listIndex, mouseEvent->ctrlKey(), mouseEvent->shiftKey());
+                updateSelectedState(listIndex, mouseEvent->ctrlKey(), mouseEvent->shiftKey());
 #endif
+            }
             if (Frame* frame = document()->frame())
                 frame->eventHandler()->setMouseDownMayStartAutoscroll();
 
@@ -1310,13 +1312,15 @@ void HTMLSelectElement::listBoxDefaultEventHandler(Event* event)
         IntPoint localOffset = roundedIntPoint(renderer()->absoluteToLocal(mouseEvent->absoluteLocation(), false, true));
         int listIndex = toRenderListBox(renderer())->listIndexAtOffset(toSize(localOffset));
         if (listIndex >= 0) {
-            if (m_multiple) {
-                setActiveSelectionEndIndex(listIndex);
-                updateListBoxSelection(false);
-            } else {
-                setActiveSelectionAnchorIndex(listIndex);
-                setActiveSelectionEndIndex(listIndex);
-                updateListBoxSelection(true);
+            if (!disabled()) {
+                if (m_multiple) {
+                    setActiveSelectionEndIndex(listIndex);
+                    updateListBoxSelection(false);
+                } else {
+                    setActiveSelectionAnchorIndex(listIndex);
+                    setActiveSelectionEndIndex(listIndex);
+                    updateListBoxSelection(true);
+                }
             }
             event->setDefaultHandled();
         }
@@ -1586,21 +1590,5 @@ unsigned HTMLSelectElement::length() const
 
     return options;
 }
-
-#ifndef NDEBUG
-
-HTMLSelectElement* toHTMLSelectElement(Node* node)
-{
-    ASSERT(!node || node->hasTagName(selectTag));
-    return static_cast<HTMLSelectElement*>(node);
-}
-
-const HTMLSelectElement* toHTMLSelectElement(const Node* node)
-{
-    ASSERT(!node || node->hasTagName(selectTag));
-    return static_cast<const HTMLSelectElement*>(node);
-}
-
-#endif
 
 } // namespace

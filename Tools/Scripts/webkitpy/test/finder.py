@@ -25,7 +25,6 @@
 
 import logging
 import re
-import sys
 
 
 _log = logging.getLogger(__name__)
@@ -77,9 +76,13 @@ class Finder(object):
     def __init__(self, filesystem):
         self.filesystem = filesystem
         self.trees = []
+        self._names_to_skip = []
 
     def add_tree(self, top_directory, starting_subdirectory=None):
         self.trees.append(_DirectoryTree(self.filesystem, top_directory, starting_subdirectory))
+
+    def skip(self, names, reason, bugid):
+        self._names_to_skip.append(tuple([names, reason, bugid]))
 
     def additional_paths(self, paths):
         return [tree.top_directory for tree in self.trees if tree.top_directory not in paths]
@@ -101,18 +104,15 @@ class Finder(object):
                 return tree.to_module(path)
         return None
 
-    def find_names(self, args, skip_integrationtests, find_all, skip_if_parallel=True):
-        suffixes = ['_unittest.py']
-        if not skip_integrationtests:
-            suffixes.append('_integrationtest.py')
-
+    def find_names(self, args, find_all):
+        suffixes = ['_unittest.py', '_integrationtest.py']
         if args:
             names = []
             for arg in args:
                 names.extend(self._find_names_for_arg(arg, suffixes))
             return names
 
-        return self._default_names(suffixes, find_all, skip_if_parallel)
+        return self._default_names(suffixes, find_all)
 
     def _find_names_for_arg(self, arg, suffixes):
         realpath = self.filesystem.realpath(arg)
@@ -145,7 +145,7 @@ class Finder(object):
                 return tree.find_modules(suffixes, path)
         return []
 
-    def _default_names(self, suffixes, find_all, skip_if_parallel):
+    def _default_names(self, suffixes, find_all):
         modules = []
         for tree in self.trees:
             modules.extend(tree.find_modules(suffixes))
@@ -154,16 +154,9 @@ class Finder(object):
         for module in modules:
             _log.debug("Found: %s" % module)
 
-        # FIXME: Figure out how to move this to test-webkitpy in order to to make this file more generic.
         if not find_all:
-            slow_tests = ('webkitpy.common.checkout.scm.scm_unittest',)
-            self._exclude(modules, slow_tests, 'are really, really slow', 31818)
-
-            if sys.platform == 'win32':
-                win32_blacklist = ('webkitpy.common.checkout',
-                                   'webkitpy.common.config',
-                                   'webkitpy.tool')
-                self._exclude(modules, win32_blacklist, 'fail horribly on win32', 54526)
+            for (names, reason, bugid) in self._names_to_skip:
+                self._exclude(modules, names, reason, bugid)
 
         return modules
 

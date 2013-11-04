@@ -167,6 +167,7 @@ namespace WebCore {
 
     String missingPluginText();
     String crashedPluginText();
+    String blockedPluginByContentSecurityPolicyText();
     String insecurePluginVersionText();
     String multipleFileUploadText(unsigned numberOfFiles);
     String unknownFileSizeText();
@@ -218,6 +219,9 @@ namespace WebCore {
     String dateFormatYearText();
     String dateFormatMonthText();
     String dateFormatDayInMonthText();
+#endif
+#if USE(SOUP)
+    String unacceptableTLSCertificate();
 #endif
 
 #if !PLATFORM(CHROMIUM)

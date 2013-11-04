@@ -52,9 +52,9 @@ public:
     
     void destroyLeftoverChildren();
 
-    RenderObject* removeChildNode(RenderObject* owner, RenderObject*, bool fullRemove = true);
-    void appendChildNode(RenderObject* owner, RenderObject*, bool fullAppend = true);
-    void insertChildNode(RenderObject* owner, RenderObject* child, RenderObject* before, bool fullInsert = true);
+    RenderObject* removeChildNode(RenderObject* owner, RenderObject*, bool notifyRenderer = true);
+    void appendChildNode(RenderObject* owner, RenderObject*, bool notifyRenderer = true);
+    void insertChildNode(RenderObject* owner, RenderObject* child, RenderObject* before, bool notifyRenderer = true);
 
     void updateBeforeAfterContent(RenderObject* owner, PseudoId type, const RenderObject* styledObject = 0);
     RenderObject* beforePseudoElementRenderer(const RenderObject* owner) const;

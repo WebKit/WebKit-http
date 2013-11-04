@@ -46,11 +46,11 @@ class tst_QWebFrame : public QObject
 public:
     bool eventFilter(QObject* watched, QEvent* event);
 
-public slots:
+public Q_SLOTS:
     void init();
     void cleanup();
 
-private slots:
+private Q_SLOTS:
     void horizontalScrollAfterBack();
     void symmetricUrl();
     void progressSignal();
@@ -90,6 +90,7 @@ private slots:
     void setUrlToEmpty();
     void setUrlToInvalid();
     void setUrlHistory();
+    void setUrlUsingStateObject();
     void setUrlSameUrl();
     void setUrlThenLoads_data();
     void setUrlThenLoads();
@@ -243,7 +244,7 @@ protected:
         return 0;
     }
 
-private slots:
+private Q_SLOTS:
     void continueRedirect()
     {
         emit metaDataChanged();
@@ -1309,6 +1310,48 @@ void tst_QWebFrame::setUrlHistory()
     QCOMPARE(m_page->history()->count(), 2);
 }
 
+void tst_QWebFrame::setUrlUsingStateObject()
+{
+    const QUrl aboutBlank("about:blank");
+    QUrl url;
+    QWebFrame* frame = m_page->mainFrame();
+    QSignalSpy urlChangedSpy(frame, SIGNAL(urlChanged(QUrl)));
+    int expectedUrlChangeCount = 0;
+
+    QCOMPARE(m_page->history()->count(), 0);
+
+    url = QUrl("qrc:/test1.html");
+    frame->setUrl(url);
+    waitForSignal(m_page, SIGNAL(loadFinished(bool)));
+    expectedUrlChangeCount++;
+    QCOMPARE(urlChangedSpy.count(), expectedUrlChangeCount);
+    QCOMPARE(frame->url(), url);
+    QCOMPARE(m_page->history()->count(), 1);
+
+    frame->evaluateJavaScript("window.history.pushState(null,'push', 'navigate/to/here')");
+    expectedUrlChangeCount++;
+    QCOMPARE(urlChangedSpy.count(), expectedUrlChangeCount);
+    QCOMPARE(frame->url(), QUrl("qrc:/navigate/to/here"));
+    QCOMPARE(m_page->history()->count(), 2);
+    QVERIFY(m_page->history()->canGoBack());
+
+    frame->evaluateJavaScript("window.history.replaceState(null,'replace', 'another/location')");
+    expectedUrlChangeCount++;
+    QCOMPARE(urlChangedSpy.count(), expectedUrlChangeCount);
+    QCOMPARE(frame->url(), QUrl("qrc:/navigate/to/another/location"));
+    QCOMPARE(m_page->history()->count(), 2);
+    QVERIFY(!m_page->history()->canGoForward());
+    QVERIFY(m_page->history()->canGoBack());
+
+    frame->evaluateJavaScript("window.history.back()");
+    QTest::qWait(100);
+    expectedUrlChangeCount++;
+    QCOMPARE(urlChangedSpy.count(), expectedUrlChangeCount);
+    QCOMPARE(frame->url(), QUrl("qrc:/test1.html"));
+    QVERIFY(m_page->history()->canGoForward());
+    QVERIFY(!m_page->history()->canGoBack());
+}
+
 void tst_QWebFrame::setUrlSameUrl()
 {
     const QUrl url1("qrc:/test1.html");
@@ -1446,10 +1489,10 @@ public:
 
     URLSetter(QWebFrame*, Signal, Type, const QUrl&);
 
-public slots:
+public Q_SLOTS:
     void execute();
 
-signals:
+Q_SIGNALS:
     void finished();
 
 private:

@@ -106,6 +106,9 @@ namespace WebCore {
     class Frame;
     class FrameView;
     class HTMLPlugInElement;
+#if ENABLE(WEB_INTENTS)
+    class Intent;
+#endif
     class KeyboardEvent;
     class Page;
     class PrintContext;
@@ -306,7 +309,7 @@ public:
     bool useFixedLayout() const { return m_useFixedLayout; }
     void setFixedLayoutSize(const WebCore::IntSize&);
 
-    void setPaginationMode(uint32_t /* WebCore::Page::Pagination::Mode */);
+    void setPaginationMode(uint32_t /* WebCore::Pagination::Mode */);
     void setPaginationBehavesLikeColumns(bool);
     void setPageLength(double);
     void setGapBetweenPages(double);
@@ -346,9 +349,7 @@ public:
     WebCore::IntPoint screenToWindow(const WebCore::IntPoint&);
     WebCore::IntRect windowToScreen(const WebCore::IntRect&);
 
-    PassRefPtr<WebImage> snapshotInViewCoordinates(const WebCore::IntRect&, ImageOptions);
-    PassRefPtr<WebImage> snapshotInDocumentCoordinates(const WebCore::IntRect&, ImageOptions);
-    PassRefPtr<WebImage> scaledSnapshotInDocumentCoordinates(const WebCore::IntRect&, double scaleFactor, ImageOptions);
+    PassRefPtr<WebImage> scaledSnapshotWithOptions(const WebCore::IntRect&, double scaleFactor, SnapshotOptions);
 
     static const WebEvent* currentEvent();
 
@@ -478,7 +479,7 @@ public:
 #endif
 
 #if ENABLE(WEB_INTENTS)
-    void deliverIntentToFrame(uint64_t frameID, const IntentData&);
+    void deliverCoreIntentToFrame(uint64_t frameID, WebCore::Intent*);
 #endif
 
     void replaceSelectionWithText(WebCore::Frame*, const String&);
@@ -570,6 +571,16 @@ public:
     uint64_t nativeWindowHandle() { return m_nativeWindowHandle; }
 #endif
 
+    bool asynchronousPluginInitializationEnabled() const { return m_asynchronousPluginInitializationEnabled; }
+    void setAsynchronousPluginInitializationEnabled(bool enabled) { m_asynchronousPluginInitializationEnabled = enabled; }
+    bool asynchronousPluginInitializationEnabledForAllPlugins() const { return m_asynchronousPluginInitializationEnabledForAllPlugins; }
+    void setAsynchronousPluginInitializationEnabledForAllPlugins(bool enabled) { m_asynchronousPluginInitializationEnabledForAllPlugins = enabled; }
+    bool artificialPluginInitializationDelayEnabled() const { return m_artificialPluginInitializationDelayEnabled; }
+    void setArtificialPluginInitializationDelayEnabled(bool enabled) { m_artificialPluginInitializationDelayEnabled = enabled; }
+
+    bool scrollingPerformanceLoggingEnabled() const { return m_scrollingPerformanceLoggingEnabled; }
+    void setScrollingPerformanceLoggingEnabled(bool);
+
 private:
     WebPage(uint64_t pageID, const WebPageCreationParameters&);
 
@@ -633,6 +644,10 @@ private:
     void contextMenuHidden() { m_isShowingContextMenu = false; }
 #endif
 
+#if ENABLE(WEB_INTENTS)
+    void deliverIntentToFrame(uint64_t frameID, const IntentData&);
+#endif
+
     static void scroll(WebCore::Page*, WebCore::ScrollDirection, WebCore::ScrollGranularity);
     static void logicalScroll(WebCore::Page*, WebCore::ScrollLogicalDirection, WebCore::ScrollGranularity);
 
@@ -650,6 +665,9 @@ private:
     void viewWillEndLiveResize();
 
     void getContentsAsString(uint64_t callbackID);
+#if ENABLE(MHTML)
+    void getContentsAsMHTMLData(uint64_t callbackID, bool useBinaryEncoding);
+#endif
     void getMainResourceDataOfFrame(uint64_t frameID, uint64_t callbackID);
     void getResourceDataFromFrame(uint64_t frameID, const String& resourceURL, uint64_t callbackID);
     void getRenderTreeExternalRepresentation(uint64_t callbackID);
@@ -758,6 +776,12 @@ private:
     bool m_isClosed;
 
     bool m_tabToLinks;
+    
+    bool m_asynchronousPluginInitializationEnabled;
+    bool m_asynchronousPluginInitializationEnabledForAllPlugins;
+    bool m_artificialPluginInitializationDelayEnabled;
+
+    bool m_scrollingPerformanceLoggingEnabled;
 
 #if PLATFORM(MAC)
     // Whether the containing window is visible or not.

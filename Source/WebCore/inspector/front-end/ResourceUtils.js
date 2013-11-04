@@ -29,103 +29,6 @@
  */
 
 /**
- * @constructor
- * @param {string} url
- */
-WebInspector.ParsedURL = function(url)
-{
-    this.isValid = false;
-    this.url = url;
-    this.scheme = "";
-    this.host = "";
-    this.port = "";
-    this.path = "";
-    this.queryParams = "";
-    this.fragment = "";
-    this.folderPathComponents = "";
-    this.lastPathComponent = "";
-
-    // RegExp groups:
-    // 1 - scheme
-    // 2 - hostname
-    // 3 - ?port
-    // 4 - ?path
-    // 5 - ?fragment
-    var match = url.match(/^([^:]+):\/\/([^\/:]*)(?::([\d]+))?(?:(\/[^#]*)(?:#(.*))?)?$/i);
-    if (match) {
-        this.isValid = true;
-        this.scheme = match[1].toLowerCase();
-        this.host = match[2];
-        this.port = match[3];
-        this.path = match[4] || "/";
-        this.fragment = match[5];
-    } else {
-        if (this.url.startsWith("data:")) {
-            this.scheme = "data";
-            return;
-        }
-        if (this.url === "about:blank") {
-            this.scheme = "about";
-            return;
-        }
-        this.path = this.url;
-    }
-
-    if (this.path) {
-        // First cut the query params.
-        var path = this.path;
-        var indexOfQuery = path.indexOf("?");
-        if (indexOfQuery !== -1) {
-            this.queryParams = path.substring(indexOfQuery + 1)
-            path = path.substring(0, indexOfQuery);
-        }
-
-        // Then take last path component.
-        var lastSlashIndex = path.lastIndexOf("/");
-        if (lastSlashIndex !== -1) {
-            this.folderPathComponents = path.substring(0, lastSlashIndex);
-            this.lastPathComponent = path.substring(lastSlashIndex + 1);
-        } else
-            this.lastPathComponent = path;
-    }
-}
-
-WebInspector.ParsedURL.prototype = {
-    get displayName()
-    {
-        if (this._displayName)
-            return this._displayName;
-
-        if (this.scheme === "data") {
-            this._displayName = this.url.trimEnd(20);
-            return this._displayName;
-        }
-
-        if (this.url === "about:blank")
-            return this.url;
-
-        this._displayName = this.lastPathComponent;
-        if (!this._displayName)
-            this._displayName = WebInspector.displayDomain(this.host);
-        if (!this._displayName && this.url)
-            this._displayName = this.url.trimURL(WebInspector.inspectedPageDomain ? WebInspector.inspectedPageDomain : "");
-        if (this._displayName === "/")
-            this._displayName = this.url;
-        return this._displayName;
-    }
-}
-/**
- * @return {?WebInspector.ParsedURL}
- */
-String.prototype.asParsedURL = function()
-{
-    var parsedURL = new WebInspector.ParsedURL(this.toString());
-    if (parsedURL.isValid)
-        return parsedURL;
-    return null;
-}
-
-/**
  * @param {string} url
  * @return {?WebInspector.Resource}
  */
@@ -140,16 +43,6 @@ WebInspector.resourceForURL = function(url)
 WebInspector.forAllResources = function(callback)
 {
      WebInspector.resourceTreeModel.forAllResources(callback);
-}
-
-/**
- * @param {string} host
- */
-WebInspector.displayDomain = function(host)
-{
-    if (host && (!WebInspector.inspectedPageDomain || (WebInspector.inspectedPageDomain && host !== WebInspector.inspectedPageDomain)))
-        return host;
-    return "";
 }
 
 /**
@@ -182,7 +75,7 @@ WebInspector.displayNameForURL = function(url)
 
 /**
  * @param {string} string
- * @param {function(string,string,string=):Node} linkifier
+ * @param {function(string,string,number=):Node} linkifier
  * @return {DocumentFragment}
  */
 WebInspector.linkifyStringAsFragmentWithCustomLinkifier = function(string, linkifier)
@@ -204,10 +97,14 @@ WebInspector.linkifyStringAsFragmentWithCustomLinkifier = function(string, linki
         var title = linkString;
         var realURL = (linkString.startsWith("www.") ? "http://" + linkString : linkString);
         var lineColumnMatch = lineColumnRegEx.exec(realURL);
-        if (lineColumnMatch)
+        var lineNumber;
+        if (lineColumnMatch) {
             realURL = realURL.substring(0, realURL.length - lineColumnMatch[0].length);
+            lineNumber = parseInt(lineColumnMatch[1], 10);
+            lineNumber = isNaN(lineNumber) ? undefined : lineNumber;
+        }
 
-        var linkNode = linkifier(title, realURL, lineColumnMatch ? lineColumnMatch[1] : undefined);
+        var linkNode = linkifier(title, realURL, lineNumber);
         container.appendChild(linkNode);
         string = string.substring(linkIndex + linkString.length, string.length);
     }
@@ -237,7 +134,7 @@ WebInspector.linkifyStringAsFragment = function(string)
     /**
      * @param {string} title
      * @param {string} url
-     * @param {string=} lineNumber
+     * @param {number=} lineNumber
      * @return {Node}
      */
     function linkifier(title, url, lineNumber)
@@ -274,7 +171,7 @@ WebInspector.linkifyURLAsNode = function(url, linkText, classes, isExternal, too
     classes += isExternal ? "webkit-html-external-link" : "webkit-html-resource-link";
 
     var a = document.createElement("a");
-    a.href = url;
+    a.href = sanitizeHref(url);
     a.className = classes;
     if (typeof tooltipText === "undefined")
         a.title = url;
@@ -328,88 +225,4 @@ WebInspector.linkifyRequestAsNode = function(request, classes)
     anchor.preferredPanel = "network";
     anchor.requestId  = request.requestId;
     return anchor;
-}
-
-/**
- * @return {?string} null if the specified resource MUST NOT have a URL (e.g. "javascript:...")
- */
-WebInspector.resourceURLForRelatedNode = function(node, url)
-{
-    if (!url || url.indexOf("://") > 0)
-        return url;
-
-    if (url.trim().startsWith("javascript:"))
-        return null; // Do not provide a resource URL for security.
-
-    for (var frameOwnerCandidate = node; frameOwnerCandidate; frameOwnerCandidate = frameOwnerCandidate.parentNode) {
-        if (frameOwnerCandidate.documentURL) {
-            var result = WebInspector.completeURL(frameOwnerCandidate.documentURL, url);
-            if (result)
-                return result;
-            break;
-        }
-    }
-
-    // documentURL not found or has bad value
-    var resourceURL = url;
-    function callback(resource)
-    {
-        if (resource.parsedURL.path === url) {
-            resourceURL = resource.url;
-            return true;
-        }
-    }
-    WebInspector.forAllResources(callback);
-    return resourceURL;
-}
-
-/**
- * @param {string} baseURL
- * @param {string} href
- * @return {?string}
- */
-WebInspector.completeURL = function(baseURL, href)
-{
-    if (href) {
-        // Return absolute URLs as-is.
-        var parsedHref = href.asParsedURL();
-        if (parsedHref && parsedHref.scheme)
-            return href;
-
-        // Return special URLs as-is.
-        var trimmedHref = href.trim();
-        if (trimmedHref.startsWith("data:") || trimmedHref.startsWith("javascript:"))
-            return href;
-    }
-
-    var parsedURL = baseURL.asParsedURL();
-    if (parsedURL) {
-        var path = href;
-        if (path.charAt(0) !== "/") {
-            var basePath = parsedURL.path;
-
-            // Trim off the query part of the basePath.
-            var questionMarkIndex = basePath.indexOf("?");
-            if (questionMarkIndex > 0)
-                basePath = basePath.substring(0, questionMarkIndex);
-            // A href of "?foo=bar" implies "basePath?foo=bar".
-            // With "basePath?a=b" and "?foo=bar" we should get "basePath?foo=bar".
-            var prefix;
-            if (path.charAt(0) === "?") {
-                var basePathCutIndex = basePath.indexOf("?");
-                if (basePathCutIndex !== -1)
-                    prefix = basePath.substring(0, basePathCutIndex);
-                else
-                    prefix = basePath;
-            } else
-                prefix = basePath.substring(0, basePath.lastIndexOf("/")) + "/";
-
-            path = prefix + path;
-        } else if (path.length > 1 && path.charAt(1) === "/") {
-            // href starts with "//" which is a full URL with the protocol dropped (use the baseURL protocol).
-            return parsedURL.scheme + ":" + path;
-        }
-        return parsedURL.scheme + "://" + parsedURL.host + (parsedURL.port ? (":" + parsedURL.port) : "") + path;
-    }
-    return null;
 }

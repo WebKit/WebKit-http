@@ -28,7 +28,7 @@
 
 #if ENABLE(TEXT_AUTOSIZING)
 
-#include "LayoutTypes.h"
+#include "IntSize.h"
 #include <wtf/Noncopyable.h>
 #include <wtf/PassOwnPtr.h>
 #include <wtf/PassRefPtr.h>
@@ -36,7 +36,7 @@
 namespace WebCore {
 
 class Document;
-class RenderBlock;
+class RenderBox;
 class RenderObject;
 class RenderStyle;
 class RenderText;
@@ -51,16 +51,19 @@ public:
 
     bool processSubtree(RenderObject* layoutRoot);
 
+    static float computeAutosizedFontSize(float specifiedSize, float multiplier);
+
 private:
     explicit TextAutosizer(Document*);
 
-    void processBlock(RenderBlock*, const IntSize& windowSize);
-    void processText(RenderText*, float multiplier);
+    void processBox(RenderBox*, const IntSize& windowSize, const IntSize& layoutSize);
+    void setMultiplier(RenderObject*, float);
 
-    typedef bool (*RenderObjectFilter)(const RenderObject*);
-    static bool treatAsInline(const RenderObject*);
+    static bool isNotAnAutosizingContainer(const RenderObject*);
 
-    RenderObject* traverseNext(RenderObject* current, const RenderObject* stayWithin, RenderObjectFilter = 0);
+    typedef bool (*RenderObjectFilterFunctor)(const RenderObject*);
+    // Use to traverse the tree of descendants, excluding any subtrees within that whose root doesn't pass the filter.
+    static RenderObject* nextInPreOrderMatchingFilter(RenderObject* current, const RenderObject* stayWithin, RenderObjectFilterFunctor);
 
     Document* m_document;
 };

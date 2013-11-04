@@ -10,8 +10,8 @@ function sendKey(input, keyName) {
 
 function finishTest() {
     console.log(pickerWindow.pagePopupController);
-    pickerWindow.document.getElementById('main').removeEventListener('webkitTransitionEnd', finishTest);
-    testRunner.notifyDone();
+    pickerWindow.removeEventListener('resize', finishTest);
+    setTimeout(function() {testRunner.notifyDone();}, 0);
 }
 
 console.log('Check if window.pagePopupController exists for a page-popup window.');
@@ -20,9 +20,11 @@ testRunner.waitUntilDone();
 if (window.internals)
     internals.settings.setEnableMockPagePopup(true);
 
-sendKey(document.getElementById('date'), 'Down');
+var dateInput = document.getElementById('date');
+dateInput.offsetTop;
+sendKey(dateInput, 'Down');
 var pickerWindow = document.getElementById('mock-page-popup').contentWindow;
-pickerWindow.document.getElementById('main').addEventListener('webkitTransitionEnd', finishTest, false);
+pickerWindow.addEventListener('resize', finishTest, false);
 </script>
 </body>
 

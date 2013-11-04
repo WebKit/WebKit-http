@@ -24,12 +24,13 @@
 
 #include "config.h"
 
-#include "cc/CCResourceProvider.h"
+#include "CCResourceProvider.h"
 
+#include "CCGraphicsContext.h"
+#include "CCSingleThreadProxy.h" // For DebugScopedSetImplThread
 #include "CompositorFakeWebGraphicsContext3D.h"
 #include "Extensions3DChromium.h"
-#include "cc/CCGraphicsContext.h"
-#include "cc/CCSingleThreadProxy.h" // For DebugScopedSetImplThread
+#include "FakeWebCompositorOutputSurface.h"
 #include <gtest/gtest.h>
 #include <public/WebGraphicsContext3D.h>
 #include <wtf/HashMap.h>
@@ -41,9 +42,98 @@ using namespace WebKit;
 
 namespace {
 
+size_t textureSize(const IntSize& size, WGC3Denum format)
+{
+    unsigned int componentsPerPixel = 4;
+    unsigned int bytesPerComponent = 1;
+    GraphicsContext3D::computeFormatAndTypeParameters(format, GraphicsContext3D::UNSIGNED_BYTE, &componentsPerPixel, &bytesPerComponent);
+    return size.width() * size.height() * componentsPerPixel * bytesPerComponent;
+}
+
+struct Texture {
+    Texture(const IntSize& size, WGC3Denum format)
+        : size(size)
+        , format(format)
+        , data(adoptArrayPtr(new uint8_t[textureSize(size, format)]))
+    {
+    }
+
+    IntSize size;
+    WGC3Denum format;
+    OwnArrayPtr<uint8_t> data;
+};
+
+// Shared data between multiple ResourceProviderContext. This contains mailbox
+// contents as well as information about sync points.
+class ContextSharedData {
+public:
+    static PassOwnPtr<ContextSharedData> create() { return adoptPtr(new ContextSharedData()); }
+
+    unsigned insertSyncPoint() { return m_nextSyncPoint++; }
+
+    void genMailbox(WGC3Dbyte* mailbox)
+    {
+        memset(mailbox, 0, sizeof(WGC3Dbyte[64]));
+        memcpy(mailbox, &m_nextMailBox, sizeof(m_nextMailBox));
+        ++m_nextMailBox;
+    }
+
+    void produceTexture(const WGC3Dbyte* mailboxName, unsigned syncPoint, PassOwnPtr<Texture> texture)
+    {
+        unsigned mailbox = 0;
+        memcpy(&mailbox, mailboxName, sizeof(mailbox));
+        ASSERT(mailbox && mailbox < m_nextMailBox);
+        m_textures.set(mailbox, texture);
+        ASSERT(m_syncPointForMailbox.get(mailbox) < syncPoint);
+        m_syncPointForMailbox.set(mailbox, syncPoint);
+    }
+
+    PassOwnPtr<Texture> consumeTexture(const WGC3Dbyte* mailboxName, unsigned syncPoint)
+    {
+        unsigned mailbox = 0;
+        memcpy(&mailbox, mailboxName, sizeof(mailbox));
+        ASSERT(mailbox && mailbox < m_nextMailBox);
+
+        // If the latest sync point the context has waited on is before the sync
+        // point for when the mailbox was set, pretend we never saw that
+        // produceTexture.
+        if (m_syncPointForMailbox.get(mailbox) < syncPoint)
+            return nullptr;
+        return m_textures.take(mailbox);
+    }
+
+private:
+    ContextSharedData()
+        : m_nextSyncPoint(1)
+        , m_nextMailBox(1)
+    { }
+
+    unsigned m_nextSyncPoint;
+    unsigned m_nextMailBox;
+    typedef HashMap<unsigned, OwnPtr<Texture> > TextureMap;
+    TextureMap m_textures;
+    HashMap<unsigned, unsigned> m_syncPointForMailbox;
+};
+
 class ResourceProviderContext : public CompositorFakeWebGraphicsContext3D {
 public:
-    static PassOwnPtr<ResourceProviderContext> create() { return adoptPtr(new ResourceProviderContext(Attributes())); }
+    static PassOwnPtr<ResourceProviderContext> create(ContextSharedData* sharedData) { return adoptPtr(new ResourceProviderContext(Attributes(), sharedData)); }
+
+    virtual unsigned insertSyncPoint()
+    {
+        unsigned syncPoint = m_sharedData->insertSyncPoint();
+        // Commit the produceTextureCHROMIUM calls at this point, so that
+        // they're associated with the sync point.
+        for (PendingProduceTextureList::iterator it = m_pendingProduceTextures.begin(); it != m_pendingProduceTextures.end(); ++it)
+            m_sharedData->produceTexture((*it)->mailbox, syncPoint, (*it)->texture.release());
+        m_pendingProduceTextures.clear();
+        return syncPoint;
+    }
+
+    virtual void waitSyncPoint(unsigned syncPoint)
+    {
+        m_lastWaitedSyncPoint = std::max(syncPoint, m_lastWaitedSyncPoint);
+    }
 
     virtual void bindTexture(WGC3Denum target, WebGLId texture)
     {
@@ -112,6 +202,29 @@ public:
         setPixels(xoffset, yoffset, width, height, pixels);
     }
 
+    virtual void genMailboxCHROMIUM(WGC3Dbyte* mailbox) { return m_sharedData->genMailbox(mailbox); }
+    virtual void produceTextureCHROMIUM(WGC3Denum target, const WGC3Dbyte* mailbox)
+    {
+        ASSERT(m_currentTexture);
+        ASSERT(target == GraphicsContext3D::TEXTURE_2D);
+
+        // Delay movind the texture into the mailbox until the next
+        // insertSyncPoint, so that it is not visible to other contexts that
+        // haven't waited on that sync point.
+        OwnPtr<PendingProduceTexture> pending(adoptPtr(new PendingProduceTexture));
+        memcpy(pending->mailbox, mailbox, sizeof(pending->mailbox));
+        pending->texture = m_textures.take(m_currentTexture);
+        m_textures.set(m_currentTexture, nullptr);
+        m_pendingProduceTextures.append(pending.release());
+    }
+
+    virtual void consumeTextureCHROMIUM(WGC3Denum target, const WGC3Dbyte* mailbox)
+    {
+        ASSERT(m_currentTexture);
+        ASSERT(target == GraphicsContext3D::TEXTURE_2D);
+        m_textures.set(m_currentTexture, m_sharedData->consumeTexture(mailbox, m_lastWaitedSyncPoint));
+    }
+
     void getPixels(const IntSize& size, WGC3Denum format, uint8_t* pixels)
     {
         ASSERT(m_currentTexture);
@@ -127,34 +240,15 @@ public:
         return m_textures.size();
     }
 
-    static size_t textureSize(const IntSize& size, WGC3Denum format)
-    {
-        unsigned int componentsPerPixel = 4;
-        unsigned int bytesPerComponent = 1;
-        GraphicsContext3D::computeFormatAndTypeParameters(format, GraphicsContext3D::UNSIGNED_BYTE, &componentsPerPixel, &bytesPerComponent);
-        return size.width() * size.height() * componentsPerPixel * bytesPerComponent;
-    }
-
 protected:
-    explicit ResourceProviderContext(const Attributes& attrs)
+    ResourceProviderContext(const Attributes& attrs, ContextSharedData* sharedData)
         : CompositorFakeWebGraphicsContext3D(attrs)
+        , m_sharedData(sharedData)
         , m_currentTexture(0)
+        , m_lastWaitedSyncPoint(0)
     { }
 
 private:
-    struct Texture {
-        Texture(const IntSize& size_, WGC3Denum format_)
-            : size(size_)
-            , format(format_)
-            , data(adoptArrayPtr(new uint8_t[textureSize(size, format)]))
-        {
-        }
-
-        IntSize size;
-        WGC3Denum format;
-        OwnArrayPtr<uint8_t> data;
-    };
-
     void allocateTexture(const IntSize& size, WGC3Denum format)
     {
         ASSERT(m_currentTexture);
@@ -181,58 +275,81 @@ private:
     }
 
     typedef HashMap<WebGLId, OwnPtr<Texture> > TextureMap;
+    struct PendingProduceTexture {
+        WGC3Dbyte mailbox[64];
+        OwnPtr<Texture> texture;
+    };
+    typedef Deque<OwnPtr<PendingProduceTexture> > PendingProduceTextureList;
+    ContextSharedData* m_sharedData;
     WebGLId m_currentTexture;
     TextureMap m_textures;
+    unsigned m_lastWaitedSyncPoint;
+    PendingProduceTextureList m_pendingProduceTextures;
 };
 
-class CCResourceProviderTest : public testing::Test {
+class CCResourceProviderTest : public testing::TestWithParam<CCResourceProvider::ResourceType> {
 public:
     CCResourceProviderTest()
-        : m_context(CCGraphicsContext::create3D(ResourceProviderContext::create()))
+        : m_sharedData(ContextSharedData::create())
+        , m_context(FakeWebCompositorOutputSurface::create(ResourceProviderContext::create(m_sharedData.get())))
         , m_resourceProvider(CCResourceProvider::create(m_context.get()))
     {
+        m_resourceProvider->setDefaultResourceType(GetParam());
     }
 
     ResourceProviderContext* context() { return static_cast<ResourceProviderContext*>(m_context->context3D()); }
 
     void getResourcePixels(CCResourceProvider::ResourceId id, const IntSize& size, WGC3Denum format, uint8_t* pixels)
     {
-        CCScopedLockResourceForRead lock(m_resourceProvider.get(), id);
-        ASSERT_NE(0U, lock.textureId());
-        context()->bindTexture(GraphicsContext3D::TEXTURE_2D, lock.textureId());
-        context()->getPixels(size, format, pixels);
+        if (GetParam() == CCResourceProvider::GLTexture) {
+            CCResourceProvider::ScopedReadLockGL lockGL(m_resourceProvider.get(), id);
+            ASSERT_NE(0U, lockGL.textureId());
+            context()->bindTexture(GraphicsContext3D::TEXTURE_2D, lockGL.textureId());
+            context()->getPixels(size, format, pixels);
+        } else if (GetParam() == CCResourceProvider::Bitmap) {
+            CCResourceProvider::ScopedReadLockSoftware lockSoftware(m_resourceProvider.get(), id);
+            memcpy(pixels, lockSoftware.skBitmap()->getPixels(), lockSoftware.skBitmap()->getSize());
+        }
+    }
+
+    void expectNumResources(int count)
+    {
+        EXPECT_EQ(count, static_cast<int>(m_resourceProvider->numResources()));
+        if (GetParam() == CCResourceProvider::GLTexture)
+            EXPECT_EQ(count, context()->textureCount());
     }
 
 protected:
     DebugScopedSetImplThread implThread;
+    OwnPtr<ContextSharedData> m_sharedData;
     OwnPtr<CCGraphicsContext> m_context;
     OwnPtr<CCResourceProvider> m_resourceProvider;
 };
 
-TEST_F(CCResourceProviderTest, Basic)
+TEST_P(CCResourceProviderTest, Basic)
 {
     IntSize size(1, 1);
     WGC3Denum format = GraphicsContext3D::RGBA;
     int pool = 1;
-    size_t pixelSize = ResourceProviderContext::textureSize(size, format);
+    size_t pixelSize = textureSize(size, format);
     ASSERT_EQ(4U, pixelSize);
 
     CCResourceProvider::ResourceId id = m_resourceProvider->createResource(pool, size, format, CCResourceProvider::TextureUsageAny);
-    EXPECT_EQ(1, context()->textureCount());
+    expectNumResources(1);
 
     uint8_t data[4] = {1, 2, 3, 4};
     IntRect rect(IntPoint(), size);
-    m_resourceProvider->upload(id, data, rect, rect, rect);
+    m_resourceProvider->upload(id, data, rect, rect, IntSize());
 
     uint8_t result[4] = {0};
     getResourcePixels(id, size, format, result);
     EXPECT_EQ(0, memcmp(data, result, pixelSize));
 
     m_resourceProvider->deleteResource(id);
-    EXPECT_EQ(0, context()->textureCount());
+    expectNumResources(0);
 }
 
-TEST_F(CCResourceProviderTest, DeleteOwnedResources)
+TEST_P(CCResourceProviderTest, DeleteOwnedResources)
 {
     IntSize size(1, 1);
     WGC3Denum format = GraphicsContext3D::RGBA;
@@ -241,28 +358,28 @@ TEST_F(CCResourceProviderTest, DeleteOwnedResources)
     const int count = 3;
     for (int i = 0; i < count; ++i)
         m_resourceProvider->createResource(pool, size, format, CCResourceProvider::TextureUsageAny);
-    EXPECT_EQ(3, context()->textureCount());
+    expectNumResources(3);
 
     m_resourceProvider->deleteOwnedResources(pool+1);
-    EXPECT_EQ(3, context()->textureCount());
+    expectNumResources(3);
 
     m_resourceProvider->deleteOwnedResources(pool);
-    EXPECT_EQ(0, context()->textureCount());
+    expectNumResources(0);
 }
 
-TEST_F(CCResourceProviderTest, Upload)
+TEST_P(CCResourceProviderTest, Upload)
 {
     IntSize size(2, 2);
     WGC3Denum format = GraphicsContext3D::RGBA;
     int pool = 1;
-    size_t pixelSize = ResourceProviderContext::textureSize(size, format);
+    size_t pixelSize = textureSize(size, format);
     ASSERT_EQ(16U, pixelSize);
 
     CCResourceProvider::ResourceId id = m_resourceProvider->createResource(pool, size, format, CCResourceProvider::TextureUsageAny);
 
     uint8_t image[16] = {0};
     IntRect imageRect(IntPoint(), size);
-    m_resourceProvider->upload(id, image, imageRect, imageRect, imageRect);
+    m_resourceProvider->upload(id, image, imageRect, imageRect, IntSize());
 
     for (uint8_t i = 0 ; i < pixelSize; ++i)
         image[i] = i;
@@ -270,8 +387,8 @@ TEST_F(CCResourceProviderTest, Upload)
     uint8_t result[16] = {0};
     {
         IntRect sourceRect(0, 0, 1, 1);
-        IntRect destRect(0, 0, 1, 1);
-        m_resourceProvider->upload(id, image, imageRect, sourceRect, destRect);
+        IntSize destOffset(0, 0);
+        m_resourceProvider->upload(id, image, imageRect, sourceRect, destOffset);
 
         uint8_t expected[16] = {0, 1, 2, 3,   0, 0, 0, 0,
                                 0, 0, 0, 0,   0, 0, 0, 0};
@@ -280,8 +397,8 @@ TEST_F(CCResourceProviderTest, Upload)
     }
     {
         IntRect sourceRect(0, 0, 1, 1);
-        IntRect destRect(1, 1, 1, 1);
-        m_resourceProvider->upload(id, image, imageRect, sourceRect, destRect);
+        IntSize destOffset(1, 1);
+        m_resourceProvider->upload(id, image, imageRect, sourceRect, destOffset);
 
         uint8_t expected[16] = {0, 1, 2, 3,   0, 0, 0, 0,
                                 0, 0, 0, 0,   0, 1, 2, 3};
@@ -290,16 +407,150 @@ TEST_F(CCResourceProviderTest, Upload)
     }
     {
         IntRect sourceRect(1, 0, 1, 1);
-        IntRect destRect(0, 1, 1, 1);
-        m_resourceProvider->upload(id, image, imageRect, sourceRect, destRect);
+        IntSize destOffset(0, 1);
+        m_resourceProvider->upload(id, image, imageRect, sourceRect, destOffset);
 
         uint8_t expected[16] = {0, 1, 2, 3,   0, 0, 0, 0,
                                 4, 5, 6, 7,   0, 1, 2, 3};
         getResourcePixels(id, size, format, result);
         EXPECT_EQ(0, memcmp(expected, result, pixelSize));
     }
+    {
+        IntRect offsetImageRect(IntPoint(100, 100), size);
+        IntRect sourceRect(100, 100, 1, 1);
+        IntSize destOffset(1, 0);
+        m_resourceProvider->upload(id, image, offsetImageRect, sourceRect, destOffset);
+
+        uint8_t expected[16] = {0, 1, 2, 3,   0, 1, 2, 3,
+                                4, 5, 6, 7,   0, 1, 2, 3};
+        getResourcePixels(id, size, format, result);
+        EXPECT_EQ(0, memcmp(expected, result, pixelSize));
+    }
+
 
     m_resourceProvider->deleteResource(id);
 }
+
+TEST_P(CCResourceProviderTest, TransferResources)
+{
+    // Resource transfer is only supported with GL textures for now.
+    if (GetParam() != CCResourceProvider::GLTexture)
+        return;
+
+    OwnPtr<CCGraphicsContext> childContext(FakeWebCompositorOutputSurface::create(ResourceProviderContext::create(m_sharedData.get())));
+    OwnPtr<CCResourceProvider> childResourceProvider(CCResourceProvider::create(childContext.get()));
+
+    IntSize size(1, 1);
+    WGC3Denum format = GraphicsContext3D::RGBA;
+    int pool = 1;
+    size_t pixelSize = textureSize(size, format);
+    ASSERT_EQ(4U, pixelSize);
+
+    CCResourceProvider::ResourceId id1 = childResourceProvider->createResource(pool, size, format, CCResourceProvider::TextureUsageAny);
+    uint8_t data1[4] = {1, 2, 3, 4};
+    IntRect rect(IntPoint(), size);
+    childResourceProvider->upload(id1, data1, rect, rect, IntSize());
+
+    CCResourceProvider::ResourceId id2 = childResourceProvider->createResource(pool, size, format, CCResourceProvider::TextureUsageAny);
+    uint8_t data2[4] = {5, 5, 5, 5};
+    childResourceProvider->upload(id2, data2, rect, rect, IntSize());
+
+    int childPool = 2;
+    int childId = m_resourceProvider->createChild(childPool);
+
+    {
+        // Transfer some resources to the parent.
+        CCResourceProvider::ResourceIdArray resourceIdsToTransfer;
+        resourceIdsToTransfer.append(id1);
+        resourceIdsToTransfer.append(id2);
+        CCResourceProvider::TransferableResourceList list = childResourceProvider->prepareSendToParent(resourceIdsToTransfer);
+        EXPECT_NE(0u, list.syncPoint);
+        EXPECT_EQ(2u, list.resources.size());
+        EXPECT_TRUE(childResourceProvider->inUseByConsumer(id1));
+        EXPECT_TRUE(childResourceProvider->inUseByConsumer(id2));
+        m_resourceProvider->receiveFromChild(childId, list);
+    }
+
+    EXPECT_EQ(2u, m_resourceProvider->numResources());
+    EXPECT_EQ(2u, m_resourceProvider->mailboxCount());
+    CCResourceProvider::ResourceIdMap resourceMap = m_resourceProvider->getChildToParentMap(childId);
+    CCResourceProvider::ResourceId mappedId1 = resourceMap.get(id1);
+    CCResourceProvider::ResourceId mappedId2 = resourceMap.get(id2);
+    EXPECT_NE(0u, mappedId1);
+    EXPECT_NE(0u, mappedId2);
+    EXPECT_FALSE(m_resourceProvider->inUseByConsumer(id1));
+    EXPECT_FALSE(m_resourceProvider->inUseByConsumer(id2));
+
+    uint8_t result[4] = {0};
+    getResourcePixels(mappedId1, size, format, result);
+    EXPECT_EQ(0, memcmp(data1, result, pixelSize));
+
+    getResourcePixels(mappedId2, size, format, result);
+    EXPECT_EQ(0, memcmp(data2, result, pixelSize));
+
+    {
+        // Check that transfering again the same resource from the child to the
+        // parent is a noop.
+        CCResourceProvider::ResourceIdArray resourceIdsToTransfer;
+        resourceIdsToTransfer.append(id1);
+        CCResourceProvider::TransferableResourceList list = childResourceProvider->prepareSendToParent(resourceIdsToTransfer);
+        EXPECT_EQ(0u, list.syncPoint);
+        EXPECT_EQ(0u, list.resources.size());
+    }
+
+    {
+        // Transfer resources back from the parent to the child.
+        CCResourceProvider::ResourceIdArray resourceIdsToTransfer;
+        resourceIdsToTransfer.append(mappedId1);
+        resourceIdsToTransfer.append(mappedId2);
+        CCResourceProvider::TransferableResourceList list = m_resourceProvider->prepareSendToChild(childId, resourceIdsToTransfer);
+        EXPECT_NE(0u, list.syncPoint);
+        EXPECT_EQ(2u, list.resources.size());
+        childResourceProvider->receiveFromParent(list);
+    }
+    EXPECT_EQ(0u, m_resourceProvider->mailboxCount());
+    EXPECT_EQ(2u, childResourceProvider->mailboxCount());
+    EXPECT_FALSE(childResourceProvider->inUseByConsumer(id1));
+    EXPECT_FALSE(childResourceProvider->inUseByConsumer(id2));
+
+    ResourceProviderContext* childContext3D = static_cast<ResourceProviderContext*>(childContext->context3D());
+    {
+        CCResourceProvider::ScopedReadLockGL lock(childResourceProvider.get(), id1);
+        ASSERT_NE(0U, lock.textureId());
+        childContext3D->bindTexture(GraphicsContext3D::TEXTURE_2D, lock.textureId());
+        childContext3D->getPixels(size, format, result);
+        EXPECT_EQ(0, memcmp(data1, result, pixelSize));
+    }
+    {
+        CCResourceProvider::ScopedReadLockGL lock(childResourceProvider.get(), id2);
+        ASSERT_NE(0U, lock.textureId());
+        childContext3D->bindTexture(GraphicsContext3D::TEXTURE_2D, lock.textureId());
+        childContext3D->getPixels(size, format, result);
+        EXPECT_EQ(0, memcmp(data2, result, pixelSize));
+    }
+
+    {
+        // Transfer resources to the parent again.
+        CCResourceProvider::ResourceIdArray resourceIdsToTransfer;
+        resourceIdsToTransfer.append(id1);
+        resourceIdsToTransfer.append(id2);
+        CCResourceProvider::TransferableResourceList list = childResourceProvider->prepareSendToParent(resourceIdsToTransfer);
+        EXPECT_NE(0u, list.syncPoint);
+        EXPECT_EQ(2u, list.resources.size());
+        EXPECT_TRUE(childResourceProvider->inUseByConsumer(id1));
+        EXPECT_TRUE(childResourceProvider->inUseByConsumer(id2));
+        m_resourceProvider->receiveFromChild(childId, list);
+    }
+
+    EXPECT_EQ(2u, m_resourceProvider->numResources());
+    m_resourceProvider->destroyChild(childId);
+    EXPECT_EQ(0u, m_resourceProvider->numResources());
+    EXPECT_EQ(0u, m_resourceProvider->mailboxCount());
+}
+
+INSTANTIATE_TEST_CASE_P(CCResourceProviderTests,
+                        CCResourceProviderTest,
+                        ::testing::Values(CCResourceProvider::GLTexture,
+                                          CCResourceProvider::Bitmap));
 
 } // namespace

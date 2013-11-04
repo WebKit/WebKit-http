@@ -175,7 +175,7 @@ bool RuntimeEnabledFeatures::isMediaSourceEnabled = false;
 #endif
 
 #if ENABLE(VIDEO_TRACK)
-#if PLATFORM(MAC) || PLATFORM(GTK) || PLATFORM(EFL)
+#if PLATFORM(MAC) || PLATFORM(GTK) || PLATFORM(EFL) || PLATFORM(CHROMIUM)
     bool RuntimeEnabledFeatures::isVideoTrackEnabled = true;
 #else
     bool RuntimeEnabledFeatures::isVideoTrackEnabled = false;
@@ -225,11 +225,7 @@ bool RuntimeEnabledFeatures::isInputTypeMonthEnabled = true;
 #endif
 
 #if ENABLE(INPUT_TYPE_TIME)
-#if PLATFORM(CHROMIUM) && !OS(ANDROID)
-bool RuntimeEnabledFeatures::isInputTypeTimeEnabled = false;
-#else
 bool RuntimeEnabledFeatures::isInputTypeTimeEnabled = true;
-#endif
 #endif
 
 #if ENABLE(INPUT_TYPE_WEEK)

@@ -35,6 +35,7 @@
 #if ENABLE(INPUT_TYPE_TIME_MULTIPLE_FIELDS)
 #include "DateTimeFormat.h"
 #endif
+#include "Language.h"
 #include "LocalizedStrings.h"
 #include <limits>
 #include <windows.h>
@@ -56,6 +57,7 @@ namespace WebCore {
 
 inline LocaleWin::LocaleWin(LCID lcid)
     : m_lcid(lcid)
+    , m_didInitializeNumberData(false)
 {
     SYSTEMTIME systemTime;
     GetLocalTime(&systemTime);
@@ -63,7 +65,7 @@ inline LocaleWin::LocaleWin(LCID lcid)
 
 #if ENABLE(CALENDAR_PICKER)
     DWORD value = 0;
-    ::GetLocaleInfo(m_lcid, LOCALE_IFIRSTDAYOFWEEK | LOCALE_RETURN_NUMBER, reinterpret_cast<LPWSTR>(&value), sizeof(value) / sizeof(TCHAR));
+    getLocaleInfo(LOCALE_IFIRSTDAYOFWEEK, value);
     // 0:Monday, ..., 6:Sunday.
     // We need 1 for Monday, 0 for Sunday.
     m_firstDayOfWeek = (value + 1) % 7;
@@ -75,11 +77,30 @@ PassOwnPtr<LocaleWin> LocaleWin::create(LCID lcid)
     return adoptPtr(new LocaleWin(lcid));
 }
 
+static LCID determineCurrentLCID()
+{
+    LCID lcid = LOCALE_USER_DEFAULT;
+    // LocaleNameToLCID() is available since Windows Vista.
+    typedef LCID (WINAPI* LocaleNameToLCIDPtr)(LPCWSTR, DWORD);
+    LocaleNameToLCIDPtr localeNameToLCID = reinterpret_cast<LocaleNameToLCIDPtr>(::GetProcAddress(::GetModuleHandle(L"kernel32"), "LocaleNameToLCID"));
+    if (!localeNameToLCID)
+        return lcid;
+    // According to MSDN, 9 is enough for LOCALE_SISO639LANGNAME.
+    const size_t languageCodeBufferSize = 9;
+    WCHAR lowercaseLanguageCode[languageCodeBufferSize];
+    ::GetLocaleInfo(LOCALE_USER_DEFAULT, LOCALE_SISO639LANGNAME, lowercaseLanguageCode, languageCodeBufferSize);
+    String browserLanguage = defaultLanguage();
+    size_t dashPosition = browserLanguage.find('-');
+    if (dashPosition != notFound)
+        browserLanguage = browserLanguage.left(dashPosition);
+    if (!equalIgnoringCase(browserLanguage, String(lowercaseLanguageCode)))
+        lcid = localeNameToLCID(defaultLanguage().charactersWithNullTermination(), 0);
+    return lcid;
+}
+
 LocaleWin* LocaleWin::currentLocale()
 {
-    // Ideally we should make LCID from defaultLanguage(). But
-    // ::LocaleNameToLCID() is available since Windows Vista.
-    static LocaleWin* currentLocale = LocaleWin::create(LOCALE_USER_DEFAULT).leakPtr();
+    static LocaleWin* currentLocale = LocaleWin::create(determineCurrentLCID()).leakPtr();
     return currentLocale;
 }
 
@@ -96,6 +117,11 @@ String LocaleWin::getLocaleInfoString(LCTYPE type)
     ::GetLocaleInfo(m_lcid, type, buffer.data(), bufferSizeWithNUL);
     buffer.shrink(bufferSizeWithNUL - 1);
     return String::adopt(buffer);
+}
+
+void LocaleWin::getLocaleInfo(LCTYPE type, DWORD& result)
+{
+    ::GetLocaleInfo(m_lcid, type | LOCALE_RETURN_NUMBER, reinterpret_cast<LPWSTR>(&result), sizeof(DWORD) / sizeof(TCHAR));
 }
 
 void LocaleWin::ensureShortMonthLabels()
@@ -252,16 +278,32 @@ static Vector<DateFormatToken> parseDateFormat(const String format)
 
 // -------------------------------- Parsing
 
+bool LocaleWin::isLocalizedDigit(UChar ch)
+{
+    String normalizedDigit = convertFromLocalizedNumber(String(&ch, 1));
+    if (normalizedDigit.length() != 1)
+        return false;
+    return isASCIIDigit(normalizedDigit[0]);
+}
+
 // Returns -1 if parsing fails.
-static int parseNumber(const String& input, unsigned& index)
+int LocaleWin::parseNumber(const String& input, unsigned& index)
 {
     unsigned digitsStart = index;
     while (index < input.length() && isASCIIDigit(input[index]))
         index++;
+    if (digitsStart != index) {
+        bool ok = false;
+        int number = input.substring(digitsStart, index - digitsStart).toInt(&ok);
+        return ok ? number : -1;
+    }
+
+    while (index < input.length() && isLocalizedDigit(input[index]))
+        index++;
     if (digitsStart == index)
         return -1;
     bool ok = false;
-    int number = input.substring(digitsStart, index - digitsStart).toInt(&ok);
+    int number = convertFromLocalizedNumber(input.substring(digitsStart, index - digitsStart)).toInt(&ok);
     return ok ? number : -1;
 }
 
@@ -377,31 +419,42 @@ double LocaleWin::parseDate(const Vector<DateFormatToken>& tokens, int baseYear,
 
 // -------------------------------- Formatting
 
-static inline void appendNumber(int value, StringBuilder& buffer)
+inline void LocaleWin::appendNumber(int value, StringBuilder& buffer)
 {
-    buffer.append(String::number(value));
+    buffer.append(convertToLocalizedNumber(String::number(value)));
 }
 
-static void appendTwoDigitsNumber(int value, StringBuilder& buffer)
+void LocaleWin::appendTwoDigitsNumber(int value, StringBuilder& buffer)
 {
-    if (value >= 0 && value < 10)
-        buffer.append("0");
-    buffer.append(String::number(value));
-}
-
-static void appendFourDigitsNumber(int value, StringBuilder& buffer)
-{
-    if (value < 0) {
-        buffer.append(String::number(value));
+    String numberString = String::number(value);
+    if (value < 0 || value >= 10) {
+        buffer.append(convertToLocalizedNumber(numberString));
         return;
     }
+    StringBuilder numberBuffer;
+    numberBuffer.reserveCapacity(1 + numberString.length());
+    numberBuffer.append("0");
+    numberBuffer.append(numberString);
+    buffer.append(convertToLocalizedNumber(numberBuffer.toString()));
+}
+
+void LocaleWin::appendFourDigitsNumber(int value, StringBuilder& buffer)
+{
+    String numberString = String::number(value);
+    if (value < 0) {
+        buffer.append(convertToLocalizedNumber(numberString));
+        return;
+    }
+    StringBuilder numberBuffer;
+    numberBuffer.reserveCapacity(3 + numberString.length());
     if (value < 10)
-        buffer.append("000");
+        numberBuffer.append("000");
     else if (value < 100)
-        buffer.append("00");
+        numberBuffer.append("00");
     else if (value < 1000)
-        buffer.append("0");
-    buffer.append(String::number(value));
+        numberBuffer.append("0");
+    numberBuffer.append(numberString);
+    buffer.append(convertToLocalizedNumber(numberBuffer.toString()));
 }
 
 String LocaleWin::formatDate(const DateComponents& dateComponents)
@@ -669,5 +722,76 @@ const Vector<String>& LocaleWin::timeAMPMLabels()
     return m_timeAMPMLabels;
 }
 #endif
+
+void LocaleWin::initializeNumberLocalizerData()
+{
+    if (m_didInitializeNumberData)
+        return;
+
+    Vector<String, DecimalSymbolsSize> symbols;
+    enum DigitSubstitution {
+        DigitSubstitutionContext = 0,
+        DigitSubstitution0to9 = 1,
+        DigitSubstitutionNative = 2,
+    };
+    DWORD digitSubstitution = DigitSubstitution0to9;
+    getLocaleInfo(LOCALE_IDIGITSUBSTITUTION, digitSubstitution);
+    if (digitSubstitution == DigitSubstitution0to9) {
+        symbols.append("0");
+        symbols.append("1");
+        symbols.append("2");
+        symbols.append("3");
+        symbols.append("4");
+        symbols.append("5");
+        symbols.append("6");
+        symbols.append("7");
+        symbols.append("8");
+        symbols.append("9");
+    } else {
+        String digits = getLocaleInfoString(LOCALE_SNATIVEDIGITS);
+        ASSERT(digits.length() >= 10);
+        for (unsigned i = 0; i < 10; ++i)
+            symbols.append(digits.substring(i, 1));
+    }
+    ASSERT(symbols.size() == DecimalSeparatorIndex);
+    symbols.append(getLocaleInfoString(LOCALE_SDECIMAL));
+    ASSERT(symbols.size() == GroupSeparatorIndex);
+    symbols.append(getLocaleInfoString(LOCALE_STHOUSAND));
+    ASSERT(symbols.size() == DecimalSymbolsSize);
+
+    String negativeSign = getLocaleInfoString(LOCALE_SNEGATIVESIGN);
+    enum NegativeFormat {
+        NegativeFormatParenthesis = 0,
+        NegativeFormatSignPrefix = 1,
+        NegativeFormatSignSpacePrefix = 2,
+        NegativeFormatSignSuffix = 3,
+        NegativeFormatSpaceSignSuffix = 4,
+    };
+    DWORD negativeFormat = NegativeFormatSignPrefix;
+    getLocaleInfo(LOCALE_INEGNUMBER, negativeFormat);
+    String negativePrefix = emptyString();
+    String negativeSuffix = emptyString();
+    switch (negativeFormat) {
+    case NegativeFormatParenthesis:
+        negativePrefix = "(";
+        negativeSuffix = ")";
+        break;
+    case NegativeFormatSignSpacePrefix:
+        negativePrefix = negativeSign + " ";
+        break;
+    case NegativeFormatSignSuffix:
+        negativeSuffix = negativeSign;
+        break;
+    case NegativeFormatSpaceSignSuffix:
+        negativeSuffix = " " + negativeSign;
+        break;
+    case NegativeFormatSignPrefix: // Fall through.
+    default:
+        negativePrefix = negativeSign;
+        break;
+    }
+    m_didInitializeNumberData = true;
+    setNumberLocalizerData(symbols, emptyString(), emptyString(), negativePrefix, negativeSuffix);
+}
 
 }

@@ -37,6 +37,7 @@
 
 namespace WebCore {
 
+class HTMLSelectElement;
 class RenderText;
 
 class RenderMenuList : public RenderDeprecatedFlexibleBox, private PopupMenuClient {
@@ -57,6 +58,8 @@ public:
     String text() const;
 
 private:
+    HTMLSelectElement* selectElement() const;
+
     virtual bool isMenuList() const { return true; }
 
     virtual void addChild(RenderObject* newChild, RenderObject* beforeChild = 0);
@@ -68,6 +71,7 @@ private:
     virtual LayoutRect controlClipRect(const LayoutPoint&) const;
     virtual bool hasControlClip() const { return true; }
     virtual bool canHaveGeneratedChildren() const OVERRIDE { return false; }
+    virtual bool canBeReplacedWithInlineRunIn() const OVERRIDE;
 
     virtual const char* renderName() const { return "RenderMenuList"; }
 

@@ -38,6 +38,31 @@
 #define PFNGLRENDERBUFFERSTORAGEMULTISAMPLEIMG PFNGLRENDERBUFFERSTORAGEMULTISAMPLEIMGPROC
 #endif
 
+#ifndef GL_EXT_robustness
+/* reuse GL_NO_ERROR */
+#define GL_GUILTY_CONTEXT_RESET_EXT 0x8253
+#define GL_INNOCENT_CONTEXT_RESET_EXT 0x8254
+#define GL_UNKNOWN_CONTEXT_RESET_EXT 0x8255
+#define GL_CONTEXT_ROBUST_ACCESS_EXT 0x90F3
+#define GL_RESET_NOTIFICATION_STRATEGY_EXT 0x8256
+#define GL_LOSE_CONTEXT_ON_RESET_EXT 0x8252
+#define GL_NO_RESET_NOTIFICATION_EXT 0x8261
+#endif
+
+#ifndef GL_EXT_robustness
+#define GL_EXT_robustness 1
+#ifdef GL_GLEXT_PROTOTYPES
+GL_APICALL GC3Denum GL_APIENTRY glGetGraphicsResetStatusEXT(void);
+GL_APICALL void GL_APIENTRY glReadnPixelsEXT(GLint x, GLint y, GC3Dsizei width, GC3Dsizei height, GC3Denum format, GC3Denum type, GC3Dsizei bufSize, void *data);
+GL_APICALL void GL_APIENTRY glGetnUniformfvEXT(GLuint program, GLint location, GC3Dsizei bufSize, float *params);
+GL_APICALL void GL_APIENTRY glGetnUniformivEXT(GLuint program, GLint location, GC3Dsizei bufSize, GLint *params);
+#endif
+typedef GC3Denum (GL_APIENTRYP PFNGLGETGRAPHICSRESETSTATUSEXTPROC) (void);
+typedef void (GL_APIENTRYP PFNGLREADNPIXELSEXTPROC) (GLint x, GLint y, GC3Dsizei width, GC3Dsizei height, GC3Denum format, GC3Denum type, GC3Dsizei bufSize, void *data);
+typedef void (GL_APIENTRYP PFNGLGETNUNIFORMFVEXTPROC) (GLuint program, GLint location, GC3Dsizei bufSize, float *params);
+typedef void (GL_APIENTRYP PFNGLGETNUNIFORMIVEXTPROC) (GLuint program, GLint location, GC3Dsizei bufSize, GLint *params);
+#endif
+
 namespace WebCore {
 
 class Extensions3DOpenGLES : public Extensions3DOpenGLCommon {
@@ -51,11 +76,23 @@ public:
     virtual void blitFramebuffer(long srcX0, long srcY0, long srcX1, long srcY1, long dstX0, long dstY0, long dstX1, long dstY1, unsigned long mask, unsigned long filter);
     virtual void renderbufferStorageMultisample(unsigned long target, unsigned long samples, unsigned long internalformat, unsigned long width, unsigned long height);
     virtual void copyTextureCHROMIUM(GC3Denum, Platform3DObject, Platform3DObject, GC3Dint, GC3Denum);
+    virtual void insertEventMarkerEXT(const String&);
+    virtual void pushGroupMarkerEXT(const String&);
+    virtual void popGroupMarkerEXT(void);
 
     virtual Platform3DObject createVertexArrayOES();
     virtual void deleteVertexArrayOES(Platform3DObject);
     virtual GC3Dboolean isVertexArrayOES(Platform3DObject);
     virtual void bindVertexArrayOES(Platform3DObject);
+
+    // EXT Robustness - reset
+    virtual int getGraphicsResetStatusARB();
+    void setEXTContextLostCallback(PassOwnPtr<GraphicsContext3D::ContextLostCallback>);
+
+    // EXT Robustness - etc
+    virtual void readnPixelsEXT(int x, int y, GC3Dsizei width, GC3Dsizei height, GC3Denum format, GC3Denum type, GC3Dsizei bufSize, void *data);
+    virtual void getnUniformfvEXT(GC3Duint program, int location, GC3Dsizei bufSize, float *params);
+    virtual void getnUniformivEXT(GC3Duint program, int location, GC3Dsizei bufSize, int *params);
 
 protected:
     // This class only needs to be instantiated by GraphicsContext3D implementations.
@@ -64,6 +101,8 @@ protected:
 
     virtual bool supportsExtension(const String&);
     virtual String getExtensions();
+
+    GC3Denum m_contextResetStatus;
 
     bool m_supportsOESvertexArrayObject;
     bool m_supportsIMGMultisampledRenderToTexture;
@@ -74,6 +113,12 @@ protected:
     PFNGLDELETEVERTEXARRAYSOESPROC m_glDeleteVertexArraysOES;
     PFNGLGENVERTEXARRAYSOESPROC m_glGenVertexArraysOES;
     PFNGLISVERTEXARRAYOESPROC m_glIsVertexArrayOES;
+    PFNGLGETGRAPHICSRESETSTATUSEXTPROC m_glGetGraphicsResetStatusEXT;
+    PFNGLREADNPIXELSEXTPROC m_glReadnPixelsEXT;
+    PFNGLGETNUNIFORMFVEXTPROC m_glGetnUniformfvEXT;
+    PFNGLGETNUNIFORMIVEXTPROC m_glGetnUniformivEXT;
+
+    OwnPtr<GraphicsContext3D::ContextLostCallback> m_contextLostCallback;
 };
 
 } // namespace WebCore

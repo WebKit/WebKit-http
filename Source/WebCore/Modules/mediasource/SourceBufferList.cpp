@@ -34,11 +34,15 @@
 #if ENABLE(MEDIA_SOURCE)
 
 #include "Event.h"
+#include "SourceBuffer.h"
 
 namespace WebCore {
 
-SourceBufferList::SourceBufferList(ScriptExecutionContext* context)
+SourceBufferList::SourceBufferList(ScriptExecutionContext* context,
+                                   GenericEventQueue* asyncEventQueue)
     : m_scriptExecutionContext(context)
+    , m_asyncEventQueue(asyncEventQueue)
+    , m_lastSourceBufferId(0)
 {
 }
 
@@ -61,7 +65,7 @@ void SourceBufferList::add(PassRefPtr<SourceBuffer> buffer)
 }
 
 bool SourceBufferList::remove(SourceBuffer* buffer)
-{    
+{
     size_t index = m_list.find(buffer);
     if (index == notFound)
         return false;
@@ -78,12 +82,42 @@ void SourceBufferList::clear()
         remove(m_list[i].get());
 }
 
+String SourceBufferList::generateUniqueId()
+{
+    // Ensure a unique id. Until m_lastSourceBufferId wraps around (very unlikely),
+    // this loop will exit after one check. If m_lastSourceBufferId does wrap,
+    // this loop may run as many times as the size of m_list, but in most
+    // cases that should be less than 10. We may want to investigate a more
+    // efficient approach if many more SourceBuffers are allowed in the future.
+    size_t nextSourceBufferId = m_lastSourceBufferId + 1;
+
+    while (contains(nextSourceBufferId)) {
+        if (nextSourceBufferId == m_lastSourceBufferId)
+            return emptyString();
+        nextSourceBufferId++;
+    }
+    m_lastSourceBufferId = nextSourceBufferId;
+
+    return String::number(nextSourceBufferId);
+}
+
+bool SourceBufferList::contains(size_t id) const
+{
+    for (size_t i = 0; i < m_list.size(); ++i) {
+        if (m_list[i]->id() == String::number(id))
+            return true;
+    }
+    return false;
+}
+
 void SourceBufferList::createAndFireEvent(const AtomicString& eventName)
 {
+    ASSERT(m_asyncEventQueue);
+
     RefPtr<Event> event = Event::create(eventName, false, false);
     event->setTarget(this);
 
-    EventTarget::dispatchEvent(event);
+    m_asyncEventQueue->enqueueEvent(event.release());
 }
 
 const AtomicString& SourceBufferList::interfaceName() const

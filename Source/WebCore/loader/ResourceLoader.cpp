@@ -214,6 +214,11 @@ void ResourceLoader::clearResourceData()
         m_resourceData->clear();
 }
 
+bool ResourceLoader::isSubresourceLoader()
+{
+    return false;
+}
+
 void ResourceLoader::willSendRequest(ResourceRequest& request, const ResourceResponse& redirectResponse)
 {
     // Protect this in this delegate method since the additional processing can do
@@ -530,7 +535,7 @@ AsyncFileStream* ResourceLoader::createAsyncFileStream(FileStreamClient* client)
 
 void ResourceLoader::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
 {
-    MemoryClassInfo<ResourceLoader> info(memoryObjectInfo, this, MemoryInstrumentation::Loader);
+    MemoryClassInfo info(memoryObjectInfo, this, MemoryInstrumentation::Loader);
     info.addMember(m_handle.get());
     info.addInstrumentedMember(m_frame);
     info.addInstrumentedMember(m_documentLoader);

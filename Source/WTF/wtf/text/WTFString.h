@@ -1,6 +1,6 @@
 /*
  * (C) 1999 Lars Knoll (knoll@kde.org)
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010 Apple Inc. All rights reserved.
+ * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2012 Apple Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -26,6 +26,7 @@
 // on systems without case-sensitive file systems.
 
 #include <wtf/text/ASCIIFastPath.h>
+#include <wtf/text/IntegerToStringConversion.h>
 #include <wtf/text/StringImpl.h>
 
 #ifdef __OBJC__
@@ -98,13 +99,16 @@ WTF_EXPORT_STRING_API float charactersToFloat(const UChar*, size_t, bool* ok = 0
 WTF_EXPORT_STRING_API float charactersToFloat(const LChar*, size_t, size_t& parsedLength);
 WTF_EXPORT_STRING_API float charactersToFloat(const UChar*, size_t, size_t& parsedLength);
 
+class ASCIILiteral;
+
 enum FloatConversionFlags {
     ShouldRoundSignificantFigures = 1 << 0,
     ShouldRoundDecimalPlaces = 1 << 1,
     ShouldTruncateTrailingZeros = 1 << 2
 };
 
-template<bool isSpecialCharacter(UChar)> bool isAllSpecialCharacters(const UChar*, size_t);
+template<bool isSpecialCharacter(UChar), typename CharacterType>
+bool isAllSpecialCharacters(const CharacterType*, size_t);
 
 class String {
 public:
@@ -135,6 +139,15 @@ public:
     String(PassRefPtr<StringImpl> impl) : m_impl(impl) { }
     String(RefPtr<StringImpl> impl) : m_impl(impl) { }
 
+    // Construct a string from a constant string literal.
+    WTF_EXPORT_STRING_API String(ASCIILiteral characters);
+
+    // Construct a string from a constant string literal.
+    // This constructor is the "big" version, as it put the length in the function call and generate bigger code.
+    enum ConstructFromLiteralTag { ConstructFromLiteral };
+    template<unsigned charactersCount>
+    String(const char (&characters)[charactersCount], ConstructFromLiteralTag) : m_impl(StringImpl::createFromLiteral<charactersCount>(characters)) { }
+
 #if COMPILER_SUPPORTS(CXX_RVALUE_REFERENCES)
     // We have to declare the copy constructor and copy assignment operator as well, otherwise
     // they'll be implicitly deleted by adding the move constructor and move assignment operator.
@@ -151,8 +164,8 @@ public:
 
     static String adopt(StringBuffer<LChar>& buffer) { return StringImpl::adopt(buffer); }
     static String adopt(StringBuffer<UChar>& buffer) { return StringImpl::adopt(buffer); }
-    template<size_t inlineCapacity>
-    static String adopt(Vector<UChar, inlineCapacity>& vector) { return StringImpl::adopt(vector); }
+    template<typename CharacterType, size_t inlineCapacity>
+    static String adopt(Vector<CharacterType, inlineCapacity>& vector) { return StringImpl::adopt(vector); }
 
     bool isNull() const { return !m_impl; }
     bool isEmpty() const { return !m_impl || !m_impl->length(); }
@@ -194,6 +207,13 @@ public:
 
     bool is8Bit() const { return m_impl->is8Bit(); }
 
+    unsigned sizeInBytes() const
+    {
+        if (!m_impl)
+            return 0;
+        return m_impl->length() * (is8Bit() ? sizeof(LChar) : sizeof(UChar));
+    }
+
     WTF_EXPORT_STRING_API CString ascii() const;
     WTF_EXPORT_STRING_API CString latin1() const;
     WTF_EXPORT_STRING_API CString utf8(bool strict = false) const;
@@ -205,15 +225,18 @@ public:
         return (*m_impl)[index];
     }
 
-    static String number(short);
-    WTF_EXPORT_STRING_API static String number(unsigned short);
-    WTF_EXPORT_STRING_API static String number(int);
-    WTF_EXPORT_STRING_API static String number(unsigned);
-    WTF_EXPORT_STRING_API static String number(long);
-    WTF_EXPORT_STRING_API static String number(unsigned long);
-    WTF_EXPORT_STRING_API static String number(long long);
-    WTF_EXPORT_STRING_API static String number(unsigned long long);
+    static String number(unsigned short number) { return numberToStringImpl(number); }
+    static String number(int number) { return numberToStringImpl(number); }
+    static String number(unsigned number) { return numberToStringImpl(number); }
+    static String number(long number) { return numberToStringImpl(number); }
+    static String number(unsigned long number) { return numberToStringImpl(number); }
+    static String number(long long number) { return numberToStringImpl(number); }
+    static String number(unsigned long long number) { return numberToStringImpl(number); }
+
     WTF_EXPORT_STRING_API static String number(double, unsigned = ShouldRoundSignificantFigures | ShouldTruncateTrailingZeros, unsigned precision = 6);
+
+    // Number to String conversion following the ECMAScript definition.
+    WTF_EXPORT_STRING_API static String numberToStringECMAScript(double);
 
     // Find a single character or string, also with match function & latin1 forms.
     size_t find(UChar c, unsigned start = 0) const
@@ -395,6 +418,8 @@ public:
     operator BlackBerry::WebKit::WebString() const;
 #endif
 
+    WTF_EXPORT_STRING_API static String make8BitFrom16BitSource(const UChar*, size_t);
+
     // String::fromUTF8 will return a null string if
     // the input data contains invalid UTF-8 sequences.
     WTF_EXPORT_STRING_API static String fromUTF8(const LChar*, size_t);
@@ -548,7 +573,8 @@ inline void append(Vector<UChar>& vector, const String& string)
     vector.append(string.characters(), string.length());
 }
 
-inline void appendNumber(Vector<UChar>& vector, unsigned char number)
+template<typename CharacterType>
+inline void appendNumber(Vector<CharacterType>& vector, unsigned char number)
 {
     int numberLength = number > 99 ? 3 : (number > 9 ? 2 : 1);
     size_t vectorSize = vector.size();
@@ -568,7 +594,8 @@ inline void appendNumber(Vector<UChar>& vector, unsigned char number)
     }
 }
 
-template<bool isSpecialCharacter(UChar)> inline bool isAllSpecialCharacters(const UChar* characters, size_t length)
+template<bool isSpecialCharacter(UChar), typename CharacterType>
+inline bool isAllSpecialCharacters(const CharacterType* characters, size_t length)
 {
     for (size_t i = 0; i < length; ++i) {
         if (!isSpecialCharacter(characters[i]))
@@ -577,9 +604,17 @@ template<bool isSpecialCharacter(UChar)> inline bool isAllSpecialCharacters(cons
     return true;
 }
 
-template<bool isSpecialCharacter(UChar)> inline bool String::isAllSpecialCharacters() const
+template<bool isSpecialCharacter(UChar)>
+inline bool String::isAllSpecialCharacters() const
 {
-    return WTF::isAllSpecialCharacters<isSpecialCharacter>(characters(), length());
+    size_t len = length();
+
+    if (!len)
+        return true;
+
+    if (is8Bit())
+        return WTF::isAllSpecialCharacters<isSpecialCharacter, LChar>(characters8(), len);
+    return WTF::isAllSpecialCharacters<isSpecialCharacter, UChar>(characters(), len);
 }
 
 // StringHash is the default hash for String
@@ -589,6 +624,15 @@ template<> struct DefaultHash<String> {
 };
 
 template <> struct VectorTraits<String> : SimpleClassVectorTraits { };
+
+class ASCIILiteral {
+public:
+    explicit ASCIILiteral(const char* characters) : m_characters(characters) { }
+    operator const char*() { return m_characters; }
+
+private:
+    const char* m_characters;
+};
 
 // Shared global empty string.
 WTF_EXPORT_STRING_API const String& emptyString();
@@ -620,6 +664,7 @@ using WTF::isAllSpecialCharacters;
 using WTF::isSpaceOrNewline;
 using WTF::reverseFind;
 using WTF::ShouldRoundDecimalPlaces;
+using WTF::ASCIILiteral;
 
 #include <wtf/text/AtomicString.h>
 #endif

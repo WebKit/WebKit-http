@@ -147,6 +147,13 @@
                     'input_jars_paths': [
                         '<(PRODUCT_DIR)/lib.java/chromium_base.jar',
                     ],
+                    'conditions': [
+                        ['inside_chromium_build==1', {
+                            'ant_build_to_chromium_src': '<(ant_build_out)/../../',
+                        }, {
+                            'ant_build_to_chromium_src': '<(ant_build_out)/../../Source/WebKit/chromium',
+                        }],
+                    ],
                 },
                 # Part of the following was copied from <(chromium_src_dir)/build/apk_test.gpyi.
                 # Not including it because gyp include doesn't support variable in path or under
@@ -171,9 +178,22 @@
                         '"<@(input_jars_paths)"',
                         '--output',
                         '<(PRODUCT_DIR)/webkit_unit_tests_apk',
+                        '--strip-binary=<(android_strip)',
+                        '--ant-args',
+                        '-DANDROID_SDK=<(android_sdk)',
+                        '--ant-args',
+                        '-DANDROID_SDK_ROOT=<(android_sdk_root)',
+                        '--ant-args',
+                        '-DANDROID_SDK_TOOLS=<(android_sdk_tools)',
+                        '--ant-args',
+                        '-DANDROID_SDK_VERSION=<(android_sdk_version)',
+                        '--ant-args',
+                        '-DANDROID_TOOLCHAIN=<(android_toolchain)',
                         '--ant-args',
                         '-DPRODUCT_DIR=<(ant_build_out)',
-                        '--ant-compile',
+                        '--ant-args',
+                        '-DCHROMIUM_SRC=<(ant_build_to_chromium_src)',
+                        '--sdk-build=<(sdk_build)',
                         '--app_abi',
                         '<(android_app_abi)',
                     ],

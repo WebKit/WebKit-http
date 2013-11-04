@@ -37,7 +37,7 @@
 #if ENABLE(INPUT_TYPE_COLOR)
 #include "ColorChooser.h"
 #include "ColorChooserClient.h"
-#include "ColorChooserProxy.h"
+#include "ColorChooserUIController.h"
 #endif
 #include "Console.h"
 #include "Cursor.h"
@@ -71,13 +71,9 @@
 #include "SecurityOrigin.h"
 #include "Settings.h"
 #include "TextFieldDecorationElement.h"
-#if USE(V8)
-#include "V8Proxy.h"
-#endif
 #include "WebAccessibilityObject.h"
 #if ENABLE(INPUT_TYPE_COLOR)
 #include "WebColorChooser.h"
-#include "WebColorChooserClientImpl.h"
 #endif
 #include "WebConsoleMessage.h"
 #include "WebCursorInfo.h"
@@ -576,6 +572,7 @@ void ChromeClientImpl::contentsSizeChanged(Frame* frame, const IntSize& size) co
     m_webView->didChangeContentsSize();
 
     WebFrameImpl* webframe = WebFrameImpl::fromFrame(frame);
+    webframe->didChangeContentsSize(size);
     if (webframe->client())
         webframe->client()->didChangeContentsSize(webframe, size);
 }
@@ -694,17 +691,16 @@ void ChromeClientImpl::reachedApplicationCacheOriginQuota(SecurityOrigin*, int64
 }
 
 #if ENABLE(INPUT_TYPE_COLOR)
-PassOwnPtr<ColorChooser> ChromeClientImpl::createColorChooser(ColorChooserClient* chooserClient, const Color& initialColor)
+PassOwnPtr<ColorChooser> ChromeClientImpl::createColorChooser(ColorChooserClient* chooserClient, const Color&)
+{
+    return adoptPtr(new ColorChooserUIController(this, chooserClient));
+}
+PassOwnPtr<WebColorChooser> ChromeClientImpl::createWebColorChooser(WebColorChooserClient* chooserClient, const WebColor& initialColor)
 {
     WebViewClient* client = m_webView->client();
     if (!client)
         return nullptr;
-    WebColorChooserClientImpl* chooserClientProxy = new WebColorChooserClientImpl(chooserClient);
-    WebColor webColor = static_cast<WebColor>(initialColor.rgb());
-    WebColorChooser* chooser = client->createColorChooser(chooserClientProxy, webColor);
-    if (!chooser)
-        return nullptr;
-    return adoptPtr(new ColorChooserProxy(adoptPtr(chooser)));
+    return adoptPtr(client->createColorChooser(chooserClient, initialColor));
 }
 #endif
 
@@ -1114,18 +1110,27 @@ bool ChromeClientImpl::isPointerLocked()
 }
 #endif
 
-#if ENABLE(REGISTER_PROTOCOL_HANDLER)
-PassOwnPtr<RegisterProtocolHandlerClientImpl> RegisterProtocolHandlerClientImpl::create(WebViewImpl* webView)
+#if ENABLE(WIDGET_REGION)
+void ChromeClientImpl::dashboardRegionsChanged()
 {
-    return adoptPtr(new RegisterProtocolHandlerClientImpl(webView));
+    WebViewClient* client = m_webView->client();
+    if (client)
+        client->draggableRegionsChanged();
+}
+#endif
+
+#if ENABLE(NAVIGATOR_CONTENT_UTILS)
+PassOwnPtr<NavigatorContentUtilsClientImpl> NavigatorContentUtilsClientImpl::create(WebViewImpl* webView)
+{
+    return adoptPtr(new NavigatorContentUtilsClientImpl(webView));
 }
 
-RegisterProtocolHandlerClientImpl::RegisterProtocolHandlerClientImpl(WebViewImpl* webView)
+NavigatorContentUtilsClientImpl::NavigatorContentUtilsClientImpl(WebViewImpl* webView)
     : m_webView(webView)
 {
 }
 
-void RegisterProtocolHandlerClientImpl::registerProtocolHandler(const String& scheme, const String& baseURL, const String& url, const String& title) 
+void NavigatorContentUtilsClientImpl::registerProtocolHandler(const String& scheme, const String& baseURL, const String& url, const String& title)
 { 
     m_webView->client()->registerProtocolHandler(scheme, baseURL, url, title);
 } 

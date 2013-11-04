@@ -38,8 +38,10 @@ public:
     virtual const char* renderName() const OVERRIDE;
 
     virtual void layoutBlock(bool relayoutChildren, LayoutUnit pageLogicalHeight = 0) OVERRIDE;
+    virtual void computePreferredLogicalWidths() OVERRIDE;
 
     virtual bool avoidsFloats() const OVERRIDE { return true; }
+    virtual bool canCollapseAnonymousBlockChild() const OVERRIDE { return false; }
 
 private:
     class GridTrack;

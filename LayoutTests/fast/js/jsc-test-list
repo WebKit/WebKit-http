@@ -127,9 +127,11 @@ fast/js/dfg-intrinsic-osr-exit
 fast/js/dfg-intrinsic-unused-this-method-check
 fast/js/dfg-intrinsic-unused-this
 fast/js/dfg-min-max
+fast/js/dfg-multi-basic-block-structure-clobber
 fast/js/dfg-multiply
 fast/js/dfg-negative-array-index
 fast/js/dfg-obvious-constant-cfa
+fast/js/dfg-osr-entry-hoisted-clobbered-structure-check
 fast/js/dfg-other-branch
 fast/js/dfg-poison-fuzz
 fast/js/dfg-proto-access-inline-osr-exit
@@ -205,6 +207,7 @@ fast/js/JSON-stringify-replacer
 fast/js/keywords-and-reserved_words
 fast/js/large-expressions
 fast/js/logical-or-jless
+fast/js/legitimately-captured-argument
 fast/js/math-transforms
 fast/js/math
 fast/js/mod-by-zero
@@ -299,6 +302,7 @@ fast/js/string-substr
 fast/js/string-trim
 fast/js/string_replace
 fast/js/this-non-object-proto
+fast/js/throw-from-finally
 fast/js/ToNumber
 fast/js/toString-elision-trailing-comma
 fast/js/tostring-exception-in-property-access

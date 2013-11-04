@@ -34,10 +34,8 @@
 #include "OpenGLShims.h"
 #include "QWebPageClient.h"
 #include "SharedBuffer.h"
-#if HAVE(QT5)
 #include <QWindow>
 #include <qpa/qplatformpixmap.h>
-#endif
 #include <wtf/UnusedParam.h>
 #include <wtf/text/CString.h>
 
@@ -63,7 +61,7 @@ class GraphicsContext3DPrivate
 #endif
 {
 public:
-    GraphicsContext3DPrivate(GraphicsContext3D*, HostWindow*);
+    GraphicsContext3DPrivate(GraphicsContext3D*, HostWindow*, GraphicsContext3D::RenderStyle);
     ~GraphicsContext3DPrivate();
 
 #if USE(ACCELERATED_COMPOSITING)
@@ -71,12 +69,15 @@ public:
 #endif
 #if USE(GRAPHICS_SURFACE)
     virtual uint32_t copyToGraphicsSurface();
+    virtual uint64_t graphicsSurfaceToken() const;
 #endif
 
     QRectF boundingRect() const;
     void blitMultisampleFramebuffer() const;
     void blitMultisampleFramebufferAndRestoreContext() const;
     bool makeCurrentIfNeeded() const;
+    void createOffscreenBuffers();
+    void initializeANGLE();
     void createGraphicsSurfaces(const IntSize&);
 
     GraphicsContext3D* m_context;
@@ -85,8 +86,7 @@ public:
     PlatformGraphicsContext3D m_platformContext;
 #if USE(GRAPHICS_SURFACE)
     GraphicsSurface::Flags m_surfaceFlags;
-    RefPtr<GraphicsSurface> m_frontBufferGraphicsSurface;
-    RefPtr<GraphicsSurface> m_backBufferGraphicsSurface;
+    RefPtr<GraphicsSurface> m_graphicsSurface;
 #endif
 };
 
@@ -106,7 +106,7 @@ void GraphicsContext3D::releaseShaderCompiler()
 }
 #endif
 
-GraphicsContext3DPrivate::GraphicsContext3DPrivate(GraphicsContext3D* context, HostWindow* hostWindow)
+GraphicsContext3DPrivate::GraphicsContext3DPrivate(GraphicsContext3D* context, HostWindow* hostWindow, GraphicsContext3D::RenderStyle renderStyle)
     : m_context(context)
     , m_hostWindow(hostWindow)
     , m_surface(0)
@@ -120,6 +120,12 @@ GraphicsContext3DPrivate::GraphicsContext3DPrivate(GraphicsContext3D* context, H
             return;
 
         makeCurrentIfNeeded();
+        return;
+    }
+
+    if (renderStyle == GraphicsContext3D::RenderToCurrentGLContext) {
+        m_platformContext = QOpenGLContext::currentContext();
+        m_surface = m_platformContext->surface();
         return;
     }
 
@@ -142,18 +148,72 @@ GraphicsContext3DPrivate::GraphicsContext3DPrivate(GraphicsContext3D* context, H
                     | GraphicsSurface::SupportsSharing;
 
     if (!surfaceSize.isEmpty()) {
-        m_frontBufferGraphicsSurface = GraphicsSurface::create(surfaceSize, m_surfaceFlags);
-        m_backBufferGraphicsSurface = GraphicsSurface::create(surfaceSize, m_surfaceFlags);
+        m_graphicsSurface = GraphicsSurface::create(surfaceSize, m_surfaceFlags);
     }
 #endif
 }
 
+void GraphicsContext3DPrivate::createOffscreenBuffers()
+{
+    glGenFramebuffers(/* count */ 1, &m_context->m_fbo);
+
+    glGenTextures(1, &m_context->m_texture);
+    glBindTexture(GraphicsContext3D::TEXTURE_2D, m_context->m_texture);
+    glTexParameterf(GraphicsContext3D::TEXTURE_2D, GraphicsContext3D::TEXTURE_MAG_FILTER, GraphicsContext3D::LINEAR);
+    glTexParameterf(GraphicsContext3D::TEXTURE_2D, GraphicsContext3D::TEXTURE_MIN_FILTER, GraphicsContext3D::LINEAR);
+    glTexParameteri(GraphicsContext3D::TEXTURE_2D, GraphicsContext3D::TEXTURE_WRAP_S, GraphicsContext3D::CLAMP_TO_EDGE);
+    glTexParameteri(GraphicsContext3D::TEXTURE_2D, GraphicsContext3D::TEXTURE_WRAP_T, GraphicsContext3D::CLAMP_TO_EDGE);
+    glBindTexture(GraphicsContext3D::TEXTURE_2D, 0);
+
+    // Create a multisample FBO.
+    if (m_context->m_attrs.antialias) {
+        glGenFramebuffers(1, &m_context->m_multisampleFBO);
+        glBindFramebuffer(GraphicsContext3D::FRAMEBUFFER, m_context->m_multisampleFBO);
+        m_context->m_boundFBO = m_context->m_multisampleFBO;
+        glGenRenderbuffers(1, &m_context->m_multisampleColorBuffer);
+        if (m_context->m_attrs.stencil || m_context->m_attrs.depth)
+            glGenRenderbuffers(1, &m_context->m_multisampleDepthStencilBuffer);
+    } else {
+        // Bind canvas FBO.
+        glBindFramebuffer(GraphicsContext3D::FRAMEBUFFER, m_context->m_fbo);
+        m_context->m_boundFBO = m_context->m_fbo;
+#if USE(OPENGL_ES_2)
+        if (m_context->m_attrs.depth)
+            glGenRenderbuffers(1, &m_context->m_depthBuffer);
+        if (m_context->m_attrs.stencil)
+            glGenRenderbuffers(1, &m_context->m_stencilBuffer);
+#endif
+        if (m_context->m_attrs.stencil || m_context->m_attrs.depth)
+            glGenRenderbuffers(1, &m_context->m_depthStencilBuffer);
+    }
+}
+
+void GraphicsContext3DPrivate::initializeANGLE()
+{
+    ShBuiltInResources ANGLEResources;
+    ShInitBuiltInResources(&ANGLEResources);
+
+    m_context->getIntegerv(GraphicsContext3D::MAX_VERTEX_ATTRIBS, &ANGLEResources.MaxVertexAttribs);
+    m_context->getIntegerv(GraphicsContext3D::MAX_VERTEX_UNIFORM_VECTORS, &ANGLEResources.MaxVertexUniformVectors);
+    m_context->getIntegerv(GraphicsContext3D::MAX_VARYING_VECTORS, &ANGLEResources.MaxVaryingVectors);
+    m_context->getIntegerv(GraphicsContext3D::MAX_VERTEX_TEXTURE_IMAGE_UNITS, &ANGLEResources.MaxVertexTextureImageUnits);
+    m_context->getIntegerv(GraphicsContext3D::MAX_COMBINED_TEXTURE_IMAGE_UNITS, &ANGLEResources.MaxCombinedTextureImageUnits);
+    m_context->getIntegerv(GraphicsContext3D::MAX_TEXTURE_IMAGE_UNITS, &ANGLEResources.MaxTextureImageUnits);
+    m_context->getIntegerv(GraphicsContext3D::MAX_FRAGMENT_UNIFORM_VECTORS, &ANGLEResources.MaxFragmentUniformVectors);
+
+    // Always set to 1 for OpenGL ES.
+    ANGLEResources.MaxDrawBuffers = 1;
+    m_context->m_compiler.setResources(ANGLEResources);
+}
+
 GraphicsContext3DPrivate::~GraphicsContext3DPrivate()
 {
-    delete m_surface;
-    m_surface = 0;
-    // Platform context is assumed to be owned by surface.
-    m_platformContext = 0;
+    if (m_hostWindow) {
+        delete m_surface;
+        m_surface = 0;
+        // Platform context is assumed to be owned by surface.
+        m_platformContext = 0;
+    }
 }
 
 static inline quint32 swapBgrToRgb(quint32 pixel)
@@ -222,14 +282,19 @@ void GraphicsContext3DPrivate::paintToTextureMapper(TextureMapper* textureMapper
 #if USE(GRAPHICS_SURFACE)
 uint32_t GraphicsContext3DPrivate::copyToGraphicsSurface()
 {
-    if (!m_frontBufferGraphicsSurface || !m_backBufferGraphicsSurface)
+    if (!m_graphicsSurface)
         return 0;
 
     blitMultisampleFramebufferAndRestoreContext();
     makeCurrentIfNeeded();
-    m_backBufferGraphicsSurface->copyFromFramebuffer(m_context->m_fbo, IntRect(0, 0, m_context->m_currentWidth, m_context->m_currentHeight));
-    std::swap(m_frontBufferGraphicsSurface, m_backBufferGraphicsSurface);
-    return m_frontBufferGraphicsSurface->exportToken();
+    m_graphicsSurface->copyFromFramebuffer(m_context->m_fbo, IntRect(0, 0, m_context->m_currentWidth, m_context->m_currentHeight));
+    uint32_t frontBuffer = m_graphicsSurface->swapBuffers();
+    return frontBuffer;
+}
+
+uint64_t GraphicsContext3DPrivate::graphicsSurfaceToken() const
+{
+    return m_graphicsSurface->exportToken();
 }
 #endif
 
@@ -255,7 +320,6 @@ void GraphicsContext3DPrivate::blitMultisampleFramebufferAndRestoreContext() con
     if (!m_context->m_attrs.antialias)
         return;
 
-#if HAVE(QT5)
     const QOpenGLContext* currentContext = QOpenGLContext::currentContext();
     QSurface* currentSurface = 0;
     if (currentContext != m_platformContext) {
@@ -265,47 +329,23 @@ void GraphicsContext3DPrivate::blitMultisampleFramebufferAndRestoreContext() con
     blitMultisampleFramebuffer();
     if (currentSurface)
         const_cast<QOpenGLContext*>(currentContext)->makeCurrent(currentSurface);
-#else
-    const QGLContext* currentContext = QGLContext::currentContext();
-    const QGLContext* widgetContext = m_surface->context();
-    if (currentContext != widgetContext)
-        m_surface->makeCurrent();
-    blitMultisampleFramebuffer();
-    if (currentContext) {
-        if (currentContext != widgetContext)
-            const_cast<QGLContext*>(currentContext)->makeCurrent();
-    } else
-        m_surface->doneCurrent();
-#endif
 }
 
 bool GraphicsContext3DPrivate::makeCurrentIfNeeded() const
 {
-#if HAVE(QT5)
     const QOpenGLContext* currentContext = QOpenGLContext::currentContext();
     if (currentContext == m_platformContext)
         return true;
     return m_platformContext->makeCurrent(m_surface);
-#else
-    const QGLContext* currentContext = QGLContext::currentContext();
-    const QGLContext* widgetContext = m_surface->context();
-    if (currentContext != widgetContext)
-        m_surface->makeCurrent();
-
-    return QGLContext::currentContext() == widgetContext;
-#endif
 }
 
 void GraphicsContext3DPrivate::createGraphicsSurfaces(const IntSize& size)
 {
 #if USE(GRAPHICS_SURFACE)
-    if (size.isEmpty()) {
-        m_frontBufferGraphicsSurface.clear();
-        m_backBufferGraphicsSurface.clear();
-    } else {
-        m_frontBufferGraphicsSurface = GraphicsSurface::create(size, m_surfaceFlags);
-        m_backBufferGraphicsSurface = GraphicsSurface::create(size, m_surfaceFlags);
-    }
+    if (size.isEmpty())
+        m_graphicsSurface.clear();
+    else
+        m_graphicsSurface = GraphicsSurface::create(size, m_surfaceFlags);
 #endif
 }
 
@@ -314,15 +354,16 @@ PassRefPtr<GraphicsContext3D> GraphicsContext3D::create(GraphicsContext3D::Attri
     // This implementation doesn't currently support rendering directly to the HostWindow.
     if (renderStyle == RenderDirectlyToHostWindow)
         return 0;
-    RefPtr<GraphicsContext3D> context = adoptRef(new GraphicsContext3D(attrs, hostWindow, false));
+    RefPtr<GraphicsContext3D> context = adoptRef(new GraphicsContext3D(attrs, hostWindow, renderStyle));
     return context->m_private ? context.release() : 0;
 }
 
-GraphicsContext3D::GraphicsContext3D(GraphicsContext3D::Attributes attrs, HostWindow* hostWindow, bool)
+GraphicsContext3D::GraphicsContext3D(GraphicsContext3D::Attributes attrs, HostWindow* hostWindow, GraphicsContext3D::RenderStyle renderStyle)
     : m_currentWidth(0)
     , m_currentHeight(0)
     , m_compiler(isGLES2Compliant() ? SH_ESSL_OUTPUT : SH_GLSL_OUTPUT)
     , m_attrs(attrs)
+    , m_renderStyle(renderStyle)
     , m_texture(0)
     , m_compositorTexture(0)
     , m_fbo(0)
@@ -339,7 +380,7 @@ GraphicsContext3D::GraphicsContext3D(GraphicsContext3D::Attributes attrs, HostWi
     , m_multisampleFBO(0)
     , m_multisampleDepthStencilBuffer(0)
     , m_multisampleColorBuffer(0)
-    , m_private(adoptPtr(new GraphicsContext3DPrivate(this, hostWindow)))
+    , m_private(adoptPtr(new GraphicsContext3DPrivate(this, hostWindow, renderStyle)))
 {
     validateAttributes();
 
@@ -360,54 +401,10 @@ GraphicsContext3D::GraphicsContext3D(GraphicsContext3D::Attributes attrs, HostWi
         return;
     }
 
-    // Create buffers for the canvas FBO.
-    glGenFramebuffers(/* count */ 1, &m_fbo);
+    if (renderStyle == RenderOffscreen)
+        m_private->createOffscreenBuffers();
 
-    glGenTextures(1, &m_texture);
-    glBindTexture(GraphicsContext3D::TEXTURE_2D, m_texture);
-    glTexParameterf(GraphicsContext3D::TEXTURE_2D, GraphicsContext3D::TEXTURE_MAG_FILTER, GraphicsContext3D::LINEAR);
-    glTexParameterf(GraphicsContext3D::TEXTURE_2D, GraphicsContext3D::TEXTURE_MIN_FILTER, GraphicsContext3D::LINEAR);
-    glTexParameteri(GraphicsContext3D::TEXTURE_2D, GraphicsContext3D::TEXTURE_WRAP_S, GraphicsContext3D::CLAMP_TO_EDGE);
-    glTexParameteri(GraphicsContext3D::TEXTURE_2D, GraphicsContext3D::TEXTURE_WRAP_T, GraphicsContext3D::CLAMP_TO_EDGE);
-    glBindTexture(GraphicsContext3D::TEXTURE_2D, 0);
-
-    // Create a multisample FBO.
-    if (m_attrs.antialias) {
-        glGenFramebuffers(1, &m_multisampleFBO);
-        glBindFramebuffer(GraphicsContext3D::FRAMEBUFFER, m_multisampleFBO);
-        m_boundFBO = m_multisampleFBO;
-        glGenRenderbuffers(1, &m_multisampleColorBuffer);
-        if (m_attrs.stencil || m_attrs.depth)
-            glGenRenderbuffers(1, &m_multisampleDepthStencilBuffer);
-    } else {
-        // Bind canvas FBO.
-        glBindFramebuffer(GraphicsContext3D::FRAMEBUFFER, m_fbo);
-        m_boundFBO = m_fbo;
-#if USE(OPENGL_ES_2)
-        if (m_attrs.depth)
-            glGenRenderbuffers(1, &m_depthBuffer);
-        if (m_attrs.stencil)
-            glGenRenderbuffers(1, &m_stencilBuffer);
-#endif
-        if (m_attrs.stencil || m_attrs.depth)
-            glGenRenderbuffers(1, &m_depthStencilBuffer);
-    }
-
-    // ANGLE initialization.
-    ShBuiltInResources ANGLEResources;
-    ShInitBuiltInResources(&ANGLEResources);
-
-    getIntegerv(GraphicsContext3D::MAX_VERTEX_ATTRIBS, &ANGLEResources.MaxVertexAttribs);
-    getIntegerv(GraphicsContext3D::MAX_VERTEX_UNIFORM_VECTORS, &ANGLEResources.MaxVertexUniformVectors);
-    getIntegerv(GraphicsContext3D::MAX_VARYING_VECTORS, &ANGLEResources.MaxVaryingVectors);
-    getIntegerv(GraphicsContext3D::MAX_VERTEX_TEXTURE_IMAGE_UNITS, &ANGLEResources.MaxVertexTextureImageUnits);
-    getIntegerv(GraphicsContext3D::MAX_COMBINED_TEXTURE_IMAGE_UNITS, &ANGLEResources.MaxCombinedTextureImageUnits); 
-    getIntegerv(GraphicsContext3D::MAX_TEXTURE_IMAGE_UNITS, &ANGLEResources.MaxTextureImageUnits);
-    getIntegerv(GraphicsContext3D::MAX_FRAGMENT_UNIFORM_VECTORS, &ANGLEResources.MaxFragmentUniformVectors);
-
-    // Always set to 1 for OpenGL ES.
-    ANGLEResources.MaxDrawBuffers = 1;
-    m_compiler.setResources(ANGLEResources);
+    m_private->initializeANGLE();
 
 #if !USE(OPENGL_ES_2)
     glEnable(GL_POINT_SPRITE);
@@ -461,7 +458,7 @@ PlatformLayer* GraphicsContext3D::platformLayer() const
 
 bool GraphicsContext3D::makeContextCurrent()
 {
-    if (!m_private)
+    if (!m_private || m_renderStyle == RenderToCurrentGLContext)
         return false;
     return m_private->makeCurrentIfNeeded();
 }

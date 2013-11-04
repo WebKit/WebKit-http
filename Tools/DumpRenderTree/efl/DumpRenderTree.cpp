@@ -31,9 +31,9 @@
 #include "DumpRenderTreeView.h"
 #include "EventSender.h"
 #include "FontManagement.h"
-#include "LayoutTestController.h"
 #include "NotImplemented.h"
 #include "PixelDumpSupport.h"
+#include "TestRunner.h"
 #include "WebCoreSupport/DumpRenderTreeSupportEfl.h"
 #include "WebCoreTestSupport.h"
 #include "WorkQueue.h"
@@ -48,6 +48,7 @@
 #include <getopt.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <wtf/Assertions.h>
 #include <wtf/OwnPtr.h>
 #include <wtf/text/CString.h>
 #include <wtf/text/StringBuilder.h>
@@ -61,10 +62,10 @@ Ecore_Timer* waitToDumpWatchdog = 0;
 extern Ewk_History_Item* prevTestBFItem;
 
 // From the top-level DumpRenderTree.h
-RefPtr<LayoutTestController> gLayoutTestController;
+RefPtr<TestRunner> gTestRunner;
 volatile bool done = false;
 
-static int dumpPixels = false;
+static bool dumpPixelsForCurrentTest;
 static int dumpTree = true;
 static int printSeparators = true;
 static int useX11Window = false;
@@ -84,7 +85,7 @@ static String dumpFramesAsText(Evas_Object* frame)
     result.append("\n");
     eina_stringshare_del(frameContents);
 
-    if (gLayoutTestController->dumpChildFramesAsText()) {
+    if (gTestRunner->dumpChildFramesAsText()) {
         Eina_List* children = DumpRenderTreeSupportEfl::frameChildren(frame);
         void* iterator;
 
@@ -127,7 +128,7 @@ static void dumpFrameScrollPosition(Evas_Object* frame)
         printf("%s", result.toString().utf8().data());
     }
 
-    if (gLayoutTestController->dumpChildFrameScrollPositions()) {
+    if (gTestRunner->dumpChildFrameScrollPositions()) {
         Eina_List* children = DumpRenderTreeSupportEfl::frameChildren(frame);
         void* iterator;
 
@@ -192,7 +193,6 @@ static bool parseCommandLineOptions(int argc, char** argv)
 {
     static const option options[] = {
         {"notree", no_argument, &dumpTree, false},
-        {"pixel-tests", no_argument, &dumpPixels, true},
         {"tree", no_argument, &dumpTree, true},
         {"gui", no_argument, &useX11Window, true},
         {0, 0, 0, 0}
@@ -210,14 +210,39 @@ static bool parseCommandLineOptions(int argc, char** argv)
     return true;
 }
 
+static inline bool isGlobalHistoryTest(const String& cTestPathOrURL)
+{
+    return cTestPathOrURL.contains("/globalhistory/");
+}
+
+static void createTestRunner(const String& testURL, const String& expectedPixelHash)
+{
+    gTestRunner =
+        TestRunner::create(std::string(testURL.utf8().data()),
+                                     std::string(expectedPixelHash.utf8().data()));
+
+    topLoadingFrame = 0;
+    done = false;
+
+    gTestRunner->setIconDatabaseEnabled(false);
+
+    if (shouldLogFrameLoadDelegates(testURL))
+        gTestRunner->setDumpFrameLoadCallbacks(true);
+
+    gTestRunner->setDeveloperExtrasEnabled(true);
+    if (shouldOpenWebInspector(testURL))
+        gTestRunner->showWebInspector();
+
+    gTestRunner->setDumpHistoryDelegateCallbacks(isGlobalHistoryTest(testURL));
+
+    if (shouldDumpAsText(testURL)) {
+        gTestRunner->setDumpAsText(true);
+        gTestRunner->setGeneratePixelResults(false);
+    }
+}
+
 static String getFinalTestURL(const String& testURL)
 {
-    const size_t hashSeparatorPos = testURL.find("'");
-    if (hashSeparatorPos != notFound)
-        return getFinalTestURL(testURL.left(hashSeparatorPos));
-
-    // Convert the path into a full file URL if it does not look
-    // like an HTTP/S URL (doesn't start with http:// or https://).
     if (!testURL.startsWith("http://") && !testURL.startsWith("https://")) {
         char* cFilePath = ecore_file_realpath(testURL.utf8().data());
         const String filePath = String::fromUTF8(cFilePath);
@@ -230,60 +255,27 @@ static String getFinalTestURL(const String& testURL)
     return testURL;
 }
 
-static String getExpectedPixelHash(const String& testURL)
+static void runTest(const char* inputLine)
 {
-    const size_t hashSeparatorPos = testURL.find("'");
-    return (hashSeparatorPos != notFound) ? testURL.substring(hashSeparatorPos + 1) : String();
-}
-
-static inline bool isGlobalHistoryTest(const String& cTestPathOrURL)
-{
-    return cTestPathOrURL.contains("/globalhistory/");
-}
-
-static void createLayoutTestController(const String& testURL, const String& expectedPixelHash)
-{
-    gLayoutTestController =
-        LayoutTestController::create(std::string(testURL.utf8().data()),
-                                     std::string(expectedPixelHash.utf8().data()));
-
-    topLoadingFrame = 0;
-    done = false;
-
-    gLayoutTestController->setIconDatabaseEnabled(false);
-
-    if (shouldLogFrameLoadDelegates(testURL))
-        gLayoutTestController->setDumpFrameLoadCallbacks(true);
-
-    gLayoutTestController->setDeveloperExtrasEnabled(true);
-    if (shouldOpenWebInspector(testURL))
-        gLayoutTestController->showWebInspector();
-
-    gLayoutTestController->setDumpHistoryDelegateCallbacks(isGlobalHistoryTest(testURL));
-
-    if (shouldDumpAsText(testURL)) {
-        gLayoutTestController->setDumpAsText(true);
-        gLayoutTestController->setGeneratePixelResults(false);
-    }
-}
-
-static void runTest(const char* cTestPathOrURL)
-{
-    const String testPathOrURL = String::fromUTF8(cTestPathOrURL);
+    TestCommand command = parseInputLine(inputLine);
+    const String testPathOrURL(command.pathOrURL.c_str());
     ASSERT(!testPathOrURL.isEmpty());
+    dumpPixelsForCurrentTest = command.shouldDumpPixels;
+    const String expectedPixelHash(command.expectedPixelHash.c_str());
 
+    // Convert the path into a full file URL if it does not look
+    // like an HTTP/S URL (doesn't start with http:// or https://).
     const String testURL = getFinalTestURL(testPathOrURL);
-    const String expectedPixelHash = getExpectedPixelHash(testPathOrURL);
 
     browser->resetDefaultsToConsistentValues();
-    createLayoutTestController(testURL, expectedPixelHash);
+    createTestRunner(testURL, expectedPixelHash);
 
     WorkQueue::shared()->clear();
     WorkQueue::shared()->setFrozen(false);
 
     const bool isSVGW3CTest = testURL.contains("svg/W3C-SVG-1.1");
-    const int width = isSVGW3CTest ? 480 : LayoutTestController::maxViewWidth;
-    const int height = isSVGW3CTest ? 360 : LayoutTestController::maxViewHeight;
+    const int width = isSVGW3CTest ? 480 : TestRunner::maxViewWidth;
+    const int height = isSVGW3CTest ? 360 : TestRunner::maxViewHeight;
     evas_object_resize(browser->mainView(), width, height);
 
     if (prevTestBFItem)
@@ -296,8 +288,8 @@ static void runTest(const char* cTestPathOrURL)
 
     ecore_main_loop_begin();
 
-    gLayoutTestController->closeWebInspector();
-    gLayoutTestController->setDeveloperExtrasEnabled(false);
+    gTestRunner->closeWebInspector();
+    gTestRunner->setDeveloperExtrasEnabled(false);
 
     browser->clearExtraViews();
 
@@ -306,7 +298,7 @@ static void runTest(const char* cTestPathOrURL)
 
     ewk_view_uri_set(browser->mainView(), "about:blank");
 
-    gLayoutTestController.clear();
+    gTestRunner.clear();
     sendPixelResultsEOF();
 }
 
@@ -328,15 +320,15 @@ static void adjustOutputTypeByMimeType(const Evas_Object* frame)
 {
     const String responseMimeType(DumpRenderTreeSupportEfl::responseMimeType(frame));
     if (responseMimeType == "text/plain") {
-        gLayoutTestController->setDumpAsText(true);
-        gLayoutTestController->setGeneratePixelResults(false);
+        gTestRunner->setDumpAsText(true);
+        gTestRunner->setGeneratePixelResults(false);
     }
 }
 
 static void dumpFrameContentsAsText(Evas_Object* frame)
 {
     String result;
-    if (gLayoutTestController->dumpAsText())
+    if (gTestRunner->dumpAsText())
         result = dumpFramesAsText(frame);
     else
         result = DumpRenderTreeSupportEfl::renderTreeDump(frame);
@@ -346,17 +338,17 @@ static void dumpFrameContentsAsText(Evas_Object* frame)
 
 static bool shouldDumpFrameScrollPosition()
 {
-    return !gLayoutTestController->dumpAsText() && !gLayoutTestController->dumpDOMAsWebArchive() && !gLayoutTestController->dumpSourceAsWebArchive();
+    return !gTestRunner->dumpAsText() && !gTestRunner->dumpDOMAsWebArchive() && !gTestRunner->dumpSourceAsWebArchive();
 }
 
 static bool shouldDumpPixelsAndCompareWithExpected()
 {
-    return dumpPixels && gLayoutTestController->generatePixelResults() && !gLayoutTestController->dumpDOMAsWebArchive() && !gLayoutTestController->dumpSourceAsWebArchive();
+    return dumpPixelsForCurrentTest && gTestRunner->generatePixelResults() && !gTestRunner->dumpDOMAsWebArchive() && !gTestRunner->dumpSourceAsWebArchive();
 }
 
 static bool shouldDumpBackForwardList()
 {
-    return gLayoutTestController->dumpBackForwardList();
+    return gTestRunner->dumpBackForwardList();
 }
 
 static bool initEfl()
@@ -420,7 +412,7 @@ void dump()
     }
 
     if (shouldDumpPixelsAndCompareWithExpected())
-        dumpWebViewAsPixelsAndCompareWithExpected(gLayoutTestController->expectedPixelHash());
+        dumpWebViewAsPixelsAndCompareWithExpected(gTestRunner->expectedPixelHash());
 
     done = true;
     ecore_main_loop_quit();
@@ -450,6 +442,8 @@ int main(int argc, char** argv)
     if (!initEfl())
         return EXIT_FAILURE;
 
+    WTFInstallReportBacktraceOnCrashHook();
+
     OwnPtr<Ecore_Evas> ecoreEvas = adoptPtr(initEcoreEvas());
     browser = DumpRenderTreeChrome::create(ecore_evas_get(ecoreEvas.get()));
     addFontsToEnvironment();
@@ -458,7 +452,7 @@ int main(int argc, char** argv)
         printSeparators = true;
         runTestingServerLoop();
     } else {
-        printSeparators = (optind < argc - 1 || (dumpPixels && dumpTree));
+        printSeparators = (optind < argc - 1 || (dumpPixelsForCurrentTest && dumpTree));
         for (int i = optind; i != argc; ++i)
             runTest(argv[i]);
     }

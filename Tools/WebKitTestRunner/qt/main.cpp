@@ -26,6 +26,7 @@
 
 #include "config.h"
 
+#include "QtInitializeTestFonts.h"
 #include "TestController.h"
 #include "qquickwebview_p.h"
 
@@ -54,7 +55,7 @@ public:
         delete m_controller;
     }
 
-public slots:
+public Q_SLOTS:
     void launch()
     {
         m_controller = new WTR::TestController(m_argc, const_cast<const char**>(m_argv));
@@ -117,6 +118,9 @@ int main(int argc, char** argv)
     }
 
     qputenv("QT_WEBKIT_THEME_NAME", "qstyle");
+
+    WebKit::initializeTestFonts();
+    QCoreApplication::setAttribute(Qt::AA_Use96Dpi, true);
 
     QQuickWebViewExperimental::setFlickableViewportEnabled(false);
     QApplication app(argc, argv);

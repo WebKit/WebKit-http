@@ -133,6 +133,15 @@ String.prototype.trimURL = function(baseURLDomain)
     return result;
 }
 
+/**
+ * @param {string} href
+ * @return {string}
+ */
+function sanitizeHref(href)
+{
+    return href && href.trim().toLowerCase().startsWith("javascript:") ? "" : href;
+}
+
 String.prototype.removeURLFragment = function()
 {
     var fragmentIndex = this.indexOf("#");
@@ -381,6 +390,22 @@ Object.defineProperty(Array.prototype, "binaryIndexOf",
     {
         var result = binarySearch(value, this, comparator);
         return result >= 0 ? result : -1;
+    }
+});
+
+Object.defineProperty(Array.prototype, "select",
+{
+    /**
+     * @this {Array.<*>}
+     * @param {string} field
+     * @return {Array.<*>}
+     */
+    value: function(field)
+    {
+        var result = new Array(this.length);
+        for (var i = 0; i < this.length; ++i)
+            result[i] = this[i][field];
+        return result;
     }
 });
 
@@ -674,42 +699,91 @@ Map.prototype = {
             objectIdentifier = ++Map._lastObjectIdentifier;
             key.__identifier = objectIdentifier;
         }
-        this._map[objectIdentifier] = value;
+        this._map[objectIdentifier] = [key, value];
     },
     
     /**
      * @param {Object} key
-     * @return {Object} value
      */
     remove: function(key)
     {
         var result = this._map[key.__identifier];
         delete this._map[key.__identifier];
-        return result;
+        return result ? result[1] : undefined;
     },
-    
+
+    /**
+     * @return {Array.<Object>}
+     */
+    keys: function()
+    {
+        return this._list(0);
+    },
+
     values: function()
+    {
+        return this._list(1);
+    },
+
+    /**
+     * @param {number} index
+     */
+    _list: function(index)
     {
         var result = [];
         for (var objectIdentifier in this._map)
-            result.push(this._map[objectIdentifier]);
+            result.push(this._map[objectIdentifier][index]);
         return result;
     },
-    
+
     /**
      * @param {Object} key
      */
     get: function(key)
     {
-        return this._map[key.__identifier];
+        var entry = this._map[key.__identifier];
+        return entry ? entry[1] : undefined;
     },
     
     clear: function()
     {
         this._map = {};
     }
-};
+}
+/**
+ * @param {string} url
+ * @param {boolean=} async
+ * @param {function(?string)=} callback
+ * @return {?string}
+ */
+function loadXHR(url, async, callback) 
+{
+    function onReadyStateChanged() 
+    {
+        if (xhr.readyState !== XMLHttpRequest.DONE)
+            return;
 
+        if (xhr.status === 200) {
+            callback(xhr.responseText);
+            return;
+        }
+
+        callback(null); 
+   }
+
+    var xhr = new XMLHttpRequest();
+    xhr.open("GET", url, async);
+    if (async)
+        xhr.onreadystatechange = onReadyStateChanged;        
+    xhr.send(null);
+
+    if (!async) {
+        if (xhr.status === 200) 
+            return xhr.responseText;
+        return null;
+    }
+    return null;
+}
 
 /**
  * @constructor
@@ -764,4 +838,20 @@ StringPool.prototype = {
             }
         }
     }
+}
+
+var _importedScripts = {};
+
+/**
+ * @param {string} scriptName
+ */
+function importScript(scriptName)
+{
+    if (_importedScripts[scriptName])
+        return;
+    _importedScripts[scriptName] = true;
+    var xhr = new XMLHttpRequest();
+    xhr.open("GET", scriptName, false);
+    xhr.send(null);
+    window.eval(xhr.responseText + "\n//@ sourceURL=" + scriptName);
 }

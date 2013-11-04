@@ -42,7 +42,7 @@ v8::Handle<v8::Integer> V8DOMStringMap::namedPropertyQuery(v8::Local<v8::String>
 {
     INC_STATS("DOM.DOMStringMap.NamedPropertyQuery");
     if (V8DOMStringMap::toNative(info.Holder())->contains(toWebCoreString(name)))
-        return v8Integer(v8::None, info.GetIsolate());
+        return v8Integer(0, info.GetIsolate());
     return v8::Handle<v8::Integer>();
 }
 
@@ -51,7 +51,7 @@ v8::Handle<v8::Value> V8DOMStringMap::namedPropertyGetter(v8::Local<v8::String> 
     INC_STATS("DOM.DOMStringMap.NamedPropertyGetter");
     String value = V8DOMStringMap::toNative(info.Holder())->item(toWebCoreString(name));
     if (value.isNull())
-        return v8::Handle<v8::Value>();
+        return v8Undefined();
     return v8StringOrUndefined(value, info.GetIsolate());
 }
 
@@ -80,7 +80,7 @@ v8::Handle<v8::Value> V8DOMStringMap::namedPropertySetter(v8::Local<v8::String> 
     ExceptionCode ec = 0;
     V8DOMStringMap::toNative(info.Holder())->setItem(toWebCoreString(name), toWebCoreString(value), ec);
     if (ec)
-        return throwError(ec, info.GetIsolate());
+        return setDOMException(ec, info.GetIsolate());
     return value;
 }
 

@@ -36,21 +36,10 @@
     FOR_EACH_OPCODE_ID(LLINT_INSTRUCTION_DECL);
 #undef LLINT_INSTRUCTION_DECL
 
-extern "C" void llint_begin();
-extern "C" void llint_end();
-extern "C" void llint_program_prologue();
-extern "C" void llint_eval_prologue();
-extern "C" void llint_function_for_call_prologue();
-extern "C" void llint_function_for_construct_prologue();
-extern "C" void llint_function_for_call_arity_check();
-extern "C" void llint_function_for_construct_arity_check();
-extern "C" void llint_generic_return_point();
-extern "C" void llint_throw_from_slow_path_trampoline();
-extern "C" void llint_throw_during_call_trampoline();
+#define DECLARE_LLINT_NATIVE_HELPER(name, length) extern "C" void name();
+    FOR_EACH_LLINT_NATIVE_HELPER(DECLARE_LLINT_NATIVE_HELPER)
+#undef DECLARE_LLINT_NATIVE_HELPER
 
-// Native call trampolines
-extern "C" void llint_native_call_trampoline();
-extern "C" void llint_native_construct_trampoline();
 
 #endif // ENABLE(LLINT)
 

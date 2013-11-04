@@ -54,7 +54,6 @@
 #include "V8Int32Array.h"
 #include "V8Int8Array.h"
 #include "V8MessagePort.h"
-#include "V8Proxy.h"
 #include "V8Uint16Array.h"
 #include "V8Uint32Array.h"
 #include "V8Uint8Array.h"
@@ -730,7 +729,7 @@ private:
     class ErrorState : public StateBase {
     public:
         ErrorState()
-            : StateBase(v8::Handle<v8::Value>(), 0)
+            : StateBase(v8Undefined(), 0)
         {
         }
 
@@ -2221,7 +2220,7 @@ PassOwnPtr<SerializedScriptValue::ArrayBufferContentsArray> SerializedScriptValu
 {
     for (size_t i = 0; i < arrayBuffers.size(); i++) {
         if (arrayBuffers[i]->isNeutered()) {
-            throwError(INVALID_STATE_ERR, isolate);
+            setDOMException(INVALID_STATE_ERR, isolate);
             didThrow = true;
             return nullptr;
         }
@@ -2239,7 +2238,7 @@ PassOwnPtr<SerializedScriptValue::ArrayBufferContentsArray> SerializedScriptValu
 
         bool result = arrayBuffers[i]->transfer(contents->at(i), neuteredViews);
         if (!result) {
-            throwError(INVALID_STATE_ERR, isolate);
+            setDOMException(INVALID_STATE_ERR, isolate);
             didThrow = true;
             return nullptr;
         }
@@ -2277,11 +2276,11 @@ SerializedScriptValue::SerializedScriptValue(v8::Handle<v8::Value> value,
         // If there was an input error, throw a new exception outside
         // of the TryCatch scope.
         didThrow = true;
-        throwError(DATA_CLONE_ERR, isolate);
+        setDOMException(DATA_CLONE_ERR, isolate);
         return;
     case Serializer::InvalidStateError:
         didThrow = true;
-        throwError(INVALID_STATE_ERR, isolate);
+        setDOMException(INVALID_STATE_ERR, isolate);
         return;
     case Serializer::JSFailure:
         // If there was a JS failure (but no exception), there's not

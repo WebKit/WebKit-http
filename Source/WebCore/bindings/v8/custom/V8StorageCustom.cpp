@@ -33,7 +33,6 @@
 
 #include "Storage.h"
 #include "V8Binding.h"
-#include "V8Proxy.h"
 
 namespace WebCore {
 
@@ -61,7 +60,7 @@ static v8::Handle<v8::Value> storageGetter(v8::Local<v8::String> v8Name, const v
     if (name != "length" && storage->contains(name))
         return v8String(storage->getItem(name), info.GetIsolate());
 
-    return v8::Handle<v8::Value>();
+    return v8Undefined();
 }
 
 v8::Handle<v8::Value> V8Storage::indexedPropertyGetter(uint32_t index, const v8::AccessorInfo& info)
@@ -75,7 +74,7 @@ v8::Handle<v8::Value> V8Storage::namedPropertyGetter(v8::Local<v8::String> name,
 {
     INC_STATS("DOM.Storage.NamedPropertyGetter");
     if (!info.Holder()->GetRealNamedPropertyInPrototypeChain(name).IsEmpty())
-        return v8::Handle<v8::Value>();
+        return v8Undefined();
     return storageGetter(name, info);
 }
 
@@ -103,12 +102,12 @@ static v8::Handle<v8::Value> storageSetter(v8::Local<v8::String> v8Name, v8::Loc
         return v8Value;
 
     if (!info.Holder()->GetRealNamedPropertyInPrototypeChain(v8Name).IsEmpty())
-        return v8::Handle<v8::Value>();
+        return v8Undefined();
 
     ExceptionCode ec = 0;
     storage->setItem(name, value, ec);
     if (ec)
-        return throwError(ec, info.GetIsolate());
+        return setDOMException(ec, info.GetIsolate());
 
     return v8Value;
 }

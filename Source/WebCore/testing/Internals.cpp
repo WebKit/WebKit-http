@@ -26,11 +26,11 @@
 #include "config.h"
 #include "Internals.h"
 
+#include "BackForwardController.h"
 #include "CachedResourceLoader.h"
 #include "ClientRect.h"
 #include "ClientRectList.h"
 #include "ComposedShadowTreeWalker.h"
-#include "DOMNodeHighlighter.h"
 #include "DOMStringList.h"
 #include "Document.h"
 #include "DocumentMarker.h"
@@ -38,7 +38,7 @@
 #include "Element.h"
 #include "ElementShadow.h"
 #include "ExceptionCode.h"
-#include "FastMallocStatistics.h"
+#include "FormController.h"
 #include "Frame.h"
 #include "FrameView.h"
 #include "HTMLContentElement.h"
@@ -50,10 +50,12 @@
 #include "InspectorController.h"
 #include "InspectorCounters.h"
 #include "InspectorInstrumentation.h"
+#include "InspectorOverlay.h"
 #include "InstrumentingAgents.h"
 #include "InternalSettings.h"
 #include "IntRect.h"
 #include "Language.h"
+#include "MallocStatistics.h"
 #include "NodeRenderingContext.h"
 #include "Page.h"
 #include "PrintContext.h"
@@ -431,15 +433,6 @@ void Internals::setShadowPseudoId(Element* element, const String& id, ExceptionC
     }
 
     return element->setShadowPseudoId(id, ec);
-}
-
-void Internals::setAuthorShadowDOMForAnyElementEnabled(bool isEnabled)
-{
-#if ENABLE(SHADOW_DOM)
-    RuntimeEnabledFeatures::setAuthorShadowDOMForAnyElementEnabled(isEnabled);
-#else
-    UNUSED_PARAM(isEnabled);
-#endif
 }
 
 String Internals::visiblePlaceholder(Element* element)
@@ -851,6 +844,42 @@ Node* Internals::touchNodeAdjustedToBestClickableNode(long x, long y, long width
     return targetNode;
 }
 
+PassRefPtr<WebKitPoint> Internals::touchPositionAdjustedToBestContextMenuNode(long x, long y, long width, long height, Document* document, ExceptionCode& ec)
+{
+    if (!document || !document->frame()) {
+        ec = INVALID_ACCESS_ERR;
+        return 0;
+    }
+
+    IntSize radius(width / 2, height / 2);
+    IntPoint point(x + radius.width(), y + radius.height());
+
+    Node* targetNode = 0;
+    IntPoint adjustedPoint;
+
+    bool foundNode = document->frame()->eventHandler()->bestContextMenuNodeForTouchPoint(point, radius, adjustedPoint, targetNode);
+    if (foundNode)
+        return WebKitPoint::create(adjustedPoint.x(), adjustedPoint.y());
+
+    return WebKitPoint::create(x, y);
+}
+
+Node* Internals::touchNodeAdjustedToBestContextMenuNode(long x, long y, long width, long height, Document* document, ExceptionCode& ec)
+{
+    if (!document || !document->frame()) {
+        ec = INVALID_ACCESS_ERR;
+        return 0;
+    }
+
+    IntSize radius(width / 2, height / 2);
+    IntPoint point(x + radius.width(), y + radius.height());
+
+    Node* targetNode = 0;
+    IntPoint adjustedPoint;
+    document->frame()->eventHandler()->bestContextMenuNodeForTouchPoint(point, radius, adjustedPoint, targetNode);
+    return targetNode;
+}
+
 PassRefPtr<ClientRect> Internals::bestZoomableAreaForTouchPoint(long x, long y, long width, long height, Document* document, ExceptionCode& ec)
 {
     if (!document || !document->frame()) {
@@ -935,17 +964,6 @@ unsigned Internals::touchEventHandlerCount(Document* document, ExceptionCode& ec
 
     return document->touchEventHandlerCount();
 }
-
-bool Internals::hasTouchEventListener(Document* document, ExceptionCode& ec)
-{
-    if (!document) {
-        ec = INVALID_ACCESS_ERR;
-        return 0;
-    }
-
-    return document->hasListenerType(Document::TOUCH_LISTENER);
-}
-
 
 PassRefPtr<NodeList> Internals::nodesFromRect(Document* document, int x, int y, unsigned topPadding, unsigned rightPadding,
     unsigned bottomPadding, unsigned leftPadding, bool ignoreClipping, bool allowShadowContent, ExceptionCode& ec) const
@@ -1192,9 +1210,19 @@ void Internals::removeURLSchemeRegisteredAsBypassingContentSecurityPolicy(const 
     SchemeRegistry::removeURLSchemeRegisteredAsBypassingContentSecurityPolicy(scheme);
 }
 
-PassRefPtr<FastMallocStatistics> Internals::fastMallocStatistics() const
+PassRefPtr<MallocStatistics> Internals::mallocStatistics() const
 {
-    return FastMallocStatistics::create();
+    return MallocStatistics::create();
+}
+
+PassRefPtr<DOMStringList> Internals::getReferencedFilePaths() const
+{
+    RefPtr<DOMStringList> stringList = DOMStringList::create();
+    frame()->loader()->history()->saveDocumentAndScrollState();
+    const Vector<String>& filePaths = FormController::getReferencedFilePaths(frame()->loader()->history()->currentItem()->documentState());
+    for (size_t i = 0; i < filePaths.size(); ++i)
+        stringList->append(filePaths[i]);
+    return stringList.release();
 }
 
 }

@@ -1476,6 +1476,7 @@ http/tests/security/xss-DENIED-window-open-javascript-url.html
 # Skip frame flattening tests until it can be tested by this DRT
 # https://bugs.webkit.org/show_bug.cgi?id=32717
 fast/frames/flattening/
+fast/text-autosizing/narrow-iframe-flattened.html
 
 # https://bugs.webkit.org/show_bug.cgi?id=34933
 media/video-display-aspect-ratio.html
@@ -1613,6 +1614,10 @@ fast/dom/HTMLLinkElement/prefetch-too-many-clients.html
 http/tests/misc/link-rel-prefetch-and-subresource.html
 fast/dom/HTMLLinkElement/subresource.html
 http/tests/misc/prefetch-purpose.html
+
+# ENABLE(LINK_PRERENDER) is disabled.
+fast/dom/HTMLLinkElement/prerender-insert-after-stop.html
+fast/dom/HTMLLinkElement/prerender-remove-after-stop.html
 
 # LayoutTestController::pageProperty is not implemented for WIN yet.
 printing/page-rule-selection.html
@@ -1823,6 +1828,8 @@ plugins/iframe-shims.html
 # Requires WebP support.
 fast/canvas/canvas-toDataURL-webp.html
 fast/images/webp-image-decoding.html
+http/tests/images/webp-partial-load.html
+http/tests/images/webp-progressive-load.html
 
 # Missing layoutTestController.findString() http://webkit.org/b/50234
 editing/text-iterator/findString.html
@@ -2122,6 +2129,7 @@ fast/sub-pixel/file-upload-control-at-fractional-offset.html
 fast/sub-pixel/float-containing-block-with-margin.html
 fast/sub-pixel/float-with-right-margin-zoom.html
 fast/sub-pixel/float-wrap-with-subpixel-top.html
+fast/sub-pixel/inline-block-should-not-wrap.html
 fast/sub-pixel/inline-block-with-margin.html
 fast/sub-pixel/inline-block-with-padding.html
 fast/sub-pixel/layout-boxes-with-zoom.html
@@ -2129,6 +2137,7 @@ fast/sub-pixel/position-right-aligns-with-container.html
 fast/sub-pixel/selection/selection-gaps-at-fractional-offsets.html
 fast/sub-pixel/size-of-box-with-zoom.html
 fast/sub-pixel/table-rows-no-gaps.html
+fast/sub-pixel/sub-pixel-accumulates-to-layers.html
 
 #Battery Status API is not implemented.
 batterystatus
@@ -2152,3 +2161,9 @@ http/tests/security/contentSecurityPolicy/1.1
 
 # Skip tests in fast/text/shaping
 fast/text/shaping
+
+# ENABLE(WIDGET_REGION) is disabled
+fast/css/widget-region-parser.html
+
+# ENABLE(INPUT_TYPE_TIME_MULTIPLE_FIELDS) is disabled
+fast/forms/time-multiple-fields

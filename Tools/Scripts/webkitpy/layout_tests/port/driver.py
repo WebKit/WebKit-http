@@ -136,7 +136,7 @@ class Driver(object):
     def __del__(self):
         self.stop()
 
-    def run_test(self, driver_input):
+    def run_test(self, driver_input, stop_when_done):
         """Run a single test and return the results.
 
         Note that it is okay if a test times out or crashes and leaves
@@ -158,35 +158,37 @@ class Driver(object):
         text, audio = self._read_first_block(deadline)  # First block is either text or audio
         image, actual_image_hash = self._read_optional_image_block(deadline)  # The second (optional) block is image data.
 
-        # We may not have read all of the output if an error (crash) occured.
-        # Since some platforms output the stacktrace over error, we should
-        # dump any buffered error into self.error_from_test.
-        # FIXME: We may need to also read stderr until the process dies?
-        self.error_from_test += self._server_process.pop_all_buffered_stderr()
+        crashed = self.has_crashed()
+        timed_out = self._server_process.timed_out
+
+        if stop_when_done or crashed or timed_out:
+            # We call stop() even if we crashed or timed out in order to get any remaining stdout/stderr output.
+            # In the timeout case, we kill the hung process as well.
+            out, err = self._server_process.stop(self._port.driver_stop_timeout() if stop_when_done else 0.0)
+            text += out
+            self.error_from_test += err
+            self._server_process = None
 
         crash_log = None
-        if self.has_crashed():
-            self.error_from_test, crash_log = self._port._get_crash_log(self._crashed_process_name,
-                self._crashed_pid, text, self.error_from_test, newer_than=start_time)
+        if crashed:
+            self.error_from_test, crash_log = self._get_crash_log(text, self.error_from_test, newer_than=start_time)
 
             # If we don't find a crash log use a placeholder error message instead.
             if not crash_log:
-                crash_log = 'no crash log found for %s:%d.' % (self._crashed_process_name, self._crashed_pid)
+                pid_str = str(self._crashed_pid) if self._crashed_pid else "unknown pid"
+                crash_log = 'no crash log found for %s:%s.' % (self._crashed_process_name, pid_str)
                 # If we were unresponsive append a message informing there may not have been a crash.
                 if self._subprocess_was_unresponsive:
                     crash_log += '  Process failed to become responsive before timing out.'
 
-        timeout = self._server_process.timed_out
-        if timeout:
-            # DRT doesn't have a built in timer to abort the test, so we might as well
-            # kill the process directly and not wait for it to shut down cleanly (since it may not).
-            self._server_process.kill()
-
         return DriverOutput(text, image, actual_image_hash, audio,
-            crash=self.has_crashed(), test_time=time.time() - test_begin_time,
-            timeout=timeout, error=self.error_from_test,
+            crash=crashed, test_time=time.time() - test_begin_time,
+            timeout=timed_out, error=self.error_from_test,
             crashed_process_name=self._crashed_process_name,
             crashed_pid=self._crashed_pid, crash_log=crash_log)
+
+    def _get_crash_log(self, stdout, stderr, newer_than):
+        return self._port._get_crash_log(self._crashed_process_name, self._crashed_pid, stdout, stderr, newer_than)
 
     # FIXME: Seems this could just be inlined into callers.
     @classmethod
@@ -271,7 +273,7 @@ class Driver(object):
 
     def stop(self):
         if self._server_process:
-            self._server_process.stop()
+            self._server_process.stop(self._port.driver_stop_timeout())
             self._server_process = None
 
         if self._driver_tempdir:
@@ -292,9 +294,8 @@ class Driver(object):
         # FIXME: We need to pass --timeout=SECONDS to WebKitTestRunner for WebKit2.
 
         cmd.extend(self._port.get_option('additional_drt_flag', []))
+        cmd.extend(self._port.additional_drt_flag())
 
-        if pixel_tests and not self._port.supports_switching_pixel_tests_per_test():
-            cmd.append('--pixel-tests')
         cmd.extend(per_test_args)
 
         cmd.append('-')
@@ -319,6 +320,8 @@ class Driver(object):
             _log.debug('WebProcess crash, pid = %s, error_line = %s' % (str(pid), error_line))
             if error_line.startswith("#PROCESS UNRESPONSIVE - WebProcess"):
                 self._subprocess_was_unresponsive = True
+                # We want to show this since it's not a regular crash and probably we don't have a crash log.
+                self.error_from_test += error_line
             return True
         return self.has_crashed()
 
@@ -335,11 +338,9 @@ class Driver(object):
 
         assert not driver_input.image_hash or driver_input.should_run_pixel_test
 
+        # ' is the separator between arguments.
         if driver_input.should_run_pixel_test:
-            if self._port.supports_switching_pixel_tests_per_test():
-                # We did not start the driver with --pixel-tests, instead we specify it per test.
-                # "'" is the separator of command fields.
-                command += "'" + '--pixel-test'
+            command += "'--pixel-test"
         if driver_input.image_hash:
             command += "'" + driver_input.image_hash
         return command + "\n"
@@ -439,7 +440,7 @@ class ContentBlock(object):
         self.decoded_content = None
 
     def decode_content(self):
-        if self.encoding == 'base64':
+        if self.encoding == 'base64' and self.content is not None:
             self.decoded_content = base64.b64decode(self.content)
         else:
             self.decoded_content = self.content
@@ -475,20 +476,20 @@ class DriverProxy(object):
     def uri_to_test(self, uri):
         return self._driver.uri_to_test(uri)
 
-    def run_test(self, driver_input):
+    def run_test(self, driver_input, stop_when_done):
         base = self._port.lookup_virtual_test_base(driver_input.test_name)
         if base:
             virtual_driver_input = copy.copy(driver_input)
             virtual_driver_input.test_name = base
             virtual_driver_input.args = self._port.lookup_virtual_test_args(driver_input.test_name)
-            return self.run_test(virtual_driver_input)
+            return self.run_test(virtual_driver_input, stop_when_done)
 
         pixel_tests_needed = driver_input.should_run_pixel_test
         cmd_line_key = self._cmd_line_as_key(pixel_tests_needed, driver_input.args)
         if not cmd_line_key in self._running_drivers:
             self._running_drivers[cmd_line_key] = self._make_driver(pixel_tests_needed)
 
-        return self._running_drivers[cmd_line_key].run_test(driver_input)
+        return self._running_drivers[cmd_line_key].run_test(driver_input, stop_when_done)
 
     def start(self):
         # FIXME: Callers shouldn't normally call this, since this routine

@@ -28,6 +28,7 @@
 
 #if ENABLE(INDEXED_DATABASE)
 
+#include "IDBDatabaseCallbacksProxy.h"
 #include "platform/WebCommon.h"
 #include "WebExceptionCode.h"
 #include "WebIDBDatabase.h"
@@ -38,7 +39,6 @@ namespace WebCore { class IDBDatabaseBackendInterface; }
 
 namespace WebKit {
 
-class IDBDatabaseCallbacksProxy;
 class WebIDBDatabaseCallbacks;
 class WebIDBDatabaseMetadata;
 class WebIDBObjectStore;
@@ -56,6 +56,7 @@ public:
     virtual void deleteObjectStore(const WebString& name, const WebIDBTransaction&, WebExceptionCode&);
     virtual void setVersion(const WebString& version, WebIDBCallbacks*, WebExceptionCode&);
     virtual WebIDBTransaction* transaction(const WebDOMStringList& names, unsigned short mode, WebExceptionCode&);
+    virtual void forceClose();
     virtual void close();
 
     // FIXME: Rename "open" to registerFrontendCallbacks.
@@ -64,6 +65,9 @@ public:
 private:
     WTF::RefPtr<WebCore::IDBDatabaseBackendInterface> m_databaseBackend;
     WTF::RefPtr<IDBDatabaseCallbacksProxy> m_databaseCallbacks;
+    // FIXME: Remove this flag when we consolidate two-phase open.
+    // http://wkb.ug/90411
+    bool m_closePending;
 };
 
 } // namespace WebKit

@@ -32,6 +32,7 @@
 #include "CachedStyleSheetClient.h"
 #include "HTTPParsers.h"
 #include "MemoryCache.h"
+#include "MemoryInstrumentation.h"
 #include "SharedBuffer.h"
 #include "StyleSheetContents.h"
 #include "TextResourceDecoder.h"
@@ -58,10 +59,13 @@ CachedCSSStyleSheet::~CachedCSSStyleSheet()
 void CachedCSSStyleSheet::didAddClient(CachedResourceClient* c)
 {
     ASSERT(c->resourceClientType() == CachedStyleSheetClient::expectedType());
+    // CachedResource::didAddClient() must be before setCSSStyleSheet(),
+    // because setCSSStyleSheet() may cause scripts to be executed, which could destroy 'c' if it is an instance of HTMLLinkElement.
+    // see the comment of HTMLLinkElement::setCSSStyleSheet.
+    CachedResource::didAddClient(c);
+
     if (!isLoading())
         static_cast<CachedStyleSheetClient*>(c)->setCSSStyleSheet(m_resourceRequest.url(), m_response.url(), m_decoder->encoding().name(), this);
-
-    CachedResource::didAddClient(c);
 }
 
 void CachedCSSStyleSheet::setEncoding(const String& chs)
@@ -168,6 +172,12 @@ PassRefPtr<StyleSheetContents> CachedCSSStyleSheet::restoreParsedStyleSheet(cons
 {
     if (!m_parsedStyleSheetCache)
         return 0;
+    if (m_parsedStyleSheetCache->hasFailedOrCanceledSubresources()) {
+        m_parsedStyleSheetCache->removedFromMemoryCache();
+        m_parsedStyleSheetCache.clear();
+        return 0;
+    }
+
     ASSERT(m_parsedStyleSheetCache->isCacheable());
     ASSERT(m_parsedStyleSheetCache->isInMemoryCache());
 
@@ -190,6 +200,15 @@ void CachedCSSStyleSheet::saveParsedStyleSheet(PassRefPtr<StyleSheetContents> sh
     m_parsedStyleSheetCache->addedToMemoryCache();
 
     setDecodedSize(m_parsedStyleSheetCache->estimatedSizeInBytes());
+}
+
+void CachedCSSStyleSheet::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
+{
+    MemoryClassInfo info(memoryObjectInfo, this, MemoryInstrumentation::CachedResourceCSS);
+    CachedResource::reportMemoryUsage(memoryObjectInfo);
+    info.addMember(m_decoder);
+    info.addInstrumentedMember(m_parsedStyleSheetCache);
+    info.addInstrumentedMember(m_decodedSheetText);
 }
 
 }

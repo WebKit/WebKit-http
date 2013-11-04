@@ -62,13 +62,13 @@ void AbstractState::beginBasicBlock(BasicBlock* basicBlock)
     m_variables = basicBlock->valuesAtHead;
     m_haveStructures = false;
     for (size_t i = 0; i < m_variables.numberOfArguments(); ++i) {
-        if (m_variables.argument(i).m_structure.isNeitherClearNorTop()) {
+        if (m_variables.argument(i).m_currentKnownStructure.isNeitherClearNorTop()) {
             m_haveStructures = true;
             break;
         }
     }
     for (size_t i = 0; i < m_variables.numberOfLocals(); ++i) {
-        if (m_variables.local(i).m_structure.isNeitherClearNorTop()) {
+        if (m_variables.local(i).m_currentKnownStructure.isNeitherClearNorTop()) {
             m_haveStructures = true;
             break;
         }
@@ -106,28 +106,8 @@ void AbstractState::initialize(Graph& graph)
         SpeculatedType prediction = node.variableAccessData()->prediction();
         if (isInt32Speculation(prediction))
             root->valuesAtHead.argument(i).set(SpecInt32);
-        else if (isArraySpeculation(prediction))
-            root->valuesAtHead.argument(i).set(SpecArray);
         else if (isBooleanSpeculation(prediction))
             root->valuesAtHead.argument(i).set(SpecBoolean);
-        else if (isInt8ArraySpeculation(prediction))
-            root->valuesAtHead.argument(i).set(SpecInt8Array);
-        else if (isInt16ArraySpeculation(prediction))
-            root->valuesAtHead.argument(i).set(SpecInt16Array);
-        else if (isInt32ArraySpeculation(prediction))
-            root->valuesAtHead.argument(i).set(SpecInt32Array);
-        else if (isUint8ArraySpeculation(prediction))
-            root->valuesAtHead.argument(i).set(SpecUint8Array);
-        else if (isUint8ClampedArraySpeculation(prediction))
-            root->valuesAtHead.argument(i).set(SpecUint8ClampedArray);
-        else if (isUint16ArraySpeculation(prediction))
-            root->valuesAtHead.argument(i).set(SpecUint16Array);
-        else if (isUint32ArraySpeculation(prediction))
-            root->valuesAtHead.argument(i).set(SpecUint32Array);
-        else if (isFloat32ArraySpeculation(prediction))
-            root->valuesAtHead.argument(i).set(SpecFloat32Array);
-        else if (isFloat64ArraySpeculation(prediction))
-            root->valuesAtHead.argument(i).set(SpecFloat64Array);
         else if (isCellSpeculation(prediction))
             root->valuesAtHead.argument(i).set(SpecCell);
         else
@@ -160,6 +140,16 @@ void AbstractState::initialize(Graph& graph)
             block->valuesAtHead.local(i).clear();
             block->valuesAtTail.local(i).clear();
         }
+        if (!block->isOSRTarget)
+            continue;
+        if (block->bytecodeBegin != graph.m_osrEntryBytecodeIndex)
+            continue;
+        for (size_t i = 0; i < graph.m_mustHandleValues.size(); ++i) {
+            AbstractValue value;
+            value.setMostSpecific(graph.m_mustHandleValues[i]);
+            block->valuesAtHead.operand(graph.m_mustHandleValues.operandForIndex(i)).merge(value);
+        }
+        block->cfaShouldRevisit = true;
     }
 }
 
@@ -290,10 +280,7 @@ bool AbstractState::execute(unsigned indexInBlock)
         SpeculatedType predictedType = node.variableAccessData()->argumentAwarePrediction();
         if (isInt32Speculation(predictedType))
             speculateInt32Unary(node);
-        else if (isArraySpeculation(predictedType)) {
-            node.setCanExit(!isArraySpeculation(forNode(node.child1()).m_type));
-            forNode(node.child1()).filter(SpecArray);
-        } else if (isCellSpeculation(predictedType)) {
+        else if (isCellSpeculation(predictedType)) {
             node.setCanExit(!isCellSpeculation(forNode(node.child1()).m_type));
             forNode(node.child1()).filter(SpecCell);
         } else if (isBooleanSpeculation(predictedType))
@@ -613,7 +600,7 @@ bool AbstractState::execute(unsigned indexInBlock)
             
     case LogicalNot: {
         JSValue childConst = forNode(node.child1()).value();
-        if (childConst && trySetConstant(nodeIndex, jsBoolean(!childConst.toBoolean()))) {
+        if (childConst && trySetConstant(nodeIndex, jsBoolean(!childConst.toBoolean(m_codeBlock->globalObjectFor(node.codeOrigin)->globalExec())))) {
             m_foundConstants = true;
             node.setCanExit(false);
             break;
@@ -645,16 +632,23 @@ bool AbstractState::execute(unsigned indexInBlock)
     case IsString:
     case IsObject:
     case IsFunction: {
-        node.setCanExit(false);
+        node.setCanExit(node.op() == IsUndefined && m_codeBlock->globalObjectFor(node.codeOrigin)->masqueradesAsUndefinedWatchpoint()->isStillValid());
         JSValue child = forNode(node.child1()).value();
         if (child) {
             bool constantWasSet;
             switch (node.op()) {
             case IsUndefined:
-                constantWasSet = trySetConstant(nodeIndex, jsBoolean(
-                    child.isCell()
-                    ? child.asCell()->structure()->typeInfo().masqueradesAsUndefined()
-                    : child.isUndefined()));
+                if (m_codeBlock->globalObjectFor(node.codeOrigin)->masqueradesAsUndefinedWatchpoint()->isStillValid()) {
+                    constantWasSet = trySetConstant(nodeIndex, jsBoolean(
+                        child.isCell()
+                        ? false 
+                        : child.isUndefined()));
+                } else {
+                    constantWasSet = trySetConstant(nodeIndex, jsBoolean(
+                        child.isCell()
+                        ? child.asCell()->structure()->masqueradesAsUndefined(m_codeBlock->globalObjectFor(node.codeOrigin))
+                        : child.isUndefined()));
+                }
                 break;
             case IsBoolean:
                 constantWasSet = trySetConstant(nodeIndex, jsBoolean(child.isBoolean()));
@@ -734,8 +728,8 @@ bool AbstractState::execute(unsigned indexInBlock)
                  && m_graph.valueOfJSConstant(node.child1().index()).isNull())
                 || (m_graph.isConstant(node.child2().index())
                     && m_graph.valueOfJSConstant(node.child2().index()).isNull())) {
-                // We know that this won't clobber the world. But that's all we know.
-                node.setCanExit(false);
+                // We can exit if we haven't fired the MasqueradesAsUndefind watchpoint yet.
+                node.setCanExit(m_codeBlock->globalObjectFor(node.codeOrigin)->masqueradesAsUndefinedWatchpoint()->isStillValid());
                 break;
             }
             
@@ -863,212 +857,168 @@ bool AbstractState::execute(unsigned indexInBlock)
             
     case GetByVal: {
         node.setCanExit(true);
-        if (!node.prediction() || !m_graph[node.child1()].prediction() || !m_graph[node.child2()].prediction()) {
+        switch (node.arrayMode()) {
+        case Array::Undecided:
+            ASSERT_NOT_REACHED();
+            break;
+        case Array::ForceExit:
             m_isValid = false;
             break;
-        }
-        if (!isActionableArraySpeculation(m_graph[node.child1()].prediction()) || !m_graph[node.child2()].shouldSpeculateInteger()) {
+        case Array::Generic:
             clobberWorld(node.codeOrigin, indexInBlock);
             forNode(nodeIndex).makeTop();
             break;
-        }
-        if (m_graph[node.child1()].shouldSpeculateArguments()) {
-            forNode(node.child1()).filter(SpecArguments);
-            forNode(node.child2()).filter(SpecInt32);
-            forNode(nodeIndex).makeTop();
-            break;
-        }
-        if (m_graph[node.child1()].prediction() == SpecString) {
-            forNode(node.child1()).filter(SpecString);
+        case Array::String:
             forNode(node.child2()).filter(SpecInt32);
             forNode(nodeIndex).set(SpecString);
             break;
-        }
-        
-        if (m_graph[node.child1()].shouldSpeculateInt8Array()) {
-            forNode(node.child1()).filter(SpecInt8Array);
+        case Array::Arguments:
+            forNode(node.child2()).filter(SpecInt32);
+            forNode(nodeIndex).makeTop();
+            break;
+        case Array::JSArray:
+        case Array::JSArrayOutOfBounds:
+            // FIXME: We should have more conservative handling of the out-of-bounds
+            // case.
+            forNode(node.child2()).filter(SpecInt32);
+            forNode(nodeIndex).makeTop();
+            break;
+        case Array::Int8Array:
             forNode(node.child2()).filter(SpecInt32);
             forNode(nodeIndex).set(SpecInt32);
             break;
-        }
-        if (m_graph[node.child1()].shouldSpeculateInt16Array()) {
-            forNode(node.child1()).filter(SpecInt16Array);
+        case Array::Int16Array:
             forNode(node.child2()).filter(SpecInt32);
             forNode(nodeIndex).set(SpecInt32);
             break;
-        }
-        if (m_graph[node.child1()].shouldSpeculateInt32Array()) {
-            forNode(node.child1()).filter(SpecInt32Array);
+        case Array::Int32Array:
             forNode(node.child2()).filter(SpecInt32);
             forNode(nodeIndex).set(SpecInt32);
             break;
-        }
-        if (m_graph[node.child1()].shouldSpeculateUint8Array()) {
-            forNode(node.child1()).filter(SpecUint8Array);
+        case Array::Uint8Array:
             forNode(node.child2()).filter(SpecInt32);
             forNode(nodeIndex).set(SpecInt32);
             break;
-        }
-        if (m_graph[node.child1()].shouldSpeculateUint8ClampedArray()) {
-            forNode(node.child1()).filter(SpecUint8ClampedArray);
+        case Array::Uint8ClampedArray:
             forNode(node.child2()).filter(SpecInt32);
             forNode(nodeIndex).set(SpecInt32);
             break;
-        }
-        if (m_graph[node.child1()].shouldSpeculateUint16Array()) {
-            forNode(node.child1()).filter(SpecUint16Array);
+        case Array::Uint16Array:
             forNode(node.child2()).filter(SpecInt32);
             forNode(nodeIndex).set(SpecInt32);
             break;
-        }
-        if (m_graph[node.child1()].shouldSpeculateUint32Array()) {
-            forNode(node.child1()).filter(SpecUint32Array);
+        case Array::Uint32Array:
             forNode(node.child2()).filter(SpecInt32);
             if (node.shouldSpeculateInteger())
                 forNode(nodeIndex).set(SpecInt32);
             else
                 forNode(nodeIndex).set(SpecDouble);
             break;
-        }
-        if (m_graph[node.child1()].shouldSpeculateFloat32Array()) {
-            forNode(node.child1()).filter(SpecFloat32Array);
+        case Array::Float32Array:
+            forNode(node.child2()).filter(SpecInt32);
+            forNode(nodeIndex).set(SpecDouble);
+            break;
+        case Array::Float64Array:
             forNode(node.child2()).filter(SpecInt32);
             forNode(nodeIndex).set(SpecDouble);
             break;
         }
-        if (m_graph[node.child1()].shouldSpeculateFloat64Array()) {
-            forNode(node.child1()).filter(SpecFloat64Array);
-            forNode(node.child2()).filter(SpecInt32);
-            forNode(nodeIndex).set(SpecDouble);
-            break;
-        }
-        ASSERT(m_graph[node.child1()].shouldSpeculateArray());
-        forNode(node.child1()).filter(SpecArray);
-        forNode(node.child2()).filter(SpecInt32);
-        forNode(nodeIndex).makeTop();
         break;
     }
             
     case PutByVal:
     case PutByValAlias: {
         node.setCanExit(true);
-
-        Edge child1 = m_graph.varArgChild(node, 0);
         Edge child2 = m_graph.varArgChild(node, 1);
         Edge child3 = m_graph.varArgChild(node, 2);
-            
-        if (!m_graph[child1].prediction() || !m_graph[child2].prediction()) {
+        switch (modeForPut(node.arrayMode())) {
+        case Array::ForceExit:
             m_isValid = false;
             break;
-        }
-        if (!m_graph[child2].shouldSpeculateInteger() || !isActionableMutableArraySpeculation(m_graph[child1].prediction())
-#if USE(JSVALUE32_64)
-            || m_graph[child1].shouldSpeculateArguments()
-#endif
-            ) {
-            ASSERT(node.op() == PutByVal);
+        case Array::Generic:
             clobberWorld(node.codeOrigin, indexInBlock);
-            forNode(nodeIndex).makeTop();
             break;
-        }
-        
-        if (m_graph[child1].shouldSpeculateArguments()) {
-            forNode(child1).filter(SpecArguments);
+        case Array::JSArray:
             forNode(child2).filter(SpecInt32);
             break;
-        }
-        if (m_graph[child1].shouldSpeculateInt8Array()) {
-            forNode(child1).filter(SpecInt8Array);
+        case Array::JSArrayOutOfBounds:
             forNode(child2).filter(SpecInt32);
-            if (m_graph[child3].shouldSpeculateInteger())
-                forNode(child3).filter(SpecInt32);
-            else
-                forNode(child3).filter(SpecNumber);
+            clobberWorld(node.codeOrigin, indexInBlock);
             break;
-        }
-        if (m_graph[child1].shouldSpeculateInt16Array()) {
-            forNode(child1).filter(SpecInt16Array);
+        case Array::Arguments:
+            forNode(child2).filter(SpecInt32);
+            break;
+        case Array::Int8Array:
             forNode(child2).filter(SpecInt32);
             if (m_graph[child3].shouldSpeculateInteger())
                 forNode(child3).filter(SpecInt32);
             else
                 forNode(child3).filter(SpecNumber);
             break;
-        }
-        if (m_graph[child1].shouldSpeculateInt32Array()) {
-            forNode(child1).filter(SpecInt32Array);
+        case Array::Int16Array:
             forNode(child2).filter(SpecInt32);
             if (m_graph[child3].shouldSpeculateInteger())
                 forNode(child3).filter(SpecInt32);
             else
                 forNode(child3).filter(SpecNumber);
             break;
-        }
-        if (m_graph[child1].shouldSpeculateUint8Array()) {
-            forNode(child1).filter(SpecUint8Array);
+        case Array::Int32Array:
             forNode(child2).filter(SpecInt32);
             if (m_graph[child3].shouldSpeculateInteger())
                 forNode(child3).filter(SpecInt32);
             else
                 forNode(child3).filter(SpecNumber);
             break;
-        }
-        if (m_graph[child1].shouldSpeculateUint8ClampedArray()) {
-            forNode(child1).filter(SpecUint8ClampedArray);
+        case Array::Uint8Array:
             forNode(child2).filter(SpecInt32);
             if (m_graph[child3].shouldSpeculateInteger())
                 forNode(child3).filter(SpecInt32);
             else
                 forNode(child3).filter(SpecNumber);
             break;
-        }
-        if (m_graph[child1].shouldSpeculateUint16Array()) {
-            forNode(child1).filter(SpecUint16Array);
+        case Array::Uint8ClampedArray:
             forNode(child2).filter(SpecInt32);
             if (m_graph[child3].shouldSpeculateInteger())
                 forNode(child3).filter(SpecInt32);
             else
                 forNode(child3).filter(SpecNumber);
             break;
-        }
-        if (m_graph[child1].shouldSpeculateUint32Array()) {
-            forNode(child1).filter(SpecUint32Array);
+        case Array::Uint16Array:
             forNode(child2).filter(SpecInt32);
             if (m_graph[child3].shouldSpeculateInteger())
                 forNode(child3).filter(SpecInt32);
             else
                 forNode(child3).filter(SpecNumber);
             break;
-        }
-        if (m_graph[child1].shouldSpeculateFloat32Array()) {
-            forNode(child1).filter(SpecFloat32Array);
+        case Array::Uint32Array:
+            forNode(child2).filter(SpecInt32);
+            if (m_graph[child3].shouldSpeculateInteger())
+                forNode(child3).filter(SpecInt32);
+            else
+                forNode(child3).filter(SpecNumber);
+            break;
+        case Array::Float32Array:
             forNode(child2).filter(SpecInt32);
             forNode(child3).filter(SpecNumber);
             break;
-        }
-        if (m_graph[child1].shouldSpeculateFloat64Array()) {
-            forNode(child1).filter(SpecFloat64Array);
+        case Array::Float64Array:
             forNode(child2).filter(SpecInt32);
             forNode(child3).filter(SpecNumber);
             break;
+        default:
+            ASSERT_NOT_REACHED();
+            break;
         }
-        ASSERT(m_graph[child1].shouldSpeculateArray());
-        forNode(child1).filter(SpecArray);
-        forNode(child2).filter(SpecInt32);
-        if (node.op() == PutByVal)
-            clobberWorld(node.codeOrigin, indexInBlock);
         break;
     }
             
     case ArrayPush:
         node.setCanExit(true);
-        forNode(node.child1()).filter(SpecArray);
         forNode(nodeIndex).set(SpecNumber);
         break;
             
     case ArrayPop:
         node.setCanExit(true);
-        forNode(node.child1()).filter(SpecArray);
         forNode(nodeIndex).makeTop();
         break;
             
@@ -1089,7 +1039,7 @@ bool AbstractState::execute(unsigned indexInBlock)
     case Branch: {
         JSValue value = forNode(node.child1()).value();
         if (value) {
-            bool booleanValue = value.toBoolean();
+            bool booleanValue = value.toBoolean(m_codeBlock->globalObjectFor(node.codeOrigin)->globalExec());
             if (booleanValue)
                 m_branchDirection = TakeTrue;
             else
@@ -1335,7 +1285,7 @@ bool AbstractState::execute(unsigned indexInBlock)
             
     case PutScopedVar:
         node.setCanExit(false);
-        clobberStructures(indexInBlock);
+        clobberCapturedVars(node.codeOrigin);
         break;
             
     case GetById:
@@ -1352,85 +1302,61 @@ bool AbstractState::execute(unsigned indexInBlock)
         break;
             
     case GetArrayLength:
-        node.setCanExit(true);
-        forNode(node.child1()).filter(SpecArray);
+        node.setCanExit(true); // Lies, but it's true for the common case of JSArray, so it's good enough.
         forNode(nodeIndex).set(SpecInt32);
         break;
 
-    case GetArgumentsLength:
-        node.setCanExit(true);
-        forNode(node.child1()).filter(SpecArguments);
-        forNode(nodeIndex).set(SpecInt32);
-        break;
-
-    case GetStringLength:
-        node.setCanExit(!isStringSpeculation(forNode(node.child1()).m_type));
-        forNode(node.child1()).filter(SpecString);
-        forNode(nodeIndex).set(SpecInt32);
-        break;
-        
-    case GetInt8ArrayLength:
-        node.setCanExit(!isInt8ArraySpeculation(forNode(node.child1()).m_type));
-        forNode(node.child1()).filter(SpecInt8Array);
-        forNode(nodeIndex).set(SpecInt32);
-        break;
-    case GetInt16ArrayLength:
-        node.setCanExit(!isInt16ArraySpeculation(forNode(node.child1()).m_type));
-        forNode(node.child1()).filter(SpecInt16Array);
-        forNode(nodeIndex).set(SpecInt32);
-        break;
-    case GetInt32ArrayLength:
-        node.setCanExit(!isInt32ArraySpeculation(forNode(node.child1()).m_type));
-        forNode(node.child1()).filter(SpecInt32Array);
-        forNode(nodeIndex).set(SpecInt32);
-        break;
-    case GetUint8ArrayLength:
-        node.setCanExit(!isUint8ArraySpeculation(forNode(node.child1()).m_type));
-        forNode(node.child1()).filter(SpecUint8Array);
-        forNode(nodeIndex).set(SpecInt32);
-        break;
-    case GetUint8ClampedArrayLength:
-        node.setCanExit(!isUint8ClampedArraySpeculation(forNode(node.child1()).m_type));
-        forNode(node.child1()).filter(SpecUint8ClampedArray);
-        forNode(nodeIndex).set(SpecInt32);
-        break;
-    case GetUint16ArrayLength:
-        node.setCanExit(!isUint16ArraySpeculation(forNode(node.child1()).m_type));
-        forNode(node.child1()).filter(SpecUint16Array);
-        forNode(nodeIndex).set(SpecInt32);
-        break;
-    case GetUint32ArrayLength:
-        node.setCanExit(!isUint32ArraySpeculation(forNode(node.child1()).m_type));
-        forNode(node.child1()).filter(SpecUint32Array);
-        forNode(nodeIndex).set(SpecInt32);
-        break;
-    case GetFloat32ArrayLength:
-        node.setCanExit(!isFloat32ArraySpeculation(forNode(node.child1()).m_type));
-        forNode(node.child1()).filter(SpecFloat32Array);
-        forNode(nodeIndex).set(SpecInt32);
-        break;
-    case GetFloat64ArrayLength:
-        node.setCanExit(!isFloat64ArraySpeculation(forNode(node.child1()).m_type));
-        forNode(node.child1()).filter(SpecFloat64Array);
-        forNode(nodeIndex).set(SpecInt32);
-        break;
-            
-    case CheckStructure: {
+    case CheckStructure:
+    case ForwardCheckStructure: {
         // FIXME: We should be able to propagate the structure sets of constants (i.e. prototypes).
         AbstractValue& value = forNode(node.child1());
+        // If this structure check is attempting to prove knowledge already held in
+        // the futurePossibleStructure set then the constant folding phase should
+        // turn this into a watchpoint instead.
+        StructureSet& set = node.structureSet();
+        if (value.m_futurePossibleStructure.isSubsetOf(set))
+            m_foundConstants = true;
         node.setCanExit(
-            !value.m_structure.isSubsetOf(node.structureSet())
+            !value.m_currentKnownStructure.isSubsetOf(set)
             || !isCellSpeculation(value.m_type));
-        value.filter(node.structureSet());
+        value.filter(set);
+        // This is likely to be unnecessary, but it's conservative, and that's a good thing.
+        // This is trying to avoid situations where the CFA proves that this structure check
+        // must fail due to a future structure proof. We have two options at that point. We
+        // can either compile all subsequent code as we would otherwise, or we can ensure
+        // that the subsequent code is never reachable. The former is correct because the
+        // Proof Is Infallible (TM) -- hence even if we don't force the subsequent code to
+        // be unreachable, it must be unreachable nonetheless. But imagine what would happen
+        // if the proof was borked. In the former case, we'd get really bizarre bugs where
+        // we assumed that the structure of this object was known even though it wasn't. In
+        // the latter case, we'd have a slight performance pathology because this would be
+        // turned into an OSR exit unnecessarily. Which would you rather have?
+        if (value.m_currentKnownStructure.isClear()
+            || value.m_futurePossibleStructure.isClear())
+            m_isValid = false;
         m_haveStructures = true;
         break;
     }
         
-    case StructureTransitionWatchpoint: {
-        // FIXME: Turn CheckStructure into StructureTransitionWatchpoint when possible!
+    case StructureTransitionWatchpoint:
+    case ForwardStructureTransitionWatchpoint: {
         AbstractValue& value = forNode(node.child1());
+
+        // It's only valid to issue a structure transition watchpoint if we already
+        // know that the watchpoint covers a superset of the structures known to
+        // belong to the set of future structures that this value may have.
+        // Currently, we only issue singleton watchpoints (that check one structure)
+        // and our futurePossibleStructure set can only contain zero, one, or an
+        // infinity of structures.
+        ASSERT(value.m_futurePossibleStructure.isSubsetOf(StructureSet(node.structure())));
+        
         ASSERT(value.isClear() || isCellSpeculation(value.m_type)); // Value could be clear if we've proven must-exit due to a speculation statically known to be bad.
         value.filter(node.structure());
+        // See comment in CheckStructure for why this is here.
+        if (value.m_currentKnownStructure.isClear()
+            || value.m_futurePossibleStructure.isClear())
+            m_isValid = false;
+        m_haveStructures = true;
         node.setCanExit(true);
         break;
     }
@@ -1449,69 +1375,70 @@ bool AbstractState::execute(unsigned indexInBlock)
         forNode(node.child1()).filter(SpecCell);
         forNode(nodeIndex).clear(); // The result is not a JS value.
         break;
-    case GetIndexedPropertyStorage: {
-        node.setCanExit(true); // Lies, but this is (almost) always followed by GetByVal, which does exit. So no point in trying to be more precise.
-        SpeculatedType basePrediction = m_graph[node.child2()].prediction();
-        if (!(basePrediction & SpecInt32) && basePrediction) {
-            forNode(nodeIndex).clear();
+    case CheckArray: {
+        if (modeAlreadyChecked(forNode(node.child1()), node.arrayMode())) {
+            m_foundConstants = true;
+            node.setCanExit(false);
             break;
         }
-        if (m_graph[node.child1()].shouldSpeculateArguments()) {
+        node.setCanExit(true); // Lies, but this is followed by operations (like GetByVal) that always exit, so there is no point in us trying to be clever here.
+        switch (node.arrayMode()) {
+        case Array::String:
+            forNode(node.child1()).filter(SpecString);
+            break;
+        case Array::JSArray:
+        case Array::JSArrayOutOfBounds:
+            // This doesn't filter anything meaningful right now. We may want to add
+            // CFA tracking of array mode speculations, but we don't have that, yet.
+            forNode(node.child1()).filter(SpecCell);
+            break;
+        case Array::Arguments:
+            forNode(node.child1()).filter(SpecArguments);
+            break;
+        case Array::Int8Array:
+            forNode(node.child1()).filter(SpecInt8Array);
+            break;
+        case Array::Int16Array:
+            forNode(node.child1()).filter(SpecInt16Array);
+            break;
+        case Array::Int32Array:
+            forNode(node.child1()).filter(SpecInt32Array);
+            break;
+        case Array::Uint8Array:
+            forNode(node.child1()).filter(SpecUint8Array);
+            break;
+        case Array::Uint8ClampedArray:
+            forNode(node.child1()).filter(SpecUint8ClampedArray);
+            break;
+        case Array::Uint16Array:
+            forNode(node.child1()).filter(SpecUint16Array);
+            break;
+        case Array::Uint32Array:
+            forNode(node.child1()).filter(SpecUint32Array);
+            break;
+        case Array::Float32Array:
+            forNode(node.child1()).filter(SpecFloat32Array);
+            break;
+        case Array::Float64Array:
+            forNode(node.child1()).filter(SpecFloat64Array);
+            break;
+        default:
             ASSERT_NOT_REACHED();
             break;
         }
-        if (m_graph[node.child1()].prediction() == SpecString) {
-            forNode(node.child1()).filter(SpecString);
-            forNode(nodeIndex).clear();
+        break;
+    }
+    case GetIndexedPropertyStorage: {
+        switch (node.arrayMode()) {
+        case Array::String:
+            // Strings are weird - we may spec fail if the string was a rope. That is of course
+            // stupid, and we should fix that, but for now let's at least be honest about it.
+            node.setCanExit(true);
+            break;
+        default:
+            node.setCanExit(false);
             break;
         }
-        
-        if (m_graph[node.child1()].shouldSpeculateInt8Array()) {
-            forNode(node.child1()).filter(SpecInt8Array);
-            forNode(nodeIndex).clear();
-            break;
-        }
-        if (m_graph[node.child1()].shouldSpeculateInt16Array()) {
-            forNode(node.child1()).filter(SpecInt16Array);
-            forNode(nodeIndex).clear();
-            break;
-        }
-        if (m_graph[node.child1()].shouldSpeculateInt32Array()) {
-            forNode(node.child1()).filter(SpecInt32Array);
-            forNode(nodeIndex).clear();
-            break;
-        }
-        if (m_graph[node.child1()].shouldSpeculateUint8Array()) {
-            forNode(node.child1()).filter(SpecUint8Array);
-            forNode(nodeIndex).clear();
-            break;
-        }
-        if (m_graph[node.child1()].shouldSpeculateUint8ClampedArray()) {
-            forNode(node.child1()).filter(SpecUint8ClampedArray);
-            forNode(nodeIndex).clear();
-            break;
-        }
-        if (m_graph[node.child1()].shouldSpeculateUint16Array()) {
-            forNode(node.child1()).filter(SpecUint16Array);
-            forNode(nodeIndex).set(SpecOther);
-            break;
-        }
-        if (m_graph[node.child1()].shouldSpeculateUint32Array()) {
-            forNode(node.child1()).filter(SpecUint32Array);
-            forNode(nodeIndex).clear();
-            break;
-        }
-        if (m_graph[node.child1()].shouldSpeculateFloat32Array()) {
-            forNode(node.child1()).filter(SpecFloat32Array);
-            forNode(nodeIndex).clear();
-            break;
-        }
-        if (m_graph[node.child1()].shouldSpeculateFloat64Array()) {
-            forNode(node.child1()).filter(SpecFloat64Array);
-            forNode(nodeIndex).clear();
-            break;
-        }
-        forNode(node.child1()).filter(SpecArray);
         forNode(nodeIndex).clear();
         break; 
     }
@@ -1609,6 +1536,12 @@ bool AbstractState::execute(unsigned indexInBlock)
 
 inline void AbstractState::clobberWorld(const CodeOrigin& codeOrigin, unsigned indexInBlock)
 {
+    clobberCapturedVars(codeOrigin);
+    clobberStructures(indexInBlock);
+}
+
+inline void AbstractState::clobberCapturedVars(const CodeOrigin& codeOrigin)
+{
     if (codeOrigin.inlineCallFrame) {
         const BitVector& capturedVars = codeOrigin.inlineCallFrame->capturedVars;
         for (size_t i = capturedVars.size(); i--;) {
@@ -1624,7 +1557,6 @@ inline void AbstractState::clobberWorld(const CodeOrigin& codeOrigin, unsigned i
         for (size_t i = m_variables.numberOfArguments(); i--;)
             m_variables.argument(i).makeTop();
     }
-    clobberStructures(indexInBlock);
 }
 
 inline void AbstractState::clobberStructures(unsigned indexInBlock)

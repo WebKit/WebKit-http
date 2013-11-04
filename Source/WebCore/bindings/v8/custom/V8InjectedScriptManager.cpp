@@ -32,12 +32,11 @@
 #if ENABLE(INSPECTOR)
 #include "InjectedScriptManager.h"
 
+#include "BindingState.h"
 #include "DOMWindow.h"
 #include "InjectedScriptHost.h"
-#include "SafeAllocation.h"
 #include "ScriptObject.h"
 #include "V8Binding.h"
-#include "V8BindingState.h"
 #include "V8DOMWindow.h"
 #include "V8InjectedScriptHost.h"
 #include "V8RecursionScope.h"
@@ -59,7 +58,7 @@ static v8::Local<v8::Object> createInjectedScriptHostV8Wrapper(InjectedScriptHos
         // Return if allocation failed.
         return v8::Local<v8::Object>();
     }
-    v8::Local<v8::Object> instance = SafeAllocation::newInstance(function);
+    v8::Local<v8::Object> instance = V8ObjectConstructor::newInstance(function);
     if (instance.IsEmpty()) {
         // Avoid setting the wrapper if allocation failed.
         return v8::Local<v8::Object>();
@@ -123,7 +122,7 @@ bool InjectedScriptManager::canAccessInspectedWindow(ScriptState* scriptState)
     Frame* frame = V8DOMWindow::toNative(holder)->frame();
 
     v8::Context::Scope contextScope(context);
-    return V8BindingSecurity::canAccessFrame(V8BindingState::Only(), frame, false);
+    return BindingSecurity::shouldAllowAccessToFrame(BindingState::instance(), frame, DoNotReportSecurityError);
 }
 
 } // namespace WebCore

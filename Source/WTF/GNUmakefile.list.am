@@ -52,6 +52,7 @@ wtf_sources += \
     Source/WTF/wtf/Forward.h \
     Source/WTF/wtf/Functional.h \
     Source/WTF/wtf/GetPtr.h \
+    Source/WTF/wtf/GregorianDateTime.cpp \
     Source/WTF/wtf/GregorianDateTime.h \
     Source/WTF/wtf/HashCountedSet.h \
     Source/WTF/wtf/HashFunctions.h \
@@ -127,6 +128,7 @@ wtf_sources += \
     Source/WTF/wtf/RetainPtr.h \
     Source/WTF/wtf/SHA1.cpp \
     Source/WTF/wtf/SHA1.h \
+    Source/WTF/wtf/SaturatedArithmetic.h \
     Source/WTF/wtf/SegmentedVector.h \
     Source/WTF/wtf/SentinelLinkedList.h \
     Source/WTF/wtf/SimpleStats.h \
@@ -206,6 +208,8 @@ wtf_sources += \
     Source/WTF/wtf/text/Base64.h \
     Source/WTF/wtf/text/CString.cpp \
     Source/WTF/wtf/text/CString.h \
+    Source/WTF/wtf/text/IntegerToStringConversion.cpp \
+    Source/WTF/wtf/text/IntegerToStringConversion.h \
     Source/WTF/wtf/text/StringBuffer.h \
     Source/WTF/wtf/text/StringBuilder.cpp \
     Source/WTF/wtf/text/StringBuilder.h \

@@ -34,6 +34,7 @@
 
 namespace WebCore {
 
+class MemoryInstrumentation;
 class StyleRuleCSSStyleDeclaration;
 class WebKitCSSKeyframesRule;
 
@@ -54,6 +55,8 @@ public:
     void setProperties(PassRefPtr<StylePropertySet>);
     
     String cssText() const;
+
+    void reportMemoryUsage(MemoryObjectInfo*) const;
 
 private:    
     StyleKeyframe() { }
@@ -76,6 +79,8 @@ public:
     CSSStyleDeclaration* style() const;
 
     String cssText() const { return m_keyframe->cssText(); }
+
+    void reportDescendantMemoryUsage(MemoryObjectInfo*) const;
 
 private:
     WebKitCSSKeyframeRule(StyleKeyframe*, WebKitCSSKeyframesRule* parent);

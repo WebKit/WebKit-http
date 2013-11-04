@@ -27,24 +27,27 @@
 #ifndef HeadsUpDisplayLayerChromium_h
 #define HeadsUpDisplayLayerChromium_h
 
+#include "CCFontAtlas.h"
+#include "IntSize.h"
 #include "LayerChromium.h"
-#include "cc/CCFontAtlas.h"
 
 namespace WebCore {
 
-struct CCLayerTreeSettings;
-
 class HeadsUpDisplayLayerChromium : public LayerChromium {
 public:
-    static PassRefPtr<HeadsUpDisplayLayerChromium> create(const CCLayerTreeSettings&, int maxTextureSize);
+    static PassRefPtr<HeadsUpDisplayLayerChromium> create();
     virtual ~HeadsUpDisplayLayerChromium();
 
+    virtual void update(CCTextureUpdateQueue&, const CCOcclusionTracker*, CCRenderingStats&) OVERRIDE;
     virtual bool drawsContent() const OVERRIDE { return true; }
 
+    void setFontAtlas(PassOwnPtr<CCFontAtlas>);
+
     virtual PassOwnPtr<CCLayerImpl> createCCLayerImpl() OVERRIDE;
+    virtual void pushPropertiesTo(CCLayerImpl*) OVERRIDE;
 
 protected:
-    HeadsUpDisplayLayerChromium(const CCLayerTreeSettings&, int maxTextureSize);
+    HeadsUpDisplayLayerChromium();
 
 private:
     OwnPtr<CCFontAtlas> m_fontAtlas;

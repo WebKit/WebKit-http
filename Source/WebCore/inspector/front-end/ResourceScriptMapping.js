@@ -30,17 +30,22 @@
 
 /**
  * @constructor
- * @extends {WebInspector.Object}
  * @implements {WebInspector.SourceMapping}
- * @implements {WebInspector.UISourceCodeProvider}
+ * @param {WebInspector.Workspace} workspace
  */
-WebInspector.ResourceScriptMapping = function()
+WebInspector.ResourceScriptMapping = function(workspace)
 {
+    this._workspace = workspace;
+    /** @type {Array.<WebInspector.RawSourceCode>} */
     this._rawSourceCodes = [];
+    /** @type {Object.<string, WebInspector.RawSourceCode>} */
     this._rawSourceCodeForScriptId = {};
+    /** @type {Object.<string, WebInspector.RawSourceCode>} */
     this._rawSourceCodeForURL = {};
+    /** @type {Object.<string, WebInspector.RawSourceCode>} */
     this._rawSourceCodeForDocumentURL = {};
     this._rawSourceCodeForUISourceCode = new Map();
+    this._workspace.addEventListener(WebInspector.Workspace.Events.ProjectWillReset, this._reset, this);
 }
 
 WebInspector.ResourceScriptMapping.prototype = {
@@ -65,20 +70,6 @@ WebInspector.ResourceScriptMapping.prototype = {
     {
         var rawSourceCode = this._rawSourceCodeForUISourceCode.get(uiSourceCode);
         return rawSourceCode.uiLocationToRawLocation(uiSourceCode, lineNumber, columnNumber);
-    },
-
-    /**
-     * @return {Array.<WebInspector.UISourceCode>}
-     */
-    uiSourceCodes: function()
-    {
-        var result = [];
-        for (var i = 0; i < this._rawSourceCodes.length; ++i) {
-            var uiSourceCode = this._rawSourceCodes[i].uiSourceCode();
-            if (uiSourceCode)
-                result.push(uiSourceCode);
-        }
-        return result;
     },
 
     /**
@@ -164,7 +155,7 @@ WebInspector.ResourceScriptMapping.prototype = {
         if (!uiSourceCode.url)
             return;
         this._rawSourceCodeForUISourceCode.put(uiSourceCode, rawSourceCode);
-        this.dispatchEventToListeners(WebInspector.UISourceCodeProvider.Events.UISourceCodeAdded, uiSourceCode);
+        this._workspace.project().addUISourceCode(uiSourceCode);
     },
 
     /**
@@ -181,9 +172,7 @@ WebInspector.ResourceScriptMapping.prototype = {
 
         for (var i = 0; i < rawSourceCode._scripts.length; ++i)
             rawSourceCode._scripts[i].setSourceMapping(this);
-
-        var data = { oldUISourceCode: oldUISourceCode, uiSourceCode: uiSourceCode };
-        this.dispatchEventToListeners(WebInspector.UISourceCodeProvider.Events.UISourceCodeReplaced, data);
+        this._workspace.project().replaceUISourceCode(oldUISourceCode, uiSourceCode);
     },
 
     /**
@@ -208,7 +197,7 @@ WebInspector.ResourceScriptMapping.prototype = {
         script.setSourceMapping(this);
     },
 
-    reset: function()
+    _reset: function()
     {
         for (var i = 0; i < this._rawSourceCodes.length; ++i) {
             var rawSourceCode = this._rawSourceCodes[i];
@@ -222,5 +211,3 @@ WebInspector.ResourceScriptMapping.prototype = {
         this._rawSourceCodeForUISourceCode.clear();
     }
 }
-
-WebInspector.ResourceScriptMapping.prototype.__proto__ = WebInspector.Object.prototype;

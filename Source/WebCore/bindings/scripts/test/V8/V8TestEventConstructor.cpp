@@ -21,15 +21,14 @@
 #include "config.h"
 #include "V8TestEventConstructor.h"
 
+#include "BindingState.h"
 #include "ContextFeatures.h"
 #include "Dictionary.h"
+#include "Frame.h"
 #include "RuntimeEnabledFeatures.h"
 #include "V8Binding.h"
-#include "V8BindingMacros.h"
-#include "V8BindingState.h"
 #include "V8DOMWrapper.h"
 #include "V8IsolatedContext.h"
-#include "V8Proxy.h"
 #include <wtf/UnusedParam.h>
 
 namespace WebCore {
@@ -56,7 +55,7 @@ static v8::Handle<v8::Value> attr2AttrGetter(v8::Local<v8::String> name, const v
 
 } // namespace TestEventConstructorV8Internal
 
-static const BatchedAttribute TestEventConstructorAttrs[] = {
+static const V8DOMConfiguration::BatchedAttribute TestEventConstructorAttrs[] = {
     // Attribute 'attr1' (Type: 'readonly attribute' ExtAttr: '')
     {"attr1", TestEventConstructorV8Internal::attr1AttrGetter, 0, 0 /* no data */, static_cast<v8::AccessControl>(v8::DEFAULT), static_cast<v8::PropertyAttribute>(v8::None), 0 /* on instance */},
     // Attribute 'attr2' (Type: 'readonly attribute' ExtAttr: 'InitializedByEventConstructor')
@@ -68,27 +67,28 @@ v8::Handle<v8::Value> V8TestEventConstructor::constructorCallback(const v8::Argu
     INC_STATS("DOM.TestEventConstructor.Constructor");
 
     if (!args.IsConstructCall())
-        return V8Proxy::throwTypeError("DOM object constructor cannot be called as a function.");
+        return throwTypeError("DOM object constructor cannot be called as a function.");
 
     if (ConstructorMode::current() == ConstructorMode::WrapExistingObject)
         return args.Holder();
 
     if (args.Length() < 1)
-        return V8Proxy::throwNotEnoughArgumentsError(args.GetIsolate());
+        return throwNotEnoughArgumentsError(args.GetIsolate());
 
     STRING_TO_V8PARAMETER_EXCEPTION_BLOCK(V8Parameter<>, type, args[0]);
     TestEventConstructorInit eventInit;
     if (args.Length() >= 2) {
-        EXCEPTION_BLOCK(Dictionary, options, args[1]);
+        EXCEPTION_BLOCK(Dictionary, options, Dictionary(args[1], args.GetIsolate()));
         if (!fillTestEventConstructorInit(eventInit, options))
-            return v8::Undefined();
+            return v8Undefined();
     }
 
     RefPtr<TestEventConstructor> event = TestEventConstructor::create(type, eventInit);
 
-    V8DOMWrapper::setDOMWrapper(args.Holder(), &info, event.get());
-    V8DOMWrapper::setJSWrapperForDOMObject(event.release(), v8::Persistent<v8::Object>::New(args.Holder()), args.GetIsolate());
-    return args.Holder();
+    v8::Handle<v8::Object> wrapper = args.Holder();
+    V8DOMWrapper::setDOMWrapper(wrapper, &info, event.get());
+    V8DOMWrapper::setJSWrapperForDOMObject(event.release(), wrapper, args.GetIsolate());
+    return wrapper;
 }
 
 bool fillTestEventConstructorInit(TestEventConstructorInit& eventInit, const Dictionary& options)
@@ -102,7 +102,7 @@ static v8::Persistent<v8::FunctionTemplate> ConfigureV8TestEventConstructorTempl
     desc->ReadOnlyPrototype();
 
     v8::Local<v8::Signature> defaultSignature;
-    defaultSignature = configureTemplate(desc, "TestEventConstructor", v8::Persistent<v8::FunctionTemplate>(), V8TestEventConstructor::internalFieldCount,
+    defaultSignature = V8DOMConfiguration::configureTemplate(desc, "TestEventConstructor", v8::Persistent<v8::FunctionTemplate>(), V8TestEventConstructor::internalFieldCount,
         TestEventConstructorAttrs, WTF_ARRAY_LENGTH(TestEventConstructorAttrs),
         0, 0);
     UNUSED_PARAM(defaultSignature); // In some cases, it will not be used.
@@ -110,14 +110,14 @@ static v8::Persistent<v8::FunctionTemplate> ConfigureV8TestEventConstructorTempl
     
 
     // Custom toString template
-    desc->Set(getToStringName(), getToStringTemplate());
+    desc->Set(v8::String::NewSymbol("toString"), V8PerIsolateData::current()->toStringTemplate());
     return desc;
 }
 
 v8::Persistent<v8::FunctionTemplate> V8TestEventConstructor::GetRawTemplate()
 {
-    V8BindingPerIsolateData* data = V8BindingPerIsolateData::current();
-    V8BindingPerIsolateData::TemplateMap::iterator result = data->rawTemplateMap().find(&info);
+    V8PerIsolateData* data = V8PerIsolateData::current();
+    V8PerIsolateData::TemplateMap::iterator result = data->rawTemplateMap().find(&info);
     if (result != data->rawTemplateMap().end())
         return result->second;
 
@@ -129,8 +129,8 @@ v8::Persistent<v8::FunctionTemplate> V8TestEventConstructor::GetRawTemplate()
 
 v8::Persistent<v8::FunctionTemplate> V8TestEventConstructor::GetTemplate()
 {
-    V8BindingPerIsolateData* data = V8BindingPerIsolateData::current();
-    V8BindingPerIsolateData::TemplateMap::iterator result = data->templateMap().find(&info);
+    V8PerIsolateData* data = V8PerIsolateData::current();
+    V8PerIsolateData::TemplateMap::iterator result = data->templateMap().find(&info);
     if (result != data->templateMap().end())
         return result->second;
 
@@ -150,16 +150,13 @@ bool V8TestEventConstructor::HasInstance(v8::Handle<v8::Value> value)
 v8::Handle<v8::Object> V8TestEventConstructor::wrapSlow(PassRefPtr<TestEventConstructor> impl, v8::Isolate* isolate)
 {
     v8::Handle<v8::Object> wrapper;
-    V8Proxy* proxy = 0;
-    wrapper = V8DOMWrapper::instantiateV8Object(proxy, &info, impl.get());
+    Frame* frame = 0;
+    wrapper = V8DOMWrapper::instantiateV8Object(frame, &info, impl.get());
     if (UNLIKELY(wrapper.IsEmpty()))
         return wrapper;
-
-    v8::Persistent<v8::Object> wrapperHandle = v8::Persistent<v8::Object>::New(wrapper);
-
+    v8::Persistent<v8::Object> wrapperHandle = V8DOMWrapper::setJSWrapperForDOMObject(impl, wrapper, isolate);
     if (!hasDependentLifetime)
         wrapperHandle.MarkIndependent();
-    V8DOMWrapper::setJSWrapperForDOMObject(impl, wrapperHandle, isolate);
     return wrapper;
 }
 

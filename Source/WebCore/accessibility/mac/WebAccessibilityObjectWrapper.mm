@@ -45,6 +45,7 @@
 #import "Chrome.h"
 #import "ColorMac.h"
 #import "ContextMenuController.h"
+#import "Font.h"
 #import "Frame.h"
 #import "FrameLoaderClient.h"
 #import "FrameSelection.h"
@@ -1576,7 +1577,9 @@ static const AccessibilityRoleMap& createAccessibilityRoleMap()
         { DivRole, NSAccessibilityGroupRole },
         { FormRole, NSAccessibilityGroupRole },
         { SpinButtonRole, NSAccessibilityIncrementorRole },
-        { FooterRole, NSAccessibilityGroupRole }
+        { FooterRole, NSAccessibilityGroupRole },
+        { ToggleButtonRole, NSAccessibilityButtonRole },
+        { CanvasRole, NSAccessibilityImageRole }
     };
     AccessibilityRoleMap& roleMap = *new AccessibilityRoleMap;
     
@@ -1597,7 +1600,10 @@ static NSString* roleValueToNSString(AccessibilityRole value)
 {
     if (m_object->isAttachment())
         return [[self attachmentView] accessibilityAttributeValue:NSAccessibilityRoleAttribute];
-    NSString* string = roleValueToNSString(m_object->roleValue());
+    AccessibilityRole role = m_object->roleValue();
+    if (role == CanvasRole && m_object->canvasHasFallbackContent())
+        role = GroupRole;
+    NSString* string = roleValueToNSString(role);
     if (string != nil)
         return string;
     return NSAccessibilityUnknownRole;

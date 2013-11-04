@@ -24,14 +24,16 @@
 
 #include "config.h"
 
-#include "cc/CCQuadCuller.h"
+#include "CCQuadCuller.h"
 
-#include "cc/CCLayerTilingData.h"
-#include "cc/CCOcclusionTracker.h"
-#include "cc/CCOverdrawMetrics.h"
-#include "cc/CCSingleThreadProxy.h"
-#include "cc/CCTiledLayerImpl.h"
-#include "cc/CCTileDrawQuad.h"
+#include "CCAppendQuadsData.h"
+#include "CCLayerTilingData.h"
+#include "CCMathUtil.h"
+#include "CCOcclusionTracker.h"
+#include "CCOverdrawMetrics.h"
+#include "CCSingleThreadProxy.h"
+#include "CCTileDrawQuad.h"
+#include "CCTiledLayerImpl.h"
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <public/WebTransformationMatrix.h>
@@ -80,6 +82,7 @@ static PassOwnPtr<CCTiledLayerImpl> makeLayer(CCTiledLayerImpl* parent, const We
             layer->pushTileProperties(i, j, resourceId++, tileOpaqueRect);
         }
 
+    IntRect rectInTarget = CCMathUtil::mapClippedRect(layer->drawTransform(), layer->visibleContentRect());
     if (!parent) {
         layer->createRenderSurface();
         surfaceLayerList.append(layer.get());
@@ -87,19 +90,19 @@ static PassOwnPtr<CCTiledLayerImpl> makeLayer(CCTiledLayerImpl* parent, const We
     } else {
         layer->setRenderTarget(parent->renderTarget());
         parent->renderSurface()->layerList().append(layer.get());
+        rectInTarget.unite(CCMathUtil::mapClippedRect(parent->drawTransform(), parent->visibleContentRect()));
     }
+    layer->setDrawableContentRect(rectInTarget);
 
     return layer.release();
 }
 
-static void appendQuads(CCQuadList& quadList, Vector<OwnPtr<CCSharedQuadState> >& sharedStateList, CCTiledLayerImpl* layer, CCLayerIteratorType& it, CCOcclusionTrackerImpl& occlusionTracker)
+static void appendQuads(CCQuadList& quadList, CCSharedQuadStateList& sharedStateList, CCTiledLayerImpl* layer, CCLayerIteratorType& it, CCOcclusionTrackerImpl& occlusionTracker)
 {
     occlusionTracker.enterLayer(it);
-    CCQuadCuller quadCuller(quadList, layer, &occlusionTracker, false, false);
-    OwnPtr<CCSharedQuadState> sharedQuadState = layer->createSharedQuadState(0);
-    bool hadMissingTiles = false;
-    layer->appendQuads(quadCuller, sharedQuadState.get(), hadMissingTiles);
-    sharedStateList.append(sharedQuadState.release());
+    CCQuadCuller quadCuller(quadList, sharedStateList, layer, &occlusionTracker, false, false);
+    CCAppendQuadsData data;
+    layer->appendQuads(quadCuller, data);
     occlusionTracker.leaveLayer(it);
     ++it;
 }
@@ -107,9 +110,9 @@ static void appendQuads(CCQuadList& quadList, Vector<OwnPtr<CCSharedQuadState> >
 #define DECLARE_AND_INITIALIZE_TEST_QUADS               \
     DebugScopedSetImplThread impl;                      \
     CCQuadList quadList;                                \
-    Vector<OwnPtr<CCSharedQuadState> > sharedStateList; \
+    CCSharedQuadStateList sharedStateList;              \
     Vector<CCLayerImpl*> renderSurfaceLayerList;        \
-    WebTransformationMatrix childTransform;                \
+    WebTransformationMatrix childTransform;             \
     IntSize rootSize = IntSize(300, 300);               \
     IntRect rootRect = IntRect(IntPoint(), rootSize);   \
     IntSize childSize = IntSize(200, 200);              \

@@ -31,21 +31,20 @@
 #include "config.h"
 #include "WebViewHost.h"
 
-#include "LayoutTestController.h"
+#include "DRTTestRunner.h"
+#include "EventSender.h"
 #include "MockGrammarCheck.h"
 #include "MockWebSpeechInputController.h"
 #include "MockWebSpeechRecognizer.h"
 #include "TestNavigationController.h"
 #include "TestShell.h"
 #include "TestWebPlugin.h"
-#include "platform/WebCString.h"
 #include "WebConsoleMessage.h"
 #include "WebContextMenuData.h"
 #include "WebDOMMessageEvent.h"
 #include "WebDataSource.h"
 #include "WebDeviceOrientationClientMock.h"
 #include "WebDocument.h"
-#include "platform/WebDragData.h"
 #include "WebElement.h"
 #include "WebFrame.h"
 #include "WebGeolocationClientMock.h"
@@ -59,22 +58,26 @@
 #include "WebPopupType.h"
 #include "WebPrintParams.h"
 #include "WebRange.h"
-#include "platform/WebRect.h"
 #include "WebScreenInfo.h"
-#include "platform/WebSerializedScriptValue.h"
-#include "platform/WebSize.h"
 #include "WebStorageNamespace.h"
 #include "WebTextCheckingCompletion.h"
 #include "WebTextCheckingResult.h"
 #include "WebUserMediaClientMock.h"
-#include "platform/WebThread.h"
-#include "platform/WebURLRequest.h"
-#include "platform/WebURLResponse.h"
 #include "WebView.h"
+#include "WebViewHostOutputSurface.h"
 #include "WebWindowFeatures.h"
+#include "platform/WebSerializedScriptValue.h"
 #include "skia/ext/platform_canvas.h"
 #include "webkit/support/test_media_stream_client.h"
 #include "webkit/support/webkit_support.h"
+#include <public/WebCString.h>
+#include <public/WebCompositorOutputSurface.h>
+#include <public/WebDragData.h>
+#include <public/WebRect.h>
+#include <public/WebSize.h>
+#include <public/WebThread.h>
+#include <public/WebURLRequest.h>
+#include <public/WebURLResponse.h>
 
 #include <wtf/Assertions.h>
 #include <wtf/PassOwnPtr.h>
@@ -250,9 +253,9 @@ static string textAffinityDescription(WebTextAffinity affinity)
 
 WebView* WebViewHost::createView(WebFrame*, const WebURLRequest& request, const WebWindowFeatures&, const WebString&, WebNavigationPolicy)
 {
-    if (!layoutTestController()->canOpenWindows())
+    if (!testRunner()->canOpenWindows())
         return 0;
-    if (layoutTestController()->shouldDumpCreateView())
+    if (testRunner()->shouldDumpCreateView())
         fprintf(stdout, "createView(%s)\n", URLDescription(request.url()).c_str());
     return m_shell->createNewWindow(WebURL())->webView();
 }
@@ -284,11 +287,11 @@ WebStorageNamespace* WebViewHost::createSessionStorageNamespace(unsigned quota)
     return webkit_support::CreateSessionStorageNamespace(quota);
 }
 
-WebKit::WebGraphicsContext3D* WebViewHost::createGraphicsContext3D(const WebKit::WebGraphicsContext3D::Attributes& attributes)
+WebKit::WebCompositorOutputSurface* WebViewHost::createOutputSurface()
 {
     if (!webView())
         return 0;
-    return webkit_support::CreateGraphicsContext3D(attributes, webView());
+    return new WebKit::WebViewHostOutputSurface(adoptPtr(webkit_support::CreateGraphicsContext3D(WebKit::WebGraphicsContext3D::Attributes(), webView())));
 }
 
 void WebViewHost::didAddMessageToConsole(const WebConsoleMessage& message, const WebString& sourceName, unsigned sourceLine)
@@ -318,7 +321,7 @@ void WebViewHost::didStartLoading()
 
 void WebViewHost::didStopLoading()
 {
-    if (layoutTestController()->shouldDumpProgressFinishedCallback())
+    if (testRunner()->shouldDumpProgressFinishedCallback())
         fputs("postProgressFinishedNotification\n", stdout);
     m_shell->setIsLoading(false);
 }
@@ -328,50 +331,50 @@ void WebViewHost::didStopLoading()
 
 bool WebViewHost::shouldBeginEditing(const WebRange& range)
 {
-    if (layoutTestController()->shouldDumpEditingCallbacks()) {
+    if (testRunner()->shouldDumpEditingCallbacks()) {
         fputs("EDITING DELEGATE: shouldBeginEditingInDOMRange:", stdout);
         printRangeDescription(range);
         fputs("\n", stdout);
     }
-    return layoutTestController()->acceptsEditing();
+    return testRunner()->acceptsEditing();
 }
 
 bool WebViewHost::shouldEndEditing(const WebRange& range)
 {
-    if (layoutTestController()->shouldDumpEditingCallbacks()) {
+    if (testRunner()->shouldDumpEditingCallbacks()) {
         fputs("EDITING DELEGATE: shouldEndEditingInDOMRange:", stdout);
         printRangeDescription(range);
         fputs("\n", stdout);
     }
-    return layoutTestController()->acceptsEditing();
+    return testRunner()->acceptsEditing();
 }
 
 bool WebViewHost::shouldInsertNode(const WebNode& node, const WebRange& range, WebEditingAction action)
 {
-    if (layoutTestController()->shouldDumpEditingCallbacks()) {
+    if (testRunner()->shouldDumpEditingCallbacks()) {
         fputs("EDITING DELEGATE: shouldInsertNode:", stdout);
         printNodeDescription(node, 0);
         fputs(" replacingDOMRange:", stdout);
         printRangeDescription(range);
         printf(" givenAction:%s\n", editingActionDescription(action).c_str());
     }
-    return layoutTestController()->acceptsEditing();
+    return testRunner()->acceptsEditing();
 }
 
 bool WebViewHost::shouldInsertText(const WebString& text, const WebRange& range, WebEditingAction action)
 {
-    if (layoutTestController()->shouldDumpEditingCallbacks()) {
+    if (testRunner()->shouldDumpEditingCallbacks()) {
         printf("EDITING DELEGATE: shouldInsertText:%s replacingDOMRange:", text.utf8().data());
         printRangeDescription(range);
         printf(" givenAction:%s\n", editingActionDescription(action).c_str());
     }
-    return layoutTestController()->acceptsEditing();
+    return testRunner()->acceptsEditing();
 }
 
 bool WebViewHost::shouldChangeSelectedRange(
     const WebRange& fromRange, const WebRange& toRange, WebTextAffinity affinity, bool stillSelecting)
 {
-    if (layoutTestController()->shouldDumpEditingCallbacks()) {
+    if (testRunner()->shouldDumpEditingCallbacks()) {
         fputs("EDITING DELEGATE: shouldChangeSelectedDOMRange:", stdout);
         printRangeDescription(fromRange);
         fputs(" toDOMRange:", stdout);
@@ -380,27 +383,27 @@ bool WebViewHost::shouldChangeSelectedRange(
                textAffinityDescription(affinity).c_str(),
                (stillSelecting ? "TRUE" : "FALSE"));
     }
-    return layoutTestController()->acceptsEditing();
+    return testRunner()->acceptsEditing();
 }
 
 bool WebViewHost::shouldDeleteRange(const WebRange& range)
 {
-    if (layoutTestController()->shouldDumpEditingCallbacks()) {
+    if (testRunner()->shouldDumpEditingCallbacks()) {
         fputs("EDITING DELEGATE: shouldDeleteDOMRange:", stdout);
         printRangeDescription(range);
         fputs("\n", stdout);
     }
-    return layoutTestController()->acceptsEditing();
+    return testRunner()->acceptsEditing();
 }
 
 bool WebViewHost::shouldApplyStyle(const WebString& style, const WebRange& range)
 {
-    if (layoutTestController()->shouldDumpEditingCallbacks()) {
+    if (testRunner()->shouldDumpEditingCallbacks()) {
         printf("EDITING DELEGATE: shouldApplyStyle:%s toElementsInDOMRange:", style.utf8().data());
         printRangeDescription(range);
         fputs("\n", stdout);
     }
-    return layoutTestController()->acceptsEditing();
+    return testRunner()->acceptsEditing();
 }
 
 bool WebViewHost::isSmartInsertDeleteEnabled()
@@ -415,28 +418,28 @@ bool WebViewHost::isSelectTrailingWhitespaceEnabled()
 
 void WebViewHost::didBeginEditing()
 {
-    if (!layoutTestController()->shouldDumpEditingCallbacks())
+    if (!testRunner()->shouldDumpEditingCallbacks())
         return;
     fputs("EDITING DELEGATE: webViewDidBeginEditing:WebViewDidBeginEditingNotification\n", stdout);
 }
 
 void WebViewHost::didChangeSelection(bool isEmptySelection)
 {
-    if (layoutTestController()->shouldDumpEditingCallbacks())
+    if (testRunner()->shouldDumpEditingCallbacks())
         fputs("EDITING DELEGATE: webViewDidChangeSelection:WebViewDidChangeSelectionNotification\n", stdout);
     // No need to update clipboard with the selected text in DRT.
 }
 
 void WebViewHost::didChangeContents()
 {
-    if (!layoutTestController()->shouldDumpEditingCallbacks())
+    if (!testRunner()->shouldDumpEditingCallbacks())
         return;
     fputs("EDITING DELEGATE: webViewDidChange:WebViewDidChangeNotification\n", stdout);
 }
 
 void WebViewHost::didEndEditing()
 {
-    if (!layoutTestController()->shouldDumpEditingCallbacks())
+    if (!testRunner()->shouldDumpEditingCallbacks())
         return;
     fputs("EDITING DELEGATE: webViewDidEndEditing:WebViewDidEndEditingNotification\n", stdout);
 }
@@ -560,7 +563,7 @@ bool WebViewHost::runModalPromptDialog(WebFrame* frame, const WebString& message
 bool WebViewHost::runModalBeforeUnloadDialog(WebFrame*, const WebString& message)
 {
     printf("CONFIRM NAVIGATION: %s\n", message.utf8().data());
-    return !layoutTestController()->shouldStayOnPageAfterHandlingBeforeUnload();
+    return !testRunner()->shouldStayOnPageAfterHandlingBeforeUnload();
 }
 
 void WebViewHost::showContextMenu(WebFrame*, const WebContextMenuData& contextMenuData)
@@ -580,7 +583,7 @@ WebContextMenuData* WebViewHost::lastContextMenuData() const
 
 void WebViewHost::setStatusText(const WebString& text)
 {
-    if (!layoutTestController()->shouldDumpStatusCallbacks())
+    if (!testRunner()->shouldDumpStatusCallbacks())
         return;
     // When running tests, write to stdout.
     printf("UI DELEGATE STATUS CALLBACK: setStatusText:%s\n", text.utf8().data());
@@ -589,7 +592,7 @@ void WebViewHost::setStatusText(const WebString& text)
 void WebViewHost::startDragging(WebFrame*, const WebDragData& data, WebDragOperationsMask mask, const WebImage&, const WebPoint&)
 {
     WebDragData mutableDragData = data;
-    if (layoutTestController()->shouldAddFileToPasteboard()) {
+    if (testRunner()->shouldAddFileToPasteboard()) {
         // Add a file called DRTFakeFile to the drag&drop clipboard.
         addDRTFakeFileToDataObject(&mutableDragData);
     }
@@ -1005,12 +1008,12 @@ WebPlugin* WebViewHost::createPlugin(WebFrame* frame, const WebPluginParams& par
     return webkit_support::CreateWebPlugin(frame, params);
 }
 
-WebMediaPlayer* WebViewHost::createMediaPlayer(WebFrame* frame, WebMediaPlayerClient* client)
+WebMediaPlayer* WebViewHost::createMediaPlayer(WebFrame* frame, const WebURL& url, WebMediaPlayerClient* client)
 {
 #if ENABLE(MEDIA_STREAM)
-    return webkit_support::CreateMediaPlayer(frame, client, testMediaStreamClient());
+    return webkit_support::CreateMediaPlayer(frame, url, client, testMediaStreamClient());
 #else
-    return webkit_support::CreateMediaPlayer(frame, client);
+    return webkit_support::CreateMediaPlayer(frame, url, client);
 #endif
 }
 
@@ -1054,7 +1057,7 @@ WebNavigationPolicy WebViewHost::decidePolicyForNavigation(
         result = WebKit::WebNavigationPolicyIgnore;
 
     if (m_policyDelegateShouldNotifyDone)
-        layoutTestController()->policyDelegateDone();
+        testRunner()->policyDelegateDone();
     return result;
 }
 
@@ -1112,7 +1115,7 @@ void WebViewHost::didCancelClientRedirect(WebFrame* frame)
 void WebViewHost::didCreateDataSource(WebFrame*, WebDataSource* ds)
 {
     ds->setExtraData(m_pendingExtraData.leakPtr());
-    if (!layoutTestController()->deferMainResourceDataLoad())
+    if (!testRunner()->deferMainResourceDataLoad())
         ds->setDeferMainResourceDataLoad(false);
 }
 
@@ -1129,7 +1132,7 @@ void WebViewHost::didStartProvisionalLoad(WebFrame* frame)
     if (!m_topLoadingFrame)
         m_topLoadingFrame = frame;
 
-    if (layoutTestController()->stopProvisionalFrameLoads()) {
+    if (testRunner()->stopProvisionalFrameLoads()) {
         printFrameDescription(frame);
         fputs(" - stopping load in didStartProvisionalLoadForFrame callback\n", stdout);
         frame->stopLoading();
@@ -1182,11 +1185,11 @@ void WebViewHost::didReceiveTitle(WebFrame* frame, const WebString& title, WebTe
         printf(" - didReceiveTitle: %s\n", title8.data());
     }
 
-    if (layoutTestController()->shouldDumpTitleChanges())
+    if (testRunner()->shouldDumpTitleChanges())
         printf("TITLE CHANGED: %s\n", title8.data());
 
     setPageTitle(title);
-    layoutTestController()->setTitleTextDirection(direction);
+    testRunner()->setTitleTextDirection(direction);
 }
 
 void WebViewHost::didFinishDocumentLoad(WebFrame* frame)
@@ -1280,7 +1283,7 @@ void WebViewHost::willSendRequest(WebFrame* frame, unsigned identifier, WebURLRe
     string requestURL = url.possibly_invalid_spec();
 
     GURL mainDocumentURL = request.firstPartyForCookies();
-    if (layoutTestController()->shouldDumpResourceLoadCallbacks()) {
+    if (testRunner()->shouldDumpResourceLoadCallbacks()) {
         printResourceDescription(identifier);
         printf(" - willSendRequest <NSURLRequest URL %s, main document URL %s,"
                " http method %s> redirectResponse ",
@@ -1384,9 +1387,14 @@ void WebViewHost::openFileSystem(WebFrame* frame, WebFileSystem::Type type, long
     webkit_support::OpenFileSystem(frame, type, size, create, callbacks);
 }
 
+void WebViewHost::deleteFileSystem(WebKit::WebFrame* frame, WebKit::WebFileSystem::Type type, WebKit::WebFileSystemCallbacks* callbacks)
+{
+    webkit_support::DeleteFileSystem(frame, type, callbacks);
+}
+
 bool WebViewHost::willCheckAndDispatchMessageEvent(WebFrame* source, WebSecurityOrigin target, WebDOMMessageEvent event)
 {
-    if (m_shell->layoutTestController()->shouldInterceptPostMessage()) {
+    if (m_shell->testRunner()->shouldInterceptPostMessage()) {
         fputs("intercepted postMessage\n", stdout);
         return true;
     }
@@ -1637,9 +1645,9 @@ bool WebViewHost::navigate(const TestNavigationEntry& entry, bool reload)
 
 // Private functions ----------------------------------------------------------
 
-LayoutTestController* WebViewHost::layoutTestController() const
+DRTTestRunner* WebViewHost::testRunner() const
 {
-    return m_shell->layoutTestController();
+    return m_shell->testRunner();
 }
 
 void WebViewHost::updateAddressBar(WebView* webView)
@@ -1659,15 +1667,16 @@ void WebViewHost::locationChangeDone(WebFrame* frame)
     if (frame != m_topLoadingFrame)
         return;
     m_topLoadingFrame = 0;
-    layoutTestController()->locationChangeDone();
+    testRunner()->locationChangeDone();
 }
 
 void WebViewHost::updateForCommittedLoad(WebFrame* frame, bool isNewNavigation)
 {
     // Code duplicated from RenderView::DidCommitLoadForFrame.
     TestShellExtraData* extraData = static_cast<TestShellExtraData*>(frame->dataSource()->extraData());
+    bool nonBlankPageAfterReset = m_pageId == -1 && strcmp(frame->dataSource()->request().url().spec().data(), "about:blank");
 
-    if (isNewNavigation) {
+    if (isNewNavigation || nonBlankPageAfterReset) {
         // New navigation.
         updateSessionHistory(frame);
         m_pageId = nextPageID++;
@@ -1762,6 +1771,12 @@ void WebViewHost::setPendingExtraData(PassOwnPtr<TestShellExtraData> extraData)
     m_pendingExtraData = extraData;
 }
 
+void WebViewHost::setDeviceScaleFactor(float deviceScaleFactor)
+{
+    webView()->setDeviceScaleFactor(deviceScaleFactor);
+    discardBackingStore();
+}
+
 void WebViewHost::setGamepadData(const WebGamepads& pads)
 {
     webkit_support::SetGamepadData(pads);
@@ -1779,7 +1794,7 @@ void WebViewHost::setAddressBarURL(const WebURL&)
 
 void WebViewHost::enterFullScreenNow()
 {
-    if (layoutTestController()->hasCustomFullScreenBehavior())
+    if (testRunner()->hasCustomFullScreenBehavior())
         return;
 
     webView()->willEnterFullScreen();
@@ -1788,7 +1803,7 @@ void WebViewHost::enterFullScreenNow()
 
 void WebViewHost::exitFullScreenNow()
 {
-    if (layoutTestController()->hasCustomFullScreenBehavior())
+    if (testRunner()->hasCustomFullScreenBehavior())
         return;
 
     webView()->willExitFullScreen();
@@ -1827,7 +1842,13 @@ void WebViewHost::paintRect(const WebRect& rect)
     ASSERT(!m_isPainting);
     ASSERT(canvas());
     m_isPainting = true;
-    webWidget()->paint(canvas(), rect);
+    float deviceScaleFactor = webView()->deviceScaleFactor();
+    int scaledX = static_cast<int>(static_cast<float>(rect.x) * deviceScaleFactor);
+    int scaledY = static_cast<int>(static_cast<float>(rect.y) * deviceScaleFactor);
+    int scaledWidth = static_cast<int>(ceil(static_cast<float>(rect.width) * deviceScaleFactor));
+    int scaledHeight = static_cast<int>(ceil(static_cast<float>(rect.height) * deviceScaleFactor));
+    WebRect deviceRect(scaledX, scaledY, scaledWidth, scaledHeight);
+    webWidget()->paint(canvas(), deviceRect);
     m_isPainting = false;
 }
 
@@ -1897,8 +1918,11 @@ SkCanvas* WebViewHost::canvas()
     if (m_canvas)
         return m_canvas.get();
     WebSize widgetSize = webWidget()->size();
+    float deviceScaleFactor = webView()->deviceScaleFactor();
+    int scaledWidth = static_cast<int>(ceil(static_cast<float>(widgetSize.width) * deviceScaleFactor));
+    int scaledHeight = static_cast<int>(ceil(static_cast<float>(widgetSize.height) * deviceScaleFactor));
     resetScrollRect();
-    m_canvas = adoptPtr(skia::CreateBitmapCanvas(widgetSize.width, widgetSize.height, true));
+    m_canvas = adoptPtr(skia::CreateBitmapCanvas(scaledWidth, scaledHeight, true));
     return m_canvas.get();
 }
 

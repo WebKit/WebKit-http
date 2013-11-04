@@ -136,6 +136,33 @@ static RenderLayer::UpdateLayerPositionsFlags updateLayerPositionFlags(RenderLay
     return flags;
 }
 
+Pagination::Mode paginationModeForRenderStyle(RenderStyle* style)
+{
+    EOverflow overflow = style->overflowY();
+    if (overflow != OPAGEDX && overflow != OPAGEDY)
+        return Pagination::Unpaginated;
+
+    bool isHorizontalWritingMode = style->isHorizontalWritingMode();
+    TextDirection textDirection = style->direction();
+    WritingMode writingMode = style->writingMode();
+
+    // paged-x always corresponds to LeftToRightPaginated or RightToLeftPaginated. If the WritingMode
+    // is horizontal, then we use TextDirection to choose between those options. If the WritingMode
+    // is vertical, then the direction of the verticality dictates the choice.
+    if (overflow == OPAGEDX) {
+        if ((isHorizontalWritingMode && textDirection == LTR) || writingMode == LeftToRightWritingMode)
+            return Pagination::LeftToRightPaginated;
+        return Pagination::RightToLeftPaginated;
+    }
+
+    // paged-y always corresponds to TopToBottomPaginated or BottomToTopPaginated. If the WritingMode
+    // is horizontal, then the direction of the horizontality dictates the choice. If the WritingMode
+    // is vertical, then we use TextDirection to choose between those options. 
+    if (writingMode == TopToBottomWritingMode || (!isHorizontalWritingMode && textDirection == RTL))
+        return Pagination::TopToBottomPaginated;
+    return Pagination::BottomToTopPaginated;
+}
+
 FrameView::FrameView(Frame* frame)
     : m_frame(frame)
     , m_canHaveScrollbars(true)
@@ -597,11 +624,39 @@ void FrameView::applyOverflowToViewport(RenderObject* o, ScrollbarMode& hMode, S
             vMode = ScrollbarAuto;
             break;
         default:
-            // Don't set it at all.
+            // Don't set it at all. Values of OPAGEDX and OPAGEDY are handled by applyPaginationToViewPort().
             ;
     }
 
     m_viewportRenderer = o;
+}
+
+void FrameView::applyPaginationToViewport()
+{
+    Document* document = m_frame->document();
+    Node* documentElement = document->documentElement();
+    RenderObject* documentRenderer = documentElement ? documentElement->renderer() : 0;
+    RenderObject* documentOrBodyRenderer = documentRenderer;
+    Node* body = document->body();
+    if (body && body->renderer()) {
+        if (body->hasTagName(bodyTag))
+            documentOrBodyRenderer = documentRenderer->style()->overflowX() == OVISIBLE && documentElement->hasTagName(htmlTag) ? body->renderer() : documentRenderer;
+    }
+
+    Pagination pagination;
+
+    if (!documentOrBodyRenderer) {
+        setPagination(pagination);
+        return;
+    }
+
+    EOverflow overflowY = documentOrBodyRenderer->style()->overflowY();
+    if (overflowY == OPAGEDX || overflowY == OPAGEDY) {
+        pagination.mode = WebCore::paginationModeForRenderStyle(documentOrBodyRenderer->style());
+        pagination.gap = static_cast<unsigned>(documentOrBodyRenderer->style()->columnGap());
+    }
+
+    setPagination(pagination);
 }
 
 void FrameView::calculateScrollbarModesForLayout(ScrollbarMode& hMode, ScrollbarMode& vMode, ScrollbarModesCalculationStrategy strategy)
@@ -998,6 +1053,10 @@ void FrameView::layout(bool allowSubtree)
         } else
             document->evaluateMediaQueryList();
 
+        // If there is any pagination to apply, it will affect the RenderView's style, so we should
+        // take care of that now.
+        applyPaginationToViewport();
+
         // Always ensure our style info is up-to-date. This can happen in situations where
         // the layout beats any sort of style recalc update that needs to occur.
         document->updateStyleIfNeeded();
@@ -1153,7 +1212,7 @@ void FrameView::layout(bool allowSubtree)
     if (AXObjectCache::accessibilityEnabled())
         root->document()->axObjectCache()->postNotification(root, AXObjectCache::AXLayoutComplete, true);
 #endif
-#if ENABLE(DASHBOARD_SUPPORT)
+#if ENABLE(DASHBOARD_SUPPORT) || ENABLE(WIDGET_REGION)
     updateDashboardRegions();
 #endif
 
@@ -1465,7 +1524,7 @@ bool FrameView::scrollContentsFastPath(const IntSize& scrollDelta, const IntRect
     FixedObjectSet::const_iterator end = m_fixedObjects->end();
     for (FixedObjectSet::const_iterator it = m_fixedObjects->begin(); it != end; ++it) {
         RenderObject* renderer = *it;
-        if (renderer->style()->position() != FixedPosition)
+        if (!renderer->style()->hasViewportConstrainedPosition())
             continue;
 #if USE(ACCELERATED_COMPOSITING)
         if (renderer->isComposited())
@@ -1490,10 +1549,6 @@ bool FrameView::scrollContentsFastPath(const IntSize& scrollDelta, const IntRect
         if (!updateRect.isEmpty())
             regionToUpdate.unite(updateRect);
     }
-
-    // The area to be painted by fixed objects exceeds 50% of the area of the view, we cannot use the fast path.
-    if (regionToUpdate.totalArea() > (clipRect.width() * clipRect.height() * 0.5))
-        return false;
 
     // 1) scroll
     hostWindow()->scroll(scrollDelta, rectToScroll, clipRect);
@@ -2057,7 +2112,7 @@ void FrameView::scheduleRelayout()
         return;
     if (!m_frame->document()->shouldScheduleLayout())
         return;
-
+    InspectorInstrumentation::didInvalidateLayout(m_frame.get());
     // When frame flattening is enabled, the contents of the frame could affect the layout of the parent frames.
     // Also invalidate parent frame starting from the owner element of this frame.
     if (m_frame->ownerRenderer() && isInChildFrameWithFrameFlattening())
@@ -2119,6 +2174,7 @@ void FrameView::scheduleRelayoutOfSubtree(RenderObject* relayoutRoot)
             }
         }
     } else if (m_layoutSchedulingEnabled) {
+        InspectorInstrumentation::didInvalidateLayout(m_frame.get());
         int delay = m_frame->document()->minimumLayoutDelay();
         m_layoutRoot = relayoutRoot;
         ASSERT(!m_layoutRoot->container() || !m_layoutRoot->container()->needsLayout());
@@ -2559,6 +2615,30 @@ void FrameView::updateOverflowStatus(bool horizontalOverflow, bool verticalOverf
     
 }
 
+const Pagination& FrameView::pagination() const
+{
+    if (m_pagination != Pagination())
+        return m_pagination;
+
+    if (Page* page = m_frame->page()) {
+        if (page->mainFrame() == m_frame)
+            return page->pagination();
+    }
+
+    return m_pagination;
+}
+
+void FrameView::setPagination(const Pagination& pagination)
+{
+    if (m_pagination == pagination)
+        return;
+
+    m_pagination = pagination;
+
+    if (m_frame)
+        m_frame->document()->styleResolverChanged(DeferRecalcStyle);
+}
+
 IntRect FrameView::windowClipRect(bool clipToContents) const
 {
     ASSERT(m_frame->view() == this);
@@ -2776,7 +2856,7 @@ bool FrameView::scrollAnimatorEnabled() const
     return false;
 }
 
-#if ENABLE(DASHBOARD_SUPPORT)
+#if ENABLE(DASHBOARD_SUPPORT) || ENABLE(WIDGET_REGION)
 void FrameView::updateDashboardRegions()
 {
     Document* document = m_frame->document();
@@ -2936,7 +3016,7 @@ FrameView* FrameView::parentFrameView() const
     return 0;
 }
 
-bool FrameView::isInChildFrameWithFrameFlattening()
+bool FrameView::isInChildFrameWithFrameFlattening() const
 {
     if (!parent() || !m_frame->ownerElement())
         return false;
@@ -3055,10 +3135,6 @@ void FrameView::paintContents(GraphicsContext* p, const IntRect& rect)
         p->fillRect(rect, Color(0xFF, 0, 0), ColorSpaceDeviceRGB);
 #endif
 
-    Page* page = m_frame->page();
-    if (page->mainFrame() == m_frame && page->pagination().mode != Page::Pagination::Unpaginated)
-        p->fillRect(rect, baseBackgroundColor(), ColorSpaceDeviceRGB);
-
     bool isTopLevelPainter = !sCurrentPaintTimeStamp;
     if (isTopLevelPainter)
         sCurrentPaintTimeStamp = currentTime();
@@ -3118,7 +3194,7 @@ void FrameView::paintContents(GraphicsContext* p, const IntRect& rect)
     m_paintBehavior = oldPaintBehavior;
     m_lastPaintTime = currentTime();
 
-#if ENABLE(DASHBOARD_SUPPORT)
+#if ENABLE(DASHBOARD_SUPPORT) || ENABLE(WIDGET_REGION)
     // Regions may have changed as a result of the visibility/z-index of element changing.
     if (document->dashboardRegionsDirty())
         updateDashboardRegions();
@@ -3148,6 +3224,42 @@ bool FrameView::isPainting() const
 void FrameView::setNodeToDraw(Node* node)
 {
     m_nodeToDraw = node;
+}
+
+void FrameView::paintContentsForSnapshot(GraphicsContext* context, const IntRect& imageRect, SelectionInSnaphot shouldPaintSelection, CoordinateSpaceForSnapshot coordinateSpace)
+{
+    updateLayoutAndStyleIfNeededRecursive();
+
+    // Cache paint behavior and set a new behavior appropriate for snapshots.
+    PaintBehavior oldBehavior = paintBehavior();
+    setPaintBehavior(oldBehavior | PaintBehaviorFlattenCompositingLayers);
+
+    // If the snapshot should exclude selection, then we'll clear the current selection
+    // in the render tree only. This will allow us to restore the selection from the DOM
+    // after we paint the snapshot.
+    if (shouldPaintSelection == ExcludeSelection) {
+        for (Frame* frame = m_frame.get(); frame; frame = frame->tree()->traverseNext(m_frame.get())) {
+            if (RenderView* root = frame->contentRenderer())
+                root->clearSelection();
+        }
+    }
+
+    if (coordinateSpace == DocumentCoordinates)
+        paintContents(context, imageRect);
+    else {
+        // A snapshot in ViewCoordinates will include a scrollbar, and the snapshot will contain
+        // whatever content the document is currently scrolled to.
+        paint(context, imageRect);
+    }
+
+    // Restore selection.
+    if (shouldPaintSelection == ExcludeSelection) {
+        for (Frame* frame = m_frame.get(); frame; frame = frame->tree()->traverseNext(m_frame.get()))
+            frame->selection()->updateAppearance();
+    }
+
+    // Restore cached paint behavior.
+    setPaintBehavior(oldBehavior);
 }
 
 void FrameView::paintOverhangAreas(GraphicsContext* context, const IntRect& horizontalOverhangArea, const IntRect& verticalOverhangArea, const IntRect& dirtyRect)
@@ -3575,4 +3687,12 @@ AXObjectCache* FrameView::axObjectCache() const
     return 0;
 }
     
+void FrameView::setScrollingPerformanceLoggingEnabled(bool flag)
+{
+#if USE(ACCELERATED_COMPOSITING)
+    if (TiledBacking* tiledBacking = this->tiledBacking())
+        tiledBacking->setScrollingPerformanceLoggingEnabled(flag);
+#endif
+}
+
 } // namespace WebCore

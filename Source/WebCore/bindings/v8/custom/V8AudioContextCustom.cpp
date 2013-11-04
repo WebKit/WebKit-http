@@ -28,14 +28,14 @@
 
 #include "V8AudioContext.h"
 
-#include <wtf/ArrayBuffer.h>
 #include "AudioBuffer.h"
 #include "AudioContext.h"
+#include "BindingState.h"
 #include "Frame.h"
 #include "V8ArrayBuffer.h"
 #include "V8AudioBuffer.h"
 #include "V8Binding.h"
-#include "V8Proxy.h"
+#include <wtf/ArrayBuffer.h>
 
 namespace WebCore {
 
@@ -44,18 +44,18 @@ v8::Handle<v8::Value> V8AudioContext::constructorCallback(const v8::Arguments& a
     INC_STATS("DOM.AudioContext.Contructor");
 
     if (!args.IsConstructCall())
-        return V8Proxy::throwTypeError("AudioContext constructor cannot be called as a function.", args.GetIsolate());
+        return throwTypeError("AudioContext constructor cannot be called as a function.", args.GetIsolate());
 
     if (ConstructorMode::current() == ConstructorMode::WrapExistingObject)
         return args.Holder();
 
-    Frame* frame = V8Proxy::retrieveFrameForCurrentContext();
+    Frame* frame = currentFrame(BindingState::instance());
     if (!frame)
-        return V8Proxy::throwError(V8Proxy::ReferenceError, "AudioContext constructor associated frame is unavailable", args.GetIsolate());
+        return throwError(ReferenceError, "AudioContext constructor associated frame is unavailable", args.GetIsolate());
 
     Document* document = frame->document();
     if (!document)
-        return V8Proxy::throwError(V8Proxy::ReferenceError, "AudioContext constructor associated document is unavailable", args.GetIsolate());
+        return throwError(ReferenceError, "AudioContext constructor associated document is unavailable", args.GetIsolate());
 
     RefPtr<AudioContext> audioContext;
     
@@ -64,37 +64,37 @@ v8::Handle<v8::Value> V8AudioContext::constructorCallback(const v8::Arguments& a
         ExceptionCode ec = 0;
         audioContext = AudioContext::create(document, ec);
         if (ec)
-            return throwError(ec, args.GetIsolate());
+            return setDOMException(ec, args.GetIsolate());
         if (!audioContext.get())
-            return V8Proxy::throwError(V8Proxy::SyntaxError, "audio resources unavailable for AudioContext construction", args.GetIsolate());
+            return throwError(SyntaxError, "audio resources unavailable for AudioContext construction", args.GetIsolate());
     } else {
         // Constructor for offline (render-target) AudioContext which renders into an AudioBuffer.
         // new AudioContext(in unsigned long numberOfChannels, in unsigned long numberOfFrames, in float sampleRate);
         if (args.Length() < 3)
-            return V8Proxy::throwNotEnoughArgumentsError(args.GetIsolate());
+            return throwNotEnoughArgumentsError(args.GetIsolate());
 
         bool ok = false;
 
         int32_t numberOfChannels = toInt32(args[0], ok);
         if (!ok || numberOfChannels <= 0 || numberOfChannels > 10)
-            return V8Proxy::throwError(V8Proxy::SyntaxError, "Invalid number of channels", args.GetIsolate());
+            return throwError(SyntaxError, "Invalid number of channels", args.GetIsolate());
 
         int32_t numberOfFrames = toInt32(args[1], ok);
         if (!ok || numberOfFrames <= 0)
-            return V8Proxy::throwError(V8Proxy::SyntaxError, "Invalid number of frames", args.GetIsolate());
+            return throwError(SyntaxError, "Invalid number of frames", args.GetIsolate());
 
         float sampleRate = toFloat(args[2]);
         if (sampleRate <= 0)
-            return V8Proxy::throwError(V8Proxy::SyntaxError, "Invalid sample rate", args.GetIsolate());
+            return throwError(SyntaxError, "Invalid sample rate", args.GetIsolate());
 
         ExceptionCode ec = 0;
         audioContext = AudioContext::createOfflineContext(document, numberOfChannels, numberOfFrames, sampleRate, ec);
         if (ec)
-            return throwError(ec, args.GetIsolate());
+            return setDOMException(ec, args.GetIsolate());
     }
 
     if (!audioContext.get())
-        return V8Proxy::throwError(V8Proxy::SyntaxError, "Error creating AudioContext", args.GetIsolate());
+        return throwError(SyntaxError, "Error creating AudioContext", args.GetIsolate());
     
     // Transform the holder into a wrapper object for the audio context.
     V8DOMWrapper::setDOMWrapper(args.Holder(), &info, audioContext.get());

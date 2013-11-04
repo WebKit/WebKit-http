@@ -33,12 +33,12 @@
 
 #include "InspectorFrontendClient.h"
 #include "PlatformString.h"
-#include "ScriptState.h"
 #include <wtf/Forward.h>
 #include <wtf/Noncopyable.h>
 
 namespace WebCore {
 
+class Frame;
 class InspectorController;
 class InspectorBackendDispatchTask;
 class InspectorFrontendHost;
@@ -71,6 +71,7 @@ public:
     virtual bool canSave() { return false; }
     virtual void save(const String&, const String&, bool) { }
     virtual void append(const String&, const String&) { }
+    virtual bool canInspectWorkers() { return false; }
 
     virtual void attachWindow() = 0;
     virtual void detachWindow() = 0;
@@ -110,8 +111,7 @@ private:
 
     friend class FrontendMenuProvider;
     InspectorController* m_inspectorController;
-    Page* m_frontendPage;
-    ScriptState* m_frontendScriptState;
+    Page* m_frontendPage;    
     // TODO(yurys): this ref shouldn't be needed.
     RefPtr<InspectorFrontendHost> m_frontendHost;
     OwnPtr<InspectorFrontendClientLocal::Settings> m_settings;

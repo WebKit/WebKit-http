@@ -7,6 +7,7 @@
 function test()
 {
     // Save time on style updates.
+    WebInspector.showPanel("elements");
     WebInspector.StylesSidebarPane.prototype.update = function() {};
     WebInspector.MetricsSidebarPane.prototype.update = function() {};
 
@@ -106,7 +107,7 @@ function test()
                 var childNodes = testNode.children;
                 for (var i = 0; i < childNodes.length; ++i) {
                     if (childNodes[i].nodeType() === 8) {
-                        WebInspector.updateFocusedNode(childNodes[i].id);
+                        WebInspector._updateFocusedNode(childNodes[i].id);
                         callback(childNodes[i]);
                         return;
                     }

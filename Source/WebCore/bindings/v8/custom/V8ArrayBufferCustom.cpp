@@ -29,21 +29,30 @@
  */
 
 #include "config.h"
+#include "V8ArrayBufferCustom.h"
+
 #include <wtf/ArrayBuffer.h>
+#include <wtf/StdLibExtras.h>
 
 #include "ExceptionCode.h"
-#include "V8Binding.h"
 #include "V8ArrayBuffer.h"
-#include "V8Proxy.h"
+#include "V8Binding.h"
 
 namespace WebCore {
+
+V8ArrayBufferDeallocationObserver* V8ArrayBufferDeallocationObserver::instance()
+{
+    DEFINE_STATIC_LOCAL(V8ArrayBufferDeallocationObserver, deallocationObserver, ());
+    return &deallocationObserver;
+}
+
 
 v8::Handle<v8::Value> V8ArrayBuffer::constructorCallback(const v8::Arguments& args)
 {
     INC_STATS("DOM.ArrayBuffer.Constructor");
 
     if (!args.IsConstructCall())
-        return V8Proxy::throwTypeError("DOM object constructor cannot be called as a function.", args.GetIsolate());
+        return throwTypeError("DOM object constructor cannot be called as a function.", args.GetIsolate());
 
     if (ConstructorMode::current() == ConstructorMode::WrapExistingObject)
         return args.Holder();
@@ -70,11 +79,14 @@ v8::Handle<v8::Value> V8ArrayBuffer::constructorCallback(const v8::Arguments& ar
     if (length >= 0)
         buffer = ArrayBuffer::create(static_cast<unsigned>(length), 1);
     if (!buffer.get())
-        return V8Proxy::throwError(V8Proxy::RangeError, "ArrayBuffer size is not a small enough positive integer.", args.GetIsolate());
+        return throwError(RangeError, "ArrayBuffer size is not a small enough positive integer.", args.GetIsolate());
+    buffer->setDeallocationObserver(V8ArrayBufferDeallocationObserver::instance());
+    v8::V8::AdjustAmountOfExternalAllocatedMemory(buffer->byteLength());
     // Transform the holder into a wrapper object for the array.
-    V8DOMWrapper::setDOMWrapper(args.Holder(), &info, buffer.get());
-    V8DOMWrapper::setJSWrapperForDOMObject(buffer.release(), v8::Persistent<v8::Object>::New(args.Holder()));
-    return args.Holder();
+    v8::Handle<v8::Object> wrapper = args.Holder();
+    V8DOMWrapper::setDOMWrapper(wrapper, &info, buffer.get());
+    V8DOMWrapper::setJSWrapperForDOMObject(buffer.release(), wrapper);
+    return wrapper;
 }
 
 } // namespace WebCore

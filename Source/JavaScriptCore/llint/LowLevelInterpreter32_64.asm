@@ -444,7 +444,13 @@ _llint_op_eq_null:
     loadi PayloadOffset[cfr, t0, 8], t0
     bineq t1, CellTag, .opEqNullImmediate
     loadp JSCell::m_structure[t0], t1
-    tbnz Structure::m_typeInfo + TypeInfo::m_flags[t1], MasqueradesAsUndefined, t1
+    btbnz Structure::m_typeInfo + TypeInfo::m_flags[t1], MasqueradesAsUndefined, .opEqNullMasqueradesAsUndefined
+    move 0, t1
+    jmp .opEqNullNotImmediate
+.opEqNullMasqueradesAsUndefined:
+    loadp CodeBlock[cfr], t0
+    loadp CodeBlock::m_globalObject[t0], t0
+    cpeq Structure::m_globalObject[t1], t0, t1
     jmp .opEqNullNotImmediate
 .opEqNullImmediate:
     cieq t1, NullTag, t2
@@ -485,7 +491,13 @@ _llint_op_neq_null:
     loadi PayloadOffset[cfr, t0, 8], t0
     bineq t1, CellTag, .opNeqNullImmediate
     loadp JSCell::m_structure[t0], t1
-    tbz Structure::m_typeInfo + TypeInfo::m_flags[t1], MasqueradesAsUndefined, t1
+    btbnz Structure::m_typeInfo + TypeInfo::m_flags[t1], MasqueradesAsUndefined, .opNeqNullMasqueradesAsUndefined
+    move 1, t1
+    jmp .opNeqNullNotImmediate
+.opNeqNullMasqueradesAsUndefined:
+    loadp CodeBlock[cfr], t0
+    loadp CodeBlock::m_globalObject[t0], t0
+    cpneq Structure::m_globalObject[t1], t0, t1
     jmp .opNeqNullNotImmediate
 .opNeqNullImmediate:
     cineq t1, NullTag, t2
@@ -875,7 +887,14 @@ _llint_op_is_undefined:
     dispatch(3)
 .opIsUndefinedCell:
     loadp JSCell::m_structure[t3], t1
-    tbnz Structure::m_typeInfo + TypeInfo::m_flags[t1], MasqueradesAsUndefined, t1
+    btbnz Structure::m_typeInfo + TypeInfo::m_flags[t1], MasqueradesAsUndefined, .opIsUndefinedMasqueradesAsUndefined
+    move 0, t1
+    storei t1, PayloadOffset[cfr, t0, 8]
+    dispatch(3)
+.opIsUndefinedMasqueradesAsUndefined:
+    loadp CodeBlock[cfr], t3
+    loadp CodeBlock::m_globalObject[t3], t3
+    cpeq Structure::m_globalObject[t1], t3, t1
     storei t1, PayloadOffset[cfr, t0, 8]
     dispatch(3)
 
@@ -1255,14 +1274,19 @@ _llint_op_put_by_id_transition_normal_out_of_line:
 
 _llint_op_get_by_val:
     traceExecution()
-    loadp CodeBlock[cfr], t1
     loadi 8[PC], t2
     loadi 12[PC], t3
-    loadp CodeBlock::m_globalData[t1], t1
     loadConstantOrVariablePayload(t2, CellTag, t0, .opGetByValSlow)
-    loadp JSGlobalData::jsArrayClassInfo[t1], t2
     loadConstantOrVariablePayload(t3, Int32Tag, t1, .opGetByValSlow)
-    bpneq [t0], t2, .opGetByValSlow
+    loadp JSCell::m_structure[t0], t3
+    loadp 16[PC], t2
+    if VALUE_PROFILER
+        storep t3, ArrayProfile::m_lastSeenStructure[t2]
+    end
+    loadp CodeBlock[cfr], t2
+    loadp CodeBlock::m_globalData[t2], t2
+    loadp JSGlobalData::jsArrayClassInfo[t2], t2
+    bpneq Structure::m_classInfo[t3], t2, .opGetByValSlow
     loadp JSArray::m_storage[t0], t3
     biaeq t1, JSArray::m_vectorLength[t0], .opGetByValSlow
     loadi 4[PC], t0
@@ -1271,16 +1295,18 @@ _llint_op_get_by_val:
     bieq t2, EmptyValueTag, .opGetByValSlow
     storei t2, TagOffset[cfr, t0, 8]
     storei t1, PayloadOffset[cfr, t0, 8]
-    loadi 16[PC], t0
+    loadi 20[PC], t0
     valueProfile(t2, t1, t0)
-    dispatch(5)
+    dispatch(6)
 
 .opGetByValSlow:
     callSlowPath(_llint_slow_path_get_by_val)
-    dispatch(5)
+    dispatch(6)
 
 
 _llint_op_get_argument_by_val:
+    # FIXME: At some point we should array profile this. Right now it isn't necessary
+    # since the DFG will never turn a get_argument_by_val into a GetByVal.
     traceExecution()
     loadi 8[PC], t0
     loadi 12[PC], t1
@@ -1293,15 +1319,15 @@ _llint_op_get_argument_by_val:
     loadi 4[PC], t3
     loadi ThisArgumentOffset + TagOffset[cfr, t2, 8], t0
     loadi ThisArgumentOffset + PayloadOffset[cfr, t2, 8], t1
-    loadi 16[PC], t2
+    loadi 20[PC], t2
     storei t0, TagOffset[cfr, t3, 8]
     storei t1, PayloadOffset[cfr, t3, 8]
     valueProfile(t0, t1, t2)
-    dispatch(5)
+    dispatch(6)
 
 .opGetArgumentByValSlow:
     callSlowPath(_llint_slow_path_get_argument_by_val)
-    dispatch(5)
+    dispatch(6)
 
 
 _llint_op_get_by_pname:
@@ -1338,10 +1364,15 @@ _llint_op_put_by_val:
     loadConstantOrVariablePayload(t0, CellTag, t1, .opPutByValSlow)
     loadi 8[PC], t0
     loadConstantOrVariablePayload(t0, Int32Tag, t2, .opPutByValSlow)
+    loadp JSCell::m_structure[t1], t3
+    loadp 16[PC], t0
+    if VALUE_PROFILER
+        storep t3, ArrayProfile::m_lastSeenStructure[t0]
+    end
     loadp CodeBlock[cfr], t0
     loadp CodeBlock::m_globalData[t0], t0
     loadp JSGlobalData::jsArrayClassInfo[t0], t0
-    bpneq [t1], t0, .opPutByValSlow
+    bpneq Structure::m_classInfo[t3], t0, .opPutByValSlow
     biaeq t2, JSArray::m_vectorLength[t1], .opPutByValSlow
     loadp JSArray::m_storage[t1], t0
     bieq ArrayStorage::m_vector + TagOffset[t0, t2, 8], EmptyValueTag, .opPutByValEmpty
@@ -1351,7 +1382,7 @@ _llint_op_put_by_val:
     writeBarrier(t1, t3)
     storei t1, ArrayStorage::m_vector + TagOffset[t0, t2, 8]
     storei t3, ArrayStorage::m_vector + PayloadOffset[t0, t2, 8]
-    dispatch(4)
+    dispatch(5)
 
 .opPutByValEmpty:
     addi 1, ArrayStorage::m_numValuesInVector[t0]
@@ -1362,11 +1393,14 @@ _llint_op_put_by_val:
 
 .opPutByValSlow:
     callSlowPath(_llint_slow_path_put_by_val)
-    dispatch(4)
+    dispatch(5)
 
 
 _llint_op_loop:
-    nop
+    traceExecution()
+    dispatchBranch(4[PC])
+
+
 _llint_op_jmp:
     traceExecution()
     dispatchBranch(4[PC])
@@ -1394,7 +1428,7 @@ macro equalNull(cellHandler, immediateHandler)
     loadi PayloadOffset[cfr, t0, 8], t0
     bineq t1, CellTag, .immediate
     loadp JSCell::m_structure[t0], t2
-    cellHandler(Structure::m_typeInfo + TypeInfo::m_flags[t2], .target)
+    cellHandler(t2, Structure::m_typeInfo + TypeInfo::m_flags[t2], .target)
     dispatch(3)
 
 .target:
@@ -1409,14 +1443,25 @@ end
 _llint_op_jeq_null:
     traceExecution()
     equalNull(
-        macro (value, target) btbnz value, MasqueradesAsUndefined, target end,
+        macro (structure, value, target) 
+            btbz value, MasqueradesAsUndefined, .opJeqNullNotMasqueradesAsUndefined
+            loadp CodeBlock[cfr], t0
+            loadp CodeBlock::m_globalObject[t0], t0
+            bpeq Structure::m_globalObject[structure], t0, target
+.opJeqNullNotMasqueradesAsUndefined:
+        end,
         macro (value, target) bieq value, NullTag, target end)
     
 
 _llint_op_jneq_null:
     traceExecution()
     equalNull(
-        macro (value, target) btbz value, MasqueradesAsUndefined, target end,
+        macro (structure, value, target) 
+            btbz value, MasqueradesAsUndefined, target 
+            loadp CodeBlock[cfr], t0
+            loadp CodeBlock::m_globalObject[t0], t0
+            bpneq Structure::m_globalObject[structure], t0, target
+        end,
         macro (value, target) bineq value, NullTag, target end)
 
 
@@ -1547,6 +1592,18 @@ _llint_op_new_func:
 .opNewFuncDone:
     dispatch(4)
 
+
+macro arrayProfileForCall()
+    if VALUE_PROFILER
+        loadi 12[PC], t3
+        bineq ThisArgumentOffset + TagOffset[cfr, t3, 8], CellTag, .done
+        loadi ThisArgumentOffset + PayloadOffset[cfr, t3, 8], t0
+        loadp JSCell::m_structure[t0], t0
+        loadp 20[PC], t1
+        storep t0, ArrayProfile::m_lastSeenStructure[t1]
+    .done:
+    end
+end
 
 macro doCall(slowPath)
     loadi 4[PC], t0

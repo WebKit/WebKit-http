@@ -32,7 +32,7 @@
 #include "DRTDesktopNotificationPresenter.h"
 
 #include "DumpRenderTree.h"
-#include "LayoutTestController.h"
+#include "TestRunner.h"
 #include <JavaScriptCore/JSStringRef.h>
 #include <JavaScriptCore/JSStringRefBSTR.h>
 #include <WebCore/NotificationClient.h>
@@ -125,7 +125,7 @@ HRESULT STDMETHODCALLTYPE DRTDesktopNotificationPresenter::checkNotificationPerm
 {
 #if ENABLE(NOTIFICATIONS) || ENABLE(LEGACY_NOTIFICATIONS)
     JSStringRef jsOrigin = JSStringCreateWithBSTR(origin);
-    bool allowed = ::gLayoutTestController->checkDesktopNotificationPermission(jsOrigin);
+    bool allowed = ::gTestRunner->checkDesktopNotificationPermission(jsOrigin);
 
     if (allowed)
         *result = WebCore::NotificationClient::PermissionAllowed;

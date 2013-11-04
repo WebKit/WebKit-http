@@ -26,7 +26,7 @@
 #import "config.h"
 #import "StorageTrackerDelegate.h"
 
-#import "LayoutTestController.h"
+#import "TestRunner.h"
 #import <WebKit/WebSecurityOriginPrivate.h>
 #import <WebKit/WebStorageManagerPrivate.h>
 
@@ -43,7 +43,7 @@
     return self;
 }
 
-- (void)logNotifications:(unsigned)number controller:(LayoutTestController*)controller
+- (void)logNotifications:(unsigned)number controller:(TestRunner*)controller
 {
     controllerToNotifyDone = controller;
 
@@ -73,7 +73,7 @@
     [super dealloc];
 }
 
-- (void)setControllerToNotifyDone:(LayoutTestController*)controller
+- (void)setControllerToNotifyDone:(TestRunner*)controller
 {
     controllerToNotifyDone = controller;
 }

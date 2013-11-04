@@ -26,11 +26,11 @@
 
 #include "TextureLayerChromium.h"
 
+#include "CCLayerTreeHost.h"
 #include "FakeCCLayerTreeHostClient.h"
-#include "WebCompositor.h"
-#include "cc/CCLayerTreeHost.h"
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <public/WebCompositor.h>
 
 using namespace WebCore;
 using ::testing::Mock;

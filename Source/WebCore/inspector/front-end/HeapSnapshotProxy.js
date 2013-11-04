@@ -355,53 +355,63 @@ WebInspector.HeapSnapshotProxyObject.prototype = {
 /**
  * @constructor
  * @extends {WebInspector.HeapSnapshotProxyObject}
- * @implements {WebInspector.HeapSnapshotReceiver}
+ * @implements {WebInspector.OutputStream}
  */
 WebInspector.HeapSnapshotLoaderProxy = function(worker, objectId)
 {
     WebInspector.HeapSnapshotProxyObject.call(this, worker, objectId);
-    this._onLoadCallbacks = [];
+    this._started = false;
+    this._pendingSnapshotConsumers = [];
 }
 
 WebInspector.HeapSnapshotLoaderProxy.prototype = {
+    startTransfer: function()
+    {
+        this._started = true;
+        this.callMethod(null, "startTransfer");
+    },
+
+    isStarted: function()
+    {
+        return this._started;
+    },
+
     /**
      * @param {function(WebInspector.HeapSnapshotProxy)} callback
-     * @return {boolean}
      */
-    startLoading: function(callback)
+    addConsumer: function(callback)
     {
-        var loadingHasJustStarted = !this._onLoadCallbacks.length;
-        this._onLoadCallbacks.push(callback);
-        return loadingHasJustStarted;
+        this._pendingSnapshotConsumers.push(callback);
     },
 
     /**
      * @param {string} chunk
      */
-    pushJSONChunk: function(chunk)
+    transferChunk: function(chunk)
     {
-        this.callMethod(null, "pushJSONChunk", chunk);
+        this.callMethod(null, "transferChunk", chunk);
     },
 
-    /**
-     * @param {function(WebInspector.HeapSnapshotProxy)} callback
-     */
-    finishLoading: function(callback)
+    finishTransfer: function()
     {
-        this._onLoadCallbacks.unshift(callback);
-
+        function buildSnapshot()
+        {
+            this.callFactoryMethod(updateStaticData.bind(this), "buildSnapshot", "WebInspector.HeapSnapshotProxy");
+        }
         function updateStaticData(snapshotProxy)
         {
             this.dispose();
-            snapshotProxy.updateStaticData(callLoadCallbacks.bind(this));
+            snapshotProxy.updateStaticData(notifyPendingConsumers.bind(this));
         }
-        function callLoadCallbacks(snapshotProxy)
+        function notifyPendingConsumers(snapshotProxy)
         {
-            for (var i = 0; i < this._onLoadCallbacks.length; ++i)
-                this._onLoadCallbacks[i](snapshotProxy);
-            this._onLoadCallbacks = null;
+            for (var i = 0; i < this._pendingSnapshotConsumers.length; ++i)
+                this._pendingSnapshotConsumers[i](snapshotProxy);
+
+            this._started = false;
+            this._pendingSnapshotConsumers = [];
         }
-        this.callFactoryMethod(updateStaticData.bind(this), "finishLoading", "WebInspector.HeapSnapshotProxy");
+        this.callMethod(buildSnapshot.bind(this), "finishTransfer");
     }
 };
 

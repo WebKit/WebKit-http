@@ -25,6 +25,7 @@
 #ifndef HTMLInputElement_h
 #define HTMLInputElement_h
 
+#include "FileChooser.h"
 #include "HTMLTextFormControlElement.h"
 #include "ImageLoaderClient.h"
 #include "StepRange.h"
@@ -71,6 +72,10 @@ public:
     // Returns false if there is no "allowed value step."
     bool getAllowedValueStep(Decimal*) const;
     StepRange createStepRange(AnyStepHandling) const;
+
+#if ENABLE(DATALIST_ELEMENT)
+    Decimal findClosestTickMarkValue(const Decimal&);
+#endif
 
     // Implementations of HTMLInputElement::stepUp() and stepDown().
     void stepUp(int, ExceptionCode&);
@@ -271,7 +276,14 @@ public:
     void setHeight(unsigned);
     void setWidth(unsigned);
 
+    virtual void blur() OVERRIDE;
+    void defaultBlur();
+    void defaultFocus(bool restorePreviousSelection);
+    virtual void focus(bool restorePreviousSelection = true) OVERRIDE;
+
     virtual const AtomicString& name() const OVERRIDE;
+
+    static Vector<FileChooserFileInfo> filesFromFileInputFormControlState(const FormControlState&);
 
 protected:
     HTMLInputElement(const QualifiedName&, Document*, HTMLFormElement*, bool createdByParser);
@@ -287,6 +299,7 @@ private:
     virtual void removedFrom(ContainerNode*) OVERRIDE;
     virtual void didMoveToNewDocument(Document* oldDocument) OVERRIDE;
 
+    virtual bool hasCustomFocusLogic() const OVERRIDE;
     virtual bool isKeyboardFocusable(KeyboardEvent*) const;
     virtual bool isMouseFocusable() const;
     virtual bool isEnumeratable() const;

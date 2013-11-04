@@ -38,6 +38,7 @@
 
 #include "PlatformString.h"
 #include <wtf/StaticConstructors.h>
+#include <wtf/text/StringBuilder.h>
 #include <wtf/text/StringHash.h>
 
 namespace WebCore {
@@ -88,18 +89,19 @@ CSSPropertySourceData::CSSPropertySourceData()
 
 String CSSPropertySourceData::toString() const
 {
-    DEFINE_STATIC_LOCAL(String, emptyValue, ("e"));
-    DEFINE_STATIC_LOCAL(String, importantSuffix, (" !important"));
+    DEFINE_STATIC_LOCAL(String, emptyValue, (ASCIILiteral("e")));
+    DEFINE_STATIC_LOCAL(String, importantSuffix, (ASCIILiteral(" !important")));
     if (!name && value == emptyValue)
         return String();
 
-    String result = name;
-    result += ": ";
-    result += value;
+    StringBuilder result;
+    result.append(name);
+    result.appendLiteral(": ");
+    result.append(value);
     if (important)
-        result += importantSuffix;
-    result += ";";
-    return result;
+        result.append(importantSuffix);
+    result.append(';');
+    return result.toString();
 }
 
 unsigned CSSPropertySourceData::hash() const

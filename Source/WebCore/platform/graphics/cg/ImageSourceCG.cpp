@@ -70,12 +70,10 @@ void sharedBufferRelease(void* info)
 }
 #endif
 
-ImageSource::ImageSource(ImageSource::AlphaOption alphaOption, ImageSource::GammaAndColorProfileOption gammaAndColorProfileOption)
+ImageSource::ImageSource(ImageSource::AlphaOption, ImageSource::GammaAndColorProfileOption)
     : m_decoder(0)
-    // FIXME: m_premultiplyAlpha is ignored in cg at the moment.
-    , m_alphaOption(alphaOption)
-    , m_gammaAndColorProfileOption(gammaAndColorProfileOption)
 {
+    // FIXME: AlphaOption and GammaAndColorProfileOption are ignored.
 }
 
 ImageSource::~ImageSource()
@@ -384,6 +382,12 @@ bool ImageSource::frameHasAlphaAtIndex(size_t)
     // FIXME: Could maybe return false for a GIF Frame if we have enough info in the GIF properties dictionary
     // to determine whether or not a transparent color was defined.
     return true;
+}
+
+unsigned ImageSource::frameBytesAtIndex(size_t index) const
+{
+    IntSize frameSize = frameSizeAtIndex(index, RespectImageOrientation);
+    return frameSize.width() * frameSize.height() * 4;
 }
 
 }

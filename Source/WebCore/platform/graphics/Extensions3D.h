@@ -66,6 +66,7 @@ public:
     //   GL_OES_compressed_ETC1_RGB8_texture
     //   GL_IMG_texture_compression_pvrtc
     //   EXT_texture_filter_anisotropic
+    //   GL_EXT_debug_marker
     //   GL_CHROMIUM_copy_texture
     //   GL_CHROMIUM_flipy
 
@@ -177,6 +178,16 @@ public:
 
     // GL_CHROMIUM_copy_texture
     virtual void copyTextureCHROMIUM(GC3Denum, Platform3DObject, Platform3DObject, GC3Dint, GC3Denum) = 0;
+
+    // EXT Robustness - uses getGraphicsResetStatusARB
+    virtual void readnPixelsEXT(int x, int y, GC3Dsizei width, GC3Dsizei height, GC3Denum format, GC3Denum type, GC3Dsizei bufSize, void *data) = 0;
+    virtual void getnUniformfvEXT(GC3Duint program, int location, GC3Dsizei bufSize, float *params) = 0;
+    virtual void getnUniformivEXT(GC3Duint program, int location, GC3Dsizei bufSize, int *params) = 0;
+
+    // GL_EXT_debug_marker
+    virtual void insertEventMarkerEXT(const String&) = 0;
+    virtual void pushGroupMarkerEXT(const String&) = 0;
+    virtual void popGroupMarkerEXT(void) = 0;
 };
 
 } // namespace WebCore

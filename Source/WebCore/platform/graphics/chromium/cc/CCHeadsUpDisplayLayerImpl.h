@@ -26,26 +26,31 @@
 #ifndef CCHeadsUpDisplayLayerImpl_h
 #define CCHeadsUpDisplayLayerImpl_h
 
-#include "cc/CCLayerImpl.h"
-#include "cc/CCScopedTexture.h"
+#include "CCFontAtlas.h"
+#include "CCLayerImpl.h"
+#include "CCScopedTexture.h"
+
+class SkCanvas;
 
 namespace WebCore {
 
 class CCDebugRectHistory;
 class CCFontAtlas;
 class CCFrameRateCounter;
-class GraphicsContext;
 
 class CCHeadsUpDisplayLayerImpl : public CCLayerImpl {
 public:
-    static PassOwnPtr<CCHeadsUpDisplayLayerImpl> create(int id, PassOwnPtr<CCFontAtlas> fontAtlas)
+    static PassOwnPtr<CCHeadsUpDisplayLayerImpl> create(int id)
     {
-        return adoptPtr(new CCHeadsUpDisplayLayerImpl(id, fontAtlas));
+        return adoptPtr(new CCHeadsUpDisplayLayerImpl(id));
     }
     virtual ~CCHeadsUpDisplayLayerImpl();
 
+    void setFontAtlas(PassOwnPtr<CCFontAtlas>);
+
     virtual void willDraw(CCResourceProvider*) OVERRIDE;
-    virtual void appendQuads(CCQuadSink&, const CCSharedQuadState*, bool& hadMissingTiles) OVERRIDE;
+    virtual void appendQuads(CCQuadSink&, CCAppendQuadsData&) OVERRIDE;
+    void updateHudTexture(CCResourceProvider*);
     virtual void didDraw(CCResourceProvider*) OVERRIDE;
 
     virtual void didLoseContext() OVERRIDE;
@@ -53,17 +58,18 @@ public:
     virtual bool layerIsAlwaysDamaged() const OVERRIDE { return true; }
 
 private:
-    CCHeadsUpDisplayLayerImpl(int, PassOwnPtr<CCFontAtlas>);
+    explicit CCHeadsUpDisplayLayerImpl(int);
 
     virtual const char* layerTypeAsString() const OVERRIDE { return "HeadsUpDisplayLayer"; }
 
-    void drawHudContents(GraphicsContext*);
-    void drawFPSCounter(GraphicsContext*, CCFrameRateCounter*, int top, int height);
-    void drawFPSCounterText(GraphicsContext*, CCFrameRateCounter*, int top, int width, int height);
-    void drawDebugRects(GraphicsContext*, CCDebugRectHistory*);
+    void drawHudContents(SkCanvas*);
+    void drawFPSCounter(SkCanvas*, CCFrameRateCounter*, int top, int height);
+    void drawFPSCounterText(SkCanvas*, CCFrameRateCounter*, int top, int width, int height);
+    void drawDebugRects(SkCanvas*, CCDebugRectHistory*);
 
     OwnPtr<CCFontAtlas> m_fontAtlas;
     OwnPtr<CCScopedTexture> m_hudTexture;
+    OwnPtr<SkCanvas> m_hudCanvas;
 };
 
 }

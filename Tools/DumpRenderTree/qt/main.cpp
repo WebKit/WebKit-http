@@ -53,7 +53,6 @@
 #endif
 
 #include <limits.h>
-#include <signal.h>
 
 #include <wtf/ExportMacros.h>
 #include <wtf/Assertions.h>
@@ -67,11 +66,11 @@ void messageHandler(QtMsgType type, const char *message)
     // do nothing
 }
 
-// We only support -v or --pixel-tests or --stdout or --stderr or -, all the others will be 
+// We only support -v or --stdout or --stderr or -, all the others will be
 // pass as test case name (even -abc.html is a valid test case name)
 bool isOption(const QString& str)
 {
-    return str == QString("-v") || str == QString("--pixel-tests")
+    return str == QString("-v")
            || str == QString("--stdout") || str == QString("--stderr")
            || str == QString("--timeout") || str == QString("--no-timeout")
            || str == QString("-");
@@ -90,38 +89,10 @@ QString takeOptionValue(QStringList& arguments, int index)
 
 void printUsage()
 {
-    fprintf(stderr, "Usage: DumpRenderTree [-v|--pixel-tests] [--stdout output_filename] [-stderr error_filename] [--no-timeout] [--timeout timeout_MS] filename [filename2..n]\n");
-    fprintf(stderr, "Or folder containing test files: DumpRenderTree [-v|--pixel-tests] dirpath\n");
+    fprintf(stderr, "Usage: DumpRenderTree [-v] [--stdout output_filename] [-stderr error_filename] [--no-timeout] [--timeout timeout_MS] filename [filename2..n]\n");
+    fprintf(stderr, "Or folder containing test files: DumpRenderTree [-v] dirpath\n");
     fflush(stderr);
 }
-
-#if HAVE(SIGNAL_H)
-typedef void (*SignalHandler)(int);
-
-static NO_RETURN void crashHandler(int sig)
-{
-    WTFReportBacktrace();
-    exit(128 + sig);
-}
-
-static void setupSignalHandlers(SignalHandler handler)
-{
-    signal(SIGILL, handler);    /* 4:   illegal instruction (not reset when caught) */
-    signal(SIGTRAP, handler);   /* 5:   trace trap (not reset when caught) */
-    signal(SIGFPE, handler);    /* 8:   floating point exception */
-    signal(SIGBUS, handler);    /* 10:  bus error */
-    signal(SIGSEGV, handler);   /* 11:  segmentation violation */
-    signal(SIGSYS, handler);    /* 12:  bad argument to system call */
-    signal(SIGPIPE, handler);   /* 13:  write on a pipe with no reader */
-    signal(SIGXCPU, handler);   /* 24:  exceeded CPU time limit */
-    signal(SIGXFSZ, handler);   /* 25:  exceeded file size limit */
-}
-
-static void WTFCrashHook()
-{
-    setupSignalHandlers(SIG_DFL);
-}
-#endif
 
 int main(int argc, char* argv[])
 {
@@ -148,36 +119,14 @@ int main(int argc, char* argv[])
 
     QApplication::setGraphicsSystem("raster");
     QApplication::setStyle(new QWindowsStyle);
+    QApplication::setDesktopSettingsAware(false);
 
     QApplication app(argc, argv);
     app.setQuitOnLastWindowClosed(false);
 
-#if HAVE(QT5)
     QCoreApplication::setAttribute(Qt::AA_Use96Dpi, true);
-#else
-#ifdef Q_WS_X11
-    QX11Info::setAppDpiY(0, 96);
-    QX11Info::setAppDpiX(0, 96);
-#endif
 
-   /*
-    * QApplication will initialize the default application font based
-    * on the application DPI at construction time, which might be
-    * different from the DPI we explicitly set using QX11Info above.
-    * See: https://bugreports.qt.nokia.com/browse/QTBUG-21603
-    *
-    * To ensure that the application font DPI matches the application
-    * DPI, we override the application font using the font we get from
-    * a QWidget, which has already been resolved against the existing
-    * default font, but with the correct paint-device DPI.
-   */
-    QApplication::setFont(QWidget().font());
-#endif
-
-#if HAVE(SIGNAL_H)
-    setupSignalHandlers(&crashHandler);
-    WTFSetCrashHook(&WTFCrashHook);
-#endif
+    WTFInstallReportBacktraceOnCrashHook();
 
     QStringList args = app.arguments();
     if (args.count() < (!suppressQtDebugOutput ? 3 : 2)) {
@@ -190,13 +139,7 @@ int main(int argc, char* argv[])
 
     WebCore::DumpRenderTree dumper;
 
-    int index = args.indexOf(QLatin1String("--pixel-tests"));
-    if (index != -1) {
-        dumper.setDumpPixelsForAllTests(true);
-        args.removeAt(index);
-    }
-
-    index = args.indexOf(QLatin1String("--stdout"));
+    int index = args.indexOf(QLatin1String("--stdout"));
     if (index != -1) {
         QString fileName = takeOptionValue(args, index);
         dumper.setRedirectOutputFileName(fileName);

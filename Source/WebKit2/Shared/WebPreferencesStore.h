@@ -48,6 +48,12 @@ namespace WebKit {
 #define DEFAULT_WEBKIT_TABSTOLINKS_ENABLED false
 #endif
 
+#if ENABLE(SMOOTH_SCROLLING) && !PLATFORM(QT)
+#define DEFAULT_WEBKIT_SCROLL_ANIMATOR_ENABLED true
+#else
+#define DEFAULT_WEBKIT_SCROLL_ANIMATOR_ENABLED false
+#endif
+
 #define FOR_EACH_WEBKIT_BOOL_PREFERENCE(macro) \
     macro(JavaScriptEnabled, javaScriptEnabled, Bool, bool, true) \
     macro(LoadsImagesAutomatically, loadsImagesAutomatically, Bool, bool, true) \
@@ -114,6 +120,12 @@ namespace WebKit {
     macro(WantsBalancedSetDefersLoadingBehavior, wantsBalancedSetDefersLoadingBehavior, Bool, bool, false) \
     macro(RequestAnimationFrameEnabled, requestAnimationFrameEnabled, Bool, bool, true) \
     macro(DiagnosticLoggingEnabled, diagnosticLoggingEnabled, Bool, bool, false) \
+    macro(AsynchronousPluginInitializationEnabled, asynchronousPluginInitializationEnabled, Bool, bool, false) \
+    macro(AsynchronousPluginInitializationEnabledForAllPlugins, asynchronousPluginInitializationEnabledForAllPlugins, Bool, bool, false) \
+    macro(ArtificialPluginInitializationDelayEnabled, artificialPluginInitializationDelayEnabled, Bool, bool, false) \
+    macro(ScrollingPerformanceLoggingEnabled, scrollingPerformanceLoggingEnabled, Bool, bool, false) \
+    macro(ThirdPartyStorageBlockingEnabled, thirdPartyStorageBlockingEnabled, Bool, bool, false) \
+    macro(ScrollAnimatorEnabled, scrollAnimatorEnabled, Bool, bool, DEFAULT_WEBKIT_SCROLL_ANIMATOR_ENABLED) \
     \
 
 #define FOR_EACH_WEBKIT_DOUBLE_PREFERENCE(macro) \

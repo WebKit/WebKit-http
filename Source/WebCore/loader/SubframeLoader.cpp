@@ -104,11 +104,47 @@ bool SubframeLoader::resourceWillUsePlugin(const String& url, const String& mime
     return shouldUsePlugin(completedURL, mimeType, shouldPreferPlugInsForImages, false, useFallback);
 }
 
-bool SubframeLoader::requestPlugin(HTMLPlugInImageElement* ownerElement, const KURL& url, const String& mimeType, const Vector<String>& paramNames, const Vector<String>& paramValues, bool useFallback)
+bool SubframeLoader::pluginIsLoadable(HTMLPlugInImageElement* pluginElement, const KURL& url, const String& mimeType)
 {
     Settings* settings = m_frame->settings();
     if (!settings)
         return false;
+
+    if (MIMETypeRegistry::isJavaAppletMIMEType(mimeType)) {
+        if (!settings->isJavaEnabled())
+            return false;
+        if (document() && document()->securityOrigin()->isLocal() && !settings->isJavaEnabledForLocalFiles())
+            return false;
+    }
+
+    if (document()) {
+        if (document()->isSandboxed(SandboxPlugins))
+            return false;
+
+        if (!document()->securityOrigin()->canDisplay(url)) {
+            FrameLoader::reportLocalLoadFailed(m_frame, url.string());
+            return false;
+        }
+
+        String declaredMimeType = document()->isPluginDocument() && document()->ownerElement() ?
+            document()->ownerElement()->fastGetAttribute(HTMLNames::typeAttr) :
+            pluginElement->fastGetAttribute(HTMLNames::typeAttr);
+        if (!document()->contentSecurityPolicy()->allowObjectFromSource(url)
+            || !document()->contentSecurityPolicy()->allowPluginType(mimeType, declaredMimeType, url)) {
+            RenderEmbeddedObject* renderer = pluginElement->renderEmbeddedObject();
+            renderer->setPluginUnavailabilityReason(RenderEmbeddedObject::PluginBlockedByContentSecurityPolicy);
+            return false;
+        }
+
+        if (m_frame->loader() && !m_frame->loader()->checkIfRunInsecureContent(document()->securityOrigin(), url))
+            return false;
+    }
+
+    return true;
+}
+
+bool SubframeLoader::requestPlugin(HTMLPlugInImageElement* ownerElement, const KURL& url, const String& mimeType, const Vector<String>& paramNames, const Vector<String>& paramValues, bool useFallback)
+{
 
     // Application plug-ins are plug-ins implemented by the user agent, for example Qt plug-ins,
     // as opposed to third-party code such as Flash. The user agent decides whether or not they are
@@ -116,39 +152,62 @@ bool SubframeLoader::requestPlugin(HTMLPlugInImageElement* ownerElement, const K
     if ((!allowPlugins(AboutToInstantiatePlugin) && !MIMETypeRegistry::isApplicationPluginMIMEType(mimeType)))
         return false;
 
-    if (MIMETypeRegistry::isJavaAppletMIMEType(mimeType)) {
-        if (!settings->isJavaEnabled())
-            return false;
-        if (m_frame->document() && m_frame->document()->securityOrigin()->isLocal() && !settings->isJavaEnabledForLocalFiles())
-            return false;
-    }
-
-    if (m_frame->document()) {
-        if (m_frame->document()->isSandboxed(SandboxPlugins))
-            return false;
-        if (!m_frame->document()->contentSecurityPolicy()->allowObjectFromSource(url))
-            return false;
-    }
+    if (!pluginIsLoadable(ownerElement, url, mimeType))
+        return false;
 
     ASSERT(ownerElement->hasTagName(objectTag) || ownerElement->hasTagName(embedTag));
     return loadPlugin(ownerElement, url, mimeType, paramNames, paramValues, useFallback);
 }
 
-static void logPluginRequest(Page* page, const String& mimeType, bool success)
+static String findPluginMIMETypeFromURL(Page* page, const String& url)
+{
+    if (!url)
+        return String();
+
+    size_t dotIndex = url.reverseFind('.');
+    if (dotIndex == notFound)
+        return String();
+
+    String extension = url.substring(dotIndex + 1);
+
+    PluginData* pluginData = page->pluginData();
+    if (!pluginData)
+        return String();
+
+    for (size_t i = 0; i < pluginData->mimes().size(); ++i) {
+        const MimeClassInfo& mimeClassInfo = pluginData->mimes()[i];
+        for (size_t j = 0; j < mimeClassInfo.extensions.size(); ++j) {
+            if (equalIgnoringCase(extension, mimeClassInfo.extensions[j]))
+                return mimeClassInfo.type;
+        }
+    }
+
+    return String();
+}
+
+static void logPluginRequest(Page* page, const String& mimeType, const String& url, bool success)
 {
     if (!page || !page->settings()->diagnosticLoggingEnabled())
         return;
-    
+
+    String newMIMEType = mimeType;
+    if (!newMIMEType) {
+        // Try to figure out the MIME type from the URL extension.
+        newMIMEType = findPluginMIMETypeFromURL(page, url);
+        if (!newMIMEType)
+            return;
+    }
+
     ChromeClient* client = page->chrome()->client();
-    client->logDiagnosticMessage(success ? DiagnosticLoggingKeys::pluginLoadedKey() : DiagnosticLoggingKeys::pluginLoadingFailedKey(), mimeType, DiagnosticLoggingKeys::noopKey());
+    client->logDiagnosticMessage(success ? DiagnosticLoggingKeys::pluginLoadedKey() : DiagnosticLoggingKeys::pluginLoadingFailedKey(), newMIMEType, DiagnosticLoggingKeys::noopKey());
     
     if (!page->hasSeenAnyPlugin())
         client->logDiagnosticMessage(DiagnosticLoggingKeys::pageContainsAtLeastOnePluginKey(), emptyString(), DiagnosticLoggingKeys::noopKey());
     
-    if (!page->hasSeenPlugin(mimeType))
-        client->logDiagnosticMessage(DiagnosticLoggingKeys::pageContainsPluginKey(), mimeType, DiagnosticLoggingKeys::noopKey());
+    if (!page->hasSeenPlugin(newMIMEType))
+        client->logDiagnosticMessage(DiagnosticLoggingKeys::pageContainsPluginKey(), newMIMEType, DiagnosticLoggingKeys::noopKey());
 
-    page->sawPlugin(mimeType);
+    page->sawPlugin(newMIMEType);
 }
 
 bool SubframeLoader::requestObject(HTMLPlugInImageElement* ownerElement, const String& url, const AtomicString& frameName, const String& mimeType, const Vector<String>& paramNames, const Vector<String>& paramValues)
@@ -169,7 +228,7 @@ bool SubframeLoader::requestObject(HTMLPlugInImageElement* ownerElement, const S
     bool useFallback;
     if (shouldUsePlugin(completedURL, mimeType, ownerElement->shouldPreferPlugInsForImages(), renderer->hasFallbackContent(), useFallback)) {
         bool success = requestPlugin(ownerElement, completedURL, mimeType, paramNames, paramValues, useFallback);
-        logPluginRequest(document()->page(), mimeType, success);
+        logPluginRequest(document()->page(), mimeType, completedURL, success);
         return success;
     }
 
@@ -241,7 +300,9 @@ PassRefPtr<Widget> SubframeLoader::createJavaAppletWidget(const IntSize& size, H
             return 0;
         }
 
-        if (!element->document()->contentSecurityPolicy()->allowObjectFromSource(codeBaseURL))
+        const char javaAppletMimeType[] = "application/x-java-applet";
+        if (!element->document()->contentSecurityPolicy()->allowObjectFromSource(codeBaseURL)
+            || !element->document()->contentSecurityPolicy()->allowPluginType(javaAppletMimeType, javaAppletMimeType, codeBaseURL))
             return 0;
     }
 
@@ -253,7 +314,7 @@ PassRefPtr<Widget> SubframeLoader::createJavaAppletWidget(const IntSize& size, H
     if (allowPlugins(AboutToInstantiatePlugin))
         widget = m_frame->loader()->client()->createJavaAppletWidget(size, element, baseURL, paramNames, paramValues);
 
-    logPluginRequest(document()->page(), element->serviceType(), widget);
+    logPluginRequest(document()->page(), element->serviceType(), String(), widget);
 
     if (!widget) {
         RenderEmbeddedObject* renderer = element->renderEmbeddedObject();
@@ -385,21 +446,9 @@ bool SubframeLoader::loadPlugin(HTMLPlugInImageElement* pluginElement, const KUR
     if (!renderer || useFallback)
         return false;
 
-    if (!document()->securityOrigin()->canDisplay(url)) {
-        FrameLoader::reportLocalLoadFailed(m_frame, url.string());
-        return false;
-    }
-
-    if (!document()->contentSecurityPolicy()->allowObjectFromSource(url))
-        return false;
-
-    FrameLoader* frameLoader = m_frame->loader();
-    if (!frameLoader->checkIfRunInsecureContent(document()->securityOrigin(), url))
-        return false;
-
     IntSize contentSize = roundedIntSize(LayoutSize(renderer->contentWidth(), renderer->contentHeight()));
     bool loadManually = document()->isPluginDocument() && !m_containsPlugins && toPluginDocument(document())->shouldLoadPluginManually();
-    RefPtr<Widget> widget = frameLoader->client()->createPlugin(contentSize,
+    RefPtr<Widget> widget = m_frame->loader()->client()->createPlugin(contentSize,
         pluginElement, url, paramNames, paramValues, mimeType, loadManually);
 
     if (!widget) {

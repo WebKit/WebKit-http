@@ -26,6 +26,7 @@
 #include "CSSSelector.h"
 #include "CSSStyleSheet.h"
 #include "Document.h"
+#include "MemoryInstrumentation.h"
 #include "PropertySetCSSStyleDeclaration.h"
 #include "StylePropertySet.h"
 #include "StyleRule.h"
@@ -100,24 +101,25 @@ void CSSStyleRule::setSelectorText(const String& selectorText)
 
     CSSStyleSheet::RuleMutationScope mutationScope(this);
 
-    String oldSelectorText = this->selectorText();
     m_styleRule->wrapperAdoptSelectorList(selectorList);
 
     if (hasCachedSelectorText()) {
-        ASSERT(selectorTextCache().contains(this));
-        selectorTextCache().set(this, generateSelectorText());
+        selectorTextCache().remove(this);
+        setHasCachedSelectorText(false);
     }
 }
 
 String CSSStyleRule::cssText() const
 {
-    String result = selectorText();
-
-    result += " { ";
-    result += m_styleRule->properties()->asText();
-    result += "}";
-
-    return result;
+    StringBuilder result;
+    result.append(selectorText());
+    result.appendLiteral(" { ");
+    String decls = m_styleRule->properties()->asText();
+    result.append(decls);
+    if (!decls.isEmpty())
+        result.append(' ');
+    result.append('}');
+    return result.toString();
 }
 
 void CSSStyleRule::reattach(StyleRule* rule)
@@ -125,6 +127,14 @@ void CSSStyleRule::reattach(StyleRule* rule)
     m_styleRule = rule;
     if (m_propertiesCSSOMWrapper)
         m_propertiesCSSOMWrapper->reattach(m_styleRule->mutableProperties());
+}
+
+void CSSStyleRule::reportDescendantMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
+{
+    MemoryClassInfo info(memoryObjectInfo, this, MemoryInstrumentation::CSS);
+    CSSRule::reportBaseClassMemoryUsage(memoryObjectInfo);
+    info.addInstrumentedMember(m_styleRule);
+    info.addInstrumentedMember(m_propertiesCSSOMWrapper);
 }
 
 } // namespace WebCore

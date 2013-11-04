@@ -29,8 +29,8 @@
 
 #include "RenderSurfaceChromium.h"
 
+#include "CCMathUtil.h"
 #include "LayerChromium.h"
-#include "cc/CCMathUtil.h"
 #include <public/WebTransformationMatrix.h>
 #include <wtf/text/CString.h>
 
@@ -58,12 +58,6 @@ FloatRect RenderSurfaceChromium::drawableContentRect() const
     if (m_owningLayer->hasReplica())
         drawableContentRect.unite(CCMathUtil::mapClippedRect(m_replicaDrawTransform, m_contentRect));
     return drawableContentRect;
-}
-
-FloatRect RenderSurfaceChromium::computeRootScissorRectInCurrentSurface(const FloatRect& rootScissorRect) const
-{
-    WebTransformationMatrix inverseScreenSpaceTransform = m_screenSpaceTransform.inverse();
-    return CCMathUtil::projectClippedRect(inverseScreenSpaceTransform, rootScissorRect);
 }
 
 }

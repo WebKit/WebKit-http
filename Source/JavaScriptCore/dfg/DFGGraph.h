@@ -53,14 +53,6 @@ namespace DFG {
 struct StorageAccessData {
     size_t offset;
     unsigned identifierNumber;
-    
-    // NOTE: the offset and identifierNumber do not by themselves
-    // uniquely identify a property. The identifierNumber and a
-    // Structure* do. If those two match, then the offset should
-    // be the same, as well. For any Node that has a StorageAccessData,
-    // it is possible to retrieve the Structure* by looking at the
-    // first child. It should be a CheckStructure, which has the
-    // Structure*.
 };
 
 struct ResolveGlobalData {
@@ -76,14 +68,7 @@ struct ResolveGlobalData {
 // Nodes that are 'dead' remain in the vector with refCount 0.
 class Graph : public Vector<Node, 64> {
 public:
-    Graph(JSGlobalData& globalData, CodeBlock* codeBlock)
-        : m_globalData(globalData)
-        , m_codeBlock(codeBlock)
-        , m_profiledBlock(codeBlock->alternative())
-        , m_hasArguments(false)
-    {
-        ASSERT(m_profiledBlock);
-    }
+    Graph(JSGlobalData&, CodeBlock*, unsigned osrEntryBytecodeIndex, const Operands<JSValue>& mustHandleValues);
     
     using Vector<Node, 64>::operator[];
     using Vector<Node, 64>::at;
@@ -135,6 +120,20 @@ public:
             deref(edge);
         }
         edge = newEdge;
+    }
+    
+    void compareAndSwap(Edge& edge, NodeIndex oldIndex, NodeIndex newIndex, bool changeRef)
+    {
+        if (edge.index() != oldIndex)
+            return;
+        changeIndex(edge, newIndex, changeRef);
+    }
+    
+    void compareAndSwap(Edge& edge, Edge oldEdge, Edge newEdge, bool changeRef)
+    {
+        if (edge != oldEdge)
+            return;
+        changeEdge(edge, newEdge, changeRef);
     }
     
     void clearAndDerefChild1(Node& node)
@@ -472,39 +471,20 @@ public:
     
     bool byValIsPure(Node& node)
     {
-        switch (node.op()) {
-        case PutByVal: {
-            if (!at(varArgChild(node, 1)).shouldSpeculateInteger())
-                return false;
-            SpeculatedType prediction = at(varArgChild(node, 0)).prediction();
-            if (!isActionableMutableArraySpeculation(prediction))
-                return false;
-            if (isArraySpeculation(prediction))
-                return false;
-            return true;
-        }
-            
-        case PutByValAlias: {
-            if (!at(varArgChild(node, 1)).shouldSpeculateInteger())
-                return false;
-            SpeculatedType prediction = at(varArgChild(node, 0)).prediction();
-            if (!isActionableMutableArraySpeculation(prediction))
-                return false;
-            return true;
-        }
-            
-        case GetByVal: {
-            if (!at(node.child2()).shouldSpeculateInteger())
-                return false;
-            SpeculatedType prediction = at(node.child1()).prediction();
-            if (!isActionableArraySpeculation(prediction))
-                return false;
-            return true;
-        }
-            
-        default:
-            ASSERT_NOT_REACHED();
+        switch (node.arrayMode()) {
+        case Array::Generic:
+        case Array::JSArrayOutOfBounds:
             return false;
+        case Array::String:
+            return node.op() == GetByVal;
+#if USE(JSVALUE32_64)
+        case Array::Arguments:
+            if (node.op() == GetByVal)
+                return true;
+            return false;
+#endif // USE(JSVALUE32_64)
+        default:
+            return true;
         }
     }
     
@@ -568,6 +548,109 @@ public:
         return node.children.child(index);
     }
     
+    void vote(Edge edge, unsigned ballot)
+    {
+        switch (at(edge).op()) {
+        case ValueToInt32:
+        case UInt32ToNumber:
+            edge = at(edge).child1();
+            break;
+        default:
+            break;
+        }
+        
+        if (at(edge).op() == GetLocal)
+            at(edge).variableAccessData()->vote(ballot);
+    }
+    
+    void vote(Node& node, unsigned ballot)
+    {
+        if (node.flags() & NodeHasVarArgs) {
+            for (unsigned childIdx = node.firstChild();
+                 childIdx < node.firstChild() + node.numChildren();
+                 childIdx++) {
+                if (!!m_varArgChildren[childIdx])
+                    vote(m_varArgChildren[childIdx], ballot);
+            }
+            return;
+        }
+        
+        if (!node.child1())
+            return;
+        vote(node.child1(), ballot);
+        if (!node.child2())
+            return;
+        vote(node.child2(), ballot);
+        if (!node.child3())
+            return;
+        vote(node.child3(), ballot);
+    }
+    
+    template<typename T> // T = NodeIndex or Edge
+    void substitute(BasicBlock& block, unsigned startIndexInBlock, T oldThing, T newThing)
+    {
+        for (unsigned indexInBlock = startIndexInBlock; indexInBlock < block.size(); ++indexInBlock) {
+            NodeIndex nodeIndex = block[indexInBlock];
+            Node& node = at(nodeIndex);
+            if (node.flags() & NodeHasVarArgs) {
+                for (unsigned childIdx = node.firstChild(); childIdx < node.firstChild() + node.numChildren(); ++childIdx) {
+                    if (!!m_varArgChildren[childIdx])
+                        compareAndSwap(m_varArgChildren[childIdx], oldThing, newThing, node.shouldGenerate());
+                }
+                continue;
+            }
+            if (!node.child1())
+                continue;
+            compareAndSwap(node.children.child1(), oldThing, newThing, node.shouldGenerate());
+            if (!node.child2())
+                continue;
+            compareAndSwap(node.children.child2(), oldThing, newThing, node.shouldGenerate());
+            if (!node.child3())
+                continue;
+            compareAndSwap(node.children.child3(), oldThing, newThing, node.shouldGenerate());
+        }
+    }
+    
+    // Use this if you introduce a new GetLocal and you know that you introduced it *before*
+    // any GetLocals in the basic block.
+    // FIXME: it may be appropriate, in the future, to generalize this to handle GetLocals
+    // introduced anywhere in the basic block.
+    void substituteGetLocal(BasicBlock& block, unsigned startIndexInBlock, VariableAccessData* variableAccessData, NodeIndex newGetLocal)
+    {
+        if (variableAccessData->isCaptured()) {
+            // Let CSE worry about this one.
+            return;
+        }
+        for (unsigned indexInBlock = startIndexInBlock; indexInBlock < block.size(); ++indexInBlock) {
+            NodeIndex nodeIndex = block[indexInBlock];
+            Node& node = at(nodeIndex);
+            bool shouldContinue = true;
+            switch (node.op()) {
+            case SetLocal: {
+                if (node.local() == variableAccessData->local())
+                    shouldContinue = false;
+                break;
+            }
+                
+            case GetLocal: {
+                if (node.variableAccessData() != variableAccessData)
+                    continue;
+                substitute(block, indexInBlock, nodeIndex, newGetLocal);
+                NodeIndex oldTailIndex = block.variablesAtTail.operand(variableAccessData->local());
+                if (oldTailIndex == nodeIndex)
+                    block.variablesAtTail.operand(variableAccessData->local()) = newGetLocal;
+                shouldContinue = false;
+                break;
+            }
+                
+            default:
+                break;
+            }
+            if (!shouldContinue)
+                break;
+        }
+    }
+    
     JSGlobalData& m_globalData;
     CodeBlock* m_codeBlock;
     CodeBlock* m_profiledBlock;
@@ -587,6 +670,10 @@ public:
     Dominators m_dominators;
     unsigned m_localVars;
     unsigned m_parameterSlots;
+    unsigned m_osrEntryBytecodeIndex;
+    Operands<JSValue> m_mustHandleValues;
+    
+    OptimizationFixpointState m_fixpointState;
 private:
     
     void handleSuccessor(Vector<BlockIndex, 16>& worklist, BlockIndex blockIndex, BlockIndex successorIndex);

@@ -27,6 +27,7 @@
 #include "RenderText.h"
 #include "RenderTheme.h"
 #include "ScrollbarTheme.h"
+#include "StyleInheritedData.h"
 #include "TextIterator.h"
 #include "VisiblePosition.h"
 #include <wtf/unicode/CharacterNames.h>
@@ -81,7 +82,7 @@ static inline bool updateUserModifyProperty(Node* node, RenderStyle* style)
     if (node->isElementNode()) {
         Element* element = static_cast<Element*>(node);
         isEnabled = element->isEnabledFormControl();
-        isReadOnlyControl = element->isReadOnlyFormControl();
+        isReadOnlyControl = element->isTextFormControl() && static_cast<HTMLTextFormControlElement*>(element)->readOnly();
     }
 
     style->setUserModify((isReadOnlyControl || !isEnabled) ? READ_ONLY : READ_WRITE_PLAINTEXT_ONLY);
@@ -109,13 +110,18 @@ int RenderTextControl::textBlockWidth() const
 {
     Element* innerText = innerTextElement();
     ASSERT(innerText);
-    return width() - borderAndPaddingWidth() - innerText->renderBox()->paddingLeft() - innerText->renderBox()->paddingRight();
+
+    LayoutUnit unitWidth = width() - borderAndPaddingWidth();
+    if (innerText->renderer())
+        unitWidth -= innerText->renderBox()->paddingLeft() + innerText->renderBox()->paddingRight();
+
+    return unitWidth;
 }
 
 void RenderTextControl::updateFromElement()
 {
     Element* innerText = innerTextElement();
-    if (innerText)
+    if (innerText && innerText->renderer())
         updateUserModifyProperty(node(), innerText->renderer()->style());
 }
 
@@ -142,24 +148,31 @@ void RenderTextControl::computeLogicalHeight()
 {
     HTMLElement* innerText = innerTextElement();
     ASSERT(innerText);
-    RenderBox* innerTextBox = innerText->renderBox();
-    LayoutUnit nonContentHeight = innerTextBox->borderAndPaddingHeight() + innerTextBox->marginHeight();
-    setHeight(computeControlHeight(innerTextBox->lineHeight(true, HorizontalLine, PositionOfInteriorLineBoxes), nonContentHeight) + borderAndPaddingHeight());
+    if (RenderBox* innerTextBox = innerText->renderBox()) {
+        LayoutUnit nonContentHeight = innerTextBox->borderAndPaddingHeight() + innerTextBox->marginHeight();
+        setHeight(computeControlHeight(innerTextBox->lineHeight(true, HorizontalLine, PositionOfInteriorLineBoxes), nonContentHeight) + borderAndPaddingHeight());
 
-    // We are able to have a horizontal scrollbar if the overflow style is scroll, or if its auto and there's no word wrap.
-    if (style()->overflowX() == OSCROLL ||  (style()->overflowX() == OAUTO && innerText->renderer()->style()->wordWrap() == NormalWordWrap))
-        setHeight(height() + scrollbarThickness());
+        // We are able to have a horizontal scrollbar if the overflow style is scroll, or if its auto and there's no word wrap.
+        if (style()->overflowX() == OSCROLL ||  (style()->overflowX() == OAUTO && innerText->renderer()->style()->wordWrap() == NormalWordWrap))
+            setHeight(height() + scrollbarThickness());
+    }
 
     RenderBlock::computeLogicalHeight();
 }
 
 void RenderTextControl::hitInnerTextElement(HitTestResult& result, const LayoutPoint& pointInContainer, const LayoutPoint& accumulatedOffset)
 {
-    LayoutPoint adjustedLocation = accumulatedOffset + location();
     HTMLElement* innerText = innerTextElement();
+    if (!innerText->renderer())
+        return;
+
+    LayoutPoint adjustedLocation = accumulatedOffset + location();
+    LayoutPoint localPoint = pointInContainer - toLayoutSize(adjustedLocation + innerText->renderBox()->location());
+    if (hasOverflowClip())
+        localPoint += scrolledContentOffset();
     result.setInnerNode(innerText);
     result.setInnerNonSharedNode(innerText);
-    result.setLocalPoint(pointInContainer - toLayoutSize(adjustedLocation + innerText->renderBox()->location()));
+    result.setLocalPoint(localPoint);
 }
 
 static const char* fontFamiliesWithInvalidCharWidth[] = {
@@ -253,8 +266,9 @@ void RenderTextControl::computePreferredLogicalWidths()
     else {
         // Use average character width. Matches IE.
         AtomicString family = style()->font().family().family();
-        RenderBox* innerTextRenderBox = innerTextElement()->renderBox();
-        m_maxPreferredLogicalWidth = preferredContentWidth(getAvgCharWidth(family)) + innerTextRenderBox->paddingLeft() + innerTextRenderBox->paddingRight();
+        m_maxPreferredLogicalWidth = preferredContentWidth(getAvgCharWidth(family));
+        if (RenderBox* innerTextRenderBox = innerTextElement()->renderBox())
+            m_maxPreferredLogicalWidth += innerTextRenderBox->paddingLeft() + innerTextRenderBox->paddingRight();
     }
 
     if (style()->minWidth().isFixed() && style()->minWidth().value() > 0) {
@@ -297,6 +311,11 @@ RenderObject* RenderTextControl::layoutSpecialExcludedChild(bool relayoutChildre
         placeholderRenderer->setChildNeedsLayout(true, MarkOnlyThis);
     }
     return placeholderRenderer;
+}
+
+bool RenderTextControl::canBeReplacedWithInlineRunIn() const
+{
+    return false;
 }
 
 } // namespace WebCore

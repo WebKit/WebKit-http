@@ -111,9 +111,9 @@ void RenderSVGText::computeFloatRectForRepaint(RenderBoxModelObject* repaintCont
     SVGRenderSupport::computeFloatRectForRepaint(this, repaintContainer, repaintRect, fixed);
 }
 
-void RenderSVGText::mapLocalToContainer(RenderBoxModelObject* repaintContainer, bool /* fixed */, bool /* useTransforms */, TransformState& transformState, ApplyContainerFlipOrNot, bool* wasFixed) const
+void RenderSVGText::mapLocalToContainer(RenderBoxModelObject* repaintContainer, TransformState& transformState, MapLocalToContainerFlags mode, bool* wasFixed) const
 {
-    SVGRenderSupport::mapLocalToContainer(this, repaintContainer, transformState, wasFixed);
+    SVGRenderSupport::mapLocalToContainer(this, repaintContainer, transformState, mode & SnapOffsetForTransforms, wasFixed);
 }
 
 const RenderObject* RenderSVGText::pushMappingToContainer(const RenderBoxModelObject* ancestorToStopAt, RenderGeometryMap& geometryMap) const
@@ -451,15 +451,15 @@ bool RenderSVGText::nodeAtFloatPoint(const HitTestRequest& request, HitTestResul
             if (!SVGRenderSupport::pointInClippingArea(this, localPoint))
                 return false;       
 
-            HitTestPoint hitTestPoint(LayoutPoint(flooredIntPoint(localPoint)));
-            return RenderBlock::nodeAtPoint(request, result, hitTestPoint, LayoutPoint(), hitTestAction);
+            HitTestLocation hitTestLocation(LayoutPoint(flooredIntPoint(localPoint)));
+            return RenderBlock::nodeAtPoint(request, result, hitTestLocation, LayoutPoint(), hitTestAction);
         }
     }
 
     return false;
 }
 
-bool RenderSVGText::nodeAtPoint(const HitTestRequest&, HitTestResult&, const HitTestPoint&, const LayoutPoint&, HitTestAction)
+bool RenderSVGText::nodeAtPoint(const HitTestRequest&, HitTestResult&, const HitTestLocation&, const LayoutPoint&, HitTestAction)
 {
     ASSERT_NOT_REACHED();
     return false;

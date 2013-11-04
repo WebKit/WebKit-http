@@ -97,7 +97,6 @@ public:
     void insertHTMLHtmlStartTagInBody(AtomicHTMLToken*);
     void insertHTMLBodyStartTagInBody(AtomicHTMLToken*);
 
-    PassRefPtr<Element> createHTMLElement(AtomicHTMLToken*);
     PassRefPtr<HTMLStackItem> createElementFromSavedToken(HTMLStackItem*);
 
     bool shouldFosterParent() const;
@@ -114,12 +113,13 @@ public:
     Element* currentElement() const { return m_openElements.top(); }
     ContainerNode* currentNode() const { return m_openElements.topNode(); }
     HTMLStackItem* currentStackItem() const { return m_openElements.topStackItem(); }
-    Element* oneBelowTop() const { return m_openElements.oneBelowTop(); }
+    HTMLStackItem* oneBelowTop() const { return m_openElements.oneBelowTop(); }
 
     HTMLElementStack* openElements() const { return &m_openElements; }
     HTMLFormattingElementList* activeFormattingElements() const { return &m_activeFormattingElements; }
 
-    Element* head() const { return m_head.get(); }
+    Element* head() const { return m_head->element(); }
+    HTMLStackItem* headStackItem() const { return m_head.get(); }
 
     void setForm(HTMLFormElement*);
     HTMLFormElement* form() const { return m_form.get(); }
@@ -154,6 +154,7 @@ private:
 
     void findFosterSite(HTMLConstructionSiteTask&);
 
+    PassRefPtr<Element> createHTMLElement(AtomicHTMLToken*);
     PassRefPtr<Element> createElement(AtomicHTMLToken*, const AtomicString& namespaceURI);
 
     void mergeAttributesFromTokenIntoElement(AtomicHTMLToken*, Element*);
@@ -166,7 +167,7 @@ private:
     // and a Document in all other cases.
     ContainerNode* m_attachmentRoot;
     
-    RefPtr<Element> m_head;
+    RefPtr<HTMLStackItem> m_head;
     RefPtr<HTMLFormElement> m_form;
     mutable HTMLElementStack m_openElements;
     mutable HTMLFormattingElementList m_activeFormattingElements;

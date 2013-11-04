@@ -31,120 +31,27 @@
 #ifndef BindingSecurity_h
 #define BindingSecurity_h
 
-#include "BindingSecurityBase.h"
-#include "DOMWindow.h"
-#include "Document.h"
-#include "Element.h"
-#include "Frame.h"
-#include "GenericBinding.h"
-#include "HTMLFrameElementBase.h"
-#include "HTMLNames.h"
-#include "HTMLParserIdioms.h"
-#include "ScriptController.h"
-#include "Settings.h"
+#include "BindingState.h"
+#include <wtf/text/WTFString.h>
 
 namespace WebCore {
 
-class DOMWindow;
+class HTMLFrameElementBase;
 class Node;
 
-// Security functions shared by various language bindings.
-template <class Binding>
-class BindingSecurity : public BindingSecurityBase {
-public:
-    // Check if the active execution context can access the target frame.
-    static bool canAccessFrame(State<Binding>*, Frame*, bool reportError);
-
-    // Check if it is safe to access the given node from the
-    // current security context.
-    static bool shouldAllowAccessToNode(State<Binding>*, Node* target);
-
-    static bool allowPopUp(State<Binding>*);
-    static bool allowSettingFrameSrcToJavascriptUrl(State<Binding>*, HTMLFrameElementBase*, const String& value);
-    static bool allowSettingSrcToJavascriptURL(State<Binding>*, Element*, const String& name, const String& value);
-
-private:
-    explicit BindingSecurity() {}
-    ~BindingSecurity();
-
-    // Check if the current DOMWindow's security context can access the target
-    // DOMWindow.  This function does not report errors, so most callers should
-    // use canAccessFrame instead.
-    static bool canAccessWindow(State<Binding>*, DOMWindow* target);
+enum SecurityReportingOption {
+    DoNotReportSecurityError,
+    ReportSecurityError,
 };
 
-// Implementations of templated methods must be in this file.
-
-template <class Binding>
-bool BindingSecurity<Binding>::canAccessWindow(State<Binding>* state,
-                                               DOMWindow* targetWindow)
-{
-    DOMWindow* activeWindow = state->activeWindow();
-    return canAccess(activeWindow, targetWindow);
-}
-
-template <class Binding>
-bool BindingSecurity<Binding>::canAccessFrame(State<Binding>* state,
-                                              Frame* target,
-                                              bool reportError)
-{
-    // The subject is detached from a frame, deny accesses.
-    if (!target)
-        return false;
-
-    if (!canAccessWindow(state, getDOMWindow(target))) {
-        if (reportError)
-            state->immediatelyReportUnsafeAccessTo(target);
-        return false;
-    }
-    return true;
-}
-
-template <class Binding>
-bool BindingSecurity<Binding>::shouldAllowAccessToNode(State<Binding>* state, Node* node)
-{
-    if (!node)
-        return false;
-
-    Frame* target = getFrame(node);
-
-    if (!target)
-        return false;
-
-    return canAccessFrame(state, target, true);
-}
-
-template <class Binding>
-bool BindingSecurity<Binding>::allowPopUp(State<Binding>* state)
-{
-    if (ScriptController::processingUserGesture())
-        return true;
-
-    Frame* frame = state->firstFrame();
-    ASSERT(frame);
-    Settings* settings = frame->settings();
-    return settings && settings->javaScriptCanOpenWindowsAutomatically();
-}
-
-template <class Binding>
-bool BindingSecurity<Binding>::allowSettingFrameSrcToJavascriptUrl(State<Binding>* state, HTMLFrameElementBase* frame, const String& value)
-{
-    if (protocolIsJavaScript(stripLeadingAndTrailingHTMLSpaces(value))) {
-        Node* contentDoc = frame->contentDocument();
-        if (contentDoc && !shouldAllowAccessToNode(state, contentDoc))
-            return false;
-    }
-    return true;
-}
-
-template <class Binding>
-bool BindingSecurity<Binding>::allowSettingSrcToJavascriptURL(State<Binding>* state, Element* element, const String& name, const String& value)
-{
-    if ((element->hasTagName(HTMLNames::iframeTag) || element->hasTagName(HTMLNames::frameTag)) && equalIgnoringCase(name, "src"))
-        return allowSettingFrameSrcToJavascriptUrl(state, static_cast<HTMLFrameElementBase*>(element), value);
-    return true;
-}
+class BindingSecurity {
+public:
+    static bool shouldAllowAccessToNode(BindingState*, Node*);
+    static bool shouldAllowAccessToDOMWindow(BindingState*, DOMWindow*, SecurityReportingOption = ReportSecurityError);
+    static bool shouldAllowAccessToFrame(BindingState*, Frame*, SecurityReportingOption = ReportSecurityError);
+    static bool allowSettingFrameSrcToJavascriptUrl(BindingState*, HTMLFrameElementBase*, const String& value);
+};
 
 }
 
-#endif // BindingSecurity_h
+#endif

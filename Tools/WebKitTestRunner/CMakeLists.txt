@@ -8,6 +8,7 @@ SET(WebKitTestRunner_SOURCES
     ${WEBKIT_TESTRUNNER_DIR}/PixelDumpSupport.cpp
     ${WEBKIT_TESTRUNNER_DIR}/TestController.cpp
     ${WEBKIT_TESTRUNNER_DIR}/TestInvocation.cpp
+    ${WEBKIT_TESTRUNNER_DIR}/WebNotificationProvider.cpp
 )
 
 SET(WebKitTestRunner_LIBRARIES
@@ -42,7 +43,7 @@ SET(WebKitTestRunner_INCLUDE_DIRECTORIES
     ${DERIVED_SOURCES_DIR}/InjectedBundle
     ${CMAKE_BINARY_DIR}
     ${CMAKE_SOURCE_DIR}/Source
-    ${LIBSOUP24_INCLUDE_DIRS}
+    ${LIBSOUP_INCLUDE_DIRS}
 )
 
 SET(WebKitTestRunnerInjectedBundle_SOURCES
@@ -55,7 +56,7 @@ SET(WebKitTestRunnerInjectedBundle_SOURCES
     ${WEBKIT_TESTRUNNER_INJECTEDBUNDLE_DIR}/InjectedBundle.cpp
     ${WEBKIT_TESTRUNNER_INJECTEDBUNDLE_DIR}/InjectedBundleMain.cpp
     ${WEBKIT_TESTRUNNER_INJECTEDBUNDLE_DIR}/InjectedBundlePage.cpp
-    ${WEBKIT_TESTRUNNER_INJECTEDBUNDLE_DIR}/LayoutTestController.cpp
+    ${WEBKIT_TESTRUNNER_INJECTEDBUNDLE_DIR}/TestRunner.cpp
     ${WEBKIT_TESTRUNNER_INJECTEDBUNDLE_DIR}/TextInputController.cpp
 
     ${WEBKIT_TESTRUNNER_INJECTEDBUNDLE_DIR}/Bindings/JSWrapper.cpp

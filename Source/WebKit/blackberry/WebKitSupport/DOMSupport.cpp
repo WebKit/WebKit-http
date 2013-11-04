@@ -33,12 +33,13 @@
 #include "RenderTextControl.h"
 #include "TextIterator.h"
 #include "VisibleSelection.h"
-#include "WTFString.h"
 
 #include "htmlediting.h"
 #include "visible_units.h"
 
 #include <limits>
+
+#include <wtf/text/WTFString.h>
 
 using WTF::Vector;
 
@@ -196,6 +197,11 @@ AttributeState elementSupportsAutocorrect(const Element* element)
 AttributeState elementSupportsAutocomplete(const Element* element)
 {
     return elementAttributeState(element, HTMLNames::autocompleteAttr);
+}
+
+AttributeState elementSupportsSpellCheck(const Element* element)
+{
+    return elementAttributeState(element, HTMLNames::spellcheckAttr);
 }
 
 AttributeState elementAttributeState(const Element* element, const QualifiedName& attributeName)
@@ -424,7 +430,7 @@ bool elementPatternMatches(const char* pattern, const HTMLInputElement* inputEle
                 return true;
 
             // Is the regex specifying a character count?
-            if (patternAttribute[patternString.length()] != '{' || !patternAttribute.endsWith('}'))
+            if (patternAttribute[patternString.length()] != '{' || !patternAttribute.endsWith("}"))
                 return false;
 
             // Make sure the number in the regex is actually a number.

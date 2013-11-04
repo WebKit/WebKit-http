@@ -37,7 +37,6 @@
 #include "V8HTMLEmbedElement.h"
 #include "V8HTMLObjectElement.h"
 #include "V8NPObject.h"
-#include "V8Proxy.h"
 
 namespace WebCore {
 
@@ -50,11 +49,11 @@ static v8::Handle<v8::Value> npObjectNamedGetter(v8::Local<v8::String> name, con
     HTMLPlugInElement* imp = C::toNative(info.Holder());
     ScriptInstance scriptInstance = imp->getInstance();
     if (!scriptInstance)
-        return v8::Handle<v8::Value>();
+        return v8Undefined();
 
     v8::Local<v8::Object> instance = v8::Local<v8::Object>::New(scriptInstance->instance());
     if (instance.IsEmpty())
-        return v8::Handle<v8::Value>();
+        return v8Undefined();
 
     return npObjectGetNamedProperty(instance, name, info);
 }
@@ -65,11 +64,11 @@ static v8::Handle<v8::Value> npObjectNamedSetter(v8::Local<v8::String> name, v8:
     HTMLPlugInElement* imp = C::toNative(info.Holder());
     ScriptInstance scriptInstance = imp->getInstance();
     if (!scriptInstance)
-        return v8::Handle<v8::Value>();
+        return v8Undefined();
 
     v8::Local<v8::Object> instance = v8::Local<v8::Object>::New(scriptInstance->instance());
     if (instance.IsEmpty())
-        return v8::Handle<v8::Value>();
+        return v8Undefined();
 
     return npObjectSetNamedProperty(instance, name, value, info);
 }
@@ -135,11 +134,11 @@ v8::Handle<v8::Value> npObjectIndexedGetter(uint32_t index, const v8::AccessorIn
     HTMLPlugInElement* imp = C::toNative(info.Holder());
     ScriptInstance scriptInstance = imp->getInstance();
     if (!scriptInstance)
-        return v8::Handle<v8::Value>();
+        return v8Undefined();
 
     v8::Local<v8::Object> instance = v8::Local<v8::Object>::New(scriptInstance->instance());
     if (instance.IsEmpty())
-        return v8::Handle<v8::Value>();
+        return v8Undefined();
 
     return npObjectGetIndexedProperty(instance, index, info);
 }
@@ -151,11 +150,11 @@ v8::Handle<v8::Value> npObjectIndexedSetter(uint32_t index, v8::Local<v8::Value>
     HTMLPlugInElement* imp = C::toNative(info.Holder());
     ScriptInstance scriptInstance = imp->getInstance();
     if (!scriptInstance)
-        return v8::Handle<v8::Value>();
+        return v8Undefined();
 
     v8::Local<v8::Object> instance = v8::Local<v8::Object>::New(scriptInstance->instance());
     if (instance.IsEmpty())
-        return v8::Handle<v8::Value>();
+        return v8Undefined();
 
     return npObjectSetIndexedProperty(instance, index, value, info);
 }

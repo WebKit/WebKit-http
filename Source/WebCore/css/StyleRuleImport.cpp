@@ -32,6 +32,12 @@
 
 namespace WebCore {
 
+StyleRuleImport::LoadContext::LoadContext(CSSStyleSheet* rootStyleSheet, const CSSParserContext& parentParserContext)
+    : rootStyleSheet(rootStyleSheet)
+    , parentParserContext(parentParserContext)
+{
+}
+
 PassRefPtr<StyleRuleImport> StyleRuleImport::create(const String& href, PassRefPtr<MediaQuerySet> media)
 {
     return adoptRef(new StyleRuleImport(href, media));
@@ -39,12 +45,9 @@ PassRefPtr<StyleRuleImport> StyleRuleImport::create(const String& href, PassRefP
 
 StyleRuleImport::StyleRuleImport(const String& href, PassRefPtr<MediaQuerySet> media)
     : StyleRuleBase(Import, 0)
-    , m_parentStyleSheet(0)
-    , m_styleSheetClient(this)
     , m_strHref(href)
     , m_mediaQueries(media)
     , m_cachedSheet(0)
-    , m_loading(false)
 {
     if (!m_mediaQueries)
         m_mediaQueries = MediaQuerySet::create(String());
@@ -52,80 +55,84 @@ StyleRuleImport::StyleRuleImport(const String& href, PassRefPtr<MediaQuerySet> m
 
 StyleRuleImport::~StyleRuleImport()
 {
-    if (m_styleSheet)
-        m_styleSheet->clearOwnerRule();
     if (m_cachedSheet)
-        m_cachedSheet->removeClient(&m_styleSheetClient);
+        m_cachedSheet->removeClient(this);
 }
 
-void StyleRuleImport::setCSSStyleSheet(const String& href, const KURL& baseURL, const String& charset, const CachedCSSStyleSheet* cachedStyleSheet)
+void StyleRuleImport::setCSSStyleSheet(const String& url, const KURL& baseURL, const String& charset, const CachedCSSStyleSheet*)
 {
-    if (m_styleSheet)
-        m_styleSheet->clearOwnerRule();
+    ASSERT(m_loadContext);
+    ASSERT(!m_styleSheet);
+    ASSERT(m_cachedSheet);
 
-    CSSParserContext context = m_parentStyleSheet ? m_parentStyleSheet->parserContext() : CSSStrictMode;
-    context.charset = charset;
+    OwnPtr<LoadContext> loadContext = m_loadContext.release();
+
+    CSSParserContext parserContext = loadContext->parentParserContext;
     if (!baseURL.isNull())
-        context.baseURL = baseURL;
+        parserContext.baseURL = baseURL;
+    parserContext.charset = charset;
 
-    m_styleSheet = StyleSheetContents::create(this, href, baseURL, context);
+    m_styleSheet = StyleSheetContents::create(url, parserContext);
+    m_styleSheet->parseAuthorStyleSheet(m_cachedSheet.get(), loadContext->rootStyleSheet.get());
 
-    Document* document = m_parentStyleSheet ? m_parentStyleSheet->singleOwnerDocument() : 0;
-    m_styleSheet->parseAuthorStyleSheet(cachedStyleSheet, document ? document->securityOrigin() : 0);
-
-    m_loading = false;
-
-    if (m_parentStyleSheet) {
-        m_parentStyleSheet->notifyLoadedSheet(cachedStyleSheet);
-        m_parentStyleSheet->checkLoaded();
-    }
+    loadContext->rootStyleSheet->contents()->checkLoadCompleted();
 }
 
 bool StyleRuleImport::isLoading() const
 {
-    return m_loading || (m_styleSheet && m_styleSheet->isLoading());
+    return m_loadContext || (m_styleSheet && m_styleSheet->isLoading());
 }
 
-void StyleRuleImport::requestStyleSheet()
+bool StyleRuleImport::hadLoadError() const
 {
-    if (!m_parentStyleSheet)
+    return m_cachedSheet && m_cachedSheet->errorOccurred();
+}
+
+void StyleRuleImport::requestStyleSheet(CSSStyleSheet* rootSheet, const CSSParserContext& parserContext)
+{
+    ASSERT(!rootSheet->parentStyleSheet());
+    ASSERT(!m_cachedSheet);
+
+    Node* ownerNode = rootSheet->ownerNode();
+    if (!ownerNode)
         return;
-    Document* document = m_parentStyleSheet->singleOwnerDocument();
-    if (!document)
-        return;
+    Document* document = ownerNode->document();
 
-    CachedResourceLoader* cachedResourceLoader = document->cachedResourceLoader();
-    if (!cachedResourceLoader)
-        return;
-
-    String absHref = m_strHref;
-    if (!m_parentStyleSheet->finalURL().isNull())
-        // use parent styleheet's URL as the base URL
-        absHref = KURL(m_parentStyleSheet->finalURL(), m_strHref).string();
-
-    // Check for a cycle in our import chain.  If we encounter a stylesheet
-    // in our parent chain with the same URL, then just bail.
-    StyleSheetContents* rootSheet = m_parentStyleSheet;
-    for (StyleSheetContents* sheet = m_parentStyleSheet; sheet; sheet = sheet->parentStyleSheet()) {
-        if (absHref == sheet->finalURL().string() || absHref == sheet->originalURL())
-            return;
-        rootSheet = sheet;
-    }
-
-    ResourceRequest request(document->completeURL(absHref));
-    if (m_parentStyleSheet->isUserStyleSheet())
-        m_cachedSheet = cachedResourceLoader->requestUserCSSStyleSheet(request, m_parentStyleSheet->charset());
+    KURL resolvedURL;
+    if (!parserContext.baseURL.isNull())
+        resolvedURL = KURL(parserContext.baseURL, m_strHref);
     else
-        m_cachedSheet = cachedResourceLoader->requestCSSStyleSheet(request, m_parentStyleSheet->charset());
-    if (m_cachedSheet) {
-        // if the import rule is issued dynamically, the sheet may be
-        // removed from the pending sheet count, so let the doc know
-        // the sheet being imported is pending.
-        if (m_parentStyleSheet && m_parentStyleSheet->loadCompleted() && rootSheet == m_parentStyleSheet)
-            m_parentStyleSheet->startLoadingDynamicSheet();
-        m_loading = true;
-        m_cachedSheet->addClient(&m_styleSheetClient);
-    }
+        resolvedURL = document->completeURL(m_strHref);
+
+    StyleSheetContents* rootSheetContents = rootSheet->contents();
+    if (rootSheetContents->hasImportCycle(this, resolvedURL, document->baseURL()))
+        return;
+
+    ResourceRequest request(resolvedURL);
+    CachedResourceLoader* cachedResourceLoader = document->cachedResourceLoader();
+    if (rootSheetContents->isUserStyleSheet())
+        m_cachedSheet = cachedResourceLoader->requestUserCSSStyleSheet(request, parserContext.charset);
+    else
+        m_cachedSheet = cachedResourceLoader->requestCSSStyleSheet(request, parserContext.charset);
+
+    if (!m_cachedSheet)
+        return;
+    // if the import rule is issued dynamically, the sheet may be
+    // removed from the pending sheet count, so let the doc know
+    // the sheet being imported is pending.
+    if (rootSheetContents->loadCompleted())
+        ownerNode->startLoadingDynamicSheet();
+
+    m_loadContext = adoptPtr(new LoadContext(rootSheet, parserContext));
+    m_cachedSheet->addClient(this);
+}
+
+void StyleRuleImport::reportDescendantMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
+{
+    MemoryClassInfo info(memoryObjectInfo, this, MemoryInstrumentation::CSS);
+    info.addInstrumentedMember(m_strHref);
+    info.addInstrumentedMember(m_mediaQueries);
+    info.addInstrumentedMember(m_styleSheet);
 }
 
 } // namespace WebCore

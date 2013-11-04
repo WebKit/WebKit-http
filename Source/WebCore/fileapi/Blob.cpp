@@ -34,6 +34,7 @@
 #include "BlobURL.h"
 #include "File.h"
 #include "HistogramSupport.h"
+#include "ScriptCallStack.h"
 #include "ScriptExecutionContext.h"
 #include "ThreadableBlobRegistry.h"
 
@@ -137,9 +138,14 @@ PassRefPtr<Blob> Blob::sliceInternal(long long start, long long end, const Strin
     long long length = end - start;
     OwnPtr<BlobData> blobData = BlobData::create();
     blobData->setContentType(contentType);
-    if (isFile())
+    if (isFile()) {
+#if ENABLE(FILE_SYSTEM)
+        if (!toFile(this)->fileSystemURL().isEmpty())
+            blobData->appendURL(toFile(this)->fileSystemURL(), start, length, modificationTime);
+        else
+#endif
         blobData->appendFile(toFile(this)->path(), start, length, modificationTime);
-    else
+    } else
         blobData->appendBlob(m_internalURL, start, length);
 
     return Blob::create(blobData.release(), length);

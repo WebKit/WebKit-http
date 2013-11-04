@@ -41,8 +41,16 @@
 
 namespace WebCore {
 
-DedicatedWorkerContext::DedicatedWorkerContext(const KURL& url, const String& userAgent, PassOwnPtr<GroupSettings> settings, DedicatedWorkerThread* thread, const String& contentSecurityPolicy, ContentSecurityPolicy::HeaderType contentSecurityPolicyType)
-    : WorkerContext(url, userAgent, settings, thread, contentSecurityPolicy, contentSecurityPolicyType)
+// static
+PassRefPtr<DedicatedWorkerContext> DedicatedWorkerContext::create(const KURL& url, const String& userAgent, PassOwnPtr<GroupSettings> settings, DedicatedWorkerThread* thread, const String& contentSecurityPolicy, ContentSecurityPolicy::HeaderType contentSecurityPolicyType, PassRefPtr<SecurityOrigin> topOrigin)
+{
+    RefPtr<DedicatedWorkerContext> context = adoptRef(new DedicatedWorkerContext(url, userAgent, settings, thread, topOrigin));
+    context->applyContentSecurityPolicyFromString(contentSecurityPolicy, contentSecurityPolicyType);
+    return context.release();
+}
+
+DedicatedWorkerContext::DedicatedWorkerContext(const KURL& url, const String& userAgent, PassOwnPtr<GroupSettings> settings, DedicatedWorkerThread* thread, PassRefPtr<SecurityOrigin> topOrigin)
+    : WorkerContext(url, userAgent, settings, thread, topOrigin)
 {
 }
 

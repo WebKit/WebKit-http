@@ -1,6 +1,7 @@
 EXPORTS
 
     ??0ArrayBufferView@WTF@@IAE@V?$PassRefPtr@VArrayBuffer@WTF@@@1@I@Z
+    ??0BooleanObject@JSC@@IAE@AAVJSGlobalData@1@PAVStructure@1@@Z
     ??0CString@WTF@@QAE@PBD@Z
     ??0CString@WTF@@QAE@PBDI@Z
     ??0Collator@WTF@@QAE@PBD@Z
@@ -81,7 +82,7 @@ EXPORTS
     ?byteCompile@Yarr@JSC@@YA?AV?$PassOwnPtr@UBytecodePattern@Yarr@JSC@@@WTF@@AAUYarrPattern@12@PAVBumpPointerAllocator@4@@Z
     ?byteSize@SourceProviderCache@JSC@@QBEIXZ
     ?calculateDSTOffset@WTF@@YANNN@Z
-    ?calculateStringHashAndLengthFromUTF8@Unicode@WTF@@YAIPBD0AAI1@Z
+    ?calculateStringHashAndLengthFromUTF8MaskingTop8Bits@Unicode@WTF@@YAIPBD0AAI1@Z
     ?calculateUTCOffset@WTF@@YAHXZ
     ?calculatedFunctionName@DebuggerCallFrame@JSC@@QBE?AVUString@2@XZ
     ?call@JSC@@YA?AVJSValue@1@PAVExecState@1@V21@W4CallType@1@ABTCallData@1@1ABVArgList@1@@Z
@@ -107,6 +108,8 @@ EXPORTS
     ?constructArray@JSC@@YAPAVJSArray@1@PAVExecState@1@ABVArgList@1@@Z
     ?constructEmptyObject@JSC@@YAPAVJSObject@1@PAVExecState@1@@Z
     ?constructFunctionSkippingEvalEnabledCheck@JSC@@YAPAVJSObject@1@PAVExecState@1@PAVJSGlobalObject@1@ABVArgList@1@ABVIdentifier@1@ABVUString@1@ABVTextPosition@WTF@@@Z
+    ?constructNumber@JSC@@YAPAVNumberObject@1@PAVExecState@1@PAVJSGlobalObject@1@VJSValue@1@@Z
+    ?constructString@JSC@@YAPAVStringObject@1@PAVExecState@1@PAVJSGlobalObject@1@VJSValue@1@@Z
     ?convertLatin1ToUTF8@Unicode@WTF@@YA?AW4ConversionResult@12@PAPBEPBEPAPADPAD@Z
     ?convertUTF16ToUTF8@Unicode@WTF@@YA?AW4ConversionResult@12@PAPB_WPB_WPAPADPAD_N@Z
     ?convertUTF8ToUTF16@Unicode@WTF@@YA?AW4ConversionResult@12@PAPBDPBDPAPA_WPA_W_N@Z
@@ -186,6 +189,7 @@ EXPORTS
     ?fillGetterPropertySlot@JSObject@JSC@@AAEXAAVPropertySlot@2@PAV?$WriteBarrierBase@W4Unknown@JSC@@@2@@Z
     ?finalize@WeakHandleOwner@JSC@@UAEXV?$Handle@W4Unknown@JSC@@@2@PAX@Z
     ?findAllocator@WeakSet@JSC@@AAEPAUFreeCell@WeakBlock@2@XZ
+    ?finishCreation@BooleanObject@JSC@@IAEXAAVJSGlobalData@2@@Z
     ?finishCreation@DateInstance@JSC@@IAEXAAVJSGlobalData@2@N@Z
     ?finishCreation@InternalFunction@JSC@@IAEXAAVJSGlobalData@2@ABVUString@2@@Z
     ?finishCreation@JSArray@JSC@@IAEXAAVJSGlobalData@2@I@Z
@@ -201,7 +205,6 @@ EXPORTS
     ?getCallData@JSCell@JSC@@SA?AW4CallType@2@PAV12@AATCallData@2@@Z
     ?getCallableObjectSlow@JSC@@YAPAVJSCell@1@PAV21@@Z
     ?getConstructData@JSCell@JSC@@SA?AW4ConstructType@2@PAV12@AATConstructData@2@@Z
-    ?getCurrentLocalTime@WTF@@YAXPAUtm@@@Z
     ?getObject@JSCell@JSC@@QAEPAVJSObject@2@XZ
     ?getOwnPropertyDescriptor@JSGlobalObject@JSC@@SA_NPAVJSObject@2@PAVExecState@2@VPropertyName@2@AAVPropertyDescriptor@2@@Z
     ?getOwnPropertyDescriptor@JSObject@JSC@@SA_NPAV12@PAVExecState@2@VPropertyName@2@AAVPropertyDescriptor@2@@Z
@@ -259,14 +262,19 @@ EXPORTS
     ?neuter@ArrayBufferView@WTF@@MAEXXZ
     ?newUninitialized@CString@WTF@@SA?AV12@IAAPAD@Z
     ?notifyWriteSlow@SymbolTableEntry@JSC@@AAEXXZ
+    ?notifyWriteSlow@WatchpointSet@JSC@@QAEXXZ
     ?nullptr@@3Vnullptr_t@std@@A
     ?number@String@WTF@@SA?AV12@NII@Z
-    ?number@UString@JSC@@SA?AV12@H@Z
-    ?number@UString@JSC@@SA?AV12@I@Z
-    ?number@UString@JSC@@SA?AV12@N@Z
     ?numberToFixedPrecisionString@WTF@@YAPBDNIQAD_N@Z
     ?numberToFixedWidthString@WTF@@YAPBDNIQAD@Z
     ?numberToString@WTF@@YAPBDNQAD@Z
+    ?numberToStringImpl@WTF@@YA?AV?$PassRefPtr@VStringImpl@WTF@@@1@_J@Z
+    ?numberToStringImpl@WTF@@YA?AV?$PassRefPtr@VStringImpl@WTF@@@1@_K@Z
+    ?numberToStringImpl@WTF@@YA?AV?$PassRefPtr@VStringImpl@WTF@@@1@H@Z
+    ?numberToStringImpl@WTF@@YA?AV?$PassRefPtr@VStringImpl@WTF@@@1@I@Z
+    ?numberToStringImpl@WTF@@YA?AV?$PassRefPtr@VStringImpl@WTF@@@1@J@Z
+    ?numberToStringImpl@WTF@@YA?AV?$PassRefPtr@VStringImpl@WTF@@@1@K@Z
+    ?objectAtScope@JSScope@JSC@@SAPAVJSObject@2@PAVScopeChainNode@2@@Z
     ?objectCount@Heap@JSC@@QAEIXZ
     ?objectProtoFuncToString@JSC@@YI_JPAVExecState@1@@Z
     ?objectTypeCounts@Heap@JSC@@QAE?AV?$PassOwnPtr@V?$HashCountedSet@PBDU?$PtrHash@PBD@WTF@@U?$HashTraits@PBD@2@@WTF@@@WTF@@XZ
@@ -315,6 +323,7 @@ EXPORTS
     ?setOrderLowerFirst@Collator@WTF@@QAEX_N@Z
     ?setPrototype@JSObject@JSC@@QAEXAAVJSGlobalData@2@VJSValue@2@@Z
     ?setSetter@PropertyDescriptor@JSC@@QAEXVJSValue@2@@Z
+    ?setToCurrentLocalTime@GregorianDateTime@WTF@@QAEXXZ
     ?setUndefined@PropertyDescriptor@JSC@@QAEXXZ
     ?setUnwrappedObject@JSGlobalThis@JSC@@IAEXAAVJSGlobalData@2@PAVJSGlobalObject@2@@Z
     ?setUpStaticFunctionSlot@JSC@@YA_NPAVExecState@1@PBVHashEntry@1@PAVJSObject@1@VPropertyName@1@AAVPropertySlot@1@@Z
@@ -352,8 +361,8 @@ EXPORTS
     ?toObject@JSCell@JSC@@QBEPAVJSObject@2@PAVExecState@2@PAVJSGlobalObject@2@@Z
     ?toObjectSlowCase@JSValue@JSC@@ABEPAVJSObject@2@PAVExecState@2@PAVJSGlobalObject@2@@Z
     ?toString@JSObject@JSC@@QBEPAVJSString@2@PAVExecState@2@@Z
-    ?toStringDecimal@DecimalNumber@WTF@@QBEIPA_WI@Z
-    ?toStringExponential@DecimalNumber@WTF@@QBEIPA_WI@Z
+    ?toStringDecimal@DecimalNumber@WTF@@QBEIPAEI@Z
+    ?toStringExponential@DecimalNumber@WTF@@QBEIPAEI@Z
     ?toStringSlowCase@JSValue@JSC@@ABEPAVJSString@2@PAVExecState@2@@Z
     ?toThisObject@JSObject@JSC@@SAPAV12@PAVJSCell@2@PAVExecState@2@@Z
     ?toThisObjectSlowCase@JSValue@JSC@@ABEPAVJSObject@2@PAVExecState@2@@Z

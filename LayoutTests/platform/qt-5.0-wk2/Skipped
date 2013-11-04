@@ -141,14 +141,13 @@ fast/text/format-control.html
 fast/url/anchor.html
 http/tests/websocket/tests/hixie76/bad-sub-protocol-non-ascii.html
 
-# layoutTestController.ignoreDesktopNotificationPermissionRequests is unimplemented
+# layoutTestController.ignoreLegacyWebNotificationPermissionRequests is unimplemented
 fast/notifications
 
 # layoutTestController.setScrollbarPolicy is unimplemented
 fast/overflow/scrollbar-restored-and-then-locked.html
 
 # FAIL: Timed out waiting for notifyDone to be called
-http/tests/appcache
 media/video-source-moved.html
 
 # These tests always fail (with and without --singly). It needs investigation.
@@ -219,6 +218,11 @@ css3/unicode-bidi-isolate-aharon-failing.html
 # [Qt][WK2] fast/dom/rtl-scroll-to-leftmost-and-resize.html fails
 # https://bugs.webkit.org/show_bug.cgi?id=74504
 fast/dom/rtl-scroll-to-leftmost-and-resize.html
+
+# [Qt][WK2] fast/forms/range/slider-mouse-events.html and fast/forms/range/slider-onchange-event.html fail after r124625
+# https://bugs.webkit.org/show_bug.cgi?id=93231
+fast/forms/range/slider-mouse-events.html
+fast/forms/range/slider-onchange-event.html
 
 # flakey svg tests
 svg/custom/getscreenctm-in-scrollable-svg-area.xhtml
@@ -320,6 +324,18 @@ compositing/layers-inside-overflow-scroll.html
 # [Qt][WK2] New compositing/backface-visibility/backface-visibility-webgl.html fails
 # https://bugs.webkit.org/show_bug.cgi?id=89645
 compositing/backface-visibility/backface-visibility-webgl.html
+
+# [Qt][WK2] New compositing test are failing since added in r126663.
+# https://bugs.webkit.org/show_bug.cgi?id=95076
+compositing/overflow/overflow-auto-with-touch-no-overflow.html
+compositing/overflow/overflow-auto-with-touch.html
+compositing/overflow/overflow-hidden-with-touch.html
+compositing/overflow/overflow-overlay-with-touch-no-overflow.html
+compositing/overflow/overflow-overlay-with-touch.html
+compositing/overflow/overflow-scroll-with-touch-no-overflow.html
+compositing/overflow/overflow-visible-with-touch.html
+compositing/overflow/scrolling-content-clip-to-viewport.html
+compositing/overflow/textarea-scroll-touch.html
 
 # [Qt] [WK2] Some fullscreen layout tests are timing out on the bot
 # https://bugs.webkit.org/show_bug.cgi?id=92543
@@ -431,91 +447,8 @@ editing/selection/14971.html
 editing/inserting/typing-tab-designmode-forms.html
 editing/inserting/typing-tab-designmode.html
 
-# [Qt] Default sizes for input-text and text-area are different when running DRT/WTR
-# https://bugs.webkit.org/show_bug.cgi?id=91990
-css3/selectors3/html/css3-modsel-23.html
-css3/selectors3/html/css3-modsel-24.html
-css3/selectors3/html/css3-modsel-68.html
-css3/selectors3/html/css3-modsel-69.html
-css3/selectors3/xhtml/css3-modsel-23.xml
-css3/selectors3/xhtml/css3-modsel-24.xml
-css3/selectors3/xhtml/css3-modsel-68.xml
-css3/selectors3/xhtml/css3-modsel-69.xml
-css3/selectors3/xml/css3-modsel-23.xml
-css3/selectors3/xml/css3-modsel-24.xml
-css3/selectors3/xml/css3-modsel-68.xml
-css3/selectors3/xml/css3-modsel-69.xml
-editing/input/caret-at-the-edge-of-input.html
-editing/input/reveal-caret-of-multiline-input.html
-editing/inserting/4960120-1.html
-editing/inserting/before-after-input-element.html
-editing/selection/3690703-2.html
-editing/selection/3690703.html
-editing/selection/3690719.html
-editing/selection/4895428-3.html
-editing/selection/4975120.html
-editing/selection/drag-select-1.html
-fast/forms/basic-inputs.html
-fast/forms/basic-textareas-quirks.html
-fast/forms/control-restrict-line-height.html
-fast/forms/encoding-test.html
-fast/forms/fieldset-align.html
-fast/forms/input-appearance-bkcolor.html
-fast/forms/input-appearance-default-bkcolor.html
-fast/forms/input-appearance-disabled.html
-fast/forms/input-appearance-focus.html
-fast/forms/input-appearance-preventDefault.html
-fast/forms/input-appearance-readonly.html
-fast/forms/input-appearance-selection.html
-fast/forms/input-appearance-visibility.html
-fast/forms/input-baseline.html
-fast/forms/input-double-click-selection-gap-bug.html
-fast/forms/input-placeholder-visibility-1.html
-fast/forms/input-placeholder-visibility-3.html
-fast/forms/input-readonly-dimmed.html
-fast/forms/input-readonly-empty.html
-fast/forms/input-spaces.html
-fast/forms/input-text-click-inside.html
-fast/forms/input-text-double-click.html
-fast/forms/input-text-option-delete.html
-fast/forms/input-text-self-emptying-click.html
-fast/forms/input-text-word-wrap.html
-fast/forms/input-width.html
-fast/forms/placeholder-position.html
-fast/forms/search-cancel-button-style-sharing.html
-fast/forms/search-display-none-cancel-button.html
-fast/forms/search-rtl.html
-fast/forms/search-vertical-alignment.html
-fast/forms/text-style-color.html
-fast/forms/textarea-placeholder-pseudo-style.html
-fast/forms/textarea-placeholder-visibility-1.html
-fast/forms/textarea-placeholder-visibility-2.html
-fast/forms/textfield-focus-ring.html
-fast/forms/textfield-outline.html
-fast/forms/textfield-overflow.html
-fast/table/colspanMinWidth.html
-fast/table/spanOverlapRepaint.html
-fast/table/text-field-baseline.html
-fast/text/international/unicode-bidi-plaintext-in-textarea.html
-fast/text/textIteratorNilRenderer.html
-tables/mozilla_expected_failures/bugs/bug92647-1.html
-svg/hixie/mixed/003.xml
-tables/mozilla/bugs/bug1188.html
-tables/mozilla/bugs/bug18359.html
-tables/mozilla/bugs/bug24200.html
-tables/mozilla/bugs/bug2479-3.html
-tables/mozilla/bugs/bug28928.html
-tables/mozilla/bugs/bug30559.html
-tables/mozilla/bugs/bug4382.html
-tables/mozilla/bugs/bug4527.html
-tables/mozilla/bugs/bug46368-1.html
-tables/mozilla/bugs/bug46368-2.html
-tables/mozilla/bugs/bug51037.html
-tables/mozilla/bugs/bug55545.html
-tables/mozilla/bugs/bug59354.html
-tables/mozilla/bugs/bug96334.html
-tables/mozilla/dom/tableDom.html
-tables/mozilla/other/move_row.html
+# Size of select is different when running DRT/WTR
+fast/replaced/three-selects-break.html
 
 # [Qt] Images scale differently in WK1 and WK2
 # https://bugs.webkit.org/show_bug.cgi?id=92015
@@ -536,3 +469,11 @@ fast/animation/request-animation-frame-timestamps-advance.html
 fast/animation/request-animation-frame-timestamps.html
 fast/animation/request-animation-frame-within-callback.html
 fast/animation/request-animation-frame.html
+
+# [Qt][WK2] REGRESSION(r125045): It made fast/events/media-focus-in-standalone-media-document.html fail
+# https://bugs.webkit.org/show_bug.cgi?id=93658
+fast/events/media-focus-in-standalone-media-document.html
+
+# New http/tests/securitycontentSecurityPolicy/object-src-url-blocked.html introduced in r124371 fails on EFL, GTK, Qt
+# https://bugs.webkit.org/show_bug.cgi?id=92963
+http/tests/security/contentSecurityPolicy/object-src-url-blocked.html

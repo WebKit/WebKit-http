@@ -78,11 +78,7 @@ private:
 
     virtual void setWindowRect(const FloatRect& rect) OVERRIDE
     {
-        IntRect intRect(rect);
-        const WebRect currentRect = m_popup->m_windowRectInScreen;
-        if (intRect.x() == currentRect.x && intRect.y() == currentRect.y && m_popup->m_isPutAboveOrigin)
-            intRect.setY(currentRect.y + currentRect.height - intRect.height());
-        m_popup->m_windowRectInScreen = intRect;
+        m_popup->m_windowRectInScreen = IntRect(rect);
         m_popup->widgetClient()->setWindowRect(m_popup->m_windowRectInScreen);
     }
 
@@ -123,6 +119,11 @@ private:
         return m_popup->m_webView;
     }
 
+    virtual FloatSize minimumWindowSize() const OVERRIDE
+    {
+        return FloatSize(0, 0);
+    }
+
     WebPagePopupImpl* m_popup;
 };
 
@@ -141,7 +142,6 @@ bool PagePopupFeaturesClient::isEnabled(Document*, ContextFeatures::FeatureType 
 
 WebPagePopupImpl::WebPagePopupImpl(WebWidgetClient* client)
     : m_widgetClient(client)
-    , m_isPutAboveOrigin(false)
 {
     ASSERT(client);
 }
@@ -157,24 +157,13 @@ bool WebPagePopupImpl::init(WebViewImpl* webView, PagePopupClient* popupClient, 
     ASSERT(popupClient);
     m_webView = webView;
     m_popupClient = popupClient;
+    m_originBoundsInRootView = originBoundsInRootView;
 
-    WebSize rootViewSize = webView->size();
-    IntSize popupSize = popupClient->contentSize();
-    IntRect popupBoundsInRootView(IntPoint(max(0, originBoundsInRootView.x()), max(0, originBoundsInRootView.maxY())), popupSize);
-    if (popupBoundsInRootView.maxY() > rootViewSize.height) {
-        popupBoundsInRootView.setY(max(0, originBoundsInRootView.y() - popupSize.height()));
-        m_isPutAboveOrigin = true;
-    }
-    if (popupBoundsInRootView.maxX() > rootViewSize.width)
-        popupBoundsInRootView.setX(max(0, rootViewSize.width - popupSize.width()));
-    IntRect boundsInScreen = webView->page()->chrome()->rootViewToScreen(popupBoundsInRootView);
+    reposition(m_popupClient->contentSize());
 
-    m_widgetClient->setWindowRect(boundsInScreen);
-    m_windowRectInScreen = boundsInScreen;
     if (!initPage())
         return false;
     m_widgetClient->show(WebNavigationPolicy());
-
     setFocus(true);
 
     return true;
@@ -202,15 +191,14 @@ bool WebPagePopupImpl::initPage()
     frame->view()->resize(m_popupClient->contentSize());
     frame->view()->setTransparent(false);
 
+    DOMWindowPagePopup::install(frame->document()->domWindow(), m_popupClient);
+
     DocumentWriter* writer = frame->loader()->activeDocumentLoader()->writer();
     writer->setMIMEType("text/html");
     writer->setEncoding("UTF-8", false);
     writer->begin();
     m_popupClient->writeDocument(*writer);
     writer->end();
-
-    ASSERT(frame->existingDOMWindow());
-    DOMWindowPagePopup::install(frame->existingDOMWindow(), m_popupClient);
     return true;
 }
 
@@ -237,13 +225,28 @@ void WebPagePopupImpl::layout()
     PageWidgetDelegate::layout(m_page.get());
 }
 
-void WebPagePopupImpl::paint(WebCanvas* canvas, const WebRect& rect)
+void WebPagePopupImpl::paint(WebCanvas* canvas, const WebRect& rect, PaintOptions)
 {
     PageWidgetDelegate::paint(m_page.get(), 0, canvas, rect, PageWidgetDelegate::Opaque);
 }
 
+void WebPagePopupImpl::reposition(const WebSize& popupSize)
+{
+    WebSize rootViewSize = m_webView->size();
+    IntRect popupBoundsInRootView(IntPoint(max(0, m_originBoundsInRootView.x()), max(0, m_originBoundsInRootView.maxY())), popupSize);
+    if (popupBoundsInRootView.maxY() > rootViewSize.height)
+        popupBoundsInRootView.setY(max(0, m_originBoundsInRootView.y() - popupSize.height));
+    if (popupBoundsInRootView.maxX() > rootViewSize.width)
+        popupBoundsInRootView.setX(max(0, rootViewSize.width - popupSize.width));
+    IntRect boundsInScreen = m_webView->page()->chrome()->rootViewToScreen(popupBoundsInRootView);
+    m_widgetClient->setWindowRect(boundsInScreen);
+    m_windowRectInScreen = boundsInScreen;
+}
+
 void WebPagePopupImpl::resize(const WebSize& newSize)
 {
+    reposition(newSize);
+
     if (m_page)
         m_page->mainFrame()->view()->resize(newSize);
     m_widgetClient->didInvalidateRect(WebRect(0, 0, newSize.width, newSize.height));

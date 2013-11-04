@@ -21,6 +21,7 @@
 #include "config.h"
 #include "JSDOMBinding.h"
 
+#include "BindingSecurity.h"
 #include "DOMObjectHashTableMap.h"
 #include "DOMStringList.h"
 #include "ExceptionCode.h"
@@ -75,13 +76,6 @@ JSValue jsStringOrUndefined(ExecState* exec, const String& s)
     return jsString(exec, s);
 }
 
-JSValue jsStringOrFalse(ExecState* exec, const String& s)
-{
-    if (s.isNull())
-        return jsBoolean(false);
-    return jsString(exec, s);
-}
-
 JSValue jsString(ExecState* exec, const KURL& url)
 {
     return jsString(exec, url.string());
@@ -101,20 +95,13 @@ JSValue jsStringOrUndefined(ExecState* exec, const KURL& url)
     return jsString(exec, url.string());
 }
 
-JSValue jsStringOrFalse(ExecState* exec, const KURL& url)
-{
-    if (url.isNull())
-        return jsBoolean(false);
-    return jsString(exec, url.string());
-}
-
 AtomicStringImpl* findAtomicString(PropertyName propertyName)
 {
     StringImpl* impl = propertyName.publicName();
     if (!impl)
         return 0;
     ASSERT(impl->existingHash());
-    return AtomicString::find(impl->characters(), impl->length(), impl->existingHash());
+    return AtomicString::find(impl);
 }
 
 String valueToStringWithNullCheck(ExecState* exec, JSValue value)
@@ -171,13 +158,12 @@ void reportException(ExecState* exec, JSValue exception)
     if (ExceptionBase* exceptionBase = toExceptionBase(exception))
         errorMessage = stringToUString(exceptionBase->message() + ": "  + exceptionBase->description());
 
-    ScriptExecutionContext* scriptExecutionContext = jsCast<JSDOMGlobalObject*>(exec->lexicalGlobalObject())->scriptExecutionContext();
-
-    // scriptExecutionContext can be null when the relevant global object is a stale inner window object.
-    // It's harmless to return here without reporting the exception to the log and the debugger in this case.
-    if (!scriptExecutionContext)
-        return;
-
+    JSDOMGlobalObject* globalObject = jsCast<JSDOMGlobalObject*>(exec->lexicalGlobalObject());
+    if (JSDOMWindow* window = jsDynamicCast<JSDOMWindow*>(globalObject)) {
+        if (!window->impl()->isCurrentlyDisplayedInFrame())
+            return;
+    }
+    ScriptExecutionContext* scriptExecutionContext = globalObject->scriptExecutionContext();
     scriptExecutionContext->reportException(ustringToString(errorMessage), lineNumber, ustringToString(exceptionSourceURL), 0);
 }
 
@@ -221,42 +207,41 @@ void setDOMException(ExecState* exec, ExceptionCode ec)
 
 #undef TRY_TO_CREATE_EXCEPTION
 
-DOMWindow* activeDOMWindow(ExecState* exec)
-{
-    return asJSDOMWindow(exec->lexicalGlobalObject())->impl();
-}
-
-DOMWindow* firstDOMWindow(ExecState* exec)
-{
-    return asJSDOMWindow(exec->dynamicGlobalObject())->impl();
-}
-
 bool shouldAllowAccessToNode(ExecState* exec, Node* node)
 {
-    return node && shouldAllowAccessToFrame(exec, node->document()->frame());
+    return BindingSecurity::shouldAllowAccessToNode(exec, node);
 }
 
-bool shouldAllowAccessToFrame(ExecState* exec, Frame* frame)
+bool shouldAllowAccessToFrame(ExecState* exec, Frame* target)
 {
-    if (!frame)
-        return false;
-    JSDOMWindow* window = toJSDOMWindow(frame, currentWorld(exec));
-    return window && window->allowsAccessFrom(exec);
+    return BindingSecurity::shouldAllowAccessToFrame(exec, target);
 }
 
 bool shouldAllowAccessToFrame(ExecState* exec, Frame* frame, String& message)
 {
     if (!frame)
         return false;
-    JSDOMWindow* window = toJSDOMWindow(frame, currentWorld(exec));
-    return window && window->allowsAccessFrom(exec, message);
+    bool result = BindingSecurity::shouldAllowAccessToFrame(exec, frame, DoNotReportSecurityError);
+    // FIXME: The following line of code should move somewhere that it can be shared with immediatelyReportUnsafeAccessTo.
+    message = frame->document()->domWindow()->crossDomainAccessErrorMessage(activeDOMWindow(exec));
+    return result;
+}
+
+bool shouldAllowAccessToDOMWindow(ExecState* exec, DOMWindow* target, String& message)
+{
+    if (!target)
+        return false;
+    bool result = BindingSecurity::shouldAllowAccessToDOMWindow(exec, target, DoNotReportSecurityError);
+    // FIXME: The following line of code should move somewhere that it can be shared with immediatelyReportUnsafeAccessTo.
+    message = target->crossDomainAccessErrorMessage(activeDOMWindow(exec));
+    return result;
 }
 
 void printErrorMessageForFrame(Frame* frame, const String& message)
 {
     if (!frame)
         return;
-    frame->domWindow()->printErrorMessage(message);
+    frame->document()->domWindow()->printErrorMessage(message);
 }
 
 JSValue objectToStringFunctionGetter(ExecState* exec, JSValue, PropertyName propertyName)

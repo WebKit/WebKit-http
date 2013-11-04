@@ -84,6 +84,24 @@ TEST(IDBLevelDBCodingTest, EncodeByte)
     EXPECT_EQ(expected, encodeByte(c));
 }
 
+TEST(IDBLevelDBCodingTest, DecodeByte)
+{
+    Vector<unsigned char> testCases;
+    testCases.append(0);
+    testCases.append(1);
+    testCases.append(255);
+
+    for (size_t i = 0; i < testCases.size(); ++i) {
+        unsigned char n = testCases[i];
+        Vector<char> v = encodeByte(n);
+
+        unsigned char res;
+        const char* p = decodeByte(v.data(), v.data() + v.size(), res);
+        EXPECT_EQ(n, res);
+        EXPECT_EQ(v.data() + v.size(), p);
+    }
+}
+   
 TEST(IDBLevelDBCodingTest, EncodeBool)
 {
     {
@@ -187,8 +205,10 @@ TEST(IDBLevelDBCodingTest, EncodeVarInt)
     EXPECT_EQ(static_cast<size_t>(2), encodeVarInt(255).size());
     EXPECT_EQ(static_cast<size_t>(2), encodeVarInt(256).size());
     EXPECT_EQ(static_cast<size_t>(5), encodeVarInt(0xffffffff).size());
+    EXPECT_EQ(static_cast<size_t>(8), encodeVarInt(0xfffffffffffffLL).size());
+    EXPECT_EQ(static_cast<size_t>(9), encodeVarInt(0x7fffffffffffffffLL).size());
 #ifdef NDEBUG
-    EXPECT_EQ(static_cast<size_t>(8), encodeInt(-100).size());
+    EXPECT_EQ(static_cast<size_t>(10), encodeVarInt(-100).size());
 #endif
 }
 
@@ -679,6 +699,24 @@ TEST(IDBLevelDBCodingTest, ComparisonTest)
             EXPECT_LT(compare(keyA, keyB), 0);
             EXPECT_GT(compare(keyB, keyA), 0);
         }
+    }
+}
+
+TEST(IDBLevelDBCodingTest, EncodeVarIntVSEncodeByteTest)
+{
+    Vector<unsigned char> testCases;
+    testCases.append(0);
+    testCases.append(1);
+    testCases.append(127);
+
+    for (size_t i = 0; i < testCases.size(); ++i) {
+        unsigned char n = testCases[i];
+
+        Vector<char> vA = encodeByte(n);
+        Vector<char> vB = encodeVarInt(static_cast<int64_t>(n));
+
+        EXPECT_EQ(vA.size(), vB.size());
+        EXPECT_EQ(*(vA.data()), *(vB.data()));
     }
 }
 

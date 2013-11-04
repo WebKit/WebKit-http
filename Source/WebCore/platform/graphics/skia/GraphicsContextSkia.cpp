@@ -68,14 +68,19 @@ namespace WebCore {
 
 namespace {
 
+// Return value % max, but account for value possibly being negative.
 inline int fastMod(int value, int max)
 {
-    int sign = SkExtractSign(value);
-
-    value = SkApplySign(value, sign);
+    bool isNeg = false;
+    if (value < 0) {
+        value = -value;
+        isNeg = true;
+    }
     if (value >= max)
         value %= max;
-    return SkApplySign(value, sign);
+    if (isNeg)
+        value = -value;
+    return value;
 }
 
 inline float square(float n)
@@ -241,7 +246,7 @@ void GraphicsContext::clip(const FloatRect& rect)
 
 void GraphicsContext::clip(const Path& path)
 {
-    if (paintingDisabled())
+    if (paintingDisabled() || path.isEmpty())
         return;
 
     platformContext()->clipPathAntiAliased(*path.platformPath());
@@ -252,7 +257,7 @@ void GraphicsContext::canvasClip(const Path& path)
     if (paintingDisabled())
         return;
 
-    platformContext()->canvasClipPath(*path.platformPath());
+    platformContext()->canvasClipPath(path.isNull() ? SkPath() : *path.platformPath());
 }
 
 void GraphicsContext::clipOut(const IntRect& rect)
@@ -269,7 +274,7 @@ void GraphicsContext::clipOut(const Path& p)
         return;
 
     // We must make a copy of the path, to mark it as inverse-filled.
-    SkPath path(*p.platformPath());
+    SkPath path(p.isNull() ? SkPath() : *p.platformPath());
     path.toggleInverseFillType();
     platformContext()->clipPathAntiAliased(path);
 }
@@ -282,7 +287,9 @@ void GraphicsContext::clipPath(const Path& pathToClip, WindRule clipRule)
     const SkPath* path = pathToClip.platformPath();
     SkPath::FillType ftype = (clipRule == RULE_EVENODD) ? SkPath::kEvenOdd_FillType : SkPath::kWinding_FillType;
     SkPath storage;
-    if (path->getFillType() != ftype) {
+    if (!path)
+        path = &storage;
+    else if (path->getFillType() != ftype) {
         storage = *path;
         storage.setFillType(ftype);
         path = &storage;
@@ -670,7 +677,7 @@ void GraphicsContext::drawRect(const IntRect& rect)
 
 void GraphicsContext::fillPath(const Path& pathToFill)
 {
-    if (paintingDisabled())
+    if (paintingDisabled() || pathToFill.isEmpty())
         return;
 
     const GraphicsContextState& state = m_state;
@@ -1044,7 +1051,7 @@ void GraphicsContext::strokeArc(const IntRect& r, int startAngle, int angleSpan)
 
 void GraphicsContext::strokePath(const Path& pathToStroke)
 {
-    if (paintingDisabled())
+    if (paintingDisabled() || pathToStroke.isEmpty())
         return;
 
     const SkPath& path = *pathToStroke.platformPath();

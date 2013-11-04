@@ -34,14 +34,12 @@
 
 #include "CustomFilterCompiledProgram.h"
 #include "CustomFilterProgramClient.h"
-
-#if USE(3D_GRAPHICS)
-#include "GraphicsContext3D.h"
-#endif
+#include "CustomFilterProgramInfo.h"
 
 namespace WebCore {
 
-CustomFilterProgram::CustomFilterProgram()
+CustomFilterProgram::CustomFilterProgram(CustomFilterProgramMixSettings mixSettings)
+    : m_mixSettings(mixSettings)
 {
     // Keep the constructor protected to prevent creating this object directly.
 }
@@ -80,13 +78,11 @@ void CustomFilterProgram::notifyClients()
         iter->first->notifyCustomFilterProgramLoaded(this);
 }
 
-#if USE(3D_GRAPHICS)
-PassRefPtr<CustomFilterCompiledProgram> CustomFilterProgram::compileProgramWithContext(GraphicsContext3D* context)
+CustomFilterProgramInfo CustomFilterProgram::programInfo() const
 {
     ASSERT(isLoaded());
-    return CustomFilterCompiledProgram::create(context, vertexShaderString(), fragmentShaderString());
+    return CustomFilterProgramInfo(vertexShaderString(), fragmentShaderString(), m_mixSettings);
 }
-#endif
 
 } // namespace WebCore
 #endif // ENABLE(CSS_SHADERS)

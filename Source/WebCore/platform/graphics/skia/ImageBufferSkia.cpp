@@ -46,7 +46,6 @@
 #include "PlatformContextSkia.h"
 #include "SharedGraphicsContext3D.h"
 #include "SkColorPriv.h"
-#include "SkDeferredCanvas.h"
 #include "SkGpuDevice.h"
 #include "SkiaUtils.h"
 #include "WEBPImageEncoder.h"
@@ -79,13 +78,14 @@ static SkCanvas* createAcceleratedCanvas(const IntSize& size, ImageBufferData* d
     GrContext* gr = context3D->grContext();
     if (!gr)
         return 0;
+    context3D->getExtensions()->pushGroupMarkerEXT("AcceleratedCanvasContext");
     gr->resetContext();
     GrTextureDesc desc;
     desc.fFlags = kRenderTarget_GrTextureFlagBit;
     desc.fSampleCnt = 0;
     desc.fWidth = size.width();
     desc.fHeight = size.height();
-    desc.fConfig = kSkia8888_PM_GrPixelConfig;
+    desc.fConfig = kSkia8888_GrPixelConfig;
     SkAutoTUnref<GrTexture> texture(gr->createUncachedTexture(desc, 0, 0));
     if (!texture.get())
         return 0;

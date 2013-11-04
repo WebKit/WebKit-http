@@ -91,6 +91,7 @@ fast/sub-pixel/file-upload-control-at-fractional-offset.html
 fast/sub-pixel/float-containing-block-with-margin.html
 fast/sub-pixel/float-with-right-margin-zoom.html
 fast/sub-pixel/float-wrap-with-subpixel-top.html
+fast/sub-pixel/inline-block-should-not-wrap.html
 fast/sub-pixel/inline-block-with-margin.html
 fast/sub-pixel/inline-block-with-padding.html
 fast/sub-pixel/layout-boxes-with-zoom.html
@@ -98,119 +99,11 @@ fast/sub-pixel/position-right-aligns-with-container.html
 fast/sub-pixel/selection/selection-gaps-at-fractional-offsets.html
 fast/sub-pixel/size-of-box-with-zoom.html
 fast/sub-pixel/table-rows-no-gaps.html
+fast/sub-pixel/sub-pixel-accumulates-to-layers.html
 
-# CONSOLE MESSAGE: line 0: SVG animation pause API missing!
-# [WK2] SVG animation pause API missing
-# https://bugs.webkit.org/show_bug.cgi?id=63396
-svg/animations/animVal-basics.html
-svg/animations/animate-calcMode-spline-by.html
-svg/animations/animate-calcMode-spline-from-by.html
-svg/animations/animate-calcMode-spline-from-to.html
-svg/animations/animate-calcMode-spline-to.html
-svg/animations/animate-calcMode-spline-values.html
-svg/animations/animate-color-calcMode-discrete.html
-svg/animations/animate-color-fill-currentColor.html
-svg/animations/animate-color-fill-from-by.html
-svg/animations/animate-color-rgba-calcMode-discrete.html
-svg/animations/animate-color-transparent.html
-svg/animations/animate-currentColor.html
-svg/animations/animate-dynamic-update-attributeName.html
-svg/animations/animate-end-attribute.html
-svg/animations/animate-endElement-beginElement.html
-svg/animations/animate-from-to-keyTimes.html
-svg/animations/animate-gradient-transform.html
-svg/animations/animate-inherit-css-property.html
-svg/animations/animate-insert-begin.html
-svg/animations/animate-insert-no-begin.html
-svg/animations/animate-keySplines.html
-svg/animations/animate-mpath-insert.html
-svg/animations/animate-number-calcMode-discrete.html
-svg/animations/animate-number-calcMode-discrete-keyTimes.html
-svg/animations/animate-path-animation-Cc-Ss.html
-svg/animations/animate-path-animation-Ll-Vv-Hh.html
-svg/animations/animate-path-animation-Qq-Tt.html
-svg/animations/animate-path-animation-cC-sS-inverse.html
-svg/animations/animate-path-animation-lL-vV-hH-inverse.html
-svg/animations/animate-path-animation-qQ-tT-inverse.html
-svg/animations/animate-path-nested-transforms.html
-svg/animations/animate-path-to-animation.html
+# [WK2][WTR] svg/animations/animate-text-nested-transforms.html fails
+# https://bugs.webkit.org/show_bug.cgi?id=95191
 svg/animations/animate-text-nested-transforms.html
-svg/animations/animateTransform-pattern-transform.html
-svg/animations/svgangle-animation-deg-to-grad.html
-svg/animations/svgangle-animation-deg-to-rad.html
-svg/animations/svgangle-animation-grad-to-deg.html
-svg/animations/svgangle-animation-grad-to-rad.html
-svg/animations/svgangle-animation-rad-to-deg.html
-svg/animations/svgangle-animation-rad-to-grad.html
-svg/animations/svgboolean-animation-1.html
-svg/animations/svginteger-animation-1.html
-svg/animations/svglength-animation-LengthModeHeight.html
-svg/animations/svglength-animation-LengthModeOther.html
-svg/animations/svglength-animation-LengthModeWidth.html
-svg/animations/svglength-animation-invalid-value-1.html
-svg/animations/svglength-animation-invalid-value-2.html
-svg/animations/svglength-animation-invalid-value-3.html
-svg/animations/svglength-animation-number-to-number.html
-svg/animations/svglength-animation-px-to-cm.html
-svg/animations/svglength-animation-px-to-ems.html
-svg/animations/svglength-animation-px-to-exs.html
-svg/animations/svglength-animation-px-to-in.html
-svg/animations/svglength-animation-px-to-number.html
-svg/animations/svglength-animation-px-to-pc.html
-svg/animations/svglength-animation-px-to-percentage.html
-svg/animations/svglength-animation-px-to-pt.html
-svg/animations/svglength-animation-px-to-px.html
-svg/animations/svglength-animation-unitType.html
-svg/animations/svglength-animation-values.html
-svg/animations/svglengthlist-animation-1.html
-svg/animations/svglengthlist-animation-2.html
-svg/animations/svglengthlist-animation-3.html
-svg/animations/svglengthlist-animation-4.html
-svg/animations/svglengthlist-animation-5.html
-svg/animations/svgnumber-animation-1.html
-svg/animations/svgnumber-animation-2.html
-svg/animations/svgnumber-animation-3.html
-svg/animations/svgnumberlist-animation-1.html
-svg/animations/svgnumberlist-animation-2.html
-svg/animations/svgnumberoptionalnumber-animation-1.html
-svg/animations/svgnumberoptionalnumber-animation-2.html
-svg/animations/svgnumberoptionalnumber-animation-3.html
-svg/animations/svgnumberoptionalnumber-animation-4.html
-svg/animations/svgpath-animation-1.html
-svg/animations/svgpointlist-animation-1.html
-svg/animations/svgpointlist-animation-2.html
-svg/animations/svgPreserveAspectRatio-animation-1.html
-svg/animations/svgrect-animation-1.html
-svg/animations/svgrect-animation-2.html
-svg/animations/svgtransform-animation-1.html
-svg/animations/svgtransform-animation-discrete.html
-svg/animations/svgstring-animation-fallback-to-discrete.html
-svg/text/select-text-svgfont.html
-svg/text/select-textLength-spacing-squeeze-1.svg
-svg/text/select-textLength-spacing-squeeze-2.svg
-svg/text/select-textLength-spacing-squeeze-3.svg
-svg/text/select-textLength-spacing-squeeze-4.svg
-svg/text/select-textLength-spacing-stretch-1.svg
-svg/text/select-textLength-spacing-stretch-2.svg
-svg/text/select-textLength-spacing-stretch-3.svg
-svg/text/select-textLength-spacing-stretch-4.svg
-svg/text/select-textLength-spacingAndGlyphs-squeeze-1.svg
-svg/text/select-textLength-spacingAndGlyphs-squeeze-2.svg
-svg/text/select-textLength-spacingAndGlyphs-squeeze-3.svg
-svg/text/select-textLength-spacingAndGlyphs-squeeze-4.svg
-svg/text/select-textLength-spacingAndGlyphs-stretch-1.svg
-svg/text/select-textLength-spacingAndGlyphs-stretch-2.svg
-svg/text/select-textLength-spacingAndGlyphs-stretch-3.svg
-svg/text/select-textLength-spacingAndGlyphs-stretch-4.svg
-svg/text/select-x-list-1.svg
-svg/text/select-x-list-2.svg
-svg/text/select-x-list-3.svg
-svg/text/select-x-list-4.svg
-svg/text/select-x-list-with-tspans-1.svg
-svg/text/select-x-list-with-tspans-2.svg
-svg/text/select-x-list-with-tspans-3.svg
-svg/text/select-x-list-with-tspans-4.svg
-svg/text/selection-doubleclick.svg
 
 # WebKit2 needs layoutTestController.overridePreference
 # <https://bugs.webkit.org/show_bug.cgi?id=42197>
@@ -385,35 +278,6 @@ webarchive/loading/mainresource-null-mimetype-crash.html
 webarchive/loading/missing-data.html
 http/tests/security/xssAuditor/script-tag-with-callbacks.html
 
-# WebKitTestRunner needs layoutTestController.dumpResourceLoadCallbacks
-# <https://bugs.webkit.org/show_bug.cgi?id=42332>
-fast/images/support-broken-image-delegate.html
-fast/loader/file-protocol-fragment.html
-fast/loader/main-document-url-for-non-http-loads.html
-fast/loader/user-style-sheet-resource-load-callbacks.html
-http/tests/loading/307-after-303-after-post.html
-http/tests/loading/pdf-commit-load-callbacks.html
-http/tests/loading/redirect-methods.html
-http/tests/misc/favicon-loads-with-images-disabled.html
-http/tests/misc/favicon-loads-with-icon-loading-override.html
-http/tests/misc/link-rel-icon-beforeload.html
-http/tests/misc/will-send-request-returns-null-on-redirect.html
-http/tests/misc/willCacheResponse-delegate-callback.html
-http/tests/misc/window-dot-stop.html
-http/tests/security/XFrameOptions/x-frame-options-deny-meta-tag-in-body.html
-http/tests/security/XFrameOptions/x-frame-options-deny-meta-tag-parent-same-origin-allow.html
-http/tests/security/XFrameOptions/x-frame-options-deny-meta-tag-parent-same-origin-deny.html
-http/tests/security/XFrameOptions/x-frame-options-deny-meta-tag.html
-http/tests/security/XFrameOptions/x-frame-options-deny.html
-http/tests/security/XFrameOptions/x-frame-options-parent-same-origin-allow.html
-http/tests/security/XFrameOptions/x-frame-options-parent-same-origin-deny.html
-http/tests/xmlhttprequest/abort-should-cancel-load.html
-security/block-test-no-port.html
-security/block-test.html
-webarchive/loading/cache-expired-subresource.html
-webarchive/loading/test-loading-archive.html
-webarchive/loading/test-loading-archive-subresource-null-mimetype.html
-
 # WebKitTestRunner needs textInputController
 # <https://bugs.webkit.org/show_bug.cgi?id=42337>
 editing/input/setting-input-value-cancel-ime-composition.html
@@ -466,28 +330,6 @@ platform/mac/editing/deleting/deletionUI-successful-deletion.html
 storage/websql/open-database-creation-callback.html
 storage/websql/quota-tracking.html
 
-# WebKitTestRunner needs layoutTestController.dumpResourceResponseMIMETypes
-# <https://bugs.webkit.org/show_bug.cgi?id=42543>
-fast/dom/HTMLScriptElement/dont-load-unknown-type.html
-fast/preloader/document-write-noscript.html
-fast/preloader/first-base-tag-scanned-wins.html
-fast/preloader/first-base-tag-wins.html
-fast/preloader/image.html
-fast/preloader/input.html
-fast/preloader/link.html
-fast/preloader/noscript.html
-fast/preloader/scan-body-from-head-import.html
-fast/preloader/scan-body-from-head-script.html
-fast/preloader/script.html
-fast/preloader/style.html
-fast/preloader/understands-base-tag.html
-http/tests/loading/preload-slow-loading.php
-http/tests/loading/preload-append-scan.php
-http/tests/mime/uppercase-mime-type.html
-platform/mac/fast/loader/file-url-mimetypes-2.html
-platform/mac/fast/loader/file-url-mimetypes-3.html
-platform/mac/fast/loader/file-url-mimetypes.html
-
 # WebKitTestRunner needs layoutTestController.setMockGeolocationPosition
 # and layoutTestController.setMockGeolocationError
 # <https://bugs.webkit.org/show_bug.cgi?id=59201>
@@ -503,6 +345,7 @@ fast/dom/Geolocation/delayed-permission-denied.html
 fast/dom/Geolocation/disconnected-frame-already.html
 fast/dom/Geolocation/disconnected-frame-permission-denied.html
 fast/dom/Geolocation/disconnected-frame.html
+fast/dom/Geolocation/error-clear-watch.html
 fast/dom/Geolocation/error.html
 fast/dom/Geolocation/maximum-age.html
 fast/dom/Geolocation/multiple-requests.html
@@ -515,6 +358,7 @@ fast/dom/Geolocation/position-string.html
 fast/dom/Geolocation/reentrant-error.html
 fast/dom/Geolocation/reentrant-permission-denied.html
 fast/dom/Geolocation/reentrant-success.html
+fast/dom/Geolocation/success-clear-watch.html
 fast/dom/Geolocation/success.html
 fast/dom/Geolocation/timeout.html
 fast/dom/Geolocation/timeout-clear-watch.html
@@ -609,14 +453,6 @@ http/tests/navigation/timerredirect-subframeload.html
 # WebKitTestRunner needs layoutTestController.queueLoadingScript
 # <https://bugs.webkit.org/show_bug.cgi?id=42675>
 http/tests/cache/subresource-failover-to-network.html
-
-# WebKitTestRunner needs layoutTestController.setUserStyleSheetLocation
-# <https://bugs.webkit.org/show_bug.cgi?id=42678>
-http/tests/security/local-user-CSS-from-remote.html
-
-# WebKitTestRunner needs layoutTestController.setUserStyleSheetEnabled
-# <https://bugs.webkit.org/show_bug.cgi?id=42679> 
-fast/loader/user-stylesheet-fast-path.html
 
 # WebKitTestRunner needs layoutTestController.setCacheModel
 # <https://bugs.webkit.org/show_bug.cgi?id=42684>
@@ -818,6 +654,16 @@ http/tests/security/referrer-policy-redirect-link.html
 # https://bugs.webkit.org/show_bug.cgi?id=84186
 fast/text-autosizing
 
+# setMockGeolocationPosition not defined in WKTR
+# https://bugs.webkit.org/show_bug.cgi?id=94554
+inspector/geolocation-error.html
+inspector/geolocation-success.html
+inspector/geolocation-watchPosition.html
+
+# WKTR doesn't implement dumpWillCacheResponse()
+# https://bugs.webkit.org/show_bug.cgi?id=94607
+http/tests/misc/willCacheResponse-delegate-callback.html
+
 ### END OF (1) Classified failures with bug reports
 ########################################
 
@@ -825,12 +671,25 @@ fast/text-autosizing
 ########################################
 ### START OF (2) Classified failures without bug reports (yet)
 
+# WebKitTestRunner needs layoutTestController.shouldPaintBrockenImage
+fast/images/support-broken-image-delegate.html
+
+# WebKitTestRunner needs layoutTestController.setWillSendRequestReturnNullOnRedirect
+http/tests/misc/will-send-request-returns-null-on-redirect.html
+
+# WebKitTestRunner needs ReceiveServerRedirectForProvisionalLoadForFrame logging
+http/tests/loading/307-after-303-after-post.html
+http/tests/loading/redirect-methods.html
+
 # WebKitTestrunner needs layoutTestController.dumpSourceAsWebArchive
 webarchive/doctype.html
 webarchive/archive-empty-frame-source.html
 
 # WebKitTestRunner needs layoutTestController.setIconDatabaseEnabled
 webarchive/test-link-rel-icon.html
+http/tests/misc/favicon-loads-with-images-disabled.html
+http/tests/misc/favicon-loads-with-icon-loading-override.html
+http/tests/misc/link-rel-icon-beforeload.html
 
 # WebKitTestRunner should dump text/plain content as text
 http/tests/incremental/slow-utf8-text.pl
@@ -1027,6 +886,10 @@ editing/pasteboard/drag-drop-url-with-style.html
 editing/shadow
 fast/dom/shadow
 
+# ENABLE(LINK_PRERENDER) is disabled.
+fast/dom/HTMLLinkElement/prerender-insert-after-stop.html
+fast/dom/HTMLLinkElement/prerender-remove-after-stop.html
+
 # WTR needs an implementation for eventSender.continuousMouseScrollBy
 # https://bugs.webkit.org/show_bug.cgi?id=69417
 fast/events/wheelevent-direction-inverted-from-device.html
@@ -1062,6 +925,14 @@ http/tests/security/video-cross-origin-readback.html
 # Content Security Policy 1.1 (ENABLE_CSP_NEXT) is not enabled
 # https://bugs.webkit.org/show_bug.cgi?id=85558
 http/tests/security/contentSecurityPolicy/1.1
+
+# Should pass now but need to be checked first.
+platform/mac/fast/loader/file-url-mimetypes-2.html
+platform/mac/fast/loader/file-url-mimetypes-3.html
+platform/mac/fast/loader/file-url-mimetypes.html
+webarchive/loading/cache-expired-subresource.html
+webarchive/loading/test-loading-archive.html
+webarchive/loading/test-loading-archive-subresource-null-mimetype.html
 
 ### END OF (2) Classified failures without bug reports (yet)
 ########################################
@@ -1302,7 +1173,6 @@ editing/input/reveal-contenteditable-on-input-vertically.html
 
 # Media tests that time out unexpectedly
 # https://bugs.webkit.org/show_bug.cgi?id=81604
-media/media-fragments/TC0080-TC0089.html
 media/video-colorspace-yuv420.html
 media/video-colorspace-yuv422.html
 media/video-loop.html
@@ -1321,6 +1191,10 @@ fast/loader/window-properties-restored-from-page-cache.html
 # Flakey on Lion WK2 debug.
 # https://bugs.webkit.org/show_bug.cgi?id=81616
 fast/harness/page-cache-crash-on-data-urls.html
+
+# Wrong logging order
+fast/loader/file-protocol-fragment.html
+http/tests/loading/pdf-commit-load-callbacks.html
 
 ### END OF (3) Unclassified failures
 ########################################
@@ -1417,6 +1291,10 @@ fast/parser/pre-html5-parser-quirks.html
 # [WK2] New fast/events/drag-display-none-element.html fails
 # https://bugs.webkit.org/show_bug.cgi?id=90177
 fast/events/drag-display-none-element.html
+
+# [WK2] New fast/events/tab-focus-link-in-canvas.html fails
+# https://bugs.webkit.org/show_bug.cgi?id=95329
+fast/events/tab-focus-link-in-canvas.html
 
 # Skip tests in fast/text/shaping
 fast/text/shaping

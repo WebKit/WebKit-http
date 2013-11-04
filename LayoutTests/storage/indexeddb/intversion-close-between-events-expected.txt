@@ -1,0 +1,37 @@
+Try to call db.close() after upgradeneeded but before the corresponding success event fires
+
+On success, you will see a series of "PASS" messages, followed by "TEST COMPLETE".
+
+
+indexedDB = self.indexedDB || self.webkitIndexedDB || self.mozIndexedDB || self.msIndexedDB || self.OIndexedDB;
+
+dbname = "intversion-close-between-events.html"
+indexedDB.deleteDatabase(dbname)
+request = indexedDB.open(dbname, 7)
+
+
+upgradeNeeded():
+db = event.target.result
+PASS event.newVersion is 7
+db.createObjectStore('objectstore')
+transaction = event.target.transaction
+
+transaction.oncomplete:
+sawTransactionComplete = true
+setTimeout(closeDB, 0)
+
+openSuccess():
+PASS didCallCloseDB is false
+PASS sawTransactionComplete is true
+db = event.target.result
+PASS db.version is 7
+PASS db.objectStoreNames.length is 1
+db.transaction(db.objectStoreNames)
+
+closeDB():
+didCallCloseDB = true
+db.close()
+PASS successfullyParsed is true
+
+TEST COMPLETE
+

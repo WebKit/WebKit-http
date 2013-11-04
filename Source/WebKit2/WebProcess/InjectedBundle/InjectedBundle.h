@@ -123,6 +123,10 @@ public:
     int pageNumberForElementById(WebFrame*, const String&, double, double);
     String pageSizeAndMarginsInPixels(WebFrame*, int, int, int, int, int, int, int);
     bool isPageBoxVisible(WebFrame*, int);
+    void setUserStyleSheetLocation(WebPageGroupProxy*, const String&);
+    void setWebNotificationPermission(WebPage*, const String& originString, bool allowed);
+    void removeAllWebNotificationPermissions(WebPage*);
+    uint64_t webNotificationID(JSContextRef, JSValueRef);
 
     // UserContent API
     void addUserScript(WebPageGroupProxy*, InjectedBundleScriptWorld*, const String& source, const String& url, ImmutableArray* whitelist, ImmutableArray* blacklist, WebCore::UserScriptInjectionTime, WebCore::UserContentInjectedFrames);
@@ -151,6 +155,7 @@ public:
     void willDestroyPage(WebPage*);
     void didInitializePageGroup(WebPageGroupProxy*);
     void didReceiveMessage(const String&, APIObject*);
+    void didReceiveMessageToPage(WebPage*, const String&, APIObject*);
 
     void didReceiveMessage(CoreIPC::Connection*, CoreIPC::MessageID, CoreIPC::ArgumentDecoder*);
 

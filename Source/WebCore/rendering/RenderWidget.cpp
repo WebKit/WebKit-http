@@ -176,11 +176,11 @@ bool RenderWidget::setWidgetGeometry(const LayoutRect& frame)
 
 bool RenderWidget::updateWidgetGeometry()
 {
-    IntRect contentBox = pixelSnappedIntRect(contentBoxRect());
+    LayoutRect contentBox = contentBoxRect();
     if (!m_widget->transformsAffectFrameRect())
         return setWidgetGeometry(absoluteContentBox());
 
-    IntRect absoluteContentBox(localToAbsoluteQuad(FloatQuad(contentBox)).boundingBox());
+    LayoutRect absoluteContentBox(localToAbsoluteQuad(FloatQuad(contentBox)).boundingBox());
     if (m_widget->isFrameView()) {
         contentBox.setLocation(absoluteContentBox.location());
         return setWidgetGeometry(contentBox);
@@ -385,10 +385,10 @@ RenderWidget* RenderWidget::find(const Widget* widget)
     return widgetRendererMap().get(widget);
 }
 
-bool RenderWidget::nodeAtPoint(const HitTestRequest& request, HitTestResult& result, const HitTestPoint& pointInContainer, const LayoutPoint& accumulatedOffset, HitTestAction action)
+bool RenderWidget::nodeAtPoint(const HitTestRequest& request, HitTestResult& result, const HitTestLocation& locationInContainer, const LayoutPoint& accumulatedOffset, HitTestAction action)
 {
     bool hadResult = result.innerNode();
-    bool inside = RenderReplaced::nodeAtPoint(request, result, pointInContainer, accumulatedOffset, action);
+    bool inside = RenderReplaced::nodeAtPoint(request, result, locationInContainer, accumulatedOffset, action);
 
     // Check to see if we are really over the widget itself (and not just in the border/padding area).
     if ((inside || result.isRectBasedTest()) && !hadResult && result.innerNode() == node())

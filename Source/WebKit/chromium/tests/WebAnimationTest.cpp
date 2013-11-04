@@ -46,14 +46,14 @@ namespace {
 #endif
 TEST(WebAnimationTest, MAYBE_DefaultSettings)
 {
-    WebFloatAnimationCurve curve;
-    WebAnimation animation(curve, WebAnimation::WebAnimationOpacity);
+    OwnPtr<WebAnimationCurve> curve = adoptPtr(WebFloatAnimationCurve::create());
+    OwnPtr<WebAnimation> animation = adoptPtr(WebAnimation::create(*curve, WebAnimation::TargetPropertyOpacity));
 
     // Ensure that the defaults are correct.
-    EXPECT_EQ(1, animation.iterations());
-    EXPECT_EQ(0, animation.startTime());
-    EXPECT_EQ(0, animation.timeOffset());
-    EXPECT_FALSE(animation.alternatesDirection());
+    EXPECT_EQ(1, animation->iterations());
+    EXPECT_EQ(0, animation->startTime());
+    EXPECT_EQ(0, animation->timeOffset());
+    EXPECT_FALSE(animation->alternatesDirection());
 }
 
 // Linux/Win bots failed on this test.
@@ -67,17 +67,17 @@ TEST(WebAnimationTest, MAYBE_DefaultSettings)
 #endif
 TEST(WebAnimationTest, MAYBE_ModifiedSettings)
 {
-    WebFloatAnimationCurve curve;
-    WebAnimation animation(curve, WebAnimation::WebAnimationOpacity);
-    animation.setIterations(2);
-    animation.setStartTime(2);
-    animation.setTimeOffset(2);
-    animation.setAlternatesDirection(true);
+    OwnPtr<WebFloatAnimationCurve> curve = adoptPtr(WebFloatAnimationCurve::create());
+    OwnPtr<WebAnimation> animation = adoptPtr(WebAnimation::create(*curve, WebAnimation::TargetPropertyOpacity));
+    animation->setIterations(2);
+    animation->setStartTime(2);
+    animation->setTimeOffset(2);
+    animation->setAlternatesDirection(true);
 
-    EXPECT_EQ(2, animation.iterations());
-    EXPECT_EQ(2, animation.startTime());
-    EXPECT_EQ(2, animation.timeOffset());
-    EXPECT_TRUE(animation.alternatesDirection());
+    EXPECT_EQ(2, animation->iterations());
+    EXPECT_EQ(2, animation->startTime());
+    EXPECT_EQ(2, animation->timeOffset());
+    EXPECT_TRUE(animation->alternatesDirection());
 }
 
 } // namespace

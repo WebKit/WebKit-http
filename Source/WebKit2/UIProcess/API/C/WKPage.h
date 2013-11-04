@@ -465,6 +465,9 @@ typedef void (^WKPageGetContentsAsStringBlock)(WKStringRef, WKErrorRef);
 WK_EXPORT void WKPageGetContentsAsString_b(WKPageRef page, WKPageGetContentsAsStringBlock block);
 #endif
 
+typedef void (*WKPageGetContentsAsMHTMLDataFunction)(WKDataRef, WKErrorRef, void*);
+WK_EXPORT void WKPageGetContentsAsMHTMLData(WKPageRef page, bool useBinaryEncoding, void* context, WKPageGetContentsAsMHTMLDataFunction function);
+
 typedef void (*WKPageForceRepaintFunction)(WKErrorRef, void*);
 WK_EXPORT void WKPageForceRepaint(WKPageRef page, void* context, WKPageForceRepaintFunction function);
 
@@ -485,6 +488,8 @@ WK_EXPORT void WKPageDeliverIntentToFrame(WKPageRef page, WKFrameRef frame, WKIn
 typedef void (*WKPageValidateCommandCallback)(WKStringRef command, bool isEnabled, int32_t state, WKErrorRef, void* context);
 WK_EXPORT void WKPageValidateCommand(WKPageRef page, WKStringRef command, void* context, WKPageValidateCommandCallback callback);
 WK_EXPORT void WKPageExecuteCommand(WKPageRef page, WKStringRef command);
+
+WK_EXPORT void WKPagePostMessageToInjectedBundle(WKPageRef page, WKStringRef messageName, WKTypeRef messageBody);
 
 #ifdef __cplusplus
 }

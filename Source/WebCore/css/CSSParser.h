@@ -53,6 +53,7 @@ class CSSValue;
 class CSSValueList;
 class CSSWrapShape;
 class Document;
+class Element;
 class MediaQueryExp;
 class MediaQuerySet;
 class StyleKeyframe;
@@ -63,6 +64,10 @@ class StyleRuleKeyframes;
 class StyleKeyframe;
 class StyleSheetContents;
 class StyledElement;
+
+#if ENABLE(CSS_SHADERS)
+class WebKitCSSMixFunctionValue;
+#endif
 
 class CSSParser {
 public:
@@ -79,11 +84,12 @@ public:
     static PassRefPtr<CSSValueList> parseFontFaceValue(const AtomicString&);
     PassRefPtr<CSSPrimitiveValue> parseValidPrimitive(int ident, CSSParserValue*);
     bool parseDeclaration(StylePropertySet*, const String&, PassRefPtr<CSSRuleSourceData>, StyleSheetContents* contextStyleSheet);
+    static PassRefPtr<StylePropertySet> parseInlineStyleDeclaration(const String&, Element*);
     PassOwnPtr<MediaQuery> parseMediaQuery(const String&);
 
     void addProperty(CSSPropertyID, PassRefPtr<CSSValue>, bool important, bool implicit = false);
     void rollbackLastProperties(int num);
-    bool hasProperties() const { return !m_parsedProperties.isEmpty(); }
+    bool hasProperties() const { return !m_parsedProperties->isEmpty(); }
 
     bool parseValue(CSSPropertyID, bool important);
     bool parseShorthand(CSSPropertyID, const StylePropertyShorthand&, bool important);
@@ -213,15 +219,24 @@ public:
     PassRefPtr<CSSValueList> parseFilter();
     PassRefPtr<WebKitCSSFilterValue> parseBuiltinFilterArguments(CSSParserValueList*, WebKitCSSFilterValue::FilterOperationType);
 #if ENABLE(CSS_SHADERS)
+    PassRefPtr<WebKitCSSMixFunctionValue> parseMixFunction(CSSParserValue*);
     PassRefPtr<WebKitCSSFilterValue> parseCustomFilter(CSSParserValue*);
+    PassRefPtr<CSSValueList> parseCustomFilterTransform(CSSParserValueList*);
 #endif
 #endif
 
+    static bool isBlendMode(int ident);
+    static bool isCompositeOperator(int ident);
+
     PassRefPtr<CSSValueList> parseTransform();
+    PassRefPtr<CSSValue> parseTransformValue(CSSParserValue*);
     bool parseTransformOrigin(CSSPropertyID propId, CSSPropertyID& propId1, CSSPropertyID& propId2, CSSPropertyID& propId3, RefPtr<CSSValue>&, RefPtr<CSSValue>&, RefPtr<CSSValue>&);
     bool parsePerspectiveOrigin(CSSPropertyID propId, CSSPropertyID& propId1, CSSPropertyID& propId2,  RefPtr<CSSValue>&, RefPtr<CSSValue>&);
 
     bool parseTextEmphasisStyle(bool important);
+
+    void addTextDecorationProperty(CSSPropertyID, PassRefPtr<CSSValue>, bool important);
+    bool parseTextDecoration(CSSPropertyID propId, bool important);
 
     bool parseLineBoxContain(bool important);
     bool parseCalculation(CSSParserValue*, CalculationPermittedValueRange);
@@ -236,13 +251,11 @@ public:
 
     bool parseFontVariantLigatures(bool important);
 
-    int yyparse();
-
     CSSParserSelector* createFloatingSelector();
     PassOwnPtr<CSSParserSelector> sinkFloatingSelector(CSSParserSelector*);
 
-    Vector<OwnPtr<CSSParserSelector> >* createFloatingSelectorVector();
-    PassOwnPtr<Vector<OwnPtr<CSSParserSelector> > > sinkFloatingSelectorVector(Vector<OwnPtr<CSSParserSelector> >*);
+    CSSSelectorVector* createFloatingSelectorVector();
+    PassOwnPtr<CSSSelectorVector> sinkFloatingSelectorVector(CSSSelectorVector*);
 
     CSSParserValueList* createFloatingValueList();
     PassOwnPtr<CSSParserValueList> sinkFloatingValueList(CSSParserValueList*);
@@ -260,10 +273,10 @@ public:
     typedef Vector<RefPtr<StyleRuleBase> > RuleList;
     StyleRuleBase* createMediaRule(MediaQuerySet*, RuleList*);
     RuleList* createRuleList();
-    StyleRuleBase* createStyleRule(Vector<OwnPtr<CSSParserSelector> >* selectors);
+    StyleRuleBase* createStyleRule(CSSSelectorVector* selectors);
     StyleRuleBase* createFontFaceRule();
     StyleRuleBase* createPageRule(PassOwnPtr<CSSParserSelector> pageSelector);
-    StyleRuleBase* createRegionRule(Vector<OwnPtr<CSSParserSelector> >* regionSelector, RuleList* rules);
+    StyleRuleBase* createRegionRule(CSSSelectorVector* regionSelector, RuleList* rules);
     StyleRuleBase* createMarginAtRule(CSSSelector::MarginBoxType);
     void startDeclarationsForMarginBox();
     void endDeclarationsForMarginBox();
@@ -286,10 +299,10 @@ public:
 
     void invalidBlockHit();
 
-    Vector<OwnPtr<CSSParserSelector> >* reusableSelectorVector() { return &m_reusableSelectorVector; }
+    CSSSelectorVector* selectorVector() { return m_selectorVector.get(); }
 
-    void setReusableRegionSelectorVector(Vector<OwnPtr<CSSParserSelector> >* selectors);
-    Vector<OwnPtr<CSSParserSelector> >* reusableRegionSelectorVector() { return &m_reusableRegionSelectorVector; }
+    void setReusableRegionSelectorVector(CSSSelectorVector* selectors);
+    CSSSelectorVector* reusableRegionSelectorVector() { return &m_reusableRegionSelectorVector; }
 
     void updateLastSelectorLineAndPosition();
     void updateLastMediaLine(MediaQuerySet*);
@@ -307,8 +320,9 @@ public:
     RefPtr<StyleKeyframe> m_keyframe;
     OwnPtr<MediaQuery> m_mediaQuery;
     OwnPtr<CSSParserValueList> m_valueList;
+
     typedef Vector<CSSProperty, 256> ParsedPropertyVector;
-    ParsedPropertyVector m_parsedProperties;
+    OwnPtr<ParsedPropertyVector> m_parsedProperties;
     CSSSelectorList* m_selectorListForParseSelector;
 
     unsigned m_numParsedPropertiesBeforeMarginBox;
@@ -390,6 +404,7 @@ private:
     bool parseGeneratedImage(CSSParserValueList*, RefPtr<CSSValue>&);
 
     bool parseValue(StylePropertySet*, CSSPropertyID, const String&, bool important, StyleSheetContents* contextStyleSheet);
+    PassRefPtr<StylePropertySet> parseDeclaration(const String&, StyleSheetContents* contextStyleSheet);
 
     enum SizeParameterType {
         None,
@@ -430,7 +445,7 @@ private:
     Vector<RefPtr<MediaQuerySet> > m_parsedMediaQuerySets;
     Vector<OwnPtr<RuleList> > m_parsedRuleLists;
     HashSet<CSSParserSelector*> m_floatingSelectors;
-    HashSet<Vector<OwnPtr<CSSParserSelector> >*> m_floatingSelectorVectors;
+    HashSet<CSSSelectorVector*> m_floatingSelectorVectors;
     HashSet<CSSParserValueList*> m_floatingValueLists;
     HashSet<CSSParserFunction*> m_floatingFunctions;
 
@@ -440,8 +455,8 @@ private:
 
     OwnPtr<Vector<RefPtr<StyleKeyframe> > > m_floatingKeyframeVector;
 
-    Vector<OwnPtr<CSSParserSelector> > m_reusableSelectorVector;
-    Vector<OwnPtr<CSSParserSelector> > m_reusableRegionSelectorVector;
+    OwnPtr<CSSSelectorVector> m_selectorVector;
+    CSSSelectorVector m_reusableRegionSelectorVector;
 
     RefPtr<CSSCalcValue> m_parsedCalculation;
 

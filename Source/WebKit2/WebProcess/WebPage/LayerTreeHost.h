@@ -73,6 +73,7 @@ public:
     virtual void setNonCompositedContentsNeedDisplay(const WebCore::IntRect&) = 0;
     virtual void scrollNonCompositedContents(const WebCore::IntRect& scrollRect, const WebCore::IntSize& scrollOffset) = 0;
     virtual void forceRepaint() = 0;
+    virtual bool forceRepaintAsync(uint64_t callbackID) { return false; }
     virtual void sizeDidChange(const WebCore::IntSize& newSize) = 0;
     virtual void deviceScaleFactorDidChange() = 0;
 
@@ -85,7 +86,7 @@ public:
     virtual void pauseRendering() { }
     virtual void resumeRendering() { }
 
-#if USE(UI_SIDE_COMPOSITING)
+#if USE(COORDINATED_GRAPHICS)
     virtual void setVisibleContentsRect(const WebCore::IntRect&, float scale, const WebCore::FloatPoint&) { }
     virtual void setVisibleContentsRectForLayer(int layerID, const WebCore::IntRect&) { }
     virtual void renderNextFrame() { }
@@ -105,7 +106,7 @@ public:
     virtual WebCore::GraphicsDeviceAdapter* graphicsDeviceAdapter() const { return 0; }
 #endif
 
-#if USE(UI_SIDE_COMPOSITING)
+#if USE(COORDINATED_GRAPHICS)
     virtual void scheduleAnimation() = 0;
 #endif
 
@@ -114,12 +115,12 @@ protected:
 
     WebPage* m_webPage;
 
-#if USE(UI_SIDE_COMPOSITING)
+#if USE(COORDINATED_GRAPHICS)
     bool m_waitingForUIProcess;
 #endif
 };
 
-#if !PLATFORM(WIN) && !PLATFORM(QT)
+#if !PLATFORM(WIN) && !USE(COORDINATED_GRAPHICS)
 inline bool LayerTreeHost::supportsAcceleratedCompositing()
 {
     return true;

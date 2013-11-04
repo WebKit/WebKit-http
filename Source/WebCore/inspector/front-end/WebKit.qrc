@@ -15,6 +15,7 @@
     <file>BreakpointsSidebarPane.js</file>
     <file>CallStackSidebarPane.js</file>
     <file>Checkbox.js</file>
+    <file>CodeMirrorTextEditor.js</file>
     <file>Color.js</file>
     <file>CompilerScriptMapping.js</file>
     <file>ConsoleMessage.js</file>
@@ -32,12 +33,19 @@
     <file>CSSKeywordCompletions.js</file>
     <file>CSSSelectorProfileView.js</file>
     <file>CSSStyleModel.js</file>
+    <file>cm/codemirror.css</file>
+    <file>cm/codemirror.js</file>
+    <file>cm/css.js</file>
+    <file>cm/htmlmixed.js</file>
+    <file>cm/javascript.js</file>
+    <file>cm/xml.js</file>
     <file>Database.js</file>
     <file>DatabaseQueryView.js</file>
     <file>DatabaseTableView.js</file>
     <file>DataGrid.js</file>
     <file>DebuggerModel.js</file>
     <file>DebuggerScriptMapping.js</file>
+    <file>DefaultTextEditor.js</file>
     <file>Dialog.js</file>
     <file>DirectoryContentView.js</file>
     <file>DOMAgent.js</file>
@@ -49,6 +57,7 @@
     <file>DOMSyntaxHighlighter.js</file>
     <file>Drawer.js</file>
     <file>ElementsPanel.js</file>
+    <file>ElementsPanelDescriptor.js</file>
     <file>ElementsTreeOutline.js</file>
     <file>EmptyView.js</file>
     <file>EventListenersSidebarPane.js</file>
@@ -62,6 +71,7 @@
     <file>FileManager.js</file>
     <file>FileSystemModel.js</file>
     <file>FileSystemView.js</file>
+    <file>FileUtils.js</file>
     <file>FilteredItemSelectionDialog.js</file>
     <file>FontView.js</file>
     <file>GoToLineDialog.js</file>
@@ -93,6 +103,7 @@
     <file>Linkifier.js</file>
     <file>MemoryStatistics.js</file>
     <file>MetricsSidebarPane.js</file>
+    <file>NativeBreakpointsSidebarPane.js</file>
     <file>NativeMemorySnapshotView.js</file>
     <file>NavigatorOverlayController.js</file>
     <file>NavigatorView.js</file>
@@ -100,18 +111,21 @@
     <file>NetworkLog.js</file>
     <file>NetworkManager.js</file>
     <file>NetworkPanel.js</file>
+    <file>NetworkPanelDescriptor.js</file>
     <file>NetworkRequest.js</file>
     <file>Object.js</file>
     <file>ObjectPopoverHelper.js</file>
     <file>ObjectPropertiesSection.js</file>
     <file>Panel.js</file>
     <file>PanelEnablerView.js</file>
+    <file>ParsedURL.js</file>
     <file>Placard.js</file>
     <file>Popover.js</file>
     <file>PresentationConsoleMessageHelper.js</file>
     <file>ProfileDataGridTree.js</file>
     <file>ProfileLauncherView.js</file>
     <file>ProfilesPanel.js</file>
+    <file>ProgressBar.js</file>
     <file>PropertiesSection.js</file>
     <file>PropertiesSidebarPane.js</file>
     <file>RawSourceCode.js</file>
@@ -140,6 +154,7 @@
     <file>ScriptFormatterWorker.js</file>
     <file>ScriptSnippetModel.js</file>
     <file>ScriptsPanel.js</file>
+    <file>ScriptsPanelDescriptor.js</file>
     <file>ScriptsNavigator.js</file>
     <file>ScriptsSearchScope.js</file>
     <file>SearchController.js</file>
@@ -151,6 +166,7 @@
     <file>SidebarOverlay.js</file>
     <file>SidebarPane.js</file>
     <file>SidebarTreeElement.js</file>
+    <file>SnippetJavaScriptSourceFrame.js</file>
     <file>SnippetStorage.js</file>
     <file>SoftContextMenu.js</file>
     <file>SourceCSSTokenizer.js</file>
@@ -162,7 +178,10 @@
     <file>Spectrum.js</file>
     <file>SplitView.js</file>
     <file>StatusBarButton.js</file>
-    <file>StylesPanel.js</file>
+    <file>StyleSheetOutlineDialog.js</file>
+    <file>StyleSource.js</file>
+    <file>StylesSourceMapping.js</file>
+    <file>StylesUISourceCodeProvider.js</file>
     <file>StylesSidebarPane.js</file>
     <file>TabbedEditorContainer.js</file>
     <file>TabbedPane.js</file>
@@ -183,18 +202,22 @@
     <file>treeoutline.js</file>
     <file>UISourceCode.js</file>
     <file>UISourceCodeFrame.js</file>
+    <file>UIString.js</file>
     <file>UIUtils.js</file>
     <file>UserAgentSupport.js</file>
     <file>UserMetrics.js</file>
     <file>utilities.js</file>
     <file>View.js</file>
     <file>WatchExpressionsSidebarPane.js</file>
+    <file>WebGLProfileView.js</file>
     <file>WorkerManager.js</file>
     <file>WorkersSidebarPane.js</file>
     <file>Workspace.js</file>
     <file>UglifyJS/parse-js.js</file>
     <file>auditsPanel.css</file>
+    <file>breadcrumbList.css</file>
     <file>dataGrid.css</file>
+    <file>cmdevtools.css</file>
     <file>dialog.css</file>
     <file>elementsPanel.css</file>
     <file>filteredItemSelectionDialog.css</file>
@@ -220,6 +243,7 @@
     <file>textEditor.css</file>
     <file>textPrompt.css</file>
     <file>timelinePanel.css</file>
+    <file>webGLProfiler.css</file>
     <file>Images/applicationCache.png</file>
     <file>Images/back.png</file>
     <file>Images/breakpointBorder.png</file>

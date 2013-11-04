@@ -58,6 +58,8 @@ enum FormType { // KEEP IN SYNC WITH edjeGroupFromFormType()
     SearchFieldCancelButton,
     SliderVertical,
     SliderHorizontal,
+    SliderThumbVertical,
+    SliderThumbHorizontal,
 #if ENABLE(VIDEO)
     PlayPauseButton,
     MuteUnMuteButton,
@@ -164,7 +166,10 @@ public:
 #if ENABLE(DATALIST_ELEMENT)
     virtual IntSize sliderTickSize() const OVERRIDE;
     virtual int sliderTickOffsetFromTrackCenter() const OVERRIDE;
+    virtual LayoutUnit sliderTickSnappingThreshold() const OVERRIDE;
 #endif
+
+    virtual bool supportsDataListUI(const AtomicString&) const OVERRIDE;
 
     virtual bool paintSliderThumb(RenderObject*, const PaintInfo&, const IntRect&);
 

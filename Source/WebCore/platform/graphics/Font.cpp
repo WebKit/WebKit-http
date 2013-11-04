@@ -39,6 +39,16 @@
 using namespace WTF;
 using namespace Unicode;
 
+namespace WTF {
+
+// allow compilation of OwnPtr<TextLayout> in source files that don't have access to the TextLayout class definition
+template <> void deleteOwnedPtr<WebCore::TextLayout>(WebCore::TextLayout* ptr)
+{
+    WebCore::Font::deleteLayout(ptr);
+}
+
+}
+
 namespace WebCore {
 
 const uint8_t Font::s_roundingHackCharacterTable[256] = {
@@ -197,6 +207,25 @@ float Font::width(const TextRun& run, int& charsConsumed, String& glyphName) con
     return floatWidthForComplexText(run);
 }
 
+#if !(PLATFORM(MAC) || (PLATFORM(CHROMIUM) && OS(DARWIN)))
+
+PassOwnPtr<TextLayout> Font::createLayout(RenderText*, float, bool) const
+{
+    return nullptr;
+}
+
+void Font::deleteLayout(TextLayout*)
+{
+}
+
+float Font::width(TextLayout&, unsigned, unsigned)
+{
+    ASSERT_NOT_REACHED();
+    return 0;
+}
+
+#endif
+
 FloatRect Font::selectionRectForText(const TextRun& run, const FloatPoint& point, int h, int from, int to) const
 {
     to = (to == -1 ? run.length() : to);
@@ -257,11 +286,6 @@ Font::CodePath Font::codePath(const TextRun& run) const
 #if ENABLE(SVG_FONTS)
     if (run.renderingContext())
         return Simple;
-#endif
-
-#if PLATFORM(QT) && !HAVE(QRAWFONT)
-    if (run.expansion() || run.rtl() || isSmallCaps() || wordSpacing() || letterSpacing())
-        return Complex;
 #endif
 
     if (m_fontDescription.featureSettings() && m_fontDescription.featureSettings()->size() > 0)

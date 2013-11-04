@@ -61,7 +61,7 @@ public:
     virtual void reset();
 
     unsigned short type() const { return m_type; }
-    void setType(unsigned short);
+    void setType(unsigned short, ExceptionCode&);
 
     AudioParam* frequency() { return m_frequency.get(); }
     AudioParam* detune() { return m_detune.get(); }
@@ -99,6 +99,12 @@ private:
     AudioFloatArray m_detuneValues;
     
     RefPtr<WaveTable> m_waveTable;
+
+    // Cache the wave tables for different waveform types, except CUSTOM.
+    static WaveTable* s_waveTableSine;
+    static WaveTable* s_waveTableSquare;
+    static WaveTable* s_waveTableSawtooth;
+    static WaveTable* s_waveTableTriangle;
 };
 
 } // namespace WebCore

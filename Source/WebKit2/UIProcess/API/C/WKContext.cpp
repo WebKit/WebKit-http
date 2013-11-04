@@ -61,11 +61,6 @@ WKContextRef WKContextCreateWithInjectedBundlePath(WKStringRef pathRef)
     return toAPI(context.release().leakRef());
 }
 
-WKContextRef WKContextGetSharedThreadContext()
-{
-    return toAPI(WebContext::sharedThreadContext());
-}
-
 void WKContextSetInjectedBundleClient(WKContextRef contextRef, const WKContextInjectedBundleClient* wkClient)
 {
     toImpl(contextRef)->initializeInjectedBundleClient(wkClient);
@@ -123,6 +118,16 @@ void WKContextSetCacheModel(WKContextRef contextRef, WKCacheModel cacheModel)
 WKCacheModel WKContextGetCacheModel(WKContextRef contextRef)
 {
     return toAPI(toImpl(contextRef)->cacheModel());
+}
+
+void WKContextSetProcessModel(WKContextRef contextRef, WKProcessModel processModel)
+{
+    toImpl(contextRef)->setProcessModel(toProcessModel(processModel));
+}
+
+WKProcessModel WKContextGetProcessModel(WKContextRef contextRef)
+{
+    return toAPI(toImpl(contextRef)->processModel());
 }
 
 void WKContextSetAlwaysUsesComplexTextCodePath(WKContextRef contextRef, bool alwaysUseComplexTextCodePath)

@@ -23,23 +23,12 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-enum ProcessModel {
-    kProcessModelSharedSecondaryThread,
-    kProcessModelSharedSecondaryProcess
-};
-typedef unsigned long ProcessModel;
-
 @interface BrowserAppDelegate : NSObject <NSApplicationDelegate> {
-    ProcessModel _currentProcessModel;
-    WKContextRef _threadContext;
     WKContextRef _processContext;
     WKPageGroupRef _pageGroup;
+    NSMutableSet *_browserWindows;
 }
 
-- (WKContextRef)getCurrentContext;
-
-- (IBAction)setSharedProcessProcessModel:(id)sender;
-- (IBAction)setSharedThreadProcessModel:(id)sender;
-- (IBAction)showStatisticsWindow:(id)sender;
+- (void)browserWindowWillClose:(NSWindow *)window;
 
 @end

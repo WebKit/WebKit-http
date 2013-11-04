@@ -30,42 +30,35 @@
 import os
 import os.path
 import generate_protocol_externs
+import shutil
+import sys
+import tempfile
 
 inspector_path = "Source/WebCore/inspector"
 inspector_frontend_path = inspector_path + "/front-end"
 
 generate_protocol_externs.generate_protocol_externs(inspector_frontend_path + "/protocol-externs.js", inspector_path + "/Inspector.json")
 
-externs = ["externs.js", "protocol-externs.js"]
 jsmodule_name_prefix = "jsmodule_"
 modules = [
     {
-        "target_name": "util",
+        "name": "common",
         "dependencies": [],
         "sources": [
-            "DOMExtension.js",
-            "utilities.js",
-            "treeoutline.js",
-        ]
-    },
-    {
-        "target_name": "common",
-        "dependencies": ["util"],
-        "sources": [
+            "Color.js",
             "Object.js",
+            "ParsedURL.js",
             "Settings.js",
+            "UIString.js",
             "UserMetrics.js",
-            "HandlerRegistry.js",
-            "InspectorFrontendHostStub.js",
+            "utilities.js",
         ]
     },
     {
-        "target_name": "sdk",
+        "name": "sdk",
         "dependencies": ["common"],
         "sources": [
-            "InspectorBackend.js",
             "ApplicationCacheModel.js",
-            "Color.js",
             "CompilerScriptMapping.js",
             "ConsoleModel.js",
             "ContentProvider.js",
@@ -82,19 +75,24 @@ modules = [
             "DebuggerScriptMapping.js",
             "FileManager.js",
             "FileSystemModel.js",
+            "FileUtils.js",
             "HAREntry.js",
             "IndexedDBModel.js",
+            "InspectorBackend.js",
+            "JavaScriptSource.js",
             "Linkifier.js",
             "NetworkLog.js",
-            "Placard.js",
+            "PresentationConsoleMessageHelper.js",
             "SASSSourceMapping.js",
             "Script.js",
             "ScriptFormatter.js",
             "ScriptSnippetModel.js",
             "SnippetStorage.js",
             "SourceMapping.js",
+            "StyleSource.js",
+            "StylesSourceMapping.js",
+            "StylesUISourceCodeProvider.js",
             "TimelineManager.js",
-            "TimelineModel.js",
             "RawSourceCode.js",
             "RemoteObject.js",
             "Resource.js",
@@ -107,27 +105,31 @@ modules = [
             "UISourceCode.js",
             "UserAgentSupport.js",
             "Workspace.js",
+            "protocol-externs.js",
         ]
     },
     {
-        "target_name": "ui",
+        "name": "ui",
         "dependencies": ["common"],
         "sources": [
-            "AdvancedSearchController.js",
             "Checkbox.js",
             "ContextMenu.js",
-            "CookiesTable.js",
+            "DOMExtension.js",
             "DOMSyntaxHighlighter.js",
             "DataGrid.js",
+            "DefaultTextEditor.js",
             "Dialog.js",
             "Drawer.js",
             "EmptyView.js",
+            "GoToLineDialog.js",
             "HelpScreen.js",
             "InspectorView.js",
             "KeyboardShortcut.js",
             "Panel.js",
             "PanelEnablerView.js",
+            "Placard.js",
             "Popover.js",
+            "ProgressBar.js",
             "PropertiesSection.js",
             "SearchController.js",
             "Section.js",
@@ -146,50 +148,50 @@ modules = [
             "TextEditorHighlighter.js",
             "TextEditorModel.js",
             "TextPrompt.js",
+            "TimelineGrid.js",
             "Toolbar.js",
             "UIUtils.js",
             "View.js",
+            "treeoutline.js",
         ]
     },
     {
-        "target_name": "components",
+        "name": "components",
         "dependencies": ["sdk", "ui"],
         "sources": [
+            "AdvancedSearchController.js",
+            "HandlerRegistry.js",
             "ConsoleMessage.js",
-            "BreakpointsSidebarPane.js",
+            "CookiesTable.js",
             "DOMBreakpointsSidebarPane.js",
             "DOMPresentationUtils.js",
             "ElementsTreeOutline.js",
-            "EventListenersSidebarPane.js",
-            "FilteredItemSelectionDialog.js",
-            "GoToLineDialog.js",
-            "NavigatorOverlayController.js",
-            "NavigatorView.js",
-            "JavaScriptContextManager.js",
-            "JavaScriptSource.js",
-            "ObjectPopoverHelper.js",
-            "ObjectPropertiesSection.js",
-            "PropertiesSidebarPane.js",
-            "SourceFrame.js",
-            "TimelineGrid.js",
-            "UISourceCodeFrame.js",
-        ]
-    },
-    {
-        "target_name": "elements",
-        "dependencies": ["components"],
-        "sources": [
-            "StylesSidebarPane.js",
-            "MetricsSidebarPane.js",
-            "ElementsPanel.js",
-        ]
-    },
-    {
-        "target_name": "network",
-        "dependencies": ["components"],
-        "sources": [
             "FontView.js",
             "ImageView.js",
+            "NativeBreakpointsSidebarPane.js",
+            "JavaScriptContextManager.js",
+            "ObjectPopoverHelper.js",
+            "ObjectPropertiesSection.js",
+            "SourceFrame.js",
+            "ResourceView.js",
+        ]
+    },
+    {
+        "name": "elements",
+        "dependencies": ["components"],
+        "sources": [
+            "ElementsPanel.js",
+            "ElementsPanelDescriptor.js",
+            "EventListenersSidebarPane.js",
+            "MetricsSidebarPane.js",
+            "PropertiesSidebarPane.js",
+            "StylesSidebarPane.js",
+        ]
+    },
+    {
+        "name": "network",
+        "dependencies": ["components"],
+        "sources": [
             "NetworkItemView.js",
             "RequestCookiesView.js",
             "RequestHeadersView.js",
@@ -199,13 +201,13 @@ modules = [
             "RequestResponseView.js",
             "RequestTimingView.js",
             "RequestView.js",
-            "ResourceView.js",
             "ResourceWebSocketFrameView.js",
             "NetworkPanel.js",
+            "NetworkPanelDescriptor.js",
         ]
     },
     {
-        "target_name": "resources",
+        "name": "resources",
         "dependencies": ["components"],
         "sources": [
             "ApplicationCacheItemsView.js",
@@ -221,25 +223,31 @@ modules = [
         ]
     },
     {
-        "target_name": "scripts",
+        "name": "scripts",
         "dependencies": ["components"],
         "sources": [
+            "BreakpointsSidebarPane.js",
             "CallStackSidebarPane.js",
-            "ScopeChainSidebarPane.js",
+            "FilteredItemSelectionDialog.js",
             "JavaScriptSourceFrame.js",
-            "PresentationConsoleMessageHelper.js",
+            "NavigatorOverlayController.js",
+            "NavigatorView.js",
             "RevisionHistoryView.js",
+            "ScopeChainSidebarPane.js",
             "ScriptsNavigator.js",
             "ScriptsPanel.js",
+            "ScriptsPanelDescriptor.js",
             "ScriptsSearchScope.js",
+            "SnippetJavaScriptSourceFrame.js",
+            "StyleSheetOutlineDialog.js",
             "TabbedEditorContainer.js",
+            "UISourceCodeFrame.js",
             "WatchExpressionsSidebarPane.js",
-            "WorkerManager.js",
             "WorkersSidebarPane.js",
         ]
     },
     {
-        "target_name": "console",
+        "name": "console",
         "dependencies": ["components"],
         "sources": [
             "ConsoleView.js",
@@ -247,10 +255,11 @@ modules = [
         ]
     },
     {
-        "target_name": "timeline",
+        "name": "timeline",
         "dependencies": ["components"],
         "sources": [
             "MemoryStatistics.js",
+            "TimelineModel.js",
             "TimelineOverviewPane.js",
             "TimelinePanel.js",
             "TimelinePresentationModel.js",
@@ -258,7 +267,7 @@ modules = [
         ]
     },
     {
-        "target_name": "audits",
+        "name": "audits",
         "dependencies": ["components"],
         "sources": [
             "AuditCategories.js",
@@ -270,14 +279,7 @@ modules = [
         ]
     },
     {
-        "target_name": "styles",
-        "dependencies": ["components"],
-        "sources": [
-            "StylesPanel.js",
-        ]
-    },
-    {
-        "target_name": "extensions",
+        "name": "extensions",
         "dependencies": ["components"],
         "sources": [
             "ExtensionAPI.js",
@@ -289,21 +291,28 @@ modules = [
         ]
     },
     {
-        "target_name": "inspector",
+        "name": "settings",
         "dependencies": ["components", "extensions"],
         "sources": [
             "SettingsScreen.js",
         ]
     },
     {
-        "target_name": "tests",
+        "name": "workers",
+        "dependencies": ["components"],
+        "sources": [
+            "WorkerManager.js",
+        ]
+    },
+    {
+        "name": "tests",
         "dependencies": ["components"],
         "sources": [
             "TestController.js",
         ]
     },
     {
-        "target_name": "profiler",
+        "name": "profiler",
         "dependencies": ["components"],
         "sources": [
             "BottomUpProfileDataGridTree.js",
@@ -322,35 +331,33 @@ modules = [
             "ProfilesPanel.js",
             "ProfileLauncherView.js",
             "TopDownProfileDataGridTree.js",
+            "WebGLProfileView.js",
         ]
     },
-#    {
-#        "target_name": "tokenizers",
-#        "dependencies": ["components"],
-#        "sources": [
-#            "SourceCSSTokenizer.js",
-#            "SourceHTMLTokenizer.js",
-#            "SourceJavaScriptTokenizer.js",
-#        ]
-#    },
+    {
+        "name": "host_stub",
+        "dependencies": ["ui"],
+        "sources": [
+            "InspectorFrontendHostStub.js",
+        ]
+    },
 ]
 
-# To be compiled...
-#
-# [Misc]
-# inspector
-# SettingsScreen
-# JavaScriptFormatter
-# ScriptFormatterWorker
-
-compiler_command = "java -jar ~/closure/compiler.jar --summary_detail_level 3 --compilation_level SIMPLE_OPTIMIZATIONS --warning_level VERBOSE --language_in ECMASCRIPT5 --accept_const_keyword \\\n"
-
-command = compiler_command
-for extern in externs:
-    command += "    --externs " + inspector_frontend_path + "/" + extern
-    command += " \\\n"
+modules_by_name = {}
 for module in modules:
-    command += "    --module " + jsmodule_name_prefix + module["target_name"] + ":"
+    modules_by_name[module["name"]] = module
+
+
+def dump_module(name, recursively, processed_modules):
+    if name in processed_modules:
+        return ""
+    processed_modules[name] = True
+    module = modules_by_name[name]
+    command = ""
+    if recursively:
+        for dependency in module["dependencies"]:
+            command += dump_module(dependency, recursively, processed_modules)
+    command += " \\\n    --module " + jsmodule_name_prefix + module["name"] + ":"
     command += str(len(module["sources"]))
     firstDependency = True
     for dependency in module["dependencies"]:
@@ -360,20 +367,54 @@ for module in modules:
             command += ","
         firstDependency = False
         command += jsmodule_name_prefix + dependency
-    command += " \\\n"
     for script in module["sources"]:
-        command += "        --js " + inspector_frontend_path + "/" + script
-        command += " \\\n"
-command += "\n"
-os.system(command)
+        command += " \\\n        --js " + inspector_frontend_path + "/" + script
+    return command
 
-print "Compiling InjectedScriptSource.js..."
-os.system("echo \"var injectedScriptValue = \" > " + inspector_path + "/" + "InjectedScriptSourceTmp.js")
-os.system("cat  " + inspector_path + "/" + "InjectedScriptSource.js" + " >> " + inspector_path + "/" + "InjectedScriptSourceTmp.js")
-command = compiler_command
-command += "    --externs " + inspector_path + "/" + "InjectedScriptExterns.js" + " \\\n"
-command += "    --module " + jsmodule_name_prefix + "injected_script" + ":" + "1" + " \\\n"
-command += "        --js " + inspector_path + "/" + "InjectedScriptSourceTmp.js" + " \\\n"
-command += "\n"
-os.system(command)
-os.system("rm " + inspector_path + "/" + "InjectedScriptSourceTmp.js")
+modules_dir = tempfile.mkdtemp()
+compiler_command = "java -jar ~/closure/compiler.jar --summary_detail_level 3 --compilation_level SIMPLE_OPTIMIZATIONS --warning_level VERBOSE --language_in ECMASCRIPT5 --accept_const_keyword --module_output_path_prefix %s/ \\\n" % modules_dir
+
+process_recursively = len(sys.argv) > 1
+if process_recursively:
+    module_name = sys.argv[1]
+    if module_name != "all":
+        modules = []
+        for i in range(1, len(sys.argv)):
+            modules.append(modules_by_name[sys.argv[i]])
+    for module in modules:
+        command = compiler_command
+        command += "    --externs " + inspector_frontend_path + "/externs.js"
+        command += dump_module(module["name"], True, {})
+        print "Compiling \"" + module["name"] + "\""
+        os.system(command)
+else:
+    command = compiler_command
+    command += "    --externs " + inspector_frontend_path + "/externs.js"
+    for module in modules:
+        command += dump_module(module["name"], False, {})
+    os.system(command)
+
+if not process_recursively:
+    print "Compiling InjectedScriptSource.js..."
+    os.system("echo \"var injectedScriptValue = \" > " + inspector_path + "/" + "InjectedScriptSourceTmp.js")
+    os.system("cat  " + inspector_path + "/" + "InjectedScriptSource.js" + " >> " + inspector_path + "/" + "InjectedScriptSourceTmp.js")
+    command = compiler_command
+    command += "    --externs " + inspector_path + "/" + "InjectedScriptExterns.js" + " \\\n"
+    command += "    --module " + jsmodule_name_prefix + "injected_script" + ":" + "1" + " \\\n"
+    command += "        --js " + inspector_path + "/" + "InjectedScriptSourceTmp.js" + " \\\n"
+    command += "\n"
+    os.system(command)
+    os.system("rm " + inspector_path + "/" + "InjectedScriptSourceTmp.js")
+
+    print "Compiling InjectedScriptWebGLModuleSource.js..."
+    os.system("echo \"var injectedScriptWebGLModuleValue = \" > " + inspector_path + "/" + "InjectedScriptWebGLModuleSourceTmp.js")
+    os.system("cat  " + inspector_path + "/" + "InjectedScriptWebGLModuleSource.js" + " >> " + inspector_path + "/" + "InjectedScriptWebGLModuleSourceTmp.js")
+    command = compiler_command
+    command += "    --externs " + inspector_path + "/" + "InjectedScriptExterns.js" + " \\\n"
+    command += "    --module " + jsmodule_name_prefix + "injected_script" + ":" + "1" + " \\\n"
+    command += "        --js " + inspector_path + "/" + "InjectedScriptWebGLModuleSourceTmp.js" + " \\\n"
+    command += "\n"
+    os.system(command)
+    os.system("rm " + inspector_path + "/" + "InjectedScriptWebGLModuleSourceTmp.js")
+
+shutil.rmtree(modules_dir)

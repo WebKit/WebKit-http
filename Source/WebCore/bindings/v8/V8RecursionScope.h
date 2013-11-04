@@ -32,7 +32,7 @@
 #define V8RecursionScope_h
 
 #include "ScriptExecutionContext.h"
-#include "V8Binding.h"
+#include "V8PerIsolateData.h"
 #include <wtf/Noncopyable.h>
 
 namespace WebCore {
@@ -46,7 +46,7 @@ namespace WebCore {
 //
 // Debug-time checking of this is enforced via this class.
 //
-// Calls of type (1) should generally go through V8Proxy, as inspector
+// Calls of type (1) should generally go through ScriptController, as inspector
 // instrumentation is needed. Calls of type (2) should always stack-allocate a
 // V8RecursionScope in the same block as the call into script. Calls of type (3)
 // should stack allocate a V8RecursionScope::MicrotaskSuppression -- this
@@ -60,24 +60,24 @@ public:
     explicit V8RecursionScope(ScriptExecutionContext* context)
         : m_isDocumentContext(context && context->isDocument())
     {
-        V8BindingPerIsolateData::current()->incrementRecursionLevel();
+        V8PerIsolateData::current()->incrementRecursionLevel();
     }
 
     ~V8RecursionScope()
     {
-        if (!V8BindingPerIsolateData::current()->decrementRecursionLevel())
+        if (!V8PerIsolateData::current()->decrementRecursionLevel())
             didLeaveScriptContext();
     }
 
     static int recursionLevel()
     {
-        return V8BindingPerIsolateData::current()->recursionLevel();
+        return V8PerIsolateData::current()->recursionLevel();
     }
 
 #ifndef NDEBUG
     static bool properlyUsed()
     {
-        return recursionLevel() > 0 || V8BindingPerIsolateData::current()->internalScriptRecursionLevel() > 0;
+        return recursionLevel() > 0 || V8PerIsolateData::current()->internalScriptRecursionLevel() > 0;
     }
 #endif
 
@@ -86,14 +86,14 @@ public:
         MicrotaskSuppression()
         {
 #ifndef NDEBUG
-            V8BindingPerIsolateData::current()->incrementInternalScriptRecursionLevel();
+            V8PerIsolateData::current()->incrementInternalScriptRecursionLevel();
 #endif
         }
 
         ~MicrotaskSuppression()
         {
 #ifndef NDEBUG
-            V8BindingPerIsolateData::current()->decrementInternalScriptRecursionLevel();
+            V8PerIsolateData::current()->decrementInternalScriptRecursionLevel();
 #endif
         }
     };

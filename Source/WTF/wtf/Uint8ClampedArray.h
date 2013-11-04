@@ -28,7 +28,10 @@
 #ifndef Uint8ClampedArray_h
 #define Uint8ClampedArray_h
 
+#include <wtf/Platform.h>
+
 #include <wtf/Uint8Array.h>
+#include <wtf/MathExtras.h>
 
 namespace WTF {
 
@@ -100,7 +103,7 @@ void Uint8ClampedArray::set(unsigned index, double value)
         value = 0;
     else if (value > 255)
         value = 255;
-    data()[index] = static_cast<unsigned char>(value + 0.5);
+    data()[index] = static_cast<unsigned char>(lrint(value));
 }
 
 Uint8ClampedArray::Uint8ClampedArray(PassRefPtr<ArrayBuffer> buffer, unsigned byteOffset, unsigned length)

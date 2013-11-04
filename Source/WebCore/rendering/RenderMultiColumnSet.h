@@ -47,32 +47,48 @@ public:
     
     virtual bool isRenderMultiColumnSet() const OVERRIDE { return true; }
 
-    unsigned columnCount() const { return m_columnCount; }
-    LayoutUnit columnWidth() const { return m_columnWidth; }
-    LayoutUnit columnHeight() const { return m_columnHeight; }
+    unsigned computedColumnCount() const { return m_computedColumnCount; }
+    LayoutUnit computedColumnWidth() const { return m_computedColumnWidth; }
+    LayoutUnit computedColumnHeight() const { return m_computedColumnHeight; }
 
-    void setColumnWidthAndCount(LayoutUnit width, unsigned count)
+    void setComputedColumnWidthAndCount(LayoutUnit width, unsigned count)
     {
-        m_columnWidth = width;
-        m_columnCount = count;
+        m_computedColumnWidth = width;
+        m_computedColumnCount = count;
     }
-    void setColumnHeight(LayoutUnit height)
+    void setComputedColumnHeight(LayoutUnit height)
     {
-        m_columnHeight = height;
+        m_computedColumnHeight = height;
     }
 
 private:
     virtual void computeLogicalWidth() OVERRIDE;
     virtual void computeLogicalHeight() OVERRIDE;
 
-    virtual LayoutUnit logicalWidthForFlowThreadContent() const OVERRIDE { return m_columnWidth; }
-    virtual LayoutUnit logicalHeightForFlowThreadContent() const OVERRIDE { return m_columnHeight; } // FIXME: Will be wrong once we have multiple sets.
+    virtual void paintReplaced(PaintInfo&, const LayoutPoint& paintOffset) OVERRIDE;
+    virtual bool nodeAtPoint(const HitTestRequest&, HitTestResult&, const HitTestLocation&, const LayoutPoint& accumulatedOffset, HitTestAction) OVERRIDE;
 
+    virtual LayoutUnit pageLogicalWidth() const OVERRIDE { return m_computedColumnWidth; }
+    virtual LayoutUnit pageLogicalHeight() const OVERRIDE { return m_computedColumnHeight; }
+
+    // FIXME: This will change once we have column sets constrained by enclosing pages, etc.
+    virtual LayoutUnit logicalHeightOfAllFlowThreadContent() const OVERRIDE { return m_computedColumnHeight; }
+    
     virtual const char* renderName() const;
     
-    unsigned m_columnCount;
-    LayoutUnit m_columnWidth;
-    LayoutUnit m_columnHeight;
+    void paintColumnRules(PaintInfo&, const LayoutPoint& paintOffset);
+    void paintColumnContents(PaintInfo&, const LayoutPoint& paintOffset);
+
+    LayoutUnit columnGap() const;
+    LayoutRect columnRectAt(unsigned index) const;
+    unsigned columnCount() const;
+
+    LayoutRect flowThreadPortionRectAt(unsigned index) const;
+    LayoutRect flowThreadPortionOverflowRect(const LayoutRect& flowThreadPortion, unsigned index, unsigned colCount, int colGap) const;
+
+    unsigned m_computedColumnCount;
+    LayoutUnit m_computedColumnWidth;
+    LayoutUnit m_computedColumnHeight;
 };
 
 } // namespace WebCore

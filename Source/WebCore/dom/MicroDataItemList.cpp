@@ -40,8 +40,7 @@ using namespace HTMLNames;
 
 const String& MicroDataItemList::undefinedItemType()
 {
-    DEFINE_STATIC_LOCAL(String, undefinedItemTypeString, ("http://webkit.org/microdata/undefinedItemType"));
-    return undefinedItemTypeString;
+    return emptyString();
 }
 
 MicroDataItemList::MicroDataItemList(PassRefPtr<Node> rootNode, const String& typeNames)
@@ -65,7 +64,7 @@ bool MicroDataItemList::nodeMatches(Element* testNode) const
     if (!testElement->fastHasAttribute(itemscopeAttr) || testElement->fastHasAttribute(itempropAttr))
         return false;
 
-    if (m_originalTypeNames == undefinedItemType())
+    if (!m_typeNames.size())
         return true;
 
     return testElement->itemType()->tokens().containsAll(m_typeNames);

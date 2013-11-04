@@ -131,11 +131,8 @@ public:
     bool shouldSuppressNonVisibleRegularRenderJobs() const;
     bool shouldPerformRenderJobs() const;
     bool shouldPerformRegularRenderJobs() const;
-    void startRenderTimer();
-    void stopRenderTimer();
-    void renderOnTimer(WebCore::Timer<BackingStorePrivate>*);
-    void renderOnIdle();
-    bool willFireTimer();
+    void dispatchRenderJob();
+    void renderJob();
 
     // Set of helper methods for the scrollBackingStore() method.
     Platform::IntRect contentsRect() const;
@@ -337,6 +334,8 @@ public:
     BlackBerry::Platform::IntSize surfaceSize() const;
     BlackBerry::Platform::Graphics::Buffer* buffer() const;
 
+    void didRenderContent(const Platform::IntRect& renderedRect);
+
     static WebPage* s_currentBackingStoreOwner;
 
     unsigned m_suspendScreenUpdates;
@@ -364,15 +363,7 @@ public:
 
     Platform::IntRect m_visibleTileBufferRect;
 
-    // Last resort timer for rendering.
-    OwnPtr<WebCore::Timer<BackingStorePrivate> > m_renderTimer;
-
     pthread_mutex_t m_mutex;
-
-    int m_blitGeneration;
-    pthread_mutex_t m_blitGenerationLock;
-    pthread_cond_t m_blitGenerationCond;
-    struct timespec m_currentBlitEnd;
 
 #if USE(ACCELERATED_COMPOSITING)
     mutable bool m_needsDrawLayersOnCommit; // Not thread safe, WebKit thread only

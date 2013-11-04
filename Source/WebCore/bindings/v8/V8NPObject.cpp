@@ -34,15 +34,13 @@
 
 #include "HTMLPlugInElement.h"
 #include "NPV8Object.h"
-#include "SafeAllocation.h"
 #include "V8Binding.h"
 #include "V8DOMMap.h"
 #include "V8HTMLAppletElement.h"
 #include "V8HTMLEmbedElement.h"
 #include "V8HTMLObjectElement.h"
-#include "V8Helpers.h"
 #include "V8NPUtils.h"
-#include "V8Proxy.h"
+#include "V8ObjectConstructor.h"
 #include "npruntime_impl.h"
 #include "npruntime_priv.h"
 #include <wtf/OwnArrayPtr.h>
@@ -92,14 +90,14 @@ static v8::Handle<v8::Value> npObjectInvokeImpl(const v8::Arguments& args, Invok
         // The holder object is not a subtype of HTMLPlugInElement, it must be an NPObject which has three
         // internal fields.
         if (args.Holder()->InternalFieldCount() != npObjectInternalFieldCount)
-            return V8Proxy::throwError(V8Proxy::ReferenceError, "NPMethod called on non-NPObject", args.GetIsolate());
+            return throwError(ReferenceError, "NPMethod called on non-NPObject", args.GetIsolate());
 
         npObject = v8ObjectToNPObject(args.Holder());
     }
 
     // Verify that our wrapper wasn't using a NPObject which has already been deleted.
     if (!npObject || !_NPN_IsAlive(npObject))
-        return V8Proxy::throwError(V8Proxy::ReferenceError, "NPObject deleted", args.GetIsolate());
+        return throwError(ReferenceError, "NPObject deleted", args.GetIsolate());
 
     // Wrap up parameters.
     int numArgs = args.Length();
@@ -133,7 +131,7 @@ static v8::Handle<v8::Value> npObjectInvokeImpl(const v8::Arguments& args, Invok
     }
 
     if (!retval)
-        V8Proxy::throwError(V8Proxy::GeneralError, "Error calling method on NPObject.", args.GetIsolate());
+        throwError(GeneralError, "Error calling method on NPObject.", args.GetIsolate());
 
     for (int i = 0; i < numArgs; i++)
         _NPN_ReleaseVariantValue(&npArgs[i]);
@@ -190,17 +188,17 @@ static v8::Handle<v8::Value> npObjectGetProperty(v8::Local<v8::Object> self, NPI
     // Verify that our wrapper wasn't using a NPObject which
     // has already been deleted.
     if (!npObject || !_NPN_IsAlive(npObject))
-        return V8Proxy::throwError(V8Proxy::ReferenceError, "NPObject deleted", isolate);
+        return throwError(ReferenceError, "NPObject deleted", isolate);
 
 
     if (npObject->_class->hasProperty && npObject->_class->getProperty && npObject->_class->hasProperty(npObject, identifier)) {
         if (!_NPN_IsAlive(npObject))
-            return V8Proxy::throwError(V8Proxy::ReferenceError, "NPObject deleted", isolate);
+            return throwError(ReferenceError, "NPObject deleted", isolate);
 
         NPVariant result;
         VOID_TO_NPVARIANT(result);
         if (!npObject->_class->getProperty(npObject, identifier, &result))
-            return v8::Handle<v8::Value>();
+            return v8Undefined();
 
         v8::Handle<v8::Value> returnValue;
         if (_NPN_IsAlive(npObject))
@@ -211,11 +209,11 @@ static v8::Handle<v8::Value> npObjectGetProperty(v8::Local<v8::Object> self, NPI
     }
 
     if (!_NPN_IsAlive(npObject))
-        return V8Proxy::throwError(V8Proxy::ReferenceError, "NPObject deleted", isolate);
+        return throwError(ReferenceError, "NPObject deleted", isolate);
 
     if (key->IsString() && npObject->_class->hasMethod && npObject->_class->hasMethod(npObject, identifier)) {
         if (!_NPN_IsAlive(npObject))
-            return V8Proxy::throwError(V8Proxy::ReferenceError, "NPObject deleted", isolate);
+            return throwError(ReferenceError, "NPObject deleted", isolate);
 
         PrivateIdentifier* id = static_cast<PrivateIdentifier*>(identifier);
         v8::Persistent<v8::FunctionTemplate> functionTemplate = staticTemplateMap().get(id);
@@ -234,7 +232,7 @@ static v8::Handle<v8::Value> npObjectGetProperty(v8::Local<v8::Object> self, NPI
         return v8Function;
     }
 
-    return v8::Handle<v8::Value>();
+    return v8Undefined();
 }
 
 v8::Handle<v8::Value> npObjectNamedPropertyGetter(v8::Local<v8::String> name, const v8::AccessorInfo& info)
@@ -273,13 +271,13 @@ static v8::Handle<v8::Value> npObjectSetProperty(v8::Local<v8::Object> self, NPI
 
     // Verify that our wrapper wasn't using a NPObject which has already been deleted.
     if (!npObject || !_NPN_IsAlive(npObject)) {
-        V8Proxy::throwError(V8Proxy::ReferenceError, "NPObject deleted", isolate);
+        throwError(ReferenceError, "NPObject deleted", isolate);
         return value;  // Intercepted, but an exception was thrown.
     }
 
     if (npObject->_class->hasProperty && npObject->_class->setProperty && npObject->_class->hasProperty(npObject, identifier)) {
         if (!_NPN_IsAlive(npObject))
-            return V8Proxy::throwError(V8Proxy::ReferenceError, "NPObject deleted", isolate);
+            return throwError(ReferenceError, "NPObject deleted", isolate);
 
         NPVariant npValue;
         VOID_TO_NPVARIANT(npValue);
@@ -289,7 +287,7 @@ static v8::Handle<v8::Value> npObjectSetProperty(v8::Local<v8::Object> self, NPI
         if (success)
             return value; // Intercept the call.
     }
-    return v8::Handle<v8::Value>();
+    return v8Undefined();
 }
 
 
@@ -325,7 +323,7 @@ v8::Handle<v8::Array> npObjectPropertyEnumerator(const v8::AccessorInfo& info, b
     // Verify that our wrapper wasn't using a NPObject which
     // has already been deleted.
     if (!npObject || !_NPN_IsAlive(npObject))
-        V8Proxy::throwError(V8Proxy::ReferenceError, "NPObject deleted", info.GetIsolate());
+        throwError(ReferenceError, "NPObject deleted", info.GetIsolate());
 
     if (NP_CLASS_STRUCT_VERSION_HAS_ENUM(npObject->_class) && npObject->_class->enumerate) {
         uint32_t count;
@@ -408,7 +406,7 @@ v8::Local<v8::Object> createV8ObjectForNPObject(NPObject* object, NPObject* root
     }
 
     v8::Handle<v8::Function> v8Function = npObjectDesc->GetFunction();
-    v8::Local<v8::Object> value = SafeAllocation::newInstance(v8Function);
+    v8::Local<v8::Object> value = V8ObjectConstructor::newInstance(v8Function);
 
     // If we were unable to allocate the instance, we avoid wrapping and registering the NP object.
     if (value.IsEmpty())

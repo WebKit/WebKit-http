@@ -56,6 +56,7 @@ class Database;
 class Element;
 class EventContext;
 class DocumentLoader;
+class DeviceOrientationData;
 class GeolocationPosition;
 class GraphicsContext;
 class HitTestResult;
@@ -112,6 +113,8 @@ public:
     static void mediaQueryResultChanged(Document*);
     static void didPushShadowRoot(Element* host, ShadowRoot*);
     static void willPopShadowRoot(Element* host, ShadowRoot*);
+    static void didCreateNamedFlow(Document*, const AtomicString& name);
+    static void didRemoveNamedFlow(Document*, const AtomicString& name);
 
     static void mouseDidMoveOverElement(Page*, const HitTestResult&, unsigned modifierFlags);
     static bool handleMousePress(Page*);
@@ -139,6 +142,7 @@ public:
     static void didFireTimer(const InspectorInstrumentationCookie&);
     static void didBeginFrame(Page*);
     static void didCancelFrame(Page*);
+    static void didInvalidateLayout(Frame*);
     static InspectorInstrumentationCookie willLayout(Frame*);
     static void didLayout(const InspectorInstrumentationCookie&);
     static InspectorInstrumentationCookie willLoadXHR(ScriptExecutionContext*, XMLHttpRequest*);
@@ -169,7 +173,7 @@ public:
     static InspectorInstrumentationCookie willReceiveResourceData(Frame*, unsigned long identifier, int length);
     static void didReceiveResourceData(const InspectorInstrumentationCookie&);
     static InspectorInstrumentationCookie willReceiveResourceResponse(Frame*, unsigned long identifier, const ResourceResponse&);
-    static void didReceiveResourceResponse(const InspectorInstrumentationCookie&, unsigned long identifier, DocumentLoader*, const ResourceResponse&);
+    static void didReceiveResourceResponse(const InspectorInstrumentationCookie&, unsigned long identifier, DocumentLoader*, const ResourceResponse&, ResourceLoader*);
     static void continueAfterXFrameOptionsDenied(Frame*, DocumentLoader*, unsigned long identifier, const ResourceResponse&);
     static void continueWithPolicyDownload(Frame*, DocumentLoader*, unsigned long identifier, const ResourceResponse&);
     static void continueWithPolicyIgnore(Frame*, DocumentLoader*, unsigned long identifier, const ResourceResponse&);
@@ -199,9 +203,9 @@ public:
     static void addMessageToConsole(WorkerContext*, MessageSource, MessageType, MessageLevel, const String& message, const String&, unsigned lineNumber);
 #endif
     static void consoleCount(Page*, PassRefPtr<ScriptArguments>, PassRefPtr<ScriptCallStack>);
-    static void startConsoleTiming(Page*, const String& title);
-    static void stopConsoleTiming(Page*, const String& title, PassRefPtr<ScriptCallStack>);
-    static void consoleTimeStamp(Page*, PassRefPtr<ScriptArguments>);
+    static void startConsoleTiming(Frame*, const String& title);
+    static void stopConsoleTiming(Frame*, const String& title, PassRefPtr<ScriptCallStack>);
+    static void consoleTimeStamp(Frame*, PassRefPtr<ScriptArguments>);
 
     static void didRequestAnimationFrame(Document*, int callbackId);
     static void didCancelAnimationFrame(Document*, int callbackId);
@@ -252,8 +256,6 @@ public:
     static bool hasFrontends() { return s_frontendCounter; }
     static bool hasFrontendForScriptContext(ScriptExecutionContext*);
     static bool collectingHTMLParseErrors(Page*);
-    static InspectorTimelineAgent* timelineAgentForOrphanEvents();
-    static void setTimelineAgentForOrphanEvents(InspectorTimelineAgent*);
 #else
     static bool hasFrontends() { return false; }
     static bool hasFrontendForScriptContext(ScriptExecutionContext*) { return false; }
@@ -267,10 +269,10 @@ public:
     static void registerInstrumentingAgents(InstrumentingAgents*);
     static void unregisterInstrumentingAgents(InstrumentingAgents*);
 
+    static DeviceOrientationData* overrideDeviceOrientation(Page*, DeviceOrientationData*);
+
 private:
 #if ENABLE(INSPECTOR)
-    static WTF::ThreadSpecific<InspectorTimelineAgent*>& threadSpecificTimelineAgentForOrphanEvents();
-
     static void didClearWindowObjectInWorldImpl(InstrumentingAgents*, Frame*, DOMWrapperWorld*);
     static bool isDebuggerPausedImpl(InstrumentingAgents*);
 
@@ -287,6 +289,8 @@ private:
     static void mediaQueryResultChangedImpl(InstrumentingAgents*);
     static void didPushShadowRootImpl(InstrumentingAgents*, Element* host, ShadowRoot*);
     static void willPopShadowRootImpl(InstrumentingAgents*, Element* host, ShadowRoot*);
+    static void didCreateNamedFlowImpl(InstrumentingAgents*, Document*, const AtomicString& name);
+    static void didRemoveNamedFlowImpl(InstrumentingAgents*, Document*, const AtomicString& name);
 
     static void mouseDidMoveOverElementImpl(InstrumentingAgents*, const HitTestResult&, unsigned modifierFlags);
     static bool handleMousePressImpl(InstrumentingAgents*);
@@ -314,6 +318,7 @@ private:
     static void didFireTimerImpl(const InspectorInstrumentationCookie&);
     static void didBeginFrameImpl(InstrumentingAgents*);
     static void didCancelFrameImpl(InstrumentingAgents*);
+    static void didInvalidateLayoutImpl(InstrumentingAgents*, Frame*);
     static InspectorInstrumentationCookie willLayoutImpl(InstrumentingAgents*, Frame*);
     static void didLayoutImpl(const InspectorInstrumentationCookie&);
     static InspectorInstrumentationCookie willLoadXHRImpl(InstrumentingAgents*, XMLHttpRequest*, ScriptExecutionContext*);
@@ -344,7 +349,7 @@ private:
     static InspectorInstrumentationCookie willReceiveResourceDataImpl(InstrumentingAgents*, unsigned long identifier, Frame*, int length);
     static void didReceiveResourceDataImpl(const InspectorInstrumentationCookie&);
     static InspectorInstrumentationCookie willReceiveResourceResponseImpl(InstrumentingAgents*, unsigned long identifier, const ResourceResponse&, Frame*);
-    static void didReceiveResourceResponseImpl(const InspectorInstrumentationCookie&, unsigned long identifier, DocumentLoader*, const ResourceResponse&);
+    static void didReceiveResourceResponseImpl(const InspectorInstrumentationCookie&, unsigned long identifier, DocumentLoader*, const ResourceResponse&, ResourceLoader*);
     static void didReceiveResourceResponseButCanceledImpl(Frame*, DocumentLoader*, unsigned long identifier, const ResourceResponse&);
     static void continueAfterXFrameOptionsDeniedImpl(Frame*, DocumentLoader*, unsigned long identifier, const ResourceResponse&);
     static void continueWithPolicyDownloadImpl(Frame*, DocumentLoader*, unsigned long identifier, const ResourceResponse&);
@@ -371,9 +376,9 @@ private:
     static void addMessageToConsoleImpl(InstrumentingAgents*, MessageSource, MessageType, MessageLevel, const String& message, PassRefPtr<ScriptArguments>, PassRefPtr<ScriptCallStack>);
     static void addMessageToConsoleImpl(InstrumentingAgents*, MessageSource, MessageType, MessageLevel, const String& message, const String& scriptId, unsigned lineNumber);
     static void consoleCountImpl(InstrumentingAgents*, PassRefPtr<ScriptArguments>, PassRefPtr<ScriptCallStack>);
-    static void startConsoleTimingImpl(InstrumentingAgents*, const String& title);
-    static void stopConsoleTimingImpl(InstrumentingAgents*, const String& title, PassRefPtr<ScriptCallStack>);
-    static void consoleTimeStampImpl(InstrumentingAgents*, PassRefPtr<ScriptArguments>);
+    static void startConsoleTimingImpl(InstrumentingAgents*, Frame*, const String& title);
+    static void stopConsoleTimingImpl(InstrumentingAgents*, Frame*, const String& title, PassRefPtr<ScriptCallStack>);
+    static void consoleTimeStampImpl(InstrumentingAgents*, Frame*, PassRefPtr<ScriptArguments>);
 
     static void didRequestAnimationFrameImpl(InstrumentingAgents*, int callbackId, Frame*);
     static void didCancelAnimationFrameImpl(InstrumentingAgents*, int callbackId, Frame*);
@@ -431,6 +436,7 @@ private:
     static GeolocationPosition* overrideGeolocationPositionImpl(InstrumentingAgents*, GeolocationPosition*);
 #endif
 
+    static DeviceOrientationData* overrideDeviceOrientationImpl(InstrumentingAgents*, DeviceOrientationData*);
     static int s_frontendCounter;
 #endif
 };
@@ -550,6 +556,24 @@ inline void InspectorInstrumentation::willPopShadowRoot(Element* host, ShadowRoo
     FAST_RETURN_IF_NO_FRONTENDS(void());
     if (InstrumentingAgents* instrumentingAgents = instrumentingAgentsForDocument(host->ownerDocument()))
         willPopShadowRootImpl(instrumentingAgents, host, root);
+#endif
+}
+
+inline void InspectorInstrumentation::didCreateNamedFlow(Document* document, const AtomicString& name)
+{
+#if ENABLE(INSPECTOR)
+    FAST_RETURN_IF_NO_FRONTENDS(void());
+    if (InstrumentingAgents* instrumentingAgents = instrumentingAgentsForDocument(document))
+        didCreateNamedFlowImpl(instrumentingAgents, document, name);
+#endif
+}
+
+inline void InspectorInstrumentation::didRemoveNamedFlow(Document* document, const AtomicString& name)
+{
+#if ENABLE(INSPECTOR)
+    FAST_RETURN_IF_NO_FRONTENDS(void());
+    if (InstrumentingAgents* instrumentingAgents = instrumentingAgentsForDocument(document))
+        didRemoveNamedFlowImpl(instrumentingAgents, document, name);
 #endif
 }
 
@@ -785,6 +809,15 @@ inline void InspectorInstrumentation::didCancelFrame(Page* page)
     FAST_RETURN_IF_NO_FRONTENDS(void());
     if (InstrumentingAgents* instrumentingAgents = instrumentingAgentsForPage(page))
         didCancelFrameImpl(instrumentingAgents);
+#endif
+}
+
+inline void InspectorInstrumentation::didInvalidateLayout(Frame* frame)
+{
+#if ENABLE(INSPECTOR)
+    FAST_RETURN_IF_NO_FRONTENDS(void());
+    if (InstrumentingAgents* instrumentingAgents = instrumentingAgentsForFrame(frame))
+        didInvalidateLayoutImpl(instrumentingAgents, frame);
 #endif
 }
 
@@ -1056,11 +1089,11 @@ inline InspectorInstrumentationCookie InspectorInstrumentation::willReceiveResou
     return InspectorInstrumentationCookie();
 }
 
-inline void InspectorInstrumentation::didReceiveResourceResponse(const InspectorInstrumentationCookie& cookie, unsigned long identifier, DocumentLoader* loader, const ResourceResponse& response)
+inline void InspectorInstrumentation::didReceiveResourceResponse(const InspectorInstrumentationCookie& cookie, unsigned long identifier, DocumentLoader* loader, const ResourceResponse& response, ResourceLoader* resourceLoader)
 {
 #if ENABLE(INSPECTOR)
     // Call this unconditionally so that we're able to log to console with no front-end attached.
-    didReceiveResourceResponseImpl(cookie, identifier, loader, response);
+    didReceiveResourceResponseImpl(cookie, identifier, loader, response, resourceLoader);
 #endif
 }
 
@@ -1386,7 +1419,6 @@ inline void InspectorInstrumentation::didFireAnimationFrame(const InspectorInstr
 #endif
 }
 
-
 #if ENABLE(GEOLOCATION)
 inline GeolocationPosition* InspectorInstrumentation::overrideGeolocationPosition(Page* page, GeolocationPosition* position)
 {
@@ -1398,6 +1430,16 @@ inline GeolocationPosition* InspectorInstrumentation::overrideGeolocationPositio
     return position;
 }
 #endif
+
+inline DeviceOrientationData* InspectorInstrumentation::overrideDeviceOrientation(Page* page, DeviceOrientationData* deviceOrientation)
+{
+#if ENABLE(INSPECTOR)
+    FAST_RETURN_IF_NO_FRONTENDS(deviceOrientation);
+    if (InstrumentingAgents* instrumentingAgents = instrumentingAgentsForPage(page))
+        return overrideDeviceOrientationImpl(instrumentingAgents, deviceOrientation);
+#endif
+    return deviceOrientation;
+}
 
 #if ENABLE(INSPECTOR)
 inline bool InspectorInstrumentation::collectingHTMLParseErrors(Page* page)

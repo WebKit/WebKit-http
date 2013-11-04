@@ -85,7 +85,7 @@ public:
     virtual bool isCleanupTask() const { return true; }
 };
 
-WorkerContext::WorkerContext(const KURL& url, const String& userAgent, PassOwnPtr<GroupSettings> settings, WorkerThread* thread, const String& policy, ContentSecurityPolicy::HeaderType contentSecurityPolicyType)
+WorkerContext::WorkerContext(const KURL& url, const String& userAgent, PassOwnPtr<GroupSettings> settings, WorkerThread* thread, PassRefPtr<SecurityOrigin> topOrigin)
     : m_url(url)
     , m_userAgent(userAgent)
     , m_groupSettings(settings)
@@ -96,10 +96,9 @@ WorkerContext::WorkerContext(const KURL& url, const String& userAgent, PassOwnPt
 #endif
     , m_closing(false)
     , m_eventQueue(WorkerEventQueue::create(this))
+    , m_topOrigin(topOrigin)
 {
     setSecurityOrigin(SecurityOrigin::create(url));
-    setContentSecurityPolicy(ContentSecurityPolicy::create(this));
-    contentSecurityPolicy()->didReceiveHeader(policy, contentSecurityPolicyType);
 }
 
 WorkerContext::~WorkerContext()
@@ -111,6 +110,12 @@ WorkerContext::~WorkerContext()
 
     // Notify proxy that we are going away. This can free the WorkerThread object, so do not access it after this.
     thread()->workerReportingProxy().workerContextDestroyed();
+}
+
+void WorkerContext::applyContentSecurityPolicyFromString(const String& policy, ContentSecurityPolicy::HeaderType contentSecurityPolicyType)
+{
+    setContentSecurityPolicy(ContentSecurityPolicy::create(this));
+    contentSecurityPolicy()->didReceiveHeader(policy, contentSecurityPolicyType);
 }
 
 ScriptExecutionContext* WorkerContext::scriptExecutionContext() const
@@ -226,6 +231,7 @@ void WorkerContext::clearInterval(int timeoutId)
 
 void WorkerContext::importScripts(const Vector<String>& urls, ExceptionCode& ec)
 {
+    ASSERT(contentSecurityPolicy());
     ec = 0;
     Vector<String>::const_iterator urlsEnd = urls.end();
     Vector<KURL> completedURLs;

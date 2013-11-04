@@ -36,12 +36,14 @@ class IntPoint;
 class IntRect;
 class FloatPoint;
 
-enum GraphicsLayerPaintingPhase {
+enum GraphicsLayerPaintingPhaseFlags {
     GraphicsLayerPaintBackground = (1 << 0),
     GraphicsLayerPaintForeground = (1 << 1),
     GraphicsLayerPaintMask = (1 << 2),
-    GraphicsLayerPaintAll = (GraphicsLayerPaintBackground | GraphicsLayerPaintForeground | GraphicsLayerPaintMask)
+    GraphicsLayerPaintOverflowContents = (1 << 3),
+    GraphicsLayerPaintAllWithOverflowClip = (GraphicsLayerPaintBackground | GraphicsLayerPaintForeground | GraphicsLayerPaintMask)
 };
+typedef unsigned GraphicsLayerPaintingPhase;
 
 enum AnimatedPropertyID {
     AnimatedPropertyInvalid,
@@ -83,6 +85,10 @@ public:
     // to verify that we don't create or destroy GraphicsLayers
     // while painting.
     virtual void verifyNotPainting() { }
+#endif
+
+#if PLATFORM(BLACKBERRY)
+    virtual bool contentsVisible(const GraphicsLayer*, const IntRect& contentRect) const { return false; }
 #endif
 };
 

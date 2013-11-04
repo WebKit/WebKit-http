@@ -56,18 +56,19 @@ WebInspector.CSSStyleModel.parseRuleArrayPayload = function(ruleArray)
 
 WebInspector.CSSStyleModel.Events = {
     StyleSheetChanged: "StyleSheetChanged",
-    MediaQueryResultChanged: "MediaQueryResultChanged"
+    MediaQueryResultChanged: "MediaQueryResultChanged",
+    NamedFlowCreated: "NamedFlowCreated",
+    NamedFlowRemoved: "NamedFlowRemoved"
 }
 
 WebInspector.CSSStyleModel.prototype = {
     /**
      * @param {DOMAgent.NodeId} nodeId
-     * @param {?Array.<string>|undefined} forcedPseudoClasses
      * @param {boolean} needPseudo
      * @param {boolean} needInherited
      * @param {function(?*)} userCallback
      */
-    getMatchedStylesAsync: function(nodeId, forcedPseudoClasses, needPseudo, needInherited, userCallback)
+    getMatchedStylesAsync: function(nodeId, needPseudo, needInherited, userCallback)
     {
         /**
          * @param {function(?*)} userCallback
@@ -113,15 +114,14 @@ WebInspector.CSSStyleModel.prototype = {
                 userCallback(result);
         }
 
-        CSSAgent.getMatchedStylesForNode(nodeId, forcedPseudoClasses || [], needPseudo, needInherited, callback.bind(null, userCallback));
+        CSSAgent.getMatchedStylesForNode(nodeId, needPseudo, needInherited, callback.bind(null, userCallback));
     },
 
     /**
      * @param {DOMAgent.NodeId} nodeId
-     * @param {?Array.<string>|undefined} forcedPseudoClasses
      * @param {function(?WebInspector.CSSStyleDeclaration)} userCallback
      */
-    getComputedStyleAsync: function(nodeId, forcedPseudoClasses, userCallback)
+    getComputedStyleAsync: function(nodeId, userCallback)
     {
         /**
          * @param {function(?WebInspector.CSSStyleDeclaration)} userCallback
@@ -134,7 +134,7 @@ WebInspector.CSSStyleModel.prototype = {
                 userCallback(WebInspector.CSSStyleDeclaration.parseComputedStylePayload(computedPayload));
         }
 
-        CSSAgent.getComputedStyleForNode(nodeId, forcedPseudoClasses || [], callback.bind(null, userCallback));
+        CSSAgent.getComputedStyleForNode(nodeId, callback.bind(null, userCallback));
     },
 
     /**
@@ -162,21 +162,31 @@ WebInspector.CSSStyleModel.prototype = {
 
     /**
      * @param {DOMAgent.NodeId} nodeId
-     * @param {function(?Array.<string>)} userCallback
+     * @param {?Array.<string>|undefined} forcedPseudoClasses
+     * @param {function()=} userCallback
+     */
+    forcePseudoState: function(nodeId, forcedPseudoClasses, userCallback)
+    {
+        CSSAgent.forcePseudoState(nodeId, forcedPseudoClasses || [], userCallback);
+    },
+
+    /**
+     * @param {DOMAgent.NodeId} nodeId
+     * @param {function(?Array.<WebInspector.NamedFlow>)} userCallback
      */
     getNamedFlowCollectionAsync: function(nodeId, userCallback)
     {
         /**
-         * @param {function(?Array.<string>)} userCallback
+         * @param {function(?Array.<WebInspector.NamedFlow>)} userCallback
          * @param {?Protocol.Error} error
-         * @param {?Array.<string>=} namedFlowPayload
+         * @param {?Array.<CSSAgent.NamedFlow>=} namedFlowPayload
          */
         function callback(userCallback, error, namedFlowPayload)
         {
             if (error || !namedFlowPayload)
                 userCallback(null);
             else
-                userCallback(namedFlowPayload);
+                userCallback(WebInspector.NamedFlow.parsePayloadArray(namedFlowPayload));
         }
 
         CSSAgent.getNamedFlowCollection(nodeId, callback.bind(this, userCallback));
@@ -337,6 +347,54 @@ WebInspector.CSSStyleModel.prototype = {
             return;
 
         this.dispatchEventToListeners(WebInspector.CSSStyleModel.Events.StyleSheetChanged, { styleSheetId: styleSheetId, majorChange: majorChange });
+    },
+
+    /**
+     * @param {DOMAgent.NodeId} documentNodeId
+     * @param {string} name
+     */
+    _namedFlowCreated: function(documentNodeId, name)
+    {
+        if (!this.hasEventListeners(WebInspector.CSSStyleModel.Events.NamedFlowCreated))
+            return;
+
+        /**
+        * @param {WebInspector.DOMDocument} root
+        */
+        function callback(root)
+        {
+            // FIXME: At the moment we only want support for NamedFlows in the main document
+            if (documentNodeId !== root.id)
+                return;
+
+            this.dispatchEventToListeners(WebInspector.CSSStyleModel.Events.NamedFlowCreated, { documentNodeId: documentNodeId, name: name });
+        }
+
+        WebInspector.domAgent.requestDocument(callback.bind(this));
+    },
+
+    /**
+     * @param {DOMAgent.NodeId} documentNodeId
+     * @param {string} name
+     */
+    _namedFlowRemoved: function(documentNodeId, name)
+    {
+        if (!this.hasEventListeners(WebInspector.CSSStyleModel.Events.NamedFlowRemoved))
+            return;
+
+        /**
+        * @param {WebInspector.DOMDocument} root
+        */
+        function callback(root)
+        {
+            // FIXME: At the moment we only want support for NamedFlows in the main document
+            if (documentNodeId !== root.id)
+                return;
+
+            this.dispatchEventToListeners(WebInspector.CSSStyleModel.Events.NamedFlowRemoved, { documentNodeId: documentNodeId, name: name });
+        }
+
+        WebInspector.domAgent.requestDocument(callback.bind(this));
     },
 
     /**
@@ -1265,6 +1323,24 @@ WebInspector.CSSDispatcher.prototype = {
     styleSheetChanged: function(styleSheetId)
     {
         this._cssModel._fireStyleSheetChanged(styleSheetId);
+    },
+
+    /**
+     * @param {DOMAgent.NodeId} documentNodeId
+     * @param {string} name
+     */
+    namedFlowCreated: function(documentNodeId, name)
+    {
+        this._cssModel._namedFlowCreated(documentNodeId, name);
+    },
+
+    /**
+     * @param {DOMAgent.NodeId} documentNodeId
+     * @param {string} name
+     */
+    namedFlowRemoved: function(documentNodeId, name)
+    {
+        this._cssModel._namedFlowRemoved(documentNodeId, name);
     }
 }
 
@@ -1274,9 +1350,11 @@ WebInspector.CSSDispatcher.prototype = {
  */
 WebInspector.NamedFlow = function(payload)
 {
-    this.nodeId = payload.nodeId;
+    this.nodeId = payload.documentNodeId;
     this.name = payload.name;
     this.overset = payload.overset;
+    this.content = payload.content;
+    this.regions = payload.regions;
 }
 
 /**
@@ -1286,6 +1364,21 @@ WebInspector.NamedFlow = function(payload)
 WebInspector.NamedFlow.parsePayload = function(payload)
 {
     return new WebInspector.NamedFlow(payload);
+}
+
+/**
+ * @param {?Array.<CSSAgent.NamedFlow>=} namedFlowPayload
+ * @return {?Array.<WebInspector.NamedFlow>}
+ */
+WebInspector.NamedFlow.parsePayloadArray = function(namedFlowPayload)
+{
+    if (!namedFlowPayload)
+        return null;
+
+    var parsedArray = [];
+    for (var i = 0; i < namedFlowPayload.length; ++i)
+        parsedArray[i] = WebInspector.NamedFlow.parsePayload(namedFlowPayload[i]);
+    return parsedArray;
 }
 
 /**

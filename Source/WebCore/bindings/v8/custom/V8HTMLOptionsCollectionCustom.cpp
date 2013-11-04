@@ -40,7 +40,6 @@
 #include "V8HTMLOptionElement.h"
 #include "V8HTMLSelectElementCustom.h"
 #include "V8Node.h"
-#include "V8Proxy.h"
 
 namespace WebCore {
 
@@ -56,7 +55,7 @@ v8::Handle<v8::Value> V8HTMLOptionsCollection::addCallback(const v8::Arguments& 
 {
     INC_STATS("DOM.HTMLOptionsCollection.add()");
     if (!V8HTMLOptionElement::HasInstance(args[0]))
-        return V8Proxy::setDOMException(TYPE_MISMATCH_ERR, args.GetIsolate());
+        return setDOMException(TYPE_MISMATCH_ERR, args.GetIsolate());
     HTMLOptionsCollection* imp = V8HTMLOptionsCollection::toNative(args.Holder());
     HTMLOptionElement* option = V8HTMLOptionElement::toNative(v8::Handle<v8::Object>(v8::Handle<v8::Object>::Cast(args[0])));
 
@@ -78,7 +77,7 @@ v8::Handle<v8::Value> V8HTMLOptionsCollection::addCallback(const v8::Arguments& 
     }
 
     if (ec)
-        return V8Proxy::setDOMException(ec, args.GetIsolate());
+        return setDOMException(ec, args.GetIsolate());
 
     return v8::Undefined();
 }
@@ -109,7 +108,7 @@ void V8HTMLOptionsCollection::lengthAccessorSetter(v8::Local<v8::String> name, v
     if (!ec)
         imp->setLength(newLength, ec);
 
-    V8Proxy::setDOMException(ec, info.GetIsolate());
+    setDOMException(ec, info.GetIsolate());
 }
 
 v8::Handle<v8::Value> V8HTMLOptionsCollection::indexedPropertyGetter(uint32_t index, const v8::AccessorInfo& info)
@@ -119,7 +118,7 @@ v8::Handle<v8::Value> V8HTMLOptionsCollection::indexedPropertyGetter(uint32_t in
 
     RefPtr<Node> result = collection->item(index);
     if (!result)
-        return v8::Handle<v8::Value>();
+        return v8Undefined();
 
     return toV8(result.release(), info.GetIsolate());
 }

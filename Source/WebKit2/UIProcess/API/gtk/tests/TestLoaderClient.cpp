@@ -70,6 +70,13 @@ static void testLoadHtml(LoadTrackingTest* test, gconstpointer)
     assertNormalLoadHappened(test->m_loadEvents);
 }
 
+static void testLoadAlternateHTML(LoadTrackingTest* test, gconstpointer)
+{
+    test->loadAlternateHTML("<html><body>Alternate page</body></html>", "http://error-page.foo/", 0);
+    test->waitUntilLoadFinished();
+    assertNormalLoadHappened(test->m_loadEvents);
+}
+
 static void testLoadPlainText(LoadTrackingTest* test, gconstpointer)
 {
     test->loadPlainText("Hello WebKit-GTK+");
@@ -142,6 +149,26 @@ static void testLoadProgress(LoadTrackingTest* test, gconstpointer)
     test->loadURI(kServer->getURIForPath("/normal").data());
     test->waitUntilLoadFinished();
     g_assert_cmpfloat(test->m_estimatedProgress, ==, 1);
+}
+
+static void testWebViewHistoryLoad(LoadTrackingTest* test, gconstpointer)
+{
+    test->loadURI(kServer->getURIForPath("/normal").data());
+    test->waitUntilLoadFinished();
+    assertNormalLoadHappened(test->m_loadEvents);
+
+    test->loadURI(kServer->getURIForPath("/normal2").data());
+    test->waitUntilLoadFinished();
+    assertNormalLoadHappened(test->m_loadEvents);
+
+    // Check that load process is the same for pages loaded from history cache.
+    test->goBack();
+    test->waitUntilLoadFinished();
+    assertNormalLoadHappened(test->m_loadEvents);
+
+    test->goForward();
+    test->waitUntilLoadFinished();
+    assertNormalLoadHappened(test->m_loadEvents);
 }
 
 class ViewURITrackingTest: public LoadTrackingTest {
@@ -217,7 +244,7 @@ static void serverCallback(SoupServer* server, SoupMessage* message, const char*
 
     soup_message_set_status(message, SOUP_STATUS_OK);
 
-    if (g_str_equal(path, "/normal"))
+    if (g_str_has_prefix(path, "/normal"))
         soup_message_body_append(message->response_body, SOUP_MEMORY_STATIC, responseString, strlen(responseString));
     else if (g_str_equal(path, "/error"))
         soup_message_set_status(message, SOUP_STATUS_CANT_CONNECT);
@@ -242,12 +269,14 @@ void beforeAll()
     LoadTrackingTest::add("WebKitWebView", "loading-status", testLoadingStatus);
     LoadTrackingTest::add("WebKitWebView", "loading-error", testLoadingError);
     LoadTrackingTest::add("WebKitWebView", "load-html", testLoadHtml);
+    LoadTrackingTest::add("WebKitWebView", "load-alternate-html", testLoadAlternateHTML);
     LoadTrackingTest::add("WebKitWebView", "load-plain-text", testLoadPlainText);
     LoadTrackingTest::add("WebKitWebView", "load-request", testLoadRequest);
     LoadStopTrackingTest::add("WebKitWebView", "stop-loading", testLoadCancelled);
     LoadTrackingTest::add("WebKitWebView", "title", testWebViewTitle);
     LoadTrackingTest::add("WebKitWebView", "progress", testLoadProgress);
     LoadTrackingTest::add("WebKitWebView", "reload", testWebViewReload);
+    LoadTrackingTest::add("WebKitWebView", "history-load", testWebViewHistoryLoad);
 
     // This test checks that web view notify::uri signal is correctly emitted
     // and the uri is already updated when loader client signals are emitted.

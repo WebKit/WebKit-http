@@ -33,46 +33,45 @@ InspectorFrontendAPI = {
 
     isDebuggingEnabled: function()
     {
-        return WebInspector.panels.scripts.debuggingEnabled;
+        return WebInspector.debuggerModel.debuggerEnabled();
     },
 
     setDebuggingEnabled: function(enabled)
     {
         if (enabled) {
-            WebInspector.panels.scripts.enableDebugging();
-            WebInspector.inspectorView.setCurrentPanel(WebInspector.panels.scripts);
+            WebInspector.debuggerModel.enableDebugger();
+            WebInspector.showPanel("scripts");
         } else
-            WebInspector.panels.scripts.disableDebugging();
+            WebInspector.debuggerModel.disableDebugger();
     },
 
     isTimelineProfilingEnabled: function()
     {
-        return WebInspector.panels.timeline.timelineProfilingEnabled;
+        return WebInspector.panels.timeline && WebInspector.panels.timeline.timelineProfilingEnabled;
     },
 
     setTimelineProfilingEnabled: function(enabled)
     {
-        WebInspector.panels.timeline.setTimelineProfilingEnabled(enabled);
+        WebInspector.showPanel("timeline").setTimelineProfilingEnabled(enabled);
     },
 
     isProfilingJavaScript: function()
     {
-        return WebInspector.CPUProfileType.instance && WebInspector.CPUProfileType.instance.isRecordingProfile();
+        return WebInspector.panels.profiles && WebInspector.CPUProfileType.instance && WebInspector.CPUProfileType.instance.isRecordingProfile();
     },
 
     startProfilingJavaScript: function()
     {
-        WebInspector.panels.profiles.enableProfiler();
-        WebInspector.inspectorView.setCurrentPanel(WebInspector.panels.profiles);
+        WebInspector.showPanel("profiles").enableProfiler();
         if (WebInspector.CPUProfileType.instance)
             WebInspector.CPUProfileType.instance.startRecordingProfile();
     },
 
     stopProfilingJavaScript: function()
     {
+        WebInspector.showPanel("profiles");
         if (WebInspector.CPUProfileType.instance)
             WebInspector.CPUProfileType.instance.stopRecordingProfile();
-        WebInspector.inspectorView.setCurrentPanel(WebInspector.panels.profiles);
     },
 
     setAttachedWindow: function(attached)
@@ -82,7 +81,7 @@ InspectorFrontendAPI = {
 
     showConsole: function()
     {
-        WebInspector.inspectorView.setCurrentPanel(WebInspector.panels.console);
+        WebInspector.showPanel("console");
     },
 
     showMainResourceForFrame: function(frameId)
@@ -92,7 +91,7 @@ InspectorFrontendAPI = {
 
     showResources: function()
     {
-        WebInspector.inspectorView.setCurrentPanel(WebInspector.panels.resources);
+        WebInspector.showPanel("resources");
     },
 
     setDockingUnavailable: function(unavailable)
@@ -102,7 +101,7 @@ InspectorFrontendAPI = {
 
     enterInspectElementMode: function()
     {
-        WebInspector.toggleSearchingForNode();
+        WebInspector.panel("elements").toggleSearchingForNode();
     },
 
     savedURL: function(url)
@@ -120,19 +119,50 @@ InspectorFrontendAPI = {
         WebInspector.setToolbarColors(backgroundColor, color);
     },
 
+    evaluateForTest: function(callId, script)
+    {
+        WebInspector.evaluateForTestInFrontend(callId, script);
+    },
+
     dispatch: function(signature)
     {
-        if (WebInspector.panels) {
+        if (InspectorFrontendAPI._isLoaded) {
             var methodName = signature.shift();
             return InspectorFrontendAPI[methodName].apply(InspectorFrontendAPI, signature);
         }
         InspectorFrontendAPI._pendingCommands.push(signature);
     },
 
+    dispatchQueryParameters: function()
+    {
+        if ("dispatch" in WebInspector.queryParamsObject)
+            InspectorFrontendAPI.dispatch(JSON.parse(window.decodeURI(WebInspector.queryParamsObject["dispatch"])));
+    },
+
+    /**
+     * @param {string} url
+     */
+    loadTimelineFromURL: function(url) 
+    {
+        WebInspector.showPanel("timeline").loadFromURL(url);
+    },
+
     loadCompleted: function()
     {
+        InspectorFrontendAPI._isLoaded = true;
         for (var i = 0; i < InspectorFrontendAPI._pendingCommands.length; ++i)
             InspectorFrontendAPI.dispatch(InspectorFrontendAPI._pendingCommands[i]);
         InspectorFrontendAPI._pendingCommands = [];
+        if (window.opener)
+            window.opener.postMessage(["loadCompleted"], "*");
     }
+}
+
+if (window.opener) {
+    function onMessageFromOpener(event)
+    {
+        if (event.source === window.opener)
+            InspectorFrontendAPI.dispatch(event.data);
+    }
+    window.addEventListener("message", onMessageFromOpener, true);
 }

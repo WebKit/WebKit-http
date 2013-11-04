@@ -74,7 +74,7 @@ class PerfTest(object):
         return self.parse_output(output)
 
     def run_single(self, driver, path_or_url, time_out_ms, should_run_pixel_test=False):
-        return driver.run_test(DriverInput(path_or_url, time_out_ms, image_hash=None, should_run_pixel_test=should_run_pixel_test))
+        return driver.run_test(DriverInput(path_or_url, time_out_ms, image_hash=None, should_run_pixel_test=should_run_pixel_test), stop_when_done=False)
 
     def run_failed(self, output):
         if output.text == None or output.error:
@@ -103,8 +103,6 @@ class PerfTest(object):
         # Following is for html5.html
         re.compile(re.escape("""Blocked access to external URL http://www.whatwg.org/specs/web-apps/current-work/"""))]
 
-    _statistics_keys = ['avg', 'median', 'stdev', 'min', 'max']
-
     def _should_ignore_line_in_parser_test_result(self, line):
         if not line:
             return True
@@ -113,48 +111,65 @@ class PerfTest(object):
                 return True
         return False
 
+    _description_regex = re.compile(r'^Description: (?P<description>.*)$', re.IGNORECASE)
+    _result_classes = ['Time', 'JS Heap', 'Malloc']
+    _result_class_regex = re.compile(r'^(?P<resultclass>' + r'|'.join(_result_classes) + '):')
+    _statistics_keys = ['avg', 'median', 'stdev', 'min', 'max', 'unit']
+    _score_regex = re.compile(r'^(?P<key>' + r'|'.join(_statistics_keys) + r')\s+(?P<value>[0-9\.]+)\s*(?P<unit>.*)')
+
     def parse_output(self, output):
-        got_a_result = False
         test_failed = False
         results = {}
-        score_regex = re.compile(r'^(?P<key>' + r'|'.join(self._statistics_keys) + r')\s+(?P<value>[0-9\.]+)\s*(?P<unit>.*)')
-        description_regex = re.compile(r'^Description: (?P<description>.*)$', re.IGNORECASE)
+        ordered_results_keys = []
+        test_name = re.sub(r'\.\w+$', '', self._test_name)
         description_string = ""
-        unit = "ms"
-
+        result_class = ""
         for line in re.split('\n', output.text):
-            description = description_regex.match(line)
+            description = self._description_regex.match(line)
             if description:
                 description_string = description.group('description')
                 continue
 
-            score = score_regex.match(line)
+            result_class_match = self._result_class_regex.match(line)
+            if result_class_match:
+                result_class = result_class_match.group('resultclass')
+                continue
+
+            score = self._score_regex.match(line)
             if score:
-                results[score.group('key')] = float(score.group('value'))
-                if score.group('unit'):
-                    unit = score.group('unit')
+                key = score.group('key')
+                value = float(score.group('value'))
+                unit = score.group('unit')
+                name = test_name
+                if result_class != 'Time':
+                    name += ':' + result_class.replace(' ', '')
+                if name not in ordered_results_keys:
+                    ordered_results_keys.append(name)
+                results.setdefault(name, {})
+                results[name]['unit'] = unit
+                results[name][key] = value
                 continue
 
             if not self._should_ignore_line_in_parser_test_result(line):
                 test_failed = True
                 _log.error(line)
 
-        if test_failed or set(self._statistics_keys) != set(results.keys()):
+        if test_failed or set(self._statistics_keys) != set(results[test_name].keys()):
             return None
 
-        results['unit'] = unit
+        for result_name in ordered_results_keys:
+            if result_name == test_name:
+                self.output_statistics(result_name, results[result_name], description_string)
+            else:
+                self.output_statistics(result_name, results[result_name])
+        return results
 
-        test_name = re.sub(r'\.\w+$', '', self._test_name)
-        self.output_statistics(test_name, results, description_string)
-
-        return {test_name: results}
-
-    def output_statistics(self, test_name, results, description_string):
+    def output_statistics(self, test_name, results, description_string=None):
         unit = results['unit']
         if description_string:
             _log.info('DESCRIPTION: %s' % description_string)
-        _log.info('RESULT %s= %s %s' % (test_name.replace('/', ': '), results['avg'], unit))
-        _log.info(', '.join(['%s= %s %s' % (key, results[key], unit) for key in self._statistics_keys[1:]]))
+        _log.info('RESULT %s= %s %s' % (test_name.replace(':', ': ').replace('/', ': '), results['avg'], unit))
+        _log.info(', '.join(['%s= %s %s' % (key, results[key], unit) for key in self._statistics_keys[1:5]]))
 
 
 class ChromiumStylePerfTest(PerfTest):
@@ -165,7 +180,6 @@ class ChromiumStylePerfTest(PerfTest):
 
     def parse_output(self, output):
         test_failed = False
-        got_a_result = False
         results = {}
         for line in re.split('\n', output.text):
             resultLine = ChromiumStylePerfTest._chromium_style_result_regex.match(line)
@@ -305,9 +319,7 @@ class ReplayPerfTest(PageLoadingPerfTest):
                 _log.error("Web page replay didn't start.")
                 return None
 
-            super(ReplayPerfTest, self).run_single(driver, "about:blank", time_out_ms)
-            _log.debug("Loading the page")
-
+            _log.debug("Web page replay started. Loading the page.")
             output = super(ReplayPerfTest, self).run_single(driver, self._url, time_out_ms, should_run_pixel_test=True)
             if self.run_failed(output):
                 return None

@@ -37,6 +37,7 @@
 #include "File.h"
 #include "HistogramSupport.h"
 #include "LineEnding.h"
+#include "ScriptCallStack.h"
 #include "ScriptExecutionContext.h"
 #include "TextEncoding.h"
 #include <wtf/ArrayBuffer.h>
@@ -141,6 +142,11 @@ void WebKitBlobBuilder::append(Blob* blob)
         file->captureSnapshot(snapshotSize, snapshotModificationTime);
 
         m_size += snapshotSize;
+#if ENABLE(FILE_SYSTEM)
+        if (!file->fileSystemURL().isEmpty())
+            m_items.append(BlobDataItem(file->fileSystemURL(), 0, snapshotSize, snapshotModificationTime));
+        else
+#endif
         m_items.append(BlobDataItem(file->path(), 0, snapshotSize, snapshotModificationTime));
     } else {
         long long blobSize = static_cast<long long>(blob->size());
@@ -148,7 +154,6 @@ void WebKitBlobBuilder::append(Blob* blob)
         m_items.append(BlobDataItem(blob->url(), 0, blobSize));
     }
 }
-
 
 void WebKitBlobBuilder::appendBytesData(const void* data, size_t length)
 {
@@ -158,8 +163,10 @@ void WebKitBlobBuilder::appendBytesData(const void* data, size_t length)
     m_size += buffer.size() - oldSize;
 }
 
-PassRefPtr<Blob> WebKitBlobBuilder::getBlob(const String& contentType)
+PassRefPtr<Blob> WebKitBlobBuilder::getBlob(const String& contentType, BlobConstructionReason constructionReason)
 {
+    HistogramSupport::histogramEnumeration("WebCore.BlobBuilder.getBlob", constructionReason, BlobConstructionReasonMax);
+
     OwnPtr<BlobData> blobData = BlobData::create();
     blobData->setContentType(contentType);
     blobData->swapItems(m_items);

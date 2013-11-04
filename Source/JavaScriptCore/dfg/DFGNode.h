@@ -33,6 +33,7 @@
 #include "CodeBlock.h"
 #include "CodeOrigin.h"
 #include "DFGAdjacencyList.h"
+#include "DFGArrayMode.h"
 #include "DFGCommon.h"
 #include "DFGNodeFlags.h"
 #include "DFGNodeType.h"
@@ -243,6 +244,21 @@ struct Node {
         m_flags &= ~(NodeMustGenerate | NodeMightClobber | NodeClobbersWorld);
         m_opInfo = local;
         children.reset();
+    }
+    
+    void convertToStructureTransitionWatchpoint(Structure* structure)
+    {
+        ASSERT(m_op == CheckStructure || m_op == ForwardCheckStructure);
+        m_opInfo = bitwise_cast<uintptr_t>(structure);
+        if (m_op == CheckStructure)
+            m_op = StructureTransitionWatchpoint;
+        else
+            m_op = ForwardStructureTransitionWatchpoint;
+    }
+    
+    void convertToStructureTransitionWatchpoint()
+    {
+        convertToStructureTransitionWatchpoint(structureSet().singletonStructure());
     }
     
     JSCell* weakConstant()
@@ -651,7 +667,13 @@ struct Node {
     
     bool hasStructureSet()
     {
-        return op() == CheckStructure;
+        switch (op()) {
+        case CheckStructure:
+        case ForwardCheckStructure:
+            return true;
+        default:
+            return false;
+        }
     }
     
     StructureSet& structureSet()
@@ -662,7 +684,13 @@ struct Node {
     
     bool hasStructure()
     {
-        return op() == StructureTransitionWatchpoint;
+        switch (op()) {
+        case StructureTransitionWatchpoint:
+        case ForwardStructureTransitionWatchpoint:
+            return true;
+        default:
+            return false;
+        }
     }
     
     Structure* structure()
@@ -703,6 +731,40 @@ struct Node {
     {
         ASSERT(hasFunctionExprIndex());
         return m_opInfo;
+    }
+    
+    bool hasArrayMode()
+    {
+        switch (op()) {
+        case GetIndexedPropertyStorage:
+        case GetArrayLength:
+        case PutByVal:
+        case PutByValAlias:
+        case GetByVal:
+        case StringCharAt:
+        case StringCharCodeAt:
+        case CheckArray:
+        case ArrayPush:
+        case ArrayPop:
+            return true;
+        default:
+            return false;
+        }
+    }
+    
+    Array::Mode arrayMode()
+    {
+        ASSERT(hasArrayMode());
+        return static_cast<Array::Mode>(m_opInfo);
+    }
+    
+    bool setArrayMode(Array::Mode arrayMode)
+    {
+        ASSERT(hasArrayMode());
+        if (this->arrayMode() == arrayMode)
+            return false;
+        m_opInfo = arrayMode;
+        return true;
     }
     
     bool hasVirtualRegister()

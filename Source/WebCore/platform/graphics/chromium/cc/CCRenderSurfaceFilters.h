@@ -29,19 +29,22 @@
 
 #if USE(ACCELERATED_COMPOSITING)
 
+class GrContext;
 class SkBitmap;
 
 namespace WebKit {
 class WebFilterOperations;
+class WebGraphicsContext3D;
 }
 
 namespace WebCore {
 class FloatSize;
-class GraphicsContext3D;
 
 class CCRenderSurfaceFilters {
 public:
-    static SkBitmap apply(const WebKit::WebFilterOperations& filters, unsigned textureId, const FloatSize&, GraphicsContext3D*);
+    static SkBitmap apply(const WebKit::WebFilterOperations& filters, unsigned textureId, const FloatSize&, WebKit::WebGraphicsContext3D*, GrContext*);
+    static WebKit::WebFilterOperations optimize(const WebKit::WebFilterOperations& filters);
+
 private:
     CCRenderSurfaceFilters();
 };

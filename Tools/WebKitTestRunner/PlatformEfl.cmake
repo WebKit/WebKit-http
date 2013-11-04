@@ -3,7 +3,6 @@ LIST(APPEND WebKitTestRunner_LINK_FLAGS
     ${EDJE_LDFLAGS}
     ${EFLDEPS_LDFLAGS}
     ${EVAS_LDFLAGS}
-    ${LIBSOUP24_LDFLAGS}
 )
 
 ADD_CUSTOM_TARGET(forwarding-headersEflForWebKitTestRunner
@@ -34,7 +33,7 @@ LIST(APPEND WebKitTestRunner_INCLUDE_DIRECTORIES
     ${ECORE_X_INCLUDE_DIRS}
     ${EFLDEPS_INCLUDE_DIRS}
     ${EVAS_INCLUDE_DIRS}
-    ${Glib_INCLUDE_DIRS}
+    ${GLIB_INCLUDE_DIRS}
 )
 
 LIST(APPEND WebKitTestRunner_LIBRARIES
@@ -42,7 +41,8 @@ LIST(APPEND WebKitTestRunner_LIBRARIES
     ${ECORE_X_LIBRARIES}
     ${EDJE_LIBRARIES}
     ${EFLDEPS_LIBRARIES}
-    ${Glib_LIBRARIES}
+    ${GLIB_LIBRARIES}
+    ${OPENGL_LIBRARIES}
     ${WTF_LIBRARY_NAME}
 )
 
@@ -51,7 +51,7 @@ LIST(APPEND WebKitTestRunnerInjectedBundle_SOURCES
 
     ${WEBKIT_TESTRUNNER_INJECTEDBUNDLE_DIR}/efl/ActivateFontsEfl.cpp
     ${WEBKIT_TESTRUNNER_INJECTEDBUNDLE_DIR}/efl/InjectedBundleEfl.cpp
-    ${WEBKIT_TESTRUNNER_INJECTEDBUNDLE_DIR}/efl/LayoutTestControllerEfl.cpp
+    ${WEBKIT_TESTRUNNER_INJECTEDBUNDLE_DIR}/efl/TestRunnerEfl.cpp
 )
 
 # FIXME: DOWNLOADED_FONTS_DIR should not hardcode the directory

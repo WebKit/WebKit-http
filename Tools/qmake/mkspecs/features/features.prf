@@ -31,29 +31,27 @@ load(mobilityconfig, true)
 # by having the feature disabled in features.pri. Nor do you have to
 # unset the opposite value, that's handled automatically for you.
 
-# For Mac we do not rely on QT_CONFIG, because icu is not officially supported for all of qt.
-haveQt(5):if(contains(QT_CONFIG,icu)|mac) {
-    DEFINES += WTF_USE_ICU_UNICODE=1
-    DEFINES -= WTF_USE_QT4_UNICODE=1
-} else {
-    DEFINES += WTF_USE_QT4_UNICODE=1
-    DEFINES -= WTF_USE_ICU_UNICODE=1
-}
-
-!contains(DEFINES, HAVE_QRAWFONT=.) {
-    # Use of QRawFont in Qt 5:
-    haveQt(5): DEFINES += HAVE_QRAWFONT=1
-}
+DEFINES += WTF_USE_ICU_UNICODE=1
+DEFINES -= WTF_USE_QT4_UNICODE=1
 
 # We need fontconfig to set up the test fonts for DumpRenderTree and WebKitTestRunner.
-haveQt(5) {
-    config_fontconfig:!mac {
-        DEFINES += HAVE_FONTCONFIG=1
-    }
-} else {
-    # Qt 4
-    unix:!mac:!embedded {
-        DEFINES += HAVE_FONTCONFIG=1
+config_fontconfig:!mac {
+    DEFINES += HAVE_FONTCONFIG=1
+}
+
+!contains(DEFINES, HAVE_QTQUICK=.) {
+    haveQtModule(quick): DEFINES += HAVE_QTQUICK=1
+}
+
+!contains(DEFINES, HAVE_QTPRINTSUPPORT=.) {
+    haveQtModule(printsupport): DEFINES += HAVE_QTPRINTSUPPORT=1
+}
+
+!contains(DEFINES, HAVE_QTTESTLIB=.) {
+    haveQtModule(testlib) {
+        DEFINES += HAVE_QTTESTLIB=1
+    } else {
+        message("Missing QtTest module, disabling DumpRenderTree, WebKitTestRunner and tests")
     }
 }
 
@@ -80,7 +78,7 @@ haveQt(5) {
 
 # Nescape plugins support (NPAPI)
 !contains(DEFINES, ENABLE_NETSCAPE_PLUGIN_API=.) {
-    haveQt(5):xlibAvailable() {
+    xlibAvailable() {
         DEFINES += ENABLE_NETSCAPE_PLUGIN_API=1
         CONFIG += plugin_backend_xlib
     } else: unix|win32-*:!embedded:!wince* {
@@ -105,11 +103,20 @@ haveQt(5) {
 }
 
 # QStyle detection
-haveQt(4)|haveQtModule(widgets): DEFINES += HAVE_QSTYLE=1
+haveQtModule(widgets): DEFINES += HAVE_QSTYLE=1
 
-# WebGL support
-!contains(DEFINES, ENABLE_WEBGL=.) {
-    contains(QT_CONFIG, opengl):!win32-*: DEFINES += ENABLE_WEBGL=1
+# Enable the USE(3D_GRAPHICS) flag when QtOpenGL is enabled.
+!contains(DEFINES, WTF_USE_3D_GRAPHICS=.):contains(QT_CONFIG, opengl) {
+    # Disable USE(3D_GRAPHICS) on Windows temporarily, see https://bugs.webkit.org/show_bug.cgi?id=90850 for details.
+    # Also disable on QNX, see https://bugs.webkit.org/show_bug.cgi?id=93278
+    !win32-*:!qnx {
+        DEFINES += WTF_USE_3D_GRAPHICS=1
+    }
+}
+
+# WebGL support - only enabled if we can use 3D graphics
+!contains(DEFINES, ENABLE_WEBGL=.):contains(DEFINES, WTF_USE_3D_GRAPHICS=1) {
+    DEFINES += ENABLE_WEBGL=1
 }
 
 # CSS Shaders support
@@ -134,17 +141,9 @@ haveQt(4)|haveQtModule(widgets): DEFINES += HAVE_QSTYLE=1
 }
 
 # orientation support
-haveQt(5) {
-    haveQtModule(sensors) {
-        !contains(DEFINES, ENABLE_ORIENTATION_EVENTS=.): DEFINES += ENABLE_ORIENTATION_EVENTS=1
-        !contains(DEFINES, ENABLE_DEVICE_ORIENTATION=.): DEFINES += ENABLE_DEVICE_ORIENTATION=1
-    }
-} else {
-    # Qt 4 with Qt Mobility
-    contains(MOBILITY_CONFIG, sensors) {
-        !contains(DEFINES, ENABLE_ORIENTATION_EVENTS=.): DEFINES += ENABLE_ORIENTATION_EVENTS=1
-        !contains(DEFINES, ENABLE_DEVICE_ORIENTATION=.): DEFINES += ENABLE_DEVICE_ORIENTATION=1
-    }
+haveQtModule(sensors) {
+    !contains(DEFINES, ENABLE_ORIENTATION_EVENTS=.): DEFINES += ENABLE_ORIENTATION_EVENTS=1
+    !contains(DEFINES, ENABLE_DEVICE_ORIENTATION=.): DEFINES += ENABLE_DEVICE_ORIENTATION=1
 }
 
 # HTML5 Media Support
@@ -169,29 +168,25 @@ haveQt(5) {
     !no_webkit2: DEFINES += ENABLE_FULLSCREEN_API=1
 }
 
-haveQt(4) {
-    haveQtModule(declarative): DEFINES += HAVE_QQUICK1=1
-} else {
-    # FIXME: Add Qt 5 QQuick1 support once QDeclarativeEngine in QQuick2
-    # is called QmlEngine and it is safe for us to use QQuick1 again.
+# Gamepad API Support
+linux-*:!contains(DEFINES, ENABLE_GAMEPAD=.) {
+    packagesExist(libudev): DEFINES += ENABLE_GAMEPAD=1
 }
 
 # Xcomposite Support
-haveQt(5):linux-*:config_libXcomposite: DEFINES += HAVE_XCOMPOSITE=1
+linux-*:config_libXcomposite: DEFINES += HAVE_XCOMPOSITE=1
 
 # Xrender Support
 haveQt(5):linux-*:config_libXrender: DEFINES += HAVE_XRENDER=1
 
 # GLX Support
-haveQt(5):linux-*:config_glx: DEFINES += HAVE_GLX=1
+haveQt(5):linux-*:config_glx:!contains(QT_CONFIG, opengles2): DEFINES += HAVE_GLX=1
 
 # Support for Graphics Surface
 !contains(DEFINES, WTF_USE_GRAPHICS_SURFACE=.) {
-    haveQt(5) {
-        mac: DEFINES += WTF_USE_GRAPHICS_SURFACE=1
-        # On linux we require GLX, libXcomposite and libXrender to enable graphics surface.
-        linux-*:contains(DEFINES, HAVE_GLX=1):contains(DEFINES, HAVE_XCOMPOSITE=1):contains(DEFINES, HAVE_XRENDER=1): DEFINES += WTF_USE_GRAPHICS_SURFACE=1
-    }
+    mac: DEFINES += WTF_USE_GRAPHICS_SURFACE=1
+    # On linux we require GLX, libXcomposite and libXrender to enable graphics surface.
+    linux-*:contains(DEFINES, HAVE_GLX=1):contains(DEFINES, HAVE_XCOMPOSITE=1):contains(DEFINES, HAVE_XRENDER=1): DEFINES += WTF_USE_GRAPHICS_SURFACE=1
 }
 
 # -------------- Fill in static defaults --------------
@@ -210,14 +205,17 @@ for(feature, FEATURE_DEFAULTS) {
 
 # ---------------- Sanitize defines -------------------
 
-# Disable SVG fonts if SVG is disabled or we don't have raw fonts
-contains(DEFINES, ENABLE_SVG=0)|!contains(DEFINES, HAVE_QRAWFONT=1): DEFINES += ENABLE_SVG_FONTS=0
+# Disable SVG fonts if SVG is disabled
+contains(DEFINES, ENABLE_SVG=0): DEFINES += ENABLE_SVG_FONTS=0
 
 # JavaScript debugger requires the inspector
 contains(DEFINES, ENABLE_INSPECTOR=0) {
     DEFINES += ENABLE_JAVASCRIPT_DEBUGGER=0
     DEFINES += ENABLE_INSPECTOR_SERVER=0
 }
+
+# Disable animated smooth scrolling if request-animation-frame is disabled
+contains(DEFINES, ENABLE_REQUEST_ANIMATION_FRAME=0): DEFINES += ENABLE_SMOOTH_SCROLLING=0
 
 # Remove conflicting defines. The preprocessor would take care of this
 # anyways, but doing it here makes for nicer command lines when building.
@@ -233,16 +231,12 @@ for(define, DEFINES) {
     contains(DEFINES, $$opposite): DEFINES -= $$define
 }
 
-# Enable the USE(3D_GRAPHICS) flag for Qt5 or when QtOpenGL is enabled.
-!contains(DEFINES, WTF_USE_3D_GRAPHICS=.) {
-    # Disable USE(3D_GRAPHICS) on Windows temporarily, see https://bugs.webkit.org/show_bug.cgi?id=90850 for details.
-    !win32-* {
-        haveQt(5)|contains(QT_CONFIG, opengl): DEFINES += WTF_USE_3D_GRAPHICS=1
+contains(DEFINES, ENABLE_GAMEPAD=1) {
+    !packagesExist(libudev) {
+        error("Gamepad API requires libudev to build. Please install libudev development files, or build WebKit without gamepad.")
+    } else:!linux-* {
+        error("Currently the Gamepad API is supported only on Linux, build WebKit without gamepad.")
     }
-}
-
-haveQt(4):contains(DEFINES, ENABLE_WEBGL=1):contains(DEFINES, WTF_USE_3D_GRAPHICS=0) {
-    error("WebGL requires Qt to be configured with OpenGL. Please reconfigure Qt with OpenGL, or build WebKit without WebGL.")
 }
 
 # Slider Touch is sensible to use when compiling WebKit2

@@ -65,6 +65,9 @@ LayerWebKitThread::LayerWebKitThread(LayerType type, GraphicsLayerBlackBerry* ow
     , m_isMask(false)
     , m_animationsChanged(false)
     , m_clearOverrideOnCommit(false)
+#if ENABLE(CSS_FILTERS)
+    , m_filtersChanged(false)
+#endif
 {
     if (type == Layer)
         m_tiler = LayerTiler::create(this);
@@ -73,11 +76,6 @@ LayerWebKitThread::LayerWebKitThread(LayerType type, GraphicsLayerBlackBerry* ow
 
 LayerWebKitThread::~LayerWebKitThread()
 {
-    m_layerCompositingThread->clearAnimations();
-
-    if (m_frontBufferLock)
-        pthread_mutex_destroy(m_frontBufferLock);
-
     if (m_tiler)
         m_tiler->layerWebKitThreadDestroyed();
 
@@ -110,26 +108,23 @@ SkBitmap LayerWebKitThread::paintContents(const IntRect& contentsRect, double sc
     OwnPtr<InstrumentedPlatformCanvas> canvas;
 
     if (drawsContent()) { // Layer contents must be drawn into a canvas.
-        IntRect untransformedContentsRect = contentsRect;
+        IntRect untransformedContentsRect = mapFromTransformed(contentsRect, scale);
 
-        canvas = adoptPtr(new InstrumentedPlatformCanvas(contentsRect.width(), contentsRect.height()));
+        SkBitmap canvasBitmap;
+        canvasBitmap.setConfig(SkBitmap::kARGB_8888_Config, contentsRect.width(), contentsRect.height());
+        if (!canvasBitmap.allocPixels())
+            return SkBitmap();
+        canvasBitmap.setIsOpaque(false);
+        canvasBitmap.eraseColor(0);
+
+        canvas = adoptPtr(new InstrumentedPlatformCanvas(canvasBitmap));
         PlatformContextSkia skiaContext(canvas.get());
 
         GraphicsContext graphicsContext(&skiaContext);
         graphicsContext.translate(-contentsRect.x(), -contentsRect.y());
 
-        if (scale != 1.0) {
-            TransformationMatrix matrix;
-            matrix.scale(1.0 / scale);
-            untransformedContentsRect = matrix.mapRect(contentsRect);
-
-            // We extract from the contentsRect but draw a slightly larger region than
-            // we were told to, in order to avoid pixels being rendered only partially.
-            const int atLeastOneDevicePixel = static_cast<int>(ceilf(1.0 / scale));
-            untransformedContentsRect.inflate(atLeastOneDevicePixel);
-
+        if (scale != 1.0)
             graphicsContext.scale(FloatSize(scale, scale));
-        }
 
         // RenderLayerBacking doesn't always clip, so we need to do this by ourselves.
         graphicsContext.clip(untransformedContentsRect);
@@ -161,18 +156,16 @@ bool LayerWebKitThread::contentsVisible(const IntRect& contentsRect) const
     return m_owner->contentsVisible(contentsRect);
 }
 
-void LayerWebKitThread::createFrontBufferLock()
-{
-    pthread_mutexattr_t mutexAttributes;
-    pthread_mutexattr_init(&mutexAttributes);
-    m_frontBufferLock = new pthread_mutex_t;
-    pthread_mutex_init(m_frontBufferLock, &mutexAttributes);
-}
-
 void LayerWebKitThread::updateTextureContentsIfNeeded()
 {
     if (m_tiler)
         m_tiler->updateTextureContentsIfNeeded(m_isMask ? 1.0 : contentsScale());
+}
+
+void LayerWebKitThread::commitPendingTextureUploads()
+{
+    if (m_tiler)
+        m_tiler->commitPendingTextureUploads();
 }
 
 void LayerWebKitThread::setContents(Image* contents)
@@ -196,7 +189,7 @@ void LayerWebKitThread::setDrawable(bool isDrawable)
 
     m_isDrawable = isDrawable;
 
-    setNeedsTexture(m_isDrawable && (drawsContent() || contents() || pluginView() || mediaPlayer() || m_texID));
+    setNeedsTexture(m_isDrawable && (drawsContent() || contents() || pluginView() || mediaPlayer()));
     setNeedsCommit();
 }
 
@@ -284,6 +277,12 @@ void LayerWebKitThread::commitOnCompositingThread()
     m_position += m_absoluteOffset;
     // Copy the base variables from this object into m_layerCompositingThread
     replicate(m_layerCompositingThread.get());
+#if ENABLE(CSS_FILTERS)
+    if (m_filtersChanged) {
+        m_filtersChanged = false;
+        m_layerCompositingThread->setFilterOperationsChanged(true);
+    }
+#endif
     if (m_animationsChanged) {
         m_layerCompositingThread->setRunningAnimations(m_runningAnimations);
         m_layerCompositingThread->setSuspendedAnimations(m_suspendedAnimations);
@@ -295,8 +294,7 @@ void LayerWebKitThread::commitOnCompositingThread()
     }
     m_position = oldPosition;
     updateLayerHierarchy();
-    if (m_tiler)
-        m_tiler->commitPendingTextureUploads();
+    commitPendingTextureUploads();
 
     size_t listSize = m_sublayers.size();
     for (size_t i = 0; i < listSize; i++)
@@ -405,6 +403,31 @@ void LayerWebKitThread::setFrame(const FloatRect& rect)
     setNeedsDisplay();
 }
 
+#if ENABLE(CSS_FILTERS)
+bool LayerWebKitThread::filtersCanBeComposited(const FilterOperations& filters)
+{
+    // There is work associated with compositing filters, even if there are zero filters,
+    // so if there are no filters, claim we can't composite them.
+    if (!filters.size())
+        return false;
+
+    for (unsigned i = 0; i < filters.size(); ++i) {
+        const FilterOperation* filterOperation = filters.at(i);
+        switch (filterOperation->getOperationType()) {
+        case FilterOperation::REFERENCE:
+#if ENABLE(CSS_SHADERS)
+        case FilterOperation::CUSTOM:
+#endif
+            return false;
+        default:
+            break;
+        }
+    }
+
+    return true;
+}
+#endif
+
 const LayerWebKitThread* LayerWebKitThread::rootLayer() const
 {
     const LayerWebKitThread* layer = this;
@@ -482,6 +505,39 @@ void LayerWebKitThread::setSuspendedAnimations(const Vector<RefPtr<LayerAnimatio
     m_suspendedAnimations = animations;
     m_animationsChanged = true;
     setNeedsCommit();
+}
+
+void LayerWebKitThread::releaseLayerResources()
+{
+    deleteTextures();
+
+    size_t listSize = m_sublayers.size();
+    for (size_t i = 0; i < listSize; i++)
+        m_sublayers[i]->releaseLayerResources();
+
+    if (maskLayer())
+        maskLayer()->releaseLayerResources();
+
+    if (replicaLayer())
+        replicaLayer()->releaseLayerResources();
+}
+
+IntRect LayerWebKitThread::mapFromTransformed(const IntRect& contentsRect, double scale)
+{
+    IntRect untransformedContentsRect = contentsRect;
+
+    if (scale != 1.0) {
+        TransformationMatrix matrix;
+        matrix.scale(1.0 / scale);
+        untransformedContentsRect = matrix.mapRect(contentsRect);
+
+        // We extract from the contentsRect but draw a slightly larger region than
+        // we were told to, in order to avoid pixels being rendered only partially.
+        const int atLeastOneDevicePixel = static_cast<int>(ceilf(1.0 / scale));
+        untransformedContentsRect.inflate(atLeastOneDevicePixel);
+    }
+
+    return untransformedContentsRect;
 }
 
 }

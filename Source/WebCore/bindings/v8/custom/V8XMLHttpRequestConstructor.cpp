@@ -36,7 +36,6 @@
 #include "SecurityOrigin.h"
 #include "V8Binding.h"
 #include "V8IsolatedContext.h"
-#include "V8Proxy.h"
 #include "V8Utilities.h"
 #include "WorkerContext.h"
 #include "WorkerContextExecutionProxy.h"
@@ -48,7 +47,7 @@ v8::Handle<v8::Value> V8XMLHttpRequest::constructorCallback(const v8::Arguments&
     INC_STATS("DOM.XMLHttpRequest.Constructor");
 
     if (!args.IsConstructCall())
-        return V8Proxy::throwTypeError("DOM object constructor cannot be called as a function.", args.GetIsolate());
+        return throwTypeError("DOM object constructor cannot be called as a function.", args.GetIsolate());
 
     if (ConstructorMode::current() == ConstructorMode::WrapExistingObject)
         return args.Holder();
@@ -57,15 +56,16 @@ v8::Handle<v8::Value> V8XMLHttpRequest::constructorCallback(const v8::Arguments&
     // Allocate a XMLHttpRequest object as its internal field.
     ScriptExecutionContext* context = getScriptExecutionContext();
     if (!context)
-        return V8Proxy::throwError(V8Proxy::ReferenceError, "XMLHttpRequest constructor's associated context is not available", args.GetIsolate());
+        return throwError(ReferenceError, "XMLHttpRequest constructor's associated context is not available", args.GetIsolate());
 
     RefPtr<SecurityOrigin> securityOrigin;
     if (V8IsolatedContext* isolatedContext = V8IsolatedContext::getEntered())
         securityOrigin = isolatedContext->securityOrigin();
     RefPtr<XMLHttpRequest> xmlHttpRequest = XMLHttpRequest::create(context, securityOrigin);
-    V8DOMWrapper::setDOMWrapper(args.Holder(), &info, xmlHttpRequest.get());
-    V8DOMWrapper::setJSWrapperForActiveDOMObject(xmlHttpRequest.release(), v8::Persistent<v8::Object>::New(args.Holder()));
-    return args.Holder();
+    v8::Handle<v8::Object> wrapper = args.Holder();
+    V8DOMWrapper::setDOMWrapper(wrapper, &info, xmlHttpRequest.get());
+    V8DOMWrapper::setJSWrapperForActiveDOMObject(xmlHttpRequest.release(), wrapper);
+    return wrapper;
 }
 
 } // namespace WebCore

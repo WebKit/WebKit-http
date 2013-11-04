@@ -1,17 +1,17 @@
 AC_PREREQ(2.60)
 
 m4_define([webkit_major_version], [1])
-m4_define([webkit_minor_version], [9])
-m4_define([webkit_micro_version], [5])
+m4_define([webkit_minor_version], [11])
+m4_define([webkit_micro_version], [0])
 
 # This is the version we'll be using as part of our User-Agent string
 # e.g., AppleWebKit/$(webkit_user_agent_version) ...
 #
 # Sourced from Source/WebCore/Configurations/Version.xcconfig
 m4_define([webkit_user_agent_major_version], [537])
-m4_define([webkit_user_agent_minor_version], [1])
+m4_define([webkit_user_agent_minor_version], [4])
 
-AC_INIT([WebKit],[webkit_major_version.webkit_minor_version.webkit_micro_version],[http://bugs.webkit.org/])
+AC_INIT([WebKitGTK],[webkit_major_version.webkit_minor_version.webkit_micro_version],[http://bugs.webkit.org/])
 
 AC_CONFIG_MACRO_DIR([Source/autotools])
 AC_CONFIG_AUX_DIR([Source/autotools])
@@ -35,13 +35,13 @@ AC_CONFIG_SRCDIR([Source/WebCore/config.h])
 
 dnl # Libtool library version, not to confuse with API version
 dnl # see http://www.gnu.org/software/libtool/manual/html_node/Libtool-versioning.html
-LIBWEBKITGTK_VERSION=15:0:15
+LIBWEBKITGTK_VERSION=16:0:16
 AC_SUBST([LIBWEBKITGTK_VERSION])
 
-LIBJAVASCRIPTCOREGTK_VERSION=13:4:13
+LIBJAVASCRIPTCOREGTK_VERSION=13:5:13
 AC_SUBST([LIBJAVASCRIPTCOREGTK_VERSION])
 
-LIBWEBKIT2GTK_VERSION=16:0:16
+LIBWEBKIT2GTK_VERSION=17:0:17
 AC_SUBST([LIBWEBKIT2GTK_VERSION])
 
 AM_INIT_AUTOMAKE([foreign subdir-objects dist-xz no-dist-gzip tar-ustar])
@@ -470,6 +470,18 @@ AC_SUBST(ENCHANT_CFLAGS)
 AC_SUBST(ENCHANT_LIBS)
 fi
 
+# farstream-0.1 depends on gstreamer 0.10 currently. Disable
+# media_stream if gstreamer 0.11 build support is enabled.
+if test "$GST_API_VERSION" = "1.0"; then
+   enable_media_stream=false
+fi
+if test "$enable_media_stream" = "yes"; then
+   PKG_CHECK_MODULES([FARSTREAM], [farstream-0.1],
+                     [have_farstream=yes], [enable_media_stream=false])
+   AC_SUBST([FARSTREAM_CFLAGS])
+   AC_SUBST([FARSTREAM_LIBS])
+fi
+
 PKG_CHECK_MODULES(GAIL, $GAIL_PC_NAME >= $GAIL_REQUIRED_VERSION)
 AC_SUBST(GAIL_CFLAGS)
 AC_SUBST(GAIL_LIBS)
@@ -552,6 +564,12 @@ AC_ARG_WITH(acceleration_backend,
                                 fi
                            ])
 AC_MSG_RESULT([$with_acceleration_backend])
+
+if test "$with_acceleration_backend" = "opengl"; then
+    PKG_CHECK_MODULES([XCOMPOSITE], [xcomposite]);
+    AC_SUBST(XCOMPOSITE_CFLAGS)
+    AC_SUBST(XCOMPOSITE_LIBS)
+fi
 
 # OpenGL is turned on by default (along with WebGL and accelerated compositing), but if
 # Clutter is chosen as the accelerated drawing backend, we want to disable it. COGL does 
@@ -925,12 +943,9 @@ AC_ARG_ENABLE(svg_fonts,
 AC_MSG_RESULT([$enable_svg_fonts])
 
 # check for SVG features, enabling SVG if necessary
-if test "$enable_svg_fonts" = "yes"; then
-   svg_flags=yes
-   if test "$enable_svg" = "no"; then
-       AC_MSG_WARN([SVG feature(s) requested but SVG is disabled.. Enabling SVG support])
-       enable_svg=yes
-   fi
+if test "$enable_svg_fonts" = "yes" && test "$enable_svg" = "no"; then
+   AC_MSG_WARN([SVG feature(s) requested but SVG is disabled.. Enabling SVG support])
+   enable_svg=yes
 fi
 
 # check whether to enable Web Socket support
@@ -996,6 +1011,14 @@ AC_ARG_ENABLE(css3_flexbox,
                              [enable CSS3 flexbox support [default=no]]),
               [],[enable_css3_flexbox=$enable_unstable_features])
 AC_MSG_RESULT([$enable_css3_flexbox])
+
+# check whether to enable CSS3 text decoration support
+AC_MSG_CHECKING([whether to enable CSS3 text decoration support])
+AC_ARG_ENABLE(css3_text_decoration,
+              AC_HELP_STRING([--enable-css3-text-decoration],
+                             [enable CSS3 text decoration support [default=no]]),
+              [],[enable_css3_text_decoration=$enable_unstable_features])
+AC_MSG_RESULT([$enable_css3_text_decoration])
 
 # check whether to enable FastMalloc
 AC_MSG_CHECKING([whether to enable optimized memory allocator])
@@ -1320,11 +1343,6 @@ if test "$enable_coverage" = "yes"; then
    AC_SUBST([COVERAGE_LDFLAGS])
 fi
 
-# check for HTML features
-if test "$enable_video" = "yes"; then
-    html_flags=yes
-fi
-
 # WebKit2
 # If you change the default here, please also make sure the assumptions made
 # in Tools/Scripts/webkitdirs.pm:buildAutotoolsProject still make sense.
@@ -1412,6 +1430,9 @@ AM_CONDITIONAL([USE_OPENGL], [test "$with_acceleration_backend" = "opengl"])
 AM_CONDITIONAL([ENABLE_INDEXED_DATABASE],[test "$enable_indexed_database" = "yes"])
 AM_CONDITIONAL([USE_LEVELDB],[test "$enable_indexed_database" = "yes"])
 
+# Farstream feature conditional
+AM_CONDITIONAL([USE_FARSTREAM], [test "$have_farstream" = "yes"])
+
 # WebKit feature conditionals
 AM_CONDITIONAL([ENABLE_DEBUG],[test "$enable_debug_features" = "yes"])
 AM_CONDITIONAL([ENABLE_UNSTABLE_FEATURES],[test "$enable_unstable_features" = "yes"])
@@ -1457,12 +1478,11 @@ AM_CONDITIONAL([ENABLE_SVG],[test "$enable_svg" = "yes"])
 AM_CONDITIONAL([ENABLE_SVG_FONTS],[test "$enable_svg_fonts" = "yes"])
 AM_CONDITIONAL([ENABLE_COVERAGE],[test "$enable_coverage" = "yes"])
 AM_CONDITIONAL([ENABLE_CSS3_FLEXBOX],[test "$enable_css3_flexbox" = "yes"])
+AM_CONDITIONAL([ENABLE_CSS3_TEXT_DECORATION],[test "$enable_css3_text_decoration" = "yes"])
 AM_CONDITIONAL([ENABLE_FAST_MALLOC],[test "$enable_fast_malloc" = "yes"])
 AM_CONDITIONAL([ENABLE_WORKERS],[test "$enable_workers" = "yes"])
 AM_CONDITIONAL([ENABLE_SHADOW_DOM],[test "$enable_shadow_dom" = "yes"])
 AM_CONDITIONAL([ENABLE_SHARED_WORKERS],[test "$enable_shared_workers" = "yes"])
-AM_CONDITIONAL([SVG_FLAGS],[test "$svg_flags" = "yes"])
-AM_CONDITIONAL([HTML_FLAGS],[test "$html_flags" = "yes"])
 AM_CONDITIONAL([ENABLE_WEB_SOCKETS],[test "$enable_web_sockets" = "yes"])
 AM_CONDITIONAL([ENABLE_WEB_AUDIO],[test "$enable_web_audio" = "yes"])
 AM_CONDITIONAL([ENABLE_WEB_TIMING],[test "$enable_web_timing" = "yes"])
@@ -1474,7 +1494,7 @@ AM_CONDITIONAL([ENABLE_LINK_PREFETCH],[test "$enable_link_prefetch" = "yes"])
 AM_CONDITIONAL([ENABLE_ANIMATION_API],[test "$enable_animation_api" = "yes"])
 AM_CONDITIONAL([ENABLE_REQUEST_ANIMATION_FRAME],[test "$enable_request_animation_frame" = "yes"])
 AM_CONDITIONAL([ENABLE_TOUCH_ICON_LOADING],[test "$enable_touch_icon_loading" = "yes"])
-AM_CONDITIONAL([ENABLE_REGISTER_PROTOCOL_HANDLER],[test "$enable_register_protocol_handler" = "yes"])
+AM_CONDITIONAL([ENABLE_NAVIGATOR_CONTENT_UTILS],[test "$enable_navigator_content_utils" = "yes"])
 AM_CONDITIONAL([ENABLE_DEVICE_ORIENTATION],[test "$enable_device_orientation" = "yes"])
 AM_CONDITIONAL([ENABLE_MUTATION_OBSERVERS],[test "$enable_mutation_observers" = "yes"])
 AM_CONDITIONAL([ENABLE_IFRAME_SEAMLESS],[test "$enable_iframe_seamless" = "yes"])
@@ -1483,6 +1503,7 @@ AM_CONDITIONAL([ENABLE_CSS_EXCLUSIONS],[test "$enable_css_exclusions" = "yes"])
 AM_CONDITIONAL([ENABLE_CSS_REGIONS],[test "$enable_css_regions" = "yes"])
 AM_CONDITIONAL([ENABLE_CSS_FILTERS],[test "$enable_css_filters" = "yes"])
 AM_CONDITIONAL([ENABLE_CSS_COMPOSITING],[test "$enable_css_compositing" = "yes"])
+AM_CONDITIONAL([ENABLE_WIDGET_REGION],[test "$enable_widget_region" = "yes"])
 
 # Gtk conditionals
 AM_CONDITIONAL([ENABLE_INTROSPECTION],[test "$enable_introspection" = "yes"])
@@ -1535,28 +1556,28 @@ Build configuration:
 
 Features:
 =======
- WebGL                                                    : $enable_webgl
  Accelerated Compositing                                  : $enable_accelerated_compositing
  Animation API                                            : $enable_animation_api
  Blob support                                             : $enable_blob
- Color input support                                      : $enable_input_type_color
- CSS3 Flexbox support                                     : $enable_css3_flexbox
- CSS box-decoration-break support                         : $enable_css_box_decoration_break
- CSS Exclusions support                                   : $enable_css_exclusions
- CSS Regions support                                      : $enable_css_regions
- CSS Filters support                                      : $enable_css_filters
  CSS Compositing support                                  : $enable_css_compositing
+ CSS Exclusions support                                   : $enable_css_exclusions
+ CSS Filters support                                      : $enable_css_filters
+ CSS Regions support                                      : $enable_css_regions
+ CSS box-decoration-break support                         : $enable_css_box_decoration_break
+ CSS3 Flexbox support                                     : $enable_css3_flexbox
+ CSS3 Text Decoration support                             : $enable_css3_text_decoration
+ Color input support                                      : $enable_input_type_color
+ DOM mutation observer support                            : $enable_mutation_observers
  DeviceOrientation support                                : $enable_device_orientation
  Directory upload                                         : $enable_directory_upload
- DOM mutation observer support                            : $enable_mutation_observers
  Fast Mobile Scrolling                                    : $enable_fast_mobile_scrolling
  Filters support                                          : $enable_filters
  Fullscreen API support                                   : $enable_fullscreen_api
  Gamepad support                                          : $enable_gamepad
  Geolocation support                                      : $enable_geolocation
+ HTML5 FileSystem API support                             : $enable_file_system
  HTML5 channel messaging support                          : $enable_channel_messaging
  HTML5 data transfer items support                        : $enable_data_transfer_items
- HTML5 FileSystem API support                             : $enable_file_system
  HTML5 iframe seamless attribute support                  : $enable_iframe_seamless
  HTML5 meter element support                              : $enable_meter_tag
  HTML5 microdata support                                  : $enable_microdata
@@ -1564,35 +1585,36 @@ Features:
  HTML5 track element support                              : $enable_video_track
  HTML5 video element support                              : $enable_video
  Icon database support                                    : $enable_icon_database
- JavaScript debugger/profiler support                     : $enable_javascript_debugger
  JIT compilation                                          : $enable_jit
+ JavaScript debugger/profiler support                     : $enable_javascript_debugger
  Legacy WebKitBlobBuilder support                         : $enable_legacy_webkit_blob_builder
  Link prefetch support                                    : $enable_link_prefetch
+ MHTML support                                            : $enable_mhtml
  MathML support                                           : $enable_mathml
  Media source                                             : $enable_media_source
  Media statistics                                         : $enable_media_statistics
  Media stream support                                     : $enable_media_stream
- MHTML support                                            : $enable_mhtml
  Opcode stats                                             : $enable_opcode_stats
  Page Visibility API support                              : $enable_page_visibility_api
  Quota API support                                        : $enable_quota
  Register Protocol Handler support                        : $enable_register_protocol_handler
  RequestAnimationFrame support                            : $enable_request_animation_frame
+ SQL client-side database storage support                 : $enable_sql_database
+ SVG fonts support                                        : $enable_svg_fonts
+ SVG support                                              : $enable_svg
  Scripted speech support                                  : $enable_scripted_speech
  Shadow DOM support                                       : $enable_shadow_dom
  SharedWorkers support                                    : $enable_shared_workers
  Speech input support                                     : $enable_input_speech
  Spellcheck support                                       : $enable_spellcheck
- SQL client-side database storage support                 : $enable_sql_database
- SVG fonts support                                        : $enable_svg_fonts
- SVG support                                              : $enable_svg
  Text Autosizing support                                  : $enable_text_autosizing
  Touch Icon Loading support                               : $enable_touch_icon_loading
  Web Audio support                                        : $enable_web_audio
- WebGL                                                    : $enable_webgl
  Web Sockets support                                      : $enable_web_sockets
  Web Timing support                                       : $enable_web_timing
  Web Workers support                                      : $enable_workers
+ WebGL                                                    : $enable_webgl
+ Widget region support                                    : $enable_widget_region
  XSLT support                                             : $enable_xslt
 
 WebKit2 support:

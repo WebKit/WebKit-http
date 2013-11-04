@@ -91,8 +91,26 @@ private:
                 break;
             }
                     
-                // FIXME: This would be a great place to remove CheckStructure's.
-                    
+            case CheckStructure:
+            case ForwardCheckStructure: {
+                AbstractValue& value = m_state.forNode(node.child1());
+                StructureAbstractValue& structureValue = value.m_futurePossibleStructure;
+                if (structureValue.isSubsetOf(node.structureSet())
+                    && structureValue.hasSingleton()
+                    && isCellSpeculation(value.m_type))
+                    node.convertToStructureTransitionWatchpoint(structureValue.singleton());
+                break;
+            }
+                
+            case CheckArray: {
+                if (!modeAlreadyChecked(m_state.forNode(node.child1()), node.arrayMode()))
+                    break;
+                ASSERT(node.refCount() == 1);
+                node.setOpAndDefaultFlags(Phantom);
+                eliminated = true;
+                break;
+            }
+                
             default:
                 break;
             }
@@ -103,9 +121,7 @@ private:
             }
                 
             m_state.execute(indexInBlock);
-            if (!node.shouldGenerate()
-                || m_state.didClobber()
-                || node.hasConstant())
+            if (!node.shouldGenerate() || m_state.didClobber() || node.hasConstant())
                 continue;
             JSValue value = m_state.forNode(nodeIndex).value();
             if (!value)

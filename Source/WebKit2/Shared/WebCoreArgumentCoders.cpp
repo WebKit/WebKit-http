@@ -46,9 +46,10 @@
 #include <WebCore/WindowFeatures.h>
 #include <wtf/text/StringHash.h>
 
-#if USE(UI_SIDE_COMPOSITING)
+#if USE(COORDINATED_GRAPHICS)
 #include <WebCore/Animation.h>
 #include <WebCore/FloatPoint3D.h>
+#include <WebCore/Length.h>
 #include <WebCore/TransformationMatrix.h>
 
 #if ENABLE(CSS_FILTERS)
@@ -554,6 +555,9 @@ void ArgumentCoder<FileChooserSettings>::encode(ArgumentEncoder* encoder, const 
 #endif
     encoder->encode(settings.acceptMIMETypes);
     encoder->encode(settings.selectedFiles);
+#if ENABLE(MEDIA_CAPTURE)
+    encoder->encode(settings.capture);
+#endif
 }
 
 bool ArgumentCoder<FileChooserSettings>::decode(ArgumentDecoder* decoder, FileChooserSettings& settings)
@@ -568,6 +572,10 @@ bool ArgumentCoder<FileChooserSettings>::decode(ArgumentDecoder* decoder, FileCh
         return false;
     if (!decoder->decode(settings.selectedFiles))
         return false;
+#if ENABLE(MEDIA_CAPTURE)
+    if (!decoder->decode(settings.capture))
+        return false;
+#endif
 
     return true;
 }
@@ -652,7 +660,7 @@ bool ArgumentCoder<KURL>::decode(ArgumentDecoder* decoder, KURL& result)
     return true;
 }
 
-#if USE(UI_SIDE_COMPOSITING)
+#if USE(COORDINATED_GRAPHICS)
 void ArgumentCoder<FloatPoint3D>::encode(ArgumentEncoder* encoder, const FloatPoint3D& floatPoint3D)
 {
     SimpleArgumentCoder<FloatPoint3D>::encode(encoder, floatPoint3D);

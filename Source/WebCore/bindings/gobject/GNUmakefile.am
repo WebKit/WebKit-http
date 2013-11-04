@@ -39,6 +39,7 @@ webkitgtk_gdom_built_sources += \
 	DerivedSources/webkit/WebKitDOMDOMMimeTypeArrayPrivate.h \
 	DerivedSources/webkit/WebKitDOMDOMMimeType.cpp \
 	DerivedSources/webkit/WebKitDOMDOMMimeTypePrivate.h \
+	DerivedSources/webkit/WebKitDOMDOMNamedFlowCollection.cpp \
 	DerivedSources/webkit/WebKitDOMDOMPluginArray.cpp \
 	DerivedSources/webkit/WebKitDOMDOMPluginArrayPrivate.h \
 	DerivedSources/webkit/WebKitDOMDOMPlugin.cpp \
@@ -231,6 +232,8 @@ webkitgtk_gdom_built_sources += \
 	DerivedSources/webkit/WebKitDOMScreen.cpp \
 	DerivedSources/webkit/WebKitDOMScreenPrivate.h \
 	DerivedSources/webkit/WebKitDOMStorage.cpp \
+	DerivedSources/webkit/WebKitDOMStorageInfo.cpp \
+	DerivedSources/webkit/WebKitDOMStorageInfoPrivate.h \
 	DerivedSources/webkit/WebKitDOMStoragePrivate.h \
 	DerivedSources/webkit/WebKitDOMStyleMedia.cpp \
 	DerivedSources/webkit/WebKitDOMStyleMediaPrivate.h \
@@ -279,6 +282,7 @@ webkitgtk_built_h_api += \
 	DerivedSources/webkit/WebKitDOMDocumentFragment.h \
 	DerivedSources/webkit/WebKitDOMDocumentType.h \
 	DerivedSources/webkit/WebKitDOMDOMImplementation.h \
+	DerivedSources/webkit/WebKitDOMDOMNamedFlowCollection.h \
 	DerivedSources/webkit/WebKitDOMDOMSettableTokenList.h \
 	DerivedSources/webkit/WebKitDOMDOMSecurityPolicy.h \
 	DerivedSources/webkit/WebKitDOMDOMStringList.h \
@@ -392,6 +396,7 @@ webkitgtk_built_h_api += \
 	DerivedSources/webkit/WebKitDOMDOMPluginArray.h \
 	DerivedSources/webkit/WebKitDOMDatabase.h \
 	DerivedSources/webkit/WebKitDOMStorage.h \
+	DerivedSources/webkit/WebKitDOMStorageInfo.h \
 	DerivedSources/webkit/WebKitDOMXPathExpression.h \
 	DerivedSources/webkit/WebKitDOMXPathNSResolver.h \
 	DerivedSources/webkit/WebKitDOMXPathResult.h \
@@ -480,6 +485,6 @@ $(top_builddir)/DerivedSources/webkit/WebKitDOMCustom.h: $(WebCore)/bindings/gob
 	$(AM_V_GEN)cp -f $< $@
 
 # Filter out SVG and IndexedDB for now
-gdom_feature_defines := $(filter-out ENABLE_INDEXED_DATABASE=1, $(filter-out ENABLE_SVG%, $(FEATURE_DEFINES))) ENABLE_INDEXED_DATABASE=0
+gdom_feature_defines := $(filter-out ENABLE_INDEXED_DATABASE=1, $(filter-out ENABLE_SVG%, $(feature_defines))) ENABLE_INDEXED_DATABASE=0
 DerivedSources/webkit/WebKitDOM%.cpp DerivedSources/webkit/WebKitDOM%.h DerivedSources/webkit/WebKitDOM%Private.h: %.idl $(SCRIPTS_FOR_GENERATE_BINDINGS) $(WebCore)/bindings/scripts/CodeGeneratorGObject.pm $(WebCore)/bindings/gobject/GNUmakefile.am $(supplemental_dependency_file)
 	$(AM_V_GEN)$(PERL) -I$(WebCore)/bindings/scripts $(WebCore)/bindings/scripts/generate-bindings.pl --include $(WebCore)/dom --include $(WebCore)/html --include $(WebCore)/css --include $(WebCore)/page --include $(WebCore)/xml --include $(WebCore)/svg --outputDir "$(GENSOURCES_WEBKIT)" --defines "LANGUAGE_GOBJECT=1 $(gdom_feature_defines)" --generator GObject --supplementalDependencyFile $(supplemental_dependency_file) $<

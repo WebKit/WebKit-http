@@ -33,6 +33,7 @@
 
 #include "AccessibilityObject.h"
 #include "Document.h"
+#include "Font.h"
 #include "FrameView.h"
 #include <wtf/gobject/GOwnPtr.h>
 #include "HostWindow.h"
@@ -79,7 +80,7 @@ static gchar* textForRenderer(RenderObject* renderer)
         else {
             // List item's markers will be treated in an special way
             // later on this function, so ignore them here.
-            if (object->isReplaced() && !renderer->isListItem())
+            if (object->isReplaced() && !object->isListMarker())
                 g_string_append_unichar(resultText, objectReplacementCharacter);
 
             // We need to check children, if any, to consider when

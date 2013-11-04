@@ -25,13 +25,15 @@
 #ifndef CCFrameRateController_h
 #define CCFrameRateController_h
 
-#include <wtf/CurrentTime.h>
+#include "CCTimer.h"
+
 #include <wtf/Deque.h>
 #include <wtf/OwnPtr.h>
 #include <wtf/PassOwnPtr.h>
 
 namespace WebCore {
 
+class CCThread;
 class CCTimeSource;
 
 class CCFrameRateControllerClient {
@@ -44,16 +46,16 @@ protected:
 
 class CCFrameRateControllerTimeSourceAdapter;
 
-class CCFrameRateController {
+class CCFrameRateController : public CCTimerClient {
 public:
     explicit CCFrameRateController(PassRefPtr<CCTimeSource>);
-    ~CCFrameRateController();
+    // Alternate form of CCFrameRateController with unthrottled frame-rate.
+    explicit CCFrameRateController(CCThread*);
+    virtual ~CCFrameRateController();
 
     void setClient(CCFrameRateControllerClient* client) { m_client = client; }
 
     void setActive(bool);
-
-    void setMaxPendingFrames(int);
 
     // Use the following methods to adjust target frame rate.
     //
@@ -65,16 +67,29 @@ public:
     void didFinishFrame();
     void didAbortAllPendingFrames();
     void setMaxFramesPending(int); // 0 for unlimited.
+    double nextTickTimeIfActivated();
+
+    void setTimebaseAndInterval(double timebase, double intervalSeconds);
 
 protected:
     friend class CCFrameRateControllerTimeSourceAdapter;
     void onTimerTick();
+
+    void postManualTick();
+
+    // CCTimerClient implementation (used for unthrottled frame-rate).
+    virtual void onTimerFired() OVERRIDE;
 
     CCFrameRateControllerClient* m_client;
     int m_numFramesPending;
     int m_maxFramesPending;
     RefPtr<CCTimeSource> m_timeSource;
     OwnPtr<CCFrameRateControllerTimeSourceAdapter> m_timeSourceClientAdapter;
+    bool m_active;
+
+    // Members for unthrottled frame-rate.
+    bool m_isTimeSourceThrottling;
+    OwnPtr<CCTimer> m_manualTicker;
 };
 
 }

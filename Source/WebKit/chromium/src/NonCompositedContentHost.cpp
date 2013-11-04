@@ -30,10 +30,10 @@
 #include "FloatPoint.h"
 #include "FloatRect.h"
 #include "GraphicsLayer.h"
-#include "LayerChromium.h"
+#include "GraphicsLayerChromium.h"
 #include "PlatformContextSkia.h"
 #include "WebViewImpl.h"
-#include "cc/CCLayerTreeHost.h"
+#include <public/WebContentLayer.h>
 #include <public/WebFloatPoint.h>
 
 namespace WebKit {
@@ -49,10 +49,11 @@ NonCompositedContentHost::NonCompositedContentHost(WebViewImpl* webView)
     m_graphicsLayer->setName("non-composited content");
 #endif
     m_graphicsLayer->setDrawsContent(true);
-    m_graphicsLayer->platformLayer()->setIsNonCompositedContent(true);
-    m_graphicsLayer->platformLayer()->setOpaque(true);
+    WebContentLayer* layer = static_cast<WebCore::GraphicsLayerChromium*>(m_graphicsLayer.get())->contentLayer();
+    layer->setUseLCDText(true);
+    layer->layer()->setOpaque(true);
 #if !OS(ANDROID)
-    m_graphicsLayer->platformLayer()->setDrawCheckerboardForMissingTiles(true);
+    layer->setDrawCheckerboardForMissingTiles(true);
 #endif
 }
 
@@ -77,29 +78,14 @@ void NonCompositedContentHost::setScrollLayer(WebCore::GraphicsLayer* layer)
 
     if (!layer) {
         m_graphicsLayer->removeFromParent();
-        m_graphicsLayer->platformLayer()->setLayerTreeHost(0);
         return;
     }
 
-    if (WebScrollableLayer(layer->platformLayer()) == scrollLayer())
+    if (layer->platformLayer() == scrollLayer())
         return;
 
     layer->addChildAtIndex(m_graphicsLayer.get(), 0);
     ASSERT(haveScrollLayer());
-}
-
-static void reserveScrollbarLayers(WebLayer layer, WebLayer clipLayer)
-{
-    // Scrollbars and corners are known to be attached outside the root clip
-    // rect, so skip the clipLayer subtree.
-    if (layer == clipLayer)
-        return;
-
-    for (size_t i = 0; i < layer.numberOfChildren(); ++i)
-        reserveScrollbarLayers(layer.childAt(i), clipLayer);
-
-    if (layer.drawsContent())
-        layer.setAlwaysReserveTextures(true);
 }
 
 void NonCompositedContentHost::setViewport(const WebCore::IntSize& viewportSize, const WebCore::IntSize& contentsSize, const WebCore::IntPoint& scrollPosition, const WebCore::IntPoint& scrollOrigin, float deviceScale)
@@ -110,12 +96,12 @@ void NonCompositedContentHost::setViewport(const WebCore::IntSize& viewportSize,
     bool visibleRectChanged = m_viewportSize != viewportSize;
 
     m_viewportSize = viewportSize;
-    WebScrollableLayer layer = scrollLayer();
-    layer.setScrollPosition(scrollPosition + scrollOrigin);
-    layer.setPosition(WebFloatPoint(-scrollPosition));
+    WebLayer* layer = scrollLayer();
+    layer->setScrollPosition(scrollPosition + scrollOrigin);
+    layer->setPosition(WebFloatPoint(-scrollPosition));
     // Due to the possibility of pinch zoom, the noncomposited layer is always
     // assumed to be scrollable.
-    layer.setScrollable(true);
+    layer->setScrollable(true);
     m_deviceScaleFactor = deviceScale;
     m_graphicsLayer->deviceOrPageScaleFactorChanged();
     m_graphicsLayer->setSize(contentsSize);
@@ -135,12 +121,6 @@ void NonCompositedContentHost::setViewport(const WebCore::IntSize& viewportSize,
         m_graphicsLayer->setNeedsDisplay();
     } else if (visibleRectChanged)
         m_graphicsLayer->setNeedsDisplay();
-
-    WebLayer clipLayer = layer.parent();
-    WebLayer rootLayer = clipLayer;
-    while (!rootLayer.parent().isNull())
-        rootLayer = rootLayer.parent();
-    reserveScrollbarLayers(rootLayer, clipLayer);
 }
 
 bool NonCompositedContentHost::haveScrollLayer()
@@ -148,11 +128,11 @@ bool NonCompositedContentHost::haveScrollLayer()
     return m_graphicsLayer->parent();
 }
 
-WebScrollableLayer NonCompositedContentHost::scrollLayer()
+WebLayer* NonCompositedContentHost::scrollLayer()
 {
     if (!m_graphicsLayer->parent())
-        return WebScrollableLayer();
-    return WebScrollableLayer(m_graphicsLayer->parent()->platformLayer());
+        return 0;
+    return m_graphicsLayer->parent()->platformLayer();
 }
 
 void NonCompositedContentHost::invalidateRect(const WebCore::IntRect& rect)
@@ -169,9 +149,7 @@ void NonCompositedContentHost::notifyAnimationStarted(const WebCore::GraphicsLay
 
 void NonCompositedContentHost::notifySyncRequired(const WebCore::GraphicsLayer*)
 {
-    WebCore::CCLayerTreeHost* layerTreeHost = m_graphicsLayer->platformLayer()->layerTreeHost();
-    if (layerTreeHost)
-        layerTreeHost->setNeedsCommit();
+    m_webView->scheduleCompositingLayerSync();
 }
 
 void NonCompositedContentHost::paintContents(const WebCore::GraphicsLayer*, WebCore::GraphicsContext& context, WebCore::GraphicsLayerPaintingPhase, const WebCore::IntRect& clipRect)

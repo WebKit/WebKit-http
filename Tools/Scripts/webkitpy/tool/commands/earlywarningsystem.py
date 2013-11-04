@@ -192,6 +192,14 @@ class ChromiumWindowsEWS(AbstractChromiumEWS):
     name = "cr-win-ews"
 
 
+class ChromiumAndroidEWS(AbstractChromiumEWS):
+    name = "cr-android-ews"
+    port_name = "chromium-android"
+    watchers = AbstractChromiumEWS.watchers + [
+        "peter+ews@chromium.org",
+    ]
+
+
 class MacEWS(AbstractEarlyWarningSystem):
     name = "mac-ews"
     port_name = "mac"

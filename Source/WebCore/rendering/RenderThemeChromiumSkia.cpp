@@ -25,6 +25,7 @@
 #include "RenderThemeChromiumSkia.h"
 
 #include "CSSValueKeywords.h"
+#include "Font.h"
 #include "GraphicsContext.h"
 #include "HTMLMediaElement.h"
 #include "HTMLNames.h"
@@ -80,7 +81,7 @@ static const float defaultSearchFieldResultsButtonWidth = 18;
 // sizes (e.g. 15px). So, for now we just use Arial.
 const String& RenderThemeChromiumSkia::defaultGUIFont()
 {
-    DEFINE_STATIC_LOCAL(String, fontFace, ("Arial"));
+    DEFINE_STATIC_LOCAL(String, fontFace, (ASCIILiteral("Arial")));
     return fontFace;
 }
 
@@ -129,6 +130,13 @@ bool RenderThemeChromiumSkia::supportsDataListUI(const AtomicString& type) const
 {
     return RenderThemeChromiumCommon::supportsDataListUI(type);
 }
+
+#if ENABLE(VIDEO_TRACK)
+bool RenderThemeChromiumSkia::supportsClosedCaptioning() const
+{
+    return true;
+}
+#endif
 
 Color RenderThemeChromiumSkia::platformActiveSelectionBackgroundColor() const
 {
@@ -590,6 +598,13 @@ bool RenderThemeChromiumSkia::shouldShowPlaceholderWhenFocused() const
 {
     return true;
 }
+
+#if ENABLE(DATALIST_ELEMENT)
+LayoutUnit RenderThemeChromiumSkia::sliderTickSnappingThreshold() const
+{
+    return RenderThemeChromiumCommon::sliderTickSnappingThreshold();
+}
+#endif
 
 #if ENABLE(PROGRESS_ELEMENT)
 

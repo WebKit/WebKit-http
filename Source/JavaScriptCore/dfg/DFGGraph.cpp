@@ -40,6 +40,18 @@ static const char* dfgOpNames[] = {
 #undef STRINGIZE_DFG_OP_ENUM
 };
 
+Graph::Graph(JSGlobalData& globalData, CodeBlock* codeBlock, unsigned osrEntryBytecodeIndex, const Operands<JSValue>& mustHandleValues)
+    : m_globalData(globalData)
+    , m_codeBlock(codeBlock)
+    , m_profiledBlock(codeBlock->alternative())
+    , m_hasArguments(false)
+    , m_osrEntryBytecodeIndex(osrEntryBytecodeIndex)
+    , m_mustHandleValues(mustHandleValues)
+    , m_fixpointState(BeforeFixpoint)
+{
+    ASSERT(m_profiledBlock);
+}
+
 const char *Graph::opName(NodeType op)
 {
     return dfgOpNames[op];
@@ -179,6 +191,8 @@ void Graph::dump(const char* prefix, NodeIndex nodeIndex)
                 dataLog(", ");
             else
                 hasPrinted = true;
+            if (!m_varArgChildren[childIdx])
+                continue;
             dataLog("%s@%u%s",
                     useKindToString(m_varArgChildren[childIdx].useKind()),
                     m_varArgChildren[childIdx].index(),
@@ -207,8 +221,12 @@ void Graph::dump(const char* prefix, NodeIndex nodeIndex)
         hasPrinted = !!node.child1();
     }
 
-    if (node.flags()) {
+    if (strlen(nodeFlagsAsString(node.flags()))) {
         dataLog("%s%s", hasPrinted ? ", " : "", nodeFlagsAsString(node.flags()));
+        hasPrinted = true;
+    }
+    if (node.hasArrayMode()) {
+        dataLog("%s%s", hasPrinted ? ", " : "", modeToString(node.arrayMode()));
         hasPrinted = true;
     }
     if (node.hasVarNumber()) {
@@ -287,13 +305,15 @@ void Graph::dump(const char* prefix, NodeIndex nodeIndex)
         dataLog("%sF:#%u", hasPrinted ? ", " : "", node.notTakenBlockIndex());
         hasPrinted = true;
     }
+    dataLog("%sbc#%u", hasPrinted ? ", " : "", node.codeOrigin.bytecodeIndex);
+    hasPrinted = true;
     (void)hasPrinted;
     
     dataLog(")");
 
     if (!skipped) {
         if (node.hasVariableAccessData())
-            dataLog("  predicting %s, double ratio %lf%s", speculationToString(node.variableAccessData()->prediction()), node.variableAccessData()->doubleVoteRatio(), node.variableAccessData()->shouldUseDoubleFormat() ? ", forcing double" : "");
+            dataLog("  predicting %s%s", speculationToString(node.variableAccessData()->prediction()), node.variableAccessData()->shouldUseDoubleFormat() ? ", forcing double" : "");
         else if (node.hasHeapPrediction())
             dataLog("  predicting %s", speculationToString(node.getHeapPrediction()));
     }
@@ -386,8 +406,10 @@ void Graph::dump()
         if (_node.flags() & NodeHasVarArgs) {                           \
             for (unsigned _childIdx = _node.firstChild();               \
                  _childIdx < _node.firstChild() + _node.numChildren();  \
-                 _childIdx++)                                           \
-                thingToDo(m_varArgChildren[_childIdx]);                 \
+                 _childIdx++) {                                         \
+                if (!!m_varArgChildren[_childIdx])                      \
+                    thingToDo(m_varArgChildren[_childIdx]);             \
+            }                                                           \
         } else {                                                        \
             if (!_node.child1()) {                                      \
                 ASSERT(!_node.child2()                                  \
@@ -477,6 +499,8 @@ void Graph::collectGarbage()
             for (unsigned childIdx = node.firstChild();
                  childIdx < node.firstChild() + node.numChildren();
                  ++childIdx) {
+                if (!m_varArgChildren[childIdx])
+                    continue;
                 NodeIndex childNodeIndex = m_varArgChildren[childIdx].index();
                 if (!at(childNodeIndex).ref())
                     continue;

@@ -25,7 +25,7 @@
 #ifndef CCLayerAnimationController_h
 #define CCLayerAnimationController_h
 
-#include "cc/CCAnimationEvents.h"
+#include "CCAnimationEvents.h"
 
 #include <wtf/HashSet.h>
 #include <wtf/Noncopyable.h>
@@ -104,7 +104,7 @@ protected:
     explicit CCLayerAnimationController(CCLayerAnimationControllerClient*);
 
 private:
-    typedef HashSet<int> TargetProperties;
+    typedef HashSet<int, DefaultHash<int>::Hash, WTF::UnsignedWithZeroKeyHashTraits<int> > TargetProperties;
 
     void pushNewAnimationsToImplThread(CCLayerAnimationController*) const;
     void removeAnimationsCompletedOnMainThread(CCLayerAnimationController*) const;

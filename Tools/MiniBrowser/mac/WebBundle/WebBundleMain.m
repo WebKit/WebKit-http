@@ -44,7 +44,8 @@ void didClearWindowObjectForFrame(WKBundlePageRef page, WKBundleFrameRef frame, 
     WKRelease(wkURL);
 
     LOG(@"WKBundlePageClient - didClearWindowForFrame %@", [(NSURL *)cfURL absoluteString]);
-    CFRelease(cfURL);
+    if (cfURL)
+        CFRelease(cfURL);
 
     WKStringRef messageName = WKStringCreateWithCFString(CFSTR("Callback"));
     WKStringRef messageBody = WKStringCreateWithCFString(CFSTR("Window was cleared"));
@@ -72,17 +73,17 @@ void willDestroyPage(WKBundleRef bundle, WKBundlePageRef page, const void* clien
     LOG(@"WKBundleClient - willDestroyPage\n");
 }
 
-void didRecieveMessage(WKBundleRef bundle, WKStringRef messageName, WKTypeRef messageBody, const void *clientInfo)
+void didReceiveMessage(WKBundleRef bundle, WKStringRef messageName, WKTypeRef messageBody, const void *clientInfo)
 {
     CFStringRef cfMessageName = WKStringCopyCFString(0, messageName);
 
     WKTypeID typeID = WKGetTypeID(messageBody);
     if (typeID == WKStringGetTypeID()) {
         CFStringRef cfMessageBody = WKStringCopyCFString(0, (WKStringRef)messageBody);
-        LOG(@"WKBundleClient - didRecieveMessage - MessageName: %@ MessageBody %@", cfMessageName, cfMessageBody);
+        LOG(@"WKBundleClient - didReceiveMessage - MessageName: %@ MessageBody %@", cfMessageName, cfMessageBody);
         CFRelease(cfMessageBody);
     } else {
-        LOG(@"WKBundleClient - didRecieveMessage - MessageName: %@ (MessageBody Unhandeled)\n", cfMessageName);
+        LOG(@"WKBundleClient - didReceiveMessage - MessageName: %@ (MessageBody Unhandled)\n", cfMessageName);
     }
 
     CFRelease(cfMessageName);
@@ -98,7 +99,8 @@ void WKBundleInitialize(WKBundleRef bundle, WKTypeRef initializationUserData)
         didCreatePage,
         willDestroyPage,
         0, // didInitializePageGroup
-        didRecieveMessage
+        didReceiveMessage,
+        0 // didReceiveMessageToPage
     };
     WKBundleSetClient(bundle, &client);
 }

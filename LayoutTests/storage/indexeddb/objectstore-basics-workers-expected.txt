@@ -79,8 +79,8 @@ PASS [Worker] store.indexNames.contains('') is false
 PASS [Worker] store.indexNames.contains('indexFail') is false
 PASS [Worker] store.indexNames.contains('indexName') is true
 PASS [Worker] store.indexNames[0] is "indexName"
-PASS [Worker] store.indexNames[1] is null
-PASS [Worker] store.indexNames[100] is null
+PASS [Worker] store.indexNames[1] is undefined.
+PASS [Worker] store.indexNames[100] is undefined.
 PASS [Worker] store.indexNames.item(1) is null
 PASS [Worker] store.indexNames.item(100) is null
 [Worker] transaction = db.transaction(['storeName'], 'readwrite')
@@ -97,8 +97,8 @@ PASS [Worker] code is DOMException.DATA_CLONE_ERR
 PASS [Worker] event.target.result is "key"
 [Worker] event.target.source.add({x: 'foo'}, 'zzz')
 [Worker] addAgainFailure():
-PASS [Worker] event.target.errorCode is IDBDatabaseException.DATA_ERR
-PASS [Worker] event.target.error.name is 'DataError'
+PASS [Worker] event.target.errorCode is IDBDatabaseException.CONSTRAINT_ERR
+PASS [Worker] event.target.error.name is 'ConstraintError'
 [Worker] event.preventDefault()
 [Worker] db.transaction(['storeName'], 'readwrite')
 [Worker] store = transaction.objectStore('storeName')

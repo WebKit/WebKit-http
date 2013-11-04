@@ -56,7 +56,7 @@ private:
     virtual void paint(PaintInfo&, const LayoutPoint&);
     virtual void layout();
 
-    virtual bool nodeAtPoint(const HitTestRequest&, HitTestResult&, const HitTestPoint& pointInContainer, const LayoutPoint& accumulatedOffset, HitTestAction) OVERRIDE;
+    virtual bool nodeAtPoint(const HitTestRequest&, HitTestResult&, const HitTestLocation& locationInContainer, const LayoutPoint& accumulatedOffset, HitTestAction) OVERRIDE;
 
     virtual void autoscroll();
 
@@ -110,13 +110,10 @@ void toRenderTextControlSingleLine(const RenderTextControlSingleLine*);
 
 class RenderTextControlInnerBlock : public RenderBlock {
 public:
-    RenderTextControlInnerBlock(Node* node, bool isMultiLine) : RenderBlock(node), m_multiLine(isMultiLine) { }
+    RenderTextControlInnerBlock(Node* node) : RenderBlock(node) { }
 
 private:
     virtual bool hasLineIfEmpty() const { return true; }
-    virtual VisiblePosition positionForPoint(const LayoutPoint&);
-
-    bool m_multiLine;
 };
 
 }

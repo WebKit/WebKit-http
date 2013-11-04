@@ -25,9 +25,9 @@
 #ifndef CCSingleThreadProxy_h
 #define CCSingleThreadProxy_h
 
-#include "cc/CCAnimationEvents.h"
-#include "cc/CCLayerTreeHostImpl.h"
-#include "cc/CCProxy.h"
+#include "CCAnimationEvents.h"
+#include "CCLayerTreeHostImpl.h"
+#include "CCProxy.h"
 #include <limits>
 #include <wtf/OwnPtr.h>
 
@@ -48,11 +48,11 @@ public:
     virtual bool initializeContext() OVERRIDE;
     virtual void setSurfaceReady() OVERRIDE;
     virtual void setVisible(bool) OVERRIDE;
-    virtual bool initializeLayerRenderer() OVERRIDE;
+    virtual bool initializeRenderer() OVERRIDE;
     virtual bool recreateContext() OVERRIDE;
     virtual int compositorIdentifier() const OVERRIDE { return m_compositorIdentifier; }
     virtual void implSideRenderingStats(CCRenderingStats&) OVERRIDE;
-    virtual const LayerRendererCapabilities& layerRendererCapabilities() const OVERRIDE;
+    virtual const RendererCapabilities& rendererCapabilities() const OVERRIDE;
     virtual void loseContext() OVERRIDE;
     virtual void setNeedsAnimate() OVERRIDE;
     virtual void setNeedsCommit() OVERRIDE;
@@ -68,6 +68,7 @@ public:
     // CCLayerTreeHostImplClient implementation
     virtual void didLoseContextOnImplThread() OVERRIDE { }
     virtual void onSwapBuffersCompleteOnImplThread() OVERRIDE { ASSERT_NOT_REACHED(); }
+    virtual void onVSyncParametersChanged(double monotonicTimebase, double intervalInSeconds) OVERRIDE { }
     virtual void setNeedsRedrawOnImplThread() OVERRIDE { m_layerTreeHost->scheduleComposite(); }
     virtual void setNeedsCommitOnImplThread() OVERRIDE { m_layerTreeHost->scheduleComposite(); }
     virtual void postAnimationEventsToMainThreadOnImplThread(PassOwnPtr<CCAnimationEventsVector>, double wallClockTime) OVERRIDE;
@@ -79,7 +80,7 @@ private:
     explicit CCSingleThreadProxy(CCLayerTreeHost*);
 
     bool commitAndComposite();
-    void doCommit(CCTextureUpdater&);
+    void doCommit(CCTextureUpdateQueue&);
     bool doComposite();
     void didSwapFrame();
 
@@ -88,14 +89,14 @@ private:
     bool m_contextLost;
     int m_compositorIdentifier;
 
-    // Holds on to the context between initializeContext() and initializeLayerRenderer() calls. Shouldn't
+    // Holds on to the context between initializeContext() and initializeRenderer() calls. Shouldn't
     // be used for anything else.
     OwnPtr<CCGraphicsContext> m_contextBeforeInitialization;
 
     // Used on the CCThread, but checked on main thread during initialization/shutdown.
     OwnPtr<CCLayerTreeHostImpl> m_layerTreeHostImpl;
-    bool m_layerRendererInitialized;
-    LayerRendererCapabilities m_layerRendererCapabilitiesForMainThread;
+    bool m_rendererInitialized;
+    RendererCapabilities m_RendererCapabilitiesForMainThread;
 
     bool m_nextFrameIsNewlyCommittedFrame;
 };

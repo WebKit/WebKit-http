@@ -39,6 +39,16 @@
 
 namespace WebCore {
 
+// Normally, -1 and 0 are not valid in a HashSet, but these are relatively likely order: values. Instead,
+// we make the two smallest int values invalid order: values (in the css parser code we clamp them to
+// int min + 2).
+struct RenderFlexibleBox::OrderHashTraits : WTF::GenericHashTraits<int> {
+    static const bool emptyValueIsZero = false;
+    static int emptyValue() { return std::numeric_limits<int>::min(); }
+    static void constructDeletedValue(int& slot) { slot = std::numeric_limits<int>::min() + 1; }
+    static bool isDeletedValue(int value) { return value == std::numeric_limits<int>::min() + 1; }
+};
+
 class RenderFlexibleBox::OrderIterator {
 public:
     OrderIterator(RenderFlexibleBox* flexibleBox, const OrderHashSet& orderValues)
@@ -89,8 +99,8 @@ public:
 private:
     RenderFlexibleBox* m_flexibleBox;
     RenderBox* m_currentChild;
-    Vector<float> m_orderValues;
-    Vector<float>::const_iterator m_orderValuesIterator;
+    Vector<int> m_orderValues;
+    Vector<int>::const_iterator m_orderValuesIterator;
 };
 
 struct RenderFlexibleBox::LineContext {
@@ -194,10 +204,10 @@ void RenderFlexibleBox::computePreferredLogicalWidths()
     LayoutUnit scrollbarWidth = 0;
     if (hasOverflowClip()) {
         if (isHorizontalWritingMode() && styleToUse->overflowY() == OSCROLL) {
-            layer()->setHasVerticalScrollbar(true);
+            ASSERT(layer()->hasVerticalScrollbar());
             scrollbarWidth = verticalScrollbarWidth();
         } else if (!isHorizontalWritingMode() && styleToUse->overflowX() == OSCROLL) {
-            layer()->setHasHorizontalScrollbar(true);
+            ASSERT(layer()->hasHorizontalScrollbar());
             scrollbarWidth = horizontalScrollbarHeight();
         }
     }
@@ -247,14 +257,6 @@ void RenderFlexibleBox::layoutBlock(bool relayoutChildren, LayoutUnit)
     computeLogicalWidth();
 
     m_overflow.clear();
-
-    // For overflow:scroll blocks, ensure we have both scrollbars in place always.
-    if (scrollsOverflow()) {
-        if (style()->overflowX() == OSCROLL)
-            layer()->setHasHorizontalScrollbar(true);
-        if (style()->overflowY() == OSCROLL)
-            layer()->setHasVerticalScrollbar(true);
-    }
 
     WTF::Vector<LineContext> lineContexts;
     OrderHashSet orderValues;
@@ -358,11 +360,6 @@ Length RenderFlexibleBox::flexBasisForChild(RenderBox* child) const
     return flexLength;
 }
 
-Length RenderFlexibleBox::crossAxisLength() const
-{
-    return isHorizontalFlow() ? style()->height() : style()->width();
-}
-
 void RenderFlexibleBox::setCrossAxisExtent(LayoutUnit extent)
 {
     if (isHorizontalFlow())
@@ -399,8 +396,17 @@ LayoutUnit RenderFlexibleBox::crossAxisContentExtent() const
 LayoutUnit RenderFlexibleBox::mainAxisContentExtent()
 {
     if (isColumnFlow())
-        return std::max(LayoutUnit(0), computeContentLogicalHeightUsing(MainOrPreferredSize, style()->logicalHeight()));
+        return std::max(LayoutUnit(0), computeLogicalClientHeight(MainOrPreferredSize, style()->logicalHeight()));
     return contentLogicalWidth();
+}
+
+LayoutUnit RenderFlexibleBox::computeMainAxisExtentForChild(RenderBox* child, SizeType sizeType, const Length& size, LayoutUnit maximumValue)
+{
+    // FIXME: This is wrong for orthogonal flows. It should use the flexbox's writing-mode, not the child's in order
+    // to figure out the logical height/width.
+    if (isColumnFlow())
+        return child->computeLogicalClientHeight(sizeType, size);
+    return child->computeContentBoxLogicalWidth(valueForLength(size, maximumValue, view()));
 }
 
 WritingMode RenderFlexibleBox::transformedWritingMode() const
@@ -599,7 +605,7 @@ LayoutUnit RenderFlexibleBox::preferredMainAxisContentExtentForChild(RenderBox* 
         LayoutUnit mainAxisExtent = hasOrthogonalFlow(child) ? child->logicalHeight() : child->maxPreferredLogicalWidth();
         return mainAxisExtent - mainAxisBorderAndPaddingExtentForChild(child);
     }
-    return std::max(LayoutUnit(0), minimumValueForLength(flexBasis, mainAxisContentExtent(), view()));
+    return std::max(LayoutUnit(0), computeMainAxisExtentForChild(child, MainOrPreferredSize, flexBasis, mainAxisContentExtent()));
 }
 
 LayoutUnit RenderFlexibleBox::computeAvailableFreeSpace(LayoutUnit preferredMainAxisExtent)
@@ -610,11 +616,11 @@ LayoutUnit RenderFlexibleBox::computeAvailableFreeSpace(LayoutUnit preferredMain
     else if (hasOverrideHeight())
         contentExtent = overrideLogicalContentHeight();
     else {
-        LayoutUnit heightResult = computeContentLogicalHeightUsing(MainOrPreferredSize, style()->logicalHeight());
+        LayoutUnit heightResult = computeLogicalClientHeight(MainOrPreferredSize, style()->logicalHeight());
         if (heightResult == -1)
             heightResult = preferredMainAxisExtent;
-        LayoutUnit minHeight = computeContentLogicalHeightUsing(MinSize, style()->logicalMinHeight()); // Leave as -1 if unset.
-        LayoutUnit maxHeight = style()->logicalMaxHeight().isUndefined() ? heightResult : computeContentLogicalHeightUsing(MaxSize, style()->logicalMaxHeight());
+        LayoutUnit minHeight = computeLogicalClientHeight(MinSize, style()->logicalMinHeight()); // Leave as -1 if unset.
+        LayoutUnit maxHeight = style()->logicalMaxHeight().isUndefined() ? heightResult : computeLogicalClientHeight(MaxSize, style()->logicalMaxHeight());
         if (maxHeight == -1)
             maxHeight = heightResult;
         heightResult = std::min(maxHeight, heightResult);
@@ -751,6 +757,14 @@ LayoutUnit RenderFlexibleBox::marginBoxAscentForChild(RenderBox* child)
     return ascent + flowAwareMarginBeforeForChild(child);
 }
 
+LayoutUnit RenderFlexibleBox::computeMarginValue(Length margin, LayoutUnit availableSize, RenderView* view)
+{
+    // CSS always computes percent margins with respect to the containing block's width, even for margin-top/margin-bottom.
+    if (margin.isPercent())
+        availableSize = logicalWidth();
+    return minimumValueForLength(margin, availableSize, view);
+}
+
 void RenderFlexibleBox::computeMainAxisPreferredSizes(bool relayoutChildren, OrderHashSet& orderValues)
 {
     LayoutUnit flexboxAvailableContentExtent = mainAxisContentExtent();
@@ -766,18 +780,18 @@ void RenderFlexibleBox::computeMainAxisPreferredSizes(bool relayoutChildren, Ord
         Length childMainAxisMin = isHorizontalFlow() ? child->style()->minWidth() : child->style()->minHeight();
         if (hasOrthogonalFlow(child) && (flexBasisForChild(child).isAuto() || childMainAxisMin.isAuto())) {
             if (!relayoutChildren)
-                child->setChildNeedsLayout(true);
+                child->setChildNeedsLayout(true, MarkOnlyThis);
             child->layoutIfNeeded();
         }
 
         // Before running the flex algorithm, 'auto' has a margin of 0.
         // Also, if we're not auto sizing, we don't do a layout that computes the start/end margins.
         if (isHorizontalFlow()) {
-            child->setMarginLeft(minimumValueForLength(child->style()->marginLeft(), flexboxAvailableContentExtent, renderView));
-            child->setMarginRight(minimumValueForLength(child->style()->marginRight(), flexboxAvailableContentExtent, renderView));
+            child->setMarginLeft(computeMarginValue(child->style()->marginLeft(), flexboxAvailableContentExtent, renderView));
+            child->setMarginRight(computeMarginValue(child->style()->marginRight(), flexboxAvailableContentExtent, renderView));
         } else {
-            child->setMarginTop(minimumValueForLength(child->style()->marginTop(), flexboxAvailableContentExtent, renderView));
-            child->setMarginBottom(minimumValueForLength(child->style()->marginBottom(), flexboxAvailableContentExtent, renderView));
+            child->setMarginTop(computeMarginValue(child->style()->marginTop(), flexboxAvailableContentExtent, renderView));
+            child->setMarginBottom(computeMarginValue(child->style()->marginBottom(), flexboxAvailableContentExtent, renderView));
         }
     }
 }
@@ -787,10 +801,10 @@ LayoutUnit RenderFlexibleBox::lineBreakLength()
     if (!isColumnFlow())
         return mainAxisContentExtent();
 
-    LayoutUnit height = computeContentLogicalHeightUsing(MainOrPreferredSize, style()->logicalHeight());
+    LayoutUnit height = computeLogicalClientHeight(MainOrPreferredSize, style()->logicalHeight());
     if (height == -1)
         height = MAX_LAYOUT_UNIT;
-    LayoutUnit maxHeight = computeContentLogicalHeightUsing(MaxSize, style()->logicalMaxHeight());
+    LayoutUnit maxHeight = computeLogicalClientHeight(MaxSize, style()->logicalMaxHeight());
     if (maxHeight != -1)
         height = std::min(height, maxHeight);
     return height;
@@ -798,25 +812,23 @@ LayoutUnit RenderFlexibleBox::lineBreakLength()
 
 LayoutUnit RenderFlexibleBox::adjustChildSizeForMinAndMax(RenderBox* child, LayoutUnit childSize, LayoutUnit flexboxAvailableContentExtent)
 {
+    // FIXME: Support intrinsic min/max lengths.
     Length max = isHorizontalFlow() ? child->style()->maxWidth() : child->style()->maxHeight();
-    Length min = isHorizontalFlow() ? child->style()->minWidth() : child->style()->minHeight();
-    RenderView* renderView = view();
-    // FIXME: valueForLength isn't quite right in quirks mode: percentage heights should check parents until a value is found.
-    // https://bugs.webkit.org/show_bug.cgi?id=81809
-    if (max.isSpecified() && childSize > valueForLength(max, flexboxAvailableContentExtent, renderView))
-        childSize = valueForLength(max, flexboxAvailableContentExtent, renderView);
-
-    if (min.isSpecified() && childSize < valueForLength(min, flexboxAvailableContentExtent, renderView))
-        return valueForLength(min, flexboxAvailableContentExtent, renderView);
-
-    // FIXME: Support min/max sizes of fit-content, max-content and fill-available.
-    if (min.isAuto()) {
-        LayoutUnit minContent = hasOrthogonalFlow(child) ? child->logicalHeight() : child->minPreferredLogicalWidth();
-        minContent -= mainAxisBorderAndPaddingExtentForChild(child);
-        return std::max(childSize, minContent);
+    if (max.isSpecified()) {
+        LayoutUnit maxExtent = computeMainAxisExtentForChild(child, MaxSize, max, flexboxAvailableContentExtent);
+        if (maxExtent != -1 && childSize > maxExtent)
+            childSize = maxExtent;
     }
 
-    return childSize;
+    Length min = isHorizontalFlow() ? child->style()->minWidth() : child->style()->minHeight();
+    LayoutUnit minExtent = 0;
+    if (min.isSpecified())
+        minExtent = computeMainAxisExtentForChild(child, MinSize, min, flexboxAvailableContentExtent);
+    else if (min.isAuto()) {
+        minExtent = hasOrthogonalFlow(child) ? child->logicalHeight() : child->minPreferredLogicalWidth();
+        minExtent -= mainAxisBorderAndPaddingExtentForChild(child);
+    }
+    return std::max(childSize, minExtent);
 }
 
 bool RenderFlexibleBox::computeNextFlexLine(OrderIterator& iterator, OrderedFlexItemList& orderedChildren, LayoutUnit& preferredMainAxisExtent, float& totalFlexGrow, float& totalWeightedFlexShrink, LayoutUnit& minMaxAppliedMainAxisExtent)
@@ -1007,7 +1019,7 @@ void RenderFlexibleBox::layoutAndPlaceChildren(LayoutUnit& crossAxisOffset, cons
         LayoutUnit childPreferredSize = childSizes[i] + mainAxisBorderAndPaddingExtentForChild(child);
         setLogicalOverrideSize(child, childPreferredSize);
         // FIXME: Can avoid laying out here in some cases. See https://webkit.org/b/87905.
-        child->setChildNeedsLayout(true);
+        child->setChildNeedsLayout(true, MarkOnlyThis);
         child->layoutIfNeeded();
 
         updateAutoMarginsInMainAxis(child, autoMarginOffset);
@@ -1221,25 +1233,31 @@ void RenderFlexibleBox::alignChildren(OrderIterator& iterator, const WTF::Vector
 void RenderFlexibleBox::applyStretchAlignmentToChild(RenderBox* child, LayoutUnit lineCrossAxisExtent)
 {
     if (!isColumnFlow() && child->style()->logicalHeight().isAuto()) {
-        LayoutUnit logicalHeightBefore = child->logicalHeight();
-        LayoutUnit stretchedLogicalHeight = child->logicalHeight() + availableAlignmentSpaceForChild(lineCrossAxisExtent, child);
+        // FIXME: If the child has orthogonal flow, then it already has an override height set, so use it.
+        if (!hasOrthogonalFlow(child)) {
+            LayoutUnit stretchedLogicalHeight = child->logicalHeight() + availableAlignmentSpaceForChild(lineCrossAxisExtent, child);
+            LayoutUnit desiredLogicalHeight = child->constrainLogicalHeightByMinMax(stretchedLogicalHeight);
 
-        child->setLogicalHeight(stretchedLogicalHeight);
-        child->computeLogicalHeight();
-
-        // FIXME: Can avoid laying out here in some cases. See https://webkit.org/b/87905.
-        if (child->logicalHeight() != logicalHeightBefore) {
-            child->setOverrideLogicalContentHeight(child->logicalHeight() - child->borderAndPaddingLogicalHeight());
-            child->setLogicalHeight(0);
-            child->setChildNeedsLayout(true);
-            child->layoutIfNeeded();
+            // FIXME: Can avoid laying out here in some cases. See https://webkit.org/b/87905.
+            if (desiredLogicalHeight != child->logicalHeight()) {
+                child->setOverrideLogicalContentHeight(desiredLogicalHeight - child->borderAndPaddingLogicalHeight());
+                child->setLogicalHeight(0);
+                child->setChildNeedsLayout(true, MarkOnlyThis);
+                child->layoutIfNeeded();
+            }
         }
-    } else if (isColumnFlow() && child->style()->logicalWidth().isAuto() && isMultiline()) {
-        // FIXME: Handle min-width and max-width.
-        LayoutUnit childWidth = lineCrossAxisExtent - crossAxisMarginExtentForChild(child);
-        child->setOverrideLogicalContentWidth(std::max(ZERO_LAYOUT_UNIT, childWidth));
-        child->setChildNeedsLayout(true);
-        child->layoutIfNeeded();
+    } else if (isColumnFlow() && child->style()->logicalWidth().isAuto()) {
+        // FIXME: If the child doesn't have orthogonal flow, then it already has an override width set, so use it.
+        if (hasOrthogonalFlow(child)) {
+            LayoutUnit childWidth = std::max(ZERO_LAYOUT_UNIT, lineCrossAxisExtent - crossAxisMarginExtentForChild(child));
+            childWidth = child->constrainLogicalWidthInRegionByMinMax(childWidth, childWidth, this);
+
+            if (childWidth != child->logicalWidth()) {
+                child->setOverrideLogicalContentWidth(childWidth);
+                child->setChildNeedsLayout(true, MarkOnlyThis);
+                child->layoutIfNeeded();
+            }
+        }
     }
 }
 

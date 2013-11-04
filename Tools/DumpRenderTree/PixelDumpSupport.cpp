@@ -31,7 +31,7 @@
 
 #include "CyclicRedundancyCheck.h"
 #include "DumpRenderTree.h"
-#include "LayoutTestController.h"
+#include "TestRunner.h"
 #include <cstdio>
 #include <wtf/Assertions.h>
 #include <wtf/RefPtr.h>
@@ -49,11 +49,11 @@ void dumpWebViewAsPixelsAndCompareWithExpected(const std::string& expectedHash)
 {
     RefPtr<BitmapContext> context;
 #if PLATFORM(MAC)
-    if (gLayoutTestController->isPrinting())
+    if (gTestRunner->isPrinting())
         context = createPagedBitmapContext();
     else
 #endif
-        context = createBitmapContextFromWebView(gLayoutTestController->testOnscreen(), gLayoutTestController->testRepaint(), gLayoutTestController->testRepaintSweepHorizontally(), gLayoutTestController->dumpSelectionRect());
+        context = createBitmapContextFromWebView(gTestRunner->testOnscreen(), gTestRunner->testRepaint(), gTestRunner->testRepaintSweepHorizontally(), gTestRunner->dumpSelectionRect());
     ASSERT(context);
     
     // Compute the hash of the bitmap context pixels

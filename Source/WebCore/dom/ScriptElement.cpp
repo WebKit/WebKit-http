@@ -38,6 +38,7 @@
 #include "IgnoreDestructiveWriteCountIncrementer.h"
 #include "MIMETypeRegistry.h"
 #include "Page.h"
+#include "ScriptCallStack.h"
 #include "ScriptRunner.h"
 #include "ScriptSourceCode.h"
 #include "ScriptValue.h"
@@ -334,7 +335,7 @@ void ScriptElement::notifyFinished(CachedResource* resource)
         && !m_cachedScript->passesAccessControlCheck(m_element->document()->securityOrigin())) {
 
         dispatchErrorEvent();
-        DEFINE_STATIC_LOCAL(String, consoleMessage, ("Cross-origin script load denied by Cross-Origin Resource Sharing policy."));
+        DEFINE_STATIC_LOCAL(String, consoleMessage, (ASCIILiteral("Cross-origin script load denied by Cross-Origin Resource Sharing policy.")));
         m_element->document()->addConsoleMessage(JSMessageSource, LogMessageType, ErrorMessageLevel, consoleMessage);
         return;
     }

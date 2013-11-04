@@ -51,7 +51,6 @@
 #include "ResourceRequest.h"
 #include "ResourceResponse.h"
 #include "V8Binding.h"
-#include "V8Proxy.h"
 #include "V8Utilities.h"
 #include "WebDataSource.h"
 #include "WebDevToolsAgentClient.h"
@@ -423,8 +422,8 @@ void WebDevToolsAgentImpl::didCreateScriptContext(WebFrameImpl* webframe, int wo
     // Skip non main world contexts.
     if (worldId)
         return;
-    if (WebCore::V8Proxy* proxy = WebCore::V8Proxy::retrieve(webframe->frame()))
-        proxy->setContextDebugId(m_hostId);
+    if (WebCore::Frame* frame = webframe->frame())
+        frame->script()->setContextDebugId(m_hostId);
 }
 
 void WebDevToolsAgentImpl::mainFrameViewCreated(WebFrameImpl* webFrame)

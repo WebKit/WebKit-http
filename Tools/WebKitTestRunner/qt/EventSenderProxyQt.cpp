@@ -33,6 +33,7 @@
 #include <QtTest/QtTest>
 #include <WebKit2/WKPagePrivate.h>
 #include <WebKit2/WKStringQt.h>
+#include <qpa/qwindowsysteminterface.h>
 
 namespace WTR {
 
@@ -301,6 +302,11 @@ void EventSenderProxy::mouseMoveTo(double x, double y)
 }
 
 void EventSenderProxy::mouseScrollBy(int, int)
+{
+    // FIXME: Implement this.
+}
+
+void EventSenderProxy::continuousMouseScrollBy(int, int, bool)
 {
     // FIXME: Implement this.
 }

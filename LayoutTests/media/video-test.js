@@ -14,7 +14,10 @@ findMediaElement();
 logConsole();
 
 if (window.testRunner) {
-    testRunner.dumpAsText();
+    // Some track element rendering tests require text pixel dump.
+    if (typeof requirePixelDump == "undefined")
+        testRunner.dumpAsText();
+
     testRunner.waitUntilDone();
 }
 
@@ -311,8 +314,8 @@ function enableAllTextTracks()
 {
     findMediaElement();
     for (var i = 0; i < video.textTracks.length; i++) {
-        if (video.textTracks[i].mode == TextTrack.DISABLED)
-            video.textTracks[i].mode = TextTrack.HIDDEN;
+        if (video.textTracks[i].mode == "disabled")
+            video.textTracks[i].mode = "hidden";
     }
 }
 
