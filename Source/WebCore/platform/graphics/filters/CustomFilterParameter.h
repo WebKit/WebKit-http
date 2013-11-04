@@ -45,6 +45,7 @@ public:
     // 3d-transforms: https://bugs.webkit.org/show_bug.cgi?id=71443
     // mat2, mat3, mat4: https://bugs.webkit.org/show_bug.cgi?id=71444
     enum ParameterType {
+        ARRAY,
         NUMBER,
         TRANSFORM
     };
@@ -56,7 +57,7 @@ public:
     
     bool isSameType(const CustomFilterParameter& other) const { return parameterType() == other.parameterType(); }
     
-    virtual PassRefPtr<CustomFilterParameter> blend(const CustomFilterParameter*, double progress) = 0;
+    virtual PassRefPtr<CustomFilterParameter> blend(const CustomFilterParameter*, double progress, const LayoutSize&) = 0;
     virtual bool operator==(const CustomFilterParameter&) const = 0;
     bool operator!=(const CustomFilterParameter& o) const { return !(*this == o); }
 protected:

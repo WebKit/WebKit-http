@@ -31,6 +31,7 @@
 
 #include "WorkerScriptController.h"
 
+#include "JSDOMBinding.h"
 #include "JSDedicatedWorkerContext.h"
 #include "ScriptSourceCode.h"
 #include "ScriptValue.h"
@@ -188,12 +189,12 @@ bool WorkerScriptController::isExecutionForbidden() const
     return m_executionForbidden;
 }
 
-void WorkerScriptController::disableEval()
+void WorkerScriptController::disableEval(const String& errorMessage)
 {
     initScriptIfNeeded();
     JSLockHolder lock(globalData());
 
-    m_workerContextWrapper->setEvalEnabled(false);
+    m_workerContextWrapper->setEvalEnabled(false, errorMessage);
 }
 
 } // namespace WebCore

@@ -317,6 +317,9 @@ inspector/debugger/debugger-compile-and-run.html
 # https://bugs.webkit.org/show_bug.cgi?id=53003
 http/tests/inspector/compiler-source-mapping-debug.html
 
+# https://bugs.webkit.org/show_bug.cgi?id=96942
+http/tests/inspector/network/network-xhr-replay.html
+
 # Safari doesn't allow to customize outermost scrollbars.
 # https://bugs.webkit.org/show_bug.cgi?id=43960
 scrollbars/custom-scrollbar-with-incomplete-style.html
@@ -517,10 +520,6 @@ css3/font-feature-settings-rendering.html
 # This test verifies that a mismatch reftest will fail as intended if both results are same.
 fast/harness/sample-fail-mismatch-reftest.html
 
-# https://bugs.webkit.org/show_bug.cgi?id=66783
-# Makes subsequent test crash
-fast/loader/document-destruction-within-unload.html
-
 # https://bugs.webkit.org/show_bug.cgi?id=67716
 media/media-controls-invalid-url.html
 
@@ -717,9 +716,6 @@ fast/frames/flattening/frameset-flattening-subframesets.html
 # https://bugs.webkit.org/show_bug.cgi?id=82750
 http/tests/navigation/javascriptlink-frames.html
 
-# https://bugs.webkit.org/show_bug.cgi?id=82751
-http/tests/security/cross-frame-access-put.html
-
 # https://bugs.webkit.org/show_bug.cgi?id=82752
 plugins/netscape-dom-access-and-reload.html
 
@@ -821,12 +817,14 @@ fast/sub-pixel/float-wrap-with-subpixel-top.html
 fast/sub-pixel/inline-block-should-not-wrap.html
 fast/sub-pixel/inline-block-with-margin.html
 fast/sub-pixel/inline-block-with-padding.html
+fast/sub-pixel/large-sizes.html
 fast/sub-pixel/layout-boxes-with-zoom.html
 fast/sub-pixel/position-right-aligns-with-container.html
 fast/sub-pixel/selection/selection-gaps-at-fractional-offsets.html
 fast/sub-pixel/size-of-box-with-zoom.html
 fast/sub-pixel/table-rows-no-gaps.html
 fast/sub-pixel/sub-pixel-accumulates-to-layers.html
+fast/sub-pixel/selection/selection-rect-in-sub-pixel-table.html
 
 # No CORS support for media elements is implemented yet.
 http/tests/security/video-cross-origin-readback.html
@@ -875,10 +873,6 @@ fast/frames/flattening/iframe-tiny.html
 fast/canvas/webgl/tex-image-and-sub-image-2d-with-video-rgb565.html
 fast/canvas/webgl/tex-image-and-sub-image-2d-with-video-rgba4444.html
 fast/canvas/webgl/tex-image-and-sub-image-2d-with-video-rgba5551.html
-
-# Asserts in MessagePort::contextDestroyed
-# https://bugs.webkit.org/show_bug.cgi?id=85811
-fast/events/message-port-clone.html
 
 # Times out without keyboard interaction
 # https://bugs.webkit.org/show_bug.cgi?id=87748
@@ -1006,11 +1000,14 @@ platform/mac/editing/pasteboard/dataTransfer-set-data-file-url.html
 
 # https://bugs.webkit.org/show_bug.cgi?id=93878 (yes, same bug as the previous)
 # Due to WebCore::JSEventListener::jsFunction(WebCore::ScriptExecutionContext*) crashes:
-fast/events/keyevent-iframe-removed-crash.html
-fullscreen/full-screen-iframe-zIndex.html
-fullscreen/full-screen-restrictions.html
+
+# https://bugs.webkit.org/show_bug.cgi?id=94458
+# Assertion failure in MessagePort::contextDestroyed, usually attributed to later tests
 http/tests/security/MessagePort/event-listener-context.html
-platform/mac/accessibility/search-with-frames.html
+
+# https://bugs.webkit.org/show_bug.cgi?id=93812
+# REGRESSION(r125251): It made svg/custom/use-instanceRoot-as-event-target.xhtml assert and flakey
+# ASSERTION FAILED: m_wrapper || !m_jsFunction
 svg/custom/use-instanceRoot-as-event-target.xhtml
 
 # Assorted failures that need investigation
@@ -1040,6 +1037,9 @@ platform/mac/editing/spelling/autocorrection-removing-underline.html
 platform/mac/editing/spelling/autocorrection-simple.html
 platform/mac/editing/spelling/delete-autocorrected-word-1.html
 platform/mac/editing/spelling/delete-autocorrected-word-2.html
+
+# Mac does not have global selections.
+editing/pasteboard/paste-global-selection.html
 
 # --- WebGL ---
 # Currently failing WebGL tests <rdar://problem/9355460>

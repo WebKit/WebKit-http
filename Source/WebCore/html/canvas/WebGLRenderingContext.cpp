@@ -375,6 +375,7 @@ private:
 };
 
 class WebGLRenderingContextLostCallback : public GraphicsContext3D::ContextLostCallback {
+    WTF_MAKE_FAST_ALLOCATED;
 public:
     explicit WebGLRenderingContextLostCallback(WebGLRenderingContext* cb) : m_context(cb) { }
     virtual void onContextLost() { m_context->forceLostContext(WebGLRenderingContext::RealLostContext); }
@@ -384,6 +385,7 @@ private:
 };
 
 class WebGLRenderingContextErrorMessageCallback : public GraphicsContext3D::ErrorMessageCallback {
+    WTF_MAKE_FAST_ALLOCATED;
 public:
     explicit WebGLRenderingContextErrorMessageCallback(WebGLRenderingContext* cb) : m_context(cb) { }
     virtual void onErrorMessage(const String& message, GC3Dint) { m_context->printGLErrorToConsole(message); }
@@ -5562,7 +5564,20 @@ void WebGLRenderingContext::maybeRestoreContext(Timer<WebGLRenderingContext>*)
         break;
     }
 
-    RefPtr<GraphicsContext3D> context(GraphicsContext3D::create(m_attributes, canvas()->document()->view()->root()->hostWindow()));
+    Document* document = canvas()->document();
+    if (!document)
+        return;
+    FrameView* view = document->view();
+    if (!view)
+        return;
+    ScrollView* root = view->root();
+    if (!root)
+        return;
+    HostWindow* hostWindow = root->hostWindow();
+    if (!hostWindow)
+        return;
+
+    RefPtr<GraphicsContext3D> context(GraphicsContext3D::create(m_attributes, hostWindow));
     if (!context) {
         if (m_contextLostMode == RealLostContext)
             m_restoreTimer.startOneShot(secondsBetweenRestoreAttempts);

@@ -56,6 +56,7 @@ public:
 
 #if PLATFORM(MAC)
     void initializeShim();
+    void initializeCocoaOverrides();
 
     void setModalWindowIsShowing(bool);
     void setFullscreenWindowIsShowing(bool);
@@ -86,6 +87,9 @@ private:
     void clearSiteData(const Vector<String>& sites, uint64_t flags, uint64_t maxAgeInSeconds, uint64_t callbackID);
 
     void platformInitialize(const PluginProcessCreationParameters&);
+    
+    void setMinimumLifetime(double);
+    void minimumLifetimeTimerFired();
 
     // The connection to the UI process.
     RefPtr<CoreIPC::Connection> m_connection;
@@ -100,12 +104,14 @@ private:
     RefPtr<NetscapePluginModule> m_pluginModule;
     
     bool m_supportsAsynchronousPluginInitialization;
+
+    WebCore::RunLoop::Timer<PluginProcess> m_minimumLifetimeTimer;
     
 #if USE(ACCELERATED_COMPOSITING) && PLATFORM(MAC)
     // The Mach port used for accelerated compositing.
     mach_port_t m_compositingRenderServerPort;
 #endif
-    
+
 };
 
 } // namespace WebKit

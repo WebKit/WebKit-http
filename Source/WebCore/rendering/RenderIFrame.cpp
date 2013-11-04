@@ -43,9 +43,9 @@ RenderIFrame::RenderIFrame(Element* element)
 {
 }
 
-void RenderIFrame::computeLogicalHeight()
+void RenderIFrame::updateLogicalHeight()
 {
-    RenderPart::computeLogicalHeight();
+    RenderPart::updateLogicalHeight();
     if (!flattenFrame())
          return;
 
@@ -61,13 +61,13 @@ void RenderIFrame::computeLogicalHeight()
     }
 }
 
-void RenderIFrame::computeLogicalWidth()
+void RenderIFrame::updateLogicalWidth()
 {
     // When we're seamless, we behave like a block. Thankfully RenderBox has all the right logic for this.
     if (isSeamless())
-        return RenderBox::computeLogicalWidth();
+        return RenderBox::updateLogicalWidth();
 
-    RenderPart::computeLogicalWidth();
+    RenderPart::updateLogicalWidth();
     if (!flattenFrame())
         return;
 
@@ -162,7 +162,7 @@ bool RenderIFrame::flattenFrame() const
 
 void RenderIFrame::layoutSeamlessly()
 {
-    computeLogicalWidth();
+    updateLogicalWidth();
     // FIXME: Containers set their height to 0 before laying out their kids (as we're doing here)
     // however, this causes FrameView::layout() to add vertical scrollbars, incorrectly inflating
     // the resulting contentHeight(). We'll need to make FrameView::layout() smarter.
@@ -175,7 +175,7 @@ void RenderIFrame::layoutSeamlessly()
     FrameView* childFrameView = static_cast<FrameView*>(widget());
     if (childFrameView) // Widget should never be null during layout(), but just in case.
         setLogicalHeight(childFrameView->contentsHeight() + borderTop() + borderBottom());
-    computeLogicalHeight();
+    updateLogicalHeight();
 
     updateWidgetPosition(); // Notify the Widget of our final height.
 
@@ -190,8 +190,8 @@ void RenderIFrame::layout()
     ASSERT(needsLayout());
 
     if (flattenFrame()) {
-        RenderPart::computeLogicalWidth();
-        RenderPart::computeLogicalHeight();
+        RenderPart::updateLogicalWidth();
+        RenderPart::updateLogicalHeight();
         layoutWithFlattening(style()->width().isFixed(), style()->height().isFixed());
         // FIXME: Is early return really OK here? What about transform/overflow code below?
         return;
@@ -199,9 +199,9 @@ void RenderIFrame::layout()
         layoutSeamlessly();
         // Do not return so as to share the layer and overflow updates below.
     } else {
-        computeLogicalWidth();
+        updateLogicalWidth();
         // No kids to layout as a replaced element.
-        computeLogicalHeight();
+        updateLogicalHeight();
     }
 
     m_overflow.clear();

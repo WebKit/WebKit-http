@@ -182,6 +182,11 @@ void WKBundleFrameClearOpener(WKBundleFrameRef frameRef)
         coreFrame->loader()->setOpener(0);
 }
 
+void WKBundleFrameStopLoading(WKBundleFrameRef frameRef)
+{
+    toImpl(frameRef)->stopLoading();
+}
+
 WKStringRef WKBundleFrameCopyLayerTreeAsText(WKBundleFrameRef frameRef)
 {
     return toCopiedAPI(toImpl(frameRef)->layerTreeAsText());
@@ -261,4 +266,13 @@ WKDataRef WKBundleFrameCopyWebArchiveFilteringSubframes(WKBundleFrameRef frameRe
 #endif
     
     return 0;
+}
+
+bool WKBundleFrameCallShouldCloseOnWebView(WKBundleFrameRef frameRef)
+{
+    Frame* coreFrame = toImpl(frameRef)->coreFrame();
+    if (!coreFrame)
+        return true;
+
+    return coreFrame->loader()->shouldClose();
 }

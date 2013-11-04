@@ -59,9 +59,6 @@ public:
     static GSList* getFrameChildren(WebKitWebFrame*);
     static WTF::CString getInnerText(WebKitWebFrame*);
     static WTF::CString dumpRenderTree(WebKitWebFrame*);
-    static int numberOfPagesForFrame(WebKitWebFrame*, float pageWidth, float pageHeight);
-    static WTF::CString pageProperty(WebKitWebFrame*, const char* propertyName, int pageNumber);
-    static WTF::CString pageSizeAndMarginsInPixels(WebKitWebFrame*, int pageNumber, int width, int height, int marginTop, int marginRight, int marginBottom, int marginLeft);
     static void addUserStyleSheet(WebKitWebFrame*, const char* sourceCode, bool allFrames);
     static guint getPendingUnloadEventCount(WebKitWebFrame*);
     static bool pauseAnimation(WebKitWebFrame*, const char* name, double time, const char* element);
@@ -131,6 +128,7 @@ public:
     static void resetTrackedRepaints(WebKitWebFrame*);
 
     static void clearMemoryCache();
+    static void clearApplicationCache();
 
 private:
     static bool s_drtRun;

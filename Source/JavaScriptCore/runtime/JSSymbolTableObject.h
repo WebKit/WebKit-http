@@ -44,22 +44,23 @@ public:
     static NO_RETURN_DUE_TO_ASSERT void putDirectVirtual(JSObject*, ExecState*, PropertyName, JSValue, unsigned attributes);
     
     JS_EXPORT_PRIVATE static bool deleteProperty(JSCell*, ExecState*, PropertyName);
-    JS_EXPORT_PRIVATE static void getOwnPropertyNames(JSObject*, ExecState*, PropertyNameArray&, EnumerationMode);
+    JS_EXPORT_PRIVATE static void getOwnNonIndexPropertyNames(JSObject*, ExecState*, PropertyNameArray&, EnumerationMode);
     
 protected:
     static const unsigned StructureFlags = IsEnvironmentRecord | OverridesVisitChildren | OverridesGetPropertyNames | Base::StructureFlags;
     
-    JSSymbolTableObject(JSGlobalData& globalData, Structure* structure, JSGlobalObject* globalObject, JSObject* globalThis, JSScope* scope)
-        : Base(globalData, structure, globalObject, globalThis, scope)
+    JSSymbolTableObject(JSGlobalData& globalData, Structure* structure, JSScope* scope, SharedSymbolTable* symbolTable = 0)
+        : Base(globalData, structure, scope)
     {
+        if (symbolTable)
+            m_symbolTable.set(globalData, this, symbolTable);
     }
 
-    void finishCreation(JSGlobalData& globalData, SharedSymbolTable* symbolTable = 0)
+    void finishCreation(JSGlobalData& globalData)
     {
         Base::finishCreation(globalData);
-        if (!symbolTable)
-            symbolTable = SharedSymbolTable::create(globalData);
-        m_symbolTable.set(globalData, this, symbolTable);
+        if (!m_symbolTable)
+            m_symbolTable.set(globalData, this, SharedSymbolTable::create(globalData));
     }
 
     static void visitChildren(JSCell*, SlotVisitor&);

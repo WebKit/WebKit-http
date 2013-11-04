@@ -10,6 +10,24 @@
 # or include() and a CONFIG += feature.
 CONFIG += config_step
 
+# Enable dynamic instead of static libraries for development
+!production_build:!buildbot:!win*: CONFIG += force_static_libs_as_shared
+
+root_project_file: finalizeConfigure()
+
+# Sanitize build config for single-configuration builds
+!debug|!release {
+    # Removing debug_and_release causes issues with lib suffixes when building debug on Windows.
+    # Work around it by only removing build_all, and still create the Makefiles for both configurations.
+    win32*: CONFIG -= build_all
+    else: CONFIG -= debug_and_release
+} else:debug_and_release {
+    # Only build a single instance of each application
+    contains(TEMPLATE, app) {
+        CONFIG -= build_all
+    }
+}
+
 # Help keep the build tree clean
 MOC_DIR = moc
 RCC_DIR = rcc
@@ -20,6 +38,8 @@ DEFINES += \
     BUILDING_QT__=1
 
 CONFIG(release, debug|release): DEFINES *= NDEBUG
+
+DEFINES += $$configDefines()
 
 CONFIG += depend_includepath
 DEPENDPATH += $$OUT_PWD
@@ -48,12 +68,6 @@ CONFIG -= warn_on
     -Winit-self \
     $$QMAKE_CXXFLAGS
 
-v8: DEFINES += WTF_USE_V8=1
-else {
-    contains(JAVASCRIPTCORE_JIT, yes): DEFINES+=ENABLE_JIT=1
-    contains(JAVASCRIPTCORE_JIT, no): DEFINES+=ENABLE_JIT=0
-}
-
 # Template configurations
 contains(TEMPLATE, derived) {
     # A (mostly) no-op template
@@ -63,6 +77,24 @@ contains(TEMPLATE, derived) {
     CONFIG += compile_libtool
 
     CONFIG -= debug_and_release
+
+    fake_debug.target = debug
+    fake_debug.depends = first
+    QMAKE_EXTRA_TARGETS += fake_debug
+    fake_release.target = release
+    fake_release.depends = first
+    QMAKE_EXTRA_TARGETS += fake_release
+
+    # A lot of our code generators require GNU tools, readily available
+    # on Linux and Mac OS X. On Windows we do have a convenience copy in
+    # Qt5's top-level repository, so let's add that to the PATH if we can
+    # find it.
+    win32 {
+        GNUTOOLS_DIR=$$[QT_HOST_DATA]/../gnuwin32/bin
+        exists($$GNUTOOLS_DIR/gperf.exe) {
+            GNUTOOLS = "(set $$escape_expand(\\\")PATH=$$toSystemPath($$GNUTOOLS_DIR);%PATH%$$escape_expand(\\\"))"
+        }
+    }
 
     for(generator, GENERATORS) {
         eval($${generator}.CONFIG = target_predeps no_link)
@@ -74,6 +106,11 @@ contains(TEMPLATE, derived) {
 
         script = $$eval($${generator}.script)
         eval($${generator}.depends += $$script)
+
+        commands = $$eval($${generator}.commands)
+        !isEmpty(commands):!isEmpty(GNUTOOLS) {
+            eval($${generator}.commands = $${GNUTOOLS} && $$val_escape($${generator}.commands))
+        }
 
         !isEmpty($${generator}.input) {
             # Compiler-style generator
@@ -126,9 +163,6 @@ contains(TEMPLATE, lib) {
     # Triggers the right export macro for the QtWebKit API (see qwebkitglobal.h)
     DEFINES += BUILDING_WEBKIT
 
-    # Build both debug and release configurations
-    mac: CONFIG += build_all
-
     # Prevent name clashes when building both debug and release. Qt5's module
     # system already takes care of this for the top level QtWebKit library.
     !qt_install_module:debug_and_release: TARGET = $$qtLibraryTarget($$TARGET)
@@ -144,31 +178,25 @@ contains(TEMPLATE, lib) {
 }
 
 # For anyone trying to include stdint.h
-win32-msvc*|win32-icc: INCLUDEPATH += $$ROOT_WEBKIT_DIR/Source/JavaScriptCore/os-win32
+win32-msvc*|win32-icc|wince*: INCLUDEPATH += $$ROOT_WEBKIT_DIR/Source/JavaScriptCore/os-win32
 
 contains(QT, webkit) {
     # In addition to the main shared QtWebKit library we also
     # need to link to any intermediate shared libraries.
     force_static_libs_as_shared {
-        WEBKIT += wtf webcore
-        !v8: WEBKIT += javascriptcore
-        !no_webkit2: WEBKIT += webkit2
+        WEBKIT += wtf javascriptcore webcore
+        build?(webkit1): WEBKIT += webkit1
+        build?(webkit2): WEBKIT += webkit2
     }
+
+    # FIXME: Replace this with putting the intermediate libraries in the prl file
 }
 
-# Reorder libraries so that the link and include order is correct,
-# and make sure the case matches the original case.
-libraries = WebKit1 WebKit2 WebCore JavaScriptCore WTF
-for(library, libraries) {
-    contains(WEBKIT, $$lower($$library)) {
-        WEBKIT -= $$lower($$library)
-        WEBKIT *= $$library
-    }
-}
+contains(TARGET, $$resolveFinalLibraryName($${QT.webkit.name})): CONFIG += creating_module
 
 defineTest(needToLink) {
     # The main dynamic library always needs to link in the intermediate libraries
-    contains(TARGET, $$resolveFinalLibraryName($${QT.webkit.name})): return(true)
+    creating_module: return(true)
 
     force_static_libs_as_shared {
         # So do the individual libraries if they are dynamic
@@ -186,33 +214,32 @@ defineTest(needToLink) {
     return(false)
 }
 
-for(library, WEBKIT) {
-    # Juggle LIBS to keep the static link order correct
-    existing_libs = $$LIBS
-    unset(LIBS)
+# Make sure we have loaded the relevant modules, so the include paths,
+# etc, are correct, and we can use WEBKIT.foo.dependent_libs below.
+load(webkit_modules)
 
-    # We definitly need include paths and such (this will set
-    # SOURCE_DIR to the right path so we can use it below).
-    library_identifier = $$lower($$library)
-    include(../modules/$${library_identifier}.prf)
-
-    # More juggling
-    dependent_libs = $$LIBS
-    unset(LIBS)
-
-    # But we might also need to link against it
-    needToLink() {
+# We might need to link against the WebKit intermediate libraries
+needToLink() {
+    for(library, WEBKIT) {
+        library_identifier = $$lower($$library)
         linkAgainstLibrary($$library, $$eval(WEBKIT.$${library_identifier}.root_source_dir))
-        LIBS += $$dependent_libs
+        LIBS += $$eval(WEBKIT.$${library_identifier}.dependent_libs)
     }
+}
 
-    # Anything not linking dynamically to QtWebKit should make sure to have its export
-    # macros syncrhonized with the code that it will be linked with statically.
-    !contains(QT, webkit) {
-        DEFINES += STATICALLY_LINKED_WITH_$$library
-    }
+creating_module {
+    # Sanitize PKGCONFIG and LIBS, as we don't want any of these libraries
+    # to end up in as public API dependenices in the QtWebKit prl file.
+    PKGCONFIG_PRIVATE *= $$PKGCONFIG
+    unset(PKGCONFIG)
+    LIBS_PRIVATE += $$LIBS
+    unset(LIBS)
 
-    LIBS = $$existing_libs $$LIBS
+    # We do have a limited subset of Qt modules as dependencies for using
+    # the public QtWebKit API. The rest of the modules go into QT_PRIVATE.
+    QT_PRIVATE *= $$QT
+    QT = $$QT_API_DEPENDS
+    QT_PRIVATE -= $$QT
 }
 
 equals(_PRO_FILE_, $${ROOT_WEBKIT_DIR}/WebKit.pro):!isEmpty(OVERRIDE_SUBDIRS) {

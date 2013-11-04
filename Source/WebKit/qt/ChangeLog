@@ -1,3 +1,298 @@
+2012-09-17  Caio Marcelo de Oliveira Filho  <caio.oliveira@openbossa.org>
+
+        [Qt] Use UndoStep::editingAction() to set the text of undo/redo actions
+        https://bugs.webkit.org/show_bug.cgi?id=96921
+
+        Reviewed by Ryosuke Niwa.
+
+        Set the text of QUndoCommands we create for undo/redo actions based on the
+        editing action from UndoStep.
+
+        This change is visible using QtTestBrowser, and looking at the Edit menu after
+        doing HTML editing changes. I've used http://simple-rte.rniwa.com for testing.
+
+        * WebCoreSupport/UndoStepQt.cpp:
+        (undoNameForEditAction): This function returns a localized name of the action.
+        (UndoStepQt::UndoStepQt): Set the text based on UndoStep::editingAction.
+        * tests/qwebpage/tst_qwebpage.cpp:
+        (tst_QWebPage):
+        (tst_QWebPage::undoActionHaveCustomText): Create a new test to verify that the text
+        describing the undo action after inserting a text and indenting the text is different.
+
+2012-09-17  Leo Franchi  <lfranchi@kde.org>
+
+        [Qt] Inspector WebSocket backend protocol update
+        https://bugs.webkit.org/show_bug.cgi?id=77031
+
+        Also adds support for multi-frame messages and non-text messages.
+        Thanks to Jocelyn Turcotte for most of the WebSocket update code!
+
+        Reviewed by Simon Hausmann.
+
+        * WebCoreSupport/InspectorServerQt.cpp:
+        (WebCore):
+        (WebCore::generateWebSocketChallengeResponse):
+        (WebCore::InspectorServerRequestHandlerQt::tcpReadyRead):
+        (WebCore::InspectorServerRequestHandlerQt::webSocketSend):
+        (WebCore::applyMask):
+        (WebCore::InspectorServerRequestHandlerQt::webSocketReadyRead):
+        * WebCoreSupport/InspectorServerQt.h:
+        (InspectorServerRequestHandlerQt):
+
+2012-09-15  Pierre Rossi  <pierre.rossi@gmail.com>
+
+        [Qt] QDoc fixes for Qt 5 documentation
+        https://bugs.webkit.org/show_bug.cgi?id=96796
+
+        Reviewed by Simon Hausmann.
+
+        Produce fewer warnings and a better documentation.
+        Having two QML modules providing a WebView component is a bit too much for poor old qdoc to
+        cope with (or would require a lot of painful disambiguation by hand). Since the plan is to have
+        QDeclarativeWebView living in the qtquick1 module, we can already take it out of the 
+        documentation generation for now.
+
+        * declarative/qdeclarativewebview.cpp: s/qmlclass/qmltype/ out of principle
+        * docs/qtwebkit.qdocconf: Remove the \i alias that caused a warning. Use *.h as headers suffix, not sources.
+        Also remove QDeclarativeWebView from the documentation.
+
+2012-09-13  Lauro Neto  <lauro.neto@openbossa.org>
+
+        [Qt][WK2] fast/forms/access-key-for-all-elements.html fails
+        https://bugs.webkit.org/show_bug.cgi?id=73917
+
+        Reviewed by Simon Hausmann.
+
+        Access-key tests were failing due to hardcoded Mac OS X in the
+        Qt WK2 user agent string. This commit moves the WK1 implementation
+        to a shared one to be used by both versions.
+
+        Change QWebPage to use the shared user agent implementation.
+
+        * Api/qwebpage.cpp:
+        (QWebPage::userAgentForUrl):
+
+2012-09-13  Oswald Buddenhagen  <oswald.buddenhagen@nokia.com>
+
+        [Qt] Fix qdoc executable preparation
+
+        Reviewed by Tor Arne Vestbø.
+
+        * docs/docs.pri:
+
+2012-09-12  Sheriff Bot  <webkit.review.bot@gmail.com>
+
+        Unreviewed, rolling out r127876.
+        http://trac.webkit.org/changeset/127876
+        https://bugs.webkit.org/show_bug.cgi?id=96600
+
+        mouse click doesn't work for spin button if spin button in
+        iframe (Requested by yosin on #webkit).
+
+        * Api/qwebframe.cpp:
+        (QWebFrame::hitTestContent):
+        * Api/qwebpage.cpp:
+        (QWebPagePrivate::handleSoftwareInputPanel):
+        (QWebPagePrivate::TouchAdjuster::findCandidatePointForTouch):
+        (QWebPage::updatePositionDependentActions):
+        * WebCoreSupport/FrameLoaderClientQt.cpp:
+        (WebCore::FrameLoaderClientQt::dispatchDecidePolicyForNavigationAction):
+
+2012-09-12  Roland Takacs  <rtakacs@inf.u-szeged.hu>
+
+        [Qt] Segmentation fault when closing QtTestBrowser
+        https://bugs.webkit.org/show_bug.cgi?id=95003
+
+        Reviewed by Simon Hausmann.
+
+        Defined a new QObject* variable that points to the QGLWidget that was created
+        in 'createPlatformGraphicsContext3DFromWidget'.
+        It is neccessary for deallocating it.
+
+        * WebCoreSupport/PageClientQt.cpp:
+        (createPlatformGraphicsContext3DFromWidget):
+        (WebCore::PageClientQWidget::createPlatformGraphicsContext3D):
+        (WebCore::PageClientQGraphicsWidget::createPlatformGraphicsContext3D):
+        * WebCoreSupport/PageClientQt.h:
+        (PageClientQWidget):
+        (PageClientQGraphicsWidget):
+
+2012-09-12  Andras Becsi  <andras.becsi@nokia.com>
+
+        [Qt] Add module identifier directive to the qmldir files
+        https://bugs.webkit.org/show_bug.cgi?id=96406
+
+        Reviewed by Simon Hausmann.
+
+        Qt5 QML modules need to be identified. Type registrations are only permitted
+        into the namespace identified in the qmldir file's module identifier directive.
+        Additionally this also facilitates the protection against external registrations.
+        This patch suppresses a warning when importing the QtWebKit module.
+
+        * declarative/experimental/qmldir:
+        * declarative/qmldir:
+
+2012-09-11  Marcelo Lira  <marcelo.lira@openbossa.org>
+
+        Restore original value of mock scrollbars enabled in InternalSettings
+        https://bugs.webkit.org/show_bug.cgi?id=87680
+
+        Reviewed by Adam Barth.
+
+        Added backup support for mock scrollbars state in
+        InternalSettings::Backup, and removed support for these
+        from Qt's DumpRenderTree.
+
+        * WebCoreSupport/DumpRenderTreeSupportQt.cpp:
+        * WebCoreSupport/DumpRenderTreeSupportQt.h:
+
+2012-09-11  Tor Arne Vestbø  <tor.arne.vestbo@nokia.com>
+
+        [Qt] Add a configure step to the Qt build system
+
+        This allows building the Qt port using just 'qmake WebKit.pro'. Using
+        the build-webkit script is still supported, and will add slightly more
+        logic to the build, such as detecting the need for clean or incremental
+        builds.
+
+        Internally, the build system now uses a new variable, WEBKIT_CONFIG, for
+        all things related to configuring the build, such as use/have/enable flags,
+        and these are translated to defines in default_post. Project files should
+        no longer check contains(DEFINES,...) to detect features, but use the new
+        enable?(), use?(), and have?() functions. The no_webkit1 and no_webkit2
+        options have been translated into WEBKIT_CONFIG options as well, and can
+        be checked using build?().
+
+        Reviewed by Simon Hausmann.
+
+        * declarative/declarative.pro:
+        * declarative/public.pri:
+        * tests/qgraphicswebview/qgraphicswebview.pro:
+
+2012-09-11  Andras Becsi  <andras.becsi@nokia.com>
+
+        [Qt][WK2] Fix the build with recent Qt5
+        https://bugs.webkit.org/show_bug.cgi?id=96283
+
+        Reviewed by Simon Hausmann.
+
+        We should not use deprecated Qt API because doing that results
+        in build failure since all the deprecated API was disabled
+        in qtbase (https://codereview.qt-project.org/#change,24890).
+
+        * tests/qgraphicswebview/tst_qgraphicswebview.cpp:
+        (tst_QGraphicsWebView::widgetsRenderingThroughCache):
+        (tst_QGraphicsWebView::setPalette):
+        (tst_QGraphicsWebView::compareCanvasToImage):
+        * tests/qobjectbridge/tst_qobjectbridge.cpp:
+        (tst_QObjectBridge::ownership):
+        * tests/qwebframe/tst_qwebframe.cpp:
+        (tst_QWebFrame::popupFocus):
+        (tst_QWebFrame::inputFieldFocus):
+        (tst_QWebFrame::evaluateWillCauseRepaint):
+        * tests/qwebpage/tst_qwebpage.cpp:
+        (Navigation):
+        (PluginCounterPage):
+        * tests/qwebview/tst_qwebview.cpp:
+        (tst_QWebView::reusePage):
+        (tst_QWebView::focusInputTypes):
+        (tst_QWebView::setPalette):
+        (tst_QWebView::renderingAfterMaxAndBack):
+
+2012-09-09  Emil A Eklund  <eae@chromium.org>
+
+        Rename Node::getRect/getPixelSnappedRect and remove ContainerNode::getRect
+        https://bugs.webkit.org/show_bug.cgi?id=81413
+
+        Reviewed by David Hyatt.
+
+        Update qwebelement and qwebpage to call pixelSnappedBoundingBox.
+
+        * Api/qwebelement.cpp:
+        (QWebElement::geometry):
+        (QWebElement::render):
+        * Api/qwebpage.cpp:
+        (QWebPagePrivate::TouchAdjuster::findCandidatePointForTouch):
+
+2012-09-07  Allan Sandfeld Jensen  <allan.jensen@nokia.com>
+
+        Simplify hitTestResultAtPoint and nodesFromRect APIs
+        https://bugs.webkit.org/show_bug.cgi?id=95720
+
+        Reviewed by Antonio Gomes.
+
+        Update calls to new API.
+
+        * Api/qwebframe.cpp:
+        (QWebFrame::hitTestContent):
+        * Api/qwebpage.cpp:
+        (QWebPagePrivate::handleSoftwareInputPanel):
+        (QWebPagePrivate::TouchAdjuster::findCandidatePointForTouch):
+        (QWebPage::updatePositionDependentActions):
+        * WebCoreSupport/FrameLoaderClientQt.cpp:
+        (WebCore::FrameLoaderClientQt::dispatchDecidePolicyForNavigationAction):
+
+2012-09-07  Allan Sandfeld Jensen  <allan.jensen@nokia.com>
+
+        X11 Global Selection
+        https://bugs.webkit.org/show_bug.cgi?id=88238
+
+        Reviewed by Tony Chang.
+
+        Use new editor command for pasting global selection, and update it using
+        the respondToChangedSelection callback.
+
+        * Api/qwebpage.cpp:
+        (QWebPagePrivate::handleClipboard):
+        * WebCoreSupport/EditorClientQt.cpp:
+        (WebCore::EditorClientQt::respondToChangedSelection):
+        (WebCore::EditorClientQt::supportsGlobalSelection):
+        * WebCoreSupport/EditorClientQt.h:
+        (EditorClientQt):
+
+2012-09-05  Sam Weinig  <sam@webkit.org>
+
+        Part 2 of removing PlatformString.h, remove PlatformString.h
+        https://bugs.webkit.org/show_bug.cgi?id=95931
+
+        Reviewed by Adam Barth.
+
+        Remove PlatformString.h
+
+        * Api/qwebdatabase_p.h:
+        * Api/qwebframe_p.h:
+        * Api/qwebhistory.cpp:
+        * Api/qwebhistoryinterface.cpp:
+        * Api/qwebpage_p.h:
+        * Api/qwebsettings.cpp:
+        * WebCoreSupport/ChromeClientQt.h:
+        * WebCoreSupport/InspectorClientQt.cpp:
+
+2012-09-05  Kaustubh Atrawalkar  <kaustubh@motorola.com>
+
+        [DRT] LTC:: Move printing related APIs from LayoutTestController to Internals
+        https://bugs.webkit.org/show_bug.cgi?id=92735
+
+        Reviewed by Hajime Morita.
+
+        Move numberOfPages, pageProperty & pageSizeAndMarginsInPixels in Internals and remove duplicated code from DumprenderTree & WebkitTestRunner.
+
+        * WebCoreSupport/DumpRenderTreeSupportQt.cpp:
+        (DumpRenderTreeSupportQt::evaluateScriptInIsolatedWorld):
+        * WebCoreSupport/DumpRenderTreeSupportQt.h:
+
+2012-09-04  Jon Lee  <jonlee@apple.com>
+
+        [Qt] REGRESSION(r127321): It made 3 notification test timeout
+        https://bugs.webkit.org/show_bug.cgi?id=95638
+
+        Reviewed by Csaba Osztrogonác.
+
+        Dispatch show event instead of display after r127321.
+
+        * WebCoreSupport/NotificationPresenterClientQt.cpp:
+        (WebCore::NotificationPresenterClientQt::sendDisplayEvent):
+
 2012-08-31  Simon Hausmann  <simon.hausmann@nokia.com>
 
         [Qt] Port convertValueToQVariant to use the JSC C API

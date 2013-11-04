@@ -52,6 +52,7 @@ class InspectorPageAgent;
 class InspectorState;
 class InstrumentingAgents;
 class IntRect;
+class RenderObject;
 class ResourceRequest;
 class ResourceResponse;
 
@@ -98,7 +99,7 @@ public:
 
     void didInvalidateLayout(Frame*);
     void willLayout(Frame*);
-    void didLayout();
+    void didLayout(RenderObject*);
 
     void didScheduleStyleRecalculation(Frame*);
     void willRecalculateStyle(Frame*);
@@ -120,10 +121,10 @@ public:
     void willFireTimer(int timerId, Frame*);
     void didFireTimer();
 
-    void willChangeXHRReadyState(const String&, int, Frame*);
-    void didChangeXHRReadyState();
-    void willLoadXHR(const String&, Frame*);
-    void didLoadXHR();
+    void willDispatchXHRReadyStateChangeEvent(const String&, int, Frame*);
+    void didDispatchXHRReadyStateChangeEvent();
+    void willDispatchXHRLoadEvent(const String&, Frame*);
+    void didDispatchXHRLoadEvent();
 
     void willEvaluateScript(const String&, int, Frame*);
     void didEvaluateScript();
@@ -161,8 +162,8 @@ public:
 
 private:
     struct TimelineRecordEntry {
-        TimelineRecordEntry(PassRefPtr<InspectorObject> record, PassRefPtr<InspectorObject> data, PassRefPtr<InspectorArray> children, const String& type, const String& frameId)
-            : record(record), data(data), children(children), type(type), frameId(frameId)
+        TimelineRecordEntry(PassRefPtr<InspectorObject> record, PassRefPtr<InspectorObject> data, PassRefPtr<InspectorArray> children, const String& type, const String& frameId, size_t usedHeapSizeAtStart)
+            : record(record), data(data), children(children), type(type), frameId(frameId), usedHeapSizeAtStart(usedHeapSizeAtStart)
         {
         }
         RefPtr<InspectorObject> record;
@@ -170,6 +171,7 @@ private:
         RefPtr<InspectorArray> children;
         String type;
         String frameId;
+        size_t usedHeapSizeAtStart;
     };
         
     InspectorTimelineAgent(InstrumentingAgents*, InspectorPageAgent*, InspectorState*, InspectorType, InspectorClient*);

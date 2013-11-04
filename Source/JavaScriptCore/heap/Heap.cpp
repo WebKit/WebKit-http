@@ -618,7 +618,7 @@ size_t Heap::protectedGlobalObjectCount()
 
 size_t Heap::globalObjectCount()
 {
-    return m_objectSpace.forEachCell<CountIfGlobalObject>();
+    return m_objectSpace.forEachLiveCell<CountIfGlobalObject>();
 }
 
 size_t Heap::protectedObjectCount()
@@ -633,7 +633,7 @@ PassOwnPtr<TypeCountSet> Heap::protectedObjectTypeCounts()
 
 PassOwnPtr<TypeCountSet> Heap::objectTypeCounts()
 {
-    return m_objectSpace.forEachCell<RecordType>();
+    return m_objectSpace.forEachLiveCell<RecordType>();
 }
 
 void Heap::deleteAllCompiledCode()
@@ -753,6 +753,9 @@ void Heap::collect(SweepToggle sweepToggle)
         m_objectSpace.resetAllocators();
     }
     
+    if (Options::useZombieMode())
+        zombifyDeadObjects();
+
     size_t currentHeapSize = size();
     if (fullGC) {
         m_sizeAfterLastCollect = currentHeapSize;
@@ -798,12 +801,9 @@ void Heap::didAllocate(size_t bytes)
     m_bytesAllocated += bytes;
 }
 
-bool Heap::isValidAllocation(size_t bytes)
+bool Heap::isValidAllocation(size_t)
 {
     if (!isValidThreadState(m_globalData))
-        return false;
-
-    if (bytes > MarkedSpace::maxCellSize)
         return false;
 
     if (m_operationInProgress != NoOperation)
@@ -842,6 +842,51 @@ void Heap::didStartVMShutdown()
     m_sweeper->didStartVMShutdown();
     m_sweeper = 0;
     lastChanceToFinalize();
+}
+
+class ZombifyCellFunctor : public MarkedBlock::VoidFunctor {
+public:
+    ZombifyCellFunctor(size_t cellSize)
+        : m_cellSize(cellSize)
+    {
+    }
+
+    void operator()(JSCell* cell)
+    {
+        if (Options::zombiesAreImmortal())
+            MarkedBlock::blockFor(cell)->setMarked(cell);
+
+        void** current = reinterpret_cast<void**>(cell);
+
+        // We want to maintain zapped-ness because that's how we know if we've called 
+        // the destructor.
+        if (cell->isZapped())
+            current++;
+
+        void* limit = static_cast<void*>(reinterpret_cast<char*>(cell) + m_cellSize);
+        for (; current < limit; current++)
+            *current = reinterpret_cast<void*>(0xbbadbeef);
+    }
+
+private:
+    size_t m_cellSize;
+};
+
+class ZombifyBlockFunctor : public MarkedBlock::VoidFunctor {
+public:
+    void operator()(MarkedBlock* block)
+    {
+        ZombifyCellFunctor functor(block->cellSize());
+        block->forEachDeadCell(functor);
+    }
+};
+
+void Heap::zombifyDeadObjects()
+{
+    m_objectSpace.sweep();
+
+    ZombifyBlockFunctor functor;
+    m_objectSpace.forEachBlock(functor);
 }
 
 } // namespace JSC

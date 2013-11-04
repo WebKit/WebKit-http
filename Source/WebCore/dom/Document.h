@@ -83,6 +83,7 @@ class DocumentWeakReference;
 class DynamicNodeListCacheBase;
 class EditingText;
 class Element;
+class ElementAttributeData;
 class EntityReference;
 class Event;
 class EventListener;
@@ -107,6 +108,7 @@ class HitTestResult;
 class IntPoint;
 class DOMWrapperWorld;
 class JSNode;
+class Localizer;
 class MediaCanStartListener;
 class MediaQueryList;
 class MediaQueryMatcher;
@@ -205,6 +207,9 @@ enum NodeListInvalidationType {
     InvalidateOnAnyAttrChange,
 };
 const int numNodeListInvalidationTypes = InvalidateOnAnyAttrChange + 1;
+
+struct ImmutableAttributeDataCacheEntry;
+typedef HashMap<unsigned, OwnPtr<ImmutableAttributeDataCacheEntry>, AlreadyHashed> ImmutableAttributeDataCache;
 
 class Document : public ContainerNode, public TreeScope, public ScriptExecutionContext {
 public:
@@ -350,6 +355,7 @@ public:
     virtual PassRefPtr<Element> createElementNS(const String& namespaceURI, const String& qualifiedName, ExceptionCode&);
     PassRefPtr<Element> createElement(const QualifiedName&, bool createdByParser);
 
+    bool cssStickyPositionEnabled() const;
     bool cssRegionsEnabled() const;
 #if ENABLE(CSS_REGIONS)
     PassRefPtr<WebKitNamedFlow> webkitGetFlowByName(const String&);
@@ -638,7 +644,7 @@ public:
 
     virtual String userAgent(const KURL&) const;
 
-    virtual void disableEval();
+    virtual void disableEval(const String& errorMessage);
 
     bool canNavigate(Frame* targetFrame);
     Frame* findUnsafeParentScrollPropagationBoundary();
@@ -740,6 +746,8 @@ public:
     void removeFocusedNodeOfSubtree(Node*, bool amongChildrenOnly = false);
     void hoveredNodeDetached(Node*);
     void activeChainNodeDetached(Node*);
+
+    void updateHoverActiveState(const HitTestRequest&, HitTestResult&);
 
     // Updates for :target (CSS3 selector).
     void setCSSTarget(Element*);
@@ -1012,6 +1020,7 @@ public:
 
     void registerForPrivateBrowsingStateChangedCallbacks(Element*);
     void unregisterForPrivateBrowsingStateChangedCallbacks(Element*);
+    void storageBlockingStateDidChange();
     void privateBrowsingStateDidChange();
 
     void setShouldCreateRenderers(bool);
@@ -1182,6 +1191,10 @@ public:
     ContextFeatures* contextFeatures() { return m_contextFeatures.get(); }
 
     virtual void reportMemoryUsage(MemoryObjectInfo*) const OVERRIDE;
+
+    PassRefPtr<ElementAttributeData> cachedImmutableAttributeData(const Element*, const Vector<Attribute>&);
+
+    Localizer& getLocalizer(const AtomicString& locale);
 
 protected:
     Document(Frame*, const KURL&, bool isXHTML, bool isHTML);
@@ -1568,9 +1581,14 @@ private:
     RefPtr<DOMSecurityPolicy> m_domSecurityPolicy;
 #endif
 
+    ImmutableAttributeDataCache m_immutableAttributeDataCache;
+
 #ifndef NDEBUG
     bool m_didDispatchViewportPropertiesChanged;
 #endif
+
+    typedef HashMap<AtomicString, OwnPtr<Localizer> > LocaleToLocalizerMap;
+    LocaleToLocalizerMap m_localizerCache;
 };
 
 inline void Document::notifyRemovePendingSheetIfNeeded()

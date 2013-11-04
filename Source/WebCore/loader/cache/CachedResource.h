@@ -25,18 +25,18 @@
 
 #include "CachePolicy.h"
 #include "FrameLoaderTypes.h"
-#include "PlatformString.h"
 #include "PurgePriority.h"
-#include "ResourceLoaderOptions.h"
 #include "ResourceLoadPriority.h"
+#include "ResourceLoaderOptions.h"
 #include "ResourceRequest.h"
 #include "ResourceResponse.h"
 #include "Timer.h"
+#include <time.h>
 #include <wtf/HashCountedSet.h>
 #include <wtf/HashSet.h>
 #include <wtf/OwnPtr.h>
 #include <wtf/Vector.h>
-#include <time.h>
+#include <wtf/text/WTFString.h>
 
 namespace WebCore {
 
@@ -47,7 +47,6 @@ class CachedResourceHandleBase;
 class CachedResourceLoader;
 class Frame;
 class InspectorResource;
-class MemoryObjectInfo;
 class PurgeableBuffer;
 class SecurityOrigin;
 class SubresourceLoader;
@@ -145,6 +144,9 @@ public:
 
     bool isLoading() const { return m_loading; }
     void setLoading(bool b) { m_loading = b; }
+    virtual bool stillNeedsLoad() const { return false; }
+
+    SubresourceLoader* loader() { return m_loader.get(); }
 
     virtual bool isImage() const { return false; }
     bool ignoreForRequestCount() const
@@ -254,7 +256,7 @@ public:
     virtual void reportMemoryUsage(MemoryObjectInfo*) const;
 
 protected:
-    void checkNotify();
+    virtual void checkNotify();
 
     void setEncodedSize(unsigned);
     void setDecodedSize(unsigned);

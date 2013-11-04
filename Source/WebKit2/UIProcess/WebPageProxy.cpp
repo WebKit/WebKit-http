@@ -52,6 +52,7 @@
 #include "WebBackForwardList.h"
 #include "WebBackForwardListItem.h"
 #include "WebCertificateInfo.h"
+#include "WebColorPickerResultListenerProxy.h"
 #include "WebContext.h"
 #include "WebContextMenuProxy.h"
 #include "WebContextUserMessageCoders.h"
@@ -183,6 +184,7 @@ WebPageProxy::WebPageProxy(PageClient* pageClient, PassRefPtr<WebProcessProxy> p
     , m_drawsTransparentBackground(false)
     , m_areMemoryCacheClientCallsEnabled(true)
     , m_useFixedLayout(false)
+    , m_suppressScrollbarAnimations(false)
     , m_paginationMode(Pagination::Unpaginated)
     , m_paginationBehavesLikeColumns(false)
     , m_pageLength(0)
@@ -411,6 +413,11 @@ void WebPageProxy::close()
     if (m_colorChooser) {
         m_colorChooser->invalidate();
         m_colorChooser = nullptr;
+    }
+
+    if (m_colorPickerResultListener) {
+        m_colorPickerResultListener->invalidate();
+        m_colorPickerResultListener = nullptr;
     }
 #endif
 
@@ -1500,6 +1507,18 @@ void WebPageProxy::setFixedLayoutSize(const IntSize& size)
 
     m_fixedLayoutSize = size;
     m_process->send(Messages::WebPage::SetFixedLayoutSize(size), m_pageID);
+}
+
+void WebPageProxy::setSuppressScrollbarAnimations(bool suppressAnimations)
+{
+    if (!isValid())
+        return;
+
+    if (suppressAnimations == m_suppressScrollbarAnimations)
+        return;
+
+    m_suppressScrollbarAnimations = suppressAnimations;
+    m_process->send(Messages::WebPage::SetSuppressScrollbarAnimations(suppressAnimations), m_pageID);
 }
 
 void WebPageProxy::setPaginationMode(WebCore::Pagination::Mode mode)
@@ -2707,11 +2726,24 @@ void WebPageProxy::needTouchEvents(bool needTouchEvents)
 #endif
 
 #if ENABLE(INPUT_TYPE_COLOR)
-void WebPageProxy::showColorChooser(const WebCore::Color& initialColor)
+void WebPageProxy::showColorChooser(const WebCore::Color& initialColor, const IntRect& elementRect)
 {
     ASSERT(!m_colorChooser);
 
-    m_colorChooser = m_pageClient->createColorChooserProxy(this, initialColor);
+    if (m_colorPickerResultListener) {
+        m_colorPickerResultListener->invalidate();
+        m_colorPickerResultListener = nullptr;
+    }
+
+    m_colorPickerResultListener = WebColorPickerResultListenerProxy::create(this);
+    m_colorChooser = WebColorChooserProxy::create(this);
+
+    if (m_uiClient.showColorPicker(this, initialColor.serialized(), m_colorPickerResultListener.get()))
+        return;
+
+    m_colorChooser = m_pageClient->createColorChooserProxy(this, initialColor, elementRect);
+    if (!m_colorChooser)
+        didEndColorChooser();
 }
 
 void WebPageProxy::setColorChooserColor(const WebCore::Color& color)
@@ -2741,12 +2773,17 @@ void WebPageProxy::didEndColorChooser()
     if (!isValid())
         return;
 
-    ASSERT(m_colorChooser);
-
-    m_colorChooser->invalidate();
-    m_colorChooser = nullptr;
+    if (m_colorChooser) {
+        m_colorChooser->invalidate();
+        m_colorChooser = nullptr;
+    }
 
     m_process->send(Messages::WebPage::DidEndColorChooser(), m_pageID);
+
+    m_colorPickerResultListener->invalidate();
+    m_colorPickerResultListener = nullptr;
+
+    m_uiClient.hideColorPicker(this);
 }
 #endif
 
@@ -2911,6 +2948,9 @@ void WebPageProxy::showPopupMenu(const IntRect& rect, uint64_t textDirection, co
 
     m_activePopupMenu = m_pageClient->createPopupMenuProxy(this);
 
+    if (!m_activePopupMenu)
+        return;
+
     // Since showPopupMenu() can spin a nested run loop we need to turn off the responsiveness timer.
     m_process->responsivenessTimer()->stop();
 
@@ -2918,8 +2958,8 @@ void WebPageProxy::showPopupMenu(const IntRect& rect, uint64_t textDirection, co
 
     protectedActivePopupMenu->showPopupMenu(rect, static_cast<TextDirection>(textDirection), m_pageScaleFactor, items, data, selectedIndex);
 
-    // Since Qt doesn't use a nested mainloop the show the popup and get the answer, we need to keep the client pointer valid.
-#if !PLATFORM(QT)
+    // Since Qt and Efl doesn't use a nested mainloop to show the popup and get the answer, we need to keep the client pointer valid.
+#if !PLATFORM(QT) && !PLATFORM(EFL)
     protectedActivePopupMenu->invalidate();
 #endif
     protectedActivePopupMenu = 0;
@@ -2959,6 +2999,8 @@ void WebPageProxy::internalShowContextMenu(const IntPoint& menuLocation, const W
     }
 
     m_activeContextMenu = m_pageClient->createContextMenuProxy(this);
+    if (!m_activeContextMenu)
+        return;
 
     // Since showContextMenu() can spin a nested run loop we need to turn off the responsiveness timer.
     m_process->responsivenessTimer()->stop();
@@ -3518,6 +3560,11 @@ void WebPageProxy::processDidCrash()
         m_colorChooser->invalidate();
         m_colorChooser = nullptr;
     }
+
+    if (m_colorPickerResultListener) {
+        m_colorPickerResultListener->invalidate();
+        m_colorPickerResultListener = nullptr;
+    }
 #endif
 
 #if ENABLE(GEOLOCATION)
@@ -3610,6 +3657,7 @@ WebPageCreationParameters WebPageProxy::creationParameters() const
     parameters.areMemoryCacheClientCallsEnabled = m_areMemoryCacheClientCallsEnabled;
     parameters.useFixedLayout = m_useFixedLayout;
     parameters.fixedLayoutSize = m_fixedLayoutSize;
+    parameters.suppressScrollbarAnimations = m_suppressScrollbarAnimations;
     parameters.paginationMode = m_paginationMode;
     parameters.paginationBehavesLikeColumns = m_paginationBehavesLikeColumns;
     parameters.pageLength = m_pageLength;
@@ -3711,9 +3759,9 @@ void WebPageProxy::requestNotificationPermission(uint64_t requestID, const Strin
         request->deny();
 }
 
-void WebPageProxy::showNotification(const String& title, const String& body, const String& iconURL, const String& tag, const String& originString, uint64_t notificationID)
+void WebPageProxy::showNotification(const String& title, const String& body, const String& iconURL, const String& tag, const String& lang, const String& dir, const String& originString, uint64_t notificationID)
 {
-    m_process->context()->notificationManagerProxy()->show(this, title, body, iconURL, tag, originString, notificationID);
+    m_process->context()->notificationManagerProxy()->show(this, title, body, iconURL, tag, lang, dir, originString, notificationID);
 }
 
 float WebPageProxy::headerHeight(WebFrameProxy* frame)

@@ -57,6 +57,7 @@
 
 #include "FrameLoaderClientImpl.h"
 #include "PlatformMessagePortChannel.h"
+#include "WebFileSystemCallbacks.h"
 #include "WebFrameClient.h"
 #include "WebFrameImpl.h"
 #include "WebMessagePortChannel.h"
@@ -103,6 +104,7 @@ void WebWorkerClientImpl::startWorkerContext(const KURL& scriptURL, const String
 
 void WebWorkerClientImpl::terminateWorkerContext()
 {
+    m_webFrame = 0;
     m_proxy->terminateWorkerContext();
 }
 
@@ -209,7 +211,11 @@ bool WebWorkerClientImpl::allowFileSystem()
 void WebWorkerClientImpl::openFileSystem(WebFileSystem::Type type, long long size, bool create, 
                                          WebFileSystemCallbacks* callbacks)
 {
-     m_webFrame->client()->openFileSystem(m_webFrame, type, size, create, callbacks);
+    if (m_proxy->askedToTerminate()) {
+        callbacks->didFail(WebFileErrorAbort);
+        return;
+    }
+    m_webFrame->client()->openFileSystem(m_webFrame, type, size, create, callbacks);
 }
 
 bool WebWorkerClientImpl::allowDatabase(WebFrame*, const WebString& name, const WebString& displayName, unsigned long estimatedSize) 

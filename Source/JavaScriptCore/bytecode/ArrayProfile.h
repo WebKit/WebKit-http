@@ -35,16 +35,16 @@ namespace JSC {
 
 class LLIntOffsetsExtractor;
 
+// This is a bitfield where each bit represents an IndexingType that we have seen.
+// There are 32 indexing types, so an unsigned is enough.
 typedef unsigned ArrayModes;
 
-static const unsigned IsNotArray = 1;
-static const unsigned IsJSArray  = 2;
+#define asArrayModes(type) \
+    (1 << static_cast<unsigned>(type))
 
 inline ArrayModes arrayModeFromStructure(Structure* structure)
 {
-    if (structure->classInfo() == &JSArray::s_info)
-        return IsJSArray;
-    return IsNotArray;
+    return asArrayModes(structure->indexingType());
 }
 
 class ArrayProfile {
@@ -70,6 +70,7 @@ public:
     unsigned bytecodeOffset() const { return m_bytecodeOffset; }
     
     Structure** addressOfLastSeenStructure() { return &m_lastSeenStructure; }
+    ArrayModes* addressOfArrayModes() { return &m_observedArrayModes; }
     
     void observeStructure(Structure* structure)
     {
@@ -79,7 +80,10 @@ public:
     void computeUpdatedPrediction(OperationInProgress operation = NoOperation);
     
     Structure* expectedStructure() const { return m_expectedStructure; }
-    bool structureIsPolymorphic() const { return m_structureIsPolymorphic; }
+    bool structureIsPolymorphic() const
+    {
+        return m_structureIsPolymorphic;
+    }
     bool hasDefiniteStructure() const
     {
         return !structureIsPolymorphic() && m_expectedStructure;

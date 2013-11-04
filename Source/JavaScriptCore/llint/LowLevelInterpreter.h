@@ -32,6 +32,25 @@
 
 #include "Opcode.h"
 
+#if ENABLE(LLINT_C_LOOP)
+
+namespace JSC {
+
+// The following is a set of alias for the opcode names. This is needed
+// because there is code (e.g. in GetByIdStatus.cpp and PutByIdStatus.cpp)
+// which refers to the opcodes expecting them to be prefixed with "llint_".
+// In the CLoop implementation, the 2 are equivalent. Hence, we set up this
+// alias here.
+
+#define LLINT_OPCODE_ALIAS(opcode, length) \
+    const OpcodeID llint_##opcode = opcode;
+FOR_EACH_CORE_OPCODE_ID(LLINT_OPCODE_ALIAS)
+#undef LLINT_OPCODE_ALIAS
+
+} // namespace JSC
+
+#else // !ENABLE(LLINT_C_LOOP)
+
 #define LLINT_INSTRUCTION_DECL(opcode, length) extern "C" void llint_##opcode();
     FOR_EACH_OPCODE_ID(LLINT_INSTRUCTION_DECL);
 #undef LLINT_INSTRUCTION_DECL
@@ -40,6 +59,7 @@
     FOR_EACH_LLINT_NATIVE_HELPER(DECLARE_LLINT_NATIVE_HELPER)
 #undef DECLARE_LLINT_NATIVE_HELPER
 
+#endif // !ENABLE(LLINT_C_LOOP)
 
 #endif // ENABLE(LLINT)
 

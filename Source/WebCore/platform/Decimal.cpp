@@ -37,7 +37,6 @@
 #include <wtf/Assertions.h>
 #include <wtf/MathExtras.h>
 #include <wtf/Noncopyable.h>
-#include <wtf/dtoa.h>
 #include <wtf/text/StringBuilder.h>
 
 namespace WebCore {
@@ -681,10 +680,8 @@ Decimal Decimal::floor() const
 
 Decimal Decimal::fromDouble(double doubleValue)
 {
-    if (isfinite(doubleValue)) {
-        NumberToStringBuffer buffer;
-        return fromString(numberToString(doubleValue, buffer));
-    }
+    if (isfinite(doubleValue))
+        return fromString(String::numberToStringECMAScript(doubleValue));
 
     if (isinf(doubleValue))
         return infinity(doubleValue < 0 ? Negative : Positive);
@@ -1005,7 +1002,7 @@ String Decimal::toString() const
             return builder.toString();
         }
 
-        builder.append("0.");
+        builder.appendLiteral("0.");
         for (int i = adjustedExponent + 1; i < 0; ++i)
             builder.append('0');
 
@@ -1023,7 +1020,7 @@ String Decimal::toString() const
 
         if (adjustedExponent) {
             builder.append(adjustedExponent < 0 ? "e" : "e+");
-            builder.append(String::number(adjustedExponent));
+            builder.appendNumber(adjustedExponent);
         }
     }
     return builder.toString();

@@ -182,10 +182,11 @@ namespace JSC {
         friend class CopiedSpace;
         friend class SlotVisitor;
         template<typename T> friend void* allocateCell(Heap&);
+        template<typename T> friend void* allocateCell(Heap&, size_t);
 
         void* allocateWithDestructor(size_t);
         void* allocateWithoutDestructor(size_t);
-        void* allocateStructure();
+        void* allocateStructure(size_t);
 
         static const size_t minExtraCost = 256;
         static const size_t maxExtraCost = 1024 * 1024;
@@ -203,7 +204,8 @@ namespace JSC {
         void harvestWeakReferences();
         void finalizeUnconditionalFinalizers();
         void deleteUnmarkedCompiledCode();
-        
+        void zombifyDeadObjects();
+ 
         RegisterFile& registerFile();
         BlockAllocator& blockAllocator();
 
@@ -371,9 +373,9 @@ namespace JSC {
         return m_objectSpace.allocateWithoutDestructor(bytes);
     }
    
-    inline void* Heap::allocateStructure()
+    inline void* Heap::allocateStructure(size_t bytes)
     {
-        return m_objectSpace.allocateStructure();
+        return m_objectSpace.allocateStructure(bytes);
     }
  
     inline CheckedBoolean Heap::tryAllocateStorage(size_t bytes, void** outPtr)

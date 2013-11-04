@@ -417,8 +417,8 @@ extern "C" {
     JSObject* JIT_STUB cti_op_new_object(STUB_ARGS_DECLARATION) WTF_INTERNAL;
     JSObject* JIT_STUB cti_op_new_regexp(STUB_ARGS_DECLARATION) WTF_INTERNAL;
     JSObject* JIT_STUB cti_op_push_activation(STUB_ARGS_DECLARATION) WTF_INTERNAL;
-    JSObject* JIT_STUB cti_op_push_new_scope(STUB_ARGS_DECLARATION) WTF_INTERNAL;
-    JSObject* JIT_STUB cti_op_push_scope(STUB_ARGS_DECLARATION) WTF_INTERNAL;
+    void JIT_STUB cti_op_push_name_scope(STUB_ARGS_DECLARATION) WTF_INTERNAL;
+    void JIT_STUB cti_op_push_with_scope(STUB_ARGS_DECLARATION) WTF_INTERNAL;
     JSObject* JIT_STUB cti_op_put_by_id_transition_realloc(STUB_ARGS_DECLARATION) WTF_INTERNAL;
     JSPropertyNameIterator* JIT_STUB cti_op_get_pnames(STUB_ARGS_DECLARATION) WTF_INTERNAL;
     int JIT_STUB cti_op_eq(STUB_ARGS_DECLARATION) WTF_INTERNAL;
@@ -468,7 +468,13 @@ extern "C" {
     void* JIT_STUB cti_vm_throw(STUB_ARGS_DECLARATION) REFERENCED_FROM_ASM WTF_INTERNAL;
 } // extern "C"
 
-#endif // ENABLE(JIT)
+#elif ENABLE(LLINT_C_LOOP)
+
+struct JITStackFrame {
+    JSGlobalData* globalData;
+};
+
+#endif // ENABLE(LLINT_C_LOOP)
 
 } // namespace JSC
 

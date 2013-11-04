@@ -7,7 +7,7 @@
 
 defineReplace(toSanitizedPath) {
     path = $$1
-    win32-msvc* {
+    win32-msvc*|wince* {
         components = $$split(path, :)
         count(components, 2): path = $$lower($$first(components)):$$last(components)
         return($$replace(path, \\\\, /))
@@ -137,13 +137,23 @@ defineTest(addStrictSubdirOrderBetween) {
     first_base_target = sub-$$replace(firstSubdirFile, [^a-zA-Z0-9_], -)
     second_base_target = sub-$$replace(secondSubdirFile, [^a-zA-Z0-9_], -)
 
+    # Use a custom target for making the derived sources, as the default target
+    # will do 'test -f $(MAKEFILE).DerivedSources || $(QMAKE) ...', which clashes
+    # with the qmake-run of the -qmake_all target, and we end up with a race
+    # and potentially half-written makefiles. The custom target depends explicitly
+    # on -qmake_all, to ensure that we have a makefile, and then calls make.
+    derived_make_for_qmake = $${first_base_target}-make_for_qmake
+    eval($${derived_make_for_qmake}.depends = $${first_base_target}-qmake_all)
+    eval($${derived_make_for_qmake}.commands = $(MAKE) -f $$eval($${firstSubdir}.makefile))
+    QMAKE_EXTRA_TARGETS += $${derived_make_for_qmake}
+
     # This target ensures that running "make qmake_all" will force both qmake and make
     # to be run on the derived sources before running qmake on the target, so that
     # qmake can pick up the right dependencies for the target based on the derived
-    # sources that were generated. Just "make qmake" is non-recursive anyway.
-    target_make_qmake.target = $${second_base_target}-qmake_all
-    target_make_qmake.depends = $${first_base_target}
-    QMAKE_EXTRA_TARGETS += target_make_qmake
+    # sources that were generated.
+    target_make_qmake = $${second_base_target}-qmake_all
+    eval($${target_make_qmake}.depends = $${derived_make_for_qmake})
+    QMAKE_EXTRA_TARGETS += $${target_make_qmake}
 
     # Make things work even if qmake -r is used.
     CONFIG += dont_recurse
@@ -151,13 +161,10 @@ defineTest(addStrictSubdirOrderBetween) {
     export(SUBDIRS)
     export(NO_RECURSIVE_QMAKE_SUBDIRS)
     export(CONFIG)
-    export(target_make_qmake.target)
-    export(target_make_qmake.depends)
-    export(derived_make_for_qmake.target)
-    export(derived_make_for_qmake.depends)
-    export(derived_make_for_qmake.commands)
-    export(target_make.target)
-    export(target_make.depends)
+    export($${target_make_qmake}.target)
+    export($${target_make_qmake}.depends)
+    export($${derived_make_for_qmake}.depends)
+    export($${derived_make_for_qmake}.commands)
     export(QMAKE_EXTRA_TARGETS)
     return(true)
 }
@@ -252,22 +259,12 @@ defineTest(linkAgainstLibrary) {
             LIBS += -Wl,-whole-archive -l$$target -Wl,-no-whole-archive
         }
 
+        LIBS += -L$$path
+
         win32-msvc*|wince*|win32-icc {
-            LIBS += -L$$path
             POST_TARGETDEPS += $${path}$${QMAKE_DIR_SEP}$${target}.lib
         } else {
-            QMAKE_LIBDIR += $$path
             POST_TARGETDEPS += $${path}$${QMAKE_DIR_SEP}lib$${target}.a
-        }
-
-        # gprof does not support profiling a shared library.
-        # To profile WebKit, applications must link QtWebKit statically.
-        !contains(CONFIG, gprof) {
-            # The following line is to prevent qmake from adding jscore to libQtWebKit's prl dependencies.
-            # The compromise we have to accept by disabling explicitlib is to drop support to link QtWebKit
-            # statically in applications (which isn't used often because, among other things, of licensing obstacles).
-            CONFIG -= explicitlib
-            CONFIG -= staticlib
         }
     }
 
@@ -284,4 +281,96 @@ defineTest(xlibAvailable) {
     } else {
         return(false)
     }
+}
+
+defineTest(build?) {
+    contains(WEBKIT_CONFIG, build_$$lower($$1)): return(true)
+    return(false)
+}
+
+defineTest(have?) {
+    contains(WEBKIT_CONFIG, have_$$lower($$1)): return(true)
+    return(false)
+}
+
+defineTest(use?) {
+    contains(WEBKIT_CONFIG, use_$$lower($$1)): return(true)
+    return(false)
+}
+
+defineTest(enable?) {
+    contains(WEBKIT_CONFIG, $$lower($$1)): return(true)
+    return(false)
+}
+
+# Used by configDefines below
+include(features.pri)
+
+# Turn Webkit config into defines
+defineReplace(configDefines) {
+    unset(defines)
+
+    args = $$split(1, |)
+
+    possible_args = enable have use plugin_architecture
+    !isEmpty(args) {
+        for(arg, possible_args): contains(args, $$arg): CONFIG += $$arg
+    } else {
+        CONFIG += $$possible_args
+    }
+
+    for(config, WEBKIT_CONFIG) {
+        match = $$find(config, "^build_")
+        !isEmpty(match) {
+            # We don't translate build_ to defines
+            next()
+        }
+        match = $$find(config, "^have_")
+        !isEmpty(match) {
+            have: defines += $$upper($$config)=1
+            next()
+        }
+        match = $$find(config, "^plugin_architecture_")
+        !isEmpty(match) {
+            plugin_architecture: defines += $$upper($$config)=1
+            next()
+        }
+        match = $$find(config, "^use_")
+        !isEmpty(match) {
+            use: defines += WTF_$$upper($$config)=1
+            next()
+        }
+
+        enable: defines += ENABLE_$$upper($$config)=1
+    }
+
+    # To prevent clashes with Platform.h, we have to explicitly
+    # disable features that are not enabled.
+    for(define, FEATURE_DEFAULTS) {
+        anyFeatureDefine = $$find(define, =.$)
+        isEmpty(anyFeatureDefine): next()
+
+        enabledFeature = $$replace(anyFeatureDefine, =.$, =1)
+        disabledFeature = $$replace(anyFeatureDefine, =.$, =0)
+
+        !contains(defines, $$enabledFeature) {
+            defines += $$disabledFeature
+        }
+    }
+
+    return($$defines)
+}
+
+defineReplace(javascriptFeatureDefines) {
+    defines = LANGUAGE_JAVASCRIPT=1 $$configDefines(enable)
+    return($$defines)
+}
+
+defineReplace(setEnvironmentVariable) {
+  variable = $$1
+  value = $$2
+  win_cmd_shell {
+      return((set \"$$variable=$$value\"))
+  }
+  return(export \"$$variable=$$value\")
 }

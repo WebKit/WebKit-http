@@ -50,8 +50,6 @@ namespace JSC {
     // These functions are faster than just calling jsString.
     JSString* jsNontrivialString(JSGlobalData*, const String&);
     JSString* jsNontrivialString(ExecState*, const String&);
-    JSString* jsNontrivialString(JSGlobalData*, const char*);
-    JSString* jsNontrivialString(ExecState*, const char*);
 
     // Should be used for strings that are owned by an object that will
     // likely outlive the JSValue this makes, such as the parse tree or a
@@ -353,14 +351,6 @@ namespace JSC {
         return JSString::create(*globalData, StringImpl::create(s.impl(), offset, 1));
     }
 
-    inline JSString* jsNontrivialString(JSGlobalData* globalData, const char* s)
-    {
-        ASSERT(s);
-        ASSERT(s[0]);
-        ASSERT(s[1]);
-        return JSString::create(*globalData, String(s).impl());
-    }
-
     inline JSString* jsNontrivialString(JSGlobalData* globalData, const String& s)
     {
         ASSERT(s.length() > 1);
@@ -468,7 +458,6 @@ namespace JSC {
     inline JSString* jsSubstring8(ExecState* exec, const String& s, unsigned offset, unsigned length) { return jsSubstring8(&exec->globalData(), s, offset, length); }
     inline JSString* jsSubstring(ExecState* exec, const String& s, unsigned offset, unsigned length) { return jsSubstring(&exec->globalData(), s, offset, length); }
     inline JSString* jsNontrivialString(ExecState* exec, const String& s) { return jsNontrivialString(&exec->globalData(), s); }
-    inline JSString* jsNontrivialString(ExecState* exec, const char* s) { return jsNontrivialString(&exec->globalData(), s); }
     inline JSString* jsOwnedString(ExecState* exec, const String& s) { return jsOwnedString(&exec->globalData(), s); }
 
     ALWAYS_INLINE bool JSString::getStringPropertySlot(ExecState* exec, PropertyName propertyName, PropertySlot& slot)
@@ -542,13 +531,13 @@ namespace JSC {
         if (value.isDouble())
             return globalData.numericStrings.add(value.asDouble());
         if (value.isTrue())
-            return globalData.propertyNames->trueKeyword.ustring();
+            return globalData.propertyNames->trueKeyword.string();
         if (value.isFalse())
-            return globalData.propertyNames->falseKeyword.ustring();
+            return globalData.propertyNames->falseKeyword.string();
         if (value.isNull())
-            return globalData.propertyNames->nullKeyword.ustring();
+            return globalData.propertyNames->nullKeyword.string();
         if (value.isUndefined())
-            return globalData.propertyNames->undefinedKeyword.ustring();
+            return globalData.propertyNames->undefinedKeyword.string();
         return value.toString(exec)->value(exec);
     }
 

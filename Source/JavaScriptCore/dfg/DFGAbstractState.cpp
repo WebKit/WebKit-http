@@ -147,7 +147,13 @@ void AbstractState::initialize(Graph& graph)
         for (size_t i = 0; i < graph.m_mustHandleValues.size(); ++i) {
             AbstractValue value;
             value.setMostSpecific(graph.m_mustHandleValues[i]);
-            block->valuesAtHead.operand(graph.m_mustHandleValues.operandForIndex(i)).merge(value);
+            int operand = graph.m_mustHandleValues.operandForIndex(i);
+            block->valuesAtHead.operand(operand).merge(value);
+#if DFG_ENABLE(DEBUG_PROPAGATION_VERBOSE)
+            dataLog("    Initializing Block #%u, operand r%d, to ", blockIndex, operand);
+            block->valuesAtHead.operand(operand).dump(WTF::dataFile());
+            dataLog("\n");
+#endif
         }
         block->cfaShouldRevisit = true;
     }
@@ -608,14 +614,9 @@ bool AbstractState::execute(unsigned indexInBlock)
         Node& child = m_graph[node.child1()];
         if (isBooleanSpeculation(child.prediction()))
             speculateBooleanUnary(node);
-        else if (child.shouldSpeculateFinalObjectOrOther()) {
-            node.setCanExit(
-                !isFinalObjectOrOtherSpeculation(forNode(node.child1()).m_type));
-            forNode(node.child1()).filter(SpecFinalObject | SpecOther);
-        } else if (child.shouldSpeculateArrayOrOther()) {
-            node.setCanExit(
-                !isArrayOrOtherSpeculation(forNode(node.child1()).m_type));
-            forNode(node.child1()).filter(SpecArray | SpecOther);
+        else if (child.shouldSpeculateNonStringCellOrOther()) {
+            node.setCanExit(true);
+            forNode(node.child1()).filter((SpecCell & ~SpecString) | SpecOther);
         } else if (child.shouldSpeculateInteger())
             speculateInt32Unary(node);
         else if (child.shouldSpeculateNumber())
@@ -857,11 +858,13 @@ bool AbstractState::execute(unsigned indexInBlock)
             forNode(node.child2()).filter(SpecInt32);
             forNode(nodeIndex).makeTop();
             break;
-        case Array::JSArray:
-        case Array::JSArrayOutOfBounds:
-            // FIXME: We should have more conservative handling of the out-of-bounds
-            // case.
+        case IN_BOUNDS_ARRAY_STORAGE_MODES:
             forNode(node.child2()).filter(SpecInt32);
+            forNode(nodeIndex).makeTop();
+            break;
+        case OUT_OF_BOUNDS_ARRAY_STORAGE_MODES:
+            forNode(node.child2()).filter(SpecInt32);
+            clobberWorld(node.codeOrigin, indexInBlock);
             forNode(nodeIndex).makeTop();
             break;
         case Array::Int8Array:
@@ -919,10 +922,10 @@ bool AbstractState::execute(unsigned indexInBlock)
         case Array::Generic:
             clobberWorld(node.codeOrigin, indexInBlock);
             break;
-        case Array::JSArray:
+        case IN_BOUNDS_ARRAY_STORAGE_MODES:
             forNode(child2).filter(SpecInt32);
             break;
-        case Array::JSArrayOutOfBounds:
+        case OUT_OF_BOUNDS_ARRAY_STORAGE_MODES:
             forNode(child2).filter(SpecInt32);
             clobberWorld(node.codeOrigin, indexInBlock);
             break;
@@ -1038,14 +1041,9 @@ bool AbstractState::execute(unsigned indexInBlock)
         Node& child = m_graph[node.child1()];
         if (child.shouldSpeculateBoolean())
             speculateBooleanUnary(node);
-        else if (child.shouldSpeculateFinalObjectOrOther()) {
-            node.setCanExit(
-                !isFinalObjectOrOtherSpeculation(forNode(node.child1()).m_type));
-            forNode(node.child1()).filter(SpecFinalObject | SpecOther);
-        } else if (child.shouldSpeculateArrayOrOther()) {
-            node.setCanExit(
-                !isArrayOrOtherSpeculation(forNode(node.child1()).m_type));
-            forNode(node.child1()).filter(SpecArray | SpecOther);
+        else if (child.shouldSpeculateNonStringCellOrOther()) {
+            node.setCanExit(true);
+            forNode(node.child1()).filter((SpecCell & ~SpecString) | SpecOther);
         } else if (child.shouldSpeculateInteger())
             speculateInt32Unary(node);
         else if (child.shouldSpeculateNumber())
@@ -1101,14 +1099,21 @@ bool AbstractState::execute(unsigned indexInBlock)
         break;
             
     case NewArray:
-    case NewArrayBuffer:
-        node.setCanExit(false);
+        node.setCanExit(true);
         forNode(nodeIndex).set(m_graph.globalObjectFor(node.codeOrigin)->arrayStructure());
         m_haveStructures = true;
         break;
         
+    case NewArrayBuffer:
+        // Unless we're having a bad time, this node can change its mind about what structure
+        // it uses.
+        node.setCanExit(false);
+        forNode(nodeIndex).set(SpecArray);
+        break;
+
     case NewArrayWithSize:
-        speculateInt32Unary(node);
+        node.setCanExit(true);
+        forNode(node.child1()).filter(SpecInt32);
         forNode(nodeIndex).set(m_graph.globalObjectFor(node.codeOrigin)->arrayStructure());
         m_haveStructures = true;
         break;
@@ -1171,7 +1176,7 @@ bool AbstractState::execute(unsigned indexInBlock)
         
     case CreateActivation:
         node.setCanExit(false);
-        forNode(nodeIndex).set(m_graph.m_globalData.activationStructure.get());
+        forNode(nodeIndex).set(m_codeBlock->globalObjectFor(node.codeOrigin)->activationStructure());
         m_haveStructures = true;
         break;
         
@@ -1301,20 +1306,6 @@ bool AbstractState::execute(unsigned indexInBlock)
             !value.m_currentKnownStructure.isSubsetOf(set)
             || !isCellSpeculation(value.m_type));
         value.filter(set);
-        // This is likely to be unnecessary, but it's conservative, and that's a good thing.
-        // This is trying to avoid situations where the CFA proves that this structure check
-        // must fail due to a future structure proof. We have two options at that point. We
-        // can either compile all subsequent code as we would otherwise, or we can ensure
-        // that the subsequent code is never reachable. The former is correct because the
-        // Proof Is Infallible (TM) -- hence even if we don't force the subsequent code to
-        // be unreachable, it must be unreachable nonetheless. But imagine what would happen
-        // if the proof was borked. In the former case, we'd get really bizarre bugs where
-        // we assumed that the structure of this object was known even though it wasn't. In
-        // the latter case, we'd have a slight performance pathology because this would be
-        // turned into an OSR exit unnecessarily. Which would you rather have?
-        if (value.m_currentKnownStructure.isClear()
-            || value.m_futurePossibleStructure.isClear())
-            m_isValid = false;
         m_haveStructures = true;
         break;
     }
@@ -1333,10 +1324,6 @@ bool AbstractState::execute(unsigned indexInBlock)
         
         ASSERT(value.isClear() || isCellSpeculation(value.m_type)); // Value could be clear if we've proven must-exit due to a speculation statically known to be bad.
         value.filter(node.structure());
-        // See comment in CheckStructure for why this is here.
-        if (value.m_currentKnownStructure.isClear()
-            || value.m_futurePossibleStructure.isClear())
-            m_isValid = false;
         m_haveStructures = true;
         node.setCanExit(true);
         break;
@@ -1345,11 +1332,13 @@ bool AbstractState::execute(unsigned indexInBlock)
     case PutStructure:
     case PhantomPutStructure:
         node.setCanExit(false);
-        clobberStructures(indexInBlock);
-        forNode(node.child1()).set(node.structureTransitionData().newStructure);
-        m_haveStructures = true;
+        if (!forNode(node.child1()).m_currentKnownStructure.isClear()) {
+            clobberStructures(indexInBlock);
+            forNode(node.child1()).set(node.structureTransitionData().newStructure);
+            m_haveStructures = true;
+        }
         break;
-    case GetPropertyStorage:
+    case GetButterfly:
     case AllocatePropertyStorage:
     case ReallocatePropertyStorage:
         node.setCanExit(false);
@@ -1367,8 +1356,7 @@ bool AbstractState::execute(unsigned indexInBlock)
         case Array::String:
             forNode(node.child1()).filter(SpecString);
             break;
-        case Array::JSArray:
-        case Array::JSArrayOutOfBounds:
+        case ALL_ARRAY_STORAGE_MODES:
             // This doesn't filter anything meaningful right now. We may want to add
             // CFA tracking of array mode speculations, but we don't have that, yet.
             forNode(node.child1()).filter(SpecCell);
@@ -1531,11 +1519,14 @@ inline void AbstractState::clobberCapturedVars(const CodeOrigin& codeOrigin)
             m_variables.local(i).makeTop();
         }
     } else {
-        for (size_t i = m_codeBlock->m_numCapturedVars; i--;)
-            m_variables.local(i).makeTop();
+        for (size_t i = m_codeBlock->m_numVars; i--;) {
+            if (m_codeBlock->isCaptured(i))
+                m_variables.local(i).makeTop();
+        }
     }
-    if (m_codeBlock->argumentsAreCaptured()) {
-        for (size_t i = m_variables.numberOfArguments(); i--;)
+
+    for (size_t i = m_variables.numberOfArguments(); i--;) {
+        if (m_codeBlock->isCaptured(argumentToOperand(i)))
             m_variables.argument(i).makeTop();
     }
 }

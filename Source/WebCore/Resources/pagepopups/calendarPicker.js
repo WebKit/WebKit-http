@@ -276,23 +276,73 @@ function initialize(args) {
         resizeWindow(main.offsetWidth, main.offsetHeight);
     } else {
         global.params = args;
-        checkLimits();
-        layout();
-
-        var initialDate = parseDateString(args.currentValue);
-        if (initialDate < global.minimumDate)
-            initialDate = global.minimumDate;
-        else if (initialDate > global.maximumDate)
-            initialDate = global.maximumDate;
-        global.daysTable.selectDate(initialDate);
-
-        setTimeout(fixWindowSize, 0);
+        openCalendarPicker();
     }
 }
 
-function fixWindowSize() {
-    var yearMonthRightElement = document.getElementsByClassName(ClassNames.YearMonthButtonRight)[0];
-    var daysAreaElement = document.getElementsByClassName(ClassNames.DaysArea)[0];
+function resetMain() {
+    var main = $("main");
+    main.innerHTML = "";
+    main.className = "";
+};
+
+function openCalendarPicker() {
+    resetMain();
+    new CalendarPicker($("main"), global.params);
+};
+
+/**
+ * @constructor
+ * @param {!Element} element
+ * @param {!Object} config
+ */
+function CalendarPicker(element, config) {
+    Picker.call(this, element, config);
+    // We assume this._config.min is a valid date.
+    this.minimumDate = (typeof this._config.min !== "undefined") ? parseDateString(this._config.min) : CalendarPicker.MinimumPossibleDate;
+    // We assume this._config.max is a valid date.
+    this.maximumDate = (typeof this._config.max !== "undefined") ? parseDateString(this._config.max) : CalendarPicker.MaximumPossibleDate;
+    this.step = (typeof this._config.step !== undefined) ? this._config.step * CalendarPicker.BaseStep : CalendarPicker.BaseStep;
+    this.yearMonthController = new YearMonthController(this);
+    this.daysTable = new DaysTable(this);
+    this._layout();
+    var initialDate = parseDateString(this._config.currentValue);
+    if (initialDate < this.minimumDate)
+        initialDate = this.minimumDate;
+    else if (initialDate > this.maximumDate)
+        initialDate = this.maximumDate;
+    this.daysTable.selectDate(initialDate);
+    this.fixWindowSize();
+    document.body.addEventListener("keydown", this._handleBodyKeyDown.bind(this), false);
+}
+CalendarPicker.prototype = Object.create(Picker.prototype);
+
+// Hard limits of type=date. See WebCore/platform/DateComponents.h.
+CalendarPicker.MinimumPossibleDate = new Date(-62135596800000.0);
+CalendarPicker.MaximumPossibleDate = new Date(8640000000000000.0);
+// See WebCore/html/DateInputType.cpp.
+CalendarPicker.BaseStep = 86400000;
+
+CalendarPicker.prototype._layout = function() {
+    this._element.style.direction = global.params.isRTL ? "rtl" : "ltr";
+    this.yearMonthController.attachTo(this._element);
+    this.daysTable.attachTo(this._element);
+    this._layoutButtons();
+};
+
+CalendarPicker.prototype.handleToday = function() {
+    var date = new Date();
+    this.daysTable.selectDate(date);
+    this.submitValue(serializeDate(date.getFullYear(), date.getMonth(), date.getDate()));
+};
+
+CalendarPicker.prototype.handleClear = function() {
+    this.submitValue("");
+};
+
+CalendarPicker.prototype.fixWindowSize = function() {
+    var yearMonthRightElement = this._element.getElementsByClassName(ClassNames.YearMonthButtonRight)[0];
+    var daysAreaElement = this._element.getElementsByClassName(ClassNames.DaysArea)[0];
     var headers = daysAreaElement.getElementsByClassName(ClassNames.DayLabel);
     var maxCellWidth = 0;
     for (var i = 0; i < headers.length; ++i) {
@@ -300,97 +350,58 @@ function fixWindowSize() {
             maxCellWidth = headers[i].offsetWidth;
     }
     var DaysAreaContainerBorder = 1;
-    var main = $("main");
     var yearMonthEnd;
     var daysAreaEnd;
     if (global.params.isRTL) {
-        var startOffset = main.offsetLeft + main.offsetWidth;
+        var startOffset = this._element.offsetLeft + this._element.offsetWidth;
         yearMonthEnd = startOffset - yearMonthRightElement.offsetLeft;
         daysAreaEnd = startOffset - (daysAreaElement.offsetLeft + daysAreaElement.offsetWidth) + maxCellWidth * 7 + DaysAreaContainerBorder;
     } else {
         yearMonthEnd = yearMonthRightElement.offsetLeft + yearMonthRightElement.offsetWidth;
         daysAreaEnd = daysAreaElement.offsetLeft + maxCellWidth * 7 + DaysAreaContainerBorder;
     }
-
     var maxEnd = Math.max(yearMonthEnd, daysAreaEnd);
-    var MainPadding = 6;
+    var MainPadding = 6; // FIXME: Fix name.
     var MainBorder = 1;
     var desiredBodyWidth = maxEnd + MainPadding + MainBorder;
 
-    var mainHeight = main.offsetHeight;
-    main.style.width = "auto";
+    var elementHeight = this._element.offsetHeight;
+    this._element.style.width = "auto";
     daysAreaElement.style.width = "100%";
     daysAreaElement.style.tableLayout = "fixed";
-    document.getElementsByClassName(ClassNames.YearMonthUpper)[0].style.display = "-webkit-box";
-    document.getElementsByClassName(ClassNames.MonthSelectorBox)[0].style.display = "block";
-    resizeWindow(desiredBodyWidth, mainHeight);
-}
+    this._element.getElementsByClassName(ClassNames.YearMonthUpper)[0].style.display = "-webkit-box";
+    this._element.getElementsByClassName(ClassNames.MonthSelectorBox)[0].style.display = "block";
+    resizeWindow(desiredBodyWidth, elementHeight);
+};
 
-function checkLimits() {
-    // Hard limits of type=date. See WebCore/platform/DateComponents.h.
-    global.minimumDate = new Date(-62135596800000.0);
-    global.maximumDate = new Date(8640000000000000.0);
-    // See WebCore/html/DateInputType.cpp.
-    global.step = 86400000;
-
-    if (global.params.min) {
-        // We assume params.min is a valid date.
-        global.minimumDate = parseDateString(global.params.min);
-    }
-    if (global.params.max) {
-        // We assume params.max is a valid date.
-        global.maximumDate = parseDateString(global.params.max);
-    }
-    if (global.params.step)
-        global.step *= global.params.step;
-}
-
-function layout() {
-    if (global.params.isRTL)
-        document.body.dir = "rtl";
-    else
-        document.body.dir = "ltr";
-    var main = $("main");
-    var params = global.params;
-    main.removeChild(main.firstChild);
-    document.body.addEventListener("keydown", handleGlobalKey, false);
-
-    global.yearMonthController = new YearMonthController();
-    global.yearMonthController.attachTo(main);
-    global.daysTable = new DaysTable();
-    global.daysTable.attachTo(main);
-    layoutButtons(main);
-}
-
-/**
- * @param {Element} main
- */
-function layoutButtons(main) {
+CalendarPicker.prototype._layoutButtons = function() {
     var container = createElement("div", ClassNames.TodayClearArea);
-    global.today = createElement("input", ClassNames.TodayButton);
-    global.today.type = "button";
-    global.today.value = global.params.todayLabel;
-    global.today.addEventListener("click", handleToday, false);
-    container.appendChild(global.today);
-    global.clear = null;
-    if (!global.params.required) {
-        global.clear = createElement("input", ClassNames.ClearButton);
-        global.clear.type = "button";
-        global.clear.value = global.params.clearLabel;
-        global.clear.addEventListener("click", handleClear, false);
-        container.appendChild(global.clear);
+    this.today = createElement("input", ClassNames.TodayButton);
+    this.today.type = "button";
+    this.today.value = this._config.todayLabel;
+    this.today.addEventListener("click", this.handleToday.bind(this), false);
+    container.appendChild(this.today);
+    this.clear = null;
+    if (!this._config.required) {
+        this.clear = createElement("input", ClassNames.ClearButton);
+        this.clear.type = "button";
+        this.clear.value = this._config.clearLabel;
+        this.clear.addEventListener("click", this.handleClear.bind(this), false);
+        container.appendChild(this.clear);
     }
-    main.appendChild(container);
+    this._element.appendChild(container);
 
-    global.lastFocusableControl = global.clear || global.today;
-}
+    this.lastFocusableControl = this.clear || this.today;
+};
 
 // ----------------------------------------------------------------
 
 /**
  * @constructor
+ * @param {!CalendarPicker} picker
  */
-function YearMonthController() {
+function YearMonthController(picker) {
+    this.picker = picker;
     /**
      * @type {!number}
      */
@@ -402,9 +413,9 @@ function YearMonthController() {
 }
 
 /**
- * @param {!Element} main
+ * @param {!Element} element
  */
-YearMonthController.prototype.attachTo = function(main) {
+YearMonthController.prototype.attachTo = function(element) {
     var outerContainer = createElement("div", ClassNames.YearMonthArea);
 
     var innerContainer = createElement("div", ClassNames.YearMonthUpper);
@@ -416,26 +427,26 @@ YearMonthController.prototype.attachTo = function(main) {
     innerContainer.appendChild(box);
     // We can't use <select> popup in PagePopup.
     this._monthPopup = createElement("div", ClassNames.MonthSelectorPopup);
-    this._monthPopup.addEventListener("click", bind(this._handleYearMonthChange, this), false);
-    this._monthPopup.addEventListener("keydown", bind(this._handleMonthPopupKey, this), false);
-    this._monthPopup.addEventListener("mousemove", bind(this._handleMouseMove, this), false);
+    this._monthPopup.addEventListener("click", this._handleYearMonthChange.bind(this), false);
+    this._monthPopup.addEventListener("keydown", this._handleMonthPopupKey.bind(this), false);
+    this._monthPopup.addEventListener("mousemove", this._handleMouseMove.bind(this), false);
     this._updateSelectionOnMouseMove = true;
     this._monthPopup.tabIndex = 0;
     this._monthPopupContents = createElement("div", ClassNames.MonthSelectorPopupContents);
     this._monthPopup.appendChild(this._monthPopupContents);
     box.appendChild(this._monthPopup);
     this._month = createElement("div", ClassNames.MonthSelector);
-    this._month.addEventListener("click", bind(this._showPopup, this), false);
+    this._month.addEventListener("click", this._showPopup.bind(this), false);
     box.appendChild(this._month);
 
     this._attachRightButtonsTo(innerContainer);
-    main.appendChild(outerContainer);
+    element.appendChild(outerContainer);
 
     this._wall = createElement("div", ClassNames.MonthSelectorWall);
-    this._wall.addEventListener("click", bind(this._closePopup, this), false);
-    main.appendChild(this._wall);
+    this._wall.addEventListener("click", this._closePopup.bind(this), false);
+    element.appendChild(this._wall);
 
-    var maximumYear = global.maximumDate.getUTCFullYear();
+    var maximumYear = this.picker.maximumDate.getUTCFullYear();
     var maxWidth = 0;
     for (var m = 0; m < 12; ++m) {
         this._month.textContent = formatYearMonth(maximumYear, m);
@@ -465,20 +476,20 @@ YearMonthController.prototype._attachLeftButtonsTo = function(parent) {
         this._left3 = createElement("input", ClassNames.YearMonthButton);
         this._left3.type = "button";
         this._left3.value = "<<<";
-        this._left3.addEventListener("click", bind(this._handleButtonClick, this), false);
+        this._left3.addEventListener("click", this._handleButtonClick.bind(this), false);
         container.appendChild(this._left3);
     }
 
     this._left2 = createElement("input", ClassNames.YearMonthButton);
     this._left2.type = "button";
     this._left2.value = "<<";
-    this._left2.addEventListener("click", bind(this._handleButtonClick, this), false);
+    this._left2.addEventListener("click", this._handleButtonClick.bind(this), false);
     container.appendChild(this._left2);
 
     this._left1 = createElement("input", ClassNames.YearMonthButton);
     this._left1.type = "button";
     this._left1.value = "<";
-    this._left1.addEventListener("click", bind(this._handleButtonClick, this), false);
+    this._left1.addEventListener("click", this._handleButtonClick.bind(this), false);
     container.appendChild(this._left1);
 };
 
@@ -491,20 +502,20 @@ YearMonthController.prototype._attachRightButtonsTo = function(parent) {
     this._right1 = createElement("input", ClassNames.YearMonthButton);
     this._right1.type = "button";
     this._right1.value = ">";
-    this._right1.addEventListener("click", bind(this._handleButtonClick, this), false);
+    this._right1.addEventListener("click", this._handleButtonClick.bind(this), false);
     container.appendChild(this._right1);
 
     this._right2 = createElement("input", ClassNames.YearMonthButton);
     this._right2.type = "button";
     this._right2.value = ">>";
-    this._right2.addEventListener("click", bind(this._handleButtonClick, this), false);
+    this._right2.addEventListener("click", this._handleButtonClick.bind(this), false);
     container.appendChild(this._right2);
 
     if (YearMonthController.addTenYearsButtons) {
         this._right3 = createElement("input", ClassNames.YearMonthButton);
         this._right3.type = "button";
         this._right3.value = ">>>";
-        this._right3.addEventListener("click", bind(this._handleButtonClick, this), false);
+        this._right3.addEventListener("click", this._handleButtonClick.bind(this), false);
         container.appendChild(this._right3);
     }
 };
@@ -534,8 +545,8 @@ YearMonthController.prototype.setYearMonth = function(year, month) {
 };
 
 YearMonthController.prototype._redraw = function() {
-    var min = global.minimumDate.getUTCFullYear() * 12 + global.minimumDate.getUTCMonth();
-    var max = global.maximumDate.getUTCFullYear() * 12 + global.maximumDate.getUTCMonth();
+    var min = this.picker.minimumDate.getUTCFullYear() * 12 + this.picker.minimumDate.getUTCMonth();
+    var max = this.picker.maximumDate.getUTCFullYear() * 12 + this.picker.maximumDate.getUTCMonth();
     var current = this._currentYear * 12 + this._currentMonth;
     if (this._left3)
         this._left3.disabled = current - 13 < min;
@@ -680,7 +691,7 @@ YearMonthController.prototype._handleYearMonthChange = function() {
         return;
     var newYear = Number(result[1]);
     var newMonth = Number(result[2]);
-    global.daysTable.navigateToMonthAndKeepSelectionPosition(newYear, newMonth);
+    this.picker.daysTable.navigateToMonthAndKeepSelectionPosition(newYear, newMonth);
 };
 
 /*
@@ -738,8 +749,8 @@ YearMonthController.prototype._handleButtonClick = function(event) {
  * @param {!number} amount
  */
 YearMonthController.prototype.moveRelatively = function(amount) {
-    var min = global.minimumDate.getUTCFullYear() * 12 + global.minimumDate.getUTCMonth();
-    var max = global.maximumDate.getUTCFullYear() * 12 + global.maximumDate.getUTCMonth();
+    var min = this.picker.minimumDate.getUTCFullYear() * 12 + this.picker.minimumDate.getUTCMonth();
+    var max = this.picker.maximumDate.getUTCFullYear() * 12 + this.picker.maximumDate.getUTCMonth();
     var current = this._currentYear * 12 + this._currentMonth;
     var updated = current;
     if (amount < 0)
@@ -748,15 +759,17 @@ YearMonthController.prototype.moveRelatively = function(amount) {
         updated = current + amount <= max ? current + amount : max;
     if (updated == current)
         return;
-    global.daysTable.navigateToMonthAndKeepSelectionPosition(Math.floor(updated / 12), updated % 12);
+    this.picker.daysTable.navigateToMonthAndKeepSelectionPosition(Math.floor(updated / 12), updated % 12);
 };
 
 // ----------------------------------------------------------------
 
 /**
  * @constructor
+ * @param {!CalendarPicker} picker
  */
-function DaysTable() {
+function DaysTable(picker) {
+    this.picker = picker;
     /**
      * @type {!number}
      */
@@ -790,14 +803,14 @@ DaysTable.prototype._hasSelection = function() {
 DaysTable._Weeks = 6;
 
 /**
- * @param {!Element} main
+ * @param {!Element} element
  */
-DaysTable.prototype.attachTo = function(main) {
+DaysTable.prototype.attachTo = function(element) {
     this._daysContainer = createElement("table", ClassNames.DaysArea);
-    this._daysContainer.addEventListener("click", bind(this._handleDayClick, this), false);
-    this._daysContainer.addEventListener("mouseover", bind(this._handleMouseOver, this), false);
-    this._daysContainer.addEventListener("mouseout", bind(this._handleMouseOut, this), false);
-    this._daysContainer.addEventListener("webkitTransitionEnd", bind(this._moveInDays, this), false);
+    this._daysContainer.addEventListener("click", this._handleDayClick.bind(this), false);
+    this._daysContainer.addEventListener("mouseover", this._handleMouseOver.bind(this), false);
+    this._daysContainer.addEventListener("mouseout", this._handleMouseOut.bind(this), false);
+    this._daysContainer.addEventListener("webkitTransitionEnd", this._moveInDays.bind(this), false);
     var container = createElement("tr", ClassNames.DayLabelContainer);
     var weekStartDay = global.params.weekStartDay || 0;
     for (var i = 0; i < 7; i++)
@@ -820,8 +833,8 @@ DaysTable.prototype.attachTo = function(main) {
     container = createElement("div", ClassNames.DaysAreaContainer);
     container.appendChild(this._daysContainer);
     container.tabIndex = 0;
-    container.addEventListener("keydown", bind(this._handleKey, this), false);
-    main.appendChild(container);
+    container.addEventListener("keydown", this._handleKey.bind(this), false);
+    element.appendChild(container);
 
     container.focus();
 };
@@ -830,24 +843,24 @@ DaysTable.prototype.attachTo = function(main) {
  * @param {!number} time date in millisecond.
  * @return {!boolean}
  */
-function stepMismatch(time) {
-    return (time - global.minimumDate.getTime()) % global.step != 0;
+CalendarPicker.prototype.stepMismatch = function(time) {
+    return (time - this.minimumDate.getTime()) % this.step != 0;
 }
 
 /**
  * @param {!number} time date in millisecond.
  * @return {!boolean}
  */
-function outOfRange(time) {
-    return time < global.minimumDate.getTime() || time > global.maximumDate.getTime();
+CalendarPicker.prototype.outOfRange = function(time) {
+    return time < this.minimumDate.getTime() || time > this.maximumDate.getTime();
 }
 
 /**
  * @param {!number} time date in millisecond.
  * @return {!boolean}
  */
-function isValidDate(time) {
-    return !outOfRange(time) && !stepMismatch(time);
+CalendarPicker.prototype.isValidDate = function(time) {
+    return !this.outOfRange(time) && !this.stepMismatch(time);
 }
 
 /**
@@ -873,9 +886,9 @@ DaysTable.prototype._renderMonth = function(year, month) {
             element.innerText = localizeNumber(dayIterator.getUTCDate());
             element.className = ClassNames.Day;
             element.dataset.submitValue = serializeDate(iterYear, iterMonth, dayIterator.getUTCDate());
-            if (outOfRange(time))
+            if (this.picker.outOfRange(time))
                 element.classList.add(ClassNames.Unavailable);
-            else if (stepMismatch(time))
+            else if (this.picker.stepMismatch(time))
                 element.classList.add(ClassNames.Unavailable);
             else if ((iterYear == year && dayIterator.getUTCMonth() < month) || (month == 0 && iterMonth == 11)) {
                 element.classList.add(ClassNames.Available);
@@ -892,7 +905,7 @@ DaysTable.prototype._renderMonth = function(year, month) {
         }
     }
 
-    global.today.disabled = !isValidDate(parseDateString().getTime());
+    this.picker.today.disabled = !this.picker.isValidDate(parseDateString().getTime());
 };
 
 /**
@@ -900,7 +913,7 @@ DaysTable.prototype._renderMonth = function(year, month) {
  * @param {!number} month
  */
 DaysTable.prototype._navigateToMonth = function(year, month) {
-    global.yearMonthController.setYearMonth(year, month);
+    this.picker.yearMonthController.setYearMonth(year, month);
     this._renderMonth(year, month);
 };
 
@@ -975,7 +988,7 @@ DaysTable.prototype._maybeSetPreviousMonth = function() {
     var year = global.yearMonthController.year();
     var month = global.yearMonthController.month();
     var thisMonthStartTime = createUTCDate(year, month, 1).getTime();
-    if (global.minimumDate.getTime() >= thisMonthStartTime)
+    if (this.minimumDate.getTime() >= thisMonthStartTime)
         return false;
     if (month == 0) {
         year--;
@@ -998,7 +1011,7 @@ DaysTable.prototype._maybeSetNextMonth = function() {
     } else
         month++;
     var nextMonthStartTime = createUTCDate(year, month, 1).getTime();
-    if (global.maximumDate.getTime() < nextMonthStartTime)
+    if (this.picker.maximumDate.getTime() < nextMonthStartTime)
         return false;
     this._navigateToMonthWithAnimation(year, month);
     return true;
@@ -1009,7 +1022,7 @@ DaysTable.prototype._maybeSetNextMonth = function() {
  */
 DaysTable.prototype._handleDayClick = function(event) {
     if (event.target.classList.contains(ClassNames.Available))
-        submitValue(event.target.dataset.submitValue);
+        this.picker.submitValue(event.target.dataset.submitValue);
 };
 
 /**
@@ -1110,7 +1123,7 @@ DaysTable.prototype._handleKey = function(event) {
     } else if (this._hasSelection() && key == "Enter") {
         var dayNode = this._days[y][x];
         if (dayNode.classList.contains(ClassNames.Available)) {
-            submitValue(dayNode.dataset.submitValue);
+            this.picker.submitValue(dayNode.dataset.submitValue);
             event.stopPropagation();
         }
 
@@ -1139,53 +1152,30 @@ DaysTable.prototype.updateSelection = function(event, x, y) {
     event.preventDefault();
 };
 
-// ----------------------------------------------------------------
-
-function handleToday() {
-    var date = new Date();
-    global.daysTable.selectDate(date);
-    submitValue(serializeDate(date.getFullYear(), date.getMonth(), date.getDate()));
-}
-
-function handleClear() {
-    submitValue("");
-}
-
 /**
- * @param {string} value
+ * @param {!Event} event
  */
-function submitValue(value) {
-    window.pagePopupController.setValueAndClosePopup(0, value);
-}
-
-function handleCancel() {
-    window.pagePopupController.setValueAndClosePopup(-1, "");
-}
-
-/**
- * @param {Event} event
- */
-function handleGlobalKey(event) {
+CalendarPicker.prototype._handleBodyKeyDown = function(event) {
     maybeUpdateFocusStyle();
     var key = event.keyIdentifier;
     if (key == "U+0009") {
         if (!event.shiftKey && document.activeElement == global.lastFocusableControl) {
             event.stopPropagation();
             event.preventDefault();
-            global.firstFocusableControl.focus();
+            this.firstFocusableControl.focus();
         } else if (event.shiftKey && document.activeElement == global.firstFocusableControl) {
             event.stopPropagation();
             event.preventDefault();
-            global.lastFocusableControl.focus();
+            this.lastFocusableControl.focus();
         }
     } else if (key == "U+004D") { // 'm'
-        global.yearMonthController.moveRelatively(event.shiftKey ? YearMonthController.PreviousMonth : YearMonthController.NextMonth);
+        this.yearMonthController.moveRelatively(event.shiftKey ? YearMonthController.PreviousMonth : YearMonthController.NextMonth);
     } else if (key == "U+0059") { // 'y'
-        global.yearMonthController.moveRelatively(event.shiftKey ? YearMonthController.PreviousYear : YearMonthController.NextYear);
+        this.yearMonthController.moveRelatively(event.shiftKey ? YearMonthController.PreviousYear : YearMonthController.NextYear);
     } else if (key == "U+0044") { // 'd'
-        global.yearMonthController.moveRelatively(event.shiftKey ? YearMonthController.PreviousTenYears : YearMonthController.NextTenYears);
+        this.yearMonthController.moveRelatively(event.shiftKey ? YearMonthController.PreviousTenYears : YearMonthController.NextTenYears);
     } else if (key == "U+001B") // ESC
-        handleCancel();
+        this.handleCancel();
 }
 
 function maybeUpdateFocusStyle() {

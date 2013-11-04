@@ -200,6 +200,7 @@ public:
     virtual void mediaPlayerPause() { }
     virtual void mediaPlayerPlay() { }
     virtual bool mediaPlayerIsPaused() const { return true; }
+    virtual bool mediaPlayerIsLooping() const { return false; }
     virtual HostWindow* mediaPlayerHostWindow() { return 0; }
     virtual IntRect mediaPlayerWindowClipRect() { return IntRect(); }
 };
@@ -266,6 +267,7 @@ public:
     bool sourceRemoveId(const String& id);
     PassRefPtr<TimeRanges> sourceBuffered(const String& id);
     bool sourceAppend(const String& id, const unsigned char* data, unsigned length);
+    void sourceSetDuration(double);
     bool sourceAbort(const String& id);
     enum EndOfStreamStatus { EosNoError, EosNetworkError, EosDecodeError };
     void sourceEndOfStream(EndOfStreamStatus);

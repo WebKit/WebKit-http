@@ -80,6 +80,7 @@ using namespace HTMLNames;
 
 #if ENABLE(DATALIST_ELEMENT)
 class ListAttributeTargetObserver : IdTargetObserver {
+    WTF_MAKE_FAST_ALLOCATED;
 public:
     static PassOwnPtr<ListAttributeTargetObserver> create(const AtomicString& id, HTMLInputElement*);
     virtual void idTargetChanged() OVERRIDE;
@@ -119,7 +120,9 @@ HTMLInputElement::HTMLInputElement(const QualifiedName& tagName, Document* docum
     , m_valueAttributeWasUpdatedAfterParsing(false)
     , m_wasModifiedByUser(false)
     , m_canReceiveDroppedFiles(false)
+#if ENABLE(TOUCH_EVENTS)
     , m_hasTouchEventHandler(false)
+#endif
     , m_inputType(InputType::createText(this))
 {
     ASSERT(hasTagName(inputTag) || hasTagName(isindexTag));

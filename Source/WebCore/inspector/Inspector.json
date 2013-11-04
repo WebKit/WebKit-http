@@ -594,17 +594,18 @@
                     { "name": "enabled", "type": "boolean", "description": "Reporting enabled state." }
                 ],
                 "hidden": true,
-                "description": "Enables reporting about creation of isolated contexts by means of <code>isolatedContextCreated</code> event. When the reporting gets enabled the event will be sent immediately for each existing isolated context."
+                "description": "Enables reporting about creation of execution contexts by means of <code>executionContextCreated</code> event. When the reporting gets enabled the event will be sent immediately for each existing execution context."
             }
 
         ],
         "events": [
             {
-                "name": "isolatedContextCreated",
+                "name": "executionContextCreated",
                 "parameters": [
-                    { "name": "context", "$ref": "ExecutionContextDescription", "description": "A newly created isolated contex." }
+                    { "name": "context", "$ref": "ExecutionContextDescription", "description": "A newly created execution contex." }
                 ],
-                "description": "Issued when new isolated context is created."
+                "hidden": true,
+                "description": "Issued when new execution context is created."
             }
         ]
     },
@@ -874,6 +875,14 @@
                 ]
             },
             {
+                "name": "replayXHR",
+                "description": "This method sends a new XMLHttpRequest which is identical to the original one. The following parameters should be identical: method, url, async, request body, extra headers, withCredentials attribute, user, password.",
+                "parameters": [
+                    { "name": "requestId", "$ref": "RequestId", "description": "Identifier of XHR to replay." }
+                ],
+                "hidden": true
+            },
+            {
                 "name": "canClearBrowserCache",
                 "description": "Tells whether clearing browser cache is supported.",
                 "returns": [
@@ -1073,7 +1082,11 @@
             {
                 "id": "Error",
                 "type": "object",
-                "description": "Database error."
+                "description": "Database error.",
+                "properties": [
+                    { "name": "message", "type": "string", "description": "Error message." },
+                    { "name": "code", "type": "integer", "description": "Error code." }
+                ]
             }
         ],
         "commands": [
@@ -1096,13 +1109,15 @@
             },
             {
                 "name": "executeSQL",
+                "async": true,
                 "parameters": [
                     { "name": "databaseId", "$ref": "DatabaseId" },
                     { "name": "query", "type": "string" }
                 ],
                 "returns": [
-                    { "name": "success", "type": "boolean" },
-                    { "name": "transactionId", "type": "integer" }
+                    { "name": "columnNames", "type": "array", "optional": true, "items": { "type": "string" } },
+                    { "name": "values", "type": "array", "optional": true, "items": { "type": "any" }},
+                    { "name": "sqlError", "$ref": "Error", "optional": true }
                 ]
             }
         ],
@@ -1111,21 +1126,6 @@
                 "name": "addDatabase",
                 "parameters": [
                     { "name": "database", "$ref": "Database" }
-                ]
-            },
-            {
-                "name": "sqlTransactionSucceeded",
-                "parameters": [
-                    { "name": "transactionId", "type": "integer" },
-                    { "name": "columnNames", "type": "array", "items": { "type": "string" } },
-                    { "name": "values", "type": "array", "items": { "type": "any" }}
-                ]
-            },
-            {
-                "name": "sqlTransactionFailed",
-                "parameters": [
-                    { "name": "transactionId", "type": "integer" },
-                    { "name": "sqlError", "$ref": "Error" }
                 ]
             }
         ]
@@ -1230,25 +1230,31 @@
             },
             {
                 "name": "requestDatabaseNamesForFrame",
+                "async": true,
                 "parameters": [
-                    { "name": "requestId", "type": "integer", "description": "Request id." },
                     { "name": "frameId", "$ref": "Network.FrameId", "description": "Frame id." }
+                ],
+                "returns": [
+                    { "name": "securityOriginWithDatabaseNames", "$ref": "SecurityOriginWithDatabaseNames", "description": "Frame with database names." }
                 ],
                 "description": "Requests database names for given frame's security origin."
             },
             {
                 "name": "requestDatabase",
+                "async": true,
                 "parameters": [
-                    { "name": "requestId", "type": "integer", "description": "Request id." },
                     { "name": "frameId", "$ref": "Network.FrameId", "description": "Frame id." },
                     { "name": "databaseName", "type": "string", "description": "Database name." }
+                ],
+                "returns": [
+                    { "name": "databaseWithObjectStores", "$ref": "DatabaseWithObjectStores", "description": "Database with an array of object stores." }
                 ],
                 "description": "Requests database with given name in given frame."
             },
             {
                 "name": "requestData",
+                "async": true,
                 "parameters": [
-                    { "name": "requestId", "type": "integer", "description": "Request id." },
                     { "name": "frameId", "$ref": "Network.FrameId", "description": "Frame id." },
                     { "name": "databaseName", "type": "string", "description": "Database name." },
                     { "name": "objectStoreName", "type": "string", "description": "Object store name." },
@@ -1257,39 +1263,11 @@
                     { "name": "pageSize", "type": "integer", "description": "Number of records to fetch." },
                     { "name": "keyRange", "$ref": "KeyRange", "optional": true, "description": "Key range." }
                 ],
-                "description": "Requests data from object store or index."
-            }
-        ],
-        "events": [
-            {
-                "name": "databaseNamesLoaded",
-                "parameters": [
-                    { "name": "requestId", "type": "number", "description": "Request id." },
-                    { "name": "securityOriginWithDatabaseNames", "$ref": "SecurityOriginWithDatabaseNames", "description": "Frame with database names." }
-                ]
-            },
-            {
-                "name": "databaseLoaded",
-                "parameters": [
-                    { "name": "requestId", "type": "integer", "description": "Request id." },
-                    { "name": "databaseWithObjectStores", "$ref": "DatabaseWithObjectStores", "description": "Database with an array of object stores." }
-                ]
-            },
-            {
-                "name": "objectStoreDataLoaded",
-                "parameters": [
-                    { "name": "requestId", "type": "integer", "description": "Request id." },
+                "returns": [
                     { "name": "objectStoreDataEntries", "type": "array", "items": { "$ref": "DataEntry" }, "description": "Array of object store data entries." },
                     { "name": "hasMore", "type": "boolean", "description": "If true, there are more entries to fetch in the given range." }
-                ]
-            },
-            {
-                "name": "indexDataLoaded",
-                "parameters": [
-                    { "name": "requestId", "type": "integer", "description": "Request id." },
-                    { "name": "indexDataEntries", "type": "array", "items": { "$ref": "DataEntry" }, "description": "Array of index data entries." },
-                    { "name": "hasMore", "type": "boolean", "description": "If true, there are more entries to fetch in the given range." }
-                ]
+                ],
+                "description": "Requests data from object store or index."
             }
         ]
     },
@@ -1469,11 +1447,6 @@
         "hidden": true,
         "types": [
             {
-                "id": "RequestId",
-                "type": "integer",
-                "description": "Request Identifier to glue a request and its completion event."
-            },
-            {
                 "id": "Entry",
                 "type": "object",
                 "properties": [
@@ -1507,37 +1480,44 @@
             },
             {
                 "name": "requestFileSystemRoot",
+                "async": true,
                 "parameters": [
                     { "name": "origin", "type": "string", "description": "Security origin of requesting FileSystem. One of frames in current page needs to have this security origin." },
                     { "name": "type", "type": "string", "enum": ["temporary", "persistent"], "description": "FileSystem type of requesting FileSystem." }
                 ],
                 "returns": [
-                    { "name": "requestId", "$ref": "RequestId", "description": "Request identifier. Corresponding fileSystemRootReceived event should have same requestId with this." }
+                    { "name": "errorCode", "type": "integer", "description": "0, if no error. Otherwise, errorCode is set to FileError::ErrorCode value." },
+                    { "name": "root", "$ref": "Entry", "optional": true, "description": "Contains root of the requested FileSystem if the command completed successfully." }
                 ],
-                "description": "Returns root directory of the FileSystem as fileSystemRootReceived event, if exists."
+                "description": "Returns root directory of the FileSystem, if exists."
             },
             {
                 "name": "requestDirectoryContent",
+                "async": true,
                 "parameters": [
                     { "name": "url", "type": "string", "description": "URL of the directory that the frontend is requesting to read from." }
                 ],
                 "returns": [
-                    { "name": "requestId", "$ref": "RequestId", "description": "Request identifier. Corresponding directoryContentReceived event should have same requestId with this." }
+                    { "name": "errorCode", "type": "integer", "description": "0, if no error. Otherwise, errorCode is set to FileError::ErrorCode value." },
+                    { "name": "entries", "type": "array", "items": { "$ref": "Entry" }, "optional": true, "description": "Contains all entries on directory if the command completed successfully." }
                 ],
-                "description": "Returns content of the directory as directoryContentReceived event."
+                "description": "Returns content of the directory."
             },
             {
                 "name": "requestMetadata",
+                "async": true,
                 "parameters": [
                     { "name": "url", "type": "string", "description": "URL of the entry that the frontend is requesting to get metadata from." }
                 ],
                 "returns": [
-                    { "name": "requestId", "$ref": "RequestId", "description": "Request identifier. Corresponding metadataReceived event should have same requestId with this." }
+                    { "name": "errorCode", "type": "integer", "description": "0, if no error. Otherwise, errorCode is set to FileError::ErrorCode value." },
+                    { "name": "metadata", "$ref": "Metadata", "optional": true, "description": "Contains metadata of the entry if the command completed successfully." }
                 ],
-                "description": "Returns metadata of the entry as metadataReceived event."
+                "description": "Returns metadata of the entry."
             },
             {
                 "name": "requestFileContent",
+                "async": true,
                 "parameters": [
                     { "name": "url", "type": "string", "description": "URL of the file that the frontend is requesting to read from." },
                     { "name": "readAsText", "type": "boolean", "description": "True if the content should be read as text, otherwise the result will be returned as base64 encoded text." },
@@ -1546,66 +1526,22 @@
                     { "name": "charset", "type": "string", "optional": true, "description": "Overrides charset of the content when content is served as text." }
                 ],
                 "returns": [
-                    { "name": "requestId", "$ref": "RequestId", "description": "Request identifier. Corresponding fileContentReceived event should have same requestId with this." }
-                ],
-                "description": "Returns content of the file as fileContentReceived event. Result should be sliced into [start, end)."
-            },
-            {
-                "name": "deleteEntry",
-                "parameters": [
-                    { "name": "url", "type": "string", "description": "URL of the entry to delete." }
-                ],
-                "returns": [
-                    { "name": "requestId", "$ref": "RequestId", "description": "Request identifier. Corresponding deletionCompleted event should have same requestId with this." }
-                ],
-                "description": "Deletes specified entry. If the entry is a directory, the agent deletes children recursively."
-            }
-        ],
-        "events": [
-            {
-                "name": "fileSystemRootReceived",
-                "parameters": [
-                    { "name": "requestId", "type": "integer", "description": "Request Identifier that was returned by corresponding requestFileSystemRoot command." },
-                    { "name": "errorCode", "type": "integer", "description": "0, if no error. Otherwise, errorCode is set to FileError::ErrorCode value." },
-                    { "name": "root", "$ref": "Entry", "optional": true, "description": "Contains root of the requested FileSystem if the command completed successfully." }
-                ],
-                "description": "Completion event of requestFileSystemRoot command."
-            },
-            {
-                "name": "directoryContentReceived",
-                "parameters": [
-                    { "name": "requestId", "type": "integer", "description": "Request Identifier that was returned by corresponding requestDirectoryContent command." },
-                    { "name": "errorCode", "type": "integer", "description": "0, if no error. Otherwise, errorCode is set to FileError::ErrorCode value." },
-                    { "name": "entries", "type": "array", "items": { "$ref": "Entry" }, "optional": true, "description": "Contains all entries on directory if the command completed successfully." }
-                ],
-                "description": "Completion event of requestDirectoryContent command."
-            },
-            {
-                "name": "metadataReceived",
-                "parameters": [
-                    { "name": "requestId", "type": "integer", "description": "Request Identifier that was returned in response to the corresponding requestMetadata command." },
-                    { "name": "errorCode", "type": "integer", "description": "0, if no error. Otherwise, errorCode is set to FileError::ErrorCode value." },
-                    { "name": "metadata", "$ref": "Metadata", "optional": true, "description": "Contains metadata of the entry if the command completed successfully." }
-                ],
-                "description": "Completion event of requestMetadata command."
-            },
-            {
-                "name": "fileContentReceived",
-                "parameters": [
-                    { "name": "requestId", "type": "integer", "description": "Request Identifier that was returned in response to the corresponding requestFileContent command." },
                     { "name": "errorCode", "type": "integer", "description": "0, if no error. Otherwise, errorCode is set to FileError::ErrorCode value." },
                     { "name": "content", "type": "string", "optional": true, "description": "Content of the file." },
                     { "name": "charset", "type": "string", "optional": true, "description": "Charset of the content if it is served as text." }
                 ],
-                "description": "Completion event of requestFileContent command."
+                "description": "Returns content of the file. Result should be sliced into [start, end)."
             },
             {
-                "name": "deletionCompleted",
+                "name": "deleteEntry",
+                "async": true,
                 "parameters": [
-                    { "name": "requestId", "type": "integer", "description": "Request Identifier that was returned in response to the corresponding deleteEntry command." },
+                    { "name": "url", "type": "string", "description": "URL of the entry to delete." }
+                ],
+                "returns": [
                     { "name": "errorCode", "type": "integer", "description": "0, if no error. Otherwise errorCode is set to FileError::ErrorCode value." }
                 ],
-                "description": "Completion event of deleteEntry command."
+                "description": "Deletes specified entry. If the entry is a directory, the agent deletes children recursively."
             }
         ]
     },
@@ -2411,18 +2347,6 @@
                 ],
                 "description": "Returns the Named Flows from the document.",
                 "hidden": true
-            },
-            {
-                "name": "getFlowByName",
-                "parameters": [
-                    { "name": "documentNodeId", "$ref": "DOM.NodeId", "description": "The document node id." },
-                    { "name": "name", "type": "string", "description": "Named Flow identifier." }
-                ],
-                "returns": [
-                    { "name": "namedFlow", "$ref": "NamedFlow", "description": "A Named Flow." }
-                ],
-                "description": "Returns the Named Flow identified by the given name",
-                "hidden": true
             }
         ],
         "events": [
@@ -2440,8 +2364,7 @@
             {
                 "name": "namedFlowCreated",
                 "parameters": [
-                    { "name": "documentNodeId", "$ref": "DOM.NodeId", "description": "The document node id." },
-                    { "name": "namedFlow", "type": "string", "description": "Identifier of the new Named Flow." }
+                    { "name": "namedFlow", "$ref": "NamedFlow", "description": "The new Named Flow." }
                 ],
                 "description": "Fires when a Named Flow is created.",
                 "hidden": true
@@ -2450,9 +2373,17 @@
                 "name": "namedFlowRemoved",
                 "parameters": [
                     { "name": "documentNodeId", "$ref": "DOM.NodeId", "description": "The document node id." },
-                    { "name": "namedFlow", "type": "string", "description": "Identifier of the removed Named Flow." }
+                    { "name": "flowName", "type": "string", "description": "Identifier of the removed Named Flow." }
                 ],
                 "description": "Fires when a Named Flow is removed: has no associated content nodes and regions.",
+                "hidden": true
+            },
+            {
+                "name": "regionLayoutUpdated",
+                "parameters": [
+                    { "name": "namedFlow", "$ref": "NamedFlow", "description": "The Named Flow whose layout may have changed." }
+                ],
+                "description": "Fires when a Named Flow's layout may have changed.",
                 "hidden": true
             }
         ]
@@ -2836,7 +2767,7 @@
                 "name": "paused",
                 "parameters": [
                     { "name": "callFrames", "type": "array", "items": { "$ref": "CallFrame" }, "description": "Call stack the virtual machine stopped on." },
-                    { "name": "reason", "type": "string", "enum": [ "XHR", "DOM", "EventListener", "exception", "assert", "other" ], "description": "Pause reason." },
+                    { "name": "reason", "type": "string", "enum": [ "XHR", "DOM", "EventListener", "exception", "assert", "CSPViolation", "other" ], "description": "Pause reason." },
                     { "name": "data", "type": "object", "optional": true, "description": "Object containing break-specific auxiliary properties." }
                 ],
                 "description": "Fired when the virtual machine stopped on breakpoint or exception or any other stop criteria."

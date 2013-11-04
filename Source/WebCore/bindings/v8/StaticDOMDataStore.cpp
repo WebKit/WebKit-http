@@ -31,6 +31,7 @@
 #include "config.h"
 #include "StaticDOMDataStore.h"
 #include "V8Binding.h"
+#include "WebCoreMemoryInstrumentation.h"
 
 namespace WebCore {
 
@@ -51,6 +52,16 @@ StaticDOMDataStore::StaticDOMDataStore()
 StaticDOMDataStore::~StaticDOMDataStore()
 {
     V8PerIsolateData::current()->unregisterDOMDataStore(this);
+}
+
+void StaticDOMDataStore::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
+{
+    MemoryClassInfo info(memoryObjectInfo, this, WebCoreMemoryTypes::Binding);
+    DOMDataStore::reportMemoryUsage(memoryObjectInfo);
+    info.addMember(m_staticDomNodeMap);
+    info.addMember(m_staticActiveDomNodeMap);
+    info.addMember(m_staticDomObjectMap);
+    info.addMember(m_staticActiveDomObjectMap);
 }
 
 } // namespace WebCore

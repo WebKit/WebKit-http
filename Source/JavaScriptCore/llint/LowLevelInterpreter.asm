@@ -61,6 +61,11 @@ else
     const PayloadOffset = 0
 end
 
+# Constant for reasoning about butterflies.
+const IsArray = 1
+const HasArrayStorage = 8
+const AllArrayTypes = 15
+
 # Type constants.
 const StringType = 5
 const ObjectType = 13
@@ -86,9 +91,9 @@ const HashFlags8BitBuffer = 64
 
 # Property storage constants
 if JSVALUE64
-    const InlineStorageCapacity = 5
-else
     const InlineStorageCapacity = 6
+else
+    const InlineStorageCapacity = 7
 end
 
 # Allocation constants
@@ -110,9 +115,13 @@ end
 
 # Some common utilities.
 macro crash()
-    storei t0, 0xbbadbeef[]
-    move 0, t0
-    call t0
+    if C_LOOP
+        cloopCrash
+    else
+        storei t0, 0xbbadbeef[]
+        move 0, t0
+        call t0
+    end
 end
 
 macro assert(assertion)
@@ -124,7 +133,10 @@ macro assert(assertion)
 end
 
 macro preserveReturnAddressAfterCall(destinationRegister)
-    if ARMv7
+    if C_LOOP
+        # In our case, we're only preserving the bytecode vPC. 
+        move lr, destinationRegister
+    elsif ARMv7
         move lr, destinationRegister
     elsif X86 or X86_64
         pop destinationRegister
@@ -134,7 +146,10 @@ macro preserveReturnAddressAfterCall(destinationRegister)
 end
 
 macro restoreReturnAddressBeforeReturn(sourceRegister)
-    if ARMv7
+    if C_LOOP
+        # In our case, we're only restoring the bytecode vPC. 
+        move sourceRegister, lr
+    elsif ARMv7
         move sourceRegister, lr
     elsif X86 or X86_64
         push sourceRegister
@@ -150,8 +165,12 @@ macro traceExecution()
 end
 
 macro callTargetFunction(callLinkInfo)
-    call LLIntCallLinkInfo::machineCodeTarget[callLinkInfo]
-    dispatchAfterCall()
+    if C_LOOP
+        cloopCallJSFunction LLIntCallLinkInfo::machineCodeTarget[callLinkInfo]
+    else
+        call LLIntCallLinkInfo::machineCodeTarget[callLinkInfo]
+        dispatchAfterCall()
+    end
 end
 
 macro slowPathForCall(advance, slowPath)
@@ -159,9 +178,27 @@ macro slowPathForCall(advance, slowPath)
         advance,
         slowPath,
         macro (callee)
-            call callee
-            dispatchAfterCall()
+            if C_LOOP
+                cloopCallJSFunction callee
+            else
+                call callee
+                dispatchAfterCall()
+            end
         end)
+end
+
+macro arrayProfile(structureAndIndexingType, profile, scratch)
+    const structure = structureAndIndexingType
+    const indexingType = structureAndIndexingType
+    if VALUE_PROFILER
+        storep structure, ArrayProfile::m_lastSeenStructure[profile]
+        loadb Structure::m_indexingType[structure], indexingType
+        move 1, scratch
+        lshifti indexingType, scratch
+        ori scratch, ArrayProfile::m_observedArrayModes[profile]
+    else
+        loadb Structure::m_indexingType[structure], indexingType
+    end
 end
 
 macro checkSwitchToJIT(increment, action)
@@ -292,7 +329,7 @@ macro functionInitialization(profileArgSkip)
 .stackHeightOK:
 end
 
-macro allocateBasicJSObject(sizeClassIndex, classInfoOffset, structure, result, scratch1, scratch2, slowCase)
+macro allocateBasicJSObject(sizeClassIndex, structure, result, scratch1, scratch2, slowCase)
     if ALWAYS_ALLOCATE_SLOW
         jmp slowCase
     else
@@ -320,10 +357,8 @@ macro allocateBasicJSObject(sizeClassIndex, classInfoOffset, structure, result, 
         storep scratch2, offsetOfMySizeClass + offsetOfFirstFreeCell[scratch1]
     
         # Initialize the object.
-        loadp classInfoOffset[scratch1], scratch2
-        storep scratch2, [result]
         storep structure, JSCell::m_structure[result]
-        storep 0, JSObject::m_outOfLineStorage[result]
+        storep 0, JSObject::m_butterfly[result]
     end
 end
 
@@ -498,7 +533,7 @@ macro withInlineStorage(object, propertyStorage, continuation)
 end
 
 macro withOutOfLineStorage(object, propertyStorage, continuation)
-    loadp JSObject::m_outOfLineStorage[object], propertyStorage
+    loadp JSObject::m_butterfly[object], propertyStorage
     # Indicate that the propertyStorage register now points to the
     # property storage, and that the object register may be reused
     # if the object pointer is not needed anymore.
@@ -755,9 +790,9 @@ _llint_op_get_pnames:
     dispatch(0) # The slow_path either advances the PC or jumps us to somewhere else.
 
 
-_llint_op_push_scope:
+_llint_op_push_with_scope:
     traceExecution()
-    callSlowPath(_llint_slow_path_push_scope)
+    callSlowPath(_llint_slow_path_push_with_scope)
     dispatch(2)
 
 
@@ -767,9 +802,9 @@ _llint_op_pop_scope:
     dispatch(1)
 
 
-_llint_op_push_new_scope:
+_llint_op_push_name_scope:
     traceExecution()
-    callSlowPath(_llint_slow_path_push_new_scope)
+    callSlowPath(_llint_slow_path_push_name_scope)
     dispatch(4)
 
 
@@ -829,9 +864,6 @@ macro notSupported()
     end
 end
 
-_llint_op_get_array_length:
-    notSupported()
-
 _llint_op_get_by_id_chain:
     notSupported()
 
@@ -878,4 +910,3 @@ _llint_op_put_by_id_transition:
 # Indicate the end of LLInt.
 _llint_end:
     crash()
-

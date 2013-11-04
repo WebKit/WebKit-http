@@ -128,6 +128,7 @@ public:
 
 #if PLATFORM(MAC)
     void initializeShim();
+    void initializeSandbox(const String& clientIdentifier);
 
 #if USE(ACCELERATED_COMPOSITING)
     mach_port_t compositingRenderServerPort() const { return m_compositingRenderServerPort; }
@@ -329,8 +330,6 @@ private:
     WebIconDatabaseProxy m_iconDatabaseProxy;
     
     String m_localStorageDirectory;
-
-    RefPtr<SandboxExtension> m_applicationCachePathExtension;
 
 #if ENABLE(PLUGIN_PROCESS)
     PluginProcessConnectionManager m_pluginProcessConnectionManager;

@@ -44,9 +44,9 @@
 #include "V8CanvasRenderingContext2D.h"
 #include "V8CustomXPathNSResolver.h"
 #include "V8DOMImplementation.h"
+#include "V8DOMWindowShell.h"
 #include "V8DOMWrapper.h"
 #include "V8HTMLDocument.h"
-#include "V8IsolatedContext.h"
 #include "V8Node.h"
 #include "V8Touch.h"
 #include "V8TouchList.h"
@@ -92,45 +92,23 @@ v8::Handle<v8::Value> V8Document::evaluateCallback(const v8::Arguments& args)
     if (ec)
         return setDOMException(ec, args.GetIsolate());
 
-    return toV8(result.release(), args.GetIsolate());
+    return toV8(result.release(), args.Holder(), args.GetIsolate());
 }
 
-v8::Handle<v8::Value> V8Document::getCSSCanvasContextCallback(const v8::Arguments& args)
-{
-    INC_STATS("DOM.Document.getCSSCanvasContext");
-    v8::Handle<v8::Object> holder = args.Holder();
-    Document* imp = V8Document::toNative(holder);
-    String contextId = toWebCoreString(args[0]);
-    String name = toWebCoreString(args[1]);
-    int width = toInt32(args[2]);
-    int height = toInt32(args[3]);
-    CanvasRenderingContext* result = imp->getCSSCanvasContext(contextId, name, width, height);
-    if (!result)
-        return v8::Undefined();
-    if (result->is2d())
-        return toV8(static_cast<CanvasRenderingContext2D*>(result), args.GetIsolate());
-#if ENABLE(WEBGL)
-    else if (result->is3d())
-        return toV8(static_cast<WebGLRenderingContext*>(result), args.GetIsolate());
-#endif // ENABLE(WEBGL)
-    ASSERT_NOT_REACHED();
-    return v8::Undefined();
-}
-
-v8::Handle<v8::Value> toV8(Document* impl, v8::Isolate* isolate, bool forceNewObject)
+v8::Handle<v8::Value> toV8(Document* impl, v8::Handle<v8::Object> creationContext, v8::Isolate* isolate, bool forceNewObject)
 {
     if (!impl)
         return v8NullWithCheck(isolate);
     if (impl->isHTMLDocument())
-        return toV8(static_cast<HTMLDocument*>(impl), isolate, forceNewObject);
+        return toV8(static_cast<HTMLDocument*>(impl), creationContext, isolate, forceNewObject);
 #if ENABLE(SVG)
     if (impl->isSVGDocument())
-        return toV8(static_cast<SVGDocument*>(impl), isolate, forceNewObject);
+        return toV8(static_cast<SVGDocument*>(impl), creationContext, isolate, forceNewObject);
 #endif
-    v8::Handle<v8::Object> wrapper = V8Document::wrap(impl, isolate, forceNewObject);
+    v8::Handle<v8::Object> wrapper = V8Document::wrap(impl, creationContext, isolate, forceNewObject);
     if (wrapper.IsEmpty())
         return wrapper;
-    if (!V8IsolatedContext::getEntered()) {
+    if (!V8DOMWindowShell::getEntered()) {
         if (Frame* frame = impl->frame())
             frame->script()->windowShell()->updateDocumentWrapper(wrapper);
     }
@@ -147,7 +125,7 @@ v8::Handle<v8::Value> V8Document::createTouchListCallback(const v8::Arguments& a
         touchList->append(touch);
     }
 
-    return toV8(touchList.release(), args.GetIsolate());
+    return toV8(touchList.release(), args.Holder(), args.GetIsolate());
 }
 #endif
 

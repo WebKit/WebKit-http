@@ -31,7 +31,6 @@
 #include "Image.h"
 #include "ImageBuffer.h"
 #include "IntSize.h"
-#include "MemoryInstrumentation.h"
 #include "Timer.h"
 #include <wtf/RefPtr.h>
 

@@ -118,6 +118,11 @@ static Region computeNonFastScrollableRegion(Frame* frame, const IntPoint& frame
     if (const FrameView::ScrollableAreaSet* scrollableAreas = frameView->scrollableAreas()) {
         for (FrameView::ScrollableAreaSet::const_iterator it = scrollableAreas->begin(), end = scrollableAreas->end(); it != end; ++it) {
             ScrollableArea* scrollableArea = *it;
+#if USE(ACCELERATED_COMPOSITING)
+            // Composited scrollable areas can be scrolled off the main thread.
+            if (scrollableArea->usesCompositedScrolling())
+                continue;
+#endif
             IntRect box = scrollableArea->scrollableAreaBoundingBox();
             box.moveBy(offset);
             nonFastScrollableRegion.unite(box);
@@ -213,6 +218,7 @@ static GraphicsLayer* scrollLayerForFrameView(FrameView* frameView)
         return 0;
     return renderView->compositor()->scrollLayer();
 #else
+    UNUSED_PARAM(frameView);
     return 0;
 #endif
 }
@@ -356,22 +362,22 @@ void ScrollingCoordinator::recomputeWheelEventHandlerCount()
 
 bool ScrollingCoordinator::hasNonLayerFixedObjects(FrameView* frameView)
 {
-    const FrameView::FixedObjectSet* fixedObjects = frameView->fixedObjects();
-    if (!fixedObjects)
+    const FrameView::ViewportConstrainedObjectSet* viewportConstrainedObjects = frameView->viewportConstrainedObjects();
+    if (!viewportConstrainedObjects)
         return false;
 
 #if USE(ACCELERATED_COMPOSITING)
-    for (FrameView::FixedObjectSet::const_iterator it = fixedObjects->begin(), end = fixedObjects->end(); it != end; ++it) {
-        RenderObject* fixedObject = *it;
-        if (!fixedObject->isBoxModelObject() || !fixedObject->hasLayer())
+    for (FrameView::ViewportConstrainedObjectSet::const_iterator it = viewportConstrainedObjects->begin(), end = viewportConstrainedObjects->end(); it != end; ++it) {
+        RenderObject* viewportConstrainedObject = *it;
+        if (!viewportConstrainedObject->isBoxModelObject() || !viewportConstrainedObject->hasLayer())
             return true;
-        RenderBoxModelObject* fixedBoxModelObject = toRenderBoxModelObject(fixedObject);
-        if (!fixedBoxModelObject->layer()->backing())
+        RenderBoxModelObject* viewportConstrainedBoxModelObject = toRenderBoxModelObject(viewportConstrainedObject);
+        if (!viewportConstrainedBoxModelObject->layer()->backing())
             return true;
     }
     return false;
 #else
-    return fixedObjects->size();
+    return viewportConstrainedObjects->size();
 #endif
 }
 
@@ -379,11 +385,20 @@ void ScrollingCoordinator::updateShouldUpdateScrollLayerPositionOnMainThread()
 {
     FrameView* frameView = m_page->mainFrame()->view();
 
-    setShouldUpdateScrollLayerPositionOnMainThread(m_forceMainThreadScrollLayerPositionUpdates
-        || frameView->hasSlowRepaintObjects()
-        || (!supportsFixedPositionLayers() && frameView->hasFixedObjects())
-        || (supportsFixedPositionLayers() && hasNonLayerFixedObjects(frameView))
-        || m_page->mainFrame()->document()->isImageDocument());
+    MainThreadScrollingReasons mainThreadScrollingReasons = (MainThreadScrollingReasons)0;
+
+    if (m_forceMainThreadScrollLayerPositionUpdates)
+        mainThreadScrollingReasons |= ForcedOnMainThread;
+    if (frameView->hasSlowRepaintObjects())
+        mainThreadScrollingReasons |= HasSlowRepaintObjects;
+    if (!supportsFixedPositionLayers() && frameView->hasViewportConstrainedObjects())
+        mainThreadScrollingReasons |= HasViewportConstrainedObjectsWithoutSupportingFixedLayers;
+    if (supportsFixedPositionLayers() && hasNonLayerFixedObjects(frameView))
+        mainThreadScrollingReasons |= HasNonLayerFixedObjects;
+    if (m_page->mainFrame()->document()->isImageDocument())
+        mainThreadScrollingReasons |= IsImageDocument;
+
+    setShouldUpdateScrollLayerPositionOnMainThread(mainThreadScrollingReasons);
 }
 
 void ScrollingCoordinator::setForceMainThreadScrollLayerPositionUpdates(bool forceMainThreadScrollLayerPositionUpdates)
@@ -430,14 +445,14 @@ void ScrollingCoordinator::setWheelEventHandlerCount(unsigned wheelEventHandlerC
     scheduleTreeStateCommit();
 }
 
-void ScrollingCoordinator::setShouldUpdateScrollLayerPositionOnMainThread(bool shouldUpdateScrollLayerPositionOnMainThread)
+void ScrollingCoordinator::setShouldUpdateScrollLayerPositionOnMainThread(MainThreadScrollingReasons reasons)
 {
     // The FrameView's GraphicsLayer is likely to be out-of-synch with the PlatformLayer
     // at this point. So we'll update it before we switch back to main thread scrolling
     // in order to avoid layer positioning bugs.
-    if (shouldUpdateScrollLayerPositionOnMainThread)
+    if (reasons)
         updateMainFrameScrollLayerPosition();
-    m_scrollingTreeState->setShouldUpdateScrollLayerPositionOnMainThread(shouldUpdateScrollLayerPositionOnMainThread);
+    m_scrollingTreeState->setShouldUpdateScrollLayerPositionOnMainThread(reasons);
     scheduleTreeStateCommit();
 }
 
@@ -487,6 +502,11 @@ void ScrollingCoordinator::setLayerIsContainerForFixedPositionLayers(GraphicsLay
 void ScrollingCoordinator::setLayerIsFixedToContainerLayer(GraphicsLayer*, bool)
 {
     // FIXME: Implement!
+}
+
+void ScrollingCoordinator::scrollableAreaScrollLayerDidChange(ScrollableArea*, GraphicsLayer*)
+{
+    // FIXME: Implement.
 }
 #endif // !ENABLE(THREADED_SCROLLING)
 

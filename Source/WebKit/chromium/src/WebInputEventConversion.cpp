@@ -149,13 +149,21 @@ PlatformGestureEventBuilder::PlatformGestureEventBuilder(Widget* widget, const W
         break;
     case WebInputEvent::GestureScrollUpdate:
         m_type = PlatformEvent::GestureScrollUpdate;
+        m_deltaX = e.data.scrollUpdate.deltaX;
+        m_deltaY = e.data.scrollUpdate.deltaY;
         break;
     case WebInputEvent::GestureTap:
         m_type = PlatformEvent::GestureTap;
-        m_area = IntSize(e.boundingBox.width, e.boundingBox.height);
+        m_area = IntSize(e.data.tap.width, e.data.tap.height);
+        // FIXME: PlatformGestureEvent deltaX is overloaded - wkb.ug/93123
+        m_deltaX = static_cast<int>(e.data.tap.tapCount);
         break;
     case WebInputEvent::GestureTapDown:
         m_type = PlatformEvent::GestureTapDown;
+        m_area = IntSize(e.data.tapDown.width, e.data.tapDown.height);
+        break;
+    case WebInputEvent::GestureTapCancel:
+        m_type = PlatformEvent::GestureTapDownCancel;
         break;
     case WebInputEvent::GestureDoubleTap:
         m_type = PlatformEvent::GestureDoubleTap;
@@ -165,7 +173,7 @@ PlatformGestureEventBuilder::PlatformGestureEventBuilder(Widget* widget, const W
         break;
     case WebInputEvent::GestureLongPress:
         m_type = PlatformEvent::GestureLongPress;
-        m_area = IntSize(e.boundingBox.width, e.boundingBox.height);
+        m_area = IntSize(e.data.longPress.width, e.data.longPress.height);
         break;
     case WebInputEvent::GesturePinchBegin:
         m_type = PlatformEvent::GesturePinchBegin;
@@ -175,14 +183,14 @@ PlatformGestureEventBuilder::PlatformGestureEventBuilder(Widget* widget, const W
         break;
     case WebInputEvent::GesturePinchUpdate:
         m_type = PlatformEvent::GesturePinchUpdate;
+        // FIXME: PlatformGestureEvent deltaX is overloaded - wkb.ug/93123
+        m_deltaX = e.data.pinchUpdate.scale;
         break;
     default:
         ASSERT_NOT_REACHED();
     }
     m_position = widget->convertFromContainingWindow(IntPoint(e.x, e.y));
     m_globalPosition = IntPoint(e.globalX, e.globalY);
-    m_deltaX = e.deltaX;
-    m_deltaY = e.deltaY;
     m_timestamp = e.timeStampSeconds;
 
     m_modifiers = 0;
@@ -223,7 +231,6 @@ PlatformKeyboardEventBuilder::PlatformKeyboardEventBuilder(const WebKeyboardEven
     m_unmodifiedText = String(e.unmodifiedText);
     m_keyIdentifier = String(e.keyIdentifier);
     m_autoRepeat = (e.modifiers & WebInputEvent::IsAutoRepeat);
-    m_windowsVirtualKeyCode = e.windowsKeyCode;
     m_nativeVirtualKeyCode = e.nativeKeyCode;
     m_isKeypad = (e.modifiers & WebInputEvent::IsKeyPad);
     m_isSystemKey = e.isSystemKey;
@@ -237,6 +244,28 @@ PlatformKeyboardEventBuilder::PlatformKeyboardEventBuilder(const WebKeyboardEven
         m_modifiers |= PlatformEvent::AltKey;
     if (e.modifiers & WebInputEvent::MetaKey)
         m_modifiers |= PlatformEvent::MetaKey;
+
+    // FIXME: PlatformKeyboardEvents expect a locational version of the keycode (e.g. VK_LSHIFT
+    // instead of VK_SHIFT). This should be changed so the location/keycode are stored separately,
+    // as in other places in the code.
+    m_windowsVirtualKeyCode = e.windowsKeyCode;
+    if (e.windowsKeyCode == VK_SHIFT) {
+        if (e.modifiers & WebInputEvent::IsLeft)
+            m_windowsVirtualKeyCode = VK_LSHIFT;
+        else if (e.modifiers & WebInputEvent::IsRight)
+            m_windowsVirtualKeyCode = VK_RSHIFT;
+    } else if (e.windowsKeyCode == VK_CONTROL) {
+        if (e.modifiers & WebInputEvent::IsLeft)
+            m_windowsVirtualKeyCode = VK_LCONTROL;
+        else if (e.modifiers & WebInputEvent::IsRight)
+            m_windowsVirtualKeyCode = VK_RCONTROL;
+    } else if (e.windowsKeyCode == VK_MENU) {
+        if (e.modifiers & WebInputEvent::IsLeft)
+            m_windowsVirtualKeyCode = VK_LMENU;
+        else if (e.modifiers & WebInputEvent::IsRight)
+            m_windowsVirtualKeyCode = VK_RMENU;
+    }
+
 }
 
 void PlatformKeyboardEventBuilder::setKeyType(Type type)
@@ -448,8 +477,12 @@ WebKeyboardEventBuilder::WebKeyboardEventBuilder(const KeyboardEvent& event)
         return; // Skip all other keyboard events.
 
     modifiers = getWebInputModifiers(event);
-    if (event.keyLocation() & KeyboardEvent::DOM_KEY_LOCATION_NUMPAD)
+    if (event.keyLocation() == KeyboardEvent::DOM_KEY_LOCATION_NUMPAD)
         modifiers |= WebInputEvent::IsKeyPad;
+    else if (event.keyLocation() == KeyboardEvent::DOM_KEY_LOCATION_LEFT)
+        modifiers |= WebInputEvent::IsLeft;
+    else if (event.keyLocation() == KeyboardEvent::DOM_KEY_LOCATION_RIGHT)
+        modifiers |= WebInputEvent::IsRight;
 
     timeStampSeconds = event.timeStamp() / millisPerSecond;
     windowsKeyCode = event.keyCode();
@@ -526,8 +559,11 @@ WebGestureEventBuilder::WebGestureEventBuilder(const Widget* widget, const Gestu
         type = GestureScrollBegin;
     else if (event.type() == eventNames().gesturescrollendEvent)
         type = GestureScrollEnd;
-    else if (event.type() == eventNames().gesturescrollupdateEvent)
+    else if (event.type() == eventNames().gesturescrollupdateEvent) {
         type = GestureScrollUpdate;
+        data.scrollUpdate.deltaX = event.deltaX();
+        data.scrollUpdate.deltaY = event.deltaY();
+    }
 
     timeStampSeconds = event.timeStamp() / millisPerSecond;
     modifiers = getWebInputModifiers(event);
@@ -536,9 +572,6 @@ WebGestureEventBuilder::WebGestureEventBuilder(const Widget* widget, const Gestu
     globalY = event.screenY();
     x = event.absoluteLocation().x() - widget->location().x();
     y = event.absoluteLocation().y() - widget->location().y();
-
-    deltaX = event.deltaX();
-    deltaY = event.deltaY();
 }
 #endif // ENABLE(GESTURE_EVENTS)
 

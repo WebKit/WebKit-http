@@ -32,7 +32,7 @@
 #define LocaleICU_h
 
 #include "DateComponents.h"
-#include "NumberLocalizer.h"
+#include "Localizer.h"
 #include <unicode/udat.h>
 #include <unicode/unum.h>
 #include <wtf/Forward.h>
@@ -44,7 +44,7 @@ namespace WebCore {
 
 // We should use this class only for LocalizedNumberICU.cpp, LocalizedDateICU.cpp,
 // and LocalizedNumberICUTest.cpp.
-class LocaleICU : public NumberLocalizer {
+class LocaleICU : public Localizer {
 public:
     static PassOwnPtr<LocaleICU> create(const char* localeString);
     static LocaleICU* currentLocale();
@@ -62,9 +62,9 @@ public:
 #endif
 
 #if ENABLE(INPUT_TYPE_TIME_MULTIPLE_FIELDS)
-    String localizedTimeFormatText();
-    String localizedShortTimeFormatText();
-    const Vector<String>& timeAMPMLabels();
+    virtual String timeFormat() OVERRIDE;
+    virtual String shortTimeFormat() OVERRIDE;
+    virtual const Vector<String>& timeAMPMLabels() OVERRIDE;
 #endif
 
 private:
@@ -72,7 +72,7 @@ private:
     explicit LocaleICU(const char*);
     String decimalSymbol(UNumberFormatSymbol);
     String decimalTextAttribute(UNumberFormatTextAttribute);
-    virtual void initializeNumberLocalizerData() OVERRIDE;
+    virtual void initializeLocalizerData() OVERRIDE;
 
     bool detectSignAndGetDigitRange(const String& input, bool& isNegative, unsigned& startIndex, unsigned& endIndex);
     unsigned matchedDecimalSymbolIndex(const String& input, unsigned& position);
@@ -109,9 +109,7 @@ private:
 #if ENABLE(INPUT_TYPE_TIME_MULTIPLE_FIELDS)
     UDateFormat* m_mediumTimeFormat;
     UDateFormat* m_shortTimeFormat;
-    String m_localizedTimeFormatText;
-    String m_localizedShortTimeFormatText;
-    OwnPtr<Vector<String> > m_timeAMPMLabels;
+    Vector<String> m_timeAMPMLabels;
     bool m_didCreateTimeFormat;
 #endif
 };

@@ -142,6 +142,9 @@ private:
             return getJSConstant(constant);
         }
 
+        if (operand == RegisterFile::Callee)
+            return getCallee();
+
         // Is this an argument?
         if (operandIsArgument(operand))
             return getArgument(operand);
@@ -190,7 +193,7 @@ private:
     NodeIndex getLocal(unsigned operand)
     {
         NodeIndex nodeIndex = m_currentBlock->variablesAtTail.local(operand);
-        bool isCaptured = m_codeBlock->localIsCaptured(m_inlineStackTop->m_inlineCallFrame, operand);
+        bool isCaptured = m_codeBlock->isCaptured(operand, m_inlineStackTop->m_inlineCallFrame);
         
         if (nodeIndex != NoNode) {
             Node* nodePtr = &m_graph[nodeIndex];
@@ -250,7 +253,7 @@ private:
     }
     void setLocal(unsigned operand, NodeIndex value, SetMode setMode = NormalSet)
     {
-        bool isCaptured = m_codeBlock->localIsCaptured(m_inlineStackTop->m_inlineCallFrame, operand);
+        bool isCaptured = m_codeBlock->isCaptured(operand, m_inlineStackTop->m_inlineCallFrame);
         
         if (setMode == NormalSet) {
             ArgumentPosition* argumentPosition = findArgumentPositionForLocal(operand);
@@ -269,12 +272,10 @@ private:
     NodeIndex getArgument(unsigned operand)
     {
         unsigned argument = operandToArgument(operand);
-        
-        bool isCaptured = m_codeBlock->argumentIsCaptured(argument);
-        
         ASSERT(argument < m_numArguments);
         
         NodeIndex nodeIndex = m_currentBlock->variablesAtTail.argument(argument);
+        bool isCaptured = m_codeBlock->isCaptured(operand);
 
         if (nodeIndex != NoNode) {
             Node* nodePtr = &m_graph[nodeIndex];
@@ -336,10 +337,10 @@ private:
     void setArgument(int operand, NodeIndex value, SetMode setMode = NormalSet)
     {
         unsigned argument = operandToArgument(operand);
-        bool isCaptured = m_codeBlock->argumentIsCaptured(argument);
-        
         ASSERT(argument < m_numArguments);
         
+        bool isCaptured = m_codeBlock->isCaptured(operand);
+
         // Always flush arguments, except for 'this'.
         if (argument && setMode == NormalSet)
             flushDirect(operand);
@@ -399,7 +400,7 @@ private:
         // FIXME: This should check if the same operand had already been flushed to
         // some other local variable.
         
-        bool isCaptured = m_codeBlock->isCaptured(m_inlineStackTop->m_inlineCallFrame, operand);
+        bool isCaptured = m_codeBlock->isCaptured(operand, m_inlineStackTop->m_inlineCallFrame);
         
         ASSERT(operand < FirstConstantRegisterIndex);
         
@@ -519,6 +520,11 @@ private:
         NodeIndex resultIndex = addToGraph(JSConstant, OpInfo(constant));
         m_constants[constant].asJSValue = resultIndex;
         return resultIndex;
+    }
+
+    NodeIndex getCallee()
+    {
+        return addToGraph(GetCallee);
     }
 
     // Helper functions to get/set the this value.
@@ -1126,7 +1132,10 @@ private:
                 ASSERT(result >= FirstConstantRegisterIndex);
                 return result;
             }
-            
+
+            if (operand == RegisterFile::Callee)
+                return m_calleeVR;
+
             return operand + m_inlineCallFrame->stackOffset;
         }
     };
@@ -1674,7 +1683,7 @@ void ByteCodeParser::handleGetByOffset(
     if (isInlineOffset(offset))
         propertyStorage = base;
     else
-        propertyStorage = addToGraph(GetPropertyStorage, base);
+        propertyStorage = addToGraph(GetButterfly, base);
     set(destinationOperand,
         addToGraph(
             GetByOffset, OpInfo(m_graph.m_storageAccessData.size()), OpInfo(prediction),
@@ -1762,7 +1771,7 @@ bool ByteCodeParser::parseBlock(unsigned limit)
         m_graph.m_arguments.resize(m_numArguments);
         for (unsigned argument = 0; argument < m_numArguments; ++argument) {
             VariableAccessData* variable = newVariableAccessData(
-                argumentToOperand(argument), m_codeBlock->argumentIsCaptured(argument));
+                argumentToOperand(argument), m_codeBlock->isCaptured(argumentToOperand(argument)));
             variable->mergeStructureCheckHoistingFailed(
                 m_inlineStackTop->m_exitProfile.hasExitSite(m_currentIndex, BadCache));
             NodeIndex setArgument = addToGraph(SetArgument, OpInfo(variable));
@@ -1835,10 +1844,7 @@ bool ByteCodeParser::parseBlock(unsigned limit)
         }
 
         case op_create_this: {
-            if (m_inlineStackTop->m_inlineCallFrame)
-                set(currentInstruction[1].u.operand, addToGraph(CreateThis, getDirect(m_inlineStackTop->m_calleeVR)));
-            else
-                set(currentInstruction[1].u.operand, addToGraph(CreateThis, addToGraph(GetCallee)));
+            set(currentInstruction[1].u.operand, addToGraph(CreateThis, get(RegisterFile::Callee)));
             NEXT_OPCODE(op_create_this);
         }
             
@@ -2268,7 +2274,8 @@ bool ByteCodeParser::parseBlock(unsigned limit)
             NEXT_OPCODE(op_put_scoped_var);
         }
         case op_get_by_id:
-        case op_get_by_id_out_of_line: {
+        case op_get_by_id_out_of_line:
+        case op_get_array_length: {
             SpeculatedType prediction = getPrediction();
             
             NodeIndex base = get(currentInstruction[2].u.operand);
@@ -2309,7 +2316,7 @@ bool ByteCodeParser::parseBlock(unsigned limit)
                 if (isInlineOffset(putByIdStatus.offset()))
                     propertyStorage = base;
                 else
-                    propertyStorage = addToGraph(GetPropertyStorage, base);
+                    propertyStorage = addToGraph(GetButterfly, base);
                 addToGraph(PutByOffset, OpInfo(m_graph.m_storageAccessData.size()), propertyStorage, base, value);
                 
                 StorageAccessData storageAccessData;
@@ -2360,13 +2367,13 @@ bool ByteCodeParser::parseBlock(unsigned limit)
                     } else {
                         propertyStorage = addToGraph(
                             ReallocatePropertyStorage, OpInfo(transitionData),
-                            base, addToGraph(GetPropertyStorage, base));
+                            base, addToGraph(GetButterfly, base));
                     }
                 } else {
                     if (isInlineOffset(putByIdStatus.offset()))
                         propertyStorage = base;
                     else
-                        propertyStorage = addToGraph(GetPropertyStorage, base);
+                        propertyStorage = addToGraph(GetButterfly, base);
                 }
                 
                 addToGraph(PutStructure, OpInfo(transitionData), base);
@@ -2450,7 +2457,8 @@ bool ByteCodeParser::parseBlock(unsigned limit)
             NEXT_OPCODE(op_get_global_var_watchable);
         }
 
-        case op_put_global_var: {
+        case op_put_global_var:
+        case op_init_global_const: {
             NodeIndex value = get(currentInstruction[2].u.operand);
             addToGraph(
                 PutGlobalVar,
@@ -2459,7 +2467,8 @@ bool ByteCodeParser::parseBlock(unsigned limit)
             NEXT_OPCODE(op_put_global_var);
         }
 
-        case op_put_global_var_check: {
+        case op_put_global_var_check:
+        case op_init_global_const_check: {
             NodeIndex value = get(currentInstruction[2].u.operand);
             CodeBlock* codeBlock = m_inlineStackTop->m_codeBlock;
             JSGlobalObject* globalObject = codeBlock->globalObject();
@@ -2847,13 +2856,13 @@ bool ByteCodeParser::parseBlock(unsigned limit)
         }
             
         case op_tear_off_activation: {
-            addToGraph(TearOffActivation, OpInfo(unmodifiedArgumentsRegister(currentInstruction[2].u.operand)), get(currentInstruction[1].u.operand), get(currentInstruction[2].u.operand));
+            addToGraph(TearOffActivation, get(currentInstruction[1].u.operand));
             NEXT_OPCODE(op_tear_off_activation);
         }
-            
+
         case op_tear_off_arguments: {
             m_graph.m_hasArguments = true;
-            addToGraph(TearOffArguments, get(unmodifiedArgumentsRegister(currentInstruction[1].u.operand)));
+            addToGraph(TearOffArguments, get(unmodifiedArgumentsRegister(currentInstruction[1].u.operand)), get(currentInstruction[2].u.operand));
             NEXT_OPCODE(op_tear_off_arguments);
         }
             
@@ -3179,17 +3188,21 @@ ByteCodeParser::InlineStackEntry::InlineStackEntry(
         if (inlineCallFrame.caller.inlineCallFrame)
             inlineCallFrame.capturedVars = inlineCallFrame.caller.inlineCallFrame->capturedVars;
         else {
-            for (int i = byteCodeParser->m_codeBlock->m_numCapturedVars; i--;)
-                inlineCallFrame.capturedVars.set(i);
+            for (int i = byteCodeParser->m_codeBlock->m_numVars; i--;) {
+                if (byteCodeParser->m_codeBlock->isCaptured(i))
+                    inlineCallFrame.capturedVars.set(i);
+            }
         }
-        
-        if (codeBlock->usesArguments() || codeBlock->needsActivation()) {
-            for (int i = argumentCountIncludingThis; i--;)
+
+        for (int i = argumentCountIncludingThis; i--;) {
+            if (codeBlock->isCaptured(argumentToOperand(i)))
                 inlineCallFrame.capturedVars.set(argumentToOperand(i) + inlineCallFrame.stackOffset);
         }
-        for (int i = codeBlock->m_numCapturedVars; i--;)
-            inlineCallFrame.capturedVars.set(i + inlineCallFrame.stackOffset);
-        
+        for (size_t i = codeBlock->m_numVars; i--;) {
+            if (codeBlock->isCaptured(i))
+                inlineCallFrame.capturedVars.set(i + inlineCallFrame.stackOffset);
+        }
+
 #if DFG_ENABLE(DEBUG_VERBOSE)
         dataLog("Current captured variables: ");
         inlineCallFrame.capturedVars.dump(WTF::dataFile());

@@ -24,7 +24,6 @@
 #define ResourceLoadScheduler_h
 
 #include "FrameLoaderTypes.h"
-#include "PlatformString.h"
 #include "ResourceLoaderOptions.h"
 #include "ResourceLoadPriority.h"
 #include "Timer.h"
@@ -47,7 +46,7 @@ class ResourceRequest;
 class SubresourceLoader;
 
 class ResourceLoadScheduler {
-    WTF_MAKE_NONCOPYABLE(ResourceLoadScheduler);
+    WTF_MAKE_NONCOPYABLE(ResourceLoadScheduler); WTF_MAKE_FAST_ALLOCATED;
 public:
     friend ResourceLoadScheduler* resourceLoadScheduler();
 
@@ -74,7 +73,7 @@ private:
     void requestTimerFired(Timer<ResourceLoadScheduler>*);
 
     class HostInformation {
-        WTF_MAKE_NONCOPYABLE(HostInformation);
+        WTF_MAKE_NONCOPYABLE(HostInformation); WTF_MAKE_FAST_ALLOCATED;
     public:
         HostInformation(const String&, unsigned);
         ~HostInformation();

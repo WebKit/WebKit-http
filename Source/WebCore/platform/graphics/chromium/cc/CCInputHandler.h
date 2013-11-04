@@ -29,8 +29,6 @@
 
 namespace WebCore {
 
-class CCActiveGestureAnimation;
-class CCGestureCurveTarget;
 class IntPoint;
 class IntSize;
 
@@ -38,9 +36,9 @@ class IntSize;
 // the impl thread side of the compositor implementation.
 //
 // There is one CCInputHandler for every CCLayerTreeHost. It is
-// created and used only on the impl thread.
+// created on the main thread and used only on the impl thread.
 //
-// The CCInputHandler is constructed with an InputHandlerClient, which is the
+// The CCInputHandler is constructed with a CCInputHandlerClient, which is the
 // interface by which the handler can manipulate the LayerTree.
 class CCInputHandlerClient {
     WTF_MAKE_NONCOPYABLE(CCInputHandlerClient);
@@ -75,9 +73,6 @@ public:
                                          double startTime,
                                          double duration) = 0;
 
-    virtual CCActiveGestureAnimation* activeGestureAnimation() = 0;
-    virtual void setActiveGestureAnimation(PassOwnPtr<CCActiveGestureAnimation>) = 0;
-
     // Request another callback to CCInputHandler::animate().
     virtual void scheduleAnimation() = 0;
 
@@ -89,10 +84,9 @@ protected:
 class CCInputHandler {
     WTF_MAKE_NONCOPYABLE(CCInputHandler);
 public:
-    static PassOwnPtr<CCInputHandler> create(CCInputHandlerClient*);
     virtual ~CCInputHandler() { }
 
-    virtual int identifier() const = 0;
+    virtual void bindToClient(CCInputHandlerClient*) = 0;
     virtual void animate(double monotonicTime) = 0;
 
 protected:

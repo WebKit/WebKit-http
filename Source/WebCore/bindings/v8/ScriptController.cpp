@@ -62,7 +62,6 @@
 #include "V8GCController.h"
 #include "V8HiddenPropertyName.h"
 #include "V8HTMLEmbedElement.h"
-#include "V8IsolatedContext.h"
 #include "V8NPObject.h"
 #include "V8RecursionScope.h"
 #include "Widget.h"
@@ -92,16 +91,6 @@ void ScriptController::setFlags(const char* string, int length)
     v8::V8::SetFlagsFromString(string, length);
 }
 
-Frame* ScriptController::retrieveFrameForEnteredContext()
-{
-    return firstFrame(BindingState::instance());
-}
-
-Frame* ScriptController::retrieveFrameForCurrentContext()
-{
-    return currentFrame(BindingState::instance());
-}
-
 bool ScriptController::canAccessFromCurrentOrigin(Frame *frame)
 {
     return !v8::Context::InContext() || BindingSecurity::shouldAllowAccessToFrame(BindingState::instance(), frame);
@@ -110,7 +99,7 @@ bool ScriptController::canAccessFromCurrentOrigin(Frame *frame)
 ScriptController::ScriptController(Frame* frame)
     : m_frame(frame)
     , m_sourceURL(0)
-    , m_windowShell(V8DOMWindowShell::create(frame))
+    , m_windowShell(V8DOMWindowShell::create(frame, mainThreadNormalWorld()))
     , m_paused(false)
 #if ENABLE(NETSCAPE_PLUGIN_API)
     , m_wrappedWindowScriptNPObject(0)
@@ -157,7 +146,7 @@ void ScriptController::resetIsolatedWorlds()
 {
     for (IsolatedWorldMap::iterator iter = m_isolatedWorlds.begin();
          iter != m_isolatedWorlds.end(); ++iter) {
-        iter->second->destroy();
+        iter->second->destroyIsolatedShell();
     }
     m_isolatedWorlds.clear();
     m_isolatedWorldSecurityOrigins.clear();
@@ -220,7 +209,7 @@ static inline String resourceString(const v8::Handle<v8::Function> function)
     StringBuilder builder;
     builder.append(resourceName);
     builder.append(':');
-    builder.append(String::number(lineNumber));
+    builder.appendNumber(lineNumber);
     return builder.toString();
 }
 
@@ -324,50 +313,72 @@ ScriptValue ScriptController::evaluate(const ScriptSourceCode& sourceCode)
     return ScriptValue(object);
 }
 
-void ScriptController::evaluateInIsolatedWorld(unsigned worldID, const Vector<ScriptSourceCode>& sources, Vector<ScriptValue>* results)
+V8DOMWindowShell* ScriptController::ensureIsolatedWorldContext(int worldId, int extensionGroup)
 {
-    evaluateInIsolatedWorld(worldID, sources, 0, results);
+    ASSERT(worldId != DOMWrapperWorld::mainWorldId);
+
+    // Check the map for non-temporary worlds.
+    if (worldId != DOMWrapperWorld::uninitializedWorldId) {
+        IsolatedWorldMap::iterator iter = m_isolatedWorlds.find(worldId);
+        if (iter != m_isolatedWorlds.end()) {
+            ASSERT(iter->second->world()->worldId() == worldId);
+            ASSERT(iter->second->world()->extensionGroup() == extensionGroup);
+            return iter->second;
+        }
+    }
+
+    RefPtr<DOMWrapperWorld> world = DOMWrapperWorld::ensureIsolatedWorld(worldId, extensionGroup);
+    OwnPtr<V8DOMWindowShell> isolatedWorldShell = V8DOMWindowShell::create(m_frame, world);
+    m_isolatedWorlds.set(world->worldId(), isolatedWorldShell.get());
+    return isolatedWorldShell.leakPtr();
 }
 
-void ScriptController::evaluateInIsolatedWorld(unsigned worldID, const Vector<ScriptSourceCode>& sources, int extensionGroup, Vector<ScriptValue>* results)
+V8DOMWindowShell* ScriptController::existingWindowShellInternal(DOMWrapperWorld* world)
 {
+    ASSERT(world);
+
+    if (LIKELY(world->isMainWorld()))
+        return m_windowShell.get();
+
+    IsolatedWorldMap::iterator iter = m_isolatedWorlds.find(world->worldId());
+    return iter == m_isolatedWorlds.end() ? 0 : iter->second;
+}
+
+V8DOMWindowShell* ScriptController::windowShell(DOMWrapperWorld* world)
+{
+    V8DOMWindowShell* shell = existingWindowShellInternal(world);
+    if (LIKELY(!!shell))
+        return shell;
+
+    OwnPtr<V8DOMWindowShell> isolatedWorldShell = V8DOMWindowShell::create(m_frame, world);
+    m_isolatedWorlds.set(world->worldId(), isolatedWorldShell.get());
+    return isolatedWorldShell.leakPtr();
+}
+
+void ScriptController::evaluateInIsolatedWorld(int worldID, const Vector<ScriptSourceCode>& sources, int extensionGroup, Vector<ScriptValue>* results)
+{
+    // Except in the test runner, worldID should be non 0 as it conflicts with the mainWorldId.
+    // FIXME: Change the test runner to perform this swap and make this an ASSERT.
+    if (UNLIKELY(!worldID))
+        worldID = DOMWrapperWorld::uninitializedWorldId;
+
     v8::HandleScope handleScope;
-
-    // FIXME: This will need to get reorganized once we have a windowShell for the isolated world.
-    if (!windowShell()->initializeIfNeeded())
-        return;
-
     v8::Local<v8::Array> v8Results;
     {
         v8::HandleScope evaluateHandleScope;
-        V8IsolatedContext* isolatedContext = 0;
-        if (worldID > 0) {
-            IsolatedWorldMap::iterator iter = m_isolatedWorlds.find(worldID);
-            if (iter != m_isolatedWorlds.end())
-                isolatedContext = iter->second;
-            else {
-                isolatedContext = new V8IsolatedContext(m_frame, DOMWrapperWorld::getOrCreateIsolatedWorld(worldID, extensionGroup));
-                if (isolatedContext->context().IsEmpty()) {
-                    delete isolatedContext;
-                    return;
-                }
+        V8DOMWindowShell* isolatedWorldShell = ensureIsolatedWorldContext(worldID, extensionGroup);
 
-                // FIXME: We should change this to using window shells to match JSC.
-                m_isolatedWorlds.set(worldID, isolatedContext);
-            }
-
+        if (worldID != DOMWrapperWorld::uninitializedWorldId) {
             IsolatedWorldSecurityOriginMap::iterator securityOriginIter = m_isolatedWorldSecurityOrigins.find(worldID);
             if (securityOriginIter != m_isolatedWorldSecurityOrigins.end())
-                isolatedContext->setSecurityOrigin(securityOriginIter->second);
-        } else {
-            isolatedContext = new V8IsolatedContext(m_frame, DOMWrapperWorld::getOrCreateIsolatedWorld(worldID, extensionGroup));
-            if (isolatedContext->context().IsEmpty()) {
-                delete isolatedContext;
-                return;
-            }
+                isolatedWorldShell->setIsolatedWorldSecurityOrigin(securityOriginIter->second);
         }
 
-        v8::Local<v8::Context> context = v8::Local<v8::Context>::New(isolatedContext->context());
+        isolatedWorldShell->initializeIfNeeded();
+        if (isolatedWorldShell->context().IsEmpty())
+            return;
+
+        v8::Local<v8::Context> context = v8::Local<v8::Context>::New(isolatedWorldShell->context());
         v8::Context::Scope contextScope(context);
         v8::Local<v8::Array> resultArray = v8::Array::New(sources.size());
 
@@ -378,8 +389,12 @@ void ScriptController::evaluateInIsolatedWorld(unsigned worldID, const Vector<Sc
             resultArray->Set(i, evaluationResult);
         }
 
-        if (!worldID)
-            isolatedContext->destroy();
+        // Mark temporary shell for weak destruction.
+        if (worldID == DOMWrapperWorld::uninitializedWorldId) {
+            int actualWorldId = isolatedWorldShell->world()->worldId();
+            m_isolatedWorlds.remove(actualWorldId);
+            isolatedWorldShell->destroyIsolatedShell();
+        }
 
         v8Results = evaluateHandleScope.Close(resultArray);
     }
@@ -396,7 +411,7 @@ void ScriptController::setIsolatedWorldSecurityOrigin(int worldID, PassRefPtr<Se
     m_isolatedWorldSecurityOrigins.set(worldID, securityOrigin);
     IsolatedWorldMap::iterator iter = m_isolatedWorlds.find(worldID);
     if (iter != m_isolatedWorlds.end())
-        iter->second->setSecurityOrigin(securityOrigin);
+        iter->second->setIsolatedWorldSecurityOrigin(securityOrigin);
 }
 
 TextPosition ScriptController::eventHandlerPosition() const
@@ -411,21 +426,16 @@ void ScriptController::finishedWithEvent(Event* event)
 {
 }
 
-v8::Persistent<v8::Context> ScriptController::unsafeHandleToCurrentWorldContext()
-{
-    if (V8IsolatedContext* isolatedContext = V8IsolatedContext::getEntered()) {
-        RefPtr<SharedPersistent<v8::Context> > context = isolatedContext->sharedContext();
-        if (m_frame != toFrameIfNotDetached(context->get()))
-            return v8::Persistent<v8::Context>();
-        return context->get();
-    }
-    windowShell()->initializeIfNeeded();
-    return windowShell()->context();
-}
-
 v8::Local<v8::Context> ScriptController::currentWorldContext()
 {
-    return v8::Local<v8::Context>::New(unsafeHandleToCurrentWorldContext());
+    if (V8DOMWindowShell* isolatedShell = V8DOMWindowShell::getEntered()) {
+        v8::Persistent<v8::Context> context = isolatedShell->context();
+        if (context.IsEmpty() || m_frame != toFrameIfNotDetached(context))
+            return v8::Local<v8::Context>();
+        return v8::Local<v8::Context>::New(context);
+    }
+    windowShell()->initializeIfNeeded();
+    return v8::Local<v8::Context>::New(windowShell()->context());
 }
 
 v8::Local<v8::Context> ScriptController::mainWorldContext()
@@ -475,7 +485,7 @@ void ScriptController::enableEval()
     v8Context->AllowCodeGenerationFromStrings(true);
 }
 
-void ScriptController::disableEval()
+void ScriptController::disableEval(const String& /* errorMessage */)
 {
     v8::HandleScope handleScope;
     v8::Handle<v8::Context> v8Context = windowShell()->context();
@@ -547,10 +557,13 @@ void ScriptController::getAllWorlds(Vector<RefPtr<DOMWrapperWorld> >& worlds)
 void ScriptController::evaluateInWorld(const ScriptSourceCode& source,
                                        DOMWrapperWorld* world)
 {
+    if (world == mainThreadNormalWorld()) {
+        evaluate(source);
+        return;
+    }
     Vector<ScriptSourceCode> sources;
     sources.append(source);
-    // FIXME: Get an ID from the world param.
-    evaluateInIsolatedWorld(0, sources, 0);
+    evaluateInIsolatedWorld(world->worldId(), sources, world->extensionGroup(), 0);
 }
 
 V8Extensions& ScriptController::registeredExtensions()
@@ -651,14 +664,14 @@ void ScriptController::collectIsolatedContexts(Vector<std::pair<ScriptState*, Se
 {
     v8::HandleScope handleScope;
     for (IsolatedWorldMap::iterator it = m_isolatedWorlds.begin(); it != m_isolatedWorlds.end(); ++it) {
-        V8IsolatedContext* isolatedContext = it->second;
-        if (!isolatedContext->securityOrigin())
+        V8DOMWindowShell* isolatedWorldShell = it->second;
+        if (!isolatedWorldShell->isolatedWorldSecurityOrigin())
             continue;
-        v8::Handle<v8::Context> v8Context = isolatedContext->context();
+        v8::Handle<v8::Context> v8Context = isolatedWorldShell->context();
         if (v8Context.IsEmpty())
             continue;
         ScriptState* scriptState = ScriptState::forContext(v8::Local<v8::Context>::New(v8Context));
-        result.append(std::pair<ScriptState*, SecurityOrigin*>(scriptState, isolatedContext->securityOrigin()));
+        result.append(std::pair<ScriptState*, SecurityOrigin*>(scriptState, isolatedWorldShell->isolatedWorldSecurityOrigin()));
     }
 }
 #endif

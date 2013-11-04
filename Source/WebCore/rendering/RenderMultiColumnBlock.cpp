@@ -68,9 +68,9 @@ void RenderMultiColumnBlock::computeColumnCountAndWidth()
     }
 }
 
-bool RenderMultiColumnBlock::recomputeLogicalWidth()
+bool RenderMultiColumnBlock::updateLogicalWidthAndColumnWidth()
 {
-    bool relayoutChildren = RenderBlock::recomputeLogicalWidth();
+    bool relayoutChildren = RenderBlock::updateLogicalWidthAndColumnWidth();
     LayoutUnit oldColumnWidth = m_columnWidth;
     computeColumnCountAndWidth();
     if (m_columnWidth != oldColumnWidth)
@@ -81,7 +81,7 @@ bool RenderMultiColumnBlock::recomputeLogicalWidth()
 void RenderMultiColumnBlock::checkForPaginationLogicalHeightChange(LayoutUnit& /*pageLogicalHeight*/, bool& /*pageLogicalHeightChanged*/, bool& /*hasSpecifiedPageLogicalHeight*/)
 {
     // We don't actually update any of the variables. We just subclassed to adjust our column height.
-    computeLogicalHeight();
+    updateLogicalHeight();
     LayoutUnit newContentLogicalHeight = contentLogicalHeight();
     if (newContentLogicalHeight > ZERO_LAYOUT_UNIT) {
         // The regions will be invalidated when we lay them out and they change size to

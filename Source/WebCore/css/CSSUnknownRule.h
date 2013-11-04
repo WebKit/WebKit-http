@@ -23,7 +23,7 @@
 #define CSSUnknownRule_h
 
 #include "CSSRule.h"
-#include "MemoryInstrumentation.h"
+#include "WebCoreMemoryInstrumentation.h"
 
 namespace WebCore {
 
@@ -33,7 +33,7 @@ public:
 
     void reportDescendantMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
     {
-        MemoryClassInfo info(memoryObjectInfo, this, MemoryInstrumentation::CSS);
+        MemoryClassInfo info(memoryObjectInfo, this, WebCoreMemoryTypes::CSS);
         CSSRule::reportBaseClassMemoryUsage(memoryObjectInfo);
     }
 };

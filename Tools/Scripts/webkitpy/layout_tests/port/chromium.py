@@ -114,6 +114,9 @@ class ChromiumPort(Port):
     def default_pixel_tests(self):
         return True
 
+    def default_baseline_search_path(self):
+        return map(self._webkit_baseline_path, self.FALLBACK_PATHS[self.version()])
+
     def default_timeout_ms(self):
         if self.get_option('configuration') == 'Debug':
             return 12 * 1000
@@ -351,8 +354,8 @@ class ChromiumPort(Port):
         if stderr and 'AddressSanitizer' in stderr:
             asan_filter_path = self.path_from_chromium_base('tools', 'valgrind', 'asan', 'asan_symbolize.py')
             if self._filesystem.exists(asan_filter_path):
-                output = self._executive.run_command([asan_filter_path], input=stderr)
-                stderr = self._executive.run_command(['c++filt'], input=output)
+                output = self._executive.run_command([asan_filter_path], input=stderr, decode_output=False)
+                stderr = self._executive.run_command(['c++filt'], input=output, decode_output=False)
 
         return super(ChromiumPort, self)._get_crash_log(name, pid, stdout, stderr, newer_than)
 
@@ -370,6 +373,9 @@ class ChromiumPort(Port):
             VirtualTestSuite('platform/chromium/virtual/threaded/compositing/webgl',
                              'compositing/webgl',
                              ['--enable-threaded-compositing']),
+            VirtualTestSuite('platform/chromium/virtual/gpu/fast/hidpi',
+                             'fast/hidpi',
+                             ['--force-compositing-mode']),
         ]
 
     #
@@ -405,10 +411,9 @@ class ChromiumPort(Port):
 
                 if (debug_mtime > release_mtime and configuration == 'Release' or
                     release_mtime > debug_mtime and configuration == 'Debug'):
-                    _log.warning('You are not running the most '
-                                 'recent DumpRenderTree binary. You need to '
-                                 'pass --debug or not to select between '
-                                 'Debug and Release.')
+                    most_recent_binary = 'Release' if configuration == 'Debug' else 'Debug'
+                    _log.warning('You are running the %s binary. However the %s binary appears to be more recent. '
+                                 'Please pass --%s.', configuration, most_recent_binary, most_recent_binary.lower())
                     _log.warning('')
             # This will fail if we don't have both a debug and release binary.
             # That's fine because, in this case, we must already be running the

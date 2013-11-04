@@ -1,7 +1,7 @@
 /*
  *  Copyright (C) 1999-2001 Harri Porten (porten@kde.org)
  *  Copyright (C) 2001 Peter Kelly (pmk@post.com)
- *  Copyright (C) 2003, 2004, 2005, 2007, 2008, 2009 Apple Inc. All rights reserved.
+ *  Copyright (C) 2003, 2004, 2005, 2007, 2008, 2009, 2012 Apple Inc. All rights reserved.
  *
  *  This library is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU Library General Public
@@ -54,9 +54,11 @@ namespace JSC {
         class SpeculativeJIT;
     }
 #endif
+#if ENABLE(LLINT_C_LOOP)
     namespace LLInt {
-        class Data;
+        class CLoop;
     }
+#endif
 
     struct ClassInfo;
     struct Instruction;
@@ -119,6 +121,9 @@ namespace JSC {
         friend class DFG::JSValueSource;
         friend class DFG::OSRExitCompiler;
         friend class DFG::SpeculativeJIT;
+#endif
+#if ENABLE(LLINT_C_LOOP)
+        friend class LLInt::CLoop;
 #endif
 
     public:
@@ -235,6 +240,7 @@ namespace JSC {
         JSValue get(ExecState*, unsigned propertyName, PropertySlot&) const;
         void put(ExecState*, PropertyName, JSValue, PutPropertySlot&);
         void putToPrimitive(ExecState*, PropertyName, JSValue, PutPropertySlot&);
+        void putToPrimitiveByIndex(ExecState*, unsigned propertyName, JSValue, bool shouldThrow);
         void putByIndex(ExecState*, unsigned propertyName, JSValue, bool shouldThrow);
 
         JSObject* toThisObject(ExecState*) const;
@@ -290,6 +296,14 @@ namespace JSC {
          */
         uint32_t tag() const;
         int32_t payload() const;
+
+#if ENABLE(LLINT_C_LOOP)
+        // This should only be used by the LLInt C Loop interpreter who needs
+        // synthesize JSValue from its "register"s holding tag and payload
+        // values.
+        explicit JSValue(int32_t tag, int32_t payload);
+#endif
+
 #elif USE(JSVALUE64)
         /*
          * On 64-bit platforms USE(JSVALUE64) should be defined, and we use a NaN-encoded

@@ -40,8 +40,9 @@
 // FIXME: Eventually this should move to WebCore.
 
 namespace WebCore {
-    class Frame;
-    class HTMLPlugInElement;
+class Frame;
+class HTMLPlugInElement;
+class RenderBoxModelObject;
 }
 
 namespace WebKit {
@@ -108,6 +109,7 @@ private:
     virtual PlatformLayer* platformLayer() const;
 #endif
     virtual JSC::JSObject* scriptObject(JSC::JSGlobalObject*);
+    virtual void storageBlockingStateChanged();
     virtual void privateBrowsingStateChanged(bool);
     virtual bool getFormValue(String&);
     virtual bool scroll(WebCore::ScrollDirection, WebCore::ScrollGranularity);

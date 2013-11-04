@@ -26,6 +26,7 @@
 #ifndef PageClientImpl_h
 #define PageClientImpl_h
 
+#include "DefaultUndoController.h"
 #include "PageClient.h"
 #include <Evas.h>
 
@@ -86,7 +87,7 @@ private:
     virtual PassRefPtr<WebContextMenuProxy> createContextMenuProxy(WebPageProxy*);
 
 #if ENABLE(INPUT_TYPE_COLOR)
-    virtual PassRefPtr<WebColorChooserProxy> createColorChooserProxy(WebPageProxy*, const WebCore::Color& initialColor);
+    virtual PassRefPtr<WebColorChooserProxy> createColorChooserProxy(WebPageProxy*, const WebCore::Color& initialColor, const WebCore::IntRect&);
 #endif
 
     virtual void setFindIndicator(PassRefPtr<FindIndicator>, bool, bool);
@@ -115,6 +116,7 @@ private:
 
 private:
     Evas_Object* m_viewWidget;
+    DefaultUndoController m_undoController;
 };
 
 } // namespace WebKit

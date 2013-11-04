@@ -101,16 +101,16 @@ protected:
 #endif
 
 #if ENABLE(INPUT_TYPE_TIME_MULTIPLE_FIELDS)
-    String timeFormatText(const String& localeString)
+    String timeFormat(const String& localeString)
     {
         OwnPtr<LocaleMac> locale = LocaleMac::create(localeString);
-        return locale->timeFormatText();
+        return locale->timeFormat();
     }
 
-    String shortTimeFormatText(const String& localeString)
+    String shortTimeFormat(const String& localeString)
     {
         OwnPtr<LocaleMac> locale = LocaleMac::create(localeString);
-        return locale->shortTimeFormatText();
+        return locale->shortTimeFormat();
     }
 
     String timeAMPMLabel(const String& localeString, unsigned index)
@@ -188,18 +188,18 @@ TEST_F(LocaleMacTest, weekDayShortLabels)
 #endif
 
 #if ENABLE(INPUT_TYPE_TIME_MULTIPLE_FIELDS)
-TEST_F(LocaleMacTest, timeFormatText)
+TEST_F(LocaleMacTest, timeFormat)
 {
-    EXPECT_STREQ("h:mm:ss a", timeFormatText("en_US").utf8().data());
-    EXPECT_STREQ("HH:mm:ss", timeFormatText("fr_FR").utf8().data());
-    EXPECT_STREQ("H:mm:ss", timeFormatText("ja_JP").utf8().data());
+    EXPECT_STREQ("h:mm:ss a", timeFormat("en_US").utf8().data());
+    EXPECT_STREQ("HH:mm:ss", timeFormat("fr_FR").utf8().data());
+    EXPECT_STREQ("H:mm:ss", timeFormat("ja_JP").utf8().data());
 }
 
-TEST_F(LocaleMacTest, shortTimeFormatText)
+TEST_F(LocaleMacTest, shortTimeFormat)
 {
-    EXPECT_STREQ("h:mm a", shortTimeFormatText("en_US").utf8().data());
-    EXPECT_STREQ("HH:mm", shortTimeFormatText("fr_FR").utf8().data());
-    EXPECT_STREQ("H:mm", shortTimeFormatText("ja_JP").utf8().data());
+    EXPECT_STREQ("h:mm a", shortTimeFormat("en_US").utf8().data());
+    EXPECT_STREQ("HH:mm", shortTimeFormat("fr_FR").utf8().data());
+    EXPECT_STREQ("H:mm", shortTimeFormat("ja_JP").utf8().data());
 }
 
 TEST_F(LocaleMacTest, timeAMPMLabels)
@@ -221,9 +221,15 @@ TEST_F(LocaleMacTest, decimalSeparator)
 }
 #endif
 
-static void testNumberIsReversible(const String& localeString, const char* original, const char* shouldHave = 0)
+TEST_F(LocaleMacTest, invalidLocale)
 {
-    OwnPtr<LocaleMac> locale = LocaleMac::create(localeString);
+    EXPECT_STREQ(monthLabel("en_US", January).utf8().data(), monthLabel("foo", January).utf8().data());
+    EXPECT_STREQ(decimalSeparator("en_US").utf8().data(), decimalSeparator("foo").utf8().data());
+}
+
+static void testNumberIsReversible(const AtomicString& localeString, const char* original, const char* shouldHave = 0)
+{
+    OwnPtr<Localizer> locale = Localizer::create(localeString);
     String localized = locale->convertToLocalizedNumber(original);
     if (shouldHave)
         EXPECT_TRUE(localized.contains(shouldHave));
@@ -231,7 +237,7 @@ static void testNumberIsReversible(const String& localeString, const char* origi
     EXPECT_STREQ(original, converted.utf8().data());
 }
 
-void testNumbers(const String& localeString, const char* decimalSeparatorShouldBe = 0)
+void testNumbers(const AtomicString& localeString, const char* decimalSeparatorShouldBe = 0)
 {
     testNumberIsReversible(localeString, "123456789012345678901234567890");
     testNumberIsReversible(localeString, "-123.456", decimalSeparatorShouldBe);

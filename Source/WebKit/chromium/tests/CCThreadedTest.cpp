@@ -28,6 +28,7 @@
 
 #include "CCActiveAnimation.h"
 #include "CCAnimationTestCommon.h"
+#include "CCInputHandler.h"
 #include "CCLayerAnimationController.h"
 #include "CCLayerImpl.h"
 #include "CCLayerTreeHostImpl.h"
@@ -44,7 +45,7 @@
 #include "LayerChromium.h"
 #include <gmock/gmock.h>
 #include <public/Platform.h>
-#include <public/WebCompositor.h>
+#include <public/WebCompositorSupport.h>
 #include <public/WebFilterOperation.h>
 #include <public/WebFilterOperations.h>
 #include <public/WebThread.h>
@@ -227,6 +228,16 @@ public:
         return m_testHooks->createOutputSurface();
     }
 
+    virtual void didRecreateOutputSurface(bool succeeded) OVERRIDE
+    {
+        m_testHooks->didRecreateOutputSurface(succeeded);
+    }
+
+    virtual PassOwnPtr<CCInputHandler> createInputHandler() OVERRIDE
+    {
+        return nullptr;
+    }
+
     virtual void willCommit() OVERRIDE
     {
     }
@@ -243,11 +254,6 @@ public:
 
     virtual void didCompleteSwapBuffers() OVERRIDE
     {
-    }
-
-    virtual void didRecreateOutputSurface(bool succeeded) OVERRIDE
-    {
-        m_testHooks->didRecreateOutputSurface(succeeded);
     }
 
     virtual void scheduleComposite() OVERRIDE
@@ -600,13 +606,13 @@ void CCThreadedTest::dispatchDidAddAnimation(void* self)
 void CCThreadedTest::runTest(bool threaded)
 {
     // For these tests, we will enable threaded animations.
-    WebCompositor::setAcceleratedAnimationEnabled(true);
+    Platform::current()->compositorSupport()->setAcceleratedAnimationEnabled(true);
 
     if (threaded) {
         m_webThread = adoptPtr(WebKit::Platform::current()->createThread("CCThreadedTest"));
-        WebCompositor::initialize(m_webThread.get());
+        Platform::current()->compositorSupport()->initialize(m_webThread.get());
     } else
-        WebCompositor::initialize(0);
+        Platform::current()->compositorSupport()->initialize(0);
 
     ASSERT(CCProxy::isMainThread());
     m_mainThreadProxy = CCScopedThreadProxy::create(CCProxy::mainThread());
@@ -633,11 +639,11 @@ void CCThreadedTest::runTest(bool threaded)
     m_client.clear();
     if (m_timedOut) {
         FAIL() << "Test timed out";
-        WebCompositor::shutdown();
+        Platform::current()->compositorSupport()->shutdown();
         return;
     }
     afterTest();
-    WebCompositor::shutdown();
+    Platform::current()->compositorSupport()->shutdown();
 }
 
 } // namespace WebKitTests

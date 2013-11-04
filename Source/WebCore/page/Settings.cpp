@@ -46,10 +46,12 @@ using namespace std;
 
 namespace WebCore {
 
-static void setLoadsImagesAutomaticallyInAllFrames(Page* page)
+static void setImageLoadingSettings(Page* page)
 {
-    for (Frame* frame = page->mainFrame(); frame; frame = frame->tree()->traverseNext())
+    for (Frame* frame = page->mainFrame(); frame; frame = frame->tree()->traverseNext()) {
+        frame->document()->cachedResourceLoader()->setImagesEnabled(page->settings()->areImagesEnabled());
         frame->document()->cachedResourceLoader()->setAutoLoadImages(page->settings()->loadsImagesAutomatically());
+    }
 }
 
 // Sets the entry in the font map for the given script. If family is the empty string, removes the entry instead.
@@ -138,6 +140,7 @@ Settings::Settings(Page* page)
     , m_sessionStorageQuota(StorageMap::noQuota)
     , m_editingBehaviorType(editingBehaviorTypeForPlatform())
     , m_maximumHTMLParserDOMTreeDepth(defaultMaximumHTMLParserDOMTreeDepth)
+    , m_storageBlockingPolicy(SecurityOrigin::AllowAllStorage)
 #if ENABLE(TEXT_AUTOSIZING)
     , m_textAutosizingFontScaleFactor(1)
 #if HACK_FORCE_TEXT_AUTOSIZING_ON_DESKTOP
@@ -199,6 +202,9 @@ Settings::Settings(Page* page)
     , m_acceleratedDrawingEnabled(false)
     , m_acceleratedFiltersEnabled(false)
     , m_isCSSCustomFilterEnabled(false)
+#if ENABLE(CSS_STICKY_POSITION)
+    , m_cssStickyPositionEnabled(true)
+#endif
 #if ENABLE(CSS_REGIONS)
     , m_cssRegionsEnabled(false)
 #endif
@@ -284,9 +290,8 @@ Settings::Settings(Page* page)
     , m_cookieEnabled(true)
     , m_windowFocusRestricted(true)
     , m_diagnosticLoggingEnabled(false)
-    , m_thirdPartyStorageBlockingEnabled(false)
     , m_scrollingPerformanceLoggingEnabled(false)
-    , m_loadsImagesAutomaticallyTimer(this, &Settings::loadsImagesAutomaticallyTimerFired)
+    , m_setImageLoadingSettingsTimer(this, &Settings::imageLoadingSettingsTimerFired)
     , m_incrementalRenderingSuppressionTimeoutInSeconds(defaultIncrementalRenderingSuppressionTimeoutInSeconds)
 {
     // A Frame may not have been created yet, so we initialize the AtomicString
@@ -452,12 +457,12 @@ void Settings::setLoadsImagesAutomatically(bool loadsImagesAutomatically)
     // Starting these loads synchronously is not important.  By putting it on a 0-delay, properly closing the Page cancels them
     // before they have a chance to really start.
     // See http://webkit.org/b/60572 for more discussion.
-    m_loadsImagesAutomaticallyTimer.startOneShot(0);
+    m_setImageLoadingSettingsTimer.startOneShot(0);
 }
 
-void Settings::loadsImagesAutomaticallyTimerFired(Timer<Settings>*)
+void Settings::imageLoadingSettingsTimerFired(Timer<Settings>*)
 {
-    setLoadsImagesAutomaticallyInAllFrames(m_page);
+    setImageLoadingSettings(m_page);
 }
 
 void Settings::setLoadsSiteIconsIgnoringImageLoadingSetting(bool loadsSiteIcons)
@@ -503,6 +508,9 @@ void Settings::setJavaEnabledForLocalFiles(bool isJavaEnabledForLocalFiles)
 void Settings::setImagesEnabled(bool areImagesEnabled)
 {
     m_areImagesEnabled = areImagesEnabled;
+
+    // See comment in setLoadsImagesAutomatically.
+    m_setImageLoadingSettingsTimer.startOneShot(0);
 }
 
 void Settings::setMediaEnabled(bool isMediaEnabled)
@@ -929,6 +937,15 @@ void Settings::setMinimumAccelerated2dCanvasSize(int numPixels)
 void Settings::setLoadDeferringEnabled(bool enabled)
 {
     m_loadDeferringEnabled = enabled;
+}
+
+void Settings::setStorageBlockingPolicy(SecurityOrigin::StorageBlockingPolicy enabled)
+{
+    if (m_storageBlockingPolicy == enabled)
+        return;
+
+    m_storageBlockingPolicy = enabled;
+    m_page->storageBlockingStateChanged();
 }
 
 void Settings::setTiledBackingStoreEnabled(bool enabled)

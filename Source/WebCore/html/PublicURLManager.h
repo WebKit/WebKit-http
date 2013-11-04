@@ -27,10 +27,10 @@
 #define PublicURLManager_h
 
 #if ENABLE(BLOB)
-#include "PlatformString.h"
 #include "ScriptExecutionContext.h"
 #include "ThreadableBlobRegistry.h"
 #include <wtf/HashSet.h>
+#include <wtf/text/WTFString.h>
 
 #if ENABLE(MEDIA_STREAM)
 #include "MediaStream.h"
@@ -47,7 +47,7 @@ namespace WebCore {
 class ScriptExecutionContext;
 
 class PublicURLManager {
-
+    WTF_MAKE_FAST_ALLOCATED;
 public:
     static PassOwnPtr<PublicURLManager> create() { return adoptPtr(new PublicURLManager); }
     void contextDestroyed()

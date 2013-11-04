@@ -1347,7 +1347,9 @@ void HTMLMediaElement::textTrackAddCue(TextTrack*, PassRefPtr<TextTrackCue> cue)
     // zero-length cues.
     double endTime = max(cue->startTime(), cue->endTime());
 
-    m_cueTree.add(m_cueTree.createInterval(cue->startTime(), endTime, cue.get()));
+    CueIntervalTree::IntervalType interval = m_cueTree.createInterval(cue->startTime(), endTime, cue.get());
+    if (!m_cueTree.contains(interval))
+        m_cueTree.add(interval);
     updateActiveTextTrackCues(currentTime());
 }
 
@@ -3256,8 +3258,16 @@ void HTMLMediaElement::mediaPlayerDurationChanged(MediaPlayer* player)
     LOG(Media, "HTMLMediaElement::mediaPlayerDurationChanged");
 
     beginProcessingMediaPlayerCallback();
+
     scheduleEvent(eventNames().durationchangeEvent);
     mediaPlayerCharacteristicChanged(player);
+
+    float now = currentTime();
+    float dur = duration();
+    ExceptionCode ignoredException;
+    if (now > dur)
+        seek(dur, ignoredException);
+
     endProcessingMediaPlayerCallback();
 }
 
@@ -4465,6 +4475,11 @@ void HTMLMediaElement::mediaPlayerPlay()
 bool HTMLMediaElement::mediaPlayerIsPaused() const
 {
     return paused();
+}
+
+bool HTMLMediaElement::mediaPlayerIsLooping() const
+{
+    return loop();
 }
 
 HostWindow* HTMLMediaElement::mediaPlayerHostWindow()

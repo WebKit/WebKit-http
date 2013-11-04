@@ -105,10 +105,13 @@ static void launchXPCService(const ProcessLauncher::LaunchOptions&, const Enviro
     // Insert a send right so we can send to it.
     mach_port_insert_right(mach_task_self(), listeningPort, listeningPort, MACH_MSG_TYPE_MAKE_SEND);
 
+    NSString *bundleIdentifier = [[NSBundle mainBundle] bundleIdentifier];
+    CString clientIdentifier = bundleIdentifier ? String([[NSBundle mainBundle] bundleIdentifier]).utf8() : *_NSGetProgname();
+
     xpc_object_t bootStrapMessage = xpc_dictionary_create(0, 0, 0);
     xpc_dictionary_set_string(bootStrapMessage, "message-name", "bootstrap");
-    xpc_dictionary_set_string(bootStrapMessage, "framework-executable-path", [[[NSBundle bundleWithIdentifier:@"com.apple.WebKit2"] executablePath] fileSystemRepresentation]);
     xpc_dictionary_set_mach_send(bootStrapMessage, "server-port", listeningPort);
+    xpc_dictionary_set_string(bootStrapMessage, "client-identifier", clientIdentifier.data());
 
     that->ref();
 
@@ -222,11 +225,14 @@ void ProcessLauncher::launchProcess()
 
         RetainPtr<CFStringRef> cfLocalization(AdoptCF, WKCopyCFLocalizationPreferredName(NULL));
         CString localization = String(cfLocalization.get()).utf8();
-        
+
+        NSString *bundleIdentifier = [[NSBundle mainBundle] bundleIdentifier];
+        CString clientIdentifier = bundleIdentifier ? String([[NSBundle mainBundle] bundleIdentifier]).utf8() : *_NSGetProgname();
+
         // Make a unique, per pid, per process launcher web process service name.
         CString serviceName = String::format("com.apple.WebKit.WebProcess-%d-%p", getpid(), this).utf8();
 
-        const char* args[] = { [processAppExecutablePath fileSystemRepresentation], frameworkExecutablePath, "-type", processTypeAsString(m_launchOptions.processType), "-servicename", serviceName.data(), "-localization", localization.data(), 0 };
+        const char* args[] = { [processAppExecutablePath fileSystemRepresentation], frameworkExecutablePath, "-type", processTypeAsString(m_launchOptions.processType), "-servicename", serviceName.data(), "-localization", localization.data(), "-client-identifier", clientIdentifier.data(), 0 };
 
         // Register ourselves.
         kern_return_t kr = bootstrap_register2(bootstrap_port, const_cast<char*>(serviceName.data()), listeningPort, 0);

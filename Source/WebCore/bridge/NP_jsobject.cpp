@@ -29,9 +29,7 @@
 
 #include "NP_jsobject.h"
 
-#include "PlatformString.h"
 #include "PluginView.h"
-#include "StringSourceProvider.h"
 #include "c_utility.h"
 #include "c_instance.h"
 #include "IdentifierRep.h"
@@ -45,6 +43,7 @@
 #include <runtime/PropertyNameArray.h>
 #include <parser/SourceCode.h>
 #include <runtime/Completion.h>
+#include <wtf/text/WTFString.h>
 
 using namespace JSC;
 using namespace JSC::Bindings;
@@ -456,7 +455,7 @@ bool _NPN_Enumerate(NPP, NPObject* o, NPIdentifier** identifier, uint32_t* count
         NPIdentifier* identifiers = static_cast<NPIdentifier*>(malloc(sizeof(NPIdentifier) * size));
         
         for (unsigned i = 0; i < size; ++i)
-            identifiers[i] = _NPN_GetStringIdentifier(propertyNames[i].ustring().utf8().data());
+            identifiers[i] = _NPN_GetStringIdentifier(propertyNames[i].string().utf8().data());
 
         *identifier = identifiers;
         *count = size;

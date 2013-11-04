@@ -28,7 +28,7 @@
 
 #include "BitmapCanvasLayerTextureUpdater.h"
 #include "CCAnimationTestCommon.h"
-#include "CCLayerTreeTestCommon.h"
+#include "CCGeometryTestUtils.h"
 #include "CCOverdrawMetrics.h"
 #include "CCRenderingStats.h"
 #include "CCSingleThreadProxy.h" // For DebugScopedSetImplThread
@@ -37,20 +37,14 @@
 #include "FakeCCGraphicsContext.h"
 #include "FakeCCLayerTreeHostClient.h"
 #include "LayerPainterChromium.h"
+#include "WebCompositorInitializer.h"
 #include <gtest/gtest.h>
-#include <public/WebCompositor.h>
 #include <public/WebTransformationMatrix.h>
 
 using namespace WebCore;
 using namespace WebKitTests;
 using namespace WTF;
 using WebKit::WebTransformationMatrix;
-
-#define EXPECT_EQ_RECT(a, b) \
-    EXPECT_EQ(a.x(), b.x()); \
-    EXPECT_EQ(a.y(), b.y()); \
-    EXPECT_EQ(a.width(), b.width()); \
-    EXPECT_EQ(a.height(), b.height());
 
 namespace {
 
@@ -76,11 +70,11 @@ private:
 class TiledLayerChromiumTest : public testing::Test {
 public:
     TiledLayerChromiumTest()
-        : m_context(WebKit::createFakeCCGraphicsContext())
+        : m_compositorInitializer(0)
+        , m_context(WebKit::createFakeCCGraphicsContext())
         , m_textureManager(CCPrioritizedTextureManager::create(60*1024*1024, 1024, CCRenderer::ContentPool))
         , m_occlusion(0)
     {
-        WebKit::WebCompositor::initialize(0);
         DebugScopedSetImplThreadAndMainThreadBlocked implThreadAndMainThreadBlocked;
         m_resourceProvider = CCResourceProvider::create(m_context.get());
     }
@@ -88,11 +82,8 @@ public:
     virtual ~TiledLayerChromiumTest()
     {
         textureManagerClearAllMemory(m_textureManager.get(), m_resourceProvider.get());
-        {
-            DebugScopedSetImplThreadAndMainThreadBlocked implThreadAndMainThreadBlocked;
-            m_resourceProvider.clear();
-        }
-        WebKit::WebCompositor::shutdown();
+        DebugScopedSetImplThreadAndMainThreadBlocked implThreadAndMainThreadBlocked;
+        m_resourceProvider.clear();
     }
 
     // Helper classes and functions that set the current thread to be the impl thread
@@ -177,6 +168,7 @@ public:
     }
 
 public:
+    WebKitTests::WebCompositorInitializer m_compositorInitializer;
     OwnPtr<CCGraphicsContext> m_context;
     OwnPtr<CCResourceProvider> m_resourceProvider;
     CCTextureUpdateQueue m_queue;
@@ -1225,7 +1217,7 @@ TEST_F(TiledLayerChromiumTest, visibleContentOpaqueRegion)
     layer->update(m_queue, &occluded, m_stats);
     updateTextures();
     opaqueContents = layer->visibleContentOpaqueRegion();
-    EXPECT_EQ_RECT(intersection(opaquePaintRect, visibleBounds), opaqueContents.bounds());
+    EXPECT_RECT_EQ(intersection(opaquePaintRect, visibleBounds), opaqueContents.bounds());
     EXPECT_EQ(1u, opaqueContents.rects().size());
 
     EXPECT_NEAR(occluded.overdrawMetrics().pixelsPainted(), 20000 * 2, 1);
@@ -1238,7 +1230,7 @@ TEST_F(TiledLayerChromiumTest, visibleContentOpaqueRegion)
     layer->update(m_queue, &occluded, m_stats);
     updateTextures();
     opaqueContents = layer->visibleContentOpaqueRegion();
-    EXPECT_EQ_RECT(intersection(opaquePaintRect, visibleBounds), opaqueContents.bounds());
+    EXPECT_RECT_EQ(intersection(opaquePaintRect, visibleBounds), opaqueContents.bounds());
     EXPECT_EQ(1u, opaqueContents.rects().size());
 
     EXPECT_NEAR(occluded.overdrawMetrics().pixelsPainted(), 20000 * 2, 1);
@@ -1253,7 +1245,7 @@ TEST_F(TiledLayerChromiumTest, visibleContentOpaqueRegion)
     layer->update(m_queue, &occluded, m_stats);
     updateTextures();
     opaqueContents = layer->visibleContentOpaqueRegion();
-    EXPECT_EQ_RECT(intersection(opaquePaintRect, visibleBounds), opaqueContents.bounds());
+    EXPECT_RECT_EQ(intersection(opaquePaintRect, visibleBounds), opaqueContents.bounds());
     EXPECT_EQ(1u, opaqueContents.rects().size());
 
     EXPECT_NEAR(occluded.overdrawMetrics().pixelsPainted(), 20000 * 2 + 1, 1);
@@ -1268,7 +1260,7 @@ TEST_F(TiledLayerChromiumTest, visibleContentOpaqueRegion)
     layer->update(m_queue, &occluded, m_stats);
     updateTextures();
     opaqueContents = layer->visibleContentOpaqueRegion();
-    EXPECT_EQ_RECT(intersection(IntRect(10, 100, 90, 100), visibleBounds), opaqueContents.bounds());
+    EXPECT_RECT_EQ(intersection(IntRect(10, 100, 90, 100), visibleBounds), opaqueContents.bounds());
     EXPECT_EQ(1u, opaqueContents.rects().size());
 
     EXPECT_NEAR(occluded.overdrawMetrics().pixelsPainted(), 20000 * 2 + 1  + 1, 1);
@@ -1539,14 +1531,14 @@ TEST_F(TiledLayerChromiumTest, nonIntegerContentsScaleIsNotDistortedDuringPaint)
     layer->update(m_queue, 0, m_stats);
     layer->trackingLayerPainter()->resetPaintedRect();
 
-    EXPECT_INT_RECT_EQ(IntRect(), layer->trackingLayerPainter()->paintedRect());
+    EXPECT_RECT_EQ(IntRect(), layer->trackingLayerPainter()->paintedRect());
     updateTextures();
 
     // Invalidate the entire layer in content space. When painting, the rect given to webkit should match the layer's bounds.
     layer->invalidateContentRect(contentRect);
     layer->update(m_queue, 0, m_stats);
 
-    EXPECT_INT_RECT_EQ(layerRect, layer->trackingLayerPainter()->paintedRect());
+    EXPECT_RECT_EQ(layerRect, layer->trackingLayerPainter()->paintedRect());
 }
 
 TEST_F(TiledLayerChromiumTest, nonIntegerContentsScaleIsNotDistortedDuringInvalidation)
@@ -1569,14 +1561,14 @@ TEST_F(TiledLayerChromiumTest, nonIntegerContentsScaleIsNotDistortedDuringInvali
     layer->update(m_queue, 0, m_stats);
     layer->trackingLayerPainter()->resetPaintedRect();
 
-    EXPECT_INT_RECT_EQ(IntRect(), layer->trackingLayerPainter()->paintedRect());
+    EXPECT_RECT_EQ(IntRect(), layer->trackingLayerPainter()->paintedRect());
     updateTextures();
 
     // Invalidate the entire layer in layer space. When painting, the rect given to webkit should match the layer's bounds.
     layer->setNeedsDisplayRect(layerRect);
     layer->update(m_queue, 0, m_stats);
 
-    EXPECT_INT_RECT_EQ(layerRect, layer->trackingLayerPainter()->paintedRect());
+    EXPECT_RECT_EQ(layerRect, layer->trackingLayerPainter()->paintedRect());
 }
 
 } // namespace

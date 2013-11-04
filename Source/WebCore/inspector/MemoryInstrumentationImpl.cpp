@@ -39,8 +39,6 @@ namespace WebCore {
 MemoryInstrumentationImpl::MemoryInstrumentationImpl(VisitedObjects& visitedObjects)
     : m_visitedObjects(visitedObjects)
 {
-    for (int i = 0; i < LastTypeEntry; ++i)
-        m_totalSizes[i] = 0;
 }
 
 void MemoryInstrumentationImpl::processDeferredInstrumentedPointers()
@@ -52,10 +50,12 @@ void MemoryInstrumentationImpl::processDeferredInstrumentedPointers()
     }
 }
 
-void MemoryInstrumentationImpl::countObjectSize(ObjectType objectType, size_t size)
+void MemoryInstrumentationImpl::countObjectSize(MemoryObjectType objectType, size_t size)
 {
-    ASSERT(objectType >= 0 && objectType < LastTypeEntry);
-    m_totalSizes[objectType] += size;
+    ASSERT(objectType);
+    TypeToSizeMap::AddResult result = m_totalSizes.add(objectType, size);
+    if (!result.isNewEntry)
+        result.iterator->second += size;
 }
 
 void MemoryInstrumentationImpl::deferInstrumentedPointer(PassOwnPtr<InstrumentedPointerBase> pointer)

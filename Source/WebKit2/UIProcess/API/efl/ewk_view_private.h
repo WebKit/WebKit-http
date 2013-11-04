@@ -59,6 +59,10 @@ void ewk_view_download_job_failed(Evas_Object* ewkView, Ewk_Download_Job*, Ewk_W
 void ewk_view_download_job_finished(Evas_Object* ewkView, Ewk_Download_Job*);
 void ewk_view_download_job_requested(Evas_Object* ewkView, Ewk_Download_Job*);
 void ewk_view_form_submission_request_new(Evas_Object* ewkView, Ewk_Form_Submission_Request*);
+#if ENABLE(FULLSCREEN_API)
+void ewk_view_full_screen_enter(Evas_Object* ewkView);
+void ewk_view_full_screen_exit(Evas_Object* ewkView);
+#endif
 void ewk_view_image_data_set(Evas_Object* ewkView, void* imageData, const WebCore::IntSize& size);
 void ewk_view_load_error(Evas_Object* ewkView, const Ewk_Web_Error* error);
 void ewk_view_load_finished(Evas_Object* ewkView);
@@ -97,5 +101,6 @@ bool ewk_view_accelerated_compositing_mode_exit(const Evas_Object* ewkView);
 #endif
 
 void ewk_view_popup_menu_request(Evas_Object* ewkView, WebKit::WebPopupMenuProxyEfl* popupMenu, const WebCore::IntRect&, WebCore::TextDirection, double pageScaleFactor, const Vector<WebKit::WebPopupItem>& items, int32_t selectedIndex);
+void ewk_view_webprocess_crashed(Evas_Object* ewkView);
 
 #endif // ewk_view_private_h

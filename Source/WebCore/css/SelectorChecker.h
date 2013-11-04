@@ -64,6 +64,7 @@ public:
             , elementStyle(0)
             , elementParentStyle(0)
             , isSubSelector(false)
+            , pseudoStyle(NOPSEUDO)
         { }
 
         CSSSelector* selector;
@@ -73,10 +74,11 @@ public:
         RenderStyle* elementStyle;
         RenderStyle* elementParentStyle;
         bool isSubSelector;
+        PseudoId pseudoStyle;
     };
 
     bool checkSelector(CSSSelector*, Element*, bool isFastCheckableSelector = false) const;
-    SelectorMatch checkSelector(const SelectorCheckingContext&, PseudoId&) const;
+    SelectorMatch checkSelector(const SelectorCheckingContext&, PseudoId&, bool& hasUnknownPseudoElements) const;
     static bool isFastCheckableSelector(const CSSSelector*);
     bool fastCheckSelector(const CSSSelector*, const Element*) const;
 
@@ -100,12 +102,6 @@ public:
     Mode mode() const { return m_mode; }
     void setMode(Mode mode) { m_mode = mode; }
 
-    PseudoId pseudoStyle() const { return m_pseudoStyle; }
-    void setPseudoStyle(PseudoId pseudoId) { m_pseudoStyle = pseudoId; }
-
-    bool hasUnknownPseudoElements() const { return m_hasUnknownPseudoElements; }
-    void clearHasUnknownPseudoElements() { m_hasUnknownPseudoElements = false; }
-
     static bool tagMatches(const Element*, const CSSSelector*);
     static bool attributeNameMatches(const Attribute*, const QualifiedName&);
     static bool isCommonPseudoClassSelector(const CSSSelector*);
@@ -121,7 +117,7 @@ public:
     static bool elementMatchesSelectorScopes(const StyledElement*, const HashSet<AtomicStringImpl*>& idScopes, const HashSet<AtomicStringImpl*>& classScopes);
 
 private:
-    bool checkOneSelector(const SelectorCheckingContext&, PseudoId&) const;
+    bool checkOneSelector(const SelectorCheckingContext&, PseudoId&, bool& hasUnknownPseudoElements) const;
     bool checkScrollbarPseudoClass(CSSSelector*, PseudoId& dynamicPseudo) const;
     static bool isFrameFocused(const Element*);
 
@@ -137,8 +133,6 @@ private:
     bool m_strictParsing;
     bool m_documentIsHTML;
     Mode m_mode;
-    PseudoId m_pseudoStyle;
-    mutable bool m_hasUnknownPseudoElements;
     mutable HashSet<LinkHash, LinkHashHash> m_linksCheckedForVisitedState;
 
     struct ParentStackFrame {

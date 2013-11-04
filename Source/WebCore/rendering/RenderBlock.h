@@ -491,13 +491,14 @@ protected:
     }
 #endif
 
-    void computeInitialRegionRangeForBlock();
+    void updateRegionsAndExclusionsLogicalSize();
     void computeRegionRangeForBlock();
 
     virtual void checkForPaginationLogicalHeightChange(LayoutUnit& pageLogicalHeight, bool& pageLogicalHeightChanged, bool& hasSpecifiedPageLogicalHeight);
 
 private:
 #if ENABLE(CSS_EXCLUSIONS)
+    void computeExclusionShapeSize();
     void updateWrapShapeInfoAfterStyleChange(const BasicShape*, const BasicShape* oldWrapShape);
 #endif
     virtual RenderObjectChildList* virtualChildren() { return children(); }
@@ -715,6 +716,7 @@ private:
         RenderText* m_text;
         OwnPtr<TextLayout> m_layout;
         LazyLineBreakIterator m_lineBreakIterator;
+        const Font* m_font;
     };
 
     class LineBreaker {
@@ -1009,7 +1011,7 @@ protected:
 
     virtual bool requiresColumns(int desiredColumnCount) const;
 
-    virtual bool recomputeLogicalWidth();
+    virtual bool updateLogicalWidthAndColumnWidth();
 
     virtual bool canCollapseAnonymousBlockChild() const { return true; }
 

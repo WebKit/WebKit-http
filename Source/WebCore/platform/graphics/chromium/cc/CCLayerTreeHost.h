@@ -144,6 +144,7 @@ public:
     void willCommit();
     void commitComplete();
     PassOwnPtr<CCGraphicsContext> createContext();
+    PassOwnPtr<CCInputHandler> createInputHandler();
     virtual PassOwnPtr<CCLayerTreeHostImpl> createLayerTreeHostImpl(CCLayerTreeHostImplClient*);
     void didLoseContext();
     enum RecreateResult {
@@ -161,8 +162,6 @@ public:
     void updateLayers(CCTextureUpdateQueue&, size_t contentsMemoryLimitBytes);
 
     CCLayerTreeHostClient* client() { return m_client; }
-
-    int compositorIdentifier() const { return m_compositorIdentifier; }
 
     // Only used when compositing on the main thread.
     void composite();
@@ -212,11 +211,19 @@ public:
 
     CCPrioritizedTextureManager* contentsTextureManager() const;
 
-    // This will cause contents texture manager to evict all textures, but
-    // without deleting them. This happens after all content textures have
-    // already been deleted on impl, after getting a 0 allocation limit.
-    // Set during a commit, but before updateLayers.
-    void evictAllContentTextures();
+    // Delete contents textures' backing resources until they use only bytesLimit bytes. This may
+    // be called on the impl thread while the main thread is running.
+    void reduceContentsTexturesMemoryOnImplThread(size_t bytesLimit, CCResourceProvider*);
+    // Retrieve the list of all contents textures' backings that have been evicted, to pass to the
+    // main thread to unlink them from their owning textures.
+    void getEvictedContentTexturesBackings(CCPrioritizedTextureManager::BackingVector&);
+    // Unlink the list of contents textures' backings from their owning textures on the main thread
+    // before updating layers.
+    void unlinkEvictedContentTexturesBackings(const CCPrioritizedTextureManager::BackingVector&);
+    // Deletes all evicted backings, unlinking them from their owning textures if needed.
+    // Returns true if this function had to unlink any backings from their owning texture when
+    // destroying them. If this was the case, the impl layer tree may contain invalid resources.
+    bool deleteEvictedContentTexturesBackings();
 
     bool visible() const { return m_visible; }
     void setVisible(bool);
@@ -266,8 +273,6 @@ private:
     void animateLayers(double monotonicTime);
     bool animateLayersRecursive(LayerChromium* current, double monotonicTime);
     void setAnimationEventsRecursive(const CCAnimationEventsVector&, LayerChromium*, double wallClockTime);
-
-    int m_compositorIdentifier;
 
     bool m_animating;
     bool m_needsAnimateLayers;

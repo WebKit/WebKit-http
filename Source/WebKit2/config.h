@@ -82,7 +82,9 @@ static const type& name() \
 #define _WINSOCKAPI_ /* Prevent inclusion of winsock.h in windows.h */
 #endif
 
+#if !PLATFORM(QT)
 #include <WebCore/config.h>
+#endif
 #include <windows.h>
 
 #if USE(CG)
@@ -108,6 +110,8 @@ static const type& name() \
 #define PLUGIN_ARCHITECTURE_WIN 1
 #elif PLATFORM(GTK) && (OS(UNIX) && !OS(MAC_OS_X))
 #define PLUGIN_ARCHITECTURE_X11 1
+#elif PLATFORM(QT)
+// Qt handles this features.prf
 #else
 #define PLUGIN_ARCHITECTURE_UNSUPPORTED 1
 #endif

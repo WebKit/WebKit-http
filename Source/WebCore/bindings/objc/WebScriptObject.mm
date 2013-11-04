@@ -38,8 +38,6 @@
 #import "JSMainThreadExecState.h"
 #import "JSPluginElementFunctions.h"
 #import "ObjCRuntimeObject.h"
-#import "PlatformString.h"
-#import "StringSourceProvider.h"
 #import "WebCoreObjCExtras.h"
 #import "objc_instance.h"
 #import "runtime_object.h"
@@ -53,7 +51,7 @@
 #import <runtime/Completion.h>
 #import <wtf/TCSpinLock.h>
 #import <wtf/Threading.h>
-
+#include <wtf/text/WTFString.h>
 
 using namespace JSC;
 using namespace JSC::Bindings;

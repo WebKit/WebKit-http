@@ -28,7 +28,6 @@
 #include "RuntimeEnabledFeatures.h"
 #include "V8Binding.h"
 #include "V8DOMWrapper.h"
-#include "V8IsolatedContext.h"
 #include "V8Node.h"
 #include <wtf/UnusedParam.h>
 
@@ -109,7 +108,7 @@ static void TestActiveDOMObjectDomainSafeFunctionSetter(v8::Local<v8::String> na
 
 } // namespace TestActiveDOMObjectV8Internal
 
-static const V8DOMConfiguration::BatchedAttribute TestActiveDOMObjectAttrs[] = {
+static const V8DOMConfiguration::BatchedAttribute V8TestActiveDOMObjectAttrs[] = {
     // Attribute 'excitingAttr' (Type: 'readonly attribute' ExtAttr: '')
     {"excitingAttr", TestActiveDOMObjectV8Internal::excitingAttrAttrGetter, 0, 0 /* no data */, static_cast<v8::AccessControl>(v8::DEFAULT), static_cast<v8::PropertyAttribute>(v8::None), 0 /* on instance */},
 };
@@ -120,7 +119,7 @@ static v8::Persistent<v8::FunctionTemplate> ConfigureV8TestActiveDOMObjectTempla
 
     v8::Local<v8::Signature> defaultSignature;
     defaultSignature = V8DOMConfiguration::configureTemplate(desc, "TestActiveDOMObject", v8::Persistent<v8::FunctionTemplate>(), V8TestActiveDOMObject::internalFieldCount,
-        TestActiveDOMObjectAttrs, WTF_ARRAY_LENGTH(TestActiveDOMObjectAttrs),
+        V8TestActiveDOMObjectAttrs, WTF_ARRAY_LENGTH(V8TestActiveDOMObjectAttrs),
         0, 0);
     UNUSED_PARAM(defaultSignature); // In some cases, it will not be used.
     v8::Local<v8::ObjectTemplate> instance = desc->InstanceTemplate();
@@ -176,31 +175,26 @@ bool V8TestActiveDOMObject::HasInstance(v8::Handle<v8::Value> value)
 }
 
 
-v8::Handle<v8::Object> V8TestActiveDOMObject::wrapSlow(PassRefPtr<TestActiveDOMObject> impl, v8::Isolate* isolate)
+v8::Handle<v8::Object> V8TestActiveDOMObject::wrapSlow(PassRefPtr<TestActiveDOMObject> impl, v8::Handle<v8::Object> creationContext, v8::Isolate* isolate)
 {
     v8::Handle<v8::Object> wrapper;
-    Frame* frame = 0;
-    if (impl->frame()) {
-        frame = impl->frame();
-        frame->script()->windowShell()->initializeIfNeeded();
+    Document* document = 0;
+    UNUSED_PARAM(document);
+
+    v8::Handle<v8::Context> context;
+    if (!creationContext.IsEmpty() && creationContext->CreationContext() != v8::Context::GetCurrent()) {
+        // For performance, we enter the context only if the currently running context
+        // is different from the context that we are about to enter.
+        context = v8::Local<v8::Context>::New(creationContext->CreationContext());
+        ASSERT(!context.IsEmpty());
+        context->Enter();
     }
 
-    // Enter the node's context and create the wrapper in that context.
-    v8::Handle<v8::Context> context;
-    if (frame) {
-        v8::Handle<v8::Context> underlyingHandle = frame->script()->unsafeHandleToCurrentWorldContext();
-        if (v8::Context::GetCurrent() != underlyingHandle) {
-            // For performance, we enter the context only if the currently running context
-            // is different from the context that we are about to enter.
-            context = v8::Local<v8::Context>::New(underlyingHandle);
-            if (!context.IsEmpty())
-                context->Enter();
-        }
-    }
-    wrapper = V8DOMWrapper::instantiateV8Object(frame, &info, impl.get());
-    // Exit the node's context if it was entered.
+    wrapper = V8DOMWrapper::instantiateV8Object(document, &info, impl.get());
+
     if (!context.IsEmpty())
         context->Exit();
+
     if (UNLIKELY(wrapper.IsEmpty()))
         return wrapper;
     v8::Persistent<v8::Object> wrapperHandle = V8DOMWrapper::setJSWrapperForDOMObject(impl, wrapper, isolate);

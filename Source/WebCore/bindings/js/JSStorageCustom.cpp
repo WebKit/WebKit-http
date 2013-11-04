@@ -26,9 +26,9 @@
 #include "config.h"
 #include "JSStorageCustom.h"
 
-#include "PlatformString.h"
-#include <runtime/PropertyNameArray.h>
 #include "Storage.h"
+#include <runtime/PropertyNameArray.h>
+#include <wtf/text/WTFString.h>
 
 using namespace JSC;
 
@@ -66,6 +66,11 @@ bool JSStorage::deleteProperty(JSCell* cell, ExecState* exec, PropertyName prope
 
     thisObject->m_impl->removeItem(propertyNameToString(propertyName));
     return true;
+}
+
+bool JSStorage::deletePropertyByIndex(JSCell* cell, ExecState* exec, unsigned propertyName)
+{
+    return deleteProperty(cell, exec, Identifier::from(exec, propertyName));
 }
 
 void JSStorage::getOwnPropertyNames(JSObject* object, ExecState* exec, PropertyNameArray& propertyNames, EnumerationMode mode)

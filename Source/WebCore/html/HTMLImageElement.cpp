@@ -423,10 +423,10 @@ inline ImageInnerElement* HTMLImageElement::innerElement() const
 
 void HTMLImageElement::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
 {
-    MemoryClassInfo info(memoryObjectInfo, this, MemoryInstrumentation::DOM);
+    MemoryClassInfo info(memoryObjectInfo, this, WebCoreMemoryTypes::DOM);
     HTMLElement::reportMemoryUsage(memoryObjectInfo);
     info.addMember(m_imageLoader);
-    info.addInstrumentedMember(m_form);
+    info.addMember(m_form);
 }
 
 }

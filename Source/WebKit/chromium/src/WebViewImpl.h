@@ -227,6 +227,7 @@ public:
     virtual float maximumPageScaleFactor() const;
     virtual void saveScrollAndScaleState();
     virtual void restoreScrollAndScaleState();
+    virtual void resetScrollAndScaleState();
     virtual void setIgnoreViewportTagMaximumScale(bool);
 
     virtual float deviceScaleFactor() const;
@@ -314,6 +315,7 @@ public:
     virtual void didRebindGraphicsContext(bool success) OVERRIDE;
     virtual WebCompositorOutputSurface* createOutputSurface() OVERRIDE;
     virtual void didRecreateOutputSurface(bool success) OVERRIDE;
+    virtual WebInputHandler* createInputHandler() OVERRIDE;
     virtual void willCommit();
     virtual void didCommit();
     virtual void didCommitAndDrawFrame();
@@ -828,6 +830,7 @@ private:
     bool m_recreatingGraphicsContext;
     bool m_compositorSurfaceReady;
     float m_deviceScaleInCompositor;
+    int m_inputHandlerIdentifier;
 #endif
     static const WebInputEvent* m_currentInputEvent;
 

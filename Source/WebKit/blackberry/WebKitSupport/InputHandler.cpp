@@ -23,6 +23,7 @@
 #include "BackingStoreClient.h"
 #include "CSSStyleDeclaration.h"
 #include "Chrome.h"
+#include "ColorPickerClient.h"
 #include "DOMSupport.h"
 #include "DatePickerClient.h"
 #include "Document.h"
@@ -65,6 +66,7 @@
 #include <BlackBerryPlatformKeyboardEvent.h>
 #include <BlackBerryPlatformLog.h>
 #include <BlackBerryPlatformMisc.h>
+#include <BlackBerryPlatformScreen.h>
 #include <BlackBerryPlatformSettings.h>
 #include <sys/keycodes.h>
 #include <wtf/text/CString.h>
@@ -335,6 +337,17 @@ static VirtualKeyboardEnterKeyType keyboardEnterKeyTypeAttribute(const WebCore::
     }
 
     return VKBEnterKeyNotSet;
+}
+
+void InputHandler::setProcessingChange(bool processingChange)
+{
+    if (processingChange == m_processingChange)
+        return;
+
+    m_processingChange = processingChange;
+
+    if (!m_processingChange)
+        m_webPage->m_selectionHandler->inputHandlerDidFinishProcessingChange();
 }
 
 WTF::String InputHandler::elementText()
@@ -926,14 +939,24 @@ void InputHandler::spellCheckBlock(VisibleSelection& visibleSelection, TextCheck
 PassRefPtr<Range> InputHandler::getRangeForSpellCheckWithFineGranularity(VisiblePosition startPosition, VisiblePosition endPosition)
 {
     VisiblePosition endOfCurrentWord = endOfWord(startPosition);
-    RefPtr<Range> rangeForSpellChecking;
-    while (endOfCurrentWord != endPosition) {
-        rangeForSpellChecking = VisibleSelection(startPosition, endOfCurrentWord).toNormalizedRange();
-        // If we exceed the MaxSpellCheckingStringLength limit, then go back one word and return this range.
-        if (rangeForSpellChecking->text().length() >= MaxSpellCheckingStringLength)
-            return VisibleSelection(startPosition, endOfWord(previousWordPosition(endOfCurrentWord))).toNormalizedRange();
 
-        endOfCurrentWord = endOfWord(nextWordPosition(endOfCurrentWord));
+    // Keep iterating until one of our cases is hit, or we've incremented the starting position right to the end.
+    while (startPosition != endPosition) {
+        // Check the text length within this range.
+        if (VisibleSelection(startPosition, endOfCurrentWord).toNormalizedRange()->text().length() >= MaxSpellCheckingStringLength) {
+            // If this is not the first word, return a Range with end boundary set to the previous word.
+            if (startOfWord(endOfCurrentWord, LeftWordIfOnBoundary) != startPosition)
+                return VisibleSelection(startPosition, endOfWord(previousWordPosition(endOfCurrentWord), LeftWordIfOnBoundary)).toNormalizedRange();
+
+            // Our first word has gone over the character limit. Increment the starting position past an uncheckable word.
+            startPosition = endOfCurrentWord;
+        } else if (endOfCurrentWord == endPosition) {
+            // Return the last segment if the end of our word lies at the end of the range.
+            return VisibleSelection(startPosition, endPosition).toNormalizedRange();
+        } else {
+            // Increment the current word.
+            endOfCurrentWord = endOfWord(nextWordPosition(endOfCurrentWord));
+        }
     }
     return 0;
 }
@@ -950,7 +973,8 @@ bool InputHandler::openDatePopup(HTMLInputElement* element, BlackBerryInputType 
     case BlackBerry::Platform::InputTypeDate:
     case BlackBerry::Platform::InputTypeTime:
     case BlackBerry::Platform::InputTypeDateTime:
-    case BlackBerry::Platform::InputTypeDateTimeLocal: {
+    case BlackBerry::Platform::InputTypeDateTimeLocal:
+    case BlackBerry::Platform::InputTypeMonth: {
         // Check if popup already exists, close it if does.
         m_webPage->m_page->chrome()->client()->closePagePopup(0);
         String value = element->value();
@@ -959,11 +983,7 @@ bool InputHandler::openDatePopup(HTMLInputElement* element, BlackBerryInputType 
         double step = element->getAttribute(HTMLNames::stepAttr).toDouble();
 
         DatePickerClient* client = new DatePickerClient(type, value, min, max, step,  m_webPage, element);
-        // Fail to create HTML popup, use the old path
-        if (!m_webPage->m_page->chrome()->client()->openPagePopup(client,  WebCore::IntRect()))
-            m_webPage->m_client->openDateTimePopup(type, value, min, max, step);
-
-        return true;
+        return m_webPage->m_page->chrome()->client()->openPagePopup(client,  WebCore::IntRect());
         }
     default: // Other types not supported
         return false;
@@ -981,8 +1001,11 @@ bool InputHandler::openColorPopup(HTMLInputElement* element)
     m_currentFocusElement = element;
     m_currentFocusElementType = TextPopup;
 
-    m_webPage->m_client->openColorPopup(element->value());
-    return true;
+    // Check if popup already exists, close it if does.
+    m_webPage->m_page->chrome()->client()->closePagePopup(0);
+
+    ColorPickerClient* client = new ColorPickerClient(element->value(), m_webPage, element);
+    return m_webPage->m_page->chrome()->client()->openPagePopup(client,  WebCore::IntRect());
 }
 
 void InputHandler::setInputValue(const WTF::String& value)
@@ -1028,7 +1051,7 @@ void InputHandler::ensureFocusTextElementVisible(CaretScrollType scrollType)
     if (!isActiveTextEdit() || !isInputModeEnabled() || !m_currentFocusElement->document())
         return;
 
-    if (!Platform::Settings::instance()->allowCenterScrollAdjustmentForInputFields() && scrollType != EdgeIfNeeded)
+    if (!(Platform::Settings::instance()->allowedScrollAdjustmentForInputFields() & scrollType))
         return;
 
     Frame* elementFrame = m_currentFocusElement->document()->frame();
@@ -1136,9 +1159,10 @@ void InputHandler::ensureFocusTextElementVisible(CaretScrollType scrollType)
     }
 
     // If the text is too small, zoom in to make it a minimum size.
-    static const int s_minimumTextHeightInPixels = 6;
+    // The minimum size being defined as 3 mm is a good value based on my observations.
+    static const int s_minimumTextHeightInPixels = Graphics::Screen::primaryScreen()->widthInMMToPixels(3);
     if (fontHeight && fontHeight < s_minimumTextHeightInPixels)
-        m_webPage->zoomAboutPoint(s_minimumTextHeightInPixels / fontHeight, m_webPage->centerOfVisibleContentsRect());
+        m_webPage->zoomAboutPoint(s_minimumTextHeightInPixels / fontHeight, selectionFocusRect.location());
 }
 
 void InputHandler::ensureFocusPluginElementVisible()
@@ -1660,6 +1684,9 @@ bool InputHandler::openSelectPopup(HTMLSelectElement* select)
     // Fail to create HTML popup, use the old path
     if (!m_webPage->m_page->chrome()->client()->openPagePopup(selectClient, elementRectInRootView))
         m_webPage->m_client->openPopupList(multiple, size, labels, enableds, itemTypes, selecteds);
+    delete[] enableds;
+    delete[] itemTypes;
+    delete[] selecteds;
     return true;
 }
 

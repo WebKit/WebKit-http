@@ -23,11 +23,11 @@
 #include "StyleRareInheritedData.h"
 
 #include "CursorList.h"
-#include "MemoryInstrumentation.h"
 #include "QuotesData.h"
 #include "RenderStyle.h"
 #include "RenderStyleConstants.h"
 #include "ShadowData.h"
+#include "WebCoreMemoryInstrumentation.h"
 
 namespace WebCore {
 
@@ -69,7 +69,7 @@ StyleRareInheritedData::StyleRareInheritedData()
     , textSecurity(RenderStyle::initialTextSecurity())
     , userModify(READ_ONLY)
     , wordBreak(RenderStyle::initialWordBreak())
-    , wordWrap(RenderStyle::initialWordWrap())
+    , overflowWrap(RenderStyle::initialOverflowWrap())
     , nbspMode(NBNORMAL)
     , khtmlLineBreak(LBNORMAL)
     , textSizeAdjust(RenderStyle::initialTextSizeAdjust())
@@ -88,7 +88,7 @@ StyleRareInheritedData::StyleRareInheritedData()
     , m_imageRendering(RenderStyle::initialImageRendering())
     , m_lineSnap(RenderStyle::initialLineSnap())
     , m_lineAlign(RenderStyle::initialLineAlign())
-#if ENABLE(OVERFLOW_SCROLLING)
+#if ENABLE(ACCELERATED_OVERFLOW_SCROLLING)
     , useTouchOverflowScrolling(RenderStyle::initialUseTouchOverflowScrolling())
 #endif
 #if ENABLE(CSS_IMAGE_RESOLUTION)
@@ -131,7 +131,7 @@ StyleRareInheritedData::StyleRareInheritedData(const StyleRareInheritedData& o)
     , textSecurity(o.textSecurity)
     , userModify(o.userModify)
     , wordBreak(o.wordBreak)
-    , wordWrap(o.wordWrap)
+    , overflowWrap(o.overflowWrap)
     , nbspMode(o.nbspMode)
     , khtmlLineBreak(o.khtmlLineBreak)
     , textSizeAdjust(o.textSizeAdjust)
@@ -150,7 +150,7 @@ StyleRareInheritedData::StyleRareInheritedData(const StyleRareInheritedData& o)
     , m_imageRendering(o.m_imageRendering)
     , m_lineSnap(o.m_lineSnap)
     , m_lineAlign(o.m_lineAlign)
-#if ENABLE(OVERFLOW_SCROLLING)
+#if ENABLE(ACCELERATED_OVERFLOW_SCROLLING)
     , useTouchOverflowScrolling(o.useTouchOverflowScrolling)
 #endif
 #if ENABLE(CSS_IMAGE_RESOLUTION)
@@ -212,10 +212,10 @@ bool StyleRareInheritedData::operator==(const StyleRareInheritedData& o) const
         && textSecurity == o.textSecurity
         && userModify == o.userModify
         && wordBreak == o.wordBreak
-        && wordWrap == o.wordWrap
+        && overflowWrap == o.overflowWrap
         && nbspMode == o.nbspMode
         && khtmlLineBreak == o.khtmlLineBreak
-#if ENABLE(OVERFLOW_SCROLLING)
+#if ENABLE(ACCELERATED_OVERFLOW_SCROLLING)
         && useTouchOverflowScrolling == o.useTouchOverflowScrolling
 #endif
         && textSizeAdjust == o.textSizeAdjust
@@ -264,15 +264,15 @@ bool StyleRareInheritedData::shadowDataEquivalent(const StyleRareInheritedData& 
 
 void StyleRareInheritedData::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
 {
-    MemoryClassInfo info(memoryObjectInfo, this, MemoryInstrumentation::CSS);
+    MemoryClassInfo info(memoryObjectInfo, this, WebCoreMemoryTypes::CSS);
     info.addMember(textShadow);
-    info.addInstrumentedMember(highlight);
+    info.addMember(highlight);
     info.addMember(cursorData);
-    info.addInstrumentedMember(hyphenationString);
-    info.addInstrumentedMember(locale);
-    info.addInstrumentedMember(textEmphasisCustomMark);
+    info.addMember(hyphenationString);
+    info.addMember(locale);
+    info.addMember(textEmphasisCustomMark);
     info.addMember(quotes);
-    info.addInstrumentedMember(m_lineGrid);
+    info.addMember(m_lineGrid);
 #if ENABLE(CSS_VARIABLES)
     info.addMember(m_variables);
 #endif

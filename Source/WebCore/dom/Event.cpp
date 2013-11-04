@@ -27,6 +27,7 @@
 #include "EventNames.h"
 #include "EventTarget.h"
 #include "UserGestureIndicator.h"
+#include "WebCoreMemoryInstrumentation.h"
 #include <wtf/CurrentTime.h>
 #include <wtf/text/AtomicString.h>
 
@@ -157,11 +158,11 @@ void Event::storeResult(const String&)
 
 void Event::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
 {
-    MemoryClassInfo info(memoryObjectInfo, this, MemoryInstrumentation::DOM);
-    info.addInstrumentedMember(m_type);
+    MemoryClassInfo info(memoryObjectInfo, this, WebCoreMemoryTypes::DOM);
+    info.addMember(m_type);
     info.addMember(m_currentTarget);
     info.addMember(m_target);
-    info.addInstrumentedMember(m_underlyingEvent);
+    info.addMember(m_underlyingEvent);
 }
 
 PassRefPtr<Event> Event::cloneFor(HTMLIFrameElement*) const

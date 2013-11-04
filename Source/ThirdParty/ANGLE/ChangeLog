@@ -1,3 +1,90 @@
+2012-09-13  Mark Rowe  <mrowe@apple.com>
+
+        <rdar://problem/12255720> Fix the build with newer Clang
+
+        Reviewed by Sam Weinig.
+        
+        Clang generates a warning about the inclusion of trailing commas on the final enum item as it's apparently
+        a C++11 extension. Remove them.
+        
+        * src/compiler/BaseTypes.h:
+        * src/compiler/ExtensionBehavior.h:
+        * src/compiler/ParseHelper.cpp:
+        (TParseContext::parseVectorFields):
+        * src/compiler/intermediate.h:
+
+2012-09-13  Simon Hausmann  <simon.hausmann@nokia.com>
+
+        [Qt] The ANGLE build on Windows breaks with GnuWin32's flex because it is too old
+        https://bugs.webkit.org/show_bug.cgi?id=96359
+
+        Reviewed by Tor Arne Vestbø.
+
+        GnuWin32's flex is 2.5.4 and that is too old for ANGLE's preprocessor
+        lexer. The only viable alternative I could find on Windows that provides
+        binaries is the winflexbison distribution (http://sourceforge.net/projects/winflexbison/),
+        so let's use that one instead.
+
+        * DerivedSources.pri:
+
+2012-09-12  Simon Hausmann  <simon.hausmann@nokia.com>
+
+        [Qt] Build on Windows requires bison/flex in PATH
+        https://bugs.webkit.org/show_bug.cgi?id=96358
+
+        Reviewed by Tor Arne Vestbø.
+
+        Use MAKEFILE_NOOP_COMMAND instead of the \n\t trick to generate a dummy command. Otherwise
+        the PATH prepend trick will break because it generates a command line along the lines of
+        (set PATH="...") && with just that trailing ampersand pair.
+
+        * DerivedSources.pri:
+
+2012-09-10  Dean Jackson  <dino@apple.com>
+
+        [Apple] Install plist for Apple Open Source build system
+        https://bugs.webkit.org/show_bug.cgi?id=96345
+
+        Reviewed by Mark Rowe.
+
+        Apple's build system requires a couple of files that describe where
+        the 3rd party Open Source library came from, and what license it
+        uses. These files are copied into /usr/local when the project is
+        being installed.
+
+        * ANGLE.plist: Added.
+        * ANGLE.txt: Added.
+        * ANGLE.xcodeproj/project.pbxproj:
+
+2012-09-06  Andras Becsi  <andras.becsi@nokia.com>
+
+        [ANGLE] Fix the build with gcc 4.7
+        https://bugs.webkit.org/show_bug.cgi?id=95989
+
+        Reviewed by Csaba Osztrogonác.
+
+        The build fails because of a bogus warning about the auto-generated
+        pplval variable. Unfortunately the warning is called -Wuninitialized
+        in gcc 4.6 and -Wmaybe-uninitialized in gcc 4.7 thus we also need to
+        ignore unknown pragmas not to break the build with compilers that do
+        not recognize these options.
+
+        * src/compiler/preprocessor/new/ExpressionParser.y:
+
+2012-09-06  Simon Hausmann  <simon.hausmann@nokia.com>
+
+        [Qt] Fix build with ANGLE on platforms that provide EGL/GLESv2
+        https://bugs.webkit.org/show_bug.cgi?id=95965
+
+        Reviewed by Tor Arne Vestbø.
+
+        Add build rules to build ANGLE as a static library for the Qt port.
+
+        * ANGLE.pri: Added.
+        * ANGLE.pro: Added.
+        * DerivedSources.pri: Added.
+        * Target.pri: Added.
+
 2012-08-24  Joshua Netterfield  <jnetterfield@rim.com>
 
         [CSS Shaders] [ANGLE] RenameFunction::RenameFunction may store references to temporary string

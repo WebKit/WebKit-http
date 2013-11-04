@@ -14,8 +14,6 @@ WEBKIT += javascriptcore
 
 CONFIG += staticlib
 
-DEFINES += QT_MAKEDLL
-
 RESOURCES += \
     $$PWD/WebCore.qrc
 
@@ -327,6 +325,7 @@ SOURCES += \
     css/StyleSheet.cpp \
     css/StyleSheetContents.cpp \
     css/StyleSheetList.cpp \
+    css/WebKitCSSArrayFunctionValue.cpp \
     css/WebKitCSSFilterValue.cpp \
     css/WebKitCSSKeyframeRule.cpp \
     css/WebKitCSSKeyframesRule.cpp \
@@ -403,7 +402,6 @@ SOURCES += \
     dom/IdTargetObserver.cpp \
     dom/IdTargetObserverRegistry.cpp \
     dom/KeyboardEvent.cpp \
-    dom/MemoryInstrumentation.cpp \
     dom/MessageChannel.cpp \
     dom/MessageEvent.cpp \
     dom/MessagePort.cpp \
@@ -469,6 +467,7 @@ SOURCES += \
     dom/UserGestureIndicator.cpp \
     dom/UserTypingGestureIndicator.cpp \
     dom/ViewportArguments.cpp \
+    dom/WebCoreMemoryInstrumentation.cpp \
     dom/WebKitAnimationEvent.cpp \
     dom/WebKitTransitionEvent.cpp \
     dom/WheelEvent.cpp \
@@ -661,6 +660,7 @@ SOURCES += \
     html/ImageDocument.cpp \
     html/ImageInputType.cpp \
     html/InputType.cpp \
+    html/InputTypeNames.cpp \
     html/LabelableElement.cpp \
     html/LabelsNodeList.cpp \
     html/LinkRelAttribute.cpp \
@@ -865,6 +865,7 @@ SOURCES += \
     page/DragController.cpp \
     page/EventHandler.cpp \
     page/EventSource.cpp \
+    page/FeatureObserver.cpp \
     page/FocusController.cpp \
     page/Frame.cpp \
     page/FrameActionScheduler.cpp \
@@ -892,6 +893,7 @@ SOURCES += \
     page/PerformanceTiming.cpp \
     page/PrintContext.cpp \
     page/Screen.cpp \
+    page/scrolling/ScrollingConstraints.cpp \
     page/scrolling/ScrollingCoordinator.cpp \
     page/scrolling/ScrollingCoordinatorNone.cpp \
     page/SecurityOrigin.cpp \
@@ -915,9 +917,11 @@ SOURCES += \
     platform/text/BidiContext.cpp \
     platform/text/DateTimeFormat.cpp \
     platform/text/Hyphenation.cpp \
+    platform/text/LocaleNone.cpp \
     platform/text/LocaleToScriptMappingDefault.cpp \
     platform/text/LocalizedDateNone.cpp \
     platform/text/LocalizedNumberNone.cpp \
+    platform/text/Localizer.cpp \
     platform/text/QuotedPrintable.cpp \
     platform/CalculationValue.cpp \
     platform/Clock.cpp \
@@ -1043,6 +1047,7 @@ SOURCES += \
     platform/text/RegularExpression.cpp \
     platform/PlatformEvent.cpp \
     platform/PlatformInstrumentation.cpp \
+    platform/PlatformMemoryInstrumentation.cpp \
     platform/RuntimeApplicationChecks.cpp \
     platform/RunLoop.cpp \
     platform/SchemeRegistry.cpp \
@@ -1062,8 +1067,8 @@ SOURCES += \
     platform/sql/SQLiteTransaction.cpp \
     platform/sql/SQLValue.cpp \
     platform/text/SegmentedString.cpp \
-    platform/text/String.cpp \
     platform/text/TextBoundaries.cpp \
+    platform/text/TextBreakIterator.cpp \
     platform/text/TextCodec.cpp \
     platform/text/TextCodecLatin1.cpp \
     platform/text/TextCodecUserDefined.cpp \
@@ -1071,7 +1076,7 @@ SOURCES += \
     platform/text/TextCodecUTF8.cpp \
     platform/text/TextCodecICU.cpp \
     platform/text/TextEncoding.cpp \
-    platform/text/TextEncodingDetectorNone.cpp \
+    platform/text/TextEncodingDetectorICU.cpp \
     platform/text/TextEncodingRegistry.cpp \
     platform/text/TextStream.cpp \
     platform/ThreadGlobalData.cpp \
@@ -1094,6 +1099,9 @@ SOURCES += \
     rendering/BidiRun.cpp \
     rendering/CounterNode.cpp \
     rendering/EllipsisBox.cpp \
+    rendering/ExclusionInterval.cpp \
+    rendering/ExclusionRectangle.cpp \
+    rendering/ExclusionShape.cpp \
     rendering/FilterEffectRenderer.cpp \
     rendering/FixedTableLayout.cpp \
     rendering/FlowThreadController.cpp \
@@ -1116,6 +1124,7 @@ SOURCES += \
     rendering/RenderCounter.cpp \
     rendering/RenderDeprecatedFlexibleBox.cpp \
     rendering/RenderDetailsMarker.cpp \
+    rendering/RenderDialog.cpp \
     rendering/RenderEmbeddedObject.cpp \
     rendering/RenderFieldset.cpp \
     rendering/RenderFileUploadControl.cpp \
@@ -1334,12 +1343,10 @@ HEADERS += \
     bindings/js/ScriptProfileNode.h \
     bindings/js/ScriptProfiler.h \
     bindings/js/ScriptSourceCode.h \
-    bindings/js/ScriptSourceProvider.h \
     bindings/js/ScriptState.h \
     bindings/js/ScriptValue.h \
     bindings/js/ScriptWrappable.h \
     bindings/js/SerializedScriptValue.h \
-    bindings/js/StringSourceProvider.h \
     bindings/js/WebCoreJSClientData.h \
     bindings/js/WorkerScriptController.h \
     bindings/js/WorkerScriptDebugServer.h \
@@ -1477,6 +1484,7 @@ HEADERS += \
     css/StyleSheet.h \
     css/StyleSheetContents.h \
     css/StyleSheetList.h \
+    css/WebKitCSSArrayFunctionValue.h \
     css/WebKitCSSFilterValue.h \
     css/WebKitCSSKeyframeRule.h \
     css/WebKitCSSKeyframesRule.h \
@@ -1548,7 +1556,6 @@ HEADERS += \
     dom/IdTargetObserver.h \
     dom/IdTargetObserverRegistry.h \
     dom/KeyboardEvent.h \
-    dom/MemoryInstrumentation.h \
     dom/MessageChannel.h \
     dom/MessageEvent.h \
     dom/MessagePortChannel.h \
@@ -1608,6 +1615,7 @@ HEADERS += \
     dom/UIEventWithKeyState.h \
     dom/UserGestureIndicator.h \
     dom/ViewportArguments.h \
+    dom/WebCoreMemoryInstrumentation.h \
     dom/WebKitAnimationEvent.h \
     dom/WebKitNamedFlow.h \
     dom/WebKitTransitionEvent.h \
@@ -2004,6 +2012,7 @@ HEADERS += \
     page/SpeechInputResult.h \
     page/SpeechInputResultList.h \
     page/TouchAdjustment.h \
+    page/ValidationMessageClient.h \
     page/WebKitAnimation.h \
     page/WebKitAnimationList.h \
     page/WindowFeatures.h \
@@ -2037,13 +2046,16 @@ HEADERS += \
     platform/graphics/BitmapImage.h \
     platform/graphics/Color.h \
     platform/graphics/CrossfadeGeneratedImage.h \
+    platform/graphics/filters/CustomFilterArrayParameter.h \
     platform/graphics/filters/CustomFilterGlobalContext.h \
     platform/graphics/filters/CustomFilterMesh.h \
+    platform/graphics/filters/CustomFilterMeshGenerator.h \
     platform/graphics/filters/CustomFilterNumberParameter.h \
     platform/graphics/filters/CustomFilterCompiledProgram.h \
     platform/graphics/filters/CustomFilterOperation.h \
     platform/graphics/filters/CustomFilterParameter.h \
     platform/graphics/filters/CustomFilterProgram.h \
+    platform/graphics/filters/CustomFilterProgramInfo.h \
     platform/graphics/filters/CustomFilterTransformParameter.h \
     platform/graphics/filters/CustomFilterValidatedProgram.h \
     platform/graphics/filters/FEBlend.h \
@@ -2103,6 +2115,7 @@ HEADERS += \
     platform/graphics/IntPoint.h \
     platform/graphics/IntPointHash.h \
     platform/graphics/IntRect.h \
+    platform/graphics/Latin1TextIterator.h \
     platform/graphics/MediaPlayer.h \
     platform/graphics/NativeImagePtr.h \
     platform/graphics/opentype/OpenTypeVerticalData.h \
@@ -2205,6 +2218,7 @@ HEADERS += \
     platform/network/qt/DnsPrefetchHelper.h \
     platform/network/qt/NetworkStateNotifierPrivate.h \
     platform/PlatformExportMacros.h \
+    platform/PlatformMemoryInstrumentation.h \
     platform/PlatformTouchEvent.h \
     platform/PlatformTouchPoint.h \
     platform/PopupMenu.h \
@@ -2214,6 +2228,7 @@ HEADERS += \
     platform/qt/QWebPageClient.h \
     platform/qt/RenderThemeQt.h \
     platform/qt/RenderThemeQtMobile.h \
+    platform/qt/UserAgentQt.h \
     platform/ScrollableArea.h \
     platform/ScrollAnimator.h \
     platform/Scrollbar.h \
@@ -2272,6 +2287,9 @@ HEADERS += \
     rendering/break_lines.h \
     rendering/CounterNode.h \
     rendering/EllipsisBox.h \
+    rendering/ExclusionInterval.h \
+    rendering/ExclusionRectangle.h \
+    rendering/ExclusionShape.h \
     rendering/FilterEffectRenderer.h \
     rendering/FixedTableLayout.h \
     rendering/HitTestingTransformState.h \
@@ -2769,6 +2787,7 @@ SOURCES += \
     platform/qt/RunLoopQt.cpp \
     platform/qt/SharedBufferQt.cpp \
     platform/qt/ThirdPartyCookiesQt.cpp \
+    platform/qt/UserAgentQt.cpp \
     platform/graphics/qt/FontCacheQt.cpp \
     platform/graphics/qt/FontCustomPlatformDataQt.cpp \
     platform/graphics/qt/GlyphPageTreeNodeQt.cpp \
@@ -2794,7 +2813,7 @@ SOURCES += \
     platform/text/qt/TextCodecQt.cpp \
     platform/qt/WidgetQt.cpp
 
-contains(DEFINES, WTF_USE_LIBXML2=1) {
+use?(LIBXML2) {
     HEADERS += xml/parser/XMLDocumentParserScope.h
     SOURCES += \
             xml/parser/XMLDocumentParserLibxml2.cpp \
@@ -2803,7 +2822,7 @@ contains(DEFINES, WTF_USE_LIBXML2=1) {
     SOURCES += xml/parser/XMLDocumentParserQt.cpp
 }
 
-contains(DEFINES, ENABLE_SMOOTH_SCROLLING=1) {
+enable?(SMOOTH_SCROLLING) {
     HEADERS += platform/ScrollAnimatorNone.h
     SOURCES += platform/ScrollAnimatorNone.cpp
 }
@@ -2831,7 +2850,7 @@ mac {
     SOURCES += editing/SmartReplaceICU.cpp
 }
 
-contains(DEFINES, ENABLE_NETSCAPE_PLUGIN_API=1) {
+enable?(NETSCAPE_PLUGIN_API) {
 
     SOURCES += plugins/npapi.cpp
 
@@ -2869,12 +2888,12 @@ contains(DEFINES, ENABLE_NETSCAPE_PLUGIN_API=1) {
         plugins/PluginViewNone.cpp
 }
 
-plugin_backend_xlib {
+use?(PLUGIN_BACKEND_XLIB) {
     SOURCES += plugins/qt/QtX11ImageConversion.cpp
     HEADERS += plugins/qt/QtX11ImageConversion.h
 }
 
-contains(DEFINES, ENABLE_SQL_DATABASE=1) {
+enable?(SQL_DATABASE) {
     SOURCES += \
         Modules/webdatabase/ChangeVersionWrapper.cpp \
         Modules/webdatabase/DatabaseTask.cpp \
@@ -2899,7 +2918,7 @@ contains(DEFINES, ENABLE_SQL_DATABASE=1) {
         bindings/js/JSSQLTransactionSyncCustom.cpp
 }
 
-contains(DEFINES, ENABLE_INDEXED_DATABASE=1) {
+enable?(INDEXED_DATABASE) {
     HEADERS += \
         bindings/js/IDBBindingUtilities.h \
 
@@ -2959,7 +2978,7 @@ contains(DEFINES, ENABLE_INDEXED_DATABASE=1) {
         Modules/indexeddb/WorkerContextIndexedDatabase.cpp
 }
 
-contains(DEFINES, ENABLE_DATA_TRANSFER_ITEMS=1) {
+enable?(DATA_TRANSFER_ITEMS) {
     HEADERS += \
         dom/DataTransferItem.h \
         dom/DataTransferItemList.h \
@@ -2973,7 +2992,7 @@ contains(DEFINES, ENABLE_DATA_TRANSFER_ITEMS=1) {
         platform/qt/DataTransferItemListQt.cpp
 }
 
-contains(DEFINES, ENABLE_FILE_SYSTEM=1) {
+enable?(FILE_SYSTEM) {
     HEADERS += \
         Modules/filesystem/AsyncFileWriter.h \
         Modules/filesystem/DOMFilePath.h \
@@ -3018,7 +3037,7 @@ contains(DEFINES, ENABLE_FILE_SYSTEM=1) {
         platform/AsyncFileSystem.cpp
 }
 
-contains(DEFINES, ENABLE_MEDIA_SOURCE=1) {
+enable?(MEDIA_SOURCE) {
     HEADERS += \
         Modules/mediasource/MediaSource.h \
         Modules/mediasource/MediaSourceRegistry.h \
@@ -3031,14 +3050,14 @@ contains(DEFINES, ENABLE_MEDIA_SOURCE=1) {
         Modules/mediasource/SourceBufferList.cpp
 }
 
-contains(DEFINES, ENABLE_ICONDATABASE=1) {
+enable?(ICONDATABASE) {
     SOURCES += \
         loader/icon/IconDatabase.cpp \
         loader/icon/IconRecord.cpp \
         loader/icon/PageURLRecord.cpp
 }
 
-contains(DEFINES, ENABLE_WORKERS=1) {
+enable?(WORKERS) {
     SOURCES += \
         bindings/js/JSDedicatedWorkerContextCustom.cpp \
         bindings/js/JSWorkerContextBase.cpp \
@@ -3063,7 +3082,7 @@ contains(DEFINES, ENABLE_WORKERS=1) {
         workers/WorkerScriptLoader.cpp
 }
 
-contains(DEFINES, ENABLE_SHARED_WORKERS=1) {
+enable?(SHARED_WORKERS) {
     SOURCES += \
         bindings/js/JSSharedWorkerCustom.cpp
 
@@ -3074,7 +3093,7 @@ contains(DEFINES, ENABLE_SHARED_WORKERS=1) {
         workers/SharedWorkerThread.cpp
 }
 
-contains(DEFINES, ENABLE_INPUT_SPEECH=1) {
+enable?(INPUT_SPEECH) {
     SOURCES += \
         page/SpeechInput.cpp \
         page/SpeechInputEvent.cpp \
@@ -3083,11 +3102,11 @@ contains(DEFINES, ENABLE_INPUT_SPEECH=1) {
         rendering/RenderInputSpeech.cpp
 }
 
-contains(DEFINES, ENABLE_SCRIPTED_SPEECH=1) {
+enable?(SCRIPTED_SPEECH) {
     SOURCES += # FIXME!
 }
 
-contains(DEFINES, ENABLE_QUOTA=1) {
+enable?(QUOTA) {
     HEADERS += \
         Modules/quota/DOMWindowQuota.idl \
         Modules/quota/StorageInfo.h \
@@ -3100,7 +3119,7 @@ contains(DEFINES, ENABLE_QUOTA=1) {
         Modules/quota/StorageInfo.cpp
 }
 
-contains(DEFINES, ENABLE_GAMEPAD=1) {
+enable?(GAMEPAD) {
     HEADERS += \
         Modules/gamepad/Gamepad.h\
         Modules/gamepad/GamepadList.h \
@@ -3116,7 +3135,7 @@ contains(DEFINES, ENABLE_GAMEPAD=1) {
         platform/qt/GamepadsQt.cpp
 }
 
-contains(DEFINES, WTF_USE_GSTREAMER=1) {
+use?(GSTREAMER) {
     HEADERS += \
             platform/graphics/gstreamer/GRefPtrGStreamer.h \
             platform/graphics/gstreamer/GStreamerUtilities.h \
@@ -3128,7 +3147,7 @@ contains(DEFINES, WTF_USE_GSTREAMER=1) {
             platform/graphics/gstreamer/GStreamerVersioning.cpp
 }
 
-contains(DEFINES, ENABLE_VIDEO=1) {
+enable?(VIDEO) {
     SOURCES += \
         html/HTMLAudioElement.cpp \
         html/HTMLMediaElement.cpp \
@@ -3142,7 +3161,7 @@ contains(DEFINES, ENABLE_VIDEO=1) {
         rendering/RenderVideo.cpp \
         rendering/RenderMedia.cpp
 
-    contains(DEFINES, WTF_USE_QTKIT=1) {
+    use?(QTKIT) {
         INCLUDEPATH += \
             $$SOURCE_DIR/../WebKitLibraries/ \
             $$PWD/platform/mac
@@ -3187,7 +3206,7 @@ contains(DEFINES, ENABLE_VIDEO=1) {
 
         QMAKE_MACOSX_DEPLOYMENT_TARGET = 10.5
 
-    } else: contains(DEFINES, WTF_USE_GSTREAMER=1) {
+    } else: use?(GSTREAMER) {
         HEADERS += \
             platform/graphics/gstreamer/GStreamerGWorld.h \
             platform/graphics/gstreamer/MediaPlayerPrivateGStreamer.h \
@@ -3204,7 +3223,7 @@ contains(DEFINES, ENABLE_VIDEO=1) {
             platform/graphics/gstreamer/PlatformVideoWindowQt.cpp \
             platform/graphics/gstreamer/ImageGStreamerQt.cpp
 
-    } else:contains(DEFINES, WTF_USE_QT_MULTIMEDIA=1) {
+    } else:use?(QT_MULTIMEDIA) {
         HEADERS += \
             platform/graphics/qt/MediaPlayerPrivateQt.h
 
@@ -3213,7 +3232,7 @@ contains(DEFINES, ENABLE_VIDEO=1) {
     }
 }
 
-contains(DEFINES, ENABLE_WEB_AUDIO=1) {
+enable?(WEB_AUDIO) {
     HEADERS += \
         Modules/webaudio/AsyncAudioDecoder.h \
         Modules/webaudio/AudioBasicInspectorNode.h \
@@ -3382,7 +3401,7 @@ contains(DEFINES, ENABLE_WEB_AUDIO=1) {
         platform/audio/VectorMath.cpp \
         platform/audio/ZeroPole.cpp
 
-    contains(DEFINES, WTF_USE_GSTREAMER=1) {
+    use?(GSTREAMER) {
         HEADERS += \
             platform/audio/gstreamer/AudioDestinationGStreamer.h \
             platform/audio/gstreamer/WebKitWebAudioSourceGStreamer.h
@@ -3394,21 +3413,21 @@ contains(DEFINES, ENABLE_WEB_AUDIO=1) {
     }
 }
 
-contains(DEFINES, ENABLE_FULLSCREEN_API=1) {
+enable?(FULLSCREEN_API) {
     SOURCES += \
         rendering/RenderFullScreen.cpp
     HEADERS += \
         rendering/RenderFullScreen.h
 }
 
-contains(DEFINES, ENABLE_XSLT=1) {
+enable?(XSLT) {
     SOURCES += \
         bindings/js/JSXSLTProcessorCustom.cpp
 
     SOURCES += xml/XMLTreeViewer.cpp
     HEADERS += xml/XMLTreeViewer.h
 
-    contains(DEFINES, WTF_USE_LIBXML2=1) {
+    use?(LIBXML2) {
         SOURCES += \
             xml/XSLTProcessor.cpp \
             xml/XSLTProcessorLibxslt.cpp \
@@ -3434,13 +3453,15 @@ contains(DEFINES, ENABLE_XSLT=1) {
     }
 }
 
-contains(DEFINES, ENABLE_FILTERS=1) {
+enable?(FILTERS) {
     SOURCES += \
         platform/graphics/filters/CustomFilterGlobalContext.cpp \
         platform/graphics/filters/CustomFilterOperation.cpp \
         platform/graphics/filters/CustomFilterProgram.cpp \
+        platform/graphics/filters/CustomFilterProgramInfo.cpp \
         platform/graphics/filters/CustomFilterCompiledProgram.cpp \
         platform/graphics/filters/CustomFilterMesh.cpp \
+        platform/graphics/filters/CustomFilterMeshGenerator.cpp \
         platform/graphics/filters/CustomFilterValidatedProgram.cpp \
         platform/graphics/filters/DistantLightSource.cpp \
         platform/graphics/filters/FEBlend.cpp \
@@ -3472,7 +3493,7 @@ contains(DEFINES, ENABLE_FILTERS=1) {
         platform/graphics/filters/arm/FELightingNEON.cpp \
 }
 
-contains(DEFINES, ENABLE_MATHML=1) {
+enable?(MATHML) {
     SOURCES += \
         mathml/MathMLElement.cpp \
         mathml/MathMLInlineContainerElement.cpp \
@@ -3488,13 +3509,16 @@ contains(DEFINES, ENABLE_MATHML=1) {
         rendering/mathml/RenderMathMLSquareRoot.cpp \
         rendering/mathml/RenderMathMLSubSup.cpp \
         rendering/mathml/RenderMathMLUnderOver.cpp
+
+    ALL_IN_ONE_SOURCES +=
+        mathml/MathMLAllInOne.cpp
 }
 
-contains(DEFINES, ENABLE_TEXT_AUTOSIZING=1) {
+enable?(TEXT_AUTOSIZING) {
     SOURCES += # FIXME!
 }
 
-contains(DEFINES, ENABLE_DEVICE_ORIENTATION=1) {
+enable?(DEVICE_ORIENTATION) {
     HEADERS += \
         platform/qt/DeviceMotionClientQt.h \
         platform/qt/DeviceMotionProviderQt.h \
@@ -3507,7 +3531,7 @@ contains(DEFINES, ENABLE_DEVICE_ORIENTATION=1) {
         platform/qt/DeviceOrientationProviderQt.cpp
 }
 
-contains(DEFINES, ENABLE_SVG=1) {
+enable?(SVG) {
     SOURCES += \
 # TODO: this-one-is-not-auto-added! FIXME! tmp/SVGElementFactory.cpp \
         bindings/js/JSSVGElementInstanceCustom.cpp \
@@ -3525,6 +3549,54 @@ contains(DEFINES, ENABLE_SVG=1) {
         rendering/svg/RenderSVGPath.cpp \
         rendering/svg/RenderSVGRect.cpp \
         rendering/svg/RenderSVGShape.cpp \
+        rendering/svg/RenderSVGBlock.cpp \
+        rendering/svg/RenderSVGContainer.cpp \
+        rendering/svg/RenderSVGForeignObject.cpp \
+        rendering/svg/RenderSVGGradientStop.cpp \
+        rendering/svg/RenderSVGHiddenContainer.cpp \
+        rendering/svg/RenderSVGImage.cpp \
+        rendering/svg/RenderSVGInline.cpp \
+        rendering/svg/RenderSVGInlineText.cpp \
+        rendering/svg/RenderSVGModelObject.cpp \
+        rendering/svg/RenderSVGResource.cpp \
+        rendering/svg/RenderSVGResourceClipper.cpp \
+        rendering/svg/RenderSVGResourceContainer.cpp \
+        rendering/svg/RenderSVGResourceFilter.cpp \
+        rendering/svg/RenderSVGResourceFilterPrimitive.cpp \
+        rendering/svg/RenderSVGResourceGradient.cpp \
+        rendering/svg/RenderSVGResourceLinearGradient.cpp \
+        rendering/svg/RenderSVGResourceMarker.cpp \
+        rendering/svg/RenderSVGResourceMasker.cpp \
+        rendering/svg/RenderSVGResourcePattern.cpp \
+        rendering/svg/RenderSVGResourceRadialGradient.cpp \
+        rendering/svg/RenderSVGResourceSolidColor.cpp \
+        rendering/svg/RenderSVGRoot.cpp \
+        rendering/svg/RenderSVGTSpan.cpp \
+        rendering/svg/RenderSVGText.cpp \
+        rendering/svg/RenderSVGTextPath.cpp \
+        rendering/svg/RenderSVGTransformableContainer.cpp \
+        rendering/svg/RenderSVGViewportContainer.cpp \
+        rendering/svg/SVGInlineFlowBox.cpp \
+        rendering/svg/SVGInlineTextBox.cpp \
+        rendering/svg/SVGPathData.cpp \
+        rendering/svg/SVGRenderSupport.cpp \
+        rendering/svg/SVGRenderTreeAsText.cpp \
+        rendering/svg/SVGRenderingContext.cpp \
+        rendering/svg/SVGResources.cpp \
+        rendering/svg/SVGResourcesCache.cpp \
+        rendering/svg/SVGResourcesCycleSolver.cpp \
+        rendering/svg/SVGRootInlineBox.cpp \
+        rendering/svg/SVGTextChunk.cpp \
+        rendering/svg/SVGTextChunkBuilder.cpp \
+        rendering/svg/SVGTextLayoutAttributes.cpp \
+        rendering/svg/SVGTextLayoutAttributesBuilder.cpp \
+        rendering/svg/SVGTextLayoutEngine.cpp \
+        rendering/svg/SVGTextLayoutEngineBaseline.cpp \
+        rendering/svg/SVGTextLayoutEngineSpacing.cpp \
+        rendering/svg/SVGTextMetrics.cpp \
+        rendering/svg/SVGTextMetricsBuilder.cpp \
+        rendering/svg/SVGTextQuery.cpp \
+        rendering/svg/SVGTextRunRenderingContext.cpp \
         svg/animation/SMILTime.cpp \
         svg/animation/SMILTimeContainer.cpp \
         svg/animation/SVGSMILElement.cpp \
@@ -3534,223 +3606,169 @@ contains(DEFINES, ENABLE_SVG=1) {
         svg/graphics/SVGImage.cpp \
         svg/graphics/SVGImageCache.cpp \
         svg/properties/SVGAttributeToPropertyMap.cpp \
-        svg/properties/SVGPathSegListPropertyTearOff.cpp
+        svg/properties/SVGPathSegListPropertyTearOff.cpp \
+        svg/SVGDocumentExtensions.cpp \
+        svg/ColorDistance.cpp \
+        svg/SVGAElement.cpp \
+        svg/SVGAltGlyphDefElement.cpp \
+        svg/SVGAltGlyphElement.cpp \
+        svg/SVGAltGlyphItemElement.cpp \
+        svg/SVGAngle.cpp \
+        svg/SVGAnimateColorElement.cpp \
+        svg/SVGAnimatedAngle.cpp \
+        svg/SVGAnimatedBoolean.cpp \
+        svg/SVGAnimatedColor.cpp \
+        svg/SVGAnimatedEnumeration.cpp \
+        svg/SVGAnimatedInteger.cpp \
+        svg/SVGAnimatedIntegerOptionalInteger.cpp \
+        svg/SVGAnimatedLength.cpp \
+        svg/SVGAnimatedLengthList.cpp \
+        svg/SVGAnimatedNumber.cpp \
+        svg/SVGAnimatedNumberList.cpp \
+        svg/SVGAnimatedNumberOptionalNumber.cpp \
+        svg/SVGAnimatedPath.cpp \
+        svg/SVGAnimatedPointList.cpp \
+        svg/SVGAnimatedPreserveAspectRatio.cpp \
+        svg/SVGAnimatedRect.cpp \
+        svg/SVGAnimatedString.cpp \
+        svg/SVGAnimatedTransformList.cpp \
+        svg/SVGAnimatedType.cpp \
+        svg/SVGAnimateElement.cpp \
+        svg/SVGAnimateMotionElement.cpp \
+        svg/SVGAnimateTransformElement.cpp \
+        svg/SVGAnimationElement.cpp \
+        svg/SVGCircleElement.cpp \
+        svg/SVGClipPathElement.cpp \
+        svg/SVGColor.cpp \
+        svg/SVGComponentTransferFunctionElement.cpp \
+        svg/SVGCursorElement.cpp \
+        svg/SVGDefsElement.cpp \
+        svg/SVGDescElement.cpp \
+        svg/SVGDocument.cpp \
+        svg/SVGElement.cpp \
+        svg/SVGElementInstance.cpp \
+        svg/SVGElementInstanceList.cpp \
+        svg/SVGEllipseElement.cpp \
+        svg/SVGException.cpp \
+        svg/SVGExternalResourcesRequired.cpp \
+        svg/SVGFEBlendElement.cpp \
+        svg/SVGFEColorMatrixElement.cpp \
+        svg/SVGFEComponentTransferElement.cpp \
+        svg/SVGFECompositeElement.cpp \
+        svg/SVGFEConvolveMatrixElement.cpp \
+        svg/SVGFEDiffuseLightingElement.cpp \
+        svg/SVGFEDisplacementMapElement.cpp \
+        svg/SVGFEDistantLightElement.cpp \
+        svg/SVGFEDropShadowElement.cpp \
+        svg/SVGFEFloodElement.cpp \
+        svg/SVGFEFuncAElement.cpp \
+        svg/SVGFEFuncBElement.cpp \
+        svg/SVGFEFuncGElement.cpp \
+        svg/SVGFEFuncRElement.cpp \
+        svg/SVGFEGaussianBlurElement.cpp \
+        svg/SVGFEImageElement.cpp \
+        svg/SVGFELightElement.cpp \
+        svg/SVGFEMergeElement.cpp \
+        svg/SVGFEMergeNodeElement.cpp \
+        svg/SVGFEMorphologyElement.cpp \
+        svg/SVGFEOffsetElement.cpp \
+        svg/SVGFEPointLightElement.cpp \
+        svg/SVGFESpecularLightingElement.cpp \
+        svg/SVGFESpotLightElement.cpp \
+        svg/SVGFETileElement.cpp \
+        svg/SVGFETurbulenceElement.cpp \
+        svg/SVGFilterElement.cpp \
+        svg/SVGFilterPrimitiveStandardAttributes.cpp \
+        svg/SVGFitToViewBox.cpp \
+        svg/SVGFontData.cpp \
+        svg/SVGFontElement.cpp \
+        svg/SVGFontFaceElement.cpp \
+        svg/SVGFontFaceFormatElement.cpp \
+        svg/SVGFontFaceNameElement.cpp \
+        svg/SVGFontFaceSrcElement.cpp \
+        svg/SVGFontFaceUriElement.cpp \
+        svg/SVGForeignObjectElement.cpp \
+        svg/SVGGElement.cpp \
+        svg/SVGGlyphElement.cpp \
+        svg/SVGGlyphRefElement.cpp \
+        svg/SVGGradientElement.cpp \
+        svg/SVGHKernElement.cpp \
+        svg/SVGImageElement.cpp \
+        svg/SVGImageLoader.cpp \
+        svg/SVGLangSpace.cpp \
+        svg/SVGLength.cpp \
+        svg/SVGLengthContext.cpp \
+        svg/SVGLengthList.cpp \
+        svg/SVGLinearGradientElement.cpp \
+        svg/SVGLineElement.cpp \
+        svg/SVGLocatable.cpp \
+        svg/SVGMarkerElement.cpp \
+        svg/SVGMaskElement.cpp \
+        svg/SVGMetadataElement.cpp \
+        svg/SVGMissingGlyphElement.cpp \
+        svg/SVGMPathElement.cpp \
+        svg/SVGNumberList.cpp \
+        svg/SVGPaint.cpp \
+        svg/SVGParserUtilities.cpp \
+        svg/SVGPathBlender.cpp \
+        svg/SVGPathBuilder.cpp \
+        svg/SVGPathByteStreamBuilder.cpp \
+        svg/SVGPathByteStreamSource.cpp \
+        svg/SVGPathElement.cpp \
+        svg/SVGPathParser.cpp \
+        svg/SVGPathSegList.cpp \
+        svg/SVGPathSegListBuilder.cpp \
+        svg/SVGPathSegListSource.cpp \
+        svg/SVGPathStringBuilder.cpp \
+        svg/SVGPathStringSource.cpp \
+        svg/SVGPathTraversalStateBuilder.cpp \
+        svg/SVGPathUtilities.cpp \
+        svg/SVGPatternElement.cpp \
+        svg/SVGPointList.cpp \
+        svg/SVGPolyElement.cpp \
+        svg/SVGPolygonElement.cpp \
+        svg/SVGPolylineElement.cpp \
+        svg/SVGPreserveAspectRatio.cpp \
+        svg/SVGRadialGradientElement.cpp \
+        svg/SVGRectElement.cpp \
+        svg/SVGSVGElement.cpp \
+        svg/SVGScriptElement.cpp \
+        svg/SVGSetElement.cpp \
+        svg/SVGStopElement.cpp \
+        svg/SVGStringList.cpp \
+        svg/SVGStylable.cpp \
+        svg/SVGStyleElement.cpp \
+        svg/SVGStyledElement.cpp \
+        svg/SVGStyledLocatableElement.cpp \
+        svg/SVGStyledTransformableElement.cpp \
+        svg/SVGSwitchElement.cpp \
+        svg/SVGSymbolElement.cpp \
+        svg/SVGTRefElement.cpp \
+        svg/SVGTSpanElement.cpp \
+        svg/SVGTests.cpp \
+        svg/SVGTextContentElement.cpp \
+        svg/SVGTextElement.cpp \
+        svg/SVGTextPathElement.cpp \
+        svg/SVGTextPositioningElement.cpp \
+        svg/SVGTitleElement.cpp \
+        svg/SVGTransform.cpp \
+        svg/SVGTransformDistance.cpp \
+        svg/SVGTransformList.cpp \
+        svg/SVGTransformable.cpp \
+        svg/SVGURIReference.cpp \
+        svg/SVGUseElement.cpp \
+        svg/SVGVKernElement.cpp \
+        svg/SVGViewElement.cpp \
+        svg/SVGViewSpec.cpp \
+        svg/SVGZoomAndPan.cpp \
+        svg/SVGZoomEvent.cpp
 
-    use_all_in_one_files {
-         # Using all in one files to avoid memory exhaustion
-         # during the linking phase.
-         SOURCES += \
-              rendering/svg/RenderSVGAllInOne.cpp \
-              svg/SVGAllInOne.cpp
-    } else {
-         SOURCES += \
-              rendering/svg/RenderSVGBlock.cpp \
-              rendering/svg/RenderSVGContainer.cpp \
-              rendering/svg/RenderSVGForeignObject.cpp \
-              rendering/svg/RenderSVGGradientStop.cpp \
-              rendering/svg/RenderSVGHiddenContainer.cpp \
-              rendering/svg/RenderSVGImage.cpp \
-              rendering/svg/RenderSVGInline.cpp \
-              rendering/svg/RenderSVGInlineText.cpp \
-              rendering/svg/RenderSVGModelObject.cpp \
-              rendering/svg/RenderSVGResource.cpp \
-              rendering/svg/RenderSVGResourceClipper.cpp \
-              rendering/svg/RenderSVGResourceContainer.cpp \
-              rendering/svg/RenderSVGResourceFilter.cpp \
-              rendering/svg/RenderSVGResourceFilterPrimitive.cpp \
-              rendering/svg/RenderSVGResourceGradient.cpp \
-              rendering/svg/RenderSVGResourceLinearGradient.cpp \
-              rendering/svg/RenderSVGResourceMarker.cpp \
-              rendering/svg/RenderSVGResourceMasker.cpp \
-              rendering/svg/RenderSVGResourcePattern.cpp \
-              rendering/svg/RenderSVGResourceRadialGradient.cpp \
-              rendering/svg/RenderSVGResourceSolidColor.cpp \
-              rendering/svg/RenderSVGRoot.cpp \
-              rendering/svg/RenderSVGTSpan.cpp \
-              rendering/svg/RenderSVGText.cpp \
-              rendering/svg/RenderSVGTextPath.cpp \
-              rendering/svg/RenderSVGTransformableContainer.cpp \
-              rendering/svg/RenderSVGViewportContainer.cpp \
-              rendering/svg/SVGInlineFlowBox.cpp \
-              rendering/svg/SVGInlineTextBox.cpp \
-              rendering/svg/SVGPathData.cpp \
-              rendering/svg/SVGRenderSupport.cpp \
-              rendering/svg/SVGRenderTreeAsText.cpp \
-              rendering/svg/SVGRenderingContext.cpp \
-              rendering/svg/SVGResources.cpp \
-              rendering/svg/SVGResourcesCache.cpp \
-              rendering/svg/SVGResourcesCycleSolver.cpp \
-              rendering/svg/SVGRootInlineBox.cpp \
-              rendering/svg/SVGTextChunk.cpp \
-              rendering/svg/SVGTextChunkBuilder.cpp \
-              rendering/svg/SVGTextLayoutAttributes.cpp \
-              rendering/svg/SVGTextLayoutAttributesBuilder.cpp \
-              rendering/svg/SVGTextLayoutEngine.cpp \
-              rendering/svg/SVGTextLayoutEngineBaseline.cpp \
-              rendering/svg/SVGTextLayoutEngineSpacing.cpp \
-              rendering/svg/SVGTextMetrics.cpp \
-              rendering/svg/SVGTextMetricsBuilder.cpp \
-              rendering/svg/SVGTextQuery.cpp \
-              rendering/svg/SVGTextRunRenderingContext.cpp \
-              svg/SVGDocumentExtensions.cpp \
-              svg/ColorDistance.cpp \
-              svg/SVGAElement.cpp \
-              svg/SVGAltGlyphDefElement.cpp \
-              svg/SVGAltGlyphElement.cpp \
-              svg/SVGAltGlyphItemElement.cpp \
-              svg/SVGAngle.cpp \
-              svg/SVGAnimateColorElement.cpp \
-              svg/SVGAnimatedAngle.cpp \
-              svg/SVGAnimatedBoolean.cpp \
-              svg/SVGAnimatedColor.cpp \
-              svg/SVGAnimatedEnumeration.cpp \
-              svg/SVGAnimatedInteger.cpp \
-              svg/SVGAnimatedIntegerOptionalInteger.cpp \
-              svg/SVGAnimatedLength.cpp \
-              svg/SVGAnimatedLengthList.cpp \
-              svg/SVGAnimatedNumber.cpp \
-              svg/SVGAnimatedNumberList.cpp \
-              svg/SVGAnimatedNumberOptionalNumber.cpp \
-              svg/SVGAnimatedPath.cpp \
-              svg/SVGAnimatedPointList.cpp \
-              svg/SVGAnimatedPreserveAspectRatio.cpp \
-              svg/SVGAnimatedRect.cpp \
-              svg/SVGAnimatedString.cpp \
-              svg/SVGAnimatedTransformList.cpp \
-              svg/SVGAnimatedType.cpp \
-              svg/SVGAnimateElement.cpp \
-              svg/SVGAnimateMotionElement.cpp \
-              svg/SVGAnimateTransformElement.cpp \
-              svg/SVGAnimationElement.cpp \
-              svg/SVGCircleElement.cpp \
-              svg/SVGClipPathElement.cpp \
-              svg/SVGColor.cpp \
-              svg/SVGComponentTransferFunctionElement.cpp \
-              svg/SVGCursorElement.cpp \
-              svg/SVGDefsElement.cpp \
-              svg/SVGDescElement.cpp \
-              svg/SVGDocument.cpp \
-              svg/SVGElement.cpp \
-              svg/SVGElementInstance.cpp \
-              svg/SVGElementInstanceList.cpp \
-              svg/SVGEllipseElement.cpp \
-              svg/SVGException.cpp \
-              svg/SVGExternalResourcesRequired.cpp \
-              svg/SVGFEBlendElement.cpp \
-              svg/SVGFEColorMatrixElement.cpp \
-              svg/SVGFEComponentTransferElement.cpp \
-              svg/SVGFECompositeElement.cpp \
-              svg/SVGFEConvolveMatrixElement.cpp \
-              svg/SVGFEDiffuseLightingElement.cpp \
-              svg/SVGFEDisplacementMapElement.cpp \
-              svg/SVGFEDistantLightElement.cpp \
-              svg/SVGFEDropShadowElement.cpp \
-              svg/SVGFEFloodElement.cpp \
-              svg/SVGFEFuncAElement.cpp \
-              svg/SVGFEFuncBElement.cpp \
-              svg/SVGFEFuncGElement.cpp \
-              svg/SVGFEFuncRElement.cpp \
-              svg/SVGFEGaussianBlurElement.cpp \
-              svg/SVGFEImageElement.cpp \
-              svg/SVGFELightElement.cpp \
-              svg/SVGFEMergeElement.cpp \
-              svg/SVGFEMergeNodeElement.cpp \
-              svg/SVGFEMorphologyElement.cpp \
-              svg/SVGFEOffsetElement.cpp \
-              svg/SVGFEPointLightElement.cpp \
-              svg/SVGFESpecularLightingElement.cpp \
-              svg/SVGFESpotLightElement.cpp \
-              svg/SVGFETileElement.cpp \
-              svg/SVGFETurbulenceElement.cpp \
-              svg/SVGFilterElement.cpp \
-              svg/SVGFilterPrimitiveStandardAttributes.cpp \
-              svg/SVGFitToViewBox.cpp \
-              svg/SVGFontData.cpp \
-              svg/SVGFontElement.cpp \
-              svg/SVGFontFaceElement.cpp \
-              svg/SVGFontFaceFormatElement.cpp \
-              svg/SVGFontFaceNameElement.cpp \
-              svg/SVGFontFaceSrcElement.cpp \
-              svg/SVGFontFaceUriElement.cpp \
-              svg/SVGForeignObjectElement.cpp \
-              svg/SVGGElement.cpp \
-              svg/SVGGlyphElement.cpp \
-              svg/SVGGlyphRefElement.cpp \
-              svg/SVGGradientElement.cpp \
-              svg/SVGHKernElement.cpp \
-              svg/SVGImageElement.cpp \
-              svg/SVGImageLoader.cpp \
-              svg/SVGLangSpace.cpp \
-              svg/SVGLength.cpp \
-              svg/SVGLengthContext.cpp \
-              svg/SVGLengthList.cpp \
-              svg/SVGLinearGradientElement.cpp \
-              svg/SVGLineElement.cpp \
-              svg/SVGLocatable.cpp \
-              svg/SVGMarkerElement.cpp \
-              svg/SVGMaskElement.cpp \
-              svg/SVGMetadataElement.cpp \
-              svg/SVGMissingGlyphElement.cpp \
-              svg/SVGMPathElement.cpp \
-              svg/SVGNumberList.cpp \
-              svg/SVGPaint.cpp \
-              svg/SVGParserUtilities.cpp \
-              svg/SVGPathBlender.cpp \
-              svg/SVGPathBuilder.cpp \
-              svg/SVGPathByteStreamBuilder.cpp \
-              svg/SVGPathByteStreamSource.cpp \
-              svg/SVGPathElement.cpp \
-              svg/SVGPathParser.cpp \
-              svg/SVGPathSegList.cpp \
-              svg/SVGPathSegListBuilder.cpp \
-              svg/SVGPathSegListSource.cpp \
-              svg/SVGPathStringBuilder.cpp \
-              svg/SVGPathStringSource.cpp \
-              svg/SVGPathTraversalStateBuilder.cpp \
-              svg/SVGPathUtilities.cpp \
-              svg/SVGPatternElement.cpp \
-              svg/SVGPointList.cpp \
-              svg/SVGPolyElement.cpp \
-              svg/SVGPolygonElement.cpp \
-              svg/SVGPolylineElement.cpp \
-              svg/SVGPreserveAspectRatio.cpp \
-              svg/SVGRadialGradientElement.cpp \
-              svg/SVGRectElement.cpp \
-              svg/SVGSVGElement.cpp \
-              svg/SVGScriptElement.cpp \
-              svg/SVGSetElement.cpp \
-              svg/SVGStopElement.cpp \
-              svg/SVGStringList.cpp \
-              svg/SVGStylable.cpp \
-              svg/SVGStyleElement.cpp \
-              svg/SVGStyledElement.cpp \
-              svg/SVGStyledLocatableElement.cpp \
-              svg/SVGStyledTransformableElement.cpp \
-              svg/SVGSwitchElement.cpp \
-              svg/SVGSymbolElement.cpp \
-              svg/SVGTRefElement.cpp \
-              svg/SVGTSpanElement.cpp \
-              svg/SVGTests.cpp \
-              svg/SVGTextContentElement.cpp \
-              svg/SVGTextElement.cpp \
-              svg/SVGTextPathElement.cpp \
-              svg/SVGTextPositioningElement.cpp \
-              svg/SVGTitleElement.cpp \
-              svg/SVGTransform.cpp \
-              svg/SVGTransformDistance.cpp \
-              svg/SVGTransformList.cpp \
-              svg/SVGTransformable.cpp \
-              svg/SVGURIReference.cpp \
-              svg/SVGUseElement.cpp \
-              svg/SVGVKernElement.cpp \
-              svg/SVGViewElement.cpp \
-              svg/SVGViewSpec.cpp \
-              svg/SVGZoomAndPan.cpp \
-              svg/SVGZoomEvent.cpp
-   }
+    ALL_IN_ONE_SOURCES += \
+        rendering/svg/RenderSVGAllInOne.cpp \
+        svg/SVGAllInOne.cpp
 }
 
-contains(DEFINES, ENABLE_JAVASCRIPT_DEBUGGER=1) {
+enable?(JAVASCRIPT_DEBUGGER) {
     SOURCES += \
         bindings/js/JSJavaScriptCallFrameCustom.cpp \
         bindings/js/ScriptProfiler.cpp \
@@ -3758,7 +3776,7 @@ contains(DEFINES, ENABLE_JAVASCRIPT_DEBUGGER=1) {
 }
 
 
-contains(DEFINES, ENABLE_VIDEO_TRACK=1) {
+enable?(VIDEO_TRACK) {
     SOURCES += \
         bindings/js/JSTextTrackCueCustom.cpp \
         bindings/js/JSTextTrackCustom.cpp \
@@ -3769,7 +3787,7 @@ contains(DEFINES, ENABLE_VIDEO_TRACK=1) {
         bindings/js/JSTextTrackListCustom.cpp
 }
 
-contains(DEFINES, ENABLE_WEB_SOCKETS=1) {
+enable?(WEB_SOCKETS) {
     HEADERS += \
         Modules/websockets/CloseEvent.h \
         Modules/websockets/ThreadableWebSocketChannel.h \
@@ -3808,7 +3826,7 @@ contains(DEFINES, ENABLE_WEB_SOCKETS=1) {
     SOURCES += \
         bindings/js/JSWebSocketCustom.cpp
 
-    contains(DEFINES, ENABLE_WORKERS=1) {
+    enable?(WORKERS) {
         HEADERS += \
             Modules/websockets/WorkerThreadableWebSocketChannel.h
 
@@ -3817,7 +3835,7 @@ contains(DEFINES, ENABLE_WEB_SOCKETS=1) {
     }
 }
 
-contains(DEFINES, ENABLE_WEBGL=1) {
+enable?(WEBGL) {
     HEADERS += \
         html/canvas/CanvasContextAttributes.h \
         html/canvas/WebGLObject.h \
@@ -3883,7 +3901,7 @@ contains(DEFINES, ENABLE_WEBGL=1) {
         html/canvas/WebGLVertexArrayObjectOES.cpp
 }
 
-contains(DEFINES, WTF_USE_3D_GRAPHICS=1) {
+use?(3D_GRAPHICS) {
     HEADERS += \
         platform/graphics/ANGLEWebKitBridge.h \
         platform/graphics/Extensions3D.h \
@@ -3928,175 +3946,14 @@ contains(DEFINES, WTF_USE_3D_GRAPHICS=1) {
             platform/graphics/opengl/GraphicsContext3DOpenGLCommon.cpp
     }
 
-    ANGLE_DIR = $$replace(PWD, "WebCore", "ThirdParty/ANGLE")
-
-    INCLUDEPATH += \
-        $$ANGLE_DIR/src \
-        $$ANGLE_DIR/src/compiler/preprocessor/new \
-        $$ANGLE_DIR/include
-
-    ANGLE_HEADERS += \
-        $$ANGLE_DIR/src/compiler/BaseTypes.h \
-        $$ANGLE_DIR/src/compiler/BuiltInFunctionEmulator.h \
-        $$ANGLE_DIR/src/compiler/Common.h \
-        $$ANGLE_DIR/src/compiler/ConstantUnion.h \
-        $$ANGLE_DIR/src/compiler/debug.h \
-        $$ANGLE_DIR/src/compiler/depgraph/DependencyGraph.h \
-        $$ANGLE_DIR/src/compiler/depgraph/DependencyGraphBuilder.h \
-        $$ANGLE_DIR/src/compiler/depgraph/DependencyGraphOutput.h \
-        $$ANGLE_DIR/src/compiler/DetectDiscontinuity.h \
-        $$ANGLE_DIR/src/compiler/DetectRecursion.h \
-        $$ANGLE_DIR/src/compiler/Diagnostics.h \
-        $$ANGLE_DIR/src/compiler/DirectiveHandler.h \
-        $$ANGLE_DIR/src/compiler/ExtensionBehavior.h \
-        $$ANGLE_DIR/src/compiler/ForLoopUnroll.h \
-        $$ANGLE_DIR/src/compiler/glslang.h \
-        $$ANGLE_DIR/src/compiler/InfoSink.h \
-        $$ANGLE_DIR/src/compiler/InitializeDll.h \
-        $$ANGLE_DIR/src/compiler/InitializeGlobals.h \
-        $$ANGLE_DIR/src/compiler/Initialize.h \
-        $$ANGLE_DIR/src/compiler/InitializeParseContext.h \
-        $$ANGLE_DIR/src/compiler/intermediate.h \
-        $$ANGLE_DIR/src/compiler/localintermediate.h \
-        $$ANGLE_DIR/src/compiler/MMap.h \
-        $$ANGLE_DIR/src/compiler/MapLongVariableNames.h \
-        $$ANGLE_DIR/src/compiler/osinclude.h \
-        $$ANGLE_DIR/src/compiler/Pragma.h \
-        $$ANGLE_DIR/src/compiler/preprocessor/atom.h \
-        $$ANGLE_DIR/src/compiler/preprocessor/compile.h \
-        $$ANGLE_DIR/src/compiler/preprocessor/cpp.h \
-        $$ANGLE_DIR/src/compiler/preprocessor/length_limits.h \
-        $$ANGLE_DIR/src/compiler/preprocessor/memory.h \
-        $$ANGLE_DIR/src/compiler/preprocessor/new/Diagnostics.h \
-        $$ANGLE_DIR/src/compiler/preprocessor/new/DirectiveHandler.h \
-        $$ANGLE_DIR/src/compiler/preprocessor/new/DirectiveParser.h \
-        $$ANGLE_DIR/src/compiler/preprocessor/new/Input.h \
-        $$ANGLE_DIR/src/compiler/preprocessor/new/Lexer.h \
-        $$ANGLE_DIR/src/compiler/preprocessor/new/Macro.h \
-        $$ANGLE_DIR/src/compiler/preprocessor/new/MacroExpander.h \
-        $$ANGLE_DIR/src/compiler/preprocessor/new/Preprocessor.h \
-        $$ANGLE_DIR/src/compiler/preprocessor/new/SourceLocation.h \
-        $$ANGLE_DIR/src/compiler/preprocessor/new/Token.h \
-        $$ANGLE_DIR/src/compiler/preprocessor/new/Tokenizer.h \
-        $$ANGLE_DIR/src/compiler/preprocessor/parser.h \
-        $$ANGLE_DIR/src/compiler/preprocessor/preprocess.h \
-        $$ANGLE_DIR/src/compiler/preprocessor/scanner.h \
-        $$ANGLE_DIR/src/compiler/preprocessor/slglobals.h \
-        $$ANGLE_DIR/src/compiler/preprocessor/symbols.h \
-        $$ANGLE_DIR/src/compiler/preprocessor/tokens.h \
-        $$ANGLE_DIR/src/compiler/OutputESSL.h \
-        $$ANGLE_DIR/src/compiler/OutputGLSL.h \
-        $$ANGLE_DIR/src/compiler/OutputGLSLBase.h \
-        $$ANGLE_DIR/src/compiler/OutputHLSL.h \
-        $$ANGLE_DIR/src/compiler/ParseHelper.h \
-        $$ANGLE_DIR/src/compiler/PoolAlloc.h \
-        $$ANGLE_DIR/src/compiler/QualifierAlive.h \
-        $$ANGLE_DIR/src/compiler/RemoveTree.h \
-        $$ANGLE_DIR/src/compiler/RenameFunction.h \
-        $$ANGLE_DIR/src/compiler/SearchSymbol.h \
-        $$ANGLE_DIR/src/compiler/ShHandle.h \
-        $$ANGLE_DIR/src/compiler/SymbolTable.h \
-        $$ANGLE_DIR/src/compiler/timing/RestrictFragmentShaderTiming.h \
-        $$ANGLE_DIR/src/compiler/timing/RestrictVertexShaderTiming.h \
-        $$ANGLE_DIR/src/compiler/TranslatorESSL.h \
-        $$ANGLE_DIR/src/compiler/TranslatorGLSL.h \
-        $$ANGLE_DIR/src/compiler/TranslatorHLSL.h \
-        $$ANGLE_DIR/src/compiler/Types.h \
-        $$ANGLE_DIR/src/compiler/UnfoldShortCircuit.h \
-        $$ANGLE_DIR/src/compiler/util.h \
-        $$ANGLE_DIR/src/compiler/ValidateLimitations.h \
-        $$ANGLE_DIR/src/compiler/VariableInfo.h \
-        $$ANGLE_DIR/src/compiler/VersionGLSL.h
-
-    HEADERS += $$ANGLE_HEADERS
-
-    ANGLE_SOURCES += \
-        $$ANGLE_DIR/src/compiler/BuiltInFunctionEmulator.cpp \
-        $$ANGLE_DIR/src/compiler/CodeGenGLSL.cpp \
-        $$ANGLE_DIR/src/compiler/Compiler.cpp \
-        $$ANGLE_DIR/src/compiler/debug.cpp \
-        $$ANGLE_DIR/src/compiler/depgraph/DependencyGraph.cpp \
-        $$ANGLE_DIR/src/compiler/depgraph/DependencyGraphBuilder.cpp \
-        $$ANGLE_DIR/src/compiler/depgraph/DependencyGraphOutput.cpp \
-        $$ANGLE_DIR/src/compiler/depgraph/DependencyGraphTraverse.cpp \
-        $$ANGLE_DIR/src/compiler/DetectDiscontinuity.cpp \
-        $$ANGLE_DIR/src/compiler/DetectRecursion.cpp \
-        $$ANGLE_DIR/src/compiler/Diagnostics.cpp \
-        $$ANGLE_DIR/src/compiler/DirectiveHandler.cpp \
-        $$ANGLE_DIR/src/compiler/ForLoopUnroll.cpp \
-        $$ANGLE_DIR/src/compiler/InfoSink.cpp \
-        $$ANGLE_DIR/src/compiler/Initialize.cpp \
-        $$ANGLE_DIR/src/compiler/InitializeDll.cpp \
-        $$ANGLE_DIR/src/compiler/InitializeParseContext.cpp \ 
-        $$ANGLE_DIR/src/compiler/Intermediate.cpp \
-        $$ANGLE_DIR/src/compiler/intermOut.cpp \
-        $$ANGLE_DIR/src/compiler/IntermTraverse.cpp \
-        $$ANGLE_DIR/src/compiler/MapLongVariableNames.cpp \
-        $$ANGLE_DIR/src/compiler/ossource_posix.cpp \
-        $$ANGLE_DIR/src/compiler/OutputESSL.cpp \
-        $$ANGLE_DIR/src/compiler/OutputGLSL.cpp \
-        $$ANGLE_DIR/src/compiler/OutputGLSLBase.cpp \
-        $$ANGLE_DIR/src/compiler/OutputHLSL.cpp \
-        $$ANGLE_DIR/src/compiler/parseConst.cpp \
-        $$ANGLE_DIR/src/compiler/ParseHelper.cpp \
-        $$ANGLE_DIR/src/compiler/PoolAlloc.cpp \
-        $$ANGLE_DIR/src/compiler/QualifierAlive.cpp \
-        $$ANGLE_DIR/src/compiler/RemoveTree.cpp \
-        $$ANGLE_DIR/src/compiler/SearchSymbol.cpp \
-        $$ANGLE_DIR/src/compiler/ShaderLang.cpp \
-        $$ANGLE_DIR/src/compiler/SymbolTable.cpp \
-        $$ANGLE_DIR/src/compiler/timing/RestrictFragmentShaderTiming.cpp \
-        $$ANGLE_DIR/src/compiler/timing/RestrictVertexShaderTiming.cpp \
-        $$ANGLE_DIR/src/compiler/TranslatorESSL.cpp \
-        $$ANGLE_DIR/src/compiler/TranslatorGLSL.cpp \
-        $$ANGLE_DIR/src/compiler/TranslatorHLSL.cpp \
-        $$ANGLE_DIR/src/compiler/UnfoldShortCircuit.cpp \
-        $$ANGLE_DIR/src/compiler/util.cpp \
-        $$ANGLE_DIR/src/compiler/ValidateLimitations.cpp \
-        $$ANGLE_DIR/src/compiler/VariableInfo.cpp \
-        $$ANGLE_DIR/src/compiler/VersionGLSL.cpp
-
-    SOURCES += \
-        $$ANGLE_DIR/src/compiler/preprocessor/atom.c \
-        $$ANGLE_DIR/src/compiler/preprocessor/cpp.c \
-        $$ANGLE_DIR/src/compiler/preprocessor/cppstruct.c \
-        $$ANGLE_DIR/src/compiler/preprocessor/memory.c \
-        $$ANGLE_DIR/src/compiler/preprocessor/new/DiagnosticsBase.cpp \
-        $$ANGLE_DIR/src/compiler/preprocessor/new/DirectiveHandlerBase.cpp \
-        $$ANGLE_DIR/src/compiler/preprocessor/new/DirectiveParser.cpp \
-        $$ANGLE_DIR/src/compiler/preprocessor/new/Input.cpp \
-        $$ANGLE_DIR/src/compiler/preprocessor/new/Lexer.cpp \
-        $$ANGLE_DIR/src/compiler/preprocessor/new/Macro.cpp \
-        $$ANGLE_DIR/src/compiler/preprocessor/new/MacroExpander.cpp \
-        $$ANGLE_DIR/src/compiler/preprocessor/new/Preprocessor.cpp \
-        $$ANGLE_DIR/src/compiler/preprocessor/new/Token.cpp \
-        $$ANGLE_DIR/src/compiler/preprocessor/scanner.c \
-        $$ANGLE_DIR/src/compiler/preprocessor/symbols.c \
-        $$ANGLE_DIR/src/compiler/preprocessor/tokens.c
-
-    *g++* {
-        ANGLE_CFLAGS += -Wno-unused-variable
-        ANGLE_CFLAGS += -Wno-missing-noreturn
-        ANGLE_CFLAGS += -Wno-unused-function
-        ANGLE_CFLAGS += -Wno-reorder
-        ANGLE_CFLAGS += -Wno-error
-
-        angle_cxx.commands = $$QMAKE_CXX -c $(CXXFLAGS) $$ANGLE_CFLAGS $(INCPATH) ${QMAKE_FILE_IN} -o ${QMAKE_FILE_OUT}
-        angle_cxx.output = ${QMAKE_VAR_OBJECTS_DIR}${QMAKE_FILE_BASE}$$QMAKE_EXT_OBJ
-        anglc_cxx.dependency_type = TYPE_C
-        angle_cxx.depends = $$ANGLE_HEADERS
-        angle_cxx.input = ANGLE_SOURCES
-        QMAKE_EXTRA_COMPILERS += angle_cxx
-    } else {
-        SOURCES += $$ANGLE_SOURCES
-    }
+    WEBKIT += angle
 
     CONFIG += opengl-shims
     INCLUDEPATH += platform/graphics/gpu
 }
 
 
-contains(DEFINES, ENABLE_MHTML=1) {
+enable?(MHTML) {
 
     INCLUDEPATH += $$PWD/loader/archive/mhtml
 
@@ -4112,23 +3969,23 @@ contains(DEFINES, ENABLE_MHTML=1) {
         page/PageSerializer.cpp
 }
 
-contains(DEFINES, ENABLE_UNDO_MANAGER=1) {
+enable?(UNDO_MANAGER) {
     SOURCES += \
         editing/UndoManager.cpp
     HEADERS += \
         editing/UndoManager.h
 }
 
-contains(DEFINES, WTF_USE_LIBPNG=1) {
+use?(LIBPNG) {
     SOURCES += platform/image-decoders/ico/ICOImageDecoder.cpp \
                platform/image-decoders/png/PNGImageDecoder.cpp
 }
 
-contains(DEFINES, WTF_USE_LIBJPEG=1) {
+use?(LIBJPEG) {
     SOURCES += platform/image-decoders/jpeg/JPEGImageDecoder.cpp
 }
 
-contains(DEFINES, WTF_USE_WEBP=1) {
+use?(WEBP) {
     HEADERS += platform/image-decoders/webp/WEBPImageDecoder.h
     SOURCES += platform/image-decoders/webp/WEBPImageDecoder.cpp
 }
@@ -4163,15 +4020,34 @@ contains(CONFIG, opengl-shims) {
     DEFINES += QT_OPENGL_SHIMS=1
 }
 
-contains(DEFINES, WTF_USE_GRAPHICS_SURFACE=1) {
+use?(GRAPHICS_SURFACE) {
     mac {
         SOURCES += platform/graphics/surfaces/mac/GraphicsSurfaceMac.cpp
         INCLUDEPATH += /System/Library/Frameworks/CoreFoundation.framework/Headers
     }
-    contains(DEFINES, HAVE_XCOMPOSITE=1)  {
+    have?(XCOMPOSITE) {
         SOURCES += platform/graphics/surfaces/qt/GraphicsSurfaceGLX.cpp
     }
 }
+
+ALL_IN_ONE_SOURCES += \
+    accessibility/AccessibilityAllInOne.cpp \
+    inspector/InspectorAllInOne.cpp \
+    loader/appcache/ApplicationCacheAllInOne.cpp \
+    platform/text/TextAllInOne.cpp \
+    rendering/style/StyleAllInOne.cpp
+
+enable?(XSLT):use?(LIBXML2) {
+    ALL_IN_ONE_SOURCES += \
+        dom/DOMAllInOne.cpp
+}
+
+# These do not compile at the moment:
+#    css/MediaAllInOne.cpp
+#    css/CSSAllInOne.cpp
+#    editing/EditingAllInOne.cpp
+#    html/HTMLElementsAllInOne.cpp
+#    rendering/RenderingAllInOne.cpp
 
 # Make sure the derived sources are built
 include(DerivedSources.pri)

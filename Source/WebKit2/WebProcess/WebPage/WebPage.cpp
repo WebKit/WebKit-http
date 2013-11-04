@@ -307,16 +307,15 @@ WebPage::WebPage(uint64_t pageID, const WebPageCreationParameters& parameters)
 
     m_page->setCanStartMedia(false);
 
-    updatePreferences(parameters.store);
-
     m_pageGroup = WebProcess::shared().webPageGroup(parameters.pageGroupData);
     m_page->setGroupName(m_pageGroup->identifier());
     m_page->setDeviceScaleFactor(parameters.deviceScaleFactor);
 
-    platformInitialize();
-
     m_drawingArea = DrawingArea::create(this, parameters);
     m_drawingArea->setPaintingEnabled(false);
+
+    updatePreferences(parameters.store);
+    platformInitialize();
 
     m_mainFrame = WebFrame::createMainFrame(this);
 
@@ -515,7 +514,7 @@ EditorState WebPage::editorState() const
     }
 
     if (selectionRoot)
-        result.editorRect = frame->view()->contentsToWindow(selectionRoot->getPixelSnappedRect());
+        result.editorRect = frame->view()->contentsToWindow(selectionRoot->pixelSnappedBoundingBox());
 
     RefPtr<Range> range;
     if (result.hasComposition && (range = frame->editor()->compositionRange())) {
@@ -1124,6 +1123,11 @@ void WebPage::setFixedLayoutSize(const IntSize& size)
         view->forceLayout();
 }
 
+void WebPage::setSuppressScrollbarAnimations(bool suppressAnimations)
+{
+    m_page->setShouldSuppressScrollbarAnimations(suppressAnimations);
+}
+
 void WebPage::setPaginationMode(uint32_t mode)
 {
     Pagination pagination = m_page->pagination();
@@ -1351,8 +1355,14 @@ static bool handleMouseEvent(const WebMouseEvent& mouseEvent, WebPage* page, boo
 
             return handled;
         }
-        case PlatformEvent::MouseReleased:
-            return frame->eventHandler()->handleMouseReleaseEvent(platformMouseEvent);
+        case PlatformEvent::MouseReleased: {
+            bool handled = frame->eventHandler()->handleMouseReleaseEvent(platformMouseEvent);
+#if PLATFORM(QT)
+            if (!handled)
+                handled = page->handleMouseReleaseEvent(platformMouseEvent);
+#endif
+            return handled;
+        }
         case PlatformEvent::MouseMoved:
             if (onlyUpdateScrollbars)
                 return frame->eventHandler()->passMouseMovedEventToScrollbars(platformMouseEvent);
@@ -1562,7 +1572,9 @@ void WebPage::highlightPotentialActivation(const IntPoint& point, const IntSize&
         // pages has a global click handler and we do not want to highlight the body.
         // Instead find the enclosing link or focusable element, or the last enclosing inline element.
         for (Node* node = adjustedNode; node; node = node->parentOrHostNode()) {
-            if (node->isMouseFocusable() || node->isLink()) {
+            if (node->isDocumentNode() || node->isFrameOwnerElement())
+                break;
+            if (node->isMouseFocusable() || node->willRespondToMouseClickEvents()) {
                 activationNode = node;
                 break;
             }
@@ -2066,15 +2078,7 @@ void WebPage::updatePreferences(const WebPreferencesStore& store)
 #if ENABLE(SMOOTH_SCROLLING)
     settings->setEnableScrollAnimator(store.getBoolValueForKey(WebPreferencesKey::scrollAnimatorEnabledKey()));
 #endif
-
-    // <rdar://problem/10697417>: It is necessary to force compositing when accelerate drawing
-    // is enabled on Mac so that scrollbars are always in their own layers.
-#if PLATFORM(MAC)
-    if (settings->acceleratedDrawingEnabled())
-        settings->setForceCompositingMode(LayerTreeHost::supportsAcceleratedCompositing());
-    else
-#endif
-        settings->setForceCompositingMode(store.getBoolValueForKey(WebPreferencesKey::forceCompositingModeKey()) && LayerTreeHost::supportsAcceleratedCompositing());
+    settings->setInteractiveFormValidationEnabled(store.getBoolValueForKey(WebPreferencesKey::interactiveFormValidationEnabledKey()));
 
 #if ENABLE(SQL_DATABASE)
     AbstractDatabase::setIsAvailable(store.getBoolValueForKey(WebPreferencesKey::databasesEnabledKey()));
@@ -2111,7 +2115,7 @@ void WebPage::updatePreferences(const WebPreferencesStore& store)
 #endif
 
     settings->setShouldRespectImageOrientation(store.getBoolValueForKey(WebPreferencesKey::shouldRespectImageOrientationKey()));
-    settings->setThirdPartyStorageBlockingEnabled(store.getBoolValueForKey(WebPreferencesKey::thirdPartyStorageBlockingEnabledKey()));
+    settings->setStorageBlockingPolicy(static_cast<SecurityOrigin::StorageBlockingPolicy>(store.getUInt32ValueForKey(WebPreferencesKey::storageBlockingPolicyKey())));
 
     settings->setDiagnosticLoggingEnabled(store.getBoolValueForKey(WebPreferencesKey::diagnosticLoggingEnabledKey()));
 
@@ -2120,7 +2124,7 @@ void WebPage::updatePreferences(const WebPreferencesStore& store)
     platformPreferencesDidChange(store);
 
     if (m_drawingArea)
-        m_drawingArea->updatePreferences();
+        m_drawingArea->updatePreferences(store);
 }
 
 #if ENABLE(INSPECTOR)
@@ -3239,7 +3243,7 @@ static bool pageContainsAnyHorizontalScrollbars(Frame* mainFrame)
 
         for (HashSet<ScrollableArea*>::const_iterator it = scrollableAreas->begin(), end = scrollableAreas->end(); it != end; ++it) {
             ScrollableArea* scrollableArea = *it;
-            if (!scrollableArea->isOnActivePage())
+            if (!scrollableArea->scrollbarsCanBeActive())
                 continue;
 
             if (hasEnabledHorizontalScrollbar(scrollableArea))

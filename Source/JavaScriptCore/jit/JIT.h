@@ -435,9 +435,9 @@ namespace JSC {
         void emitWriteBarrier(JSCell* owner, RegisterID value, RegisterID scratch, WriteBarrierMode, WriteBarrierUseKind);
 
         template<typename ClassType, bool destructor, typename StructureType> void emitAllocateBasicJSObject(StructureType, RegisterID result, RegisterID storagePtr);
-        void emitAllocateBasicStorage(size_t, RegisterID result);
+        void emitAllocateBasicStorage(size_t, ptrdiff_t offsetFromBase, RegisterID result);
         template<typename T> void emitAllocateJSFinalObject(T structure, RegisterID result, RegisterID storagePtr);
-        void emitAllocateJSArray(unsigned valuesRegister, unsigned length, RegisterID cellResult, RegisterID storageResult, RegisterID storagePtr);
+        void emitAllocateJSArray(unsigned valuesRegister, unsigned length, RegisterID cellResult, RegisterID storageResult, RegisterID storagePtr, RegisterID scratch);
         
 #if ENABLE(VALUE_PROFILER)
         // This assumes that the value to profile is in regT0 and that regT3 is available for
@@ -449,6 +449,8 @@ namespace JSC {
         void emitValueProfilingSite(unsigned) { }
         void emitValueProfilingSite() { }
 #endif
+        void emitArrayProfilingSite(RegisterID structureAndIndexingType, RegisterID scratch, ArrayProfile*);
+        void emitArrayProfilingSiteForBytecodeIndex(RegisterID structureAndIndexingType, RegisterID scratch, unsigned bytecodeIndex);
 
         enum FinalObjectMode { MayBeFinal, KnownNotFinal };
 
@@ -671,8 +673,8 @@ namespace JSC {
         void emit_op_pre_inc(Instruction*);
         void emit_op_profile_did_call(Instruction*);
         void emit_op_profile_will_call(Instruction*);
-        void emit_op_push_new_scope(Instruction*);
-        void emit_op_push_scope(Instruction*);
+        void emit_op_push_name_scope(Instruction*);
+        void emit_op_push_with_scope(Instruction*);
         void emit_op_put_by_id(Instruction*);
         void emit_op_put_by_index(Instruction*);
         void emit_op_put_by_val(Instruction*);

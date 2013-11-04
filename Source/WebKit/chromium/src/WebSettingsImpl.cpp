@@ -337,6 +337,11 @@ void WebSettingsImpl::setExperimentalWebGLEnabled(bool enabled)
     m_settings->setWebGLEnabled(enabled);
 }
 
+void WebSettingsImpl::setCSSStickyPositionEnabled(bool enabled)
+{
+    m_settings->setCSSStickyPositionEnabled(enabled);
+}
+
 void WebSettingsImpl::setExperimentalCSSRegionsEnabled(bool enabled)
 {
     m_settings->setCSSRegionsEnabled(enabled);
@@ -426,6 +431,12 @@ void WebSettingsImpl::setAcceleratedCompositingFor3DTransformsEnabled(bool enabl
 void WebSettingsImpl::setAcceleratedCompositingForVideoEnabled(bool enabled)
 {
     m_settings->setAcceleratedCompositingForVideoEnabled(enabled);
+}
+
+void WebSettingsImpl::setAcceleratedCompositingForOverflowScrollEnabled(
+    bool enabled)
+{
+    m_settings->setAcceleratedCompositingForOverflowScrollEnabled(enabled);
 }
 
 void WebSettingsImpl::setAcceleratedCompositingForPluginsEnabled(bool enabled)

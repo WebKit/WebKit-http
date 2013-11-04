@@ -77,6 +77,7 @@ private:
     static void didReceiveContentLengthForResource(WKBundlePageRef, WKBundleFrameRef, uint64_t identifier, uint64_t length, const void*);
     static void didFinishLoadForResource(WKBundlePageRef, WKBundleFrameRef, uint64_t identifier, const void*);
     static void didFailLoadForResource(WKBundlePageRef, WKBundleFrameRef, uint64_t identifier, WKErrorRef, const void*);
+    static bool shouldCacheResponse(WKBundlePageRef, WKBundleFrameRef, uint64_t identifier, const void*);
     static void didReceiveIntentForFrame(WKBundlePageRef, WKBundleFrameRef, WKBundleIntentRequestRef, WKTypeRef*, const void*);
     static void registerIntentServiceForFrame(WKBundlePageRef, WKBundleFrameRef, WKIntentServiceInfoRef, WKTypeRef*, const void*);
 
@@ -105,6 +106,7 @@ private:
     void didReceiveContentLengthForResource(WKBundlePageRef, WKBundleFrameRef, uint64_t identifier, uint64_t length);
     void didFinishLoadForResource(WKBundlePageRef, WKBundleFrameRef, uint64_t identifier);
     void didFailLoadForResource(WKBundlePageRef, WKBundleFrameRef, uint64_t identifier, WKErrorRef);
+    bool shouldCacheResponse(WKBundlePageRef, WKBundleFrameRef, uint64_t identifier);
 
     // WKBundlePagePolicyClient
     static WKBundlePagePolicyAction decidePolicyForNavigationAction(WKBundlePageRef, WKBundleFrameRef, WKBundleNavigationActionRef, WKURLRequestRef, WKTypeRef*, const void*);
@@ -122,11 +124,15 @@ private:
     static void willRunJavaScriptAlert(WKBundlePageRef, WKStringRef message, WKBundleFrameRef frame, const void* clientInfo);
     static void willRunJavaScriptConfirm(WKBundlePageRef, WKStringRef message, WKBundleFrameRef frame, const void* clientInfo);
     static void willRunJavaScriptPrompt(WKBundlePageRef, WKStringRef message, WKStringRef defaultValue, WKBundleFrameRef frame, const void* clientInfo);
+    static void didReachApplicationCacheOriginQuota(WKBundlePageRef, WKSecurityOriginRef, int64_t totalBytesNeeded, const void* clientInfo);
+    static uint64_t didExceedDatabaseQuota(WKBundlePageRef, WKSecurityOriginRef, WKStringRef databaseName, WKStringRef databaseDisplayName, uint64_t currentQuotaBytes, uint64_t currentOriginUsageBytes, uint64_t currentDatabaseUsageBytes, uint64_t expectedUsageBytes, const void* clientInfo);
     void willAddMessageToConsole(WKStringRef message, uint32_t lineNumber);
     void willSetStatusbarText(WKStringRef statusbarText);
     void willRunJavaScriptAlert(WKStringRef message, WKBundleFrameRef);
     void willRunJavaScriptConfirm(WKStringRef message, WKBundleFrameRef);
     void willRunJavaScriptPrompt(WKStringRef message, WKStringRef defaultValue, WKBundleFrameRef);
+    void didReachApplicationCacheOriginQuota(WKSecurityOriginRef, int64_t totalBytesNeeded);
+    uint64_t didExceedDatabaseQuota(WKSecurityOriginRef, WKStringRef databaseName, WKStringRef databaseDisplayName, uint64_t currentQuotaBytes, uint64_t currentOriginUsageBytes, uint64_t currentDatabaseUsageBytes, uint64_t expectedUsageBytes);
 
 #if ENABLE(FULLSCREEN_API)
     // Full Screen client

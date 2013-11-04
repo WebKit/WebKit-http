@@ -67,7 +67,6 @@ ASSERT_CLASS_FITS_IN_CELL(ObjectPrototype);
 
 ObjectPrototype::ObjectPrototype(ExecState* exec, Structure* stucture)
     : JSNonFinalObject(exec->globalData(), stucture)
-    , m_hasNoPropertiesWithUInt32Names(true)
 {
 }
 
@@ -75,34 +74,7 @@ void ObjectPrototype::finishCreation(JSGlobalData& globalData, JSGlobalObject*)
 {
     Base::finishCreation(globalData);
     ASSERT(inherits(&s_info));
-}
-
-void ObjectPrototype::put(JSCell* cell, ExecState* exec, PropertyName propertyName, JSValue value, PutPropertySlot& slot)
-{
-    ObjectPrototype* thisObject = jsCast<ObjectPrototype*>(cell);
-    Base::put(cell, exec, propertyName, value, slot);
-
-    if (thisObject->m_hasNoPropertiesWithUInt32Names && propertyName.asIndex() != PropertyName::NotAnIndex)
-        thisObject->m_hasNoPropertiesWithUInt32Names = false;
-}
-
-bool ObjectPrototype::defineOwnProperty(JSObject* object, ExecState* exec, PropertyName propertyName, PropertyDescriptor& descriptor, bool shouldThrow)
-{
-    ObjectPrototype* thisObject = jsCast<ObjectPrototype*>(object);
-    bool result = Base::defineOwnProperty(object, exec, propertyName, descriptor, shouldThrow);
-
-    if (thisObject->m_hasNoPropertiesWithUInt32Names && propertyName.asIndex() != PropertyName::NotAnIndex)
-        thisObject->m_hasNoPropertiesWithUInt32Names = false;
-
-    return result;
-}
-
-bool ObjectPrototype::getOwnPropertySlotByIndex(JSCell* cell, ExecState* exec, unsigned propertyName, PropertySlot& slot)
-{
-    ObjectPrototype* thisObject = jsCast<ObjectPrototype*>(cell);
-    if (thisObject->m_hasNoPropertiesWithUInt32Names)
-        return false;
-    return Base::getOwnPropertySlotByIndex(thisObject, exec, propertyName, slot);
+    notifyUsedAsPrototype(globalData);
 }
 
 bool ObjectPrototype::getOwnPropertySlot(JSCell* cell, ExecState* exec, PropertyName propertyName, PropertySlot &slot)
@@ -157,7 +129,7 @@ EncodedJSValue JSC_HOST_CALL objectProtoFuncDefineGetter(ExecState* exec)
     JSValue get = exec->argument(1);
     CallData callData;
     if (getCallData(get, callData) == CallTypeNone)
-        return throwVMError(exec, createSyntaxError(exec, "invalid getter usage"));
+        return throwVMError(exec, createTypeError(exec, ASCIILiteral("invalid getter usage")));
 
     PropertyDescriptor descriptor;
     descriptor.setGetter(get);
@@ -177,7 +149,7 @@ EncodedJSValue JSC_HOST_CALL objectProtoFuncDefineSetter(ExecState* exec)
     JSValue set = exec->argument(1);
     CallData callData;
     if (getCallData(set, callData) == CallTypeNone)
-        return throwVMError(exec, createSyntaxError(exec, "invalid setter usage"));
+        return throwVMError(exec, createTypeError(exec, ASCIILiteral("invalid setter usage")));
 
     PropertyDescriptor descriptor;
     descriptor.setSetter(set);
@@ -247,7 +219,7 @@ EncodedJSValue JSC_HOST_CALL objectProtoFuncToString(ExecState* exec)
 {
     JSValue thisValue = exec->hostThisValue();
     if (thisValue.isUndefinedOrNull())
-        return JSValue::encode(jsNontrivialString(exec, thisValue.isUndefined() ? "[object Undefined]" : "[object Null]"));
+        return JSValue::encode(jsNontrivialString(exec, String(thisValue.isUndefined() ? ASCIILiteral("[object Undefined]") : ASCIILiteral("[object Null]"))));
     JSObject* thisObject = thisValue.toObject(exec);
 
     JSString* result = thisObject->structure()->objectToStringValue();

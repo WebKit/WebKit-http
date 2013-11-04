@@ -42,6 +42,11 @@ using namespace std;
 
 namespace WebCore {
 
+PassOwnPtr<Localizer> Localizer::create(const AtomicString& locale)
+{
+    return LocaleICU::create(locale.string().utf8().data());
+}
+
 LocaleICU::LocaleICU(const char* locale)
     : m_locale(locale)
     , m_numberFormat(0)
@@ -112,7 +117,7 @@ String LocaleICU::decimalTextAttribute(UNumberFormatTextAttribute tag)
     return String::adopt(buffer);
 }
 
-void LocaleICU::initializeNumberLocalizerData()
+void LocaleICU::initializeLocalizerData()
 {
     if (m_didCreateDecimalFormat)
         return;
@@ -136,7 +141,7 @@ void LocaleICU::initializeNumberLocalizerData()
     symbols.append(decimalSymbol(UNUM_DECIMAL_SEPARATOR_SYMBOL));
     symbols.append(decimalSymbol(UNUM_GROUPING_SEPARATOR_SYMBOL));
     ASSERT(symbols.size() == DecimalSymbolsSize);
-    setNumberLocalizerData(symbols, decimalTextAttribute(UNUM_POSITIVE_PREFIX), decimalTextAttribute(UNUM_POSITIVE_SUFFIX), decimalTextAttribute(UNUM_NEGATIVE_PREFIX), decimalTextAttribute(UNUM_NEGATIVE_SUFFIX));
+    setLocalizerData(symbols, decimalTextAttribute(UNUM_POSITIVE_PREFIX), decimalTextAttribute(UNUM_POSITIVE_SUFFIX), decimalTextAttribute(UNUM_NEGATIVE_PREFIX), decimalTextAttribute(UNUM_NEGATIVE_SUFFIX));
 }
 
 bool LocaleICU::initializeShortDateFormat()
@@ -390,20 +395,21 @@ void LocaleICU::initializeDateTimeFormat()
     m_shortTimeFormat = openDateFormat(UDAT_SHORT, UDAT_NONE);
     m_localizedShortTimeFormatText = getDateFormatPattern(m_shortTimeFormat);
 
-    m_timeAMPMLabels = createLabelVector(m_mediumTimeFormat, UDAT_AM_PMS, UCAL_AM, 2);
-    if (!m_timeAMPMLabels)
-        m_timeAMPMLabels = createFallbackAMPMLabels();
+    OwnPtr<Vector<String> > timeAMPMLabels = createLabelVector(m_mediumTimeFormat, UDAT_AM_PMS, UCAL_AM, 2);
+    if (!timeAMPMLabels)
+        timeAMPMLabels = createFallbackAMPMLabels();
+    m_timeAMPMLabels = *timeAMPMLabels;
 
     m_didCreateTimeFormat = true;
 }
 
-String LocaleICU::localizedTimeFormatText()
+String LocaleICU::timeFormat()
 {
     initializeDateTimeFormat();
     return m_localizedTimeFormatText;
 }
 
-String LocaleICU::localizedShortTimeFormatText()
+String LocaleICU::shortTimeFormat()
 {
     initializeDateTimeFormat();
     return m_localizedShortTimeFormatText;
@@ -412,7 +418,7 @@ String LocaleICU::localizedShortTimeFormatText()
 const Vector<String>& LocaleICU::timeAMPMLabels()
 {
     initializeDateTimeFormat();
-    return *m_timeAMPMLabels;
+    return m_timeAMPMLabels;
 }
 
 #endif

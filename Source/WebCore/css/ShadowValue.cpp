@@ -21,9 +21,9 @@
 #include "ShadowValue.h"
 
 #include "CSSPrimitiveValue.h"
-#include "MemoryInstrumentation.h"
-#include "PlatformString.h"
+#include "WebCoreMemoryInstrumentation.h"
 #include <wtf/text/StringBuilder.h>
+#include <wtf/text/WTFString.h>
 
 namespace WebCore {
 
@@ -81,13 +81,13 @@ String ShadowValue::customCssText() const
 
 void ShadowValue::reportDescendantMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
 {
-    MemoryClassInfo info(memoryObjectInfo, this, MemoryInstrumentation::CSS);
-    info.addInstrumentedMember(x);
-    info.addInstrumentedMember(y);
-    info.addInstrumentedMember(blur);
-    info.addInstrumentedMember(spread);
-    info.addInstrumentedMember(style);
-    info.addInstrumentedMember(color);
+    MemoryClassInfo info(memoryObjectInfo, this, WebCoreMemoryTypes::CSS);
+    info.addMember(x);
+    info.addMember(y);
+    info.addMember(blur);
+    info.addMember(spread);
+    info.addMember(style);
+    info.addMember(color);
 }
 
 }

@@ -23,9 +23,9 @@
 
 #include "DownloadProxy.h"
 #include "DrawingAreaProxyImpl.h"
+#include "PageViewportControllerClientQt.h"
 #include "QtDialogRunner.h"
 #include "QtDownloadManager.h"
-#include "QtViewportHandler.h"
 #include "QtWebContext.h"
 #include "QtWebError.h"
 #include "QtWebIconDatabaseClient.h"
@@ -323,11 +323,20 @@ void QQuickWebViewPrivate::initialize(WKContextRef contextRef, WKPageGroupRef pa
     webPageProxy->initializeWebPage();
 }
 
+void QQuickWebViewPrivate::loadDidStop()
+{
+    Q_Q(QQuickWebView);
+    ASSERT(!q->loading());
+    QWebLoadRequest loadRequest(q->url(), QQuickWebView::LoadStoppedStatus);
+    emit q->loadingChanged(&loadRequest);
+}
+
 void QQuickWebViewPrivate::onComponentComplete()
 {
     Q_Q(QQuickWebView);
-    m_viewportHandler.reset(new QtViewportHandler(webPageProxy.get(), q, pageView.data()));
-    pageView->eventHandler()->setViewportHandler(m_viewportHandler.data());
+    m_pageViewportControllerClient.reset(new PageViewportControllerClientQt(q, pageView.data()));
+    m_pageViewportController.reset(new PageViewportController(webPageProxy.get(), m_pageViewportControllerClient.data()));
+    pageView->eventHandler()->setViewportController(m_pageViewportControllerClient.data());
 }
 
 void QQuickWebViewPrivate::setTransparentBackground(bool enable)
@@ -339,10 +348,6 @@ bool QQuickWebViewPrivate::transparentBackground() const
 {
     return webPageProxy->drawsTransparentBackground();
 }
-
-/*!
-    \qmlsignal WebView::loadingChanged(WebLoadRequest request)
-*/
 
 void QQuickWebViewPrivate::provisionalLoadDidStart(const WTF::String& url)
 {
@@ -854,11 +859,6 @@ QQuickWebViewFlickablePrivate::QQuickWebViewFlickablePrivate(QQuickWebView* view
     viewport->setAcceptHoverEvents(false);
 }
 
-QQuickWebViewFlickablePrivate::~QQuickWebViewFlickablePrivate()
-{
-    m_viewportHandler->disconnect();
-}
-
 void QQuickWebViewFlickablePrivate::initialize(WKContextRef contextRef, WKPageGroupRef pageGroupRef)
 {
     QQuickWebViewPrivate::initialize(contextRef, pageGroupRef);
@@ -874,29 +874,29 @@ void QQuickWebViewFlickablePrivate::onComponentComplete()
 
 void QQuickWebViewFlickablePrivate::didChangeViewportProperties(const WebCore::ViewportAttributes& newAttributes)
 {
-    if (m_viewportHandler)
-        m_viewportHandler->viewportAttributesChanged(newAttributes);
+    if (m_pageViewportController)
+        m_pageViewportController->didChangeViewportAttributes(newAttributes);
 }
 
 void QQuickWebViewFlickablePrivate::updateViewportSize()
 {
-    // FIXME: Examine why there is not an viewportHandler here in the beginning.
-    if (m_viewportHandler)
-        m_viewportHandler->viewportItemSizeChanged();
+    Q_Q(QQuickWebView);
+
+    if (m_pageViewportController)
+        m_pageViewportController->setViewportSize(QSizeF(q->width(), q->height()));
 }
 
 void QQuickWebViewFlickablePrivate::pageDidRequestScroll(const QPoint& pos)
 {
-    m_viewportHandler->pageContentPositionRequested(pos);
+    if (m_pageViewportController)
+        m_pageViewportController->pageDidRequestScroll(pos);
 }
 
 void QQuickWebViewFlickablePrivate::didChangeContentsSize(const QSize& newSize)
 {
-    Q_Q(QQuickWebView);
-
     pageView->setContentsSize(newSize); // emits contentsSizeChanged()
     QQuickWebViewPrivate::didChangeContentsSize(newSize);
-    m_viewportHandler->pageContentsSizeChanged(newSize, q->boundingRect().size().toSize());
+    m_pageViewportController->didChangeContentsSize(newSize);
 }
 
 void QQuickWebViewFlickablePrivate::handleMouseEvent(QMouseEvent* event)
@@ -1435,7 +1435,6 @@ QQuickWebPage* QQuickWebViewExperimental::page()
 
 /*!
     \page index.html
-
     \title QtWebKit: QML WebView version 3.0
 
     The WebView API allows QML applications to render regions of dynamic
@@ -1443,12 +1442,12 @@ QQuickWebPage* QQuickWebViewExperimental::page()
     QML components or encompass the full screen as specified within the
     QML application.
 
-    QML WebView version 3.0 is incompatible with previous QML WebView API
-    versions.  It allows an application to load pages into the WebView,
-    either by URL or with an HTML string, and navigate within session
-    history.  By default, links to different pages load within the same
-    WebView, but applications may intercept requests to delegate links to
-    other functions.
+    QML WebView version 3.0 is incompatible with previous QML \l
+    {QtWebKit1::WebView} {WebView} API versions.  It allows an
+    application to load pages into the WebView, either by URL or with
+    an HTML string, and navigate within session history.  By default,
+    links to different pages load within the same WebView, but applications
+    may intercept requests to delegate links to other functions.
 
     This sample QML application loads a web page, responds to session
     history context, and intercepts requests for external links:
@@ -1481,6 +1480,7 @@ QQuickWebPage* QQuickWebViewExperimental::page()
 
 /*!
     \qmltype WebView
+    \instantiates QQuickWebView
     \inqmlmodule QtWebKit 3.0
     \brief A WebView renders web content within a QML application
 */

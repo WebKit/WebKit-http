@@ -28,12 +28,9 @@
 
 import logging
 import os
-import signal
-import subprocess
 
 from webkitpy.layout_tests.port.server_process import ServerProcess
 from webkitpy.layout_tests.port.driver import Driver
-from webkitpy.common.system.executive import Executive
 
 _log = logging.getLogger(__name__)
 
@@ -46,7 +43,7 @@ class XvfbDriver(Driver):
         def x_filter(process_name):
             return process_name.find("Xorg") > -1
 
-        running_displays = len(Executive().running_pids(x_filter))
+        running_displays = len(self._port.host.executive.running_pids(x_filter))
 
         # Use even displays for pixel tests and odd ones otherwise. When pixel tests are disabled,
         # DriverProxy creates two drivers, one for normal and the other for ref tests. Both have
@@ -54,23 +51,28 @@ class XvfbDriver(Driver):
         display_id = self._worker_number * 2 + running_displays
         if pixel_tests:
             display_id += 1
-        run_xvfb = ["Xvfb", ":%d" % (display_id), "-screen",  "0", "800x600x24", "-nolisten", "tcp"]
+        self._lock_file = "/tmp/.X%d-lock" % display_id
+
+        run_xvfb = ["Xvfb", ":%d" % display_id, "-screen",  "0", "800x600x24", "-nolisten", "tcp"]
         with open(os.devnull, 'w') as devnull:
-            self._xvfb_process = subprocess.Popen(run_xvfb, stderr=devnull)
+            self._xvfb_process = self._port.host.executive.popen(run_xvfb, stderr=devnull)
+
         server_name = self._port.driver_name()
         environment = self._port.setup_environ_for_server(server_name)
         # We must do this here because the DISPLAY number depends on _worker_number
-        environment['DISPLAY'] = ":%d" % (display_id)
+        environment['DISPLAY'] = ":%d" % display_id
+        # Drivers should use separate application cache locations
+        environment['XDG_CACHE_HOME'] = self._port.host.filesystem.join(self._port.results_directory(), '%s-appcache-%d' % (server_name, self._worker_number))
+
         self._crashed_process_name = None
         self._crashed_pid = None
-        self._server_process = ServerProcess(self._port, server_name, self.cmd_line(pixel_tests, per_test_args), environment)
+        self._server_process = self._port._server_process_constructor(self._port, server_name, self.cmd_line(pixel_tests, per_test_args), environment)
+        self._server_process.start()
 
     def stop(self):
         super(XvfbDriver, self).stop()
         if getattr(self, '_xvfb_process', None):
-            try:
-                self._xvfb_process.terminate()
-                self._xvfb_process.wait()
-            except OSError:
-                _log.warn("The driver is already terminated.")
+            self._port.host.executive.kill_process(self._xvfb_process.pid)
             self._xvfb_process = None
+            if self._port.host.filesystem.exists(self._lock_file):
+                self._port.host.filesystem.remove(self._lock_file)

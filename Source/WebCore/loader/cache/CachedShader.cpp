@@ -32,9 +32,9 @@
 #if ENABLE(CSS_SHADERS)
 
 #include "CachedShader.h"
-#include "MemoryInstrumentation.h"
 #include "SharedBuffer.h"
 #include "TextResourceDecoder.h"
+#include "WebCoreMemoryInstrumentation.h"
 #include <wtf/text/StringBuilder.h>
 
 namespace WebCore {
@@ -70,10 +70,10 @@ void CachedShader::data(PassRefPtr<SharedBuffer> data, bool allDataReceived)
 
 void CachedShader::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
 {
-    MemoryClassInfo info(memoryObjectInfo, this, MemoryInstrumentation::CachedResourceShader);
+    MemoryClassInfo info(memoryObjectInfo, this, WebCoreMemoryTypes::CachedResourceShader);
     CachedResource::reportMemoryUsage(memoryObjectInfo);
     info.addMember(m_decoder);
-    info.addInstrumentedMember(m_shaderString);
+    info.addMember(m_shaderString);
 }
 
 } // namespace WebCore

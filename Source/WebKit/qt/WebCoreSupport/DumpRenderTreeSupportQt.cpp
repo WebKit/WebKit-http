@@ -237,11 +237,6 @@ void DumpRenderTreeSupportQt::setFrameFlatteningEnabled(QWebPage* page, bool ena
     QWebPagePrivate::core(page)->settings()->setFrameFlatteningEnabled(enabled);
 }
 
-void DumpRenderTreeSupportQt::setMockScrollbarsEnabled(QWebPage* page, bool enabled)
-{
-    QWebPagePrivate::core(page)->settings()->setMockScrollbarsEnabled(enabled);
-}
-
 void DumpRenderTreeSupportQt::webPageSetGroupName(QWebPage* page, const QString& groupName)
 {
     page->handle()->page->setGroupName(groupName);
@@ -384,15 +379,6 @@ void DumpRenderTreeSupportQt::garbageCollectorCollect()
 void DumpRenderTreeSupportQt::garbageCollectorCollectOnAlternateThread(bool waitUntilDone)
 {
     gcController().garbageCollectOnAlternateThreadForDebugging(waitUntilDone);
-}
-
-int DumpRenderTreeSupportQt::numberOfPages(QWebFrame* frame, float width, float height)
-{
-    Frame* coreFrame = QWebFramePrivate::core(frame);
-    if (!coreFrame)
-        return -1;
-
-    return PrintContext::numberOfPages(coreFrame, FloatSize(width, height));
 }
 
 // Suspend active DOM objects in this frame.
@@ -856,19 +842,6 @@ void DumpRenderTreeSupportQt::evaluateScriptInIsolatedWorld(QWebFrame* frame, in
     if (!proxy)
         return;
     proxy->executeScriptInWorld(scriptWorld->world(), script, true);
-}
-
-QString DumpRenderTreeSupportQt::pageSizeAndMarginsInPixels(QWebFrame* frame, int pageIndex, int width, int height, int marginTop, int marginRight, int marginBottom, int marginLeft)
-{
-    WebCore::Frame* coreFrame = QWebFramePrivate::core(frame);
-    return PrintContext::pageSizeAndMarginsInPixels(coreFrame, pageIndex, width, height,
-                                                    marginTop, marginRight, marginBottom, marginLeft);
-}
-
-QString DumpRenderTreeSupportQt::pageProperty(QWebFrame* frame, const QString& propertyName, int pageNumber)
-{
-    WebCore::Frame* coreFrame = QWebFramePrivate::core(frame);
-    return PrintContext::pageProperty(coreFrame, propertyName.toUtf8().constData(), pageNumber);
 }
 
 void DumpRenderTreeSupportQt::addUserStyleSheet(QWebPage* page, const QString& sourceCode)

@@ -28,14 +28,13 @@
 #import "WebFrameInternal.h"
 #import <WebCore/Frame.h>
 #import <WebCore/FrameLoaderClient.h>
-#import <WebCore/PlatformString.h>
 #import <WebCore/RenderLayer.h>
 #import <WebCore/RenderLayerBacking.h>
 #import <WebCore/RenderView.h>
 #import <WebCore/StyledElement.h>
+#import <wtf/text/WTFString.h>
 
 using namespace WebCore;
-
 
 @interface WebRenderLayer(Private)
 
@@ -59,13 +58,13 @@ using namespace WebCore;
 
         if (node->hasClass()) {
             StyledElement* styledElement = static_cast<StyledElement*>(node);
-            String classes;
+            StringBuilder classes;
             for (size_t i = 0; i < styledElement->classNames().size(); ++i) {
                 if (i > 0)
-                    classes += " ";
-                classes += styledElement->classNames()[i];
+                    classes.append(' ');
+                classes.append(styledElement->classNames()[i]);
             }
-            name = [name stringByAppendingFormat:@" class=\"%@\"", (NSString *)classes];
+            name = [name stringByAppendingFormat:@" class=\"%@\"", (NSString *)classes.toString()];
         }
     }
 

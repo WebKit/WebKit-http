@@ -1,3 +1,328 @@
+2012-09-17  Dan Bernstein  <mitz@apple.com>
+
+        <rdar://problem/12316935> [mac WebKit1]: -[WebView _setPaginationBehavesLikeColumns:] is a no-op
+        https://bugs.webkit.org/show_bug.cgi?id=96971
+
+        Reviewed by Sam Weinig.
+
+        * WebView/WebView.mm:
+        (-[WebView _setPaginationBehavesLikeColumns:]): Added a call to setPagination().
+
+2012-09-14  Adam Barth  <abarth@webkit.org>
+
+        Remove webkitPostMessage
+        https://bugs.webkit.org/show_bug.cgi?id=96577
+
+        Reviewed by Ojan Vafai.
+
+        Add ENABLE_LEGACY_VENDOR_PREFIXES flag.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2012-09-14  Beth Dakin  <bdakin@apple.com>
+
+        https://bugs.webkit.org/show_bug.cgi?id=96688
+        Put position:fixed elements in their own layers and allow them to 
+        create a stacking context
+        -and corresponding-
+        <rdar://problem/11467961>
+
+        Reviewed by Simon Fraser.
+
+        Enable these settings in WK1 too for consistency. 
+        * WebView/WebView.mm:
+        (-[WebView _preferencesChanged:]):
+
+2012-09-13  Sheriff Bot  <webkit.review.bot@gmail.com>
+
+        Unreviewed, rolling out r128552.
+        http://trac.webkit.org/changeset/128552
+        https://bugs.webkit.org/show_bug.cgi?id=96729
+
+        Still breaks the test on chromium linux debug. It's quite
+        annoying. (Requested by rniwa on #webkit).
+
+        * WebView/WebHTMLView.mm:
+        (-[WebHTMLView _invalidateGStatesForTree]):
+
+2012-09-13  Ryosuke Niwa  <rniwa@webkit.org>
+
+        suspend/resumeWidgetHierarchyUpdates should be a RAII object
+        https://bugs.webkit.org/show_bug.cgi?id=96706
+
+        Reviewed by Simon Fraser.
+
+        * WebView/WebHTMLView.mm:
+        (-[WebHTMLView _invalidateGStatesForTree]):
+
+2012-09-13  Sheriff Bot  <webkit.review.bot@gmail.com>
+
+        Unreviewed, rolling out r128531.
+        http://trac.webkit.org/changeset/128531
+        https://bugs.webkit.org/show_bug.cgi?id=96719
+
+        plugins/document-open.html crash on Chromium-Linux (Requested
+        by tkent1 on #webkit).
+
+        * WebView/WebHTMLView.mm:
+        (-[WebHTMLView _invalidateGStatesForTree]):
+
+2012-09-13  Benjamin Poulain  <bpoulain@apple.com>
+
+        Improve the SourceProvider hierarchy
+        https://bugs.webkit.org/show_bug.cgi?id=95635
+
+        Reviewed by Geoffrey Garen.
+
+        * Plugins/Hosted/NetscapePluginInstanceProxy.mm: Fix a #include abuse.
+        * WebView/WebScriptDebugger.mm:
+        (toNSString): We can now use the (faster) implicit conversion
+        from String to NSString.
+
+2012-09-13  Ryosuke Niwa  <rniwa@webkit.org>
+
+        suspend/resumeWidgetHierarchyUpdates should be a RAII object
+        https://bugs.webkit.org/show_bug.cgi?id=96706
+
+        Reviewed by Simon Fraser.
+
+        * WebView/WebHTMLView.mm:
+        (-[WebHTMLView _invalidateGStatesForTree]):
+
+2012-09-12  Sheriff Bot  <webkit.review.bot@gmail.com>
+
+        Unreviewed, rolling out r127876.
+        http://trac.webkit.org/changeset/127876
+        https://bugs.webkit.org/show_bug.cgi?id=96600
+
+        mouse click doesn't work for spin button if spin button in
+        iframe (Requested by yosin on #webkit).
+
+        * WebCoreSupport/WebFrameLoaderClient.mm:
+        (WebFrameLoaderClient::actionDictionary):
+        * WebView/WebHTMLView.mm:
+        (-[WebHTMLView elementAtPoint:allowShadowContent:]):
+
+2012-09-11  Geoffrey Garen  <ggaren@apple.com>
+
+        Mac build fix: Commit a file I forgot.
+
+        * WebView/WebScriptDebugDelegate.mm:
+        (-[WebScriptCallFrame functionName]):
+
+2012-09-11  Michael Saboff  <msaboff@apple.com>
+
+        Build fixed for http://trac.webkit.org/changeset/128243
+
+        Rubber stamped by Stephanie Lewis.
+
+        Added missing include file needed by 96422.
+
+        * icu/unicode/unorm2.h: Added.
+
+2012-09-11  Michael Saboff  <msaboff@apple.com>
+
+        Build fixed for http://trac.webkit.org/changeset/128243
+
+        Rubber stamped by Stephanie Lewis.
+
+        Added missing include file needed by 96422.
+
+        * icu/unicode/ptypes.h: Added.
+
+2012-09-11  Michael Saboff  <msaboff@apple.com>
+
+        Update ICU header files to more recent version
+        https://bugs.webkit.org/show_bug.cgi?id=96422
+
+        Reviewed by Geoff Garen.
+
+        Updated ICU header files to 4.6.1.  Modifications made as part of the merge are:
+        platform.h - Changed ifndef / define / endif for U_HAVE_UINT8_T, U_HAVE_UINT16_T, U_HAVE_UINT32_T,
+            U_HAVE_UINT64_T, U_IS_BIG_ENDIAN and U_ENABLE_TRACING to match the existing platform.h
+        putil.h (line 132) - Changes defined(U_WINDOWS) to defined(WIN32) || defined(OS2) to match existing putil.h
+        ustring.h (line 945) - Wrapped macro argument cs with { (const UChar *)cs } to match existing ustring.h
+        utypes.h (line 545) - Changed defined(U_WINDOWS) to defined(WIN32) to match existing utypes.h
+
+        * icu/unicode/localpointer.h: Added.
+        * icu/unicode/parseerr.h:
+        * icu/unicode/platform.h:
+        * icu/unicode/putil.h:
+        * icu/unicode/uchar.h:
+        * icu/unicode/uconfig.h:
+        * icu/unicode/uidna.h:
+        * icu/unicode/uiter.h:
+        * icu/unicode/umachine.h:
+        * icu/unicode/unorm.h:
+        * icu/unicode/urename.h:
+        * icu/unicode/uscript.h:
+        * icu/unicode/ustring.h:
+        * icu/unicode/utf.h:
+        * icu/unicode/utf16.h:
+        * icu/unicode/utf8.h:
+        * icu/unicode/utypes.h:
+        * icu/unicode/uvernum.h: Added.
+        * icu/unicode/uversion.h:
+
+2012-09-11  Matt Lilek  <mrl@apple.com>
+
+        OS X port should compile with newer versions of clang
+        https://bugs.webkit.org/show_bug.cgi?id=96434
+
+        m_isTerminated is unused in the Hosted flavor of NetscapePluginStream.
+
+        Reviewed by Anders Carlsson.
+
+        * Plugins/Hosted/HostedNetscapePluginStream.h:
+        (HostedNetscapePluginStream):
+        * Plugins/Hosted/HostedNetscapePluginStream.mm:
+        (WebKit::HostedNetscapePluginStream::HostedNetscapePluginStream):
+
+2012-09-10  Jer Noble  <jer.noble@apple.com>
+
+        Unreviewed; rolling out r128081.
+        http://trac.webkit.org/changeset/128081
+        https://bugs.webkit.org/show_bug.cgi?id=96134
+
+        New test http/tests/media/video-donottrack.html fails to run on Apple test bots.
+
+        * WebCoreSupport/WebFrameLoaderClient.h:
+        * WebCoreSupport/WebFrameLoaderClient.mm:
+        * WebView/WebDelegateImplementationCaching.h:
+        (WebFrameLoadDelegateImplementationCache):
+        * WebView/WebDelegateImplementationCaching.mm:
+        * WebView/WebView.mm:
+        (-[WebView _cacheFrameLoadDelegateImplementations]):
+
+2012-09-07  Jon Lee  <jonlee@apple.com>
+
+        Update notifications to latest spec
+        https://bugs.webkit.org/show_bug.cgi?id=91726
+        <rdar://problem/11910451>
+
+        Reviewed by Alexey Proskuryakov.
+
+        Expose lang and dir.
+
+        * WebView/WebNotification.h:
+        * WebView/WebNotification.mm:
+        (-[WebNotification lang]):
+        (-[WebNotification dir]):
+
+2012-09-10  Jer Noble  <jer.noble@apple.com>
+
+        NSInvalidArgumentException in WebFrameLoaderClient::shouldSendDoNotTrackHTTPHeader()
+        https://bugs.webkit.org/show_bug.cgi?id=96320
+
+        Reviewed by Geoffrey Garen.
+
+        Client was being cached as the FrameLoaderClient, but requests were sent to the ResourceLoadClient.
+
+        * WebCoreSupport/WebFrameLoaderClient.mm:
+        (WebFrameLoaderClient::shouldSendDoNotTrackHTTPHeader): Send the request to the FrameLoadDelegate.
+        * WebView/WebDelegateImplementationCaching.h:
+        * WebView/WebDelegateImplementationCaching.mm:
+        (CallFrameLoadDelegateReturningBoolean): Added.
+
+2012-09-07  Jer Noble  <jer.noble@apple.com>
+
+        <audio> and <video> should send Do Not Track when appropriate
+        https://bugs.webkit.org/show_bug.cgi?id=96134
+
+        Reviewed by Eric Carlson.
+
+        Add support for the shouldSendDoNotTrackHTTPHeader by passing the request
+        on to the WebFrameLoadDelegate.
+
+        * WebCoreSupport/WebFrameLoaderClient.h:
+        * WebCoreSupport/WebFrameLoaderClient.mm:
+        (WebFrameLoaderClient::shouldSendDoNotTrackHeader):
+            Pass the question on to the WebFrameLoadDelegate.
+        * WebView/WebDelegateImplementationCaching.h:
+        (WebFrameLoadDelegateImplementationCache):
+            Add an entry for the delegate's webViewShouldSendDoNotTrackHeader method.
+        * WebView/WebDelegateImplementationCaching.mm:
+        (CallResourceLoadDelegateReturningBoolean): Added a 0-parameter overloaded function.
+        * WebView/WebView.mm:
+        (-[WebView _cacheFrameLoadDelegateImplementations]): initialize the 
+            cached value for shouldSendDoNotTrackHeaderFunc.
+
+2012-09-07  Benjamin Poulain  <bpoulain@apple.com>
+
+        Rename the ustring() accessor to string()
+        https://bugs.webkit.org/show_bug.cgi?id=95919
+
+        Reviewed by Geoffrey Garen.
+
+        * Plugins/Hosted/NetscapePluginInstanceProxy.mm:
+        (WebKit::NetscapePluginInstanceProxy::enumerate):
+
+2012-09-07  Allan Sandfeld Jensen  <allan.jensen@nokia.com>
+
+        Simplify hitTestResultAtPoint and nodesFromRect APIs
+        https://bugs.webkit.org/show_bug.cgi?id=95720
+
+        Reviewed by Antonio Gomes.
+
+        Update calls to new API.
+
+        * WebCoreSupport/WebFrameLoaderClient.mm:
+        (WebFrameLoaderClient::actionDictionary):
+        * WebView/WebHTMLView.mm:
+        (-[WebHTMLView elementAtPoint:allowShadowContent:]):
+
+2012-09-05  Sam Weinig  <sam@webkit.org>
+
+        Part 2 of removing PlatformString.h, remove PlatformString.h
+        https://bugs.webkit.org/show_bug.cgi?id=95931
+
+        Reviewed by Adam Barth.
+
+        Remove PlatformString.h
+
+        * History/WebHistoryItem.mm:
+        * Misc/WebStringTruncator.mm:
+        * Plugins/Hosted/NetscapePluginHostManager.h:
+        (NetscapePluginHostManager):
+        * Plugins/WebPluginController.mm:
+        * Storage/WebStorageTrackerClient.mm:
+        * WebCoreSupport/WebChromeClient.mm:
+        * WebCoreSupport/WebEditorClient.mm:
+        * WebCoreSupport/WebFrameLoaderClient.mm:
+        * WebCoreSupport/WebIconDatabaseClient.mm:
+        * WebCoreSupport/WebInspectorClient.h:
+        (WebInspectorClient):
+        (WebInspectorFrontendClient):
+        * WebView/WebRenderLayer.mm:
+        * WebView/WebViewData.h:
+
+2012-09-05  Benjamin Poulain  <bpoulain@apple.com>
+
+        More fixes for String::operator+=() on Mac
+        https://bugs.webkit.org/show_bug.cgi?id=95880
+
+        Reviewed by Adam Barth.
+
+        * WebView/WebRenderLayer.mm:
+        (+[WebRenderLayer nameForLayer:]): Use StringBuilder to concatenate the class names
+        efficiently.
+        * WebView/WebView.mm:
+        (+[WebView _decodeData:]): This is a legitimate use of String::append(), there
+        is no other concatenation done on that string.
+
+2012-09-01  Mark Lam  <mark.lam@apple.com>
+
+        Added #include <JavaScriptCore/Identifier.h>.
+        https://bugs.webkit.org/show_bug.cgi?id=95641.
+
+        Reviewed by Dan Bernstein.
+
+        The code references JSC::Indentifier but was previously depending on
+        someone else to #include it. This results in build problems when
+        building for the llint C loop configuration.
+
+        * Plugins/Hosted/NetscapePluginInstanceProxy.h:
+
 2012-08-31  Tony Chang  <tony@chromium.org>
 
         Remove ENABLE_CSS3_FLEXBOX compile time flag

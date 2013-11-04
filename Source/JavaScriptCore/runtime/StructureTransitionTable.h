@@ -26,6 +26,7 @@
 #ifndef StructureTransitionTable_h
 #define StructureTransitionTable_h
 
+#include "IndexingType.h"
 #include "WeakGCMap.h"
 #include <wtf/HashFunctions.h>
 #include <wtf/OwnPtr.h>
@@ -37,6 +38,40 @@ namespace JSC {
 class JSCell;
 class Structure;
 
+static const unsigned FirstInternalAttribute = 1 << 6; // Use for transitions that don't have to do with property additions.
+
+// Support for attributes used to indicate transitions not related to properties.
+// If any of these are used, the string portion of the key should be 0.
+enum NonPropertyTransition {
+    AllocateArrayStorage,
+    AllocateSlowPutArrayStorage,
+    SwitchToSlowPutArrayStorage,
+    AddIndexedAccessors
+};
+
+inline unsigned toAttributes(NonPropertyTransition transition)
+{
+    return transition + FirstInternalAttribute;
+}
+
+inline IndexingType newIndexingType(IndexingType oldType, NonPropertyTransition transition)
+{
+    switch (transition) {
+    case AllocateArrayStorage:
+        return oldType | HasArrayStorage;
+    case AllocateSlowPutArrayStorage:
+        return oldType | HasSlowPutArrayStorage;
+    case SwitchToSlowPutArrayStorage:
+        ASSERT(oldType & HasArrayStorage);
+        return (oldType & ~HasArrayStorage) | HasSlowPutArrayStorage;
+    case AddIndexedAccessors:
+        return oldType | MayHaveIndexedAccessors;
+    default:
+        ASSERT_NOT_REACHED();
+        return oldType;
+    }
+}
+
 class StructureTransitionTable {
     static const intptr_t UsingSingleSlotFlag = 1;
 
@@ -44,7 +79,10 @@ class StructureTransitionTable {
         typedef std::pair<RefPtr<StringImpl>, unsigned> Key;
         static unsigned hash(const Key& p)
         {
-            return p.first->existingHash();
+            unsigned result = p.second;
+            if (p.first)
+                result += p.first->existingHash();
+            return result;
         }
 
         static bool equal(const Key& a, const Key& b)

@@ -29,7 +29,7 @@
 #include "FloatRect.h"
 #include "GraphicsContext.h"
 #include "ImageBuffer.h"
-#include "MemoryInstrumentation.h"
+#include "PlatformMemoryInstrumentation.h"
 
 using namespace std;
 
@@ -110,10 +110,10 @@ void CrossfadeGeneratedImage::drawPattern(GraphicsContext* context, const FloatR
 
 void CrossfadeGeneratedImage::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
 {
-    MemoryClassInfo info(memoryObjectInfo, this, MemoryInstrumentation::DOM);
+    MemoryClassInfo info(memoryObjectInfo, this, PlatformMemoryTypes::Image);
     GeneratedImage::reportMemoryUsage(memoryObjectInfo);
-    info.addInstrumentedMember(m_fromImage);
-    info.addInstrumentedMember(m_toImage);
+    info.addMember(m_fromImage);
+    info.addMember(m_toImage);
 }
 
 }

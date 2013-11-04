@@ -34,10 +34,10 @@
 #include "BlobData.h"
 #include "BlobRegistry.h"
 #include "BlobStorageData.h"
-#include "PlatformString.h"
 #include <wtf/HashMap.h>
 #include <wtf/text/CString.h>
 #include <wtf/text/StringHash.h>
+#include <wtf/text/WTFString.h>
 
 namespace WebCore {
 
@@ -50,6 +50,7 @@ class ResourceResponse;
 
 // BlobRegistryImpl is not thread-safe. It should only be called from main thread.
 class BlobRegistryImpl : public BlobRegistry {
+    WTF_MAKE_FAST_ALLOCATED;
 public:
     virtual ~BlobRegistryImpl() { }
 

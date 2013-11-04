@@ -30,7 +30,6 @@
 #include "V8Collection.h"
 #include "V8DOMWrapper.h"
 #include "V8Event.h"
-#include "V8IsolatedContext.h"
 #include "V8Node.h"
 #include <wtf/UnusedParam.h>
 
@@ -55,7 +54,7 @@ static v8::Handle<v8::Value> itemCallback(const v8::Arguments& args)
         ec = INDEX_SIZE_ERR;
         goto fail;
     }
-    return toV8(imp->item(index), args.GetIsolate());
+    return toV8(imp->item(index), args.Holder(), args.GetIsolate());
     }
     fail:
     return setDOMException(ec, args.GetIsolate());
@@ -103,7 +102,7 @@ static v8::Handle<v8::Value> dispatchEventCallback(const v8::Arguments& args)
 
 } // namespace TestEventTargetV8Internal
 
-static const V8DOMConfiguration::BatchedCallback TestEventTargetCallbacks[] = {
+static const V8DOMConfiguration::BatchedCallback V8TestEventTargetCallbacks[] = {
     {"item", TestEventTargetV8Internal::itemCallback},
     {"addEventListener", TestEventTargetV8Internal::addEventListenerCallback},
     {"removeEventListener", TestEventTargetV8Internal::removeEventListenerCallback},
@@ -116,7 +115,7 @@ static v8::Persistent<v8::FunctionTemplate> ConfigureV8TestEventTargetTemplate(v
     v8::Local<v8::Signature> defaultSignature;
     defaultSignature = V8DOMConfiguration::configureTemplate(desc, "TestEventTarget", v8::Persistent<v8::FunctionTemplate>(), V8TestEventTarget::internalFieldCount,
         0, 0,
-        TestEventTargetCallbacks, WTF_ARRAY_LENGTH(TestEventTargetCallbacks));
+        V8TestEventTargetCallbacks, WTF_ARRAY_LENGTH(V8TestEventTargetCallbacks));
     UNUSED_PARAM(defaultSignature); // In some cases, it will not be used.
     v8::Local<v8::ObjectTemplate> instance = desc->InstanceTemplate();
     v8::Local<v8::ObjectTemplate> proto = desc->PrototypeTemplate();
@@ -171,11 +170,26 @@ bool V8TestEventTarget::HasInstance(v8::Handle<v8::Value> value)
 }
 
 
-v8::Handle<v8::Object> V8TestEventTarget::wrapSlow(PassRefPtr<TestEventTarget> impl, v8::Isolate* isolate)
+v8::Handle<v8::Object> V8TestEventTarget::wrapSlow(PassRefPtr<TestEventTarget> impl, v8::Handle<v8::Object> creationContext, v8::Isolate* isolate)
 {
     v8::Handle<v8::Object> wrapper;
-    Frame* frame = 0;
-    wrapper = V8DOMWrapper::instantiateV8Object(frame, &info, impl.get());
+    Document* document = 0;
+    UNUSED_PARAM(document);
+
+    v8::Handle<v8::Context> context;
+    if (!creationContext.IsEmpty() && creationContext->CreationContext() != v8::Context::GetCurrent()) {
+        // For performance, we enter the context only if the currently running context
+        // is different from the context that we are about to enter.
+        context = v8::Local<v8::Context>::New(creationContext->CreationContext());
+        ASSERT(!context.IsEmpty());
+        context->Enter();
+    }
+
+    wrapper = V8DOMWrapper::instantiateV8Object(document, &info, impl.get());
+
+    if (!context.IsEmpty())
+        context->Exit();
+
     if (UNLIKELY(wrapper.IsEmpty()))
         return wrapper;
     v8::Persistent<v8::Object> wrapperHandle = V8DOMWrapper::setJSWrapperForDOMObject(impl, wrapper, isolate);

@@ -33,8 +33,8 @@
 
 #include "CSSValueList.h"
 #include "Length.h"
-#include "MemoryInstrumentation.h"
 #include "StyleResolver.h"
+#include "WebCoreMemoryInstrumentation.h"
 
 #include <wtf/OwnPtr.h>
 #include <wtf/PassOwnPtr.h>
@@ -109,7 +109,7 @@ bool CSSCalcValue::hasVariableReference() const
 
 void CSSCalcValue::reportDescendantMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
 {
-    MemoryClassInfo info(memoryObjectInfo, this, MemoryInstrumentation::CSS);
+    MemoryClassInfo info(memoryObjectInfo, this, WebCoreMemoryTypes::CSS);
 }
     
 double CSSCalcValue::clampToPermittedRange(double value) const
@@ -132,6 +132,7 @@ CSSCalcExpressionNode::~CSSCalcExpressionNode()
 }
     
 class CSSCalcPrimitiveValue : public CSSCalcExpressionNode {
+    WTF_MAKE_FAST_ALLOCATED;
 public:
 
     static PassRefPtr<CSSCalcPrimitiveValue> create(CSSPrimitiveValue* value, bool isInteger)
@@ -224,8 +225,8 @@ public:
 
     virtual void reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const OVERRIDE
     {
-        MemoryClassInfo info(memoryObjectInfo, this, MemoryInstrumentation::CSS);
-        info.addInstrumentedMember(m_value);
+        MemoryClassInfo info(memoryObjectInfo, this, WebCoreMemoryTypes::CSS);
+        info.addMember(m_value);
     }
     
 private:
@@ -322,9 +323,9 @@ public:
 
     virtual void reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const OVERRIDE
     {
-        MemoryClassInfo info(memoryObjectInfo, this, MemoryInstrumentation::CSS);
-        info.addInstrumentedMember(m_leftSide);
-        info.addInstrumentedMember(m_rightSide);
+        MemoryClassInfo info(memoryObjectInfo, this, WebCoreMemoryTypes::CSS);
+        info.addMember(m_leftSide);
+        info.addMember(m_rightSide);
     }
 
     static String buildCssText(const String& leftExpression, const String& rightExpression, CalcOperator op)

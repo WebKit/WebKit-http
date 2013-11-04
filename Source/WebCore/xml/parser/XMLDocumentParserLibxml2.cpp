@@ -73,7 +73,7 @@ using namespace std;
 namespace WebCore {
 
 class PendingCallbacks {
-    WTF_MAKE_NONCOPYABLE(PendingCallbacks);
+    WTF_MAKE_NONCOPYABLE(PendingCallbacks); WTF_MAKE_FAST_ALLOCATED;
 public:
     ~PendingCallbacks() { }
     static PassOwnPtr<PendingCallbacks> create()
@@ -344,6 +344,7 @@ static int matchFunc(const char*)
 }
 
 class OffsetBuffer {
+    WTF_MAKE_FAST_ALLOCATED;
 public:
     OffsetBuffer(const Vector<char>& b) : m_buffer(b), m_currentOffset(0) { }
 
@@ -1332,7 +1333,7 @@ void XMLDocumentParser::doEnd()
         xmlTreeViewer.transformDocumentToTreeView();
 
     if (m_sawXSLTransform) {
-        void* doc = xmlDocPtrForString(document()->cachedResourceLoader(), m_originalSourceForTransform, document()->url().string());
+        void* doc = xmlDocPtrForString(document()->cachedResourceLoader(), m_originalSourceForTransform.toString(), document()->url().string());
         document()->setTransformSource(adoptPtr(new TransformSource(doc)));
 
         document()->setParsing(false); // Make the document think it's done, so it will apply XSL stylesheets.

@@ -256,6 +256,7 @@ void JIT::privateCompileMainPass()
         DEFINE_OP(op_eq)
         DEFINE_OP(op_eq_null)
         case op_get_by_id_out_of_line:
+        case op_get_array_length:
         DEFINE_OP(op_get_by_id)
         DEFINE_OP(op_get_arguments_length)
         DEFINE_OP(op_get_by_val)
@@ -318,8 +319,8 @@ void JIT::privateCompileMainPass()
         DEFINE_OP(op_pre_inc)
         DEFINE_OP(op_profile_did_call)
         DEFINE_OP(op_profile_will_call)
-        DEFINE_OP(op_push_new_scope)
-        DEFINE_OP(op_push_scope)
+        DEFINE_OP(op_push_name_scope)
+        DEFINE_OP(op_push_with_scope)
         case op_put_by_id_out_of_line:
         case op_put_by_id_transition_direct:
         case op_put_by_id_transition_normal:
@@ -329,7 +330,9 @@ void JIT::privateCompileMainPass()
         DEFINE_OP(op_put_by_index)
         DEFINE_OP(op_put_by_val)
         DEFINE_OP(op_put_getter_setter)
+        case op_init_global_const:
         DEFINE_OP(op_put_global_var)
+        case op_init_global_const_check:
         DEFINE_OP(op_put_global_var_check)
         DEFINE_OP(op_put_scoped_var)
         DEFINE_OP(op_resolve)
@@ -358,7 +361,6 @@ void JIT::privateCompileMainPass()
         DEFINE_OP(op_to_jsnumber)
         DEFINE_OP(op_to_primitive)
 
-        case op_get_array_length:
         case op_get_by_id_chain:
         case op_get_by_id_generic:
         case op_get_by_id_proto:
@@ -446,6 +448,7 @@ void JIT::privateCompileSlowCases()
         DEFINE_SLOWCASE_OP(op_div)
         DEFINE_SLOWCASE_OP(op_eq)
         case op_get_by_id_out_of_line:
+        case op_get_array_length:
         DEFINE_SLOWCASE_OP(op_get_by_id)
         DEFINE_SLOWCASE_OP(op_get_arguments_length)
         DEFINE_SLOWCASE_OP(op_get_by_val)
@@ -490,6 +493,7 @@ void JIT::privateCompileSlowCases()
         case op_put_by_id_transition_normal_out_of_line:
         DEFINE_SLOWCASE_OP(op_put_by_id)
         DEFINE_SLOWCASE_OP(op_put_by_val)
+        case op_init_global_const_check:
         DEFINE_SLOWCASE_OP(op_put_global_var_check);
         DEFINE_SLOWCASE_OP(op_resolve_global)
         DEFINE_SLOWCASE_OP(op_resolve_global_dynamic)

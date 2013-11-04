@@ -31,18 +31,18 @@
 #ifndef ScriptProfiler_h
 #define ScriptProfiler_h
 
-#include "PlatformString.h"
 #include "ScriptHeapSnapshot.h"
 #include "ScriptProfile.h"
 #include "ScriptState.h"
 
+#include <wtf/Forward.h>
 #include <wtf/PassRefPtr.h>
+#include <wtf/text/WTFString.h>
 
 namespace WebCore {
 
 class ExternalArrayVisitor;
 class ExternalStringVisitor;
-class MemoryInstrumentation;
 class NodeWrapperVisitor;
 class Page;
 class ScriptObject;

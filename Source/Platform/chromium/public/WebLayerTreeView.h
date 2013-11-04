@@ -84,10 +84,6 @@ public:
     virtual void setRootLayer(const WebLayer&) = 0;
     virtual void clearRootLayer() = 0;
 
-    // Returns a unique identifier that can be used on the compositor thread to request a
-    // WebCompositorInputHandler instance.
-    virtual int compositorIdentifier() = 0;
-
 
     // View properties ---------------------------------------------------
 
@@ -133,7 +129,7 @@ public:
     virtual bool commitRequested() const = 0;
 
     // Triggers a compositing pass. If the compositor thread was not
-    // enabled via WebCompositor::initialize, the compositing pass happens
+    // enabled via WebCompositorSupport::initialize, the compositing pass happens
     // immediately. If it is enabled, the compositing pass will happen at a
     // later time. Before the compositing pass happens (i.e. before composite()
     // returns when the compositor thread is disabled), WebContentLayers will be

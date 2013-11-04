@@ -34,7 +34,6 @@ namespace WebCore {
 class CSSRule;
 class CSSStyleDeclaration;
 class KURL;
-class MemoryObjectInfo;
 class PropertySetCSSStyleDeclaration;
 class StyledElement;
 class StylePropertyShorthand;
@@ -91,6 +90,7 @@ public:
     void addSubresourceStyleURLs(ListHashSet<KURL>&, StyleSheetContents* contextStyleSheet) const;
 
     PassRefPtr<StylePropertySet> copy() const;
+    PassRefPtr<StylePropertySet> immutableCopyIfNeeded() const;
 
     void removeEquivalentProperties(const StylePropertySet*);
     void removeEquivalentProperties(const CSSStyleDeclaration*);

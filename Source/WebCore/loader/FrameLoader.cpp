@@ -77,7 +77,6 @@
 #include "Logging.h"
 #include "MIMETypeRegistry.h"
 #include "MainResourceLoader.h"
-#include "MemoryInstrumentation.h"
 #include "Page.h"
 #include "PageCache.h"
 #include "PageTransitionEvent.h"
@@ -99,6 +98,7 @@
 #include "SerializedScriptValue.h"
 #include "Settings.h"
 #include "TextResourceDecoder.h"
+#include "WebCoreMemoryInstrumentation.h"
 #include "WindowFeatures.h"
 #include "XMLDocumentParser.h"
 #include <wtf/CurrentTime.h>
@@ -123,6 +123,7 @@
 #if ENABLE(WEB_ARCHIVE) || ENABLE(MHTML)
 #include "Archive.h"
 #endif
+
 
 namespace WebCore {
 
@@ -646,6 +647,7 @@ void FrameLoader::didBeginDocument(bool dispatch)
     m_frame->document()->initContentSecurityPolicy();
 
     Settings* settings = m_frame->document()->settings();
+    m_frame->document()->cachedResourceLoader()->setImagesEnabled(!settings || settings->areImagesEnabled());
     m_frame->document()->cachedResourceLoader()->setAutoLoadImages(settings && settings->loadsImagesAutomatically());
 
     if (m_documentLoader) {
@@ -718,7 +720,7 @@ void FrameLoader::checkCompleted()
     m_shouldCallCheckCompleted = false;
 
     if (m_frame->view())
-        m_frame->view()->checkStopDelayingDeferredRepaints();
+        m_frame->view()->checkFlushDeferredRepaintsAfterLoadComplete();
 
     // Have we completed before?
     if (m_isComplete)
@@ -753,6 +755,9 @@ void FrameLoader::checkCompleted()
     completed();
     if (m_frame->page())
         checkLoadComplete();
+
+    if (m_frame->view())
+        m_frame->view()->checkFlushDeferredRepaintsAfterLoadComplete();
 }
 
 void FrameLoader::checkTimerFired(Timer<FrameLoader>*)
@@ -1614,24 +1619,21 @@ void FrameLoader::setDocumentLoader(DocumentLoader* loader)
 
     m_client->prepareForDataSourceReplacement();
     detachChildren();
+
+    // detachChildren() can trigger this frame's unload event, and therefore
+    // script can run and do just about anything. For example, an unload event that calls
+    // document.write("") on its parent frame can lead to a recursive detachChildren()
+    // invocation for this frame. In that case, we can end up at this point with a
+    // loader that hasn't been deleted but has been detached from its frame. Such a
+    // DocumentLoader has been sufficiently detached that we'll end up in an inconsistent
+    // state if we try to use it.
+    if (loader && !loader->frame())
+        return;
+
     if (m_documentLoader)
         m_documentLoader->detachFromFrame();
 
     m_documentLoader = loader;
-
-    // The following abomination is brought to you by the unload event.
-    // The detachChildren() call above may trigger a child frame's unload event,
-    // which could do something obnoxious like call document.write("") on
-    // the main frame, which results in detaching children while detaching children.
-    // This can cause the new m_documentLoader to be detached from its Frame*, but still
-    // be alive. To make matters worse, DocumentLoaders with a null Frame* aren't supposed
-    // to happen when they're still alive (and many places below us on the stack think the
-    // DocumentLoader is still usable). Ergo, we reattach loader to its Frame, and pretend
-    // like nothing ever happened.
-    if (m_documentLoader && !m_documentLoader->frame()) {
-        ASSERT(!m_documentLoader->isLoading());
-        m_documentLoader->setFrame(m_frame);
-    }
 }
 
 void FrameLoader::setPolicyDocumentLoader(DocumentLoader* loader)
@@ -1805,6 +1807,12 @@ void FrameLoader::transitionToCommitted(PassRefPtr<CachedPage> cachedPage)
 
     setDocumentLoader(m_provisionalDocumentLoader.get());
     setProvisionalDocumentLoader(0);
+
+    if (pdl != m_documentLoader) {
+        ASSERT(m_state == FrameStateComplete);
+        return;
+    }
+
     setState(FrameStateCommittedPage);
 
 #if ENABLE(TOUCH_EVENTS)
@@ -3271,11 +3279,11 @@ NetworkingContext* FrameLoader::networkingContext() const
 
 void FrameLoader::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
 {
-    MemoryClassInfo info(memoryObjectInfo, this, MemoryInstrumentation::Loader);
-    info.addInstrumentedMember(m_documentLoader);
-    info.addInstrumentedMember(m_provisionalDocumentLoader);
-    info.addInstrumentedMember(m_policyDocumentLoader);
-    info.addInstrumentedMember(m_outgoingReferrer);
+    MemoryClassInfo info(memoryObjectInfo, this, WebCoreMemoryTypes::Loader);
+    info.addMember(m_documentLoader);
+    info.addMember(m_provisionalDocumentLoader);
+    info.addMember(m_policyDocumentLoader);
+    info.addMember(m_outgoingReferrer);
     info.addInstrumentedHashSet(m_openedFrames);
 }
 

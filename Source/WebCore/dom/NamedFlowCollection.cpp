@@ -81,7 +81,7 @@ PassRefPtr<WebKitNamedFlow> NamedFlowCollection::ensureFlowWithName(const String
     RefPtr<WebKitNamedFlow> newFlow = WebKitNamedFlow::create(this, flowName);
     m_namedFlows.add(newFlow.get());
 
-    InspectorInstrumentation::didCreateNamedFlow(m_document, newFlow->name());
+    InspectorInstrumentation::didCreateNamedFlow(m_document, newFlow.get());
 
     return newFlow.release();
 }
@@ -95,9 +95,9 @@ void NamedFlowCollection::discardNamedFlow(WebKitNamedFlow* namedFlow)
     ASSERT(namedFlow->flowState() == WebKitNamedFlow::FlowStateNull);
     ASSERT(m_namedFlows.contains(namedFlow));
 
-    m_namedFlows.remove(namedFlow);
+    InspectorInstrumentation::willRemoveNamedFlow(m_document, namedFlow);
 
-    InspectorInstrumentation::didRemoveNamedFlow(m_document, namedFlow->name());
+    m_namedFlows.remove(namedFlow);
 }
 
 void NamedFlowCollection::documentDestroyed()
@@ -106,11 +106,25 @@ void NamedFlowCollection::documentDestroyed()
 }
 PassRefPtr<DOMNamedFlowCollection> NamedFlowCollection::createCSSOMSnapshot()
 {
-    NamedFlowSet createdFlows;
+    Vector<WebKitNamedFlow*> createdFlows;
     for (NamedFlowSet::iterator it = m_namedFlows.begin(); it != m_namedFlows.end(); ++it)
         if ((*it)->flowState() == WebKitNamedFlow::FlowStateCreated)
-            createdFlows.add(*it);
+            createdFlows.append(*it);
     return DOMNamedFlowCollection::create(createdFlows);
 }
+
+// The HashFunctions object used by the HashSet to compare between NamedFlows.
+// It is safe to set safeToCompareToEmptyOrDeleted because the HashSet will never contain null pointers or deleted values.
+struct NamedFlowCollection::NamedFlowHashFunctions {
+    static unsigned hash(WebKitNamedFlow* key) { return DefaultHash<String>::Hash::hash(key->name()); }
+    static bool equal(WebKitNamedFlow* a, WebKitNamedFlow* b) { return a->name() == b->name(); }
+    static const bool safeToCompareToEmptyOrDeleted = true;
+};
+
+// The HashTranslator is used to lookup a NamedFlow in the set using a name.
+struct NamedFlowCollection::NamedFlowHashTranslator {
+    static unsigned hash(const String& key) { return DefaultHash<String>::Hash::hash(key); }
+    static bool equal(WebKitNamedFlow* a, const String& b) { return a->name() == b; }
+};
 
 } // namespace WebCore

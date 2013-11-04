@@ -28,6 +28,7 @@
 #include "FrameView.h"
 #include "GraphicsContext.h"
 #include "InspectorController.h"
+#include "InspectorInstrumentation.h"
 #include "Page.h"
 #include "SurfacePool.h"
 #include "WebPage.h"
@@ -235,6 +236,16 @@ BackingStorePrivate::~BackingStorePrivate()
     pthread_mutex_destroy(&m_mutex);
 }
 
+void BackingStorePrivate::instrumentBeginFrame()
+{
+    WebCore::InspectorInstrumentation::didBeginFrame(WebPagePrivate::core(m_webPage));
+}
+
+void BackingStorePrivate::instrumentCancelFrame()
+{
+    WebCore::InspectorInstrumentation::didCancelFrame(WebPagePrivate::core(m_webPage));
+}
+
 bool BackingStorePrivate::shouldDirectRenderingToWindow() const
 {
     // Direct rendering doesn't work with OpenGL compositing code paths due to
@@ -349,9 +360,14 @@ void BackingStorePrivate::resumeScreenAndBackingStoreUpdates(BackingStore::Resum
     --m_suspendScreenUpdates;
     BlackBerry::Platform::userInterfaceThreadMessageClient()->syncToCurrentMessage();
 
+#if USE(ACCELERATED_COMPOSITING)
+    // This will also blit since we set the OSDS flag above.
+    m_webPage->d->commitRootLayerIfNeeded();
+#else
     // Do some blitting if necessary.
     if ((op == BackingStore::Blit || op == BackingStore::RenderAndBlit) && !shouldDirectRenderingToWindow())
         blitVisibleContents();
+#endif
 }
 
 void BackingStorePrivate::repaint(const Platform::IntRect& windowRect,
@@ -909,8 +925,6 @@ bool BackingStorePrivate::isCurrentVisibleJob(const TileIndex& index, BackingSto
         return true;
 
     // Second check if the individual parts of the non-rendered region are in the regular queue.
-    bool isCurrent = true; // It is true until it isn't :)
-
     IntRectList tileNotRenderedRegionRects = tile->frontBuffer()->notRenderedRegion().rects();
     for (size_t i = 0; i < tileNotRenderedRegionRects.size(); ++i) {
         Platform::IntRect tileNotRenderedRegionRect = tileNotRenderedRegionRects.at(i);
@@ -919,10 +933,11 @@ bool BackingStorePrivate::isCurrentVisibleJob(const TileIndex& index, BackingSto
         // Map to transformed contents coordinates.
         tileNotRenderedRegionRect.move(origin.x(), origin.y());
 
-        isCurrent = m_renderQueue->isCurrentRegularRenderJob(tileNotRenderedRegionRect) ? isCurrent : false;
+        if (!m_renderQueue->isCurrentRegularRenderJob(tileNotRenderedRegionRect))
+            return false;
     }
 
-    return isCurrent;
+    return true;
 }
 
 void BackingStorePrivate::scrollBackingStore(int deltaX, int deltaY)
@@ -2706,12 +2721,14 @@ bool BackingStore::isDirectRenderingToWindow() const
 
 void BackingStore::createBackingStoreMemory()
 {
-    SurfacePool::globalSurfacePool()->createBuffers();
+    if (BackingStorePrivate::s_currentBackingStoreOwner == d->m_webPage)
+        SurfacePool::globalSurfacePool()->createBuffers();
 }
 
 void BackingStore::releaseBackingStoreMemory()
 {
-    SurfacePool::globalSurfacePool()->releaseBuffers();
+    if (BackingStorePrivate::s_currentBackingStoreOwner == d->m_webPage)
+        SurfacePool::globalSurfacePool()->releaseBuffers();
 }
 
 bool BackingStore::defersBlit() const

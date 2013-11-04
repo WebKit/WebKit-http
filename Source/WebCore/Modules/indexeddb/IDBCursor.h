@@ -41,7 +41,6 @@ class IDBCallbacks;
 class IDBCursorBackendInterface;
 class IDBRequest;
 class ScriptExecutionContext;
-class SerializedScriptValue;
 
 typedef int ExceptionCode;
 
@@ -75,14 +74,14 @@ public:
     PassRefPtr<IDBAny> value();
     IDBAny* source() const;
 
-    PassRefPtr<IDBRequest> update(ScriptExecutionContext*, PassRefPtr<SerializedScriptValue>, ExceptionCode&);
+    PassRefPtr<IDBRequest> update(ScriptExecutionContext*, ScriptValue&, ExceptionCode&);
     void advance(unsigned long, ExceptionCode&);
     void continueFunction(PassRefPtr<IDBKey>, ExceptionCode&);
     PassRefPtr<IDBRequest> deleteFunction(ScriptExecutionContext*, ExceptionCode&);
 
     void postSuccessHandlerCallback();
     void close();
-    void setValueReady(PassRefPtr<IDBKey>, PassRefPtr<IDBKey> primaryKey, PassRefPtr<SerializedScriptValue>);
+    void setValueReady(PassRefPtr<IDBKey>, PassRefPtr<IDBKey> primaryKey, ScriptValue&);
 
     // The spec requires that the script object that wraps the value
     // be unchanged until the value changes as a result of the cursor

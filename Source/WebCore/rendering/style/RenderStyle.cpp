@@ -28,7 +28,6 @@
 #include "CSSPropertyNames.h"
 #include "Font.h"
 #include "FontSelector.h"
-#include "MemoryInstrumentation.h"
 #include "QuotesData.h"
 #include "RenderArena.h"
 #include "RenderObject.h"
@@ -40,6 +39,7 @@
 #if ENABLE(TOUCH_EVENTS)
 #include "RenderTheme.h"
 #endif
+#include "WebCoreMemoryInstrumentation.h"
 #include <wtf/StdLibExtras.h>
 #include <algorithm>
 
@@ -468,7 +468,7 @@ StyleDifference RenderStyle::diff(const RenderStyle* other, unsigned& changedCon
             || rareInheritedData->m_effectiveZoom != other->rareInheritedData->m_effectiveZoom
             || rareInheritedData->textSizeAdjust != other->rareInheritedData->textSizeAdjust
             || rareInheritedData->wordBreak != other->rareInheritedData->wordBreak
-            || rareInheritedData->wordWrap != other->rareInheritedData->wordWrap
+            || rareInheritedData->overflowWrap != other->rareInheritedData->overflowWrap
             || rareInheritedData->nbspMode != other->rareInheritedData->nbspMode
             || rareInheritedData->khtmlLineBreak != other->rareInheritedData->khtmlLineBreak
             || rareInheritedData->textSecurity != other->rareInheritedData->textSecurity
@@ -1036,6 +1036,13 @@ CounterDirectiveMap& RenderStyle::accessCounterDirectives()
     return *map;
 }
 
+const CounterDirectives RenderStyle::getCounterDirectives(const AtomicString& identifier) const
+{
+    if (const CounterDirectiveMap* directives = counterDirectives())
+        return directives->get(identifier);
+    return CounterDirectives();
+}
+
 const AtomicString& RenderStyle::hyphenString() const
 {
     ASSERT(hyphens() != HyphensNone);
@@ -1335,40 +1342,40 @@ Color RenderStyle::colorIncludingFallback(int colorProperty, bool visitedLink) c
     EBorderStyle borderStyle = BNONE;
     switch (colorProperty) {
     case CSSPropertyBackgroundColor:
-        return visitedLink ? rareNonInheritedData->m_visitedLinkBackgroundColor : backgroundColor(); // Background color doesn't fall back.
+        return visitedLink ? visitedLinkBackgroundColor() : backgroundColor(); // Background color doesn't fall back.
     case CSSPropertyBorderLeftColor:
-        result = visitedLink ? rareNonInheritedData->m_visitedLinkBorderLeftColor : borderLeftColor();
+        result = visitedLink ? visitedLinkBorderLeftColor() : borderLeftColor();
         borderStyle = borderLeftStyle();
         break;
     case CSSPropertyBorderRightColor:
-        result = visitedLink ? rareNonInheritedData->m_visitedLinkBorderRightColor : borderRightColor();
+        result = visitedLink ? visitedLinkBorderRightColor() : borderRightColor();
         borderStyle = borderRightStyle();
         break;
     case CSSPropertyBorderTopColor:
-        result = visitedLink ? rareNonInheritedData->m_visitedLinkBorderTopColor : borderTopColor();
+        result = visitedLink ? visitedLinkBorderTopColor() : borderTopColor();
         borderStyle = borderTopStyle();
         break;
     case CSSPropertyBorderBottomColor:
-        result = visitedLink ? rareNonInheritedData->m_visitedLinkBorderBottomColor : borderBottomColor();
+        result = visitedLink ? visitedLinkBorderBottomColor() : borderBottomColor();
         borderStyle = borderBottomStyle();
         break;
     case CSSPropertyColor:
-        result = visitedLink ? inherited->visitedLinkColor : color();
+        result = visitedLink ? visitedLinkColor() : color();
         break;
     case CSSPropertyOutlineColor:
-        result = visitedLink ? rareNonInheritedData->m_visitedLinkOutlineColor : outlineColor();
+        result = visitedLink ? visitedLinkOutlineColor() : outlineColor();
         break;
     case CSSPropertyWebkitColumnRuleColor:
-        result = visitedLink ? rareNonInheritedData->m_multiCol->m_visitedLinkColumnRuleColor : columnRuleColor();
+        result = visitedLink ? visitedLinkColumnRuleColor() : columnRuleColor();
         break;
     case CSSPropertyWebkitTextEmphasisColor:
-        result = visitedLink ? rareInheritedData->visitedLinkTextEmphasisColor : textEmphasisColor();
+        result = visitedLink ? visitedLinkTextEmphasisColor() : textEmphasisColor();
         break;
     case CSSPropertyWebkitTextFillColor:
-        result = visitedLink ? rareInheritedData->visitedLinkTextFillColor : textFillColor();
+        result = visitedLink ? visitedLinkTextFillColor() : textFillColor();
         break;
     case CSSPropertyWebkitTextStrokeColor:
-        result = visitedLink ? rareInheritedData->visitedLinkTextStrokeColor : textStrokeColor();
+        result = visitedLink ? visitedLinkTextStrokeColor() : textStrokeColor();
         break;
     default:
         ASSERT_NOT_REACHED();
@@ -1379,7 +1386,7 @@ Color RenderStyle::colorIncludingFallback(int colorProperty, bool visitedLink) c
         if (!visitedLink && (borderStyle == INSET || borderStyle == OUTSET || borderStyle == RIDGE || borderStyle == GROOVE))
             result.setRGB(238, 238, 238);
         else
-            result = visitedLink ? inherited->visitedLinkColor : color();
+            result = visitedLink ? visitedLinkColor() : color();
     }
     return result;
 }
@@ -1597,15 +1604,15 @@ LayoutBoxExtent RenderStyle::imageOutsets(const NinePieceImage& image) const
 
 void RenderStyle::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
 {
-    MemoryClassInfo info(memoryObjectInfo, this, MemoryInstrumentation::CSS);
+    MemoryClassInfo info(memoryObjectInfo, this, WebCoreMemoryTypes::CSS);
     info.addMember(m_box);
     info.addMember(visual);
     // FIXME: m_background contains RefPtr<StyleImage> that might need to be instrumented.
     info.addMember(m_background);
     // FIXME: surrond contains some fields e.g. BorderData that might need to be instrumented.
     info.addMember(surround);
-    info.addInstrumentedMember(rareNonInheritedData);
-    info.addInstrumentedMember(rareInheritedData);
+    info.addMember(rareNonInheritedData);
+    info.addMember(rareInheritedData);
     // FIXME: inherited contains StyleImage and Font fields that might need to be instrumented.
     info.addMember(inherited);
     if (m_cachedPseudoStyles)

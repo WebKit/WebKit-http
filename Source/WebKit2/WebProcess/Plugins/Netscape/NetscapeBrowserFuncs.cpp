@@ -37,6 +37,7 @@
 #include <WebCore/ProtectionSpace.h>
 #include <WebCore/SharedBuffer.h>
 #include <utility>
+#include <wtf/text/StringBuilder.h>
 
 #if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 1070
 #include "NetscapeSandboxFunctions.h"
@@ -123,7 +124,7 @@ static const char* findEndOfLine(const char* bytes, unsigned length)
 static String capitalizeRFC822HeaderFieldName(const String& name)
 {
     bool capitalizeCharacter = true;
-    String result;
+    StringBuilder result;
 
     for (unsigned i = 0; i < name.length(); i++) {
         UChar c;
@@ -143,7 +144,7 @@ static String capitalizeRFC822HeaderFieldName(const String& name)
         result.append(c);
     }
 
-    return result;
+    return result.toString();
 }
 
 static HTTPHeaderMap parseRFC822HeaderFields(const char* bytes, unsigned length)
@@ -203,12 +204,8 @@ static HTTPHeaderMap parseRFC822HeaderFields(const char* bytes, unsigned length)
                 value = String(colon, endOfLine - colon);
             
             String oldValue = headerFields.get(lastHeaderKey);
-            if (!oldValue.isNull()) {
-                String tmp = oldValue;
-                tmp += ", ";
-                tmp += value;
-                value = tmp;
-            }
+            if (!oldValue.isNull())
+                value = oldValue + ", " + value;
             
             headerFields.set(lastHeaderKey, value);
         }
@@ -691,14 +688,20 @@ static void NPN_ReleaseObject(NPObject *npObject)
 
 static bool NPN_Invoke(NPP npp, NPObject *npObject, NPIdentifier methodName, const NPVariant* arguments, uint32_t argumentCount, NPVariant* result)
 {
+    RefPtr<NetscapePlugin> plugin = NetscapePlugin::fromNPP(npp);
+    PluginDestructionProtector protector(plugin.get());
+
     if (npObject->_class->invoke)
         return npObject->_class->invoke(npObject, methodName, arguments, argumentCount, result);
 
     return false;
 }
 
-static bool NPN_InvokeDefault(NPP, NPObject *npObject, const NPVariant* arguments, uint32_t argumentCount, NPVariant* result)
+static bool NPN_InvokeDefault(NPP npp, NPObject *npObject, const NPVariant* arguments, uint32_t argumentCount, NPVariant* result)
 {
+    RefPtr<NetscapePlugin> plugin = NetscapePlugin::fromNPP(npp);
+    PluginDestructionProtector protector(plugin.get());
+
     if (npObject->_class->invokeDefault)
         return npObject->_class->invokeDefault(npObject, arguments, argumentCount, result);
 

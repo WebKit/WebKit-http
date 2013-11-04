@@ -86,7 +86,7 @@ public:
     // Note that this will adopt the mach port and destroy it when the work queue is invalidated.
     void registerMachPortEventHandler(mach_port_t, MachPortEventType, const Function<void()>&);
     void unregisterMachPortEventHandler(mach_port_t);
-#elif PLATFORM(WIN)
+#elif OS(WINDOWS)
     void registerHandle(HANDLE, const Function<void()>&);
     void unregisterAndCloseHandle(HANDLE);
 #elif PLATFORM(QT)
@@ -117,7 +117,7 @@ private:
     HashMap<mach_port_t, EventSource*> m_eventSources;
     dispatch_queue_t m_dispatchQueue;
 #endif
-#elif PLATFORM(WIN)
+#elif OS(WINDOWS)
     class WorkItemWin : public ThreadSafeRefCounted<WorkItemWin> {
     public:
         static PassRefPtr<WorkItemWin> create(const Function<void()>&, WorkQueue*);
@@ -187,6 +187,21 @@ private:
     HashMap<int, Vector<EventSource*> > m_eventSources;
     typedef HashMap<int, Vector<EventSource*> >::iterator EventSourceIterator; 
 #elif PLATFORM(EFL)
+    class TimerWorkItem {
+    public:
+        static PassOwnPtr<TimerWorkItem> create(Function<void()>, double expireTime);
+        void dispatch() { m_function(); }
+        double expireTime() const { return m_expireTime; }
+        bool expired(double currentTime) const { return currentTime >= m_expireTime; }
+
+    protected:
+        TimerWorkItem(Function<void()>, double expireTime);
+
+    private:
+        Function<void()> m_function;
+        double m_expireTime;
+    };
+
     fd_set m_fileDescriptorSet;
     int m_maxFileDescriptor;
     int m_readFromPipeDescriptor;
@@ -199,13 +214,17 @@ private:
     int m_socketDescriptor;
     Function<void()> m_socketEventHandler;
 
-    HashMap<int, OwnPtr<Ecore_Timer> > m_timers;
+    Vector<OwnPtr<TimerWorkItem> > m_timerWorkItems;
+    Mutex m_timerWorkItemsLock;
 
     void sendMessageToThread(const char*);
     static void* workQueueThread(WorkQueue*);
     void performWork();
     void performFileDescriptorWork();
-    static bool timerFired(void*);
+    static double getCurrentTime();
+    struct timeval* getNextTimeOut();
+    void performTimerWork();
+    void insertTimerWorkItem(PassOwnPtr<TimerWorkItem>);
 #endif
 };
 

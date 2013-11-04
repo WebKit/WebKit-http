@@ -26,6 +26,7 @@
 #include "config.h"
 #include "TextStream.h"
 
+#include <wtf/MathExtras.h>
 #include <wtf/StringExtras.h>
 #include <wtf/text/WTFString.h>
 
@@ -35,6 +36,14 @@ namespace WebCore {
 
 static const size_t printBufferSize = 100; // large enough for any integer or floating point value in string format, including trailing null character
 
+static inline bool hasFractions(double val)
+{
+    static const double s_epsilon = 0.0001;
+    int ival = static_cast<int>(val);
+    double dval = static_cast<double>(ival);
+    return fabs(val - dval) > s_epsilon;
+}
+
 TextStream& TextStream::operator<<(bool b)
 {
     return *this << (b ? "1" : "0");
@@ -42,25 +51,37 @@ TextStream& TextStream::operator<<(bool b)
 
 TextStream& TextStream::operator<<(int i)
 {
-    m_text.append(String::number(i));
+    m_text.appendNumber(i);
     return *this;
 }
 
 TextStream& TextStream::operator<<(unsigned i)
 {
-    m_text.append(String::number(i));
+    m_text.appendNumber(i);
     return *this;
 }
 
 TextStream& TextStream::operator<<(long i)
 {
-    m_text.append(String::number(i));
+    m_text.appendNumber(i);
     return *this;
 }
 
 TextStream& TextStream::operator<<(unsigned long i)
 {
-    m_text.append(String::number(i));
+    m_text.appendNumber(i);
+    return *this;
+}
+
+TextStream& TextStream::operator<<(long long i)
+{
+    m_text.appendNumber(i);
+    return *this;
+}
+
+TextStream& TextStream::operator<<(unsigned long long i)
+{
+    m_text.appendNumber(i);
     return *this;
 }
 
@@ -95,26 +116,20 @@ TextStream& TextStream::operator<<(const String& string)
     return *this;
 }
 
+TextStream& TextStream::operator<<(const FormatNumberRespectingIntegers& numberToFormat)
+{
+    if (hasFractions(numberToFormat.value))
+        return *this << numberToFormat.value;
+
+    m_text.appendNumber(static_cast<int>(numberToFormat.value));
+    return *this;
+}
+
 String TextStream::release()
 {
     String result = m_text.toString();
     m_text.clear();
     return result;
 }
-
-#if OS(WINDOWS) && CPU(X86_64)
-TextStream& TextStream::operator<<(__int64 i)
-{
-    char buffer[printBufferSize];
-    snprintf(buffer, sizeof(buffer) - 1, "%I64i", i);
-    return *this << buffer;
-}
-TextStream& TextStream::operator<<(unsigned __int64 i)
-{
-    char buffer[printBufferSize];
-    snprintf(buffer, sizeof(buffer) - 1, "%I64u", i);
-    return *this << buffer;
-}
-#endif
 
 }

@@ -24,6 +24,7 @@
 
 #include "Font.h"
 #include "GlyphBuffer.h"
+#include "Latin1TextIterator.h"
 #include "SimpleFontData.h"
 #include "SurrogatePairAwareTextIterator.h"
 #include "TextRun.h"
@@ -57,7 +58,7 @@ WidthIterator::WidthIterator(const Font* font, const TextRun& run, HashSet<const
         m_expansionPerOpportunity = 0;
     else {
         bool isAfterExpansion = m_isAfterExpansion;
-        unsigned expansionOpportunityCount = Font::expansionOpportunityCount(m_run.characters(), m_run.length(), m_run.ltr() ? LTR : RTL, isAfterExpansion);
+        unsigned expansionOpportunityCount = m_run.is8Bit() ? Font::expansionOpportunityCount(m_run.characters8(), m_run.length(), m_run.ltr() ? LTR : RTL, isAfterExpansion) : Font::expansionOpportunityCount(m_run.characters16(), m_run.length(), m_run.ltr() ? LTR : RTL, isAfterExpansion);
         if (isAfterExpansion && !m_run.allowsTrailingExpansion())
             expansionOpportunityCount--;
 
@@ -83,14 +84,9 @@ GlyphData WidthIterator::glyphDataForCharacter(UChar32 character, bool mirror, i
     return m_font->glyphDataForCharacter(character, mirror);
 }
 
-unsigned WidthIterator::advance(int offset, GlyphBuffer* glyphBuffer)
+template <typename TextIterator>
+inline unsigned WidthIterator::advanceInternal(TextIterator& textIterator, GlyphBuffer* glyphBuffer)
 {
-    if (offset > m_run.length())
-        offset = m_run.length();
-
-    if (int(m_currentCharacter) >= offset)
-        return 0;
-
     bool rtl = m_run.rtl();
     bool hasExtraSpacing = (m_font->letterSpacing() || m_font->wordSpacing() || m_expansion) && !m_run.spacingDisabled();
 
@@ -106,7 +102,7 @@ unsigned WidthIterator::advance(int offset, GlyphBuffer* glyphBuffer)
 
     UChar32 character = 0;
     unsigned clusterLength = 0;
-    SurrogatePairAwareTextIterator textIterator(m_run.data(m_currentCharacter), m_currentCharacter, offset, m_run.length());
+
     while (textIterator.consume(character, clusterLength)) {
         unsigned advanceLength = clusterLength;
         const GlyphData& glyphData = glyphDataForCharacter(character, rtl, textIterator.currentCharacter(), advanceLength);
@@ -185,8 +181,7 @@ unsigned WidthIterator::advance(int offset, GlyphBuffer* glyphBuffer)
 
                 // Account for word spacing.
                 // We apply additional space between "words" by adding width to the space character.
-                // Word-spacing affects each space (U+0020) and non-breaking space (U+00A0).
-                if ((character == noBreakSpace || character == ' ') && textIterator.currentCharacter() && m_font->wordSpacing())
+                if (treatAsSpace && (character != '\t' || !m_run.allowTabs()) && textIterator.currentCharacter() && m_font->wordSpacing())
                     width += m_font->wordSpacing();
             } else
                 m_isAfterExpansion = false;
@@ -204,7 +199,7 @@ unsigned WidthIterator::advance(int offset, GlyphBuffer* glyphBuffer)
         // Advance past the character we just dealt with.
         textIterator.advance(advanceLength);
 
-        float oldWidth = width; 
+        float oldWidth = width;
 
         // Force characters that are used to determine word boundaries for the rounding hack
         // to be integer width, so following words will start on an integer boundary.
@@ -222,7 +217,7 @@ unsigned WidthIterator::advance(int offset, GlyphBuffer* glyphBuffer)
             // Check to see if the next character is a "rounding hack character", if so, adjust
             // width so that the total run width will be on an integer boundary.
             if ((m_run.applyWordRounding() && textIterator.currentCharacter() < m_run.length() && Font::isRoundingHackCharacter(*(textIterator.characters())))
-                    || (m_run.applyRunRounding() && textIterator.currentCharacter() >= m_run.length())) {
+                || (m_run.applyRunRounding() && textIterator.currentCharacter() >= m_run.length())) {
                 float totalWidth = widthSinceLastRounding + width;
                 widthSinceLastRounding = ceilf(totalWidth);
                 width += widthSinceLastRounding - totalWidth;
@@ -249,6 +244,25 @@ unsigned WidthIterator::advance(int offset, GlyphBuffer* glyphBuffer)
     m_runWidthSoFar += widthSinceLastRounding;
     m_finalRoundingWidth = lastRoundingWidth;
     return consumedCharacters;
+}
+
+unsigned WidthIterator::advance(int offset, GlyphBuffer* glyphBuffer)
+{
+    int length = m_run.length();
+
+    if (offset > length)
+        offset = length;
+
+    if (m_currentCharacter >= static_cast<unsigned>(offset))
+        return 0;
+
+    if (m_run.is8Bit()) {
+        Latin1TextIterator textIterator(m_run.data8(m_currentCharacter), m_currentCharacter, offset, length);
+        return advanceInternal(textIterator, glyphBuffer);
+    }
+
+    SurrogatePairAwareTextIterator textIterator(m_run.data16(m_currentCharacter), m_currentCharacter, offset, length);
+    return advanceInternal(textIterator, glyphBuffer);
 }
 
 bool WidthIterator::advanceOneCharacter(float& width, GlyphBuffer* glyphBuffer)

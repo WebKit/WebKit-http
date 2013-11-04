@@ -21,7 +21,7 @@
 #include "config.h"
 #include "CSSCharsetRule.h"
 
-#include "MemoryInstrumentation.h"
+#include "WebCoreMemoryInstrumentation.h"
 
 namespace WebCore {
 
@@ -38,9 +38,9 @@ String CSSCharsetRule::cssText() const
 
 void CSSCharsetRule::reportDescendantMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
 {
-    MemoryClassInfo info(memoryObjectInfo, this, MemoryInstrumentation::CSS);
+    MemoryClassInfo info(memoryObjectInfo, this, WebCoreMemoryTypes::CSS);
     CSSRule::reportBaseClassMemoryUsage(memoryObjectInfo);
-    info.addInstrumentedMember(m_encoding);
+    info.addMember(m_encoding);
 }
 
 } // namespace WebCore

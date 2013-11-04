@@ -30,9 +30,9 @@
 #include "MemoryCache.h"
 #include "CachedResourceClient.h"
 #include "CachedResourceClientWalker.h"
-#include "MemoryInstrumentation.h"
 #include "SharedBuffer.h"
 #include "TextResourceDecoder.h"
+#include "WebCoreMemoryInstrumentation.h"
 #include <wtf/Vector.h>
 
 #if USE(JSC)  
@@ -71,7 +71,7 @@ const String& CachedScript::script()
 
     if (!m_script && m_data) {
         m_script = m_decoder->decode(m_data->data(), encodedSize());
-        m_script += m_decoder->flush();
+        m_script.append(m_decoder->flush());
         setDecodedSize(m_script.sizeInBytes());
     }
     m_decodedDataDeletionTimer.startOneShot(0);
@@ -86,14 +86,6 @@ void CachedScript::data(PassRefPtr<SharedBuffer> data, bool allDataReceived)
 
     m_data = data;
     setEncodedSize(m_data.get() ? m_data->size() : 0);
-    setLoading(false);
-    checkNotify();
-}
-
-void CachedScript::error(CachedResource::Status status)
-{
-    setStatus(status);
-    ASSERT(errorOccurred());
     setLoading(false);
     checkNotify();
 }
@@ -129,9 +121,9 @@ void CachedScript::sourceProviderCacheSizeChanged(int delta)
 
 void CachedScript::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
 {
-    MemoryClassInfo info(memoryObjectInfo, this, MemoryInstrumentation::CachedResourceScript);
+    MemoryClassInfo info(memoryObjectInfo, this, WebCoreMemoryTypes::CachedResourceScript);
     CachedResource::reportMemoryUsage(memoryObjectInfo);
-    info.addInstrumentedMember(m_script);
+    info.addMember(m_script);
     info.addMember(m_decoder);
 #if USE(JSC)
     info.addMember(m_sourceProviderCache);

@@ -34,7 +34,7 @@
 #include "LocalizedStrings.h"
 
 #include "NotImplemented.h"
-#include "PlatformString.h"
+#include <wtf/text/WTFString.h>
 
 namespace WebCore {
 
@@ -419,26 +419,26 @@ String unknownFileSizeText()
     return String::fromUTF8("Unknown");
 }
 
-String imageTitle(const String& filename, const IntSize& size)
+String imageTitle(const String&, const IntSize&)
 {
     notImplemented();
     return String();
 }
 
 #if ENABLE(VIDEO)
-String localizedMediaControlElementString(const String& name)
+String localizedMediaControlElementString(const String&)
 {
     notImplemented();
     return String();
 }
 
-String localizedMediaControlElementHelpText(const String& name)
+String localizedMediaControlElementHelpText(const String&)
 {
     notImplemented();
     return String();
 }
 
-String localizedMediaTimeDescription(float time)
+String localizedMediaTimeDescription(float)
 {
     notImplemented();
     return String();

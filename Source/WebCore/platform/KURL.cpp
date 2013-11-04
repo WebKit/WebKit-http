@@ -28,6 +28,7 @@
 #include "KURL.h"
 
 #include "DecodeEscapeSequences.h"
+#include "PlatformMemoryInstrumentation.h"
 #include "TextEncoding.h"
 #include <stdio.h>
 #include <wtf/HashMap.h>
@@ -293,7 +294,7 @@ static void appendASCII(const String& base, const char* rel, size_t len, CharBuf
     buffer[buffer.size() - 1] = '\0';
 }
 
-// FIXME: Move to PlatformString.h eventually.
+// FIXME: Move to WTFString.h eventually.
 // Returns the index of the first index in string |s| of any of the characters
 // in |toFind|. |toFind| should be a null-terminated string, all characters up
 // to the null will be searched. Returns int if not found.
@@ -1914,6 +1915,18 @@ String mimeTypeFromDataURL(const String& url)
         return "text/plain"; // Data URLs with no MIME type are considered text/plain.
     }
     return "";
+}
+
+void KURL::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
+{
+    MemoryClassInfo info(memoryObjectInfo, this);
+#if USE(GOOGLEURL)
+    info.addMember(m_url);
+#elif USE(WTFURL)
+    info.addMember(m_urlImpl);
+#else // !USE(GOOGLEURL)
+    info.addMember(m_string);
+#endif
 }
 
 }

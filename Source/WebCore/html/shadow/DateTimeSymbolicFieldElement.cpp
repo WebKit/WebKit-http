@@ -27,17 +27,49 @@
 #if ENABLE(INPUT_TYPE_TIME_MULTIPLE_FIELDS)
 #include "DateTimeSymbolicFieldElement.h"
 
+#include "FontCache.h"
 #include "KeyboardEvent.h"
+#include "RenderStyle.h"
+#include "StyleResolver.h"
+#include "TextBreakIterator.h"
+#include "TextRun.h"
+#include <wtf/text/StringBuilder.h>
 #include <wtf/unicode/Unicode.h>
 
 namespace WebCore {
 
+static AtomicString makeVisibleEmptyValue(const Vector<String>& symbols)
+{
+    unsigned maximumLength = 0;
+    for (unsigned index = 0; index < symbols.size(); ++index)
+        maximumLength = std::max(maximumLength, numGraphemeClusters(symbols[index]));
+    StringBuilder builder;
+    builder.reserveCapacity(maximumLength);
+    for (unsigned length = 0; length < maximumLength; ++length)
+        builder.append('-');
+    return builder.toAtomicString();
+}
+
 DateTimeSymbolicFieldElement::DateTimeSymbolicFieldElement(Document* document, FieldOwner& fieldOwner, const Vector<String>& symbols)
     : DateTimeFieldElement(document, fieldOwner)
     , m_symbols(symbols)
+    , m_visibleEmptyValue(makeVisibleEmptyValue(symbols))
     , m_selectedIndex(-1)
 {
     ASSERT(!symbols.isEmpty());
+    setHasCustomCallbacks();
+}
+
+PassRefPtr<RenderStyle> DateTimeSymbolicFieldElement::customStyleForRenderer()
+{
+    FontCachePurgePreventer fontCachePurgePreventer;
+    RefPtr<RenderStyle> originalStyle = document()->styleResolver()->styleForElement(this);
+    RefPtr<RenderStyle> style = RenderStyle::clone(originalStyle.get());
+    float maxiumWidth = style->font().width(visibleEmptyValue());
+    for (unsigned index = 0; index < m_symbols.size(); ++index)
+        maxiumWidth = std::max(maxiumWidth, style->font().width(m_symbols[index]));
+    style->setWidth(Length(maxiumWidth, Fixed));
+    return style.release();
 }
 
 void DateTimeSymbolicFieldElement::handleKeyboardEvent(KeyboardEvent* keyboardEvent)
@@ -61,6 +93,16 @@ void DateTimeSymbolicFieldElement::handleKeyboardEvent(KeyboardEvent* keyboardEv
 bool DateTimeSymbolicFieldElement::hasValue() const
 {
     return m_selectedIndex >= 0;
+}
+
+int DateTimeSymbolicFieldElement::maximum() const
+{
+    return static_cast<int>(m_symbols.size());
+}
+
+int DateTimeSymbolicFieldElement::minimum() const
+{
+    return 1;
 }
 
 void DateTimeSymbolicFieldElement::setEmptyValue(const DateComponents&, EventBehavior eventBehavior)
@@ -98,9 +140,14 @@ int DateTimeSymbolicFieldElement::valueAsInteger() const
     return m_selectedIndex;
 }
 
+String DateTimeSymbolicFieldElement::visibleEmptyValue() const
+{
+    return m_visibleEmptyValue;
+}
+
 String DateTimeSymbolicFieldElement::visibleValue() const
 {
-    return hasValue() ? m_symbols[m_selectedIndex] : "--";
+    return hasValue() ? m_symbols[m_selectedIndex] : visibleEmptyValue();
 }
 
 } // namespace WebCore

@@ -1,6 +1,6 @@
 /*
  *  Copyright (C) 1999-2000 Harri Porten (porten@kde.org)
- *  Copyright (C) 2004, 2005, 2006, 2007, 2008 Apple Inc. All rights reserved.
+ *  Copyright (C) 2004, 2005, 2006, 2007, 2008, 2012 Apple Inc. All rights reserved.
  *  Copyright (C) 2006 Bjoern Graf (bjoern.graf@gmail.com)
  *
  *  This library is free software; you can redistribute it and/or
@@ -22,9 +22,10 @@
 
 #include "config.h"
 
+#include "ButterflyInlineMethods.h"
 #include "BytecodeGenerator.h"
 #include "Completion.h"
-#include <wtf/CurrentTime.h>
+#include "CopiedSpaceInlineMethods.h"
 #include "ExceptionHelpers.h"
 #include "InitializeThreading.h"
 #include "Interpreter.h"
@@ -33,12 +34,14 @@
 #include "JSFunction.h"
 #include "JSLock.h"
 #include "JSString.h"
-#include <wtf/MainThread.h>
 #include "SamplingTool.h"
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <wtf/CurrentTime.h>
+#include <wtf/MainThread.h>
+#include <wtf/text/StringBuilder.h>
 
 #if !OS(WINDOWS)
 #include <unistd.h>
@@ -224,20 +227,20 @@ protected:
 
         JSArray* array = constructEmptyArray(globalExec());
         for (size_t i = 0; i < arguments.size(); ++i)
-            array->putDirectIndex(globalExec(), i, jsString(globalExec(), arguments[i]), false);
+            array->putDirectIndex(globalExec(), i, jsString(globalExec(), arguments[i]));
         putDirect(globalData, Identifier(globalExec(), "arguments"), array);
     }
 
     void addFunction(JSGlobalData& globalData, const char* name, NativeFunction function, unsigned arguments)
     {
         Identifier identifier(globalExec(), name);
-        putDirect(globalData, identifier, JSFunction::create(globalExec(), this, arguments, identifier.ustring(), function));
+        putDirect(globalData, identifier, JSFunction::create(globalExec(), this, arguments, identifier.string(), function));
     }
     
     void addConstructableFunction(JSGlobalData& globalData, const char* name, NativeFunction function, unsigned arguments)
     {
         Identifier identifier(globalExec(), name);
-        putDirect(globalData, identifier, JSFunction::create(globalExec(), this, arguments, identifier.ustring(), function, NoIntrinsic, function));
+        putDirect(globalData, identifier, JSFunction::create(globalExec(), this, arguments, identifier.string(), function, NoIntrinsic, function));
     }
 };
 COMPILE_ASSERT(!IsInteger<GlobalObject>::value, WTF_IsInteger_GlobalObject_false);
@@ -308,17 +311,19 @@ EncodedJSValue JSC_HOST_CALL functionDescribe(ExecState* exec)
 
 EncodedJSValue JSC_HOST_CALL functionJSCStack(ExecState* exec)
 {
-    String trace = "--> Stack trace:\n";
+    StringBuilder trace;
+    trace.appendLiteral("--> Stack trace:\n");
+
     Vector<StackFrame> stackTrace;
     Interpreter::getStackTrace(&exec->globalData(), stackTrace);
     int i = 0;
 
     for (Vector<StackFrame>::iterator iter = stackTrace.begin(); iter < stackTrace.end(); iter++) {
         StackFrame level = *iter;
-        trace += String::format("    %i   %s\n", i, level.toString(exec).utf8().data());
+        trace.append(String::format("    %i   %s\n", i, level.toString(exec).utf8().data()));
         i++;
     }
-    fprintf(stderr, "%s", trace.utf8().data());
+    fprintf(stderr, "%s", trace.toString().utf8().data());
     return JSValue::encode(jsUndefined());
 }
 

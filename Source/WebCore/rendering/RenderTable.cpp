@@ -212,12 +212,18 @@ void RenderTable::removeCaption(const RenderTableCaption* oldCaption)
     m_captions.remove(index);
 }
 
-void RenderTable::computeLogicalWidth()
+void RenderTable::updateLogicalWidth()
 {
     recalcSectionsIfNeeded();
 
-    if (isOutOfFlowPositioned())
-        computePositionedLogicalWidth();
+    if (isOutOfFlowPositioned()) {
+        LogicalExtentComputedValues computedValues;
+        computePositionedLogicalWidth(computedValues);
+        setLogicalWidth(computedValues.m_extent);
+        setLogicalLeft(computedValues.m_position);
+        setMarginStart(computedValues.m_margins.m_start);
+        setMarginEnd(computedValues.m_margins.m_end);
+    }
 
     RenderBlock* cb = containingBlock();
     RenderView* renderView = view();
@@ -340,7 +346,7 @@ void RenderTable::layout()
     initMaxMarginValues();
     
     LayoutUnit oldLogicalWidth = logicalWidth();
-    computeLogicalWidth();
+    updateLogicalWidth();
 
     if (logicalWidth() != oldLogicalWidth) {
         for (unsigned i = 0; i < m_captions.size(); i++)
@@ -401,7 +407,7 @@ void RenderTable::layout()
     setLogicalHeight(logicalHeight() + borderAndPaddingBefore);
 
     if (!isOutOfFlowPositioned())
-        computeLogicalHeight();
+        updateLogicalHeight();
 
     Length logicalHeightLength = style()->logicalHeight();
     LayoutUnit computedLogicalHeight = 0;
@@ -453,7 +459,7 @@ void RenderTable::layout()
     }
 
     if (isOutOfFlowPositioned())
-        computeLogicalHeight();
+        updateLogicalHeight();
 
     // table can be containing block of positioned elements.
     // FIXME: Only pass true if width or height changed.
@@ -1292,7 +1298,7 @@ bool RenderTable::nodeAtPoint(const HitTestRequest& request, HitTestResult& resu
     LayoutRect boundsRect(adjustedLocation, size());
     if (visibleToHitTesting() && (action == HitTestBlockBackground || action == HitTestChildBlockBackground) && locationInContainer.intersects(boundsRect)) {
         updateHitTestResult(result, flipForWritingMode(locationInContainer.point() - toLayoutSize(adjustedLocation)));
-        if (!result.addNodeToRectBasedTestResult(node(), locationInContainer, boundsRect))
+        if (!result.addNodeToRectBasedTestResult(node(), request, locationInContainer, boundsRect))
             return true;
     }
 

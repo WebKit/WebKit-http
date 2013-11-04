@@ -44,7 +44,7 @@
 using namespace WebCore;
 
 class StreamingClient : public ResourceHandleClient {
-    WTF_MAKE_NONCOPYABLE(StreamingClient);
+    WTF_MAKE_NONCOPYABLE(StreamingClient); WTF_MAKE_FAST_ALLOCATED;
     public:
         StreamingClient(WebKitWebSrc*);
         virtual ~StreamingClient();
@@ -630,7 +630,7 @@ static gboolean webKitWebSrcSetUri(GstURIHandler* handler, const gchar* uri)
 }
 #endif
 
-static void webKitWebSrcUriHandlerInit(gpointer gIface, gpointer ifaceData)
+static void webKitWebSrcUriHandlerInit(gpointer gIface, gpointer)
 {
     GstURIHandlerInterface* iface = (GstURIHandlerInterface *) gIface;
 
@@ -655,7 +655,7 @@ static gboolean webKitWebSrcNeedDataMainCb(WebKitWebSrc* src)
     return FALSE;
 }
 
-static void webKitWebSrcNeedDataCb(GstAppSrc* appsrc, guint length, gpointer userData)
+static void webKitWebSrcNeedDataCb(GstAppSrc*, guint length, gpointer userData)
 {
     WebKitWebSrc* src = WEBKIT_WEB_SRC(userData);
     WebKitWebSrcPrivate* priv = src->priv;
@@ -686,7 +686,7 @@ static gboolean webKitWebSrcEnoughDataMainCb(WebKitWebSrc* src)
     return FALSE;
 }
 
-static void webKitWebSrcEnoughDataCb(GstAppSrc* appsrc, gpointer userData)
+static void webKitWebSrcEnoughDataCb(GstAppSrc*, gpointer userData)
 {
     WebKitWebSrc* src = WEBKIT_WEB_SRC(userData);
     WebKitWebSrcPrivate* priv = src->priv;
@@ -711,7 +711,7 @@ static gboolean webKitWebSrcSeekMainCb(WebKitWebSrc* src)
     return FALSE;
 }
 
-static gboolean webKitWebSrcSeekDataCb(GstAppSrc* appsrc, guint64 offset, gpointer userData)
+static gboolean webKitWebSrcSeekDataCb(GstAppSrc*, guint64 offset, gpointer userData)
 {
     WebKitWebSrc* src = WEBKIT_WEB_SRC(userData);
     WebKitWebSrcPrivate* priv = src->priv;
@@ -782,18 +782,15 @@ void StreamingClient::didReceiveResponse(ResourceHandle*, const ResourceResponse
     if (length > 0) {
         length += priv->requestedOffset;
         gst_app_src_set_size(priv->appsrc, length);
+
+#ifndef GST_API_VERSION_1
         if (!priv->haveAppSrc27) {
-#ifdef GST_API_VERSION_1
-            GstSegment* segment = &GST_BASE_SRC(priv->appsrc)->segment;
-            segment->duration = length;
-            segment->format = GST_FORMAT_BYTES;
-#else
             gst_segment_set_duration(&GST_BASE_SRC(priv->appsrc)->segment, GST_FORMAT_BYTES, length);
-#endif
             gst_element_post_message(GST_ELEMENT(priv->appsrc),
                                      gst_message_new_duration(GST_OBJECT(priv->appsrc),
                                                               GST_FORMAT_BYTES, length));
         }
+#endif
     }
 
     priv->size = length >= 0 ? length : 0;
@@ -856,7 +853,7 @@ void StreamingClient::didReceiveResponse(ResourceHandle*, const ResourceResponse
         notifyGstTagsOnPad(GST_ELEMENT(m_src), m_src->priv->srcpad, tags);
 }
 
-void StreamingClient::didReceiveData(ResourceHandle* handle, const char* data, int length, int encodedDataLength)
+void StreamingClient::didReceiveData(ResourceHandle* handle, const char* data, int length, int)
 {
     WebKitWebSrcPrivate* priv = m_src->priv;
 

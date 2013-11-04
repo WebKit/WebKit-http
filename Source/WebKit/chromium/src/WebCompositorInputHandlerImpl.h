@@ -26,12 +26,11 @@
 #ifndef WebCompositorInputHandlerImpl_h
 #define WebCompositorInputHandlerImpl_h
 
-#include "CCGestureCurve.h"
-#include "CCInputHandler.h"
+#include "PlatformGestureCurveTarget.h"
 #include "WebActiveWheelFlingParameters.h"
 #include "WebCompositorInputHandler.h"
 #include "WebInputEvent.h"
-#include <public/WebCompositor.h>
+#include <public/WebInputHandler.h>
 #include <wtf/HashSet.h>
 #include <wtf/Noncopyable.h>
 #include <wtf/OwnPtr.h>
@@ -42,36 +41,35 @@ class Mutex;
 
 namespace WebCore {
 class IntPoint;
-class CCGestureCurveTarget;
-class CCInputHandlerClient;
-class CCThread;
+class PlatformGestureCurve;
 }
 
 namespace WebKit {
 
 class WebCompositorInputHandlerClient;
 
-class WebCompositorInputHandlerImpl : public WebCompositorInputHandler, public WebCore::CCInputHandler, public WebCore::CCGestureCurveTarget {
+class WebCompositorInputHandlerImpl : public WebCompositorInputHandler, public WebInputHandler, public WebCore::PlatformGestureCurveTarget {
     WTF_MAKE_NONCOPYABLE(WebCompositorInputHandlerImpl);
 public:
-    static PassOwnPtr<WebCompositorInputHandlerImpl> create(WebCore::CCInputHandlerClient*);
     static WebCompositorInputHandler* fromIdentifier(int identifier);
 
+    WebCompositorInputHandlerImpl();
     virtual ~WebCompositorInputHandlerImpl();
 
     // WebCompositorInputHandler implementation.
     virtual void setClient(WebCompositorInputHandlerClient*);
     virtual void handleInputEvent(const WebInputEvent&);
 
-    // WebCore::CCInputHandler implementation.
-    virtual int identifier() const;
+    // WebInputHandler implementation.
+    virtual void bindToClient(WebInputHandlerClient*);
     virtual void animate(double monotonicTime);
 
-    // WebCore::CCGestureCurveTarget implementation.
+    // WebCore::PlatformGestureCurveTarget implementation.
     virtual void scrollBy(const WebCore::IntPoint&);
 
+    int identifier() const { return m_identifier; }
+
 private:
-    explicit WebCompositorInputHandlerImpl(WebCore::CCInputHandlerClient*);
 
     enum EventDisposition { DidHandle, DidNotHandle, DropEvent };
     // This function processes the input event and determines the disposition, but does not make
@@ -83,13 +81,13 @@ private:
     // Returns true if we actually had an active fling to cancel.
     bool cancelCurrentFling();
 
-    OwnPtr<WebCore::CCActiveGestureAnimation> m_wheelFlingAnimation;
+    OwnPtr<WebCore::PlatformGestureCurve> m_wheelFlingCurve;
     // Parameters for the active fling animation, stored in case we need to transfer it out later.
     WebActiveWheelFlingParameters m_wheelFlingParameters;
 
     WebCompositorInputHandlerClient* m_client;
     int m_identifier;
-    WebCore::CCInputHandlerClient* m_inputHandlerClient;
+    WebInputHandlerClient* m_inputHandlerClient;
 
 #ifndef NDEBUG
     bool m_expectScrollUpdateEnd;

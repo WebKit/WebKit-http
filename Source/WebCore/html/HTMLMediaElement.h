@@ -86,6 +86,7 @@ public:
 
     void createShadowSubtree();
     virtual void willAddAuthorShadowRoot() OVERRIDE;
+    virtual bool areAuthorShadowsAllowed() const OVERRIDE { return false; }
 
     virtual bool isVideo() const = 0;
     virtual bool hasVideo() const { return false; }
@@ -431,6 +432,7 @@ private:
     virtual void mediaPlayerPause() OVERRIDE;
     virtual void mediaPlayerPlay() OVERRIDE;
     virtual bool mediaPlayerIsPaused() const OVERRIDE;
+    virtual bool mediaPlayerIsLooping() const OVERRIDE;
     virtual HostWindow* mediaPlayerHostWindow() OVERRIDE;
     virtual IntRect mediaPlayerWindowClipRect() OVERRIDE;
 

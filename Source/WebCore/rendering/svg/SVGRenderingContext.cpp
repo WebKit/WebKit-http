@@ -27,6 +27,7 @@
 #if ENABLE(SVG)
 #include "SVGRenderingContext.h"
 
+#include "BasicShapes.h"
 #include "Frame.h"
 #include "FrameView.h"
 #include "RenderSVGResource.h"
@@ -122,6 +123,12 @@ void SVGRenderingContext::prepareToRenderSVGContent(RenderObject* object, PaintI
         }
     }
 
+    ClipPathOperation* clipPathOperation = style->clipPath();
+    if (clipPathOperation && clipPathOperation->getOperationType() == ClipPathOperation::SHAPE) {
+        ShapeClipPathOperation* clipPath = static_cast<ShapeClipPathOperation*>(clipPathOperation);
+        m_paintInfo->context->clipPath(clipPath->path(object->objectBoundingBox()), clipPath->windRule());
+    }
+
     SVGResources* resources = SVGResourcesCache::cachedResourcesForRenderObject(m_object);
     if (!resources) {
 #if ENABLE(FILTERS)
@@ -139,7 +146,8 @@ void SVGRenderingContext::prepareToRenderSVGContent(RenderObject* object, PaintI
         }
     }
 
-    if (RenderSVGResourceClipper* clipper = resources->clipper()) {
+    RenderSVGResourceClipper* clipper = resources->clipper();
+    if (!clipPathOperation && clipper) {
         if (!clipper->applyResource(m_object, style, m_paintInfo->context, ApplyToDefaultMode))
             return;
     }

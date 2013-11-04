@@ -42,7 +42,6 @@ namespace BlackBerry {
 namespace WebKit {
 
 static bool canScrollInnerFrame(Frame*);
-static bool canScrollRenderBox(RenderBox*);
 static RenderLayer* parentLayer(RenderLayer*);
 static bool isNonRenderViewFixedPositionedContainer(RenderLayer*);
 
@@ -111,7 +110,23 @@ bool InRegionScrollerPrivate::setScrollPositionCompositingThread(unsigned camouf
     LayerCompositingThread* scrollLayer = reinterpret_cast<LayerWebKitThread*>(camouflagedLayer)->layerCompositingThread();
 
     // FIXME: Clamp maximum and minimum scroll positions as a last attempt to fix round errors.
-    scrollLayer->override()->setBoundsOrigin(scrollPosition);
+    FloatPoint anchor;
+    if (scrollLayer->override()->isAnchorPointSet())
+        anchor = scrollLayer->override()->anchorPoint();
+    else
+        anchor = scrollLayer->anchorPoint();
+
+    FloatSize bounds;
+    if (scrollLayer->override()->isBoundsSet())
+        bounds = scrollLayer->override()->bounds();
+    else
+        bounds = scrollLayer->bounds();
+
+    // Position is offset on the layer by the layer anchor point.
+    FloatPoint layerPosition(-scrollPosition.x() + anchor.x() * bounds.width(),
+                             -scrollPosition.y() + anchor.y() * bounds.height());
+
+    scrollLayer->override()->setPosition(FloatPoint(layerPosition.x(), layerPosition.y()));
 
     // The client is going to blitVisibleContens, which allow us benefit from "defer blits" technique.
     return true;
@@ -344,9 +359,22 @@ static bool canScrollInnerFrame(Frame* frame)
 //     with overflow-y: hidden and overflow-x: auto set.
 // The version below fixes it.
 // FIXME: Fix RenderBox::canBeScrolledAndHasScrollableArea method instead.
-static bool canScrollRenderBox(RenderBox* box)
+bool InRegionScrollerPrivate::canScrollRenderBox(RenderBox* box)
 {
-    if (!box || !box->hasOverflowClip())
+    if (!box)
+        return false;
+
+    // We use this to make non-overflown contents layers to actually
+    // be overscrollable.
+    if (box->layer() && box->layer()->usesCompositedScrolling()) {
+        if (box->style()->overflowScrolling() == OSBlackberryTouch)
+            return true;
+    }
+
+    if (!box->hasOverflowClip())
+        return false;
+
+    if (box->scrollHeight() == box->clientHeight() && box->scrollWidth() == box->clientWidth())
         return false;
 
     if (box->scrollsOverflowX() && (box->scrollWidth() != box->clientWidth())

@@ -26,6 +26,7 @@
 #ifndef JSNameScope_h
 #define JSNameScope_h
 
+#include "JSGlobalObject.h"
 #include "JSVariableObject.h"
 
 namespace JSC {
@@ -37,7 +38,14 @@ public:
 
     static JSNameScope* create(ExecState* exec, const Identifier& identifier, JSValue value, unsigned attributes)
     {
-        JSNameScope* scopeObject = new (NotNull, allocateCell<JSNameScope>(*exec->heap())) JSNameScope(exec);
+        JSNameScope* scopeObject = new (NotNull, allocateCell<JSNameScope>(*exec->heap())) JSNameScope(exec, exec->scope());
+        scopeObject->finishCreation(exec, identifier, value, attributes);
+        return scopeObject;
+    }
+
+    static JSNameScope* create(ExecState* exec, const Identifier& identifier, JSValue value, unsigned attributes, JSScope* next)
+    {
+        JSNameScope* scopeObject = new (NotNull, allocateCell<JSNameScope>(*exec->heap())) JSNameScope(exec, next);
         scopeObject->finishCreation(exec, identifier, value, attributes);
         return scopeObject;
     }
@@ -63,14 +71,12 @@ protected:
     static const unsigned StructureFlags = OverridesGetOwnPropertySlot | OverridesVisitChildren | Base::StructureFlags;
 
 private:
-    JSNameScope(ExecState* exec)
+    JSNameScope(ExecState* exec, JSScope* next)
         : Base(
             exec->globalData(),
-            exec->globalData().nameScopeStructure.get(),
+            exec->lexicalGlobalObject()->nameScopeStructure(),
             reinterpret_cast<Register*>(&m_registerStore + 1),
-            exec->lexicalGlobalObject(),
-            exec->globalThisValue(),
-            exec->scope()
+            next
         )
     {
     }

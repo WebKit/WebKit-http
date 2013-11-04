@@ -26,6 +26,7 @@
 #include "AXObjectCache.h"
 #include "AccessibilityObject.h"
 #include "AnimationController.h"
+#include "ApplicationCacheStorage.h"
 #include "CSSComputedStyleDeclaration.h"
 #include "Chrome.h"
 #include "ChromeClientGtk.h"
@@ -54,7 +55,6 @@
 #include "MutationObserver.h"
 #include "NodeList.h"
 #include "PageGroup.h"
-#include "PlatformString.h"
 #include "PrintContext.h"
 #include "RenderListItem.h"
 #include "RenderTreeAsText.h"
@@ -73,6 +73,7 @@
 #include "webkitwebview.h"
 #include "webkitwebviewprivate.h"
 #include <JavaScriptCore/APICast.h>
+#include <wtf/text/WTFString.h>
 
 using namespace JSC;
 using namespace WebCore;
@@ -187,68 +188,6 @@ CString DumpRenderTreeSupportGtk::dumpRenderTree(WebKitWebFrame* frame)
         view->layout();
 
     return externalRepresentation(coreFrame).utf8();
-}
-
-/**
- * numberOfPagesForFrame
- * @frame: a #WebKitWebFrame
- * @pageWidth: width of a page
- * @pageHeight: height of a page
- *
- * Return value: The number of pages to be printed.
- */
-int DumpRenderTreeSupportGtk::numberOfPagesForFrame(WebKitWebFrame* frame, float pageWidth, float pageHeight)
-{
-    g_return_val_if_fail(WEBKIT_IS_WEB_FRAME(frame), 0);
-
-    Frame* coreFrame = core(frame);
-    if (!coreFrame)
-        return -1;
-
-    return PrintContext::numberOfPages(coreFrame, FloatSize(pageWidth, pageHeight));
-}
-
-/**
- * pageProperty
- * @frame: a #WebKitWebFrame
- * @propertyName: name of a property
- * @pageNumber: number of a page 
- *
- * Return value: The value of the given property name.
- */
-CString DumpRenderTreeSupportGtk::pageProperty(WebKitWebFrame* frame, const char* propertyName, int pageNumber)
-{
-    g_return_val_if_fail(WEBKIT_IS_WEB_FRAME(frame), CString());
-
-    Frame* coreFrame = core(frame);
-    if (!coreFrame)
-        return CString();
-
-    return PrintContext::pageProperty(coreFrame, propertyName, pageNumber).utf8();
-}
-
-/**
- * pageSizeAndMarginsInPixels
- * @frame: a #WebKitWebFrame
- * @pageNumber: number of a page 
- * @width: width of a page
- * @height: height of a page
- * @marginTop: top margin of a page
- * @marginRight: right margin of a page
- * @marginBottom: bottom margin of a page
- * @marginLeft: left margin of a page
- *
- * Return value: The value of page size and margin.
- */
-CString DumpRenderTreeSupportGtk::pageSizeAndMarginsInPixels(WebKitWebFrame* frame, int pageNumber, int width, int height, int marginTop, int marginRight, int marginBottom, int marginLeft)
-{
-    g_return_val_if_fail(WEBKIT_IS_WEB_FRAME(frame), CString());
-
-    Frame* coreFrame = core(frame);
-    if (!coreFrame)
-        return CString();
-
-    return PrintContext::pageSizeAndMarginsInPixels(coreFrame, pageNumber, width, height, marginTop, marginRight, marginBottom, marginLeft).utf8();
 }
 
 /**
@@ -872,4 +811,10 @@ void DumpRenderTreeSupportGtk::resetTrackedRepaints(WebKitWebFrame* frame)
 void DumpRenderTreeSupportGtk::clearMemoryCache()
 {
     memoryCache()->evictResources();
+}
+
+void DumpRenderTreeSupportGtk::clearApplicationCache()
+{
+    cacheStorage().empty();
+    cacheStorage().vacuumDatabaseFile();
 }

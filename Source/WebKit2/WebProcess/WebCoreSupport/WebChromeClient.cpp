@@ -45,6 +45,7 @@
 #include "WebPreferencesStore.h"
 #include "WebProcess.h"
 #include "WebSearchPopupMenu.h"
+#include "WebSecurityOrigin.h"
 #include <WebCore/AXObjectCache.h>
 #include <WebCore/ColorChooser.h>
 #include <WebCore/DatabaseTracker.h>
@@ -535,9 +536,14 @@ void WebChromeClient::exceededDatabaseQuota(Frame* frame, const String& database
     uint64_t currentQuota = DatabaseTracker::tracker().quotaForOrigin(origin);
     uint64_t currentOriginUsage = DatabaseTracker::tracker().usageForOrigin(origin);
     uint64_t newQuota = 0;
-    WebProcess::shared().connection()->sendSync(
-        Messages::WebPageProxy::ExceededDatabaseQuota(webFrame->frameID(), origin->databaseIdentifier(), databaseName, details.displayName(), currentQuota, currentOriginUsage, details.currentUsage(), details.expectedUsage()),
-        Messages::WebPageProxy::ExceededDatabaseQuota::Reply(newQuota), m_page->pageID());
+    RefPtr<WebSecurityOrigin> webSecurityOrigin = WebSecurityOrigin::createFromDatabaseIdentifier(origin->databaseIdentifier());
+    newQuota = m_page->injectedBundleUIClient().didExceedDatabaseQuota(m_page, webSecurityOrigin.get(), databaseName, details.displayName(), currentQuota, currentOriginUsage, details.currentUsage(), details.expectedUsage());
+
+    if (!newQuota) {
+        WebProcess::shared().connection()->sendSync(
+            Messages::WebPageProxy::ExceededDatabaseQuota(webFrame->frameID(), origin->databaseIdentifier(), databaseName, details.displayName(), currentQuota, currentOriginUsage, details.currentUsage(), details.expectedUsage()),
+            Messages::WebPageProxy::ExceededDatabaseQuota::Reply(newQuota), m_page->pageID());
+    }
 
     DatabaseTracker::tracker().setQuota(origin, newQuota);
 }
@@ -549,9 +555,10 @@ void WebChromeClient::reachedMaxAppCacheSize(int64_t)
     notImplemented();
 }
 
-void WebChromeClient::reachedApplicationCacheOriginQuota(SecurityOrigin*, int64_t)
+void WebChromeClient::reachedApplicationCacheOriginQuota(SecurityOrigin* origin, int64_t totalBytesNeeded)
 {
-    notImplemented();
+    RefPtr<WebSecurityOrigin> webSecurityOrigin = WebSecurityOrigin::createFromString(origin->toString());
+    m_page->injectedBundleUIClient().didReachApplicationCacheOriginQuota(m_page, webSecurityOrigin.get(), totalBytesNeeded);
 }
 
 #if ENABLE(DASHBOARD_SUPPORT)

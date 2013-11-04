@@ -1,3 +1,198 @@
+2012-09-14  Zan Dobersek  <zandobersek@gmail.com>
+
+        [GTK] Clear application cache between tests in DumpRenderTree
+        https://bugs.webkit.org/show_bug.cgi?id=96543
+
+        Reviewed by Philippe Normand.
+
+        Add a method to the DumpRenderTreeSupportGtk class that upon calling
+        clears the application cache and vacuums the database file.
+
+        * WebCoreSupport/DumpRenderTreeSupportGtk.cpp:
+        (DumpRenderTreeSupportGtk::clearApplicationCache):
+        * WebCoreSupport/DumpRenderTreeSupportGtk.h:
+        (DumpRenderTreeSupportGtk):
+
+2012-09-13  Sheriff Bot  <webkit.review.bot@gmail.com>
+
+        Unreviewed, rolling out r128453.
+        http://trac.webkit.org/changeset/128453
+        https://bugs.webkit.org/show_bug.cgi?id=96681
+
+        Having tests use the same appcache directory leads to timeouts
+        (Requested by zdobersek on #webkit).
+
+        * WebCoreSupport/DumpRenderTreeSupportGtk.cpp:
+        (DumpRenderTreeSupportGtk::clearMemoryCache):
+        * WebCoreSupport/DumpRenderTreeSupportGtk.h:
+        (DumpRenderTreeSupportGtk):
+
+2012-09-13  Zan Dobersek  <zandobersek@gmail.com>
+
+        [GTK] Clear application cache between tests in DumpRenderTree
+        https://bugs.webkit.org/show_bug.cgi?id=96543
+
+        Reviewed by Philippe Normand.
+
+        Add a method to the DumpRenderTreeSupportGtk class that upon calling
+        clears the application cache and vacuums the database file.
+
+        * WebCoreSupport/DumpRenderTreeSupportGtk.cpp:
+        (DumpRenderTreeSupportGtk::clearApplicationCache):
+        * WebCoreSupport/DumpRenderTreeSupportGtk.h:
+        (DumpRenderTreeSupportGtk):
+
+2012-09-12  Siraj Razick  <siraj.razick@collabora.co.uk>
+
+        [GTK] Update AcceleratedCompositingContextClutter to match AcceleratedCompositingContext.h API update
+        https://bugs.webkit.org/show_bug.cgi?id=96165
+
+        Reviewed by Martin Robinson.
+
+        Due to the refactoring done in bug #90085 AcceleratedCompositingContext API changed, as a result
+        AcceleratedCompositingContextClutter doesn't compile anymore. This patch is to update the
+        AcceleratedCompositingContextClutter implementations to match the API update, and Make webkit
+        AC backend compile again.
+
+        * WebCoreSupport/AcceleratedCompositingContextClutter.cpp:
+        (WebKit::AcceleratedCompositingContext::AcceleratedCompositingContext):
+        (WebKit::AcceleratedCompositingContext::~AcceleratedCompositingContext):
+        (WebKit::AcceleratedCompositingContext::setRootCompositingLayer):
+        (WebKit::AcceleratedCompositingContext::setNonCompositedContentsNeedDisplay):
+        (WebKit::flushAndRenderLayersCallback):
+        (WebKit::AcceleratedCompositingContext::scheduleLayerFlush):
+        (WebKit::AcceleratedCompositingContext::flushPendingLayerChanges):
+        (WebKit::AcceleratedCompositingContext::flushAndRenderLayers):
+
+2012-09-11  Arnaud Renevier  <a.renevier@sisa.samsung.com>
+
+        [Gtk] allow building with css-shaders
+        https://bugs.webkit.org/show_bug.cgi?id=95603
+
+        Reviewed by Martin Robinson.
+
+        Add enable-css-shaders property to WebKit WebSettings, and connects it
+        to WebCore settings setCSSCustomFilterEnabled.
+
+        * webkit/webkitwebsettings.cpp:
+        (webkit_web_settings_class_init):
+        (webkit_web_settings_set_property):
+        (webkit_web_settings_get_property):
+        * webkit/webkitwebsettingsprivate.h:
+        * webkit/webkitwebview.cpp:
+        (webkit_web_view_update_settings):
+        (webkit_web_view_settings_notify):
+
+2012-09-09  Emil A Eklund  <eae@chromium.org>
+
+        Rename Node::getRect/getPixelSnappedRect and remove ContainerNode::getRect
+        https://bugs.webkit.org/show_bug.cgi?id=81413
+
+        Reviewed by David Hyatt.
+
+        Update ChromeClientGtk and webkitwebview to call pixelSnappedBoundingBox.
+
+        * WebCoreSupport/ChromeClientGtk.cpp:
+        (WebKit::ChromeClient::mouseDidMoveOverElement):
+        * webkit/webkitwebview.cpp:
+        (getLocationForKeyboardGeneratedContextMenu):
+        (webkit_web_view_query_tooltip):
+
+2012-09-07  Martin Robinson  <mrobinson@igalia.com>
+
+        [GTK] Move user agent helpers to WebCore
+        https://bugs.webkit.org/show_bug.cgi?id=95745
+
+        Reviewed by Carlos Garcia Campos.
+
+        Move the code for determining the user agent to WebCore and have WebKit1
+        use the new shared code.
+
+        * webkit/webkitwebsettings.cpp: Use the WebCore code to determine the user
+        agent in WebKit1.
+
+2012-09-05  Sam Weinig  <sam@webkit.org>
+
+        Part 2 of removing PlatformString.h, remove PlatformString.h
+        https://bugs.webkit.org/show_bug.cgi?id=95931
+
+        Reviewed by Adam Barth.
+
+        Remove PlatformString.h
+
+        * WebCoreSupport/ChromeClientGtk.cpp:
+        * WebCoreSupport/DumpRenderTreeSupportGtk.cpp:
+        * WebCoreSupport/InspectorClientGtk.cpp:
+        * gdom/ConvertToGCharPrivate.h:
+        * webkit/webkitsecurityorigin.cpp:
+        * webkit/webkitwebdatasource.cpp:
+        * webkit/webkitwebhistoryitem.cpp:
+        * webkit/webkitwebresource.cpp:
+
+2012-09-06  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Add API to get/set the security policy of a given URI scheme
+        https://bugs.webkit.org/show_bug.cgi?id=95549
+
+        Reviewed by Martin Robinson.
+
+        Add WebKitSecurityPolicy enum with flags that represent the
+        security policy of a URI scheme. Add methods to get and set the
+        security policy flags for a given URI scheme.
+
+        * docs/webkitgtk-sections.txt: Add new symbols.
+        * tests/testglobals.c:
+        (test_globals_security_policy):
+        (main):
+        * webkit/webkitglobals.cpp:
+        (webkit_set_security_policy_for_uri_scheme):
+        (webkit_get_security_policy_for_uri_scheme):
+        * webkit/webkitglobals.h:
+
+2012-09-05  Kaustubh Atrawalkar  <kaustubh@motorola.com>
+
+        [DRT] LTC:: Move printing related APIs from LayoutTestController to Internals
+        https://bugs.webkit.org/show_bug.cgi?id=92735
+
+        Reviewed by Hajime Morita.
+
+        Move numberOfPages, pageProperty & pageSizeAndMarginsInPixels in Internals and remove duplicated code from DumprenderTree & WebkitTestRunner.
+
+        * WebCoreSupport/DumpRenderTreeSupportGtk.cpp:
+        * WebCoreSupport/DumpRenderTreeSupportGtk.h:
+        (DumpRenderTreeSupportGtk):
+
+2012-09-04  Joanmarie Diggs  <jdiggs@igalia.com>
+
+        [GTK] Crash in AccessibilityObject::accessibilityPlatformIncludesObject()
+        https://bugs.webkit.org/show_bug.cgi?id=95740
+
+        Reviewed by Martin Robinson.
+
+        Updated unit test.
+
+        * tests/testatk.c:
+        (testWebkitAtkComboBox): Added checks that the menu popup in a combo box
+        has 0 links and, more importantly, that checking doesn't result in a crash.
+
+2012-09-01  Joanmarie Diggs  <jdiggs@igalia.com>
+
+        [Gtk] Incorrect/unexpected characters in the text of certain accessibles
+        https://bugs.webkit.org/show_bug.cgi?id=95180
+
+        Reviewed by Chris Fleizach.
+
+        Corrected a unit test in which the expected accessible text was wrong as
+        a result of this bug. In particular, the AtkText inserted into an empty
+        text field is expected to be the same text atk_text_get_text() returns.
+        That was not happening -- and presumably not noticed as a result of the
+        hard to read textual representation of the multibyte password field
+        bullets.
+
+        * tests/testatk.c:
+        (testWebkitAtkTextChangedNotifications): Corrected the test and added a
+        comment so that one knows what the multibyte character is.
+
 2012-08-31  José Dapena Paz  <jdapena@igalia.com>
 
         [GTK] Assert on ChromeClientGtk::scroll with delta (0, -1).

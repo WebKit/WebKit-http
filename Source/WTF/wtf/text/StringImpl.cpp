@@ -28,10 +28,14 @@
 #include "AtomicString.h"
 #include "StringBuffer.h"
 #include "StringHash.h"
+#include <wtf/MemoryInstrumentation.h>
 #include <wtf/StdLibExtras.h>
 #include <wtf/WTFThreadData.h>
 #include <wtf/unicode/CharacterNames.h>
 
+#ifdef STRING_STATS
+#include <wtf/DataLog.h>
+#endif
 
 using namespace std;
 
@@ -41,9 +45,68 @@ using namespace Unicode;
 
 COMPILE_ASSERT(sizeof(StringImpl) == 2 * sizeof(int) + 3 * sizeof(void*), StringImpl_should_stay_small);
 
+#ifdef STRING_STATS
+StringStats StringImpl::m_stringStats;
+
+unsigned StringStats::s_stringRemovesTillPrintStats = StringStats::s_printStringStatsFrequency;
+
+void StringStats::removeString(StringImpl* string)
+{
+    unsigned length = string->length();
+    bool isSubString = string->isSubString();
+
+    --m_totalNumberStrings;
+
+    if (string->has16BitShadow()) {
+        --m_numberUpconvertedStrings;
+        if (!isSubString)
+            m_totalUpconvertedData -= length;
+    }
+
+    if (string->is8Bit()) {
+        --m_number8BitStrings;
+        if (!isSubString)
+            m_total8BitData -= length;
+    } else {
+        --m_number16BitStrings;
+        if (!isSubString)
+            m_total16BitData -= length;
+    }
+
+    if (!--s_stringRemovesTillPrintStats) {
+        s_stringRemovesTillPrintStats = s_printStringStatsFrequency;
+        printStats();
+    }
+}
+
+void StringStats::printStats()
+{
+    dataLog("String stats for process id %d:\n", getpid());
+
+    unsigned long long totalNumberCharacters = m_total8BitData + m_total16BitData;
+    double percent8Bit = m_totalNumberStrings ? ((double)m_number8BitStrings * 100) / (double)m_totalNumberStrings : 0.0;
+    double average8bitLength = m_number8BitStrings ? (double)m_total8BitData / (double)m_number8BitStrings : 0.0;
+    dataLog("%8u (%5.2f%%) 8 bit        %12llu chars  %12llu bytes  avg length %6.1f\n", m_number8BitStrings, percent8Bit, m_total8BitData, m_total8BitData, average8bitLength);
+
+    double percent16Bit = m_totalNumberStrings ? ((double)m_number16BitStrings * 100) / (double)m_totalNumberStrings : 0.0;
+    double average16bitLength = m_number16BitStrings ? (double)m_total16BitData / (double)m_number16BitStrings : 0.0;
+    dataLog("%8u (%5.2f%%) 16 bit       %12llu chars  %12llu bytes  avg length %6.1f\n", m_number16BitStrings, percent16Bit, m_total16BitData, m_total16BitData * 2, average16bitLength);
+
+    double percentUpconverted = m_totalNumberStrings ? ((double)m_numberUpconvertedStrings * 100) / (double)m_number8BitStrings : 0.0;
+    double averageUpconvertedLength = m_numberUpconvertedStrings ? (double)m_totalUpconvertedData / (double)m_numberUpconvertedStrings : 0.0;
+    dataLog("%8u (%5.2f%%) upconverted  %12llu chars  %12llu bytes  avg length %6.1f\n", m_numberUpconvertedStrings, percentUpconverted, m_totalUpconvertedData, m_totalUpconvertedData * 2, averageUpconvertedLength);
+
+    double averageLength = m_totalNumberStrings ? (double)totalNumberCharacters / (double)m_totalNumberStrings : 0.0;
+    dataLog("%8u Total                 %12llu chars  %12llu bytes  avg length %6.1f\n", m_totalNumberStrings, totalNumberCharacters, m_total8BitData + (m_total16BitData + m_totalUpconvertedData) * 2, averageLength);
+}
+#endif
+
+
 StringImpl::~StringImpl()
 {
     ASSERT(!isStatic());
+
+    STRING_STATS_REMOVE_STRING(this);
 
     if (isAtomic())
         AtomicString::remove(this);
@@ -221,6 +284,8 @@ const UChar* StringImpl::getData16SlowCase() const
         return m_substringBuffer->characters() + offset;
     }
 
+    STRING_STATS_ADD_UPCONVERTED_STRING(m_length);
+    
     unsigned len = length();
     if (hasTerminatingNullCharacter())
         len++;
@@ -791,12 +856,6 @@ bool equalIgnoringCase(const UChar* a, const LChar* b, unsigned length)
     return true;
 }
 
-static inline bool equalIgnoringCase(const UChar* a, const UChar* b, int length)
-{
-    ASSERT(length >= 0);
-    return umemcasecmp(a, b, length) == 0;
-}
-
 size_t StringImpl::find(CharacterMatchFunctionPtr matchFunction, unsigned start)
 {
     if (is8Bit())
@@ -832,7 +891,7 @@ size_t StringImpl::find(const LChar* matchString, unsigned index)
     const UChar* searchCharacters = characters() + index;
 
     // Optimization 2: keep a running hash of the strings,
-    // only call memcmp if the hashes match.
+    // only call equal if the hashes match.
     unsigned searchHash = 0;
     unsigned matchHash = 0;
     for (unsigned i = 0; i < matchLength; ++i) {
@@ -885,11 +944,11 @@ size_t StringImpl::findIgnoringCase(const LChar* matchString, unsigned index)
     return index + i;
 }
 
-template <typename CharType>
-ALWAYS_INLINE static size_t findInner(const CharType* searchCharacters, const CharType* matchCharacters, unsigned index, unsigned searchLength, unsigned matchLength)
+template <typename SearchCharacterType, typename MatchCharacterType>
+ALWAYS_INLINE static size_t findInner(const SearchCharacterType* searchCharacters, const MatchCharacterType* matchCharacters, unsigned index, unsigned searchLength, unsigned matchLength)
 {
     // Optimization: keep a running hash of the strings,
-    // only call memcmp if the hashes match.
+    // only call equal() if the hashes match.
 
     // delta is the number of additional times to test; delta == 0 means test only once.
     unsigned delta = searchLength - matchLength;
@@ -904,7 +963,7 @@ ALWAYS_INLINE static size_t findInner(const CharType* searchCharacters, const Ch
 
     unsigned i = 0;
     // keep looping until we match
-    while (searchHash != matchHash || memcmp(searchCharacters + i, matchCharacters, matchLength * sizeof(CharType))) {
+    while (searchHash != matchHash || !equal(searchCharacters + i, matchCharacters, matchLength)) {
         if (i == delta)
             return notFound;
         searchHash += searchCharacters[i + matchLength];
@@ -941,10 +1000,16 @@ size_t StringImpl::find(StringImpl* matchString)
     if (UNLIKELY(!matchLength))
         return 0;
 
-    if (is8Bit() && matchString->is8Bit())
-        return findInner(characters8(), matchString->characters8(), 0, length(), matchLength);
+    if (is8Bit()) {
+        if (matchString->is8Bit())
+            return findInner(characters8(), matchString->characters8(), 0, length(), matchLength);
+        return findInner(characters8(), matchString->characters16(), 0, length(), matchLength);
+    }
 
-    return findInner(characters(), matchString->characters(), 0, length(), matchLength);
+    if (matchString->is8Bit())
+        return findInner(characters16(), matchString->characters8(), 0, length(), matchLength);
+
+    return findInner(characters16(), matchString->characters16(), 0, length(), matchLength);
 }
 
 size_t StringImpl::find(StringImpl* matchString, unsigned index)
@@ -977,10 +1042,16 @@ size_t StringImpl::find(StringImpl* matchString, unsigned index)
     if (matchLength > searchLength)
         return notFound;
 
-    if (is8Bit() && matchString->is8Bit())
-        return findInner(characters8() + index, matchString->characters8(), index, searchLength, matchLength);
+    if (is8Bit()) {
+        if (matchString->is8Bit())
+            return findInner(characters8() + index, matchString->characters8(), index, searchLength, matchLength);
+        return findInner(characters8() + index, matchString->characters16(), index, searchLength, matchLength);
+    }
 
-    return findInner(characters() + index, matchString->characters(), index, searchLength, matchLength);
+    if (matchString->is8Bit())
+        return findInner(characters16() + index, matchString->characters8(), index, searchLength, matchLength);
+
+    return findInner(characters16() + index, matchString->characters16(), index, searchLength, matchLength);
 }
 
 size_t StringImpl::findIgnoringCase(StringImpl* matchString, unsigned index)
@@ -1021,11 +1092,11 @@ size_t StringImpl::reverseFind(UChar c, unsigned index)
     return WTF::reverseFind(characters16(), m_length, c, index);
 }
 
-template <typename CharType>
-ALWAYS_INLINE static size_t reverseFindInner(const CharType* searchCharacters, const CharType* matchCharacters, unsigned index, unsigned length, unsigned matchLength)
+template <typename SearchCharacterType, typename MatchCharacterType>
+ALWAYS_INLINE static size_t reverseFindInner(const SearchCharacterType* searchCharacters, const MatchCharacterType* matchCharacters, unsigned index, unsigned length, unsigned matchLength)
 {
     // Optimization: keep a running hash of the strings,
-    // only call memcmp if the hashes match.
+    // only call equal if the hashes match.
 
     // delta is the number of additional times to test; delta == 0 means test only once.
     unsigned delta = min(index, length - matchLength);
@@ -1038,7 +1109,7 @@ ALWAYS_INLINE static size_t reverseFindInner(const CharType* searchCharacters, c
     }
 
     // keep looping until we match
-    while (searchHash != matchHash || memcmp(searchCharacters + delta, matchCharacters, matchLength * sizeof(CharType))) {
+    while (searchHash != matchHash || !equal(searchCharacters + delta, matchCharacters, matchLength)) {
         if (!delta)
             return notFound;
         delta--;
@@ -1069,10 +1140,16 @@ size_t StringImpl::reverseFind(StringImpl* matchString, unsigned index)
     if (matchLength > ourLength)
         return notFound;
 
-    if (is8Bit() && matchString->is8Bit())
-        return reverseFindInner(characters8(), matchString->characters8(), index, ourLength, matchLength);
+    if (is8Bit()) {
+        if (matchString->is8Bit())
+            return reverseFindInner(characters8(), matchString->characters8(), index, ourLength, matchLength);
+        return reverseFindInner(characters8(), matchString->characters16(), index, ourLength, matchLength);
+    }
+    
+    if (matchString->is8Bit())
+        return reverseFindInner(characters16(), matchString->characters8(), index, ourLength, matchLength);
 
-    return reverseFindInner(characters(), matchString->characters(), index, ourLength, matchLength);
+    return reverseFindInner(characters16(), matchString->characters16(), index, ourLength, matchLength);
 }
 
 size_t StringImpl::reverseFindIgnoringCase(StringImpl* matchString, unsigned index)
@@ -1713,6 +1790,26 @@ size_t StringImpl::sizeInBytes() const
     } else
         size *= 2;
     return size + sizeof(*this);
+}
+
+void StringImpl::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
+{
+    size_t selfSize = sizeof(StringImpl);
+
+        // Count size used by internal buffer but skip strings that were constructed from literals.
+    if ((m_hashAndFlags & BufferInternal) && !hasTerminatingNullCharacter())
+        // Three cases are covered here:
+        // 1) a normal 8-bit string with internal storage (BufferInternal)
+        // 2) a normal 16-bit string with internal storage (BufferInternal)
+        // 3) empty unique string with length = 0 (BufferInternal)
+        selfSize += m_length * (m_hashAndFlags & s_hashFlag8BitBuffer ? sizeof(LChar) : sizeof(UChar));
+
+    MemoryClassInfo info(memoryObjectInfo, this, 0, selfSize);
+
+    if (m_hashAndFlags & BufferSubstring)
+        info.addMember(m_substringBuffer);
+    else if (m_hashAndFlags & s_hashFlagHas16BitShadow) // Substring never has its own shadow.
+        info.addRawBuffer(m_copyData16, (m_length + (hasTerminatingNullCharacter() ? 1 : 0)) * sizeof(UChar));
 }
 
 } // namespace WTF

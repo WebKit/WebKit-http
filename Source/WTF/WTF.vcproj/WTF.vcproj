@@ -424,10 +424,6 @@
 				>
 			</File>
 			<File
-				RelativePath="..\wtf\text\IntegerToStringConversion.cpp"
-				>
-			</File>
-			<File
 				RelativePath="..\wtf\text\IntegerToStringConversion.h"
 				>
 			</File>
@@ -902,6 +898,10 @@
 		</File>
 		<File
 			RelativePath="..\wtf\MediaTime.cpp"
+			>
+		</File>
+		<File
+		        RelativePath="..\wtf\MemoryInstrumentation.h"
 			>
 		</File>
 		<File

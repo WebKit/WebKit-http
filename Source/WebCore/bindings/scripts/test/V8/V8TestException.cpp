@@ -27,7 +27,6 @@
 #include "RuntimeEnabledFeatures.h"
 #include "V8Binding.h"
 #include "V8DOMWrapper.h"
-#include "V8IsolatedContext.h"
 #include <wtf/UnusedParam.h>
 
 namespace WebCore {
@@ -47,7 +46,7 @@ static v8::Handle<v8::Value> nameAttrGetter(v8::Local<v8::String> name, const v8
 
 } // namespace TestExceptionV8Internal
 
-static const V8DOMConfiguration::BatchedAttribute TestExceptionAttrs[] = {
+static const V8DOMConfiguration::BatchedAttribute V8TestExceptionAttrs[] = {
     // Attribute 'name' (Type: 'readonly attribute' ExtAttr: '')
     {"name", TestExceptionV8Internal::nameAttrGetter, 0, 0 /* no data */, static_cast<v8::AccessControl>(v8::DEFAULT), static_cast<v8::PropertyAttribute>(v8::None), 0 /* on instance */},
 };
@@ -58,7 +57,7 @@ static v8::Persistent<v8::FunctionTemplate> ConfigureV8TestExceptionTemplate(v8:
 
     v8::Local<v8::Signature> defaultSignature;
     defaultSignature = V8DOMConfiguration::configureTemplate(desc, "TestException", v8::Persistent<v8::FunctionTemplate>(), V8TestException::internalFieldCount,
-        TestExceptionAttrs, WTF_ARRAY_LENGTH(TestExceptionAttrs),
+        V8TestExceptionAttrs, WTF_ARRAY_LENGTH(V8TestExceptionAttrs),
         0, 0);
     UNUSED_PARAM(defaultSignature); // In some cases, it will not be used.
     
@@ -101,11 +100,26 @@ bool V8TestException::HasInstance(v8::Handle<v8::Value> value)
 }
 
 
-v8::Handle<v8::Object> V8TestException::wrapSlow(PassRefPtr<TestException> impl, v8::Isolate* isolate)
+v8::Handle<v8::Object> V8TestException::wrapSlow(PassRefPtr<TestException> impl, v8::Handle<v8::Object> creationContext, v8::Isolate* isolate)
 {
     v8::Handle<v8::Object> wrapper;
-    Frame* frame = 0;
-    wrapper = V8DOMWrapper::instantiateV8Object(frame, &info, impl.get());
+    Document* document = 0;
+    UNUSED_PARAM(document);
+
+    v8::Handle<v8::Context> context;
+    if (!creationContext.IsEmpty() && creationContext->CreationContext() != v8::Context::GetCurrent()) {
+        // For performance, we enter the context only if the currently running context
+        // is different from the context that we are about to enter.
+        context = v8::Local<v8::Context>::New(creationContext->CreationContext());
+        ASSERT(!context.IsEmpty());
+        context->Enter();
+    }
+
+    wrapper = V8DOMWrapper::instantiateV8Object(document, &info, impl.get());
+
+    if (!context.IsEmpty())
+        context->Exit();
+
     if (UNLIKELY(wrapper.IsEmpty()))
         return wrapper;
     v8::Persistent<v8::Object> wrapperHandle = V8DOMWrapper::setJSWrapperForDOMObject(impl, wrapper, isolate);

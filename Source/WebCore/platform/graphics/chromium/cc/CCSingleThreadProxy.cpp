@@ -46,7 +46,6 @@ PassOwnPtr<CCProxy> CCSingleThreadProxy::create(CCLayerTreeHost* layerTreeHost)
 CCSingleThreadProxy::CCSingleThreadProxy(CCLayerTreeHost* layerTreeHost)
     : m_layerTreeHost(layerTreeHost)
     , m_contextLost(false)
-    , m_compositorIdentifier(-1)
     , m_rendererInitialized(false)
     , m_nextFrameIsNewlyCommittedFrame(false)
 {
@@ -155,6 +154,7 @@ bool CCSingleThreadProxy::recreateContext()
 
     bool initialized;
     {
+        DebugScopedSetMainThreadBlocked mainThreadBlocked;
         DebugScopedSetImplThread impl;
         if (!m_layerTreeHostImpl->contentsTexturesPurged())
             m_layerTreeHost->deleteContentsTexturesOnImplThread(m_layerTreeHostImpl->resourceProvider());
@@ -275,6 +275,12 @@ void CCSingleThreadProxy::postAnimationEventsToMainThreadOnImplThread(PassOwnPtr
     m_layerTreeHost->setAnimationEvents(events, wallClockTime);
 }
 
+void CCSingleThreadProxy::releaseContentsTexturesOnImplThread()
+{
+    ASSERT(isImplThread());
+    m_layerTreeHost->reduceContentsTexturesMemoryOnImplThread(0, m_layerTreeHostImpl->resourceProvider());
+}
+
 // Called by the legacy scheduling path (e.g. where render_widget does the scheduling)
 void CCSingleThreadProxy::compositeImmediately()
 {
@@ -297,16 +303,26 @@ bool CCSingleThreadProxy::commitAndComposite()
 {
     ASSERT(CCProxy::isMainThread());
 
-
     if (!m_layerTreeHost->initializeRendererIfNeeded())
         return false;
 
-    if (m_layerTreeHostImpl->contentsTexturesPurged())
-        m_layerTreeHost->evictAllContentTextures();
+    // Unlink any texture backings that were deleted
+    CCPrioritizedTextureManager::BackingVector evictedContentsTexturesBackings;
+    {
+        DebugScopedSetImplThread implThread;
+        m_layerTreeHost->getEvictedContentTexturesBackings(evictedContentsTexturesBackings);
+    }
+    m_layerTreeHost->unlinkEvictedContentTexturesBackings(evictedContentsTexturesBackings);
+    {
+        DebugScopedSetImplThreadAndMainThreadBlocked implAndMainBlocked;
+        m_layerTreeHost->deleteEvictedContentTexturesBackings();
+    }
 
     CCTextureUpdateQueue queue;
     m_layerTreeHost->updateLayers(queue, m_layerTreeHostImpl->memoryAllocationLimitBytes());
-    m_layerTreeHostImpl->resetContentsTexturesPurged();
+
+    if (m_layerTreeHostImpl->contentsTexturesPurged())
+        m_layerTreeHostImpl->resetContentsTexturesPurged();
 
     m_layerTreeHost->willCommit();
     doCommit(queue);

@@ -24,6 +24,7 @@
 #include "UnitTestUtils/EWK2UnitTestServer.h"
 #include <EWebKit2.h>
 #include <Ecore.h>
+#include <Eina.h>
 #include <gtest/gtest.h>
 #include <wtf/OwnPtr.h>
 #include <wtf/PassOwnPtr.h>
@@ -33,6 +34,7 @@
 using namespace EWK2UnitTest;
 
 extern EWK2UnitTestEnvironment* environment;
+bool fullScreenCallbackCalled;
 
 static void onLoadFinishedForRedirection(void* userData, Evas_Object*, void*)
 {
@@ -189,27 +191,54 @@ TEST_F(EWK2UnitTestBase, ewk_view_form_submission_request)
     evas_object_smart_callback_del(webView(), "form,submission,request", onFormAboutToBeSubmitted);
 }
 
+static inline void checkBasicPopupMenuItem(Ewk_Popup_Menu_Item* item, const char* title, bool enabled)
+{
+    EXPECT_EQ(ewk_popup_menu_item_type_get(item), EWK_POPUP_MENU_ITEM);
+    EXPECT_STREQ(ewk_popup_menu_item_text_get(item), title);
+    EXPECT_EQ(ewk_popup_menu_item_enabled_get(item), enabled);
+}
+
+static Eina_Bool selectItemAfterDelayed(void* data)
+{
+    EXPECT_TRUE(ewk_view_popup_menu_select(static_cast<Evas_Object*>(data), 0));
+    return ECORE_CALLBACK_CANCEL;
+}
+
 static Eina_Bool showPopupMenu(Ewk_View_Smart_Data* smartData, Eina_Rectangle, Ewk_Text_Direction, double, Eina_List* list, int selectedIndex)
 {
     EXPECT_EQ(selectedIndex, 2);
 
     Ewk_Popup_Menu_Item* item = static_cast<Ewk_Popup_Menu_Item*>(eina_list_nth(list, 0));
-    EXPECT_EQ(ewk_popup_menu_item_type_get(item), EWK_POPUP_MENU_ITEM);
-    EXPECT_STREQ(ewk_popup_menu_item_text_get(item), "first");
+    checkBasicPopupMenuItem(item, "first", true);
+    EXPECT_EQ(ewk_popup_menu_item_text_direction_get(item), EWK_TEXT_DIRECTION_LEFT_TO_RIGHT);
+    EXPECT_STREQ(ewk_popup_menu_item_tooltip_get(item), "");
+    EXPECT_STREQ(ewk_popup_menu_item_accessibility_text_get(item), "");
+    EXPECT_FALSE(ewk_popup_menu_item_is_label_get(item));
+    EXPECT_FALSE(ewk_popup_menu_item_selected_get(item));
 
     item = static_cast<Ewk_Popup_Menu_Item*>(eina_list_nth(list, 1));
-    EXPECT_EQ(ewk_popup_menu_item_type_get(item), EWK_POPUP_MENU_ITEM);
-    EXPECT_STREQ(ewk_popup_menu_item_text_get(item), "second");
+    checkBasicPopupMenuItem(item, "second", false);
+    EXPECT_EQ(ewk_popup_menu_item_enabled_get(item), false);
 
     item = static_cast<Ewk_Popup_Menu_Item*>(eina_list_nth(list, 2));
-    EXPECT_EQ(ewk_popup_menu_item_type_get(item), EWK_POPUP_MENU_ITEM);
-    EXPECT_STREQ(ewk_popup_menu_item_text_get(item), "third");
+    checkBasicPopupMenuItem(item, "third", true);
+    EXPECT_EQ(ewk_popup_menu_item_text_direction_get(item), EWK_TEXT_DIRECTION_RIGHT_TO_LEFT);
+    EXPECT_STREQ(ewk_popup_menu_item_tooltip_get(item), "tooltip");
+    EXPECT_STREQ(ewk_popup_menu_item_accessibility_text_get(item), "aria");
+    EXPECT_TRUE(ewk_popup_menu_item_selected_get(item));
 
     item = static_cast<Ewk_Popup_Menu_Item*>(eina_list_nth(list, 3));
+    checkBasicPopupMenuItem(item, "label", false);
+    EXPECT_TRUE(ewk_popup_menu_item_is_label_get(item));
+
+    item = static_cast<Ewk_Popup_Menu_Item*>(eina_list_nth(list, 4));
+    checkBasicPopupMenuItem(item, "    forth", true);
+
+    item = static_cast<Ewk_Popup_Menu_Item*>(eina_list_nth(list, 5));
     EXPECT_EQ(ewk_popup_menu_item_type_get(item), EWK_POPUP_MENU_UNKNOWN);
     EXPECT_STREQ(ewk_popup_menu_item_text_get(item), 0);
 
-    EXPECT_TRUE(ewk_view_popup_menu_select(smartData->self, 0));
+    ecore_timer_add(0, selectItemAfterDelayed, smartData->self);
     return true;
 }
 
@@ -217,7 +246,8 @@ TEST_F(EWK2UnitTestBase, ewk_view_popup_menu_select)
 {
     const char* selectHTML =
         "<!doctype html><body><select onchange=\"document.title=this.value;\">"
-        "<option>first</option><option>second</option><option selected>third</option>"
+        "<option>first</option><option disabled>second</option><option selected dir=\"rtl\" title=\"tooltip\" aria-label=\"aria\">third</option>"
+        "<optgroup label=\"label\"><option>forth</option></optgroup>"
         "</select></body>";
 
     ewkViewClass()->popup_menu_show = showPopupMenu;
@@ -229,4 +259,104 @@ TEST_F(EWK2UnitTestBase, ewk_view_popup_menu_select)
 
     EXPECT_TRUE(ewk_view_popup_menu_close(webView()));
     EXPECT_FALSE(ewk_view_popup_menu_select(webView(), 0));
+}
+
+TEST_F(EWK2UnitTestBase, ewk_view_settings_get)
+{
+    Ewk_Settings* settings = ewk_view_settings_get(webView());
+    ASSERT_TRUE(settings);
+    ASSERT_EQ(settings, ewk_view_settings_get(webView()));
+}
+
+TEST_F(EWK2UnitTestBase, ewk_view_theme_set)
+{
+    const char* buttonHTML = "<html><body><input type='button' id='btn'>"
+        "<script>document.title=document.getElementById('btn').clientWidth;</script>"
+        "</body></html>";
+
+    ewk_view_html_string_load(webView(), buttonHTML, "file:///", 0);
+    waitUntilTitleChangedTo("30"); // button of default theme has 30px as padding (15 to -16)
+
+    ewk_view_theme_set(webView(), environment->pathForResource("it_does_not_exist.edj").data());
+    ewk_view_html_string_load(webView(), buttonHTML, "file:///", 0);
+    waitUntilTitleChangedTo("30"); // the result should be same as default theme
+
+    ewk_view_theme_set(webView(), environment->pathForResource("empty_theme.edj").data());
+    ewk_view_html_string_load(webView(), buttonHTML, "file:///", 0);
+    waitUntilTitleChangedTo("30"); // the result should be same as default theme
+
+    ewk_view_theme_set(webView(), environment->pathForResource("big_button_theme.edj").data());
+    ewk_view_html_string_load(webView(), buttonHTML, "file:///", 0);
+    waitUntilTitleChangedTo("299"); // button of big button theme has 299px as padding (150 to -150)
+}
+
+TEST_F(EWK2UnitTestBase, ewk_view_mouse_events_enabled)
+{
+    ASSERT_TRUE(ewk_view_mouse_events_enabled_set(webView(), EINA_TRUE));
+    ASSERT_TRUE(ewk_view_mouse_events_enabled_get(webView()));
+
+    ASSERT_TRUE(ewk_view_mouse_events_enabled_set(webView(), 2));
+    ASSERT_TRUE(ewk_view_mouse_events_enabled_get(webView()));
+
+    ASSERT_TRUE(ewk_view_mouse_events_enabled_set(webView(), EINA_FALSE));
+    ASSERT_FALSE(ewk_view_mouse_events_enabled_get(webView()));
+}
+
+static Eina_Bool fullScreenCallback(Ewk_View_Smart_Data* smartData)
+{
+    fullScreenCallbackCalled = true;
+    return false;
+}
+
+static void checkFullScreenProperty(Evas_Object* webView, bool expectedState)
+{
+    if (environment->useX11Window()) {
+        Ewk_View_Smart_Data* smartData = static_cast<Ewk_View_Smart_Data*>(evas_object_smart_data_get(webView));
+        Ecore_Evas* ecoreEvas = ecore_evas_ecore_evas_get(smartData->base.evas);
+        bool windowState = false;
+        while (((windowState = ecore_evas_fullscreen_get(ecoreEvas)) != expectedState))
+            ecore_main_loop_iterate();
+        ASSERT_TRUE(expectedState == windowState);
+    }
+}
+
+TEST_F(EWK2UnitTestBase, ewk_view_full_screen_enter)
+{
+    const char fullscreenHTML[] =
+        "<!doctype html><head><script>function makeFullScreen(){"
+        "var div = document.getElementById(\"fullscreen\");"
+        "div.webkitRequestFullScreen();"
+        "document.title = \"fullscreen entered\";"
+        "}</script></head>"
+        "<body><div id=\"fullscreen\" style=\"width:100px; height:100px\" onclick=\"makeFullScreen()\"></div></body>";
+
+    ewkViewClass()->fullscreen_enter = fullScreenCallback;
+
+    ewk_view_html_string_load(webView(), fullscreenHTML, "file:///", 0);
+    waitUntilLoadFinished();
+    mouseClick(50, 50);
+    waitUntilTitleChangedTo("fullscreen entered");
+    ASSERT_TRUE(fullScreenCallbackCalled);
+    checkFullScreenProperty(webView(), true);
+}
+
+TEST_F(EWK2UnitTestBase, ewk_view_full_screen_exit)
+{
+    const char fullscreenHTML[] =
+        "<!doctype html><head><script>function makeFullScreenAndExit(){"
+        "var div = document.getElementById(\"fullscreen\");"
+        "div.webkitRequestFullScreen();"
+        "document.webkitCancelFullScreen();"
+        "document.title = \"fullscreen exited\";"
+        "}</script></head>"
+        "<body><div id=\"fullscreen\" style=\"width:100px; height:100px\" onclick=\"makeFullScreenAndExit()\"></div></body>";
+
+    ewkViewClass()->fullscreen_exit = fullScreenCallback;
+
+    ewk_view_html_string_load(webView(), fullscreenHTML, "file:///", 0);
+    waitUntilLoadFinished();
+    mouseClick(50, 50);
+    waitUntilTitleChangedTo("fullscreen exited");
+    ASSERT_TRUE(fullScreenCallbackCalled);
+    checkFullScreenProperty(webView(), false);
 }

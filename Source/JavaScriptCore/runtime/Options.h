@@ -65,6 +65,7 @@ namespace JSC {
 #define JSC_OPTIONS(v) \
     v(bool, useJIT,    true) \
     v(bool, useDFGJIT, true) \
+    v(bool, useRegExpJIT, true) \
     \
     /* showDisassembly implies showDFGDisassembly. */ \
     v(bool, showDisassembly, false) \
@@ -117,7 +118,10 @@ namespace JSC {
     v(unsigned, opaqueRootMergeThreshold, 1000) \
     \
     v(bool, forceWeakRandomSeed, false) \
-    v(unsigned, forcedWeakRandomSeed, 0)
+    v(unsigned, forcedWeakRandomSeed, 0) \
+    \
+    v(bool, useZombieMode, false) \
+    v(bool, zombiesAreImmortal, false) 
 
 
 class Options {

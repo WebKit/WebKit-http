@@ -57,7 +57,6 @@ LIST(APPEND WebCore_SOURCES
     bindings/v8/V8GCController.cpp
     bindings/v8/V8GCForContextDispose.cpp
     bindings/v8/V8HiddenPropertyName.cpp
-    bindings/v8/V8IsolatedContext.cpp
     bindings/v8/V8LazyEventListener.cpp
     bindings/v8/V8NodeFilterCondition.cpp
     bindings/v8/V8ObjectConstructor.cpp
@@ -83,6 +82,7 @@ LIST(APPEND WebCore_SOURCES
     bindings/v8/custom/V8CSSStyleDeclarationCustom.cpp
     bindings/v8/custom/V8CSSValueCustom.cpp
     bindings/v8/custom/V8CanvasRenderingContext2DCustom.cpp
+    bindings/v8/custom/V8CanvasRenderingContextCustom.cpp
     bindings/v8/custom/V8ClipboardCustom.cpp
     bindings/v8/custom/V8ConsoleCustom.cpp
     bindings/v8/custom/V8CoordinatesCustom.cpp
@@ -231,10 +231,7 @@ FOREACH (_include ${WebCoreTestSupport_IDL_INCLUDES})
     LIST(APPEND IDL_INCLUDES --include=${WEBCORE_DIR}/${_include})
 ENDFOREACH ()
 
-SET(FEATURE_DEFINES_JAVASCRIPT "LANGUAGE_JAVASCRIPT=1 V8_BINDING=1")
-FOREACH (_feature ${FEATURE_DEFINES})
-    SET(FEATURE_DEFINES_JAVASCRIPT "${FEATURE_DEFINES_JAVASCRIPT} ${_feature}")
-ENDFOREACH ()
+SET(FEATURE_DEFINES_JAVASCRIPT "LANGUAGE_JAVASCRIPT=1 V8_BINDING=1 ${FEATURE_DEFINES_WITH_SPACE_SEPARATOR}")
 
 # Generate DebuggerScriptSource.h
 ADD_CUSTOM_COMMAND(

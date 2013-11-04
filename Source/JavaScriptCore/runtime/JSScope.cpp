@@ -44,8 +44,6 @@ void JSScope::visitChildren(JSCell* cell, SlotVisitor& visitor)
 
     Base::visitChildren(thisObject, visitor);
     visitor.append(&thisObject->m_next);
-    visitor.append(&thisObject->m_globalObject);
-    visitor.append(&thisObject->m_globalThis);
 }
 
 bool JSScope::isDynamicScope(bool& requiresDynamicChecks) const
@@ -212,7 +210,7 @@ JSValue JSScope::resolveBase(CallFrame* callFrame, const Identifier& identifier,
     if (!isStrict)
         return callFrame->lexicalGlobalObject();
 
-    return throwError(callFrame, createErrorForInvalidGlobalAssignment(callFrame, identifier.ustring()));
+    return throwError(callFrame, createErrorForInvalidGlobalAssignment(callFrame, identifier.string()));
 }
 
 JSValue JSScope::resolveWithBase(CallFrame* callFrame, const Identifier& identifier, Register* base)

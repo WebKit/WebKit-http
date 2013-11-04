@@ -38,6 +38,7 @@
 #include "JSScriptProfile.h"
 #include "JSTestCallback.h"
 #include "JSTestObj.h"
+#include "JSTestSubObj.h"
 #include "JSa.h"
 #include "JSb.h"
 #include "JSbool.h"
@@ -135,6 +136,7 @@ static const HashTableValue JSTestObjTableValues[] =
 #endif
     { "cachedAttribute1", DontDelete | ReadOnly, (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjCachedAttribute1), (intptr_t)0, NoIntrinsic },
     { "cachedAttribute2", DontDelete | ReadOnly, (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjCachedAttribute2), (intptr_t)0, NoIntrinsic },
+    { "anyAttribute", DontDelete, (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjAnyAttribute), (intptr_t)setJSTestObjAnyAttribute, NoIntrinsic },
     { "contentDocument", DontDelete | ReadOnly, (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjContentDocument), (intptr_t)0, NoIntrinsic },
     { "mutablePoint", DontDelete, (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjMutablePoint), (intptr_t)setJSTestObjMutablePoint, NoIntrinsic },
     { "immutablePoint", DontDelete, (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjImmutablePoint), (intptr_t)setJSTestObjImmutablePoint, NoIntrinsic },
@@ -437,7 +439,7 @@ JSValue jsTestObjConstructorStaticStringAttr(ExecState* exec, JSValue slotBase, 
 JSValue jsTestObjConstructorTestSubObj(ExecState* exec, JSValue slotBase, PropertyName)
 {
     JSTestObj* castedThis = jsCast<JSTestObj*>(asObject(slotBase));
-    return JSTestSubObj::getConstructor(exec, castedThis);
+    return JSTestSubObj::getConstructor(exec, castedThis->globalObject());
 }
 
 
@@ -814,7 +816,7 @@ JSValue jsTestObjConditionalAttr3(ExecState* exec, JSValue slotBase, PropertyNam
 JSValue jsTestObjConditionalAttr4Constructor(ExecState* exec, JSValue slotBase, PropertyName)
 {
     JSTestObj* castedThis = jsCast<JSTestObj*>(asObject(slotBase));
-    return JSTestObjectA::getConstructor(exec, castedThis);
+    return JSTestObjectA::getConstructor(exec, castedThis->globalObject());
 }
 
 #endif
@@ -823,7 +825,7 @@ JSValue jsTestObjConditionalAttr4Constructor(ExecState* exec, JSValue slotBase, 
 JSValue jsTestObjConditionalAttr5Constructor(ExecState* exec, JSValue slotBase, PropertyName)
 {
     JSTestObj* castedThis = jsCast<JSTestObj*>(asObject(slotBase));
-    return JSTestObjectB::getConstructor(exec, castedThis);
+    return JSTestObjectB::getConstructor(exec, castedThis->globalObject());
 }
 
 #endif
@@ -832,7 +834,7 @@ JSValue jsTestObjConditionalAttr5Constructor(ExecState* exec, JSValue slotBase, 
 JSValue jsTestObjConditionalAttr6Constructor(ExecState* exec, JSValue slotBase, PropertyName)
 {
     JSTestObj* castedThis = jsCast<JSTestObj*>(asObject(slotBase));
-    return JSTestObjectC::getConstructor(exec, castedThis);
+    return JSTestObjectC::getConstructor(exec, castedThis->globalObject());
 }
 
 #endif
@@ -844,7 +846,7 @@ JSValue jsTestObjCachedAttribute1(ExecState* exec, JSValue slotBase, PropertyNam
     if (JSValue cachedValue = castedThis->m_cachedAttribute1.get())
         return cachedValue;
     TestObj* impl = static_cast<TestObj*>(castedThis->impl());
-    JSValue result = impl->cachedAttribute1() ? impl->cachedAttribute1()->deserialize(exec, castedThis->globalObject(), 0) : jsNull();
+    JSValue result = (impl->cachedAttribute1().hasNoValue() ? jsNull() : impl->cachedAttribute1().jsValue());
     castedThis->m_cachedAttribute1.set(exec->globalData(), castedThis, result);
     return result;
 }
@@ -857,8 +859,18 @@ JSValue jsTestObjCachedAttribute2(ExecState* exec, JSValue slotBase, PropertyNam
     if (JSValue cachedValue = castedThis->m_cachedAttribute2.get())
         return cachedValue;
     TestObj* impl = static_cast<TestObj*>(castedThis->impl());
-    JSValue result = impl->cachedAttribute2() ? impl->cachedAttribute2()->deserialize(exec, castedThis->globalObject(), 0) : jsNull();
+    JSValue result = (impl->cachedAttribute2().hasNoValue() ? jsNull() : impl->cachedAttribute2().jsValue());
     castedThis->m_cachedAttribute2.set(exec->globalData(), castedThis, result);
+    return result;
+}
+
+
+JSValue jsTestObjAnyAttribute(ExecState* exec, JSValue slotBase, PropertyName)
+{
+    JSTestObj* castedThis = jsCast<JSTestObj*>(asObject(slotBase));
+    UNUSED_PARAM(exec);
+    TestObj* impl = static_cast<TestObj*>(castedThis->impl());
+    JSValue result = (impl->anyAttribute().hasNoValue() ? jsNull() : impl->anyAttribute().jsValue());
     return result;
 }
 
@@ -1349,6 +1361,15 @@ void setJSTestObjConditionalAttr6Constructor(ExecState* exec, JSObject* thisObje
 }
 
 #endif
+
+void setJSTestObjAnyAttribute(ExecState* exec, JSObject* thisObject, JSValue value)
+{
+    UNUSED_PARAM(exec);
+    JSTestObj* castedThis = jsCast<JSTestObj*>(thisObject);
+    TestObj* impl = static_cast<TestObj*>(castedThis->impl());
+    impl->setAnyAttribute(exec->globalData(), value);
+}
+
 
 void setJSTestObjMutablePoint(ExecState* exec, JSObject* thisObject, JSValue value)
 {

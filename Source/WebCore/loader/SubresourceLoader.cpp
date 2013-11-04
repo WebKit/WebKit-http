@@ -36,9 +36,9 @@
 #include "FrameLoader.h"
 #include "Logging.h"
 #include "MemoryCache.h"
-#include "MemoryInstrumentation.h"
 #include "SecurityOrigin.h"
 #include "SecurityPolicy.h"
+#include "WebCoreMemoryInstrumentation.h"
 #include <wtf/RefCountedLeakCounter.h>
 #include <wtf/StdLibExtras.h>
 #include <wtf/text/CString.h>
@@ -137,10 +137,10 @@ void SubresourceLoader::cancelIfNotFinishing()
 
 void SubresourceLoader::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
 {
-    MemoryClassInfo info(memoryObjectInfo, this, MemoryInstrumentation::Loader);
+    MemoryClassInfo info(memoryObjectInfo, this, WebCoreMemoryTypes::Loader);
     ResourceLoader::reportMemoryUsage(memoryObjectInfo);
-    info.addInstrumentedMember(m_resource);
-    info.addInstrumentedMember(m_document);
+    info.addMember(m_resource);
+    info.addMember(m_document);
     info.addMember(m_requestCountTracker);
 }
 
@@ -167,11 +167,13 @@ void SubresourceLoader::willSendRequest(ResourceRequest& newRequest, const Resou
     
     ResourceLoader::willSendRequest(newRequest, redirectResponse);
     if (!previousURL.isNull() && !newRequest.isNull() && previousURL != newRequest.url()) {
-        if (!m_document->cachedResourceLoader()->canRequest(m_resource->type(), newRequest.url())) {
-            cancel();
-            return;
+        if (m_document->cachedResourceLoader()->canRequest(m_resource->type(), newRequest.url())) {
+            if (m_resource->type() != CachedResource::ImageResource || !m_document->cachedResourceLoader()->shouldDeferImageLoad(newRequest.url())) {
+                m_resource->willSendRequest(newRequest, redirectResponse);
+                return;
+            }
         }
-        m_resource->willSendRequest(newRequest, redirectResponse);
+        cancel();
     }
 }
 

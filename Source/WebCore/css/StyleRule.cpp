@@ -28,8 +28,8 @@
 #include "CSSMediaRule.h"
 #include "CSSPageRule.h"
 #include "CSSStyleRule.h"
-#include "MemoryInstrumentation.h"
 #include "StyleRuleImport.h"
+#include "WebCoreMemoryInstrumentation.h"
 #include "WebKitCSSKeyframeRule.h"
 #include "WebKitCSSKeyframesRule.h"
 #include "WebKitCSSRegionRule.h"
@@ -81,7 +81,7 @@ void StyleRuleBase::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
     case Unknown:
     case Charset:
     case Keyframe:
-        MemoryClassInfo info(memoryObjectInfo, this, MemoryInstrumentation::CSS);
+        MemoryClassInfo info(memoryObjectInfo, this, WebCoreMemoryTypes::CSS);
         return;
     }
     ASSERT_NOT_REACHED();
@@ -208,9 +208,9 @@ unsigned StyleRule::averageSizeInBytes()
 
 void StyleRule::reportDescendantMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
 {
-    MemoryClassInfo info(memoryObjectInfo, this, MemoryInstrumentation::CSS);
-    info.addInstrumentedMember(m_properties);
-    info.addInstrumentedMember(m_selectorList);
+    MemoryClassInfo info(memoryObjectInfo, this, WebCoreMemoryTypes::CSS);
+    info.addMember(m_properties);
+    info.addMember(m_selectorList);
 }
 
 StyleRule::StyleRule(int sourceLine)
@@ -271,9 +271,9 @@ void StyleRulePage::setProperties(PassRefPtr<StylePropertySet> properties)
 
 void StyleRulePage::reportDescendantMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
 {
-    MemoryClassInfo info(memoryObjectInfo, this, MemoryInstrumentation::CSS);
-    info.addInstrumentedMember(m_properties);
-    info.addInstrumentedMember(m_selectorList);
+    MemoryClassInfo info(memoryObjectInfo, this, WebCoreMemoryTypes::CSS);
+    info.addMember(m_properties);
+    info.addMember(m_selectorList);
 }
 
 StyleRuleFontFace::StyleRuleFontFace()
@@ -305,8 +305,8 @@ void StyleRuleFontFace::setProperties(PassRefPtr<StylePropertySet> properties)
 
 void StyleRuleFontFace::reportDescendantMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
 {
-    MemoryClassInfo info(memoryObjectInfo, this, MemoryInstrumentation::CSS);
-    info.addInstrumentedMember(m_properties);
+    MemoryClassInfo info(memoryObjectInfo, this, WebCoreMemoryTypes::CSS);
+    info.addMember(m_properties);
 }
 
 
@@ -336,7 +336,7 @@ void StyleRuleBlock::wrapperRemoveRule(unsigned index)
 
 void StyleRuleBlock::reportDescendantMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
 {
-    MemoryClassInfo info(memoryObjectInfo, this, MemoryInstrumentation::CSS);
+    MemoryClassInfo info(memoryObjectInfo, this, WebCoreMemoryTypes::CSS);
     info.addInstrumentedVector(m_childRules);
 }
 
@@ -355,8 +355,8 @@ StyleRuleMedia::StyleRuleMedia(const StyleRuleMedia& o)
 
 void StyleRuleMedia::reportDescendantMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
 {
-    MemoryClassInfo info(memoryObjectInfo, this, MemoryInstrumentation::CSS);
-    info.addInstrumentedMember(m_mediaQueries);
+    MemoryClassInfo info(memoryObjectInfo, this, WebCoreMemoryTypes::CSS);
+    info.addMember(m_mediaQueries);
 }
 
 StyleRuleRegion::StyleRuleRegion(CSSSelectorVector* selectors, Vector<RefPtr<StyleRuleBase> >& adoptRules)
@@ -373,8 +373,8 @@ StyleRuleRegion::StyleRuleRegion(const StyleRuleRegion& o)
 
 void StyleRuleRegion::reportDescendantMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
 {
-    MemoryClassInfo info(memoryObjectInfo, this, MemoryInstrumentation::CSS);
-    info.addInstrumentedMember(m_selectorList);
+    MemoryClassInfo info(memoryObjectInfo, this, WebCoreMemoryTypes::CSS);
+    info.addMember(m_selectorList);
 }
 
 } // namespace WebCore

@@ -180,8 +180,10 @@ static void appendReadwriteSandboxDirectory(Vector<const char*>& vector, const c
 
 #endif
 
-static void initializeSandbox(const WebProcessCreationParameters& parameters)
+void WebProcess::initializeSandbox(const String& clientIdentifier)
 {
+    [[NSFileManager defaultManager] changeCurrentDirectoryPath:[[NSBundle mainBundle] bundlePath]];
+
 #if ENABLE(WEB_PROCESS_SANDBOX)
 
 #if DEBUG_BYPASS_SANDBOX
@@ -191,7 +193,7 @@ static void initializeSandbox(const WebProcessCreationParameters& parameters)
 
 #if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1080
     // Use private temporary and cache directories.
-    String systemDirectorySuffix = "com.apple.WebProcess+" + parameters.uiProcessBundleIdentifier;
+    String systemDirectorySuffix = "com.apple.WebProcess+" + clientIdentifier;
     setenv("DIRHELPER_USER_DIR_SUFFIX", fileSystemRepresentation(systemDirectorySuffix).data(), 0);
     char temporaryDirectory[PATH_MAX];
     if (!confstr(_CS_DARWIN_USER_TEMP_DIR, temporaryDirectory, sizeof(temporaryDirectory))) {
@@ -205,8 +207,6 @@ static void initializeSandbox(const WebProcessCreationParameters& parameters)
 
     // These are read-only.
     appendReadonlySandboxDirectory(sandboxParameters, "WEBKIT2_FRAMEWORK_DIR", [[[NSBundle bundleForClass:NSClassFromString(@"WKView")] bundlePath] stringByDeletingLastPathComponent]);
-    appendReadonlySandboxDirectory(sandboxParameters, "UI_PROCESS_BUNDLE_RESOURCE_DIR", parameters.uiProcessBundleResourcePath);
-    appendReadonlySandboxDirectory(sandboxParameters, "WEBKIT_WEB_INSPECTOR_DIR", parameters.webInspectorBaseDirectory);
 
     // These are read-write getconf paths.
     appendReadwriteConfDirectory(sandboxParameters, "DARWIN_USER_TEMP_DIR", _CS_DARWIN_USER_TEMP_DIR);
@@ -214,10 +214,6 @@ static void initializeSandbox(const WebProcessCreationParameters& parameters)
 
     // These are read-write paths.
     appendReadwriteSandboxDirectory(sandboxParameters, "HOME_DIR", NSHomeDirectory());
-    appendReadwriteSandboxDirectory(sandboxParameters, "WEBKIT_DATABASE_DIR", parameters.databaseDirectory);
-    appendReadwriteSandboxDirectory(sandboxParameters, "WEBKIT_LOCALSTORAGE_DIR", parameters.localStorageDirectory);
-    appendReadwriteSandboxDirectory(sandboxParameters, "WEBKIT_APPLICATION_CACHE_DIR", parameters.applicationCacheDirectory);
-    appendReadwriteSandboxDirectory(sandboxParameters, "NSURL_CACHE_DIR", parameters.nsURLCachePath);
 
     sandboxParameters.append(static_cast<const char*>(0));
 
@@ -254,9 +250,11 @@ static id NSApplicationAccessibilityFocusedUIElement(NSApplication*, SEL)
     
 void WebProcess::platformInitializeWebProcess(const WebProcessCreationParameters& parameters, CoreIPC::ArgumentDecoder*)
 {
-    [[NSFileManager defaultManager] changeCurrentDirectoryPath:[[NSBundle mainBundle] bundlePath]];
-
-    initializeSandbox(parameters);
+    SandboxExtension::consumePermanently(parameters.uiProcessBundleResourcePathExtensionHandle);
+    SandboxExtension::consumePermanently(parameters.localStorageDirectoryExtensionHandle);
+    SandboxExtension::consumePermanently(parameters.databaseDirectoryExtensionHandle);
+    SandboxExtension::consumePermanently(parameters.applicationCacheDirectoryExtensionHandle);
+    SandboxExtension::consumePermanently(parameters.nsURLCachePathExtensionHandle);
 
     if (!parameters.parentProcessName.isNull()) {
         NSString *applicationName = [NSString stringWithFormat:WEB_UI_STRING("%@ Web Content", "Visible name of the web process. The argument is the application name."), (NSString *)parameters.parentProcessName];
@@ -276,6 +274,8 @@ void WebProcess::platformInitializeWebProcess(const WebProcessCreationParameters
 #if ENABLE(NOTIFICATIONS) || ENABLE(LEGACY_NOTIFICATIONS)
     m_notificationManager.initialize(parameters.notificationPermissions);
 #endif
+
+    m_presenterApplicationPid = parameters.presenterApplicationPid;
 
     // rdar://9118639 accessibilityFocusedUIElement in NSApplication defaults to use the keyWindow. Since there's
     // no window in WK2, NSApplication needs to use the focused page's focused element.

@@ -38,16 +38,16 @@
 
 namespace WebCore {
 
-v8::Handle<v8::Value> toV8(IDBKey* key, v8::Isolate* isolate)
+v8::Handle<v8::Value> toV8(IDBKey* key, v8::Handle<v8::Object> creationContext, v8::Isolate* isolate)
 {
     if (!key)
-        return v8NullWithCheck(isolate);
+        return v8Undefined();
 
     switch (key->type()) {
     case IDBKey::InvalidType:
     case IDBKey::MinType:
         ASSERT_NOT_REACHED();
-        return v8::Undefined();
+        return v8Undefined();
     case IDBKey::NumberType:
         return v8::Number::New(key->number());
     case IDBKey::StringType:
@@ -58,13 +58,13 @@ v8::Handle<v8::Value> toV8(IDBKey* key, v8::Isolate* isolate)
         {
             v8::Local<v8::Array> array = v8::Array::New(key->array().size());
             for (size_t i = 0; i < key->array().size(); ++i)
-                array->Set(i, toV8(key->array()[i].get(), isolate));
+                array->Set(i, toV8(key->array()[i].get(), creationContext, isolate));
             return array;
         }
     }
 
     ASSERT_NOT_REACHED();
-    return v8::Undefined();
+    return v8Undefined();
 }
 
 } // namespace WebCore

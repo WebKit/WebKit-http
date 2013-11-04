@@ -34,7 +34,6 @@
 #include "ColorSpace.h"
 #include "CounterDirectives.h"
 #include "DataRef.h"
-#include "FillLayer.h"
 #include "FontBaseline.h"
 #include "FontDescription.h"
 #include "GraphicsTypes.h"
@@ -75,7 +74,6 @@
 #include <wtf/Vector.h>
 
 #if ENABLE(CSS_FILTERS)
-#include "FilterOperations.h"
 #include "StyleFilterData.h"
 #endif
 
@@ -102,13 +100,16 @@ namespace WebCore {
 
 using std::max;
 
+#if ENABLE(CSS_FILTERS)
+class FilterOperations;
+#endif
+
 class BorderData;
 class CounterContent;
 class CursorList;
 class Font;
 class FontMetrics;
 class IntRect;
-class MemoryObjectInfo;
 class Pair;
 class ShadowData;
 class StyleImage;
@@ -685,7 +686,7 @@ public:
 
     bool breakWords() const
     {
-        return wordBreak() == BreakWordBreak || wordWrap() == BreakWordWrap;
+        return wordBreak() == BreakWordBreak || overflowWrap() == BreakOverflowWrap;
     }
 
     EFillRepeat backgroundRepeatX() const { return static_cast<EFillRepeat>(m_background->background().repeatX()); }
@@ -840,7 +841,7 @@ public:
     EMarginCollapse marginBeforeCollapse() const { return static_cast<EMarginCollapse>(rareNonInheritedData->marginBeforeCollapse); }
     EMarginCollapse marginAfterCollapse() const { return static_cast<EMarginCollapse>(rareNonInheritedData->marginAfterCollapse); }
     EWordBreak wordBreak() const { return static_cast<EWordBreak>(rareInheritedData->wordBreak); }
-    EWordWrap wordWrap() const { return static_cast<EWordWrap>(rareInheritedData->wordWrap); }
+    EOverflowWrap overflowWrap() const { return static_cast<EOverflowWrap>(rareInheritedData->overflowWrap); }
     ENBSPMode nbspMode() const { return static_cast<ENBSPMode>(rareInheritedData->nbspMode); }
     EKHTMLLineBreak khtmlLineBreak() const { return static_cast<EKHTMLLineBreak>(rareInheritedData->khtmlLineBreak); }
     const AtomicString& highlight() const { return rareInheritedData->highlight; }
@@ -951,19 +952,16 @@ public:
 #if ENABLE(TOUCH_EVENTS)
     Color tapHighlightColor() const { return rareInheritedData->tapHighlightColor; }
 #endif
-#if ENABLE(OVERFLOW_SCROLLING)
+#if ENABLE(ACCELERATED_OVERFLOW_SCROLLING)
     bool useTouchOverflowScrolling() const { return rareInheritedData->useTouchOverflowScrolling; }
 #endif
     bool textSizeAdjust() const { return rareInheritedData->textSizeAdjust; }
     ETextSecurity textSecurity() const { return static_cast<ETextSecurity>(rareInheritedData->textSecurity); }
 
     WritingMode writingMode() const { return static_cast<WritingMode>(inherited_flags.m_writingMode); }
-    // Lines have horizontal orientation; modes horizontal-tb or horizontal-bt.
-    bool isHorizontalWritingMode() const { return writingMode() == TopToBottomWritingMode || writingMode() == BottomToTopWritingMode; }
-    // Bottom of the line occurs earlier in the block; modes vertical-rl or horizontal-bt.
-    bool isFlippedLinesWritingMode() const { return writingMode() == LeftToRightWritingMode || writingMode() == BottomToTopWritingMode; }
-    // Block progression increases in the opposite direction to normal; modes vertical-rl or horizontal-bt.
-    bool isFlippedBlocksWritingMode() const { return writingMode() == RightToLeftWritingMode || writingMode() == BottomToTopWritingMode; }
+    bool isHorizontalWritingMode() const { return WebCore::isHorizontalWritingMode(writingMode()); }
+    bool isFlippedLinesWritingMode() const { return WebCore::isFlippedLinesWritingMode(writingMode()); }
+    bool isFlippedBlocksWritingMode() const { return WebCore::isFlippedBlocksWritingMode(writingMode()); }
 
 #if ENABLE(CSS_IMAGE_ORIENTATION)
     ImageOrientationEnum imageOrientation() const { return static_cast<ImageOrientationEnum>(rareInheritedData->m_imageOrientation); }
@@ -1303,7 +1301,7 @@ public:
     void setMarginBeforeCollapse(EMarginCollapse c) { SET_VAR(rareNonInheritedData, marginBeforeCollapse, c); }
     void setMarginAfterCollapse(EMarginCollapse c) { SET_VAR(rareNonInheritedData, marginAfterCollapse, c); }
     void setWordBreak(EWordBreak b) { SET_VAR(rareInheritedData, wordBreak, b); }
-    void setWordWrap(EWordWrap b) { SET_VAR(rareInheritedData, wordWrap, b); }
+    void setOverflowWrap(EOverflowWrap b) { SET_VAR(rareInheritedData, overflowWrap, b); }
     void setNBSPMode(ENBSPMode b) { SET_VAR(rareInheritedData, nbspMode, b); }
     void setKHTMLLineBreak(EKHTMLLineBreak b) { SET_VAR(rareInheritedData, khtmlLineBreak, b); }
     void setHighlight(const AtomicString& h) { SET_VAR(rareInheritedData, highlight, h); }
@@ -1403,7 +1401,7 @@ public:
 #if ENABLE(TOUCH_EVENTS)
     void setTapHighlightColor(const Color& c) { SET_VAR(rareInheritedData, tapHighlightColor, c); }
 #endif
-#if ENABLE(OVERFLOW_SCROLLING)
+#if ENABLE(ACCELERATED_OVERFLOW_SCROLLING)
     void setUseTouchOverflowScrolling(bool v) { SET_VAR(rareInheritedData, useTouchOverflowScrolling, v); }
 #endif
     bool setTextSizeAdjust(bool);
@@ -1464,14 +1462,14 @@ public:
     static BasicShape* initialWrapShapeInside() { return 0; }
     static BasicShape* initialWrapShapeOutside() { return 0; }
 
-    void setClipPath(PassRefPtr<BasicShape> shape)
+    void setClipPath(PassRefPtr<ClipPathOperation> operation)
     {
-        if (rareNonInheritedData->m_clipPath != shape)
-            rareNonInheritedData.access()->m_clipPath = shape;
+        if (rareNonInheritedData->m_clipPath != operation)
+            rareNonInheritedData.access()->m_clipPath = operation;
     }
-    BasicShape* clipPath() const { return rareNonInheritedData->m_clipPath.get(); }
+    ClipPathOperation* clipPath() const { return rareNonInheritedData->m_clipPath.get(); }
 
-    static BasicShape* initialClipPath() { return 0; }
+    static ClipPathOperation* initialClipPath() { return 0; }
 
     Length wrapPadding() const { return rareNonInheritedData->m_wrapPadding; }
     void setWrapPadding(Length wrapPadding) { SET_VAR(rareNonInheritedData, m_wrapPadding, wrapPadding); }
@@ -1492,6 +1490,7 @@ public:
 
     const CounterDirectiveMap* counterDirectives() const;
     CounterDirectiveMap& accessCounterDirectives();
+    const CounterDirectives getCounterDirectives(const AtomicString& identifier) const;
 
     QuotesData* quotes() const { return rareInheritedData->quotes.get(); }
     void setQuotes(PassRefPtr<QuotesData>);
@@ -1641,7 +1640,7 @@ public:
     static EMarginCollapse initialMarginBeforeCollapse() { return MCOLLAPSE; }
     static EMarginCollapse initialMarginAfterCollapse() { return MCOLLAPSE; }
     static EWordBreak initialWordBreak() { return NormalWordBreak; }
-    static EWordWrap initialWordWrap() { return NormalWordWrap; }
+    static EOverflowWrap initialOverflowWrap() { return NormalOverflowWrap; }
     static ENBSPMode initialNBSPMode() { return NBNORMAL; }
     static EKHTMLLineBreak initialKHTMLLineBreak() { return LBNORMAL; }
     static const AtomicString& initialHighlight() { return nullAtom; }
@@ -1724,7 +1723,7 @@ public:
 #if ENABLE(TOUCH_EVENTS)
     static Color initialTapHighlightColor();
 #endif
-#if ENABLE(OVERFLOW_SCROLLING)
+#if ENABLE(ACCELERATED_OVERFLOW_SCROLLING)
     static bool initialUseTouchOverflowScrolling() { return false; }
 #endif
 #if ENABLE(DASHBOARD_SUPPORT) || ENABLE(WIDGET_REGION)

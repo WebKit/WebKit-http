@@ -113,8 +113,8 @@ public:
 
     void reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
     {
-        MemoryClassInfo info(memoryObjectInfo, this, MemoryInstrumentation::DOM);
-        info.addInstrumentedMember(m_parent);
+        MemoryClassInfo info(memoryObjectInfo, this);
+        info.addMember(m_parent);
     }
 
 private:

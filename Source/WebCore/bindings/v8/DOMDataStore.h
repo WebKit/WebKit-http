@@ -47,7 +47,6 @@ namespace WebCore {
 
     class DOMData;
     class DOMDataStore;
-    class MemoryObjectInfo;
 
     typedef WTF::Vector<DOMDataStore*> DOMDataList;
 
@@ -87,7 +86,7 @@ namespace WebCore {
         static void weakActiveDOMObjectCallback(v8::Persistent<v8::Value> v8Object, void* domObject);
         static void weakNodeCallback(v8::Persistent<v8::Value> v8Object, void* domObject);
 
-        void reportMemoryUsage(MemoryObjectInfo*) const;
+        virtual void reportMemoryUsage(MemoryObjectInfo*) const;
 
     protected:
         static void weakDOMObjectCallback(v8::Persistent<v8::Value> v8Object, void* domObject);

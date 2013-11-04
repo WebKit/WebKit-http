@@ -703,24 +703,22 @@ void JIT::emit_op_is_string(Instruction* currentInstruction)
 void JIT::emit_op_tear_off_activation(Instruction* currentInstruction)
 {
     unsigned activation = currentInstruction[1].u.operand;
-    unsigned arguments = currentInstruction[2].u.operand;
-    Jump activationCreated = branch32(NotEqual, tagFor(activation), TrustedImm32(JSValue::EmptyValueTag));
-    Jump argumentsNotCreated = branch32(Equal, tagFor(arguments), TrustedImm32(JSValue::EmptyValueTag));
-    activationCreated.link(this);
+    Jump activationNotCreated = branch32(Equal, tagFor(activation), TrustedImm32(JSValue::EmptyValueTag));
     JITStubCall stubCall(this, cti_op_tear_off_activation);
-    stubCall.addArgument(currentInstruction[1].u.operand);
-    stubCall.addArgument(unmodifiedArgumentsRegister(currentInstruction[2].u.operand));
+    stubCall.addArgument(activation);
     stubCall.call();
-    argumentsNotCreated.link(this);
+    activationNotCreated.link(this);
 }
 
 void JIT::emit_op_tear_off_arguments(Instruction* currentInstruction)
 {
-    int dst = currentInstruction[1].u.operand;
+    int arguments = currentInstruction[1].u.operand;
+    int activation = currentInstruction[2].u.operand;
 
-    Jump argsNotCreated = branch32(Equal, tagFor(unmodifiedArgumentsRegister(dst)), TrustedImm32(JSValue::EmptyValueTag));
+    Jump argsNotCreated = branch32(Equal, tagFor(unmodifiedArgumentsRegister(arguments)), TrustedImm32(JSValue::EmptyValueTag));
     JITStubCall stubCall(this, cti_op_tear_off_arguments);
-    stubCall.addArgument(unmodifiedArgumentsRegister(dst));
+    stubCall.addArgument(unmodifiedArgumentsRegister(arguments));
+    stubCall.addArgument(activation);
     stubCall.call();
     argsNotCreated.link(this);
 }
@@ -1358,11 +1356,11 @@ void JIT::emit_op_next_pname(Instruction* currentInstruction)
     end.link(this);
 }
 
-void JIT::emit_op_push_scope(Instruction* currentInstruction)
+void JIT::emit_op_push_with_scope(Instruction* currentInstruction)
 {
-    JITStubCall stubCall(this, cti_op_push_scope);
+    JITStubCall stubCall(this, cti_op_push_with_scope);
     stubCall.addArgument(currentInstruction[1].u.operand);
-    stubCall.call(currentInstruction[1].u.operand);
+    stubCall.call();
 }
 
 void JIT::emit_op_pop_scope(Instruction*)
@@ -1397,12 +1395,13 @@ void JIT::emitSlow_op_to_jsnumber(Instruction* currentInstruction, Vector<SlowCa
     stubCall.call(dst);
 }
 
-void JIT::emit_op_push_new_scope(Instruction* currentInstruction)
+void JIT::emit_op_push_name_scope(Instruction* currentInstruction)
 {
-    JITStubCall stubCall(this, cti_op_push_new_scope);
-    stubCall.addArgument(TrustedImmPtr(&m_codeBlock->identifier(currentInstruction[2].u.operand)));
-    stubCall.addArgument(currentInstruction[3].u.operand);
-    stubCall.call(currentInstruction[1].u.operand);
+    JITStubCall stubCall(this, cti_op_push_name_scope);
+    stubCall.addArgument(TrustedImmPtr(&m_codeBlock->identifier(currentInstruction[1].u.operand)));
+    stubCall.addArgument(currentInstruction[2].u.operand);
+    stubCall.addArgument(TrustedImm32(currentInstruction[3].u.operand));
+    stubCall.call();
 }
 
 void JIT::emit_op_catch(Instruction* currentInstruction)

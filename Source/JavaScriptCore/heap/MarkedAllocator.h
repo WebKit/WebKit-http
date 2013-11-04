@@ -21,11 +21,11 @@ class MarkedAllocator {
 public:
     MarkedAllocator();
     void reset();
-    void zapFreeList();
+    void canonicalizeCellLivenessData();
     size_t cellSize() { return m_cellSize; }
     bool cellsNeedDestruction() { return m_cellsNeedDestruction; }
     bool onlyContainsStructures() { return m_onlyContainsStructures; }
-    void* allocate();
+    void* allocate(size_t);
     Heap* heap() { return m_heap; }
     
     template<typename Functor> void forEachBlock(Functor&);
@@ -39,10 +39,10 @@ public:
 private:
     friend class LLIntOffsetsExtractor;
     
-    JS_EXPORT_PRIVATE void* allocateSlowCase();
-    void* tryAllocate();
-    void* tryAllocateHelper();
-    MarkedBlock* allocateBlock();
+    JS_EXPORT_PRIVATE void* allocateSlowCase(size_t);
+    void* tryAllocate(size_t);
+    void* tryAllocateHelper(size_t);
+    MarkedBlock* allocateBlock(size_t);
     
     MarkedBlock::FreeList m_freeList;
     MarkedBlock* m_currentBlock;
@@ -75,12 +75,11 @@ inline void MarkedAllocator::init(Heap* heap, MarkedSpace* markedSpace, size_t c
     m_onlyContainsStructures = onlyContainsStructures;
 }
 
-inline void* MarkedAllocator::allocate()
+inline void* MarkedAllocator::allocate(size_t bytes)
 {
     MarkedBlock::FreeCell* head = m_freeList.head;
-    // This is a light-weight fast path to cover the most common case.
     if (UNLIKELY(!head))
-        return allocateSlowCase();
+        return allocateSlowCase(bytes);
     
     m_freeList.head = head->next;
     return head;
@@ -93,14 +92,14 @@ inline void MarkedAllocator::reset()
     m_blocksToSweep = m_blockList.head();
 }
 
-inline void MarkedAllocator::zapFreeList()
+inline void MarkedAllocator::canonicalizeCellLivenessData()
 {
     if (!m_currentBlock) {
         ASSERT(!m_freeList.head);
         return;
     }
     
-    m_currentBlock->zapFreeList(m_freeList);
+    m_currentBlock->canonicalizeCellLivenessData(m_freeList);
     m_currentBlock = 0;
     m_freeList = MarkedBlock::FreeList();
 }

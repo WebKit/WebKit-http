@@ -73,8 +73,8 @@ public:
     virtual void removeRegionFromThread(RenderRegion*);
     const RenderRegionList& renderRegionList() const { return m_regionList; }
 
-    void computeLogicalWidth();
-    void computeLogicalHeight();
+    virtual void updateLogicalWidth() OVERRIDE;
+    virtual void updateLogicalHeight() OVERRIDE;
 
     void paintFlowThreadPortionInRegion(PaintInfo&, RenderRegion*, LayoutRect flowThreadPortionRect, LayoutRect flowThreadPortionOverflowRect, const LayoutPoint&) const;
     bool hitTestFlowThreadPortionInRegion(RenderRegion*, LayoutRect flowThreadPortionRect, LayoutRect flowThreadPortionOverflowRect, const HitTestRequest&, HitTestResult&, const HitTestLocation& locationInContainer, const LayoutPoint& accumulatedOffset) const;
@@ -131,6 +131,10 @@ public:
 
     bool pageLogicalHeightChanged() const { return m_pageLogicalHeightChanged; }
 
+#ifndef NDEBUG
+    unsigned autoLogicalHeightRegionsCount() const;
+#endif
+
 protected:
     virtual const char* renderName() const = 0;
 
@@ -175,14 +179,14 @@ protected:
     typedef HashMap<const RenderBox*, RenderRegionRange> RenderRegionRangeMap;
     RenderRegionRangeMap m_regionRangeMap;
 
-    bool m_hasValidRegions;
-    bool m_regionsInvalidated;
-    bool m_regionsHaveUniformLogicalWidth;
-    bool m_regionsHaveUniformLogicalHeight;
-    bool m_overset;
-    bool m_hasRegionsWithStyling;
-    bool m_dispatchRegionLayoutUpdateEvent;
-    bool m_pageLogicalHeightChanged;
+    bool m_hasValidRegions : 1;
+    bool m_regionsInvalidated : 1;
+    bool m_regionsHaveUniformLogicalWidth : 1;
+    bool m_regionsHaveUniformLogicalHeight : 1;
+    bool m_overset : 1;
+    bool m_hasRegionsWithStyling : 1;
+    bool m_dispatchRegionLayoutUpdateEvent : 1;
+    bool m_pageLogicalHeightChanged : 1;
 };
 
 inline RenderFlowThread* toRenderFlowThread(RenderObject* object)

@@ -154,6 +154,7 @@ public:
     virtual bool sourceRemoveId(const String&) { return false; }
     virtual bool sourceAppend(const String&, const unsigned char*, unsigned) { return false; }
     virtual bool sourceAbort(const String&) { return false; }
+    virtual void sourceSetDuration(double) { }
     virtual void sourceEndOfStream(MediaPlayer::EndOfStreamStatus) { }
     virtual bool sourceSetTimestampOffset(const String&, double) { return false; }
 #endif
@@ -490,6 +491,11 @@ bool MediaPlayer::sourceAbort(const String& id)
     return m_private->sourceAbort(id);
 }
 
+void MediaPlayer::sourceSetDuration(double duration)
+{
+    m_private->sourceSetDuration(duration);
+}
+
 void MediaPlayer::sourceEndOfStream(MediaPlayer::EndOfStreamStatus status)
 {
     return m_private->sourceEndOfStream(status);
@@ -779,6 +785,8 @@ MediaPlayer::SupportsType MediaPlayer::supportsType(const ContentType& contentTy
             && (contentType.type().startsWith("video/webm", false) || contentType.type().startsWith("video/x-flv", false)))
             return IsNotSupported;
     }
+#else
+    UNUSED_PARAM(client);
 #endif
 
 #if ENABLE(ENCRYPTED_MEDIA)

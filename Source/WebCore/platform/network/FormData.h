@@ -21,16 +21,15 @@
 #define FormData_h
 
 #include "KURL.h"
-#include "PlatformString.h"
 #include <wtf/Forward.h>
 #include <wtf/RefCounted.h>
 #include <wtf/Vector.h>
+#include <wtf/text/WTFString.h>
 
 namespace WebCore {
 
 class Document;
 class FormDataList;
-class MemoryObjectInfo;
 class TextEncoding;
 
 class FormDataElement {

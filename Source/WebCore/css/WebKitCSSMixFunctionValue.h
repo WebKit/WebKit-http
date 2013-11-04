@@ -36,7 +36,7 @@
 #include <wtf/PassRefPtr.h>
 
 namespace WebCore {
-    
+
 class WebKitCSSMixFunctionValue : public CSSValueList {
 public:
     static PassRefPtr<WebKitCSSMixFunctionValue> create()

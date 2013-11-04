@@ -44,7 +44,6 @@
 
 #include "FontOrientation.h"
 #include "FontWidthVariant.h"
-#include "GlyphBuffer.h"
 #include "TextOrientation.h"
 
 #if PLATFORM(WIN)

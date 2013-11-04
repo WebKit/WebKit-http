@@ -27051,6 +27051,14 @@
 				>
 			</File>
 			<File
+				RelativePath="..\page\FeatureObserver.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\page\FeatureObserver.h"
+				>
+			</File>
+			<File
 				RelativePath="..\page\FocusController.cpp"
 				>
 			</File>
@@ -27280,6 +27288,14 @@
 			</File>
 			<File
 				RelativePath="..\page\Screen.h"
+				>
+			</File>
+			<File
+				RelativePath="..\page\scrolling\ScrollingConstraints.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\page\scrolling\ScrollingConstraints.h"
 				>
 			</File>
 			<File
@@ -28600,6 +28616,14 @@
 			</File>
 			<File
 				RelativePath="..\platform\PlatformKeyboardEvent.h"
+				>
+			</File>
+			<File
+				RelativePath="..\platform\PlatformMemoryInstrumentation.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\platform\PlatformMemoryInstrumentation.h"
 				>
 			</File>
 			<File
@@ -31861,6 +31885,10 @@
 					Name="filters"
 					>
 					<File
+						RelativePath="..\platform\graphics\filters\CustomFilterArrayParameter.h"
+						>
+					</File>
+					<File
 						RelativePath="..\platform\graphics\filters\CustomFilterGlobalContext.cpp"
 						>
 					</File>
@@ -31874,6 +31902,14 @@
 					</File>
 					<File
 						RelativePath="..\platform\graphics\filters\CustomFilterMesh.h"
+						>
+					</File>
+					<File
+						RelativePath="..\platform\graphics\filters\CustomFilterMeshGenerator.cpp"
+						>
+					</File>
+					<File
+						RelativePath="..\platform\graphics\filters\CustomFilterMeshGenerator.h"
 						>
 					</File>
 					<File
@@ -33654,6 +33690,10 @@
 					>
 				</File>
 				<File
+					RelativePath="..\platform\graphics\Latin1TextIterator.h"
+					>
+				</File>
+				<File
 					RelativePath="..\platform\text\LineBreakIteratorPoolICU.h"
 					>
 				</File>
@@ -33663,6 +33703,10 @@
 				</File>
 				<File
 					RelativePath="..\platform\text\LineEnding.h"
+					>
+				</File>
+				<File
+					RelativePath="..\platform\text\LocaleNone.cpp"
 					>
 				</File>
 				<File
@@ -33688,13 +33732,17 @@
 				<File
 					RelativePath="..\platform\text\LocalizedNumberNone.cpp"
 					>
-				</File>
 				<File
-					RelativePath="..\platform\text\ParserUtilities.h"
+					RelativePath="..\platform\text\Localizer.cpp"
 					>
 				</File>
 				<File
-					RelativePath="..\platform\text\PlatformString.h"
+					RelativePath="..\platform\text\Localizer.h"
+					>
+				</File>
+				</File>
+				<File
+					RelativePath="..\platform\text\ParserUtilities.h"
 					>
 				</File>
 				<File
@@ -33719,10 +33767,6 @@
 				</File>
 				<File
 					RelativePath="..\platform\text\SegmentedString.h"
-					>
-				</File>
-				<File
-					RelativePath="..\platform\text\String.cpp"
 					>
 				</File>
 				<File
@@ -33828,6 +33872,26 @@
 				<File
 					RelativePath="..\platform\text\TextBreakIterator.h"
 					>
+				</File>
+				<File
+					RelativePath="..\platform\text\TextBreakIterator.cpp"
+					>
+					<FileConfiguration
+						Name="Release|Win32"
+						ExcludedFromBuild="true"
+						>
+						<Tool
+							Name="VCCLCompilerTool"
+						/>
+					</FileConfiguration>
+					<FileConfiguration
+						Name="Production|Win32"
+						ExcludedFromBuild="true"
+						>
+						<Tool
+							Name="VCCLCompilerTool"
+						/>
+					</FileConfiguration>
 				</File>
 				<File
 					RelativePath="..\platform\text\TextBreakIteratorICU.cpp"
@@ -37987,6 +38051,14 @@
 				>
 			</File>
 			<File
+				RelativePath="..\css\WebKitCSSArrayFunctionValue.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\css\WebKitCSSArrayFunctionValue.h"
+				>
+			</File>
+			<File
 				RelativePath="..\css\WebKitCSSFilterValue.cpp"
 				>
 			</File>
@@ -38350,6 +38422,30 @@
 				RelativePath="..\rendering\EllipsisBox.h"
 				>
 			</File>
+                        <File
+                                RelativePath="..\rendering\ExclusionInterval.cpp"
+                                >
+                        </File>
+                        <File
+                                RelativePath="..\rendering\ExclusionInterval.h"
+                                >
+                        </File>
+                        <File
+                                RelativePath="..\rendering\ExclusionRectangle.cpp"
+                                >
+                        </File>
+                        <File
+                                RelativePath="..\rendering\ExclusionSRectangle.h"
+                                >
+                        </File>
+                        <File
+                                RelativePath="..\rendering\ExclusionShape.cpp"
+                                >
+                        </File>
+                        <File
+                                RelativePath="..\rendering\ExclusionShape.h"
+                                >
+                        </File>
 			<File
 				RelativePath="..\rendering\FilterEffectRenderer.cpp"
 				>
@@ -46599,6 +46695,10 @@
 					RelativePath="..\rendering\style\BasicShapes.h"
 					>
 				</File>
+				<File
+					RelativePath="..\rendering\style\ClipPathOperation.h"
+					>
+				</File>
 			</Filter>
 			<Filter
 				Name="svg"
@@ -51855,14 +51955,6 @@
 				>
 			</File>
 			<File
-				RelativePath="..\dom\MemoryInstrumentation.cpp"
-				>
-			</File>
-			<File
-				RelativePath="..\dom\MemoryInstrumentation.h"
-				>
-			</File>
-			<File
 				RelativePath="..\dom\MessageChannel.cpp"
 				>
 				<FileConfiguration
@@ -55276,6 +55368,14 @@
 			</File>
 			<File
 				RelativePath="..\dom\DOMNamedFlowCollection.h"
+				>
+			</File>
+			<File
+				RelativePath="..\dom\WebCoreMemoryInstrumentation.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\dom\WebCoreMemoryInstrumentation.h"
 				>
 			</File>
 			<File
@@ -63549,6 +63649,14 @@
 			<File
 				RelativePath="..\html\InputType.h"
 				>
+			</File>  
+			<File
+				RelativePath="..\html\InputTypeNames.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\html\InputTypeNames.h"
+				>
 			</File>
 			<File
 				RelativePath="..\html\LabelableElement.cpp"
@@ -65855,6 +65963,10 @@
 				</File>
 				<File
 					RelativePath="..\bindings\js\JSCustomXPathNSResolver.h"
+					>
+				</File>
+				<File
+					RelativePath="..\bindings\js\JSDependentRetained.h"
 					>
 				</File>
 				<File
@@ -71986,10 +72098,6 @@
 					>
 				</File>
 				<File
-					RelativePath="..\bindings\js\ScriptSourceProvider.h"
-					>
-				</File>
-				<File
 					RelativePath="..\bindings\js\ScriptState.cpp"
 					>
 					<FileConfiguration
@@ -72111,10 +72219,6 @@
 				</File>
 				<File
 					RelativePath="..\bindings\js\SerializedScriptValue.h"
-					>
-				</File>
-				<File
-					RelativePath="..\bindings\js\StringSourceProvider.h"
 					>
 				</File>
 				<File
@@ -75934,6 +76038,18 @@
 					>
 				</File>
 				<File
+					RelativePath="..\inspector\front-end\CSSNamedFlowCollectionsView.js"
+					>
+				</File>
+				<File
+					RelativePath="..\inspector\front-end\CSSNamedFlowView.js"
+					>
+				</File>
+				<File
+					RelativePath="..\inspector\front-end\cssNamedFlows.css"
+					>
+				</File>
+				<File
 					RelativePath="..\inspector\front-end\CSSSelectorProfileView.js"
 					>
 				</File>
@@ -76234,10 +76350,6 @@
 					>
 				</File>
 				<File
-					RelativePath="..\inspector\front-end\JavaScriptContextManager.js"
-					>
-				</File>
-				<File
 					RelativePath="..\inspector\front-end\JavaScriptFormatter.js"
 					>
 				</File>
@@ -76322,6 +76434,10 @@
 					>
 				</File>
 				<File
+					RelativePath="..\inspector\front-end\NetworkUISourceCodeProvider.js"
+					>
+				</File>
+				<File
 					RelativePath="..\inspector\front-end\NetworkRequest.js"
 					>
 				</File>
@@ -76398,10 +76514,6 @@
 					>
 				</File>
 				<File
-					RelativePath="..\inspector\front-end\RawSourceCode.js"
-					>
-				</File>
-				<File
 					RelativePath="..\inspector\front-end\RemoteObject.js"
 					>
 				</File>
@@ -76463,6 +76575,10 @@
 				</File>
 				<File
 					RelativePath="..\inspector\front-end\ResourceUtils.js"
+					>
+				</File>
+				<File
+					RelativePath="..\inspector\front-end\RuntimeModel.js"
 					>
 				</File>
 				<File
@@ -76627,10 +76743,6 @@
 				</File>
 				<File
 					RelativePath="..\inspector\front-end\StylesSourceMapping.js"
-					>
-				</File>
-				<File
-					RelativePath="..\inspector\front-end\StylesUISourceCodeProvider.js"
 					>
 				</File>
 				<File

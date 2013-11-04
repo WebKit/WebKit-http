@@ -32,7 +32,6 @@
 #include "V8DOMWrapper.h"
 #include "V8Float32Array.h"
 #include "V8Int32Array.h"
-#include "V8IsolatedContext.h"
 #include <wtf/Float32Array.h>
 #include <wtf/Float64Array.h>
 #include <wtf/GetPtr.h>
@@ -56,7 +55,7 @@ static v8::Handle<v8::Value> fooCallback(const v8::Arguments& args)
         return throwNotEnoughArgumentsError(args.GetIsolate());
     Float64Array* imp = V8Float64Array::toNative(args.Holder());
     EXCEPTION_BLOCK(Float32Array*, array, V8Float32Array::HasInstance(MAYBE_MISSING_PARAMETER(args, 0, DefaultIsUndefined)) ? V8Float32Array::toNative(v8::Handle<v8::Object>::Cast(MAYBE_MISSING_PARAMETER(args, 0, DefaultIsUndefined))) : 0);
-    return toV8(imp->foo(array), args.GetIsolate());
+    return toV8(imp->foo(array), args.Holder(), args.GetIsolate());
 }
 
 static v8::Handle<v8::Value> setCallback(const v8::Arguments& args)
@@ -67,17 +66,17 @@ static v8::Handle<v8::Value> setCallback(const v8::Arguments& args)
 
 } // namespace Float64ArrayV8Internal
 
-v8::Handle<v8::Value> toV8(Float64Array* impl, v8::Isolate* isolate)
+v8::Handle<v8::Value> toV8(Float64Array* impl, v8::Handle<v8::Object> creationContext, v8::Isolate* isolate)
 {
     if (!impl)
         return v8NullWithCheck(isolate);
-    v8::Handle<v8::Object> wrapper = V8Float64Array::wrap(impl, isolate);
+    v8::Handle<v8::Object> wrapper = V8Float64Array::wrap(impl, creationContext, isolate);
     if (!wrapper.IsEmpty())
         wrapper->SetIndexedPropertiesToExternalArrayData(impl->baseAddress(), v8::kExternalDoubleArray, impl->length());
     return wrapper;
 }
 
-static const V8DOMConfiguration::BatchedCallback Float64ArrayCallbacks[] = {
+static const V8DOMConfiguration::BatchedCallback V8Float64ArrayCallbacks[] = {
     {"set", Float64ArrayV8Internal::setCallback},
 };
 
@@ -94,7 +93,7 @@ static v8::Persistent<v8::FunctionTemplate> ConfigureV8Float64ArrayTemplate(v8::
     v8::Local<v8::Signature> defaultSignature;
     defaultSignature = V8DOMConfiguration::configureTemplate(desc, "Float64Array", V8ArrayBufferView::GetTemplate(), V8Float64Array::internalFieldCount,
         0, 0,
-        Float64ArrayCallbacks, WTF_ARRAY_LENGTH(Float64ArrayCallbacks));
+        V8Float64ArrayCallbacks, WTF_ARRAY_LENGTH(V8Float64ArrayCallbacks));
     UNUSED_PARAM(defaultSignature); // In some cases, it will not be used.
     desc->SetCallHandler(V8Float64Array::constructorCallback);
     v8::Local<v8::ObjectTemplate> instance = desc->InstanceTemplate();
@@ -147,12 +146,27 @@ bool V8Float64Array::HasInstance(v8::Handle<v8::Value> value)
 }
 
 
-v8::Handle<v8::Object> V8Float64Array::wrapSlow(PassRefPtr<Float64Array> impl, v8::Isolate* isolate)
+v8::Handle<v8::Object> V8Float64Array::wrapSlow(PassRefPtr<Float64Array> impl, v8::Handle<v8::Object> creationContext, v8::Isolate* isolate)
 {
     v8::Handle<v8::Object> wrapper;
     ASSERT(static_cast<void*>(static_cast<ArrayBufferView*>(impl.get())) == static_cast<void*>(impl.get()));
-    Frame* frame = 0;
-    wrapper = V8DOMWrapper::instantiateV8Object(frame, &info, impl.get());
+    Document* document = 0;
+    UNUSED_PARAM(document);
+
+    v8::Handle<v8::Context> context;
+    if (!creationContext.IsEmpty() && creationContext->CreationContext() != v8::Context::GetCurrent()) {
+        // For performance, we enter the context only if the currently running context
+        // is different from the context that we are about to enter.
+        context = v8::Local<v8::Context>::New(creationContext->CreationContext());
+        ASSERT(!context.IsEmpty());
+        context->Enter();
+    }
+
+    wrapper = V8DOMWrapper::instantiateV8Object(document, &info, impl.get());
+
+    if (!context.IsEmpty())
+        context->Exit();
+
     if (UNLIKELY(wrapper.IsEmpty()))
         return wrapper;
     v8::Persistent<v8::Object> wrapperHandle = V8DOMWrapper::setJSWrapperForDOMObject(impl, wrapper, isolate);

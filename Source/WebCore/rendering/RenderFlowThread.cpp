@@ -166,7 +166,7 @@ void RenderFlowThread::layout()
                 previousRegionLogicalWidth = regionLogicalWidth;
             }
             
-            computeLogicalWidth(); // Called to get the maximum logical width for the region.
+            updateLogicalWidth(); // Called to get the maximum logical width for the region.
             
             LayoutUnit logicalHeight = 0;
             for (RenderRegionList::iterator iter = m_regionList.begin(); iter != m_regionList.end(); ++iter) {
@@ -196,7 +196,7 @@ void RenderFlowThread::layout()
         dispatchRegionLayoutUpdateEvent();
 }
 
-void RenderFlowThread::computeLogicalWidth()
+void RenderFlowThread::updateLogicalWidth()
 {
     LayoutUnit logicalWidth = 0;
     for (RenderRegionList::iterator iter = m_regionList.begin(); iter != m_regionList.end(); ++iter) {
@@ -222,7 +222,7 @@ void RenderFlowThread::computeLogicalWidth()
     }
 }
 
-void RenderFlowThread::computeLogicalHeight()
+void RenderFlowThread::updateLogicalHeight()
 {
     LayoutUnit logicalHeight = 0;
 
@@ -753,6 +753,25 @@ bool RenderFlowThread::objectInFlowRegion(const RenderObject* object, const Rend
 
     return false;
 }
+
+#ifndef NDEBUG
+unsigned RenderFlowThread::autoLogicalHeightRegionsCount() const
+{
+    unsigned autoLogicalHeightRegions = 0;
+    for (RenderRegionList::const_iterator iter = m_regionList.begin(); iter != m_regionList.end(); ++iter) {
+        const RenderRegion* region = *iter;
+        if (!region->isValid()) {
+            ASSERT(!region->hasAutoLogicalHeight());
+            continue;
+        }
+
+        if (region->hasAutoLogicalHeight())
+            autoLogicalHeightRegions++;
+    }
+
+    return autoLogicalHeightRegions;
+}
+#endif
 
 CurrentRenderFlowThreadMaintainer::CurrentRenderFlowThreadMaintainer(RenderFlowThread* renderFlowThread)
         : m_renderFlowThread(renderFlowThread)

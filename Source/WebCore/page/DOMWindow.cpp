@@ -735,8 +735,6 @@ Storage* DOMWindow::sessionStorage(ExceptionCode& ec) const
 {
     if (!isCurrentlyDisplayedInFrame())
         return 0;
-    if (m_sessionStorage)
-        return m_sessionStorage.get();
 
     Document* document = this->document();
     if (!document)
@@ -746,6 +744,9 @@ Storage* DOMWindow::sessionStorage(ExceptionCode& ec) const
         ec = SECURITY_ERR;
         return 0;
     }
+
+    if (m_sessionStorage)
+        return m_sessionStorage.get();
 
     Page* page = document->page();
     if (!page)
@@ -762,8 +763,6 @@ Storage* DOMWindow::localStorage(ExceptionCode& ec) const
 {
     if (!isCurrentlyDisplayedInFrame())
         return 0;
-    if (m_localStorage)
-        return m_localStorage.get();
 
     Document* document = this->document();
     if (!document)
@@ -773,6 +772,9 @@ Storage* DOMWindow::localStorage(ExceptionCode& ec) const
         ec = SECURITY_ERR;
         return 0;
     }
+
+    if (m_localStorage)
+        return m_localStorage.get();
 
     Page* page = document->page();
     if (!page)
@@ -1755,10 +1757,35 @@ String DOMWindow::crossDomainAccessErrorMessage(DOMWindow* activeWindow)
     if (activeWindowURL.isNull())
         return String();
 
-    // FIXME: This error message should contain more specifics of why the same origin check has failed.
-    // Perhaps we should involve the security origin object in composing it.
+    ASSERT(!activeWindow->document()->securityOrigin()->canAccess(document()->securityOrigin()));
+
     // FIXME: This message, and other console messages, have extra newlines. Should remove them.
-    return "Unsafe JavaScript attempt to access frame with URL " + document()->url().string() + " from frame with URL " + activeWindowURL.string() + ". Domains, protocols and ports must match.\n";
+    String message = "Unsafe JavaScript attempt to access frame with URL " + document()->url().string() + " from frame with URL " + activeWindowURL.string() + ".";
+
+    // Sandbox errors.
+    if (document()->isSandboxed(SandboxOrigin) || activeWindow->document()->isSandboxed(SandboxOrigin)) {
+        if (document()->isSandboxed(SandboxOrigin) && activeWindow->document()->isSandboxed(SandboxOrigin))
+            return "Sandbox access violation: " + message + " Both frames are sandboxed into unique origins.\n";
+        if (document()->isSandboxed(SandboxOrigin))
+            return "Sandbox access violation: " + message + " The frame being accessed is sandboxed into a unique origin.\n";
+        return "Sandbox access violation: " + message + " The frame requesting access is sandboxed into a unique origin.\n";
+    }
+
+    SecurityOrigin* activeOrigin = activeWindow->document()->securityOrigin();
+    SecurityOrigin* targetOrigin = document()->securityOrigin();
+    if (targetOrigin->protocol() != activeOrigin->protocol())
+        return message + " The frame requesting access has a protocol of '" + activeOrigin->protocol() + "', the frame being accessed has a protocol of '" + targetOrigin->protocol() + "'. Protocols must match.\n";
+
+    // 'document.domain' errors.
+    if (targetOrigin->domainWasSetInDOM() && activeOrigin->domainWasSetInDOM())
+        return message + " The frame requesting access set 'document.domain' to '" + activeOrigin->domain() + "', the frame being accessed set it to '" + targetOrigin->domain() + "'. Both must set 'document.domain' to the same value to allow access.\n";
+    if (activeOrigin->domainWasSetInDOM())
+        return message + " The frame requesting access set 'document.domain' to '" + activeOrigin->domain() + "', but the frame being accessed did not. Both must set 'document.domain' to the same value to allow access.\n";
+    if (targetOrigin->domainWasSetInDOM())
+        return message + " The frame being accessed set 'document.domain' to '" + targetOrigin->domain() + "', but the frame requesting access did not. Both must set 'document.domain' to the same value to allow access.\n";
+
+    // Default.
+    return message + " Domains, protocols and ports must match.\n";
 }
 
 bool DOMWindow::isInsecureScriptAccess(DOMWindow* activeWindow, const String& urlString)

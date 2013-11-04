@@ -210,13 +210,11 @@ void JIT::emit_op_get_by_val(Instruction* currentInstruction)
     addSlowCase(branch32(NotEqual, regT3, TrustedImm32(JSValue::Int32Tag)));
     emitJumpSlowCaseIfNotJSCell(base, regT1);
     loadPtr(Address(regT0, JSCell::structureOffset()), regT1);
-#if ENABLE(VALUE_PROFILER)
-    storePtr(regT1, currentInstruction[4].u.arrayProfile->addressOfLastSeenStructure());
-#endif
-    addSlowCase(branchPtr(NotEqual, Address(regT1, JSCell::classInfoOffset()), TrustedImmPtr(&JSArray::s_info)));
+    emitArrayProfilingSite(regT1, regT3, currentInstruction[4].u.arrayProfile);
+    addSlowCase(branchTest32(Zero, regT1, TrustedImm32(HasArrayStorage)));
     
-    loadPtr(Address(regT0, JSArray::storageOffset()), regT3);
-    addSlowCase(branch32(AboveOrEqual, regT2, Address(regT0, JSArray::vectorLengthOffset())));
+    loadPtr(Address(regT0, JSObject::butterflyOffset()), regT3);
+    addSlowCase(branch32(AboveOrEqual, regT2, Address(regT3, ArrayStorage::vectorLengthOffset())));
     
     load32(BaseIndex(regT3, regT2, TimesEight, OBJECT_OFFSETOF(ArrayStorage, m_vector[0]) + OBJECT_OFFSETOF(JSValue, u.asBits.tag)), regT1); // tag
     load32(BaseIndex(regT3, regT2, TimesEight, OBJECT_OFFSETOF(ArrayStorage, m_vector[0]) + OBJECT_OFFSETOF(JSValue, u.asBits.payload)), regT0); // payload
@@ -269,14 +267,12 @@ void JIT::emit_op_put_by_val(Instruction* currentInstruction)
     addSlowCase(branch32(NotEqual, regT3, TrustedImm32(JSValue::Int32Tag)));
     emitJumpSlowCaseIfNotJSCell(base, regT1);
     loadPtr(Address(regT0, JSCell::structureOffset()), regT1);
-#if ENABLE(VALUE_PROFILER)
-    storePtr(regT1, currentInstruction[4].u.arrayProfile->addressOfLastSeenStructure());
-#endif
-    addSlowCase(branchPtr(NotEqual, Address(regT1, Structure::classInfoOffset()), TrustedImmPtr(&JSArray::s_info)));
-    addSlowCase(branch32(AboveOrEqual, regT2, Address(regT0, JSArray::vectorLengthOffset())));
+    emitArrayProfilingSite(regT1, regT3, currentInstruction[4].u.arrayProfile);
+    addSlowCase(branchTest32(Zero, regT1, TrustedImm32(HasArrayStorage)));
+    loadPtr(Address(regT0, JSObject::butterflyOffset()), regT3);
+    addSlowCase(branch32(AboveOrEqual, regT2, Address(regT3, ArrayStorage::vectorLengthOffset())));
 
     emitWriteBarrier(regT0, regT1, regT1, regT3, UnconditionalWriteBarrier, WriteBarrierForPropertyAccess);
-    loadPtr(Address(regT0, JSArray::storageOffset()), regT3);
     
     Jump empty = branch32(Equal, BaseIndex(regT3, regT2, TimesEight, OBJECT_OFFSETOF(ArrayStorage, m_vector[0]) + OBJECT_OFFSETOF(JSValue, u.asBits.tag)), TrustedImm32(JSValue::EmptyValueTag));
     
@@ -288,10 +284,10 @@ void JIT::emit_op_put_by_val(Instruction* currentInstruction)
     
     empty.link(this);
     add32(TrustedImm32(1), Address(regT3, OBJECT_OFFSETOF(ArrayStorage, m_numValuesInVector)));
-    branch32(Below, regT2, Address(regT3, OBJECT_OFFSETOF(ArrayStorage, m_length))).linkTo(storeResult, this);
+    branch32(Below, regT2, Address(regT3, ArrayStorage::lengthOffset())).linkTo(storeResult, this);
     
     add32(TrustedImm32(1), regT2, regT0);
-    store32(regT0, Address(regT3, OBJECT_OFFSETOF(ArrayStorage, m_length)));
+    store32(regT0, Address(regT3, ArrayStorage::lengthOffset()));
     jump().linkTo(storeResult, this);
     
     end.link(this);
@@ -343,7 +339,7 @@ void JIT::compileGetByIdHotPath()
     PatchableJump structureCheck = patchableBranchPtrWithPatch(NotEqual, Address(regT0, JSCell::structureOffset()), structureToCompare, TrustedImmPtr(reinterpret_cast<void*>(patchGetByIdDefaultStructure)));
     addSlowCase(structureCheck);
     
-    ConvertibleLoadLabel propertyStorageLoad = convertibleLoadPtr(Address(regT0, JSObject::offsetOfOutOfLineStorage()), regT2);
+    ConvertibleLoadLabel propertyStorageLoad = convertibleLoadPtr(Address(regT0, JSObject::butterflyOffset()), regT2);
     DataLabelCompact displacementLabel1 = loadPtrWithCompactAddressOffsetPatch(Address(regT2, patchGetByIdDefaultOffset), regT0); // payload
     DataLabelCompact displacementLabel2 = loadPtrWithCompactAddressOffsetPatch(Address(regT2, patchGetByIdDefaultOffset), regT1); // tag
     
@@ -409,7 +405,7 @@ void JIT::emit_op_put_by_id(Instruction* currentInstruction)
     DataLabelPtr structureToCompare;
     addSlowCase(branchPtrWithPatch(NotEqual, Address(regT0, JSCell::structureOffset()), structureToCompare, TrustedImmPtr(reinterpret_cast<void*>(patchGetByIdDefaultStructure))));
     
-    ConvertibleLoadLabel propertyStorageLoad = convertibleLoadPtr(Address(regT0, JSObject::offsetOfOutOfLineStorage()), regT1);
+    ConvertibleLoadLabel propertyStorageLoad = convertibleLoadPtr(Address(regT0, JSObject::butterflyOffset()), regT1);
     DataLabel32 displacementLabel1 = storePtrWithAddressOffsetPatch(regT2, Address(regT1, patchPutByIdDefaultOffset)); // payload
     DataLabel32 displacementLabel2 = storePtrWithAddressOffsetPatch(regT3, Address(regT1, patchPutByIdDefaultOffset)); // tag
     
@@ -443,7 +439,7 @@ void JIT::emitSlow_op_put_by_id(Instruction* currentInstruction, Vector<SlowCase
 void JIT::compilePutDirectOffset(RegisterID base, RegisterID valueTag, RegisterID valuePayload, PropertyOffset cachedOffset)
 {
     if (isOutOfLineOffset(cachedOffset))
-        loadPtr(Address(base, JSObject::offsetOfOutOfLineStorage()), base);
+        loadPtr(Address(base, JSObject::butterflyOffset()), base);
     emitStore(indexRelativeToBase(cachedOffset), valueTag, valuePayload, base);
 }
 
@@ -456,7 +452,7 @@ void JIT::compileGetDirectOffset(RegisterID base, RegisterID resultTag, Register
     }
     
     RegisterID temp = resultPayload;
-    loadPtr(Address(base, JSObject::offsetOfOutOfLineStorage()), temp);
+    loadPtr(Address(base, JSObject::butterflyOffset()), temp);
     emitLoad(indexRelativeToBase(cachedOffset), resultTag, resultPayload, temp);
 }
 
@@ -469,9 +465,9 @@ void JIT::compileGetDirectOffset(JSObject* base, RegisterID resultTag, RegisterI
         return;
     }
     
-    loadPtr(base->addressOfOutOfLineStorage(), resultTag);
-    load32(Address(resultTag, offsetInOutOfLineStorage(cachedOffset) * sizeof(WriteBarrier<Unknown>) + OBJECT_OFFSETOF(JSValue, u.asBits.payload)), resultPayload);
-    load32(Address(resultTag, offsetInOutOfLineStorage(cachedOffset) * sizeof(WriteBarrier<Unknown>) + OBJECT_OFFSETOF(JSValue, u.asBits.tag)), resultTag);
+    loadPtr(base->butterflyAddress(), resultTag);
+    load32(Address(resultTag, offsetInButterfly(cachedOffset) * sizeof(WriteBarrier<Unknown>) + OBJECT_OFFSETOF(JSValue, u.asBits.payload)), resultPayload);
+    load32(Address(resultTag, offsetInButterfly(cachedOffset) * sizeof(WriteBarrier<Unknown>) + OBJECT_OFFSETOF(JSValue, u.asBits.tag)), resultTag);
 }
 
 void JIT::privateCompilePutByIdTransition(StructureStubInfo* stubInfo, Structure* oldStructure, Structure* newStructure, PropertyOffset cachedOffset, StructureChain* chain, ReturnAddressPtr returnAddress, bool direct)
@@ -617,16 +613,15 @@ void JIT::privateCompilePatchGetArrayLength(ReturnAddressPtr returnAddress)
     
     // Check for array
     loadPtr(Address(regT0, JSCell::structureOffset()), regT2);
-#if ENABLE(VALUE_PROFILER)
-    storePtr(regT2, m_codeBlock->getOrAddArrayProfile(stubInfo->bytecodeIndex)->addressOfLastSeenStructure());
-#endif
-    Jump failureCases1 = branchPtr(NotEqual, Address(regT2, Structure::classInfoOffset()), TrustedImmPtr(&JSArray::s_info));
+    emitArrayProfilingSiteForBytecodeIndex(regT2, regT3, stubInfo->bytecodeIndex);
+    Jump failureCases1 = branchTest32(Zero, regT2, TrustedImm32(IsArray));
+    Jump failureCases2 = branchTest32(Zero, regT2, TrustedImm32(HasArrayStorage));
     
     // Checks out okay! - get the length from the storage
-    loadPtr(Address(regT0, JSArray::storageOffset()), regT2);
-    load32(Address(regT2, OBJECT_OFFSETOF(ArrayStorage, m_length)), regT2);
+    loadPtr(Address(regT0, JSArray::butterflyOffset()), regT2);
+    load32(Address(regT2, ArrayStorage::lengthOffset()), regT2);
     
-    Jump failureCases2 = branch32(Above, regT2, TrustedImm32(INT_MAX));
+    Jump failureCases3 = branch32(Above, regT2, TrustedImm32(INT_MAX));
     move(regT2, regT0);
     move(TrustedImm32(JSValue::Int32Tag), regT1);
     Jump success = jump();
@@ -637,6 +632,7 @@ void JIT::privateCompilePatchGetArrayLength(ReturnAddressPtr returnAddress)
     CodeLocationLabel slowCaseBegin = stubInfo->callReturnLocation.labelAtOffset(-stubInfo->patch.baseline.u.get.coldPathBegin);
     patchBuffer.link(failureCases1, slowCaseBegin);
     patchBuffer.link(failureCases2, slowCaseBegin);
+    patchBuffer.link(failureCases3, slowCaseBegin);
     
     // On success return back to the hot patch code, at a point it will perform the store to dest for us.
     patchBuffer.link(success, stubInfo->hotPathBegin.labelAtOffset(stubInfo->patch.baseline.u.get.putResult));
@@ -1029,7 +1025,7 @@ void JIT::compileGetDirectOffset(RegisterID base, RegisterID resultTag, Register
     
     if (finalObjectMode == MayBeFinal) {
         Jump isInline = branch32(LessThan, offset, TrustedImm32(inlineStorageCapacity));
-        loadPtr(Address(base, JSObject::offsetOfOutOfLineStorage()), base);
+        loadPtr(Address(base, JSObject::butterflyOffset()), base);
         neg32(offset);
         Jump done = jump();
         isInline.link(this);
@@ -1041,7 +1037,7 @@ void JIT::compileGetDirectOffset(RegisterID base, RegisterID resultTag, Register
         breakpoint();
         isOutOfLine.link(this);
 #endif
-        loadPtr(Address(base, JSObject::offsetOfOutOfLineStorage()), base);
+        loadPtr(Address(base, JSObject::butterflyOffset()), base);
         neg32(offset);
     }
     load32(BaseIndex(base, offset, TimesEight, OBJECT_OFFSETOF(JSValue, u.asBits.payload) + (inlineStorageCapacity - 2) * sizeof(EncodedJSValue)), resultPayload);

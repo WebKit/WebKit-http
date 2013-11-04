@@ -30,7 +30,6 @@
 #include "PlatformCAAnimation.h"
 
 #include "FloatConversion.h"
-#include "PlatformString.h"
 #include "TimingFunction.h"
 #include <QuartzCore/CACFAnimation.h>
 #include <QuartzCore/CACFTiming.h>
@@ -38,6 +37,7 @@
 #include <QuartzCore/CACFValueFunction.h>
 #include <QuartzCore/CACFVector.h>
 #include <wtf/UnusedParam.h>
+#include <wtf/text/WTFString.h>
 
 using namespace WebCore;
 
@@ -296,7 +296,9 @@ void PlatformCAAnimation::setTimingFunction(const TimingFunction* value, bool re
 
 void PlatformCAAnimation::copyTimingFunctionFrom(const PlatformCAAnimation* value)
 {
-    CACFAnimationSetTimingFunction(m_animation.get(), CACFAnimationGetTimingFunction(value->m_animation.get()));
+    CACFTimingFunctionRef timingFunc = CACFAnimationGetTimingFunction(value->m_animation.get());
+    if (timingFunc)
+        CACFAnimationSetTimingFunction(m_animation.get(), timingFunc);
 }
 
 bool PlatformCAAnimation::isRemovedOnCompletion() const

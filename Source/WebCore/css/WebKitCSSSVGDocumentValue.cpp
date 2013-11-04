@@ -30,7 +30,7 @@
 #include "CSSParser.h"
 #include "CachedResourceLoader.h"
 #include "Document.h"
-#include "MemoryInstrumentation.h"
+#include "WebCoreMemoryInstrumentation.h"
 
 namespace WebCore {
 
@@ -66,8 +66,8 @@ String WebKitCSSSVGDocumentValue::customCssText() const
 
 void WebKitCSSSVGDocumentValue::reportDescendantMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
 {
-    MemoryClassInfo info(memoryObjectInfo, this, MemoryInstrumentation::CSS);
-    info.addInstrumentedMember(m_url);
+    MemoryClassInfo info(memoryObjectInfo, this, WebCoreMemoryTypes::CSS);
+    info.addMember(m_url);
     // FIXME: add m_document when cached resources are instrumented.
 }
 

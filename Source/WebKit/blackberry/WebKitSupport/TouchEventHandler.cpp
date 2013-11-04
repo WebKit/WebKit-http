@@ -177,11 +177,17 @@ void TouchEventHandler::touchHoldEvent()
         m_webPage->clearFocusNode();
 }
 
+static bool isMainFrameScrollable(const WebPagePrivate* page)
+{
+    return page->viewportSize().width() < page->contentsSize().width() || page->viewportSize().height() < page->contentsSize().height();
+}
+
 bool TouchEventHandler::handleTouchPoint(Platform::TouchPoint& point, bool useFatFingers)
 {
     // Enable input mode on any touch event.
     m_webPage->m_inputHandler->setInputModeEnabled();
     bool pureWithMouseConversion = m_webPage->m_touchEventMode == PureTouchEventsWithMouseConversion;
+    bool alwaysEnableMouseConversion = pureWithMouseConversion || (!isMainFrameScrollable(m_webPage) && !m_webPage->m_inRegionScroller->d->isActive());
 
     switch (point.m_state) {
     case Platform::TouchPoint::TouchPressed:
@@ -203,7 +209,7 @@ bool TouchEventHandler::handleTouchPoint(Platform::TouchPoint& point, bool useFa
 
             // Set or reset the touch mode.
             Element* possibleTargetNodeForMouseMoveEvents = static_cast<Element*>(m_lastFatFingersResult.positionWasAdjusted() ? elementUnderFatFinger : m_lastFatFingersResult.node());
-            m_convertTouchToMouse = pureWithMouseConversion ? true : shouldConvertTouchToMouse(possibleTargetNodeForMouseMoveEvents);
+            m_convertTouchToMouse = alwaysEnableMouseConversion ? true : shouldConvertTouchToMouse(possibleTargetNodeForMouseMoveEvents);
 
             if (!possibleTargetNodeForMouseMoveEvents || (!possibleTargetNodeForMouseMoveEvents->hasEventListeners(eventNames().touchmoveEvent) && !m_convertTouchToMouse))
                 m_webPage->client()->notifyNoMouseMoveOrTouchMoveHandlers();
@@ -235,8 +241,10 @@ bool TouchEventHandler::handleTouchPoint(Platform::TouchPoint& point, bool useFa
 
             // Apply any suppressed changes. This does not eliminate the need
             // for the show after the handling of fat finger pressed as it may
-            // have triggered a state change.
-            m_webPage->m_inputHandler->processPendingKeyboardVisibilityChange();
+            // have triggered a state change. Leave the change suppressed if
+            // we are triggering spell check options.
+            if (!shouldRequestSpellCheckOptions)
+                m_webPage->m_inputHandler->processPendingKeyboardVisibilityChange();
 
             if (shouldSuppressMouseDownOnTouchDown())
                 handleFatFingerPressed();
@@ -267,7 +275,7 @@ bool TouchEventHandler::handleTouchPoint(Platform::TouchPoint& point, bool useFa
             PlatformMouseEvent mouseEvent(point.m_pos, m_lastScreenPoint, PlatformEvent::MouseMoved, 1, LeftButton, TouchScreen);
             m_lastScreenPoint = point.m_screenPos;
             if (!m_webPage->handleMouseEvent(mouseEvent)) {
-                m_convertTouchToMouse = pureWithMouseConversion;
+                m_convertTouchToMouse = alwaysEnableMouseConversion;
                 return false;
             }
             return true;

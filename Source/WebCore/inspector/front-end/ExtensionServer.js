@@ -71,6 +71,7 @@ WebInspector.ExtensionServer = function()
     this._registerHandler(commands.Subscribe, this._onSubscribe.bind(this));
     this._registerHandler(commands.Unsubscribe, this._onUnsubscribe.bind(this));
     this._registerHandler(commands.UpdateButton, this._onUpdateButton.bind(this));
+    this._registerHandler(commands.UpdateAuditProgress, this._onUpdateAuditProgress.bind(this));
 
     window.addEventListener("message", this._onWindowMessage.bind(this), false);
 }
@@ -550,12 +551,20 @@ WebInspector.ExtensionServer.prototype = {
         return this._status.OK();
     },
 
+    _onUpdateAuditProgress: function(message)
+    {
+        var auditResult = this._clientObjects[message.resultId];
+        if (!auditResult)
+            return this._status.E_NOTFOUND(message.resultId);
+        auditResult.updateProgress(Math.min(Math.max(0, message.progress), 1));
+    },
+
     _onStopAuditCategoryRun: function(message)
     {
         var auditRun = this._clientObjects[message.resultId];
         if (!auditRun)
             return this._status.E_NOTFOUND(message.resultId);
-        auditRun.cancel();
+        auditRun.done();
     },
 
     _dispatchCallback: function(requestId, port, result)
@@ -601,6 +610,11 @@ WebInspector.ExtensionServer.prototype = {
         WebInspector.resourceTreeModel.addEventListener(WebInspector.ResourceTreeModel.EventTypes.InspectedURLChanged,
             this._inspectedURLChanged, this);
         WebInspector.resourceTreeModel.addEventListener(WebInspector.ResourceTreeModel.EventTypes.MainFrameNavigated, this._mainFrameNavigated, this);
+        this._initDone = true;
+        if (this._pendingExtensions) {
+            this._pendingExtensions.forEach(this._innerAddExtension, this);
+            delete this._pendingExtensions;
+        }
         InspectorExtensionRegistry.getExtensionsAsync();
     },
 
@@ -643,11 +657,22 @@ WebInspector.ExtensionServer.prototype = {
      */
     _addExtensions: function(extensions)
     {
-        for (var i = 0; i < extensions.length; ++i)
-            this._addExtension(extensions[i]);
+        extensions.forEach(this._addExtension, this);
     },
 
     _addExtension: function(extensionInfo)
+    {
+        if (this._initDone) {
+            this._innerAddExtension(extensionInfo);
+            return;
+        }
+        if (this._pendingExtensions)
+            this._pendingExtensions.push(extensionInfo);
+        else
+            this._pendingExtensions = [extensionInfo];
+    },
+
+    _innerAddExtension: function(extensionInfo)
     {
         const urlOriginRegExp = new RegExp("([^:]+:\/\/[^/]*)\/"); // Can't use regexp literal here, MinJS chokes on it.
         var startPage = extensionInfo.startPage;
@@ -767,7 +792,7 @@ WebInspector.ExtensionServer.prototype = {
             var mainFrame = WebInspector.resourceTreeModel.mainFrame;
             if (!mainFrame)
                 return this._status.E_FAILED("main frame not available yet");
-            var context = WebInspector.javaScriptContextManager.contextByFrameAndSecurityOrigin(mainFrame, securityOrigin);
+            var context = WebInspector.runtimeModel.contextByFrameAndSecurityOrigin(mainFrame, securityOrigin);
             if (!context)
                 return this._status.E_NOTFOUND(securityOrigin);
             contextId = context.id;

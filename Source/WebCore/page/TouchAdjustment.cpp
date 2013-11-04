@@ -96,6 +96,9 @@ bool providesContextMenuItems(Node* node)
 {
     // This function tries to match the nodes that receive special context-menu items in
     // ContextMenuController::populate(), and should be kept uptodate with those.
+    ASSERT(node->renderer() || node->isShadowRoot());
+    if (!node->renderer())
+        return false;
     if (node->isContentEditable())
         return true;
     if (node->isLink())
@@ -126,7 +129,7 @@ static inline void appendQuadsToSubtargetList(Vector<FloatQuad>& quads, Node* no
 
 static inline void appendBasicSubtargetsForNode(Node* node, SubtargetGeometryList& subtargets)
 {
-    // Since the node is a result of a hit test, we are already ensured it has a renderer.
+    // Node guaranteed to have renderer due to check in node filter.
     ASSERT(node->renderer());
 
     Vector<FloatQuad> quads;
@@ -354,6 +357,20 @@ FloatPoint contentsToWindow(FrameView *view, FloatPoint pt)
     return FloatPoint(adjusted.x(), adjusted.y());
 }
 
+// Adjusts 'point' to the nearest point inside rect, and leaves it unchanged if already inside.
+void adjustPointToRect(FloatPoint& point, const FloatRect& rect)
+{
+    if (point.x() < rect.x())
+        point.setX(rect.x());
+    else if (point.x() > rect.maxX())
+        point.setX(rect.maxX());
+
+    if (point.y() < rect.y())
+        point.setY(rect.y());
+    else if (point.y() > rect.maxY())
+        point.setY(rect.maxY());
+}
+
 bool snapTo(const SubtargetGeometry& geom, const IntPoint& touchPoint, const IntRect& touchArea, IntPoint& adjustedPoint)
 {
     FrameView* view = geom.node()->document()->view();
@@ -375,7 +392,11 @@ bool snapTo(const SubtargetGeometry& geom, const IntPoint& touchPoint, const Int
         return false;
     }
 
-    // Non-rectilinear element.
+    // The following code tries to adjust the point to place inside a both the touchArea and the non-rectilinear quad.
+    // FIXME: This will return the point inside the touch area that is the closest to the quad center, but does not
+    // guarantee that the point will be inside the quad. Corner-cases exist where the quad will intersect but this
+    // will fail to adjust the point to somewhere in the intersection.
+
     // Convert quad from content to window coordinates.
     FloatPoint p1 = contentsToWindow(view, quad.p1());
     FloatPoint p2 = contentsToWindow(view, quad.p2());
@@ -389,32 +410,12 @@ bool snapTo(const SubtargetGeometry& geom, const IntPoint& touchPoint, const Int
     }
 
     // Pull point towards the center of the element.
-    float cx = 0.25 * (p1.x() + p2.x() + p3.x() + p4.x());
-    float cy = 0.25 * (p1.y() + p2.y() + p3.y() + p4.y());
-    FloatPoint center = FloatPoint(cx, cy);
+    FloatPoint center = quad.center();
 
-    FloatSize pullDirection = center - touchPoint;
-    float distanceToCenter = pullDirection.diagonalLength();
+    adjustPointToRect(center, touchArea);
+    adjustedPoint = roundedIntPoint(center);
 
-    // Use distance from center to corner of touch area to limit adjustment distance.
-    float dx = 0.5f * touchArea.width();
-    float dy = 0.5f * touchArea.height();
-    float touchRadius = sqrt(dx * dx + dy * dy);
-
-    float scaleFactor = touchRadius / distanceToCenter;
-    if (scaleFactor > 1)
-        scaleFactor = 1;
-    pullDirection.scale(scaleFactor);
-
-    int x = static_cast<int>(touchPoint.x() + pullDirection.width());
-    int y = static_cast<int>(touchPoint.y() + pullDirection.height());
-    IntPoint point(x, y);
-
-    if (quad.containsPoint(point)) {
-        adjustedPoint = point;
-        return true;
-    }
-    return false;
+    return quad.containsPoint(adjustedPoint);
 }
 
 // A generic function for finding the target node with the lowest distance metric. A distance metric here is the result

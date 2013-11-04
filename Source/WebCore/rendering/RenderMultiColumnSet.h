@@ -62,8 +62,8 @@ public:
     }
 
 private:
-    virtual void computeLogicalWidth() OVERRIDE;
-    virtual void computeLogicalHeight() OVERRIDE;
+    virtual void updateLogicalWidth() OVERRIDE;
+    virtual void updateLogicalHeight() OVERRIDE;
 
     virtual void paintReplaced(PaintInfo&, const LayoutPoint& paintOffset) OVERRIDE;
     virtual bool nodeAtPoint(const HitTestRequest&, HitTestResult&, const HitTestLocation&, const LayoutPoint& accumulatedOffset, HitTestAction) OVERRIDE;

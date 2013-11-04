@@ -103,7 +103,7 @@ public:
     // Disconnect the process from the context.
     void disconnectProcess(WebProcessProxy*);
 
-    PassRefPtr<WebPageProxy> createWebPage(PageClient*, WebPageGroup*);
+    PassRefPtr<WebPageProxy> createWebPage(PageClient*, WebPageGroup*, WebPageProxy* relatedPage = 0);
 
     WebProcessProxy* relaunchProcessIfNecessary();
 
@@ -277,6 +277,7 @@ private:
     ProcessModel m_processModel;
     
     Vector<RefPtr<WebProcessProxy> > m_processes;
+    bool m_haveInitialEmptyProcess;
 
     RefPtr<WebPageGroup> m_defaultPageGroup;
 

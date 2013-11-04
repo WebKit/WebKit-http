@@ -36,9 +36,9 @@
 #include "CachedResourceLoader.h"
 #include "FontPlatformData.h"
 #include "MemoryCache.h"
-#include "MemoryInstrumentation.h"
 #include "SharedBuffer.h"
 #include "TextResourceDecoder.h"
+#include "WebCoreMemoryInstrumentation.h"
 #include <wtf/Vector.h>
 
 #ifdef STORE_FONT_CUSTOM_PLATFORM_DATA
@@ -137,7 +137,7 @@ bool CachedFont::ensureSVGFontData()
 
         RefPtr<TextResourceDecoder> decoder = TextResourceDecoder::create("application/xml");
         String svgSource = decoder->decode(m_data->data(), m_data->size());
-        svgSource += decoder->flush();
+        svgSource.append(decoder->flush());
         
         m_externalSVGDocument->setContent(svgSource);
         
@@ -198,21 +198,12 @@ void CachedFont::checkNotify()
          c->fontLoaded(this);
 }
 
-
-void CachedFont::error(CachedResource::Status status)
-{
-    setStatus(status);
-    ASSERT(errorOccurred());
-    setLoading(false);
-    checkNotify();
-}
-
 void CachedFont::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
 {
-    MemoryClassInfo info(memoryObjectInfo, this, MemoryInstrumentation::CachedResourceFont);
+    MemoryClassInfo info(memoryObjectInfo, this, WebCoreMemoryTypes::CachedResourceFont);
     CachedResource::reportMemoryUsage(memoryObjectInfo);
 #if ENABLE(SVG_FONTS)
-    info.addInstrumentedMember(m_externalSVGDocument);
+    info.addMember(m_externalSVGDocument);
 #endif
 #ifdef STORE_FONT_CUSTOM_PLATFORM_DATA
     info.addMember(m_fontData);

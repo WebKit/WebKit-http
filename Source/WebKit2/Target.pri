@@ -150,6 +150,7 @@ HEADERS += \
     UIProcess/API/C/WKBackForwardListItem.h \
     UIProcess/API/C/WKBatteryManager.h \
     UIProcess/API/C/WKBatteryStatus.h \
+    UIProcess/API/C/WKColorPickerResultListener.h \
     UIProcess/API/C/WKContext.h \
     UIProcess/API/C/WKContextPrivate.h \
     UIProcess/API/C/WKCredential.h \
@@ -200,6 +201,7 @@ HEADERS += \
     UIProcess/CoordinatedGraphics/CoordinatedBackingStore.h \
     UIProcess/CoordinatedGraphics/LayerTreeCoordinatorProxy.h \
     UIProcess/CoordinatedGraphics/LayerTreeRenderer.h \
+    UIProcess/DefaultUndoController.h \
     UIProcess/DrawingAreaProxy.h \
     UIProcess/DrawingAreaProxyImpl.h \
     UIProcess/FindIndicator.h \
@@ -213,6 +215,8 @@ HEADERS += \
     UIProcess/Notifications/WebNotificationManagerProxy.h \
     UIProcess/Notifications/WebNotificationProvider.h \
     UIProcess/PageClient.h \
+    UIProcess/PageViewportController.h \
+    UIProcess/PageViewportControllerClient.h \
     UIProcess/Plugins/PluginInfoStore.h \
     UIProcess/Plugins/PluginProcessProxy.h \
     UIProcess/Plugins/PluginProcessManager.h \
@@ -225,6 +229,7 @@ HEADERS += \
     UIProcess/WebBatteryManagerProxy.h \
     UIProcess/WebBatteryProvider.h \
     UIProcess/WebColorChooserProxy.h \
+    UIProcess/WebColorPickerResultListenerProxy.h \
     UIProcess/WebConnectionToWebProcess.h \
     UIProcess/WebContext.h \
     UIProcess/WebContextConnectionClient.h \
@@ -375,7 +380,6 @@ SOURCES += \
     Platform/CoreIPC/ArgumentDecoder.cpp \
     Platform/CoreIPC/ArgumentEncoder.cpp \
     Platform/CoreIPC/Attachment.cpp \
-    Platform/CoreIPC/BinarySemaphore.cpp \
     Platform/CoreIPC/Connection.cpp \
     Platform/CoreIPC/DataReference.cpp \
     Platform/Logging.cpp \
@@ -499,6 +503,7 @@ SOURCES += \
     UIProcess/API/C/WKBackForwardListItem.cpp \
     UIProcess/API/C/WKBatteryManager.cpp \
     UIProcess/API/C/WKBatteryStatus.cpp \
+    UIProcess/API/C/WKColorPickerResultListener.cpp \
     UIProcess/API/C/WKContext.cpp \
     UIProcess/API/C/WKCredential.cpp \
     UIProcess/API/C/WKDatabaseManager.cpp \
@@ -540,6 +545,7 @@ SOURCES += \
     UIProcess/CoordinatedGraphics/CoordinatedBackingStore.cpp \
     UIProcess/CoordinatedGraphics/LayerTreeCoordinatorProxy.cpp \
     UIProcess/CoordinatedGraphics/LayerTreeRenderer.cpp \
+    UIProcess/DefaultUndoController.cpp \
     UIProcess/Downloads/DownloadProxy.cpp \
     UIProcess/DrawingAreaProxy.cpp \
     UIProcess/DrawingAreaProxyImpl.cpp \
@@ -553,6 +559,7 @@ SOURCES += \
     UIProcess/Notifications/WebNotification.cpp \
     UIProcess/Notifications/WebNotificationManagerProxy.cpp \
     UIProcess/Notifications/WebNotificationProvider.cpp \
+    UIProcess/PageViewportController.cpp \
     UIProcess/Plugins/PluginInfoStore.cpp \
     UIProcess/Plugins/PluginProcessProxy.cpp \
     UIProcess/Plugins/PluginProcessManager.cpp \
@@ -565,6 +572,8 @@ SOURCES += \
     UIProcess/WebBackForwardList.cpp \
     UIProcess/WebBatteryManagerProxy.cpp \
     UIProcess/WebBatteryProvider.cpp \
+    UIProcess/WebColorChooserProxy.cpp \
+    UIProcess/WebColorPickerResultListenerProxy.cpp \
     UIProcess/WebConnectionToWebProcess.cpp \
     UIProcess/WebContext.cpp \
     UIProcess/WebContextConnectionClient.cpp \
@@ -608,8 +617,6 @@ SOURCES += \
     UIProcess/WebUIClient.cpp \
     UIProcess/WebVibrationProvider.cpp \
     UIProcess/WebVibrationProxy.cpp \
-    UIProcess/qt/QtWebContext.cpp \
-    UIProcess/qt/QtWebUndoController.cpp \
     UIProcess/qt/TextCheckerQt.cpp \
     UIProcess/qt/WebContextQt.cpp \
     UIProcess/qt/WebFullScreenManagerProxyQt.cpp \
@@ -743,7 +750,7 @@ SOURCES += \
     WebProcess/qt/WebProcessMainQt.cpp \
     WebProcess/qt/WebProcessQt.cpp
 
-contains(DEFINES, HAVE_QTQUICK=1) {
+have?(QTQUICK) {
     QT += qml quick quick-private
 
     HEADERS += \
@@ -765,6 +772,7 @@ contains(DEFINES, HAVE_QTQUICK=1) {
         UIProcess/API/qt/qquicknetworkrequest_p.h \
         UIProcess/API/qt/qquickurlschemedelegate_p.h \
         UIProcess/API/qt/qwebkittest_p.h \
+        UIProcess/qt/PageViewportControllerClientQt.h \
         UIProcess/qt/QtWebContext.h \
         UIProcess/qt/QtWebPageEventHandler.h \
         UIProcess/qt/QtGestureRecognizer.h \
@@ -779,8 +787,6 @@ contains(DEFINES, HAVE_QTQUICK=1) {
         UIProcess/qt/QtWebPagePolicyClient.h \
         UIProcess/qt/QtWebPageSGNode.h \
         UIProcess/qt/QtWebPageUIClient.h \
-        UIProcess/qt/QtViewportHandler.h \
-        UIProcess/qt/QtWebUndoController.h \
         UIProcess/qt/QtWebIconDatabaseClient.h \
         UIProcess/qt/WebContextMenuProxyQt.h \
         UIProcess/qt/WebGeolocationProviderQt.h \
@@ -801,7 +807,7 @@ contains(DEFINES, HAVE_QTQUICK=1) {
         UIProcess/API/qt/qquickurlschemedelegate.cpp \
         UIProcess/API/qt/qwebpreferences.cpp \
         UIProcess/API/qt/qwebkittest.cpp \
-        UIProcess/qt/QtWebError.cpp \
+        UIProcess/qt/PageViewportControllerClientQt.cpp \
         UIProcess/qt/QtDialogRunner.cpp \
         UIProcess/qt/QtDownloadManager.cpp \
         UIProcess/qt/QtPageClient.cpp \
@@ -813,14 +819,15 @@ contains(DEFINES, HAVE_QTQUICK=1) {
         UIProcess/qt/QtPanGestureRecognizer.cpp \
         UIProcess/qt/QtPinchGestureRecognizer.cpp \
         UIProcess/qt/QtTapGestureRecognizer.cpp \
-        UIProcess/qt/QtViewportHandler.cpp \
+        UIProcess/qt/QtWebContext.cpp \
+        UIProcess/qt/QtWebError.cpp \
         UIProcess/qt/WebContextMenuProxyQt.cpp \
         UIProcess/qt/WebGeolocationProviderQt.cpp \
         UIProcess/qt/WebPopupMenuProxyQt.cpp \
         UIProcess/qt/QtWebIconDatabaseClient.cpp \
         UIProcess/qt/QtWebPageUIClient.cpp
 
-    contains(DEFINES, ENABLE_INPUT_TYPE_COLOR=1) {
+    enable?(INPUT_TYPE_COLOR) {
         HEADERS += \
             UIProcess/qt/WebColorChooserProxyQt.h
         SOURCES += \
@@ -829,13 +836,13 @@ contains(DEFINES, HAVE_QTQUICK=1) {
 }
 
 mac: {
-    contains(DEFINES, WTF_USE_QTKIT=1) {
+    use?(QTKIT) {
         DEFINES += NSGEOMETRY_TYPES_SAME_AS_CGGEOMETRY_TYPES
         INCLUDEPATH += \
             $$PWD/../../WebKitLibraries/
         HEADERS += \
             WebProcess/WebCoreSupport/qt/WebSystemInterface.h
-        SOURCES += \
+        OBJECTIVE_SOURCES += \
             WebProcess/WebCoreSupport/qt/WebSystemInterface.mm
     }
     INCLUDEPATH += \
@@ -852,6 +859,11 @@ mac: {
         Platform/mac/WorkQueueMac.cpp \
         Platform/mac/SharedMemoryMac.cpp
 
+} else:win32 {
+    SOURCES += \
+        Platform/CoreIPC/win/ConnectionWin.cpp \
+        Platform/win/WorkQueueWin.cpp \
+        Platform/win/SharedMemoryWin.cpp
 } else {
     SOURCES += \
         Platform/CoreIPC/unix/AttachmentUnix.cpp \
@@ -860,7 +872,16 @@ mac: {
         Platform/unix/SharedMemoryUnix.cpp
 }
 
-contains(DEFINES, ENABLE_INSPECTOR_SERVER=1) {
+win32 {
+    SOURCES += \
+        Platform/CoreIPC/win/BinarySemaphoreWin.cpp
+} else {
+    SOURCES += \
+        Platform/CoreIPC/BinarySemaphore.cpp
+}
+
+
+enable?(INSPECTOR_SERVER) {
     HEADERS += \
         UIProcess/InspectorServer/WebInspectorServer.h \
         UIProcess/InspectorServer/WebSocketServer.h \
@@ -876,7 +897,7 @@ contains(DEFINES, ENABLE_INSPECTOR_SERVER=1) {
         UIProcess/InspectorServer/qt/WebSocketServerQt.cpp
 }
 
-contains(DEFINES, ENABLE_TOUCH_EVENTS=1) {
+enable?(TOUCH_EVENTS) {
     HEADERS += \
         Shared/NativeWebTouchEvent.h
     SOURCES += \
@@ -884,9 +905,11 @@ contains(DEFINES, ENABLE_TOUCH_EVENTS=1) {
 }
 
 
-contains(DEFINES, ENABLE_GEOLOCATION=1): QT += location
+enable?(GEOLOCATION): QT += location
 
-plugin_backend_xlib {
+use?(3D_GRAPHICS): WEBKIT += angle
+
+use?(PLUGIN_BACKEND_XLIB) {
     DEFINES += XP_UNIX
     PKGCONFIG += x11
     DEFINES += MOZ_X11

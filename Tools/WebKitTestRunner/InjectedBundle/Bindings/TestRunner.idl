@@ -46,6 +46,9 @@ module WTR {
         void dumpProgressFinishedCallback();
         void dumpResourceLoadCallbacks();
         void dumpResourceResponseMIMETypes();
+        void dumpWillCacheResponse();
+        void dumpApplicationCacheDelegateCallbacks();
+        void dumpDatabaseCallbacks();
 
         // Special options.
         void keepWebHistory();
@@ -62,10 +65,14 @@ module WTR {
         void setPrivateBrowsingEnabled(in boolean value);
         void setPopupBlockingEnabled(in boolean value);
         void setAuthorAndUserStylesEnabled(in boolean value);
+        void setCustomPolicyDelegate(in boolean enabled, in boolean permissive);
         void addOriginAccessWhitelistEntry(in DOMString sourceOrigin, in DOMString destinationProtocol, in DOMString destinationHost, in boolean allowDestinationSubdomains);
         void removeOriginAccessWhitelistEntry(in DOMString sourceOrigin, in DOMString destinationProtocol, in DOMString destinationHost, in boolean allowDestinationSubdomains);
         void setUserStyleSheetEnabled(in boolean value);
         void setUserStyleSheetLocation(in DOMString location);
+        void setMinimumTimerInterval(in double interval); // Interval specified in seconds.
+        void setSpatialNavigationEnabled(in boolean value);
+        void setTabKeyCyclesThroughElements(in boolean enabled);
 
         // Special DOM functions.
         void clearBackForwardList();
@@ -77,6 +84,7 @@ module WTR {
 
         // Special DOM variables.
         attribute boolean globalFlag;
+        readonly attribute unsigned long workerThreadCount;
 
         // Repaint testing.
         void testRepaint();
@@ -84,8 +92,6 @@ module WTR {
         void display();
 
         // Printing
-        int numberOfPages(in double pageWidthInPixels, in double pageHeightInPixels);
-        DOMString pageSizeAndMarginsInPixels(in int pageIndex, in int width, in int height, in int marginTop, in int marginRight, in int marginBottom, in int marginLeft);
         boolean isPageBoxVisible(in int pageIndex);
 
         [PassContext] void setValueForUser(in object element, in DOMString value);
@@ -108,6 +114,11 @@ module WTR {
         // Application Cache API
         void clearAllApplicationCaches();
         void setAppCacheMaximumSize(in unsigned long long size);
+        long long applicationCacheDiskUsageForOrigin(in DOMString origin);
+        void clearApplicationCacheForOrigin(in DOMString name);
+        void setApplicationCacheOriginQuota(in unsigned long long bytes);
+        void disallowIncreaseForApplicationCacheQuota();
+        object originsWithApplicationCache();
 
         // Compositing testing.
         DOMString layerTreeAsText();
@@ -132,6 +143,7 @@ module WTR {
         void setShouldStayOnPageAfterHandlingBeforeUnload(in boolean flag);
 
         void setDefersLoading(in boolean flag);
+        void setStopProvisionalFrameLoads();
 
         // Web intents testing.
         void sendWebIntentResponse(in DOMString reply);
@@ -166,6 +178,8 @@ module WTR {
         void denyWebNotificationPermission(in DOMString origin);
         void removeAllWebNotificationPermissions();
         void simulateWebNotificationClick(in object notification);
+
+        boolean callShouldCloseOnWebView();
     };
 
 }

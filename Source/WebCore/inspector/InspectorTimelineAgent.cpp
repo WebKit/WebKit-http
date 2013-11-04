@@ -46,6 +46,8 @@
 #include "InspectorState.h"
 #include "InstrumentingAgents.h"
 #include "IntRect.h"
+#include "RenderObject.h"
+#include "RenderView.h"
 #include "ResourceRequest.h"
 #include "ResourceResponse.h"
 #include "TimelineRecordFactory.h"
@@ -242,8 +244,14 @@ void InspectorTimelineAgent::willLayout(Frame* frame)
     pushCurrentRecord(InspectorObject::create(), TimelineRecordType::Layout, true, frame);
 }
 
-void InspectorTimelineAgent::didLayout()
+void InspectorTimelineAgent::didLayout(RenderObject* root)
 {
+    if (m_recordStack.isEmpty())
+        return;
+    LayoutRect rect = root->frame()->view()->contentsToRootView(root->absoluteBoundingBoxRect());
+    TimelineRecordEntry entry = m_recordStack.last();
+    ASSERT(entry.type == TimelineRecordType::Layout);
+    TimelineRecordFactory::addRectData(entry.data.get(), rect);
     didCompleteCurrentRecord(TimelineRecordType::Layout);
 }
 
@@ -336,22 +344,22 @@ void InspectorTimelineAgent::didFireTimer()
     didCompleteCurrentRecord(TimelineRecordType::TimerFire);
 }
 
-void InspectorTimelineAgent::willChangeXHRReadyState(const String& url, int readyState, Frame* frame)
+void InspectorTimelineAgent::willDispatchXHRReadyStateChangeEvent(const String& url, int readyState, Frame* frame)
 {
     pushCurrentRecord(TimelineRecordFactory::createXHRReadyStateChangeData(url, readyState), TimelineRecordType::XHRReadyStateChange, false, frame);
 }
 
-void InspectorTimelineAgent::didChangeXHRReadyState()
+void InspectorTimelineAgent::didDispatchXHRReadyStateChangeEvent()
 {
     didCompleteCurrentRecord(TimelineRecordType::XHRReadyStateChange);
 }
 
-void InspectorTimelineAgent::willLoadXHR(const String& url, Frame* frame)
+void InspectorTimelineAgent::willDispatchXHRLoadEvent(const String& url, Frame* frame)
 {
     pushCurrentRecord(TimelineRecordFactory::createXHRLoadData(url), TimelineRecordType::XHRLoad, true, frame);
 }
 
-void InspectorTimelineAgent::didLoadXHR()
+void InspectorTimelineAgent::didDispatchXHRLoadEvent()
 {
     didCompleteCurrentRecord(TimelineRecordType::XHRLoad);
 }
@@ -502,12 +510,16 @@ void InspectorTimelineAgent::innerAddRecordToTimeline(PassRefPtr<InspectorObject
     }
 }
 
-void InspectorTimelineAgent::setHeapSizeStatistics(InspectorObject* record)
+static size_t getUsedHeapSize()
 {
     HeapInfo info;
     ScriptGCEvent::getHeapSize(info);
-    record->setNumber("usedHeapSize", info.usedJSHeapSize);
-    record->setNumber("totalHeapSize", info.totalJSHeapSize);
+    return info.usedJSHeapSize;
+}
+
+void InspectorTimelineAgent::setHeapSizeStatistics(InspectorObject* record)
+{
+    record->setNumber("usedHeapSize", getUsedHeapSize());
 
     if (m_state->getBoolean(TimelineAgentState::includeMemoryDetails)) {
         RefPtr<InspectorObject> counters = InspectorObject::create();
@@ -535,6 +547,9 @@ void InspectorTimelineAgent::didCompleteCurrentRecord(const String& type)
         entry.record->setObject("data", entry.data);
         entry.record->setArray("children", entry.children);
         entry.record->setNumber("endTime", timestamp());
+        size_t usedHeapSizeDelta = getUsedHeapSize() - entry.usedHeapSizeAtStart;
+        if (usedHeapSizeDelta)
+            entry.record->setNumber("usedHeapSizeDelta", usedHeapSizeDelta);
         addRecordToTimeline(entry.record, type, entry.frameId);
     }
 }
@@ -572,7 +587,7 @@ void InspectorTimelineAgent::pushCurrentRecord(PassRefPtr<InspectorObject> data,
     String frameId;
     if (frame && m_pageAgent)
         frameId = m_pageAgent->frameId(frame);
-    m_recordStack.append(TimelineRecordEntry(record.release(), data, InspectorArray::create(), type, frameId));
+    m_recordStack.append(TimelineRecordEntry(record.release(), data, InspectorArray::create(), type, frameId, getUsedHeapSize()));
     if (hasLowLevelDetails && !m_platformInstrumentationClientInstalledAtStackDepth && !PlatformInstrumentation::hasClient()) {
         m_platformInstrumentationClientInstalledAtStackDepth = m_recordStack.size();
         PlatformInstrumentation::setClient(this);

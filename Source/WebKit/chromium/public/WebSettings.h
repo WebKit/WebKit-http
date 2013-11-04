@@ -61,6 +61,7 @@ public:
     virtual void setAcceleratedCompositingForAnimationEnabled(bool) = 0;
     virtual void setAcceleratedCompositingForCanvasEnabled(bool) = 0;
     virtual void setAcceleratedCompositingForFixedPositionEnabled(bool)  = 0;
+    virtual void setAcceleratedCompositingForOverflowScrollEnabled(bool) = 0;
     virtual void setAcceleratedCompositingForPluginsEnabled(bool) = 0;
     virtual void setAcceleratedCompositingForVideoEnabled(bool) = 0;
     virtual void setAcceleratedFiltersEnabled(bool) = 0;
@@ -92,6 +93,7 @@ public:
     virtual void setEnableScrollAnimator(bool) = 0;
     virtual void setExperimentalCSSCustomFilterEnabled(bool) = 0;
     virtual void setExperimentalCSSGridLayoutEnabled(bool) = 0;
+    virtual void setCSSStickyPositionEnabled(bool) = 0;
     virtual void setExperimentalCSSRegionsEnabled(bool) = 0;
     virtual void setExperimentalCSSVariablesEnabled(bool) = 0;
     virtual void setExperimentalWebGLEnabled(bool) = 0;

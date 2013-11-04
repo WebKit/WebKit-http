@@ -46,8 +46,15 @@ enum Mode {
     ForceExit, // Implies that we have no idea how to execute this operation, so we should just give up.
     Generic,
     String,
-    JSArray,
-    JSArrayOutOfBounds,
+    ArrayStorage,
+    SlowPutArrayStorage,
+    ArrayStorageOutOfBounds,
+    ArrayWithArrayStorage,
+    ArrayWithSlowPutArrayStorage,
+    ArrayWithArrayStorageOutOfBounds,
+    PossiblyArrayWithArrayStorage,
+    PossiblyArrayWithSlowPutArrayStorage,
+    PossiblyArrayWithArrayStorageOutOfBounds,
     Arguments,
     Int8Array,
     Int16Array,
@@ -61,6 +68,37 @@ enum Mode {
 };
 } // namespace Array
 
+// Helpers for 'case' statements. For example, saying "case AllArrayStorageModes:"
+// is the same as having multiple case statements listing off all of the modes that
+// have the word "ArrayStorage" in them.
+#define NON_ARRAY_ARRAY_STORAGE_MODES                      \
+    Array::ArrayStorage:                                   \
+    case Array::SlowPutArrayStorage:                       \
+    case Array::ArrayStorageOutOfBounds:                   \
+    case Array::PossiblyArrayWithArrayStorage:             \
+    case Array::PossiblyArrayWithSlowPutArrayStorage:      \
+    case Array::PossiblyArrayWithArrayStorageOutOfBounds
+#define ARRAY_WITH_ARRAY_STORAGE_MODES                     \
+    Array::ArrayWithArrayStorage:                          \
+    case Array::ArrayWithSlowPutArrayStorage:              \
+    case Array::ArrayWithArrayStorageOutOfBounds
+#define ALL_ARRAY_STORAGE_MODES                            \
+    NON_ARRAY_ARRAY_STORAGE_MODES:                         \
+    case ARRAY_WITH_ARRAY_STORAGE_MODES
+#define IN_BOUNDS_ARRAY_STORAGE_MODES                      \
+    Array::ArrayStorage:                                   \
+    case Array::ArrayWithArrayStorage:                     \
+    case Array::PossiblyArrayWithArrayStorage
+#define SLOW_PUT_ARRAY_STORAGE_MODES                       \
+    Array::SlowPutArrayStorage:                            \
+    case Array::ArrayWithSlowPutArrayStorage:              \
+    case Array::PossiblyArrayWithSlowPutArrayStorage
+#define OUT_OF_BOUNDS_ARRAY_STORAGE_MODES                  \
+    SLOW_PUT_ARRAY_STORAGE_MODES:                          \
+    case Array::ArrayStorageOutOfBounds:                   \
+    case Array::ArrayWithArrayStorageOutOfBounds:          \
+    case Array::PossiblyArrayWithArrayStorageOutOfBounds
+
 Array::Mode fromObserved(ArrayModes modes, bool makeSafe);
 
 Array::Mode fromStructure(Structure*, bool makeSafe);
@@ -71,11 +109,40 @@ bool modeAlreadyChecked(AbstractValue&, Array::Mode);
 
 const char* modeToString(Array::Mode);
 
+inline bool modeUsesButterfly(Array::Mode arrayMode)
+{
+    switch (arrayMode) {
+    case ALL_ARRAY_STORAGE_MODES:
+        return true;
+    default:
+        return false;
+    }
+}
+
 inline bool modeIsJSArray(Array::Mode arrayMode)
 {
     switch (arrayMode) {
-    case Array::JSArray:
-    case Array::JSArrayOutOfBounds:
+    case ARRAY_WITH_ARRAY_STORAGE_MODES:
+        return true;
+    default:
+        return false;
+    }
+}
+
+inline bool isInBoundsAccess(Array::Mode arrayMode)
+{
+    switch (arrayMode) {
+    case IN_BOUNDS_ARRAY_STORAGE_MODES:
+        return true;
+    default:
+        return false;
+    }
+}
+
+inline bool isSlowPutAccess(Array::Mode arrayMode)
+{
+    switch (arrayMode) {
+    case SLOW_PUT_ARRAY_STORAGE_MODES:
         return true;
     default:
         return false;
@@ -114,25 +181,6 @@ inline Array::Mode modeForPut(Array::Mode arrayMode)
     }
 }
 
-inline bool modesCompatibleForStorageLoad(Array::Mode left, Array::Mode right)
-{
-    if (left == right)
-        return true;
-    
-    bool leftIsJSArray =
-        left == Array::JSArray
-        || left == Array::JSArrayOutOfBounds;
-    
-    bool rightIsJSArray =
-        right == Array::JSArray
-        || right == Array::JSArrayOutOfBounds;
-    
-    if (leftIsJSArray && rightIsJSArray)
-        return true;
-    
-    return false;
-}
-
 inline bool modeIsSpecific(Array::Mode mode)
 {
     switch (mode) {
@@ -147,7 +195,15 @@ inline bool modeIsSpecific(Array::Mode mode)
 
 inline bool modeSupportsLength(Array::Mode mode)
 {
-    return modeIsSpecific(mode);
+    switch (mode) {
+    case Array::Undecided:
+    case Array::ForceExit:
+    case Array::Generic:
+    case NON_ARRAY_ARRAY_STORAGE_MODES:
+        return false;
+    default:
+        return true;
+    }
 }
 
 } } // namespace JSC::DFG

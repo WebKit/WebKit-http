@@ -82,7 +82,7 @@ public:
     void load(const QString& html)
     {
         m_frameLoaded = false;
-        WKPageLoadURL(m_webView->pageRef(), WKURLCreateWithUTF8CString(html.toAscii().data()));
+        WKPageLoadURL(m_webView->pageRef(), WKURLCreateWithUTF8CString(html.toLocal8Bit().data()));
         QVERIFY(::waitForSignal(this, SIGNAL(loaded()), 5000));
     }
 
@@ -150,7 +150,7 @@ class tst_qrawwebview : public QObject {
     Q_OBJECT
 public:
     tst_qrawwebview()
-        : m_resourceDir(QString::fromAscii(TESTS_SOURCE_DIR "/html/resources"))
+        : m_resourceDir(QString::fromLatin1(TESTS_SOURCE_DIR "/html/resources"))
         , m_baseUrl(QUrl::fromLocalFile(TESTS_SOURCE_DIR "/html").toString())
     { }
 

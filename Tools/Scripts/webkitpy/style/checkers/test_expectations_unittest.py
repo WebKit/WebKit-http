@@ -79,6 +79,9 @@ class TestExpectationsTestCase(unittest.TestCase):
         self._expect_port_for_expectations_path('chromium', 'LayoutTests/platform/chromium/TestExpectations')
         self._expect_port_for_expectations_path(None, '/mock-checkout/LayoutTests/platform/win/TestExpectations')
         self._expect_port_for_expectations_path('win', 'LayoutTests/platform/win/TestExpectations')
+        self._expect_port_for_expectations_path('efl', 'LayoutTests/platform/efl/TestExpectations')
+        self._expect_port_for_expectations_path('efl', 'LayoutTests/platform/efl-wk1/TestExpectations')
+        self._expect_port_for_expectations_path('efl', 'LayoutTests/platform/efl-wk2/TestExpectations')
 
     def assert_lines_lint(self, lines, should_pass, expected_output=None):
         self._error_collector.reset_errors()
@@ -93,8 +96,7 @@ class TestExpectationsTestCase(unittest.TestCase):
         # Now use a test port so we can check the lines.
         checker._port_obj = host.port_factory.get('test-mac-leopard')
         checker.check_test_expectations(expectations_str='\n'.join(lines),
-                                        tests=[self._test_file],
-                                        overrides=None)
+                                        tests=[self._test_file])
         checker.check_tabs(lines)
         if should_pass:
             self.assertEqual('', self._error_collector.get_errors())

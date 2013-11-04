@@ -311,6 +311,9 @@ public:
     virtual bool isBlockFlow() const { return false; }
     virtual bool isBoxModelObject() const { return false; }
     virtual bool isCounter() const { return false; }
+#if ENABLE(DIALOG_ELEMENT)
+    virtual bool isDialog() const { return false; }
+#endif
     virtual bool isQuote() const { return false; }
 
 #if ENABLE(DETAILS_ELEMENT)
@@ -559,6 +562,7 @@ public:
 
     bool hasTransform() const { return m_bitfields.hasTransform(); }
     bool hasMask() const { return style() && style()->hasMask(); }
+    bool hasClipPath() const { return style() && style()->clipPath(); }
     bool hasHiddenBackface() const { return style() && style()->backfaceVisibility() == BackfaceVisibilityHidden; }
 
 #if ENABLE(CSS_FILTERS)
@@ -752,7 +756,7 @@ public:
     RenderBoxModelObject* containerForRepaint() const;
     // Actually do the repaint of rect r for this object which has been computed in the coordinate space
     // of repaintContainer. If repaintContainer is 0, repaint via the view.
-    void repaintUsingContainer(RenderBoxModelObject* repaintContainer, const LayoutRect&, bool immediate = false) const;
+    void repaintUsingContainer(RenderBoxModelObject* repaintContainer, const IntRect&, bool immediate = false) const;
     
     // Repaint the entire object.  Called when, e.g., the color of a border changes, or when a border
     // style changes.

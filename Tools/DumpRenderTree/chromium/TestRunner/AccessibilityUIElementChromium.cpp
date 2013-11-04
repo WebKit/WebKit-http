@@ -208,6 +208,18 @@ static string roleToString(WebAccessibilityRole role)
         return result.append("ToggleButton");
     case WebAccessibilityRoleCanvas:
         return result.append("Canvas");
+    case WebAccessibilityRoleParagraph:
+        return result.append("Paragraph");
+    case WebAccessibilityRoleDiv:
+        return result.append("Div");
+    case WebAccessibilityRoleLabel:
+        return result.append("Label");
+    case WebAccessibilityRoleForm:
+        return result.append("Form");
+    case WebAccessibilityRoleHorizontalRule:
+        return result.append("HorizontalRule");
+    case WebAccessibilityRoleLegend:
+        return result.append("Legend");
     default:
         // Also matches WebAccessibilityRoleUnknown.
         return result.append("Unknown");
@@ -234,7 +246,15 @@ string getStringValue(const WebAccessibilityObject& object)
 
 string getRole(const WebAccessibilityObject& object)
 {
-    return roleToString(object.roleValue());
+    string roleString = roleToString(object.roleValue());
+
+    // Special-case canvas with fallback content because Chromium wants to
+    // treat this as essentially a separate role that it can map differently depending
+    // on the platform.
+    if (object.roleValue() == WebAccessibilityRoleCanvas && object.canvasHasFallbackContent())
+        roleString += "WithFallbackContent";
+
+    return roleString;
 }
 
 string getTitle(const WebAccessibilityObject& object)
@@ -249,6 +269,12 @@ string getOrientation(const WebAccessibilityObject& object)
         return "AXOrientation: AXVerticalOrientation";
 
     return "AXOrientation: AXHorizontalOrientation";
+}
+
+string getValueDescription(const WebAccessibilityObject& object)
+{
+    string valueDescription = object.valueDescription().utf8();
+    return valueDescription.insert(0, "AXValueDescription: ");
 }
 
 string getAttributes(const WebAccessibilityObject& object)
@@ -303,6 +329,7 @@ AccessibilityUIElement::AccessibilityUIElement(const WebAccessibilityObject& obj
     bindProperty("intValue", &AccessibilityUIElement::intValueGetterCallback);
     bindProperty("minValue", &AccessibilityUIElement::minValueGetterCallback);
     bindProperty("maxValue", &AccessibilityUIElement::maxValueGetterCallback);
+    bindProperty("valueDescription", &AccessibilityUIElement::valueDescriptionGetterCallback);
     bindProperty("childrenCount", &AccessibilityUIElement::childrenCountGetterCallback);
     bindProperty("insertionPointLineNumber", &AccessibilityUIElement::insertionPointLineNumberGetterCallback);
     bindProperty("selectedTextRange", &AccessibilityUIElement::selectedTextRangeGetterCallback);
@@ -450,6 +477,11 @@ void AccessibilityUIElement::minValueGetterCallback(CppVariant* result)
 void AccessibilityUIElement::maxValueGetterCallback(CppVariant* result)
 {
     result->set(accessibilityObject().maxValueForRange());
+}
+
+void AccessibilityUIElement::valueDescriptionGetterCallback(CppVariant* result)
+{
+    result->set(getValueDescription(accessibilityObject()));
 }
 
 void AccessibilityUIElement::childrenCountGetterCallback(CppVariant* result)

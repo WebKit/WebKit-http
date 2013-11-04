@@ -41,12 +41,13 @@
 #include <public/WebContentLayer.h>
 #include <public/WebImageLayer.h>
 #include <public/WebLayer.h>
+#include <public/WebLayerScrollClient.h>
 #include <wtf/HashMap.h>
 
 namespace WebCore {
 
-class LayerChromium;
 class Path;
+class ScrollableArea;
 
 class LinkHighlightClient {
 public:
@@ -58,7 +59,7 @@ protected:
     virtual ~LinkHighlightClient() { }
 };
 
-class GraphicsLayerChromium : public GraphicsLayer, public GraphicsContextPainter, public WebKit::WebAnimationDelegate {
+class GraphicsLayerChromium : public GraphicsLayer, public GraphicsContextPainter, public WebKit::WebAnimationDelegate, public WebKit::WebLayerScrollClient {
 public:
     GraphicsLayerChromium(GraphicsLayerClient*);
     virtual ~GraphicsLayerChromium();
@@ -132,7 +133,12 @@ public:
 
     virtual void setDebugBackgroundColor(const Color&);
     virtual void setDebugBorder(const Color&, float borderWidth);
-    virtual void deviceOrPageScaleFactorChanged();
+
+    virtual void setAppliesPageScale(bool appliesScale) OVERRIDE;
+    virtual bool appliesPageScale() const OVERRIDE;
+
+    void setScrollableArea(ScrollableArea* scrollableArea) { m_scrollableArea = scrollableArea; }
+    ScrollableArea* scrollableArea() const { return m_scrollableArea; }
 
     // GraphicsContextPainter implementation.
     virtual void paint(GraphicsContext&, const IntRect& clip) OVERRIDE;
@@ -141,11 +147,13 @@ public:
     virtual void notifyAnimationStarted(double startTime) OVERRIDE;
     virtual void notifyAnimationFinished(double finishTime) OVERRIDE;
 
+    // WebLayerScrollClient implementation.
+    virtual void didScroll() OVERRIDE;
+
     WebKit::WebContentLayer* contentLayer() const { return m_layer.get(); }
 
     // Exposed for tests.
     WebKit::WebLayer* contentsLayer() const { return m_contentsLayer; }
-    float contentsScale() const;
 
 private:
     void updateNames();
@@ -163,7 +171,6 @@ private:
     void updateContentsImage();
     void updateContentsVideo();
     void updateContentsRect();
-    void updateContentsScale();
 
     enum ContentsLayerPurpose {
         NoContentsLayer = 0,
@@ -196,10 +203,11 @@ private:
     ContentsLayerPurpose m_contentsLayerPurpose;
     bool m_contentsLayerHasBackgroundColor : 1;
     bool m_inSetChildren;
-    bool m_pageScaleChanged;
 
     typedef HashMap<String, int> AnimationIdMap;
     AnimationIdMap m_animationIdMap;
+
+    ScrollableArea* m_scrollableArea;
 };
 
 } // namespace WebCore

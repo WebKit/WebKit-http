@@ -77,6 +77,7 @@
       'ENABLE_JAVASCRIPT_DEBUGGER=1',
       'ENABLE_LEGACY_CSS_VENDOR_PREFIXES=0',
       'ENABLE_LEGACY_VIEWPORT_ADAPTION=1',
+      'ENABLE_LEGACY_VENDOR_PREFIXES=1',
       'ENABLE_LEGACY_WEBKIT_BLOB_BUILDER=1',
       'ENABLE_LINK_PREFETCH=1',
       'ENABLE_LINK_PRERENDER=1',
@@ -147,6 +148,7 @@
     'conditions': [
       ['OS=="android"', {
         'feature_defines': [
+          'ENABLE_ACCELERATED_OVERFLOW_SCROLLING=1',
           'ENABLE_CALENDAR_PICKER=0',
           'ENABLE_DATALIST_ELEMENT=0',
           'ENABLE_INPUT_SPEECH=0',
@@ -157,7 +159,6 @@
           'ENABLE_MEDIA_STREAM=0',
           'ENABLE_NOTIFICATIONS=0',
           'ENABLE_ORIENTATION_EVENTS=1',
-          'ENABLE_OVERFLOW_SCROLLING=1',
           'ENABLE_PAGE_POPUP=0',
           'ENABLE_PRINTING=0',
           # FIXME: Disable once the linking error has been resolved.
@@ -169,6 +170,7 @@
         'enable_touch_icon_loading': 1,
       }, { # OS!="android"
         'feature_defines': [
+          'ENABLE_ACCELERATED_OVERFLOW_SCROLLING=0',
           'ENABLE_CALENDAR_PICKER=1',
           'ENABLE_DATALIST_ELEMENT=1',
           'ENABLE_INPUT_SPEECH=1',
@@ -180,7 +182,6 @@
           'ENABLE_MEDIA_STREAM=1',
           'ENABLE_NOTIFICATIONS=1',
           'ENABLE_ORIENTATION_EVENTS=0',
-          'ENABLE_OVERFLOW_SCROLLING=0',
           'ENABLE_PAGE_POPUP=1',
           'ENABLE_PRINTING=1',
           'ENABLE_SHARED_WORKERS=1',
@@ -198,6 +199,11 @@
       ['OS!="mac" and OS!="android"', {
         'feature_defines': [
           'WTF_USE_WEBAUDIO_FFMPEG=1',
+        ],
+      }],
+      ['OS=="win"', {
+        'feature_defines': [
+          'ENABLE_OPENTYPE_VERTICAL=1',
         ],
       }],
       ['enable_web_intents==1', {

@@ -49,12 +49,8 @@ public:
 DOMWindow* activeDOMWindow(BindingState*);
 DOMWindow* firstDOMWindow(BindingState*);
 
-Frame* activeFrame(BindingState*);
-Frame* firstFrame(BindingState*);
-
 // FIXME: When implementing this function for JSC, we need to understand if there
 // are any subtle differences between the currentFrame and the lexicalGlobalObject.
-Frame* currentFrame(BindingState*);
 Document* currentDocument(BindingState*);
 
 // FIXME: This function is redundant with the copy in JSDOMBinding.cpp.

@@ -21,8 +21,8 @@
 #include "config.h"
 #include "CSSInitialValue.h"
 
-#include "MemoryInstrumentation.h"
-#include "PlatformString.h"
+#include "WebCoreMemoryInstrumentation.h"
+#include <wtf/text/WTFString.h>
 
 namespace WebCore {
 
@@ -33,7 +33,7 @@ String CSSInitialValue::customCssText() const
 
 void CSSInitialValue::reportDescendantMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
 {
-    MemoryClassInfo info(memoryObjectInfo, this, MemoryInstrumentation::CSS);
+    MemoryClassInfo info(memoryObjectInfo, this, WebCoreMemoryTypes::CSS);
 }
 
 } // namespace WebCore

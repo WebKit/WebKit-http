@@ -1547,6 +1547,10 @@ static bool needsSelfRetainWhileLoadingQuirk()
     settings->setRequestAnimationFrameEnabled([preferences requestAnimationFrameEnabled]);
     settings->setNeedsDidFinishLoadOrderQuirk(needsDidFinishLoadOrderQuirk());
     settings->setDiagnosticLoggingEnabled([preferences diagnosticLoggingEnabled]);
+
+    // We have enabled this setting in WebKit2 for the sake of some ScrollingCoordinator work.
+    // To avoid possible rendering differences, we should enable it for WebKit1 too.
+    settings->setFixedPositionCreatesStackingContext(true);
     
     NSTimeInterval timeout = [preferences incrementalRenderingSuppressionTimeoutInSeconds];
     if (timeout > 0)
@@ -1787,7 +1791,7 @@ static inline IMP getMethod(id o, SEL s)
     HTMLNames::init(); // this method is used for importing bookmarks at startup, so HTMLNames are likely to be uninitialized yet
     RefPtr<TextResourceDecoder> decoder = TextResourceDecoder::create("text/html"); // bookmark files are HTML
     String result = decoder->decode(static_cast<const char*>([data bytes]), [data length]);
-    result += decoder->flush();
+    result.append(decoder->flush());
     return result;
 }
 
@@ -2866,6 +2870,8 @@ static PassOwnPtr<Vector<String> > toStringVector(NSArray* patterns)
 
     Pagination pagination = page->pagination();
     pagination.behavesLikeColumns = behavesLikeColumns;
+
+    page->setPagination(pagination);
 }
 
 - (BOOL)_paginationBehavesLikeColumns

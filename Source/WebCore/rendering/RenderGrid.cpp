@@ -71,19 +71,19 @@ void RenderGrid::layoutBlock(bool relayoutChildren, LayoutUnit)
         if (logicalWidthChangedInRegions())
             relayoutChildren = true;
     }
-    computeInitialRegionRangeForBlock();
+    updateRegionsAndExclusionsLogicalSize();
 
     LayoutSize previousSize = size();
 
     setLogicalHeight(0);
-    computeLogicalWidth();
+    updateLogicalWidth();
 
     m_overflow.clear();
 
     layoutGridItems();
 
     LayoutUnit oldClientAfterEdge = clientLogicalBottom();
-    computeLogicalHeight();
+    updateLogicalHeight();
 
     if (size() != previousSize)
         relayoutChildren = true;

@@ -55,6 +55,7 @@ enum CompositingUpdateType {
 // There is one RenderLayerCompositor per RenderView.
 
 class RenderLayerCompositor : public GraphicsLayerClient {
+    WTF_MAKE_FAST_ALLOCATED;
 public:
     RenderLayerCompositor(RenderView*);
     ~RenderLayerCompositor();
@@ -191,6 +192,8 @@ public:
     void frameViewDidChangeLocation(const IntPoint& contentsOffset);
     void frameViewDidChangeSize();
     void frameViewDidScroll();
+
+    void scrollingLayerDidChange(RenderLayer*);
 
     String layerTreeAsText(bool showDebugInfo = false);
 

@@ -130,6 +130,7 @@ inline ClipRect intersection(const ClipRect& a, const ClipRect& b)
 }
 
 class ClipRects {
+    WTF_MAKE_FAST_ALLOCATED;
 public:
     static PassRefPtr<ClipRects> create()
     {
@@ -227,6 +228,8 @@ enum ClipRectsType {
 };
 
 struct ClipRectsCache {
+    WTF_MAKE_FAST_ALLOCATED;
+public:
     ClipRectsCache()
     {
 #ifndef NDEBUG
@@ -363,7 +366,6 @@ public:
     void paintResizer(GraphicsContext*, const IntPoint&, const IntRect& damageRect);
 
     void updateScrollInfoAfterLayout();
-    bool usesCompositedScrolling() const;
 
     bool scroll(ScrollDirection, ScrollGranularity, float multiplier = 1);
     void autoscroll();
@@ -564,8 +566,6 @@ public:
     typedef unsigned CalculateLayerBoundsFlags;
     static IntRect calculateLayerBounds(const RenderLayer*, const RenderLayer* ancestorLayer, CalculateLayerBoundsFlags = DefaultCalculateLayerBoundsFlags);
     
-    void updateHoverActiveState(const HitTestRequest&, HitTestResult&);
-
     // WARNING: This method returns the offset for the parent as this is what updateLayerPositions expects.
     LayoutPoint computeOffsetFromRoot(bool& hasLayerOffset) const;
 
@@ -635,9 +635,11 @@ public:
     virtual GraphicsLayer* layerForHorizontalScrollbar() const;
     virtual GraphicsLayer* layerForVerticalScrollbar() const;
     virtual GraphicsLayer* layerForScrollCorner() const;
+    virtual bool usesCompositedScrolling() const OVERRIDE;
 #else
     bool isComposited() const { return false; }
     bool hasCompositedMask() const { return false; }
+    bool usesCompositedScrolling() const { return false; }
 #endif
 
     bool paintsWithTransparency(PaintBehavior paintBehavior) const
@@ -804,7 +806,7 @@ private:
     virtual IntSize overhangAmount() const;
     virtual IntPoint currentMousePosition() const;
     virtual bool shouldSuspendScrollAnimations() const;
-    virtual bool isOnActivePage() const;
+    virtual bool scrollbarsCanBeActive() const;
     virtual IntRect scrollableAreaBoundingBox() const OVERRIDE;
 
     // Rectangle encompassing the scroll corner and resizer rect.

@@ -46,7 +46,6 @@
 #include "InspectorFrontendHost.h"
 #include "InspectorPageAgent.h"
 #include "Page.h"
-#include "PlatformString.h"
 #include "ScriptFunctionCall.h"
 #include "ScriptObject.h"
 #include "ScriptState.h"
@@ -56,6 +55,7 @@
 #include "WindowFeatures.h"
 #include <wtf/Deque.h>
 #include <wtf/text/CString.h>
+#include <wtf/text/WTFString.h>
 
 namespace WebCore {
 
@@ -65,6 +65,7 @@ static const float minimumAttachedHeight = 250.0f;
 static const float maximumAttachedHeightRatio = 0.75f;
 
 class InspectorBackendDispatchTask {
+    WTF_MAKE_FAST_ALLOCATED;
 public:
     InspectorBackendDispatchTask(InspectorController* inspectorController)
         : m_inspectorController(inspectorController)

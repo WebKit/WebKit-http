@@ -64,6 +64,7 @@
  * - "text,found", unsigned int*: the requested text was found and it gives the number of matches.
  * - "title,changed", const char*: title of the main frame was changed.
  * - "uri,changed", const char*: uri of the main frame was changed.
+ * - "webprocess,crashed", Eina_Bool*: expects a @c EINA_TRUE if web process crash is handled; @c EINA_FALSE, otherwise.
  */
 
 #ifndef ewk_view_h
@@ -73,6 +74,7 @@
 #include "ewk_context.h"
 #include "ewk_download_job.h"
 #include "ewk_intent.h"
+#include "ewk_settings.h"
 #include "ewk_url_request.h"
 #include "ewk_url_response.h"
 #include "ewk_web_error.h"
@@ -105,6 +107,8 @@ struct _Ewk_View_Smart_Class {
     //  - if overridden, have to call parent method if desired
     Eina_Bool (*focus_in)(Ewk_View_Smart_Data *sd);
     Eina_Bool (*focus_out)(Ewk_View_Smart_Data *sd);
+    Eina_Bool (*fullscreen_enter)(Ewk_View_Smart_Data *sd);
+    Eina_Bool (*fullscreen_exit)(Ewk_View_Smart_Data *sd);
     Eina_Bool (*mouse_wheel)(Ewk_View_Smart_Data *sd, const Evas_Event_Mouse_Wheel *ev);
     Eina_Bool (*mouse_down)(Ewk_View_Smart_Data *sd, const Evas_Event_Mouse_Down *ev);
     Eina_Bool (*mouse_up)(Ewk_View_Smart_Data *sd, const Evas_Event_Mouse_Up *ev);
@@ -117,7 +121,7 @@ struct _Ewk_View_Smart_Class {
  * The version you have to put into the version field
  * in the @a Ewk_View_Smart_Class structure.
  */
-#define EWK_VIEW_SMART_CLASS_VERSION 2UL
+#define EWK_VIEW_SMART_CLASS_VERSION 3UL
 
 /**
  * Initializer for whole Ewk_View_Smart_Class structure.
@@ -129,7 +133,7 @@ struct _Ewk_View_Smart_Class {
  * @see EWK_VIEW_SMART_CLASS_INIT_VERSION
  * @see EWK_VIEW_SMART_CLASS_INIT_NAME_VERSION
  */
-#define EWK_VIEW_SMART_CLASS_INIT(smart_class_init) {smart_class_init, EWK_VIEW_SMART_CLASS_VERSION, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
+#define EWK_VIEW_SMART_CLASS_INIT(smart_class_init) {smart_class_init, EWK_VIEW_SMART_CLASS_VERSION, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
 
 /**
  * Initializer to zero a whole Ewk_View_Smart_Class structure.
@@ -356,6 +360,15 @@ EAPI Eina_Bool ewk_view_reload_bypass_cache(Evas_Object *o);
 EAPI Eina_Bool    ewk_view_stop(Evas_Object *o);
 
 /**
+ * Gets the Ewk_Settings of this view.
+ *
+ * @param o view object to get Ewk_Settings
+ *
+ * @return the Ewk_Settings of this view or @c NULL on failure
+ */
+EAPI Ewk_Settings *ewk_view_settings_get(const Evas_Object *o);
+
+/**
  * Delivers a Web intent to the view's main frame.
  *
  * @param o view object to deliver the intent to
@@ -543,7 +556,7 @@ EAPI Eina_Bool ewk_view_device_pixel_ratio_set(Evas_Object *o, float ratio);
  * use this one.
  *
  * @param o view object to change theme
- * @param path theme path, may be @c NULL to reset to the default theme
+ * @param path theme path
  */
 EAPI void ewk_view_theme_set(Evas_Object *o, const char *path);
 
@@ -619,6 +632,28 @@ EAPI Eina_Bool ewk_view_popup_menu_select(Evas_Object *o, unsigned int index);
  *         popup menu is not selected)
  */
 EAPI Eina_Bool ewk_view_popup_menu_close(Evas_Object *o);
+
+/**
+ * Sets whether the ewk_view supports the mouse events or not.
+ *
+ * The ewk_view will support the mouse events if EINA_TRUE or not support the
+ * mouse events otherwise. The default value is EINA_TRUE.
+ *
+ * @param o view object to enable/disable the mouse events
+ * @param enabled a state to set
+ *
+ * @return @c EINA_TRUE on success or @c EINA_FALSE on failure
+ */
+EAPI Eina_Bool ewk_view_mouse_events_enabled_set(Evas_Object *o, Eina_Bool enabled);
+
+/**
+ * Queries if the ewk_view supports the mouse events.
+ *
+ * @param o view object to query if the mouse events are enabled
+ *
+ * @return @c EINA_TRUE if the mouse events are enabled or @c EINA_FALSE otherwise
+ */
+EAPI Eina_Bool ewk_view_mouse_events_enabled_get(const Evas_Object *o);
 
 #ifdef __cplusplus
 }

@@ -406,7 +406,7 @@ WebInspector.Events = {
 
 WebInspector.loaded = function()
 {
-    InspectorBackend.loadFromJSONIfNeeded();
+    InspectorBackend.loadFromJSONIfNeeded("../Inspector.json");
 
     if (WebInspector.WorkerManager.isDedicatedWorkerFrontend()) {
         // Do not create socket for the worker front-end.
@@ -491,7 +491,7 @@ WebInspector._doLoadedDoneWithCapabilities = function()
     this.debuggerModel.addEventListener(WebInspector.DebuggerModel.Events.DebuggerPaused, this._debuggerPaused, this);
     this.networkLog = new WebInspector.NetworkLog();
     this.domAgent = new WebInspector.DOMAgent();
-    this.javaScriptContextManager = new WebInspector.JavaScriptContextManager(this.resourceTreeModel);
+    this.runtimeModel = new WebInspector.RuntimeModel(this.resourceTreeModel);
 
     this.consoleView = new WebInspector.ConsoleView(WebInspector.WorkerManager.isWorkerFrontend());
 
@@ -523,7 +523,8 @@ WebInspector._doLoadedDoneWithCapabilities = function()
 
     this.scriptSnippetModel = new WebInspector.ScriptSnippetModel(this.workspace);
     new WebInspector.DebuggerScriptMapping(this.workspace);
-    new WebInspector.StylesUISourceCodeProvider(this.workspace);
+    new WebInspector.NetworkUISourceCodeProvider(this.workspace);
+    new WebInspector.StylesSourceMapping(this.workspace);
     if (WebInspector.experimentsSettings.sass.isEnabled())
         new WebInspector.SASSSourceMapping(this.workspace);
 

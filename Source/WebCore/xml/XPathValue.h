@@ -27,8 +27,8 @@
 #ifndef XPathValue_h
 #define XPathValue_h
 
-#include "PlatformString.h"
 #include "XPathNodeSet.h"
+#include <wtf/text/WTFString.h>
 
 namespace WebCore {
 
@@ -45,8 +45,8 @@ namespace WebCore {
             
         private:
             ValueData() { }
-            ValueData(const NodeSet& nodeSet) : m_nodeSet(nodeSet) { }
-            ValueData(const String& string) : m_string(string) { }            
+            explicit ValueData(const NodeSet& nodeSet) : m_nodeSet(nodeSet) { }
+            explicit ValueData(const String& string) : m_string(string) { }            
         };
 
         // Copying Value objects makes their data partially shared, so care has to be taken when dealing with copies.

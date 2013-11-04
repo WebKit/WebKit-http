@@ -47,7 +47,7 @@ const ClassInfo InterruptedExecutionError::s_info = { "InterruptedExecutionError
 JSValue InterruptedExecutionError::defaultValue(const JSObject*, ExecState* exec, PreferredPrimitiveType hint)
 {
     if (hint == PreferString)
-        return jsNontrivialString(exec, "JavaScript execution exceeded timeout.");
+        return jsNontrivialString(exec, String(ASCIILiteral("JavaScript execution exceeded timeout.")));
     return JSValue(std::numeric_limits<double>::quiet_NaN());
 }
 
@@ -74,7 +74,7 @@ const ClassInfo TerminatedExecutionError::s_info = { "TerminatedExecutionError",
 JSValue TerminatedExecutionError::defaultValue(const JSObject*, ExecState* exec, PreferredPrimitiveType hint)
 {
     if (hint == PreferString)
-        return jsNontrivialString(exec, "JavaScript execution terminated.");
+        return jsNontrivialString(exec, String(ASCIILiteral("JavaScript execution terminated.")));
     return JSValue(std::numeric_limits<double>::quiet_NaN());
 }
 
@@ -96,17 +96,17 @@ bool isTerminatedExecutionException(JSValue value)
 
 JSObject* createStackOverflowError(ExecState* exec)
 {
-    return createRangeError(exec, "Maximum call stack size exceeded.");
+    return createRangeError(exec, ASCIILiteral("Maximum call stack size exceeded."));
 }
 
 JSObject* createStackOverflowError(JSGlobalObject* globalObject)
 {
-    return createRangeError(globalObject, "Maximum call stack size exceeded.");
+    return createRangeError(globalObject, ASCIILiteral("Maximum call stack size exceeded."));
 }
 
 JSObject* createUndefinedVariableError(ExecState* exec, const Identifier& ident)
 {
-    String message(makeString("Can't find variable: ", ident.ustring()));
+    String message(makeString("Can't find variable: ", ident.string()));
     return createReferenceError(exec, message);
 }
     
@@ -153,7 +153,7 @@ JSObject* createErrorForInvalidGlobalAssignment(ExecState* exec, const String& p
 
 JSObject* createOutOfMemoryError(JSGlobalObject* globalObject)
 {
-    return createError(globalObject, "Out of memory");
+    return createError(globalObject, ASCIILiteral("Out of memory"));
 }
 
 JSObject* throwOutOfMemoryError(ExecState* exec)

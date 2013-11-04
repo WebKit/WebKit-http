@@ -1,3 +1,200 @@
+2012-09-17  Sheriff Bot  <webkit.review.bot@gmail.com>
+
+        Unreviewed, rolling out r128809.
+        http://trac.webkit.org/changeset/128809
+        https://bugs.webkit.org/show_bug.cgi?id=96958
+
+        Broke the Windows build. (Requested by andersca on #webkit).
+
+        * DefaultPolicyDelegate.cpp:
+        (DefaultPolicyDelegate::decidePolicyForNavigationAction):
+        (DefaultPolicyDelegate::decidePolicyForMIMEType):
+        (DefaultPolicyDelegate::unableToImplementPolicyWithError):
+        * MarshallingHelpers.cpp:
+        (MarshallingHelpers::KURLToBSTR):
+        (MarshallingHelpers::CFStringRefToBSTR):
+        (MarshallingHelpers::stringArrayToSafeArray):
+        (MarshallingHelpers::safeArrayToStringArray):
+        * WebCoreSupport/WebChromeClient.cpp:
+        (WebChromeClient::runJavaScriptPrompt):
+        * WebCoreSupport/WebEditorClient.cpp:
+        (WebEditorClient::checkGrammarOfString):
+        (WebEditorClient::getGuessesForWord):
+        * WebFrame.cpp:
+        (WebFrame::canProvideDocumentSource):
+        * WebHistory.cpp:
+        (WebHistory::removeItem):
+        (WebHistory::addItem):
+        * WebIconDatabase.cpp:
+        (WebIconDatabase::startUpIconDatabase):
+        * WebNotificationCenter.cpp:
+        (WebNotificationCenter::postNotification):
+        * WebPreferences.cpp:
+        (WebPreferences::setStringValue):
+        * WebView.cpp:
+        (PreferencesChangedOrRemovedObserver::onNotify):
+        (WebView::close):
+        (WebView::canShowMIMEType):
+        (WebView::initWithFrame):
+        (WebView::setApplicationNameForUserAgent):
+        (WebView::setCustomUserAgent):
+        (WebView::userAgentForURL):
+        (WebView::setCustomTextEncodingName):
+        (WebView::customTextEncodingName):
+        (WebView::setPreferences):
+        (WebView::searchFor):
+        (WebView::executeCoreCommandByName):
+        (WebView::markAllMatchesForText):
+        (WebView::setGroupName):
+        (WebView::registerURLSchemeAsLocal):
+        (WebView::replaceSelectionWithText):
+        (WebView::onNotify):
+        (WebView::notifyPreferencesChanged):
+        (WebView::MIMETypeForExtension):
+        (WebView::standardUserAgentWithApplicationName):
+        (WebView::addAdditionalPluginDirectory):
+        (WebView::registerEmbeddedViewMIMEType):
+        (toString):
+        (toKURL):
+        (WebView::addOriginAccessWhitelistEntry):
+        (WebView::removeOriginAccessWhitelistEntry):
+        (WebView::geolocationDidFailWithError):
+        (WebView::setDomainRelaxationForbiddenForURLScheme):
+        (WebView::setCompositionForTesting):
+        (WebView::confirmCompositionForTesting):
+
+2012-09-16  Mark Lam  <mark.lam@apple.com>
+
+        Added MSVC project changes to enable building the llint.
+        https://bugs.webkit.org/show_bug.cgi?id=96175.
+
+        Reviewed by Geoff Garen.
+
+        This only adds the ability to build the llint, but currently, only the
+        C++ backend is supported. By default, the Windows port will remain
+        running with the baseline JIT.  The llint will not be enabled.
+
+        * WebKit.vcproj/WebKit.sln:
+
+2012-09-13  Brent Fulgham  <bfulgham@webkit.org>
+
+        [WinCairo] Unreviewed build fix.
+
+        * WebCookieManagerCurl.cpp: Remove unused 'using WebCore'
+        declaration that prevented the build from completing.
+
+2012-09-12  Sheriff Bot  <webkit.review.bot@gmail.com>
+
+        Unreviewed, rolling out r127876.
+        http://trac.webkit.org/changeset/127876
+        https://bugs.webkit.org/show_bug.cgi?id=96600
+
+        mouse click doesn't work for spin button if spin button in
+        iframe (Requested by yosin on #webkit).
+
+        * WebActionPropertyBag.cpp:
+        (WebActionPropertyBag::Read):
+        * WebView.cpp:
+        (WebView::handleContextMenuEvent):
+        (WebView::elementAtPoint):
+
+2012-09-10  Beth Dakin  <bdakin@apple.com>
+
+        https://bugs.webkit.org/show_bug.cgi?id=96158
+        Need API to suppress scrollbar animations
+        -and corresponding-
+        <rdar://problem/12210972>
+
+        Reviewed by Sam Weinig.
+
+        ScrollableArea::isOnActivePage() has been re-named to
+        ScrollableArea:: scrollbarsCanBeActive().
+        * WebScrollBar.cpp:
+        (WebScrollBar::scrollbarsCanBeActive):
+        * WebScrollBar.h:
+        (WebScrollBar):
+
+2012-09-10  Dominic Mazzoni  <dmazzoni@google.com>
+
+        AX: Update Windows port accessible role mappings to fix some tests
+        https://bugs.webkit.org/show_bug.cgi?id=96219
+
+        Reviewed by Chris Fleizach.
+
+        Update a bunch of accessible role mappings to fix tests and improve win
+        accessibility.
+
+        * AccessibleBase.cpp:
+        (MSAARole):
+
+2012-09-07  Allan Sandfeld Jensen  <allan.jensen@nokia.com>
+
+        Simplify hitTestResultAtPoint and nodesFromRect APIs
+        https://bugs.webkit.org/show_bug.cgi?id=95720
+
+        Reviewed by Antonio Gomes.
+
+        Update calls to new API.
+
+        * WebActionPropertyBag.cpp:
+        (WebActionPropertyBag::Read):
+        * WebView.cpp:
+        (WebView::handleContextMenuEvent):
+        (WebView::elementAtPoint):
+
+2012-09-05  Sam Weinig  <sam@webkit.org>
+
+        Part 2 of removing PlatformString.h, remove PlatformString.h
+        https://bugs.webkit.org/show_bug.cgi?id=95931
+
+        Reviewed by Adam Barth.
+
+        Remove PlatformString.h
+
+        * DOMCSSClasses.cpp:
+        * DefaultPolicyDelegate.cpp:
+        * MarshallingHelpers.cpp:
+        * WebCoreSupport/WebInspectorClient.h:
+        * WebDownload.h:
+        * WebFrame.h:
+        * WebHistoryItem.h:
+        * WebIconDatabase.cpp:
+        * WebKitDLL.h:
+        * WebKitGraphics.cpp:
+        * WebKitSystemBits.cpp:
+        * WebLocalizableStrings.cpp:
+        * WebNotificationCenter.cpp:
+        * WebResource.h:
+
+2012-09-06  Patrick Gansterer  <paroga@webkit.org>
+
+        Remove String::operator+=() from windows platform code
+        https://bugs.webkit.org/show_bug.cgi?id=95904
+
+        Reviewed by Benjamin Poulain.
+
+        Use StringBuilder and operator+() to concatenate strings instead of operator+=().
+
+        * AccessibleBase.cpp:
+        (AccessibleBase::get_accKeyboardShortcut):
+        * WebDownload.cpp:
+        (WebDownload::bundlePathForTargetPath):
+        * WebView.cpp:
+        (imeCompositionArgumentNames):
+
+2012-09-05  Kaustubh Atrawalkar  <kaustubh@motorola.com>
+
+        [DRT] LTC:: Move printing related APIs from LayoutTestController to Internals
+        https://bugs.webkit.org/show_bug.cgi?id=92735
+
+        Reviewed by Hajime Morita.
+
+        Move numberOfPages, pageProperty & pageSizeAndMarginsInPixels in Internals and remove duplicated code from DumprenderTree & WebkitTestRunner.
+        Kept the function defination and declaration to keep binary compatibility for IWebFramePrivate.idl
+
+        * WebFrame.cpp:
+        (WebFrame::numberOfPages):
+
 2012-08-30  Benjamin Poulain  <bpoulain@apple.com>
 
         Replace JSC::UString by WTF::String

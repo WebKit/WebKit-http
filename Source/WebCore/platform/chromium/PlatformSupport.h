@@ -51,7 +51,6 @@ typedef NPP_t* NPP;
 
 #if OS(DARWIN)
 typedef struct CGFont* CGFontRef;
-typedef uintptr_t ATSFontContainerRef;
 #ifdef __OBJC__
 @class NSFont;
 #else
@@ -74,8 +73,6 @@ class GeolocationServiceChromium;
 class GraphicsContext;
 class Image;
 class IDBFactoryBackendInterface;
-class IDBKey;
-class IDBKeyPath;
 class IntRect;
 class KURL;
 class SerializedScriptValue;
@@ -105,7 +102,6 @@ public:
 #if OS(DARWIN)
     static bool loadFont(NSFont* srcFont, CGFontRef*, uint32_t* fontID);
 #elif OS(UNIX)
-    static void getRenderStyleForStrike(const char* family, int sizeAndStyle, FontRenderStyle* result);
     struct FontFamily {
         String name;
         bool isBold;
@@ -114,19 +110,11 @@ public:
     static void getFontFamilyForCharacters(const UChar*, size_t numCharacters, const char* preferredLocale, FontFamily*);
 #endif
 
-    // Forms --------------------------------------------------------------
-    static void notifyFormStateChanged(const Document*);
-
     // IndexedDB ----------------------------------------------------------
     static PassRefPtr<IDBFactoryBackendInterface> idbFactory();
-    // Extracts keyPath from values and returns the corresponding keys.
-    static void createIDBKeysFromSerializedValuesAndKeyPath(const Vector<RefPtr<SerializedScriptValue> >& values, const IDBKeyPath&, Vector<RefPtr<IDBKey> >& keys);
-    // Injects key via keyPath into value. Returns true on success.
-    static PassRefPtr<SerializedScriptValue> injectIDBKeyIntoSerializedValue(PassRefPtr<IDBKey>, PassRefPtr<SerializedScriptValue>, const IDBKeyPath&);
 
     // JavaScript ---------------------------------------------------------
     static void notifyJSOutOfMemory(Frame*);
-    static bool allowScriptDespiteSettings(const KURL& documentURL);
 
     // Plugin -------------------------------------------------------------
     static bool plugins(bool refresh, Vector<PluginInfo>*);
@@ -142,10 +130,6 @@ public:
     static IntRect screenRect(Widget*);
     static IntRect screenAvailableRect(Widget*);
 
-    // Returns private and shared usage, in bytes. Private bytes is the amount of
-    // memory currently allocated to this process that cannot be shared. Returns
-    // false on platform specific error conditions.
-    static bool getProcessMemorySize(size_t* privateBytes, size_t* sharedBytes);
     // Theming ------------------------------------------------------------
 #if OS(WINDOWS)
     static void paintButton(

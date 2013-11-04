@@ -31,6 +31,8 @@
     <file>CPUProfileView.js</file>
     <file>CSSCompletions.js</file>
     <file>CSSKeywordCompletions.js</file>
+    <file>CSSNamedFlowCollectionsView.js</file>
+    <file>CSSNamedFlowView.js</file>
     <file>CSSSelectorProfileView.js</file>
     <file>CSSStyleModel.js</file>
     <file>cm/codemirror.css</file>
@@ -94,7 +96,6 @@
     <file>InspectorFrontendAPI.js</file>
     <file>InspectorFrontendHostStub.js</file>
     <file>InspectorView.js</file>
-    <file>JavaScriptContextManager.js</file>
     <file>JavaScriptFormatter.js</file>
     <file>JavaScriptSource.js</file>
     <file>JavaScriptSourceFrame.js</file>
@@ -109,6 +110,7 @@
     <file>NavigatorView.js</file>
     <file>NetworkItemView.js</file>
     <file>NetworkLog.js</file>
+    <file>NetworkUISourceCodeProvider.js</file>
     <file>NetworkManager.js</file>
     <file>NetworkPanel.js</file>
     <file>NetworkPanelDescriptor.js</file>
@@ -128,7 +130,6 @@
     <file>ProgressBar.js</file>
     <file>PropertiesSection.js</file>
     <file>PropertiesSidebarPane.js</file>
-    <file>RawSourceCode.js</file>
     <file>RemoteObject.js</file>
     <file>Resource.js</file>
     <file>RequestCookiesView.js</file>
@@ -147,6 +148,7 @@
     <file>ResourceWebSocketFrameView.js</file>
     <file>ResourcesPanel.js</file>
     <file>RevisionHistoryView.js</file>
+    <file>RuntimeModel.js</file>
     <file>SASSSourceMapping.js</file>
     <file>ScopeChainSidebarPane.js</file>
     <file>Script.js</file>
@@ -181,7 +183,6 @@
     <file>StyleSheetOutlineDialog.js</file>
     <file>StyleSource.js</file>
     <file>StylesSourceMapping.js</file>
-    <file>StylesUISourceCodeProvider.js</file>
     <file>StylesSidebarPane.js</file>
     <file>TabbedEditorContainer.js</file>
     <file>TabbedPane.js</file>
@@ -216,6 +217,7 @@
     <file>UglifyJS/parse-js.js</file>
     <file>auditsPanel.css</file>
     <file>breadcrumbList.css</file>
+    <file>cssNamedFlows.css</file>
     <file>dataGrid.css</file>
     <file>cmdevtools.css</file>
     <file>dialog.css</file>
@@ -289,6 +291,7 @@
     <file>Images/indexedDBIndex.png</file>
     <file>Images/localStorage.png</file>
     <file>Images/navigatorShowHideButton.png</file>
+    <file>Images/namedFlowOverflow.png</file>
     <file>Images/paneAddButtons.png</file>
     <file>Images/paneBottomGrow.png</file>
     <file>Images/paneBottomGrowActive.png</file>
@@ -305,6 +308,9 @@
     <file>Images/profilesSilhouette.png</file>
     <file>Images/programCounterBorder.png</file>
     <file>Images/radioDot.png</file>
+    <file>Images/regionEmpty.png</file>
+    <file>Images/regionFit.png</file>
+    <file>Images/regionOverset.png</file>
     <file>Images/resourceCSSIcon.png</file>
     <file>Images/resourceDocumentIcon.png</file>
     <file>Images/resourceDocumentIconSmall.png</file>

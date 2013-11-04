@@ -357,11 +357,13 @@ v8::Handle<v8::Value> V8DOMWindow::postMessageCallback(const v8::Arguments& args
     return handlePostMessageCallback(args);
 }
 
+#if ENABLE(LEGACY_VENDOR_PREFIXES)
 v8::Handle<v8::Value> V8DOMWindow::webkitPostMessageCallback(const v8::Arguments& args)
 {
     INC_STATS("DOM.DOMWindow.webkitPostMessage()");
     return handlePostMessageCallback(args);
 }
+#endif
 
 // FIXME(fqian): returning string is cheating, and we should
 // fix this by calling toString function on the receiver.
@@ -465,7 +467,7 @@ v8::Handle<v8::Value> V8DOMWindow::openCallback(const v8::Arguments& args)
     if (!openedWindow)
         return v8::Undefined();
 
-    return toV8(openedWindow.release(), args.GetIsolate());
+    return toV8(openedWindow.release(), args.Holder(), args.GetIsolate());
 }
 
 v8::Handle<v8::Value> V8DOMWindow::indexedPropertyGetter(uint32_t index, const v8::AccessorInfo& info)
@@ -482,11 +484,10 @@ v8::Handle<v8::Value> V8DOMWindow::indexedPropertyGetter(uint32_t index, const v
 
     Frame* child = frame->tree()->scopedChild(index);
     if (child)
-        return toV8(child->document()->domWindow(), info.GetIsolate());
+        return toV8(child->document()->domWindow(), info.Holder(), info.GetIsolate());
 
     return v8Undefined();
 }
-
 
 v8::Handle<v8::Value> V8DOMWindow::namedPropertyGetter(v8::Local<v8::String> name, const v8::AccessorInfo& info)
 {
@@ -505,7 +506,7 @@ v8::Handle<v8::Value> V8DOMWindow::namedPropertyGetter(v8::Local<v8::String> nam
     AtomicString propName = toWebCoreAtomicString(name);
     Frame* child = frame->tree()->scopedChild(propName);
     if (child)
-        return toV8(child->document()->domWindow(), info.GetIsolate());
+        return toV8(child->document()->domWindow(), info.Holder(), info.GetIsolate());
 
     // Search IDL functions defined in the prototype
     if (!info.Holder()->GetRealNamedProperty(name).IsEmpty())
@@ -519,8 +520,8 @@ v8::Handle<v8::Value> V8DOMWindow::namedPropertyGetter(v8::Local<v8::String> nam
             RefPtr<HTMLCollection> items = doc->windowNamedItems(propName);
             if (!items->isEmpty()) {
                 if (items->hasExactlyOneItem())
-                    return toV8(items->item(0), info.GetIsolate());
-                return toV8(items.release(), info.GetIsolate());
+                    return toV8(items->item(0), info.Holder(), info.GetIsolate());
+                return toV8(items.release(), info.Holder(), info.GetIsolate());
             }
         }
     }
@@ -600,8 +601,10 @@ bool V8DOMWindow::indexedSecurityCheck(v8::Local<v8::Object> host, uint32_t inde
     return BindingSecurity::shouldAllowAccessToFrame(BindingState::instance(), target, DoNotReportSecurityError);
 }
 
-v8::Handle<v8::Value> toV8(DOMWindow* window, v8::Isolate* isolate)
+v8::Handle<v8::Value> toV8(DOMWindow* window, v8::Handle<v8::Object> creationContext, v8::Isolate* isolate)
 {
+    // Notice that we explicitly ignore creationContext because the DOMWindow is its own creationContext.
+
     if (!window)
         return v8NullWithCheck(isolate);
     // Initializes environment of a frame, and return the global object

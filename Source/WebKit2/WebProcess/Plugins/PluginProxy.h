@@ -32,6 +32,7 @@
 #include "Plugin.h"
 #include <WebCore/AffineTransform.h>
 #include <WebCore/IntRect.h>
+#include <WebCore/SecurityOrigin.h>
 
 #if PLATFORM(MAC)
 #include <wtf/RetainPtr.h>
@@ -71,7 +72,6 @@ private:
     virtual bool initialize(const Parameters&);
     bool initializeSynchronously();
 
-    virtual void waitForAsynchronousInitialization();
     virtual void destroy();
     virtual void paint(WebCore::GraphicsContext*, const WebCore::IntRect& dirtyRect);
     virtual PassRefPtr<ShareableBitmap> snapshot();
@@ -112,6 +112,7 @@ private:
 #endif
 
     virtual void contentsScaleFactorChanged(float);
+    virtual void storageBlockingStateChanged(bool);
     virtual void privateBrowsingStateChanged(bool);
     virtual bool getFormValue(String& formValue);
     virtual bool handleScroll(WebCore::ScrollDirection, WebCore::ScrollGranularity);

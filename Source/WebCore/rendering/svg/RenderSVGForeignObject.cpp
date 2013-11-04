@@ -105,14 +105,14 @@ const AffineTransform& RenderSVGForeignObject::localToParentTransform() const
     return m_localToParentTransform;
 }
 
-void RenderSVGForeignObject::computeLogicalWidth()
+void RenderSVGForeignObject::updateLogicalWidth()
 {
     // FIXME: Investigate in size rounding issues
     // FIXME: Remove unnecessary rounding when layout is off ints: webkit.org/b/63656
     setWidth(static_cast<int>(roundf(m_viewport.width())));
 }
 
-void RenderSVGForeignObject::computeLogicalHeight()
+void RenderSVGForeignObject::updateLogicalHeight()
 {
     // FIXME: Investigate in size rounding issues
     // FIXME: Remove unnecessary rounding when layout is off ints: webkit.org/b/63656

@@ -46,7 +46,7 @@ extern WTFLogChannel LogView;
 
 void initializeLogChannel(WTFLogChannel*);
 void initializeLogChannelsIfNecessary(void);
-#if PLATFORM(GTK) || PLATFORM(QT)
+#if PLATFORM(GTK) || PLATFORM(QT) || PLATFORM(EFL)
 WTFLogChannel* getChannelFromName(const String& channelName);
 #endif
 

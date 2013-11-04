@@ -19,6 +19,8 @@
  * Boston, MA 02110-1301, USA.
  */
 
+#define WTF_DEPRECATED_STRING_OPERATORS
+
 #include "config.h"
 #include "StylePropertySet.h"
 
@@ -59,6 +61,13 @@ PassRefPtr<StylePropertySet> StylePropertySet::createImmutable(const CSSProperty
 {
     void* slot = WTF::fastMalloc(immutableStylePropertySetSize(count));
     return adoptRef(new (slot) StylePropertySet(properties, count, cssParserMode, /* makeMutable */ false));
+}
+
+PassRefPtr<StylePropertySet> StylePropertySet::immutableCopyIfNeeded() const
+{
+    if (!isMutable())
+        return const_cast<StylePropertySet*>(this);
+    return createImmutable(m_mutablePropertyVector->data(), m_mutablePropertyVector->size(), cssParserMode());
 }
 
 StylePropertySet::StylePropertySet(CSSParserMode cssParserMode)
@@ -291,20 +300,26 @@ String StylePropertySet::get4Values(const StylePropertyShorthand& shorthand) con
     bool showBottom = (top->value()->cssText() != bottom->value()->cssText()) || showLeft;
     bool showRight = (top->value()->cssText() != right->value()->cssText()) || showBottom;
 
-    String res = top->value()->cssText();
-    if (showRight)
-        res += " " + right->value()->cssText();
-    if (showBottom)
-        res += " " + bottom->value()->cssText();
-    if (showLeft)
-        res += " " + left->value()->cssText();
-
-    return res;
+    StringBuilder result;
+    result.append(top->value()->cssText());
+    if (showRight) {
+        result.append(' ');
+        result.append(right->value()->cssText());
+    }
+    if (showBottom) {
+        result.append(' ');
+        result.append(bottom->value()->cssText());
+    }
+    if (showLeft) {
+        result.append(' ');
+        result.append(left->value()->cssText());
+    }
+    return result.toString();
 }
 
 String StylePropertySet::getLayeredShorthandValue(const StylePropertyShorthand& shorthand) const
 {
-    String res;
+    StringBuilder result;
 
     const unsigned size = shorthand.length();
     // Begin by collecting the properties into an array.
@@ -325,7 +340,7 @@ String StylePropertySet::getLayeredShorthandValue(const StylePropertyShorthand& 
     // Now stitch the properties together.  Implicit initial values are flagged as such and
     // can safely be omitted.
     for (size_t i = 0; i < numLayers; i++) {
-        String layerRes;
+        StringBuilder layerResult;
         bool useRepeatXShorthand = false;
         bool useRepeatYShorthand = false;
         bool useSingleWordShorthand = false;
@@ -379,42 +394,44 @@ String StylePropertySet::getLayeredShorthandValue(const StylePropertyShorthand& 
             }
 
             if (value && !value->isImplicitInitialValue()) {
-                if (!layerRes.isNull())
-                    layerRes += " ";
+                if (!layerResult.isEmpty())
+                    layerResult.append(' ');
                 if (foundBackgroundPositionYCSSProperty && shorthand.properties()[j] == CSSPropertyBackgroundSize) 
-                    layerRes += "/ ";
+                    layerResult.appendLiteral("/ ");
                 if (!foundBackgroundPositionYCSSProperty && shorthand.properties()[j] == CSSPropertyBackgroundSize) 
                     continue;
 
                 if (useRepeatXShorthand) {
                     useRepeatXShorthand = false;
-                    layerRes += getValueName(CSSValueRepeatX);
+                    layerResult.append(getValueName(CSSValueRepeatX));
                 } else if (useRepeatYShorthand) {
                     useRepeatYShorthand = false;
-                    layerRes += getValueName(CSSValueRepeatY);
+                    layerResult.append(getValueName(CSSValueRepeatY));
                 } else if (useSingleWordShorthand) {
                     useSingleWordShorthand = false;
-                    layerRes += value->cssText();
+                    layerResult.append(value->cssText());
                 } else
-                    layerRes += value->cssText();
+                    layerResult.append(value->cssText());
 
                 if (shorthand.properties()[j] == CSSPropertyBackgroundPositionY)
                     foundBackgroundPositionYCSSProperty = true;
             }
         }
 
-        if (!layerRes.isNull()) {
-            if (!res.isNull())
-                res += ", ";
-            res += layerRes;
+        if (!layerResult.isEmpty()) {
+            if (!result.isEmpty())
+                result.appendLiteral(", ");
+            result.append(layerResult);
         }
     }
-    return res;
+    if (result.isEmpty())
+        return String();
+    return result.toString();
 }
 
 String StylePropertySet::getShorthandValue(const StylePropertyShorthand& shorthand) const
 {
-    String res;
+    StringBuilder result;
     for (unsigned i = 0; i < shorthand.length(); ++i) {
         if (!isPropertyImplicit(shorthand.properties()[i])) {
             RefPtr<CSSValue> value = getPropertyCSSValue(shorthand.properties()[i]);
@@ -422,12 +439,14 @@ String StylePropertySet::getShorthandValue(const StylePropertyShorthand& shortha
                 return String();
             if (value->isInitialValue())
                 continue;
-            if (!res.isNull())
-                res += " ";
-            res += value->cssText();
+            if (!result.isEmpty())
+                result.append(' ');
+            result.append(value->cssText());
         }
     }
-    return res;
+    if (result.isEmpty())
+        return String();
+    return result.toString();
 }
 
 // only returns a non-null value if all properties have the same, non-null value
@@ -1102,13 +1121,13 @@ unsigned StylePropertySet::averageSizeInBytes()
 void StylePropertySet::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
 {
     size_t actualSize = m_isMutable ? sizeof(StylePropertySet) : immutableStylePropertySetSize(m_arraySize);
-    MemoryClassInfo info(memoryObjectInfo, this, MemoryInstrumentation::CSS, actualSize);
+    MemoryClassInfo info(memoryObjectInfo, this, WebCoreMemoryTypes::CSS, actualSize);
     if (m_isMutable)
         info.addVectorPtr(m_mutablePropertyVector);
 
     unsigned count = propertyCount();
     for (unsigned i = 0; i < count; ++i)
-        info.addInstrumentedMember(propertyAt(i));
+        info.addMember(propertyAt(i));
 }
 
 // See the function above if you need to update this.

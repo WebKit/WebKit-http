@@ -76,7 +76,7 @@ private:
 protected:
     JSTestObj(JSC::Structure*, JSDOMGlobalObject*, PassRefPtr<TestObj>);
     void finishCreation(JSC::JSGlobalData&);
-    static const unsigned StructureFlags = JSC::OverridesGetOwnPropertySlot | JSC::OverridesVisitChildren | Base::StructureFlags;
+    static const unsigned StructureFlags = JSC::OverridesGetOwnPropertySlot | JSC::InterceptsGetOwnPropertySlotByIndexEvenWhenLengthIsNotZero | JSC::OverridesVisitChildren | Base::StructureFlags;
 };
 
 class JSTestObjOwner : public JSC::WeakHandleOwner {
@@ -314,6 +314,8 @@ void setJSTestObjConditionalAttr6Constructor(JSC::ExecState*, JSC::JSObject*, JS
 #endif
 JSC::JSValue jsTestObjCachedAttribute1(JSC::ExecState*, JSC::JSValue, JSC::PropertyName);
 JSC::JSValue jsTestObjCachedAttribute2(JSC::ExecState*, JSC::JSValue, JSC::PropertyName);
+JSC::JSValue jsTestObjAnyAttribute(JSC::ExecState*, JSC::JSValue, JSC::PropertyName);
+void setJSTestObjAnyAttribute(JSC::ExecState*, JSC::JSObject*, JSC::JSValue);
 JSC::JSValue jsTestObjContentDocument(JSC::ExecState*, JSC::JSValue, JSC::PropertyName);
 JSC::JSValue jsTestObjMutablePoint(JSC::ExecState*, JSC::JSValue, JSC::PropertyName);
 void setJSTestObjMutablePoint(JSC::ExecState*, JSC::JSObject*, JSC::JSValue);

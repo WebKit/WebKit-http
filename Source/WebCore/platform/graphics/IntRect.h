@@ -82,6 +82,7 @@ class FloatRect;
 class FractionalLayoutRect;
 
 class IntRect {
+    WTF_MAKE_FAST_ALLOCATED;
 public:
     IntRect() { }
     IntRect(const IntPoint& location, const IntSize& size)
@@ -236,8 +237,9 @@ public:
     operator SkIRect() const;
 #endif
 
-#if (PLATFORM(MAC) && !defined(NSGEOMETRY_TYPES_SAME_AS_CGGEOMETRY_TYPES)) \
-        || (PLATFORM(CHROMIUM) && OS(DARWIN))  || (PLATFORM(QT) && USE(QTKIT))
+#if (PLATFORM(MAC) || (PLATFORM(CHROMIUM) && OS(DARWIN))) \
+        && !defined(NSGEOMETRY_TYPES_SAME_AS_CGGEOMETRY_TYPES) \
+        || (PLATFORM(QT) && USE(QTKIT))
     operator NSRect() const;
 #endif
 

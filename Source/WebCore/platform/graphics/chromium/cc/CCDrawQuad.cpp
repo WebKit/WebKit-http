@@ -97,6 +97,21 @@ unsigned CCDrawQuad::size() const
     return sizeof(CCDrawQuad);
 }
 
+PassOwnPtr<CCDrawQuad> CCDrawQuad::copy(const CCSharedQuadState* copiedSharedQuadState) const
+{
+    // RenderPass quads have their own copy() method.
+    ASSERT(material() != RenderPass);
+
+    unsigned bytes = size();
+    ASSERT(bytes);
+
+    OwnPtr<CCDrawQuad> copyQuad(adoptPtr(reinterpret_cast<CCDrawQuad*>(new char[bytes])));
+    memcpy(copyQuad.get(), this, bytes);
+    copyQuad->setSharedQuadState(copiedSharedQuadState);
+
+    return copyQuad.release();
+}
+
 void CCDrawQuad::setSharedQuadState(const CCSharedQuadState* sharedQuadState)
 {
     m_sharedQuadState = sharedQuadState;

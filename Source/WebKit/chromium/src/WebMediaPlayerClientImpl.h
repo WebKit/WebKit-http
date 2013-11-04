@@ -163,6 +163,7 @@ public:
     virtual WTF::PassRefPtr<WebCore::TimeRanges> sourceBuffered(const String&);
     virtual bool sourceAppend(const String&, const unsigned char* data, unsigned length);
     virtual bool sourceAbort(const String&);
+    virtual void sourceSetDuration(double);
     virtual void sourceEndOfStream(WebCore::MediaPlayer::EndOfStreamStatus);
     virtual bool sourceSetTimestampOffset(const String&, double offset);
 #endif
@@ -196,7 +197,7 @@ private:
     bool acceleratedRenderingInUse();
 #endif
 
-    Mutex m_compositingMutex; // Guards m_currentVideoFrame and m_videoFrameProviderClient.
+    Mutex m_webMediaPlayerMutex; // Guards the m_webMediaPlayer
     WebCore::MediaPlayer* m_mediaPlayer;
     OwnPtr<WebMediaPlayer> m_webMediaPlayer;
     WebVideoFrame* m_currentVideoFrame;

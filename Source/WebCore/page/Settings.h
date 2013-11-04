@@ -30,6 +30,7 @@
 #include "EditingBehaviorTypes.h"
 #include "FontRenderingMode.h"
 #include "KURL.h"
+#include "SecurityOrigin.h"
 #include "Timer.h"
 #include <wtf/HashMap.h>
 #include <wtf/text/AtomicString.h>
@@ -336,6 +337,14 @@ namespace WebCore {
         void setCSSCustomFilterEnabled(bool enabled) { m_isCSSCustomFilterEnabled = enabled; }
         bool isCSSCustomFilterEnabled() const { return m_isCSSCustomFilterEnabled; }
 
+#if ENABLE(CSS_STICKY_POSITION)
+        void setCSSStickyPositionEnabled(bool enabled) { m_cssStickyPositionEnabled = enabled; }
+        bool cssStickyPositionEnabled() const { return m_cssStickyPositionEnabled; }
+#else
+        void setCSSStickyPositionEnabled(bool) { }
+        bool cssStickyPositionEnabled() const { return false; }
+#endif
+
 #if ENABLE(CSS_REGIONS)
         void setCSSRegionsEnabled(bool enabled) { m_cssRegionsEnabled = enabled; }
         bool cssRegionsEnabled() const { return m_cssRegionsEnabled; }
@@ -381,6 +390,9 @@ namespace WebCore {
 
         void setAcceleratedCompositingForScrollableFramesEnabled(bool enabled) { m_acceleratedCompositingForScrollableFramesEnabled = enabled; }
         bool acceleratedCompositingForScrollableFramesEnabled() const { return m_acceleratedCompositingForScrollableFramesEnabled; }
+
+        void setAcceleratedCompositingForOverflowScrollEnabled(bool enabled) { m_acceleratedCompositingForOverflowScrollEnabled = enabled; }
+        bool acceleratedCompositingForOverflowScrollEnabled() const { return m_acceleratedCompositingForOverflowScrollEnabled; };
 
         void setShowDebugBorders(bool);
         bool showDebugBorders() const { return m_showDebugBorders; }
@@ -459,10 +471,7 @@ namespace WebCore {
         void setQuantizedMemoryInfoEnabled(bool flag) { m_quantizedMemoryInfoEnabled = flag; }
         bool quantizedMemoryInfoEnabled() const { return m_quantizedMemoryInfoEnabled; }
 
-        // This setting will be removed when an HTML5 compatibility issue is
-        // resolved and WebKit implementation of interactive validation is
-        // completed. See http://webkit.org/b/40520, http://webkit.org/b/40747,
-        // and http://webkit.org/b/40908
+        // This feature requires an implementation of ValidationMessageClient.
         void setInteractiveFormValidationEnabled(bool flag) { m_interactiveFormValidation = flag; }
         bool interactiveFormValidationEnabled() const { return m_interactiveFormValidation; }
 
@@ -601,8 +610,8 @@ namespace WebCore {
         void setWindowFocusRestricted(bool restricted) { m_windowFocusRestricted = restricted; }
         bool windowFocusRestricted() const { return m_windowFocusRestricted; }
 
-        void setThirdPartyStorageBlockingEnabled(bool enabled) { m_thirdPartyStorageBlockingEnabled = enabled; }
-        bool thirdPartyStorageBlockingEnabled() const { return m_thirdPartyStorageBlockingEnabled; }
+        void setStorageBlockingPolicy(SecurityOrigin::StorageBlockingPolicy);
+        SecurityOrigin::StorageBlockingPolicy storageBlockingPolicy() const { return m_storageBlockingPolicy; }
 
         void setScrollingPerformanceLoggingEnabled(bool);
         bool scrollingPerformanceLoggingEnabled() { return m_scrollingPerformanceLoggingEnabled; }
@@ -652,6 +661,7 @@ namespace WebCore {
         unsigned m_sessionStorageQuota;
         unsigned m_editingBehaviorType;
         unsigned m_maximumHTMLParserDOMTreeDepth;
+        SecurityOrigin::StorageBlockingPolicy m_storageBlockingPolicy;
 #if ENABLE(TEXT_AUTOSIZING)
         float m_textAutosizingFontScaleFactor;
         IntSize m_textAutosizingWindowSizeOverride;
@@ -709,6 +719,9 @@ namespace WebCore {
         bool m_acceleratedDrawingEnabled : 1;
         bool m_acceleratedFiltersEnabled : 1;
         bool m_isCSSCustomFilterEnabled : 1;
+#if ENABLE(CSS_STICKY_POSITION)
+        bool m_cssStickyPositionEnabled : 1;
+#endif        
 #if ENABLE(CSS_REGIONS)
         bool m_cssRegionsEnabled : 1;
 #endif
@@ -720,6 +733,7 @@ namespace WebCore {
         bool m_downloadableBinaryFontsEnabled : 1;
         bool m_xssAuditorEnabled : 1;
         bool m_acceleratedCompositingEnabled : 1;
+        bool m_acceleratedCompositingForOverflowScrollEnabled : 1;
         bool m_acceleratedCompositingFor3DTransformsEnabled : 1;
         bool m_acceleratedCompositingForVideoEnabled : 1;
         bool m_acceleratedCompositingForPluginsEnabled : 1;
@@ -795,12 +809,10 @@ namespace WebCore {
 
         bool m_diagnosticLoggingEnabled : 1;
 
-        bool m_thirdPartyStorageBlockingEnabled : 1;
-
         bool m_scrollingPerformanceLoggingEnabled : 1;
 
-        Timer<Settings> m_loadsImagesAutomaticallyTimer;
-        void loadsImagesAutomaticallyTimerFired(Timer<Settings>*);
+        Timer<Settings> m_setImageLoadingSettingsTimer;
+        void imageLoadingSettingsTimerFired(Timer<Settings>*);
         
         double m_incrementalRenderingSuppressionTimeoutInSeconds;
 

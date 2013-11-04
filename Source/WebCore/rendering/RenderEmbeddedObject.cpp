@@ -230,8 +230,8 @@ void RenderEmbeddedObject::layout()
 {
     ASSERT(needsLayout());
 
-    computeLogicalWidth();
-    computeLogicalHeight();
+    updateLogicalWidth();
+    updateLogicalHeight();
 
     RenderPart::layout();
 

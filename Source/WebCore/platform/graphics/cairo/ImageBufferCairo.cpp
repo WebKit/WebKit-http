@@ -38,17 +38,17 @@
 #include "NotImplemented.h"
 #include "Pattern.h"
 #include "PlatformContextCairo.h"
-#include "PlatformString.h"
 #include "RefPtrCairo.h"
 #include <cairo.h>
 #include <wtf/Vector.h>
 #include <wtf/text/Base64.h>
+#include <wtf/text/WTFString.h>
 
 using namespace std;
 
 namespace WebCore {
 
-ImageBufferData::ImageBufferData(const IntSize& size)
+ImageBufferData::ImageBufferData(const IntSize&)
     : m_surface(0)
     , m_platformContext(0)
 {

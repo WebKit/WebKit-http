@@ -71,11 +71,10 @@ TiledCoreAnimationDrawingArea::TiledCoreAnimationDrawingArea(WebPage* webPage, c
     , m_layerFlushScheduler(this)
     , m_isPaintingSuspended(!parameters.isVisible)
 {
-    Page* page = webPage->corePage();
+    Page* page = m_webPage->corePage();
 
-    // FIXME: It's weird that we're mucking around with the settings here.
-    page->settings()->setForceCompositingMode(true);
     page->settings()->setScrollingCoordinatorEnabled(true);
+    page->settings()->setForceCompositingMode(true);
 
     WebProcess::shared().eventDispatcher().addScrollingTreeForPage(webPage);
 
@@ -92,8 +91,6 @@ TiledCoreAnimationDrawingArea::TiledCoreAnimationDrawingArea(WebPage* webPage, c
     LayerTreeContext layerTreeContext;
     layerTreeContext.contextID = m_layerHostingContext->contextID();
     m_webPage->send(Messages::DrawingAreaProxy::EnterAcceleratedCompositingMode(0, layerTreeContext));
-
-    updatePreferences();
 }
 
 TiledCoreAnimationDrawingArea::~TiledCoreAnimationDrawingArea()
@@ -206,8 +203,17 @@ void TiledCoreAnimationDrawingArea::setPageOverlayNeedsDisplay(const IntRect& re
     scheduleCompositingLayerSync();
 }
 
-void TiledCoreAnimationDrawingArea::updatePreferences()
+void TiledCoreAnimationDrawingArea::updatePreferences(const WebPreferencesStore&)
 {
+    bool scrollingPerformanceLoggingEnabled = m_webPage->scrollingPerformanceLoggingEnabled();
+    ScrollingThread::dispatch(bind(&ScrollingTree::setScrollingPerformanceLoggingEnabled, m_webPage->corePage()->scrollingCoordinator()->scrollingTree(), scrollingPerformanceLoggingEnabled));
+
+    // Soon we want pages with fixed positioned elements to be able to be scrolled by the ScrollingCoordinator.
+    // As a part of that work, we have to composite fixed position elements, and we have to allow those
+    // elements to create a stacking context.
+    m_webPage->corePage()->settings()->setAcceleratedCompositingForFixedPositionEnabled(true);
+    m_webPage->corePage()->settings()->setFixedPositionCreatesStackingContext(true);
+
     bool showDebugBorders = m_webPage->corePage()->settings()->showDebugBorders();
 
     if (showDebugBorders == !!m_debugInfoLayer)
@@ -221,10 +227,7 @@ void TiledCoreAnimationDrawingArea::updatePreferences()
         m_debugInfoLayer = nullptr;
     }
 
-    bool scrollingPerformanceLoggingEnabled = m_webPage->scrollingPerformanceLoggingEnabled();
-
     ScrollingThread::dispatch(bind(&ScrollingTree::setDebugRootLayer, m_webPage->corePage()->scrollingCoordinator()->scrollingTree(), m_debugInfoLayer));
-    ScrollingThread::dispatch(bind(&ScrollingTree::setScrollingPerformanceLoggingEnabled, m_webPage->corePage()->scrollingCoordinator()->scrollingTree(), scrollingPerformanceLoggingEnabled));
 }
 
 void TiledCoreAnimationDrawingArea::dispatchAfterEnsuringUpdatedScrollPosition(const Function<void ()>& functionRef)

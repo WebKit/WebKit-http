@@ -31,10 +31,10 @@
 #include "Document.h"
 #include "Event.h"
 #include "EventNames.h"
-#include "MemoryInstrumentation.h"
 #include "RuntimeApplicationChecks.h"
 #include "ScriptExecutionContext.h"
 #include "SuspendableTimer.h"
+#include "WebCoreMemoryInstrumentation.h"
 
 namespace WebCore {
     
@@ -110,7 +110,7 @@ void DocumentEventQueue::enqueueOrDispatchScrollEvent(PassRefPtr<Node> target, S
 
 void DocumentEventQueue::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
 {
-    MemoryClassInfo info(memoryObjectInfo, this, MemoryInstrumentation::DOM);
+    MemoryClassInfo info(memoryObjectInfo, this, WebCoreMemoryTypes::DOM);
     info.addMember(m_pendingEventTimer);
     info.addInstrumentedHashSet(m_queuedEvents);
     info.addInstrumentedHashSet(m_nodesWithQueuedScrollEvents);

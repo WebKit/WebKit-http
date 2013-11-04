@@ -55,10 +55,10 @@
 
 namespace WTR {
 
-// defaultLongTimeout + defaultShortTimeout should be less than 50,
+// defaultLongTimeout + defaultShortTimeout should be less than 80,
 // the default timeout value of the test harness so we can detect an
 // unresponsive web process.
-static const double defaultLongTimeout = 30;
+static const double defaultLongTimeout = 60;
 static const double defaultShortTimeout = 15;
 static const double defaultNoTimeout = -1;
 
@@ -223,6 +223,8 @@ WKPageRef TestController::createOtherPage(WKPageRef oldPage, WKURLRequestRef, WK
         0, // mouseDidMoveOverElement
         0, // decidePolicyForNotificationPermissionRequest
         0, // unavailablePluginButtonClicked
+        0, // showColorPicker
+        0, // hideColorPicker
     };
     WKPageSetPageUIClient(newPage, &otherPageUIClient);
 
@@ -391,6 +393,8 @@ void TestController::initialize(int argc, const char* argv[])
         0, // mouseDidMoveOverElement
         decidePolicyForNotificationPermissionRequest, // decidePolicyForNotificationPermissionRequest
         0, // unavailablePluginButtonClicked
+        0, // showColorPicker
+        0, // hideColorPicker
     };
     WKPageSetPageUIClient(m_mainWebView->page(), &pageUIClient);
 
@@ -475,6 +479,8 @@ bool TestController::resetStateToConsistentValues()
     WKPreferencesSetAsynchronousPluginInitializationEnabled(preferences, false);
     WKPreferencesSetAsynchronousPluginInitializationEnabledForAllPlugins(preferences, false);
     WKPreferencesSetArtificialPluginInitializationDelayEnabled(preferences, false);
+    WKPreferencesSetTabToLinksEnabled(preferences, false);
+    WKPreferencesSetInteractiveFormValidationEnabled(preferences, true);
 
 // [Qt][WK2]REGRESSION(r104881):It broke hundreds of tests
 // FIXME: https://bugs.webkit.org/show_bug.cgi?id=76247

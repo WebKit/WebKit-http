@@ -92,9 +92,11 @@ WebMediaPlayer* WebMediaPlayerClientImpl::mediaPlayer() const
 WebMediaPlayerClientImpl::~WebMediaPlayerClientImpl()
 {
 #if USE(ACCELERATED_COMPOSITING)
-    MutexLocker locker(m_compositingMutex);
     if (m_videoFrameProviderClient)
         m_videoFrameProviderClient->stopUsingProvider();
+    // No need for a lock here, as getCurrentFrame/putCurrentFrame can't be
+    // called now that the client is no longer using this provider. Also, load()
+    // and this destructor are called from the same thread.
     if (m_webMediaPlayer)
         m_webMediaPlayer->setStreamTextureClient(0);
 #endif
@@ -118,10 +120,7 @@ void WebMediaPlayerClientImpl::readyStateChanged()
     m_mediaPlayer->readyStateChanged();
 #if USE(ACCELERATED_COMPOSITING)
     if (hasVideo() && supportsAcceleratedRendering() && !m_videoLayer) {
-        if (WebCompositorSupport* compositorSupport = Platform::current()->compositorSupport())
-            m_videoLayer = adoptPtr(compositorSupport->createVideoLayer(this));
-        else
-            m_videoLayer = adoptPtr(WebVideoLayer::create(this));
+        m_videoLayer = adoptPtr(Platform::current()->compositorSupport()->createVideoLayer(this));
 
         m_videoLayer->layer()->setOpaque(m_opaque);
         GraphicsLayerChromium::registerContentsLayer(m_videoLayer->layer());
@@ -315,8 +314,8 @@ void WebMediaPlayerClientImpl::load(const String& url)
 {
     m_url = url;
 
+    MutexLocker locker(m_webMediaPlayerMutex);
     if (m_preload == MediaPlayer::None) {
-        MutexLocker locker(m_compositingMutex);
 #if ENABLE(WEB_AUDIO)
         m_audioSourceProvider.wrap(0); // Clear weak reference to m_webMediaPlayer's WebAudioSourceProvider.
 #endif
@@ -328,7 +327,6 @@ void WebMediaPlayerClientImpl::load(const String& url)
 
 void WebMediaPlayerClientImpl::loadInternal()
 {
-    MutexLocker locker(m_compositingMutex);
 #if ENABLE(WEB_AUDIO)
     m_audioSourceProvider.wrap(0); // Clear weak reference to m_webMediaPlayer's WebAudioSourceProvider.
 #endif
@@ -441,6 +439,12 @@ bool WebMediaPlayerClientImpl::sourceAbort(const String& id)
         return false;
 
     return m_webMediaPlayer->sourceAbort(id);
+}
+
+void WebMediaPlayerClientImpl::sourceSetDuration(double duration)
+{
+    if (m_webMediaPlayer)
+        m_webMediaPlayer->sourceSetDuration(duration);
 }
 
 void WebMediaPlayerClientImpl::sourceEndOfStream(WebCore::MediaPlayer::EndOfStreamStatus status)
@@ -763,7 +767,7 @@ bool WebMediaPlayerClientImpl::acceleratedRenderingInUse()
 
 void WebMediaPlayerClientImpl::setVideoFrameProviderClient(WebVideoFrameProvider::Client* client)
 {
-    MutexLocker locker(m_compositingMutex);
+    MutexLocker locker(m_webMediaPlayerMutex);
     if (m_videoFrameProviderClient)
         m_videoFrameProviderClient->stopUsingProvider();
     m_videoFrameProviderClient = client;
@@ -773,8 +777,10 @@ void WebMediaPlayerClientImpl::setVideoFrameProviderClient(WebVideoFrameProvider
 
 WebVideoFrame* WebMediaPlayerClientImpl::getCurrentFrame()
 {
-    MutexLocker locker(m_compositingMutex);
+    // This function is called only by the client.
+    MutexLocker locker(m_webMediaPlayerMutex);
     ASSERT(!m_currentVideoFrame);
+    ASSERT(m_videoFrameProviderClient);
     if (m_webMediaPlayer)
         m_currentVideoFrame = m_webMediaPlayer->getCurrentFrame();
     return m_currentVideoFrame;
@@ -782,8 +788,10 @@ WebVideoFrame* WebMediaPlayerClientImpl::getCurrentFrame()
 
 void WebMediaPlayerClientImpl::putCurrentFrame(WebVideoFrame* videoFrame)
 {
-    MutexLocker locker(m_compositingMutex);
+    // This function is called only by the client.
+    MutexLocker locker(m_webMediaPlayerMutex);
     ASSERT(videoFrame == m_currentVideoFrame);
+    ASSERT(m_videoFrameProviderClient);
     if (!videoFrame)
         return;
     if (m_webMediaPlayer)

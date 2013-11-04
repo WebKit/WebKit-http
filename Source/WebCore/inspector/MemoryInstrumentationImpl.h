@@ -31,41 +31,46 @@
 #ifndef MemoryInstrumentationImpl_h
 #define MemoryInstrumentationImpl_h
 
-#include "MemoryInstrumentation.h"
 
+#include <wtf/Forward.h>
+#include <wtf/HashMap.h>
 #include <wtf/HashSet.h>
+#include <wtf/MemoryInstrumentation.h>
 #include <wtf/Vector.h>
+
+using WTF::MemoryObjectType;
 
 namespace WebCore {
 
 typedef HashSet<const void*> VisitedObjects;
 
-class MemoryInstrumentationImpl : public MemoryInstrumentation {
+class MemoryInstrumentationImpl : public WTF::MemoryInstrumentation {
 public:
     explicit MemoryInstrumentationImpl(VisitedObjects&);
 
     size_t selfSize() const;
-    size_t totalSize(ObjectType objectType) const
+    size_t totalSize(MemoryObjectType objectType) const
     {
-        ASSERT(objectType >= 0 && objectType < LastTypeEntry);
-        return m_totalSizes[objectType];
+        TypeToSizeMap::const_iterator i = m_totalSizes.find(objectType);
+        return i == m_totalSizes.end() ? 0 : i->second;
     }
 
     size_t reportedSizeForAllTypes() const
     {
         size_t size = 0;
-        for (int i = 0; i < LastTypeEntry; ++i)
-            size += m_totalSizes[i];
+        for (TypeToSizeMap::const_iterator i = m_totalSizes.begin(); i != m_totalSizes.end(); ++i)
+            size += i->second;
         return size;
     }
 
 private:
-    virtual void countObjectSize(ObjectType, size_t) OVERRIDE;
+    virtual void countObjectSize(MemoryObjectType, size_t) OVERRIDE;
     virtual void deferInstrumentedPointer(PassOwnPtr<InstrumentedPointerBase>) OVERRIDE;
     virtual bool visited(const void*) OVERRIDE;
     virtual void processDeferredInstrumentedPointers() OVERRIDE;
 
-    size_t m_totalSizes[LastTypeEntry];
+    typedef HashMap<MemoryObjectType, size_t> TypeToSizeMap;
+    TypeToSizeMap m_totalSizes;
     VisitedObjects& m_visitedObjects;
     Vector<OwnPtr<InstrumentedPointerBase> > m_deferredInstrumentedPointers;
 };

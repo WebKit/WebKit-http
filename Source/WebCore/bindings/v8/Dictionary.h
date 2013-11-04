@@ -28,13 +28,13 @@
 
 #include "EventListener.h"
 #include "MessagePort.h"
-#include "PlatformString.h"
 #include "ScriptValue.h"
 #include <v8.h>
 #include <wtf/HashMap.h>
 #include <wtf/HashSet.h>
 #include <wtf/Vector.h>
 #include <wtf/text/AtomicString.h>
+#include <wtf/text/WTFString.h>
 
 namespace WebCore {
 
@@ -89,8 +89,8 @@ public:
     bool get(const String&, Vector<String>&) const;
     bool get(const String&, ArrayValue&) const;
 
-    bool getOwnPropertiesAsStringHashMap(WTF::HashMap<String, String>&) const;
-    bool getOwnPropertyNames(WTF::Vector<String>&) const;
+    bool getOwnPropertiesAsStringHashMap(HashMap<String, String>&) const;
+    bool getOwnPropertyNames(Vector<String>&) const;
 
     bool getWithUndefinedOrNullCheck(const String&, String&) const;
 

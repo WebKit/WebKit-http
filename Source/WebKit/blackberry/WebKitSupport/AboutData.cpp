@@ -139,7 +139,7 @@ static String configPage()
     page += numberToHTMLTr("selectionEnabled", settings->selectionEnabled());
     page += numberToHTMLTr("fineCursorControlEnabled", settings->fineCursorControlEnabled());
     page += numberToHTMLTr("alwaysShowKeyboardOnFocus", settings->alwaysShowKeyboardOnFocus());
-    page += numberToHTMLTr("allowCenterScrollAdjustmentForInputFields", settings->allowCenterScrollAdjustmentForInputFields());
+    page += numberToHTMLTr("allowedScrollAdjustmentForInputFields", settings->allowedScrollAdjustmentForInputFields());
     page += numberToHTMLTr("unrestrictedResizeEvents", settings->unrestrictedResizeEvents());
     page += numberToHTMLTr("isBridgeBrowser", settings->isBridgeBrowser());
     page += numberToHTMLTr("showImageLocationOptionsInGCM", settings->showImageLocationOptionsInGCM());
@@ -457,9 +457,6 @@ static String cachePage(String cacheCommand)
 
     result.append(String("<html><head><title>BlackBerry Browser Disk Cache</title></head><body>"));
 
-    BlackBerry::Platform::Settings* settings = BlackBerry::Platform::Settings::instance();
-    ASSERT(settings);
-
     if (cacheCommand.isEmpty())
         result.append(String(BlackBerry::Platform::generateHtmlFragmentForCacheKeys().data()));
     else if (cacheCommand.startsWith("?query=", false)) {
@@ -467,17 +464,7 @@ static String cachePage(String cacheCommand)
         result.append(String(key.data()));
         result.append(String("<hr>"));
         result.append(String(BlackBerry::Platform::generateHtmlFragmentForCacheHeaders(key).data()));
-    }
-#if !defined(PUBLIC_BUILD) || !PUBLIC_BUILD
-    else if (equalIgnoringCase(cacheCommand, "/disable")) {
-        settings->setDiskCacheEnabled(false);
-        result.append("Http disk cache is disabled.");
-    } else if (equalIgnoringCase(cacheCommand, "/enable")) {
-        settings->setDiskCacheEnabled(true);
-        result.append("Http disk cache is enabled.");
-    }
-#endif
-    else {
+    } else {
         // Unknown cache command.
         return String();
     }
@@ -505,6 +492,7 @@ static String buildPage()
     result.append(String(BlackBerry::Platform::BUILDINFO_WEBKIT));
     result.append(String(BlackBerry::Platform::BUILDINFO_PLATFORM));
     result.append(String(BlackBerry::Platform::BUILDINFO_LIBWEBVIEW));
+    result.append(String(BlackBerry::Platform::BUILDINFO_WEBPLATFORM));
     result.append(String("</body></html>"));
 
     return result;

@@ -104,8 +104,8 @@ static void PNGAPI pngComplete(png_structp png, png_infop)
     static_cast<PNGImageDecoder*>(png_get_progressive_ptr(png))->pngComplete();
 }
 
-class PNGImageReader
-{
+class PNGImageReader {
+    WTF_MAKE_FAST_ALLOCATED;
 public:
     PNGImageReader(PNGImageDecoder* decoder)
         : m_readOffset(0)
@@ -401,7 +401,7 @@ void PNGImageDecoder::headerAvailable()
     }
 }
 
-void PNGImageDecoder::rowAvailable(unsigned char* rowBuffer, unsigned rowIndex, int interlacePass)
+void PNGImageDecoder::rowAvailable(unsigned char* rowBuffer, unsigned rowIndex, int)
 {
     if (m_frameBufferCache.isEmpty())
         return;

@@ -39,6 +39,7 @@
 #include "ewk_context_private.h"
 #include "ewk_download_job.h"
 #include "ewk_download_job_private.h"
+#include "ewk_view.h"
 #include "ewk_view_private.h"
 
 using namespace WebCore;
@@ -106,7 +107,12 @@ bool PageClientImpl::isViewInWindow()
 
 void PageClientImpl::processDidCrash()
 {
-    notImplemented();
+    // Check if loading was ongoing, when web process crashed.
+    double loadProgress = ewk_view_load_progress_get(m_viewWidget);
+    if (loadProgress >= 0 && loadProgress < 1)
+        ewk_view_load_progress_changed(m_viewWidget, 1);
+
+    ewk_view_webprocess_crashed(m_viewWidget);
 }
 
 void PageClientImpl::didRelaunchProcess()
@@ -139,25 +145,24 @@ void PageClientImpl::didChangeViewportProperties(const WebCore::ViewportAttribut
     notImplemented();
 }
 
-void PageClientImpl::registerEditCommand(PassRefPtr<WebEditCommandProxy>, WebPageProxy::UndoOrRedo)
+void PageClientImpl::registerEditCommand(PassRefPtr<WebEditCommandProxy> command, WebPageProxy::UndoOrRedo undoOrRedo)
 {
-    notImplemented();
+    m_undoController.registerEditCommand(command, undoOrRedo);
 }
 
 void PageClientImpl::clearAllEditCommands()
 {
-    notImplemented();
+    m_undoController.clearAllEditCommands();
 }
 
-bool PageClientImpl::canUndoRedo(WebPageProxy::UndoOrRedo)
+bool PageClientImpl::canUndoRedo(WebPageProxy::UndoOrRedo undoOrRedo)
 {
-    notImplemented();
-    return false;
+    return m_undoController.canUndoRedo(undoOrRedo);
 }
 
-void PageClientImpl::executeUndoRedo(WebPageProxy::UndoOrRedo)
+void PageClientImpl::executeUndoRedo(WebPageProxy::UndoOrRedo undoOrRedo)
 {
-    notImplemented();
+    m_undoController.executeUndoRedo(undoOrRedo);
 }
 
 FloatRect PageClientImpl::convertToDeviceSpace(const FloatRect& viewRect)
@@ -208,7 +213,7 @@ PassRefPtr<WebContextMenuProxy> PageClientImpl::createContextMenuProxy(WebPagePr
 }
 
 #if ENABLE(INPUT_TYPE_COLOR)
-PassRefPtr<WebColorChooserProxy> PageClientImpl::createColorChooserProxy(WebPageProxy*, const WebCore::Color&)
+PassRefPtr<WebColorChooserProxy> PageClientImpl::createColorChooserProxy(WebPageProxy*, const WebCore::Color&, const WebCore::IntRect&)
 {
     notImplemented();
     return 0;

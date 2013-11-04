@@ -29,13 +29,14 @@
 
 #include "IntSize.h"
 #include "NotImplemented.h"
-#include "PlatformString.h"
+#include "TextBreakIterator.h"
 #include <wtf/MathExtras.h>
+#include <wtf/UnusedParam.h>
+#include <wtf/unicode/CharacterNames.h>
+
 #if USE(CF)
 #include <wtf/RetainPtr.h>
 #endif
-#include <wtf/UnusedParam.h>
-#include <wtf/unicode/CharacterNames.h>
 
 #if PLATFORM(MAC)
 #include "WebCoreSystemInterface.h"
@@ -675,12 +676,12 @@ String crashedPluginText()
 
 String blockedPluginByContentSecurityPolicyText()
 {
-    return WEB_UI_STRING("Blocked Plug-in", "Label text to be used if plugin is blocked by a page's Content Security Policy");
+    return WEB_UI_STRING_KEY("Blocked Plug-in", "Blocked Plug-In (Blocked by page's Content Security Policy)", "Label text to be used if plugin is blocked by a page's Content Security Policy");
 }
 
 String insecurePluginVersionText()
 {
-    return WEB_UI_STRING("Blocked Plug-in", "Label text to be used when an insecure plug-in version was blocked from loading");
+    return WEB_UI_STRING_KEY("Blocked Plug-in", "Blocked Plug-In (Insecure plug-in)", "Label text to be used when an insecure plug-in version was blocked from loading");
 }
 
 String multipleFileUploadText(unsigned numberOfFiles)

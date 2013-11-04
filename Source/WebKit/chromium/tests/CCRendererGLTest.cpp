@@ -33,9 +33,9 @@
 #include "FakeWebCompositorOutputSurface.h"
 #include "FakeWebGraphicsContext3D.h"
 #include "GraphicsContext3D.h"
+#include "WebCompositorInitializer.h"
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
-#include <public/WebCompositor.h>
 #include <public/WebTransformationMatrix.h>
 
 using namespace WebCore;
@@ -80,9 +80,11 @@ public:
         , m_rootLayer(CCLayerImpl::create(1))
         , m_memoryAllocationLimitBytes(CCPrioritizedTextureManager::defaultMemoryAllocationLimit())
     {
-        OwnPtr<CCRenderPass> rootRenderPass = CCRenderPass::create(m_rootLayer->id(), IntRect(), WebTransformationMatrix());
+        m_rootLayer->createRenderSurface();
+        CCRenderPass::Id renderPassId = m_rootLayer->renderSurface()->renderPassId();
+        OwnPtr<CCRenderPass> rootRenderPass = CCRenderPass::create(renderPassId, IntRect(), WebTransformationMatrix());
         m_renderPassesInDrawOrder.append(rootRenderPass.get());
-        m_renderPasses.set(m_rootLayer->id(), rootRenderPass.release());
+        m_renderPasses.set(renderPassId, rootRenderPass.release());
     }
 
     // CCRendererClient methods.
@@ -128,6 +130,7 @@ protected:
     CCRendererGLTest()
         : m_suggestHaveBackbufferYes(1, true)
         , m_suggestHaveBackbufferNo(1, false)
+        , m_compositorInitializer(0)
         , m_context(FakeWebCompositorOutputSurface::create(adoptPtr(new FrameCountingMemoryAllocationSettingContext())))
         , m_resourceProvider(CCResourceProvider::create(m_context.get()))
         , m_renderer(&m_mockClient, m_resourceProvider.get())
@@ -136,13 +139,7 @@ protected:
 
     virtual void SetUp()
     {
-        WebKit::WebCompositor::initialize(0);
         m_renderer.initialize();
-    }
-
-    virtual void TearDown()
-    {
-        WebKit::WebCompositor::shutdown();
     }
 
     void swapBuffers()
@@ -155,6 +152,7 @@ protected:
     WebGraphicsMemoryAllocation m_suggestHaveBackbufferYes;
     WebGraphicsMemoryAllocation m_suggestHaveBackbufferNo;
 
+    WebCompositorInitializer m_compositorInitializer;
     OwnPtr<CCGraphicsContext> m_context;
     FakeCCRendererClient m_mockClient;
     OwnPtr<CCResourceProvider> m_resourceProvider;

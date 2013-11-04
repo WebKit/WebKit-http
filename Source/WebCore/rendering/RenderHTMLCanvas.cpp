@@ -89,8 +89,8 @@ void RenderHTMLCanvas::canvasSizeChanged()
         setPreferredLogicalWidthsDirty(true);
 
     LayoutSize oldSize = size();
-    computeLogicalWidth();
-    computeLogicalHeight();
+    updateLogicalWidth();
+    updateLogicalHeight();
     if (oldSize == size())
         return;
 

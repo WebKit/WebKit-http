@@ -228,11 +228,8 @@ namespace JSC {
         
         Strong<Structure> structureStructure;
         Strong<Structure> debuggerActivationStructure;
-        Strong<Structure> activationStructure;
         Strong<Structure> interruptedExecutionErrorStructure;
         Strong<Structure> terminatedExecutionErrorStructure;
-        Strong<Structure> nameScopeStructure;
-        Strong<Structure> strictEvalActivationStructure;
         Strong<Structure> stringStructure;
         Strong<Structure> notAnObjectStructure;
         Strong<Structure> propertyNameIteratorStructure;
@@ -247,7 +244,7 @@ namespace JSC {
         Strong<Structure> regExpStructure;
         Strong<Structure> sharedSymbolTableStructure;
         Strong<Structure> structureChainStructure;
-        Strong<Structure> withScopeStructure;
+        Strong<Structure> sparseArrayValueMapStructure;
 
         IdentifierTable* identifierTable;
         CommonIdentifiers* propertyNames;
@@ -288,7 +285,7 @@ namespace JSC {
 #elif !ENABLE(CLASSIC_INTERPRETER) && !ENABLE(LLINT)
         bool canUseJIT() { return true; } // jit only
 #else
-        bool canUseJIT() { return m_canUseAssembler; }
+        bool canUseJIT() { return m_canUseJIT; }
 #endif
 
 #if !ENABLE(YARR_JIT)
@@ -296,7 +293,7 @@ namespace JSC {
 #elif !ENABLE(CLASSIC_INTERPRETER) && !ENABLE(LLINT)
         bool canUseRegExpJIT() { return true; } // jit only
 #else
-        bool canUseRegExpJIT() { return m_canUseAssembler; }
+        bool canUseRegExpJIT() { return m_canUseRegExpJIT; }
 #endif
 
         PrivateName m_inheritorIDKey;
@@ -445,6 +442,8 @@ namespace JSC {
         void createNativeThunk();
 #if ENABLE(ASSEMBLER) && (ENABLE(CLASSIC_INTERPRETER) || ENABLE(LLINT))
         bool m_canUseAssembler;
+        bool m_canUseJIT;
+        bool m_canUseRegExpJIT;
 #endif
 #if ENABLE(GC_VALIDATION)
         const ClassInfo* m_initializingObjectClass;
@@ -473,6 +472,11 @@ namespace JSC {
         m_initializingObjectClass = initializingObjectClass;
     }
 #endif
+
+    inline Heap* WeakSet::heap() const
+    {
+        return &m_globalData->heap;
+    }
 
 } // namespace JSC
 

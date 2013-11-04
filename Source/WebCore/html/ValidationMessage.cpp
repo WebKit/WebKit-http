@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010 Google Inc. All rights reserved.
+ * Copyright (C) 2010, 2012 Google Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -35,9 +35,9 @@
 #include "CSSValueKeywords.h"
 #include "ElementShadow.h"
 #include "ExceptionCodePlaceholder.h"
-#include "FormAssociatedElement.h"
 #include "HTMLBRElement.h"
 #include "HTMLDivElement.h"
+#include "HTMLFormControlElement.h"
 #include "HTMLNames.h"
 #include "Page.h"
 #include "RenderBlock.h"
@@ -46,29 +46,69 @@
 #include "ShadowRoot.h"
 #include "StyleResolver.h"
 #include "Text.h"
+#include "ValidationMessageClient.h"
 #include <wtf/PassOwnPtr.h>
 
 namespace WebCore {
 
 using namespace HTMLNames;
 
-ALWAYS_INLINE ValidationMessage::ValidationMessage(FormAssociatedElement* element)
+ALWAYS_INLINE ValidationMessage::ValidationMessage(HTMLFormControlElement* element)
     : m_element(element)
 {
+    ASSERT(m_element);
 }
 
 ValidationMessage::~ValidationMessage()
 {
+    if (ValidationMessageClient* client = validationMessageClient()) {
+        client->hideValidationMessage(*m_element);
+        return;
+    }
+
     deleteBubbleTree();
 }
 
-PassOwnPtr<ValidationMessage> ValidationMessage::create(FormAssociatedElement* element)
+PassOwnPtr<ValidationMessage> ValidationMessage::create(HTMLFormControlElement* element)
 {
     return adoptPtr(new ValidationMessage(element));
 }
 
+ValidationMessageClient* ValidationMessage::validationMessageClient() const
+{
+    if (Page* page = m_element->document()->page())
+        return page->validationMessageClient();
+    return 0;
+}
+
+void ValidationMessage::updateValidationMessage(const String& message)
+{
+    String updatedMessage = message;
+    if (!validationMessageClient()) {
+        // HTML5 specification doesn't ask UA to show the title attribute value
+        // with the validationMessage. However, this behavior is same as Opera
+        // and the specification describes such behavior as an example.
+        const AtomicString& title = m_element->fastGetAttribute(titleAttr);
+        if (!updatedMessage.isEmpty() && !title.isEmpty()) {
+            updatedMessage.append('\n');
+            updatedMessage.append(title);
+        }
+    }
+
+    if (updatedMessage.isEmpty()) {
+        requestToHideMessage();
+        return;
+    }
+    setMessage(updatedMessage);
+}
+
 void ValidationMessage::setMessage(const String& message)
 {
+    if (ValidationMessageClient* client = validationMessageClient()) {
+        client->showValidationMessage(*m_element, message);
+        return;
+    }
+
     // Don't modify the DOM tree in this context.
     // If so, an assertion in Node::isFocusable() fails.
     ASSERT(!message.isEmpty());
@@ -82,6 +122,7 @@ void ValidationMessage::setMessage(const String& message)
 
 void ValidationMessage::setMessageDOMAndStartTimer(Timer<ValidationMessage>*)
 {
+    ASSERT(!validationMessageClient());
     ASSERT(m_messageHeading);
     ASSERT(m_messageBody);
     m_messageHeading->removeAllChildren();
@@ -133,10 +174,10 @@ static void adjustBubblePosition(const LayoutRect& hostRect, HTMLElement* bubble
 
 void ValidationMessage::buildBubbleTree(Timer<ValidationMessage>*)
 {
-    HTMLElement* host = toHTMLElement(m_element);
+    ASSERT(!validationMessageClient());
     ShadowRoot* shadowRoot = m_element->ensureUserAgentShadowRoot();
 
-    Document* doc = host->document();
+    Document* doc = m_element->document();
     m_bubble = HTMLDivElement::create(doc);
     m_bubble->setShadowPseudoId("-webkit-validation-bubble");
     // Need to force position:absolute because RenderMenuList doesn't assume it
@@ -145,8 +186,8 @@ void ValidationMessage::buildBubbleTree(Timer<ValidationMessage>*)
     ExceptionCode ec = 0;
     shadowRoot->appendChild(m_bubble.get(), ec);
     ASSERT(!ec);
-    host->document()->updateLayout();
-    adjustBubblePosition(host->getRect(), m_bubble.get());
+    m_element->document()->updateLayout();
+    adjustBubblePosition(m_element->boundingBox(), m_bubble.get());
 
     RefPtr<HTMLDivElement> clipper = HTMLDivElement::create(doc);
     clipper->setShadowPseudoId("-webkit-validation-bubble-arrow-clipper");
@@ -180,6 +221,11 @@ void ValidationMessage::buildBubbleTree(Timer<ValidationMessage>*)
 
 void ValidationMessage::requestToHideMessage()
 {
+    if (ValidationMessageClient* client = validationMessageClient()) {
+        client->hideValidationMessage(*m_element);
+        return;
+    }
+
     // We must not modify the DOM tree in this context by the same reason as setMessage().
     m_timer = adoptPtr(new Timer<ValidationMessage>(this, &ValidationMessage::deleteBubbleTree));
     m_timer->startOneShot(0);
@@ -187,22 +233,28 @@ void ValidationMessage::requestToHideMessage()
 
 bool ValidationMessage::shadowTreeContains(Node* node) const
 {
-    if (!m_bubble)
+    if (validationMessageClient() || !m_bubble)
         return false;
     return m_bubble->treeScope() == node->treeScope();
 }
 
 void ValidationMessage::deleteBubbleTree(Timer<ValidationMessage>*)
 {
+    ASSERT(!validationMessageClient());
     if (m_bubble) {
         m_messageHeading = 0;
         m_messageBody = 0;
-        HTMLElement* host = toHTMLElement(m_element);
-        ExceptionCode ec;
-        host->userAgentShadowRoot()->removeChild(m_bubble.get(), ec);
+        m_element->userAgentShadowRoot()->removeChild(m_bubble.get(), ASSERT_NO_EXCEPTION);
         m_bubble = 0;
     }
     m_message = String();
+}
+
+bool ValidationMessage::isVisible() const
+{
+    if (ValidationMessageClient* client = validationMessageClient())
+        return client->isValidationMessageVisible(*m_element);
+    return !m_message.isEmpty();
 }
 
 } // namespace WebCore

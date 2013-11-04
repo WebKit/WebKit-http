@@ -27,6 +27,7 @@
 #include <wtf/ASCIICType.h>
 #include <wtf/DataLog.h>
 #include <wtf/MathExtras.h>
+#include <wtf/MemoryInstrumentation.h>
 #include <wtf/text/CString.h>
 #include <wtf/StringExtras.h>
 #include <wtf/Vector.h>
@@ -417,7 +418,37 @@ String String::format(const char *format, ...)
     return StringImpl::create(reinterpret_cast<const LChar*>(buffer.data()), len);
 #endif
 }
-    
+
+String String::number(int number)
+{
+    return numberToStringSigned<String>(number);
+}
+
+String String::number(unsigned int number)
+{
+    return numberToStringUnsigned<String>(number);
+}
+
+String String::number(long number)
+{
+    return numberToStringSigned<String>(number);
+}
+
+String String::number(unsigned long number)
+{
+    return numberToStringUnsigned<String>(number);
+}
+
+String String::number(long long number)
+{
+    return numberToStringSigned<String>(number);
+}
+
+String String::number(unsigned long long number)
+{
+    return numberToStringUnsigned<String>(number);
+}
+
 String String::number(double number, unsigned flags, unsigned precision)
 {
     NumberToStringBuffer buffer;
@@ -788,6 +819,12 @@ String String::fromUTF8WithLatin1Fallback(const LChar* string, size_t size)
     if (!utf8)
         return String(string, size);
     return utf8;
+}
+
+void String::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
+{
+    MemoryClassInfo info(memoryObjectInfo, this);
+    info.addMember(m_impl);
 }
 
 // String Operations

@@ -362,18 +362,20 @@ HRESULT STDMETHODCALLTYPE AccessibleBase::get_accKeyboardShortcut(VARIANT vChild
 
     static String accessKeyModifiers;
     if (accessKeyModifiers.isNull()) {
+        StringBuilder accessKeyModifiersBuilder;
         unsigned modifiers = EventHandler::accessKeyModifiers();
         // Follow the same order as Mozilla MSAA implementation:
         // Ctrl+Alt+Shift+Meta+key. MSDN states that keyboard shortcut strings
         // should not be localized and defines the separator as "+".
         if (modifiers & PlatformEvent::CtrlKey)
-            accessKeyModifiers += "Ctrl+";
+            accessKeyModifiersBuilder.appendLiteral("Ctrl+");
         if (modifiers & PlatformEvent::AltKey)
-            accessKeyModifiers += "Alt+";
+            accessKeyModifiersBuilder.appendLiteral("Alt+");
         if (modifiers & PlatformEvent::ShiftKey)
-            accessKeyModifiers += "Shift+";
+            accessKeyModifiersBuilder.appendLiteral("Shift+");
         if (modifiers & PlatformEvent::MetaKey)
-            accessKeyModifiers += "Win+";
+            accessKeyModifiersBuilder.appendLiteral("Win+");
+        accessKeyModifiers = accessKeyModifiersBuilder.toString();
     }
     *shortcut = BString(String(accessKeyModifiers + accessKey)).release();
     return S_OK;
@@ -667,6 +669,36 @@ static long MSAARole(AccessibilityRole role)
             return ROLE_SYSTEM_LISTITEM;
         case WebCore::PopUpButtonRole:
             return ROLE_SYSTEM_COMBOBOX;
+        case WebCore::DivRole:
+        case WebCore::FormRole:
+        case WebCore::LabelRole:
+        case WebCore::ParagraphRole:
+            return ROLE_SYSTEM_GROUPING;
+        case WebCore::HorizontalRuleRole:
+            return ROLE_SYSTEM_SEPARATOR;
+        case WebCore::ApplicationAlertRole:
+            return ROLE_SYSTEM_ALERT;
+        case WebCore::ComboBoxRole:
+            return ROLE_SYSTEM_COMBOBOX;
+        case WebCore::SpinButtonRole:
+            return ROLE_SYSTEM_SPINBUTTON;
+        case WebCore::SpinButtonPartRole:
+            return ROLE_SYSTEM_PUSHBUTTON;
+        case WebCore::ToggleButtonRole:
+            return ROLE_SYSTEM_PUSHBUTTON;
+        case WebCore::ToolbarRole:
+            return ROLE_SYSTEM_TOOLBAR;
+        case WebCore::UserInterfaceTooltipRole:
+            return ROLE_SYSTEM_TOOLTIP;
+        case WebCore::TreeRole:
+        case WebCore::TreeGridRole:
+            return ROLE_SYSTEM_OUTLINE;
+        case WebCore::TreeItemRole:
+            return ROLE_SYSTEM_OUTLINEITEM;
+        case WebCore::TabListRole:
+            return ROLE_SYSTEM_PAGETABLIST;
+        case WebCore::TabPanelRole:
+            return ROLE_SYSTEM_PROPERTYPAGE;
         default:
             // This is the default role for MSAA.
             return ROLE_SYSTEM_CLIENT;

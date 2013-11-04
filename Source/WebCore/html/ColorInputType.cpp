@@ -39,6 +39,7 @@
 #include "HTMLDivElement.h"
 #include "HTMLInputElement.h"
 #include "HTMLOptionElement.h"
+#include "InputTypeNames.h"
 #include "MouseEvent.h"
 #include "RenderObject.h"
 #include "RenderView.h"
@@ -208,7 +209,7 @@ HTMLElement* ColorInputType::shadowColorSwatch() const
 
 IntRect ColorInputType::elementRectRelativeToRootView() const
 {
-    return element()->document()->view()->contentsToRootView(element()->getPixelSnappedRect());
+    return element()->document()->view()->contentsToRootView(element()->pixelSnappedBoundingBox());
 }
 
 Color ColorInputType::currentColor()

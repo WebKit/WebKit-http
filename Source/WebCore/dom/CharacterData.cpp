@@ -26,7 +26,6 @@
 #include "EventNames.h"
 #include "ExceptionCode.h"
 #include "InspectorInstrumentation.h"
-#include "MemoryInstrumentation.h"
 #include "MutationEvent.h"
 #include "MutationObserverInterestGroup.h"
 #include "MutationRecord.h"
@@ -35,6 +34,7 @@
 #include "StyleInheritedData.h"
 #include "TextBreakIterator.h"
 #include "UndoManager.h"
+#include "WebCoreMemoryInstrumentation.h"
 
 using namespace std;
 
@@ -96,9 +96,9 @@ unsigned CharacterData::parserAppendData(const UChar* data, unsigned dataLength,
 
 void CharacterData::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
 {
-    MemoryClassInfo info(memoryObjectInfo, this, MemoryInstrumentation::DOM);
+    MemoryClassInfo info(memoryObjectInfo, this, WebCoreMemoryTypes::DOM);
     Node::reportMemoryUsage(memoryObjectInfo);
-    info.addInstrumentedMember(m_data);
+    info.addMember(m_data);
 }
 
 void CharacterData::appendData(const String& data, ExceptionCode&)

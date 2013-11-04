@@ -284,9 +284,7 @@ fast/forms/input-text-option-delete.html
 fast/forms/input-text-scroll-left-on-blur.html
 fast/forms/input-type-change-in-onfocus-keyboard.html
 fast/forms/legend-access-key.html
-fast/forms/listbox-deselect-scroll.html
 fast/forms/listbox-onchange.html
-fast/forms/listbox-selection.html
 fast/forms/listbox-typeahead-cyrillic.html
 fast/forms/listbox-typeahead-empty.html
 fast/forms/listbox-typeahead-greek.html
@@ -944,15 +942,21 @@ fast/sub-pixel/float-wrap-with-subpixel-top.html
 fast/sub-pixel/inline-block-should-not-wrap.html
 fast/sub-pixel/inline-block-with-margin.html
 fast/sub-pixel/inline-block-with-padding.html
+fast/sub-pixel/large-sizes.html
 fast/sub-pixel/layout-boxes-with-zoom.html
 fast/sub-pixel/position-right-aligns-with-container.html
 fast/sub-pixel/selection/selection-gaps-at-fractional-offsets.html
 fast/sub-pixel/size-of-box-with-zoom.html
 fast/sub-pixel/table-rows-no-gaps.html
 fast/sub-pixel/sub-pixel-accumulates-to-layers.html
+fast/sub-pixel/selection/selection-rect-in-sub-pixel-table.html
 
 # HiDPI tests require test infrastructure enhancements
 fast/hidpi
 
 # WebKitTestRunner needs to allow self-signed certificates for localhost.
 http/tests/ssl
+
+# Flakey on both Snow Leopard and Windows 7
+# https://bugs.webkit.org/show_bug.cgi?id=58337
+fast/dom/StyleSheet/detached-stylesheet-without-wrapper.html

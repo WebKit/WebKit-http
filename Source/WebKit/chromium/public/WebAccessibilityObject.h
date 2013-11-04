@@ -133,6 +133,7 @@ public:
     WEBKIT_EXPORT WebString ariaLiveRegionRelevant() const;
     WEBKIT_EXPORT WebString ariaLiveRegionStatus() const;
     WEBKIT_EXPORT WebRect boundingBoxRect() const;
+    WEBKIT_EXPORT bool canvasHasFallbackContent() const;
     WEBKIT_EXPORT double estimatedLoadingProgress() const;
     WEBKIT_EXPORT WebString helpText() const;
     WEBKIT_EXPORT int headingLevel() const;
@@ -149,6 +150,7 @@ public:
     WEBKIT_EXPORT WebAccessibilityObject titleUIElement() const;
     WEBKIT_EXPORT WebURL url() const;
 
+    WEBKIT_EXPORT bool supportsRangeValue() const;
     WEBKIT_EXPORT WebString valueDescription() const;
     WEBKIT_EXPORT float valueForRange() const;
     WEBKIT_EXPORT float maxValueForRange() const;

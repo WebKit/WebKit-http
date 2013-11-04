@@ -34,19 +34,19 @@
 #if ENABLE(WEB_SOCKETS)
 
 #include "KURL.h"
-#include "PlatformString.h"
 #include "WebSocketExtensionDispatcher.h"
 #include "WebSocketExtensionProcessor.h"
 #include "WebSocketHandshakeRequest.h"
 #include "WebSocketHandshakeResponse.h"
 #include <wtf/PassOwnPtr.h>
+#include <wtf/text/WTFString.h>
 
 namespace WebCore {
 
 class ScriptExecutionContext;
 
 class WebSocketHandshake {
-    WTF_MAKE_NONCOPYABLE(WebSocketHandshake);
+    WTF_MAKE_NONCOPYABLE(WebSocketHandshake); WTF_MAKE_FAST_ALLOCATED;
 public:
     enum Mode {
         Incomplete, Normal, Failed, Connected

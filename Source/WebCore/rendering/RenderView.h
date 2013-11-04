@@ -48,6 +48,7 @@ public:
     virtual ~RenderView();
 
     bool hitTest(const HitTestRequest&, HitTestResult&);
+    bool hitTest(const HitTestRequest&, const HitTestLocation&, HitTestResult&);
 
     virtual const char* renderName() const OVERRIDE { return "RenderView"; }
 
@@ -58,8 +59,8 @@ public:
     virtual bool isChildAllowed(RenderObject*, RenderStyle*) const OVERRIDE;
 
     virtual void layout() OVERRIDE;
-    virtual void computeLogicalWidth() OVERRIDE;
-    virtual void computeLogicalHeight() OVERRIDE;
+    virtual void updateLogicalWidth() OVERRIDE;
+    virtual void updateLogicalHeight() OVERRIDE;
     // FIXME: This override is not needed and should be removed
     // it only exists to make computePreferredLogicalWidths public.
     virtual void computePreferredLogicalWidths() OVERRIDE;
@@ -192,8 +193,6 @@ public:
     IntervalArena* intervalArena();
 
     IntSize viewportSize() const { return document()->viewportSize(); }
-
-    void setFixedPositionedObjectsNeedLayout();
 
     void setRenderQuoteHead(RenderQuote* head) { m_renderQuoteHead = head; }
     RenderQuote* renderQuoteHead() const { return m_renderQuoteHead; }

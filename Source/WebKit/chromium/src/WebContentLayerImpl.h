@@ -29,7 +29,7 @@
 #include "ContentLayerChromiumClient.h"
 #include "WebLayerImpl.h"
 #include <public/WebContentLayer.h>
-#include <wtf/PassRefPtr.h>
+#include <wtf/OwnPtr.h>
 
 namespace WebKit {
 class WebContentLayerClient;
@@ -42,7 +42,8 @@ public:
     // WebContentLayer implementation.
     virtual WebLayer* layer() OVERRIDE;
     virtual void setDoubleSided(bool)  OVERRIDE;
-    virtual void setContentsScale(float)  OVERRIDE;
+    virtual void setBoundsContainPageScale(bool) OVERRIDE;
+    virtual bool boundsContainPageScale() const OVERRIDE;
     virtual void setUseLCDText(bool)  OVERRIDE;
     virtual void setDrawCheckerboardForMissingTiles(bool)  OVERRIDE;
 
@@ -52,7 +53,7 @@ protected:
     // ContentLayerChromiumClient implementation.
     virtual void paintContents(SkCanvas*, const WebCore::IntRect& clip, WebCore::FloatRect& opaque) OVERRIDE;
 
-    OwnPtr<WebLayerImpl> m_webLayerImpl;
+    OwnPtr<WebLayerImpl> m_layer;
     WebContentLayerClient* m_client;
     bool m_drawsContent;
 };

@@ -28,6 +28,7 @@
 
 #if ENABLE(INDEXED_DATABASE)
 
+#include "ScriptValue.h"
 #include <v8.h>
 #include <wtf/Forward.h>
 
@@ -38,8 +39,11 @@ class IDBKeyPath;
 class SerializedScriptValue;
 
 PassRefPtr<IDBKey> createIDBKeyFromValue(v8::Handle<v8::Value>);
-PassRefPtr<IDBKey> createIDBKeyFromSerializedValueAndKeyPath(PassRefPtr<SerializedScriptValue>, const IDBKeyPath&);
-PassRefPtr<SerializedScriptValue> injectIDBKeyIntoSerializedValue(PassRefPtr<IDBKey>, PassRefPtr<SerializedScriptValue>, const IDBKeyPath&);
+
+bool injectIDBKeyIntoScriptValue(PassRefPtr<IDBKey>, ScriptValue&, const IDBKeyPath&);
+PassRefPtr<IDBKey> createIDBKeyFromScriptValueAndKeyPath(const ScriptValue&, const IDBKeyPath&);
+bool canInjectIDBKeyIntoScriptValue(const ScriptValue&, const IDBKeyPath&);
+ScriptValue deserializeIDBValue(ScriptExecutionContext*, PassRefPtr<SerializedScriptValue>);
 
 }
 

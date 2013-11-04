@@ -46,8 +46,6 @@
     # binary and increasing the speed of gdb.
     'enable_svg%': 1,
 
-    # If set to 1, links against the cc library from the chromium repository
-    # instead of the compositor implementation files in platform/graphics/chromium
     'use_libcc_for_compositor%': 0,
 
     'enable_wexit_time_destructors': 1,
@@ -1337,7 +1335,6 @@
         '../../ThirdParty/glu/glu.gyp:libtess',
         '../../JavaScriptCore/JavaScriptCore.gyp/JavaScriptCore.gyp:yarr',
         '../../WTF/WTF.gyp/WTF.gyp:wtf',
-        '../../Platform/Platform.gyp/Platform.gyp:webkit_platform',
         '<(chromium_src_dir)/build/temp_gyp/googleurl.gyp:googleurl',
         '<(chromium_src_dir)/skia/skia.gyp:skia',
         '<(chromium_src_dir)/third_party/iccjpeg/iccjpeg.gyp:iccjpeg',
@@ -1357,7 +1354,6 @@
       'export_dependent_settings': [
         '../../JavaScriptCore/JavaScriptCore.gyp/JavaScriptCore.gyp:yarr',
         '../../WTF/WTF.gyp/WTF.gyp:wtf',
-        '../../Platform/Platform.gyp/Platform.gyp:webkit_platform',
         '<(chromium_src_dir)/build/temp_gyp/googleurl.gyp:googleurl',
         '<(chromium_src_dir)/skia/skia.gyp:skia',
         '<(chromium_src_dir)/third_party/iccjpeg/iccjpeg.gyp:iccjpeg',
@@ -1382,6 +1378,7 @@
           'WEBCORE_NAVIGATOR_VENDOR="Google Inc."',
         ],
         'include_dirs': [
+          '../../Platform/chromium',
           '<(INTERMEDIATE_DIR)',
           '<@(webcore_include_dirs)',
           '<(chromium_src_dir)/gpu',
@@ -1477,6 +1474,7 @@
               # com.google.Chrome[] objc[]: Class ScrollbarPrefsObserver is implemented in both .../Google Chrome.app/Contents/Versions/.../Google Chrome Helper.app/Contents/MacOS/../../../Google Chrome Framework.framework/Google Chrome Framework and /System/Library/Frameworks/WebKit.framework/Versions/A/Frameworks/WebCore.framework/Versions/A/WebCore. One of the two will be used. Which one is undefined.
               'WebCascadeList=ChromiumWebCoreObjCWebCascadeList',
               'WebCoreFlippedView=ChromiumWebCoreObjCWebCoreFlippedView',
+              'WebCoreTextFieldCell=ChromiumWebCoreObjCWebCoreTextFieldCell',
               'WebScrollbarPrefsObserver=ChromiumWebCoreObjCWebScrollbarPrefsObserver',
               'WebCoreRenderThemeNotificationObserver=ChromiumWebCoreObjCWebCoreRenderThemeNotificationObserver',
               'WebFontCache=ChromiumWebCoreObjCWebFontCache',
@@ -1495,7 +1493,7 @@
                 'postbuild_name': 'Check Objective-C Rename',
                 'variables': {
                   'class_whitelist_regex':
-                      'ChromiumWebCoreObjC|TCMVisibleView|RTCMFlippedView|WebCoreTextFieldCell',
+                      'ChromiumWebCoreObjC|TCMVisibleView|RTCMFlippedView',
                   'category_whitelist_regex':
                       'TCMInterposing|ScrollAnimatorChromiumMacExt',
                 },
@@ -1625,7 +1623,7 @@
       'hard_dependency': 1,
       'sources': [
         '<@(webcore_privateheader_files)',
-        '<@(webcore_files)',
+        '<@(webcore_platform_files)',
 
         # For WebCoreSystemInterface, Mac-only.
         '../../WebKit/mac/WebCoreSupport/WebSystemInterface.mm',
@@ -1725,6 +1723,11 @@
               ],
               'action': ['cp', '<@(_inputs)', '<@(_outputs)'],
             },
+          ],
+          'sources': [
+            '../editing/SmartReplaceCF.cpp',
+            '../rendering/RenderThemeMac.mm',
+            '../../WebKit/mac/WebCoreSupport/WebSystemInterface.mm',
           ],
           'sources/': [
             # Additional files from the WebCore Mac build that are presently
@@ -1843,9 +1846,9 @@
           'sources/': [
             ['exclude', 'Posix\\.cpp$'],
 
-            ['include', 'platform/graphics/opentype/OpenTypeTypes\\.h$'],
-            ['include', 'platform/graphics/opentype/OpenTypeVerticalData\\.cpp$'],
-            ['include', 'platform/graphics/opentype/OpenTypeVerticalData\\.h$'],
+            ['include', '/opentype/'],
+            ['include', '/SkiaFontWin\\.cpp$'],
+            ['include', '/TransparencyWin\\.cpp$'],
 
             # The Chromium Win currently uses GlyphPageTreeNodeChromiumWin.cpp from
             # platform/graphics/chromium, included by regex above, instead.
@@ -1892,6 +1895,19 @@
             ['exclude', 'Android\\.cpp$'],
           ],
         }],
+      ],
+    },
+    {
+      'target_name': 'webcore_platform_geometry',
+      'type': 'static_library',
+      'dependencies': [
+        'webcore_prerequisites',
+      ],
+      'defines': [
+        'WEBKIT_IMPLEMENTATION=1',
+      ],
+      'sources': [
+        '<@(webcore_platform_geometry_files)',
       ],
     },
     {
@@ -2042,7 +2058,6 @@
 
         ['exclude', 'Modules/filesystem/LocalFileSystem\\.cpp$'],
         ['exclude', 'Modules/indexeddb/IDBFactoryBackendInterface\\.cpp$'],
-        ['exclude', 'Modules/indexeddb/IDBKeyPathBackendImpl\\.cpp$'],
         ['exclude', 'Modules/webdatabase/DatabaseTrackerClient\\.h$'],
         ['exclude', 'Modules/webdatabase/DatabaseTracker\\.cpp$'],
         ['exclude', 'Modules/webdatabase/OriginQuotaManager\\.(cpp|h)$'],
@@ -2085,19 +2100,6 @@
         ['OS=="win" and buildtype=="Official"', {
           'msvs_shard': 10,
         }],
-        ['OS=="win"', {
-          'sources/': [
-            ['exclude', 'Posix\\.cpp$'],
-            ['include', '/opentype/'],
-            ['include', '/SkiaFontWin\\.cpp$'],
-            ['include', '/TransparencyWin\\.cpp$'],
-          ],
-        },{ # OS!="win"
-          'sources/': [
-            ['exclude', 'Win\\.cpp$'],
-            ['exclude', '/(Windows|Uniscribe)[^/]*\\.cpp$']
-          ],
-        }],
         ['os_posix == 1 and OS != "mac" and gcc_version == 42', {
           # Due to a bug in gcc 4.2.1 (the current version on hardy), we get
           # warnings about uninitialized this.
@@ -2139,11 +2141,11 @@
         'webcore_dom',
         'webcore_html',
         'webcore_platform',
+        'webcore_platform_geometry',
         'webcore_remaining',
         'webcore_rendering',
         # Exported.
         'webcore_bindings',
-        '../../Platform/Platform.gyp/Platform.gyp:webkit_platform',
         '../../WTF/WTF.gyp/WTF.gyp:wtf',
         '<(chromium_src_dir)/build/temp_gyp/googleurl.gyp:googleurl',
         '<(chromium_src_dir)/skia/skia.gyp:skia',
@@ -2153,7 +2155,6 @@
       ],
       'export_dependent_settings': [
         'webcore_bindings',
-        '../../Platform/Platform.gyp/Platform.gyp:webkit_platform',
         '../../WTF/WTF.gyp/WTF.gyp:wtf',
         '<(chromium_src_dir)/build/temp_gyp/googleurl.gyp:googleurl',
         '<(chromium_src_dir)/skia/skia.gyp:skia',
@@ -2209,11 +2210,7 @@
             'webcore_svg',
           ],
         }],
-        ['use_libcc_for_compositor==1', {
-          'dependencies': [
-            '<(chromium_src_dir)/cc/cc.gyp:cc'
-          ],
-        }, { # use_libcc_for_compositor==0
+        ['use_libcc_for_compositor==0', {
           'dependencies': [
             'webcore_chromium_compositor'
           ],

@@ -36,10 +36,10 @@
 #include "FrameView.h"
 #include "Image.h"
 #include "Logging.h"
-#include "MemoryInstrumentation.h"
 #include "ResourceHandle.h"
 #include "SecurityOrigin.h"
 #include "SecurityOriginHash.h"
+#include "WebCoreMemoryInstrumentation.h"
 #include "WorkerContext.h"
 #include "WorkerLoaderProxy.h"
 #include "WorkerThread.h"
@@ -717,12 +717,12 @@ MemoryCache::Statistics MemoryCache::getStatistics()
 
 void MemoryCache::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
 {
-    MemoryClassInfo info(memoryObjectInfo, this, MemoryInstrumentation::MemoryCacheStructures);
+    MemoryClassInfo info(memoryObjectInfo, this, WebCoreMemoryTypes::MemoryCacheStructures);
     info.addHashMap(m_resources);
     CachedResourceMap::const_iterator e = m_resources.end();
     for (CachedResourceMap::const_iterator i = m_resources.begin(); i != e; ++i) {
-        info.addInstrumentedMember(i->first);
-        info.addInstrumentedMember(i->second);
+        info.addMember(i->first);
+        info.addMember(i->second);
     }
     info.addVector(m_allResources);
     info.addMember(m_liveDecodedResources);

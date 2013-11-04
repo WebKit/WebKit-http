@@ -21,10 +21,10 @@
 
 #include "IntSize.h"
 #include "NotImplemented.h"
-#include "PlatformString.h"
 #include <LocaleHandler.h>
 #include <LocalizeResource.h>
 #include <wtf/Vector.h>
+#include <wtf/text/WTFString.h>
 
 namespace WebCore {
 
@@ -481,17 +481,17 @@ String validationMessageTypeMismatchText()
 
 String validationMessageTypeMismatchForEmailText()
 {
-    return validationMessageTypeMismatchText();
+    return String::fromUTF8(s_resource.getString(BlackBerry::Platform::VALIDATION_TYPE_MISMATCH_EMAIL));
 }
 
 String validationMessageTypeMismatchForMultipleEmailText()
 {
-    return validationMessageTypeMismatchText();
+    return String::fromUTF8(s_resource.getString(BlackBerry::Platform::VALIDATION_TYPE_MISMATCH_MULTIPLE_EMAIL));
 }
 
 String validationMessageTypeMismatchForURLText()
 {
-    return validationMessageTypeMismatchText();
+    return String::fromUTF8(s_resource.getString(BlackBerry::Platform::VALIDATION_TYPE_MISMATCH_URL));
 }
 
 String validationMessageValueMissingText()

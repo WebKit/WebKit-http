@@ -40,6 +40,7 @@
 #include "CSSStyleSheet.h"
 #include "ChildNodeList.h"
 #include "ClassNodeList.h"
+#include "ContainerNodeAlgorithms.h"
 #include "ContextMenuController.h"
 #include "DOMImplementation.h"
 #include "DOMSettableTokenList.h"
@@ -67,7 +68,6 @@
 #include "KeyboardEvent.h"
 #include "LabelsNodeList.h"
 #include "Logging.h"
-#include "MemoryInstrumentation.h"
 #include "MouseEvent.h"
 #include "MutationEvent.h"
 #include "NameNodeList.h"
@@ -98,6 +98,7 @@
 #include "TreeScopeAdopter.h"
 #include "UIEvent.h"
 #include "UIEventWithKeyState.h"
+#include "WebCoreMemoryInstrumentation.h"
 #include "WheelEvent.h"
 #include "WindowEventContext.h"
 #include "XMLNames.h"
@@ -795,7 +796,7 @@ RenderBoxModelObject* Node::renderBoxModelObject() const
     return m_renderer && m_renderer->isBoxModelObject() ? toRenderBoxModelObject(m_renderer) : 0;
 }
 
-LayoutRect Node::getRect() const
+LayoutRect Node::boundingBox() const
 {
     if (renderer())
         return renderer()->absoluteBoundingBoxRect();
@@ -1197,6 +1198,11 @@ static void checkAcceptChild(Node* newParent, Node* newChild, ExceptionCode& ec)
 
     if (newChild == newParent || newParent->isDescendantOf(newChild)) {
         ec = HIERARCHY_REQUEST_ERR;
+        return;
+    }
+
+    if (newParent->inDocument() && ChildFrameDisconnector::nodeHasDisconnector(newParent)) {
+        ec = NO_MODIFICATION_ALLOWED_ERR;
         return;
     }
 }
@@ -2091,15 +2097,17 @@ FloatPoint Node::convertFromPage(const FloatPoint& p) const
 
 #ifndef NDEBUG
 
-static void appendAttributeDesc(const Node* node, String& string, const QualifiedName& name, const char* attrDesc)
+static void appendAttributeDesc(const Node* node, StringBuilder& stringBuilder, const QualifiedName& name, const char* attrDesc)
 {
-    if (node->isElementNode()) {
-        String attr = static_cast<const Element*>(node)->getAttribute(name);
-        if (!attr.isEmpty()) {
-            string += attrDesc;
-            string += attr;
-        }
-    }
+    if (!node->isElementNode())
+        return;
+
+    String attr = static_cast<const Element*>(node)->getAttribute(name);
+    if (attr.isEmpty())
+        return;
+
+    stringBuilder.append(attrDesc);
+    stringBuilder.append(attr);
 }
 
 void Node::showNode(const char* prefix) const
@@ -2112,10 +2120,10 @@ void Node::showNode(const char* prefix) const
         value.replace('\n', "\\n");
         fprintf(stderr, "%s%s\t%p \"%s\"\n", prefix, nodeName().utf8().data(), this, value.utf8().data());
     } else {
-        String attrs = "";
+        StringBuilder attrs;
         appendAttributeDesc(this, attrs, classAttr, " CLASS=");
         appendAttributeDesc(this, attrs, styleAttr, " STYLE=");
-        fprintf(stderr, "%s%s\t%p%s\n", prefix, nodeName().utf8().data(), this, attrs.utf8().data());
+        fprintf(stderr, "%s%s\t%p%s\n", prefix, nodeName().utf8().data(), this, attrs.toString().utf8().data());
     }
 }
 
@@ -2183,16 +2191,18 @@ static void traverseTreeAndMark(const String& baseIndent, const Node* rootNode, 
         if (node == markedNode2)
             fprintf(stderr, "%s", markedLabel2);
 
-        String indent = baseIndent;
+        StringBuilder indent;
+        indent.append(baseIndent);
         for (const Node* tmpNode = node; tmpNode && tmpNode != rootNode; tmpNode = tmpNode->parentOrHostNode())
-            indent += "\t";
-        fprintf(stderr, "%s", indent.utf8().data());
+            indent.append('\t');
+        fprintf(stderr, "%s", indent.toString().utf8().data());
         node->showNode();
+        indent.append('\t');
         if (node->isShadowRoot()) {
             if (ShadowRoot* youngerShadowRoot = toShadowRoot(node)->youngerShadowRoot())
-                traverseTreeAndMark(indent + "\t", youngerShadowRoot, markedNode1, markedLabel1, markedNode2, markedLabel2);
+                traverseTreeAndMark(indent.toString(), youngerShadowRoot, markedNode1, markedLabel1, markedNode2, markedLabel2);
         } else if (ShadowRoot* oldestShadowRoot = oldestShadowRootFor(node))
-            traverseTreeAndMark(indent + "\t", oldestShadowRoot, markedNode1, markedLabel1, markedNode2, markedLabel2);
+            traverseTreeAndMark(indent.toString(), oldestShadowRoot, markedNode1, markedLabel1, markedNode2, markedLabel2);
     }
 }
 
@@ -2212,13 +2222,13 @@ void Node::formatForDebugger(char* buffer, unsigned length) const
 {
     String result;
     String s;
-    
+
     s = nodeName();
-    if (s.length() == 0)
-        result += "<none>";
+    if (s.isEmpty())
+        result = "<none>";
     else
-        result += s;
-          
+        result = s;
+
     strncpy(buffer, result.utf8().data(), length - 1);
 }
 
@@ -2525,40 +2535,6 @@ void Node::notifyMutationObserversNodeWillDetach()
 }
 #endif // ENABLE(MUTATION_OBSERVERS)
 
-#if ENABLE(STYLE_SCOPED)
-bool Node::hasScopedHTMLStyleChild() const
-{
-    return hasRareData() && rareData()->hasScopedHTMLStyleChild();
-}
-
-size_t Node::numberOfScopedHTMLStyleChildren() const
-{
-    return hasRareData() ? rareData()->numberOfScopedHTMLStyleChildren() : 0;
-}
-
-void Node::registerScopedHTMLStyleChild()
-{
-    ensureRareData()->registerScopedHTMLStyleChild();
-}
-
-void Node::unregisterScopedHTMLStyleChild()
-{
-    ASSERT(hasRareData());
-    if (hasRareData())
-        rareData()->unregisterScopedHTMLStyleChild();
-}
-#else
-bool Node::hasScopedHTMLStyleChild() const
-{
-    return 0;
-}
-
-size_t Node::numberOfScopedHTMLStyleChildren() const
-{
-    return 0;
-}
-#endif
-
 void Node::handleLocalEvents(Event* event)
 {
     if (!hasRareData() || !rareData()->eventTargetData())
@@ -2832,14 +2808,14 @@ void Node::removedLastRef()
 
 void Node::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
 {
-    MemoryClassInfo info(memoryObjectInfo, this, MemoryInstrumentation::DOM);
+    MemoryClassInfo info(memoryObjectInfo, this, WebCoreMemoryTypes::DOM);
     TreeShared<Node, ContainerNode>::reportMemoryUsage(memoryObjectInfo);
     ScriptWrappable::reportMemoryUsage(memoryObjectInfo);
-    info.addInstrumentedMember(m_document);
-    info.addInstrumentedMember(m_next);
-    info.addInstrumentedMember(m_previous);
+    info.addMember(m_document);
+    info.addMember(m_next);
+    info.addMember(m_previous);
     if (m_renderer)
-        info.addInstrumentedMember(m_renderer->style());
+        info.addMember(m_renderer->style());
 }
 
 } // namespace WebCore

@@ -87,16 +87,26 @@ RenderView::~RenderView()
 
 bool RenderView::hitTest(const HitTestRequest& request, HitTestResult& result)
 {
-    return layer()->hitTest(request, result);
+    return hitTest(request, result.hitTestLocation(), result);
 }
 
-void RenderView::computeLogicalHeight()
+bool RenderView::hitTest(const HitTestRequest& request, const HitTestLocation& location, HitTestResult& result)
+{
+    bool inside = layer()->hitTest(request, location, result);
+
+    // Next set up the correct :hover/:active state along the new chain.
+    document()->updateHoverActiveState(request, result);
+
+    return inside;
+}
+
+void RenderView::updateLogicalHeight()
 {
     if (!shouldUsePrintingLayout() && m_frameView)
         setLogicalHeight(viewLogicalHeight());
 }
 
-void RenderView::computeLogicalWidth()
+void RenderView::updateLogicalWidth()
 {
     if (!shouldUsePrintingLayout() && m_frameView)
         setLogicalWidth(viewLogicalWidth());
@@ -935,21 +945,6 @@ RenderBlock::IntervalArena* RenderView::intervalArena()
     if (!m_intervalArena)
         m_intervalArena = IntervalArena::create();
     return m_intervalArena.get();
-}
-
-void RenderView::setFixedPositionedObjectsNeedLayout()
-{
-    ASSERT(m_frameView);
-
-    ListHashSet<RenderBox*>* positionedObjects = this->positionedObjects();
-    if (!positionedObjects)
-        return;
-
-    ListHashSet<RenderBox*>::const_iterator end = positionedObjects->end();
-    for (ListHashSet<RenderBox*>::const_iterator it = positionedObjects->begin(); it != end; ++it) {
-        RenderBox* currBox = *it;
-        currBox->setNeedsLayout(true);
-    }
 }
 
 } // namespace WebCore

@@ -547,29 +547,16 @@ namespace JSC {
             return needsFullScopeChain() && codeType() != GlobalCode;
         }
         
-        bool argumentsAreCaptured() const
+        bool isCaptured(int operand, InlineCallFrame* inlineCallFrame = 0) const
         {
-            return needsActivation() || usesArguments();
-        }
-        
-        bool argumentIsCaptured(int) const
-        {
-            return argumentsAreCaptured();
-        }
-        
-        bool localIsCaptured(InlineCallFrame* inlineCallFrame, int operand) const
-        {
-            if (!inlineCallFrame)
-                return operand < m_numCapturedVars;
-            
-            return inlineCallFrame->capturedVars.get(operand);
-        }
-        
-        bool isCaptured(InlineCallFrame* inlineCallFrame, int operand) const
-        {
+            if (inlineCallFrame && !operandIsArgument(operand))
+                return inlineCallFrame->capturedVars.get(operand);
+
+            // Our estimate of argument capture is conservative.
             if (operandIsArgument(operand))
-                return argumentIsCaptured(operandToArgument(operand));
-            return localIsCaptured(inlineCallFrame, operand);
+                return needsActivation() || usesArguments();
+
+            return operand < m_numCapturedVars;
         }
 
         CodeType codeType() const { return m_codeType; }
@@ -1556,6 +1543,25 @@ namespace JSC {
         return isInlineCallFrameSlow();
     }
 #endif
+
+    inline JSValue ExecState::argumentAfterCapture(size_t argument)
+    {
+        if (argument >= argumentCount())
+             return jsUndefined();
+
+        if (!codeBlock())
+            return this[argumentOffset(argument)].jsValue();
+
+        if (argument >= static_cast<size_t>(codeBlock()->symbolTable()->parameterCount()))
+            return this[argumentOffset(argument)].jsValue();
+
+        const SlowArgument* slowArguments = codeBlock()->symbolTable()->slowArguments();
+        if (!slowArguments || slowArguments[argument].status == SlowArgument::Normal)
+            return this[argumentOffset(argument)].jsValue();
+
+        ASSERT(slowArguments[argument].status == SlowArgument::Captured);
+        return this[slowArguments[argument].indexIfCaptured].jsValue();
+    }
 
 #if ENABLE(DFG_JIT)
     inline void DFGCodeBlocks::mark(void* candidateCodeBlock)

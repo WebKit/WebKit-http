@@ -39,11 +39,11 @@
 #include "IDBIndexBackendImpl.h"
 #include "IDBKey.h"
 #include "IDBKeyPath.h"
-#include "IDBKeyPathBackendImpl.h"
 #include "IDBKeyRange.h"
 #include "IDBTracing.h"
 #include "IDBTransactionBackendImpl.h"
 #include "ScriptExecutionContext.h"
+#include <wtf/MathExtras.h>
 
 namespace WebCore {
 
@@ -199,20 +199,6 @@ private:
         if (primaryKey && foundPrimaryKey->isEqual(primaryKey))
             return true;
         return false;
-    }
-
-    PassRefPtr<IDBKey> fetchKeyFromKeyPath(SerializedScriptValue* value)
-    {
-        IDB_TRACE("IndexWriter::fetchKeyFromKeyPath");
-
-        Vector<RefPtr<SerializedScriptValue> > values;
-        values.append(value);
-        Vector<RefPtr<IDBKey> > keys;
-        IDBKeyPathBackendImpl::createIDBKeysFromSerializedValuesAndKeyPath(values, m_indexMetadata.keyPath, keys);
-        if (keys.isEmpty())
-            return 0;
-        ASSERT(keys.size() == 1);
-        return keys[0].release();
     }
 
     const IDBIndexMetadata m_indexMetadata;
@@ -555,7 +541,7 @@ void IDBObjectStoreBackendImpl::countInternal(ScriptExecutionContext*, PassRefPt
 {
     IDB_TRACE("IDBObjectStoreBackendImpl::countInternal");
     uint32_t count = 0;
-    RefPtr<IDBBackingStore::Cursor> backingStoreCursor = objectStore->backingStore()->openObjectStoreCursor(objectStore->databaseId(), objectStore->id(), range.get(), IDBCursor::NEXT);
+    RefPtr<IDBBackingStore::Cursor> backingStoreCursor = objectStore->backingStore()->openObjectStoreKeyCursor(objectStore->databaseId(), objectStore->id(), range.get(), IDBCursor::NEXT);
     if (!backingStoreCursor) {
         callbacks->onSuccess(SerializedScriptValue::numberValue(count));
         return;

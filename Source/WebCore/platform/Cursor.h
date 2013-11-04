@@ -104,6 +104,7 @@ namespace WebCore {
 #endif
 
     class Cursor {
+        WTF_MAKE_FAST_ALLOCATED;
     public:
         enum Type {
             Pointer,

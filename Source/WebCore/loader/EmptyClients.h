@@ -65,6 +65,7 @@ namespace WebCore {
 class GraphicsContext3D;
 
 class EmptyChromeClient : public ChromeClient {
+    WTF_MAKE_FAST_ALLOCATED;
 public:
     virtual ~EmptyChromeClient() { }
     virtual void chromeDestroyed() { }
@@ -170,6 +171,10 @@ public:
 
 #if ENABLE(INPUT_TYPE_COLOR)
     virtual PassOwnPtr<ColorChooser> createColorChooser(ColorChooserClient*, const Color&) OVERRIDE;
+#endif
+
+#if ENABLE(CALENDAR_PICKER)
+    virtual PassOwnPtr<DateTimeChooser> openDateTimeChooser(DateTimeChooserClient*, const DateTimeChooserParameters&) OVERRIDE;
 #endif
 
     virtual void runOpenPanel(Frame*, PassRefPtr<FileChooser>) OVERRIDE;

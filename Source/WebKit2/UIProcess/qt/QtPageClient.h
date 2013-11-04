@@ -21,6 +21,7 @@
 #ifndef QtPageClient_h
 #define QtPageClient_h
 
+#include "FindIndicator.h"
 #include "PageClient.h"
 
 class QQuickWebView;
@@ -30,7 +31,7 @@ namespace WebKit {
 class DrawingAreaProxy;
 class LayerTreeContext;
 class QtWebPageEventHandler;
-class QtWebUndoController;
+class DefaultUndoController;
 class ShareableBitmap;
 
 class QtPageClient : public PageClient {
@@ -38,7 +39,7 @@ public:
     QtPageClient();
     ~QtPageClient();
 
-    void initialize(QQuickWebView*, QtWebPageEventHandler*, WebKit::QtWebUndoController*);
+    void initialize(QQuickWebView*, QtWebPageEventHandler*, WebKit::DefaultUndoController*);
 
     // QQuickWebView.
     virtual void setViewNeedsDisplay(const WebCore::IntRect&);
@@ -73,7 +74,7 @@ public:
     virtual void setCursorHiddenUntilMouseMoves(bool);
     virtual void toolTipChanged(const String&, const String&);
 
-    // QtWebUndoController
+    // DefaultUndoController
     virtual void registerEditCommand(PassRefPtr<WebEditCommandProxy>, WebPageProxy::UndoOrRedo);
     virtual void clearAllEditCommands();
     virtual bool canUndoRedo(WebPageProxy::UndoOrRedo);
@@ -87,7 +88,7 @@ public:
     virtual PassRefPtr<WebPopupMenuProxy> createPopupMenuProxy(WebPageProxy*);
     virtual PassRefPtr<WebContextMenuProxy> createContextMenuProxy(WebPageProxy*);
 #if ENABLE(INPUT_TYPE_COLOR)
-    virtual PassRefPtr<WebColorChooserProxy> createColorChooserProxy(WebPageProxy*, const WebCore::Color& intialColor);
+    virtual PassRefPtr<WebColorChooserProxy> createColorChooserProxy(WebPageProxy*, const WebCore::Color& initialColor, const WebCore::IntRect&);
 #endif
     virtual void setFindIndicator(PassRefPtr<FindIndicator>, bool fadeOut, bool animate) { }
     virtual void didCommitLoadForMainFrame(bool useCustomRepresentation) { }
@@ -108,7 +109,7 @@ public:
 private:
     QQuickWebView* m_webView;
     QtWebPageEventHandler* m_eventHandler;
-    QtWebUndoController* m_undoController;
+    DefaultUndoController* m_undoController;
 };
 
 } // namespace WebKit

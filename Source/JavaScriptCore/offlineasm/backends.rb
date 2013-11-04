@@ -25,12 +25,14 @@ require "config"
 require "armv7"
 require "ast"
 require "x86"
+require "cloop"
 
 BACKENDS =
     [
      "X86",
      "X86_64",
-     "ARMv7"
+     "ARMv7",
+     "C_LOOP"
     ]
 
 # Keep the set of working backends separate from the set of backends that might be
@@ -42,7 +44,8 @@ WORKING_BACKENDS =
     [
      "X86",
      "X86_64",
-     "ARMv7"
+     "ARMv7",
+     "C_LOOP"
     ]
 
 BACKEND_PATTERN = Regexp.new('\\A(' + BACKENDS.join(')|(') + ')\\Z')
@@ -53,7 +56,8 @@ class Node
             $activeBackend = name
             send("lower" + name)
         rescue => e
-            raise "Got error #{e} at #{codeOriginString}"
+            e.message << "At #{codeOriginString}"
+            raise e
         end
     end
 end
@@ -76,11 +80,17 @@ class LabelReference
     def asmLabel
         Assembler.labelReference(name[1..-1])
     end
+    def cLabel
+        Assembler.cLabelReference(name[1..-1])
+    end
 end
 
 class LocalLabelReference
     def asmLabel
         Assembler.localLabelReference("_offlineasm_"+name[1..-1])
+    end
+    def cLabel
+        Assembler.cLocalLabelReference("_offlineasm_"+name[1..-1])
     end
 end
 

@@ -32,13 +32,12 @@
 #include "ExceptionCode.h"
 #include "HTMLNames.h"
 #include "MediaList.h"
-#include "MemoryInstrumentation.h"
 #include "Node.h"
 #include "SVGNames.h"
 #include "SecurityOrigin.h"
 #include "StyleRule.h"
-#include "StyleRuleImport.h"
 #include "StyleSheetContents.h"
+#include "WebCoreMemoryInstrumentation.h"
 #include <wtf/text/StringBuilder.h>
 
 namespace WebCore {
@@ -58,8 +57,8 @@ private:
 
     virtual void reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const OVERRIDE
     {
-        MemoryClassInfo info(memoryObjectInfo, this, MemoryInstrumentation::CSS);
-        info.addInstrumentedMember(m_styleSheet);
+        MemoryClassInfo info(memoryObjectInfo, this, WebCoreMemoryTypes::CSS);
+        info.addMember(m_styleSheet);
     }
     
     CSSStyleSheet* m_styleSheet;
@@ -151,7 +150,7 @@ void CSSStyleSheet::willMutateRules()
     m_contents->setMutable();
 
     // Any existing CSSOM wrappers need to be connected to the copied child rules.
-    reattachCSSOMWrappers();
+    reattachChildRuleCSSOMWrappers();
 }
 
 void CSSStyleSheet::didMutateRules()
@@ -170,11 +169,8 @@ void CSSStyleSheet::didMutate()
     owner->styleResolverChanged(DeferRecalcStyle);
 }
 
-void CSSStyleSheet::reattachCSSOMWrappers()
+void CSSStyleSheet::reattachChildRuleCSSOMWrappers()
 {
-    if (m_ownerRule)
-        m_ownerRule->reattachStyleSheetContents();
-
     for (unsigned i = 0; i < m_childRuleCSSOMWrappers.size(); ++i) {
         if (!m_childRuleCSSOMWrappers[i])
             continue;
@@ -184,13 +180,13 @@ void CSSStyleSheet::reattachCSSOMWrappers()
 
 void CSSStyleSheet::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
 {
-    MemoryClassInfo info(memoryObjectInfo, this, MemoryInstrumentation::CSS);
-    info.addInstrumentedMember(m_contents);
-    info.addInstrumentedMember(m_title);
-    info.addInstrumentedMember(m_mediaQueries);
-    info.addInstrumentedMember(m_ownerNode);
-    info.addInstrumentedMember(m_ownerRule);
-    info.addInstrumentedMember(m_mediaCSSOMWrapper);
+    MemoryClassInfo info(memoryObjectInfo, this, WebCoreMemoryTypes::CSS);
+    info.addMember(m_contents);
+    info.addMember(m_title);
+    info.addMember(m_mediaQueries);
+    info.addMember(m_ownerNode);
+    info.addMember(m_ownerRule);
+    info.addMember(m_mediaCSSOMWrapper);
     info.addInstrumentedVector(m_childRuleCSSOMWrappers);
 }
 
@@ -287,10 +283,7 @@ unsigned CSSStyleSheet::insertRule(const String& ruleString, unsigned index, Exc
     if (!success) {
         ec = HIERARCHY_REQUEST_ERR;
         return 0;
-    }
-    if (rule->isImportRule())
-        static_cast<StyleRuleImport*>(rule.get())->requestStyleSheet(rootStyleSheet(), m_contents->parserContext());
-
+    }        
     if (!m_childRuleCSSOMWrappers.isEmpty())
         m_childRuleCSSOMWrappers.insert(index, RefPtr<CSSRule>());
 
@@ -377,17 +370,11 @@ CSSStyleSheet* CSSStyleSheet::parentStyleSheet() const
     return m_ownerRule ? m_ownerRule->parentStyleSheet() : 0; 
 }
 
-CSSStyleSheet* CSSStyleSheet::rootStyleSheet() const
+Document* CSSStyleSheet::ownerDocument() const
 {
     const CSSStyleSheet* root = this;
     while (root->parentStyleSheet())
         root = root->parentStyleSheet();
-    return const_cast<CSSStyleSheet*>(root);
-}
-
-Document* CSSStyleSheet::ownerDocument() const
-{
-    const CSSStyleSheet* root = rootStyleSheet();
     return root->ownerNode() ? root->ownerNode()->document() : 0;
 }
 

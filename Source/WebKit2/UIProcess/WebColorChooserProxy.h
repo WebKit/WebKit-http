@@ -49,18 +49,21 @@ public:
         virtual void didChooseColor(const WebCore::Color&) = 0;
         virtual void didEndColorChooser() = 0;
     };
-    virtual ~WebColorChooserProxy() { }
+
+    static PassRefPtr<WebColorChooserProxy> create(Client* client)
+    {
+        return adoptRef(new WebColorChooserProxy(client));
+    }
+
+    virtual ~WebColorChooserProxy();
 
     void invalidate() { m_client = 0; }
 
-    virtual void endChooser() = 0;
-    virtual void setSelectedColor(const WebCore::Color&) = 0;
+    virtual void endChooser();
+    virtual void setSelectedColor(const WebCore::Color&);
 
 protected:
-    WebColorChooserProxy(Client* client)
-        : m_client(client)
-    {
-    }
+    explicit WebColorChooserProxy(Client*);
 
     Client* m_client;
 };

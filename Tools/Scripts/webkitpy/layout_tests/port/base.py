@@ -156,7 +156,7 @@ class Port(object):
         if self.get_option('webkit_test_runner'):
             # Add some more time to WebKitTestRunner because it needs to syncronise the state
             # with the web process and we want to detect if there is a problem with that in the driver.
-            return 50 * 1000
+            return 80 * 1000
         return 35 * 1000
 
     def driver_stop_timeout(self):
@@ -1006,7 +1006,8 @@ class Port(object):
         expectations = OrderedDict()
 
         for path in self.expectations_files():
-            expectations[path] = self._filesystem.read_text_file(path)
+            if self._filesystem.exists(path):
+                expectations[path] = self._filesystem.read_text_file(path)
 
         for path in self.get_option('additional_expectations', []):
             expanded_path = self._filesystem.expanduser(path)

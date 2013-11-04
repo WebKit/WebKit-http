@@ -49,11 +49,14 @@ class TestExpectationsChecker(object):
 
     def _determine_port_from_expectations_path(self, host, expectations_path):
         # Pass a configuration to avoid calling default_configuration() when initializing the port (takes 0.5 seconds on a Mac Pro!).
-        options = optparse.Values({'configuration': 'Release'})
+        options_wk1 = optparse.Values({'configuration': 'Release', 'webkit_test_runner': False})
+        options_wk2 = optparse.Values({'configuration': 'Release', 'webkit_test_runner': True})
         for port_name in host.port_factory.all_port_names():
-            port = host.port_factory.get(port_name, options=options)
-            if port.path_to_test_expectations_file().replace(port.path_from_webkit_base() + host.filesystem.sep, '') == expectations_path:
-                return port
+            ports = [host.port_factory.get(port_name, options=options_wk1), host.port_factory.get(port_name, options=options_wk2)]
+            for port in ports:
+                for test_expectation_file in port.expectations_files():
+                    if test_expectation_file.replace(port.path_from_webkit_base() + host.filesystem.sep, '') == expectations_path:
+                        return port
         return None
 
     def __init__(self, file_path, handle_style_error, host=None):
@@ -75,13 +78,9 @@ class TestExpectationsChecker(object):
     def _handle_error_message(self, lineno, message, confidence):
         pass
 
-    def check_test_expectations(self, expectations_str, tests=None, overrides=None):
-        # FIXME: we should pass in the filenames here if possible, and ensure
-        # that this works with with cascading expectations files and remove the overrides param.
+    def check_test_expectations(self, expectations_str, tests=None):
         parser = TestExpectationParser(self._port_obj, tests, False)
         expectations = parser.parse('expectations', expectations_str)
-        if overrides:
-            expectations += parser.parse('overrides', overrides)
 
         level = 5
         for expectation_line in expectations:
@@ -92,12 +91,9 @@ class TestExpectationsChecker(object):
         self._tab_checker.check(lines)
 
     def check(self, lines):
-        overrides = self._port_obj.test_expectations_overrides()
         expectations = '\n'.join(lines)
         if self._port_obj:
-            self.check_test_expectations(expectations_str=expectations,
-                                         tests=None,
-                                         overrides=overrides)
+            self.check_test_expectations(expectations_str=expectations, tests=None)
         else:
             self._handle_style_error(1, 'test/expectations', 5,
                                      'No port uses path %s for test_expectations' % self._file_path)

@@ -123,14 +123,6 @@ bool PluginProxy::canInitializeAsynchronously() const
     return controller()->asynchronousPluginInitializationEnabled() && (m_connection->supportsAsynchronousPluginInitialization() || controller()->asynchronousPluginInitializationEnabledForAllPlugins());
 }
 
-void PluginProxy::waitForAsynchronousInitialization()
-{
-    ASSERT(!m_isStarted);
-    ASSERT(m_waitingOnAsynchronousInitialization);
-
-    initializeSynchronously();
-}
-
 bool PluginProxy::initializeSynchronously()
 {
     ASSERT(m_pendingPluginCreationParameters);
@@ -458,6 +450,11 @@ void PluginProxy::sendComplexTextInput(const String& textInput)
 void PluginProxy::contentsScaleFactorChanged(float scaleFactor)
 {
     geometryDidChange();
+}
+
+void PluginProxy::storageBlockingStateChanged(bool isStorageBlockingEnabled)
+{
+    m_connection->connection()->send(Messages::PluginControllerProxy::StorageBlockingStateChanged(isStorageBlockingEnabled), m_pluginInstanceID);
 }
 
 void PluginProxy::privateBrowsingStateChanged(bool isPrivateBrowsingEnabled)

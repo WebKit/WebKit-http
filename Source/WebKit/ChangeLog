@@ -1,3 +1,83 @@
+2012-09-14  Tor Arne Vestbø  <tor.arne.vestbo@nokia.com>
+
+        [Qt] Make force_static_libs_as_shared work on Mac OS
+
+        We had to move a few LIBS += around that were in the wrong place,
+        and not caught when everything was just linked into the final
+        QtWebKit library.
+
+        Reviewed by Simon Hausmann.
+
+        * WebKit1.pri: Move multimedia-stuff to WebCore, to share with WK2
+
+2012-09-11  Raphael Kubo da Costa  <rakuco@webkit.org>
+
+        [EFL] Rewrite the EFL-related Find modules
+        https://bugs.webkit.org/show_bug.cgi?id=95237
+
+        Reviewed by Kenneth Rohde Christiansen.
+
+        * PlatformEfl.cmake: Stop setting the LINK_FLAGS property and add
+        libraries and include directories for each Enlightenment
+        Foundation Library used by the port.
+
+2012-09-11  Tor Arne Vestbø  <tor.arne.vestbo@nokia.com>
+
+        [Qt] Add a configure step to the Qt build system
+
+        This allows building the Qt port using just 'qmake WebKit.pro'. Using
+        the build-webkit script is still supported, and will add slightly more
+        logic to the build, such as detecting the need for clean or incremental
+        builds.
+
+        Internally, the build system now uses a new variable, WEBKIT_CONFIG, for
+        all things related to configuring the build, such as use/have/enable flags,
+        and these are translated to defines in default_post. Project files should
+        no longer check contains(DEFINES,...) to detect features, but use the new
+        enable?(), use?(), and have?() functions. The no_webkit1 and no_webkit2
+        options have been translated into WEBKIT_CONFIG options as well, and can
+        be checked using build?().
+
+        Reviewed by Simon Hausmann.
+
+        * WebKit1.pri:
+        * WebKit1.pro:
+
+2012-09-06  Crystal Zhang  <haizhang@rim.com>
+
+        [BlackBerry]  Implement a color picker
+        https://bugs.webkit.org/show_bug.cgi?id=96001
+
+        Reviewed by Rob Buis.
+
+        Add color picker files into building system.
+
+        * PlatformBlackBerry.cmake:
+
+2012-09-06  Simon Hausmann  <simon.hausmann@nokia.com>
+
+        [Qt] Fix build with ANGLE on platforms that provide EGL/GLESv2
+        https://bugs.webkit.org/show_bug.cgi?id=95965
+
+        Reviewed by Tor Arne Vestbø.
+
+        Depend on ANGLE if necessary, due to the use WebCore types that pull in ANGLE
+        headers (GraphicsContext3D.h in particular).
+
+        * WebKit1.pro:
+
+2012-09-04  Michał Pakuła vel Rutka  <m.pakula@samsung.com>
+
+        [EFL] Context menu restore.
+        https://bugs.webkit.org/show_bug.cgi?id=74179
+
+        Reviewed by Gyuyoung Kim.
+
+        Adds context menu support for EFL port using non-CROSS_PLATFORM_CONTEXT_MENUS
+        approach, the same as used in WebKit2.
+
+        * PlatformEfl.cmake: Added ContextMenuClientEfl.cpp file to sources list.
+
 2012-08-29  Ryuan Choi  <ryuan.choi@samsung.com>
 
         [EFL] Move several files to remove webkit1 dependency from WebCore.

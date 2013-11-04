@@ -376,7 +376,7 @@ bool GraphicsContext::paintingDisabled() const
     return m_state.paintingDisabled;
 }
 
-#if !OS(WINCE)
+#if !OS(WINCE) || PLATFORM(QT)
 void GraphicsContext::drawText(const Font& font, const TextRun& run, const FloatPoint& point, int from, int to)
 {
     if (paintingDisabled())
@@ -413,8 +413,7 @@ void GraphicsContext::drawBidiText(const Font& font, const TextRun& run, const F
     FloatPoint currPoint = point;
     BidiCharacterRun* bidiRun = bidiRuns.firstRun();
     while (bidiRun) {
-        TextRun subrun = run;
-        subrun.setText(run.data(bidiRun->start()), bidiRun->stop() - bidiRun->start());
+        TextRun subrun = run.subRun(bidiRun->start(), bidiRun->stop() - bidiRun->start());
         bool isRTL = bidiRun->level() % 2;
         subrun.setDirection(isRTL ? RTL : LTR);
         subrun.setDirectionalOverride(bidiRun->dirOverride(false));
@@ -705,7 +704,7 @@ CompositeOperator GraphicsContext::compositeOperation() const
 #if !USE(CG) && !USE(SKIA)
 // Implement this if you want to go ahead and push the drawing mode into your native context
 // immediately.
-void GraphicsContext::setPlatformTextDrawingMode(TextDrawingModeFlags mode)
+void GraphicsContext::setPlatformTextDrawingMode(TextDrawingModeFlags)
 {
 }
 #endif

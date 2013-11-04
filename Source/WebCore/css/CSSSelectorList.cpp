@@ -28,7 +28,7 @@
 #include "CSSSelectorList.h"
 
 #include "CSSParserValues.h"
-#include "MemoryInstrumentation.h"
+#include "WebCoreMemoryInstrumentation.h"
 #include <wtf/text/StringBuilder.h>
 
 namespace WebCore {
@@ -145,7 +145,7 @@ String CSSSelectorList::selectorsText() const
 
 void CSSSelectorList::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
 {
-    MemoryClassInfo info(memoryObjectInfo, this, MemoryInstrumentation::CSS);
+    MemoryClassInfo info(memoryObjectInfo, this, WebCoreMemoryTypes::CSS);
     info.addRawBuffer(m_selectorArray, length() * sizeof(CSSSelector));
 }
 

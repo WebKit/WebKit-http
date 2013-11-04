@@ -34,16 +34,16 @@
 #if ENABLE(INSPECTOR)
 
 #include "InspectorValues.h"
-#include "PlatformString.h"
-
 #include <wtf/HashMap.h>
 #include <wtf/RefCounted.h>
+#include <wtf/text/WTFString.h>
 
 namespace WebCore {
 
 class InspectorStateClient;
 
 class InspectorState {
+    WTF_MAKE_FAST_ALLOCATED;
 public:
     InspectorState(InspectorStateClient*);
     virtual ~InspectorState() {}

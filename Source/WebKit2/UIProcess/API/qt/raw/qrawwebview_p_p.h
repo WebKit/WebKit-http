@@ -25,8 +25,10 @@
 #ifndef qrawwebview_p_p_h
 #define qrawwebview_p_p_h
 
+#include "FindIndicator.h"
 #include "PageClient.h"
 #include "WebContextMenuProxy.h"
+#include "WebEditCommandProxy.h"
 #include "WebPopupMenuProxy.h"
 #include "qrawwebview_p.h"
 
@@ -87,7 +89,7 @@ public:
     virtual PassRefPtr<WebKit::WebContextMenuProxy> createContextMenuProxy(WebKit::WebPageProxy* webPageProxy);
 
 #if ENABLE(INPUT_TYPE_COLOR)
-    virtual PassRefPtr<WebKit::WebColorChooserProxy> createColorChooserProxy(WebKit::WebPageProxy*, const WebCore::Color& intialColor);
+    virtual PassRefPtr<WebKit::WebColorChooserProxy> createColorChooserProxy(WebKit::WebPageProxy*, const WebCore::Color& intialColor, const WebCore::IntRect&);
 #endif
 
     QRawWebViewPrivate(WebKit::WebContext*, WebKit::WebPageGroup*, QRawWebViewClient*);

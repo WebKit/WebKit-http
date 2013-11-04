@@ -33,6 +33,7 @@ import re
 import shlex
 import sys
 import time
+import os
 
 from webkitpy.common.system import path
 
@@ -66,9 +67,13 @@ class DriverOutput(object):
     strip_patterns.append((re.compile(' *" *\n +" *'), ' '))
     strip_patterns.append((re.compile('" +$'), '"'))
     strip_patterns.append((re.compile('- '), '-'))
+    strip_patterns.append((re.compile('\n( *)"\s+'), '\n\g<1>"'))
     strip_patterns.append((re.compile('\s+"\n'), '"\n'))
     strip_patterns.append((re.compile('scrollWidth [0-9]+'), 'scrollWidth'))
     strip_patterns.append((re.compile('scrollHeight [0-9]+'), 'scrollHeight'))
+    strip_patterns.append((re.compile('scrollX [0-9]+'), 'scrollX'))
+    strip_patterns.append((re.compile('scrollY [0-9]+'), 'scrollY'))
+    strip_patterns.append((re.compile('scrolled to [0-9]+,[0-9]+'), 'scrolled'))
 
     def __init__(self, text, image, image_hash, audio, crash=False,
             test_time=0, timeout=False, error='', crashed_process_name='??',
@@ -165,8 +170,10 @@ class Driver(object):
             # We call stop() even if we crashed or timed out in order to get any remaining stdout/stderr output.
             # In the timeout case, we kill the hung process as well.
             out, err = self._server_process.stop(self._port.driver_stop_timeout() if stop_when_done else 0.0)
-            text += out
-            self.error_from_test += err
+            if out:
+                text += out
+            if err:
+                self.error_from_test += err
             self._server_process = None
 
         crash_log = None
@@ -176,10 +183,14 @@ class Driver(object):
             # If we don't find a crash log use a placeholder error message instead.
             if not crash_log:
                 pid_str = str(self._crashed_pid) if self._crashed_pid else "unknown pid"
-                crash_log = 'no crash log found for %s:%s.' % (self._crashed_process_name, pid_str)
+                crash_log = 'No crash log found for %s:%s.\n' % (self._crashed_process_name, pid_str)
                 # If we were unresponsive append a message informing there may not have been a crash.
                 if self._subprocess_was_unresponsive:
-                    crash_log += '  Process failed to become responsive before timing out.'
+                    crash_log += 'Process failed to become responsive before timing out.\n'
+
+                # Print stdout and stderr to the placeholder crash log; we want as much context as possible.
+                if self.error_from_test:
+                    crash_log += '\nstdout:\n%s\nstderr:\n%s\n' % (text, self.error_from_test)
 
         return DriverOutput(text, image, actual_image_hash, audio,
             crash=crashed, test_time=time.time() - test_begin_time,
@@ -266,6 +277,8 @@ class Driver(object):
         # FIXME: We're assuming that WebKitTestRunner checks this DumpRenderTree-named environment variable.
         environment['DUMPRENDERTREE_TEMP'] = str(self._driver_tempdir)
         environment['LOCAL_RESOURCE_ROOT'] = self._port.layout_tests_dir()
+        if 'WEBKITOUTPUTDIR' in os.environ:
+            environment['WEBKITOUTPUTDIR'] = os.environ['WEBKITOUTPUTDIR']
         self._crashed_process_name = None
         self._crashed_pid = None
         self._server_process = self._port._server_process_constructor(self._port, server_name, self.cmd_line(pixel_tests, per_test_args), environment)

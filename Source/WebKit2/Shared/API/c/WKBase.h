@@ -29,7 +29,7 @@
 
 #include <stdint.h>
 
-#if defined(WIN32) || defined(_WIN32)
+#if (defined(WIN32) || defined(_WIN32)) && !defined(BUILDING_QT__)
 #include <WebKit2/WKBaseWin.h>
 #endif
 
@@ -89,6 +89,7 @@ typedef const struct OpaqueWKBackForwardListItem* WKBackForwardListItemRef;
 typedef const struct OpaqueWKBatteryManager* WKBatteryManagerRef;
 typedef const struct OpaqueWKBatteryStatus* WKBatteryStatusRef;
 typedef const struct OpaqueWKResourceCacheManager* WKResourceCacheManagerRef;
+typedef const struct OpaqueWKColorPickerResultListener* WKColorPickerResultListenerRef;
 typedef const struct OpaqueWKContext* WKContextRef;
 typedef const struct OpaqueWKCookieManager* WKCookieManagerRef;
 typedef const struct OpaqueWKCredential* WKCredentialRef;

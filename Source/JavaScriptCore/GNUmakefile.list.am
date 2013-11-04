@@ -266,6 +266,7 @@ javascriptcore_sources += \
     Source/JavaScriptCore/heap/HeapTimer.cpp \
 	Source/JavaScriptCore/heap/IncrementalSweeper.h \
 	Source/JavaScriptCore/heap/IncrementalSweeper.cpp \
+    Source/JavaScriptCore/heap/SlotVisitor.cpp \
 	Source/JavaScriptCore/heap/SlotVisitor.h \
 	Source/JavaScriptCore/heap/SlotVisitorInlineMethods.h \
 	Source/JavaScriptCore/heap/HandleStack.cpp \
@@ -404,6 +405,8 @@ javascriptcore_sources += \
 	Source/JavaScriptCore/jit/ThunkGenerators.cpp \
 	Source/JavaScriptCore/jit/ThunkGenerators.h \
 	Source/JavaScriptCore/llint/LLIntCommon.h \
+	Source/JavaScriptCore/llint/LLIntCLoop.cpp \
+	Source/JavaScriptCore/llint/LLIntCLoop.h \
 	Source/JavaScriptCore/llint/LLIntData.cpp \
 	Source/JavaScriptCore/llint/LLIntData.h \
 	Source/JavaScriptCore/llint/LLIntEntrypoints.cpp \
@@ -411,6 +414,7 @@ javascriptcore_sources += \
 	Source/JavaScriptCore/llint/LLIntExceptions.cpp \
 	Source/JavaScriptCore/llint/LLIntExceptions.h \
 	Source/JavaScriptCore/llint/LLIntOfflineAsmConfig.h \
+	Source/JavaScriptCore/llint/LLIntOpcode.h \
 	Source/JavaScriptCore/llint/LLIntSlowPaths.cpp \
 	Source/JavaScriptCore/llint/LLIntSlowPaths.h \
 	Source/JavaScriptCore/llint/LLIntThunks.cpp \
@@ -453,8 +457,10 @@ javascriptcore_sources += \
 	Source/JavaScriptCore/runtime/Arguments.h \
 	Source/JavaScriptCore/runtime/ArrayConstructor.cpp \
 	Source/JavaScriptCore/runtime/ArrayConstructor.h \
+	Source/JavaScriptCore/runtime/ArrayConventions.h \
 	Source/JavaScriptCore/runtime/ArrayPrototype.cpp \
 	Source/JavaScriptCore/runtime/ArrayPrototype.h \
+	Source/JavaScriptCore/runtime/ArrayStorage.h \
 	Source/JavaScriptCore/runtime/BatchedTransitionOptimizer.h \
 	Source/JavaScriptCore/runtime/BigInteger.h \
 	Source/JavaScriptCore/runtime/BooleanConstructor.cpp \
@@ -463,6 +469,8 @@ javascriptcore_sources += \
 	Source/JavaScriptCore/runtime/BooleanObject.h \
 	Source/JavaScriptCore/runtime/BooleanPrototype.cpp \
 	Source/JavaScriptCore/runtime/BooleanPrototype.h \
+	Source/JavaScriptCore/runtime/ButterflyInlineMethods.h \
+	Source/JavaScriptCore/runtime/Butterfly.h \
 	Source/JavaScriptCore/runtime/CachedTranscendentalFunction.h \
 	Source/JavaScriptCore/runtime/CallData.cpp \
 	Source/JavaScriptCore/runtime/CallData.h \
@@ -507,6 +515,9 @@ javascriptcore_sources += \
 	Source/JavaScriptCore/runtime/GetterSetter.h \
 	Source/JavaScriptCore/runtime/Identifier.cpp \
 	Source/JavaScriptCore/runtime/Identifier.h \
+	Source/JavaScriptCore/runtime/IndexingHeaderInlineMethods.h \
+	Source/JavaScriptCore/runtime/IndexingHeader.h \
+	Source/JavaScriptCore/runtime/IndexingType.h \
 	Source/JavaScriptCore/runtime/InitializeThreading.cpp \
 	Source/JavaScriptCore/runtime/InitializeThreading.h \
 	Source/JavaScriptCore/runtime/InternalFunction.cpp \
@@ -566,6 +577,7 @@ javascriptcore_sources += \
 	Source/JavaScriptCore/runtime/JSValueInlineMethods.h \
 	Source/JavaScriptCore/runtime/JSVariableObject.cpp \
 	Source/JavaScriptCore/runtime/JSVariableObject.h \
+	Source/JavaScriptCore/runtime/JSWithScope.h \
 	Source/JavaScriptCore/runtime/JSWrapperObject.cpp \
 	Source/JavaScriptCore/runtime/JSWrapperObject.h \
 	Source/JavaScriptCore/runtime/LiteralParser.cpp \
@@ -611,7 +623,9 @@ javascriptcore_sources += \
 	Source/JavaScriptCore/runtime/PropertyOffset.h \
 	Source/JavaScriptCore/runtime/PropertySlot.cpp \
 	Source/JavaScriptCore/runtime/PropertySlot.h \
+	Source/JavaScriptCore/runtime/PropertyStorage.h \
 	Source/JavaScriptCore/runtime/Protect.h \
+	Source/JavaScriptCore/runtime/PutDirectIndexMode.h \
 	Source/JavaScriptCore/runtime/PutPropertySlot.h \
 	Source/JavaScriptCore/runtime/RegExpCache.cpp \
 	Source/JavaScriptCore/runtime/RegExpCache.h \
@@ -628,11 +642,13 @@ javascriptcore_sources += \
 	Source/JavaScriptCore/runtime/RegExpObject.h \
 	Source/JavaScriptCore/runtime/RegExpPrototype.cpp \
 	Source/JavaScriptCore/runtime/RegExpPrototype.h \
+	Source/JavaScriptCore/runtime/Reject.h \
 	Source/JavaScriptCore/runtime/SamplingCounter.cpp \
 	Source/JavaScriptCore/runtime/SamplingCounter.h \
 	Source/JavaScriptCore/runtime/SmallStrings.cpp \
 	Source/JavaScriptCore/runtime/SmallStrings.h \
-	Source/JavaScriptCore/runtime/StorageBarrier.h \
+	Source/JavaScriptCore/runtime/SparseArrayValueMap.cpp \
+	Source/JavaScriptCore/runtime/SparseArrayValueMap.h \
 	Source/JavaScriptCore/runtime/StrictEvalActivation.cpp \
 	Source/JavaScriptCore/runtime/StrictEvalActivation.h \
 	Source/JavaScriptCore/runtime/StringConstructor.cpp \
@@ -693,6 +709,7 @@ offlineasm_nosources += \
 	Source/JavaScriptCore/offlineasm/asm.rb \
 	Source/JavaScriptCore/offlineasm/ast.rb \
 	Source/JavaScriptCore/offlineasm/backends.rb \
+	Source/JavaScriptCore/offlineasm/cloop.rb \
 	Source/JavaScriptCore/offlineasm/config.rb \
 	Source/JavaScriptCore/offlineasm/generate_offset_extractor.rb \
 	Source/JavaScriptCore/offlineasm/instructions.rb \

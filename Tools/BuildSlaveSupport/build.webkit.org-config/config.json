@@ -10,7 +10,6 @@
                     { "name": "apple-macpro-5", "platform": "mac-lion" },	
                     { "name": "apple-macpro-6", "platform": "mac-lion" },
                     { "name": "apple-macpro-8", "platform": "mac-lion" },	
-                    { "name": "apple-xserve-1", "platform": "mac-lion" },
                     { "name": "apple-xserve-2", "platform": "mac-lion" },
                     { "name": "apple-xserve-3", "platform": "mac-lion" },
                     { "name": "apple-xserve-10", "platform": "mac-lion" },
@@ -65,6 +64,7 @@
                     { "name": "google-linux-2", "platform": "chromium-linux" },
                     { "name": "google-linux-perf", "platform": "chromium-linux" },
                     { "name": "google-linux-android", "platform": "chromium-android" },
+                    { "name": "google-android-tests", "platform": "chromium-android" },
 
                     { "name": "wincairo-1", "platform": "wincairo" },
 
@@ -104,7 +104,7 @@
                     },
                     { "name": "Apple Lion Debug WK2 (Tests)", "type": "TestWebKit2", "builddir": "lion-debug-tests-wk2",
                       "platform": "mac-lion", "configuration": "debug", "architectures": ["x86_64"],
-                      "slavenames": ["apple-macpro-8", "apple-xserve-1"]
+                      "slavenames": ["apple-macpro-8"]
                     },
                     { "name": "Apple Lion Release WK1 (Tests)", "type": "Test", "builddir": "lion-release-tests-wk1",
                       "platform": "mac-lion", "configuration": "release", "architectures": ["x86_64"],
@@ -200,35 +200,42 @@
                     {
                       "name": "Qt Linux Release", "type": "BuildAndTest", "builddir": "qt-linux-release",
                       "platform": "qt-4.8", "configuration": "release", "architectures": ["i386"],
+                      "SVNMirror": "svn://rain.inf.u-szeged.hu/webkit/",
                       "slavenames": ["szeged-linux-1"]
                     },
                     {
                       "name": "Qt Linux Release minimal", "type": "Build", "builddir": "qt-linux-release-minimal",
+                      "SVNMirror": "svn://rain.inf.u-szeged.hu/webkit/",
                       "platform": "qt-4.8", "configuration": "release", "architectures": ["i386"],
                       "slavenames": ["szeged-linux-2"]
                     },
                     {
                       "name": "Qt Linux 64-bit Release (Perf)", "type": "BuildAndPerfTest", "builddir": "qt-linux-64-release-perf-tests",
+                      "SVNMirror": "svn://rain.inf.u-szeged.hu/webkit/",
                       "platform": "qt-5.0-wk1", "configuration": "release", "architectures": ["x86_64"],
                       "slavenames": ["szeged-linux-3"]
                     },
                     {
                       "name": "Qt Linux 64-bit Release (WebKit2 Perf)", "type": "BuildAndPerfTestWebKit2", "builddir": "qt-linux-64-release-wk2-perf-tests",
+                      "SVNMirror": "svn://rain.inf.u-szeged.hu/webkit/",
                       "platform": "qt-5.0-wk2", "configuration": "release", "architectures": ["x86_64"],
                       "slavenames": ["szeged-linux-5"]
                     },
                     {
                       "name": "Qt Linux ARMv7 Release", "type": "Build", "builddir": "qt-linux-armv7-release",
+                      "SVNMirror": "svn://rain.inf.u-szeged.hu/webkit:3389/",
                       "platform": "qt-arm", "configuration": "release", "architectures": ["armv7"],
                       "slavenames": ["szeged-linux-4"]
                     },
                     {
                       "name": "Qt Windows 32-bit Release", "type": "Build", "builddir": "qt-windows-32bit-release",
+                      "SVNMirror": "svn://rain.inf.u-szeged.hu/webkit/",
                       "platform": "qt-win", "configuration": "release", "architectures": ["i386"],
                       "slavenames": ["szeged-windows-1"]
                     },
                     {
                       "name": "Qt Windows 32-bit Debug", "type": "Build", "builddir": "qt-windows-32bit-debug",
+                      "SVNMirror": "svn://rain.inf.u-szeged.hu/webkit/",
                       "platform": "qt-win", "configuration": "debug", "architectures": ["i386"],
                       "slavenames": ["szeged-windows-2"]
                     },
@@ -288,7 +295,12 @@
                     {
                       "name": "Chromium Android Release", "type": "Build", "builddir": "chromium-linux-android",
                       "platform": "chromium-android", "configuration": "release", "architectures": ["i386"],
-                      "slavenames": ["google-linux-android"]
+                      "triggers": ["chromium-android-release-tests"], "slavenames": ["google-linux-android"]
+                    },
+                    {
+                      "name": "Chromium Android Release (Tests)", "type": "Test", "builddir": "chromium-android-release-tests",
+                      "platform": "chromium-android", "configuration": "release", "architectures": ["i386"],
+                      "slavenames": ["google-android-tests"]
                     },
                     {
                       "name": "WinCairo Release", "type": "BuildAndTest", "builddir": "win-cairo-release",
@@ -397,6 +409,9 @@
                     },
                     { "type": "Triggerable", "name": "chromium-linux-perf-tests",
                       "builderNames": ["Chromium Linux Release (Perf)"]
+                    },
+                    { "type": "Triggerable", "name": "chromium-android-release-tests",
+                      "builderNames": ["Chromium Android Release (Tests)"]
                     },
                     { "type": "Triggerable", "name": "gtk-linux-64-release-tests-wk2",
                       "builderNames": ["GTK Linux 64-bit Release WK2 (Tests)"]

@@ -32,7 +32,6 @@
 #include "SerializedScriptValue.h"
 #include "V8Binding.h"
 #include "V8DOMWrapper.h"
-#include "V8IsolatedContext.h"
 #include "V8MessagePort.h"
 #include <wtf/ArrayBuffer.h>
 #include <wtf/UnusedParam.h>
@@ -102,7 +101,7 @@ static v8::Handle<v8::Value> portsAttrGetter(v8::Local<v8::String> name, const v
     MessagePortArray portsCopy(*ports);
     v8::Local<v8::Array> portArray = v8::Array::New(portsCopy.size());
     for (size_t i = 0; i < portsCopy.size(); ++i)
-        portArray->Set(v8Integer(i, info.GetIsolate()), toV8(portsCopy[i].get(), info.GetIsolate()));
+        portArray->Set(v8Integer(i, info.GetIsolate()), toV8(portsCopy[i].get(), info.Holder(), info.GetIsolate()));
     return portArray;
 }
 
@@ -190,7 +189,7 @@ static v8::Handle<v8::Value> multiTransferListCallback(const v8::Arguments& args
 
 } // namespace TestSerializedScriptValueInterfaceV8Internal
 
-static const V8DOMConfiguration::BatchedAttribute TestSerializedScriptValueInterfaceAttrs[] = {
+static const V8DOMConfiguration::BatchedAttribute V8TestSerializedScriptValueInterfaceAttrs[] = {
     // Attribute 'value' (Type: 'attribute' ExtAttr: '')
     {"value", TestSerializedScriptValueInterfaceV8Internal::valueAttrGetter, TestSerializedScriptValueInterfaceV8Internal::valueAttrSetter, 0 /* no data */, static_cast<v8::AccessControl>(v8::DEFAULT), static_cast<v8::PropertyAttribute>(v8::None), 0 /* on instance */},
     // Attribute 'readonlyValue' (Type: 'readonly attribute' ExtAttr: '')
@@ -203,7 +202,7 @@ static const V8DOMConfiguration::BatchedAttribute TestSerializedScriptValueInter
     {"cachedReadonlyValue", TestSerializedScriptValueInterfaceV8Internal::cachedReadonlyValueAttrGetter, 0, 0 /* no data */, static_cast<v8::AccessControl>(v8::DEFAULT), static_cast<v8::PropertyAttribute>(v8::None), 0 /* on instance */},
 };
 
-static const V8DOMConfiguration::BatchedCallback TestSerializedScriptValueInterfaceCallbacks[] = {
+static const V8DOMConfiguration::BatchedCallback V8TestSerializedScriptValueInterfaceCallbacks[] = {
     {"acceptTransferList", TestSerializedScriptValueInterfaceV8Internal::acceptTransferListCallback},
     {"multiTransferList", TestSerializedScriptValueInterfaceV8Internal::multiTransferListCallback},
 };
@@ -211,7 +210,7 @@ static const V8DOMConfiguration::BatchedCallback TestSerializedScriptValueInterf
 v8::Handle<v8::Value> V8TestSerializedScriptValueInterface::constructorCallback(const v8::Arguments& args)
 {
     INC_STATS("DOM.TestSerializedScriptValueInterface.Constructor");
-
+    
     if (!args.IsConstructCall())
         return throwTypeError("DOM object constructor cannot be called as a function.");
 
@@ -245,8 +244,8 @@ static v8::Persistent<v8::FunctionTemplate> ConfigureV8TestSerializedScriptValue
 
     v8::Local<v8::Signature> defaultSignature;
     defaultSignature = V8DOMConfiguration::configureTemplate(desc, "TestSerializedScriptValueInterface", v8::Persistent<v8::FunctionTemplate>(), V8TestSerializedScriptValueInterface::internalFieldCount,
-        TestSerializedScriptValueInterfaceAttrs, WTF_ARRAY_LENGTH(TestSerializedScriptValueInterfaceAttrs),
-        TestSerializedScriptValueInterfaceCallbacks, WTF_ARRAY_LENGTH(TestSerializedScriptValueInterfaceCallbacks));
+        V8TestSerializedScriptValueInterfaceAttrs, WTF_ARRAY_LENGTH(V8TestSerializedScriptValueInterfaceAttrs),
+        V8TestSerializedScriptValueInterfaceCallbacks, WTF_ARRAY_LENGTH(V8TestSerializedScriptValueInterfaceCallbacks));
     UNUSED_PARAM(defaultSignature); // In some cases, it will not be used.
     desc->SetCallHandler(V8TestSerializedScriptValueInterface::constructorCallback);
     v8::Local<v8::ObjectTemplate> instance = desc->InstanceTemplate();
@@ -293,11 +292,26 @@ bool V8TestSerializedScriptValueInterface::HasInstance(v8::Handle<v8::Value> val
 }
 
 
-v8::Handle<v8::Object> V8TestSerializedScriptValueInterface::wrapSlow(PassRefPtr<TestSerializedScriptValueInterface> impl, v8::Isolate* isolate)
+v8::Handle<v8::Object> V8TestSerializedScriptValueInterface::wrapSlow(PassRefPtr<TestSerializedScriptValueInterface> impl, v8::Handle<v8::Object> creationContext, v8::Isolate* isolate)
 {
     v8::Handle<v8::Object> wrapper;
-    Frame* frame = 0;
-    wrapper = V8DOMWrapper::instantiateV8Object(frame, &info, impl.get());
+    Document* document = 0;
+    UNUSED_PARAM(document);
+
+    v8::Handle<v8::Context> context;
+    if (!creationContext.IsEmpty() && creationContext->CreationContext() != v8::Context::GetCurrent()) {
+        // For performance, we enter the context only if the currently running context
+        // is different from the context that we are about to enter.
+        context = v8::Local<v8::Context>::New(creationContext->CreationContext());
+        ASSERT(!context.IsEmpty());
+        context->Enter();
+    }
+
+    wrapper = V8DOMWrapper::instantiateV8Object(document, &info, impl.get());
+
+    if (!context.IsEmpty())
+        context->Exit();
+
     if (UNLIKELY(wrapper.IsEmpty()))
         return wrapper;
     v8::Persistent<v8::Object> wrapperHandle = V8DOMWrapper::setJSWrapperForDOMObject(impl, wrapper, isolate);

@@ -26,12 +26,10 @@
 #ifndef ANGLEWebKitBridge_h
 #define ANGLEWebKitBridge_h
 
-#include "PlatformString.h"
 #include <wtf/text/CString.h>
+#include <wtf/text/WTFString.h>
 
-#if PLATFORM(QT)
-#include "ANGLE/include/GLSLANG/ShaderLang.h"
-#elif !PLATFORM(GTK) && !PLATFORM(EFL) && !PLATFORM(BLACKBERRY) && !PLATFORM(CHROMIUM)
+#if !PLATFORM(GTK) && !PLATFORM(EFL) && !PLATFORM(BLACKBERRY) && !PLATFORM(CHROMIUM) && !PLATFORM(QT)
 #include "ANGLE/ShaderLang.h"
 #else
 #include "ShaderLang.h"
@@ -44,6 +42,26 @@ enum ANGLEShaderType {
     SHADER_TYPE_FRAGMENT = SH_FRAGMENT_SHADER,
 };
 
+enum ANGLEShaderSymbolType {
+    SHADER_SYMBOL_TYPE_ATTRIBUTE,
+    SHADER_SYMBOL_TYPE_UNIFORM
+};
+
+struct ANGLEShaderSymbol {
+    ANGLEShaderSymbolType symbolType;
+    String name;
+    ShDataType dataType;
+    int size;
+
+    bool isSampler()
+    {
+        return dataType == SH_SAMPLER_2D
+            || dataType == SH_SAMPLER_CUBE
+            || dataType == SH_SAMPLER_2D_RECT_ARB
+            || dataType == SH_SAMPLER_EXTERNAL_OES;
+    }
+};
+
 class ANGLEWebKitBridge {
 public:
 
@@ -54,6 +72,11 @@ public:
     void setResources(ShBuiltInResources);
     
     bool validateShaderSource(const char* shaderSource, ANGLEShaderType, String& translatedShaderSource, String& shaderValidationLog, int extraCompileOptions = 0);
+
+    // Get the uniforms for the last validated shader of type ShShaderType.
+    // For this function to work, you must use the SH_ATTRIBUTES_UNIFORMS compile option during validation.
+    // Returns false if an unexpected error occurred in ANGLE.
+    bool getUniforms(ShShaderType, Vector<ANGLEShaderSymbol> &symbols);
 
 private:
 

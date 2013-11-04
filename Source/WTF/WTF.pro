@@ -14,6 +14,11 @@ VPATH += $$PWD/wtf
 
 INCLUDEPATH += $$PWD/wtf
 
+wince* {
+    # for mt19937ar.c
+    INCLUDEPATH += $${ROOT_WEBKIT_DIR}/Source/ThirdParty
+}
+
 HEADERS += \
     Alignment.h \
     AlwaysInline.h \
@@ -81,6 +86,7 @@ HEADERS += \
     MathExtras.h \
     MD5.h \
     MediaTime.h \
+    MemoryInstrumentation.h \
     MessageQueue.h \
     MetaAllocator.h \
     MetaAllocatorHandle.h \
@@ -219,7 +225,6 @@ SOURCES += \
     text/AtomicString.cpp \
     text/Base64.cpp \
     text/CString.cpp \
-    text/IntegerToStringConversion.cpp \
     text/StringBuilder.cpp \
     text/StringImpl.cpp \
     text/StringStatics.cpp \

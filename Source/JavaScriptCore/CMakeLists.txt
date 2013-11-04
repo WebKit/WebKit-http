@@ -119,6 +119,7 @@ SET(JavaScriptCore_SOURCES
     heap/MarkedBlock.cpp
     heap/MarkedSpace.cpp
     heap/MarkStack.cpp
+    heap/SlotVisitor.cpp
     heap/WeakSet.cpp
     heap/WeakHandleOwner.cpp
     heap/WeakBlock.cpp
@@ -245,6 +246,7 @@ SET(JavaScriptCore_SOURCES
     runtime/RegExpObject.cpp
     runtime/RegExpPrototype.cpp
     runtime/SmallStrings.cpp
+    runtime/SparseArrayValueMap.cpp
     runtime/StrictEvalActivation.cpp
     runtime/StringConstructor.cpp
     runtime/StringObject.cpp
@@ -291,6 +293,66 @@ SET(JavaScriptCore_LIBRARIES
     ${WTF_LIBRARY_NAME}
 )
 
+IF (ENABLE_LLINT)
+    # We cannot check for RUBY_FOUND because it is set only when the full package is installed and
+    # the only thing we need is the interpreter. Unlike Python, cmake does not provide a macro
+    # for finding the only Ruby interpreter.
+    IF (NOT RUBY_EXECUTABLE)
+        MESSAGE(FATAL_ERROR "The Ruby interpreter is needed to generate LLInt files.")
+    ENDIF ()
+
+    SET(LLINT_ASM
+        llint/LowLevelInterpreter.asm
+        llint/LowLevelInterpreter32_64.asm
+        llint/LowLevelInterpreter64.asm
+    )
+
+    SET(OFFLINE_ASM
+        offlineasm/armv7.rb
+        offlineasm/ast.rb
+        offlineasm/backends.rb
+        offlineasm/cloop.rb
+        offlineasm/config.rb
+        offlineasm/instructions.rb
+        offlineasm/offsets.rb
+        offlineasm/opt.rb
+        offlineasm/parser.rb
+        offlineasm/registers.rb
+        offlineasm/self_hash.rb
+        offlineasm/settings.rb
+        offlineasm/transform.rb
+        offlineasm/x86.rb
+    )
+
+    ADD_CUSTOM_COMMAND(
+        OUTPUT ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/LLIntDesiredOffsets.h
+        MAIN_DEPENDENCY ${JAVASCRIPTCORE_DIR}/offlineasm/generate_offset_extractor.rb
+        DEPENDS ${LLINT_ASM} ${OFFLINE_ASM}
+        COMMAND ${RUBY_EXECUTABLE} ${JAVASCRIPTCORE_DIR}/offlineasm/generate_offset_extractor.rb ${JAVASCRIPTCORE_DIR}/llint/LowLevelInterpreter.asm ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/LLIntDesiredOffsets.h
+        VERBATIM)
+
+    ADD_SOURCE_DEPENDENCIES(${JAVASCRIPTCORE_DIR}/llint/LLIntOffsetsExtractor.cpp ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/LLIntDesiredOffsets.h)
+    ADD_EXECUTABLE(LLIntOffsetsExtractor ${JAVASCRIPTCORE_DIR}/llint/LLIntOffsetsExtractor.cpp)
+    TARGET_LINK_LIBRARIES(LLIntOffsetsExtractor ${WTF_LIBRARY_NAME})
+
+    ADD_CUSTOM_COMMAND(
+        OUTPUT ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/LLIntAssembly.h
+        MAIN_DEPENDENCY ${JAVASCRIPTCORE_DIR}/offlineasm/asm.rb
+        DEPENDS LLIntOffsetsExtractor ${LLINT_ASM} ${OFFLINE_ASM}
+        COMMAND ${RUBY_EXECUTABLE} ${JAVASCRIPTCORE_DIR}/offlineasm/asm.rb ${JAVASCRIPTCORE_DIR}/llint/LowLevelInterpreter.asm $<TARGET_FILE:LLIntOffsetsExtractor> ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/LLIntAssembly.h
+        VERBATIM)
+
+    ADD_SOURCE_DEPENDENCIES(${JAVASCRIPTCORE_DIR}/llint/LowLevelInterpreter.cpp ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/LLIntAssembly.h)
+    LIST(APPEND JavaScriptCore_SOURCES
+        llint/LLIntCLoop.cpp
+        llint/LLIntData.cpp
+        llint/LLIntEntrypoints.cpp
+        llint/LLIntExceptions.cpp
+        llint/LLIntSlowPaths.cpp
+        llint/LLIntThunks.cpp
+        llint/LowLevelInterpreter.cpp
+    )
+ENDIF ()
 
 # GENERATOR 1-A: LUT creator
 FOREACH (_file ${JavaScriptCore_LUT_FILES})
@@ -347,10 +409,6 @@ ADD_LIBRARY(${JavaScriptCore_LIBRARY_NAME} ${JavaScriptCore_LIBRARY_TYPE} ${Java
 TARGET_LINK_LIBRARIES(${JavaScriptCore_LIBRARY_NAME} ${JavaScriptCore_LIBRARIES})
 SET_TARGET_PROPERTIES(${JavaScriptCore_LIBRARY_NAME} PROPERTIES FOLDER "JavaScriptCore")
 SET_TARGET_PROPERTIES(${JavaScriptCore_LIBRARY_NAME} PROPERTIES LINK_INTERFACE_LIBRARIES "")
-
-IF (JavaScriptCore_LINK_FLAGS)
-    ADD_TARGET_PROPERTIES(${JavaScriptCore_LIBRARY_NAME} LINK_FLAGS "${JavaScriptCore_LINK_FLAGS}")
-ENDIF ()
 
 IF (SHARED_CORE)
     SET_TARGET_PROPERTIES(${JavaScriptCore_LIBRARY_NAME} PROPERTIES VERSION ${PROJECT_VERSION} SOVERSION ${PROJECT_VERSION_MAJOR})

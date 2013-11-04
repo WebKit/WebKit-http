@@ -139,6 +139,7 @@ private Q_SLOTS:
     void errorPageExtensionLoadFinished();
     void userAgentApplicationName();
     void userAgentNewlineStripping();
+    void undoActionHaveCustomText();
 
     void viewModes();
 
@@ -395,7 +396,7 @@ public:
     TestPage(QObject* parent = 0) : QWebPage(parent) {}
 
     struct Navigation {
-        QWeakPointer<QWebFrame> frame;
+        QPointer<QWebFrame> frame;
         QNetworkRequest request;
         NavigationType type;
     };
@@ -893,7 +894,7 @@ void tst_QWebPage::createPluginWithPluginsDisabled()
 class PluginCounterPage : public QWebPage {
 public:
     int m_count;
-    QWeakPointer<QObject> m_widget;
+    QPointer<QObject> m_widget;
     QObject* m_pluginParent;
     PluginCounterPage(QObject* parent = 0)
         : QWebPage(parent)
@@ -3258,6 +3259,20 @@ void tst_QWebPage::loadSignalsOrder()
     waitForSignal(&loadSpy, SIGNAL(started()));
     page.mainFrame()->load(url);
     QTRY_VERIFY(loadSpy.isFinished());
+}
+
+void tst_QWebPage::undoActionHaveCustomText()
+{
+    m_page->mainFrame()->setHtml("<div id=test contenteditable></div>");
+    m_page->mainFrame()->evaluateJavaScript("document.getElementById('test').focus()");
+
+    m_page->mainFrame()->evaluateJavaScript("document.execCommand('insertText', true, 'Test');");
+    QString typingActionText = m_page->action(QWebPage::Undo)->text();
+
+    m_page->mainFrame()->evaluateJavaScript("document.execCommand('indent', true);");
+    QString alignActionText = m_page->action(QWebPage::Undo)->text();
+
+    QVERIFY(typingActionText != alignActionText);
 }
 
 QTEST_MAIN(tst_QWebPage)

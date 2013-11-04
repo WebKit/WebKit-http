@@ -45,6 +45,11 @@ using namespace std;
 
 namespace WebCore {
 
+PassOwnPtr<Localizer> Localizer::create(const AtomicString& locale)
+{
+    return LocaleMac::create(locale.string());
+}
+
 static NSDateFormatter* createDateTimeFormatter(NSLocale* locale, NSDateFormatterStyle dateStyle, NSDateFormatterStyle timeStyle)
 {
     NSDateFormatter *formatter = [[NSDateFormatter alloc] init];
@@ -66,6 +71,11 @@ LocaleMac::LocaleMac(const String& localeIdentifier)
     : m_locale([[NSLocale alloc] initWithLocaleIdentifier:localeIdentifier])
     , m_didInitializeNumberData(false)
 {
+    NSArray* availableLanguages = [NSLocale ISOLanguageCodes];
+    // NSLocale returns a lower case NSLocaleLanguageCode so we don't have care about case.
+    NSString* language = [m_locale.get() objectForKey:NSLocaleLanguageCode];
+    if ([availableLanguages indexOfObject:language] == NSNotFound)
+        m_locale = [[NSLocale alloc] initWithLocaleIdentifier:defaultLanguage()];
 }
 
 LocaleMac::~LocaleMac()
@@ -240,7 +250,7 @@ NSDateFormatter* LocaleMac::createShortTimeFormatter()
     return createDateTimeFormatter(m_locale.get(), NSDateFormatterNoStyle, NSDateFormatterShortStyle);
 }
 
-String LocaleMac::timeFormatText()
+String LocaleMac::timeFormat()
 {
     if (!m_localizedTimeFormatText.isEmpty())
         return m_localizedTimeFormatText;
@@ -249,7 +259,7 @@ String LocaleMac::timeFormatText()
     return m_localizedTimeFormatText;
 }
 
-String LocaleMac::shortTimeFormatText()
+String LocaleMac::shortTimeFormat()
 {
     if (!m_localizedShortTimeFormatText.isEmpty())
         return m_localizedShortTimeFormatText;
@@ -270,7 +280,7 @@ const Vector<String>& LocaleMac::timeAMPMLabels()
 }
 #endif
 
-void LocaleMac::initializeNumberLocalizerData()
+void LocaleMac::initializeLocalizerData()
 {
     if (m_didInitializeNumberData)
         return;
@@ -298,7 +308,7 @@ void LocaleMac::initializeNumberLocalizerData()
     String positiveSuffix([formatter.get() positiveSuffix]);
     String negativePrefix([formatter.get() negativePrefix]);
     String negativeSuffix([formatter.get() negativeSuffix]);
-    setNumberLocalizerData(symbols, positivePrefix, positiveSuffix, negativePrefix, negativeSuffix);
+    setLocalizerData(symbols, positivePrefix, positiveSuffix, negativePrefix, negativeSuffix);
 }
 
 }

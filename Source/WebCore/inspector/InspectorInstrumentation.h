@@ -65,6 +65,7 @@ class InspectorTimelineAgent;
 class InstrumentingAgents;
 class KURL;
 class Node;
+class RenderObject;
 class ResourceRequest;
 class ResourceResponse;
 class ScriptArguments;
@@ -76,6 +77,7 @@ class SecurityOrigin;
 class ShadowRoot;
 class StorageArea;
 class StyleRule;
+class ThreadableLoaderClient;
 class WorkerContext;
 class WorkerContextProxy;
 class XMLHttpRequest;
@@ -113,8 +115,9 @@ public:
     static void mediaQueryResultChanged(Document*);
     static void didPushShadowRoot(Element* host, ShadowRoot*);
     static void willPopShadowRoot(Element* host, ShadowRoot*);
-    static void didCreateNamedFlow(Document*, const AtomicString& name);
-    static void didRemoveNamedFlow(Document*, const AtomicString& name);
+    static void didCreateNamedFlow(Document*, WebKitNamedFlow*);
+    static void willRemoveNamedFlow(Document*, WebKitNamedFlow*);
+    static void didUpdateRegionLayout(Document*, WebKitNamedFlow*);
 
     static void mouseDidMoveOverElement(Page*, const HitTestResult&, unsigned modifierFlags);
     static bool handleMousePress(Page*);
@@ -127,8 +130,8 @@ public:
 
     static InspectorInstrumentationCookie willCallFunction(ScriptExecutionContext*, const String& scriptName, int scriptLine);
     static void didCallFunction(const InspectorInstrumentationCookie&);
-    static InspectorInstrumentationCookie willChangeXHRReadyState(ScriptExecutionContext*, XMLHttpRequest* request);
-    static void didChangeXHRReadyState(const InspectorInstrumentationCookie&);
+    static InspectorInstrumentationCookie willDispatchXHRReadyStateChangeEvent(ScriptExecutionContext*, XMLHttpRequest*);
+    static void didDispatchXHRReadyStateChangeEvent(const InspectorInstrumentationCookie&);
     static InspectorInstrumentationCookie willDispatchEvent(Document*, const Event& event, DOMWindow* window, Node* node, const Vector<EventContext>& ancestors);
     static void didDispatchEvent(const InspectorInstrumentationCookie&);
     static InspectorInstrumentationCookie willHandleEvent(ScriptExecutionContext*, Event*);
@@ -144,10 +147,10 @@ public:
     static void didCancelFrame(Page*);
     static void didInvalidateLayout(Frame*);
     static InspectorInstrumentationCookie willLayout(Frame*);
-    static void didLayout(const InspectorInstrumentationCookie&);
+    static void didLayout(const InspectorInstrumentationCookie&, RenderObject*);
     static void didScroll(Page*);
-    static InspectorInstrumentationCookie willLoadXHR(ScriptExecutionContext*, XMLHttpRequest*);
-    static void didLoadXHR(const InspectorInstrumentationCookie&);
+    static InspectorInstrumentationCookie willDispatchXHRLoadEvent(ScriptExecutionContext*, XMLHttpRequest*);
+    static void didDispatchXHRLoadEvent(const InspectorInstrumentationCookie&);
     static InspectorInstrumentationCookie willPaint(Frame*, GraphicsContext*, const LayoutRect&);
     static void didPaint(const InspectorInstrumentationCookie&);
     static void willComposite(Page*);
@@ -181,11 +184,15 @@ public:
     static void didReceiveData(Frame*, unsigned long identifier, const char* data, int dataLength, int encodedDataLength);
     static void didFinishLoading(Frame*, DocumentLoader*, unsigned long identifier, double finishTime);
     static void didFailLoading(Frame*, DocumentLoader*, unsigned long identifier, const ResourceError&);
-    static void resourceRetrievedByXMLHttpRequest(ScriptExecutionContext*, unsigned long identifier, const String& sourceString, const String& url, const String& sendURL, unsigned sendLineNumber);
+    static void documentThreadableLoaderStartedLoadingForClient(ScriptExecutionContext*, unsigned long identifier, ThreadableLoaderClient*);
+    static void willLoadXHR(ScriptExecutionContext*, ThreadableLoaderClient*, const String&, const KURL&, bool, PassRefPtr<FormData>, const HTTPHeaderMap&, bool);
+    static void didFailXHRLoading(ScriptExecutionContext*, ThreadableLoaderClient*);
+    static void didFinishXHRLoading(ScriptExecutionContext*, ThreadableLoaderClient*, unsigned long identifier, const String& sourceString, const String& url, const String& sendURL, unsigned sendLineNumber);
     static void didReceiveXHRResponse(ScriptExecutionContext*, unsigned long identifier);
     static void willLoadXHRSynchronously(ScriptExecutionContext*);
     static void didLoadXHRSynchronously(ScriptExecutionContext*);
     static void scriptImported(ScriptExecutionContext*, unsigned long identifier, const String& sourceString);
+    static void scriptExecutionBlockedByCSP(ScriptExecutionContext*, const String& directiveText);
     static void didReceiveScriptResponse(ScriptExecutionContext*, unsigned long identifier);
     static void domContentLoadedEventFired(Frame*);
     static void loadEventFired(Frame*);
@@ -290,8 +297,9 @@ private:
     static void mediaQueryResultChangedImpl(InstrumentingAgents*);
     static void didPushShadowRootImpl(InstrumentingAgents*, Element* host, ShadowRoot*);
     static void willPopShadowRootImpl(InstrumentingAgents*, Element* host, ShadowRoot*);
-    static void didCreateNamedFlowImpl(InstrumentingAgents*, Document*, const AtomicString& name);
-    static void didRemoveNamedFlowImpl(InstrumentingAgents*, Document*, const AtomicString& name);
+    static void didCreateNamedFlowImpl(InstrumentingAgents*, Document*, WebKitNamedFlow*);
+    static void willRemoveNamedFlowImpl(InstrumentingAgents*, Document*, WebKitNamedFlow*);
+    static void didUpdateRegionLayoutImpl(InstrumentingAgents*, Document*, WebKitNamedFlow*);
 
     static void mouseDidMoveOverElementImpl(InstrumentingAgents*, const HitTestResult&, unsigned modifierFlags);
     static bool handleMousePressImpl(InstrumentingAgents*);
@@ -304,8 +312,8 @@ private:
 
     static InspectorInstrumentationCookie willCallFunctionImpl(InstrumentingAgents*, const String& scriptName, int scriptLine, ScriptExecutionContext*);
     static void didCallFunctionImpl(const InspectorInstrumentationCookie&);
-    static InspectorInstrumentationCookie willChangeXHRReadyStateImpl(InstrumentingAgents*, XMLHttpRequest*, ScriptExecutionContext*);
-    static void didChangeXHRReadyStateImpl(const InspectorInstrumentationCookie&);
+    static InspectorInstrumentationCookie willDispatchXHRReadyStateChangeEventImpl(InstrumentingAgents*, XMLHttpRequest*, ScriptExecutionContext*);
+    static void didDispatchXHRReadyStateChangeEventImpl(const InspectorInstrumentationCookie&);
     static InspectorInstrumentationCookie willDispatchEventImpl(InstrumentingAgents*, const Event&, DOMWindow*, Node*, const Vector<EventContext>& ancestors, Document*);
     static InspectorInstrumentationCookie willHandleEventImpl(InstrumentingAgents*, Event*);
     static void didHandleEventImpl(const InspectorInstrumentationCookie&);
@@ -321,10 +329,10 @@ private:
     static void didCancelFrameImpl(InstrumentingAgents*);
     static void didInvalidateLayoutImpl(InstrumentingAgents*, Frame*);
     static InspectorInstrumentationCookie willLayoutImpl(InstrumentingAgents*, Frame*);
-    static void didLayoutImpl(const InspectorInstrumentationCookie&);
+    static void didLayoutImpl(const InspectorInstrumentationCookie&, RenderObject*);
     static void didScrollImpl(InstrumentingAgents*);
-    static InspectorInstrumentationCookie willLoadXHRImpl(InstrumentingAgents*, XMLHttpRequest*, ScriptExecutionContext*);
-    static void didLoadXHRImpl(const InspectorInstrumentationCookie&);
+    static InspectorInstrumentationCookie willDispatchXHRLoadEventImpl(InstrumentingAgents*, XMLHttpRequest*, ScriptExecutionContext*);
+    static void didDispatchXHRLoadEventImpl(const InspectorInstrumentationCookie&);
     static InspectorInstrumentationCookie willPaintImpl(InstrumentingAgents*, GraphicsContext*, const LayoutRect&, Frame*);
     static void didPaintImpl(const InspectorInstrumentationCookie&);
     static void willCompositeImpl(InstrumentingAgents*);
@@ -359,11 +367,15 @@ private:
     static void didReceiveDataImpl(InstrumentingAgents*, unsigned long identifier, const char* data, int dataLength, int encodedDataLength);
     static void didFinishLoadingImpl(InstrumentingAgents*, unsigned long identifier, DocumentLoader*, double finishTime);
     static void didFailLoadingImpl(InstrumentingAgents*, unsigned long identifier, DocumentLoader*, const ResourceError&);
-    static void resourceRetrievedByXMLHttpRequestImpl(InstrumentingAgents*, unsigned long identifier, const String& sourceString, const String& url, const String& sendURL, unsigned sendLineNumber);
+    static void documentThreadableLoaderStartedLoadingForClientImpl(InstrumentingAgents*, unsigned long identifier, ThreadableLoaderClient*);
+    static void willLoadXHRImpl(InstrumentingAgents*, ThreadableLoaderClient*, const String&, const KURL&, bool, PassRefPtr<FormData>, const HTTPHeaderMap&, bool);
+    static void didFailXHRLoadingImpl(InstrumentingAgents*, ThreadableLoaderClient*);
+    static void didFinishXHRLoadingImpl(InstrumentingAgents*, ThreadableLoaderClient*, unsigned long identifier, const String& sourceString, const String& url, const String& sendURL, unsigned sendLineNumber);
     static void didReceiveXHRResponseImpl(InstrumentingAgents*, unsigned long identifier);
     static void willLoadXHRSynchronouslyImpl(InstrumentingAgents*);
     static void didLoadXHRSynchronouslyImpl(InstrumentingAgents*);
     static void scriptImportedImpl(InstrumentingAgents*, unsigned long identifier, const String& sourceString);
+    static void scriptExecutionBlockedByCSPImpl(InstrumentingAgents*, const String& directiveText);
     static void didReceiveScriptResponseImpl(InstrumentingAgents*, unsigned long identifier);
     static void domContentLoadedEventFiredImpl(InstrumentingAgents*, Frame*);
     static void loadEventFiredImpl(InstrumentingAgents*, Frame*);
@@ -561,21 +573,30 @@ inline void InspectorInstrumentation::willPopShadowRoot(Element* host, ShadowRoo
 #endif
 }
 
-inline void InspectorInstrumentation::didCreateNamedFlow(Document* document, const AtomicString& name)
+inline void InspectorInstrumentation::didCreateNamedFlow(Document* document, WebKitNamedFlow* namedFlow)
 {
 #if ENABLE(INSPECTOR)
     FAST_RETURN_IF_NO_FRONTENDS(void());
     if (InstrumentingAgents* instrumentingAgents = instrumentingAgentsForDocument(document))
-        didCreateNamedFlowImpl(instrumentingAgents, document, name);
+        didCreateNamedFlowImpl(instrumentingAgents, document, namedFlow);
 #endif
 }
 
-inline void InspectorInstrumentation::didRemoveNamedFlow(Document* document, const AtomicString& name)
+inline void InspectorInstrumentation::willRemoveNamedFlow(Document* document, WebKitNamedFlow* namedFlow)
 {
 #if ENABLE(INSPECTOR)
     FAST_RETURN_IF_NO_FRONTENDS(void());
     if (InstrumentingAgents* instrumentingAgents = instrumentingAgentsForDocument(document))
-        didRemoveNamedFlowImpl(instrumentingAgents, document, name);
+        willRemoveNamedFlowImpl(instrumentingAgents, document, namedFlow);
+#endif
+}
+
+inline void InspectorInstrumentation::didUpdateRegionLayout(Document* document, WebKitNamedFlow* namedFlow)
+{
+#if ENABLE(INSPECTOR)
+    FAST_RETURN_IF_NO_FRONTENDS(void());
+    if (InstrumentingAgents* instrumentingAgents = instrumentingAgentsForDocument(document))
+        didUpdateRegionLayoutImpl(instrumentingAgents, document, namedFlow);
 #endif
 }
 
@@ -673,22 +694,22 @@ inline void InspectorInstrumentation::didCallFunction(const InspectorInstrumenta
 #endif
 }
 
-inline InspectorInstrumentationCookie InspectorInstrumentation::willChangeXHRReadyState(ScriptExecutionContext* context, XMLHttpRequest* request)
+inline InspectorInstrumentationCookie InspectorInstrumentation::willDispatchXHRReadyStateChangeEvent(ScriptExecutionContext* context, XMLHttpRequest* request)
 {
 #if ENABLE(INSPECTOR)
     FAST_RETURN_IF_NO_FRONTENDS(InspectorInstrumentationCookie());
     if (InstrumentingAgents* instrumentingAgents = instrumentingAgentsForContext(context))
-        return willChangeXHRReadyStateImpl(instrumentingAgents, request, context);
+        return willDispatchXHRReadyStateChangeEventImpl(instrumentingAgents, request, context);
 #endif
     return InspectorInstrumentationCookie();
 }
 
-inline void InspectorInstrumentation::didChangeXHRReadyState(const InspectorInstrumentationCookie& cookie)
+inline void InspectorInstrumentation::didDispatchXHRReadyStateChangeEvent(const InspectorInstrumentationCookie& cookie)
 {
 #if ENABLE(INSPECTOR)
     FAST_RETURN_IF_NO_FRONTENDS(void());
     if (cookie.first)
-        didChangeXHRReadyStateImpl(cookie);
+        didDispatchXHRReadyStateChangeEventImpl(cookie);
 #endif
 }
 
@@ -833,12 +854,12 @@ inline InspectorInstrumentationCookie InspectorInstrumentation::willLayout(Frame
     return InspectorInstrumentationCookie();
 }
 
-inline void InspectorInstrumentation::didLayout(const InspectorInstrumentationCookie& cookie)
+inline void InspectorInstrumentation::didLayout(const InspectorInstrumentationCookie& cookie, RenderObject* root)
 {
 #if ENABLE(INSPECTOR)
     FAST_RETURN_IF_NO_FRONTENDS(void());
     if (cookie.first)
-        didLayoutImpl(cookie);
+        didLayoutImpl(cookie, root);
 #endif
 }
 
@@ -851,22 +872,22 @@ inline void InspectorInstrumentation::didScroll(Page* page)
 #endif
 }
 
-inline InspectorInstrumentationCookie InspectorInstrumentation::willLoadXHR(ScriptExecutionContext* context, XMLHttpRequest* request)
+inline InspectorInstrumentationCookie InspectorInstrumentation::willDispatchXHRLoadEvent(ScriptExecutionContext* context, XMLHttpRequest* request)
 {
 #if ENABLE(INSPECTOR)
     FAST_RETURN_IF_NO_FRONTENDS(InspectorInstrumentationCookie());
     if (InstrumentingAgents* instrumentingAgents = instrumentingAgentsForContext(context))
-        return willLoadXHRImpl(instrumentingAgents, request, context);
+        return willDispatchXHRLoadEventImpl(instrumentingAgents, request, context);
 #endif
     return InspectorInstrumentationCookie();
 }
 
-inline void InspectorInstrumentation::didLoadXHR(const InspectorInstrumentationCookie& cookie)
+inline void InspectorInstrumentation::didDispatchXHRLoadEvent(const InspectorInstrumentationCookie& cookie)
 {
 #if ENABLE(INSPECTOR)
     FAST_RETURN_IF_NO_FRONTENDS(void());
     if (cookie.first)
-        didLoadXHRImpl(cookie);
+        didDispatchXHRLoadEventImpl(cookie);
 #endif
 }
 
@@ -1156,11 +1177,36 @@ inline void InspectorInstrumentation::didFailLoading(Frame* frame, DocumentLoade
 #endif
 }
 
-inline void InspectorInstrumentation::resourceRetrievedByXMLHttpRequest(ScriptExecutionContext* context, unsigned long identifier, const String& sourceString, const String& url, const String& sendURL, unsigned sendLineNumber)
+inline void InspectorInstrumentation::documentThreadableLoaderStartedLoadingForClient(ScriptExecutionContext* context, unsigned long identifier, ThreadableLoaderClient* client)
 {
 #if ENABLE(INSPECTOR)
     if (InstrumentingAgents* instrumentingAgents = instrumentingAgentsForContext(context))
-        resourceRetrievedByXMLHttpRequestImpl(instrumentingAgents, identifier, sourceString, url, sendURL, sendLineNumber);
+        documentThreadableLoaderStartedLoadingForClientImpl(instrumentingAgents, identifier, client);
+#endif
+}
+
+inline void InspectorInstrumentation::willLoadXHR(ScriptExecutionContext* context, ThreadableLoaderClient* client, const String& method, const KURL& url, bool async, PassRefPtr<FormData> formData, const HTTPHeaderMap& headers, bool includeCredentials)
+{
+#if ENABLE(INSPECTOR)
+    if (InstrumentingAgents* instrumentingAgents = instrumentingAgentsForContext(context))
+        willLoadXHRImpl(instrumentingAgents, client, method, url, async, formData, headers, includeCredentials);
+#endif
+}
+
+inline void InspectorInstrumentation::didFailXHRLoading(ScriptExecutionContext* context, ThreadableLoaderClient* client)
+{
+#if ENABLE(INSPECTOR)
+    if (InstrumentingAgents* instrumentingAgents = instrumentingAgentsForContext(context))
+        didFailXHRLoadingImpl(instrumentingAgents, client);
+#endif
+}
+
+
+inline void InspectorInstrumentation::didFinishXHRLoading(ScriptExecutionContext* context, ThreadableLoaderClient* client, unsigned long identifier, const String& sourceString, const String& url, const String& sendURL, unsigned sendLineNumber)
+{
+#if ENABLE(INSPECTOR)
+    if (InstrumentingAgents* instrumentingAgents = instrumentingAgentsForContext(context))
+        didFinishXHRLoadingImpl(instrumentingAgents, client, identifier, sourceString, url, sendURL, sendLineNumber);
 #endif
 }
 
@@ -1193,6 +1239,14 @@ inline void InspectorInstrumentation::scriptImported(ScriptExecutionContext* con
 #if ENABLE(INSPECTOR)
     if (InstrumentingAgents* instrumentingAgents = instrumentingAgentsForContext(context))
         scriptImportedImpl(instrumentingAgents, identifier, sourceString);
+#endif
+}
+
+inline void InspectorInstrumentation::scriptExecutionBlockedByCSP(ScriptExecutionContext* context, const String& directiveText)
+{
+#if ENABLE(INSPECTOR)
+    if (InstrumentingAgents* instrumentingAgents = instrumentingAgentsForContext(context))
+        scriptExecutionBlockedByCSPImpl(instrumentingAgents, directiveText);
 #endif
 }
 

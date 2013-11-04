@@ -49,6 +49,48 @@ using namespace std;
 
 namespace WebCore {
 
+typedef LCID (WINAPI* LocaleNameToLCIDPtr)(LPCWSTR, DWORD);
+
+static String extractLanguageCode(const String& locale)
+{
+    size_t dashPosition = locale.find('-');
+    if (dashPosition == notFound)
+        return locale;
+    return locale.left(dashPosition);
+}
+
+static LCID LCIDFromLocaleInternal(LCID userDefaultLCID, const String& userDefaultLanguageCode, LocaleNameToLCIDPtr localeNameToLCID, String& locale)
+{
+    String localeLanguageCode = extractLanguageCode(locale);
+    if (equalIgnoringCase(localeLanguageCode, userDefaultLanguageCode))
+        return userDefaultLCID;
+    return localeNameToLCID(locale.charactersWithNullTermination(), 0);
+}
+
+static LCID LCIDFromLocale(const AtomicString& locale)
+{
+    // LocaleNameToLCID() is available since Windows Vista.
+    LocaleNameToLCIDPtr localeNameToLCID = reinterpret_cast<LocaleNameToLCIDPtr>(::GetProcAddress(::GetModuleHandle(L"kernel32"), "LocaleNameToLCID"));
+    if (!localeNameToLCID)
+        return LOCALE_USER_DEFAULT;
+
+    // According to MSDN, 9 is enough for LOCALE_SISO639LANGNAME.
+    const size_t languageCodeBufferSize = 9;
+    WCHAR lowercaseLanguageCode[languageCodeBufferSize];
+    ::GetLocaleInfo(LOCALE_USER_DEFAULT, LOCALE_SISO639LANGNAME, lowercaseLanguageCode, languageCodeBufferSize);
+    String userDefaultLanguageCode = String(lowercaseLanguageCode);
+
+    LCID lcid = LCIDFromLocaleInternal(LOCALE_USER_DEFAULT, userDefaultLanguageCode, localeNameToLCID, String(locale));
+    if (!lcid)
+        lcid = LCIDFromLocaleInternal(LOCALE_USER_DEFAULT, userDefaultLanguageCode, localeNameToLCID, defaultLanguage());
+    return lcid;
+}
+
+PassOwnPtr<Localizer> Localizer::create(const AtomicString& locale)
+{
+    return LocaleWin::create(LCIDFromLocale(locale));
+}
+
 // Windows doesn't have an API to parse locale-specific date string,
 // and GetDateFormat() and GetDateFormatEx() don't support years older
 // than 1600, which we should support according to the HTML
@@ -77,30 +119,9 @@ PassOwnPtr<LocaleWin> LocaleWin::create(LCID lcid)
     return adoptPtr(new LocaleWin(lcid));
 }
 
-static LCID determineCurrentLCID()
-{
-    LCID lcid = LOCALE_USER_DEFAULT;
-    // LocaleNameToLCID() is available since Windows Vista.
-    typedef LCID (WINAPI* LocaleNameToLCIDPtr)(LPCWSTR, DWORD);
-    LocaleNameToLCIDPtr localeNameToLCID = reinterpret_cast<LocaleNameToLCIDPtr>(::GetProcAddress(::GetModuleHandle(L"kernel32"), "LocaleNameToLCID"));
-    if (!localeNameToLCID)
-        return lcid;
-    // According to MSDN, 9 is enough for LOCALE_SISO639LANGNAME.
-    const size_t languageCodeBufferSize = 9;
-    WCHAR lowercaseLanguageCode[languageCodeBufferSize];
-    ::GetLocaleInfo(LOCALE_USER_DEFAULT, LOCALE_SISO639LANGNAME, lowercaseLanguageCode, languageCodeBufferSize);
-    String browserLanguage = defaultLanguage();
-    size_t dashPosition = browserLanguage.find('-');
-    if (dashPosition != notFound)
-        browserLanguage = browserLanguage.left(dashPosition);
-    if (!equalIgnoringCase(browserLanguage, String(lowercaseLanguageCode)))
-        lcid = localeNameToLCID(defaultLanguage().charactersWithNullTermination(), 0);
-    return lcid;
-}
-
 LocaleWin* LocaleWin::currentLocale()
 {
-    static LocaleWin* currentLocale = LocaleWin::create(determineCurrentLCID()).leakPtr();
+    static LocaleWin* currentLocale = LocaleWin::create(LCIDFromLocale(defaultLanguage())).leakPtr();
     return currentLocale;
 }
 
@@ -699,18 +720,18 @@ static String convertWindowsTimeFormatToLDML(const String& windowsTimeFormat)
     return builder.toString();
 }
 
-String LocaleWin::timeFormatText()
+String LocaleWin::timeFormat()
 {
-    if (m_timeFormatText.isEmpty())
-        m_timeFormatText = convertWindowsTimeFormatToLDML(getLocaleInfoString(LOCALE_STIMEFORMAT));
-    return m_timeFormatText;
+    if (m_localizedTimeFormatText.isEmpty())
+        m_localizedTimeFormatText = convertWindowsTimeFormatToLDML(getLocaleInfoString(LOCALE_STIMEFORMAT));
+    return m_localizedTimeFormatText;
 }
 
 // Note: To make XP/Vista and Windows 7/later same behavior, we don't use
 // LOCALE_SSHORTTIME.
-String LocaleWin::shortTimeFormatText()
+String LocaleWin::shortTimeFormat()
 {
-    return timeFormatText();
+    return timeFormat();
 }
 
 const Vector<String>& LocaleWin::timeAMPMLabels()
@@ -723,7 +744,7 @@ const Vector<String>& LocaleWin::timeAMPMLabels()
 }
 #endif
 
-void LocaleWin::initializeNumberLocalizerData()
+void LocaleWin::initializeLocalizerData()
 {
     if (m_didInitializeNumberData)
         return;
@@ -791,7 +812,7 @@ void LocaleWin::initializeNumberLocalizerData()
         break;
     }
     m_didInitializeNumberData = true;
-    setNumberLocalizerData(symbols, emptyString(), emptyString(), negativePrefix, negativeSuffix);
+    setLocalizerData(symbols, emptyString(), emptyString(), negativePrefix, negativeSuffix);
 }
 
 }

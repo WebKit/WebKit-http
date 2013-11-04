@@ -294,7 +294,7 @@ void RenderTableSection::setCellLogicalWidths()
                     }
                     cell->repaint();
                 }
-                cell->updateLogicalWidth(w);
+                cell->setCellLogicalWidth(w);
             }
         }
     }
@@ -579,9 +579,9 @@ void RenderTableSection::layoutRows()
                 }
             }
 
-            if (ListHashSet<RenderBox*>* percentHeightDescendants = cell->percentHeightDescendants()) {
-                ListHashSet<RenderBox*>::iterator end = percentHeightDescendants->end();
-                for (ListHashSet<RenderBox*>::iterator it = percentHeightDescendants->begin(); it != end; ++it) {
+            if (TrackedRendererListHashSet* percentHeightDescendants = cell->percentHeightDescendants()) {
+                TrackedRendererListHashSet::iterator end = percentHeightDescendants->end();
+                for (TrackedRendererListHashSet::iterator it = percentHeightDescendants->begin(); it != end; ++it) {
                     RenderBox* box = *it;
                     if (!box->isReplaced() && !box->scrollsOverflow() && !flexAllChildren)
                         continue;

@@ -36,6 +36,7 @@
 #include "RenderTheme.h"
 
 #include <cairo.h>
+#include <wtf/efl/RefPtrEfl.h>
 
 typedef struct _Ecore_Evas Ecore_Evas;
 typedef struct _Evas_Object Evas_Object;
@@ -67,13 +68,16 @@ enum FormType { // KEEP IN SYNC WITH edjeGroupFromFormType()
     SeekBackwardButton,
     FullScreenButton,
 #endif
+#if ENABLE(VIDEO_TRACK)
+    ToggleCaptionsButton,
+#endif
     Spinner,
     FormTypeLast
 };
 
 class RenderThemeEfl : public RenderTheme {
 private:
-    RenderThemeEfl(Page*);
+    explicit RenderThemeEfl(Page*);
     ~RenderThemeEfl();
 
 public:
@@ -96,18 +100,14 @@ public:
     // controls that need to do this.
     virtual LayoutUnit baselinePosition(const RenderObject*) const;
 
-    virtual Color platformActiveSelectionBackgroundColor() const { return m_activeSelectionBackgroundColor; }
-    virtual Color platformInactiveSelectionBackgroundColor() const { return m_inactiveSelectionBackgroundColor; }
-    virtual Color platformActiveSelectionForegroundColor() const { return m_activeSelectionForegroundColor; }
-    virtual Color platformInactiveSelectionForegroundColor() const { return m_inactiveSelectionForegroundColor; }
-    virtual Color platformFocusRingColor() const { return m_focusRingColor; }
+    virtual Color platformActiveSelectionBackgroundColor() const;
+    virtual Color platformInactiveSelectionBackgroundColor() const;
+    virtual Color platformActiveSelectionForegroundColor() const;
+    virtual Color platformInactiveSelectionForegroundColor() const;
+    virtual Color platformFocusRingColor() const;
 
-    virtual void themeChanged();
-
-    // Set platform colors and notify they changed
-    void setActiveSelectionColor(int foreR, int foreG, int foreB, int foreA, int backR, int backG, int backB, int backA);
-    void setInactiveSelectionColor(int foreR, int foreG, int foreB, int foreA, int backR, int backG, int backB, int backA);
-    void setFocusRingColor(int r, int g, int b, int a);
+    // Set platform colors; remember to call platformColorDidChange after.
+    void setColorFromThemeClass(const char* colorClass);
 
     void setButtonTextColor(int foreR, int foreG, int foreB, int foreA, int backR, int backG, int backB, int backA);
     void setComboTextColor(int foreR, int foreG, int foreB, int foreA, int backR, int backG, int backB, int backA);
@@ -115,7 +115,6 @@ public:
     void setSearchTextColor(int foreR, int foreG, int foreB, int foreA, int backR, int backG, int backB, int backA);
 
     void adjustSizeConstraints(RenderStyle*, FormType) const;
-
 
     // System fonts.
     virtual void systemFont(int propId, FontDescription&) const;
@@ -205,21 +204,32 @@ public:
     virtual bool paintMediaVolumeSliderThumb(RenderObject*, const PaintInfo&, const IntRect&);
     virtual bool paintMediaCurrentTime(RenderObject*, const PaintInfo&, const IntRect&);
 #endif
+#if ENABLE(VIDEO_TRACK)
+    virtual bool supportsClosedCaptioning() const OVERRIDE;
+    virtual bool paintMediaToggleClosedCaptionsButton(RenderObject*, const PaintInfo&, const IntRect&) OVERRIDE;
+#endif
+    virtual bool shouldShowPlaceholderWhenFocused() const OVERRIDE { return true; }
 
     void setThemePath(const String&);
-    String themePath() { return m_themePath; }
+    String themePath() const;
+
 protected:
     static float defaultFontSize;
 
 private:
-    void createCanvas();
-    void createEdje();
-    void applyEdjeColors();
-    void applyPartDescriptions();
-    const char* edjeGroupFromFormType(FormType) const;
+    bool loadTheme();
+    ALWAYS_INLINE bool loadThemeIfNeeded() const
+    {
+        return m_edje || (!m_themePath.isEmpty() && const_cast<RenderThemeEfl*>(this)->loadTheme());
+    }
+
+    ALWAYS_INLINE Ecore_Evas* canvas() const { return m_canvas.get(); }
+    ALWAYS_INLINE Evas_Object* edje() const { return m_edje.get(); }
+
+    void applyPartDescriptionsFrom(const String& themePath);
+
     void applyEdjeStateFromForm(Evas_Object*, ControlStates);
     bool paintThemePart(RenderObject*, FormType, const PaintInfo&, const IntRect&);
-    bool isFormElementTooLargeToDisplay(const IntSize&);
 
 #if ENABLE(VIDEO)
     bool emitMediaButtonSignal(FormType, MediaControlElementType, const IntRect&);
@@ -239,8 +249,9 @@ private:
 #endif
 
     String m_themePath;
-    Ecore_Evas* m_canvas;
-    Evas_Object* m_edje;
+    // Order so that the canvas gets destroyed at last.
+    OwnPtr<Ecore_Evas> m_canvas;
+    RefPtr<Evas_Object> m_edje;
 
     struct ThemePartDesc {
         FormType type;
@@ -252,31 +263,31 @@ private:
     void applyPartDescription(Evas_Object*, struct ThemePartDesc*);
 
     struct ThemePartCacheEntry {
+        static ThemePartCacheEntry* create(const String& themePath, FormType, const IntSize&);
+        void reuse(const String& themePath, FormType, const IntSize& = IntSize());
+
+        ALWAYS_INLINE Ecore_Evas* canvas() { return m_canvas.get(); }
+        ALWAYS_INLINE Evas_Object* edje() { return m_edje.get(); }
+        ALWAYS_INLINE cairo_surface_t* surface() { return m_surface.get(); }
+
         FormType type;
         IntSize size;
-        Ecore_Evas* ee;
-        Evas_Object* o;
-        cairo_surface_t* surface;
+
+    private:
+        // Order so that the canvas gets destroyed at last.
+        OwnPtr<Ecore_Evas> m_canvas;
+        RefPtr<Evas_Object> m_edje;
+        RefPtr<cairo_surface_t> m_surface;
     };
 
     struct ThemePartDesc m_partDescs[FormTypeLast];
 
     // this should be small and not so frequently used,
     // so use a vector and do linear searches
-    Vector<struct ThemePartCacheEntry *> m_partCache;
+    Vector<ThemePartCacheEntry*> m_partCache;
 
-    // get (use, create or replace) entry from cache
-    struct ThemePartCacheEntry* cacheThemePartGet(FormType, const IntSize&);
-    // flush cache, deleting all entries
-    void cacheThemePartFlush();
-
-    // internal, used by cacheThemePartGet()
-    bool themePartCacheEntryReset(struct ThemePartCacheEntry*, FormType);
-    bool themePartCacheEntrySurfaceCreate(struct ThemePartCacheEntry*);
-    struct ThemePartCacheEntry* cacheThemePartNew(FormType, const IntSize&);
-    struct ThemePartCacheEntry* cacheThemePartReset(FormType, struct ThemePartCacheEntry*);
-    struct ThemePartCacheEntry* cacheThemePartResizeAndReset(FormType, const IntSize&, struct ThemePartCacheEntry*);
-
+    ThemePartCacheEntry* getThemePartFromCache(FormType, const IntSize&);
+    void flushThemePartCache();
 };
 }
 

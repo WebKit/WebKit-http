@@ -105,7 +105,6 @@ fast/text/international/bidi-neutral-run.html
 fast/text/international/bidi-neutral-directionality-paragraph-start.html
 svg/W3C-SVG-1.1/fonts-glyph-02-t.svg
 svg/W3C-SVG-1.1/text-intro-05-t.svg
-svg/batik/text/textBiDi.svg
 svg/text/text-intro-05-t.svg
 #                           - Mac OS X and Windows do not have a CJK font in common
 fast/encoding/denormalised-voiced-japanese-chars.html
@@ -258,6 +257,7 @@ http/tests/fileapi
 fast/dom/DOMURL/check-instanceof-domurl-functions.html
 fast/forms/file/input-file-entries.html
 fast/forms/file/recover-file-input-in-unposted-form.html
+http/tests/security/contentSecurityPolicy/blob-urls-match-self.html
 
 # Need to add functionality to DumpRenderTree to test IDN <rdar://problem/5301954>
 fast/encoding/idn-security.html
@@ -513,7 +513,6 @@ editing/pasteboard/undoable-fragment-removes.html
 editing/execCommand/enabling-and-selection-2.html
 
 # Needs custom policy delegate enhancement in DRT
-http/tests/navigation/post-goback-repost-policy.html
 http/tests/download
 
 # Needs scheduleAsynchronousClick method for EventSender
@@ -593,7 +592,6 @@ accessibility/aria-tab-roles.html
 accessibility/aria-text-role.html
 accessibility/aria-used-on-image-maps.html
 accessibility/button-press-action.html
-accessibility/canvas.html
 accessibility/document-attributes.html
 accessibility/editable-webarea-context-menu-point.html
 accessibility/ignore-spacer-elements.html
@@ -620,6 +618,7 @@ accessibility/radio-button-checkbox-size.html
 accessibility/radio-button-group-members.html
 accessibility/radio-button-title-label.html
 accessibility/secure-textfield-title-ui.html
+accessibility/spinbutton-value.html
 accessibility/table-attributes.html
 accessibility/table-cell-spans.html
 accessibility/table-cells.html
@@ -962,9 +961,6 @@ media/video-display-aspect-ratio.html
 
 # Accept header is handled by the browser
 http/tests/misc/image-checks-for-accept.html
-
-# Needs platform specific API implemented in DRT, maybe not relevant for non-Mac and non-Windows ports
-fast/loader/api-test-new-window-data-load-base-url.html
 
 # Needs to implement NPP_HandleEvent() in TestNetscapePlugin
 plugins/keyboard-events.html
@@ -1472,7 +1468,7 @@ fast/events/constructors/webgl-context-event-constructor.html
 http/tests/security/webgl-remote-read-remote-image-allowed.html
 http/tests/security/webgl-remote-read-remote-image-allowed-with-credentials.html
 http/tests/security/webgl-remote-read-remote-image-blocked-no-crossorigin.html
-inspector/profiler/webgl/webgl-profiler-api-changes.html
+inspector/profiler/webgl
 
 # Tests that require ENABLE(DOWNLOAD_ATTRIBUTE).
 fast/dom/HTMLAnchorElement/anchor-nodownload.html
@@ -1742,12 +1738,14 @@ fast/sub-pixel/float-wrap-with-subpixel-top.html
 fast/sub-pixel/inline-block-should-not-wrap.html
 fast/sub-pixel/inline-block-with-margin.html
 fast/sub-pixel/inline-block-with-padding.html
+fast/sub-pixel/large-sizes.html
 fast/sub-pixel/layout-boxes-with-zoom.html
 fast/sub-pixel/position-right-aligns-with-container.html
 fast/sub-pixel/selection/selection-gaps-at-fractional-offsets.html
 fast/sub-pixel/size-of-box-with-zoom.html
 fast/sub-pixel/table-rows-no-gaps.html
 fast/sub-pixel/sub-pixel-accumulates-to-layers.html
+fast/sub-pixel/selection/selection-rect-in-sub-pixel-table.html
 
 # No CORS support for media elements is implemented yet.
 http/tests/security/video-cross-origin-readback.html
@@ -1813,6 +1811,14 @@ userscripts/user-script-plugin-document.html
 # https://bugs.webkit.org/show_bug.cgi?id=87858
 fast/js/names.html
 
+# New plugins/npruntime/delete-plugin-within-* tests introduced in r117012 fail/crash
+# https://bugs.webkit.org/show_bug.cgi?id=86443
+plugins/npruntime/delete-plugin-within-getProperty.html
+plugins/npruntime/delete-plugin-within-hasProperty-return-false.html
+plugins/npruntime/delete-plugin-within-hasProperty-return-true.html
+plugins/npruntime/delete-plugin-within-invoke.html
+plugins/npruntime/delete-plugin-within-setProperty.html
+
 # [Win] ASSERT(oldLayoutDelta == view()->layoutDelta()) failed in RenderBlock::layoutBlockChild
 # https://bugs.webkit.org/show_bug.cgi?id=87450
 media/media-volume-slider-rendered-below.html
@@ -1858,10 +1864,6 @@ compositing/backing/no-backing-foreground-layer.html
 # Asserts in GraphicsContext::platformContext
 # https://bugs.webkit.org/show_bug.cgi?id=88150
 compositing/geometry/clipping-foreground.html
-
-# Asserts in MessagePort::contextDestroyed
-# https://bugs.webkit.org/show_bug.cgi?id=85811
-fast/events/message-port-clone.html
 
 # Require rebaseline after bug 88171
 # https://bugs.webkit.org/show_bug.cgi?id=88171
@@ -1983,7 +1985,6 @@ fast/borders/only-one-border-with-width.html
 fast/multicol/progression-reverse.html
 fast/multicol/vertical-lr/rules-with-border-before.html
 fast/multicol/vertical-rl/rules-with-border-before.html
-css1/box_properties/border_bottom-expected.png
 css2.1/t0805-c5519-brdr-r-00-a.html
 css2.1/t0805-c5519-brdr-r-01-e.html
 css2.1/t0805-c5520-brdr-b-01-e.html
@@ -2150,7 +2151,6 @@ http/tests/security/referrer-policy-https-always.html
 http/tests/security/referrer-policy-https-default.html
 http/tests/security/referrer-policy-https-never.html
 http/tests/security/referrer-policy-redirect.html
-http/tests/security/referrer-policy-rel-noreferrer.htm
 
 # As usual, DRT on Windows has problems knowing how to continue a test when focus moves to a popup window, in this case the file chooser
 # https://bugs.webkit.org/show_bug.cgi?id=87469
@@ -2158,3 +2158,64 @@ fast/events/domactivate-sets-underlying-click-event-as-handled.html
 
 # https://bugs.webkit.org/show_bug.cgi?id=95388
 fast/css/nested-layers-with-hover.html
+
+# https://bugs.webkit.org/show_bug.cgi?id=95428
+media/video-controls-captions.html
+
+# https://bugs.webkit.org/show_bug.cgi?id=95795
+editing/style/apply-style-atomic.html
+
+# https://bugs.webkit.org/show_bug.cgi?id=94374
+inspector/timeline/timeline-decode-resize.html
+
+# Flaky inspector tests
+# https://bugs.webkit.org/show_bug.cgi?id=95802
+http/tests/inspector/appcache/appcache-manifest-with-non-existing-file.html
+http/tests/inspector/console-resource-errors.html
+http/tests/inspector/network/network-initiator-from-console.html
+http/tests/inspector/resource-tree/resource-request-content-while-loading.html
+http/tests/inspector/search/resources-search-match-index.html
+inspector/profiler/heap-snapshot.html
+inspector/profiler/memory-instrumentation-cached-images.html
+inspector/styles/media-queries.html
+inspector/styles/region-style-crash.html
+
+# Flaky http/tests/security tests
+# https://bugs.webkit.org/show_bug.cgi?id=95803
+http/tests/security/local-image-from-remote-whitelisted.html
+http/tests/security/object-literals.html
+http/tests/security/script-with-failed-cors-check-fails-to-load.html
+http/tests/security/xss-DENIED-mime-type-execute-as-html.html
+http/tests/security/xss-DENIED-xsl-external-entity.xml
+http/tests/security/contentSecurityPolicy/report-blocked-uri.html
+http/tests/security/cookies/cookie-theft-with-javascript-doc.html
+http/tests/security/frameNavigation/inactive-function-in-popup-navigate-child.html
+http/tests/security/local-video-poster-from-remote.html
+http/tests/security/local-video-source-from-remote.html
+http/tests/security/location-prototype.html
+http/tests/security/script-crossorigin-loads-correctly.html
+http/tests/security/video-poster-cross-origin-crash.html
+http/tests/security/xss-eval.html
+
+# Flaky http/tests/cookie tests
+# https://bugs.webkit.org/show_bug.cgi?id=95805
+http/tests/cookies/multiple-cookies.html
+http/tests/cookies/single-quoted-value.html
+
+# Flaky media/video tests
+# https://bugs.webkit.org/show_bug.cgi?id=95806
+media/video-aspect-ratio.html
+media/video-replaces-poster.html
+media/video-set-rate-from-pause.html
+media/video-src-change.html
+media/video-timeupdate-reverse-play.html
+media/W3C/video/src/src_removal_does_not_trigger_loadstart.html
+
+# Interactive form validation not enabled on Windows
+fast/forms/number/number-interactive-validation-required.html
+
+# Dialog element is not yet enabled.
+fast/dom/HTMLDialogElement
+
+# Windows does not have global selection.
+editing/pasteboard/paste-global-selection.html

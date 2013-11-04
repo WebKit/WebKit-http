@@ -101,10 +101,10 @@ public:
 
     virtual void notifyRunLayoutTestsFinished() = 0;
 
-    virtual void notifyInRegionScrollingStartingPointChanged(const std::vector<Platform::ScrollViewBase*>&) = 0;
+    virtual void notifyInRegionScrollableAreasChanged(const std::vector<Platform::ScrollViewBase*>&) = 0;
     virtual void notifyNoMouseMoveOrTouchMoveHandlers() = 0;
 
-    virtual void notifyDocumentOnLoad() = 0;
+    virtual void notifyDocumentOnLoad(bool) = 0;
 
     virtual void notifyWindowObjectCleared() = 0;
     virtual WebString invokeClientJavaScriptCallback(const char* const* args, unsigned numArgs) = 0;
@@ -166,9 +166,6 @@ public:
     virtual void resetBackForwardList(unsigned listSize, unsigned currentIndex) = 0;
 
     virtual void openPopupList(bool multiple, int size, const ScopeArray<WebString>& labels, const bool* enableds, const int* itemType, const bool* selecteds) = 0;
-    virtual void openDateTimePopup(int type, const WebString& value, const WebString& min, const WebString& max, double step) = 0;
-    virtual void openColorPopup(const WebString& value) = 0;
-
     virtual bool chooseFilenames(bool allowMultiple, const SharedArray<WebString>& acceptTypes, const SharedArray<WebString>& initialFiles, const WebString& capture, SharedArray<WebString>& chosenFiles) = 0;
 
     virtual void loadPluginForMimetype(int, int width, int height, const SharedArray<WebString>& paramNames, const SharedArray<WebString>& paramValues, const char* url) = 0;
@@ -273,6 +270,7 @@ public:
 
     virtual void requestUserMedia(const Platform::WebUserMediaRequest&) = 0;
     virtual void cancelUserMediaRequest(const Platform::WebUserMediaRequest&) = 0;
+    virtual void updateFindStringResult(int numMatches, int currentIndex) = 0;
 };
 } // namespace WebKit
 } // namespace BlackBerry

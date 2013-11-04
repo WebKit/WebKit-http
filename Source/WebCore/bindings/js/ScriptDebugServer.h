@@ -33,10 +33,8 @@
 #if ENABLE(JAVASCRIPT_DEBUGGER)
 
 #include "ScriptDebugListener.h"
-#include "PlatformString.h"
 #include "ScriptBreakpoint.h"
 #include "Timer.h"
-
 #include <debugger/Debugger.h>
 #include <wtf/HashMap.h>
 #include <wtf/HashSet.h>
@@ -98,6 +96,7 @@ public:
     void runScript(ScriptState*, const String& scriptId, ScriptValue* result, bool* wasThrown, String* exceptionMessage);
 
     class Task {
+        WTF_MAKE_FAST_ALLOCATED;
     public:
         virtual ~Task() { }
         virtual void run() = 0;

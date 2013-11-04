@@ -31,13 +31,13 @@
 #include "InspectorDOMAgent.h"
 #include "InspectorStyleSheet.h"
 #include "InspectorValues.h"
-#include "PlatformString.h"
 #include "SecurityContext.h"
 
 #include <wtf/HashMap.h>
 #include <wtf/HashSet.h>
 #include <wtf/PassRefPtr.h>
 #include <wtf/RefPtr.h>
+#include <wtf/text/WTFString.h>
 
 namespace WebCore {
 
@@ -55,6 +55,7 @@ class Node;
 class NodeList;
 class SelectorProfile;
 class StyleResolver;
+class UpdateRegionLayoutTask;
 
 #if ENABLE(INSPECTOR)
 
@@ -99,8 +100,10 @@ public:
     virtual void disable(ErrorString*);
     void reset();
     void mediaQueryResultChanged();
-    void didCreateNamedFlow(Document*, const AtomicString& name);
-    void didRemoveNamedFlow(Document*, const AtomicString& name);
+    void didCreateNamedFlow(Document*, WebKitNamedFlow*);
+    void willRemoveNamedFlow(Document*, WebKitNamedFlow*);
+    void didUpdateRegionLayout(Document*, WebKitNamedFlow*);
+    void regionLayoutUpdated(WebKitNamedFlow*, int documentNodeId);
 
     virtual void getComputedStyleForNode(ErrorString*, int nodeId, RefPtr<TypeBuilder::Array<TypeBuilder::CSS::CSSComputedStyleProperty> >&);
     virtual void getInlineStylesForNode(ErrorString*, int nodeId, RefPtr<TypeBuilder::CSS::CSSStyle>& inlineStyle, RefPtr<TypeBuilder::CSS::CSSStyle>& attributes);
@@ -116,7 +119,6 @@ public:
     virtual void getSupportedCSSProperties(ErrorString*, RefPtr<TypeBuilder::Array<TypeBuilder::CSS::CSSPropertyInfo> >& result);
     virtual void forcePseudoState(ErrorString*, int nodeId, const RefPtr<InspectorArray>& forcedPseudoClasses);
     virtual void getNamedFlowCollection(ErrorString*, int documentNodeId, RefPtr<TypeBuilder::Array<TypeBuilder::CSS::NamedFlow> >& result);
-    virtual void getFlowByName(ErrorString*, int documentNodeId, const String& flowName, RefPtr<TypeBuilder::CSS::NamedFlow>& result);
 
     virtual void startSelectorProfiler(ErrorString*);
     virtual void stopSelectorProfiler(ErrorString*, RefPtr<TypeBuilder::CSS::SelectorProfile>&);
@@ -143,8 +145,10 @@ private:
     typedef HashMap<RefPtr<Document>, RefPtr<InspectorStyleSheet> > DocumentToViaInspectorStyleSheet; // "via inspector" stylesheets
     typedef HashMap<int, unsigned> NodeIdToForcedPseudoState;
 
+    void resetNonPersistentData();
     InspectorStyleSheetForInlineStyle* asInspectorStyleSheet(Element* element);
     Element* elementForId(ErrorString*, int nodeId);
+    int documentNodeWithRequestedFlowsId(Document*);
     void collectStyleSheets(CSSStyleSheet*, TypeBuilder::Array<WebCore::TypeBuilder::CSS::CSSStyleSheetHeader>*);
 
     InspectorStyleSheet* bindStyleSheet(CSSStyleSheet*);
@@ -176,6 +180,7 @@ private:
     DocumentToViaInspectorStyleSheet m_documentToInspectorStyleSheet;
     NodeIdToForcedPseudoState m_nodeIdToForcedPseudoState;
     HashSet<int> m_namedFlowCollectionsRequested;
+    OwnPtr<UpdateRegionLayoutTask> m_updateRegionLayoutTask;
 
     int m_lastStyleSheetId;
 

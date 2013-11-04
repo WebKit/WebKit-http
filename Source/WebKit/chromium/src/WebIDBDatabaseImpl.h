@@ -47,7 +47,7 @@ class WebIDBTransaction;
 // See comment in WebIDBFactory for a high level overview these classes.
 class WebIDBDatabaseImpl : public WebIDBDatabase {
 public:
-    WebIDBDatabaseImpl(WTF::PassRefPtr<WebCore::IDBDatabaseBackendInterface>);
+    WebIDBDatabaseImpl(WTF::PassRefPtr<WebCore::IDBDatabaseBackendInterface>, WTF::PassRefPtr<IDBDatabaseCallbacksProxy>);
     virtual ~WebIDBDatabaseImpl();
 
     virtual WebIDBMetadata metadata() const;
@@ -59,15 +59,9 @@ public:
     virtual void forceClose();
     virtual void close();
 
-    // FIXME: Rename "open" to registerFrontendCallbacks.
-    virtual void open(WebIDBDatabaseCallbacks*);
-
 private:
     WTF::RefPtr<WebCore::IDBDatabaseBackendInterface> m_databaseBackend;
     WTF::RefPtr<IDBDatabaseCallbacksProxy> m_databaseCallbacks;
-    // FIXME: Remove this flag when we consolidate two-phase open.
-    // http://wkb.ug/90411
-    bool m_closePending;
 };
 
 } // namespace WebKit

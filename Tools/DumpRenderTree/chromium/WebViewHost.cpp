@@ -251,12 +251,13 @@ static string textAffinityDescription(WebTextAffinity affinity)
 
 // WebViewClient -------------------------------------------------------------
 
-WebView* WebViewHost::createView(WebFrame*, const WebURLRequest& request, const WebWindowFeatures&, const WebString&, WebNavigationPolicy)
+WebView* WebViewHost::createView(WebFrame* creator, const WebURLRequest& request, const WebWindowFeatures&, const WebString&, WebNavigationPolicy)
 {
     if (!testRunner()->canOpenWindows())
         return 0;
     if (testRunner()->shouldDumpCreateView())
         fprintf(stdout, "createView(%s)\n", URLDescription(request.url()).c_str());
+    creator->consumeUserGesture();
     return m_shell->createNewWindow(WebURL())->webView();
 }
 
@@ -864,9 +865,8 @@ bool WebViewHost::requestPointerLock()
     case PointerLockWillSucceed:
         postDelayedTask(new HostMethodTask(this, &WebViewHost::didAcquirePointerLock), 0);
         return true;
-    case PointerLockWillFailAsync:
+    case PointerLockWillRespondAsync:
         ASSERT(!m_pointerLocked);
-        postDelayedTask(new HostMethodTask(this, &WebViewHost::didNotAcquirePointerLock), 0);
         return true;
     case PointerLockWillFailSync:
         ASSERT(!m_pointerLocked);
@@ -891,6 +891,9 @@ void WebViewHost::didAcquirePointerLock()
 {
     m_pointerLocked = true;
     webWidget()->didAcquirePointerLock();
+
+    // Reset planned result to default.
+    m_pointerLockPlannedResult = PointerLockWillSucceed;
 }
 
 void WebViewHost::didNotAcquirePointerLock()
@@ -898,6 +901,9 @@ void WebViewHost::didNotAcquirePointerLock()
     ASSERT(!m_pointerLocked);
     m_pointerLocked = false;
     webWidget()->didNotAcquirePointerLock();
+
+    // Reset planned result to default.
+    m_pointerLockPlannedResult = PointerLockWillSucceed;
 }
 
 void WebViewHost::didLosePointerLock()

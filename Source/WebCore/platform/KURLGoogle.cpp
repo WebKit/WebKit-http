@@ -41,6 +41,7 @@
 #include <algorithm>
 
 #include "NotImplemented.h"
+#include "PlatformMemoryInstrumentation.h"
 #include "TextEncoding.h"
 #include <wtf/HashMap.h>
 #include <wtf/Vector.h>
@@ -389,6 +390,13 @@ const String& KURLGooglePrivate::string() const
     return m_string;
 }
 
+void KURLGooglePrivate::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
+{
+    MemoryClassInfo info(memoryObjectInfo, this);
+    info.addMember(m_utf8);
+    info.addMember(m_string);
+    info.addMember(m_innerURL);
+}
 // KURL ------------------------------------------------------------------------
 
 // Initializes with a string representing an absolute URL. No encoding

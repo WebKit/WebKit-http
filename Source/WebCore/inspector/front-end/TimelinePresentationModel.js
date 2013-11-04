@@ -218,13 +218,29 @@ WebInspector.TimelinePresentationModel.createEventDivider = function(recordType,
     return eventDivider;
 }
 
+WebInspector.TimelinePresentationModel._hiddenRecords = { }
+WebInspector.TimelinePresentationModel._hiddenRecords[WebInspector.TimelineModel.RecordType.MarkDOMContent] = 1;
+WebInspector.TimelinePresentationModel._hiddenRecords[WebInspector.TimelineModel.RecordType.MarkLoad] = 1;
+WebInspector.TimelinePresentationModel._hiddenRecords[WebInspector.TimelineModel.RecordType.ScheduleStyleRecalculation] = 1;
+WebInspector.TimelinePresentationModel._hiddenRecords[WebInspector.TimelineModel.RecordType.InvalidateLayout] = 1;
+
 WebInspector.TimelinePresentationModel.prototype = {
     /**
-     * @param {WebInspector.TimelinePresentationModel.Filter} filter
+     * @param {!WebInspector.TimelinePresentationModel.Filter} filter
      */
     addFilter: function(filter)
     {
         this._filters.push(filter);
+    },
+
+    /**
+     * @param {!WebInspector.TimelinePresentationModel.Filter} filter
+     */
+    removeFilter: function(filter)
+    {
+        var index = this._filters.indexOf(filter);
+        if (index !== -1)
+            this._filters.splice(index, 1);
     },
 
     rootRecord: function()
@@ -278,13 +294,7 @@ WebInspector.TimelinePresentationModel.prototype = {
     _innerAddRecord: function(record, parentRecord)
     {
         const recordTypes = WebInspector.TimelineModel.RecordType;
-        const hiddenRecords = [
-            recordTypes.MarkDOMContent,
-            recordTypes.MarkLoad,
-            recordTypes.ScheduleStyleRecalculation,
-            recordTypes.InvalidateLayout
-        ];
-        var isHiddenRecord = hiddenRecords.indexOf(record.type) >= 0;
+        var isHiddenRecord = record.type in WebInspector.TimelinePresentationModel._hiddenRecords;
         var connectedToOldRecord = false;
         if (record.type === recordTypes.Time)
             parentRecord = this._rootRecord;
@@ -378,8 +388,16 @@ WebInspector.TimelinePresentationModel.prototype = {
         this._glueRecords = glue;
     },
 
+    invalidateFilteredRecords: function()
+    {
+        delete this._filteredRecords;
+    },
+
     filteredRecords: function()
     {
+        if (this._filteredRecords)
+            return this._filteredRecords;
+
         var recordsInWindow = [];
 
         var stack = [{children: this._rootRecord.children, index: 0, parentIsCollapsed: false}];
@@ -410,6 +428,7 @@ WebInspector.TimelinePresentationModel.prototype = {
             }
         }
 
+        this._filteredRecords = recordsInWindow;
         return recordsInWindow;
     },
 
@@ -665,9 +684,9 @@ WebInspector.TimelinePresentationModel.Record.prototype = {
     /**
      * @return {number}
      */
-    get totalHeapSize()
+    get usedHeapSizeDelta()
     {
-        return this._record.totalHeapSize;
+        return this._record.usedHeapSizeDelta || 0;
     },
 
     /**
@@ -751,7 +770,7 @@ WebInspector.TimelinePresentationModel.Record.prototype = {
             case recordTypes.ResourceReceiveResponse:
             case recordTypes.ResourceReceivedData:
             case recordTypes.ResourceFinish:
-                contentHelper._appendElementRow(WebInspector.UIString("Resource"), this._linkifyLocation(this.url));
+                contentHelper._appendElementRow(WebInspector.UIString("Resource"), WebInspector.linkifyResourceAsNode(this.url));
                 if (previewElement)
                     contentHelper._appendElementRow(WebInspector.UIString("Preview"), previewElement);
                 if (this.data["requestMethod"])
@@ -779,7 +798,7 @@ WebInspector.TimelinePresentationModel.Record.prototype = {
                 callSiteStackTraceLabel = WebInspector.UIString("Layout invalidated");
                 if (this.stackTrace) {
                     callStackLabel = WebInspector.UIString("Layout forced");
-                    contentHelper._appendTextRow(WebInspector.UIString("Note"), WebInspector.UIString("Forced synchronous layout is a possible performance bottlenck."));
+                    contentHelper._appendTextRow(WebInspector.UIString("Note"), WebInspector.UIString("Forced synchronous layout is a possible performance bottleneck."));
                 }
                 break;
             case recordTypes.Time:
@@ -796,8 +815,14 @@ WebInspector.TimelinePresentationModel.Record.prototype = {
         if (this.scriptName && this.type !== recordTypes.FunctionCall)
             contentHelper._appendElementRow(WebInspector.UIString("Function Call"), this._linkifyScriptLocation());
 
-        if (this.usedHeapSize)
-            contentHelper._appendTextRow(WebInspector.UIString("Used Heap Size"), WebInspector.UIString("%s of %s", Number.bytesToString(this.usedHeapSize), Number.bytesToString(this.totalHeapSize)));
+        if (this.usedHeapSize) {
+            if (this.usedHeapSizeDelta) {
+                var sign = this.usedHeapSizeDelta > 0 ? "+" : "-";
+                contentHelper._appendTextRow(WebInspector.UIString("Used Heap Size"),
+                    WebInspector.UIString("%s (%s%s)", Number.bytesToString(this.usedHeapSize), sign, Number.bytesToString(this.usedHeapSizeDelta)));
+            } else if (this.category === WebInspector.TimelinePresentationModel.categories().scripting)
+                contentHelper._appendTextRow(WebInspector.UIString("Used Heap Size"), Number.bytesToString(this.usedHeapSize));
+        }
 
         if (this.callSiteStackTrace)
             contentHelper._appendStackTrace(callSiteStackTraceLabel || WebInspector.UIString("Call Site stack"), this.callSiteStackTrace, this._linkifyCallFrame.bind(this));
@@ -870,15 +895,14 @@ WebInspector.TimelinePresentationModel.Record.prototype = {
 
     /**
      * @param {string} url
-     * @param {number=} lineNumber
+     * @param {number} lineNumber
      * @param {number=} columnNumber
      */
     _linkifyLocation: function(url, lineNumber, columnNumber)
     {
         // FIXME(62725): stack trace line/column numbers are one-based.
-        lineNumber = lineNumber ? lineNumber - 1 : lineNumber;
         columnNumber = columnNumber ? columnNumber - 1 : 0;
-        return this._linkifier.linkifyLocation(url, lineNumber, columnNumber, "timeline-details");
+        return this._linkifier.linkifyLocation(url, lineNumber - 1, columnNumber, "timeline-details");
     },
 
     _linkifyCallFrame: function(callFrame)
@@ -1098,7 +1122,8 @@ WebInspector.TimelinePresentationModel.Filter = function()
 
 WebInspector.TimelinePresentationModel.Filter.prototype = {
     /**
-     * @param {WebInspector.TimelinePresentationModel.Record} record
+     * @param {!WebInspector.TimelinePresentationModel.Record} record
+     * @return {boolean}
      */
     accept: function(record) { return false; }
 }

@@ -28,10 +28,10 @@
 #include "Image.h"
 #include "KURL.h"
 #include "NotImplemented.h"
-#include "PlatformString.h"
 #include "RenderImage.h"
 #include "markup.h"
 #include <wtf/text/CString.h>
+#include <wtf/text/WTFString.h>
 
 namespace WebCore {
 
@@ -51,7 +51,7 @@ void Pasteboard::writePlainText(const String&, SmartReplaceOption)
     notImplemented();
 }
 
-void Pasteboard::writeSelection(Range* selectedRange, bool canSmartCopyOrDelete, Frame* frame)
+void Pasteboard::writeSelection(Range*, bool, Frame*)
 {
     notImplemented();
 }
@@ -61,7 +61,7 @@ void Pasteboard::writeURL(const KURL&, const String&, Frame*)
     notImplemented();
 }
 
-void Pasteboard::writeImage(Node* node, const KURL&, const String&)
+void Pasteboard::writeImage(Node*, const KURL&, const String&)
 {
     notImplemented();
 }
@@ -82,8 +82,7 @@ bool Pasteboard::canSmartReplace()
     return false;
 }
 
-PassRefPtr<DocumentFragment> Pasteboard::documentFragment(Frame* frame, PassRefPtr<Range> context,
-                                                          bool allowPlainText, bool& chosePlainText)
+PassRefPtr<DocumentFragment> Pasteboard::documentFragment(Frame*, PassRefPtr<Range>, bool, bool&)
 {
     notImplemented();
     return 0;

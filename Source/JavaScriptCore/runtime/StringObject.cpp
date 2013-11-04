@@ -78,6 +78,17 @@ void StringObject::put(JSCell* cell, ExecState* exec, PropertyName propertyName,
     JSObject::put(cell, exec, propertyName, value, slot);
 }
 
+void StringObject::putByIndex(JSCell* cell, ExecState* exec, unsigned propertyName, JSValue value, bool shouldThrow)
+{
+    StringObject* thisObject = jsCast<StringObject*>(cell);
+    if (thisObject->internalValue()->canGetIndex(propertyName)) {
+        if (shouldThrow)
+            throwTypeError(exec, StrictModeReadonlyPropertyWriteError);
+        return;
+    }
+    JSObject::putByIndex(cell, exec, propertyName, value, shouldThrow);
+}
+
 bool StringObject::defineOwnProperty(JSObject* object, ExecState* exec, PropertyName propertyName, PropertyDescriptor& descriptor, bool throwException)
 {
     StringObject* thisObject = jsCast<StringObject*>(object);
@@ -85,27 +96,27 @@ bool StringObject::defineOwnProperty(JSObject* object, ExecState* exec, Property
     if (propertyName == exec->propertyNames().length) {
         if (!object->isExtensible()) {
             if (throwException)
-                throwError(exec, createTypeError(exec, "Attempting to define property on object that is not extensible."));
+                throwError(exec, createTypeError(exec, ASCIILiteral("Attempting to define property on object that is not extensible.")));
             return false;
         }
         if (descriptor.configurablePresent() && descriptor.configurable()) {
             if (throwException)
-                throwError(exec, createTypeError(exec, "Attempting to configurable attribute of unconfigurable property."));
+                throwError(exec, createTypeError(exec, ASCIILiteral("Attempting to configurable attribute of unconfigurable property.")));
             return false;
         }
         if (descriptor.enumerablePresent() && descriptor.enumerable()) {
             if (throwException)
-                throwError(exec, createTypeError(exec, "Attempting to change enumerable attribute of unconfigurable property."));
+                throwError(exec, createTypeError(exec, ASCIILiteral("Attempting to change enumerable attribute of unconfigurable property.")));
             return false;
         }
         if (descriptor.isAccessorDescriptor()) {
             if (throwException)
-                throwError(exec, createTypeError(exec, "Attempting to change access mechanism for an unconfigurable property."));
+                throwError(exec, createTypeError(exec, ASCIILiteral("Attempting to change access mechanism for an unconfigurable property.")));
             return false;
         }
         if (descriptor.writablePresent() && descriptor.writable()) {
             if (throwException)
-                throwError(exec, createTypeError(exec, "Attempting to change writable attribute of unconfigurable property."));
+                throwError(exec, createTypeError(exec, ASCIILiteral("Attempting to change writable attribute of unconfigurable property.")));
             return false;
         }
         if (!descriptor.value())
@@ -113,7 +124,7 @@ bool StringObject::defineOwnProperty(JSObject* object, ExecState* exec, Property
         if (propertyName == exec->propertyNames().length && sameValue(exec, descriptor.value(), jsNumber(thisObject->internalValue()->length())))
             return true;
         if (throwException)
-            throwError(exec, createTypeError(exec, "Attempting to change value of a readonly property."));
+            throwError(exec, createTypeError(exec, ASCIILiteral("Attempting to change value of a readonly property.")));
         return false;
     }
 
@@ -131,6 +142,14 @@ bool StringObject::deleteProperty(JSCell* cell, ExecState* exec, PropertyName pr
         return false;
     }
     return JSObject::deleteProperty(thisObject, exec, propertyName);
+}
+
+bool StringObject::deletePropertyByIndex(JSCell* cell, ExecState* exec, unsigned i)
+{
+    StringObject* thisObject = jsCast<StringObject*>(cell);
+    if (thisObject->internalValue()->canGetIndex(i))
+        return false;
+    return JSObject::deletePropertyByIndex(thisObject, exec, i);
 }
 
 void StringObject::getOwnPropertyNames(JSObject* object, ExecState* exec, PropertyNameArray& propertyNames, EnumerationMode mode)

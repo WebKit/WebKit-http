@@ -45,6 +45,7 @@
 #define DEFAULT_MAX_LAYOUT_HEIGHT 768
 
 namespace WebCore {
+class AuthenticationChallengeClient;
 class AutofillManager;
 class DOMWrapperWorld;
 class Document;
@@ -133,8 +134,6 @@ public:
 
     // Scale the page to the given scale and anchor about the point which is specified in untransformed content coordinates.
     bool zoomAboutPoint(double scale, const WebCore::FloatPoint& anchor, bool enforceScaleClamping = true, bool forceRendering = false, bool isRestoringZoomLevel = false);
-    bool scheduleZoomAboutPoint(double scale, const WebCore::FloatPoint& anchor, bool enforceScaleClamping = true, bool forceRendering = false);
-    void unscheduleZoomAboutPoint();
     WebCore::IntPoint calculateReflowedScrollPosition(const WebCore::FloatPoint& anchorOffset, double inverseScale);
     void setTextReflowAnchorPoint(const Platform::IntPoint& focalPoint);
 
@@ -201,7 +200,7 @@ public:
     virtual int showAlertDialog(WebPageClient::AlertType atype);
     virtual bool isActive() const;
     virtual bool isVisible() const { return m_visible; }
-    virtual bool authenticationChallenge(const WebCore::KURL&, const WebCore::ProtectionSpace&, WebCore::Credential&);
+    virtual void authenticationChallenge(const WebCore::KURL&, const WebCore::ProtectionSpace&, const WebCore::Credential&, WebCore::AuthenticationChallengeClient*);
     virtual SaveCredentialType notifyShouldSaveCredential(bool);
     virtual void syncProxyCredential(const WebCore::Credential&);
 
@@ -526,6 +525,7 @@ public:
     double m_scaleBeforeFullScreen;
     int m_xScrollOffsetBeforeFullScreen;
 #endif
+    bool m_isTogglingFullScreenState;
 #endif
 
     Platform::BlackBerryCursor m_currentCursor;
@@ -545,15 +545,6 @@ public:
     RefPtr<WebCore::Node> m_currentBlockZoomNode;
     RefPtr<WebCore::Node> m_currentBlockZoomAdjustedNode;
     bool m_shouldReflowBlock;
-
-    // Delayed zoomAboutPoint.
-    OwnPtr<WebCore::Timer<WebPagePrivate> > m_delayedZoomTimer;
-    struct {
-        double scale;
-        WebCore::FloatPoint anchor;
-        bool enforceScaleClamping;
-        bool forceRendering;
-    } m_delayedZoomArguments;
 
     double m_lastUserEventTimestamp; // Used to detect user scrolling.
 

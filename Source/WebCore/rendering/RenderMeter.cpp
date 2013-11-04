@@ -52,15 +52,15 @@ HTMLMeterElement* RenderMeter::meterElement() const
     return toHTMLMeterElement(node()->shadowHost());
 }
 
-void RenderMeter::computeLogicalWidth()
+void RenderMeter::updateLogicalWidth()
 {
-    RenderBox::computeLogicalWidth();
+    RenderBox::updateLogicalWidth();
     setWidth(theme()->meterSizeForBounds(this, pixelSnappedIntRect(frameRect())).width());
 }
 
-void RenderMeter::computeLogicalHeight()
+void RenderMeter::updateLogicalHeight()
 {
-    RenderBox::computeLogicalHeight();
+    RenderBox::updateLogicalHeight();
     setHeight(theme()->meterSizeForBounds(this, pixelSnappedIntRect(frameRect())).height());
 }
 

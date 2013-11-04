@@ -38,11 +38,23 @@ from webkitpy.layout_tests.port.xvfbdriver import XvfbDriver
 class GtkPort(Port, PulseAudioSanitizer):
     port_name = "gtk"
 
+    def expectations_files(self):
+        return [self._filesystem.join(self._webkit_baseline_path(d), 'TestExpectations') for d in self._skipped_file_search_paths()]
+
     def _port_flag_for_scripts(self):
         return "--gtk"
 
     def _driver_class(self):
         return XvfbDriver
+
+    def default_timeout_ms(self):
+        # For now, use the base Port's default timeout value in case of WebKitTestRunner.
+        if self.get_option('webkit_test_runner'):
+            return super(GtkPort, self).default_timeout_ms()
+
+        if self.get_option('configuration') == 'Debug':
+            return 12 * 1000
+        return 6 * 1000
 
     def setup_test_run(self):
         self._unload_pulseaudio_module()
@@ -63,11 +75,6 @@ class GtkPort(Port, PulseAudioSanitizer):
                                                                     'Source', 'WebCore', 'platform',
                                                                     'audio', 'resources')
         self._copy_value_from_environ_if_set(environment, 'WEBKITOUTPUTDIR')
-        if self.get_option('webkit_test_runner'):
-            # FIXME: This is a workaround to ensure that testing with WebKitTestRunner is started with
-            # a non-existing cache. This should be removed when (and if) it will be possible to properly
-            # set the cache directory path through a WebKitWebContext.
-            environment['XDG_CACHE_HOME'] = self._filesystem.join(self.results_directory(), 'appcache')
         return environment
 
     def _generate_all_test_configurations(self):

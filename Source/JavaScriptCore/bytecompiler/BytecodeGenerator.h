@@ -261,9 +261,9 @@ namespace JSC {
         JS_EXPORT_PRIVATE static void setDumpsGeneratedCode(bool dumpsGeneratedCode);
         static bool dumpsGeneratedCode();
 
-        BytecodeGenerator(ProgramNode*, JSScope*, SymbolTable*, ProgramCodeBlock*, CompilationKind);
-        BytecodeGenerator(FunctionBodyNode*, JSScope*, SymbolTable*, CodeBlock*, CompilationKind);
-        BytecodeGenerator(EvalNode*, JSScope*, SymbolTable*, EvalCodeBlock*, CompilationKind);
+        BytecodeGenerator(ProgramNode*, JSScope*, SharedSymbolTable*, ProgramCodeBlock*, CompilationKind);
+        BytecodeGenerator(FunctionBodyNode*, JSScope*, SharedSymbolTable*, CodeBlock*, CompilationKind);
+        BytecodeGenerator(EvalNode*, JSScope*, SharedSymbolTable*, EvalCodeBlock*, CompilationKind);
 
         ~BytecodeGenerator();
         
@@ -295,8 +295,6 @@ namespace JSC {
         // register with a refcount of 0 is considered "available", meaning that
         // the next instruction may overwrite it.
         RegisterID* newTemporary();
-
-        RegisterID* highestUsedRegister();
 
         // The same as newTemporary(), but this function returns "suggestion" if
         // "suggestion" is a temporary. This function is helpful in situations
@@ -464,6 +462,7 @@ namespace JSC {
 
         RegisterID* emitGetStaticVar(RegisterID* dst, const ResolveResult&, const Identifier&);
         RegisterID* emitPutStaticVar(const ResolveResult&, const Identifier&, RegisterID* value);
+        RegisterID* emitInitGlobalConst(const ResolveResult&, const Identifier&, RegisterID* value);
 
         RegisterID* emitResolve(RegisterID* dst, const ResolveResult&, const Identifier& property);
         RegisterID* emitResolveBase(RegisterID* dst, const ResolveResult&, const Identifier& property);
@@ -509,6 +508,8 @@ namespace JSC {
         RegisterID* emitGetPropertyNames(RegisterID* dst, RegisterID* base, RegisterID* i, RegisterID* size, Label* breakTarget);
         RegisterID* emitNextPropertyName(RegisterID* dst, RegisterID* base, RegisterID* i, RegisterID* size, RegisterID* iter, Label* target);
 
+        void emitReadOnlyExceptionIfNeeded();
+
         // Start a try block. 'start' must have been emitted.
         TryData* pushTry(Label* start);
         // End a try block. 'end' must have been emitted.
@@ -522,9 +523,9 @@ namespace JSC {
 
         void emitThrowReferenceError(const String& message);
 
-        void emitPushNewScope(RegisterID* dst, const Identifier& property, RegisterID* value);
+        void emitPushNameScope(const Identifier& property, RegisterID* value, unsigned attributes);
 
-        RegisterID* emitPushScope(RegisterID* scope);
+        RegisterID* emitPushWithScope(RegisterID* scope);
         void emitPopScope();
 
         void emitDebugHook(DebugHookID, int firstLine, int lastLine, int column);
@@ -617,7 +618,9 @@ namespace JSC {
         int addGlobalVar(const Identifier&, ConstantMode, FunctionMode);
 
         void addParameter(const Identifier&, int parameterIndex);
-        
+        RegisterID* resolveCallee(FunctionBodyNode*);
+        void addCallee(FunctionBodyNode*, RegisterID*);
+
         void preserveLastVar();
         bool shouldAvoidResolveGlobal();
 
@@ -626,26 +629,20 @@ namespace JSC {
             if (index >= 0)
                 return m_calleeRegisters[index];
 
+            if (index == RegisterFile::Callee)
+                return m_calleeRegister;
+
             ASSERT(m_parameters.size());
             return m_parameters[index + m_parameters.size() + RegisterFile::CallFrameHeaderSize];
         }
 
         unsigned addConstant(const Identifier&);
         RegisterID* addConstantValue(JSValue);
+        RegisterID* addConstantEmptyValue();
         unsigned addRegExp(RegExp*);
 
         unsigned addConstantBuffer(unsigned length);
         
-        FunctionExecutable* makeFunction(ExecState* exec, FunctionBodyNode* body)
-        {
-            return FunctionExecutable::create(exec, body->ident(), body->inferredName(), body->source(), body->usesArguments(), body->parameters(), body->isStrictMode(), body->lineNo(), body->lastLine());
-        }
-
-        FunctionExecutable* makeFunction(JSGlobalData* globalData, FunctionBodyNode* body)
-        {
-            return FunctionExecutable::create(*globalData, body->ident(), body->inferredName(), body->source(), body->usesArguments(), body->parameters(), body->isStrictMode(), body->lineNo(), body->lastLine());
-        }
-
         JSString* addStringConstant(const Identifier&);
 
         void addLineInfo(unsigned lineNo)
@@ -658,7 +655,7 @@ namespace JSC {
     public:
         Vector<Instruction>& instructions() { return m_instructions; }
 
-        SymbolTable& symbolTable() { return *m_symbolTable; }
+        SharedSymbolTable& symbolTable() { return *m_symbolTable; }
 #if ENABLE(BYTECODE_COMMENTS)
         Vector<Comment>& comments() { return m_comments; }
 #endif
@@ -701,7 +698,7 @@ namespace JSC {
         bool m_shouldEmitRichSourceInfo;
 
         Strong<JSScope> m_scope;
-        SymbolTable* m_symbolTable;
+        SharedSymbolTable* m_symbolTable;
 
 #if ENABLE(BYTECODE_COMMENTS)
         Vector<Comment> m_comments;
@@ -716,7 +713,9 @@ namespace JSC {
         HashSet<RefPtr<StringImpl>, IdentifierRepHash> m_functions;
         RegisterID m_ignoredResultRegister;
         RegisterID m_thisRegister;
+        RegisterID m_calleeRegister;
         RegisterID* m_activationRegister;
+        RegisterID* m_emptyValueRegister;
         SegmentedVector<RegisterID, 32> m_constantPoolRegisters;
         SegmentedVector<RegisterID, 32> m_calleeRegisters;
         SegmentedVector<RegisterID, 32> m_parameters;

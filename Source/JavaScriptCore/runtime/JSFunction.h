@@ -59,14 +59,15 @@ namespace JSC {
 
         static JSFunction* create(ExecState* exec, FunctionExecutable* executable, JSScope* scope)
         {
-            JSFunction* function = new (NotNull, allocateCell<JSFunction>(*exec->heap())) JSFunction(exec, executable, scope);
+            JSGlobalData& globalData = exec->globalData();
+            JSFunction* function = new (NotNull, allocateCell<JSFunction>(globalData.heap)) JSFunction(globalData, executable, scope);
             ASSERT(function->structure()->globalObject());
-            function->finishCreation(exec, executable, scope);
+            function->finishCreation(globalData);
             return function;
         }
         
-        JS_EXPORT_PRIVATE const String& name(ExecState*);
-        JS_EXPORT_PRIVATE const String displayName(ExecState*);
+        JS_EXPORT_PRIVATE String name(ExecState*);
+        JS_EXPORT_PRIVATE String displayName(ExecState*);
         const String calculatedDisplayName(ExecState*);
 
         JSScope* scope()
@@ -137,16 +138,16 @@ namespace JSC {
         const static unsigned StructureFlags = OverridesGetOwnPropertySlot | ImplementsHasInstance | OverridesVisitChildren | OverridesGetPropertyNames | JSObject::StructureFlags;
 
         JS_EXPORT_PRIVATE JSFunction(ExecState*, JSGlobalObject*, Structure*);
-        JSFunction(ExecState*, FunctionExecutable*, JSScope*);
+        JSFunction(JSGlobalData&, FunctionExecutable*, JSScope*);
         
         void finishCreation(ExecState*, NativeExecutable*, int length, const String& name);
-        void finishCreation(ExecState*, FunctionExecutable*, JSScope*);
+        using Base::finishCreation;
 
         Structure* cacheInheritorID(ExecState*);
 
         static bool getOwnPropertySlot(JSCell*, ExecState*, PropertyName, PropertySlot&);
         static bool getOwnPropertyDescriptor(JSObject*, ExecState*, PropertyName, PropertyDescriptor&);
-        static void getOwnPropertyNames(JSObject*, ExecState*, PropertyNameArray&, EnumerationMode = ExcludeDontEnumProperties);
+        static void getOwnNonIndexPropertyNames(JSObject*, ExecState*, PropertyNameArray&, EnumerationMode = ExcludeDontEnumProperties);
         static bool defineOwnProperty(JSObject*, ExecState*, PropertyName, PropertyDescriptor&, bool shouldThrow);
 
         static void put(JSCell*, ExecState*, PropertyName, JSValue, PutPropertySlot&);
@@ -163,6 +164,7 @@ namespace JSC {
         static JSValue argumentsGetter(ExecState*, JSValue, PropertyName);
         static JSValue callerGetter(ExecState*, JSValue, PropertyName);
         static JSValue lengthGetter(ExecState*, JSValue, PropertyName);
+        static JSValue nameGetter(ExecState*, JSValue, PropertyName);
 
         WriteBarrier<ExecutableBase> m_executable;
         WriteBarrier<JSScope> m_scope;

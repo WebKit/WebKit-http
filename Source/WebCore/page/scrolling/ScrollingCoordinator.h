@@ -44,10 +44,13 @@
 
 namespace WebCore {
 
+typedef unsigned MainThreadScrollingReasons;
+
 class FrameView;
 class GraphicsLayer;
 class Page;
 class Region;
+class ScrollableArea;
 class ScrollingCoordinatorPrivate;
 class ScrollingTreeState;
 
@@ -92,6 +95,9 @@ public:
     // Should be called whenever the vertical scrollbar layer for the given frame view changes.
     void frameViewVerticalScrollbarLayerDidChange(FrameView*, GraphicsLayer* verticalScrollbarLayer);
 
+    // Should be called whenever the scrollable layer for the given scroll area changes.
+    void scrollableAreaScrollLayerDidChange(ScrollableArea*, GraphicsLayer*);
+
     // Requests that the scrolling coordinator updates the scroll position of the given frame view. If this function returns true, it means that the
     // position will be updated asynchronously. If it returns false, the caller should update the scrolling position itself.
     bool requestScrollPositionUpdate(FrameView*, const IntPoint&);
@@ -123,6 +129,14 @@ public:
     // Attach/detach layer position to ancestor fixed position container.
     void setLayerIsFixedToContainerLayer(GraphicsLayer*, bool);
 
+    enum MainThreadScrollingReasonFlags {
+        ForcedOnMainThread = 1 << 0,
+        HasSlowRepaintObjects = 1 << 1,
+        HasViewportConstrainedObjectsWithoutSupportingFixedLayers = 1 << 2,
+        HasNonLayerFixedObjects = 1 << 3,
+        IsImageDocument = 1 << 4
+    };
+
 private:
     explicit ScrollingCoordinator(Page*);
 
@@ -151,7 +165,7 @@ private:
 
     void setScrollParameters(const ScrollParameters&);
     void setWheelEventHandlerCount(unsigned);
-    void setShouldUpdateScrollLayerPositionOnMainThread(bool);
+    void setShouldUpdateScrollLayerPositionOnMainThread(MainThreadScrollingReasons);
 
     void updateMainFrameScrollLayerPosition();
 

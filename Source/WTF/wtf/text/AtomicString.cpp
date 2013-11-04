@@ -26,6 +26,7 @@
 
 #include "StringHash.h"
 #include <wtf/HashSet.h>
+#include <wtf/MemoryInstrumentation.h>
 #include <wtf/Threading.h>
 #include <wtf/WTFThreadData.h>
 #include <wtf/unicode/UTF8.h>
@@ -37,6 +38,7 @@ using namespace Unicode;
 COMPILE_ASSERT(sizeof(AtomicString) == sizeof(String), atomic_string_and_string_must_be_same_size);
 
 class AtomicStringTable {
+    WTF_MAKE_FAST_ALLOCATED;
 public:
     static AtomicStringTable* create()
     {
@@ -433,5 +435,11 @@ void AtomicString::show() const
     m_string.show();
 }
 #endif
+
+void AtomicString::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
+{
+    MemoryClassInfo info(memoryObjectInfo, this);
+    info.addMember(m_string);
+}
 
 } // namespace WTF

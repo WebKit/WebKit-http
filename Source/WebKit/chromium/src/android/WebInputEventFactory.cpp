@@ -50,7 +50,9 @@ WebKeyboardEvent WebInputEventFactory::keyboardEvent(WebInputEvent::Type type,
     result.type = type;
     result.modifiers = modifiers;
     result.timeStampSeconds = timeStampSeconds;
-    result.windowsKeyCode = WebCore::windowsKeyCodeForKeyEvent(keycode);
+    int windowsKeyCode = WebCore::windowsKeyCodeForKeyEvent(keycode);
+    result.windowsKeyCode = WebKeyboardEvent::windowsKeyCodeWithoutLocation(windowsKeyCode);
+    result.modifiers |= WebKeyboardEvent::locationModifiersFromWindowsKeyCode(windowsKeyCode);
     result.nativeKeyCode = keycode;
     result.unmodifiedText[0] = unicodeCharacter;
     if (result.windowsKeyCode == WebCore::VKEY_RETURN) {
@@ -146,12 +148,21 @@ WebMouseWheelEvent WebInputEventFactory::mouseWheelEvent(MouseWheelDirectionType
 
 // WebGestureEvent ------------------------------------------------------------
 
+// FIXME: remove this obsolete version
 WebGestureEvent WebInputEventFactory::gestureEvent(WebInputEvent::Type type,
                                                    double timeStampSeconds,
                                                    int x,
                                                    int y,
-                                                   float deltaX,
-                                                   float deltaY,
+                                                   float,
+                                                   float,
+                                                   int modifiers) {
+    return gestureEvent(type, timeStampSeconds, x, y, modifiers);
+}
+
+WebGestureEvent WebInputEventFactory::gestureEvent(WebInputEvent::Type type,
+                                                   double timeStampSeconds,
+                                                   int x,
+                                                   int y,
                                                    int modifiers)
 {
     WebGestureEvent result;
@@ -159,8 +170,6 @@ WebGestureEvent WebInputEventFactory::gestureEvent(WebInputEvent::Type type,
     result.type = type;
     result.x = x;
     result.y = y;
-    result.deltaX = deltaX;
-    result.deltaY = deltaY;
     result.timeStampSeconds = timeStampSeconds;
     result.modifiers = modifiers;
 

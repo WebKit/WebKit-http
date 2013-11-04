@@ -79,6 +79,7 @@ wtf_sources += \
     Source/WTF/wtf/MathExtras.h \
     Source/WTF/wtf/MediaTime.h \
     Source/WTF/wtf/MediaTime.cpp \
+    Source/WTF/wtf/MemoryInstrumentation.h \
     Source/WTF/wtf/MessageQueue.h \
     Source/WTF/wtf/MetaAllocator.cpp \
     Source/WTF/wtf/MetaAllocator.h \
@@ -208,7 +209,6 @@ wtf_sources += \
     Source/WTF/wtf/text/Base64.h \
     Source/WTF/wtf/text/CString.cpp \
     Source/WTF/wtf/text/CString.h \
-    Source/WTF/wtf/text/IntegerToStringConversion.cpp \
     Source/WTF/wtf/text/IntegerToStringConversion.h \
     Source/WTF/wtf/text/StringBuffer.h \
     Source/WTF/wtf/text/StringBuilder.cpp \

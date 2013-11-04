@@ -28,9 +28,9 @@
 #include "CachedResourceLoader.h"
 #include "Document.h"
 #include "MemoryCache.h"
-#include "MemoryInstrumentation.h"
 #include "StyleCachedImage.h"
 #include "StylePendingImage.h"
+#include "WebCoreMemoryInstrumentation.h"
 
 namespace WebCore {
 
@@ -128,8 +128,8 @@ PassRefPtr<CSSValue> CSSImageValue::cloneForCSSOM() const
 
 void CSSImageValue::reportDescendantMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
 {
-    MemoryClassInfo info(memoryObjectInfo, this, MemoryInstrumentation::CSS);
-    info.addInstrumentedMember(m_url);
+    MemoryClassInfo info(memoryObjectInfo, this, WebCoreMemoryTypes::CSS);
+    info.addMember(m_url);
     // No need to report m_image as it is counted as part of RenderArena.
 }
 

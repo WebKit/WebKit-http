@@ -54,10 +54,6 @@ compositing/iframes/iframe-src-change.html
 # <https://bugs.webkit.org/show_bug.cgi?id=57638>
 inspector/styles/styles-add-blank-property.html
 
-# Flakey on both Snow Leopard and Windows 7
-# https://bugs.webkit.org/show_bug.cgi?id=58337
-fast/dom/StyleSheet/detached-stylesheet-without-wrapper.html
-
 # Flakey on Snow Leopard Intel WebKit2 Release Tests
 # https://bugs.webkit.org/show_bug.cgi?id=58183
 editing/execCommand/convert-style-elements-to-spans.html
@@ -94,12 +90,14 @@ fast/sub-pixel/float-wrap-with-subpixel-top.html
 fast/sub-pixel/inline-block-should-not-wrap.html
 fast/sub-pixel/inline-block-with-margin.html
 fast/sub-pixel/inline-block-with-padding.html
+fast/sub-pixel/large-sizes.html
 fast/sub-pixel/layout-boxes-with-zoom.html
 fast/sub-pixel/position-right-aligns-with-container.html
 fast/sub-pixel/selection/selection-gaps-at-fractional-offsets.html
 fast/sub-pixel/size-of-box-with-zoom.html
 fast/sub-pixel/table-rows-no-gaps.html
 fast/sub-pixel/sub-pixel-accumulates-to-layers.html
+fast/sub-pixel/selection/selection-rect-in-sub-pixel-table.html
 
 # [WK2][WTR] svg/animations/animate-text-nested-transforms.html fails
 # https://bugs.webkit.org/show_bug.cgi?id=95191
@@ -203,20 +201,8 @@ fast/canvas/webgl/webgl-array-invalid-ranges.html
 fast/canvas/webgl/webgl-specific.html
 fast/harness/override-preferences-2.html
 fast/images/animated-gif-restored-from-bfcache.html
-fast/repaint/no-caret-repaint-in-non-content-editable-element.html
+fast/loader/display-image-unset-allows-cached-image-load.html
 fast/text/zero-font-size.html
-
-# WTR needs an implementation of applicationCacheDiskUsageForOrigin
-# https://bugs.webkit.org/show_bug.cgi?id=87188
-http/tests/appcache/origin-usage.html
-http/tests/canvas/webgl/origin-clean-conformance.html
-http/tests/navigation/ping-cross-origin-from-https.html
-http/tests/security/webgl-remote-read-remote-image-allowed.html
-http/tests/security/webgl-remote-read-remote-image-allowed-with-credentials.html
-http/tests/security/webgl-remote-read-remote-image-blocked-no-crossorigin.html
-loader/go-back-to-different-window-size.html
-media/restore-from-page-cache.html
-java/embedding-java-with-object.html
 
 # WebKitTestRunner needs to support layoutTestController.dumpDOMAsWebArchive
 # <https://bugs.webkit.org/show_bug.cgi?id=42324>
@@ -252,31 +238,9 @@ webarchive/test-table-background.html
 webarchive/test-td-background.html
 webarchive/test-xml-stylesheet.xml
 
-# WebKitTestRunner needs layoutTestController.dumpFrameLoadCallbacks
-# <https://bugs.webkit.org/show_bug.cgi?id=42331>
+# Fails on WebKit2
+# <https://bugs.webkit.org/show_bug.cgi?id=96741>
 fast/loader/recursive-before-unload-crash.html
-http/tests/globalhistory/history-delegate-basic-302-redirect.html
-http/tests/globalhistory/history-delegate-basic-refresh-redirect.html
-http/tests/security/mixedContent/about-blank-iframe-in-main-frame.html
-http/tests/security/mixedContent/data-url-iframe-in-main-frame.html
-http/tests/security/mixedContent/data-url-script-in-iframe.html
-http/tests/security/mixedContent/empty-url-plugin-in-frame.html
-http/tests/security/mixedContent/insecure-css-in-iframe.html
-http/tests/security/mixedContent/insecure-css-in-main-frame.html
-http/tests/security/mixedContent/insecure-iframe-in-iframe.html
-http/tests/security/mixedContent/insecure-iframe-in-main-frame.html
-http/tests/security/mixedContent/insecure-image-in-iframe.html
-http/tests/security/mixedContent/insecure-image-in-main-frame.html
-http/tests/security/mixedContent/insecure-plugin-in-iframe.html
-http/tests/security/mixedContent/insecure-script-in-iframe.html
-http/tests/security/mixedContent/redirect-http-to-https-iframe-in-main-frame.html
-http/tests/security/mixedContent/redirect-http-to-https-script-in-iframe.html
-http/tests/security/mixedContent/redirect-https-to-http-iframe-in-main-frame.html
-http/tests/security/mixedContent/redirect-https-to-http-script-in-iframe.html
-webarchive/loading/javascript-url-iframe-crash.html
-webarchive/loading/mainresource-null-mimetype-crash.html
-webarchive/loading/missing-data.html
-http/tests/security/xssAuditor/script-tag-with-callbacks.html
 
 # WebKitTestRunner needs textInputController
 # <https://bugs.webkit.org/show_bug.cgi?id=42337>
@@ -325,11 +289,6 @@ platform/mac/editing/deleting/deletionUI-differing-background.html
 platform/mac/editing/deleting/deletionUI-minimum-size.html
 platform/mac/editing/deleting/deletionUI-successful-deletion.html
 
-# WebKitTestRunner needs layoutTestController.dumpDatabaseCallbacks
-# <https://bugs.webkit.org/show_bug.cgi?id=57570>
-storage/websql/open-database-creation-callback.html
-storage/websql/quota-tracking.html
-
 # WebKitTestRunner needs layoutTestController.setMockGeolocationPosition
 # and layoutTestController.setMockGeolocationError
 # <https://bugs.webkit.org/show_bug.cgi?id=59201>
@@ -367,16 +326,6 @@ fast/dom/Geolocation/timestamp.html
 fast/dom/Geolocation/watch.html
 fast/dom/Geolocation/window-close-crash.html
 
-# WebKitTestRunner needs layoutTestController.setCustomPolicyDelegate
-# <https://bugs.webkit.org/show_bug.cgi?id=42546>
-fast/loader/javascript-url-hierarchical-execution.html
-fast/loader/onload-policy-ignore-for-frame.html
-fast/loader/reload-policy-delegate.html
-http/tests/misc/policy-delegate-called-twice.html
-http/tests/misc/redirect-to-external-url.html
-http/tests/security/feed-urls-from-remote.html
-http/tests/download
-
 # WebKitTestRunner needs layoutTestController.setDashboardCompatibilityMode
 # <https://bugs.webkit.org/show_bug.cgi?id=42547>
 fast/canvas/canvas-gradient-addStop-error.html
@@ -391,6 +340,9 @@ svg/custom/svg-allowed-in-dashboard-object.html
 # <https://bugs.webkit.org/show_bug.cgi?id=42672>
 fast/css/compare-content-style.html
 fast/frames/frame-display-none-focus.html
+fast/loader/display-image-unset-can-block-image-and-can-reload-in-place.html
+fast/loader/images-enabled-unset-can-block-image-and-can-reload-in-place.html
+fast/loader/reload-policy-delegate.html
 
 # WebKitTestRunner needs layoutTestController.queueLoad
 # <https://bugs.webkit.org/show_bug.cgi?id=42674>
@@ -470,17 +422,9 @@ platform/mac/scrollbars/key-window-not-first-responder.html
 # <https://bugs.webkit.org/show_bug.cgi?id=42686>
 fast/encoding/idn-security.html
 
-# WebKitTestRunner needs layoutTestController.setTabKeyCyclesThroughElements
-# <https://bugs.webkit.org/show_bug.cgi?id=42687>
-fast/events/keypress-insert-tab.html
-
 # WebKitTestRunner needs layoutTestController.abortModal
 # <https://bugs.webkit.org/show_bug.cgi?id=69548>
 fast/events/show-modal-dialog-onblur-onfocus.html
-
-# WebKitTestRunner needs layoutTestController.setStopProvisionalFrameLoads
-# <https://bugs.webkit.org/show_bug.cgi?id=42691>
-fast/loader/stop-provisional-loads.html
 
 # WebKitTestRunner needs layoutTestController.setPrinting
 # <https://bugs.webkit.org/show_bug.cgi?id=42693>
@@ -524,6 +468,8 @@ http/tests/xmlhttprequest/access-control-preflight-credential-async.html
 
 # WebKitTestRunner needs to print history delegate information
 # <https://bugs.webkit.org/show_bug.cgi?id=42704>
+http/tests/globalhistory/history-delegate-basic-302-redirect.html
+http/tests/globalhistory/history-delegate-basic-refresh-redirect.html
 http/tests/globalhistory/history-delegate-basic-title.html
 http/tests/globalhistory/history-delegate-basic-visited-links.html
 
@@ -655,9 +601,10 @@ inspector/geolocation-error.html
 inspector/geolocation-success.html
 inspector/geolocation-watchPosition.html
 
-# WKTR doesn't implement dumpWillCacheResponse()
-# https://bugs.webkit.org/show_bug.cgi?id=94607
-http/tests/misc/willCacheResponse-delegate-callback.html
+# WebFrameLoaderClient::dispatchDecidePolicy methods should consider 
+# 'WKBundlePagePolicyActionPassThrough' policy action 
+# https://bugs.webkit.org/show_bug.cgi?id=95974
+fast/loader/onload-policy-ignore-for-frame.html
 
 ### END OF (1) Classified failures with bug reports
 ########################################
@@ -684,23 +631,6 @@ http/tests/misc/link-rel-icon-beforeload.html
 
 # WebKitTestRunner should dump text/plain content as text
 http/tests/incremental/slow-utf8-text.pl
-
-# WebKitTestRunner needs layoutTestController.workerThreadCount
-fast/workers/dedicated-worker-lifecycle.html
-fast/workers/shared-worker-frame-lifecycle.html
-fast/workers/shared-worker-lifecycle.html
-fast/workers/worker-lifecycle.html
-fast/workers/worker-close-more.html
-
-# WebKitTestRunner needs layoutTestController.clearAllApplicationCaches
-http/tests/appcache/origin-delete.html
-http/tests/appcache/origin-quota.html
-http/tests/appcache/origin-quota-continued-download.html
-http/tests/appcache/origin-quota-continued-download-multiple-manifests.html
-http/tests/appcache/origins-with-appcache.html
-
-# WebKitTestRunner needs layoutTestController.callShouldCloseOnWebView
-fast/events/onbeforeunload-focused-iframe.html
 
 # WebKitTestRunner needs layoutTestController.setHandlesAuthenticationChallenges
 http/tests/misc/authentication-redirect-1/authentication-sent-to-redirect-cross-origin.html
@@ -750,9 +680,6 @@ platform/mac/editing/spelling/move-cursor-around-misspelled-word.html
 
 # WebKitTestRunner needs layoutTestController.hasGrammarMarker
 editing/spelling/grammar.html
-
-# WebKitTestRunner needs layoutTestController.setSpatialNavigationEnabled
-fast/spatial-navigation
 
 # WebKitTestRunner needs layoutTestController.dumpUserGestureInFrameLoadCallbacks
 fast/frames/location-redirect-user-gesture.html
@@ -834,14 +761,6 @@ java
 # WebKitTestRunner needs layoutTestController.displayInvalidatedRegion
 compositing/plugins/invalidate_rect.html
 plugins/windowless_plugin_paint_test.html
-
-# WebKitTestRunner needs layoutTestController.setMinimumTimerInterval
-fast/dom/timer-increase-min-interval-and-reset-part-1.html
-fast/dom/timer-increase-min-interval-and-reset-part-2.html
-fast/dom/timer-increase-min-interval-repeating.html
-fast/dom/timer-increase-min-interval.html
-fast/dom/timer-increase-then-decrease-min-interval-repeating.html
-fast/dom/timer-increase-then-decrease-min-interval.html
 
 # WebKitTestRunner needs layoutTestController.originsWithLocalStorage
 storage/domstorage/localstorage/storagetracker/storage-tracker-1-prepare.html
@@ -927,6 +846,21 @@ platform/mac/fast/loader/file-url-mimetypes.html
 webarchive/loading/cache-expired-subresource.html
 webarchive/loading/test-loading-archive.html
 webarchive/loading/test-loading-archive-subresource-null-mimetype.html
+
+# Some elements are skipped when focus is moved.
+fast/spatial-navigation/snav-container-white-space.html
+fast/spatial-navigation/snav-div-overflow-scrol-hidden.html
+fast/spatial-navigation/snav-fully-aligned-horizontally.html
+fast/spatial-navigation/snav-fully-aligned-vertically.html
+fast/spatial-navigation/snav-iframe-no-scrollable-content.html
+fast/spatial-navigation/snav-imagemap-overlapped-areas.html
+
+# WK2 is missing API for getting header fields from HTTP responses
+# which have to be serialized.
+http/tests/download
+
+# WebFrameLoaderClient::canHandleRequest() has to be implemented.
+http/tests/misc/redirect-to-external-url.html
 
 ### END OF (2) Classified failures without bug reports (yet)
 ########################################
@@ -1170,13 +1104,6 @@ media/video-colorspace-yuv420.html
 media/video-colorspace-yuv422.html
 media/video-loop.html
 
-# JQuery tests that time out unexpectedly.
-# https://bugs.webkit.org/show_bug.cgi?id=81606
-jquery/core.html
-jquery/event.html
-jquery/manipulation.html
-jquery/traversing.html
-
 # Times out unexpectedly.
 # https://bugs.webkit.org/show_bug.cgi?id=81609
 fast/loader/window-properties-restored-from-page-cache.html
@@ -1188,6 +1115,9 @@ fast/harness/page-cache-crash-on-data-urls.html
 # Wrong logging order
 fast/loader/file-protocol-fragment.html
 http/tests/loading/pdf-commit-load-callbacks.html
+
+# Times out unexpectedly.
+http/tests/security/feed-urls-from-remote.html
 
 ### END OF (3) Unclassified failures
 ########################################
@@ -1284,10 +1214,6 @@ fast/parser/pre-html5-parser-quirks.html
 # [WK2] New fast/events/drag-display-none-element.html fails
 # https://bugs.webkit.org/show_bug.cgi?id=90177
 fast/events/drag-display-none-element.html
-
-# [WK2] New fast/events/tab-focus-link-in-canvas.html fails
-# https://bugs.webkit.org/show_bug.cgi?id=95329
-fast/events/tab-focus-link-in-canvas.html
 
 # Skip tests in fast/text/shaping
 fast/text/shaping

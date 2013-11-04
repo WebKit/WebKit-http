@@ -119,34 +119,9 @@ JSValueRef TestRunner::computedStyleIncludingVisitedInfo(JSContextRef context, J
 
 JSRetainPtr<JSStringRef> TestRunner::layerTreeAsText() const
 {
-    notImplemented();
-    return JSRetainPtr<JSStringRef>(Adopt, JSStringCreateWithUTF8CString(""));
-}
+    String result = DumpRenderTreeSupportEfl::layerTreeAsText(browser->mainFrame());
 
-int TestRunner::numberOfPages(float pageWidth, float pageHeight)
-{
-    return DumpRenderTreeSupportEfl::numberOfPages(browser->mainFrame(), pageWidth, pageHeight);
-}
-
-JSRetainPtr<JSStringRef> TestRunner::pageProperty(const char* propertyName, int pageNumber) const
-{
-    const String property = DumpRenderTreeSupportEfl::pageProperty(browser->mainFrame(), propertyName, pageNumber);
-    if (property.isEmpty())
-        return 0;
-
-    JSRetainPtr<JSStringRef> propertyValue(Adopt, JSStringCreateWithUTF8CString(property.utf8().data()));
-    return propertyValue;
-}
-
-JSRetainPtr<JSStringRef> TestRunner::pageSizeAndMarginsInPixels(int pageNumber, int width, int height, int marginTop, int marginRight, int marginBottom, int marginLeft) const
-{
-    String pageSizeAndMargins = DumpRenderTreeSupportEfl::pageSizeAndMarginsInPixels(browser->mainFrame(), pageNumber, width, height, marginTop, marginRight, marginBottom, marginLeft);
-
-    if (pageSizeAndMargins.isEmpty())
-        return 0;
-
-    JSRetainPtr<JSStringRef> returnValue(Adopt, JSStringCreateWithUTF8CString(pageSizeAndMargins.utf8().data()));
-    return returnValue;
+    return JSRetainPtr<JSStringRef>(Adopt, JSStringCreateWithUTF8CString(result.utf8().data()));
 }
 
 size_t TestRunner::webHistoryItemCount()
@@ -200,7 +175,7 @@ JSStringRef TestRunner::pathToLocalResource(JSContextRef context, JSStringRef ur
 void TestRunner::queueLoad(JSStringRef url, JSStringRef target)
 {
     WebCore::KURL baseURL(WebCore::KURL(), String::fromUTF8(ewk_frame_uri_get(browser->mainFrame())));
-    WebCore::KURL absoluteURL(baseURL, WTF::String(url->ustring().impl()));
+    WebCore::KURL absoluteURL(baseURL, url->string());
 
     JSRetainPtr<JSStringRef> jsAbsoluteURL(
         Adopt, JSStringCreateWithUTF8CString(absoluteURL.string().utf8().data()));
@@ -242,7 +217,7 @@ void TestRunner::addOriginAccessWhitelistEntry(JSStringRef sourceOrigin, JSStrin
     kurl.setProtocol(String(protocol->characters(), protocol->length()));
     kurl.setHost(String(host->characters(), host->length()));
 
-    ewk_security_policy_whitelist_origin_add(sourceOrigin->ustring().utf8().data(), kurl.string().utf8().data(), includeSubdomains);
+    ewk_security_policy_whitelist_origin_add(sourceOrigin->string().utf8().data(), kurl.string().utf8().data(), includeSubdomains);
 }
 
 void TestRunner::removeOriginAccessWhitelistEntry(JSStringRef sourceOrigin, JSStringRef protocol, JSStringRef host, bool includeSubdomains)
@@ -251,7 +226,7 @@ void TestRunner::removeOriginAccessWhitelistEntry(JSStringRef sourceOrigin, JSSt
     kurl.setProtocol(String(protocol->characters(), protocol->length()));
     kurl.setHost(String(host->characters(), host->length()));
 
-    ewk_security_policy_whitelist_origin_del(sourceOrigin->ustring().utf8().data(), kurl.string().utf8().data(), includeSubdomains);
+    ewk_security_policy_whitelist_origin_del(sourceOrigin->string().utf8().data(), kurl.string().utf8().data(), includeSubdomains);
 }
 
 void TestRunner::setMainFrameIsFirstResponder(bool)
@@ -280,7 +255,7 @@ void TestRunner::setUserStyleSheetEnabled(bool flag)
 
 void TestRunner::setUserStyleSheetLocation(JSStringRef path)
 {
-    gUserStyleSheet = path->ustring().utf8();
+    gUserStyleSheet = path->string().utf8();
 
     if (gUserStyleSheetEnabled)
         setUserStyleSheetEnabled(true);
@@ -288,7 +263,7 @@ void TestRunner::setUserStyleSheetLocation(JSStringRef path)
 
 void TestRunner::setValueForUser(JSContextRef context, JSValueRef nodeObject, JSStringRef value)
 {
-    DumpRenderTreeSupportEfl::setValueForUser(context, nodeObject, WTF::String(value->ustring().impl()));
+    DumpRenderTreeSupportEfl::setValueForUser(context, nodeObject, value->string());
 }
 
 void TestRunner::setViewModeMediaFeature(JSStringRef mode)
@@ -484,14 +459,14 @@ void TestRunner::setPluginsEnabled(bool flag)
 
 bool TestRunner::elementDoesAutoCompleteForElementWithId(JSStringRef id)
 {
-    const String elementId(id->ustring().impl());
+    const String elementId(id->string());
     const Evas_Object* mainFrame = browser->mainFrame();
     return DumpRenderTreeSupportEfl::elementDoesAutoCompleteForElementWithId(mainFrame, elementId);
 }
 
 void TestRunner::execCommand(JSStringRef name, JSStringRef value)
 {
-    DumpRenderTreeSupportEfl::executeCoreCommandByName(browser->mainView(), name->ustring().utf8().data(), value->ustring().utf8().data());
+    DumpRenderTreeSupportEfl::executeCoreCommandByName(browser->mainView(), name->string().utf8().data(), value->string().utf8().data());
 }
 
 bool TestRunner::findString(JSContextRef context, JSStringRef target, JSObjectRef optionsArray)
@@ -525,12 +500,12 @@ bool TestRunner::findString(JSContextRef context, JSStringRef target, JSObjectRe
             options |= WebCore::StartInSelection;
     }
 
-    return DumpRenderTreeSupportEfl::findString(browser->mainView(), WTF::String(target->ustring().impl()), options);
+    return DumpRenderTreeSupportEfl::findString(browser->mainView(), target->string(), options);
 }
 
 bool TestRunner::isCommandEnabled(JSStringRef name)
 {
-    return DumpRenderTreeSupportEfl::isCommandEnabled(browser->mainView(), name->ustring().utf8().data());
+    return DumpRenderTreeSupportEfl::isCommandEnabled(browser->mainView(), name->string().utf8().data());
 }
 
 void TestRunner::setCacheModel(int cacheModel)
@@ -598,7 +573,7 @@ void TestRunner::setApplicationCacheOriginQuota(unsigned long long quota)
 
 void TestRunner::clearApplicationCacheForOrigin(OpaqueJSString* url)
 {
-    Ewk_Security_Origin* origin = ewk_security_origin_new_from_string(url->ustring().utf8().data());
+    Ewk_Security_Origin* origin = ewk_security_origin_new_from_string(url->string().utf8().data());
     ewk_security_origin_application_cache_clear(origin);
     ewk_security_origin_free(origin);
 }
@@ -663,7 +638,7 @@ void TestRunner::syncLocalStorage()
 
 void TestRunner::setDomainRelaxationForbiddenForURLScheme(bool forbidden, JSStringRef scheme)
 {
-    DumpRenderTreeSupportEfl::setDomainRelaxationForbiddenForURLScheme(forbidden, WTF::String(scheme->ustring().impl()));
+    DumpRenderTreeSupportEfl::setDomainRelaxationForbiddenForURLScheme(forbidden, scheme->string());
 }
 
 void TestRunner::goBack()
@@ -683,12 +658,12 @@ void TestRunner::setAppCacheMaximumSize(unsigned long long size)
 
 bool TestRunner::pauseAnimationAtTimeOnElementWithId(JSStringRef animationName, double time, JSStringRef elementId)
 {
-    return DumpRenderTreeSupportEfl::pauseAnimation(browser->mainFrame(), animationName->ustring().utf8().data(), elementId->ustring().utf8().data(), time);
+    return DumpRenderTreeSupportEfl::pauseAnimation(browser->mainFrame(), animationName->string().utf8().data(), elementId->string().utf8().data(), time);
 }
 
 bool TestRunner::pauseTransitionAtTimeOnElementWithId(JSStringRef propertyName, double time, JSStringRef elementId)
 {
-    return DumpRenderTreeSupportEfl::pauseTransition(browser->mainFrame(), propertyName->ustring().utf8().data(), elementId->ustring().utf8().data(), time);
+    return DumpRenderTreeSupportEfl::pauseTransition(browser->mainFrame(), propertyName->string().utf8().data(), elementId->string().utf8().data(), time);
 }
 
 unsigned TestRunner::numberOfActiveAnimations() const
@@ -703,7 +678,7 @@ static inline bool toBool(JSStringRef value)
 
 static inline int toInt(JSStringRef value)
 {
-    return atoi(value->ustring().utf8().data());
+    return atoi(value->string().utf8().data());
 }
 
 void TestRunner::overridePreference(JSStringRef key, JSStringRef value)
@@ -735,17 +710,17 @@ void TestRunner::overridePreference(JSStringRef key, JSStringRef value)
     else if (equals(key, "WebKitWebAudioEnabled"))
         ewk_view_setting_web_audio_set(browser->mainView(), toBool(value));
     else
-        fprintf(stderr, "TestRunner::overridePreference tried to override unknown preference '%s'.\n", value->ustring().utf8().data());
+        fprintf(stderr, "TestRunner::overridePreference tried to override unknown preference '%s'.\n", value->string().utf8().data());
 }
 
 void TestRunner::addUserScript(JSStringRef source, bool runAtStart, bool allFrames)
 {
-    DumpRenderTreeSupportEfl::addUserScript(browser->mainView(), String(source->ustring().impl()), runAtStart, allFrames);
+    DumpRenderTreeSupportEfl::addUserScript(browser->mainView(), source->string(), runAtStart, allFrames);
 }
 
 void TestRunner::addUserStyleSheet(JSStringRef source, bool allFrames)
 {
-    DumpRenderTreeSupportEfl::addUserStyleSheet(browser->mainView(), WTF::String(source->ustring().impl()), allFrames);
+    DumpRenderTreeSupportEfl::addUserStyleSheet(browser->mainView(), source->string(), allFrames);
 }
 
 void TestRunner::setDeveloperExtrasEnabled(bool enabled)
@@ -771,7 +746,7 @@ void TestRunner::closeWebInspector()
 
 void TestRunner::evaluateInWebInspector(long callId, JSStringRef script)
 {
-    DumpRenderTreeSupportEfl::evaluateInWebInspector(browser->mainView(), callId, String(script->ustring().impl()));
+    DumpRenderTreeSupportEfl::evaluateInWebInspector(browser->mainView(), callId, script->string());
 }
 
 void TestRunner::evaluateScriptInIsolatedWorldAndReturnValue(unsigned, JSObjectRef, JSStringRef)
@@ -781,7 +756,7 @@ void TestRunner::evaluateScriptInIsolatedWorldAndReturnValue(unsigned, JSObjectR
 
 void TestRunner::evaluateScriptInIsolatedWorld(unsigned worldID, JSObjectRef globalObject, JSStringRef script)
 {
-    DumpRenderTreeSupportEfl::evaluateScriptInIsolatedWorld(browser->mainFrame(), worldID, globalObject, String(script->ustring().impl()));
+    DumpRenderTreeSupportEfl::evaluateScriptInIsolatedWorld(browser->mainFrame(), worldID, globalObject, script->string());
 }
 
 void TestRunner::removeAllVisitedLinks()
@@ -853,7 +828,7 @@ void TestRunner::setTextDirection(JSStringRef direction)
     else if (JSStringIsEqualToUTF8CString(direction, "ltr"))
         ewkDirection = EWK_TEXT_DIRECTION_LEFT_TO_RIGHT;
     else {
-        fprintf(stderr, "TestRunner::setTextDirection called with unknown direction: '%s'.\n", direction->ustring().utf8().data());
+        fprintf(stderr, "TestRunner::setTextDirection called with unknown direction: '%s'.\n", direction->string().utf8().data());
         return;
     }
 

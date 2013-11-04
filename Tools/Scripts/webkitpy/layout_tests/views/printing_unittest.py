@@ -31,6 +31,7 @@
 
 import optparse
 import StringIO
+import sys
 import time
 import unittest
 
@@ -113,17 +114,23 @@ class  Testprinter(unittest.TestCase):
     def test_print_config(self):
         printer, err, out = self.get_printer()
         # FIXME: it's lame that i have to set these options directly.
-        printer._options.results_directory = '/tmp'
         printer._options.pixel_tests = True
         printer._options.new_baseline = True
         printer._options.time_out_ms = 6000
         printer._options.slow_time_out_ms = 12000
-        printer.print_config()
+        printer.print_config('/tmp')
+        self.assertTrue("Using port 'test-mac-leopard'" in err.getvalue())
+        self.assertTrue('Test configuration: <leopard, x86, release>' in err.getvalue())
+        self.assertTrue('Placing test results in /tmp' in err.getvalue())
         self.assertTrue('Baseline search path: test-mac-leopard -> test-mac-snowleopard -> generic' in err.getvalue())
+        self.assertTrue('Using Release build' in err.getvalue())
+        self.assertTrue('Pixel tests enabled' in err.getvalue())
+        self.assertTrue('Command line:' in err.getvalue())
+        self.assertTrue('Regular timeout: ' in err.getvalue())
 
         self.reset(err)
         printer._options.quiet = True
-        printer.print_config()
+        printer.print_config('/tmp')
         self.assertFalse('Baseline search path: test-mac-leopard -> test-mac-snowleopard -> generic' in err.getvalue())
 
     def test_print_one_line_summary(self):
@@ -247,6 +254,32 @@ BUGX : failures/expected/timeout.html = TIMEOUT
         # FIXME: Test that print_unexpected_results() produces the printer the
         # buildbot is expecting.
         pass
+
+    def test_test_status_line(self):
+        printer, _, _ = self.get_printer()
+        printer._meter.number_of_columns = lambda: 80
+        actual = printer._test_status_line('fast/dom/HTMLFormElement/associated-elements-after-index-assertion-fail1.html', ' passed')
+        self.assertEquals(80, len(actual))
+        self.assertEquals(actual, '[0/0] fast/dom/HTMLFormElement/associa...after-index-assertion-fail1.html passed')
+
+        printer._meter.number_of_columns = lambda: 89
+        actual = printer._test_status_line('fast/dom/HTMLFormElement/associated-elements-after-index-assertion-fail1.html', ' passed')
+        self.assertEquals(89, len(actual))
+        self.assertEquals(actual, '[0/0] fast/dom/HTMLFormElement/associated-...ents-after-index-assertion-fail1.html passed')
+
+        printer._meter.number_of_columns = lambda: sys.maxint
+        actual = printer._test_status_line('fast/dom/HTMLFormElement/associated-elements-after-index-assertion-fail1.html', ' passed')
+        self.assertEquals(90, len(actual))
+        self.assertEquals(actual, '[0/0] fast/dom/HTMLFormElement/associated-elements-after-index-assertion-fail1.html passed')
+
+        printer._meter.number_of_columns = lambda: 18
+        actual = printer._test_status_line('fast/dom/HTMLFormElement/associated-elements-after-index-assertion-fail1.html', ' passed')
+        self.assertEquals(18, len(actual))
+        self.assertEquals(actual, '[0/0] f...l passed')
+
+        printer._meter.number_of_columns = lambda: 10
+        actual = printer._test_status_line('fast/dom/HTMLFormElement/associated-elements-after-index-assertion-fail1.html', ' passed')
+        self.assertEquals(actual, '[0/0] associated-elements-after-index-assertion-fail1.html passed')
 
     def test_details(self):
         printer, err, _ = self.get_printer(['--details'])

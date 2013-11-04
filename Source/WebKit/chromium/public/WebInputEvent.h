@@ -116,6 +116,7 @@ public:
         GestureFlingCancel,
         GestureTap,
         GestureTapDown,
+        GestureTapCancel,
         GestureDoubleTap,
         GestureTwoFingerTap,
         GestureLongPress,
@@ -151,6 +152,10 @@ public:
         // event and back will not preserve these flags.
         CapsLockOn       = 1 << 9,
         NumLockOn        = 1 << 10,
+
+        // Left/right modifiers for keyboard events.
+        IsLeft           = 1 << 11,
+        IsRight          = 1 << 12,
     };
 
     static const int InputModifiers = ShiftKey | ControlKey | AltKey | MetaKey;
@@ -189,16 +194,6 @@ public:
             || type == TouchCancel;
     }
 
-    // Returns true if the WebInputEvent |type| should be handled as user gesture.
-    static bool isUserGestureEventType(int type)
-    {
-        return isKeyboardEventType(type)
-            || type == MouseDown
-            || type == MouseUp
-            || type == TouchStart
-            || type == TouchEnd;
-    }
-
     // Returns true if the WebInputEvent is a gesture event.
     static bool isGestureEventType(int type)
     {
@@ -212,6 +207,7 @@ public:
             || type == GesturePinchUpdate
             || type == GestureTap
             || type == GestureTapDown
+            || type == GestureTapCancel
             || type == GestureDoubleTap
             || type == GestureTwoFingerTap
             || type == GestureLongPress
@@ -237,7 +233,11 @@ public:
     // |windowsKeyCode| is the Windows key code associated with this key
     // event.  Sometimes it's direct from the event (i.e. on Windows),
     // sometimes it's via a mapping function.  If you want a list, see
-    // WebCore/platform/chromium/KeyboardCodes* .
+    // WebCore/platform/chromium/KeyboardCodes* . Note that this should
+    // ALWAYS store the non-locational version of a keycode as this is
+    // what is returned by the Windows API. For example, it should
+    // store VK_SHIFT instead of VK_RSHIFT. The location information
+    // should be stored in |modifiers|.
     int windowsKeyCode;
 
     // The actual key code genenerated by the platform.  The DOM spec runs
@@ -279,6 +279,9 @@ public:
     // Sets keyIdentifier based on the value of windowsKeyCode.  This is
     // handy for generating synthetic keyboard events.
     WEBKIT_EXPORT void setKeyIdentifierFromWindowsKeyCode();
+
+    static int windowsKeyCodeWithoutLocation(int keycode);
+    static int locationModifiersFromWindowsKeyCode(int keycode);
 };
 
 // WebMouseEvent --------------------------------------------------------------
@@ -365,16 +368,15 @@ public:
 
 class WebGestureEvent : public WebInputEvent {
 public:
+    enum SourceDevice {
+        Touchpad,
+        Touchscreen,
+    };
+
     int x;
     int y;
     int globalX;
     int globalY;
-
-    // FIXME: These are currently overloaded. We're in the process of moving
-    // to the union below. http://wkb.ug/93123
-    float deltaX;
-    float deltaY;
-    WebRect boundingBox;
 
     union {
       struct {
@@ -382,6 +384,11 @@ public:
         int width;
         int height;
       } tap;
+
+      struct {
+        int width;
+        int height;
+      } tapDown;
 
       struct {
         int width;
@@ -398,6 +405,7 @@ public:
       struct {
         float velocityX;
         float velocityY;
+        SourceDevice sourceDevice;
       } flingStart;
 
       struct {
@@ -411,8 +419,6 @@ public:
         , y(0)
         , globalX(0)
         , globalY(0)
-        , deltaX(0.0f)
-        , deltaY(0.0f)
     {
       memset(&data, 0, sizeof(data)); 
     }

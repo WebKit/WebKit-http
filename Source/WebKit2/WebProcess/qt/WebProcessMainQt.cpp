@@ -54,7 +54,7 @@
 #include <QDebug>
 #endif
 
-#if !USE(UNIX_DOMAIN_SOCKETS)
+#if OS(DARWIN) && !USE(UNIX_DOMAIN_SOCKETS)
 #include <servers/bootstrap.h>
 
 extern "C" kern_return_t bootstrap_look_up2(mach_port_t, const name_t, mach_port_t*, pid_t, uint64_t);
@@ -146,8 +146,6 @@ Q_DECL_EXPORT int WebProcessMainQt(QGuiApplication* app)
 {
     initializeProxy();
 
-    srandom(time(0));
-
     JSC::initializeThreading();
     WTF::initializeMainThread();
     RunLoop::initializeMainRunLoop();
@@ -174,11 +172,19 @@ Q_DECL_EXPORT int WebProcessMainQt(QGuiApplication* app)
     }
 #else
     bool wasNumber = false;
-    int identifier = app->arguments().at(1).toInt(&wasNumber, 10);
+    qulonglong id = app->arguments().at(1).toULongLong(&wasNumber, 10);
     if (!wasNumber) {
         qDebug() << "Error: connection identifier wrong.";
         return 1;
     }
+    CoreIPC::Connection::Identifier identifier;
+#if OS(WINDOWS)
+    // Convert to HANDLE
+    identifier = reinterpret_cast<CoreIPC::Connection::Identifier>(id);
+#else
+    // Convert to int
+    identifier = static_cast<CoreIPC::Connection::Identifier>(id);
+#endif
 #endif
 #if USE(ACCELERATED_COMPOSITING)
     CoordinatedGraphicsLayer::initFactory();

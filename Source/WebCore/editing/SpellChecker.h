@@ -27,7 +27,6 @@
 #define SpellChecker_h
 
 #include "Element.h"
-#include "PlatformString.h"
 #include "Range.h"
 #include "TextChecking.h"
 #include "Timer.h"
@@ -36,6 +35,7 @@
 #include <wtf/RefPtr.h>
 #include <wtf/Noncopyable.h>
 #include <wtf/Vector.h>
+#include <wtf/text/WTFString.h>
 
 namespace WebCore {
 
@@ -70,7 +70,7 @@ private:
 };
 
 class SpellChecker {
-    WTF_MAKE_NONCOPYABLE(SpellChecker);
+    WTF_MAKE_NONCOPYABLE(SpellChecker); WTF_MAKE_FAST_ALLOCATED;
 public:
     friend class SpellCheckRequest;
 

@@ -33,7 +33,12 @@
 
 #if ENABLE(MEDIA_STREAM)
 
+#include <wtf/PassRefPtr.h>
+
 namespace WebCore {
+
+class MediaStreamDescriptor;
+class RTCIceCandidateDescriptor;
 
 class RTCPeerConnectionHandlerClient {
 public:
@@ -45,9 +50,25 @@ public:
         ReadyStateClosed = 5
     };
 
+    enum IceState {
+        IceStateNew = 1,
+        IceStateGathering = 2,
+        IceStateWaiting = 3,
+        IceStateChecking = 4,
+        IceStateConnected = 5,
+        IceStateCompleted = 6,
+        IceStateFailed = 7,
+        IceStateClosed = 8
+    };
+
     virtual ~RTCPeerConnectionHandlerClient() { }
 
+    virtual void negotiationNeeded() = 0;
+    virtual void didGenerateIceCandidate(PassRefPtr<RTCIceCandidateDescriptor>) = 0;
     virtual void didChangeReadyState(ReadyState) = 0;
+    virtual void didChangeIceState(IceState) = 0;
+    virtual void didAddRemoteStream(PassRefPtr<MediaStreamDescriptor>) = 0;
+    virtual void didRemoveRemoteStream(MediaStreamDescriptor*) = 0;
 };
 
 } // namespace WebCore

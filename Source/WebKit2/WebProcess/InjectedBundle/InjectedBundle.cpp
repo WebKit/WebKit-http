@@ -46,6 +46,8 @@
 #include "WebProcess.h"
 #include <JavaScriptCore/APICast.h>
 #include <JavaScriptCore/JSLock.h>
+#include <WebCore/ApplicationCache.h>
+#include <WebCore/ApplicationCacheStorage.h>
 #include <WebCore/Frame.h>
 #include <WebCore/FrameView.h>
 #include <WebCore/GCController.h>
@@ -65,6 +67,7 @@
 #include <WebCore/SecurityPolicy.h>
 #include <WebCore/Settings.h>
 #include <WebCore/UserGestureIndicator.h>
+#include <WebCore/WorkerThread.h>
 #include <wtf/OwnArrayPtr.h>
 #include <wtf/PassOwnArrayPtr.h>
 
@@ -131,7 +134,13 @@ void InjectedBundle::overrideBoolPreferenceForTestRunner(WebPageGroupProxy* page
 {
     const HashSet<Page*>& pages = PageGroup::pageGroup(pageGroup->identifier())->pages();
 
-    // FIXME: Need an explicit way to set "WebKitTabToLinksPreferenceKey" directly in WebPage.
+    if (preference == "WebKitTabToLinksPreferenceKey") {
+       WebPreferencesStore::overrideBoolValueForKey(WebPreferencesKey::tabsToLinksKey(), enabled);
+       for (HashSet<Page*>::iterator i = pages.begin(); i != pages.end(); ++i) {
+            WebPage* webPage = static_cast<WebFrameLoaderClient*>((*i)->mainFrame()->loader()->client())->webFrame()->page();
+            webPage->setTabToLinksEnabled(enabled);
+        }
+    }
 
     if (preference == "WebKit2AsynchronousPluginInitializationEnabled") {
         WebPreferencesStore::overrideBoolValueForKey(WebPreferencesKey::asynchronousPluginInitializationEnabledKey(), enabled);
@@ -173,7 +182,8 @@ void InjectedBundle::overrideBoolPreferenceForTestRunner(WebPageGroupProxy* page
     macro(WebKitWebAudioEnabled, WebAudioEnabled, webAudioEnabled) \
     macro(WebKitWebGLEnabled, WebGLEnabled, webGLEnabled) \
     macro(WebKitXSSAuditorEnabled, XSSAuditorEnabled, xssAuditorEnabled) \
-    macro(WebKitShouldRespectImageOrientation, ShouldRespectImageOrientation, shouldRespectImageOrientation)
+    macro(WebKitShouldRespectImageOrientation, ShouldRespectImageOrientation, shouldRespectImageOrientation) \
+    macro(WebKitEnableCaretBrowsing, CaretBrowsingEnabled, caretBrowsingEnabled)
 
     if (preference == "WebKitAcceleratedCompositingEnabled")
         enabled = enabled && LayerTreeHost::supportsAcceleratedCompositing();
@@ -215,6 +225,13 @@ void InjectedBundle::setAllowFileAccessFromFileURLs(WebPageGroupProxy* pageGroup
     const HashSet<Page*>& pages = PageGroup::pageGroup(pageGroup->identifier())->pages();
     for (HashSet<Page*>::iterator iter = pages.begin(); iter != pages.end(); ++iter)
         (*iter)->settings()->setAllowFileAccessFromFileURLs(enabled);
+}
+
+void InjectedBundle::setMinimumLogicalFontSize(WebPageGroupProxy* pageGroup, int size)
+{
+    const HashSet<Page*>& pages = PageGroup::pageGroup(pageGroup->identifier())->pages();
+    for (HashSet<Page*>::iterator iter = pages.begin(); iter != pages.end(); ++iter)
+        (*iter)->settings()->setMinimumLogicalFontSize(size);
 }
 
 void InjectedBundle::setFrameFlatteningEnabled(WebPageGroupProxy* pageGroup, bool enabled)
@@ -278,6 +295,13 @@ void InjectedBundle::setAuthorAndUserStylesEnabled(WebPageGroupProxy* pageGroup,
         (*iter)->settings()->setAuthorAndUserStylesEnabled(enabled);
 }
 
+void InjectedBundle::setSpatialNavigationEnabled(WebPageGroupProxy* pageGroup, bool enabled)
+{
+    const HashSet<Page*>& pages = PageGroup::pageGroup(pageGroup->identifier())->pages();
+    for (HashSet<Page*>::iterator iter = pages.begin(); iter != pages.end(); ++iter)
+        (*iter)->settings()->setSpatialNavigationEnabled(enabled);
+}
+
 void InjectedBundle::addOriginAccessWhitelistEntry(const String& sourceOrigin, const String& destinationProtocol, const String& destinationHost, bool allowDestinationSubdomains)
 {
     SecurityPolicy::addOriginAccessWhitelistEntry(*SecurityOrigin::createFromString(sourceOrigin), destinationProtocol, destinationHost, allowDestinationSubdomains);
@@ -303,7 +327,9 @@ void InjectedBundle::clearAllDatabases()
 void InjectedBundle::setDatabaseQuota(uint64_t quota)
 {
 #if ENABLE(SQL_DATABASE)
-    WebDatabaseManager::shared().setQuotaForOrigin("file:///", quota);
+    // Historically, we've used the following (somewhat non-sensical) string
+    // for the databaseIdentifier of local files.
+    WebDatabaseManager::shared().setQuotaForOrigin("file__0", quota);
 #endif
 }
 
@@ -312,9 +338,47 @@ void InjectedBundle::clearApplicationCache()
     WebApplicationCacheManager::shared().deleteAllEntries();
 }
 
+void InjectedBundle::clearApplicationCacheForOrigin(const String& originString)
+{
+    RefPtr<SecurityOrigin> origin = SecurityOrigin::createFromString(originString);
+    ApplicationCache::deleteCacheForOrigin(origin.get());
+}
+
 void InjectedBundle::setAppCacheMaximumSize(uint64_t size)
 {
     WebApplicationCacheManager::shared().setAppCacheMaximumSize(size);
+}
+
+uint64_t InjectedBundle::appCacheUsageForOrigin(const String& originString)
+{
+    RefPtr<SecurityOrigin> origin = SecurityOrigin::createFromString(originString);
+    return ApplicationCache::diskUsageForOrigin(origin.get());
+}
+
+void InjectedBundle::setApplicationCacheOriginQuota(const String& originString, uint64_t bytes)
+{
+    RefPtr<SecurityOrigin> origin = SecurityOrigin::createFromString(originString);
+    cacheStorage().storeUpdatedQuotaForOrigin(origin.get(), bytes);
+}
+
+void InjectedBundle::resetApplicationCacheOriginQuota(const String& originString)
+{
+    RefPtr<SecurityOrigin> origin = SecurityOrigin::createFromString(originString);
+    cacheStorage().storeUpdatedQuotaForOrigin(origin.get(), cacheStorage().defaultOriginQuota());
+}
+
+PassRefPtr<ImmutableArray> InjectedBundle::originsWithApplicationCache()
+{
+    HashSet<RefPtr<SecurityOrigin>, SecurityOriginHash> origins;
+    cacheStorage().getOriginsWithCache(origins);
+    Vector< RefPtr<APIObject> > originsVector;
+
+    HashSet<RefPtr<SecurityOrigin>, SecurityOriginHash>::iterator it = origins.begin();
+    HashSet<RefPtr<SecurityOrigin>, SecurityOriginHash>::iterator end = origins.end();
+    for ( ; it != end; ++it)
+        originsVector.append(WebString::create((*it)->databaseIdentifier()));
+
+    return ImmutableArray::adopt(originsVector);
 }
 
 int InjectedBundle::numberOfPages(WebFrame* frame, double pageWidthInPixels, double pageHeightInPixels)
@@ -529,11 +593,27 @@ void InjectedBundle::setPageVisibilityState(WebPage* page, int state, bool isIni
 #endif
 }
 
+size_t InjectedBundle::workerThreadCount()
+{
+#if ENABLE(WORKERS)
+    return WebCore::WorkerThread::workerThreadCount();
+#else
+    return 0;
+#endif
+}
+
 void InjectedBundle::setUserStyleSheetLocation(WebPageGroupProxy* pageGroup, const String& location)
 {
     const HashSet<Page*>& pages = PageGroup::pageGroup(pageGroup->identifier())->pages();
     for (HashSet<Page*>::iterator iter = pages.begin(); iter != pages.end(); ++iter)
         (*iter)->settings()->setUserStyleSheetLocation(KURL(KURL(), location));
+}
+
+void InjectedBundle::setMinimumTimerInterval(WebPageGroupProxy* pageGroup, double seconds)
+{
+    const HashSet<Page*>& pages = PageGroup::pageGroup(pageGroup->identifier())->pages();
+    for (HashSet<Page*>::iterator iter = pages.begin(); iter != pages.end(); ++iter)
+        (*iter)->settings()->setMinDOMTimerInterval(seconds);
 }
 
 void InjectedBundle::setWebNotificationPermission(WebPage* page, const String& originString, bool allowed)
@@ -566,6 +646,11 @@ uint64_t InjectedBundle::webNotificationID(JSContextRef jsContext, JSValueRef js
 #else
     return 0;
 #endif
+}
+
+void InjectedBundle::setTabKeyCyclesThroughElements(WebPage* page, bool enabled)
+{
+    page->corePage()->setTabKeyCyclesThroughElements(enabled);
 }
 
 } // namespace WebKit

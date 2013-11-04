@@ -108,6 +108,7 @@ public:
     void overrideXSSAuditorEnabledForTestRunner(WebPageGroupProxy* pageGroup, bool enabled);
     void setAllowUniversalAccessFromFileURLs(WebPageGroupProxy*, bool);
     void setAllowFileAccessFromFileURLs(WebPageGroupProxy*, bool);
+    void setMinimumLogicalFontSize(WebPageGroupProxy*, int size);
     void setFrameFlatteningEnabled(WebPageGroupProxy*, bool);
     void setPluginsEnabled(WebPageGroupProxy*, bool);
     void setGeoLocationPermission(WebPageGroupProxy*, bool);
@@ -116,6 +117,7 @@ public:
     void setPopupBlockingEnabled(WebPageGroupProxy*, bool);
     void switchNetworkLoaderToNewTestingSession();
     void setAuthorAndUserStylesEnabled(WebPageGroupProxy*, bool);
+    void setSpatialNavigationEnabled(WebPageGroupProxy*, bool);
     void addOriginAccessWhitelistEntry(const String&, const String&, const String&, bool);
     void removeOriginAccessWhitelistEntry(const String&, const String&, const String&, bool);
     void resetOriginAccessWhitelists();
@@ -124,6 +126,7 @@ public:
     String pageSizeAndMarginsInPixels(WebFrame*, int, int, int, int, int, int, int);
     bool isPageBoxVisible(WebFrame*, int);
     void setUserStyleSheetLocation(WebPageGroupProxy*, const String&);
+    void setMinimumTimerInterval(WebPageGroupProxy*, double seconds);
     void setWebNotificationPermission(WebPage*, const String& originString, bool allowed);
     void removeAllWebNotificationPermissions(WebPage*);
     uint64_t webNotificationID(JSContextRef, JSValueRef);
@@ -143,7 +146,12 @@ public:
 
     // Application Cache API
     void clearApplicationCache();
+    void clearApplicationCacheForOrigin(const String& origin);
     void setAppCacheMaximumSize(uint64_t);
+    uint64_t appCacheUsageForOrigin(const String& origin);
+    void setApplicationCacheOriginQuota(const String& origin, uint64_t);
+    void resetApplicationCacheOriginQuota(const String& origin);
+    PassRefPtr<ImmutableArray> originsWithApplicationCache();
 
     // Garbage collection API
     void garbageCollectJavaScriptObjects();
@@ -165,8 +173,12 @@ public:
 
     void setPageVisibilityState(WebPage*, int state, bool isInitialState);
 
+    static size_t workerThreadCount();
+
+    void setTabKeyCyclesThroughElements(WebPage*, bool enabled);
+
 private:
-    InjectedBundle(const String&);
+    explicit InjectedBundle(const String&);
 
     virtual Type type() const { return APIType; }
 

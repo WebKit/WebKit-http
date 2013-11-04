@@ -4,15 +4,36 @@
 # See 'Tools/qmake/README' for an overview of the build system
 # -------------------------------------------------------------------
 
+# Use Qt5's module system
+load(qt_build_config)
+
 TEMPLATE = lib
 TARGET = QtWebKit
 
 WEBKIT_DESTDIR = $${ROOT_BUILD_DIR}/lib
 
-# Use Qt5's module system
-load(qt_build_config)
+WEBKIT += wtf javascriptcore webcore
+
+build?(webkit1): WEBKIT += webkit1
+build?(webkit2): WEBKIT += webkit2
+
+# Ensure that changes to the WebKit1 and WebKit2 API will trigger a qmake of this
+# file, which in turn runs syncqt to update the forwarding headers.
+build?(webkit1): QMAKE_INTERNAL_INCLUDED_FILES *= WebKit/WebKit1.pro
+build?(webkit2): QMAKE_INTERNAL_INCLUDED_FILES *= WebKit2/Target.pri
+
+use?(3D_GRAPHICS): WEBKIT += angle
+
+# We load the relevant modules here, so that the effects of each module
+# on the QT variable can be picked up when we later load(qt_module).
+load(webkit_modules)
+
 MODULE = webkit
-MODULE_PRI = ../Tools/qmake/qt_webkit.pri
+
+# This is the canonical list of dependencies for the public API of
+# the QtWebKit library, and will end up in the library's prl file.
+QT_API_DEPENDS = core gui network
+build?(webkit1): QT_API_DEPENDS += widgets
 
 # ---------------- Custom developer-build handling -------------------
 #
@@ -27,15 +48,7 @@ CONFIG += force_independent
 
 BASE_TARGET = $$TARGET
 
-load(qt_module_config)
-
-# Make sure the module config doesn't override our preferred build config.
-debug_and_release:if(!debug|!release) {
-    # Removing debug_and_release causes issues with lib suffixes when building debug on Windows.
-    # Work around it by only removing build_all, and still create the Makefiles for both configurations.
-    win32*: CONFIG -= build_all
-    else: CONFIG -= debug_and_release
-}
+load(qt_module)
 
 # Allow doing a debug-only build of WebKit (not supported by Qt)
 macx:!debug_and_release:debug: TARGET = $$BASE_TARGET
@@ -67,23 +80,6 @@ macx {
         QMAKE_EXTRA_TARGETS += change_install_name default_install_target
     }
 }
-
-WEBKIT += wtf
-
-WEBKIT += javascriptcore
-
-WEBKIT += webcore
-
-!no_webkit2 {
-    WEBKIT += webkit2
-
-    # Ensure that changes to the WebKit1 and WebKit2 API will trigger a qmake of this
-    # file, which in turn runs syncqt to update the forwarding headers.
-    QMAKE_INTERNAL_INCLUDED_FILES *= WebKit2/Target.pri
-    QMAKE_INTERNAL_INCLUDED_FILES *= WebKit/WebKit1.pro
-}
-
-!no_webkit1: WEBKIT += webkit1
 
 qnx {
     # see: https://bugs.webkit.org/show_bug.cgi?id=93460

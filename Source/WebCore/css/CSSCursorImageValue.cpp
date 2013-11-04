@@ -23,11 +23,11 @@
 #include "CSSCursorImageValue.h"
 
 #include "CachedResourceLoader.h"
-#include "MemoryInstrumentation.h"
 #include "TreeScope.h"
-#include "PlatformString.h"
+#include "WebCoreMemoryInstrumentation.h"
 #include <wtf/MathExtras.h>
 #include <wtf/UnusedParam.h>
+#include <wtf/text/WTFString.h>
 
 #if ENABLE(SVG)
 #include "SVGCursorElement.h"
@@ -135,7 +135,7 @@ void CSSCursorImageValue::removeReferencedElement(SVGElement* element)
 
 void CSSCursorImageValue::reportDescendantMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
 {
-    MemoryClassInfo info(memoryObjectInfo, this, MemoryInstrumentation::CSS);
+    MemoryClassInfo info(memoryObjectInfo, this, WebCoreMemoryTypes::CSS);
     CSSImageValue::reportDescendantMemoryUsage(memoryObjectInfo);
 #if ENABLE(SVG)
     info.addInstrumentedHashSet(m_referencedElements);

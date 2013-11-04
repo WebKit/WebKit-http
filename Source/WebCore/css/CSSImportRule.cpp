@@ -27,10 +27,10 @@
 #include "CachedResourceLoader.h"
 #include "Document.h"
 #include "MediaList.h"
-#include "MemoryInstrumentation.h"
 #include "SecurityOrigin.h"
 #include "StyleRuleImport.h"
 #include "StyleSheetContents.h"
+#include "WebCoreMemoryInstrumentation.h"
 #include <wtf/text/StringBuilder.h>
 
 namespace WebCore {
@@ -79,18 +79,11 @@ String CSSImportRule::cssText() const
 
 void CSSImportRule::reportDescendantMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
 {
-    MemoryClassInfo info(memoryObjectInfo, this, MemoryInstrumentation::CSS);
+    MemoryClassInfo info(memoryObjectInfo, this, WebCoreMemoryTypes::CSS);
     CSSRule::reportBaseClassMemoryUsage(memoryObjectInfo);
-    info.addInstrumentedMember(m_importRule);
-    info.addInstrumentedMember(m_mediaCSSOMWrapper);
-    info.addInstrumentedMember(m_styleSheetCSSOMWrapper);
-}
-
-void CSSImportRule::reattachStyleSheetContents()
-{
-    ASSERT(m_styleSheetCSSOMWrapper);
-    ASSERT(!parentStyleSheet() || parentStyleSheet()->contents()->hasOneClient());
-    m_importRule->reattachStyleSheetContents(m_styleSheetCSSOMWrapper->contents());
+    info.addMember(m_importRule);
+    info.addMember(m_mediaCSSOMWrapper);
+    info.addMember(m_styleSheetCSSOMWrapper);
 }
 
 CSSStyleSheet* CSSImportRule::styleSheet() const

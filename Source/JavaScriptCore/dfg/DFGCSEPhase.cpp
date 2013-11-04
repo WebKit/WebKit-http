@@ -582,8 +582,10 @@ private:
                 break;
 
             Node& node = m_graph[index];
+            if (!node.shouldGenerate())
+                continue;
             switch (node.op()) {
-            case GetPropertyStorage:
+            case GetButterfly:
                 if (node.child1() == child1)
                     return index;
                 break;
@@ -632,6 +634,8 @@ private:
                 break;
 
             Node& node = m_graph[index];
+            if (!node.shouldGenerate())
+                continue;
             switch (node.op()) {
             case PutByOffset:
             case PutStructure:
@@ -661,6 +665,8 @@ private:
                 break;
 
             Node& node = m_graph[index];
+            if (!node.shouldGenerate())
+                continue;
             switch (node.op()) {
             case GetIndexedPropertyStorage: {
                 if (node.child1() == child1 && node.arrayMode() == arrayMode)
@@ -688,6 +694,8 @@ private:
         for (unsigned i = endIndexForPureCSE(); i--;) {
             NodeIndex index = m_currentBlock->at(i);
             Node& node = m_graph[index];
+            if (!node.shouldGenerate())
+                continue;
             if (node.op() == GetScopeChain
                 && node.scopeChainDepth() == depth)
                 return index;
@@ -702,6 +710,8 @@ private:
         for (unsigned i = m_indexInBlock; i--;) {
             NodeIndex index = m_currentBlock->at(i);
             Node& node = m_graph[index];
+            if (!node.shouldGenerate())
+                continue;
             switch (node.op()) {
             case GetLocal:
                 if (node.local() == local) {
@@ -1160,7 +1170,7 @@ private:
             break;
         }
 
-        case GetPropertyStorage:
+        case GetButterfly:
             setReplacement(getPropertyStorageLoadElimination(node.child1().index()));
             break;
 

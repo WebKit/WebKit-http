@@ -29,7 +29,6 @@
 
 namespace WebCore {
 
-class MemoryObjectInfo;
 class StyleSheetContents;
     
 // FIXME: The current CSSValue and subclasses should be turned into internal types (StyleValue).
@@ -95,6 +94,7 @@ public:
 #if ENABLE(CSS_FILTERS)
     bool isWebKitCSSFilterValue() const { return m_classType == WebKitCSSFilterClass; }
 #if ENABLE(CSS_SHADERS)
+    bool isWebKitCSSArrayFunctionValue() const { return m_classType == WebKitCSSArrayFunctionValueClass; }
     bool isWebKitCSSMixFunctionValue() const { return m_classType == WebKitCSSMixFunctionValueClass; }
     bool isWebKitCSSShaderValue() const { return m_classType == WebKitCSSShaderClass; }
 #endif
@@ -183,6 +183,7 @@ protected:
 #if ENABLE(CSS_FILTERS)
         WebKitCSSFilterClass,
 #if ENABLE(CSS_SHADERS)
+        WebKitCSSArrayFunctionValueClass,
         WebKitCSSMixFunctionValueClass,
 #endif
 #endif

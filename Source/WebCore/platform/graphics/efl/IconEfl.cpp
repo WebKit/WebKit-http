@@ -37,8 +37,8 @@
 #include "GraphicsContext.h"
 #include "MIMETypeRegistry.h"
 #include "NotImplemented.h"
-#include "PlatformString.h"
 #include <wtf/PassRefPtr.h>
+#include <wtf/text/WTFString.h>
 
 namespace WebCore {
 
@@ -52,13 +52,13 @@ Icon::~Icon()
 {
 }
 
-PassRefPtr<Icon> Icon::createIconForFiles(const Vector<String>& filenames)
+PassRefPtr<Icon> Icon::createIconForFiles(const Vector<String>&)
 {
     notImplemented();
     return 0;
 }
 
-void Icon::paint(GraphicsContext* context, const IntRect& rect)
+void Icon::paint(GraphicsContext*, const IntRect&)
 {
     notImplemented();
 }

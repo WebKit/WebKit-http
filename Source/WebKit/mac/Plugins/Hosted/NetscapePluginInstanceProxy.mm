@@ -45,6 +45,7 @@
 #import <JavaScriptCore/Error.h>
 #import <JavaScriptCore/JSLock.h>
 #import <JavaScriptCore/PropertyNameArray.h>
+#import <JavaScriptCore/SourceCode.h>
 #import <JavaScriptCore/StrongInlines.h>
 #import <WebCore/CookieJar.h>
 #import <WebCore/DocumentLoader.h>
@@ -56,7 +57,6 @@
 #import <WebCore/SecurityOrigin.h>
 #import <WebCore/ScriptController.h>
 #import <WebCore/ScriptValue.h>
-#import <WebCore/StringSourceProvider.h>
 #import <WebCore/UserGestureIndicator.h>
 #import <WebCore/npruntime_impl.h>
 #import <WebCore/runtime_object.h>
@@ -1224,7 +1224,7 @@ bool NetscapePluginInstanceProxy::enumerate(uint32_t objectID, data_t& resultDat
 
     RetainPtr<NSMutableArray*> array(AdoptNS, [[NSMutableArray alloc] init]);
     for (unsigned i = 0; i < propertyNames.size(); i++) {
-        uint64_t methodName = reinterpret_cast<uint64_t>(_NPN_GetStringIdentifier(propertyNames[i].ustring().utf8().data()));
+        uint64_t methodName = reinterpret_cast<uint64_t>(_NPN_GetStringIdentifier(propertyNames[i].string().utf8().data()));
 
         [array.get() addObject:[NSNumber numberWithLongLong:methodName]];
     }

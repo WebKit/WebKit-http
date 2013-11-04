@@ -37,7 +37,6 @@
 #include "KeyboardCodes.h"
 #include "KeyboardEvent.h"
 #include "PlatformKeyboardEvent.h"
-#include "PlatformString.h"
 #include "RenderObject.h"
 #include "Settings.h"
 #include "SpellChecker.h"
@@ -61,6 +60,7 @@
 #include "WebTextCheckingResult.h"
 #include "WebViewClient.h"
 #include "WebViewImpl.h"
+#include <wtf/text/WTFString.h>
 
 using namespace WebCore;
 
@@ -847,6 +847,15 @@ void EditorClientImpl::getGuessesForWord(const String& word,
                                          WTF::Vector<String>& guesses)
 {
     notImplemented();
+}
+
+bool EditorClientImpl::supportsGlobalSelection()
+{
+#if OS(UNIX) && !OS(DARWIN)
+    return true;
+#else
+    return false;
+#endif
 }
 
 void EditorClientImpl::willSetInputMethodState()

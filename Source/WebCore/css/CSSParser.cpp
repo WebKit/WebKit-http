@@ -105,6 +105,7 @@
 #endif
 
 #if ENABLE(CSS_SHADERS)
+#include "WebKitCSSArrayFunctionValue.h"
 #include "WebKitCSSMixFunctionValue.h"
 #include "WebKitCSSShaderValue.h"
 #endif
@@ -156,14 +157,24 @@ namespace WebCore {
 static const unsigned INVALID_NUM_PARSED_PROPERTIES = UINT_MAX;
 static const double MAX_SCALE = 1000000;
 
-static bool equal(const CSSParserString& a, const char* b)
+template <unsigned N>
+static bool equal(const CSSParserString& a, const char (&b)[N])
 {
-    return a.is8Bit() ? WTF::equal(a.characters8(), reinterpret_cast<const LChar*>(b), a.length()) : WTF::equal(a.characters16(), reinterpret_cast<const LChar*>(b), a.length());
+    unsigned length = N - 1; // Ignore the trailing null character
+    if (a.length() != length)
+        return false;
+
+    return a.is8Bit() ? WTF::equal(a.characters8(), reinterpret_cast<const LChar*>(b), length) : WTF::equal(a.characters16(), reinterpret_cast<const LChar*>(b), length);
 }
 
-static bool equalIgnoringCase(const CSSParserString& a, const char* b)
+template <unsigned N>
+static bool equalIgnoringCase(const CSSParserString& a, const char (&b)[N])
 {
-    return a.is8Bit() ? WTF::equalIgnoringCase(b, a.characters8(), a.length()) : WTF::equalIgnoringCase(b, a.characters16(), a.length());
+    unsigned length = N - 1; // Ignore the trailing null character
+    if (a.length() != length)
+        return false;
+
+    return a.is8Bit() ? WTF::equalIgnoringCase(b, a.characters8(), length) : WTF::equalIgnoringCase(b, a.characters16(), length);
 }
 
 static bool hasPrefix(const char* string, unsigned length, const char* prefix)
@@ -188,6 +199,7 @@ CSSParserContext::CSSParserContext(CSSParserMode mode, const KURL& baseURL)
     , mode(mode)
     , isHTMLDocument(false)
     , isCSSCustomFilterEnabled(false)
+    , isCSSStickyPositionEnabled(false)
     , isCSSRegionsEnabled(false)
     , isCSSGridLayoutEnabled(false)
 #if ENABLE(CSS_VARIABLES)
@@ -204,6 +216,7 @@ CSSParserContext::CSSParserContext(Document* document, const KURL& baseURL, cons
     , mode(document->inQuirksMode() ? CSSQuirksMode : CSSStrictMode)
     , isHTMLDocument(document->isHTMLDocument())
     , isCSSCustomFilterEnabled(document->settings() ? document->settings()->isCSSCustomFilterEnabled() : false)
+    , isCSSStickyPositionEnabled(document->cssStickyPositionEnabled())
     , isCSSRegionsEnabled(document->cssRegionsEnabled())
     , isCSSGridLayoutEnabled(document->cssGridLayoutEnabled())
 #if ENABLE(CSS_VARIABLES)
@@ -221,6 +234,7 @@ bool operator==(const CSSParserContext& a, const CSSParserContext& b)
         && a.mode == b.mode
         && a.isHTMLDocument == b.isHTMLDocument
         && a.isCSSCustomFilterEnabled == b.isCSSCustomFilterEnabled
+        && a.isCSSStickyPositionEnabled == b.isCSSStickyPositionEnabled
         && a.isCSSRegionsEnabled == b.isCSSRegionsEnabled
         && a.isCSSGridLayoutEnabled == b.isCSSGridLayoutEnabled
 #if ENABLE(CSS_VARIABLES)
@@ -625,6 +639,11 @@ static inline bool isValidKeywordPropertyAndValue(CSSPropertyID propertyId, int 
         if (valueID == CSSValueAuto || valueID == CSSValueNone || (valueID >= CSSValueInset && valueID <= CSSValueDouble))
             return true;
         break;
+    case CSSPropertyOverflowWrap: // normal | break-word
+    case CSSPropertyWordWrap:
+        if (valueID == CSSValueNormal || valueID == CSSValueBreakWord)
+            return true;
+        break;
     case CSSPropertyOverflowX: // visible | hidden | scroll | auto | marquee | overlay | inherit
         if (valueID == CSSValueVisible || valueID == CSSValueHidden || valueID == CSSValueScroll || valueID == CSSValueAuto || valueID == CSSValueOverlay || valueID == CSSValueWebkitMarquee)
             return true;
@@ -654,7 +673,7 @@ static inline bool isValidKeywordPropertyAndValue(CSSPropertyID propertyId, int 
     case CSSPropertyPosition: // static | relative | absolute | fixed | sticky | inherit
         if (valueID == CSSValueStatic || valueID == CSSValueRelative || valueID == CSSValueAbsolute || valueID == CSSValueFixed
 #if ENABLE(CSS_STICKY_POSITION)
-            || valueID == CSSValueWebkitSticky
+            || (parserContext.isCSSStickyPositionEnabled && valueID == CSSValueWebkitSticky)
 #endif
             )
             return true;
@@ -818,7 +837,7 @@ static inline bool isValidKeywordPropertyAndValue(CSSPropertyID propertyId, int 
         if (valueID == CSSValueNormal || valueID == CSSValueSpace)
             return true;
         break;
-#if ENABLE(OVERFLOW_SCROLLING)
+#if ENABLE(ACCELERATED_OVERFLOW_SCROLLING)
     case CSSPropertyWebkitOverflowScrolling:
         if (valueID == CSSValueAuto || valueID == CSSValueTouch)
             return true;
@@ -906,10 +925,6 @@ static inline bool isValidKeywordPropertyAndValue(CSSPropertyID propertyId, int 
         if (valueID == CSSValueNormal || valueID == CSSValueBreakAll || valueID == CSSValueBreakWord)
             return true;
         break;
-    case CSSPropertyWordWrap: // normal | break-word
-        if (valueID == CSSValueNormal || valueID == CSSValueBreakWord)
-            return true;
-        break;
     default:
         ASSERT_NOT_REACHED();
         return false;
@@ -937,6 +952,7 @@ static inline bool isKeywordPropertyID(CSSPropertyID propertyId)
     case CSSPropertyListStylePosition:
     case CSSPropertyListStyleType:
     case CSSPropertyOutlineStyle:
+    case CSSPropertyOverflowWrap:
     case CSSPropertyOverflowX:
     case CSSPropertyOverflowY:
     case CSSPropertyPageBreakAfter:
@@ -999,7 +1015,7 @@ static inline bool isKeywordPropertyID(CSSPropertyID propertyId)
     case CSSPropertyWebkitMarqueeDirection:
     case CSSPropertyWebkitMarqueeStyle:
     case CSSPropertyWebkitNbspMode:
-#if ENABLE(OVERFLOW_SCROLLING)
+#if ENABLE(ACCELERATED_OVERFLOW_SCROLLING)
     case CSSPropertyWebkitOverflowScrolling:
 #endif
     case CSSPropertyWebkitPrintColorAdjust:
@@ -2796,6 +2812,7 @@ bool CSSParser::parseValue(CSSPropertyID propId, bool important)
     case CSSPropertyListStylePosition:
     case CSSPropertyListStyleType:
     case CSSPropertyOutlineStyle:
+    case CSSPropertyOverflowWrap:
     case CSSPropertyOverflowX:
     case CSSPropertyOverflowY:
     case CSSPropertyPageBreakAfter:
@@ -2858,7 +2875,7 @@ bool CSSParser::parseValue(CSSPropertyID propId, bool important)
     case CSSPropertyWebkitMarqueeDirection:
     case CSSPropertyWebkitMarqueeStyle:
     case CSSPropertyWebkitNbspMode:
-#if ENABLE(OVERFLOW_SCROLLING)
+#if ENABLE(ACCELERATED_OVERFLOW_SCROLLING)
     case CSSPropertyWebkitOverflowScrolling:
 #endif
     case CSSPropertyWebkitPrintColorAdjust:
@@ -3186,18 +3203,19 @@ bool CSSParser::parseAnimationShorthand(bool important)
 
 bool CSSParser::parseTransitionShorthand(bool important)
 {
-    const unsigned numProperties = webkitTransitionShorthand().length();
+    const unsigned numProperties = 4;
+    ASSERT(numProperties == webkitTransitionShorthand().length());
 
     ShorthandScope scope(this, CSSPropertyWebkitTransition);
 
-    bool parsedProperty[] = { false, false, false, false };
-    RefPtr<CSSValue> values[4];
+    bool parsedProperty[numProperties] = { false };
+    RefPtr<CSSValue> values[numProperties];
 
     unsigned i;
     while (m_valueList->current()) {
         CSSParserValue* val = m_valueList->current();
         if (val->unit == CSSParserValue::Operator && val->iValue == ',') {
-            // We hit the end.  Fill in all remaining values with the initial value.
+            // We hit the end. Fill in all remaining values with the initial value.
             m_valueList->next();
             for (i = 0; i < numProperties; ++i) {
                 if (!parsedProperty[i])
@@ -4333,7 +4351,7 @@ bool CSSParser::parseDashboardRegions(CSSPropertyID propId, bool important)
         }
         bool validFunctionName = false;
 #if ENABLE(DASHBOARD_SUPPORT)
-        static const char* const dashboardRegionFunctionName = "dashboard-region(";
+        static const char dashboardRegionFunctionName[] = "dashboard-region(";
         if (equalIgnoringCase(value->function->name, dashboardRegionFunctionName)) {
             validFunctionName = true;
 #if ENABLE(DASHBOARD_SUPPORT) && ENABLE(WIDGET_REGION)
@@ -4343,7 +4361,7 @@ bool CSSParser::parseDashboardRegions(CSSPropertyID propId, bool important)
         }
 #endif
 #if ENABLE(WIDGET_REGION)
-        static const char* const widgetRegionFunctionName = "region(";
+        static const char widgetRegionFunctionName[] = "region(";
         if (equalIgnoringCase(value->function->name, widgetRegionFunctionName)) {
             validFunctionName = true;
 #if ENABLE(DASHBOARD_SUPPORT) && ENABLE(WIDGET_REGION)
@@ -7493,6 +7511,41 @@ static bool acceptCommaOperator(CSSParserValueList* argsList)
     return true;
 }
 
+PassRefPtr<WebKitCSSArrayFunctionValue> CSSParser::parseCustomFilterArrayFunction(CSSParserValue* value)
+{
+    ASSERT(value->unit == CSSParserValue::Function && value->function);
+
+    if (!equalIgnoringCase(value->function->name, "array("))
+        return 0;
+
+    CSSParserValueList* arrayArgsParserValueList = value->function->args.get();
+    if (!arrayArgsParserValueList || !arrayArgsParserValueList->size())
+        return 0;
+
+    // array() values are comma separated.
+    RefPtr<WebKitCSSArrayFunctionValue> arrayFunction = WebKitCSSArrayFunctionValue::create();
+    while (true) {
+        // We parse pairs <Value, Comma> at each step.
+        CSSParserValue* currentParserValue = arrayArgsParserValueList->current();
+        if (!currentParserValue || !validUnit(currentParserValue, FNumber, CSSStrictMode))
+            return 0;
+
+        RefPtr<CSSValue> arrayValue = cssValuePool().createValue(currentParserValue->fValue, CSSPrimitiveValue::CSS_NUMBER);
+        arrayFunction->append(arrayValue.release());
+
+        CSSParserValue* nextParserValue = arrayArgsParserValueList->next();
+        if (!nextParserValue)
+            break;
+
+        if (!isComma(nextParserValue))
+            return 0;
+
+        arrayArgsParserValueList->next();
+    }
+
+    return arrayFunction;
+}
+
 PassRefPtr<WebKitCSSMixFunctionValue> CSSParser::parseMixFunction(CSSParserValue* value)
 {
     ASSERT(value->unit == CSSParserValue::Function && value->function);
@@ -7661,13 +7714,19 @@ PassRefPtr<WebKitCSSFilterValue> CSSParser::parseCustomFilter(CSSParserValue* va
 
         RefPtr<CSSValue> parameterValue;
 
-        if (arg->unit == CSSParserValue::Function && arg->function)
+        if (arg->unit == CSSParserValue::Function && arg->function) {
             // TODO: Implement other parameters types parsing.
             // textures: https://bugs.webkit.org/show_bug.cgi?id=71442
             // mat2, mat3, mat4: https://bugs.webkit.org/show_bug.cgi?id=71444
-            // array: https://bugs.webkit.org/show_bug.cgi?id=94226
             // 3d-transform shall be the last to be checked
-            parameterValue = parseCustomFilterTransform(argsList);
+            if (equalIgnoringCase(arg->function->name, "array(")) {
+                parameterValue = parseCustomFilterArrayFunction(arg);
+                // This parsing step only consumes function arguments,
+                // argsList is therefore moved forward explicitely.
+                argsList->next();
+            } else
+                parameterValue = parseCustomFilterTransform(argsList);
+        }
         else {
             RefPtr<CSSValueList> paramValueList = CSSValueList::createSpaceSeparated();
             while ((arg = argsList->current())) {
@@ -10359,12 +10418,12 @@ static CSSPropertyID cssPropertyID(const CharacterType* propertyName, unsigned l
     const Property* hashTableEntry = findProperty(name, length);
     const CSSPropertyID propertyID = hashTableEntry ? static_cast<CSSPropertyID>(hashTableEntry->id) : CSSPropertyInvalid;
 
-    // 600 is comfortably larger than numCSSProperties to allow for growth
-    static const int CSSPropertyHistogramSize = 600;
-    COMPILE_ASSERT(CSSPropertyHistogramSize > numCSSProperties, number_of_css_properties_exceed_CSSPropertyHistogramSize);
-
-    if (hasPrefix(buffer, length, "-webkit-") && propertyID != CSSPropertyInvalid)
-        HistogramSupport::histogramEnumeration("CSS.PrefixUsage", max(1, propertyID - firstCSSProperty), CSSPropertyHistogramSize);
+    static const int cssPropertyHistogramSize = numCSSProperties;
+    if (hasPrefix(buffer, length, "-webkit-") && propertyID != CSSPropertyInvalid) {
+        int histogramValue = propertyID - firstCSSProperty;
+        ASSERT(0 <= histogramValue && histogramValue < cssPropertyHistogramSize);
+        HistogramSupport::histogramEnumeration("CSS.PrefixUsage", histogramValue, cssPropertyHistogramSize);
+    }
 
     return propertyID;
 }

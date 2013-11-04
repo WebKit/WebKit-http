@@ -99,6 +99,15 @@ static const gchar* webkitAccessibleGetName(AtkObject* object)
     if (!coreObject->isAccessibilityRenderObject())
         return returnString(coreObject->stringValue());
 
+    if (coreObject->isFieldset()) {
+        AccessibilityObject* label = coreObject->titleUIElement();
+        if (label) {
+            AtkObject* atkObject = label->wrapper();
+            if (ATK_IS_TEXT(atkObject))
+                return atk_text_get_text(ATK_TEXT(atkObject), 0, -1);
+        }
+    }
+
     if (coreObject->isControl()) {
         AccessibilityObject* label = coreObject->correspondingLabelForControlElement();
         if (label) {
@@ -166,6 +175,23 @@ static const gchar* webkitAccessibleGetDescription(AtkObject* object)
 
 static void setAtkRelationSetFromCoreObject(AccessibilityObject* coreObject, AtkRelationSet* relationSet)
 {
+    if (coreObject->isFieldset()) {
+        AccessibilityObject* label = coreObject->titleUIElement();
+        if (label)
+            atk_relation_set_add_relation_by_type(relationSet, ATK_RELATION_LABELLED_BY, label->wrapper());
+        return;
+    }
+
+    if (coreObject->roleValue() == LegendRole) {
+        for (AccessibilityObject* parent = coreObject->parentObjectUnignored(); parent; parent = parent->parentObjectUnignored()) {
+            if (parent->isFieldset()) {
+                atk_relation_set_add_relation_by_type(relationSet, ATK_RELATION_LABEL_FOR, parent->wrapper());
+                break;
+            }
+        }
+        return;
+    }
+
     if (coreObject->isControl()) {
         AccessibilityObject* label = coreObject->correspondingLabelForControlElement();
         if (label)
@@ -476,7 +502,7 @@ static AtkRole atkRole(AccessibilityRole role)
     case SplitGroupRole:
         return ATK_ROLE_SPLIT_PANE;
     case SplitterRole:
-        return ATK_ROLE_SEPARATOR;
+        return ATK_ROLE_UNKNOWN;
     case ColorWellRole:
         return ATK_ROLE_COLOR_CHOOSER;
     case ListRole:
@@ -501,7 +527,6 @@ static AtkRole atkRole(AccessibilityRole role)
     case WebCoreLinkRole:
     case ImageMapLinkRole:
         return ATK_ROLE_LINK;
-    case CanvasRole:
     case ImageMapRole:
     case ImageRole:
         return ATK_ROLE_IMAGE;
@@ -520,11 +545,16 @@ static AtkRole atkRole(AccessibilityRole role)
     case ParagraphRole:
         return ATK_ROLE_PARAGRAPH;
     case LabelRole:
+    case LegendRole:
         return ATK_ROLE_LABEL;
     case DivRole:
         return ATK_ROLE_SECTION;
     case FormRole:
         return ATK_ROLE_FORM;
+    case CanvasRole:
+        return ATK_ROLE_CANVAS;
+    case HorizontalRuleRole:
+        return ATK_ROLE_SEPARATOR;
     default:
         return ATK_ROLE_UNKNOWN;
     }
@@ -820,7 +850,7 @@ static GType GetAtkInterfaceTypeFromWAIType(WAIType type)
 
 static bool roleIsTextType(AccessibilityRole role)
 {
-    return role == ParagraphRole || role == HeadingRole || role == DivRole || role == CellRole;
+    return role == ParagraphRole || role == HeadingRole || role == DivRole || role == CellRole || role == ListItemRole;
 }
 
 static guint16 getInterfaceMaskFromObject(AccessibilityObject* coreObject)

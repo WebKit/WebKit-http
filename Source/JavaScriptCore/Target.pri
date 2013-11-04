@@ -89,6 +89,7 @@ SOURCES += \
     heap/MarkedAllocator.cpp \
     heap/MarkedBlock.cpp \
     heap/MarkedSpace.cpp \
+    heap/SlotVisitor.cpp \
     heap/VTableSpectrum.cpp \
     heap/WriteBarrierSupport.cpp \
     debugger/DebuggerActivation.cpp \
@@ -245,6 +246,7 @@ SOURCES += \
     runtime/RegExpCache.cpp \
     runtime/SamplingCounter.cpp \
     runtime/SmallStrings.cpp \
+    runtime/SparseArrayValueMap.cpp \
     runtime/StrictEvalActivation.cpp \
     runtime/StringConstructor.cpp \
     runtime/StringObject.cpp \

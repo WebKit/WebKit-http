@@ -539,7 +539,7 @@ String RenderThemeQt::extraMediaControlsStyleSheet()
     String result = String(mediaControlsQtUserAgentStyleSheet, sizeof(mediaControlsQtUserAgentStyleSheet));
 
     if (m_page && m_page->chrome()->requiresFullscreenForVideoPlayback())
-        result += String(mediaControlsQtFullscreenUserAgentStyleSheet, sizeof(mediaControlsQtFullscreenUserAgentStyleSheet));
+        result.append(String(mediaControlsQtFullscreenUserAgentStyleSheet, sizeof(mediaControlsQtFullscreenUserAgentStyleSheet)));
 
     return result;
 }
@@ -867,7 +867,7 @@ String RenderThemeQt::fileListNameForWidth(const FileList* fileList, const Font&
         int n = fileList->length();
         string = QCoreApplication::translate("QWebPage", "%n file(s)",
                                              "number of chosen file",
-                                             QCoreApplication::DefaultCodec, n);
+                                             n);
     }
 
     return string;

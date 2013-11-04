@@ -78,6 +78,8 @@ void CustomFilterGlobalContext::prepareContextIfNeeded(HostWindow* hostWindow)
     GraphicsContext3D::Attributes attributes;
     attributes.preserveDrawingBuffer = true;
     attributes.premultipliedAlpha = false;
+    attributes.shareResources = true;
+    attributes.preferDiscreteGPU = true;
     m_context = GraphicsContext3D::create(attributes, hostWindow, GraphicsContext3D::RenderOffscreen);
     if (!m_context)
         return;
@@ -87,9 +89,6 @@ void CustomFilterGlobalContext::prepareContextIfNeeded(HostWindow* hostWindow)
 
 PassRefPtr<CustomFilterValidatedProgram> CustomFilterGlobalContext::getValidatedProgram(const CustomFilterProgramInfo& programInfo)
 {
-    // Check that the context is already prepared.
-    ASSERT(m_context);
-
     CustomFilterValidatedProgramsMap::iterator iter = m_programs.find(programInfo);
     if (iter != m_programs.end())
         return iter->second;

@@ -22,8 +22,7 @@
 #include "CSSValueList.h"
 
 #include "CSSParserValues.h"
-#include "MemoryInstrumentation.h"
-#include "PlatformString.h"
+#include "WebCoreMemoryInstrumentation.h"
 #include <wtf/PassOwnPtr.h>
 #include <wtf/text/StringBuilder.h>
 
@@ -189,7 +188,7 @@ PassRefPtr<CSSValueList> CSSValueList::cloneForCSSOM() const
 
 void CSSValueList::reportDescendantMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
 {
-    MemoryClassInfo info(memoryObjectInfo, this, MemoryInstrumentation::CSS);
+    MemoryClassInfo info(memoryObjectInfo, this, WebCoreMemoryTypes::CSS);
     info.addInstrumentedVector(m_values);
 }
 

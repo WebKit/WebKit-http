@@ -70,6 +70,7 @@ SelectionHandler::SelectionHandler(WebPagePrivate* page)
     , m_selectionActive(false)
     , m_caretActive(false)
     , m_lastUpdatedEndPointIsValid(false)
+    , m_didSuppressCaretPositionChangedNotification(false)
 {
 }
 
@@ -268,6 +269,12 @@ void SelectionHandler::setCaretPosition(const WebCore::IntPoint &position)
     controller->setSelection(newSelection);
 
     SelectionLog(LogLevelInfo, "SelectionHandler::setCaretPosition point valid, cursor updated");
+}
+
+void SelectionHandler::inputHandlerDidFinishProcessingChange()
+{
+    if (m_didSuppressCaretPositionChangedNotification)
+        notifyCaretPositionChangedIfNeeded();
 }
 
 // This function makes sure we are not reducing the selection to a caret selection.
@@ -738,6 +745,8 @@ static void adjustCaretRects(WebCore::IntRect& startCaret, bool isStartCaretClip
     else {
         startCaret = rectList[0];
         startCaret.setLocation(caretLocationForRect(startCaret, true, isRTL));
+        // Reset width to 1 as we are strictly interested in caret location.
+        startCaret.setWidth(1);
     }
 
     if (isEndCaretClippedOut)
@@ -745,14 +754,12 @@ static void adjustCaretRects(WebCore::IntRect& startCaret, bool isStartCaretClip
     else {
         endCaret = rectList[0];
         endCaret.setLocation(caretLocationForRect(endCaret, false, isRTL));
+        // Reset width to 1 as we are strictly interested in caret location.
+        endCaret.setWidth(1);
     }
 
     if (isStartCaretClippedOut && isEndCaretClippedOut)
         return;
-
-    // Reset width to 1 as we are strictly interested in caret location.
-    startCaret.setWidth(1);
-    endCaret.setWidth(1);
 
     for (unsigned i = 1; i < rectList.size(); i++) {
         WebCore::IntRect currentRect(rectList[i]);
@@ -853,13 +860,14 @@ void SelectionHandler::selectionPositionChanged(bool forceUpdateWithoutChange)
 
     if (m_webPage->m_inputHandler->isInputMode() && m_webPage->m_inputHandler->processingChange()) {
         m_webPage->m_client->cancelSelectionVisuals();
+
+        // Since we're not calling notifyCaretPositionChangedIfNeeded now, we have to do so at the end of processing
+        // to avoid dropping a notification.
+        m_didSuppressCaretPositionChangedNotification = true;
         return;
     }
 
-    if (m_caretActive || (m_webPage->m_inputHandler->isInputMode() && m_webPage->focusedOrMainFrame()->selection()->isCaret())) {
-        // This may update the caret to no longer be active.
-        caretPositionChanged();
-    }
+    notifyCaretPositionChangedIfNeeded();
 
     // Enter selection mode if selection type is RangeSelection, and disable selection if
     // selection is active and becomes caret selection.
@@ -874,8 +882,8 @@ void SelectionHandler::selectionPositionChanged(bool forceUpdateWithoutChange)
 
     SelectionTimingLog(LogLevelInfo, "SelectionHandler::selectionPositionChanged starting at %f", m_timer.elapsed());
 
-    WebCore::IntRect startCaret;
-    WebCore::IntRect endCaret;
+    WebCore::IntRect startCaret(DOMSupport::InvalidPoint, WebCore::IntSize());
+    WebCore::IntRect endCaret(DOMSupport::InvalidPoint, WebCore::IntSize());
 
     // Get the text rects from the selections range.
     Vector<FloatQuad> quads;
@@ -946,6 +954,17 @@ void SelectionHandler::selectionPositionChanged(bool forceUpdateWithoutChange)
 
     m_webPage->m_client->notifySelectionDetailsChanged(startCaret, endCaret, visibleSelectionRegion, inputNodeOverridesTouch());
     SelectionTimingLog(LogLevelInfo, "SelectionHandler::selectionPositionChanged completed at %f", m_timer.elapsed());
+}
+
+
+void SelectionHandler::notifyCaretPositionChangedIfNeeded()
+{
+    m_didSuppressCaretPositionChangedNotification = false;
+
+    if (m_caretActive || (m_webPage->m_inputHandler->isInputMode() && m_webPage->focusedOrMainFrame()->selection()->isCaret())) {
+        // This may update the caret to no longer be active.
+        caretPositionChanged();
+    }
 }
 
 // NOTE: This function is not in WebKit coordinates.

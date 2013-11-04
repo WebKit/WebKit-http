@@ -25,11 +25,12 @@
 
 #include "config.h"
 #include "WKBundle.h"
-#include "WKBundlePrivate.h"
 
+#include "ImmutableArray.h"
 #include "InjectedBundle.h"
 #include "WKAPICast.h"
 #include "WKBundleAPICast.h"
+#include "WKBundlePrivate.h"
 
 using namespace WebKit;
 
@@ -146,6 +147,11 @@ void WKBundleSetAllowFileAccessFromFileURLs(WKBundleRef bundleRef, WKBundlePageG
     toImpl(bundleRef)->setAllowFileAccessFromFileURLs(toImpl(pageGroupRef), enabled);
 }
 
+void WKBundleSetMinimumLogicalFontSize(WKBundleRef bundleRef, WKBundlePageGroupRef pageGroupRef, int size)
+{
+    toImpl(bundleRef)->setMinimumLogicalFontSize(toImpl(pageGroupRef), size);
+}
+
 void WKBundleSetFrameFlatteningEnabled(WKBundleRef bundleRef, WKBundlePageGroupRef pageGroupRef, bool enabled)
 {
     toImpl(bundleRef)->setFrameFlatteningEnabled(toImpl(pageGroupRef), enabled);
@@ -186,6 +192,11 @@ void WKBundleSetAuthorAndUserStylesEnabled(WKBundleRef bundleRef, WKBundlePageGr
     toImpl(bundleRef)->setAuthorAndUserStylesEnabled(toImpl(pageGroupRef), enabled);
 }
 
+void WKBundleSetSpatialNavigationEnabled(WKBundleRef bundleRef, WKBundlePageGroupRef pageGroupRef, bool enabled)
+{
+    toImpl(bundleRef)->setSpatialNavigationEnabled(toImpl(pageGroupRef), enabled);
+}
+
 void WKBundleAddOriginAccessWhitelistEntry(WKBundleRef bundleRef, WKStringRef sourceOrigin, WKStringRef destinationProtocol, WKStringRef destinationHost, bool allowDestinationSubdomains)
 {
     toImpl(bundleRef)->addOriginAccessWhitelistEntry(toImpl(sourceOrigin)->string(), toImpl(destinationProtocol)->string(), toImpl(destinationHost)->string(), allowDestinationSubdomains);
@@ -221,9 +232,40 @@ void WKBundleClearApplicationCache(WKBundleRef bundleRef)
     toImpl(bundleRef)->clearApplicationCache();
 }
 
+void WKBundleClearApplicationCacheForOrigin(WKBundleRef bundleRef, WKStringRef origin)
+{
+    toImpl(bundleRef)->clearApplicationCacheForOrigin(toImpl(origin)->string());
+}
+
 void WKBundleSetAppCacheMaximumSize(WKBundleRef bundleRef, uint64_t size)
 {
     toImpl(bundleRef)->setAppCacheMaximumSize(size);
+}
+
+uint64_t WKBundleGetAppCacheUsageForOrigin(WKBundleRef bundleRef, WKStringRef origin)
+{
+    return toImpl(bundleRef)->appCacheUsageForOrigin(toImpl(origin)->string());
+}
+
+void WKBundleSetApplicationCacheOriginQuota(WKBundleRef bundleRef, WKStringRef origin, uint64_t bytes)
+{
+    toImpl(bundleRef)->setApplicationCacheOriginQuota(toImpl(origin)->string(), bytes);
+}
+
+void WKBundleResetApplicationCacheOriginQuota(WKBundleRef bundleRef, WKStringRef origin)
+{
+    toImpl(bundleRef)->resetApplicationCacheOriginQuota(toImpl(origin)->string());
+}
+
+WKArrayRef WKBundleCopyOriginsWithApplicationCache(WKBundleRef bundleRef)
+{
+    RefPtr<ImmutableArray> origins = toImpl(bundleRef)->originsWithApplicationCache();
+    return toAPI(origins.release().leakRef());
+}
+
+void WKBundleSetMinimumTimerInterval(WKBundleRef bundleRef, WKBundlePageGroupRef pageGroupRef, double seconds)
+{
+    toImpl(bundleRef)->setMinimumTimerInterval(toImpl(pageGroupRef), seconds);
 }
 
 int WKBundleNumberOfPages(WKBundleRef bundleRef, WKBundleFrameRef frameRef, double pageWidthInPixels, double pageHeightInPixels)
@@ -256,6 +298,12 @@ void WKBundleSetPageVisibilityState(WKBundleRef bundleRef, WKBundlePageRef pageR
     toImpl(bundleRef)->setPageVisibilityState(toImpl(pageRef), state, isInitialState);
 }
 
+size_t WKBundleGetWorkerThreadCount(WKBundleRef)
+{
+    // Actually do not need argument here, keeping it however for consistency.
+    return InjectedBundle::workerThreadCount();
+}
+
 void WKBundleSetUserStyleSheetLocation(WKBundleRef bundleRef, WKBundlePageGroupRef pageGroupRef, WKStringRef location)
 {
     toImpl(bundleRef)->setUserStyleSheetLocation(toImpl(pageGroupRef), toImpl(location)->string());
@@ -276,3 +324,7 @@ uint64_t WKBundleGetWebNotificationID(WKBundleRef bundleRef, JSContextRef contex
     return toImpl(bundleRef)->webNotificationID(context, notification);
 }
 
+void WKBundleSetTabKeyCyclesThroughElements(WKBundleRef bundleRef, WKBundlePageRef pageRef, bool enabled)
+{
+    toImpl(bundleRef)->setTabKeyCyclesThroughElements(toImpl(pageRef), enabled);
+}

@@ -31,11 +31,11 @@
 #include "ImageObserver.h"
 #include "IntRect.h"
 #include "MIMETypeRegistry.h"
-#include "MemoryInstrumentation.h"
-#include "PlatformString.h"
+#include "PlatformMemoryInstrumentation.h"
 #include "Timer.h"
 #include <wtf/CurrentTime.h>
 #include <wtf/Vector.h>
+#include <wtf/text/WTFString.h>
 
 namespace WebCore {
 
@@ -574,13 +574,13 @@ Color BitmapImage::solidColor() const
 
 void BitmapImage::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
 {
-    MemoryClassInfo info(memoryObjectInfo, this, MemoryInstrumentation::CachedResourceImage);
+    MemoryClassInfo info(memoryObjectInfo, this, PlatformMemoryTypes::Image);
     Image::reportMemoryUsage(memoryObjectInfo);
     info.addMember(m_source);
     info.addMember(m_frameTimer);
     info.addVector(m_frames);
     for (unsigned i = 0; i < m_frameCount; ++i) {
-#if OS(WINCE)
+#if OS(WINCE) && !PLATFORM(QT)
         info.addRawBuffer(m_frames[i].m_frame.get(), m_frames[i].m_frameBytes);
 #else
         info.addRawBuffer(m_frames[i].m_frame, m_frames[i].m_frameBytes);

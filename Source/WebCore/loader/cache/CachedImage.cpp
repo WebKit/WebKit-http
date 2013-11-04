@@ -79,7 +79,7 @@ CachedImage::~CachedImage()
 
 void CachedImage::load(CachedResourceLoader* cachedResourceLoader, const ResourceLoaderOptions& options)
 {
-    if (!cachedResourceLoader || cachedResourceLoader->autoLoadImages())
+    if (!cachedResourceLoader || !cachedResourceLoader->shouldDeferImageLoad(m_resourceRequest.url()))
         CachedResource::load(cachedResourceLoader, options);
     else
         setLoading(false);
@@ -385,12 +385,8 @@ void CachedImage::error(CachedResource::Status status)
 {
     checkShouldPaintBrokenImage();
     clear();
-    setStatus(status);
-    ASSERT(errorOccurred());
-    m_data.clear();
+    CachedResource::error(status);
     notifyObservers();
-    setLoading(false);
-    checkNotify();
 }
 
 void CachedImage::setResponse(const ResourceResponse& response)
@@ -476,9 +472,9 @@ void CachedImage::changedInRect(const Image* image, const IntRect& rect)
 
 void CachedImage::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
 {
-    MemoryClassInfo info(memoryObjectInfo, this, MemoryInstrumentation::CachedResourceImage);
+    MemoryClassInfo info(memoryObjectInfo, this, WebCoreMemoryTypes::CachedResourceImage);
     CachedResource::reportMemoryUsage(memoryObjectInfo);
-    info.addInstrumentedMember(m_image);
+    info.addMember(m_image);
 #if ENABLE(SVG)
     info.addMember(m_svgImageCache);
 #endif

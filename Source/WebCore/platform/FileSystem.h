@@ -30,11 +30,11 @@
 #ifndef FileSystem_h
 #define FileSystem_h
 
-#include "PlatformString.h"
 #include <time.h>
 #include <wtf/Forward.h>
 #include <wtf/MathExtras.h>
 #include <wtf/Vector.h>
+#include <wtf/text/WTFString.h>
 
 #if USE(CF)
 #include <wtf/RetainPtr.h>
@@ -216,7 +216,7 @@ String filenameForDisplay(const String&);
 CString applicationDirectoryPath();
 CString sharedResourcesPath();
 #endif
-#if PLATFORM(GTK) || PLATFORM(QT)
+#if USE(SOUP) || PLATFORM(QT)
 uint64_t getVolumeFreeSizeForPath(const char*);
 #endif
 

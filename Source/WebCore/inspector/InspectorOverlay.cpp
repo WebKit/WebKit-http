@@ -50,6 +50,7 @@
 #include "ScriptValue.h"
 #include "Settings.h"
 #include "StyledElement.h"
+#include <wtf/text/StringBuilder.h>
 
 namespace WebCore {
 
@@ -351,7 +352,7 @@ void InspectorOverlay::drawNodeHighlight()
         elementInfo->setString("idValue", element->getIdAttribute());
         HashSet<AtomicString> usedClassNames;
         if (element->hasClass() && element->isStyledElement()) {
-            String classNames;
+            StringBuilder classNames;
             const SpaceSplitString& classNamesString = static_cast<StyledElement*>(element)->classNames();
             size_t classNameCount = classNamesString.size();
             for (size_t i = 0; i < classNameCount; ++i) {
@@ -359,9 +360,10 @@ void InspectorOverlay::drawNodeHighlight()
                 if (usedClassNames.contains(className))
                     continue;
                 usedClassNames.add(className);
-                classNames += makeString(".", className);
+                classNames.append('.');
+                classNames.append(className);
             }
-            elementInfo->setString("className", classNames);
+            elementInfo->setString("className", classNames.toString());
         }
 
         RenderObject* renderer = node->renderer();
@@ -383,7 +385,7 @@ void InspectorOverlay::drawRectHighlight()
 
     Highlight highlight;
     buildRectHighlight(m_page, m_highlightRect.get(), m_rectHighlightConfig, &highlight);
-    evaluateInOverlay("highlightRect", buildObjectForHighlight(m_page->mainFrame()->view(), highlight));
+    evaluateInOverlay("drawRectHighlight", buildObjectForHighlight(m_page->mainFrame()->view(), highlight));
 }
 
 void InspectorOverlay::drawPausedInDebuggerMessage()
@@ -442,7 +444,7 @@ Page* InspectorOverlay::overlayPage()
 
 void InspectorOverlay::reset()
 {
-    evaluateInOverlay("reset", "");
+    evaluateInOverlay("reset", String::number(m_page->deviceScaleFactor()));
 }
 
 void InspectorOverlay::evaluateInOverlay(const String& method, const String& argument)

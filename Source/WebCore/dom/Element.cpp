@@ -283,7 +283,7 @@ void Element::scrollIntoView(bool alignToTop)
     if (!renderer())
         return;
 
-    LayoutRect bounds = getRect();
+    LayoutRect bounds = boundingBox();
     // Align to the top / bottom and to the closest edge.
     if (alignToTop)
         renderer()->scrollRectToVisible(bounds, ScrollAlignment::alignToEdgeIfNeeded, ScrollAlignment::alignTopAlways);
@@ -298,7 +298,7 @@ void Element::scrollIntoViewIfNeeded(bool centerIfNeeded)
     if (!renderer())
         return;
 
-    LayoutRect bounds = getRect();
+    LayoutRect bounds = boundingBox();
     if (centerIfNeeded)
         renderer()->scrollRectToVisible(bounds, ScrollAlignment::alignCenterIfNeeded, ScrollAlignment::alignCenterIfNeeded);
     else
@@ -532,7 +532,7 @@ IntRect Element::boundsInRootViewSpace()
         // Get the bounding rectangle from the SVG model.
         SVGElement* svgElement = static_cast<SVGElement*>(this);
         FloatRect localRect;
-        if (svgElement->boundingBox(localRect))
+        if (svgElement->getBoundingBox(localRect))
             quads.append(renderer()->localToAbsoluteQuad(localRect));
     } else
 #endif
@@ -580,7 +580,7 @@ PassRefPtr<ClientRect> Element::getBoundingClientRect()
         // Get the bounding rectangle from the SVG model.
         SVGElement* svgElement = static_cast<SVGElement*>(this);
         FloatRect localRect;
-        if (svgElement->boundingBox(localRect))
+        if (svgElement->getBoundingBox(localRect))
             quads.append(renderer()->localToAbsoluteQuad(localRect));
     } else
 #endif
@@ -755,17 +755,36 @@ void Element::parseAttribute(const Attribute& attribute)
         classAttributeChanged(attribute.value());
 }
 
-void Element::classAttributeChanged(const AtomicString& newClassString)
+template <typename CharacterType>
+static inline bool classStringHasClassName(const CharacterType* characters, unsigned length)
 {
-    const UChar* characters = newClassString.characters();
-    unsigned length = newClassString.length();
-    unsigned i;
-    for (i = 0; i < length; ++i) {
+    ASSERT(length > 0);
+
+    unsigned i = 0;
+    do {
         if (isNotHTMLSpace(characters[i]))
             break;
-    }
-    bool hasClass = i < length;
-    if (hasClass) {
+        ++i;
+    } while (i < length);
+
+    return i < length;
+}
+
+static inline bool classStringHasClassName(const AtomicString& newClassString)
+{
+    unsigned length = newClassString.length();
+
+    if (!length)
+        return false;
+
+    if (newClassString.is8Bit())
+        return classStringHasClassName(newClassString.characters8(), length);
+    return classStringHasClassName(newClassString.characters16(), length);
+}
+
+void Element::classAttributeChanged(const AtomicString& newClassString)
+{
+    if (classStringHasClassName(newClassString)) {
         const bool shouldFoldCase = document()->inQuirksMode();
         ensureAttributeData()->setClass(newClassString, shouldFoldCase);
     } else if (attributeData())
@@ -823,7 +842,15 @@ void Element::parserSetAttributes(const Vector<Attribute>& attributeVector, Frag
         }
     }
 
-    m_attributeData = ElementAttributeData::createImmutable(filteredAttributes);
+    // When the document is in parsing state, we cache immutable ElementAttributeData objects with the
+    // input attribute vector as key. (This cache is held by Document.)
+    if (!document() || !document()->parsing())
+        m_attributeData = ElementAttributeData::createImmutable(filteredAttributes);
+    else if (!isHTMLElement()) {
+        // FIXME: Support attribute data sharing for non-HTML elements.
+        m_attributeData = ElementAttributeData::createImmutable(filteredAttributes);
+    } else
+        m_attributeData = document()->cachedImmutableAttributeData(this, filteredAttributes);
 
     // Iterate over the set of attributes we already have on the stack in case
     // attributeChanged mutates m_attributeData.
@@ -1389,31 +1416,28 @@ void Element::finishParsingChildren()
 #ifndef NDEBUG
 void Element::formatForDebugger(char* buffer, unsigned length) const
 {
-    String result;
+    StringBuilder result;
     String s;
-    
-    s = nodeName();
-    if (s.length() > 0) {
-        result += s;
-    }
-          
+
+    result.append(nodeName());
+
     s = getIdAttribute();
     if (s.length() > 0) {
         if (result.length() > 0)
-            result += "; ";
-        result += "id=";
-        result += s;
+            result.appendLiteral("; ");
+        result.appendLiteral("id=");
+        result.append(s);
     }
-          
+
     s = getAttribute(classAttr);
     if (s.length() > 0) {
         if (result.length() > 0)
-            result += "; ";
-        result += "class=";
-        result += s;
+            result.appendLiteral("; ");
+        result.appendLiteral("class=");
+        result.append(s);
     }
-          
-    strncpy(buffer, result.utf8().data(), length - 1);
+
+    strncpy(buffer, result.toString().utf8().data(), length - 1);
 }
 #endif
 
@@ -1634,7 +1658,7 @@ void Element::updateFocusAppearance(bool /*restorePreviousSelection*/)
             frame->selection()->revealSelection();
         }
     } else if (renderer() && !renderer()->isWidget())
-        renderer()->scrollRectToVisible(getRect());
+        renderer()->scrollRectToVisible(boundingBox());
 }
 
 void Element::blur()
@@ -2038,6 +2062,24 @@ const AtomicString& Element::webkitRegionOverset() const
     return undefinedState;
 }
 
+#if ENABLE(CSS_REGIONS)
+
+Vector<RefPtr<Range> > Element::webkitGetRegionFlowRanges() const
+{
+    document()->updateLayoutIgnorePendingStylesheets();
+
+    Vector<RefPtr<Range> > rangeObjects;
+    if (document()->cssRegionsEnabled() && renderer() && renderer()->isRenderRegion()) {
+        RenderRegion* region = toRenderRegion(renderer());
+        if (region->isValid())
+            region->getRanges(rangeObjects);
+    }
+
+    return rangeObjects;
+}
+
+#endif
+
 #ifndef NDEBUG
 bool Element::fastAttributeLookupAllowed(const QualifiedName& name) const
 {
@@ -2241,7 +2283,7 @@ void Element::createMutableAttributeData()
     if (!m_attributeData)
         m_attributeData = ElementAttributeData::create();
     else
-        m_attributeData = m_attributeData->makeMutable();
+        m_attributeData = m_attributeData->makeMutableCopy();
 }
 
 } // namespace WebCore

@@ -185,7 +185,7 @@ PassRefPtr<WebKit::WebContextMenuProxy> QRawWebViewPrivate::createContextMenuPro
 }
 
 #if ENABLE(INPUT_TYPE_COLOR)
-PassRefPtr<WebKit::WebColorChooserProxy> QRawWebViewPrivate::createColorChooserProxy(WebKit::WebPageProxy*, const WebCore::Color& intialColor)
+PassRefPtr<WebKit::WebColorChooserProxy> QRawWebViewPrivate::createColorChooserProxy(WebKit::WebPageProxy*, const WebCore::Color& intialColor, const WebCore::IntRect&)
 {
     notImplemented();
     return PassRefPtr<WebKit::WebColorChooserProxy>();
@@ -240,7 +240,10 @@ PassOwnPtr<WebKit::DrawingAreaProxy> QRawWebViewPrivate::createDrawingAreaProxy(
 }
 
 QRawWebViewPrivate::QRawWebViewPrivate(WebKit::WebContext* context, WebKit::WebPageGroup* pageGroup, QRawWebViewClient* client)
-    : m_client(client)
+    : m_focused(false)
+    , m_visible(false)
+    , m_active(false)
+    , m_client(client)
     , m_webPageProxy(context->createWebPage(this, pageGroup))
 {
     m_webPageProxy->pageGroup()->preferences()->setForceCompositingMode(true);

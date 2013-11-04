@@ -32,7 +32,11 @@
 #define MockWebRTCPeerConnectionHandler_h
 
 #if ENABLE(MEDIA_STREAM)
+
+#include "Task.h"
 #include <public/WebRTCPeerConnectionHandler.h>
+#include <public/WebRTCSessionDescription.h>
+#include <public/WebRTCSessionDescriptionRequest.h>
 
 namespace WebKit {
 class WebRTCPeerConnectionHandlerClient;
@@ -44,10 +48,28 @@ public:
 
     virtual bool initialize(const WebKit::WebRTCConfiguration&, const WebKit::WebMediaConstraints&) OVERRIDE;
 
+    virtual void createOffer(const WebKit::WebRTCSessionDescriptionRequest&, const WebKit::WebMediaConstraints&) OVERRIDE;
+    virtual void createAnswer(const WebKit::WebRTCSessionDescriptionRequest&, const WebKit::WebMediaConstraints&) OVERRIDE;
+    virtual void setLocalDescription(const WebKit::WebRTCVoidRequest&, const WebKit::WebRTCSessionDescription&) OVERRIDE;
+    virtual void setRemoteDescription(const WebKit::WebRTCVoidRequest&, const WebKit::WebRTCSessionDescription&) OVERRIDE;
+    virtual WebKit::WebRTCSessionDescription localDescription() OVERRIDE;
+    virtual WebKit::WebRTCSessionDescription remoteDescription() OVERRIDE;
+    virtual bool updateICE(const WebKit::WebRTCConfiguration&, const WebKit::WebMediaConstraints&) OVERRIDE;
+    virtual bool addICECandidate(const WebKit::WebRTCICECandidate&) OVERRIDE;
+    virtual bool addStream(const WebKit::WebMediaStreamDescriptor&, const WebKit::WebMediaConstraints&) OVERRIDE;
+    virtual void removeStream(const WebKit::WebMediaStreamDescriptor&) OVERRIDE;
     virtual void stop() OVERRIDE;
+
+    // Task related methods
+    TaskList* taskList() { return &m_taskList; }
 
 private:
     MockWebRTCPeerConnectionHandler() { }
+
+    WebKit::WebRTCPeerConnectionHandlerClient* m_client;
+    TaskList m_taskList;
+    WebKit::WebRTCSessionDescription m_localDescription;
+    WebKit::WebRTCSessionDescription m_remoteDescription;
 };
 
 #endif // ENABLE(MEDIA_STREAM)

@@ -461,6 +461,8 @@ namespace JSC {
         ExpressionNode* base() const { return m_base; }
         ExpressionNode* subscript() const { return m_subscript; }
 
+        bool subscriptHasAssignments() const { return m_subscriptHasAssignments; }
+
     private:
         virtual RegisterID* emitBytecode(BytecodeGenerator&, RegisterID* = 0);
 
@@ -594,55 +596,17 @@ namespace JSC {
         virtual RegisterID* emitBytecode(BytecodeGenerator&, RegisterID* = 0);
     };
 
-    class PrePostResolveNode : public ExpressionNode, public ThrowableExpressionData {
+    class PostfixNode : public ExpressionNode, public ThrowableExpressionData {
     public:
-        PrePostResolveNode(const JSTokenLocation&, const Identifier&, unsigned divot, unsigned startOffset, unsigned endOffset);
-
-    protected:
-        const Identifier& m_ident;
-    };
-
-    class PostfixResolveNode : public PrePostResolveNode {
-    public:
-        PostfixResolveNode(const JSTokenLocation&, const Identifier&, Operator, unsigned divot, unsigned startOffset, unsigned endOffset);
+        PostfixNode(const JSTokenLocation&, ExpressionNode*, Operator, unsigned divot, unsigned startOffset, unsigned endOffset);
 
     private:
         virtual RegisterID* emitBytecode(BytecodeGenerator&, RegisterID* = 0);
+        virtual RegisterID* emitResolve(BytecodeGenerator&, RegisterID* = 0);
+        virtual RegisterID* emitBracket(BytecodeGenerator&, RegisterID* = 0);
+        virtual RegisterID* emitDot(BytecodeGenerator&, RegisterID* = 0);
 
-        Operator m_operator;
-    };
-
-    class PostfixBracketNode : public ExpressionNode, public ThrowableSubExpressionData {
-    public:
-        PostfixBracketNode(const JSTokenLocation&, ExpressionNode* base, ExpressionNode* subscript, Operator, unsigned divot, unsigned startOffset, unsigned endOffset);
-
-    private:
-        virtual RegisterID* emitBytecode(BytecodeGenerator&, RegisterID* = 0);
-
-        ExpressionNode* m_base;
-        ExpressionNode* m_subscript;
-        Operator m_operator;
-    };
-
-    class PostfixDotNode : public ExpressionNode, public ThrowableSubExpressionData {
-    public:
-        PostfixDotNode(const JSTokenLocation&, ExpressionNode* base, const Identifier&, Operator, unsigned divot, unsigned startOffset, unsigned endOffset);
-
-    private:
-        virtual RegisterID* emitBytecode(BytecodeGenerator&, RegisterID* = 0);
-
-        ExpressionNode* m_base;
-        const Identifier& m_ident;
-        Operator m_operator;
-    };
-
-    class PostfixErrorNode : public ExpressionNode, public ThrowableSubExpressionData {
-    public:
-        PostfixErrorNode(const JSTokenLocation&, Operator, unsigned divot, unsigned startOffset, unsigned endOffset);
-
-    private:
-        virtual RegisterID* emitBytecode(BytecodeGenerator&, RegisterID* = 0);
-
+        ExpressionNode* m_expr;
         Operator m_operator;
     };
 
@@ -720,47 +684,17 @@ namespace JSC {
         ExpressionNode* m_expr;
     };
 
-    class PrefixResolveNode : public PrePostResolveNode {
+    class PrefixNode : public ExpressionNode, public ThrowablePrefixedSubExpressionData {
     public:
-        PrefixResolveNode(const JSTokenLocation&, const Identifier&, Operator, unsigned divot, unsigned startOffset, unsigned endOffset);
+        PrefixNode(const JSTokenLocation&, ExpressionNode*, Operator, unsigned divot, unsigned startOffset, unsigned endOffset);
 
     private:
         virtual RegisterID* emitBytecode(BytecodeGenerator&, RegisterID* = 0);
+        virtual RegisterID* emitResolve(BytecodeGenerator&, RegisterID* = 0);
+        virtual RegisterID* emitBracket(BytecodeGenerator&, RegisterID* = 0);
+        virtual RegisterID* emitDot(BytecodeGenerator&, RegisterID* = 0);
 
-        Operator m_operator;
-    };
-
-    class PrefixBracketNode : public ExpressionNode, public ThrowablePrefixedSubExpressionData {
-    public:
-        PrefixBracketNode(const JSTokenLocation&, ExpressionNode* base, ExpressionNode* subscript, Operator, unsigned divot, unsigned startOffset, unsigned endOffset);
-
-    private:
-        virtual RegisterID* emitBytecode(BytecodeGenerator&, RegisterID* = 0);
-
-        ExpressionNode* m_base;
-        ExpressionNode* m_subscript;
-        Operator m_operator;
-    };
-
-    class PrefixDotNode : public ExpressionNode, public ThrowablePrefixedSubExpressionData {
-    public:
-        PrefixDotNode(const JSTokenLocation&, ExpressionNode* base, const Identifier&, Operator, unsigned divot, unsigned startOffset, unsigned endOffset);
-
-    private:
-        virtual RegisterID* emitBytecode(BytecodeGenerator&, RegisterID* = 0);
-
-        ExpressionNode* m_base;
-        const Identifier& m_ident;
-        Operator m_operator;
-    };
-
-    class PrefixErrorNode : public ExpressionNode, public ThrowableExpressionData {
-    public:
-        PrefixErrorNode(const JSTokenLocation&, Operator, unsigned divot, unsigned startOffset, unsigned endOffset);
-
-    private:
-        virtual RegisterID* emitBytecode(BytecodeGenerator&, RegisterID* = 0);
-
+        ExpressionNode* m_expr;
         Operator m_operator;
     };
 
@@ -1270,7 +1204,6 @@ namespace JSC {
         ExpressionNode* m_lexpr;
         ExpressionNode* m_expr;
         StatementNode* m_statement;
-        bool m_identIsVarDecl;
     };
 
     class ContinueNode : public StatementNode, public ThrowableExpressionData {
@@ -1469,6 +1402,7 @@ namespace JSC {
         FunctionParameters(ParameterNode*);
     };
 
+    enum FunctionNameIsInScopeToggle { FunctionNameIsNotInScope, FunctionNameIsInScope };
     class FunctionBodyNode : public ScopeNode {
     public:
         static const bool isFunctionNode = true;
@@ -1480,12 +1414,15 @@ namespace JSC {
 
         virtual RegisterID* emitBytecode(BytecodeGenerator&, RegisterID* = 0);
 
-        void finishParsing(const SourceCode&, ParameterNode*, const Identifier&);
-        void finishParsing(PassRefPtr<FunctionParameters>, const Identifier&);
+        void finishParsing(const SourceCode&, ParameterNode*, const Identifier&, FunctionNameIsInScopeToggle);
+        void finishParsing(PassRefPtr<FunctionParameters>, const Identifier&, FunctionNameIsInScopeToggle);
         
         const Identifier& ident() { return m_ident; }
         void setInferredName(const Identifier& inferredName) { ASSERT(!inferredName.isNull()); m_inferredName = inferredName; }
         const Identifier& inferredName() { return m_inferredName.isEmpty() ? m_ident : m_inferredName; }
+
+        bool functionNameIsInScope() { return m_functionNameIsInScopeToggle == FunctionNameIsInScope; }
+        FunctionNameIsInScopeToggle functionNameIsInScopeToggle() { return m_functionNameIsInScopeToggle; }
 
         static const bool scopeIsFunction = true;
 
@@ -1495,6 +1432,7 @@ namespace JSC {
 
         Identifier m_ident;
         Identifier m_inferredName;
+        FunctionNameIsInScopeToggle m_functionNameIsInScopeToggle;
         RefPtr<FunctionParameters> m_parameters;
     };
 

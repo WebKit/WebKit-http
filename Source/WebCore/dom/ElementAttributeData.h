@@ -35,16 +35,16 @@ namespace WebCore {
 
 class Attr;
 class Element;
-class MemoryObjectInfo;
+class ImmutableElementAttributeData;
+class MutableElementAttributeData;
 
 enum SynchronizationOfLazyAttribute { NotInSynchronizationOfLazyAttribute, InSynchronizationOfLazyAttribute };
 
-class ElementAttributeData {
+class ElementAttributeData : public RefCounted<ElementAttributeData> {
     WTF_MAKE_FAST_ALLOCATED;
 public:
-    static PassOwnPtr<ElementAttributeData> create() { return adoptPtr(new ElementAttributeData); }
-    static PassOwnPtr<ElementAttributeData> createImmutable(const Vector<Attribute>&);
-    ~ElementAttributeData();
+    static PassRefPtr<ElementAttributeData> create();
+    static PassRefPtr<ElementAttributeData> createImmutable(const Vector<Attribute>&);
 
     void clearClass() { m_classNames.clear(); }
     void setClass(const AtomicString& className, bool shouldFoldCase) const { m_classNames.set(className, shouldFoldCase); }
@@ -58,7 +58,8 @@ public:
     StylePropertySet* ensureInlineStyle(StyledElement*);
     StylePropertySet* ensureMutableInlineStyle(StyledElement*);
     void updateInlineStyleAvoidingMutation(StyledElement*, const String& text) const;
-    void destroyInlineStyle(StyledElement*) const;
+    void destroyInlineStyle(StyledElement*);
+    void detachCSSOMWrapperIfNeeded(StyledElement*);
 
     const StylePropertySet* attributeStyle() const { return m_attributeStyle.get(); }
     void setAttributeStyle(PassRefPtr<StylePropertySet> style) const { m_attributeStyle = style; }
@@ -95,22 +96,18 @@ public:
 
     void reportMemoryUsage(MemoryObjectInfo*) const;
 
-private:
-    friend class Element;
-    friend class HTMLConstructionSite;
-
-    ElementAttributeData();
-    ElementAttributeData(const ElementAttributeData&);
-    ElementAttributeData(const Vector<Attribute>&);
-
-    Attribute* getAttributeItem(const AtomicString& name, bool shouldIgnoreAttributeCase);
-    const Attribute* getAttributeItem(const AtomicString& name, bool shouldIgnoreAttributeCase) const;
-    size_t getAttributeItemIndexSlowCase(const AtomicString& name, bool shouldIgnoreAttributeCase) const;
-    void cloneDataFrom(const ElementAttributeData& sourceData, const Element& sourceElement, Element& targetElement);
-    void clearAttributes(Element*);
-
     bool isMutable() const { return m_isMutable; }
-    PassOwnPtr<ElementAttributeData> makeMutable() const { return adoptPtr(new ElementAttributeData(*this)); }
+
+protected:
+    ElementAttributeData()
+        : m_isMutable(true)
+        , m_arraySize(0)
+    { }
+
+    ElementAttributeData(unsigned arraySize)
+        : m_isMutable(false)
+        , m_arraySize(arraySize)
+    { }
 
     mutable RefPtr<StylePropertySet> m_inlineStyleDecl;
     mutable RefPtr<StylePropertySet> m_attributeStyle;
@@ -120,16 +117,63 @@ private:
     unsigned m_isMutable : 1;
     unsigned m_arraySize : 31;
 
-    union {
-        Vector<Attribute, 4>* m_mutableAttributeVector;
-        void* m_attributes;
-    };
+private:
+    friend class Element;
+    friend class HTMLConstructionSite;
+    friend class ImmutableElementAttributeData;
+    friend class MutableElementAttributeData;
+
+    Attribute* getAttributeItem(const AtomicString& name, bool shouldIgnoreAttributeCase);
+    const Attribute* getAttributeItem(const AtomicString& name, bool shouldIgnoreAttributeCase) const;
+    size_t getAttributeItemIndexSlowCase(const AtomicString& name, bool shouldIgnoreAttributeCase) const;
+    void cloneDataFrom(const ElementAttributeData& sourceData, const Element& sourceElement, Element& targetElement);
+    void clearAttributes(Element*);
+
+    PassRefPtr<ElementAttributeData> makeMutableCopy() const;
+
+    Vector<Attribute, 4>& mutableAttributeVector();
+    const Vector<Attribute, 4>& mutableAttributeVector() const;
+    const Attribute* immutableAttributeArray() const;
 };
+
+class ImmutableElementAttributeData : public ElementAttributeData {
+public:
+    ImmutableElementAttributeData(const Vector<Attribute>&);
+    ~ImmutableElementAttributeData();
+
+    void* m_attributeArray;
+};
+
+class MutableElementAttributeData : public ElementAttributeData {
+public:
+    MutableElementAttributeData() { }
+    MutableElementAttributeData(const ImmutableElementAttributeData&);
+
+    Vector<Attribute, 4> m_attributeVector;
+};
+
+inline Vector<Attribute, 4>& ElementAttributeData::mutableAttributeVector()
+{
+    ASSERT(m_isMutable);
+    return static_cast<MutableElementAttributeData*>(this)->m_attributeVector;
+}
+
+inline const Vector<Attribute, 4>& ElementAttributeData::mutableAttributeVector() const
+{
+    ASSERT(m_isMutable);
+    return static_cast<const MutableElementAttributeData*>(this)->m_attributeVector;
+}
+
+inline const Attribute* ElementAttributeData::immutableAttributeArray() const
+{
+    ASSERT(!m_isMutable);
+    return reinterpret_cast<const Attribute*>(&static_cast<const ImmutableElementAttributeData*>(this)->m_attributeArray);
+}
 
 inline size_t ElementAttributeData::length() const
 {
     if (isMutable())
-        return m_mutableAttributeVector->size();
+        return mutableAttributeVector().size();
     return m_arraySize;
 }
 
@@ -201,17 +245,29 @@ inline Attribute* ElementAttributeData::getAttributeItem(const QualifiedName& na
 inline const Attribute* ElementAttributeData::attributeItem(unsigned index) const
 {
     ASSERT(index < length());
-    if (isMutable())
-        return &m_mutableAttributeVector->at(index);
-    const Attribute* buffer = reinterpret_cast<const Attribute*>(&m_attributes);
-    return &buffer[index];
+    if (m_isMutable)
+        return &mutableAttributeVector().at(index);
+    return &immutableAttributeArray()[index];
 }
 
 inline Attribute* ElementAttributeData::attributeItem(unsigned index)
 {
-    ASSERT(isMutable());
     ASSERT(index < length());
-    return &m_mutableAttributeVector->at(index);
+    return &mutableAttributeVector().at(index);
+}
+
+}
+
+namespace WTF {
+
+template <> inline void deleteOwnedPtr<WebCore::ElementAttributeData>(WebCore::ElementAttributeData* ptr)
+{
+    if (!ptr)
+        return;
+    if (ptr->isMutable())
+        delete static_cast<WebCore::MutableElementAttributeData*>(ptr);
+    else
+        delete static_cast<WebCore::ImmutableElementAttributeData*>(ptr);
 }
 
 }

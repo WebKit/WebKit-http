@@ -161,7 +161,7 @@ const char* NetscapePlugin::userAgent()
 
 #if PLUGIN_ARCHITECTURE(MAC)
         if (quirks().contains(PluginQuirks::AppendVersion3UserAgent))
-            userAgent += " Version/3.2.1";
+            userAgent.append(" Version/3.2.1");
 #endif
 
         m_userAgent = userAgent.utf8();
@@ -375,21 +375,15 @@ uint32_t NetscapePlugin::scheduleTimer(unsigned interval, bool repeat, void (*ti
     
     // FIXME: Based on the plug-in visibility, figure out if we should throttle the timer, or if we should start it at all.
     timer->start();
-    m_timers.set(timerID, timer.leakPtr());
+    m_timers.set(timerID, timer.release());
 
     return timerID;
 }
 
 void NetscapePlugin::unscheduleTimer(unsigned timerID)
 {
-    TimerMap::iterator it = m_timers.find(timerID);
-    if (it == m_timers.end())
-        return;
-
-    OwnPtr<Timer> timer = adoptPtr(it->second);
-    m_timers.remove(it);
-
-    timer->stop();
+    if (OwnPtr<Timer> timer = m_timers.take(timerID))
+        timer->stop();
 }
 
 double NetscapePlugin::contentsScaleFactor()
@@ -565,7 +559,7 @@ bool NetscapePlugin::allowPopups() const
 static bool isTransparentSilverlightBackgroundValue(const String& lowercaseBackgroundValue)
 {
     // This checks if the background color value is transparent, according to
-    // the forumat documented at http://msdn.microsoft.com/en-us/library/cc838148(VS.95).aspx
+    // the format documented at http://msdn.microsoft.com/en-us/library/cc838148(VS.95).aspx
     if (lowercaseBackgroundValue.startsWith('#')) {
         if (lowercaseBackgroundValue.length() == 5 && lowercaseBackgroundValue[1] != 'f') {
             // An 8-bit RGB value with alpha transparency, in the form #ARGB.
@@ -687,7 +681,6 @@ void NetscapePlugin::destroy()
 
     platformDestroy();
 
-    deleteAllValues(m_timers);
     m_timers.clear();
 }
     
@@ -953,7 +946,23 @@ void NetscapePlugin::contentsScaleFactorChanged(float scaleFactor)
 #endif
 }
 
+void NetscapePlugin::storageBlockingStateChanged(bool storageBlockingEnabled)
+{
+    if (m_storageBlockingState != storageBlockingEnabled) {
+        m_storageBlockingState = storageBlockingEnabled;
+        updateNPNPrivateMode();
+    }
+}
+
 void NetscapePlugin::privateBrowsingStateChanged(bool privateBrowsingEnabled)
+{
+    if (m_privateBrowsingState != privateBrowsingEnabled) {
+        m_privateBrowsingState = privateBrowsingEnabled;
+        updateNPNPrivateMode();
+    }
+}
+
+void NetscapePlugin::updateNPNPrivateMode()
 {
     ASSERT(m_isStarted);
 
@@ -962,7 +971,7 @@ void NetscapePlugin::privateBrowsingStateChanged(bool privateBrowsingEnabled)
     //   (assigned enum value 18) with a pointer to an NPBool value on all applicable instances.
     //   Plugins should check the boolean value pointed to, not the pointer itself. 
     //   The value will be true when private mode is on.
-    NPBool value = privateBrowsingEnabled;
+    NPBool value = m_privateBrowsingState || m_storageBlockingState;
     NPP_SetValue(NPNVprivateModeBool, &value);
 }
 

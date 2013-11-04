@@ -101,10 +101,13 @@ BUGWK86623 : editing/pasteboard/drop-text-events.html = TEXT
 BUGWK86623 : editing/pasteboard/get-data-text-plain-drop.html = TEXT
 BUGWK86623 : fast/dom/shadow/drop-event-for-input-in-shadow.html = TEXT
 BUGWK86623 : fast/dom/shadow/drop-event-in-shadow.html = TEXT
-BUGWK86623 SKIP : fast/events/drag-and-drop-subframe-dataTransfer.html = TEXT
 BUGWK86623 : fast/events/drag-display-none-element.html = TEXT
 BUGWK86623 : fast/events/drag-in-frames.html = TEXT
+BUGWK86623 : fast/events/drag-link.html = TEXT
 BUGWK86623 : fast/events/drag-parent-node.html = TEXT
+BUGWK86623 : fast/events/moving-text-should-fire-drop-and-dragend-events.html = TEXT
+BUGWK86623 : fast/events/moving-text-should-fire-drop-and-dragend-events-2.html = TEXT
+BUGWK86623 : fast/events/remove-target-with-shadow-in-drag.html = TEXT
 BUGWK86623 : http/tests/local/fileapi/file-last-modified-after-delete.html = TEXT
 
 // Missing drag'n'drop, needs baselines
@@ -122,17 +125,11 @@ BUGWK95182 : fast/css/sticky = IMAGE
 BUGWK95071 : fast/forms/range/slider-in-multi-column.html = TEXT
 BUGWK95071 : fast/forms/range/slider-transformed.html = TEXT
 
-// TestRunner does not implement handleErrorPages()
-BUGWKEFL : fast/history/back-forward-reset-after-error-handling.html = TEXT
-
 // The EFL port has no support for webarchives.
 BUGWKEFL SKIP : webarchive = PASS
 BUGWKEFL SKIP : http/tests/webarchive = PASS
 BUGWKEFL SKIP : svg/webarchive = PASS
 BUGWKEFL SKIP : svg/custom/image-with-prefix-in-webarchive.svg = PASS
-
-// Feature not mature yet and disabled by default on WebCore
-BUGWK87088 : fast/js/names.html = TEXT
 
 // The EFL port uses different keyboard accelerators than Safari (via Chromium).
 BUGWKEFL SKIP : fast/events/option-tab.html = PASS
@@ -177,13 +174,11 @@ BUGWKEFL SKIP : accessibility = TEXT
 // CRASHES
 //////////////////////////////////////////////////////////////////////////////////////////
 
-BUGWK94458 DEBUG : http/tests/security/XFrameOptions/x-frame-options-deny-meta-tag-in-body.html = CRASH TEXT
 
 //////////////////////////////////////////////////////////////////////////////////////////
 // FLAKY TESTS
 //////////////////////////////////////////////////////////////////////////////////////////
 
-BUGWK93654 : fast/events/keyevent-iframe-removed-crash.html = CRASH TEXT
 BUGWK85603 : fast/forms/textarea-placeholder-set-attribute.html = TEXT IMAGE PASS
 BUGWK59801 : fast/workers/storage/use-same-database-in-page-and-workers.html = TEXT PASS
 BUGWK83878 : media/track/track-mode.html = TEXT PASS
@@ -192,7 +187,6 @@ BUGWK86072 : media/sources-fallback-codecs.html = TEXT PASS
 BUGWK86073 : ietestcenter/css3/flexbox/flexbox-layout-001.htm = IMAGE PASS
 BUGWK86073 : ietestcenter/css3/flexbox/flexbox-layout-003.htm = IMAGE PASS
 BUGWK86074 : media/svg-as-image-with-media-blocked.html = CRASH PASS
-BUGWK86075 : fast/events/message-port-close.html = CRASH PASS
 BUGWK86078 : http/tests/misc/favicon-loads-with-icon-loading-override.html = TEXT PASS
 BUGWK86079 : http/tests/misc/link-rel-icon-beforeload.html = TEXT PASS
 BUGWK86081 : loader/navigation-while-deferring-loads.html = TEXT PASS
@@ -208,9 +202,16 @@ BUGWK91958 : http/tests/inspector-enabled/injected-script-discard.html = TEXT PA
 BUGWK85615 : http/tests/inspector/resource-har-pages.html = TEXT PASS
 BUGWKEFL : http/tests/inspector/search/resources-search-match-index.html = TEXT PASS
 BUGWK93820 : inspector/console/console-format-collections.html = TEXT PASS
+BUGWK96886 : inspector/debugger/dynamic-script-tag.html = TEXT PASS
 BUGWKEFL : inspector/profiler/heap-snapshot.html = TEXT PASS
 BUGWKEFL : inspector/timeline/timeline-enum-stability.html = TEXT PASS
 BUGWK95066 : inspector/styles/media-queries.html = TEXT PASS
+
+// Test is flaky and needs to be fixed
+BUGWK95813 : fast/innerHTML/innerHTML-iframe.html = TEXT PASS
+
+// Sometimes asserts in MessagePort::contextDestroyed
+BUGWK94458 : http/tests/security/XFrameOptions/x-frame-options-deny-meta-tag-in-body.html = CRASH TEXT PASS
 
 // Aborting application cache downloads is flaky.
 BUGWK87633 : http/tests/appcache/abort-cache-onchecking-manifest-404.html = TEXT PASS
@@ -235,6 +236,7 @@ BUGWKEFL : media/media-controls-clone.html = TEXT PASS
 
 BUGWK93213 : fast/text/international/text-spliced-font.html = TEXT PASS
 BUGWK93214 : http/tests/loading/307-after-303-after-post.html = TIMEOUT PASS
+BUGWK93212 : http/tests/incremental/slow-utf8-text.pl = TIMEOUT PASS
 
 //////////////////////////////////////////////////////////////////////////////////////////
 // FAILING TESTS
@@ -292,7 +294,6 @@ BUGWK84333 : fast/forms/file/file-input-change-event.html = TEXT
 BUGWK84333 : fast/forms/file/file-input-reset.html = IMAGE
 BUGWK84333 : fast/forms/file/get-file-upload.html = TEXT
 BUGWK84333 : fast/forms/file/input-file-directory-upload.html = TEXT
-BUGWK84333 : fast/forms/file/input-file-entries.html = TEXT
 BUGWK84333 : fast/forms/file/input-file-re-render.html = MISSING
 BUGWK84333 : fast/forms/file/input-file-write-files.html = TEXT
 BUGWK84333 : fast/forms/file/recover-file-input-in-unposted-form.html = TEXT
@@ -370,15 +371,14 @@ BUGWK84338 : editing/style/apply-through-end-of-document.html = TEXT
 BUGWK84338 : editing/style/non-inheritable-styles.html = TEXT
 BUGWK84338 : editing/style/smoosh-styles-003.html = TEXT
 BUGWK84338 : fast/events/clipboard-dataTransferItemList.html = TEXT
+BUGWK84338 : fast/forms/input-paste-undo.html = TEXT
 BUGWK84338 : fast/forms/plaintext-mode-2.html = MISSING
 BUGWK84338 : fast/forms/textarea-paste-newline.html = TEXT
 
 // Missing showModalDialog implementation
-BUGWK84589 : fast/animation/request-animation-frame-during-modal.html = TEXT
 BUGWK84589 : fast/events/show-modal-dialog-onblur-onfocus.html = TEXT
 BUGWK84589 : fast/harness/show-modal-dialog.html = TEXT
 BUGWK84589 : fast/events/scroll-event-during-modal-dialog.html = TEXT
-BUGWK84589 : http/tests/security/cross-frame-access-call.html = TEXT
 BUGWK84589 : http/tests/security/cross-frame-access-get.html = TEXT
 
 // Issue with timing for suspend/resumeAnimations()?
@@ -409,118 +409,117 @@ BUGWK87974 : http/tests/download = TEXT IMAGE IMAGE+TEXT
 // Needs custom policy delegate enhancement to log DOM node info - EFL port is missing DOM node abstraction
 BUGWK87972 : fast/loader/policy-delegate-action-hit-test-zoomed.html = TEXT
 BUGWK87972 : fast/encoding/mailto-always-utf-8.html = TEXT
-BUGWK87972 : fast/forms/mailto/formenctype-attribute-button-html.html = TEXT
-BUGWK87972 : fast/forms/mailto/formenctype-attribute-input-html.html = TEXT
 
-// EFL's LayoutTestController does not implement layerTreeAsText
-BUGWK82294 : compositing/animation/animation-compositing.html = TEXT
-BUGWK82294 : compositing/geometry/ancestor-overflow-change.html = TEXT
-BUGWK82294 : compositing/geometry/clip.html = TEXT
-BUGWK82294 : compositing/geometry/composited-in-columns.html = TEXT
-BUGWK82294 : compositing/geometry/flipped-writing-mode.html = TEXT
-BUGWK82294 : compositing/geometry/foreground-layer.html = TEXT
-BUGWK82294 : compositing/geometry/layer-due-to-layer-children-deep-switch.html = TEXT
-BUGWK82294 : compositing/geometry/layer-due-to-layer-children-switch.html = TEXT
-BUGWK82294 : compositing/geometry/limit-layer-bounds-clipping-ancestor.html = TEXT
-BUGWK82294 : compositing/geometry/limit-layer-bounds-fixed-positioned.html = TEXT
-BUGWK82294 : compositing/geometry/limit-layer-bounds-opacity-transition.html = TEXT
-BUGWK82294 : compositing/geometry/limit-layer-bounds-overflow-root.html = TEXT
-BUGWK82294 : compositing/geometry/limit-layer-bounds-positioned-transition.html = TEXT
-BUGWK82294 : compositing/geometry/limit-layer-bounds-positioned.html = TEXT
-BUGWK82294 : compositing/geometry/limit-layer-bounds-transformed-overflow.html = TEXT
-BUGWK82294 : compositing/geometry/limit-layer-bounds-transformed.html = TEXT
-BUGWK82294 : compositing/geometry/preserve-3d-switching.html = TEXT
-BUGWK82294 : compositing/iframes/become-composited-nested-iframes.html = TEXT
-BUGWK82294 : compositing/iframes/become-overlapped-iframe.html = TEXT
-BUGWK82294 : compositing/iframes/composited-parent-iframe.html = TEXT
-BUGWK82294 : compositing/iframes/connect-compositing-iframe-delayed.html = TEXT
-BUGWK82294 : compositing/iframes/connect-compositing-iframe.html = TEXT
-BUGWK82294 : compositing/iframes/connect-compositing-iframe2.html = TEXT
-BUGWK82294 : compositing/iframes/connect-compositing-iframe3.html = TEXT
-BUGWK82294 : compositing/iframes/enter-compositing-iframe.html = TEXT
-BUGWK82294 : compositing/iframes/iframe-resize.html = TEXT
-BUGWK82294 : compositing/iframes/iframe-size-from-zero.html = TEXT
-BUGWK82294 : compositing/iframes/iframe-size-to-zero.html = TEXT
-BUGWK82294 : compositing/iframes/iframe-src-change.html = TEXT
-BUGWK82294 : compositing/iframes/invisible-nested-iframe-hide.html = TEXT
-BUGWK82294 : compositing/iframes/invisible-nested-iframe-show.html = TEXT
-BUGWK82294 : compositing/iframes/overlapped-iframe-iframe.html = TEXT
-BUGWK82294 : compositing/iframes/overlapped-iframe.html = TEXT
-BUGWK82294 : compositing/iframes/overlapped-nested-iframes.html = TEXT
-BUGWK82294 : compositing/iframes/page-cache-layer-tree.html = TEXT
-BUGWK82294 : compositing/iframes/resizer.html = MISSING
-BUGWK82294 : compositing/iframes/scrolling-iframe.html = TEXT
-BUGWK82294 : compositing/images/clip-on-directly-composited-image.html = TEXT
-BUGWK82294 : compositing/layer-creation/animation-overlap-with-children.html = TEXT
-BUGWK82294 : compositing/layer-creation/fixed-position-and-transform.html = TEXT
-BUGWK82294 : compositing/layer-creation/fixed-position-under-transform.html = TEXT
-BUGWK82294 : compositing/layer-creation/overflow-scroll-overlap.html = TEXT
-BUGWK82294 : compositing/layer-creation/overlap-child-layer.html = TEXT
-BUGWK82294 : compositing/layer-creation/overlap-clipping.html = TEXT
-BUGWK82294 : compositing/layer-creation/overlap-transformed-layer.html = TEXT
-BUGWK82294 : compositing/layer-creation/rotate3d-overlap.html = TEXT
-BUGWK82294 : compositing/layer-creation/scroll-partial-update.html = TEXT
-BUGWK82294 : compositing/layer-creation/spanOverlapsCanvas.html = TEXT
-BUGWK82294 : compositing/layer-creation/translatez-overlap.html = TEXT
-BUGWK82294 : compositing/overflow/clip-descendents.html = TEXT
-BUGWK82294 SKIP : compositing/overflow/clipping-ancestor-with-accelerated-scrolling-ancestor.html = MISSING
-BUGWK82294 : compositing/overflow/content-gains-scrollbars.html = TEXT
-BUGWK82294 : compositing/overflow/content-loses-scrollbars.html = TEXT
-BUGWK82294 SKIP : compositing/overflow/nested-scrolling.html = MISSING
-BUGWK82294 : compositing/overflow/overflow-auto-with-touch.html = TEXT
-BUGWK82294 SKIP : compositing/overflow/overflow-clip-with-accelerated-scrolling-ancestor.html = MISSING
-BUGWK82294 : compositing/overflow/overflow-overlay-with-touch.html = TEXT
-BUGWK82294 : compositing/overflow/overflow-scrollbar-layers.html = TEXT
-BUGWK82294 SKIP : compositing/overflow/remove-overflow-crash2.html = MISSING
-BUGWK82294 : compositing/overflow/resize-painting.html = TEXT
-BUGWK82294 : compositing/overflow/scrolling-content-clip-to-viewport.html = TEXT
-BUGWK82294 : compositing/overflow/textarea-scroll-touch.html = TEXT
-BUGWK82294 : compositing/plugins/no-backing-store.html = TEXT
-BUGWK82294 : compositing/plugins/small-to-large-composited-plugin.html = TEXT
-BUGWK82294 : compositing/rtl/rtl-absolute-overflow-scrolled.html = TEXT
-BUGWK82294 : compositing/rtl/rtl-absolute-overflow.html = TEXT
-BUGWK82294 : compositing/rtl/rtl-absolute.html = TEXT
-BUGWK82294 : compositing/rtl/rtl-fixed-overflow-scrolled.html = TEXT
-BUGWK82294 : compositing/rtl/rtl-fixed-overflow.html = TEXT
-BUGWK82294 : compositing/rtl/rtl-fixed.html = TEXT
-BUGWK82294 : compositing/rtl/rtl-iframe-absolute-overflow-scrolled.html = TEXT
-BUGWK82294 : compositing/rtl/rtl-iframe-absolute-overflow.html = TEXT
-BUGWK82294 : compositing/rtl/rtl-iframe-absolute.html = TEXT
-BUGWK82294 : compositing/rtl/rtl-iframe-fixed-overflow-scrolled.html = TEXT
-BUGWK82294 : compositing/rtl/rtl-iframe-fixed-overflow.html = TEXT
-BUGWK82294 : compositing/rtl/rtl-iframe-fixed.html = TEXT
-BUGWK82294 : compositing/rtl/rtl-iframe-relative.html = TEXT
-BUGWK82294 : compositing/rtl/rtl-relative.html = TEXT
-BUGWK82294 : compositing/tiling/crash-reparent-tiled-layer.html = TEXT
-BUGWK82294 : compositing/tiling/huge-layer-add-remove-child.html = TEXT
-BUGWK82294 : compositing/tiling/huge-layer-img.html = TEXT
-BUGWK82294 : compositing/tiling/huge-layer-resize.html = TEXT
-BUGWK82294 : compositing/tiling/huge-layer-with-layer-children-resize.html = TEXT
-BUGWK82294 : compositing/tiling/huge-layer-with-layer-children.html = TEXT
-BUGWK82294 : compositing/tiling/huge-layer.html = TEXT
-BUGWK82294 : compositing/video/video-poster.html = TEXT
-BUGWK82294 : compositing/backing/no-backing-for-clip-overlap.html = TEXT
-BUGWK82294 : compositing/backing/no-backing-for-clip.html = TEXT
-BUGWK82294 : compositing/backing/no-backing-for-perspective.html = TEXT
-BUGWK82294 : compositing/clip-child-by-non-stacking-ancestor.html = TEXT
-BUGWK82294 : compositing/geometry/bounds-clipped-composited-child.html = TEXT
-BUGWK82294 : compositing/geometry/fixed-position-composited-switch.html = TEXT
-BUGWK82294 : compositing/layer-creation/fixed-position-out-of-view.html = TEXT
-BUGWK82294 : compositing/layer-creation/overlap-animation.html = TEXT
-BUGWK82294 : compositing/layer-creation/overlap-transformed-and-clipped.html = TEXT
-BUGWK82294 : compositing/layer-creation/overlap-transforms.html = TEXT
-BUGWK82294 : compositing/layer-creation/stacking-context-overlap-nested.html = TEXT
-BUGWK82294 : compositing/layer-creation/stacking-context-overlap.html = TEXT
-BUGWK82294 : compositing/overflow-trumps-transform-style.html = TEXT
-BUGWK82294 : compositing/tiled-layers-hidpi.html = TEXT
-BUGWK82294 : compositing/visibility/layer-visible-content.html = TEXT
-BUGWK82294 : compositing/visibility/visibility-image-layers-dynamic.html = TEXT
-BUGWK82294 : compositing/layer-creation/no-compositing-for-preserve-3d.html = TEXT
-BUGWK82294 : compositing/columns/composited-in-paginated.html = TEXT
-BUGWK82294 : compositing/geometry/bounds-ignores-hidden-composited-descendant.html = TEXT
-BUGWK82294 : compositing/geometry/bounds-ignores-hidden-dynamic-negzindex.html = TEXT
-BUGWK82294 : compositing/geometry/bounds-ignores-hidden-dynamic.html = TEXT
-BUGWK82294 : compositing/geometry/bounds-ignores-hidden.html = TEXT
+// EFL has accelerated compositing disabled
+BUGWK79766 : compositing/animation/animation-compositing.html = TEXT
+BUGWK79766 : compositing/geometry/ancestor-overflow-change.html = TEXT
+BUGWK79766 : compositing/geometry/clip.html = TEXT
+BUGWK79766 : compositing/geometry/composited-in-columns.html = TEXT
+BUGWK79766 : compositing/geometry/flipped-writing-mode.html = TEXT
+BUGWK79766 : compositing/geometry/foreground-layer.html = TEXT
+BUGWK79766 : compositing/geometry/layer-due-to-layer-children-deep-switch.html = TEXT
+BUGWK79766 : compositing/geometry/layer-due-to-layer-children-switch.html = TEXT
+BUGWK79766 : compositing/geometry/limit-layer-bounds-clipping-ancestor.html = TEXT
+BUGWK79766 : compositing/geometry/limit-layer-bounds-fixed-positioned.html = TEXT
+BUGWK79766 : compositing/geometry/limit-layer-bounds-opacity-transition.html = TEXT
+BUGWK79766 : compositing/geometry/limit-layer-bounds-overflow-root.html = TEXT
+BUGWK79766 : compositing/geometry/limit-layer-bounds-positioned-transition.html = TEXT
+BUGWK79766 : compositing/geometry/limit-layer-bounds-positioned.html = TEXT
+BUGWK79766 : compositing/geometry/limit-layer-bounds-transformed-overflow.html = TEXT
+BUGWK79766 : compositing/geometry/limit-layer-bounds-transformed.html = TEXT
+BUGWK79766 : compositing/geometry/preserve-3d-switching.html = TEXT
+BUGWK79766 : compositing/iframes/become-composited-nested-iframes.html = TEXT
+BUGWK79766 : compositing/iframes/become-overlapped-iframe.html = TEXT
+BUGWK79766 : compositing/iframes/composited-parent-iframe.html = TEXT
+BUGWK79766 : compositing/iframes/connect-compositing-iframe-delayed.html = TEXT
+BUGWK79766 : compositing/iframes/connect-compositing-iframe.html = TEXT
+BUGWK79766 : compositing/iframes/connect-compositing-iframe2.html = TEXT
+BUGWK79766 : compositing/iframes/connect-compositing-iframe3.html = TEXT
+BUGWK79766 : compositing/iframes/enter-compositing-iframe.html = TEXT
+BUGWK79766 : compositing/iframes/iframe-resize.html = TEXT
+BUGWK79766 : compositing/iframes/iframe-size-from-zero.html = TEXT
+BUGWK79766 : compositing/iframes/iframe-size-to-zero.html = TEXT
+BUGWK79766 : compositing/iframes/iframe-src-change.html = TEXT
+BUGWK79766 : compositing/iframes/invisible-nested-iframe-hide.html = TEXT
+BUGWK79766 : compositing/iframes/invisible-nested-iframe-show.html = TEXT
+BUGWK79766 : compositing/iframes/overlapped-iframe-iframe.html = TEXT
+BUGWK79766 : compositing/iframes/overlapped-iframe.html = TEXT
+BUGWK79766 : compositing/iframes/overlapped-nested-iframes.html = TEXT
+BUGWK79766 : compositing/iframes/page-cache-layer-tree.html = TEXT
+BUGWK79766 : compositing/iframes/resizer.html = MISSING
+BUGWK79766 : compositing/iframes/scrolling-iframe.html = TEXT
+BUGWK79766 : compositing/images/clip-on-directly-composited-image.html = TEXT
+BUGWK79766 : compositing/layer-creation/animation-overlap-with-children.html = TEXT
+BUGWK79766 : compositing/layer-creation/fixed-position-and-transform.html = TEXT
+BUGWK79766 : compositing/layer-creation/fixed-position-under-transform.html = TEXT
+BUGWK79766 : compositing/layer-creation/overflow-scroll-overlap.html = TEXT
+BUGWK79766 : compositing/layer-creation/overlap-child-layer.html = TEXT
+BUGWK79766 : compositing/layer-creation/overlap-clipping.html = TEXT
+BUGWK79766 : compositing/layer-creation/overlap-transformed-layer.html = TEXT
+BUGWK79766 : compositing/layer-creation/rotate3d-overlap.html = TEXT
+BUGWK79766 : compositing/layer-creation/scroll-partial-update.html = TEXT
+BUGWK79766 : compositing/layer-creation/spanOverlapsCanvas.html = TEXT
+BUGWK79766 : compositing/layer-creation/translatez-overlap.html = TEXT
+BUGWK79766 : compositing/overflow/clip-descendents.html = TEXT
+BUGWK79766 SKIP : compositing/overflow/clipping-ancestor-with-accelerated-scrolling-ancestor.html = MISSING
+BUGWK79766 : compositing/overflow/content-gains-scrollbars.html = TEXT
+BUGWK79766 : compositing/overflow/content-loses-scrollbars.html = TEXT
+BUGWK79766 SKIP : compositing/overflow/nested-scrolling.html = MISSING
+BUGWK79766 : compositing/overflow/overflow-auto-with-touch.html = TEXT
+BUGWK79766 : compositing/overflow/overflow-auto-with-touch-toggle.html = TEXT
+BUGWK79766 SKIP : compositing/overflow/overflow-clip-with-accelerated-scrolling-ancestor.html = MISSING
+BUGWK79766 : compositing/overflow/overflow-overlay-with-touch.html = TEXT
+BUGWK79766 : compositing/overflow/overflow-scrollbar-layers.html = TEXT
+BUGWK79766 SKIP : compositing/overflow/remove-overflow-crash2.html = MISSING
+BUGWK79766 : compositing/overflow/resize-painting.html = TEXT
+BUGWK79766 : compositing/overflow/scrolling-content-clip-to-viewport.html = TEXT
+BUGWK79766 : compositing/overflow/textarea-scroll-touch.html = TEXT
+BUGWK79766 : compositing/plugins/no-backing-store.html = TEXT
+BUGWK79766 : compositing/plugins/small-to-large-composited-plugin.html = TEXT
+BUGWK79766 : compositing/rtl/rtl-absolute-overflow-scrolled.html = TEXT
+BUGWK79766 : compositing/rtl/rtl-absolute-overflow.html = TEXT
+BUGWK79766 : compositing/rtl/rtl-absolute.html = TEXT
+BUGWK79766 : compositing/rtl/rtl-fixed-overflow-scrolled.html = TEXT
+BUGWK79766 : compositing/rtl/rtl-fixed-overflow.html = TEXT
+BUGWK79766 : compositing/rtl/rtl-fixed.html = TEXT
+BUGWK79766 : compositing/rtl/rtl-iframe-absolute-overflow-scrolled.html = TEXT
+BUGWK79766 : compositing/rtl/rtl-iframe-absolute-overflow.html = TEXT
+BUGWK79766 : compositing/rtl/rtl-iframe-absolute.html = TEXT
+BUGWK79766 : compositing/rtl/rtl-iframe-fixed-overflow-scrolled.html = TEXT
+BUGWK79766 : compositing/rtl/rtl-iframe-fixed-overflow.html = TEXT
+BUGWK79766 : compositing/rtl/rtl-iframe-fixed.html = TEXT
+BUGWK79766 : compositing/rtl/rtl-iframe-relative.html = TEXT
+BUGWK79766 : compositing/rtl/rtl-relative.html = TEXT
+BUGWK79766 : compositing/tiling/crash-reparent-tiled-layer.html = TEXT
+BUGWK79766 : compositing/tiling/huge-layer-add-remove-child.html = TEXT
+BUGWK79766 : compositing/tiling/huge-layer-img.html = TEXT
+BUGWK79766 : compositing/tiling/huge-layer-resize.html = TEXT
+BUGWK79766 : compositing/tiling/huge-layer-with-layer-children-resize.html = TEXT
+BUGWK79766 : compositing/tiling/huge-layer-with-layer-children.html = TEXT
+BUGWK79766 : compositing/tiling/huge-layer.html = TEXT
+BUGWK79766 : compositing/video/video-poster.html = TEXT
+BUGWK79766 : compositing/backing/no-backing-for-clip-overlap.html = TEXT
+BUGWK79766 : compositing/backing/no-backing-for-clip.html = TEXT
+BUGWK79766 : compositing/backing/no-backing-for-perspective.html = TEXT
+BUGWK79766 : compositing/clip-child-by-non-stacking-ancestor.html = TEXT
+BUGWK79766 : compositing/geometry/bounds-clipped-composited-child.html = TEXT
+BUGWK79766 : compositing/geometry/fixed-position-composited-switch.html = TEXT
+BUGWK79766 : compositing/layer-creation/fixed-position-out-of-view.html = TEXT
+BUGWK79766 : compositing/layer-creation/overlap-animation.html = TEXT
+BUGWK79766 : compositing/layer-creation/overlap-transformed-and-clipped.html = TEXT
+BUGWK79766 : compositing/layer-creation/overlap-transforms.html = TEXT
+BUGWK79766 : compositing/layer-creation/stacking-context-overlap-nested.html = TEXT
+BUGWK79766 : compositing/layer-creation/stacking-context-overlap.html = TEXT
+BUGWK79766 : compositing/overflow-trumps-transform-style.html = TEXT
+BUGWK79766 : compositing/tiled-layers-hidpi.html = TEXT
+BUGWK79766 : compositing/visibility/layer-visible-content.html = TEXT
+BUGWK79766 : compositing/visibility/visibility-image-layers-dynamic.html = TEXT
+BUGWK79766 : compositing/layer-creation/no-compositing-for-preserve-3d.html = TEXT
+BUGWK79766 : compositing/columns/composited-in-paginated.html = TEXT
+BUGWK79766 : compositing/geometry/bounds-ignores-hidden-composited-descendant.html = TEXT
+BUGWK79766 : compositing/geometry/bounds-ignores-hidden-dynamic-negzindex.html = TEXT
+BUGWK79766 : compositing/geometry/bounds-ignores-hidden-dynamic.html = TEXT
+BUGWK79766 : compositing/geometry/bounds-ignores-hidden.html = TEXT
 
 // EFL's LayoutTestController does not implement displayInvalidatedRegion
 BUGWK86727 : compositing/plugins/invalidate_rect.html = TEXT
@@ -542,7 +541,7 @@ BUGWK77219 SKIP : http/tests/canvas/webgl/origin-clean-conformance.html = TEXT
 BUGWK77219 SKIP : http/tests/security/webgl-remote-read-remote-image-allowed-with-credentials.html = TEXT
 BUGWK77219 SKIP : http/tests/security/webgl-remote-read-remote-image-allowed.html = TEXT
 BUGWK77219 SKIP : http/tests/security/webgl-remote-read-remote-image-blocked-no-crossorigin.html = TEXT
-BUGWK77219 : inspector/profiler/webgl/webgl-profiler-api-changes.html = TEXT
+BUGWK77219 SKIP : inspector/profiler/webgl = TEXT
 
 BUGWK84759 : ietestcenter/css3/multicolumn/column-containing-block-001.htm = IMAGE
 BUGWK84760 : ietestcenter/css3/multicolumn/column-containing-block-002.htm = IMAGE
@@ -627,13 +626,12 @@ BUGWK29359 : fast/css/pseudo-in-range.html = TEXT
 BUGWK29359 : fast/css/pseudo-out-of-range.html = TEXT
 BUGWK29359 : fast/css/pseudo-in-range-invalid-value.html = TEXT
 
+// These tests require TOUCH_ADJUSTMENT flag to be enabled
+BUGWK78801 SKIP : touchadjustment = PASS
+
 // Tracking corner not being painted for TextArea.
 BUGWK85484 : fast/css/resize-corner-tracking-transformed.html = TEXT
 BUGWK85484 : fast/css/resize-corner-tracking.html = TEXT
-BUGWK85484 : fast/forms/textarea-scroll-height.html = MISSING
-BUGWK85484 : fast/forms/textarea-scrolled-type.html = MISSING
-
-BUGWK85493 : fast/css/square-button-appearance.html = TEXT
 
 BUGWK73766 : css3/unicode-bidi-isolate-aharon-failing.html = IMAGE IMAGE+TEXT
 
@@ -661,14 +659,10 @@ BUGWK85599 : http/tests/navigation/postredirect-goback1.html = TEXT
 // Interferes with the rAF tests that are enabled
 BUGWK85689 SKIP : fast/animation/request-animation-frame-disabled.html = TEXT
 
-// Crash shared with the GTK+ port
-BUGWK30724 DEBUG : fast/loader/opaque-base-url.html = CRASH
-
 // EFL's DumpRenderTree should support LayoutTestController's dumpEditingCallbacks()
 BUGWK84835 : editing/execCommand/4128080-2.html = TEXT
 BUGWK84835 : editing/execCommand/copy-without-selection.html = TEXT
 BUGWK84835 : editing/execCommand/findString-diacriticals.html = TEXT
-BUGWK84835 : editing/execCommand/indent-paragraphs.html = TEXT
 
 // DRT doesn't check for isPrinting().
 BUGWK87226 : printing/iframe-print.html = TEXT
@@ -699,9 +693,6 @@ BUGWKEFL SLOW DEBUG : http/tests/incremental/slow-utf8-html.pl = PASS
 // Tests imported in r116658
 BUGWK85308 : ietestcenter/css3/valuesandunits/units-000.htm = IMAGE CRASH
 BUGWK85310 : ietestcenter/css3/valuesandunits/units-010.htm = IMAGE
-
-// New test introduced in r116694 fails
-BUGWK86182 : fast/frames/seamless/seamless-inherited-document-style.html = TEXT
 
 // LEGACY_VIEWPORT_ADAPTION flag is not enabled on EFL port
 BUGWK88191 : fast/viewport/viewport-legacy-handheldfriendly.html = TEXT
@@ -759,10 +750,6 @@ BUGWK86597 : fullscreen/video-controls-drag.html = TEXT
 BUGWK86187 : media/media-fullscreen-not-in-document.html = TEXT
 BUGWK86187 SKIP : media/media-fullscreen-inline.html = PASS
 
-// ecore_x library is not initialized and calls to it cause crashes
-BUGWK86961 : editing/execCommand/paste-and-match-style-event.html = CRASH
-BUGWK86961 : fast/dom/shadow/cppevent-in-shadow.html = CRASH
-
 // Selection problem in Shadow DOM test (passes on GTK)
 BUGWKEFL : fast/dom/shadow/selections-in-shadow.html = TEXT
 
@@ -790,9 +777,6 @@ BUGWK85463 SKIP : editing/inserting/typing-space-to-trigger-smart-link.html = PA
 // Missing deletebutton controller implementation.
 BUGWK86615 : editing/deleting/5408255.html = TEXT
 BUGWK86615 : editing/deleting/regional-indicators.html = TEXT
-
-// Custom font loading delaying text drawing on Canvas
-BUGWK87355 : canvas/philip/tests/2d.text.draw.fontface.notinpage.html = TEXT
 
 // Tests failing due to rounding problems in colors inside pixman
 BUGWK49964 : fast/canvas/canvas-fillPath-shadow.html = TEXT
@@ -929,8 +913,8 @@ BUGWK86722 SKIP : fast/images/paletted-png-with-color-profile.html = PASS
 BUGWK88729 SKIP : userscripts/window-onerror-for-isolated-world-1.html = PASS
 BUGWK88729 SKIP : userscripts/window-onerror-for-isolated-world-2.html = PASS
 
-// These tests do not seem to fail anywhere else.
-BUGWK88031 : fast/multicol/span/generated-child-split-flow-crash.html = TEXT
+// The sort order is incorrect in the output.
+BUGWK30620 : fast/xsl/sort-locale.xml = TEXT
 
 // Flexbox test failing on EFL.
 BUGWK88984 : css3/flexbox/flexitem.html = TEXT
@@ -943,21 +927,11 @@ BUGWK89845 : fast/forms/input-set-composition-scroll.html = TEXT
 
 BUGWK90007 : http/tests/security/mixedContent/insecure-audio-video-in-main-frame.html = TEXT
 
-BUGWK90334 : css3/flexbox/anonymous-block.html = IMAGE
-
 // Test started failing after r122681 due to wrong scrollbar positioning
 BUGWK91359 : css3/flexbox/flexbox-overflow-auto.html = IMAGE
 
-// Require rebaseline after bug 88171
-BUGWK88171 : fast/block/float/independent-align-positioning.html = TEXT
-BUGWK88171 : fast/block/float/010.html = TEXT
-BUGWK88171 : css1/formatting_model/floating_elements.html = TEXT
-
 // Looks like missing multipart/x-mixed-replace support in libsoup. Failing on both GTK and EFL.
 BUGWK68979 : http/tests/multipart/multipart-replace-non-html-content.php = TEXT
-
-// Skip tests in fast/text/shaping
-BUGWK90951 SKIP : fast/text/shaping = PASS
 
 // Test added by Mac port, rendering results totally different on EFL.
 BUGWK91477 : fast/multicol/shrink-to-column-height-for-pagination.html = MISSING
@@ -965,11 +939,6 @@ BUGWK91477 : fast/multicol/shrink-to-column-height-for-pagination.html = MISSING
 // These tests are failing after r122528.
 BUGWK91210 : http/tests/w3c/webperf/approved/navigation-timing/html/test_performance_attributes_exist_in_object.html = TEXT
 BUGWK91210 : http/tests/w3c/webperf/approved/navigation-timing/html/test_timing_xserver_redirect.html = TEXT
-BUGWK91210 : http/tests/w3c/webperf/approved/navigation-timing/html5/test_performance_attributes_exist_in_object.html = TEXT
-BUGWK91210 : http/tests/w3c/webperf/approved/navigation-timing/html5/test_timing_xserver_redirect.html = TEXT
-
-// Failing after r123145 on EFL, GTK and QT.
-BUGWK91843 : http/tests/security/cross-frame-access-put.html = TEXT
 
 // Failing after r123379 on EFL and GTK.
 BUGWK92063 : fast/css/sticky/parsing-position-sticky.html = TEXT
@@ -1004,15 +973,6 @@ BUGWK50485 SKIP : inspector/profiler/heap-snapshot-summary-sorting-instances.htm
 // ENABLE(INPUT_TYPE_TIME_MULTIPLE_FIELDS) is disabled
 BUGWK94186 SKIP : fast/forms/time-multiple-fields = PASS
 
-// Require rebaseline after bug 93148
-BUGWK93148 : tables/mozilla_expected_failures/bugs/bug106966.html = TEXT
-BUGWK93148 : tables/mozilla_expected_failures/marvin/table_overflow_hidden_tbody.html = TEXT
-BUGWK93148 : tables/mozilla_expected_failures/marvin/table_overflow_hidden_tr.html = TEXT
-BUGWK93148 : fast/css/nested-layers-with-hover.html = TEXT
-
-BUGWK92956 : http/tests/security/contentSecurityPolicy/object-src-url-blocked.html = TEXT
-BUGWK93212 : http/tests/incremental/slow-utf8-text.pl = TIMEOUT
-
 BUGWK93976 : fast/css-generated-content/quotes-lang.html = IMAGE
 
 BUGWK93247 DEBUG : fast/lists/list-marker-remove-crash.html = CRASH
@@ -1026,16 +986,11 @@ BUGWK94003 : fast/css/word-spacing-characters-complex-text.html = IMAGE
 // This has always failed on Gtk/Efl - exposed by bug 89826
 BUGWK94009 : css2.1/20110323/c541-word-sp-000.htm = IMAGE
 
-BUGWK94150 : fast/events/autoscroll-in-textarea.html = TEXT
-
 // Requires CSS_COMPOSITING to be turned on
 BUGWK94024 SKIP : css3/compositing = TEXT
 
 // Fails also on GTK
 BUGWK94080 : fast/overflow/line-clamp-and-columns.html = IMAGE
-
-// Failing after 125592
-BUGWK94194 : http/tests/security/frameNavigation/inactive-function-in-popup-navigate-child.html = TEXT
 
 // Alt text should be displayed if src attribute is not set.
 BUGWK94198 : fast/dom/HTMLImageElement/image-alt-text.html = IMAGE
@@ -1060,29 +1015,62 @@ BUGWK85877 : fast/forms/select-style.html = MISSING
 // Test 2 in below test is failing.
 BUGWK94877 : fast/forms/listbox-hit-test-zoomed.html = MISSING
 
-// The text in the popup button is clipped.
-BUGWK94878 : fast/forms/menulist-restrict-line-height.html = MISSING
-
 // Cancel mark in search field is not working.
 BUGWK94880 : fast/forms/search-cancel-button-style-sharing.html = MISSING
 BUGWK94880 : fast/forms/search-rtl.html = MISSING
 
-//Require rebaseline after https://bugs.webkit.org/show_bug.cgi?id=77754
-BUGWK77754 : fast/inline/left-right-center-inline-alignment-in-ltr-and-rtl-blocks.html = TEXT
-BUGWK77754 : fast/inline/absolute-positioned-inline-in-centred-block.html = TEXT
-BUGWK77754 : fast/css/absolute-child-with-percent-height-inside-relative-parent.html = TEXT
+// New windows are created with wrong size
+BUGWK53959 : fast/dom/Window/window-resize.html = TEXT
+BUGWK53959 : fast/dom/Window/window-resize-and-move-arguments.html = TEXT
 
-// Fails after r127035.
-BUGWK95428 : media/video-controls-captions.html = TEXT
-
-//Require rebaseline after https://bugs.webkit.org/show_bug.cgi?id=80394
-BUGWK80394 : fast/block/margin-collapse/empty-clear-blocks.html = IMAGE+TEXT
-BUGWK80394 : fast/block/float/024.html = IMAGE+TEXT
-BUGWK80394 : fast/block/margin-collapse/025.html = TEXT
-BUGWK80394 : fast/block/margin-collapse/block-inside-inline/025.html = TEXT
+// Asserts in MessagePort::contextDestroyed, but the assert usually gets attributed to later tests. 
+BUGWK94458 SKIP : fast/events/message-port-constructor-for-deleted-document.html = PASS
 
 // Started failing on JSC ports after r127202.
 BUGWK95530 : http/tests/security/inactive-document-with-empty-security-origin.html = TEXT
 
 // Fails after r127140.
 BUGWK95551 : fast/forms/datalist/input-appearance-range-with-datalist-rtl.html = IMAGE
+
+// EFL port does not support plugins yet
+BUGWK96881 : fast/dom/Window/Plug-ins.html = TEXT
+BUGWK96881 : fast/frames/sandboxed-iframe-about-blank.html = TEXT
+BUGWK96881 : fast/frames/sandboxed-iframe-navigation-allowed.html = TEXT
+BUGWK96881 : fast/frames/sandboxed-iframe-plugins.html = TEXT
+BUGWK96881 : fast/replaced/invalid-object-with-fallback.html = TEXT
+BUGWK96881 : http/tests/security/contentSecurityPolicy/object-src-none-allowed.html = TEXT
+BUGWK96881 : http/tests/security/contentSecurityPolicy/object-src-url-blocked.html = TEXT
+BUGWK96881 SKIP : http/tests/plugins = TEXT
+BUGWK96881 : http/tests/security/cross-origin-plugin-allowed.html = TEXT
+BUGWK96881 : http/tests/security/cross-origin-plugin-private-browsing-toggled-allowed.html = TEXT
+BUGWK96881 : http/tests/security/cross-origin-plugin-private-browsing-toggled.html = TEXT
+BUGWK96881 : http/tests/security/cross-origin-plugin.html = TEXT
+BUGWK96881 : http/tests/security/frameNavigation/xss-DENIED-plugin-navigation.html = TEXT
+BUGWK96881 : http/tests/security/storage-blocking-loosened-plugin.html = TEXT
+BUGWK96881 : http/tests/security/storage-blocking-loosened-private-browsing-plugin.html = TEXT
+BUGWK96881 : http/tests/security/storage-blocking-strengthened-plugin.html = TEXT
+BUGWK96881 : http/tests/security/storage-blocking-strengthened-private-browsing-plugin.html = TEXT
+BUGWK96881 SKIP : java = TEXT
+BUGWK96881 SKIP : plugins = TEXT
+BUGWK96881 : userscripts/user-script-plugin-document.html = TEXT
+
+// EFL does not yet support global selection
+BUGWK88238 SKIP : editing/pasteboard/paste-global-selection.html = TEXT
+
+// Gradient instead of solid color in the rectangle
+BUGWK54251 : fast/canvas/DrawImageSinglePixelStretch.html = TEXT
+
+// Fails after r128270.
+BUGWK96517 : fast/events/popup-blocking-timers.html = TEXT
+
+// REGRESSION(r128802): It made some JS tests crash
+// https://bugs.webkit.org/show_bug.cgi?id=97001
+BUGWK97001 : fast/js/Object-defineProperty.html = CRASH
+BUGWK97001 : fast/js/array-bad-time.html = CRASH
+BUGWK97001 : fast/js/array-slow-put.html = CRASH
+BUGWK97001 : fast/js/object-bad-time.html = CRASH
+BUGWK97001 : ietestcenter/Javascript/15.4.4.14-9-b-i-5.html = CRASH
+BUGWK97001 : ietestcenter/Javascript/15.4.4.15-8-b-i-5.html = CRASH
+
+// Passes in some machines and fails on other (such as the bots).
+BUGWK97021 : fast/events/dont-loose-last-event.html = TEXT

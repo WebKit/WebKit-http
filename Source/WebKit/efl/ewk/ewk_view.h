@@ -299,6 +299,7 @@ typedef struct _Ewk_Download Ewk_Download;
 /// Contains Download data.
 struct _Ewk_Download {
     const char *url; /**< URL of resource. */
+    const char *suggested_name; /**< suggested name from download attributes */
     /* to be extended */
 };
 
@@ -735,7 +736,7 @@ EAPI void         ewk_view_fixed_layout_size_get(const Evas_Object *o, Evas_Coor
  * use this one.
  *
  * @param o view object to change theme
- * @param path theme path, may be @c NULL to reset to the default theme
+ * @param path theme path
  */
 EAPI void         ewk_view_theme_set(Evas_Object *o, const char *path);
 

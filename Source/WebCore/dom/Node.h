@@ -66,7 +66,6 @@ class Frame;
 class HTMLInputElement;
 class IntRect;
 class KeyboardEvent;
-class MemoryObjectInfo;
 class NSResolver;
 class NamedNodeMap;
 class NameNodeList;
@@ -349,6 +348,9 @@ public:
     void setHasAttrList() { setFlag(HasAttrListFlag); }
     void clearHasAttrList() { clearFlag(HasAttrListFlag); }
 
+    bool hasScopedHTMLStyleChild() const { return getFlag(HasScopedHTMLStyleChildFlag); }
+    void setHasScopedHTMLStyleChild(bool flag) { setFlag(flag, HasScopedHTMLStyleChildFlag); }
+
     enum ShouldSetAttached {
         SetAttached,
         DoNotSetAttached
@@ -401,8 +403,8 @@ public:
     }
 
     virtual bool shouldUseInputMethod();
-    virtual LayoutRect getRect() const;
-    IntRect getPixelSnappedRect() const { return pixelSnappedIntRect(getRect()); }
+    virtual LayoutRect boundingBox() const;
+    IntRect pixelSnappedBoundingBox() const { return pixelSnappedIntRect(boundingBox()); }
     LayoutRect renderRect(bool* isReplaced);
     IntRect pixelSnappedRenderRect(bool* isReplaced) { return pixelSnappedIntRect(renderRect(isReplaced)); }
 
@@ -658,11 +660,8 @@ public:
     void notifyMutationObserversNodeWillDetach();
 #endif // ENABLE(MUTATION_OBSERVERS)
 
-#if ENABLE(STYLE_SCOPED)
     void registerScopedHTMLStyleChild();
     void unregisterScopedHTMLStyleChild();
-#endif
-    bool hasScopedHTMLStyleChild() const;
     size_t numberOfScopedHTMLStyleChildren() const;
 
     virtual void reportMemoryUsage(MemoryObjectInfo*) const;
@@ -710,10 +709,11 @@ private:
 #endif
         InNamedFlowFlag = 1 << 26,
         HasAttrListFlag = 1 << 27,
-        HasCustomCallbacksFlag = 1 << 28
+        HasCustomCallbacksFlag = 1 << 28,
+        HasScopedHTMLStyleChildFlag = 1 << 29
     };
 
-    // 4 bits remaining
+    // 3 bits remaining
 
     bool getFlag(NodeFlags mask) const { return m_nodeFlags & mask; }
     void setFlag(bool f, NodeFlags mask) const { m_nodeFlags = (m_nodeFlags & ~mask) | (-(int32_t)f & mask); } 

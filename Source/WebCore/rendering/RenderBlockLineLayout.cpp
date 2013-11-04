@@ -422,9 +422,9 @@ static inline InlineBox* createInlineBoxForRenderer(RenderObject* obj, bool isRo
 static inline void dirtyLineBoxesForRenderer(RenderObject* o, bool fullLayout)
 {
     if (o->isText()) {
-        if (o->preferredLogicalWidthsDirty() && (o->isCounter() || o->isQuote()))
-            toRenderText(o)->computePreferredLogicalWidths(0); // FIXME: Counters depend on this hack. No clue why. Should be investigated and removed.
-        toRenderText(o)->dirtyLineBoxes(fullLayout);
+        RenderText* renderText = toRenderText(o);
+        renderText->updateTextIfNeeded(); // FIXME: Counters depend on this hack. No clue why. Should be investigated and removed.
+        renderText->dirtyLineBoxes(fullLayout);
     } else
         toRenderInline(o)->dirtyLineBoxes(fullLayout);
 }
@@ -1232,7 +1232,7 @@ void RenderBlock::layoutRunsAndFloats(LineLayoutState& layoutState, bool hasInli
             // that the block really needed a full layout, we missed our chance to repaint the layer
             // before layout started.  Luckily the layer has cached the repaint rect for its original
             // position and size, and so we can use that to make a repaint happen now.
-            repaintUsingContainer(containerForRepaint(), layer()->repaintRect());
+            repaintUsingContainer(containerForRepaint(), pixelSnappedIntRect(layer()->repaintRect()));
         }
     }
 
@@ -1275,6 +1275,7 @@ void RenderBlock::layoutRunsAndFloats(LineLayoutState& layoutState, bool hasInli
 
 RenderBlock::RenderTextInfo::RenderTextInfo()
     : m_text(0)
+    , m_font(0)
 {
 }
 
@@ -1297,8 +1298,8 @@ void RenderBlock::layoutRunsAndFloatsInRange(LineLayoutState& layoutState, Inlin
 #if ENABLE(CSS_EXCLUSIONS)
     WrapShapeInfo* wrapShapeInfo = this->wrapShapeInfo();
     // Move to the top of the shape inside to begin layout
-    if (wrapShapeInfo && logicalHeight() < wrapShapeInfo->shapeTop())
-        setLogicalHeight(wrapShapeInfo->shapeTop());
+    if (wrapShapeInfo && logicalHeight() < wrapShapeInfo->shapeLogicalTop())
+        setLogicalHeight(wrapShapeInfo->shapeLogicalTop());
 #endif
 
     while (!end.atEnd()) {
@@ -2433,11 +2434,17 @@ InlineIterator RenderBlock::LineBreaker::nextLineBreak(InlineBidiResolver& resol
                 ASSERT(current.m_pos == t->textLength());
             }
 
-            if (renderTextInfo.m_text != t || renderTextInfo.m_lineBreakIterator.string() != t->characters()) {
+            if (renderTextInfo.m_text != t) {
+                t->updateTextIfNeeded();
                 renderTextInfo.m_text = t;
+                renderTextInfo.m_font = &f;
                 renderTextInfo.m_layout = f.createLayout(t, width.currentWidth(), collapseWhiteSpace);
                 renderTextInfo.m_lineBreakIterator.reset(t->characters(), t->textLength(), style->locale());
+            } else if (renderTextInfo.m_layout && renderTextInfo.m_font != &f) {
+                renderTextInfo.m_font = &f;
+                renderTextInfo.m_layout = f.createLayout(t, width.currentWidth(), collapseWhiteSpace);
             }
+
             TextLayout* textLayout = renderTextInfo.m_layout.get();
 
             for (; current.m_pos < t->textLength(); current.fastIncrementInTextNode()) {

@@ -38,7 +38,6 @@
 #include "IDBTracing.h"
 #include "IDBTransaction.h"
 #include "ScriptExecutionContext.h"
-#include "SerializedScriptValue.h"
 
 namespace WebCore {
 
@@ -125,10 +124,9 @@ IDBAny* IDBCursor::source() const
     return m_source.get();
 }
 
-PassRefPtr<IDBRequest> IDBCursor::update(ScriptExecutionContext* context, PassRefPtr<SerializedScriptValue> prpValue, ExceptionCode& ec)
+PassRefPtr<IDBRequest> IDBCursor::update(ScriptExecutionContext* context, ScriptValue& value, ExceptionCode& ec)
 {
     IDB_TRACE("IDBCursor::update");
-    RefPtr<SerializedScriptValue> value = prpValue;
 
     if (!m_gotValue || isKeyCursor()) {
         ec = IDBDatabaseException::IDB_INVALID_STATE_ERR;
@@ -142,17 +140,12 @@ PassRefPtr<IDBRequest> IDBCursor::update(ScriptExecutionContext* context, PassRe
         ec = IDBDatabaseException::READ_ONLY_ERR;
         return 0;
     }
-    if (value->blobURLs().size() > 0) {
-        // FIXME: Add Blob/File/FileList support
-        ec = IDBDatabaseException::IDB_DATA_CLONE_ERR;
-        return 0;
-    }
 
     RefPtr<IDBObjectStore> objectStore = effectiveObjectStore();
     const IDBKeyPath& keyPath = objectStore->metadata().keyPath;
     const bool usesInLineKeys = !keyPath.isNull();
     if (usesInLineKeys) {
-        RefPtr<IDBKey> keyPathKey = createIDBKeyFromSerializedValueAndKeyPath(value, keyPath);
+        RefPtr<IDBKey> keyPathKey = createIDBKeyFromScriptValueAndKeyPath(value, keyPath);
         if (!keyPathKey || !keyPathKey->isEqual(m_currentPrimaryKey.get())) {
             ec = IDBDatabaseException::DATA_ERR;
             return 0;
@@ -266,28 +259,25 @@ void IDBCursor::close()
     m_request.clear();
 }
 
-void IDBCursor::setValueReady(PassRefPtr<IDBKey> key, PassRefPtr<IDBKey> primaryKey, PassRefPtr<SerializedScriptValue> prpValue)
+void IDBCursor::setValueReady(PassRefPtr<IDBKey> key, PassRefPtr<IDBKey> primaryKey, ScriptValue& value)
 {
     m_currentKey = key;
     m_currentPrimaryKey = primaryKey;
 
-    RefPtr<SerializedScriptValue> value = prpValue;
     if (!isKeyCursor()) {
         RefPtr<IDBObjectStore> objectStore = effectiveObjectStore();
         const IDBObjectStoreMetadata metadata = objectStore->metadata();
         if (metadata.autoIncrement && !metadata.keyPath.isNull()) {
 #ifndef NDEBUG
-            RefPtr<IDBKey> expectedKey = createIDBKeyFromSerializedValueAndKeyPath(value, metadata.keyPath);
+            RefPtr<IDBKey> expectedKey = createIDBKeyFromScriptValueAndKeyPath(value, metadata.keyPath);
             ASSERT(!expectedKey || expectedKey->isEqual(m_currentPrimaryKey.get()));
 #endif
-            RefPtr<SerializedScriptValue> valueAfterInjection = injectIDBKeyIntoSerializedValue(m_currentPrimaryKey, value, metadata.keyPath);
-            ASSERT(valueAfterInjection);
+            bool injected = injectIDBKeyIntoScriptValue(m_currentPrimaryKey, value, metadata.keyPath);
             // FIXME: There is no way to report errors here. Move this into onSuccessWithContinuation so that we can abort the transaction there. See: https://bugs.webkit.org/show_bug.cgi?id=92278
-            if (valueAfterInjection)
-                value = valueAfterInjection;
+            ASSERT_UNUSED(injected, injected);
         }
     }
-    m_currentValue = IDBAny::create(value.release());
+    m_currentValue = IDBAny::create(value);
 
     m_gotValue = true;
     m_valueIsDirty = true;

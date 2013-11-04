@@ -394,17 +394,16 @@ void XMLHttpRequest::callReadyStateChangeListener()
     if (!scriptExecutionContext())
         return;
 
-    InspectorInstrumentationCookie cookie = InspectorInstrumentation::willChangeXHRReadyState(scriptExecutionContext(), this);
+    InspectorInstrumentationCookie cookie = InspectorInstrumentation::willDispatchXHRReadyStateChangeEvent(scriptExecutionContext(), this);
 
     if (m_async || (m_state <= OPENED || m_state == DONE))
         m_progressEventThrottle.dispatchReadyStateChangeEvent(XMLHttpRequestProgressEvent::create(eventNames().readystatechangeEvent), m_state == DONE ? FlushProgressEvent : DoNotFlushProgressEvent);
 
-    InspectorInstrumentation::didChangeXHRReadyState(cookie);
-
+    InspectorInstrumentation::didDispatchXHRReadyStateChangeEvent(cookie);
     if (m_state == DONE && !m_error) {
-        InspectorInstrumentationCookie cookie = InspectorInstrumentation::willLoadXHR(scriptExecutionContext(), this);
+        InspectorInstrumentationCookie cookie = InspectorInstrumentation::willDispatchXHRLoadEvent(scriptExecutionContext(), this);
         m_progressEventThrottle.dispatchEvent(XMLHttpRequestProgressEvent::create(eventNames().loadEvent));
-        InspectorInstrumentation::didLoadXHR(cookie);
+        InspectorInstrumentation::didDispatchXHRLoadEvent(cookie);
         m_progressEventThrottle.dispatchEvent(XMLHttpRequestProgressEvent::create(eventNames().loadendEvent));
     }
 }
@@ -644,8 +643,7 @@ void XMLHttpRequest::send(DOMFormData* body, ExceptionCode& ec)
 
         String contentType = getRequestHeader("Content-Type");
         if (contentType.isEmpty()) {
-            contentType = "multipart/form-data; boundary=";
-            contentType += m_requestEntityBody->boundary().data();
+            contentType = makeString("multipart/form-data; boundary=", m_requestEntityBody->boundary().data());
             setRequestHeaderInternal("Content-Type", contentType);
         }
     }
@@ -684,6 +682,13 @@ void XMLHttpRequest::sendBytesData(const void* data, size_t length, ExceptionCod
     createRequest(ec);
 }
 
+void XMLHttpRequest::sendFromInspector(PassRefPtr<FormData> formData, ExceptionCode& ec)
+{
+    m_requestEntityBody = formData ? formData->deepCopy() : 0;
+    createRequest(ec);
+    m_exceptionCode = ec;
+}
+
 void XMLHttpRequest::createRequest(ExceptionCode& ec)
 {
 #if ENABLE(BLOB)
@@ -717,6 +722,8 @@ void XMLHttpRequest::createRequest(ExceptionCode& ec)
 #if PLATFORM(CHROMIUM) || PLATFORM(BLACKBERRY)
     request.setTargetType(ResourceRequest::TargetIsXHR);
 #endif
+
+    InspectorInstrumentation::willLoadXHR(scriptExecutionContext(), this, m_method, m_url, m_async, m_requestEntityBody ? m_requestEntityBody->deepCopy() : 0, m_requestHeaders, m_includeCredentials);
 
     if (m_requestEntityBody) {
         ASSERT(m_method != "GET");
@@ -809,6 +816,8 @@ void XMLHttpRequest::internalAbort()
     }
 
     m_decoder = 0;
+
+    InspectorInstrumentation::didFailXHRLoading(scriptExecutionContext(), this);
 
     if (hadLoader)
         dropProtection();
@@ -920,7 +929,7 @@ void XMLHttpRequest::setRequestHeaderInternal(const AtomicString& name, const St
 {
     HTTPHeaderMap::AddResult result = m_requestHeaders.add(name, value);
     if (!result.isNewEntry)
-        result.iterator->second += ", " + value;
+        result.iterator->second.append(", " + value);
 }
 
 String XMLHttpRequest::getRequestHeader(const AtomicString& name) const
@@ -1075,7 +1084,7 @@ void XMLHttpRequest::didFinishLoading(unsigned long identifier, double)
 
     m_responseBuilder.shrinkToFit();
 
-    InspectorInstrumentation::resourceRetrievedByXMLHttpRequest(scriptExecutionContext(), identifier, m_responseBuilder.toStringPreserveCapacity(), m_url, m_lastSendURL, m_lastSendLineNumber);
+    InspectorInstrumentation::didFinishXHRLoading(scriptExecutionContext(), this, identifier, m_responseBuilder.toStringPreserveCapacity(), m_url, m_lastSendURL, m_lastSendLineNumber);
 
     bool hadLoader = m_loader;
     m_loader = 0;

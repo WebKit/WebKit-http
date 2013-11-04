@@ -100,12 +100,19 @@ extern const HashTable stringConstructorTable;
 #if ENABLE(ASSEMBLER) && (ENABLE(CLASSIC_INTERPRETER) || ENABLE(LLINT))
 static bool enableAssembler(ExecutableAllocator& executableAllocator)
 {
-    if (!executableAllocator.isValid() || !Options::useJIT())
+    if (!executableAllocator.isValid() || (!Options::useJIT() && !Options::useRegExpJIT()))
         return false;
 
 #if USE(CF)
-    RetainPtr<CFStringRef> canUseJITKey(AdoptCF, CFStringCreateWithCString(0 , "JavaScriptCoreUseJIT", kCFStringEncodingMacRoman));
-    RetainPtr<CFBooleanRef> canUseJIT(AdoptCF, (CFBooleanRef)CFPreferencesCopyAppValue(canUseJITKey.get(), kCFPreferencesCurrentApplication));
+#if COMPILER(GCC) && !COMPILER(CLANG)
+    // FIXME: remove this once the EWS have been upgraded to LLVM.
+    // Work around a bug of GCC with strict-aliasing.
+    RetainPtr<CFStringRef> canUseJITKeyRetain(AdoptCF, CFStringCreateWithCString(0 , "JavaScriptCoreUseJIT", kCFStringEncodingMacRoman));
+    CFStringRef canUseJITKey = canUseJITKeyRetain.get();
+#else
+    CFStringRef canUseJITKey = CFSTR("JavaScriptCoreUseJIT");
+#endif // COMPILER(GCC) && !COMPILER(CLANG)
+    RetainPtr<CFBooleanRef> canUseJIT(AdoptCF, (CFBooleanRef)CFPreferencesCopyAppValue(canUseJITKey, kCFPreferencesCurrentApplication));
     if (canUseJIT)
         return kCFBooleanTrue == canUseJIT.get();
 #endif
@@ -175,6 +182,8 @@ JSGlobalData::JSGlobalData(GlobalDataType globalDataType, ThreadStackType thread
     , m_newStringsSinceLastHashConst(0)
 #if ENABLE(ASSEMBLER) && (ENABLE(CLASSIC_INTERPRETER) || ENABLE(LLINT))
     , m_canUseAssembler(enableAssembler(executableAllocator))
+    , m_canUseJIT(m_canUseAssembler && Options::useJIT())
+    , m_canUseRegExpJIT(m_canUseAssembler && Options::useRegExpJIT())
 #endif
 #if ENABLE(GC_VALIDATION)
     , m_initializingObjectClass(0)
@@ -188,11 +197,8 @@ JSGlobalData::JSGlobalData(GlobalDataType globalDataType, ThreadStackType thread
     IdentifierTable* existingEntryIdentifierTable = wtfThreadData().setCurrentIdentifierTable(identifierTable);
     structureStructure.set(*this, Structure::createStructure(*this));
     debuggerActivationStructure.set(*this, DebuggerActivation::createStructure(*this, 0, jsNull()));
-    activationStructure.set(*this, JSActivation::createStructure(*this, 0, jsNull()));
     interruptedExecutionErrorStructure.set(*this, InterruptedExecutionError::createStructure(*this, 0, jsNull()));
     terminatedExecutionErrorStructure.set(*this, TerminatedExecutionError::createStructure(*this, 0, jsNull()));
-    nameScopeStructure.set(*this, JSNameScope::createStructure(*this, 0, jsNull()));
-    strictEvalActivationStructure.set(*this, StrictEvalActivation::createStructure(*this, 0, jsNull()));
     stringStructure.set(*this, JSString::createStructure(*this, 0, jsNull()));
     notAnObjectStructure.set(*this, JSNotAnObject::createStructure(*this, 0, jsNull()));
     propertyNameIteratorStructure.set(*this, JSPropertyNameIterator::createStructure(*this, 0, jsNull()));
@@ -207,7 +213,7 @@ JSGlobalData::JSGlobalData(GlobalDataType globalDataType, ThreadStackType thread
     regExpStructure.set(*this, RegExp::createStructure(*this, 0, jsNull()));
     sharedSymbolTableStructure.set(*this, SharedSymbolTable::createStructure(*this, 0, jsNull()));
     structureChainStructure.set(*this, StructureChain::createStructure(*this, 0, jsNull()));
-    withScopeStructure.set(*this, JSWithScope::createStructure(*this, 0, jsNull()));
+    sparseArrayValueMapStructure.set(*this, SparseArrayValueMap::createStructure(*this, 0, jsNull()));
 
     wtfThreadData().setCurrentIdentifierTable(existingEntryIdentifierTable);
 
@@ -452,7 +458,7 @@ void JSGlobalData::releaseExecutableMemory()
                 recompiler.currentlyExecutingFunctions.add(static_cast<FunctionExecutable*>(executable));
                 
         }
-        heap.objectSpace().forEachCell<StackPreservingRecompiler>(recompiler);
+        heap.objectSpace().forEachLiveCell<StackPreservingRecompiler>(recompiler);
     }
     m_regExpCache->invalidateCode();
     heap.collectAllGarbage();

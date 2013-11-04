@@ -78,6 +78,8 @@ struct OpInfo {
 struct Node {
     enum VarArgTag { VarArg };
     
+    Node() { }
+    
     // Construct a node with up to 3 children, no immediate value.
     Node(NodeType op, CodeOrigin codeOrigin, NodeIndex child1 = NoNode, NodeIndex child2 = NoNode, NodeIndex child3 = NoNode)
         : codeOrigin(codeOrigin)
@@ -335,12 +337,6 @@ struct Node {
     VirtualRegister local()
     {
         return variableAccessData()->local();
-    }
-    
-    VirtualRegister unmodifiedArgumentsRegister()
-    {
-        ASSERT(op() == TearOffActivation);
-        return static_cast<VirtualRegister>(m_opInfo);
     }
     
     VirtualRegister unlinkedLocal()

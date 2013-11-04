@@ -60,7 +60,7 @@ struct SameSizeAsWebMouseWheelEvent : public SameSizeAsWebMouseEvent {
 };
 
 struct SameSizeAsWebGestureEvent : public SameSizeAsWebInputEvent {
-    int gestureData[14];
+    int gestureData[8];
 };
 
 struct SameSizeAsWebTouchEvent : public SameSizeAsWebInputEvent {
@@ -200,6 +200,43 @@ void WebKeyboardEvent::setKeyIdentifierFromWindowsKeyCode()
         keyIdentifier[sizeof(keyIdentifier) - 1] = '\0';
     } else
         snprintf(keyIdentifier, sizeof(keyIdentifier), "U+%04X", toupper(windowsKeyCode));
+}
+
+// static
+int WebKeyboardEvent::windowsKeyCodeWithoutLocation(int keycode)
+{
+    switch (keycode) {
+    case VK_LCONTROL:
+    case VK_RCONTROL:
+        return VK_CONTROL;
+    case VK_LSHIFT:
+    case VK_RSHIFT:
+        return VK_SHIFT;
+    case VK_LMENU:
+    case VK_RMENU:
+        return VK_MENU;
+    default:
+        return keycode;
+    }
+}
+
+// static
+int WebKeyboardEvent::locationModifiersFromWindowsKeyCode(int keycode)
+{
+    switch (keycode) {
+    case VK_LCONTROL:
+    case VK_LSHIFT:
+    case VK_LMENU:
+    case VK_LWIN:
+        return IsLeft;
+    case VK_RCONTROL:
+    case VK_RSHIFT:
+    case VK_RMENU:
+    case VK_RWIN:
+        return IsRight;
+    default:
+        return 0;
+    }
 }
 
 } // namespace WebKit

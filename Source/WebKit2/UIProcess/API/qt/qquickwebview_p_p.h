@@ -21,13 +21,14 @@
 #ifndef qquickwebview_p_p_h
 #define qquickwebview_p_p_h
 
+#include "DefaultUndoController.h"
+#include "PageViewportController.h"
+#include "PageViewportControllerClient.h"
 #include "QtPageClient.h"
 #include "QtWebPageUIClient.h"
-#include "QtWebUndoController.h"
 
 #include "qquickwebview_p.h"
 #include "qquickwebpage_p.h"
-
 #include <QtCore/QElapsedTimer>
 #include <QtCore/QObject>
 #include <QtCore/QScopedPointer>
@@ -39,7 +40,7 @@ namespace WebKit {
 class DownloadProxy;
 class DrawingAreaProxy;
 class QtDialogRunner;
-class QtViewportHandler;
+class PageViewportControllerClientQt;
 class QtWebContext;
 class QtWebError;
 class QtWebPageLoadClient;
@@ -79,6 +80,7 @@ public:
     virtual void loadProgressDidChange(int loadProgress);
     virtual void backForwardListDidChange();
     virtual void loadDidSucceed();
+    virtual void loadDidStop();
     virtual void loadDidFail(const WebKit::QtWebError& error);
     virtual void handleMouseEvent(QMouseEvent*);
 
@@ -87,7 +89,7 @@ public:
     int loadProgress() const { return m_loadProgress; }
     void setNeedsDisplay();
 
-    virtual WebKit::QtViewportHandler* viewportHandler() { return 0; }
+    WebKit::PageViewportController* viewportController() const { return m_pageViewportController.data(); }
     virtual void updateViewportSize() { }
     void updateTouchViewportSize();
 
@@ -159,7 +161,7 @@ protected:
     RefPtr<WebKit::WebPageProxy> webPageProxy;
 
     WebKit::QtPageClient pageClient;
-    WebKit::QtWebUndoController undoController;
+    WebKit::DefaultUndoController undoController;
     OwnPtr<QWebNavigationHistory> navigationHistory;
     OwnPtr<QWebPreferences> preferences;
 
@@ -170,7 +172,9 @@ protected:
     QScopedPointer<QQuickWebPage> pageView;
     QQuickWebView* q_ptr;
 
-    QScopedPointer<WebKit::QtViewportHandler> m_viewportHandler;
+    QScopedPointer<WebKit::PageViewportController> m_pageViewportController;
+    QScopedPointer<WebKit::PageViewportControllerClientQt> m_pageViewportControllerClient;
+
     FlickableAxisLocker axisLocker;
 
     QQmlComponent* alertDialog;
@@ -212,13 +216,11 @@ class QQuickWebViewFlickablePrivate : public QQuickWebViewPrivate {
     Q_DECLARE_PUBLIC(QQuickWebView)
 public:
     QQuickWebViewFlickablePrivate(QQuickWebView* viewport);
-    virtual ~QQuickWebViewFlickablePrivate();
     virtual void initialize(WKContextRef contextRef = 0, WKPageGroupRef pageGroupRef = 0);
 
     virtual void onComponentComplete();
 
     virtual void didChangeViewportProperties(const WebCore::ViewportAttributes&);
-    virtual WebKit::QtViewportHandler* viewportHandler() { return m_viewportHandler.data(); }
     virtual void updateViewportSize();
 
     virtual void pageDidRequestScroll(const QPoint& pos);

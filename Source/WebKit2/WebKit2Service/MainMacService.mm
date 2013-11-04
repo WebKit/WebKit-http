@@ -23,61 +23,15 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <AvailabilityMacros.h>
+#import <AvailabilityMacros.h>
 
 #if MAC_OS_X_VERSION_MIN_REQUIRED >= 1070
 
-#include <dlfcn.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <xpc/xpc.h>
-
-extern "C" mach_port_t xpc_dictionary_copy_mach_send(xpc_object_t, const char*);
-
-static void WebKit2ServiceEventHandler(xpc_connection_t peer)
-{
-    xpc_connection_set_target_queue(peer, dispatch_get_main_queue());
-    xpc_connection_set_event_handler(peer, ^(xpc_object_t event) {
-        xpc_type_t type = xpc_get_type(event);
-        if (type == XPC_TYPE_ERROR) {
-            if (event == XPC_ERROR_CONNECTION_INVALID || event == XPC_ERROR_TERMINATION_IMMINENT) {
-                // FIXME: Handle this case more gracefully.
-                exit(EXIT_FAILURE);
-            }
-        } else {
-            assert(type == XPC_TYPE_DICTIONARY);
-
-            if (!strcmp(xpc_dictionary_get_string(event, "message-name"), "bootstrap")) {
-                static void* frameworkLibrary = dlopen(xpc_dictionary_get_string(event, "framework-executable-path"), RTLD_NOW);
-                if (!frameworkLibrary) {
-                    NSLog(@"Unable to load WebKit2.framework: %s\n", dlerror());
-                    exit(EXIT_FAILURE);
-                }
-
-                typedef int (*WebKitMainFunction)(xpc_connection_t connection, mach_port_t serverPort);
-                WebKitMainFunction webKitMainXPC = reinterpret_cast<WebKitMainFunction>(dlsym(frameworkLibrary, "WebKitMainXPC"));
-                if (!webKitMainXPC) {
-                    NSLog(@"Unable to find entry point in WebKit2.framework: %s\n", dlerror());
-                    exit(EXIT_FAILURE);
-                }
-
-                xpc_object_t reply = xpc_dictionary_create_reply(event);
-                xpc_dictionary_set_string(reply, "message-name", "process-finished-launching");
-                xpc_connection_send_message(xpc_dictionary_get_remote_connection(event), reply);
-                xpc_release(reply);
-
-                webKitMainXPC(peer, xpc_dictionary_copy_mach_send(event, "server-port"));
-            }
-        }
-    });
-
-    xpc_connection_resume(peer);
-}
+#import "WebProcessXPCServiceMain.h"
 
 int main(int argc, char** argv)
 {
-    xpc_main(WebKit2ServiceEventHandler);
-    return 0;
+    return WebProcessXPCServiceMain(argc, argv);
 }
 
 #else

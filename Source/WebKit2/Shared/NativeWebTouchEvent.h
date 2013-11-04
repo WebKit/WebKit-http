@@ -30,6 +30,9 @@
 
 #if PLATFORM(QT)
 #include <QTouchEvent>
+#elif PLATFORM(EFL)
+#include "ewk_touch.h"
+#include <Evas.h>
 #endif
 
 namespace WebKit {
@@ -38,6 +41,8 @@ class NativeWebTouchEvent : public WebTouchEvent {
 public:
 #if PLATFORM(QT)
     explicit NativeWebTouchEvent(const QTouchEvent*, const QTransform& fromItemTransform);
+#elif PLATFORM(EFL)
+    NativeWebTouchEvent(Ewk_Touch_Event_Type, const Eina_List*, const Evas_Modifier*, const Evas_Point*, double timestamp);
 #endif
 
 #if PLATFORM(QT)

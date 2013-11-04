@@ -34,6 +34,7 @@
 #include "DateComponents.h"
 #include "HTMLInputElement.h"
 #include "HTMLNames.h"
+#include "InputTypeNames.h"
 #include <wtf/CurrentTime.h>
 #include <wtf/DateMath.h>
 #include <wtf/MathExtras.h>
@@ -41,7 +42,9 @@
 
 #if ENABLE(INPUT_TYPE_TIME)
 #if ENABLE(INPUT_TYPE_TIME_MULTIPLE_FIELDS)
+#include "DateTimeFieldsState.h"
 #include "ElementShadow.h"
+#include "FormController.h"
 #include "KeyboardEvent.h"
 #include "ShadowRoot.h"
 #endif
@@ -258,6 +261,25 @@ bool TimeInputType::isTextField() const
     return false;
 }
 
+void TimeInputType::restoreFormControlState(const FormControlState& state)
+{
+    if (!m_dateTimeEditElement)
+        return;
+    DateComponents date;
+    setMillisecondToDateComponents(createStepRange(AnyIsDefaultStep).minimum().toDouble(), &date);
+    DateTimeFieldsState dateTimeFieldsState = DateTimeFieldsState::restoreFormControlState(state);
+    m_dateTimeEditElement->setValueAsDateTimeFieldsState(dateTimeFieldsState, date);
+    element()->setValueInternal(serialize(Decimal::fromDouble(m_dateTimeEditElement->valueAsDouble())), DispatchNoEvent);
+}
+
+FormControlState TimeInputType::saveFormControlState() const
+{
+    if (!m_dateTimeEditElement)
+        return FormControlState();
+
+    return m_dateTimeEditElement->valueAsDateTimeFieldsState().saveFormControlState();
+}
+
 void TimeInputType::setValue(const String& sanitizedValue, bool valueChanged, TextFieldEventBehavior eventBehavior)
 {
     InputType::setValue(sanitizedValue, valueChanged, eventBehavior);
@@ -280,13 +302,14 @@ void TimeInputType::updateInnerTextValue()
     if (!m_dateTimeEditElement)
         return;
 
+    Localizer& localizer = element()->document()->getLocalizer(element()->computeInheritedLanguage());
     const StepRange stepRange(createStepRange(AnyIsDefaultStep));
     DateComponents date;
     if (parseToDateComponents(element()->value(), &date))
-        m_dateTimeEditElement->setValueAsDate(stepRange, date);
+        m_dateTimeEditElement->setValueAsDate(stepRange, date, localizer);
     else {
         setMillisecondToDateComponents(stepRange.minimum().toDouble(), &date);
-        m_dateTimeEditElement->setEmptyValue(stepRange, date);
+        m_dateTimeEditElement->setEmptyValue(stepRange, date, localizer);
     }
 }
 #else

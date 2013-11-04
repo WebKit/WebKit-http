@@ -25,11 +25,11 @@
 #define SVGPathParser_h
 
 #if ENABLE(SVG)
-#include "PlatformString.h"
 #include "SVGPathConsumer.h"
 #include "SVGPathSeg.h"
 #include "SVGPathSource.h"
 #include <wtf/PassOwnPtr.h>
+#include <wtf/text/WTFString.h>
 
 namespace WebCore {
 
@@ -38,7 +38,7 @@ class SVGPathParser {
 public:
     SVGPathParser();
 
-    bool parsePathDataFromSource(PathParsingMode pathParsingMode);
+    bool parsePathDataFromSource(PathParsingMode, bool checkForInitialMoveTo = true);
     void setCurrentConsumer(SVGPathConsumer* consumer) { m_consumer = consumer; }
     void setCurrentSource(SVGPathSource* source) { m_source = source; }
     void cleanup();
