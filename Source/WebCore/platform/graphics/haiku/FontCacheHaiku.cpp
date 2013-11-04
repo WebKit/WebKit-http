@@ -47,20 +47,20 @@ void FontCache::platformInit()
 {
 }
 
-const SimpleFontData* FontCache::getFontDataForCharacters(const Font& font, const UChar* characters, int length)
+PassRefPtr<SimpleFontData> FontCache::getFontDataForCharacters(const Font& font, const UChar* characters, int length)
 {
     FontPlatformData data(font.fontDescription(), font.family().family());
     return getCachedFontData(&data);
 }
 
-SimpleFontData* FontCache::getSimilarFontPlatformData(const Font& font)
+PassRefPtr<SimpleFontData> FontCache::getSimilarFontPlatformData(const Font& font)
 {
     notImplemented();
     return 0;
 }
 
 // FIXME: implement shouldretain
-SimpleFontData* FontCache::getLastResortFallbackFont(const FontDescription& fontDescription, ShouldRetain /*shouldRetain*/)
+PassRefPtr<SimpleFontData> FontCache::getLastResortFallbackFont(const FontDescription& fontDescription, ShouldRetain /*shouldRetain*/)
 {
     font_family family;
     font_style style;
