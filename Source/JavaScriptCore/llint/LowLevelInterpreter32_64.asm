@@ -108,13 +108,14 @@ macro cCall2(function, arg1, arg2)
     if ARMv7
         move arg1, t0
         move arg2, t1
+        call function
     elsif X86
         poke arg1, 0
         poke arg2, 1
+        call function
     else
         error
     end
-    call function
 end
 
 # This barely works. arg3 and arg4 should probably be immediates.
@@ -124,15 +125,16 @@ macro cCall4(function, arg1, arg2, arg3, arg4)
         move arg2, t1
         move arg3, t2
         move arg4, t3
+        call function
     elsif X86
         poke arg1, 0
         poke arg2, 1
         poke arg3, 2
         poke arg4, 3
+        call function
     else
         error
     end
-    call function
 end
 
 macro callSlowPath(slowPath)
@@ -1006,14 +1008,14 @@ macro getScope(deBruijinIndexOperand, scopeCheck)
     # Need to conditionally skip over one scope.
     bieq TagOffset[cfr, t1, 8], EmptyValueTag, .noActivation
     scopeCheck(t0, t1)
-    loadp ScopeChainNode::next[t0], t0
+    loadp JSScope::m_next[t0], t0
 .noActivation:
     subi 1, t2
     
     btiz t2, .done
 .loop:
     scopeCheck(t0, t1)
-    loadp ScopeChainNode::next[t0], t0
+    loadp JSScope::m_next[t0], t0
     subi 1, t2
     btinz t2, .loop
 
@@ -1027,8 +1029,7 @@ _llint_op_resolve_global_dynamic:
     getScope(
         20[PC],
         macro (scope, scratch)
-            loadp ScopeChainNode::object[scope], scratch
-            bpneq JSCell::m_structure[scratch], t3, .opResolveGlobalDynamicSuperSlow
+            bpneq JSCell::m_structure[scope], t3, .opResolveGlobalDynamicSuperSlow
         end)
     resolveGlobal(7, .opResolveGlobalDynamicSlow)
     dispatch(7)
@@ -1051,7 +1052,6 @@ _llint_op_get_scoped_var:
     getScope(12[PC], macro (scope, scratch) end)
     loadi 4[PC], t1
     loadi 8[PC], t2
-    loadp ScopeChainNode::object[t0], t0
     loadp JSVariableObject::m_registers[t0], t0
     loadi TagOffset[t0, t2, 8], t3
     loadi PayloadOffset[t0, t2, 8], t0
@@ -1069,7 +1069,6 @@ _llint_op_put_scoped_var:
     loadConstantOrVariable(t1, t3, t2)
     loadi 4[PC], t1
     writeBarrier(t3, t2)
-    loadp ScopeChainNode::object[t0], t0
     loadp JSVariableObject::m_registers[t0], t0
     storei t3, TagOffset[t0, t1, 8]
     storei t2, PayloadOffset[t0, t1, 8]
@@ -1615,7 +1614,7 @@ macro doCall(slowPath)
     addp 24, PC
     lshifti 3, t3
     addp cfr, t3  # t3 contains the new value of cfr
-    loadp JSFunction::m_scopeChain[t2], t0
+    loadp JSFunction::m_scope[t2], t0
     storei t2, Callee + PayloadOffset[t3]
     storei t0, ScopeChain + PayloadOffset[t3]
     loadi 8 - 24[PC], t2
@@ -1625,8 +1624,7 @@ macro doCall(slowPath)
     storei CellTag, Callee + TagOffset[t3]
     storei CellTag, ScopeChain + TagOffset[t3]
     move t3, cfr
-    call LLIntCallLinkInfo::machineCodeTarget[t1]
-    dispatchAfterCall()
+    callTargetFunction(t1)
 
 .opCallSlow:
     slowPathForCall(6, slowPath)

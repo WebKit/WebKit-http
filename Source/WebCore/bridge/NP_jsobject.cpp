@@ -267,7 +267,7 @@ bool _NPN_Evaluate(NPP instance, NPObject* o, NPString* s, NPVariant* variant)
         JSLockHolder lock(exec);
         String scriptString = convertNPStringToUTF16(s);
         
-        JSValue returnValue = JSC::evaluate(rootObject->globalObject()->globalExec(), rootObject->globalObject()->globalScopeChain(), makeSource(scriptString), JSC::JSValue());
+        JSValue returnValue = JSC::evaluate(rootObject->globalObject()->globalExec(), makeSource(scriptString), JSC::JSValue());
 
         convertValueToNPVariant(exec, returnValue, variant);
         exec->clearException();
@@ -433,7 +433,7 @@ bool _NPN_HasMethod(NPP, NPObject* o, NPIdentifier methodName)
 void _NPN_SetException(NPObject*, const NPUTF8* message)
 {
     // Ignoring the NPObject param is consistent with the Mozilla implementation.
-    UString exception(message);
+    String exception(message);
     CInstance::setGlobalException(exception);
 }
 

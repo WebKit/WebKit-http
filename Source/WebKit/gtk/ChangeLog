@@ -1,3 +1,42 @@
+2012-08-31  José Dapena Paz  <jdapena@igalia.com>
+
+        [GTK] Assert on ChromeClientGtk::scroll with delta (0, -1).
+        https://bugs.webkit.org/show_bug.cgi?id=95590
+
+        Change the assert to avoid hitting when the delta does not have any
+        value > 0.
+
+        Reviewed by Martin Robinson.
+
+        * WebCoreSupport/ChromeClientGtk.cpp:
+        (WebKit::ChromeClient::scroll):
+
+2012-08-30  Benjamin Poulain  <bpoulain@apple.com>
+
+        Replace JSC::UString by WTF::String
+        https://bugs.webkit.org/show_bug.cgi?id=95271
+
+        Reviewed by Geoffrey Garen.
+
+        Replace UString by String.
+
+        * gdom/ConvertToGCharPrivate.h:
+        (copyAsGchar):
+
+2012-08-30  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
+
+        Use ASCIILiteral for DEFINE_STATIC_LOCAL string
+        https://bugs.webkit.org/show_bug.cgi?id=95420
+
+        Reviewed by Benjamin Poulain.
+
+        As recommended by http://trac.webkit.org/wiki/EfficientStrings,
+        WebKit needs to use ASCIILiteral for the string of DEFINE_STATIC_LOCAL.
+
+        * webkit/webkitwebsettings.cpp:
+        (webkitPlatform):
+        (webkitOSVersion):
+
 2012-08-29  José Dapena Paz  <jdapena@igalia.com>
 
         [Gtk] Process Gtk 3.4 smooth scroll events properly.

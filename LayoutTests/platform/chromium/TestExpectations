@@ -180,6 +180,10 @@ BUGWK94287 MAC WIN : fast/forms/time-multiple-fields/time-multiple-fields-appear
 BUGWK94287 MAC WIN : fast/forms/time-multiple-fields/time-multiple-fields-appearance-pseudo-classes.html = MISSING TEXT IMAGE IMAGE+TEXT PASS
 BUGWK94287 MAC WIN : fast/forms/time-multiple-fields/time-multiple-fields-appearance-style.html = MISSING TEXT IMAGE IMAGE+TEXT PASS
 
+BUGWK94916 SNOWLEOPARD WIN LINUX : fast/forms/datalist/input-appearance-range-with-padding-with-datalist.html = MISSING IMAGE
+BUGWK94916 SNOWLEOPARD WIN LINUX : fast/forms/datalist/input-appearance-range-with-transform.html = MISSING IMAGE
+BUGWK94916 SNOWLEOPARD WIN LINUX : fast/forms/datalist/input-appearance-range-with-datalist-zoomed.html = IMAGE
+
 // Proximity Events is not supported.
 BUGWK92942 SKIP : fast/dom/Proximity = PASS
 BUGWK92942 SKIP : fast/events/constructors/device-proximity-event-constructor.html = PASS
@@ -197,6 +201,7 @@ WONTFIX SKIP : platform/qt/plugins/qt-qwidget-plugin.html = PASS
 WONTFIX SKIP : platform/qt/fast/forms = PASS
 WONTFIX MAC WIN : platform/chromium-linux = TEXT IMAGE IMAGE+TEXT MISSING
 WONTFIX SKIP LINUX MAC : platform/win = PASS
+WONTFIX SKIP LINUX WIN MAC : platform/chromium-android = PASS
 
 // These tests are for -apple- and -khtml- prefixes, which we don't support
 WONTFIX SKIP : inspector/styles/vendor-prefixes.html = TIMEOUT
@@ -892,6 +897,7 @@ BUGCR145338 WONTFIX ANDROID SKIP : fast/forms/date = PASS
 BUGCR145338 WONTFIX ANDROID SKIP : fast/mediastream = PASS
 BUGCR145338 WONTFIX ANDROID SKIP : fast/notifications = PASS
 BUGCR145338 WONTFIX ANDROID SKIP : fast/speech = PASS
+BUGCR145338 WONTFIX ANDROID SKIP : http/tests/notifications = PASS
 BUGCR145338 WONTFIX ANDROID SKIP : platform/chromium/fast/forms/color = PASS
 BUGCR145338 WONTFIX ANDROID SKIP : platform/chromium/media/video-capture-preview.html = PASS // Uses mediastream
 BUGCR145338 WONTFIX ANDROID SKIP : webaudio = PASS
@@ -1796,8 +1802,8 @@ BUGCR32155 : fast/js/Object-getOwnPropertyNames.html = TEXT
 
 // Expectations from roll to 53171:53194
 // As of Oct 7, 2010, times out on all platforms when doing DEBUG costing 13 seconds on average. Skipping.
-BUGCR32308 SKIP DEBUG : fast/frames/cached-frame-counter.html = TIMEOUT
-BUGCR32308 WIN ANDROID RELEASE SLOW : fast/frames/cached-frame-counter.html = PASS
+// As of Aug 31, 2012, now times out in release. Marking flaky everywhere.
+BUGCR32308 : fast/frames/cached-frame-counter.html = TIMEOUT PASS
 
 BUGCR33293 SKIP : fast/media/lifetime.html = TIMEOUT
 
@@ -1975,7 +1981,7 @@ BUGCR47083 : fast/text/hyphenate-limit-lines.html = IMAGE IMAGE+TEXT
 BUGCR47083 : fast/text/hyphenate-limit-before-after.html = IMAGE+TEXT
 
 BUGCR48239 : fast/js/function-apply.html = TEXT
-BUGCR48239 LINUX ANDROID WIN : fast/js/function-apply-aliased.html = PASS TEXT
+BUGCR48239 : fast/js/function-apply-aliased.html = PASS TEXT
 BUGCR48239 : fast/js/function-apply-many-args.html = TIMEOUT TEXT
 
 BUGCR48859 WIN : fast/inline/continuation-outlines-with-layers-2.html = IMAGE+TEXT
@@ -2184,7 +2190,7 @@ BUGCR8729 LINUX ANDROID MAC : http/tests/multipart/invalid-image-data.html = PAS
 BUGCR10370 LINUX ANDROID WIN : fast/css/font-weight-1.html = IMAGE+TEXT
 // Registering the fonts for this test causes other processes (Adium, Firefox)
 // to spin and become unresponsive or crash.
-BUGWK50709 MAC : fast/css/font-weight-1.html = IMAGE+TEXT
+BUGWK50709 MAC : fast/css/font-weight-1.html = IMAGE
 
 /////////////////////////////////////////////////////////////////////////////
 // End DRT failures
@@ -3296,9 +3302,6 @@ BUGWK88832 XP : http/tests/xmlhttprequest/origin-exact-matching.html = PASS TIME
 
 BUGCR132898 : http/tests/websocket/tests/hybi/workers/close.html = PASS TEXT
 
-// Flaky
-BUGWK89167 : media/track/track-cue-rendering-snap-to-lines-not-set.html = TEXT PASS
-
 // Timing out on some Windows bots
 BUGWK89510 WIN : gamepad/gamepad-polling-access.html = PASS TIMEOUT
 
@@ -3489,8 +3492,15 @@ BUGWK94078 WIN RELEASE : http/tests/inspector/web-socket-frame-error.html = PASS
 
 BUGWK94256 DEBUG : fast/block/inline-children-root-linebox-crash.html = PASS CRASH
 
+// Following tests need baselines on Win and Linux 
+BUGWK94492 WIN LINUX : css3/filters/custom/custom-filter-color-matrix.html = PASS IMAGE IMAGE+TEXT TEXT MISSING
+BUGWK94492 WIN LINUX : css3/filters/custom/custom-filter-composite-source-atop.html = PASS IMAGE IMAGE+TEXT TEXT MISSING
+
 // Flaky
 BUGWK95246 : http/tests/security/mixedContent/filesystem-url-in-iframe.html = PASS TEXT
+
+BUGWK95581 : http/tests/xmlhttprequest/zero-length-response.html = TIMEOUT PASS
+BUGWK95581 : http/tests/misc/javascript-url-stop-loaders.html = TIMEOUT PASS
 
 BUGWK94261 DEBUG : http/tests/inspector/indexeddb/resources-panel.html = PASS CRASH TIMEOUT
 
@@ -3514,7 +3524,7 @@ BUGWK94528 MAC : fast/text-autosizing/nested-em-line-height.html = PASS IMAGE
 BUGWK94532 LINUX : fast/forms/formmethod-attribute-button-html.html = PASS MISSING
 
 BUGWK94660 : fast/js/create-lots-of-workers.html = PASS CRASH TIMEOUT
-BUGWK95366 DEBUG : css3/flexbox/flexitem-stretch-image.html = TEXT
+BUGWK95366 DEBUG : css3/flexbox/flexitem-stretch-image.html = TEXT PASS
 
 BUGCR67540 BUGWK94735 LINUX : fast/text/emphasis-overlap.html = IMAGE IMAGE+TEXT
 
@@ -3602,13 +3612,31 @@ BUGCR145590 ANDROID : media/video-source-type-params.html = TEXT
 BUGCR145590 ANDROID : platform/chromium/compositing/video-frame-size-change.html = TIMEOUT
 BUGCR145590 ANDROID : platform/chromium/media/video-frame-size-change.html = TIMEOUT
 
+BUGWK89167 : media/track/track-cue-rendering-snap-to-lines-not-set.html = TEXT PASS
+
+BUGWK95588 MAC : fast/dom/shadow/shadowdom-for-textarea-complex-shadow.html = IMAGE
+
 BUGWK95070 LINUX DEBUG : inspector/styles/media-queries.html = TEXT
 BUGWK95070 WIN LINUX RELEASE : inspector/styles/media-queries.html = PASS TEXT
 
 BUGWK95101 SNOWLEOPARD : fast/text/atsui-bidi-control.html = PASS TIMEOUT
+
+// These need new baselines: both new tests and new CC button has just been added.
+BUGWK95395 : media/track/track-cue-rendering-horizontal.html = IMAGE
+BUGWK95395 : media/track/track-cue-rendering-vertical.html = IMAGE
 
 // Failing due to sub-pixel layout.
 BUGWK95136 : fast/css/sticky/sticky-left-percentage.html = IMAGE
 BUGWK95136 WIN LINUX : fast/css/sticky/sticky-writing-mode-vertical-lr.html = IMAGE
 BUGWK95136 : fast/css/sticky/sticky-writing-mode-vertical-rl.html = IMAGE
 
+BUGWK95617 : fast/js/function-constructor-this-value.html = PASS TEXT
+
+//Require rebaseline after https://bugs.webkit.org/show_bug.cgi?id=80394
+BUGWK80394 MAC WIN : fast/block/margin-collapse/empty-clear-blocks.html = IMAGE+TEXT
+BUGWK80394 MAC WIN : fast/block/float/024.html = IMAGE+TEXT
+BUGWK80394 MAC WIN : fast/block/margin-collapse/025.html = TEXT
+BUGWK80394 MAC WIN : fast/block/margin-collapse/block-inside-inline/025.html = TEXT
+
+// Does not yet support new web notifications TestRunner API
+BUGWK95506 SKIP : http/tests/notifications = PASS

@@ -64,7 +64,6 @@
 #include "Nodes.h"
 #include "RegExpObject.h"
 #include "StructureStubInfo.h"
-#include "UString.h"
 #include "UnconditionalFinalizer.h"
 #include "ValueProfile.h"
 #include "Watchpoint.h"
@@ -75,6 +74,7 @@
 #include <wtf/RefPtr.h>
 #include <wtf/SegmentedVector.h>
 #include <wtf/Vector.h>
+#include <wtf/text/WTFString.h>
 
 // Set ENABLE_BYTECODE_COMMENTS to 1 to enable recording bytecode generator
 // comments for the bytecodes that it generates. This will allow
@@ -229,12 +229,14 @@ namespace JSC {
         {
             return *(binarySearch<MethodCallLinkInfo, unsigned, getMethodCallLinkInfoBytecodeIndex>(m_methodCallLinkInfos.begin(), m_methodCallLinkInfos.size(), bytecodeIndex));
         }
+#endif // ENABLE(JIT)
 
 #if ENABLE(LLINT)
         Instruction* adjustPCIfAtCallSite(Instruction*);
 #endif
         unsigned bytecodeOffset(ExecState*, ReturnAddressPtr);
 
+#if ENABLE(JIT)
         unsigned bytecodeOffsetForCallAtIndex(unsigned index)
         {
             if (!m_rareData)
@@ -254,6 +256,8 @@ namespace JSC {
         {
             m_incomingCalls.push(incoming);
         }
+#endif // ENABLE(JIT)
+
 #if ENABLE(LLINT)
         void linkIncomingCall(LLIntCallLinkInfo* incoming)
         {
@@ -262,7 +266,6 @@ namespace JSC {
 #endif // ENABLE(LLINT)
         
         void unlinkIncomingCalls();
-#endif // ENABLE(JIT)
 
 #if ENABLE(DFG_JIT) || ENABLE(LLINT)
         void setJITCodeMap(PassOwnPtr<CompactJITCodeMap> jitCodeMap)
@@ -445,7 +448,7 @@ namespace JSC {
         MacroAssemblerCodePtr getJITCodeWithArityCheck() { return m_jitCodeWithArityCheck; }
         JITCode::JITType getJITType() { return m_jitCode.jitType(); }
         ExecutableMemoryHandle* executableMemory() { return getJITCode().getExecutableMemory(); }
-        virtual JSObject* compileOptimized(ExecState*, ScopeChainNode*, unsigned bytecodeIndex) = 0;
+        virtual JSObject* compileOptimized(ExecState*, JSScope*, unsigned bytecodeIndex) = 0;
         virtual void jettison() = 0;
         enum JITCompilationResult { AlreadyCompiled, CouldNotCompile, CompiledSuccessfully };
         JITCompilationResult jitCompile(ExecState* exec)
@@ -583,7 +586,7 @@ namespace JSC {
 
         void clearEvalCache();
         
-        UString nameForRegister(int registerNumber);
+        String nameForRegister(int registerNumber);
         
         void addPropertyAccessInstruction(unsigned propertyAccessInstruction)
         {
@@ -931,7 +934,7 @@ namespace JSC {
             if (!codeOrigin.inlineCallFrame)
                 return globalObject();
             // FIXME: if we ever inline based on executable not function, this code will need to change.
-            return codeOrigin.inlineCallFrame->callee->scope()->globalObject.get();
+            return codeOrigin.inlineCallFrame->callee->scope()->globalObject();
         }
 
         // Jump Tables
@@ -1446,7 +1449,7 @@ namespace JSC {
         
 #if ENABLE(JIT)
     protected:
-        virtual JSObject* compileOptimized(ExecState*, ScopeChainNode*, unsigned bytecodeIndex);
+        virtual JSObject* compileOptimized(ExecState*, JSScope*, unsigned bytecodeIndex);
         virtual void jettison();
         virtual bool jitCompileImpl(ExecState*);
         virtual CodeBlock* replacement();
@@ -1481,7 +1484,7 @@ namespace JSC {
         
 #if ENABLE(JIT)
     protected:
-        virtual JSObject* compileOptimized(ExecState*, ScopeChainNode*, unsigned bytecodeIndex);
+        virtual JSObject* compileOptimized(ExecState*, JSScope*, unsigned bytecodeIndex);
         virtual void jettison();
         virtual bool jitCompileImpl(ExecState*);
         virtual CodeBlock* replacement();
@@ -1507,7 +1510,7 @@ namespace JSC {
         
 #if ENABLE(JIT)
     protected:
-        virtual JSObject* compileOptimized(ExecState*, ScopeChainNode*, unsigned bytecodeIndex);
+        virtual JSObject* compileOptimized(ExecState*, JSScope*, unsigned bytecodeIndex);
         virtual void jettison();
         virtual bool jitCompileImpl(ExecState*);
         virtual CodeBlock* replacement();

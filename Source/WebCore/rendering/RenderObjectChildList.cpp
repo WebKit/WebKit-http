@@ -85,9 +85,6 @@ RenderObject* RenderObjectChildList::removeChildNode(RenderObject* owner, Render
     if (oldChild->isBox())
         toRenderBox(oldChild)->deleteLineBoxWrapper();
 
-    if (!owner->documentBeingDestroyed() && notifyRenderer)
-        oldChild->willBeRemovedFromTree();
-    
     // If oldChild is the start or end of the selection, then clear the selection to
     // avoid problems of invalid pointers.
     // FIXME: The FrameSelection should be responsible for this when it
@@ -95,7 +92,13 @@ RenderObject* RenderObjectChildList::removeChildNode(RenderObject* owner, Render
     if (!owner->documentBeingDestroyed() && oldChild->isSelectionBorder())
         owner->view()->clearSelection();
 
-    // remove the child
+    if (!owner->documentBeingDestroyed() && notifyRenderer)
+        oldChild->willBeRemovedFromTree();
+
+    // WARNING: There should be no code running between willBeRemovedFromTree and the actual removal below.
+    // This is needed to avoid race conditions where willBeRemovedFromTree would dirty the tree's structure
+    // and the code running here would force an untimely rebuilding, leaving |oldChild| dangling.
+
     if (oldChild->previousSibling())
         oldChild->previousSibling()->setNextSibling(oldChild->nextSibling());
     if (oldChild->nextSibling())
@@ -337,6 +340,32 @@ static RenderObject* createRendererForBeforeAfterContent(RenderObject* owner, co
     return renderer;
 }
 
+static RenderObject* ensureBeforeAfterContainer(RenderObject* owner, PseudoId type, RenderStyle* pseudoElementStyle, Node* generatingNode, RenderObject* insertBefore)
+{
+    // Make a generated box that might be any display type now that we are able to drill down into children
+    // to find the original content properly.
+    RenderObject* generatedContentContainer = RenderObject::createObject(owner->document(), pseudoElementStyle);
+    ASSERT(generatingNode); // The styled object cannot be anonymous or else it could not have ':before' or ':after' pseudo elements.
+    generatedContentContainer->setNode(generatingNode); // This allows access to the generatingNode.
+    generatedContentContainer->setStyle(pseudoElementStyle);
+    if (!owner->isChildAllowed(generatedContentContainer, pseudoElementStyle)) {
+        // The generated content container is not allowed here -> abort.
+        generatedContentContainer->destroy();
+        return 0;
+    }
+
+    // When we don't have a first child and are part of a continuation chain,
+    // insertBefore is incorrectly set to zero above, which causes the :before
+    // child to end up at the end of continuation chain.
+    // See https://bugs.webkit.org/show_bug.cgi?id=78380.
+    if (!insertBefore && type == BEFORE && owner->virtualContinuation())
+        owner->addChildIgnoringContinuation(generatedContentContainer, 0);
+    else
+        owner->addChild(generatedContentContainer, insertBefore);
+
+    return generatedContentContainer;
+}
+
 void RenderObjectChildList::updateBeforeAfterContent(RenderObject* owner, PseudoId type, const RenderObject* styledObject)
 {
     // Double check that the document did in fact use generated content rules.  Otherwise we should not have been called.
@@ -426,41 +455,30 @@ void RenderObjectChildList::updateBeforeAfterContent(RenderObject* owner, Pseudo
         insertBefore = insertBefore->nextSibling();
 
     // Generated content consists of a single container that houses multiple children (specified
-    // by the content property).  This generated content container gets the pseudo-element style set on it.
+    // by the content property). This generated content container gets the pseudo-element style set on it.
+    // For pseudo-elements that are regions, the container is the RenderRegion.
     RenderObject* generatedContentContainer = 0;
 
-    // Walk our list of generated content and create render objects for each.
-    for (const ContentData* content = pseudoElementStyle->contentData(); content; content = content->next()) {
-        RenderObject* renderer =  createRendererForBeforeAfterContent(owner, content, pseudoElementStyle);
+    if (!pseudoElementStyle->regionThread().isEmpty())
+        generatedContentContainer = ensureBeforeAfterContainer(owner, type, pseudoElementStyle, styledObject->node(), insertBefore);
+    else {
+        // Walk our list of generated content and create render objects for each.
+        for (const ContentData* content = pseudoElementStyle->contentData(); content; content = content->next()) {
+            RenderObject* renderer = createRendererForBeforeAfterContent(owner, content, pseudoElementStyle);
 
-        if (renderer) {
-            if (!generatedContentContainer) {
-                // Make a generated box that might be any display type now that we are able to drill down into children
-                // to find the original content properly.
-                generatedContentContainer = RenderObject::createObject(owner->document(), pseudoElementStyle);
-                ASSERT(styledObject->node()); // The styled object cannot be anonymous or else it could not have ':before' or ':after' pseudo elements.
-                generatedContentContainer->setNode(styledObject->node()); // This allows access to the generatingNode.
-                generatedContentContainer->setStyle(pseudoElementStyle);
-                if (!owner->isChildAllowed(generatedContentContainer, pseudoElementStyle)) {
-                    // The generated content container is not allowed here -> abort.
-                    generatedContentContainer->destroy();
-                    renderer->destroy();
-                    return;
+            if (renderer) {
+                if (!generatedContentContainer) {
+                    generatedContentContainer = ensureBeforeAfterContainer(owner, type, pseudoElementStyle, styledObject->node(), insertBefore);
+                    if (!generatedContentContainer) {
+                        renderer->destroy();
+                        return;
+                    }
                 }
-
-                // When we don't have a first child and are part of a continuation chain,
-                // insertBefore is incorrectly set to zero above, which causes the :before
-                // child to end up at the end of continuation chain.
-                // See https://bugs.webkit.org/show_bug.cgi?id=78380.
-                if (!insertBefore && type == BEFORE && owner->virtualContinuation())
-                    owner->addChildIgnoringContinuation(generatedContentContainer, 0);
+                if (generatedContentContainer->isChildAllowed(renderer, pseudoElementStyle))
+                    generatedContentContainer->addChild(renderer);
                 else
-                    owner->addChild(generatedContentContainer, insertBefore);
+                    renderer->destroy();
             }
-            if (generatedContentContainer->isChildAllowed(renderer, pseudoElementStyle))
-                generatedContentContainer->addChild(renderer);
-            else
-                renderer->destroy();
         }
     }
 

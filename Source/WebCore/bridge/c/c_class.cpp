@@ -32,7 +32,6 @@
 #include "c_instance.h"
 #include "c_runtime.h"
 #include "npruntime_impl.h"
-#include <runtime/ScopeChain.h>
 #include <runtime/Identifier.h>
 #include <runtime/JSGlobalObject.h>
 #include <runtime/JSObject.h>
@@ -73,7 +72,7 @@ CClass* CClass::classForIsA(NPClass* isa)
 
 MethodList CClass::methodsNamed(PropertyName propertyName, Instance* instance) const
 {
-    UString name(propertyName.publicName());
+    String name(propertyName.publicName());
     
     MethodList methodList;
 
@@ -97,7 +96,7 @@ MethodList CClass::methodsNamed(PropertyName propertyName, Instance* instance) c
 
 Field* CClass::fieldNamed(PropertyName propertyName, Instance* instance) const
 {
-    UString name(propertyName.publicName());
+    String name(propertyName.publicName());
     
     Field* aField = _fields.get(name.impl());
     if (aField)

@@ -213,7 +213,7 @@ void QtInstance::getPropertyNames(ExecState* exec, PropertyNameArray& array)
             QMetaMethod method = meta->method(i);
             if (method.access() != QMetaMethod::Private) {
                 QByteArray sig = method.methodSignature();
-                array.add(Identifier(exec, UString(sig.constData(), sig.length())));
+                array.add(Identifier(exec, String(sig.constData(), sig.length())));
             }
         }
     }
@@ -303,9 +303,6 @@ JSValue QtInstance::valueOf(ExecState* exec) const
     return stringValue(exec);
 }
 
-// In qt_runtime.cpp
-QVariant convertValueToQVariant(ExecState*, JSValue, QMetaType::Type hint, int *distance);
-
 QByteArray QtField::name() const
 {
     if (m_type == MetaProperty)
@@ -360,7 +357,12 @@ void QtField::setValueToInstance(ExecState* exec, const Instance* inst, JSValue 
             argtype = (QMetaType::Type) m_property.userType();
 
         // dynamic properties just get any QVariant
-        QVariant val = convertValueToQVariant(exec, aValue, argtype, 0);
+        JSValueRef exception = 0;
+        QVariant val = convertValueToQVariant(toRef(exec), toRef(exec, aValue), argtype, 0, &exception);
+        if (exception) {
+            throwError(exec, toJS(exec, exception));
+            return;
+        }
         if (m_type == MetaProperty) {
             if (m_property.isWritable())
                 m_property.write(obj, val);

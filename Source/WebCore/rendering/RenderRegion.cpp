@@ -104,6 +104,11 @@ LayoutRect RenderRegion::overflowRectForFlowThreadPortion(LayoutRect flowThreadP
     return clipRect;
 }
 
+LayoutUnit RenderRegion::pageLogicalTopForOffset(LayoutUnit /* offset */) const
+{
+    return flowThread()->isHorizontalWritingMode() ? flowThreadPortionRect().y() : flowThreadPortionRect().x();
+}
+
 bool RenderRegion::isFirstRegion() const
 {
     ASSERT(isValid() && m_flowThread);
@@ -145,7 +150,7 @@ bool RenderRegion::nodeAtPoint(const HitTestRequest& request, HitTestResult& res
         if (m_flowThread && m_flowThread->hitTestFlowThreadPortionInRegion(this, flowThreadPortionRect(), flowThreadPortionOverflowRect(), request, result, locationInContainer, LayoutPoint(adjustedLocation.x() + borderLeft() + paddingLeft(), adjustedLocation.y() + borderTop() + paddingTop())))
             return true;
         updateHitTestResult(result, locationInContainer.point() - toLayoutSize(adjustedLocation));
-        if (!result.addNodeToRectBasedTestResult(node(), locationInContainer, boundsRect))
+        if (!result.addNodeToRectBasedTestResult(generatingNode(), locationInContainer, boundsRect))
             return true;
     }
 
@@ -156,6 +161,8 @@ void RenderRegion::checkRegionStyle()
 {
     ASSERT(m_flowThread);
     bool customRegionStyle = false;
+
+    // FIXME: Region styling doesn't work for pseudo elements.
     if (node()) {
         Element* regionElement = static_cast<Element*>(node());
         customRegionStyle = view()->document()->styleResolver()->checkRegionStyle(regionElement);
@@ -186,7 +193,7 @@ void RenderRegion::layout()
         LayoutRect oldRegionRect(flowThreadPortionRect());
         if (!isHorizontalWritingMode())
             oldRegionRect = oldRegionRect.transposedRect();
-        if (oldRegionRect.width() != pageLogicalWidth() || oldRegionRect.height() != logicalHeightOfAllFlowThreadContent())
+        if (oldRegionRect.width() != pageLogicalWidth() || oldRegionRect.height() != pageLogicalHeight())
             m_flowThread->invalidateRegions();
     }
 
@@ -200,6 +207,34 @@ void RenderRegion::layout()
     // RenderFlowThread itself).
     //
     // We'll need to expand RenderBoxRegionInfo to also hold left and right overflow values.
+}
+
+void RenderRegion::repaintFlowThreadContent(const LayoutRect& repaintRect, bool immediate) const
+{
+    repaintFlowThreadContentRectangle(repaintRect, immediate, flowThreadPortionRect(), flowThreadPortionOverflowRect(), contentBoxRect().location());
+}
+
+void RenderRegion::repaintFlowThreadContentRectangle(const LayoutRect& repaintRect, bool immediate, const LayoutRect& flowThreadPortionRect, const LayoutRect& flowThreadPortionOverflowRect, const LayoutPoint& regionLocation) const
+{
+    // We only have to issue a repaint in this region if the region rect intersects the repaint rect.
+    LayoutRect flippedFlowThreadPortionRect(flowThreadPortionRect);
+    LayoutRect flippedFlowThreadPortionOverflowRect(flowThreadPortionOverflowRect);
+    flowThread()->flipForWritingMode(flippedFlowThreadPortionRect); // Put the region rects into physical coordinates.
+    flowThread()->flipForWritingMode(flippedFlowThreadPortionOverflowRect);
+
+    LayoutRect clippedRect(repaintRect);
+    clippedRect.intersect(flippedFlowThreadPortionOverflowRect);
+    if (clippedRect.isEmpty())
+        return;
+
+    // Put the region rect into the region's physical coordinate space.
+    clippedRect.setLocation(regionLocation + (clippedRect.location() - flippedFlowThreadPortionRect.location()));
+
+    // Now switch to the region's writing mode coordinate space and let it repaint itself.
+    flipForWritingMode(clippedRect);
+    
+    // Issue the repaint.
+    repaintRectangle(clippedRect, immediate);
 }
 
 void RenderRegion::installFlowThread()
@@ -394,6 +429,7 @@ PassRefPtr<RenderStyle> RenderRegion::computeStyleInRegion(const RenderObject* o
     ASSERT(!object->isAnonymous());
     ASSERT(object->node() && object->node()->isElementNode());
 
+    // FIXME: Region styling fails for pseudo-elements because the renderers don't have a node.
     Element* element = toElement(object->node());
     RefPtr<RenderStyle> renderObjectRegionStyle = object->view()->document()->styleResolver()->styleForElement(element, 0, DisallowStyleSharing, MatchAllRules, this);
 

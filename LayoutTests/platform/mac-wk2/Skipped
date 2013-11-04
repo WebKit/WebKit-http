@@ -156,8 +156,6 @@ fast/events/wheelevent-in-vertical-scrollbar-in-rtl.html
 fast/events/wheelevent-direction-inverted-from-device.html
 fast/forms/drag-into-textarea.html
 fast/forms/drag-out-of-textarea.html
-fast/forms/get-file-upload.html
-fast/forms/input-file-re-render.html
 fast/forms/input-readonly-autoscroll.html
 fast/forms/input-text-drag-down.html
 fast/forms/listbox-typeahead-cyrillic.html
@@ -232,10 +230,6 @@ http/tests/navigation/https-in-page-cache.html
 # [WK2] http/tests/security/contentSecurityPolicy/script-src-star-cross-scheme.html fails after r97360
 # https://bugs.webkit.org/show_bug.cgi?id=70245
 http/tests/security/contentSecurityPolicy/script-src-star-cross-scheme.html
-
-# [WK2] http/tests/websocket/tests/hixie76/frame-lengths.html times out on mac-wk2
-# https://bugs.webkit.org/show_bug.cgi?id=81624
-http/tests/websocket/tests/hixie76/frame-lengths.html
 
 # [WK2] Four http/tests/xmlhttprequest tests fail on mac-wk2
 # https://bugs.webkit.org/show_bug.cgi?id=81627
@@ -374,16 +368,6 @@ svg/transforms/change-transform-origin-css.xhtml
 # https://bugs.webkit.org/show_bug.cgi?id=82939
 sputnik/Unicode/Unicode_218/S7.6_A2.4.html
 sputnik/Unicode/Unicode_218/S7.6_A5.2_T1.html
-
-# Asserts under JSC::DFG::SpeculativeJIT::typedArrayDescriptor
-# https://bugs.webkit.org/show_bug.cgi?id=95398
-fast/js/dfg-int32array.html
-fast/js/dfg-float32array.html
-fast/js/dfg-uint8clampedarray.html
-fast/js/dfg-poison-fuzz.html
-fast/js/dfg-float64array.html
-fast/js/dfg-int32array-overflow-values.html
-fast/js/dfg-inline-function-dot-caller.html
 
 ### END OF (3) Unclassified failures
 ########################################

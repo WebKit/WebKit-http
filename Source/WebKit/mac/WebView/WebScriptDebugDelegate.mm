@@ -175,18 +175,18 @@ NSString * const WebScriptErrorLineNumberKey = @"WebScriptErrorLineNumber";
         return [NSArray array];
 
 
-    ScopeChainNode* scopeChain = _private->debuggerCallFrame->scopeChain();
-    JSLockHolder lock(scopeChain->globalData);
-    if (!scopeChain->next)  // global frame
+    JSScope* scope = _private->debuggerCallFrame->scope();
+    JSLockHolder lock(scope->globalData());
+    if (!scope->next())  // global frame
         return [NSArray arrayWithObject:_private->globalObject];
 
     NSMutableArray *scopes = [[NSMutableArray alloc] init];
 
-    ScopeChainIterator end = scopeChain->end();
-    for (ScopeChainIterator it = scopeChain->begin(); it != end; ++it) {
+    ScopeChainIterator end = scope->end();
+    for (ScopeChainIterator it = scope->begin(); it != end; ++it) {
         JSObject* object = it.get();
         if (object->isActivationObject())
-            object = DebuggerActivation::create(*scopeChain->globalData, object);
+            object = DebuggerActivation::create(*scope->globalData(), object);
         [scopes addObject:[self _convertValueToObjcValue:object]];
     }
 
@@ -203,8 +203,8 @@ NSString * const WebScriptErrorLineNumberKey = @"WebScriptErrorLineNumber";
     if (!_private->debuggerCallFrame)
         return nil;
 
-    const UString* functionName = _private->debuggerCallFrame->functionName();
-    return functionName ? toNSString(*functionName) : nil;
+    const String* functionName = _private->debuggerCallFrame->functionName();
+    return functionName ? nsStringNilIfEmpty(*functionName) : nil;
 }
 
 // Returns the pending exception for this frame (nil if none).
@@ -242,14 +242,14 @@ NSString * const WebScriptErrorLineNumberKey = @"WebScriptErrorLineNumber";
         DynamicGlobalObjectScope globalObjectScope(globalObject->globalData(), globalObject);
 
         JSValue exception;
-        JSValue result = evaluateInGlobalCallFrame(stringToUString(script), exception, globalObject);
+        JSValue result = evaluateInGlobalCallFrame(script, exception, globalObject);
         if (exception)
             return [self _convertValueToObjcValue:exception];
         return result ? [self _convertValueToObjcValue:result] : nil;        
     }
 
     JSValue exception;
-    JSValue result = _private->debuggerCallFrame->evaluate(stringToUString(script), exception);
+    JSValue result = _private->debuggerCallFrame->evaluate(script, exception);
     if (exception)
         return [self _convertValueToObjcValue:exception];
     return result ? [self _convertValueToObjcValue:result] : nil;

@@ -33,7 +33,7 @@ namespace JSC  {
     class Arguments;
     class JSActivation;
     class Interpreter;
-    class ScopeChainNode;
+    class JSScope;
 
     // Represents the current state of script execution.
     // Passed as the first argument to most functions.
@@ -42,10 +42,10 @@ namespace JSC  {
         JSValue calleeAsValue() const { return this[RegisterFile::Callee].jsValue(); }
         JSObject* callee() const { return this[RegisterFile::Callee].function(); }
         CodeBlock* codeBlock() const { return this[RegisterFile::CodeBlock].Register::codeBlock(); }
-        ScopeChainNode* scopeChain() const
+        JSScope* scope() const
         {
-            ASSERT(this[RegisterFile::ScopeChain].Register::scopeChain());
-            return this[RegisterFile::ScopeChain].Register::scopeChain();
+            ASSERT(this[RegisterFile::ScopeChain].Register::scope());
+            return this[RegisterFile::ScopeChain].Register::scope();
         }
 
         // Global object in which execution began.
@@ -53,13 +53,13 @@ namespace JSC  {
 
         // Global object in which the currently executing code was defined.
         // Differs from dynamicGlobalObject() during function calls across web browser frames.
-        inline JSGlobalObject* lexicalGlobalObject() const;
+        JSGlobalObject* lexicalGlobalObject() const;
 
         // Differs from lexicalGlobalObject because this will have DOM window shell rather than
         // the actual DOM window, which can't be "this" for security reasons.
-        inline JSObject* globalThisValue() const;
+        JSObject* globalThisValue() const;
 
-        inline JSGlobalData& globalData() const;
+        JSGlobalData& globalData() const;
 
         // Convenience functions for access to global data.
         // It takes a few memory references to get from a call frame to the global data
@@ -103,7 +103,7 @@ namespace JSC  {
         CallFrame& operator=(const Register& r) { *static_cast<Register*>(this) = r; return *this; }
 
         CallFrame* callerFrame() const { return this[RegisterFile::CallerFrame].callFrame(); }
-#if ENABLE(JIT)
+#if ENABLE(JIT) || ENABLE(LLINT)
         ReturnAddressPtr returnPC() const { return ReturnAddressPtr(this[RegisterFile::ReturnPC].vPC()); }
         bool hasReturnPC() const { return !!this[RegisterFile::ReturnPC].vPC(); }
         void clearReturnPC() { registers()[RegisterFile::ReturnPC] = static_cast<Instruction*>(0); }
@@ -166,16 +166,16 @@ namespace JSC  {
 #endif
 
         void setCallerFrame(CallFrame* callerFrame) { static_cast<Register*>(this)[RegisterFile::CallerFrame] = callerFrame; }
-        void setScopeChain(ScopeChainNode* scopeChain) { static_cast<Register*>(this)[RegisterFile::ScopeChain] = scopeChain; }
+        void setScope(JSScope* scope) { static_cast<Register*>(this)[RegisterFile::ScopeChain] = scope; }
 
-        ALWAYS_INLINE void init(CodeBlock* codeBlock, Instruction* vPC, ScopeChainNode* scopeChain,
+        ALWAYS_INLINE void init(CodeBlock* codeBlock, Instruction* vPC, JSScope* scope,
             CallFrame* callerFrame, int argc, JSObject* callee)
         {
             ASSERT(callerFrame); // Use noCaller() rather than 0 for the outer host call frame caller.
             ASSERT(callerFrame == noCaller() || callerFrame->removeHostCallFrameFlag()->registerFile()->end() >= this);
 
             setCodeBlock(codeBlock);
-            setScopeChain(scopeChain);
+            setScope(scope);
             setCallerFrame(callerFrame);
             setReturnPC(vPC); // This is either an Instruction* or a pointer into JIT generated code stored as an Instruction*.
             setArgumentCountIncludingThis(argc); // original argument count (for the sake of the "arguments" object)
@@ -183,9 +183,9 @@ namespace JSC  {
         }
 
         // Read a register from the codeframe (or constant from the CodeBlock).
-        inline Register& r(int);
+        Register& r(int);
         // Read a register for a non-constant 
-        inline Register& uncheckedR(int);
+        Register& uncheckedR(int);
 
         // Access to arguments.
         size_t argumentCount() const { return argumentCountIncludingThis() - 1; }

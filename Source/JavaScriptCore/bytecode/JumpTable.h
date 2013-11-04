@@ -31,9 +31,9 @@
 #define JumpTable_h
 
 #include "MacroAssembler.h"
-#include "UString.h"
 #include <wtf/HashMap.h>
 #include <wtf/Vector.h>
+#include <wtf/text/StringImpl.h>
 
 namespace JSC {
 

@@ -36,7 +36,7 @@ void CallFrame::dumpCaller()
 {
     int signedLineNumber;
     intptr_t sourceID;
-    UString urlString;
+    String urlString;
     JSValue function;
     
     interpreter()->retrieveLastCaller(this, signedLineNumber, sourceID, urlString, function);
@@ -139,7 +139,7 @@ CallFrame* CallFrame::trueCallFrame(AbstractPC pc)
         // Fill in the inlinedCaller
         inlinedCaller->setCodeBlock(machineCodeBlock);
         
-        inlinedCaller->setScopeChain(calleeAsFunction->scope());
+        inlinedCaller->setScope(calleeAsFunction->scope());
         if (nextInlineCallFrame)
             inlinedCaller->setCallerFrame(this + nextInlineCallFrame->stackOffset);
         else

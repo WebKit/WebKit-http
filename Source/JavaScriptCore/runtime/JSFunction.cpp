@@ -38,7 +38,6 @@
 #include "ObjectPrototype.h"
 #include "Parser.h"
 #include "PropertyNameArray.h"
-#include "ScopeChainMark.h"
 
 using namespace WTF;
 using namespace Unicode;
@@ -59,7 +58,7 @@ bool JSFunction::isHostFunctionNonInline() const
     return isHostFunction();
 }
 
-JSFunction* JSFunction::create(ExecState* exec, JSGlobalObject* globalObject, int length, const UString& name, NativeFunction nativeFunction, Intrinsic intrinsic, NativeFunction nativeConstructor)
+JSFunction* JSFunction::create(ExecState* exec, JSGlobalObject* globalObject, int length, const String& name, NativeFunction nativeFunction, Intrinsic intrinsic, NativeFunction nativeConstructor)
 {
     NativeExecutable* executable;
 #if !ENABLE(JIT)
@@ -81,18 +80,18 @@ JSFunction* JSFunction::create(ExecState* exec, JSGlobalObject* globalObject, in
 JSFunction::JSFunction(ExecState* exec, JSGlobalObject* globalObject, Structure* structure)
     : Base(exec->globalData(), structure)
     , m_executable()
-    , m_scopeChain(exec->globalData(), this, globalObject->globalScopeChain())
+    , m_scope(exec->globalData(), this, globalObject)
 {
 }
 
-JSFunction::JSFunction(ExecState* exec, FunctionExecutable* executable, ScopeChainNode* scopeChainNode)
-    : Base(exec->globalData(), scopeChainNode->globalObject->functionStructure())
+JSFunction::JSFunction(ExecState* exec, FunctionExecutable* executable, JSScope* scope)
+    : Base(exec->globalData(), scope->globalObject()->functionStructure())
     , m_executable(exec->globalData(), this, executable)
-    , m_scopeChain(exec->globalData(), this, scopeChainNode)
+    , m_scope(exec->globalData(), this, scope)
 {
 }
 
-void JSFunction::finishCreation(ExecState* exec, NativeExecutable* executable, int length, const UString& name)
+void JSFunction::finishCreation(ExecState* exec, NativeExecutable* executable, int length, const String& name)
 {
     Base::finishCreation(exec->globalData());
     ASSERT(inherits(&s_info));
@@ -101,18 +100,18 @@ void JSFunction::finishCreation(ExecState* exec, NativeExecutable* executable, i
     putDirect(exec->globalData(), exec->propertyNames().length, jsNumber(length), DontDelete | ReadOnly | DontEnum);
 }
 
-void JSFunction::finishCreation(ExecState* exec, FunctionExecutable* executable, ScopeChainNode* scopeChainNode)
+void JSFunction::finishCreation(ExecState* exec, FunctionExecutable* executable, JSScope* scope)
 {
     JSGlobalData& globalData = exec->globalData();
     Base::finishCreation(globalData);
     ASSERT(inherits(&s_info));
 
     // Switching the structure here is only safe if we currently have the function structure!
-    ASSERT(structure() == scopeChainNode->globalObject->functionStructure());
+    ASSERT(structure() == scope->globalObject()->functionStructure());
     setStructureAndReallocateStorageIfNecessary(
         globalData,
-        scopeChainNode->globalObject->namedFunctionStructure());
-    putDirectOffset(globalData, scopeChainNode->globalObject->functionNameOffset(), executable->nameValue());
+        scope->globalObject()->namedFunctionStructure());
+    putDirectOffset(globalData, scope->globalObject()->functionNameOffset(), executable->nameValue());
 }
 
 Structure* JSFunction::cacheInheritorID(ExecState* exec)
@@ -125,29 +124,29 @@ Structure* JSFunction::cacheInheritorID(ExecState* exec)
     return m_cachedInheritorID.get();
 }
 
-const UString& JSFunction::name(ExecState* exec)
+const String& JSFunction::name(ExecState* exec)
 {
     return asString(getDirect(exec->globalData(), exec->globalData().propertyNames->name))->tryGetValue();
 }
 
-const UString JSFunction::displayName(ExecState* exec)
+const String JSFunction::displayName(ExecState* exec)
 {
     JSValue displayName = getDirect(exec->globalData(), exec->globalData().propertyNames->displayName);
     
     if (displayName && isJSString(displayName))
         return asString(displayName)->tryGetValue();
     
-    return UString();
+    return String();
 }
 
-const UString JSFunction::calculatedDisplayName(ExecState* exec)
+const String JSFunction::calculatedDisplayName(ExecState* exec)
 {
-    const UString explicitName = displayName(exec);
+    const String explicitName = displayName(exec);
     
     if (!explicitName.isEmpty())
         return explicitName;
     
-    const UString actualName = name(exec);
+    const String actualName = name(exec);
     if (!actualName.isEmpty() || isHostFunction())
         return actualName;
     
@@ -169,7 +168,7 @@ void JSFunction::visitChildren(JSCell* cell, SlotVisitor& visitor)
     ASSERT(thisObject->structure()->typeInfo().overridesVisitChildren());
     Base::visitChildren(thisObject, visitor);
 
-    visitor.append(&thisObject->m_scopeChain);
+    visitor.append(&thisObject->m_scope);
     visitor.append(&thisObject->m_executable);
 }
 
@@ -181,7 +180,7 @@ CallType JSFunction::getCallData(JSCell* cell, CallData& callData)
         return CallTypeHost;
     }
     callData.js.functionExecutable = thisObject->jsExecutable();
-    callData.js.scopeChain = thisObject->scope();
+    callData.js.scope = thisObject->scope();
     return CallTypeJS;
 }
 
@@ -450,12 +449,12 @@ ConstructType JSFunction::getConstructData(JSCell* cell, ConstructData& construc
         return ConstructTypeHost;
     }
     constructData.js.functionExecutable = thisObject->jsExecutable();
-    constructData.js.scopeChain = thisObject->scope();
+    constructData.js.scope = thisObject->scope();
     return ConstructTypeJS;
 }
     
 
-UString getCalculatedDisplayName(CallFrame* callFrame, JSObject* object)
+String getCalculatedDisplayName(CallFrame* callFrame, JSObject* object)
 {
     if (JSFunction* function = jsDynamicCast<JSFunction*>(object))
         return function->calculatedDisplayName(callFrame);

@@ -52,10 +52,6 @@ class BUrl;
 #include "KURLGooglePrivate.h"
 #endif
 
-#if USE(JSC)
-#include <runtime/UString.h>
-#endif
-
 namespace WebCore {
 
 class TextEncoding;

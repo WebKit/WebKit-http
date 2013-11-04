@@ -1,3 +1,115 @@
+2012-08-31  Pratik Solanki  <psolanki@apple.com>
+
+        objc_msgSend and IMP should be cast appropriately before using
+        https://bugs.webkit.org/show_bug.cgi?id=95242
+
+        Reviewed by Benjamin Poulain.
+
+        Fix for older compilers. Pass id as the return type to the template
+        instead of relying on default type.
+
+        * wtf/Functional.h:
+        (WTF::R):
+        * wtf/ObjcRuntimeExtras.h:
+
+2012-08-31  Michael Saboff  <msaboff@apple.com>
+
+        CSS Parser should directly parse 8 bit source strings
+        https://bugs.webkit.org/show_bug.cgi?id=95207
+
+        Reviewed by Geoffrey Garen.
+
+        * wtf/text/StringImpl.h:
+        (WTF::equalIgnoringCase): Added (const char*, const LChar*, unsigned) flavor to support
+        8 bit CSS parser work.
+
+2012-08-30  Benjamin Poulain  <bpoulain@apple.com>
+
+        AtomicString(ASCIILiteral) should not compile
+        https://bugs.webkit.org/show_bug.cgi?id=95413
+
+        Reviewed by Adam Barth.
+
+        * wtf/text/AtomicString.h:
+        (AtomicString): Declare the constructor from ASCIILiteral private to ensure it is
+        not used by accident.
+
+2012-08-30  Benjamin Poulain  <bpoulain@apple.com>
+
+        Ambiguous operator[]  after r127191 on some compiler
+        https://bugs.webkit.org/show_bug.cgi?id=95509
+
+        Reviewed by Simon Fraser.
+
+        * wtf/text/WTFString.h:
+        (WTF::String::characterAt): At this as a synonym to operator[] to attempt a build fix.
+
+2012-08-30  Mark Lam  <mark.lam@apple.com>
+
+        Render unto #ifdef's that which belong to them.
+        https://bugs.webkit.org/show_bug.cgi?id=95482.
+
+        Reviewed by Filip Pizlo.
+
+        * wtf/Platform.h: Added ENABLE(COMPUTED_GOTO_OPCODES).
+
+2012-08-30  Pratik Solanki  <psolanki@apple.com>
+
+        objc_msgSend and IMP should be cast appropriately before using
+        https://bugs.webkit.org/show_bug.cgi?id=95242
+
+        Reviewed by Benjamin Poulain.
+
+        Add new templates wtfObjcMsgSend and wtfCallIMP that do the appropriate
+        casts to correctly typed function pointers before calling objc_msgSend
+        and IMP methods directly.
+
+        * wtf/Functional.h:
+        (WTF::R): Use wtfObjcMsgSend.
+        * wtf/ObjcRuntimeExtras.h: Added.
+        (wtfObjcMsgSend):
+        (wtfCallIMP):
+
+2012-08-30  Benjamin Poulain  <bpoulain@apple.com>
+
+        Replace JSC::UString by WTF::String
+        https://bugs.webkit.org/show_bug.cgi?id=95271
+
+        Reviewed by Geoffrey Garen.
+
+        * wtf/Platform.h: Useless edit to force a full build. This is needed for some bots for some reason.
+        * wtf/text/WTFString.h: Export a symbol that was exported on UString and needed in WebCore.
+
+        Add String::getCharactersWithUpconvert<>(), which is similar to String::getCharacters<>() but with the same
+        behaviors as UString::getCharacters<>().
+
+        String::getCharactersWithUpconvert<>() is useful when manipulating multiple strings, it allow writting code
+        using 16bits characters if any of the input String is not 8bit.
+
+2012-08-30  Yong Li  <yoli@rim.com>
+
+        Vector::shrinkToFit should use realloc when suitable.
+        https://bugs.webkit.org/show_bug.cgi?id=94810
+
+        Reviewed by Benjamin Poulain.
+
+        Only tested on BlackBerry. So it is wrapped with PLATFORM(BLACKBERRY) in the mean time.
+        Use realloc to shrink buffer when inline buffer isn't involved and and canMoveWithMemcpy is true.
+
+        When running the test code attached to the bug, it gives 30-45% performance boost for the large blocks
+        (Every test cycle includes an extra pair of malloc/free, so the boost on shrinkToFit() is even bigger)
+        Performance impact on small blocks is not noticeable. (Tested on BlackBerry)
+
+        * wtf/Vector.h:
+        (WTF::VectorBufferBase::shouldReallocateBuffer):
+        (VectorBufferBase):
+        (WTF::VectorBufferBase::reallocateBuffer):
+        (VectorBuffer):
+        (WTF::VectorBuffer::shouldReallocateBuffer):
+        (WTF::VectorBuffer::reallocateBuffer):
+        (WTF::VectorBuffer::inlineBuffer):
+        (WTF::::shrinkCapacity):
+
 2012-08-30  Patrick Gansterer  <paroga@webkit.org>
 
         Build fix for COMPILER(MSVC) && !CPU(X86) after r127001.

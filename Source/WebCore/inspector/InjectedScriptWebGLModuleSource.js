@@ -40,7 +40,7 @@ var TypeUtils = {
      * http://www.khronos.org/registry/typedarray/specs/latest/#7
      * @type {Array.<Function>}
      */
-    typedArrayClasses: (function(typeNames) {
+    _typedArrayClasses: (function(typeNames) {
         var result = [];
         for (var i = 0, n = typeNames.length; i < n; ++i) {
             if (inspectedWindow[typeNames[i]])
@@ -55,7 +55,7 @@ var TypeUtils = {
      */
     typedArrayClass: function(array)
     {
-        var classes = TypeUtils.typedArrayClasses;
+        var classes = TypeUtils._typedArrayClasses;
         for (var i = 0, n = classes.length; i < n; ++i) {
             if (array instanceof classes[i])
                 return classes[i];
@@ -93,7 +93,7 @@ var TypeUtils = {
 
         if (obj instanceof HTMLCanvasElement) {
             var result = obj.cloneNode(true);
-            var context = result.getContext("2d");
+            var context = Resource.wrappedObject(result.getContext("2d"));
             context.drawImage(obj, 0, 0);
             return result;
         }
@@ -121,18 +121,104 @@ var TypeUtils = {
      */
     _dummyCanvas2dContext: function()
     {
-        var context = TypeUtils._dummyCanvas2dContext;
+        var context = TypeUtils._dummyCanvas2dContextInstance;
         if (!context) {
             var canvas = inspectedWindow.document.createElement("canvas");
-            context = canvas.getContext("2d");
-            var contextResource = Resource.forObject(context);
-            if (contextResource)
-                context = contextResource.wrappedObject();
-            TypeUtils._dummyCanvas2dContext = context;
+            context = /** @type {CanvasRenderingContext2D} */ Resource.wrappedObject(canvas.getContext("2d"));
+            TypeUtils._dummyCanvas2dContextInstance = context;
         }
         return context;
     }
 }
+
+/**
+ * @interface
+ */
+function StackTrace()
+{
+}
+
+StackTrace.prototype = {
+    /**
+     * @param {number} index
+     * @return {{sourceURL: string, lineNumber: number, columnNumber: number}}
+     */
+    callFrame: function(index)
+    {
+    }
+}
+
+/**
+ * @param {number=} stackTraceLimit
+ * @param {Function=} topMostFunctionToIgnore
+ * @return {StackTrace}
+ */
+StackTrace.create = function(stackTraceLimit, topMostFunctionToIgnore)
+{
+    if (typeof Error.captureStackTrace === "function")
+        return new StackTraceV8(stackTraceLimit, topMostFunctionToIgnore || arguments.callee);
+    // FIXME: Support JSC, and maybe other browsers.
+    return null;
+}
+
+/**
+ * @constructor
+ * @implements {StackTrace}
+ * @param {number=} stackTraceLimit
+ * @param {Function=} topMostFunctionToIgnore
+ * @see http://code.google.com/p/v8/wiki/JavaScriptStackTraceApi
+ */
+function StackTraceV8(stackTraceLimit, topMostFunctionToIgnore)
+{
+    StackTrace.call(this);
+    var oldStackTraceLimit = Error.stackTraceLimit;
+    if (typeof stackTraceLimit === "number")
+        Error.stackTraceLimit = stackTraceLimit;
+
+    this._error = /** @type {{stack: Array}} */ {};
+    Error.captureStackTrace(this._error, topMostFunctionToIgnore || arguments.callee);
+
+    Error.stackTraceLimit = oldStackTraceLimit;
+}
+
+StackTraceV8.prototype = {
+    /**
+     * @override
+     * @param {number} index
+     * @return {{sourceURL: string, lineNumber: number, columnNumber: number}}
+     */
+    callFrame: function(index)
+    {
+        if (!this._stackTrace)
+            this._prepareStackTrace();
+        return this._stackTrace[index];
+    },
+
+    _prepareStackTrace: function()
+    {
+        var oldPrepareStackTrace = Error.prepareStackTrace;
+        /**
+         * @param {Object} error
+         * @param {Array.<CallSite>} structuredStackTrace
+         * @return {Array.<{sourceURL: string, lineNumber: number, columnNumber: number}>}
+         */
+        Error.prepareStackTrace = function(error, structuredStackTrace)
+        {
+            return structuredStackTrace.map(function(callSite) {
+                return {
+                    sourceURL: callSite.getFileName(),
+                    lineNumber: callSite.getLineNumber(),
+                    columnNumber: callSite.getColumnNumber()
+                };
+            });
+        }
+        this._stackTrace = this._error.stack;
+        Error.prepareStackTrace = oldPrepareStackTrace;
+        delete this._error; // No longer needed, free memory.
+    }
+}
+
+StackTraceV8.prototype.__proto__ = StackTrace.prototype;
 
 /**
  * @constructor
@@ -193,13 +279,15 @@ Cache.prototype = {
  * @param {string} functionName
  * @param {Array|Arguments} args
  * @param {Resource|*=} result
+ * @param {StackTrace=} stackTrace
  */
-function Call(thisObject, functionName, args, result)
+function Call(thisObject, functionName, args, result, stackTrace)
 {
     this._thisObject = thisObject;
     this._functionName = functionName;
     this._args = Array.prototype.slice.call(args, 0);
     this._result = result;
+    this._stackTrace = stackTrace || null;
 }
 
 Call.prototype = {
@@ -235,6 +323,22 @@ Call.prototype = {
         return this._result;
     },
 
+    /**
+     * @return {StackTrace}
+     */
+    stackTrace: function()
+    {
+        return this._stackTrace;
+    },
+
+    /**
+     * @param {StackTrace} stackTrace
+     */
+    setStackTrace: function(stackTrace)
+    {
+        this._stackTrace = stackTrace;
+    },
+
     freeze: function()
     {
         if (this._freezed)
@@ -259,7 +363,7 @@ Call.prototype = {
         var args = this._args.map(function(obj) {
             return Resource.toReplayable(obj, cache);
         });
-        return new ReplayableCall(thisObject, this._functionName, args, result);
+        return new ReplayableCall(thisObject, this._functionName, args, result, this._stackTrace);
     },
 
     /**
@@ -286,6 +390,7 @@ Call.prototype = {
         this._functionName = replayableCall.functionName();
         this._args = replayArgs;
         this._result = replayResult;
+        this._stackTrace = replayableCall.stackTrace();
         this._freezed = true;
         return this;
     }
@@ -297,13 +402,15 @@ Call.prototype = {
  * @param {string} functionName
  * @param {Array.<ReplayableResource|*>} args
  * @param {ReplayableResource|*} result
+ * @param {StackTrace} stackTrace
  */
-function ReplayableCall(thisObject, functionName, args, result)
+function ReplayableCall(thisObject, functionName, args, result, stackTrace)
 {
     this._thisObject = thisObject;
     this._functionName = functionName;
     this._args = args;
     this._result = result;
+    this._stackTrace = stackTrace;
 }
 
 ReplayableCall.prototype = {
@@ -337,6 +444,14 @@ ReplayableCall.prototype = {
     result: function()
     {
         return this._result;
+    },
+
+    /**
+     * @return {StackTrace}
+     */
+    stackTrace: function()
+    {
+        return this._stackTrace;
     },
 
     /**
@@ -380,6 +495,16 @@ Resource.forObject = function(obj)
     if (typeof obj === "object")
         return obj["__resourceObject"];
     return null;
+}
+
+/**
+ * @param {Resource|*} obj
+ * @return {*}
+ */
+Resource.wrappedObject = function(obj)
+{
+    var resource = Resource.forObject(obj);
+    return resource ? resource.wrappedObject() : obj;
 }
 
 /**
@@ -753,11 +878,6 @@ function WebGLProgramResource(wrappedObject)
     Resource.call(this, wrappedObject);
 }
 
-/**
- * @type {Object.<number,string>}
- */
-WebGLProgramResource.UniformMethodNames = null;
-
 WebGLProgramResource.prototype = {
     /**
      * @override
@@ -766,7 +886,8 @@ WebGLProgramResource.prototype = {
      */
     _populateReplayableData: function(data, cache)
     {
-        var gl = WebGLRenderingContextResource.forObject(this).wrappedObject();
+        var glResource = WebGLRenderingContextResource.forObject(this);
+        var gl = glResource.wrappedObject();
         var program = this.wrappedObject();
 
         var uniforms = [];
@@ -828,7 +949,7 @@ WebGLProgramResource.prototype = {
      */
     _uniformMethodNameByType: function(gl, type)
     {
-        var uniformMethodNames = WebGLProgramResource.UniformMethodNames;
+        var uniformMethodNames = WebGLProgramResource._uniformMethodNames;
         if (!uniformMethodNames) {
             uniformMethodNames = {};
             uniformMethodNames[gl.FLOAT] = "uniform1f";
@@ -848,7 +969,7 @@ WebGLProgramResource.prototype = {
             uniformMethodNames[gl.FLOAT_MAT2] = "uniformMatrix2fv";
             uniformMethodNames[gl.FLOAT_MAT3] = "uniformMatrix3fv";
             uniformMethodNames[gl.FLOAT_MAT4] = "uniformMatrix4fv";
-            WebGLProgramResource.UniformMethodNames = uniformMethodNames;
+            WebGLProgramResource._uniformMethodNames = uniformMethodNames;
         }
         console.assert(uniformMethodNames[type], "Unknown uniform type " + type);
         return uniformMethodNames[type];
@@ -971,8 +1092,10 @@ WebGLRenderbufferResource.prototype.__proto__ = WebGLBoundResource.prototype;
 function WebGLRenderingContextResource(glContext, replayContextCallback)
 {
     Resource.call(this, glContext);
-    this._proxyObject = null;
     this._replayContextCallback = replayContextCallback;
+    this._proxyObject = null;
+    /** @type {Object.<number, boolean>} */
+    this._customErrors = null;
 }
 
 /**
@@ -1147,12 +1270,11 @@ WebGLRenderingContextResource.prototype = {
      */
     _doReplayCalls: function(data, cache)
     {
-        this._proxyObject = null;
         this._replayContextCallback = data.replayContextCallback;
+        this._proxyObject = null;
+        this._customErrors = null;
 
-        var context = this._replayContextCallback();
-        var contextResource = Resource.forObject(context);
-        var gl = contextResource ? contextResource.wrappedObject() : context;
+        var gl = Resource.wrappedObject(this._replayContextCallback());
         this.setWrappedObject(gl);
 
         var glState = data.glState;
@@ -1291,36 +1413,38 @@ WebGLRenderingContextResource.prototype = {
      */
     _wrapObject: function()
     {
-        var glContext = this.wrappedObject();
-        var proxy = Object.create(glContext.__proto__); // In order to emulate "instanceof".
+        var gl = this.wrappedObject();
+        var proxy = Object.create(gl.__proto__); // In order to emulate "instanceof".
 
         var self = this;
+        var customWrapFunctions = WebGLRenderingContextResource.wrapFunctions();
         function processProperty(property)
         {
-            if (typeof glContext[property] === "function") {
-                var customWrapFunction = WebGLRenderingContextResource.WrapFunctions[property];
+            if (typeof gl[property] === "function") {
+                var customWrapFunction = customWrapFunctions[property];
                 if (customWrapFunction)
-                    proxy[property] = self._wrapCustomFunction(self, glContext, glContext[property], property, customWrapFunction);
+                    proxy[property] = self._wrapCustomFunction(self, gl, gl[property], property, customWrapFunction);
                 else
-                    proxy[property] = self._wrapFunction(self, glContext, glContext[property], property);
+                    proxy[property] = self._wrapFunction(self, gl, gl[property], property);
             } else if (/^[A-Z0-9_]+$/.test(property)) {
                 // Fast access to enums and constants.
-                proxy[property] = glContext[property];
+                console.assert(typeof gl[property] === "number", "Expected a number for property " + property);
+                proxy[property] = gl[property];
             } else {
                 Object.defineProperty(proxy, property, {
                     get: function()
                     {
-                        return glContext[property];
+                        return gl[property];
                     },
                     set: function(value)
                     {
-                        glContext[property] = value;
+                        gl[property] = value;
                     }
                 });
             }
         }
 
-        for (var property in glContext)
+        for (var property in gl)
             processProperty(property);
 
         return proxy;
@@ -1332,7 +1456,7 @@ WebGLRenderingContextResource.prototype = {
      * @param {Function} originalFunction
      * @param {string} functionName
      * @param {Function} customWrapFunction
-     * @return {*}
+     * @return {Function}
      */
     _wrapCustomFunction: function(resource, originalObject, originalFunction, functionName, customWrapFunction)
     {
@@ -1343,8 +1467,11 @@ WebGLRenderingContextResource.prototype = {
                 manager.captureArguments(resource, arguments);
             var wrapFunction = new WebGLRenderingContextResource.WrapFunction(originalObject, originalFunction, functionName, arguments);
             customWrapFunction.apply(wrapFunction, arguments);
-            if (manager)
-                manager.reportCall(wrapFunction.call());
+            if (manager && manager.capturing()) {
+                var call = wrapFunction.call();
+                call.setStackTrace(StackTrace.create(1, arguments.callee));
+                manager.reportCall(call);
+            }
             return wrapFunction.result();
         };
     },
@@ -1354,7 +1481,7 @@ WebGLRenderingContextResource.prototype = {
      * @param {WebGLRenderingContext} originalObject
      * @param {Function} originalFunction
      * @param {string} functionName
-     * @return {*}
+     * @return {Function}
      */
     _wrapFunction: function(resource, originalObject, originalFunction, functionName)
     {
@@ -1365,7 +1492,8 @@ WebGLRenderingContextResource.prototype = {
                 return originalFunction.apply(originalObject, arguments);
             manager.captureArguments(resource, arguments);
             var result = originalFunction.apply(originalObject, arguments);
-            var call = new Call(resource, functionName, arguments, result);
+            var stackTrace = StackTrace.create(1, arguments.callee);
+            var call = new Call(resource, functionName, arguments, result, stackTrace);
             manager.reportCall(call);
             return result;
         };
@@ -1414,78 +1542,88 @@ WebGLRenderingContextResource.WrapFunction.prototype = {
     }
 }
 
-WebGLRenderingContextResource.WrapFunctions = {
-    __proto__: null
-}
-
 /**
- * @param {string} methodName
- * @param {Function} resourceConstructor
+ * @return {Object.<string, Function>}
  */
-function createResourceWrapFunction(methodName, resourceConstructor)
+WebGLRenderingContextResource.wrapFunctions = function()
 {
-    /** @this WebGLRenderingContextResource.WrapFunction */
-    WebGLRenderingContextResource.WrapFunctions[methodName] = function()
-    {
-        var wrappedObject = this.result();
-        if (!wrappedObject)
-            return;
-        var resource = new resourceConstructor(wrappedObject);
-        var manager = this._glResource.manager();
-        if (manager)
-            manager.registerResource(resource);
-        resource.pushCall(this.call());
-    }
-}
-createResourceWrapFunction("createBuffer", WebGLBufferResource);
-createResourceWrapFunction("createShader", WebGLShaderResource);
-createResourceWrapFunction("createProgram", WebGLProgramResource);
-createResourceWrapFunction("createTexture", WebGLTextureResource);
-createResourceWrapFunction("createFramebuffer", WebGLFramebufferResource);
-createResourceWrapFunction("createRenderbuffer", WebGLRenderbufferResource);
-createResourceWrapFunction("getUniformLocation", Resource);
+    var wrapFunctions = WebGLRenderingContextResource._wrapFunctions;
+    if (!wrapFunctions) {
+        wrapFunctions = Object.create(null);
 
-/**
- * @param {string} methodName
- */
-function customWrapFunction(methodName)
-{
-    var customPushCall = "pushCall_" + methodName;
-    /**
-     * @param {Object|number} target
-     * @this WebGLRenderingContextResource.WrapFunction
-     */
-    WebGLRenderingContextResource.WrapFunctions[methodName] = function(target)
-    {
-        var resource = this._glResource.currentBinding(target);
-        if (!resource)
-            return;
-        if (resource[customPushCall])
-            resource[customPushCall].call(resource, this.call());
-        else
-            resource.pushCall(this.call());
+        /**
+         * @param {string} methodName
+         * @param {Function} resourceConstructor
+         */
+        function createResourceWrapFunction(methodName, resourceConstructor)
+        {
+            /** @this WebGLRenderingContextResource.WrapFunction */
+            wrapFunctions[methodName] = function()
+            {
+                var wrappedObject = this.result();
+                if (!wrappedObject)
+                    return;
+                var resource = new resourceConstructor(wrappedObject);
+                var manager = this._glResource.manager();
+                if (manager)
+                    manager.registerResource(resource);
+                resource.pushCall(this.call());
+            }
+        }
+        createResourceWrapFunction("createBuffer", WebGLBufferResource);
+        createResourceWrapFunction("createShader", WebGLShaderResource);
+        createResourceWrapFunction("createProgram", WebGLProgramResource);
+        createResourceWrapFunction("createTexture", WebGLTextureResource);
+        createResourceWrapFunction("createFramebuffer", WebGLFramebufferResource);
+        createResourceWrapFunction("createRenderbuffer", WebGLRenderbufferResource);
+        createResourceWrapFunction("getUniformLocation", Resource);
+
+        /**
+         * @param {string} methodName
+         */
+        function customWrapFunction(methodName)
+        {
+            var customPushCall = "pushCall_" + methodName;
+            /**
+             * @param {Object|number} target
+             * @this WebGLRenderingContextResource.WrapFunction
+             */
+            wrapFunctions[methodName] = function(target)
+            {
+                var resource = this._glResource.currentBinding(target);
+                if (!resource)
+                    return;
+                if (resource[customPushCall])
+                    resource[customPushCall].call(resource, this.call());
+                else
+                    resource.pushCall(this.call());
+            }
+        }
+        customWrapFunction("attachShader");
+        customWrapFunction("bindAttribLocation");
+        customWrapFunction("compileShader");
+        customWrapFunction("detachShader");
+        customWrapFunction("linkProgram");
+        customWrapFunction("shaderSource");
+        customWrapFunction("bufferData");
+        customWrapFunction("bufferSubData");
+        customWrapFunction("compressedTexImage2D");
+        customWrapFunction("compressedTexSubImage2D");
+        customWrapFunction("copyTexImage2D");
+        customWrapFunction("copyTexSubImage2D");
+        customWrapFunction("generateMipmap");
+        customWrapFunction("texImage2D");
+        customWrapFunction("texSubImage2D");
+        customWrapFunction("texParameterf");
+        customWrapFunction("texParameteri");
+        customWrapFunction("framebufferRenderbuffer");
+        customWrapFunction("framebufferTexture2D");
+        customWrapFunction("renderbufferStorage");
+
+        WebGLRenderingContextResource._wrapFunctions = wrapFunctions;
     }
+    return wrapFunctions;
 }
-customWrapFunction("attachShader");
-customWrapFunction("bindAttribLocation");
-customWrapFunction("compileShader");
-customWrapFunction("detachShader");
-customWrapFunction("linkProgram");
-customWrapFunction("shaderSource");
-customWrapFunction("bufferData");
-customWrapFunction("bufferSubData");
-customWrapFunction("compressedTexImage2D");
-customWrapFunction("compressedTexSubImage2D");
-customWrapFunction("copyTexImage2D");
-customWrapFunction("copyTexSubImage2D");
-customWrapFunction("generateMipmap");
-customWrapFunction("texImage2D");
-customWrapFunction("texSubImage2D");
-customWrapFunction("texParameterf");
-customWrapFunction("texParameteri");
-customWrapFunction("framebufferRenderbuffer");
-customWrapFunction("framebufferTexture2D");
-customWrapFunction("renderbufferStorage");
 
 /**
  * @constructor
@@ -1760,9 +1898,21 @@ InjectedScript.prototype = {
         var calls = traceLog.replayableCalls();
         for (var i = 0, n = calls.length; i < n; ++i) {
             var call = calls[i];
-            result.calls.push({
-                functionName: call.functionName() + "(" + call.args().join(", ") + ") => " + call.result()
+            var args = call.args().map(function(argument) {
+                return argument + "";
             });
+            var stackTrace = call.stackTrace();
+            var callFrame = stackTrace ? stackTrace.callFrame(0) || {} : {};
+            var traceLogItem = {
+                functionName: call.functionName(),
+                arguments: args,
+                sourceURL: callFrame.sourceURL,
+                lineNumber: callFrame.lineNumber,
+                columnNumber: callFrame.columnNumber
+            };
+            if (call.result())
+                traceLogItem.result = call.result() + "";
+            result.calls.push(traceLogItem);
         }
         return result;
     },
@@ -1808,7 +1958,7 @@ InjectedScript.prototype = {
             var canvas = originalGlContext.canvas.cloneNode(true);
             // FIXME: Pass original context id instead of "experimental-webgl".
             // FIXME: Pass original ContextAttributes to the getContext() method.
-            replayContext = canvas.getContext("experimental-webgl");
+            replayContext = /** @type {WebGLRenderingContext} */ Resource.wrappedObject(canvas.getContext("experimental-webgl"));
             originalGlContext["__replayContext"] = replayContext;
             this._replayContext = replayContext;
         } else {

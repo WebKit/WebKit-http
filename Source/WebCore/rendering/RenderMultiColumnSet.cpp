@@ -44,6 +44,13 @@ RenderMultiColumnSet::RenderMultiColumnSet(Node* node, RenderFlowThread* flowThr
 {
 }
 
+LayoutUnit RenderMultiColumnSet::pageLogicalTopForOffset(LayoutUnit offset) const
+{
+    LayoutUnit portionLogicalTop = (isHorizontalWritingMode() ? flowThreadPortionRect().y() : flowThreadPortionRect().x());
+    unsigned columnIndex = (offset - portionLogicalTop) / computedColumnHeight();
+    return portionLogicalTop + columnIndex * computedColumnHeight();
+}
+
 void RenderMultiColumnSet::computeLogicalWidth()
 {
     // Our logical width starts off matching the column block itself.
@@ -99,6 +106,22 @@ LayoutRect RenderMultiColumnSet::columnRectAt(unsigned index) const
     if (isHorizontalWritingMode())
         return LayoutRect(colLogicalLeft, colLogicalTop, colLogicalWidth, colLogicalHeight);
     return LayoutRect(colLogicalTop, colLogicalLeft, colLogicalHeight, colLogicalWidth);
+}
+
+unsigned RenderMultiColumnSet::columnIndexAtOffset(LayoutUnit offset) const
+{
+    LayoutRect portionRect(flowThreadPortionRect());
+    LayoutUnit flowThreadLogicalTop = isHorizontalWritingMode() ? portionRect.y() : portionRect.x();
+    LayoutUnit flowThreadLogicalBottom = isHorizontalWritingMode() ? portionRect.maxY() : portionRect.maxX();
+    
+    // Handle the offset being out of range.
+    if (offset < flowThreadLogicalTop)
+        return 0;
+    if (offset >= flowThreadLogicalBottom)
+        return columnCount() - 1;
+    
+    // Just divide by the column height to determine the correct column.
+    return static_cast<float>(offset - flowThreadLogicalTop) / computedColumnHeight();
 }
 
 LayoutRect RenderMultiColumnSet::flowThreadPortionRectAt(unsigned index) const
@@ -296,6 +319,44 @@ bool RenderMultiColumnSet::nodeAtPoint(const HitTestRequest& request, HitTestRes
     
     updateHitTestResult(result, locationInContainer.point() - toLayoutSize(adjustedLocation));
     return !result.addNodeToRectBasedTestResult(node(), locationInContainer, boundsRect);
+}
+
+void RenderMultiColumnSet::repaintFlowThreadContent(const LayoutRect& repaintRect, bool immediate) const
+{
+    // Figure out the start and end columns and only check within that range so that we don't walk the
+    // entire column set. Put the repaint rect into flow thread coordinates by flipping it first.
+    LayoutRect flowThreadRepaintRect(repaintRect);
+    flowThread()->flipForWritingMode(flowThreadRepaintRect);
+    
+    // Now we can compare this rect with the flow thread portions owned by each column. First let's
+    // just see if the repaint rect intersects our flow thread portion at all.
+    LayoutRect clippedRect(flowThreadRepaintRect);
+    clippedRect.intersect(RenderRegion::flowThreadPortionOverflowRect());
+    if (clippedRect.isEmpty())
+        return;
+    
+    // Now we know we intersect at least one column. Let's figure out the logical top and logical
+    // bottom of the area we're repainting.
+    LayoutUnit repaintLogicalTop = isHorizontalWritingMode() ? flowThreadRepaintRect.y() : flowThreadRepaintRect.x();
+    LayoutUnit repaintLogicalBottom = (isHorizontalWritingMode() ? flowThreadRepaintRect.maxY() : flowThreadRepaintRect.maxX()) - 1;
+    
+    unsigned startColumn = columnIndexAtOffset(repaintLogicalTop);
+    unsigned endColumn = columnIndexAtOffset(repaintLogicalBottom);
+    
+    LayoutUnit colGap = columnGap();
+    unsigned colCount = columnCount();
+    for (unsigned i = startColumn; i <= endColumn; i++) {
+        LayoutRect colRect = columnRectAt(i);
+        
+        // Get the portion of the flow thread that corresponds to this column.
+        LayoutRect flowThreadPortion = flowThreadPortionRectAt(i);
+        
+        // Now get the overflow rect that corresponds to the column.
+        LayoutRect flowThreadOverflowPortion = flowThreadPortionOverflowRect(flowThreadPortion, i, colCount, colGap);
+
+        // Do a repaint for this specific column.
+        repaintFlowThreadContentRectangle(repaintRect, immediate, flowThreadPortion, flowThreadOverflowPortion, colRect.location());
+    }
 }
 
 const char* RenderMultiColumnSet::renderName() const

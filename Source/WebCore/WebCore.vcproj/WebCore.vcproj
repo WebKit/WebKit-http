@@ -30429,6 +30429,26 @@
 					Name="cg"
 					>
 					<File
+						RelativePath="..\platform\graphics\cg\BitmapImageCG.cpp"
+						>
+						<FileConfiguration
+							Name="Debug_Cairo_CFLite|Win32"
+							ExcludedFromBuild="true"
+							>
+							<Tool
+								Name="VCCLCompilerTool"
+							/>
+						</FileConfiguration>
+						<FileConfiguration
+							Name="Release_Cairo_CFLite|Win32"
+							ExcludedFromBuild="true"
+							>
+							<Tool
+								Name="VCCLCompilerTool"
+							/>
+						</FileConfiguration>
+					</File>
+					<File
 						RelativePath="..\platform\graphics\cg\ColorCG.cpp"
 						>
 						<FileConfiguration
@@ -31902,6 +31922,14 @@
 					</File>
 					<File
 						RelativePath="..\platform\graphics\filters\CustomFilterCompiledProgram.h"
+						>
+					</File>
+					<File
+						RelativePath="..\platform\graphics\filters\CustomFilterValidatedProgram.cpp"
+						>
+					</File>
+					<File
+						RelativePath="..\platform\graphics\filters\CustomFilterValidatedProgram.h"
 						>
 					</File>
 					<File
@@ -37303,7 +37331,7 @@
 				>
 			</File>
 			<File
-				RelativePath="..\css\CSSWrapShapes.cpp"
+				RelativePath="..\css\CSSBasicShapes.cpp"
 				>
 				<FileConfiguration
 					Name="Debug|Win32"
@@ -37355,7 +37383,7 @@
 				</FileConfiguration>
 			</File>
 			<File
-				RelativePath="..\css\CSSWrapShapes.h"
+				RelativePath="..\css\CSSBasicShapes.h"
 				>
 			</File>
 			<File
@@ -38031,11 +38059,11 @@
 				>
 			</File>
 			<File
-			    RelativePath="..\css\WrapShapeFunctions.cpp"
+			    RelativePath="..\css\BasicShapeFunctions.cpp"
 			    >
 			</File>
 			<File
-			    RelativePath="..\css\WrapShapeFunctions.h"
+			    RelativePath="..\css\BasicShapeFunctions.h"
 			    >
 			</File>
 		</Filter>
@@ -46564,11 +46592,11 @@
 					>
 				</File>
 				<File
-					RelativePath="..\rendering\style\WrapShapes.cpp"
+					RelativePath="..\rendering\style\BasicShapes.cpp"
 					>
 				</File>
 				<File
-					RelativePath="..\rendering\style\WrapShapes.h"
+					RelativePath="..\rendering\style\BasicShapes.h"
 					>
 				</File>
 			</Filter>
@@ -73879,14 +73907,6 @@
 				</File>
 				<File
 					RelativePath="..\ForwardingHeaders\runtime\StringObject.h"
-					>
-				</File>
-				<File
-					RelativePath="..\ForwardingHeaders\runtime\UString.h"
-					>
-				</File>
-				<File
-					RelativePath="..\ForwardingHeaders\runtime\UStringImpl.h"
 					>
 				</File>
 			</Filter>

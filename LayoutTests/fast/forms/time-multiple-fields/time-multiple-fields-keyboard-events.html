@@ -16,6 +16,7 @@ Test following keys:
     <li>Tab - Move focus field</li>
     <li>Backspace - Make value empty</li>
 </ul>
+<input id="before">
 <input id="input" type="time">
 <input id="another">
 <div id="console"></div>
@@ -97,6 +98,18 @@ keyDown('\t');
 keyDown('\t');
 shouldBeEqualToString('document.activeElement.id', 'another');
 
+beginTest('Shfit+Tab key', '03:00');
+another.focus();
+keyDown('\t', ['shiftKey']);
+keyDown('P');
+shouldBeEqualToString('input.value', '15:00');
+keyDown('\t', ['shiftKey']);
+keyDown('3');
+shouldBeEqualToString('input.value', '15:03');
+keyDown('\t', ['shiftKey']);
+keyDown('\t', ['shiftKey']);
+shouldBeEqualToString('document.activeElement.id', 'before');
+
 beginTest('Backspace key', '12:34');
 keyDown("\b");
 shouldBeEqualToString('input.value', '');
@@ -104,6 +117,26 @@ shouldBeEqualToString('input.value', '');
 beginTest('Delete key', '12:34');
 keyDown("delete");
 shouldBeEqualToString('input.value', '');
+
+beginTest('Typeahead', '12:34:56');
+keyDown('rightArrow');
+keyDown('1');
+shouldBeEqualToString('input.value', '12:01:56');
+keyDown('rightArrow');
+keyDown('leftArrow');
+keyDown('2');
+shouldBeEqualToString('input.value', '12:02:56');
+
+beginTest('RTL Left/Right keys', '04:56');
+input.setAttribute("dir", "rtl");
+keyDown('1');
+shouldBeEqualToString('input.value', '01:56');
+keyDown('leftArrow');
+keyDown('2');
+shouldBeEqualToString('input.value', '01:02');
+keyDown('rightArrow');
+keyDown('3');
+shouldBeEqualToString('input.value', '03:02');
 </script>
 <script src="../../js/resources/js-test-post.js"></script>
 </body>

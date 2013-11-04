@@ -69,12 +69,12 @@ public:
 
     String functionName() const;
     JSC::DebuggerCallFrame::Type type() const;
-    JSC::ScopeChainNode* scopeChain() const;
+    JSC::JSScope* scopeChain() const;
     JSC::JSGlobalObject* dynamicGlobalObject() const;
     JSC::ExecState* exec() const;
 
     JSC::JSObject* thisObject() const;
-    JSC::JSValue evaluate(const JSC::UString& script, JSC::JSValue& exception) const;
+    JSC::JSValue evaluate(const String& script, JSC::JSValue& exception) const;
     
 private:
     JavaScriptCallFrame(const JSC::DebuggerCallFrame&, PassRefPtr<JavaScriptCallFrame> caller, intptr_t sourceID, const TextPosition&);

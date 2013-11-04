@@ -354,12 +354,20 @@ BUGWK93560 : fast/canvas/webgl/tex-image-and-sub-image-2d-with-image-data-rgba44
 BUGWK93560 : fast/canvas/webgl/tex-image-and-sub-image-2d-with-image-data-rgba5551.html = PASS TEXT
 BUGWK93560 : fast/canvas/webgl/tex-image-and-sub-image-2d-with-image-data.html = PASS TEXT
 
-// Flexbox test failing on Mac.
-BUGWK95366 : css3/flexbox/flexitem-stretch-image.html = TEXT
-
 //Require rebaseline after https://bugs.webkit.org/show_bug.cgi?id=77754
 BUGWK77754 : fast/inline/left-right-center-inline-alignment-in-ltr-and-rtl-blocks.html = TEXT
 BUGWK77754 : fast/inline/absolute-positioned-inline-in-centred-block.html = TEXT
 BUGWK77754 : fast/css/absolute-child-with-percent-height-inside-relative-parent.html = TEXT
 
 BUGWK92464 DEBUG : fast/events/tabindex-focus-blur-all.html = CRASH PASS
+
+//Require rebaseline after https://bugs.webkit.org/show_bug.cgi?id=80394
+BUGWK80394 : fast/block/float/024.html = TEXT
+BUGWK80394 : fast/block/margin-collapse/empty-clear-blocks.html = TEXT
+BUGWK80394 : fast/block/margin-collapse/025.html = TEXT
+BUGWK80394 : fast/block/margin-collapse/block-inside-inline/025.html = TEXT
+
+// Asserts in MessagePort::contextDestroyed, but the assert usually gets attributed to later tests.
+BUGWK94458 SKIP : fast/events/message-port-constructor-for-deleted-document.html = PASS
+
+BUGWK95501 SKIP : http/tests/security/inactive-document-with-empty-security-origin.html = TIMEOUT

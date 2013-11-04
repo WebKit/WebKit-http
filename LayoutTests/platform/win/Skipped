@@ -393,10 +393,6 @@ animations/3d/transform-origin-vs-functions.html
 compositing/reflections/animation-inside-reflection.html
 compositing/reflections/nested-reflection-animated.html
 
-# Sometimes fail http://webkit.org/b/48454
-compositing/tiling/huge-layer-resize.html
-compositing/tiling/huge-layer-with-layer-children-resize.html
-
 # http://webkit.org/b/48455
 transitions/cancel-transition.html
 
@@ -706,7 +702,6 @@ fast/text/international/bidi-linebreak-003.html
 fast/text/international/bidi-listbox-atsui.html
 fast/text/international/bidi-listbox.html
 fast/text/international/hindi-spacing.html
-http/tests/loading/gmail-assert-on-load.html
 http/tests/misc/window-dot-stop.html
 http/tests/security/dataTransfer-set-data-file-url.html
 http/tests/xmlhttprequest/abort-should-cancel-load.html
@@ -833,6 +828,7 @@ fast/dom/Geolocation
 
 # This port doesn't support Notifications.
 fast/notifications
+http/tests/notifications
 
 # These media tests regressed on the bots.  Skipping to make the bots green again.
 # https://bugs.webkit.org/show_bug.cgi?id=28281
@@ -1476,6 +1472,7 @@ fast/events/constructors/webgl-context-event-constructor.html
 http/tests/security/webgl-remote-read-remote-image-allowed.html
 http/tests/security/webgl-remote-read-remote-image-allowed-with-credentials.html
 http/tests/security/webgl-remote-read-remote-image-blocked-no-crossorigin.html
+inspector/profiler/webgl/webgl-profiler-api-changes.html
 
 # Tests that require ENABLE(DOWNLOAD_ATTRIBUTE).
 fast/dom/HTMLAnchorElement/anchor-nodownload.html
@@ -1816,14 +1813,6 @@ userscripts/user-script-plugin-document.html
 # https://bugs.webkit.org/show_bug.cgi?id=87858
 fast/js/names.html
 
-# New plugins/npruntime/delete-plugin-within-* tests introduced in r117012 fail/crash
-# https://bugs.webkit.org/show_bug.cgi?id=86443
-plugins/npruntime/delete-plugin-within-getProperty.html
-plugins/npruntime/delete-plugin-within-hasProperty-return-false.html
-plugins/npruntime/delete-plugin-within-hasProperty-return-true.html
-plugins/npruntime/delete-plugin-within-invoke.html
-plugins/npruntime/delete-plugin-within-setProperty.html
-
 # [Win] ASSERT(oldLayoutDelta == view()->layoutDelta()) failed in RenderBlock::layoutBlockChild
 # https://bugs.webkit.org/show_bug.cgi?id=87450
 media/media-volume-slider-rendered-below.html
@@ -1884,7 +1873,6 @@ css1/formatting_model/floating_elements.html
 css2.1/20110323/c543-txt-decor-000.html
 fast/block/float/float-in-float-hit-testing.html
 fast/block/float/overhanging-tall-block.html
-fast/css/align-positioned-object-on-resize.html
 fast/css/text-transform-select.html
 fast/css/zoom-body-scroll.html
 fast/dom/34176.html
@@ -2149,3 +2137,24 @@ editing/deleting/delete-br-006.html
 # https://bugs.webkit.org/show_bug.cgi?id=95405
 # Test times out
 platform/win/accessibility/single-select-children.html
+
+# Require rebaseline after https://bugs.webkit.org/show_bug.cgi?id=80394
+fast/block/float/024.html
+fast/block/margin-collapse/empty-clear-blocks.html
+fast/block/margin-collapse/025.html
+fast/block/margin-collapse/block-inside-inline/025.html
+
+# referrer tests failing, problems connecting to address provided to iframe
+http/tests/security/no-referrer.html
+http/tests/security/referrer-policy-https-always.html
+http/tests/security/referrer-policy-https-default.html
+http/tests/security/referrer-policy-https-never.html
+http/tests/security/referrer-policy-redirect.html
+http/tests/security/referrer-policy-rel-noreferrer.htm
+
+# As usual, DRT on Windows has problems knowing how to continue a test when focus moves to a popup window, in this case the file chooser
+# https://bugs.webkit.org/show_bug.cgi?id=87469
+fast/events/domactivate-sets-underlying-click-event-as-handled.html
+
+# https://bugs.webkit.org/show_bug.cgi?id=95388
+fast/css/nested-layers-with-hover.html

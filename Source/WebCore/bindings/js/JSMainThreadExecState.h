@@ -63,18 +63,18 @@ public:
         String resourceName;
         int lineNumber = 1;
         if (callType == JSC::CallTypeJS) {
-            resourceName = ustringToString(callData.js.functionExecutable->sourceURL());
+            resourceName = callData.js.functionExecutable->sourceURL();
             lineNumber = callData.js.functionExecutable->lineNo();
         } else
             resourceName = "undefined";
         return InspectorInstrumentation::willCallFunction(context, resourceName, lineNumber);
     }
 
-    static JSC::JSValue evaluate(JSC::ExecState* exec, JSC::ScopeChainNode* chain, const JSC::SourceCode& source, JSC::JSValue thisValue, JSC::JSValue* exception)
+    static JSC::JSValue evaluate(JSC::ExecState* exec, const JSC::SourceCode& source, JSC::JSValue thisValue, JSC::JSValue* exception)
     {
         JSMainThreadExecState currentState(exec);
         JSC::JSLockHolder lock(exec);
-        return JSC::evaluate(exec, chain, source, thisValue, exception);
+        return JSC::evaluate(exec, source, thisValue, exception);
     };
 
 protected:

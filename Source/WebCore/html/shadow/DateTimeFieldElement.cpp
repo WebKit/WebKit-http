@@ -30,6 +30,7 @@
 #include "DateComponents.h"
 #include "HTMLNames.h"
 #include "KeyboardEvent.h"
+#include "RenderObject.h"
 #include "Text.h"
 
 namespace WebCore {
@@ -48,6 +49,12 @@ DateTimeFieldElement::DateTimeFieldElement(Document* document, FieldOwner& field
 
 void DateTimeFieldElement::defaultEventHandler(Event* event)
 {
+    if (event->type() == eventNames().blurEvent)
+        didBlur();
+
+    if (event->type() == eventNames().focusEvent)
+        didFocus();
+
     if (event->isKeyboardEvent()) {
         KeyboardEvent* keyboardEvent = static_cast<KeyboardEvent*>(event);
         handleKeyboardEvent(keyboardEvent);
@@ -74,6 +81,22 @@ void DateTimeFieldElement::defaultKeyboardEventHandler(KeyboardEvent* keyboardEv
         return;
     }
 
+    if (keyIdentifier == "Left") {
+        if (!m_fieldOwner)
+            return;
+        if (isRTL() ? m_fieldOwner->focusOnNextField(*this) : m_fieldOwner->focusOnPreviousField(*this))
+            keyboardEvent->setDefaultHandled();
+        return;
+    }
+
+    if (keyIdentifier == "Right") {
+        if (!m_fieldOwner)
+            return;
+        if (isRTL() ? m_fieldOwner->focusOnPreviousField(*this) : m_fieldOwner->focusOnNextField(*this))
+            keyboardEvent->setDefaultHandled();
+        return;
+    }
+
     if (keyIdentifier == "Up") {
         keyboardEvent->setDefaultHandled();
         stepUp();
@@ -87,10 +110,23 @@ void DateTimeFieldElement::defaultKeyboardEventHandler(KeyboardEvent* keyboardEv
     }
 }
 
-void DateTimeFieldElement::focusOnNextField()
+void DateTimeFieldElement::didBlur()
 {
     if (m_fieldOwner)
-        m_fieldOwner->focusOnNextField();
+        m_fieldOwner->didBlurFromField();
+}
+
+void DateTimeFieldElement::didFocus()
+{
+    if (m_fieldOwner)
+        m_fieldOwner->didFocusOnField();
+}
+
+void DateTimeFieldElement::focusOnNextField()
+{
+    if (!m_fieldOwner)
+        return;
+    m_fieldOwner->focusOnNextField(*this);
 }
 
 void DateTimeFieldElement::initialize(const AtomicString& shadowPseudoId)
@@ -99,9 +135,19 @@ void DateTimeFieldElement::initialize(const AtomicString& shadowPseudoId)
     appendChild(Text::create(document(), visibleValue()));
 }
 
+bool DateTimeFieldElement::isFocusable() const
+{
+    return !isReadOnly();
+}
+
 bool DateTimeFieldElement::isReadOnly() const
 {
     return fastHasAttribute(readonlyAttr);
+}
+
+bool DateTimeFieldElement::isRTL() const
+{
+    return renderer() && renderer()->style()->direction() == RTL;
 }
 
 void DateTimeFieldElement::setReadOnly()
@@ -109,6 +155,11 @@ void DateTimeFieldElement::setReadOnly()
     // Set HTML attribute readonly to change apperance.
     setBooleanAttribute(readonlyAttr, true);
     setNeedsStyleRecalc();
+}
+
+bool DateTimeFieldElement::supportsFocus() const
+{
+    return true;
 }
 
 void DateTimeFieldElement::updateVisibleValue(EventBehavior eventBehavior)

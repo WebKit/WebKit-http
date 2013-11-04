@@ -210,11 +210,6 @@ void RenderTable::removeCaption(const RenderTableCaption* oldCaption)
         return;
 
     m_captions.remove(index);
-
-    // FIXME: The rest of this function is probably not needed since we have 
-    // implemented proper multiple captions support (see bug 58249).
-    if (node())
-        node()->setNeedsStyleRecalc();
 }
 
 void RenderTable::computeLogicalWidth()
@@ -266,7 +261,13 @@ void RenderTable::computeLogicalWidth()
         LayoutUnit containerLogicalWidthForAutoMargins = availableLogicalWidth;
         if (avoidsFloats() && cb->containsFloats())
             containerLogicalWidthForAutoMargins = containingBlockAvailableLineWidthInRegion(0, 0); // FIXME: Work with regions someday.
-        computeInlineDirectionMargins(cb, containerLogicalWidthForAutoMargins, logicalWidth());
+        ComputedMarginValues marginValues;
+        bool hasInvertedDirection =  cb->style()->isLeftToRightDirection() == style()->isLeftToRightDirection();
+        computeInlineDirectionMargins(cb, containerLogicalWidthForAutoMargins, logicalWidth(),
+            hasInvertedDirection ? marginValues.m_start : marginValues.m_end,
+            hasInvertedDirection ? marginValues.m_end : marginValues.m_start);
+        setMarginStart(marginValues.m_start);
+        setMarginEnd(marginValues.m_end);
     } else {
         setMarginStart(minimumValueForLength(style()->marginStart(), availableLogicalWidth, renderView));
         setMarginEnd(minimumValueForLength(style()->marginEnd(), availableLogicalWidth, renderView));

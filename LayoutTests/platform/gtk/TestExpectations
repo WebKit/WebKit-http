@@ -40,6 +40,12 @@ BUGWK77754 : fast/inline/left-right-center-inline-alignment-in-ltr-and-rtl-block
 BUGWK77754 : fast/inline/absolute-positioned-inline-in-centred-block.html = TEXT
 BUGWK77754 : fast/css/absolute-child-with-percent-height-inside-relative-parent.html = TEXT
 
+//Require rebaseline after https://bugs.webkit.org/show_bug.cgi?id=80394
+BUGWK80394 : fast/block/margin-collapse/empty-clear-blocks.html = IMAGE+TEXT
+BUGWK80394 : fast/block/float/024.html = IMAGE+TEXT
+BUGWK80394 : fast/block/margin-collapse/025.html = TEXT
+BUGWK80394 : fast/block/margin-collapse/block-inside-inline/025.html = TEXT
+
 //////////////////////////////////////////////////////////////////////////////////////////
 // Expected failures
 //////////////////////////////////////////////////////////////////////////////////////////
@@ -155,6 +161,7 @@ BUGWKGTK SKIP : fast/dom/DeviceOrientation = TEXT
 
 // Desktop notifications are not supported.
 BUGWKGTK SKIP : fast/notifications = TEXT
+BUGWKGTK SKIP : http/tests/notifications = TEXT
 
 // We lack userscripts support.
 BUGWKGTK SKIP : userscripts = TEXT
@@ -562,7 +569,7 @@ BUGWK93727 RELEASE : fullscreen/exit-full-screen-iframe.html = TEXT PASS
 BUGWK93727 RELEASE : fullscreen/full-screen-iframe-zIndex.html = TEXT PASS
 BUGWK93727 RELEASE : svg/custom/use-instanceRoot-as-event-target.xhtml = TEXT PASS
 
-BUGWK95430 : fast/layers/scroll-no-visible-content-but-visible-descendant.html = TEXT PASS
+BUGWK95430 : fast/layers/scroll-no-visible-content-but-visible-descendant.html = IMAGE PASS
 
 //////////////////////////////////////////////////////////////////////////////////////////
 // End of Flaky tests
@@ -1293,7 +1300,11 @@ BUGWK87355 : canvas/philip/tests/2d.text.draw.fontface.notinpage.html = TEXT
 
 BUGWK95428 : media/video-controls-captions.html = TEXT
 
-BUGWK95429 : svg/custom/clamped-masking-clipping.svg = TEXT
+BUGWK95429 : svg/custom/clamped-masking-clipping.svg = IMAGE
+
+BUGWK94677 : http/tests/security/contentSecurityPolicy/register-bypassing-scheme = TEXT
+
+BUGWK95530 : http/tests/security/inactive-document-with-empty-security-origin.html = TEXT
 
 //////////////////////////////////////////////////////////////////////////////////////////
 // End of Tests failing

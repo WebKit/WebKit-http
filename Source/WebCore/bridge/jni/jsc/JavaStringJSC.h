@@ -32,8 +32,6 @@
 #include "JavaInstanceJSC.h"
 
 #include <runtime/JSLock.h>
-#include <runtime/ScopeChain.h>
-
 
 namespace JSC {
 
@@ -54,7 +52,6 @@ public:
     JavaString()
     {
         JSLockHolder lock(WebCore::JSDOMWindowBase::commonJSGlobalData());
-        m_impl = UString().impl();
     }
 
     ~JavaString()
@@ -67,7 +64,7 @@ public:
     {
         if (!m_utf8String.data()) {
             JSLockHolder lock(WebCore::JSDOMWindowBase::commonJSGlobalData());
-            m_utf8String = UString(m_impl).utf8();
+            m_utf8String = String(m_impl).utf8();
         }
         return m_utf8String.data();
     }
@@ -81,7 +78,7 @@ private:
         const jchar* uc = getUCharactersFromJStringInEnv(e, s);
         {
             JSLockHolder lock(WebCore::JSDOMWindowBase::commonJSGlobalData());
-            m_impl = UString(reinterpret_cast<const UChar*>(uc), size).impl();
+            m_impl = String(reinterpret_cast<const UChar*>(uc), size).impl();
         }
         releaseUCharactersForJStringInEnv(e, s, uc);
     }

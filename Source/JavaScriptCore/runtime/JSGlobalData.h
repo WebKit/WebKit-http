@@ -76,7 +76,6 @@ namespace JSC {
     class RegExpCache;
     class Stringifier;
     class Structure;
-    class UString;
 #if ENABLE(REGEXP_TRACING)
     class RegExp;
 #endif
@@ -239,7 +238,7 @@ namespace JSC {
         Strong<Structure> propertyNameIteratorStructure;
         Strong<Structure> getterSetterStructure;
         Strong<Structure> apiWrapperStructure;
-        Strong<Structure> scopeChainNodeStructure;
+        Strong<Structure> JSScopeStructure;
         Strong<Structure> executableStructure;
         Strong<Structure> nativeExecutableStructure;
         Strong<Structure> evalExecutableStructure;
@@ -366,7 +365,7 @@ namespace JSC {
         double cachedUTCOffset;
         DSTOffsetCache dstOffsetCache;
         
-        UString cachedDateString;
+        String cachedDateString;
         double cachedDateStringValue;
 
         int maxReentryDepth;
@@ -421,6 +420,7 @@ namespace JSC {
         { \
             ASSERT(!m_##type##ArrayDescriptor.m_classInfo || m_##type##ArrayDescriptor.m_classInfo == descriptor.m_classInfo); \
             m_##type##ArrayDescriptor = descriptor; \
+            ASSERT(m_##type##ArrayDescriptor.m_classInfo); \
         } \
         const TypedArrayDescriptor& type##ArrayDescriptor() const { ASSERT(m_##type##ArrayDescriptor.m_classInfo); return m_##type##ArrayDescriptor; }
 

@@ -137,6 +137,7 @@ compositing/webgl
 http/tests/security/webgl-remote-read-remote-image-allowed.html
 http/tests/security/webgl-remote-read-remote-image-allowed-with-credentials.html
 http/tests/security/webgl-remote-read-remote-image-blocked-no-crossorigin.html
+inspector/profiler/webgl
 
 # ENABLE(LINK_PREFETCH) is disabled.
 fast/dom/HTMLLinkElement/link-and-subresource-test.html
@@ -766,7 +767,7 @@ http/tests/security/isolatedWorld/cross-origin-xhr.html
 # https://bugs.webkit.org/show_bug.cgi?id=72252
 http/tests/misc/xslt-bad-import.html
 
-# New test http/tests/cookies/js-get-and-set-http-only-cookie.php fails on Mac, GTK, Qt, EFL (introduced in r119947)
+# [Qt] http/tests/cookies/js-get-and-set-http-only-cookie.html failing since introduction in r119947
 # https://bugs.webkit.org/show_bug.cgi?id=87208
 http/tests/cookies/js-get-and-set-http-only-cookie.html
 
@@ -1316,6 +1317,17 @@ fast/preloader/document-write-2.html
 # ERROR: LayoutTestController::overridePreference() does not support the 'WebKitPageCacheSupportsPluginsPreferenceKey' preference
 # http://trac.webkit.org/changeset/106305
 plugins/crash-restoring-plugin-page-from-page-cache.html
+
+# ERROR: TestRunner::overridePreference() does not support the 'WebKitCSSCustomFilterEnabled' preference
+css3/filters/custom/custom-filter-shader-cache.html
+css3/filters/custom/effect-color-check.html
+css3/filters/custom/effect-custom-combined-missing.html
+css3/filters/custom/effect-custom.html
+css3/filters/custom/effect-custom-parameters.html
+css3/filters/custom/filter-repaint-custom-clipped.html
+css3/filters/custom/filter-repaint-custom-rotated.html
+css3/filters/custom/filter-repaint-custom.html
+
 
 # ReferenceError: Can't find variable: MediaKeyError
 # http://trac.webkit.org/changeset/114067
@@ -2576,6 +2588,7 @@ fast/block/lineboxcontain/font.html
 css3/flexbox/flexbox-overflow-auto.html
 fast/block/line-layout/selection-highlight-overlap.html
 fast/css/empty-cell-baseline.html
+fast/forms/datalist/input-appearance-range-with-datalist-rtl.html
 fast/forms/datalist/update-range-with-datalist.html
 fast/multicol/cell-shrinkback.html
 fast/multicol/overflow-into-columngap.html
@@ -2763,12 +2776,19 @@ http/tests/inspector-enabled/contentSecurityPolicy-blocks-setTimeout.html
 http/tests/inspector/csp-injected-content-warning-contains-stacktrace.html
 http/tests/inspector/csp-inline-warning-contains-stacktrace.html
 
-# [Qt] New inspector/profiler/webgl-profiler-api-changes.html times out
-# https://bugs.webkit.org/show_bug.cgi?id=95183
-inspector/profiler/webgl-profiler-api-changes.html
-
 # [Qt] New svg/custom/clamped-masking-clipping.svg asserts
 # https://bugs.webkit.org/show_bug.cgi?id=95431
 # [Qt][GTK] New svg/custom/clamped-masking-clipping.svg fails
 # https://bugs.webkit.org/show_bug.cgi?id=95432
 svg/custom/clamped-masking-clipping.svg
+
+# [Qt] REGRESSION(r122175): fast/loader/document-destruction-within-unload.html makes the following test assert
+# https://bugs.webkit.org/show_bug.cgi?id=95441
+fast/loader/document-destruction-within-unload.html
+
+# REGRESSION (r127202): http/tests/security/inactive-document-with-empty-security-origin.html failing on JSC ports
+# https://bugs.webkit.org/show_bug.cgi?id=95530
+http/tests/security/inactive-document-with-empty-security-origin.html
+
+# https://bugs.webkit.org/show_bug.cgi?id=95507
+http/tests/notifications

@@ -847,6 +847,7 @@ SET(WebCore_SOURCES
 
     Modules/mediastream/IceCandidate.cpp
     Modules/mediastream/LocalMediaStream.cpp
+    Modules/mediastream/MediaConstraintsImpl.cpp
     Modules/mediastream/MediaStream.cpp
     Modules/mediastream/MediaStreamEvent.cpp
     Modules/mediastream/MediaStreamList.cpp
@@ -994,7 +995,9 @@ SET(WebCore_SOURCES
     bindings/generic/BindingSecurity.cpp
     bindings/generic/RuntimeEnabledFeatures.cpp
 
+    css/BasicShapeFunctions.cpp
     css/CSSAspectRatioValue.cpp
+    css/CSSBasicShapes.cpp
     css/CSSBorderImage.cpp
     css/CSSBorderImageSliceValue.cpp
     css/CSSCalculationValue.cpp
@@ -1039,7 +1042,6 @@ SET(WebCore_SOURCES
     css/CSSValue.cpp
     css/CSSValueList.cpp
     css/CSSValuePool.cpp
-    css/CSSWrapShapes.cpp
     css/FontFeatureValue.cpp
     css/FontValue.cpp
     css/LengthFunctions.cpp
@@ -1076,7 +1078,6 @@ SET(WebCore_SOURCES
     css/WebKitCSSSVGDocumentValue.cpp
     css/WebKitCSSShaderValue.cpp
     css/WebKitCSSTransformValue.cpp
-    css/WrapShapeFunctions.cpp
 
     dom/ActiveDOMObject.cpp
     dom/Attr.cpp
@@ -2118,6 +2119,7 @@ SET(WebCore_SOURCES
     rendering/mathml/RenderMathMLSubSup.cpp
     rendering/mathml/RenderMathMLUnderOver.cpp
 
+    rendering/style/BasicShapes.cpp
     rendering/style/ContentData.cpp
     rendering/style/CounterDirectives.cpp
     rendering/style/FillLayer.cpp
@@ -2146,7 +2148,6 @@ SET(WebCore_SOURCES
     rendering/style/StyleVisualData.cpp
     rendering/style/SVGRenderStyle.cpp
     rendering/style/SVGRenderStyleDefs.cpp
-    rendering/style/WrapShapes.cpp
 
     rendering/svg/RenderSVGBlock.cpp
     rendering/svg/RenderSVGContainer.cpp
@@ -2566,18 +2567,18 @@ IF (WTF_USE_3D_GRAPHICS)
     IF (BISON_VERSION EQUAL "2.5")
         # Bison 2.5 can not compile generated glslang.
         # See https://bugs.webkit.org/show_bug.cgi?id=93487
-        LIST(APPEND WebCore_SOURCES
+        LIST(APPEND ANGLESupport_SOURCES
             ${THIRDPARTY_DIR}/ANGLE/src/compiler/glslang_lex.cpp
             ${THIRDPARTY_DIR}/ANGLE/src/compiler/glslang_tab.cpp
         )
     ELSE ()
-        LIST(APPEND WebCore_SOURCES
+        LIST(APPEND ANGLESupport_SOURCES
             ${DERIVED_SOURCES_WEBCORE_DIR}/glslang.cpp
             ${DERIVED_SOURCES_WEBCORE_DIR}/glslang_tab.cpp
         )
     ENDIF ()
 
-    LIST(APPEND WebCore_SOURCES
+    LIST(APPEND ANGLESupport_SOURCES
         ${THIRDPARTY_DIR}/ANGLE/src/compiler/BuiltInFunctionEmulator.cpp
         ${THIRDPARTY_DIR}/ANGLE/src/compiler/CodeGenGLSL.cpp
         ${THIRDPARTY_DIR}/ANGLE/src/compiler/Compiler.cpp
@@ -2976,6 +2977,14 @@ SET_TARGET_PROPERTIES(${WebCoreTestSupport_LIBRARY_NAME} PROPERTIES FOLDER "WebC
 
 ADD_DEPENDENCIES(${WebCore_LIBRARY_NAME} ${JavaScriptCore_LIBRARY_NAME})
 ADD_DEPENDENCIES(${WebCoreTestSupport_LIBRARY_NAME} ${WebCore_LIBRARY_NAME})
+
+IF (WTF_USE_3D_GRAPHICS)
+    SET(ANGLESupport_LIBRARY_NAME ANGLESupport)
+    ADD_LIBRARY(${ANGLESupport_LIBRARY_NAME} STATIC ${ANGLESupport_SOURCES})
+    SET_TARGET_PROPERTIES(${ANGLESupport_LIBRARY_NAME} PROPERTIES FOLDER "WebCore")
+    LIST(APPEND WebCore_LIBRARIES ${ANGLESupport_LIBRARY_NAME})
+    WEBKIT_SET_EXTRA_COMPILER_FLAGS(${ANGLESupport_LIBRARY_NAME} IGNORECXX_WARNINGS)
+ENDIF ()
 
 TARGET_LINK_LIBRARIES(${WebCore_LIBRARY_NAME} ${WebCore_LIBRARIES})
 

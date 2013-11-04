@@ -36,7 +36,7 @@
 
 namespace JSC {
 
-const UString* DebuggerCallFrame::functionName() const
+const String* DebuggerCallFrame::functionName() const
 {
     if (!m_callFrame->codeBlock())
         return 0;
@@ -50,15 +50,15 @@ const UString* DebuggerCallFrame::functionName() const
     return &jsCast<JSFunction*>(function)->name(m_callFrame);
 }
     
-UString DebuggerCallFrame::calculatedFunctionName() const
+String DebuggerCallFrame::calculatedFunctionName() const
 {
     if (!m_callFrame->codeBlock())
-        return UString();
+        return String();
 
     JSObject* function = m_callFrame->callee();
 
     if (!function)
-        return UString();
+        return String();
 
     return getCalculatedDisplayName(m_callFrame, function);
 }
@@ -84,7 +84,7 @@ JSObject* DebuggerCallFrame::thisObject() const
     return asObject(thisValue);
 }
 
-JSValue DebuggerCallFrame::evaluate(const UString& script, JSValue& exception) const
+JSValue DebuggerCallFrame::evaluate(const String& script, JSValue& exception) const
 {
     if (!m_callFrame->codeBlock())
         return JSValue();
@@ -96,7 +96,7 @@ JSValue DebuggerCallFrame::evaluate(const UString& script, JSValue& exception) c
         globalData.exception = JSValue();
     }
 
-    JSValue result = globalData.interpreter->execute(eval, m_callFrame, thisObject(), m_callFrame->scopeChain());
+    JSValue result = globalData.interpreter->execute(eval, m_callFrame, thisObject(), m_callFrame->scope());
     if (globalData.exception) {
         exception = globalData.exception;
         globalData.exception = JSValue();

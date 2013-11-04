@@ -2029,9 +2029,7 @@ static EDisplay equivalentBlockDisplay(EDisplay display, bool isFloating, bool s
     case BLOCK:
     case TABLE:
     case BOX:
-#if ENABLE(CSS3_FLEXBOX)
     case FLEX:
-#endif
     case GRID:
         return display;
 
@@ -2044,10 +2042,8 @@ static EDisplay equivalentBlockDisplay(EDisplay display, bool isFloating, bool s
         return TABLE;
     case INLINE_BOX:
         return BOX;
-#if ENABLE(CSS3_FLEXBOX)
     case INLINE_FLEX:
         return FLEX;
-#endif
     case INLINE_GRID:
         return GRID;
 
@@ -2084,11 +2080,7 @@ static bool doesNotInheritTextDecoration(RenderStyle* style, Element* e)
 
 static bool isDisplayFlexibleBox(EDisplay display)
 {
-#if ENABLE(CSS3_FLEXBOX)
     return display == FLEX || display == INLINE_FLEX;
-#else
-    return false;
-#endif
 }
 
 void StyleResolver::adjustRenderStyle(RenderStyle* style, RenderStyle* parentStyle, Element *e)
@@ -2197,6 +2189,7 @@ void StyleResolver::adjustRenderStyle(RenderStyle* style, RenderStyle* parentSty
         || style->hasMask()
         || style->boxReflect()
         || style->hasFilter()
+        || style->hasBlendMode()
         || style->position() == StickyPosition
 #ifdef FIXED_POSITION_CREATES_STACKING_CONTEXT
         || style->position() == FixedPosition
@@ -3360,8 +3353,15 @@ static bool createGridPosition(CSSValue* value, Length& position)
 #if ENABLE(CSS_VARIABLES)
 static bool hasVariableReference(CSSValue* value)
 {
-    if (value->isPrimitiveValue() && static_cast<CSSPrimitiveValue*>(value)->isVariableName())
-        return true;
+    if (value->isPrimitiveValue()) {
+        CSSPrimitiveValue* primitiveValue = static_cast<CSSPrimitiveValue*>(value);
+        if (CSSCalcValue* calcValue = primitiveValue->cssCalcValue())
+            return calcValue->hasVariableReference();
+        return primitiveValue->isVariableName();
+    }
+
+    if (value->isCalculationValue())
+        return static_cast<CSSCalcValue*>(value)->hasVariableReference();
 
     for (CSSValueListIterator i = value; i.hasMore(); i.advance()) {
         if (hasVariableReference(i.value()))
@@ -4378,7 +4378,6 @@ void StyleResolver::applyProperty(CSSPropertyID id, CSSValue* value)
     case CSSPropertyWebkitColumns:
     case CSSPropertyWebkitColumnSpan:
     case CSSPropertyWebkitColumnWidth:
-#if ENABLE(CSS3_FLEXBOX)
     case CSSPropertyWebkitAlignContent:
     case CSSPropertyWebkitAlignItems:
     case CSSPropertyWebkitAlignSelf:
@@ -4391,7 +4390,6 @@ void StyleResolver::applyProperty(CSSPropertyID id, CSSValue* value)
     case CSSPropertyWebkitFlexWrap:
     case CSSPropertyWebkitJustifyContent:
     case CSSPropertyWebkitOrder:
-#endif
 #if ENABLE(CSS_REGIONS)
     case CSSPropertyWebkitFlowFrom:
     case CSSPropertyWebkitFlowInto:

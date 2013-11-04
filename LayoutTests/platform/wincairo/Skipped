@@ -915,10 +915,6 @@ animations/3d/transform-origin-vs-functions.html
 compositing/reflections/animation-inside-reflection.html
 compositing/reflections/nested-reflection-animated.html
 
-# Sometimes fail http://webkit.org/b/48454
-compositing/tiling/huge-layer-resize.html
-compositing/tiling/huge-layer-with-layer-children-resize.html
-
 # http://webkit.org/b/48455
 transitions/cancel-transition.html
 
@@ -1223,7 +1219,6 @@ fast/text/international/bidi-linebreak-003.html
 fast/text/international/bidi-listbox-atsui.html
 fast/text/international/bidi-listbox.html
 fast/text/international/hindi-spacing.html
-http/tests/loading/gmail-assert-on-load.html
 http/tests/misc/window-dot-stop.html
 http/tests/security/dataTransfer-set-data-file-url.html
 http/tests/xmlhttprequest/abort-should-cancel-load.html
@@ -1350,6 +1345,7 @@ fast/dom/Geolocation
 
 # This port doesn't support Notifications.
 fast/notifications
+http/tests/notifications
 
 # These media tests regressed on the bots.  Skipping to make the bots green again.
 # https://bugs.webkit.org/show_bug.cgi?id=28281
@@ -1485,7 +1481,6 @@ media/video-display-aspect-ratio.html
 http/tests/misc/image-checks-for-accept.html
 
 # Tests timeout: https://bugs.webkit.org/show_bug.cgi?id=35041
-http/tests/websocket/tests/hixie76/frame-lengths.html
 http/tests/websocket/tests/hixie76/simple-stress.html
 
 # Needs platform specific API implemented in DRT, maybe not relevant for non-Mac and non-Windows ports

@@ -1,3 +1,239 @@
+2012-08-31  Brady Eidson  <beidson@apple.com>
+
+       REGRESSION (r127252): incomplete repaint on Flash element after pinch to zoom
+       <rdar://problem/12217897> and https://bugs.webkit.org/show_bug.cgi?id=95607
+
+       Reviewed by Simon Fraser.
+
+       * WebProcess/Plugins/PluginView.cpp:
+       (WebKit::PluginView::viewGeometryDidChange): Only give the window coordinate clip rect a chance
+         to override the boundsRect() if the page scale factor is 1.
+
+2012-08-31  Tony Chang  <tony@chromium.org>
+
+        Remove ENABLE_CSS3_FLEXBOX compile time flag
+        https://bugs.webkit.org/show_bug.cgi?id=95382
+
+        Reviewed by Ojan Vafai.
+
+        Everyone is already enabling this by default and the spec has stablized.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2012-08-31  Pratik Solanki  <psolanki@apple.com>
+
+        objc_msgSend and IMP should be cast appropriately before using
+        https://bugs.webkit.org/show_bug.cgi?id=95242
+
+        Reviewed by Benjamin Poulain.
+
+        Follow on fix for Mac EWS - use objc-runtime.h instead of runtime.h so
+        that it finds the declaration for objc_msgSend.
+
+        * UIProcess/API/mac/PDFViewController.mm:
+
+2012-08-31  Jon Lee  <jonlee@apple.com>
+
+        [Tests] Add basic tests to http/tests/notifications
+        https://bugs.webkit.org/show_bug.cgi?id=95493
+        <rdar://problem/12209303>
+
+        Reviewed by Alexey Proskuryakov.
+
+        Simplify the passing of the permission policy to just a boolean instead of converting it
+        back and forth from the NotificationClient::Permission enum.
+
+        * WebProcess/InjectedBundle/API/c/WKBundlePrivate.h: Move the declaration to the section
+        of functions that are TestRunner SPI.
+        * WebProcess/InjectedBundle/InjectedBundle.cpp:
+        (WebKit::InjectedBundle::setWebNotificationPermission): Use a boolean.
+        * WebProcess/Notifications/NotificationPermissionRequestManager.cpp:
+        (WebKit::NotificationPermissionRequestManager::setPermissionLevelForTesting):
+        * WebProcess/Notifications/NotificationPermissionRequestManager.h:
+        (NotificationPermissionRequestManager):
+
+        * win/WebKit2.vcproj: Add WKNotificationPermissionRequest.{h,cpp}.
+        * win/WebKit2Generated.make: Export WKNotificationPermissionRequest.h.
+
+2012-08-31  Balazs Kelemen  <kbalazs@webkit.org>
+
+        [Qt] ASSERT(m_useFixedLayout) in WebPage when using QRawWebView without setting fixed layout
+        https://bugs.webkit.org/show_bug.cgi?id=95557
+
+        Reviewed by Noam Rosenthal.
+
+        Let QRawWebView work with non-fixed layout size.
+
+        * UIProcess/API/qt/raw/qrawwebview.cpp:
+        (QRawWebView::setSize): Also put the member assigment into
+        the point where the new size is ensured to be committed.
+
+2012-08-31  Balazs Kelemen  <kbalazs@webkit.org>
+
+        [Qt] LayerTreeRenderer::callOnMainTread method name is misleading
+        https://bugs.webkit.org/show_bug.cgi?id=95558
+
+        Reviewed by Kenneth Rohde Christiansen.
+
+        Fix the typo in the function name so callers will really call this
+        and not WTF::callOnMainThread. Renamed to dispatchOnMainThread to
+        make it clear that these things are not the same.
+
+        * UIProcess/CoordinatedGraphics/LayerTreeRenderer.cpp:
+        (WebKit::LayerTreeRenderer::dispatchOnMainThread):
+        (WebKit::LayerTreeRenderer::flushLayerChanges):
+        (WebKit::LayerTreeRenderer::purgeGLResources):
+        * UIProcess/CoordinatedGraphics/LayerTreeRenderer.h:
+        (LayerTreeRenderer):
+
+2012-08-31  Brady Eidson  <beidson@apple.com>
+
+        REGRESSION (127047): Crash in PluginProxy::windowVisibilityChanged when changing tabs
+        <rdar://problem/12211180> and https://bugs.webkit.org/show_bug.cgi?id=95515
+
+        Reviewed by Dan Bernstein.
+
+        Plug-ins created in background tabs don't get initialized until they first become visible,
+        so telling them they are now invisible leads to messaging on behalf of an uninitialized plug-in.
+
+        Many other methods related to visibility and focus only call through if the plug-in is initialized,
+        so setWindowIsVisible should do the same.
+
+        * WebProcess/Plugins/PluginView.cpp:
+        (WebKit::PluginView::setWindowIsVisible): Only tell initialized plug-ins of window visibility changes.
+
+2012-08-31  Milian Wolff  <milian.wolff@kdab.com>
+
+        [Qt] QNX does not support SOCK_SEQPACKET socket type for socketpair in ProcessLauncherQt
+        https://bugs.webkit.org/show_bug.cgi?id=95553
+
+        Reviewed by Simon Hausmann.
+
+        Calling socketpair with SOCK_SEQPACKET socket type fails on QNX with an error 241 (EPROTOTYPE),
+        as can be seen by the following debug output: "Creation of socket failed with errno: 241".
+        A test app shows that SOCK_DGRAM works properly on QNX, thus use it instead of SOCK_SEQPACKET.
+
+        * UIProcess/Launcher/qt/ProcessLauncherQt.cpp:
+
+2012-08-30  Mark Hahnenberg  <mhahnenberg@apple.com>
+
+        ~JSNPObject should call invalidate() if it hasn't been called already
+        https://bugs.webkit.org/show_bug.cgi?id=95497
+
+        Reviewed by Geoffrey Garen.
+
+        Finalization is no longer eager, just like destruction, so the original intent behind 
+        this ASSERT in ~JSNPObject is no longer relevant. Therefore, we can just call invalidate() 
+        ourselves in ~JSNPObject.
+
+        * WebProcess/Plugins/Netscape/JSNPObject.cpp:
+        (WebKit::JSNPObject::~JSNPObject):
+
+2012-08-30  Sam Weinig  <sam@webkit.org>
+
+        Allow dynamic mach-lookup extensions in the WebProcess
+        <rdar://problem/12207996>
+
+        Reviewed by Gavin Barraclough.
+
+        Like we allow file read/write dynamic sandbox extensions, we should allow
+        mach-lookup extensions.
+
+        * WebProcess/com.apple.WebProcess.sb.in:
+
+2012-08-30  Geoffrey Garen  <ggaren@apple.com>
+
+        Use one object instead of two for closures, eliminating ScopeChainNode
+        https://bugs.webkit.org/show_bug.cgi?id=95501
+
+        Reviewed by Filip Pizlo.
+
+        Mechanical changes to update for JSC interface change.
+
+2012-08-30  JungJik Lee  <jungjik.lee@samsung.com>
+
+        [EFL][WK2] Add WebMemorySampler feature.
+        https://bugs.webkit.org/show_bug.cgi?id=91214
+
+        Reviewed by Kenneth Rohde Christiansen.
+
+        Add WebMemorySampler feature to EFL port. WebMemorySampler records memory usage of
+        WebProcess and UI Process and also it records application memory status in real time.
+        Included items on the result are JIT, JS heap, fastmalloc bytes and
+        application memory info from /proc/process_id/statm.
+
+        * PlatformEfl.cmake:
+        * Shared/linux/WebMemorySamplerLinux.cpp: Added.
+        (WebKit):
+        (ApplicationMemoryStats):
+        (WebKit::nextToken):
+        (WebKit::appendKeyValuePair):
+        (WebKit::sampleMemoryAllocatedForApplication):
+        (WebKit::WebMemorySampler::processName):
+        (WebKit::WebMemorySampler::sampleWebKit):
+        (WebKit::WebMemorySampler::sendMemoryPressureEvent):
+        * UIProcess/API/efl/ewk_context.cpp:
+        (_Ewk_Context::_Ewk_Context):
+
+2012-08-30  Pratik Solanki  <psolanki@apple.com>
+
+        objc_msgSend and IMP should be cast appropriately before using
+        https://bugs.webkit.org/show_bug.cgi?id=95242
+
+        Reviewed by Benjamin Poulain.
+
+        Use wtfObjcMsgSend and wtfCallIMP templates which do appropriate casts
+        to a function pointer with right types when calling objc_msgSend and an
+        IMP method directly.
+
+        * UIProcess/API/mac/PDFViewController.mm:
+        (WebKit::PDFViewScrollView_scrollWheel):
+
+2012-08-30  Benjamin Poulain  <bpoulain@apple.com>
+
+        Replace JSC::UString by WTF::String
+        https://bugs.webkit.org/show_bug.cgi?id=95271
+
+        Reviewed by Geoffrey Garen.
+
+        Update to code to switch from UString to String.
+
+        * WebProcess/Plugins/Netscape/JSNPMethod.cpp:
+        (WebKit::JSNPMethod::finishCreation):
+        * WebProcess/Plugins/Netscape/JSNPMethod.h:
+        (WebKit::JSNPMethod::create):
+        (JSNPMethod):
+        * WebProcess/Plugins/Netscape/JSNPObject.cpp:
+        (WebKit::npIdentifierFromIdentifier):
+        * WebProcess/Plugins/Netscape/NPRuntimeObjectMap.cpp:
+        (WebKit::NPRuntimeObjectMap::evaluate):
+        (WebKit::NPRuntimeObjectMap::moveGlobalExceptionToExecState):
+
+2012-08-29  Mark Hahnenberg  <mhahnenberg@apple.com>
+
+        JSNPObject doesn't always protect its data when calling into plugin code
+        https://bugs.webkit.org/show_bug.cgi?id=95394
+
+        Reviewed by Brady Eidson.
+
+        We need to use NPRuntimeObjectMap::PluginProtector when calling into plugin code since 
+        there's no telling what the plugin will do, including destroying itself.
+
+        * WebProcess/Plugins/Netscape/JSNPObject.cpp:
+        (WebKit::JSNPObject::getOwnPropertySlot):
+        (WebKit::JSNPObject::getOwnPropertyDescriptor):
+
+2012-08-30  Mike Sierra  <mike.sierra@nokia.com>
+
+        [QT][WK2] webview API doc
+        https://bugs.webkit.org/show_bug.cgi?id=81701
+
+        Reviewed by Simon Hausmann.
+
+        Various improvements and additions to the documentation of the QML WebView element.
+
+        * UIProcess/API/qt/qquickwebview.cpp:
+
 2012-08-29  Kangil Han  <kangil.han@samsung.com>
 
         [EFL][WK2] Replace PageClientImpl with ewk view in constructor of EflViewportHandler.

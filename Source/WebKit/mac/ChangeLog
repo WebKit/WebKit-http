@@ -1,3 +1,150 @@
+2012-08-31  Tony Chang  <tony@chromium.org>
+
+        Remove ENABLE_CSS3_FLEXBOX compile time flag
+        https://bugs.webkit.org/show_bug.cgi?id=95382
+
+        Reviewed by Ojan Vafai.
+
+        Everyone is already enabling this by default and the spec has stablized.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2012-08-31  Pratik Solanki  <psolanki@apple.com>
+
+        objc_msgSend and IMP should be cast appropriately before using
+        https://bugs.webkit.org/show_bug.cgi?id=95242
+
+        Reviewed by Benjamin Poulain.
+
+        Fix for older compilers. Pass id as the return type to the template
+        instead of relying on default type.
+
+        * WebView/WebDelegateImplementationCaching.mm:
+        (CallDelegate):
+        (CallFormDelegate):
+        * WebView/WebHTMLView.mm:
+        (setCursor):
+        (setNeedsDisplayInRect):
+
+2012-08-30  Geoffrey Garen  <ggaren@apple.com>
+
+        Use one object instead of two for closures, eliminating ScopeChainNode
+        https://bugs.webkit.org/show_bug.cgi?id=95501
+
+        Reviewed by Filip Pizlo.
+
+        Mechanical change to update for JSC interface change.
+
+2012-08-30  Sheriff Bot  <webkit.review.bot@gmail.com>
+
+        Unreviewed, rolling out r127171.
+        http://trac.webkit.org/changeset/127171
+        https://bugs.webkit.org/show_bug.cgi?id=95505
+
+        testRunner does not need dumpWebNotificationCallbacks().
+        (Requested by jonlee on #webkit).
+
+        * WebKit.exp:
+
+2012-08-30  Pratik Solanki  <psolanki@apple.com>
+
+        objc_msgSend and IMP should be cast appropriately before using
+        https://bugs.webkit.org/show_bug.cgi?id=95242
+
+        Reviewed by Benjamin Poulain.
+
+        Use wtfObjcMsgSend and wtfCallIMP templates which do appropriate casts
+        to a function pointer with right types when calling objc_msgSend and an
+        IMP method directly.
+
+        * WebCoreSupport/WebCachedFramePlatformData.h:
+        (WebCachedFramePlatformData::clear):
+        * WebCoreSupport/WebDeviceOrientationClient.mm:
+        (WebDeviceOrientationClient::getProvider):
+        * WebView/WebDelegateImplementationCaching.mm:
+        (CallDelegate):
+        (CallDelegateReturningBoolean):
+        (CallResourceLoadDelegateReturningBoolean):
+        (CallFormDelegate):
+        (CallFormDelegateReturningBoolean):
+        * WebView/WebHTMLView.mm:
+        (setCursor):
+        (setNeedsDisplayInRect):
+
+2012-08-30  Benjamin Poulain  <bpoulain@apple.com>
+
+        Replace JSC::UString by WTF::String
+        https://bugs.webkit.org/show_bug.cgi?id=95271
+
+        Reviewed by Geoffrey Garen.
+
+        Get rid of UString, replace it by String, and simplify the code when possible.
+
+        On x86_64, this reduces the binary size by 7kb.
+
+        * Plugins/Hosted/NetscapePluginHostProxy.mm:
+        (identifierFromIdentifierRep):
+        * Plugins/Hosted/NetscapePluginInstanceProxy.mm:
+        (WebKit::NetscapePluginInstanceProxy::addValueToArray):
+        (WebKit::NetscapePluginInstanceProxy::moveGlobalExceptionToExecState):
+        * Plugins/Hosted/ProxyInstance.mm:
+        (WebKit::ProxyRuntimeMethod::create):
+        (WebKit::ProxyRuntimeMethod::finishCreation):
+        (WebKit::ProxyInstance::getPropertyNames):
+        (WebKit::ProxyInstance::methodsNamed):
+        (WebKit::ProxyInstance::fieldNamed):
+        * WebView/WebFrame.mm:
+        (-[WebFrame _stringByEvaluatingJavaScriptFromString:forceUserGesture:]):
+        (-[WebFrame _stringByEvaluatingJavaScriptFromString:withGlobalObject:inScriptWorld:]):
+        * WebView/WebScriptDebugDelegate.mm:
+        (-[WebScriptCallFrame functionName]):
+        (-[WebScriptCallFrame evaluateWebScript:]):
+        * WebView/WebScriptDebugger.h:
+        (WTF):
+        (JSC):
+        (WebScriptDebugger):
+        * WebView/WebScriptDebugger.mm:
+        (toNSURL):
+        (WebScriptDebugger::sourceParsed):
+        * WebView/WebView.mm:
+        (aeDescFromJSValue):
+
+2012-08-30  Jon Lee  <jonlee@apple.com>
+
+        [Mac] Add testRunner.dumpWebNotificationCallbacks() to DRT
+        https://bugs.webkit.org/show_bug.cgi?id=95232
+        <rdar://problem/12190776>
+
+        Reviewed by Alexey Proskuryakov.
+
+        * WebKit.exp: Export WebNotification class.
+
+2012-08-30  Jon Lee  <jonlee@apple.com>
+
+        [Mac] Registering web views for notifications is unbalanced
+        https://bugs.webkit.org/show_bug.cgi?id=95465
+        <rdar://problem/12206765>
+
+        Reviewed by Darin Adler.
+
+        Setting the notification provider for a WK1 WebView registers that web view to the
+        provider. When the WebView is closed, WebCore is essentially responsible for
+        unregistering the web view. This leads to an imbalance on Lion since notifications are
+        not supported, and the NotificationController responsible for making the unregistration
+        call doesn't exist.
+
+        Instead, the unregisterWebView method should be called when the web view is closed.
+
+        * WebView/WebViewPrivate.h: Remove _notificationControllerDestroyed, since it is
+        unneeded.
+
+        * WebCoreSupport/WebNotificationClient.mm:
+        (WebNotificationClient::notificationControllerDestroyed):
+        * WebView/WebView.mm:
+        (-[WebView _close]): Unregister the web view from the assigned provider here.
+        (-[WebView _setNotificationProvider:]): Only allow setting the provider once, to avoid
+        registering the web view to multiple providers.
+
 2012-08-29  Jon Lee  <jonlee@apple.com>
 
         [Mac] Add iconURL to WebNotification

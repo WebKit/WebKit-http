@@ -244,7 +244,6 @@ SET(JavaScriptCore_SOURCES
     runtime/RegExpMatchesArray.cpp
     runtime/RegExpObject.cpp
     runtime/RegExpPrototype.cpp
-    runtime/ScopeChain.cpp
     runtime/SmallStrings.cpp
     runtime/StrictEvalActivation.cpp
     runtime/StringConstructor.cpp
@@ -255,7 +254,6 @@ SET(JavaScriptCore_SOURCES
     runtime/StructureChain.cpp
     runtime/SymbolTable.cpp
     runtime/TimeoutChecker.cpp
-    runtime/UString.cpp
 
     tools/CodeProfile.cpp
     tools/CodeProfiling.cpp

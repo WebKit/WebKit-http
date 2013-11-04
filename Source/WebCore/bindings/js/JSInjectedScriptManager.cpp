@@ -54,12 +54,12 @@ ScriptObject InjectedScriptManager::createInjectedScript(const String& source, S
 {
     JSLockHolder lock(scriptState);
 
-    SourceCode sourceCode = makeSource(stringToUString(source));
+    SourceCode sourceCode = makeSource(source);
     JSDOMGlobalObject* globalObject = jsCast<JSDOMGlobalObject*>(scriptState->lexicalGlobalObject());
     JSValue globalThisValue = scriptState->globalThisValue();
 
     JSValue evaluationException;
-    JSValue evaluationReturnValue = JSMainThreadExecState::evaluate(scriptState, globalObject->globalScopeChain(), sourceCode, globalThisValue, &evaluationException);
+    JSValue evaluationReturnValue = JSMainThreadExecState::evaluate(scriptState, sourceCode, globalThisValue, &evaluationException);
     if (evaluationException)
         return ScriptObject();
 

@@ -1,3 +1,202 @@
+2012-08-31  Tony Chang  <tony@chromium.org>
+
+        Remove ENABLE_CSS3_FLEXBOX compile time flag
+        https://bugs.webkit.org/show_bug.cgi?id=95382
+
+        Reviewed by Ojan Vafai.
+
+        Everyone is already enabling this by default and the spec has stablized.
+
+        * features.gypi:
+
+2012-08-31  Christopher Cameron  <ccameron@chromium.org>
+
+        [chromium] Add main versus impl thread asserts
+        https://bugs.webkit.org/show_bug.cgi?id=95596
+
+        Reviewed by James Robinson.
+
+        Add asserts to prioritized texture manager that specify that a
+        function be called on the main or impl thread.
+
+        Add debug signs that the main thread is blocked to the threaded
+        proxy.
+
+        Add a mechanism to simultaneously set the thread to the impl thread
+        and indicate that the main thread is blocked.
+
+        Update tests that hit asserts in the prioritized texture manager to
+        set their impl thread and main thread blocked state correctly.
+
+        * tests/CCPrioritizedTextureTest.cpp:
+        (WTF::CCPrioritizedTextureTest::CCPrioritizedTextureTest):
+        (WTF::CCPrioritizedTextureTest::~CCPrioritizedTextureTest):
+        (WTF::CCPrioritizedTextureTest::validateTexture):
+        (WTF::TEST_F):
+        * tests/TiledLayerChromiumTest.cpp:
+
+2012-08-30  James Robinson  <jamesr@chromium.org>
+
+        [chromium] Put compositor client interfaces in separate headers, normalize naming
+        https://bugs.webkit.org/show_bug.cgi?id=95522
+
+        Reviewed by Adam Barth.
+
+        * src/WebContentLayerImpl.cpp:
+        (WebKit::WebContentLayerImpl::~WebContentLayerImpl):
+        * src/WebContentLayerImpl.h:
+        (WebContentLayerImpl):
+        * src/WebExternalTextureLayerImpl.h:
+        * src/WebLayerTreeViewImpl.h:
+        (WebCore):
+        * tests/CCLayerTreeHostCommonTest.cpp:
+        * tests/CCLayerTreeHostTest.cpp:
+        (WebKitTests::ContentLayerChromiumWithUpdateTracking::create):
+        (WebKitTests::ContentLayerChromiumWithUpdateTracking::ContentLayerChromiumWithUpdateTracking):
+        (WebKitTests::CCLayerTreeHostTestDeviceScaleFactorScalesViewportAndLayers::CCLayerTreeHostTestDeviceScaleFactorScalesViewportAndLayers):
+        (WebKitTests::CCLayerTreeHostTestAtomicCommit::CCLayerTreeHostTestAtomicCommit):
+        (WebKitTests::CCLayerTreeHostTestAtomicCommitWithPartialUpdate::CCLayerTreeHostTestAtomicCommitWithPartialUpdate):
+        (WebKitTests::CCLayerTreeHostTestLostContextWhileUpdatingResources::CCLayerTreeHostTestLostContextWhileUpdatingResources):
+        (CCLayerTreeHostTestLostContextWhileUpdatingResources):
+        * tests/ContentLayerChromiumTest.cpp:
+        (WebKit::MockContentLayerChromiumClient::MockContentLayerChromiumClient):
+        (WebKit::TEST):
+
+2012-08-31  Gavin Peters  <gavinp@chromium.org>
+
+        [chromium] DEPS roll with a test skip.
+        https://bugs.webkit.org/show_bug.cgi?id=95601
+
+        Unreviewed gardening & DEPS roll.
+
+
+        fast/frames/cached-frame-counter.html was never the most stable test, and now it's failing on more platforms. Marking it flaky, along with a DEPS roll (earlier attempts at the DEPS roll failed on this)
+
+        * DEPS:
+
+2012-08-31  Gavin Peters  <gavinp@chromium.org>
+
+        [chromium] Disable WebViewTest.AutoResizeMinimumSize
+        https://bugs.webkit.org/show_bug.cgi?id=95571
+
+        Unreviewed gardening.
+
+        Disabling this test since it started failing in build 17225, see http://build.chromium.org/p/chromium.webkit/builders/Webkit%20Win/builds/17247 for instance. Will shortly file bug to re-enable this.
+
+        * tests/WebViewTest.cpp:
+
+2012-08-30  James Robinson  <jamesr@chromium.org>
+
+        [chromium] Revert WebCompositorSupport to raw ptrs, make dtor protected
+        https://bugs.webkit.org/show_bug.cgi?id=95520
+
+        Reviewed by Darin Fisher.
+
+        Adopt the return value of WebCompositorSupport explicitly.
+
+        * src/LinkHighlight.cpp:
+        (WebKit::LinkHighlight::LinkHighlight):
+        (WebKit::LinkHighlight::startHighlightAnimation):
+        * src/WebMediaPlayerClientImpl.cpp:
+        (WebKit::WebMediaPlayerClientImpl::readyStateChanged):
+        * src/WebPluginContainerImpl.cpp:
+        (WebKit::WebPluginContainerImpl::setBackingTextureId):
+        (WebKit::WebPluginContainerImpl::setBackingIOSurfaceId):
+
+2012-08-30  James Robinson  <jamesr@chromium.org>
+
+        [chromium] Make webkit_compositor specific unit test compilation conditional on gyp var
+        https://bugs.webkit.org/show_bug.cgi?id=95401
+
+        Reviewed by Dirk Pranke.
+
+        If use_libcc_for_compositor is set, these tests are being compiled and run elsewhere.
+
+        * WebKit.gyp:
+        * WebKit.gypi:
+        * WebKitUnitTests.gyp:
+
+2012-08-27  James Robinson  <jamesr@chromium.org>
+
+        [chromium] Add CompositorSupport interface for constructing compositor classes
+        https://bugs.webkit.org/show_bug.cgi?id=95040
+
+        Reviewed by Darin Fisher.
+
+        * src/LinkHighlight.cpp:
+        (WebKit::LinkHighlight::LinkHighlight):
+        (WebKit::LinkHighlight::startHighlightAnimation):
+        * src/WebMediaPlayerClientImpl.cpp:
+        (WebKit::WebMediaPlayerClientImpl::readyStateChanged):
+        * src/WebMediaPlayerClientImpl.h:
+        (WebKit):
+        * src/WebPluginContainerImpl.cpp:
+        (WebKit::WebPluginContainerImpl::setBackingTextureId):
+        (WebKit::WebPluginContainerImpl::setBackingIOSurfaceId):
+        * src/WebPluginContainerImpl.h:
+        (WebKit):
+
+2012-08-30  Gavin Peters  <gavinp@chromium.org>
+
+        [chromium] Disable CCLayerTreeHostTestScrollMultipleRedraw.runMultiThread
+        https://bugs.webkit.org/show_bug.cgi?id=95472
+
+        Unreviewed gardening.
+
+        When landing r127079, this test was re-enabled, and has not passed since. I'm disabling it, and created bug 95473 to track fixing this issue.
+
+        * tests/CCLayerTreeHostTest.cpp:
+        (WebKitTests::TEST_F):
+
+2012-08-30  James Robinson  <jamesr@chromium.org>
+
+        [chromium] Clean up some webkit compositor unit tests
+        https://bugs.webkit.org/show_bug.cgi?id=95410
+
+        Reviewed by Adrienne Walker.
+
+        This adds includes that were implicitly being picked up, removes ones that weren't being used, removes
+        dead code, adds OVERRIDE on functions that OVERRIDE, and deinlines virtuals that the chromium clang style
+        plugin is unhappy about.
+
+        * tests/CCAnimationTestCommon.cpp:
+        (WebKitTests::FakeFloatAnimationCurve::duration):
+        (WebKitTests):
+        (WebKitTests::FakeFloatAnimationCurve::getValue):
+        (WebKitTests::FakeTransformTransition::duration):
+        (WebKitTests::FakeFloatTransition::duration):
+        (WebKitTests::FakeLayerAnimationControllerClient::id):
+        (WebKitTests::FakeLayerAnimationControllerClient::setOpacityFromAnimation):
+        (WebKitTests::FakeLayerAnimationControllerClient::opacity):
+        (WebKitTests::FakeLayerAnimationControllerClient::setTransformFromAnimation):
+        (WebKitTests::FakeLayerAnimationControllerClient::transform):
+        * tests/CCAnimationTestCommon.h:
+        (FakeFloatAnimationCurve):
+        (FakeTransformTransition):
+        (FakeFloatTransition):
+        (FakeLayerAnimationControllerClient):
+        * tests/CCTiledLayerTestCommon.cpp:
+        (WebKitTests::FakeLayerTextureUpdater::sampledTexelFormat):
+        (WebKitTests):
+        (WebKitTests::FakeTiledLayerWithScaledBounds::FakeTiledLayerWithScaledBounds):
+        (WebKitTests::FakeTiledLayerChromium::textureManager):
+        (WebKitTests::FakeTiledLayerChromium::textureUpdater):
+        (WebKitTests::FakeTiledLayerWithScaledBounds::contentBounds):
+        (WebKitTests::FakeTextureUploader::isBusy):
+        (WebKitTests::FakeTextureUploader::uploadTexture):
+        * tests/CCTiledLayerTestCommon.h:
+        (FakeLayerTextureUpdater):
+        (FakeTiledLayerChromium):
+        (FakeTiledLayerWithScaledBounds):
+        (FakeTextureUploader):
+        * tests/FakeWebCompositorOutputSurface.h:
+        * tests/TextureCopierTest.cpp:
+        (MockContext):
+        (TEST):
+        * tests/ThrottledTextureUploaderTest.cpp:
+        (WebKit::TEST):
+        * tests/WebLayerTreeViewTest.cpp:
+
 2012-08-29  Hironori Bono  <hbono@chromium.org>
 
         Fix Chromium builds (Win and Mac)

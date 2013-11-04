@@ -52,7 +52,7 @@ namespace JSC {
     class LLIntOffsetsExtractor;
     class ProgramExecutable;
     class Register;
-    class ScopeChainNode;
+    class JSScope;
     class SamplingTool;
     struct CallFrameClosure;
     struct HandlerInfo;
@@ -79,8 +79,8 @@ namespace JSC {
         StackFrameCodeType codeType;
         Strong<ExecutableBase> executable;
         int line;
-        UString sourceURL;
-        UString toString(CallFrame* callFrame) const
+        String sourceURL;
+        String toString(CallFrame* callFrame) const
         {
             StringBuilder traceBuild;
             String functionName = friendlyFunctionName(callFrame);
@@ -194,7 +194,7 @@ namespace JSC {
         Opcode getOpcode(OpcodeID id)
         {
             ASSERT(m_initialized);
-#if ENABLE(COMPUTED_GOTO_CLASSIC_INTERPRETER) || ENABLE(LLINT)
+#if ENABLE(COMPUTED_GOTO_OPCODES)
             return m_opcodeTable[id];
 #else
             return id;
@@ -204,6 +204,7 @@ namespace JSC {
         OpcodeID getOpcodeID(Opcode opcode)
         {
             ASSERT(m_initialized);
+#if ENABLE(COMPUTED_GOTO_OPCODES)
 #if ENABLE(LLINT)
             ASSERT(isOpcode(opcode));
             return m_opcodeIDTable.get(opcode);
@@ -213,9 +214,10 @@ namespace JSC {
                 return static_cast<OpcodeID>(bitwise_cast<uintptr_t>(opcode));
 
             return m_opcodeIDTable.get(opcode);
-#else
+#endif // ENABLE(COMPUTED_GOTO_CLASSIC_INTERPRETER)
+#else // !ENABLE(COMPUTED_GOTO_OPCODES)
             return opcode;
-#endif
+#endif // !ENABLE(COMPUTED_GOTO_OPCODES)
         }
         
         bool classicEnabled()
@@ -225,15 +227,15 @@ namespace JSC {
 
         bool isOpcode(Opcode);
 
-        JSValue execute(ProgramExecutable*, CallFrame*, ScopeChainNode*, JSObject* thisObj);
+        JSValue execute(ProgramExecutable*, CallFrame*, JSObject* thisObj);
         JSValue executeCall(CallFrame*, JSObject* function, CallType, const CallData&, JSValue thisValue, const ArgList&);
         JSObject* executeConstruct(CallFrame*, JSObject* function, ConstructType, const ConstructData&, const ArgList&);
-        JSValue execute(EvalExecutable*, CallFrame*, JSValue thisValue, ScopeChainNode*);
-        JSValue execute(EvalExecutable*, CallFrame*, JSValue thisValue, ScopeChainNode*, int globalRegisterOffset);
+        JSValue execute(EvalExecutable*, CallFrame*, JSValue thisValue, JSScope*);
+        JSValue execute(EvalExecutable*, CallFrame*, JSValue thisValue, JSScope*, int globalRegisterOffset);
 
         JSValue retrieveArgumentsFromVMCode(CallFrame*, JSFunction*) const;
         JSValue retrieveCallerFromVMCode(CallFrame*, JSFunction*) const;
-        JS_EXPORT_PRIVATE void retrieveLastCaller(CallFrame*, int& lineNumber, intptr_t& sourceID, UString& sourceURL, JSValue& function) const;
+        JS_EXPORT_PRIVATE void retrieveLastCaller(CallFrame*, int& lineNumber, intptr_t& sourceID, String& sourceURL, JSValue& function) const;
         
         void getArgumentsData(CallFrame*, JSFunction*&, ptrdiff_t& firstParameterIndex, Register*& argv, int& argc);
         
@@ -241,7 +243,7 @@ namespace JSC {
 
         NEVER_INLINE HandlerInfo* throwException(CallFrame*&, JSValue&, unsigned bytecodeOffset);
         NEVER_INLINE void debug(CallFrame*, DebugHookID, int firstLine, int lastLine, int column);
-        static const UString getTraceLine(CallFrame*, StackFrameCodeType, const UString&, int);
+        static const String getTraceLine(CallFrame*, StackFrameCodeType, const String&, int);
         JS_EXPORT_PRIVATE static void getStackTrace(JSGlobalData*, Vector<StackFrame>& results);
         static void addStackTraceIfNecessary(CallFrame*, JSObject* error);
 
@@ -254,12 +256,12 @@ namespace JSC {
     private:
         enum ExecutionFlag { Normal, InitializeAndReturn };
 
-        CallFrameClosure prepareForRepeatCall(FunctionExecutable*, CallFrame*, JSFunction*, int argumentCountIncludingThis, ScopeChainNode*);
+        CallFrameClosure prepareForRepeatCall(FunctionExecutable*, CallFrame*, JSFunction*, int argumentCountIncludingThis, JSScope*);
         void endRepeatCall(CallFrameClosure&);
         JSValue execute(CallFrameClosure&);
 
 #if ENABLE(CLASSIC_INTERPRETER)
-        NEVER_INLINE ScopeChainNode* createExceptionScope(CallFrame*, const Instruction* vPC);
+        NEVER_INLINE JSScope* createExceptionScope(CallFrame*, const Instruction* vPC);
 
         void tryCacheGetByID(CallFrame*, CodeBlock*, Instruction*, JSValue baseValue, const Identifier& propertyName, const PropertySlot&);
         void uncacheGetByID(CodeBlock*, Instruction* vPC);
@@ -287,6 +289,7 @@ namespace JSC {
 
         RegisterFile m_registerFile;
         
+#if ENABLE(COMPUTED_GOTO_OPCODES)
 #if ENABLE(LLINT)
         Opcode* m_opcodeTable; // Maps OpcodeID => Opcode for compiling
         HashMap<Opcode, OpcodeID> m_opcodeIDTable; // Maps Opcode => OpcodeID for decompiling
@@ -294,6 +297,7 @@ namespace JSC {
         Opcode m_opcodeTable[numOpcodeIDs]; // Maps OpcodeID => Opcode for compiling
         HashMap<Opcode, OpcodeID> m_opcodeIDTable; // Maps Opcode => OpcodeID for decompiling
 #endif
+#endif // ENABLE(COMPUTED_GOTO_OPCODES)
 
 #if !ASSERT_DISABLED
         bool m_initialized;
@@ -307,9 +311,9 @@ namespace JSC {
         return !thisValue.isObject() || thisValue.toThisObject(exec) == thisValue;
     }
 
-    inline JSValue Interpreter::execute(EvalExecutable* eval, CallFrame* callFrame, JSValue thisValue, ScopeChainNode* scopeChain)
+    inline JSValue Interpreter::execute(EvalExecutable* eval, CallFrame* callFrame, JSValue thisValue, JSScope* scope)
     {
-        return execute(eval, callFrame, thisValue, scopeChain, m_registerFile.size() + 1 + RegisterFile::CallFrameHeaderSize);
+        return execute(eval, callFrame, thisValue, scope, m_registerFile.size() + 1 + RegisterFile::CallFrameHeaderSize);
     }
 
     JSValue eval(CallFrame*);

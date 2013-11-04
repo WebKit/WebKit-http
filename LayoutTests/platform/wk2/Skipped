@@ -535,7 +535,6 @@ http/tests/loading/bad-server-subframe.html
 http/tests/loading/basic.html
 http/tests/loading/deleted-host-in-resource-load-delegate-callback.html
 http/tests/loading/empty-subframe.html
-http/tests/loading/gmail-assert-on-load.html
 http/tests/loading/load-javascript-after-many-xhrs.html
 http/tests/loading/location-hash-reload-cycle.html
 http/tests/loading/nested_bad_objects.php
@@ -551,10 +550,6 @@ http/tests/loading/state-object-security-exception.html
 # <https://bugs.webkit.org/show_bug.cgi?id=44479>
 fast/parser/remove-misnested-iframe-in-beforeload.html
 fast/parser/remove-misnested-iframe-parent-in-beforeload.html
-
-# WebKit2 doesn't support tiled layers
-# <rdar://problem/8735596>
-compositing/tiling/huge-layer-resize.html
 
 # transitions/default-timing-function.html failing on WebKit2 since it was added
 # <https://bugs.webkit.org/show_bug.cgi?id=56531>
@@ -676,10 +671,6 @@ fast/images/support-broken-image-delegate.html
 
 # WebKitTestRunner needs layoutTestController.setWillSendRequestReturnNullOnRedirect
 http/tests/misc/will-send-request-returns-null-on-redirect.html
-
-# WebKitTestRunner needs ReceiveServerRedirectForProvisionalLoadForFrame logging
-http/tests/loading/307-after-303-after-post.html
-http/tests/loading/redirect-methods.html
 
 # WebKitTestrunner needs layoutTestController.dumpSourceAsWebArchive
 webarchive/doctype.html
@@ -926,6 +917,9 @@ http/tests/security/video-cross-origin-readback.html
 # https://bugs.webkit.org/show_bug.cgi?id=85558
 http/tests/security/contentSecurityPolicy/1.1
 
+# Unexpected redirection happens.
+http/tests/loading/redirect-methods.html
+
 # Should pass now but need to be checked first.
 platform/mac/fast/loader/file-url-mimetypes-2.html
 platform/mac/fast/loader/file-url-mimetypes-3.html
@@ -1029,7 +1023,6 @@ fast/loader/hashchange-event.html
 fast/loader/onhashchange-attribute-listeners.html
 fast/loader/stateobjects/popstate-fires-on-history-traversal.html
 fast/overflow/overflow_hidden.html
-fast/workers/storage/interrupt-database-sync.html
 fast/workers/storage/interrupt-database.html
 fast/workers/storage/use-same-database-in-page-and-workers.html
 fast/xmlhttprequest/xmlhttprequest-nonexistent-file.html

@@ -314,7 +314,7 @@ jobject JavaJSObject::eval(jstring script) const
     JSLockHolder lock(rootObject->globalObject()->globalData());
     
     rootObject->globalObject()->globalData().timeoutChecker.start();
-    JSValue result = JSC::evaluate(rootObject->globalObject()->globalExec(), rootObject->globalObject()->globalScopeChain(), makeSource(JavaString(script).impl()));
+    JSValue result = JSC::evaluate(rootObject->globalObject()->globalExec(), makeSource(JavaString(script).impl()));
     rootObject->globalObject()->globalData().timeoutChecker.stop();
 
     return convertValueToJObject(result);
@@ -488,7 +488,7 @@ jobject JavaJSObject::convertValueToJObject(JSValue value) const
             result = env->NewObject (JSObjectClass, constructorID, (jdouble)value.toNumber(exec));
         }
     } else if (value.isString()) {
-        UString stringValue = value.toString(exec)->value(exec);
+        String stringValue = value.toString(exec)->value(exec);
         JNIEnv *env = getJNIEnv();
         result = env->NewString ((const jchar *)stringValue.characters(), stringValue.length());
     } else if (value.isBoolean()) {

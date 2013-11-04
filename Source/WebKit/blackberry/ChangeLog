@@ -1,3 +1,141 @@
+2012-08-31  Jacky Jiang  <zhajiang@rim.com>
+
+        [BlackBerry] ASSERT failure in RenderBlock::checkPositionedObjectsNeedLayout
+        https://bugs.webkit.org/show_bug.cgi?id=95611
+
+        Reviewed by Antonio Gomes.
+
+        PR:200127
+        Remove r118405 now as we already have a new fix webkit/43f8394b for
+        that issue and it is not reproducible anymore after the removal.
+        In this way, we can get rid of this ASSERT failure as well.
+        Thanks Antonio for the suggestion.
+
+        * Api/WebPage.cpp:
+        (BlackBerry::WebKit::WebPagePrivate::setViewportSize):
+
+2012-08-31  Joshua Netterfield  <jnetterfield@rim.com>
+
+        [BlackBerry] Eliminate WebGL IT policy
+        https://bugs.webkit.org/show_bug.cgi?id=95604
+        Internal RIM PR #198764
+
+        Reviewed by Rob Buis.
+
+        This is no longer a requirement for the BlackBerry port.
+
+        * Api/WebPage.cpp:
+        (BlackBerry::WebKit::WebPagePrivate::init):
+        (BlackBerry::WebKit::WebPage::setWebGLEnabled):
+        * WebKitSupport/AboutData.cpp:
+        (BlackBerry::WebKit::configPage):
+
+2012-08-30  Benjamin Poulain  <bpoulain@apple.com>
+
+        Replace JSC::UString by WTF::String
+        https://bugs.webkit.org/show_bug.cgi?id=95271
+
+        Reviewed by Geoffrey Garen.
+
+        Replace UString by String.
+
+        * WebCoreSupport/ClientExtension.cpp:
+        * WebCoreSupport/PagePopupBlackBerry.cpp:
+        (WebCore::PagePopupBlackBerry::installDomFunction):
+
+2012-08-30  Jacky Jiang  <zhajiang@rim.com>
+
+        [BlackBerry] ASSERT failure in JSC::MarkedAllocator::allocateSlowCase
+        https://bugs.webkit.org/show_bug.cgi?id=95492
+
+        Reviewed by Yong Li.
+
+        PR: 200724
+        Hold the JSLock for the current thread before we call toRef to avoid
+        the ASSERT failure.
+
+        * Api/WebPage.cpp:
+        (BlackBerry::WebKit::WebPagePrivate::executeJavaScript):
+
+2012-08-30  Antonio Gomes  <agomes@rim.com>
+
+        [BlackBerry] Remove unneeded force-immediate-repaint from InRegionScroller::setLayerScrollPosition
+        https://bugs.webkit.org/show_bug.cgi?id=95476
+        PR #200704
+
+        Reviewed by Yong Li.
+
+        This code is not needed at this point for neither the fast nor slow in-region
+        scroll codepaths, and it is a huge performance beast as it forces all
+        containers to get full-repainted per scroll call (in webkit thread).
+
+        Patch also take this opportunity to remove an early-return we
+        have in the {i}frame slow scrolling code path so that we can
+        adjust the selection handles in this case as well.
+
+        * Api/InRegionScroller.cpp:
+        (BlackBerry::WebKit::InRegionScrollerPrivate::setLayerScrollPosition):
+
+2012-08-30  Hanna Ma  <Hanma@rim.com>
+
+        [BlackBerry] node search does not work with elements on touch start listener
+        https://bugs.webkit.org/show_bug.cgi?id=95252
+
+        Reviewed by Antonio Gomes.
+
+        Fix the node search function of web insepctor on elements with touch start listener.
+        Add methods from webPage to check if the node search functionality is enabled before handling touch events.
+        PR194107
+
+        * Api/WebPage.cpp:
+        (BlackBerry::WebKit::WebPage::touchEvent):
+
+2012-08-30  Arvid Nilsson  <anilsson@rim.com>
+
+        [BlackBerry] One shot drawing sync flag never cleared when there's no layers
+        https://bugs.webkit.org/show_bug.cgi?id=95447
+
+        Reviewed by Antonio Gomes.
+
+        PR 199866
+        When we remove the layers, WebKit could tell us we need a one shot
+        drawing sync to repaint the BackingStore with the content that was
+        previously drawn by layers. We also sometimes set the one shot drawing
+        sync flag manually.
+
+        We would bail from commit if there were no layers and not actually
+        perform the osds, so it left the osds flag set forever and the
+        situation prevails, because nobody will ever clear the osds flag.
+
+        The BackingStore surrenders the responsibility of blitting to the AC
+        commit mechanism when a one shot drawing sync is pending, because we
+        want the operations render, commit and blit to happen in the correct
+        order with no intermediate blits.
+
+        So, no commit means no blit, and the result of regular rendering did
+        not show up on screen.
+
+        Fixed by not bailing from commit if there's no layers, instead clearing
+        the "needs commit" and osds flags and performing a blit.
+
+        Reviewed internally by Andrew Lo.
+
+        * Api/WebPage.cpp:
+        (BlackBerry::WebKit::WebPagePrivate::commitRootLayerIfNeeded):
+
+2012-08-30  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
+
+        Use ASCIILiteral for DEFINE_STATIC_LOCAL string
+        https://bugs.webkit.org/show_bug.cgi?id=95420
+
+        Reviewed by Benjamin Poulain.
+
+        As recommended by http://trac.webkit.org/wiki/EfficientStrings,
+        WebKit needs to use ASCIILiteral for the string of DEFINE_STATIC_LOCAL.
+
+        * Api/WebSettings.cpp:
+        (WebKit):
+
 2012-08-29  Nima Ghanavatian  <nghanavatian@rim.com>
 
         [BlackBerry] Do not use the shadow tree when retrieving the underlying element for FatFinger.

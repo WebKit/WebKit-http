@@ -1,3 +1,81 @@
+2012-08-30  James Robinson  <jamesr@chromium.org>
+
+        [chromium] Revert WebCompositorSupport to raw ptrs, make dtor protected
+        https://bugs.webkit.org/show_bug.cgi?id=95520
+
+        Reviewed by Darin Fisher.
+
+        WebPassOwnPtr<T> isn't quite usable from the chromium side - it needs some more work and isn't worth blocking
+        WebCompositorSupport for. Also, the d'tor for WebCompositorSupport needs to be protected, not private, so it can
+        be implemented.
+
+        * Platform.gypi:
+        * chromium/public/WebCompositorSupport.h:
+        (WebKit):
+        (WebKit::WebCompositorSupport::createLayerTreeView):
+        (WebKit::WebCompositorSupport::createLayer):
+        (WebKit::WebCompositorSupport::createContentLayer):
+        (WebKit::WebCompositorSupport::createExternalTextureLayer):
+        (WebKit::WebCompositorSupport::createIOSurfaceLayer):
+        (WebKit::WebCompositorSupport::createImageLayer):
+        (WebKit::WebCompositorSupport::createSolidColorLayer):
+        (WebKit::WebCompositorSupport::createVideoLayer):
+        (WebKit::WebCompositorSupport::createScrollbarLayer):
+        (WebKit::WebCompositorSupport::createAnimation):
+        (WebKit::WebCompositorSupport::createFloatAnimationCurve):
+        (WebKit::WebCompositorSupport::createTransformAnimationCurve):
+        (WebCompositorSupport):
+        * chromium/public/WebPassOwnPtr.h: Removed.
+
+2012-08-30  James Robinson  <jamesr@chromium.org>
+
+        Chromium win build fix - fix typo in gypi
+
+        * Platform.gypi:
+
+2012-08-27  James Robinson  <jamesr@chromium.org>
+
+        [chromium] Add CompositorSupport interface for constructing compositor classes
+        https://bugs.webkit.org/show_bug.cgi?id=95040
+
+        Reviewed by Darin Fisher.
+
+        Adds a WebCompositorSupport interface as a tear-off of PlatformSupport so the embedder can handle provide
+        implementations of compositor interfaces.
+
+        Adds a new WebPassOwnPtr<> type for use when the caller of an API must take ownership of the provided parameter.
+
+        * Platform.gypi:
+        * chromium/public/Platform.h:
+        (WebKit):
+        (WebKit::Platform::compositorSupport):
+        (Platform):
+        * chromium/public/WebCompositorSupport.h: Added.
+        (WebKit):
+        (WebCompositorSupport):
+        (WebKit::WebCompositorSupport::~WebCompositorSupport):
+
+2012-08-30  Tommy Widenflycht  <tommyw@google.com>
+
+        MediaStream API: Introduce MediaConstraints
+        https://bugs.webkit.org/show_bug.cgi?id=95198
+
+        Reviewed by Adam Barth.
+
+        Adds WebMediaConstraints.
+
+        * Platform.gypi:
+        * chromium/public/WebMediaConstraints.h: Copied from Source/Platform/chromium/public/WebRTCPeerConnectionHandler.h.
+        (WebCore):
+        (WebKit):
+        (WebMediaConstraints):
+        (WebKit::WebMediaConstraints::WebMediaConstraints):
+        (WebKit::WebMediaConstraints::~WebMediaConstraints):
+        (WebKit::WebMediaConstraints::operator=):
+        * chromium/public/WebRTCPeerConnectionHandler.h:
+        (WebKit):
+        (WebRTCPeerConnectionHandler):
+
 2012-08-27  Ian Vollick  <vollick@chromium.org>
 
         [chromium] Should accelerate rotations of >= 180 degrees

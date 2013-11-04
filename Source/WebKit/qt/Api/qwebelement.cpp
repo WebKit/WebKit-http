@@ -20,6 +20,7 @@
 #include "config.h"
 #include "qwebelement.h"
 
+#include "APICast.h"
 #include "qwebelement_p.h"
 #include "CSSComputedStyleDeclaration.h"
 #include "CSSParser.h"
@@ -750,16 +751,16 @@ QVariant QWebElement::evaluateJavaScript(const QString& scriptSource)
 
     if (!setupScriptContext(m_element, thisValue, state, scriptController))
         return QVariant();
-    JSC::ScopeChainNode* scopeChain = state->dynamicGlobalObject()->globalScopeChain();
-    JSC::UString script(reinterpret_cast_ptr<const UChar*>(scriptSource.data()), scriptSource.length());
+    String script(reinterpret_cast_ptr<const UChar*>(scriptSource.data()), scriptSource.length());
 
     JSC::JSValue evaluationException;
-    JSC::JSValue evaluationResult = JSC::evaluate(state, scopeChain, JSC::makeSource(script), thisValue, &evaluationException);
+    JSC::JSValue evaluationResult = JSC::evaluate(state, JSC::makeSource(script), thisValue, &evaluationException);
     if (evaluationException)
         return QVariant();
 
     int distance = 0;
-    return JSC::Bindings::convertValueToQVariant(state, evaluationResult, QMetaType::Void, &distance);
+    JSValueRef* ignoredException = 0;
+    return JSC::Bindings::convertValueToQVariant(toRef(state), toRef(state, evaluationResult), QMetaType::Void, &distance, ignoredException);
 }
 
 /*!
@@ -2046,7 +2047,7 @@ Element* QtWebElementRuntime::get(const QWebElement& element)
     return element.m_element;
 }
 
-static QVariant convertJSValueToWebElementVariant(JSC::JSObject* object, int *distance, HashSet<JSC::JSObject*>* visitedObjects)
+static QVariant convertJSValueToWebElementVariant(JSC::JSObject* object, int *distance, HashSet<JSObjectRef>* visitedObjects)
 {
     Element* element = 0;
     QVariant ret;
@@ -2055,7 +2056,7 @@ static QVariant convertJSValueToWebElementVariant(JSC::JSObject* object, int *di
         *distance = 0;
         // Allow other objects to reach this one. This won't cause our algorithm to
         // loop since when we find an Element we do not recurse.
-        visitedObjects->remove(object);
+        visitedObjects->remove(toRef(object));
     } else if (object && object->inherits(&JSDocument::s_info)) {
         // To support TestRunnerQt::nodesFromRect(), used in DRT, we do an implicit
         // conversion from 'document' to the QWebElement representing the 'document.documentElement'.
