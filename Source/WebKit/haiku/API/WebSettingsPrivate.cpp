@@ -29,7 +29,6 @@
 #include "WebSettingsPrivate.h"
 
 #include "PageCache.h"
-#include "PlatformString.h"
 #include "Settings.h"
 #include "WebSettings.h"
 

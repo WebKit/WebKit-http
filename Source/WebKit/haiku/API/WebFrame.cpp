@@ -40,7 +40,6 @@
 #include "HTMLFrameOwnerElement.h"
 #include "KURL.h"
 #include "Page.h"
-#include "PlatformString.h"
 #include "RenderObject.h"
 #include "RenderTreeAsText.h"
 #include "RenderView.h"

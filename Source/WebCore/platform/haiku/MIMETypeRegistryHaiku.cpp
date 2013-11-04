@@ -29,7 +29,6 @@
 #include "config.h"
 #include "MIMETypeRegistry.h"
 
-#include "PlatformString.h"
 #include <MimeType.h>
 #include <wtf/Assertions.h>
 #include <wtf/MainThread.h>

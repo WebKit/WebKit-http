@@ -35,7 +35,6 @@
 #include "FloatRect.h"
 #include "GraphicsContext.h"
 #include "NotImplemented.h"
-#include "PlatformString.h"
 #include "StrokeStyleApplier.h"
 #include "TransformationMatrix.h"
 #include <Bitmap.h>

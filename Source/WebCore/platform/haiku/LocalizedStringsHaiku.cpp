@@ -27,9 +27,9 @@
 
 #include "config.h"
 #include "LocalizedStrings.h"
+#include <wtf/text/WTFString.h>
 
 #include "NotImplemented.h"
-#include "PlatformString.h"
 
 
 namespace WebCore {

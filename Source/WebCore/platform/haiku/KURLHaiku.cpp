@@ -28,8 +28,6 @@
 #include "config.h"
 #include "KURL.h"
 
-#include "PlatformString.h"
-
 #include <String.h>
 #include <wtf/text/CString.h>
 

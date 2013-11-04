@@ -31,7 +31,6 @@
 #include "InspectorClientHaiku.h"
 
 #include "NotImplemented.h"
-#include "PlatformString.h"
 
 
 namespace WebCore {

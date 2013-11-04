@@ -33,7 +33,6 @@
 #include "Cookie.h"
 #include "KURL.h"
 #include "NotImplemented.h"
-#include "PlatformString.h"
 #include <wtf/HashMap.h>
 #include <wtf/text/CString.h>
 #include <stdio.h>

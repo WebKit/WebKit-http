@@ -30,7 +30,6 @@
 #include "FileList.h"
 #include "IntPoint.h"
 #include "NotImplemented.h"
-#include "PlatformString.h"
 #include "wtf/text/StringHash.h"
 
 #include <support/Locker.h>

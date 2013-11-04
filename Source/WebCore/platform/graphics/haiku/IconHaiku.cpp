@@ -26,7 +26,6 @@
 #include "GraphicsContext.h"
 #include "IntRect.h"
 #include "NotImplemented.h"
-#include "PlatformString.h"
 
 
 namespace WebCore {

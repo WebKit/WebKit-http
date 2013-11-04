@@ -57,7 +57,6 @@
 #include "PageGroup.h"
 #include "PlatformKeyboardEvent.h"
 #include "PlatformMouseEvent.h"
-#include "PlatformString.h"
 #include "PlatformWheelEvent.h"
 #include "ResourceHandle.h"
 #include "Settings.h"

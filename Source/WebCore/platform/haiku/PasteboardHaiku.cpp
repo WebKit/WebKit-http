@@ -163,7 +163,7 @@ PassRefPtr<DocumentFragment> Pasteboard::documentFragment(Frame* frame, PassRefP
     if (data->FindData("text/html", B_MIME_TYPE, reinterpret_cast<const void**>(&buffer), &bufferLength) == B_OK) {
         RefPtr<TextResourceDecoder> decoder = TextResourceDecoder::create("text/plain", "UTF-8", true);
         String html = decoder->decode(buffer, bufferLength);
-        html += decoder->flush();
+        html.append(decoder->flush());
 
         if (!html.isEmpty()) {
             RefPtr<DocumentFragment> fragment = createFragmentFromMarkup(frame->document(), html, "", DisallowScriptingContent);
@@ -209,7 +209,7 @@ void Pasteboard::writeImage(Node*, const KURL&, const String&)
     notImplemented();
 }
 
-void Pasteboard::writeClipboard(Clipboard* clipboard)
+void Pasteboard::writeClipboard(Clipboard* /*clipboard*/)
 {
     notImplemented();
 }

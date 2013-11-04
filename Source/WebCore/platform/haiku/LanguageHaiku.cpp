@@ -26,7 +26,7 @@
 #include "config.h"
 #include "Language.h"
 
-#include "PlatformString.h"
+#include <wtf/text/WTFString.h>
 
 // JavaScriptCore's Locker.h winds up taking precedence over ours
 // hence the explicit path

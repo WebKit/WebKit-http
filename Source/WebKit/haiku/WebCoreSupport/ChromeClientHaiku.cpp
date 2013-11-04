@@ -41,7 +41,6 @@
 #include "Icon.h"
 #include "NotImplemented.h"
 #include "Page.h"
-#include "PlatformString.h"
 #include "PopupMenuHaiku.h"
 #include "SearchPopupMenuHaiku.h"
 #include "WebFrame.h"

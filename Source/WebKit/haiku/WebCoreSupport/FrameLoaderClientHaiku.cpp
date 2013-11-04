@@ -53,7 +53,6 @@
 #include "MIMETypeRegistry.h"
 #include "NotImplemented.h"
 #include "Page.h"
-#include "PlatformString.h"
 #include "PluginData.h"
 #include "PluginDatabase.h"
 #include "PluginView.h"
@@ -204,16 +203,16 @@ void FrameLoaderClientHaiku::dispatchDidReceiveAuthenticationChallenge(DocumentL
 {
     const ProtectionSpace& space = challenge.protectionSpace();
     String text = "Host \"" + space.host() + "\" requests authentication for realm \"" + space.realm() + "\"\n";
-    text += "Authentication Scheme: ";
+    text.append("Authentication Scheme: ");
     switch (space.authenticationScheme()) {
     case ProtectionSpaceAuthenticationSchemeHTTPBasic:
-        text += "Basic (data will be sent as plain text)";
+        text.append("Basic (data will be sent as plain text)");
         break;
     case ProtectionSpaceAuthenticationSchemeHTTPDigest:
-        text += "Digest (data will not be sent plain text)";
+        text.append("Digest (data will not be sent plain text)");
         break;
     default:
-        text += "Unknown (possibly plaintext)";
+        text.append("Unknown (possibly plaintext)");
         break;
     }
 

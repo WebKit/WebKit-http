@@ -29,7 +29,6 @@
 #ifndef WebFramePrivate_h
 #define WebFramePrivate_h
 
-#include "PlatformString.h"
 #include <String.h>
 
 class BMessenger;
