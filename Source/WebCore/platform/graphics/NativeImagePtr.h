@@ -46,6 +46,8 @@ class NativeImageSkia;
 }
 #elif OS(WINCE)
 #include "SharedBitmap.h"
+#elif PLATFORM(HAIKU)
+class BBitmap;
 #endif
 
 namespace WebCore {
@@ -71,6 +73,8 @@ typedef WebCore::NativeImageSkia* NativeImagePtr;
 typedef RefPtr<SharedBitmap> NativeImagePtr;
 #elif PLATFORM(BLACKBERRY)
 typedef void* NativeImagePtr;
+#elif PLATFORM(HAIKU)
+typedef BBitmap* NativeImagePtr;
 #endif
 
 }

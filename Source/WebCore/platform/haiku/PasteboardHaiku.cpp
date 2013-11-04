@@ -104,7 +104,7 @@ void Pasteboard::writeSelection(Range* selectedRange, bool canSmartCopyOrDelete,
     be_clipboard->Commit();
 }
 
-void Pasteboard::writePlainText(const String& text)
+void Pasteboard::writePlainText(const String& text, SmartReplaceOption smartReplaceOption)
 {
     AutoClipboardLocker locker(be_clipboard);
     if (!locker.isLocked())

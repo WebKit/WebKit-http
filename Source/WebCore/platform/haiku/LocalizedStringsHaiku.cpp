@@ -379,6 +379,12 @@ String crashedPluginText()
     return "Plug-in Failure";
 }
 
+String blockedPluginByContentSecurityPolicyText()
+{
+    notImplemented();
+    return String();
+}
+
 String multipleFileUploadText(unsigned)
 {
     // FIXME:
