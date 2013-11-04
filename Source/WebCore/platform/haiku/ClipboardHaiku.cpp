@@ -119,9 +119,9 @@ bool ClipboardHaiku::setData(const String& type, const String& data)
 }
 
 // Extensions beyond IE's API.
-HashSet<String> ClipboardHaiku::types() const
+ListHashSet<String> ClipboardHaiku::types() const
 {
-    HashSet<String> result;
+    ListHashSet<String> result;
 
     if (be_clipboard->Lock()) {
         BMessage* data = be_clipboard->Data();

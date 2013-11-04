@@ -948,7 +948,7 @@ void FrameLoaderClientHaiku::transitionToCommittedForNewPage()
     bool transparent = m_webFrame->IsTransparent();
     Color backgroundColor = transparent ? WebCore::Color::transparent : WebCore::Color::white;
 
-    frame->createView(size, backgroundColor, transparent, IntSize(), false);
+    frame->createView(size, backgroundColor, transparent);
 
     postCommitFrameViewSetup(m_webFrame, frame->view(), true);
 }

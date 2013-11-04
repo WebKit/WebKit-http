@@ -44,7 +44,7 @@ double HeapStatistics::s_endTime = 0.0;
 Deque<double>* HeapStatistics::s_pauseTimeStarts = 0;
 Deque<double>* HeapStatistics::s_pauseTimeEnds = 0;
 
-#if OS(UNIX) 
+#if OS(UNIX) && !PLATFORM(HAIKU) 
 
 void HeapStatistics::initialize()
 {

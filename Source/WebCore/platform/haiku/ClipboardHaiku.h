@@ -53,7 +53,7 @@ public:
     virtual bool setData(const String& type, const String& data);
 
     // Extensions beyond IE's API.
-    virtual HashSet<String> types() const;
+    virtual ListHashSet<String> types() const;
     virtual PassRefPtr<FileList> files() const;
 
     IntPoint dragLocation() const;
