@@ -41,7 +41,7 @@
 #include "FormState.h"
 #include "Frame.h"
 #include "FrameLoader.h"
-#include "FrameNetworkingContext.h"
+#include "FrameNetworkingContextHaiku.h"
 #include "FrameTree.h"
 #include "FrameView.h"
 #include "HTMLFormElement.h"
@@ -190,6 +190,10 @@ void FrameLoaderClientHaiku::dispatchWillSendRequest(DocumentLoader* loader, uns
 {
     CALLED("DocumentLoader: %p, identifier: %u, request: %s, redirectResponse: %d", loader, identifier,
            request.url().string().utf8().data(), redirectResponse.url().string().utf8().data());
+
+    if(page()->fContext)
+        request.setContext(*(page()->fContext));
+
     notImplemented();
 }
 
@@ -1110,8 +1114,8 @@ void FrameLoaderClientHaiku::registerForIconNotification(bool listen)
 
 PassRefPtr<FrameNetworkingContext> FrameLoaderClientHaiku::createNetworkingContext()
 {
-    notImplemented();
-    return 0;
+    return FrameNetworkingContextHaiku::create(m_webFrame->Frame(),
+        *(page()->fContext));
 }
 
 void FrameLoaderClientHaiku::didPerformFirstNavigation() const

@@ -87,13 +87,12 @@ public:
 			void				SetListener(const BMessenger& listener);
 	static	void				SetDownloadListener(const BMessenger& listener);
 
-	static	void				SetNetworkContext(BUrlContext* context);
-
 			BWebFrame*			MainFrame() const;
 			BWebSettings*		Settings() const;
 			BWebView*			WebView() const;
 				// NOTE: Using the BWebView requires locking it's looper!
 
+            void                SetContext(BUrlContext* context);
 			void				LoadURL(const char* urlString);
 			void				Reload();
 			void				GoBack();
@@ -230,6 +229,7 @@ private:
 			BWebFrame*			fMainFrame;
 			BWebSettings*		fSettings;
 			WebCore::Page*		fPage;
+            BUrlContext*        fContext;
 
 			float				fLoadingProgress;
 			BString				fStatusMessage;

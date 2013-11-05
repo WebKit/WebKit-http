@@ -21,6 +21,7 @@
 #include "ResourceRequest.h"
 
 #include "CookieJar.h"
+#include "NetworkingContext.h"
 
 #include <UrlProtocolRoster.h>
 #include <UrlRequest.h>
@@ -35,8 +36,6 @@ BUrlRequest* ResourceRequest::toNetworkRequest() const
 
     if(!request)
         return NULL;
-
-    request->SetContext(&networkContext());
 
     BHttpRequest* httpRequest = dynamic_cast<BHttpRequest*>(request);
     if (httpRequest != NULL) {
@@ -66,6 +65,11 @@ void ResourceRequest::setCredentials(const char* username, const char* password)
 {
     fUsername = username;
     fPassword = password;
+}
+
+void ResourceRequest::setContext(BUrlContext& context)
+{
+    fContext = &context;
 }
 
 }

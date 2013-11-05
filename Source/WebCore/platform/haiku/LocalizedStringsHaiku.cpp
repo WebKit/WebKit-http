@@ -34,11 +34,6 @@
 
 namespace WebCore {
 	
-String insecurePluginVersionText()
-{
-    return "Blocked Plug-in";
-}
-	
 String submitButtonDefaultLabel()
 {
     return "Submit";
@@ -380,6 +375,17 @@ String crashedPluginText()
 }
 
 String blockedPluginByContentSecurityPolicyText()
+{
+    notImplemented();
+    return String();
+}
+
+String insecurePluginVersionText()
+{
+    return "Blocked Plug-in";
+}
+
+String inactivePluginText()
 {
     notImplemented();
     return String();

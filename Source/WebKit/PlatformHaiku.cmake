@@ -27,7 +27,7 @@ ENDIF ()
 
 IF (ENABLE_NOTIFICATIONS)
   LIST(APPEND WebKit_INCLUDE_DIRECTORIES
-    "${WEBCORE_DIR}/notifications"
+      "${WEBCORE_DIR}/Modules/notifications"
   )
 ENDIF ()
 
@@ -37,6 +37,7 @@ LIST(APPEND WebKit_SOURCES
     haiku/WebCoreSupport/DragClientHaiku.cpp
     haiku/WebCoreSupport/EditorClientHaiku.cpp
     haiku/WebCoreSupport/FrameLoaderClientHaiku.cpp
+    haiku/WebCoreSupport/FrameNetworkingContextHaiku.cpp
     haiku/WebCoreSupport/InspectorClientHaiku.cpp
 
     haiku/API/WebDownload.cpp

@@ -180,9 +180,10 @@ BMessenger BWebPage::sDownloadListener;
 BWebPage::BWebPage(BWebView* webView)
     : BHandler("BWebPage")
     , fWebView(webView)
-    , fMainFrame(0)
-    , fSettings(0)
-    , fPage(0)
+    , fMainFrame(NULL)
+    , fSettings(NULL)
+    , fPage(NULL)
+    , fContext(NULL)
     , fLoadingProgress(100)
     , fStatusMessage()
     , fDisplayedStatusMessage()
@@ -254,9 +255,9 @@ void BWebPage::SetDownloadListener(const BMessenger& listener)
     sDownloadListener = listener;
 }
 
-/*static*/ void BWebPage::SetNetworkContext(BUrlContext* context)
+void BWebPage::SetContext(BUrlContext* context)
 {
-	WebCore::setNetworkContext(context);
+	fContext = context;
 }
 
 void BWebPage::LoadURL(const char* urlString)

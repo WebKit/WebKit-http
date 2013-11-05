@@ -174,18 +174,6 @@ void ResourceHandle::loadResourceSynchronously(NetworkingContext* context, const
     error = syncLoader.resourceError();
     data = syncLoader.data();
     response = syncLoader.resourceResponse();
-    
-    // curl
-    /*ResourceHandleManager* manager = ResourceHandleManager::sharedInstance();
-    manager->dispatchSynchronousJob(handle.get());
-    error = syncLoader.resourceError();
-    data = syncLoader.data();
-    response = syncLoader.resourceResponse();*/
-    
-    // Qt
-    // starting in deferred mode gives d->m_job the chance of being set before sending the request.
-    /*d->m_job = new QNetworkReplyHandler(handle.get(), QNetworkReplyHandler::SynchronousLoad, true);
-    d->m_job->setLoadingDeferred(false);*/
 }
 
  
