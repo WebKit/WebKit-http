@@ -25,15 +25,16 @@
 #ifndef LabelsNodeList_h
 #define LabelsNodeList_h
 
-#include "DynamicNodeList.h"
+#include "LiveNodeList.h"
 #include <wtf/PassRefPtr.h>
 
 namespace WebCore {
 
-class LabelsNodeList : public DynamicSubtreeNodeList {
+class LabelsNodeList : public LiveNodeList {
 public:
-    static PassRefPtr<LabelsNodeList> create(Node* forNode, const AtomicString&)
+    static PassRefPtr<LabelsNodeList> create(Node* forNode, CollectionType type, const AtomicString&)
     {
+        ASSERT_UNUSED(type, type == LabelsNodeListType);
         return adoptRef(new LabelsNodeList(forNode));
     }
     ~LabelsNodeList();

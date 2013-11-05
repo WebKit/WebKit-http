@@ -102,7 +102,7 @@ public:
 
     const FontPlatformData& platformData() const { return m_platformData; }
 #if ENABLE(OPENTYPE_VERTICAL)
-    const OpenTypeVerticalData* verticalData() const { return m_verticalData; }
+    const OpenTypeVerticalData* verticalData() const { return m_verticalData.get(); }
 #endif
 
     PassRefPtr<SimpleFontData> smallCapsFontData(const FontDescription&) const;
@@ -157,6 +157,7 @@ public:
 
     Glyph spaceGlyph() const { return m_spaceGlyph; }
     void setSpaceGlyph(Glyph spaceGlyph) { m_spaceGlyph = spaceGlyph; }
+    Glyph zeroWidthSpaceGlyph() const { return m_zeroWidthSpaceGlyph; }
     void setZeroWidthSpaceGlyph(Glyph spaceGlyph) { m_zeroWidthSpaceGlyph = spaceGlyph; }
     bool isZeroWidthSpaceGlyph(Glyph glyph) const { return glyph == m_zeroWidthSpaceGlyph && glyph; }
 
@@ -273,7 +274,7 @@ private:
     bool m_isTextOrientationFallback;
     bool m_isBrokenIdeographFallback;
 #if ENABLE(OPENTYPE_VERTICAL)
-    const OpenTypeVerticalData* m_verticalData;
+    RefPtr<OpenTypeVerticalData> m_verticalData;
 #endif
     bool m_hasVerticalGlyphs;
     

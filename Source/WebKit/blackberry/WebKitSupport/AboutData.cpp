@@ -31,7 +31,6 @@
 #include <BlackBerryPlatformLog.h>
 #include <BlackBerryPlatformMemory.h>
 #include <BlackBerryPlatformSettings.h>
-#include <BlackBerryPlatformWebKitCredits.h>
 #include <BuildInformation.h>
 #include <heap/Heap.h>
 #include <process.h>
@@ -132,7 +131,8 @@ static String configPage()
     page += numberToHTMLTr("secondaryThreadStackSize", settings->secondaryThreadStackSize());
     page += numberToHTMLTr("maxPixelsPerDecodedImage", settings->maxPixelsPerDecodedImage());
     page += numberToHTMLTr("shouldReportLowMemoryToUser", settings->shouldReportLowMemoryToUser());
-    page += numberToHTMLTr("numberOfBackingStoreTiles", settings->numberOfBackingStoreTiles());
+    page += numberToHTMLTr("numberOfBackingStoreFrontBuffers", settings->numberOfBackingStoreFrontBuffers()));
+    page += numberToHTMLTr("numberOfBackingStoreBackBuffers", settings->numberOfBackingStoreBackBuffers()));
     page += numberToHTMLTr("maximumNumberOfBacking...AcrossProcesses", settings->maximumNumberOfBackingStoreTilesAcrossProcesses());
     page += numberToHTMLTr("tabsSupportedByClient", settings->tabsSupportedByClient());
     page += numberToHTMLTr("contextMenuEnabled", settings->contextMenuEnabled());
@@ -498,18 +498,6 @@ static String buildPage()
     return result;
 }
 
-static String creditsPage()
-{
-    String result;
-
-    result.append(writeHeader("Credits"));
-    result.append(String("<style> .about {padding:14px;} </style>"));
-    result.append(String(BlackBerry::Platform::WEBKITCREDITS));
-    result.append(String("</body></html>"));
-
-    return result;
-}
-
 static String cookiePage()
 {
     String result;
@@ -523,9 +511,6 @@ static String cookiePage()
 
 String aboutData(String aboutWhat)
 {
-    if (equalIgnoringCase(aboutWhat, "credits"))
-        return creditsPage();
-
     if (aboutWhat.startsWith("cache"))
         return cachePage(aboutWhat.substring(5));
 

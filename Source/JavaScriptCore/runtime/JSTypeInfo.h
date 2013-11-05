@@ -46,6 +46,7 @@ namespace JSC {
     static const unsigned OverridesVisitChildren = 1 << 7;
     static const unsigned OverridesGetPropertyNames = 1 << 8;
     static const unsigned ProhibitsPropertyCaching = 1 << 9;
+    static const unsigned HasImpureGetOwnPropertySlot = 1 << 10;
 
     class TypeInfo {
     public:
@@ -54,7 +55,6 @@ namespace JSC {
             , m_flags(flags & 0xff)
             , m_flags2(flags >> 8)
         {
-            ASSERT(flags <= 0x3ff);
             ASSERT(static_cast<int>(type) <= 0xff);
             ASSERT(type >= CompoundType || !(flags & OverridesVisitChildren));
             // No object that doesn't ImplementsHasInstance should override it!
@@ -80,6 +80,7 @@ namespace JSC {
         bool overridesVisitChildren() const { return isSetOnFlags1(OverridesVisitChildren); }
         bool overridesGetPropertyNames() const { return isSetOnFlags2(OverridesGetPropertyNames); }
         bool prohibitsPropertyCaching() const { return isSetOnFlags2(ProhibitsPropertyCaching); }
+        bool hasImpureGetOwnPropertySlot() const { return isSetOnFlags2(HasImpureGetOwnPropertySlot); }
 
         static ptrdiff_t flagsOffset()
         {

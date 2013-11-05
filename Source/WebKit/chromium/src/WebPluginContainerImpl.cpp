@@ -67,6 +67,7 @@
 #include "ScrollAnimator.h"
 #include "ScrollView.h"
 #include "ScrollbarTheme.h"
+#include "ScrollingCoordinator.h"
 #include "TouchEvent.h"
 #include "UserGestureIndicator.h"
 #include "WebPrintParams.h"
@@ -184,6 +185,9 @@ void WebPluginContainerImpl::handleEvent(Event* event)
     if (!m_webPlugin->acceptsInputEvents())
         return;
 
+    const WebInputEvent* currentInputEvent = WebViewImpl::currentInputEvent();
+    UserGestureIndicator gestureIndicator(currentInputEvent && WebInputEvent::isUserGestureEventType(currentInputEvent->type) ? DefinitelyProcessingUserGesture : PossiblyProcessingUserGesture);
+
     RefPtr<WebPluginContainerImpl> protector(this);
     // The events we pass are defined at:
     //    http://devedge-temp.mozilla.org/library/manuals/2002/plugin/1.0/structures5.html#1000000
@@ -280,6 +284,23 @@ float WebPluginContainerImpl::pageZoomFactor()
     return frame->pageZoomFactor();
 }
 
+void WebPluginContainerImpl::setWebLayer(WebLayer* layer)
+{
+    if (m_webLayer == layer)
+        return;
+
+    // If anyone of the layers is null we need to switch between hardware
+    // and software compositing. This is done by triggering a style recalc
+    // on the container element.
+    if (!m_webLayer || !layer)
+        m_element->setNeedsStyleRecalc(WebCore::SyntheticStyleChange);
+    if (m_webLayer)
+        GraphicsLayerChromium::unregisterContentsLayer(m_webLayer);
+    if (layer)
+        GraphicsLayerChromium::registerContentsLayer(layer);
+    m_webLayer = layer;
+}
+
 bool WebPluginContainerImpl::supportsPaginatedPrint() const
 {
     return m_webPlugin->supportsPaginatedPrint();
@@ -369,67 +390,6 @@ void WebPluginContainerImpl::reportGeometry()
     }
 }
 
-void WebPluginContainerImpl::setBackingTextureId(unsigned textureId)
-{
-#if USE(ACCELERATED_COMPOSITING)
-    if (m_textureId == textureId)
-        return;
-
-    ASSERT(!m_ioSurfaceLayer);
-
-    if (!m_textureLayer) {
-        m_textureLayer = adoptPtr(Platform::current()->compositorSupport()->createExternalTextureLayer());
-        GraphicsLayerChromium::registerContentsLayer(m_textureLayer->layer());
-    }
-    m_textureLayer->setTextureId(textureId);
-
-    // If anyone of the IDs is zero we need to switch between hardware
-    // and software compositing. This is done by triggering a style recalc
-    // on the container element.
-    if (!m_textureId || !textureId)
-        m_element->setNeedsStyleRecalc(WebCore::SyntheticStyleChange);
-
-    m_textureId = textureId;
-#endif
-}
-
-void WebPluginContainerImpl::setBackingIOSurfaceId(int width,
-                                                   int height,
-                                                   uint32_t ioSurfaceId)
-{
-#if USE(ACCELERATED_COMPOSITING)
-    if (ioSurfaceId == m_ioSurfaceId)
-        return;
-
-    ASSERT(!m_textureLayer);
-
-    if (!m_ioSurfaceLayer) {
-        m_ioSurfaceLayer = adoptPtr(Platform::current()->compositorSupport()->createIOSurfaceLayer());
-        GraphicsLayerChromium::registerContentsLayer(m_ioSurfaceLayer->layer());
-    }
-    m_ioSurfaceLayer->setIOSurfaceProperties(ioSurfaceId, WebSize(width, height));
-
-    // If anyone of the IDs is zero we need to switch between hardware
-    // and software compositing. This is done by triggering a style recalc
-    // on the container element.
-    if (!ioSurfaceId || !m_ioSurfaceId)
-        m_element->setNeedsStyleRecalc(WebCore::SyntheticStyleChange);
-
-    m_ioSurfaceId = ioSurfaceId;
-#endif
-}
-
-void WebPluginContainerImpl::commitBackingTexture()
-{
-#if USE(ACCELERATED_COMPOSITING)
-    if (m_textureLayer)
-        m_textureLayer->layer()->invalidate();
-
-    if (m_ioSurfaceLayer)
-        m_ioSurfaceLayer->layer()->invalidate();
-#endif
-}
-
 void WebPluginContainerImpl::clearScriptObjects()
 {
     Frame* frame = m_element->document()->frame();
@@ -489,17 +449,6 @@ void WebPluginContainerImpl::zoomLevelChanged(double zoomLevel)
     WebViewImpl* view = WebViewImpl::fromPage(m_element->document()->frame()->page());
     view->fullFramePluginZoomLevelChanged(zoomLevel);
 }
- 
-void WebPluginContainerImpl::setOpaque(bool opaque)
-{
-#if USE(ACCELERATED_COMPOSITING)
-    if (m_textureLayer)
-        m_textureLayer->layer()->setOpaque(opaque);
-
-    if (m_ioSurfaceLayer)
-        m_ioSurfaceLayer->layer()->setOpaque(opaque);
-#endif
-}
 
 bool WebPluginContainerImpl::isRectTopmost(const WebRect& rect)
 {
@@ -520,15 +469,37 @@ bool WebPluginContainerImpl::isRectTopmost(const WebRect& rect)
     return (nodes.first().get() == m_element);
 }
 
-void WebPluginContainerImpl::setIsAcceptingTouchEvents(bool acceptingTouchEvents)
+void WebPluginContainerImpl::requestTouchEventType(TouchEventRequestType requestType)
 {
-    if (m_isAcceptingTouchEvents == acceptingTouchEvents)
+    if (m_touchEventRequestType == requestType)
         return;
-    m_isAcceptingTouchEvents = acceptingTouchEvents;
-    if (m_isAcceptingTouchEvents)
-        m_element->document()->didAddTouchEventHandler();
+    m_touchEventRequestType = requestType;
+    if (m_touchEventRequestType != TouchEventRequestTypeNone)
+        m_element->document()->didAddTouchEventHandler(m_element);
     else
-        m_element->document()->didRemoveTouchEventHandler();
+        m_element->document()->didRemoveTouchEventHandler(m_element);
+}
+
+void WebPluginContainerImpl::setWantsWheelEvents(bool wantsWheelEvents)
+{
+    if (m_wantsWheelEvents == wantsWheelEvents)
+        return;
+    m_wantsWheelEvents = wantsWheelEvents;
+    if (Page* page = m_element->document()->page()) {
+        if (ScrollingCoordinator* scrollingCoordinator = page->scrollingCoordinator()) {
+            if (parent() && parent()->isFrameView())
+                scrollingCoordinator->frameViewLayoutUpdated(static_cast<FrameView*>(parent()));
+        }
+    }
+}
+
+WebPoint WebPluginContainerImpl::windowToLocalPoint(const WebPoint& point)
+{
+    ScrollView* view = parent();
+    if (!view)
+        return point;
+    WebPoint windowPoint = view->windowToContents(point);
+    return roundedIntPoint(m_element->renderer()->absoluteToLocal(LayoutPoint(windowPoint), UseTransforms));
 }
 
 void WebPluginContainerImpl::didReceiveResponse(const ResourceResponse& response)
@@ -581,6 +552,11 @@ bool WebPluginContainerImpl::canProcessDrag() const
     return m_webPlugin->canProcessDrag();
 }
 
+bool WebPluginContainerImpl::wantsWheelEvents()
+{
+    return m_wantsWheelEvents;
+}
+
 void WebPluginContainerImpl::willDestroyPluginLoadObserver(WebPluginLoadObserver* observer)
 {
     size_t pos = m_pluginLoadObservers.find(observer);
@@ -592,11 +568,7 @@ void WebPluginContainerImpl::willDestroyPluginLoadObserver(WebPluginLoadObserver
 #if USE(ACCELERATED_COMPOSITING)
 WebLayer* WebPluginContainerImpl::platformLayer() const
 {
-    if (m_textureId)
-        return m_textureLayer->layer();
-    if (m_ioSurfaceId)
-        return m_ioSurfaceLayer->layer();
-    return 0;
+    return m_webLayer;
 }
 #endif
 
@@ -635,29 +607,24 @@ WebPluginContainerImpl::WebPluginContainerImpl(WebCore::HTMLPlugInElement* eleme
     : WebCore::PluginViewBase(0)
     , m_element(element)
     , m_webPlugin(webPlugin)
-#if USE(ACCELERATED_COMPOSITING)
-    , m_textureId(0)
-    , m_ioSurfaceId(0)
-#endif
-    , m_isAcceptingTouchEvents(false)
+    , m_webLayer(0)
+    , m_touchEventRequestType(TouchEventRequestTypeNone)
+    , m_wantsWheelEvents(false)
 {
 }
 
 WebPluginContainerImpl::~WebPluginContainerImpl()
 {
-#if USE(ACCELERATED_COMPOSITING)
-    if (m_textureLayer)
-        GraphicsLayerChromium::unregisterContentsLayer(m_textureLayer->layer());
-    if (m_ioSurfaceLayer)
-        GraphicsLayerChromium::unregisterContentsLayer(m_ioSurfaceLayer->layer());
-#endif
-
-    if (m_isAcceptingTouchEvents)
-        m_element->document()->didRemoveTouchEventHandler();
+    if (m_touchEventRequestType != TouchEventRequestTypeNone)
+        m_element->document()->didRemoveTouchEventHandler(m_element);
 
     for (size_t i = 0; i < m_pluginLoadObservers.size(); ++i)
         m_pluginLoadObservers[i]->clearPluginContainer();
     m_webPlugin->destroy();
+#if USE(ACCELERATED_COMPOSITING)
+    if (m_webLayer)
+        GraphicsLayerChromium::unregisterContentsLayer(m_webLayer);
+#endif
 }
 
 void WebPluginContainerImpl::handleMouseEvent(MouseEvent* event)
@@ -790,15 +757,23 @@ void WebPluginContainerImpl::handleKeyboardEvent(KeyboardEvent* event)
 
 void WebPluginContainerImpl::handleTouchEvent(TouchEvent* event)
 {
-    if (!m_isAcceptingTouchEvents)
+    switch (m_touchEventRequestType) {
+    case TouchEventRequestTypeNone:
         return;
-    WebTouchEventBuilder webEvent(this, m_element->renderer(), *event);
-    if (webEvent.type == WebInputEvent::Undefined)
+    case TouchEventRequestTypeRaw: {
+        WebTouchEventBuilder webEvent(this, m_element->renderer(), *event);
+        if (webEvent.type == WebInputEvent::Undefined)
+            return;
+        WebCursorInfo cursorInfo;
+        if (m_webPlugin->handleInputEvent(webEvent, cursorInfo))
+            event->setDefaultHandled();
+        // FIXME: Can a plugin change the cursor from a touch-event callback?
         return;
-    WebCursorInfo cursorInfo;
-    if (m_webPlugin->handleInputEvent(webEvent, cursorInfo))
-        event->setDefaultHandled();
-    // FIXME: Can a plugin change the cursor from a touch-event callback?
+    }
+    case TouchEventRequestTypeSynthesizedMouse:
+        synthesizeMouseEventIfPossible(event);
+        return;
+    }
 }
 
 void WebPluginContainerImpl::handleGestureEvent(GestureEvent* event)
@@ -810,6 +785,17 @@ void WebPluginContainerImpl::handleGestureEvent(GestureEvent* event)
     if (m_webPlugin->handleInputEvent(webEvent, cursorInfo))
         event->setDefaultHandled();
     // FIXME: Can a plugin change the cursor from a touch-event callback?
+}
+
+void WebPluginContainerImpl::synthesizeMouseEventIfPossible(TouchEvent* event)
+{
+    WebMouseEventBuilder webEvent(this, m_element->renderer(), *event);
+    if (webEvent.type == WebInputEvent::Undefined)
+        return;
+
+    WebCursorInfo cursorInfo;
+    if (m_webPlugin->handleInputEvent(webEvent, cursorInfo))
+        event->setDefaultHandled();
 }
 
 void WebPluginContainerImpl::calculateGeometry(const IntRect& frameRect,

@@ -30,22 +30,6 @@
 
 namespace WebCore {
 
-MediaControlOverlayEnclosureElement::MediaControlOverlayEnclosureElement(Document* document)
-    : MediaControlChromiumEnclosureElement(document)
-{
-}
-
-PassRefPtr<MediaControlOverlayEnclosureElement> MediaControlOverlayEnclosureElement::create(Document* document)
-{
-    return adoptRef(new MediaControlOverlayEnclosureElement(document));
-}
-
-const AtomicString& MediaControlOverlayEnclosureElement::shadowPseudoId() const
-{
-    DEFINE_STATIC_LOCAL(AtomicString, id, ("-webkit-media-controls-overlay-enclosure", AtomicString::ConstructFromLiteral));
-    return id;
-}
-
 MediaControlsChromiumAndroid::MediaControlsChromiumAndroid(Document* document)
     : MediaControlsChromium(document)
     , m_overlayPlayButton(0)
@@ -55,7 +39,7 @@ MediaControlsChromiumAndroid::MediaControlsChromiumAndroid(Document* document)
 
 PassRefPtr<MediaControls> MediaControls::create(Document* document)
 {
-    return MediaControlsChromiumAndroid::create(document);
+    return MediaControlsChromiumAndroid::createControls(document);
 }
 
 PassRefPtr<MediaControlsChromiumAndroid> MediaControlsChromiumAndroid::createControls(Document* document)

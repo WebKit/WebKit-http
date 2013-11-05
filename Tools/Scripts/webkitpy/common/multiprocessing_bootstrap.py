@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 # Copyright (c) 2011 Google Inc. All rights reserved.
 # Copyright (C) 2010 Chris Jerdonek (cjerdonek@webkit.org)
 #
@@ -58,7 +57,7 @@ def run(*parts):
     # doesn't need to do it and their process id as reported by
     # subprocess.Popen is not jhbuild's.
     if '--gtk' in sys.argv[1:] and os.path.exists(os.path.join(script_dir, '..', '..', 'WebKitBuild', 'Dependencies')):
-        cmd.insert(1, os.path.join(script_dir, '..', 'gtk', 'run-with-jhbuild'))
+        cmd.insert(0, os.path.join(script_dir, '..', 'gtk', 'run-with-jhbuild'))
 
     proc = subprocess.Popen(cmd, env=env)
     try:

@@ -40,6 +40,7 @@
 namespace JSC {
 
 class EvalExecutable;
+class FunctionBodyNode;
 class Identifier;
 class ProgramExecutable;
 class UnlinkedCodeBlock;
@@ -56,7 +57,7 @@ template <typename KeyType, typename EntryType, int CacheSize> class CacheMap {
     typedef typename HashMap<KeyType, unsigned>::iterator iterator;
 public:
     CacheMap()
-        : m_randomGenerator((static_cast<uint32_t>(randomNumber() * UINT32_MAX)))
+        : m_randomGenerator((static_cast<uint32_t>(randomNumber() * std::numeric_limits<uint32_t>::max())))
     {
     }
     const EntryType* find(const KeyType& key)
@@ -81,6 +82,17 @@ public:
         m_data[newIndex].second = value;
         ASSERT(m_map.size() <= CacheSize);
     }
+
+    void clear()
+    {
+        m_map.clear();
+        for (size_t i = 0; i < CacheSize; i++) {
+            m_data[i].first = KeyType();
+            m_data[i].second = EntryType();
+        }
+    }
+
+
 private:
     HashMap<KeyType, unsigned> m_map;
     FixedArray<std::pair<KeyType, EntryType>, CacheSize> m_data;
@@ -98,7 +110,14 @@ public:
     void usedFunctionCode(JSGlobalData&, UnlinkedFunctionCodeBlock*);
     ~CodeCache();
 
-    enum CodeType { EvalType, ProgramType, FunctionType };
+    void clear()
+    {
+        m_cachedCodeBlocks.clear();
+        m_cachedGlobalFunctions.clear();
+        m_recentlyUsedFunctionCode.clear();
+    }
+
+    enum CodeType { EvalType, ProgramType, FunctionCallType, FunctionConstructType };
     typedef std::pair<String, unsigned> CodeBlockKey;
     typedef std::pair<String, String> GlobalFunctionKey;
 
@@ -112,14 +131,20 @@ private:
     GlobalFunctionKey makeGlobalFunctionKey(const SourceCode&, const String&);
 
     enum {
-        kMaxCodeBlockEntries = 1024,
+        kMaxRootCodeBlockEntries = 1024,
         kMaxGlobalFunctionEntries = 1024,
-        kMaxFunctionCodeBlocks = 1024
+        // Sampling content on a number of sites indicates that
+        // on average there are 6-7 functions used per root codeblock.
+        // So we'll allow an average of 8 to give some leeway for increasing
+        // page complexity over time. Note that is simply a probabalistic
+        // measure and does not result in a hard limit of cache entries
+        // in each code block.
+        kMaxFunctionCodeBlocks = kMaxRootCodeBlockEntries * 8
     };
 
-    CacheMap<CodeBlockKey, Strong<UnlinkedCodeBlock>, kMaxCodeBlockEntries> m_cachedCodeBlocks;
-    CacheMap<GlobalFunctionKey, Strong<UnlinkedFunctionExecutable>, kMaxGlobalFunctionEntries> m_cachedGlobalFunctions;
-    CacheMap<UnlinkedFunctionCodeBlock*, Strong<UnlinkedFunctionCodeBlock>, kMaxFunctionCodeBlocks> m_cachedFunctionCode;
+    CacheMap<CodeBlockKey, Strong<UnlinkedCodeBlock>, kMaxRootCodeBlockEntries> m_cachedCodeBlocks;
+    CacheMap<GlobalFunctionKey, Strong<UnlinkedFunctionExecutable>, kMaxFunctionCodeBlocks> m_cachedGlobalFunctions;
+    CacheMap<UnlinkedFunctionCodeBlock*, Strong<UnlinkedFunctionCodeBlock>, kMaxFunctionCodeBlocks> m_recentlyUsedFunctionCode;
 };
 
 }

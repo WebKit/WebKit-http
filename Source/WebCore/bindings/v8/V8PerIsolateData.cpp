@@ -50,13 +50,13 @@ V8PerIsolateData::V8PerIsolateData(v8::Isolate* isolate)
     , m_hiddenPropertyName(adoptPtr(new V8HiddenPropertyName()))
     , m_constructorMode(ConstructorMode::CreateNewObject)
     , m_recursionLevel(0)
-    , m_nextDependentRetainedId(0)
 #ifndef NDEBUG
     , m_internalScriptRecursionLevel(0)
 #endif
     , m_gcEventData(adoptPtr(new GCEventData()))
     , m_shouldCollectGarbageSoon(false)
 {
+    m_v8Null.set(v8::Null(isolate));
 }
 
 V8PerIsolateData::~V8PerIsolateData()
@@ -121,7 +121,7 @@ void V8PerIsolateData::visitExternalStrings(ExternalStringVisitor* visitor)
         virtual ~VisitorImpl() { }
         virtual void VisitExternalString(v8::Handle<v8::String> string)
         {
-            WebCoreStringResource* resource = static_cast<WebCoreStringResource*>(string->GetExternalStringResource());
+            WebCoreStringResourceBase* resource = WebCoreStringResourceBase::toWebCoreStringResourceBase(string);
             if (resource)
                 resource->visitStrings(m_visitor);
         }
@@ -144,7 +144,7 @@ v8::Handle<v8::Value> V8PerIsolateData::constructorOfToString(const v8::Argument
     // obscure and unlikely to be a problem.
     v8::Handle<v8::Value> value = args.Callee()->Get(v8::String::NewSymbol("toString"));
     if (!value->IsFunction()) 
-        return v8::String::New("");
+        return v8::String::Empty(args.GetIsolate());
     return v8::Handle<v8::Function>::Cast(value)->Call(args.This(), 0, 0);
 }
 

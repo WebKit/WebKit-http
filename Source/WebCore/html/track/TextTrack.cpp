@@ -107,6 +107,7 @@ TextTrack::TextTrack(ScriptExecutionContext* context, TextTrackClient* client, c
     , m_trackIndex(invalidTrackIndex)
     , m_renderedTrackIndex(invalidTrackIndex)
     , m_showingByDefault(false)
+    , m_hasBeenConfigured(false)
 {
     setKind(kind);
 }
@@ -125,15 +126,15 @@ TextTrack::~TextTrack()
 
 bool TextTrack::isValidKindKeyword(const AtomicString& value)
 {
-    if (equalIgnoringCase(value, subtitlesKeyword()))
+    if (value == subtitlesKeyword())
         return true;
-    if (equalIgnoringCase(value, captionsKeyword()))
+    if (value == captionsKeyword())
         return true;
-    if (equalIgnoringCase(value, descriptionsKeyword()))
+    if (value == descriptionsKeyword())
         return true;
-    if (equalIgnoringCase(value, chaptersKeyword()))
+    if (value == chaptersKeyword())
         return true;
-    if (equalIgnoringCase(value, metadataKeyword()))
+    if (value == metadataKeyword())
         return true;
 
     return false;
@@ -200,6 +201,20 @@ TextTrackCueList* TextTrack::cues()
     return 0;
 }
 
+void TextTrack::removeAllCues()
+{
+    if (!m_cues)
+        return;
+
+    if (m_client)
+        m_client->textTrackRemoveCues(this, m_cues.get());
+    
+    for (size_t i = 0; i < m_cues->length(); ++i)
+        m_cues->item(i)->setTrack(0);
+    
+    m_cues = 0;
+}
+
 TextTrackCueList* TextTrack::activeCues() const
 {
     // 4.8.10.12.5 If the text track mode ... is not the text track disabled mode,
@@ -213,7 +228,7 @@ TextTrackCueList* TextTrack::activeCues() const
     return 0;
 }
 
-void TextTrack::addCue(PassRefPtr<TextTrackCue> prpCue, ExceptionCode& ec)
+void TextTrack::addCue(PassRefPtr<TextTrackCue> prpCue)
 {
     if (!prpCue)
         return;
@@ -224,30 +239,19 @@ void TextTrack::addCue(PassRefPtr<TextTrackCue> prpCue, ExceptionCode& ec)
     if (isnan(cue->startTime()) || isnan(cue->endTime()) || cue->startTime() < 0 || cue->endTime() < 0)
         return;
 
-    // 4.8.10.12.4 Text track API
+    // 4.8.10.12.5 Text track API
 
     // The addCue(cue) method of TextTrack objects, when invoked, must run the following steps:
 
-    // 1. If the given cue is already associated with a text track other than 
-    // the method's TextTrack object's text track, then throw an InvalidStateError
-    // exception and abort these steps.
+    // 1. If the given cue is in a text track list of cues, then remove cue from that text track
+    // list of cues.
     TextTrack* cueTrack = cue->track();
-    if (cueTrack && cueTrack != this) {
-        ec = INVALID_STATE_ERR;
-        return;
-    }
+    if (cueTrack && cueTrack != this)
+        cueTrack->removeCue(cue.get(), ASSERT_NO_EXCEPTION);
 
-    // 2. Associate cue with the method's TextTrack object's text track, if it is 
-    // not currently associated with a text track.
+    // 2. Add cue to the method's TextTrack object's text track's text track list of cues.
     cue->setTrack(this);
-
-    // 3. If the given cue is already listed in the method's TextTrack object's text
-    // track's text track list of cues, then throw an InvalidStateError exception.
-    // 4. Add cue to the method's TextTrack object's text track's text track list of cues.
-    if (!ensureTextTrackCueList()->add(cue)) {
-        ec = INVALID_STATE_ERR;
-        return;
-    }
+    ensureTextTrackCueList()->add(cue);
     
     if (m_client)
         m_client->textTrackAddCue(this, cue.get());
@@ -258,20 +262,18 @@ void TextTrack::removeCue(TextTrackCue* cue, ExceptionCode& ec)
     if (!cue)
         return;
 
-    // 4.8.10.12.4 Text track API
+    // 4.8.10.12.5 Text track API
 
     // The removeCue(cue) method of TextTrack objects, when invoked, must run the following steps:
 
-    // 1. If the given cue is not associated with the method's TextTrack 
-    // object's text track, then throw an InvalidStateError exception.
+    // 1. If the given cue is not currently listed in the method's TextTrack 
+    // object's text track's text track list of cues, then throw a NotFoundError exception.
     if (cue->track() != this) {
-        ec = INVALID_STATE_ERR;
+        ec = NOT_FOUND_ERR;
         return;
     }
-    
-    // 2. If the given cue is not currently listed in the method's TextTrack 
-    // object's text track's text track list of cues, then throw a NotFoundError exception.
-    // 3. Remove cue from the method's TextTrack object's text track's text track list of cues.
+
+    // 2. Remove cue from the method's TextTrack object's text track's text track list of cues.
     if (!m_cues || !m_cues->remove(cue)) {
         ec = INVALID_STATE_ERR;
         return;
@@ -296,6 +298,9 @@ void TextTrack::cueDidChange(TextTrackCue* cue)
 {
     if (!m_client)
         return;
+
+    // Make sure the TextTrackCueList order is up-to-date.
+    ensureTextTrackCueList()->updateCueIndex(cue);
 
     // ... and add it back again.
     m_client->textTrackAddCue(this, cue);

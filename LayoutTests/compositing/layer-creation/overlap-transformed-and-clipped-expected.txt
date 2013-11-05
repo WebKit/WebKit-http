@@ -13,11 +13,9 @@
               (children 2
                 (GraphicsLayer
                   (bounds 100.00 100.00)
-                  (drawsContent 1)
                 )
                 (GraphicsLayer
                   (bounds 100.00 100.00)
-                  (drawsContent 1)
                 )
               )
             )

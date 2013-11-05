@@ -173,6 +173,9 @@ static inline int cssyyerror(void*, const char*)
 %token <string> URI
 %token <string> FUNCTION
 %token <string> ANYFUNCTION
+#if ENABLE_VIDEO_TRACK
+%token <string> CUEFUNCTION
+#endif
 %token <string> NOTFUNCTION
 %token <string> CALCFUNCTION
 %token <string> MINFUNCTION
@@ -713,11 +716,11 @@ supports_declaration_condition:
         CSSParser* p = static_cast<CSSParser*>(parser);
         if ($3 && $6) {
             p->m_valueList = p->sinkFloatingValueList($6);
-            int oldParsedProperties = p->m_parsedProperties->size();
+            int oldParsedProperties = p->m_parsedProperties.size();
             $$ = p->parseValue(static_cast<CSSPropertyID>($3), $7);
             // We just need to know if the declaration is supported as it is written. Rollback any additions.
             if ($$)
-                p->rollbackLastProperties(p->m_parsedProperties->size() - oldParsedProperties);
+                p->rollbackLastProperties(p->m_parsedProperties.size() - oldParsedProperties);
             p->m_valueList = nullptr;
         }
         p->markPropertyEnd($7, false);
@@ -1020,6 +1023,7 @@ maybe_space_before_declaration:
 before_selector_list:
     /* empty */ {
         parser->markRuleHeaderStart(CSSRuleSourceData::STYLE_RULE);
+        parser->markSelectorStart();
     }
   ;
 
@@ -1029,11 +1033,22 @@ at_rule_header_end:
     }
   ;
 
+at_selector_end:
+    /* empty */ {
+        parser->markSelectorEnd();
+    }
+  ;
+
 ruleset:
-    before_selector_list selector_list at_rule_header_end '{' at_rule_body_start maybe_space_before_declaration declaration_list closing_brace {
+    before_selector_list selector_list at_selector_end at_rule_header_end '{' at_rule_body_start maybe_space_before_declaration declaration_list closing_brace {
         $$ = parser->createStyleRule($2);
     }
   ;
+
+before_selector_group_item:
+    /* empty */ {
+        parser->markSelectorStart();
+    }
 
 selector_list:
     selector %prec UNIMPORTANT_TOK {
@@ -1044,10 +1059,10 @@ selector_list:
             parser->updateLastSelectorLineAndPosition();
         }
     }
-    | selector_list ',' maybe_space selector %prec UNIMPORTANT_TOK {
-        if ($1 && $4) {
+    | selector_list at_selector_end ',' maybe_space before_selector_group_item selector %prec UNIMPORTANT_TOK {
+        if ($1 && $6) {
             $$ = $1;
-            $$->append(parser->sinkFloatingSelector($4));
+            $$->append(parser->sinkFloatingSelector($6));
             parser->updateLastSelectorLineAndPosition();
         } else
             $$ = 0;
@@ -1311,6 +1326,21 @@ pseudo:
         if (type == CSSSelector::PseudoUnknown)
             $$ = 0;
     }
+#if ENABLE_VIDEO_TRACK
+    // used by ::cue(:past/:future)
+    | ':' ':' CUEFUNCTION maybe_space simple_selector_list maybe_space ')' {
+        if ($5) {
+            $$ = parser->createFloatingSelector();
+            $$->setMatch(CSSSelector::PseudoClass);
+            $$->adoptSelectorVector(*parser->sinkFloatingSelectorVector($5));
+            $$->setValue($3);
+            CSSSelector::PseudoType type = $$->pseudoType();
+            if (type != CSSSelector::PseudoCue)
+                $$ = 0;
+        } else
+            $$ = 0;
+    }
+#endif
     // use by :-webkit-any.
     // FIXME: should we support generic selectors here or just simple_selectors?
     // Use simple_selector_list for now to match -moz-any.

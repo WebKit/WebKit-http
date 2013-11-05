@@ -38,8 +38,15 @@ messages -> NetworkConnectionToWebProcess {
     ResumePendingRequests() -> ()
     
     SetSerialLoadingEnabled(bool enabled) -> ()
-    
-    WillSendRequestHandled(uint64_t requestID, WebCore::ResourceRequest newRequest)
+
+    StartDownload(bool privateBrowsingEnabled, uint64_t downloadID, WebCore::ResourceRequest request)
+
+    CookiesForDOM(bool privateBrowsingEnabled, WebCore::KURL firstParty, WebCore::KURL url) -> (WTF::String result)
+    SetCookiesFromDOM(bool privateBrowsingEnabled, WebCore::KURL firstParty, WebCore::KURL url, WTF::String cookieString)
+    CookiesEnabled(bool privateBrowsingEnabled, WebCore::KURL firstParty, WebCore::KURL url) -> (bool enabled)
+    CookieRequestHeaderFieldValue(bool privateBrowsingEnabled, WebCore::KURL firstParty, WebCore::KURL url) -> (WTF::String result)
+    GetRawCookies(bool privateBrowsingEnabled, WebCore::KURL firstParty, WebCore::KURL url) -> (WTF::Vector<WebCore::Cookie> cookies)
+    DeleteCookie(bool privateBrowsingEnabled, WebCore::KURL url, WTF::String cookieName)
 }
 
 #endif // ENABLE(NETWORK_PROCESS)

@@ -50,6 +50,13 @@ public:
     {
     }
     
+    MacroAssembler::Label sourceLabel() const
+    {
+        MacroAssembler::Label label;
+        label.m_label.m_offset = m_source;
+        return label;
+    }
+    
     void setDestination(MacroAssembler::Label destination)
     {
         m_destination = destination.m_label.m_offset;

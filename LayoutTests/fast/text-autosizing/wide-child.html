@@ -21,11 +21,12 @@ if (window.internals) {
 <body>
 
 <div style="width: 320px">
-    This text should all be autosized to 40px computed font-size, since although this block is narrow, it has a wide child block, so the cluster will be wide and need autosizing.
+    This text should not be autosized, as this div is the lowest common ancestor of the root cluster, and this div is narrow.<br>
+    Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.
     <div style="width: 800px">
+        This text should be autosized to 40px computed font size (16 * 800/320) since it's wider than the lowest common ancestor of its enclosing cluster so it becomes a cluster itself.<br>
         Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.
     </div>
-    Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.
 </div>
 
 </body>

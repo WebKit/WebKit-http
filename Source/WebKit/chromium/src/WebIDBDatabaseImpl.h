@@ -29,9 +29,10 @@
 #if ENABLE(INDEXED_DATABASE)
 
 #include "IDBDatabaseCallbacksProxy.h"
-#include "platform/WebCommon.h"
 #include "WebExceptionCode.h"
 #include "WebIDBDatabase.h"
+#include "WebIDBTransaction.h"
+#include "platform/WebCommon.h"
 #include <wtf/PassRefPtr.h>
 #include <wtf/RefPtr.h>
 
@@ -54,10 +55,22 @@ public:
 
     virtual WebIDBObjectStore* createObjectStore(long long, const WebString& name, const WebIDBKeyPath&, bool autoIncrement, const WebIDBTransaction&, WebExceptionCode&);
     virtual void deleteObjectStore(long long objectStoreId, const WebIDBTransaction&, WebExceptionCode&);
-    virtual void setVersion(const WebString& version, WebIDBCallbacks*, WebExceptionCode&);
-    virtual WebIDBTransaction* transaction(const WebVector<long long>& names, unsigned short mode);
+    // FIXME: Remove this method in https://bugs.webkit.org/show_bug.cgi?id=103923.
+    virtual WebIDBTransaction* createTransaction(long long id, const WebVector<long long>&, unsigned short mode);
+    virtual void createTransaction(long long id, WebIDBDatabaseCallbacks*, const WebVector<long long>&, unsigned short mode);
     virtual void forceClose();
     virtual void close();
+    virtual void abort(long long transactionId);
+    virtual void commit(long long transactionId);
+
+    virtual void get(long long transactionId, long long objectStoreId, long long indexId, const WebIDBKeyRange&, bool keyOnly, WebIDBCallbacks*) OVERRIDE;
+    virtual void put(long long transactionId, long long objectStoreId, const WebVector<unsigned char>& value, const WebIDBKey&, PutMode, WebIDBCallbacks*, const WebVector<long long>& indexIds, const WebVector<WebIndexKeys>&) OVERRIDE;
+    virtual void setIndexKeys(long long transactionId, long long objectStoreId, const WebIDBKey&, const WebVector<long long>& indexIds, const WebVector<WebIndexKeys>&) OVERRIDE;
+    virtual void setIndexesReady(long long transactionId, long long objectStoreId, const WebVector<long long>& indexIds) OVERRIDE;
+    virtual void openCursor(long long transactionId, long long objectStoreId, long long indexId, const WebIDBKeyRange&, unsigned short direction, bool keyOnly, TaskType, WebIDBCallbacks*) OVERRIDE;
+    virtual void count(long long transactionId, long long objectStoreId, long long indexId, const WebIDBKeyRange&, WebIDBCallbacks*) OVERRIDE;
+    virtual void deleteRange(long long transactionId, long long objectStoreId, const WebIDBKeyRange&, WebIDBCallbacks*) OVERRIDE;
+    virtual void clear(long long transactionId, long long objectStoreId, WebIDBCallbacks*) OVERRIDE;
 
 private:
     WTF::RefPtr<WebCore::IDBDatabaseBackendInterface> m_databaseBackend;

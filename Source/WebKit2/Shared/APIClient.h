@@ -51,7 +51,9 @@ public:
         if (client && client->version < currentVersion)
             memcpy(&m_client, client, APIClientTraits<ClientInterface>::interfaceSizesByVersion[client->version]);
     }
-    
+
+    const ClientInterface& client() const { return m_client; }
+
 protected:
     ClientInterface m_client;
 };

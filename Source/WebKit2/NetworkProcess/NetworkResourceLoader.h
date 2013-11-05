@@ -31,6 +31,7 @@
 #include "MessageSender.h"
 #include "NetworkConnectionToWebProcess.h"
 #include "NetworkResourceLoadParameters.h"
+#include <WebCore/AuthenticationChallenge.h>
 #include <WebCore/ResourceHandleClient.h>
 #include <WebCore/ResourceLoaderOptions.h>
 #include <WebCore/ResourceRequest.h>
@@ -58,6 +59,8 @@ public:
     CoreIPC::Connection* connection() const;
     uint64_t destinationID() const { return identifier(); }
     
+    void didReceiveNetworkResourceLoaderMessage(CoreIPC::Connection*, CoreIPC::MessageID, CoreIPC::MessageDecoder&);
+
     void start();
 
     virtual void connectionToWebProcessDidClose(NetworkConnectionToWebProcess*) OVERRIDE;
@@ -77,7 +80,6 @@ public:
     virtual void didFail(WebCore::ResourceHandle*, const WebCore::ResourceError&) OVERRIDE;
     virtual void wasBlocked(WebCore::ResourceHandle*) OVERRIDE;
     virtual void cannotShowURL(WebCore::ResourceHandle*) OVERRIDE;
-    virtual void willCacheResponse(WebCore::ResourceHandle*, WebCore::CacheStoragePolicy&) OVERRIDE;
     virtual bool shouldUseCredentialStorage(WebCore::ResourceHandle*) OVERRIDE;
     virtual void didReceiveAuthenticationChallenge(WebCore::ResourceHandle*, const WebCore::AuthenticationChallenge&) OVERRIDE;
     virtual void didCancelAuthenticationChallenge(WebCore::ResourceHandle*, const WebCore::AuthenticationChallenge&) OVERRIDE;
@@ -108,6 +110,12 @@ public:
 private:
     NetworkResourceLoader(const NetworkResourceLoadParameters&, ResourceLoadIdentifier, NetworkConnectionToWebProcess*);
 
+    void willSendRequestHandled(uint64_t requestID, const WebCore::ResourceRequest&);
+    void canAuthenticateAgainstProtectionSpaceHandled(uint64_t requestID, bool canAuthenticate);
+    void receivedAuthenticationCredential(const WebCore::AuthenticationChallenge&, const WebCore::Credential&);
+    void receivedRequestToContinueWithoutAuthenticationCredential(const WebCore::AuthenticationChallenge&);
+    void receivedAuthenticationCancellation(const WebCore::AuthenticationChallenge&);
+    
     void scheduleStopOnMainThread();
     static void performStops(void*);
 
@@ -119,9 +127,9 @@ private:
     RefPtr<RemoteNetworkingContext> m_networkingContext;
     RefPtr<WebCore::ResourceHandle> m_handle;    
     RefPtr<NetworkConnectionToWebProcess> m_connection;
+    
+    OwnPtr<WebCore::AuthenticationChallenge> m_currentAuthenticationChallenge;
 };
-
-void didReceiveWillSendRequestHandled(uint64_t requestID, const WebCore::ResourceRequest&);
 
 } // namespace WebKit
 

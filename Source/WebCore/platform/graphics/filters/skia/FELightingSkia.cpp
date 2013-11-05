@@ -98,12 +98,14 @@ bool FELighting::platformApplySkia()
 
     RefPtr<Image> image = in->asImageBuffer()->copyImage(DontCopyBackingStore);
     NativeImageSkia* nativeImage = image->nativeImageForCurrentFrame();
+    if (!nativeImage)
+        return false;
 
     GraphicsContext* dstContext = resultImage->context();
 
     SkPaint paint;
     paint.setImageFilter(createImageFilter(0))->unref();
-    dstContext->platformContext()->canvas()->drawBitmap(nativeImage->bitmap(), drawingRegion.location().x(), drawingRegion.location().y(), &paint);
+    dstContext->platformContext()->drawBitmap(nativeImage->bitmap(), drawingRegion.location().x(), drawingRegion.location().y(), &paint);
     return true;
 }
 

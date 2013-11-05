@@ -46,9 +46,10 @@
 #include "CodeBlock.h"
 #include "CompactJITCodeMap.h"
 #include "Interpreter.h"
+#include "JITDisassembler.h"
 #include "JSInterfaceJIT.h"
+#include "LegacyProfiler.h"
 #include "Opcode.h"
-#include "Profiler.h"
 #include <bytecode/SamplingTool.h>
 
 namespace JSC {
@@ -467,6 +468,7 @@ namespace JSC {
         void emitArrayProfilingSite(RegisterID structureAndIndexingType, RegisterID scratch, ArrayProfile*);
         void emitArrayProfilingSiteForBytecodeIndex(RegisterID structureAndIndexingType, RegisterID scratch, unsigned bytecodeIndex);
         void emitArrayProfileStoreToHoleSpecialCase(ArrayProfile*);
+        void emitArrayProfileOutOfBoundsSpecialCase(ArrayProfile*);
         
         JITArrayMode chooseArrayMode(ArrayProfile*);
         
@@ -945,6 +947,8 @@ namespace JSC {
         int m_uninterruptedConstantSequenceBegin;
 #endif
 #endif
+        OwnPtr<JITDisassembler> m_disassembler;
+        RefPtr<Profiler::Compilation> m_compilation;
         WeakRandom m_randomGenerator;
         static CodeRef stringGetByValStubGenerator(JSGlobalData*);
 

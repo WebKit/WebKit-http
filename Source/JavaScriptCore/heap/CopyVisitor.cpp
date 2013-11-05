@@ -27,6 +27,7 @@
 #include "CopyVisitor.h"
 
 #include "CopyVisitorInlines.h"
+#include "CopyWorkList.h"
 #include "GCThreadSharedData.h"
 #include "JSCell.h"
 #include "JSObject.h"
@@ -41,17 +42,24 @@ CopyVisitor::CopyVisitor(GCThreadSharedData& shared)
 
 void CopyVisitor::copyFromShared()
 {
-    GCCopyPhaseFunctor functor(*this);
-    Vector<MarkedBlock*>& blocksToCopy = m_shared.m_blocksToCopy;
-    size_t startIndex, endIndex;
+    size_t next, end;
+    m_shared.getNextBlocksToCopy(next, end);
+    while (next < end) {
+        for (; next < end; ++next) {
+            CopiedBlock* block = m_shared.m_blocksToCopy[next];
+            if (!block->hasWorkList())
+                continue;
 
-    m_shared.getNextBlocksToCopy(startIndex, endIndex);
-    while (startIndex < endIndex) {
-        for (size_t i = startIndex; i < endIndex; i++)
-            blocksToCopy[i]->forEachLiveCell(functor);
-        m_shared.getNextBlocksToCopy(startIndex, endIndex);
+            CopyWorkList& workList = block->workList();
+            for (CopyWorkList::iterator it = workList.begin(); it != workList.end(); ++it)
+                visitCell(*it);
+
+            ASSERT(!block->liveBytes());
+            m_shared.m_copiedSpace->recycleEvacuatedBlock(block);
+        }
+        m_shared.getNextBlocksToCopy(next, end);
     }
-    ASSERT(startIndex == endIndex);
+    ASSERT(next == end);
 }
 
 } // namespace JSC

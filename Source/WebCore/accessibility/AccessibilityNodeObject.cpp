@@ -63,11 +63,13 @@
 #include "LocalizedStrings.h"
 #include "MathMLNames.h"
 #include "NodeList.h"
+#include "NodeTraversal.h"
 #include "Page.h"
 #include "ProgressTracker.h"
 #include "Text.h"
 #include "TextControlInnerElements.h"
 #include "TextIterator.h"
+#include "UserGestureIndicator.h"
 #include "Widget.h"
 #include "htmlediting.h"
 #include "visible_units.h"
@@ -401,11 +403,6 @@ bool AccessibilityNodeObject::canvasHasFallbackContent() const
     return false;
 }
 
-bool AccessibilityNodeObject::isWebArea() const
-{
-    return roleValue() == WebAreaRole;
-}
-
 bool AccessibilityNodeObject::isImageButton() const
 {
     return isNativeImage() && isButton();
@@ -686,7 +683,7 @@ bool AccessibilityNodeObject::isRequired() const
 
     Node* n = this->node();
     if (n && (n->isElementNode() && toElement(n)->isFormControlElement()))
-        return static_cast<HTMLFormControlElement*>(n)->required();
+        return static_cast<HTMLFormControlElement*>(n)->isRequired();
 
     return false;
 }
@@ -974,11 +971,13 @@ void AccessibilityNodeObject::alterSliderValue(bool increase)
     
 void AccessibilityNodeObject::increment()
 {
+    UserGestureIndicator gestureIndicator(DefinitelyProcessingUserGesture);
     alterSliderValue(true);
 }
 
 void AccessibilityNodeObject::decrement()
 {
+    UserGestureIndicator gestureIndicator(DefinitelyProcessingUserGesture);
     alterSliderValue(false);
 }
 
@@ -1030,6 +1029,11 @@ bool AccessibilityNodeObject::isGenericFocusableElement() const
     if (roleValue() == WebAreaRole)
         return false;
     if (node() && node()->hasTagName(bodyTag))
+        return false;
+
+    // An SVG root is focusable by default, but it's probably not interactive, so don't
+    // include it. It can still be made accessible by giving it an ARIA role.
+    if (roleValue() == SVGRootRole)
         return false;
 
     return true;
@@ -1425,20 +1429,62 @@ unsigned AccessibilityNodeObject::hierarchicalLevel() const
     return level;
 }
 
+// When building the textUnderElement for an object, determine whether or not
+// we should include the inner text of this given descendant object or skip it.
+static bool shouldUseAccessiblityObjectInnerText(AccessibilityObject* obj)
+{
+    // Consider this hypothetical example:
+    // <div tabindex=0>
+    //   <h2>
+    //     Table of contents
+    //   </h2>
+    //   <a href="#start">Jump to start of book</a>
+    //   <ul>
+    //     <li><a href="#1">Chapter 1</a></li>
+    //     <li><a href="#1">Chapter 2</a></li>
+    //   </ul>
+    // </div>
+    //
+    // The goal is to return a reasonable title for the outer container div, because
+    // it's focusable - but without making its title be the full inner text, which is
+    // quite long. As a heuristic, skip links, controls, and elements that are usually
+    // containers with lots of children.
+
+    // Skip focusable children, so we don't include the text of links and controls.
+    if (obj->canSetFocusAttribute())
+        return false;
+
+    // Skip big container elements like lists, tables, etc.
+    if (obj->isList() || obj->isAccessibilityTable() || obj->isTree() || obj->isCanvas())
+        return false;
+
+    return true;
+}
+
 String AccessibilityNodeObject::textUnderElement() const
 {
     Node* node = this->node();
-    if (!node)
-        return String();
-
-    // Note: TextIterator doesn't return any text for nodes that don't have renderers.
-    // If this could be fixed, it'd be more accurate use TextIterator here.
-    if (node->isElementNode())
-        return toElement(node)->innerText();
-    else if (node->isTextNode())
+    if (node && node->isTextNode())
         return toText(node)->wholeText();
-    
-    return String();
+
+    String result;
+    for (AccessibilityObject* child = firstChild(); child; child = child->nextSibling()) {
+        if (!shouldUseAccessiblityObjectInnerText(child))
+            continue;
+
+        if (child->isAccessibilityNodeObject()) {
+            Vector<AccessibilityText> textOrder;
+            toAccessibilityNodeObject(child)->alternativeText(textOrder);
+            if (textOrder.size() > 0) {
+                result.append(textOrder[0].text);
+                continue;
+            }
+        }
+
+        result.append(child->textUnderElement());
+    }
+
+    return result;
 }
 
 String AccessibilityNodeObject::title() const
@@ -1586,7 +1632,7 @@ String AccessibilityNodeObject::accessibilityDescriptionForElements(Vector<Eleme
         Element* idElement = elements[i];
 
         builder.append(accessibleNameForNode(idElement));
-        for (Node* n = idElement->firstChild(); n; n = n->traverseNextNode(idElement))
+        for (Node* n = idElement->firstChild(); n; n = NodeTraversal::next(n, idElement))
             builder.append(accessibleNameForNode(n));
 
         if (i != size - 1)

@@ -28,7 +28,7 @@
 
 #include "SoupCookiePersistentStorageType.h"
 #include "WKCookieManager.h"
-#include "WKRetainPtr.h"
+#include "WebCookieManagerProxy.h"
 #include "ewk_cookie_manager.h"
 #include <WebKit2/WKBase.h>
 #include <wtf/PassOwnPtr.h>
@@ -48,14 +48,14 @@ struct Cookie_Change_Handler {
     { }
 };
 
-class Ewk_Cookie_Manager {
+class EwkCookieManager {
 public:
-    static PassOwnPtr<Ewk_Cookie_Manager> create(WKCookieManagerRef cookieManagerRef)
+    static PassOwnPtr<EwkCookieManager> create(PassRefPtr<WebKit::WebCookieManagerProxy> cookieManager)
     {
-        return adoptPtr(new Ewk_Cookie_Manager(cookieManagerRef));
+        return adoptPtr(new EwkCookieManager(cookieManager));
     }
 
-    ~Ewk_Cookie_Manager();
+    ~EwkCookieManager();
 
     void setPersistentStorage(const String& filename, WebKit::SoupCookiePersistentStorageType storage);
 
@@ -69,13 +69,13 @@ public:
     void watchChanges(const Cookie_Change_Handler& changeHandler);
 
 private:
-    explicit Ewk_Cookie_Manager(WKCookieManagerRef cookieManagerRef);
+    explicit EwkCookieManager(PassRefPtr<WebKit::WebCookieManagerProxy> cookieManager);
 
     bool isWatchingForChanges() const;
 
     static void cookiesDidChange(WKCookieManagerRef, const void* clientInfo);
 
-    WKRetainPtr<WKCookieManagerRef> m_wkCookieManager;
+    RefPtr<WebKit::WebCookieManagerProxy> m_cookieManager;
     Cookie_Change_Handler m_changeHandler;
 };
 

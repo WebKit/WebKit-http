@@ -342,6 +342,15 @@ struct AbstractValue {
         return true;
     }
     
+    Structure* bestProvenStructure() const
+    {
+        if (m_currentKnownStructure.hasSingleton())
+            return m_currentKnownStructure.singleton();
+        if (m_futurePossibleStructure.hasSingleton())
+            return m_futurePossibleStructure.singleton();
+        return 0;
+    }
+    
     void checkConsistency() const
     {
         if (!(m_type & SpecCell)) {
@@ -362,15 +371,14 @@ struct AbstractValue {
         // complexity of the code.
     }
     
-    void dump(FILE* out) const
+    void dump(PrintStream& out) const
     {
-        fprintf(out, "(%s, %s, ", speculationToString(m_type), arrayModesToString(m_arrayModes));
-        m_currentKnownStructure.dump(out);
-        dataLog(", ");
-        m_futurePossibleStructure.dump(out);
+        out.print(
+            "(", SpeculationDump(m_type), ", ", ArrayModesDump(m_arrayModes), ", ",
+            m_currentKnownStructure, ", ", m_futurePossibleStructure);
         if (!!m_value)
-            fprintf(out, ", %s", m_value.description());
-        fprintf(out, ")");
+            out.print(", ", m_value);
+        out.print(")");
     }
     
     // A great way to think about the difference between m_currentKnownStructure and

@@ -69,6 +69,8 @@ class DisplaySleepDisabler;
 #endif
 
 #if ENABLE(VIDEO_TRACK)
+class InbandTextTrackPrivate;
+
 typedef PODIntervalTree<double, TextTrackCue*> CueIntervalTree;
 typedef Vector<CueIntervalTree::IntervalType> CueList;
 #endif
@@ -132,7 +134,7 @@ public:
     void setPreload(const String&);
 
     PassRefPtr<TimeRanges> buffered() const;
-    void load(ExceptionCode&);
+    void load();
     String canPlayType(const String& mimeType, const String& keySystem = String(), const KURL& = KURL()) const;
 
 // ready state
@@ -216,8 +218,14 @@ public:
     TextTrackList* textTracks();
     CueList currentlyActiveCues() const { return m_currentlyActiveCues; }
 
+    void removeTrack(TextTrack*);
+    void removeAllInbandTracks();
+
     virtual void didAddTrack(HTMLTrackElement*);
-    virtual void willRemoveTrack(HTMLTrackElement*);
+    virtual void didRemoveTrack(HTMLTrackElement*);
+
+    virtual void mediaPlayerDidAddTrack(PassRefPtr<InbandTextTrackPrivate>) OVERRIDE;
+    virtual void mediaPlayerDidRemoveTrack(PassRefPtr<InbandTextTrackPrivate>) OVERRIDE;
 
     struct TrackGroup {
         enum GroupKind { CaptionsAndSubtitles, Description, Chapter, Metadata, Other };
@@ -230,9 +238,9 @@ public:
         {
         }
 
-        Vector<HTMLTrackElement*> tracks;
-        HTMLTrackElement* visibleTrack;
-        HTMLTrackElement* defaultTrack;
+        Vector<RefPtr<TextTrack> > tracks;
+        RefPtr<TextTrack> visibleTrack;
+        RefPtr<TextTrack> defaultTrack;
         GroupKind kind;
         bool hasSrcLang;
     };
@@ -240,6 +248,10 @@ public:
     void configureTextTrackGroupForLanguage(const TrackGroup&) const;
     void configureTextTracks();
     void configureTextTrackGroup(const TrackGroup&) const;
+
+    void toggleTrackAtIndex(int index, bool exclusive = true);
+    static int textTracksOffIndex() { return -1; }
+    static int textTracksIndexNotFound() { return -2; }
 
     bool userPrefersCaptions() const;
     bool userIsInterestedInThisTrackKind(String) const;
@@ -255,6 +267,9 @@ public:
     virtual void textTrackRemoveCues(TextTrack*, const TextTrackCueList*);
     virtual void textTrackAddCue(TextTrack*, PassRefPtr<TextTrackCue>);
     virtual void textTrackRemoveCue(TextTrack*, PassRefPtr<TextTrackCue>);
+
+    bool requiresTextTrackRepresentation() const;
+    void setTextTrackRepresentation(TextTrackRepresentation*);
 #endif
 
 #if ENABLE(PLUGIN_PROXY_FOR_VIDEO)
@@ -320,11 +335,13 @@ public:
 
     virtual bool willRespondToMouseClickEvents() OVERRIDE;
 
+    virtual void reportMemoryUsage(MemoryObjectInfo*) const;
+
 protected:
     HTMLMediaElement(const QualifiedName&, Document*, bool);
     virtual ~HTMLMediaElement();
 
-    virtual void parseAttribute(const Attribute&) OVERRIDE;
+    virtual void parseAttribute(const QualifiedName&, const AtomicString&) OVERRIDE;
     virtual void finishParsingChildren();
     virtual bool isURLAttribute(const Attribute&) const OVERRIDE;
     virtual void attach() OVERRIDE;
@@ -355,7 +372,13 @@ protected:
     
     void addBehaviorRestriction(BehaviorRestrictions restriction) { m_restrictions |= restriction; }
     void removeBehaviorRestriction(BehaviorRestrictions restriction) { m_restrictions &= ~restriction; }
-    
+
+#if ENABLE(VIDEO_TRACK)
+    bool ignoreTrackDisplayUpdateRequests() const { return m_ignoreTrackDisplayUpdate > 0; }
+    void beginIgnoringTrackDisplayUpdateRequests();
+    void endIgnoringTrackDisplayUpdateRequests();
+#endif
+
 private:
     void createMediaPlayer();
 
@@ -417,7 +440,7 @@ private:
 #if ENABLE(ENCRYPTED_MEDIA)
     virtual void mediaPlayerKeyAdded(MediaPlayer*, const String& keySystem, const String& sessionId) OVERRIDE;
     virtual void mediaPlayerKeyError(MediaPlayer*, const String& keySystem, const String& sessionId, MediaPlayerClient::MediaKeyErrorCode, unsigned short systemCode) OVERRIDE;
-    virtual void mediaPlayerKeyMessage(MediaPlayer*, const String& keySystem, const String& sessionId, const unsigned char* message, unsigned messageLength) OVERRIDE;
+    virtual void mediaPlayerKeyMessage(MediaPlayer*, const String& keySystem, const String& sessionId, const unsigned char* message, unsigned messageLength, const KURL& defaultURL) OVERRIDE;
     virtual bool mediaPlayerKeyNeeded(MediaPlayer*, const String& keySystem, const String& sessionId, const unsigned char* initData, unsigned initDataLength) OVERRIDE;
 #endif
 
@@ -483,10 +506,6 @@ private:
 #if ENABLE(VIDEO_TRACK)
     void updateActiveTextTrackCues(float);
     HTMLTrackElement* showingTrackWithSameKind(HTMLTrackElement*) const;
-
-    bool ignoreTrackDisplayUpdateRequests() const { return m_ignoreTrackDisplayUpdate > 0; }
-    void beginIgnoringTrackDisplayUpdateRequests() { ++m_ignoreTrackDisplayUpdate; }
-    void endIgnoringTrackDisplayUpdateRequests() { ASSERT(m_ignoreTrackDisplayUpdate); --m_ignoreTrackDisplayUpdate; }
 
     void markCaptionAndSubtitleTracksAsUnconfigured();
     virtual void captionPreferencesChanged() OVERRIDE;
@@ -684,6 +703,8 @@ private:
 #if PLATFORM(MAC)
     OwnPtr<DisplaySleepDisabler> m_sleepDisabler;
 #endif
+
+    friend class TrackDisplayUpdateScope;
 };
 
 #if ENABLE(VIDEO_TRACK)

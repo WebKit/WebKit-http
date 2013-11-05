@@ -143,12 +143,19 @@ static inline PassRefPtr<ClipPathOperation> blendFunc(const AnimationBase*, Clip
 }
 
 #if ENABLE(CSS_EXCLUSIONS)
-static inline PassRefPtr<BasicShape> blendFunc(const AnimationBase*, BasicShape* from, BasicShape* to, double progress)
+static inline PassRefPtr<ExclusionShapeValue> blendFunc(const AnimationBase*, ExclusionShapeValue* from, ExclusionShapeValue* to, double progress)
 {
-    if (!from->canBlend(to))
+    // FIXME Bug 102723: Shape-inside should be able to animate a value of 'outside-shape' when shape-outside is set to a BasicShape
+    if (from->type() != ExclusionShapeValue::SHAPE || to->type() != ExclusionShapeValue::SHAPE)
         return to;
 
-    return to->blend(from, progress);
+    const BasicShape* fromShape = from->shape();
+    const BasicShape* toShape = to->shape();
+
+    if (!fromShape->canBlend(toShape))
+        return to;
+
+    return ExclusionShapeValue::createShapeValue(toShape->blend(fromShape, progress));
 }
 #endif
 
@@ -404,10 +411,10 @@ public:
 };
 
 #if ENABLE(CSS_EXCLUSIONS)
-class PropertyWrapperBasicShape : public RefCountedPropertyWrapper<BasicShape> {
+class PropertyWrapperExclusionShape : public RefCountedPropertyWrapper<ExclusionShapeValue> {
 public:
-    PropertyWrapperBasicShape(CSSPropertyID prop, BasicShape* (RenderStyle::*getter)() const, void (RenderStyle::*setter)(PassRefPtr<BasicShape>))
-        : RefCountedPropertyWrapper<BasicShape>(prop, getter, setter)
+    PropertyWrapperExclusionShape(CSSPropertyID prop, ExclusionShapeValue* (RenderStyle::*getter)() const, void (RenderStyle::*setter)(PassRefPtr<ExclusionShapeValue>))
+        : RefCountedPropertyWrapper<ExclusionShapeValue>(prop, getter, setter)
     {
     }
 };
@@ -1123,6 +1130,8 @@ void CSSPropertyAnimation::ensurePropertyMap()
     gPropertyWrappers->append(new PropertyWrapper<short>(CSSPropertyWebkitBorderHorizontalSpacing, &RenderStyle::horizontalBorderSpacing, &RenderStyle::setHorizontalBorderSpacing));
     gPropertyWrappers->append(new PropertyWrapper<short>(CSSPropertyWebkitBorderVerticalSpacing, &RenderStyle::verticalBorderSpacing, &RenderStyle::setVerticalBorderSpacing));
     gPropertyWrappers->append(new PropertyWrapper<int>(CSSPropertyZIndex, &RenderStyle::zIndex, &RenderStyle::setZIndex));
+    gPropertyWrappers->append(new PropertyWrapper<short>(CSSPropertyOrphans, &RenderStyle::orphans, &RenderStyle::setOrphans));
+    gPropertyWrappers->append(new PropertyWrapper<short>(CSSPropertyWidows, &RenderStyle::widows, &RenderStyle::setWidows));
     gPropertyWrappers->append(new PropertyWrapper<Length>(CSSPropertyLineHeight, &RenderStyle::specifiedLineHeight, &RenderStyle::setLineHeight));
     gPropertyWrappers->append(new PropertyWrapper<int>(CSSPropertyOutlineOffset, &RenderStyle::outlineOffset, &RenderStyle::setOutlineOffset));
     gPropertyWrappers->append(new PropertyWrapper<unsigned short>(CSSPropertyOutlineWidth, &RenderStyle::outlineWidth, &RenderStyle::setOutlineWidth));
@@ -1162,7 +1171,7 @@ void CSSPropertyAnimation::ensurePropertyMap()
     gPropertyWrappers->append(new PropertyWrapperClipPath(CSSPropertyWebkitClipPath, &RenderStyle::clipPath, &RenderStyle::setClipPath));
 
 #if ENABLE(CSS_EXCLUSIONS)
-    gPropertyWrappers->append(new PropertyWrapperBasicShape(CSSPropertyWebkitShapeInside, &RenderStyle::shapeInside, &RenderStyle::setShapeInside));
+    gPropertyWrappers->append(new PropertyWrapperExclusionShape(CSSPropertyWebkitShapeInside, &RenderStyle::shapeInside, &RenderStyle::setShapeInside));
 #endif
 
     gPropertyWrappers->append(new PropertyWrapperVisitedAffectedColor(CSSPropertyWebkitColumnRuleColor, MaybeInvalidColor, &RenderStyle::columnRuleColor, &RenderStyle::setColumnRuleColor, &RenderStyle::visitedLinkColumnRuleColor, &RenderStyle::setVisitedLinkColumnRuleColor));

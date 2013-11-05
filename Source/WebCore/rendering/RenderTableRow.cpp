@@ -33,6 +33,7 @@
 #include "RenderTableCell.h"
 #include "RenderView.h"
 #include "StyleInheritedData.h"
+#include "WebCoreMemoryInstrumentation.h"
 
 namespace WebCore {
 
@@ -53,23 +54,12 @@ void RenderTableRow::willBeRemovedFromTree()
     section()->setNeedsCellRecalc();
 }
 
-void RenderTableRow::updateBeforeAndAfterContent()
-{
-    if (!isAnonymous() && document()->styleSheetCollection()->usesBeforeAfterRules()) {
-        children()->updateBeforeAfterContent(this, BEFORE);
-        children()->updateBeforeAfterContent(this, AFTER);
-    }
-}
-
 void RenderTableRow::styleDidChange(StyleDifference diff, const RenderStyle* oldStyle)
 {
     ASSERT(style()->display() == TABLE_ROW);
 
     RenderBox::styleDidChange(diff, oldStyle);
     propagateStyleToAnonymousChildren();
-
-    if (parent())
-        updateBeforeAndAfterContent();
 
     if (section() && oldStyle && style()->logicalHeight() != oldStyle->logicalHeight())
         section()->rowLogicalHeightChanged(rowIndex());
@@ -266,6 +256,13 @@ RenderTableRow* RenderTableRow::createAnonymousWithParentRenderer(const RenderOb
     RenderTableRow* newRow = new (parent->renderArena()) RenderTableRow(parent->document() /* is anonymous */);
     newRow->setStyle(newStyle.release());
     return newRow;
+}
+
+void RenderTableRow::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
+{
+    MemoryClassInfo info(memoryObjectInfo, this, PlatformMemoryTypes::Rendering);
+    RenderBox::reportMemoryUsage(memoryObjectInfo);
+    info.addMember(m_children);
 }
 
 } // namespace WebCore

@@ -28,41 +28,49 @@
 
 #if ENABLE(NETWORK_PROCESS)
 
+#include "ChildProcessProxy.h"
 #include "Connection.h"
+#include "MessageReceiverMap.h"
 #include "ProcessLauncher.h"
 #include "WebProcessProxyMessages.h"
 #include <wtf/Deque.h>
 
+#if ENABLE(CUSTOM_PROTOCOLS)
+#include "CustomProtocolManagerProxy.h"
+#endif
+
 namespace WebKit {
 
-class NetworkProcessManager;
+class DownloadProxy;
+class DownloadProxyMap;
+class WebContext;
 struct NetworkProcessCreationParameters;
 
-class NetworkProcessProxy : public RefCounted<NetworkProcessProxy>, CoreIPC::Connection::Client, ProcessLauncher::Client {
+class NetworkProcessProxy : public RefCounted<NetworkProcessProxy>, public ChildProcessProxy {
 public:
-    static PassRefPtr<NetworkProcessProxy> create(NetworkProcessManager*);
+    static PassRefPtr<NetworkProcessProxy> create(WebContext*);
     ~NetworkProcessProxy();
 
     void getNetworkProcessConnection(PassRefPtr<Messages::WebProcessProxy::GetNetworkProcessConnection::DelayedReply>);
 
-    bool isValid() const { return m_connection; }
+    DownloadProxy* createDownloadProxy();
 
 #if PLATFORM(MAC)
     void setApplicationIsOccluded(bool);
 #endif
 
 private:
-    NetworkProcessProxy(NetworkProcessManager*);
+    NetworkProcessProxy(WebContext*);
 
-    void platformInitializeNetworkProcess(NetworkProcessCreationParameters&);
+    virtual void getLaunchOptions(ProcessLauncher::LaunchOptions&) OVERRIDE;
 
     void networkProcessCrashedOrFailedToLaunch();
 
     // CoreIPC::Connection::Client
-    virtual void didReceiveMessage(CoreIPC::Connection*, CoreIPC::MessageID, CoreIPC::MessageDecoder&);
-    virtual void didClose(CoreIPC::Connection*);
-    virtual void didReceiveInvalidMessage(CoreIPC::Connection*, CoreIPC::StringReference messageReceiverName, CoreIPC::StringReference messageName);
-    virtual void syncMessageSendTimedOut(CoreIPC::Connection*);
+    virtual void didReceiveMessage(CoreIPC::Connection*, CoreIPC::MessageID, CoreIPC::MessageDecoder&) OVERRIDE;
+    virtual void didReceiveSyncMessage(CoreIPC::Connection*, CoreIPC::MessageID, CoreIPC::MessageDecoder&, OwnPtr<CoreIPC::MessageEncoder>&) OVERRIDE;
+    virtual void didClose(CoreIPC::Connection*) OVERRIDE;
+    virtual void didReceiveInvalidMessage(CoreIPC::Connection*, CoreIPC::StringReference messageReceiverName, CoreIPC::StringReference messageName) OVERRIDE;
 
     // Message handlers
     void didReceiveNetworkProcessProxyMessage(CoreIPC::Connection*, CoreIPC::MessageID, CoreIPC::MessageDecoder&);
@@ -71,16 +79,17 @@ private:
     // ProcessLauncher::Client
     virtual void didFinishLaunching(ProcessLauncher*, CoreIPC::Connection::Identifier);
 
-    // The connection to the network process.
-    RefPtr<CoreIPC::Connection> m_connection;
-
-    // The process launcher for the network process.
-    RefPtr<ProcessLauncher> m_processLauncher;
-
-    NetworkProcessManager* m_networkProcessManager;
+    WebContext* m_webContext;
     
     unsigned m_numPendingConnectionRequests;
     Deque<RefPtr<Messages::WebProcessProxy::GetNetworkProcessConnection::DelayedReply> > m_pendingConnectionReplies;
+
+    CoreIPC::MessageReceiverMap m_messageReceiverMap;
+    OwnPtr<DownloadProxyMap> m_downloadProxyMap;
+
+#if ENABLE(CUSTOM_PROTOCOLS)
+    CustomProtocolManagerProxy m_customProtocolManagerProxy;
+#endif
 };
 
 } // namespace WebKit

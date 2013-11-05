@@ -119,6 +119,7 @@
                     'type': 'shared_library',
                     'dependencies': [
                         '<(chromium_src_dir)/testing/android/native_test.gyp:native_test_native_code',
+                        '<(chromium_src_dir)/tools/android/forwarder2/forwarder.gyp:forwarder2',
                     ],
                 }],
                 ['OS=="mac"', {
@@ -185,6 +186,8 @@
                         '--output',
                         '<(PRODUCT_DIR)/webkit_unit_tests_apk',
                         '--strip-binary=<(android_strip)',
+                        '--ant-args',
+                        '-quiet',
                         '--ant-args',
                         '-DANDROID_SDK=<(android_sdk)',
                         '--ant-args',

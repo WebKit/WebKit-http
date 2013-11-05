@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2010, 2011, 2012 Apple Inc. All rights reserved.
+ * Copyright (C) 2012 Intel Corporation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -31,12 +32,14 @@
 #include "TestController.h"
 #include <climits>
 #include <cstdio>
-#include <WebKit2/WKDictionary.h>
 #include <WebKit2/WKContextPrivate.h>
+#include <WebKit2/WKData.h>
+#include <WebKit2/WKDictionary.h>
 #include <WebKit2/WKInspector.h>
 #include <WebKit2/WKRetainPtr.h>
 #include <wtf/OwnArrayPtr.h>
 #include <wtf/PassOwnArrayPtr.h>
+#include <wtf/PassOwnPtr.h>
 #include <wtf/text/CString.h>
 
 #if PLATFORM(MAC)
@@ -104,7 +107,7 @@ TestInvocation::TestInvocation(const std::string& pathOrURL)
     , m_gotFinalMessage(false)
     , m_gotRepaint(false)
     , m_error(false)
-    , m_webProcessIsUnrensponsive(false)
+    , m_webProcessIsUnresponsive(false)
 {
 }
 
@@ -165,10 +168,34 @@ static void updateTiledDrawingForCurrentTest(const char* pathOrURL)
 #endif
 }
 
+#if ENABLE(CSS_DEVICE_ADAPTATION)
+static bool shouldUseFixedLayout(const char* pathOrURL)
+{
+    return strstr(pathOrURL, "device-adapt/") || strstr(pathOrURL, "device-adapt\\");
+}
+#endif
+
+static void updateLayoutType(const char* pathOrURL)
+{
+#if ENABLE(CSS_DEVICE_ADAPTATION)
+    WKRetainPtr<WKMutableDictionaryRef> viewOptions = adoptWK(WKMutableDictionaryCreate());
+    WKRetainPtr<WKStringRef> useFixedLayoutKey = adoptWK(WKStringCreateWithUTF8CString("UseFixedLayout"));
+    WKRetainPtr<WKBooleanRef> useFixedLayoutValue = adoptWK(WKBooleanCreate(shouldUseFixedLayout(pathOrURL)));
+    WKDictionaryAddItem(viewOptions.get(), useFixedLayoutKey.get(), useFixedLayoutValue.get());
+
+    TestController::shared().ensureViewSupportsOptions(viewOptions.get());
+#else
+    UNUSED_PARAM(pathOrURL);
+#endif
+}
+
 void TestInvocation::invoke()
 {
     sizeWebViewForCurrentTest(m_pathOrURL.c_str());
+    updateLayoutType(m_pathOrURL.c_str());
     updateTiledDrawingForCurrentTest(m_pathOrURL.c_str());
+
+    m_textOutput.clear();
 
     WKRetainPtr<WKStringRef> messageName = adoptWK(WKStringCreateWithUTF8CString("BeginTest"));
     WKRetainPtr<WKMutableDictionaryRef> beginTestMessageBody = adoptWK(WKMutableDictionaryCreate());
@@ -190,7 +217,7 @@ void TestInvocation::invoke()
     TestController::shared().runUntil(m_gotInitialResponse, TestController::ShortTimeout);
     if (!m_gotInitialResponse) {
         m_errorMessage = "Timed out waiting for initial response from web process\n";
-        m_webProcessIsUnrensponsive = true;
+        m_webProcessIsUnresponsive = true;
         goto end;
     }
     if (m_error)
@@ -206,7 +233,7 @@ void TestInvocation::invoke()
     TestController::shared().runUntil(m_gotFinalMessage, TestController::shared().useWaitToDumpWatchdogTimer() ? TestController::LongTimeout : TestController::NoTimeout);
     if (!m_gotFinalMessage) {
         m_errorMessage = "Timed out waiting for final message from web process\n";
-        m_webProcessIsUnrensponsive = true;
+        m_webProcessIsUnresponsive = true;
         goto end;
     }
     if (m_error)
@@ -220,7 +247,7 @@ end:
         WKInspectorClose(WKPageGetInspector(TestController::shared().mainWebView()->page()));
 #endif // ENABLE(INSPECTOR)
 
-    if (m_webProcessIsUnrensponsive)
+    if (m_webProcessIsUnresponsive)
         dumpWebProcessUnresponsiveness();
     else if (!TestController::shared().resetStateToConsistentValues()) {
         m_errorMessage = "Timed out loading about:blank before the next test";
@@ -261,13 +288,42 @@ void TestInvocation::dump(const char* textToStdout, const char* textToStderr, bo
 
 void TestInvocation::dumpResults()
 {
-    dump(toWTFString(m_textOutput.get()).utf8().data());
+    if (m_textOutput.length())
+        dump(m_textOutput.toString().utf8().data());
+    else if (m_audioResult)
+        dumpAudio(m_audioResult.get());
 
     if (m_dumpPixels && m_pixelResult)
         dumpPixelsAndCompareWithExpected(m_pixelResult.get(), m_repaintRects.get());
 
     fputs("#EOF\n", stdout);
     fflush(stdout);
+    fflush(stderr);
+}
+
+void TestInvocation::dumpAudio(WKDataRef audioData)
+{
+    size_t length = WKDataGetSize(audioData);
+    if (!length)
+        return;
+
+    const unsigned char* data = WKDataGetBytes(audioData);
+
+    printf("Content-Type: audio/wav\n");
+    printf("Content-Length: %lu\n", static_cast<unsigned long>(length));
+
+    const size_t bytesToWriteInOneChunk = 1 << 15;
+    size_t dataRemainingToWrite = length;
+    while (dataRemainingToWrite) {
+        size_t bytesToWriteInThisChunk = std::min(dataRemainingToWrite, bytesToWriteInOneChunk);
+        size_t bytesWritten = fwrite(data, 1, bytesToWriteInThisChunk, stdout);
+        if (bytesWritten != bytesToWriteInThisChunk)
+            break;
+        dataRemainingToWrite -= bytesWritten;
+        data += bytesWritten;
+    }
+    printf("#EOF\n");
+    fprintf(stderr, "#EOF\n");
 }
 
 bool TestInvocation::compareActualHashToExpectedAndDumpResults(const char actualHash[33])
@@ -313,9 +369,6 @@ void TestInvocation::didReceiveMessageFromInjectedBundle(WKStringRef messageName
         ASSERT(WKGetTypeID(messageBody) == WKDictionaryGetTypeID());
         WKDictionaryRef messageBodyDictionary = static_cast<WKDictionaryRef>(messageBody);
 
-        WKRetainPtr<WKStringRef> textOutputKey(AdoptWK, WKStringCreateWithUTF8CString("TextOutput"));
-        m_textOutput = static_cast<WKStringRef>(WKDictionaryGetItemForKey(messageBodyDictionary, textOutputKey.get()));
-
         WKRetainPtr<WKStringRef> pixelResultKey = adoptWK(WKStringCreateWithUTF8CString("PixelResult"));
         m_pixelResult = static_cast<WKImageRef>(WKDictionaryGetItemForKey(messageBodyDictionary, pixelResultKey.get()));
         ASSERT(!m_pixelResult || m_dumpPixels);
@@ -323,11 +376,21 @@ void TestInvocation::didReceiveMessageFromInjectedBundle(WKStringRef messageName
         WKRetainPtr<WKStringRef> repaintRectsKey = adoptWK(WKStringCreateWithUTF8CString("RepaintRects"));
         m_repaintRects = static_cast<WKArrayRef>(WKDictionaryGetItemForKey(messageBodyDictionary, repaintRectsKey.get()));
 
+        WKRetainPtr<WKStringRef> audioResultKey =  adoptWK(WKStringCreateWithUTF8CString("AudioResult"));
+        m_audioResult = static_cast<WKDataRef>(WKDictionaryGetItemForKey(messageBodyDictionary, audioResultKey.get()));
+
         m_gotFinalMessage = true;
         TestController::shared().notifyDone();
         return;
     }
-    
+
+    if (WKStringIsEqualToUTF8CString(messageName, "TextOutput")) {
+        ASSERT(WKGetTypeID(messageBody) == WKStringGetTypeID());
+        WKStringRef textOutput = static_cast<WKStringRef>(messageBody);
+        m_textOutput.append(toWTFString(textOutput));
+        return;
+    }
+
     if (WKStringIsEqualToUTF8CString(messageName, "BeforeUnloadReturnValue")) {
         ASSERT(WKGetTypeID(messageBody) == WKBooleanGetTypeID());
         WKBooleanRef beforeUnloadReturnValue = static_cast<WKBooleanRef>(messageBody);

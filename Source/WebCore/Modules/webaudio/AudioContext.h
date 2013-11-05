@@ -49,6 +49,7 @@ class AudioBuffer;
 class AudioBufferCallback;
 class AudioBufferSourceNode;
 class MediaElementAudioSourceNode;
+class MediaStreamAudioDestinationNode;
 class MediaStreamAudioSourceNode;
 class HTMLMediaElement;
 class ChannelMergerNode;
@@ -118,6 +119,7 @@ public:
 #endif
 #if ENABLE(MEDIA_STREAM)
     PassRefPtr<MediaStreamAudioSourceNode> createMediaStreamSource(MediaStream*, ExceptionCode&);
+    PassRefPtr<MediaStreamAudioDestinationNode> createMediaStreamDestination();
 #endif
     PassRefPtr<GainNode> createGain();
     PassRefPtr<BiquadFilterNode> createBiquadFilter();
@@ -248,22 +250,29 @@ public:
 
     virtual void reportMemoryUsage(MemoryObjectInfo*) const OVERRIDE;
 
-private:
+protected:
     explicit AudioContext(Document*);
     AudioContext(Document*, unsigned numberOfChannels, size_t numberOfFrames, float sampleRate);
+    
+    static bool isSampleRateRangeGood(float sampleRate);
+    
+private:
     void constructCommon();
 
     void lazyInitialize();
     void uninitialize();
-    static void uninitializeDispatch(void* userData);
+
+    // ScriptExecutionContext calls stop twice.
+    // We'd like to schedule only one stop action for them.
+    bool m_isStopScheduled;
+    static void stopDispatch(void* userData);
+    void clear();
 
     void scheduleNodeDeletion();
     static void deleteMarkedNodesDispatch(void* userData);
     
     bool m_isInitialized;
     bool m_isAudioThreadFinished;
-
-    Document* m_document;
 
     // The context itself keeps a reference to all source nodes.  The source nodes, then reference all nodes they're connected to.
     // In turn, these nodes reference all nodes they're connected to.  All nodes are ultimately connected to the AudioDestinationNode.

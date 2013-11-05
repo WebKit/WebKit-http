@@ -1,5 +1,4 @@
-CONSOLE MESSAGE: The setVersion() method is non-standard and will be removed. Use the "upgradeneeded" event instead.
-CONSOLE MESSAGE: line 92: Uncaught Error: This should *NOT* be caught!
+CONSOLE MESSAGE: line 73: Uncaught Error: This should *NOT* be caught!
 Test IDBTransaction.error cases.
 
 On success, you will see a series of "PASS" messages, followed by "TEST COMPLETE".
@@ -7,12 +6,9 @@ On success, you will see a series of "PASS" messages, followed by "TEST COMPLETE
 
 indexedDB = self.indexedDB || self.webkitIndexedDB || self.mozIndexedDB || self.msIndexedDB || self.OIndexedDB;
 
-dbname = self.location.pathname
+dbname = "transaction-error.html"
 indexedDB.deleteDatabase(dbname)
 indexedDB.open(dbname)
-db = request.result
-db.setVersion('1')
-trans = event.target.result
 store = db.createObjectStore('storeName')
 store.add('value', 'key')
 
@@ -28,34 +24,41 @@ PASS trans.error is null
 If the transaction is aborted due to a request error that is not prevented, IDBTransaction.error should match:
 trans = db.transaction('storeName', 'readwrite')
 request = trans.objectStore('storeName').add('value2', 'key')
-PASS request.errorCode is IDBDatabaseException.CONSTRAINT_ERR
 PASS request.error.name is 'ConstraintError'
 request_error = request.error
 Transaction received abort event.
 PASS trans.error is non-null.
+trans.webkitErrorMessage = Key already exists in the object store.
+PASS trans.webkitErrorMessage is non-null.
 PASS trans.error is request_error
 
 If the transaction is aborted due to an exception thrown from event callback, IDBTransaction.error should be AbortError:
 trans = db.transaction('storeName', 'readwrite')
 request = trans.objectStore('storeName').add('value2', 'key')
-PASS request.errorCode is IDBDatabaseException.CONSTRAINT_ERR
 PASS request.error.name is 'ConstraintError'
 Throwing exception...
 Transaction received abort event.
 PASS trans.error is non-null.
+trans.webkitErrorMessage = Uncaught exception in event handler.
+PASS trans.webkitErrorMessage is non-null.
 PASS trans.error.name is 'AbortError'
 
 If the transaction is aborted due to an error during commit, IDBTransaction.error should reflect that error:
 trans = db.transaction('storeName', 'readwrite')
 request = trans.objectStore('storeName').add({id: 1}, 'record1')
 request = trans.objectStore('storeName').add({id: 1}, 'record2')
-request = db.setVersion('2')
-trans = request.result
+request = indexedDB.open(dbname, 2)
+trans = request.transaction
 This should fail due to the unique constraint:
-trans.objectStore('storeName').createIndex('indexName', 'id', {unique: true})
+indexName = 'Also test utf8: 漢'
+trans.objectStore('storeName').createIndex(indexName, 'id', {unique: true})
 Transaction received abort event.
 PASS trans.error is non-null.
-PASS trans.error.name is not 'AbortError'
+PASS trans.error.name is 'ConstraintError'
+trans.webkitErrorMessage = Unable to add key to index 'Also test utf8: æ¼¢': at least one key does not satisfy the uniqueness requirements.
+PASS trans.webkitErrorMessage is non-null.
+Note: This fails because of http://wkb.ug/37327
+FAIL trans.webkitErrorMessage.indexOf(indexName) should not be -1.
 
 PASS successfullyParsed is true
 

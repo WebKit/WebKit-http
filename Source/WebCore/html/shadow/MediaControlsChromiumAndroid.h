@@ -32,17 +32,6 @@
 
 namespace WebCore {
 
-class MediaControlOverlayPlayButtonElement;
-
-class MediaControlOverlayEnclosureElement : public MediaControlChromiumEnclosureElement {
-public:
-    static PassRefPtr<MediaControlOverlayEnclosureElement> create(Document*);
-
-private:
-    explicit MediaControlOverlayEnclosureElement(Document*);
-    virtual const AtomicString& shadowPseudoId() const;
-};
-
 class MediaControlsChromiumAndroid : public MediaControlsChromium {
 public:
     static PassRefPtr<MediaControlsChromiumAndroid> createControls(Document*);

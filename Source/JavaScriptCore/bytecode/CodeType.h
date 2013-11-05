@@ -32,22 +32,14 @@ namespace JSC {
 
 enum CodeType { GlobalCode, EvalCode, FunctionCode };
 
-inline const char* codeTypeToString(CodeType codeType)
-{
-    switch (codeType) {
-    case GlobalCode:
-        return "GlobalCode";
-    case EvalCode:
-        return "EvalCode";
-    case FunctionCode:
-        return "FunctionCode";
-    default:
-        ASSERT_NOT_REACHED();
-        return 0;
-    }
-}
-
 } // namespace JSC
+
+namespace WTF {
+
+class PrintStream;
+void printInternal(PrintStream&, JSC::CodeType);
+
+} // namespace WTF
 
 #endif // CodeType_h
 

@@ -114,14 +114,6 @@ sub new
     return $reference;
 }
 
-sub StripModule($)
-{
-    my $object = shift;
-    my $name = shift;
-    $name =~ s/[a-zA-Z0-9]*:://;
-    return $name;
-}
-
 sub ProcessDocument
 {
     my $object = shift;
@@ -132,22 +124,20 @@ sub ProcessDocument
     require $ifaceName . ".pm";
 
     # Dynamically load external code generation perl module
-    $codeGenerator = $ifaceName->new($object, $useOutputDir, $useOutputHeadersDir, $useLayerOnTop, $preprocessor, $writeDependencies, $verbose, $targetIdlFilePath);
+    $codeGenerator = $ifaceName->new($object, $useLayerOnTop, $preprocessor, $writeDependencies, $verbose, $targetIdlFilePath);
     unless (defined($codeGenerator)) {
-        my $classes = $useDocument->classes;
-        foreach my $class (@$classes) {
-            print "Skipping $useGenerator code generation for IDL interface \"" . $class->name . "\".\n" if $verbose;
+        my $interfaces = $useDocument->interfaces;
+        foreach my $interface (@$interfaces) {
+            print "Skipping $useGenerator code generation for IDL interface \"" . $interface->name . "\".\n" if $verbose;
         }
         return;
     }
 
-    # Start the actual code generation!
-    $codeGenerator->GenerateModule($useDocument, $defines);
-
-    my $classes = $useDocument->classes;
-    foreach my $class (@$classes) {
-        print "Generating $useGenerator bindings code for IDL interface \"" . $class->name . "\"...\n" if $verbose;
-        $codeGenerator->GenerateInterface($class, $defines);
+    my $interfaces = $useDocument->interfaces;
+    foreach my $interface (@$interfaces) {
+        print "Generating $useGenerator bindings code for IDL interface \"" . $interface->name . "\"...\n" if $verbose;
+        $codeGenerator->GenerateInterface($interface, $defines);
+        $codeGenerator->WriteData($interface, $useOutputDir, $useOutputHeadersDir);
     }
 }
 
@@ -159,7 +149,7 @@ sub FileNamePrefix
     require $ifaceName . ".pm";
 
     # Dynamically load external code generation perl module
-    $codeGenerator = $ifaceName->new($object, $useOutputDir, $useOutputHeadersDir, $useLayerOnTop, $preprocessor, $writeDependencies, $verbose);
+    $codeGenerator = $ifaceName->new($object, $useLayerOnTop, $preprocessor, $writeDependencies, $verbose);
     return $codeGenerator->FileNamePrefix();
 }
 
@@ -177,17 +167,17 @@ sub UpdateFile
 sub ForAllParents
 {
     my $object = shift;
-    my $dataNode = shift;
+    my $interface = shift;
     my $beforeRecursion = shift;
     my $afterRecursion = shift;
     my $parentsOnly = shift;
 
     my $recurse;
     $recurse = sub {
-        my $interface = shift;
+        my $currentInterface = shift;
 
-        for (@{$interface->parents}) {
-            my $interfaceName = $object->StripModule($_);
+        for (@{$currentInterface->parents}) {
+            my $interfaceName = $_;
             my $parentInterface = $object->ParseInterface($interfaceName, $parentsOnly);
 
             if ($beforeRecursion) {
@@ -198,27 +188,27 @@ sub ForAllParents
         }
     };
 
-    &$recurse($dataNode);
+    &$recurse($interface);
 }
 
-sub AddMethodsConstantsAndAttributesFromParentClasses
+sub AddMethodsConstantsAndAttributesFromParentInterfaces
 {
-    # Add to $dataNode all of its inherited interface members, except for those
-    # inherited through $dataNode's first listed parent.  If an array reference
+    # Add to $interface all of its inherited interface members, except for those
+    # inherited through $interface's first listed parent.  If an array reference
     # is passed in as $parents, the names of all ancestor interfaces visited
     # will be appended to the array.  If $collectDirectParents is true, then
-    # even the names of $dataNode's first listed parent and its ancestors will
+    # even the names of $interface's first listed parent and its ancestors will
     # be appended to $parents.
 
     my $object = shift;
-    my $dataNode = shift;
+    my $interface = shift;
     my $parents = shift;
     my $collectDirectParents = shift;
 
     my $first = 1;
 
-    $object->ForAllParents($dataNode, sub {
-        my $interface = shift;
+    $object->ForAllParents($interface, sub {
+        my $currentInterface = shift;
 
         if ($first) {
             # Ignore first parent class, already handled by the generation itself.
@@ -227,10 +217,10 @@ sub AddMethodsConstantsAndAttributesFromParentClasses
             if ($collectDirectParents) {
                 # Just collect the names of the direct ancestor interfaces,
                 # if necessary.
-                push(@$parents, $interface->name);
-                $object->ForAllParents($interface, sub {
-                    my $interface = shift;
-                    push(@$parents, $interface->name);
+                push(@$parents, $currentInterface->name);
+                $object->ForAllParents($currentInterface, sub {
+                    my $currentInterface = shift;
+                    push(@$parents, $currentInterface->name);
                 }, undef, 1);
             }
 
@@ -239,27 +229,27 @@ sub AddMethodsConstantsAndAttributesFromParentClasses
         }
 
         # Collect the name of this additional parent.
-        push(@$parents, $interface->name) if $parents;
+        push(@$parents, $currentInterface->name) if $parents;
 
         print "  |  |>  -> Inheriting "
-            . @{$interface->constants} . " constants, "
-            . @{$interface->functions} . " functions, "
-            . @{$interface->attributes} . " attributes...\n  |  |>\n" if $verbose;
+            . @{$currentInterface->constants} . " constants, "
+            . @{$currentInterface->functions} . " functions, "
+            . @{$currentInterface->attributes} . " attributes...\n  |  |>\n" if $verbose;
 
-        # Add this parent's members to $dataNode.
-        push(@{$dataNode->constants}, @{$interface->constants});
-        push(@{$dataNode->functions}, @{$interface->functions});
-        push(@{$dataNode->attributes}, @{$interface->attributes});
+        # Add this parent's members to $interface.
+        push(@{$interface->constants}, @{$currentInterface->constants});
+        push(@{$interface->functions}, @{$currentInterface->functions});
+        push(@{$interface->attributes}, @{$currentInterface->attributes});
     });
 }
 
 sub FindSuperMethod
 {
-    my ($object, $dataNode, $functionName) = @_;
+    my ($object, $interface, $functionName) = @_;
     my $indexer;
-    $object->ForAllParents($dataNode, undef, sub {
-        my $interface = shift;
-        foreach my $function (@{$interface->functions}) {
+    $object->ForAllParents($interface, undef, sub {
+        my $currentInterface = shift;
+        foreach my $function (@{$currentInterface->functions}) {
             if ($function->signature->name eq $functionName) {
                 $indexer = $function->signature;
                 return 'prune';
@@ -308,7 +298,7 @@ sub ParseInterface
     my $parser = IDLParser->new(1);
     my $document = $parser->Parse($filename, $defines, $preprocessor, $parentsOnly);
 
-    foreach my $interface (@{$document->classes}) {
+    foreach my $interface (@{$document->interfaces}) {
         return $interface if $interface->name eq $interfaceName;
     }
 
@@ -342,10 +332,10 @@ sub IsArrayType
 sub IsConstructorTemplate
 {
     my $object = shift;
-    my $dataNode = shift;
+    my $interface = shift;
     my $template = shift;
 
-    return $dataNode->extendedAttributes->{"ConstructorTemplate"} && $dataNode->extendedAttributes->{"ConstructorTemplate"} eq $template;
+    return $interface->extendedAttributes->{"ConstructorTemplate"} && $interface->extendedAttributes->{"ConstructorTemplate"} eq $template;
 }
 
 sub IsPrimitiveType
@@ -403,6 +393,17 @@ sub IsTypedArrayType
     return 1 if (($type eq "Int8Array") or ($type eq "Int16Array") or ($type eq "Int32Array"));
     return 1 if (($type eq "Float32Array") or ($type eq "Float64Array"));
     return 0;
+}
+
+sub IsRefPtrType
+{
+    my $object = shift;
+    my $type = shift;
+
+    return 0 if $object->IsPrimitiveType($type);
+    return 0 if $type eq "DOMString";
+
+    return 1;
 }
 
 sub GetSVGTypeNeedingTearOff
@@ -513,10 +514,10 @@ sub NamespaceForAttributeName
 # links to its respective overloads (including itself).
 sub LinkOverloadedFunctions
 {
-    my ($object, $dataNode) = @_;
+    my ($object, $interface) = @_;
 
     my %nameToFunctionsMap = ();
-    foreach my $function (@{$dataNode->functions}) {
+    foreach my $function (@{$interface->functions}) {
         my $name = $function->signature->name;
         $nameToFunctionsMap{$name} = [] if !exists $nameToFunctionsMap{$name};
         push(@{$nameToFunctionsMap{$name}}, $function);
@@ -533,7 +534,7 @@ sub AttributeNameForGetterAndSetter
     if ($attribute->signature->extendedAttributes->{"ImplementedAs"}) {
         $attributeName = $attribute->signature->extendedAttributes->{"ImplementedAs"};
     }
-    my $attributeType = $generator->StripModule($attribute->signature->type);
+    my $attributeType = $attribute->signature->type;
 
     # Avoid clash with C++ keyword.
     $attributeName = "_operator" if $attributeName eq "operator";
@@ -564,6 +565,19 @@ sub ContentAttributeName
     return "WebCore::${namespace}::${contentAttributeName}Attr";
 }
 
+sub CanUseFastAttribute
+{
+    my ($generator, $attribute, $contentAttributeName) = @_;
+    my $attributeType = $attribute->signature->type;
+    # HTMLNames::styleAttr cannot be used with fast{Get,Has}Attribute but we do not [Reflect] the
+    # style attribute.
+
+    # Unfortunately SVG makes class animatable.
+    return 0 if $contentAttributeName eq "WebCore::HTMLNames::classAttr";
+
+    return !$generator->IsSVGAnimatedType($attributeType);
+}
+
 sub GetterExpression
 {
     my ($generator, $implIncludes, $interfaceName, $attribute) = @_;
@@ -578,13 +592,22 @@ sub GetterExpression
     if ($attribute->signature->extendedAttributes->{"URL"}) {
         $functionName = "getURLAttribute";
     } elsif ($attribute->signature->type eq "boolean") {
-        $functionName = "hasAttribute";
+        my $namespace = $generator->NamespaceForAttributeName($interfaceName, $contentAttributeName);
+        if ($generator->CanUseFastAttribute($attribute, $contentAttributeName)) {
+            $functionName = "fastHasAttribute";
+        } else {
+            $functionName = "hasAttribute";
+        }
     } elsif ($attribute->signature->type eq "long") {
         $functionName = "getIntegralAttribute";
     } elsif ($attribute->signature->type eq "unsigned long") {
         $functionName = "getUnsignedIntegralAttribute";
     } else {
-        $functionName = "getAttribute";
+        if ($generator->CanUseFastAttribute($attribute, $contentAttributeName)) {
+            $functionName = "fastGetAttribute";
+        } else {
+            $functionName = "getAttribute";
+        }
     }
 
     return ($functionName, $contentAttributeName);
@@ -645,13 +668,13 @@ sub GenerateConditionalStringFromAttributeValue
 
 sub GenerateCompileTimeCheckForEnumsIfNeeded
 {
-    my ($generator, $dataNode) = @_;
-    my $interfaceName = $dataNode->name;
+    my ($generator, $interface) = @_;
+    my $interfaceName = $interface->name;
     my @checks = ();
     # If necessary, check that all constants are available as enums with the same value.
-    if (!$dataNode->extendedAttributes->{"DoNotCheckConstants"} && @{$dataNode->constants}) {
+    if (!$interface->extendedAttributes->{"DoNotCheckConstants"} && @{$interface->constants}) {
         push(@checks, "\n");
-        foreach my $constant (@{$dataNode->constants}) {
+        foreach my $constant (@{$interface->constants}) {
             my $reflect = $constant->extendedAttributes->{"Reflect"};
             my $name = $reflect ? $reflect : $constant->name;
             my $value = $constant->value;
@@ -693,21 +716,22 @@ sub ExtendedAttributeContains
 sub GetVisibleInterfaceName
 {
     my $object = shift;
-    my $dataNode = shift;
-    my $interfaceName = $dataNode->extendedAttributes->{"InterfaceName"};
-    return $interfaceName ? $interfaceName : $dataNode->name;
+    my $interface = shift;
+    my $interfaceName = $interface->extendedAttributes->{"InterfaceName"};
+    return $interfaceName ? $interfaceName : $interface->name;
 }
 
-sub IsStrictSubtype
+sub IsSubType
 {
     my $object = shift;
-    my $dataNode = shift;
+    my $interface = shift;
     my $interfaceName = shift;
     my $found = 0;
 
-    $object->ForAllParents($dataNode, sub {
-        my $interface = shift;
-        if ($object->StripModule($interface->name) eq $interfaceName) {
+    return 1 if $interfaceName eq $interface->name;
+    $object->ForAllParents($interface, sub {
+        my $currentInterface = shift;
+        if ($currentInterface->name eq $interfaceName) {
             $found = 1;
         }
         return "prune" if $found;

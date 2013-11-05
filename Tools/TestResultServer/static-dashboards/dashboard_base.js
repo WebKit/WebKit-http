@@ -188,21 +188,13 @@ function handleValidHashParameterWrapper(key, value)
     // FIXME: This should probably be stored on g_crossDashboardState like everything else in this function.
     case 'builder':
         validateParameter(g_currentState, key, value,
-            function() { return value in g_builders; });
+            function() { return value in currentBuilders(); });
         return true;
 
     case 'useTestData':
     case 'showAllRuns':
         g_crossDashboardState[key] = value == 'true';
         return true;
-
-    case 'buildDir':
-        if (value === 'Debug' || value == 'Release') {
-            g_crossDashboardState['testType'] = 'layout-tests';
-            g_crossDashboardState[key] = value;
-            return true;
-        } else
-            return false;
 
     default:
         return handleValidHashParameter(key, value);
@@ -213,7 +205,6 @@ var g_defaultCrossDashboardStateValues = {
     group: '@ToT - chromium.org',
     showAllRuns: false,
     testType: 'layout-tests',
-    buildDir: '',
     useTestData: false,
 }
 
@@ -425,9 +416,9 @@ function currentBuilderGroup()
     return currentBuilderGroupCategory()[g_crossDashboardState.group]
 }
 
-function builderMaster(builderName)
+function currentBuilders()
 {
-    return BUILDER_TO_MASTER[builderName];
+    return currentBuilderGroup().builders;
 }
 
 function isTipOfTreeWebKitBuilder()
@@ -435,17 +426,10 @@ function isTipOfTreeWebKitBuilder()
     return currentBuilderGroup().isToTWebKit;
 }
 
-var g_defaultBuilderName, g_builders;
+var g_defaultBuilderName;
 function initBuilders()
 {
-    if (g_crossDashboardState.buildDir) {
-        // If buildDir is set, point to the results.json in the local tree. Useful for debugging changes to the python JSON generator.
-        g_defaultBuilderName = 'DUMMY_BUILDER_NAME';
-        g_builders = {'DUMMY_BUILDER_NAME': ''};
-        var loc = document.location.toString();
-        var offset = loc.indexOf('webkit/');
-    } else
-        currentBuilderGroup().setup();
+    currentBuilderGroup().setup();
 }
 
 var g_resultsByBuilder = {};
@@ -715,7 +699,7 @@ function htmlForTestTypeSwitcher(opt_noBuilderMenu, opt_extraHtml, opt_includeNo
     html += selectHTML('Test type', 'testType', TEST_TYPES);
 
     if (!opt_noBuilderMenu) {
-        var buildersForMenu = Object.keys(g_builders);
+        var buildersForMenu = Object.keys(currentBuilders());
         if (opt_includeNoneBuilder)
             buildersForMenu.unshift('--------------');
         html += selectHTML('Builder', 'builder', buildersForMenu);

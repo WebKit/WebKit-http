@@ -143,7 +143,7 @@ public:
     virtual int visibleWidth() const = 0;
     virtual IntSize contentsSize() const = 0;
     virtual IntSize overhangAmount() const { return IntSize(); }
-    virtual IntPoint currentMousePosition() const { return IntPoint(); }
+    virtual IntPoint lastKnownMousePosition() const { return IntPoint(); }
 
     virtual bool shouldSuspendScrollAnimations() const { return true; }
     virtual void scrollbarStyleChanged(int /*newStyle*/, bool /*forceUpdate*/) { }
@@ -173,6 +173,8 @@ public:
     virtual TiledBacking* tiledBacking() { return 0; }
     virtual bool usesCompositedScrolling() const { return false; }
 #endif
+
+    virtual void reportMemoryUsage(MemoryObjectInfo*) const;
 
 protected:
     ScrollableArea();

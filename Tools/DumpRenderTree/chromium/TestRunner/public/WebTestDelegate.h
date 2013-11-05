@@ -32,15 +32,18 @@
 #define WebTestDelegate_h
 
 #include "Platform/chromium/public/WebString.h"
+#include "Platform/chromium/public/WebURL.h"
 #include "Platform/chromium/public/WebVector.h"
 
 namespace WebKit {
 struct WebContextMenuData;
 class WebGamepads;
+class WebIntentRequest;
 }
 
 namespace WebTestRunner {
 
+struct WebPreferences;
 class WebTask;
 
 class WebTestDelegate {
@@ -61,6 +64,16 @@ public:
     virtual WebKit::WebString registerIsolatedFileSystem(const WebKit::WebVector<WebKit::WebString>& absoluteFilenames) = 0;
     virtual long long getCurrentTimeInMillisecond() = 0;
     virtual WebKit::WebString getAbsoluteWebStringFromUTF8Path(const std::string& path) = 0;
+
+    // Methods used by TestRunner.
+    // FIXME: Make these methods pure virtual once the TestRunner is part of
+    // the public TestRunner API.
+    virtual WebKit::WebURL localFileToDataURL(const WebKit::WebURL&) { return WebKit::WebURL(); }
+    virtual WebKit::WebURL rewriteLayoutTestsURL(const std::string&) { return WebKit::WebURL(); }
+    virtual WebPreferences* preferences() { return 0; }
+    virtual void applyPreferences() { };
+    virtual void setCurrentWebIntentRequest(const WebKit::WebIntentRequest&) { };
+    virtual WebKit::WebIntentRequest* currentWebIntentRequest() { return 0; }
 };
 
 }

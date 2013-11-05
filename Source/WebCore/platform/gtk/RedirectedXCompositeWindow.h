@@ -27,7 +27,7 @@
 #ifndef  RedirectedXCompositeWindow_h
 #define  RedirectedXCompositeWindow_h
 
-#if PLATFORM(X11)
+#if USE(GLX)
 
 #include "GLContext.h"
 #include "IntSize.h"
@@ -42,7 +42,8 @@ namespace WebCore {
 
 class RedirectedXCompositeWindow {
 public:
-    static PassOwnPtr<RedirectedXCompositeWindow> create(const IntSize&);
+    enum GLContextNeeded { CreateGLContext, DoNotCreateGLContext };
+    static PassOwnPtr<RedirectedXCompositeWindow> create(const IntSize&, GLContextNeeded = CreateGLContext);
     virtual ~RedirectedXCompositeWindow();
     const IntSize& size() { return m_size; }
 
@@ -59,13 +60,14 @@ public:
     }
 
 private:
-    RedirectedXCompositeWindow(const IntSize&);
+    RedirectedXCompositeWindow(const IntSize&, GLContextNeeded);
     void cleanupPixmapAndPixmapSurface();
 
     IntSize m_size;
     Window m_window;
     Window m_parentWindow;
     Pixmap m_pixmap;
+    GLContextNeeded m_needsContext;
     OwnPtr<GLContext> m_context;
     RefPtr<cairo_surface_t> m_surface;
     unsigned int m_pendingResizeSourceId;
@@ -78,6 +80,6 @@ private:
 
 } // namespace WebCore
 
-#endif // PLATFORM(X11)
+#endif // USE(GLX)
 
 #endif // RedirectedXCompositeWindow_h

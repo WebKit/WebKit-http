@@ -10,6 +10,7 @@
       <dep package="fonts"/>
       <dep package="fontconfig"/>
       <dep package="freetype6"/>
+      <dep package="harfbuzz"/>
       <dep package="libxml2"/>
       <dep package="gdk-pixbuf"/>
       <dep package="gtk+"/>
@@ -20,6 +21,11 @@
       <dep package="libsoup"/>
       <dep package="at-spi2-core"/>
       <dep package="at-spi2-atk"/>
+      <dep package="gstreamer"/>
+      <dep package="gst-plugins-base"/>
+      <dep package="gst-plugins-good"/>
+      <dep package="gst-plugins-bad"/>
+      <dep package="gst-libav"/>
     </dependencies>
   </metamodule>
 
@@ -39,6 +45,8 @@
       href="http://www.freedesktop.org"/>
   <repository type="tarball" name="xmlsoft.org"
       href="ftp://xmlsoft.org"/>
+  <repository type="git" name="gstreamer"
+      href="git://anongit.freedesktop.org/git/gstreamer/"/>
 
   <autotools id="make" autogen-sh="configure">
     <branch repo="ftp.gnu.org"
@@ -85,6 +93,16 @@
             md5sum="647ee8ed266f9a4117c8d0a4855b3d3e"/>
   </tarball>
 
+ <autotools id="harfbuzz" autogen-sh="configure">
+   <branch module="software/harfbuzz/release/harfbuzz-0.9.6.tar.bz2" version="0.9.6"
+           checkoutdir="harfbuzz-0.9.6"
+           repo="freedesktop.org"
+           hash="sha256:394a849d6061993018754b0cc04110891ad215e3df3f6953b75dcc55a11f9d9b"
+           md5sum="f3a100a0512c185b211a0deb4790c34c">
+     <patch file="harfbuzz-icu-detection-fix.patch" strip="1" />
+   </branch>
+ </autotools>
+
   <autotools id="libffi" autogen-sh="configure">
     <branch module="/pub/libffi/libffi-3.0.10.tar.gz" version="3.0.10"
              repo="sourceware.org"
@@ -114,25 +132,11 @@
             md5sum="89d483f30a7c77245b7ee02faaea5a5a"/>
   </autotools>
 
-  <autotools id="pango"
-             autogenargs="--disable-introspection">
-    <dependencies>
-      <dep package="glib"/>
-      <dep package="freetype6"/>
-      <dep package="cairo"/>
-    </dependencies>
-    <branch module="/pub/GNOME/sources/pango/1.30/pango-1.30.0.tar.xz" version="1.30.0"
-            repo="ftp.gnome.org"
-            hash="sha256:7c6d2ab024affaed0e942f9279b818235f9c6a36d9fc50688f48d387f4102dff"
-            md5sum="2a70627ffd9f43c52c04cc0b05fe359f"/>
-  </autotools>
-
   <autotools id="gtk+" autogen-sh="configure"
              autogenargs="--disable-introspection">
     <dependencies>
       <dep package="glib"/>
       <dep package="cairo"/>
-      <dep package="pango"/>
       <dep package="gdk-pixbuf"/>
     </dependencies>
     <branch module="/pub/GNOME/sources/gtk+/3.4/gtk+-3.4.2.tar.xz" version="3.4.2"
@@ -146,10 +150,9 @@
     <dependencies>
       <dep package="libffi"/>
     </dependencies>
-    <branch module="/pub/GNOME/sources/glib/2.33/glib-2.33.2.tar.xz" version="2.33.2"
+    <branch module="/pub/GNOME/sources/glib/2.35/glib-2.35.2.tar.xz" version="2.35.2"
             repo="ftp.gnome.org"
-            hash="sha256:b7163e9f159775d13ecfb433d67c3f0883e0e518e85b2e970d4ad9773d7cd0b4"
-            md5sum="06ef0099fed22afcf34ade39ddff9a5b"/>
+            hash="sha256:84fffa2041850352b83a7b27c127f1c4e8b3d169aa3a000b100820ba10f8c19e"/>
   </autotools>
 
   <autotools id="glib-networking">
@@ -167,9 +170,9 @@
     <dependencies>
       <dep package="glib-networking"/>
     </dependencies>
-    <branch module="libsoup" version="2.39.2"
+    <branch module="libsoup" version="2.40.2-r1"
             repo="git.gnome.org"
-            tag="LIBSOUP_2_39_2"/>
+            revision="5651d18eb8c9edff5961a32c488641bf6776ca6b"/>
   </autotools>
 
   <autotools id="fontconfig" autogen-sh="configure">
@@ -228,10 +231,42 @@
   </autotools>
 
   <autotools id="libxml2">
-    <branch module="/libxml2/libxml2-2.8.0.tar.gz" version="2.8.0"
+    <branch module="/libxml2/libxml2-2.9.0.tar.gz" version="2.9.0"
             repo="xmlsoft.org"
-            hash="sha256:f2e2d0e322685193d1affec83b21dc05d599e17a7306d7b90de95bb5b9ac622a"
-            md5sum="c62106f02ee00b6437f0fb9d370c1093"/>
+            hash="sha256:ad25d91958b7212abdc12b9611cfb4dc4e5cddb6d1e9891532f48aacee422b82"
+            md5sum="5b9bebf4f5d2200ae2c4efe8fa6103f7"/>
+  </autotools>
+
+  <autotools id="gstreamer">
+    <branch repo="gstreamer" module="gstreamer" checkoutdir="gstreamer" tag="1.0.3"/>
+  </autotools>
+
+  <autotools id="gst-plugins-base" autogenargs="--disable-examples">
+    <dependencies>
+      <dep package="gstreamer"/>
+    </dependencies>
+    <branch repo="gstreamer" module="gst-plugins-base" checkoutdir="gst-plugins-base" tag="1.0.3"/>
+  </autotools>
+
+  <autotools id="gst-plugins-good" autogenargs="--disable-examples">
+    <dependencies>
+      <dep package="gst-plugins-base"/>
+    </dependencies>
+    <branch repo="gstreamer" module="gst-plugins-good" checkoutdir="gst-plugins-good" tag="1.0.3"/>
+  </autotools>
+
+  <autotools id="gst-plugins-bad" autogenargs="--disable-examples">
+    <dependencies>
+      <dep package="gst-plugins-base"/>
+    </dependencies>
+    <branch repo="gstreamer" module="gst-plugins-bad" checkoutdir="gst-plugins-bad" tag="1.0.3"/>
+  </autotools>
+
+  <autotools id="gst-libav" autogenargs="--with-libav-extra-configure='--disable-yasm'">
+    <dependencies>
+      <dep package="gst-plugins-base"/>
+    </dependencies>
+    <branch repo="gstreamer" module="gst-libav" checkoutdir="gst-libav" tag="1.0.3"/>
   </autotools>
 
 </moduleset>

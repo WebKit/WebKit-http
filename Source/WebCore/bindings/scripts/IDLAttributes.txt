@@ -53,7 +53,7 @@ DoNotCheckSecurityOnGetter
 DoNotCheckSecurityOnSetter
 EventTarget
 ExtendsDOMGlobalObject
-GenerateIsReachable=ImplDocument|ImplElementRoot|ImplBaseRoot
+GenerateIsReachable=ImplDocument|ImplElementRoot|ImplOwnerNodeRoot
 Immutable
 ImplementedAs=*
 IndexedGetter
@@ -76,7 +76,7 @@ JSCustomPushEventHandlerScope
 JSCustomSetter
 JSCustomToJSObject
 JSCustomToNativeObject
-JSGenerateIsReachable=|Impl|ImplContext|ImplDocument|ImplElementRoot|ImplFrame|ImplBaseRoot
+JSGenerateIsReachable=|Impl|ImplContext|ImplDocument|ImplElementRoot|ImplFrame|ImplOwnerNodeRoot
 JSGenerateToJSObject
 JSGenerateToNativeObject
 JSInlineGetOwnPropertySlot
@@ -108,6 +108,7 @@ TreatReturnedNullStringAs=Null|Undefined
 TreatUndefinedAs=NullString
 TypedArray=*
 URL
+V8CacheAttributeForGC
 V8Custom
 V8CustomConstructor
 V8CustomGetter
@@ -118,7 +119,7 @@ V8DependentLifetime
 V8DoNotCheckSignature
 V8EnabledAtRuntime=*
 V8EnabledPerContext=*
-V8GenerateIsReachable=ImplDocument|ImplElementRoot|ImplOwnerRoot|ImplOwnerNodeRoot|ImplBaseRoot
+V8GenerateIsReachable=ImplDocument|ImplElementRoot|ImplOwnerRoot|ImplOwnerNodeRoot
 V8NoWrapperCache
 V8MeasureAs=*
 V8ReadOnly

@@ -91,29 +91,16 @@ var TypeUtils = {
             var img = /** @type {HTMLImageElement} */ (obj);
             // Special case for Images with Blob URIs: cloneNode will fail if the Blob URI has already been revoked.
             // FIXME: Maybe this is a bug in WebKit core?
-            if (/^blob:/.test(img.src)) {
-                var canvas = inspectedWindow.document.createElement("canvas");
-                var context = Resource.wrappedObject(canvas.getContext("2d"));
-                canvas.width = img.width;
-                canvas.height = img.height;
-                context.drawImage(img, 0, 0);
-                return canvas;
-            }
+            if (/^blob:/.test(img.src))
+                return TypeUtils.cloneIntoCanvas(img, img.width, img.height);
             return img.cloneNode(true);
         }
 
-        if (obj instanceof HTMLCanvasElement) {
-            var result = obj.cloneNode(true);
-            var context = Resource.wrappedObject(result.getContext("2d"));
-            context.drawImage(obj, 0, 0);
-            return result;
-        }
+        if (obj instanceof HTMLCanvasElement)
+            return TypeUtils.cloneIntoCanvas(obj, obj.width, obj.height);
 
-        if (obj instanceof HTMLVideoElement) {
-            var result = obj.cloneNode(true);
-            // FIXME: Copy HTMLVideoElement's current image into a 2d canvas.
-            return result;
-        }
+        if (obj instanceof HTMLVideoElement)
+            return TypeUtils.cloneIntoCanvas(obj, obj.videoWidth, obj.videoHeight);
 
         if (obj instanceof ImageData) {
             var context = TypeUtils._dummyCanvas2dContext();
@@ -126,6 +113,22 @@ var TypeUtils = {
 
         console.error("ASSERT_NOT_REACHED: failed to clone object: ", obj);
         return obj;
+    },
+
+    /**
+     * @param {HTMLImageElement|HTMLCanvasElement|HTMLVideoElement} obj
+     * @param {number} width
+     * @param {number} height
+     * @return {HTMLCanvasElement}
+     */
+    cloneIntoCanvas: function(obj, width, height)
+    {
+        var canvas = /** @type {HTMLCanvasElement} */ (inspectedWindow.document.createElement("canvas"));
+        canvas.width = width;
+        canvas.height = height;
+        var context = /** @type {CanvasRenderingContext2D} */ (Resource.wrappedObject(canvas.getContext("2d")));
+        context.drawImage(obj, 0, 0);
+        return canvas;
     },
 
     /**
@@ -149,7 +152,7 @@ var TypeUtils = {
     {
         var context = TypeUtils._dummyCanvas2dContextInstance;
         if (!context) {
-            var canvas = inspectedWindow.document.createElement("canvas");
+            var canvas = /** @type {HTMLCanvasElement} */ (inspectedWindow.document.createElement("canvas"));
             context = /** @type {CanvasRenderingContext2D} */ (Resource.wrappedObject(canvas.getContext("2d")));
             TypeUtils._dummyCanvas2dContextInstance = context;
         }
@@ -265,7 +268,9 @@ Cache.prototype = {
 
     reset: function()
     {
+        /** @type {!Object.<number, Object>} */
         this._items = Object.create(null);
+        /** @type {number} */
         this._size = 0;
     },
 
@@ -345,7 +350,7 @@ Call.prototype = {
     },
     
     /**
-     * @return {Array}
+     * @return {!Array}
      */
     args: function()
     {
@@ -419,8 +424,8 @@ Call.prototype = {
     },
 
     /**
-     * @param {Cache} cache
-     * @return {ReplayableCall}
+     * @param {!Cache} cache
+     * @return {!ReplayableCall}
      */
     toReplayable: function(cache)
     {
@@ -435,9 +440,9 @@ Call.prototype = {
     },
 
     /**
-     * @param {ReplayableCall} replayableCall
-     * @param {Cache} cache
-     * @return {Call}
+     * @param {!ReplayableCall} replayableCall
+     * @param {!Cache} cache
+     * @return {!Call}
      */
     replay: function(replayableCall, cache)
     {
@@ -561,11 +566,11 @@ ReplayableCall.prototype = {
 
     /**
      * @param {Cache} cache
-     * @return {Call}
+     * @return {!Call}
      */
     replay: function(cache)
     {
-        var call = Object.create(Call.prototype);
+        var call = /** @type {!Call} */ (Object.create(Call.prototype));
         return call.replay(this, cache);
     }
 }
@@ -576,9 +581,21 @@ ReplayableCall.prototype = {
  */
 function Resource(wrappedObject)
 {
+    /** @type {number} */
     this._id = ++Resource._uniqueId;
+    /** @type {ResourceTrackingManager} */
     this._resourceManager = null;
+    /** @type {!Array.<Call>} */
     this._calls = [];
+    /**
+     * This is to prevent GC from collecting associated resources.
+     * Otherwise, for example in WebGL, subsequent calls to gl.getParameter()
+     * may return a recently created instance that is no longer bound to a
+     * Resource object (thus, no history to replay it later).
+     *
+     * @type {!Object.<string, Resource>}
+     */
+    this._boundResources = Object.create(null);
     this.setWrappedObject(wrappedObject);
 }
 
@@ -614,7 +631,7 @@ Resource.wrappedObject = function(obj)
 
 /**
  * @param {Resource|*} obj
- * @param {Cache} cache
+ * @param {!Cache} cache
  * @return {ReplayableResource|*}
  */
 Resource.toReplayable = function(obj, cache)
@@ -678,7 +695,7 @@ Resource.prototype = {
     },
 
     /**
-     * @return {Array.<Call>}
+     * @return {!Array.<Call>}
      */
     calls: function()
     {
@@ -686,8 +703,8 @@ Resource.prototype = {
     },
 
     /**
-     * @param {Cache} cache
-     * @return {ReplayableResource}
+     * @param {!Cache} cache
+     * @return {!ReplayableResource}
      */
     toReplayable: function(cache)
     {
@@ -707,8 +724,8 @@ Resource.prototype = {
     },
 
     /**
-     * @param {Object} data
-     * @param {Cache} cache
+     * @param {!Object} data
+     * @param {!Cache} cache
      */
     _populateReplayableData: function(data, cache)
     {
@@ -716,9 +733,9 @@ Resource.prototype = {
     },
 
     /**
-     * @param {Object} data
-     * @param {Cache} cache
-     * @return {Resource}
+     * @param {!Object} data
+     * @param {!Cache} cache
+     * @return {!Resource}
      */
     replay: function(data, cache)
     {
@@ -736,8 +753,8 @@ Resource.prototype = {
     },
 
     /**
-     * @param {Object} data
-     * @param {Cache} cache
+     * @param {!Object} data
+     * @param {!Cache} cache
      */
     _doReplayCalls: function(data, cache)
     {
@@ -746,7 +763,7 @@ Resource.prototype = {
     },
 
     /**
-     * @param {Call} call
+     * @param {!Call} call
      */
     pushCall: function(call)
     {
@@ -765,6 +782,19 @@ Resource.prototype = {
             enumerable: false,
             configurable: true
         });
+    },
+
+    /**
+     * @param {string} key
+     * @param {*} obj
+     */
+    _registerBoundResource: function(key, obj)
+    {
+        var resource = Resource.forObject(obj);
+        if (resource)
+            this._boundResources[key] = resource;
+        else
+            delete this._boundResources[key];
     },
 
     /**
@@ -817,12 +847,12 @@ Resource.prototype = {
     },
 
     /**
-     * @param {Resource} resource
-     * @param {Object} originalObject
-     * @param {Function} originalFunction
+     * @param {!Resource} resource
+     * @param {!Object} originalObject
+     * @param {!Function} originalFunction
      * @param {string} functionName
-     * @param {Function} customWrapFunction
-     * @return {Function}
+     * @param {!Function} customWrapFunction
+     * @return {!Function}
      */
     _wrapCustomFunction: function(resource, originalObject, originalFunction, functionName, customWrapFunction)
     {
@@ -844,11 +874,11 @@ Resource.prototype = {
     },
 
     /**
-     * @param {Resource} resource
-     * @param {Object} originalObject
-     * @param {Function} originalFunction
+     * @param {!Resource} resource
+     * @param {!Object} originalObject
+     * @param {!Function} originalFunction
      * @param {string} functionName
-     * @return {Function}
+     * @return {!Function}
      */
     _wrapFunction: function(resource, originalObject, originalFunction, functionName)
     {
@@ -867,15 +897,16 @@ Resource.prototype = {
     },
 
     /**
-     * @param {Resource} resource
-     * @param {Object} originalObject
+     * @param {!Resource} resource
+     * @param {!Object} originalObject
      * @param {string} propertyName
-     * @return {Function}
+     * @return {function(*)}
      */
     _wrapPropertySetter: function(resource, originalObject, propertyName)
     {
         return function(value)
         {
+            resource._registerBoundResource(propertyName, value);
             var manager = resource.manager();
             if (!manager || !manager.capturing()) {
                 originalObject[propertyName] = Resource.wrappedObject(value);
@@ -930,7 +961,7 @@ Resource.WrapFunction.prototype = {
     },
 
     /**
-     * @return {Call}
+     * @return {!Call}
      */
     call: function()
     {
@@ -985,11 +1016,11 @@ function ReplayableResource(originalResource, data)
 ReplayableResource.prototype = {
     /**
      * @param {Cache} cache
-     * @return {Resource}
+     * @return {!Resource}
      */
     replay: function(cache)
     {
-        var result = Object.create(this._proto);
+        var result = /** @type {!Resource} */ (Object.create(this._proto));
         result = result.replay(this._data, cache)
         console.assert(result.__proto__ === this._proto, "Wrong type of a replay result");
         return result;
@@ -1050,14 +1081,15 @@ LogEverythingResource.prototype = {
 function WebGLBoundResource(wrappedObject)
 {
     Resource.call(this, wrappedObject);
+    /** @type {!Object.<string, *>} */
     this._state = {};
 }
 
 WebGLBoundResource.prototype = {
     /**
      * @override
-     * @param {Object} data
-     * @param {Cache} cache
+     * @param {!Object} data
+     * @param {!Cache} cache
      */
     _populateReplayableData: function(data, cache)
     {
@@ -1070,8 +1102,8 @@ WebGLBoundResource.prototype = {
 
     /**
      * @override
-     * @param {Object} data
-     * @param {Cache} cache
+     * @param {!Object} data
+     * @param {!Cache} cache
      */
     _doReplayCalls: function(data, cache)
     {
@@ -1105,6 +1137,11 @@ WebGLBoundResource.prototype = {
         });
     },
 
+    /**
+     * @param {!Object} data
+     * @param {!Cache} cache
+     * @return {WebGLRenderingContextResource}
+     */
     _replayContextResource: function(data, cache)
     {
         var calls = data.calls;
@@ -1144,8 +1181,8 @@ function WebGLTextureResource(wrappedObject)
 WebGLTextureResource.prototype = {
     /**
      * @override
-     * @param {Object} data
-     * @param {Cache} cache
+     * @param {!Object} data
+     * @param {!Cache} cache
      */
     _doReplayCalls: function(data, cache)
     {
@@ -1165,11 +1202,11 @@ WebGLTextureResource.prototype = {
 
     /**
      * @override
-     * @param {Call} call
+     * @param {!Call} call
      */
     pushCall: function(call)
     {
-        var gl = call.resource().wrappedObject();
+        var gl = WebGLRenderingContextResource.forObject(call.resource()).wrappedObject();
         WebGLRenderingContextResource.PixelStoreParameters.forEach(function(parameter) {
             var value = gl.getParameter(gl[parameter]);
             if (this._state[parameter] !== value) {
@@ -1185,9 +1222,10 @@ WebGLTextureResource.prototype = {
     },
 
     /**
-     * @param {Call} call
+     * Handles: texParameteri, texParameterf
+     * @param {!Call} call
      */
-    pushCall_texParameterf: function(call)
+    pushCall_texParameter: function(call)
     {
         var args = call.args();
         var pname = args[1];
@@ -1199,14 +1237,15 @@ WebGLTextureResource.prototype = {
     },
 
     /**
+     * Handles: copyTexImage2D, copyTexSubImage2D
      * copyTexImage2D and copyTexSubImage2D define a texture image with pixels from the current framebuffer.
-     * @param {Call} call
+     * @param {!Call} call
      */
     pushCall_copyTexImage2D: function(call)
     {
-        var glResource = call.resource();
+        var glResource = WebGLRenderingContextResource.forObject(call.resource());
         var gl = glResource.wrappedObject();
-        var framebufferResource = glResource.currentBinding(gl.FRAMEBUFFER);
+        var framebufferResource = /** @type {WebGLFramebufferResource} */ glResource.currentBinding(gl.FRAMEBUFFER);
         if (framebufferResource)
             this.pushCall(new Call(glResource, "bindFramebuffer", [gl.FRAMEBUFFER, framebufferResource]));
         else {
@@ -1219,9 +1258,6 @@ WebGLTextureResource.prototype = {
     __proto__: WebGLBoundResource.prototype
 }
 
-WebGLTextureResource.prototype.pushCall_texParameteri = WebGLTextureResource.prototype.pushCall_texParameterf;
-WebGLTextureResource.prototype.pushCall_copyTexSubImage2D = WebGLTextureResource.prototype.pushCall_copyTexImage2D;
-
 /**
  * @constructor
  * @extends {Resource}
@@ -1233,9 +1269,18 @@ function WebGLProgramResource(wrappedObject)
 
 WebGLProgramResource.prototype = {
     /**
+     * @override (overrides @return type)
+     * @return {WebGLProgram}
+     */
+    wrappedObject: function()
+    {
+        return this._wrappedObject;
+    },
+
+    /**
      * @override
-     * @param {Object} data
-     * @param {Cache} cache
+     * @param {!Object} data
+     * @param {!Cache} cache
      */
     _populateReplayableData: function(data, cache)
     {
@@ -1246,7 +1291,7 @@ WebGLProgramResource.prototype = {
         var originalErrors = glResource.getAllErrors();
 
         var uniforms = [];
-        var uniformsCount = gl.getProgramParameter(program, gl.ACTIVE_UNIFORMS);
+        var uniformsCount = /** @type {number} */ gl.getProgramParameter(program, gl.ACTIVE_UNIFORMS);
         for (var i = 0; i < uniformsCount; ++i) {
             var activeInfo = gl.getActiveUniform(program, i);
             if (!activeInfo)
@@ -1268,8 +1313,8 @@ WebGLProgramResource.prototype = {
 
     /**
      * @override
-     * @param {Object} data
-     * @param {Cache} cache
+     * @param {!Object} data
+     * @param {!Cache} cache
      */
     _doReplayCalls: function(data, cache)
     {
@@ -1277,7 +1322,7 @@ WebGLProgramResource.prototype = {
         var gl = WebGLRenderingContextResource.forObject(this).wrappedObject();
         var program = this.wrappedObject();
 
-        var originalProgram = gl.getParameter(gl.CURRENT_PROGRAM);
+        var originalProgram = /** @type {WebGLProgram} */ (gl.getParameter(gl.CURRENT_PROGRAM));
         var currentProgram = originalProgram;
         
         data.uniforms.forEach(function(uniform) {
@@ -1334,7 +1379,7 @@ WebGLProgramResource.prototype = {
 
     /**
      * @override
-     * @param {Call} call
+     * @param {!Call} call
      */
     pushCall: function(call)
     {
@@ -1357,8 +1402,20 @@ function WebGLShaderResource(wrappedObject)
 
 WebGLShaderResource.prototype = {
     /**
+     * @return {number}
+     */
+    type: function()
+    {
+        var call = this._calls[0];
+        if (call && call.functionName() === "createShader")
+            return call.args()[0];
+        console.error("ASSERT_NOT_REACHED: Failed to restore shader type from the log.", call);
+        return 0;
+    },
+
+    /**
      * @override
-     * @param {Call} call
+     * @param {!Call} call
      */
     pushCall: function(call)
     {
@@ -1382,7 +1439,7 @@ function WebGLBufferResource(wrappedObject)
 WebGLBufferResource.prototype = {
     /**
      * @override
-     * @param {Call} call
+     * @param {!Call} call
      */
     pushCall: function(call)
     {
@@ -1406,7 +1463,7 @@ function WebGLFramebufferResource(wrappedObject)
 WebGLFramebufferResource.prototype = {
     /**
      * @override
-     * @param {Call} call
+     * @param {!Call} call
      */
     pushCall: function(call)
     {
@@ -1429,7 +1486,7 @@ function WebGLRenderbufferResource(wrappedObject)
 WebGLRenderbufferResource.prototype = {
     /**
      * @override
-     * @param {Call} call
+     * @param {!Call} call
      */
     pushCall: function(call)
     {
@@ -1452,6 +1509,8 @@ function WebGLRenderingContextResource(glContext, replayContextCallback)
     this._replayContextCallback = replayContextCallback;
     /** @type {Object.<number, boolean>} */
     this._customErrors = null;
+    /** @type {!Object.<string, boolean>} */
+    this._extensions = {};
 }
 
 /**
@@ -1556,6 +1615,15 @@ WebGLRenderingContextResource.forObject = function(obj)
 
 WebGLRenderingContextResource.prototype = {
     /**
+     * @override (overrides @return type)
+     * @return {WebGLRenderingContext}
+     */
+    wrappedObject: function()
+    {
+        return this._wrappedObject;
+    },
+
+    /**
      * @return {Array.<number>}
      */
     getAllErrors: function()
@@ -1629,14 +1697,24 @@ WebGLRenderingContextResource.prototype = {
     },
 
     /**
+     * @param {string} name
+     */
+    addExtension: function(name)
+    {
+        // FIXME: Wrap OES_vertex_array_object extension.
+        this._extensions[name] = true;
+    },
+
+    /**
      * @override
-     * @param {Object} data
-     * @param {Cache} cache
+     * @param {!Object} data
+     * @param {!Cache} cache
      */
     _populateReplayableData: function(data, cache)
     {
         var gl = this.wrappedObject();
         data.replayContextCallback = this._replayContextCallback;
+        data.extensions = TypeUtils.cloneObject(this._extensions);
 
         var originalErrors = this.getAllErrors();
 
@@ -1650,7 +1728,7 @@ WebGLRenderingContextResource.prototype = {
         });
 
         // VERTEX_ATTRIB_ARRAYS
-        var maxVertexAttribs = gl.getParameter(gl.MAX_VERTEX_ATTRIBS);
+        var maxVertexAttribs = /** @type {number} */ (gl.getParameter(gl.MAX_VERTEX_ATTRIBS));
         var vertexAttribParameters = ["VERTEX_ATTRIB_ARRAY_BUFFER_BINDING", "VERTEX_ATTRIB_ARRAY_ENABLED", "VERTEX_ATTRIB_ARRAY_SIZE", "VERTEX_ATTRIB_ARRAY_STRIDE", "VERTEX_ATTRIB_ARRAY_TYPE", "VERTEX_ATTRIB_ARRAY_NORMALIZED", "CURRENT_VERTEX_ATTRIB"];
         var vertexAttribStates = [];
         for (var i = 0; i < maxVertexAttribs; ++i) {
@@ -1664,8 +1742,8 @@ WebGLRenderingContextResource.prototype = {
         glState.vertexAttribStates = vertexAttribStates;
 
         // TEXTURES
-        var currentTextureBinding = gl.getParameter(gl.ACTIVE_TEXTURE);
-        var maxTextureImageUnits = gl.getParameter(gl.MAX_TEXTURE_IMAGE_UNITS);
+        var currentTextureBinding = /** @type {number} */ (gl.getParameter(gl.ACTIVE_TEXTURE));
+        var maxTextureImageUnits = /** @type {number} */ (gl.getParameter(gl.MAX_TEXTURE_IMAGE_UNITS));
         var textureBindings = [];
         for (var i = 0; i < maxTextureImageUnits; ++i) {
             gl.activeTexture(gl.TEXTURE0 + i);
@@ -1685,16 +1763,21 @@ WebGLRenderingContextResource.prototype = {
 
     /**
      * @override
-     * @param {Object} data
-     * @param {Cache} cache
+     * @param {!Object} data
+     * @param {!Cache} cache
      */
     _doReplayCalls: function(data, cache)
     {
         this._replayContextCallback = data.replayContextCallback;
         this._customErrors = null;
+        this._extensions = TypeUtils.cloneObject(data.extensions) || {};
 
         var gl = /** @type {!WebGLRenderingContext} */ (Resource.wrappedObject(this._replayContextCallback()));
         this.setWrappedObject(gl);
+
+        // Enable corresponding WebGL extensions.
+        for (var name in this._extensions)
+            gl.getExtension(name);
 
         var glState = data.glState;
         gl.bindFramebuffer(gl.FRAMEBUFFER, /** @type {WebGLFramebuffer} */ (ReplayableResource.replay(glState.FRAMEBUFFER_BINDING, cache)));
@@ -1849,50 +1932,56 @@ WebGLRenderingContextResource.prototype = {
 
             /**
              * @param {string} methodName
+             * @param {function(this:Resource, !Call)=} pushCallFunc
              */
-            function customWrapFunction(methodName)
+            function stateModifyingWrapFunction(methodName, pushCallFunc)
             {
-                var customPushCall = "pushCall_" + methodName;
-                /**
-                 * @param {Object|number} target
-                 * @this Resource.WrapFunction
-                 */
-                wrapFunctions[methodName] = function(target)
-                {
-                    var resource = this._resource.currentBinding(target);
-                    if (!resource)
-                        return;
-                    if (resource[customPushCall])
-                        resource[customPushCall].call(resource, this.call());
-                    else
-                        resource.pushCall(this.call());
+                if (pushCallFunc) {
+                    /**
+                     * @param {Object|number} target
+                     * @this Resource.WrapFunction
+                     */
+                    wrapFunctions[methodName] = function(target)
+                    {
+                        var resource = this._resource.currentBinding(target);
+                        if (resource)
+                            pushCallFunc.call(resource, this.call());
+                    }
+                } else {
+                    /**
+                     * @param {Object|number} target
+                     * @this Resource.WrapFunction
+                     */
+                    wrapFunctions[methodName] = function(target)
+                    {
+                        var resource = this._resource.currentBinding(target);
+                        if (resource)
+                            resource.pushCall(this.call());
+                    }
                 }
             }
-            customWrapFunction("attachShader");
-            customWrapFunction("bindAttribLocation");
-            customWrapFunction("compileShader");
-            customWrapFunction("detachShader");
-            customWrapFunction("linkProgram");
-            customWrapFunction("shaderSource");
-            customWrapFunction("bufferData");
-            customWrapFunction("bufferSubData");
-            customWrapFunction("compressedTexImage2D");
-            customWrapFunction("compressedTexSubImage2D");
-            customWrapFunction("copyTexImage2D");
-            customWrapFunction("copyTexSubImage2D");
-            customWrapFunction("generateMipmap");
-            customWrapFunction("texImage2D");
-            customWrapFunction("texSubImage2D");
-            customWrapFunction("texParameterf");
-            customWrapFunction("texParameteri");
-            customWrapFunction("framebufferRenderbuffer");
-            customWrapFunction("framebufferTexture2D");
-            customWrapFunction("renderbufferStorage");
+            stateModifyingWrapFunction("bindAttribLocation");
+            stateModifyingWrapFunction("compileShader");
+            stateModifyingWrapFunction("detachShader");
+            stateModifyingWrapFunction("linkProgram");
+            stateModifyingWrapFunction("shaderSource");
+            stateModifyingWrapFunction("bufferData");
+            stateModifyingWrapFunction("bufferSubData");
+            stateModifyingWrapFunction("compressedTexImage2D");
+            stateModifyingWrapFunction("compressedTexSubImage2D");
+            stateModifyingWrapFunction("copyTexImage2D", WebGLTextureResource.prototype.pushCall_copyTexImage2D);
+            stateModifyingWrapFunction("copyTexSubImage2D", WebGLTextureResource.prototype.pushCall_copyTexImage2D);
+            stateModifyingWrapFunction("generateMipmap");
+            stateModifyingWrapFunction("texImage2D");
+            stateModifyingWrapFunction("texSubImage2D");
+            stateModifyingWrapFunction("texParameterf", WebGLTextureResource.prototype.pushCall_texParameter);
+            stateModifyingWrapFunction("texParameteri", WebGLTextureResource.prototype.pushCall_texParameter);
+            stateModifyingWrapFunction("renderbufferStorage");
 
             /** @this Resource.WrapFunction */
             wrapFunctions["getError"] = function()
             {
-                var gl = this._originalObject;
+                var gl = /** @type {WebGLRenderingContext} */ (this._originalObject);
                 var error = this.result();
                 if (error !== gl.NO_ERROR)
                     this._resource.clearError(error);
@@ -1901,6 +1990,89 @@ WebGLRenderingContextResource.prototype = {
                     if (error !== gl.NO_ERROR)
                         this.overrideResult(error);
                 }
+            }
+
+            /**
+             * @param {string} name
+             * @this Resource.WrapFunction
+             */
+            wrapFunctions["getExtension"] = function(name)
+            {
+                this._resource.addExtension(name);
+            }
+
+            //
+            // Register bound WebGL resources.
+            //
+
+            /**
+             * @param {WebGLProgram} program
+             * @param {WebGLShader} shader
+             * @this Resource.WrapFunction
+             */
+            wrapFunctions["attachShader"] = function(program, shader)
+            {
+                var resource = this._resource.currentBinding(program);
+                if (resource) {
+                    resource.pushCall(this.call());
+                    var shaderResource = /** @type {WebGLShaderResource} */ (Resource.forObject(shader));
+                    if (shaderResource) {
+                        var shaderType = shaderResource.type();
+                        resource._registerBoundResource("__attachShader_" + shaderType, shaderResource);
+                    }
+                }
+            }
+            /**
+             * @param {number} target
+             * @param {number} attachment
+             * @param {number} objectTarget
+             * @param {WebGLRenderbuffer|WebGLTexture} obj
+             * @this Resource.WrapFunction
+             */
+            wrapFunctions["framebufferRenderbuffer"] = wrapFunctions["framebufferTexture2D"] = function(target, attachment, objectTarget, obj)
+            {
+                var resource = this._resource.currentBinding(target);
+                if (resource) {
+                    resource.pushCall(this.call());
+                    resource._registerBoundResource("__framebufferAttachmentObjectName", obj);
+                }
+            }
+            /**
+             * @param {number} target
+             * @param {Object} obj
+             * @this Resource.WrapFunction
+             */
+            wrapFunctions["bindBuffer"] = wrapFunctions["bindFramebuffer"] = wrapFunctions["bindRenderbuffer"] = function(target, obj)
+            {
+                this._resource._registerBoundResource("__bindBuffer_" + target, obj);
+            }
+            /**
+             * @param {number} target
+             * @param {WebGLTexture} obj
+             * @this Resource.WrapFunction
+             */
+            wrapFunctions["bindTexture"] = function(target, obj)
+            {
+                var gl = /** @type {WebGLRenderingContext} */ (this._originalObject);
+                var currentTextureBinding = /** @type {number} */ (gl.getParameter(gl.ACTIVE_TEXTURE));
+                this._resource._registerBoundResource("__bindTexture_" + target + "_" + currentTextureBinding, obj);
+            }
+            /**
+             * @param {WebGLProgram} program
+             * @this Resource.WrapFunction
+             */
+            wrapFunctions["useProgram"] = function(program)
+            {
+                this._resource._registerBoundResource("__useProgram", program);
+            }
+            /**
+             * @param {number} index
+             * @this Resource.WrapFunction
+             */
+            wrapFunctions["vertexAttribPointer"] = function(index)
+            {
+                var gl = /** @type {WebGLRenderingContext} */ (this._originalObject);
+                this._resource._registerBoundResource("__vertexAttribPointer_" + index, gl.getParameter(gl.ARRAY_BUFFER_BINDING));
             }
 
             WebGLRenderingContextResource._wrapFunctions = wrapFunctions;
@@ -1983,9 +2155,18 @@ CanvasRenderingContext2DResource.TransformationMatrixMethods = [
 
 CanvasRenderingContext2DResource.prototype = {
     /**
+     * @override (overrides @return type)
+     * @return {CanvasRenderingContext2D}
+     */
+    wrappedObject: function()
+    {
+        return this._wrappedObject;
+    },
+
+    /**
      * @override
-     * @param {Object} data
-     * @param {Cache} cache
+     * @param {!Object} data
+     * @param {!Cache} cache
      */
     _populateReplayableData: function(data, cache)
     {
@@ -2001,8 +2182,8 @@ CanvasRenderingContext2DResource.prototype = {
 
     /**
      * @override
-     * @param {Object} data
-     * @param {Cache} cache
+     * @param {!Object} data
+     * @param {!Cache} cache
      */
     _doReplayCalls: function(data, cache)
     {
@@ -2029,7 +2210,7 @@ CanvasRenderingContext2DResource.prototype = {
     },
 
     /**
-     * @param {Call} call
+     * @param {!Call} call
      */
     pushCall_setTransform: function(call)
     {
@@ -2042,7 +2223,7 @@ CanvasRenderingContext2DResource.prototype = {
     },
 
     /**
-     * @param {Call} call
+     * @param {!Call} call
      */
     pushCall_beginPath: function(call)
     {
@@ -2053,7 +2234,7 @@ CanvasRenderingContext2DResource.prototype = {
     },
 
     /**
-     * @param {Call} call
+     * @param {!Call} call
      */
     pushCall_save: function(call)
     {
@@ -2062,7 +2243,7 @@ CanvasRenderingContext2DResource.prototype = {
     },
 
     /**
-     * @param {Call} call
+     * @param {!Call} call
      */
     pushCall_restore: function(call)
     {
@@ -2249,7 +2430,7 @@ CanvasRenderingContext2DResource.prototype = {
 
             /**
              * @param {string} methodName
-             * @param {Function=} func
+             * @param {function(this:Resource, !Call)=} func
              */
             function stateModifyingWrapFunction(methodName, func)
             {
@@ -2269,9 +2450,9 @@ CanvasRenderingContext2DResource.prototype = {
             }
 
             for (var i = 0, methodName; methodName = CanvasRenderingContext2DResource.TransformationMatrixMethods[i]; ++i)
-                stateModifyingWrapFunction(methodName, methodName === "setTransform" ? this.pushCall_setTransform : null);
+                stateModifyingWrapFunction(methodName, methodName === "setTransform" ? this.pushCall_setTransform : undefined);
             for (var i = 0, methodName; methodName = CanvasRenderingContext2DResource.PathMethods[i]; ++i)
-                stateModifyingWrapFunction(methodName, methodName === "beginPath" ? this.pushCall_beginPath : null);
+                stateModifyingWrapFunction(methodName, methodName === "beginPath" ? this.pushCall_beginPath : undefined);
 
             stateModifyingWrapFunction("save", this.pushCall_save);
             stateModifyingWrapFunction("restore", this.pushCall_restore);
@@ -2290,7 +2471,9 @@ CanvasRenderingContext2DResource.prototype = {
  */
 function TraceLog()
 {
+    /** @type {!Array.<ReplayableCall>} */
     this._replayableCalls = [];
+    /** @type {!Cache} */
     this._replayablesCache = new Cache();
 }
 
@@ -2304,7 +2487,7 @@ TraceLog.prototype = {
     },
 
     /**
-     * @return {Array.<ReplayableCall>}
+     * @return {!Array.<ReplayableCall>}
      */
     replayableCalls: function()
     {
@@ -2312,7 +2495,7 @@ TraceLog.prototype = {
     },
 
     /**
-     * @param {Resource} resource
+     * @param {!Resource} resource
      */
     captureResource: function(resource)
     {
@@ -2320,7 +2503,7 @@ TraceLog.prototype = {
     },
 
     /**
-     * @param {Call} call
+     * @param {!Call} call
      */
     addCall: function(call)
     {
@@ -2335,18 +2518,24 @@ TraceLog.prototype = {
 
 /**
  * @constructor
- * @param {TraceLog} traceLog
+ * @param {!TraceLog} traceLog
+ * @param {function()=} resetCallback
  */
-function TraceLogPlayer(traceLog)
+function TraceLogPlayer(traceLog, resetCallback)
 {
+    /** @type {!TraceLog} */
     this._traceLog = traceLog;
+    /** @type {number} */
     this._nextReplayStep = 0;
+    /** @type {!Cache} */
     this._replayWorldCache = new Cache();
+    /** @type {function()|undefined} */
+    this._resetCallback = resetCallback;
 }
 
 TraceLogPlayer.prototype = {
     /**
-     * @return {TraceLog}
+     * @return {!TraceLog}
      */
     traceLog: function()
     {
@@ -2363,18 +2552,23 @@ TraceLogPlayer.prototype = {
 
     reset: function()
     {
-        // FIXME: Prevent memory leaks: detach and delete all old resources OR reuse them OR create a new replay canvas every time.
         this._nextReplayStep = 0;
         this._replayWorldCache.reset();
+        if (this._resetCallback)
+            this._resetCallback();
     },
 
+    /**
+     * @return {Call}
+     */
     step: function()
     {
-        this.stepTo(this._nextReplayStep);
+        return this.stepTo(this._nextReplayStep);
     },
 
     /**
      * @param {number} stepNum
+     * @return {Call}
      */
     stepTo: function(stepNum)
     {
@@ -2383,14 +2577,19 @@ TraceLogPlayer.prototype = {
         if (this._nextReplayStep > stepNum)
             this.reset();
         // FIXME: Replay all the cached resources first to warm-up.
+        var lastCall = null;
         var replayableCalls = this._traceLog.replayableCalls();
         while (this._nextReplayStep <= stepNum)
-            replayableCalls[this._nextReplayStep++].replay(this._replayWorldCache);
+            lastCall = replayableCalls[this._nextReplayStep++].replay(this._replayWorldCache);
+        return lastCall;
     },
 
+    /**
+     * @return {Call}
+     */
     replay: function()
     {
-        this.stepTo(this._traceLog.size() - 1);
+        return this.stepTo(this._traceLog.size() - 1);
     }
 }
 
@@ -2422,7 +2621,7 @@ ResourceTrackingManager.prototype = {
     },
 
     /**
-     * @param {Resource} resource
+     * @param {!Resource} resource
      */
     registerResource: function(resource)
     {
@@ -2456,7 +2655,7 @@ ResourceTrackingManager.prototype = {
     },
 
     /**
-     * @param {Resource} resource
+     * @param {!Resource} resource
      * @param {Array|Arguments} args
      */
     captureArguments: function(resource, args)
@@ -2472,7 +2671,7 @@ ResourceTrackingManager.prototype = {
     },
 
     /**
-     * @param {Call} call
+     * @param {!Call} call
      */
     captureCall: function(call)
     {
@@ -2504,11 +2703,16 @@ ResourceTrackingManager.prototype = {
  */
 var InjectedScript = function()
 {
+    /** @type {!ResourceTrackingManager} */
     this._manager = new ResourceTrackingManager();
+    /** @type {number} */
     this._lastTraceLogId = 0;
+    /** @type {!Object.<string, TraceLog>} */
     this._traceLogs = {};
+    /** @type {TraceLogPlayer} */
     this._traceLogPlayer = null;
-    this._replayContext = null;
+    /** @type {!Array.<{type: string, context: Object}>} */
+    this._replayContexts = [];
 }
 
 InjectedScript.prototype = {
@@ -2534,12 +2738,50 @@ InjectedScript.prototype = {
         return resource.proxyObject();
     },
 
+    /**
+     * @return {string}
+     */
     captureFrame: function()
     {
+        return this._callStartCapturingFunction(this._manager.captureFrame);
+    },
+
+    /**
+     * @return {string}
+     */
+    startCapturing: function()
+    {
+        return this._callStartCapturingFunction(this._manager.startCapturing);
+    },
+
+    /**
+     * @param {function(this:ResourceTrackingManager)} func
+     * @return {string}
+     */
+    _callStartCapturingFunction: function(func)
+    {
+        var oldTraceLog = this._manager.lastTraceLog();
+        func.call(this._manager);
+        var traceLog = this._manager.lastTraceLog();
+        if (traceLog === oldTraceLog) {
+            for (var id in this._traceLogs) {
+                if (this._traceLogs[id] === traceLog)
+                    return id;
+            }
+        }
         var id = this._makeTraceLogId();
-        this._manager.captureFrame();
-        this._traceLogs[id] = this._manager.lastTraceLog();
+        this._traceLogs[id] = traceLog;
         return id;
+    },
+
+    /**
+     * @param {string} id
+     */
+    stopCapturing: function(id)
+    {
+        var traceLog = this._traceLogs[id];
+        if (traceLog)
+            this._manager.stopCapturing(traceLog);
     },
 
     /**
@@ -2547,26 +2789,34 @@ InjectedScript.prototype = {
      */
     dropTraceLog: function(id)
     {
-        if (this._traceLogPlayer && this._traceLogPlayer.traceLog() === this._traceLogs[id])
+        this.stopCapturing(id);
+        if (this._traceLogPlayer && this._traceLogPlayer.traceLog() === this._traceLogs[id]) {
             this._traceLogPlayer = null;
+            this._replayContexts = [];
+        }
         delete this._traceLogs[id];
     },
 
     /**
      * @param {string} id
+     * @param {number=} startOffset
      * @return {Object|string}
      */
-    traceLog: function(id)
+    traceLog: function(id, startOffset)
     {
         var traceLog = this._traceLogs[id];
         if (!traceLog)
             return "Error: Trace log with this ID not found.";
+        startOffset = Math.max(0, startOffset || 0);
+        var alive = this._manager.capturing() && this._manager.lastTraceLog() === traceLog;
         var result = {
             id: id,
-            calls: []
+            calls: [],
+            alive: alive,
+            startOffset: startOffset
         };
         var calls = traceLog.replayableCalls();
-        for (var i = 0, n = calls.length; i < n; ++i) {
+        for (var i = startOffset, n = calls.length; i < n; ++i) {
             var call = calls[i];
             var args = call.args().map(function(argument) {
                 return argument + "";
@@ -2603,16 +2853,24 @@ InjectedScript.prototype = {
         var traceLog = this._traceLogs[id];
         if (!traceLog)
             return "";
-        if (!this._traceLogPlayer || this._traceLogPlayer.traceLog() !== traceLog)
-            this._traceLogPlayer = new TraceLogPlayer(traceLog);
-        this._traceLogPlayer.stepTo(stepNo);
-        if (!this._replayContext) {
+        if (!this._traceLogPlayer || this._traceLogPlayer.traceLog() !== traceLog) {
+            this._replayContexts = [];
+            this._traceLogPlayer = new TraceLogPlayer(traceLog, this._onTraceLogPlayerReset.bind(this));
+        }
+        var lastCall = this._traceLogPlayer.stepTo(stepNo);
+        if (!this._replayContexts.length) {
             console.error("ASSERT_NOT_REACHED: replayTraceLog failed to create a replay canvas?!");
             return "";
         }
-        // Return current screenshot.
         // FIXME: Support replaying several canvases simultaneously.
-        return this._replayContext.canvas.toDataURL();
+        var lastCallResourceContext = Resource.wrappedObject(lastCall.resource());
+        for (var i = 0, n = this._replayContexts.length; i < n; ++i) {
+            var context = this._replayContexts[i].context;
+            if (lastCallResourceContext === context)
+                return context.canvas.toDataURL();
+        }
+        console.assert("ASSERT_NOT_REACHED: replayTraceLog failed to match the replaying canvas?!");
+        return this._replayContexts[0].context.canvas.toDataURL();
     },
 
     /**
@@ -2623,35 +2881,32 @@ InjectedScript.prototype = {
         return "{\"injectedScriptId\":" + injectedScriptId + ",\"traceLogId\":" + (++this._lastTraceLogId) + "}";
     },
 
+    _onTraceLogPlayerReset: function()
+    {
+        this._replayContexts = [];
+    },
+
     /**
      * @param {!WebGLRenderingContext} originalGlContext
      * @return {WebGLRenderingContext}
      */
     _constructWebGLReplayContext: function(originalGlContext)
     {
-        var replayContext = originalGlContext["__replayContext"];
-        if (!replayContext) {
-            var canvas = originalGlContext.canvas.cloneNode(true);
-            var attributes = originalGlContext.getContextAttributes();
-            var contextIds = ["experimental-webgl", "webkit-3d", "3d"];
-            for (var i = 0, contextId; contextId = contextIds[i]; ++i) {
-                replayContext = canvas.getContext(contextId, attributes);
-                if (replayContext) {
-                    replayContext = /** @type {WebGLRenderingContext} */ (Resource.wrappedObject(replayContext));
-                    break;
-                }
+        var canvas = originalGlContext.canvas.cloneNode(true);
+        var attributes = originalGlContext.getContextAttributes();
+        var contextIds = ["experimental-webgl", "webkit-3d", "3d"];
+        for (var i = 0, contextId; contextId = contextIds[i]; ++i) {
+            var replayContext = canvas.getContext(contextId, attributes);
+            if (replayContext) {
+                replayContext = /** @type {WebGLRenderingContext} */ (Resource.wrappedObject(replayContext));
+                this._replayContexts.push({
+                    type: "3d",
+                    context: replayContext
+                });
+                return replayContext;
             }
-            Object.defineProperty(originalGlContext, "__replayContext", {
-                value: replayContext,
-                writable: false,
-                enumerable: false,
-                configurable: true
-            });
-            this._replayContext = replayContext;
-        } else {
-            // FIXME: Reset the replay GL state and clear the canvas.
         }
-        return replayContext;
+        return null;
     },
 
     /**
@@ -2663,7 +2918,10 @@ InjectedScript.prototype = {
         // Create a new 2D context each time to start with an empty context drawing state stack (managed by save() and restore() methods).
         var canvas = originalContext.canvas.cloneNode(true);
         var replayContext = /** @type {CanvasRenderingContext2D} */ (Resource.wrappedObject(canvas.getContext("2d")));
-        this._replayContext = replayContext;
+        this._replayContexts.push({
+            type: "2d",
+            context: replayContext
+        });
         return replayContext;
     }
 }

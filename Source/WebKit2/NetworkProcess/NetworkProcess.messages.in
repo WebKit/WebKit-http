@@ -29,9 +29,22 @@ messages -> NetworkProcess {
     # Creates a connection for communication with a WebProcess
     CreateNetworkConnectionToWebProcess()
 
+    EnsurePrivateBrowsingSession()
+    DestroyPrivateBrowsingSession()
+
+    DownloadRequest(uint64_t downloadID, WebCore::ResourceRequest request)
+    CancelDownload(uint64_t downloadID)
+
 #if PLATFORM(MAC)
     SetApplicationIsOccluded(bool flag)
 #endif
+
+#if ENABLE(CUSTOM_PROTOCOLS)
+    RegisterSchemeForCustomProtocol(WTF::String name)
+    UnregisterSchemeForCustomProtocol(WTF::String name)
+#endif
+
+    AllowSpecificHTTPSCertificateForHost(WebKit::PlatformCertificateInfo certificate, WTF::String host)
 }
 
 #endif // ENABLE(NETWORK_PROCESS)

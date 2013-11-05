@@ -67,6 +67,21 @@
 using namespace WebKit;
 using namespace WebCore;
 
+/**
+ * SECTION: WebKitWebView
+ * @Short_description: The central class of the WebKit2GTK+ API
+ * @Title: WebKitWebView
+ *
+ * #WebKitWebView is the central class of the WebKit2GTK+ API. It is
+ * responsible for managing the drawing of the content and forwarding
+ * of events. You can load any URI into the #WebKitWebView or a data
+ * string. With #WebKitSettings you can control various aspects of the
+ * rendering and loading of the content.
+ *
+ * Note that #WebKitWebView is scrollable by itself, so you don't need
+ * to embed it in a #GtkScrolledWindow.
+ */
+
 enum {
     LOAD_CHANGED,
     LOAD_FAILED,
@@ -97,6 +112,8 @@ enum {
 
     SUBMIT_FORM,
 
+    INSECURE_CONTENT_DETECTED,
+
     LAST_SIGNAL
 };
 
@@ -116,6 +133,16 @@ typedef HashMap<uint64_t, GRefPtr<WebKitWebResource> > LoadingResourcesMap;
 typedef HashMap<String, GRefPtr<WebKitWebResource> > ResourcesMap;
 
 struct _WebKitWebViewPrivate {
+    ~_WebKitWebViewPrivate()
+    {
+        if (javascriptGlobalContext)
+            JSGlobalContextRelease(javascriptGlobalContext);
+
+        // For modal dialogs, make sure the main loop is stopped when finalizing the webView.
+        if (modalLoop && g_main_loop_is_running(modalLoop.get()))
+            g_main_loop_quit(modalLoop.get());
+    }
+
     WebKitWebContext* context;
     CString title;
     CString customTextEncoding;
@@ -153,7 +180,7 @@ struct _WebKitWebViewPrivate {
 
 static guint signals[LAST_SIGNAL] = { 0, };
 
-G_DEFINE_TYPE(WebKitWebView, webkit_web_view, WEBKIT_TYPE_WEB_VIEW_BASE)
+WEBKIT_DEFINE_TYPE(WebKitWebView, webkit_web_view, WEBKIT_TYPE_WEB_VIEW_BASE)
 
 static inline WebPageProxy* getPage(WebKitWebView* webView)
 {
@@ -441,6 +468,7 @@ static void webkitWebViewConstructed(GObject* object)
     attachFormClientToView(webView);
 
     priv->backForwardList = adoptGRef(webkitBackForwardListCreate(getPage(webView)->backForwardList()));
+    priv->windowProperties = adoptGRef(webkitWindowPropertiesCreate());
 
     GRefPtr<WebKitSettings> settings = adoptGRef(webkit_settings_new());
     webkitWebViewSetSettings(webView, settings.get());
@@ -495,34 +523,15 @@ static void webkitWebViewGetProperty(GObject* object, guint propId, GValue* valu
     }
 }
 
-static void webkitWebViewFinalize(GObject* object)
+static void webkitWebViewDispose(GObject* object)
 {
     WebKitWebView* webView = WEBKIT_WEB_VIEW(object);
-    WebKitWebViewPrivate* priv = webView->priv;
-
-    if (priv->javascriptGlobalContext)
-        JSGlobalContextRelease(priv->javascriptGlobalContext);
-
-    // For modal dialogs, make sure the main loop is stopped when finalizing the webView.
-    if (priv->modalLoop && g_main_loop_is_running(priv->modalLoop.get()))
-        g_main_loop_quit(priv->modalLoop.get());
-
     webkitWebViewCancelFaviconRequest(webView);
     webkitWebViewDisconnectMainResourceResponseChangedSignalHandler(webView);
     webkitWebViewDisconnectSettingsSignalHandlers(webView);
     webkitWebViewDisconnectFaviconDatabaseSignalHandlers(webView);
 
-    priv->~WebKitWebViewPrivate();
-    G_OBJECT_CLASS(webkit_web_view_parent_class)->finalize(object);
-}
-
-static void webkit_web_view_init(WebKitWebView* webView)
-{
-    WebKitWebViewPrivate* priv = G_TYPE_INSTANCE_GET_PRIVATE(webView, WEBKIT_TYPE_WEB_VIEW, WebKitWebViewPrivate);
-    webView->priv = priv;
-    new (priv) WebKitWebViewPrivate();
-
-    webView->priv->windowProperties = adoptGRef(webkitWindowPropertiesCreate());
+    G_OBJECT_CLASS(webkit_web_view_parent_class)->dispose(object);
 }
 
 static gboolean webkitWebViewAccumulatorObjectHandled(GSignalInvocationHint*, GValue* returnValue, const GValue* handlerReturn, gpointer)
@@ -541,7 +550,7 @@ static void webkit_web_view_class_init(WebKitWebViewClass* webViewClass)
     gObjectClass->constructed = webkitWebViewConstructed;
     gObjectClass->set_property = webkitWebViewSetProperty;
     gObjectClass->get_property = webkitWebViewGetProperty;
-    gObjectClass->finalize = webkitWebViewFinalize;
+    gObjectClass->dispose = webkitWebViewDispose;
 
     webViewClass->load_failed = webkitWebViewLoadFail;
     webViewClass->create = webkitWebViewCreate;
@@ -549,8 +558,6 @@ static void webkit_web_view_class_init(WebKitWebViewClass* webViewClass)
     webViewClass->decide_policy = webkitWebViewDecidePolicy;
     webViewClass->permission_request = webkitWebViewPermissionRequest;
     webViewClass->run_file_chooser = webkitWebViewRunFileChooser;
-
-    g_type_class_add_private(webViewClass, sizeof(WebKitWebViewPrivate));
 
     /**
      * WebKitWebView:web-context:
@@ -1240,6 +1247,30 @@ static void webkit_web_view_class_init(WebKitWebViewClass* webViewClass)
                      g_cclosure_marshal_VOID__OBJECT,
                      G_TYPE_NONE, 1,
                      WEBKIT_TYPE_FORM_SUBMISSION_REQUEST);
+
+    /**
+     * WebKitWebView::insecure-content-detected:
+     * @web_view: the #WebKitWebView on which the signal is emitted
+     * @event: the #WebKitInsecureContentEvent
+     *
+     * This signal is emitted when insecure content has been detected
+     * in a page loaded through a secure connection. This typically
+     * means that a external resource from an unstrusted source has
+     * been run or displayed, resulting in a mix of HTTPS and
+     * non-HTTPS content.
+     *
+     * You can check the @event parameter to know exactly which kind
+     * of event has been detected (see #WebKitInsecureContentEvent).
+     */
+    signals[INSECURE_CONTENT_DETECTED] =
+        g_signal_new("insecure-content-detected",
+            G_TYPE_FROM_CLASS(webViewClass),
+            G_SIGNAL_RUN_LAST,
+            G_STRUCT_OFFSET(WebKitWebViewClass, insecure_content_detected),
+            0, 0,
+            g_cclosure_marshal_VOID__ENUM,
+            G_TYPE_NONE, 1,
+            WEBKIT_TYPE_INSECURE_CONTENT_EVENT);
 }
 
 static void webkitWebViewSetIsLoading(WebKitWebView* webView, bool isLoading)
@@ -1271,6 +1302,7 @@ static void webkitWebViewEmitLoadChanged(WebKitWebView* webView, WebKitLoadEvent
     if (loadEvent == WEBKIT_LOAD_STARTED) {
         webkitWebViewSetIsLoading(webView, true);
         webkitWebViewWatchForChangesInFavicon(webView);
+        webkitWebViewBaseCancelAuthenticationDialog(WEBKIT_WEB_VIEW_BASE(webView));
     } else if (loadEvent == WEBKIT_LOAD_FINISHED) {
         webkitWebViewSetIsLoading(webView, false);
         webView->priv->waitingForMainResource = false;
@@ -1331,6 +1363,19 @@ void webkitWebViewLoadFailed(WebKitWebView* webView, WebKitLoadEvent loadEvent, 
     webkitWebViewSetIsLoading(webView, false);
     gboolean returnValue;
     g_signal_emit(webView, signals[LOAD_FAILED], 0, loadEvent, failingURI, error, &returnValue);
+    g_signal_emit(webView, signals[LOAD_CHANGED], 0, WEBKIT_LOAD_FINISHED);
+}
+
+void webkitWebViewLoadFailedWithTLSErrors(WebKitWebView* webView, const char* failingURI, GError *error, GTlsCertificateFlags tlsErrors, GTlsCertificate* certificate)
+{
+    webkitWebViewSetIsLoading(webView, false);
+
+    WebKitTLSErrorsPolicy tlsErrorsPolicy = webkit_web_context_get_tls_errors_policy(webView->priv->context);
+    if (tlsErrorsPolicy == WEBKIT_TLS_ERRORS_POLICY_FAIL) {
+        webkitWebViewLoadFailed(webView, WEBKIT_LOAD_STARTED, failingURI, error);
+        return;
+    }
+
     g_signal_emit(webView, signals[LOAD_CHANGED], 0, WEBKIT_LOAD_FINISHED);
 }
 
@@ -1617,6 +1662,26 @@ void webkitWebViewPopulateContextMenu(WebKitWebView* webView, ImmutableArray* pr
 void webkitWebViewSubmitFormRequest(WebKitWebView* webView, WebKitFormSubmissionRequest* request)
 {
     g_signal_emit(webView, signals[SUBMIT_FORM], 0, request);
+}
+
+void webkitWebViewHandleAuthenticationChallenge(WebKitWebView* webView, AuthenticationChallengeProxy* authenticationChallenge)
+{
+    WebKit2GtkAuthenticationDialog* dialog;
+    GtkAuthenticationDialog::CredentialStorageMode credentialStorageMode;
+
+    if (webkit_settings_get_enable_private_browsing(webView->priv->settings.get()))
+        credentialStorageMode = GtkAuthenticationDialog::DisallowPersistentStorage;
+    else
+        credentialStorageMode = GtkAuthenticationDialog::AllowPersistentStorage;
+
+    dialog = new WebKit2GtkAuthenticationDialog(authenticationChallenge, credentialStorageMode);
+    webkitWebViewBaseAddAuthenticationDialog(WEBKIT_WEB_VIEW_BASE(webView), dialog);
+    dialog->show();
+}
+
+void webkitWebViewInsecureContentDetected(WebKitWebView* webView, WebKitInsecureContentEvent type)
+{
+    g_signal_emit(webView, signals[INSECURE_CONTENT_DETECTED], 0, type);
 }
 
 /**

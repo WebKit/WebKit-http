@@ -30,6 +30,7 @@
 #include "InspectorInstrumentation.h"
 #include "ScheduledAction.h"
 #include "ScriptExecutionContext.h"
+#include "WebCoreMemoryInstrumentation.h"
 #include <wtf/CurrentTime.h>
 #include <wtf/HashSet.h>
 #include <wtf/StdLibExtras.h>
@@ -44,16 +45,6 @@ static const double oneMillisecond = 0.001;
 
 static int timerNestingLevel = 0;
     
-static int timeoutId()
-{
-    static int lastUsedTimeoutId = 0;
-    ++lastUsedTimeoutId;
-    // Avoid wraparound going negative on us.
-    if (lastUsedTimeoutId <= 0)
-        lastUsedTimeoutId = 1;
-    return lastUsedTimeoutId;
-}
-    
 static inline bool shouldForwardUserGesture(int interval, int nestingLevel)
 {
     return UserGestureIndicator::processingUserGesture()
@@ -63,14 +54,15 @@ static inline bool shouldForwardUserGesture(int interval, int nestingLevel)
 
 DOMTimer::DOMTimer(ScriptExecutionContext* context, PassOwnPtr<ScheduledAction> action, int interval, bool singleShot)
     : SuspendableTimer(context)
-    , m_timeoutId(timeoutId())
+    , m_timeoutId(context->newUniqueID())
     , m_nestingLevel(timerNestingLevel + 1)
     , m_action(action)
     , m_originalInterval(interval)
 {
     if (shouldForwardUserGesture(interval, m_nestingLevel))
         m_userGestureToken = UserGestureIndicator::currentToken();
-    scriptExecutionContext()->addTimeout(m_timeoutId, this);
+
+    context->addTimeout(m_timeoutId, this);
 
     double intervalMilliseconds = intervalClampedToMinimum(interval, context->minimumTimerInterval());
     if (singleShot)
@@ -205,6 +197,14 @@ double DOMTimer::alignedFireTime(double fireTime) const
     }
 
     return fireTime;
+}
+
+void DOMTimer::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
+{
+    MemoryClassInfo info(memoryObjectInfo, this, WebCoreMemoryTypes::DOM);
+    SuspendableTimer::reportMemoryUsage(memoryObjectInfo);
+    info.addMember(m_action);
+    info.addMember(m_userGestureToken);
 }
 
 } // namespace WebCore

@@ -43,9 +43,9 @@ class ElementRareData;
 class ElementShadow;
 class IntSize;
 class Locale;
+class PseudoElement;
 class RenderRegion;
 class ShadowRoot;
-class WebKitAnimationList;
 
 enum SpellcheckAttributeState {
     SpellcheckAttributeTrue,
@@ -246,7 +246,7 @@ public:
 
     // This method is called whenever an attribute is added, changed or removed.
     virtual void attributeChanged(const QualifiedName&, const AtomicString&);
-    virtual void parseAttribute(const Attribute&);
+    virtual void parseAttribute(const QualifiedName&, const AtomicString&) { }
 
     // Only called by the parser immediately after element construction.
     void parserSetAttributes(const Vector<Attribute>&, FragmentScriptingPermission);
@@ -270,10 +270,14 @@ public:
     virtual void attach();
     virtual void detach();
     virtual RenderObject* createRenderer(RenderArena*, RenderStyle*);
+    virtual bool rendererIsNeeded(const NodeRenderingContext&);
     void recalcStyle(StyleChange = NoChange);
 
     ElementShadow* shadow() const;
     ElementShadow* ensureShadow();
+    PassRefPtr<ShadowRoot> createShadowRoot(ExceptionCode&);
+    ShadowRoot* shadowRoot() const;
+
     virtual void willAddAuthorShadowRoot() { }
     virtual bool areAuthorShadowsAllowed() const { return true; }
 
@@ -283,8 +287,29 @@ public:
 
     RenderStyle* computedStyle(PseudoId = NOPSEUDO);
 
+    // Methods for indicating the style is affected by dynamic updates (e.g., children changing, our position changing in our sibling list, etc.)
+    bool styleAffectedByEmpty() const { return hasRareData() && rareDataStyleAffectedByEmpty(); }
+    bool childrenAffectedByHover() const { return hasRareData() && rareDataChildrenAffectedByHover(); }
+    bool childrenAffectedByActive() const { return hasRareData() && rareDataChildrenAffectedByActive(); }
+    bool childrenAffectedByDrag() const { return hasRareData() && rareDataChildrenAffectedByDrag(); }
+    bool childrenAffectedByPositionalRules() const { return hasRareData() && (rareDataChildrenAffectedByForwardPositionalRules() || rareDataChildrenAffectedByBackwardPositionalRules()); }
+    bool childrenAffectedByFirstChildRules() const { return hasRareData() && rareDataChildrenAffectedByFirstChildRules(); }
+    bool childrenAffectedByLastChildRules() const { return hasRareData() && rareDataChildrenAffectedByLastChildRules(); }
+    bool childrenAffectedByDirectAdjacentRules() const { return hasRareData() && rareDataChildrenAffectedByDirectAdjacentRules(); }
+    bool childrenAffectedByForwardPositionalRules() const { return hasRareData() && rareDataChildrenAffectedByForwardPositionalRules(); }
+    bool childrenAffectedByBackwardPositionalRules() const { return hasRareData() && rareDataChildrenAffectedByBackwardPositionalRules(); }
+    unsigned childIndex() const { return hasRareData() ? rareDataChildIndex() : 0; }
+
     void setStyleAffectedByEmpty();
-    bool styleAffectedByEmpty() const;
+    void setChildrenAffectedByHover(bool);
+    void setChildrenAffectedByActive(bool);
+    void setChildrenAffectedByDrag(bool);
+    void setChildrenAffectedByFirstChildRules();
+    void setChildrenAffectedByLastChildRules();
+    void setChildrenAffectedByDirectAdjacentRules();
+    void setChildrenAffectedByForwardPositionalRules();
+    void setChildrenAffectedByBackwardPositionalRules();
+    void setChildIndex(unsigned);
 
     void setIsInCanvasSubtree(bool);
     bool isInCanvasSubtree() const;
@@ -341,6 +366,13 @@ public:
     virtual void finishParsingChildren();
     virtual void beginParsingChildren();
 
+    bool hasPseudoElements() const;
+    PseudoElement* pseudoElement(PseudoId) const;
+    PseudoElement* beforePseudoElement() const { return pseudoElement(BEFORE); }
+    PseudoElement* afterPseudoElement() const { return pseudoElement(AFTER); }
+    bool childNeedsShadowWalker() const;
+    void didShadowTreeAwareChildrenChange();
+
     // ElementTraversal API
     Element* firstElementChild() const;
     Element* lastElementChild() const;
@@ -348,8 +380,8 @@ public:
     Element* nextElementSibling() const;
     unsigned childElementCount() const;
 
-    virtual bool shouldMatchReadOnlySelector() const;
-    virtual bool shouldMatchReadWriteSelector() const;
+    virtual bool matchesReadOnlyPseudoClass() const;
+    virtual bool matchesReadWritePseudoClass() const;
     bool webkitMatchesSelector(const String& selectors, ExceptionCode&);
 
     DOMTokenList* classList();
@@ -370,6 +402,9 @@ public:
 #if ENABLE(INPUT_SPEECH)
     virtual bool isInputFieldSpeechButtonElement() const { return false; }
 #endif
+#if ENABLE(INPUT_MULTIPLE_FIELDS_UI)
+    virtual bool isDateTimeFieldElement() const;
+#endif
 
     virtual bool isFormControlElement() const { return false; }
     virtual bool isEnabledFormControl() const { return true; }
@@ -380,7 +415,6 @@ public:
     virtual bool isDefaultButtonForForm() const { return false; }
     virtual bool willValidate() const { return false; }
     virtual bool isValidFormControlElement() { return false; }
-    virtual bool hasUnacceptableValue() const { return false; }
     virtual bool isInRange() const { return false; }
     virtual bool isOutOfRange() const { return false; }
     virtual bool isFrameElementBase() const { return false; }
@@ -396,6 +430,11 @@ public:
 
 #if ENABLE(SVG)
     virtual bool childShouldCreateRenderer(const NodeRenderingContext&) const;
+#endif
+
+#if ENABLE(VIDEO_TRACK)
+    bool isWebVTTNode() const;
+    void setIsWebVTTNode(bool flag);
 #endif
     
 #if ENABLE(FULLSCREEN_API)
@@ -413,14 +452,17 @@ public:
     void webkitRequestFullscreen();
 #endif
 
+#if ENABLE(DIALOG_ELEMENT)
+    bool isInTopLayer() const;
+    void setIsInTopLayer(bool);
+#endif
+
 #if ENABLE(POINTER_LOCK)
     void webkitRequestPointerLock();
 #endif
 
     virtual bool isSpellCheckingEnabled() const;
 
-    PassRefPtr<WebKitAnimationList> webkitGetAnimations() const;
-    
     PassRefPtr<RenderStyle> styleForRenderer();
 
     RenderRegion* renderRegion() const;
@@ -465,6 +507,10 @@ protected:
     void classAttributeChanged(const AtomicString& newClassString);
 
 private:
+    void updatePseudoElement(PseudoId, StyleChange = NoChange);
+    PassRefPtr<PseudoElement> createPseudoElementIfNeeded(PseudoId);
+    void setPseudoElement(PseudoId, PassRefPtr<PseudoElement>);
+
     // FIXME: Remove the need for Attr to call willModifyAttribute/didModifyAttribute.
     friend class Attr;
 
@@ -508,11 +554,21 @@ private:
     
     // cloneNode is private so that non-virtual cloneElementWithChildren and cloneElementWithoutChildren
     // are used instead.
-    virtual PassRefPtr<Node> cloneNode(bool deep);
+    virtual PassRefPtr<Node> cloneNode(bool deep) OVERRIDE;
     virtual PassRefPtr<Element> cloneElementWithoutAttributesAndChildren();
 
     QualifiedName m_tagName;
-    virtual OwnPtr<NodeRareData> createRareData();
+    virtual PassOwnPtr<NodeRareData> createRareData();
+    bool rareDataStyleAffectedByEmpty() const;
+    bool rareDataChildrenAffectedByHover() const;
+    bool rareDataChildrenAffectedByActive() const;
+    bool rareDataChildrenAffectedByDrag() const;
+    bool rareDataChildrenAffectedByFirstChildRules() const;
+    bool rareDataChildrenAffectedByLastChildRules() const;
+    bool rareDataChildrenAffectedByDirectAdjacentRules() const;
+    bool rareDataChildrenAffectedByForwardPositionalRules() const;
+    bool rareDataChildrenAffectedByBackwardPositionalRules() const;
+    unsigned rareDataChildIndex() const;
 
     SpellcheckAttributeState spellcheckAttributeState() const;
 
@@ -523,12 +579,15 @@ private:
 
     void createMutableAttributeData();
 
-private:
+    bool shouldInvalidateDistributionWhenAttributeChanged(ElementShadow*, const QualifiedName&, const AtomicString&);
+
     ElementRareData* elementRareData() const;
     ElementRareData* ensureElementRareData();
 
     void detachAllAttrNodesFromElement();
     void detachAttrNodeFromElementWithValue(Attr*, const AtomicString& value);
+
+    void createRendererIfNeeded();
 
     RefPtr<ElementAttributeData> m_attributeData;
 };
@@ -625,7 +684,7 @@ inline void Element::updateName(const AtomicString& oldName, const AtomicString&
 
 inline void Element::updateId(const AtomicString& oldId, const AtomicString& newId)
 {
-    if (!inDocument())
+    if (!isInTreeScope())
         return;
 
     if (oldId == newId)
@@ -636,7 +695,7 @@ inline void Element::updateId(const AtomicString& oldId, const AtomicString& new
 
 inline void Element::updateId(TreeScope* scope, const AtomicString& oldId, const AtomicString& newId)
 {
-    ASSERT(inDocument());
+    ASSERT(isInTreeScope());
     ASSERT(oldId != newId);
 
     if (!oldId.isEmpty())
@@ -732,22 +791,16 @@ inline Attribute* Element::getAttributeItem(const QualifiedName& name)
 
 inline void Element::updateInvalidAttributes() const
 {
-    if (!isStyleAttributeValid())
+    if (!attributeData())
+        return;
+
+    if (attributeData()->m_styleAttributeIsDirty)
         updateStyleAttribute();
 
 #if ENABLE(SVG)
-    if (!areSVGAttributesValid())
+    if (attributeData()->m_animatedSVGAttributesAreDirty)
         updateAnimatedSVGAttribute(anyQName());
 #endif
-}
-
-inline Element* firstElementChild(const ContainerNode* container)
-{
-    ASSERT_ARG(container, container);
-    Node* child = container->firstChild();
-    while (child && !child->isElementNode())
-        child = child->nextSibling();
-    return static_cast<Element*>(child);
 }
 
 inline bool Element::hasID() const
@@ -776,6 +829,25 @@ inline bool Node::hasID() const
 inline bool Node::hasClass() const
 {
     return isElementNode() && toElement(this)->hasClass();
+}
+
+inline Node::InsertionNotificationRequest Node::insertedInto(ContainerNode* insertionPoint)
+{
+    ASSERT(insertionPoint->inDocument() || isContainerNode());
+    if (insertionPoint->inDocument())
+        setFlag(InDocumentFlag);
+    if (parentOrHostNode()->isInShadowTree())
+        setFlag(IsInShadowTreeFlag);
+    return InsertionDone;
+}
+
+inline void Node::removedFrom(ContainerNode* insertionPoint)
+{
+    ASSERT(insertionPoint->inDocument() || isContainerNode());
+    if (insertionPoint->inDocument())
+        clearFlag(InDocumentFlag);
+    if (isInShadowTree() && !treeScope()->rootNode()->isShadowRoot())
+        clearFlag(IsInShadowTreeFlag);
 }
 
 inline bool isShadowHost(const Node* node)

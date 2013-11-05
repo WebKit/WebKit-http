@@ -93,7 +93,7 @@ public:
 #endif
     const TestEventPrinter* printer() const { return &m_printer; }
 
-    WebPreferences* preferences() { return &m_prefs; }
+    WebTestRunner::WebPreferences* preferences() { return &m_prefs; }
     void applyPreferences() { m_prefs.applyTo(m_webView); }
 
     WebPermissions* webPermissions() { return m_webPermissions.get(); }
@@ -112,6 +112,7 @@ public:
 
     void setFocus(WebKit::WebWidget*, bool enable);
     bool shouldDumpFrameLoadCallbacks() const { return (m_testIsPreparing || m_testIsPending) && testRunner()->shouldDumpFrameLoadCallbacks(); }
+    bool shouldDumpResourceRequestCallbacks() const { return (m_testIsPreparing || m_testIsPending) && testRunner()->shouldDumpResourceRequestCallbacks(); }
     bool shouldDumpUserGestureInFrameLoadCallbacks() const { return (m_testIsPreparing || m_testIsPending) && testRunner()->shouldDumpUserGestureInFrameLoadCallbacks(); }
     bool shouldDumpResourceLoadCallbacks() const  { return (m_testIsPreparing || m_testIsPending) && testRunner()->shouldDumpResourceLoadCallbacks(); }
     bool shouldDumpResourceResponseMIMETypes() const  { return (m_testIsPreparing || m_testIsPending) && testRunner()->shouldDumpResourceResponseMIMETypes(); }
@@ -129,6 +130,7 @@ public:
 
     void setAcceleratedCompositingForVideoEnabled(bool enabled) { m_acceleratedCompositingForVideoEnabled = enabled; }
     void setAcceleratedCompositingForFixedPositionEnabled(bool enabled) { m_acceleratedCompositingForFixedPositionEnabled = enabled; }
+    void setAcceleratedCompositingForOverflowScrollEnabled(bool enabled) { m_acceleratedCompositingForOverflowScrollEnabled = enabled; }
     bool softwareCompositingEnabled() { return m_softwareCompositingEnabled; }
     void setSoftwareCompositingEnabled(bool enabled) { m_softwareCompositingEnabled = enabled; }
     void setThreadedCompositingEnabled(bool enabled) { m_threadedCompositingEnabled = enabled; }
@@ -136,8 +138,8 @@ public:
     void setAccelerated2dCanvasEnabled(bool enabled) { m_accelerated2dCanvasEnabled = enabled; }
     void setDeferred2dCanvasEnabled(bool enabled) { m_deferred2dCanvasEnabled = enabled; }
     void setAcceleratedPaintingEnabled(bool enabled) { m_acceleratedPaintingEnabled = enabled; }
-    void setPerTilePaintingEnabled(bool);
-    void setAcceleratedAnimationEnabled(bool);
+    void setPerTilePaintingEnabled(bool enabled) { m_perTilePaintingEnabled = enabled; }
+    void setAcceleratedAnimationEnabled(bool enabled) { m_acceleratedAnimationEnabled = enabled; }
     void setDeferredImageDecodingEnabled(bool enabled) { m_deferredImageDecodingEnabled = enabled; }
 #if defined(OS_WIN)
     // Access to the finished event. Used by the static WatchDog thread.
@@ -231,6 +233,7 @@ private:
     bool m_allowExternalPages;
     bool m_acceleratedCompositingForVideoEnabled;
     bool m_acceleratedCompositingForFixedPositionEnabled;
+    bool m_acceleratedCompositingForOverflowScrollEnabled;
     bool m_softwareCompositingEnabled;
     bool m_threadedCompositingEnabled;
     bool m_forceCompositingMode;
@@ -240,7 +243,7 @@ private:
     bool m_perTilePaintingEnabled;
     bool m_acceleratedAnimationEnabled;
     bool m_deferredImageDecodingEnabled;
-    WebPreferences m_prefs;
+    WebTestRunner::WebPreferences m_prefs;
     bool m_stressOpt;
     bool m_stressDeopt;
     std::string m_javaScriptFlags;

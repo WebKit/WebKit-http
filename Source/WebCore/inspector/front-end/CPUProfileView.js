@@ -94,6 +94,10 @@ WebInspector.CPUProfileView = function(profile)
             return;
         }
         this.profile.head = profile.head;
+
+        if (profile.idleTime)
+            this._injectIdleTimeNode(profile);
+
         this._assignParentsInProfile();
         this._changeView();
         this._updatePercentButton();
@@ -186,6 +190,7 @@ WebInspector.CPUProfileView.prototype = {
 
                 delete profileNode._searchMatchedSelfColumn;
                 delete profileNode._searchMatchedTotalColumn;
+                delete profileNode._searchMatchedAverageColumn;
                 delete profileNode._searchMatchedCallsColumn;
                 delete profileNode._searchMatchedFunctionColumn;
 
@@ -230,6 +235,8 @@ WebInspector.CPUProfileView.prototype = {
         // Make equalTo implicitly true if it wasn't specified there is no other operator.
         if (!isNaN(queryNumber) && !(greaterThan || lessThan))
             equalTo = true;
+
+        var matcher = new RegExp(query.escapeForRegExp(), "i");
 
         function matchesQuery(/*ProfileDataGridNode*/ profileDataGridNode)
         {
@@ -298,7 +305,7 @@ WebInspector.CPUProfileView.prototype = {
                     profileDataGridNode._searchMatchedCallsColumn = true;
             }
 
-            if (profileDataGridNode.functionName.hasSubstring(query, true) || profileDataGridNode.url.hasSubstring(query, true))
+            if (profileDataGridNode.functionName.match(matcher) || profileDataGridNode.url.match(matcher))
                 profileDataGridNode._searchMatchedFunctionColumn = true;
 
             if (profileDataGridNode._searchMatchedSelfColumn ||
@@ -533,6 +540,38 @@ WebInspector.CPUProfileView.prototype = {
         }
     },
 
+    _injectIdleTimeNode: function(profile)
+    {
+        var idleTime = profile.idleTime;
+        var nodes = profile.head.children;
+
+        var programNode = {selfTime: 0};
+        for (var i = nodes.length - 1; i >= 0; --i) {
+            if (nodes[i].functionName === "(program)") {
+                programNode = nodes[i];
+                break;
+            }
+        }
+        var programTime = programNode.selfTime;
+        if (idleTime > programTime)
+            idleTime = programTime;
+        programTime = programTime - idleTime;
+        programNode.selfTime = programTime;
+        programNode.totalTime = programTime;
+        var idleNode = {
+            functionName: "(idle)",
+            url: null,
+            lineNumber: 0,
+            totalTime: idleTime,
+            selfTime: idleTime,
+            numberOfCalls: 0,
+            visible: true,
+            callUID: 0,
+            children: []
+        };
+        nodes.push(idleNode);
+    },
+
     __proto__: WebInspector.View.prototype
 }
 
@@ -630,7 +669,7 @@ WebInspector.CPUProfileType.prototype = {
 /**
  * @constructor
  * @extends {WebInspector.ProfileHeader}
- * @param {WebInspector.CPUProfileType} type
+ * @param {!WebInspector.CPUProfileType} type
  * @param {string} title
  * @param {number=} uid
  */

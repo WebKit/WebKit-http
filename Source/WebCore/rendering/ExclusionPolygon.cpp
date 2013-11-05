@@ -327,8 +327,8 @@ void ExclusionPolygon::getExcludedIntervals(float logicalTop, float logicalHeigh
     if (isEmpty())
         return;
 
-    float y1 = minYForLogicalLine(logicalTop, logicalHeight);
-    float y2 = maxYForLogicalLine(logicalTop, logicalHeight);
+    float y1 = logicalTop;
+    float y2 = y1 + logicalHeight;
 
     Vector<ExclusionInterval> y1XIntervals, y2XIntervals;
     computeXIntersections(y1, true, y1XIntervals);
@@ -354,8 +354,8 @@ void ExclusionPolygon::getIncludedIntervals(float logicalTop, float logicalHeigh
     if (isEmpty())
         return;
 
-    float y1 = minYForLogicalLine(logicalTop, logicalHeight);
-    float y2 = maxYForLogicalLine(logicalTop, logicalHeight);
+    float y1 = logicalTop;
+    float y2 = y1 + logicalHeight;
 
     Vector<ExclusionInterval> y1XIntervals, y2XIntervals;
     computeXIntersections(y1, true, y1XIntervals);
@@ -374,6 +374,22 @@ void ExclusionPolygon::getIncludedIntervals(float logicalTop, float logicalHeigh
         ExclusionInterval interval = includedIntervals[i];
         result.append(LineSegment(interval.x1, interval.x2));
     }
+}
+
+bool ExclusionPolygon::firstIncludedIntervalLogicalTop(float minLogicalIntervalTop, const FloatSize& minLogicalIntervalSize, float& result) const
+{
+    // FIXME: This is just a temporary stub, https://bugs.webkit.org/show_bug.cgi?id=103429
+
+    if (minLogicalIntervalSize.width() > m_boundingBox.width())
+        return false;
+
+    float minY = std::max(m_boundingBox.y(), minLogicalIntervalTop);
+    float maxY = minY + minLogicalIntervalSize.height();
+    if (minY < m_boundingBox.y() || maxY > m_boundingBox.maxY())
+        return false;
+
+    result = minLogicalIntervalTop;
+    return true;
 }
 
 } // namespace WebCore

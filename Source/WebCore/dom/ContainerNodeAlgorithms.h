@@ -26,6 +26,7 @@
 #include "Frame.h"
 #include "HTMLFrameOwnerElement.h"
 #include "InspectorInstrumentation.h"
+#include "NodeTraversal.h"
 #include <wtf/Assertions.h>
 
 namespace WebCore {
@@ -37,7 +38,6 @@ public:
     {
     }
 
-    void notifyInsertedIntoDocument(Node*);
     void notify(Node*);
 
 private:
@@ -210,11 +210,6 @@ inline void ChildNodeInsertionNotifier::notifyNodeInsertedIntoTree(ContainerNode
     notifyDescendantInsertedIntoTree(node);
 }
 
-inline void ChildNodeInsertionNotifier::notifyInsertedIntoDocument(Node* node)
-{
-    notifyNodeInsertedIntoDocument(node);
-}
-
 inline void ChildNodeInsertionNotifier::notify(Node* node)
 {
     ASSERT(!NoEventDispatchAssertion::isEventDispatchForbidden());
@@ -265,22 +260,33 @@ inline void ChildNodeRemovalNotifier::notify(Node* node)
 
 class ChildFrameDisconnector {
 public:
-    enum DisconnectPolicy {
-        RootAndDescendants,
-        DescendantsOnly
+    enum ShouldIncludeRoot {
+        DoNotIncludeRoot,
+        IncludeRoot
     };
 
-    explicit ChildFrameDisconnector(Node* root)
+    explicit ChildFrameDisconnector(Node* root, ShouldIncludeRoot shouldIncludeRoot = IncludeRoot)
         : m_root(root)
+    {
+        // If we know there's no frames to disconnect then don't bother traversing
+        // the tree looking for them.
+        Frame* frame = root->document()->frame();
+        if (frame && !frame->tree()->firstChild())
+            return;
+        collectDescendant(m_root, shouldIncludeRoot);
+    }
+
+    ~ChildFrameDisconnector()
     {
     }
 
-    void disconnect(DisconnectPolicy = RootAndDescendants);
+    void disconnect();
+
+    static bool nodeHasDisconnector(Node*);
 
 private:
-    void collectFrameOwners(Node* root);
-    void collectFrameOwners(ElementShadow*);
-    void disconnectCollectedFrameOwners();
+    void collectDescendant(Node* root, ShouldIncludeRoot);
+    void collectDescendant(ElementShadow*);
 
     class Target {
     public:
@@ -302,25 +308,18 @@ private:
     Node* m_root;
 };
 
-inline void ChildFrameDisconnector::collectFrameOwners(Node* root)
+inline void ChildFrameDisconnector::collectDescendant(Node* root, ShouldIncludeRoot shouldIncludeRoot)
 {
-    if (!root->connectedSubframeCount())
-        return;
-
-    // FIXME: This should just check isElementNode() to avoid the virtual call
-    // and we should not depend on hasCustomCallbacks().
-    if (root->hasCustomCallbacks() && root->isFrameOwnerElement())
-        m_list.append(toFrameOwnerElement(root));
-
-    for (Node* child = root->firstChild(); child; child = child->nextSibling())
-        collectFrameOwners(child);
-
-    ElementShadow* shadow = root->isElementNode() ? toElement(root)->shadow() : 0;
-    if (shadow)
-        collectFrameOwners(shadow);
+    Element* element = (shouldIncludeRoot == IncludeRoot && root->isElementNode()) ? toElement(root) : ElementTraversal::firstWithin(root);
+    for (; element; element = ElementTraversal::next(element, root)) {
+        if (element->hasCustomCallbacks() && element->isFrameOwnerElement())
+            m_list.append(toFrameOwnerElement(element));
+        if (ElementShadow* shadow = element->shadow())
+            collectDescendant(shadow);
+    }
 }
 
-inline void ChildFrameDisconnector::disconnectCollectedFrameOwners()
+inline void ChildFrameDisconnector::disconnect()
 {
     // Must disable frame loading in the subtree so an unload handler cannot
     // insert more frames and create loaded frames in detached subtrees.
@@ -331,21 +330,6 @@ inline void ChildFrameDisconnector::disconnectCollectedFrameOwners()
         if (target.isValid())
             target.disconnect();
     }
-}
-
-inline void ChildFrameDisconnector::disconnect(DisconnectPolicy policy)
-{
-    if (!m_root->connectedSubframeCount())
-        return;
-
-    if (policy == RootAndDescendants)
-        collectFrameOwners(m_root);
-    else {
-        for (Node* child = m_root->firstChild(); child; child = child->nextSibling())
-            collectFrameOwners(child);
-    }
-
-    disconnectCollectedFrameOwners();
 }
 
 } // namespace WebCore

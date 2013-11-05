@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 # Copyright (C) 2010 Google Inc. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -330,6 +329,8 @@ class TestExpectationParser(object):
             elif state == 'expectations':
                 if token in ('Rebaseline', 'Skip', 'Slow', 'WontFix'):
                     modifiers.append(token.upper())
+                elif token not in cls._expectation_tokens:
+                    warnings.append('Unrecognized expectation "%s"' % token)
                 else:
                     expectations.append(cls._expectation_tokens.get(token, token))
             elif state == 'name_found':
@@ -755,7 +756,8 @@ class TestExpectations(object):
                     'text': TEXT,
                     'timeout': TIMEOUT,
                     'crash': CRASH,
-                    'missing': MISSING}
+                    'missing': MISSING,
+                    'skip': SKIP}
 
     # (aggregated by category, pass/fail/skip, type)
     EXPECTATION_DESCRIPTIONS = {SKIP: 'skipped',

@@ -52,6 +52,7 @@
 #include "Document.h"
 #include "DocumentFragment.h"
 #include "DocumentType.h"
+#include "Element.h"
 #include "ElementShadow.h"
 #include "Event.h"
 #include "EventContext.h"
@@ -75,6 +76,7 @@
 #include "MutationEvent.h"
 #include "Node.h"
 #include "NodeList.h"
+#include "NodeTraversal.h"
 #include "Page.h"
 #include "Pasteboard.h"
 #include "RenderStyle.h"
@@ -563,6 +565,18 @@ int InspectorDOMAgent::pushNodePathToFrontend(Node* nodeToPush)
     return map->get(nodeToPush);
 }
 
+int InspectorDOMAgent::pushNodePathForRenderLayerToFrontend(const RenderLayer* renderLayer)
+{
+    Node* node = renderLayer->renderer()->node();
+
+    // RenderLayers may not be associated with a Node, for instance
+    // in the case of CSS generated content.
+    if (!node)
+        return 0;
+
+    return pushNodePathToFrontend(node);
+}
+
 int InspectorDOMAgent::boundNodeId(Node* node)
 {
     return m_documentNodeToIdMap.get(node);
@@ -835,7 +849,7 @@ void InspectorDOMAgent::performSearch(ErrorString*, const String& whitespaceTrim
             continue;
 
         // Manual plain text search.
-        while ((node = node->traverseNextNode(document->documentElement()))) {
+        while ((node = NodeTraversal::next(node, document->documentElement()))) {
             switch (node->nodeType()) {
             case Node::TEXT_NODE:
             case Node::COMMENT_NODE:
@@ -1066,12 +1080,19 @@ void InspectorDOMAgent::highlightRect(ErrorString*, int x, int y, int width, int
     m_overlay->highlightRect(adoptPtr(new IntRect(x, y, width, height)), *highlightConfig);
 }
 
-void InspectorDOMAgent::highlightNode(
-    ErrorString* errorString,
-    int nodeId,
-    const RefPtr<InspectorObject>& highlightInspectorObject)
+void InspectorDOMAgent::highlightNode(ErrorString* errorString, const RefPtr<InspectorObject>& highlightInspectorObject, const int* nodeId, const String* objectId)
 {
-    Node* node = nodeForId(nodeId);
+    Node* node = 0;
+    if (nodeId) {
+        node = assertNode(errorString, *nodeId);
+    } else if (objectId) {
+        InjectedScript injectedScript = m_injectedScriptManager->injectedScriptForObjectId(*objectId);
+        node = injectedScript.nodeForObjectId(*objectId);
+        if (!node)
+            *errorString = "Node for given objectId not found";
+    } else
+        *errorString = "Either nodeId or objectId must be specified";
+
     if (!node)
         return;
 
@@ -1149,17 +1170,29 @@ void InspectorDOMAgent::markUndoableState(ErrorString*)
     m_history->markUndoableState();
 }
 
-void InspectorDOMAgent::resolveNode(ErrorString* error, int nodeId, const String* const objectGroup, RefPtr<TypeBuilder::Runtime::RemoteObject>& result)
+void InspectorDOMAgent::focus(ErrorString* errorString, int nodeId)
+{
+    Element* element = assertElement(errorString, nodeId);
+    if (!element)
+        return;
+    if (!element->isFocusable()) {
+        *errorString = "Element is not focusable";
+        return;
+    }
+    element->focus();
+}
+
+void InspectorDOMAgent::resolveNode(ErrorString* errorString, int nodeId, const String* const objectGroup, RefPtr<TypeBuilder::Runtime::RemoteObject>& result)
 {
     String objectGroupName = objectGroup ? *objectGroup : "";
     Node* node = nodeForId(nodeId);
     if (!node) {
-        *error = "No node with given id found";
+        *errorString = "No node with given id found";
         return;
     }
     RefPtr<TypeBuilder::Runtime::RemoteObject> object = resolveNode(node, objectGroupName);
     if (!object) {
-        *error = "Node with given id does not belong to the document";
+        *errorString = "Node with given id does not belong to the document";
         return;
     }
     result = object;
@@ -1246,6 +1279,9 @@ PassRefPtr<TypeBuilder::DOM::Node> InspectorDOMAgent::buildObjectForNode(Node* n
         value->setAttributes(buildArrayForElementAttributes(element));
         if (node->isFrameOwnerElement()) {
             HTMLFrameOwnerElement* frameOwner = static_cast<HTMLFrameOwnerElement*>(node);
+            Frame* frame = frameOwner->contentFrame();
+            if (frame)
+                value->setFrameId(m_pageAgent->frameId(frame));
             Document* doc = frameOwner->contentDocument();
             if (doc)
                 value->setContentDocument(buildObjectForNode(doc, 0, nodesMap));

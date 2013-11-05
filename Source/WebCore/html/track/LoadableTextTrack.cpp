@@ -37,10 +37,11 @@
 
 namespace WebCore {
 
-LoadableTextTrack::LoadableTextTrack(HTMLTrackElement* track, const String& kind, const String& label, const String& language, bool)
+LoadableTextTrack::LoadableTextTrack(HTMLTrackElement* track, const String& kind, const String& label, const String& language)
     : TextTrack(track->document(), track, kind, label, language, TrackElement)
     , m_trackElement(track)
     , m_loadTimer(this, &LoadableTextTrack::loadTimerFired)
+    , m_isDefault(false)
 {
 }
 
@@ -129,7 +130,7 @@ size_t LoadableTextTrack::trackElementIndex()
 
     size_t index = 0;
     for (Node* node = m_trackElement->parentNode()->firstChild(); node; node = node->nextSibling()) {
-        if (!node->hasTagName(trackTag) || !node->inDocument())
+        if (!node->hasTagName(trackTag) || !node->parentNode())
             continue;
         if (node == m_trackElement)
             return index;

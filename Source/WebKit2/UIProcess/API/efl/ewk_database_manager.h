@@ -41,14 +41,14 @@ extern "C" {
 #endif
 
 /** Creates a type name for Ewk_Database_Manager. */
-typedef struct Ewk_Database_Manager Ewk_Database_Manager;
+typedef struct EwkDatabaseManager Ewk_Database_Manager;
 
 /**
  * @typedef Ewk_Database_Origins_Get_Cb Ewk_Database_Origins_Get_Cb
  * @brief Callback type for use with ewk_database_manager_origins_get()
  *
  * @param origins @c Eina_List containing @c Ewk_Security_Origin elements or @c NULL in case of error,
- *                        the Eina_List and its items should be freed after use. Use ewk_security_origin_unref()
+ *                        the Eina_List and its items should be freed after use. Use ewk_object_unref()
  *                        to free the items
  */
 typedef void (*Ewk_Database_Origins_Get_Cb)(Eina_List *origins, Ewk_Error *error, void *user_data);

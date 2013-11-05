@@ -26,16 +26,16 @@
 #include "config.h"
 #include "PageClientBase.h"
 
+#include "CoordinatedLayerTreeHostProxy.h"
 #include "DrawingAreaProxyImpl.h"
 #include "EwkViewImpl.h"
 #include "InputMethodContextEfl.h"
-#include "LayerTreeCoordinatorProxy.h"
 #include "LayerTreeRenderer.h"
 #include "NativeWebKeyboardEvent.h"
 #include "NotImplemented.h"
 #include "TextureMapper.h"
 #include "WebContext.h"
-#include "WebContextMenuProxy.h"
+#include "WebContextMenuProxyEfl.h"
 #include "WebPageGroup.h"
 #include "WebPageProxy.h"
 #include "WebPopupMenuProxyEfl.h"
@@ -70,10 +70,6 @@ EwkViewImpl* PageClientBase::viewImpl() const
 PassOwnPtr<DrawingAreaProxy> PageClientBase::createDrawingAreaProxy()
 {
     OwnPtr<DrawingAreaProxy> drawingArea = DrawingAreaProxyImpl::create(m_viewImpl->page());
-#if USE(ACCELERATED_COMPOSITING)
-    if (!m_viewImpl->isHardwareAccelerated())
-        drawingArea->layerTreeCoordinatorProxy()->layerTreeRenderer()->setAccelerationMode(TextureMapper::SoftwareMode);
-#endif
     return drawingArea.release();
 }
 
@@ -127,6 +123,8 @@ void PageClientBase::processDidCrash()
         loadProgress = 1;
         m_viewImpl->smartCallback<LoadProgress>().call(&loadProgress);
     }
+
+    m_viewImpl->smartCallback<TooltipTextUnset>().call();
 
     bool handled = false;
     m_viewImpl->smartCallback<WebProcessCrashed>().call(&handled);
@@ -219,10 +217,9 @@ PassRefPtr<WebPopupMenuProxy> PageClientBase::createPopupMenuProxy(WebPageProxy*
     return WebPopupMenuProxyEfl::create(m_viewImpl, page);
 }
 
-PassRefPtr<WebContextMenuProxy> PageClientBase::createContextMenuProxy(WebPageProxy*)
+PassRefPtr<WebContextMenuProxy> PageClientBase::createContextMenuProxy(WebPageProxy* page)
 {
-    notImplemented();
-    return 0;
+    return WebContextMenuProxyEfl::create(m_viewImpl, page);
 }
 
 #if ENABLE(INPUT_TYPE_COLOR)
@@ -254,11 +251,6 @@ void PageClientBase::updateAcceleratedCompositingMode(const LayerTreeContext&)
     notImplemented();
 }
 #endif // USE(ACCELERATED_COMPOSITING)
-
-void PageClientBase::didChangeScrollbarsForMainFrame() const
-{
-    notImplemented();
-}
 
 void PageClientBase::didCommitLoadForMainFrame(bool)
 {

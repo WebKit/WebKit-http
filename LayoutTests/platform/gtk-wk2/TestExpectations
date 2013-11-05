@@ -37,7 +37,6 @@
 # Tests that require new results.
 #////////////////////////////////////////////////////////////////////////////////////////
 
-Bug(GTK) fast/regions/autoheight-regions-mark.html [ Skip ]
 Bug(GTK) http/tests/security/resources/drag-drop-allowed.html [ Skip ]
 
 #////////////////////////////////////////////////////////////////////////////////////////
@@ -51,7 +50,6 @@ Bug(GTK) http/tests/security/resources/drag-drop-allowed.html [ Skip ]
 # [GTK] Implement drag and drop support in WebKit2
 # https://bugs.webkit.org/show_bug.cgi?id=63706
 # Implement EditingCallbacks deletegates in the WebKitTestRunner
-webkit.org/b/63706 accessibility/editable-webarea-context-menu-point.html [ Failure ]
 webkit.org/b/63706 editing/pasteboard/4947130.html [ Failure ]
 webkit.org/b/63706 editing/pasteboard/dataTransfer-setData-getData.html [ Failure Timeout ]
 webkit.org/b/63706 editing/pasteboard/drag-and-drop-image-contenteditable.html [ Failure Timeout ]
@@ -132,19 +130,6 @@ Bug(GTK) editing/selection/extend-after-mouse-selection.html [ Failure ]
 # WebKit2 needs textInputController.selectedRange
 Bug(GTK) editing/selection/mixed-editability-10.html [ Failure ]
 
-# Implement eventSender.contextClick
-Bug(GTK) editing/pasteboard/copy-standalone-image-crash.html [ Failure ]
-Bug(GTK) editing/selection/empty-cell-right-click.html [ Failure ]
-Bug(GTK) editing/selection/button-right-click.html [ Failure ]
-Bug(GTK) editing/selection/context-menu-on-text.html [ Failure ]
-Bug(GTK) editing/selection/empty-cell-right-click.html [ Failure ]
-Bug(GTK) fast/events/selectstart-prevent-selection-on-right-click.html [ Failure ]
-Bug(GTK) fast/events/context-no-deselect.html [ Failure ]
-Bug(GTK) fast/events/contextmenu-scrolled-page-with-frame.html [ Failure ]
-Bug(GTK) fast/events/context-onmousedown-event.html [ Failure ]
-Bug(GTK) media/controls-right-click-on-timebar.html [ Failure ]
-Bug(GTK) svg/custom/use-events-crash.svg [ Failure ]
-
 # Implement PageClientImpl::registerEditCommand and handling commands functions
 Bug(GTK) editing/deleting/delete-by-word-002.html [ Failure ]
 Bug(GTK) editing/deleting/delete-and-undo.html [ Failure ]
@@ -196,7 +181,7 @@ webkit.org/b/93977 fast/dom/Geolocation/page-reload-cancel-permission-requests.h
 
 # Implement eventSender.scheduleAsynchronousKeyDown
 # http://webkit.org/b/93979
-Bug(GTK) fast/mutation/end-of-task-delivery.html [ Failure Timeout ]
+Bug(GTK) fast/dom/MutationObserver/end-of-task-delivery.html [ Failure Timeout ]
 
 # Implement testRunner.setUseDeferredFrameLoading
 # http://webkit.org/b/93980
@@ -266,6 +251,7 @@ webkit.org/b/72698 media/audio-garbage-collect.html [ Failure Pass ]
 Bug(GTK) editing/pasteboard/smart-paste-004.html [ Failure Pass ]
 Bug(GTK) editing/selection/5057506.html [ Failure Pass ]
 Bug(GTK) editing/selection/click-in-margins-inside-editable-div.html [ Failure Pass ]
+Bug(GTK) fast/dom/MutationObserver/database-callback-delivery.html [ Failure Pass ]
 Bug(GTK) fast/events/dispatch-message-string-data.html [ Failure Pass ]
 Bug(GTK) fast/events/domactivate-sets-underlying-click-event-as-handled.html [ Failure Pass ]
 Bug(GTK) fast/events/mouseclick-target-and-positioning.html [ Failure Pass ]
@@ -294,7 +280,6 @@ Bug(GTK) fast/forms/select/optgroup-disabled.html [ Pass Timeout ]
 Bug(GTK) fast/forms/select-selected.html [ Pass Timeout ]
 Bug(GTK) fast/js/exceptions-thrown-in-callbacks.html [ Failure Pass ]
 Bug(GTK) fast/loader/fragment-after-redirect-gets-back-entry.html [ Failure Pass ]
-Bug(GTK) fast/mutation/database-callback-delivery.html [ Failure Pass ]
 Bug(GTK) fast/writing-mode/japanese-ruby-horizontal-bt.html [ Failure Pass ]
 Bug(GTK) fast/writing-mode/japanese-ruby-vertical-lr.html [ Failure Pass ]
 Bug(GTK) fast/writing-mode/japanese-ruby-vertical-rl.html [ Failure Pass ]
@@ -473,6 +458,9 @@ Bug(GTK) fast/workers/shared-worker-load-error.html [ Failure ]
 Bug(GTK) fast/writing-mode/Kusa-Makura-background-canvas.html [ Failure ]
 Bug(GTK) http/tests/local/blob/send-hybrid-blob.html [ Failure ]
 Bug(GTK) http/tests/misc/object-embedding-svg-delayed-size-negotiation-2.htm [ Failure ]
+Bug(GTK) http/tests/multipart/multipart-html.php [ Timeout ]
+Bug(GTK) http/tests/multipart/multipart-replace-non-html-content.php [ Timeout ]
+Bug(GTK) http/tests/multipart/policy-ignore-crash.php [ Failure ]
 Bug(GTK) http/tests/security/cross-origin-xsl-BLOCKED.html [ Failure ]
 Bug(GTK) http/tests/security/cross-origin-xsl-redirect-BLOCKED.html [ Failure ]
 Bug(GTK) http/tests/security/storage-blocking-strengthened-plugin.html [ Failure ]
@@ -585,7 +573,32 @@ Bug(GTK) fullscreen/full-screen-keyboard-enabled.html [ Pass ]
 # Will need rebaselining after bug 98527 fixed
 webkit.org/b/98527 http/tests/loading/text-content-type-with-binary-extension.html [ Failure ]
 
+# Fix for https://bugs.webkit.org/show_bug.cgi?id=97192 introduces this regression
+webkit.org/b/102776 media/track/track-cue-container-rendering-position.html [ Failure ]
+
 #////////////////////////////////////////////////////////////////////////////////////////
 # End of Tests working in WK2 and failing in WK1
 #////////////////////////////////////////////////////////////////////////////////////////
 
+
+# Selection doesn't work properly.
+Bug(GTK) editing/selection/context-menu-text-selection.html [ Failure Pass ]
+Bug(GTK) editing/selection/empty-cell-right-click.html [ Failure ]
+Bug(GTK) editing/spelling/context-menu-suggestions.html [ Failure ]
+
+# EventSender's contextClick should return objects that implements click() method
+webkit.org/b/98410 editing/pasteboard/copy-standalone-image-crash.html [ Failure ]
+webkit.org/b/98410 media/context-menu-actions.html [ Failure ]
+
+# An oncontextmenu attribute is not called.
+Bug(GTK) editing/spelling/spellcheck-input-search-crash.html [ Failure ]
+Bug(GTK) fast/events/contextmenu-scrolled-page-with-frame.html [ Failure ]
+
+# An onmousedown attribute is not called.
+Bug(GTK) fast/events/context-onmousedown-event.html [ Failure ]
+
+# An onselectstart attribute is not called.
+Bug(GTK) fast/events/selectstart-prevent-selection-on-right-click.html [ Failure ]
+
+# Start of media player causes timeout
+Bug(GTK) media/controls-right-click-on-timebar.html [ Failure ]

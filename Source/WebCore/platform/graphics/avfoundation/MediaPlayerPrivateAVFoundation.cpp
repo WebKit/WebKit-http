@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011 Apple Inc. All rights reserved.
+ * Copyright (C) 2011, 2012 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -33,6 +33,8 @@
 #include "Frame.h"
 #include "FrameView.h"
 #include "GraphicsContext.h"
+#include "InbandTextTrackPrivateAVF.h"
+#include "InbandTextTrackPrivateClient.h"
 #include "KURL.h"
 #include "Logging.h"
 #include "PlatformLayer.h"
@@ -72,6 +74,9 @@ MediaPlayerPrivateAVFoundation::MediaPlayerPrivateAVFoundation(MediaPlayer* play
     , m_ignoreLoadStateChanges(false)
     , m_haveReportedFirstVideoFrame(false)
     , m_playWhenFramesAvailable(false)
+#if HAVE(AVFOUNDATION_TEXT_TRACK_SUPPORT)
+    , m_inbandTrackConfigurationPending(false)
+#endif
 {
     LOG(Media, "MediaPlayerPrivateAVFoundation::MediaPlayerPrivateAVFoundation(%p)", this);
 }
@@ -261,6 +266,14 @@ void MediaPlayerPrivateAVFoundation::seek(float time)
     if (currentTime() == time)
         return;
 
+#if HAVE(AVFOUNDATION_TEXT_TRACK_SUPPORT)
+    // Forget any partially accumulated cue data as the seek could be to a time outside of the cue's
+    // range, which will mean that the next cue delivered will result in the current cue getting the
+    // incorrect duration.
+    if (currentTrack())
+        currentTrack()->resetCueValues();
+#endif
+    
     LOG(Media, "MediaPlayerPrivateAVFoundation::seek(%p) - seeking to %f", this, time);
     m_seekTo = time;
 
@@ -568,7 +581,7 @@ void MediaPlayerPrivateAVFoundation::seekCompleted(bool finished)
 {
     LOG(Media, "MediaPlayerPrivateAVFoundation::seekCompleted(%p) - finished = %d", this, finished);
     UNUSED_PARAM(finished);
-    
+
     m_seekTo = MediaPlayer::invalidTime();
     updateStates();
     m_player->timeChanged();
@@ -784,12 +797,62 @@ void MediaPlayerPrivateAVFoundation::dispatchNotification()
     case Notification::ContentsNeedsDisplay:
         contentsNeedsDisplay();
         break;
+    case Notification::InbandTracksNeedConfiguration:
+#if HAVE(AVFOUNDATION_TEXT_TRACK_SUPPORT)
+        m_inbandTrackConfigurationPending = false;
+        configureInbandTracks();
+#endif
+        break;
 
     case Notification::None:
         ASSERT_NOT_REACHED();
         break;
     }
 }
+
+#if HAVE(AVFOUNDATION_TEXT_TRACK_SUPPORT)
+void MediaPlayerPrivateAVFoundation::flushCurrentCue(InbandTextTrackPrivateAVF* track)
+{
+    if (!track->client())
+        return;
+
+    // AVFoundation returns a cue every time the data is buffered, only add it once.
+    if (track->client()->hasCue(track, track->start(), track->end(), track->id(), track->content(), track->settings())) {
+        LOG(Media, "MediaPlayerPrivateAVFoundation::flushCurrentCue(%p) - already have cue for time %.2f", this, track->start());
+        return;
+    }
+
+    LOG(Media, "MediaPlayerPrivateAVFoundation::flushCurrentCue(%p) - adding cue for time %.2f", this, track->start());
+    track->client()->addCue(track, track->start(), track->end(), track->id(), track->content(), track->settings());
+}
+
+void MediaPlayerPrivateAVFoundation::configureInbandTracks()
+{
+    RefPtr<InbandTextTrackPrivateAVF> trackToEnable;
+
+    // AVFoundation can only emit cues for one track at a time, so enable the first track that is showing, or the first that
+    // is hidden if none are showing. Otherwise disable all tracks.
+    for (unsigned i = 0; i < m_textTracks.size(); ++i) {
+        RefPtr<InbandTextTrackPrivateAVF> track = m_textTracks[i];
+        if (track->mode() == InbandTextTrackPrivate::Showing) {
+            trackToEnable = track;
+            break;
+        }
+        if (track->mode() == InbandTextTrackPrivate::Hidden)
+            trackToEnable = track;
+    }
+
+    setCurrentTrack(trackToEnable.get());
+}
+
+void MediaPlayerPrivateAVFoundation::trackModeChanged()
+{
+    if (m_inbandTrackConfigurationPending)
+        return;
+    m_inbandTrackConfigurationPending = true;
+    scheduleMainThreadNotification(Notification::InbandTracksNeedConfiguration);
+}
+#endif
 
 } // namespace WebCore
 

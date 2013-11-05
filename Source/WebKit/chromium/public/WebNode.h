@@ -31,6 +31,7 @@
 #ifndef WebNode_h
 #define WebNode_h
 
+#include "WebExceptionCode.h"
 #include "platform/WebCommon.h"
 #include "platform/WebPrivatePtr.h"
 #include "platform/WebString.h"
@@ -45,6 +46,7 @@ class WebDocument;
 class WebElement;
 class WebFrame;
 class WebNodeList;
+class WebPluginContainer;
 
 // Provides access to some properties of a DOM node.
 class WebNode {
@@ -111,6 +113,7 @@ public:
     WEBKIT_EXPORT bool dispatchEvent(const WebDOMEvent&);
     WEBKIT_EXPORT void simulateClick();
     WEBKIT_EXPORT WebNodeList getElementsByTagName(const WebString&) const;
+    WEBKIT_EXPORT WebElement querySelector(const WebString&, WebExceptionCode&) const;
     WEBKIT_EXPORT WebElement rootEditableElement() const;
     WEBKIT_EXPORT bool focused() const;
     WEBKIT_EXPORT bool remove();
@@ -119,6 +122,7 @@ public:
     // This does not 100% guarantee the user can see it, but is pretty close.
     // Note: This method only works properly after layout has occurred.
     WEBKIT_EXPORT bool hasNonEmptyBoundingBox() const;
+    WEBKIT_EXPORT WebPluginContainer* pluginContainer() const;
 
     template<typename T> T to()
     {

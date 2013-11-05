@@ -34,37 +34,41 @@
 #include "ScriptController.h"
 #include "V8Binding.h"
 #include "V8DOMWindow.h"
-#include "V8DOMWindowShell.h"
+#include "V8DedicatedWorkerContext.h"
+#include "V8SharedWorkerContext.h"
 
 namespace WebCore {
 
 WorldContextHandle::WorldContextHandle(WorldToUse worldToUse)
     : m_worldToUse(worldToUse)
 {
+    ASSERT(worldToUse != UseWorkerWorld);
+
     if (worldToUse == UseMainWorld || worldToUse == UseWorkerWorld)
         return;
 
+    if (!v8::Context::InContext())
+        CRASH();
+
+    v8::Handle<v8::Context> context = v8::Context::GetCurrent();
 #if ENABLE(WORKERS)
-    // FIXME We are duplicating a lot of effort here checking the context for the worker and for the isolated world.
-    if (v8::Context::InContext()) {
-        v8::Handle<v8::Context> context = v8::Context::GetCurrent();
-        if (!context.IsEmpty()) {
-            if (UNLIKELY(!V8DOMWrapper::isWrapperOfType(toInnerGlobalObject(context), &V8DOMWindow::info))) {
-                m_worldToUse = UseWorkerWorld;
-                return;
-            }
-        }
+    if (UNLIKELY(!V8DOMWrapper::isWrapperOfType(toInnerGlobalObject(context), &V8DOMWindow::info))) {
+#if ENABLE(SHARED_WORKERS)
+        ASSERT(V8DOMWrapper::isWrapperOfType(toInnerGlobalObject(context)->GetPrototype(), &V8DedicatedWorkerContext::info) || V8DOMWrapper::isWrapperOfType(toInnerGlobalObject(context)->GetPrototype(), &V8SharedWorkerContext::info));
+#else
+        ASSERT(V8DOMWrapper::isWrapperOfType(toInnerGlobalObject(context)->GetPrototype(), &V8DedicatedWorkerContext::info));
+#endif
+        m_worldToUse = UseWorkerWorld;
+        return;
     }
 #endif
 
-    V8DOMWindowShell* shell = V8DOMWindowShell::getEntered();
-    if (LIKELY(!shell)) {
-        m_worldToUse = UseMainWorld;
+    if (DOMWrapperWorld::isolated(context)) {
+        m_context = SharedPersistent<v8::Context>::create(context);
         return;
     }
 
-    ASSERT(!shell->context().IsEmpty());
-    m_context = SharedPersistent<v8::Context>::create(shell->context());
+    m_worldToUse = UseMainWorld;
 }
 
 v8::Local<v8::Context> WorldContextHandle::adjustedContext(ScriptController* script) const

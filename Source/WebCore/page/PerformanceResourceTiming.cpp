@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2012 Google Inc. All rights reserved.
+ * Copyright (C) 2012 Intel Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -44,10 +45,44 @@
 
 namespace WebCore {
 
-PerformanceResourceTiming::PerformanceResourceTiming(const ResourceRequest& request, const ResourceResponse& response, double finishTime, Document* requestingDocument)
-    : PerformanceEntry(request.url().string(), "resource", response.resourceLoadTiming()->requestTime, finishTime)
+static double monotonicTimeToDocumentMilliseconds(Document* document, double seconds)
+{
+    ASSERT(seconds >= 0.0);
+    return document->loader()->timing()->monotonicTimeToZeroBasedDocumentTime(seconds) * 1000.0;
+}
+
+static bool passesTimingAllowCheck(const ResourceResponse& response, Document* requestingDocument)
+{
+    AtomicallyInitializedStatic(AtomicString&, timingAllowOrigin = *new AtomicString("timing-allow-origin"));
+
+    RefPtr<SecurityOrigin> resourceOrigin = SecurityOrigin::create(response.url());
+    if (resourceOrigin->isSameSchemeHostPort(requestingDocument->securityOrigin()))
+        return true;
+
+    const String& timingAllowOriginString = response.httpHeaderField(timingAllowOrigin);
+    if (timingAllowOriginString.isEmpty() || equalIgnoringCase(timingAllowOriginString, "null"))
+        return false;
+
+    if (timingAllowOriginString == "*")
+        return true;
+
+    const String& securityOrigin = requestingDocument->securityOrigin()->toString();
+    Vector<String> timingAllowOrigins;
+    timingAllowOriginString.split(" ", timingAllowOrigins);
+    for (size_t i = 0; i < timingAllowOrigins.size(); ++i)
+        if (timingAllowOrigins[i] == securityOrigin)
+            return true;
+
+    return false;
+}
+
+PerformanceResourceTiming::PerformanceResourceTiming(const AtomicString& initiatorType, const ResourceRequest& request, const ResourceResponse& response, double initiationTime, double finishTime, Document* requestingDocument)
+    : PerformanceEntry(request.url().string(), "resource", monotonicTimeToDocumentMilliseconds(requestingDocument, initiationTime), monotonicTimeToDocumentMilliseconds(requestingDocument, finishTime))
+    , m_initiatorType(initiatorType)
     , m_timing(response.resourceLoadTiming())
     , m_finishTime(finishTime)
+    , m_didReuseConnection(response.connectionReused())
+    , m_shouldReportDetails(passesTimingAllowCheck(response, requestingDocument))
     , m_requestingDocument(requestingDocument)
 {
 }
@@ -56,33 +91,38 @@ PerformanceResourceTiming::~PerformanceResourceTiming()
 {
 }
 
-String PerformanceResourceTiming::initiatorType() const
+AtomicString PerformanceResourceTiming::initiatorType() const
 {
-    // FIXME: This should be decided by the resource type.
-    return "other";
+    return m_initiatorType;
 }
-
-// FIXME: Need to enforce same-origin policy on these.
 
 double PerformanceResourceTiming::redirectStart() const
 {
     // FIXME: Need to track and report redirects for resources.
+    if (!m_shouldReportDetails)
+        return 0.0;
     return 0;
 }
 
 double PerformanceResourceTiming::redirectEnd() const
 {
+    if (!m_shouldReportDetails)
+        return 0.0;
     return 0;
 }
 
 double PerformanceResourceTiming::fetchStart() const
 {
-    return monotonicTimeToDocumentMilliseconds(m_timing->requestTime);
+    // FIXME: This should be different depending on redirects.
+    return (startTime());
 }
 
 double PerformanceResourceTiming::domainLookupStart() const
 {
-    if (m_timing->dnsStart < 0)
+    if (!m_shouldReportDetails)
+        return 0.0;
+
+    if (!m_timing || m_timing->dnsStart < 0)
         return fetchStart();
 
     return resourceTimeToDocumentMilliseconds(m_timing->dnsStart);
@@ -90,7 +130,10 @@ double PerformanceResourceTiming::domainLookupStart() const
 
 double PerformanceResourceTiming::domainLookupEnd() const
 {
-    if (m_timing->dnsEnd < 0)
+    if (!m_shouldReportDetails)
+        return 0.0;
+
+    if (!m_timing || m_timing->dnsEnd < 0)
         return domainLookupStart();
 
     return resourceTimeToDocumentMilliseconds(m_timing->dnsEnd);
@@ -98,7 +141,11 @@ double PerformanceResourceTiming::domainLookupEnd() const
 
 double PerformanceResourceTiming::connectStart() const
 {
-    if (m_timing->connectStart < 0) // Connection was reused.
+    if (!m_shouldReportDetails)
+        return 0.0;
+
+    // connectStart will be -1 when a network request is not made.
+    if (!m_timing || m_timing->connectStart < 0 || m_didReuseConnection)
         return domainLookupEnd();
 
     // connectStart includes any DNS time, so we may need to trim that off.
@@ -111,7 +158,11 @@ double PerformanceResourceTiming::connectStart() const
 
 double PerformanceResourceTiming::connectEnd() const
 {
-    if (m_timing->connectEnd < 0) // Connection was reused.
+    if (!m_shouldReportDetails)
+        return 0.0;
+
+    // connectStart will be -1 when a network request is not made.
+    if (!m_timing || m_timing->connectEnd < 0 || m_didReuseConnection)
         return connectStart();
 
     return resourceTimeToDocumentMilliseconds(m_timing->connectEnd);
@@ -119,37 +170,50 @@ double PerformanceResourceTiming::connectEnd() const
 
 double PerformanceResourceTiming::secureConnectionStart() const
 {
-    if (m_timing->sslStart < 0) // Secure connection not negotiated.
-        return 0;
+    if (!m_shouldReportDetails)
+        return 0.0;
+
+    if (!m_timing || m_timing->sslStart < 0) // Secure connection not negotiated.
+        return 0.0;
 
     return resourceTimeToDocumentMilliseconds(m_timing->sslStart);
 }
 
 double PerformanceResourceTiming::requestStart() const
 {
+    if (!m_shouldReportDetails)
+        return 0.0;
+
+    if (!m_timing)
+        return connectEnd();
+
     return resourceTimeToDocumentMilliseconds(m_timing->sendStart);
 }
 
 double PerformanceResourceTiming::responseStart() const
 {
+    if (!m_shouldReportDetails)
+        return 0.0;
+
+    if (!m_timing)
+        return requestStart();
     // FIXME: This number isn't exactly correct. See the notes in PerformanceTiming::responseStart().
     return resourceTimeToDocumentMilliseconds(m_timing->receiveHeadersEnd);
 }
 
 double PerformanceResourceTiming::responseEnd() const
 {
-    return monotonicTimeToDocumentMilliseconds(m_finishTime);
-}
+    if (!m_finishTime)
+        return responseStart();
 
-double PerformanceResourceTiming::monotonicTimeToDocumentMilliseconds(double seconds) const
-{
-    ASSERT(seconds >= 0.0);
-    return m_requestingDocument->loader()->timing()->convertMonotonicTimeToDocumentTime(seconds) * 1000.0;
+    return monotonicTimeToDocumentMilliseconds(m_requestingDocument.get(), m_finishTime);
 }
 
 double PerformanceResourceTiming::resourceTimeToDocumentMilliseconds(int deltaMilliseconds) const
 {
-    return monotonicTimeToDocumentMilliseconds(m_timing->requestTime) + deltaMilliseconds;
+    if (!deltaMilliseconds)
+        return 0.0;
+    return monotonicTimeToDocumentMilliseconds(m_requestingDocument.get(), m_timing->requestTime) + deltaMilliseconds;
 }
 
 } // namespace WebCore

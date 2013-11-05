@@ -31,7 +31,7 @@
 #include "config.h"
 #include "RuntimeEnabledFeatures.h"
 
-#include "AbstractDatabase.h"
+#include "DatabaseManager.h"
 #include "MediaPlayer.h"
 #include "SharedWorkerRepository.h"
 #include "WebSocket.h"
@@ -55,6 +55,7 @@ bool RuntimeEnabledFeatures::isDeviceMotionEnabled = true;
 bool RuntimeEnabledFeatures::isDeviceOrientationEnabled = true;
 bool RuntimeEnabledFeatures::isSpeechInputEnabled = true;
 bool RuntimeEnabledFeatures::isCSSExclusionsEnabled = false;
+bool RuntimeEnabledFeatures::isCSSRegionsEnabled = false;
 bool RuntimeEnabledFeatures::isLangAttributeAwareFormControlUIEnabled = false;
 
 #if ENABLE(SCRIPTED_SPEECH)
@@ -149,12 +150,12 @@ bool RuntimeEnabledFeatures::webSocketEnabled()
 #if ENABLE(SQL_DATABASE)
 bool RuntimeEnabledFeatures::openDatabaseEnabled()
 {
-    return AbstractDatabase::isAvailable();
+    return DatabaseManager::manager().isAvailable();
 }
 
 bool RuntimeEnabledFeatures::openDatabaseSyncEnabled()
 {
-    return AbstractDatabase::isAvailable();
+    return DatabaseManager::manager().isAvailable();
 }
 #endif
 
@@ -171,7 +172,7 @@ bool RuntimeEnabledFeatures::isMediaSourceEnabled = false;
 #endif
 
 #if ENABLE(VIDEO_TRACK)
-#if PLATFORM(MAC) || PLATFORM(GTK) || PLATFORM(EFL) || PLATFORM(CHROMIUM) || PLATFORM(BLACKBERRY)
+#if PLATFORM(MAC) || PLATFORM(GTK) || PLATFORM(EFL) || PLATFORM(CHROMIUM) || PLATFORM(BLACKBERRY) || PLATFORM(WIN)
     bool RuntimeEnabledFeatures::isVideoTrackEnabled = true;
 #else
     bool RuntimeEnabledFeatures::isVideoTrackEnabled = false;
@@ -205,11 +206,7 @@ bool RuntimeEnabledFeatures::isInputTypeDateTimeEnabled = true;
 #endif
 
 #if ENABLE(INPUT_TYPE_DATETIMELOCAL)
-#if PLATFORM(CHROMIUM) && !OS(ANDROID)
-bool RuntimeEnabledFeatures::isInputTypeDateTimeLocalEnabled = false;
-#else
 bool RuntimeEnabledFeatures::isInputTypeDateTimeLocalEnabled = true;
-#endif
 #endif
 
 #if ENABLE(INPUT_TYPE_MONTH)
@@ -230,6 +227,14 @@ bool RuntimeEnabledFeatures::isDialogElementEnabled = false;
 
 #if ENABLE(REQUEST_AUTOCOMPLETE)
 bool RuntimeEnabledFeatures::isRequestAutocompleteEnabled = false;
+#endif
+
+#if ENABLE(CSP_NEXT)
+bool RuntimeEnabledFeatures::areExperimentalContentSecurityPolicyFeaturesEnabled = false;
+#endif
+
+#if ENABLE(WEB_INTENTS)
+bool RuntimeEnabledFeatures::isWebIntentsEnabled = true;
 #endif
 
 } // namespace WebCore

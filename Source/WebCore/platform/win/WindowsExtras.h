@@ -26,12 +26,28 @@
 #define WindowsExtras_h
 
 #include <windows.h>
+#include <objbase.h>
+#include <shlwapi.h>
 
 namespace WebCore {
 
 #ifndef HWND_MESSAGE
 const HWND HWND_MESSAGE = 0;
 #endif
+
+inline HRESULT getRegistryValue(HKEY hkey, LPCWSTR pszSubKey, LPCWSTR pszValue, LPDWORD pdwType, LPVOID pvData, LPDWORD pcbData)
+{
+#if OS(WINCE)
+    HKEY key;
+    if (::RegOpenKeyExW(hkey, pszSubKey, 0, 0, &key) != ERROR_SUCCESS)
+        return ERROR_INVALID_NAME;
+    HRESULT result = ::RegQueryValueExW(key, pszValue, 0, pdwType, static_cast<LPBYTE>(pvData), pcbData);
+    ::RegCloseKey(key);
+    return result;
+#else
+    return ::SHGetValueW(hkey, pszSubKey, pszValue, pdwType, pvData, pcbData);
+#endif
+}
 
 inline void* getWindowPointer(HWND hWnd, int index)
 {

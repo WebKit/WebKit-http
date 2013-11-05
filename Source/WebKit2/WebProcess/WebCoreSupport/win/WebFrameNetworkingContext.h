@@ -23,6 +23,7 @@
 #include "WebFrame.h"
 
 #include <WebCore/FrameNetworkingContext.h>
+#include <WebCore/NotImplemented.h>
 #include <WebCore/ResourceError.h>
 #include <WebCore/ResourceRequest.h>
 
@@ -39,11 +40,16 @@ private:
     {
     }
 
-    virtual WTF::String userAgent() const;
-    virtual WTF::String referrer() const;
+    virtual String userAgent() const;
+    virtual String referrer() const;
     virtual WebCore::ResourceError blockedError(const WebCore::ResourceRequest&) const;
 
-    WTF::String m_userAgent;
+#if USE(CFNETWORK)
+    virtual bool inPrivateBrowsingMode() const;
+    virtual CFURLStorageSessionRef storageSession() const;
+#endif
+
+    String m_userAgent;
 };
 
 #endif // WebFrameNetworkingContext_h

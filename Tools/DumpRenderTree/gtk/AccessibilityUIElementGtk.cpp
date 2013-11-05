@@ -37,6 +37,19 @@
 #include <wtf/text/WTFString.h>
 #include <wtf/unicode/CharacterNames.h>
 
+static String coreAttributeToAtkAttribute(JSStringRef attribute)
+{
+    size_t bufferSize = JSStringGetMaximumUTF8CStringSize(attribute);
+    GOwnPtr<gchar> buffer(static_cast<gchar*>(g_malloc(bufferSize)));
+    JSStringGetUTF8CString(attribute, buffer.get(), bufferSize);
+
+    String attributeString = String::fromUTF8(buffer.get());
+    if (attributeString == "AXPlaceholderValue")
+        return "placeholder-text";
+
+    return "";
+}
+
 static inline String roleToString(AtkRole role)
 {
     switch (role) {
@@ -240,8 +253,10 @@ int AccessibilityUIElement::childrenCount()
 
 AccessibilityUIElement AccessibilityUIElement::elementAtPoint(int x, int y)
 {
-    // FIXME: implement
-    return 0;
+    if (!m_element)
+        return 0;
+
+    return AccessibilityUIElement(atk_component_ref_accessible_at_point(ATK_COMPONENT(m_element), x, y, ATK_XY_WINDOW));
 }
 
 AccessibilityUIElement AccessibilityUIElement::linkedUIElementAtIndex(unsigned index)
@@ -305,7 +320,6 @@ JSStringRef AccessibilityUIElement::attributesOfDocumentLinks()
 
 AccessibilityUIElement AccessibilityUIElement::titleUIElement()
 {
-
     if (!m_element)
         return 0;
 
@@ -322,9 +336,9 @@ AccessibilityUIElement AccessibilityUIElement::titleUIElement()
             if (targetList->len)
                 target = static_cast<AtkObject*>(g_ptr_array_index(targetList, 0));
         }
-        g_object_unref(set);
     }
 
+    g_object_unref(set);
     return target ? AccessibilityUIElement(target) : 0;
 }
 
@@ -409,7 +423,23 @@ JSStringRef AccessibilityUIElement::stringValue()
 
 JSStringRef AccessibilityUIElement::language()
 {
-    // FIXME: implement
+    if (!m_element)
+        return JSStringCreateWithCharacters(0, 0);
+
+    // In ATK, the document language is exposed as the document's locale.
+    if (atk_object_get_role(ATK_OBJECT(m_element)) == ATK_ROLE_DOCUMENT_FRAME)
+        return JSStringCreateWithUTF8CString(g_strdup_printf("AXLanguage: %s", atk_document_get_locale(ATK_DOCUMENT(m_element))));
+
+    // For all other objects, the language is exposed as an AtkText attribute.
+    if (!ATK_IS_TEXT(m_element))
+        return JSStringCreateWithCharacters(0, 0);
+
+    for (GSList* textAttributes = atk_text_get_default_attributes(ATK_TEXT(m_element)); textAttributes; textAttributes = textAttributes->next) {
+        AtkAttribute* atkAttribute = static_cast<AtkAttribute*>(textAttributes->data);
+        if (!strcmp(atkAttribute->name, atk_text_attribute_get_name(ATK_TEXT_ATTR_LANGUAGE)))
+            return JSStringCreateWithUTF8CString(g_strdup_printf("AXLanguage: %s", atkAttribute->value));
+    }
+
     return JSStringCreateWithCharacters(0, 0);
 }
 
@@ -463,11 +493,13 @@ double AccessibilityUIElement::height()
 
 double AccessibilityUIElement::clickPointX()
 {
+    // Note: This is not something we have in ATK.
     return 0.f;
 }
 
 double AccessibilityUIElement::clickPointY()
 {
+    // Note: This is not something we have in ATK.
     return 0.f;
 }
 
@@ -542,7 +574,19 @@ int AccessibilityUIElement::insertionPointLineNumber()
     return 0;
 }
 
-bool AccessibilityUIElement::isActionSupported(JSStringRef action)
+bool AccessibilityUIElement::isPressActionSupported()
+{
+    // FIXME: implement
+    return false;
+}
+
+bool AccessibilityUIElement::isIncrementActionSupported()
+{
+    // FIXME: implement
+    return false;
+}
+
+bool AccessibilityUIElement::isDecrementActionSupported()
 {
     // FIXME: implement
     return false;
@@ -762,7 +806,19 @@ void AccessibilityUIElement::setSelectedTextRange(unsigned location, unsigned le
 
 JSStringRef AccessibilityUIElement::stringAttributeValue(JSStringRef attribute)
 {
-    // FIXME: implement
+    if (!m_element)
+        return JSStringCreateWithCharacters(0, 0);
+
+    String atkAttributeName = coreAttributeToAtkAttribute(attribute);
+    if (atkAttributeName.isEmpty())
+        return JSStringCreateWithCharacters(0, 0);
+
+    for (GSList* atkAttributes = atk_object_get_attributes(ATK_OBJECT(m_element)); atkAttributes; atkAttributes = atkAttributes->next) {
+        AtkAttribute* atkAttribute = static_cast<AtkAttribute*>(atkAttributes->data);
+        if (!strcmp(atkAttribute->name, atkAttributeName.utf8().data()))
+            return JSStringCreateWithUTF8CString(atkAttribute->value);
+    }
+
     return JSStringCreateWithCharacters(0, 0);
 }
 
@@ -926,14 +982,12 @@ bool AccessibilityUIElement::isFocusable() const
 
 bool AccessibilityUIElement::isSelectable() const
 {
-    // FIXME: implement
-    return false;
+    return checkElementState(m_element, ATK_STATE_SELECTABLE);
 }
 
 bool AccessibilityUIElement::isMultiSelectable() const
 {
-    // FIXME: implement
-    return false;
+    return checkElementState(m_element, ATK_STATE_MULTISELECTABLE);
 }
 
 bool AccessibilityUIElement::isSelectedOptionActive() const

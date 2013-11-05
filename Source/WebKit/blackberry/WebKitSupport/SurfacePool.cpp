@@ -55,13 +55,17 @@ SurfacePool* SurfacePool::globalSurfacePool()
 }
 
 SurfacePool::SurfacePool()
-    : m_visibleTileBuffer(0)
+    : m_numberOfFrontBuffers(0)
     , m_tileRenderingSurface(0)
-    , m_backBuffer(0)
     , m_initialized(false)
     , m_buffersSuspended(false)
     , m_hasFenceExtension(false)
 {
+}
+
+int SurfacePool::numberOfBackingStoreFrontBuffers() const
+{
+    return m_numberOfFrontBuffers;
 }
 
 void SurfacePool::initialize(const Platform::IntSize& tileSize)
@@ -70,28 +74,32 @@ void SurfacePool::initialize(const Platform::IntSize& tileSize)
         return;
     m_initialized = true;
 
-    const unsigned numberOfTiles = Platform::Settings::instance()->numberOfBackingStoreTiles();
+    m_numberOfFrontBuffers = Platform::Settings::instance()->numberOfBackingStoreFrontBuffers();
     const unsigned maxNumberOfTiles = Platform::Settings::instance()->maximumNumberOfBackingStoreTilesAcrossProcesses();
 
-    if (numberOfTiles) { // Only allocate if we actually use a backingstore.
-        unsigned byteLimit = (maxNumberOfTiles /*pool*/ + 2 /*visible tile buffer, backbuffer*/) * tileSize.width() * tileSize.height() * 4;
+    if (m_numberOfFrontBuffers) { // Only allocate if we actually use a backingstore.
+        unsigned byteLimit = maxNumberOfTiles * tileSize.width() * tileSize.height() * 4;
         bool success = Platform::Graphics::createPixmapGroup(SHARED_PIXMAP_GROUP, byteLimit);
         if (!success) {
-            BBLOG(Platform::LogLevelWarn,
+            Platform::logAlways(Platform::LogLevelWarn,
                 "Shared buffer pool could not be set up, using regular memory allocation instead.");
         }
     }
 
     m_tileRenderingSurface = Platform::Graphics::drawingSurface();
 
-    if (!numberOfTiles)
+    if (!m_numberOfFrontBuffers)
         return; // we only use direct rendering when 0 tiles are specified.
 
-    // Create the shared backbuffer.
-    m_backBuffer = reinterpret_cast<unsigned>(new TileBuffer(tileSize));
+    const unsigned numberOfBackBuffers = Platform::Settings::instance()->numberOfBackingStoreBackBuffers();
+    const unsigned numberOfPoolTiles = m_numberOfFrontBuffers + numberOfBackBuffers; // back buffer
 
-    for (size_t i = 0; i < numberOfTiles; ++i)
-        m_tilePool.append(BackingStoreTile::create(tileSize, BackingStoreTile::DoubleBuffered));
+    for (size_t i = 0; i < numberOfPoolTiles; ++i)
+        m_tileBufferPool.append(new TileBuffer(tileSize));
+
+    // All buffers not used as front buffers are used as back buffers.
+    // Initially, that's all of them.
+    m_availableBackBufferPool = m_tileBufferPool;
 
 #if BLACKBERRY_PLATFORM_GRAPHICS_EGL
     const char* extensions = eglQueryString(Platform::Graphics::eglDisplay(), EGL_EXTENSIONS);
@@ -137,18 +145,33 @@ void SurfacePool::releaseTileRenderingSurface(PlatformGraphicsContext* context) 
     Platform::Graphics::releaseBufferDrawable(m_tileRenderingSurface);
 }
 
-void SurfacePool::initializeVisibleTileBuffer(const Platform::IntSize& visibleSize)
+unsigned SurfacePool::numberOfAvailableBackBuffers() const
 {
-    if (!m_visibleTileBuffer || m_visibleTileBuffer->size() != visibleSize) {
-        delete m_visibleTileBuffer;
-        m_visibleTileBuffer = BackingStoreTile::create(visibleSize, BackingStoreTile::SingleBuffered);
-    }
+    return m_availableBackBufferPool.size();
 }
 
-TileBuffer* SurfacePool::backBuffer() const
+TileBuffer* SurfacePool::takeBackBuffer()
 {
-    ASSERT(m_backBuffer);
-    return reinterpret_cast<TileBuffer*>(m_backBuffer);
+    ASSERT(!m_availableBackBufferPool.isEmpty());
+    if (m_availableBackBufferPool.isEmpty())
+        return 0;
+
+    TileBuffer* buffer = m_availableBackBufferPool.first();
+
+    // Reorder so we get FIFO semantics. Should minimize fence waiting times.
+    for (unsigned i = 0; i < m_availableBackBufferPool.size() - 1; ++i)
+        m_availableBackBufferPool[i] = m_availableBackBufferPool[i + 1];
+    m_availableBackBufferPool.removeLast();
+
+    ASSERT(buffer);
+    return buffer;
+}
+
+void SurfacePool::addBackBuffer(TileBuffer* tileBuffer)
+{
+    ASSERT(tileBuffer);
+    tileBuffer->clearRenderedRegion();
+    m_availableBackBufferPool.append(tileBuffer);
 }
 
 const char *SurfacePool::sharedPixmapGroup() const
@@ -158,51 +181,33 @@ const char *SurfacePool::sharedPixmapGroup() const
 
 void SurfacePool::createBuffers()
 {
-    if (!m_initialized || m_tilePool.isEmpty() || !m_buffersSuspended)
+    if (!m_initialized || m_tileBufferPool.isEmpty() || !m_buffersSuspended)
         return;
 
     // Create the tile pool.
-    for (size_t i = 0; i < m_tilePool.size(); ++i) {
-        if (m_tilePool[i]->frontBuffer()->wasNativeBufferCreated())
-            Platform::Graphics::createPixmapBuffer(m_tilePool[i]->frontBuffer()->nativeBuffer());
+    for (size_t i = 0; i < m_tileBufferPool.size(); ++i) {
+        if (m_tileBufferPool[i]->wasNativeBufferCreated())
+            Platform::Graphics::createPixmapBuffer(m_tileBufferPool[i]->nativeBuffer());
     }
-
-    if (m_visibleTileBuffer && m_visibleTileBuffer->frontBuffer()->wasNativeBufferCreated())
-        Platform::Graphics::createPixmapBuffer(m_visibleTileBuffer->frontBuffer()->nativeBuffer());
-
-    if (backBuffer() && backBuffer()->wasNativeBufferCreated())
-        Platform::Graphics::createPixmapBuffer(backBuffer()->nativeBuffer());
 
     m_buffersSuspended = false;
 }
 
 void SurfacePool::releaseBuffers()
 {
-    if (!m_initialized || m_tilePool.isEmpty() || m_buffersSuspended)
+    if (!m_initialized || m_tileBufferPool.isEmpty() || m_buffersSuspended)
         return;
 
     m_buffersSuspended = true;
 
     // Release the tile pool.
-    for (size_t i = 0; i < m_tilePool.size(); ++i) {
-        if (!m_tilePool[i]->frontBuffer()->wasNativeBufferCreated())
+    for (size_t i = 0; i < m_tileBufferPool.size(); ++i) {
+        if (!m_tileBufferPool[i]->wasNativeBufferCreated())
             continue;
-        m_tilePool[i]->frontBuffer()->clearRenderedRegion();
+        m_tileBufferPool[i]->clearRenderedRegion();
         // Clear the buffer to prevent accidental leakage of (possibly sensitive) pixel data.
-        Platform::Graphics::clearBuffer(m_tilePool[i]->frontBuffer()->nativeBuffer(), 0, 0, 0, 0);
-        Platform::Graphics::destroyPixmapBuffer(m_tilePool[i]->frontBuffer()->nativeBuffer());
-    }
-
-    if (m_visibleTileBuffer && m_visibleTileBuffer->frontBuffer()->wasNativeBufferCreated()) {
-        m_visibleTileBuffer->frontBuffer()->clearRenderedRegion();
-        Platform::Graphics::clearBuffer(m_visibleTileBuffer->frontBuffer()->nativeBuffer(), 0, 0, 0, 0);
-        Platform::Graphics::destroyPixmapBuffer(m_visibleTileBuffer->frontBuffer()->nativeBuffer());
-    }
-
-    if (backBuffer() && backBuffer()->wasNativeBufferCreated()) {
-        backBuffer()->clearRenderedRegion();
-        Platform::Graphics::clearBuffer(backBuffer()->nativeBuffer(), 0, 0, 0, 0);
-        Platform::Graphics::destroyPixmapBuffer(backBuffer()->nativeBuffer());
+        Platform::Graphics::clearBuffer(m_tileBufferPool[i]->nativeBuffer(), 0, 0, 0, 0);
+        Platform::Graphics::destroyPixmapBuffer(m_tileBufferPool[i]->nativeBuffer());
     }
 
     Platform::userInterfaceThreadMessageClient()->dispatchSyncMessage(
@@ -237,7 +242,7 @@ void SurfacePool::waitForBuffer(TileBuffer* tileBuffer)
 #endif
 }
 
-void SurfacePool::notifyBuffersComposited(const Vector<TileBuffer*>& tileBuffers)
+void SurfacePool::notifyBuffersComposited(const TileBufferList& tileBuffers)
 {
     if (!m_hasFenceExtension)
         return;

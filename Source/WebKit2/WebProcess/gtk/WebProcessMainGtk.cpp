@@ -55,7 +55,6 @@ WK_EXPORT int WebProcessMainGtk(int argc, char* argv[])
 #endif
 
     gtk_init(&argc, &argv);
-    g_type_init();
 
     JSC::initializeThreading();
     WTF::initializeMainThread();
@@ -75,9 +74,6 @@ WK_EXPORT int WebProcessMainGtk(int argc, char* argv[])
     GRefPtr<SoupCache> soupCache = adoptGRef(soup_cache_new(soupCacheDirectory.get(), SOUP_CACHE_SINGLE_USER));
     soup_session_add_feature(session, SOUP_SESSION_FEATURE(soupCache.get()));
     soup_cache_load(soupCache.get());
-
-    // This is for compatibility, it will be removed when UI process can handle SSL errors.
-    WebCore::ResourceHandle::setIgnoreSSLErrors(true);
 
     RunLoop::run();
 

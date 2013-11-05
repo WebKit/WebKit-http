@@ -144,9 +144,21 @@ void PageGroup::clearLocalStorageForOrigin(SecurityOrigin* origin)
     for (PageGroupMap::iterator it = pageGroups->begin(); it != end; ++it) {
         if (it->value->hasLocalStorage())
             it->value->localStorage()->clearOriginForDeletion(origin);
-    }    
+    }
 }
-    
+
+void PageGroup::closeIdleLocalStorageDatabases()
+{
+    if (!pageGroups)
+        return;
+
+    PageGroupMap::iterator end = pageGroups->end();
+    for (PageGroupMap::iterator it = pageGroups->begin(); it != end; ++it) {
+        if (it->value->hasLocalStorage())
+            it->value->localStorage()->closeIdleLocalStorageDatabases();
+    }
+}
+
 void PageGroup::syncLocalStorage()
 {
     if (!pageGroups)
@@ -301,7 +313,7 @@ void PageGroup::addUserStyleSheetToWorld(DOMWrapperWorld* world, const String& s
     styleSheetsInWorld->append(userStyleSheet.release());
 
     if (injectionTime == InjectInExistingDocuments)
-        resetUserStyleCacheInAllFrames();
+        invalidatedInjectedStyleSheetCacheInAllFrames();
 }
 
 void PageGroup::removeUserScriptFromWorld(DOMWrapperWorld* world, const KURL& url)
@@ -351,7 +363,7 @@ void PageGroup::removeUserStyleSheetFromWorld(DOMWrapperWorld* world, const KURL
     if (stylesheets->isEmpty())
         m_userStyleSheets->remove(it);
 
-    resetUserStyleCacheInAllFrames();
+    invalidatedInjectedStyleSheetCacheInAllFrames();
 }
 
 void PageGroup::removeUserScriptsFromWorld(DOMWrapperWorld* world)
@@ -381,7 +393,7 @@ void PageGroup::removeUserStyleSheetsFromWorld(DOMWrapperWorld* world)
     
     m_userStyleSheets->remove(it);
 
-    resetUserStyleCacheInAllFrames();
+    invalidatedInjectedStyleSheetCacheInAllFrames();
 }
 
 void PageGroup::removeAllUserContent()
@@ -390,17 +402,17 @@ void PageGroup::removeAllUserContent()
 
     if (m_userStyleSheets) {
         m_userStyleSheets.clear();
-        resetUserStyleCacheInAllFrames();
+        invalidatedInjectedStyleSheetCacheInAllFrames();
     }
 }
 
-void PageGroup::resetUserStyleCacheInAllFrames()
+void PageGroup::invalidatedInjectedStyleSheetCacheInAllFrames()
 {
     // Clear our cached sheets and have them just reparse.
     HashSet<Page*>::const_iterator end = m_pages.end();
     for (HashSet<Page*>::const_iterator it = m_pages.begin(); it != end; ++it) {
         for (Frame* frame = (*it)->mainFrame(); frame; frame = frame->tree()->traverseNext())
-            frame->document()->styleSheetCollection()->updatePageGroupUserSheets();
+            frame->document()->styleSheetCollection()->invalidateInjectedStyleSheetCache();
     }
 }
 

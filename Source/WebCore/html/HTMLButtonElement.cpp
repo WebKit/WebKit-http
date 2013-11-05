@@ -99,18 +99,18 @@ bool HTMLButtonElement::isPresentationAttribute(const QualifiedName& name) const
     return HTMLFormControlElement::isPresentationAttribute(name);
 }
 
-void HTMLButtonElement::parseAttribute(const Attribute& attribute)
+void HTMLButtonElement::parseAttribute(const QualifiedName& name, const AtomicString& value)
 {
-    if (attribute.name() == typeAttr) {
-        if (equalIgnoringCase(attribute.value(), "reset"))
+    if (name == typeAttr) {
+        if (equalIgnoringCase(value, "reset"))
             m_type = RESET;
-        else if (equalIgnoringCase(attribute.value(), "button"))
+        else if (equalIgnoringCase(value, "button"))
             m_type = BUTTON;
         else
             m_type = SUBMIT;
         setNeedsWillValidateCheck();
     } else
-        HTMLFormControlElement::parseAttribute(attribute);
+        HTMLFormControlElement::parseAttribute(name, value);
 }
 
 void HTMLButtonElement::defaultEventHandler(Event* event)
@@ -192,8 +192,8 @@ bool HTMLButtonElement::appendFormData(FormDataList& formData, bool)
 void HTMLButtonElement::accessKeyAction(bool sendMouseEvents)
 {
     focus();
-    // Send the mouse button events if the caller specified sendMouseEvents
-    dispatchSimulatedClick(0, sendMouseEvents);
+
+    dispatchSimulatedClick(0, sendMouseEvents ? SendMouseUpDownEvents : SendNoEvents);
 }
 
 bool HTMLButtonElement::isURLAttribute(const Attribute& attribute) const

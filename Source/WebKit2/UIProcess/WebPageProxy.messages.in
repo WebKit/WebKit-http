@@ -205,7 +205,9 @@ messages -> WebPageProxy {
 #if PLATFORM(WIN)
     DidChangeCompositionSelection(bool hasChanged)
 #endif
-
+#if PLATFORM(QT)
+    WillSetInputMethodState()
+#endif
     # Find messages
     DidCountStringMatches(WTF::String string, uint32_t matchCount)
     SetFindIndicator(WebCore::FloatRect selectionRect, Vector<WebCore::FloatRect> textRects, float contentImageScaleFactor, WebKit::ShareableBitmap::Handle contentImageHandle, bool fadeOut, bool animate)
@@ -271,7 +273,7 @@ messages -> WebPageProxy {
 
 #if PLATFORM(MAC)
     # Dictionary support.
-    DidPerformDictionaryLookup(WTF::String text, WebKit::DictionaryPopupInfo dictionaryPopupInfo)
+    DidPerformDictionaryLookup(WebKit::AttributedString text, WebKit::DictionaryPopupInfo dictionaryPopupInfo)
 
     # Keyboard input support messages
     InterpretQueuedKeyEvent(WebKit::EditorState state) -> (bool handled, Vector<WebCore::KeypressCommand> savedCommands)
@@ -298,7 +300,7 @@ messages -> WebPageProxy {
 #if PLATFORM(MAC)
     SubstitutionsPanelIsShowing() -> (bool isShowing)
 #endif
-#if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 1070
+#if PLATFORM(MAC)
     # Autocorrection messages
     ShowCorrectionPanel(int32_t panelType, WebCore::FloatRect boundingBoxOfReplacedString, String replacedString, String replacementString, Vector<String> alternativeReplacementStrings)
     DismissCorrectionPanel(int32_t reason)
@@ -337,4 +339,9 @@ messages -> WebPageProxy {
 #endif
 
     SavePDFToFileInDownloadsFolder(WTF::String suggestedFilename, WTF::String originatingURLString, CoreIPC::DataReference data)
+
+#if PLATFORM(MAC)
+    SavePDFToTemporaryFolderAndOpenWithNativeApplication(WTF::String suggestedFilename, WTF::String originatingURLString, CoreIPC::DataReference data, WTF::String pdfUUID)
+    OpenPDFFromTemporaryFolderWithNativeApplication(WTF::String pdfUUID)
+#endif
 }

@@ -89,6 +89,8 @@ fast/js/dfg-array-push-bad-time
 fast/js/dfg-array-push-slow-put
 fast/js/dfg-bool-to-int32-reuse
 fast/js/dfg-branch-not-fail
+fast/js/dfg-cfg-simplify-phantom-get-local-on-same-block-set-local
+fast/js/dfg-cfg-simplify-redundant-dead-get-local
 fast/js/dfg-check-two-structures
 fast/js/dfg-constant-fold-first-local-read-after-block-merge
 fast/js/dfg-convert-this-dom-window
@@ -101,6 +103,8 @@ fast/js/dfg-dead-speculation
 fast/js/dfg-dead-variable-on-exit
 fast/js/dfg-double-use-of-post-simplification-double-prediction
 fast/js/dfg-double-vote-fuzz
+fast/js/dfg-ensure-array-storage-on-string
+fast/js/dfg-ensure-contiguous-on-string
 fast/js/dfg-exception
 fast/js/dfg-float32array
 fast/js/dfg-float64array
@@ -131,6 +135,8 @@ fast/js/dfg-inline-new-array-buffer
 fast/js/dfg-inline-unused-this-method-check
 fast/js/dfg-inline-unused-this
 fast/js/dfg-inlining-reg-alloc
+fast/js/dfg-int-overflow-in-loop
+fast/js/dfg-int-overflow-large-constants-in-a-line
 fast/js/dfg-int16array
 fast/js/dfg-int32-to-double-on-known-number
 fast/js/dfg-int32array-overflow-values
@@ -138,6 +144,7 @@ fast/js/dfg-int32array
 fast/js/dfg-int8array
 fast/js/dfg-integer-optimization
 fast/js/dfg-intrinsic-osr-exit
+fast/js/dfg-intrinsic-side-effect-assignment-osr-exit
 fast/js/dfg-intrinsic-unused-this-method-check
 fast/js/dfg-intrinsic-unused-this
 fast/js/dfg-min-max
@@ -154,8 +161,10 @@ fast/js/dfg-other-branch
 fast/js/dfg-poison-fuzz
 fast/js/dfg-proto-access-inline-osr-exit
 fast/js/dfg-put-by-id-prototype-check
+fast/js/dfg-put-scoped-var-backward-flow
 fast/js/dfg-putbyval-cfa-clobber
 fast/js/dfg-redundant-load-of-captured-variable-proven-constant
+fast/js/dfg-side-effect-assignment-osr-exit
 fast/js/dfg-string-stricteq
 fast/js/dfg-tear-off-arguments-not-activation
 fast/js/dfg-uint16array
@@ -336,6 +345,7 @@ fast/js/toString-for-var-decl
 fast/js/toString-number-dot-expr
 fast/js/toString-prefix-postfix-preserve-parens
 fast/js/toString-recursion
+fast/js/try-catch-try-try-catch-try-finally-return-catch-finally
 fast/js/try-try-return-finally-finally
 fast/js/typeof-codegen-crash
 fast/js/typeof-constant-string

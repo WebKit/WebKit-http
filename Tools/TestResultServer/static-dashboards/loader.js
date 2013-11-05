@@ -71,11 +71,6 @@ loader.Loader.prototype = {
     {
         this._loadNext();
     },
-    buildersListLoaded: function()
-    {
-        initBuilders();
-        this._loadNext();
-    },
     _loadNext: function()
     {
         var loadingStep = this._loadingSteps.shift();
@@ -88,12 +83,14 @@ loader.Loader.prototype = {
     _loadBuildersList: function()
     {
         loadBuildersList(g_crossDashboardState.group, g_crossDashboardState.testType);
+        initBuilders();
+        this._loadNext();
     },
     _loadResultsFiles: function()
     {
         parseParameters();
 
-        for (var builderName in g_builders)
+        for (var builderName in currentBuilders())
             this._loadResultsFileForBuilder(builderName);
     },
     _loadResultsFileForBuilder: function(builderName)
@@ -163,25 +160,19 @@ loader.Loader.prototype = {
     },
     _handleResultsFileLoadError: function(builderName)
     {
-        var error = 'Failed to load results file for ' + builderName + '.';
+        console.error('Failed to load results file for ' + builderName + '.');
 
-        if (isLayoutTestResults()) {
-            console.error(error);
-            g_buildersThatFailedToLoad.push(builderName);
-        } else {
-            // Avoid to show error/warning messages for non-layout tests. We may be
-            // checking the builders that are not running the tests.
-            console.info('info:' + error);
-        }
+        // FIXME: loader shouldn't depend on state defined in dashboard_base.js.
+        g_buildersThatFailedToLoad.push(builderName);
 
         // Remove this builder from builders, so we don't try to use the
         // data that isn't there.
-        delete g_builders[builderName];
+        delete currentBuilders()[builderName];
 
         // Change the default builder name if it has been deleted.
         if (g_defaultBuilderName == builderName) {
             g_defaultBuilderName = null;
-            for (var availableBuilderName in g_builders) {
+            for (var availableBuilderName in currentBuilders()) {
                 g_defaultBuilderName = availableBuilderName;
                 g_defaultDashboardSpecificStateValues.builder = availableBuilderName;
                 break;
@@ -203,7 +194,7 @@ loader.Loader.prototype = {
     },
     _haveResultsFilesLoaded: function()
     {
-        for (var builder in g_builders) {
+        for (var builder in currentBuilders()) {
             if (!g_resultsByBuilder[builder])
                 return false;
         }

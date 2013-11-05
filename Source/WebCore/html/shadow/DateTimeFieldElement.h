@@ -34,6 +34,7 @@ namespace WebCore {
 
 class DateComponents;
 class DateTimeFieldsState;
+class Font;
 
 // DateTimeFieldElement is base class of date time field element.
 class DateTimeFieldElement : public HTMLElement {
@@ -62,6 +63,7 @@ public:
     virtual void defaultEventHandler(Event*) OVERRIDE;
     virtual bool hasValue() const = 0;
     bool isReadOnly() const;
+    virtual float maximumWidth(const Font&);
     virtual void populateDateTimeFieldsState(DateTimeFieldsState&) = 0;
     void removeEventHandler() { m_fieldOwner = 0; }
     void setReadOnly();
@@ -82,6 +84,7 @@ protected:
     void focusOnNextField();
     virtual void handleKeyboardEvent(KeyboardEvent*) = 0;
     void initialize(const AtomicString& pseudo, const String& axHelpText);
+    Locale& localeForOwner() const;
     AtomicString localeIdentifier() const;
     virtual int maximum() const = 0;
     virtual int minimum() const = 0;
@@ -89,8 +92,8 @@ protected:
 
 private:
     void defaultKeyboardEventHandler(KeyboardEvent*);
+    virtual bool isDateTimeFieldElement() const OVERRIDE;
     virtual bool isFocusable() const OVERRIDE FINAL;
-    bool isRTL() const;
     virtual bool supportsFocus() const OVERRIDE FINAL;
 
     FieldOwner* m_fieldOwner;

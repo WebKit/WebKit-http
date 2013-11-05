@@ -39,6 +39,7 @@
 #include "JSValue.h"
 #include "LLIntData.h"
 #include "NumericStrings.h"
+#include "ProfilerDatabase.h"
 #include "PrivateName.h"
 #include "SmallStrings.h"
 #include "Strong.h"
@@ -72,9 +73,9 @@ namespace JSC {
     class JSObject;
     class Keywords;
     class LLIntOffsetsExtractor;
+    class LegacyProfiler;
     class NativeExecutable;
     class ParserArena;
-    class Profiler;
     class RegExpCache;
     class Stringifier;
     class Structure;
@@ -263,7 +264,7 @@ namespace JSC {
             return m_inDefineOwnProperty;
         }
 
-        Profiler* enabledProfiler()
+        LegacyProfiler* enabledProfiler()
         {
             return m_enabledProfiler;
         }
@@ -351,7 +352,8 @@ namespace JSC {
         String cachedDateString;
         double cachedDateStringValue;
 
-        Profiler* m_enabledProfiler;
+        LegacyProfiler* m_enabledProfiler;
+        OwnPtr<Profiler::Database> m_perBytecodeProfiler;
         RegExpCache* m_regExpCache;
         BumpPointerAllocator m_regExpAllocator;
 
@@ -447,6 +449,8 @@ namespace JSC {
 
         JSLock& apiLock() { return m_apiLock; }
         CodeCache* codeCache() { return m_codeCache.get(); }
+
+        JS_EXPORT_PRIVATE void discardAllCode();
 
     private:
         friend class LLIntOffsetsExtractor;

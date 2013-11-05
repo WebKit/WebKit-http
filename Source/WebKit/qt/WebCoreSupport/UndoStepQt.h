@@ -20,29 +20,27 @@
 #ifndef UndoStepQt_h
 #define UndoStepQt_h
 
-#include <QUndoCommand>
+#include <PlatformExportMacros.h>
 #include <UndoStep.h>
+#include <qstring.h>
+#include <qwebkitglobal.h>
 #include <wtf/RefPtr.h>
 
-class UndoStepQt
-#ifndef QT_NO_UNDOCOMMAND
-    : public QUndoCommand
-#endif
-{
+class WEBKIT_EXPORTDATA UndoStepQt  {
     public:
-#ifndef QT_NO_UNDOCOMMAND
-        UndoStepQt(WTF::RefPtr<WebCore::UndoStep> step, QUndoCommand *parent = 0);
-#else
-        UndoStepQt(WTF::RefPtr<WebCore::UndoStep> step);
-#endif
         ~UndoStepQt();
 
         void redo();
         void undo();
+        QString text() const;
 
     private:
+        UndoStepQt(WTF::RefPtr<WebCore::UndoStep>);
+
         WTF::RefPtr<WebCore::UndoStep> m_step;
         bool m_first;
+        QString m_text;
+        friend class QWebPageAdapter;
 };
 
 #endif

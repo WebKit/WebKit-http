@@ -62,8 +62,13 @@ public:
 
     RenderLayer* owningLayer() const { return m_owningLayer; }
 
-    enum UpdateDepth { CompositingChildren, AllDescendants };
-    void updateAfterLayout(UpdateDepth, bool isUpdateRoot);
+    enum UpdateAfterLayoutFlag {
+        CompositingChildrenOnly = 1 << 0,
+        NeedsFullRepaint = 1 << 1,
+        IsUpdateRoot = 1 << 2
+    };
+    typedef unsigned UpdateAfterLayoutFlags;
+    void updateAfterLayout(UpdateAfterLayoutFlags);
     
     // Returns true if layer configuration changed.
     bool updateGraphicsLayerConfiguration();
@@ -137,6 +142,7 @@ public:
     
     void updateAfterWidgetResize();
     void positionOverflowControlsLayers(const IntSize& offsetFromRoot);
+    bool hasUnpositionedOverflowControlsLayers() const;
 
     bool usingTileCache() const { return m_usingTiledCacheLayer; }
     TiledBacking* tiledBacking() const;
@@ -164,6 +170,7 @@ public:
 #endif
 
     IntRect contentsBox() const;
+    IntRect backgroundBox() const;
     
     // For informative purposes only.
     CompositingLayerType compositingLayerType() const;
@@ -184,6 +191,7 @@ public:
 #if ENABLE(CSS_COMPOSITING)
     void setBlendMode(BlendMode);
 #endif
+    void reportMemoryUsage(MemoryObjectInfo*) const;
 
 private:
     void createPrimaryGraphicsLayer();
@@ -203,6 +211,7 @@ private:
     bool requiresVerticalScrollbarLayer() const;
     bool requiresScrollCornerLayer() const;
     bool updateScrollingLayers(bool scrollingLayers);
+    void updateDrawsContent(bool isSimpleContainer);
 
     GraphicsLayerPaintingPhase paintingPhaseForPrimaryLayer() const;
     
@@ -237,7 +246,8 @@ private:
     void updateImageContents();
 
     Color rendererBackgroundColor() const;
-    void updateBackgroundColor();
+    void updateBackgroundColor(bool isSimpleContainer);
+    void updateContentsRect(bool isSimpleContainer);
 
     bool containsNonEmptyRenderers() const;
     bool hasVisibleNonCompositingDescendantLayers() const;
@@ -271,7 +281,8 @@ private:
 
     IntRect m_compositedBounds;
 
-    bool m_artificiallyInflatedBounds;      // bounds had to be made non-zero to make transform-origin work
+    bool m_artificiallyInflatedBounds; // bounds had to be made non-zero to make transform-origin work
+    bool m_boundsConstrainedByClipping;
     bool m_isMainFrameRenderViewLayer;
     bool m_usingTiledCacheLayer;
     bool m_requiresOwnBackingStore;

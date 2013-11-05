@@ -35,6 +35,7 @@
 #include "BindingState.h"
 #include "DOMWindow.h"
 #include "InjectedScriptHost.h"
+#include "ScriptDebugServer.h"
 #include "ScriptObject.h"
 #include "V8Binding.h"
 #include "V8DOMWindow.h"
@@ -64,7 +65,7 @@ static v8::Local<v8::Object> createInjectedScriptHostV8Wrapper(InjectedScriptHos
         // Avoid setting the wrapper if allocation failed.
         return v8::Local<v8::Object>();
     }
-    V8DOMWrapper::setDOMWrapper(instance, &V8InjectedScriptHost::info, host);
+    V8DOMWrapper::setNativeInfo(instance, &V8InjectedScriptHost::info, host);
     // Create a weak reference to the v8 wrapper of InspectorBackend to deref
     // InspectorBackend when the wrapper is garbage collected.
     host->ref();
@@ -95,7 +96,7 @@ ScriptObject InjectedScriptManager::createInjectedScript(const String& scriptSou
     // inspector's stuff) the function is called a few lines below with InjectedScriptHost wrapper,
     // injected script id and explicit reference to the inspected global object. The function is expected
     // to create and configure InjectedScript instance that is going to be used by the inspector.
-    v8::Local<v8::Script> script = v8::Script::Compile(v8String(scriptSource));
+    v8::Local<v8::Script> script = v8::Script::Compile(deprecatedV8String(scriptSource));
     V8RecursionScope::MicrotaskSuppression recursionScope;
     v8::Local<v8::Value> v = script->Run();
     ASSERT(!v.IsEmpty());
@@ -117,7 +118,7 @@ bool InjectedScriptManager::canAccessInspectedWindow(ScriptState* scriptState)
     v8::Local<v8::Object> global = context->Global();
     if (global.IsEmpty())
         return false;
-    v8::Handle<v8::Object> holder = V8DOMWrapper::lookupDOMWrapper(V8DOMWindow::GetTemplate(), global);
+    v8::Handle<v8::Object> holder = global->FindInstanceInPrototypeChain(V8DOMWindow::GetTemplate());
     if (holder.IsEmpty())
         return false;
     Frame* frame = V8DOMWindow::toNative(holder)->frame();

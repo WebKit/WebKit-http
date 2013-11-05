@@ -32,7 +32,12 @@
 #include <wtf/PassRefPtr.h>
 #include <wtf/RefPtr.h>
 
-namespace WebCore { class IDBCallbacks; }
+namespace WebCore {
+
+class IDBCallbacks;
+class IDBDatabaseBackendInterface;
+
+} // namespace WebCore
 
 namespace WebKit {
 
@@ -46,7 +51,6 @@ public:
     virtual void onSuccess(WebIDBCursor*, const WebIDBKey&, const WebIDBKey& primaryKey, const WebSerializedScriptValue&);
     virtual void onSuccess(WebIDBDatabase*);
     virtual void onSuccess(const WebIDBKey&);
-    virtual void onSuccess(WebIDBTransaction*);
     virtual void onSuccess(const WebSerializedScriptValue&);
     virtual void onSuccess(const WebSerializedScriptValue&, const WebIDBKey&, const WebIDBKeyPath&);
     virtual void onSuccess(const WebIDBKey&, const WebIDBKey& primaryKey, const WebSerializedScriptValue&);
@@ -58,7 +62,7 @@ public:
 
 private:
     RefPtr<WebCore::IDBCallbacks> m_callbacks;
-    bool m_didCreateDatabaseProxy;
+    RefPtr<WebCore::IDBDatabaseBackendInterface> m_databaseProxy;
 };
 
 } // namespace WebKit

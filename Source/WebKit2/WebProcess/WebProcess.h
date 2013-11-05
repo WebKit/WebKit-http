@@ -26,8 +26,10 @@
 #ifndef WebProcess_h
 #define WebProcess_h
 
+#include "AuthenticationManager.h"
 #include "CacheModel.h"
 #include "ChildProcess.h"
+#include "DownloadManager.h"
 #include "DrawingArea.h"
 #include "EventDispatcher.h"
 #include "MessageReceiverMap.h"
@@ -106,24 +108,22 @@ class NetworkProcessConnection;
 
 #if USE(SECURITY_FRAMEWORK)
 class SecItemResponseData;
-class SecKeychainItemResponseData;
 #endif
 
-class WebProcess : public ChildProcess, private CoreIPC::Connection::QueueClient {
+class WebProcess : public ChildProcess, private CoreIPC::Connection::QueueClient, private DownloadManager::Client {
 public:
     static WebProcess& shared();
 
     void initialize(CoreIPC::Connection::Identifier, WebCore::RunLoop*);
 
-    CoreIPC::Connection* connection() const { return m_connection->connection(); }
+    CoreIPC::Connection* connection() const { return m_connection.get(); }
     WebCore::RunLoop* runLoop() const { return m_runLoop; }
 
     void addMessageReceiver(CoreIPC::StringReference messageReceiverName, CoreIPC::MessageReceiver*);
     void addMessageReceiver(CoreIPC::StringReference messageReceiverName, uint64_t destinationID, CoreIPC::MessageReceiver*);
-
     void removeMessageReceiver(CoreIPC::StringReference messageReceiverName, uint64_t destinationID);
 
-    WebConnectionToUIProcess* webConnectionToUIProcess() const { return m_connection.get(); }
+    WebConnectionToUIProcess* webConnectionToUIProcess() const { return m_webConnection.get(); }
 
     WebPage* webPage(uint64_t pageID) const;
     void createWebPage(uint64_t pageID, const WebPageCreationParameters&);
@@ -152,6 +152,9 @@ public:
     void setShouldTrackVisitedLinks(bool);
     void addVisitedLink(WebCore::LinkHash);
     bool isLinkVisited(WebCore::LinkHash) const;
+
+    bool isPlugInAutoStartOrigin(unsigned plugInOriginhash);
+    void addPlugInAutoStartOrigin(const String& pageOrigin, unsigned plugInOriginHash);
 
     bool fullKeyboardAccessEnabled() const { return m_fullKeyboardAccessEnabled; }
 
@@ -209,8 +212,22 @@ public:
     WebResourceLoadScheduler& webResourceLoadScheduler() { return m_webResourceLoadScheduler; }
 #endif
 
+    void setCacheModel(uint32_t);
+
+    void ensurePrivateBrowsingSession();
+    void destroyPrivateBrowsingSession();
+
+    DownloadManager& downloadManager();
+    AuthenticationManager& authenticationManager() { return m_authenticationManager; }
+
 private:
     WebProcess();
+
+    // DownloadManager::Client.
+    virtual void didCreateDownload() OVERRIDE;
+    virtual void didDestroyDownload() OVERRIDE;
+    virtual CoreIPC::Connection* downloadProxyConnection() OVERRIDE;
+    virtual AuthenticationManager& downloadsAuthenticationManager() OVERRIDE;
 
     void initializeWebProcess(const WebProcessCreationParameters&, CoreIPC::MessageDecoder&);
     void platformInitializeWebProcess(const WebProcessCreationParameters&, CoreIPC::MessageDecoder&);
@@ -235,11 +252,10 @@ private:
     void visitedLinkStateChanged(const Vector<WebCore::LinkHash>& linkHashes);
     void allVisitedLinkStateChanged();
 
-    void setCacheModel(uint32_t);
+    void didAddPlugInAutoStartOrigin(unsigned plugInOriginHash);
+    void plugInAutoStartOriginsChanged(const Vector<unsigned>& hashes);
+
     void platformSetCacheModel(CacheModel);
-    static void calculateCacheSizes(CacheModel cacheModel, uint64_t memorySize, uint64_t diskFreeSize,
-        unsigned& cacheTotalCapacity, unsigned& cacheMinDeadCapacity, unsigned& cacheMaxDeadCapacity, double& deadDecodedDataDeletionInterval,
-        unsigned& pageCacheCapacity, unsigned long& urlCacheMemoryCapacity, unsigned long& urlCacheDiskCapacity);
     void platformClearResourceCaches(ResourceCachesToClear);
     void clearApplicationCache();
 
@@ -250,11 +266,8 @@ private:
     void clearPluginSiteData(const Vector<String>& pluginPaths, const Vector<String>& sites, uint64_t flags, uint64_t maxAgeInSeconds, uint64_t callbackID);
 #endif
 
-#if ENABLE(NETWORK_PROCESS)
-    void networkProcessCrashed(CoreIPC::Connection*);
-#endif
 #if ENABLE(PLUGIN_PROCESS)
-    void pluginProcessCrashed(CoreIPC::Connection*, const String& pluginPath);
+    void pluginProcessCrashed(CoreIPC::Connection*, const String& pluginPath, uint32_t processType);
 #endif
 
     void startMemorySampler(const SandboxExtension::Handle&, const String&, const double);
@@ -272,11 +285,14 @@ private:
     void garbageCollectJavaScriptObjects();
     void setJavaScriptGarbageCollectorTimerEnabled(bool flag);
 
+#if USE(SOUP)
+    void setIgnoreTLSErrors(bool);
+#endif
+
     void postInjectedBundleMessage(const CoreIPC::DataReference& messageData);
 
 #if USE(SECURITY_FRAMEWORK)
     void secItemResponse(CoreIPC::Connection*, uint64_t requestID, const SecItemResponseData&);
-    void secKeychainItemResponse(CoreIPC::Connection*, uint64_t requestID, const SecKeychainItemResponseData&);
 #endif
 
     // ChildProcess
@@ -305,12 +321,15 @@ private:
 #endif
 
 #if ENABLE(CUSTOM_PROTOCOLS)
+    void initializeCustomProtocolManager(const WebProcessCreationParameters&);
     void registerSchemeForCustomProtocol(const WTF::String&);
     void unregisterSchemeForCustomProtocol(const WTF::String&);
 #endif
 
-    RefPtr<WebConnectionToUIProcess> m_connection;
+    RefPtr<CoreIPC::Connection> m_connection;
     CoreIPC::MessageReceiverMap m_messageReceiverMap;
+
+    RefPtr<WebConnectionToUIProcess> m_webConnection;
 
     HashMap<uint64_t, RefPtr<WebPage> > m_pageMap;
     HashMap<uint64_t, RefPtr<WebPageGroupProxy> > m_pageGroupMap;
@@ -325,6 +344,8 @@ private:
     // FIXME: The visited link table should not be per process.
     VisitedLinkTable m_visitedLinkTable;
     bool m_shouldTrackVisitedLinks;
+
+    HashSet<unsigned> m_plugInAutoStartOrigins;
 
     bool m_hasSetCacheModel;
     CacheModel m_cacheModel;
@@ -380,6 +401,7 @@ private:
     WebSoupRequestManager m_soupRequestManager;
 #endif
 
+    AuthenticationManager m_authenticationManager;
 };
 
 } // namespace WebKit

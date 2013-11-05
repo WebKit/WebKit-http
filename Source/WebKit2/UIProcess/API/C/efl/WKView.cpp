@@ -28,7 +28,12 @@ using namespace WebKit;
 
 WKViewRef WKViewCreate(Evas* canvas, WKContextRef contextRef, WKPageGroupRef pageGroupRef)
 {
-    return toAPI(ewk_view_base_add(canvas, contextRef, pageGroupRef));
+    return toAPI(ewk_view_base_add(canvas, contextRef, pageGroupRef, EwkViewImpl::LegacyBehavior));
+}
+
+WKViewRef WKViewCreateWithFixedLayout(Evas* canvas, WKContextRef contextRef, WKPageGroupRef pageGroupRef)
+{
+    return toAPI(ewk_view_base_add(canvas, contextRef, pageGroupRef, EwkViewImpl::DefaultBehavior));
 }
 
 WKPageRef WKViewGetPage(WKViewRef viewRef)
@@ -36,4 +41,11 @@ WKPageRef WKViewGetPage(WKViewRef viewRef)
     EwkViewImpl* viewImpl = EwkViewImpl::fromEvasObject(toImpl(viewRef));
 
     return viewImpl->wkPage();
+}
+
+WKImageRef WKViewGetSnapshot(WKViewRef viewRef)
+{
+    EwkViewImpl* viewImpl = EwkViewImpl::fromEvasObject(toImpl(viewRef));
+
+    return viewImpl->takeSnapshot();
 }

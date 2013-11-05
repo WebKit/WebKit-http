@@ -205,6 +205,7 @@ PassRefPtr<CustomFilterCompiledProgram> CustomFilterValidatedProgram::compiledPr
     ASSERT(m_isInitialized && m_globalContext && !m_validatedVertexShader.isNull() && !m_validatedFragmentShader.isNull());
     if (!m_compiledProgram) {
         m_compiledProgram = CustomFilterCompiledProgram::create(m_globalContext->context(), m_validatedVertexShader, m_validatedFragmentShader, m_programInfo.programType());
+        ASSERT(m_compiledProgram->isInitialized());
         ASSERT(m_compiledProgram->samplerLocation() != -1 || !needsInputTexture());
     }
     return m_compiledProgram;
@@ -273,7 +274,7 @@ void CustomFilterValidatedProgram::rewriteMixFragmentShader()
         {
             css_main();
             mediump vec4 originalColor = texture2D(css_u_texture, css_v_texCoord);
-            mediump vec4 multipliedColor = css_ColorMatrix * originalColor;
+            mediump vec4 multipliedColor = clamp(css_ColorMatrix * originalColor, 0.0, 1.0);
             mediump vec3 blendedColor = css_BlendColor(multipliedColor.rgb, css_MixColor.rgb);
             gl_FragColor = css_Composite(multipliedColor.rgb, multipliedColor.a, blendedColor.rgb, css_MixColor.a);
         }
@@ -512,7 +513,13 @@ CustomFilterValidatedProgram::~CustomFilterValidatedProgram()
         m_globalContext->removeValidatedProgram(this);
 }
 
-#if !PLATFORM(BLACKBERRY)
+CustomFilterProgramInfo CustomFilterValidatedProgram::validatedProgramInfo() const
+{
+    ASSERT(m_isInitialized);
+    return CustomFilterProgramInfo(m_validatedVertexShader, m_validatedFragmentShader, m_programInfo.programType(), m_programInfo.mixSettings(), m_programInfo.meshType());
+}
+
+#if !PLATFORM(BLACKBERRY) && !USE(TEXTURE_MAPPER)
 void CustomFilterValidatedProgram::platformInit()
 {
 }

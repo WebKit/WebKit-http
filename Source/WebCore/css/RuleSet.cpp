@@ -145,6 +145,9 @@ void RuleSet::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
     reportAtomRuleMap(&info, m_tagRules);
     reportAtomRuleMap(&info, m_shadowPseudoElementRules);
     info.addMember(m_linkPseudoClassRules);
+#if ENABLE(VIDEO_TRACK)
+    info.addMember(m_cuePseudoRules);
+#endif
     info.addMember(m_focusPseudoClassRules);
     info.addMember(m_universalRules);
     info.addMember(m_pageRules);
@@ -191,10 +194,6 @@ void RuleSet::addToRuleSet(AtomicStringImpl* key, AtomRuleMap& map, const RuleDa
 void RuleSet::addRule(StyleRule* rule, unsigned selectorIndex, AddRuleFlags addRuleFlags)
 {
     RuleData ruleData(rule, selectorIndex, m_ruleCount++, addRuleFlags);
-    static const unsigned athostRuleSpecificity = 0x100000;
-
-    if (addRuleFlags & RuleIsHostRule)
-        ruleData.increaseSpecificity(athostRuleSpecificity);
 
     collectFeaturesFromRuleData(m_features, ruleData);
 
@@ -212,6 +211,12 @@ void RuleSet::addRule(StyleRule* rule, unsigned selectorIndex, AddRuleFlags addR
         addToRuleSet(selector->value().impl(), m_shadowPseudoElementRules, ruleData);
         return;
     }
+#if ENABLE(VIDEO_TRACK)
+    if (selector->pseudoType() == CSSSelector::PseudoCue) {
+        m_cuePseudoRules.append(ruleData);
+        return;
+    }
+#endif
     if (SelectorChecker::isCommonPseudoClassSelector(selector)) {
         switch (selector->pseudoType()) {
         case CSSSelector::PseudoLink:
@@ -312,6 +317,14 @@ void RuleSet::addRulesFromSheet(StyleSheetContents* sheet, const MediaQueryEvalu
                             continue;
                         resolver->addKeyframeStyle(static_cast<StyleRuleKeyframes*>(childRule));
                     }
+#if ENABLE(CSS_DEVICE_ADAPTATION)
+                    else if (childRule->isViewportRule() && resolver && !resolver->affectedByViewportChange()) {
+                        // @viewport should not be scoped.
+                        if (scope)
+                            continue;
+                        resolver->viewportStyleResolver()->addViewportRule(static_cast<StyleRuleViewport*>(childRule));
+                    }
+#endif
                 } // for rules
             } // if rules
         } else if (rule->isFontFaceRule() && resolver) {
@@ -340,6 +353,14 @@ void RuleSet::addRulesFromSheet(StyleSheetContents* sheet, const MediaQueryEvalu
         else if (rule->isHostRule())
             resolver->addHostRule(static_cast<StyleRuleHost*>(rule), hasDocumentSecurityOrigin, scope);
 #endif
+#if ENABLE(CSS_DEVICE_ADAPTATION)
+        else if (rule->isViewportRule() && resolver) {
+            // @viewport should not be scoped.
+            if (scope)
+                continue;
+            resolver->viewportStyleResolver()->addViewportRule(static_cast<StyleRuleViewport*>(rule));
+        }
+#endif
     }
     if (m_autoShrinkToFitEnabled)
         shrinkToFit();
@@ -365,6 +386,9 @@ void RuleSet::shrinkToFit()
     shrinkMapVectorsToFit(m_tagRules);
     shrinkMapVectorsToFit(m_shadowPseudoElementRules);
     m_linkPseudoClassRules.shrinkToFit();
+#if ENABLE(VIDEO_TRACK)
+    m_cuePseudoRules.shrinkToFit();
+#endif
     m_focusPseudoClassRules.shrinkToFit();
     m_universalRules.shrinkToFit();
     m_pageRules.shrinkToFit();

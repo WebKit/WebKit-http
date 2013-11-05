@@ -411,6 +411,13 @@ String contextMenuItemTagMediaPlay() { return String(); }
 String contextMenuItemTagMediaPause() { return String(); }
 String contextMenuItemTagMediaMute() { return String(); }
 
+#if ENABLE(VIDEO_TRACK)
+String textTrackClosedCaptionsText() { return String(); }
+String textTrackSubtitlesText() { return String(); }
+String textTrackOffText() { return String(); }
+String textTrackNoLabelText() { return String(); }
+#endif
+
 String localizedMediaControlElementString(const String& /*name*/)
 {
     // FIXME: to be fixed.
@@ -503,5 +510,17 @@ String validationMessageStepMismatchText(const String& base, const String& step)
 {
     return query(WebLocalizedString::ValidationStepMismatch, base, step);
 }
+
+String validationMessageBadInputForNumberText()
+{
+    return query(WebLocalizedString::ValidationBadInputForNumber);
+}
+
+#if ENABLE(INPUT_MULTIPLE_FIELDS_UI)
+String validationMessageBadInputForDateTimeText()
+{
+    return query(WebLocalizedString::ValidationBadInputForDateTime);
+}
+#endif
 
 } // namespace WebCore

@@ -27,12 +27,10 @@ function createDOM(tagName, attributes)
         if (child.isShadowRoot) {
             ++shadowRootCount;
             var shadowRoot;
-            if (window.WebKitShadowRoot)
-                shadowRoot = new WebKitShadowRoot(element);
-            else if (shadowRootcount == 1)
-                shadowRoot = internals.ensureShadowRoot(element);
+            if (element.webkitCreateShadowRoot)
+                shadowRoot = element.webkitCreateShadowRoot(element);
             else
-                throw "CreateDOM cannot be used to host multiple ShadowRoots without new WebKitShadowRoot()";
+                shadowRoot = internals.createShadowRoot(element);
             if (child.attributes) {
                 for (var attribute in child.attributes) {
                     // Shadow Root does not have setAttribute.
@@ -81,7 +79,7 @@ function getNodeInShadowTreeStack(path)
         else
             return null;
         if (ids[i] != '')
-            node = internals.getElementByIdInShadowRoot(node, ids[i]);
+            node = node.getElementById(ids[i]);
     }
     return node;
 }

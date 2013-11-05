@@ -37,6 +37,7 @@
 #include "WebDevToolsAgentPrivate.h"
 #include "WebPageOverlay.h"
 #include <public/WebSize.h>
+#include <public/WebThread.h>
 #include <wtf/Forward.h>
 #include <wtf/OwnPtr.h>
 
@@ -66,7 +67,8 @@ struct WebDevToolsMessageData;
 class WebDevToolsAgentImpl : public WebDevToolsAgentPrivate,
                              public WebCore::InspectorClient,
                              public WebCore::InspectorFrontendChannel,
-                             public WebPageOverlay {
+                             public WebPageOverlay,
+                             private WebThread::TaskObserver {
 public:
     WebDevToolsAgentImpl(WebViewImpl* webViewImpl, WebDevToolsAgentClient* client);
     virtual ~WebDevToolsAgentImpl();
@@ -108,12 +110,18 @@ public:
     virtual void getAllocatedObjects(HashSet<const void*>&);
     virtual void dumpUncountedAllocatedObjects(const HashMap<const void*, size_t>&);
 
+    virtual bool captureScreenshot(WTF::String* data);
+
     int hostId() { return m_hostId; }
 
     // WebPageOverlay
     virtual void paintPageOverlay(WebCanvas*);
 
 private:
+    // WebThread::TaskObserver
+    virtual void willProcessTask();
+    virtual void didProcessTask();
+
     WebCore::InspectorController* inspectorController();
     WebCore::Frame* mainFrame();
 
@@ -122,6 +130,7 @@ private:
     WebViewImpl* m_webViewImpl;
     bool m_attached;
     OwnPtr<DeviceMetricsSupport> m_metricsSupport;
+    BrowserDataHint m_sendWithBrowserDataHint;
 };
 
 } // namespace WebKit

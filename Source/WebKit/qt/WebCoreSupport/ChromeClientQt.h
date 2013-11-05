@@ -42,6 +42,8 @@ class QEventLoop;
 QT_END_NAMESPACE
 
 class QWebPage;
+class QWebPageAdapter;
+class QWebFullScreenVideoHandler;
 
 namespace WebCore {
 
@@ -56,10 +58,11 @@ struct ViewportArguments;
 #if ENABLE(VIDEO)
 class FullScreenVideoQt;
 #endif
+class TextureMapperLayerClientQt;
 
 class ChromeClientQt : public ChromeClient {
 public:
-    ChromeClientQt(QWebPage*);
+    ChromeClientQt(QWebPageAdapter*);
     virtual ~ChromeClientQt();
     virtual void chromeDestroyed();
 
@@ -98,7 +101,7 @@ public:
 
     virtual void setResizable(bool);
 
-    virtual void addMessageToConsole(MessageSource, MessageType, MessageLevel, const String& message, unsigned int lineNumber, const String& sourceID);
+    virtual void addMessageToConsole(MessageSource, MessageLevel, const String& message, unsigned lineNumber, const String& sourceID);
 
     virtual bool canRunBeforeUnloadConfirmPanel();
     virtual bool runBeforeUnloadConfirmPanel(const String& message, Frame*);
@@ -156,7 +159,7 @@ public:
 #if ENABLE(TOUCH_EVENTS)
     virtual void needTouchEvents(bool) { }
 #endif
- 
+
 #if ENABLE(VIDEO) && (USE(GSTREAMER) || USE(QT_MULTIMEDIA) || USE(QTKIT))
     virtual bool supportsFullscreenForNode(const Node*);
     virtual void enterFullscreenForNode(Node*);
@@ -169,8 +172,8 @@ public:
     virtual PassOwnPtr<ColorChooser> createColorChooser(ColorChooserClient*, const Color&);
 #endif
 
-     virtual void runOpenPanel(Frame*, PassRefPtr<FileChooser>);
-     virtual void loadIconForFiles(const Vector<String>&, FileIconLoader*);
+    virtual void runOpenPanel(Frame*, PassRefPtr<FileChooser>);
+    virtual void loadIconForFiles(const Vector<String>&, FileIconLoader*);
 
     virtual void formStateDidChange(const Node*) { }
 
@@ -198,7 +201,9 @@ public:
     virtual bool shouldRubberBandInDirection(WebCore::ScrollDirection) const { return true; }
     virtual void numWheelEventHandlersChanged(unsigned) { }
 
-    QWebPage* m_webPage;
+    QWebFullScreenVideoHandler* createFullScreenVideoHandler();
+
+    QWebPageAdapter* m_webPage;
     KURL lastHoverURL;
     String lastHoverTitle;
     String lastHoverContent;
@@ -218,6 +223,10 @@ public:
     static bool dumpVisitedLinksCallbacks;
 
     mutable QtPlatformPlugin m_platformPlugin;
+
+#if USE(ACCELERATED_COMPOSITING)
+    OwnPtr<TextureMapperLayerClientQt> m_textureMapperLayerClient;
+#endif
 };
 }
 

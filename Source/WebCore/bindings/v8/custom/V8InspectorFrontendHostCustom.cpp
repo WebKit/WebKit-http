@@ -46,19 +46,19 @@ namespace WebCore {
 v8::Handle<v8::Value> V8InspectorFrontendHost::platformCallback(const v8::Arguments& args)
 {
 #if defined(OS_MACOSX)
-    return v8String("mac", args.GetIsolate());
+    return v8::String::NewSymbol("mac");
 #elif defined(OS_LINUX)
-    return v8String("linux", args.GetIsolate());
+    return v8::String::NewSymbol("linux");
 #elif defined(OS_FREEBSD)
-    return v8String("freebsd", args.GetIsolate());
+    return v8::String::NewSymbol("freebsd");
 #elif defined(OS_OPENBSD)
-    return v8String("openbsd", args.GetIsolate());
+    return v8::String::NewSymbol("openbsd");
 #elif defined(OS_SOLARIS)
-    return v8String("solaris", args.GetIsolate());
+    return v8::String::NewSymbol("solaris");
 #elif defined(OS_WIN)
-    return v8String("windows", args.GetIsolate());
+    return v8::String::NewSymbol("windows");
 #else
-    return v8String("unknown", args.GetIsolate());
+    return v8::String::NewSymbol("unknown");
 #endif
 }
 
@@ -71,12 +71,12 @@ static void populateContextMenuItems(v8::Local<v8::Array>& itemArray, ContextMen
 {
     for (size_t i = 0; i < itemArray->Length(); ++i) {
         v8::Local<v8::Object> item = v8::Local<v8::Object>::Cast(itemArray->Get(i));
-        v8::Local<v8::Value> type = item->Get(v8::String::New("type"));
-        v8::Local<v8::Value> id = item->Get(v8::String::New("id"));
-        v8::Local<v8::Value> label = item->Get(v8::String::New("label"));
-        v8::Local<v8::Value> enabled = item->Get(v8::String::New("enabled"));
-        v8::Local<v8::Value> checked = item->Get(v8::String::New("checked"));
-        v8::Local<v8::Value> subItems = item->Get(v8::String::New("subItems"));
+        v8::Local<v8::Value> type = item->Get(v8::String::NewSymbol("type"));
+        v8::Local<v8::Value> id = item->Get(v8::String::NewSymbol("id"));
+        v8::Local<v8::Value> label = item->Get(v8::String::NewSymbol("label"));
+        v8::Local<v8::Value> enabled = item->Get(v8::String::NewSymbol("enabled"));
+        v8::Local<v8::Value> checked = item->Get(v8::String::NewSymbol("checked"));
+        v8::Local<v8::Value> subItems = item->Get(v8::String::NewSymbol("subItems"));
         if (!type->IsString())
             continue;
         String typeString = toWebCoreStringWithNullCheck(type);
@@ -112,7 +112,7 @@ v8::Handle<v8::Value> V8InspectorFrontendHost::showContextMenuCallback(const v8:
         return v8::Undefined();
 
     v8::Local<v8::Object> eventWrapper = v8::Local<v8::Object>::Cast(args[0]);
-    if (!V8MouseEvent::info.equals(V8DOMWrapper::domWrapperType(eventWrapper)))
+    if (!V8MouseEvent::info.equals(toWrapperTypeInfo(eventWrapper)))
         return v8::Undefined();
 
     Event* event = V8Event::toNative(eventWrapper);

@@ -41,7 +41,6 @@ class Document;
 
 inline HTMLShadowElement::HTMLShadowElement(const QualifiedName& tagName, Document* document)
     : InsertionPoint(tagName, document)
-    , m_registeredWithShadowRoot(false)
 {
     ASSERT(hasTagName(HTMLNames::shadowTag));
 }
@@ -60,37 +59,24 @@ const AtomicString& HTMLShadowElement::select() const
      return nullAtom;
 }
 
-Node::InsertionNotificationRequest HTMLShadowElement::insertedInto(ContainerNode* insertionPoint)
-{
-    InsertionPoint::insertedInto(insertionPoint);
-
-    if (insertionPoint->inDocument() && isActive()) {
-        if (ShadowRoot* root = shadowRoot()) {
-            root->registerShadowElement();
-            m_registeredWithShadowRoot = true;
-        }
-    }
-
-    return InsertionDone;
-}
-
-void HTMLShadowElement::removedFrom(ContainerNode* insertionPoint)
-{
-    if (insertionPoint->inDocument() && m_registeredWithShadowRoot) {
-        ShadowRoot* root = shadowRoot();
-        if (!root)
-            root = insertionPoint->shadowRoot();
-        if (root)
-            root->unregisterShadowElement();
-        m_registeredWithShadowRoot = false;
-    }
-    InsertionPoint::removedFrom(insertionPoint);
-}
-
 const CSSSelectorList& HTMLShadowElement::emptySelectorList()
 {
     DEFINE_STATIC_LOCAL(CSSSelectorList, selectorList, (CSSSelectorList()));
     return selectorList;
+}
+
+ShadowRoot* HTMLShadowElement::olderShadowRoot()
+{
+    if (!treeScope()->rootNode()->isShadowRoot())
+        return 0;
+
+    toShadowRoot(treeScope()->rootNode())->owner()->ensureDistributionFromDocument();
+
+    ShadowRoot* older = toShadowRoot(treeScope()->rootNode())->olderShadowRoot();
+    if (!older || older->type() != ShadowRoot::AuthorShadowRoot || older->assignedTo() != this)
+        return 0;
+
+    return older;
 }
 
 } // namespace WebCore

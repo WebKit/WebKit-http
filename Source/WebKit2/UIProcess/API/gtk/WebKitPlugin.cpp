@@ -26,7 +26,26 @@
 
 using namespace WebKit;
 
+/**
+ * SECTION: WebKitPlugin
+ * @Short_description: Represents a plugin, enabling fine-grained control
+ * @Title: WebKitPlugin
+ *
+ * This object represents a single plugin, found while scanning the
+ * various platform plugin directories. This object can be used to get
+ * more information about a plugin, and enable/disable it, allowing
+ * fine-grained control of plugins. The list of available plugins can
+ * be obtained from the #WebKitWebContext, with
+ * webkit_web_context_get_plugins().
+ *
+ */
+
 struct _WebKitPluginPrivate {
+    ~_WebKitPluginPrivate()
+    {
+        g_list_free_full(mimeInfoList, reinterpret_cast<GDestroyNotify>(webkit_mime_info_unref));
+    }
+
     PluginModuleInfo pluginInfo;
     CString name;
     CString description;
@@ -34,29 +53,10 @@ struct _WebKitPluginPrivate {
     GList* mimeInfoList;
 };
 
-G_DEFINE_TYPE(WebKitPlugin, webkit_plugin, G_TYPE_OBJECT)
-
-static void webkitPluginFinalize(GObject* object)
-{
-    WebKitPluginPrivate* priv = WEBKIT_PLUGIN(object)->priv;
-    g_list_free_full(priv->mimeInfoList, reinterpret_cast<GDestroyNotify>(webkit_mime_info_unref));
-    priv->~WebKitPluginPrivate();
-    G_OBJECT_CLASS(webkit_plugin_parent_class)->finalize(object);
-}
-
-static void webkit_plugin_init(WebKitPlugin* plugin)
-{
-    WebKitPluginPrivate* priv = G_TYPE_INSTANCE_GET_PRIVATE(plugin, WEBKIT_TYPE_PLUGIN, WebKitPluginPrivate);
-    plugin->priv = priv;
-    new (priv) WebKitPluginPrivate();
-}
+WEBKIT_DEFINE_TYPE(WebKitPlugin, webkit_plugin, G_TYPE_OBJECT)
 
 static void webkit_plugin_class_init(WebKitPluginClass* pluginClass)
 {
-    GObjectClass* gObjectClass = G_OBJECT_CLASS(pluginClass);
-    gObjectClass->finalize = webkitPluginFinalize;
-
-    g_type_class_add_private(pluginClass, sizeof(WebKitPluginPrivate));
 }
 
 WebKitPlugin* webkitPluginCreate(const PluginModuleInfo& pluginInfo)

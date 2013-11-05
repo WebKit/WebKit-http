@@ -144,7 +144,6 @@
       '../rendering/style',
       '../rendering/svg',
       '../storage',
-      '../storage/chromium',
       '../svg',
       '../svg/animation',
       '../svg/graphics',
@@ -580,11 +579,6 @@
       'dependencies': [
         'generate_supplemental_dependency',
       ],
-      'variables': {
-        # Write sources into a file, so that the action command line won't
-        # exceed OS limits.
-        'additional_idl_files_list': '<|(additional_idl_files_list.tmp <@(webcore_test_support_idl_files))',
-      },
       'sources': [
         # bison rule
         '<(SHARED_INTERMEDIATE_DIR)/webkit/CSSGrammar.y',
@@ -1167,11 +1161,9 @@
             '../bindings/scripts/CodeGenerator.pm',
             '../bindings/scripts/CodeGeneratorV8.pm',
             '../bindings/scripts/IDLParser.pm',
-            '../bindings/scripts/IDLStructure.pm',
             '../bindings/scripts/preprocessor.pm',
             '<(SHARED_INTERMEDIATE_DIR)/supplemental_dependency.tmp',
-            '<(additional_idl_files_list)',
-            '<!@(cat <(additional_idl_files_list))',
+            '<@(webcore_test_support_idl_files)',
           ],
           'outputs': [
             # FIXME:  The .cpp file should be in webkit/bindings once
@@ -1225,8 +1217,8 @@
             '<@(generator_include_dirs)',
             '--supplementalDependencyFile',
             '<(SHARED_INTERMEDIATE_DIR)/supplemental_dependency.tmp',
-            '--additionalIdlFilesList',
-            '<(additional_idl_files_list)',
+            '--additionalIdlFiles',
+            '<(webcore_test_support_idl_files)',
             '<(RULE_INPUT_PATH)',
             '<@(preprocessor)',
           ],
@@ -1602,7 +1594,6 @@
         'webcore_prerequisites',
       ],
       'sources': [
-        '<@(webcore_dom_privateheader_files)',
         '<@(webcore_dom_files)',
       ],
       'sources!': [
@@ -1611,8 +1602,8 @@
       ],
       'sources/': [
         # FIXME: Figure out how to store these patterns in a variable.
-        ['exclude', '(cairo|ca|cf|cg|curl|efl|freetype|gstreamer|gtk|linux|mac|opengl|openvg|opentype|pango|posix|qt|soup|svg|symbian|texmap|iphone|win|wince|wx)/'],
-        ['exclude', '(?<!Chromium)(Cairo|CF|CG|Curl|Gtk|JSC|Linux|Mac|OpenType|POSIX|Posix|Qt|Safari|Soup|Symbian|Win|WinCE|Wx)\\.(cpp|mm?)$'],
+        ['exclude', '(cairo|ca|cf|cg|curl|efl|freetype|gstreamer|gtk|linux|mac|opengl|openvg|opentype|pango|posix|qt|soup|svg|texmap|iphone|win|wince|wx)/'],
+        ['exclude', '(?<!Chromium)(Cairo|CF|CG|Curl|Gtk|JSC|Linux|Mac|OpenType|POSIX|Posix|Qt|Safari|Soup|Win|WinCE|Wx)\\.(cpp|mm?)$'],
 
         ['exclude', 'AllInOne\\.cpp$'],
       ],
@@ -1624,7 +1615,6 @@
         'webcore_prerequisites',
       ],
       'sources': [
-        '<@(webcore_html_privateheader_files)',
         '<@(webcore_html_files)',
       ],
       'sources/': [
@@ -1645,7 +1635,6 @@
         'webcore_prerequisites',
       ],
       'sources': [
-        '<@(webcore_svg_privateheader_files)',
         '<@(webcore_svg_files)',
       ],
       'sources/': [
@@ -1662,7 +1651,6 @@
       # if this hard dependency could be split off the rest.
       'hard_dependency': 1,
       'sources': [
-        '<@(webcore_privateheader_files)',
         '<@(webcore_platform_files)',
 
         # For WebCoreSystemInterface, Mac-only.
@@ -1673,8 +1661,8 @@
         ['include', 'platform/'],
 
         # FIXME: Figure out how to store these patterns in a variable.
-        ['exclude', '(cairo|ca|cf|cg|curl|efl|freetype|gstreamer|gtk|harfbuzz|linux|mac|opengl|openvg|opentype|pango|posix|qt|soup|svg|symbian|texmap|iphone|win|wince|wx)/'],
-        ['exclude', '(?<!Chromium)(Cairo|CF|CG|Curl|Gtk|JSC|Linux|Mac|OpenType|POSIX|Posix|Qt|Safari|Soup|Symbian|Win|WinCE|Wx)\\.(cpp|mm?)$'],
+        ['exclude', '(cairo|ca|cf|cg|curl|efl|freetype|gstreamer|gtk|harfbuzz|linux|mac|opengl|openvg|opentype|pango|posix|qt|soup|svg|texmap|iphone|win|wince|wx)/'],
+        ['exclude', '(?<!Chromium)(Cairo|CF|CG|Curl|Gtk|JSC|Linux|Mac|OpenType|POSIX|Posix|Qt|Safari|Soup|Win|WinCE|Wx)\\.(cpp|mm?)$'],
 
         ['exclude', 'platform/LinkHash\\.cpp$'],
         ['exclude', 'platform/MIMETypeRegistry\\.cpp$'],
@@ -1698,6 +1686,21 @@
                     ],
                 }],
             ],
+        }],
+        ['use_default_render_theme==1', {
+          'sources/': [
+            ['exclude', 'platform/chromium/PlatformThemeChromiumWin.h'],
+            ['exclude', 'platform/chromium/PlatformThemeChromiumWin.cpp'],
+            ['exclude', 'platform/chromium/ScrollbarThemeChromiumWin.cpp'],
+            ['exclude', 'platform/chromium/ScrollbarThemeChromiumWin.h'],
+          ],
+        }, { # use_default_render_theme==0
+          'sources/': [
+            ['exclude', 'platform/chromium/PlatformThemeChromiumDefault.cpp'],
+            ['exclude', 'platform/chromium/PlatformThemeChromiumDefault.h'],
+            ['exclude', 'platform/chromium/ScrollbarThemeChromiumDefault.cpp'],
+            ['exclude', 'platform/chromium/ScrollbarThemeChromiumDefault.h'],
+          ],
         }],
         ['use_x11 == 1', {
           'sources/': [
@@ -1972,7 +1975,6 @@
         'webcore_prerequisites',
       ],
       'sources': [
-        '<@(webcore_privateheader_files)',
         '<@(webcore_files)',
       ],
       'sources/': [
@@ -1980,13 +1982,23 @@
         ['include', 'rendering/'],
 
         # FIXME: Figure out how to store these patterns in a variable.
-        ['exclude', '(cairo|ca|cf|cg|curl|efl|freetype|gstreamer|gtk|linux|mac|opengl|openvg|opentype|pango|posix|qt|soup|svg|symbian|texmap|iphone|win|wince|wx)/'],
-        ['exclude', '(?<!Chromium)(Cairo|CF|CG|Curl|Gtk|JSC|Linux|Mac|OpenType|POSIX|Posix|Qt|Safari|Soup|Symbian|Win|WinCE|Wx)\\.(cpp|mm?)$'],
+        ['exclude', '(cairo|ca|cf|cg|curl|efl|freetype|gstreamer|gtk|linux|mac|opengl|openvg|opentype|pango|posix|qt|soup|svg|texmap|iphone|win|wince|wx)/'],
+        ['exclude', '(?<!Chromium)(Cairo|CF|CG|Curl|Gtk|JSC|Linux|Mac|OpenType|POSIX|Posix|Qt|Safari|Soup|Win|WinCE|Wx)\\.(cpp|mm?)$'],
         # Previous rule excludes things like ChromiumFooWin, include those.
         ['include', 'rendering/.*Chromium.*\\.(cpp|mm?)$'],
         ['exclude', 'AllInOne\\.cpp$'],
       ],
       'conditions': [
+        ['use_default_render_theme==0', {
+          'sources/': [
+            ['exclude', 'rendering/RenderThemeChromiumDefault.*'],
+          ],
+        }],
+        ['use_default_render_theme==1', {
+          'sources/': [
+            ['exclude', 'RenderThemeChromiumWin.*'],
+          ],
+        }],
         ['OS=="win"', {
           'sources/': [
             ['exclude', 'Posix\\.cpp$'],
@@ -2030,7 +2042,7 @@
         ['OS=="android"', {
           'sources/': [
             ['include', 'rendering/RenderThemeChromiumFontProviderLinux\\.cpp$'],
-            ['include', 'rendering/RenderThemeChromiumLinux\\.cpp$'],
+            ['include', 'rendering/RenderThemeChromiumDefault\\.cpp$'],
           ],
         },{ # OS!="android"
           'sources/': [
@@ -2050,7 +2062,6 @@
       # if this hard dependency could be split off the rest.
       'hard_dependency': 1,
       'sources': [
-        '<@(webcore_privateheader_files)',
         '<@(webcore_files)',
       ],
       'sources/': [
@@ -2070,14 +2081,14 @@
         ['exclude', 'bridge/jni/jsc/'],
 
         # FIXME: Figure out how to store these patterns in a variable.
-        ['exclude', '(cairo|ca|cf|cg|curl|efl|freetype|gstreamer|gtk|linux|mac|opengl|openvg|opentype|pango|posix|qt|soup|svg|symbian|texmap|iphone|win|wince|wx)/'],
-        ['exclude', '(?<!Chromium)(Cairo|CF|CG|Curl|Gtk|JSC|Linux|Mac|OpenType|POSIX|Posix|Qt|Safari|Soup|Symbian|Win|WinCE|Wx)\\.(cpp|mm?)$'],
+        ['exclude', '(atk|cairo|ca|cf|cg|curl|efl|freetype|gstreamer|gtk|linux|mac|opengl|openvg|opentype|pango|posix|qt|soup|svg|texmap|iphone|win|wince|wx)/'],
+        ['exclude', '(?<!Chromium)(Cairo|CF|CG|Curl|Gtk|JSC|Linux|Mac|OpenType|POSIX|Posix|Qt|Safari|Soup|Win|WinCE|Wx)\\.(cpp|mm?)$'],
 
         ['exclude', 'AllInOne\\.cpp$'],
 
         ['exclude', 'Modules/filesystem/LocalFileSystem\\.cpp$'],
         ['exclude', 'Modules/indexeddb/IDBFactoryBackendInterface\\.cpp$'],
-        ['exclude', 'Modules/webdatabase/DatabaseTrackerClient\\.h$'],
+        ['exclude', 'Modules/webdatabase/DatabaseManagerClient\\.h$'],
         ['exclude', 'Modules/webdatabase/DatabaseTracker\\.cpp$'],
         ['exclude', 'Modules/webdatabase/OriginQuotaManager\\.(cpp|h)$'],
         ['exclude', 'Modules/webdatabase/OriginUsageRecord\\.(cpp|h)$'],
@@ -2085,7 +2096,6 @@
         ['exclude', 'inspector/InspectorFrontendClientLocal\\.cpp$'],
         ['exclude', 'inspector/JavaScript[^/]*\\.cpp$'],
         ['exclude', 'loader/UserStyleSheetLoader\\.cpp$'],
-        ['exclude', 'loader/CookieJar\\.cpp$'],
         ['exclude', 'loader/appcache/'],
         ['exclude', 'loader/archive/cf/LegacyWebArchiveMac\\.mm$'],
         ['exclude', 'loader/archive/cf/LegacyWebArchive\\.cpp$'],

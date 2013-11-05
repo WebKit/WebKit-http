@@ -32,24 +32,31 @@ namespace WebKit {
 
 class RemoteNetworkingContext : public WebCore::NetworkingContext {
 public:
-    static PassRefPtr<RemoteNetworkingContext> create(bool needsSiteSpecificQuirks, bool localFileContentSniffingEnabled)
+    static PassRefPtr<RemoteNetworkingContext> create(bool needsSiteSpecificQuirks, bool localFileContentSniffingEnabled, bool privateBrowsingEnabled)
     {
-        return adoptRef(new RemoteNetworkingContext(needsSiteSpecificQuirks, localFileContentSniffingEnabled));
+        return adoptRef(new RemoteNetworkingContext(needsSiteSpecificQuirks, localFileContentSniffingEnabled, privateBrowsingEnabled));
     }
     virtual ~RemoteNetworkingContext();
 
+    static void setPrivateBrowsingStorageSessionIdentifierBase(const String&);
+    static void ensurePrivateBrowsingSession();
+    static void destroyPrivateBrowsingSession();
+
 private:
-    RemoteNetworkingContext(bool needsSiteSpecificQuirks, bool localFileContentSniffingEnabled);
+    RemoteNetworkingContext(bool needsSiteSpecificQuirks, bool localFileContentSniffingEnabled, bool privateBrowsingEnabled);
 
     virtual bool isValid() const OVERRIDE;
 
     virtual bool needsSiteSpecificQuirks() const OVERRIDE;
     virtual bool localFileContentSniffingEnabled() const OVERRIDE;
+    virtual bool inPrivateBrowsingMode() const OVERRIDE;
+    virtual CFURLStorageSessionRef storageSession() const OVERRIDE;
     virtual NSOperationQueue *scheduledOperationQueue() const OVERRIDE;
     virtual WebCore::ResourceError blockedError(const WebCore::ResourceRequest&) const OVERRIDE;
 
     bool m_needsSiteSpecificQuirks;
     bool m_localFileContentSniffingEnabled;
+    bool m_privateBrowsingEnabled;
 };
 
 }

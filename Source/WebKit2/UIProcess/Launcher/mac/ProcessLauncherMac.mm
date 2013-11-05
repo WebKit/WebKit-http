@@ -97,10 +97,8 @@ static void setUpTerminationNotificationHandler(pid_t pid)
 
 static void addDYLDEnvironmentAdditions(const ProcessLauncher::LaunchOptions& launchOptions, bool isWebKitDevelopmentBuild, EnvironmentVariables& environmentVariables)
 {
-#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1070
     DynamicLinkerEnvironmentExtractor environmentExtractor([[NSBundle mainBundle] executablePath], _NSGetMachExecuteHeader()->cputype);
     environmentExtractor.getExtractedEnvironmentVariables(environmentVariables);
-#endif
 
     NSBundle *webKit2Bundle = [NSBundle bundleWithIdentifier:@"com.apple.WebKit2"];
     NSString *frameworksPath = [[webKit2Bundle bundlePath] stringByDeletingLastPathComponent];
@@ -160,15 +158,18 @@ static void connectToWebProcessServiceForWebKitDevelopment(const ProcessLauncher
     NSString *bundleIdentifier = [[NSBundle mainBundle] bundleIdentifier];
     CString clientIdentifier = bundleIdentifier ? String([[NSBundle mainBundle] bundleIdentifier]).utf8() : *_NSGetProgname();
 
-    xpc_object_t bootStrapMessage = xpc_dictionary_create(0, 0, 0);
-    xpc_dictionary_set_string(bootStrapMessage, "message-name", "bootstrap");
-    xpc_dictionary_set_string(bootStrapMessage, "framework-executable-path", [[[NSBundle bundleWithIdentifier:@"com.apple.WebKit2"] executablePath] fileSystemRepresentation]);
-    xpc_dictionary_set_mach_send(bootStrapMessage, "server-port", listeningPort);
-    xpc_dictionary_set_string(bootStrapMessage, "client-identifier", clientIdentifier.data());
+    xpc_object_t bootstrapMessage = xpc_dictionary_create(0, 0, 0);
+    xpc_dictionary_set_string(bootstrapMessage, "message-name", "bootstrap");
+    xpc_dictionary_set_string(bootstrapMessage, "framework-executable-path", [[[NSBundle bundleWithIdentifier:@"com.apple.WebKit2"] executablePath] fileSystemRepresentation]);
+    xpc_dictionary_set_mach_send(bootstrapMessage, "server-port", listeningPort);
+    xpc_dictionary_set_string(bootstrapMessage, "client-identifier", clientIdentifier.data());
+    xpc_dictionary_set_string(bootstrapMessage, "ui-process-name", [[[NSProcessInfo processInfo] processName] UTF8String]);
+    xpc_dictionary_set_fd(bootstrapMessage, "stdout", STDOUT_FILENO);
+    xpc_dictionary_set_fd(bootstrapMessage, "stderr", STDERR_FILENO);
 
     that->ref();
 
-    xpc_connection_send_message_with_reply(connection, bootStrapMessage, dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^(xpc_object_t reply) {
+    xpc_connection_send_message_with_reply(connection, bootstrapMessage, dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^(xpc_object_t reply) {
         xpc_type_t type = xpc_get_type(reply);
         if (type == XPC_TYPE_ERROR) {
             // We failed to launch. Release the send right.
@@ -191,7 +192,7 @@ static void connectToWebProcessServiceForWebKitDevelopment(const ProcessLauncher
 
         that->deref();
     });
-    xpc_release(bootStrapMessage);
+    xpc_release(bootstrapMessage);
 }
 
 static void createWebProcessServiceForWebKitDevelopment(const ProcessLauncher::LaunchOptions& launchOptions, ProcessLauncher* that, DidFinishLaunchingProcessFunction didFinishLaunchingProcessFunction)
@@ -243,9 +244,7 @@ static void createWebProcessServiceForWebKitDevelopment(const ProcessLauncher::L
     xpc_dictionary_set_value(reExecMessage, "environment", environment);
     xpc_release(environment);
 
-#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1070
     xpc_dictionary_set_bool(reExecMessage, "executable-heap", launchOptions.executableHeap);
-#endif
 
     xpc_connection_send_message(reExecConnection, reExecMessage);
     xpc_release(reExecMessage);
@@ -275,14 +274,15 @@ static void createWebProcessService(const ProcessLauncher::LaunchOptions& launch
     NSString *bundleIdentifier = [[NSBundle mainBundle] bundleIdentifier];
     CString clientIdentifier = bundleIdentifier ? String([[NSBundle mainBundle] bundleIdentifier]).utf8() : *_NSGetProgname();
 
-    xpc_object_t bootStrapMessage = xpc_dictionary_create(0, 0, 0);
-    xpc_dictionary_set_string(bootStrapMessage, "message-name", "bootstrap");
-    xpc_dictionary_set_mach_send(bootStrapMessage, "server-port", listeningPort);
-    xpc_dictionary_set_string(bootStrapMessage, "client-identifier", clientIdentifier.data());
+    xpc_object_t bootstrapMessage = xpc_dictionary_create(0, 0, 0);
+    xpc_dictionary_set_string(bootstrapMessage, "message-name", "bootstrap");
+    xpc_dictionary_set_mach_send(bootstrapMessage, "server-port", listeningPort);
+    xpc_dictionary_set_string(bootstrapMessage, "client-identifier", clientIdentifier.data());
+    xpc_dictionary_set_string(bootstrapMessage, "ui-process-name", [[[NSProcessInfo processInfo] processName] UTF8String]);
 
     that->ref();
 
-    xpc_connection_send_message_with_reply(connection, bootStrapMessage, dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^(xpc_object_t reply) {
+    xpc_connection_send_message_with_reply(connection, bootstrapMessage, dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^(xpc_object_t reply) {
         xpc_type_t type = xpc_get_type(reply);
         if (type == XPC_TYPE_ERROR) {
             // We failed to launch. Release the send right.
@@ -305,11 +305,10 @@ static void createWebProcessService(const ProcessLauncher::LaunchOptions& launch
 
         that->deref();
     });
-    xpc_release(bootStrapMessage);
+    xpc_release(bootstrapMessage);
 }
 #endif
 
-#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1070
 static bool tryPreexistingProcess(const ProcessLauncher::LaunchOptions& launchOptions, ProcessLauncher* that, DidFinishLaunchingProcessFunction didFinishLaunchingProcessFunction)
 {
     EnvironmentVariables environmentVariables;
@@ -355,7 +354,6 @@ static bool tryPreexistingProcess(const ProcessLauncher::LaunchOptions& launchOp
     RunLoop::main()->dispatch(bind(didFinishLaunchingProcessFunction, that, processIdentifier, CoreIPC::Connection::Identifier(listeningPort)));
     return true;
 }
-#endif
 
 static void createProcess(const ProcessLauncher::LaunchOptions& launchOptions, bool isWebKitDevelopmentBuild, ProcessLauncher* that, DidFinishLaunchingProcessFunction didFinishLaunchingProcessFunction)
 {
@@ -405,7 +403,8 @@ static void createProcess(const ProcessLauncher::LaunchOptions& launchOptions, b
     // Make a unique, per pid, per process launcher web process service name.
     CString serviceName = String::format("com.apple.WebKit.WebProcess-%d-%p", getpid(), that).utf8();
 
-    const char* args[] = { [processAppExecutablePath fileSystemRepresentation], [frameworkExecutablePath fileSystemRepresentation], "-type", ProcessLauncher::processTypeAsString(launchOptions.processType), "-servicename", serviceName.data(), "-localization", localization.data(), "-client-identifier", clientIdentifier.data(), 0 };
+    const char* args[] = { [processAppExecutablePath fileSystemRepresentation], [frameworkExecutablePath fileSystemRepresentation], "-type", ProcessLauncher::processTypeAsString(launchOptions.processType), "-servicename", serviceName.data(), "-localization", localization.data(), "-client-identifier", clientIdentifier.data(),
+        "-ui-process-name", [[[NSProcessInfo processInfo] processName] UTF8String], 0 };
 
     // Register ourselves.
     kern_return_t kr = bootstrap_register2(bootstrap_port, const_cast<char*>(serviceName.data()), listeningPort, 0);
@@ -435,11 +434,9 @@ static void createProcess(const ProcessLauncher::LaunchOptions& launchOptions, b
     // Start suspended so we can set up the termination notification handler.
     flags |= POSIX_SPAWN_START_SUSPENDED;
 
-#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1070
     static const int allowExecutableHeapFlag = 0x2000;
     if (launchOptions.executableHeap)
         flags |= allowExecutableHeapFlag;
-#endif
 
     posix_spawnattr_setflags(&attr, flags);
 
@@ -469,10 +466,8 @@ static void createProcess(const ProcessLauncher::LaunchOptions& launchOptions, b
 
 void ProcessLauncher::launchProcess()
 {
-#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1070
     if (tryPreexistingProcess(m_launchOptions, this, &ProcessLauncher::didFinishLaunchingProcess))
         return;
-#endif
 
     bool isWebKitDevelopmentBuild = ![[[[NSBundle bundleWithIdentifier:@"com.apple.WebKit2"] bundlePath] stringByDeletingLastPathComponent] hasPrefix:@"/System/"];
 

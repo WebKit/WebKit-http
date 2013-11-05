@@ -51,7 +51,7 @@ class LinkBuffer;
 class RepatchBuffer;
 class Watchpoint;
 namespace DFG {
-class CorrectableJumpPoint;
+struct OSRExit;
 }
 
 template <class AssemblerType>
@@ -320,7 +320,7 @@ public:
     class Label {
         template<class TemplateAssemblerType>
         friend class AbstractMacroAssembler;
-        friend class DFG::CorrectableJumpPoint;
+        friend struct DFG::OSRExit;
         friend class Jump;
         friend class JumpReplacementWatchpoint;
         friend class MacroAssemblerCodeRef;
@@ -501,7 +501,7 @@ public:
         template<class TemplateAssemblerType>
         friend class AbstractMacroAssembler;
         friend class Call;
-        friend class DFG::CorrectableJumpPoint;
+        friend struct DFG::OSRExit;
         friend class LinkBuffer;
     public:
         Jump()
@@ -510,7 +510,7 @@ public:
         
 #if CPU(ARM_THUMB2)
         // Fixme: this information should be stored in the instruction stream, not in the Jump object.
-        Jump(AssemblerLabel jmp, ARMv7Assembler::JumpType type, ARMv7Assembler::Condition condition = ARMv7Assembler::ConditionInvalid)
+        Jump(AssemblerLabel jmp, ARMv7Assembler::JumpType type = ARMv7Assembler::JumpNoCondition, ARMv7Assembler::Condition condition = ARMv7Assembler::ConditionInvalid)
             : m_label(jmp)
             , m_type(type)
             , m_condition(condition)
@@ -528,6 +528,13 @@ public:
         {
         }
 #endif
+        
+        Label label() const
+        {
+            Label result;
+            result.m_label = m_label;
+            return result;
+        }
 
         void link(AbstractMacroAssembler<AssemblerType>* masm) const
         {
@@ -585,7 +592,7 @@ public:
         friend class LinkBuffer;
 
     public:
-        typedef Vector<Jump, 16> JumpVector;
+        typedef Vector<Jump, 2> JumpVector;
         
         JumpList() { }
         

@@ -22,7 +22,7 @@
 #include "ewk_main.h"
 
 #include "FileSystem.h"
-#include "Logging.h"
+#include "InitializeLogging.h"
 #include "PageCache.h"
 #include "PageGroup.h"
 #include "PlatformStrategiesEfl.h"
@@ -159,8 +159,9 @@ static WebCore::StorageTrackerClientEfl* trackerClient()
 
 Eina_Bool _ewk_init_body(void)
 {
-
+#if !GLIB_CHECK_VERSION(2, 35, 0)
     g_type_init();
+#endif
 
     if (!ecore_main_loop_glib_integrate())
         WARN("Ecore was not compiled with GLib support, some plugins will not "

@@ -1,5 +1,6 @@
 /*
     Copyright (C) 2012 Samsung Electronics
+    Copyright (C) 2012 Intel Corporation.
 
     This library is free software; you can redistribute it and/or
     modify it under the terms of the GNU Library General Public
@@ -18,160 +19,100 @@
 */
 
 #include "config.h"
-
-#if USE(3D_GRAPHICS) || USE(ACCELERATED_COMPOSITING)
 #include "GraphicsContext3DPrivate.h"
 
-#include "GraphicsContext.h"
+#if USE(3D_GRAPHICS) || USE(ACCELERATED_COMPOSITING)
+
 #include "HostWindow.h"
 #include "NotImplemented.h"
-#include "PlatformContextCairo.h"
-#include <Ecore_Evas.h>
-#include <Evas_GL.h>
-#include <wtf/OwnArrayPtr.h>
-#include <wtf/text/CString.h>
 
 namespace WebCore {
 
 GraphicsContext3DPrivate::GraphicsContext3DPrivate(GraphicsContext3D* context, HostWindow* hostWindow, GraphicsContext3D::RenderStyle renderStyle)
     : m_context(context)
     , m_hostWindow(hostWindow)
-    , m_evasGL(0)
-    , m_evasGLContext(0)
-    , m_evasGLSurface(0)
-    , m_glContext(0)
-    , m_glSurface(0)
-    , m_api(0)
-    , m_renderStyle(renderStyle)
+    , m_pendingSurfaceResize(false)
 {
-    if (renderStyle == GraphicsContext3D::RenderToCurrentGLContext)
-        return;
-
     if (m_hostWindow && m_hostWindow->platformPageClient()) {
         // FIXME: Implement this code path for WebKit1.
         // Get Evas object from platformPageClient and set EvasGL related members.
         return;
     }
 
-    // For WebKit2, we need to create a dummy ecoreEvas object for the WebProcess in order to use EvasGL APIs.
-#ifdef HAVE_ECORE_X
-    ecore_evas_init();
-    m_ecoreEvas = adoptPtr(ecore_evas_gl_x11_new(0, 0, 0, 0, 1, 1));
-    if (!m_ecoreEvas)
-        return;
-#else
-    return;
-#endif
-
-    Evas* evas = ecore_evas_get(m_ecoreEvas.get());
-    if (!evas)
+    m_platformContext = GLPlatformContext::createContext(renderStyle);
+    if (!m_platformContext)
         return;
 
-    // Create a new Evas_GL object for gl rendering on efl.
-    m_evasGL = evas_gl_new(evas);
-    if (!m_evasGL)
-        return;
-
-    // Get the API for rendering using OpenGL.
-    // This returns a structure that contains all the OpenGL functions we can use to render in Evas
-    m_api = evas_gl_api_get(m_evasGL);
-    if (!m_api)
-        return;
-
-    // Create a context
-    m_evasGLContext = evas_gl_context_create(m_evasGL, 0);
-    if (!m_evasGLContext)
-        return;
-
-    // Create a surface
-    if (!createSurface(0, renderStyle == GraphicsContext3D::RenderDirectlyToHostWindow))
-        return;
-
-    makeContextCurrent();
-
+    if (renderStyle == GraphicsContext3D::RenderOffscreen) {
 #if USE(GRAPHICS_SURFACE)
-    IntSize surfaceSize(m_context->m_currentWidth, m_context->m_currentHeight);
-    m_surfaceFlags = GraphicsSurface::SupportsTextureTarget | GraphicsSurface::SupportsSharing;
-    if (!surfaceSize.isEmpty())
-        m_graphicsSurface = GraphicsSurface::create(surfaceSize, m_surfaceFlags);
+        m_platformSurface = GLPlatformSurface::createTransportSurface();
+#else
+        m_platformSurface = GLPlatformSurface::createOffscreenSurface();
 #endif
+        if (!m_platformSurface) {
+            m_platformContext = nullptr;
+            return;
+        }
+
+        if (!m_platformContext->initialize(m_platformSurface.get()) || !m_platformContext->makeCurrent(m_platformSurface.get())) {
+            releaseResources();
+            m_platformContext = nullptr;
+            m_platformSurface = nullptr;
+#if USE(GRAPHICS_SURFACE)
+        } else
+            m_surfaceHandle = GraphicsSurfaceToken(m_platformSurface->handle());
+#else
+        }
+#endif
+    }
 }
 
 GraphicsContext3DPrivate::~GraphicsContext3DPrivate()
 {
-    if (!m_evasGL)
-        return;
-
-    if (m_evasGLSurface)
-        evas_gl_surface_destroy(m_evasGL, m_evasGLSurface);
-
-    if (m_evasGLContext)
-        evas_gl_context_destroy(m_evasGL, m_evasGLContext);
-
-    evas_gl_free(m_evasGL);
-
-#if USE(GRAPHICS_SURFACE)
-    m_graphicsSurface.clear();
-#endif
 }
 
-bool GraphicsContext3DPrivate::createSurface(PageClientEfl* pageClient, bool renderDirectlyToHostWindow)
+void GraphicsContext3DPrivate::releaseResources()
 {
-    // If RenderStyle is RenderOffscreen, we will be rendering to a FBO,
-    // so Evas_GL_Surface has a 1x1 dummy surface.
-    int width = 1;
-    int height = 1;
+    // Release the current context and drawable only after destroying any associated gl resources.
+    if (m_platformContext)
+        m_platformContext->destroy();
 
-    // But, in case of RenderDirectlyToHostWindow, we have to render to a render target surface with the same size as our webView.
-    if (renderDirectlyToHostWindow) {
-        if (!pageClient)
-            return false;
-        // FIXME: Get geometry of webView and set size of target surface.
-    }
+    if (m_platformSurface)
+        m_platformSurface->destroy();
 
-    Evas_GL_Config config = {
-        EVAS_GL_RGBA_8888,
-        EVAS_GL_DEPTH_BIT_8,
-        EVAS_GL_STENCIL_NONE, // FIXME: set EVAS_GL_STENCIL_BIT_8 after fixing Evas_GL bug.
-        EVAS_GL_OPTIONS_NONE,
-        EVAS_GL_MULTISAMPLE_NONE
-    };
-
-    // Create a new Evas_GL_Surface object
-    m_evasGLSurface = evas_gl_surface_create(m_evasGL, &config, width, height);
-    if (!m_evasGLSurface)
-        return false;
-
-#if USE(ACCELERATED_COMPOSITING)
-    if (renderDirectlyToHostWindow) {
-        Evas_Native_Surface nativeSurface;
-        // Fill in the Native Surface information from the given Evas GL surface.
-        evas_gl_native_surface_get(m_evasGL, m_evasGLSurface, &nativeSurface);
-
-        // FIXME: Create and specially set up a evas_object which act as the render targer surface.
-    }
-#endif
-
-    return true;
+    if (m_platformContext)
+        m_platformContext->releaseCurrent();
 }
 
-void GraphicsContext3DPrivate::setCurrentGLContext(void* context, void* surface)
+bool GraphicsContext3DPrivate::createSurface(PageClientEfl*, bool)
 {
-    m_glContext = context;
-    m_glSurface = surface;
+    notImplemented();
+    return false;
+}
+
+void GraphicsContext3DPrivate::setContextLostCallback(PassOwnPtr<GraphicsContext3D::ContextLostCallback> callBack)
+{
+    m_contextLostCallback = callBack;
 }
 
 PlatformGraphicsContext3D GraphicsContext3DPrivate::platformGraphicsContext3D() const
 {
-    if (m_renderStyle == GraphicsContext3D::RenderToCurrentGLContext)
-        return m_glContext;
-
-    return m_evasGLContext;
+    return m_platformContext->handle();
 }
 
 bool GraphicsContext3DPrivate::makeContextCurrent()
 {
-    return evas_gl_make_current(m_evasGL, m_evasGLSurface, m_evasGLContext);
+    bool success = m_platformContext->makeCurrent(m_platformSurface.get());
+
+    if (!m_platformContext->isValid()) {
+        // FIXME: Restore context
+        if (m_contextLostCallback)
+            m_contextLostCallback->onContextLost();
+
+        success = false;
+    }
+
+    return success;
 }
 
 #if USE(TEXTURE_MAPPER_GL)
@@ -182,28 +123,60 @@ void GraphicsContext3DPrivate::paintToTextureMapper(TextureMapper*, const FloatR
 #endif
 
 #if USE(GRAPHICS_SURFACE)
-void GraphicsContext3DPrivate::createGraphicsSurfaces(const IntSize& size)
+void GraphicsContext3DPrivate::didResizeCanvas(const IntSize& size)
 {
-    if (size.isEmpty())
-        m_graphicsSurface.clear();
-    else
-        m_graphicsSurface = GraphicsSurface::create(size, m_surfaceFlags);
+    m_pendingSurfaceResize = true;
+    m_size = size;
 }
 
 uint32_t GraphicsContext3DPrivate::copyToGraphicsSurface()
 {
-    if (!m_graphicsSurface)
+    if (!m_platformContext || !makeContextCurrent())
         return 0;
 
-    makeContextCurrent();
-    m_graphicsSurface->copyFromTexture(m_context->m_texture, IntRect(0, 0, m_context->m_currentWidth, m_context->m_currentHeight));
-    return m_graphicsSurface->swapBuffers();
+    if (m_pendingSurfaceResize) {
+        m_pendingSurfaceResize = false;
+        m_platformSurface->setGeometry(IntRect(0, 0, m_context->m_currentWidth, m_context->m_currentHeight));
+    }
+
+    bool enableScissorTest = false;
+    int width = m_context->m_currentWidth;
+    int height = m_context->m_currentHeight;
+
+    // We should copy the full buffer, and not respect the current scissor bounds.
+    // FIXME: It would be more efficient to track the state of the scissor test.
+    if (m_context->isEnabled(GraphicsContext3D::SCISSOR_TEST)) {
+        enableScissorTest = true;
+        m_context->disable(GraphicsContext3D::SCISSOR_TEST);
+    }
+
+    if (m_context->m_attrs.antialias) {
+
+        glBindFramebuffer(GL_READ_FRAMEBUFFER_EXT, m_context->m_multisampleFBO);
+        glBindFramebuffer(GL_DRAW_FRAMEBUFFER_EXT, m_context->m_fbo);
+
+        // Use NEAREST as no scale is performed during the blit.
+        glBlitFramebuffer(0, 0, width, height, 0, 0, width, height, GraphicsContext3D::COLOR_BUFFER_BIT, GraphicsContext3D::NEAREST);
+    }
+
+    m_platformSurface->updateContents(m_context->m_texture, m_context->m_boundFBO, m_context->m_boundTexture0);
+
+    if (enableScissorTest)
+        m_context->enable(GraphicsContext3D::SCISSOR_TEST);
+
+    return 0;
 }
 
 GraphicsSurfaceToken GraphicsContext3DPrivate::graphicsSurfaceToken() const
 {
-    return m_graphicsSurface->exportToken();
+    return m_surfaceHandle;
 }
+
+IntSize GraphicsContext3DPrivate::platformLayerSize() const
+{
+    return m_size;
+}
+
 #endif
 
 } // namespace WebCore

@@ -36,8 +36,9 @@ import tempfile
 
 inspector_path = "Source/WebCore/inspector"
 inspector_frontend_path = inspector_path + "/front-end"
+protocol_externs_path = inspector_frontend_path + "/protocol-externs.js"
 
-generate_protocol_externs.generate_protocol_externs(inspector_frontend_path + "/protocol-externs.js", inspector_path + "/Inspector.json")
+generate_protocol_externs.generate_protocol_externs(protocol_externs_path, inspector_path + "/Inspector.json")
 
 jsmodule_name_prefix = "jsmodule_"
 modules = [
@@ -66,8 +67,7 @@ modules = [
             "ContentProvider.js",
             "ContentProviders.js",
             "CookieParser.js",
-            "CSSCompletions.js",
-            "CSSKeywordCompletions.js",
+            "CSSMetadata.js",
             "CSSStyleModel.js",
             "BreakpointManager.js",
             "Database.js",
@@ -305,6 +305,7 @@ modules = [
         "dependencies": ["components", "extensions"],
         "sources": [
             "SettingsScreen.js",
+            "OverridesView.js",
         ]
     },
     {
@@ -329,6 +330,7 @@ modules = [
             "HeapSnapshotView.js",
             "HeapSnapshotWorker.js",
             "HeapSnapshotWorkerDispatcher.js",
+            "NativeHeapGraph.js",
             "NativeMemorySnapshotView.js",
             "ProfileDataGridTree.js",
             "ProfilesPanel.js",
@@ -429,3 +431,4 @@ if not process_recursively:
     os.system("rm " + inspector_path + "/" + "InjectedScriptCanvasModuleSourceTmp.js")
 
 shutil.rmtree(modules_dir)
+#os.system("rm " + protocol_externs_path)

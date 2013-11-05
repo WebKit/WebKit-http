@@ -1,5 +1,6 @@
 /*
     Copyright (C) 2012 Samsung Electronics
+    Copyright (C) 2012 Intel Corporation.
 
     This library is free software; you can redistribute it and/or
     modify it under the terms of the GNU Library General Public
@@ -23,11 +24,11 @@
 #if USE(3D_GRAPHICS) || USE(ACCELERATED_COMPOSITING)
 
 #include "GraphicsContext3DPrivate.h"
-#include "ImageData.h"
+#include "Image.h"
+#include "ImageSource.h"
 #include "NotImplemented.h"
 #include "OpenGLShims.h"
 #include "PlatformContextCairo.h"
-#include <GL/glx.h>
 
 #if USE(OPENGL_ES_2)
 #include "Extensions3DOpenGLES.h"
@@ -39,6 +40,9 @@ namespace WebCore {
 
 PassRefPtr<GraphicsContext3D> GraphicsContext3D::create(GraphicsContext3D::Attributes attrs, HostWindow* hostWindow, RenderStyle renderStyle)
 {
+    if (renderStyle == RenderDirectlyToHostWindow)
+        return 0;
+
     RefPtr<GraphicsContext3D> context = adoptRef(new GraphicsContext3D(attrs, hostWindow, renderStyle));
     return context->m_private ? context.release() : 0;
 }
@@ -67,29 +71,12 @@ GraphicsContext3D::GraphicsContext3D(GraphicsContext3D::Attributes attrs, HostWi
     , m_multisampleColorBuffer(0)
     , m_private(adoptPtr(new GraphicsContext3DPrivate(this, hostWindow, renderStyle)))
 {
-    validateAttributes();
-
-    if (!m_private)
-        return;
-
-    static bool initializedShims = false;
-    static bool success = true;
-    if (!initializedShims) {
-        success = initializeOpenGLShims();
-        initializedShims = true;
-    }
-    if (!success) {
+    if (!m_private || !m_private->m_platformContext) {
         m_private = nullptr;
         return;
     }
 
-    if (renderStyle == RenderToCurrentGLContext) {
-        // Evas doesn't allow including gl headers and Evas_GL headers at the same time,
-        // so we need to query the current gl context/surface here instead of in GraphicsContext3DPrivate.
-        void* currentContext = (void*)glXGetCurrentContext();
-        void* currentSurface = (void*)glXGetCurrentDrawable();
-        m_private->setCurrentGLContext(currentContext, currentSurface);
-    }
+    validateAttributes();
 
     if (renderStyle == RenderOffscreen) {
         // Create buffers for the canvas FBO.
@@ -147,14 +134,15 @@ GraphicsContext3D::GraphicsContext3D(GraphicsContext3D::Attributes attrs, HostWi
     glEnable(GL_POINT_SPRITE);
     glEnable(GL_VERTEX_PROGRAM_POINT_SIZE);
 #endif
+    if (renderStyle != RenderToCurrentGLContext)
+        glClearColor(0.0, 0.0, 0.0, 0.0);
 }
 
 GraphicsContext3D::~GraphicsContext3D()
 {
-    if (m_renderStyle == RenderToCurrentGLContext || !m_private)
+    if (!m_private || !makeContextCurrent())
         return;
 
-    makeContextCurrent();
     glDeleteTextures(1, &m_texture);
 
     if (m_attrs.antialias) {
@@ -165,7 +153,6 @@ GraphicsContext3D::~GraphicsContext3D()
 
         glDeleteFramebuffers(1, &m_multisampleFBO);
     } else if (m_attrs.stencil || m_attrs.depth) {
-
 #if USE(OPENGL_ES_2)
         if (m_attrs.depth)
             glDeleteRenderbuffers(1, &m_depthBuffer);
@@ -175,7 +162,8 @@ GraphicsContext3D::~GraphicsContext3D()
 #endif
         glDeleteRenderbuffers(1, &m_depthStencilBuffer);
     }
-    glDeleteFramebuffers(1, &m_fbo);
+
+    m_private->releaseResources();
 }
 
 PlatformGraphicsContext3D GraphicsContext3D::platformGraphicsContext3D()
@@ -197,12 +185,6 @@ PlatformLayer* GraphicsContext3D::platformLayer() const
 
 bool GraphicsContext3D::makeContextCurrent()
 {
-    if (!m_private)
-        return false;
-
-    if (m_renderStyle == RenderToCurrentGLContext)
-        return true;
-
     return m_private->makeContextCurrent();
 }
 
@@ -215,9 +197,9 @@ bool GraphicsContext3D::isGLES2Compliant() const
 #endif
 }
 
-void GraphicsContext3D::setContextLostCallback(PassOwnPtr<ContextLostCallback>) 
+void GraphicsContext3D::setContextLostCallback(PassOwnPtr<ContextLostCallback> callBack)
 {
-    notImplemented();
+    m_private->setContextLostCallback(callBack);
 }
 
 void GraphicsContext3D::setErrorMessageCallback(PassOwnPtr<ErrorMessageCallback>) 
@@ -236,14 +218,14 @@ void GraphicsContext3D::paintToCanvas(const unsigned char* imagePixels, int imag
     RefPtr<cairo_surface_t> imageSurface = adoptRef(cairo_image_surface_create_for_data(
         const_cast<unsigned char*>(imagePixels), CAIRO_FORMAT_ARGB32, imageWidth, imageHeight, imageWidth * 4));
 
-    // OpenGL keeps the pixels stored bottom up, so we need to flip the image here.
-    cairo_translate(cr, 0, imageHeight);
-    cairo_scale(cr, 1, -1); 
+    cairo_rectangle(cr, 0, 0, canvasWidth, canvasHeight);
 
+    // OpenGL keeps the pixels stored bottom up, so we need to flip the image here.
+    cairo_matrix_t matrix;
+    cairo_matrix_init(&matrix, 1.0, 0.0, 0.0, -1.0, 0.0, imageHeight);
+    cairo_set_matrix(cr, &matrix);
     cairo_set_operator(cr, CAIRO_OPERATOR_SOURCE);
     cairo_set_source_surface(cr, imageSurface.get(), 0, 0);
-    cairo_rectangle(cr, 0, 0, canvasWidth, -canvasHeight);
-
     cairo_fill(cr);
     context->restore();
 }
@@ -251,14 +233,75 @@ void GraphicsContext3D::paintToCanvas(const unsigned char* imagePixels, int imag
 #if USE(GRAPHICS_SURFACE)
 void GraphicsContext3D::createGraphicsSurfaces(const IntSize& size)
 {
-    m_private->createGraphicsSurfaces(size);
+    m_private->didResizeCanvas(size);
 }
 #endif
 
-bool GraphicsContext3D::getImageData(Image*, GC3Denum /* format */, GC3Denum /* type */, bool /* premultiplyAlpha */, bool /* ignoreGammaAndColorProfile */, Vector<uint8_t>& /* outputVector */)
+GraphicsContext3D::ImageExtractor::~ImageExtractor()
 {
-    notImplemented();
-    return false;
+    delete m_decoder;
+}
+
+bool GraphicsContext3D::ImageExtractor::extractImage(bool premultiplyAlpha, bool ignoreGammaAndColorProfile)
+{
+    // This implementation is taken from GraphicsContext3DCairo.
+
+    if (!m_image)
+        return false;
+
+    // We need this to stay in scope because the native image is just a shallow copy of the data.
+    m_decoder = new ImageSource(premultiplyAlpha ? ImageSource::AlphaPremultiplied : ImageSource::AlphaNotPremultiplied, ignoreGammaAndColorProfile ? ImageSource::GammaAndColorProfileIgnored : ImageSource::GammaAndColorProfileApplied);
+
+    if (!m_decoder)
+        return false;
+
+    ImageSource& decoder = *m_decoder;
+    m_alphaOp = AlphaDoNothing;
+
+    if (m_image->data()) {
+        decoder.setData(m_image->data(), true);
+
+        if (!decoder.frameCount() || !decoder.frameIsCompleteAtIndex(0))
+            return false;
+
+        OwnPtr<NativeImageCairo> nativeImage = adoptPtr(decoder.createFrameAtIndex(0));
+        m_imageSurface = nativeImage->surface();
+    } else {
+        NativeImageCairo* nativeImage = m_image->nativeImageForCurrentFrame();
+        m_imageSurface = (nativeImage) ? nativeImage->surface() : 0;
+
+        if (!premultiplyAlpha)
+            m_alphaOp = AlphaDoUnmultiply;
+    }
+
+    if (!m_imageSurface)
+        return false;
+
+    m_imageWidth = cairo_image_surface_get_width(m_imageSurface.get());
+    m_imageHeight = cairo_image_surface_get_height(m_imageSurface.get());
+
+    if (!m_imageWidth || !m_imageHeight)
+        return false;
+
+    if (cairo_image_surface_get_format(m_imageSurface.get()) != CAIRO_FORMAT_ARGB32)
+        return false;
+
+    uint srcUnpackAlignment = 1;
+    size_t bytesPerRow = cairo_image_surface_get_stride(m_imageSurface.get());
+    size_t bitsPerPixel = 32;
+    unsigned padding = bytesPerRow - bitsPerPixel / 8 * m_imageWidth;
+
+    if (padding) {
+        srcUnpackAlignment = padding + 1;
+        while (bytesPerRow % srcUnpackAlignment)
+            ++srcUnpackAlignment;
+    }
+
+    m_imagePixelData = cairo_image_surface_get_data(m_imageSurface.get());
+    m_imageSourceFormat = SourceFormatBGRA8;
+    m_imageSourceUnpackAlignment = srcUnpackAlignment;
+
+    return true;
 }
 
 } // namespace WebCore

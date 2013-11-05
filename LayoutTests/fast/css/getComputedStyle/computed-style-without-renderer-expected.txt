@@ -62,7 +62,7 @@ max-width: none
 min-height: 0px
 min-width: 0px
 opacity: 1
-orphans: 2
+orphans: auto
 outline-color: rgb(0, 0, 0)
 outline-style: none
 outline-width: 0px
@@ -94,7 +94,7 @@ unicode-bidi: normal
 vertical-align: baseline
 visibility: visible
 white-space: normal
-widows: 2
+widows: auto
 width: 50%
 word-break: normal
 word-spacing: 0px
@@ -140,7 +140,7 @@ zoom: 1
 -webkit-column-rule-color: rgb(0, 0, 0)
 -webkit-column-rule-style: none
 -webkit-column-rule-width: 0px
--webkit-column-span: 1
+-webkit-column-span: none
 -webkit-column-width: auto
 -webkit-align-content: stretch
 -webkit-align-items: stretch
@@ -172,7 +172,6 @@ zoom: 1
 -webkit-marquee-increment: 6px
 -webkit-marquee-repetition: infinite
 -webkit-marquee-style: scroll
--webkit-mask-attachment: scroll
 -webkit-mask-box-image: none
 -webkit-mask-box-image-outset: 0px
 -webkit-mask-box-image-repeat: stretch

@@ -33,13 +33,12 @@
 #include "ewk_private.h"
 #include "ewk_url_request_private.h"
 #include <wtf/PassRefPtr.h>
-#include <wtf/RefCounted.h>
 
 /**
  * \struct  EwkNavigationData
  * @brief   Contains the navigation data details.
  */
-class EwkNavigationData : public Ewk_Object {
+class EwkNavigationData : public EwkObject {
 public:
     EWK_OBJECT_DECLARE(EwkNavigationData)
 

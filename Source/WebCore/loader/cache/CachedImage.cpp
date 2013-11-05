@@ -39,6 +39,7 @@
 #include "Settings.h"
 #include "SubresourceLoader.h"
 #include <wtf/CurrentTime.h>
+#include <wtf/MemoryObjectInfo.h>
 #include <wtf/StdLibExtras.h>
 #include <wtf/Vector.h>
 
@@ -100,7 +101,10 @@ void CachedImage::didAddClient(CachedResourceClient* c)
 
 void CachedImage::didRemoveClient(CachedResourceClient* c)
 {
+    ASSERT(c);
     ASSERT(c->resourceClientType() == CachedImageClient::expectedType());
+
+    m_pendingContainerSizeRequests.remove(static_cast<CachedImageClient*>(c));
 #if ENABLE(SVG)
     if (m_svgImageCache)
         m_svgImageCache->removeClientFromCache(static_cast<CachedImageClient*>(c));
@@ -111,6 +115,7 @@ void CachedImage::didRemoveClient(CachedResourceClient* c)
 
 void CachedImage::allClientsRemoved()
 {
+    m_pendingContainerSizeRequests.clear();
     if (m_image && !errorOccurred())
         m_image->resetAnimation();
 }
@@ -184,10 +189,15 @@ Image* CachedImage::imageForRenderer(const RenderObject* renderer)
     return Image::nullImage();
 }
 
-void CachedImage::setContainerSizeForRenderer(const RenderObject* renderer, const IntSize& containerSize, float containerZoom)
+void CachedImage::setContainerSizeForRenderer(const CachedImageClient* renderer, const IntSize& containerSize, float containerZoom)
 {
-    if (!m_image || containerSize.isEmpty())
+    if (containerSize.isEmpty())
         return;
+    ASSERT(renderer);
+    if (!m_image) {
+        m_pendingContainerSizeRequests.set(renderer, SizeAndZoom(containerSize, containerZoom));
+        return;
+    }
 #if ENABLE(SVG)
     if (!m_image->isSVGImage()) {
         m_image->setContainerSize(containerSize);
@@ -196,7 +206,6 @@ void CachedImage::setContainerSizeForRenderer(const RenderObject* renderer, cons
 
     m_svgImageCache->setRequestedSizeAndScales(renderer, SVGImageCache::SizeAndScales(containerSize, containerZoom));
 #else
-    UNUSED_PARAM(renderer);
     UNUSED_PARAM(containerZoom);
     m_image->setContainerSize(containerSize);
 #endif
@@ -297,6 +306,7 @@ void CachedImage::clear()
     m_svgImageCache.clear();
 #endif
     clearImage();
+    m_pendingContainerSizeRequests.clear();
     setEncodedSize(0);
 }
 
@@ -306,20 +316,25 @@ inline void CachedImage::createImage()
     if (m_image)
         return;
 #if USE(CG) && !USE(WEBKIT_IMAGE_DECODERS)
-    if (m_response.mimeType() == "application/pdf") {
+    else if (m_response.mimeType() == "application/pdf")
         m_image = PDFDocumentImage::create();
-        return;
-    }
 #endif
 #if ENABLE(SVG)
-    if (m_response.mimeType() == "image/svg+xml") {
+    else if (m_response.mimeType() == "image/svg+xml") {
         RefPtr<SVGImage> svgImage = SVGImage::create(this);
         m_svgImageCache = SVGImageCache::create(svgImage.get());
         m_image = svgImage.release();
-        return;
     }
 #endif
-    m_image = BitmapImage::create(this);
+    else
+        m_image = BitmapImage::create(this);
+
+    // Send queued container size requests.
+    if (m_image && m_image->usesContainerSize()) {
+        for (ContainerSizeRequests::iterator it = m_pendingContainerSizeRequests.begin(); it != m_pendingContainerSizeRequests.end(); ++it)
+            setContainerSizeForRenderer(it->key, it->value.first, it->value.second);
+        m_pendingContainerSizeRequests.clear();
+    }
 }
 
 inline void CachedImage::clearImage()
@@ -389,11 +404,11 @@ void CachedImage::error(CachedResource::Status status)
     notifyObservers();
 }
 
-void CachedImage::setResponse(const ResourceResponse& response)
+void CachedImage::responseReceived(const ResourceResponse& response)
 {
     if (!m_response.isNull())
         clear();
-    CachedResource::setResponse(response);
+    CachedResource::responseReceived(response);
 }
 
 void CachedImage::destroyDecodedData()
@@ -468,11 +483,20 @@ void CachedImage::changedInRect(const Image* image, const IntRect& rect)
 void CachedImage::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
 {
     MemoryClassInfo info(memoryObjectInfo, this, WebCoreMemoryTypes::CachedResourceImage);
+    memoryObjectInfo->setClassName("CachedImage");
     CachedResource::reportMemoryUsage(memoryObjectInfo);
-    info.addMember(m_image);
+    info.addMember(m_image, "m_image");
 #if ENABLE(SVG)
     info.addMember(m_svgImageCache);
 #endif
+}
+
+bool CachedImage::currentFrameHasAlpha(const RenderObject* renderer)
+{
+    Image* image = imageForRenderer(renderer);
+    if (image->isBitmapImage())
+        image->nativeImageForCurrentFrame(); // force decode
+    return image->currentFrameHasAlpha();
 }
 
 } // namespace WebCore

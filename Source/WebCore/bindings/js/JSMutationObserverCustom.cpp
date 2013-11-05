@@ -54,11 +54,19 @@ EncodedJSValue JSC_HOST_CALL JSMutationObserverConstructor::constructJSMutationO
     }
 
     JSMutationObserverConstructor* jsConstructor = jsCast<JSMutationObserverConstructor*>(exec->callee());
-    RefPtr<JSMutationCallback> callback = JSMutationCallback::create(object, jsConstructor->globalObject());
-    RefPtr<MutationObserver> observer = MutationObserver::create(jsConstructor->globalObject()->scriptExecutionContext(), callback);
-    JSObject* wrapper = asObject(toJS(exec, jsConstructor->globalObject(), observer.release()));
+    RefPtr<MutationCallback> callback = JSMutationCallback::create(object, jsConstructor->globalObject());
+    return JSValue::encode(asObject(toJS(exec, jsConstructor->globalObject(), MutationObserver::create(callback.release()))));
+}
 
-    return JSValue::encode(wrapper);
+bool JSMutationObserverOwner::isReachableFromOpaqueRoots(JSC::Handle<JSC::Unknown> handle, void*, SlotVisitor& visitor)
+{
+    MutationObserver* observer = jsCast<JSMutationObserver*>(handle.get().asCell())->impl();
+    HashSet<Node*> observedNodes = observer->getObservedNodes();
+    for (HashSet<Node*>::iterator it = observedNodes.begin(); it != observedNodes.end(); ++it) {
+        if (visitor.containsOpaqueRoot(root(*it)))
+            return true;
+    }
+    return false;
 }
 
 } // namespace WebCore

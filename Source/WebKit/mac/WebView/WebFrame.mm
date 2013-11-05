@@ -40,6 +40,7 @@
 #import "WebDataSourceInternal.h"
 #import "WebDocumentLoaderMac.h"
 #import "WebDynamicScrollBarsView.h"
+#import "WebElementDictionary.h"
 #import "WebFrameLoaderClient.h"
 #import "WebFrameViewInternal.h"
 #import "WebHTMLView.h"
@@ -60,13 +61,14 @@
 #import <WebCore/Chrome.h>
 #import <WebCore/ColorMac.h>
 #import <WebCore/DOMImplementation.h>
-#import <WebCore/DatabaseContext.h>
+#import <WebCore/DatabaseManager.h>
 #import <WebCore/DocumentFragment.h>
 #import <WebCore/DocumentLoader.h>
 #import <WebCore/DocumentMarkerController.h>
 #import <WebCore/EventHandler.h>
 #import <WebCore/EventNames.h>
 #import <WebCore/Frame.h>
+#import <WebCore/FrameLoadRequest.h>
 #import <WebCore/FrameLoader.h>
 #import <WebCore/FrameLoaderStateMachine.h>
 #import <WebCore/FrameTree.h>
@@ -75,6 +77,7 @@
 #import <WebCore/HTMLNames.h>
 #import <WebCore/HistoryItem.h>
 #import <WebCore/HitTestResult.h>
+#import <WebCore/JSNode.h>
 #import <WebCore/LegacyWebArchive.h>
 #import <WebCore/Page.h>
 #import <WebCore/PlatformEventFactoryMac.h>
@@ -497,15 +500,7 @@ static inline WebDataSource *dataSource(DocumentLoader* loader)
 
 - (NSString *)_stringForRange:(DOMRange *)range
 {
-    // This will give a system malloc'd buffer that can be turned directly into an NSString
-    unsigned length;
-    UChar* buf = plainTextToMallocAllocatedBuffer(core(range), length, true);
-    
-    if (!buf)
-        return [NSString string];
-
-    // Transfer buffer ownership to NSString
-    return [[[NSString alloc] initWithCharactersNoCopy:buf length:length freeWhenDone:YES] autorelease];
+    return plainText(core(range), TextIteratorDefaultBehavior, true);
 }
 
 - (BOOL)_shouldFlattenCompositingLayers:(CGContextRef)context
@@ -1076,7 +1071,7 @@ static inline WebDataSource *dataSource(DocumentLoader* loader)
     
     if (Document* document = _private->coreFrame->document()) {
 #if ENABLE(SQL_DATABASE)
-        if (DatabaseContext::hasOpenDatabases(document))
+        if (DatabaseManager::manager().hasOpenDatabases(document))
             [result setObject:[NSNumber numberWithBool:YES] forKey:WebFrameUsesDatabases];
 #endif
         if (!document->canSuspendActiveDOMObjects())
@@ -1250,6 +1245,27 @@ static inline WebDataSource *dataSource(DocumentLoader* loader)
     return pages;
 }
 
+- (JSValueRef)jsWrapperForNode:(DOMNode *)node inScriptWorld:(WebScriptWorld *)world
+{
+    Frame* coreFrame = _private->coreFrame;
+    if (!coreFrame)
+        return 0;
+
+    JSDOMWindow* globalObject = coreFrame->script()->globalObject(core(world));
+    JSC::ExecState* exec = globalObject->globalExec();
+
+    JSC::JSLockHolder lock(exec);
+    return toRef(exec, toJS(exec, globalObject, core(node)));
+}
+
+- (NSDictionary *)elementAtPoint:(NSPoint)point
+{
+    Frame* coreFrame = _private->coreFrame;
+    if (!coreFrame)
+        return nil;
+    return [[[WebElementDictionary alloc] initWithHitTestResult:coreFrame->eventHandler()->hitTestResultAtPoint(IntPoint(point), false, true)] autorelease];
+}
+
 @end
 
 @implementation WebFrame
@@ -1369,7 +1385,7 @@ static bool needsMicrosoftMessengerDOMDocumentWorkaround()
     if (!resourceRequest.url().isValid() && !resourceRequest.url().isEmpty())
         resourceRequest.setURL([NSURL URLWithString:[@"file:" stringByAppendingString:[[request URL] absoluteString]]]);
 
-    coreFrame->loader()->load(resourceRequest, false);
+    coreFrame->loader()->load(FrameLoadRequest(coreFrame, resourceRequest));
 }
 
 static NSURL *createUniqueWebDataURL()
@@ -1400,7 +1416,7 @@ static NSURL *createUniqueWebDataURL()
 
     SubstituteData substituteData(WebCore::SharedBuffer::wrapNSData(data), MIMEType, encodingName, [unreachableURL absoluteURL], responseURL);
 
-    _private->coreFrame->loader()->load(request, substituteData, false);
+    _private->coreFrame->loader()->load(FrameLoadRequest(_private->coreFrame, request, substituteData));
 }
 
 

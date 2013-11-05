@@ -34,15 +34,16 @@
 
 namespace WebCore {
 
-// FIXME: Uses ThreadSafeRefCounted for storage in ScriptExecutionContext::Task but
-// it is never actually used on multiple threads. http://webkit.org/b/101483
-class IDBDatabaseCallbacks : public ThreadSafeRefCounted<IDBDatabaseCallbacks> {
+class IDBDatabaseCallbacks : public RefCounted<IDBDatabaseCallbacks> {
 public:
     virtual ~IDBDatabaseCallbacks() { }
 
     virtual void onForcedClose() = 0;
     virtual void onVersionChange(const String& version) = 0;
     virtual void onVersionChange(int64_t oldVersion, int64_t newVersion) = 0;
+
+    virtual void onAbort(int64_t transactionId, PassRefPtr<IDBDatabaseError>) = 0;
+    virtual void onComplete(int64_t transactionId) = 0;
 };
 
 } // namespace WebCore

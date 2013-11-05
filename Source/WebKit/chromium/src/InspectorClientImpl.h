@@ -34,7 +34,6 @@
 #include "InspectorClient.h"
 #include "InspectorController.h"
 #include "InspectorFrontendChannel.h"
-#include <public/WebThread.h>
 #include <wtf/OwnPtr.h>
 
 namespace WebKit {
@@ -44,8 +43,7 @@ class WebDevToolsAgentImpl;
 class WebViewImpl;
 
 class InspectorClientImpl : public WebCore::InspectorClient,
-                            public WebCore::InspectorFrontendChannel,
-                            public WebThread::TaskObserver {
+                            public WebCore::InspectorFrontendChannel {
 public:
     InspectorClientImpl(WebViewImpl*);
     ~InspectorClientImpl();
@@ -70,12 +68,13 @@ public:
     virtual void clearBrowserCookies();
 
     virtual bool canMonitorMainThread();
-    virtual void startMainThreadMonitoring();
-    virtual void stopMainThreadMonitoring();
 
     virtual bool canOverrideDeviceMetrics();
     virtual void overrideDeviceMetrics(int, int, float, bool);
     virtual void autoZoomPageToFitWidth();
+
+    virtual bool overridesShowPaintRects();
+    virtual void setShowPaintRects(bool);
 
     virtual bool canShowFPSCounter();
     virtual void setShowFPSCounter(bool);
@@ -85,11 +84,9 @@ public:
     virtual void getAllocatedObjects(HashSet<const void*>&);
     virtual void dumpUncountedAllocatedObjects(const HashMap<const void*, size_t>&);
 
-private:
-    // WebThread::TaskObserver
-    virtual void willProcessTask();
-    virtual void didProcessTask();
+    virtual bool captureScreenshot(WTF::String* data);
 
+private:
     WebDevToolsAgentImpl* devToolsAgent();
 
     // The WebViewImpl of the page being inspected; gets passed to the constructor

@@ -26,53 +26,144 @@
 #ifndef ImageDecodingStore_h
 #define ImageDecodingStore_h
 
-#include "SkBitmap.h"
-#include "SkRect.h"
+#include "ImageDecoder.h"
+#include "ScaledImageFragment.h"
+#include "SkTypes.h"
 #include "SkSize.h"
+#include "SkSizeHash.h"
 
-#include <wtf/HashMap.h>
+#include <wtf/DoublyLinkedList.h>
 #include <wtf/HashSet.h>
 #include <wtf/OwnPtr.h>
 #include <wtf/PassOwnPtr.h>
-#include <wtf/RefPtr.h>
+#include <wtf/ThreadingPrimitives.h>
 #include <wtf/Vector.h>
 
 namespace WebCore {
 
-class ImageDecoder;
 class ImageFrameGenerator;
-class ScaledImageFragment;
 class SharedBuffer;
 
-// This class can only be instantiated on main thread. There will be an
-// instance on impl thread in the future but that part of implementation
-// is incomplete. See bug: https://bugs.webkit.org/show_bug.cgi?id=94240
-// for details.
 class ImageDecodingStore {
 public:
+    enum CacheCondition {
+        CacheMustBeComplete,
+        CacheCanBeIncomplete
+    };
+
     static PassOwnPtr<ImageDecodingStore> create() { return adoptPtr(new ImageDecodingStore); }
     ~ImageDecodingStore();
 
-    static ImageDecodingStore* instanceOnMainThread();
-    static void initializeOnMainThread();
+    static ImageDecodingStore* instance();
+    static void initializeOnce();
     static void shutdown();
 
-    // You may only lock one set of pixels at a time; overlapping lock calls are not allowed.
-    void* lockPixels(PassRefPtr<ImageFrameGenerator>, const SkISize& scaledSize, const SkIRect& scaledSubset);
-    void unlockPixels();
+    // If cacheMustBeComplete is true then only return a complete cache.
+    bool lockCache(const ImageFrameGenerator*, const SkISize& scaledSize, CacheCondition, const ScaledImageFragment**, ImageDecoder** = 0);
+    void unlockCache(const ImageFrameGenerator*, const ScaledImageFragment*);
+    const ScaledImageFragment* insertAndLockCache(const ImageFrameGenerator*, PassOwnPtr<ScaledImageFragment>, PassOwnPtr<ImageDecoder> = nullptr);
 
-    void frameGeneratorBeingDestroyed(ImageFrameGenerator*);
+    // Overwrite an existing cached image. It is unlocked and then replaced with the new image.
+    // The existing cached image must be already locked and incomplete.
+    const ScaledImageFragment* overwriteAndLockCache(const ImageFrameGenerator*, const ScaledImageFragment*, PassOwnPtr<ScaledImageFragment>);
+
+    // Remove all cache entries indexed by ImageFrameGenerator.
+    void removeCacheIndexedByGenerator(const ImageFrameGenerator*);
+
+    void setCacheLimitInBytes(size_t);
+    size_t memoryUsageInBytes();
+    unsigned cacheEntries();
 
 private:
+    typedef std::pair<const ImageFrameGenerator*, SkISize> CacheIdentifier;
+
+    class CacheEntry : public DoublyLinkedListNode<CacheEntry> {
+        friend class WTF::DoublyLinkedListNode<CacheEntry>;
+    public:
+        static PassOwnPtr<CacheEntry> createAndUse(const ImageFrameGenerator* generator, PassOwnPtr<ScaledImageFragment> image, PassOwnPtr<ImageDecoder> decoder = nullptr)
+        {
+            return adoptPtr(new CacheEntry(generator, image, decoder, 1));
+        }
+
+        CacheEntry(const ImageFrameGenerator* generator, PassOwnPtr<ScaledImageFragment> image, PassOwnPtr<ImageDecoder> decoder, int count)
+            : m_prev(0)
+            , m_next(0)
+            , m_generator(generator)
+            , m_cachedImage(image)
+            , m_cachedDecoder(decoder)
+            , m_useCount(count)
+        {
+        }
+
+        ~CacheEntry()
+        {
+            ASSERT(!m_useCount);
+        }
+
+        CacheIdentifier cacheKey() const { return std::make_pair(m_generator, m_cachedImage->scaledSize()); }
+        const ScaledImageFragment* cachedImage() const { return m_cachedImage.get(); }
+        ScaledImageFragment* cachedImage() { return m_cachedImage.get(); }
+        ImageDecoder* cachedDecoder() const { return m_cachedDecoder.get(); }
+        PassOwnPtr<ImageDecoder> overwriteCachedImage(PassOwnPtr<ScaledImageFragment> image)
+        {
+            m_cachedImage = image;
+            if (m_cachedImage->isComplete())
+                return m_cachedDecoder.release();
+            return nullptr;
+        }
+        int useCount() const { return m_useCount; }
+        void incrementUseCount() { ++m_useCount; }
+        void decrementUseCount() { --m_useCount; ASSERT(m_useCount >= 0); }
+
+        // FIXME: getSafeSize() returns size in bytes truncated to a 32-bits integer.
+        //        Find a way to get the size in 64-bits.
+        size_t memoryUsageInBytes() const { return cachedImage()->bitmap().getSafeSize(); }
+
+    private:
+        CacheEntry* m_prev;
+        CacheEntry* m_next;
+        const ImageFrameGenerator* m_generator;
+        OwnPtr<ScaledImageFragment> m_cachedImage;
+        OwnPtr<ImageDecoder> m_cachedDecoder;
+        int m_useCount;
+    };
+
     ImageDecodingStore();
-    bool calledOnValidThread() const;
-    void createFrameGenerator(PassOwnPtr<ImageDecoder>);
-    ScaledImageFragment* lookupFrameCache(int imageId, const SkISize& scaledSize) const;
-    void deleteFrameCache(int imageId);
 
-    Vector<OwnPtr<ScaledImageFragment> > m_frameCache;
+    void prune();
 
-    SkBitmap m_lockedSkBitmap;
+    // These methods are called while m_mutex is locked.
+    void insertCacheInternal(PassOwnPtr<CacheEntry>);
+    void removeFromCacheInternal(const CacheEntry*, Vector<OwnPtr<CacheEntry> >* deletionList);
+    void removeFromCacheListInternal(const Vector<OwnPtr<CacheEntry> >& deletionList);
+    void incrementMemoryUsage(size_t size) { m_memoryUsageInBytes += size; }
+    void decrementMemoryUsage(size_t size)
+    {
+        ASSERT(m_memoryUsageInBytes >= size);
+        m_memoryUsageInBytes -= size;
+    }
+
+    // Head of this list is the least recently used cache entry.
+    // Tail of this list is the most recently used cache entry.
+    DoublyLinkedList<CacheEntry> m_orderedCacheList;
+
+    typedef HashMap<CacheIdentifier, OwnPtr<CacheEntry> > CacheMap;
+    CacheMap m_cacheMap;
+
+    typedef HashSet<SkISize> SizeSet;
+    typedef HashMap<const ImageFrameGenerator*, SizeSet> CachedSizeMap;
+    CachedSizeMap m_cachedSizeMap;
+
+    size_t m_cacheLimitInBytes;
+    size_t m_memoryUsageInBytes;
+
+    // Protect concurrent access to these members:
+    //   m_orderedCacheList
+    //   m_cacheMap and all CacheEntrys stored in it
+    //   m_cachedSizeMap
+    //   m_cacheLimitInBytes
+    //   m_memoryUsageInBytes
+    Mutex m_mutex;
 };
 
 } // namespace WebCore

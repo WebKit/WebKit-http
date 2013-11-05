@@ -24,6 +24,7 @@
 #define V8TestCallback_h
 
 #include "ActiveDOMCallback.h"
+#include "ScopedPersistent.h"
 #include "TestCallback.h"
 #include "WorldContextHandle.h"
 #include <v8.h>
@@ -35,11 +36,11 @@ class ScriptExecutionContext;
 
 class V8TestCallback : public TestCallback, public ActiveDOMCallback {
 public:
-    static PassRefPtr<V8TestCallback> create(v8::Local<v8::Value> value, ScriptExecutionContext* context)
+    static PassRefPtr<V8TestCallback> create(v8::Handle<v8::Value> value, ScriptExecutionContext* context, v8::Handle<v8::Object> owner = v8::Handle<v8::Object>())
     {
         ASSERT(value->IsObject());
         ASSERT(context);
-        return adoptRef(new V8TestCallback(value->ToObject(), context));
+        return adoptRef(new V8TestCallback(v8::Handle<v8::Object>::Cast(value), context, owner));
     }
 
     virtual ~V8TestCallback();
@@ -55,9 +56,15 @@ public:
     virtual bool callbackRequiresThisToPass(Class8* class8Param, ThisClass* thisClassParam);
 
 private:
-    V8TestCallback(v8::Local<v8::Object>, ScriptExecutionContext*);
+    V8TestCallback(v8::Handle<v8::Object>, ScriptExecutionContext*, v8::Handle<v8::Object>);
 
-    v8::Persistent<v8::Object> m_callback;
+    static void weakCallback(v8::Persistent<v8::Value> wrapper, void* parameter)
+    {
+        V8TestCallback* object = static_cast<V8TestCallback*>(parameter);
+        object->m_callback.clear();
+    }
+
+    ScopedPersistent<v8::Object> m_callback;
     WorldContextHandle m_worldContext;
 };
 

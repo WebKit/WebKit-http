@@ -29,7 +29,7 @@
 #include "RenderEmbeddedObject.h"
 
 #include "RenderImageResource.h"
-#include "RenderTheme.h"
+#include "Timer.h"
 
 namespace WebCore {
 
@@ -40,9 +40,16 @@ public:
     RenderSnapshottedPlugIn(HTMLPlugInImageElement*);
     virtual ~RenderSnapshottedPlugIn();
 
+    enum LabelSize {
+        LabelSizeSmall,
+        LabelSizeLarge,
+        NoLabel,
+    };
+
     void updateSnapshot(PassRefPtr<Image>);
 
     void handleEvent(Event*);
+    void hoverDelayTimerFired(DeferrableOneShotTimer<RenderSnapshottedPlugIn>*);
 
 private:
     HTMLPlugInImageElement* plugInImageElement() const;
@@ -52,11 +59,17 @@ private:
     virtual bool isSnapshottedPlugIn() const OVERRIDE { return true; }
     virtual void paint(PaintInfo&, const LayoutPoint&) OVERRIDE;
     virtual void paintReplaced(PaintInfo&, const LayoutPoint&) OVERRIDE;
-    void paintReplacedSnapshot(PaintInfo&, const LayoutPoint&);
 
-    virtual void layout() OVERRIDE;
+    void paintReplacedSnapshot(PaintInfo&, const LayoutPoint&);
+    void paintLabel(PaintInfo&, const LayoutPoint&);
+    void repaintLabel();
+
+    LayoutRect tryToFitStartLabel(LabelSize, const LayoutRect& contentBox) const;
+    Image* startLabelImage(LabelSize) const;
 
     OwnPtr<RenderImageResource> m_snapshotResource;
+    bool m_shouldShowLabel;
+    DeferrableOneShotTimer<RenderSnapshottedPlugIn> m_hoverDelayTimer;
 };
 
 inline RenderSnapshottedPlugIn* toRenderSnapshottedPlugIn(RenderObject* object)

@@ -58,7 +58,7 @@ V8CustomXPathNSResolver::~V8CustomXPathNSResolver()
 String V8CustomXPathNSResolver::lookupNamespaceURI(const String& prefix)
 {
     v8::Handle<v8::Function> lookupNamespaceURIFunc;
-    v8::Handle<v8::String> lookupNamespaceURIName = v8::String::New("lookupNamespaceURI");
+    v8::Handle<v8::String> lookupNamespaceURIName = v8::String::NewSymbol("lookupNamespaceURI");
 
     // Check if the resolver has a function property named lookupNamespaceURI.
     if (m_resolver->Has(lookupNamespaceURIName)) {
@@ -68,7 +68,7 @@ String V8CustomXPathNSResolver::lookupNamespaceURI(const String& prefix)
     }
 
     if (lookupNamespaceURIFunc.IsEmpty() && !m_resolver->IsFunction()) {
-        activeDOMWindow(BindingState::instance())->console()->addMessage(JSMessageSource, LogMessageType, ErrorMessageLevel, "XPathNSResolver does not have a lookupNamespaceURI method.");
+        activeDOMWindow(BindingState::instance())->console()->addMessage(JSMessageSource, ErrorMessageLevel, "XPathNSResolver does not have a lookupNamespaceURI method.");
         return String();
     }
 
@@ -77,7 +77,7 @@ String V8CustomXPathNSResolver::lookupNamespaceURI(const String& prefix)
     tryCatch.SetVerbose(true); // Print exceptions to console.
 
     const int argc = 1;
-    v8::Handle<v8::Value> argv[argc] = { v8String(prefix) };
+    v8::Handle<v8::Value> argv[argc] = { deprecatedV8String(prefix) };
     v8::Handle<v8::Function> function = lookupNamespaceURIFunc.IsEmpty() ? v8::Handle<v8::Function>::Cast(m_resolver) : lookupNamespaceURIFunc;
 
     v8::Handle<v8::Value> retval = ScriptController::callFunctionWithInstrumentation(0, function, m_resolver, argc, argv);

@@ -106,16 +106,10 @@ enum MarkingBehavior {
     MarkContainingBlockChain,
 };
 
-enum PlaceGeneratedRunInFlag {
-    PlaceGeneratedRunIn,
-    DoNotPlaceGeneratedRunIn
-};
-
 enum MapCoordinatesMode {
     IsFixed = 1 << 0,
     UseTransforms = 1 << 1,
-    ApplyContainerFlip = 1 << 2,
-    SnapOffsetForTransforms = 1 << 3
+    ApplyContainerFlip = 1 << 2
 };
 typedef unsigned MapCoordinatesFlags;
 
@@ -155,12 +149,9 @@ const int showTreeCharacterOffset = 39;
 
 // Base class for all rendering tree objects.
 class RenderObject : public CachedImageClient {
-    friend class LayoutRepainter;
     friend class RenderBlock;
-    friend class RenderBox;
     friend class RenderLayer;
     friend class RenderObjectChildList;
-    friend class RenderSVGContainer;
 public:
     // Anonymous objects should pass the document as their node, and they will then automatically be
     // marked as anonymous in the constructor.
@@ -244,7 +235,7 @@ public:
     // Function to return our enclosing flow thread if we are contained inside one.
     RenderFlowThread* enclosingRenderFlowThread() const;
 
-    RenderNamedFlowThread* enclosingRenderNamedFlowThread() const;
+    RenderNamedFlowThread* renderNamedFlowThreadWrapper() const;
 
     virtual bool isEmpty() const { return firstChild() == 0; }
 
@@ -284,6 +275,8 @@ public:
     virtual void removeChild(RenderObject*);
     virtual bool createsAnonymousWrapper() const { return false; }
     //////////////////////////////////////////
+
+    virtual void reportMemoryUsage(MemoryObjectInfo*) const;
 
 protected:
     //////////////////////////////////////////
@@ -332,6 +325,8 @@ private:
 
 public:
     RenderArena* renderArena() const { return document()->renderArena(); }
+
+    bool isPseudoElement() const { return node() && node()->isPseudoElement(); }
 
     virtual bool isBR() const { return false; }
     virtual bool isBlockFlow() const { return false; }
@@ -398,6 +393,8 @@ public:
     virtual bool isRenderFullScreen() const { return false; }
     virtual bool isRenderFullScreenPlaceholder() const { return false; }
 #endif
+
+    virtual bool isRenderGrid() const { return false; }
 
     virtual bool isRenderFlowThread() const { return false; }
     virtual bool isRenderNamedFlowThread() const { return false; }
@@ -487,6 +484,7 @@ public:
     // to inherit from RenderSVGObject -> RenderObject (some need RenderBlock inheritance for instance)
     virtual void setNeedsTransformUpdate() { }
     virtual void setNeedsBoundariesUpdate();
+    virtual bool needsBoundariesUpdate() { return false; }
 
     // Per SVG 1.1 objectBoundingBox ignores clipping, masking, filter effects, opacity and stroke-width.
     // This is used for all computation of objectBoundingBox relative units and by SVGLocatable::getBBox().
@@ -542,11 +540,11 @@ public:
 
     bool isFloating() const { return m_bitfields.floating(); }
 
-    bool isOutOfFlowPositioned() const { return m_bitfields.positioned(); } // absolute or fixed positioning
-    bool isInFlowPositioned() const { return m_bitfields.relPositioned() || m_bitfields.stickyPositioned(); } // relative or sticky positioning
-    bool isRelPositioned() const { return m_bitfields.relPositioned(); } // relative positioning
-    bool isStickyPositioned() const { return m_bitfields.stickyPositioned(); }
-    bool isPositioned() const { return m_bitfields.positioned() || m_bitfields.relPositioned() || m_bitfields.stickyPositioned(); }
+    bool isOutOfFlowPositioned() const { return m_bitfields.isOutOfFlowPositioned(); } // absolute or fixed positioning
+    bool isInFlowPositioned() const { return m_bitfields.isRelPositioned() || m_bitfields.isStickyPositioned(); } // relative or sticky positioning
+    bool isRelPositioned() const { return m_bitfields.isRelPositioned(); } // relative positioning
+    bool isStickyPositioned() const { return m_bitfields.isStickyPositioned(); }
+    bool isPositioned() const { return m_bitfields.isPositioned(); }
 
     bool isText() const  { return m_bitfields.isText(); }
     bool isBox() const { return m_bitfields.isBox(); }
@@ -620,12 +618,15 @@ public:
     bool isRooted(RenderView** = 0) const;
 
     Node* node() const { return isAnonymous() ? 0 : m_node; }
+    Node* nonPseudoNode() const { return isPseudoElement() ? 0 : node(); }
+
+    // FIXME: Why does RenderWidget need this?
+    void clearNode() { m_node = 0; }
 
     // Returns the styled node that caused the generation of this renderer.
     // This is the same as node() except for renderers of :before and :after
     // pseudo elements for which their parent node is returned.
-    Node* generatingNode() const { return m_node == document() ? 0 : m_node; }
-    void setNode(Node* node) { m_node = node; }
+    Node* generatingNode() const { return isPseudoElement() ? node()->parentOrHostNode() : node(); }
 
     Document* document() const { return m_node->document(); }
     Frame* frame() const { return document()->frame(); }
@@ -657,9 +658,13 @@ public:
         setPreferredLogicalWidthsDirty(true);
     }
 
-    void setPositioned(bool b = true)  { m_bitfields.setPositioned(b);  }
-    void setRelPositioned(bool b = true) { m_bitfields.setRelPositioned(b); }
-    void setStickyPositioned(bool b = true) { m_bitfields.setStickyPositioned(b); }
+    void setPositionState(EPosition position)
+    {
+        ASSERT((position != AbsolutePosition && position != FixedPosition) || isBox());
+        m_bitfields.setPositionedState(position);
+    }
+    void clearPositionedState() { m_bitfields.clearPositionedState(); }
+
     void setFloating(bool b = true) { m_bitfields.setFloating(b); }
     void setInline(bool b = true) { m_bitfields.setIsInline(b); }
     void setHasBoxDecorations(bool b = true) { m_bitfields.setPaintBackground(b); }
@@ -713,6 +718,9 @@ public:
 
     // Set the style of the object and update the state of the object accordingly.
     virtual void setStyle(PassRefPtr<RenderStyle>);
+
+    // Set the style of the object if it's generated content.
+    void setPseudoStyle(PassRefPtr<RenderStyle>);
 
     // Updates only the local style ptr of the object.  Does not update the state of the object,
     // and so only should be called when the style is known not to have changed (or from setStyle).
@@ -812,6 +820,7 @@ public:
     IntRect pixelSnappedAbsoluteClippedOverflowRect() const;
     virtual LayoutRect clippedOverflowRectForRepaint(const RenderLayerModelObject* repaintContainer) const;
     virtual LayoutRect rectWithOutlineForRepaint(const RenderLayerModelObject* repaintContainer, LayoutUnit outlineWidth) const;
+    virtual LayoutRect outlineBoundsForRepaint(const RenderLayerModelObject* /*repaintContainer*/, const RenderGeometryMap* = 0) const { return LayoutRect(); }
 
     // Given a rect in the object's coordinate space, compute a rect suitable for repainting
     // that rect in view coordinates.
@@ -981,14 +990,15 @@ protected:
     virtual void willBeDestroyed();
     void arenaDelete(RenderArena*, void* objectBase);
 
-    virtual LayoutRect outlineBoundsForRepaint(const RenderLayerModelObject* /*repaintContainer*/, LayoutPoint* /*cachedOffsetToRepaintContainer*/ = 0) const { return LayoutRect(); }
-
     virtual bool canBeReplacedWithInlineRunIn() const;
 
     virtual void insertedIntoTree();
     virtual void willBeRemovedFromTree();
 
 private:
+    void removeFromRenderFlowThread();
+    void removeFromRenderFlowThreadRecursive(RenderFlowThread*);
+
     RenderStyle* cachedFirstLineStyle() const;
     StyleDifference adjustStyleDifference(StyleDifference, unsigned contextSensitiveProperties) const;
 
@@ -1021,6 +1031,12 @@ private:
         void set##Name(bool name) { m_##name = name; }\
 
     class RenderObjectBitfields {
+        enum PositionedState {
+            IsStaticlyPositioned = 0,
+            IsRelativelyPositioned = 1,
+            IsOutOfFlowPositioned = 2,
+            IsStickyPositioned = 3
+        };
     public:
         RenderObjectBitfields(Node* node)
             : m_needsLayout(false)
@@ -1030,9 +1046,6 @@ private:
             , m_needsSimplifiedNormalFlowLayout(false)
             , m_preferredLogicalWidthsDirty(false)
             , m_floating(false)
-            , m_positioned(false)
-            , m_relPositioned(false)
-            , m_stickyPositioned(false)
             , m_paintBackground(false)
             , m_isAnonymous(node == node->document())
             , m_isText(false)
@@ -1052,6 +1065,7 @@ private:
             , m_marginBeforeQuirk(false) 
             , m_marginAfterQuirk(false)
             , m_hasColumns(false)
+            , m_positionedState(IsStaticlyPositioned)
             , m_selectionState(SelectionNone)
         {
         }
@@ -1065,9 +1079,6 @@ private:
         ADD_BOOLEAN_BITFIELD(preferredLogicalWidthsDirty, PreferredLogicalWidthsDirty);
         ADD_BOOLEAN_BITFIELD(floating, Floating);
 
-        ADD_BOOLEAN_BITFIELD(positioned, Positioned);
-        ADD_BOOLEAN_BITFIELD(relPositioned, RelPositioned);
-        ADD_BOOLEAN_BITFIELD(stickyPositioned, StickyPositioned);
         ADD_BOOLEAN_BITFIELD(paintBackground, PaintBackground); // if the box has something to paint in the
         // background painting phase (background, border, etc)
 
@@ -1098,9 +1109,22 @@ private:
         ADD_BOOLEAN_BITFIELD(hasColumns, HasColumns);
 
     private:
+        unsigned m_positionedState : 2; // PositionedState
         unsigned m_selectionState : 3; // SelectionState
 
     public:
+        bool isOutOfFlowPositioned() const { return m_positionedState == IsOutOfFlowPositioned; }
+        bool isRelPositioned() const { return m_positionedState == IsRelativelyPositioned; }
+        bool isStickyPositioned() const { return m_positionedState == IsStickyPositioned; }
+        bool isPositioned() const { return m_positionedState != IsStaticlyPositioned; }
+
+        void setPositionedState(int positionState)
+        {
+            // This mask maps FixedPosition and AbsolutePosition to IsOutOfFlowPositioned, saving one bit.
+            m_positionedState = static_cast<PositionedState>(positionState & 0x3);
+        }
+        void clearPositionedState() { m_positionedState = StaticPosition; }
+
         ALWAYS_INLINE SelectionState selectionState() const { return static_cast<SelectionState>(m_selectionState); }
         ALWAYS_INLINE void setSelectionState(SelectionState selectionState) { m_selectionState = selectionState; }
     };

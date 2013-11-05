@@ -124,7 +124,7 @@ rect: style.getPropertyValue(min-width) : 0px
 rect: style.getPropertyCSSValue(min-width) : [object CSSPrimitiveValue]
 rect: style.getPropertyValue(opacity) : 1
 rect: style.getPropertyCSSValue(opacity) : [object CSSPrimitiveValue]
-rect: style.getPropertyValue(orphans) : 2
+rect: style.getPropertyValue(orphans) : auto
 rect: style.getPropertyCSSValue(orphans) : [object CSSPrimitiveValue]
 rect: style.getPropertyValue(outline-color) : rgb(0, 0, 0)
 rect: style.getPropertyCSSValue(outline-color) : [object CSSPrimitiveValue]
@@ -188,7 +188,7 @@ rect: style.getPropertyValue(visibility) : visible
 rect: style.getPropertyCSSValue(visibility) : [object CSSPrimitiveValue]
 rect: style.getPropertyValue(white-space) : normal
 rect: style.getPropertyCSSValue(white-space) : [object CSSPrimitiveValue]
-rect: style.getPropertyValue(widows) : 2
+rect: style.getPropertyValue(widows) : auto
 rect: style.getPropertyCSSValue(widows) : [object CSSPrimitiveValue]
 rect: style.getPropertyValue(width) : auto
 rect: style.getPropertyCSSValue(width) : [object CSSPrimitiveValue]
@@ -280,7 +280,7 @@ rect: style.getPropertyValue(-webkit-column-rule-style) : none
 rect: style.getPropertyCSSValue(-webkit-column-rule-style) : [object CSSPrimitiveValue]
 rect: style.getPropertyValue(-webkit-column-rule-width) : 0px
 rect: style.getPropertyCSSValue(-webkit-column-rule-width) : [object CSSPrimitiveValue]
-rect: style.getPropertyValue(-webkit-column-span) : 1
+rect: style.getPropertyValue(-webkit-column-span) : none
 rect: style.getPropertyCSSValue(-webkit-column-span) : [object CSSPrimitiveValue]
 rect: style.getPropertyValue(-webkit-column-width) : auto
 rect: style.getPropertyCSSValue(-webkit-column-width) : [object CSSPrimitiveValue]
@@ -344,8 +344,6 @@ rect: style.getPropertyValue(-webkit-marquee-repetition) : infinite
 rect: style.getPropertyCSSValue(-webkit-marquee-repetition) : [object CSSPrimitiveValue]
 rect: style.getPropertyValue(-webkit-marquee-style) : scroll
 rect: style.getPropertyCSSValue(-webkit-marquee-style) : [object CSSPrimitiveValue]
-rect: style.getPropertyValue(-webkit-mask-attachment) : scroll
-rect: style.getPropertyCSSValue(-webkit-mask-attachment) : [object CSSPrimitiveValue]
 rect: style.getPropertyValue(-webkit-mask-box-image) : none
 rect: style.getPropertyCSSValue(-webkit-mask-box-image) : [object CSSPrimitiveValue]
 rect: style.getPropertyValue(-webkit-mask-box-image-outset) : 0px
@@ -626,7 +624,7 @@ g: style.getPropertyValue(min-width) : 0px
 g: style.getPropertyCSSValue(min-width) : [object CSSPrimitiveValue]
 g: style.getPropertyValue(opacity) : 1
 g: style.getPropertyCSSValue(opacity) : [object CSSPrimitiveValue]
-g: style.getPropertyValue(orphans) : 2
+g: style.getPropertyValue(orphans) : auto
 g: style.getPropertyCSSValue(orphans) : [object CSSPrimitiveValue]
 g: style.getPropertyValue(outline-color) : rgb(0, 0, 0)
 g: style.getPropertyCSSValue(outline-color) : [object CSSPrimitiveValue]
@@ -690,7 +688,7 @@ g: style.getPropertyValue(visibility) : visible
 g: style.getPropertyCSSValue(visibility) : [object CSSPrimitiveValue]
 g: style.getPropertyValue(white-space) : normal
 g: style.getPropertyCSSValue(white-space) : [object CSSPrimitiveValue]
-g: style.getPropertyValue(widows) : 2
+g: style.getPropertyValue(widows) : auto
 g: style.getPropertyCSSValue(widows) : [object CSSPrimitiveValue]
 g: style.getPropertyValue(width) : auto
 g: style.getPropertyCSSValue(width) : [object CSSPrimitiveValue]
@@ -782,7 +780,7 @@ g: style.getPropertyValue(-webkit-column-rule-style) : none
 g: style.getPropertyCSSValue(-webkit-column-rule-style) : [object CSSPrimitiveValue]
 g: style.getPropertyValue(-webkit-column-rule-width) : 0px
 g: style.getPropertyCSSValue(-webkit-column-rule-width) : [object CSSPrimitiveValue]
-g: style.getPropertyValue(-webkit-column-span) : 1
+g: style.getPropertyValue(-webkit-column-span) : none
 g: style.getPropertyCSSValue(-webkit-column-span) : [object CSSPrimitiveValue]
 g: style.getPropertyValue(-webkit-column-width) : auto
 g: style.getPropertyCSSValue(-webkit-column-width) : [object CSSPrimitiveValue]
@@ -846,8 +844,6 @@ g: style.getPropertyValue(-webkit-marquee-repetition) : infinite
 g: style.getPropertyCSSValue(-webkit-marquee-repetition) : [object CSSPrimitiveValue]
 g: style.getPropertyValue(-webkit-marquee-style) : scroll
 g: style.getPropertyCSSValue(-webkit-marquee-style) : [object CSSPrimitiveValue]
-g: style.getPropertyValue(-webkit-mask-attachment) : scroll
-g: style.getPropertyCSSValue(-webkit-mask-attachment) : [object CSSPrimitiveValue]
 g: style.getPropertyValue(-webkit-mask-box-image) : none
 g: style.getPropertyCSSValue(-webkit-mask-box-image) : [object CSSPrimitiveValue]
 g: style.getPropertyValue(-webkit-mask-box-image-outset) : 0px

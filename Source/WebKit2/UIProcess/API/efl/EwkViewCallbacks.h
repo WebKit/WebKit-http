@@ -29,27 +29,29 @@
 #include "WKEinaSharedString.h"
 #include "ewk_private.h"
 #include <Evas.h>
+#include <WebCore/IntSize.h>
 #include <wtf/text/CString.h>
 #include <wtf/text/WTFString.h>
 
-typedef struct Ewk_Object Ewk_Auth_Request;
-typedef struct Ewk_Object Ewk_Download_Job;
-typedef struct Ewk_Object Ewk_File_Chooser_Request;
-typedef struct Ewk_Object Ewk_Form_Submission_Request;
-typedef struct Ewk_Object Ewk_Navigation_Policy_Decision;
-typedef struct Ewk_Object Ewk_Resource;
+typedef struct EwkObject Ewk_Auth_Request;
+typedef struct EwkObject Ewk_Download_Job;
+typedef struct EwkObject Ewk_File_Chooser_Request;
+typedef struct EwkObject Ewk_Form_Submission_Request;
+typedef struct EwkObject Ewk_Navigation_Policy_Decision;
+typedef struct EwkObject Ewk_Resource;
 #if ENABLE(WEB_INTENTS)
-typedef struct Ewk_Object Ewk_Intent;
+typedef struct EwkObject Ewk_Intent;
 #endif
 #if ENABLE(WEB_INTENTS_TAG)
-typedef struct Ewk_Object Ewk_Intent_Service;
+typedef struct EwkObject Ewk_Intent_Service;
 #endif
+typedef struct EwkError Ewk_Error;
 
 struct Ewk_Download_Job_Error;
-struct Ewk_Error;
 struct Ewk_Resource_Request;
 struct Ewk_Resource_Load_Response;
 struct Ewk_Resource_Load_Error;
+struct Ewk_CSS_Size;
 
 namespace EwkViewCallbacks {
 
@@ -57,8 +59,7 @@ enum CallbackType {
     AuthenticationRequest,
     BackForwardListChange,
     CancelVibration,
-    CloseWindow,
-    CreateWindow,
+    ContentsSizeChanged,
     DownloadJobCancelled,
     DownloadJobFailed,
     DownloadJobFinished,
@@ -69,6 +70,7 @@ enum CallbackType {
     LoadError,
     LoadFinished,
     LoadProgress,
+    MenuBarVisible,
     ProvisionalLoadFailed,
     ProvisionalLoadRedirect,
     ProvisionalLoadStarted,
@@ -77,15 +79,18 @@ enum CallbackType {
     ResourceLoadFailed,
     ResourceLoadFinished,
     ResourceRequestSent,
+    StatusBarVisible,
     NavigationPolicyDecision,
     NewWindowPolicyDecision,
     TextFound,
     TitleChange,
+    ToolbarVisible,
     TooltipTextUnset,
     TooltipTextSet,
     URLChanged,
     Vibrate,
     WebProcessCrashed,
+    WindowResizable,
 #if ENABLE(WEB_INTENTS)
     IntentRequest,
 #endif
@@ -94,63 +99,74 @@ enum CallbackType {
 #endif
 };
 
-template<typename T>
-inline bool callbackArgumentsExpected()
-{
-    return true;
-}
-
-template<>
-inline bool callbackArgumentsExpected<void>()
-{
-    return false;
-}
-
 template <CallbackType>
-struct CallBackInfo {
-    typedef void* Type;
+struct CallBackInfo;
 
-    static inline const char* name()
+class EvasObjectHolder {
+protected:
+    explicit EvasObjectHolder(Evas_Object* object)
+        : m_object(object)
     {
-        ASSERT_NOT_REACHED();
-        return "";
+        ASSERT(m_object);
+    }
+
+    Evas_Object* m_object;
+};
+
+template <CallbackType callbackType, typename ArgType = typename CallBackInfo<callbackType>::Type>
+struct CallBack: public EvasObjectHolder {
+    explicit CallBack(Evas_Object* view) : EvasObjectHolder(view) { }
+
+    void call(ArgType argument)
+    {
+        evas_object_smart_callback_call(m_object, CallBackInfo<callbackType>::name(), static_cast<void*>(argument));
     }
 };
 
 template <CallbackType callbackType>
-class CallBack {
-public:
-    typedef typename CallBackInfo<callbackType>::Type ArgType;
+struct CallBack <callbackType, void> : public EvasObjectHolder {
+    explicit CallBack(Evas_Object* view) : EvasObjectHolder(view) { }
 
-    explicit CallBack(Evas_Object* view)
-        : m_view(view)
+    void call()
     {
-        ASSERT(m_view);
+        evas_object_smart_callback_call(m_object, CallBackInfo<callbackType>::name(), 0);
     }
+};
 
-    void call(ArgType* argument = 0)
+template <CallbackType callbackType>
+struct CallBack <callbackType, const char*> : public EvasObjectHolder {
+    explicit CallBack(Evas_Object* view) : EvasObjectHolder(view) { }
+
+    void call(const char* arg)
     {
-        if (argument && !callbackArgumentsExpected<ArgType>()) {
-            CRITICAL("should not pass arguments for this callback!");
-            ASSERT_NOT_REACHED();
-            return;
-        }
-
-        evas_object_smart_callback_call(m_view, CallBackInfo<callbackType>::name(), static_cast<void*>(argument));
+        evas_object_smart_callback_call(m_object, CallBackInfo<callbackType>::name(), const_cast<char*>(arg));
     }
 
     void call(const String& arg)
     {
-        call(const_cast<char*>(arg.utf8().data()));
+        call(arg.utf8().data());
     }
 
     void call(const WKEinaSharedString& arg)
     {
-        call(const_cast<char*>(static_cast<const char*>(arg)));
+        call(static_cast<const char*>(arg));
+    }
+};
+
+template <CallbackType callbackType>
+struct CallBack <callbackType, Ewk_CSS_Size*> : public EvasObjectHolder {
+    explicit CallBack(Evas_Object* view) : EvasObjectHolder(view) { }
+
+    void call(Ewk_CSS_Size* size)
+    {
+        evas_object_smart_callback_call(m_object, CallBackInfo<callbackType>::name(), size);
     }
 
-private:
-    Evas_Object* m_view;
+    void call(const WebCore::IntSize& arg)
+    {
+        Ewk_CSS_Size size = { arg.width(), arg.height() };
+        call(&size);
+    }
 };
 
 #define DECLARE_EWK_VIEW_CALLBACK(callbackType, string, type) \
@@ -161,43 +177,46 @@ struct CallBackInfo<callbackType> {                           \
 }
 
 // Note: type 'void' means that no arguments are expected.
-DECLARE_EWK_VIEW_CALLBACK(AuthenticationRequest, "authentication,request", Ewk_Auth_Request);
+DECLARE_EWK_VIEW_CALLBACK(AuthenticationRequest, "authentication,request", Ewk_Auth_Request*);
 DECLARE_EWK_VIEW_CALLBACK(BackForwardListChange, "back,forward,list,changed", void);
 DECLARE_EWK_VIEW_CALLBACK(CancelVibration, "cancel,vibration", void);
-DECLARE_EWK_VIEW_CALLBACK(CloseWindow, "close,window", void);
-DECLARE_EWK_VIEW_CALLBACK(CreateWindow, "create,window", Evas_Object*);
-DECLARE_EWK_VIEW_CALLBACK(DownloadJobCancelled, "download,cancelled", Ewk_Download_Job);
-DECLARE_EWK_VIEW_CALLBACK(DownloadJobFailed, "download,failed", Ewk_Download_Job_Error);
-DECLARE_EWK_VIEW_CALLBACK(DownloadJobFinished, "download,finished", Ewk_Download_Job);
-DECLARE_EWK_VIEW_CALLBACK(DownloadJobRequested, "download,request", Ewk_Download_Job);
-DECLARE_EWK_VIEW_CALLBACK(FileChooserRequest, "file,chooser,request", Ewk_File_Chooser_Request);
-DECLARE_EWK_VIEW_CALLBACK(NewFormSubmissionRequest, "form,submission,request", Ewk_Form_Submission_Request);
+DECLARE_EWK_VIEW_CALLBACK(ContentsSizeChanged, "contents,size,changed", Ewk_CSS_Size*);
+DECLARE_EWK_VIEW_CALLBACK(DownloadJobCancelled, "download,cancelled", Ewk_Download_Job*);
+DECLARE_EWK_VIEW_CALLBACK(DownloadJobFailed, "download,failed", Ewk_Download_Job_Error*);
+DECLARE_EWK_VIEW_CALLBACK(DownloadJobFinished, "download,finished", Ewk_Download_Job*);
+DECLARE_EWK_VIEW_CALLBACK(DownloadJobRequested, "download,request", Ewk_Download_Job*);
+DECLARE_EWK_VIEW_CALLBACK(FileChooserRequest, "file,chooser,request", Ewk_File_Chooser_Request*);
+DECLARE_EWK_VIEW_CALLBACK(NewFormSubmissionRequest, "form,submission,request", Ewk_Form_Submission_Request*);
 DECLARE_EWK_VIEW_CALLBACK(IconChanged, "icon,changed", void);
-DECLARE_EWK_VIEW_CALLBACK(LoadError, "load,error", Ewk_Error);
+DECLARE_EWK_VIEW_CALLBACK(LoadError, "load,error", Ewk_Error*);
 DECLARE_EWK_VIEW_CALLBACK(LoadFinished, "load,finished", void);
-DECLARE_EWK_VIEW_CALLBACK(LoadProgress, "load,progress", double);
-DECLARE_EWK_VIEW_CALLBACK(ProvisionalLoadFailed, "load,provisional,failed", Ewk_Error);
+DECLARE_EWK_VIEW_CALLBACK(LoadProgress, "load,progress", double*);
+DECLARE_EWK_VIEW_CALLBACK(ProvisionalLoadFailed, "load,provisional,failed", Ewk_Error*);
 DECLARE_EWK_VIEW_CALLBACK(ProvisionalLoadRedirect, "load,provisional,redirect", void);
 DECLARE_EWK_VIEW_CALLBACK(ProvisionalLoadStarted, "load,provisional,started", void);
-DECLARE_EWK_VIEW_CALLBACK(NavigationPolicyDecision, "policy,decision,navigation", Ewk_Navigation_Policy_Decision);
-DECLARE_EWK_VIEW_CALLBACK(NewWindowPolicyDecision, "policy,decision,new,window", Ewk_Navigation_Policy_Decision);
-DECLARE_EWK_VIEW_CALLBACK(ResourceLoadStarted, "resource,request,new", Ewk_Resource_Request);
-DECLARE_EWK_VIEW_CALLBACK(ResourceLoadResponse, "resource,request,response", Ewk_Resource_Load_Response);
-DECLARE_EWK_VIEW_CALLBACK(ResourceLoadFailed, "resource,request,failed", Ewk_Resource_Load_Error);
-DECLARE_EWK_VIEW_CALLBACK(ResourceLoadFinished, "resource,request,finished", Ewk_Resource);
-DECLARE_EWK_VIEW_CALLBACK(ResourceRequestSent, "resource,request,sent", Ewk_Resource_Request);
-DECLARE_EWK_VIEW_CALLBACK(TextFound, "text,found", unsigned);
-DECLARE_EWK_VIEW_CALLBACK(TitleChange, "title,changed", char);
+DECLARE_EWK_VIEW_CALLBACK(MenuBarVisible, "menubar,visible", bool*);
+DECLARE_EWK_VIEW_CALLBACK(NavigationPolicyDecision, "policy,decision,navigation", Ewk_Navigation_Policy_Decision*);
+DECLARE_EWK_VIEW_CALLBACK(NewWindowPolicyDecision, "policy,decision,new,window", Ewk_Navigation_Policy_Decision*);
+DECLARE_EWK_VIEW_CALLBACK(ResourceLoadStarted, "resource,request,new", Ewk_Resource_Request*);
+DECLARE_EWK_VIEW_CALLBACK(ResourceLoadResponse, "resource,request,response", Ewk_Resource_Load_Response*);
+DECLARE_EWK_VIEW_CALLBACK(ResourceLoadFailed, "resource,request,failed", Ewk_Resource_Load_Error*);
+DECLARE_EWK_VIEW_CALLBACK(ResourceLoadFinished, "resource,request,finished", Ewk_Resource*);
+DECLARE_EWK_VIEW_CALLBACK(ResourceRequestSent, "resource,request,sent", Ewk_Resource_Request*);
+DECLARE_EWK_VIEW_CALLBACK(StatusBarVisible, "statusbar,visible", bool*);
+DECLARE_EWK_VIEW_CALLBACK(TextFound, "text,found", unsigned*);
+DECLARE_EWK_VIEW_CALLBACK(TitleChange, "title,changed", const char*);
+DECLARE_EWK_VIEW_CALLBACK(ToolbarVisible, "toolbar,visible", bool*);
 DECLARE_EWK_VIEW_CALLBACK(TooltipTextUnset, "tooltip,text,unset", void);
-DECLARE_EWK_VIEW_CALLBACK(TooltipTextSet, "tooltip,text,set", char);
-DECLARE_EWK_VIEW_CALLBACK(URLChanged, "url,changed", char);
-DECLARE_EWK_VIEW_CALLBACK(Vibrate, "vibrate", uint64_t);
-DECLARE_EWK_VIEW_CALLBACK(WebProcessCrashed, "webprocess,crashed", bool);
+DECLARE_EWK_VIEW_CALLBACK(TooltipTextSet, "tooltip,text,set", const char*);
+DECLARE_EWK_VIEW_CALLBACK(URLChanged, "url,changed", const char*);
+DECLARE_EWK_VIEW_CALLBACK(Vibrate, "vibrate", uint32_t*);
+DECLARE_EWK_VIEW_CALLBACK(WebProcessCrashed, "webprocess,crashed", bool*);
+DECLARE_EWK_VIEW_CALLBACK(WindowResizable, "window,resizable", bool*);
 #if ENABLE(WEB_INTENTS)
-DECLARE_EWK_VIEW_CALLBACK(IntentRequest, "intent,request,new", Ewk_Intent);
+DECLARE_EWK_VIEW_CALLBACK(IntentRequest, "intent,request,new", Ewk_Intent*);
 #endif
 #if ENABLE(WEB_INTENTS_TAG)
-DECLARE_EWK_VIEW_CALLBACK(IntentServiceRegistration, "intent,service,register", Ewk_Intent_Service);
+DECLARE_EWK_VIEW_CALLBACK(IntentServiceRegistration, "intent,service,register", Ewk_Intent_Service*);
 #endif
 
 }

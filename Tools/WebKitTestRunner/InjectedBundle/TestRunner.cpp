@@ -41,6 +41,7 @@
 #include <WebKit2/WKBundlePagePrivate.h>
 #include <WebKit2/WKBundlePrivate.h>
 #include <WebKit2/WKBundleScriptWorld.h>
+#include <WebKit2/WKData.h>
 #include <WebKit2/WKRetainPtr.h>
 #include <WebKit2/WKSerializedScriptValue.h>
 #include <WebKit2/WebKit2_C.h>
@@ -149,9 +150,7 @@ void TestRunner::waitUntilDone()
 void TestRunner::waitToDumpWatchdogTimerFired()
 {
     invalidateWaitToDumpWatchdogTimer();
-    const char* message = "FAIL: Timed out waiting for notifyDone to be called\n";
-    InjectedBundle::shared().stringBuilder()->append(message);
-    InjectedBundle::shared().stringBuilder()->append("\n");
+    InjectedBundle::shared().outputText("FAIL: Timed out waiting for notifyDone to be called\n\n");
     InjectedBundle::shared().done();
 }
 
@@ -433,6 +432,13 @@ void TestRunner::setValueForUser(JSContextRef context, JSValueRef element, JSStr
 
     WKRetainPtr<WKBundleNodeHandleRef> nodeHandle(AdoptWK, WKBundleNodeHandleCreate(context, const_cast<JSObjectRef>(element)));
     WKBundleNodeHandleSetHTMLInputElementValueForUser(nodeHandle.get(), toWK(value).get());
+}
+
+void TestRunner::setAudioData(JSContextRef context, JSValueRef data)
+{
+    WKRetainPtr<WKDataRef> audioData(AdoptWK, WKBundleCreateWKDataFromUInt8Array(InjectedBundle::shared().bundle(), context, data));
+    InjectedBundle::shared().setAudioResult(audioData.get());
+    m_whatToDump = Audio;
 }
 
 unsigned TestRunner::windowCount()
@@ -755,6 +761,11 @@ void TestRunner::dispatchPendingLoadRequests()
     WKBundleDispatchPendingLoadRequests(InjectedBundle::shared().bundle());
 }
 
+void TestRunner::setCacheModel(int model)
+{
+    WKBundleSetCacheModel(InjectedBundle::shared().bundle(), model);
+}
+
 void TestRunner::grantWebNotificationPermission(JSStringRef origin)
 {
     WKRetainPtr<WKStringRef> originWK = toWK(origin);
@@ -877,6 +888,12 @@ void TestRunner::queueNonLoadingScript(JSStringRef script)
 {
     WKRetainPtr<WKStringRef> scriptWK = toWK(script);
     InjectedBundle::shared().queueNonLoadingScript(scriptWK.get());
+}
+
+void TestRunner::setViewModeMediaFeature(JSStringRef mode)
+{
+    WKRetainPtr<WKStringRef> modeWK = toWK(mode);
+    WKBundlePageSetViewMode(InjectedBundle::shared().page()->page(), modeWK.get());
 }
 
 } // namespace WTR

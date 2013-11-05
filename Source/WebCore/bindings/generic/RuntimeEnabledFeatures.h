@@ -71,6 +71,14 @@ public:
     static bool cssExclusionsEnabled() { return false; }
 #endif
 
+#if ENABLE(CSS_REGIONS)
+    static void setCSSRegionsEnabled(bool isEnabled) { isCSSRegionsEnabled = isEnabled; }
+    static bool cssRegionsEnabled() { return isCSSRegionsEnabled; }
+#else
+    static void setCSSRegionsEnabled(bool) { }
+    static bool cssRegionsEnabled() { return false; }
+#endif
+
 #if ENABLE(FULLSCREEN_API)
     // Mozilla version
     static bool webkitFullScreenAPIEnabled() { return isFullScreenAPIEnabled; }
@@ -115,6 +123,7 @@ public:
 #if ENABLE(WEB_AUDIO)
     static void setWebkitAudioContextEnabled(bool isEnabled) { isWebAudioEnabled = isEnabled; }
     static bool webkitAudioContextEnabled() { return isWebAudioEnabled; }
+    static bool webkitOfflineAudioContextEnabled() { return isWebAudioEnabled; }
 #endif
 
 #if ENABLE(TOUCH_EVENTS)
@@ -247,6 +256,11 @@ public:
     static void setDialogElementEnabled(bool isEnabled) { isDialogElementEnabled = isEnabled; }
 #endif
 
+#if ENABLE(CSP_NEXT)
+    static bool experimentalContentSecurityPolicyFeaturesEnabled() { return areExperimentalContentSecurityPolicyFeaturesEnabled; }
+    static void setExperimentalContentSecurityPolicyFeaturesEnabled(bool isEnabled) { areExperimentalContentSecurityPolicyFeaturesEnabled = isEnabled; }
+#endif
+
     static bool langAttributeAwareFormControlUIEnabled() { return isLangAttributeAwareFormControlUIEnabled; }
     // The lang attribute support is incomplete and should only be turned on for tests.
     static void setLangAttributeAwareFormControlUIEnabled(bool isEnabled) { isLangAttributeAwareFormControlUIEnabled = isEnabled; }
@@ -256,6 +270,12 @@ public:
     static void setRequestAutocompleteEnabled(bool isEnabled) { isRequestAutocompleteEnabled = isEnabled; }
 #endif
 
+#if ENABLE(WEB_INTENTS)
+    static bool webkitStartActivityEnabled() { return isWebIntentsEnabled; }
+    static bool webkitIntentEnabled() { return isWebIntentsEnabled; }
+    static bool webKitIntentEnabled() { return isWebIntentsEnabled; }
+    static void setWebIntentsEnabled(bool isEnabled) { isWebIntentsEnabled = isEnabled; }
+#endif
 
 private:
     // Never instantiate.
@@ -274,6 +294,7 @@ private:
     static bool isDeviceOrientationEnabled;
     static bool isSpeechInputEnabled;
     static bool isCSSExclusionsEnabled;
+    static bool isCSSRegionsEnabled;
     WEBCORE_TESTING static bool isLangAttributeAwareFormControlUIEnabled;
 #if ENABLE(SCRIPTED_SPEECH)
     static bool isScriptedSpeechEnabled;
@@ -356,6 +377,15 @@ private:
 #if ENABLE(REQUEST_AUTOCOMPLETE)
     static bool isRequestAutocompleteEnabled;
 #endif
+
+#if ENABLE(CSP_NEXT)
+    static bool areExperimentalContentSecurityPolicyFeaturesEnabled;
+#endif
+
+#if ENABLE(WEB_INTENTS)
+    static bool isWebIntentsEnabled;
+#endif
+
 };
 
 } // namespace WebCore

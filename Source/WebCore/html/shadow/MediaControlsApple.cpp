@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2007, 2008, 2009, 2010, 2011 Apple Inc. All rights reserved.
- * Copyright (C) 2011 Google Inc. All rights reserved.
+ * Copyright (C) 2011, 2012 Google Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -149,7 +149,7 @@ PassRefPtr<MediaControlsApple> MediaControlsApple::createControls(Document* docu
     if (document->page()->theme()->supportsClosedCaptioning()) {
         RefPtr<MediaControlClosedCaptionsContainerElement> closedCaptionsContainer = MediaControlClosedCaptionsContainerElement::create(document);
 
-        RefPtr<MediaControlClosedCaptionsTrackListElement> closedCaptionsTrackList = MediaControlClosedCaptionsTrackListElement::create(document);
+        RefPtr<MediaControlClosedCaptionsTrackListElement> closedCaptionsTrackList = MediaControlClosedCaptionsTrackListElement::create(document, controls.get());
         controls->m_closedCaptionsTrackList = closedCaptionsTrackList.get();
         closedCaptionsContainer->appendChild(closedCaptionsTrackList.release(), ec, true);
         if (ec)
@@ -168,7 +168,7 @@ PassRefPtr<MediaControlsApple> MediaControlsApple::createControls(Document* docu
     }
 
     // FIXME: Only create when needed <http://webkit.org/b/57163>
-    RefPtr<MediaControlFullscreenButtonElement> fullScreenButton = MediaControlFullscreenButtonElement::create(document, controls.get());
+    RefPtr<MediaControlFullscreenButtonElement> fullScreenButton = MediaControlFullscreenButtonElement::create(document);
     controls->m_fullScreenButton = fullScreenButton.get();
     panel->appendChild(fullScreenButton.release(), ec, true);
 
@@ -178,7 +178,7 @@ PassRefPtr<MediaControlsApple> MediaControlsApple::createControls(Document* docu
     if (document->page()->theme()->usesMediaControlVolumeSlider()) {
         RefPtr<MediaControlVolumeSliderContainerElement> volumeSliderContainer = MediaControlVolumeSliderContainerElement::create(document);
 
-        RefPtr<MediaControlVolumeSliderElement> slider = MediaControlVolumeSliderElement::create(document);
+        RefPtr<MediaControlPanelVolumeSliderElement> slider = MediaControlPanelVolumeSliderElement::create(document);
         controls->m_volumeSlider = slider.get();
         volumeSliderContainer->appendChild(slider.release(), ec, true);
         if (ec)
@@ -289,6 +289,13 @@ void MediaControlsApple::makeTransparent()
         m_closedCaptionsContainer->hide();
 }
 
+void MediaControlsApple::changedClosedCaptionsVisibility()
+{
+    MediaControls::changedClosedCaptionsVisibility();
+    if (m_closedCaptionsTrackList)
+        m_closedCaptionsTrackList->updateDisplay();
+}
+
 void MediaControlsApple::reset()
 {
     Page* page = document()->page();
@@ -323,7 +330,7 @@ void MediaControlsApple::reset()
         if (m_mediaController->hasClosedCaptions()) {
             m_toggleClosedCaptionsButton->show();
             if (m_closedCaptionsTrackList)
-                m_closedCaptionsTrackList->updateDisplay();
+                m_closedCaptionsTrackList->resetTrackListMenu();
         } else
             m_toggleClosedCaptionsButton->hide();
     }
@@ -481,9 +488,18 @@ void MediaControlsApple::toggleClosedCaptionTrackList()
     if (m_closedCaptionsContainer) {
         if (m_closedCaptionsContainer->isShowing())
             m_closedCaptionsContainer->hide();
-        else
+        else {
+            if (m_closedCaptionsTrackList)
+                m_closedCaptionsTrackList->updateDisplay();
             m_closedCaptionsContainer->show();
+        }
     }
+}
+
+void MediaControlsApple::closedCaptionTracksChanged()
+{
+    if (m_closedCaptionsTrackList)
+        m_closedCaptionsTrackList->resetTrackListMenu();
 }
 
 }

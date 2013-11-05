@@ -44,6 +44,7 @@ namespace FrameTestHelpers {
 
 void loadFrame(WebFrame*, const std::string& url);
 
+WebView* createWebView(bool enableJavascript = false, WebFrameClient* = 0, WebViewClient* = 0);
 WebView* createWebViewAndLoad(const std::string& url, bool enableJavascript = false, WebFrameClient* = 0, WebViewClient* = 0);
 
 } // namespace FrameTestHelpers

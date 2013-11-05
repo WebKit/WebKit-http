@@ -40,6 +40,10 @@
 #include "TimeRanges.h"
 #include <wtf/text/CString.h>
 
+#if ENABLE(VIDEO_TRACK)
+#include "InbandTextTrackPrivate.h"
+#endif
+
 #if PLATFORM(QT)
 #include <QtGlobal>
 #endif
@@ -1053,10 +1057,10 @@ void MediaPlayer::keyError(const String& keySystem, const String& sessionId, Med
         m_mediaPlayerClient->mediaPlayerKeyError(this, keySystem, sessionId, errorCode, systemCode);
 }
 
-void MediaPlayer::keyMessage(const String& keySystem, const String& sessionId, const unsigned char* message, unsigned messageLength)
+void MediaPlayer::keyMessage(const String& keySystem, const String& sessionId, const unsigned char* message, unsigned messageLength, const KURL& defaultURL)
 {
     if (m_mediaPlayerClient)
-        m_mediaPlayerClient->mediaPlayerKeyMessage(this, keySystem, sessionId, message, messageLength);
+        m_mediaPlayerClient->mediaPlayerKeyMessage(this, keySystem, sessionId, message, messageLength, defaultURL);
 }
 
 bool MediaPlayer::keyNeeded(const String& keySystem, const String& sessionId, const unsigned char* initData, unsigned initDataLength)
@@ -1108,6 +1112,34 @@ CachedResourceLoader* MediaPlayer::cachedResourceLoader()
 
     return m_mediaPlayerClient->mediaPlayerCachedResourceLoader();
 }
+
+#if ENABLE(VIDEO_TRACK)
+void MediaPlayer::addTextTrack(PassRefPtr<InbandTextTrackPrivate> track)
+{
+    if (!m_mediaPlayerClient)
+        return;
+
+    m_mediaPlayerClient->mediaPlayerDidAddTrack(track);
+}
+
+void MediaPlayer::removeTextTrack(PassRefPtr<InbandTextTrackPrivate> track)
+{
+    if (!m_mediaPlayerClient)
+        return;
+
+    m_mediaPlayerClient->mediaPlayerDidRemoveTrack(track);
+}
+
+bool MediaPlayer::requiresTextTrackRepresentation() const
+{
+    return m_private->requiresTextTrackRepresentation();
+}
+
+void MediaPlayer::setTextTrackRepresentation(TextTrackRepresentation* representation)
+{
+    m_private->setTextTrackRepresentation(representation);
+}
+#endif
 
 }
 

@@ -76,19 +76,21 @@ void MediaPlayerPrivate::getSupportedTypes(HashSet<WTF::String>& types)
         types.add(*i);
 }
 
-MediaPlayer::SupportsType MediaPlayerPrivate::supportsType(const WTF::String& type, const WTF::String& codecs, const KURL&)
+MediaPlayer::SupportsType MediaPlayerPrivate::supportsType(const WTF::String& type, const WTF::String& codecs, const KURL& url)
 {
-    if (type.isNull() || type.isEmpty()) {
+    bool isRTSP = url.protocolIs("rtsp");
+
+    if (!isRTSP && (type.isNull() || type.isEmpty())) {
         LOG(Media, "MediaPlayer does not support type; type is null or empty.");
         return MediaPlayer::IsNotSupported;
     }
 
     // spec says we should not return "probably" if the codecs string is empty
-    if (PlatformPlayer::mimeTypeSupported(type.ascii().data())) {
-        LOG(Media, "MediaPlayer supports type; cache contains type '%s'.", type.ascii().data());
+    if (isRTSP || PlatformPlayer::mimeTypeSupported(type.ascii().data())) {
+        LOG(Media, "MediaPlayer supports type %s.", isRTSP ? "rtsp" : type.ascii().data());
         return codecs.isEmpty() ? MediaPlayer::MayBeSupported : MediaPlayer::IsSupported;
     }
-    LOG(Media, "MediaPlayer does not support type; cache doesn't contain type '%s'.", type.ascii().data());
+    LOG(Media, "MediaPlayer does not support type %s.", type.ascii().data());
     return MediaPlayer::IsNotSupported;
 }
 
@@ -128,9 +130,8 @@ MediaPlayerPrivate::~MediaPlayerPrivate()
     if (m_isAuthenticationChallenging)
         AuthenticationChallengeManager::instance()->cancelAuthenticationChallenge(this);
 
-    if (isFullscreen()) {
+    if (isFullscreen())
         m_webCorePlayer->mediaPlayerClient()->mediaPlayerExitFullscreen();
-    }
 #if USE(ACCELERATED_COMPOSITING)
     // Remove media player from platform layer.
     if (m_platformLayer)
@@ -159,12 +160,13 @@ void MediaPlayerPrivate::load(const WTF::String& url)
 
     void* tabId = m_webCorePlayer->mediaPlayerClient()->mediaPlayerHostWindow()->platformPageClient();
     int playerID = m_webCorePlayer->mediaPlayerClient()->mediaPlayerHostWindow()->platformPageClient()->playerID();
+    bool isVideo = m_webCorePlayer->mediaPlayerClient()->mediaPlayerIsVideo();
 
     deleteGuardedObject(m_platformPlayer);
 #if USE(ACCELERATED_COMPOSITING)
-    m_platformPlayer = PlatformPlayer::create(this, tabId, true, modifiedUrl.utf8().data());
+    m_platformPlayer = PlatformPlayer::create(this, tabId, isVideo, true, modifiedUrl.utf8().data());
 #else
-    m_platformPlayer = PlatformPlayer::create(this, tabId, false, modifiedUrl.utf8().data());
+    m_platformPlayer = PlatformPlayer::create(this, tabId, isVideo, false, modifiedUrl.utf8().data());
 #endif
 
     WTF::String cookiePairs;
@@ -310,6 +312,19 @@ void MediaPlayerPrivate::setVolume(float volume)
 {
     if (m_platformPlayer)
         m_platformPlayer->setVolume(volume);
+}
+
+void MediaPlayerPrivate::setMuted(bool muted)
+{
+    if (m_platformPlayer)
+        m_platformPlayer->setMuted(muted);
+}
+
+bool MediaPlayerPrivate::muted() const
+{
+    if (m_platformPlayer)
+        return m_platformPlayer->muted();
+    return false;
 }
 
 MediaPlayer::NetworkState MediaPlayerPrivate::networkState() const
@@ -691,7 +706,11 @@ void MediaPlayerPrivate::waitMetadataTimerFired(Timer<MediaPlayerPrivate>*)
     }
     m_waitMetadataPopDialogCounter = 0;
 
+    // Need to prevent re-entrant play here
+    m_platformPlayer->setPreventReentrantPlay(true);
     int wait = showErrorDialog(PlatformPlayer::MediaMetaDataTimeoutError);
+    m_platformPlayer->setPreventReentrantPlay(false);
+
     if (!wait)
         onPauseNotified();
     else {
@@ -716,9 +735,9 @@ static ProtectionSpace generateProtectionSpaceFromMMRAuthChallenge(const MMRAuth
     ASSERT(url.isValid());
 
     return ProtectionSpace(url.host(), url.port(),
-                           static_cast<ProtectionSpaceServerType>(authChallenge.serverType()),
-                           authChallenge.realm().c_str(),
-                           static_cast<ProtectionSpaceAuthenticationScheme>(authChallenge.authScheme()));
+        static_cast<ProtectionSpaceServerType>(authChallenge.serverType()),
+        authChallenge.realm().c_str(),
+        static_cast<ProtectionSpaceAuthenticationScheme>(authChallenge.authScheme()));
 }
 
 void MediaPlayerPrivate::onAuthenticationNeeded(MMRAuthChallenge& authChallenge)
@@ -750,8 +769,8 @@ void MediaPlayerPrivate::notifyChallengeResult(const KURL& url, const Protection
         return;
 
     m_platformPlayer->reloadWithCredential(credential.user().utf8(String::StrictConversion).data(),
-                                        credential.password().utf8(String::StrictConversion).data(),
-                                        static_cast<MMRAuthChallenge::CredentialPersistence>(credential.persistence()));
+        credential.password().utf8(String::StrictConversion).data(),
+        static_cast<MMRAuthChallenge::CredentialPersistence>(credential.persistence()));
 }
 
 void MediaPlayerPrivate::onAuthenticationAccepted(const MMRAuthChallenge& authChallenge) const
@@ -930,9 +949,9 @@ void MediaPlayerPrivate::setBuffering(bool buffering)
     }
 }
 
-static unsigned int allocateTextureId()
+static unsigned allocateTextureId()
 {
-    unsigned int texid;
+    unsigned texid;
     glGenTextures(1, &texid);
     glBindTexture(GL_TEXTURE_2D, texid);
     // Do basic linear filtering on resize.
@@ -955,7 +974,7 @@ void MediaPlayerPrivate::drawBufferingAnimation(const TransformationMatrix& matr
         renderMatrix.rotate(time.tv_nsec / 1000000000.0 * 360.0);
 
         static bool initialized = false;
-        static unsigned int texId = allocateTextureId();
+        static unsigned texId = allocateTextureId();
         glBindTexture(GL_TEXTURE_2D, texId);
         if (!initialized) {
             initialized = true;

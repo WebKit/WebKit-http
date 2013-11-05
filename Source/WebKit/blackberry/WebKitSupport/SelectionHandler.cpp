@@ -51,13 +51,13 @@ using namespace BlackBerry::Platform;
 using namespace WebCore;
 
 #if SHOWDEBUG_SELECTIONHANDLER
-#define SelectionLog(severity, format, ...) logAlways(severity, format, ## __VA_ARGS__)
+#define SelectionLog(severity, format, ...) Platform::logAlways(severity, format, ## __VA_ARGS__)
 #else
 #define SelectionLog(severity, format, ...)
 #endif // SHOWDEBUG_SELECTIONHANDLER
 
 #if SHOWDEBUG_SELECTIONHANDLER_TIMING
-#define SelectionTimingLog(severity, format, ...) logAlways(severity, format, ## __VA_ARGS__)
+#define SelectionTimingLog(severity, format, ...) Platform::logAlways(severity, format, ## __VA_ARGS__)
 #else
 #define SelectionTimingLog(severity, format, ...)
 #endif // SHOWDEBUG_SELECTIONHANDLER_TIMING
@@ -85,8 +85,12 @@ void SelectionHandler::cancelSelection()
 
     if (m_webPage->m_selectionOverlay)
         m_webPage->m_selectionOverlay->hide();
+    // Notify client with empty selection to ensure the handles are removed if
+    // rendering happened prior to processing on webkit thread
+    m_webPage->m_client->notifySelectionDetailsChanged(WebCore::IntRect(DOMSupport::InvalidPoint, WebCore::IntSize()),
+        WebCore::IntRect(DOMSupport::InvalidPoint, WebCore::IntSize()), IntRectRegion());
 
-    SelectionLog(LogLevelInfo, "SelectionHandler::cancelSelection");
+    SelectionLog(Platform::LogLevelInfo, "SelectionHandler::cancelSelection");
 
     if (m_webPage->m_inputHandler->isInputMode())
         m_webPage->m_inputHandler->cancelSelection();
@@ -216,11 +220,14 @@ bool SelectionHandler::shouldUpdateSelectionOrCaretForPoint(const WebCore::IntPo
     bool aboveCaret = point.y() < caretRect.y();
     bool belowCaret = point.y() >= caretRect.maxY();
 
-    SelectionLog(LogLevelInfo, "SelectionHandler::shouldUpdateSelectionOrCaretForPoint multiline = %s above = %s below = %s first line = %s last line = %s start = %s"
-            , m_webPage->m_inputHandler->isMultilineInputMode() ? "true" : "false", aboveCaret ? "true" : "false", belowCaret ? "true" : "false"
-            , inSameLine(currentSelection.visibleStart(), startOfEditableContent(currentSelection.visibleStart())) ? "true" : "false"
-            , inSameLine(currentSelection.visibleEnd(), endOfEditableContent(currentSelection.visibleEnd())) ? "true" : "false"
-            , startCaret ? "true" : "false");
+    SelectionLog(Platform::LogLevelInfo,
+        "SelectionHandler::shouldUpdateSelectionOrCaretForPoint multiline = %s above = %s below = %s first line = %s last line = %s start = %s",
+        m_webPage->m_inputHandler->isMultilineInputMode() ? "true" : "false",
+        aboveCaret ? "true" : "false",
+        belowCaret ? "true" : "false",
+        inSameLine(currentSelection.visibleStart(), startOfEditableContent(currentSelection.visibleStart())) ? "true" : "false",
+        inSameLine(currentSelection.visibleEnd(), endOfEditableContent(currentSelection.visibleEnd())) ? "true" : "false",
+        startCaret ? "true" : "false");
 
     if (!m_webPage->m_inputHandler->isMultilineInputMode() && (aboveCaret || belowCaret))
         return false;
@@ -232,14 +239,16 @@ bool SelectionHandler::shouldUpdateSelectionOrCaretForPoint(const WebCore::IntPo
     return true;
 }
 
-void SelectionHandler::setCaretPosition(const WebCore::IntPoint &position)
+void SelectionHandler::setCaretPosition(const WebCore::IntPoint& position)
 {
-    if (!m_webPage->m_inputHandler->isInputMode())
+    if (!m_webPage->m_inputHandler->isInputMode() || !m_webPage->focusedOrMainFrame()->document()->focusedNode())
         return;
 
     m_caretActive = true;
 
-    SelectionLog(LogLevelInfo, "SelectionHandler::setCaretPosition requested point %d, %d", position.x(), position.y());
+    SelectionLog(Platform::LogLevelInfo,
+        "SelectionHandler::setCaretPosition requested point %s",
+        Platform::IntPoint(position).toString().c_str());
 
     Frame* focusedFrame = m_webPage->focusedOrMainFrame();
     FrameSelection* controller = focusedFrame->selection();
@@ -253,14 +262,17 @@ void SelectionHandler::setCaretPosition(const WebCore::IntPoint &position)
 
     VisiblePosition visibleCaretPosition(focusedFrame->visiblePositionForPoint(relativePoint));
 
-    if (!DOMSupport::isPositionInNode(m_webPage->focusedOrMainFrame()->document()->focusedNode(), visibleCaretPosition.deepEquivalent())) {
-        if (unsigned short character = directionOfPointRelativeToRect(relativePoint, currentCaretRect))
-            m_webPage->m_inputHandler->handleKeyboardInput(Platform::KeyboardEvent(character));
+    if (RenderObject* focusedRenderer = focusedFrame->document()->focusedNode()->renderer()) {
+        WebCore::IntRect nodeOutlineBounds(focusedRenderer->absoluteOutlineBounds());
+        if (!nodeOutlineBounds.contains(relativePoint)) {
+            if (unsigned short character = directionOfPointRelativeToRect(relativePoint, currentCaretRect))
+                m_webPage->m_inputHandler->handleKeyboardInput(Platform::KeyboardEvent(character));
 
-        // Send the selection changed in case this does not trigger a selection change to
-        // ensure the caret position is accurate. This may be a duplicate event.
-        selectionPositionChanged(true /* forceUpdateWithoutChange */);
-        return;
+            // Send the selection changed in case this does not trigger a selection change to
+            // ensure the caret position is accurate. This may be a duplicate event.
+            selectionPositionChanged(true /* forceUpdateWithoutChange */);
+            return;
+        }
     }
 
     VisibleSelection newSelection(visibleCaretPosition);
@@ -271,7 +283,7 @@ void SelectionHandler::setCaretPosition(const WebCore::IntPoint &position)
 
     controller->setSelection(newSelection);
 
-    SelectionLog(LogLevelInfo, "SelectionHandler::setCaretPosition point valid, cursor updated");
+    SelectionLog(Platform::LogLevelInfo, "SelectionHandler::setCaretPosition point valid, cursor updated");
 }
 
 void SelectionHandler::inputHandlerDidFinishProcessingChange()
@@ -445,7 +457,9 @@ bool SelectionHandler::updateOrHandleInputSelection(VisibleSelection& newSelecti
     if (!character)
         return false;
 
-    SelectionLog(LogLevelInfo, "SelectionHandler::updateOrHandleInputSelection making selection change attempt using key event %d", character);
+    SelectionLog(Platform::LogLevelInfo,
+        "SelectionHandler::updateOrHandleInputSelection making selection change attempt using key event %d",
+        character);
 
     if (shouldExtendSelectionInDirection(controller->selection(), character))
         m_webPage->m_inputHandler->handleKeyboardInput(Platform::KeyboardEvent(character, Platform::KeyboardEvent::KeyDown, KEYMOD_SHIFT));
@@ -471,7 +485,10 @@ void SelectionHandler::setSelection(const WebCore::IntPoint& start, const WebCor
     m_timer.start();
 #endif
 
-    SelectionLog(LogLevelInfo, "SelectionHandler::setSelection adjusted points %d, %d, %d, %d", start.x(), start.y(), end.x(), end.y());
+    SelectionLog(Platform::LogLevelInfo,
+        "SelectionHandler::setSelection adjusted points %s, %s",
+        Platform::IntPoint(start).toString().c_str(),
+        Platform::IntPoint(end).toString().c_str());
 
     // Note that IntPoint(-1, -1) is being our sentinel so far for
     // clipped out selection starting or ending location.
@@ -542,7 +559,7 @@ void SelectionHandler::setSelection(const WebCore::IntPoint& start, const WebCor
         // Requested selection results in an empty selection, skip this change.
         selectionPositionChanged(true /* forceUpdateWithoutChange */);
 
-        SelectionLog(LogLevelWarn, "SelectionHandler::setSelection selection points invalid, selection not updated.");
+        SelectionLog(Platform::LogLevelWarn, "SelectionHandler::setSelection selection points invalid, selection not updated.");
         return;
     }
 
@@ -551,7 +568,7 @@ void SelectionHandler::setSelection(const WebCore::IntPoint& start, const WebCor
         m_webPage->m_client->notifySelectionHandlesReversed();
 
     controller->setSelection(newSelection);
-    SelectionLog(LogLevelInfo, "SelectionHandler::setSelection selection points valid, selection updated.");
+    SelectionLog(Platform::LogLevelInfo, "SelectionHandler::setSelection selection points valid, selection updated.");
 }
 
 // FIXME re-use this in context. Must be updated to include an option to return the href.
@@ -630,7 +647,9 @@ void SelectionHandler::selectObject(const WebCore::IntPoint& location, TextGranu
     ASSERT(m_webPage && m_webPage->focusedOrMainFrame() && m_webPage->focusedOrMainFrame()->selection());
     Frame* focusedFrame = m_webPage->focusedOrMainFrame();
 
-    SelectionLog(LogLevelInfo, "SelectionHandler::selectObject adjusted points %d, %d", location.x(), location.y());
+    SelectionLog(Platform::LogLevelInfo,
+        "SelectionHandler::selectObject adjusted points %s",
+        Platform::IntPoint(location).toString().c_str());
 
     WebCore::IntPoint relativePoint = DOMSupport::convertPointToFrame(m_webPage->mainFrame(), focusedFrame, location);
     VisiblePosition pointLocation(focusedFrame->visiblePositionForPoint(relativePoint));
@@ -649,11 +668,18 @@ void SelectionHandler::selectObject(TextGranularity granularity)
     ASSERT(m_webPage->focusedOrMainFrame() && m_webPage->focusedOrMainFrame()->selection());
     Frame* focusedFrame = m_webPage->focusedOrMainFrame();
 
-    SelectionLog(LogLevelInfo, "SelectionHandler::selectObject using current selection");
+    SelectionLog(Platform::LogLevelInfo, "SelectionHandler::selectObject using current selection");
+
+    ASSERT(focusedFrame->selection()->selectionType() != VisibleSelection::NoSelection);
 
     // Use the current selection as the selection point.
-    ASSERT(focusedFrame->selection()->selectionType() != VisibleSelection::NoSelection);
-    m_selectionActive = expandSelectionToGranularity(focusedFrame, focusedFrame->selection()->selection(), granularity, true /* isInputMode */);
+    VisibleSelection selectionOrigin = focusedFrame->selection()->selection();
+
+    // If this is the end of the input field, make sure we select the last word.
+    if (m_webPage->m_inputHandler->isCaretAtEndOfText())
+        selectionOrigin = previousWordPosition(selectionOrigin.start());
+
+    m_selectionActive = expandSelectionToGranularity(focusedFrame, selectionOrigin, granularity, true /* isInputMode */);
 }
 
 void SelectionHandler::selectObject(Node* node)
@@ -661,12 +687,16 @@ void SelectionHandler::selectObject(Node* node)
     if (!node)
         return;
 
+    // Clear input focus if we're not selecting text there.
+    if (node != m_webPage->m_inputHandler->currentFocusElement().get())
+        m_webPage->clearFocusNode();
+
     m_selectionActive = true;
 
     ASSERT(m_webPage && m_webPage->focusedOrMainFrame() && m_webPage->focusedOrMainFrame()->selection());
     Frame* focusedFrame = m_webPage->focusedOrMainFrame();
 
-    SelectionLog(LogLevelInfo, "SelectionHandler::selectNode");
+    SelectionLog(Platform::LogLevelInfo, "SelectionHandler::selectNode");
 
     VisibleSelection selection = VisibleSelection::selectionFromContentsOfNode(node);
     focusedFrame->selection()->setSelection(selection);
@@ -853,7 +883,9 @@ bool SelectionHandler::inputNodeOverridesTouch() const
 // system is not entirely WebKit.
 void SelectionHandler::selectionPositionChanged(bool forceUpdateWithoutChange)
 {
-    SelectionLog(LogLevelInfo, "SelectionHandler::selectionPositionChanged forceUpdateWithoutChange = %s", forceUpdateWithoutChange ? "true" : "false");
+    SelectionLog(Platform::LogLevelInfo,
+        "SelectionHandler::selectionPositionChanged forceUpdateWithoutChange = %s",
+        forceUpdateWithoutChange ? "true" : "false");
 
     // This method can get called during WebPage shutdown process.
     // If that is the case, just bail out since the client is not
@@ -877,6 +909,10 @@ void SelectionHandler::selectionPositionChanged(bool forceUpdateWithoutChange)
     // Enter selection mode if selection type is RangeSelection, and disable selection if
     // selection is active and becomes caret selection.
     Frame* frame = m_webPage->focusedOrMainFrame();
+
+    if (frame->view()->needsLayout())
+        return;
+
     WebCore::IntPoint framePos = m_webPage->frameOffset(frame);
     if (m_selectionActive && (m_caretActive || frame->selection()->isNone()))
         m_selectionActive = false;
@@ -885,7 +921,9 @@ void SelectionHandler::selectionPositionChanged(bool forceUpdateWithoutChange)
     else if (!m_selectionActive)
         return;
 
-    SelectionTimingLog(LogLevelInfo, "SelectionHandler::selectionPositionChanged starting at %f", m_timer.elapsed());
+    SelectionTimingLog(Platform::LogLevelInfo,
+        "SelectionHandler::selectionPositionChanged starting at %f",
+        m_timer.elapsed());
 
     WebCore::IntRect startCaret(DOMSupport::InvalidPoint, WebCore::IntSize());
     WebCore::IntRect endCaret(DOMSupport::InvalidPoint, WebCore::IntSize());
@@ -919,10 +957,18 @@ void SelectionHandler::selectionPositionChanged(bool forceUpdateWithoutChange)
         regionForTextQuads(quads, visibleSelectionRegion);
 
 #if SHOWDEBUG_SELECTIONHANDLER // Don't rely just on SelectionLog to avoid loop.
-        for (unsigned int i = 0; i < unclippedRegion.numRects(); i++)
-            SelectionLog(LogLevelInfo, "Rect list - Unmodified #%d, (%d, %d) (%d x %d)", i, unclippedRegion.rects()[i].x(), unclippedRegion.rects()[i].y(), unclippedRegion.rects()[i].width(), unclippedRegion.rects()[i].height());
-        for (unsigned int i = 0; i < visibleSelectionRegion.numRects(); i++)
-            SelectionLog(LogLevelInfo, "Rect list  - Clipped to Visible #%d, (%d, %d) (%d x %d)", i, visibleSelectionRegion.rects()[i].x(), visibleSelectionRegion.rects()[i].y(), visibleSelectionRegion.rects()[i].width(), visibleSelectionRegion.rects()[i].height());
+        for (unsigned i = 0; i < unclippedRegion.numRects(); i++) {
+            SelectionLog(Platform::LogLevelInfo,
+                "Rect list - Unmodified #%d, %s",
+                i,
+                unclippedRegion.rects()[i].toString().c_str());
+        }
+        for (unsigned i = 0; i < visibleSelectionRegion.numRects(); i++) {
+            SelectionLog(Platform::LogLevelInfo,
+                "Rect list  - Clipped to Visible #%d, %s",
+                i,
+                visibleSelectionRegion.rects()[i].toString().c_str());
+        }
 #endif
 
         bool shouldCareAboutPossibleClippedOutSelection = frame != m_webPage->mainFrame() || m_webPage->m_inputHandler->isInputMode();
@@ -940,14 +986,18 @@ void SelectionHandler::selectionPositionChanged(bool forceUpdateWithoutChange)
         }
     }
 
-    SelectionLog(BlackBerry::Platform::LogLevelInfo, "SelectionHandler::selectionPositionChanged Start Rect=(%d, %d) (%d x %d) End Rect=(%d, %d) (%d x %d)",
-                    startCaret.x(), startCaret.y(), startCaret.width(), startCaret.height(), endCaret.x(), endCaret.y(), endCaret.width(), endCaret.height());
+    SelectionLog(Platform::LogLevelInfo,
+        "SelectionHandler::selectionPositionChanged Start Rect=%s End Rect=%s",
+        Platform::IntRect(startCaret).toString().c_str(),
+        Platform::IntRect(endCaret).toString().c_str());
 
     if (m_webPage->m_selectionOverlay)
         m_webPage->m_selectionOverlay->draw(visibleSelectionRegion);
 
     m_webPage->m_client->notifySelectionDetailsChanged(startCaret, endCaret, visibleSelectionRegion, inputNodeOverridesTouch());
-    SelectionTimingLog(LogLevelInfo, "SelectionHandler::selectionPositionChanged completed at %f", m_timer.elapsed());
+    SelectionTimingLog(Platform::LogLevelInfo,
+        "SelectionHandler::selectionPositionChanged completed at %f",
+        m_timer.elapsed());
 }
 
 
@@ -963,15 +1013,12 @@ void SelectionHandler::notifyCaretPositionChangedIfNeeded()
 
 void SelectionHandler::caretPositionChanged()
 {
-    SelectionLog(LogLevelInfo, "SelectionHandler::caretPositionChanged");
+    SelectionLog(Platform::LogLevelInfo, "SelectionHandler::caretPositionChanged");
 
     WebCore::IntRect caretLocation;
-    // If the input field is empty, we always turn off the caret.
     // If the input field is not active, we must be turning off the caret.
-    bool emptyInputField = m_webPage->m_inputHandler->elementText().isEmpty();
-    if (emptyInputField || (!m_webPage->m_inputHandler->isInputMode() && m_caretActive)) {
-        if (!emptyInputField)
-            m_caretActive = false;
+    if (!m_webPage->m_inputHandler->isInputMode() && m_caretActive) {
+        m_caretActive = false;
         // Send an empty caret change to turn off the caret.
         m_webPage->m_client->notifyCaretChanged(caretLocation, m_webPage->m_touchEventHandler->lastFatFingersResult().isTextInput() /* userTouchTriggered */);
         return;
@@ -994,8 +1041,9 @@ void SelectionHandler::caretPositionChanged()
 
     m_caretActive = !caretLocation.isEmpty();
 
-    SelectionLog(LogLevelInfo, "SelectionHandler::caretPositionChanged caret Rect %d, %d, %dx%d",
-                        caretLocation.x(), caretLocation.y(), caretLocation.width(), caretLocation.height());
+    SelectionLog(Platform::LogLevelInfo,
+        "SelectionHandler::caretPositionChanged caret Rect %s",
+        Platform::IntRect(caretLocation).toString().c_str());
 
     bool isSingleLineInput = !m_webPage->m_inputHandler->isMultilineInputMode();
     WebCore::IntRect nodeBoundingBox = isSingleLineInput ? m_webPage->m_inputHandler->boundingBoxForInputField() : WebCore::IntRect();
@@ -1007,10 +1055,14 @@ void SelectionHandler::caretPositionChanged()
         nodeBoundingBox.intersect(clippingRectForContent);
     }
 
-    SelectionLog(LogLevelInfo, "SelectionHandler::caretPositionChanged: %s line input, single line bounding box (%d, %d) %dx%d",
-        isSingleLineInput ? "single" : "multi", nodeBoundingBox.x(), nodeBoundingBox.y(), nodeBoundingBox.width(), nodeBoundingBox.height());
+    SelectionLog(Platform::LogLevelInfo,
+        "SelectionHandler::caretPositionChanged: %s line input, single line bounding box %s%s",
+        isSingleLineInput ? "single" : "multi",
+        Platform::IntRect(nodeBoundingBox).toString().c_str(),
+        m_webPage->m_inputHandler->elementText().isEmpty() ? ", empty text field" : "");
 
-    m_webPage->m_client->notifyCaretChanged(caretLocation, m_webPage->m_touchEventHandler->lastFatFingersResult().isTextInput() /* userTouchTriggered */, isSingleLineInput, nodeBoundingBox);
+    m_webPage->m_client->notifyCaretChanged(caretLocation, m_webPage->m_touchEventHandler->lastFatFingersResult().isTextInput() /* userTouchTriggered */,
+        isSingleLineInput, nodeBoundingBox, m_webPage->m_inputHandler->elementText().isEmpty());
 }
 
 bool SelectionHandler::selectionContains(const WebCore::IntPoint& point)

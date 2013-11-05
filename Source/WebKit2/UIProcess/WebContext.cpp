@@ -54,9 +54,9 @@
 #include "WebProcessMessages.h"
 #include "WebProcessProxy.h"
 #include "WebResourceCacheManagerProxy.h"
+#include <WebCore/InitializeLogging.h>
 #include <WebCore/Language.h>
 #include <WebCore/LinkHash.h>
-#include <WebCore/Logging.h>
 #include <WebCore/ResourceRequest.h>
 #include <WebCore/RunLoop.h>
 #include <runtime/InitializeThreading.h>
@@ -72,7 +72,9 @@
 #endif
 
 #if ENABLE(NETWORK_PROCESS)
-#include "NetworkProcessManager.h"
+#include "NetworkProcessCreationParameters.h"
+#include "NetworkProcessMessages.h"
+#include "NetworkProcessProxy.h"
 #endif
 
 #if USE(SOUP)
@@ -88,6 +90,8 @@ using namespace WebCore;
 namespace WebKit {
 
 static const double sharedSecondaryProcessShutdownTimeout = 60;
+
+unsigned WebContext::m_privateBrowsingEnterCount;
 
 DEFINE_DEBUG_ONLY_GLOBAL(WTF::RefCountedLeakCounter, webContextCounter, ("WebContext"));
 
@@ -116,10 +120,12 @@ const Vector<WebContext*>& WebContext::allContexts()
 
 WebContext::WebContext(ProcessModel processModel, const String& injectedBundlePath)
     : m_processModel(processModel)
+    , m_webProcessCountLimit(UINT_MAX)
     , m_haveInitialEmptyProcess(false)
     , m_defaultPageGroup(WebPageGroup::create())
     , m_injectedBundlePath(injectedBundlePath)
     , m_visitedLinkProvider(this)
+    , m_plugInAutoStartProvider(this)
     , m_alwaysUsesComplexTextCodePath(false)
     , m_shouldUseFontSmoothing(true)
     , m_cacheModel(CacheModelDocumentViewer)
@@ -129,11 +135,19 @@ WebContext::WebContext(ProcessModel processModel, const String& injectedBundlePa
     , m_shouldPaintNativeControls(true)
     , m_initialHTTPCookieAcceptPolicy(HTTPCookieAcceptPolicyAlways)
 #endif
+#if USE(SOUP)
+    , m_initialHTTPCookieAcceptPolicy(HTTPCookieAcceptPolicyOnlyFromMainDocumentDomain)
+#endif
     , m_processTerminationEnabled(true)
 #if ENABLE(NETWORK_PROCESS)
     , m_usesNetworkProcess(false)
 #endif
+#if USE(SOUP)
+    , m_ignoreTLSErrors(true)
+#endif
 {
+    platformInitialize();
+
     addMessageReceiver(Messages::WebContext::messageReceiverName(), this);
     addMessageReceiver(CoreIPC::MessageKindTraits<WebContextLegacyMessage::Kind>::messageReceiverName(), this);
 
@@ -162,22 +176,25 @@ WebContext::WebContext(ProcessModel processModel, const String& injectedBundlePa
     m_soupRequestManagerProxy = WebSoupRequestManagerProxy::create(this);
 #endif
     
-#if !LOG_DISABLED
-    WebKit::initializeLogChannelsIfNecessary();
-#endif
-
     contexts().append(this);
 
     addLanguageChangeObserver(this, languageChanged);
 
 #if !LOG_DISABLED
     WebCore::initializeLoggingChannelsIfNecessary();
+    WebKit::initializeLogChannelsIfNecessary();
 #endif // !LOG_DISABLED
 
 #ifndef NDEBUG
     webContextCounter.increment();
 #endif
 }
+
+#if !PLATFORM(MAC)
+void WebContext::platformInitialize()
+{
+}
+#endif
 
 WebContext::~WebContext()
 {
@@ -246,6 +263,11 @@ WebContext::~WebContext()
 #endif
 }
 
+void WebContext::initializeClient(const WKContextClient* client)
+{
+    m_client.initialize(client);
+}
+
 void WebContext::initializeInjectedBundleClient(const WKContextInjectedBundleClient* client)
 {
     m_injectedBundleClient.initialize(client);
@@ -285,6 +307,18 @@ void WebContext::setProcessModel(ProcessModel processModel)
     m_processModel = processModel;
 }
 
+void WebContext::setMaximumNumberOfProcesses(unsigned maximumNumberOfProcesses)
+{
+    // Guard against API misuse.
+    if (!m_processes.isEmpty())
+        CRASH();
+
+    if (maximumNumberOfProcesses == 0)
+        m_webProcessCountLimit = UINT_MAX;
+    else
+        m_webProcessCountLimit = maximumNumberOfProcesses;
+}
+
 WebProcessProxy* WebContext::deprecatedSharedProcess()
 {
     ASSERT(m_processModel == ProcessModelSharedSecondaryProcess);
@@ -322,17 +356,104 @@ void WebContext::setUsesNetworkProcess(bool usesNetworkProcess)
 #endif
 }
 
-void WebContext::ensureSharedWebProcess()
+bool WebContext::usesNetworkProcess() const
 {
-    if (m_processes.isEmpty())
-        createNewWebProcess();
+#if ENABLE(NETWORK_PROCESS)
+    return m_usesNetworkProcess;
+#else
+    return false;
+#endif
 }
 
-PassRefPtr<WebProcessProxy> WebContext::createNewWebProcess()
+#if ENABLE(NETWORK_PROCESS)
+void WebContext::ensureNetworkProcess()
+{
+    if (m_networkProcess)
+        return;
+
+    m_networkProcess = NetworkProcessProxy::create(this);
+
+    NetworkProcessCreationParameters parameters;
+
+    parameters.diskCacheDirectory = diskCacheDirectory();
+    if (!parameters.diskCacheDirectory.isEmpty())
+        SandboxExtension::createHandleForReadWriteDirectory(parameters.diskCacheDirectory, parameters.diskCacheDirectoryExtensionHandle);
+
+    parameters.cacheModel = m_cacheModel;
+
+    // Add any platform specific parameters
+    platformInitializeNetworkProcess(parameters);
+
+    // Initialize the network process.
+    m_networkProcess->send(Messages::NetworkProcess::InitializeNetworkProcess(parameters), 0);
+}
+
+void WebContext::removeNetworkProcessProxy(NetworkProcessProxy* networkProcessProxy)
+{
+    ASSERT(m_networkProcess);
+    ASSERT(networkProcessProxy == m_networkProcess.get());
+    
+    m_networkProcess = nullptr;
+}
+
+void WebContext::getNetworkProcessConnection(PassRefPtr<Messages::WebProcessProxy::GetNetworkProcessConnection::DelayedReply> reply)
+{
+    ASSERT(reply);
+
+    ensureNetworkProcess();
+    ASSERT(m_networkProcess);
+
+    m_networkProcess->getNetworkProcessConnection(reply);
+}
+#endif
+
+
+void WebContext::willStartUsingPrivateBrowsing()
+{
+    if (m_privateBrowsingEnterCount++)
+        return;
+
+    const Vector<WebContext*>& contexts = allContexts();
+    for (size_t i = 0, count = contexts.size(); i < count; ++i) {
+#if ENABLE(NETWORK_PROCESS)
+        if (contexts[i]->usesNetworkProcess() && contexts[i]->networkProcess())
+            contexts[i]->networkProcess()->send(Messages::NetworkProcess::EnsurePrivateBrowsingSession(), 0);
+#endif
+        contexts[i]->sendToAllProcesses(Messages::WebProcess::EnsurePrivateBrowsingSession());
+    }
+}
+
+void WebContext::willStopUsingPrivateBrowsing()
+{
+    // If the client asks to disable private browsing without enabling it first, it may be resetting a persistent preference,
+    // so it is still necessary to destroy any existing private browsing session.
+    if (m_privateBrowsingEnterCount && --m_privateBrowsingEnterCount)
+        return;
+
+    const Vector<WebContext*>& contexts = allContexts();
+    for (size_t i = 0, count = contexts.size(); i < count; ++i) {
+#if ENABLE(NETWORK_PROCESS)
+        if (contexts[i]->usesNetworkProcess() && contexts[i]->networkProcess())
+            contexts[i]->networkProcess()->send(Messages::NetworkProcess::DestroyPrivateBrowsingSession(), 0);
+#endif
+
+        contexts[i]->sendToAllProcesses(Messages::WebProcess::DestroyPrivateBrowsingSession());
+    }
+}
+
+WebProcessProxy* WebContext::ensureSharedWebProcess()
+{
+    ASSERT(m_processModel == ProcessModelSharedSecondaryProcess);
+    if (m_processes.isEmpty())
+        createNewWebProcess();
+    return m_processes[0].get();
+}
+
+WebProcessProxy* WebContext::createNewWebProcess()
 {
 #if ENABLE(NETWORK_PROCESS)
     if (m_usesNetworkProcess)
-        NetworkProcessManager::shared().ensureNetworkProcess();
+        ensureNetworkProcess();
 #endif
 
     RefPtr<WebProcessProxy> process = WebProcessProxy::create(this);
@@ -396,6 +517,8 @@ PassRefPtr<WebProcessProxy> WebContext::createNewWebProcess()
     parameters.usesNetworkProcess = m_usesNetworkProcess;
 #endif
 
+    parameters.plugInAutoStartOrigins = m_plugInAutoStartProvider.autoStartOriginsCopy();
+
     // Add any platform specific parameters
     platformInitializeWebProcess(parameters);
 
@@ -420,8 +543,7 @@ PassRefPtr<WebProcessProxy> WebContext::createNewWebProcess()
     } else
         ASSERT(m_messagesToInjectedBundlePostedToEmptyContext.isEmpty());
 
-
-    return process.release();
+    return process.get();
 }
 
 void WebContext::warmInitialProcess()  
@@ -430,6 +552,9 @@ void WebContext::warmInitialProcess()
         ASSERT(!m_processes.isEmpty());
         return;
     }
+
+    if (m_processes.size() >= m_webProcessCountLimit)
+        return;
 
     createNewWebProcess();
     m_haveInitialEmptyProcess = true;
@@ -450,9 +575,6 @@ bool WebContext::shouldTerminate(WebProcessProxy* process)
     ASSERT(m_processes.contains(process));
 
     if (!m_processTerminationEnabled)
-        return false;
-
-    if (!m_downloads.isEmpty())
         return false;
 
     if (!m_applicationCacheManagerProxy->shouldTerminate(process))
@@ -514,14 +636,6 @@ void WebContext::disconnectProcess(WebProcessProxy* process)
         return;
     }
 
-    // Invalidate all outstanding downloads.
-    for (HashMap<uint64_t, RefPtr<DownloadProxy> >::iterator::Values it = m_downloads.begin().values(), end = m_downloads.end().values(); it != end; ++it) {
-        (*it)->processDidClose();
-        (*it)->invalidate();
-    }
-
-    m_downloads.clear();
-
     m_applicationCacheManagerProxy->invalidate();
 #if ENABLE(BATTERY_STATUS)
     m_batteryManagerProxy->invalidate();
@@ -555,12 +669,28 @@ void WebContext::disconnectProcess(WebProcessProxy* process)
     m_processes.remove(m_processes.find(process));
 }
 
+WebProcessProxy* WebContext::createNewWebProcessRespectingProcessCountLimit()
+{
+    if (m_processes.size() < m_webProcessCountLimit)
+        return createNewWebProcess();
+
+    // Choose a process with fewest pages, to achieve flat distribution.
+    WebProcessProxy* result = 0;
+    unsigned fewestPagesSeen = UINT_MAX;
+    for (unsigned i = 0; i < m_processes.size(); ++i) {
+        if (fewestPagesSeen > m_processes[i]->pages().size()) {
+            result = m_processes[i].get();
+            fewestPagesSeen = m_processes[i]->pages().size();
+        }
+    }
+    return result;
+}
+
 PassRefPtr<WebPageProxy> WebContext::createWebPage(PageClient* pageClient, WebPageGroup* pageGroup, WebPageProxy* relatedPage)
 {
     RefPtr<WebProcessProxy> process;
     if (m_processModel == ProcessModelSharedSecondaryProcess) {
-        ensureSharedWebProcess();
-        process = m_processes[0];
+        process = ensureSharedWebProcess();
     } else {
         if (m_haveInitialEmptyProcess) {
             process = m_processes.last();
@@ -568,10 +698,8 @@ PassRefPtr<WebPageProxy> WebContext::createWebPage(PageClient* pageClient, WebPa
         } else if (relatedPage) {
             // Sharing processes, e.g. when creating the page via window.open().
             process = relatedPage->process();
-        } else {
-            // FIXME (Multi-WebProcess): <rdar://problem/12239661> Consider limiting the number of web processes in per-tab process model.
-            process = createNewWebProcess();
-        }
+        } else
+            process = createNewWebProcessRespectingProcessCountLimit();
     }
 
     if (!pageGroup)
@@ -580,37 +708,26 @@ PassRefPtr<WebPageProxy> WebContext::createWebPage(PageClient* pageClient, WebPa
     return process->createWebPage(pageClient, this, pageGroup);
 }
 
-WebProcessProxy* WebContext::relaunchProcessIfNecessary()
-{
-    if (m_processModel == ProcessModelSharedSecondaryProcess) {
-        ensureSharedWebProcess();
-        return m_processes[0].get();
-    }
-
-    ASSERT_NOT_REACHED();
-    return 0;
-}
-
 DownloadProxy* WebContext::download(WebPageProxy* initiatingPage, const ResourceRequest& request)
 {
-    if (m_processModel == ProcessModelSharedSecondaryProcess) {
-        ensureSharedWebProcess();
+    DownloadProxy* downloadProxy = createDownloadProxy();
+    uint64_t initiatingPageID = initiatingPage ? initiatingPage->pageID() : 0;
 
-        DownloadProxy* download = createDownloadProxy();
-        uint64_t initiatingPageID = initiatingPage ? initiatingPage->pageID() : 0;
-
-#if PLATFORM(QT)
-        ASSERT(initiatingPage); // Our design does not suppport downloads without a WebPage.
-        initiatingPage->handleDownloadRequest(download);
+#if ENABLE(NETWORK_PROCESS)
+    if (usesNetworkProcess() && networkProcess()) {
+        // FIXME (NetworkProcess): Replicate whatever FrameLoader::setOriginalURLForDownloadRequest does with the request here.
+        networkProcess()->connection()->send(Messages::NetworkProcess::DownloadRequest(downloadProxy->downloadID(), request), 0);
+        return downloadProxy;
+    }
 #endif
 
-        m_processes[0]->send(Messages::WebProcess::DownloadRequest(download->downloadID(), initiatingPageID, request), 0);
-        return download;
+#if PLATFORM(QT)
+    ASSERT(initiatingPage); // Our design does not suppport downloads without a WebPage.
+    initiatingPage->handleDownloadRequest(downloadProxy);
+#endif
 
-    } else {
-        // FIXME (Multi-WebProcess): <rdar://problem/12239483> Make downloading work.
-        return 0;
-    }
+    m_processes[0]->send(Messages::WebProcess::DownloadRequest(downloadProxy->downloadID(), initiatingPageID, request), 0);
+    return downloadProxy;
 }
 
 void WebContext::postMessageToInjectedBundle(const String& messageName, APIObject* messageBody)
@@ -724,6 +841,8 @@ void WebContext::setCacheModel(CacheModel cacheModel)
 {
     m_cacheModel = cacheModel;
     sendToAllProcesses(Messages::WebProcess::SetCacheModel(static_cast<uint32_t>(m_cacheModel)));
+
+    // FIXME: Inform the Network Process if in use.
 }
 
 void WebContext::setDefaultRequestTimeoutInterval(double timeoutInterval)
@@ -747,19 +866,12 @@ void WebContext::addVisitedLinkHash(LinkHash linkHash)
 
 DownloadProxy* WebContext::createDownloadProxy()
 {
-    RefPtr<DownloadProxy> downloadProxy = DownloadProxy::create(this);
-    m_downloads.set(downloadProxy->downloadID(), downloadProxy);
-    addMessageReceiver(Messages::DownloadProxy::messageReceiverName(), downloadProxy->downloadID(), this);
-    return downloadProxy.get();
-}
+#if ENABLE(NETWORK_PROCESS)
+    if (usesNetworkProcess())
+        return m_networkProcess->createDownloadProxy();
+#endif
 
-void WebContext::downloadFinished(DownloadProxy* downloadProxy)
-{
-    ASSERT(m_downloads.contains(downloadProxy->downloadID()));
-
-    downloadProxy->invalidate();
-    removeMessageReceiver(Messages::DownloadProxy::messageReceiverName(), downloadProxy->downloadID());
-    m_downloads.remove(downloadProxy->downloadID());
+    return ensureSharedWebProcess()->createDownloadProxy();
 }
 
 // FIXME: This is not the ideal place for this function.
@@ -806,13 +918,6 @@ void WebContext::didReceiveMessage(CoreIPC::Connection* connection, CoreIPC::Mes
         return;
     }
 
-    if (messageID.is<CoreIPC::MessageClassDownloadProxy>()) {
-        if (DownloadProxy* downloadProxy = m_downloads.get(decoder.destinationID()).get())
-            downloadProxy->didReceiveDownloadProxyMessage(connection, messageID, decoder);
-        
-        return;
-    }
-
     switch (messageID.get<WebContextLegacyMessage::Kind>()) {
         case WebContextLegacyMessage::PostMessage: {
             String messageName;
@@ -837,12 +942,6 @@ void WebContext::didReceiveSyncMessage(CoreIPC::Connection* connection, CoreIPC:
 {
     if (messageID.is<CoreIPC::MessageClassWebContext>()) {
         didReceiveSyncWebContextMessage(connection, messageID, decoder, replyEncoder);
-        return;
-    }
-
-    if (messageID.is<CoreIPC::MessageClassDownloadProxy>()) {
-        if (DownloadProxy* downloadProxy = m_downloads.get(decoder.destinationID()).get())
-            downloadProxy->didReceiveSyncDownloadProxyMessage(connection, messageID, decoder, replyEncoder);
         return;
     }
 
@@ -952,6 +1051,21 @@ String WebContext::cookieStorageDirectory() const
     return platformDefaultCookieStorageDirectory();
 }
 
+void WebContext::allowSpecificHTTPSCertificateForHost(const WebCertificateInfo* certificate, const String& host)
+{
+#if ENABLE(NETWORK_PROCESS)
+    if (m_usesNetworkProcess && m_networkProcess) {
+        m_networkProcess->send(Messages::NetworkProcess::AllowSpecificHTTPSCertificateForHost(certificate->platformCertificateInfo(), host), 0);
+        return;
+    }
+#else
+    UNUSED_PARAM(certificate);
+    UNUSED_PARAM(host);
+#endif
+    // FIXME: It's unclear whether we want this SPI to be exposed and used for clients that don't use the NetworkProcess.
+    ASSERT_NOT_REACHED();
+}
+
 void WebContext::setHTTPPipeliningEnabled(bool enabled)
 {
 #if PLATFORM(MAC)
@@ -1034,5 +1148,44 @@ void WebContext::setJavaScriptGarbageCollectorTimerEnabled(bool flag)
 {
     sendToAllProcesses(Messages::WebProcess::SetJavaScriptGarbageCollectorTimerEnabled(flag));
 }
+
+void WebContext::addPlugInAutoStartOriginHash(const String& pageOrigin, unsigned plugInOriginHash)
+{
+    m_plugInAutoStartProvider.addAutoStartOrigin(pageOrigin, plugInOriginHash);
+}
+
+PassRefPtr<ImmutableDictionary> WebContext::plugInAutoStartOriginHashes() const
+{
+    return m_plugInAutoStartProvider.autoStartOriginsTableCopy();
+}
+
+void WebContext::setPlugInAutoStartOriginHashes(ImmutableDictionary& dictionary)
+{
+    return m_plugInAutoStartProvider.setAutoStartOriginsTable(dictionary);
+}
+
+#if ENABLE(CUSTOM_PROTOCOLS)
+void WebContext::registerSchemeForCustomProtocol(const WTF::String& scheme)
+{
+#if ENABLE(NETWORK_PROCESS)
+    if (m_usesNetworkProcess && m_networkProcess) {
+        m_networkProcess->send(Messages::NetworkProcess::RegisterSchemeForCustomProtocol(scheme), 0);
+        return;
+    }
+#endif
+    sendToAllProcesses(Messages::WebProcess::RegisterSchemeForCustomProtocol(scheme));
+}
+
+void WebContext::unregisterSchemeForCustomProtocol(const WTF::String& scheme)
+{
+#if ENABLE(NETWORK_PROCESS)
+    if (m_usesNetworkProcess && m_networkProcess) {
+        m_networkProcess->send(Messages::NetworkProcess::UnregisterSchemeForCustomProtocol(scheme), 0);
+        return;
+    }
+#endif
+    sendToAllProcesses(Messages::WebProcess::UnregisterSchemeForCustomProtocol(scheme));
+}
+#endif
 
 } // namespace WebKit

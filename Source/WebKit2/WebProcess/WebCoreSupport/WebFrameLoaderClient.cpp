@@ -202,7 +202,6 @@ bool WebFrameLoaderClient::shouldUseCredentialStorage(DocumentLoader*, unsigned 
     return webPage->injectedBundleResourceLoadClient().shouldUseCredentialStorage(webPage, m_frame, identifier);
 }
 
-#if !PLATFORM(GTK)
 void WebFrameLoaderClient::dispatchDidReceiveAuthenticationChallenge(DocumentLoader*, unsigned long, const AuthenticationChallenge& challenge)
 {
     // FIXME: Authentication is a per-resource concept, but we don't do per-resource handling in the UIProcess at the API level quite yet.
@@ -212,9 +211,8 @@ void WebFrameLoaderClient::dispatchDidReceiveAuthenticationChallenge(DocumentLoa
     if (!webPage)
         return;
 
-    AuthenticationManager::shared().didReceiveAuthenticationChallenge(m_frame, challenge);
+    WebProcess::shared().authenticationManager().didReceiveAuthenticationChallenge(m_frame, challenge);
 }
-#endif
 
 void WebFrameLoaderClient::dispatchDidCancelAuthenticationChallenge(DocumentLoader*, unsigned long /*identifier*/, const AuthenticationChallenge&)    
 {
@@ -1285,9 +1283,9 @@ bool WebFrameLoaderClient::canCachePage() const
     return !m_frameHasCustomRepresentation;
 }
 
-void WebFrameLoaderClient::download(ResourceHandle* handle, const ResourceRequest& request, const ResourceResponse& response)
+void WebFrameLoaderClient::convertMainResourceLoadToDownload(MainResourceLoader *mainResourceLoader, const ResourceRequest& request, const ResourceResponse& response)
 {
-    m_frame->convertHandleToDownload(handle, request, response);
+    m_frame->convertMainResourceLoadToDownload(mainResourceLoader, request, response);
 }
 
 PassRefPtr<Frame> WebFrameLoaderClient::createFrame(const KURL& url, const String& name, HTMLFrameOwnerElement* ownerElement,

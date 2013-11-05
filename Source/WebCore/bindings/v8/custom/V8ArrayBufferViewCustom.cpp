@@ -26,30 +26,27 @@
 #include "V8ArrayBufferViewCustom.h"
 
 #include "V8ArrayBufferViewCustomScript.h"
+#include "V8HiddenPropertyName.h"
 
 #include <v8.h>
 
 
 namespace WebCore {
 
-// The random suffix helps to avoid name collision.
-const char hiddenCopyMethodName[] = "TypedArray::HiddenCopy::8NkZVq";
-
 v8::Handle<v8::Value> getHiddenCopyMethod(v8::Handle<v8::Object> prototype)
 {
-    v8::Handle<v8::String> key = v8::String::New(hiddenCopyMethodName);
-    return prototype->GetHiddenValue(key);
+    return prototype->GetHiddenValue(V8HiddenPropertyName::typedArrayHiddenCopyMethod());
 }
 
-v8::Handle<v8::Value> installHiddenCopyMethod(v8::Handle<v8::Object> prototype) {
+v8::Handle<v8::Value> installHiddenCopyMethod(v8::Handle<v8::Object> prototype, v8::Isolate* isolate)
+{
     v8::TryCatch tryCatch;
     tryCatch.SetVerbose(true);
     String source(reinterpret_cast<const char*>(V8ArrayBufferViewCustomScript_js),
                   sizeof(V8ArrayBufferViewCustomScript_js));
-    v8::Handle<v8::Script> script = v8::Script::Compile(v8String(source));
+    v8::Handle<v8::Script> script = v8::Script::Compile(v8String(source, isolate));
     v8::Handle<v8::Value> value = script->Run();
-    v8::Handle<v8::String> key = v8::String::New(hiddenCopyMethodName);
-    prototype->SetHiddenValue(key, value);
+    prototype->SetHiddenValue(V8HiddenPropertyName::typedArrayHiddenCopyMethod(), value);
     return value;
 }
 
@@ -61,7 +58,7 @@ bool copyElements(v8::Handle<v8::Object> destArray, v8::Handle<v8::Object> srcAr
     v8::Handle<v8::Object> prototype = prototype_value.As<v8::Object>();
     v8::Handle<v8::Value> value = getHiddenCopyMethod(prototype);
     if (value.IsEmpty())
-        value = installHiddenCopyMethod(prototype);
+        value = installHiddenCopyMethod(prototype, isolate);
     if (value.IsEmpty() || !value->IsFunction())
         return false;
     v8::Handle<v8::Function> copy_method = value.As<v8::Function>();

@@ -22,8 +22,6 @@
         function canplaythrough() {
             consoleWrite("EVENT(canplaythrough)");
             controller.removeEventListener('canplaythrough', canplaythrough, true);
-            run('video.play()');
-            run('video2.play()');
             controller.addEventListener('playing', playing, true);
             run('controller.play()');
         }

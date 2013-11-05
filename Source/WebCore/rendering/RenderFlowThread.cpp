@@ -462,6 +462,10 @@ bool RenderFlowThread::logicalWidthChangedInRegions(const RenderBlock* block, La
     RenderRegion* endRegion;
     getRegionRangeForBox(block, startRegion, endRegion);
 
+    // If the block doesn't have a startRegion (and implicitly a region range) it's safe to assume the width in regions has changed (e.g. the region chain was invalidated).
+    if (!startRegion)
+        return true;
+
     for (RenderRegionList::iterator iter = m_regionList.find(startRegion); iter != m_regionList.end(); ++iter) {
         RenderRegion* region = *iter;
         ASSERT(!region->needsLayout());
@@ -737,7 +741,7 @@ void RenderFlowThread::resetRegionsOverrideLogicalContentHeight()
 
     // We need to reset the override logical content height for regions with auto logical height
     // only if the flow thread content needs layout.
-    if (!selfNeedsLayout())
+    if (!needsLayout())
         return;
 
     // FIXME: optimize this to iterate the region chain only if the flow thread has auto logical height
@@ -753,6 +757,9 @@ void RenderFlowThread::resetRegionsOverrideLogicalContentHeight()
         // as we are already inside layout.
         region->setNeedsLayout(true);
     }
+    // Make sure we don't skip any region breaks when we do the layout again.
+    // Using m_regionsInvalidated to force all the RenderFlowThread children do the layout again.
+    m_regionsInvalidated = true;
 }
 
 void RenderFlowThread::markAutoLogicalHeightRegionsForLayout()

@@ -48,10 +48,12 @@
 namespace WebCore {
 
 class BitmapTexturePool;
+class CustomFilterProgram;
+class GraphicsLayer;
 class TextureMapper;
 
 // A 2D texture that can be the target of software or GL rendering.
-class BitmapTexture  : public RefCounted<BitmapTexture> {
+class BitmapTexture : public RefCounted<BitmapTexture> {
 public:
     enum Flag {
         SupportsAlpha = 0x01
@@ -74,6 +76,7 @@ public:
 
     virtual IntSize size() const = 0;
     virtual void updateContents(Image*, const IntRect&, const IntPoint& offset, UpdateContentsFlag) = 0;
+    virtual void updateContents(TextureMapper*, GraphicsLayer*, const IntRect& target, const IntPoint& offset, UpdateContentsFlag);
     virtual void updateContents(const void*, const IntRect& target, const IntPoint& offset, int bytesPerLine, UpdateContentsFlag) = 0;
     virtual bool isValid() const = 0;
     inline Flags flags() const { return m_flags; }
@@ -134,8 +137,8 @@ public:
 
     // makes a surface the target for the following drawTexture calls.
     virtual void bindSurface(BitmapTexture* surface) = 0;
-    virtual void setGraphicsContext(GraphicsContext* context) { m_context = context; }
-    virtual GraphicsContext* graphicsContext() { return m_context; }
+    void setGraphicsContext(GraphicsContext* context) { m_context = context; }
+    GraphicsContext* graphicsContext() { return m_context; }
     virtual void beginClip(const TransformationMatrix&, const FloatRect&) = 0;
     virtual void endClip() = 0;
     virtual PassRefPtr<BitmapTexture> createTexture() = 0;
@@ -150,12 +153,18 @@ public:
     virtual void beginPainting(PaintFlags = 0) { }
     virtual void endPainting() { }
 
-    virtual IntSize maxTextureSize() const { return IntSize(INT_MAX, INT_MAX); }
+    virtual IntSize maxTextureSize() const = 0;
 
     virtual PassRefPtr<BitmapTexture> acquireTextureFromPool(const IntSize&);
 
+#if ENABLE(CSS_SHADERS)
+    virtual void removeCachedCustomFilterProgram(CustomFilterProgram*) { }
+#endif
+
 protected:
-    TextureMapper(AccelerationMode);
+    explicit TextureMapper(AccelerationMode);
+
+    GraphicsContext* m_context;
 
 private:
 #if USE(TEXTURE_MAPPER_GL)
@@ -169,7 +178,6 @@ private:
     InterpolationQuality m_interpolationQuality;
     TextDrawingModeFlags m_textDrawingMode;
     OwnPtr<BitmapTexturePool> m_texturePool;
-    GraphicsContext* m_context;
     AccelerationMode m_accelerationMode;
 };
 

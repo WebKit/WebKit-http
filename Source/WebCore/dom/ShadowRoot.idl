@@ -26,8 +26,6 @@
 
 [
     Conditional=SHADOW_DOM,
-    Constructor(in Element host),
-    ConstructorRaisesException,
     JSGenerateToJSObject
 ] interface ShadowRoot : DocumentFragment {
     readonly attribute Element activeElement;
@@ -47,4 +45,3 @@
     NodeList getElementsByTagNameNS(in [TreatNullAs=NullString,Optional=DefaultIsUndefined] DOMString namespaceURI,
                                     in [Optional=DefaultIsUndefined] DOMString localName);
 };
-

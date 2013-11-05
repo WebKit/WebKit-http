@@ -43,7 +43,6 @@
 #include "V8RecursionScope.h"
 #include "WebMediaPlayerClientImpl.h"
 #include "WebSocket.h"
-#include "WorkerContextExecutionProxy.h"
 #include "platform/WebKitPlatformSupport.h"
 #include "v8.h"
 #include <public/Platform.h>
@@ -134,6 +133,7 @@ void initializeWithoutV8(WebKitPlatformSupport* webKitPlatformSupport)
     ASSERT(!s_webKitPlatformSupport);
     s_webKitPlatformSupport = webKitPlatformSupport;
     Platform::initialize(s_webKitPlatformSupport);
+    WebCore::ImageDecodingStore::initializeOnce();
 
     WTF::initializeThreading();
     WTF::initializeMainThread();

@@ -1,3 +1,543 @@
+2012-12-20  Ilya Tikhonovsky  <loislo@chromium.org>
+
+        Unreviewed build fix for chromium mac after r138206.
+
+        * WebCoreSupport/WebSystemInterface.mm:
+        (InitWebCoreSystemInterface):
+
+2012-12-19  Alexey Proskuryakov  <ap@apple.com>
+
+        <rdar://problem/12890242> [WK2 NetworkProcess] Client doesn't receive SSL certificates
+        https://bugs.webkit.org/show_bug.cgi?id=105467
+
+        Reviewed by Brady Eidson.
+
+        * WebCoreSupport/WebSystemInterface.mm: (InitWebCoreSystemInterface): Initialize
+        a WKSI function we've been missing.
+
+2012-12-19  Alexis Menard  <alexis@webkit.org>
+
+        Implement CSS parsing for CSS transitions unprefixed.
+        https://bugs.webkit.org/show_bug.cgi?id=104804
+
+        Reviewed by Dean Jackson.
+
+        Add a new flag ENABLE_CSS_TRANSFORMS_ANIMATIONS_TRANSITIONS_UNPREFIXED
+        to cover the work of unprefixing Transforms, Animations and 
+        Transitions. It will let the possibility of each ports to turn it off 
+        in their release branches until we're confident that these CSS 
+        properties are ready to be unprefixed.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2012-12-18  Alexey Proskuryakov  <ap@apple.com>
+
+        Remove unnecessary functions from CookiesStrategy
+        https://bugs.webkit.org/show_bug.cgi?id=105369
+
+        Reviewed by Brady Eidson.
+
+        * WebCoreSupport/WebPlatformStrategies.h:
+        * WebCoreSupport/WebPlatformStrategies.mm:
+
+2012-12-18  Alice Liu  <alice.liu@apple.com>
+
+        Add SPI to WebKit1 WebFrame for hit testing
+        https://bugs.webkit.org/show_bug.cgi?id=105106
+
+        Reviewed by Dan Bernstein.
+
+        * WebView/WebFrame.mm:
+        (-[WebFrame elementAtPoint:]): Added. Takes an NSPoint to feed to the WebCore::Frame for hit-testing.
+        Creates a WebElementDictionary from that WebCore::HitTestResult, and returns the element dictionary. 
+        * WebView/WebFramePrivate.h:
+
+2012-12-18  Alice Liu  <alice.liu@apple.com>
+
+        Add SPI to WebKit1 WebFrame for node conversion to JSValueRef
+        https://bugs.webkit.org/show_bug.cgi?id=105262
+
+        Reviewed by Anders Carlsson.
+
+        * WebView/WebFrame.mm:
+        (-[WebFrame jsWrapper:forWorld:]): Added. Takes a DOMNode and WebScriptWorld and provides a JSValueRef
+        for the WebCore::Node in that particular WebScriptWorld.
+        * WebView/WebFramePrivate.h:
+
+2012-12-18  Beth Dakin  <bdakin@apple.com>
+
+        https://bugs.webkit.org/show_bug.cgi?id=102579
+        [mac] Enable scaled cursors
+
+        Reviewed by Dean Jackson.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2012-12-16  Levi Weintraub  <leviw@chromium.org>
+
+        Push pixel snapping logic into TransformState
+        https://bugs.webkit.org/show_bug.cgi?id=101779
+
+        Reviewed by Simon Fraser.
+
+        * WebView/WebFullScreenController.mm:
+        (screenRectOfContents): Removed SnapOffsetForTransforms as it's no longer needed.
+
+2012-12-15  Anders Carlsson  <andersca@apple.com>
+
+        Rename FrameLoaderClient::download to convertMainResourceLoadToDownload
+        https://bugs.webkit.org/show_bug.cgi?id=105122
+
+        Reviewed by Andreas Kling.
+
+        Update for WebCore changes.
+
+        * WebCoreSupport/WebFrameLoaderClient.h:
+        (WebFrameLoaderClient):
+        * WebCoreSupport/WebFrameLoaderClient.mm:
+        (WebFrameLoaderClient::convertMainResourceLoadToDownload):
+
+2012-12-15  Mark Lam  <mark.lam@apple.com>
+
+        Re-landing patch for "Introducing the DatabaseStrategy and database servers".
+        https://bugs.webkit.org/show_bug.cgi?id=104934.
+
+        Not reviewed.
+
+        Merged from r137767. Previously reviewed by Sam Weinig.
+
+        * WebCoreSupport/WebPlatformStrategies.h:
+        (WebPlatformStrategies):
+        * WebCoreSupport/WebPlatformStrategies.mm:
+        (WebPlatformStrategies::createDatabaseStrategy):
+
+2012-12-14  Mark Lam  <mark.lam@apple.com>
+
+        The WebView should initialize the platform strategies before initializing other sub-systems.
+        https://bugs.webkit.org/show_bug.cgi?id=105083.
+
+        Reviewed by Alexey Proskuryakov.
+
+        * WebView/WebView.mm:
+        (-[WebView _commonInitializationWithFrameName:groupName:]):
+
+2012-12-14  Sheriff Bot  <webkit.review.bot@gmail.com>
+
+        Unreviewed, rolling out r137767.
+        http://trac.webkit.org/changeset/137767
+        https://bugs.webkit.org/show_bug.cgi?id=105062
+
+        Broke Mac builds. (Requested by mlam on #webkit).
+
+        * WebCoreSupport/WebPlatformStrategies.h:
+        (WebPlatformStrategies):
+        * WebCoreSupport/WebPlatformStrategies.mm:
+
+2012-12-14  Mark Lam  <mark.lam@apple.com>
+
+        Introducing the DatabaseStrategy and database servers.
+        https://bugs.webkit.org/show_bug.cgi?id=104934.
+
+        Reviewed by Sam Weinig.
+
+        The database server is currently a placeholder that does nothing.
+
+        * WebCoreSupport/WebPlatformStrategies.h:
+        (WebPlatformStrategies):
+        * WebCoreSupport/WebPlatformStrategies.mm:
+        (WebPlatformStrategies::createDatabaseStrategy):
+
+2012-12-13  Alexey Proskuryakov  <ap@apple.com>
+
+        <rdar://problem/12838354> Per-Tab WebProcess: DOM cookie access functions should respect private browsing
+        https://bugs.webkit.org/show_bug.cgi?id=104691
+
+        Reviewed by Sam Weinig.
+
+        * WebCoreSupport/WebFrameNetworkingContext.h:
+        * WebCoreSupport/WebFrameNetworkingContext.mm:
+        (WebFrameNetworkingContext::inPrivateBrowsingMode):
+        (WebFrameNetworkingContext::storageSession):
+        Implemented inPrivateBrowsingMode().
+
+2012-12-12  Mark Lam  <mark.lam@apple.com>
+
+        Encapsulate externally used webdatabase APIs in DatabaseManager.
+        https://bugs.webkit.org/show_bug.cgi?id=104741.
+
+        Reviewed by Sam Weinig.
+
+        Use DatabaseManager instead of accessing DatabaseTracker, AbstractDatabase,
+        and DatabaseContext directly. This is to prepare for upcoming webkit2
+        refactoring.
+
+        * Storage/WebDatabaseManager.mm:
+        (-[WebDatabaseManager origins]):
+        (-[WebDatabaseManager databasesWithOrigin:]):
+        (-[WebDatabaseManager detailsForDatabase:withOrigin:]):
+        (-[WebDatabaseManager deleteAllDatabases]):
+        (-[WebDatabaseManager deleteOrigin:]):
+        (-[WebDatabaseManager deleteDatabase:withOrigin:]):
+        (WebKitInitializeDatabasesIfNecessary):
+        * Storage/WebDatabaseManagerClient.h: Copied from Source/WebKit/mac/Storage/WebDatabaseTrackerClient.h.
+        (WebDatabaseManagerClient):
+        * Storage/WebDatabaseManagerClient.mm: Copied from Source/WebKit/mac/Storage/WebDatabaseTrackerClient.mm.
+        (WebDatabaseManagerClient::sharedWebDatabaseManagerClient):
+        (WebDatabaseManagerClient::WebDatabaseManagerClient):
+        (WebDatabaseManagerClient::~WebDatabaseManagerClient):
+        (DidModifyOriginData::dispatchToMainThread):
+        (DidModifyOriginData::DidModifyOriginData):
+        (DidModifyOriginData):
+        (WebDatabaseManagerClient::dispatchDidModifyOrigin):
+        (WebDatabaseManagerClient::dispatchDidModifyDatabase):
+        * Storage/WebDatabaseQuotaManager.mm:
+        (-[WebDatabaseQuotaManager usage]):
+        (-[WebDatabaseQuotaManager quota]):
+        (-[WebDatabaseQuotaManager setQuota:]):
+        * Storage/WebDatabaseTrackerClient.h: Removed.
+        * Storage/WebDatabaseTrackerClient.mm: Removed.
+        * WebCoreSupport/WebSecurityOrigin.mm:
+        (-[WebSecurityOrigin usage]):
+        (-[WebSecurityOrigin quota]):
+        (-[WebSecurityOrigin setQuota:]):
+        * WebKit.order:
+        * WebView/WebFrame.mm:
+        (-[WebFrame _cacheabilityDictionary]):
+        * WebView/WebView.mm:
+        (-[WebView _preferencesChanged:]):
+
+2012-12-12  Alexey Proskuryakov  <ap@apple.com>
+
+        Make LOG() work in WebProcess and NetworkProcess
+        https://bugs.webkit.org/show_bug.cgi?id=104718
+
+        Reviewed by Tim Horton.
+
+        * WebView/WebView.mm: Use WebCore/InitializeLogging.h to avoid conflicts between
+        WebCore and WebKit versions of this file.
+
+2012-12-11  Mike West  <mkwst@chromium.org>
+
+        Web Inspector: ConsoleTypes should not expose MessageType - it should be private to inspector.
+        https://bugs.webkit.org/show_bug.cgi?id=66371
+
+        Reviewed by Pavel Feldman.
+
+        Drops WebCore::MessageType from the addMessageToConsole method.
+
+        * WebCoreSupport/WebChromeClient.h:
+        (WebChromeClient):
+        * WebCoreSupport/WebChromeClient.mm:
+        (WebChromeClient::addMessageToConsole):
+
+2012-12-09  Antti Koivisto  <antti@apple.com>
+
+        Factor node traversal into standalone functions
+        https://bugs.webkit.org/show_bug.cgi?id=104507
+
+        Reviewed by Eric Seidel.
+    
+        * WebView/WebHTMLRepresentation.mm:
+        (searchForLabelsBeforeElement):
+
+2012-12-10  Alexis Menard  <alexis@webkit.org>
+
+        [CSS3 Backgrounds and Borders] Remove CSS3_BACKGROUND feature flag.
+        https://bugs.webkit.org/show_bug.cgi?id=104539
+
+        Reviewed by Antonio Gomes.
+
+        As discussed on webkit-dev it is not needed to keep this feature flag 
+        as support for <position> type is a small feature that is already 
+        implemented by three other UAs. It was useful while landing this 
+        feature as partial bits were landed one after one.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2012-12-06  Rick Byers  <rbyers@chromium.org>
+
+        CSS cursor property should support webkit-image-set
+        https://bugs.webkit.org/show_bug.cgi?id=99493
+
+        Reviewed by Beth Dakin.
+
+        Add ENABLE_MOUSE_CURSOR_SCALE - disabled by default.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2012-12-03  Yury Semikhatsky  <yurys@chromium.org>
+
+        Unreviewed. Fix Mac compilation after r136448.
+
+        * WebCoreSupport/WebChromeClient.mm:
+        (stringForMessageType):
+
+2012-12-03  Alexis Menard  <alexis@webkit.org>
+
+        [Mac] Enable CSS3 background-position offset by default.
+        https://bugs.webkit.org/show_bug.cgi?id=103905
+
+        Reviewed by Simon Fraser.
+
+        Turn the flag on by default.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2012-12-02  Yongjun Zhang  <yongjun_zhang@apple.com>
+
+        Need a method to close all idle localstorage databases immediately.
+        https://bugs.webkit.org/show_bug.cgi?id=103469
+
+        Reviewed by David Kilzer.
+
+        Add a new method to WebStorageManager that we can call to close all
+        idle local storage databases.
+
+        * Storage/WebStorageManager.mm:
+        (+[WebStorageManager closeIdleLocalStorageDatabases]):
+        * Storage/WebStorageManagerPrivate.h:
+
+2012-11-30  Mihai Maerean  <mmaerean@adobe.com>
+
+        [CSSRegions] when WebKit uses V8, there should be a single variable to store if the CSS Regions feature is enabled
+        https://bugs.webkit.org/show_bug.cgi?id=101192
+
+        Reviewed by Hajime Morita.
+
+        Removed the CSS Regions flag in Settings and switched to using the new flag I have added in RuntimeEnabledFeatures.
+
+        Tests: No new tests because there is no functional change.
+
+        * WebView/WebView.mm:
+        (-[WebView _preferencesChanged:]):
+
+2012-11-29  Rafael Weinstein  <rafaelw@chromium.org>
+
+        [HTMLTemplateElement] Add feature flag
+        https://bugs.webkit.org/show_bug.cgi?id=103694
+
+        Reviewed by Adam Barth.
+
+        This flag will guard the implementation of the HTMLTemplateElement.
+        http://dvcs.w3.org/hg/webcomponents/raw-file/tip/spec/templates/index.html
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2012-11-29  Alexey Proskuryakov  <ap@apple.com>
+
+        [WK2] Forward cookie jar calls to NetworkProcess
+        https://bugs.webkit.org/show_bug.cgi?id=103457
+
+        Reviewed by Darin Adler.
+
+        * WebCoreSupport/WebPlatformStrategies.h:
+        (WebPlatformStrategies):
+        * WebCoreSupport/WebPlatformStrategies.mm:
+        (WebPlatformStrategies::cookiesForDOM):
+        (WebPlatformStrategies::setCookiesFromDOM):
+        (WebPlatformStrategies::cookiesEnabled):
+        (WebPlatformStrategies::cookieRequestHeaderFieldValue):
+        (WebPlatformStrategies::getRawCookies):
+        (WebPlatformStrategies::deleteCookie):
+        (WebPlatformStrategies::getHostnamesWithCookies):
+        (WebPlatformStrategies::deleteCookiesForHostname):
+        (WebPlatformStrategies::deleteAllCookies):
+        (WebPlatformStrategies::getPluginInfo):
+        (WebPlatformStrategies::bufferForType):
+        WebKit1 strategy just uses PlatformCookieJar.
+
+2012-11-28  Beth Dakin  <bdakin@apple.com>
+
+        https://bugs.webkit.org/show_bug.cgi?id=102970
+        [WK1] REGRESSION (r129545): Main frame doesn't rubberband unless 
+        WebFrameLoadDelegate implements -webView:didFirstLayoutInFrame:
+
+        Reviewed by Sam Weinig.
+
+        We should always register for DidFirstLayout in WK1 since we do work 
+        at that time besides just calling the delegate function.
+        * WebView/WebView.mm:
+        (-[WebView _cacheFrameLoadDelegateImplementations]):
+
+2012-11-27  Michael Saboff  <msaboff@apple.com>
+
+        TextIterator unnecessarily converts 8 bit strings to 16 bits
+        https://bugs.webkit.org/show_bug.cgi?id=103295
+
+        Reviewed by Brent Fulgham.
+
+        Updated _stringForRange to use plainText() instead of removed plainTextToMallocAllocatedBuffer().
+
+        * WebView/WebFrame.mm:
+        (-[WebFrame _stringForRange:]):
+
+2012-11-27  James Simonsen  <simonjam@chromium.org>
+
+        Consolidate FrameLoader::load() into one function taking a FrameLoadRequest
+        https://bugs.webkit.org/show_bug.cgi?id=102151
+
+        Reviewed by Adam Barth.
+
+        * Plugins/WebPluginController.mm:
+        * WebView/WebFrame.mm:
+        (-[WebFrame loadRequest:]):
+        (-[WebFrame _loadData:MIMEType:textEncodingName:baseURL:unreachableURL:]):
+
+2012-11-27  Pratik Solanki  <psolanki@apple.com>
+
+        objc/objc-runtime.h does not exist on all PLATFORM(MAC)
+        https://bugs.webkit.org/show_bug.cgi?id=101780
+
+        Reviewed by Brent Fulgham.
+
+        Clean up header includes so we don't include objc/objc-runtime.h.
+
+        * Carbon/HIWebView.mm:
+        (UpdateCommandStatus): Use wtfObjcMsgSend template instead of objc_msgSend.
+        * Plugins/WebNetscapePluginView.mm:
+        * Plugins/WebPluginContainerCheck.mm:
+        (-[WebPluginContainerCheck _continueWithPolicy:]): Use wtfObjcMsgSend template instead of objc_msgSend.
+        * Plugins/WebPluginController.mm:
+        * WebCoreSupport/WebCachedFramePlatformData.h:
+        * WebCoreSupport/WebDeviceOrientationClient.mm:
+        * WebView/WebDelegateImplementationCaching.mm:
+        * WebView/WebHTMLView.mm:
+        * WebView/WebPDFDocumentExtras.mm:
+        * WebView/WebPolicyDelegate.mm:
+        (-[WebPolicyDecisionListener _usePolicy:]): Use wtfObjcMsgSend template instead of objc_msgSend.
+        * WebView/WebView.mm:
+
+2012-11-27  Sheriff Bot  <webkit.review.bot@gmail.com>
+
+        Unreviewed, rolling out r135786.
+        http://trac.webkit.org/changeset/135786
+        https://bugs.webkit.org/show_bug.cgi?id=103379
+
+        It made 3 plugin tests timeout on several platforms (Requested
+        by Ossy on #webkit).
+
+        * Plugins/WebPluginController.mm:
+        * WebView/WebFrame.mm:
+        (-[WebFrame loadRequest:]):
+        (-[WebFrame _loadData:MIMEType:textEncodingName:baseURL:unreachableURL:]):
+
+2012-11-26  James Simonsen  <simonjam@chromium.org>
+
+        Consolidate FrameLoader::load() into one function taking a FrameLoadRequest
+        https://bugs.webkit.org/show_bug.cgi?id=102151
+
+        Reviewed by Adam Barth.
+
+        * Plugins/WebPluginController.mm:
+        * WebView/WebFrame.mm:
+        (-[WebFrame loadRequest:]):
+        (-[WebFrame _loadData:MIMEType:textEncodingName:baseURL:unreachableURL:]):
+
+2012-11-23  Alexis Menard  <alexis@webkit.org>
+
+        [CSS3 Backgrounds and Borders] Implement new CSS3 background-position parsing.
+        https://bugs.webkit.org/show_bug.cgi?id=102104
+
+        Reviewed by Julien Chaffraix.
+
+        Protect the new feature behind a feature flag.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2012-11-21  Allan Sandfeld Jensen  <allan.jensen@digia.com>
+
+        Disambiguate innerNodeFramePoint and mainFramePoint
+        https://bugs.webkit.org/show_bug.cgi?id=98139
+
+        Reviewed by Julien Chaffraix.
+
+        Switch to using HitTestResult::innerNodeFrame and HitTestResult::innerNodeFramePoint.
+
+        * WebCoreSupport/WebContextMenuClient.mm:
+        (WebContextMenuClient::showContextMenu):
+
+2012-11-20  Sheriff Bot  <webkit.review.bot@gmail.com>
+
+        Unreviewed, rolling out r135295.
+        http://trac.webkit.org/changeset/135295
+        https://bugs.webkit.org/show_bug.cgi?id=102834
+
+        This patch causes assertion to some layout tests on chromium
+        (Requested by jianli on #webkit).
+
+        * Plugins/WebPluginController.mm:
+        * WebView/WebFrame.mm:
+        (-[WebFrame loadRequest:]):
+        (-[WebFrame _loadData:MIMEType:textEncodingName:baseURL:unreachableURL:]):
+
+2012-11-20  James Simonsen  <simonjam@chromium.org>
+
+        Consolidate FrameLoader::load() into one function taking a FrameLoadRequest
+        https://bugs.webkit.org/show_bug.cgi?id=102151
+
+        Reviewed by Adam Barth.
+
+        * Plugins/WebPluginController.mm:
+        * WebView/WebFrame.mm:
+        (-[WebFrame loadRequest:]):
+        (-[WebFrame _loadData:MIMEType:textEncodingName:baseURL:unreachableURL:]):
+
+2012-11-19  Kihong Kwon  <kihong.kwon@samsung.com>
+
+        Add PROXIMITY_EVENTS feature
+        https://bugs.webkit.org/show_bug.cgi?id=102658
+
+        Reviewed by Kentaro Hara.
+
+        Add PROXIMITY_EVENTS feature to xcode project for WebKit.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2012-11-16  Tony Chang  <tony@chromium.org>
+
+        Remove ENABLE_CSS_HIERARCHIES since it's no longer in use
+        https://bugs.webkit.org/show_bug.cgi?id=102554
+
+        Reviewed by Andreas Kling.
+
+        As mentioned in https://bugs.webkit.org/show_bug.cgi?id=79939#c41 ,
+        we're going to revist this feature once additional vendor support is
+        achieved.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2012-11-15  Alexey Proskuryakov  <ap@apple.com>
+
+        Private Browsing is a per-page setting that sets a global value
+        https://bugs.webkit.org/show_bug.cgi?id=67870
+
+        Reviewed by Sam Weinig.
+
+        * WebCoreSupport/WebFrameNetworkingContext.h:
+        * WebCoreSupport/WebFrameNetworkingContext.mm:
+        Moved functions for managing global sessions from WebCore.
+
+        * WebCoreSupport/WebPlatformStrategies.h:
+        * WebCoreSupport/WebPlatformStrategies.mm:
+        (WebPlatformStrategies::defaultCookieStorage): Added. Uses WebFrameNetworkingContext
+        to reach the storage.
+
+        * WebView/WebPreferences.mm:
+        (+[WebPreferences _switchNetworkLoaderToNewTestingSession]): Ditto.
+        (+[WebPreferences _setCurrentNetworkLoaderSessionCookieAcceptPolicy:]): Ditto.
+
+        * WebView/WebPreferencesPrivate.h: Added a comment explaining that two functions
+        are not generic enough for use outside DRT (one of them had "testing" in name,
+        but another did not).
+
+        * WebView/WebView.mm:
+        (-[WebView _preferencesChanged:]): Create a global private browsing session when
+        the first view with private browsing is created, delete it when any window with
+        it disabled is created (since this comes from preferences, it applies to all
+        views equally, even though we are dealing with a single one here).
+        (-[WebView _cachedResponseForURL:]): Use main frame's networking context instead of
+        a global one.
+
 2012-11-13  Timothy Hatcher  <timothy@apple.com>
 
         Adjust the Web Inspector window title frame if needed to prevent it from intersecting the dock button.

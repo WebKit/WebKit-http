@@ -28,6 +28,7 @@
 #include "Document.h"
 #include "EventNames.h"
 #include "HTMLNames.h"
+#include "NodeTraversal.h"
 #include "RenderObject.h"
 #include "RenderSVGResource.h"
 #include "RenderSVGResourceClipper.h"
@@ -100,8 +101,8 @@ String SVGStyledElement::title() const
 
     // If we aren't an instance in a <use> or the <use> title was not found, then find the first
     // <title> child of this element.
-    Element* titleElement = firstElementChild();
-    for (; titleElement; titleElement = titleElement->nextElementSibling()) {
+    Element* titleElement = ElementTraversal::firstWithin(this);
+    for (; titleElement; titleElement = ElementTraversal::nextSkippingChildren(titleElement, this)) {
         if (titleElement->hasTagName(SVGNames::titleTag) && titleElement->isSVGElement())
             break;
     }
@@ -298,19 +299,19 @@ void SVGStyledElement::collectStyleForPresentationAttribute(const Attribute& att
         addPropertyToPresentationAttributeStyle(style, propertyID, attribute.value());
 }
 
-void SVGStyledElement::parseAttribute(const Attribute& attribute)
+void SVGStyledElement::parseAttribute(const QualifiedName& name, const AtomicString& value)
 {
     // SVG animation has currently requires special storage of values so we set
     // the className here.  svgAttributeChanged actually causes the resulting
     // style updates (instead of StyledElement::parseAttribute). We don't
     // tell StyledElement about the change to avoid parsing the class list twice
-    if (attribute.name() == HTMLNames::classAttr) {
-        setClassNameBaseValue(attribute.value());
+    if (name == HTMLNames::classAttr) {
+        setClassNameBaseValue(value);
         return;
     }
 
     // id is handled by StyledElement which SVGElement inherits from
-    SVGElement::parseAttribute(attribute);
+    SVGElement::parseAttribute(name, value);
 }
 
 bool SVGStyledElement::isKnownAttribute(const QualifiedName& attrName)

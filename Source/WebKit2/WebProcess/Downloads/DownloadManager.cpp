@@ -27,37 +27,31 @@
 #include "DownloadManager.h"
 
 #include "Download.h"
-#include "WebProcess.h"
 #include <wtf/StdLibExtras.h>
 
 using namespace WebCore;
 
 namespace WebKit {
 
-DownloadManager& DownloadManager::shared()
-{
-    DEFINE_STATIC_LOCAL(DownloadManager, downloadManager, ());
-    return downloadManager;
-}
-
-DownloadManager::DownloadManager()
+DownloadManager::DownloadManager(Client* client)
+    : m_client(client)
 {
 }
 
-void DownloadManager::startDownload(uint64_t downloadID, WebPage* initiatingPage, const ResourceRequest& request)
+void DownloadManager::startDownload(uint64_t downloadID, const ResourceRequest& request)
 {
-    OwnPtr<Download> download = Download::create(downloadID, request);
-    download->start(initiatingPage);
+    OwnPtr<Download> download = Download::create(*this, downloadID, request);
+    download->start();
 
     ASSERT(!m_downloads.contains(downloadID));
     m_downloads.set(downloadID, download.leakPtr());
 }
 
-void DownloadManager::convertHandleToDownload(uint64_t downloadID, WebPage* initiatingPage, ResourceHandle* handle, const ResourceRequest& request, const ResourceResponse& response)
+void DownloadManager::convertHandleToDownload(uint64_t downloadID, ResourceHandle* handle, const ResourceRequest& request, const ResourceResponse& response)
 {
-    OwnPtr<Download> download = Download::create(downloadID, request);
+    OwnPtr<Download> download = Download::create(*this, downloadID, request);
 
-    download->startWithHandle(initiatingPage, handle, response);
+    download->startWithHandle(handle, response);
     ASSERT(!m_downloads.contains(downloadID));
     m_downloads.set(downloadID, download.leakPtr());
 }
@@ -77,6 +71,26 @@ void DownloadManager::downloadFinished(Download* download)
     m_downloads.remove(download->downloadID());
 
     delete download;
+}
+
+void DownloadManager::didCreateDownload()
+{
+    m_client->didCreateDownload();
+}
+
+void DownloadManager::didDestroyDownload()
+{
+    m_client->didDestroyDownload();
+}
+
+CoreIPC::Connection* DownloadManager::downloadProxyConnection()
+{
+    return m_client->downloadProxyConnection();
+}
+
+AuthenticationManager& DownloadManager::downloadsAuthenticationManager()
+{
+    return m_client->downloadsAuthenticationManager();
 }
 
 #if PLATFORM(QT)

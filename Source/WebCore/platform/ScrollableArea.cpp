@@ -35,6 +35,7 @@
 #include "GraphicsContext.h"
 #include "GraphicsLayer.h"
 #include "FloatPoint.h"
+#include "PlatformMemoryInstrumentation.h"
 #include "PlatformWheelEvent.h"
 #include "ScrollAnimator.h"
 #include "ScrollbarTheme.h"
@@ -115,11 +116,9 @@ bool ScrollableArea::scroll(ScrollDirection direction, ScrollGranularity granula
     case ScrollByPrecisePixel:
         step = scrollbar->pixelStep();
         break;
-    case ScrollByPixelVelocity:
-        break;
     }
 
-    if (granularity != ScrollByPixelVelocity && (direction == ScrollUp || direction == ScrollLeft))
+    if (direction == ScrollUp || direction == ScrollLeft)
         multiplier = -multiplier;
 
     return scrollAnimator()->scroll(orientation, granularity, step, multiplier);
@@ -420,6 +419,12 @@ IntRect ScrollableArea::visibleContentRect(bool includeScrollbars) const
                    scrollPosition().y(),
                    std::max(0, visibleWidth() + verticalScrollbarWidth),
                    std::max(0, visibleHeight() + horizontalScrollbarHeight));
+}
+
+void ScrollableArea::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
+{
+    MemoryClassInfo info(memoryObjectInfo, this);
+    info.addMember(m_scrollAnimator);
 }
 
 } // namespace WebCore

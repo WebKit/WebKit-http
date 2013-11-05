@@ -45,10 +45,6 @@ class wxMouseEvent;
 class wxPoint;
 #endif
 
-#if PLATFORM(HAIKU)
-class BMessage;
-#endif
-
 namespace WebCore {
 
     class FloatPoint;
@@ -62,7 +58,6 @@ namespace WebCore {
     enum PlatformWheelEventGranularity {
         ScrollByPageWheelEvent,
         ScrollByPixelWheelEvent,
-        ScrollByPixelVelocityWheelEvent
     };
 
 #if PLATFORM(MAC) || (PLATFORM(CHROMIUM) && OS(DARWIN))
@@ -181,10 +176,6 @@ namespace WebCore {
 
 #if PLATFORM(WX)
         PlatformWheelEvent(const wxMouseEvent&, const wxPoint&);
-#endif
-
-#if PLATFORM(HAIKU)
-        explicit PlatformWheelEvent(BMessage*);
 #endif
 
     protected:

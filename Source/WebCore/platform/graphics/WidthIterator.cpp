@@ -223,9 +223,12 @@ inline unsigned WidthIterator::advanceInternal(TextIterator& textIterator, Glyph
                         float expansionAtThisOpportunity = !m_run.applyWordRounding() ? m_expansionPerOpportunity : roundf(previousExpansion) - roundf(m_expansion);
                         m_runWidthSoFar += expansionAtThisOpportunity;
                         if (glyphBuffer) {
-                            if (glyphBuffer->isEmpty())
-                                glyphBuffer->add(fontData->spaceGlyph(), fontData, expansionAtThisOpportunity);
-                            else
+                            if (glyphBuffer->isEmpty()) {
+                                if (m_forTextEmphasis)
+                                    glyphBuffer->add(fontData->zeroWidthSpaceGlyph(), fontData, m_expansionPerOpportunity);
+                                else
+                                    glyphBuffer->add(fontData->spaceGlyph(), fontData, expansionAtThisOpportunity);
+                            } else
                                 glyphBuffer->expandLastAdvance(expansionAtThisOpportunity);
                         }
                         previousExpansion = m_expansion;
@@ -241,7 +244,7 @@ inline unsigned WidthIterator::advanceInternal(TextIterator& textIterator, Glyph
 
                 // Account for word spacing.
                 // We apply additional space between "words" by adding width to the space character.
-                if (treatAsSpace && (character != '\t' || !m_run.allowTabs()) && textIterator.currentCharacter() && m_font->wordSpacing())
+                if (treatAsSpace && (character != '\t' || !m_run.allowTabs()) && (textIterator.currentCharacter() || character == noBreakSpace) && m_font->wordSpacing())
                     width += m_font->wordSpacing();
             } else
                 m_isAfterExpansion = false;

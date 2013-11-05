@@ -52,9 +52,9 @@ bool AccessibilityUIElement::isValid() const
 {
     return m_element;            
 }
-    
+
 // Unsupported methods on various platforms. As they're implemented on other platforms this list should be modified.
-#if !PLATFORM(MAC) && !PLATFORM(GTK)
+#if !PLATFORM(MAC) && !PLATFORM(GTK) && !PLATFORM(EFL)
 AccessibilityUIElement::AccessibilityUIElement(PlatformUIElement) { }
 AccessibilityUIElement::AccessibilityUIElement(const AccessibilityUIElement&) { }
 AccessibilityUIElement::~AccessibilityUIElement() { }
@@ -85,7 +85,9 @@ double AccessibilityUIElement::numberAttributeValue(JSStringRef) { return 0; }
 bool AccessibilityUIElement::boolAttributeValue(JSStringRef) { return false; }
 bool AccessibilityUIElement::isAttributeSupported(JSStringRef) { return false; }
 bool AccessibilityUIElement::isAttributeSettable(JSStringRef) { return false; }
-bool AccessibilityUIElement::isActionSupported(JSStringRef) { return false; }
+bool AccessibilityUIElement::isPressActionSupported() { return false; }
+bool AccessibilityUIElement::isIncrementActionSupported() { return false; }
+bool AccessibilityUIElement::isDecrementActionSupported() { return false; }
 JSRetainPtr<JSStringRef> AccessibilityUIElement::role() { return 0; }
 JSRetainPtr<JSStringRef> AccessibilityUIElement::subrole() { return 0; }
 JSRetainPtr<JSStringRef> AccessibilityUIElement::roleDescription() { return 0; }

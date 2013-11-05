@@ -35,6 +35,7 @@
 #include "config.h"
 
 #include "FontOrientation.h"
+#include "OpenTypeVerticalData.h"
 #include "SharedBuffer.h"
 #include "SkTypeface.h"
 #include <wtf/Forward.h>
@@ -54,9 +55,6 @@ namespace WebCore {
 SkTypeface* CreateTypefaceFromHFont(HFONT, int* size, int* lfQuality);
 
 class FontDescription;
-#if ENABLE(OPENTYPE_VERTICAL)
-class OpenTypeVerticalData;
-#endif
 
 class FontPlatformData {
 public:
@@ -97,7 +95,7 @@ public:
     }
 
 #if ENABLE(OPENTYPE_VERTICAL)
-    const OpenTypeVerticalData* verticalData() const;
+    PassRefPtr<OpenTypeVerticalData> verticalData() const;
     PassRefPtr<SharedBuffer> openTypeTable(uint32_t table) const;
 #endif
 
@@ -107,6 +105,8 @@ public:
 
     SCRIPT_FONTPROPERTIES* scriptFontProperties() const;
     SCRIPT_CACHE* scriptCache() const { return &m_scriptCache; }
+
+    static bool ensureFontLoaded(HFONT);
 
 private:
     // We refcount the internal HFONT so that FontPlatformData can be

@@ -33,9 +33,9 @@
 #include "Font.h"
 
 #include "FontFallbackList.h"
+#include "FontPlatformDataChromiumWin.h"
 #include "GlyphBuffer.h"
 #include "NotImplemented.h"
-#include "PlatformSupport.h"
 #include "PlatformContextSkia.h"
 #include "SimpleFontData.h"
 #include "SkiaFontWin.h"
@@ -140,7 +140,7 @@ void TransparencyAwareFontPainter::initializeForGDI()
         // this mode and it will apply the color.
         m_transparency.setTextCompositeColor(color);
         color = SkColorSetRGB(0, 0, 0);
-    } else if (m_createdTransparencyLayer || m_platformContext->canvas()->isDrawingToLayer()) {
+    } else if (m_createdTransparencyLayer || m_platformContext->isDrawingToLayer()) {
         // When we're drawing a web page, we know the background is opaque,
         // but if we're drawing to a layer, we still need extra work.
         layerMode = TransparencyWin::OpaqueCompositeLayer;
@@ -527,7 +527,7 @@ static void drawGlyphsWin(GraphicsContext* graphicsContext,
             success = painter.drawGlyphs(curLen, &glyphs[0], &advances[0], horizontalOffset - point.x() - currentWidth);
             if (!success && !executions) {
                 // Ask the browser to load the font for us and retry.
-                PlatformSupport::ensureFontLoaded(font->platformData().hfont());
+                FontPlatformData::ensureFontLoaded(font->platformData().hfont());
                 continue;
             }
             break;

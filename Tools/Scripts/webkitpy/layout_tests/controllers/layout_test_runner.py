@@ -28,12 +28,12 @@
 
 import logging
 import math
-import re
 import threading
 import time
 
 from webkitpy.common import message_pool
 from webkitpy.layout_tests.controllers import single_test_runner
+from webkitpy.layout_tests.models.test_run_results import TestRunResults
 from webkitpy.layout_tests.models import test_expectations
 from webkitpy.layout_tests.models import test_failures
 from webkitpy.layout_tests.models import test_results
@@ -61,57 +61,47 @@ class TestRunInterruptedException(Exception):
 
 
 class LayoutTestRunner(object):
-    def __init__(self, options, port, printer, results_directory, expectations, test_is_slow_fn):
+    def __init__(self, options, port, printer, results_directory, test_is_slow_fn):
         self._options = options
         self._port = port
         self._printer = printer
         self._results_directory = results_directory
-        self._expectations = None
         self._test_is_slow = test_is_slow_fn
-        self._sharder = Sharder(self._port.split_test, self._port.TEST_PATH_SEPARATOR, self._options.max_locked_shards)
+        self._sharder = Sharder(self._port.split_test, self._options.max_locked_shards)
+        self._filesystem = self._port.host.filesystem
 
-        self._current_result_summary = None
+        self._expectations = None
+        self._test_inputs = []
         self._needs_http = None
         self._needs_websockets = None
         self._retrying = False
-        self._test_files_list = []
-        self._all_results = []
-        self._group_stats = {}
-        self._worker_stats = {}
-        self._filesystem = self._port.host.filesystem
 
-    def test_key(self, test_name):
-        return self._sharder.test_key(test_name)
+        self._current_run_results = None
+        self._remaining_locked_shards = []
+        self._has_http_lock = False
 
-    def run_tests(self, test_inputs, expectations, result_summary, num_workers, needs_http, needs_websockets, retrying):
-        """Returns a tuple of (interrupted, keyboard_interrupted, thread_timings, test_timings, individual_test_timings):
-            interrupted is whether the run was interrupted
-            keyboard_interrupted is whether the interruption was because someone typed Ctrl^C
-            thread_timings is a list of dicts with the total runtime
-                of each thread with 'name', 'num_tests', 'total_time' properties
-            test_timings is a list of timings for each sharded subdirectory
-                of the form [time, directory_name, num_tests]
-            individual_test_timings is a list of run times for each test
-                in the form {filename:filename, test_run_time:test_run_time}
-            result_summary: summary object to populate with the results
-        """
-        self._current_result_summary = result_summary
+    def run_tests(self, expectations, test_inputs, tests_to_skip, num_workers, needs_http, needs_websockets, retrying):
         self._expectations = expectations
+        self._test_inputs = test_inputs
         self._needs_http = needs_http
         self._needs_websockets = needs_websockets
         self._retrying = retrying
-        self._test_files_list = [test_input.test_name for test_input in test_inputs]
-        self._printer.num_tests = len(self._test_files_list)
+
+        # FIXME: rename all variables to test_run_results or some such ...
+        run_results = TestRunResults(self._expectations, len(test_inputs) + len(tests_to_skip))
+        self._current_run_results = run_results
+        self._remaining_locked_shards = []
+        self._has_http_lock = False
+        self._printer.num_tests = len(test_inputs)
         self._printer.num_completed = 0
 
-        self._all_results = []
-        self._group_stats = {}
-        self._worker_stats = {}
-        self._has_http_lock = False
-        self._remaining_locked_shards = []
+        if not retrying:
+            self._printer.print_expected(run_results, self._expectations.get_tests_with_result_type)
 
-        keyboard_interrupted = False
-        interrupted = False
+        for test_name in set(tests_to_skip):
+            result = test_results.TestResult(test_name)
+            result.type = test_expectations.SKIP
+            run_results.add(result, expected=True, test_is_slow=self._test_is_slow(test_name))
 
         self._printer.write_update('Sharding tests ...')
         locked_shards, unlocked_shards = self._sharder.shard_tests(test_inputs, int(self._options.child_processes), self._options.fully_parallel)
@@ -133,28 +123,27 @@ class LayoutTestRunner(object):
         self._printer.print_workers_and_shards(num_workers, len(all_shards), len(locked_shards))
 
         if self._options.dry_run:
-            return (keyboard_interrupted, interrupted, self._worker_stats.values(), self._group_stats, self._all_results)
+            return run_results
 
         self._printer.write_update('Starting %s ...' % grammar.pluralize('worker', num_workers))
 
         try:
             with message_pool.get(self, self._worker_factory, num_workers, self._port.worker_startup_delay_secs(), self._port.host) as pool:
                 pool.run(('test_list', shard.name, shard.test_inputs) for shard in all_shards)
+        except TestRunInterruptedException, e:
+            _log.warning(e.reason)
+            run_results.interrupted = True
         except KeyboardInterrupt:
             self._printer.flush()
             self._printer.writeln('Interrupted, exiting ...')
-            keyboard_interrupted = True
-        except TestRunInterruptedException, e:
-            _log.warning(e.reason)
-            interrupted = True
+            raise
         except Exception, e:
             _log.debug('%s("%s") raised, exiting' % (e.__class__.__name__, str(e)))
             raise
         finally:
             self.stop_servers_with_lock()
 
-        # FIXME: should this be a class instead of a tuple?
-        return (interrupted, keyboard_interrupted, self._worker_stats.values(), self._group_stats, self._all_results)
+        return run_results
 
     def _worker_factory(self, worker_connection):
         results_directory = self._results_directory
@@ -163,37 +152,37 @@ class LayoutTestRunner(object):
             results_directory = self._filesystem.join(self._results_directory, 'retries')
         return Worker(worker_connection, results_directory, self._options)
 
-    def _mark_interrupted_tests_as_skipped(self, result_summary):
-        for test_name in self._test_files_list:
-            if test_name not in result_summary.results:
-                result = test_results.TestResult(test_name, [test_failures.FailureEarlyExit()])
+    def _mark_interrupted_tests_as_skipped(self, run_results):
+        for test_input in self._test_inputs:
+            if test_input.test_name not in run_results.results_by_name:
+                result = test_results.TestResult(test_input.test_name, [test_failures.FailureEarlyExit()])
                 # FIXME: We probably need to loop here if there are multiple iterations.
                 # FIXME: Also, these results are really neither expected nor unexpected. We probably
                 # need a third type of result.
-                result_summary.add(result, expected=False, test_is_slow=self._test_is_slow(test_name))
+                run_results.add(result, expected=False, test_is_slow=self._test_is_slow(test_input.test_name))
 
-    def _interrupt_if_at_failure_limits(self, result_summary):
+    def _interrupt_if_at_failure_limits(self, run_results):
         # Note: The messages in this method are constructed to match old-run-webkit-tests
         # so that existing buildbot grep rules work.
-        def interrupt_if_at_failure_limit(limit, failure_count, result_summary, message):
+        def interrupt_if_at_failure_limit(limit, failure_count, run_results, message):
             if limit and failure_count >= limit:
-                message += " %d tests run." % (result_summary.expected + result_summary.unexpected)
-                self._mark_interrupted_tests_as_skipped(result_summary)
+                message += " %d tests run." % (run_results.expected + run_results.unexpected)
+                self._mark_interrupted_tests_as_skipped(run_results)
                 raise TestRunInterruptedException(message)
 
         interrupt_if_at_failure_limit(
             self._options.exit_after_n_failures,
-            result_summary.unexpected_failures,
-            result_summary,
-            "Exiting early after %d failures." % result_summary.unexpected_failures)
+            run_results.unexpected_failures,
+            run_results,
+            "Exiting early after %d failures." % run_results.unexpected_failures)
         interrupt_if_at_failure_limit(
             self._options.exit_after_n_crashes_or_timeouts,
-            result_summary.unexpected_crashes + result_summary.unexpected_timeouts,
-            result_summary,
+            run_results.unexpected_crashes + run_results.unexpected_timeouts,
+            run_results,
             # This differs from ORWT because it does not include WebProcess crashes.
-            "Exiting early after %d crashes and %d timeouts." % (result_summary.unexpected_crashes, result_summary.unexpected_timeouts))
+            "Exiting early after %d crashes and %d timeouts." % (run_results.unexpected_crashes, run_results.unexpected_timeouts))
 
-    def _update_summary_with_result(self, result_summary, result):
+    def _update_summary_with_result(self, run_results, result):
         if result.type == test_expectations.SKIP:
             exp_str = got_str = 'SKIP'
             expected = True
@@ -202,11 +191,11 @@ class LayoutTestRunner(object):
             exp_str = self._expectations.get_expectations_string(result.test_name)
             got_str = self._expectations.expectation_to_string(result.type)
 
-        result_summary.add(result, expected, self._test_is_slow(result.test_name))
+        run_results.add(result, expected, self._test_is_slow(result.test_name))
 
         self._printer.print_finished_test(result, expected, exp_str, got_str)
 
-        self._interrupt_if_at_failure_limits(result_summary)
+        self._interrupt_if_at_failure_limits(run_results)
 
     def start_servers_with_lock(self, number_of_servers):
         self._printer.write_update('Acquiring http lock ...')
@@ -240,9 +229,7 @@ class LayoutTestRunner(object):
     def _handle_started_test(self, worker_name, test_input, test_timeout_sec):
         self._printer.print_started_test(test_input.test_name)
 
-    def _handle_finished_test_list(self, worker_name, list_name, num_tests, elapsed_time):
-        self._group_stats[list_name] = (num_tests, elapsed_time)
-
+    def _handle_finished_test_list(self, worker_name, list_name):
         def find(name, test_lists):
             for i in range(len(test_lists)):
                 if test_lists[i].name == name:
@@ -255,12 +242,8 @@ class LayoutTestRunner(object):
             if not self._remaining_locked_shards and not self._port.requires_http_server():
                 self.stop_servers_with_lock()
 
-    def _handle_finished_test(self, worker_name, result, elapsed_time, log_messages=[]):
-        self._worker_stats.setdefault(worker_name, {'name': worker_name, 'num_tests': 0, 'total_time': 0})
-        self._worker_stats[worker_name]['total_time'] += elapsed_time
-        self._worker_stats[worker_name]['num_tests'] += 1
-        self._all_results.append(result)
-        self._update_summary_with_result(self._current_result_summary, result)
+    def _handle_finished_test(self, worker_name, result, log_messages=[]):
+        self._update_summary_with_result(self._current_run_results, result)
 
 
 class Worker(object):
@@ -278,8 +261,7 @@ class Worker(object):
         self._batch_count = None
         self._filesystem = None
         self._driver = None
-        self._tests_run_file = None
-        self._tests_run_filename = None
+        self._num_tests = 0
 
     def __del__(self):
         self.stop()
@@ -294,16 +276,12 @@ class Worker(object):
 
         self._batch_count = 0
         self._batch_size = self._options.batch_size or 0
-        tests_run_filename = self._filesystem.join(self._results_directory, "tests_run%d.txt" % self._worker_number)
-        self._tests_run_file = self._filesystem.open_text_file_for_writing(tests_run_filename)
 
     def handle(self, name, source, test_list_name, test_inputs):
         assert name == 'test_list'
-        start_time = time.time()
         for test_input in test_inputs:
-            self._run_test(test_input)
-        elapsed_time = time.time() - start_time
-        self._caller.post('finished_test_list', test_list_name, len(test_inputs), elapsed_time)
+            self._run_test(test_input, test_list_name)
+        self._caller.post('finished_test_list', test_list_name)
 
     def _update_test_input(self, test_input):
         if test_input.reference_files is None:
@@ -314,7 +292,7 @@ class Worker(object):
         else:
             test_input.should_run_pixel_test = self._port.should_run_as_pixel_test(test_input)
 
-    def _run_test(self, test_input):
+    def _run_test(self, test_input, shard_name):
         self._batch_count += 1
 
         stop_when_done = False
@@ -328,18 +306,19 @@ class Worker(object):
         self._caller.post('started_test', test_input, test_timeout_sec)
 
         result = self._run_test_with_timeout(test_input, test_timeout_sec, stop_when_done)
+        result.shard_name = shard_name
+        result.worker_name = self._name
+        result.total_run_time = time.time() - start
+        result.test_number = self._num_tests
+        self._num_tests += 1
 
-        elapsed_time = time.time() - start
-        self._caller.post('finished_test', result, elapsed_time)
+        self._caller.post('finished_test', result)
 
         self._clean_up_after_test(test_input, result)
 
     def stop(self):
         _log.debug("%s cleaning up" % self._name)
         self._kill_driver()
-        if self._tests_run_file:
-            self._tests_run_file.close()
-            self._tests_run_file = None
 
     def _timeout(self, test_input):
         """Compute the appropriate timeout value for a test."""
@@ -373,7 +352,6 @@ class Worker(object):
 
     def _clean_up_after_test(self, test_input, result):
         test_name = test_input.test_name
-        self._tests_run_file.write(test_name + "\n")
 
         if result.failures:
             # Check and kill DumpRenderTree if we need to.
@@ -474,9 +452,8 @@ class TestShard(object):
 
 
 class Sharder(object):
-    def __init__(self, test_split_fn, test_path_separator, max_locked_shards):
+    def __init__(self, test_split_fn, max_locked_shards):
         self._split = test_split_fn
-        self._sep = test_path_separator
         self._max_locked_shards = max_locked_shards
 
     def shard_tests(self, test_inputs, num_workers, fully_parallel):
@@ -603,29 +580,3 @@ class Sharder(object):
             some_shards, remaining_shards = split_at(remaining_shards, num_old_per_new)
             new_shards.append(TestShard('%s_%d' % (shard_name_prefix, len(new_shards) + 1), extract_and_flatten(some_shards)))
         return new_shards
-
-    def test_key(self, test_name):
-        """Turns a test name into a list with two sublists, the natural key of the
-        dirname, and the natural key of the basename.
-
-        This can be used when sorting paths so that files in a directory.
-        directory are kept together rather than being mixed in with files in
-        subdirectories."""
-        dirname, basename = self._split(test_name)
-        return (self.natural_sort_key(dirname + self._sep), self.natural_sort_key(basename))
-
-    @staticmethod
-    def natural_sort_key(string_to_split):
-        """ Turns a string into a list of string and number chunks, i.e. "z23a" -> ["z", 23, "a"]
-
-        This can be used to implement "natural sort" order. See:
-        http://www.codinghorror.com/blog/2007/12/sorting-for-humans-natural-sort-order.html
-        http://nedbatchelder.com/blog/200712.html#e20071211T054956
-        """
-        def tryint(val):
-            try:
-                return int(val)
-            except ValueError:
-                return val
-
-        return [tryint(chunk) for chunk in re.split('(\d+)', string_to_split)]

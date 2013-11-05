@@ -22,11 +22,14 @@
 #define EwkViewImpl_h
 
 #include "EwkViewCallbacks.h"
+#include "ImmutableDictionary.h"
 #include "RefPtrEfl.h"
 #include "WKEinaSharedString.h"
 #include "WKGeometry.h"
 #include "WKRetainPtr.h"
+#include "ewk_url_request_private.h"
 #include <Evas.h>
+#include <WebCore/FloatPoint.h>
 #include <WebCore/IntRect.h>
 #include <WebCore/TextDirection.h>
 #include <WebCore/Timer.h>
@@ -46,6 +49,7 @@
 #endif
 
 namespace WebKit {
+class ContextMenuClientEfl;
 class FindClientEfl;
 class FormClientEfl;
 class InputMethodContextEfl;
@@ -54,6 +58,8 @@ class PageLoadClientEfl;
 class PagePolicyClientEfl;
 class PageUIClientEfl;
 class ResourceLoadClientEfl;
+class WebContextMenuItemData;
+class WebContextMenuProxyEfl;
 class WebPageGroup;
 class WebPageProxy;
 class WebPopupItem;
@@ -61,6 +67,10 @@ class WebPopupMenuProxyEfl;
 
 #if ENABLE(VIBRATION)
 class VibrationClientEfl;
+#endif
+
+#if USE(COORDINATED_GRAPHICS)
+class LayerTreeRenderer;
 #endif
 }
 
@@ -72,10 +82,12 @@ class IntSize;
 }
 
 class EwkContext;
-class Ewk_Back_Forward_List;
-class Ewk_Color_Picker;
-class Ewk_Popup_Menu;
-class Ewk_Settings;
+class EwkBackForwardList;
+class EwkColorPicker;
+class EwkContextMenu;
+class EwkPopupMenu;
+class EwkSettings;
+class EwkWindowFeatures;
 
 #if USE(ACCELERATED_COMPOSITING)
 typedef struct _Evas_GL_Context Evas_GL_Context;
@@ -95,17 +107,20 @@ public:
     ~EwkViewImpl();
 
     static EwkViewImpl* fromEvasObject(const Evas_Object* view);
-
     Evas_Object* view() { return m_view; }
+
     WKPageRef wkPage();
     WebKit::WebPageProxy* page() { return m_pageProxy.get(); }
     EwkContext* ewkContext() { return m_context.get(); }
-    Ewk_Settings* settings() { return m_settings.get(); }
-    Ewk_Back_Forward_List* backForwardList() { return m_backForwardList.get(); }
+    EwkSettings* settings() { return m_settings.get(); }
+    EwkBackForwardList* backForwardList() { return m_backForwardList.get(); }
+    EwkWindowFeatures* windowFeatures();
 
     WebCore::IntSize size() const;
     bool isFocused() const;
     bool isVisible() const;
+
+    void setDeviceScaleFactor(float scale);
 
     WebCore::AffineTransform transformToScene() const;
     WebCore::AffineTransform transformFromScene() const;
@@ -149,6 +164,7 @@ public:
     bool createGLSurface(const WebCore::IntSize& viewSize);
     bool enterAcceleratedCompositingMode();
     bool exitAcceleratedCompositingMode();
+    void setNeedsSurfaceResize() { m_pendingSurfaceResize = true; }
 #endif
 
 #if ENABLE(INPUT_TYPE_COLOR)
@@ -156,11 +172,14 @@ public:
     void dismissColorPicker();
 #endif
 
-    WKPageRef createNewPage(WKDictionaryRef windowFeatures);
+    WKPageRef createNewPage(PassRefPtr<EwkUrlRequest>, WebKit::ImmutableDictionary* windowFeatures);
     void closePage();
 
     void requestPopupMenu(WebKit::WebPopupMenuProxyEfl*, const WebCore::IntRect&, WebCore::TextDirection, double pageScaleFactor, const Vector<WebKit::WebPopupItem>& items, int32_t selectedIndex);
     void closePopupMenu();
+    
+    void showContextMenu(WebKit::WebContextMenuProxyEfl*, const WebCore::IntPoint& position, const Vector<WebKit::WebContextMenuItemData>& items);
+    void hideContextMenu();
 
     void updateTextInputState();
 
@@ -177,7 +196,6 @@ public:
 #if USE(TILED_BACKING_STORE)
     void informLoadCommitted();
 #endif
-    void informContentsSizeChange(const WebCore::IntSize& size);
     unsigned long long informDatabaseQuotaReached(const String& databaseName, const String& displayName, unsigned long long currentQuota, unsigned long long currentOriginUsage, unsigned long long currentDatabaseUsage, unsigned long long expectedUsage);
 
 #if USE(TILED_BACKING_STORE)
@@ -186,24 +204,30 @@ public:
     void setScaleFactor(float scaleFactor) { m_scaleFactor = scaleFactor; }
     float scaleFactor() const { return m_scaleFactor; }
 
-    void setScrollPosition(WebCore::IntPoint position) { m_scrollPosition = position; }
-    const WebCore::IntPoint scrollPosition() const { return m_scrollPosition; }
-#endif
-#if USE(ACCELERATED_COMPOSITING)
-    Evas_GL* evasGL() { return m_evasGL.get(); }
-    Evas_GL_Context* evasGLContext() { return m_evasGLContext ? m_evasGLContext->context() : 0; }
-    Evas_GL_Surface* evasGLSurface() { return m_evasGLSurface ? m_evasGLSurface->surface() : 0; }
-    void clearEvasGLSurface() { m_evasGLSurface.clear(); }
+    void setPagePosition(const WebCore::FloatPoint& position) { m_pagePosition = position; }
+    const WebCore::FloatPoint pagePosition() const { return m_pagePosition; }
 #endif
 
     // FIXME: needs refactoring (split callback invoke)
     void informURLChange();
 
     bool isHardwareAccelerated() const { return m_isHardwareAccelerated; }
+    void setDrawsBackground(bool enable) { m_setDrawsBackground = enable; }
+
+    WKImageRef takeSnapshot();
 
 private:
+#if USE(ACCELERATED_COMPOSITING)
+    Evas_GL_Context* evasGLContext() { return m_evasGLContext ? m_evasGLContext->context() : 0; }
+    Evas_GL_Surface* evasGLSurface() { return m_evasGLSurface ? m_evasGLSurface->surface() : 0; }
+#endif
+
     inline Ewk_View_Smart_Data* smartData() const;
     void displayTimerFired(WebCore::Timer<EwkViewImpl>*);
+
+#if USE(COORDINATED_GRAPHICS)
+    WebKit::LayerTreeRenderer* layerTreeRenderer();
+#endif
 
     void informIconChange();
 
@@ -225,6 +249,7 @@ private:
     OwnPtr<Evas_GL> m_evasGL;
     OwnPtr<WebKit::EvasGLContext> m_evasGLContext;
     OwnPtr<WebKit::EvasGLSurface> m_evasGLSurface;
+    bool m_pendingSurfaceResize;
 #endif
     OwnPtr<WebKit::PageClientBase> m_pageClient;
     RefPtr<WebKit::WebPageProxy> m_pageProxy;
@@ -232,17 +257,19 @@ private:
     OwnPtr<WebKit::PagePolicyClientEfl> m_pagePolicyClient;
     OwnPtr<WebKit::PageUIClientEfl> m_pageUIClient;
     OwnPtr<WebKit::ResourceLoadClientEfl> m_resourceLoadClient;
+    OwnPtr<WebKit::ContextMenuClientEfl> m_contextMenuClient;
     OwnPtr<WebKit::FindClientEfl> m_findClient;
     OwnPtr<WebKit::FormClientEfl> m_formClient;
 #if ENABLE(VIBRATION)
     OwnPtr<WebKit::VibrationClientEfl> m_vibrationClient;
 #endif
-    OwnPtr<Ewk_Back_Forward_List> m_backForwardList;
+    OwnPtr<EwkBackForwardList> m_backForwardList;
 #if USE(TILED_BACKING_STORE)
     float m_scaleFactor;
-    WebCore::IntPoint m_scrollPosition;
+    WebCore::FloatPoint m_pagePosition;
 #endif
-    OwnPtr<Ewk_Settings> m_settings;
+    OwnPtr<EwkSettings> m_settings;
+    RefPtr<EwkWindowFeatures> m_windowFeatures;
     const void* m_cursorIdentifier; // This is an address, do not free it.
     WKEinaSharedString m_faviconURL;
     WKEinaSharedString m_url;
@@ -254,10 +281,12 @@ private:
     bool m_touchEventsEnabled;
 #endif
     WebCore::Timer<EwkViewImpl> m_displayTimer;
-    OwnPtr<Ewk_Popup_Menu> m_popupMenu;
+    OwnPtr<EwkContextMenu> m_contextMenu;
+    OwnPtr<EwkPopupMenu> m_popupMenu;
     OwnPtr<WebKit::InputMethodContextEfl> m_inputMethodContext;
-    OwnPtr<Ewk_Color_Picker> m_colorPicker;
+    OwnPtr<EwkColorPicker> m_colorPicker;
     bool m_isHardwareAccelerated;
+    bool m_setDrawsBackground;
 };
 
 #endif // EwkViewImpl_h

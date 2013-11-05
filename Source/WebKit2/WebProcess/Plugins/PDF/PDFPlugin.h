@@ -43,6 +43,10 @@ OBJC_CLASS PDFAnnotation;
 OBJC_CLASS PDFLayerController;
 OBJC_CLASS WKPDFLayerControllerDelegate;
 
+namespace CoreIPC {
+class DataReference;
+}
+
 namespace WebCore {
 class Element;
 struct PluginInfo;
@@ -67,6 +71,9 @@ public:
 
     void clickedLink(NSURL *);
     void saveToPDF();
+    void openWithNativeApplication();
+    void writeItemsToPasteboard(NSArray *items, NSArray *types);
+    void showDefinitionForAttributedString(NSAttributedString *, CGPoint);
 
 private:
     explicit PDFPlugin(WebFrame*);
@@ -94,10 +101,18 @@ private:
     virtual void setScrollOffset(const WebCore::IntPoint&) OVERRIDE;
     virtual void invalidateScrollbarRect(WebCore::Scrollbar*, const WebCore::IntRect&) OVERRIDE;
     virtual void invalidateScrollCornerRect(const WebCore::IntRect&) OVERRIDE;
+    virtual WebCore::IntPoint lastKnownMousePosition() const OVERRIDE { return m_lastMousePositionInPluginCoordinates; }
     
     NSEvent *nsEventForWebMouseEvent(const WebMouseEvent&);
+    WebCore::IntPoint convertFromPluginToPDFView(const WebCore::IntPoint&) const;
+    WebCore::IntPoint convertFromRootViewToPlugin(const WebCore::IntPoint&) const;
     
     bool supportsForms();
+    bool isFullFramePlugin();
+
+    void updatePageAndDeviceScaleFactors();
+
+    WebCore::IntPoint convertFromPDFViewToRootView(const WebCore::IntPoint&) const;
 
     RetainPtr<CALayer> m_containerLayer;
     RetainPtr<CALayer> m_contentLayer;
@@ -110,8 +125,10 @@ private:
     RefPtr<WebCore::Element> m_annotationContainer;
 
     WebCore::AffineTransform m_rootViewToPluginTransform;
-    WebCore::IntPoint m_lastMousePoint;
     WebMouseEvent m_lastMouseEvent;
+    WebCore::IntPoint m_lastMousePositionInPluginCoordinates;
+
+    String m_temporaryPDFUUID;
     
     RetainPtr<WKPDFLayerControllerDelegate> m_pdfLayerControllerDelegate;
 };

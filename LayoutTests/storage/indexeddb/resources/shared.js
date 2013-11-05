@@ -28,7 +28,6 @@ function removeVendorPrefixes()
 {
     IDBCursor = self.IDBCursor || self.webkitIDBCursor;
     IDBDatabase = self.IDBDatabase || self.webkitIDBDatabase;
-    IDBDatabaseException = self.IDBDatabaseException || self.webkitIDBDatabaseException;
     IDBFactory = self.IDBFactory || self.webkitIDBFactory;
     IDBIndex = self.IDBIndex || self.webkitIDBIndex;
     IDBKeyRange = self.IDBKeyRange || self.webkitIDBKeyRange;
@@ -54,7 +53,7 @@ function unexpectedErrorCallback(event)
 
 function unexpectedAbortCallback(e)
 {
-    testFailed("Abort function called unexpectedly!");
+    testFailed("Abort function called unexpectedly! Message: [" + e.target.webkitErrorMessage + "]");
     finishJSTest();
 }
 
@@ -64,9 +63,9 @@ function unexpectedCompleteCallback()
     finishJSTest();
 }
 
-function unexpectedBlockedCallback()
+function unexpectedBlockedCallback(e)
 {
-    testFailed("onblocked called unexpectedly");
+    testFailed("onblocked called unexpectedly. oldVersion = " + e.oldVersion + ", newVersion = " + e.newVersion);
     finishJSTest();
 }
 
@@ -189,15 +188,19 @@ function indexedDBTest(upgradeCallback, optionalOpenCallback, optionalParameters
     deleteRequest.onerror = unexpectedErrorCallback;
     deleteRequest.onblocked = unexpectedBlockedCallback;
     deleteRequest.onsuccess = function() {
-        var openRequest;
+        self.openRequest = null;
         if (optionalParameters && 'version' in optionalParameters)
             openRequest = evalAndLog("indexedDB.open(dbname, " + optionalParameters['version'] + ")");
         else
             openRequest = evalAndLog("indexedDB.open(dbname)");
+        shouldBe("openRequest.readyState", "'pending'", true/*quiet*/);
         openRequest.onerror = unexpectedErrorCallback;
         openRequest.onupgradeneeded = upgradeCallback;
         openRequest.onblocked = unexpectedBlockedCallback;
         if (optionalOpenCallback)
             openRequest.onsuccess = optionalOpenCallback;
+        delete self.openRequest;
+        if (optionalParameters && 'runAfterOpen' in optionalParameters)
+            (optionalParameters['runAfterOpen'])();
     };
 }

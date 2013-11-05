@@ -75,6 +75,7 @@ class ImmutableArray;
 class InjectedBundleScriptWorld;
 class WebCertificateInfo;
 class WebConnection;
+class WebData;
 class WebFrame;
 class WebPage;
 class WebPageGroupProxy;
@@ -107,6 +108,7 @@ public:
     void setShouldTrackVisitedLinks(bool);
     void setAlwaysAcceptCookies(bool);
     void removeAllVisitedLinks();
+    void setCacheModel(uint32_t);
     void activateMacFontAscentHack();
     void overrideBoolPreferenceForTestRunner(WebPageGroupProxy*, const String& preference, bool enabled);
     void overrideXSSAuditorEnabledForTestRunner(WebPageGroupProxy* pageGroup, bool enabled);
@@ -133,6 +135,7 @@ public:
     void setWebNotificationPermission(WebPage*, const String& originString, bool allowed);
     void removeAllWebNotificationPermissions(WebPage*);
     uint64_t webNotificationID(JSContextRef, JSValueRef);
+    PassRefPtr<WebData> createWebDataFromUint8Array(JSContextRef, JSValueRef);
 
     // UserContent API
     void addUserScript(WebPageGroupProxy*, InjectedBundleScriptWorld*, const String& source, const String& url, ImmutableArray* whitelist, ImmutableArray* blacklist, WebCore::UserScriptInjectionTime, WebCore::UserContentInjectedFrames);
@@ -179,6 +182,7 @@ public:
     void setTabKeyCyclesThroughElements(WebPage*, bool enabled);
     void setSerialLoadingEnabled(bool);
     void setShadowDOMEnabled(bool);
+    void setCSSRegionsEnabled(bool);
     void dispatchPendingLoadRequests();
 
 private:

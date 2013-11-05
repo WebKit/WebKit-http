@@ -37,19 +37,15 @@
       'type': 'none',
       'direct_dependent_settings': {
         'defines': [
-          # temporary for landing Skia rev 3077 with minimal layout test breakage
-          'SK_SIMPLE_TWOCOLOR_VERTICAL_GRADIENTS',
+          # Place defines here that require significant WebKit rebaselining, or that
+          # are otherwise best removed in WebKit and then rolled into Chromium.
+          # Defines should be in single quotes and a comma must appear after every one.
+          # DO NOT remove the define until you are ready to rebaseline, and
+          # AFTER the flag has been removed from skia.gyp in Chromium.
 
-          # Temporarily disable the Skia fix in
-          # http://code.google.com/p/skia/source/detail?r=3037 ; enabling that
-          # fix will require substantial rebaselining.
-          'SK_DRAW_POS_TEXT_IGNORE_SUBPIXEL_LEFT_ALIGN_FIX',
+          'SK_DISABLE_DITHER_32BIT_GRADIENT',
 
-          # Temporarily ignore fix to antialias coverage, until we can rebaseline
-          'SK_USE_LEGACY_AA_COVERAGE',
-
-          # When enabled yields a 10x speedup on some devices.
-          'SK_DISABLE_FAST_AA_STROKE_RECT',
+          'SK_DISABLE_DASHING_OPTIMIZATION',
         ],
       },
     },

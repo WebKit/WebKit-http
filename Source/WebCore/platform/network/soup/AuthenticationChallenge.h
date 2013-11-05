@@ -39,9 +39,10 @@ public:
     {
     }
 
-    AuthenticationChallenge(const ProtectionSpace& protectionSpace, const Credential& proposedCredential, unsigned previousFailureCount, const ResourceResponse& response, const ResourceError& error)
+    AuthenticationChallenge(const ProtectionSpace& protectionSpace, const Credential& proposedCredential, unsigned previousFailureCount, const ResourceResponse& response, const ResourceError& error, uint64_t identifier)
         : AuthenticationChallengeBase(protectionSpace, proposedCredential, previousFailureCount, response, error)
     {
+        m_identifier = identifier;
     }
 
     AuthenticationChallenge(SoupSession*, SoupMessage*, SoupAuth*, bool retrying, AuthenticationClient*);
@@ -49,6 +50,7 @@ public:
     SoupSession* soupSession() const { return m_soupSession.get(); }
     SoupMessage* soupMessage() const { return m_soupMessage.get(); }
     SoupAuth* soupAuth() const { return m_soupAuth.get(); }
+    void setProposedCredential(const Credential& credential) { m_proposedCredential = credential; }
 
 private:
     friend class AuthenticationChallengeBase;

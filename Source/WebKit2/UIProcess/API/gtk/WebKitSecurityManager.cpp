@@ -27,6 +27,19 @@
 
 using namespace WebKit;
 
+/**
+ * SECTION: WebKitSecurityManager
+ * @Short_description: Controls security settings in a #WebKitWebContext
+ * @Title: WebKitSecurityManager
+ *
+ * The #WebKitSecurityManager defines security settings for URI
+ * schemes in a #WebKitWebContext. Get it from the context with
+ * webkit_web_context_get_security_manager(), and use it to register a
+ * URI scheme with a certain security level, or to check if it already
+ * has it.
+ *
+ */
+
 typedef enum {
     SecurityPolicyLocal,
     SecurityPolicyNoAccess,
@@ -40,28 +53,10 @@ struct _WebKitSecurityManagerPrivate {
     WebKitWebContext* webContext;
 };
 
-G_DEFINE_TYPE(WebKitSecurityManager, webkit_security_manager, G_TYPE_OBJECT)
-
-static void webkit_security_manager_init(WebKitSecurityManager* manager)
-{
-    WebKitSecurityManagerPrivate* priv = G_TYPE_INSTANCE_GET_PRIVATE(manager, WEBKIT_TYPE_SECURITY_MANAGER, WebKitSecurityManagerPrivate);
-    manager->priv = priv;
-    new (priv) WebKitSecurityManagerPrivate();
-}
-
-static void webkitSecurityManagerFinalize(GObject* object)
-{
-    WebKitSecurityManagerPrivate* priv = WEBKIT_SECURITY_MANAGER(object)->priv;
-    priv->~WebKitSecurityManagerPrivate();
-    G_OBJECT_CLASS(webkit_security_manager_parent_class)->finalize(object);
-}
+WEBKIT_DEFINE_TYPE(WebKitSecurityManager, webkit_security_manager, G_TYPE_OBJECT)
 
 static void webkit_security_manager_class_init(WebKitSecurityManagerClass* klass)
 {
-    GObjectClass* gObjectClass = G_OBJECT_CLASS(klass);
-    gObjectClass->finalize = webkitSecurityManagerFinalize;
-
-    g_type_class_add_private(klass, sizeof(WebKitSecurityManagerPrivate));
 }
 
 WebKitSecurityManager* webkitSecurityManagerCreate(WebKitWebContext* webContext)

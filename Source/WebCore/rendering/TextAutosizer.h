@@ -28,17 +28,15 @@
 
 #if ENABLE(TEXT_AUTOSIZING)
 
-#include "IntSize.h"
+#include "HTMLNames.h"
 #include <wtf/Noncopyable.h>
 #include <wtf/PassOwnPtr.h>
-#include <wtf/PassRefPtr.h>
 
 namespace WebCore {
 
 class Document;
 class RenderBlock;
 class RenderObject;
-class RenderStyle;
 class RenderText;
 struct TextAutosizingWindowInfo;
 
@@ -55,21 +53,36 @@ public:
     static float computeAutosizedFontSize(float specifiedSize, float multiplier);
 
 private:
+    enum TraversalDirection {
+        FirstToLast,
+        LastToFirst
+    };
+
     explicit TextAutosizer(Document*);
 
     void processCluster(RenderBlock* cluster, RenderBlock* container, RenderObject* subtreeRoot, const TextAutosizingWindowInfo&);
-    void processContainer(float multiplier, RenderBlock* container, RenderObject* subtreeRoot, const TextAutosizingWindowInfo&);
+    void processContainer(float multiplier, RenderBlock* container, const RenderBlock* blockContainingAllText, RenderObject* subtreeRoot, const TextAutosizingWindowInfo&);
 
     void setMultiplier(RenderObject*, float);
 
     static bool isAutosizingContainer(const RenderObject*);
-    static bool isAutosizingCluster(const RenderBlock*);
+    static bool isAutosizingCluster(const RenderBlock*, const RenderBlock* parentBlockContainingAllText);
+    static bool isAutosizingCluster(const RenderObject*);
 
-    static bool clusterShouldBeAutosized(const RenderBlock* lowestCommonAncestor, float commonAncestorWidth);
-    static void measureDescendantTextWidth(const RenderBlock* container, float minTextWidth, float& textWidth);
+    static bool containerShouldBeAutosized(const RenderBlock* container);
+    static bool containerContainsOneOfTags(const RenderBlock* cluster, const Vector<QualifiedName>& tags);
+    static bool contentHeightIsConstrained(const RenderBlock* container);
+    static bool clusterShouldBeAutosized(const RenderBlock* blockContainingAllText, float blockWidth);
+    static void measureDescendantTextWidth(const RenderBlock* container, const RenderBlock* blockContainingAllText, float minTextWidth, float& textWidth);
 
     // Use to traverse the tree of descendants, excluding descendants of containers (but returning the containers themselves).
-    static RenderObject* nextInPreOrderSkippingDescendantsOfContainers(const RenderObject* current, const RenderObject* stayWithin);
+    static RenderObject* nextInPreOrderSkippingDescendantsOfContainers(const RenderObject*, const RenderObject* stayWithin);
+
+    static const RenderBlock* findDeepestBlockContainingAllText(const RenderBlock* cluster);
+
+    // Depending on the traversal direction specified, finds the first or the last leaf text node child that doesn't
+    // belong to any cluster.
+    static const RenderObject* findFirstTextLeafNotInCluster(const RenderObject*, size_t& depth, TraversalDirection);
 
     Document* m_document;
 };

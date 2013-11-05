@@ -83,6 +83,7 @@ static inline const AtomicString& getGenericFontFamilyForScript(const ScriptFont
 
 double Settings::gDefaultMinDOMTimerInterval = 0.010; // 10 milliseconds
 double Settings::gDefaultDOMTimerAlignmentInterval = 0;
+double Settings::gHiddenPageDOMTimerAlignmentInterval = 1.0;
 
 #if USE(SAFARI_THEME)
 bool Settings::gShouldPaintNativeControls = true;
@@ -145,7 +146,6 @@ Settings::Settings(Page* page)
 #endif
 #endif
     SETTINGS_INITIALIZER_LIST
-    , m_isSpatialNavigationEnabled(false)
     , m_isJavaEnabled(false)
     , m_isJavaEnabledForLocalFiles(true)
     , m_loadsImagesAutomatically(false)
@@ -154,7 +154,6 @@ Settings::Settings(Page* page)
     , m_isMediaEnabled(true)
     , m_arePluginsEnabled(false)
     , m_isScriptEnabled(false)
-    , m_isWebSecurityEnabled(true)
     , m_textAreasAreResizable(false)
     , m_needsAdobeFrameReloadingQuirk(false)
     , m_isDOMPasteAllowed(false)
@@ -166,15 +165,13 @@ Settings::Settings(Page* page)
 #if ENABLE(CSS_STICKY_POSITION)
     , m_cssStickyPositionEnabled(true)
 #endif
-#if ENABLE(CSS_REGIONS)
-    , m_cssRegionsEnabled(false)
-#endif
 #if ENABLE(CSS_VARIABLES)
     , m_cssVariablesEnabled(false)
 #endif
     , m_acceleratedCompositingEnabled(true)
     , m_showDebugBorders(false)
     , m_showRepaintCounter(false)
+    , m_showTiledScrollingIndicator(false)
     , m_tiledBackingStoreEnabled(false)
     , m_dnsPrefetchingEnabled(false)
 #if USE(UNIFIED_TEXT_CHECKING)
@@ -202,6 +199,16 @@ PassOwnPtr<Settings> Settings::create(Page* page)
 {
     return adoptPtr(new Settings(page));
 } 
+
+void Settings::setHiddenPageDOMTimerAlignmentInterval(double hiddenPageDOMTimerAlignmentinterval)
+{
+    gHiddenPageDOMTimerAlignmentInterval = hiddenPageDOMTimerAlignmentinterval;
+}
+
+double Settings::hiddenPageDOMTimerAlignmentInterval()
+{
+    return gHiddenPageDOMTimerAlignmentInterval;
+}
 
 #if !PLATFORM(MAC) && !PLATFORM(BLACKBERRY)
 void Settings::initializeDefaultFontFamilies()
@@ -401,16 +408,6 @@ void Settings::setScriptEnabled(bool isScriptEnabled)
     m_isScriptEnabled = isScriptEnabled;
 }
 
-void Settings::setWebSecurityEnabled(bool isWebSecurityEnabled)
-{
-    m_isWebSecurityEnabled = isWebSecurityEnabled;
-}
-
-void Settings::setSpatialNavigationEnabled(bool isSpatialNavigationEnabled)
-{
-    m_isSpatialNavigationEnabled = isSpatialNavigationEnabled;
-}
-
 void Settings::setJavaEnabled(bool isJavaEnabled)
 {
     m_isJavaEnabled = isJavaEnabled;
@@ -441,22 +438,6 @@ void Settings::setPluginsEnabled(bool arePluginsEnabled)
 
 void Settings::setPrivateBrowsingEnabled(bool privateBrowsingEnabled)
 {
-    // FIXME http://webkit.org/b/67870: The private browsing storage session and cookie private
-    // browsing mode (which is used if storage sessions are not available) are global settings, so
-    // it is misleading to have them as per-page settings.
-    // In addition, if they are treated as a per Page settings, the global values can get out of
-    // sync with the per Page value in the following situation:
-    // 1. The global values get set to true when setPrivateBrowsingEnabled(true) is called.
-    // 2. All Pages are closed, so all Settings objects go away.
-    // 3. A new Page is created, and a corresponding new Settings object is created - with
-    //    m_privateBrowsingEnabled starting out as false in the constructor.
-    // 4. The WebPage settings get applied to the new Page and setPrivateBrowsingEnabled(false)
-    //    is called, but an if (m_privateBrowsingEnabled == privateBrowsingEnabled) early return
-    //    prevents the global values from getting changed from true to false.
-#if PLATFORM(MAC) || USE(CFNETWORK)
-    ResourceHandle::setPrivateBrowsingEnabled(privateBrowsingEnabled);
-#endif
-
     if (m_privateBrowsingEnabled == privateBrowsingEnabled)
         return;
 
@@ -618,6 +599,14 @@ void Settings::setShowRepaintCounter(bool enabled)
         
     m_showRepaintCounter = enabled;
     m_page->setNeedsRecalcStyleInAllFrames();
+}
+
+void Settings::setShowTiledScrollingIndicator(bool enabled)
+{
+    if (m_showTiledScrollingIndicator == enabled)
+        return;
+        
+    m_showTiledScrollingIndicator = enabled;
 }
 
 #if PLATFORM(WIN) || (OS(WINDOWS) && PLATFORM(WX))

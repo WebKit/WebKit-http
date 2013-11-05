@@ -77,6 +77,8 @@ WebInspector.CSSStyleModel.Events = {
     RegionLayoutUpdated: "RegionLayoutUpdated"
 }
 
+WebInspector.CSSStyleModel.MediaTypes = ["all", "braille", "embossed", "handheld", "print", "projection", "screen", "speech", "tty", "tv"];
+
 WebInspector.CSSStyleModel.prototype = {
     /**
      * @param {DOMAgent.NodeId} nodeId
@@ -528,6 +530,29 @@ WebInspector.CSSStyleModel.prototype = {
         return sourceMapping ? sourceMapping.rawLocationToUILocation(rawLocation) : null;
     },
 
+    /**
+     * @param {DOMAgent.NodeId} nodeId
+     */
+    toggleInlineVisibility: function(nodeId)
+    {
+        /**
+         * @param {WebInspector.CSSStyleDeclaration} inlineStyles
+         */
+        function callback(inlineStyles)
+        {
+            var visibility = inlineStyles.getLiveProperty("visibility");
+            if (visibility) {
+                if (visibility.value === "hidden")
+                    visibility.setText("", false, true);
+                else
+                    visibility.setValue("hidden", false, true);
+            } else
+                inlineStyles.appendProperty("visibility", "hidden");
+        }
+
+        this.getInlineStylesAsync(nodeId, callback.bind(this));
+    },
+
     __proto__: WebInspector.Object.prototype
 }
 
@@ -694,7 +719,7 @@ WebInspector.CSSStyleDeclaration.prototype = {
      */
     longhandProperties: function(name)
     {
-        var longhands = WebInspector.CSSCompletions.cssPropertiesMetainfo.longhands(name);
+        var longhands = WebInspector.CSSMetadata.cssPropertiesMetainfo.longhands(name);
         var result = [];
         for (var i = 0; longhands && i < longhands.length; ++i) {
             var property = this._livePropertyMap[longhands[i]];
@@ -748,16 +773,15 @@ WebInspector.CSSStyleDeclaration.prototype = {
      * @param {number} index
      * @param {string} name
      * @param {string} value
-     * @param {function(?WebInspector.CSSStyleDeclaration)} userCallback
+     * @param {function(?WebInspector.CSSStyleDeclaration)=} userCallback
      */
     insertPropertyAt: function(index, name, value, userCallback)
     {
         /**
-         * @param {function(?WebInspector.CSSStyleDeclaration)} userCallback
          * @param {?string} error
          * @param {CSSAgent.CSSStyle} payload
          */
-        function callback(userCallback, error, payload)
+        function callback(error, payload)
         {
             WebInspector.cssModel._pendingCommandsMajorState.pop();
             if (!userCallback)
@@ -775,13 +799,13 @@ WebInspector.CSSStyleDeclaration.prototype = {
             throw "No style id";
 
         WebInspector.cssModel._pendingCommandsMajorState.push(true);
-        CSSAgent.setPropertyText(this.id, index, name + ": " + value + ";", false, callback.bind(this, userCallback));
+        CSSAgent.setPropertyText(this.id, index, name + ": " + value + ";", false, callback.bind(this));
     },
 
     /**
      * @param {string} name
      * @param {string} value
-     * @param {function(?WebInspector.CSSStyleDeclaration)} userCallback
+     * @param {function(?WebInspector.CSSStyleDeclaration)=} userCallback
      */
     appendProperty: function(name, value, userCallback)
     {
@@ -800,7 +824,7 @@ WebInspector.CSSRule = function(payload, matchingSelectors)
     if (matchingSelectors)
         this.matchingSelectors = matchingSelectors;
     this.selectors = payload.selectorList.selectors;
-    this.selectorText = payload.selectorList.text;
+    this.selectorText = this.selectors.join(", ");
     this.selectorRange = payload.selectorList.range;
     this.sourceLine = payload.sourceLine;
     this.sourceURL = payload.sourceURL;

@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2011 Google Inc. All Rights Reserved.
+ * Copyright (C) 2012 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -41,6 +42,7 @@
 #include "HTMLNames.h"
 #include "IdTargetObserverRegistry.h"
 #include "InsertionPoint.h"
+#include "NodeTraversal.h"
 #include "Page.h"
 #include "RuntimeEnabledFeatures.h"
 #include "ShadowRoot.h"
@@ -51,12 +53,18 @@
 
 namespace WebCore {
 
+struct SameSizeAsTreeScope {
+    virtual ~SameSizeAsTreeScope();
+    void* pointers[7];
+};
+
+COMPILE_ASSERT(sizeof(TreeScope) == sizeof(SameSizeAsTreeScope), treescope_should_stay_small);
+
 using namespace HTMLNames;
 
 TreeScope::TreeScope(ContainerNode* rootNode)
     : m_rootNode(rootNode)
     , m_parentTreeScope(0)
-    , m_shouldCacheLabelsByForAttribute(false)
     , m_idTargetObserverRegistry(IdTargetObserverRegistry::create())
 {
     ASSERT(rootNode);
@@ -91,18 +99,24 @@ Element* TreeScope::getElementById(const AtomicString& elementId) const
 {
     if (elementId.isEmpty())
         return 0;
-    return m_elementsById.getElementById(elementId.impl(), this);
+    if (!m_elementsById)
+        return 0;
+    return m_elementsById->getElementById(elementId.impl(), this);
 }
 
 void TreeScope::addElementById(const AtomicString& elementId, Element* element)
 {
-    m_elementsById.add(elementId.impl(), element);
+    if (!m_elementsById)
+        m_elementsById = adoptPtr(new DocumentOrderedMap);
+    m_elementsById->add(elementId.impl(), element);
     m_idTargetObserverRegistry->notifyObservers(elementId);
 }
 
 void TreeScope::removeElementById(const AtomicString& elementId, Element* element)
 {
-    m_elementsById.remove(elementId.impl(), element);
+    if (!m_elementsById)
+        return;
+    m_elementsById->remove(elementId.impl(), element);
     m_idTargetObserverRegistry->notifyObservers(elementId);
 }
 
@@ -125,45 +139,57 @@ void TreeScope::addImageMap(HTMLMapElement* imageMap)
     AtomicStringImpl* name = imageMap->getName().impl();
     if (!name)
         return;
-    m_imageMapsByName.add(name, imageMap);
+    if (!m_imageMapsByName)
+        m_imageMapsByName = adoptPtr(new DocumentOrderedMap);
+    m_imageMapsByName->add(name, imageMap);
 }
 
 void TreeScope::removeImageMap(HTMLMapElement* imageMap)
 {
+    if (!m_imageMapsByName)
+        return;
     AtomicStringImpl* name = imageMap->getName().impl();
     if (!name)
         return;
-    m_imageMapsByName.remove(name, imageMap);
+    m_imageMapsByName->remove(name, imageMap);
 }
 
 HTMLMapElement* TreeScope::getImageMap(const String& url) const
 {
     if (url.isNull())
         return 0;
+    if (!m_imageMapsByName)
+        return 0;
     size_t hashPos = url.find('#');
     String name = (hashPos == notFound ? url : url.substring(hashPos + 1)).impl();
     if (rootNode()->document()->isHTMLDocument())
-        return static_cast<HTMLMapElement*>(m_imageMapsByName.getElementByLowercasedMapName(AtomicString(name.lower()).impl(), this));
-    return static_cast<HTMLMapElement*>(m_imageMapsByName.getElementByMapName(AtomicString(name).impl(), this));
+        return static_cast<HTMLMapElement*>(m_imageMapsByName->getElementByLowercasedMapName(AtomicString(name.lower()).impl(), this));
+    return static_cast<HTMLMapElement*>(m_imageMapsByName->getElementByMapName(AtomicString(name).impl(), this));
 }
 
 void TreeScope::addLabel(const AtomicString& forAttributeValue, HTMLLabelElement* element)
 {
-    m_labelsByForAttribute.add(forAttributeValue.impl(), element);
+    ASSERT(m_labelsByForAttribute);
+    m_labelsByForAttribute->add(forAttributeValue.impl(), element);
 }
 
 void TreeScope::removeLabel(const AtomicString& forAttributeValue, HTMLLabelElement* element)
 {
-    m_labelsByForAttribute.remove(forAttributeValue.impl(), element);
+    ASSERT(m_labelsByForAttribute);
+    m_labelsByForAttribute->remove(forAttributeValue.impl(), element);
 }
 
 HTMLLabelElement* TreeScope::labelElementForId(const AtomicString& forAttributeValue)
 {
-    if (!m_shouldCacheLabelsByForAttribute) {
-        m_shouldCacheLabelsByForAttribute = true;
-        for (Node* node = rootNode(); node; node = node->traverseNextNode()) {
-            if (node->hasTagName(labelTag)) {
-                HTMLLabelElement* label = static_cast<HTMLLabelElement*>(node);
+    if (forAttributeValue.isEmpty())
+        return 0;
+
+    if (!m_labelsByForAttribute) {
+        // Populate the map on first access.
+        m_labelsByForAttribute = adoptPtr(new DocumentOrderedMap);
+        for (Element* element = ElementTraversal::firstWithin(rootNode()); element; element = ElementTraversal::next(element)) {
+            if (element->hasTagName(labelTag)) {
+                HTMLLabelElement* label = static_cast<HTMLLabelElement*>(element);
                 const AtomicString& forValue = label->fastGetAttribute(forAttr);
                 if (!forValue.isEmpty())
                     addLabel(forValue, label);
@@ -171,10 +197,7 @@ HTMLLabelElement* TreeScope::labelElementForId(const AtomicString& forAttributeV
         }
     }
 
-    if (forAttributeValue.isEmpty())
-        return 0;
-
-    return static_cast<HTMLLabelElement*>(m_labelsByForAttribute.getElementByLabelForAttribute(forAttributeValue.impl(), this));
+    return static_cast<HTMLLabelElement*>(m_labelsByForAttribute->getElementByLabelForAttribute(forAttributeValue.impl(), this));
 }
 
 DOMSelection* TreeScope::getSelection() const
@@ -208,9 +231,9 @@ Element* TreeScope::findAnchor(const String& name)
         return 0;
     if (Element* element = getElementById(name))
         return element;
-    for (Node* node = rootNode(); node; node = node->traverseNextNode()) {
-        if (node->hasTagName(aTag)) {
-            HTMLAnchorElement* anchor = static_cast<HTMLAnchorElement*>(node);
+    for (Element* element = ElementTraversal::firstWithin(rootNode()); element; element = ElementTraversal::next(element)) {
+        if (element->hasTagName(aTag)) {
+            HTMLAnchorElement* anchor = static_cast<HTMLAnchorElement*>(element);
             if (rootNode()->document()->inQuirksMode()) {
                 // Quirks mode, case insensitive comparison of names.
                 if (equalIgnoringCase(anchor->name(), name))

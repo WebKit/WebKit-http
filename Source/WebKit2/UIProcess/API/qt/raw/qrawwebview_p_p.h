@@ -42,7 +42,6 @@ public:
     virtual void didFinishLoadingDataForCustomRepresentation(const String& suggestedFilename, const CoreIPC::DataReference&) { }
     virtual double customRepresentationZoomFactor() { return 1; }
     virtual void setCustomRepresentationZoomFactor(double) { }
-    virtual void didChangeScrollbarsForMainFrame() const { }
     virtual void findStringInCustomRepresentation(const String&, WebKit::FindOptions, unsigned maxMatchCount) { }
     virtual void countStringMatchesInCustomRepresentation(const String&, WebKit::FindOptions, unsigned maxMatchCount) { }
     virtual void clearAllEditCommands() { }
@@ -71,6 +70,7 @@ public:
 #endif // USE(ACCELERATED_COMPOSITING)
 
     virtual void updateTextInputState();
+    virtual void handleWillSetInputMethodState();
 #if ENABLE(GESTURE_EVENTS)
     virtual void doneWithGestureEvent(const WebKit::WebGestureEvent& event, bool wasEventHandled);
 #endif

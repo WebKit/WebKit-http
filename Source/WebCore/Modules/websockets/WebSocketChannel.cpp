@@ -194,7 +194,7 @@ void WebSocketChannel::fail(const String& reason)
     ASSERT(!m_suspended);
     if (m_document) {
         InspectorInstrumentation::didReceiveWebSocketFrameError(m_document, m_identifier, reason);
-        m_document->addConsoleMessage(JSMessageSource, LogMessageType, ErrorMessageLevel, reason, m_handshake->clientOrigin());
+        m_document->addConsoleMessage(JSMessageSource, ErrorMessageLevel, "WebSocket connection to '" + m_handshake->url().string() + "' failed: " + reason);
     }
 
     // Hybi-10 specification explicitly states we must not continue to handle incoming data
@@ -330,11 +330,8 @@ void WebSocketChannel::didFailSocketStream(SocketStreamHandle* handle, const Soc
             message = "WebSocket network error: error code " + String::number(error.errorCode());
         else
             message = "WebSocket network error: " + error.localizedDescription();
-        String failingURL = error.failingURL();
-        ASSERT(failingURL.isNull() || m_handshake->url().string() == failingURL);
-        if (failingURL.isNull())
-            failingURL = m_handshake->url().string();
-        m_document->addConsoleMessage(NetworkMessageSource, LogMessageType, ErrorMessageLevel, message, failingURL);
+        InspectorInstrumentation::didReceiveWebSocketFrameError(m_document, m_identifier, message);
+        m_document->addConsoleMessage(NetworkMessageSource, ErrorMessageLevel, message);
     }
     m_shouldDiscardReceivedData = true;
     handle->disconnect();

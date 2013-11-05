@@ -41,11 +41,13 @@
 #include "Event.h"
 #include "HTMLDivElement.h"
 #include "HTMLMediaElement.h"
+#include "NodeTraversal.h"
 #include "RenderTextTrackCue.h"
 #include "Text.h"
 #include "TextTrack.h"
 #include "TextTrackCueList.h"
 #include "WebVTTParser.h"
+#include <wtf/MathExtras.h>
 #include <wtf/text/StringBuilder.h>
 
 namespace WebCore {
@@ -266,8 +268,14 @@ void TextTrackCue::setId(const String& id)
     cueDidChange();
 }
 
-void TextTrackCue::setStartTime(double value)
+void TextTrackCue::setStartTime(double value, ExceptionCode& ec)
 {
+    // NaN, Infinity and -Infinity values should trigger a TypeError.
+    if (isinf(value) || isnan(value)) {
+        ec = TypeError;
+        return;
+    }
+    
     // TODO(93143): Add spec-compliant behavior for negative time values.
     if (m_startTime == value || value < 0)
         return;
@@ -277,8 +285,14 @@ void TextTrackCue::setStartTime(double value)
     cueDidChange();
 }
     
-void TextTrackCue::setEndTime(double value)
+void TextTrackCue::setEndTime(double value, ExceptionCode& ec)
 {
+    // NaN, Infinity and -Infinity values should trigger a TypeError.
+    if (isinf(value) || isnan(value)) {
+        ec = TypeError;
+        return;
+    }
+
     // TODO(93143): Add spec-compliant behavior for negative time values.
     if (m_endTime == value || value < 0)
         return;
@@ -474,6 +488,12 @@ void TextTrackCue::invalidateCueIndex()
     m_cueIndex = invalidCueIndex;
 }
 
+void TextTrackCue::markNodesAsWebVTTNodes(Node* root)
+{
+    for (Element* child = ElementTraversal::firstWithin(root); child; child = ElementTraversal::next(child, root))
+        child->setIsWebVTTNode(true);
+}
+
 PassRefPtr<DocumentFragment> TextTrackCue::getCueAsHTML()
 {
     RefPtr<DocumentFragment> clonedFragment;
@@ -496,6 +516,7 @@ PassRefPtr<DocumentFragment> TextTrackCue::getCueAsHTML()
 
     clonedFragment = DocumentFragment::create(document);
     m_documentFragment->cloneChildNodes(clonedFragment.get());
+    markNodesAsWebVTTNodes(clonedFragment.get());
 
     return clonedFragment.release();
 }
@@ -814,6 +835,7 @@ TextTrackCue::CueSetting TextTrackCue::settingName(const String& name)
 
 void TextTrackCue::setCueSettings(const String& input)
 {
+    m_settings = input;
     unsigned position = 0;
 
     while (position < input.length()) {

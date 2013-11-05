@@ -409,14 +409,6 @@
     white-space: nowrap;
 }
 
-.timeline-filter-status-bar-item .glyph {
-    -webkit-mask-position: -32px -48px;
-}
-
-.timeline-filter-status-bar-item.toggled-on .glyph {
-    background-color: rgb(66, 129, 235) !important;
-}
-
 .garbage-collect-status-bar-item .glyph {
     -webkit-mask-position: -128px -24px;
 }
@@ -623,6 +615,7 @@
     border-style: none;
     width: 1px;
     height: 100%;
+    pointer-events: none;
 }
 
 .sidebar-tree-item .timeline-frame-overview-status-bar-item {

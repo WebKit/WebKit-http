@@ -26,6 +26,8 @@
 #ifndef CacheModel_h
 #define CacheModel_h
 
+#include <stdint.h>
+
 namespace WebKit {
 
 enum CacheModel {
@@ -33,6 +35,10 @@ enum CacheModel {
     CacheModelDocumentBrowser,
     CacheModelPrimaryWebBrowser
 };
+
+void calculateCacheSizes(CacheModel cacheModel, uint64_t memorySize, uint64_t diskFreeSize,
+    unsigned& cacheTotalCapacity, unsigned& cacheMinDeadCapacity, unsigned& cacheMaxDeadCapacity, double& deadDecodedDataDeletionInterval,
+    unsigned& pageCacheCapacity, unsigned long& urlCacheMemoryCapacity, unsigned long& urlCacheDiskCapacity);
 
 } // namespace WebKit
 

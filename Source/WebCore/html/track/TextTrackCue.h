@@ -90,10 +90,10 @@ public:
     void setId(const String&);
 
     double startTime() const { return m_startTime; }
-    void setStartTime(double);
+    void setStartTime(double, ExceptionCode&);
 
     double endTime() const { return m_endTime; }
-    void setEndTime(double);
+    void setEndTime(double, ExceptionCode&);
 
     bool pauseOnExit() const { return m_pauseOnExit; }
     void setPauseOnExit(bool);
@@ -119,12 +119,14 @@ public:
     const String& text() const { return m_content; }
     void setText(const String&);
 
+    const String& cueSettings() const { return m_settings; }
     void setCueSettings(const String&);
 
     int cueIndex();
     void invalidateCueIndex();
 
     PassRefPtr<DocumentFragment> getCueAsHTML();
+    void markNodesAsWebVTTNodes(Node*);
 
     virtual bool dispatchEvent(PassRefPtr<Event>);
     bool dispatchEvent(PassRefPtr<Event>, ExceptionCode&);
@@ -184,6 +186,7 @@ private:
     double m_startTime;
     double m_endTime;
     String m_content;
+    String m_settings;
     int m_linePosition;
     int m_computedLinePosition;
     int m_textPosition;

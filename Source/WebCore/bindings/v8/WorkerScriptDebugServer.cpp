@@ -35,7 +35,6 @@
 
 #include "ScriptDebugListener.h"
 #include "WorkerContext.h"
-#include "WorkerContextExecutionProxy.h"
 #include "WorkerDebuggerAgent.h"
 #include "WorkerThread.h"
 #include <v8.h>
@@ -44,11 +43,12 @@
 
 namespace WebCore {
 
-WorkerScriptDebugServer::WorkerScriptDebugServer(WorkerContext* workerContext)
+WorkerScriptDebugServer::WorkerScriptDebugServer(WorkerContext* workerContext, const String& mode)
     : ScriptDebugServer()
     , m_listener(0)
     , m_workerContext(workerContext)
     , m_isolate(v8::Isolate::GetCurrent())
+    , m_debuggerTaskMode(mode)
 {
     ASSERT(m_isolate);
 }
@@ -66,12 +66,7 @@ void WorkerScriptDebugServer::addListener(ScriptDebugListener* listener)
     ASSERT(!m_debuggerScript.get()->IsUndefined());
     v8::Debug::SetDebugEventListener2(&WorkerScriptDebugServer::v8DebugEventCallback, v8::External::New(this));
     
-    // TODO: Should we remove |proxy|? It looks like unused now.
-    WorkerContextExecutionProxy* proxy = m_workerContext->script()->proxy();
-    if (!proxy)
-        return;
-
-    v8::Handle<v8::Function> getScriptsFunction = v8::Local<v8::Function>::Cast(m_debuggerScript.get()->Get(v8::String::New("getWorkerScripts")));
+    v8::Handle<v8::Function> getScriptsFunction = v8::Local<v8::Function>::Cast(m_debuggerScript.get()->Get(v8::String::NewSymbol("getWorkerScripts")));
     v8::Handle<v8::Value> argv[] = { v8Undefined() };
     v8::Handle<v8::Value> value = getScriptsFunction->Call(m_debuggerScript.get(), 0, argv);
     if (value.IsEmpty())
@@ -79,7 +74,7 @@ void WorkerScriptDebugServer::addListener(ScriptDebugListener* listener)
     ASSERT(!value->IsUndefined() && value->IsArray());
     v8::Handle<v8::Array> scriptsArray = v8::Handle<v8::Array>::Cast(value);
     for (unsigned i = 0; i < scriptsArray->Length(); ++i)
-        dispatchDidParseSource(listener, v8::Handle<v8::Object>::Cast(scriptsArray->Get(v8Integer(i))));
+        dispatchDidParseSource(listener, v8::Handle<v8::Object>::Cast(scriptsArray->Get(deprecatedV8Integer(i))));
 }
 
 void WorkerScriptDebugServer::removeListener(ScriptDebugListener* listener)
@@ -105,7 +100,7 @@ void WorkerScriptDebugServer::runMessageLoopOnPause(v8::Handle<v8::Context>)
 {
     MessageQueueWaitResult result;
     do {
-        result = m_workerContext->thread()->runLoop().runInMode(m_workerContext, WorkerDebuggerAgent::debuggerTaskMode);
+        result = m_workerContext->thread()->runLoop().runInMode(m_workerContext, m_debuggerTaskMode);
     // Keep waiting until execution is resumed.
     } while (result == MessageQueueMessageReceived && isPaused());
     

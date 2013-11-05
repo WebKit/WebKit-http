@@ -32,7 +32,7 @@
 #define StyleGridItemData_h
 
 
-#include "Length.h"
+#include "GridPosition.h"
 #include <wtf/PassRefPtr.h>
 #include <wtf/RefCounted.h>
 #include <wtf/Vector.h>
@@ -54,11 +54,8 @@ public:
         return !(*this == o);
     }
 
-    // FIXME: For the moment, we only support a subset of the grammar which correspond to:
-    // 'auto' | <length>
-    // When we add more of the syntax, we will need a dedicated GridPosition class.
-    Length m_gridColumn;
-    Length m_gridRow;
+    GridPosition m_gridColumn;
+    GridPosition m_gridRow;
 
 private:
     StyleGridItemData();

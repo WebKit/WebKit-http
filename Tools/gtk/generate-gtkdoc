@@ -98,6 +98,7 @@ def get_webkit2_options():
         'ignored_files': glob.glob(src_path('*Private.h')) + \
                          glob.glob(src_path('*Client*')) + \
                          glob.glob(src_path('WebKitWebViewBaseAccessible.*')) + \
+                         glob.glob(src_path('WebKit2GtkAuthenticationDialog.*')) + \
                          glob.glob(src_path('WebKitGeolocationProvider.*')) + \
                          glob.glob(src_path('WebKitTextChecker.*')) + \
                          glob.glob(derived_sources_path('webkit2gtk', 'webkit2', 'WebKitMarshal.*')) + \
@@ -159,6 +160,13 @@ pkg_config_path = os.environ.get("PKG_CONFIG_PATH")
 os.environ['PKG_CONFIG_PATH'] = common.build_path('Source', 'JavaScriptCore')
 if pkg_config_path:
     os.environ['PKG_CONFIG_PATH'] += ':' + pkg_config_path
+
+# Newer versions of glib have deprecated g_type_init, so we need to disable
+# that warning when running gtkdoc-scanobj by overriding the CFLAGS we use
+# to compile it.
+cflags = os.environ.get('CFLAGS', '')
+cflags += ' -DGLIB_VERSION_MIN_REQUIRED=GLIB_VERSION_2_32'
+os.environ['CFLAGS'] = cflags
 
 saw_webkit1_warnings = saw_webkit2_warnings = False
 

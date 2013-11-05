@@ -49,6 +49,7 @@
 #include "MainResourceLoader.h"
 #include "Page.h"
 #include "ResourceBuffer.h"
+#include "SchemeRegistry.h"
 #include "Settings.h"
 #include "TextResourceDecoder.h"
 #include "WebCoreMemoryInstrumentation.h"
@@ -97,6 +98,7 @@ DocumentLoader::DocumentLoader(const ResourceRequest& req, const SubstituteData&
     , m_isStopping(false)
     , m_gotFirstByte(false)
     , m_isClientRedirect(false)
+    , m_loadingEmptyDocument(false)
     , m_wasOnloadHandled(false)
     , m_stopRecordingResponses(false)
     , m_substituteResourceDeliveryTimer(this, &DocumentLoader::substituteResourceDeliveryTimerFired)
@@ -114,7 +116,7 @@ FrameLoader* DocumentLoader::frameLoader() const
 
 DocumentLoader::~DocumentLoader()
 {
-    ASSERT(!m_frame || frameLoader()->activeDocumentLoader() != this || !frameLoader()->isLoading());
+    ASSERT(!m_frame || frameLoader()->activeDocumentLoader() != this || !isLoading());
     if (m_iconLoadDecisionCallback)
         m_iconLoadDecisionCallback->invalidate();
     if (m_iconDataCallback)
@@ -178,13 +180,7 @@ void DocumentLoader::setRequest(const ResourceRequest& req)
     // would be a WebFoundation bug if it sent a redirect callback after commit.
     ASSERT(!m_committed);
 
-    KURL oldURL = m_request.url();
     m_request = req;
-
-    // Only dispatchDidReceiveServerRedirectForProvisionalLoad() if URL changed (and is non-null).
-    // Also, don't send it when replacing unreachable URLs with alternate content.
-    if (!handlingUnreachableURL && !req.url().isNull() && oldURL != req.url())
-        frameLoader()->client()->dispatchDidReceiveServerRedirectForProvisionalLoad();
 }
 
 void DocumentLoader::setMainDocumentError(const ResourceError& error)
@@ -285,7 +281,7 @@ void DocumentLoader::commitIfReady()
 void DocumentLoader::finishedLoading()
 {
     commitIfReady();
-    if (!frameLoader() || frameLoader()->stateMachine()->creatingInitialEmptyDocument())
+    if (!frameLoader())
         return;
 
     if (!maybeCreateArchive()) {
@@ -300,7 +296,8 @@ void DocumentLoader::finishedLoading()
     if (!m_mainDocumentError.isNull())
         return;
     clearMainResourceLoader();
-    frameLoader()->checkLoadComplete();
+    if (!frameLoader()->stateMachine()->creatingInitialEmptyDocument())
+        frameLoader()->checkLoadComplete();
 }
 
 void DocumentLoader::commitLoad(const char* data, int length)
@@ -327,6 +324,9 @@ void DocumentLoader::commitData(const char* bytes, size_t length)
         m_gotFirstByte = true;
         m_writer.begin(documentURL(), false);
         m_writer.setDocumentWasLoadedAsPartOfNavigation();
+
+        if (frameLoader()->stateMachine()->creatingInitialEmptyDocument())
+            return;
         
 #if ENABLE(MHTML)
         // The origin is the MHTML file, we need to set the base URL to the document encoded in the MHTML so
@@ -449,6 +449,7 @@ void DocumentLoader::clearMainResourceLoader()
         m_mainResourceData = m_mainResourceLoader->resourceData();
         m_mainResourceLoader = 0;
     }
+    m_loadingEmptyDocument = false;
 
     if (this == frameLoader()->activeDocumentLoader())
         checkLoadComplete();
@@ -463,7 +464,7 @@ bool DocumentLoader::isLoadingInAPISense() const
             return true;
     
         Document* doc = m_frame->document();
-        if ((m_mainResourceLoader || !m_frame->document()->loadEventFinished()) && isLoading())
+        if ((isLoadingMainResource() || !m_frame->document()->loadEventFinished()) && isLoading())
             return true;
         if (m_cachedResourceLoader->requestCount())
             return true;
@@ -577,6 +578,9 @@ PassRefPtr<ArchiveResource> DocumentLoader::subresource(const KURL& url) const
     CachedResource* resource = m_cachedResourceLoader->cachedResource(url);
     if (!resource || !resource->isLoaded())
         return archiveResourceForURL(url);
+
+    if (resource->type() == CachedResource::MainResource)
+        return 0;
 
     // FIXME: This has the side effect of making the resource non-purgeable.
     // It would be better if it didn't have this permanent effect.
@@ -769,8 +773,6 @@ KURL DocumentLoader::documentURL() const
         url = requestURL();
     if (url.isEmpty())
         url = responseURL();
-    if (url.isEmpty())
-        url = blankURL();
     return url;
 }
 
@@ -806,11 +808,22 @@ void DocumentLoader::stopLoadingSubresources()
 
 void DocumentLoader::addSubresourceLoader(ResourceLoader* loader)
 {
+    // The main resource's underlying ResourceLoader will ask to be added here.
+    // It is much simpler to handle special casing of main resource loads if we don't
+    // let it be added. In the main resource load case, m_mainResourceLoader->loader()
+    // will still be null at this point, but m_gotFirstByte should be false here if and only
+    // if we are just starting the main resource load.
+    if (!m_gotFirstByte)
+        return;
+    ASSERT(!m_subresourceLoaders.contains(loader));
+    ASSERT(!m_mainResourceLoader || m_mainResourceLoader->loader() != loader);
     m_subresourceLoaders.add(loader);
 }
 
 void DocumentLoader::removeSubresourceLoader(ResourceLoader* loader)
 {
+    if (!m_subresourceLoaders.contains(loader))
+        return;
     m_subresourceLoaders.remove(loader);
     checkLoadComplete();
     if (Frame* frame = m_frame)
@@ -830,7 +843,7 @@ void DocumentLoader::removePlugInStreamLoader(ResourceLoader* loader)
 
 bool DocumentLoader::isLoadingMainResource() const
 {
-    return !!m_mainResourceLoader;
+    return !!m_mainResourceLoader || m_loadingEmptyDocument;
 }
 
 bool DocumentLoader::isLoadingMultipartContent() const
@@ -843,17 +856,45 @@ bool DocumentLoader::isMultipartReplacingLoad() const
     return isLoadingMultipartContent() && frameLoader()->isReplacing();
 }
 
+bool DocumentLoader::maybeLoadEmpty()
+{
+    bool shouldLoadEmpty = !m_substituteData.isValid() && (m_request.url().isEmpty() || SchemeRegistry::shouldLoadURLSchemeAsEmptyDocument(m_request.url().protocol()));
+    if (!shouldLoadEmpty && !frameLoader()->client()->representationExistsForURLScheme(m_request.url().protocol()))
+        return false;
+
+    m_loadingEmptyDocument = true;
+    if (m_request.url().isEmpty() && !frameLoader()->stateMachine()->creatingInitialEmptyDocument())
+        m_request.setURL(blankURL());
+    String mimeType = shouldLoadEmpty ? "text/html" : frameLoader()->client()->generatedMIMETypeForURLScheme(m_request.url().protocol());
+    setResponse(ResourceResponse(m_request.url(), mimeType, 0, String(), String()));
+    finishedLoading();
+    return true;
+}
+
 void DocumentLoader::startLoadingMainResource()
 {
     m_mainDocumentError = ResourceError();
     timing()->markNavigationStart();
     ASSERT(!m_mainResourceLoader);
-    m_mainResourceLoader = MainResourceLoader::create(m_frame);
+
+    if (maybeLoadEmpty())
+        return;
+
+    m_mainResourceLoader = MainResourceLoader::create(this);
 
     // FIXME: Is there any way the extra fields could have not been added by now?
     // If not, it would be great to remove this line of code.
     frameLoader()->addExtraFieldsToMainResourceRequest(m_request);
     m_mainResourceLoader->load(m_request, m_substituteData);
+
+    if (m_request.isNull()) {
+        m_mainResourceLoader = 0;
+        // If the load was aborted by clearing m_request, it's possible the ApplicationCacheHost
+        // is now in a state where starting an empty load will be inconsistent. Replace it with
+        // a new ApplicationCacheHost.
+        m_applicationCacheHost = adoptPtr(new ApplicationCacheHost(this));
+        maybeLoadEmpty();
+    }
 }
 
 void DocumentLoader::cancelMainResourceLoad(const ResourceError& error)

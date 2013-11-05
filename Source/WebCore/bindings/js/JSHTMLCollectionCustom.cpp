@@ -20,16 +20,20 @@
 #include "config.h"
 #include "JSHTMLCollection.h"
 
-#include "HTMLCollection.h"
-#include "HTMLOptionsCollection.h"
 #include "HTMLAllCollection.h"
+#include "HTMLCollection.h"
+#include "HTMLFormControlsCollection.h"
+#include "HTMLOptionsCollection.h"
+#include "HTMLPropertiesCollection.h"
 #include "JSDOMBinding.h"
 #include "JSHTMLAllCollection.h"
+#include "JSHTMLFormControlsCollection.h"
 #include "JSHTMLOptionsCollection.h"
 #include "JSNode.h"
 #include "JSNodeList.h"
 #include "JSRadioNodeList.h"
 #include "Node.h"
+#include "PropertyNodeList.h"
 #include "RadioNodeList.h"
 #include "StaticNodeList.h"
 #include <wtf/Vector.h>
@@ -39,26 +43,6 @@ using namespace JSC;
 
 namespace WebCore {
 
-static JSValue getNamedItems(ExecState* exec, JSHTMLCollection* collection, PropertyName propertyName)
-{
-    Vector<RefPtr<Node> > namedItems;
-    const AtomicString& name = propertyNameToAtomicString(propertyName);
-    collection->impl()->namedItems(name, namedItems);
-
-    if (namedItems.isEmpty())
-        return jsUndefined();
-    if (namedItems.size() == 1)
-        return toJS(exec, collection->globalObject(), namedItems[0].get());
-
-    if (collection->impl()->type() == FormControls)
-       return toJS(exec, collection->globalObject(), collection->impl()->base()->radioNodeList(name).get());
-
-    // FIXME: HTML5 specifies that this should be a DynamicNodeList.
-    // FIXME: HTML5 specifies that non-HTMLOptionsCollection collections should return
-    // the first matching item instead of a NodeList.
-    return toJS(exec, collection->globalObject(), StaticNodeList::adopt(namedItems).get());
-}
-
 bool JSHTMLCollection::canGetItemsForName(ExecState*, HTMLCollection* collection, PropertyName propertyName)
 {
     return collection->hasNamedItem(propertyNameToAtomicString(propertyName));
@@ -66,13 +50,14 @@ bool JSHTMLCollection::canGetItemsForName(ExecState*, HTMLCollection* collection
 
 JSValue JSHTMLCollection::nameGetter(ExecState* exec, JSValue slotBase, PropertyName propertyName)
 {
-    JSHTMLCollection* thisObj = jsCast<JSHTMLCollection*>(asObject(slotBase));
-    return getNamedItems(exec, thisObj, propertyName);
-}
-
-JSValue JSHTMLCollection::namedItem(ExecState* exec)
-{
-    return getNamedItems(exec, this, Identifier(exec, exec->argument(0).toString(exec)->value(exec)));
+    JSHTMLCollection* collection = jsCast<JSHTMLCollection*>(asObject(slotBase));
+    const AtomicString& name = propertyNameToAtomicString(propertyName);
+    HTMLCollection* impl = collection->impl();
+#if ENABLE(MICRODATA)
+    if (impl->type() == ItemProperties)
+        return toJS(exec, collection->globalObject(), static_cast<HTMLPropertiesCollection*>(impl)->propertyNodeList(name));
+#endif
+    return toJS(exec, collection->globalObject(), impl->namedItem(name));
 }
 
 JSValue toJS(ExecState* exec, JSDOMGlobalObject* globalObject, HTMLCollection* collection)
@@ -86,18 +71,17 @@ JSValue toJS(ExecState* exec, JSDOMGlobalObject* globalObject, HTMLCollection* c
         return wrapper;
 
     switch (collection->type()) {
-        case SelectOptions:
-            wrapper = CREATE_DOM_WRAPPER(exec, globalObject, HTMLOptionsCollection, collection);
-            break;
-        case DocAll:
-            wrapper = CREATE_DOM_WRAPPER(exec, globalObject, HTMLAllCollection, collection);
-            break;
-        default:
-            wrapper = CREATE_DOM_WRAPPER(exec, globalObject, HTMLCollection, collection);
-            break;
+    case FormControls:
+        return CREATE_DOM_WRAPPER(exec, globalObject, HTMLFormControlsCollection, collection);
+    case SelectOptions:
+        return CREATE_DOM_WRAPPER(exec, globalObject, HTMLOptionsCollection, collection);
+    case DocAll:
+        return CREATE_DOM_WRAPPER(exec, globalObject, HTMLAllCollection, collection);
+    default:
+        break;
     }
 
-    return wrapper;
+    return CREATE_DOM_WRAPPER(exec, globalObject, HTMLCollection, collection);
 }
 
 } // namespace WebCore

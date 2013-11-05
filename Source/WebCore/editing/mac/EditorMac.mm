@@ -31,7 +31,6 @@
 #import "CachedResourceLoader.h"
 #import "DocumentFragment.h"
 #import "DOMRangeInternal.h"
-#import "EditingText.h"
 #import "Editor.h"
 #import "EditorClient.h"
 #import "Font.h"
@@ -40,6 +39,7 @@
 #import "HTMLConverter.h"
 #import "HTMLNames.h"
 #import "LegacyWebArchive.h"
+#import "NodeTraversal.h"
 #import "Pasteboard.h"
 #import "PasteboardStrategy.h"
 #import "PlatformStrategies.h"
@@ -47,6 +47,7 @@
 #import "RenderBlock.h"
 #import "RuntimeApplicationChecks.h"
 #import "Sound.h"
+#import "Text.h"
 #import "TypingCommand.h"
 #import "htmlediting.h"
 #import "WebNSAttributedStringExtras.h"
@@ -168,7 +169,7 @@ const SimpleFontData* Editor::fontForSelection(bool& hasMultipleFonts) const
         Node* pastEnd = range->pastLastNode();
         // In the loop below, n should eventually match pastEnd and not become nil, but we've seen at least one
         // unreproducible case where this didn't happen, so check for null also.
-        for (Node* node = startNode; node && node != pastEnd; node = node->traverseNextNode()) {
+        for (Node* node = startNode; node && node != pastEnd; node = NodeTraversal::next(node)) {
             RenderObject* renderer = node->renderer();
             if (!renderer)
                 continue;

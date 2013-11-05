@@ -5,6 +5,8 @@ WEBCORE_CSS_PROPERTY_NAMES := $(WebCore)/css/CSSPropertyNames.in
 WEBCORE_CSS_VALUE_KEYWORDS := $(WebCore)/css/CSSValueKeywords.in
 
 webcore_cppflags += \
+	-DWTF_USE_FREETYPE=1 \
+	-DWTF_USE_HARFBUZZ_NG=1 \
 	-I$(srcdir)/Source/ThirdParty/ANGLE/src \
 	-I$(srcdir)/Source/ThirdParty/ANGLE/include \
 	-I$(srcdir)/Source/ThirdParty/ANGLE/include/GLSLANG \
@@ -57,7 +59,11 @@ webcore_cppflags += \
 	-I$(srcdir)/Source/WebCore/platform/graphics/cpu/arm \
 	-I$(srcdir)/Source/WebCore/platform/graphics/cpu/arm/filters/ \
 	-I$(srcdir)/Source/WebCore/platform/graphics/filters \
+	-I$(srcdir)/Source/WebCore/platform/graphics/filters/texmap \
+	-I$(srcdir)/Source/WebCore/platform/graphics/freetype \
 	-I$(srcdir)/Source/WebCore/platform/graphics/gpu \
+	-I$(srcdir)/Source/WebCore/platform/graphics/harfbuzz \
+	-I$(srcdir)/Source/WebCore/platform/graphics/harfbuzz/ng \
 	-I$(srcdir)/Source/WebCore/platform/graphics/opengl \
 	-I$(srcdir)/Source/WebCore/platform/graphics/opentype \
 	-I$(srcdir)/Source/WebCore/platform/graphics/transforms \
@@ -105,39 +111,26 @@ webcore_cppflags += \
 
 webcoregtk_cppflags += \
 	-DWEBKITGTK_API_VERSION_STRING=\"@WEBKITGTK_API_VERSION@\" \
+	-DWTF_USE_FREETYPE=1 \
+	-DWTF_USE_HARFBUZZ_NG=1 \
 	-DWTF_USE_SOUP=1 \
-	-I$(srcdir)/Source/WebCore/accessibility/gtk \
+	-I$(srcdir)/Source/WebCore/accessibility/atk \
 	-I$(srcdir)/Source/WebCore/loader/gtk \
 	-I$(srcdir)/Source/WebCore/page/gtk \
 	-I$(srcdir)/Source/WebCore/platform/cairo \
 	-I$(srcdir)/Source/WebCore/platform/audio/gstreamer \
 	-I$(srcdir)/Source/WebCore/platform/geoclue \
 	-I$(srcdir)/Source/WebCore/platform/graphics/cairo \
+	-I$(srcdir)/Source/WebCore/platform/graphics/freetype \
 	-I$(srcdir)/Source/WebCore/platform/graphics/glx \
+	-I$(srcdir)/Source/WebCore/platform/graphics/harfbuzz \
+	-I$(srcdir)/Source/WebCore/platform/graphics/harfbuzz/ng \
 	-I$(srcdir)/Source/WebCore/platform/graphics/egl \
 	-I$(srcdir)/Source/WebCore/platform/graphics/gstreamer \
 	-I$(srcdir)/Source/WebCore/platform/graphics/gtk \
 	-I$(srcdir)/Source/WebCore/platform/gtk \
 	-I$(srcdir)/Source/WebCore/platform/network/soup \
 	-I$(srcdir)/Source/WebCore/platform/text/enchant
-
-# ---
-# FreeType font backend
-# ---
-if USE_FREETYPE
-webcoregtk_cppflags += \
-	-DWTF_USE_FREETYPE=1 \
-	-I$(srcdir)/Source/WebCore/platform/graphics/freetype
-endif # END USE_FREETYPE
-
-# ---
-# Pango font backend
-# ---
-if USE_PANGO
-webcoregtk_cppflags += \
-	-DWTF_USE_PANGO=1 \
-	-I$(srcdir)/Source/WebCore/platform/graphics/pango
-endif # END USE_PANGO
 
 # ---
 # Windows plugin support
@@ -155,19 +148,6 @@ feature_defines_overrides += ENABLE_GAMEPAD=1
 else
 feature_defines_overrides += ENABLE_GAMEPAD=0
 endif # END ENABLE_GAMEPAD
-
-# ----
-# Indexed Database API support
-# ----
-if ENABLE_INDEXED_DATABASE
-feature_defines_overrides += ENABLE_INDEXED_DATABASE=1
-else
-feature_defines_overrides += ENABLE_INDEXED_DATABASE=0
-endif # END ENABLE_INDEXED_DATABASE
-
-if USE_LEVELDB
-webcore_cppflags += -DWTF_USE_LEVELDB
-endif # END USE_LEVELDB
 
 # ----
 # Video Support
@@ -208,15 +188,6 @@ $(GENSOURCES_WEBCORE)/XPathGrammar.cpp: $(WebCore)/xml/XPathGrammar.y
 	$(AM_V_at)perl $(WebCore)/css/makegrammar.pl --outputDir $(GENSOURCES_WEBCORE) --bison "$(BISON)" --symbolsPrefix xpathyy $<
 
 # ----
-# XHR timeout Support
-# ----
-if ENABLE_XHR_TIMEOUT
-feature_defines_overrides += ENABLE_XHR_TIMEOUT=1
-else
-feature_defines_overrides += ENABLE_XHR_TIMEOUT=0
-endif # END ENABLE_XHR_TIMEOUT
-
-# ----
 # XSLT Support
 # ----
 if ENABLE_XSLT
@@ -226,22 +197,13 @@ feature_defines_overrides += ENABLE_XSLT=0
 endif # END ENABLE_XSLT
 
 # ----
-# Filters
+# Unprefixed CSS Transforms, Animation and Transitions
 # ----
-if ENABLE_FILTERS
-feature_defines_overrides += ENABLE_FILTERS=1
+if ENABLE_CSS_TRANSFORMS_ANIMATIONS_TRANSITIONS_UNPREFIXED
+feature_defines_overrides += ENABLE_CSS_TRANSFORMS_ANIMATIONS_TRANSITIONS_UNPREFIXED=1
 else
-feature_defines_overrides += ENABLE_FILTERS=0
-endif # END ENABLE_FILTERS
-
-# ----
-# CSS Device Adaptation
-# ----
-if ENABLE_CSS_DEVICE_ADAPTATION
-feature_defines_overrides += ENABLE_CSS_DEVICE_ADAPTATION=1
-else
-feature_defines_overrides += ENABLE_CSS_DEVICE_ADAPTATION=0
-endif # END ENABLE_CSS_DEVICE_ADAPTATION
+feature_defines_overrides += ENABLE_CSS_TRANSFORMS_ANIMATIONS_TRANSITIONS_UNPREFIXED=0
+endif # END ENABLE_CSS_TRANSFORMS_ANIMATIONS_TRANSITIONS_UNPREFIXED
 
 # ----
 # Shaders
@@ -273,6 +235,32 @@ DerivedSources/WebCore/MathMLElementFactory.cpp DerivedSources/WebCore/MathMLNam
 # FIXME: allow a more fine-grained inclusion/generation of sources per SVG feature
 # ----
 if ENABLE_SVG
+nodist_libWebCoreSVG_la_SOURCES = \
+	$(webcore_svg_built_sources)
+
+libWebCoreSVG_la_SOURCES = \
+	$(webcore_svg_sources)
+
+libWebCoreSVG_la_CXXFLAGS = \
+	$(SYMBOL_VISIBILITY_INLINES) \
+	$(global_cxxflags)
+
+libWebCoreSVG_la_CFLAGS = \
+	$(SYMBOL_VISIBILITY) \
+	$(global_cflags)
+
+libWebCoreSVG_la_CPPFLAGS = \
+	-DBUILDING_WebCore \
+	-DBUILDING_WEBKIT \
+	$(global_cppflags) \
+	$(webcore_cppflags) \
+	$(webcoregtk_cppflags) \
+	$(javascriptcore_cppflags) \
+	-fno-strict-aliasing \
+	$(CAIRO_CFLAGS) \
+	$(FREETYPE_CFLAGS) \
+	$(LIBSOUP_CFLAGS)
+
 feature_defines_overrides += ENABLE_SVG=1
 WEBCORE_CSS_PROPERTY_NAMES += $(WebCore)/css/SVGCSSPropertyNames.in
 WEBCORE_CSS_VALUE_KEYWORDS += $(WebCore)/css/SVGCSSValueKeywords.in
@@ -354,32 +342,6 @@ else
 feature_defines_overrides += ENABLE_SPELLCHECK=0
 endif  # END ENABLE_SPELLCHECK
 
-# ---
-# CSS3 Conditional Rules support
-# ---
-if ENABLE_CSS3_CONDITIONAL_RULES
-feature_defines_overrides += ENABLE_CSS3_CONDITIONAL_RULES=1
-else
-feature_defines_overrides += ENABLE_CSS3_CONDITIONAL_RULES=0
-endif  # END ENABLE_CSS3_CONDITIONAL_RULES
-
-# ---
-# Unstable features
-# If unstable features should not be enabled, their defines should be overriden with a 0 value.
-# ---
-if !ENABLE_UNSTABLE_FEATURES
-feature_defines_unstable += \
-	ENABLE_CSP_NEXT=0 \
-	ENABLE_CSS3_TEXT=0 \
-	ENABLE_CSS_STICKY_POSITION=0 \
-	ENABLE_LINK_PREFETCH=0 \
-	ENABLE_MICRODATA=0 \
-	ENABLE_MUTATION_OBSERVERS=0 \
-	ENABLE_STYLE_SCOPED=0 \
-	ENABLE_VIDEO_TRACK=0 \
-	ENABLE_WEB_TIMING=0
-endif
-
 
 # Fill the feature_defines variable with all the defines, making it possible
 # to override the default define value (as set in feature_defines_defaults)
@@ -391,12 +353,9 @@ feature_defines += $(strip $(foreach bare_define, \
 			$(if $(findstring =$(fvalue),$(define)),$(patsubst %=$(fvalue),%,$(define))) \
 		) \
 	), \
-	$(if $(findstring $(bare_define)=, $(feature_defines_unstable)), \
-		$(filter $(bare_define)=%,$(feature_defines_unstable)), \
-		$(if $(findstring $(bare_define)=, $(feature_defines_overrides)), \
-			$(filter $(bare_define)=%,$(feature_defines_overrides)), \
-			$(filter $(bare_define)=%,$(feature_defines_defaults)) \
-		) \
+	$(if $(findstring $(bare_define)=, $(feature_defines_overrides)), \
+		$(filter $(bare_define)=%,$(feature_defines_overrides)), \
+		$(filter $(bare_define)=%,$(feature_defines_defaults)) \
 	) \
 ))
 
@@ -461,7 +420,6 @@ USER_AGENT_STYLE_SHEETS = \
 SCRIPTS_FOR_GENERATE_BINDINGS = \
 	$(WebCore)/bindings/scripts/CodeGenerator.pm \
 	$(WebCore)/bindings/scripts/IDLParser.pm \
-	$(WebCore)/bindings/scripts/IDLStructure.pm \
 	$(WebCore)/bindings/scripts/InFilesCompiler.pm \
 	$(WebCore)/bindings/scripts/InFilesParser.pm \
 	$(WebCore)/bindings/scripts/generate-bindings.pl \
@@ -601,8 +559,14 @@ DerivedSources/WebCore/JS%.h: %.idl $(SCRIPTS_FOR_GENERATE_BINDINGS) $(WebCore)/
 $(webkitgtk_sources) $(webkit2_sources) $(webkit2_plugin_process_sources) $(webcore_sources) $(webcoregtk_sources) : | $(supplemental_dependency_file) $(webcore_built_sources)
 
 noinst_LTLIBRARIES += \
+	libWebCorePlatform.la \
 	libWebCoreModules.la \
 	libWebCore.la
+
+if ENABLE_SVG
+noinst_LTLIBRARIES += \
+	libWebCoreSVG.la
+endif
 
 # Artificial dependency to try to force a relink of the WebCore libraries
 # When their makefiles change.
@@ -611,6 +575,12 @@ $(webcore_lib_for_dep): $(srcdir)/Source/WebCore/GNUmakefile.am $(srcdir)/Source
 
 webcoremodules_lib_for_dep = libWebcoreModules.la
 $(webcoremodules_lib_for_dep): $(srcdir)/Source/WebCore/GNUmakefile.am $(srcdir)/Source/WebCore/GNUmakefile.list.am
+
+webcoreplatform_lib_for_dep = libWebcorePlatform.la
+$(webcoreplatform_lib_for_dep): $(srcdir)/Source/WebCore/GNUmakefile.am $(srcdir)/Source/WebCore/GNUmakefile.list.am
+
+webcoresvg_lib_for_dep = libWebCoreSVG.la
+$(webcoresvg_lib_for_dep): $(srcdir)/Source/WebCore/GNUmakefile.am $(srcdir)/Source/WebCore/GNUmakefile.list.am
 
 nodist_EXTRA_libWebCore_la_SOURCES = \
 	$(webcore_built_nosources)
@@ -641,6 +611,7 @@ libWebCore_la_CPPFLAGS = \
 	$(CLUTTER_CFLAGS) \
 	$(COVERAGE_CFLAGS) \
 	$(ENCHANT_CFLAGS) \
+	$(FREETYPE_CFLAGS) \
 	$(GAMEPAD_CFLAGS) \
 	$(GEOCLUE_CFLAGS) \
 	$(GLIB_CFLAGS) \
@@ -668,6 +639,43 @@ libWebCoreModules_la_CXXFLAGS = $(libWebCore_la_CXXFLAGS)
 libWebCoreModules_la_CFLAGS = $(libWebCore_la_CFLAGS)
 
 libWebCoreModules_la_CPPFLAGS = $(libWebCore_la_CPPFLAGS)
+
+libWebCorePlatform_la_SOURCES = \
+	$(webcore_platform_sources)
+
+libWebCorePlatform_la_CXXFLAGS = \
+	$(SYMBOL_VISIBILITY_INLINES) \
+	$(global_cxxflags)
+
+libWebCorePlatform_la_CFLAGS = \
+	$(SYMBOL_VISIBILITY) \
+	$(global_cflags)
+
+libWebCorePlatform_la_CPPFLAGS = \
+	-DBUILDING_WEBKIT \
+	$(global_cppflags) \
+	$(webcore_cppflags) \
+	$(webcoregtk_cppflags) \
+	$(javascriptcore_cppflags) \
+	-fno-strict-aliasing \
+	$(CAIRO_CFLAGS) \
+	$(CLUTTER_CFLAGS) \
+	$(COVERAGE_CFLAGS) \
+	$(ENCHANT_CFLAGS) \
+	$(FREETYPE_CFLAGS) \
+	$(GAMEPAD_CFLAGS) \
+	$(GEOCLUE_CFLAGS) \
+	$(GLIB_CFLAGS) \
+	$(GSTREAMER_CFLAGS) \
+	$(LIBSECRET_CFLAGS) \
+	$(LIBSOUP_CFLAGS) \
+	$(LIBXML_CFLAGS) \
+	$(LIBXSLT_CFLAGS) \
+	$(PANGO_CFLAGS) \
+	$(SQLITE3_CFLAGS) \
+	$(UNICODE_CFLAGS) \
+	$(XRENDER_CFLAGS) \
+	$(XT_CFLAGS)
 
 # We have a different library with only the files that require GTK+. It allows us
 # to build a common WebCore lib and two different gtk WebCore libs depending on
@@ -702,6 +710,7 @@ libWebCoreGtk_la_CPPFLAGS = \
 	$(COVERAGE_CFLAGS) \
 	$(ENCHANT_CFLAGS) \
 	$(FARSTREAM_CFLAGS) \
+	$(FREETYPE_CFLAGS) \
 	$(GAIL_CFLAGS) \
 	$(GAMEPAD_CFLAGS) \
 	$(GEOCLUE_CFLAGS) \
@@ -756,7 +765,6 @@ EXTRA_DIST += \
 	Source/WebCore/bindings/scripts/CodeGenerator.pm \
 	Source/WebCore/bindings/scripts/IDLAttributes.txt \
 	Source/WebCore/bindings/scripts/IDLParser.pm \
-	Source/WebCore/bindings/scripts/IDLStructure.pm \
 	Source/WebCore/bindings/scripts/InFilesCompiler.pm \
 	Source/WebCore/bindings/scripts/InFilesParser.pm \
 	Source/WebCore/bindings/scripts/generate-bindings.pl \

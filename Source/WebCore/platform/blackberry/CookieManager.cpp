@@ -78,8 +78,6 @@ CookieManager& cookieManager()
         // Open the cookieJar now and get the backing store cookies to fill the manager.
         cookieManager = new CookieManager;
         cookieManager->m_cookieBackingStore->open(cookieManager->cookieJar());
-        cookieManager->getBackingStoreCookies();
-        CookieLog("CookieManager - Backingstore load complete.\n");
     }
     return *cookieManager;
 }
@@ -88,6 +86,7 @@ CookieManager::CookieManager()
     : m_count(0)
     , m_privateMode(false)
     , m_shouldDumpAllCookies(false)
+    , m_syncedWithDatabase(false)
     , m_cookieJarFileName(pathByAppendingComponent(BlackBerry::Platform::Settings::instance()->applicationDataDirectory().c_str(), "/cookieCollection.db"))
     , m_policy(CookieStorageAcceptPolicyAlways)
     , m_cookieBackingStore(CookieDatabaseBackingStore::create())
@@ -127,6 +126,16 @@ static bool shouldIgnoreScheme(const String& protocol)
 
 void CookieManager::setCookies(const KURL& url, const String& value, CookieFilter filter)
 {
+    // Dispatch the message because the database cookies are not loaded in memory yet.
+    if (!m_syncedWithDatabase && !m_privateMode) {
+        typedef void (WebCore::CookieManager::*FunctionType)(const KURL&, const String&, CookieFilter);
+
+        BlackBerry::Platform::webKitThreadMessageClient()->dispatchMessage(
+            BlackBerry::Platform::createMethodCallMessage<FunctionType, CookieManager, const KURL, const String, CookieFilter>(
+                &CookieManager::setCookies, this, url, value, filter));
+        return;
+    }
+
     CookieLog("CookieManager - Setting cookies");
     CookieParser parser(url);
     Vector<ParsedCookie*> cookies = parser.parse(value);
@@ -139,6 +148,15 @@ void CookieManager::setCookies(const KURL& url, const String& value, CookieFilte
 
 void CookieManager::setCookies(const KURL& url, const Vector<String>& cookies, CookieFilter filter)
 {
+    // Dispatch the message because the database cookies are not loaded in memory yet.
+    if (!m_syncedWithDatabase && !m_privateMode) {
+        typedef void (WebCore::CookieManager::*FunctionType)(const KURL&, const Vector<String>&, CookieFilter);
+        BlackBerry::Platform::webKitThreadMessageClient()->dispatchMessage(
+            BlackBerry::Platform::createMethodCallMessage<FunctionType, CookieManager, const KURL, const Vector<String>, CookieFilter>(
+                &CookieManager::setCookies, this, url, cookies, filter));
+        return;
+    }
+
     CookieLog("CookieManager - Setting cookies");
     CookieParser parser(url);
     for (size_t i = 0; i < cookies.size(); ++i) {
@@ -150,6 +168,11 @@ void CookieManager::setCookies(const KURL& url, const Vector<String>& cookies, C
 
 String CookieManager::getCookie(const KURL& url, CookieFilter filter) const
 {
+    if (!m_syncedWithDatabase && !m_privateMode) {
+        LOG_ERROR("CookieManager is calling getCookies before database values are loaded.");
+        return String();
+    }
+
     Vector<ParsedCookie*> rawCookies;
     rawCookies.reserveInitialCapacity(s_maxCookieCountPerHost);
 
@@ -175,6 +198,11 @@ String CookieManager::getCookie(const KURL& url, CookieFilter filter) const
 
 String CookieManager::generateHtmlFragmentForCookies()
 {
+    if (!m_syncedWithDatabase && !m_privateMode) {
+        LOG_ERROR("CookieManager is calling generateHtmlFragmentForCookies before database values are loaded.");
+        return String();
+    }
+
     CookieLog("CookieManager - generateHtmlFragmentForCookies\n");
 
     Vector<ParsedCookie*> cookieCandidates;
@@ -210,6 +238,11 @@ String CookieManager::generateHtmlFragmentForCookies()
 
 void CookieManager::getRawCookies(Vector<ParsedCookie*> &stackOfCookies, const KURL& requestURL, CookieFilter filter) const
 {
+    if (!m_syncedWithDatabase && !m_privateMode) {
+        LOG_ERROR("CookieManager is calling getRawCookies before database values are loaded.");
+        return;
+    }
+
     CookieLog("CookieManager - getRawCookies - processing url with domain - %s & protocol: %s & path: %s\n", requestURL.host().utf8().data(), requestURL.protocol().utf8().data(), requestURL.path().utf8().data());
 
     const bool invalidScheme = shouldIgnoreScheme(requestURL.protocol());
@@ -489,6 +522,10 @@ void CookieManager::addCookieToMap(CookieMap* targetMap, ParsedCookie* candidate
 
 void CookieManager::getBackingStoreCookies()
 {
+    // Make sure private mode is off when the database thread calls this method
+    if (m_privateMode)
+        return;
+
     // This method should be called just after having created the cookieManager
     // NEVER afterwards!
     ASSERT(!m_count);
@@ -500,18 +537,28 @@ void CookieManager::getBackingStoreCookies()
         ParsedCookie* newCookie = cookies[i];
         checkAndTreatCookie(newCookie, BackingStoreCookieEntry);
     }
+    CookieLog("CookieManager - Backingstore loading complete.");
+
+    m_syncedWithDatabase = true;
 }
 
-void CookieManager::setPrivateMode(bool mode)
+void CookieManager::setPrivateMode(bool privateMode)
 {
-    if (m_privateMode == mode)
+    if (m_privateMode == privateMode)
         return;
 
-    m_privateMode = mode;
-    if (!mode) {
-        removeAllCookies(DoNotRemoveFromBackingStore);
+    m_privateMode = privateMode;
+
+    // If we switched to private mode when the database cookies haven't loaded into memory yet
+    // we can return because there's nothing in memory anyway.
+    if (m_privateMode && !m_syncedWithDatabase)
+        return;
+
+    removeAllCookies(DoNotRemoveFromBackingStore);
+
+    // If we are switching back to public mode, reload the database to memory.
+    if (!m_privateMode)
         getBackingStoreCookies();
-    }
 }
 
 CookieMap* CookieManager::findOrCreateCookieMap(CookieMap* protocolMap, const ParsedCookie& candidateCookie)
@@ -553,6 +600,15 @@ CookieMap* CookieManager::findOrCreateCookieMap(CookieMap* protocolMap, const Pa
 
 void CookieManager::removeCookieWithName(const KURL& url, const String& cookieName)
 {
+    // Dispatch the message because the database cookies are not loaded in memory yet.
+    if (!m_syncedWithDatabase && !m_privateMode) {
+        typedef void (WebCore::CookieManager::*FunctionType)(const KURL&, const String&);
+        BlackBerry::Platform::webKitThreadMessageClient()->dispatchMessage(
+            BlackBerry::Platform::createMethodCallMessage<FunctionType, CookieManager, const KURL, const String>(
+                &CookieManager::removeCookieWithName, this, url, cookieName));
+        return;
+    }
+
     // We get all cookies from all domains that domain matches the request domain
     // and delete any cookies with the specified name that path matches the request path
     Vector<ParsedCookie*> results;

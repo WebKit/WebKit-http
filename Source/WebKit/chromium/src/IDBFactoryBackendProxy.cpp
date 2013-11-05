@@ -61,14 +61,24 @@ using namespace WebCore;
 
 namespace WebKit {
 
+static WebIDBFactory* s_webIDBFactory = 0;
+
+void setIDBFactory(WebIDBFactory* factory)
+{
+    s_webIDBFactory = factory;
+}
+
 PassRefPtr<IDBFactoryBackendInterface> IDBFactoryBackendProxy::create()
 {
     return adoptRef(new IDBFactoryBackendProxy());
 }
 
 IDBFactoryBackendProxy::IDBFactoryBackendProxy()
-    : m_webIDBFactory(webKitPlatformSupport()->idbFactory())
 {
+    if (s_webIDBFactory)
+        m_webIDBFactory = s_webIDBFactory;
+    else
+        m_webIDBFactory = webKitPlatformSupport()->idbFactory();
 }
 
 IDBFactoryBackendProxy::~IDBFactoryBackendProxy()
@@ -178,7 +188,7 @@ bool IDBFactoryBackendProxy::allowIndexedDB(ScriptExecutionContext* context, con
     }
 
     if (!allowed)
-        callbacks->onError(WebIDBDatabaseError(IDBDatabaseException::UNKNOWN_ERR, "The user denied permission to access the database."));
+        callbacks->onError(WebIDBDatabaseError(IDBDatabaseException::UnknownError, "The user denied permission to access the database."));
 
     return allowed;
 }
@@ -205,6 +215,7 @@ void IDBFactoryBackendProxy::getDatabaseNames(PassRefPtr<IDBCallbacks> prpCallba
 }
 
 
+// FIXME: Remove this method in https://bugs.webkit.org/show_bug.cgi?id=103923.
 void IDBFactoryBackendProxy::open(const String& name, int64_t version, PassRefPtr<IDBCallbacks> prpCallbacks, PassRefPtr<IDBDatabaseCallbacks> prpDatabaseCallbacks, PassRefPtr<SecurityOrigin> securityOrigin, ScriptExecutionContext* context, const String& dataDir)
 {
     RefPtr<IDBCallbacks> callbacks(prpCallbacks);
@@ -215,6 +226,18 @@ void IDBFactoryBackendProxy::open(const String& name, int64_t version, PassRefPt
 
     WebFrameImpl* webFrame = getWebFrame(context);
     m_webIDBFactory->open(name, version, new WebIDBCallbacksImpl(callbacks), new WebIDBDatabaseCallbacksImpl(databaseCallbacks), origin, webFrame, dataDir);
+}
+
+void IDBFactoryBackendProxy::open(const String& name, int64_t version, int64_t transactionId, PassRefPtr<IDBCallbacks> prpCallbacks, PassRefPtr<IDBDatabaseCallbacks> prpDatabaseCallbacks, PassRefPtr<SecurityOrigin> securityOrigin, ScriptExecutionContext* context, const String& dataDir)
+{
+    RefPtr<IDBCallbacks> callbacks(prpCallbacks);
+    RefPtr<IDBDatabaseCallbacks> databaseCallbacks(prpDatabaseCallbacks);
+    WebSecurityOrigin origin(securityOrigin);
+    if (!allowIndexedDB(context, name, origin, callbacks))
+        return;
+
+    WebFrameImpl* webFrame = getWebFrame(context);
+    m_webIDBFactory->open(name, version, transactionId, new WebIDBCallbacksImpl(callbacks), new WebIDBDatabaseCallbacksImpl(databaseCallbacks), origin, webFrame, dataDir);
 }
 
 void IDBFactoryBackendProxy::deleteDatabase(const String& name, PassRefPtr<IDBCallbacks> prpCallbacks, PassRefPtr<SecurityOrigin> securityOrigin, ScriptExecutionContext* context, const String& dataDir)

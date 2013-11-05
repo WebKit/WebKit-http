@@ -34,6 +34,7 @@
 #include "Editor.h"
 #include "HTMLElement.h"
 #include "HTMLNames.h"
+#include "HTMLTemplateElement.h"
 #include "KURL.h"
 #include "ProcessingInstruction.h"
 #include "XLinkNames.h"
@@ -141,7 +142,12 @@ void MarkupAccumulator::serializeNodesWithNamespaces(Node* targetNode, Node* nod
         appendStartTag(targetNode, &namespaceHash);
 
     if (!(targetNode->document()->isHTMLDocument() && elementCannotHaveEndTag(targetNode))) {
-        for (Node* current = targetNode->firstChild(); current; current = current->nextSibling())
+#if ENABLE(TEMPLATE_ELEMENT)
+        Node* current = targetNode->hasTagName(templateTag) ? toHTMLTemplateElement(targetNode)->content()->firstChild() : targetNode->firstChild();
+#else
+        Node* current = targetNode->firstChild();
+#endif
+        for ( ; current; current = current->nextSibling())
             serializeNodesWithNamespaces(current, nodeToSkip, IncludeNode, &namespaceHash, tagNamesToSkip);
     }
 
@@ -449,13 +455,13 @@ void MarkupAccumulator::appendAttribute(StringBuilder& result, Element* element,
     else {
         QualifiedName prefixedName = attribute.name();
         if (attribute.namespaceURI() == XLinkNames::xlinkNamespaceURI) {
-            if (attribute.prefix() != xlinkAtom)
+            if (!attribute.prefix())
                 prefixedName.setPrefix(xlinkAtom);
         } else if (attribute.namespaceURI() == XMLNames::xmlNamespaceURI) {
-            if (attribute.prefix() != xmlAtom)
+            if (!attribute.prefix())
                 prefixedName.setPrefix(xmlAtom);
         } else if (attribute.namespaceURI() == XMLNSNames::xmlnsNamespaceURI) {
-            if (attribute.name() != XMLNSNames::xmlnsAttr && attribute.prefix() != xmlnsAtom)
+            if (attribute.name() != XMLNSNames::xmlnsAttr && !attribute.prefix())
                 prefixedName.setPrefix(xmlnsAtom);
         }
         result.append(prefixedName.toString());

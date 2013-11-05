@@ -41,6 +41,7 @@ namespace WebCore {
 class CursorList;
 class QuotesData;
 class ShadowData;
+class StyleImage;
 
 // This struct is for rarely used inherited CSS3, CSS2, and WebKit-specific properties.
 // By grouping them together, we save space, and only allocate this object when someone
@@ -59,6 +60,8 @@ public:
     bool shadowDataEquivalent(const StyleRareInheritedData&) const;
 
     void reportMemoryUsage(MemoryObjectInfo*) const;
+
+    RefPtr<StyleImage> listStyleImage;
 
     Color textStrokeColor;
     float textStrokeWidth;
@@ -79,6 +82,8 @@ public:
     // Paged media properties.
     short widows;
     short orphans;
+    unsigned m_hasAutoWidows : 1;
+    unsigned m_hasAutoOrphans : 1;
     
     unsigned textSecurity : 2; // ETextSecurity
     unsigned userModify : 2; // EUserModify (editing)
@@ -95,6 +100,7 @@ public:
     unsigned textEmphasisFill : 1; // TextEmphasisFill
     unsigned textEmphasisMark : 3; // TextEmphasisMark
     unsigned textEmphasisPosition : 1; // TextEmphasisPosition
+    unsigned m_textOrientation : 2; // TextOrientation
     unsigned m_lineBoxContain: 7; // LineBoxContain
     // CSS Image Values Level 3
 #if ENABLE(CSS_IMAGE_ORIENTATION)
@@ -113,6 +119,7 @@ public:
 #if ENABLE(CSS3_TEXT)
     unsigned m_textAlignLast : 3; // ETextAlignLast
 #endif // CSS3_TEXT
+    unsigned m_rubyPosition : 1; // RubyPosition
 
     AtomicString hyphenationString;
     short hyphenationLimitBefore;

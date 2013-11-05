@@ -56,7 +56,7 @@ public:
     // meaningful enough or not.
     virtual WrappedImagePtr data() const { return m_bestFitImage.get(); }
 
-    CachedImage* cachedImage() const { return m_bestFitImage.get(); }
+    void clearImageSetValue() { m_imageSetValue = 0; }
 
     virtual bool canRender(const RenderObject*, float multiplier) const;
     virtual bool isLoaded() const;
@@ -71,6 +71,8 @@ public:
     virtual void removeClient(RenderObject*);
     virtual PassRefPtr<Image> image(RenderObject*, const IntSize&) const;
     virtual float imageScaleFactor() const { return m_imageScaleFactor; }
+    virtual bool hasAlpha(const RenderObject*) const OVERRIDE;
+    virtual CachedImage* cachedImage() const OVERRIDE { return m_bestFitImage.get(); }
     
 private:
     StyleCachedImageSet(CachedImage*, float imageScaleFactor, CSSImageSetValue*);

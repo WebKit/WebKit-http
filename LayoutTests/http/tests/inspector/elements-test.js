@@ -153,7 +153,7 @@ InspectorTest.dumpSelectedElementStyles = function(excludeComputed, excludeMatch
                 continue;
             if (section.element.previousSibling && section.element.previousSibling.className === "sidebar-separator")
                 InspectorTest.addResult("======== " + section.element.previousSibling.textContent + " ========");
-            InspectorTest.addResult(section.expanded ? "[expanded] " : "[collapsed] ");
+            InspectorTest.addResult((section.expanded ? "[expanded] " : "[collapsed] ") + (section.noAffect ? "[no-affect] " : ""));
             var chainEntries = section.titleElement.children;
             for (var j = 0; j < chainEntries.length; ++j) {
                 var chainEntry = chainEntries[j];
@@ -258,6 +258,29 @@ InspectorTest.dumpObjectPropertySection = function(section, formatters)
         if (key in formatters)
             value = formatters[key](value);
         InspectorTest.addResult("    " + key + ": " + value);
+    }
+}
+
+InspectorTest.dumpObjectPropertySectionDeep = function(section)
+{
+    function domNodeToString(node) {
+        if (node)
+            return "'" + node.textContent + "'";
+        else
+            return "null";
+    }
+    function dumpTreeElementRecursively(treeElement, prefix) {
+        if ("nameElement" in treeElement)
+            InspectorTest.addResult(prefix + domNodeToString(treeElement.nameElement) + " => " + domNodeToString(treeElement.valueElement));
+        else
+            InspectorTest.addResult(prefix + treeElement.title);
+        for (var i = 0; i < treeElement.children.length; i++)
+            dumpTreeElementRecursively(treeElement.children[i], prefix + "    ");
+    }
+
+    var childNodes = section.propertiesTreeOutline.children;
+    for (var i = 0; i < childNodes.length; i++) {
+        dumpTreeElementRecursively(childNodes[i], "");
     }
 }
 

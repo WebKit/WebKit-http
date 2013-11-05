@@ -66,7 +66,6 @@ var CODE_REVIEW_UNITTEST;
   var minLeftSideRatio = 10;
   var maxLeftSideRatio = 90;
   var file_diff_being_resized = null;
-  var next_line_id = 0;
   var files = {};
   var original_file_contents = {};
   var patched_file_contents = {};
@@ -89,18 +88,15 @@ var CODE_REVIEW_UNITTEST;
     return 'line' + number;
   }
 
-  function nextLineID() {
-    return idForLine(next_line_id++);
-  }
-
   function forEachLine(callback) {
-    for (var i = 0; i < next_line_id; ++i) {
-      callback($('#' + idForLine(i)));
-    }
-  }
-
-  function idify() {
-    this.id = nextLineID();
+    var i = 0;
+    var line;
+    do {
+      line = $('#' + idForLine(i));
+      if (line[0])
+        callback(line);
+      i++;
+    } while (line[0]);
   }
 
   function hoverify() {
@@ -423,7 +419,7 @@ var CODE_REVIEW_UNITTEST;
       $(file).find(query).each(function() {
         if ($(this).text() != line_number)
           return;
-        var line = $(this).parent();
+        var line = lineContainerFromDescendant($(this));
         addPreviousComment(line, author, comment_text);
       });
     }
@@ -601,6 +597,11 @@ var CODE_REVIEW_UNITTEST;
   }
 
   function crawlDiff() {
+    var next_line_id = 0;
+    var idify = function() {
+      this.id = idForLine(next_line_id++);
+    }
+
     $('.Line').each(idify).each(hoverify);
     $('.FileDiff').each(function() {
       var header = $(this).children('h1');
@@ -637,9 +638,10 @@ var CODE_REVIEW_UNITTEST;
     for (var i = 0; i < implementation_suffix_list.length; ++i) {
       var suffix = implementation_suffix_list[i];
       if (file_name.lastIndexOf(suffix) == file_name.length - suffix.length) {
-        trac_links.prepend('<a target="_blank">header</a>');
+        var new_link = $('<a target="_blank">header</a>');
         var stem = file_name.substr(0, file_name.length - suffix.length);
-        trac_links[0].href= 'http://trac.webkit.org/log/trunk/' + stem + '.h';
+        new_link[0].href= 'http://trac.webkit.org/log/trunk/' + stem + '.h';
+        trac_links = $.merge(new_link, trac_links);
       }
     }
     return trac_links;
@@ -1058,19 +1060,6 @@ var CODE_REVIEW_UNITTEST;
     g_overallCommentsInputTimer = setTimeout(saveDraftComments, 1000);
   }
 
-  function onBodyResize() {
-    updateToolbarAnchorState();
-  }
-
-  function updateToolbarAnchorState() {
-    var toolbar = $('#toolbar');
-    // Unanchor the toolbar and then see if it's bottom is below the body's bottom.
-    toolbar.toggleClass('anchored', false);
-    var toolbar_bottom = toolbar.offset().top + toolbar.outerHeight();
-    var should_anchor = toolbar_bottom >= document.body.clientHeight;
-    toolbar.toggleClass('anchored', should_anchor);
-  }
-
   function diffLinksHtml() {
     return '<a href="javascript:" class="unify-link">unified</a>' +
       '<a href="javascript:" class="side-by-side-link">side-by-side</a>';
@@ -1089,20 +1078,30 @@ var CODE_REVIEW_UNITTEST;
             '<button id="preview_comments">Preview</button>' +
             '<button id="post_comments">Publish</button> ' +
           '</span>' +
+          '<div class="clear_float"></div>' +
         '</div>' +
         '<div class="autosave-state"></div>' +
         '</div>');
 
     $('.overallComments textarea').bind('click', openOverallComments);
     $('.overallComments textarea').bind('input', handleOverallCommentsInput);
+
+    var toolbar = $('#toolbar');
+    toolbar.css('position', '-webkit-sticky');
+    var supportsSticky = toolbar.css('position') == '-webkit-sticky';
+    document.body.style.marginBottom = supportsSticky ? 0 : '40px';
   }
 
   function handleDocumentReady() {
     crawlDiff();
     fetchHistory();
+
     $(document.body).prepend('<div id="message">' +
         '<div class="help">Select line numbers to add a comment. Scroll though diffs with the "j" and "k" keys.' +
-          '<div class="DiffLinks LinkContainer">' + diffLinksHtml() + '</div>' +
+          '<div class="DiffLinks LinkContainer">' +
+            '<input type="checkbox" id="line-number-on-copy"><label for="line-number-on-copy">Skip line numbers on copy</label>' +
+            diffLinksHtml() +
+          '</div>' +
           '<a href="javascript:" class="more">[more]</a>' +
           '<div class="more-help inactive">' +
             '<div class="winter"></div>' +
@@ -1128,17 +1127,72 @@ var CODE_REVIEW_UNITTEST;
     $(document.body).prepend('<div id="comment_form" class="inactive"><div class="winter"></div><div class="lightbox"><iframe id="reviewform" src="attachment.cgi?id=' + attachment_id + '&action=reviewform"></iframe></div></div>');
     $('#reviewform').bind('load', handleReviewFormLoad);
 
-    // Create a dummy iframe and monitor resizes in it's contentWindow to detect when the top document's body changes size.
-    // FIXME: Should we setTimeout throttle these?
-    var resize_iframe = $('<iframe class="pseudo_resize_event_iframe"></iframe>');
-    $(document.body).append(resize_iframe);
-    // Handle the event on a timeout to avoid crashing Firefox.
-    $(resize_iframe[0].contentWindow).bind('resize', function() { setTimeout(onBodyResize, 0)});
-
-    updateToolbarAnchorState();
     loadDiffState();
     generateFileDiffResizeStyleElement();
+    updateLineNumberOnCopyLinkContents();
+
+    document.body.addEventListener('copy', handleCopy);
   };
+
+  function forEachNode(nodeList, callback) {
+    Array.prototype.forEach.call(nodeList, callback);
+  }
+
+  $('#line-number-on-copy').live('click', toggleShouldStripLineNumbersOnCopy);
+
+  function updateLineNumberOnCopyLinkContents() {
+    document.getElementById('line-number-on-copy').checked = shouldStripLineNumbersOnCopy();
+  }
+
+  function shouldStripLineNumbersOnCopy() {
+    return localStorage.getItem('code-review-line-numbers-on-copy') == 'true';
+  }
+
+  function toggleShouldStripLineNumbersOnCopy() {
+    localStorage.setItem('code-review-line-numbers-on-copy', !shouldStripLineNumbersOnCopy());
+    updateLineNumberOnCopyLinkContents();
+  }
+
+  function sanitizeFragmentForCopy(fragment, shouldStripLineNumbers) {
+    var classesToRemove = ['LinkContainer'];
+    if (shouldStripLineNumbers)
+      classesToRemove.push('lineNumber');
+
+    classesToRemove.forEach(function(className) {
+      forEachNode(fragment.querySelectorAll('.' + className), function(node) {
+        $(node).remove();
+      });
+    });
+
+    // Ensure that empty newlines show up in the copy now that
+    // the line might collapse since the line number doesn't take up space.
+    forEachNode(fragment.querySelectorAll('.text'), function(node) {
+      if (node.textContent.match(/^\s*$/))
+        node.innerHTML = '<br>';
+    });
+  }
+
+  function handleCopy(event) {
+    if (event.target.tagName == 'TEXTAREA')
+      return;
+    var selection = window.getSelection();
+    var range = selection.getRangeAt(0);
+    var selectionFragment = range.cloneContents();
+    sanitizeFragmentForCopy(selectionFragment, shouldStripLineNumbersOnCopy())
+
+    // FIXME: When event.clipboardData.setData supports text/html, remove all the code below.
+    // https://bugs.webkit.org/show_bug.cgi?id=104179
+    var container = document.createElement('div');
+    container.appendChild(selectionFragment);
+    document.body.appendChild(container);
+    selection.selectAllChildren(container);
+
+    setTimeout(function() {
+      $(container).remove();
+      selection.removeAllRanges();
+      selection.addRange(range);
+    });
+  }
 
   function handleReviewFormLoad() {
     var review_form_contents = $('#reviewform').contents();
@@ -1928,6 +1982,10 @@ var CODE_REVIEW_UNITTEST;
     return descendant.hasClass('Line') ? descendant : descendant.parents('.Line');
   }
 
+  function lineContainerFromDescendant(descendant) {
+    return descendant.hasClass('LineContainer') ? descendant : descendant.parents('.LineContainer');
+  }
+
   function lineFromLineContainer(lineContainer) {
     var line = $(lineContainer);
     if (!line.hasClass('Line'))
@@ -2037,6 +2095,9 @@ var CODE_REVIEW_UNITTEST;
     window.addPreviousComment = addPreviousComment;
     window.tracLinks = tracLinks;
     window.crawlDiff = crawlDiff;
+    window.convertAllFileDiffs = convertAllFileDiffs;
+    window.sanitizeFragmentForCopy = sanitizeFragmentForCopy;
+    window.displayPreviousComments = displayPreviousComments;
     window.discardComment = discardComment;
     window.addCommentField = addCommentField;
     window.acceptComment = acceptComment;

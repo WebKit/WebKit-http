@@ -22,6 +22,7 @@
 #include "NotImplemented.h"
 #include "Page.h"
 #include "PageGroup.h"
+#include "PlatformCookieJar.h"
 #include "PluginDatabase.h"
 #include "PluginPackage.h"
 
@@ -38,6 +39,11 @@ PlatformStrategiesGtk::PlatformStrategiesGtk()
 }
 
 CookiesStrategy* PlatformStrategiesGtk::createCookiesStrategy()
+{
+    return this;
+}
+
+DatabaseStrategy* PlatformStrategiesGtk::createDatabaseStrategy()
 {
     return this;
 }
@@ -74,6 +80,36 @@ void PlatformStrategiesGtk::notifyCookiesChanged()
 {
 }
 
+String PlatformStrategiesGtk::cookiesForDOM(NetworkingContext* context, const KURL& firstParty, const KURL& url)
+{
+    return WebCore::cookiesForDOM(context, firstParty, url);
+}
+
+void PlatformStrategiesGtk::setCookiesFromDOM(NetworkingContext* context, const KURL& firstParty, const KURL& url, const String& cookieString)
+{
+    WebCore::setCookiesFromDOM(context, firstParty, url, cookieString);
+}
+
+bool PlatformStrategiesGtk::cookiesEnabled(NetworkingContext* context, const KURL& firstParty, const KURL& url)
+{
+    return WebCore::cookiesEnabled(context, firstParty, url);
+}
+
+String PlatformStrategiesGtk::cookieRequestHeaderFieldValue(NetworkingContext* context, const KURL& firstParty, const KURL& url)
+{
+    return WebCore::cookieRequestHeaderFieldValue(context, firstParty, url);
+}
+
+bool PlatformStrategiesGtk::getRawCookies(NetworkingContext* context, const KURL& firstParty, const KURL& url, Vector<Cookie>& rawCookies)
+{
+    return WebCore::getRawCookies(context, firstParty, url, rawCookies);
+}
+
+void PlatformStrategiesGtk::deleteCookie(NetworkingContext* context, const KURL& url, const String& cookieName)
+{
+    WebCore::deleteCookie(context, url, cookieName);
+}
+
 // PluginStrategy
 void PlatformStrategiesGtk::refreshPlugins()
 {
@@ -84,7 +120,6 @@ void PlatformStrategiesGtk::getPluginInfo(const Page* page, Vector<PluginInfo>& 
 {
     PluginDatabase* database = PluginDatabase::installedPlugins();
     const Vector<PluginPackage*> &plugins = database->plugins();
-    outPlugins.resize(plugins.size());
 
     for (size_t i = 0; i < plugins.size(); ++i) {
         PluginPackage* package = plugins[i];

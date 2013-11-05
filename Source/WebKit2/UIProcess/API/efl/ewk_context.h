@@ -54,7 +54,7 @@ extern "C" {
  *
  * @see Ewk_Object
  */
-typedef struct Ewk_Object Ewk_Context;
+typedef struct EwkObject Ewk_Context;
 
 /**
  * \enum    Ewk_Cache_Model
@@ -128,7 +128,7 @@ EAPI Ewk_Context *ewk_context_default_get(void);
  *
  * @return Ewk_Context object on success or @c NULL on failure
  *
- * @see ewk_context_unref
+ * @see ewk_object_unref
  * @see ewk_context_new_with_injected_bundle_path
  */
 EAPI Ewk_Context *ewk_context_new(void);
@@ -142,7 +142,7 @@ EAPI Ewk_Context *ewk_context_new(void);
  *
  * @return Ewk_Context object on success or @c NULL on failure
  *
- * @see ewk_context_unref
+ * @see ewk_object_unref
  * @see ewk_context_new
  */
 EAPI Ewk_Context *ewk_context_new_with_injected_bundle_path(const char *path);

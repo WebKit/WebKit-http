@@ -26,6 +26,7 @@
 #include "config.h"
 #include "ScrollingStateFixedNode.h"
 
+#include "GraphicsLayer.h"
 #include "ScrollingStateTree.h"
 #include "TextStream.h"
 #include <wtf/OwnPtr.h>
@@ -69,6 +70,12 @@ void ScrollingStateFixedNode::updateConstraints(const FixedPositionViewportConst
     m_constraints = constraints;
     m_changedProperties = ViewportConstraints;
     m_scrollingStateTree->setHasChangedProperties(true);
+}
+
+void ScrollingStateFixedNode::syncLayerPositionForViewportRect(const LayoutRect& viewportRect)
+{
+    FloatPoint position = m_constraints.layerPositionForViewportRect(viewportRect);
+    graphicsLayer()->syncPosition(position);
 }
 
 void ScrollingStateFixedNode::dumpProperties(TextStream& ts, int indent) const

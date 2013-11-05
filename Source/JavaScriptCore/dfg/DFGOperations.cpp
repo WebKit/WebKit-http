@@ -1062,14 +1062,14 @@ char* DFG_OPERATION operationLinkConstruct(ExecState* execCallee)
     return linkFor(execCallee, CodeForConstruct);
 }
 
-inline char* virtualFor(ExecState* execCallee, CodeSpecializationKind kind)
+inline char* virtualForWithFunction(ExecState* execCallee, CodeSpecializationKind kind, JSCell*& calleeAsFunctionCell)
 {
     ExecState* exec = execCallee->callerFrame();
     JSGlobalData* globalData = &exec->globalData();
     NativeCallFrameTracer tracer(globalData, exec);
 
     JSValue calleeAsValue = execCallee->calleeAsValue();
-    JSCell* calleeAsFunctionCell = getJSFunction(calleeAsValue);
+    calleeAsFunctionCell = getJSFunction(calleeAsValue);
     if (UNLIKELY(!calleeAsFunctionCell))
         return reinterpret_cast<char*>(handleHostCall(execCallee, calleeAsValue, kind));
     
@@ -1085,6 +1085,56 @@ inline char* virtualFor(ExecState* execCallee, CodeSpecializationKind kind)
         }
     }
     return reinterpret_cast<char*>(executable->generatedJITCodeWithArityCheckFor(kind).executableAddress());
+}
+
+inline char* virtualFor(ExecState* execCallee, CodeSpecializationKind kind)
+{
+    JSCell* calleeAsFunctionCellIgnored;
+    return virtualForWithFunction(execCallee, kind, calleeAsFunctionCellIgnored);
+}
+
+static bool attemptToOptimizeClosureCall(ExecState* execCallee, JSCell* calleeAsFunctionCell, CallLinkInfo& callLinkInfo)
+{
+    if (!calleeAsFunctionCell)
+        return false;
+    
+    JSFunction* callee = jsCast<JSFunction*>(calleeAsFunctionCell);
+    JSFunction* oldCallee = callLinkInfo.callee.get();
+    
+    if (!oldCallee
+        || oldCallee->structure() != callee->structure()
+        || oldCallee->executable() != callee->executable())
+        return false;
+    
+    ASSERT(callee->executable()->hasJITCodeForCall());
+    MacroAssemblerCodePtr codePtr = callee->executable()->generatedJITCodeForCall().addressForCall();
+    
+    CodeBlock* codeBlock;
+    if (callee->executable()->isHostFunction())
+        codeBlock = 0;
+    else {
+        codeBlock = &jsCast<FunctionExecutable*>(callee->executable())->generatedBytecodeForCall();
+        if (execCallee->argumentCountIncludingThis() < static_cast<size_t>(codeBlock->numParameters()))
+            return false;
+    }
+    
+    dfgLinkClosureCall(
+        execCallee, callLinkInfo, codeBlock,
+        callee->structure(), callee->executable(), codePtr);
+    
+    return true;
+}
+
+char* DFG_OPERATION operationLinkClosureCall(ExecState* execCallee)
+{
+    JSCell* calleeAsFunctionCell;
+    char* result = virtualForWithFunction(execCallee, CodeForCall, calleeAsFunctionCell);
+    CallLinkInfo& callLinkInfo = execCallee->callerFrame()->codeBlock()->getCallLinkInfo(execCallee->returnPC());
+
+    if (!attemptToOptimizeClosureCall(execCallee, calleeAsFunctionCell, callLinkInfo))
+        dfgLinkSlowFor(execCallee, callLinkInfo, CodeForCall);
+    
+    return result;
 }
 
 char* DFG_OPERATION operationVirtualCall(ExecState* execCallee)
@@ -1370,36 +1420,67 @@ char* DFG_OPERATION operationReallocateButterflyToGrowPropertyStorage(ExecState*
     return reinterpret_cast<char*>(result);
 }
 
-char* DFG_OPERATION operationEnsureInt32(ExecState* exec, JSObject* object)
+char* DFG_OPERATION operationEnsureInt32(ExecState* exec, JSCell* cell)
 {
     JSGlobalData& globalData = exec->globalData();
     NativeCallFrameTracer tracer(&globalData, exec);
     
-    return reinterpret_cast<char*>(object->ensureInt32(globalData));
+    if (!cell->isObject())
+        return 0;
+    
+    return reinterpret_cast<char*>(asObject(cell)->ensureInt32(globalData));
 }
 
-char* DFG_OPERATION operationEnsureDouble(ExecState* exec, JSObject* object)
+char* DFG_OPERATION operationEnsureDouble(ExecState* exec, JSCell* cell)
 {
     JSGlobalData& globalData = exec->globalData();
     NativeCallFrameTracer tracer(&globalData, exec);
     
-    return reinterpret_cast<char*>(object->ensureDouble(globalData));
+    if (!cell->isObject())
+        return 0;
+    
+    return reinterpret_cast<char*>(asObject(cell)->ensureDouble(globalData));
 }
 
-char* DFG_OPERATION operationEnsureContiguous(ExecState* exec, JSObject* object)
+char* DFG_OPERATION operationEnsureContiguous(ExecState* exec, JSCell* cell)
 {
     JSGlobalData& globalData = exec->globalData();
     NativeCallFrameTracer tracer(&globalData, exec);
     
-    return reinterpret_cast<char*>(object->ensureContiguous(globalData));
+    if (!cell->isObject())
+        return 0;
+    
+    return reinterpret_cast<char*>(asObject(cell)->ensureContiguous(globalData));
 }
 
-char* DFG_OPERATION operationEnsureArrayStorage(ExecState* exec, JSObject* object)
+char* DFG_OPERATION operationRageEnsureContiguous(ExecState* exec, JSCell* cell)
+{
+    JSGlobalData& globalData = exec->globalData();
+    NativeCallFrameTracer tracer(&globalData, exec);
+    
+    if (!cell->isObject())
+        return 0;
+    
+    return reinterpret_cast<char*>(asObject(cell)->rageEnsureContiguous(globalData));
+}
+
+char* DFG_OPERATION operationEnsureArrayStorage(ExecState* exec, JSCell* cell)
+{
+    JSGlobalData& globalData = exec->globalData();
+    NativeCallFrameTracer tracer(&globalData, exec);
+    
+    if (!cell->isObject())
+        return 0;
+
+    return reinterpret_cast<char*>(asObject(cell)->ensureArrayStorage(globalData));
+}
+
+StringImpl* DFG_OPERATION operationResolveRope(ExecState* exec, JSString* string)
 {
     JSGlobalData& globalData = exec->globalData();
     NativeCallFrameTracer tracer(&globalData, exec);
 
-    return reinterpret_cast<char*>(object->ensureArrayStorage(globalData));
+    return string->value(exec).impl();
 }
 
 double DFG_OPERATION operationFModOnInts(int32_t a, int32_t b)
@@ -1472,22 +1553,24 @@ void DFG_OPERATION debugOperationPrintSpeculationFailure(ExecState* exec, void* 
     SpeculationFailureDebugInfo* debugInfo = static_cast<SpeculationFailureDebugInfo*>(debugInfoRaw);
     CodeBlock* codeBlock = debugInfo->codeBlock;
     CodeBlock* alternative = codeBlock->alternative();
-    dataLog("Speculation failure in %p at @%u with executeCounter = %s, "
-            "reoptimizationRetryCounter = %u, optimizationDelayCounter = %u, "
-            "osrExitCounter = %u\n",
-            codeBlock,
-            debugInfo->nodeIndex,
-            alternative ? alternative->jitExecuteCounter().status() : 0,
-            alternative ? alternative->reoptimizationRetryCounter() : 0,
-            alternative ? alternative->optimizationDelayCounter() : 0,
-            codeBlock->osrExitCounter());
+    dataLog(
+        "Speculation failure in ", *codeBlock, " at @", debugInfo->nodeIndex,
+        " with ");
+    if (alternative) {
+        dataLog(
+            "executeCounter = ", alternative->jitExecuteCounter(),
+            ", reoptimizationRetryCounter = ", alternative->reoptimizationRetryCounter(),
+            ", optimizationDelayCounter = ", alternative->optimizationDelayCounter());
+    } else
+        dataLog("no alternative code block (i.e. we've been jettisoned)");
+    dataLog(", osrExitCounter = ", codeBlock->osrExitCounter(), "\n");
 }
 #endif
 
 extern "C" void DFG_OPERATION triggerReoptimizationNow(CodeBlock* codeBlock)
 {
 #if ENABLE(JIT_VERBOSE_OSR)
-    dataLog("%p: Entered reoptimize\n", codeBlock);
+    dataLog(*codeBlock, ": Entered reoptimize\n");
 #endif
     // We must be called with the baseline code block.
     ASSERT(JITCode::isBaselineCode(codeBlock->getJITType()));

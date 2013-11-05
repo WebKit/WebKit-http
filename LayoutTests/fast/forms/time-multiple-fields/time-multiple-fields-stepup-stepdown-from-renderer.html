@@ -2,66 +2,197 @@
 <html>
 <head>
 <script src="../../js/resources/js-test-pre.js"></script>
+<script src="../resources/common.js"></script>
 </head>
 <body>
 <script>
 description('Check stepping-up and -down for time input fields from renderer. No cases of empty initial values.');
+if (window.internals)
+    internals.settings.setLangAttributeAwareFormControlUIEnabled(true);
 
 var input = document.createElement('input');
 var invalidStateErr = '"Error: InvalidStateError: DOM Exception 11"';
 
 document.body.appendChild(input);
 
-function sendKey(keyName) {
-    var event = document.createEvent('KeyboardEvent');
-    event.initKeyboardEvent('keydown', true, true, document.defaultView, keyName);
-    input.dispatchEvent(event);
+function keyDown(key, modifiers)
+{
+    if (!window.eventSender)
+        return;
+    eventSender.keyDown(key, modifiers);
 }
 
-function setInputAttributes(min, max, step, value) {
+function setInputAttributes(value, min, max, step) {
+    input.value = value;
     input.min = min;
     input.max = max;
     input.step = step;
-    input.value = value;
 }
 
-function stepUp(value, step, max, optionalStepCount) {
-    setInputAttributes(null, max, step, value);
-    if (typeof optionalStepCount != "undefined")
-        if (optionalStepCount < 0)
-            for (var i = 0; i < -optionalStepCount; i++)
-                sendKey('Down');
-        else
-            for (var i = 0; i < optionalStepCount; i++)
-                sendKey('Up');
-    else
-        sendKey('Up');
+function test(value, step, min, max, keySequence) {
+    setInputAttributes(value, min, max, step);
+    for (var i = 0; i < keySequence.length; i++)
+        keyDown(keySequence[i]);
     return input.value;
 }
 
-function stepDown(value, step, min, optionalStepCount) {
-    setInputAttributes(min, null, step, value);
-    if (typeof optionalStepCount != "undefined")
-        if (optionalStepCount < 0)
-            for (var i = 0; i < -optionalStepCount; i++)
-                sendKey('Up');
-        else
-            for (var i = 0; i < optionalStepCount; i++)
-                sendKey('Down');
-    else
-        sendKey('Down');
-    return input.value;
+function stepUp(value, step, min, max) {
+    return test(value, step, min, max, ['upArrow']);
+}
+
+function stepDown(value, step, min, max) {
+    return test(value, step, min, max, ['downArrow']);
 }
 
 input.type = 'time';
 input.focus();
-sendKey('Right');
-debug('Function arguments are (value, step, {min or max}, [stepCount]).');
+keyDown('rightArrow');
+debug('Function arguments are (value, step, min, max, [keySequence]).');
 debug('Normal cases');
-shouldBe('stepUp("07:13", null, null)', '"07:14"');
-shouldBe('stepDown("07:13", null, null)', '"07:12"');
-shouldBe('stepUp("07:13", null, null, 10)', '"07:23"');
-shouldBe('stepDown("07:13", null, null, 11)', '"07:02"');
+shouldBeEqualToString('stepUp("07:13", null, null, null)', '07:14');
+shouldBeEqualToString('stepDown("07:13", null, null, null)', '07:12');
+shouldBeEqualToString('test("07:13", null, null, null, ["upArrow", "upArrow", "upArrow"])', '07:16');
+shouldBeEqualToString('test("07:13", null, null, null, ["downArrow", "downArrow", "downArrow"])', '07:10');
+
+debug('Milliseconds');
+input.step = 0.001;
+keyDown('rightArrow');
+keyDown('rightArrow');
+shouldBeEqualToString('stepUp("07:13:00.000", 0.001, null, null)', '07:13:00.001');
+shouldBeEqualToString('stepDown("07:13:00.001", 0.001, null, null)', '07:13');
+shouldBeEqualToString('stepUp("07:13:00.999", 0.001, null, null)', '07:13');
+shouldBeEqualToString('stepDown("07:13:00.000", 0.001, null, null)', '07:13:00.999');
+shouldBeEqualToString('stepUp("07:13:00.000", 0.250, null, null)', '07:13:00.250');
+shouldBeEqualToString('stepDown("07:13:00.500", 0.250, null, null)', '07:13:00.250');
+shouldBeEqualToString('stepUp("07:13:00.750", 0.250, null, null)', '07:13');
+shouldBeEqualToString('stepDown("07:13:00.000", 0.250, null, null)', '07:13:00.750');
+shouldBeEqualToString('stepUp("07:13:00.099", 0.100, null, null)', '07:13:00.100');
+shouldBeEqualToString('stepDown("07:13:00.101", 0.100, null, null)', '07:13:00.100');
+shouldBeEqualToString('stepUp("07:13:00.500", 0.0001, null, null)', '07:13:00.501');
+shouldBeEqualToString('stepDown("07:13:00.500", 0.0001, null, null)', '07:13:00.499');
+shouldBeEqualToString('stepUp("07:13:00.500", 0, null, null)', '07:13');
+shouldBeEqualToString('stepDown("07:13:00.500", 0, null, null)', '07:13');
+shouldBeEqualToString('stepUp("07:13:00.500", 60, null, null)', '07:13');
+shouldBeEqualToString('stepDown("07:13:00.500", 60, null, null)', '07:13');
+shouldBeEqualToString('stepUp("07:13:00.500", 0.100, "00:00:00.050", null)', '07:13:00.550');
+shouldBeEqualToString('stepDown("07:13:00.500", 0.100, "00:00:00.050", null)', '07:13:00.450');
+shouldBeEqualToString('test("07:13:00.500", 0.100, null, null, ["delete", "upArrow"])', '07:13');
+shouldBeEqualToString('test("07:13:00.500", 0.100, null, null, ["delete", "downArrow"])', '07:13:00.900');
+shouldBeEqualToString('test("07:13:00.500", 0.100, "00:00:00.050", null, ["delete", "upArrow"])', '07:13:00.050');
+shouldBeEqualToString('test("07:13:00.500", 0.100, "00:00:00.050", null, ["delete", "downArrow"])', '07:13:00.950');
+
+debug('Seconds');
+keyDown('leftArrow');
+shouldBeEqualToString('stepUp("07:13:00", 1, null, null)', '07:13:01');
+shouldBeEqualToString('stepDown("07:13:01", 1, null, null)', '07:13');
+shouldBeEqualToString('stepUp("07:13:59", 0.001, null, null)', '07:13');
+shouldBeEqualToString('stepDown("07:13:00", 0.001, null, null)', '07:13:59');
+shouldBeEqualToString('stepUp("07:13:00", 10, null, null)', '07:13:10');
+shouldBeEqualToString('stepDown("07:13:30", 10, null, null)', '07:13:20');
+shouldBeEqualToString('stepUp("07:13:50", 10, null, null)', '07:13');
+shouldBeEqualToString('stepDown("07:13:00", 10, null, null)', '07:13:50');
+shouldBeEqualToString('stepUp("07:13:09", 10, null, null)', '07:13:10');
+shouldBeEqualToString('stepDown("07:13:11", 10, null, null)', '07:13:10');
+shouldBeEqualToString('stepUp("07:13:30", 2.5, null, null)', '07:13:31');
+shouldBeEqualToString('stepDown("07:13:30", 2.5, null, null)', '07:13:29');
+shouldBeEqualToString('stepUp("07:13:30", 0, null, null)', '07:13');
+shouldBeEqualToString('stepDown("07:13:30", 0, null, null)', '07:13');
+shouldBeEqualToString('stepUp("07:13:30", 3600, null, null)', '07:13');
+shouldBeEqualToString('stepDown("07:13:30", 3600, null, null)', '07:13');
+shouldBeEqualToString('stepUp("07:13:30", 11, null, null)', '07:13:31');
+shouldBeEqualToString('stepDown("07:13:30", 11, null, null)', '07:13:29');
+shouldBeEqualToString('stepUp("07:13:30", 10, "00:00:05", null)', '07:13:35');
+shouldBeEqualToString('stepDown("07:13:30", 10, "00:00:05", null)', '07:13:25');
+shouldBeEqualToString('test("07:13:30", 10, null, null, ["delete", "upArrow"])', '07:13');
+shouldBeEqualToString('test("07:13:30", 10, null, null, ["delete", "downArrow"])', '07:13:50');
+shouldBeEqualToString('test("07:13:30", 10, "00:00:05", null, ["delete", "upArrow"])', '07:13:05');
+shouldBeEqualToString('test("07:13:30", 10, "00:00:05", null, ["delete", "downArrow"])', '07:13:55');
+
+debug('Minutes');
+keyDown('leftArrow');
+shouldBeEqualToString('stepUp("07:13", 1, null, null)', '07:14');
+shouldBeEqualToString('stepDown("07:13", 1, null, null)', '07:12');
+shouldBeEqualToString('stepUp("07:59", 0.001, null, null)', '07:00');
+shouldBeEqualToString('stepDown("07:00", 0.001, null, null)', '07:59');
+shouldBeEqualToString('stepUp("07:00", 600, null, null)', '07:10');
+shouldBeEqualToString('stepDown("07:10", 600, null, null)', '07:00');
+shouldBeEqualToString('stepUp("07:50", 600, null, null)', '07:00');
+shouldBeEqualToString('stepDown("07:00", 600, null, null)', '07:50');
+shouldBeEqualToString('stepUp("07:13", 600, null, null)', '07:20');
+shouldBeEqualToString('stepDown("07:13", 600, null, null)', '07:10');
+shouldBeEqualToString('stepUp("07:13", 150, null, null)', '07:14');
+shouldBeEqualToString('stepDown("07:13", 150, null, null)', '07:12');
+shouldBeEqualToString('stepUp("07:13", 0, null, null)', '07:14');
+shouldBeEqualToString('stepDown("07:13", 0, null, null)', '07:12');
+shouldBeEqualToString('stepUp("07:13", 36000, null, null)', '07:00');
+shouldBeEqualToString('stepDown("07:13", 36000, null, null)', '07:00');
+shouldBeEqualToString('stepUp("07:13", 660, null, null)', '07:14');
+shouldBeEqualToString('stepDown("07:13", 660, null, null)', '07:12');
+shouldBeEqualToString('stepUp("07:13", 600, "00:05", null)', '07:15');
+shouldBeEqualToString('stepDown("07:13", 600, "00:05", null)', '07:05');
+shouldBeEqualToString('test("07:13", 600, null, null, ["delete", "upArrow"])', '07:00');
+shouldBeEqualToString('test("07:13", 600, null, null, ["delete", "downArrow"])', '07:50');
+shouldBeEqualToString('test("07:13", 600, "00:05", null, ["delete", "upArrow"])', '07:05');
+shouldBeEqualToString('test("07:13", 600, "00:05", null, ["delete", "downArrow"])', '07:55');
+
+debug('Hours, 1-12');
+keyDown('leftArrow');
+shouldBeEqualToString('stepUp("07:00", 1, null, null)', '08:00');
+shouldBeEqualToString('stepDown("07:00", 1, null, null)', '06:00');
+shouldBeEqualToString('stepUp("11:00", 1, null, null)', '00:00');
+shouldBeEqualToString('stepDown("00:00", 1, null, null)', '11:00');
+shouldBeEqualToString('stepUp("06:00", 7200, null, null)', '08:00');
+shouldBeEqualToString('stepDown("06:00", 7200, null, null)', '04:00');
+shouldBeEqualToString('stepUp("10:00", 7200, null, null)', '00:00');
+shouldBeEqualToString('stepDown("00:00", 7200, null, null)', '10:00');
+shouldBeEqualToString('stepUp("07:00", 7200, null, null)', '08:00');
+shouldBeEqualToString('stepDown("07:00", 7200, null, null)', '06:00');
+shouldBeEqualToString('stepUp("06:00", 3601, null, null)', '07:00');
+shouldBeEqualToString('stepDown("06:00", 3601, null, null)', '05:00');
+shouldBeEqualToString('stepUp("06:00", 0, null, null)', '07:00');
+shouldBeEqualToString('stepDown("06:00", 0, null, null)', '05:00');
+shouldBeEqualToString('stepUp("06:00", 86400, null, null)', '00:00');
+shouldBeEqualToString('stepDown("06:00", 86400, null, null)', '00:00');
+shouldBeEqualToString('stepUp("06:00", 36000, null, null)', '07:00');
+shouldBeEqualToString('stepDown("06:00", 36000, null, null)', '05:00');
+shouldBeEqualToString('stepUp("06:00", 7200, "01:00", null)', '07:00');
+shouldBeEqualToString('stepDown("06:00", 7200, "01:00", null)', '05:00');
+shouldBeEqualToString('test("06:00", 7200, null, null, ["delete", "upArrow"])', '02:00');
+shouldBeEqualToString('test("06:00", 7200, null, null, ["delete", "downArrow"])', '00:00');
+shouldBeEqualToString('getUserAgentShadowTextContent(input)', '12:00 AM');
+shouldBeEqualToString('test("06:00", 7200, "01:00", null, ["delete", "upArrow"])', '01:00');
+shouldBeEqualToString('test("06:00", 7200, "01:00", null, ["delete", "downArrow"])', '11:00');
+
+debug('Hours, 0-23');
+debug('The tests in this block fail on platforms without the lang-attribute-aware-form-control-UI feature.');
+input.setAttribute('lang', 'ja');
+shouldBeEqualToString('stepUp("07:00", 1, null, null)', '08:00');
+shouldBeEqualToString('stepDown("07:00", 1, null, null)', '06:00');
+shouldBeEqualToString('stepUp("23:00", 1, null, null)', '00:00');
+shouldBeEqualToString('stepDown("00:00", 1, null, null)', '23:00');
+shouldBeEqualToString('stepUp("06:00", 7200, null, null)', '08:00');
+shouldBeEqualToString('stepDown("06:00", 7200, null, null)', '04:00');
+shouldBeEqualToString('stepUp("22:00", 7200, null, null)', '00:00');
+shouldBeEqualToString('stepDown("00:00", 7200, null, null)', '22:00');
+shouldBeEqualToString('stepUp("07:00", 7200, null, null)', '08:00');
+shouldBeEqualToString('stepDown("07:00", 7200, null, null)', '06:00');
+shouldBeEqualToString('stepUp("06:00", 3601, null, null)', '07:00');
+shouldBeEqualToString('stepDown("06:00", 3601, null, null)', '05:00');
+shouldBeEqualToString('stepUp("06:00", 0, null, null)', '07:00');
+shouldBeEqualToString('stepDown("06:00", 0, null, null)', '05:00');
+shouldBeEqualToString('stepUp("06:00", 86400, null, null)', '00:00');
+shouldBeEqualToString('stepDown("06:00", 86400, null, null)', '00:00');
+shouldBeEqualToString('stepUp("06:00", 36000, null, null)', '07:00');
+shouldBeEqualToString('stepDown("06:00", 36000, null, null)', '05:00');
+shouldBeEqualToString('stepUp("06:00", 7200, "01:00", null)', '07:00');
+shouldBeEqualToString('stepDown("06:00", 7200, "01:00", null)', '05:00');
+shouldBeEqualToString('test("06:00", 7200, null, null, ["delete", "upArrow"])', '00:00');
+shouldBeEqualToString('getUserAgentShadowTextContent(input)', '00:00');
+shouldBeEqualToString('test("06:00", 7200, null, null, ["delete", "downArrow"])', '22:00');
+shouldBeEqualToString('test("06:00", 7200, "01:00", null, ["delete", "upArrow"])', '01:00');
+shouldBeEqualToString('test("06:00", 7200, "01:00", null, ["delete", "downArrow"])', '23:00');
+input.removeAttribute('lang');
+
 debug('');
 document.body.removeChild(input);
 </script>

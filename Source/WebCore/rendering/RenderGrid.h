@@ -44,12 +44,15 @@ public:
     virtual bool canCollapseAnonymousBlockChild() const OVERRIDE { return false; }
 
 private:
+    virtual bool isRenderGrid() const OVERRIDE { return true; }
+
     class GridTrack;
     enum TrackSizingDirection { ForColumns, ForRows };
     void computedUsedBreadthOfGridTracks(TrackSizingDirection, Vector<GridTrack>&);
     void layoutGridItems();
 
     LayoutPoint findChildLogicalPosition(RenderBox*, const Vector<GridTrack>& columnTracks, const Vector<GridTrack>& rowTracks);
+    size_t resolveGridPosition(const GridPosition&) const;
 };
 
 } // namespace WebCore

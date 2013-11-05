@@ -36,6 +36,7 @@
 #include "WebFrame.h"
 #include "WebFrameLoaderClient.h"
 #include "WebFullScreenManager.h"
+#include "WebImage.h"
 #include "WebOpenPanelParameters.h"
 #include "WebOpenPanelResultListener.h"
 #include "WebPage.h"
@@ -48,7 +49,7 @@
 #include "WebSecurityOrigin.h"
 #include <WebCore/AXObjectCache.h>
 #include <WebCore/ColorChooser.h>
-#include <WebCore/DatabaseTracker.h>
+#include <WebCore/DatabaseManager.h>
 #include <WebCore/FileChooser.h>
 #include <WebCore/FileIconLoader.h>
 #include <WebCore/Frame.h>
@@ -267,7 +268,7 @@ void WebChromeClient::setResizable(bool resizable)
     m_page->send(Messages::WebPageProxy::SetIsResizable(resizable));
 }
 
-void WebChromeClient::addMessageToConsole(MessageSource, MessageType, MessageLevel, const String& message, unsigned int lineNumber, const String& /*sourceID*/)
+void WebChromeClient::addMessageToConsole(MessageSource, MessageLevel, const String& message, unsigned lineNumber, const String& /*sourceID*/)
 {
     // Notify the bundle client.
     m_page->injectedBundleUIClient().willAddMessageToConsole(m_page, message, lineNumber);
@@ -432,7 +433,7 @@ PlatformPageClient WebChromeClient::platformPageClient() const
     return 0;
 }
 
-void WebChromeClient::contentsSizeChanged(Frame* frame, const IntSize& /*size*/) const
+void WebChromeClient::contentsSizeChanged(Frame* frame, const IntSize& size) const
 {
     if (!m_page->corePage()->settings()->frameFlatteningEnabled()) {
         WebFrame* largestFrame = findLargestFrameInFrameSet(m_page);
@@ -453,8 +454,11 @@ void WebChromeClient::contentsSizeChanged(Frame* frame, const IntSize& /*size*/)
     }
 
     m_page->send(Messages::WebPageProxy::DidChangeContentsSize(m_page->size()));
-
+#elif PLATFORM(EFL)
+    m_page->send(Messages::WebPageProxy::DidChangeContentsSize(size));
 #endif
+
+    m_page->drawingArea()->mainFrameContentSizeChanged(size);
 
     FrameView* frameView = frame->view();
     if (frameView && !frameView->delegatesScrolling())  {
@@ -545,9 +549,10 @@ void WebChromeClient::exceededDatabaseQuota(Frame* frame, const String& database
     WebFrame* webFrame = static_cast<WebFrameLoaderClient*>(frame->loader()->client())->webFrame();
     SecurityOrigin* origin = frame->document()->securityOrigin();
 
-    DatabaseDetails details = DatabaseTracker::tracker().detailsForNameAndOrigin(databaseName, origin);
-    uint64_t currentQuota = DatabaseTracker::tracker().quotaForOrigin(origin);
-    uint64_t currentOriginUsage = DatabaseTracker::tracker().usageForOrigin(origin);
+    DatabaseManager& dbManager = DatabaseManager::manager();
+    DatabaseDetails details = dbManager.detailsForNameAndOrigin(databaseName, origin);
+    uint64_t currentQuota = dbManager.quotaForOrigin(origin);
+    uint64_t currentOriginUsage = dbManager.usageForOrigin(origin);
     uint64_t newQuota = 0;
     RefPtr<WebSecurityOrigin> webSecurityOrigin = WebSecurityOrigin::createFromDatabaseIdentifier(origin->databaseIdentifier());
     newQuota = m_page->injectedBundleUIClient().didExceedDatabaseQuota(m_page, webSecurityOrigin.get(), databaseName, details.displayName(), currentQuota, currentOriginUsage, details.currentUsage(), details.expectedUsage());
@@ -558,7 +563,7 @@ void WebChromeClient::exceededDatabaseQuota(Frame* frame, const String& database
             Messages::WebPageProxy::ExceededDatabaseQuota::Reply(newQuota), m_page->pageID());
     }
 
-    DatabaseTracker::tracker().setQuota(origin, newQuota);
+    dbManager.setQuota(origin, newQuota);
 }
 #endif
 
@@ -813,6 +818,11 @@ void WebChromeClient::logDiagnosticMessage(const String& message, const String& 
         return;
 
     m_page->injectedBundleDiagnosticLoggingClient().logDiagnosticMessage(m_page, message, description, success);
+}
+
+PassRefPtr<Image> WebChromeClient::plugInStartLabelImage(RenderSnapshottedPlugIn::LabelSize size) const
+{
+    return m_page->injectedBundleUIClient().plugInStartLabelImage(size)->bitmap()->createImage();
 }
 
 } // namespace WebKit

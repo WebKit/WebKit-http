@@ -871,6 +871,10 @@ vertical-rl
 vertical-lr
 horizontal-bt
 
+// -webkit-ruby-position
+after
+before
+
 // -webkit-text-emphasis-position
 over
 under
@@ -895,6 +899,8 @@ farthest-corner
 // cover
 
 // -webkit-text-orientation
+sideways
+sideways-right
 upright
 vertical-right
 
@@ -914,9 +920,11 @@ off
 optimizeQuality
 -webkit-optimize-contrast
 
-// -webkit-wrap-shape
+// -webkit-shape-inside
+// -webkit-shape-outside
 nonzero
 evenodd
+outside-shape
 
 // -webkit-region-overflow
 // auto

@@ -43,13 +43,13 @@ class PropertyNodeList;
 
 class HTMLPropertiesCollection : public HTMLCollection {
 public:
-    static PassRefPtr<HTMLPropertiesCollection> create(Node*);
+    static PassRefPtr<HTMLPropertiesCollection> create(Node*, CollectionType);
     virtual ~HTMLPropertiesCollection();
 
     void updateRefElements() const;
 
     PassRefPtr<DOMStringList> names() const;
-    virtual PassRefPtr<PropertyNodeList> namedItem(const String&) const OVERRIDE;
+    virtual PassRefPtr<PropertyNodeList> propertyNodeList(const String&) const;
     virtual bool hasNamedItem(const AtomicString&) const OVERRIDE;
 
     void invalidateCache() const

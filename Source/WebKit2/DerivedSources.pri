@@ -24,6 +24,7 @@ WEBCORE_GENERATED_HEADERS_FOR_WEBKIT2 += \
     $$WEBCORE_GENERATED_SOURCES_DIR/JSNode.h \
     $$WEBCORE_GENERATED_SOURCES_DIR/JSNotification.h \
     $$WEBCORE_GENERATED_SOURCES_DIR/JSRange.h \
+    $$WEBCORE_GENERATED_SOURCES_DIR/JSUint8Array.h \
 
 defineReplace(message_header_generator_output) {
   FILENAME=$$basename(1)
@@ -64,10 +65,10 @@ VPATH = \
 
 MESSAGE_RECEIVERS = \
     AuthenticationManager.messages.in \
+    CoordinatedLayerTreeHostProxy.messages.in \
     DownloadProxy.messages.in \
     DrawingAreaProxy.messages.in \
     EventDispatcher.messages.in \
-    LayerTreeCoordinatorProxy.messages.in \
     PluginControllerProxy.messages.in \
     PluginProcess.messages.in \
     PluginProcessConnection.messages.in \
@@ -98,8 +99,8 @@ MESSAGE_RECEIVERS = \
     WebNotificationManager.messages.in \
     WebFullScreenManager.messages.in \
     WebFullScreenManagerProxy.messages.in \
+    CoordinatedLayerTreeHost.messages.in \
     DrawingArea.messages.in \
-    LayerTreeCoordinator.messages.in \
     WebInspector.messages.in \
     WebPage.messages.in \
     WebPageGroupProxy.messages.in \

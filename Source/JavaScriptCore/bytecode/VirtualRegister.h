@@ -27,6 +27,7 @@
 #define VirtualRegister_h
 
 #include <wtf/Platform.h>
+#include <wtf/PrintStream.h>
 
 namespace JSC {
 
@@ -36,5 +37,14 @@ enum VirtualRegister { InvalidVirtualRegister = -1 };
 COMPILE_ASSERT(sizeof(VirtualRegister) == sizeof(int), VirtualRegister_is_32bit);
 
 } // namespace JSC
+
+namespace WTF {
+
+inline void printInternal(PrintStream& out, JSC::VirtualRegister value)
+{
+    out.print(static_cast<int>(value));
+}
+
+} // namespace WTF
 
 #endif // VirtualRegister_h

@@ -53,6 +53,7 @@
 #include <PrintContext.h>
 #include <RenderTreeAsText.h>
 #include <ResourceLoadScheduler.h>
+#include <RuntimeEnabledFeatures.h>
 #include <SchemeRegistry.h>
 #include <ScriptValue.h>
 #include <Settings.h>
@@ -61,6 +62,7 @@
 #include <history/HistoryItem.h>
 #include <workers/WorkerThread.h>
 #include <wtf/HashMap.h>
+#include <wtf/UnusedParam.h>
 
 #if ENABLE(GEOLOCATION)
 #include <GeolocationClientMock.h>
@@ -367,7 +369,7 @@ void DumpRenderTreeSupportEfl::setCSSRegionsEnabled(const Evas_Object* ewkView, 
 {
     DRT_SUPPRT_PAGE_GET_OR_RETURN(ewkView, page);
 
-    page->settings()->setCSSRegionsEnabled(enabled);
+    WebCore::RuntimeEnabledFeatures::setCSSRegionsEnabled(enabled);
 }
 
 bool DumpRenderTreeSupportEfl::isCommandEnabled(const Evas_Object* ewkView, const char* name)
@@ -524,6 +526,10 @@ void DumpRenderTreeSupportEfl::evaluateInWebInspector(const Evas_Object* ewkView
 
     if (page->inspectorController())
         page->inspectorController()->evaluateForTestInFrontend(callId, script);
+#else
+    UNUSED_PARAM(ewkView);
+    UNUSED_PARAM(callId);
+    UNUSED_PARAM(script);
 #endif
 }
 

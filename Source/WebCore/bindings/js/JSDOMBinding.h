@@ -3,6 +3,7 @@
  *  Copyright (C) 2003, 2004, 2005, 2006, 2008, 2009 Apple Inc. All rights reserved.
  *  Copyright (C) 2007 Samuel Weinig <sam@webkit.org>
  *  Copyright (C) 2009 Google, Inc. All rights reserved.
+ *  Copyright (C) 2012 Ericsson AB. All rights reserved.
  *
  *  This library is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU Lesser General Public
@@ -57,6 +58,7 @@ enum ParameterDefaultPolicy {
 
 #define MAYBE_MISSING_PARAMETER(exec, index, policy) (((policy) == DefaultIsNullString && (index) >= (exec)->argumentCount()) ? (JSValue()) : ((exec)->argument(index)))
 
+    class CachedScript;
     class Frame;
     class KURL;
 
@@ -253,7 +255,7 @@ enum ParameterDefaultPolicy {
 
     const JSC::HashTable* getHashTableForGlobalData(JSC::JSGlobalData&, const JSC::HashTable* staticTable);
 
-    void reportException(JSC::ExecState*, JSC::JSValue exception);
+    void reportException(JSC::ExecState*, JSC::JSValue exception, CachedScript* = 0);
     void reportCurrentException(JSC::ExecState*);
 
     // Convert a DOM implementation exception code into a JavaScript exception in the execution state.
@@ -387,8 +389,8 @@ enum ParameterDefaultPolicy {
     };
 
     template<>
-    struct NativeValueTraits<unsigned long> {
-        static inline bool nativeValue(JSC::ExecState* exec, JSC::JSValue jsValue, unsigned long& indexedValue)
+    struct NativeValueTraits<unsigned> {
+        static inline bool nativeValue(JSC::ExecState* exec, JSC::JSValue jsValue, unsigned& indexedValue)
         {
             if (!jsValue.isNumber())
                 return false;
@@ -409,6 +411,26 @@ enum ParameterDefaultPolicy {
             return !exec->hadException();
         }
     };
+
+    template <class T, class JST>
+    Vector<RefPtr<T> > toRefPtrNativeArray(JSC::ExecState* exec, JSC::JSValue value, T* (*toT)(JSC::JSValue value))
+    {
+        if (!isJSArray(value))
+            return Vector<RefPtr<T> >();
+
+        Vector<RefPtr<T> > result;
+        JSC::JSArray* array = asArray(value);
+        for (size_t i = 0; i < array->length(); ++i) {
+            JSC::JSValue element = array->getIndex(exec, i);
+            if (element.inherits(&JST::s_info))
+                result.append((*toT)(element));
+            else {
+                throwVMError(exec, createTypeError(exec, "Invalid Array element type"));
+                return Vector<RefPtr<T> >();
+            }
+        }
+        return result;
+    }
 
     template <class T>
     Vector<T> toNativeArray(JSC::ExecState* exec, JSC::JSValue value)

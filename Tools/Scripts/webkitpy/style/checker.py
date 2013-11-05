@@ -39,6 +39,7 @@ from checkers.common import categories as CommonCategories
 from checkers.common import CarriageReturnChecker
 from checkers.changelog import ChangeLogChecker
 from checkers.cpp import CppChecker
+from checkers.cmake import CMakeChecker
 from checkers.jsonchecker import JSONChecker
 from checkers.png import PNGChecker
 from checkers.python import PythonChecker
@@ -149,7 +150,8 @@ _PATH_RULES_SPECIFIER = [
 
     ([# The Qt APIs use Qt declaration style, it puts the * to
       # the variable name, not to the class.
-      "Source/WebKit/qt/Api/"],
+      "Source/WebKit/qt/Api/",
+      "Source/WebKit/qt/WidgetApi/"],
      ["-readability/naming",
       "-whitespace/declaration"]),
 
@@ -173,7 +175,14 @@ _PATH_RULES_SPECIFIER = [
      ["-readability/naming",
       "-readability/parameter_name",
       "-readability/null",
+      "-readability/enum_casing",
       "-whitespace/parens"]),
+
+    ([# The GTK+ API use upper case, underscore separated, words in
+      # certain types of enums (e.g. signals, properties).
+      "Source/WebKit2/UIProcess/API/gtk"],
+     ["-readability/enum_casing"]),
+
     ([# Header files in ForwardingHeaders have no header guards or
       # exceptional header guards (e.g., WebCore_FWD_Debugger_h).
       "/ForwardingHeaders/"],
@@ -220,6 +229,8 @@ _PATH_RULES_SPECIFIER = [
       "-whitespace/declaration"]),
     ([# These files define GObjects, which implies some definitions of
       # variables and functions containing underscores.
+      "Source/WebCore/platform/graphics/clutter/GraphicsLayerActor.cpp",
+      "Source/WebCore/platform/graphics/clutter/GraphicsLayerActor.h",
       "Source/WebCore/platform/graphics/gstreamer/VideoSinkGStreamer1.cpp",
       "Source/WebCore/platform/graphics/gstreamer/VideoSinkGStreamer.cpp",
       "Source/WebCore/platform/graphics/gstreamer/WebKitWebSourceGStreamer.cpp",
@@ -305,6 +316,8 @@ _XML_FILE_EXTENSIONS = [
 
 _PNG_FILE_EXTENSION = 'png'
 
+_CMAKE_FILE_EXTENSION = 'cmake'
+
 # Files to skip that are less obvious.
 #
 # Some files should be skipped when checking style. For example,
@@ -324,6 +337,8 @@ _SKIPPED_FILES_WITH_WARNING = [
 # with FileType.NONE are automatically skipped without warning.
 _SKIPPED_FILES_WITHOUT_WARNING = [
     "LayoutTests" + os.path.sep,
+    # Prevents this being recognized as a text file.
+    "Source/WebCore/GNUmakefile.features.am.in",
     ]
 
 # Extensions of files which are allowed to contain carriage returns.
@@ -495,6 +510,7 @@ class FileType:
     WATCHLIST = 7
     XML = 8
     XCODEPROJ = 9
+    CMAKE = 10
 
 
 class CheckerDispatcher(object):
@@ -573,6 +589,8 @@ class CheckerDispatcher(object):
             return FileType.XCODEPROJ
         elif file_extension == _PNG_FILE_EXTENSION:
             return FileType.PNG
+        elif ((file_extension == _CMAKE_FILE_EXTENSION) or os.path.basename(file_path) == 'CMakeLists.txt'):
+            return FileType.CMAKE
         elif ((not file_extension and os.path.join("Tools", "Scripts") in file_path) or
               file_extension in _TEXT_FILE_EXTENSIONS or os.path.basename(file_path) == 'TestExpectations'):
             return FileType.TEXT
@@ -603,6 +621,8 @@ class CheckerDispatcher(object):
             checker = XcodeProjectFileChecker(file_path, handle_style_error)
         elif file_type == FileType.PNG:
             checker = PNGChecker(file_path, handle_style_error)
+        elif file_type == FileType.CMAKE:
+            checker = CMakeChecker(file_path, handle_style_error)
         elif file_type == FileType.TEXT:
             basename = os.path.basename(file_path)
             if basename == 'TestExpectations':

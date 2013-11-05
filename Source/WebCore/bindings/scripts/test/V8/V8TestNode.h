@@ -56,42 +56,35 @@ private:
 inline v8::Handle<v8::Object> wrap(TestNode* impl, v8::Handle<v8::Object> creationContext, v8::Isolate* isolate = 0)
 {
     ASSERT(impl);
-    ASSERT(V8DOMWrapper::getCachedWrapper(impl).IsEmpty());
+    ASSERT(DOMDataStore::getWrapper(impl, isolate).IsEmpty());
     return V8TestNode::createWrapper(impl, creationContext, isolate);
-}
-
-inline v8::Handle<v8::Object> toV8Object(TestNode* impl, v8::Handle<v8::Object> creationContext = v8::Handle<v8::Object>(), v8::Isolate* isolate = 0)
-{
-    if (UNLIKELY(!impl))
-        return v8::Handle<v8::Object>();
-    v8::Handle<v8::Object> wrapper = V8DOMWrapper::getCachedWrapper(impl);
-    if (!wrapper.IsEmpty())
-        return wrapper;
-    return wrap(impl, creationContext, isolate);
 }
 
 inline v8::Handle<v8::Value> toV8(TestNode* impl, v8::Handle<v8::Object> creationContext = v8::Handle<v8::Object>(), v8::Isolate* isolate = 0)
 {
     if (UNLIKELY(!impl))
         return v8NullWithCheck(isolate);
-    v8::Handle<v8::Value> wrapper = V8DOMWrapper::getCachedWrapper(impl);
+    v8::Handle<v8::Value> wrapper = DOMDataStore::getWrapper(impl, isolate);
     if (!wrapper.IsEmpty())
         return wrapper;
     return wrap(impl, creationContext, isolate);
 }
 
-inline v8::Handle<v8::Value> toV8Fast(TestNode* impl, const v8::AccessorInfo& info, Node* holder)
+template<class HolderContainer, class Wrappable>
+inline v8::Handle<v8::Value> toV8Fast(TestNode* impl, const HolderContainer& container, Wrappable* wrappable)
 {
     if (UNLIKELY(!impl))
-        return v8::Null(info.GetIsolate());
-    // What we'd really like to check here is whether we're in the main world or
-    // in an isolated world. The fastest way we know how to do that is to check
-    // whether the holder's inline wrapper is the same wrapper we see in the
-    // v8::AccessorInfo.
-    v8::Handle<v8::Object> wrapper = (holder->wrapper() == info.Holder()) ? impl->wrapper() : V8DOMWrapper::getCachedWrapper(impl);
+        return v8Null(container.GetIsolate());
+    v8::Handle<v8::Object> wrapper = DOMDataStore::getWrapperFast(impl, container, wrappable);
     if (!wrapper.IsEmpty())
         return wrapper;
-    return wrap(impl, info.Holder(), info.GetIsolate());
+    return wrap(impl, container.Holder(), container.GetIsolate());
+}
+
+template<class HolderContainer, class Wrappable>
+inline v8::Handle<v8::Value> toV8Fast(PassRefPtr< TestNode > impl, const HolderContainer& container, Wrappable* wrappable)
+{
+    return toV8Fast(impl.get(), container, wrappable);
 }
 
 inline v8::Handle<v8::Value> toV8(PassRefPtr< TestNode > impl, v8::Handle<v8::Object> creationContext = v8::Handle<v8::Object>(), v8::Isolate* isolate = 0)

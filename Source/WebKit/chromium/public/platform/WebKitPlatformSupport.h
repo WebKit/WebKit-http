@@ -31,25 +31,11 @@
 #ifndef WebKitPlatformSupport_h
 #define WebKitPlatformSupport_h
 
-#include "WebCommon.h"
-#include "WebGraphicsContext3D.h"
-#include "WebSerializedScriptValue.h"
-#include "WebString.h"
-#include "WebURL.h"
-#include "WebVector.h"
-#include <time.h>
 #include "../../../../Platform/chromium/public/Platform.h"
-
-#ifdef WIN32
-typedef void *HANDLE;
-#endif
 
 namespace WebKit {
 
-class WebApplicationCacheHost; // FIXME: Does this belong in platform?
-class WebApplicationCacheHostClient; // FIXME: Does this belong in platform?
 class WebIDBFactory; // FIXME: Does this belong in platform?
-class WebPluginListBuilder; // FIXME: Does this belong in platform?
 class WebSharedWorkerRepository; // FIXME: Does this belong in platform?
 
 // FIXME: Eventually all these API will need to move to WebKit::Platform.
@@ -58,13 +44,6 @@ public:
     // Indexed Database ----------------------------------------------------
 
     virtual WebIDBFactory* idbFactory() { return 0; }
-
-
-    // Plugins -------------------------------------------------------------
-
-    // If refresh is true, then cached information should not be used to
-    // satisfy this call.
-    virtual void getPluginList(bool refresh, WebPluginListBuilder*) { }
 
 
     // Shared Workers ------------------------------------------------------

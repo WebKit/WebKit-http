@@ -26,7 +26,6 @@
 #import "config.h"
 #import "NetworkProcessProxy.h"
 
-#import "NetworkProcessCreationParameters.h"
 #import "NetworkProcessMessages.h"
 
 #if ENABLE(NETWORK_PROCESS)
@@ -35,17 +34,12 @@ using namespace WebCore;
 
 namespace WebKit {
 
-void NetworkProcessProxy::platformInitializeNetworkProcess(NetworkProcessCreationParameters& parameters)
-{
-    parameters.parentProcessName = [[NSProcessInfo processInfo] processName];
-}
-
 void NetworkProcessProxy::setApplicationIsOccluded(bool applicationIsOccluded)
 {
     if (!isValid())
         return;
     
-    m_connection->send(Messages::NetworkProcess::SetApplicationIsOccluded(applicationIsOccluded), 0);
+    connection()->send(Messages::NetworkProcess::SetApplicationIsOccluded(applicationIsOccluded), 0);
 }
 
 } // namespace WebKit

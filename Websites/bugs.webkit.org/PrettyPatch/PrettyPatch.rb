@@ -318,6 +318,7 @@ h1 :hover {
 .overallComments textarea {
   height: 2em;
   max-width: 100%;
+  min-width: 200px;
 }
 
 .comment textarea, .overallComments textarea {
@@ -334,13 +335,9 @@ h1 :hover {
   display: block;
 }
 
-body {
-  margin-bottom: 40px;
-}
-
 #toolbar {
-  display: -webkit-box;
-  display: -moz-box;
+  display: -webkit-flex;
+  display: -moz-flex;
   padding: 3px;
   left: 0;
   right: 0;
@@ -348,9 +345,6 @@ body {
   background-color: #eee;
   font-family: sans-serif;
   position: fixed;
-}
-
-#toolbar.anchored {
   bottom: 0;
 }
 
@@ -423,6 +417,7 @@ body {
   border: 0;
 }
 
+.LinkContainer label:after,
 .LinkContainer a:after {
   content: " | ";
   color: black;
@@ -430,6 +425,10 @@ body {
 
 .LinkContainer a:last-of-type:after {
   content: "";
+}
+
+.LinkContainer label {
+  color: #039;
 }
 
 .help {
@@ -451,8 +450,8 @@ body {
 }
 
 .overallComments {
-  -webkit-box-flex: 1;
-  -moz-box-flex: 1;
+  -webkit-flex: 1;
+  -moz-flex: 1;
   margin-right: 3px;
 }
 
@@ -478,13 +477,6 @@ div:focus {
   margin: 2px 2px 0 0;
   border: none;
   vertical-align: middle;
-}
-
-.pseudo_resize_event_iframe {
-  height: 10%;
-  width: 10%;
-  position: absolute;
-  top: -11%;
 }
 
 .revision {
@@ -514,7 +506,7 @@ div:focus {
 }
 </style>
 <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.4.2/jquery.min.js"></script> 
-<script src="code-review.js?version=43"></script>
+<script src="code-review.js?version=46"></script>
 </head>
 EOF
 

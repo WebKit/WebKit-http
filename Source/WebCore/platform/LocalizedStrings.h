@@ -219,6 +219,7 @@ namespace WebCore {
 #if PLATFORM(MAC)
     String builtInPDFPluginName();
     String pdfDocumentTypeDescription();
+    String postScriptDocumentTypeDescription();
     String keygenMenuItem512();
     String keygenMenuItem1024();
     String keygenMenuItem2048();
@@ -252,8 +253,21 @@ namespace WebCore {
     String validationMessageRangeUnderflowText(const String& minimum);
     String validationMessageRangeOverflowText(const String& maximum);
     String validationMessageStepMismatchText(const String& base, const String& step);
+    String validationMessageBadInputForNumberText();
+#if ENABLE(INPUT_MULTIPLE_FIELDS_UI)
+    String validationMessageBadInputForDateTimeText();
+#endif
 #if USE(SOUP)
     String unacceptableTLSCertificate();
+#endif
+
+    String clickToExitFullScreenText();
+
+#if ENABLE(VIDEO_TRACK)
+    String textTrackClosedCaptionsText();
+    String textTrackSubtitlesText();
+    String textTrackOffText();
+    String textTrackNoLabelText();
 #endif
 
 #if !PLATFORM(CHROMIUM)

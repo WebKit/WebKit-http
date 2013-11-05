@@ -39,6 +39,7 @@
 #include "ImageOrientation.h"
 #include "IntRect.h"
 #include "KURL.h"
+#include "Logging.h"
 #include "MIMETypeRegistry.h"
 #include "MediaPlayer.h"
 #include "NotImplemented.h"
@@ -244,8 +245,6 @@ MediaPlayerPrivateGStreamer::MediaPlayerPrivateGStreamer(MediaPlayer* player)
     , m_totalBytes(-1)
     , m_originalPreloadWasAutoAndWasOverridden(false)
 {
-    if (initializeGStreamerAndRegisterWebKitElements())
-        createGSTPlayBin();
 }
 
 MediaPlayerPrivateGStreamer::~MediaPlayerPrivateGStreamer()
@@ -292,6 +291,8 @@ MediaPlayerPrivateGStreamer::~MediaPlayerPrivateGStreamer()
 
 void MediaPlayerPrivateGStreamer::load(const String& url)
 {
+    if (!initializeGStreamerAndRegisterWebKitElements())
+        return;
 
     KURL kurl(KURL(), url);
     String cleanUrl(url);
@@ -299,6 +300,13 @@ void MediaPlayerPrivateGStreamer::load(const String& url)
     // Clean out everything after file:// url path.
     if (kurl.isLocalFile())
         cleanUrl = cleanUrl.substring(0, kurl.pathEnd());
+
+    if (!m_playBin) {
+        createGSTPlayBin();
+        setDownloadBuffering();
+    }
+
+    ASSERT(m_playBin);
 
     m_url = KURL(KURL(), cleanUrl);
     g_object_set(m_playBin, "uri", cleanUrl.utf8().data(), NULL);
@@ -316,6 +324,7 @@ void MediaPlayerPrivateGStreamer::load(const String& url)
     m_player->networkStateChanged();
     m_readyState = MediaPlayer::HaveNothing;
     m_player->readyStateChanged();
+    m_volumeAndMuteInitialized = false;
 
     // GStreamer needs to have the pipeline set to a paused state to
     // start providing anything useful.
@@ -1186,6 +1195,13 @@ void MediaPlayerPrivateGStreamer::updateStates()
         if (state == GST_STATE_PAUSED) {
             if (!m_webkitAudioSink)
                 updateAudioSink();
+
+            if (!m_volumeAndMuteInitialized) {
+                notifyPlayerOfVolumeChange();
+                notifyPlayerOfMute();
+                m_volumeAndMuteInitialized = true;
+            }
+
             if (m_buffering && m_bufferingPercentage == 100) {
                 m_buffering = false;
                 m_bufferingPercentage = 0;
@@ -1735,13 +1751,10 @@ MediaPlayer::MovieLoadType MediaPlayerPrivateGStreamer::movieLoadType() const
     return MediaPlayer::Download;
 }
 
-void MediaPlayerPrivateGStreamer::setPreload(MediaPlayer::Preload preload)
+void MediaPlayerPrivateGStreamer::setDownloadBuffering()
 {
-    m_originalPreloadWasAutoAndWasOverridden = m_preload != preload && m_preload == MediaPlayer::Auto;
-
-    m_preload = preload;
-
-    ASSERT(m_playBin);
+    if (!m_playBin)
+        return;
 
     GstPlayFlags flags;
     g_object_get(m_playBin, "flags", &flags, NULL);
@@ -1752,6 +1765,15 @@ void MediaPlayerPrivateGStreamer::setPreload(MediaPlayer::Preload preload)
         LOG_MEDIA_MESSAGE("Disabling on-disk buffering");
         g_object_set(m_playBin, "flags", flags & ~GST_PLAY_FLAG_DOWNLOAD, NULL);
     }
+}
+
+void MediaPlayerPrivateGStreamer::setPreload(MediaPlayer::Preload preload)
+{
+    m_originalPreloadWasAutoAndWasOverridden = m_preload != preload && m_preload == MediaPlayer::Auto;
+
+    m_preload = preload;
+
+    setDownloadBuffering();
 
     if (m_delayingLoad && m_preload != MediaPlayer::None) {
         m_delayingLoad = false;
@@ -1808,9 +1830,7 @@ void MediaPlayerPrivateGStreamer::createGSTPlayBin()
     gst_bin_add_many(GST_BIN(m_videoSinkBin), videoTee, queue, NULL);
 
     // Link a new src pad from tee to queue1.
-    GRefPtr<GstPad> srcPad = adoptGRef(gst_element_get_request_pad(videoTee, "src%d"));
-    GRefPtr<GstPad> sinkPad = adoptGRef(gst_element_get_static_pad(queue, "sink"));
-    gst_pad_link(srcPad.get(), sinkPad.get());
+    gst_element_link_pads_full(videoTee, 0, queue, "sink", GST_PAD_LINK_CHECK_NOTHING);
 #endif
 
     GstElement* actualVideoSink = 0;

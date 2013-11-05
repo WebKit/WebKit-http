@@ -298,17 +298,17 @@ public:
         return m_structure == other.m_structure;
     }
     
-    void dump(FILE* out) const
+    void dump(PrintStream& out) const
     {
         if (isTop()) {
-            fprintf(out, "TOP");
+            out.print("TOP");
             return;
         }
         
-        fprintf(out, "[");
+        out.print("[");
         if (m_structure)
-            fprintf(out, "%p", m_structure);
-        fprintf(out, "]");
+            out.print(RawPointer(m_structure));
+        out.print("]");
     }
 
 private:

@@ -32,7 +32,7 @@
 
 vars = {
   'chromium_svn': 'http://src.chromium.org/svn/trunk/src',
-  'chromium_rev': '167914'
+  'chromium_rev': '173769'
 }
 
 deps = {
@@ -101,6 +101,8 @@ deps = {
     Var('chromium_svn')+'/media@'+Var('chromium_rev'),
   'printing':
     Var('chromium_svn')+'/printing@'+Var('chromium_rev'),
+  'webkit/media/crypto/ppapi/cdm':
+    From('chromium_deps', 'src/webkit/media/crypto/ppapi/cdm'),
   'ppapi':
     Var('chromium_svn')+'/ppapi@'+Var('chromium_rev'),
   'sql':
@@ -117,18 +119,24 @@ deps = {
     From('chromium_deps', 'src/tools/grit'),
   'tools/gritsettings':
     Var('chromium_svn')+'/tools/gritsettings@'+Var('chromium_rev'),
+  'tools/generate_library_loader':
+    Var('chromium_svn')+'/tools/generate_library_loader@'+Var('chromium_rev'),
   'tools/generate_stubs':
     Var('chromium_svn')+'/tools/generate_stubs@'+Var('chromium_rev'),
   'tools/win':
     Var('chromium_svn')+'/tools/win@'+Var('chromium_rev'),
   'ui':
     Var('chromium_svn')+'/ui@'+Var('chromium_rev'),
+  'win8':
+    Var('chromium_svn')+'/win8@'+Var('chromium_rev'),
 
   # other third party
   'third_party/pyftpdlib/src':
     From('chromium_deps', 'src/third_party/pyftpdlib/src'),
   'third_party/icu':
     From('chromium_deps', 'src/third_party/icu'),
+  'third_party/opus/src':
+    From('chromium_deps', 'src/third_party/opus/src'),
   'third_party/ots':
     From('chromium_deps', 'src/third_party/ots'),
   'third_party/yasm/source/patched-yasm':

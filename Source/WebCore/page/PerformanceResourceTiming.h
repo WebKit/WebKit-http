@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2012 Google Inc. All rights reserved.
+ * Copyright (C) 2012 Intel Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -48,12 +49,12 @@ class ResourceResponse;
 
 class PerformanceResourceTiming : public PerformanceEntry {
 public:
-    static PassRefPtr<PerformanceResourceTiming> create(const ResourceRequest& request, const ResourceResponse& response, double finishTime, Document* requestingDocument)
+    static PassRefPtr<PerformanceResourceTiming> create(const AtomicString& initiatorType, const ResourceRequest& request, const ResourceResponse& response, double initiationTime, double finishTime, Document* requestingDocument)
     {
-        return adoptRef(new PerformanceResourceTiming(request, response, finishTime, requestingDocument));
+        return adoptRef(new PerformanceResourceTiming(initiatorType, request, response, initiationTime, finishTime, requestingDocument));
     }
 
-    String initiatorType() const;
+    AtomicString initiatorType() const;
 
     double redirectStart() const;
     double redirectEnd() const;
@@ -70,14 +71,16 @@ public:
     virtual bool isResource() { return true; }
 
 private:
-    PerformanceResourceTiming(const ResourceRequest&, const ResourceResponse&, double finishTime, Document*);
+    PerformanceResourceTiming(const AtomicString& initatorType, const ResourceRequest&, const ResourceResponse&, double initiationTime, double finishTime, Document*);
     ~PerformanceResourceTiming();
 
-    double monotonicTimeToDocumentMilliseconds(double seconds) const;
     double resourceTimeToDocumentMilliseconds(int deltaMilliseconds) const;
 
+    AtomicString m_initiatorType;
     RefPtr<ResourceLoadTiming> m_timing;
     double m_finishTime;
+    bool m_didReuseConnection;
+    bool m_shouldReportDetails;
     RefPtr<Document> m_requestingDocument;
 };
 

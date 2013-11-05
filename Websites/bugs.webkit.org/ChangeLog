@@ -1,3 +1,92 @@
+2012-12-06  Ojan Vafai  <ojan@chromium.org>
+
+        Review page is super flakey now
+        https://bugs.webkit.org/show_bug.cgi?id=104331
+
+        Committing without review since this is breaking the code review tool.
+
+        remove is only shipping in Chromium. Use jQuery's remove instead.
+
+        * PrettyPatch/PrettyPatch.rb:
+        * code-review.js:
+
+2012-12-05  Ojan Vafai  <ojan@chromium.org>
+
+        Make the strip line numbers link into a checkbox
+        https://bugs.webkit.org/show_bug.cgi?id=104187
+
+        Reviewed by Tony Chang.
+
+        The link text was confusing.
+
+        * PrettyPatch/PrettyPatch.rb:
+        * code-review.js:
+
+2012-12-05  Ojan Vafai  <ojan@chromium.org>
+
+        Sanitize content on copy in the code review tool
+        https://bugs.webkit.org/show_bug.cgi?id=104155
+
+        Reviewed by Tony Chang.
+
+        Always remove expand/header/annotate links. Provide an option
+        to remove line numbers as well. Store the option in localStorage so
+        people can always get whichever behavior they want.
+
+        A better solution would be to restructure the DOM, but that would require gutting
+        the whole code review tool and would make it difficult to include line numbers if
+        you wanted them.
+
+        * PrettyPatch/PrettyPatch.rb:
+        * code-review-test.html:
+        * code-review.js:
+
+2012-12-04  Ojan Vafai  <ojan@chromium.org>
+
+        Use sticky positioning for the code review toolbar
+        https://bugs.webkit.org/show_bug.cgi?id=104056
+
+        Reviewed by Adam Barth.
+
+        This simplifies the code and gives a nicer user-experience.
+        Also, while here, I fixed up the CSS to not have toolbar items
+        overlap when you make the window too small.
+
+        * PrettyPatch/PrettyPatch.rb:
+        * code-review-test.html:
+        * code-review.js:
+
+2012-12-04  Ojan Vafai  <ojan@chromium.org>
+
+        Properly create the header links in the code review tool
+        https://bugs.webkit.org/show_bug.cgi?id=104037
+
+        Reviewed by Adam Barth.
+
+        Right now, we just prepend "header" to the two existing links and change
+        the first link to point to the header. The problem is that jQuery's prepend
+        method just prepends to each item in the jQuery object instead of adding
+        the item to the beginning of the list as this code assumed.
+
+        * code-review-test.html:
+        * code-review.js:
+
+2012-12-04  Ojan Vafai  <ojan@chromium.org>
+
+        Can't add followup comment to a previous comment
+        https://bugs.webkit.org/show_bug.cgi?id=104025
+
+        Reviewed by Adam Barth.
+
+        If we side-by-sidify a shared diff line, and then apply
+        a previous comment, we would incorrectly put the comment
+        on the Line instead of the LineContainer.
+
+        Also, get rid of global next_line_id to simplify testing.
+
+        * code-review-test.html:
+        * code-review.js:
+
 2012-11-06  Ryosuke Niwa  <rniwa@webkit.org>
 
         committers-autocomplete.js works only with WebKit based browsers

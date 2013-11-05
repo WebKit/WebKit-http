@@ -81,8 +81,8 @@ class CommandTest(unittest.TestCase):
 
     def test_required_arguments(self):
         two_required_arguments = TrivialCommand(argument_names="ARG1 ARG2 [ARG3]")
-        expected_missing_args_error = "2 arguments required, 1 argument provided.  Provided: 'foo'  Required: ARG1 ARG2\nSee 'trivial-tool help trivial' for usage.\n"
-        exit_code = OutputCapture().assert_outputs(self, two_required_arguments.check_arguments_and_execute, [None, ["foo"], TrivialTool()], expected_stderr=expected_missing_args_error)
+        expected_logs = "2 arguments required, 1 argument provided.  Provided: 'foo'  Required: ARG1 ARG2\nSee 'trivial-tool help trivial' for usage.\n"
+        exit_code = OutputCapture().assert_outputs(self, two_required_arguments.check_arguments_and_execute, [None, ["foo"], TrivialTool()], expected_logs=expected_logs)
         self.assertEqual(exit_code, 1)
 
 
@@ -171,7 +171,3 @@ See 'trivial-tool help COMMAND' for more information on a specific command.
         tool = TrivialTool(commands=[command_with_options])
         expected_subcommand_help = "trivial [options]   help text\n\nLONG HELP\n\nOptions:\n  --my_option=MY_OPTION\n\n"
         self._assert_tool_main_outputs(tool, ["tool", "help", "trivial"], expected_subcommand_help)
-
-
-if __name__ == "__main__":
-    unittest.main()

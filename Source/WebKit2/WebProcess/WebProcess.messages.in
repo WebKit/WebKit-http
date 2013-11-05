@@ -54,6 +54,13 @@ messages -> WebProcess {
 #if PLATFORM(WIN)
     SetShouldPaintNativeControls(bool shouldPaintNativeControls)
 #endif
+#if USE(SOUP)
+    SetIgnoreTLSErrors(bool ignoreTLSErrors)
+#endif
+
+    // Private browsing session is per process. Individual pages or page groups may use the private session or the default one as appropriate.
+    EnsurePrivateBrowsingSession()
+    DestroyPrivateBrowsingSession()
 
     # Plug-ins.
 #if ENABLE(NETSCAPE_PLUGIN_API)
@@ -63,13 +70,11 @@ messages -> WebProcess {
     GetSitesWithPluginData(Vector<WTF::String> pluginPaths, uint64_t callbackID)
     ClearPluginSiteData(Vector<WTF::String> pluginPaths, Vector<WTF::String> sites, uint64_t flags, uint64_t maxAgeInSeconds, uint64_t callbackID)
 #endif
-
-#if ENABLE(NETWORK_PROCESS)
-    NetworkProcessCrashed() DispatchOnConnectionQueue
-#endif
+    DidAddPlugInAutoStartOrigin(uint32_t hash)
+    PlugInAutoStartOriginsChanged(Vector<uint32_t> hashes)
 
 #if ENABLE(PLUGIN_PROCESS)
-    PluginProcessCrashed(String pluginProcess) DispatchOnConnectionQueue
+    PluginProcessCrashed(String pluginProcess, uint32_t processType) DispatchOnConnectionQueue
 #endif
 
     void StartMemorySampler(WebKit::SandboxExtension::Handle sampleLogFileHandle, WTF::String sampleLogFilePath, double interval);
@@ -95,7 +100,6 @@ messages -> WebProcess {
 
 #if USE(SECURITY_FRAMEWORK)
     SecItemResponse(uint64_t requestID, WebKit::SecItemResponseData response) DispatchOnConnectionQueue
-    SecKeychainItemResponse(uint64_t requestID, WebKit::SecKeychainItemResponseData response) DispatchOnConnectionQueue
 #endif
 
 #if PLATFORM(MAC)

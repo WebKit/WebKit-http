@@ -37,11 +37,11 @@
 namespace WTF {
 
 template<typename ValueArg, size_t inlineCapacity, typename HashArg>
-void reportMemoryUsage(const ListHashSet<ValueArg, inlineCapacity, HashArg>* const& set, MemoryObjectInfo* memoryObjectInfo)
+void reportMemoryUsage(const ListHashSet<ValueArg, inlineCapacity, HashArg>* set, MemoryObjectInfo* memoryObjectInfo)
 {
     MemoryClassInfo info(memoryObjectInfo, set);
     info.addPrivateBuffer(set->sizeInBytes() - sizeof(*set));
-    reportSequenceMemoryUsage<ValueArg, typename ListHashSet<ValueArg, inlineCapacity, HashArg>::const_iterator>(set->begin(), set->end(), info);
+    SequenceMemoryInstrumentationTraits<ValueArg>::reportMemoryUsage(set->begin(), set->end(), info);
 }
 
 }

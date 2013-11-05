@@ -29,16 +29,15 @@
     void setForceCompositingMode(in boolean enabled) raises(DOMException);
     void setEnableCompositingForFixedPosition(in boolean enabled) raises(DOMException);
     void setEnableCompositingForScrollableFrames(in boolean enabled) raises(DOMException);
+    void setEnableCompositingForOverflowScroll(in boolean enabled) raises(DOMException);
     void setAcceleratedDrawingEnabled(in boolean enabled) raises(DOMException);
     void setAcceleratedFiltersEnabled(in boolean enabled) raises(DOMException);
     void setMockScrollbarsEnabled(in boolean enabled) raises(DOMException);
-    void setUsesOverlayScrollbars(in boolean flag);
     void setPasswordEchoEnabled(in boolean enabled) raises(DOMException);
     void setPasswordEchoDurationInSeconds(in double durationInSeconds) raises(DOMException);
     void setFixedElementsLayoutRelativeToFrame(in boolean enabled) raises(DOMException);
     void setUnifiedTextCheckingEnabled(in boolean enabled) raises (DOMException);
     boolean unifiedTextCheckingEnabled() raises (DOMException);
-    void setPageScaleFactor(in float scaleFactor, in long x, in long y) raises(DOMException);
     void setTouchEventEmulationEnabled(in boolean enabled) raises(DOMException);
     void setDeviceSupportsTouch(in boolean enabled) raises(DOMException);
     void setDeviceSupportsMouse(in boolean enabled) raises(DOMException);
@@ -71,11 +70,6 @@
     void setDialogElementEnabled(in boolean enabled) raises(DOMException);
     void setLangAttributeAwareFormControlUIEnabled(in boolean enabled);
 
-    void setPagination(in DOMString mode, in long gap, in [Optional] long pageLength) raises(DOMException);
-    sequence<String> userPreferredLanguages();
-    void setUserPreferredLanguages(in sequence<String> languages);
-    void allowRoundingHacks();
-    void setEnableMockPagePopup(in boolean enabled) raises(DOMException);
     [Conditional=VIDEO_TRACK] void setShouldDisplayTrackKind(in DOMString kind, in boolean enabled) raises (DOMException);
     [Conditional=VIDEO_TRACK] boolean shouldDisplayTrackKind(in DOMString trackKind) raises (DOMException);
     void setMemoryInfoEnabled(in boolean enabled) raises(DOMException);

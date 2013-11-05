@@ -74,7 +74,7 @@ void visibleTextQuads(const Range& range, Vector<FloatQuad>& quads, bool useSele
         return;
 
     Node* stopNode = range.pastLastNode();
-    for (Node* node = range.firstNode(); node != stopNode; node = node->traverseNextNode()) {
+    for (Node* node = range.firstNode(); node && node != stopNode; node = node->traverseNextNode()) {
         RenderObject* r = node->renderer();
         if (!r || !r->isText())
             continue;
@@ -314,34 +314,6 @@ VisibleSelection visibleSelectionForRangeInputElement(Element* element, int star
     return VisibleSelection(visibleStart, visibleEnd);
 }
 
-Node* DOMContainerNodeForPosition(const Position& position)
-{
-    Node* nodeAtPos = position.containerNode();
-    if (nodeAtPos && nodeAtPos->isInShadowTree())
-        nodeAtPos = nodeAtPos->shadowAncestorNode();
-
-    return nodeAtPos;
-}
-
-bool isPositionInNode(Node* node, const Position& position)
-{
-    if (!node)
-        return false;
-
-    Node* domNodeAtPos = DOMContainerNodeForPosition(position);
-    if (!domNodeAtPos)
-        return false;
-
-    int offset = 0;
-    if (domNodeAtPos == position.containerNode())
-        offset = position.computeOffsetInContainerNode();
-
-    RefPtr<Range> rangeForNode = rangeOfContents(node);
-    int ec;
-
-    return rangeForNode->isPointInRange(domNodeAtPos, offset, ec);
-}
-
 static bool matchesReservedStringEmail(const AtomicString& string)
 {
     return string.contains("email", false /* caseSensitive */);
@@ -495,25 +467,30 @@ VisibleSelection visibleSelectionForClosestActualWordStart(const VisibleSelectio
     // it selects the paragraph marker. As well, if the position is at the end of a word, it will select
     // only the space between words. We want to select an actual word so we move the selection to
     // the start of the leftmost word if the character after the selection point is whitespace.
-    if (selection.selectionType() != VisibleSelection::RangeSelection && isWhitespace(selection.visibleStart().characterAfter())) {
+
+    if (selection.selectionType() != VisibleSelection::RangeSelection) {
+        int leftDistance = 0;
+        int rightDistance = 0;
+
         VisibleSelection leftSelection(previousWordPosition(selection.start()));
-        bool leftSelectionIsOnWord = !isWhitespace(leftSelection.visibleStart().characterAfter());
+        bool leftSelectionIsOnWord = !isWhitespace(leftSelection.visibleStart().characterAfter()) && leftSelection.start().containerNode() == selection.start().containerNode();
+        if (leftSelectionIsOnWord) {
+            VisibleSelection rangeSelection(endOfWord(leftSelection.start()), selection.visibleStart());
+            leftDistance = TextIterator::rangeLength(rangeSelection.toNormalizedRange().get());
+        }
 
-        VisibleSelection rangeSelection(endOfWord(leftSelection.start()), selection.visibleStart());
-        int leftDistance = TextIterator::rangeLength(rangeSelection.toNormalizedRange().get());
-
-        VisibleSelection rightSelection(nextWordPosition(selection.start()));
-        rightSelection = previousWordPosition(rightSelection.start());
-        bool rightSelectionIsOnWord = !isWhitespace(rightSelection.visibleStart().characterAfter());
-
-        rangeSelection = VisibleSelection(rightSelection.visibleStart(), selection.visibleStart());
-        int rightDistance = TextIterator::rangeLength(rangeSelection.toNormalizedRange().get());
+        VisibleSelection rightSelection = previousWordPosition(nextWordPosition(selection.start()));
+        bool rightSelectionIsOnWord = !isWhitespace(rightSelection.visibleStart().characterAfter()) && rightSelection.start().containerNode() == selection.start().containerNode();
+        if (rightSelectionIsOnWord) {
+            VisibleSelection rangeSelection = VisibleSelection(rightSelection.visibleStart(), selection.visibleStart());
+            rightDistance = TextIterator::rangeLength(rangeSelection.toNormalizedRange().get());
+        }
 
         // Make sure we found an actual word. If not, return the original selection.
         if (!leftSelectionIsOnWord && !rightSelectionIsOnWord)
             return selection;
 
-        if (!rightSelectionIsOnWord || (leftSelectionIsOnWord && leftDistance < rightDistance)) {
+        if (!rightSelectionIsOnWord || (leftSelectionIsOnWord && leftDistance <= rightDistance)) {
             // Left is closer or right is invalid.
             return leftSelection;
         }

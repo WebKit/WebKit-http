@@ -453,11 +453,6 @@ void TestRunner::evaluateScriptInIsolatedWorld(unsigned worldID, JSObjectRef glo
 
 }
 
-void TestRunner::disableImageLoading()
-{
-
-}
-
 void TestRunner::addOriginAccessWhitelistEntry(JSStringRef sourceOrigin, JSStringRef destinationProtocol, JSStringRef destinationHost, bool allowDestinationSubdomains)
 {
     // FIXME: implement
@@ -614,6 +609,11 @@ void TestRunner::deliverWebIntent(JSStringRef, JSStringRef, JSStringRef)
 }
 
 void TestRunner::setStorageDatabaseIdleInterval(double)
+{
+    // FIXME: Implement this.
+}
+
+void TestRunner::closeIdleLocalStorageDatabases()
 {
     // FIXME: Implement this.
 }

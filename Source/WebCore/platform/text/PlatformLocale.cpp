@@ -338,41 +338,15 @@ String Locale::localizedDecimalSeparator()
 #endif
 
 #if ENABLE(DATE_AND_TIME_INPUT_TYPES)
-String Locale::dateTimeFormatWithSeconds()
-{
-    if (!m_dateTimeFormatWithSeconds.isNull())
-        return m_dateTimeFormatWithSeconds;
-    // FIXME: We should retrieve the separator and the order from the system.
-    StringBuilder builder;
-    builder.append(dateFormat());
-    builder.append(' ');
-    builder.append(timeFormat());
-    m_dateTimeFormatWithSeconds = builder.toString();
-    return m_dateTimeFormatWithSeconds;
-}
-
-String Locale::dateTimeFormatWithoutSeconds()
-{
-    if (!m_dateTimeFormatWithoutSeconds.isNull())
-        return m_dateTimeFormatWithoutSeconds;
-    // FIXME: We should retrieve the separator and the order from the system.
-    StringBuilder builder;
-    builder.append(dateFormat());
-    builder.append(' ');
-    builder.append(shortTimeFormat());
-    m_dateTimeFormatWithoutSeconds = builder.toString();
-    return m_dateTimeFormatWithoutSeconds;
-}
 
 String Locale::formatDateTime(const DateComponents& date, FormatType formatType)
 {
-    if (date.type() == DateComponents::DateTime || date.type() == DateComponents::DateTimeLocal || date.type() == DateComponents::Invalid)
+    if (date.type() == DateComponents::Invalid)
         return String();
 #if !ENABLE(INPUT_TYPE_WEEK)
     if (date.type() == DateComponents::Week)
         return String();
 #endif
-    // FIXME: Supports all types.
 
     DateTimeStringBuilder builder(*this, date);
     switch (date.type()) {
@@ -390,9 +364,11 @@ String Locale::formatDateTime(const DateComponents& date, FormatType formatType)
         builder.build(weekFormatInLDML());
         break;
 #endif
-    case DateComponents::Invalid:
     case DateComponents::DateTime:
     case DateComponents::DateTimeLocal:
+        builder.build(formatType == FormatTypeShort ? dateTimeFormatWithoutSeconds() : dateTimeFormatWithSeconds());
+        break;
+    case DateComponents::Invalid:
         ASSERT_NOT_REACHED();
         break;
     }

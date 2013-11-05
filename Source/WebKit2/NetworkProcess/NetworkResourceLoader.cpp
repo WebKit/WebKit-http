@@ -28,12 +28,12 @@
 
 #if ENABLE(NETWORK_PROCESS)
 
-#include "BlockingResponseMap.h"
 #include "DataReference.h"
 #include "Logging.h"
 #include "NetworkConnectionToWebProcess.h"
 #include "NetworkProcess.h"
 #include "NetworkResourceLoadParameters.h"
+#include "PlatformCertificateInfo.h"
 #include "RemoteNetworkingContext.h"
 #include "SharedMemory.h"
 #include "WebCoreArgumentCoders.h"
@@ -82,7 +82,7 @@ void NetworkResourceLoader::start()
     ref();
     
     // FIXME (NetworkProcess): Create RemoteNetworkingContext with actual settings.
-    m_networkingContext = RemoteNetworkingContext::create(false, false);
+    m_networkingContext = RemoteNetworkingContext::create(false, false, m_requestParameters.inPrivateBrowsingMode());
 
     // FIXME (NetworkProcess): Pass an actual value for defersLoading
     m_handle = ResourceHandle::create(m_networkingContext.get(), m_requestParameters.request(), this, false /* defersLoading */, m_requestParameters.contentSniffingPolicy() == SniffContent);
@@ -144,14 +144,15 @@ void NetworkResourceLoader::stop()
 void NetworkResourceLoader::connectionToWebProcessDidClose(NetworkConnectionToWebProcess* connection)
 {
     ASSERT_ARG(connection, connection == m_connection.get());
-    m_connection->unregisterObserver(this);
-    m_connection = 0;
+    // FIXME (NetworkProcess): Cancel the load. The request may be long-living, so we don't want it to linger around after all clients are gone.
 }
 
 void NetworkResourceLoader::didReceiveResponse(ResourceHandle*, const ResourceResponse& response)
 {
     // FIXME (NetworkProcess): Cache the response.
-    send(Messages::WebResourceLoader::DidReceiveResponse(response));
+    if (FormData* formData = m_requestParameters.request().httpBody())
+        formData->removeGeneratedFilesIfNeeded();
+    send(Messages::WebResourceLoader::DidReceiveResponseWithCertificateInfo(response, PlatformCertificateInfo(response)));
 }
 
 void NetworkResourceLoader::didReceiveData(ResourceHandle*, const char* data, int length, int encodedDataLength)
@@ -175,40 +176,39 @@ void NetworkResourceLoader::didFail(ResourceHandle*, const ResourceError& error)
 {
     // FIXME (NetworkProcess): For the memory cache we'll need to update the finished status of the cached resource here.
     // Such bookkeeping will need to be thread safe, as this callback is happening on a background thread.
+    if (FormData* formData = m_requestParameters.request().httpBody())
+        formData->removeGeneratedFilesIfNeeded();
     send(Messages::WebResourceLoader::DidFailResourceLoad(error));
     scheduleStopOnMainThread();
-}
-
-static BlockingResponseMap<ResourceRequest*>& responseMap()
-{
-    AtomicallyInitializedStatic(BlockingResponseMap<ResourceRequest*>&, responseMap = *new BlockingResponseMap<ResourceRequest*>);
-    return responseMap;
 }
 
 static uint64_t generateWillSendRequestID()
 {
     static int64_t uniqueWillSendRequestID;
-    return OSAtomicIncrement64Barrier(&uniqueWillSendRequestID);
-}
-
-void didReceiveWillSendRequestHandled(uint64_t requestID, const ResourceRequest& request)
-{
-    responseMap().didReceiveResponse(requestID, adoptPtr(new ResourceRequest(request)));
+    return atomicIncrement(&uniqueWillSendRequestID);
 }
 
 void NetworkResourceLoader::willSendRequest(ResourceHandle*, ResourceRequest& request, const ResourceResponse& redirectResponse)
 {
-    // We only expect to get the willSendRequest callback from ResourceHandle as the result of a redirect
+    // We only expect to get the willSendRequest callback from ResourceHandle as the result of a redirect.
     ASSERT(!redirectResponse.isNull());
 
     uint64_t requestID = generateWillSendRequestID();
 
-    send(Messages::WebResourceLoader::WillSendRequest(requestID, request, redirectResponse));
-    
-    OwnPtr<ResourceRequest> newRequest = responseMap().waitForResponse(requestID);
-    request = *newRequest;
+    if (!send(Messages::WebResourceLoader::WillSendRequest(requestID, request, redirectResponse))) {
+        request = ResourceRequest();
+        return;
+    }
+
+    OwnPtr<ResourceRequest> newRequest = m_connection->willSendRequestResponseMap().waitForResponse(requestID);
+    request = newRequest ? *newRequest : ResourceRequest();
 
     RunLoop::main()->dispatch(WTF::bind(&NetworkResourceLoadScheduler::receivedRedirect, &NetworkProcess::shared().networkResourceLoadScheduler(), m_identifier, request.url()));
+}
+
+void NetworkResourceLoader::willSendRequestHandled(uint64_t requestID, const WebCore::ResourceRequest& newRequest)
+{
+    m_connection->willSendRequestResponseMap().didReceiveResponse(requestID, adoptPtr(new ResourceRequest(newRequest)));
 }
 
 // FIXME (NetworkProcess): Many of the following ResourceHandleClient methods definitely need implementations. A few will not.
@@ -234,37 +234,93 @@ void NetworkResourceLoader::cannotShowURL(WebCore::ResourceHandle*)
     notImplemented();
 }
 
-void NetworkResourceLoader::willCacheResponse(WebCore::ResourceHandle*, WebCore::CacheStoragePolicy&)
+bool NetworkResourceLoader::shouldUseCredentialStorage(ResourceHandle*)
 {
-    notImplemented();
+    // When the WebProcess is handling loading a client is consulted each time this shouldUseCredentialStorage question is asked.
+    // In NetworkProcess mode we ask the WebProcess client up front once and then reuse the cached answer.
+
+    return m_requestParameters.allowStoredCredentials() == AllowStoredCredentials;
 }
 
-bool NetworkResourceLoader::shouldUseCredentialStorage(WebCore::ResourceHandle*)
+void NetworkResourceLoader::didReceiveAuthenticationChallenge(ResourceHandle*, const AuthenticationChallenge& challenge)
 {
-    notImplemented();
-    return false;
+    ASSERT(!m_currentAuthenticationChallenge);
+    m_currentAuthenticationChallenge = adoptPtr(new AuthenticationChallenge(challenge));
+
+    send(Messages::WebResourceLoader::DidReceiveAuthenticationChallenge(*m_currentAuthenticationChallenge));
 }
 
-void NetworkResourceLoader::didReceiveAuthenticationChallenge(WebCore::ResourceHandle*, const WebCore::AuthenticationChallenge&)
+void NetworkResourceLoader::didCancelAuthenticationChallenge(ResourceHandle*, const AuthenticationChallenge& challenge)
 {
-    notImplemented();
+    ASSERT(m_currentAuthenticationChallenge);
+    ASSERT(m_currentAuthenticationChallenge->identifier() == challenge.identifier());
+
+    send(Messages::WebResourceLoader::DidCancelAuthenticationChallenge(*m_currentAuthenticationChallenge));
+
+    m_currentAuthenticationChallenge.clear();
 }
 
-void NetworkResourceLoader::didCancelAuthenticationChallenge(WebCore::ResourceHandle*, const WebCore::AuthenticationChallenge&)
+void NetworkResourceLoader::receivedCancellation(ResourceHandle*, const AuthenticationChallenge& challenge)
 {
-    notImplemented();
+    receivedAuthenticationCancellation(challenge);
 }
 
-void NetworkResourceLoader::receivedCancellation(WebCore::ResourceHandle*, const WebCore::AuthenticationChallenge&)
+void NetworkResourceLoader::receivedAuthenticationCredential(const AuthenticationChallenge& challenge, const Credential& credential)
 {
-    notImplemented();
+    ASSERT(m_currentAuthenticationChallenge);
+    ASSERT(m_currentAuthenticationChallenge->authenticationClient());
+
+    if (m_currentAuthenticationChallenge->identifier() != challenge.identifier())
+        return;
+    
+    m_currentAuthenticationChallenge->authenticationClient()->receivedCredential(*m_currentAuthenticationChallenge, credential);
+    m_currentAuthenticationChallenge.clear();
+}
+
+void NetworkResourceLoader::receivedRequestToContinueWithoutAuthenticationCredential(const AuthenticationChallenge& challenge)
+{
+    ASSERT(m_currentAuthenticationChallenge);
+    ASSERT(m_currentAuthenticationChallenge->authenticationClient());
+
+    if (m_currentAuthenticationChallenge->identifier() != challenge.identifier())
+        return;
+
+    m_currentAuthenticationChallenge->authenticationClient()->receivedRequestToContinueWithoutCredential(*m_currentAuthenticationChallenge);
+    m_currentAuthenticationChallenge.clear();
+}
+
+void NetworkResourceLoader::receivedAuthenticationCancellation(const AuthenticationChallenge& challenge)
+{
+    ASSERT(m_currentAuthenticationChallenge);
+    ASSERT(m_currentAuthenticationChallenge->authenticationClient());
+
+    if (m_currentAuthenticationChallenge->identifier() != challenge.identifier())
+        return;
+
+    m_currentAuthenticationChallenge->authenticationClient()->receivedCancellation(*m_currentAuthenticationChallenge);
+    m_currentAuthenticationChallenge.clear();
 }
 
 #if USE(PROTECTION_SPACE_AUTH_CALLBACK)
-bool NetworkResourceLoader::canAuthenticateAgainstProtectionSpace(WebCore::ResourceHandle*, const WebCore::ProtectionSpace&)
+static uint64_t generateCanAuthenticateAgainstProtectionSpaceID()
 {
-    notImplemented();
-    return false;
+    static int64_t uniqueCanAuthenticateAgainstProtectionSpaceID;
+    return atomicIncrement(&uniqueCanAuthenticateAgainstProtectionSpaceID);
+}
+
+bool NetworkResourceLoader::canAuthenticateAgainstProtectionSpace(ResourceHandle*, const ProtectionSpace& protectionSpace)
+{
+    uint64_t requestID = generateCanAuthenticateAgainstProtectionSpaceID();
+
+    if (!send(Messages::WebResourceLoader::CanAuthenticateAgainstProtectionSpace(requestID, protectionSpace)))
+        return false;
+
+    return m_connection->canAuthenticateAgainstProtectionSpaceResponseMap().waitForResponse(requestID);
+}
+
+void NetworkResourceLoader::canAuthenticateAgainstProtectionSpaceHandled(uint64_t requestID, bool canAuthenticate)
+{
+    m_connection->canAuthenticateAgainstProtectionSpaceResponseMap().didReceiveResponse(requestID, canAuthenticate);
 }
 #endif
 

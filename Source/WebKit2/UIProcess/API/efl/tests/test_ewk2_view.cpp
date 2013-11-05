@@ -20,13 +20,7 @@
 #include "config.h"
 
 #include "UnitTestUtils/EWK2UnitTestBase.h"
-#include "UnitTestUtils/EWK2UnitTestEnvironment.h"
 #include "UnitTestUtils/EWK2UnitTestServer.h"
-#include <EWebKit2.h>
-#include <Ecore.h>
-#include <Eina.h>
-#include <Evas.h>
-#include <gtest/gtest.h>
 #include <wtf/OwnPtr.h>
 #include <wtf/PassOwnPtr.h>
 #include <wtf/UnusedParam.h>
@@ -140,14 +134,14 @@ TEST_F(EWK2UnitTestBase, ewk_view_navigation)
     ASSERT_FALSE(ewk_view_forward_possible(webView()));
 }
 
-TEST_F(EWK2UnitTestBase, ewk_view_setting_encoding_custom)
+TEST_F(EWK2UnitTestBase, DISABLED_ewk_view_setting_encoding_custom)
 {
-    ASSERT_FALSE(ewk_view_setting_encoding_custom_get(webView()));
-    ASSERT_TRUE(ewk_view_setting_encoding_custom_set(webView(), "UTF-8"));
-    ASSERT_STREQ("UTF-8", ewk_view_setting_encoding_custom_get(webView()));
+    ASSERT_FALSE(ewk_view_custom_encoding_get(webView()));
+    ASSERT_TRUE(ewk_view_custom_encoding_set(webView(), "UTF-8"));
+    ASSERT_STREQ("UTF-8", ewk_view_custom_encoding_get(webView()));
     // Set the default charset.
-    ASSERT_TRUE(ewk_view_setting_encoding_custom_set(webView(), 0));
-    ASSERT_FALSE(ewk_view_setting_encoding_custom_get(webView()));
+    ASSERT_TRUE(ewk_view_custom_encoding_set(webView(), 0));
+    ASSERT_FALSE(ewk_view_custom_encoding_get(webView()));
 }
 
 static void onFormAboutToBeSubmitted(void* userData, Evas_Object*, void* eventInfo)
@@ -225,9 +219,9 @@ TEST_F(EWK2UnitTestBase, ewk_view_theme_set)
     ewk_view_html_string_load(webView(), buttonHTML, "file:///", 0);
     EXPECT_TRUE(waitUntilTitleChangedTo("30")); // the result should be same as default theme
 
-    ewk_view_theme_set(webView(), environment->pathForResource("big_button_theme.edj").data());
+    ewk_view_theme_set(webView(), environment->pathForTheme("big_button_theme.edj").data());
     ewk_view_html_string_load(webView(), buttonHTML, "file:///", 0);
-    EXPECT_TRUE(waitUntilTitleChangedTo("299")); // button of big button theme has 299px as padding (150 to -150)
+    EXPECT_TRUE(waitUntilTitleChangedTo("299")); // button of big button theme has 299px as padding (15 to -285)
 }
 
 TEST_F(EWK2UnitTestBase, ewk_view_mouse_events_enabled)
@@ -808,13 +802,13 @@ struct VibrationCbData {
     bool didReceiveVibrate; // Whether the vibration event received.
     bool didReceiveCancelVibration; // Whether the cancel vibration event received.
     unsigned vibrateCalledCount; // Vibrate callbacks count.
-    uint64_t expectedVibrationTime; // Expected vibration time.
+    unsigned expectedVibrationTime; // Expected vibration time.
 };
 
 static void onVibrate(void* userData, Evas_Object*, void* eventInfo)
 {
     VibrationCbData* data = static_cast<VibrationCbData*>(userData);
-    uint64_t* vibrationTime = static_cast<uint64_t*>(eventInfo);
+    unsigned* vibrationTime = static_cast<unsigned*>(eventInfo);
     if (*vibrationTime == data->expectedVibrationTime)
         data->didReceiveVibrate = true;
     data->vibrateCalledCount++;
@@ -887,3 +881,38 @@ TEST_F(EWK2UnitTestBase, ewk_context_vibration_client_callbacks_set)
     ASSERT_FALSE(data.didReceiveCancelVibration);
 }
 
+static void onContentsSizeChanged(void* userData, Evas_Object*, void* eventInfo)
+{
+    bool* result = static_cast<bool*>(userData);
+    Ewk_CSS_Size* size = static_cast<Ewk_CSS_Size*>(eventInfo);
+
+    if (size->w == 2000 && size->h == 3000)
+        *result = true;
+}
+
+TEST_F(EWK2UnitTestBase, ewk_view_contents_size_changed)
+{
+    const char contentsSizeHTML[] =
+        "<!DOCTYPE html>"
+        "<body style=\"margin:0px;width:2000px;height:3000px\"></body>";
+
+    bool sizeChanged = false;
+    evas_object_smart_callback_add(webView(), "contents,size,changed", onContentsSizeChanged, &sizeChanged);
+    ewk_view_html_string_load(webView(), contentsSizeHTML, 0, 0);
+    while (!sizeChanged)
+        ecore_main_loop_iterate();
+
+    ewk_view_device_pixel_ratio_set(webView(), 2);
+    ewk_view_html_string_load(webView(), contentsSizeHTML, 0, 0);
+    sizeChanged = false;
+    while (!sizeChanged)
+        ecore_main_loop_iterate();
+
+    ewk_view_scale_set(webView(), 3, 0, 0);
+    ewk_view_html_string_load(webView(), contentsSizeHTML, 0, 0);
+    sizeChanged = false;
+    while (!sizeChanged)
+        ecore_main_loop_iterate();
+
+    evas_object_smart_callback_del(webView(), "contents,size,changed", onContentsSizeChanged);
+}

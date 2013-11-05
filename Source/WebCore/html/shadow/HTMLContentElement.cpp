@@ -64,7 +64,6 @@ PassRefPtr<HTMLContentElement> HTMLContentElement::create(const QualifiedName& t
 
 HTMLContentElement::HTMLContentElement(const QualifiedName& name, Document* document)
     : InsertionPoint(name, document)
-    , m_registeredWithShadowRoot(false)
     , m_shouldParseSelectorList(false)
     , m_isValidSelector(true)
 {
@@ -98,46 +97,16 @@ void HTMLContentElement::ensureSelectParsed()
         m_selectorList = CSSSelectorList();
 }
 
-void HTMLContentElement::parseAttribute(const Attribute& attribute)
+void HTMLContentElement::parseAttribute(const QualifiedName& name, const AtomicString& value)
 {
-    if (attribute.name() == selectAttr) {
-        if (ShadowRoot* root = shadowRoot()) {
+    if (name == selectAttr) {
+        if (ShadowRoot* root = containingShadowRoot()) {
             root->owner()->setShouldCollectSelectFeatureSet();
             root->owner()->invalidateDistribution();
         }
         m_shouldParseSelectorList = true;
     } else
-        InsertionPoint::parseAttribute(attribute);
-}
-
-Node::InsertionNotificationRequest HTMLContentElement::insertedInto(ContainerNode* insertionPoint)
-{
-    InsertionPoint::insertedInto(insertionPoint);
-
-    if (insertionPoint->inDocument() && isActive()) {
-        ShadowRoot* root = shadowRoot();
-        root->registerContentElement();
-        root->owner()->setShouldCollectSelectFeatureSet();
-        m_registeredWithShadowRoot = true;
-    }
-
-    return InsertionDone;
-}
-
-void HTMLContentElement::removedFrom(ContainerNode* insertionPoint)
-{
-    if (insertionPoint->inDocument() && m_registeredWithShadowRoot) {
-        ShadowRoot* root = shadowRoot();
-        if (!root)
-            root = insertionPoint->shadowRoot();
-        if (root)
-            root->unregisterContentElement();
-        m_registeredWithShadowRoot = false;
-
-        if (ElementShadow* elementShadow = root ? root->owner() : 0)
-            elementShadow->setShouldCollectSelectFeatureSet();
-    }
-    InsertionPoint::removedFrom(insertionPoint);
+        InsertionPoint::parseAttribute(name, value);
 }
 
 static bool validateSubSelector(CSSSelector* selector)

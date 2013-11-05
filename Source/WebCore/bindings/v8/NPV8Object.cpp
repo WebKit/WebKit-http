@@ -80,16 +80,17 @@ static void freeV8NPObject(NPObject* npObject)
         int v8ObjectHash = v8NpObject->v8Object->GetIdentityHash();
         ASSERT(v8ObjectHash);
         V8NPObjectMap::iterator iter = v8NPObjectMap->find(v8ObjectHash);
-        ASSERT(iter != v8NPObjectMap->end());
-        V8NPObjectVector& objects = iter->value;
-        for (size_t index = 0; index < objects.size(); ++index) {
-            if (objects.at(index) == v8NpObject) {
-                objects.remove(index);
-                break;
+        if (iter != v8NPObjectMap->end()) {
+            V8NPObjectVector& objects = iter->value;
+            for (size_t index = 0; index < objects.size(); ++index) {
+                if (objects.at(index) == v8NpObject) {
+                    objects.remove(index);
+                    break;
+                }
             }
+            if (objects.isEmpty())
+                v8NPObjectMap->remove(v8ObjectHash);
         }
-        if (objects.isEmpty())
-            v8NPObjectMap->remove(v8ObjectHash);
     }
     v8NpObject->v8Object.Dispose();
     v8NpObject->v8Object.Clear();
@@ -111,11 +112,11 @@ static v8::Local<v8::String> npIdentifierToV8Identifier(NPIdentifier name)
 {
     PrivateIdentifier* identifier = static_cast<PrivateIdentifier*>(name);
     if (identifier->isString)
-        return v8::String::New(static_cast<const char*>(identifier->value.string));
+        return v8::String::NewSymbol(static_cast<const char*>(identifier->value.string));
 
     char buffer[32];
     snprintf(buffer, sizeof(buffer), "%d", identifier->value.number);
-    return v8::String::New(buffer);
+    return v8::String::NewSymbol(buffer);
 }
 
 NPObject* v8ObjectToNPObject(v8::Handle<v8::Object> object)
@@ -144,29 +145,32 @@ NPObject* npCreateV8ScriptObject(NPP npp, v8::Handle<v8::Object> object, DOMWind
         }
     }
 
-    int v8ObjectHash = object->GetIdentityHash();
-    ASSERT(v8ObjectHash);
-    V8NPObjectMap* v8NPObjectMap = V8PerContextData::from(object->CreationContext())->v8NPObjectMap();
-    V8NPObjectMap::iterator iter = v8NPObjectMap->find(v8ObjectHash);
-    if (iter != v8NPObjectMap->end()) {
-        V8NPObjectVector& objects = iter->value;
-        for (size_t index = 0; index < objects.size(); ++index) {
-            V8NPObject* v8npObject = objects.at(index);
-            if (v8npObject->rootObject == root) {
-                ASSERT(v8npObject->v8Object == object);
-                _NPN_RetainObject(&v8npObject->object);
-                return reinterpret_cast<NPObject*>(v8npObject);
+    V8NPObjectVector* objectVector = 0;
+    if (V8PerContextData* perContextData = V8PerContextData::from(object->CreationContext())) {
+        int v8ObjectHash = object->GetIdentityHash();
+        ASSERT(v8ObjectHash);
+        V8NPObjectMap* v8NPObjectMap = perContextData->v8NPObjectMap();
+        V8NPObjectMap::iterator iter = v8NPObjectMap->find(v8ObjectHash);
+        if (iter != v8NPObjectMap->end()) {
+            V8NPObjectVector& objects = iter->value;
+            for (size_t index = 0; index < objects.size(); ++index) {
+                V8NPObject* v8npObject = objects.at(index);
+                if (v8npObject->v8Object == object && v8npObject->rootObject == root) {
+                    _NPN_RetainObject(&v8npObject->object);
+                    return reinterpret_cast<NPObject*>(v8npObject);
+                }
             }
+        } else {
+            iter = v8NPObjectMap->set(v8ObjectHash, V8NPObjectVector()).iterator;
         }
-    } else {
-        iter = v8NPObjectMap->set(v8ObjectHash, V8NPObjectVector()).iterator;
+        objectVector = &iter->value;
     }
-
     V8NPObject* v8npObject = reinterpret_cast<V8NPObject*>(_NPN_CreateObject(npp, &V8NPObjectClass));
     v8npObject->v8Object = v8::Persistent<v8::Object>::New(object);
     v8npObject->rootObject = root;
 
-    iter->value.append(v8npObject);
+    if (objectVector)
+        objectVector->append(v8npObject);
 
     return reinterpret_cast<NPObject*>(v8npObject);
 }
@@ -209,7 +213,7 @@ bool _NPN_Invoke(NPP npp, NPObject* npObject, NPIdentifier methodName, const NPV
     v8::Context::Scope scope(context);
     ExceptionCatcher exceptionCatcher;
 
-    v8::Handle<v8::Value> functionObject = v8NpObject->v8Object->Get(v8::String::New(identifier->value.string));
+    v8::Handle<v8::Value> functionObject = v8NpObject->v8Object->Get(v8::String::NewSymbol(identifier->value.string));
     if (functionObject.IsEmpty() || functionObject->IsNull()) {
         NULL_TO_NPVARIANT(*result);
         return false;
@@ -532,7 +536,7 @@ bool _NPN_Enumerate(NPP npp, NPObject* npObject, NPIdentifier** identifier, uint
         *count = props->Length();
         *identifier = static_cast<NPIdentifier*>(malloc(sizeof(NPIdentifier*) * *count));
         for (uint32_t i = 0; i < *count; ++i) {
-            v8::Local<v8::Value> name = props->Get(v8Integer(i));
+            v8::Local<v8::Value> name = props->Get(deprecatedV8Integer(i));
             (*identifier)[i] = getStringIdentifier(v8::Local<v8::String>::Cast(name));
         }
         return true;

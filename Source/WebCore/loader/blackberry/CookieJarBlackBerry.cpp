@@ -39,49 +39,27 @@ namespace WebCore {
 
 String cookies(Document const* document, KURL const& url)
 {
-    Frame* frame = document->frame();
-    Page* page = frame ? frame->page() : 0;
-
-    if (!page)
-        return String();
-
-    if (!(frame && frame->loader() && frame->loader()->client()))
-        return String();
-
-    if (!static_cast<FrameLoaderClientBlackBerry*>(frame->loader()->client())->cookiesEnabled())
-        return String();
-
-    ASSERT(document && url == document->cookieURL());
     // 'HttpOnly' cookies should no be accessible from scripts, so we filter them out here
-    return cookieManager().getCookie(url, NoHttpOnlyCookie);
+    if (cookiesEnabled(document))
+        return cookieManager().getCookie(url, NoHttpOnlyCookie);
+    return String();
+
 }
 
 void setCookies(Document* document, KURL const& url, String const& value)
 {
-    Frame* frame = document->frame();
-    Page* page = frame ? frame->page() : 0;
-
-    if (!page)
-        return;
-
-    if (!(frame && frame->loader() && frame->loader()->client()))
-        return;
-
-    if (!static_cast<FrameLoaderClientBlackBerry*>(frame->loader()->client())->cookiesEnabled())
-        return;
-
-    ASSERT(document && url == document->cookieURL());
-    cookieManager().setCookies(url, value, NoHttpOnlyCookie);
+    if (cookiesEnabled(document))
+        cookieManager().setCookies(url, value, NoHttpOnlyCookie);
 }
 
-bool cookiesEnabled(Document const*)
+bool cookiesEnabled(const Document* document)
 {
-    // FIXME. Currently cookie is enabled by default, no setting on property page.
-    return true;
+    return document && document->settings() && document->settings()->cookieEnabled();
 }
 
 bool getRawCookies(const Document* document, const KURL& url, Vector<Cookie>& rawCookies)
 {
+    // Note: this method is called by inspector only. No need to check if cookie is enabled.
     Vector<ParsedCookie*> result;
     cookieManager().getRawCookies(result, url, WithHttpOnlyCookies);
     for (size_t i = 0; i < result.size(); i++)
@@ -93,20 +71,15 @@ void deleteCookie(const Document* document, const KURL& url, const String& cooki
 {
     // Cookies are not bound to the document. Therefore, we don't need to pass
     // in the document object to find the targeted cookies in cookie manager.
+    // Note: this method is called by inspector only. No need to check if cookie is enabled.
     cookieManager().removeCookieWithName(url, cookieName);
 }
 
 String cookieRequestHeaderFieldValue(const Document* document, const KURL &url)
 {
-    ASSERT(document);
-
-    if (!(document->frame() && document->frame()->loader() && document->frame()->loader()->client()))
-        return String();
-
-    if (!static_cast<FrameLoaderClientBlackBerry*>(document->frame()->loader()->client())->cookiesEnabled())
-        return String();
-
-    return cookieManager().getCookie(url, WithHttpOnlyCookies);
+    if (cookiesEnabled(document))
+        return cookieManager().getCookie(url, WithHttpOnlyCookies);
+    return String();
 }
 
 } // namespace WebCore

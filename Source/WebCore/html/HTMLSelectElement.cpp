@@ -45,6 +45,7 @@
 #include "LocalizedStrings.h"
 #include "MouseEvent.h"
 #include "NodeRenderingContext.h"
+#include "NodeTraversal.h"
 #include "Page.h"
 #include "RenderListBox.h"
 #include "RenderMenuList.h"
@@ -64,16 +65,13 @@ using namespace HTMLNames;
 // Upper limit agreed upon with representatives of Opera and Mozilla.
 static const unsigned maxSelectItems = 10000;
 
-static const DOMTimeStamp typeAheadTimeout = 1000;
-
 HTMLSelectElement::HTMLSelectElement(const QualifiedName& tagName, Document* document, HTMLFormElement* form)
     : HTMLFormControlElementWithState(tagName, document, form)
-    , m_lastCharTime(0)
+    , m_typeAhead(this)
     , m_size(0)
     , m_lastOnChangeIndex(-1)
     , m_activeSelectionAnchorIndex(-1)
     , m_activeSelectionEndIndex(-1)
-    , m_repeatingChar(0)
     , m_isProcessingUserDrivenChange(false)
     , m_multiple(false)
     , m_activeSelectionState(false)
@@ -163,7 +161,7 @@ bool HTMLSelectElement::valueMissing() const
     if (!willValidate())
         return false;
 
-    if (!isRequiredFormControl())
+    if (!isRequired())
         return false;
 
     int firstSelectionIndex = selectedIndex();
@@ -284,15 +282,15 @@ bool HTMLSelectElement::isPresentationAttribute(const QualifiedName& name) const
     return HTMLFormControlElementWithState::isPresentationAttribute(name);
 }
 
-void HTMLSelectElement::parseAttribute(const Attribute& attribute)
+void HTMLSelectElement::parseAttribute(const QualifiedName& name, const AtomicString& value)
 {
-    if (attribute.name() == sizeAttr) {
+    if (name == sizeAttr) {
         int oldSize = m_size;
         // Set the attribute value to a number.
         // This is important since the style rules for this attribute can determine the appearance property.
-        int size = attribute.value().toInt();
+        int size = value.toInt();
         String attrSize = String::number(size);
-        if (attrSize != attribute.value()) {
+        if (attrSize != value) {
             // FIXME: This is horribly factored.
             if (Attribute* sizeAttribute = getAttributeItem(sizeAttr))
                 sizeAttribute->setValue(attrSize);
@@ -309,14 +307,14 @@ void HTMLSelectElement::parseAttribute(const Attribute& attribute)
             reattach();
             setRecalcListItems();
         }
-    } else if (attribute.name() == multipleAttr)
-        parseMultipleAttribute(attribute);
-    else if (attribute.name() == accesskeyAttr) {
+    } else if (name == multipleAttr)
+        parseMultipleAttribute(value);
+    else if (name == accesskeyAttr) {
         // FIXME: ignore for the moment.
-    } else if (attribute.name() == onchangeAttr)
-        setAttributeEventListener(eventNames().changeEvent, createAttributeEventListener(this, attribute));
+    } else if (name == onchangeAttr)
+        setAttributeEventListener(eventNames().changeEvent, createAttributeEventListener(this, name, value));
     else
-        HTMLFormControlElementWithState::parseAttribute(attribute);
+        HTMLFormControlElementWithState::parseAttribute(name, value);
 }
 
 bool HTMLSelectElement::isKeyboardFocusable(KeyboardEvent* event) const
@@ -393,7 +391,7 @@ void HTMLSelectElement::optionElementChildrenChanged()
 void HTMLSelectElement::accessKeyAction(bool sendMouseEvents)
 {
     focus();
-    dispatchSimulatedClick(0, sendMouseEvents);
+    dispatchSimulatedClick(0, sendMouseEvents ? SendMouseUpDownEvents : SendNoEvents);
 }
 
 void HTMLSelectElement::setMultiple(bool multiple)
@@ -487,7 +485,7 @@ void HTMLSelectElement::setLength(unsigned newLen, ExceptionCode& ec)
 
 bool HTMLSelectElement::isRequiredFormControl() const
 {
-    return required();
+    return isRequired();
 }
 
 // Returns the 1st valid item |skip| items from |listIndex| in direction |direction| if there is one.
@@ -737,13 +735,12 @@ void HTMLSelectElement::recalcListItems(bool updateSelectedStates) const
 
     HTMLOptionElement* foundSelected = 0;
     HTMLOptionElement* firstOption = 0;
-    for (Node* currentNode = this->firstChild(); currentNode;) {
-        if (!currentNode->isHTMLElement()) {
-            currentNode = currentNode->traverseNextSibling(this);
+    for (Element* currentElement = ElementTraversal::firstWithin(this); currentElement; ) {
+        if (!currentElement->isHTMLElement()) {
+            currentElement = ElementTraversal::nextSkippingChildren(currentElement, this);
             continue;
         }
-
-        HTMLElement* current = toHTMLElement(currentNode);
+        HTMLElement* current = toHTMLElement(currentElement);
 
         // optgroup tags may not nest. However, both FireFox and IE will
         // flatten the tree automatically, so we follow suit.
@@ -751,7 +748,7 @@ void HTMLSelectElement::recalcListItems(bool updateSelectedStates) const
         if (current->hasTagName(optgroupTag)) {
             m_listItems.append(current);
             if (current->firstChild()) {
-                currentNode = current->firstChild();
+                currentElement = ElementTraversal::firstWithin(current);
                 continue;
             }
         }
@@ -778,12 +775,12 @@ void HTMLSelectElement::recalcListItems(bool updateSelectedStates) const
             m_listItems.append(current);
 
         // In conforming HTML code, only <optgroup> and <option> will be found
-        // within a <select>. We call traverseNextSibling so that we only step
+        // within a <select>. We call NodeTraversal::nextSkippingChildren so that we only step
         // into those tags that we choose to. For web-compat, we should cope
         // with the case where odd tags like a <div> have been added but we
         // handle this because such tags have already been removed from the
         // <select>'s subtree at this point.
-        currentNode = currentNode->traverseNextSibling(this);
+        currentElement = ElementTraversal::nextSkippingChildren(currentElement, this);
     }
 
     if (!foundSelected && m_size <= 1 && firstOption && !firstOption->selected())
@@ -1000,10 +997,10 @@ void HTMLSelectElement::restoreFormControlState(const FormControlState& state)
     setNeedsValidityCheck();
 }
 
-void HTMLSelectElement::parseMultipleAttribute(const Attribute& attribute)
+void HTMLSelectElement::parseMultipleAttribute(const AtomicString& value)
 {
     bool oldUsesMenuList = usesMenuList();
-    m_multiple = !attribute.isNull();
+    m_multiple = !value.isNull();
     setNeedsValidityCheck();
     if (oldUsesMenuList != usesMenuList())
         reattachIfAttached();
@@ -1289,7 +1286,7 @@ void HTMLSelectElement::listBoxDefaultEventHandler(Event* event)
 
         // Convert to coords relative to the list box if needed.
         MouseEvent* mouseEvent = static_cast<MouseEvent*>(event);
-        IntPoint localOffset = roundedIntPoint(renderer()->absoluteToLocal(mouseEvent->absoluteLocation(), UseTransforms | SnapOffsetForTransforms));
+        IntPoint localOffset = roundedIntPoint(renderer()->absoluteToLocal(mouseEvent->absoluteLocation(), UseTransforms));
         int listIndex = toRenderListBox(renderer())->listIndexAtOffset(toSize(localOffset));
         if (listIndex >= 0) {
             if (!disabled()) {
@@ -1309,7 +1306,7 @@ void HTMLSelectElement::listBoxDefaultEventHandler(Event* event)
         if (mouseEvent->button() != LeftButton || !mouseEvent->buttonDown())
             return;
 
-        IntPoint localOffset = roundedIntPoint(renderer()->absoluteToLocal(mouseEvent->absoluteLocation(), UseTransforms | SnapOffsetForTransforms));
+        IntPoint localOffset = roundedIntPoint(renderer()->absoluteToLocal(mouseEvent->absoluteLocation(), UseTransforms));
         int listIndex = toRenderListBox(renderer())->listIndexAtOffset(toSize(localOffset));
         if (listIndex >= 0) {
             if (!disabled()) {
@@ -1474,82 +1471,34 @@ int HTMLSelectElement::lastSelectedListIndex() const
     return -1;
 }
 
-static String stripLeadingWhiteSpace(const String& string)
+int HTMLSelectElement::indexOfSelectedOption() const
 {
-    int length = string.length();
+    return optionToListIndex(selectedIndex());
+}
 
-    int i;
-    for (i = 0; i < length; ++i) {
-        if (string[i] != noBreakSpace && (string[i] <= 0x7F ? !isASCIISpace(string[i]) : (direction(string[i]) != WhiteSpaceNeutral)))
-            break;
-    }
+int HTMLSelectElement::optionCount() const
+{
+    return listItems().size();
+}
 
-    return string.substring(i, length - i);
+String HTMLSelectElement::optionAtIndex(int index) const
+{
+    const Vector<HTMLElement*>& items = listItems();
+    
+    HTMLElement* element = items[index];
+    if (!element->hasTagName(optionTag) || toHTMLOptionElement(element)->disabled())
+        return String();
+    return toHTMLOptionElement(element)->textIndentedToRespectGroupLabel();
 }
 
 void HTMLSelectElement::typeAheadFind(KeyboardEvent* event)
 {
-    if (event->timeStamp() < m_lastCharTime)
-        return;
-
-    DOMTimeStamp delta = event->timeStamp() - m_lastCharTime;
-    m_lastCharTime = event->timeStamp();
-
-    UChar c = event->charCode();
-
-    String prefix;
-    int searchStartOffset = 1;
-    if (delta > typeAheadTimeout) {
-        prefix = String(&c, 1);
-        m_typedString = prefix;
-        m_repeatingChar = c;
-    } else {
-        m_typedString.append(c);
-
-        if (c == m_repeatingChar) {
-            // The user is likely trying to cycle through all the items starting
-            // with this character, so just search on the character.
-            prefix = String(&c, 1);
-        } else {
-            m_repeatingChar = 0;
-            prefix = m_typedString;
-            searchStartOffset = 0;
-        }
-    }
-
-    const Vector<HTMLElement*>& items = listItems();
-    int itemCount = items.size();
-    if (itemCount < 1)
-        return;
-
-    int selected = selectedIndex();
-    int index = optionToListIndex(selected >= 0 ? selected : 0) + searchStartOffset;
+    int index = m_typeAhead.handleEvent(event, TypeAhead::MatchPrefix | TypeAhead::CycleFirstChar);
     if (index < 0)
         return;
-    index %= itemCount;
-
-    // Compute a case-folded copy of the prefix string before beginning the search for
-    // a matching element. This code uses foldCase to work around the fact that
-    // String::startWith does not fold non-ASCII characters. This code can be changed
-    // to use startWith once that is fixed.
-    String prefixWithCaseFolded(prefix.foldCase());
-    for (int i = 0; i < itemCount; ++i, index = (index + 1) % itemCount) {
-        HTMLElement* element = items[index];
-        if (!element->hasTagName(optionTag) || toHTMLOptionElement(element)->disabled())
-            continue;
-
-        // Fold the option string and check if its prefix is equal to the folded prefix.
-        String text = toHTMLOptionElement(element)->textIndentedToRespectGroupLabel();
-        if (stripLeadingWhiteSpace(text).foldCase().startsWith(prefixWithCaseFolded)) {
-            selectOption(listToOptionIndex(index), DeselectOtherOptions | DispatchChangeEvent | UserDriven);
-            if (!usesMenuList())
-                listBoxOnChange();
-
-            setOptionsChangedOnRenderer();
-            setNeedsStyleRecalc();
-            return;
-        }
-    }
+    selectOption(listToOptionIndex(index), DeselectOtherOptions | DispatchChangeEvent | UserDriven);
+    if (!usesMenuList())
+        listBoxOnChange();
 }
 
 Node::InsertionNotificationRequest HTMLSelectElement::insertedInto(ContainerNode* insertionPoint)

@@ -41,6 +41,8 @@
 #include "HTMLInputElement.h"
 #include "HTMLOptionElement.h"
 #include "KeyboardEvent.h"
+#include "LocalizedStrings.h"
+#include "NodeTraversal.h"
 #include "Page.h"
 #include "PickerIndicatorElement.h"
 #include "PlatformLocale.h"
@@ -85,12 +87,12 @@ bool BaseMultipleFieldsDateAndTimeInputType::hasCustomFocusLogic() const
 
 bool BaseMultipleFieldsDateAndTimeInputType::isEditControlOwnerDisabled() const
 {
-    return element()->readOnly();
+    return element()->disabled();
 }
 
 bool BaseMultipleFieldsDateAndTimeInputType::isEditControlOwnerReadOnly() const
 {
-    return element()->disabled();
+    return element()->readOnly();
 }
 
 void BaseMultipleFieldsDateAndTimeInputType::focusAndSelectSpinButtonOwner()
@@ -101,7 +103,7 @@ void BaseMultipleFieldsDateAndTimeInputType::focusAndSelectSpinButtonOwner()
 
 bool BaseMultipleFieldsDateAndTimeInputType::shouldSpinButtonRespondToMouseEvents()
 {
-    return !element()->disabled() && !element()->readOnly();
+    return !element()->isDisabledOrReadOnly();
 }
 
 bool BaseMultipleFieldsDateAndTimeInputType::shouldSpinButtonRespondToWheelEvents()
@@ -125,7 +127,7 @@ void BaseMultipleFieldsDateAndTimeInputType::spinButtonStepUp()
 
 bool BaseMultipleFieldsDateAndTimeInputType::isPickerIndicatorOwnerDisabledOrReadOnly() const
 {
-    return element()->disabled() || element()->readOnly();
+    return element()->isDisabledOrReadOnly();
 }
 
 void BaseMultipleFieldsDateAndTimeInputType::pickerIndicatorChooseValue(const String& value)
@@ -166,6 +168,11 @@ BaseMultipleFieldsDateAndTimeInputType::~BaseMultipleFieldsDateAndTimeInputType(
         m_dateTimeEditElement->removeEditControlOwner();
     if (m_pickerIndicatorElement)
         m_pickerIndicatorElement->removePickerIndicatorOwner();
+}
+
+String BaseMultipleFieldsDateAndTimeInputType::badInputText() const
+{
+    return validationMessageBadInputForDateTimeText();
 }
 
 void BaseMultipleFieldsDateAndTimeInputType::blur()
@@ -273,6 +280,11 @@ void BaseMultipleFieldsDateAndTimeInputType::handleKeydownEvent(KeyboardEvent* e
         forwardEvent(event);
 }
 
+bool BaseMultipleFieldsDateAndTimeInputType::hasBadInput() const
+{
+    return element()->value().isEmpty() && m_dateTimeEditElement && m_dateTimeEditElement->anyEditableFieldsHaveValues();
+}
+
 bool BaseMultipleFieldsDateAndTimeInputType::isKeyboardFocusable(KeyboardEvent*) const
 {
     return false;
@@ -325,8 +337,10 @@ FormControlState BaseMultipleFieldsDateAndTimeInputType::saveFormControlState() 
 void BaseMultipleFieldsDateAndTimeInputType::setValue(const String& sanitizedValue, bool valueChanged, TextFieldEventBehavior eventBehavior)
 {
     InputType::setValue(sanitizedValue, valueChanged, eventBehavior);
-    if (valueChanged)
+    if (valueChanged || (sanitizedValue.isEmpty() && m_dateTimeEditElement && m_dateTimeEditElement->anyEditableFieldsHaveValues())) {
         updateInnerTextValue();
+        element()->setNeedsValidityCheck();
+    }
 }
 
 bool BaseMultipleFieldsDateAndTimeInputType::shouldUseInputMethod() const
@@ -345,7 +359,7 @@ void BaseMultipleFieldsDateAndTimeInputType::updateInnerTextValue()
         return;
 
     AtomicString direction = element()->locale().isRTL() ? AtomicString("rtl", AtomicString::ConstructFromLiteral) : AtomicString("ltr", AtomicString::ConstructFromLiteral);
-    if (Element* container = firstElementChild(element()->userAgentShadowRoot()))
+    if (Element* container = ElementTraversal::firstWithin(element()->userAgentShadowRoot()))
         container->setAttribute(HTMLNames::dirAttr, direction);
 
     DateTimeEditElement::LayoutParameters layoutParameters(element()->locale(), createStepRange(AnyIsDefaultStep));
@@ -406,14 +420,6 @@ void BaseMultipleFieldsDateAndTimeInputType::showPickerIndicator()
     m_pickerIndicatorIsVisible = true;
     ASSERT(m_pickerIndicatorElement);
     m_pickerIndicatorElement->removeInlineStyleProperty(CSSPropertyDisplay);
-}
-
-int BaseMultipleFieldsDateAndTimeInputType::fullYear(const String& source) const
-{
-    DateComponents date;
-    if (!parseToDateComponents(source, &date))
-        return DateTimeEditElement::LayoutParameters::undefinedYear();
-    return date.fullYear();
 }
 
 bool BaseMultipleFieldsDateAndTimeInputType::shouldHaveSecondField(const DateComponents& date) const

@@ -64,9 +64,24 @@ WebPrerender::WebPrerender(PassRefPtr<WebCore::Prerender> prerender)
 {
 }
 
-WebPrerender::~WebPrerender()
+const WebCore::Prerender* WebPrerender::toPrerender() const
+{
+    return m_private.get();
+}
+
+void WebPrerender::reset()
 {
     m_private.reset();
+}
+
+void WebPrerender::assign(const WebPrerender& other)
+{
+    m_private = other.m_private;
+}
+
+bool WebPrerender::isNull() const
+{
+    return m_private.isNull();
 }
 
 WebURL WebPrerender::url() const
@@ -95,6 +110,26 @@ const WebPrerender::ExtraData* WebPrerender::extraData() const
     if (!webcoreExtraData)
         return 0;
     return static_cast<ExtraDataContainer*>(webcoreExtraData.get())->extraData();
+}
+
+void WebPrerender::didStartPrerender()
+{
+    m_private->didStartPrerender();
+}
+
+void WebPrerender::didStopPrerender()
+{
+    m_private->didStopPrerender();
+}
+
+void WebPrerender::didSendLoadForPrerender()
+{
+    m_private->didSendLoadForPrerender();
+}
+
+void WebPrerender::didSendDOMContentLoadedForPrerender()
+{
+    m_private->didSendDOMContentLoadedForPrerender();
 }
 
 } // namespace WebKit

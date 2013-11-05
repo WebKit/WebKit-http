@@ -32,6 +32,8 @@
 #include "Logging.h"
 #include "NetworkConnectionToWebProcessMessages.h"
 #include "NetworkProcessConnection.h"
+#include "NetworkResourceLoaderMessages.h"
+#include "PlatformCertificateInfo.h"
 #include "WebCoreArgumentCoders.h"
 #include "WebProcess.h"
 #include <WebCore/ResourceLoader.h>
@@ -54,6 +56,16 @@ WebResourceLoader::~WebResourceLoader()
 {
 }
 
+CoreIPC::Connection* WebResourceLoader::connection() const
+{
+    return WebProcess::shared().networkConnection()->connection();
+}
+
+uint64_t WebResourceLoader::destinationID() const
+{
+    return m_coreLoader->identifier();
+}
+
 void WebResourceLoader::willSendRequest(uint64_t requestID, const ResourceRequest& proposedRequest, const ResourceResponse& redirectResponse)
 {
     LOG(Network, "(WebProcess) WebResourceLoader::willSendRequest to '%s'", proposedRequest.url().string().utf8().data());
@@ -61,13 +73,15 @@ void WebResourceLoader::willSendRequest(uint64_t requestID, const ResourceReques
     ResourceRequest newRequest = proposedRequest;
     m_coreLoader->willSendRequest(newRequest, redirectResponse);
 
-    WebProcess::shared().networkConnection()->connection()->send(Messages::NetworkConnectionToWebProcess::WillSendRequestHandled(requestID, newRequest), 0);
+    send(Messages::NetworkResourceLoader::WillSendRequestHandled(requestID, newRequest));
 }
 
-void WebResourceLoader::didReceiveResponse(const WebCore::ResourceResponse& response)
+void WebResourceLoader::didReceiveResponseWithCertificateInfo(const ResourceResponse& response, const PlatformCertificateInfo& certificateInfo)
 {
-    LOG(Network, "(WebProcess) WebResourceLoader::didReceiveResponse for '%s'", m_coreLoader->url().string().utf8().data());
-    m_coreLoader->didReceiveResponse(response);
+    LOG(Network, "(WebProcess) WebResourceLoader::didReceiveResponseWithCertificateInfo for '%s'. Status %d.", m_coreLoader->url().string().utf8().data(), response.httpStatusCode());
+    ResourceResponse responseCopy(response);
+    responseCopy.setCertificateChain(certificateInfo.certificateChain());
+    m_coreLoader->didReceiveResponse(responseCopy);
 }
 
 void WebResourceLoader::didReceiveData(const CoreIPC::DataReference& data, int64_t encodedDataLength, bool allAtOnce)
@@ -104,6 +118,57 @@ void WebResourceLoader::didReceiveResource(const ShareableResource::Handle& hand
     }
 
     m_coreLoader->didFinishLoading(finishTime);
+}
+
+void WebResourceLoader::canAuthenticateAgainstProtectionSpace(uint64_t requestID, const ProtectionSpace& protectionSpace)
+{
+    send(Messages::NetworkResourceLoader::CanAuthenticateAgainstProtectionSpaceHandled(requestID, m_coreLoader->canAuthenticateAgainstProtectionSpace(protectionSpace)));
+}
+
+void WebResourceLoader::didReceiveAuthenticationChallenge(const AuthenticationChallenge& challenge)
+{
+    LOG(Network, "(WebProcess) WebResourceLoader::didReceiveAuthenticationChallenge for '%s'", m_coreLoader->url().string().utf8().data());
+
+    m_currentAuthenticationChallenge = adoptPtr(new AuthenticationChallenge(challenge));
+    m_currentAuthenticationChallenge->setAuthenticationClient(this);
+
+    m_coreLoader->didReceiveAuthenticationChallenge(*m_currentAuthenticationChallenge);
+}
+
+void WebResourceLoader::didCancelAuthenticationChallenge(const AuthenticationChallenge& challenge)
+{
+    if (m_currentAuthenticationChallenge->identifier() != challenge.identifier())
+        return;
+
+    LOG(Network, "(WebProcess) WebResourceLoader::didCancelAuthenticationChallenge for '%s'", m_coreLoader->url().string().utf8().data());
+
+    m_coreLoader->didCancelAuthenticationChallenge(*m_currentAuthenticationChallenge);
+    m_currentAuthenticationChallenge.clear();
+}
+
+// WebCore::AuthenticationClient
+void WebResourceLoader::receivedCredential(const AuthenticationChallenge& challenge, const Credential& credential)
+{
+    ASSERT(m_currentAuthenticationChallenge && challenge == *m_currentAuthenticationChallenge);
+    send(Messages::NetworkResourceLoader::ReceivedAuthenticationCredential(challenge, credential));
+
+    m_currentAuthenticationChallenge.clear();
+}
+
+void WebResourceLoader::receivedRequestToContinueWithoutCredential(const AuthenticationChallenge& challenge)
+{
+    ASSERT(m_currentAuthenticationChallenge && challenge == *m_currentAuthenticationChallenge);
+    send(Messages::NetworkResourceLoader::ReceivedRequestToContinueWithoutAuthenticationCredential(challenge));
+
+    m_currentAuthenticationChallenge.clear();
+}
+
+void WebResourceLoader::receivedCancellation(const AuthenticationChallenge& challenge)
+{
+    ASSERT(m_currentAuthenticationChallenge && challenge == *m_currentAuthenticationChallenge);
+    send(Messages::NetworkResourceLoader::ReceivedAuthenticationCancellation(challenge));
+
+    m_currentAuthenticationChallenge.clear();
 }
 
 } // namespace WebKit

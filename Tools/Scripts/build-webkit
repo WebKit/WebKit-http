@@ -57,8 +57,9 @@ my $installHeaders;
 my $installLibs;
 my $prefixPath;
 my $makeArgs = "";
-my $cmakeArgs;
+my $cmakeArgs = "";
 my $onlyWebKitProject = 0;
+my $noWebKit1 = 0;
 my $noWebKit2 = 0;
 my $coverageSupport = 0;
 my $startTime = time();
@@ -129,11 +130,12 @@ Usage: $programName [options] [options to pass to build system]
   --prefix=<path>                   Set installation prefix to the given path (Gtk/Efl/BlackBerry/Haiku only)
   --makeargs=<arguments>            Optional Makefile flags
   --qmakearg=<arguments>            Optional qmake flags (Qt only, e.g. --qmakearg="CONFIG+=webkit2" to build WebKit2)
-  --cmakearg=<arguments>            Optional CMake flags (e.g. --cmakearg="-DFOO=bar -DCMAKE_PREFIX_PATH=/usr/local")
+  --cmakeargs=<arguments>           Optional CMake flags (e.g. --cmakeargs="-DFOO=bar -DCMAKE_PREFIX_PATH=/usr/local")
 
   --minimal                         No optional features, unless explicitly enabled
 
   --only-webkit                     Build only the WebKit project
+  --no-webkit1                      Omit WebKit1 code from the build (Qt/EFL only)
   --no-webkit2                      Omit WebKit2 code from the build
 
 EOF
@@ -149,6 +151,7 @@ my %options = (
     'cmakeargs=s' => \$cmakeArgs,
     'minimal' => \$minimal,
     'only-webkit' => \$onlyWebKitProject,
+    'no-webkit1' => \$noWebKit1,
     'no-webkit2' => \$noWebKit2,
     'coverage' => \$coverageSupport,
 );
@@ -210,16 +213,7 @@ if ($useGYP) {
 
 my @options = ();
 
-# enable autotool options accordingly
-if (isGtk()) {
-    @options = @ARGV;
-    foreach (@features) {
-        push @options, autotoolsFlag(${$_->{value}}, $_->{option});
-    }
-
-    push @options, "--prefix=" . $prefixPath if defined($prefixPath);
-    push @options, "--makeargs=" . $makeArgs if $makeArgs;
-} elsif (isAppleMacWebKit()) {
+if (isAppleMacWebKit()) {
     push @options, XcodeOptions();
 
     sub option($$$)
@@ -255,6 +249,7 @@ if (isGtk()) {
     push @options, "--install-headers=" . $installHeaders if defined($installHeaders);
     push @options, "--install-libs=" . $installLibs if defined($installLibs);
     push @options, "--makeargs=" . $makeArgs if $makeArgs;
+    push @options, "WEBKIT_CONFIG-=build_webkit1" if $noWebKit1;
     push @options, "WEBKIT_CONFIG-=build_webkit2" if $noWebKit2;
 
     if (checkForArgumentAndRemoveFromARGV("-2")) {
@@ -320,8 +315,8 @@ if (isChromium()) {
 if (isEfl()) {
     # By default we build using all of the available CPUs.
     $makeArgs .= ($makeArgs ? " " : "") . "-j" . numberOfCPUs() if $makeArgs !~ /-j\s*\d+/;
-    $cmakeArgs .= ($cmakeArgs ? " " : "") . "-DENABLE_WEBKIT=ON";
-    $cmakeArgs .= " -DENABLE_WEBKIT2=ON" if !$noWebKit2;
+    $cmakeArgs = "-DENABLE_WEBKIT=OFF "  . $cmakeArgs if $noWebKit1;
+    $cmakeArgs = "-DENABLE_WEBKIT2=OFF " . $cmakeArgs if $noWebKit2;
 
     # We remove CMakeCache to avoid the bots to reuse cached flags when
     # we enable new features. This forces a reconfiguration.
@@ -373,10 +368,7 @@ for my $dir (@projects) {
 
     my $project = basename($dir);
     if (isGtk()) {
-        if ($noWebKit2) {
-            unshift(@options, "--disable-webkit2");
-        }
-        $result = buildGtkProject($project, $clean, @options);
+        $result = buildGtkProject($project, $clean, $prefixPath, $makeArgs, $noWebKit2, @features);
     } elsif (isAppleMacWebKit()) {
         my @local_options = @options;
         push @local_options, XcodeCoverageSupportOptions() if $coverageSupport && $project ne "ANGLE";

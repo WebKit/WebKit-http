@@ -25,8 +25,6 @@
 
 #import <AvailabilityMacros.h>
 
-#if MAC_OS_X_VERSION_MIN_REQUIRED >= 1070
-
 #import <crt_externs.h>
 #import <dlfcn.h>
 #import <mach-o/dyld.h>
@@ -73,11 +71,9 @@ static void WebProcessServiceForWebKitDevelopmentEventHandler(xpc_connection_t p
                 size_t outCount = 0;
                 posix_spawnattr_setbinpref_np(&attr, 1, cpuTypes, &outCount);
 
-#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1070
                 static const int allowExecutableHeapFlag = 0x2000;
                 if (xpc_dictionary_get_bool(event, "executable-heap"))
                     flags |= allowExecutableHeapFlag;
-#endif
 
                 posix_spawnattr_setflags(&attr, flags);
 
@@ -123,9 +119,9 @@ static void WebProcessServiceForWebKitDevelopmentEventHandler(xpc_connection_t p
                     exit(EXIT_FAILURE);
                 }
 
-                typedef void (*InitializeWebProcessFunction)(const char* clientIdentifer, xpc_connection_t connection, mach_port_t serverPort);
-                InitializeWebProcessFunction InitializeWebProcessFunctionPtr = reinterpret_cast<InitializeWebProcessFunction>(dlsym(frameworkLibrary, "InitializeWebProcessForWebProcessServiceForWebKitDevelopment"));
-                if (!InitializeWebProcessFunctionPtr) {
+                typedef void (*InitializeWebProcessFunction)(const char* clientIdentifer, xpc_connection_t connection, mach_port_t serverPort, const char* uiProcessName);
+                InitializeWebProcessFunction initializeWebProcessFunctionPtr = reinterpret_cast<InitializeWebProcessFunction>(dlsym(frameworkLibrary, "initializeWebProcessForWebProcessServiceForWebKitDevelopment"));
+                if (!initializeWebProcessFunctionPtr) {
                     NSLog(@"Unable to find entry point in WebKit2.framework: %s\n", dlerror());
                     exit(EXIT_FAILURE);
                 }
@@ -135,7 +131,10 @@ static void WebProcessServiceForWebKitDevelopmentEventHandler(xpc_connection_t p
                 xpc_connection_send_message(xpc_dictionary_get_remote_connection(event), reply);
                 xpc_release(reply);
 
-                InitializeWebProcessFunctionPtr(xpc_dictionary_get_string(event, "client-identifier"), peer, xpc_dictionary_copy_mach_send(event, "server-port"));
+                dup2(xpc_dictionary_dup_fd(event, "stdout"), STDOUT_FILENO);
+                dup2(xpc_dictionary_dup_fd(event, "stderr"), STDERR_FILENO);
+
+                initializeWebProcessFunctionPtr(xpc_dictionary_get_string(event, "client-identifier"), peer, xpc_dictionary_copy_mach_send(event, "server-port"), xpc_dictionary_get_string(event, "ui-process-name"));
             }
         }
     });
@@ -148,12 +147,3 @@ int main(int argc, char** argv)
     xpc_main(WebProcessServiceForWebKitDevelopmentEventHandler);
     return 0;;
 }
-
-#else
-
-int main(int argc, char** argv)
-{
-    return 0;
-}
-
-#endif

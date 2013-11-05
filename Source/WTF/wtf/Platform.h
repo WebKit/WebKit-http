@@ -438,6 +438,7 @@
 /* PLATFORM(CHROMIUM) */
 /* PLATFORM(QT) */
 /* PLATFORM(WX) */
+/* PLATFORM(EFL) */
 /* PLATFORM(GTK) */
 /* PLATFORM(HAIKU) */
 /* PLATFORM(BLACKBERRY) */
@@ -449,6 +450,8 @@
 #define WTF_PLATFORM_QT 1
 #elif defined(BUILDING_WX__)
 #define WTF_PLATFORM_WX 1
+#elif defined(BUILDING_EFL__)
+#define WTF_PLATFORM_EFL 1
 #elif defined(BUILDING_GTK__)
 #define WTF_PLATFORM_GTK 1
 #elif defined(BUILDING_HAIKU__)
@@ -561,7 +564,6 @@
 #endif
 #define WTF_USE_CF 1
 #define WTF_USE_PTHREADS 1
-#define HAVE_PTHREAD_RWLOCK 1
 #define HAVE_READLINE 1
 #define HAVE_RUNLOOP_TIMER 1
 #define ENABLE_FULLSCREEN_API 1
@@ -581,10 +583,20 @@
 #if PLATFORM(CHROMIUM) && OS(DARWIN)
 #define WTF_USE_CF 1
 #define WTF_USE_PTHREADS 1
-#define HAVE_PTHREAD_RWLOCK 1
-
 #define WTF_USE_WK_SCROLLBAR_PAINTER 1
 #endif
+
+#if PLATFORM(CHROMIUM)
+#if OS(DARWIN)
+/* We can't override the global operator new and delete on OS(DARWIN) because
+ * some object are allocated by WebKit and deallocated by the embedder. */
+#define ENABLE_GLOBAL_FASTMALLOC_NEW 0
+#else /* !OS(DARWIN) */
+/* On non-OS(DARWIN), the "system malloc" is actually TCMalloc anyway, so there's
+ * no need to use WebKit's copy of TCMalloc. */
+#define USE_SYSTEM_MALLOC 1
+#endif /* OS(DARWIN) */
+#endif /* PLATFORM(CHROMIUM) */
 
 #if PLATFORM(IOS)
 #define DONT_FINALIZE_ON_MAIN_THREAD 1
@@ -608,7 +620,6 @@
 #define ENABLE_ORIENTATION_EVENTS 1
 #define ENABLE_REPAINT_THROTTLING 1
 #define ENABLE_WEB_ARCHIVE 1
-#define HAVE_PTHREAD_RWLOCK 1
 #define HAVE_READLINE 1
 #define WTF_USE_CF 1
 #define WTF_USE_CFNETWORK 1
@@ -665,7 +676,6 @@
 
 #if OS(UNIX) && (PLATFORM(GTK) || PLATFORM(QT))
 #define WTF_USE_PTHREADS 1
-#define HAVE_PTHREAD_RWLOCK 1
 #endif
 
 #if PLATFORM(HAIKU)
@@ -688,7 +698,7 @@
 #endif
 
 #if !defined(HAVE_ACCESSIBILITY)
-#if PLATFORM(IOS) || PLATFORM(MAC) || PLATFORM(WIN) || PLATFORM(GTK) || (PLATFORM(CHROMIUM) && !OS(ANDROID))
+#if PLATFORM(IOS) || PLATFORM(MAC) || PLATFORM(WIN) || PLATFORM(GTK) || (PLATFORM(CHROMIUM) && !OS(ANDROID)) || PLATFORM(EFL)
 #define HAVE_ACCESSIBILITY 1
 #endif
 #endif /* !defined(HAVE_ACCESSIBILITY) */
@@ -856,14 +866,6 @@
 #endif
 #endif
 
-#if !defined(ENABLE_GESTURE_ANIMATION)
-#if PLATFORM(QT) || !ENABLE(SMOOTH_SCROLLING)
-#define ENABLE_GESTURE_ANIMATION 0
-#else
-#define ENABLE_GESTURE_ANIMATION 1
-#endif
-#endif
-
 #if !defined(ENABLE_SATURATED_LAYOUT_ARITHMETIC)
 #define ENABLE_SATURATED_LAYOUT_ARITHMETIC 0
 #endif
@@ -926,7 +928,7 @@
     && (CPU(X86) || CPU(X86_64) || CPU(ARM) || CPU(MIPS)) \
     && (OS(DARWIN) || !COMPILER(GCC) || GCC_VERSION_AT_LEAST(4, 1, 0)) \
     && !OS(WINCE) \
-    && !OS(QNX)
+    && !(OS(QNX) && !PLATFORM(QT)) /* We use JIT in QNX Qt */
 #define ENABLE_JIT 1
 #endif
 
@@ -955,7 +957,7 @@
 #if !defined(ENABLE_LLINT) \
     && ENABLE(JIT) \
     && (OS(DARWIN) || OS(LINUX)) \
-    && (PLATFORM(MAC) || PLATFORM(IOS) || PLATFORM(GTK) || (PLATFORM(QT) && OS(LINUX))) \
+    && (PLATFORM(MAC) || PLATFORM(IOS) || PLATFORM(GTK) || PLATFORM(QT)) \
     && (CPU(X86) || CPU(X86_64) || CPU(ARM_THUMB2))
 #define ENABLE_LLINT 1
 #endif
@@ -1036,7 +1038,7 @@
 #define ENABLE_REGEXP_TRACING 0
 
 /* Yet Another Regex Runtime - turned on by default for JIT enabled ports. */
-#if !defined(ENABLE_YARR_JIT) && (ENABLE(JIT) || ENABLE(LLINT_C_LOOP)) && !PLATFORM(CHROMIUM)
+#if !defined(ENABLE_YARR_JIT) && (ENABLE(JIT) || ENABLE(LLINT_C_LOOP)) && !PLATFORM(CHROMIUM) && !(OS(QNX) && PLATFORM(QT))
 #define ENABLE_YARR_JIT 1
 
 /* Setting this flag compares JIT results with interpreter results. */
@@ -1192,6 +1194,10 @@
 
 #if PLATFORM(MAC) && !PLATFORM(IOS) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 1080
 #define WTF_USE_COREMEDIA 1
+#endif
+
+#if PLATFORM(MAC) && !PLATFORM(IOS) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 1090
+#define HAVE_AVFOUNDATION_TEXT_TRACK_SUPPORT 1
 #endif
 
 #if PLATFORM(MAC) || PLATFORM(GTK) || PLATFORM(EFL) || (PLATFORM(WIN) && !OS(WINCE) && !PLATFORM(WIN_CAIRO)) || PLATFORM(BLACKBERRY)

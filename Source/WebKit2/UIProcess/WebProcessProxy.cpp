@@ -27,6 +27,7 @@
 #include "WebProcessProxy.h"
 
 #include "DataReference.h"
+#include "DownloadProxyMap.h"
 #include "PluginInfoStore.h"
 #include "PluginProcessManager.h"
 #include "TextChecker.h"
@@ -44,10 +45,6 @@
 #include <wtf/MainThread.h>
 #include <wtf/text/CString.h>
 #include <wtf/text/WTFString.h>
-
-#if ENABLE(NETWORK_PROCESS)
-#include "NetworkProcessManager.h"
-#endif
 
 #if PLATFORM(MAC)
 #include "SimplePDFPlugin.h"
@@ -90,7 +87,8 @@ PassRefPtr<WebProcessProxy> WebProcessProxy::create(PassRefPtr<WebContext> conte
 }
 
 WebProcessProxy::WebProcessProxy(PassRefPtr<WebContext> context)
-    : m_responsivenessTimer(this)
+    : ChildProcessProxy(this)
+    , m_responsivenessTimer(this)
     , m_context(context)
     , m_mayHaveUniversalFileReadSandboxExtension(false)
 #if ENABLE(CUSTOM_PROTOCOLS)
@@ -102,45 +100,23 @@ WebProcessProxy::WebProcessProxy(PassRefPtr<WebContext> context)
 
 WebProcessProxy::~WebProcessProxy()
 {
-    if (m_connection)
-        m_connection->invalidate();
-    
-    for (size_t i = 0; i < m_pendingMessages.size(); ++i)
-        m_pendingMessages[i].first.releaseArguments();
-
-    if (m_processLauncher) {
-        m_processLauncher->invalidate();
-        m_processLauncher = 0;
-    }
+    if (m_webConnection)
+        m_webConnection->invalidate();
 }
 
-WebProcessProxy* WebProcessProxy::fromConnection(CoreIPC::Connection* connection)
+void WebProcessProxy::getLaunchOptions(ProcessLauncher::LaunchOptions& launchOptions)
 {
-    ASSERT(connection);
-    WebConnectionToWebProcess* webConnection = static_cast<WebConnectionToWebProcess*>(connection->client());
-
-    WebProcessProxy* webProcessProxy = webConnection->webProcessProxy();
-    ASSERT(webProcessProxy->connection() == connection);
-    return webProcessProxy;
-}
-
-void WebProcessProxy::connect()
-{
-    ASSERT(!m_processLauncher);
-
-    ProcessLauncher::LaunchOptions launchOptions;
     launchOptions.processType = ProcessLauncher::WebProcess;
-    platformConnect(launchOptions);
-    
-    m_processLauncher = ProcessLauncher::create(this, launchOptions);
+    platformGetLaunchOptions(launchOptions);
 }
 
 void WebProcessProxy::disconnect()
 {
-    if (m_connection) {
-        m_connection->connection()->removeQueueClient(this);
-        m_connection->invalidate();
-        m_connection = nullptr;
+    clearConnection();
+
+    if (m_webConnection) {
+        m_webConnection->invalidate();
+        m_webConnection = nullptr;
     }
 
     m_responsivenessTimer.stop();
@@ -152,37 +128,15 @@ void WebProcessProxy::disconnect()
         frames[i]->disconnect();
     m_frameMap.clear();
 
+    if (m_downloadProxyMap)
+        m_downloadProxyMap->processDidClose();
+
     m_context->disconnectProcess(this);
 }
 
-bool WebProcessProxy::sendMessage(CoreIPC::MessageID messageID, PassOwnPtr<CoreIPC::MessageEncoder> encoder, unsigned messageSendFlags)
+void WebProcessProxy::addMessageReceiver(CoreIPC::StringReference messageReceiverName, CoreIPC::MessageReceiver* messageReceiver)
 {
-    // If we're waiting for the web process to launch, we need to stash away the messages so we can send them once we have
-    // a CoreIPC connection.
-    if (isLaunching()) {
-        m_pendingMessages.append(make_pair(CoreIPC::Connection::OutgoingMessage(messageID, encoder), messageSendFlags));
-        return true;
-    }
-
-    // If the web process has exited, m_connection will be null here.
-    if (!m_connection)
-        return false;
-
-    return connection()->sendMessage(messageID, encoder, messageSendFlags);
-}
-
-bool WebProcessProxy::isLaunching() const
-{
-    if (m_processLauncher)
-        return m_processLauncher->isLaunching();
-
-    return false;
-}
-
-void WebProcessProxy::terminate()
-{
-    if (m_processLauncher)
-        m_processLauncher->terminateProcess();
+    m_messageReceiverMap.addMessageReceiver(messageReceiverName, messageReceiver);
 }
 
 void WebProcessProxy::addMessageReceiver(CoreIPC::StringReference messageReceiverName, uint64_t destinationID, CoreIPC::MessageReceiver* messageReceiver)
@@ -393,9 +347,9 @@ void WebProcessProxy::getPluginPath(const String& mimeType, const String& urlStr
 
 #if ENABLE(PLUGIN_PROCESS)
 
-void WebProcessProxy::getPluginProcessConnection(const String& pluginPath, PassRefPtr<Messages::WebProcessProxy::GetPluginProcessConnection::DelayedReply> reply)
+void WebProcessProxy::getPluginProcessConnection(const String& pluginPath, uint32_t processType, PassRefPtr<Messages::WebProcessProxy::GetPluginProcessConnection::DelayedReply> reply)
 {
-    PluginProcessManager::shared().getPluginProcessConnection(m_context->pluginInfoStore(), pluginPath, reply);
+    PluginProcessManager::shared().getPluginProcessConnection(m_context->pluginInfoStore(), pluginPath, static_cast<PluginProcess::Type>(processType), reply);
 }
 
 #elif ENABLE(NETSCAPE_PLUGIN_API)
@@ -422,7 +376,7 @@ void WebProcessProxy::getSharedWorkerProcessConnection(const String& /* url */, 
 #if ENABLE(NETWORK_PROCESS)
 void WebProcessProxy::getNetworkProcessConnection(PassRefPtr<Messages::WebProcessProxy::GetNetworkProcessConnection::DelayedReply> reply)
 {
-    NetworkProcessManager::shared().getNetworkProcessConnection(reply);
+    m_context->getNetworkProcessConnection(reply);
 }
 #endif // ENABLE(NETWORK_PROCESS)
 
@@ -441,6 +395,9 @@ void WebProcessProxy::didReceiveMessage(CoreIPC::Connection* connection, CoreIPC
 
 #if ENABLE(CUSTOM_PROTOCOLS)
     if (messageID.is<CoreIPC::MessageClassCustomProtocolManagerProxy>()) {
+#if ENABLE(NETWORK_PROCESS)
+        ASSERT(!context()->usesNetworkProcess());
+#endif
         m_customProtocolManagerProxy.didReceiveMessage(connection, messageID, decoder);
         return;
     }
@@ -493,6 +450,8 @@ void WebProcessProxy::didClose(CoreIPC::Connection*)
     // to be deleted before we can finish our work.
     RefPtr<WebProcessProxy> protect(this);
 
+    webConnection()->didClose();
+
     Vector<RefPtr<WebPageProxy> > pages;
     copyValuesToVector(m_pageMap, pages);
 
@@ -500,14 +459,19 @@ void WebProcessProxy::didClose(CoreIPC::Connection*)
 
     for (size_t i = 0, size = pages.size(); i < size; ++i)
         pages[i]->processDidCrash();
+
 }
 
-void WebProcessProxy::didReceiveInvalidMessage(CoreIPC::Connection*, CoreIPC::StringReference messageReceiverName, CoreIPC::StringReference messageName)
+void WebProcessProxy::didReceiveInvalidMessage(CoreIPC::Connection* connection, CoreIPC::StringReference messageReceiverName, CoreIPC::StringReference messageName)
 {
     WTFLogAlways("Received an invalid message \"%s.%s\" from the web process.\n", messageReceiverName.toString().data(), messageName.toString().data());
 
     // Terminate the WebProcesses.
     terminate();
+
+    // Since we've invalidated the connection we'll never get a CoreIPC::Connection::Client::didClose
+    // callback so we'll explicitly call it here instead.
+    didClose(connection);
 }
 
 void WebProcessProxy::didBecomeUnresponsive(ResponsivenessTimer*)
@@ -534,26 +498,11 @@ void WebProcessProxy::didBecomeResponsive(ResponsivenessTimer*)
         pages[i]->processDidBecomeResponsive();
 }
 
-void WebProcessProxy::didFinishLaunching(ProcessLauncher*, CoreIPC::Connection::Identifier connectionIdentifier)
+void WebProcessProxy::didFinishLaunching(ProcessLauncher* launcher, CoreIPC::Connection::Identifier connectionIdentifier)
 {
-    didFinishLaunching(connectionIdentifier);
-}
+    ChildProcessProxy::didFinishLaunching(launcher, connectionIdentifier);
 
-void WebProcessProxy::didFinishLaunching(CoreIPC::Connection::Identifier connectionIdentifier)
-{
-    ASSERT(!m_connection);
-    
-    m_connection = WebConnectionToWebProcess::create(this, connectionIdentifier, RunLoop::main());
-    m_connection->connection()->addQueueClient(this);
-    m_connection->connection()->open();
-
-    for (size_t i = 0; i < m_pendingMessages.size(); ++i) {
-        CoreIPC::Connection::OutgoingMessage& outgoingMessage = m_pendingMessages[i].first;
-        unsigned messageSendFlags = m_pendingMessages[i].second;
-        connection()->sendMessage(outgoingMessage.messageID(), adoptPtr(outgoingMessage.arguments()), messageSendFlags);
-    }
-
-    m_pendingMessages.clear();
+    m_webConnection = WebConnectionToWebProcess::create(this);
 
     // Tell the context that we finished launching.
     m_context->processDidFinishLaunching(this);
@@ -611,7 +560,7 @@ size_t WebProcessProxy::frameCountInPage(WebPageProxy* page) const
 
 void WebProcessProxy::shouldTerminate(bool& shouldTerminate)
 {
-    if (!m_pageMap.isEmpty() || !m_context->shouldTerminate(this)) {
+    if (!m_pageMap.isEmpty() || (m_downloadProxyMap && !m_downloadProxyMap->isEmpty()) || !m_context->shouldTerminate(this)) {
         shouldTerminate = false;
         return;
     }
@@ -626,6 +575,19 @@ void WebProcessProxy::updateTextCheckerState()
 {
     if (canSendMessage())
         send(Messages::WebProcess::SetTextCheckerState(TextChecker::state()), 0);
+}
+
+
+DownloadProxy* WebProcessProxy::createDownloadProxy()
+{
+#if ENABLE(NETWORK_PROCESS)
+    ASSERT(!m_context->usesNetworkProcess());
+#endif
+
+    if (!m_downloadProxyMap)
+        m_downloadProxyMap = adoptPtr(new DownloadProxyMap(m_messageReceiverMap));
+
+    return m_downloadProxyMap->createDownloadProxy(m_context.get());
 }
 
 void WebProcessProxy::didNavigateWithNavigationData(uint64_t pageID, const WebNavigationDataStore& store, uint64_t frameID) 

@@ -292,11 +292,11 @@ public:
     bool acceleratesDrawing() const { return m_acceleratesDrawing; }
     virtual void setAcceleratesDrawing(bool b) { m_acceleratesDrawing = b; }
 
-    // The color used to paint the layer backgrounds
+    // The color used to paint the layer background. Pass an invalid color to remove it.
+    // Note that this covers the entire layer. Use setContentsToSolidColor() if the color should
+    // only cover the contentsRect.
     const Color& backgroundColor() const { return m_backgroundColor; }
     virtual void setBackgroundColor(const Color&);
-    virtual void clearBackgroundColor();
-    bool backgroundColorSet() const { return m_backgroundColorSet; }
 
     // opaque means that we know the layer contents have no alpha
     bool contentsOpaque() const { return m_contentsOpaque; }
@@ -346,7 +346,8 @@ public:
     virtual void setContentsToImage(Image*) { }
     virtual bool shouldDirectlyCompositeImage(Image*) const { return true; }
     virtual void setContentsToMedia(PlatformLayer*) { } // video or plug-in
-    virtual void setContentsToBackgroundColor(const Color&) { }
+    // Pass an invalid color to remove the contents layer.
+    virtual void setContentsToSolidColor(const Color&) { }
     virtual void setContentsToCanvas(PlatformLayer*) { }
     virtual bool hasContentsLayer() const { return false; }
 
@@ -372,6 +373,7 @@ public:
     virtual void setShowRepaintCounter(bool show) { m_showRepaintCounter = show; }
     bool isShowingRepaintCounter() const { return m_showRepaintCounter; }
 
+    // FIXME: this is really a paint count.
     int repaintCount() const { return m_repaintCount; }
     int incrementRepaintCount() { return ++m_repaintCount; }
 
@@ -417,14 +419,18 @@ public:
     void resetTrackedRepaints();
     void addRepaintRect(const FloatRect&);
 
-#if PLATFORM(QT) || PLATFORM(GTK) || PLATFORM(EFL)
-    // This allows several alternative GraphicsLayer implementations in the same port,
-    // e.g. if a different GraphicsLayer implementation is needed in WebKit1 vs. WebKit2.
-    typedef PassOwnPtr<GraphicsLayer> GraphicsLayerFactoryCallback(GraphicsLayerClient*);
-    static void setGraphicsLayerFactory(GraphicsLayerFactoryCallback);
+    static bool supportsBackgroundColorContent()
+    {
+#if USE(CA) || USE(TEXTURE_MAPPER)
+        return true;
+#else
+        return false;
 #endif
+    }
 
     void updateDebugIndicators();
+
+    virtual void reportMemoryUsage(MemoryObjectInfo*) const;
 
 protected:
     // Should be called from derived class destructors. Should call willBeDestroyed() on super.
@@ -485,7 +491,6 @@ protected:
     FilterOperations m_filters;
 #endif
 
-    bool m_backgroundColorSet : 1;
     bool m_contentsOpaque : 1;
     bool m_preserves3D: 1;
     bool m_backfaceVisibility : 1;
@@ -515,10 +520,6 @@ protected:
     IntRect m_contentsRect;
 
     int m_repaintCount;
-
-#if PLATFORM(QT) || PLATFORM(GTK) || PLATFORM(EFL)
-    static GraphicsLayer::GraphicsLayerFactoryCallback* s_graphicsLayerFactory;
-#endif
 };
 
 

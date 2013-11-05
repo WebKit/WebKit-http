@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2009, 2010 Apple Inc. All rights reserved.
+ * Copyright (C) 2009, 2010, 2012 Apple Inc. All rights reserved.
  * Copyright (C) 2010 University of Szeged
  *
  * Redistribution and use in source and binary forms, with or without
@@ -507,7 +507,7 @@ public:
 private:
 
     // ARMv7, Appx-A.6.3
-    bool BadReg(RegisterID reg)
+    static bool BadReg(RegisterID reg)
     {
         return (reg == ARMRegisters::sp) || (reg == ARMRegisters::pc);
     }
@@ -1261,6 +1261,18 @@ public:
         
         m_formatter.twoWordOp5i6Imm4Reg4EncodedImm(OP_MOV_imm_T3, imm.m_value.imm4, rd, imm);
     }
+    
+    static void revertJumpTo_movT3(void* instructionStart, RegisterID rd, ARMThumbImmediate imm)
+    {
+        ASSERT(imm.isValid());
+        ASSERT(!imm.isEncodedImm());
+        ASSERT(!BadReg(rd));
+        
+        uint16_t* address = static_cast<uint16_t*>(instructionStart);
+        address[0] = twoWordOp5i6Imm4Reg4EncodedImmFirst(OP_MOV_imm_T3, imm);
+        address[1] = twoWordOp5i6Imm4Reg4EncodedImmSecond(rd, imm);
+        cacheFlush(address, sizeof(uint16_t) * 2);
+    }
 
     ALWAYS_INLINE void mov(RegisterID rd, ARMThumbImmediate imm)
     {
@@ -1928,7 +1940,6 @@ public:
             return LinkConditionalBX;
         
         const int paddingSize = JUMP_ENUM_SIZE(jumpType);
-        bool mayTriggerErrata = false;
         
         if (jumpType == JumpCondition) {
             // 2-byte conditional T1
@@ -1937,17 +1948,13 @@ public:
                 return LinkJumpT1;
             // 4-byte conditional T3
             const uint16_t* jumpT3Location = reinterpret_cast_ptr<const uint16_t*>(from - (paddingSize - JUMP_ENUM_SIZE(LinkJumpT3)));
-            if (canBeJumpT3(jumpT3Location, to, mayTriggerErrata)) {
-                if (!mayTriggerErrata)
-                    return LinkJumpT3;
-            }
+            if (canBeJumpT3(jumpT3Location, to))
+                return LinkJumpT3;
             // 4-byte conditional T4 with IT
             const uint16_t* conditionalJumpT4Location = 
             reinterpret_cast_ptr<const uint16_t*>(from - (paddingSize - JUMP_ENUM_SIZE(LinkConditionalJumpT4)));
-            if (canBeJumpT4(conditionalJumpT4Location, to, mayTriggerErrata)) {
-                if (!mayTriggerErrata)
-                    return LinkConditionalJumpT4;
-            }
+            if (canBeJumpT4(conditionalJumpT4Location, to))
+                return LinkConditionalJumpT4;
         } else {
             // 2-byte unconditional T2
             const uint16_t* jumpT2Location = reinterpret_cast_ptr<const uint16_t*>(from - (paddingSize - JUMP_ENUM_SIZE(LinkJumpT2)));
@@ -1955,10 +1962,8 @@ public:
                 return LinkJumpT2;
             // 4-byte unconditional T4
             const uint16_t* jumpT4Location = reinterpret_cast_ptr<const uint16_t*>(from - (paddingSize - JUMP_ENUM_SIZE(LinkJumpT4)));
-            if (canBeJumpT4(jumpT4Location, to, mayTriggerErrata)) {
-                if (!mayTriggerErrata)
-                    return LinkJumpT4;
-            }
+            if (canBeJumpT4(jumpT4Location, to))
+                return LinkJumpT4;
             // use long jump sequence
             return LinkBX;
         }
@@ -2057,12 +2062,12 @@ public:
         ASSERT(from.isSet());
         ASSERT(reinterpret_cast<intptr_t>(to) & 1);
 
-        setPointer(reinterpret_cast<uint16_t*>(reinterpret_cast<intptr_t>(code) + from.m_offset) - 1, to);
+        setPointer(reinterpret_cast<uint16_t*>(reinterpret_cast<intptr_t>(code) + from.m_offset) - 1, to, false);
     }
 
     static void linkPointer(void* code, AssemblerLabel where, void* value)
     {
-        setPointer(reinterpret_cast<char*>(code) + where.m_offset, value);
+        setPointer(reinterpret_cast<char*>(code) + where.m_offset, value, false);
     }
 
     static void relinkJump(void* from, void* to)
@@ -2080,7 +2085,7 @@ public:
         ASSERT(!(reinterpret_cast<intptr_t>(from) & 1));
         ASSERT(reinterpret_cast<intptr_t>(to) & 1);
 
-        setPointer(reinterpret_cast<uint16_t*>(from) - 1, to);
+        setPointer(reinterpret_cast<uint16_t*>(from) - 1, to, true);
     }
     
     static void* readCallTarget(void* from)
@@ -2092,7 +2097,7 @@ public:
     {
         ASSERT(!(reinterpret_cast<intptr_t>(where) & 1));
         
-        setInt32(where, value);
+        setInt32(where, value, true);
     }
     
     static void repatchCompact(void* where, int32_t offset)
@@ -2119,7 +2124,7 @@ public:
     {
         ASSERT(!(reinterpret_cast<intptr_t>(where) & 1));
         
-        setPointer(where, value);
+        setPointer(where, value, true);
     }
 
     static void* readPointer(void* where)
@@ -2133,22 +2138,13 @@ public:
         ASSERT(!(bitwise_cast<uintptr_t>(to) & 1));
         uint16_t* ptr = reinterpret_cast<uint16_t*>(instructionStart) + 2;
         
-        // Ensure that we're not in one of those errata-triggering thingies. If we are, then
-        // prepend a nop.
-        bool spansTwo4K = ((reinterpret_cast<intptr_t>(ptr) & 0xfff) == 0x002);
-        
-        if (spansTwo4K) {
-            ptr[-2] = OP_NOP_T1;
-            ptr++;
-        }
-
         linkJumpT4(ptr, to);
         cacheFlush(ptr - 2, sizeof(uint16_t) * 2);
     }
     
     static ptrdiff_t maxJumpReplacementSize()
     {
-        return 6;
+        return 4;
     }
     
     static void replaceWithLoad(void* instructionStart)
@@ -2164,11 +2160,11 @@ public:
             ptr[0] |= OP_LDR_imm_T3;
             ptr[1] |= (ptr[1] & 0x0F00) << 4;
             ptr[1] &= 0xF0FF;
+            cacheFlush(ptr, sizeof(uint16_t) * 2);
             break;
         default:
             ASSERT_NOT_REACHED();
         }
-        cacheFlush(ptr, sizeof(uint16_t) * 2);
     }
 
     static void replaceWithAddressComputation(void* instructionStart)
@@ -2182,13 +2178,13 @@ public:
             ptr[0] |= OP_ADD_imm_T3;
             ptr[1] |= (ptr[1] & 0xF000) >> 4;
             ptr[1] &= 0x0FFF;
+            cacheFlush(ptr, sizeof(uint16_t) * 2);
             break;
         case OP_ADD_imm_T3:
             break;
         default:
             ASSERT_NOT_REACHED();
         }
-        cacheFlush(ptr, sizeof(uint16_t) * 2);
     }
 
     unsigned debugOffset() { return m_formatter.debugOffset(); }
@@ -2291,7 +2287,7 @@ private:
         return VFPOperand(op);
     }
 
-    static void setInt32(void* code, uint32_t value)
+    static void setInt32(void* code, uint32_t value, bool flush)
     {
         uint16_t* location = reinterpret_cast<uint16_t*>(code);
         ASSERT(isMOV_imm_T3(location - 4) && isMOVT(location - 2));
@@ -2303,7 +2299,8 @@ private:
         location[-2] = twoWordOp5i6Imm4Reg4EncodedImmFirst(OP_MOVT, hi16);
         location[-1] = twoWordOp5i6Imm4Reg4EncodedImmSecond((location[-1] >> 8) & 0xf, hi16);
 
-        cacheFlush(location - 4, 4 * sizeof(uint16_t));
+        if (flush)
+            cacheFlush(location - 4, 4 * sizeof(uint16_t));
     }
     
     static int32_t readInt32(void* code)
@@ -2334,9 +2331,9 @@ private:
         cacheFlush(location, sizeof(uint16_t));
     }
 
-    static void setPointer(void* code, void* value)
+    static void setPointer(void* code, void* value, bool flush)
     {
-        setInt32(code, reinterpret_cast<uint32_t>(value));
+        setInt32(code, reinterpret_cast<uint32_t>(value), flush);
     }
 
     static bool isB(void* address)
@@ -2401,46 +2398,22 @@ private:
         return ((relative << 20) >> 20) == relative;
     }
     
-    static bool canBeJumpT3(const uint16_t* instruction, const void* target, bool& mayTriggerErrata)
+    static bool canBeJumpT3(const uint16_t* instruction, const void* target)
     {
         ASSERT(!(reinterpret_cast<intptr_t>(instruction) & 1));
         ASSERT(!(reinterpret_cast<intptr_t>(target) & 1));
         
         intptr_t relative = reinterpret_cast<intptr_t>(target) - (reinterpret_cast<intptr_t>(instruction));
-        // From Cortex-A8 errata:
-        // If the 32-bit Thumb-2 branch instruction spans two 4KiB regions and
-        // the target of the branch falls within the first region it is
-        // possible for the processor to incorrectly determine the branch
-        // instruction, and it is also possible in some cases for the processor
-        // to enter a deadlock state.
-        // The instruction is spanning two pages if it ends at an address ending 0x002
-        bool spansTwo4K = ((reinterpret_cast<intptr_t>(instruction) & 0xfff) == 0x002);
-        mayTriggerErrata = spansTwo4K;
-        // The target is in the first page if the jump branch back by [3..0x1002] bytes
-        bool targetInFirstPage = (relative >= -0x1002) && (relative < -2);
-        bool wouldTriggerA8Errata = spansTwo4K && targetInFirstPage;
-        return ((relative << 11) >> 11) == relative && !wouldTriggerA8Errata;
+        return ((relative << 11) >> 11) == relative;
     }
     
-    static bool canBeJumpT4(const uint16_t* instruction, const void* target, bool& mayTriggerErrata)
+    static bool canBeJumpT4(const uint16_t* instruction, const void* target)
     {
         ASSERT(!(reinterpret_cast<intptr_t>(instruction) & 1));
         ASSERT(!(reinterpret_cast<intptr_t>(target) & 1));
         
         intptr_t relative = reinterpret_cast<intptr_t>(target) - (reinterpret_cast<intptr_t>(instruction));
-        // From Cortex-A8 errata:
-        // If the 32-bit Thumb-2 branch instruction spans two 4KiB regions and
-        // the target of the branch falls within the first region it is
-        // possible for the processor to incorrectly determine the branch
-        // instruction, and it is also possible in some cases for the processor
-        // to enter a deadlock state.
-        // The instruction is spanning two pages if it ends at an address ending 0x002
-        bool spansTwo4K = ((reinterpret_cast<intptr_t>(instruction) & 0xfff) == 0x002);
-        mayTriggerErrata = spansTwo4K;
-        // The target is in the first page if the jump branch back by [3..0x1002] bytes
-        bool targetInFirstPage = (relative >= -0x1002) && (relative < -2);
-        bool wouldTriggerA8Errata = spansTwo4K && targetInFirstPage;
-        return ((relative << 7) >> 7) == relative && !wouldTriggerA8Errata;
+        return ((relative << 7) >> 7) == relative;
     }
     
     void linkJumpT1(Condition cond, uint16_t* instruction, void* target)
@@ -2484,9 +2457,7 @@ private:
         // FIMXE: this should be up in the MacroAssembler layer. :-(
         ASSERT(!(reinterpret_cast<intptr_t>(instruction) & 1));
         ASSERT(!(reinterpret_cast<intptr_t>(target) & 1));
-        bool scratch;
-        UNUSED_PARAM(scratch);
-        ASSERT(canBeJumpT3(instruction, target, scratch));
+        ASSERT(canBeJumpT3(instruction, target));
         
         intptr_t relative = reinterpret_cast<intptr_t>(target) - (reinterpret_cast<intptr_t>(instruction));
         
@@ -2501,9 +2472,7 @@ private:
         // FIMXE: this should be up in the MacroAssembler layer. :-(        
         ASSERT(!(reinterpret_cast<intptr_t>(instruction) & 1));
         ASSERT(!(reinterpret_cast<intptr_t>(target) & 1));
-        bool scratch;
-        UNUSED_PARAM(scratch);
-        ASSERT(canBeJumpT4(instruction, target, scratch));
+        ASSERT(canBeJumpT4(instruction, target));
         
         intptr_t relative = reinterpret_cast<intptr_t>(target) - (reinterpret_cast<intptr_t>(instruction));
         // ARM encoding for the top two bits below the sign bit is 'peculiar'.
@@ -2561,8 +2530,7 @@ private:
         ASSERT((isMOV_imm_T3(instruction - 5) && isMOVT(instruction - 3) && isBX(instruction - 1))
                || (isNOP_T1(instruction - 5) && isNOP_T2(instruction - 4) && isB(instruction - 2)));
         
-        bool scratch;
-        if (canBeJumpT4(instruction, target, scratch)) {
+        if (canBeJumpT4(instruction, target)) {
             // There may be a better way to fix this, but right now put the NOPs first, since in the
             // case of an conditional branch this will be coming after an ITTT predicating *three*
             // instructions!  Looking backwards to modify the ITTT to an IT is not easy, due to

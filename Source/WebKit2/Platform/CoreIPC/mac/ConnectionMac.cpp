@@ -93,6 +93,10 @@ void Connection::platformInitialize(Identifier identifier)
 
 #if HAVE(XPC)
     m_xpcConnection = identifier.xpcConnection;
+    // FIXME: Instead of explicitly retaining the connection here, Identifier::xpcConnection
+    // should just be a smart pointer.
+    if (m_xpcConnection)
+        xpc_retain(m_xpcConnection);
 #endif
 }
 

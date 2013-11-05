@@ -290,6 +290,7 @@ var WebInspector = {
 }
 
 WebInspector.Events = {
+    InspectorLoaded: "InspectorLoaded",
     InspectorClosing: "InspectorClosing"
 }
 
@@ -394,7 +395,7 @@ WebInspector._doLoadedDoneWithCapabilities = function()
     this.console.addEventListener(WebInspector.ConsoleModel.Events.MessageAdded, this._updateErrorAndWarningCounts, this);
     this.console.addEventListener(WebInspector.ConsoleModel.Events.RepeatCountUpdated, this._updateErrorAndWarningCounts, this);
 
-    WebInspector.CSSCompletions.requestCSSNameCompletions();
+    WebInspector.CSSMetadata.requestCSSShorthandData();
 
     this.drawer = new WebInspector.Drawer();
 
@@ -493,6 +494,8 @@ WebInspector._doLoadedDoneWithCapabilities = function()
 
     WebInspector.WorkerManager.loadCompleted();
     InspectorFrontendAPI.loadCompleted();
+
+    WebInspector.notifications.dispatchEventToListeners(WebInspector.Events.InspectorLoaded);
 }
 
 var windowLoaded = function()
@@ -620,8 +623,8 @@ WebInspector._registerShortcuts = function()
     var shortcut = WebInspector.KeyboardShortcut;
     var section = WebInspector.shortcutsScreen.section(WebInspector.UIString("All Panels"));
     var keys = [
-        shortcut.makeDescriptor("]", shortcut.Modifiers.CtrlOrMeta),
-        shortcut.makeDescriptor("[", shortcut.Modifiers.CtrlOrMeta)
+        shortcut.makeDescriptor("[", shortcut.Modifiers.CtrlOrMeta),
+        shortcut.makeDescriptor("]", shortcut.Modifiers.CtrlOrMeta)
     ];
     section.addRelatedKeys(keys, WebInspector.UIString("Go to the panel to the left/right"));
 

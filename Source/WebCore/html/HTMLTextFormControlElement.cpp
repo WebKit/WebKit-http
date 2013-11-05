@@ -37,6 +37,7 @@
 #include "HTMLInputElement.h"
 #include "HTMLNames.h"
 #include "NodeRenderingContext.h"
+#include "NodeTraversal.h"
 #include "RenderBox.h"
 #include "RenderTextControl.h"
 #include "RenderTheme.h"
@@ -65,6 +66,10 @@ HTMLTextFormControlElement::~HTMLTextFormControlElement()
 
 bool HTMLTextFormControlElement::childShouldCreateRenderer(const NodeRenderingContext& childContext) const
 {
+    // FIXME: We shouldn't force the pseudo elements down into the shadow, but
+    // this perserves the current behavior of WebKit.
+    if (childContext.node()->isPseudoElement())
+        return HTMLFormControlElementWithState::childShouldCreateRenderer(childContext);
     return childContext.isOnEncapsulationBoundary() && HTMLFormControlElementWithState::childShouldCreateRenderer(childContext);
 }
 
@@ -116,7 +121,7 @@ String HTMLTextFormControlElement::strippedPlaceholder() const
 {
     // According to the HTML5 specification, we need to remove CR and LF from
     // the attribute value.
-    const AtomicString& attributeValue = getAttribute(placeholderAttr);
+    const AtomicString& attributeValue = fastGetAttribute(placeholderAttr);
     if (!attributeValue.contains(newlineCharacter) && !attributeValue.contains(carriageReturn))
         return attributeValue;
 
@@ -136,7 +141,7 @@ static bool isNotLineBreak(UChar ch) { return ch != newlineCharacter && ch != ca
 
 bool HTMLTextFormControlElement::isPlaceholderEmpty() const
 {
-    const AtomicString& attributeValue = getAttribute(placeholderAttr);
+    const AtomicString& attributeValue = fastGetAttribute(placeholderAttr);
     return attributeValue.string().find(isNotLineBreak) == notFound;
 }
 
@@ -462,7 +467,7 @@ PassRefPtr<Range> HTMLTextFormControlElement::selection() const
     int offset = 0;
     Node* startNode = 0;
     Node* endNode = 0;
-    for (Node* node = innerText->firstChild(); node; node = node->traverseNextNode(innerText)) {
+    for (Node* node = innerText->firstChild(); node; node = NodeTraversal::next(node, innerText)) {
         ASSERT(!node->firstChild());
         ASSERT(node->isTextNode() || node->hasTagName(brTag));
         int length = node->isTextNode() ? lastOffsetInNode(node) : 1;
@@ -503,16 +508,16 @@ void HTMLTextFormControlElement::selectionChanged(bool userTriggered)
     }
 }
 
-void HTMLTextFormControlElement::parseAttribute(const Attribute& attribute)
+void HTMLTextFormControlElement::parseAttribute(const QualifiedName& name, const AtomicString& value)
 {
-    if (attribute.name() == placeholderAttr)
+    if (name == placeholderAttr)
         updatePlaceholderVisibility(true);
-    else if (attribute.name() == onselectAttr)
-        setAttributeEventListener(eventNames().selectEvent, createAttributeEventListener(this, attribute));
-    else if (attribute.name() == onchangeAttr)
-        setAttributeEventListener(eventNames().changeEvent, createAttributeEventListener(this, attribute));
+    else if (name == onselectAttr)
+        setAttributeEventListener(eventNames().selectEvent, createAttributeEventListener(this, name, value));
+    else if (name == onchangeAttr)
+        setAttributeEventListener(eventNames().changeEvent, createAttributeEventListener(this, name, value));
     else
-        HTMLFormControlElementWithState::parseAttribute(attribute);
+        HTMLFormControlElementWithState::parseAttribute(name, value);
 }
 
 bool HTMLTextFormControlElement::lastChangeWasUserEdit() const
@@ -561,7 +566,7 @@ String HTMLTextFormControlElement::innerTextValue() const
         return emptyString();
 
     StringBuilder result;
-    for (Node* node = innerText; node; node = node->traverseNextNode(innerText)) {
+    for (Node* node = innerText; node; node = NodeTraversal::next(node, innerText)) {
         if (node->hasTagName(brTag))
             result.append(newlineCharacter);
         else if (node->isTextNode())
@@ -608,7 +613,7 @@ String HTMLTextFormControlElement::valueWithHardLineBreaks() const
     getNextSoftBreak(line, breakNode, breakOffset);
 
     StringBuilder result;
-    for (Node* node = innerText->firstChild(); node; node = node->traverseNextNode(innerText)) {
+    for (Node* node = innerText->firstChild(); node; node = NodeTraversal::next(node, innerText)) {
         if (node->hasTagName(brTag))
             result.append(newlineCharacter);
         else if (node->isTextNode()) {

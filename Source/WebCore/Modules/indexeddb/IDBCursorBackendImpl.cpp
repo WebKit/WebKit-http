@@ -28,7 +28,6 @@
 
 #if ENABLE(INDEXED_DATABASE)
 
-#include "CrossThreadTask.h"
 #include "IDBBackingStore.h"
 #include "IDBCallbacks.h"
 #include "IDBDatabaseError.h"
@@ -41,6 +40,66 @@
 #include "SerializedScriptValue.h"
 
 namespace WebCore {
+
+class IDBCursorBackendImpl::CursorIterationOperation : public IDBTransactionBackendImpl::Operation {
+public:
+    static PassOwnPtr<IDBTransactionBackendImpl::Operation> create(PassRefPtr<IDBCursorBackendImpl> cursor, PassRefPtr<IDBKey> key, PassRefPtr<IDBCallbacks> callbacks)
+    {
+        return adoptPtr(new CursorIterationOperation(cursor, key, callbacks));
+    }
+    virtual void perform(IDBTransactionBackendImpl*);
+private:
+    CursorIterationOperation(PassRefPtr<IDBCursorBackendImpl> cursor, PassRefPtr<IDBKey> key, PassRefPtr<IDBCallbacks> callbacks)
+        : m_cursor(cursor)
+        , m_key(key)
+        , m_callbacks(callbacks)
+    {
+    }
+
+    RefPtr<IDBCursorBackendImpl> m_cursor;
+    RefPtr<IDBKey> m_key;
+    RefPtr<IDBCallbacks> m_callbacks;
+};
+
+class IDBCursorBackendImpl::CursorAdvanceOperation : public IDBTransactionBackendImpl::Operation {
+public:
+    static PassOwnPtr<IDBTransactionBackendImpl::Operation> create(PassRefPtr<IDBCursorBackendImpl> cursor, unsigned long count, PassRefPtr<IDBCallbacks> callbacks)
+    {
+        return adoptPtr(new CursorAdvanceOperation(cursor, count, callbacks));
+    }
+    virtual void perform(IDBTransactionBackendImpl*);
+private:
+    CursorAdvanceOperation(PassRefPtr<IDBCursorBackendImpl> cursor, unsigned long count, PassRefPtr<IDBCallbacks> callbacks)
+        : m_cursor(cursor)
+        , m_count(count)
+        , m_callbacks(callbacks)
+    {
+    }
+
+    RefPtr<IDBCursorBackendImpl> m_cursor;
+    unsigned long m_count;
+    RefPtr<IDBCallbacks> m_callbacks;
+};
+
+class IDBCursorBackendImpl::CursorPrefetchIterationOperation : public IDBTransactionBackendImpl::Operation {
+public:
+    static PassOwnPtr<IDBTransactionBackendImpl::Operation> create(PassRefPtr<IDBCursorBackendImpl> cursor, int numberToFetch, PassRefPtr<IDBCallbacks> callbacks)
+    {
+        return adoptPtr(new CursorPrefetchIterationOperation(cursor, numberToFetch, callbacks));
+    }
+    virtual void perform(IDBTransactionBackendImpl*);
+private:
+    CursorPrefetchIterationOperation(PassRefPtr<IDBCursorBackendImpl> cursor, int numberToFetch, PassRefPtr<IDBCallbacks> callbacks)
+        : m_cursor(cursor)
+        , m_numberToFetch(numberToFetch)
+        , m_callbacks(callbacks)
+    {
+    }
+
+    RefPtr<IDBCursorBackendImpl> m_cursor;
+    int m_numberToFetch;
+    RefPtr<IDBCallbacks> m_callbacks;
+};
 
 IDBCursorBackendImpl::IDBCursorBackendImpl(PassRefPtr<IDBBackingStore::Cursor> cursor, CursorType cursorType, IDBTransactionBackendInterface::TaskType taskType, IDBTransactionBackendImpl* transaction, IDBObjectStoreBackendImpl* objectStore)
     : m_cursor(cursor)
@@ -63,13 +122,13 @@ IDBCursorBackendImpl::~IDBCursorBackendImpl()
     m_objectStore.clear();
 }
 
-void IDBCursorBackendImpl::continueFunction(PassRefPtr<IDBKey> prpKey, PassRefPtr<IDBCallbacks> prpCallbacks, ExceptionCode&)
+
+void IDBCursorBackendImpl::continueFunction(PassRefPtr<IDBKey> key, PassRefPtr<IDBCallbacks> prpCallbacks, ExceptionCode&)
 {
     IDB_TRACE("IDBCursorBackendImpl::continue");
     RefPtr<IDBCallbacks> callbacks = prpCallbacks;
-
-    if (!m_transaction->scheduleTask(m_taskType, createCallbackTask(&IDBCursorBackendImpl::continueFunctionInternal, this, prpKey, callbacks)))
-        callbacks->onError(IDBDatabaseError::create(IDBDatabaseException::IDB_ABORT_ERR));
+    if (!m_transaction->scheduleTask(m_taskType, CursorIterationOperation::create(this, key, callbacks)))
+        callbacks->onError(IDBDatabaseError::create(IDBDatabaseException::AbortError));
 }
 
 void IDBCursorBackendImpl::advance(unsigned long count, PassRefPtr<IDBCallbacks> prpCallbacks, ExceptionCode&)
@@ -77,36 +136,32 @@ void IDBCursorBackendImpl::advance(unsigned long count, PassRefPtr<IDBCallbacks>
     IDB_TRACE("IDBCursorBackendImpl::advance");
     RefPtr<IDBCallbacks> callbacks = prpCallbacks;
 
-    if (!m_transaction->scheduleTask(createCallbackTask(&IDBCursorBackendImpl::advanceInternal, this, count, callbacks)))
-        callbacks->onError(IDBDatabaseError::create(IDBDatabaseException::IDB_ABORT_ERR));
+    if (!m_transaction->scheduleTask(CursorAdvanceOperation::create(this, count, callbacks)))
+        callbacks->onError(IDBDatabaseError::create(IDBDatabaseException::AbortError));
 }
 
-void IDBCursorBackendImpl::advanceInternal(ScriptExecutionContext*, PassRefPtr<IDBCursorBackendImpl> prpCursor, unsigned long count, PassRefPtr<IDBCallbacks> callbacks)
+void IDBCursorBackendImpl::CursorAdvanceOperation::perform(IDBTransactionBackendImpl*)
 {
-    IDB_TRACE("IDBCursorBackendImpl::advanceInternal");
-    RefPtr<IDBCursorBackendImpl> cursor = prpCursor;
-    if (!cursor->m_cursor || !cursor->m_cursor->advance(count)) {
-        cursor->m_cursor = 0;
-        callbacks->onSuccess(static_cast<SerializedScriptValue*>(0));
+    IDB_TRACE("CursorAdvanceOperation");
+    if (!m_cursor->m_cursor || !m_cursor->m_cursor->advance(m_count)) {
+        m_cursor->m_cursor = 0;
+        m_callbacks->onSuccess(static_cast<SerializedScriptValue*>(0));
         return;
     }
 
-    callbacks->onSuccess(cursor->key(), cursor->primaryKey(), cursor->value());
+    m_callbacks->onSuccess(m_cursor->key(), m_cursor->primaryKey(), m_cursor->value());
 }
 
-void IDBCursorBackendImpl::continueFunctionInternal(ScriptExecutionContext*, PassRefPtr<IDBCursorBackendImpl> prpCursor, PassRefPtr<IDBKey> prpKey, PassRefPtr<IDBCallbacks> callbacks)
+void IDBCursorBackendImpl::CursorIterationOperation::perform(IDBTransactionBackendImpl*)
 {
-    IDB_TRACE("IDBCursorBackendImpl::continueInternal");
-    RefPtr<IDBCursorBackendImpl> cursor = prpCursor;
-    RefPtr<IDBKey> key = prpKey;
-
-    if (!cursor->m_cursor || !cursor->m_cursor->continueFunction(key.get())) {
-        cursor->m_cursor = 0;
-        callbacks->onSuccess(static_cast<SerializedScriptValue*>(0));
+    IDB_TRACE("CursorIterationOperation");
+    if (!m_cursor->m_cursor || !m_cursor->m_cursor->continueFunction(m_key.get())) {
+        m_cursor->m_cursor = 0;
+        m_callbacks->onSuccess(static_cast<SerializedScriptValue*>(0));
         return;
     }
 
-    callbacks->onSuccess(cursor->key(), cursor->primaryKey(), cursor->value());
+    m_callbacks->onSuccess(m_cursor->key(), m_cursor->primaryKey(), m_cursor->value());
 }
 
 void IDBCursorBackendImpl::deleteFunction(PassRefPtr<IDBCallbacks> prpCallbacks, ExceptionCode&)
@@ -126,61 +181,58 @@ void IDBCursorBackendImpl::prefetchContinue(int numberToFetch, PassRefPtr<IDBCal
 {
     IDB_TRACE("IDBCursorBackendImpl::prefetchContinue");
     RefPtr<IDBCallbacks> callbacks = prpCallbacks;
-    if (!m_transaction->scheduleTask(m_taskType, createCallbackTask(&IDBCursorBackendImpl::prefetchContinueInternal, this, numberToFetch, callbacks)))
-        callbacks->onError(IDBDatabaseError::create(IDBDatabaseException::IDB_ABORT_ERR));
+    if (!m_transaction->scheduleTask(m_taskType, CursorPrefetchIterationOperation::create(this, numberToFetch, callbacks)))
+        callbacks->onError(IDBDatabaseError::create(IDBDatabaseException::AbortError));
 }
 
-void IDBCursorBackendImpl::prefetchContinueInternal(ScriptExecutionContext*, PassRefPtr<IDBCursorBackendImpl> prpCursor, int numberToFetch, PassRefPtr<IDBCallbacks> callbacks)
+void IDBCursorBackendImpl::CursorPrefetchIterationOperation::perform(IDBTransactionBackendImpl*)
 {
-    IDB_TRACE("IDBCursorBackendImpl::prefetchContinueInternal");
-    RefPtr<IDBCursorBackendImpl> cursor = prpCursor;
+    IDB_TRACE("CursorPrefetchIterationOperation");
 
     Vector<RefPtr<IDBKey> > foundKeys;
     Vector<RefPtr<IDBKey> > foundPrimaryKeys;
     Vector<RefPtr<SerializedScriptValue> > foundValues;
 
-    if (cursor->m_cursor)
-        cursor->m_savedCursor = cursor->m_cursor->clone();
+    if (m_cursor->m_cursor)
+        m_cursor->m_savedCursor = m_cursor->m_cursor->clone();
 
     const size_t maxSizeEstimate = 10 * 1024 * 1024;
     size_t sizeEstimate = 0;
 
-    for (int i = 0; i < numberToFetch; ++i) {
-        if (!cursor->m_cursor || !cursor->m_cursor->continueFunction(0)) {
-            cursor->m_cursor = 0;
+    for (int i = 0; i < m_numberToFetch; ++i) {
+        if (!m_cursor->m_cursor || !m_cursor->m_cursor->continueFunction(0)) {
+            m_cursor->m_cursor = 0;
             break;
         }
 
-        foundKeys.append(cursor->m_cursor->key());
-        foundPrimaryKeys.append(cursor->m_cursor->primaryKey());
+        foundKeys.append(m_cursor->m_cursor->key());
+        foundPrimaryKeys.append(m_cursor->m_cursor->primaryKey());
 
-        if (cursor->m_cursorType != IDBCursorBackendInterface::IndexKeyCursor)
-            foundValues.append(SerializedScriptValue::createFromWire(cursor->m_cursor->value()));
+        if (m_cursor->m_cursorType != IDBCursorBackendInterface::IndexKeyCursor)
+            foundValues.append(SerializedScriptValue::createFromWireBytes(m_cursor->m_cursor->value()));
         else
             foundValues.append(SerializedScriptValue::create());
 
-        sizeEstimate += cursor->m_cursor->key()->sizeEstimate();
-        sizeEstimate += cursor->m_cursor->primaryKey()->sizeEstimate();
-        if (cursor->m_cursorType != IDBCursorBackendInterface::IndexKeyCursor)
-            sizeEstimate += cursor->m_cursor->value().length() * sizeof(UChar);
+        sizeEstimate += m_cursor->m_cursor->key()->sizeEstimate();
+        sizeEstimate += m_cursor->m_cursor->primaryKey()->sizeEstimate();
+        if (m_cursor->m_cursorType != IDBCursorBackendInterface::IndexKeyCursor)
+            sizeEstimate += m_cursor->m_cursor->value().size();
 
         if (sizeEstimate > maxSizeEstimate)
             break;
     }
 
     if (!foundKeys.size()) {
-        callbacks->onSuccess(static_cast<SerializedScriptValue*>(0));
+        m_callbacks->onSuccess(static_cast<SerializedScriptValue*>(0));
         return;
     }
 
-    cursor->m_transaction->addPendingEvents(foundKeys.size() - 1);
-    callbacks->onSuccessWithPrefetch(foundKeys, foundPrimaryKeys, foundValues);
+    m_callbacks->onSuccessWithPrefetch(foundKeys, foundPrimaryKeys, foundValues);
 }
 
 void IDBCursorBackendImpl::prefetchReset(int usedPrefetches, int unusedPrefetches)
 {
     IDB_TRACE("IDBCursorBackendImpl::prefetchReset");
-    m_transaction->addPendingEvents(-unusedPrefetches);
     m_cursor = m_savedCursor;
     m_savedCursor = 0;
 

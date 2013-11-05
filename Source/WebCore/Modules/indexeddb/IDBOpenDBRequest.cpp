@@ -37,16 +37,17 @@
 
 namespace WebCore {
 
-PassRefPtr<IDBOpenDBRequest> IDBOpenDBRequest::create(ScriptExecutionContext* context, PassRefPtr<IDBAny> source, PassRefPtr<IDBDatabaseCallbacksImpl> callbacks, int64_t version)
+PassRefPtr<IDBOpenDBRequest> IDBOpenDBRequest::create(ScriptExecutionContext* context, PassRefPtr<IDBAny> source, PassRefPtr<IDBDatabaseCallbacksImpl> callbacks, int64_t transactionId, int64_t version)
 {
-    RefPtr<IDBOpenDBRequest> request(adoptRef(new IDBOpenDBRequest(context, source, callbacks, version)));
+    RefPtr<IDBOpenDBRequest> request(adoptRef(new IDBOpenDBRequest(context, source, callbacks, transactionId, version)));
     request->suspendIfNeeded();
     return request.release();
 }
 
-IDBOpenDBRequest::IDBOpenDBRequest(ScriptExecutionContext* context, PassRefPtr<IDBAny> source, PassRefPtr<IDBDatabaseCallbacksImpl> callbacks, int64_t version)
+IDBOpenDBRequest::IDBOpenDBRequest(ScriptExecutionContext* context, PassRefPtr<IDBAny> source, PassRefPtr<IDBDatabaseCallbacksImpl> callbacks, int64_t transactionId, int64_t version)
     : IDBRequest(context, source, IDBTransactionBackendInterface::NormalTask, 0)
     , m_databaseCallbacks(callbacks)
+    , m_transactionId(transactionId)
     , m_version(version)
 {
     ASSERT(!m_result);
@@ -84,31 +85,42 @@ void IDBOpenDBRequest::onUpgradeNeeded(int64_t oldVersion, PassRefPtr<IDBTransac
     ASSERT(m_databaseCallbacks);
 
     RefPtr<IDBDatabaseBackendInterface> databaseBackend = prpDatabaseBackend;
+    // FIXME: This potentially expensive (synchronous) call into the backend could be removed if the metadata
+    // were passed in during the (asynchronous) onUpgradeNeeded call from the backend. http://wkbug.com/103920
+    IDBDatabaseMetadata metadata = databaseBackend->metadata();
+
     RefPtr<IDBTransactionBackendInterface> transactionBackend = prpTransactionBackend;
     RefPtr<IDBDatabase> idbDatabase = IDBDatabase::create(scriptExecutionContext(), databaseBackend, m_databaseCallbacks);
+    idbDatabase->setMetadata(metadata);
     m_databaseCallbacks->connect(idbDatabase.get());
     m_databaseCallbacks = 0;
-
-    RefPtr<IDBTransaction> frontend = IDBTransaction::create(scriptExecutionContext(), transactionBackend, Vector<String>(), IDBTransaction::VERSION_CHANGE, idbDatabase.get(), this);
-    transactionBackend->setCallbacks(frontend.get());
-    m_transaction = frontend;
-    m_result = IDBAny::create(idbDatabase.release());
 
     if (oldVersion == IDBDatabaseMetadata::NoIntVersion) {
         // This database hasn't had an integer version before.
         oldVersion = IDBDatabaseMetadata::DefaultIntVersion;
     }
+    metadata.intVersion = oldVersion;
+
+    RefPtr<IDBTransaction> frontend = IDBTransaction::create(scriptExecutionContext(), m_transactionId, transactionBackend, idbDatabase.get(), this, metadata);
+    transactionBackend->setCallbacks(frontend.get());
+    m_transaction = frontend;
+    m_result = IDBAny::create(idbDatabase.release());
+
     if (m_version == IDBDatabaseMetadata::NoIntVersion)
         m_version = 1;
     enqueueEvent(IDBUpgradeNeededEvent::create(oldVersion, m_version, eventNames().upgradeneededEvent));
 }
 
-void IDBOpenDBRequest::onSuccess(PassRefPtr<IDBDatabaseBackendInterface> backend)
+void IDBOpenDBRequest::onSuccess(PassRefPtr<IDBDatabaseBackendInterface> prpBackend)
 {
     IDB_TRACE("IDBOpenDBRequest::onSuccess()");
     if (!shouldEnqueueEvent())
         return;
 
+    RefPtr<IDBDatabaseBackendInterface> backend = prpBackend;
+    // FIXME: This potentially expensive (synchronous) call into the backend could be removed if the metadata
+    // were passed in during the (asynchronous) onSuccess call from the backend. http://wkbug.com/103920
+    IDBDatabaseMetadata metadata = backend->metadata();
     RefPtr<IDBDatabase> idbDatabase;
     if (m_result) {
         idbDatabase = m_result->idbDatabase();
@@ -116,11 +128,12 @@ void IDBOpenDBRequest::onSuccess(PassRefPtr<IDBDatabaseBackendInterface> backend
         ASSERT(!m_databaseCallbacks);
     } else {
         ASSERT(m_databaseCallbacks);
-        idbDatabase = IDBDatabase::create(scriptExecutionContext(), backend, m_databaseCallbacks);
+        idbDatabase = IDBDatabase::create(scriptExecutionContext(), backend.release(), m_databaseCallbacks);
         m_databaseCallbacks->connect(idbDatabase.get());
         m_databaseCallbacks = 0;
         m_result = IDBAny::create(idbDatabase.get());
     }
+    idbDatabase->setMetadata(metadata);
     enqueueEvent(Event::create(eventNames().successEvent, false, false));
 }
 
@@ -140,7 +153,7 @@ bool IDBOpenDBRequest::dispatchEvent(PassRefPtr<Event> event)
     // an "error" event should be fired instead.
     if (event->type() == eventNames().successEvent && m_result->idbDatabase()->isClosePending()) {
         m_result.clear();
-        onError(IDBDatabaseError::create(IDBDatabaseException::IDB_ABORT_ERR, "The connection was closed."));
+        onError(IDBDatabaseError::create(IDBDatabaseException::AbortError, "The connection was closed."));
         return false;
     }
 

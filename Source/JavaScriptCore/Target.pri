@@ -40,6 +40,7 @@ SOURCES += \
     API/JSClassRef.cpp \
     API/JSContextRef.cpp \
     API/JSObjectRef.cpp \
+    API/JSScriptRef.cpp \
     API/JSStringRef.cpp \
     API/JSValueRef.cpp \
     API/JSWeakObjectMapRefPrivate.cpp \
@@ -55,8 +56,12 @@ SOURCES += \
     bytecode/CallLinkInfo.cpp \
     bytecode/CallLinkStatus.cpp \
     bytecode/CodeBlock.cpp \
+    bytecode/CodeBlockHash.cpp \
+    bytecode/CodeOrigin.cpp \
+    bytecode/CodeType.cpp \
     bytecode/DFGExitProfile.cpp \
     bytecode/ExecutionCounter.cpp \
+    bytecode/ExitKind.cpp \
     bytecode/GetByIdStatus.cpp \
     bytecode/JumpTable.cpp \
     bytecode/LazyOperandValueProfile.cpp \
@@ -64,6 +69,7 @@ SOURCES += \
     bytecode/Opcode.cpp \
     bytecode/PolymorphicPutByIdList.cpp \
     bytecode/PutByIdStatus.cpp \
+    bytecode/ReduceWhitespace.cpp \
     bytecode/ResolveGlobalStatus.cpp \
     bytecode/SamplingTool.cpp \
     bytecode/SpecialPointer.cpp \
@@ -111,7 +117,6 @@ SOURCES += \
     dfg/DFGCFAPhase.cpp \
     dfg/DFGCFGSimplificationPhase.cpp \
     dfg/DFGConstantFoldingPhase.cpp \
-    dfg/DFGCorrectableJumpPoint.cpp \
     dfg/DFGCSEPhase.cpp \
     dfg/DFGDisassembler.cpp \
     dfg/DFGDominators.cpp \
@@ -136,14 +141,17 @@ SOURCES += \
     dfg/DFGStructureCheckHoistingPhase.cpp \
     dfg/DFGThunks.cpp \
     dfg/DFGValueSource.cpp \
+    dfg/DFGVariableAccessDataDump.cpp \
     dfg/DFGVariableEvent.cpp \
     dfg/DFGVariableEventStream.cpp \
     dfg/DFGValidate.cpp \
     dfg/DFGVirtualRegisterAllocationPhase.cpp \
+    disassembler/Disassembler.cpp \
     interpreter/AbstractPC.cpp \
     interpreter/CallFrame.cpp \
     interpreter/Interpreter.cpp \
     interpreter/JSStack.cpp \
+    jit/ClosureCallStubRoutine.cpp \
     jit/ExecutableAllocatorFixedVMPool.cpp \
     jit/ExecutableAllocator.cpp \
     jit/HostCallReturnValue.cpp \
@@ -152,7 +160,9 @@ SOURCES += \
     jit/JITArithmetic32_64.cpp \
     jit/JITCall.cpp \
     jit/JITCall32_64.cpp \
+    jit/JITCode.cpp \
     jit/JIT.cpp \
+    jit/JITDisassembler.cpp \
     jit/JITExceptions.cpp \
     jit/JITOpcodes.cpp \
     jit/JITOpcodes32_64.cpp \
@@ -174,10 +184,31 @@ SOURCES += \
     parser/ParserArena.cpp \
     parser/Parser.cpp \
     parser/SourceProviderCache.cpp \
+    profiler/ProfilerBytecode.cpp \
+    profiler/ProfilerBytecode.h \
+    profiler/ProfilerBytecodeSequence.cpp \
+    profiler/ProfilerBytecodes.cpp \
+    profiler/ProfilerBytecodes.h \
+    profiler/ProfilerCompilation.cpp \
+    profiler/ProfilerCompilation.h \
+    profiler/ProfilerCompilationKind.cpp \
+    profiler/ProfilerCompilationKind.h \
+    profiler/ProfilerCompiledBytecode.cpp \
+    profiler/ProfilerCompiledBytecode.h \
+    profiler/ProfilerDatabase.cpp \
+    profiler/ProfilerDatabase.h \
+    profiler/ProfilerExecutionCounter.h \
+    profiler/ProfilerOrigin.cpp \
+    profiler/ProfilerOrigin.h \
+    profiler/ProfilerOriginStack.cpp \
+    profiler/ProfilerOriginStack.h \
+    profiler/ProfilerOSRExit.cpp \
+    profiler/ProfilerOSRExitSite.cpp \
+    profiler/ProfilerProfiledBytecodes.cpp \
     profiler/Profile.cpp \
     profiler/ProfileGenerator.cpp \
     profiler/ProfileNode.cpp \
-    profiler/Profiler.cpp \
+    profiler/LegacyProfiler.cpp \
     runtime/ArgList.cpp \
     runtime/Arguments.cpp \
     runtime/ArrayConstructor.cpp \
@@ -187,6 +218,7 @@ SOURCES += \
     runtime/BooleanPrototype.cpp \
     runtime/CallData.cpp \
     runtime/CodeCache.cpp \
+    runtime/CodeSpecializationKind.cpp \
     runtime/CommonIdentifiers.cpp \
     runtime/Completion.cpp \
     runtime/ConstructData.cpp \

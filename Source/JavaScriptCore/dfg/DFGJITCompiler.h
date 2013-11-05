@@ -34,6 +34,7 @@
 #include "DFGFPRInfo.h"
 #include "DFGGPRInfo.h"
 #include "DFGGraph.h"
+#include "DFGOSRExitCompilationInfo.h"
 #include "DFGRegisterBank.h"
 #include "DFGRegisterSet.h"
 #include "JITCode.h"
@@ -50,6 +51,7 @@ namespace DFG {
 
 class JITCodeGenerator;
 class NodeToRegisterMap;
+class OSRExitJumpPlaceholder;
 class SlowPathGenerator;
 class SpeculativeJIT;
 class SpeculationRecovery;
@@ -343,6 +345,13 @@ public:
     SpeculatedType getSpeculation(NodeIndex nodeIndex) { return getSpeculation(graph()[nodeIndex]); }
     SpeculatedType getSpeculation(Edge nodeUse) { return getSpeculation(nodeUse.index()); }
 
+    void appendExitInfo(MacroAssembler::JumpList jumpsToFail = MacroAssembler::JumpList())
+    {
+        OSRExitCompilationInfo info;
+        info.m_failureJumps = jumpsToFail;
+        m_exitCompilationInfo.append(info);
+    }
+
 #if USE(JSVALUE32_64)
     void* addressOfDoubleConstant(NodeIndex nodeIndex)
     {
@@ -357,9 +366,9 @@ public:
         m_propertyAccesses.append(record);
     }
 
-    void addJSCall(Call fastCall, Call slowCall, DataLabelPtr targetToCheck, CallLinkInfo::CallType callType, CodeOrigin codeOrigin)
+    void addJSCall(Call fastCall, Call slowCall, DataLabelPtr targetToCheck, CallLinkInfo::CallType callType, GPRReg callee, CodeOrigin codeOrigin)
     {
-        m_jsCalls.append(JSCallRecord(fastCall, slowCall, targetToCheck, callType, codeOrigin));
+        m_jsCalls.append(JSCallRecord(fastCall, slowCall, targetToCheck, callType, callee, codeOrigin));
     }
     
     void addWeakReference(JSCell* target)
@@ -420,6 +429,8 @@ public:
     }
 
 private:
+    friend class OSRExitJumpPlaceholder;
+    
     // Internal implementation to compile.
     void compileEntry();
     void compileBody(SpeculativeJIT&);
@@ -440,11 +451,12 @@ private:
     Vector<CallExceptionRecord> m_exceptionChecks;
     
     struct JSCallRecord {
-        JSCallRecord(Call fastCall, Call slowCall, DataLabelPtr targetToCheck, CallLinkInfo::CallType callType, CodeOrigin codeOrigin)
+        JSCallRecord(Call fastCall, Call slowCall, DataLabelPtr targetToCheck, CallLinkInfo::CallType callType, GPRReg callee, CodeOrigin codeOrigin)
             : m_fastCall(fastCall)
             , m_slowCall(slowCall)
             , m_targetToCheck(targetToCheck)
             , m_callType(callType)
+            , m_callee(callee)
             , m_codeOrigin(codeOrigin)
         {
         }
@@ -453,11 +465,14 @@ private:
         Call m_slowCall;
         DataLabelPtr m_targetToCheck;
         CallLinkInfo::CallType m_callType;
+        GPRReg m_callee;
         CodeOrigin m_codeOrigin;
     };
     
     Vector<PropertyAccessRecord, 4> m_propertyAccesses;
     Vector<JSCallRecord, 4> m_jsCalls;
+    Vector<OSRExitCompilationInfo> m_exitCompilationInfo;
+    Vector<Vector<Label> > m_exitSiteLabels;
     unsigned m_currentCodeOriginIndex;
 };
 

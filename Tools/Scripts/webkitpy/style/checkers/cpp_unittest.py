@@ -1,4 +1,3 @@
-#!/usr/bin/python
 # -*- coding: utf-8; -*-
 #
 # Copyright (C) 2011 Google Inc. All rights reserved.
@@ -3258,6 +3257,43 @@ class NoNonVirtualDestructorsTest(CppStyleTestBase):
                 };''',
             'The class Foo probably needs a virtual destructor')
 
+    def test_enum_casing(self):
+        self.assert_multi_line_lint(
+            '''\
+                enum Foo {
+                    FOO_ONE = 1,
+                    FOO_TWO
+                };
+                enum { FOO_ONE };
+                enum {FooOne, fooTwo};
+                enum {
+                    FOO_ONE
+                };''',
+            ['enum members should use InterCaps with an initial capital letter.  [readability/enum_casing] [4]'] * 5)
+
+        self.assert_multi_line_lint(
+            '''\
+                enum Foo {
+                    fooOne = 1,
+                    FooTwo = 2
+                };''',
+            'enum members should use InterCaps with an initial capital letter.  [readability/enum_casing] [4]')
+
+        self.assert_multi_line_lint(
+            '''\
+                enum Foo {
+                    FooOne = 1,
+                    FooTwo
+                } fooVar = FooOne;
+                enum { FooOne, FooTwo };
+                enum { FooOne, FooTwo } fooVar = FooTwo;
+                enum { FooOne= FooTwo } foo;
+                enum Enum123 {
+                    FooOne,
+                    FooTwo = FooOne,
+                };''',
+            '')
+
     def test_destructor_non_virtual_when_virtual_needed(self):
         self.assert_multi_line_lint_re(
             '''\
@@ -3280,7 +3316,7 @@ class NoNonVirtualDestructorsTest(CppStyleTestBase):
             '''\
                 class Foo {
                     enum Goo {
-                        GOO
+                        Goo
                     };
                     virtual void foo();
                 };''',
@@ -4360,6 +4396,9 @@ class WebKitStyleTest(CppStyleTestBase):
             'gtk_style_context_get_style(context, "propertyName", &value, "otherName", &otherValue, NULL);',
             '')
         self.assert_lint(
+            'gtk_style_context_get(context, static_cast<GtkStateFlags>(0), "property", &value, NULL);',
+            '')
+        self.assert_lint(
             'gtk_widget_style_get_property(style, NULL, NULL);',
             'Use 0 instead of NULL.  [readability/null] [5]',
             'foo.cpp')
@@ -4837,30 +4876,3 @@ class CppCheckerTest(unittest.TestCase):
         # Thus, just check the distinguishing case to verify that the
         # code defines __ne__.
         self.assertFalse(checker1 != checker2)
-
-
-def tearDown():
-    """A global check to make sure all error-categories have been tested.
-
-    The main tearDown() routine is the only code we can guarantee will be
-    run after all other tests have been executed.
-    """
-    try:
-        if _run_verifyallcategoriesseen:
-            ErrorCollector(None).verify_all_categories_are_seen()
-    except NameError:
-        # If nobody set the global _run_verifyallcategoriesseen, then
-        # we assume we shouldn't run the test
-        pass
-
-if __name__ == '__main__':
-    import sys
-    # We don't want to run the verify_all_categories_are_seen() test unless
-    # we're running the full test suite: if we only run one test,
-    # obviously we're not going to see all the error categories.  So we
-    # only run verify_all_categories_are_seen() when no commandline flags
-    # are passed in.
-    global _run_verifyallcategoriesseen
-    _run_verifyallcategoriesseen = (len(sys.argv) == 1)
-
-    unittest.main()

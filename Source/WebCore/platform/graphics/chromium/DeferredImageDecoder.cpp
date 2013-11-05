@@ -40,6 +40,8 @@ const char labelLazyDecoded[] = "lazy";
 
 } // namespace
 
+bool DeferredImageDecoder::s_enabled = false;
+
 DeferredImageDecoder::DeferredImageDecoder(ImageDecoder* actualDecoder)
     : m_allDataReceived(false)
     , m_actualDecoder(adoptPtr(actualDecoder))
@@ -49,8 +51,6 @@ DeferredImageDecoder::DeferredImageDecoder(ImageDecoder* actualDecoder)
 
 DeferredImageDecoder::~DeferredImageDecoder()
 {
-    // FIXME: Remove the corresponding entry in ImageDecodingStore if image
-    // is defer-decoded.
 }
 
 DeferredImageDecoder* DeferredImageDecoder::create(const SharedBuffer& data, ImageSource::AlphaOption alphaOption, ImageSource::GammaAndColorProfileOption gammaAndColorOption)
@@ -74,18 +74,26 @@ bool DeferredImageDecoder::isLazyDecoded(const SkBitmap& bitmap)
 SkBitmap DeferredImageDecoder::createResizedLazyDecodingBitmap(const SkBitmap& bitmap, const SkISize& scaledSize, const SkIRect& scaledSubset)
 {
     LazyDecodingPixelRef* pixelRef = static_cast<LazyDecodingPixelRef*>(bitmap.pixelRef());
-    ASSERT(!pixelRef->isScaled(pixelRef->frameGenerator()->fullSize()) && !pixelRef->isClipped());
 
     int rowBytes = 0;
     rowBytes = SkBitmap::ComputeRowBytes(SkBitmap::kARGB_8888_Config, scaledSize.width());
 
     SkBitmap resizedBitmap;
     resizedBitmap.setConfig(SkBitmap::kARGB_8888_Config, scaledSubset.width(), scaledSubset.height(), rowBytes);
+
+    // FIXME: This code has the potential problem that multiple
+    // LazyDecodingPixelRefs are created even though they share the same
+    // scaled size and ImageFrameGenerator.
     resizedBitmap.setPixelRef(new LazyDecodingPixelRef(pixelRef->frameGenerator(), scaledSize, scaledSubset))->unref();
 
     // See comments in createLazyDecodingBitmap().
     resizedBitmap.setImmutable();
     return resizedBitmap;
+}
+
+void DeferredImageDecoder::setEnabled(bool enabled)
+{
+    s_enabled = enabled;
 }
 
 String DeferredImageDecoder::filenameExtension() const
@@ -99,7 +107,7 @@ ImageFrame* DeferredImageDecoder::frameBufferAtIndex(size_t index)
     // because a multiframe is usually animated GIF. Animation is handled by
     // BitmapImage which uses some metadata functions that do synchronous image
     // decoding.
-    if (ImageDecodingStore::instanceOnMainThread()
+    if (s_enabled
         && m_actualDecoder
         && m_actualDecoder->repetitionCount() == cAnimationNone
         && m_actualDecoder->isSizeAvailable()) {
@@ -201,7 +209,9 @@ SkBitmap DeferredImageDecoder::createLazyDecodingBitmap()
     SkBitmap bitmap;
     bitmap.setConfig(SkBitmap::kARGB_8888_Config, fullSize.width(), fullSize.height());
 
-    m_frameGenerator = ImageFrameGenerator::create(m_actualDecoder.release(), m_data.release(), m_allDataReceived);
+    m_frameGenerator = ImageFrameGenerator::create(fullSize, m_data.release(), m_allDataReceived);
+    m_actualDecoder.clear();
+
     bitmap.setPixelRef(new LazyDecodingPixelRef(m_frameGenerator, fullSize, fullRect))->unref();
 
     // Use the URI to identify this as a lazily decoded SkPixelRef of type LazyDecodingPixelRef.
@@ -217,6 +227,11 @@ SkBitmap DeferredImageDecoder::createLazyDecodingBitmap()
     // decoded before.
 
     return bitmap;
+}
+
+bool DeferredImageDecoder::hotSpot(IntPoint& hotSpot) const
+{
+    return m_actualDecoder ? m_actualDecoder->hotSpot(hotSpot) : false;
 }
 
 } // namespace WebCore

@@ -37,9 +37,7 @@ void InitWebCoreSystemInterface(void)
     
     dispatch_once(&initOnce, ^{
         INIT(AdvanceDefaultButtonPulseAnimation);
-#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1070
         INIT(CALayerEnumerateRectsBeingDrawnWithBlock);
-#endif
         INIT(CopyCFLocalizationPreferredName);
         INIT(CGContextGetShouldSmoothFonts);
         INIT(CGPatternCreateWithImageAndTransform);
@@ -52,6 +50,7 @@ void InitWebCoreSystemInterface(void)
 #endif
         INIT(CopyCONNECTProxyResponse);
         INIT(CopyNSURLResponseStatusLine);
+        INIT(CopyNSURLResponseCertificateChain);
         INIT(CreateCTLineWithUniCharProvider);
         INIT(CreateCustomCFReadStream);
         INIT(CreateNSURLConnectionDelegateProxy);
@@ -124,7 +123,6 @@ void InitWebCoreSystemInterface(void)
 
         INIT(SetMetadataURL);
         
-#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1070
         INIT(IOSurfaceContextCreate);
         INIT(IOSurfaceContextCreateImage);
         INIT(CreateCTTypesetterWithUniCharProviderAndOptions);
@@ -134,10 +132,7 @@ void InitWebCoreSystemInterface(void)
         INIT(SetCrashReportApplicationSpecificInformation);
         INIT(AVAssetResolvedURL);
         INIT(Cursor);
-#else
-        INIT(GetHyphenationLocationBeforeIndex);
-        INIT(GetNSEventMomentumPhase);
-#endif
+
 #if USE(CFNETWORK)
         INIT(GetDefaultHTTPCookieStorage);
         INIT(CopyCredentialFromCFPersistentStorage);
@@ -164,22 +159,16 @@ void InitWebCoreSystemInterface(void)
         INIT(CopyCFURLResponseSuggestedFilename);
         INIT(SetCFURLResponseMIMEType);
 
-#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1070
         INIT(CreateVMPressureDispatchOnMainQueue);
-#endif
 
 #if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1080
         INIT(GetMacOSXVersionString);
         INIT(ExecutableWasLinkedOnOrBeforeLion);
 #endif
 
-#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1070
         INIT(CGPathAddRoundedRect);
-#endif
-
-#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1070
         INIT(CFURLRequestAllowAllPostCaching);
-#endif
+
 #if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 1080 && !PLATFORM(IOS)
         INIT(FilterIsManagedSession);
         INIT(FilterCreateInstance);

@@ -42,11 +42,10 @@
 
 namespace WebCore {
 
-const char* WorkerScriptDebugServer::debuggerTaskMode = "debugger";
-
-WorkerScriptDebugServer::WorkerScriptDebugServer(WorkerContext* context)
+WorkerScriptDebugServer::WorkerScriptDebugServer(WorkerContext* context, const String& mode)
     : ScriptDebugServer()
     , m_workerContext(context)
+    , m_debuggerTaskMode(mode)
 {
 }
 
@@ -59,6 +58,12 @@ void WorkerScriptDebugServer::addListener(ScriptDebugListener* listener)
         m_workerContext->script()->attachDebugger(this);
     m_listeners.add(listener);
     recompileAllJSFunctions(0);
+}
+
+void WorkerScriptDebugServer::willExecuteProgram(const JSC::DebuggerCallFrame& debuggerCallFrame, intptr_t sourceID, int lineNumber, int columnNumber)
+{
+    if (!m_paused)
+        createCallFrame(debuggerCallFrame, sourceID, lineNumber, columnNumber);
 }
 
 void WorkerScriptDebugServer::recompileAllJSFunctions(Timer<ScriptDebugServer>*)
@@ -87,7 +92,7 @@ void WorkerScriptDebugServer::runEventLoopWhilePaused()
 {
     MessageQueueWaitResult result;
     do {
-        result = m_workerContext->thread()->runLoop().runInMode(m_workerContext, WorkerDebuggerAgent::debuggerTaskMode);
+        result = m_workerContext->thread()->runLoop().runInMode(m_workerContext, m_debuggerTaskMode);
     // Keep waiting until execution is resumed.
     } while (result != MessageQueueTerminated && !m_doneProcessingDebuggerEvents);
 }

@@ -54,6 +54,7 @@ private:
         if (!block)
             return;
         ASSERT(block->isReachable);
+        m_block = block;
         for (m_indexInBlock = 0; m_indexInBlock < block->size(); ++m_indexInBlock) {
             m_compileIndex = block->at(m_indexInBlock);
             fixupNode(m_graph[m_compileIndex]);
@@ -69,7 +70,7 @@ private:
         NodeType op = node.op();
 
 #if DFG_ENABLE(DEBUG_PROPAGATION_VERBOSE)
-        dataLog("   %s @%u: ", Graph::opName(op), m_compileIndex);
+        dataLogF("   %s @%u: ", Graph::opName(op), m_compileIndex);
 #endif
         
         switch (op) {
@@ -131,7 +132,8 @@ private:
             node.setArrayMode(
                 node.arrayMode().refine(
                     m_graph[node.child1()].prediction(),
-                    m_graph[node.child2()].prediction()));
+                    m_graph[node.child2()].prediction(),
+                    SpecNone, node.flags()));
             
             blessArrayOperation(node.child1(), node.child2(), 2);
             
@@ -170,7 +172,7 @@ private:
                     m_graph[node.child1()].prediction() & SpecCell,
                     SpecInt32,
                     m_graph[node.child2()].prediction()));
-            blessArrayOperation(node.child1(), node.child2(), 2);
+            blessArrayOperation(node.child1(), Edge(), 2);
             
             Node* nodePtr = &m_graph[m_compileIndex];
             switch (nodePtr->arrayMode().type()) {
@@ -184,7 +186,7 @@ private:
         }
             
         case ArrayPop: {
-            blessArrayOperation(node.child1(), node.child2(), 1);
+            blessArrayOperation(node.child1(), Edge(), 1);
             break;
         }
             
@@ -412,10 +414,10 @@ private:
 
 #if DFG_ENABLE(DEBUG_PROPAGATION_VERBOSE)
         if (!(node.flags() & NodeHasVarArgs)) {
-            dataLog("new children: ");
+            dataLogF("new children: ");
             node.dumpChildren(WTF::dataFile());
         }
-        dataLog("\n");
+        dataLogF("\n");
 #endif
     }
     
@@ -442,6 +444,16 @@ private:
                 m_graph.ref(index);
             
             if (structure) {
+                if (m_indexInBlock > 0) {
+                    // If the previous node was a CheckStructure inserted because of stuff
+                    // that the array profile told us, then remove it.
+                    Node& previousNode = m_graph[m_block->at(m_indexInBlock - 1)];
+                    if (previousNode.op() == CheckStructure
+                        && previousNode.child1() == array
+                        && previousNode.codeOrigin == codeOrigin)
+                        previousNode.setOpAndDefaultFlags(Phantom);
+                }
+                
                 Node arrayify(ArrayifyToStructure, codeOrigin, OpInfo(structure), OpInfo(arrayMode.asWord()), array, index);
                 arrayify.ref();
                 NodeIndex arrayifyIndex = m_graph.size();
@@ -548,7 +560,7 @@ private:
         NodeIndex resultIndex = (NodeIndex)m_graph.size();
         
 #if DFG_ENABLE(DEBUG_PROPAGATION_VERBOSE)
-        dataLog("(replacing @%u->@%u with @%u->@%u) ",
+        dataLogF("(replacing @%u->@%u with @%u->@%u) ",
                 m_compileIndex, edge.index(), m_compileIndex, resultIndex);
 #endif
         
@@ -564,7 +576,8 @@ private:
         int32ToDouble.predict(SpecDouble);
         int32ToDouble.ref();
     }
-    
+
+    BasicBlock* m_block;
     unsigned m_indexInBlock;
     NodeIndex m_compileIndex;
     InsertionSet<NodeIndex> m_insertionSet;

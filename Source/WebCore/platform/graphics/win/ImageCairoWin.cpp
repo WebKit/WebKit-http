@@ -62,7 +62,7 @@ bool BitmapImage::getHBITMAPOfSize(HBITMAP bmp, LPSIZE size)
     GetObject(bmp, sizeof(BITMAP), &bmpInfo);
 
     // If this is a 32bpp bitmap, which it always should be, we'll clear it so alpha-wise it will be visible
-    if (bmpInfo.bmBitsPixel == 32) {
+    if (bmpInfo.bmBitsPixel == 32 && bmpInfo.bmBits) {
         int bufferSize = bmpInfo.bmWidthBytes * bmpInfo.bmHeight;
         memset(bmpInfo.bmBits, 255, bufferSize);
     }
@@ -83,7 +83,7 @@ bool BitmapImage::getHBITMAPOfSize(HBITMAP bmp, LPSIZE size)
     if (size)
         drawFrameMatchingSourceSize(&gc, FloatRect(0.0f, 0.0f, bmpInfo.bmWidth, bmpInfo.bmHeight), IntSize(*size), ColorSpaceDeviceRGB, CompositeCopy);
     else
-        draw(&gc, FloatRect(0.0f, 0.0f, bmpInfo.bmWidth, bmpInfo.bmHeight), FloatRect(0.0f, 0.0f, imageSize.width(), imageSize.height()), ColorSpaceDeviceRGB, CompositeCopy);
+        draw(&gc, FloatRect(0.0f, 0.0f, bmpInfo.bmWidth, bmpInfo.bmHeight), FloatRect(0.0f, 0.0f, imageSize.width(), imageSize.height()), ColorSpaceDeviceRGB, CompositeCopy, BlendModeNormal);
 
     // Do cleanup
     cairo_destroy(targetRef);
@@ -95,11 +95,17 @@ void BitmapImage::drawFrameMatchingSourceSize(GraphicsContext* ctxt, const Float
 {
     size_t frames = frameCount();
     for (size_t i = 0; i < frames; ++i) {
-        cairo_surface_t* image = frameAtIndex(i)->surface();
+        NativeImageCairo* nativeImage = frameAtIndex(i);
+        if (!nativeImage)
+            continue;
+        cairo_surface_t* image = nativeImage->surface();
+        if (!image)
+            continue;
+
         if (cairo_image_surface_get_height(image) == static_cast<size_t>(srcSize.height()) && cairo_image_surface_get_width(image) == static_cast<size_t>(srcSize.width())) {
             size_t currentFrame = m_currentFrame;
             m_currentFrame = i;
-            draw(ctxt, dstRect, FloatRect(0.0f, 0.0f, srcSize.width(), srcSize.height()), ColorSpaceDeviceRGB, compositeOp);
+            draw(ctxt, dstRect, FloatRect(0.0f, 0.0f, srcSize.width(), srcSize.height()), ColorSpaceDeviceRGB, compositeOp, BlendModeNormal);
             m_currentFrame = currentFrame;
             return;
         }
@@ -107,7 +113,7 @@ void BitmapImage::drawFrameMatchingSourceSize(GraphicsContext* ctxt, const Float
 
     // No image of the correct size was found, fallback to drawing the current frame
     IntSize imageSize = BitmapImage::size();
-    draw(ctxt, dstRect, FloatRect(0.0f, 0.0f, imageSize.width(), imageSize.height()), ColorSpaceDeviceRGB, compositeOp);
+    draw(ctxt, dstRect, FloatRect(0.0f, 0.0f, imageSize.width(), imageSize.height()), ColorSpaceDeviceRGB, compositeOp, BlendModeNormal);
 }
 
 } // namespace WebCore

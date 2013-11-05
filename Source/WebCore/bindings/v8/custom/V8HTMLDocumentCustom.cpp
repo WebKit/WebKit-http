@@ -59,7 +59,7 @@ v8::Local<v8::Object> V8HTMLDocument::wrapInShadowObject(v8::Local<v8::Object> w
         shadowTemplate = v8::Persistent<v8::FunctionTemplate>::New(v8::FunctionTemplate::New());
         if (shadowTemplate.IsEmpty())
             return v8::Local<v8::Object>();
-        shadowTemplate->SetClassName(v8::String::New("HTMLDocument"));
+        shadowTemplate->SetClassName(v8::String::NewSymbol("HTMLDocument"));
         shadowTemplate->Inherit(V8HTMLDocument::GetTemplate());
         shadowTemplate->InstanceTemplate()->SetInternalFieldCount(V8HTMLDocument::internalFieldCount);
     }
@@ -76,7 +76,7 @@ v8::Local<v8::Object> V8HTMLDocument::wrapInShadowObject(v8::Local<v8::Object> w
     if (shadow.IsEmpty())
         return v8::Local<v8::Object>();
     shadow->SetPrototype(wrapper);
-    V8DOMWrapper::setDOMWrapper(wrapper, &V8HTMLDocument::info, impl);
+    V8DOMWrapper::setNativeInfo(wrapper, &V8HTMLDocument::info, impl);
     return shadow;
 }
 
@@ -145,7 +145,7 @@ v8::Handle<v8::Value> V8HTMLDocument::openCallback(const v8::Arguments& args)
                 return v8::Undefined();
             v8::Local<v8::Object> global = context->Global();
             // Get the open property of the global object.
-            v8::Local<v8::Value> function = global->Get(v8::String::New("open"));
+            v8::Local<v8::Value> function = global->Get(v8::String::NewSymbol("open"));
             // If the open property is not a function throw a type error.
             if (!function->IsFunction())
                 return throwTypeError("open is not a function", args.GetIsolate());
@@ -174,7 +174,7 @@ v8::Handle<v8::Object> wrap(HTMLDocument* impl, v8::Handle<v8::Object> creationC
     v8::Handle<v8::Object> wrapper = V8HTMLDocument::createWrapper(impl, creationContext, isolate);
     if (wrapper.IsEmpty())
         return wrapper;
-    if (!V8DOMWindowShell::getEntered()) {
+    if (!worldForEnteredContextIfIsolated()) {
         if (Frame* frame = impl->frame())
             frame->script()->windowShell(mainThreadNormalWorld())->updateDocumentWrapper(wrapper);
     }

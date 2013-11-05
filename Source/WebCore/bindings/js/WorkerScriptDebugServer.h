@@ -42,13 +42,11 @@ class WorkerContext;
 class WorkerScriptDebugServer : public ScriptDebugServer {
     WTF_MAKE_NONCOPYABLE(WorkerScriptDebugServer);
 public:
-    explicit WorkerScriptDebugServer(WorkerContext*);
+    WorkerScriptDebugServer(WorkerContext*, const String&);
     ~WorkerScriptDebugServer() { }
 
     void addListener(ScriptDebugListener*);
     void removeListener(ScriptDebugListener*);
-
-    static const char* debuggerTaskMode;
 
     void interruptAndRunTask(PassOwnPtr<ScriptDebugServer::Task>);
 
@@ -61,10 +59,13 @@ private:
 
     virtual bool isContentScript(JSC::ExecState*) { return false; }
 
+    virtual void willExecuteProgram(const JSC::DebuggerCallFrame&, intptr_t sourceID, int lineno, int columnNumber);
+
     virtual void runEventLoopWhilePaused();
 
     WorkerContext* m_workerContext;
     ListenerSet m_listeners;
+    String m_debuggerTaskMode;
 };
 
 } // namespace WebCore

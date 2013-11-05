@@ -146,7 +146,7 @@ bool RangeInputType::isSteppable() const
 
 void RangeInputType::handleMouseDownEvent(MouseEvent* event)
 {
-    if (element()->disabled() || element()->readOnly())
+    if (element()->isDisabledOrReadOnly())
         return;
 
     Node* targetNode = event->target()->toNode();
@@ -165,7 +165,7 @@ void RangeInputType::handleMouseDownEvent(MouseEvent* event)
 #if ENABLE(TOUCH_SLIDER)
 void RangeInputType::handleTouchEvent(TouchEvent* event)
 {
-    if (element()->disabled() || element()->readOnly())
+    if (element()->isDisabledOrReadOnly())
         return;
 
     if (event->type() == eventNames().touchendEvent) {
@@ -191,7 +191,7 @@ bool RangeInputType::hasTouchEventHandler() const
 
 void RangeInputType::handleKeydownEvent(KeyboardEvent* event)
 {
-    if (element()->disabled() || element()->readOnly())
+    if (element()->isDisabledOrReadOnly())
         return;
 
     const String& key = event->keyIdentifier();
@@ -260,7 +260,6 @@ void RangeInputType::createShadowSubtree()
     track->appendChild(SliderThumbElement::create(document), ec);
     RefPtr<HTMLElement> container = SliderContainerElement::create(document);
     container->appendChild(track.release(), ec);
-    container->appendChild(TrackLimiterElement::create(document), ec);
     element()->userAgentShadowRoot()->appendChild(container.release(), ec);
 }
 
@@ -286,9 +285,7 @@ void RangeInputType::accessKeyAction(bool sendMouseEvents)
 {
     InputType::accessKeyAction(sendMouseEvents);
 
-    // Send mouse button events if the caller specified sendMouseEvents.
-    // FIXME: The comment above is no good. It says what we do, but not why.
-    element()->dispatchSimulatedClick(0, sendMouseEvents);
+    element()->dispatchSimulatedClick(0, sendMouseEvents ? SendMouseUpDownEvents : SendNoEvents);
 }
 
 void RangeInputType::minOrMaxAttributeChanged()
@@ -342,8 +339,9 @@ HTMLElement* RangeInputType::sliderTrackElement() const
 void RangeInputType::listAttributeTargetChanged()
 {
     m_tickMarkValuesDirty = true;
-    if (element()->renderer())
-        element()->renderer()->setNeedsLayout(true);
+    HTMLElement* sliderTrackElement = sliderTrackElementOf(element());
+    if (sliderTrackElement->renderer())
+        sliderTrackElement->renderer()->setNeedsLayout(true);
 }
 
 static bool decimalCompare(const Decimal& a, const Decimal& b)

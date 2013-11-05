@@ -58,8 +58,6 @@ public:
     virtual bool canClearBrowserCookies() { return false; }
     virtual void clearBrowserCookies() { }
     virtual bool canMonitorMainThread() { return false; }
-    virtual void startMainThreadMonitoring() { }
-    virtual void stopMainThreadMonitoring() { }
 
     virtual bool canOverrideDeviceMetrics() { return false; }
 
@@ -72,6 +70,9 @@ public:
         // FIXME: Platforms may want to implement this (see https://bugs.webkit.org/show_bug.cgi?id=82886).
     }
 
+    virtual bool overridesShowPaintRects() { return false; }
+    virtual void setShowPaintRects(bool) { }
+
     virtual bool canShowFPSCounter() { return false; }
     virtual void setShowFPSCounter(bool) { }
 
@@ -79,6 +80,8 @@ public:
 
     virtual void getAllocatedObjects(HashSet<const void*>&) { }
     virtual void dumpUncountedAllocatedObjects(const HashMap<const void*, size_t>&) { }
+
+    virtual bool captureScreenshot(String*) { return false; }
 
     static bool doDispatchMessageOnFrontendPage(Page* frontendPage, const String& message);
 };

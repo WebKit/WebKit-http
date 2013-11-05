@@ -102,7 +102,9 @@ bool Dictionary::getKey(const String& key, v8::Local<v8::Value>& value) const
     v8::Local<v8::Object> options = m_options->ToObject();
     ASSERT(!options.IsEmpty());
 
-    v8::Handle<v8::String> v8Key = v8String(key);
+    ASSERT(m_isolate);
+    ASSERT(m_isolate == v8::Isolate::GetCurrent());
+    v8::Handle<v8::String> v8Key = v8String(key, m_isolate);
     if (!options->Has(v8Key))
         return false;
     value = options->Get(v8Key);
@@ -213,6 +215,19 @@ bool Dictionary::get(const String& key, unsigned& value) const
     return true;
 }
 
+bool Dictionary::get(const String& key, unsigned long& value) const
+{
+    v8::Local<v8::Value> v8Value;
+    if (!getKey(key, v8Value))
+        return false;
+
+    v8::Local<v8::Integer> v8Integer = v8Value->ToInteger();
+    if (v8Integer.IsEmpty())
+        return false;
+    value = static_cast<unsigned long>(v8Integer->Value());
+    return true;
+}
+
 bool Dictionary::get(const String& key, unsigned long long& value) const
 {
     v8::Local<v8::Value> v8Value;
@@ -236,7 +251,7 @@ bool Dictionary::get(const String& key, RefPtr<DOMWindow>& value) const
     DOMWindow* source = 0;
     if (v8Value->IsObject()) {
         v8::Handle<v8::Object> wrapper = v8::Handle<v8::Object>::Cast(v8Value);
-        v8::Handle<v8::Object> window = V8DOMWrapper::lookupDOMWrapper(V8DOMWindow::GetTemplate(), wrapper);
+        v8::Handle<v8::Object> window = wrapper->FindInstanceInPrototypeChain(V8DOMWindow::GetTemplate());
         if (!window.IsEmpty())
             source = V8DOMWindow::toNative(window);
     }
@@ -253,7 +268,7 @@ bool Dictionary::get(const String& key, RefPtr<Storage>& value) const
     Storage* source = 0;
     if (v8Value->IsObject()) {
         v8::Handle<v8::Object> wrapper = v8::Handle<v8::Object>::Cast(v8Value);
-        v8::Handle<v8::Object> storage = V8DOMWrapper::lookupDOMWrapper(V8Storage::GetTemplate(), wrapper);
+        v8::Handle<v8::Object> storage = wrapper->FindInstanceInPrototypeChain(V8Storage::GetTemplate());
         if (!storage.IsEmpty())
             source = V8Storage::toNative(storage);
     }
@@ -282,9 +297,11 @@ bool Dictionary::get(const String& key, HashSet<AtomicString>& value) const
     if (!v8Value->IsArray())
         return false;
 
+    ASSERT(m_isolate);
+    ASSERT(m_isolate == v8::Isolate::GetCurrent());
     v8::Local<v8::Array> v8Array = v8::Local<v8::Array>::Cast(v8Value);
     for (size_t i = 0; i < v8Array->Length(); ++i) {
-        v8::Local<v8::Value> indexedValue = v8Array->Get(v8Integer(i));
+        v8::Local<v8::Value> indexedValue = v8Array->Get(v8Integer(i, m_isolate));
         value.add(toWebCoreString(indexedValue));
     }
 
@@ -314,8 +331,7 @@ bool Dictionary::get(const String& key, RefPtr<Uint8Array>& value) const
     Uint8Array* source = 0;
     if (v8Value->IsObject()) {
         v8::Handle<v8::Object> wrapper = v8::Handle<v8::Object>::Cast(v8Value);
-
-        v8::Handle<v8::Object> array = V8DOMWrapper::lookupDOMWrapper(V8Uint8Array::GetTemplate(), wrapper);
+        v8::Handle<v8::Object> array = wrapper->FindInstanceInPrototypeChain(V8Uint8Array::GetTemplate());
         if (!array.IsEmpty())
             source = V8Uint8Array::toNative(array);
     }
@@ -333,8 +349,7 @@ bool Dictionary::get(const String& key, RefPtr<MediaKeyError>& value) const
     MediaKeyError* source = 0;
     if (v8Value->IsObject()) {
         v8::Handle<v8::Object> wrapper = v8::Handle<v8::Object>::Cast(v8Value);
-
-        v8::Handle<v8::Object> error = V8DOMWrapper::lookupDOMWrapper(V8MediaKeyError::GetTemplate(), wrapper);
+        v8::Handle<v8::Object> error = wrapper->FindInstanceInPrototypeChain(V8MediaKeyError::GetTemplate());
         if (!error.IsEmpty())
             source = V8MediaKeyError::toNative(error);
     }
@@ -356,7 +371,7 @@ bool Dictionary::get(const String& key, RefPtr<TrackBase>& value) const
 
         // FIXME: this will need to be changed so it can also return an AudioTrack or a VideoTrack once
         // we add them.
-        v8::Handle<v8::Object> track = V8DOMWrapper::lookupDOMWrapper(V8TextTrack::GetTemplate(), wrapper);
+        v8::Handle<v8::Object> track = wrapper->FindInstanceInPrototypeChain(V8TextTrack::GetTemplate());
         if (!track.IsEmpty())
             source = V8TextTrack::toNative(track);
     }
@@ -375,7 +390,7 @@ bool Dictionary::get(const String& key, RefPtr<SpeechRecognitionError>& value) c
     SpeechRecognitionError* source = 0;
     if (v8Value->IsObject()) {
         v8::Handle<v8::Object> wrapper = v8::Handle<v8::Object>::Cast(v8Value);
-        v8::Handle<v8::Object> speechRecognitionError = V8DOMWrapper::lookupDOMWrapper(V8SpeechRecognitionError::GetTemplate(), wrapper);
+        v8::Handle<v8::Object> speechRecognitionError = wrapper->FindInstanceInPrototypeChain(V8SpeechRecognitionError::GetTemplate());
         if (!speechRecognitionError.IsEmpty())
             source = V8SpeechRecognitionError::toNative(speechRecognitionError);
     }
@@ -392,7 +407,7 @@ bool Dictionary::get(const String& key, RefPtr<SpeechRecognitionResult>& value) 
     SpeechRecognitionResult* source = 0;
     if (v8Value->IsObject()) {
         v8::Handle<v8::Object> wrapper = v8::Handle<v8::Object>::Cast(v8Value);
-        v8::Handle<v8::Object> speechRecognitionResult = V8DOMWrapper::lookupDOMWrapper(V8SpeechRecognitionResult::GetTemplate(), wrapper);
+        v8::Handle<v8::Object> speechRecognitionResult = wrapper->FindInstanceInPrototypeChain(V8SpeechRecognitionResult::GetTemplate());
         if (!speechRecognitionResult.IsEmpty())
             source = V8SpeechRecognitionResult::toNative(speechRecognitionResult);
     }
@@ -409,7 +424,7 @@ bool Dictionary::get(const String& key, RefPtr<SpeechRecognitionResultList>& val
     SpeechRecognitionResultList* source = 0;
     if (v8Value->IsObject()) {
         v8::Handle<v8::Object> wrapper = v8::Handle<v8::Object>::Cast(v8Value);
-        v8::Handle<v8::Object> speechRecognitionResultList = V8DOMWrapper::lookupDOMWrapper(V8SpeechRecognitionResultList::GetTemplate(), wrapper);
+        v8::Handle<v8::Object> speechRecognitionResultList = wrapper->FindInstanceInPrototypeChain(V8SpeechRecognitionResultList::GetTemplate());
         if (!speechRecognitionResultList.IsEmpty())
             source = V8SpeechRecognitionResultList::toNative(speechRecognitionResultList);
     }

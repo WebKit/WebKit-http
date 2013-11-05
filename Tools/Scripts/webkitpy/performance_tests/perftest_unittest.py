@@ -1,4 +1,3 @@
-#!/usr/bin/python
 # Copyright (C) 2012 Google Inc. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -63,7 +62,8 @@ class MainTest(unittest.TestCase):
         output_capture = OutputCapture()
         output_capture.capture_output()
         try:
-            test = PerfTest(None, 'some-test', '/path/some-dir/some-test')
+            test = PerfTest(MockPort(), 'some-test', '/path/some-dir/some-test')
+            test._filter_output(output)
             self.assertEqual(test.parse_output(output),
                 {'some-test': {'avg': 1100.0, 'median': 1101.0, 'min': 1080.0, 'max': 1120.0, 'stdev': 11.0, 'unit': 'ms',
                     'values': [i for i in range(1, 20)]}})
@@ -72,7 +72,7 @@ class MainTest(unittest.TestCase):
             actual_stdout, actual_stderr, actual_logs = output_capture.restore_output()
         self.assertEqual(actual_stdout, '')
         self.assertEqual(actual_stderr, '')
-        self.assertEqual(actual_logs, 'RESULT some-test= 1100.0 ms\nmedian= 1101.0 ms, stdev= 11.0 ms, min= 1080.0 ms, max= 1120.0 ms\n')
+        self.assertEqual(actual_logs, '')
 
     def test_parse_output_with_failing_line(self):
         output = DriverOutput('\n'.join([
@@ -81,7 +81,7 @@ class MainTest(unittest.TestCase):
             '',
             'some-unrecognizable-line',
             '',
-            'Time:'
+            'Time:',
             'values 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19 ms',
             'avg 1100 ms',
             'median 1101 ms',
@@ -91,13 +91,74 @@ class MainTest(unittest.TestCase):
         output_capture = OutputCapture()
         output_capture.capture_output()
         try:
-            test = PerfTest(None, 'some-test', '/path/some-dir/some-test')
+            test = PerfTest(MockPort(), 'some-test', '/path/some-dir/some-test')
+            test._filter_output(output)
             self.assertEqual(test.parse_output(output), None)
         finally:
             actual_stdout, actual_stderr, actual_logs = output_capture.restore_output()
         self.assertEqual(actual_stdout, '')
         self.assertEqual(actual_stderr, '')
-        self.assertEqual(actual_logs, 'some-unrecognizable-line\n')
+        self.assertEqual(actual_logs, 'ERROR: some-unrecognizable-line\n')
+
+    def test_parse_output_with_description(self):
+        output = DriverOutput('\n'.join([
+            'Description: this is a test description.',
+            'Time:',
+            'values 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19 ms',
+            'avg 1100 ms',
+            'median 1101 ms',
+            'stdev 11 ms',
+            'min 1080 ms',
+            'max 1120 ms']), image=None, image_hash=None, audio=None)
+        test = PerfTest(MockPort(), 'some-test', '/path/some-dir/some-test')
+        self.assertTrue(test.parse_output(output))
+        self.assertEqual(test.description(), 'this is a test description.')
+
+    def test_ignored_stderr_lines(self):
+        test = PerfTest(MockPort(), 'some-test', '/path/some-dir/some-test')
+        ignored_lines = [
+            "Unknown option: --foo-bar",
+            "[WARNING:proxy_service.cc] bad moon a-rising",
+            "[INFO:SkFontHost_android.cpp(1158)] Use Test Config File Main /data/local/tmp/drt/android_main_fonts.xml, Fallback /data/local/tmp/drt/android_fallback_fonts.xml, Font Dir /data/local/tmp/drt/fonts/",
+        ]
+        for line in ignored_lines:
+            self.assertTrue(test._should_ignore_line_in_stderr(line))
+
+        non_ignored_lines = [
+            "Should not be ignored",
+            "[WARNING:chrome.cc] Something went wrong",
+            "[ERROR:main.cc] The sky has fallen",
+        ]
+        for line in non_ignored_lines:
+            self.assertFalse(test._should_ignore_line_in_stderr(line))
+
+    def test_parse_output_with_subtests(self):
+        output = DriverOutput('\n'.join([
+            'Running 20 times',
+            'some test: [1, 2, 3, 4, 5]',
+            'other test = else: [6, 7, 8, 9, 10]',
+            '',
+            'Time:',
+            'values 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19 ms',
+            'avg 1100 ms',
+            'median 1101 ms',
+            'stdev 11 ms',
+            'min 1080 ms',
+            'max 1120 ms']), image=None, image_hash=None, audio=None)
+        output_capture = OutputCapture()
+        output_capture.capture_output()
+        try:
+            test = PerfTest(MockPort(), 'some-test', '/path/some-dir/some-test')
+            test._filter_output(output)
+            self.assertEqual(test.parse_output(output),
+                {'some-test': {'avg': 1100.0, 'median': 1101.0, 'min': 1080.0, 'max': 1120.0, 'stdev': 11.0, 'unit': 'ms',
+                    'values': [i for i in range(1, 20)]}})
+        finally:
+            pass
+            actual_stdout, actual_stderr, actual_logs = output_capture.restore_output()
+        self.assertEqual(actual_stdout, '')
+        self.assertEqual(actual_stderr, '')
+        self.assertEqual(actual_logs, '')
 
 
 class TestPageLoadingPerfTest(unittest.TestCase):
@@ -125,7 +186,7 @@ class TestPageLoadingPerfTest(unittest.TestCase):
         output_capture = OutputCapture()
         output_capture.capture_output()
         try:
-            self.assertEqual(test.run(driver, None),
+            self.assertEqual(test._run_with_driver(driver, None),
                 {'some-test': {'max': 20000, 'avg': 11000.0, 'median': 11000, 'stdev': 5627.314338711378, 'min': 2000, 'unit': 'ms',
                     'values': [i * 1000 for i in range(2, 21)]}})
         finally:
@@ -143,7 +204,7 @@ class TestPageLoadingPerfTest(unittest.TestCase):
         output_capture = OutputCapture()
         output_capture.capture_output()
         try:
-            self.assertEqual(test.run(driver, None),
+            self.assertEqual(test._run_with_driver(driver, None),
                 {'some-test': {'max': 20000, 'avg': 11000.0, 'median': 11000, 'stdev': 5627.314338711378, 'min': 2000, 'unit': 'ms',
                     'values': [i * 1000 for i in range(2, 21)]},
                  'some-test:Malloc': {'max': 10, 'avg': 10.0, 'median': 10, 'min': 10, 'stdev': 0.0, 'unit': 'bytes',
@@ -165,7 +226,7 @@ class TestPageLoadingPerfTest(unittest.TestCase):
             port = MockPort()
             test = PageLoadingPerfTest(port, 'some-test', '/path/some-dir/some-test')
             driver = TestPageLoadingPerfTest.MockDriver([1, 2, 3, 4, 5, 6, 7, 'some error', 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20], test)
-            self.assertEqual(test.run(driver, None), None)
+            self.assertEqual(test._run_with_driver(driver, None), None)
         finally:
             actual_stdout, actual_stderr, actual_logs = output_capture.restore_output()
         self.assertEqual(actual_stdout, '')
@@ -361,7 +422,3 @@ class TestPerfTestFactory(unittest.TestCase):
     def test_inspector_test(self):
         test = PerfTestFactory.create_perf_test(MockPort(), 'inspector/some-test', '/path/inspector/some-test')
         self.assertEqual(test.__class__, ChromiumStylePerfTest)
-
-
-if __name__ == '__main__':
-    unittest.main()

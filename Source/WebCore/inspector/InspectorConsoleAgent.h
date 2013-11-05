@@ -27,9 +27,11 @@
 
 #if ENABLE(INSPECTOR)
 
+#include "ConsoleAPITypes.h"
 #include "ConsoleTypes.h"
 #include "InspectorBaseAgent.h"
 #include "InspectorFrontend.h"
+#include "ScriptState.h"
 #include <wtf/Forward.h>
 #include <wtf/HashMap.h>
 #include <wtf/Noncopyable.h>
@@ -68,13 +70,17 @@ public:
     virtual void clearFrontend();
     virtual void restore();
 
-    void addMessageToConsole(MessageSource, MessageType, MessageLevel, const String& message, PassRefPtr<ScriptArguments>, PassRefPtr<ScriptCallStack>, unsigned long requestIdentifier = 0);
-    void addMessageToConsole(MessageSource, MessageType, MessageLevel, const String& message, const String& scriptId, unsigned lineNumber, unsigned long requestIdentifier = 0);
+    void addMessageToConsole(MessageSource, MessageType, MessageLevel, const String& message, ScriptState*, PassRefPtr<ScriptArguments>, unsigned long requestIdentifier = 0);
+    void addMessageToConsole(MessageSource, MessageType, MessageLevel, const String& message, const String& scriptId, unsigned lineNumber, ScriptState* = 0, unsigned long requestIdentifier = 0);
+
+    // FIXME: Remove once we no longer generate stacks outside of Inspector.
+    void addMessageToConsole(MessageSource, MessageType, MessageLevel, const String& message, PassRefPtr<ScriptCallStack>, unsigned long requestIdentifier = 0);
+
     Vector<unsigned> consoleMessageArgumentCounts();
 
     void startTiming(const String& title);
     void stopTiming(const String& title, PassRefPtr<ScriptCallStack>);
-    void count(PassRefPtr<ScriptArguments>, PassRefPtr<ScriptCallStack>);
+    void count(ScriptState*, PassRefPtr<ScriptArguments>);
 
     void frameWindowDiscarded(DOMWindow*);
 
@@ -88,6 +94,8 @@ public:
     virtual void setMonitoringXHREnabled(ErrorString*, bool enabled);
     virtual void addInspectedNode(ErrorString*, int nodeId) = 0;
     virtual void addInspectedHeapObject(ErrorString*, int inspectedHeapObjectId);
+
+    virtual bool isWorkerAgent() = 0;
 
 protected:
     void addConsoleMessage(PassOwnPtr<ConsoleMessage>);

@@ -37,6 +37,7 @@ public:
     void updateCheckedState(HTMLInputElement*);
     void requiredAttributeChanged(HTMLInputElement*);
     void remove(HTMLInputElement*);
+    bool contains(HTMLInputElement*) const;
 
 private:
     RadioButtonGroup();
@@ -81,7 +82,7 @@ void RadioButtonGroup::add(HTMLInputElement* button)
     if (!m_members.add(button).isNewEntry)
         return;
     bool groupWasValid = isValid();
-    if (button->required())
+    if (button->isRequired())
         ++m_requiredCount;
     if (button->checked())
         setCheckedButton(button);
@@ -116,7 +117,7 @@ void RadioButtonGroup::requiredAttributeChanged(HTMLInputElement* button)
     ASSERT(button->isRadioButton());
     ASSERT(m_members.contains(button));
     bool wasValid = isValid();
-    if (button->required())
+    if (button->isRequired())
         ++m_requiredCount;
     else {
         ASSERT(m_requiredCount);
@@ -134,7 +135,7 @@ void RadioButtonGroup::remove(HTMLInputElement* button)
         return;
     bool wasValid = isValid();
     m_members.remove(it);
-    if (button->required()) {
+    if (button->isRequired()) {
         ASSERT(m_requiredCount);
         --m_requiredCount;
     }
@@ -162,6 +163,11 @@ void RadioButtonGroup::setNeedsValidityCheckForAllButtons()
         ASSERT(button->isRadioButton());
         button->setNeedsValidityCheck();
     }
+}
+
+bool RadioButtonGroup::contains(HTMLInputElement* button) const
+{
+    return m_members.contains(button);
 }
 
 // ----------------------------------------------------------------
@@ -227,12 +233,15 @@ HTMLInputElement* CheckedRadioButtons::checkedButtonForGroup(const AtomicString&
     return group ? group->checkedButton() : 0;
 }
 
-bool CheckedRadioButtons::isRequiredGroup(const AtomicString& name) const
+bool CheckedRadioButtons::isInRequiredGroup(HTMLInputElement* element) const
 {
+    ASSERT(element->isRadioButton());
+    if (element->name().isEmpty())
+        return false;
     if (!m_nameToGroupMap)
         return false;
-    RadioButtonGroup* group = m_nameToGroupMap->get(name.impl());
-    return group && group->isRequired();
+    RadioButtonGroup* group = m_nameToGroupMap->get(element->name().impl());
+    return group && group->isRequired() && group->contains(element);
 }
 
 void CheckedRadioButtons::removeButton(HTMLInputElement* element)

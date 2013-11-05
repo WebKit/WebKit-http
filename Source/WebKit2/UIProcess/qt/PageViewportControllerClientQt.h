@@ -48,7 +48,7 @@ public:
     ~PageViewportControllerClientQt();
 
     virtual void setViewportPosition(const WebCore::FloatPoint& contentsPoint);
-    virtual void setContentsScale(float scale, bool treatAsInitialValue);
+    virtual void setContentsScale(float);
 
     virtual void didResumeContent();
     virtual void didChangeContentsSize(const WebCore::IntSize&);
@@ -128,6 +128,7 @@ private:
     void setContentRectVisiblePositionAtScale(const QPointF& location, qreal itemScale);
     void animateContentRectVisible(const QRectF& contentRect);
     void scaleContent(qreal itemScale, const QPointF& centerInCSSCoordinates = QPointF());
+    void clearRelativeZoomState();
 
     ScaleAnimation* m_scaleAnimation;
     QPointF m_lastPinchCenterInViewportCoordinates;

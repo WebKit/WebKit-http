@@ -30,9 +30,27 @@
 #ifndef InitWebCoreQt_h
 #define InitWebCoreQt_h
 
+#include "qimage.h"
+
+namespace WebCore {
+class Page;
+class QStyleFacade;
+}
+class QWebPageAdapter;
+
+typedef WebCore::QStyleFacade* (*QtStyleFacadeFactoryFunction)(QWebPageAdapter*);
+
+namespace WebKit {
+
+Q_DECL_EXPORT void setWebKitWidgetsInitCallback(QtStyleFacadeFactoryFunction);
+Q_DECL_EXPORT void initializeWebKitQt();
+Q_DECL_EXPORT void setImagePlatformResource(const char* /* name */, const QPixmap&);
+
+}
+
 namespace WebCore {
 
-void initializeWebCoreQt();
+Q_DECL_EXPORT void initializeWebCoreQt();
 
 }
 

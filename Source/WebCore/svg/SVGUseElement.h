@@ -66,7 +66,7 @@ private:
     virtual void buildPendingResource();
 
     bool isSupportedAttribute(const QualifiedName&);
-    virtual void parseAttribute(const Attribute&) OVERRIDE;
+    virtual void parseAttribute(const QualifiedName&, const AtomicString&) OVERRIDE;
     virtual void svgAttributeChanged(const QualifiedName&);
 
     virtual bool willRecalcStyle(StyleChange);
@@ -114,6 +114,7 @@ private:
     bool instanceTreeIsLoading(SVGElementInstance*);
     virtual void notifyFinished(CachedResource*);
     Document* referencedDocument() const;
+    void setCachedDocument(CachedResourceHandle<CachedSVGDocument>);
 
     // SVGTests
     virtual void synchronizeRequiredFeatures() { SVGTests::synchronizeRequiredFeatures(this); }

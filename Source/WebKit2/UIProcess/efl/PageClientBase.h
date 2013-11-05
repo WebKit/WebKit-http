@@ -40,7 +40,7 @@ public:
 
     // Called from the view
     virtual void didCommitLoad() = 0;
-    virtual void updateViewportSize(const WebCore::IntSize&) = 0;
+    virtual void updateViewportSize() = 0;
     virtual void didChangeContentsSize(const WebCore::IntSize&) = 0;
 
     EwkViewImpl* viewImpl() const;
@@ -99,8 +99,6 @@ protected:
     virtual void exitAcceleratedCompositingMode();
     virtual void updateAcceleratedCompositingMode(const LayerTreeContext&);
 #endif
-
-    virtual void didChangeScrollbarsForMainFrame() const;
 
     virtual void didCommitLoadForMainFrame(bool);
     virtual void didFinishLoadingDataForCustomRepresentation(const String&, const CoreIPC::DataReference&);

@@ -30,6 +30,23 @@
 using namespace WebKit;
 using namespace WebCore;
 
+/**
+ * SECTION: WebKitFindController
+ * @Short_description: Controls text search in a #WebKitWebView
+ * @Title: WebKitFindController
+ *
+ * A #WebKitFindController is used to search text in a #WebKitWebView. You
+ * can get a #WebKitWebView<!-- -->'s #WebKitFindController with
+ * webkit_web_view_get_find_controller(), and later use it to search
+ * for text using webkit_find_controller_search(), or get the
+ * number of matches using webkit_find_controller_count_matches(). The
+ * operations are asynchronous and trigger signals when ready, such as
+ * #WebKitFindController::found-text,
+ * #WebKitFindController::failed-to-find-text or
+ * #WebKitFindController::counted-matches<!-- -->.
+ *
+ */
+
 enum {
     FOUND_TEXT,
     FAILED_TO_FIND_TEXT,
@@ -62,7 +79,7 @@ struct _WebKitFindControllerPrivate {
 
 static guint signals[LAST_SIGNAL] = { 0, };
 
-G_DEFINE_TYPE(WebKitFindController, webkit_find_controller, G_TYPE_OBJECT)
+WEBKIT_DEFINE_TYPE(WebKitFindController, webkit_find_controller, G_TYPE_OBJECT)
 
 COMPILE_ASSERT_MATCHING_ENUM(WEBKIT_FIND_OPTIONS_CASE_INSENSITIVE, FindOptionsCaseInsensitive);
 COMPILE_ASSERT_MATCHING_ENUM(WEBKIT_FIND_OPTIONS_AT_WORD_STARTS, FindOptionsAtWordStarts);
@@ -83,13 +100,6 @@ static void didFailToFindString(WKPageRef page, WKStringRef string, const void* 
 static void didCountStringMatches(WKPageRef page, WKStringRef string, unsigned matchCount, const void* clientInfo)
 {
     g_signal_emit(WEBKIT_FIND_CONTROLLER(clientInfo), signals[COUNTED_MATCHES], 0, matchCount);
-}
-
-static void webkit_find_controller_init(WebKitFindController* findController)
-{
-    WebKitFindControllerPrivate* priv = G_TYPE_INSTANCE_GET_PRIVATE(findController, WEBKIT_TYPE_FIND_CONTROLLER, WebKitFindControllerPrivate);
-    findController->priv = priv;
-    new (priv) WebKitFindControllerPrivate();
 }
 
 static inline WebPageProxy* getPage(WebKitFindController* findController)
@@ -146,22 +156,12 @@ static void webkitFindControllerSetProperty(GObject* object, guint propId, const
     }
 }
 
-static void webkitFindControllerFinalize(GObject* object)
-{
-    WEBKIT_FIND_CONTROLLER(object)->priv->~WebKitFindControllerPrivate();
-    G_OBJECT_CLASS(webkit_find_controller_parent_class)->finalize(object);
-}
-
 static void webkit_find_controller_class_init(WebKitFindControllerClass* findClass)
 {
     GObjectClass* gObjectClass = G_OBJECT_CLASS(findClass);
-
     gObjectClass->constructed = webkitFindControllerConstructed;
     gObjectClass->get_property = webkitFindControllerGetProperty;
     gObjectClass->set_property = webkitFindControllerSetProperty;
-    gObjectClass->finalize = webkitFindControllerFinalize;
-
-    g_type_class_add_private(findClass, sizeof(WebKitFindControllerPrivate));
 
     /**
      * WebKitFindController:text:

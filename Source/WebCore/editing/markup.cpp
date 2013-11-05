@@ -51,6 +51,7 @@
 #include "HTMLTextFormControlElement.h"
 #include "KURL.h"
 #include "MarkupAccumulator.h"
+#include "NodeTraversal.h"
 #include "Range.h"
 #include "RenderObject.h"
 #include "StylePropertySet.h"
@@ -95,24 +96,20 @@ private:
     String m_value;
 };
 
-static void completeURLs(Node* node, const String& baseURL)
+static void completeURLs(DocumentFragment* fragment, const String& baseURL)
 {
     Vector<AttributeChange> changes;
 
     KURL parsedBaseURL(ParsedURLString, baseURL);
 
-    Node* end = node->traverseNextSibling();
-    for (Node* n = node; n != end; n = n->traverseNextNode()) {
-        if (n->isElementNode()) {
-            Element* e = static_cast<Element*>(n);
-            if (!e->hasAttributes())
-                continue;
-            unsigned length = e->attributeCount();
-            for (unsigned i = 0; i < length; i++) {
-                const Attribute* attribute = e->attributeItem(i);
-                if (e->isURLAttribute(*attribute) && !attribute->value().isEmpty())
-                    changes.append(AttributeChange(e, attribute->name(), KURL(parsedBaseURL, attribute->value()).string()));
-            }
+    for (Element* element = ElementTraversal::firstWithin(fragment); element; element = ElementTraversal::next(element, fragment)) {
+        if (!element->hasAttributes())
+            continue;
+        unsigned length = element->attributeCount();
+        for (unsigned i = 0; i < length; i++) {
+            const Attribute* attribute = element->attributeItem(i);
+            if (element->isURLAttribute(*attribute) && !attribute->value().isEmpty())
+                changes.append(AttributeChange(element, attribute->name(), KURL(parsedBaseURL, attribute->value()).string()));
         }
     }
 
@@ -365,7 +362,7 @@ Node* StyledMarkupAccumulator::traverseNodesForSerialization(Node* startNode, No
         if (!n)
             break;
         
-        next = n->traverseNextNode();
+        next = NodeTraversal::next(n);
         bool openedTag = false;
 
         if (isBlock(n) && canHaveChildrenForEditing(n) && next == pastEnd)
@@ -373,7 +370,7 @@ Node* StyledMarkupAccumulator::traverseNodesForSerialization(Node* startNode, No
             continue;
 
         if (!n->renderer() && !enclosingNodeWithTag(firstPositionInOrBeforeNode(n), selectTag)) {
-            next = n->traverseNextSibling();
+            next = NodeTraversal::nextSkippingChildren(n);
             // Don't skip over pastEnd.
             if (pastEnd && pastEnd->isDescendantOf(n))
                 next = pastEnd;
@@ -678,7 +675,7 @@ static const char fragmentMarkerTag[] = "webkit-fragment-marker";
 
 static bool findNodesSurroundingContext(Document* document, RefPtr<Node>& nodeBeforeContext, RefPtr<Node>& nodeAfterContext)
 {
-    for (Node* node = document->firstChild(); node; node = node->traverseNextNode()) {
+    for (Node* node = document->firstChild(); node; node = NodeTraversal::next(node)) {
         if (node->nodeType() == Node::COMMENT_NODE && static_cast<CharacterData*>(node)->data() == fragmentMarkerTag) {
             if (!nodeBeforeContext)
                 nodeBeforeContext = node;
@@ -697,10 +694,10 @@ static void trimFragment(DocumentFragment* fragment, Node* nodeBeforeContext, No
     RefPtr<Node> next;
     for (RefPtr<Node> node = fragment->firstChild(); node; node = next) {
         if (nodeBeforeContext->isDescendantOf(node.get())) {
-            next = node->traverseNextNode();
+            next = NodeTraversal::next(node.get());
             continue;
         }
-        next = node->traverseNextSibling();
+        next = NodeTraversal::nextSkippingChildren(node.get());
         ASSERT(!node->contains(nodeAfterContext));
         node->parentNode()->removeChild(node.get(), ec);
         if (nodeBeforeContext == node)
@@ -709,7 +706,7 @@ static void trimFragment(DocumentFragment* fragment, Node* nodeBeforeContext, No
 
     ASSERT(nodeAfterContext->parentNode());
     for (RefPtr<Node> node = nodeAfterContext; node; node = next) {
-        next = node->traverseNextSibling();
+        next = NodeTraversal::nextSkippingChildren(node.get());
         node->parentNode()->removeChild(node.get(), ec);
         ASSERT(!ec);
     }
@@ -997,6 +994,10 @@ String urlToMarkup(const KURL& url, const String& title)
 PassRefPtr<DocumentFragment> createFragmentForInnerOuterHTML(const String& markup, Element* contextElement, FragmentScriptingPermission scriptingPermission, ExceptionCode& ec)
 {
     Document* document = contextElement->document();
+#if ENABLE(TEMPLATE_ELEMENT)
+    if (contextElement->hasTagName(templateTag))
+        document = document->templateContentsOwnerDocument();
+#endif
     RefPtr<DocumentFragment> fragment = DocumentFragment::create(document);
 
     if (document->isHTMLDocument()) {

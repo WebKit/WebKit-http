@@ -24,22 +24,23 @@
 #include "ChildNodeList.h"
 
 #include "Element.h"
+#include "NodeRareData.h"
 
 namespace WebCore {
 
 ChildNodeList::ChildNodeList(PassRefPtr<Node> node)
-    : DynamicNodeList(node, ChildNodeListType, NodeListIsRootedAtNode, DoNotInvalidateOnAttributeChanges)
+    : LiveNodeList(node, ChildNodeListType, DoNotInvalidateOnAttributeChanges)
 {
 }
 
 ChildNodeList::~ChildNodeList()
 {
-    ownerNode()->removeCachedChildNodeList();
+    ownerNode()->nodeLists()->removeChildNodeList(this);
 }
 
 bool ChildNodeList::nodeMatches(Element* testNode) const
 {
-    // This function will be called only by DynamicNodeList::itemWithName,
+    // This function will be called only by LiveNodeList::namedItem,
     // for an element that was located with getElementById.
     return testNode->parentNode() == rootNode();
 }

@@ -266,6 +266,7 @@ bool ScriptElement::requestScript(const String& sourceUrl)
             updateRequestForAccessControl(request.mutableResourceRequest(), m_element->document()->securityOrigin(), allowCredentials);
         }
         request.setCharset(scriptCharset());
+        request.setInitiator(element());
 
         m_cachedScript = m_element->document()->cachedResourceLoader()->requestScript(request);
         m_isExternalScript = true;
@@ -338,7 +339,7 @@ void ScriptElement::notifyFinished(CachedResource* resource)
 
         dispatchErrorEvent();
         DEFINE_STATIC_LOCAL(String, consoleMessage, (ASCIILiteral("Cross-origin script load denied by Cross-Origin Resource Sharing policy.")));
-        m_element->document()->addConsoleMessage(JSMessageSource, LogMessageType, ErrorMessageLevel, consoleMessage);
+        m_element->document()->addConsoleMessage(JSMessageSource, ErrorMessageLevel, consoleMessage);
         return;
     }
 

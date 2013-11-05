@@ -34,34 +34,17 @@
 
 namespace JSC {
 
-class GCCopyPhaseFunctor : public MarkedBlock::VoidFunctor {
-public:
-    GCCopyPhaseFunctor(CopyVisitor& visitor)
-        : m_visitor(visitor)
-    {
-    }
-
-    void operator()(JSCell* cell)
-    {
-        Structure* structure = cell->structure();
-        if (!structure->outOfLineCapacity() && !hasIndexedProperties(structure->indexingType()))
-            return;
-        ASSERT(structure->classInfo()->methodTable.copyBackingStore == JSObject::copyBackingStore);
-        JSObject::copyBackingStore(cell, m_visitor);
-    }
-
-private:
-    CopyVisitor& m_visitor;
-};
-
-inline bool CopyVisitor::checkIfShouldCopy(void* oldPtr, size_t bytes)
+inline void CopyVisitor::visitCell(JSCell* cell)
 {
-    if (CopiedSpace::isOversize(bytes))
-        return false;
+    ASSERT(cell->structure()->classInfo()->methodTable.copyBackingStore == JSObject::copyBackingStore);
+    JSObject::copyBackingStore(cell, *this);
+}
 
-    if (CopiedSpace::blockFor(oldPtr)->isPinned())
+inline bool CopyVisitor::checkIfShouldCopy(void* oldPtr)
+{
+    CopiedBlock* block = CopiedSpace::blockFor(oldPtr);
+    if (block->isOversize() || block->isPinned())
         return false;
-
     return true;
 }
 
@@ -106,12 +89,12 @@ inline void CopyVisitor::doneCopying()
 
 inline void CopyVisitor::didCopy(void* ptr, size_t bytes)
 {
-    ASSERT(!CopiedSpace::isOversize(bytes));
     CopiedBlock* block = CopiedSpace::blockFor(ptr);
+    ASSERT(!block->isOversize());
     ASSERT(!block->isPinned());
 
-    if (block->didEvacuateBytes(bytes))
-        m_shared.m_copiedSpace->recycleEvacuatedBlock(block);
+    block->didEvacuateBytes(bytes);
+
 }
 
 } // namespace JSC

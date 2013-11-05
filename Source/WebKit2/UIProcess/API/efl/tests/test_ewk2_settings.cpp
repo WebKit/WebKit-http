@@ -26,9 +26,6 @@
 #include "config.h"
 
 #include "UnitTestUtils/EWK2UnitTestBase.h"
-#include "UnitTestUtils/EWK2UnitTestEnvironment.h"
-#include <EWebKit2.h>
-#include <Eina.h>
 
 using namespace EWK2UnitTest;
 
@@ -209,4 +206,84 @@ TEST_F(EWK2UnitTestBase, ewk_settings_scripts_can_open_windows)
 
     ASSERT_TRUE(ewk_settings_scripts_can_open_windows_set(settings, false));
     ASSERT_FALSE(ewk_settings_scripts_can_open_windows_get(settings));
+}
+
+TEST_F(EWK2UnitTestBase, ewk_settings_local_storage_enabled)
+{
+    Ewk_Settings* settings = ewk_view_settings_get(webView());
+
+    // HTML5 local storage should be enabled by default.
+    ASSERT_TRUE(ewk_settings_local_storage_enabled_get(settings));
+
+    ASSERT_TRUE(ewk_settings_local_storage_enabled_set(settings, false));
+    ASSERT_FALSE(ewk_settings_local_storage_enabled_get(settings));
+
+    ASSERT_TRUE(ewk_settings_local_storage_enabled_set(settings, true));
+    ASSERT_TRUE(ewk_settings_local_storage_enabled_get(settings));
+}
+
+TEST_F(EWK2UnitTestBase, ewk_settings_plugins_enabled)
+{
+    Ewk_Settings* settings = ewk_view_settings_get(webView());
+
+    // Plug-ins support is enabled by default.
+    ASSERT_TRUE(ewk_settings_plugins_enabled_get(settings));
+
+    ASSERT_TRUE(ewk_settings_plugins_enabled_set(settings, true));
+    ASSERT_TRUE(ewk_settings_plugins_enabled_get(settings));
+
+    ASSERT_TRUE(ewk_settings_plugins_enabled_set(settings, false));
+    ASSERT_FALSE(ewk_settings_plugins_enabled_get(settings));
+}
+
+TEST_F(EWK2UnitTestBase, ewk_settings_default_font_size)
+{
+    Ewk_Settings* settings = ewk_view_settings_get(webView());
+
+    // 16 by default.
+    ASSERT_EQ(16, ewk_settings_default_font_size_get(settings));
+
+    ASSERT_TRUE(ewk_settings_default_font_size_set(settings, 10));
+    ASSERT_EQ(10, ewk_settings_default_font_size_get(settings));
+
+    ASSERT_TRUE(ewk_settings_default_font_size_set(settings, 20));
+    ASSERT_EQ(20, ewk_settings_default_font_size_get(settings));
+}
+
+TEST_F(EWK2UnitTestBase, ewk_settings_private_browsing_enabled)
+{
+    Ewk_Settings* settings = ewk_view_settings_get(webView());
+
+    // Private browsing is disabled by default.
+    ASSERT_FALSE(ewk_settings_private_browsing_enabled_get(settings));
+
+    ASSERT_TRUE(ewk_settings_private_browsing_enabled_set(settings, true));
+    ASSERT_TRUE(ewk_settings_private_browsing_enabled_get(settings));
+
+    ASSERT_TRUE(ewk_settings_private_browsing_enabled_set(settings, false));
+    ASSERT_FALSE(ewk_settings_private_browsing_enabled_get(settings));
+}
+
+TEST_F(EWK2UnitTestBase, ewk_settings_text_autosizing_enabled)
+{
+    Ewk_Settings* settings = ewk_view_settings_get(webView());
+
+#if ENABLE(TEXT_AUTOSIZING)
+    // Text autosizing should be disabled by default.
+    ASSERT_FALSE(ewk_settings_text_autosizing_enabled_get(settings));
+
+    ASSERT_TRUE(ewk_settings_text_autosizing_enabled_set(settings, false));
+    ASSERT_FALSE(ewk_settings_text_autosizing_enabled_get(settings));
+
+    ASSERT_TRUE(ewk_settings_text_autosizing_enabled_set(settings, true));
+    ASSERT_TRUE(ewk_settings_text_autosizing_enabled_get(settings));
+#else
+    ASSERT_FALSE(ewk_settings_text_autosizing_enabled_get(settings));
+
+    ASSERT_FALSE(ewk_settings_text_autosizing_enabled_set(settings, false));
+    ASSERT_FALSE(ewk_settings_text_autosizing_enabled_get(settings));
+
+    ASSERT_FALSE(ewk_settings_text_autosizing_enabled_set(settings, true));
+    ASSERT_FALSE(ewk_settings_text_autosizing_enabled_get(settings));
+#endif
 }

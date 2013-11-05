@@ -34,19 +34,15 @@
 namespace WebCore {
 
 #if USE(GRAPHICS_SURFACE)
-void TextureMapperSurfaceBackingStore::setGraphicsSurface(const GraphicsSurfaceToken& graphicsSurfaceToken, const IntSize& surfaceSize, uint32_t frontBuffer)
+void TextureMapperSurfaceBackingStore::setGraphicsSurface(PassRefPtr<GraphicsSurface> surface)
 {
-    if (graphicsSurfaceToken != m_graphicsSurfaceToken) {
-        GraphicsSurface::Flags surfaceFlags = GraphicsSurface::SupportsTextureTarget
-                                            | GraphicsSurface::SupportsSharing;
-        setSurface(GraphicsSurface::create(surfaceSize, surfaceFlags, graphicsSurfaceToken));
-        m_graphicsSurfaceSize = surfaceSize;
-    }
+    m_graphicsSurface = surface;
+}
 
-    RefPtr<WebCore::GraphicsSurface> surface = graphicsSurface();
-    if (surface && surface->frontBuffer() != frontBuffer)
-        surface->swapBuffers();
-
+void TextureMapperSurfaceBackingStore::swapBuffersIfNeeded(uint32_t)
+{
+    if (m_graphicsSurface)
+        m_graphicsSurface->swapBuffers();
 }
 
 PassRefPtr<BitmapTexture> TextureMapperSurfaceBackingStore::texture() const
@@ -60,17 +56,6 @@ void TextureMapperSurfaceBackingStore::paintToTextureMapper(TextureMapper* textu
 {
     if (m_graphicsSurface)
         m_graphicsSurface->paintToTextureMapper(textureMapper, targetRect, transform, opacity, mask);
-}
-
-void TextureMapperSurfaceBackingStore::setSurface(PassRefPtr<GraphicsSurface> surface)
-{
-    if (surface) {
-        m_graphicsSurface = surface;
-        m_graphicsSurfaceToken = m_graphicsSurface->exportToken();
-    } else {
-        m_graphicsSurface = RefPtr<GraphicsSurface>();
-        m_graphicsSurfaceToken = GraphicsSurfaceToken();
-    }
 }
 #endif
 
@@ -95,6 +80,25 @@ void TextureMapperTile::updateContents(TextureMapper* textureMapper, Image* imag
     m_texture->updateContents(image, targetRect, sourceOffset, updateContentsFlag);
 }
 
+void TextureMapperTile::updateContents(TextureMapper* textureMapper, GraphicsLayer* sourceLayer, const IntRect& dirtyRect, BitmapTexture::UpdateContentsFlag updateContentsFlag)
+{
+    IntRect targetRect = enclosingIntRect(m_rect);
+    targetRect.intersect(dirtyRect);
+    if (targetRect.isEmpty())
+        return;
+    IntPoint sourceOffset = targetRect.location();
+
+    // Normalize targetRect to the texture's coordinates.
+    targetRect.move(-m_rect.x(), -m_rect.y());
+
+    if (!m_texture) {
+        m_texture = textureMapper->createTexture();
+        m_texture->reset(targetRect.size(), BitmapTexture::SupportsAlpha);
+    }
+
+    m_texture->updateContents(textureMapper, sourceLayer, targetRect, sourceOffset, updateContentsFlag);
+}
+
 void TextureMapperTile::paint(TextureMapper* textureMapper, const TransformationMatrix& transform, float opacity, BitmapTexture* mask, const unsigned exposedEdges)
 {
     if (texture().get())
@@ -111,7 +115,7 @@ void TextureMapperTiledBackingStore::updateContentsFromImageIfNeeded(TextureMapp
     if (!m_image)
         return;
 
-    updateContents(textureMapper, m_image.get(), BitmapTexture::UpdateCannotModifyOriginalImageData);
+    updateContents(textureMapper, m_image.get(), m_image->size(), m_image->rect(), BitmapTexture::UpdateCannotModifyOriginalImageData);
     m_image.clear();
 }
 
@@ -210,6 +214,13 @@ void TextureMapperTiledBackingStore::updateContents(TextureMapper* textureMapper
     createOrDestroyTilesIfNeeded(totalSize, textureMapper->maxTextureSize(), image->currentFrameHasAlpha());
     for (size_t i = 0; i < m_tiles.size(); ++i)
         m_tiles[i].updateContents(textureMapper, image, dirtyRect, updateContentsFlag);
+}
+
+void TextureMapperTiledBackingStore::updateContents(TextureMapper* textureMapper, GraphicsLayer* sourceLayer, const FloatSize& totalSize, const IntRect& dirtyRect, BitmapTexture::UpdateContentsFlag updateContentsFlag)
+{
+    createOrDestroyTilesIfNeeded(totalSize, textureMapper->maxTextureSize(), true);
+    for (size_t i = 0; i < m_tiles.size(); ++i)
+        m_tiles[i].updateContents(textureMapper, sourceLayer, dirtyRect, updateContentsFlag);
 }
 
 PassRefPtr<BitmapTexture> TextureMapperTiledBackingStore::texture() const

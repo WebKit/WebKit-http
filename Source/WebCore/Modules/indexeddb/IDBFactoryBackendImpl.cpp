@@ -35,7 +35,6 @@
 #include "IDBDatabaseException.h"
 #include "IDBTransactionCoordinator.h"
 #include "SecurityOrigin.h"
-#include <wtf/Threading.h>
 #include <wtf/UnusedParam.h>
 
 #if ENABLE(INDEXED_DATABASE)
@@ -83,7 +82,7 @@ void IDBFactoryBackendImpl::getDatabaseNames(PassRefPtr<IDBCallbacks> callbacks,
 {
     RefPtr<IDBBackingStore> backingStore = openBackingStore(securityOrigin, dataDirectory);
     if (!backingStore) {
-        callbacks->onError(IDBDatabaseError::create(IDBDatabaseException::UNKNOWN_ERR, "Internal error."));
+        callbacks->onError(IDBDatabaseError::create(IDBDatabaseException::UnknownError, "Internal error opening backing store for indexedDB.webkitGetDatabaseNames."));
         return;
     }
 
@@ -111,7 +110,7 @@ void IDBFactoryBackendImpl::deleteDatabase(const String& name, PassRefPtr<IDBCal
     // FIXME: Everything from now on should be done on another thread.
     RefPtr<IDBBackingStore> backingStore = openBackingStore(securityOrigin, dataDirectory);
     if (!backingStore) {
-        callbacks->onError(IDBDatabaseError::create(IDBDatabaseException::UNKNOWN_ERR, "Internal error."));
+        callbacks->onError(IDBDatabaseError::create(IDBDatabaseException::UnknownError, "Internal error opening backing store for indexedDB.deleteDatabase."));
         return;
     }
 
@@ -121,7 +120,7 @@ void IDBFactoryBackendImpl::deleteDatabase(const String& name, PassRefPtr<IDBCal
         databaseBackend->deleteDatabase(callbacks);
         m_databaseBackendMap.remove(uniqueIdentifier);
     } else
-        callbacks->onError(IDBDatabaseError::create(IDBDatabaseException::UNKNOWN_ERR, "Internal error."));
+        callbacks->onError(IDBDatabaseError::create(IDBDatabaseException::UnknownError, "Internal error creating database backend for indexedDB.deleteDatabase."));
 }
 
 PassRefPtr<IDBBackingStore> IDBFactoryBackendImpl::openBackingStore(PassRefPtr<SecurityOrigin> securityOrigin, const String& dataDirectory)
@@ -142,7 +141,7 @@ PassRefPtr<IDBBackingStore> IDBFactoryBackendImpl::openBackingStore(PassRefPtr<S
     return 0;
 }
 
-void IDBFactoryBackendImpl::open(const String& name, int64_t version, PassRefPtr<IDBCallbacks> callbacks, PassRefPtr<IDBDatabaseCallbacks> databaseCallbacks, PassRefPtr<SecurityOrigin> prpSecurityOrigin, ScriptExecutionContext*, const String& dataDirectory)
+void IDBFactoryBackendImpl::open(const String& name, int64_t version, int64_t transactionId, PassRefPtr<IDBCallbacks> callbacks, PassRefPtr<IDBDatabaseCallbacks> databaseCallbacks, PassRefPtr<SecurityOrigin> prpSecurityOrigin, ScriptExecutionContext*, const String& dataDirectory)
 {
     RefPtr<SecurityOrigin> securityOrigin = prpSecurityOrigin;
     const String uniqueIdentifier = computeUniqueIdentifier(name, securityOrigin.get());
@@ -152,7 +151,7 @@ void IDBFactoryBackendImpl::open(const String& name, int64_t version, PassRefPtr
     if (it == m_databaseBackendMap.end()) {
         RefPtr<IDBBackingStore> backingStore = openBackingStore(securityOrigin, dataDirectory);
         if (!backingStore) {
-            callbacks->onError(IDBDatabaseError::create(IDBDatabaseException::UNKNOWN_ERR, "Internal error."));
+            callbacks->onError(IDBDatabaseError::create(IDBDatabaseException::UnknownError, "Internal error opening backing store for indexedDB.open."));
             return;
         }
 
@@ -160,16 +159,16 @@ void IDBFactoryBackendImpl::open(const String& name, int64_t version, PassRefPtr
         if (databaseBackend)
             m_databaseBackendMap.set(uniqueIdentifier, databaseBackend.get());
         else {
-            callbacks->onError(IDBDatabaseError::create(IDBDatabaseException::UNKNOWN_ERR, "Internal error."));
+            callbacks->onError(IDBDatabaseError::create(IDBDatabaseException::UnknownError, "Internal error creating database backend for indexeddb.open."));
             return;
         }
     } else
         databaseBackend = it->value;
 
     if (version == IDBDatabaseMetadata::NoIntVersion)
-        databaseBackend->openConnection(callbacks, databaseCallbacks);
+        databaseBackend->openConnection(callbacks, databaseCallbacks, transactionId);
     else
-        databaseBackend->openConnectionWithVersion(callbacks, databaseCallbacks, version);
+        databaseBackend->openConnectionWithVersion(callbacks, databaseCallbacks, transactionId, version);
 }
 
 } // namespace WebCore

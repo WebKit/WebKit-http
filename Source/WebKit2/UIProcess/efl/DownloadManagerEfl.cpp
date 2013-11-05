@@ -89,7 +89,7 @@ void DownloadManagerEfl::didFail(WKContextRef, WKDownloadRef wkDownload, WKError
     EwkDownloadJob* download = downloadManager->downloadJob(downloadId);
     ASSERT(download);
 
-    OwnPtr<Ewk_Error> ewkError = Ewk_Error::create(error);
+    OwnPtr<EwkError> ewkError = EwkError::create(error);
     download->setState(EWK_DOWNLOAD_JOB_STATE_FAILED);
     Ewk_Download_Job_Error downloadError = { download, ewkError.get() };
     download->viewImpl()->smartCallback<DownloadJobFailed>().call(&downloadError);
@@ -137,6 +137,11 @@ DownloadManagerEfl::DownloadManagerEfl(EwkContext* context)
     wkDownloadClient.didFinish = didFinish;
 
     WKContextSetDownloadClient(toAPI(context->webContext().get()), &wkDownloadClient);
+}
+
+DownloadManagerEfl::~DownloadManagerEfl()
+{
+    WKContextSetDownloadClient(toAPI(m_context->webContext().get()), 0);
 }
 
 void DownloadManagerEfl::registerDownload(DownloadProxy* download, EwkViewImpl* viewImpl)

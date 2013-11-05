@@ -424,7 +424,7 @@ void FormData::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
     info.addMember(m_boundary);
 }
 
-static void encode(Encoder& encoder, const FormDataElement& element)
+static void encodeElement(Encoder& encoder, const FormDataElement& element)
 {
     encoder.encodeUInt32(element.m_type);
 
@@ -435,6 +435,7 @@ static void encode(Encoder& encoder, const FormDataElement& element)
 
     case FormDataElement::encodedFile:
         encoder.encodeString(element.m_filename);
+        encoder.encodeString(element.m_generatedFilename);
         encoder.encodeBool(element.m_shouldGenerateFile);
 #if ENABLE(BLOB)
         encoder.encodeInt64(element.m_fileStart);
@@ -466,7 +467,7 @@ static void encode(Encoder& encoder, const FormDataElement& element)
     ASSERT_NOT_REACHED();
 }
 
-static bool decode(Decoder& decoder, FormDataElement& element)
+static bool decodeElement(Decoder& decoder, FormDataElement& element)
 {
     uint32_t type;
     if (!decoder.decodeUInt32(type))
@@ -493,8 +494,12 @@ static bool decode(Decoder& decoder, FormDataElement& element)
         String filenameOrURL;
         if (!decoder.decodeString(filenameOrURL))
             return false;
-        if (type == FormDataElement::encodedFile && !decoder.decodeBool(element.m_shouldGenerateFile))
-            return false;
+        if (type == FormDataElement::encodedFile) {
+            if (!decoder.decodeString(element.m_generatedFilename))
+                return false;
+            if (!decoder.decodeBool(element.m_shouldGenerateFile))
+                return false;
+        }
         int64_t fileStart;
         if (!decoder.decodeInt64(fileStart))
             return false;
@@ -503,7 +508,7 @@ static bool decode(Decoder& decoder, FormDataElement& element)
         int64_t fileLength;
         if (!decoder.decodeInt64(fileLength))
             return false;
-        if (fileLength < fileStart)
+        if (fileLength != BlobDataItem::toEndOfFile && fileLength < fileStart)
             return false;
         double expectedFileModificationTime;
         if (!decoder.decodeDouble(expectedFileModificationTime))
@@ -539,7 +544,7 @@ static bool decode(Decoder& decoder, FormDataElement& element)
     return false;
 }
 
-void FormData::encodeForBackForward(Encoder& encoder) const
+void FormData::encode(Encoder& encoder) const
 {
     encoder.encodeBool(m_alwaysStream);
 
@@ -548,14 +553,14 @@ void FormData::encodeForBackForward(Encoder& encoder) const
     size_t size = m_elements.size();
     encoder.encodeUInt64(size);
     for (size_t i = 0; i < size; ++i)
-        encode(encoder, m_elements[i]);
+        encodeElement(encoder, m_elements[i]);
 
     encoder.encodeBool(m_hasGeneratedFiles);
 
     encoder.encodeInt64(m_identifier);
 }
 
-PassRefPtr<FormData> FormData::decodeForBackForward(Decoder& decoder)
+PassRefPtr<FormData> FormData::decode(Decoder& decoder)
 {
     RefPtr<FormData> data = FormData::create();
 
@@ -574,7 +579,7 @@ PassRefPtr<FormData> FormData::decodeForBackForward(Decoder& decoder)
         return 0;
     for (size_t i = 0; i < elementsSize; ++i) {
         FormDataElement element;
-        if (!decode(decoder, element))
+        if (!decodeElement(decoder, element))
             return 0;
         data->m_elements.append(element);
     }

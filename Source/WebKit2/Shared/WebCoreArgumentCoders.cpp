@@ -28,6 +28,7 @@
 
 #include "ShareableBitmap.h"
 #include <WebCore/AuthenticationChallenge.h>
+#include <WebCore/Cookie.h>
 #include <WebCore/Credential.h>
 #include <WebCore/Cursor.h>
 #include <WebCore/DatabaseDetails.h>
@@ -195,7 +196,7 @@ bool ArgumentCoder<HTTPHeaderMap>::decode(ArgumentDecoder* decoder, HTTPHeaderMa
 
 void ArgumentCoder<AuthenticationChallenge>::encode(ArgumentEncoder& encoder, const AuthenticationChallenge& challenge)
 {
-    encoder << challenge.protectionSpace() << challenge.proposedCredential() << challenge.previousFailureCount() << challenge.failureResponse() << challenge.error();
+    encoder << challenge.protectionSpace() << challenge.proposedCredential() << challenge.previousFailureCount() << challenge.failureResponse() << challenge.error() << challenge.identifier();
 }
 
 bool ArgumentCoder<AuthenticationChallenge>::decode(ArgumentDecoder* decoder, AuthenticationChallenge& challenge)
@@ -220,7 +221,11 @@ bool ArgumentCoder<AuthenticationChallenge>::decode(ArgumentDecoder* decoder, Au
     if (!decoder->decode(error))
         return false;
     
-    challenge = AuthenticationChallenge(protectionSpace, proposedCredential, previousFailureCount, failureResponse, error);
+    uint64_t identifier;
+    if (!decoder->decode(identifier))
+        return false;
+    
+    challenge = AuthenticationChallenge(protectionSpace, proposedCredential, previousFailureCount, failureResponse, error, identifier);
     return true;
 }
 
@@ -375,6 +380,9 @@ void ArgumentCoder<ResourceRequest>::encode(ArgumentEncoder& encoder, const Reso
         encoder << resourceRequest.httpMethod();
         encoder << resourceRequest.httpHeaderFields();
 
+        // FIXME: Do not encode HTTP message body.
+        // 1. It can be large and thus costly to send across.
+        // 2. It is misleading to provide a body with some requests, while others use body streams, which cannot be serialized at all.
         FormData* httpBody = resourceRequest.httpBody();
         encoder << static_cast<bool>(httpBody);
         if (httpBody)
@@ -681,6 +689,42 @@ bool ArgumentCoder<CompositionUnderline>::decode(ArgumentDecoder* decoder, Compo
 
     return true;
 }
+
+
+void ArgumentCoder<Cookie>::encode(ArgumentEncoder& encoder, const Cookie& cookie)
+{
+    encoder << cookie.name;
+    encoder << cookie.value;
+    encoder << cookie.domain;
+    encoder << cookie.path;
+    encoder << cookie.expires;
+    encoder << cookie.httpOnly;
+    encoder << cookie.secure;
+    encoder << cookie.session;
+}
+
+bool ArgumentCoder<Cookie>::decode(ArgumentDecoder* decoder, Cookie& cookie)
+{
+    if (!decoder->decode(cookie.name))
+        return false;
+    if (!decoder->decode(cookie.value))
+        return false;
+    if (!decoder->decode(cookie.domain))
+        return false;
+    if (!decoder->decode(cookie.path))
+        return false;
+    if (!decoder->decode(cookie.expires))
+        return false;
+    if (!decoder->decode(cookie.httpOnly))
+        return false;
+    if (!decoder->decode(cookie.secure))
+        return false;
+    if (!decoder->decode(cookie.session))
+        return false;
+
+    return true;
+}
+
 
 #if ENABLE(SQL_DATABASE)
 void ArgumentCoder<DatabaseDetails>::encode(ArgumentEncoder& encoder, const DatabaseDetails& details)

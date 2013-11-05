@@ -174,7 +174,7 @@ protected:
     virtual void determinePropertyValueTypes(const String& from, const String& to);
 
     bool isSupportedAttribute(const QualifiedName&);
-    virtual void parseAttribute(const Attribute&) OVERRIDE;
+    virtual void parseAttribute(const QualifiedName&, const AtomicString&) OVERRIDE;
     virtual void svgAttributeChanged(const QualifiedName&) OVERRIDE;
 
     enum AttributeType {
@@ -197,7 +197,8 @@ protected:
     AnimatedPropertyValueType m_fromPropertyValueType;
     AnimatedPropertyValueType m_toPropertyValueType;
 
-    virtual void targetElementWillChange(SVGElement* currentTarget, SVGElement* oldTarget) OVERRIDE;
+    virtual void setTargetElement(SVGElement*) OVERRIDE;
+    virtual void setAttributeName(const QualifiedName&) OVERRIDE;
     bool hasInvalidCSSAttributeType() const { return m_hasInvalidCSSAttributeType; }
 
     virtual void updateAnimationMode();
@@ -206,7 +207,6 @@ protected:
 
 private:
     virtual void animationAttributeChanged() OVERRIDE;
-    virtual void setAttributeName(const QualifiedName&) OVERRIDE;
     void setAttributeType(const AtomicString&);
 
     void checkInvalidCSSAttributeType(SVGElement*);

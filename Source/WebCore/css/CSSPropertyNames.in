@@ -182,6 +182,13 @@ text-underline-mode
 text-underline-style
 text-underline-width
 top
+#if defined(ENABLE_CSS_TRANSFORMS_ANIMATIONS_TRANSITIONS_UNPREFIXED) && ENABLE_CSS_TRANSFORMS_ANIMATIONS_TRANSITIONS_UNPREFIXED
+transition = -webkit-transition
+transition-delay = -webkit-transition-delay
+transition-duration = -webkit-transition-duration
+transition-property = -webkit-transition-property
+transition-timing-function = -webkit-transition-timing-function
+#endif
 unicode-bidi
 unicode-range
 vertical-align
@@ -318,7 +325,6 @@ z-index
 -webkit-marquee-speed
 -webkit-marquee-style
 -webkit-mask
--webkit-mask-attachment
 -webkit-mask-box-image
 -webkit-mask-box-image-outset
 -webkit-mask-box-image-repeat
@@ -352,6 +358,7 @@ z-index
 -webkit-perspective-origin-y
 -webkit-print-color-adjust
 -webkit-rtl-ordering
+-webkit-ruby-position
 -webkit-text-combine
 -epub-text-combine = -webkit-text-combine
 #if defined(ENABLE_CSS3_TEXT) && ENABLE_CSS3_TEXT

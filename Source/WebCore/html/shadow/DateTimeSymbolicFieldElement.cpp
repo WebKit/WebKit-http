@@ -27,12 +27,9 @@
 #if ENABLE(INPUT_MULTIPLE_FIELDS_UI)
 #include "DateTimeSymbolicFieldElement.h"
 
-#include "FontCache.h"
+#include "Font.h"
 #include "KeyboardEvent.h"
-#include "RenderStyle.h"
-#include "StyleResolver.h"
 #include "TextBreakIterator.h"
-#include "TextRun.h"
 #include <wtf/text/StringBuilder.h>
 #include <wtf/unicode/Unicode.h>
 
@@ -55,21 +52,17 @@ DateTimeSymbolicFieldElement::DateTimeSymbolicFieldElement(Document* document, F
     , m_symbols(symbols)
     , m_visibleEmptyValue(makeVisibleEmptyValue(symbols))
     , m_selectedIndex(-1)
+    , m_typeAhead(this)
 {
     ASSERT(!symbols.isEmpty());
-    setHasCustomCallbacks();
 }
 
-PassRefPtr<RenderStyle> DateTimeSymbolicFieldElement::customStyleForRenderer()
+float DateTimeSymbolicFieldElement::maximumWidth(const Font& font)
 {
-    FontCachePurgePreventer fontCachePurgePreventer;
-    RefPtr<RenderStyle> originalStyle = document()->styleResolver()->styleForElement(this);
-    RefPtr<RenderStyle> style = RenderStyle::clone(originalStyle.get());
-    float maxiumWidth = style->font().width(visibleEmptyValue());
+    float maximumWidth = font.width(visibleEmptyValue());
     for (unsigned index = 0; index < m_symbols.size(); ++index)
-        maxiumWidth = std::max(maxiumWidth, style->font().width(m_symbols[index]));
-    style->setMinWidth(Length(maxiumWidth, Fixed));
-    return style.release();
+        maximumWidth = std::max(maximumWidth, font.width(m_symbols[index]));
+    return maximumWidth + DateTimeFieldElement::maximumWidth(font);
 }
 
 void DateTimeSymbolicFieldElement::handleKeyboardEvent(KeyboardEvent* keyboardEvent)
@@ -82,12 +75,11 @@ void DateTimeSymbolicFieldElement::handleKeyboardEvent(KeyboardEvent* keyboardEv
         return;
 
     keyboardEvent->setDefaultHandled();
-    for (unsigned index = 0; index < m_symbols.size(); ++index) {
-        if (!m_symbols[index].isEmpty() && WTF::Unicode::toLower(m_symbols[index][0]) == charCode) {
-            setValueAsInteger(index, DispatchEvent);
-            return;
-        }
-    }
+
+    int index = m_typeAhead.handleEvent(keyboardEvent, TypeAhead::MatchPrefix | TypeAhead::CycleFirstChar | TypeAhead::MatchIndex);
+    if (index < 0)
+        return;
+    setValueAsInteger(index, DispatchEvent);
 }
 
 bool DateTimeSymbolicFieldElement::hasValue() const
@@ -107,6 +99,8 @@ int DateTimeSymbolicFieldElement::minimum() const
 
 void DateTimeSymbolicFieldElement::setEmptyValue(EventBehavior eventBehavior)
 {
+    if (isReadOnly())
+        return;
     m_selectedIndex = invalidIndex;
     updateVisibleValue(eventBehavior);
 }
@@ -148,6 +142,21 @@ String DateTimeSymbolicFieldElement::visibleEmptyValue() const
 String DateTimeSymbolicFieldElement::visibleValue() const
 {
     return hasValue() ? m_symbols[m_selectedIndex] : visibleEmptyValue();
+}
+
+int DateTimeSymbolicFieldElement::indexOfSelectedOption() const
+{
+    return m_selectedIndex;
+}
+
+int DateTimeSymbolicFieldElement::optionCount() const
+{
+    return m_symbols.size();
+}
+
+String DateTimeSymbolicFieldElement::optionAtIndex(int index) const
+{
+    return m_symbols[index];
 }
 
 } // namespace WebCore

@@ -33,6 +33,7 @@
 #import "EventDispatcher.h"
 #import "LayerHostingContext.h"
 #import "LayerTreeContext.h"
+#import "WebFrame.h"
 #import "WebPage.h"
 #import "WebPageCreationParameters.h"
 #import "WebPageProxyMessages.h"
@@ -69,6 +70,7 @@ TiledCoreAnimationDrawingArea::TiledCoreAnimationDrawingArea(WebPage* webPage, c
     , m_layerTreeStateIsFrozen(false)
     , m_layerFlushScheduler(this)
     , m_isPaintingSuspended(!parameters.isVisible)
+    , m_minimumLayoutWidth(0)
 {
     Page* page = m_webPage->corePage();
 
@@ -213,20 +215,26 @@ void TiledCoreAnimationDrawingArea::updatePreferences(const WebPreferencesStore&
     m_webPage->corePage()->settings()->setAcceleratedCompositingForFixedPositionEnabled(true);
     m_webPage->corePage()->settings()->setFixedPositionCreatesStackingContext(true);
 
-    bool showDebugBorders = m_webPage->corePage()->settings()->showDebugBorders();
-
-    if (showDebugBorders == !!m_debugInfoLayer)
+    bool showTiledScrollingIndicator = m_webPage->corePage()->settings()->showTiledScrollingIndicator();
+    if (showTiledScrollingIndicator == !!m_debugInfoLayer)
         return;
 
-    if (showDebugBorders) {
-        m_debugInfoLayer = [CALayer layer];
-        [m_rootLayer.get() addSublayer:m_debugInfoLayer.get()];
-    } else {
-        [m_debugInfoLayer.get() removeFromSuperlayer];
-        m_debugInfoLayer = nullptr;
-    }
+    updateDebugInfoLayer(showTiledScrollingIndicator);
+}
 
-    ScrollingThread::dispatch(bind(&ScrollingTree::setDebugRootLayer, m_webPage->corePage()->scrollingCoordinator()->scrollingTree(), m_debugInfoLayer));
+void TiledCoreAnimationDrawingArea::mainFrameContentSizeChanged(const IntSize& contentSize)
+{
+    if (!m_minimumLayoutWidth)
+        return;
+
+    if (m_inUpdateGeometry)
+        return;
+
+    if (m_lastSentIntrinsicContentSize == contentSize)
+        return;
+
+    m_lastSentIntrinsicContentSize = contentSize;
+    m_webPage->send(Messages::DrawingAreaProxy::IntrinsicContentSizeDidChange(contentSize));
 }
 
 void TiledCoreAnimationDrawingArea::dispatchAfterEnsuringUpdatedScrollPosition(const Function<void ()>& functionRef)
@@ -330,9 +338,24 @@ void TiledCoreAnimationDrawingArea::resumePainting()
         m_webPage->corePage()->resumeScriptedAnimations();
 }
 
-void TiledCoreAnimationDrawingArea::updateGeometry(const IntSize& viewSize)
+void TiledCoreAnimationDrawingArea::updateGeometry(const IntSize& viewSize, double minimumLayoutWidth)
 {
-    m_webPage->setSize(viewSize);
+    m_inUpdateGeometry = true;
+
+    m_minimumLayoutWidth = minimumLayoutWidth;
+
+    IntSize size = viewSize;
+    IntSize contentSize = IntSize(-1, -1);
+
+    if (m_minimumLayoutWidth > 0) {
+        m_webPage->setSize(IntSize(m_minimumLayoutWidth, 0));
+        m_webPage->layoutIfNeeded();
+
+        contentSize = m_webPage->mainWebFrame()->contentBounds().size();
+        size = contentSize;
+    }
+
+    m_webPage->setSize(size);
     m_webPage->layoutIfNeeded();
 
     if (m_pageOverlayLayer)
@@ -351,7 +374,10 @@ void TiledCoreAnimationDrawingArea::updateGeometry(const IntSize& viewSize)
     [CATransaction flush];
     [CATransaction synchronize];
 
-    m_webPage->send(Messages::DrawingAreaProxy::DidUpdateGeometry());
+    m_lastSentIntrinsicContentSize = contentSize;
+    m_webPage->send(Messages::DrawingAreaProxy::DidUpdateGeometry(contentSize));
+
+    m_inUpdateGeometry = false;
 }
 
 void TiledCoreAnimationDrawingArea::setDeviceScaleFactor(float deviceScaleFactor)
@@ -421,8 +447,7 @@ void TiledCoreAnimationDrawingArea::setRootCompositingLayer(CALayer *layer)
     if (m_pageOverlayLayer)
         [m_rootLayer.get() addSublayer:m_pageOverlayLayer->platformLayer()];
 
-    if (m_debugInfoLayer)
-        [m_rootLayer.get() addSublayer:m_debugInfoLayer.get()];
+    updateDebugInfoLayer(m_webPage->corePage()->settings()->showTiledScrollingIndicator());
 
     [CATransaction commit];
 }
@@ -457,6 +482,34 @@ void TiledCoreAnimationDrawingArea::destroyPageOverlayLayer()
 
     [m_pageOverlayLayer->platformLayer() removeFromSuperlayer];
     m_pageOverlayLayer = nullptr;
+}
+
+TiledBacking* TiledCoreAnimationDrawingArea::mainFrameTiledBacking() const
+{
+    Frame* frame = m_webPage->corePage()->mainFrame();
+    if (!frame)
+        return 0;
+    
+    FrameView* frameView = frame->view();
+    return frameView ? frameView->tiledBacking() : 0;
+}
+
+void TiledCoreAnimationDrawingArea::updateDebugInfoLayer(bool showLayer)
+{
+    if (showLayer) {
+        if (TiledBacking* tiledBacking = mainFrameTiledBacking())
+            m_debugInfoLayer = tiledBacking->tiledScrollingIndicatorLayer();
+        
+        if (m_debugInfoLayer) {
+#ifndef NDEBUG
+            [m_debugInfoLayer.get() setName:@"Debug Info"];
+#endif
+            [m_rootLayer.get() addSublayer:m_debugInfoLayer.get()];
+        }
+    } else if (m_debugInfoLayer) {
+        [m_debugInfoLayer.get() removeFromSuperlayer];
+        m_debugInfoLayer = nullptr;
+    }
 }
 
 } // namespace WebKit

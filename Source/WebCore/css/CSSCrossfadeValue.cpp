@@ -52,6 +52,19 @@ static bool subimageIsPending(CSSValue* value)
     return false;
 }
 
+static bool subimageHasAlpha(CSSValue* value, const RenderObject* renderer)
+{
+    if (value->isImageValue())
+        return static_cast<CSSImageValue*>(value)->hasAlpha(renderer);
+
+    if (value->isImageGeneratorValue())
+        return static_cast<CSSImageGeneratorValue*>(value)->hasAlpha(renderer);
+
+    ASSERT_NOT_REACHED();
+
+    return true;
+}
+
 static CachedImage* cachedImageForCSSValue(CSSValue* value, CachedResourceLoader* cachedResourceLoader)
 {
     if (!value)
@@ -126,15 +139,32 @@ bool CSSCrossfadeValue::isPending() const
     return subimageIsPending(m_fromValue.get()) || subimageIsPending(m_toValue.get());
 }
 
+bool CSSCrossfadeValue::hasAlpha(const RenderObject* renderer) const
+{
+    return subimageHasAlpha(m_fromValue.get(), renderer) || subimageHasAlpha(m_toValue.get(), renderer);
+}
+
 void CSSCrossfadeValue::loadSubimages(CachedResourceLoader* cachedResourceLoader)
 {
+    CachedResourceHandle<CachedImage> oldCachedFromImage = m_cachedFromImage;
+    CachedResourceHandle<CachedImage> oldCachedToImage = m_cachedToImage;
+
     m_cachedFromImage = cachedImageForCSSValue(m_fromValue.get(), cachedResourceLoader);
     m_cachedToImage = cachedImageForCSSValue(m_toValue.get(), cachedResourceLoader);
 
-    if (m_cachedFromImage)
-        m_cachedFromImage->addClient(&m_crossfadeSubimageObserver);
-    if (m_cachedToImage)
-        m_cachedToImage->addClient(&m_crossfadeSubimageObserver);
+    if (m_cachedFromImage != oldCachedFromImage) {
+        if (oldCachedFromImage)
+            oldCachedFromImage->removeClient(&m_crossfadeSubimageObserver);
+        if (m_cachedFromImage)
+            m_cachedFromImage->addClient(&m_crossfadeSubimageObserver);
+    }
+
+    if (m_cachedToImage != oldCachedToImage) {
+        if (oldCachedToImage)
+            oldCachedToImage->removeClient(&m_crossfadeSubimageObserver);
+        if (m_cachedToImage)
+            m_cachedToImage->addClient(&m_crossfadeSubimageObserver);
+    }
 
     m_crossfadeSubimageObserver.setReady(true);
 }

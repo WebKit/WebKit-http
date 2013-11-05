@@ -86,7 +86,6 @@ void InjectedBundle::didReceiveMessageToPage(WKBundleRef bundle, WKBundlePageRef
 void InjectedBundle::initialize(WKBundleRef bundle, WKTypeRef initializationUserData)
 {
     m_bundle = bundle;
-    m_stringBuilder = WTF::adoptPtr(new WTF::StringBuilder());
 
     WKBundleClient client = {
         kWKBundleClientCurrentVersion,
@@ -103,6 +102,9 @@ void InjectedBundle::initialize(WKBundleRef bundle, WKTypeRef initializationUser
 
     activateFonts();
     WKBundleActivateMacFontAscentHack(m_bundle);
+
+    // FIXME: We'd like to start with a clean state for every test, but this function can't be used more than once yet.
+    WKBundleSwitchNetworkLoaderToNewTestingSession(m_bundle);
 }
 
 void InjectedBundle::didCreatePage(WKBundlePageRef page)
@@ -174,6 +176,8 @@ void InjectedBundle::didReceiveMessage(WKStringRef messageName, WKTypeRef messag
         resetLocalSettings();
         m_testRunner->removeAllWebNotificationPermissions();
 
+        page()->resetAfterTest();
+
         return;
     }
     if (WKStringIsEqualToUTF8CString(messageName, "CallAddChromeInputFieldCallback")) {
@@ -215,9 +219,7 @@ bool InjectedBundle::booleanForKey(WKDictionaryRef dictionary, const char* key)
     WKRetainPtr<WKStringRef> wkKey(AdoptWK, WKStringCreateWithUTF8CString(key));
     WKTypeRef value = WKDictionaryGetItemForKey(dictionary, wkKey.get());
     if (WKGetTypeID(value) != WKBooleanGetTypeID()) {
-        stringBuilder()->appendLiteral("Boolean value for key \"");
-        stringBuilder()->append(key);
-        stringBuilder()->appendLiteral("\" not found in dictionary\n");
+        outputText(makeString("Boolean value for key", key, " not found in dictionary\n"));
         return false;
     }
     return WKBooleanGetValue(static_cast<WKBooleanRef>(value));
@@ -229,7 +231,6 @@ void InjectedBundle::beginTesting(WKDictionaryRef settings)
 
     m_pixelResult.clear();
     m_repaintRects.clear();
-    m_stringBuilder->clear();
 
     m_testRunner = TestRunner::create();
     m_gcController = GCController::create();
@@ -242,7 +243,6 @@ void InjectedBundle::beginTesting(WKDictionaryRef settings)
     WKBundleSetAllowUniversalAccessFromFileURLs(m_bundle, m_pageGroup, true);
     WKBundleSetJavaScriptCanAccessClipboard(m_bundle, m_pageGroup, true);
     WKBundleSetPrivateBrowsingEnabled(m_bundle, m_pageGroup, false);
-    WKBundleSwitchNetworkLoaderToNewTestingSession(m_bundle);
     WKBundleSetAuthorAndUserStylesEnabled(m_bundle, m_pageGroup, true);
     WKBundleSetFrameFlatteningEnabled(m_bundle, m_pageGroup, false);
     WKBundleSetMinimumLogicalFontSize(m_bundle, m_pageGroup, 9);
@@ -254,6 +254,7 @@ void InjectedBundle::beginTesting(WKDictionaryRef settings)
     WKBundleSetAlwaysAcceptCookies(m_bundle, false);
     WKBundleSetSerialLoadingEnabled(m_bundle, false);
     WKBundleSetShadowDOMEnabled(m_bundle, true);
+    WKBundleSetCacheModel(m_bundle, 1 /*CacheModelDocumentBrowser*/);
 
     WKBundleRemoveAllUserContent(m_bundle, m_pageGroup);
 
@@ -289,21 +290,18 @@ void InjectedBundle::done()
     WKRetainPtr<WKStringRef> doneMessageName(AdoptWK, WKStringCreateWithUTF8CString("Done"));
     WKRetainPtr<WKMutableDictionaryRef> doneMessageBody(AdoptWK, WKMutableDictionaryCreate());
 
-    WKRetainPtr<WKStringRef> textOutputKey(AdoptWK, WKStringCreateWithUTF8CString("TextOutput"));
-    WKRetainPtr<WKStringRef> textOutput(AdoptWK, WKStringCreateWithUTF8CString(m_stringBuilder->toString().utf8().data()));
-    WKDictionaryAddItem(doneMessageBody.get(), textOutputKey.get(), textOutput.get());
-    
     WKRetainPtr<WKStringRef> pixelResultKey = adoptWK(WKStringCreateWithUTF8CString("PixelResult"));
     WKDictionaryAddItem(doneMessageBody.get(), pixelResultKey.get(), m_pixelResult.get());
 
     WKRetainPtr<WKStringRef> repaintRectsKey = adoptWK(WKStringCreateWithUTF8CString("RepaintRects"));
     WKDictionaryAddItem(doneMessageBody.get(), repaintRectsKey.get(), m_repaintRects.get());
 
+    WKRetainPtr<WKStringRef> audioResultKey = adoptWK(WKStringCreateWithUTF8CString("AudioResult"));
+    WKDictionaryAddItem(doneMessageBody.get(), audioResultKey.get(), m_audioResult.get());
+
     WKBundlePostMessage(m_bundle, doneMessageName.get(), doneMessageBody.get());
 
     closeOtherPages();
-
-    page()->resetAfterTest();
 
     m_state = Idle;
 }
@@ -319,13 +317,24 @@ void InjectedBundle::closeOtherPages()
         WKBundlePageClose(pagesToClose[i]);
 }
 
-void InjectedBundle::dumpBackForwardListsForAllPages()
+void InjectedBundle::dumpBackForwardListsForAllPages(StringBuilder& stringBuilder)
 {
     size_t size = m_pages.size();
     for (size_t i = 0; i < size; ++i)
-        m_pages[i]->dumpBackForwardList();
+        m_pages[i]->dumpBackForwardList(stringBuilder);
 }
-    
+
+void InjectedBundle::outputText(const String& output)
+{
+    if (m_state != Testing)
+        return;
+    if (output.isEmpty())
+        return;
+    WKRetainPtr<WKStringRef> messageName(AdoptWK, WKStringCreateWithUTF8CString("TextOutput"));
+    WKRetainPtr<WKStringRef> messageBody(AdoptWK, WKStringCreateWithUTF8CString(output.utf8().data()));
+    WKBundlePostMessage(m_bundle, messageName.get(), messageBody.get());
+}
+
 void InjectedBundle::postNewBeforeUnloadReturnValue(bool value)
 {
     WKRetainPtr<WKStringRef> messageName(AdoptWK, WKStringCreateWithUTF8CString("BeforeUnloadReturnValue"));

@@ -48,6 +48,7 @@
 #include "HitTestRequest.h"
 #include "HitTestResult.h"
 #include "InlineTextBox.h"
+#include "NodeTraversal.h"
 #include "Page.h"
 #include "Range.h"
 #include "RenderText.h"
@@ -1311,7 +1312,7 @@ IntRect CaretBase::absoluteBoundsForLocalRect(Node* node, const LayoutRect& rect
     LayoutRect localRect(rect);
     if (caretPainter->isBox())
         toRenderBox(caretPainter)->flipForWritingMode(localRect);
-    return caretPainter->localToAbsoluteQuad(FloatRect(localRect), SnapOffsetForTransforms).enclosingBoundingBox();
+    return caretPainter->localToAbsoluteQuad(FloatRect(localRect)).enclosingBoundingBox();
 }
 
 IntRect FrameSelection::absoluteCaretBounds()
@@ -1435,7 +1436,7 @@ void CaretBase::paintCaret(Node* node, GraphicsContext* context, const LayoutPoi
     RenderObject* renderer = caretRenderer(node);
     if (renderer && renderer->isBox())
         toRenderBox(renderer)->flipForWritingMode(drawingRect);
-    drawingRect.moveBy(paintOffset);
+    drawingRect.moveBy(roundedIntPoint(paintOffset));
     LayoutRect caret = intersection(drawingRect, clipRect);
     if (caret.isEmpty())
         return;
@@ -1952,13 +1953,16 @@ void FrameSelection::getClippedVisibleTextRectangles(Vector<FloatRect>& rectangl
 // Scans logically forward from "start", including any child frames.
 static HTMLFormElement* scanForForm(Node* start)
 {
-    for (Node* node = start; node; node = node->traverseNextNode()) {
-        if (node->hasTagName(formTag))
-            return static_cast<HTMLFormElement*>(node);
-        if (node->isHTMLElement() && toHTMLElement(node)->isFormControlElement())
-            return static_cast<HTMLFormControlElement*>(node)->form();
-        if (node->hasTagName(frameTag) || node->hasTagName(iframeTag)) {
-            Node* childDocument = static_cast<HTMLFrameElementBase*>(node)->contentDocument();
+    if (!start)
+        return 0;
+    Element* element = start->isElementNode() ? toElement(start) : ElementTraversal::next(start);
+    for (; element; element = ElementTraversal::next(element)) {
+        if (element->hasTagName(formTag))
+            return static_cast<HTMLFormElement*>(element);
+        if (element->isHTMLElement() && toHTMLElement(element)->isFormControlElement())
+            return static_cast<HTMLFormControlElement*>(element)->form();
+        if (element->hasTagName(frameTag) || element->hasTagName(iframeTag)) {
+            Node* childDocument = static_cast<HTMLFrameElementBase*>(element)->contentDocument();
             if (HTMLFormElement* frameResult = scanForForm(childDocument))
                 return frameResult;
         }
@@ -2025,7 +2029,7 @@ void FrameSelection::setSelectionFromNone()
 
     Node* node = document->documentElement();
     while (node && !node->hasTagName(bodyTag))
-        node = node->traverseNextNode();
+        node = NodeTraversal::next(node);
     if (node)
         setSelection(VisibleSelection(firstPositionInOrBeforeNode(node), DOWNSTREAM));
 }

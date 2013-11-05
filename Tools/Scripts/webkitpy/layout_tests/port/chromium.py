@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 # Copyright (C) 2010 Google Inc. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -278,10 +277,6 @@ class ChromiumPort(Port):
             "ff_aac_decoder": ["webaudio/codec-tests/aac"],
         }
 
-    def skipped_layout_tests(self, test_list):
-        # FIXME: Merge w/ WebKitPort.skipped_layout_tests()
-        return set(self._skipped_tests_for_unsupported_features(test_list))
-
     def setup_test_run(self):
         # Delete the disk cache if any to ensure a clean test run.
         dump_render_tree_binary_path = self._path_to_driver()
@@ -396,6 +391,12 @@ class ChromiumPort(Port):
             VirtualTestSuite('platform/chromium/virtual/deferred/fast/images',
                              'fast/images',
                              ['--enable-deferred-image-decoding', '--enable-per-tile-painting', '--force-compositing-mode']),
+            VirtualTestSuite('platform/chromium/virtual/gpu/compositedscrolling/overflow',
+                             'compositing/overflow',
+                             ['--enable-accelerated-overflow-scroll']),
+            VirtualTestSuite('platform/chromium/virtual/gpu/compositedscrolling/scrollbars',
+                             'scrollbars',
+                             ['--enable-accelerated-overflow-scroll']),
         ]
 
     #

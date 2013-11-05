@@ -29,6 +29,7 @@
 #if USE(DICTATION_ALTERNATIVES)
 #import <AppKit/NSTextAlternatives.h>
 #endif
+#import "AttributedString.h"
 #import "ColorSpaceData.h"
 #import "DataReference.h"
 #import "DictionaryPopupInfo.h"
@@ -431,11 +432,6 @@ CGContextRef PageClientImpl::containingWindowGraphicsContext()
     return static_cast<CGContextRef>([[window graphicsContext] graphicsPort]);
 }
 
-void PageClientImpl::didChangeScrollbarsForMainFrame() const
-{
-    [m_wkView _didChangeScrollbarsForMainFrame];
-}
-
 void PageClientImpl::didCommitLoadForMainFrame(bool useCustomRepresentation)
 {
     [m_wkView _setPageHasCustomRepresentation:useCustomRepresentation];
@@ -471,34 +467,21 @@ void PageClientImpl::flashBackingStoreUpdates(const Vector<IntRect>&)
     notImplemented();
 }
 
-void PageClientImpl::didPerformDictionaryLookup(const String& text, double scaleFactor, const DictionaryPopupInfo& dictionaryPopupInfo)
+void PageClientImpl::didPerformDictionaryLookup(const AttributedString& text, const DictionaryPopupInfo& dictionaryPopupInfo)
 {
-    NSFontDescriptor *fontDescriptor = [NSFontDescriptor fontDescriptorWithFontAttributes:(NSDictionary *)dictionaryPopupInfo.fontInfo.fontAttributeDictionary.get()];
-    NSFont *font = [NSFont fontWithDescriptor:fontDescriptor size:((scaleFactor != 1) ? [fontDescriptor pointSize] * scaleFactor : 0)];
-
-    RetainPtr<NSMutableAttributedString> attributedString(AdoptNS, [[NSMutableAttributedString alloc] initWithString:nsStringFromWebCoreString(text)]);
-    [attributedString.get() addAttribute:NSFontAttributeName value:font range:NSMakeRange(0, [attributedString.get() length])];
-
+    RetainPtr<NSAttributedString> attributedString = text.string;
     NSPoint textBaselineOrigin = dictionaryPopupInfo.origin;
 
-#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1070
     // Convert to screen coordinates.
     textBaselineOrigin = [m_wkView convertPoint:textBaselineOrigin toView:nil];
     textBaselineOrigin = [m_wkView.window convertRectToScreen:NSMakeRect(textBaselineOrigin.x, textBaselineOrigin.y, 0, 0)].origin;
 
     WKShowWordDefinitionWindow(attributedString.get(), textBaselineOrigin, (NSDictionary *)dictionaryPopupInfo.options.get());
-#else
-    // If the dictionary lookup is being triggered by a hot key, force the overlay style.
-    NSDictionary *options = (dictionaryPopupInfo.type == DictionaryPopupInfo::HotKey) ? [NSDictionary dictionaryWithObject:NSDefinitionPresentationTypeOverlay forKey:NSDefinitionPresentationTypeKey] : 0;
-    [m_wkView showDefinitionForAttributedString:attributedString.get() range:NSMakeRange(0, [attributedString.get() length]) options:options baselineOriginProvider:^(NSRange adjustedRange) { return (NSPoint)textBaselineOrigin; }];
-#endif
 }
 
 void PageClientImpl::dismissDictionaryLookupPanel()
 {
-#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1070
     WKHideWordDefinitionWindow();
-#endif
 }
 
 void PageClientImpl::showCorrectionPanel(AlternativeTextType type, const FloatRect& boundingBoxOfReplacedString, const String& replacedString, const String& replacementString, const Vector<String>& alternativeReplacementStrings)
@@ -528,15 +511,12 @@ String PageClientImpl::dismissCorrectionPanelSoon(WebCore::ReasonForDismissingAl
 
 void PageClientImpl::recordAutocorrectionResponse(AutocorrectionResponseType responseType, const String& replacedString, const String& replacementString)
 {
-#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1070
     NSCorrectionResponse response = responseType == AutocorrectionReverted ? NSCorrectionResponseReverted : NSCorrectionResponseEdited;
     CorrectionPanel::recordAutocorrectionResponse(m_wkView, response, replacedString, replacementString);
-#endif
 }
 
 void PageClientImpl::recommendedScrollbarStyleDidChange(int32_t newStyle)
 {
-#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1070
     NSArray *trackingAreas = [m_wkView trackingAreas];
     NSUInteger count = [trackingAreas count];
     ASSERT(count == 1);
@@ -557,9 +537,11 @@ void PageClientImpl::recommendedScrollbarStyleDidChange(int32_t newStyle)
                                                                userInfo:nil];
     [m_wkView addTrackingArea:trackingArea];
     [trackingArea release];
-#else
-    UNUSED_PARAM(newStyle);
-#endif
+}
+
+void PageClientImpl::intrinsicContentSizeDidChange(const IntSize& intrinsicContentSize)
+{
+    [m_wkView _setIntrinsicContentSize:intrinsicContentSize];
 }
 
 bool PageClientImpl::executeSavedCommandBySelector(const String& selectorString)

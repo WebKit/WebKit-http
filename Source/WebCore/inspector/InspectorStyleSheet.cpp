@@ -47,6 +47,7 @@
 #include "InspectorPageAgent.h"
 #include "InspectorValues.h"
 #include "Node.h"
+#include "RegularExpression.h"
 #include "SVGNames.h"
 #include "StyleResolver.h"
 #include "StyleRule.h"
@@ -190,7 +191,7 @@ static PassRefPtr<CSSRuleList> asCSSRuleList(CSSStyleSheet* styleSheet)
     Vector<RefPtr<CSSRule> >& listRules = list->rules();
     for (unsigned i = 0, size = styleSheet->length(); i < size; ++i) {
         CSSRule* item = styleSheet->item(i);
-        if (item->isCharsetRule())
+        if (item->type() == CSSRule::CHARSET_RULE)
             continue;
         listRules.append(item);
     }
@@ -202,10 +203,10 @@ static PassRefPtr<CSSRuleList> asCSSRuleList(CSSRule* rule)
     if (!rule)
         return 0;
 
-    if (rule->isMediaRule())
+    if (rule->type() == CSSRule::MEDIA_RULE)
         return static_cast<CSSMediaRule*>(rule)->cssRules();
 
-    if (rule->isKeyframesRule())
+    if (rule->type() == CSSRule::WEBKIT_KEYFRAMES_RULE)
         return static_cast<WebKitCSSKeyframesRule*>(rule)->cssRules();
 
     return 0;
@@ -219,11 +220,11 @@ static void fillMediaListChain(CSSRule* rule, Array<TypeBuilder::CSS::CSSMedia>*
     while (parentRule) {
         CSSStyleSheet* parentStyleSheet = 0;
         bool isMediaRule = true;
-        if (parentRule->isMediaRule()) {
+        if (parentRule->type() == CSSRule::MEDIA_RULE) {
             CSSMediaRule* mediaRule = static_cast<CSSMediaRule*>(parentRule);
             mediaList = mediaRule->media();
             parentStyleSheet = mediaRule->parentStyleSheet();
-        } else if (parentRule->isImportRule()) {
+        } else if (parentRule->type() == CSSRule::IMPORT_RULE) {
             CSSImportRule* importRule = static_cast<CSSImportRule*>(parentRule);
             mediaList = importRule->media();
             parentStyleSheet = importRule->parentStyleSheet();
@@ -897,7 +898,7 @@ bool InspectorStyleSheet::deleteRule(const InspectorCSSId& id, ExceptionCode& ec
 
     String sheetText = m_parsedStyleSheet->text();
     sheetText.remove(sourceData->ruleHeaderRange.start, sourceData->ruleBodyRange.end - sourceData->ruleHeaderRange.start + 1);
-    m_parsedStyleSheet->setText(sheetText);
+    setText(sheetText);
     fireStyleSheetChanged();
     return true;
 }
@@ -952,20 +953,44 @@ PassRefPtr<TypeBuilder::CSS::CSSStyleSheetHeader> InspectorStyleSheet::buildObje
     return result.release();
 }
 
+static PassRefPtr<TypeBuilder::Array<String> > selectorsFromSource(const CSSRuleSourceData* sourceData, const String& sheetText)
+{
+    DEFINE_STATIC_LOCAL(RegularExpression, comment, ("/\\*[^]*?\\*/", TextCaseSensitive, MultilineEnabled));
+    RefPtr<TypeBuilder::Array<String> > result = TypeBuilder::Array<String>::create();
+    const SelectorRangeList& ranges = sourceData->selectorRanges;
+    for (size_t i = 0, size = ranges.size(); i < size; ++i) {
+        const SourceRange& range = ranges.at(i);
+        String selector = sheetText.substring(range.start, range.length());
+
+        // We don't want to see any comments in the selector components, only the meaningful parts.
+        replace(selector, comment, "");
+        result->addItem(selector.stripWhiteSpace());
+    }
+    return result.release();
+}
+
 PassRefPtr<TypeBuilder::CSS::SelectorList> InspectorStyleSheet::buildObjectForSelectorList(CSSStyleRule* rule)
 {
-    RefPtr<TypeBuilder::Array<String> > selectors = TypeBuilder::Array<String>::create();
-    const CSSSelectorList& selectorList = rule->styleRule()->selectorList();
-    for (CSSSelector* selector = selectorList.first(); selector; selector = CSSSelectorList::next(selector))
-        selectors->addItem(selector->selectorText());
-
-    RefPtr<TypeBuilder::CSS::SelectorList> result = TypeBuilder::CSS::SelectorList::create()
-        .setSelectors(selectors)
-        .setText(rule->selectorText());
-
     RefPtr<CSSRuleSourceData> sourceData;
     if (ensureParsedDataReady())
         sourceData = ruleSourceDataFor(rule->style());
+    RefPtr<TypeBuilder::Array<String> > selectors;
+
+    // This intentionally does not rely on the source data to avoid catching the trailing comments (before the declaration starting '{').
+    String selectorText = rule->selectorText();
+
+    if (sourceData)
+        selectors = selectorsFromSource(sourceData.get(), m_parsedStyleSheet->text());
+    else {
+        selectors = TypeBuilder::Array<String>::create();
+        const CSSSelectorList& selectorList = rule->styleRule()->selectorList();
+        for (CSSSelector* selector = selectorList.first(); selector; selector = CSSSelectorList::next(selector))
+            selectors->addItem(selector->selectorText());
+    }
+    RefPtr<TypeBuilder::CSS::SelectorList> result = TypeBuilder::CSS::SelectorList::create()
+        .setSelectors(selectors)
+        .setText(selectorText)
+        .release();
     if (sourceData)
         result->setRange(buildSourceRangeObject(sourceData->ruleHeaderRange));
     return result.release();

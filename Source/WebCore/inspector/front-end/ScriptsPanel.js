@@ -126,8 +126,11 @@ WebInspector.ScriptsPanel = function(workspaceForTest)
     this._debugSidebarContentsElement.id = "scripts-debug-sidebar-contents";
     this.sidebarElement.appendChild(this._debugSidebarContentsElement);
 
-    for (var pane in this.sidebarPanes)
+    for (var pane in this.sidebarPanes) {
+        if (this.sidebarPanes[pane] === this.sidebarPanes.domBreakpoints)
+            continue;
         this._debugSidebarContentsElement.appendChild(this.sidebarPanes[pane].element);
+    }
 
     this.sidebarPanes.callstack.expanded = true;
 
@@ -248,9 +251,16 @@ WebInspector.ScriptsPanel.prototype = {
     _uiSourceCodeRemoved: function(event)
     {
         var uiSourceCode = /** @type {WebInspector.UISourceCode} */ (event.data);
+        var wasCurrent = uiSourceCode === this._currentUISourceCode;
         this._editorContainer.removeUISourceCode(uiSourceCode);
         this._navigator.removeUISourceCode(uiSourceCode);
         this._removeSourceFrame(uiSourceCode);
+        // Replace debugger script-based uiSourceCode with a network-based one.
+        if (wasCurrent && uiSourceCode.isTemporary) {
+            var newUISourceCode = WebInspector.workspace.uiSourceCodeForURL(uiSourceCode.url);
+            if (newUISourceCode)
+                this._showFile(newUISourceCode);
+        }
     },
 
     _consoleCommandEvaluatedInSelectedCallFrame: function(event)
@@ -404,6 +414,12 @@ WebInspector.ScriptsPanel.prototype = {
         if (typeof lineNumber === "number")
             sourceFrame.highlightLine(lineNumber);
         sourceFrame.focus();
+
+        WebInspector.notifications.dispatchEventToListeners(WebInspector.UserMetrics.UserAction, {
+            action: WebInspector.UserMetrics.UserActionNames.OpenSourceLink,
+            url: uiSourceCode.url,
+            lineNumber: lineNumber
+        });
     },
 
     /**
@@ -928,6 +944,12 @@ WebInspector.ScriptsPanel.prototype = {
         var uiSourceCodes = this._workspace.uiSourceCodes();
         for (var i = 0; i < uiSourceCodes.length; ++i)
             uiSourceCodes[i].setFormatted(this._toggleFormatSourceButton.toggled);
+
+        WebInspector.notifications.dispatchEventToListeners(WebInspector.UserMetrics.UserAction, {
+            action: WebInspector.UserMetrics.UserActionNames.TogglePrettyPrint,
+            enabled: this._toggleFormatSourceButton.toggled,
+            url: this._editorContainer.currentFile().url
+        });
     },
 
     addToWatch: function(expression)

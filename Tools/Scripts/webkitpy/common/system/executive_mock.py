@@ -26,11 +26,13 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+import logging
 import os
 import StringIO
 
-from webkitpy.common.system.deprecated_logging import log
 from webkitpy.common.system.executive import ScriptError
+
+_log = logging.getLogger(__name__)
 
 
 class MockProcess(object):
@@ -71,7 +73,7 @@ class MockExecutive(object):
             if process_name_filter(process_name):
                 running_pids.append(process_pid)
 
-        log("MOCK running_pids: %s" % running_pids)
+        _log.info("MOCK running_pids: %s" % running_pids)
         return running_pids
 
     def run_and_throw_if_fail(self, args, quiet=False, cwd=None, env=None):
@@ -79,10 +81,14 @@ class MockExecutive(object):
             env_string = ""
             if env:
                 env_string = ", env=%s" % env
-            log("MOCK run_and_throw_if_fail: %s, cwd=%s%s" % (args, cwd, env_string))
+            _log.info("MOCK run_and_throw_if_fail: %s, cwd=%s%s" % (args, cwd, env_string))
         if self._should_throw_when_run.intersection(args):
             raise ScriptError("Exception for %s" % args, output="MOCK command output")
         return "MOCK output of child process"
+
+    def command_for_printing(self, args):
+        string_args = map(unicode, args)
+        return " ".join(string_args)
 
     def run_command(self,
                     args,
@@ -104,8 +110,12 @@ class MockExecutive(object):
             input_string = ""
             if input:
                 input_string = ", input=%s" % input
-            log("MOCK run_command: %s, cwd=%s%s%s" % (args, cwd, env_string, input_string))
+            _log.info("MOCK run_command: %s, cwd=%s%s%s" % (args, cwd, env_string, input_string))
         output = "MOCK output of child process"
+
+        if self._should_throw_when_run.intersection(args):
+            raise ScriptError("Exception for %s" % args, output="MOCK command output")
+
         if self._should_throw:
             raise ScriptError("MOCK ScriptError", output=output)
         return output
@@ -128,7 +138,7 @@ class MockExecutive(object):
             env_string = ""
             if env:
                 env_string = ", env=%s" % env
-            log("MOCK popen: %s%s%s" % (args, cwd_string, env_string))
+            _log.info("MOCK popen: %s%s%s" % (args, cwd_string, env_string))
         if not self._proc:
             self._proc = MockProcess()
         return self._proc

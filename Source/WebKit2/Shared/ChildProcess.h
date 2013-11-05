@@ -28,6 +28,7 @@
 
 #include "Connection.h"
 #include <WebCore/RunLoop.h>
+#include <wtf/RetainPtr.h>
 
 #if PLATFORM(MAC)
 OBJC_CLASS NSString;
@@ -62,7 +63,7 @@ public:
     };
 
 #if PLATFORM(MAC)
-    bool applicationIsOccluded() const { return m_applicationIsOccluded; }
+    bool applicationIsOccluded() const { return !m_processVisibleAssertion; }
     void setApplicationIsOccluded(bool);
 #endif
 
@@ -80,12 +81,7 @@ private:
     virtual bool shouldTerminate() = 0;
     virtual void terminate();
 
-#if PLATFORM(MAC)
-    void disableProcessSuppression(NSString *reason);
-    void enableProcessSuppression(NSString *reason);
-
-    static NSString * const processSuppressionVisibleApplicationReason;
-#endif
+    void platformInitialize();
 
     // The timeout, in seconds, before this process will be terminated if termination
     // has been enabled. If the timeout is 0 seconds, the process will be terminated immediately.
@@ -98,7 +94,7 @@ private:
     WebCore::RunLoop::Timer<ChildProcess> m_terminationTimer;
 
 #if PLATFORM(MAC)
-    bool m_applicationIsOccluded;
+    RetainPtr<id> m_processVisibleAssertion;
 #endif
 };
 

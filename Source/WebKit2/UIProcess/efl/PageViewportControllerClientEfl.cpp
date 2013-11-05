@@ -28,12 +28,11 @@
 
 #if USE(TILED_BACKING_STORE)
 
+#include "CoordinatedLayerTreeHostProxy.h"
 #include "EwkViewImpl.h"
-#include "LayerTreeCoordinatorProxy.h"
 #include "LayerTreeRenderer.h"
 #include "PageViewportController.h"
 #include "TransformationMatrix.h"
-#include "ewk_view_private.h"
 
 using namespace WebCore;
 
@@ -41,7 +40,6 @@ namespace WebKit {
 
 PageViewportControllerClientEfl::PageViewportControllerClientEfl(EwkViewImpl* viewImpl)
     : m_viewImpl(viewImpl)
-    , m_scaleFactor(1)
     , m_controller(0)
 {
     ASSERT(m_viewImpl);
@@ -58,53 +56,41 @@ DrawingAreaProxy* PageViewportControllerClientEfl::drawingArea() const
 
 void PageViewportControllerClientEfl::setRendererActive(bool active)
 {
-    drawingArea()->layerTreeCoordinatorProxy()->layerTreeRenderer()->setActive(active);
+    drawingArea()->coordinatedLayerTreeHostProxy()->layerTreeRenderer()->setActive(active);
 }
 
-void PageViewportControllerClientEfl::updateViewportSize(const IntSize& viewportSize)
+void PageViewportControllerClientEfl::updateViewportSize()
 {
-    m_viewportSize = viewportSize;
-
     ASSERT(m_controller);
-    m_controller->didChangeViewportSize(viewportSize);
-}
-
-void PageViewportControllerClientEfl::setVisibleContentsRect(const IntPoint& newScrollPosition, float newScale, const FloatPoint& trajectory)
-{
-    m_scaleFactor = newScale;
-    m_scrollPosition = newScrollPosition;
-
-    ASSERT(m_controller);
-    m_controller->didChangeContentsVisibility(m_scrollPosition, m_scaleFactor, trajectory);
+    m_controller->didChangeViewportSize(m_viewImpl->size());
 }
 
 void PageViewportControllerClientEfl::didChangeContentsSize(const WebCore::IntSize& contentsSize)
 {
-    drawingArea()->layerTreeCoordinatorProxy()->setContentsSize(contentsSize);
+    drawingArea()->coordinatedLayerTreeHostProxy()->setContentsSize(contentsSize);
     m_viewImpl->update();
 }
 
 void PageViewportControllerClientEfl::setViewportPosition(const WebCore::FloatPoint& contentsPoint)
 {
-    IntPoint position(contentsPoint.x(), contentsPoint.y());
-    setVisibleContentsRect(position, m_scaleFactor, FloatPoint());
-    m_viewImpl->setScrollPosition(position);
+    m_contentPosition = contentsPoint;
+
+    FloatPoint pos(contentsPoint);
+    pos.scale(scaleFactor(), scaleFactor());
+    m_viewImpl->setPagePosition(pos);
+
+    m_controller->didChangeContentsVisibility(m_contentPosition, scaleFactor());
 }
 
-void PageViewportControllerClientEfl::setContentsScale(float newScale, bool treatAsInitialValue)
+void PageViewportControllerClientEfl::setContentsScale(float newScale)
 {
-    if (treatAsInitialValue) {
-        m_scrollPosition = IntPoint();
-        m_viewImpl->setScrollPosition(IntPoint());
-    }
-    m_scaleFactor = newScale;
     m_viewImpl->setScaleFactor(newScale);
 }
 
 void PageViewportControllerClientEfl::didResumeContent()
 {
     ASSERT(m_controller);
-    m_controller->didChangeContentsVisibility(m_scrollPosition, m_scaleFactor);
+    m_controller->didChangeContentsVisibility(m_contentPosition, scaleFactor());
 }
 
 void PageViewportControllerClientEfl::didChangeVisibleContents()

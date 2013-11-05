@@ -30,6 +30,8 @@ namespace WebCore {
 
 class HTMLImageLoader;
 class FrameLoader;
+class MouseEvent;
+class Widget;
 
 enum PluginCreationOption {
     CreateAnyWidgetType,
@@ -57,6 +59,12 @@ public:
     // Public for FrameView::addWidgetToUpdate()
     bool needsWidgetUpdate() const { return m_needsWidgetUpdate; }
     void setNeedsWidgetUpdate(bool needsWidgetUpdate) { m_needsWidgetUpdate = needsWidgetUpdate; }
+
+    void userDidClickSnapshot(PassRefPtr<MouseEvent>);
+
+    // Plug-in URL might not be the same as url() with overriding parameters.
+    void subframeLoaderWillCreatePlugIn(const KURL& plugInURL);
+    void subframeLoaderDidCreatePlugIn(const Widget*);
 
 protected:
     HTMLPlugInImageElement(const QualifiedName& tagName, Document*, bool createdByParser, PreferPlugInsForImagesOption);
@@ -91,11 +99,16 @@ private:
     virtual bool useFallbackContent() const { return false; }
     
     virtual void updateSnapshot(PassRefPtr<Image>) OVERRIDE;
+    virtual void dispatchPendingMouseClick() OVERRIDE;
+    void simulatedMouseClickTimerFired(DeferrableOneShotTimer<HTMLPlugInImageElement>*);
 
     bool m_needsWidgetUpdate;
     bool m_shouldPreferPlugInsForImages;
     bool m_needsDocumentActivationCallbacks;
     RefPtr<RenderStyle> m_customStyleForPageCache;
+    RefPtr<MouseEvent> m_pendingClickEventFromSnapshot;
+    DeferrableOneShotTimer<HTMLPlugInImageElement> m_simulatedMouseClickTimer;
+    unsigned m_plugInOriginHash;
 };
 
 } // namespace WebCore

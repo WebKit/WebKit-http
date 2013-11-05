@@ -27,12 +27,16 @@
 #define WebContext_h
 
 #include "APIObject.h"
+#include "DownloadProxyMap.h"
 #include "GenericCallback.h"
+#include "ImmutableDictionary.h"
 #include "MessageReceiver.h"
 #include "MessageReceiverMap.h"
+#include "PlugInAutoStartProvider.h"
 #include "PluginInfoStore.h"
 #include "ProcessModel.h"
 #include "VisitedLinkProvider.h"
+#include "WebContextClient.h"
 #include "WebContextConnectionClient.h"
 #include "WebContextInjectedBundleClient.h"
 #include "WebDownloadClient.h"
@@ -49,30 +53,35 @@
 namespace WebKit {
 
 class DownloadProxy;
+class NetworkProcessProxy;
 class WebApplicationCacheManagerProxy;
-#if ENABLE(BATTERY_STATUS)
-class WebBatteryManagerProxy;
-#endif
 class WebCookieManagerProxy;
 class WebDatabaseManagerProxy;
 class WebGeolocationManagerProxy;
 class WebIconDatabase;
 class WebKeyValueStorageManagerProxy;
 class WebMediaCacheManagerProxy;
-#if ENABLE(NETWORK_INFO)
-class WebNetworkInfoManagerProxy;
-#endif
 class WebNotificationManagerProxy;
 class WebPageGroup;
 class WebPageProxy;
 class WebResourceCacheManagerProxy;
-#if USE(SOUP)
-class WebSoupRequestManagerProxy;
-#endif
 struct StatisticsData;
 struct WebProcessCreationParameters;
     
 typedef GenericCallback<WKDictionaryRef> DictionaryCallback;
+
+#if ENABLE(BATTERY_STATUS)
+class WebBatteryManagerProxy;
+#endif
+#if ENABLE(NETWORK_INFO)
+class WebNetworkInfoManagerProxy;
+#endif
+#if USE(SOUP)
+class WebSoupRequestManagerProxy;
+#endif
+#if ENABLE(NETWORK_PROCESS)
+struct NetworkProcessCreationParameters;
+#endif
 
 #if PLATFORM(MAC)
 extern NSString *SchemeForCustomProtocolRegisteredNotificationName;
@@ -95,6 +104,7 @@ public:
     bool dispatchMessage(CoreIPC::Connection*, CoreIPC::MessageID, CoreIPC::MessageDecoder&);
     bool dispatchSyncMessage(CoreIPC::Connection*, CoreIPC::MessageID, CoreIPC::MessageDecoder&, OwnPtr<CoreIPC::MessageEncoder>&);
 
+    void initializeClient(const WKContextClient*);
     void initializeInjectedBundleClient(const WKContextInjectedBundleClient*);
     void initializeConnectionClient(const WKContextConnectionClient*);
     void initializeHistoryClient(const WKContextHistoryClient*);
@@ -102,6 +112,9 @@ public:
 
     void setProcessModel(ProcessModel); // Can only be called when there are no processes running.
     ProcessModel processModel() const { return m_processModel; }
+
+    void setMaximumNumberOfProcesses(unsigned); // Can only be called when there are no processes running.
+    unsigned maximumNumberOfProcesses() const { return m_webProcessCountLimit; }
 
     // FIXME (Multi-WebProcess): Remove. No code should assume that there is a shared process.
     WebProcessProxy* deprecatedSharedProcess();
@@ -115,8 +128,6 @@ public:
     void disconnectProcess(WebProcessProxy*);
 
     PassRefPtr<WebPageProxy> createWebPage(PageClient*, WebPageGroup*, WebPageProxy* relatedPage = 0);
-
-    WebProcessProxy* relaunchProcessIfNecessary();
 
     const String& injectedBundlePath() const { return m_injectedBundlePath; }
 
@@ -167,18 +178,18 @@ public:
 
 #if PLATFORM(WIN)
     void setShouldPaintNativeControls(bool);
-
+#endif
+#if PLATFORM(WIN) || USE(SOUP)
     void setInitialHTTPCookieAcceptPolicy(HTTPCookieAcceptPolicy policy) { m_initialHTTPCookieAcceptPolicy = policy; }
 #endif
-
     void setEnhancedAccessibility(bool);
     
     // Downloads.
     DownloadProxy* createDownloadProxy();
     WebDownloadClient& downloadClient() { return m_downloadClient; }
-    void downloadFinished(DownloadProxy*);
 
     WebHistoryClient& historyClient() { return m_historyClient; }
+    WebContextClient& client() { return m_client; }
 
     static HashSet<String, CaseFoldingHash> pdfAndPostScriptMIMETypes();
 
@@ -220,8 +231,10 @@ public:
     void setDiskCacheDirectory(const String& dir) { m_overrideDiskCacheDirectory = dir; }
     void setCookieStorageDirectory(const String& dir) { m_overrideCookieStorageDirectory = dir; }
 
-    void ensureSharedWebProcess();
-    PassRefPtr<WebProcessProxy> createNewWebProcess();
+    void allowSpecificHTTPSCertificateForHost(const WebCertificateInfo*, const String& host);
+
+    WebProcessProxy* ensureSharedWebProcess();
+    WebProcessProxy* createNewWebProcessRespectingProcessCountLimit(); // Will return an existing one if limit is met.
     void warmInitialProcess();
 
     bool shouldTerminate(WebProcessProxy*);
@@ -245,19 +258,49 @@ public:
 
     void textCheckerStateChanged();
 
+    PassRefPtr<ImmutableDictionary> plugInAutoStartOriginHashes() const;
+    void setPlugInAutoStartOriginHashes(ImmutableDictionary&);
+
+    // Network Process Management
+
     void setUsesNetworkProcess(bool);
+    bool usesNetworkProcess() const;
+
+#if ENABLE(NETWORK_PROCESS)
+    void ensureNetworkProcess();
+    NetworkProcessProxy* networkProcess() { return m_networkProcess.get(); }
+    void removeNetworkProcessProxy(NetworkProcessProxy*);
+
+    void getNetworkProcessConnection(PassRefPtr<Messages::WebProcessProxy::GetNetworkProcessConnection::DelayedReply>);
+#endif
+
 
 #if PLATFORM(MAC)
     static bool applicationIsOccluded() { return s_applicationIsOccluded; }
 #endif
 
+    static void willStartUsingPrivateBrowsing();
+    static void willStopUsingPrivateBrowsing();
+
+#if USE(SOUP)
+    void setIgnoreTLSErrors(bool);
+    bool ignoreTLSErrors() const { return m_ignoreTLSErrors; }
+#endif
+
 private:
     WebContext(ProcessModel, const String& injectedBundlePath);
+    void platformInitialize();
 
     virtual Type type() const { return APIType; }
 
     void platformInitializeWebProcess(WebProcessCreationParameters&);
     void platformInvalidateContext();
+
+    WebProcessProxy* createNewWebProcess();
+
+#if ENABLE(NETWORK_PROCESS)
+    void platformInitializeNetworkProcess(NetworkProcessCreationParameters&);
+#endif
 
 #if PLATFORM(MAC)
     void getPasteboardTypes(const String& pasteboardName, Vector<String>& pasteboardTypes);
@@ -310,9 +353,21 @@ private:
     static void applicationBecameOccluded(uint32_t, void*, uint32_t, void*, uint32_t);
     static void initializeProcessSuppressionSupport();
     static void registerOcclusionNotificationHandlers();
+    void registerNotificationObservers();
+    void unregisterNotificationObservers();
 #endif
 
+#if ENABLE(CUSTOM_PROTOCOLS)
+    void registerSchemeForCustomProtocol(const String&);
+    void unregisterSchemeForCustomProtocol(const String&);
+#endif
+
+    void addPlugInAutoStartOriginHash(const String& pageOrigin, unsigned plugInOriginHash);
+
+    CoreIPC::MessageReceiverMap m_messageReceiverMap;
+
     ProcessModel m_processModel;
+    unsigned m_webProcessCountLimit; // The limit has no effect when process model is ProcessModelSharedSecondaryProcess.
     
     Vector<RefPtr<WebProcessProxy> > m_processes;
     bool m_haveInitialEmptyProcess;
@@ -323,14 +378,16 @@ private:
     String m_injectedBundlePath;
     WebContextInjectedBundleClient m_injectedBundleClient;
 
+    WebContextClient m_client;
     WebContextConnectionClient m_connectionClient;
-
+    WebDownloadClient m_downloadClient;
     WebHistoryClient m_historyClient;
 
 #if ENABLE(NETSCAPE_PLUGIN_API)
     PluginInfoStore m_pluginInfoStore;
 #endif
     VisitedLinkProvider m_visitedLinkProvider;
+    PlugInAutoStartProvider m_plugInAutoStartProvider;
         
     HashSet<String> m_schemesToRegisterAsEmptyDocument;
     HashSet<String> m_schemesToRegisterAsSecure;
@@ -343,15 +400,16 @@ private:
     bool m_alwaysUsesComplexTextCodePath;
     bool m_shouldUseFontSmoothing;
 
+    // How many times an API call was used to enable the preference.
+    // The variable can be 0 when private browsing is used if it's enabled due to a persistent preference.
+    static unsigned m_privateBrowsingEnterCount;
+
     // Messages that were posted before any pages were created.
     // The client should use initialization messages instead, so that a restarted process would get the same state.
     Vector<pair<String, RefPtr<APIObject> > > m_messagesToInjectedBundlePostedToEmptyContext;
 
     CacheModel m_cacheModel;
 
-    WebDownloadClient m_downloadClient;
-    HashMap<uint64_t, RefPtr<DownloadProxy> > m_downloads;
-    
     bool m_memorySamplerEnabled;
     double m_memorySamplerInterval;
 
@@ -381,6 +439,8 @@ private:
 
 #if PLATFORM(WIN)
     bool m_shouldPaintNativeControls;
+#endif
+#if PLATFORM(WIN) || USE(SOUP)
     HTTPCookieAcceptPolicy m_initialHTTPCookieAcceptPolicy;
 #endif
 
@@ -400,14 +460,17 @@ private:
 
 #if ENABLE(NETWORK_PROCESS)
     bool m_usesNetworkProcess;
+    RefPtr<NetworkProcessProxy> m_networkProcess;
 #endif
     
     HashMap<uint64_t, RefPtr<DictionaryCallback> > m_dictionaryCallbacks;
 
-    CoreIPC::MessageReceiverMap m_messageReceiverMap;
-
 #if PLATFORM(MAC)
     static bool s_applicationIsOccluded;
+#endif
+
+#if USE(SOUP)
+    bool m_ignoreTLSErrors;
 #endif
 };
 
@@ -425,7 +488,7 @@ template<typename U> void WebContext::sendToAllProcessesRelaunchingThemIfNecessa
 {
 // FIXME (Multi-WebProcess): WebContext doesn't track processes that have exited, so it cannot relaunch these. Perhaps this functionality won't be needed in this mode.
     if (m_processModel == ProcessModelSharedSecondaryProcess)
-        relaunchProcessIfNecessary();
+        ensureSharedWebProcess();
     sendToAllProcesses(message);
 }
 

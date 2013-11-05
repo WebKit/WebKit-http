@@ -1003,18 +1003,6 @@ typedef Vector<WTF::ArrayBufferContents> ArrayBufferContentsArray;
 
 class CloneDeserializer : CloneBase {
 public:
-    static String toWireString(const Vector<unsigned char>& value)
-    {
-        const uint8_t* start = value.begin();
-        const uint8_t* end = value.end();
-        const uint32_t length = value.size() / sizeof(UChar);
-        String str;
-        if (!CloneDeserializer::readString(start, end, str, length))
-            return String();
-
-        return String(str.impl());
-    }
-
     static String deserializeString(const Vector<uint8_t>& buffer)
     {
         const uint8_t* ptr = buffer.begin();
@@ -1750,6 +1738,11 @@ SerializedScriptValue::~SerializedScriptValue()
 {
 }
 
+SerializedScriptValue::SerializedScriptValue(const Vector<uint8_t>& buffer)
+    : m_data(buffer)
+{
+}
+
 SerializedScriptValue::SerializedScriptValue(Vector<uint8_t>& buffer)
 {
     m_data.swap(buffer);
@@ -1838,19 +1831,6 @@ PassRefPtr<SerializedScriptValue> SerializedScriptValue::create(const String& st
 PassRefPtr<SerializedScriptValue> SerializedScriptValue::create(JSC::ExecState* exec, JSC::JSValue value)
 {
     return SerializedScriptValue::create(exec, value, 0, 0);
-}
-
-String SerializedScriptValue::toWireString() const
-{
-    return CloneDeserializer::toWireString(m_data);
-}
-
-PassRefPtr<SerializedScriptValue> SerializedScriptValue::createFromWire(const String& value)
-{
-    Vector<uint8_t> buffer;
-    if (!writeLittleEndian(buffer, value.impl()->characters(), value.length()))
-        return 0;
-    return adoptRef(new SerializedScriptValue(buffer));
 }
 
 PassRefPtr<SerializedScriptValue> SerializedScriptValue::numberValue(double value)
@@ -1983,6 +1963,11 @@ void SerializedScriptValue::maybeThrowExceptionIfSerializationFailed(ExecState* 
 bool SerializedScriptValue::serializationDidCompleteSuccessfully(SerializationReturnCode code)
 {
     return (code == SuccessfullyCompleted);
+}
+
+uint32_t SerializedScriptValue::wireFormatVersion()
+{
+    return CurrentVersion;
 }
 
 }

@@ -50,8 +50,6 @@ static const char permissionDeniedErrorMessage[] = "User denied Geolocation";
 static const char failedToStartServiceErrorMessage[] = "Failed to start Geolocation service";
 static const char framelessDocumentErrorMessage[] = "Geolocation cannot be used in frameless documents";
 
-static const int firstAvailableWatchId = 1;
-
 static PassRefPtr<Geoposition> createGeoposition(GeolocationPosition* position)
 {
     if (!position)
@@ -311,12 +309,9 @@ int Geolocation::watchPosition(PassRefPtr<PositionCallback> successCallback, Pas
     RefPtr<GeoNotifier> notifier = GeoNotifier::create(this, successCallback, errorCallback, options);
     startRequest(notifier.get());
 
-    static int nextAvailableWatchId = firstAvailableWatchId;
-    // In case of overflow, make sure the ID remains positive, but reuse the ID values.
-    if (nextAvailableWatchId < 1)
-        nextAvailableWatchId = 1;
-    m_watchers.set(nextAvailableWatchId, notifier.release());
-    return nextAvailableWatchId++;
+    int watchID = m_scriptExecutionContext->newUniqueID();
+    m_watchers.set(watchID, notifier.release());
+    return watchID;
 }
 
 void Geolocation::startRequest(GeoNotifier *notifier)
@@ -378,7 +373,7 @@ void Geolocation::makeCachedPositionCallbacks()
     GeoNotifierSet::const_iterator end = m_requestsAwaitingCachedPosition.end();
     for (GeoNotifierSet::const_iterator iter = m_requestsAwaitingCachedPosition.begin(); iter != end; ++iter) {
         GeoNotifier* notifier = iter->get();
-        notifier->runSuccessCallback(m_cachedPosition.get());
+        notifier->runSuccessCallback(lastPosition());
 
         // If this is a one-shot request, stop it. Otherwise, if the watch still
         // exists, start the service to get updates.
@@ -409,24 +404,25 @@ void Geolocation::requestTimedOut(GeoNotifier* notifier)
 
 bool Geolocation::haveSuitableCachedPosition(PositionOptions* options)
 {
-    if (!m_cachedPosition)
+    Geoposition* cachedPosition = lastPosition();
+    if (!cachedPosition)
         return false;
     if (!options->hasMaximumAge())
         return true;
     if (!options->maximumAge())
         return false;
     DOMTimeStamp currentTimeMillis = convertSecondsToDOMTimeStamp(currentTime());
-    return m_cachedPosition->timestamp() > currentTimeMillis - options->maximumAge();
+    return cachedPosition->timestamp() > currentTimeMillis - options->maximumAge();
 }
 
-void Geolocation::clearWatch(int watchId)
+void Geolocation::clearWatch(int watchID)
 {
-    if (watchId < firstAvailableWatchId)
+    if (watchID <= 0)
         return;
 
-    if (GeoNotifier* notifier = m_watchers.find(watchId))
+    if (GeoNotifier* notifier = m_watchers.find(watchID))
         m_pendingForPermissionNotifiers.remove(notifier);
-    m_watchers.remove(watchId);
+    m_watchers.remove(watchID);
     
     if (!hasListeners())
         stopUpdating();
@@ -628,8 +624,6 @@ void Geolocation::makeSuccessCallbacks()
 void Geolocation::positionChanged()
 {
     ASSERT(isAllowed());
-
-    m_cachedPosition = lastPosition();
 
     // Stop all currently running timers.
     stopTimers();

@@ -26,9 +26,10 @@
 #ifndef CachedResourceLoader_h
 #define CachedResourceLoader_h
 
+#include "CachePolicy.h"
 #include "CachedResource.h"
 #include "CachedResourceHandle.h"
-#include "CachePolicy.h"
+#include "CachedResourceRequest.h"
 #include "ResourceLoadPriority.h"
 #include "Timer.h"
 #include <wtf/Deque.h>
@@ -44,7 +45,6 @@ class CachedSVGDocument;
 class CachedFont;
 class CachedImage;
 class CachedRawResource;
-class CachedResourceRequest;
 class CachedScript;
 class CachedShader;
 class CachedTextTrack;
@@ -69,7 +69,6 @@ friend class ImageLoader;
 friend class ResourceCacheValidationSuppressor;
 
 public:
-    enum DeferOption { NoDefer, DeferredByClient };
     static PassRefPtr<CachedResourceLoader> create(DocumentLoader* documentLoader) { return adoptRef(new CachedResourceLoader(documentLoader)); }
     ~CachedResourceLoader();
 
@@ -121,7 +120,7 @@ public:
     void clearDocumentLoader() { m_documentLoader = 0; }
 
     void removeCachedResource(CachedResource*) const;
-    void loadDone();
+    void loadDone(CachedResource*);
     void garbageCollectDocumentResources();
     
     void incrementRequestCount(const CachedResource*);
@@ -131,7 +130,7 @@ public:
     bool isPreloaded(const String& urlString) const;
     void clearPreloads();
     void clearPendingPreloads();
-    void preload(CachedResource::Type, ResourceRequest&, const String& charset, bool referencedFromBody);
+    void preload(CachedResource::Type, CachedResourceRequest&, const String& charset, bool referencedFromBody);
     void checkForPendingPreloads();
     void printPreloadStats();
     bool canRequest(CachedResource::Type, const KURL&, bool forPreload = false);
@@ -144,12 +143,12 @@ private:
     explicit CachedResourceLoader(DocumentLoader*);
 
     CachedResourceHandle<CachedResource> requestResource(CachedResource::Type, CachedResourceRequest&);
-    CachedResourceHandle<CachedResource> revalidateResource(CachedResource*);
-    CachedResourceHandle<CachedResource> loadResource(CachedResource::Type, ResourceRequest&, const String& charset);
-    void requestPreload(CachedResource::Type, ResourceRequest&, const String& charset);
+    CachedResourceHandle<CachedResource> revalidateResource(const CachedResourceRequest&, CachedResource*);
+    CachedResourceHandle<CachedResource> loadResource(CachedResource::Type, CachedResourceRequest&, const String& charset);
+    void requestPreload(CachedResource::Type, CachedResourceRequest&, const String& charset);
 
     enum RevalidationPolicy { Use, Revalidate, Reload, Load };
-    RevalidationPolicy determineRevalidationPolicy(CachedResource::Type, ResourceRequest&, bool forPreload, CachedResource* existingResource, DeferOption) const;
+    RevalidationPolicy determineRevalidationPolicy(CachedResource::Type, ResourceRequest&, bool forPreload, CachedResource* existingResource, CachedResourceRequest::DeferOption) const;
     
     void notifyLoadedFromMemoryCache(CachedResource*);
     bool checkInsecureContent(CachedResource::Type, const KURL&) const;
@@ -170,12 +169,20 @@ private:
     OwnPtr<ListHashSet<CachedResource*> > m_preloads;
     struct PendingPreload {
         CachedResource::Type m_type;
-        ResourceRequest m_request;
+        CachedResourceRequest m_request;
         String m_charset;
     };
     Deque<PendingPreload> m_pendingPreloads;
 
     Timer<CachedResourceLoader> m_garbageCollectDocumentResourcesTimer;
+
+#if ENABLE(RESOURCE_TIMING)
+    struct InitiatorInfo {
+        AtomicString name;
+        double startTime;
+    };
+    HashMap<CachedResource*, InitiatorInfo> m_initiatorMap;
+#endif
 
     // 29 bits left
     bool m_autoLoadImages : 1;

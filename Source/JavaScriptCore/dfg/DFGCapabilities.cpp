@@ -33,12 +33,39 @@
 namespace JSC { namespace DFG {
 
 #if ENABLE(DFG_JIT)
+bool mightCompileEval(CodeBlock* codeBlock)
+{
+    return codeBlock->instructionCount() <= Options::maximumOptimizationCandidateInstructionCount();
+}
+bool mightCompileProgram(CodeBlock* codeBlock)
+{
+    return codeBlock->instructionCount() <= Options::maximumOptimizationCandidateInstructionCount();
+}
+bool mightCompileFunctionForCall(CodeBlock* codeBlock)
+{
+    return codeBlock->instructionCount() <= Options::maximumOptimizationCandidateInstructionCount();
+}
+bool mightCompileFunctionForConstruct(CodeBlock* codeBlock)
+{
+    return codeBlock->instructionCount() <= Options::maximumOptimizationCandidateInstructionCount();
+}
+
+bool mightInlineFunctionForCall(CodeBlock* codeBlock)
+{
+    return codeBlock->instructionCount() <= Options::maximumFunctionForCallInlineCandidateInstructionCount()
+        && !codeBlock->ownerExecutable()->needsActivation();
+}
+bool mightInlineFunctionForConstruct(CodeBlock* codeBlock)
+{
+    return codeBlock->instructionCount() <= Options::maximumFunctionForConstructInlineCandidateInstructionCount()
+        && !codeBlock->ownerExecutable()->needsActivation();
+}
 
 static inline void debugFail(CodeBlock* codeBlock, OpcodeID opcodeID, bool result)
 {
     ASSERT_UNUSED(result, !result);
 #if DFG_ENABLE(DEBUG_VERBOSE)
-    dataLog("Cannot handle code block %p because of opcode %s.\n", codeBlock, opcodeNames[opcodeID]);
+    dataLogF("Cannot handle code block %p because of opcode %s.\n", codeBlock, opcodeNames[opcodeID]);
 #else
     UNUSED_PARAM(codeBlock);
     UNUSED_PARAM(opcodeID);
@@ -51,10 +78,10 @@ static inline void debugFail(CodeBlock* codeBlock, OpcodeID opcodeID, Capability
     ASSERT(result != CanCompile);
 #if DFG_ENABLE(DEBUG_VERBOSE)
     if (result == CannotCompile)
-        dataLog("Cannot handle code block %p because of opcode %s.\n", codeBlock, opcodeNames[opcodeID]);
+        dataLogF("Cannot handle code block %p because of opcode %s.\n", codeBlock, opcodeNames[opcodeID]);
     else {
         ASSERT(result == ShouldProfile);
-        dataLog("Cannot compile code block %p because of opcode %s, but inlining might be possible.\n", codeBlock, opcodeNames[opcodeID]);
+        dataLogF("Cannot compile code block %p because of opcode %s, but inlining might be possible.\n", codeBlock, opcodeNames[opcodeID]);
     }
 #else
     UNUSED_PARAM(codeBlock);

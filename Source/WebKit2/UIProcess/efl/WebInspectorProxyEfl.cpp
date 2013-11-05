@@ -33,8 +33,8 @@
 #include "ewk_settings.h"
 #include "ewk_view.h"
 #include "ewk_view_private.h"
+#include <WebCore/EflInspectorUtilities.h>
 #include <WebCore/NotImplemented.h>
-#include <unistd.h>
 #include <wtf/text/CString.h>
 #include <wtf/text/StringBuilder.h>
 #include <wtf/text/WTFString.h>
@@ -90,13 +90,15 @@ WebPageProxy* WebInspectorProxy::platformCreateInspectorPage()
 #if USE(ACCELERATED_COMPOSITING) && defined HAVE_ECORE_X
     const char* engine = "opengl_x11";
     m_inspectorWindow = ecore_evas_new(engine, 0, 0, initialWindowWidth, initialWindowHeight, 0);
-#else
-    m_inspectorWindow = ecore_evas_new(0, 0, 0, initialWindowWidth, initialWindowHeight, 0);
+
+    // Gracefully fall back to software if evas_gl engine is not available.
+    if (!m_inspectorWindow)
 #endif
+        m_inspectorWindow = ecore_evas_new(0, 0, 0, initialWindowWidth, initialWindowHeight, 0);
     if (!m_inspectorWindow)
         return 0;
 
-    m_inspectorView = ewk_view_base_add(ecore_evas_get(m_inspectorWindow), toAPI(page()->process()->context()), toAPI(inspectorPageGroup()));
+    m_inspectorView = ewk_view_base_add(ecore_evas_get(m_inspectorWindow), toAPI(page()->process()->context()), toAPI(inspectorPageGroup()), EwkViewImpl::LegacyBehavior);
     EwkViewImpl* inspectorViewImpl = EwkViewImpl::fromEvasObject(m_inspectorView);
     inspectorViewImpl->setThemePath(TEST_THEME_DIR "/default.edj");
 
@@ -160,11 +162,7 @@ String WebInspectorProxy::inspectorPageURL() const
 
 String WebInspectorProxy::inspectorBaseURL() const
 {
-    String inspectorFilesPath = WEB_INSPECTOR_INSTALL_DIR;
-    if (access(inspectorFilesPath.utf8().data(), R_OK))
-        inspectorFilesPath = WEB_INSPECTOR_DIR;
-
-    return "file://" + inspectorFilesPath;
+    return "file://" + WebCore::inspectorResourcePath();
 }
 
 unsigned WebInspectorProxy::platformInspectedWindowHeight()

@@ -1002,10 +1002,10 @@ static id textMarkerRangeFromVisiblePositions(AXObjectCache *cache, VisiblePosit
         [additional addObject:NSAccessibilitySortDirectionAttribute];
         
     // If an object is a child of a live region, then add these
-    if (m_object->isInsideARIALiveRegion()) {
+    if (m_object->isInsideARIALiveRegion())
         [additional addObject:NSAccessibilityARIAAtomicAttribute];
-        [additional addObject:NSAccessibilityARIABusyAttribute];
-    }
+    // All objects should expose the ARIA busy attribute (ARIA 1.1 with ISSUE-538).
+    [additional addObject:NSAccessibilityARIABusyAttribute];
     
     if (m_object->ariaHasPopup())
         [additional addObject:NSAccessibilityHasPopupAttribute];
@@ -1585,6 +1585,7 @@ static const AccessibilityRoleMap& createAccessibilityRoleMap()
         { ImageMapRole, @"AXImageMap" },
         { ListMarkerRole, @"AXListMarker" },
         { WebAreaRole, @"AXWebArea" },
+        { SeamlessWebAreaRole, NSAccessibilityGroupRole },
         { HeadingRole, @"AXHeading" },
         { ListBoxRole, NSAccessibilityListRole },
         { ListBoxOptionRole, NSAccessibilityStaticTextRole },

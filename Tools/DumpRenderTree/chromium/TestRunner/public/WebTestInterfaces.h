@@ -41,6 +41,7 @@ namespace WebTestRunner {
 class WebAccessibilityController;
 class WebEventSender;
 class WebTestDelegate;
+class WebTestRunner;
 
 class WebTestInterfaces {
 public:
@@ -54,6 +55,9 @@ public:
 
     WebAccessibilityController* accessibilityController();
     WebEventSender* eventSender();
+    WebTestRunner* testRunner();
+    // FIXME: Remove this once TestRunner is complete.
+    void setTestRunner(WebTestRunner*);
 
 private:
     class Internal;

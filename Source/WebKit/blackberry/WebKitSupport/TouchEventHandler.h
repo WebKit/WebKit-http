@@ -35,33 +35,29 @@ public:
     TouchEventHandler(WebPagePrivate* webpage);
     ~TouchEventHandler();
 
-    bool handleTouchPoint(Platform::TouchPoint&, bool useFatFingers);
-    void touchEventCancel();
-    void touchHoldEvent();
-
-    void playSoundIfAnchorIsTarget() const;
-
-    bool shouldSuppressMouseDownOnTouchDown() const;
+    void doFatFingers(const Platform::TouchPoint&);
+    void handleTouchPoint(const Platform::TouchPoint&, unsigned modifiers);
+    void sendClickAtFatFingersPoint(unsigned modifiers = 0);
 
     const FatFingersResult& lastFatFingersResult() const { return m_lastFatFingersResult; }
     void resetLastFatFingersResult() { m_lastFatFingersResult.reset(); }
 
-private:
-    void handleFatFingerPressed();
+    void playSoundIfAnchorIsTarget() const;
 
     void drawTapHighlight();
 
 private:
+    void handleFatFingerPressed(bool shiftActive = false, bool altActive = false, bool ctrlActive = false);
+
+private:
     WebPagePrivate* m_webPage;
 
-    bool m_didCancelTouch;
-    bool m_convertTouchToMouse;
-
     WebCore::TouchEventMode m_existingTouchMode;
-
     WebCore::IntPoint m_lastScreenPoint; // Screen Position
-
     FatFingersResult m_lastFatFingersResult;
+    imf_sp_text_t m_spellCheckOptionRequest;
+    bool m_shouldRequestSpellCheckOptions;
+
 };
 
 }

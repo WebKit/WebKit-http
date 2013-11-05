@@ -29,6 +29,7 @@
 #include "IntRect.h"
 #include "LayoutRect.h"
 #include "PlatformWheelEvent.h"
+#include "RenderObject.h"
 #include "ScrollTypes.h"
 #include "Timer.h"
 #include <wtf/Forward.h>
@@ -48,8 +49,9 @@ namespace WebCore {
 typedef unsigned MainThreadScrollingReasons;
 typedef uint64_t ScrollingNodeID;
 
-enum ScrollingNodeType { ScrollingNode, FixedNode };
+enum ScrollingNodeType { ScrollingNode, FixedNode, StickyNode };
 
+class Document;
 class Frame;
 class FrameView;
 class GraphicsLayer;
@@ -149,6 +151,14 @@ public:
     virtual void scrollableAreaScrollLayerDidChange(ScrollableArea*, GraphicsLayer*) { }
     virtual void setLayerIsContainerForFixedPositionLayers(GraphicsLayer*, bool) { }
     virtual void setLayerIsFixedToContainerLayer(GraphicsLayer*, bool) { }
+    virtual void touchEventTargetRectsDidChange(const Document*) { }
+
+#if ENABLE(TOUCH_EVENT_TRACKING)
+    void computeAbsoluteTouchEventTargetRects(const Document*, Vector<IntRect>&);
+#endif
+
+    static String mainThreadScrollingReasonsAsText(MainThreadScrollingReasons);
+    String mainThreadScrollingReasonsAsText() const;
 
 protected:
     explicit ScrollingCoordinator(Page*);

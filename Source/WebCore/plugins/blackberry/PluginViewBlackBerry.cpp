@@ -194,11 +194,11 @@ void PluginView::updateBuffer(const IntRect& bufferRect)
         std::vector<BlackBerry::Platform::IntRect> exposedRects = exposedRegion.rects();
         for (unsigned i = 0; i < exposedRects.size(); ++i) {
             NPDrawEvent draw;
+            NPRect tempRect = toNPRect(exposedRects.at(i));
             draw.pluginRect = toNPRect(m_windowRect);
             draw.clipRect = toNPRect(m_clipRect);
-            draw.drawRect = (NPRect*)alloca(sizeof(NPRect));
+            draw.drawRect = &tempRect;
             draw.drawRectCount = 1;
-            *draw.drawRect = toNPRect(exposedRects.at(i));
             draw.zoomFactor = ((NPSetWindowCallbackStruct*)m_npWindow.ws_info)->zoomFactor;
 
             NPEvent npEvent;
@@ -490,22 +490,15 @@ void PluginView::handleTouchEvent(TouchEvent* event)
         npTouchEvent.type = TOUCH_EVENT_DOUBLETAP;
     else if (event->isTouchHold())
         npTouchEvent.type = TOUCH_EVENT_TOUCHHOLD;
-    else if (event->type() == eventNames().touchstartEvent)
-        npTouchEvent.type = TOUCH_EVENT_START;
-    else if (event->type() == eventNames().touchendEvent)
-        npTouchEvent.type = TOUCH_EVENT_END;
-    else if (event->type() == eventNames().touchmoveEvent)
-        npTouchEvent.type = TOUCH_EVENT_MOVE;
     else if (event->type() == eventNames().touchcancelEvent)
         npTouchEvent.type = TOUCH_EVENT_CANCEL;
-    else {
-        ASSERT_NOT_REACHED();
+    else
         return;
-    }
 
     TouchList* touchList;
-    // The touches list is empty if in a touch end event. Use changedTouches instead.
-    if (npTouchEvent.type == TOUCH_EVENT_DOUBLETAP || npTouchEvent.type == TOUCH_EVENT_END)
+    // The touches list is empty if in a touch end event.
+    // Since DoubleTap is ususally a TouchEnd Use changedTouches instead.
+    if (npTouchEvent.type == TOUCH_EVENT_DOUBLETAP)
         touchList = event->changedTouches();
     else
         touchList = event->touches();
@@ -536,13 +529,6 @@ void PluginView::handleTouchEvent(TouchEvent* event)
 
     if (dispatchNPEvent(npEvent))
         event->setDefaultHandled();
-    else if (npTouchEvent.type == TOUCH_EVENT_DOUBLETAP) {
-        // Send Touch Up if double tap not consumed
-        npTouchEvent.type = TOUCH_EVENT_END;
-        npEvent.data = &npTouchEvent;
-        if (dispatchNPEvent(npEvent))
-            event->setDefaultHandled();
-    }
 }
 
 void PluginView::handleMouseEvent(MouseEvent* event)
@@ -559,19 +545,17 @@ void PluginView::handleMouseEvent(MouseEvent* event)
     mouseEvent.x = event->offsetX();
     mouseEvent.y = event->offsetY();
 
-    if (event->type() == eventNames().mousedownEvent) {
+    if (event->type() == eventNames().mousedownEvent)
         mouseEvent.type = MOUSE_BUTTON_DOWN;
-        parentFrame()->eventHandler()->setCapturingMouseEventsNode(node());
-    } else if (event->type() == eventNames().mousemoveEvent)
+    else if (event->type() == eventNames().mousemoveEvent)
         mouseEvent.type = MOUSE_MOTION;
     else if (event->type() == eventNames().mouseoutEvent)
         mouseEvent.type = MOUSE_OUTBOUND;
     else if (event->type() == eventNames().mouseoverEvent)
         mouseEvent.type = MOUSE_OVER;
-    else if (event->type() == eventNames().mouseupEvent) {
+    else if (event->type() == eventNames().mouseupEvent)
         mouseEvent.type = MOUSE_BUTTON_UP;
-        parentFrame()->eventHandler()->setCapturingMouseEventsNode(0);
-    } else
+    else
         return;
 
     mouseEvent.button = event->button();

@@ -34,7 +34,8 @@ struct SameSizeAsFillLayer {
 
     LengthSize m_sizeLength;
 
-    unsigned m_bitfields;
+    unsigned m_bitfields: 32;
+    unsigned m_bitfields2: 1;
 };
 
 COMPILE_ASSERT(sizeof(FillLayer) == sizeof(SameSizeAsFillLayer), FillLayer_should_stay_small);
@@ -60,6 +61,9 @@ FillLayer::FillLayer(EFillLayerType type)
     , m_repeatYSet(false)
     , m_xPosSet(false)
     , m_yPosSet(false)
+    , m_backgroundOriginSet(false)
+    , m_backgroundXOrigin(LeftEdge)
+    , m_backgroundYOrigin(TopEdge)
     , m_compositeSet(type == MaskFillLayer)
     , m_type(type)
 {
@@ -86,6 +90,9 @@ FillLayer::FillLayer(const FillLayer& o)
     , m_repeatYSet(o.m_repeatYSet)
     , m_xPosSet(o.m_xPosSet)
     , m_yPosSet(o.m_yPosSet)
+    , m_backgroundOriginSet(o.m_backgroundOriginSet)
+    , m_backgroundXOrigin(o.m_backgroundXOrigin)
+    , m_backgroundYOrigin(o.m_backgroundYOrigin)
     , m_compositeSet(o.m_compositeSet)
     , m_type(o.m_type)
 {
@@ -106,6 +113,9 @@ FillLayer& FillLayer::operator=(const FillLayer& o)
     m_image = o.m_image;
     m_xPosition = o.m_xPosition;
     m_yPosition = o.m_yPosition;
+    m_backgroundXOrigin = o.m_backgroundXOrigin;
+    m_backgroundYOrigin = o.m_backgroundYOrigin;
+    m_backgroundOriginSet = o.m_backgroundOriginSet;
     m_sizeLength = o.m_sizeLength;
     m_attachment = o.m_attachment;
     m_clip = o.m_clip;
@@ -134,11 +144,12 @@ bool FillLayer::operator==(const FillLayer& o) const
 {
     // We do not check the "isSet" booleans for each property, since those are only used during initial construction
     // to propagate patterns into layers.  All layer comparisons happen after values have all been filled in anyway.
-    return StyleImage::imagesEquivalent(m_image.get(), o.m_image.get()) && m_xPosition == o.m_xPosition && m_yPosition == o.m_yPosition &&
-           m_attachment == o.m_attachment && m_clip == o.m_clip && 
-           m_composite == o.m_composite && m_origin == o.m_origin && m_repeatX == o.m_repeatX &&
-           m_repeatY == o.m_repeatY && m_sizeType == o.m_sizeType && m_sizeLength == o.m_sizeLength && 
-           m_type == o.m_type && ((m_next && o.m_next) ? *m_next == *o.m_next : m_next == o.m_next);
+    return StyleImage::imagesEquivalent(m_image.get(), o.m_image.get()) && m_xPosition == o.m_xPosition && m_yPosition == o.m_yPosition
+            && m_backgroundXOrigin == o.m_backgroundXOrigin && m_backgroundYOrigin == o.m_backgroundYOrigin
+            && m_attachment == o.m_attachment && m_clip == o.m_clip
+            && m_composite == o.m_composite && m_origin == o.m_origin && m_repeatX == o.m_repeatX
+            && m_repeatY == o.m_repeatY && m_sizeType == o.m_sizeType && m_sizeLength == o.m_sizeLength
+            && m_type == o.m_type && ((m_next && o.m_next) ? *m_next == *o.m_next : m_next == o.m_next);
 }
 
 void FillLayer::fillUnsetProperties()
@@ -149,6 +160,10 @@ void FillLayer::fillUnsetProperties()
         // We need to fill in the remaining values with the pattern specified.
         for (FillLayer* pattern = this; curr; curr = curr->next()) {
             curr->m_xPosition = pattern->m_xPosition;
+            if (pattern->isBackgroundOriginSet()) {
+                curr->m_backgroundXOrigin = pattern->m_backgroundXOrigin;
+                curr->m_backgroundYOrigin = pattern->m_backgroundYOrigin;
+            }
             pattern = pattern->next();
             if (pattern == curr || !pattern)
                 pattern = this;
@@ -160,12 +175,16 @@ void FillLayer::fillUnsetProperties()
         // We need to fill in the remaining values with the pattern specified.
         for (FillLayer* pattern = this; curr; curr = curr->next()) {
             curr->m_yPosition = pattern->m_yPosition;
+            if (pattern->isBackgroundOriginSet()) {
+                curr->m_backgroundXOrigin = pattern->m_backgroundXOrigin;
+                curr->m_backgroundYOrigin = pattern->m_backgroundYOrigin;
+            }
             pattern = pattern->next();
             if (pattern == curr || !pattern)
                 pattern = this;
         }
     }
-    
+
     for (curr = this; curr && curr->isAttachmentSet(); curr = curr->next()) { }
     if (curr && curr != this) {
         // We need to fill in the remaining values with the pattern specified.
@@ -258,6 +277,33 @@ void FillLayer::cullEmptyLayers()
     }
 }
 
+static EFillBox clipMax(EFillBox clipA, EFillBox clipB)
+{
+    if (clipA == BorderFillBox || clipB == BorderFillBox)
+        return BorderFillBox;
+    if (clipA == PaddingFillBox || clipB == PaddingFillBox)
+        return PaddingFillBox;
+    if (clipA == ContentFillBox || clipB == ContentFillBox)
+        return ContentFillBox;
+    return TextFillBox;
+}
+
+void FillLayer::computeClipMax() const
+{
+    if (m_next) {
+        m_next->computeClipMax();
+        m_clipMax = clipMax(clip(), m_next->clip());
+    } else
+        m_clipMax = m_clip;
+}
+
+bool FillLayer::clipOccludesNextLayers(bool firstLayer) const
+{
+    if (firstLayer)
+        computeClipMax();
+    return m_clip == m_clipMax;
+}
+
 bool FillLayer::containsImage(StyleImage* s) const
 {
     if (!s)
@@ -278,6 +324,25 @@ bool FillLayer::imagesAreLoaded() const
     }
 
     return true;
+}
+
+bool FillLayer::hasOpaqueImage(const RenderObject* renderer) const
+{
+    if (!m_image)
+        return false;
+
+    if (m_composite == CompositeClear || m_composite == CompositeCopy)
+        return true;
+
+    if (m_composite == CompositeSourceOver)
+        return !m_image->hasAlpha(renderer);
+
+    return false;
+}
+
+bool FillLayer::hasRepeatXY() const
+{
+    return m_repeatX == RepeatFill && m_repeatY == RepeatFill;
 }
 
 } // namespace WebCore

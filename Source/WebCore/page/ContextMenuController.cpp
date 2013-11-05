@@ -704,9 +704,8 @@ static bool selectionContainsPossibleWord(Frame* frame)
     // Current algorithm: look for a character that's not just a separator.
     for (TextIterator it(frame->selection()->toNormalizedRange().get()); !it.atEnd(); it.advance()) {
         int length = it.length();
-        const UChar* characters = it.characters();
         for (int i = 0; i < length; ++i)
-            if (!(category(characters[i]) & (Separator_Space | Separator_Line | Separator_Paragraph)))
+            if (!(category(it.characterAt(i)) & (Separator_Space | Separator_Line | Separator_Paragraph)))
                 return true;
     }
     return false;
@@ -878,8 +877,8 @@ void ContextMenuController::populate()
                 if (!(frame->page() && frame->page()->inspectorController()->hasInspectorFrontendClient())) {
 #endif
 
-                // In GTK+ unavailable items are not hidden but insensitive
-#if PLATFORM(GTK)
+                // In GTK+ and EFL, unavailable items are not hidden but insensitive.
+#if PLATFORM(GTK) || PLATFORM(EFL)
                 appendItem(BackItem, m_contextMenu.get());
                 appendItem(ForwardItem, m_contextMenu.get());
                 appendItem(StopItem, m_contextMenu.get());

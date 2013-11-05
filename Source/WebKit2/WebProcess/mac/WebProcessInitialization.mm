@@ -28,6 +28,7 @@
 
 #import "WebProcess.h"
 #import "WebSystemInterface.h"
+#import <WebCore/LocalizedStrings.h>
 #import <WebCore/RunLoop.h>
 #import <WebKitSystemInterface.h>
 #import <runtime/InitializeThreading.h>
@@ -37,22 +38,26 @@ using namespace WebCore;
 
 namespace WebKit {
 
-void InitializeWebProcess(const String& clientIdentifier, CoreIPC::Connection::Identifier connectionIdentifier)
+void initializeWebProcess(const WebProcessInitializationParameters& parameters)
 {
-    NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
+    @autoreleasepool {
+        InitWebCoreSystemInterface();
+        JSC::initializeThreading();
+        WTF::initializeMainThread();
+        RunLoop::initializeMainRunLoop();
 
-    InitWebCoreSystemInterface();
-    JSC::initializeThreading();
-    WTF::initializeMainThread();
-    RunLoop::initializeMainRunLoop();
+        if (!parameters.uiProcessName.isNull()) {
+            NSString *applicationName = [NSString stringWithFormat:WEB_UI_STRING("%@ Web Content", "Visible name of the web process. The argument is the application name."), (NSString *)parameters.uiProcessName];
+            WKSetVisibleApplicationName((CFStringRef)applicationName);
+        }
 
-    WebProcess::shared().initializeShim();
-    WebProcess::shared().initializeSandbox(clientIdentifier);
-    WebProcess::shared().initialize(connectionIdentifier, RunLoop::main());
-
-    WKAXRegisterRemoteApp();
-
-    [pool drain];
+        WebProcess& webProcess = WebProcess::shared();
+        webProcess.initializeShim();
+        webProcess.initializeSandbox(parameters.clientIdentifier);
+        webProcess.initialize(parameters.connectionIdentifier, RunLoop::main());
+        
+        WKAXRegisterRemoteApp();
+    }
 }
 
 } // namespace WebKit

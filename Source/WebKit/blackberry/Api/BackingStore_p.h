@@ -46,12 +46,12 @@ class ViewportAccessor;
 
 namespace WebKit {
 
-class BackingStoreTile;
 class TileBuffer;
 class WebPage;
 class BackingStoreClient;
 
-typedef WTF::HashMap<TileIndex, BackingStoreTile*> TileMap;
+typedef WTF::HashMap<TileIndex, TileBuffer*> TileMap;
+
 class BackingStoreGeometry {
 public:
     BackingStoreGeometry()
@@ -70,12 +70,15 @@ public:
     void setNumberOfTilesHigh(int numberOfTilesHigh) { m_numberOfTilesHigh = numberOfTilesHigh; }
     Platform::IntPoint backingStoreOffset() const { return m_backingStoreOffset; }
     void setBackingStoreOffset(const Platform::IntPoint& offset) { m_backingStoreOffset = offset; }
-    BackingStoreTile* tileAt(TileIndex index) const { return m_tileMap.get(index); }
+    Platform::IntPoint originOfTile(const TileIndex&) const;
+    TileBuffer* tileBufferAt(const TileIndex& index) const { return m_tileMap.get(index); }
     const TileMap& tileMap() const { return m_tileMap; }
     void setTileMap(const TileMap& tileMap) { m_tileMap = tileMap; }
 
     double scale() const { return m_scale; }
     void setScale(double scale) { m_scale = scale; }
+
+    bool isTileCorrespondingToBuffer(TileIndex, TileBuffer*) const;
 
   private:
     int m_numberOfTilesWide;
@@ -172,49 +175,48 @@ public:
 
     Platform::IntRect backingStoreRectForScroll(int deltaX, int deltaY, const Platform::IntRect&) const;
     void setBackingStoreRect(const Platform::IntRect&, double scale);
+    void updateTilesAfterBackingStoreRectChange();
 
-    typedef WTF::Vector<TileIndex> TileIndexList;
     TileIndexList indexesForBackingStoreRect(const Platform::IntRect&) const;
+    TileIndexList indexesForVisibleContentsRect(BackingStoreGeometry*) const;
 
-    Platform::IntPoint originOfLastRenderForTile(const TileIndex&, BackingStoreTile*, const Platform::IntRect& backingStoreRect) const;
-
-    TileIndex indexOfLastRenderForTile(const TileIndex&, BackingStoreTile*) const;
     TileIndex indexOfTile(const Platform::IntPoint& origin, const Platform::IntRect& backingStoreRect) const;
-    void clearAndUpdateTileOfNotRenderedRegion(const TileIndex&, BackingStoreTile*, const Platform::IntRectRegion&, const Platform::IntRect& backingStoreRect, bool update = true);
-    bool isCurrentVisibleJob(const TileIndex&, BackingStoreTile*, const Platform::IntRect& backingStoreRect) const;
+    void clearAndUpdateTileOfNotRenderedRegion(const TileIndex&, TileBuffer*, const Platform::IntRectRegion&, BackingStoreGeometry*, bool update = true);
+    bool isCurrentVisibleJob(const TileIndex&, BackingStoreGeometry*) const;
 
     // Not thread safe. Call only when threads are in sync.
-    void clearRenderedRegion(BackingStoreTile*, const Platform::IntRectRegion&);
+    void clearRenderedRegion(TileBuffer*, const Platform::IntRectRegion&);
 
     // Responsible for scrolling the backing store and updating the
     // tile matrix geometry.
     void scrollBackingStore(int deltaX, int deltaY);
 
-    // Render the tiles dirty rect and invalidate the screen.
-    bool renderDirectToWindow(const Platform::IntRect&);
+    // Render the given dirty rect and invalidate the screen.
+    Platform::IntRect renderDirectToWindow(const Platform::IntRect&);
 
-    // Render the tiles dirty rect.
-    // NOTE: This will not update the screen. To do that you should call
-    // blitVisibleContents() after this method.
-    bool render(const Platform::IntRect&);
+    // Render the given tiles if enough back buffers are available.
+    // Return the actual set of rendered tiles.
+    // NOTE: This should only be called by RenderQueue and resumeScreenUpdates().
+    //   If you want to render to get contents to the screen, you should call
+    //   renderAndBlitImmediately() or renderAndBlitVisibleContentsImmediately().
+    TileIndexList render(const TileIndexList&);
 
     // Called by the render queue to ensure that the queue is in a
     // constant state before performing a render job.
     void requestLayoutIfNeeded() const;
 
     // Helper render methods.
-    bool renderVisibleContents();
-    bool renderBackingStore();
+    void renderAndBlitVisibleContentsImmediately();
+    void renderAndBlitImmediately(const Platform::IntRect&);
     void blitVisibleContents(bool force = false);
 
     // Assumes the rect to be in window/viewport coordinates.
     void copyPreviousContentsToBackSurfaceOfWindow();
-    void copyPreviousContentsToBackSurfaceOfTile(const Platform::IntRect&, BackingStoreTile*);
+    void copyPreviousContentsToTileBuffer(const Platform::IntRect& excludeRect, TileBuffer* dstTileBuffer, TileBuffer* srcTileBuffer);
     void paintDefaultBackground(const Platform::IntRect& dstRect, BlackBerry::Platform::ViewportAccessor*, bool flush);
     void blitOnIdle();
 
-    typedef std::pair<TileIndex, Platform::IntRect> TileRect;
-    Platform::IntRect blitTileRect(TileBuffer*, const TileRect&, const Platform::IntPoint&, const WebCore::TransformationMatrix&, BackingStoreGeometry*);
+    Platform::IntRect blitTileRect(TileBuffer*, const Platform::IntRect&, const Platform::IntPoint&, const WebCore::TransformationMatrix&, BackingStoreGeometry*);
 
 #if USE(ACCELERATED_COMPOSITING)
     // Use instead of blitVisibleContents() if you need more control over
@@ -237,29 +239,23 @@ public:
     void blitVerticalScrollbar();
 
     // Returns whether the tile index is currently visible or not.
-    bool isTileVisible(const TileIndex&) const;
+    bool isTileVisible(const TileIndex&, BackingStoreGeometry*) const;
     bool isTileVisible(const Platform::IntPoint&) const;
 
     // Returns a rect that is the union of all tiles that are visible.
-    Platform::IntRect visibleTilesRect() const;
+    TileIndexList visibleTileIndexes(BackingStoreGeometry*) const;
 
     // Used to clip to the visible content for instance.
-    Platform::IntRect tileVisibleContentsRect(const TileIndex&) const;
-
-    // Used to clip to the unclipped visible content for instance which includes overscroll.
-    Platform::IntRect tileUnclippedVisibleContentsRect(const TileIndex&) const;
+    Platform::IntRect tileVisibleContentsRect(const TileIndex&, BackingStoreGeometry*) const;
 
     // Used to clip to the contents for instance.
-    Platform::IntRect tileContentsRect(const TileIndex&, const Platform::IntRect&) const;
-    Platform::IntRect tileContentsRect(const TileIndex&, const Platform::IntRect&, BackingStoreGeometry* state) const;
+    Platform::IntRect tileContentsRect(const TileIndex&, const Platform::IntRect&, BackingStoreGeometry*) const;
 
     // This is called by WebPage once load is committed to reset the render queue.
     void resetRenderQueue();
-    // This is called by FrameLoaderClient that explicitly paints on first visible layout.
-    void clearVisibleZoom();
 
     // This is called by WebPage once load is committed to reset all the tiles.
-    void resetTiles(bool resetBackground);
+    void resetTiles();
 
     // This is called by WebPage after load is complete to update all the tiles.
     void updateTiles(bool updateVisible, bool immediate);
@@ -267,21 +263,14 @@ public:
     // This is called during scroll and by the render queue.
     void updateTilesForScrollOrNotRenderedRegion(bool checkLoading = true);
 
-    // Reset an individual tile.
-    void resetTile(const TileIndex&, BackingStoreTile*, bool resetBackground);
-
     // Update an individual tile.
-    void updateTile(const TileIndex&, bool immediate);
-    void updateTile(const Platform::IntPoint&, bool immediate);
+    void updateTile(const Platform::IntPoint& tileOrigin, bool immediate);
 
-    Platform::IntRect mapFromTilesToTransformedContents(const TileRect&) const;
-    Platform::IntRect mapFromTilesToTransformedContents(const TileRect&, const Platform::IntRect&) const;
-
+    typedef std::pair<TileIndex, Platform::IntRect> TileRect;
     typedef WTF::Vector<TileRect> TileRectList;
-    TileRectList mapFromTransformedContentsToAbsoluteTileBoundaries(const Platform::IntRect&) const;
-    TileRectList mapFromTransformedContentsToTiles(const Platform::IntRect&) const;
-    TileRectList mapFromTransformedContentsToTiles(const Platform::IntRect&, BackingStoreGeometry*) const;
+    TileRectList mapFromPixelContentsToTiles(const Platform::IntRect&, BackingStoreGeometry*) const;
 
+    void setTileMatrixNeedsUpdate() { m_tileMatrixNeedsUpdate = true; }
     void updateTileMatrixIfNeeded();
 
     // Called by WebPagePrivate::notifyTransformedContentsSizeChanged.
@@ -304,11 +293,8 @@ public:
 
     // Create the surfaces of the backing store.
     void createSurfaces();
-    void createVisibleTileBuffer();
 
     // Various calculations of quantities relevant to backing store.
-    Platform::IntPoint originOfTile(const TileIndex&) const;
-    Platform::IntPoint originOfTile(const TileIndex&, const Platform::IntRect&) const;
     int minimumNumberOfTilesWide() const;
     int minimumNumberOfTilesHigh() const;
     Platform::IntSize expandedContentsSize() const;
@@ -317,13 +303,12 @@ public:
     static int tileWidth();
     static int tileHeight();
     static Platform::IntSize tileSize();
-    static Platform::IntRect tileRect();
 
     // This takes transformed contents coordinates.
     void renderContents(BlackBerry::Platform::Graphics::Buffer*, const Platform::IntPoint& surfaceOffset, const Platform::IntRect& contentsRect) const;
     void renderContents(Platform::Graphics::Drawable* /*drawable*/, const Platform::IntRect& /*contentsRect*/, const Platform::IntSize& /*destinationSize*/) const;
 
-    void blitToWindow(const Platform::IntRect& dstRect, const BlackBerry::Platform::Graphics::Buffer* srcBuffer, const Platform::IntRect& srcRect, bool blend, unsigned char globalAlpha);
+    void blitToWindow(const Platform::IntRect& dstRect, const BlackBerry::Platform::Graphics::Buffer* srcBuffer, const Platform::IntRect& srcRect, BlackBerry::Platform::Graphics::BlendMode, unsigned char globalAlpha);
     void fillWindow(Platform::Graphics::FillPattern, const Platform::IntRect& dstRect, const Platform::IntPoint& contentsOrigin, double contentsScale);
 
     WebCore::Color webPageBackgroundColorUserInterfaceThread() const; // use WebSettings::backgroundColor() for the WebKit thread
@@ -340,13 +325,12 @@ public:
     void unlockBackingStore();
 
     BackingStoreGeometry* frontState() const;
-    BackingStoreGeometry* backState() const;
-    void swapState();
+    void adoptAsFrontState(BackingStoreGeometry* newFrontState);
 
     BackingStoreWindowBufferState* windowFrontBufferState() const;
     BackingStoreWindowBufferState* windowBackBufferState() const;
 
-    static void setCurrentBackingStoreOwner(WebPage* webPage) { BackingStorePrivate::s_currentBackingStoreOwner = webPage; }
+    static void setCurrentBackingStoreOwner(WebPage*);
     static WebPage* currentBackingStoreOwner() { return BackingStorePrivate::s_currentBackingStoreOwner; }
     bool isActive() const;
 
@@ -354,7 +338,7 @@ public:
     BlackBerry::Platform::IntSize surfaceSize() const;
     BlackBerry::Platform::Graphics::Buffer* buffer() const;
 
-    void didRenderContent(const Platform::IntRect& renderedRect);
+    void didRenderContent(const Platform::IntRectRegion& renderedRegion);
 
     static WebPage* s_currentBackingStoreOwner;
 
@@ -364,6 +348,7 @@ public:
 
     bool m_suspendRenderJobs;
     bool m_suspendRegularRenderJobs;
+    bool m_tileMatrixNeedsUpdate;
     bool m_isScrollingOrZooming;
     WebPage* m_webPage;
     BackingStoreClient* m_client;
@@ -376,7 +361,6 @@ public:
     WebCore::Color m_webPageBackgroundColor; // for user interface thread operations such as blitting
 
     mutable unsigned m_frontState;
-    mutable unsigned m_backState;
 
     unsigned m_currentWindowBackBuffer;
     mutable BackingStoreWindowBufferState m_windowBufferState[2];

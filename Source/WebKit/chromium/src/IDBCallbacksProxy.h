@@ -51,7 +51,6 @@ public:
     virtual void onSuccess(PassRefPtr<WebCore::IDBCursorBackendInterface>, PassRefPtr<WebCore::IDBKey>, PassRefPtr<WebCore::IDBKey> primaryKey, PassRefPtr<WebCore::SerializedScriptValue>);
     virtual void onSuccess(PassRefPtr<WebCore::IDBDatabaseBackendInterface>);
     virtual void onSuccess(PassRefPtr<WebCore::IDBKey>);
-    virtual void onSuccess(PassRefPtr<WebCore::IDBTransactionBackendInterface>);
     virtual void onSuccess(PassRefPtr<WebCore::SerializedScriptValue>);
     virtual void onSuccess(PassRefPtr<WebCore::SerializedScriptValue>, PassRefPtr<WebCore::IDBKey>, const WebCore::IDBKeyPath&);
     virtual void onSuccess(int64_t);
@@ -69,6 +68,7 @@ private:
 
     OwnPtr<WebIDBCallbacks> m_callbacks;
     RefPtr<IDBDatabaseCallbacksProxy> m_databaseCallbacks;
+    bool m_didCreateProxy;
 };
 
 } // namespace WebKit

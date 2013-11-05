@@ -28,42 +28,84 @@
 #include "IDBRequest.h"
 
 #include "DOMStringList.h"
+#include "Document.h"
+#include "Frame.h"
+#include "FrameTestHelpers.h"
 #include "IDBCursorBackendInterface.h"
 #include "IDBDatabaseBackendImpl.h"
 #include "IDBTransactionCoordinator.h"
+#include "WebFrame.h"
+#include "WebFrameImpl.h"
+#include "WebView.h"
 
 #include <gtest/gtest.h>
 
 #if ENABLE(INDEXED_DATABASE)
 
 using namespace WebCore;
+using namespace WebKit;
 
 namespace {
 
-TEST(IDBRequestTest, EventsAfterStopping)
+class IDBRequestTest : public testing::Test {
+public:
+    IDBRequestTest()
+        : m_webView(0)
+    {
+    }
+
+    void SetUp() OVERRIDE
+    {
+        m_webView = FrameTestHelpers::createWebViewAndLoad("about:blank");
+        m_webView->setFocus(true);
+    }
+
+    void TearDown() OVERRIDE
+    {
+        m_webView->close();
+    }
+
+    v8::Handle<v8::Context> context()
+    {
+        return static_cast<WebFrameImpl*>(m_webView->mainFrame())->frame()->script()->mainWorldContext();
+    }
+
+    ScriptExecutionContext* scriptExecutionContext()
+    {
+        return static_cast<WebFrameImpl*>(m_webView->mainFrame())->frame()->document();
+    }
+
+private:
+    WebView* m_webView;
+};
+
+TEST_F(IDBRequestTest, EventsAfterStopping)
 {
-    ScriptExecutionContext* context = 0;
+    v8::HandleScope handleScope;
+    v8::Context::Scope scope(context());
+
     IDBTransaction* transaction = 0;
-    RefPtr<IDBRequest> request = IDBRequest::create(context, IDBAny::createInvalid(), transaction);
+    RefPtr<IDBRequest> request = IDBRequest::create(scriptExecutionContext(), IDBAny::createInvalid(), transaction);
     EXPECT_EQ(request->readyState(), "pending");
     request->stop();
 
     // Ensure none of the following raise assertions in stopped state:
-    request->onError(IDBDatabaseError::create(IDBDatabaseException::IDB_ABORT_ERR, "Description goes here."));
+    request->onError(IDBDatabaseError::create(IDBDatabaseException::AbortError, "Description goes here."));
     request->onSuccess(DOMStringList::create());
     request->onSuccess(PassRefPtr<IDBCursorBackendInterface>(), IDBKey::createInvalid(), IDBKey::createInvalid(), SerializedScriptValue::nullValue());
     request->onSuccess(IDBKey::createInvalid());
-    request->onSuccess(PassRefPtr<IDBTransactionBackendInterface>());
     request->onSuccess(SerializedScriptValue::nullValue());
     request->onSuccess(SerializedScriptValue::nullValue(), IDBKey::createInvalid(), IDBKeyPath());
     request->onSuccess(IDBKey::createInvalid(), IDBKey::createInvalid(), SerializedScriptValue::nullValue());
 }
 
-TEST(IDBRequestTest, AbortErrorAfterAbort)
+TEST_F(IDBRequestTest, AbortErrorAfterAbort)
 {
-    ScriptExecutionContext* context = 0;
+    v8::HandleScope handleScope;
+    v8::Context::Scope scope(context());
+
     IDBTransaction* transaction = 0;
-    RefPtr<IDBRequest> request = IDBRequest::create(context, IDBAny::createInvalid(), transaction);
+    RefPtr<IDBRequest> request = IDBRequest::create(scriptExecutionContext(), IDBAny::createInvalid(), transaction);
     EXPECT_EQ(request->readyState(), "pending");
 
     // Simulate the IDBTransaction having received onAbort from back end and aborting the request:
@@ -71,7 +113,7 @@ TEST(IDBRequestTest, AbortErrorAfterAbort)
 
     // Now simulate the back end having fired an abort error at the request to clear up any intermediaries.
     // Ensure an assertion is not raised.
-    request->onError(IDBDatabaseError::create(IDBDatabaseException::IDB_ABORT_ERR, "Description goes here."));
+    request->onError(IDBDatabaseError::create(IDBDatabaseException::AbortError, "Description goes here."));
 }
 
 } // namespace

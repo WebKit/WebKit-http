@@ -35,9 +35,9 @@
 #include "HTMLContentElement.h"
 #include "HTMLShadowElement.h"
 #include "InspectorInstrumentation.h"
+#include "NodeTraversal.h"
 #include "ShadowRoot.h"
 #include "StyleResolver.h"
-#include "Text.h"
 
 namespace WebCore {
 
@@ -86,6 +86,9 @@ void ElementShadow::addShadowRoot(Element* shadowHost, PassRefPtr<ShadowRoot> sh
     setValidityUndetermined();
     invalidateDistribution(shadowHost);
     ChildNodeInsertionNotifier(shadowHost).notify(shadowRoot.get());
+
+    // Existence of shadow roots requires the host and its children to do traversal using ComposedShadowTreeWalker.
+    shadowHost->setNeedsShadowTreeWalker();
 
     // FIXME(94905): ShadowHost should be reattached during recalcStyle.
     // Set some flag here and recreate shadow hosts' renderer in
@@ -158,21 +161,8 @@ bool ElementShadow::needsStyleRecalc()
 
 void ElementShadow::recalcStyle(Node::StyleChange change)
 {
-    for (ShadowRoot* root = youngestShadowRoot(); root; root = root->olderShadowRoot()) {
-        StyleResolver* styleResolver = root->document()->styleResolver();
-        styleResolver->pushParentShadowRoot(root);
-
-        for (Node* n = root->firstChild(); n; n = n->nextSibling()) {
-            if (n->isElementNode())
-                static_cast<Element*>(n)->recalcStyle(change);
-            else if (n->isTextNode())
-                toText(n)->recalcTextStyle(change);
-        }
-
-        styleResolver->popParentShadowRoot(root);
-        root->clearNeedsStyleRecalc();
-        root->clearChildNeedsStyleRecalc();
-    }
+    for (ShadowRoot* root = youngestShadowRoot(); root; root = root->olderShadowRoot())
+        root->recalcStyle(change);
 }
 
 void ElementShadow::ensureDistribution()
@@ -180,6 +170,16 @@ void ElementShadow::ensureDistribution()
     if (!m_distributor.needsDistribution())
         return;
     m_distributor.distribute(host());
+}
+
+void ElementShadow::ensureDistributionFromDocument()
+{
+    Vector<Element*, 8> hosts;
+    for (Element* current = host(); current; current = current->shadowHost())
+        hosts.append(current);
+
+    for (size_t i = hosts.size(); i > 0; --i)
+        hosts[i - 1]->shadow()->ensureDistribution();
 }
 
 void ElementShadow::setValidityUndetermined()
@@ -214,7 +214,7 @@ void ElementShadow::setShouldCollectSelectFeatureSet()
 
     m_shouldCollectSelectFeatureSet = true;
 
-    if (ShadowRoot* parentShadowRoot = host()->shadowRoot()) {
+    if (ShadowRoot* parentShadowRoot = host()->containingShadowRoot()) {
         if (ElementShadow* parentElementShadow = parentShadowRoot->owner())
             parentElementShadow->setShouldCollectSelectFeatureSet();
     }
@@ -234,8 +234,8 @@ void ElementShadow::ensureSelectFeatureSetCollected()
 void ElementShadow::collectSelectFeatureSetFrom(ShadowRoot* root)
 {
     if (root->hasElementShadow()) {
-        for (Node* node = root->firstChild(); node; node = node->traverseNextNode()) {
-            if (ElementShadow* elementShadow = node->isElementNode() ? toElement(node)->shadow() : 0) {
+        for (Element* element = ElementTraversal::firstWithin(root); element; element = ElementTraversal::next(element)) {
+            if (ElementShadow* elementShadow = element->shadow()) {
                 elementShadow->ensureSelectFeatureSetCollected();
                 m_selectFeatures.add(elementShadow->m_selectFeatures);
             }
@@ -243,9 +243,9 @@ void ElementShadow::collectSelectFeatureSetFrom(ShadowRoot* root)
     }
 
     if (root->hasContentElement()) {
-        for (Node* node = root->firstChild(); node; node = node->traverseNextNode()) {
-            if (isHTMLContentElement(node)) {
-                const CSSSelectorList& list = toHTMLContentElement(node)->selectorList();
+        for (Element* element = ElementTraversal::firstWithin(root); element; element = ElementTraversal::next(element)) {
+            if (isHTMLContentElement(element)) {
+                const CSSSelectorList& list = toHTMLContentElement(element)->selectorList();
                 for (CSSSelector* selector = list.first(); selector; selector = list.next(selector))
                     m_selectFeatures.collectFeaturesFromSelector(selector);                    
             }

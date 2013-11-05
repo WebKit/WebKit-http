@@ -112,6 +112,7 @@ TestShell::TestShell()
     , m_allowExternalPages(false)
     , m_acceleratedCompositingForVideoEnabled(false)
     , m_acceleratedCompositingForFixedPositionEnabled(false)
+    , m_acceleratedCompositingForOverflowScrollEnabled(false)
     , m_softwareCompositingEnabled(false)
     , m_threadedCompositingEnabled(false)
     , m_forceCompositingMode(false)
@@ -129,7 +130,6 @@ TestShell::TestShell()
     WebRuntimeFeatures::enableDataTransferItems(true);
     WebRuntimeFeatures::enableDeviceMotion(false);
     WebRuntimeFeatures::enableGeolocation(true);
-    WebRuntimeFeatures::enablePointerLock(true);
     WebRuntimeFeatures::enableIndexedDatabase(true);
     WebRuntimeFeatures::enableInputTypeDateTime(true);
     WebRuntimeFeatures::enableInputTypeDateTimeLocal(true);
@@ -149,6 +149,7 @@ TestShell::TestShell()
     WebRuntimeFeatures::enableStyleScoped(true);
     WebRuntimeFeatures::enableScriptedSpeech(true);
     WebRuntimeFeatures::enableRequestAutocomplete(true);
+    WebRuntimeFeatures::enableExperimentalContentSecurityPolicyFeatures(true);
 
     // 30 second is the same as the value in Mac DRT.
     // If we use a value smaller than the timeout value of
@@ -162,6 +163,7 @@ void TestShell::initialize()
     m_webPermissions = adoptPtr(new WebPermissions(this));
     m_testInterfaces = adoptPtr(new WebTestInterfaces());
     m_testRunner = adoptPtr(new DRTTestRunner(this));
+    m_testInterfaces->setTestRunner(m_testRunner.get());
 #if ENABLE(NOTIFICATIONS) || ENABLE(LEGACY_NOTIFICATIONS)
     m_notificationPresenter = adoptPtr(new NotificationPresenter(this));
 #endif
@@ -185,6 +187,8 @@ void TestShell::createMainWindow()
     m_webView = m_webViewHost->webView();
     m_testInterfaces->setDelegate(m_webViewHost.get());
     m_testInterfaces->setWebView(m_webView);
+    m_testRunner->setDelegate(m_webViewHost.get());
+    m_testRunner->setWebView(m_webView);
     m_drtDevToolsAgent->setWebView(m_webView);
 }
 
@@ -192,6 +196,8 @@ TestShell::~TestShell()
 {
     m_testInterfaces->setDelegate(0);
     m_testInterfaces->setWebView(0);
+    m_testRunner->setDelegate(0);
+    m_testRunner->setWebView(0);
     m_drtDevToolsAgent->setWebView(0);
 }
 
@@ -234,6 +240,7 @@ void TestShell::resetWebSettings(WebView& webView)
     m_prefs.acceleratedCompositingEnabled = true;
     m_prefs.acceleratedCompositingForVideoEnabled = m_acceleratedCompositingForVideoEnabled;
     m_prefs.acceleratedCompositingForFixedPositionEnabled = m_acceleratedCompositingForFixedPositionEnabled;
+    m_prefs.acceleratedCompositingForOverflowScrollEnabled = m_acceleratedCompositingForOverflowScrollEnabled;
     m_prefs.forceCompositingMode = m_forceCompositingMode;
     m_prefs.accelerated2dCanvasEnabled = m_accelerated2dCanvasEnabled;
     m_prefs.deferred2dCanvasEnabled = m_deferred2dCanvasEnabled;
@@ -390,18 +397,6 @@ void TestShell::testTimedOut()
 {
     m_printer.handleTimedOut();
     testFinished();
-}
-
-void TestShell::setPerTilePaintingEnabled(bool enabled)
-{
-    m_perTilePaintingEnabled = enabled;
-    Platform::current()->compositorSupport()->setPerTilePaintingEnabled(enabled);
-}
-
-void TestShell::setAcceleratedAnimationEnabled(bool enabled)
-{
-    m_acceleratedAnimationEnabled = enabled;
-    Platform::current()->compositorSupport()->setAcceleratedAnimationEnabled(enabled);
 }
 
 static string dumpDocumentText(WebFrame* frame)
@@ -757,7 +752,7 @@ WebViewHost* TestShell::createNewWindow(const WebKit::WebURL& url)
 
 WebViewHost* TestShell::createNewWindow(const WebKit::WebURL& url, DRTDevToolsAgent* devToolsAgent)
 {
-    WebTestRunner::WebTestProxy<WebViewHost, TestShell*>* host = new WebTestRunner::WebTestProxy<WebViewHost, TestShell*>(this);
+    WebTestProxy<WebViewHost, TestShell*>* host = new WebTestProxy<WebViewHost, TestShell*>(this);
     host->setInterfaces(m_testInterfaces.get());
     if (m_webViewHost)
         host->setDelegate(m_webViewHost.get());

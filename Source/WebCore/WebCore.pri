@@ -56,6 +56,7 @@ INCLUDEPATH += \
     $$SOURCE_DIR/platform/graphics/cpu/arm \
     $$SOURCE_DIR/platform/graphics/cpu/arm/filters \
     $$SOURCE_DIR/platform/graphics/filters \
+    $$SOURCE_DIR/platform/graphics/filters/texmap \
     $$SOURCE_DIR/platform/graphics/opengl \
     $$SOURCE_DIR/platform/graphics/opentype \
     $$SOURCE_DIR/platform/graphics/qt \
@@ -106,18 +107,14 @@ INCLUDEPATH += $$WEBCORE_GENERATED_SOURCES_DIR
 enable?(XSLT) {
     use?(LIBXML2) {
         mac {
-            INCLUDEPATH += /usr/include/libxml2
+            INCLUDEPATH += /usr/include/libxslt /usr/include/libxml2
             LIBS += -lxml2 -lxslt
         } else {
-            PKGCONFIG += libxslt
+            PKGCONFIG += libxslt libxml-2.0
         }
     } else {
         QT *= xmlpatterns
     }
-}
-
-use?(LIBXML2) {
-    PKGCONFIG += libxml-2.0
 }
 
 use?(ZLIB) {
@@ -180,18 +177,25 @@ enable?(VIDEO) {
                 -framework QuartzCore -framework QTKit \
                 -framework Security -framework IOKit
 
-        # We can know the Mac OS version by using the Darwin major version
         DARWIN_VERSION = $$split(QMAKE_HOST.version, ".")
         DARWIN_MAJOR_VERSION = $$first(DARWIN_VERSION)
-        equals(DARWIN_MAJOR_VERSION, "12") {
-            LIBS += $${ROOT_WEBKIT_DIR}/WebKitLibraries/libWebKitSystemInterfaceMountainLion.a
-        } else:equals(DARWIN_MAJOR_VERSION, "11") {
-            LIBS += $${ROOT_WEBKIT_DIR}/WebKitLibraries/libWebKitSystemInterfaceLion.a
-        } else:equals(DARWIN_MAJOR_VERSION, "10") {
-            LIBS += $${ROOT_WEBKIT_DIR}/WebKitLibraries/libWebKitSystemInterfaceSnowLeopard.a
-        } else:equals(DARWIN_MAJOR_VERSION, "9") {
-            LIBS += $${ROOT_WEBKIT_DIR}/WebKitLibraries/libWebKitSystemInterfaceLeopard.a
+
+        # We first check if a specific SDK is set to be used for the build.
+        contains(QMAKE_MAC_SDK, ".*MacOSX10.7.sdk.*") {
+            SYSTEM_LIBRARY_PATH = $${ROOT_WEBKIT_DIR}/WebKitLibraries/libWebKitSystemInterfaceLion.a
+        } else:contains(QMAKE_MAC_SDK, ".*MacOSX10.8.sdk.*") {
+            SYSTEM_LIBRARY_PATH = $${ROOT_WEBKIT_DIR}/WebKitLibraries/libWebKitSystemInterfaceMountainLion.a
         }
+
+        # If the previous check did not yield a result, we resort to the Darwin version.
+        isEmpty(SYSTEM_LIBRARY_PATH) {
+            equals(DARWIN_MAJOR_VERSION, "11") {
+                SYSTEM_LIBRARY_PATH = $${ROOT_WEBKIT_DIR}/WebKitLibraries/libWebKitSystemInterfaceLion.a
+            } else:equals(DARWIN_MAJOR_VERSION, "12") {
+                SYSTEM_LIBRARY_PATH = $${ROOT_WEBKIT_DIR}/WebKitLibraries/libWebKitSystemInterfaceMountainLion.a
+            }
+        }
+        LIBS += $$SYSTEM_LIBRARY_PATH
     } else:use?(GSTREAMER) {
         INCLUDEPATH += $$SOURCE_DIR/platform/graphics/gstreamer
     } else:use?(QT_MULTIMEDIA) {
@@ -208,7 +212,18 @@ enable?(WEB_AUDIO) {
 }
 
 use?(3D_GRAPHICS) {
-    contains(QT_CONFIG, opengles2):!win32: LIBS += -lEGL
+    win32: {
+        win32-g++: {
+            # Make sure OpenGL libs are after the webcore lib so MinGW can resolve symbols
+            contains(QT_CONFIG, opengles2) {
+                LIBS += $$QMAKE_LIBS_OPENGL_ES2
+            } else {
+                LIBS += $$QMAKE_LIBS_OPENGL
+            }
+        }
+    } else {
+        contains(QT_CONFIG, opengles2): LIBS += -lEGL
+    }
 }
 
 use?(GRAPHICS_SURFACE) {
@@ -219,12 +234,22 @@ use?(GRAPHICS_SURFACE) {
     }
 }
 
-!system-sqlite:exists( $${SQLITE3SRCDIR}/sqlite3.c ) {
-    INCLUDEPATH += $${SQLITE3SRCDIR}
-    DEFINES += SQLITE_CORE SQLITE_OMIT_LOAD_EXTENSION SQLITE_OMIT_COMPLETE
+have?(sqlite3) {
+    mac {
+        LIBS += -lsqlite3
+    } else {
+        PKGCONFIG += sqlite3
+    }
 } else {
-    INCLUDEPATH += $${SQLITE3SRCDIR}
-    LIBS += -lsqlite3
+    SQLITE3SRCDIR = $$(SQLITE3SRCDIR)
+    isEmpty(SQLITE3SRCDIR): SQLITE3SRCDIR = ../../../qtbase/src/3rdparty/sqlite/
+    exists($${SQLITE3SRCDIR}/sqlite3.c) {
+        INCLUDEPATH += $${SQLITE3SRCDIR}
+        DEFINES += SQLITE_CORE SQLITE_OMIT_LOAD_EXTENSION SQLITE_OMIT_COMPLETE
+    } else {
+        INCLUDEPATH += $${SQLITE3SRCDIR}
+        LIBS += -lsqlite3
+    }
 }
 
 use?(libjpeg): LIBS += -ljpeg
@@ -280,6 +305,12 @@ linux*-g++*:QMAKE_LFLAGS += $$QMAKE_LFLAGS_NOUNDEF
 
 unix|win32-g++* {
     QMAKE_PKGCONFIG_REQUIRES = QtCore QtGui QtNetwork QtWidgets
+}
+
+contains(DEFINES, ENABLE_OPENCL=1) {
+    LIBS += -lOpenCL
+
+    INCLUDEPATH += $$SOURCE_DIR/platform/graphics/gpu/opencl
 }
 
 # Disable C++0x mode in WebCore for those who enabled it in their Qt's mkspec

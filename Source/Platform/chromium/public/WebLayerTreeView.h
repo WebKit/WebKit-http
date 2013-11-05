@@ -33,8 +33,6 @@
 #include "WebPrivateOwnPtr.h"
 #include "WebSize.h"
 
-class SkBitmap;
-
 namespace WebKit {
 class WebGraphicsContext3D;
 class WebLayer;
@@ -53,6 +51,7 @@ public:
             , showPlatformLayerTree(false)
             , showPaintRects(false)
             , renderVSyncEnabled(true)
+            , lowLatencyRenderingEnabled(false)
             , perTilePaintingEnabled(false)
             , partialSwapEnabled(false)
             , acceleratedAnimationEnabled(true)
@@ -69,6 +68,7 @@ public:
         bool showPlatformLayerTree;
         bool showPaintRects;
         bool renderVSyncEnabled;
+        bool lowLatencyRenderingEnabled;
         bool perTilePaintingEnabled;
         bool partialSwapEnabled;
         bool acceleratedAnimationEnabled;
@@ -158,6 +158,9 @@ public:
     // mode.
     virtual void updateAnimations(double frameBeginTime) = 0;
 
+    // Relays the end of a fling animation.
+    virtual void didStopFlinging() { }
+
     // Composites and attempts to read back the result into the provided
     // buffer. If it wasn't possible, e.g. due to context lost, will return
     // false. Pixel format is 32bit (RGBA), and the provided buffer must be
@@ -182,12 +185,11 @@ public:
     // Toggles the FPS counter in the HUD layer
     virtual void setShowFPSCounter(bool) { }
 
-    // Provides a font atlas to use for debug visualizations. The atlas must be a bitmap containing glyph data, a table of
-    // ASCII character values to a subrectangle of the atlas representing the corresponding glyph, and the glyph height.
-    virtual void setFontAtlas(WebRect asciiToRectTable[128], const SkBitmap&, int fontHeight) { }
+    // Toggles the paint rects in the HUD layer
+    virtual void setShowPaintRects(bool) { }
 
     // Simulates a lost context. For testing only.
-    virtual void loseCompositorContext(int numTimes) = 0;
+    virtual void loseCompositorContext(int numTimes) { }
 };
 
 } // namespace WebKit

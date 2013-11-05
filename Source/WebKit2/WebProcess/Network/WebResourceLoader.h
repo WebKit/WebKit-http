@@ -29,7 +29,9 @@
 #if ENABLE(NETWORK_PROCESS)
 
 #include "Connection.h"
+#include "MessageSender.h"
 #include "ShareableResource.h"
+#include <WebCore/AuthenticationClient.h>
 #include <wtf/PassRefPtr.h>
 #include <wtf/RefCounted.h>
 #include <wtf/RefPtr.h>
@@ -39,6 +41,8 @@ class DataReference;
 }
 
 namespace WebCore {
+class AuthenticationChallenge;
+class ProtectionSpace;
 class ResourceBuffer;
 class ResourceError;
 class ResourceLoader;
@@ -48,27 +52,47 @@ class ResourceResponse;
 
 namespace WebKit {
 
+class PlatformCertificateInfo;
 typedef uint64_t ResourceLoadIdentifier;
 
-class WebResourceLoader : public RefCounted<WebResourceLoader> {
+class WebResourceLoader : public RefCounted<WebResourceLoader>, public CoreIPC::MessageSender<WebResourceLoader>, public WebCore::AuthenticationClient {
 public:
     static PassRefPtr<WebResourceLoader> create(PassRefPtr<WebCore::ResourceLoader>);
 
     ~WebResourceLoader();
 
+    // Used by MessageSender.
+    CoreIPC::Connection* connection() const;
+    uint64_t destinationID() const;
+
     void didReceiveWebResourceLoaderMessage(CoreIPC::Connection*, CoreIPC::MessageID, CoreIPC::MessageDecoder&);
+
+    using RefCounted<WebResourceLoader>::ref;
+    using RefCounted<WebResourceLoader>::deref;
+
+    virtual void receivedCredential(const WebCore::AuthenticationChallenge&, const WebCore::Credential&);
+    virtual void receivedRequestToContinueWithoutCredential(const WebCore::AuthenticationChallenge&);
+    virtual void receivedCancellation(const WebCore::AuthenticationChallenge&);
 
 private:
     WebResourceLoader(PassRefPtr<WebCore::ResourceLoader>);
 
     void willSendRequest(uint64_t requestID, const WebCore::ResourceRequest&, const WebCore::ResourceResponse& redirectResponse);
-    void didReceiveResponse(const WebCore::ResourceResponse&);
+    void didReceiveResponseWithCertificateInfo(const WebCore::ResourceResponse&, const PlatformCertificateInfo&);
     void didReceiveData(const CoreIPC::DataReference&, int64_t encodedDataLength, bool allAtOnce);
     void didFinishResourceLoad(double finishTime);
     void didFailResourceLoad(const WebCore::ResourceError&);
     void didReceiveResource(const ShareableResource::Handle&, double finishTime);
 
+    void canAuthenticateAgainstProtectionSpace(uint64_t requestID, const WebCore::ProtectionSpace&);
+    void didReceiveAuthenticationChallenge(const WebCore::AuthenticationChallenge&);
+    void didCancelAuthenticationChallenge(const WebCore::AuthenticationChallenge&);
+
+    virtual void refAuthenticationClient() { ref(); }
+    virtual void derefAuthenticationClient() { deref(); }
+
     RefPtr<WebCore::ResourceLoader> m_coreLoader;
+    OwnPtr<WebCore::AuthenticationChallenge> m_currentAuthenticationChallenge;
 };
 
 } // namespace WebKit

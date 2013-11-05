@@ -28,6 +28,7 @@
 #include "PageClientDefaultImpl.h"
 
 #include "EwkViewImpl.h"
+#include "ewk_view.h"
 
 #if USE(TILED_BACKING_STORE)
 #include "PageViewportController.h"
@@ -52,16 +53,14 @@ void PageClientDefaultImpl::didCommitLoad()
 #endif
 }
 
-void PageClientDefaultImpl::updateViewportSize(const WebCore::IntSize& size)
+void PageClientDefaultImpl::updateViewportSize()
 {
 #if USE(TILED_BACKING_STORE)
     if (!m_pageViewportControllerClient) {
         m_pageViewportControllerClient = PageViewportControllerClientEfl::create(m_viewImpl);
         m_pageViewportController = adoptPtr(new PageViewportController(m_viewImpl->page(), m_pageViewportControllerClient.get()));
     }
-    m_pageViewportControllerClient->updateViewportSize(size);
-#else
-    UNUSED_PARAM(size);
+    m_pageViewportControllerClient->updateViewportSize();
 #endif
 }
 
@@ -94,9 +93,9 @@ void PageClientDefaultImpl::didChangeContentsSize(const WebCore::IntSize& size)
 #if USE(TILED_BACKING_STORE)
     ASSERT(m_pageViewportController);
     m_pageViewportController->didChangeContentsSize(size);
-#else
-    m_viewImpl->informContentsSizeChange(size);
 #endif
+
+    m_viewImpl->smartCallback<ContentsSizeChanged>().call(size);
 }
 
 #if USE(TILED_BACKING_STORE)

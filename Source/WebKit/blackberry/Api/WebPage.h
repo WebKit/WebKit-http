@@ -99,7 +99,7 @@ public:
 
     void loadString(const BlackBerry::Platform::String&, const BlackBerry::Platform::String& baseURL, const BlackBerry::Platform::String& contentType = "text/html", const BlackBerry::Platform::String& failingURL = BlackBerry::Platform::String::emptyString());
 
-    void download(const Platform::NetworkRequest&);
+    void convertMainResourceLoadToDownload(const Platform::NetworkRequest&);
 
     bool executeJavaScript(const BlackBerry::Platform::String& script, JavaScriptDataType& returnType, BlackBerry::Platform::String& returnValue);
 
@@ -154,7 +154,7 @@ public:
 
     // For conversion to mouse events.
     void touchEventCancel();
-    bool touchPointAsMouseEvent(const Platform::TouchPoint&, bool useFatFingers = true);
+    void touchPointAsMouseEvent(const Platform::TouchPoint&, unsigned modifiers = 0);
 
     void playSoundIfAnchorIsTarget() const;
 
@@ -268,8 +268,6 @@ public:
 
     BlackBerry::Platform::String textHasAttribute(const BlackBerry::Platform::String& query) const;
 
-    void setAllowNotification(const BlackBerry::Platform::String& domain, bool allow);
-
     Platform::WebContext webContext(TargetDetectionStrategy) const;
 
     typedef intptr_t BackForwardId;
@@ -333,6 +331,8 @@ public:
     void notifyScreenPowerStateChanged(bool powered);
     void notifyFullScreenVideoExited(bool done);
     void clearPluginSiteData();
+    void setExtraPluginDirectory(const BlackBerry::Platform::String& path);
+    void updateDisabledPluginFiles(const BlackBerry::Platform::String& fileName, bool disabled);
     void setJavaScriptCanAccessClipboard(bool);
     bool isWebGLEnabled() const;
     void setWebGLEnabled(bool);
@@ -365,6 +365,12 @@ public:
     void enableQnxJavaScriptObject(bool);
 
     BlackBerry::Platform::String renderTreeAsText();
+
+    void updateNotificationPermission(const BlackBerry::Platform::String& requestId, bool allowed);
+    void notificationClicked(const BlackBerry::Platform::String& notificationId);
+    void notificationClosed(const BlackBerry::Platform::String& notificationId);
+    void notificationError(const BlackBerry::Platform::String& notificationId);
+    void notificationShown(const BlackBerry::Platform::String& notificationId);
 
 private:
     virtual ~WebPage();

@@ -28,12 +28,45 @@
 #include "JSHTMLOptionElement.h"
 #include "JSHTMLSelectElement.h"
 #include "JSHTMLSelectElementCustom.h"
+#include "JSNodeList.h"
+#include "StaticNodeList.h"
 
 #include <wtf/MathExtras.h>
 
 using namespace JSC;
 
 namespace WebCore {
+
+static JSValue getNamedItems(ExecState* exec, JSHTMLOptionsCollection* collection, PropertyName propertyName)
+{
+    Vector<RefPtr<Node> > namedItems;
+    const AtomicString& name = propertyNameToAtomicString(propertyName);
+    collection->impl()->namedItems(name, namedItems);
+
+    if (namedItems.isEmpty())
+        return jsUndefined();
+    if (namedItems.size() == 1)
+        return toJS(exec, collection->globalObject(), namedItems[0].get());
+
+    // FIXME: HTML5 specifies that this should be a LiveNodeList.
+    return toJS(exec, collection->globalObject(), StaticNodeList::adopt(namedItems).get());
+}
+
+bool JSHTMLOptionsCollection::canGetItemsForName(ExecState*, HTMLOptionsCollection* collection, PropertyName propertyName)
+{
+    return collection->hasNamedItem(propertyNameToAtomicString(propertyName));
+}
+
+JSValue JSHTMLOptionsCollection::nameGetter(ExecState* exec, JSValue slotBase, PropertyName propertyName)
+{
+    JSHTMLOptionsCollection* thisObj = jsCast<JSHTMLOptionsCollection*>(asObject(slotBase));
+    return getNamedItems(exec, thisObj, propertyName);
+}
+
+JSValue JSHTMLOptionsCollection::namedItem(ExecState* exec)
+{
+    return getNamedItems(exec, this, Identifier(exec, exec->argument(0).toString(exec)->value(exec)));
+}
 
 void JSHTMLOptionsCollection::setLength(ExecState* exec, JSValue value)
 {
@@ -57,7 +90,7 @@ void JSHTMLOptionsCollection::setLength(ExecState* exec, JSValue value)
 void JSHTMLOptionsCollection::indexSetter(ExecState* exec, unsigned index, JSValue value)
 {
     HTMLOptionsCollection* imp = static_cast<HTMLOptionsCollection*>(impl());
-    HTMLSelectElement* base = toHTMLSelectElement(imp->base());
+    HTMLSelectElement* base = toHTMLSelectElement(imp->ownerNode());
     selectIndexSetter(base, exec, index, value);
 }
 
@@ -85,7 +118,7 @@ JSValue JSHTMLOptionsCollection::add(ExecState* exec)
 JSValue JSHTMLOptionsCollection::remove(ExecState* exec)
 {
     HTMLOptionsCollection* imp = static_cast<HTMLOptionsCollection*>(impl());
-    JSHTMLSelectElement* base = jsCast<JSHTMLSelectElement*>(asObject(toJS(exec, globalObject(), imp->base())));
+    JSHTMLSelectElement* base = jsCast<JSHTMLSelectElement*>(asObject(toJS(exec, globalObject(), imp->ownerNode())));
     return base->remove(exec);
 }
 

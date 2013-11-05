@@ -26,11 +26,13 @@
 #ifndef WebLayerTreeViewClient_h
 #define WebLayerTreeViewClient_h
 
+class SkBitmap;
+
 namespace WebKit {
 class WebCompositorOutputSurface;
-class WebGraphicsContext3D;
 class WebInputHandler;
 class WebThread;
+struct WebRect;
 struct WebSize;
 
 class WebLayerTreeViewClient {
@@ -56,15 +58,6 @@ public:
     // for mobile-device pinch zooming). This is triggered by events sent to the
     // compositor thread through the WebCompositor interface.
     virtual void applyScrollAndScale(const WebSize& scrollDelta, float scaleFactor) = 0;
-
-    // DEPRECATED: Creates a 3D context suitable for the compositing. This may be called
-    // more than once if the context gets lost. This will be removed once
-    // downstream dependencies have been removed.
-    virtual WebGraphicsContext3D* createContext3D() { return 0; }
-
-    // DEPRECATED: Signals a successful rebinding of the 3D context (e.g. after a lost
-    // context event).
-    virtual void didRebindGraphicsContext(bool) { return; }
 
     // Creates the output surface. This may be called more than once
     // if the context gets lost.
@@ -99,6 +92,11 @@ public:
     // compositor thread is disabled; when enabled, the compositor will
     // internally schedule a compositing pass when needed.
     virtual void scheduleComposite() = 0;
+
+    // Creates a font atlas to use for debug visualizations. The atlas is a bitmap
+    // containing glyph data, a table of ASCII character values to a subrectangle
+    // of the atlas representing the corresponding glyph, and the glyph height.
+    virtual void createFontAtlas(SkBitmap&, WebRect asciiToRectTable[128], int& fontHeight) { }
 
 protected:
     virtual ~WebLayerTreeViewClient() { }

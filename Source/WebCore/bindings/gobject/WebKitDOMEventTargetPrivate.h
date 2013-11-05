@@ -21,7 +21,7 @@
 #define WebKitDOMEventTargetPrivate_h
 
 #include "EventTarget.h"
-#include <webkit/WebKitDOMEventTarget.h>
+#include <webkitdom/WebKitDOMEventTarget.h>
 
 namespace WebKit {
 WebCore::EventTarget* core(WebKitDOMEventTarget* request);

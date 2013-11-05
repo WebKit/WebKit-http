@@ -34,6 +34,19 @@
 using namespace WebKit;
 using namespace WebCore;
 
+/**
+ * SECTION: WebKitDownload
+ * @Short_description: Object used to communicate with the application when downloading
+ * @Title: WebKitDownload
+ *
+ * #WebKitDownload carries information about a download request and
+ * response, including a #WebKitURIRequest and a #WebKitURIResponse
+ * objects. The application may use this object to control the
+ * download process, or to simply figure out what is to be downloaded,
+ * and handle the download process itself.
+ *
+ */
+
 enum {
     RECEIVED_DATA,
     FINISHED,
@@ -53,6 +66,12 @@ enum {
 };
 
 struct _WebKitDownloadPrivate {
+    ~_WebKitDownloadPrivate()
+    {
+        if (webView)
+            g_object_remove_weak_pointer(G_OBJECT(webView), reinterpret_cast<void**>(&webView));
+    }
+
     RefPtr<DownloadProxy> download;
 
     GRefPtr<WebKitURIRequest> request;
@@ -68,16 +87,7 @@ struct _WebKitDownloadPrivate {
 
 static guint signals[LAST_SIGNAL] = { 0, };
 
-G_DEFINE_TYPE(WebKitDownload, webkit_download, G_TYPE_OBJECT)
-
-static void webkitDownloadFinalize(GObject* object)
-{
-    WebKitDownloadPrivate* priv = WEBKIT_DOWNLOAD(object)->priv;
-    if (priv->webView)
-        g_object_remove_weak_pointer(G_OBJECT(priv->webView), reinterpret_cast<void**>(&priv->webView));
-    priv->~WebKitDownloadPrivate();
-    G_OBJECT_CLASS(webkit_download_parent_class)->finalize(object);
-}
+WEBKIT_DEFINE_TYPE(WebKitDownload, webkit_download, G_TYPE_OBJECT)
 
 static void webkitDownloadGetProperty(GObject* object, guint propId, GValue* value, GParamSpec* paramSpec)
 {
@@ -111,18 +121,10 @@ static gboolean webkitDownloadDecideDestination(WebKitDownload* download, const 
     return TRUE;
 }
 
-static void webkit_download_init(WebKitDownload* download)
-{
-    WebKitDownloadPrivate* priv = G_TYPE_INSTANCE_GET_PRIVATE(download, WEBKIT_TYPE_DOWNLOAD, WebKitDownloadPrivate);
-    download->priv = priv;
-    new (priv) WebKitDownloadPrivate();
-}
-
 static void webkit_download_class_init(WebKitDownloadClass* downloadClass)
 {
     GObjectClass* objectClass = G_OBJECT_CLASS(downloadClass);
     objectClass->get_property = webkitDownloadGetProperty;
-    objectClass->finalize = webkitDownloadFinalize;
 
     downloadClass->decide_destination = webkitDownloadDecideDestination;
 
@@ -264,8 +266,6 @@ static void webkit_download_class_init(WebKitDownloadClass* downloadClass)
                      g_cclosure_marshal_VOID__STRING,
                      G_TYPE_BOOLEAN, 1,
                      G_TYPE_STRING);
-
-    g_type_class_add_private(downloadClass, sizeof(WebKitDownloadPrivate));
 }
 
 WebKitDownload* webkitDownloadCreate(DownloadProxy* downloadProxy)

@@ -40,7 +40,6 @@ PassOwnPtr<ScrollingTreeFixedNode> ScrollingTreeFixedNode::create(ScrollingTree*
 
 ScrollingTreeFixedNode::ScrollingTreeFixedNode(ScrollingTree* scrollingTree)
     : ScrollingTreeNode(scrollingTree)
-    , m_constraints(FixedPositionViewportConstraints())
 {
 }
 

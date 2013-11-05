@@ -24,6 +24,7 @@
 #ifndef NodeList_h
 #define NodeList_h
 
+#include "ScriptWrappable.h"
 #include <wtf/Forward.h>
 #include <wtf/RefCounted.h>
 
@@ -31,17 +32,17 @@ namespace WebCore {
 
     class Node;
 
-    class NodeList : public RefCounted<NodeList> {
+    class NodeList : public ScriptWrappable, public RefCounted<NodeList> {
     public:
         virtual ~NodeList() { }
 
         // DOM methods & attributes for NodeList
         virtual unsigned length() const = 0;
         virtual Node* item(unsigned index) const = 0;
-        virtual Node* itemWithName(const AtomicString&) const = 0;
-        
+        virtual Node* namedItem(const AtomicString&) const = 0;
+
         // Other methods (not part of DOM)
-        virtual bool isDynamicNodeList() const { return false; }
+        virtual bool isLiveNodeList() const { return false; }
     };
 
 } // namespace WebCore

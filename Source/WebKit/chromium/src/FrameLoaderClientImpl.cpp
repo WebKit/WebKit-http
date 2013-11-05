@@ -65,6 +65,7 @@
 #if ENABLE(REQUEST_AUTOCOMPLETE)
 #include "WebAutofillClient.h"
 #endif
+#include "WebCachedURLRequest.h"
 #include "WebDOMEvent.h"
 #include "WebDataSourceImpl.h"
 #include "WebDevToolsAgentPrivate.h"
@@ -1048,6 +1049,14 @@ void FrameLoaderClientImpl::dispatchUnableToImplementPolicy(const ResourceError&
     m_webFrame->client()->unableToImplementPolicyWithError(m_webFrame, error);
 }
 
+void FrameLoaderClientImpl::dispatchWillRequestResource(CachedResourceRequest* request)
+{
+    if (m_webFrame->client()) {
+        WebCachedURLRequest urlRequest(request);
+        m_webFrame->client()->willRequestResource(m_webFrame, urlRequest);
+    }
+}
+
 void FrameLoaderClientImpl::dispatchWillSendSubmitEvent(PassRefPtr<FormState> prpFormState)
 {
     if (m_webFrame->client())
@@ -1205,6 +1214,12 @@ bool FrameLoaderClientImpl::shouldStopLoadingForHistoryItem(HistoryItem* targetI
     // translated and then pass through again.
     const KURL& url = targetItem->url();
     return !url.protocolIs(backForwardNavigationScheme);
+}
+
+void FrameLoaderClientImpl::didDisownOpener()
+{
+    if (m_webFrame->client())
+        m_webFrame->client()->didDisownOpener(m_webFrame);
 }
 
 void FrameLoaderClientImpl::didDisplayInsecureContent()
@@ -1441,7 +1456,7 @@ bool FrameLoaderClientImpl::canCachePage() const
 
 // Downloading is handled in the browser process, not WebKit. If we get to this
 // point, our download detection code in the ResourceDispatcherHost is broken!
-void FrameLoaderClientImpl::download(ResourceHandle* handle,
+void FrameLoaderClientImpl::convertMainResourceLoadToDownload(MainResourceLoader* mainResourceLoader,
                                      const ResourceRequest& request,
                                      const ResourceResponse& response)
 {
@@ -1618,6 +1633,13 @@ bool FrameLoaderClientImpl::willCheckAndDispatchMessageEvent(
         source = WebFrameImpl::fromFrame(event->source()->document()->frame());
     return m_webFrame->client()->willCheckAndDispatchMessageEvent(
         source, m_webFrame, WebSecurityOrigin(target), WebDOMMessageEvent(event));
+}
+
+void FrameLoaderClientImpl::didChangeName(const String& name)
+{
+    if (!m_webFrame->client())
+        return;
+    m_webFrame->client()->didChangeName(m_webFrame, name);
 }
 
 #if ENABLE(WEB_INTENTS_TAG)

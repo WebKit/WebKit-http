@@ -33,14 +33,13 @@
 
 #include <wtf/ArrayBufferView.h>
 #include "DocumentLoader.h"
-#include "EventTargetHeaders.h"
-#include "EventTargetInterfaces.h"
 #include "Frame.h"
 #include "FrameLoaderClient.h"
 #include "StylePropertySet.h"
 #include "V8AbstractEventListener.h"
 #include "V8Binding.h"
 #include "V8Collection.h"
+#include "V8DOMWindow.h"
 #include "V8EventListener.h"
 #include "V8EventListenerList.h"
 #include "V8HTMLCollection.h"
@@ -56,7 +55,6 @@
 #include "V8WorkerContextEventListener.h"
 #include "WebGLContextAttributes.h"
 #include "WebGLUniformLocation.h"
-#include "WorkerContextExecutionProxy.h"
 #include "WrapperTypeInfo.h"
 #include <algorithm>
 #include <utility>
@@ -106,39 +104,17 @@ void V8DOMWrapper::setNamedHiddenReference(v8::Handle<v8::Object> parent, const 
     parent->SetHiddenValue(V8HiddenPropertyName::hiddenReferenceName(name, strlen(name)), child);
 }
 
-WrapperTypeInfo* V8DOMWrapper::domWrapperType(v8::Handle<v8::Object> object)
-{
-    ASSERT(V8DOMWrapper::maybeDOMWrapper(object));
-    return toWrapperTypeInfo(object);
-}
-
-PassRefPtr<NodeFilter> V8DOMWrapper::wrapNativeNodeFilter(v8::Handle<v8::Value> filter)
-{
-    // A NodeFilter is used when walking through a DOM tree or iterating tree
-    // nodes.
-    // FIXME: we may want to cache NodeFilterCondition and NodeFilter
-    // object, but it is minor.
-    // NodeFilter is passed to NodeIterator that has a ref counted pointer
-    // to NodeFilter. NodeFilter has a ref counted pointer to NodeFilterCondition.
-    // In NodeFilterCondition, filter object is persisted in its constructor,
-    // and disposed in its destructor.
-    return NodeFilter::create(V8NodeFilterCondition::create(filter));
-}
-
-v8::Local<v8::Object> V8DOMWrapper::instantiateV8Object(v8::Handle<v8::Object> creationContext, WrapperTypeInfo* type, void* impl)
+v8::Local<v8::Object> V8DOMWrapper::createWrapper(v8::Handle<v8::Object> creationContext, WrapperTypeInfo* type, void* impl)
 {
     V8WrapperInstantiationScope scope(creationContext);
 
     V8PerContextData* perContextData = V8PerContextData::from(scope.context());
-    v8::Local<v8::Object> instance = perContextData ? perContextData->createWrapperFromCache(type) : V8ObjectConstructor::newInstance(type->getTemplate()->GetFunction());
+    v8::Local<v8::Object> wrapper = perContextData ? perContextData->createWrapperFromCache(type) : V8ObjectConstructor::newInstance(type->getTemplate()->GetFunction());
 
-    // Avoid setting the DOM wrapper for failed allocations.
-    if (instance.IsEmpty())
-        return instance;
+    if (type == &V8HTMLDocument::info && !wrapper.IsEmpty())
+        wrapper = V8HTMLDocument::wrapInShadowObject(wrapper, static_cast<Node*>(impl));
 
-    if (type == &V8HTMLDocument::info)
-        instance = V8HTMLDocument::wrapInShadowObject(instance, static_cast<Node*>(impl));
-    return instance;
+    return wrapper;
 }
 
 static bool hasInternalField(v8::Handle<v8::Value> value)
@@ -169,29 +145,12 @@ bool V8DOMWrapper::isWrapperOfType(v8::Handle<v8::Value> value, WrapperTypeInfo*
     if (!hasInternalField(value))
         return false;
 
-    v8::Handle<v8::Object> object = v8::Handle<v8::Object>::Cast(value);
-    ASSERT(object->InternalFieldCount() >= v8DefaultWrapperInternalFieldCount);
-    ASSERT(object->GetAlignedPointerFromInternalField(v8DOMWrapperObjectIndex));
+    v8::Handle<v8::Object> wrapper = v8::Handle<v8::Object>::Cast(value);
+    ASSERT(wrapper->InternalFieldCount() >= v8DefaultWrapperInternalFieldCount);
+    ASSERT(wrapper->GetAlignedPointerFromInternalField(v8DOMWrapperObjectIndex));
 
-    WrapperTypeInfo* typeInfo = static_cast<WrapperTypeInfo*>(object->GetAlignedPointerFromInternalField(v8DOMWrapperTypeIndex));
+    WrapperTypeInfo* typeInfo = static_cast<WrapperTypeInfo*>(wrapper->GetAlignedPointerFromInternalField(v8DOMWrapperTypeIndex));
     return typeInfo == type;
-}
-
-#define TRY_TO_WRAP_WITH_INTERFACE(interfaceName) \
-    if (eventNames().interfaceFor##interfaceName == desiredInterface) \
-        return toV8(static_cast<interfaceName*>(target), creationContext, isolate);
-
-// A JS object of type EventTarget is limited to a small number of possible classes.
-v8::Handle<v8::Value> V8DOMWrapper::convertEventTargetToV8Object(EventTarget* target, v8::Handle<v8::Object> creationContext, v8::Isolate* isolate)
-{
-    if (!target)
-        return v8NullWithCheck(isolate);
-
-    AtomicString desiredInterface = target->interfaceName();
-    DOM_EVENT_TARGET_INTERFACES_FOR_EACH(TRY_TO_WRAP_WITH_INTERFACE)
-
-    ASSERT_NOT_REACHED();
-    return v8Undefined();
 }
 
 PassRefPtr<EventListener> V8DOMWrapper::getEventListener(v8::Local<v8::Value> value, bool isAttribute, ListenerLookupType lookup)

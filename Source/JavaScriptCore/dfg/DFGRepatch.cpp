@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011 Apple Inc. All rights reserved.
+ * Copyright (C) 2011, 2012 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -37,6 +37,7 @@
 #include "Operations.h"
 #include "PolymorphicPutByIdList.h"
 #include "RepatchBuffer.h"
+#include <wtf/StringPrintStream.h>
 
 namespace JSC { namespace DFG {
 
@@ -118,7 +119,7 @@ static void replaceWithJump(RepatchBuffer& repatchBuffer, StructureStubInfo& stu
 {
     if (MacroAssembler::canJumpReplacePatchableBranchPtrWithPatch()) {
         repatchBuffer.replaceWithJump(
-            RepatchBuffer::startOfPatchableBranchPtrWithPatch(
+            RepatchBuffer::startOfPatchableBranchPtrWithPatchOnAddress(
                 stubInfo.callReturnLocation.dataLabelPtrAtOffset(
                     -(intptr_t)stubInfo.patch.dfg.deltaCheckImmToCall)),
             CodeLocationLabel(target));
@@ -235,8 +236,8 @@ static void generateProtoChainAccessStub(ExecState* exec, StructureStubInfo& stu
     
     stubRoutine = FINALIZE_CODE_FOR_DFG_STUB(
         patchBuffer,
-        ("DFG prototype chain access stub for CodeBlock %p, return point %p",
-         exec->codeBlock(), successLabel.executableAddress()));
+        ("DFG prototype chain access stub for %s, return point %p",
+            toCString(*exec->codeBlock()).data(), successLabel.executableAddress()));
 }
 
 static bool tryCacheGetByID(ExecState* exec, JSValue baseValue, const Identifier& propertyName, const PropertySlot& slot, StructureStubInfo& stubInfo)
@@ -296,9 +297,9 @@ static bool tryCacheGetByID(ExecState* exec, JSValue baseValue, const Identifier
         
         stubInfo.stubRoutine = FINALIZE_CODE_FOR_DFG_STUB(
             patchBuffer,
-            ("DFG GetById array length stub for CodeBlock %p, return point %p",
-             exec->codeBlock(), stubInfo.callReturnLocation.labelAtOffset(
-                 stubInfo.patch.dfg.deltaCallToDone).executableAddress()));
+            ("DFG GetById array length stub for %s, return point %p",
+                toCString(*exec->codeBlock()).data(), stubInfo.callReturnLocation.labelAtOffset(
+                    stubInfo.patch.dfg.deltaCallToDone).executableAddress()));
         
         RepatchBuffer repatchBuffer(codeBlock);
         replaceWithJump(repatchBuffer, stubInfo, stubInfo.stubRoutine->code().code());
@@ -340,7 +341,7 @@ static bool tryCacheGetByID(ExecState* exec, JSValue baseValue, const Identifier
         return false;
     
     PropertyOffset offset = slot.cachedOffset();
-    size_t count = normalizePrototypeChain(exec, baseValue, slot.slotBase(), propertyName, offset);
+    size_t count = normalizePrototypeChainForChainAccess(exec, baseValue, slot.slotBase(), propertyName, offset);
     if (count == InvalidPrototypeChain)
         return false;
 
@@ -525,9 +526,9 @@ static bool tryBuildGetByIDList(ExecState* exec, JSValue baseValue, const Identi
             createJITStubRoutine(
                 FINALIZE_DFG_CODE(
                     patchBuffer,
-                    ("DFG GetById polymorphic list access for CodeBlock %p, return point %p",
-                     exec->codeBlock(), stubInfo.callReturnLocation.labelAtOffset(
-                         stubInfo.patch.dfg.deltaCallToDone).executableAddress())),
+                    ("DFG GetById polymorphic list access for %s, return point %p",
+                        toCString(*exec->codeBlock()).data(), stubInfo.callReturnLocation.labelAtOffset(
+                            stubInfo.patch.dfg.deltaCallToDone).executableAddress())),
                 *globalData,
                 codeBlock->ownerExecutable(),
                 slot.cachedPropertyType() == PropertySlot::Getter
@@ -568,7 +569,7 @@ static bool tryBuildGetByIDProtoList(ExecState* exec, JSValue baseValue, const I
     ASSERT(slot.slotBase().isObject());
     
     PropertyOffset offset = slot.cachedOffset();
-    size_t count = normalizePrototypeChain(exec, baseValue, slot.slotBase(), propertyName, offset);
+    size_t count = normalizePrototypeChainForChainAccess(exec, baseValue, slot.slotBase(), propertyName, offset);
     if (count == InvalidPrototypeChain)
         return false;
 
@@ -737,9 +738,9 @@ static void emitPutReplaceStub(
             
     stubRoutine = FINALIZE_CODE_FOR_DFG_STUB(
         patchBuffer,
-        ("DFG PutById replace stub for CodeBlock %p, return point %p",
-         exec->codeBlock(), stubInfo.callReturnLocation.labelAtOffset(
-             stubInfo.patch.dfg.deltaCallToDone).executableAddress()));
+        ("DFG PutById replace stub for %s, return point %p",
+            toCString(*exec->codeBlock()).data(), stubInfo.callReturnLocation.labelAtOffset(
+                stubInfo.patch.dfg.deltaCallToDone).executableAddress()));
 }
 
 static void emitPutTransitionStub(
@@ -937,11 +938,11 @@ static void emitPutTransitionStub(
         createJITStubRoutine(
             FINALIZE_DFG_CODE(
                 patchBuffer,
-                ("DFG PutById %stransition stub (%p -> %p) for CodeBlock %p, return point %p",
-                 structure->outOfLineCapacity() != oldStructure->outOfLineCapacity() ? "reallocating " : "",
-                 oldStructure, structure,
-                 exec->codeBlock(), stubInfo.callReturnLocation.labelAtOffset(
-                     stubInfo.patch.dfg.deltaCallToDone).executableAddress())),
+                ("DFG PutById %stransition stub (%p -> %p) for %s, return point %p",
+                    structure->outOfLineCapacity() != oldStructure->outOfLineCapacity() ? "reallocating " : "",
+                    oldStructure, structure,
+                    toCString(*exec->codeBlock()).data(), stubInfo.callReturnLocation.labelAtOffset(
+                        stubInfo.patch.dfg.deltaCallToDone).executableAddress())),
             *globalData,
             exec->codeBlock()->ownerExecutable(),
             structure->outOfLineCapacity() != oldStructure->outOfLineCapacity(),
@@ -1113,8 +1114,20 @@ void dfgBuildPutByIdList(ExecState* exec, JSValue baseValue, const Identifier& p
         dfgRepatchCall(exec->codeBlock(), stubInfo.callReturnLocation, appropriateGenericPutByIdFunction(slot, putKind));
 }
 
+static void linkSlowFor(RepatchBuffer& repatchBuffer, JSGlobalData* globalData, CallLinkInfo& callLinkInfo, CodeSpecializationKind kind)
+{
+    if (kind == CodeForCall) {
+        repatchBuffer.relink(callLinkInfo.callReturnLocation, globalData->getCTIStub(virtualCallThunkGenerator).code());
+        return;
+    }
+    ASSERT(kind == CodeForConstruct);
+    repatchBuffer.relink(callLinkInfo.callReturnLocation, globalData->getCTIStub(virtualConstructThunkGenerator).code());
+}
+
 void dfgLinkFor(ExecState* exec, CallLinkInfo& callLinkInfo, CodeBlock* calleeCodeBlock, JSFunction* callee, MacroAssemblerCodePtr codePtr, CodeSpecializationKind kind)
 {
+    ASSERT(!callLinkInfo.stub);
+    
     CodeBlock* callerCodeBlock = exec->callerFrame()->codeBlock();
     JSGlobalData* globalData = callerCodeBlock->globalData();
     
@@ -1129,11 +1142,110 @@ void dfgLinkFor(ExecState* exec, CallLinkInfo& callLinkInfo, CodeBlock* calleeCo
         calleeCodeBlock->linkIncomingCall(&callLinkInfo);
     
     if (kind == CodeForCall) {
-        repatchBuffer.relink(callLinkInfo.callReturnLocation, globalData->getCTIStub(virtualCallThunkGenerator).code());
+        repatchBuffer.relink(callLinkInfo.callReturnLocation, globalData->getCTIStub(linkClosureCallThunkGenerator).code());
         return;
     }
+    
     ASSERT(kind == CodeForConstruct);
-    repatchBuffer.relink(callLinkInfo.callReturnLocation, globalData->getCTIStub(virtualConstructThunkGenerator).code());
+    linkSlowFor(repatchBuffer, globalData, callLinkInfo, CodeForConstruct);
+}
+
+void dfgLinkSlowFor(ExecState* exec, CallLinkInfo& callLinkInfo, CodeSpecializationKind kind)
+{
+    CodeBlock* callerCodeBlock = exec->callerFrame()->codeBlock();
+    JSGlobalData* globalData = callerCodeBlock->globalData();
+    
+    RepatchBuffer repatchBuffer(callerCodeBlock);
+    
+    linkSlowFor(repatchBuffer, globalData, callLinkInfo, kind);
+}
+
+void dfgLinkClosureCall(ExecState* exec, CallLinkInfo& callLinkInfo, CodeBlock* calleeCodeBlock, Structure* structure, ExecutableBase* executable, MacroAssemblerCodePtr codePtr)
+{
+    ASSERT(!callLinkInfo.stub);
+    
+    CodeBlock* callerCodeBlock = exec->callerFrame()->codeBlock();
+    JSGlobalData* globalData = callerCodeBlock->globalData();
+    
+    GPRReg calleeGPR = static_cast<GPRReg>(callLinkInfo.calleeGPR);
+    
+    CCallHelpers stubJit(globalData, callerCodeBlock);
+    
+    CCallHelpers::JumpList slowPath;
+    
+#if USE(JSVALUE64)
+    slowPath.append(
+        stubJit.branchTest64(
+            CCallHelpers::NonZero, calleeGPR, GPRInfo::tagMaskRegister));
+#else
+    // We would have already checked that the callee is a cell.
+#endif
+    
+    slowPath.append(
+        stubJit.branchPtr(
+            CCallHelpers::NotEqual,
+            CCallHelpers::Address(calleeGPR, JSCell::structureOffset()),
+            CCallHelpers::TrustedImmPtr(structure)));
+    
+    slowPath.append(
+        stubJit.branchPtr(
+            CCallHelpers::NotEqual,
+            CCallHelpers::Address(calleeGPR, JSFunction::offsetOfExecutable()),
+            CCallHelpers::TrustedImmPtr(executable)));
+    
+    stubJit.loadPtr(
+        CCallHelpers::Address(calleeGPR, JSFunction::offsetOfScopeChain()),
+        GPRInfo::returnValueGPR);
+
+#if USE(JSVALUE64)
+    stubJit.store64(
+        GPRInfo::returnValueGPR,
+        CCallHelpers::Address(GPRInfo::callFrameRegister, static_cast<ptrdiff_t>(sizeof(Register) * JSStack::ScopeChain)));
+#else
+    stubJit.storePtr(
+        GPRInfo::returnValueGPR,
+        CCallHelpers::Address(GPRInfo::callFrameRegister, static_cast<ptrdiff_t>(sizeof(Register) * JSStack::ScopeChain) + OBJECT_OFFSETOF(EncodedValueDescriptor, asBits.payload)));
+    stubJit.store32(
+        CCallHelpers::TrustedImm32(JSValue::CellTag),
+        CCallHelpers::Address(GPRInfo::callFrameRegister, static_cast<ptrdiff_t>(sizeof(Register) * JSStack::ScopeChain) + OBJECT_OFFSETOF(EncodedValueDescriptor, asBits.tag)));
+#endif
+    
+    JITCompiler::Call call = stubJit.nearCall();
+    JITCompiler::Jump done = stubJit.jump();
+    
+    slowPath.link(&stubJit);
+    stubJit.move(CCallHelpers::TrustedImmPtr(callLinkInfo.callReturnLocation.executableAddress()), GPRInfo::nonArgGPR2);
+    stubJit.restoreReturnAddressBeforeReturn(GPRInfo::nonArgGPR2);
+    stubJit.move(calleeGPR, GPRInfo::nonArgGPR0);
+#if USE(JSVALUE32_64)
+    stubJit.move(CCallHelpers::TrustedImm32(JSValue::CellTag), GPRInfo::nonArgGPR1);
+#endif
+    JITCompiler::Jump slow = stubJit.jump();
+    
+    LinkBuffer patchBuffer(*globalData, &stubJit, callerCodeBlock);
+    
+    patchBuffer.link(call, FunctionPtr(codePtr.executableAddress()));
+    patchBuffer.link(done, callLinkInfo.callReturnLocation.labelAtOffset(0));
+    patchBuffer.link(slow, CodeLocationLabel(globalData->getCTIStub(virtualCallThunkGenerator).code()));
+    
+    RefPtr<ClosureCallStubRoutine> stubRoutine = adoptRef(new ClosureCallStubRoutine(
+        FINALIZE_DFG_CODE(
+            patchBuffer,
+            ("DFG closure call stub for %s, return point %p, target %p (%s)",
+                toCString(*callerCodeBlock).data(), callLinkInfo.callReturnLocation.labelAtOffset(0).executableAddress(),
+                codePtr.executableAddress(), toCString(*calleeCodeBlock).data())),
+        *globalData, callerCodeBlock->ownerExecutable(), structure, executable, callLinkInfo.codeOrigin));
+    
+    RepatchBuffer repatchBuffer(callerCodeBlock);
+    
+    repatchBuffer.replaceWithJump(
+        RepatchBuffer::startOfBranchPtrWithPatchOnRegister(callLinkInfo.hotPathBegin),
+        CodeLocationLabel(stubRoutine->code().code()));
+    linkSlowFor(repatchBuffer, globalData, callLinkInfo, CodeForCall);
+    
+    callLinkInfo.stub = stubRoutine.release();
+    
+    ASSERT(!calleeCodeBlock || calleeCodeBlock->isIncomingCallAlreadyLinked(&callLinkInfo));
 }
 
 void dfgResetGetByID(RepatchBuffer& repatchBuffer, StructureStubInfo& stubInfo)
@@ -1142,7 +1254,7 @@ void dfgResetGetByID(RepatchBuffer& repatchBuffer, StructureStubInfo& stubInfo)
     CodeLocationDataLabelPtr structureLabel = stubInfo.callReturnLocation.dataLabelPtrAtOffset(-(intptr_t)stubInfo.patch.dfg.deltaCheckImmToCall);
     if (MacroAssembler::canJumpReplacePatchableBranchPtrWithPatch()) {
         repatchBuffer.revertJumpReplacementToPatchableBranchPtrWithPatch(
-            RepatchBuffer::startOfPatchableBranchPtrWithPatch(structureLabel),
+            RepatchBuffer::startOfPatchableBranchPtrWithPatchOnAddress(structureLabel),
             MacroAssembler::Address(
                 static_cast<MacroAssembler::RegisterID>(stubInfo.patch.dfg.baseGPR),
                 JSCell::structureOffset()),
@@ -1176,7 +1288,7 @@ void dfgResetPutByID(RepatchBuffer& repatchBuffer, StructureStubInfo& stubInfo)
     CodeLocationDataLabelPtr structureLabel = stubInfo.callReturnLocation.dataLabelPtrAtOffset(-(intptr_t)stubInfo.patch.dfg.deltaCheckImmToCall);
     if (MacroAssembler::canJumpReplacePatchableBranchPtrWithPatch()) {
         repatchBuffer.revertJumpReplacementToPatchableBranchPtrWithPatch(
-            RepatchBuffer::startOfPatchableBranchPtrWithPatch(structureLabel),
+            RepatchBuffer::startOfPatchableBranchPtrWithPatchOnAddress(structureLabel),
             MacroAssembler::Address(
                 static_cast<MacroAssembler::RegisterID>(stubInfo.patch.dfg.baseGPR),
                 JSCell::structureOffset()),

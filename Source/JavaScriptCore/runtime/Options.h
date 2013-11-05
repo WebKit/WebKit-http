@@ -66,9 +66,16 @@ namespace JSC {
     v(bool, useDFGJIT, true) \
     v(bool, useRegExpJIT, true) \
     \
+    v(bool, forceDFGCodeBlockLiveness, false) \
+    \
+    v(bool, dumpGeneratedBytecodes, false) \
+    \
     /* showDisassembly implies showDFGDisassembly. */ \
     v(bool, showDisassembly, false) \
     v(bool, showDFGDisassembly, false) \
+    v(bool, showAllDFGNodes, false) \
+    \
+    v(bool, enableProfiler, false) \
     \
     v(unsigned, maximumOptimizationCandidateInstructionCount, 10000) \
     \
@@ -82,11 +89,13 @@ namespace JSC {
     v(int32, thresholdForJITSoon, 100) \
     \
     v(int32, thresholdForOptimizeAfterWarmUp, 1000) \
-    v(int32, thresholdForOptimizeAfterLongWarmUp, 5000) \
+    v(int32, thresholdForOptimizeAfterLongWarmUp, 1000) \
     v(int32, thresholdForOptimizeSoon, 1000) \
     \
     v(int32, executionCounterIncrementForLoop, 1) \
     v(int32, executionCounterIncrementForReturn, 15) \
+    \
+    v(int32, evalThresholdMultiplier, 10) \
     \
     v(bool, randomizeExecutionCountsBetweenCheckpoints, false) \
     v(int32, maximumExecutionCountsBetweenCheckpoints, 1000) \

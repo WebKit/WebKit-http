@@ -21,6 +21,7 @@
 #include "config.h"
 #include "WebKitLoaderClient.h"
 
+#include "WebKit2GtkAuthenticationDialog.h"
 #include "WebKitBackForwardListPrivate.h"
 #include "WebKitURIResponsePrivate.h"
 #include "WebKitWebViewBasePrivate.h"
@@ -56,8 +57,11 @@ static void didFailProvisionalLoadWithErrorForFrame(WKPageRef page, WKFrameRef f
     GOwnPtr<GError> webError(g_error_new_literal(g_quark_from_string(resourceError.domain().utf8().data()),
                                                  resourceError.errorCode(),
                                                  resourceError.localizedDescription().utf8().data()));
-    webkitWebViewLoadFailed(WEBKIT_WEB_VIEW(clientInfo), WEBKIT_LOAD_STARTED,
-                            resourceError.failingURL().utf8().data(), webError.get());
+    if (resourceError.tlsErrors()) {
+        webkitWebViewLoadFailedWithTLSErrors(WEBKIT_WEB_VIEW(clientInfo), resourceError.failingURL().utf8().data(), webError.get(),
+            static_cast<GTlsCertificateFlags>(resourceError.tlsErrors()), resourceError.certificate());
+    } else
+        webkitWebViewLoadFailed(WEBKIT_WEB_VIEW(clientInfo), WEBKIT_LOAD_STARTED, resourceError.failingURL().utf8().data(), webError.get());
 }
 
 static void didCommitLoadForFrame(WKPageRef page, WKFrameRef frame, WKTypeRef userData, const void* clientInfo)
@@ -105,6 +109,16 @@ static void didReceiveTitleForFrame(WKPageRef page, WKStringRef titleRef, WKFram
     webkitWebViewSetTitle(WEBKIT_WEB_VIEW(clientInfo), toImpl(titleRef)->string().utf8());
 }
 
+static void didDisplayInsecureContentForFrame(WKPageRef page, WKFrameRef frame, WKTypeRef userData, const void *clientInfo)
+{
+    webkitWebViewInsecureContentDetected(WEBKIT_WEB_VIEW(clientInfo), WEBKIT_INSECURE_CONTENT_DISPLAYED);
+}
+
+static void didRunInsecureContentForFrame(WKPageRef page, WKFrameRef frame, WKTypeRef userData, const void *clientInfo)
+{
+    webkitWebViewInsecureContentDetected(WEBKIT_WEB_VIEW(clientInfo), WEBKIT_INSECURE_CONTENT_RUN);
+}
+
 static void didChangeProgress(WKPageRef page, const void* clientInfo)
 {
     webkitWebViewSetEstimatedLoadProgress(WEBKIT_WEB_VIEW(clientInfo), WKPageGetEstimatedProgress(page));
@@ -113,6 +127,11 @@ static void didChangeProgress(WKPageRef page, const void* clientInfo)
 static void didChangeBackForwardList(WKPageRef page, WKBackForwardListItemRef addedItem, WKArrayRef removedItems, const void* clientInfo)
 {
     webkitBackForwardListChanged(webkit_web_view_get_back_forward_list(WEBKIT_WEB_VIEW(clientInfo)), toImpl(addedItem), toImpl(removedItems));
+}
+
+static void didReceiveAuthenticationChallengeInFrame(WKPageRef page, WKFrameRef frame, WKAuthenticationChallengeRef authenticationChallenge, const void *clientInfo)
+{
+    webkitWebViewHandleAuthenticationChallenge(WEBKIT_WEB_VIEW(clientInfo), toImpl(authenticationChallenge));
 }
 
 void attachLoaderClientToView(WebKitWebView* webView)
@@ -132,10 +151,10 @@ void attachLoaderClientToView(WebKitWebView* webView)
         0, // didFirstLayoutForFrame
         0, // didFirstVisuallyNonEmptyLayoutForFrame
         0, // didRemoveFrameFromHierarchy
-        0, // didDisplayInsecureContentForFrame
-        0, // didRunInsecureContentForFrame
+        didDisplayInsecureContentForFrame,
+        didRunInsecureContentForFrame,
         0, // canAuthenticateAgainstProtectionSpaceInFrame
-        0, // didReceiveAuthenticationChallengeInFrame
+        didReceiveAuthenticationChallengeInFrame,
         didChangeProgress, // didStartProgress
         didChangeProgress,
         didChangeProgress, // didFinishProgress

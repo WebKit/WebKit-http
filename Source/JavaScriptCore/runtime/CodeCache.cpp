@@ -126,7 +126,7 @@ UnlinkedFunctionCodeBlock* CodeCache::generateFunctionCodeBlock(JSGlobalData& gl
     body->destroyData();
     if (error.m_type != ParserError::ErrorNone)
         return 0;
-    m_cachedFunctionCode.add(result, Strong<UnlinkedFunctionCodeBlock>(globalData, result));
+    m_recentlyUsedFunctionCode.add(result, Strong<UnlinkedFunctionCodeBlock>(globalData, result));
     return result;
 }
 
@@ -173,7 +173,7 @@ UnlinkedFunctionExecutable* CodeCache::getFunctionExecutableFromGlobalCode(JSGlo
 
 void CodeCache::usedFunctionCode(JSGlobalData& globalData, UnlinkedFunctionCodeBlock* codeBlock)
 {
-    m_cachedFunctionCode.add(codeBlock, Strong<UnlinkedFunctionCodeBlock>(globalData, codeBlock));
+    m_recentlyUsedFunctionCode.add(codeBlock, Strong<UnlinkedFunctionCodeBlock>(globalData, codeBlock));
 }
 
 }

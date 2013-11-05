@@ -33,6 +33,7 @@
 #include "DFGCommon.h"
 #include "LinkBuffer.h"
 #include "MacroAssembler.h"
+#include <wtf/StringPrintStream.h>
 #include <wtf/Vector.h>
 
 namespace JSC { namespace DFG {
@@ -62,10 +63,27 @@ public:
         m_endOfCode = label;
     }
     
+    void dump(PrintStream&, LinkBuffer&);
     void dump(LinkBuffer&);
+    void reportToProfiler(Profiler::Compilation*, LinkBuffer&);
     
 private:
-    void dumpDisassembly(const char* prefix, LinkBuffer&, MacroAssembler::Label& previousLabel, MacroAssembler::Label currentLabel, NodeIndex context);
+    void dumpHeader(PrintStream&, LinkBuffer&);
+    
+    struct DumpedOp {
+        DumpedOp(CodeOrigin codeOrigin, CString text)
+            : codeOrigin(codeOrigin)
+            , text(text)
+        {
+        }
+        
+        CodeOrigin codeOrigin;
+        CString text;
+    };
+    void append(Vector<DumpedOp>&, StringPrintStream&, CodeOrigin&);
+    Vector<DumpedOp> createDumpList(LinkBuffer&);
+    
+    void dumpDisassembly(PrintStream&, const char* prefix, LinkBuffer&, MacroAssembler::Label& previousLabel, MacroAssembler::Label currentLabel, NodeIndex context);
     
     Graph& m_graph;
     MacroAssembler::Label m_startOfCode;

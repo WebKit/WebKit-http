@@ -26,14 +26,21 @@
 #include "config.h"
 #include "V8ValueCache.h"
 
-#include "BindingVisitors.h"
 #include "V8Binding.h"
 
 namespace WebCore {
 
 static v8::Local<v8::String> makeExternalString(const String& string)
 {
-    WebCoreStringResource* stringResource = new WebCoreStringResource(string);
+    if (string.is8Bit() && string.containsOnlyASCII()) {
+        WebCoreStringResource8* stringResource = new WebCoreStringResource8(string);
+        v8::Local<v8::String> newString = v8::String::NewExternal(stringResource);
+        if (newString.IsEmpty())
+            delete stringResource;
+        return newString;
+    }
+
+    WebCoreStringResource16* stringResource = new WebCoreStringResource16(string);
     v8::Local<v8::String> newString = v8::String::NewExternal(stringResource);
     if (newString.IsEmpty())
         delete stringResource;
@@ -93,33 +100,11 @@ v8::Local<v8::String> StringCache::v8ExternalStringSlow(StringImpl* stringImpl, 
     return newString;
 }
 
-void WebCoreStringResource::visitStrings(ExternalStringVisitor* visitor)
+IntegerCache::IntegerCache()
 {
-    visitor->visitJSExternalString(m_plainString.impl());
-    if (m_plainString.impl() != m_atomicString.impl() && !m_atomicString.isNull())
-        visitor->visitJSExternalString(m_atomicString.impl());
-}
-
-void IntegerCache::createSmallIntegers(v8::Isolate* isolate)
-{
-    ASSERT(!m_initialized);
-    // We initialize m_smallIntegers not in a constructor but in v8Integer(),
-    // because Integer::New() requires a HandleScope. At the point where
-    // IntegerCache is constructed, a HandleScope might not exist.
+    v8::HandleScope handleScope;
     for (int value = 0; value < numberOfCachedSmallIntegers; value++)
-        m_smallIntegers[value] = v8::Persistent<v8::Integer>::New(v8::Integer::New(value, isolate));
-    m_initialized = true;
-}
-
-IntegerCache::~IntegerCache()
-{
-    if (m_initialized) {
-        for (int value = 0; value < numberOfCachedSmallIntegers; value++) {
-            m_smallIntegers[value].Dispose();
-            m_smallIntegers[value].Clear();
-        }
-        m_initialized = false;
-    }
+        m_smallIntegers[value].set(v8::Integer::New(value));
 }
 
 } // namespace WebCore

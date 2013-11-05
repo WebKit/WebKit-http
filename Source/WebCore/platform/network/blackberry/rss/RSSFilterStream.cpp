@@ -449,7 +449,7 @@ void RSSFilterStream::notifyStatusReceived(int status, const char* message)
     FilterStream::notifyStatusReceived(status, message);
 }
 
-void RSSFilterStream::notifyHeadersReceived(NetworkRequest::HeaderList& headers)
+void RSSFilterStream::notifyHeadersReceived(const NetworkRequest::HeaderList& headers)
 {
     if (!isRSSContent(m_resourceType)) {
         NetworkRequest::HeaderList::const_iterator end = headers.end();
@@ -525,9 +525,16 @@ bool RSSFilterStream::convertContentToHtml(std::string& result)
     if (!success)
         return false;
 
+    // FIXME:
+    // The HTML string generated below purports to be a UTF8-encoded
+    // WTF::String, although its characters8() data should be Latin1.
+    // We build then extract this string, pretending that we don't know
+    // that we pass incorrectly-encoded char data both ways.
+    // We should use BlackBerry::Platform::String instead of WTF::String.
     OwnPtr<RSSGenerator> generator = adoptPtr(new RSSGenerator());
     String html = generator->generateHtml(parser->m_root);
-    result = html.utf8(String::StrictConversion).data();
+    ASSERT(html.is8Bit());
+    result.assign(reinterpret_cast<const char*>(html.characters8()), html.length());
 
     return true;
 }
@@ -539,10 +546,10 @@ void RSSFilterStream::handleRSSContent()
     BlackBerry::Platform::NetworkBuffer* buffer;
     std::string html;
     if (!convertContentToHtml(html))
-        buffer = BlackBerry::Platform::createNetworkBufferWithData(m_content.c_str(), m_content.size());
+        buffer = BlackBerry::Platform::createNetworkBufferByCopyingData(m_content.c_str(), m_content.size());
     else {
         updateRSSHeaders(html.size());
-        buffer = BlackBerry::Platform::createNetworkBufferWithData(html.c_str(), html.size());
+        buffer = BlackBerry::Platform::createNetworkBufferByCopyingData(html.c_str(), html.size());
     }
 
     sendSavedHeaders();

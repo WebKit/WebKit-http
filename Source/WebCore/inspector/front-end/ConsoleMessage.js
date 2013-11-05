@@ -322,22 +322,40 @@ WebInspector.ConsoleMessageImpl.prototype = {
                 titleElement.createTextChild(": ");
             }
 
-            var span = titleElement.createChild("span", "console-formatted-" + property.type);
-            if (property.type === "object") {
-                if (property.subtype === "node")
-                    span.addStyleClass("console-formatted-preview-node");
-                else if (property.subtype === "regexp")
-                    span.addStyleClass("console-formatted-string");
-                span.textContent = property.value;
-            } else if (property.type === "function")
-                span.textContent = "function";
-            else
-                span.textContent = property.value;
+            this._appendPropertyPreview(titleElement, property);
         }
         if (preview.overflow)
             titleElement.createChild("span").textContent = "\u2026";
         titleElement.createTextChild(isArray ? "]" : "}");
         return preview.lossless;
+    },
+
+    /**
+     * @param {Element} titleElement
+     * @param {RuntimeAgent.PropertyPreview} property
+     */
+    _appendPropertyPreview: function(titleElement, property)
+    {
+        var span = titleElement.createChild("span", "console-formatted-" + property.type);
+
+        if (property.type === "function") {
+            span.textContent = "function";
+            return;
+        }
+
+        if (property.type === "object" && property.subtype === "regexp") {
+            span.addStyleClass("console-formatted-string");
+            span.textContent = property.value;
+            return;
+        }
+
+        if (property.type === "object" && property.subtype === "node" && property.value) {
+            span.addStyleClass("console-formatted-preview-node");
+            WebInspector.DOMPresentationUtils.createSpansForNodeTitle(span, property.value);
+            return;
+        }
+
+        span.textContent = property.value;
     },
 
     _formatParameterAsNode: function(object, elem)
@@ -368,7 +386,7 @@ WebInspector.ConsoleMessageImpl.prototype = {
      */
     useArrayPreviewInFormatter: function(array)
     {
-        return !!array.preview;
+        return this.type !== WebInspector.ConsoleMessage.MessageType.DirXML && !!array.preview;
     },
 
     _formatParameterAsArray: function(array, elem)
@@ -592,21 +610,21 @@ WebInspector.ConsoleMessageImpl.prototype = {
         this._element = element;
 
         switch (this.level) {
-            case WebInspector.ConsoleMessage.MessageLevel.Tip:
-                element.addStyleClass("console-tip-level");
-                break;
-            case WebInspector.ConsoleMessage.MessageLevel.Log:
-                element.addStyleClass("console-log-level");
-                break;
-            case WebInspector.ConsoleMessage.MessageLevel.Debug:
-                element.addStyleClass("console-debug-level");
-                break;
-            case WebInspector.ConsoleMessage.MessageLevel.Warning:
-                element.addStyleClass("console-warning-level");
-                break;
-            case WebInspector.ConsoleMessage.MessageLevel.Error:
-                element.addStyleClass("console-error-level");
-                break;
+        case WebInspector.ConsoleMessage.MessageLevel.Tip:
+            element.addStyleClass("console-tip-level");
+            break;
+        case WebInspector.ConsoleMessage.MessageLevel.Log:
+            element.addStyleClass("console-log-level");
+            break;
+        case WebInspector.ConsoleMessage.MessageLevel.Debug:
+            element.addStyleClass("console-debug-level");
+            break;
+        case WebInspector.ConsoleMessage.MessageLevel.Warning:
+            element.addStyleClass("console-warning-level");
+            break;
+        case WebInspector.ConsoleMessage.MessageLevel.Error:
+            element.addStyleClass("console-error-level");
+            break;
         }
 
         if (this.type === WebInspector.ConsoleMessage.MessageType.StartGroup || this.type === WebInspector.ConsoleMessage.MessageType.StartGroupCollapsed)

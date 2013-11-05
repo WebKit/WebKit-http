@@ -34,6 +34,7 @@
 #include "CrossThreadTask.h"
 #include "DatabaseTask.h"
 #include "Document.h"
+#include "FrameLoadRequest.h"
 #include "GroupSettings.h"
 #include "KURL.h"
 #include "MessageEvent.h"
@@ -130,10 +131,9 @@ void WebSharedWorkerImpl::initializeLoader(const WebURL& url)
     // Construct substitute data source for the 'shadow page'. We only need it
     // to have same origin as the worker so the loading checks work correctly.
     CString content("");
-    int len = static_cast<int>(content.length());
-    RefPtr<SharedBuffer> buf(SharedBuffer::create(content.data(), len));
-    SubstituteData substData(buf, String("text/html"), String("UTF-8"), KURL());
-    webFrame->frame()->loader()->load(ResourceRequest(url), substData, false);
+    int length = static_cast<int>(content.length());
+    RefPtr<SharedBuffer> buffer(SharedBuffer::create(content.data(), length));
+    webFrame->frame()->loader()->load(FrameLoadRequest(webFrame->frame(), ResourceRequest(url), SubstituteData(buffer, "text/html", "UTF-8", KURL())));
 
     // This document will be used as 'loading context' for the worker.
     m_loadingDocument = webFrame->frame()->document();
@@ -203,30 +203,25 @@ void WebSharedWorkerImpl::postExceptionTask(ScriptExecutionContext* context,
 }
 
 void WebSharedWorkerImpl::postConsoleMessageToWorkerObject(MessageSource source,
-                                                           MessageType type,
                                                            MessageLevel level,
                                                            const String& message,
                                                            int lineNumber,
                                                            const String& sourceURL)
 {
-    WebWorkerBase::dispatchTaskToMainThread(createCallbackTask(&postConsoleMessageTask, AllowCrossThreadAccess(this),
-                                            source, type, level,
-                                            message, lineNumber, sourceURL));
+    WebWorkerBase::dispatchTaskToMainThread(createCallbackTask(&postConsoleMessageTask, AllowCrossThreadAccess(this), source, level, message, lineNumber, sourceURL));
 }
 
 void WebSharedWorkerImpl::postConsoleMessageTask(ScriptExecutionContext* context,
                                                  WebSharedWorkerImpl* thisPtr,
                                                  int source,
-                                                 int type, int level,
+                                                 int level,
                                                  const String& message,
                                                  int lineNumber,
                                                  const String& sourceURL)
 {
     if (!thisPtr->client())
         return;
-    thisPtr->client()->postConsoleMessageToWorkerObject(source,
-                                                              type, level, message,
-                                                              lineNumber, sourceURL);
+    thisPtr->client()->postConsoleMessageToWorkerObject(source, level, message, lineNumber, sourceURL);
 }
 
 void WebSharedWorkerImpl::postMessageToPageInspector(const String& message)

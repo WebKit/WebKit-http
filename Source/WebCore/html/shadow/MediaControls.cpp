@@ -1,6 +1,6 @@
 /*
- * Copyright (C) 2011 Apple Inc. All rights reserved.
- * Copyright (C) 2011 Google Inc. All rights reserved.
+ * Copyright (C) 2011, 2012 Apple Inc. All rights reserved.
+ * Copyright (C) 2011, 2012 Google Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -369,7 +369,9 @@ void MediaControls::createTextTrackDisplay()
 
     // Insert it before the first controller element so it always displays behind the controls.
     ExceptionCode ec;
-    insertBefore(textDisplayContainer.release(), m_panel, ec, true);
+    insertBefore(textDisplayContainer, m_panel, ec, true);
+    textDisplayContainer->createSubtrees(document());
+    textDisplayContainer.release();
 }
 
 void MediaControls::showTextTrackDisplay()

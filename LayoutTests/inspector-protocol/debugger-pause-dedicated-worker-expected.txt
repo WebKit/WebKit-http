@@ -1,6 +1,5 @@
 Started worker
 Worker created
-didEnableWorkerDebugging
 didConnectToWorker
 SUCCESS: Worker paused
 

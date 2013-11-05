@@ -112,8 +112,9 @@ LayoutState::LayoutState(LayoutState* prev, RenderBox* renderer, const LayoutSiz
 
 #if ENABLE(CSS_EXCLUSIONS)
     if (renderer->isRenderBlock()) {
-        m_exclusionShapeInsideInfo = toRenderBlock(renderer)->exclusionShapeInsideInfo();
-        if (!m_exclusionShapeInsideInfo)
+        const RenderBlock* renderBlock = toRenderBlock(renderer);
+        m_exclusionShapeInsideInfo = renderBlock->exclusionShapeInsideInfo();
+        if (!m_exclusionShapeInsideInfo && m_next->m_exclusionShapeInsideInfo && renderBlock->allowsExclusionShapeInsideInfoSharing())
             m_exclusionShapeInsideInfo = m_next->m_exclusionShapeInsideInfo;
     }
 #endif
@@ -156,7 +157,7 @@ LayoutState::LayoutState(RenderObject* root)
 #endif
 {
     RenderObject* container = root->container();
-    FloatPoint absContentPoint = container->localToAbsolute(FloatPoint(), UseTransforms | SnapOffsetForTransforms);
+    FloatPoint absContentPoint = container->localToAbsolute(FloatPoint(), UseTransforms);
     m_paintOffset = LayoutSize(absContentPoint.x(), absContentPoint.y());
 
     if (container->hasOverflowClip()) {

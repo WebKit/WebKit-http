@@ -84,11 +84,7 @@ v8::Handle<v8::Value> V8Document::evaluateCallback(const v8::Arguments& args)
     if (V8XPathResult::HasInstance(args[4]))
         inResult = V8XPathResult::toNative(v8::Handle<v8::Object>::Cast(args[4]));
 
-    v8::TryCatch exceptionCatcher;
-    RefPtr<XPathResult> result = document->evaluate(expression, contextNode.get(), resolver.get(), type, inResult.get(), ec);
-    if (exceptionCatcher.HasCaught())
-        return throwError(exceptionCatcher.Exception(), args.GetIsolate());
-
+    V8TRYCATCH(RefPtr<XPathResult>, result, document->evaluate(expression, contextNode.get(), resolver.get(), type, inResult.get(), ec));
     if (ec)
         return setDOMException(ec, args.GetIsolate());
 
@@ -107,7 +103,7 @@ v8::Handle<v8::Object> wrap(Document* impl, v8::Handle<v8::Object> creationConte
     v8::Handle<v8::Object> wrapper = V8Document::createWrapper(impl, creationContext, isolate);
     if (wrapper.IsEmpty())
         return wrapper;
-    if (!V8DOMWindowShell::getEntered()) {
+    if (!worldForEnteredContextIfIsolated()) {
         if (Frame* frame = impl->frame())
             frame->script()->windowShell(mainThreadNormalWorld())->updateDocumentWrapper(wrapper);
     }

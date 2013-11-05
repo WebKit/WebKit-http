@@ -83,6 +83,8 @@ public:
     static PassRefPtr<SerializedScriptValue> undefinedValue();
     static PassRefPtr<SerializedScriptValue> booleanValue(bool value);
 
+    static uint32_t wireFormatVersion();
+
     String toString();
     
     JSC::JSValue deserialize(JSC::ExecState*, JSC::JSGlobalObject*, MessagePortArray*, SerializationErrorMode = Throwing);
@@ -98,11 +100,15 @@ public:
 
 #if ENABLE(INDEXED_DATABASE)
     static PassRefPtr<SerializedScriptValue> create(JSC::ExecState*, JSC::JSValue);
-    static PassRefPtr<SerializedScriptValue> createFromWire(const String& data);
-    String toWireString() const;
     static PassRefPtr<SerializedScriptValue> numberValue(double value);
     JSC::JSValue deserialize(JSC::ExecState*, JSC::JSGlobalObject*);
 #endif
+
+    static PassRefPtr<SerializedScriptValue> createFromWireBytes(const Vector<uint8_t>& data)
+    {
+        return adoptRef(new SerializedScriptValue(data));
+    }
+    const Vector<uint8_t>& toWireBytes() const { return m_data; }
 
     ~SerializedScriptValue();
 
@@ -112,6 +118,7 @@ private:
     static bool serializationDidCompleteSuccessfully(SerializationReturnCode);
     static PassOwnPtr<ArrayBufferContentsArray> transferArrayBuffers(ArrayBufferArray&, SerializationReturnCode&);
 
+    SerializedScriptValue(const Vector<unsigned char>&);
     SerializedScriptValue(Vector<unsigned char>&);
     SerializedScriptValue(Vector<unsigned char>&, Vector<String>& blobURLs);
     SerializedScriptValue(Vector<unsigned char>&, Vector<String>& blobURLs, PassOwnPtr<ArrayBufferContentsArray>);

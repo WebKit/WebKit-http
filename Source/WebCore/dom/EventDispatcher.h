@@ -26,6 +26,8 @@
 #ifndef EventDispatcher_h
 #define EventDispatcher_h
 
+#include "EventContext.h"
+#include "SimulatedClickOptions.h"
 #include <wtf/Forward.h>
 #include <wtf/HashMap.h>
 #include <wtf/Vector.h>
@@ -33,7 +35,6 @@
 namespace WebCore {
 
 class Event;
-class EventContext;
 class EventDispatchMediator;
 class EventTarget;
 class FrameView;
@@ -57,7 +58,7 @@ enum EventDispatchContinuation {
 class EventRelatedTargetAdjuster {
 public:
     EventRelatedTargetAdjuster(PassRefPtr<Node>, PassRefPtr<Node> relatedTarget);
-    void adjust(Vector<EventContext>&);
+    void adjust(Vector<EventContext, 32>&);
 private:
     typedef HashMap<TreeScope*, EventTarget*> RelatedTargetMap;
     EventTarget* findRelatedTarget(TreeScope*);
@@ -72,7 +73,7 @@ public:
     static bool dispatchEvent(Node*, PassRefPtr<EventDispatchMediator>);
     static void dispatchScopedEvent(Node*, PassRefPtr<EventDispatchMediator>);
 
-    static void dispatchSimulatedClick(Node*, PassRefPtr<Event> underlyingEvent, bool sendMouseEvents, bool showPressedLook);
+    static void dispatchSimulatedClick(Node*, Event* underlyingEvent, SimulatedClickMouseEventOptions, SimulatedClickVisualOptions);
 
     bool dispatchEvent(PassRefPtr<Event>);
     void adjustRelatedTarget(Event*, PassRefPtr<EventTarget> prpRelatedTarget);
@@ -92,7 +93,7 @@ private:
     EventDispatchContinuation dispatchEventAtBubbling(PassRefPtr<Event>, WindowEventContext&);
     void dispatchEventPostProcess(PassRefPtr<Event>, void* preDispatchEventHandlerResult);
 
-    Vector<EventContext> m_ancestors;
+    Vector<EventContext, 32> m_ancestors;
     RefPtr<Node> m_node;
     RefPtr<FrameView> m_view;
     bool m_ancestorsInitialized;

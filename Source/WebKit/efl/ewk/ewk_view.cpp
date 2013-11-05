@@ -57,6 +57,7 @@
 #include "RefPtrCairo.h"
 #include "RenderThemeEfl.h"
 #include "ResourceHandle.h"
+#include "RuntimeEnabledFeatures.h"
 #include "Settings.h"
 #include "TiledBackingStore.h"
 #include "c_instance.h"
@@ -81,6 +82,7 @@
 #include <limits>
 #include <math.h>
 #include <sys/time.h>
+#include <wtf/UnusedParam.h>
 
 #if ENABLE(DEVICE_ORIENTATION)
 #include "DeviceMotionClientEfl.h"
@@ -262,9 +264,6 @@ struct _Ewk_View_Private_Data {
     OwnPtr<WebCore::AcceleratedCompositingContext> acceleratedCompositingContext;
     bool isCompositingActive;
     RefPtr<Evas_Object> compositingObject;
-#endif
-#if ENABLE(NETWORK_INFO)
-    OwnPtr<WebCore::NetworkInfoClientEfl> networkInfoClient;
 #endif
 #if ENABLE(INPUT_TYPE_COLOR)
     WebCore::ColorChooserClient* colorChooserClient;
@@ -774,8 +773,7 @@ static Ewk_View_Private_Data* _ewk_view_priv_new(Ewk_View_Smart_Data* smartData)
 #endif
 
 #if ENABLE(NETWORK_INFO)
-    priv->networkInfoClient = adoptPtr(new WebCore::NetworkInfoClientEfl);
-    WebCore::provideNetworkInfoTo(priv->page.get(), priv->networkInfoClient.get());
+    WebCore::provideNetworkInfoTo(priv->page.get(), new WebCore::NetworkInfoClientEfl);
 #endif
 
 #if ENABLE(VIBRATION)
@@ -821,7 +819,7 @@ static Ewk_View_Private_Data* _ewk_view_priv_new(Ewk_View_Smart_Data* smartData)
     priv->pageSettings->setSansSerifFontFamily("sans");
     priv->pageSettings->setStandardFontFamily("sans");
     priv->pageSettings->setHyperlinkAuditingEnabled(false);
-    priv->pageSettings->setCSSRegionsEnabled(true);
+    WebCore::RuntimeEnabledFeatures::setCSSRegionsEnabled(true);
     priv->pageSettings->setScriptEnabled(true);
     priv->pageSettings->setPluginsEnabled(true);
     priv->pageSettings->setLocalStorageEnabled(true);
@@ -837,6 +835,9 @@ static Ewk_View_Private_Data* _ewk_view_priv_new(Ewk_View_Smart_Data* smartData)
     priv->pageSettings->setFullScreenEnabled(true);
 #endif
     priv->pageSettings->setInteractiveFormValidationEnabled(true);
+#if USE(ACCELERATED_COMPOSITING)
+    priv->pageSettings->setAcceleratedCompositingEnabled(false);
+#endif
 
     url = priv->pageSettings->userStyleSheetLocation();
     priv->settings.userStylesheet = eina_stringshare_add(url.string().utf8().data());
@@ -889,7 +890,7 @@ static Ewk_View_Private_Data* _ewk_view_priv_new(Ewk_View_Smart_Data* smartData)
     priv->settings.resizableTextareas = priv->pageSettings->textAreasAreResizable();
     priv->settings.privateBrowsing = priv->pageSettings->privateBrowsingEnabled();
     priv->settings.caretBrowsing = priv->pageSettings->caretBrowsingEnabled();
-    priv->settings.spatialNavigation = priv->pageSettings->isSpatialNavigationEnabled();
+    priv->settings.spatialNavigation = priv->pageSettings->spatialNavigationEnabled();
     priv->settings.localStorage = priv->pageSettings->localStorageEnabled();
     priv->settings.offlineAppCache = true; // XXX no function to read setting; this keeps the original setting
     priv->settings.pageCache = priv->pageSettings->usesPageCache();
@@ -4484,6 +4485,8 @@ void ewk_view_inspector_show(const Evas_Object* ewkView)
     EWK_VIEW_PRIV_GET_OR_RETURN(smartData, priv);
 
     priv->page->inspectorController()->show();
+#else
+    UNUSED_PARAM(ewkView);
 #endif
 }
 
@@ -4494,6 +4497,8 @@ void ewk_view_inspector_close(const Evas_Object* ewkView)
     EWK_VIEW_PRIV_GET_OR_RETURN(smartData, priv);
 
     priv->page->inspectorController()->close();
+#else
+    UNUSED_PARAM(ewkView);
 #endif
 }
 
@@ -4505,6 +4510,7 @@ Evas_Object* ewk_view_inspector_view_get(const Evas_Object* ewkView)
 
     return priv->inspectorView;
 #else
+    UNUSED_PARAM(ewkView);
     return 0;
 #endif
 }
@@ -4516,6 +4522,9 @@ void ewk_view_inspector_view_set(Evas_Object* ewkView, Evas_Object* inspectorVie
     EWK_VIEW_PRIV_GET(smartData, priv);
 
     priv->inspectorView = inspectorView;
+#else
+    UNUSED_PARAM(ewkView);
+    UNUSED_PARAM(inspectorView);
 #endif
 }
 

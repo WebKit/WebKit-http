@@ -28,6 +28,7 @@
 
 #import "CustomProtocolManager.h"
 #import "SandboxExtension.h"
+#import "SecItemShimMethods.h"
 #import "WKFullKeyboardAccessWatcher.h"
 #import "WebInspector.h"
 #import "WebPage.h"
@@ -46,12 +47,6 @@
 #import <mach/mach_error.h>
 #import <objc/runtime.h>
 #import <stdio.h>
-
-#if __MAC_OS_X_VERSION_MIN_REQUIRED == 1060
-#import "KeychainItemShimMethods.h"
-#else
-#import "SecItemShimMethods.h"
-#endif
 
 #if ENABLE(WEB_PROCESS_SANDBOX)
 #import <pwd.h>
@@ -128,6 +123,17 @@ void WebProcess::platformSetCacheModel(CacheModel cacheModel)
     pageCache()->setCapacity(pageCacheCapacity);
 
     NSURLCache *nsurlCache = [NSURLCache sharedURLCache];
+
+#if ENABLE(NETWORK_PROCESS)
+    // FIXME: Once there is no loading being done in the WebProcess, we should remove this,
+    // as calling [NSURLCache sharedURLCache] initializes the cache, which we would rather not do.
+    if (m_usesNetworkProcess) {
+        [nsurlCache setMemoryCapacity:0];
+        [nsurlCache setDiskCapacity:0];
+        return;
+    }
+#endif
+
     [nsurlCache setMemoryCapacity:urlCacheMemoryCapacity];
     [nsurlCache setDiskCapacity:max<unsigned long>(urlCacheDiskCapacity, [nsurlCache diskCapacity])]; // Don't shrink a big disk cache, since that would cause churn.
 }
@@ -264,18 +270,19 @@ void WebProcess::platformInitializeWebProcess(const WebProcessCreationParameters
     SandboxExtension::consumePermanently(parameters.applicationCacheDirectoryExtensionHandle);
     SandboxExtension::consumePermanently(parameters.diskCacheDirectoryExtensionHandle);
 
-    if (!parameters.parentProcessName.isNull()) {
-        NSString *applicationName = [NSString stringWithFormat:WEB_UI_STRING("%@ Web Content", "Visible name of the web process. The argument is the application name."), (NSString *)parameters.parentProcessName];
-        WKSetVisibleApplicationName((CFStringRef)applicationName);
-    }
+#if ENABLE(NETWORK_PROCESS)
+    if (!parameters.usesNetworkProcess) {
+#endif
+        if (!parameters.diskCacheDirectory.isNull()) {
+            NSUInteger cacheMemoryCapacity = parameters.nsURLCacheMemoryCapacity;
+            NSUInteger cacheDiskCapacity = parameters.nsURLCacheDiskCapacity;
 
-    if (!parameters.diskCacheDirectory.isNull()) {
-        NSUInteger cacheMemoryCapacity = parameters.nsURLCacheMemoryCapacity;
-        NSUInteger cacheDiskCapacity = parameters.nsURLCacheDiskCapacity;
-
-        RetainPtr<NSURLCache> parentProcessURLCache(AdoptNS, [[NSURLCache alloc] initWithMemoryCapacity:cacheMemoryCapacity diskCapacity:cacheDiskCapacity diskPath:parameters.diskCacheDirectory]);
-        [NSURLCache setSharedURLCache:parentProcessURLCache.get()];
+            RetainPtr<NSURLCache> parentProcessURLCache(AdoptNS, [[NSURLCache alloc] initWithMemoryCapacity:cacheMemoryCapacity diskCapacity:cacheDiskCapacity diskPath:parameters.diskCacheDirectory]);
+            [NSURLCache setSharedURLCache:parentProcessURLCache.get()];
+        }
+#if ENABLE(NETWORK_PROCESS)
     }
+#endif
 
     m_shouldForceScreenFontSubstitution = parameters.shouldForceScreenFontSubstitution;
     Font::setDefaultTypesettingFeatures(parameters.shouldEnableKerningAndLigaturesByDefault ? Kerning | Ligatures : 0);
@@ -292,20 +299,11 @@ void WebProcess::platformInitializeWebProcess(const WebProcessCreationParameters
     // no window in WK2, NSApplication needs to use the focused page's focused element.
     Method methodToPatch = class_getInstanceMethod([NSApplication class], @selector(accessibilityFocusedUIElement));
     method_setImplementation(methodToPatch, (IMP)NSApplicationAccessibilityFocusedUIElement);
-    
-    for (size_t i = 0; i < parameters.urlSchemesRegisteredForCustomProtocols.size(); ++i)
-        CustomProtocolManager::shared().registerScheme(parameters.urlSchemesRegisteredForCustomProtocols[i]);
-    
-    CustomProtocolManager::registerCustomProtocolClass();
 }
 
 void WebProcess::initializeShim()
 {
-#if __MAC_OS_X_VERSION_MIN_REQUIRED == 1060
-    initializeKeychainItemShim();
-#else
     initializeSecItemShim();
-#endif
 }
 
 void WebProcess::platformTerminate()
@@ -319,16 +317,7 @@ void WebProcess::platformTerminate()
 
 void WebProcess::secItemResponse(CoreIPC::Connection*, uint64_t requestID, const SecItemResponseData& response)
 {
-#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1070
     didReceiveSecItemResponse(requestID, response);
-#endif
-}
-
-void WebProcess::secKeychainItemResponse(CoreIPC::Connection*, uint64_t requestID, const SecKeychainItemResponseData& response)
-{
-#if __MAC_OS_X_VERSION_MIN_REQUIRED == 1060
-    didReceiveSecKeychainItemResponse(requestID, response);
-#endif
 }
 
 } // namespace WebKit

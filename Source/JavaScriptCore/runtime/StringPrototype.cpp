@@ -338,24 +338,26 @@ static ALWAYS_INLINE JSValue jsSpliceSubstringsWithSeparators(ExecState* exec, J
         return jsString(exec, StringImpl::create(source.impl(), std::max(0, position), std::min(sourceSize, length)));
     }
 
-    int totalLength = 0;
-    bool allSeperators8Bit = true;
+    Checked<int, RecordOverflow> totalLength = 0;
+    bool allSeparators8Bit = true;
     for (int i = 0; i < rangeCount; i++)
         totalLength += substringRanges[i].length;
     for (int i = 0; i < separatorCount; i++) {
         totalLength += separators[i].length();
         if (separators[i].length() && !separators[i].is8Bit())
-            allSeperators8Bit = false;
+            allSeparators8Bit = false;
     }
+    if (totalLength.hasOverflowed())
+        return throwOutOfMemoryError(exec);
 
     if (!totalLength)
         return jsEmptyString(exec);
 
-    if (source.is8Bit() && allSeperators8Bit) {
+    if (source.is8Bit() && allSeparators8Bit) {
         LChar* buffer;
         const LChar* sourceData = source.characters8();
 
-        RefPtr<StringImpl> impl = StringImpl::tryCreateUninitialized(totalLength, buffer);
+        RefPtr<StringImpl> impl = StringImpl::tryCreateUninitialized(totalLength.unsafeGet(), buffer);
         if (!impl)
             return throwOutOfMemoryError(exec);
 
@@ -380,7 +382,7 @@ static ALWAYS_INLINE JSValue jsSpliceSubstringsWithSeparators(ExecState* exec, J
     }
 
     UChar* buffer;
-    RefPtr<StringImpl> impl = StringImpl::tryCreateUninitialized(totalLength, buffer);
+    RefPtr<StringImpl> impl = StringImpl::tryCreateUninitialized(totalLength.unsafeGet(), buffer);
     if (!impl)
         return throwOutOfMemoryError(exec);
 

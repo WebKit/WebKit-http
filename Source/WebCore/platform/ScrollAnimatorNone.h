@@ -38,7 +38,6 @@
 #endif
 
 #include "FloatPoint.h"
-#include "PlatformGestureCurveTarget.h"
 #include "ScrollAnimator.h"
 #include "Timer.h"
 #include <wtf/OwnPtr.h>
@@ -51,7 +50,7 @@ class IntPoint;
 class ActivePlatformGestureAnimation;
 struct ScrollAnimatorParameters;
 
-class ScrollAnimatorNone : public ScrollAnimator, public PlatformGestureCurveTarget {
+class ScrollAnimatorNone : public ScrollAnimator {
 public:
     explicit ScrollAnimatorNone(ScrollableArea*);
     virtual ~ScrollAnimatorNone();
@@ -96,9 +95,6 @@ public:
         Curve m_coastTimeCurve;
         double m_maximumCoastTime;
     };
-
-    // PlatformGestureCurveTarget implementation.
-    virtual void scrollBy(const IntPoint&);
 
 protected:
     virtual void animationWillStart() { }
@@ -159,7 +155,6 @@ protected:
     void stopAnimationTimerIfNeeded();
     bool animationTimerActive();
     void updateVisibleLengths();
-    virtual void fireUpAnAnimation(FloatPoint);
 
     PerAxisData m_horizontalData;
     PerAxisData m_verticalData;
@@ -169,14 +164,6 @@ protected:
     Timer<ScrollAnimatorNone> m_animationTimer;
 #else
     bool m_animationActive;
-#endif
-
-    float m_firstVelocity;
-    bool m_firstVelocitySet;
-    bool m_firstVelocityIsVertical;
-
-#if ENABLE(GESTURE_ANIMATION)
-    OwnPtr<ActivePlatformGestureAnimation> m_gestureAnimation;
 #endif
 };
 

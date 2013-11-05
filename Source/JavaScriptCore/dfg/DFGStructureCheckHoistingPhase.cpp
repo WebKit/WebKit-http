@@ -32,6 +32,7 @@
 #include "DFGGraph.h"
 #include "DFGInsertionSet.h"
 #include "DFGPhase.h"
+#include "DFGVariableAccessDataDump.h"
 #include <wtf/HashMap.h>
 
 namespace JSC { namespace DFG {
@@ -105,6 +106,24 @@ public:
                     // Don't count these uses.
                     break;
                     
+                case ArrayifyToStructure:
+                case Arrayify:
+                    if (node.arrayMode().conversion() == Array::RageConvert) {
+                        // Rage conversion changes structures. We should avoid tying to do
+                        // any kind of hoisting when rage conversion is in play.
+                        Node& child = m_graph[node.child1()];
+                        if (child.op() != GetLocal)
+                            break;
+                        VariableAccessData* variable = child.variableAccessData();
+                        variable->vote(VoteOther);
+                        if (variable->isCaptured() || variable->structureCheckHoistingFailed())
+                            break;
+                        if (!isCellSpeculation(variable->prediction()))
+                            break;
+                        noticeStructureCheck(variable, 0);
+                    }
+                    break;
+                    
                 case SetLocal: {
                     // Find all uses of the source of the SetLocal. If any of them are a
                     // kind of CheckStructure, then we should notice them to ensure that
@@ -167,8 +186,9 @@ public:
             if (iter == m_map.end())
                 continue;
 #if DFG_ENABLE(DEBUG_PROPAGATION_VERBOSE)
-            dataLog("Zeroing the structure to hoist for %s because the ratio is %lf.\n",
-                    m_graph.nameOfVariableAccessData(variable), variable->voteRatio());
+            dataLog(
+                "Zeroing the structure to hoist for ", VariableAccessDataDump(m_graph, variable),
+                " because the ratio is ", variable->voteRatio(), ".\n");
 #endif
             iter->value.m_structure = 0;
         }
@@ -200,16 +220,20 @@ public:
                 JSValue value = m_graph.m_mustHandleValues[i];
                 if (!value || !value.isCell()) {
 #if DFG_ENABLE(DEBUG_PROPAGATION_VERBOSE)
-                    dataLog("Zeroing the structure to hoist for %s because the OSR entry value is not a cell: %s.\n",
-                            m_graph.nameOfVariableAccessData(variable), value.description());
+                    dataLog(
+                        "Zeroing the structure to hoist for ", VariableAccessDataDump(m_graph, variable),
+                        " because the OSR entry value is not a cell: ", value, ".\n");
 #endif
                     iter->value.m_structure = 0;
                     continue;
                 }
                 if (value.asCell()->structure() != iter->value.m_structure) {
 #if DFG_ENABLE(DEBUG_PROPAGATION_VERBOSE)
-                    dataLog("Zeroing the structure to hoist for %s because the OSR entry value has structure %p and we wanted %p.\n",
-                            m_graph.nameOfVariableAccessData(variable), value.asCell()->structure(), iter->value.m_structure);
+                    dataLog(
+                        "Zeroing the structure to hoist for ", VariableAccessDataDump(m_graph, variable),
+                        " because the OSR entry value has structure ",
+                        RawPointer(value.asCell()->structure()), " and we wanted ",
+                        RawPointer(iter->value.m_structure), ".\n");
 #endif
                     iter->value.m_structure = 0;
                     continue;
@@ -223,10 +247,12 @@ public:
         for (HashMap<VariableAccessData*, CheckData>::iterator it = m_map.begin();
              it != m_map.end(); ++it) {
             if (!it->value.m_structure) {
-                dataLog("Not hoisting checks for %s because of heuristics.\n", m_graph.nameOfVariableAccessData(it->key));
+                dataLog(
+                    "Not hoisting checks for ", VariableAccessDataDump(m_graph, it->key),
+                    " because of heuristics.\n");
                 continue;
             }
-            dataLog("Hoisting checks for %s\n", m_graph.nameOfVariableAccessData(it->key));
+            dataLog("Hoisting checks for ", VariableAccessDataDump(m_graph, it->key), "\n");
         }
 #endif // DFG_ENABLE(DEBUG_PROPAGATION_VERBOSE)
         

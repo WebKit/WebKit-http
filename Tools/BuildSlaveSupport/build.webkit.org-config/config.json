@@ -51,6 +51,8 @@
 
                     { "name": "google-windows-1", "platform": "chromium-win" },
                     { "name": "google-windows-2", "platform": "chromium-win" },
+                    { "name": "google-windows-3", "platform": "chromium-win" },
+                    { "name": "google-windows-4", "platform": "chromium-win" },
                     { "name": "google-windows-perf", "platform": "chromium-win" },
                     { "name": "google-mac-1", "platform": "chromium-mac" },
                     { "name": "google-mac-2", "platform": "chromium-mac" },
@@ -62,6 +64,7 @@
                     { "name": "google-linux-perf", "platform": "chromium-linux" },
                     { "name": "google-linux-android", "platform": "chromium-android" },
                     { "name": "google-android-tests", "platform": "chromium-android" },
+                    { "name": "google-android-perf", "platform": "chromium-android" },
 
                     { "name": "wincairo-1", "platform": "wincairo" },
 
@@ -72,7 +75,9 @@
                     { "name": "efl-linux-slave-3", "platform": "efl" },
                     { "name": "efl-linux-slave-4", "platform": "efl" },
 
-                    { "name": "mips-1", "platform": "qt-mipsel"}
+                    { "name": "mips-1", "platform": "qt-mipsel"},
+
+                    { "name": "sh4-linux-1", "platform": "qt-sh4"}
                   ],
 
     "builders":   [ { "name": "Apple Lion (Leaks)", "type": "BuildAndTestLeaks", "builddir": "lion-leaks",
@@ -224,6 +229,11 @@
                       "slavenames": ["mips-1"]
                     },
                     {
+                      "name": "Qt Linux SH4 Release", "type": "Build", "builddir": "qt-linux-sh4-release",
+                      "platform": "qt-sh4", "configuration": "release", "architectures": ["sh4"],
+                      "slavenames": ["sh4-linux-1"]
+                    },
+                    {
                       "name": "Qt Windows 32-bit Release", "type": "Build", "builddir": "qt-windows-32bit-release",
                       "SVNMirror": "svn://webkit.inf.u-szeged.hu/webkit/",
                       "platform": "qt-win", "configuration": "release", "architectures": ["i386"],
@@ -244,12 +254,12 @@
                       "name": "Chromium Win Release", "type": "Build", "builddir": "chromium-win-release",
                       "platform": "chromium-win", "configuration": "release", "architectures": ["i386"],
                       "triggers": ["chromium-win-release-tests", "chromium-win-perf-tests"],
-                      "slavenames": ["google-windows-1"]
+                      "slavenames": ["google-windows-1", "google-windows-3"]
                     },
                     {
                       "name": "Chromium Win Release (Tests)", "type": "Test", "builddir": "chromium-win-release-tests",
                       "platform": "chromium-win", "configuration": "release", "architectures": ["i386"],
-                      "slavenames": ["google-windows-2"]
+                      "slavenames": ["google-windows-2", "google-windows-4"]
                     },
                     {
                       "name": "Chromium Win Release (Perf)", "type": "DownloadAndPerfTest", "builddir": "chromium-win-perf-tests",
@@ -291,12 +301,18 @@
                     {
                       "name": "Chromium Android Release", "type": "Build", "builddir": "chromium-linux-android",
                       "platform": "chromium-android", "configuration": "release", "architectures": ["i386"],
-                      "triggers": ["chromium-android-release-tests"], "slavenames": ["google-linux-android"]
+                      "triggers": ["chromium-android-release-tests", "chromium-android-release-perf"],
+                      "slavenames": ["google-linux-android"]
                     },
                     {
                       "name": "Chromium Android Release (Tests)", "type": "Test", "builddir": "chromium-android-release-tests",
                       "platform": "chromium-android", "configuration": "release", "architectures": ["i386"],
                       "slavenames": ["google-android-tests"]
+                    },
+                    {
+                      "name": "Chromium Android Release (Perf)", "type": "DownloadAndPerfTest", "builddir": "chromium-android-release-perf",
+                      "platform": "chromium-android", "configuration": "release", "architectures": ["i386"],
+                      "slavenames": ["google-android-perf"]
                     },
                     {
                       "name": "WinCairo Release", "type": "BuildAndTest", "builddir": "win-cairo-release",
@@ -314,12 +330,12 @@
                       "slavenames": ["efl-linux-slave-1"]
                     },
                     {
-                      "name": "EFL Linux 64-bit Release WK2", "type": "BuildAndTestWebKit2", "builddir": "efl-linux-64-release-wk2",
+                      "name": "EFL Linux 64-bit Release WK2", "type": "BuildAndTestWebKit2Only", "builddir": "efl-linux-64-release-wk2",
                       "platform": "efl", "configuration": "release", "architectures": ["x86_64"],
                       "slavenames": ["efl-linux-slave-2"]
                     },
                     {
-                      "name": "EFL Linux 64-bit Debug WK2", "type": "BuildAndTestWebKit2", "builddir": "efl-linux-64-debug-wk2",
+                      "name": "EFL Linux 64-bit Debug WK2", "type": "BuildAndTestWebKit2Only", "builddir": "efl-linux-64-debug-wk2",
                       "platform": "efl", "configuration": "debug", "architectures": ["x86_64"],
                       "slavenames": ["efl-linux-slave-4"]
                     },
@@ -334,6 +350,7 @@
                       "builderNames": ["GTK Linux 32-bit Release", "GTK Linux 64-bit Release", "GTK Linux 64-bit Debug",
                                        "Qt Linux Release", "Qt Linux Release minimal", "Qt Linux 64-bit Release (Perf)",
                                        "Qt Linux 64-bit Release (WebKit2 Perf)", "Qt Linux ARMv7 Release", "Qt Linux MIPS32R2 LE Release",
+                                       "Qt Linux SH4 Release",
                                        "Qt Windows 32-bit Release", "Qt Windows 32-bit Debug", "Qt Mountain Lion Release",
                                        "Chromium Win Release", "Chromium Mac Release", "Chromium Linux Release",
                                        "Chromium Android Release",
@@ -405,6 +422,9 @@
                     },
                     { "type": "Triggerable", "name": "chromium-android-release-tests",
                       "builderNames": ["Chromium Android Release (Tests)"]
+                    },
+                    { "type": "Triggerable", "name": "chromium-android-release-perf",
+                      "builderNames": ["Chromium Android Release (Perf)"]
                     },
                     { "type": "Triggerable", "name": "gtk-linux-64-release-tests-wk2",
                       "builderNames": ["GTK Linux 64-bit Release WK2 (Tests)"]

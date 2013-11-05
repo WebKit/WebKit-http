@@ -1,4 +1,3 @@
-#!/usr/bin/python
 # Copyright (C) 2012 Google Inc. All rights reserved.
 # Copyright (C) 2010 Gabor Rapcsanyi (rgabor@inf.u-szeged.hu), University of Szeged
 #
@@ -31,13 +30,15 @@
 import unittest
 
 from webkitpy.common.host_mock import MockHost
+from webkitpy.common.system.systemhost_mock import MockSystemHost
 from webkitpy.layout_tests import run_webkit_tests
+from webkitpy.layout_tests.controllers.layout_test_runner import LayoutTestRunner, Sharder, TestRunInterruptedException
 from webkitpy.layout_tests.models import test_expectations
 from webkitpy.layout_tests.models import test_failures
-from webkitpy.layout_tests.models.result_summary import ResultSummary
+from webkitpy.layout_tests.models.test_run_results import TestRunResults
 from webkitpy.layout_tests.models.test_input import TestInput
 from webkitpy.layout_tests.models.test_results import TestResult
-from webkitpy.layout_tests.controllers.layout_test_runner import LayoutTestRunner, Sharder, TestRunInterruptedException
+from webkitpy.layout_tests.port.test import TestPort
 
 
 TestExpectations = test_expectations.TestExpectations
@@ -46,6 +47,9 @@ TestExpectations = test_expectations.TestExpectations
 class FakePrinter(object):
     num_completed = 0
     num_tests = 0
+
+    def print_expected(self, run_results, get_tests_with_result_type):
+        pass
 
     def print_workers_and_shards(self, num_workers, num_shards, num_locked_shards):
         pass
@@ -68,7 +72,7 @@ class FakePrinter(object):
 
 class LockCheckingRunner(LayoutTestRunner):
     def __init__(self, port, options, printer, tester, http_lock):
-        super(LockCheckingRunner, self).__init__(options, port, printer, port.results_directory(), TestExpectations(port, []), lambda test_name: False)
+        super(LockCheckingRunner, self).__init__(options, port, printer, port.results_directory(), lambda test_name: False)
         self._finished_list_called = False
         self._tester = tester
         self._should_have_http_lock = http_lock
@@ -97,13 +101,10 @@ class LayoutTestRunnerTests(unittest.TestCase):
         port = port or host.port_factory.get(options.platform, options=options)
         return LockCheckingRunner(port, options, FakePrinter(), self, True)
 
-    def _result_summary(self, runner, tests):
-        return ResultSummary(TestExpectations(runner._port, tests), tests, 1, set())
-
     def _run_tests(self, runner, tests):
         test_inputs = [TestInput(test, 6000) for test in tests]
         expectations = TestExpectations(runner._port, tests)
-        runner.run_tests(test_inputs, expectations, self._result_summary(runner, tests),
+        runner.run_tests(expectations, test_inputs, set(),
             num_workers=1, needs_http=any('http' in test for test in tests), needs_websockets=any(['websocket' in test for test in tests]), retrying=False)
 
     def test_http_locking(self):
@@ -119,29 +120,29 @@ class LayoutTestRunnerTests(unittest.TestCase):
         runner._options.exit_after_n_failures = None
         runner._options.exit_after_n_crashes_or_times = None
         test_names = ['passes/text.html', 'passes/image.html']
-        runner._test_files_list = test_names
+        runner._test_inputs = [TestInput(test_name, 6000) for test_name in test_names]
 
-        result_summary = self._result_summary(runner, test_names)
-        result_summary.unexpected_failures = 100
-        result_summary.unexpected_crashes = 50
-        result_summary.unexpected_timeouts = 50
+        run_results = TestRunResults(TestExpectations(runner._port, test_names), len(test_names))
+        run_results.unexpected_failures = 100
+        run_results.unexpected_crashes = 50
+        run_results.unexpected_timeouts = 50
         # No exception when the exit_after* options are None.
-        runner._interrupt_if_at_failure_limits(result_summary)
+        runner._interrupt_if_at_failure_limits(run_results)
 
         # No exception when we haven't hit the limit yet.
         runner._options.exit_after_n_failures = 101
         runner._options.exit_after_n_crashes_or_timeouts = 101
-        runner._interrupt_if_at_failure_limits(result_summary)
+        runner._interrupt_if_at_failure_limits(run_results)
 
         # Interrupt if we've exceeded either limit:
         runner._options.exit_after_n_crashes_or_timeouts = 10
-        self.assertRaises(TestRunInterruptedException, runner._interrupt_if_at_failure_limits, result_summary)
-        self.assertEqual(result_summary.results['passes/text.html'].type, test_expectations.SKIP)
-        self.assertEqual(result_summary.results['passes/image.html'].type, test_expectations.SKIP)
+        self.assertRaises(TestRunInterruptedException, runner._interrupt_if_at_failure_limits, run_results)
+        self.assertEqual(run_results.results_by_name['passes/text.html'].type, test_expectations.SKIP)
+        self.assertEqual(run_results.results_by_name['passes/image.html'].type, test_expectations.SKIP)
 
         runner._options.exit_after_n_crashes_or_timeouts = None
         runner._options.exit_after_n_failures = 10
-        exception = self.assertRaises(TestRunInterruptedException, runner._interrupt_if_at_failure_limits, result_summary)
+        exception = self.assertRaises(TestRunInterruptedException, runner._interrupt_if_at_failure_limits, run_results)
 
     def test_update_summary_with_result(self):
         # Reftests expected to be image mismatch should be respected when pixel_tests=False.
@@ -151,17 +152,17 @@ class LayoutTestRunnerTests(unittest.TestCase):
         expectations = TestExpectations(runner._port, tests=[test])
         runner._expectations = expectations
 
-        result_summary = ResultSummary(expectations, [test], 1, set())
+        run_results = TestRunResults(expectations, 1)
         result = TestResult(test_name=test, failures=[test_failures.FailureReftestMismatchDidNotOccur()], reftest_type=['!='])
-        runner._update_summary_with_result(result_summary, result)
-        self.assertEqual(1, result_summary.expected)
-        self.assertEqual(0, result_summary.unexpected)
+        runner._update_summary_with_result(run_results, result)
+        self.assertEqual(1, run_results.expected)
+        self.assertEqual(0, run_results.unexpected)
 
-        result_summary = ResultSummary(expectations, [test], 1, set())
+        run_results = TestRunResults(expectations, 1)
         result = TestResult(test_name=test, failures=[], reftest_type=['=='])
-        runner._update_summary_with_result(result_summary, result)
-        self.assertEqual(0, result_summary.expected)
-        self.assertEqual(1, result_summary.unexpected)
+        runner._update_summary_with_result(run_results, result)
+        self.assertEqual(0, run_results.expected)
+        self.assertEqual(1, run_results.unexpected)
 
     def test_servers_started(self):
 
@@ -235,12 +236,8 @@ class SharderTests(unittest.TestCase):
         return TestInput(test_file, requires_lock=(test_file.startswith('http') or test_file.startswith('perf')))
 
     def get_shards(self, num_workers, fully_parallel, test_list=None, max_locked_shards=1):
-        def split(test_name):
-            idx = test_name.rfind('/')
-            if idx != -1:
-                return (test_name[0:idx], test_name[idx + 1:])
-
-        self.sharder = Sharder(split, '/', max_locked_shards)
+        port = TestPort(MockSystemHost())
+        self.sharder = Sharder(port.split_test, max_locked_shards)
         test_list = test_list or self.test_list
         return self.sharder.shard_tests([self.get_test_input(test) for test in test_list], num_workers, fully_parallel)
 
@@ -335,48 +332,3 @@ class SharderTests(unittest.TestCase):
                'http/tests/websocket/tests/websocket-protocol-ignored.html',
                'http/tests/xmlhttprequest/supported-xml-content-types.html',
                'perf/object-keys.html'])])
-
-
-class NaturalCompareTest(unittest.TestCase):
-    def assert_cmp(self, x, y, result):
-        self.assertEqual(cmp(Sharder.natural_sort_key(x), Sharder.natural_sort_key(y)), result)
-
-    def test_natural_compare(self):
-        self.assert_cmp('a', 'a', 0)
-        self.assert_cmp('ab', 'a', 1)
-        self.assert_cmp('a', 'ab', -1)
-        self.assert_cmp('', '', 0)
-        self.assert_cmp('', 'ab', -1)
-        self.assert_cmp('1', '2', -1)
-        self.assert_cmp('2', '1', 1)
-        self.assert_cmp('1', '10', -1)
-        self.assert_cmp('2', '10', -1)
-        self.assert_cmp('foo_1.html', 'foo_2.html', -1)
-        self.assert_cmp('foo_1.1.html', 'foo_2.html', -1)
-        self.assert_cmp('foo_1.html', 'foo_10.html', -1)
-        self.assert_cmp('foo_2.html', 'foo_10.html', -1)
-        self.assert_cmp('foo_23.html', 'foo_10.html', 1)
-        self.assert_cmp('foo_23.html', 'foo_100.html', -1)
-
-
-class KeyCompareTest(unittest.TestCase):
-    def setUp(self):
-        def split(test_name):
-            idx = test_name.rfind('/')
-            if idx != -1:
-                return (test_name[0:idx], test_name[idx + 1:])
-
-        self.sharder = Sharder(split, '/', 1)
-
-    def assert_cmp(self, x, y, result):
-        self.assertEqual(cmp(self.sharder.test_key(x), self.sharder.test_key(y)), result)
-
-    def test_test_key(self):
-        self.assert_cmp('/a', '/a', 0)
-        self.assert_cmp('/a', '/b', -1)
-        self.assert_cmp('/a2', '/a10', -1)
-        self.assert_cmp('/a2/foo', '/a10/foo', -1)
-        self.assert_cmp('/a/foo11', '/a/foo2', 1)
-        self.assert_cmp('/ab', '/a/a/b', -1)
-        self.assert_cmp('/a/a/b', '/ab', 1)
-        self.assert_cmp('/foo-bar/baz', '/foo/baz', -1)

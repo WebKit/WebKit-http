@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 # Copyright (c) 2012 Google Inc. All rights reserved.
 #
 # All rights reserved.
@@ -30,7 +29,7 @@ class MockFileLock(object):
         pass
 
     def acquire_lock(self):
-        pass
+        return True
 
     def release_lock(self):
-        pass
+        return True

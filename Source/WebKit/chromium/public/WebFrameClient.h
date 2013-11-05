@@ -50,6 +50,7 @@ namespace WebKit {
 
 class WebApplicationCacheHost;
 class WebApplicationCacheHostClient;
+class WebCachedURLRequest;
 class WebCookieJar;
 class WebDataSource;
 class WebDOMEvent;
@@ -108,12 +109,19 @@ public:
     // is created and initialized.
     virtual void didCreateFrame(WebFrame* parent, WebFrame* child) { }
 
+    // This frame set its opener to null, disowning it.
+    // See http://html.spec.whatwg.org/#dom-opener.
+    virtual void didDisownOpener(WebFrame*) { }
+
     // This frame has been detached from the view, but has not been closed yet.
     virtual void frameDetached(WebFrame*) { }
 
     // This frame is about to be closed. This is called after frameDetached,
     // when the document is being unloaded, due to new one committing.
     virtual void willClose(WebFrame*) { }
+
+    // This frame's name has changed.
+    virtual void didChangeName(WebFrame*, const WebString&) { }
 
     // Load commands -------------------------------------------------------
 
@@ -250,6 +258,9 @@ public:
      // Remove the association between an identifier assigned to a request if
      // the client keeps such an association.
      virtual void removeIdentifierForRequest(unsigned identifier) { }
+
+    // An element will request a resource.
+    virtual void willRequestResource(WebFrame*, const WebCachedURLRequest&) { }
 
     // A request is about to be sent out, and the client may modify it.  Request
     // is writable, and changes to the URL, for example, will change the request

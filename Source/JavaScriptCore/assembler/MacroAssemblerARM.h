@@ -570,11 +570,7 @@ public:
 
     Jump branch32(RelationalCondition cond, RegisterID left, TrustedImm32 right, int useConstantPool = 0)
     {
-        ARMWord tmp = (static_cast<unsigned>(right.m_value) == 0x80000000) ? ARMAssembler::InvalidImmediate : m_assembler.getOp2(-right.m_value);
-        if (tmp != ARMAssembler::InvalidImmediate)
-            m_assembler.cmn(left, tmp);
-        else
-            m_assembler.cmp(left, m_assembler.getImm(right.m_value, ARMRegisters::S0));
+        internalCompare32(left, right);
         return Jump(m_assembler.jmp(ARMCondition(cond), useConstantPool));
     }
 
@@ -807,6 +803,14 @@ public:
         return Jump(m_assembler.jmp(ARMCondition(cond)));
     }
 
+    PatchableJump patchableBranch32(RelationalCondition cond, RegisterID reg, TrustedImm32 imm)
+    {
+        internalCompare32(reg, imm);
+        Jump jump(m_assembler.loadBranchTarget(ARMRegisters::S1, ARMCondition(cond), true));
+        m_assembler.bx(ARMRegisters::S1, ARMCondition(cond));
+        return PatchableJump(jump);
+    }
+
     void breakpoint()
     {
         m_assembler.bkpt(0);
@@ -887,6 +891,31 @@ public:
         add32(imm, ARMRegisters::S1);
         m_assembler.ldrUniqueImmediate(ARMRegisters::S0, reinterpret_cast<ARMWord>(address.m_ptr));
         m_assembler.dtrUp(ARMAssembler::StoreUint32, ARMRegisters::S1, ARMRegisters::S0, 0);
+    }
+
+    void add64(TrustedImm32 imm, AbsoluteAddress address)
+    {
+        ARMWord tmp;
+
+        move(TrustedImmPtr(address.m_ptr), ARMRegisters::S1);
+        m_assembler.dtrUp(ARMAssembler::LoadUint32, ARMRegisters::S0, ARMRegisters::S1, 0);
+
+        if ((tmp = ARMAssembler::getOp2(imm.m_value)) != ARMAssembler::InvalidImmediate)
+            m_assembler.adds(ARMRegisters::S0, ARMRegisters::S0, tmp);
+        else if ((tmp = ARMAssembler::getOp2(-imm.m_value)) != ARMAssembler::InvalidImmediate)
+            m_assembler.subs(ARMRegisters::S0, ARMRegisters::S0, tmp);
+        else {
+            m_assembler.adds(ARMRegisters::S0, ARMRegisters::S0, m_assembler.getImm(imm.m_value, ARMRegisters::S1));
+            move(TrustedImmPtr(address.m_ptr), ARMRegisters::S1);
+        }
+        m_assembler.dtrUp(ARMAssembler::StoreUint32, ARMRegisters::S0, ARMRegisters::S1, 0);
+
+        m_assembler.dtrUp(ARMAssembler::LoadUint32, ARMRegisters::S0, ARMRegisters::S1, sizeof(ARMWord));
+        if (imm.m_value >= 0)
+            m_assembler.adc(ARMRegisters::S0, ARMRegisters::S0, ARMAssembler::getOp2Byte(0));
+        else
+            m_assembler.sbc(ARMRegisters::S0, ARMRegisters::S0, ARMAssembler::getOp2Byte(0));
+        m_assembler.dtrUp(ARMAssembler::StoreUint32, ARMRegisters::S0, ARMRegisters::S1, sizeof(ARMWord));
     }
 
     void sub32(TrustedImm32 imm, AbsoluteAddress address)
@@ -1268,10 +1297,20 @@ public:
 
     static bool canJumpReplacePatchableBranchPtrWithPatch() { return false; }
 
-    static CodeLocationLabel startOfPatchableBranchPtrWithPatch(CodeLocationDataLabelPtr label)
+    static CodeLocationLabel startOfPatchableBranchPtrWithPatchOnAddress(CodeLocationDataLabelPtr)
     {
         UNREACHABLE_FOR_PLATFORM();
         return CodeLocationLabel();
+    }
+
+    static CodeLocationLabel startOfBranchPtrWithPatchOnRegister(CodeLocationDataLabelPtr label)
+    {
+        return label.labelAtOffset(0);
+    }
+
+    static void revertJumpReplacementToBranchPtrWithPatch(CodeLocationLabel instructionStart, RegisterID reg, void* initialValue)
+    {
+        ARMAssembler::revertJump(instructionStart.dataLocation(), reg, reinterpret_cast<uintptr_t>(initialValue) & 0xffff);
     }
 
     static void revertJumpReplacementToPatchableBranchPtrWithPatch(CodeLocationLabel instructionStart, Address, void* initialValue)
@@ -1309,6 +1348,15 @@ protected:
 private:
     friend class LinkBuffer;
     friend class RepatchBuffer;
+
+    void internalCompare32(RegisterID left, TrustedImm32 right)
+    {
+        ARMWord tmp = (static_cast<unsigned>(right.m_value) == 0x80000000) ? ARMAssembler::InvalidImmediate : m_assembler.getOp2(-right.m_value);
+        if (tmp != ARMAssembler::InvalidImmediate)
+            m_assembler.cmn(left, tmp);
+        else
+            m_assembler.cmp(left, m_assembler.getImm(right.m_value, ARMRegisters::S0));
+    }
 
     static void linkCall(void* code, Call call, FunctionPtr function)
     {

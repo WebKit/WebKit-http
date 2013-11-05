@@ -1,3 +1,1192 @@
+2012-12-19  Oliver Hunt  <oliver@apple.com>
+
+        StringImpl isolatedCopy unnecessarily copies text-segment character data
+        https://bugs.webkit.org/show_bug.cgi?id=105376
+
+        Reviewed by Anders Carlsson.
+
+        This patch adds a new (private) helper to StringImpl that tests whether the StringImpl
+        is backed by an ASCII literal.  This allows isolatedCopy() to safely use the createFromLiteral
+        constructor rather than making an unnecessary copy.
+
+        * wtf/text/StringImpl.h:
+        (StringImpl):
+        (WTF::StringImpl::isASCIILiteral):
+        (WTF::StringImpl::isolatedCopy):
+
+2012-12-19  Oliver Hunt  <oliver@apple.com>
+
+        WTF String from ASCIILiteral fails to correctly handle empty strings.
+        https://bugs.webkit.org/show_bug.cgi?id=105453
+
+        Reviewed by Anders Carlsson.
+
+        When we have an zero length literal we should return the empty StringImpl.
+
+        * wtf/text/StringImpl.cpp:
+        (WTF::StringImpl::createFromLiteral):
+
+2012-12-18  Yury Semikhatsky  <yurys@chromium.org>
+
+        Web Inspector: show cached images under MemoryCache -> Images section
+        https://bugs.webkit.org/show_bug.cgi?id=105261
+
+        Reviewed by Pavel Feldman.
+
+        Use first provided name and class name. If one of the ancestors tries to overwrite
+        it just ignore the call.
+
+        * wtf/MemoryObjectInfo.h:
+        (WTF::MemoryObjectInfo::setClassName):
+        (WTF::MemoryObjectInfo::setName):
+
+2012-12-18  Uli Schlachter  <psychon@znc.in>
+
+        Implement uncommitted memory for Linux.
+        https://bugs.webkit.org/show_bug.cgi?id=65766
+
+        Reviewed by Simon Hausmann.
+
+        The old approach used MAP_NORESERVE to allocate address space without
+        committing it. However, that flag gets ignored if
+        /proc/sys/vm/overcommit_memory is set to 2. The new approach uses a
+        mapping with PROT_NONE. This works because mappings which aren't even
+        readable don't get accounted as committed on Linux.
+
+        * wtf/OSAllocatorPosix.cpp:
+        (WTF::OSAllocator::reserveUncommitted):
+        (WTF::OSAllocator::reserveAndCommit):
+        (WTF::OSAllocator::commit):
+        (WTF::OSAllocator::decommit):
+
+2012-12-17  Ilya Tikhonovsky  <loislo@chromium.org>
+
+        Web Inspector: Native Memory Instrumentation: MemoryInstrumentation doesn't detect reportMemoryUsage method defined in a base class.
+        https://bugs.webkit.org/show_bug.cgi?id=105026
+
+        Reviewed by Yury Semikhatsky.
+
+        Old SFINAE test was replaced with new one based on this article:
+        http://stackoverflow.com/questions/1966362/sfinae-to-check-for-inherited-member-functions
+
+        * wtf/MemoryInstrumentation.h:
+        (MemoryInstrumentation):
+        (yes):
+        (IsInstrumented):
+        (no):
+        (WTF::MemoryInstrumentation::IsInstrumented::BaseMixin::reportMemoryUsage):
+        (WTF::MemoryInstrumentation::selectInstrumentationMethod):
+        (InstrumentationSelector):
+        (WTF):
+        (WTF::::reportObjectMemoryUsage):
+
+2012-12-17  Ilya Tikhonovsky  <loislo@chromium.org>
+
+        Unreviewed, rolling out r137892.
+        http://trac.webkit.org/changeset/137892
+        https://bugs.webkit.org/show_bug.cgi?id=105026
+
+        it broke compilation on windows
+
+        * wtf/MemoryInstrumentation.h:
+        (WTF::MemoryInstrumentation::selectInstrumentationMethod):
+        (MemoryInstrumentation):
+        (WTF::MemoryInstrumentation::reportObjectMemoryUsage):
+        (WTF::reportMemoryUsage):
+
+2012-12-14  Ilya Tikhonovsky  <loislo@chromium.org>
+
+        Web Inspector: Native Memory Instrumentation: MemoryInstrumentation doesn't detect reportMemoryUsage method defined in a base class.
+        https://bugs.webkit.org/show_bug.cgi?id=105026
+
+        Reviewed by Yury Semikhatsky.
+
+        Old SFINAE test was replaced with new one based on this article:
+        http://stackoverflow.com/questions/1966362/sfinae-to-check-for-inherited-member-functions
+
+        * wtf/MemoryInstrumentation.h:
+        (MemoryInstrumentation):
+        (yes):
+        (IsInstrumented):
+        (no):
+        (WTF::MemoryInstrumentation::IsInstrumented::BaseMixin::reportMemoryUsage):
+        (WTF::MemoryInstrumentation::selectInstrumentationMethod):
+        (InstrumentationSelector):
+        (WTF):
+        (WTF::::reportObjectMemoryUsage):
+
+2012-12-14  Yury Semikhatsky  <yurys@chromium.org>
+
+        Web Inspector: add data grid for exploring native heap graph
+        https://bugs.webkit.org/show_bug.cgi?id=105012
+
+        Reviewed by Pavel Feldman.
+
+        Do not report edges with null target.
+
+        * wtf/MemoryInstrumentation.h:
+        (WTF::MemoryInstrumentation::addObjectImpl):
+
+2012-12-13  Filip Pizlo  <fpizlo@apple.com>
+
+        Attempt to rationalize and simplify WTF::binarySearch
+        https://bugs.webkit.org/show_bug.cgi?id=104890
+
+        Reviewed by Maciej Stachowiak.
+
+        Binary search now has three modes:
+
+        The default: assert that the key was found, but return an adjacent element if it
+        wasn't found, if asserts are turned off.
+        
+        tryBinarySearch: return 0 if the key wasn't found.
+        
+        approximateBinarySearch: if the key is not found, return an adjacent element (either
+        the left or right; no guarantee which).
+        
+        This also reduces the number of variants of binarySearch. The functor variant is now
+        gone because binarySearch now always uses a functor for the key extractor. The
+        generic variant is now gone because binarySearch always expects an array type that
+        can do operator[].
+
+        * wtf/StdLibExtras.h:
+        (WTF::binarySearchImpl):
+        (WTF::binarySearch):
+        (WTF::tryBinarySearch):
+        (WTF::approximateBinarySearch):
+
+2012-12-13  Ilya Tikhonovsky  <loislo@chromium.org>
+
+        Web Inspector: Native Memory Instrumentation: do not validate pointers to objects in RenderArena agains tcmalloc data.
+        https://bugs.webkit.org/show_bug.cgi?id=104903
+
+        Reviewed by Yury Semikhatsky.
+
+        This is a simplest approach to do that with zero performance overhead.
+
+        * wtf/MemoryInstrumentation.cpp:
+        (WTF::MemoryClassInfo::setCustomAllocation):
+        (WTF):
+        * wtf/MemoryInstrumentation.h:
+        (MemoryClassInfo):
+        * wtf/MemoryObjectInfo.h:
+        (WTF::MemoryObjectInfo::MemoryObjectInfo):
+        (WTF::MemoryObjectInfo::customAllocation):
+        (WTF::MemoryObjectInfo::setCustomAllocations):
+        (MemoryObjectInfo):
+
+2012-12-12  Ilya Tikhonovsky  <loislo@chromium.org>
+
+        Web Inspector: Native Memory Instrumentation: remove fake root MemoryObjectInfo.
+        https://bugs.webkit.org/show_bug.cgi?id=104796
+
+        Reviewed by Yury Semikhatsky.
+
+        It was not a good idea to introduce a fake root MemoryObjectInfo.
+        It makes a problem when we visit an object without its own MemoryObjectType.
+
+        Example: RenderBox has a global pointer to a hash map.
+        HashMap doesn't have its own object type because it is a generic container.
+        It will inherit object type from the fake root memory object info.
+        The same could happen for another container in another class with other MemoryObjectType.
+
+        This fact forces me to create custom process method for root objects
+        because they need to have their own MemoryObjectInfo with customisable memory object type.
+
+        Drive by fix: InstrumentedPointer* was replaced with Wrapper* because actually it is using
+        for instrumented and not instrumented object classes.
+
+        * wtf/MemoryInstrumentation.cpp:
+        (WTF::MemoryInstrumentation::MemoryInstrumentation):
+        (WTF::MemoryInstrumentation::WrapperBase::WrapperBase):
+        (WTF::MemoryInstrumentation::WrapperBase::process):
+        (WTF::MemoryInstrumentation::WrapperBase::processRootObjectRef):
+        (WTF):
+        * wtf/MemoryInstrumentation.h:
+        (WTF::MemoryInstrumentation::addRootObject):
+        (MemoryInstrumentation):
+        (WrapperBase):
+        (WTF::MemoryInstrumentation::WrapperBase::~WrapperBase):
+        (Wrapper):
+        (OwningTraits):
+        (WTF::MemoryInstrumentation::OwningTraits::addRootObject):
+        (WTF::MemoryInstrumentation::addObjectImpl):
+        (WTF::::Wrapper):
+        (WTF::::callReportMemoryUsage):
+
+2012-12-12  Sergio Martins  <sergio.martins@kdab.com>
+
+        Fix QNX Qt build by enabling JIT.
+        https://bugs.webkit.org/show_bug.cgi?id=102794
+
+        Reviewed by Simon Hausmann.
+
+        JIT is working, so enable it. Otherwise LLINT gets enabled, and
+        that doesn't compile.
+
+        YARR_JIT is crashing at this time though, so disable it.
+
+        * wtf/Platform.h:
+
+2012-12-11  Ilya Tikhonovsky  <loislo@chromium.org>
+
+        Web Inspector: Native Memory Instrumentation: simplify Sequences processing code.
+        https://bugs.webkit.org/show_bug.cgi?id=104777
+
+        Reviewed by Yury Semikhatsky.
+
+        Redesign reportMemoryUsage for the sequences.
+        With the old schema we couldn't instrument HashMap<key, WebCore::LayoutUnit>
+        because LayoutUnit has overloaded conversion operators for double, int, etc.
+        I wrote an empty SequenceMemoryInstrumentationTraits for LayoutUnit class
+        but it doesn't help because the root of problem was hidden in the free template function reportSequenceMemoryUsage.
+        I could overload reportSequenceMemoryUsage too but in this case I need to fully specify all the types
+        for the iterators like HashMap<.....>::const_iterator. Too many letters.
+        I found a better solution. Free reportSequenceMemoryUsage can be converted into default implementation of static
+        reportMemoryUsage traits method. In this case the types of iterators will be inferred automaticaly. The old default
+        implementation becomes a custom implementation for the user defined types.
+
+        * wtf/MemoryInstrumentationHashCountedSet.h:
+        (WTF::reportMemoryUsage):
+        * wtf/MemoryInstrumentationHashMap.h:
+        (WTF::reportMemoryUsage):
+        * wtf/MemoryInstrumentationHashSet.h:
+        (WTF::reportMemoryUsage):
+        * wtf/MemoryInstrumentationListHashSet.h:
+        (WTF::reportMemoryUsage):
+        * wtf/MemoryInstrumentationSequence.h:
+        (WTF):
+        (WTF::SequenceMemoryInstrumentationTraits::reportMemoryUsage):
+        (SequenceMemoryInstrumentationTraits):
+        * wtf/MemoryInstrumentationVector.h:
+        (WTF::reportMemoryUsage):
+
+2012-12-10  Yury Semikhatsky  <yurys@chromium.org>
+
+        Memory instrumentation: make sure each edge is reported only once
+        https://bugs.webkit.org/show_bug.cgi?id=104630
+
+        Reviewed by Pavel Feldman.
+
+        Make sure that outgoing edges are reported only once if we come to the same
+        object twice: first by an address of a base class and then by a real address
+        of the object.
+
+        * wtf/MemoryInstrumentation.cpp:
+        (WTF::MemoryInstrumentation::MemoryInstrumentation):
+        (WTF::MemoryInstrumentation::reportLinkToBuffer):
+        (WTF::MemoryInstrumentation::InstrumentedPointerBase::InstrumentedPointerBase):
+        (WTF::MemoryInstrumentation::InstrumentedPointerBase::process):
+        (WTF::MemoryClassInfo::init):
+        (WTF::MemoryClassInfo::addRawBuffer):
+        (WTF::MemoryClassInfo::addPrivateBuffer):
+        * wtf/MemoryInstrumentation.h:
+        (InstrumentedPointerBase):
+        (MemoryInstrumentation):
+        (InstrumentedPointer):
+        (WTF::MemoryClassInfo::MemoryClassInfo):
+        (WTF::MemoryClassInfo::addMember):
+        (MemoryClassInfo):
+        (WTF::::InstrumentedPointer):
+        (WTF::::callReportMemoryUsage):
+        * wtf/MemoryObjectInfo.h:
+        (WTF::MemoryObjectInfo::MemoryObjectInfo):
+        (WTF::MemoryObjectInfo::firstVisit):
+        (WTF::MemoryObjectInfo::className):
+        (WTF::MemoryObjectInfo::name):
+        (WTF::MemoryObjectInfo::setAlreadyVisited):
+        (MemoryObjectInfo):
+
+2012-12-10  Benjamin Poulain  <benjamin@webkit.org>
+
+        Add convenience methods to use ListHashSet for a LRU cache
+        https://bugs.webkit.org/show_bug.cgi?id=104499
+
+        Reviewed by Sam Weinig.
+
+        ListHashSet is a great abstract data type to implement caches.
+        Unfortunately, the class was missing methods to do that easily and
+        efficiently. This patch fixes that.
+
+        The names appendOrMoveToLast() and prependOrMoveToFirst() were chosen
+        in favor of append()/prepend() to ensure they are not used in place of
+        add() by accident.
+
+        * wtf/ListHashSet.h:
+        (ListHashSet):
+        (WTF::::removeFirst):
+        (WTF::::appendOrMoveToLast):
+        (WTF::::prependOrMoveToFirst):
+        (WTF::::unlink):
+        (WTF::::unlinkAndDelete):
+        (WTF::::prependNode):
+
+2012-12-10  Eric Carlson  <eric.carlson@apple.com>
+
+        Add support for in-band text tracks to Mac port
+        https://bugs.webkit.org/show_bug.cgi?id=103663
+
+        Reviewed by Sam Weinig.
+
+        * wtf/Platform.h: Define HAVE_AVFOUNDATION_TEXT_TRACK_SUPPORT.
+
+2012-12-08  Patrick Gansterer  <paroga@webkit.org>
+
+        Compiling WTF outside of WebKit failed on Windows
+        https://bugs.webkit.org/show_bug.cgi?id=100201
+
+        Reviewed by Darin Adler.
+
+        Explicitly use the Unicode variants of the Windows API to
+        allow building the WTF library without the UNICODE define.
+
+        * wtf/win/MainThreadWin.cpp:
+        (WTF::initializeMainThreadPlatform):
+
+2012-12-08  Gustavo Noronha Silva  <gns@gnome.org>
+
+        Unreviewed trivial space fix to silence an automake warning.
+
+        * GNUmakefile.list.am:
+
+2012-12-05  Halton Huo  <halton.huo@intel.com>
+
+        [CMake] Unify coding style for CMake files
+        https://bugs.webkit.org/show_bug.cgi?id=103605
+
+        Reviewed by Laszlo Gombos.
+
+        Update cmake files(.cmake, CMakeLists.txt) with following style rules:
+        1. Indentation
+        1.1 Use spaces, not tabs.
+        1.2 Four spaces as indent.
+        2. Spacing
+        2.1 Place one space between control statements and their parentheses.
+            For eg, if (), else (), elseif (), endif (), foreach (),
+            endforeach (), while (), endwhile (), break ().
+        2.2 Do not place spaces between function and macro statements and
+            their parentheses. For eg, macro(), endmacro(), function(),
+            endfunction().
+        2.3 Do not place spaces between a command or function or macro and its
+            parentheses, or between a parenthesis and its content. For eg,
+            message("testing") not message( "testing") or message ("testing" )
+        2.4 No space at line ending.
+        3. Lowercase when call commands macros and functions. For eg,
+           add_executable() not ADD_EXECUTABLE(), set() not SET().
+
+        * CMakeLists.txt:
+        * wtf/CMakeLists.txt:
+        * wtf/PlatformBlackBerry.cmake:
+        * wtf/PlatformEfl.cmake:
+        * wtf/PlatformWinCE.cmake:
+
+2012-12-04  Jon Lee  <jonlee@apple.com>
+
+        Extend StringHasher to take a stream of characters
+        https://bugs.webkit.org/show_bug.cgi?id=104076
+        <rdar://problem/12811887>
+
+        Reviewed by Darin Adler.
+
+        We essentially move computeHash() to a member function of StringHasher. This allows clients of the
+        hasher to append strings to the general hash, without having to first concatenate the strings.
+
+        * wtf/StringHasher.h:
+        (WTF::StringHasher::addCharacters): Same as computeHash(), except also take into account the possibility
+        that there is a pending character to hash. If this is the case, we align the word boundary by consuming the
+        first character in data, adjust the length, move the data pointer forward one, and update the hasher's
+        pending character state. Also add an early return so that we are guaranteed at least one character in case
+        we run into this situation.
+        (WTF::StringHasher::computeHash): Refactor into addCharacters().
+
+2012-12-04  Yury Semikhatsky  <yurys@chromium.org>
+
+        Web Inspector: simplify reportMemoryUsage signature
+        https://bugs.webkit.org/show_bug.cgi?id=104028
+
+        Reviewed by Vsevolod Vlasov.
+
+        Removed const& modifier from instrumented pointer type. Was const T* const&,
+        now it is const T*
+
+        * wtf/MemoryInstrumentation.cpp:
+        (WTF::MemoryClassInfo::addRawBuffer):
+        * wtf/MemoryInstrumentation.h:
+        (MemoryInstrumentation):
+        (WTF::MemoryInstrumentation::selectInstrumentationMethod):
+        (WTF::MemoryInstrumentation::reportObjectMemoryUsage):
+        (MemoryClassInfo):
+        (WTF::reportMemoryUsage):
+        (WTF::MemoryInstrumentation::addObjectImpl):
+        (WTF):
+        * wtf/MemoryInstrumentationArrayBufferView.h:
+        (WTF::reportMemoryUsage):
+        * wtf/MemoryInstrumentationHashCountedSet.h:
+        (WTF::reportMemoryUsage):
+        * wtf/MemoryInstrumentationHashMap.h:
+        (WTF::reportMemoryUsage):
+        * wtf/MemoryInstrumentationHashSet.h:
+        (WTF::reportMemoryUsage):
+        * wtf/MemoryInstrumentationListHashSet.h:
+        (WTF::reportMemoryUsage):
+        * wtf/MemoryInstrumentationParsedURL.h:
+        (WTF::reportMemoryUsage):
+        * wtf/MemoryInstrumentationString.h:
+        (WTF::reportMemoryUsage):
+        * wtf/MemoryInstrumentationVector.h:
+        (WTF::reportMemoryUsage):
+
+2012-12-01  Filip Pizlo  <fpizlo@apple.com>
+
+        JSC should be able to report profiling data associated with the IR dumps and disassembly
+        https://bugs.webkit.org/show_bug.cgi?id=102999
+
+        Reviewed by Gavin Barraclough.
+
+        Made some minor changes to support the new profiler. FileOutputStream now has an
+        open() method, and DataLog uses it. StringPrintStream has a reset() method, which
+        allows you to reuse the same StringPrintStream for creating multiple strings.
+        SegmentedVector now has a const operator[]. And, WTFString now can do fromUTF8() on
+        a CString directly.
+
+        * wtf/DataLog.cpp:
+        (WTF::initializeLogFileOnce):
+        * wtf/FilePrintStream.cpp:
+        (WTF::FilePrintStream::open):
+        (WTF):
+        * wtf/FilePrintStream.h:
+        * wtf/SegmentedVector.h:
+        (WTF::SegmentedVector::at):
+        (SegmentedVector):
+        (WTF::SegmentedVector::operator[]):
+        * wtf/StringPrintStream.cpp:
+        (WTF::StringPrintStream::reset):
+        (WTF):
+        * wtf/StringPrintStream.h:
+        (StringPrintStream):
+        * wtf/text/WTFString.cpp:
+        (WTF::String::fromUTF8):
+        (WTF):
+        * wtf/text/WTFString.h:
+        (String):
+
+2012-12-04  Sheriff Bot  <webkit.review.bot@gmail.com>
+
+        Unreviewed, rolling out r136597.
+        http://trac.webkit.org/changeset/136597
+        https://bugs.webkit.org/show_bug.cgi?id=104065
+
+        broke Windows compilation (Requested by yurys on #webkit).
+
+        * wtf/MemoryInstrumentation.cpp:
+        (WTF::MemoryClassInfo::addRawBuffer):
+        * wtf/MemoryInstrumentation.h:
+        (MemoryInstrumentation):
+        (WTF::MemoryInstrumentation::selectInstrumentationMethod):
+        (WTF::MemoryInstrumentation::reportObjectMemoryUsage):
+        (MemoryClassInfo):
+        (WTF::reportMemoryUsage):
+        (WTF::MemoryInstrumentation::addObjectImpl):
+        (WTF):
+        * wtf/MemoryInstrumentationArrayBufferView.h:
+        (WTF::reportMemoryUsage):
+        * wtf/MemoryInstrumentationHashCountedSet.h:
+        (WTF::reportMemoryUsage):
+        * wtf/MemoryInstrumentationHashMap.h:
+        (WTF::reportMemoryUsage):
+        * wtf/MemoryInstrumentationHashSet.h:
+        (WTF::reportMemoryUsage):
+        * wtf/MemoryInstrumentationListHashSet.h:
+        (WTF::reportMemoryUsage):
+        * wtf/MemoryInstrumentationParsedURL.h:
+        (WTF::reportMemoryUsage):
+        * wtf/MemoryInstrumentationString.h:
+        (WTF::reportMemoryUsage):
+        * wtf/MemoryInstrumentationVector.h:
+        (WTF::reportMemoryUsage):
+
+2012-12-04  Yury Semikhatsky  <yurys@chromium.org>
+
+        Web Inspector: simplify reportMemoryUsage signature
+        https://bugs.webkit.org/show_bug.cgi?id=104028
+
+        Reviewed by Vsevolod Vlasov.
+
+        Removed const& modifier from instrumented pointer type. Was const T* const&,
+        now it is const T*
+
+        * wtf/MemoryInstrumentation.cpp:
+        (WTF::MemoryClassInfo::addRawBuffer):
+        * wtf/MemoryInstrumentation.h:
+        (MemoryInstrumentation):
+        (WTF::MemoryInstrumentation::selectInstrumentationMethod):
+        (WTF::MemoryInstrumentation::reportObjectMemoryUsage):
+        (MemoryClassInfo):
+        (WTF::reportMemoryUsage):
+        (WTF::MemoryInstrumentation::addObjectImpl):
+        (WTF):
+        * wtf/MemoryInstrumentationArrayBufferView.h:
+        (WTF::reportMemoryUsage):
+        * wtf/MemoryInstrumentationHashCountedSet.h:
+        (WTF::reportMemoryUsage):
+        * wtf/MemoryInstrumentationHashMap.h:
+        (WTF::reportMemoryUsage):
+        * wtf/MemoryInstrumentationHashSet.h:
+        (WTF::reportMemoryUsage):
+        * wtf/MemoryInstrumentationListHashSet.h:
+        (WTF::reportMemoryUsage):
+        * wtf/MemoryInstrumentationParsedURL.h:
+        (WTF::reportMemoryUsage):
+        * wtf/MemoryInstrumentationString.h:
+        (WTF::reportMemoryUsage):
+        * wtf/MemoryInstrumentationVector.h:
+        (WTF::reportMemoryUsage):
+
+2012-12-03  Yury Semikhatsky  <yurys@chromium.org>
+
+        Web Inspector: NMI introduce heap graph recording API
+        https://bugs.webkit.org/show_bug.cgi?id=103232
+
+        Reviewed by Vsevolod Vlasov.
+
+        MemoryInstrumentationClient is extended with several methods for reporting
+        heap graph vertices and edges. Edge source is always idenfied by heap object
+        address. Target node might be either a destination object address(either real
+        or adjusted if the edge was retrieved from a pointer to a base class) or a
+        MemoryObjectInfo in case of internal buffers.
+
+        * wtf/MemoryInstrumentation.cpp:
+        (WTF::MemoryInstrumentation::reportEdge):
+        (WTF):
+        (WTF::MemoryInstrumentation::reportLinkToBuffer): report edge between the object
+        and a buffer which it owns.
+        (WTF::MemoryInstrumentation::InstrumentedPointerBase::process):
+        (WTF::MemoryClassInfo::addRawBuffer):
+        (WTF::MemoryClassInfo::addPrivateBuffer):
+        * wtf/MemoryInstrumentation.h:
+        (MemoryInstrumentationClient):
+        (WTF::MemoryInstrumentationClient::reportNode):
+        (WTF::MemoryInstrumentationClient::reportEdge):
+        (WTF::MemoryInstrumentationClient::reportLeaf):
+        (WTF::MemoryInstrumentationClient::reportBaseAddress): if we found an object by a pointer
+        to base class it may have different value than real object address. Report both real and
+        adjusted addresses so that they both can be used for identifying corresponding heap graph
+        node.
+        (WTF::MemoryInstrumentation::addRootObject):
+        (MemoryInstrumentation):
+        (WTF::MemoryInstrumentation::addObject):
+        (WTF::MemoryInstrumentation::addRawBuffer):
+        (WTF::MemoryInstrumentation::OwningTraits::addObject):
+        (WTF::MemoryClassInfo::addMember):
+        (MemoryClassInfo):
+        (WTF::MemoryInstrumentation::addObjectImpl):
+        * wtf/MemoryObjectInfo.h: added methods for repoting class name and some name string.
+        (WTF::MemoryObjectInfo::setClassName):
+        (WTF::MemoryObjectInfo::setName):
+        (MemoryObjectInfo):
+
+2012-12-03  Filip Pizlo  <fpizlo@apple.com>
+
+        Replace JSValue::description() with JSValue::dump(PrintStream&)
+        https://bugs.webkit.org/show_bug.cgi?id=103866
+
+        Reviewed by Darin Adler.
+
+        Make it easier to get a String from a StringPrintStream.
+
+        * wtf/StringPrintStream.cpp:
+        (WTF::StringPrintStream::toString):
+        * wtf/StringPrintStream.h:
+        (StringPrintStream):
+        (WTF::toString):
+
+2012-12-02  Filip Pizlo  <fpizlo@apple.com>
+
+        It should be possible to build and run with DFG_ENABLE(PROPAGATION_VERBOSE)
+        https://bugs.webkit.org/show_bug.cgi?id=103848
+
+        Reviewed by Sam Weinig.
+
+        Increase the variadicity of dataLog() and print(), and add a pointerDump()
+        which allows passing a pointer to something that has a printInternal(). If
+        the pointer is null, it'll print "(null)"; otherwise it'll invoke the
+        printInternal() function.
+
+        * wtf/DataLog.h:
+        (WTF):
+        (WTF::dataLog):
+        * wtf/PrintStream.h:
+        (PrintStream):
+        (WTF::PrintStream::print):
+        (WTF):
+        (PointerDump):
+        (WTF::PointerDump::PointerDump):
+        (WTF::PointerDump::dump):
+        (WTF::pointerDump):
+
+2012-11-30  Simon Hausmann  <simon.hausmann@digia.com>, Pierre Rossi  <pierre.rossi@digia.com>
+
+        [Qt] Separate Qt WebKit into Qt WebKit and Qt WebKit Widgets
+        https://bugs.webkit.org/show_bug.cgi?id=99314
+
+        Reviewed by Tor Arne Vestbø.
+
+        This big change separates QtWebKit into QtWebKit and QtWebKitWidgets as
+        shared libraries.
+
+        It's a big refactoring that mostly involves moving WebCore dependent
+        code into QtWebKit and accessing it through exported QWebFrameAdapter
+        and QWebPageAdapter classes.
+
+
+        * wtf/text/WTFString.h:
+        (String): Export the QString conversions also as WTF_STRING_API.
+
+2012-11-29  Filip Pizlo  <fpizlo@apple.com>
+
+        It should be easy to find code blocks in debug dumps
+        https://bugs.webkit.org/show_bug.cgi?id=103623
+
+        Reviewed by Geoffrey Garen.
+
+        Changed RawPointer to accept both const void* and void*, and use the former internally.
+        
+        Cleaned up SHA1 so that the functionality already used internally for self-testing is
+        available via the API. This includes addBytes(CString) and computing hex digests.
+
+        * wtf/RawPointer.h:
+        (WTF::RawPointer::RawPointer):
+        (RawPointer):
+        (WTF::RawPointer::value):
+        * wtf/SHA1.cpp:
+        (WTF::expectSHA1):
+        (WTF::SHA1::hexDigest):
+        (WTF::SHA1::computeHexDigest):
+        * wtf/SHA1.h:
+        (WTF::SHA1::addBytes):
+
+2012-11-29  Patrick Gansterer  <paroga@webkit.org>
+
+        Build fix for WinCE after r136096.
+
+        * wtf/StringPrintStream.cpp: Added missing include file.
+
+2012-11-28  Filip Pizlo  <fpizlo@apple.com>
+
+        SpeculatedType dumping should not use the static char buffer[thingy] idiom
+        https://bugs.webkit.org/show_bug.cgi?id=103584
+
+        Reviewed by Michael Saboff.
+
+        Added a StringPrintStream, and made it easy to create dumpers for typedefs to primitives.
+
+        * GNUmakefile.list.am:
+        * WTF.gypi:
+        * WTF.pro:
+        * WTF.vcproj/WTF.vcproj:
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/CMakeLists.txt:
+        * wtf/PrintStream.cpp:
+        (WTF::dumpCharacter):
+        * wtf/PrintStream.h:
+        (WTF::printInternal):
+        * wtf/StringPrintStream.cpp: Added.
+        (WTF::StringPrintStream::StringPrintStream):
+        (WTF::StringPrintStream::~StringPrintStream):
+        (WTF::StringPrintStream::vprintf):
+        (WTF::StringPrintStream::toCString):
+        (WTF::StringPrintStream::increaseSize):
+        * wtf/StringPrintStream.h: Added.
+        (StringPrintStream):
+        (WTF::toCString):
+
+2012-11-28  Michael Saboff  <msaboff@apple.com>
+
+        Update String Stats for recent dataLog changes and add summary
+        https://bugs.webkit.org/show_bug.cgi?id=103583
+
+        Reviewed by Filip Pizlo.
+
+        Updated calls to dataLog() to dataLogF() as a results of r135469.
+        Added total savings from 8 bit strings in bytes and as a percentage.
+
+        * wtf/text/StringImpl.cpp:
+        (WTF::StringStats::printStats):
+
+2012-11-28  Roger Fong  <roger_fong@apple.com>
+
+        Make DataLog work/compile properly on Windows.
+        https://bugs.webkit.org/show_bug.cgi?id=103544
+
+        Reviewed by Filip Pizlo.
+
+        * wtf/DataLog.cpp:
+        (WTF::initializeLogFileOnce):
+
+2012-11-28  Filip Pizlo  <fpizlo@apple.com>
+
+        It should be possible to say dataLog("count = ", count, "\n") instead of dataLogF("count = %d\n", count)
+        https://bugs.webkit.org/show_bug.cgi?id=103009
+
+        Reviewed by Michael Saboff.
+
+        Added the ability to use out.print(...) and dataLog(...) variadically and with
+        WTF::printInternal(PrintStream&, const T&) overloads for any type T that you want
+        to be able to pass as an argument to out.print() or dataLog(). Also added one
+        example class for doing this: RawPointer, which can be used to force a pointer
+        to be printed as "%p" rather than matching any overloads that you might want to
+        introduce.
+
+        * GNUmakefile.list.am:
+        * WTF.gypi:
+        * WTF.pro:
+        * WTF.vcproj/WTF.vcproj:
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/CMakeLists.txt:
+        * wtf/DataLog.h:
+        (WTF):
+        (WTF::dataLog):
+        * wtf/PrintStream.cpp:
+        (WTF::printInternal):
+        (WTF):
+        * wtf/PrintStream.h:
+        (PrintStream):
+        (WTF::PrintStream::print):
+        (WTF):
+        * wtf/RawPointer.h: Added.
+        (WTF):
+        (RawPointer):
+        (WTF::RawPointer::RawPointer):
+        (WTF::RawPointer::value):
+
+2012-11-27  Filip Pizlo  <fpizlo@apple.com>
+
+        Convert some remaining uses of FILE* to PrintStream&.
+
+        Rubber stamped by Mark Hahnenberg.
+
+        * wtf/BitVector.cpp:
+        (WTF::BitVector::dump):
+        * wtf/BitVector.h:
+        (BitVector):
+
+2012-11-27  Pratik Solanki  <psolanki@apple.com>
+
+        objc/objc-runtime.h does not exist on all PLATFORM(MAC)
+        https://bugs.webkit.org/show_bug.cgi?id=101780
+
+        Reviewed by Brent Fulgham.
+
+        Clean up header includes so we don't include objc/objc-runtime.h.
+
+        * wtf/Functional.h:
+        * wtf/ObjcRuntimeExtras.h: Include objc/message.h here so we don't rely on proper ordering
+        of includes in files that include this header.
+
+2012-11-27  Sheriff Bot  <webkit.review.bot@gmail.com>
+
+        Unreviewed, rolling out r135828.
+        http://trac.webkit.org/changeset/135828
+        https://bugs.webkit.org/show_bug.cgi?id=103405
+
+        [Chromium] Multiple ASAN errors after a WebKit roll due to
+        mismatched malloc/delete (not free) resulting from
+        StringImpl::deref() (Requested by apavlov on #webkit).
+
+        * wtf/FastAllocBase.h:
+        * wtf/Platform.h:
+
+2012-11-26  Adam Barth  <abarth@webkit.org>
+
+        [Chromium] fastMalloc has an extra branch on Windows
+        https://bugs.webkit.org/show_bug.cgi?id=103027
+
+        Reviewed by Eric Seidel.
+
+        There's no need to override the new/delete operators on non-Mac
+        platform because:
+
+        1) We use the system malloc anyway.
+        2) We've modified the system malloc to crash in out-of-memory conditions.
+
+        This patch removes a branch (and a call) from malloc, which will
+        hopefully improve performance. I haven't measured the performance
+        characteristics of this patch, but I will look at the graphs closely
+        when landing.
+
+        * wtf/FastAllocBase.h:
+        * wtf/Platform.h:
+
+2012-11-26  Filip Pizlo  <fpizlo@apple.com>
+
+        DataLog to a file should work if there are multiple processes using WTF
+        https://bugs.webkit.org/show_bug.cgi?id=103323
+
+        Reviewed by Mark Hahnenberg.
+
+        Whereas before DataLog would open a file with the name you specified, now it'll open a file with the
+        name plus the PID appended to it. So if you are dealing with multiple processes running with DataLog
+        to a file enabled, you'll get multiple separate log files.
+
+        * wtf/DataLog.cpp:
+        (WTF::initializeLogFileOnce):
+
+2012-11-26  Zeno Albisser  <zeno@webkit.org>
+
+        [Qt] Fix the LLInt build on Mac
+        https://bugs.webkit.org/show_bug.cgi?id=97587
+
+        Reviewed by Simon Hausmann.
+
+        * wtf/InlineASM.h:
+            Use OS(DARWIN) instead of PLATFORM(MAC),
+            in order to allow Qt to use the same code.
+        * wtf/Platform.h:
+
+2012-11-26  Patrick Gansterer  <paroga@webkit.org>
+
+        Build fix for WinCE after r135640.
+
+        * wtf/DataLog.cpp:
+
+2012-11-24  Adam Barth  <abarth@webkit.org>
+
+        Chromium should use TCMalloc on Mac to go fast
+        https://bugs.webkit.org/show_bug.cgi?id=102866
+
+        Reviewed by Eric Seidel.
+
+        This patch enables TCMalloc for some WebKit objects. It improves
+        dom-modify on Mac by 5-10%.
+
+        On non-Mac platforms, Chromium already uses TCMalloc throughout the
+        project. Unfortunately, we haven't yet figured out how to turn TCMalloc
+        on globally on Mac because the approach we use for other platforms makes
+        some OS X APIs sad.
+
+        The next best thing would be to enable TCMalloc for WebKit by
+        overriding the global new and delete operator, as is done on apple-mac
+        and other platforms. Unfortunately, we cannot use that approach either
+        because the Chromium WebKit API is not memory tight.
+
+        Fortunately, WebKit has a mechanism for selectively enabling TCMalloc
+        for a selection of objects by overriding the new and delete operators
+        on those objects. This patch opts chromium-mac into that scheme by
+        setting the appropriate preprocessor macros.
+
+        * WTF.gyp/WTF.gyp:
+        * wtf/Platform.h:
+
+2012-11-21  Filip Pizlo  <fpizlo@apple.com>
+
+        Any function that can log things should be able to easily log them to a memory buffer as well
+        https://bugs.webkit.org/show_bug.cgi?id=103000
+
+        Reviewed by Sam Weinig.
+
+        We have a number of places where we pass around a FILE* as a target to which to print
+        some logging information. But the purpose of passing FILE* instead of always assuming
+        that we should dump to stderr is that it may be sometimes useful to send the logging
+        information elsewhere. Unfortunately, FILE* isn't quite powerful enough: it's combersome
+        to use it to send logging to a string, for example.
+        
+        We could get around this by using <iostream> and <sstream>, but so far this aspect of
+        C++ has not been part of the WebKit coding conventions. Personally I find <iostream>
+        awkward due to its abuse of operator overloading.
+        
+        So this patch introduces the PrintStream abstract class, which offers printf-like
+        functionality while completely abstracting the destination and mechanism of the printing
+        output. It would be trivial to implement a StringPrintStream, for example. This will feed
+        into work on https://bugs.webkit.org/show_bug.cgi?id=102999.
+        
+        This also sets us up for creating templatized print() and println() methods that will
+        allow us to say things like out.print("count = ", count, "\n"), but that is the topic
+        of https://bugs.webkit.org/show_bug.cgi?id=103009.
+        
+        This patch also changes dataLog() to use FilePrintStream internally, and WTF::dataFile()
+        now returns a FilePrintStream&. Any previous users of WTF::dataFile() have been changed
+        to expect a PrintStream&.
+
+        * GNUmakefile.list.am:
+        * WTF.pro:
+        * WTF.vcproj/WTF.vcproj:
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/CMakeLists.txt:
+        * wtf/DataLog.cpp:
+        (WTF):
+        (WTF::initializeLogFileOnce):
+        (WTF::initializeLogFile):
+        (WTF::dataFile):
+        (WTF::dataLogV):
+        (WTF::dataLogString):
+        * wtf/DataLog.h:
+        (WTF):
+        * wtf/FilePrintStream.cpp: Added.
+        (WTF):
+        (WTF::FilePrintStream::FilePrintStream):
+        (WTF::FilePrintStream::~FilePrintStream):
+        (WTF::FilePrintStream::vprintf):
+        (WTF::FilePrintStream::flush):
+        * wtf/FilePrintStream.h: Added.
+        (WTF):
+        (FilePrintStream):
+        (WTF::FilePrintStream::file):
+        * wtf/PrintStream.cpp: Added.
+        (WTF):
+        (WTF::PrintStream::PrintStream):
+        (WTF::PrintStream::~PrintStream):
+        (WTF::PrintStream::printf):
+        (WTF::PrintStream::print):
+        (WTF::PrintStream::println):
+        (WTF::PrintStream::flush):
+        (WTF::print):
+        * wtf/PrintStream.h: Added.
+        (WTF):
+        (PrintStream):
+        (WTF::print):
+        (WTF::println):
+
+2012-11-23  Robert Kroeger  <rjkroege@chromium.org>
+
+        Remove unused ScrollByPixelVelocity
+        https://bugs.webkit.org/show_bug.cgi?id=102840
+
+        Reviewed by Sam Weinig.
+
+        The GESTURE_ANIMATION feature turns on code in WebCore is unused.
+        Remove it.
+
+        No new tests: code removal/cleanup.
+
+        * wtf/Platform.h:
+
+2012-11-23  Laszlo Gombos  <l.gombos@samsung.com>
+
+        [EFL] Define WTF_PLATFORM_EFL in Platform.h
+        https://bugs.webkit.org/show_bug.cgi?id=101482
+
+        Reviewed by Kenneth Rohde Christiansen.
+
+        Define WTF_PLATFORM_EFL in Platform.h to be consistent with 
+        other ports.
+
+        * wtf/Platform.h:
+
+2012-11-16  Yury Semikhatsky  <yurys@chromium.org>
+
+        Memory instrumentation: extract MemoryObjectInfo declaration into a separate file
+        https://bugs.webkit.org/show_bug.cgi?id=102510
+
+        Reviewed by Pavel Feldman.
+
+        Moved MemoryObjectInfo into separate header. Moved definition of MemoryInstrumentation
+        methods that depend on MemoryObjectInfo declaration into MemoryInstrumentation.cpp to
+        make MemoryInstrumentation require only forward declaration of MemoryObjectInfo.
+
+        * GNUmakefile.list.am:
+        * WTF.gypi:
+        * WTF.pro:
+        * WTF.vcproj/WTF.vcproj:
+        * wtf/CMakeLists.txt:
+        * wtf/MemoryInstrumentation.cpp: Added.
+        (WTF):
+        (WTF::MemoryInstrumentation::MemoryInstrumentation):
+        (WTF::MemoryInstrumentation::~MemoryInstrumentation):
+        (WTF::MemoryInstrumentation::getObjectType): this method allows to get object type without
+        pulling in MemoryObjectInfo.h and all its dependencies.
+        (WTF::MemoryInstrumentation::callReportObjectInfo):
+        (WTF::MemoryInstrumentation::InstrumentedPointerBase::InstrumentedPointerBase):
+        (WTF::MemoryInstrumentation::InstrumentedPointerBase::process):
+        (WTF::MemoryClassInfo::init):
+        (WTF::MemoryClassInfo::addRawBuffer):
+        (WTF::MemoryClassInfo::addPrivateBuffer):
+        * wtf/MemoryInstrumentation.h:
+        (MemoryInstrumentation):
+        (WTF::MemoryInstrumentation::addRootObject):
+        (InstrumentedPointerBase):
+        (WTF::MemoryInstrumentation::reportObjectMemoryUsage):
+        (InstrumentedPointer):
+        (WTF::MemoryInstrumentation::addObject): we now pass owner's MemoryObjectInfo in all places
+        where we report objects pointed by the owner.
+        (WTF::MemoryInstrumentation::OwningTraits::addObject):
+        (WTF::MemoryClassInfo::MemoryClassInfo):
+        (WTF::MemoryClassInfo::addMember):
+        (MemoryClassInfo):
+        (WTF::MemoryInstrumentation::addObjectImpl):
+        (WTF::::InstrumentedPointer):
+        (WTF::::callReportMemoryUsage):
+        * wtf/MemoryObjectInfo.h: Added.
+        (WTF):
+        (MemoryObjectInfo):
+        (WTF::MemoryObjectInfo::MemoryObjectInfo):
+        (WTF::MemoryObjectInfo::objectType):
+        (WTF::MemoryObjectInfo::objectSize):
+        (WTF::MemoryObjectInfo::reportedPointer):
+        (WTF::MemoryObjectInfo::memoryInstrumentation):
+        (WTF::MemoryObjectInfo::reportObjectInfo):
+
+2012-11-23  Krzysztof Czech  <k.czech@samsung.com>
+
+        [EFL] Platform support for Accessibility feature.
+        https://bugs.webkit.org/show_bug.cgi?id=100848
+
+        Reviewed by Gyuyoung Kim.
+
+        Enable HAVE(ACCESSIBILITY) ifdefs so that EFL port can use it.
+
+        * wtf/Platform.h:
+
+2012-11-22  Michael Saboff  <msaboff@apple.com>
+
+        HTML integer parsing functions don't natively handle 8 bit strings
+        https://bugs.webkit.org/show_bug.cgi?id=102997
+
+        Reviewed by Filip Pizlo.
+
+        Added exports to the LChar* versions of charactersToIntStrict() and charactersToUIntStrict()
+        to support the changes made to parseHTMLInteger() and parseHTMLNonNegativeInteger().
+
+        * wtf/text/WTFString.h:
+        (WTF::charactersToIntStrict): Added export
+        (WTF::charactersToUIntStrict): Added export
+
+2012-11-21  Filip Pizlo  <fpizlo@apple.com>
+
+        Rename dataLog() and dataLogV() to dataLogF() and dataLogFV()
+        https://bugs.webkit.org/show_bug.cgi?id=103001
+
+        Rubber stamped by Dan Bernstein.
+
+        * wtf/DataLog.cpp:
+        (WTF::dataLogFV):
+        (WTF::dataLogF):
+        (WTF::dataLogFString):
+        * wtf/DataLog.h:
+        (WTF):
+        * wtf/HashTable.cpp:
+        (WTF::HashTableStats::dumpStats):
+        * wtf/HashTable.h:
+        (WTF::HashTable::Stats::dumpStats):
+        * wtf/MetaAllocator.cpp:
+        (WTF::MetaAllocator::dumpProfile):
+        * wtf/StackStats.cpp:
+        (WTF::StackStats::initialize):
+        (WTF::StackStats::PerThreadStats::PerThreadStats):
+        (WTF::StackStats::CheckPoint::CheckPoint):
+        (WTF::StackStats::CheckPoint::~CheckPoint):
+        (WTF::StackStats::probe):
+        (WTF::StackStats::LayoutCheckPoint::LayoutCheckPoint):
+        * wtf/text/WTFString.cpp:
+        (String::show):
+
+2012-11-21  Anthony G. Basile  <blueness@gentoo.org>
+
+        Source/WTF/wtf/Assertions.cpp: fix build on a uClibc system
+        https://bugs.webkit.org/show_bug.cgi?id=102946
+
+        Reviewed by Tony Chang.
+
+        Webkit-Gtk fails to build on a uClibc system because
+        Assertions.cpp assumes that all Linux systems have execinfo.h
+        and provide backtrace(). This is not necessarily the case for
+        uClibc which can be configured without these.  This patch
+        refines the check for OS(LINUX) to prevent this breakage.
+        Originally reported at https://bugs.gentoo.org/441674
+
+        * wtf/Assertions.cpp:
+
+2012-11-19  Filip Pizlo  <fpizlo@apple.com>
+
+        DFG should be able to cache closure calls
+        https://bugs.webkit.org/show_bug.cgi?id=102662
+
+        Reviewed by Gavin Barraclough.
+
+        Added support to the meta allocator for easily querying whether an address falls within
+        a certain allocated chunk. Also added a useful debug routine to SentinelLinkedList,
+        which can be used to check if a node is on a particular list.
+
+        * wtf/MetaAllocatorHandle.h:
+        (MetaAllocatorHandle):
+        (WTF::MetaAllocatorHandle::containsIntegerAddress):
+        (WTF::MetaAllocatorHandle::contains):
+        * wtf/SentinelLinkedList.h:
+        (SentinelLinkedList):
+        (WTF::::isOnList):
+        (WTF):
+
+2012-11-19  Laszlo Gombos  <l.gombos@samsung.com>
+
+        Remove ReadWriteLock
+        https://bugs.webkit.org/show_bug.cgi?id=101637
+
+        Reviewed by Darin Adler.
+
+        Remove ReadWriteLock as it does not seems to be used.
+
+        * wtf/Platform.h: Remove the definition of HAVE_PTHREAD_RWLOCK.
+
+        * wtf/ThreadingPrimitives.h: Remove the PlatformReadWriteLock type 
+        and the ReadWriteLock class.
+
+        * wtf/ThreadingPthreads.cpp: Remove the implementation of
+        the ReadWriteLock class using pthreads.
+
+2012-11-19  Brady Eidson  <beidson@apple.com>
+
+        Add 64-bit specializations for atomicIncrement and atomicDecrement
+        https://bugs.webkit.org/show_bug.cgi?id=102702
+
+        Reviewed by Eric Carlson.
+
+        * wtf/Atomics.h:
+        (WTF::atomicIncrement): Add A 64-bit version for Darwin.
+        (WTF::atomicDecrement): Ditto.
+
+2012-11-18  Laszlo Gombos  <l.gombos@samsung.com>
+
+        Remove non-existent directories from the make system
+        https://bugs.webkit.org/show_bug.cgi?id=102632
+
+        Reviewed by Adam Barth.
+
+        Remove (non-existent) symbian references from the exclude list in gyp project files.
+
+        * WTF.gyp/WTF.gyp:
+
+2012-11-16  Michael Saboff  <msaboff@apple.com>
+
+        String::fromUTF8() should take advantage of the ASCII check in convertUTF8ToUTF16()
+        https://bugs.webkit.org/show_bug.cgi?id=100577
+
+        Reviewed by Oliver Hunt.
+
+        Passed in ASCII flag to convertUTF8ToUTF16() and if try, create an 8 bit string from the original arguments.
+        Relanding after fix to https://bugs.webkit.org/show_bug.cgi?id=102482.
+
+        * wtf/text/WTFString.cpp:
+        (WTF::String::fromUTF8):
+
+2012-11-15  Yury Semikhatsky  <yurys@chromium.org>
+
+        Memory instrumentation: add code for reporting stack traces of unknown instrumented objects
+        https://bugs.webkit.org/show_bug.cgi?id=102384
+
+        Reviewed by Pavel Feldman.
+
+        Added an option to collect stack traces for instrumented pointers so that they
+        can be printed in case the check failed for the pointer. This code is hidden
+        behind a define.
+
+        * wtf/MemoryInstrumentation.h:
+        (MemoryInstrumentationClient):
+        (WTF::MemoryInstrumentation::checkCountedObject): the method now returns false
+        in case the check has failed.
+        (InstrumentedPointer):
+        (WTF::::InstrumentedPointer):
+        (WTF):
+        (WTF::::process):
+
 2012-11-15  Mark Hahnenberg  <mhahnenberg@apple.com>
 
         Windows Fibers can corrupt the cached StackBounds

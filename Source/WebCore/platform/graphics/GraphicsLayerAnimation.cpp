@@ -221,6 +221,8 @@ GraphicsLayerAnimation::GraphicsLayerAnimation(const String& name, const Keyfram
     , m_listsMatch(listsMatch)
     , m_startTime(startTime)
     , m_pauseTime(0)
+    , m_totalRunningTime(0)
+    , m_lastRefreshedTime(m_startTime)
     , m_state(PlayingState)
 {
 }
@@ -341,6 +343,9 @@ void GraphicsLayerAnimation::resume()
 
 void GraphicsLayerAnimations::add(const GraphicsLayerAnimation& animation)
 {
+    // Remove the old state if we are resuming a paused animation.
+    remove(animation.name(), animation.property());
+
     m_animations.append(animation);
 }
 
@@ -368,6 +373,14 @@ void GraphicsLayerAnimations::remove(const String& name)
 {
     for (int i = m_animations.size() - 1; i >= 0; --i) {
         if (m_animations[i].name() == name)
+            m_animations.remove(i);
+    }
+}
+
+void GraphicsLayerAnimations::remove(const String& name, AnimatedPropertyID property)
+{
+    for (int i = m_animations.size() - 1; i >= 0; --i) {
+        if (m_animations[i].name() == name && m_animations[i].property() == property)
             m_animations.remove(i);
     }
 }

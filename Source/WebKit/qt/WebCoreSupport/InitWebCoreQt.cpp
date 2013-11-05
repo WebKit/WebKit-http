@@ -30,10 +30,13 @@
 #include "config.h"
 #include "InitWebCoreQt.h"
 
+#include "Chrome.h"
+#include "ChromeClientQt.h"
 #include "Image.h"
+#include "InitializeLogging.h"
 #include "NotImplemented.h"
+#include "Page.h"
 #include "PlatformStrategiesQt.h"
-#include "QStyleFacadeImp.h"
 #include "RenderThemeQStyle.h"
 #include "ScriptController.h"
 #include "ScrollbarThemeQStyle.h"
@@ -44,26 +47,44 @@
 
 #include "qwebelement_p.h"
 #include <JavaScriptCore/runtime/InitializeThreading.h>
-#include <QApplication>
-#include <QStyle>
 #include <wtf/MainThread.h>
 
 namespace WebKit {
 
-// Called also from WebKit2's WebProcess.
-Q_DECL_EXPORT void initializeWebKit2Theme()
+static QtStyleFacadeFactoryFunction initCallback = 0;
+
+Q_DECL_EXPORT void setWebKitWidgetsInitCallback(QtStyleFacadeFactoryFunction callback)
 {
-    if (qgetenv("QT_WEBKIT_THEME_NAME") == "qstyle") {
-        WebCore::RenderThemeQStyle::setStyleFactoryFunction(WebKit::QStyleFacadeImp::create);
+    initCallback = callback;
+}
+
+static WebCore::QStyleFacade* createStyleForPage(WebCore::Page* page)
+{
+    QWebPageAdapter* pageAdapter = 0;
+    if (page)
+        pageAdapter = static_cast<WebCore::ChromeClientQt*>(page->chrome()->client())->m_webPage;
+    return initCallback(pageAdapter);
+}
+
+// Called also from WebKit2's WebProcess
+Q_DECL_EXPORT void initializeWebKitQt()
+{
+    if (initCallback) {
+        WebCore::RenderThemeQStyle::setStyleFactoryFunction(createStyleForPage);
         WebCore::RenderThemeQt::setCustomTheme(WebCore::RenderThemeQStyle::create, new WebCore::ScrollbarThemeQStyle);
     }
+}
+
+Q_DECL_EXPORT void setImagePlatformResource(const char* name, const QPixmap& pixmap)
+{
+    WebCore::Image::setPlatformResource(name, pixmap);
 }
 
 }
 
 namespace WebCore {
 
-void initializeWebCoreQt()
+Q_DECL_EXPORT void initializeWebCoreQt()
 {
     static bool initialized = false;
     if (initialized)
@@ -79,17 +100,9 @@ void initializeWebCoreQt()
     PlatformStrategiesQt::initialize();
     QtWebElementRuntime::initialize();
 
-    RenderThemeQStyle::setStyleFactoryFunction(WebKit::QStyleFacadeImp::create);
-    RenderThemeQt::setCustomTheme(RenderThemeQStyle::create, new ScrollbarThemeQStyle);
-
 #if USE(QTKIT)
     InitWebCoreSystemInterface();
 #endif
-
-    // QWebSettings::SearchCancelButtonGraphic
-    Image::setPlatformResource("searchCancelButton", QApplication::style()->standardPixmap(QStyle::SP_DialogCloseButton));
-    // QWebSettings::SearchCancelButtonPressedGraphic
-    Image::setPlatformResource("searchCancelButtonPressed", QApplication::style()->standardPixmap(QStyle::SP_DialogCloseButton));
 
     initialized = true;
 }

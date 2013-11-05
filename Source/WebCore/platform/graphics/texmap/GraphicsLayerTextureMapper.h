@@ -25,18 +25,15 @@
 #include "GraphicsLayerClient.h"
 #include "Image.h"
 #include "TextureMapperLayer.h"
+#include "Timer.h"
 
 namespace WebCore {
-
-class TextureMapperLayer;
-class BitmapTexture;
-class TextureMapper;
 
 class GraphicsLayerTextureMapper : public GraphicsLayer {
     friend class TextureMapperLayer;
 
 public:
-    GraphicsLayerTextureMapper(GraphicsLayerClient*);
+    explicit GraphicsLayerTextureMapper(GraphicsLayerClient*);
     virtual ~GraphicsLayerTextureMapper();
 
     // reimps from GraphicsLayer.h
@@ -67,6 +64,8 @@ public:
     virtual void setContentsRect(const IntRect& r);
     virtual void setReplicatedByLayer(GraphicsLayer*);
     virtual void setContentsToImage(Image*);
+    virtual void setContentsToSolidColor(const Color&);
+    Color solidColor() const { return m_solidColor; }
     virtual void setContentsToMedia(PlatformLayer*);
     virtual void setContentsToCanvas(PlatformLayer* canvas) { setContentsToMedia(canvas); }
     virtual void flushCompositingState(const FloatRect&);
@@ -76,7 +75,6 @@ public:
 
     void notifyChange(TextureMapperLayer::ChangeMask);
     inline int changeMask() const { return m_changeMask; }
-    void didSynchronize();
 
     virtual bool addAnimation(const KeyframeValueList&, const IntSize&, const Animation*, const String&, double);
     virtual void pauseAnimation(const String&, double);
@@ -84,8 +82,6 @@ public:
     void setAnimations(const GraphicsLayerAnimations&);
 
     TextureMapperLayer* layer() const { return m_layer.get(); }
-    bool needsDisplay() const { return m_needsDisplay; }
-    IntRect needsDisplayRect() const { return enclosingIntRect(m_needsDisplayRect); }
 
     virtual void setDebugBorder(const Color&, float width);
 
@@ -93,22 +89,38 @@ public:
     virtual bool setFilters(const FilterOperations&);
 #endif
 
+    // FIXME: It will be removed after removing dependency of LayerTreeRenderer on GraphicsLayerTextureMapper.
+    void setHasOwnBackingStore(bool b) { m_hasOwnBackingStore = b; }
+
     void setFixedToViewport(bool fixed) { m_fixedToViewport = fixed; }
     bool fixedToViewport() const { return m_fixedToViewport; }
 
+    void drawRepaintCounter(GraphicsContext*);
 private:
     virtual void willBeDestroyed();
+    void didFlushCompositingState();
+    void updateBackingStore();
+    void prepareBackingStore();
+    bool shouldHaveBackingStore() const;
+    void animationStartedTimerFired(Timer<GraphicsLayerTextureMapper>*);
 
     OwnPtr<TextureMapperLayer> m_layer;
     RefPtr<TextureMapperTiledBackingStore> m_compositedImage;
     NativeImagePtr m_compositedNativeImagePtr;
+    RefPtr<TextureMapperBackingStore> m_backingStore;
+
     int m_changeMask;
     bool m_needsDisplay;
+    bool m_hasOwnBackingStore;
     bool m_fixedToViewport;
+    Color m_solidColor;
+
+    Color m_debugBorderColor;
+    float m_debugBorderWidth;
+
     TextureMapperPlatformLayer* m_contentsLayer;
     FloatRect m_needsDisplayRect;
     GraphicsLayerAnimations m_animations;
-    void animationStartedTimerFired(Timer<GraphicsLayerTextureMapper>*);
     Timer<GraphicsLayerTextureMapper> m_animationStartedTimer;
 };
 

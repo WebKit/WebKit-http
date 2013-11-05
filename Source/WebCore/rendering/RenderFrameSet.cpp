@@ -40,6 +40,8 @@
 #include "RenderLayer.h"
 #include "RenderView.h"
 #include "Settings.h"
+#include "WebCoreMemoryInstrumentation.h"
+#include <wtf/MemoryInstrumentationVector.h>
 
 namespace WebCore {
 
@@ -464,8 +466,11 @@ void RenderFrameSet::layout()
 
     bool doFullRepaint = selfNeedsLayout() && checkForRepaintDuringLayout();
     LayoutRect oldBounds;
-    if (doFullRepaint)
-        oldBounds = absoluteClippedOverflowRect();
+    RenderLayerModelObject* repaintContainer = 0;
+    if (doFullRepaint) {
+        repaintContainer = containerForRepaint();
+        oldBounds = clippedOverflowRectForRepaint(repaintContainer);
+    }
 
     if (!parent()->isFrameSet() && !document()->printing()) {
         setWidth(view()->viewWidth());
@@ -493,18 +498,14 @@ void RenderFrameSet::layout()
 
     computeEdgeInfo();
 
-    if (doFullRepaint) {
-        view()->repaintViewRectangle(oldBounds);
-        LayoutRect newBounds = absoluteClippedOverflowRect();
-        if (newBounds != oldBounds)
-            view()->repaintViewRectangle(newBounds);
-    }
+    updateLayerTransform();
 
-    // If this FrameSet has a transform matrix then we need to recompute it
-    // because the transform origin is a function the size of the RenderFrameSet
-    // which may not be computed until it is attached to the render tree.
-    if (layer() && hasTransform())
-        layer()->updateTransform();
+    if (doFullRepaint) {
+        repaintUsingContainer(repaintContainer, pixelSnappedIntRect(oldBounds));
+        LayoutRect newBounds = clippedOverflowRectForRepaint(repaintContainer);
+        if (newBounds != oldBounds)
+            repaintUsingContainer(repaintContainer, pixelSnappedIntRect(newBounds));
+    }
 
     setNeedsLayout(false);
 }
@@ -700,7 +701,7 @@ bool RenderFrameSet::userResize(MouseEvent* evt)
         if (needsLayout())
             return false;
         if (evt->type() == eventNames().mousedownEvent && evt->button() == LeftButton) {
-            FloatPoint localPos = absoluteToLocal(evt->absoluteLocation(), UseTransforms | SnapOffsetForTransforms);
+            FloatPoint localPos = absoluteToLocal(evt->absoluteLocation(), UseTransforms);
             startResizing(m_cols, localPos.x());
             startResizing(m_rows, localPos.y());
             if (m_cols.m_splitBeingResized != noSplit || m_rows.m_splitBeingResized != noSplit) {
@@ -710,7 +711,7 @@ bool RenderFrameSet::userResize(MouseEvent* evt)
         }
     } else {
         if (evt->type() == eventNames().mousemoveEvent || (evt->type() == eventNames().mouseupEvent && evt->button() == LeftButton)) {
-            FloatPoint localPos = absoluteToLocal(evt->absoluteLocation(), UseTransforms | SnapOffsetForTransforms);
+            FloatPoint localPos = absoluteToLocal(evt->absoluteLocation(), UseTransforms);
             continueResizing(m_cols, localPos.x());
             continueResizing(m_rows, localPos.y());
             if (evt->type() == eventNames().mouseupEvent && evt->button() == LeftButton) {
@@ -812,6 +813,24 @@ CursorDirective RenderFrameSet::getCursor(const LayoutPoint& point, Cursor& curs
         return SetCursor;
     }
     return RenderBox::getCursor(point, cursor);
+}
+
+void RenderFrameSet::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
+{
+    MemoryClassInfo info(memoryObjectInfo, this, PlatformMemoryTypes::Rendering);
+    RenderBox::reportMemoryUsage(memoryObjectInfo);
+    info.addMember(m_children);
+    info.addMember(m_rows);
+    info.addMember(m_cols);
+}
+
+void RenderFrameSet::GridAxis::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
+{
+    MemoryClassInfo info(memoryObjectInfo, this, PlatformMemoryTypes::Rendering);
+    info.addMember(m_sizes);
+    info.addMember(m_deltas);
+    info.addMember(m_preventResize);
+    info.addMember(m_allowBorder);
 }
 
 } // namespace WebCore

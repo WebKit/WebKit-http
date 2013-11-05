@@ -23,8 +23,15 @@ function prepareDatabase()
 
 function clear()
 {
-    evalAndExpectException("db.transaction('foo').objectStore('foo').clear();", "IDBDatabaseException.READ_ONLY_ERR");
-    evalAndLog("db.transaction('foo', 'readwrite').objectStore('foo').clear();");
+    evalAndExpectException("db.transaction('foo').objectStore('foo').clear();", "0", "'ReadOnlyError'");
+    transaction = evalAndLog("db.transaction('foo', 'readwrite')");
+    evalAndLog("transaction.objectStore('foo').clear();");
+    transaction.oncomplete = cleared;
+    transaction.onabort = unexpectedAbortCallback;
+}
+
+function cleared()
+{
     request = evalAndLog("request = db.transaction('foo').objectStore('foo').openCursor();");
     request.onsuccess = areWeClearYet;
     request.onerror = unexpectedErrorCallback;

@@ -88,10 +88,6 @@
     void scrollByLines(in [Optional=DefaultIsUndefined] long lines);
     void scrollByPages(in [Optional=DefaultIsUndefined] long pages);
 
-#if defined(ENABLE_ANIMATION_API) && ENABLE_ANIMATION_API
-    WebKitAnimationList webkitGetAnimations();
-#endif
-
     // HTML 5
     NodeList getElementsByClassName(in [Optional=DefaultIsUndefined] DOMString name);
 
@@ -119,8 +115,11 @@
     readonly attribute Element nextElementSibling;
     readonly attribute unsigned long childElementCount;
 
-#if defined(ENABLE_SHADOW_DOM)
-    [TreatReturnedNullStringAs=Null, V8EnabledAtRuntime=shadowDOM] attribute DOMString pseudo;
+    // ShadowAware API
+#if defined(ENABLE_SHADOW_DOM) && ENABLE_SHADOW_DOM
+    [Reflect=pseudo, V8EnabledAtRuntime=shadowDOM, ImplementedAs=pseudo] attribute DOMString webkitPseudo;
+    [V8EnabledAtRuntime=shadowDOM, ImplementedAs=createShadowRoot] ShadowRoot webkitCreateShadowRoot() raises(DOMException);
+    [V8EnabledAtRuntime=shadowDOM, ImplementedAs=shadowRoot] readonly attribute ShadowRoot webkitShadowRoot;
 #endif
 
     // DOM 4
@@ -150,8 +149,8 @@
     [Conditional=POINTER_LOCK] void webkitRequestPointerLock();
 
     // CSS Regions API
-    [Conditional=CSS_REGIONS] readonly attribute DOMString webkitRegionOverset;
-    [Conditional=CSS_REGIONS] sequence<Range> webkitGetRegionFlowRanges();
+    [Conditional=CSS_REGIONS, V8EnabledAtRuntime=cssRegions] readonly attribute DOMString webkitRegionOverset;
+    [Conditional=CSS_REGIONS, V8EnabledAtRuntime=cssRegions] sequence<Range> webkitGetRegionFlowRanges();
 
 #if !defined(LANGUAGE_OBJECTIVE_C) || !LANGUAGE_OBJECTIVE_C
     // Event handler DOM attributes

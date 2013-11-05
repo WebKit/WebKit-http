@@ -38,27 +38,21 @@ public:
 
     void initialize(const BlackBerry::Platform::IntSize&);
 
-    int isActive() const { return !m_tilePool.isEmpty() && !m_buffersSuspended; }
-    int isEmpty() const { return m_tilePool.isEmpty(); }
-    int size() const { return m_tilePool.size(); }
-
-    typedef WTF::Vector<BackingStoreTile*> TileList;
-    const TileList tileList() const { return m_tilePool; }
+    int isActive() const { return !m_tileBufferPool.isEmpty() && !m_buffersSuspended; }
+    int isEmpty() const { return m_tileBufferPool.isEmpty(); }
+    int numberOfBackingStoreFrontBuffers() const;
 
     PlatformGraphicsContext* createPlatformGraphicsContext(BlackBerry::Platform::Graphics::Drawable*) const;
     PlatformGraphicsContext* lockTileRenderingSurface() const;
     void releaseTileRenderingSurface(PlatformGraphicsContext*) const;
-    BackingStoreTile* visibleTileBuffer() const { return m_visibleTileBuffer; }
 
-    void initializeVisibleTileBuffer(const BlackBerry::Platform::IntSize&);
-
-    // This is a shared back buffer that is used by all the tiles since
-    // only one tile will be rendering it at a time and we invalidate
-    // the whole tile every time we render by copying from the front
-    // buffer those portions that we don't render. This allows us to
-    // have N+1 tilebuffers rather than N*2 for our double buffered
-    // backingstore.
-    TileBuffer* backBuffer() const;
+    // The surface pool will allocate as many back buffers as specified by
+    // Platform::Settings::instance()->numberOfBackingStoreBackBuffers() which
+    // allows for at least one back buffer to be available for drawing before
+    // swapping buffers/geometry to the front.
+    unsigned numberOfAvailableBackBuffers() const;
+    TileBuffer* takeBackBuffer();
+    void addBackBuffer(TileBuffer*);
 
     const char *sharedPixmapGroup() const;
 
@@ -73,20 +67,18 @@ public:
     void waitForBuffer(TileBuffer*);
 
     // Compositing thread must notify the SurfacePool when EGLImages are composited
-    void notifyBuffersComposited(const Vector<TileBuffer*>& buffers);
+    void notifyBuffersComposited(const WTF::Vector<TileBuffer*>& buffers);
 
     void destroyPlatformSync(void* platformSync);
 
 private:
-    // This is necessary so BackingStoreTile can atomically swap buffers with m_backBuffer.
-    friend class BackingStoreTile;
-
     SurfacePool();
 
-    TileList m_tilePool;
-    BackingStoreTile* m_visibleTileBuffer;
+    typedef WTF::Vector<TileBuffer*> TileBufferList;
+    TileBufferList m_tileBufferPool;
+    TileBufferList m_availableBackBufferPool;
+    unsigned m_numberOfFrontBuffers;
     BlackBerry::Platform::Graphics::Buffer* m_tileRenderingSurface;
-    unsigned m_backBuffer;
     bool m_initialized; // SurfacePool has been set up, with or without buffers.
     bool m_buffersSuspended; // Buffer objects exist, but pixel memory has been freed.
 

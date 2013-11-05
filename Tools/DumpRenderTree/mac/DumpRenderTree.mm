@@ -87,7 +87,6 @@
 #import <WebKit/WebTypesInternal.h>
 #import <WebKit/WebViewPrivate.h>
 #import <getopt.h>
-#import <objc/objc-runtime.h>
 #import <wtf/Assertions.h>
 #import <wtf/FastMalloc.h>
 #import <wtf/RetainPtr.h>
@@ -693,6 +692,9 @@ static void resetDefaultsToConsistentValues()
 // Called once on DumpRenderTree startup.
 static void setDefaultsToConsistentValuesForTesting()
 {
+    // FIXME: We'd like to start with a clean state for every test, but this function can't be used more than once yet.
+    [WebPreferences _switchNetworkLoaderToNewTestingSession];
+
     resetDefaultsToConsistentValues();
 
     NSString *path = libraryPathForDumpRenderTree();
@@ -702,8 +704,6 @@ static void setDefaultsToConsistentValuesForTesting()
                                           diskPath:[path stringByAppendingPathComponent:@"URLCache"]];
     [NSURLCache setSharedURLCache:sharedCache];
     [sharedCache release];
-
-    [WebPreferences _switchNetworkLoaderToNewTestingSession];
 }
 
 static void runThread(void* arg)

@@ -30,7 +30,6 @@
 #include "WebKitDOMEventTarget.h"
 #include "WebKitDOMTestNodePrivate.h"
 #include "gobject/ConvertToUTF8String.h"
-#include "webkitglobalsprivate.h"
 #include <wtf/GetPtr.h>
 #include <wtf/RefPtr.h>
 
@@ -38,32 +37,23 @@ namespace WebKit {
 
 WebKitDOMTestNode* kit(WebCore::TestNode* obj)
 {
-    g_return_val_if_fail(obj, 0);
+    if (!obj)
+        return 0;
 
     if (gpointer ret = DOMObjectCache::get(obj))
-        return static_cast<WebKitDOMTestNode*>(ret);
+        return WEBKIT_DOM_TEST_NODE(ret);
 
-    return static_cast<WebKitDOMTestNode*>(DOMObjectCache::put(obj, WebKit::wrapTestNode(obj)));
+    return wrapTestNode(obj);
 }
 
 WebCore::TestNode* core(WebKitDOMTestNode* request)
 {
-    g_return_val_if_fail(request, 0);
-
-    WebCore::TestNode* coreObject = static_cast<WebCore::TestNode*>(WEBKIT_DOM_OBJECT(request)->coreObject);
-    g_return_val_if_fail(coreObject, 0);
-
-    return coreObject;
+    return request ? static_cast<WebCore::TestNode*>(WEBKIT_DOM_OBJECT(request)->coreObject) : 0;
 }
 
 WebKitDOMTestNode* wrapTestNode(WebCore::TestNode* coreObject)
 {
-    g_return_val_if_fail(coreObject, 0);
-
-    // We call ref() rather than using a C++ smart pointer because we can't store a C++ object
-    // in a C-allocated GObject structure. See the finalize() code for the matching deref().
-    coreObject->ref();
-
+    ASSERT(coreObject);
     return WEBKIT_DOM_TEST_NODE(g_object_new(WEBKIT_TYPE_DOM_TEST_NODE, "core-object", coreObject, NULL));
 }
 
@@ -103,67 +93,8 @@ static void webkit_dom_event_target_init(WebKitDOMEventTargetIface* iface)
 
 G_DEFINE_TYPE_WITH_CODE(WebKitDOMTestNode, webkit_dom_test_node, WEBKIT_TYPE_DOM_NODE, G_IMPLEMENT_INTERFACE(WEBKIT_TYPE_DOM_EVENT_TARGET, webkit_dom_event_target_init))
 
-enum {
-    PROP_0,
-};
-
-static void webkit_dom_test_node_finalize(GObject* object)
-{
-
-    WebKitDOMObject* domObject = WEBKIT_DOM_OBJECT(object);
-    
-    if (domObject->coreObject) {
-        WebCore::TestNode* coreObject = static_cast<WebCore::TestNode*>(domObject->coreObject);
-
-        WebKit::DOMObjectCache::forget(coreObject);
-        coreObject->deref();
-
-        domObject->coreObject = 0;
-    }
-
-
-    G_OBJECT_CLASS(webkit_dom_test_node_parent_class)->finalize(object);
-}
-
-static void webkit_dom_test_node_set_property(GObject* object, guint propertyId, const GValue* value, GParamSpec* pspec)
-{
-    WebCore::JSMainThreadNullState state;
-    switch (propertyId) {
-    default:
-        G_OBJECT_WARN_INVALID_PROPERTY_ID(object, propertyId, pspec);
-        break;
-    }
-}
-
-
-static void webkit_dom_test_node_get_property(GObject* object, guint propertyId, GValue* value, GParamSpec* pspec)
-{
-    WebCore::JSMainThreadNullState state;
-    switch (propertyId) {
-    default:
-        G_OBJECT_WARN_INVALID_PROPERTY_ID(object, propertyId, pspec);
-        break;
-    }
-}
-
-
-static void webkit_dom_test_node_constructed(GObject* object)
-{
-
-    if (G_OBJECT_CLASS(webkit_dom_test_node_parent_class)->constructed)
-        G_OBJECT_CLASS(webkit_dom_test_node_parent_class)->constructed(object);
-}
-
 static void webkit_dom_test_node_class_init(WebKitDOMTestNodeClass* requestClass)
 {
-    GObjectClass* gobjectClass = G_OBJECT_CLASS(requestClass);
-    gobjectClass->finalize = webkit_dom_test_node_finalize;
-    gobjectClass->set_property = webkit_dom_test_node_set_property;
-    gobjectClass->get_property = webkit_dom_test_node_get_property;
-    gobjectClass->constructed = webkit_dom_test_node_constructed;
-
-
-
 }
 
 static void webkit_dom_test_node_init(WebKitDOMTestNode* request)

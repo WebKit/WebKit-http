@@ -138,4 +138,8 @@ typedef enum {
 // Printing.
 - (NSArray *)_computePageRectsWithPrintScaleFactor:(float)printWidthScaleFactor pageSize:(NSSize)pageSize;
 
+- (JSValueRef)jsWrapperForNode:(DOMNode *)node inScriptWorld:(WebScriptWorld *)world;
+
+- (NSDictionary *)elementAtPoint:(NSPoint)point;
+
 @end

@@ -28,6 +28,7 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import codecs
+import logging
 import os
 import sys
 import time
@@ -41,7 +42,6 @@ from webkitpy.common.config.committervalidator import CommitterValidator
 from webkitpy.common.config.ports import DeprecatedPort
 from webkitpy.common.net.bugzilla import Attachment
 from webkitpy.common.net.statusserver import StatusServer
-from webkitpy.common.system.deprecated_logging import error, log
 from webkitpy.common.system.executive import ScriptError
 from webkitpy.tool.bot.botinfo import BotInfo
 from webkitpy.tool.bot.commitqueuetask import CommitQueueTask, CommitQueueTaskDelegate
@@ -54,6 +54,8 @@ from webkitpy.tool.bot.queueengine import QueueEngine, QueueEngineDelegate
 from webkitpy.tool.bot.stylequeuetask import StyleQueueTask, StyleQueueTaskDelegate
 from webkitpy.tool.commands.stepsequence import StepSequenceErrorHandler
 from webkitpy.tool.multicommandtool import Command, TryAgain
+
+_log = logging.getLogger(__name__)
 
 
 class AbstractQueue(Command, QueueEngineDelegate):
@@ -78,7 +80,7 @@ class AbstractQueue(Command, QueueEngineDelegate):
             self._tool.bugs.add_cc_to_bug(bug_id, self.watchers)
         except Exception, e:
             traceback.print_exc()
-            log("Failed to CC watchers.")
+            _log.error("Failed to CC watchers.")
 
     def run_webkit_patch(self, args):
         webkit_patch_args = [self._tool.path()]
@@ -92,12 +94,17 @@ class AbstractQueue(Command, QueueEngineDelegate):
         if self._options.port:
             webkit_patch_args += ["--port=%s" % self._options.port]
         webkit_patch_args.extend(args)
-        # FIXME: There is probably no reason to use run_and_throw_if_fail anymore.
-        # run_and_throw_if_fail was invented to support tee'd output
-        # (where we write both to a log file and to the console at once),
-        # but the queues don't need live-progress, a dump-of-output at the
-        # end should be sufficient.
-        return self._tool.executive.run_and_throw_if_fail(webkit_patch_args, cwd=self._tool.scm().checkout_root)
+
+        try:
+            args_for_printing = list(webkit_patch_args)
+            args_for_printing[0] = 'webkit-patch'  # Printing our path for each log is redundant.
+            _log.info("Running: %s" % self._tool.executive.command_for_printing(args_for_printing))
+            command_output = self._tool.executive.run_command(webkit_patch_args, cwd=self._tool.scm().checkout_root)
+        except ScriptError, e:
+            # Make sure the whole output gets printed if the command failed.
+            _log.error(e.message_with_output(output_limit=None))
+            raise
+        return command_output
 
     def _log_directory(self):
         return os.path.join("..", "%s-logs" % self.name)
@@ -111,12 +118,13 @@ class AbstractQueue(Command, QueueEngineDelegate):
         raise NotImplementedError, "subclasses must implement"
 
     def begin_work_queue(self):
-        log("CAUTION: %s will discard all local changes in \"%s\"" % (self.name, self._tool.scm().checkout_root))
+        _log.info("CAUTION: %s will discard all local changes in \"%s\"" % (self.name, self._tool.scm().checkout_root))
         if self._options.confirm:
             response = self._tool.user.prompt("Are you sure?  Type \"yes\" to continue: ")
             if (response != "yes"):
-                error("User declined.")
-        log("Running WebKit %s." % self.name)
+                _log.error("User declined.")
+                sys.exit(1)
+        _log.info("Running WebKit %s." % self.name)
         self._tool.status_server.update_status(self.name, "Starting Queue")
 
     def stop_work_queue(self, reason):
@@ -193,7 +201,7 @@ class FeederQueue(AbstractQueue):
         return None
 
     def handle_unexpected_error(self, work_item, message):
-        log(message)
+        _log.error(message)
 
 
 class AbstractPatchQueue(AbstractQueue):
@@ -357,7 +365,7 @@ class CommitQueue(AbstractPatchQueue, StepSequenceErrorHandler, CommitQueueTaskD
         # Hitting this error handler should be pretty rare.  It does occur,
         # however, when a patch no longer applies to top-of-tree in the final
         # land step.
-        log(script_error.message_with_output())
+        _log.error(script_error.message_with_output())
 
     @classmethod
     def handle_checkout_needs_update(cls, tool, state, options, error):
@@ -405,13 +413,13 @@ class AbstractReviewQueue(AbstractPatchQueue, StepSequenceErrorHandler):
             raise e
 
     def handle_unexpected_error(self, patch, message):
-        log(message)
+        _log.error(message)
 
     # StepSequenceErrorHandler methods
 
     @classmethod
     def handle_script_error(cls, tool, state, script_error):
-        log(script_error.output)
+        _log.error(script_error.output)
 
 
 class StyleQueue(AbstractReviewQueue, StyleQueueTaskDelegate):

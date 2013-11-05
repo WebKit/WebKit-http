@@ -54,11 +54,13 @@ class XvfbDriver(Driver):
         for i in range(99):
             if i not in reserved_screens:
                 _guard_lock_file = self._port.host.filesystem.join('/tmp', 'WebKitXvfb.lock.%i' % i)
-                self._guard_lock = FileLock(_guard_lock_file)
+                self._guard_lock = self._port.host.make_file_lock(_guard_lock_file)
                 if self._guard_lock.acquire_lock():
                     return i
 
     def _start(self, pixel_tests, per_test_args):
+        self.stop()
+
         # Use even displays for pixel tests and odd ones otherwise. When pixel tests are disabled,
         # DriverProxy creates two drivers, one for normal and the other for ref tests. Both have
         # the same worker number, so this prevents them from using the same Xvfb instance.

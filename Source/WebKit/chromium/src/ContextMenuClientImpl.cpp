@@ -120,7 +120,7 @@ static String selectMisspelledWord(const ContextMenu* defaultMenu, Frame* select
 
     // Selection is empty, so change the selection to the word under the cursor.
     HitTestResult hitTestResult = selectedFrame->eventHandler()->
-        hitTestResultAtPoint(selectedFrame->page()->contextMenuController()->hitTestResult().point(), true);
+        hitTestResultAtPoint(selectedFrame->page()->contextMenuController()->hitTestResult().pointInInnerNodeFrame(), true);
     Node* innerNode = hitTestResult.innerNode();
     VisiblePosition pos(innerNode->renderer()->positionForPoint(
         hitTestResult.localPoint()));
@@ -155,10 +155,10 @@ PlatformMenuDescription ContextMenuClientImpl::getCustomMenuFromDefaultItems(
         return 0;
 
     HitTestResult r = m_webView->page()->contextMenuController()->hitTestResult();
-    Frame* selectedFrame = r.innerNonSharedNode()->document()->frame();
+    Frame* selectedFrame = r.innerNodeFrame();
 
     WebContextMenuData data;
-    data.mousePosition = selectedFrame->view()->contentsToWindow(r.roundedPoint());
+    data.mousePosition = selectedFrame->view()->contentsToWindow(r.roundedPointInInnerNodeFrame());
 
     // Compute edit flags.
     data.editFlags = WebContextMenuData::CanDoNone;
@@ -277,10 +277,18 @@ PlatformMenuDescription ContextMenuClientImpl::getCustomMenuFromDefaultItems(
         // a mouse on a word, Chrome just needs to find a spelling marker on the word instread of spellchecking it.
         if (selectedFrame->settings() && selectedFrame->settings()->asynchronousSpellCheckingEnabled()) {
             VisibleSelection selection = selectedFrame->selection()->selection();
-            if (selection.isCaret()) {
-                selection.expandUsingGranularity(WordGranularity);
+            bool shouldUpdateSelection = false;
+            if (selection.isCaretOrRange()) {
+                if (selection.isCaret()) {
+                    selection.expandUsingGranularity(WordGranularity);
+                    shouldUpdateSelection = true;
+                }
                 RefPtr<Range> range = selection.toNormalizedRange();
                 Vector<DocumentMarker*> markers = selectedFrame->document()->markers()->markersInRange(range.get(), DocumentMarker::Spelling | DocumentMarker::Grammar);
+                if (markers.size() == 1) {
+                    if (markers[0]->startOffset() != static_cast<unsigned>(range->startOffset()) || markers[0]->endOffset() != static_cast<unsigned>(range->endOffset()))
+                        markers.clear();
+                }
                 if (markers.size() == 1) {
                     range->setStart(range->startContainer(), markers[0]->startOffset());
                     range->setEnd(range->endContainer(), markers[0]->endOffset());
@@ -294,12 +302,13 @@ PlatformMenuDescription ContextMenuClientImpl::getCustomMenuFromDefaultItems(
                         m_webView->spellCheckClient()->spellCheck(data.misspelledWord, misspelledOffset, misspelledLength, &data.dictionarySuggestions);
                     }
                     selection = VisibleSelection(range.get());
-                    if (selectedFrame->selection()->shouldChangeSelection(selection))
+                    if (shouldUpdateSelection && selectedFrame->selection()->shouldChangeSelection(selection))
                         selectedFrame->selection()->setSelection(selection, WordGranularity);
                 }
             }
-        } else if (m_webView->focusedWebCoreFrame()->editor()->isContinuousSpellCheckingEnabled()) {
-            data.isSpellCheckingEnabled = true;
+        } else {
+            data.isSpellCheckingEnabled = 
+                m_webView->focusedWebCoreFrame()->editor()->isContinuousSpellCheckingEnabled();
             // Spellchecking might be enabled for the field, but could be disabled on the node.
             if (m_webView->focusedWebCoreFrame()->editor()->isSpellCheckingEnabledInFocusedNode()) {
                 data.misspelledWord = selectMisspelledWord(defaultMenu, selectedFrame);

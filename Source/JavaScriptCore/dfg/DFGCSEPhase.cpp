@@ -30,6 +30,7 @@
 
 #include "DFGGraph.h"
 #include "DFGPhase.h"
+#include <wtf/FastBitVector.h>
 
 namespace JSC { namespace DFG {
 
@@ -43,13 +44,17 @@ public:
         
         for (unsigned i = 0; i < m_graph.size(); ++i)
             m_replacements[i] = NoNode;
+        
+        m_relevantToOSR.resize(m_graph.size());
     }
     
     bool run()
     {
         m_changed = false;
+        
         for (unsigned block = 0; block < m_graph.m_blocks.size(); ++block)
             performBlockCSE(m_graph.m_blocks[block].get());
+        
         return m_changed;
     }
     
@@ -79,7 +84,7 @@ private:
             result++;
         ASSERT(result <= m_indexInBlock);
 #if DFG_ENABLE(DEBUG_PROPAGATION_VERBOSE)
-        dataLog("  limit %u: ", result);
+        dataLogF("  limit %u: ", result);
 #endif
         return result;
     }
@@ -213,7 +218,7 @@ private:
         return NoNode;
     }
     
-    NodeIndex scopedVarLoadElimination(unsigned scopeChainDepth, unsigned varNumber)
+    NodeIndex scopedVarLoadElimination(NodeIndex registers, unsigned varNumber)
     {
         for (unsigned i = m_indexInBlock; i--;) {
             NodeIndex index = m_currentBlock->at(i);
@@ -222,16 +227,20 @@ private:
                 continue;
             switch (node.op()) {
             case GetScopedVar: {
-                Node& getScopeRegisters = m_graph[node.child1()];
-                Node& getScope = m_graph[getScopeRegisters.child1()];
-                if (getScope.scopeChainDepth() == scopeChainDepth && node.varNumber() == varNumber)
+                if (node.child1() == registers && node.varNumber() == varNumber)
                     return index;
                 break;
             } 
             case PutScopedVar: {
-                Node& getScope = m_graph[node.child1()];
-                if (getScope.scopeChainDepth() == scopeChainDepth && node.varNumber() == varNumber)
+                if (node.child2() == registers && node.varNumber() == varNumber)
                     return node.child3().index();
+                break;
+            }
+            case SetLocal: {
+                VariableAccessData* variableAccessData = node.variableAccessData();
+                if (variableAccessData->isCaptured()
+                    && variableAccessData->local() == static_cast<VirtualRegister>(varNumber))
+                    return NoNode;
                 break;
             }
             default:
@@ -296,7 +305,7 @@ private:
         return NoNode;
     }
     
-    NodeIndex scopedVarStoreElimination(unsigned scopeChainDepth, unsigned varNumber)
+    NodeIndex scopedVarStoreElimination(NodeIndex scope, NodeIndex registers, unsigned varNumber)
     {
         for (unsigned i = m_indexInBlock; i--;) {
             NodeIndex index = m_currentBlock->at(i);
@@ -305,16 +314,22 @@ private:
                 continue;
             switch (node.op()) {
             case PutScopedVar: {
-                Node& getScope = m_graph[node.child1()];
-                if (getScope.scopeChainDepth() == scopeChainDepth && node.varNumber() == varNumber)
+                if (node.child1() == scope && node.child2() == registers && node.varNumber() == varNumber)
                     return index;
                 break;
             }
                 
             case GetScopedVar: {
-                Node& getScopeRegisters = m_graph[node.child1()];
-                Node& getScope = m_graph[getScopeRegisters.child1()];
-                if (getScope.scopeChainDepth() == scopeChainDepth && node.varNumber() == varNumber)
+                // Let's be conservative.
+                if (node.varNumber() == varNumber)
+                    return NoNode;
+                break;
+            }
+                
+            case GetLocal: {
+                VariableAccessData* variableAccessData = node.variableAccessData();
+                if (variableAccessData->isCaptured()
+                    && variableAccessData->local() == static_cast<VirtualRegister>(varNumber))
                     return NoNode;
                 break;
             }
@@ -549,6 +564,11 @@ private:
             case ReallocatePropertyStorage:
                 return NoNode;
                 
+            case GetIndexedPropertyStorage:
+                if (node.arrayMode().getIndexedPropertyStorageMayTriggerGC())
+                    return NoNode;
+                break;
+                
             default:
                 break;
             }
@@ -779,30 +799,22 @@ private:
         return NoNode;
     }
     
-    NodeIndex getScopeLoadElimination(unsigned depth)
+    NodeIndex getMyScopeLoadElimination()
     {
-        for (unsigned i = endIndexForPureCSE(); i--;) {
+        for (unsigned i = m_indexInBlock; i--;) {
             NodeIndex index = m_currentBlock->at(i);
             Node& node = m_graph[index];
             if (!node.shouldGenerate())
                 continue;
-            if (node.op() == GetScope
-                && node.scopeChainDepth() == depth)
+            switch (node.op()) {
+            case CreateActivation:
+                // This may cause us to return a different scope.
+                return NoNode;
+            case GetMyScope:
                 return index;
-        }
-        return NoNode;
-    }
-
-    NodeIndex getScopeRegistersLoadElimination(unsigned depth)
-    {
-        for (unsigned i = endIndexForPureCSE(); i--;) {
-            NodeIndex index = m_currentBlock->at(i);
-            Node& node = m_graph[index];
-            if (!node.shouldGenerate())
-                continue;
-            if (node.op() == GetScopeRegisters
-                && m_graph[node.scope()].scopeChainDepth() == depth)
-                return index;
+            default:
+                break;
+            }
         }
         return NoNode;
     }
@@ -836,6 +848,11 @@ private:
                     relevantLocalOp = index;
                     return node.child1().index();
                 }
+                break;
+                
+            case PutScopedVar:
+                if (static_cast<VirtualRegister>(node.varNumber()) == local)
+                    return NoNode;
                 break;
                 
             default:
@@ -890,8 +907,13 @@ private:
                 return result;
             }
                 
-            case GetScope:
-            case GetScopeRegisters:
+            case GetScopedVar:
+                if (static_cast<VirtualRegister>(node.varNumber()) == local)
+                    result.mayBeAccessed = true;
+                break;
+                
+            case GetMyScope:
+            case SkipTopScope:
                 if (m_graph.uncheckedActivationRegisterFor(node.codeOrigin) == local)
                     result.mayBeAccessed = true;
                 break;
@@ -954,7 +976,26 @@ private:
         ASSERT(m_replacements[child.index()] == NoNode);
         
         if (addRef)
-            m_graph[child].ref();
+            m_graph.ref(child);
+    }
+    
+    void eliminateIrrelevantPhantomChildren(Node& node)
+    {
+        ASSERT(node.op() == Phantom);
+        for (unsigned i = 0; i < AdjacencyList::Size; ++i) {
+            Edge edge = node.children.child(i);
+            if (!edge)
+                continue;
+            if (m_relevantToOSR.get(edge.index()))
+                continue;
+            
+#if DFG_ENABLE(DEBUG_PROPAGATION_VERBOSE)
+            dataLog("   Eliminating edge @", m_compileIndex, " -> @", edge.index());
+#endif
+            m_graph.deref(edge);
+            node.children.removeEdgeFromBag(i--);
+            m_changed = true;
+        }
     }
     
     enum PredictionHandlingMode { RequireSamePrediction, AllowPredictionMismatch };
@@ -970,12 +1011,13 @@ private:
             return false;
         
 #if DFG_ENABLE(DEBUG_PROPAGATION_VERBOSE)
-        dataLog("   Replacing @%u -> @%u", m_compileIndex, replacement);
+        dataLogF("   Replacing @%u -> @%u", m_compileIndex, replacement);
 #endif
         
         Node& node = m_graph[m_compileIndex];
         node.setOpAndDefaultFlags(Phantom);
         node.setRefCount(1);
+        eliminateIrrelevantPhantomChildren(node);
         
         // At this point we will eliminate all references to this node.
         m_replacements[m_compileIndex] = replacement;
@@ -988,13 +1030,14 @@ private:
     void eliminate()
     {
 #if DFG_ENABLE(DEBUG_PROPAGATION_VERBOSE)
-        dataLog("   Eliminating @%u", m_compileIndex);
+        dataLogF("   Eliminating @%u", m_compileIndex);
 #endif
         
         Node& node = m_graph[m_compileIndex];
         ASSERT(node.refCount() == 1);
         ASSERT(node.mustGenerate());
         node.setOpAndDefaultFlags(Phantom);
+        eliminateIrrelevantPhantomChildren(node);
         
         m_changed = true;
     }
@@ -1008,6 +1051,8 @@ private:
             return;
         ASSERT(node.mustGenerate());
         node.setOpAndDefaultFlags(phantomType);
+        if (phantomType == Phantom)
+            eliminateIrrelevantPhantomChildren(node);
         
         m_changed = true;
     }
@@ -1025,11 +1070,14 @@ private:
             performSubstitution(node.children.child3(), shouldGenerate);
         }
         
+        if (node.op() == SetLocal)
+            m_relevantToOSR.set(node.child1().index());
+        
         if (!shouldGenerate)
             return;
         
 #if DFG_ENABLE(DEBUG_PROPAGATION_VERBOSE)
-        dataLog("   %s @%u: ", Graph::opName(m_graph[m_compileIndex].op()), m_compileIndex);
+        dataLogF("   %s @%u: ", Graph::opName(m_graph[m_compileIndex].op()), m_compileIndex);
 #endif
         
         // NOTE: there are some nodes that we deliberately don't CSE even though we
@@ -1043,6 +1091,10 @@ private:
         
         switch (node.op()) {
         
+        case Identity:
+            setReplacement(node.child1().index());
+            break;
+            
         // Handle the pure nodes. These nodes never have any side-effects.
         case BitAnd:
         case BitOr:
@@ -1072,6 +1124,9 @@ private:
         case IsFunction:
         case DoubleAsInt32:
         case LogicalNot:
+        case SkipTopScope:
+        case SkipScope:
+        case GetScopeRegisters:
             setReplacement(pureCSE(node));
             break;
             
@@ -1185,14 +1240,10 @@ private:
             setReplacement(getArrayLengthElimination(node.child1().index()));
             break;
 
-        case GetScope:
-            setReplacement(getScopeLoadElimination(node.scopeChainDepth()));
+        case GetMyScope:
+            setReplacement(getMyScopeLoadElimination());
             break;
-
-        case GetScopeRegisters:
-            setReplacement(getScopeRegistersLoadElimination(m_graph[node.scope()].scopeChainDepth()));
-            break;
-
+            
         // Handle nodes that are conditionally pure: these are pure, and can
         // be CSE'd, so long as the prediction is the one we want.
         case ValueAdd:
@@ -1216,9 +1267,7 @@ private:
             break;
 
         case GetScopedVar: {
-            Node& getScopeRegisters = m_graph[node.child1()];
-            Node& getScope = m_graph[getScopeRegisters.child1()];
-            setReplacement(scopedVarLoadElimination(getScope.scopeChainDepth(), node.varNumber()));
+            setReplacement(scopedVarLoadElimination(node.child1().index(), node.varNumber()));
             break;
         }
 
@@ -1237,8 +1286,7 @@ private:
         case PutScopedVar: {
             if (m_graph.m_fixpointState == FixpointNotConverged)
                 break;
-            Node& getScope = m_graph[node.child1()];
-            eliminate(scopedVarStoreElimination(getScope.scopeChainDepth(), node.varNumber()));
+            eliminate(scopedVarStoreElimination(node.child1().index(), node.child2().index(), node.varNumber()));
             break;
         }
 
@@ -1306,6 +1354,12 @@ private:
             eliminate(putByOffsetStoreElimination(m_graph.m_storageAccessData[node.storageAccessDataIndex()].identifierNumber, node.child1().index()));
             break;
             
+        case Phantom:
+            // FIXME: we ought to remove Phantom's that have no children.
+            
+            eliminateIrrelevantPhantomChildren(node);
+            break;
+            
         default:
             // do nothing.
             break;
@@ -1313,7 +1367,7 @@ private:
         
         m_lastSeen[node.op()] = m_indexInBlock;
 #if DFG_ENABLE(DEBUG_PROPAGATION_VERBOSE)
-        dataLog("\n");
+        dataLogF("\n");
 #endif
     }
     
@@ -1327,6 +1381,23 @@ private:
         m_currentBlock = block;
         for (unsigned i = 0; i < LastNodeType; ++i)
             m_lastSeen[i] = UINT_MAX;
+        
+        // Make all of my Phi nodes relevant to OSR.
+        for (unsigned i = 0; i < block->phis.size(); ++i)
+            m_relevantToOSR.set(block->phis[i]);
+        
+        // Make all of my SetLocal nodes relevant to OSR.
+        for (unsigned i = 0; i < block->size(); ++i) {
+            NodeIndex nodeIndex = block->at(i);
+            Node& node = m_graph[nodeIndex];
+            switch (node.op()) {
+            case SetLocal:
+                m_relevantToOSR.set(nodeIndex);
+                break;
+            default:
+                break;
+            }
+        }
 
         for (m_indexInBlock = 0; m_indexInBlock < block->size(); ++m_indexInBlock) {
             m_compileIndex = block->at(m_indexInBlock);
@@ -1339,6 +1410,7 @@ private:
     unsigned m_indexInBlock;
     Vector<NodeIndex, 16> m_replacements;
     FixedArray<unsigned, LastNodeType> m_lastSeen;
+    FastBitVector m_relevantToOSR;
     bool m_changed; // Only tracks changes that have a substantive effect on other optimizations.
 };
 

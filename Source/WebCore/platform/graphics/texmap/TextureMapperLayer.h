@@ -24,24 +24,15 @@
 
 #include "FilterOperations.h"
 #include "FloatRect.h"
-#include "GraphicsContext.h"
 #include "GraphicsLayer.h"
 #include "GraphicsLayerAnimation.h"
 #include "GraphicsLayerTransform.h"
-#include "Image.h"
-#include "IntPointHash.h"
 #include "TextureMapper.h"
 #include "TextureMapperBackingStore.h"
-#include "Timer.h"
-#include "TransformOperations.h"
-#include <wtf/CurrentTime.h>
-#include <wtf/HashMap.h>
-#include <wtf/RefCounted.h>
 
 namespace WebCore {
 
 class TextureMapperPlatformLayer;
-class TextureMapperLayer;
 class GraphicsLayerTextureMapper;
 
 class TextureMapperPaintOptions {
@@ -96,26 +87,19 @@ public:
         FilterChange =              (1L << 23)
     };
 
-    enum SyncOptions {
-        TraverseDescendants = 1,
-        ComputationsOnly = 2
-    };
-
     TextureMapperLayer()
         : m_parent(0)
         , m_effectTarget(0)
         , m_contentsLayer(0)
         , m_opacity(1)
         , m_centerZ(0)
-        , m_shouldUpdateBackingStoreFromLayer(true)
         , m_textureMapper(0)
-        , m_debugBorderWidth(0)
     { }
 
     virtual ~TextureMapperLayer();
 
-    void flushCompositingState(GraphicsLayerTextureMapper*, int syncOptions = 0);
-    void flushCompositingState(GraphicsLayerTextureMapper*, TextureMapper*, int syncOptions = 0);
+    TextureMapper* textureMapper() const;
+    void flushCompositingStateForThisLayerOnly(GraphicsLayerTextureMapper*);
     IntSize size() const { return IntSize(m_size.width(), m_size.height()); }
     void setTransform(const TransformationMatrix&);
     void setOpacity(float value) { m_opacity = value; }
@@ -127,18 +111,16 @@ public:
 
     void paint();
 
-    void setShouldUpdateBackingStoreFromLayer(bool b) { m_shouldUpdateBackingStoreFromLayer = b; }
-    void setBackingStore(TextureMapperBackingStore* backingStore) { m_backingStore = backingStore; }
+    void setBackingStore(PassRefPtr<TextureMapperBackingStore> backingStore) { m_backingStore = backingStore; }
     PassRefPtr<TextureMapperBackingStore> backingStore() { return m_backingStore; }
     void clearBackingStoresRecursive();
 
     void setScrollPositionDeltaIfNeeded(const FloatSize&);
 
-    void setDebugBorder(const Color&, float width);
     void applyAnimationsRecursively();
 
 private:
-    TextureMapperLayer* rootLayer();
+    const TextureMapperLayer* rootLayer() const;
     void computeTransformsRecursive();
     void computeOverlapsIfNeeded();
     void computeTiles();
@@ -148,7 +130,6 @@ private:
     FloatRect targetRectForTileRect(const FloatRect& totalTargetRect, const FloatRect& tileRect) const;
     void invalidateViewport(const FloatRect&);
     void notifyChange(ChangeMask);
-    void flushCompositingStateSelf(GraphicsLayerTextureMapper*, TextureMapper*);
 
     static int compareGraphicsLayersZValue(const void* a, const void* b);
     static void sortByZOrder(Vector<TextureMapperLayer* >& array, int first, int last);
@@ -161,9 +142,6 @@ private:
     void paintSelf(const TextureMapperPaintOptions&);
     void paintSelfAndChildren(const TextureMapperPaintOptions&);
     void paintSelfAndChildrenWithReplica(const TextureMapperPaintOptions&);
-    void updateBackingStore(TextureMapper*, GraphicsLayerTextureMapper*);
-
-    void drawRepaintCounter(GraphicsContext*, GraphicsLayer*);
 
     // GraphicsLayerAnimation::Client
     void setAnimatedTransform(const TransformationMatrix& matrix) { setTransform(matrix); }
@@ -202,7 +180,6 @@ private:
 #endif
     float m_centerZ;
     String m_name;
-    bool m_shouldUpdateBackingStoreFromLayer;
 
     struct State {
         FloatPoint pos;
@@ -212,10 +189,10 @@ private:
         TransformationMatrix childrenTransform;
         float opacity;
         FloatRect contentsRect;
-        FloatRect needsDisplayRect;
         int descendantsWithContent;
         TextureMapperLayer* maskLayer;
         TextureMapperLayer* replicaLayer;
+        Color solidColor;
 #if ENABLE(CSS_FILTERS)
          FilterOperations filters;
 #endif
@@ -227,7 +204,6 @@ private:
         bool contentsOpaque : 1;
         bool backfaceVisibility : 1;
         bool visible : 1;
-        bool needsDisplay: 1;
         bool mightHaveOverlaps : 1;
         bool needsRepaint;
         State()
@@ -241,7 +217,6 @@ private:
             , contentsOpaque(false)
             , backfaceVisibility(false)
             , visible(true)
-            , needsDisplay(true)
             , mightHaveOverlaps(false)
             , needsRepaint(false)
         {
@@ -253,8 +228,6 @@ private:
     GraphicsLayerAnimations m_animations;
     FloatSize m_scrollPositionDelta;
     bool m_fixedToViewport;
-    Color m_debugBorderColor;
-    float m_debugBorderWidth;
 };
 
 

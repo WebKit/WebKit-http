@@ -90,7 +90,8 @@ WebInspector.KeyboardShortcut.Keys = {
     Period: { code: 190, name: "." },
     Slash: { code: 191, name: "/" },
     Apostrophe: { code: 192, name: "`" },
-    SingleQuote: { code: 222, name: "\'" }
+    SingleQuote: { code: 222, name: "\'" },
+    H: { code: 72, name: "H" }
 };
 
 /**
@@ -129,10 +130,20 @@ WebInspector.KeyboardShortcut.makeKeyFromEvent = function(keyboardEvent)
 
 /**
  * @param {KeyboardEvent} event
+ * @return {boolean}
  */
 WebInspector.KeyboardShortcut.eventHasCtrlOrMeta = function(event)
 {
     return WebInspector.isMac() ? event.metaKey && !event.ctrlKey : event.ctrlKey && !event.metaKey;
+}
+
+/**
+ * @param {KeyboardEvent} event
+ * @return {boolean}
+ */
+WebInspector.KeyboardShortcut.hasNoModifiers = function(event)
+{
+    return !event.ctrlKey && !event.shiftKey && !event.altKey && !event.metaKey;
 }
 
 /** @typedef {{key: number, name: string}} */

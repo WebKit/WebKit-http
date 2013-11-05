@@ -62,6 +62,11 @@ WKContextRef WKContextCreateWithInjectedBundlePath(WKStringRef pathRef)
     return toAPI(context.release().leakRef());
 }
 
+void WKContextSetClient(WKContextRef contextRef, const WKContextClient* wkClient)
+{
+    toImpl(contextRef)->initializeClient(wkClient);
+}
+
 void WKContextSetInjectedBundleClient(WKContextRef contextRef, const WKContextInjectedBundleClient* wkClient)
 {
     toImpl(contextRef)->initializeInjectedBundleClient(wkClient);
@@ -129,6 +134,16 @@ void WKContextSetProcessModel(WKContextRef contextRef, WKProcessModel processMod
 WKProcessModel WKContextGetProcessModel(WKContextRef contextRef)
 {
     return toAPI(toImpl(contextRef)->processModel());
+}
+
+void WKContextSetMaximumNumberOfProcesses(WKContextRef contextRef, unsigned numberOfProcesses)
+{
+    toImpl(contextRef)->setMaximumNumberOfProcesses(numberOfProcesses);
+}
+
+unsigned WKContextGetMaximumNumberOfProcesses(WKContextRef contextRef)
+{
+    return toImpl(contextRef)->maximumNumberOfProcesses();
 }
 
 void WKContextSetAlwaysUsesComplexTextCodePath(WKContextRef contextRef, bool alwaysUseComplexTextCodePath)
@@ -257,6 +272,11 @@ void WKContextSetIconDatabasePath(WKContextRef contextRef, WKStringRef iconDatab
     toImpl(contextRef)->setIconDatabasePath(toImpl(iconDatabasePath)->string());
 }
 
+void WKContextAllowSpecificHTTPSCertificateForHost(WKContextRef contextRef, WKCertificateInfoRef certificateRef, WKStringRef hostRef)
+{
+    toImpl(contextRef)->allowSpecificHTTPSCertificateForHost(toImpl(certificateRef), toImpl(hostRef)->string());
+}
+
 void WKContextSetDatabaseDirectory(WKContextRef contextRef, WKStringRef databaseDirectory)
 {
     toImpl(contextRef)->setDatabaseDirectory(toImpl(databaseDirectory)->string());
@@ -315,6 +335,18 @@ void WKContextSetJavaScriptGarbageCollectorTimerEnabled(WKContextRef contextRef,
 void WKContextSetUsesNetworkProcess(WKContextRef contextRef, bool usesNetworkProcess)
 {
     toImpl(contextRef)->setUsesNetworkProcess(usesNetworkProcess);
+}
+
+WKDictionaryRef WKContextCopyPlugInAutoStartOriginHashes(WKContextRef contextRef)
+{
+    return toAPI(toImpl(contextRef)->plugInAutoStartOriginHashes().leakRef());
+}
+
+void WKContextSetPlugInAutoStartOriginHashes(WKContextRef contextRef, WKDictionaryRef dictionaryRef)
+{
+    if (!dictionaryRef)
+        return;
+    toImpl(contextRef)->setPlugInAutoStartOriginHashes(*toImpl(dictionaryRef));
 }
 
 // Deprecated functions.

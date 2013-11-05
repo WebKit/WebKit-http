@@ -36,7 +36,8 @@
 
 #include "MediaConstraints.h"
 #include "RTCConfiguration.h"
-#include "RTCDataChannelDescriptor.h"
+#include "RTCDataChannelHandlerChromium.h"
+#include "RTCDataChannelHandlerClient.h"
 #include "RTCIceCandidateDescriptor.h"
 #include "RTCPeerConnectionHandlerClient.h"
 #include "RTCSessionDescriptionDescriptor.h"
@@ -47,7 +48,7 @@
 #include <public/WebMediaConstraints.h>
 #include <public/WebMediaStreamDescriptor.h>
 #include <public/WebRTCConfiguration.h>
-#include <public/WebRTCDataChannel.h>
+#include <public/WebRTCDataChannelHandler.h>
 #include <public/WebRTCICECandidate.h>
 #include <public/WebRTCSessionDescription.h>
 #include <public/WebRTCSessionDescriptionRequest.h>
@@ -148,24 +149,13 @@ void RTCPeerConnectionHandlerChromium::getStats(PassRefPtr<RTCStatsRequest> requ
     m_webHandler->getStats(request);
 }
 
-bool RTCPeerConnectionHandlerChromium::openDataChannel(PassRefPtr<RTCDataChannelDescriptor> dataChannel)
+PassOwnPtr<RTCDataChannelHandler> RTCPeerConnectionHandlerChromium::createDataChannel(const String& label, bool reliable)
 {
-    return m_webHandler->openDataChannel(dataChannel);
-}
+    WebKit::WebRTCDataChannelHandler* webHandler = m_webHandler->createDataChannel(label, reliable);
+    if (!webHandler)
+        return nullptr;
 
-bool RTCPeerConnectionHandlerChromium::sendStringData(PassRefPtr<RTCDataChannelDescriptor> dataChannel, const String& data)
-{
-    return m_webHandler->sendStringData(dataChannel, data);
-}
-
-bool RTCPeerConnectionHandlerChromium::sendRawData(PassRefPtr<RTCDataChannelDescriptor> dataChannel, const char* data, size_t dataLength)
-{
-    return m_webHandler->sendRawData(dataChannel, data, dataLength);
-}
-
-void RTCPeerConnectionHandlerChromium::closeDataChannel(PassRefPtr<RTCDataChannelDescriptor> dataChannel)
-{
-    return m_webHandler->closeDataChannel(dataChannel);
+    return RTCDataChannelHandlerChromium::create(webHandler);
 }
 
 void RTCPeerConnectionHandlerChromium::stop()
@@ -188,6 +178,11 @@ void RTCPeerConnectionHandlerChromium::didChangeReadyState(WebKit::WebRTCPeerCon
     m_client->didChangeReadyState(static_cast<RTCPeerConnectionHandlerClient::ReadyState>(state));
 }
 
+void RTCPeerConnectionHandlerChromium::didChangeICEGatheringState(WebKit::WebRTCPeerConnectionHandlerClient::ICEGatheringState state)
+{
+    m_client->didChangeIceGatheringState(static_cast<RTCPeerConnectionHandlerClient::IceGatheringState>(state));
+}
+
 void RTCPeerConnectionHandlerChromium::didChangeICEState(WebKit::WebRTCPeerConnectionHandlerClient::ICEState state)
 {
     m_client->didChangeIceState(static_cast<RTCPeerConnectionHandlerClient::IceState>(state));
@@ -201,6 +196,12 @@ void RTCPeerConnectionHandlerChromium::didAddRemoteStream(const WebKit::WebMedia
 void RTCPeerConnectionHandlerChromium::didRemoveRemoteStream(const WebKit::WebMediaStreamDescriptor& webMediaStreamDescriptor)
 {
     m_client->didRemoveRemoteStream(webMediaStreamDescriptor);
+}
+
+void RTCPeerConnectionHandlerChromium::didAddRemoteDataChannel(WebKit::WebRTCDataChannelHandler* webHandler)
+{
+    ASSERT(webHandler);
+    m_client->didAddRemoteDataChannel(RTCDataChannelHandlerChromium::create(webHandler));
 }
 
 } // namespace WebCore

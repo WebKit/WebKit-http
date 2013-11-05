@@ -145,7 +145,13 @@ public:
     ExpressionNode* makeRightShiftNode(const JSTokenLocation&, ExpressionNode* left, ExpressionNode* right, bool rightHasAssignments);
     ExpressionNode* makeURightShiftNode(const JSTokenLocation&, ExpressionNode* left, ExpressionNode* right, bool rightHasAssignments);
 
-    ExpressionNode* createLogicalNot(const JSTokenLocation& location, ExpressionNode* expr) { return new (m_globalData) LogicalNotNode(location, expr); }
+    ExpressionNode* createLogicalNot(const JSTokenLocation& location, ExpressionNode* expr)
+    {
+        if (expr->isNumber())
+            return createBoolean(location, !static_cast<NumberNode*>(expr)->value());
+
+        return new (m_globalData) LogicalNotNode(location, expr);
+    }
     ExpressionNode* createUnaryPlus(const JSTokenLocation& location, ExpressionNode* expr) { return new (m_globalData) UnaryPlusNode(location, expr); }
     ExpressionNode* createVoid(const JSTokenLocation& location, ExpressionNode* expr)
     {
@@ -266,6 +272,11 @@ public:
     FunctionBodyNode* createFunctionBody(const JSTokenLocation& location, bool inStrictContext)
     {
         return FunctionBodyNode::create(m_globalData, location, inStrictContext);
+    }
+
+    void setFunctionStart(FunctionBodyNode* body, int functionStart)
+    {
+        body->setFunctionStart(functionStart);
     }
     
     template <bool> PropertyNode* createGetterOrSetterProperty(const JSTokenLocation& location, PropertyNode::Type type, const Identifier* name, ParameterNode* params, FunctionBodyNode* body, int openBracePos, int closeBracePos, int bodyStartLine, int bodyEndLine)

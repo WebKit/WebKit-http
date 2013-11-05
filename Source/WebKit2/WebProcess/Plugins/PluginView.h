@@ -44,10 +44,13 @@
 namespace WebCore {
 class Frame;
 class HTMLPlugInElement;
+class MouseEvent;
 class RenderBoxModelObject;
 }
 
 namespace WebKit {
+
+class WebEvent;
 
 class PluginView : public WebCore::PluginViewBase, public PluginController, private WebCore::MediaCanStartListener, private WebFrame::LoadListener {
 public:
@@ -134,6 +137,7 @@ private:
     virtual WebCore::Scrollbar* horizontalScrollbar();
     virtual WebCore::Scrollbar* verticalScrollbar();
     virtual bool wantsWheelEvents();
+    virtual bool shouldAlwaysAutoStart() const OVERRIDE;
 
     // WebCore::Widget
     virtual void setFrameRect(const WebCore::IntRect&);
@@ -201,6 +205,8 @@ private:
     virtual void didFinishLoad(WebFrame*);
     virtual void didFailLoad(WebFrame*, bool wasCancelled);
 
+    PassOwnPtr<WebEvent> createWebEvent(WebCore::MouseEvent*) const;
+
     RefPtr<WebCore::HTMLPlugInElement> m_pluginElement;
     RefPtr<Plugin> m_plugin;
     WebPage* m_webPage;
@@ -245,6 +251,7 @@ private:
     RefPtr<ShareableBitmap> m_transientPaintingSnapshot;
     // This timer is used when plugin snapshotting is enabled, to capture a plugin placeholder.
     WebCore::DeferrableOneShotTimer<PluginView> m_pluginSnapshotTimer;
+    unsigned m_countSnapshotRetries;
 
     double m_pageScaleFactor;
 };

@@ -62,7 +62,6 @@ class WebDeviceOrientationClientMock;
 class WebGeolocationClient;
 class WebGeolocationClientMock;
 class WebGeolocationServiceMock;
-class WebIntentServiceInfo;
 class WebSerializedScriptValue;
 class WebSharedWorkerClient;
 class WebSpeechInputController;
@@ -143,6 +142,12 @@ class WebViewHost : public WebKit::WebViewClient, public WebKit::WebFrameClient,
     virtual WebKit::WebString registerIsolatedFileSystem(const WebKit::WebVector<WebKit::WebString>& absoluteFilenames) OVERRIDE;
     virtual long long getCurrentTimeInMillisecond() OVERRIDE;
     virtual WebKit::WebString getAbsoluteWebStringFromUTF8Path(const std::string& path) OVERRIDE;
+    virtual WebKit::WebURL localFileToDataURL(const WebKit::WebURL&) OVERRIDE;
+    virtual WebKit::WebURL rewriteLayoutTestsURL(const std::string&) OVERRIDE;
+    virtual WebTestRunner::WebPreferences* preferences() OVERRIDE;
+    virtual void applyPreferences() OVERRIDE;
+    virtual void setCurrentWebIntentRequest(const WebKit::WebIntentRequest&) OVERRIDE;
+    virtual WebKit::WebIntentRequest* currentWebIntentRequest() OVERRIDE;
 
     // NavigationHost
     virtual bool navigate(const TestNavigationEntry&, bool reload);
@@ -174,10 +179,6 @@ class WebViewHost : public WebKit::WebViewClient, public WebKit::WebFrameClient,
     virtual bool shouldApplyStyle(const WebKit::WebString& style, const WebKit::WebRange&);
     virtual bool isSmartInsertDeleteEnabled();
     virtual bool isSelectTrailingWhitespaceEnabled();
-    virtual void didBeginEditing();
-    virtual void didChangeSelection(bool isSelectionEmpty);
-    virtual void didChangeContents();
-    virtual void didEndEditing();
     virtual bool handleCurrentKeyboardEvent();
     virtual void runModalAlertDialog(WebKit::WebFrame*, const WebKit::WebString&);
     virtual bool runModalConfirmDialog(WebKit::WebFrame*, const WebKit::WebString&);
@@ -185,7 +186,6 @@ class WebViewHost : public WebKit::WebViewClient, public WebKit::WebFrameClient,
     virtual bool runModalBeforeUnloadDialog(WebKit::WebFrame*, const WebKit::WebString&);
     virtual void showContextMenu(WebKit::WebFrame*, const WebKit::WebContextMenuData&);
     virtual void setStatusText(const WebKit::WebString&);
-    virtual void startDragging(WebKit::WebFrame*, const WebKit::WebDragData&, WebKit::WebDragOperationsMask, const WebKit::WebImage&, const WebKit::WebPoint&);
     virtual void didUpdateLayout();
     virtual void navigateBackForwardSoon(int offset);
     virtual int historyBackListCount();
@@ -208,6 +208,8 @@ class WebViewHost : public WebKit::WebViewClient, public WebKit::WebFrameClient,
 
     // WebKit::WebWidgetClient
     virtual void didAutoResize(const WebKit::WebSize& newSize);
+    virtual void initializeLayerTreeView(WebKit::WebLayerTreeViewClient*, const WebKit::WebLayer& rootLayer, const WebKit::WebLayerTreeView::Settings&);
+    virtual WebKit::WebLayerTreeView* layerTreeView();
     virtual void scheduleAnimation();
     virtual void didFocus();
     virtual void didBlur();
@@ -261,6 +263,7 @@ class WebViewHost : public WebKit::WebViewClient, public WebKit::WebFrameClient,
     virtual void didChangeLocationWithinPage(WebKit::WebFrame*);
     virtual void assignIdentifierToRequest(WebKit::WebFrame*, unsigned identifier, const WebKit::WebURLRequest&);
     virtual void removeIdentifierForRequest(unsigned identifier);
+    virtual void willRequestResource(WebKit::WebFrame*, const WebKit::WebCachedURLRequest&);
     virtual void willSendRequest(WebKit::WebFrame*, unsigned identifier, WebKit::WebURLRequest&, const WebKit::WebURLResponse&);
     virtual void didReceiveResponse(WebKit::WebFrame*, unsigned identifier, const WebKit::WebURLResponse&);
     virtual void didFinishResourceLoad(WebKit::WebFrame*, unsigned identifier);
@@ -273,10 +276,6 @@ class WebViewHost : public WebKit::WebViewClient, public WebKit::WebFrameClient,
     virtual bool willCheckAndDispatchMessageEvent(
         WebKit::WebFrame* sourceFrame, WebKit::WebFrame* targetFrame, 
         WebKit::WebSecurityOrigin target, WebKit::WebDOMMessageEvent);
-    virtual void registerIntentService(WebKit::WebFrame*, const WebKit::WebIntentServiceInfo&);
-    virtual void dispatchIntent(WebKit::WebFrame*, const WebKit::WebIntentRequest&);
-    virtual void deliveredIntentResult(WebKit::WebFrame*, int, const WebKit::WebSerializedScriptValue&);
-    virtual void deliveredIntentFailure(WebKit::WebFrame*, int, const WebKit::WebSerializedScriptValue&);
 
     WebKit::WebDeviceOrientationClientMock* deviceOrientationClientMock();
     
@@ -289,9 +288,6 @@ class WebViewHost : public WebKit::WebViewClient, public WebKit::WebFrameClient,
 
     // Pending task list, Note taht the method is referred from WebMethodTask class.
     WebTestRunner::WebTaskList* taskList() { return &m_taskList; }
-
-    // The current web intents request.
-    WebKit::WebIntentRequest* currentIntentRequest() { return &m_currentRequest; }
 
 private:
 
@@ -459,6 +455,8 @@ private:
 
     // For web intents: holds the current request, if any.
     WebKit::WebIntentRequest m_currentRequest;
+
+    OwnPtr<WebKit::WebLayerTreeView> m_layerTreeView;
 };
 
 #endif // WebViewHost_h

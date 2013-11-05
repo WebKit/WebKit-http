@@ -1,11 +1,12 @@
 /*
+ * Copyright (C) 2004, 2005, 2006, 2007, 2009, 2010, 2011 Apple Inc. All rights reserved.
  * Copyright (C) 2008 Alp Toker <alp@atoker.com>
  * Copyright (C) 2008 Xan Lopez <xan@gnome.org>
  * Copyright (C) 2008, 2010 Collabora Ltd.
  * Copyright (C) 2009 Holger Hans Peter Freyther
  * Copyright (C) 2009 Gustavo Noronha Silva <gns@gnome.org>
  * Copyright (C) 2009 Christian Dywan <christian@imendio.com>
- * Copyright (C) 2009, 2010, 2011 Igalia S.L.
+ * Copyright (C) 2009, 2010, 2011, 2012 Igalia S.L.
  * Copyright (C) 2009 John Kjellberg <john.kjellberg@power.alstom.com>
  * Copyright (C) 2012 Intel Corporation
  *
@@ -31,6 +32,7 @@
 #include "CachedResourceLoader.h"
 #include "ChromeClient.h"
 #include "CookieJarSoup.h"
+#include "CredentialStorage.h"
 #include "FileSystem.h"
 #include "Frame.h"
 #include "GOwnPtrSoup.h"
@@ -45,12 +47,14 @@
 #include "ResourceHandleInternal.h"
 #include "ResourceResponse.h"
 #include "SharedBuffer.h"
+#include "SoupURIUtils.h"
 #include "TextEncoding.h"
 #include <errno.h>
 #include <fcntl.h>
 #include <gio/gio.h>
 #include <glib.h>
 #define LIBSOUP_USE_UNSTABLE_REQUEST_API
+#include <libsoup/soup-multipart-input-stream.h>
 #include <libsoup/soup-request-http.h>
 #include <libsoup/soup-requester.h>
 #include <libsoup/soup.h>
@@ -68,9 +72,22 @@
 #include "BlobStorageData.h"
 #endif
 
+#if PLATFORM(GTK)
+#include "CredentialBackingStore.h"
+#endif
+
 namespace WebCore {
 
 #define READ_BUFFER_SIZE 8192
+
+inline static void soupLogPrinter(SoupLogger*, SoupLoggerLogLevel, char direction, const char* data, gpointer)
+{
+#if LOG_DISABLED
+    UNUSED_PARAM(direction);
+    UNUSED_PARAM(data);
+#endif
+    LOG(Network, "%c %s", direction, data);
+}
 
 static bool loadingSynchronousRequest = false;
 
@@ -259,6 +276,7 @@ static void ensureSessionIsInitialized(SoupSession* session)
     if (!soup_session_get_feature(session, SOUP_TYPE_LOGGER) && LogNetwork.state == WTFLogChannelOn) {
         SoupLogger* logger = soup_logger_new(static_cast<SoupLoggerLogLevel>(SOUP_LOGGER_LOG_BODY), -1);
         soup_session_add_feature(session, SOUP_SESSION_FEATURE(logger));
+        soup_logger_set_printer(logger, soupLogPrinter, 0, 0);
         g_object_unref(logger);
     }
 #endif // !LOG_DISABLED
@@ -279,7 +297,12 @@ SoupSession* ResourceHandleInternal::soupSession()
     return session;
 }
 
-static void gotHeadersCallback(SoupMessage* msg, gpointer data)
+static bool isAuthenticationFailureStatusCode(int httpStatusCode)
+{
+    return httpStatusCode == SOUP_STATUS_PROXY_AUTHENTICATION_REQUIRED || httpStatusCode == SOUP_STATUS_UNAUTHORIZED;
+}
+
+static void gotHeadersCallback(SoupMessage* message, gpointer data)
 {
     ResourceHandle* handle = static_cast<ResourceHandle*>(data);
     if (!handle)
@@ -293,18 +316,65 @@ static void gotHeadersCallback(SoupMessage* msg, gpointer data)
         d->m_response.resourceLoadTiming()->receiveHeadersEnd = milisecondsSinceRequest(d->m_response.resourceLoadTiming()->requestTime);
 #endif
 
+#if PLATFORM(GTK)
+    // We are a bit more conservative with the persistent credential storage than the session store,
+    // since we are waiting until we know that this authentication succeeded before actually storing.
+    // This is because we want to avoid hitting the disk twice (once to add and once to remove) for
+    // incorrect credentials or polluting the keychain with invalid credentials.
+    if (!isAuthenticationFailureStatusCode(message->status_code) && message->status_code < 500 && !d->m_credentialDataToSaveInPersistentStore.credential.isEmpty()) {
+        credentialBackingStore().storeCredentialsForChallenge(
+            d->m_credentialDataToSaveInPersistentStore.challenge,
+            d->m_credentialDataToSaveInPersistentStore.credential);
+    }
+#endif
+
     // The original response will be needed later to feed to willSendRequest in
     // restartedCallback() in case we are redirected. For this reason, so we store it
     // here.
     ResourceResponse response;
-    response.updateFromSoupMessage(msg);
-
+    response.updateFromSoupMessage(message);
     d->m_response = response;
+}
+
+static void applyAuthenticationToRequest(ResourceHandle* handle, ResourceRequest& request, bool redirect)
+{
+    // m_user/m_pass are credentials given manually, for instance, by the arguments passed to XMLHttpRequest.open().
+    ResourceHandleInternal* d = handle->getInternal();
+
+    if (handle->shouldUseCredentialStorage()) {
+        if (d->m_user.isEmpty() && d->m_pass.isEmpty())
+            d->m_initialCredential = CredentialStorage::get(request.url());
+        else if (!redirect) {
+            // If there is already a protection space known for the URL, update stored credentials
+            // before sending a request. This makes it possible to implement logout by sending an
+            // XMLHttpRequest with known incorrect credentials, and aborting it immediately (so that
+            // an authentication dialog doesn't pop up).
+            CredentialStorage::set(Credential(d->m_user, d->m_pass, CredentialPersistenceNone), request.url());
+        }
+    }
+
+    String user = d->m_user;
+    String password = d->m_pass;
+    if (!d->m_initialCredential.isEmpty()) {
+        user = d->m_initialCredential.user();
+        password = d->m_initialCredential.password();
+    }
+
+    if (user.isEmpty() && password.isEmpty())
+        return;
+
+    // We always put the credentials into the URL. In the CFNetwork-port HTTP family credentials are applied in
+    // the didReceiveAuthenticationChallenge callback, but libsoup requires us to use this method to override
+    // any previously remembered credentials. It has its own per-session credential storage.
+    KURL urlWithCredentials(request.url());
+    urlWithCredentials.setUser(user);
+    urlWithCredentials.setPass(password);
+    request.setURL(urlWithCredentials);
 }
 
 // Called each time the message is going to be sent again except the first time.
 // It's used mostly to let webkit know about redirects.
-static void restartedCallback(SoupMessage* msg, gpointer data)
+static void restartedCallback(SoupMessage* message, gpointer data)
 {
     ResourceHandle* handle = static_cast<ResourceHandle*>(data);
     if (!handle)
@@ -313,30 +383,53 @@ static void restartedCallback(SoupMessage* msg, gpointer data)
     if (d->m_cancelled)
         return;
 
-    GOwnPtr<char> uri(soup_uri_to_string(soup_message_get_uri(msg), false));
-    String location = String::fromUTF8(uri.get());
-    KURL newURL = KURL(handle->firstRequest().url(), location);
+    ResourceResponse& redirectResponse = d->m_response;
+#if ENABLE(WEB_TIMING)
+    redirectResponse.setResourceLoadTiming(ResourceLoadTiming::create());
+    redirectResponse.resourceLoadTiming()->requestTime = monotonicallyIncreasingTime();
+#endif
+
+    // WebCore only expects us to call willSendRequest when we are redirecting. soup
+    // fires this signal also when it's handling authentication challenges, so in that
+    // case we should not willSendRequest.
+    if (isAuthenticationFailureStatusCode(redirectResponse.httpStatusCode()))
+        return;
 
     ResourceRequest request = handle->firstRequest();
-    request.setURL(newURL);
-    request.setHTTPMethod(msg->method);
+    request.setURL(KURL(handle->firstRequest().url(), soupURIToKURL(soup_message_get_uri(message))));
+    request.setHTTPMethod(message->method);
 
     // Should not set Referer after a redirect from a secure resource to non-secure one.
     if (!request.url().protocolIs("https") && protocolIs(request.httpReferrer(), "https")) {
         request.clearHTTPReferrer();
-        soup_message_headers_remove(msg->request_headers, "Referer");
+        soup_message_headers_remove(message->request_headers, "Referer");
     }
 
+    const KURL& url = request.url();
+    d->m_user = url.user();
+    d->m_pass = url.pass();
+    request.removeCredentials();
+
+    if (!protocolHostAndPortAreEqual(request.url(), redirectResponse.url())) {
+        // If the network layer carries over authentication headers from the original request
+        // in a cross-origin redirect, we want to clear those headers here. 
+        request.clearHTTPAuthorization();
+        soup_message_headers_remove(message->request_headers, "Authorization");
+
+        // TODO: We are losing any username and password specified in the redirect URL, as this is the 
+        // same behavior as the CFNet port. We should investigate if this is really what we want.
+    } else
+        applyAuthenticationToRequest(handle, request, true);
+
+    // Per-request authentication is handled via the URI-embedded username/password.
+    GOwnPtr<SoupURI> newSoupURI(request.soupURI());
+    soup_message_set_uri(message, newSoupURI.get());
+
     if (d->client())
-        d->client()->willSendRequest(handle, request, d->m_response);
+        d->client()->willSendRequest(handle, request, redirectResponse);
 
     if (d->m_cancelled)
         return;
-
-#if ENABLE(WEB_TIMING)
-    d->m_response.setResourceLoadTiming(ResourceLoadTiming::create());
-    d->m_response.resourceLoadTiming()->requestTime = monotonicallyIncreasingTime();
-#endif
 
     // Update the first party in case the base URL changed with the redirect
     String firstPartyString = request.firstPartyForCookies().string();
@@ -369,12 +462,9 @@ static void cleanupSoupRequestOperation(ResourceHandle* handle, bool isDestroyin
 {
     ResourceHandleInternal* d = handle->getInternal();
 
-    if (d->m_soupRequest)
-        d->m_soupRequest.clear();
-
-    if (d->m_inputStream)
-        d->m_inputStream.clear();
-
+    d->m_soupRequest.clear();
+    d->m_inputStream.clear();
+    d->m_multipartInputStream.clear();
     d->m_cancellable.clear();
 
     if (d->m_soupMessage) {
@@ -419,7 +509,50 @@ static bool handleUnignoredTLSErrors(ResourceHandle* handle)
     return true;
 }
 
-static void sendRequestCallback(GObject*, GAsyncResult* res, gpointer data)
+static void nextMultipartResponsePartCallback(GObject* /*source*/, GAsyncResult* result, gpointer data)
+{
+    RefPtr<ResourceHandle> handle = static_cast<ResourceHandle*>(data);
+
+    ResourceHandleInternal* d = handle->getInternal();
+    ResourceHandleClient* client = handle->client();
+
+    if (d->m_cancelled || !client) {
+        cleanupSoupRequestOperation(handle.get());
+        return;
+    }
+
+    ASSERT(!d->m_inputStream);
+
+    GOwnPtr<GError> error;
+    d->m_inputStream = adoptGRef(soup_multipart_input_stream_next_part_finish(d->m_multipartInputStream.get(), result, &error.outPtr()));
+    if (error) {
+        client->didFail(handle.get(), ResourceError::httpError(d->m_soupMessage.get(), error.get(), d->m_soupRequest.get()));
+        cleanupSoupRequestOperation(handle.get());
+        return;
+    }
+
+    if (!d->m_inputStream) {
+        client->didFinishLoading(handle.get(), 0);
+        cleanupSoupRequestOperation(handle.get());
+        return;
+    }
+
+    d->m_response = ResourceResponse();
+    d->m_response.setURL(handle->firstRequest().url());
+    d->m_response.updateFromSoupMessageHeaders(soup_multipart_input_stream_get_headers(d->m_multipartInputStream.get()));
+
+    client->didReceiveResponse(handle.get(), d->m_response);
+
+    if (d->m_cancelled || !client) {
+        cleanupSoupRequestOperation(handle.get());
+        return;
+    }
+
+    g_input_stream_read_async(d->m_inputStream.get(), d->m_buffer, READ_BUFFER_SIZE,
+        G_PRIORITY_DEFAULT, d->m_cancellable.get(), readCallback, handle.get());
+}
+
+static void sendRequestCallback(GObject*, GAsyncResult* result, gpointer data)
 {
     RefPtr<ResourceHandle> handle = static_cast<ResourceHandle*>(data);
 
@@ -433,19 +566,18 @@ static void sendRequestCallback(GObject*, GAsyncResult* res, gpointer data)
     }
 
     if (d->m_defersLoading) {
-        d->m_deferredResult = res;
+        d->m_deferredResult = result;
         return;
     }
 
     GOwnPtr<GError> error;
-    GInputStream* in = soup_request_send_finish(d->m_soupRequest.get(), res, &error.outPtr());
+    GRefPtr<GInputStream> inputStream = adoptGRef(soup_request_send_finish(d->m_soupRequest.get(), result, &error.outPtr()));
     if (error) {
         client->didFail(handle.get(), ResourceError::httpError(soupMessage, error.get(), d->m_soupRequest.get()));
         cleanupSoupRequestOperation(handle.get());
         return;
     }
 
-    d->m_inputStream = adoptGRef(in);
     d->m_buffer = static_cast<char*>(g_slice_alloc(READ_BUFFER_SIZE));
 
     if (soupMessage) {
@@ -475,6 +607,14 @@ static void sendRequestCallback(GObject*, GAsyncResult* res, gpointer data)
         return;
     }
 
+    if (soupMessage && d->m_response.isMultipart()) {
+        d->m_multipartInputStream = adoptGRef(soup_multipart_input_stream_new(soupMessage, inputStream.get()));
+        soup_multipart_input_stream_next_part_async(d->m_multipartInputStream.get(), G_PRIORITY_DEFAULT,
+            d->m_cancellable.get(), nextMultipartResponsePartCallback, handle.get());
+        return;
+    }
+
+    d->m_inputStream = inputStream;
     g_input_stream_read_async(d->m_inputStream.get(), d->m_buffer, READ_BUFFER_SIZE,
                               G_PRIORITY_DEFAULT, d->m_cancellable.get(), readCallback, handle.get());
 }
@@ -673,16 +813,16 @@ static void networkEventCallback(SoupMessage*, GSocketClientEvent event, GIOStre
 }
 #endif
 
-static const char* gSoupRequestInitiaingPageIDKey = "wk-soup-request-initiaing-page-id";
+static const char* gSoupRequestInitiatingPageIDKey = "wk-soup-request-initiating-page-id";
 
-static void setSoupRequestInitiaingPageIDFromNetworkingContext(SoupRequest* request, NetworkingContext* context)
+static void setSoupRequestInitiatingPageIDFromNetworkingContext(SoupRequest* request, NetworkingContext* context)
 {
     if (!context || !context->isValid())
         return;
 
     uint64_t* initiatingPageIDPtr = static_cast<uint64_t*>(fastMalloc(sizeof(uint64_t)));
     *initiatingPageIDPtr = context->initiatingPageID();
-    g_object_set_data_full(G_OBJECT(request), g_intern_static_string(gSoupRequestInitiaingPageIDKey), initiatingPageIDPtr, fastFree);
+    g_object_set_data_full(G_OBJECT(request), g_intern_static_string(gSoupRequestInitiatingPageIDKey), initiatingPageIDPtr, fastFree);
 }
 
 static bool createSoupMessageForHandleAndRequest(ResourceHandle* handle, const ResourceRequest& request)
@@ -749,14 +889,16 @@ static bool createSoupRequestAndMessageForHandle(ResourceHandle* handle, bool is
     SoupRequester* requester = SOUP_REQUESTER(soup_session_get_feature(d->soupSession(), SOUP_TYPE_REQUESTER));
 
     GOwnPtr<GError> error;
-    const ResourceRequest& request = handle->firstRequest();
-    d->m_soupRequest = adoptGRef(soup_requester_request(requester, request.urlStringForSoup().utf8().data(), &error.outPtr()));
+    ResourceRequest& request = handle->firstRequest();
+
+    GOwnPtr<SoupURI> soupURI(request.soupURI());
+    d->m_soupRequest = adoptGRef(soup_requester_request_uri(requester, soupURI.get(), &error.outPtr()));
     if (error) {
         d->m_soupRequest.clear();
         return false;
     }
 
-    // Non-HTTP family requests do not need a soupMessage, as it's callbacks really only apply to HTTP.
+    // SoupMessages are only applicable to HTTP-family requests.
     if (isHTTPFamilyRequest && !createSoupMessageForHandleAndRequest(handle, request)) {
         d->m_soupRequest.clear();
         return false;
@@ -780,15 +922,6 @@ bool ResourceHandle::start(NetworkingContext* context)
     // Used to set the keep track of custom SoupSessions for ports that support it (EFL).
     d->m_context = context;
 
-    if (!(d->m_user.isEmpty() || d->m_pass.isEmpty())) {
-        // If credentials were specified for this request, add them to the url,
-        // so that they will be passed to NetworkRequest.
-        KURL urlWithCredentials(firstRequest().url());
-        urlWithCredentials.setUser(d->m_user);
-        urlWithCredentials.setPass(d->m_pass);
-        d->m_firstRequest.setURL(urlWithCredentials);
-    }
-
     // Only allow the POST and GET methods for non-HTTP requests.
     const ResourceRequest& request = firstRequest();
     bool isHTTPFamilyRequest = request.url().protocolIsInHTTPFamily();
@@ -797,12 +930,14 @@ bool ResourceHandle::start(NetworkingContext* context)
         return true;
     }
 
+    applyAuthenticationToRequest(this, firstRequest(), false);
+
     if (!createSoupRequestAndMessageForHandle(this, isHTTPFamilyRequest)) {
         this->scheduleFailure(InvalidURLFailure); // Error must not be reported immediately
         return true;
     }
 
-    setSoupRequestInitiaingPageIDFromNetworkingContext(d->m_soupRequest.get(), context);
+    setSoupRequestInitiatingPageIDFromNetworkingContext(d->m_soupRequest.get(), context);
 
     // Send the request only if it's not been explicitly deferred.
     if (!d->m_defersLoading)
@@ -841,6 +976,11 @@ void ResourceHandle::cancel()
         g_cancellable_cancel(d->m_cancellable.get());
 }
 
+bool ResourceHandle::shouldUseCredentialStorage()
+{
+    return (!client() || client()->shouldUseCredentialStorage(this)) && firstRequest().url().protocolIsInHTTPFamily();
+}
+
 void ResourceHandle::setHostAllowsAnyHTTPSCertificate(const String& host)
 {
     allowsAnyHTTPSCertificateHosts().add(host.lower());
@@ -856,17 +996,78 @@ void ResourceHandle::setIgnoreSSLErrors(bool ignoreSSLErrors)
     gIgnoreSSLErrors = ignoreSSLErrors;
 }
 
+#if PLATFORM(GTK)
+void getCredentialFromPersistentStoreCallback(const Credential& credential, void* data)
+{
+    static_cast<ResourceHandle*>(data)->continueDidReceiveAuthenticationChallenge(credential);
+}
+#endif
+
+void ResourceHandle::continueDidReceiveAuthenticationChallenge(const Credential& credentialFromPersistentStorage)
+{
+    ASSERT(!d->m_currentWebChallenge.isNull());
+    AuthenticationChallenge& challenge = d->m_currentWebChallenge;
+
+    ASSERT(challenge.soupSession());
+    ASSERT(challenge.soupMessage());
+    if (!credentialFromPersistentStorage.isEmpty())
+        challenge.setProposedCredential(credentialFromPersistentStorage);
+
+    if (!client()) {
+        soup_session_unpause_message(challenge.soupSession(), challenge.soupMessage());
+        clearAuthentication();
+        return;
+    }
+
+    ASSERT(challenge.soupSession());
+    ASSERT(challenge.soupMessage());
+    client()->didReceiveAuthenticationChallenge(this, challenge);
+}
+
 void ResourceHandle::didReceiveAuthenticationChallenge(const AuthenticationChallenge& challenge)
 {
     ASSERT(d->m_currentWebChallenge.isNull());
-    d->m_currentWebChallenge = challenge;
 
-    if (client()) {
-        ASSERT(challenge.soupSession());
-        ASSERT(challenge.soupMessage());
-        soup_session_pause_message(challenge.soupSession(), challenge.soupMessage());
-        client()->didReceiveAuthenticationChallenge(this, challenge);
+    // FIXME: Per the specification, the user shouldn't be asked for credentials if there were incorrect ones provided explicitly.
+    bool useCredentialStorage = shouldUseCredentialStorage();
+    if (useCredentialStorage) {
+        if (!d->m_initialCredential.isEmpty() || challenge.previousFailureCount()) {
+            // The stored credential wasn't accepted, stop using it. There is a race condition
+            // here, since a different credential might have already been stored by another
+            // ResourceHandle, but the observable effect should be very minor, if any.
+            CredentialStorage::remove(challenge.protectionSpace());
+        }
+
+        if (!challenge.previousFailureCount()) {
+            Credential credential = CredentialStorage::get(challenge.protectionSpace());
+            if (!credential.isEmpty() && credential != d->m_initialCredential) {
+                ASSERT(credential.persistence() == CredentialPersistenceNone);
+
+                // Store the credential back, possibly adding it as a default for this directory.
+                if (isAuthenticationFailureStatusCode(challenge.failureResponse().httpStatusCode()))
+                    CredentialStorage::set(credential, challenge.protectionSpace(), challenge.failureResponse().url());
+
+                soup_auth_authenticate(challenge.soupAuth(), credential.user().utf8().data(), credential.password().utf8().data());
+                return;
+            }
+        }
     }
+
+    d->m_currentWebChallenge = challenge;
+    soup_session_pause_message(challenge.soupSession(), challenge.soupMessage());
+
+#if PLATFORM(GTK)
+    // We could also do this before we even start the request, but that would be at the expense
+    // of all request latency, versus a one-time latency for the small subset of requests that
+    // use HTTP authentication. In the end, this doesn't matter much, because persistent credentials
+    // will become session credentials after the first use.
+    if (useCredentialStorage) {
+        credentialBackingStore().credentialForChallenge(challenge, getCredentialFromPersistentStoreCallback, this);
+        return;
+    }
+#endif
+
+    continueDidReceiveAuthenticationChallenge(Credential());
 }
 
 void ResourceHandle::receivedRequestToContinueWithoutCredential(const AuthenticationChallenge& challenge)
@@ -884,6 +1085,28 @@ void ResourceHandle::receivedCredential(const AuthenticationChallenge& challenge
     ASSERT(!challenge.isNull());
     if (challenge != d->m_currentWebChallenge)
         return;
+
+    // FIXME: Support empty credentials. Currently, an empty credential cannot be stored in WebCore credential storage, as that's empty value for its map.
+    if (credential.isEmpty()) {
+        receivedRequestToContinueWithoutCredential(challenge);
+        return;
+    }
+
+    if (shouldUseCredentialStorage()) {
+        // Eventually we will manage per-session credentials only internally or use some newly-exposed API from libsoup,
+        // because once we authenticate via libsoup, there is no way to ignore it for a particular request. Right now,
+        // we place the credentials in the store even though libsoup will never fire the authenticate signal again for
+        // this protection space.
+        if (credential.persistence() == CredentialPersistenceForSession || credential.persistence() == CredentialPersistencePermanent)
+            CredentialStorage::set(credential, challenge.protectionSpace(), challenge.failureResponse().url());
+
+#if PLATFORM(GTK)
+        if (credential.persistence() == CredentialPersistencePermanent) {
+            d->m_credentialDataToSaveInPersistentStore.credential = credential;
+            d->m_credentialDataToSaveInPersistentStore.challenge = challenge;
+        }
+#endif
+    }
 
     ASSERT(challenge.soupSession());
     ASSERT(challenge.soupMessage());
@@ -1022,6 +1245,14 @@ static void readCallback(GObject*, GAsyncResult* asyncResult, gpointer data)
     }
 
     if (!bytesRead) {
+        // If this is a multipart message, we'll look for another part.
+        if (d->m_soupMessage && d->m_multipartInputStream) {
+            d->m_inputStream.clear();
+            soup_multipart_input_stream_next_part_async(d->m_multipartInputStream.get(), G_PRIORITY_DEFAULT,
+                d->m_cancellable.get(), nextMultipartResponsePartCallback, handle.get());
+            return;
+        }
+
         // We inform WebCore of load completion now instead of waiting for the input
         // stream to close because the input stream is closed asynchronously. If this
         // is a synchronous request, we wait until the closeCallback, because we don't
@@ -1097,9 +1328,9 @@ SoupSession* ResourceHandle::defaultSession()
     return session;
 }
 
-uint64_t ResourceHandle::getSoupRequestInitiaingPageID(SoupRequest* request)
+uint64_t ResourceHandle::getSoupRequestInitiatingPageID(SoupRequest* request)
 {
-    uint64_t* initiatingPageIDPtr = static_cast<uint64_t*>(g_object_get_data(G_OBJECT(request), gSoupRequestInitiaingPageIDKey));
+    uint64_t* initiatingPageIDPtr = static_cast<uint64_t*>(g_object_get_data(G_OBJECT(request), gSoupRequestInitiatingPageIDKey));
     return initiatingPageIDPtr ? *initiatingPageIDPtr : 0;
 }
 

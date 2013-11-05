@@ -32,10 +32,12 @@ INCLUDEPATH += \
     $$SOURCE_DIR/ForwardingHeaders \
     $$JAVASCRIPTCORE_GENERATED_SOURCES_DIR
 
+# Pick up the right version of LLIntAssembly.h
+macx: INCLUDEPATH += $$JAVASCRIPTCORE_GENERATED_SOURCES_DIR/$$activeBuildConfig()
+
 win32-*: LIBS += -lwinmm
 
 wince* {
-    INCLUDEPATH += $$QT.core.sources/../3rdparty/ce-compat
     INCLUDEPATH += $$SOURCE_DIR/os-win32
 }
 

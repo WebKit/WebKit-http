@@ -65,6 +65,7 @@ public:
     ResourceError cannotShowURLError();
     
     virtual void setDefersLoading(bool);
+    bool defersLoading() const { return m_defersLoading; }
 
     unsigned long identifier() const { return m_identifier; }
 
@@ -117,7 +118,6 @@ public:
     virtual bool canAuthenticateAgainstProtectionSpace(ResourceHandle*, const ProtectionSpace& protectionSpace) { return canAuthenticateAgainstProtectionSpace(protectionSpace); }
 #endif
     virtual void receivedCancellation(ResourceHandle*, const AuthenticationChallenge& challenge) { receivedCancellation(challenge); }
-    virtual void willCacheResponse(ResourceHandle*, CacheStoragePolicy&);
 #if PLATFORM(MAC)
 #if USE(CFNETWORK)
     virtual CFCachedURLResponseRef willCacheResponse(ResourceHandle*, CFCachedURLResponseRef);
@@ -168,7 +168,6 @@ protected:
     void didFinishLoadingOnePart(double finishTime);
 
     bool cancelled() const { return m_cancelled; }
-    bool defersLoading() const { return m_defersLoading; }
 
     RefPtr<ResourceHandle> m_handle;
     RefPtr<Frame> m_frame;

@@ -48,6 +48,9 @@ enum WebTextInputType {
     WebTextInputTypeNumber,
     WebTextInputTypeTelephone,
     WebTextInputTypeURL,
+
+    // FIXME: Remove these types once Date like types are not
+    // seen as Text. For now they also exist in WebTextInputType
     WebTextInputTypeDate,
     WebTextInputTypeDateTime,
     WebTextInputTypeDateTimeLocal,

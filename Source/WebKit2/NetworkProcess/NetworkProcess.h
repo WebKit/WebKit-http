@@ -28,7 +28,11 @@
 
 #if ENABLE(NETWORK_PROCESS)
 
+#include "AuthenticationManager.h"
+#include "CacheModel.h"
 #include "ChildProcess.h"
+#include "DownloadManager.h"
+#include "MessageReceiverMap.h"
 #include "NetworkResourceLoadScheduler.h"
 #include <wtf/Forward.h>
 
@@ -41,7 +45,7 @@ namespace WebKit {
 class NetworkConnectionToWebProcess;
 struct NetworkProcessCreationParameters;
 
-class NetworkProcess : ChildProcess {
+class NetworkProcess : ChildProcess, DownloadManager::Client {
     WTF_MAKE_NONCOPYABLE(NetworkProcess);
 public:
     static NetworkProcess& shared();
@@ -52,6 +56,8 @@ public:
 
     NetworkResourceLoadScheduler& networkResourceLoadScheduler() { return m_networkResourceLoadScheduler; }
 
+    DownloadManager& downloadManager();
+
 private:
     NetworkProcess();
     ~NetworkProcess();
@@ -59,26 +65,54 @@ private:
     void platformInitialize(const NetworkProcessCreationParameters&);
 
     // ChildProcess
-    virtual bool shouldTerminate();
+    virtual bool shouldTerminate() OVERRIDE;
 
     // CoreIPC::Connection::Client
-    virtual void didReceiveMessage(CoreIPC::Connection*, CoreIPC::MessageID, CoreIPC::MessageDecoder&);
-    virtual void didClose(CoreIPC::Connection*);
-    virtual void didReceiveInvalidMessage(CoreIPC::Connection*, CoreIPC::StringReference messageReceiverName, CoreIPC::StringReference messageName);
-    virtual void syncMessageSendTimedOut(CoreIPC::Connection*);
+    virtual void didReceiveMessage(CoreIPC::Connection*, CoreIPC::MessageID, CoreIPC::MessageDecoder&) OVERRIDE;
+    virtual void didReceiveSyncMessage(CoreIPC::Connection*, CoreIPC::MessageID, CoreIPC::MessageDecoder&, OwnPtr<CoreIPC::MessageEncoder>&);
+    virtual void didClose(CoreIPC::Connection*) OVERRIDE;
+    virtual void didReceiveInvalidMessage(CoreIPC::Connection*, CoreIPC::StringReference messageReceiverName, CoreIPC::StringReference messageName) OVERRIDE;
+
+    // DownloadManager::Client
+    virtual void didCreateDownload() OVERRIDE;
+    virtual void didDestroyDownload() OVERRIDE;
+    virtual CoreIPC::Connection* downloadProxyConnection() OVERRIDE;
+    virtual AuthenticationManager& downloadsAuthenticationManager() OVERRIDE;
 
     // Message Handlers
     void didReceiveNetworkProcessMessage(CoreIPC::Connection*, CoreIPC::MessageID, CoreIPC::MessageDecoder&);
     void initializeNetworkProcess(const NetworkProcessCreationParameters&);
     void createNetworkConnectionToWebProcess();
+    void ensurePrivateBrowsingSession();
+    void destroyPrivateBrowsingSession();
+    void downloadRequest(uint64_t downloadID, const WebCore::ResourceRequest&);
+    void cancelDownload(uint64_t downloadID);
+    void setCacheModel(uint32_t);
+#if ENABLE(CUSTOM_PROTOCOLS)
+    void registerSchemeForCustomProtocol(const String&);
+    void unregisterSchemeForCustomProtocol(const String&);
+#endif
+
+    void allowSpecificHTTPSCertificateForHost(const PlatformCertificateInfo&, const String& host);
+
+    // Platform Helpers
+    void platformSetCacheModel(CacheModel);
 
     // The connection to the UI process.
     RefPtr<CoreIPC::Connection> m_uiConnection;
+
+    CoreIPC::MessageReceiverMap m_messageReceiverMap;
 
     // Connections to WebProcesses.
     Vector<RefPtr<NetworkConnectionToWebProcess> > m_webProcessConnections;
 
     NetworkResourceLoadScheduler m_networkResourceLoadScheduler;
+
+    String m_diskCacheDirectory;
+    bool m_hasSetCacheModel;
+    CacheModel m_cacheModel;
+
+    AuthenticationManager m_downloadsAuthenticationManager;
 };
 
 } // namespace WebKit

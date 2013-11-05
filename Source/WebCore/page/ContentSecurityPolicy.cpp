@@ -37,9 +37,8 @@
 #include "InspectorValues.h"
 #include "KURL.h"
 #include "PingLoader.h"
+#include "RuntimeEnabledFeatures.h"
 #include "SchemeRegistry.h"
-#include "ScriptCallStack.h"
-#include "ScriptCallStackFactory.h"
 #include "ScriptState.h"
 #include "SecurityOrigin.h"
 #include "TextEncoding.h"
@@ -1313,7 +1312,7 @@ void CSPDirectiveList::addDirective(const String& name, const String& value)
     else if (equalIgnoringCase(name, reportURI))
         parseReportURI(name, value);
 #if ENABLE(CSP_NEXT)
-    else if (m_experimental) {
+    else if (m_experimental && m_policy->experimentalFeaturesEnabled()) {
         if (equalIgnoringCase(name, formAction))
             setCSPDirective<SourceListDirective>(name, value, m_formAction);
         else if (equalIgnoringCase(name, pluginTypes))
@@ -1693,21 +1692,21 @@ void ContentSecurityPolicy::reportInvalidSourceExpression(const String& directiv
 
 void ContentSecurityPolicy::logToConsole(const String& message, const String& contextURL, const WTF::OrdinalNumber& contextLine, ScriptState* state) const
 {
-    RefPtr<ScriptCallStack> callStack;
-    if (InspectorInstrumentation::consoleAgentEnabled(m_scriptExecutionContext)) {
-        if (state)
-            callStack = createScriptCallStackForConsole(state);
-        else
-            callStack = createScriptCallStack(ScriptCallStack::maxCallStackSizeToCapture, true);
-        if (callStack && !callStack->size())
-            callStack = 0;
-    }
-    m_scriptExecutionContext->addConsoleMessage(JSMessageSource, LogMessageType, ErrorMessageLevel, message, contextURL, contextLine.oneBasedInt(), callStack);
+    m_scriptExecutionContext->addConsoleMessage(JSMessageSource, ErrorMessageLevel, message, contextURL, contextLine.oneBasedInt(), state);
 }
 
 void ContentSecurityPolicy::reportBlockedScriptExecutionToInspector(const String& directiveText) const
 {
     InspectorInstrumentation::scriptExecutionBlockedByCSP(m_scriptExecutionContext, directiveText);
+}
+
+bool ContentSecurityPolicy::experimentalFeaturesEnabled() const
+{
+#if ENABLE(CSP_NEXT)
+    return RuntimeEnabledFeatures::experimentalContentSecurityPolicyFeaturesEnabled();
+#else
+    return false;
+#endif
 }
 
 }

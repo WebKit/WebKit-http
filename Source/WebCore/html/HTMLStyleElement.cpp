@@ -70,21 +70,21 @@ PassRefPtr<HTMLStyleElement> HTMLStyleElement::create(const QualifiedName& tagNa
     return adoptRef(new HTMLStyleElement(tagName, document, createdByParser));
 }
 
-void HTMLStyleElement::parseAttribute(const Attribute& attribute)
+void HTMLStyleElement::parseAttribute(const QualifiedName& name, const AtomicString& value)
 {
-    if (attribute.name() == titleAttr && m_sheet)
-        m_sheet->setTitle(attribute.value());
-    else if (attribute.name() == onloadAttr)
-        setAttributeEventListener(eventNames().loadEvent, createAttributeEventListener(this, attribute));
-    else if (attribute.name() == onerrorAttr)
-        setAttributeEventListener(eventNames().errorEvent, createAttributeEventListener(this, attribute));
-    else if (attribute.name() == scopedAttr && ContextFeatures::styleScopedEnabled(document()))
-        scopedAttributeChanged(!attribute.isNull());
-    else if (attribute.name() == mediaAttr && inDocument() && document()->renderer() && m_sheet) {
-        m_sheet->setMediaQueries(MediaQuerySet::createAllowingDescriptionSyntax(attribute.value()));
+    if (name == titleAttr && m_sheet)
+        m_sheet->setTitle(value);
+    else if (name == onloadAttr)
+        setAttributeEventListener(eventNames().loadEvent, createAttributeEventListener(this, name, value));
+    else if (name == onerrorAttr)
+        setAttributeEventListener(eventNames().errorEvent, createAttributeEventListener(this, name, value));
+    else if (name == scopedAttr && ContextFeatures::styleScopedEnabled(document()))
+        scopedAttributeChanged(!value.isNull());
+    else if (name == mediaAttr && inDocument() && document()->renderer() && m_sheet) {
+        m_sheet->setMediaQueries(MediaQuerySet::createAllowingDescriptionSyntax(value));
         document()->styleResolverChanged(RecalcStyleImmediately);
     } else
-        HTMLElement::parseAttribute(attribute);
+        HTMLElement::parseAttribute(name, value);
 }
 
 void HTMLStyleElement::scopedAttributeChanged(bool scoped)
@@ -98,7 +98,7 @@ void HTMLStyleElement::scopedAttributeChanged(bool scoped)
         // As any <style> in a shadow tree is treated as "scoped",
         // need to remove the <style> from its shadow root.
         if (m_scopedStyleRegistrationState == RegisteredInShadowRoot)
-            unregisterWithScopingNode(shadowRoot());
+            unregisterWithScopingNode(containingShadowRoot());
 
         if (m_scopedStyleRegistrationState != RegisteredAsScoped)
             registerWithScopingNode(true);
@@ -131,7 +131,7 @@ void HTMLStyleElement::registerWithScopingNode(bool scoped)
     if (m_scopedStyleRegistrationState != NotRegistered)
         return;
 
-    ContainerNode* scope = scoped ? parentNode() : shadowRoot();
+    ContainerNode* scope = scoped ? parentNode() : containingShadowRoot();
     if (!scope)
         return;
     if (!scope->isElementNode() && !scope->isShadowRoot()) {
@@ -140,9 +140,11 @@ void HTMLStyleElement::registerWithScopingNode(bool scoped)
         ASSERT_NOT_REACHED();
         return;
     }
-
     scope->registerScopedHTMLStyleChild();
-    scope->setNeedsStyleRecalc();
+    if (scope->isShadowRoot())
+        scope->shadowHost()->setNeedsStyleRecalc();
+    else
+        scope->setNeedsStyleRecalc();
     if (inDocument() && !document()->parsing() && document()->renderer())
         document()->styleResolverChanged(DeferRecalcStyle);
 
@@ -190,9 +192,9 @@ void HTMLStyleElement::removedFrom(ContainerNode* insertionPoint)
     if (m_scopedStyleRegistrationState != NotRegistered) {
         ContainerNode* scope;
         if (m_scopedStyleRegistrationState == RegisteredInShadowRoot) {
-            scope = shadowRoot();
+            scope = containingShadowRoot();
             if (!scope)
-                scope = insertionPoint->shadowRoot();
+                scope = insertionPoint->containingShadowRoot();
         } else
             scope = parentNode() ? parentNode() : insertionPoint;
         unregisterWithScopingNode(scope);

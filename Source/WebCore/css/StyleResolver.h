@@ -33,6 +33,7 @@
 #include "SelectorChecker.h"
 #include "StyleInheritedData.h"
 #include "StyleScopeResolver.h"
+#include "ViewportStyleResolver.h"
 #include <wtf/HashMap.h>
 #include <wtf/HashSet.h>
 #include <wtf/RefPtr.h>
@@ -44,16 +45,17 @@ namespace WebCore {
 
 enum ESmartMinimumForFontSize { DoNotUseSmartMinimumForFontSize, UseSmartMinimumForFontFize };
 
+class CSSCursorImageValue;
 class CSSFontSelector;
-class CSSPageRule;
-class CSSPrimitiveValue;
-class CSSProperty;
-class CSSRuleList;
 class CSSFontFace;
 class CSSFontFaceRule;
 class CSSImageGeneratorValue;
 class CSSImageSetValue;
 class CSSImageValue;
+class CSSPageRule;
+class CSSPrimitiveValue;
+class CSSProperty;
+class CSSRuleList;
 class CSSSelector;
 class CSSStyleRule;
 class CSSStyleSheet;
@@ -83,7 +85,9 @@ class StyleKeyframe;
 class StylePendingImage;
 class StylePropertySet;
 class StyleRule;
+#if ENABLE(SHADOW_DOM)
 class StyleRuleHost;
+#endif
 class StyleRuleKeyframes;
 class StyleRulePage;
 class StyleRuleRegion;
@@ -92,6 +96,7 @@ class StyleSheet;
 class StyleSheetContents;
 class StyleSheetList;
 class StyledElement;
+class ViewportStyleResolver;
 class WebKitCSSFilterValue;
 class WebKitCSSShaderValue;
 class WebKitCSSSVGDocumentValue;
@@ -149,6 +154,8 @@ public:
     PassRefPtr<RenderStyle> pseudoStyleForElement(PseudoId, Element*, RenderStyle* parentStyle);
 
     PassRefPtr<RenderStyle> styleForPage(int pageIndex);
+    PassRefPtr<RenderStyle> defaultStyleForElement();
+    PassRefPtr<RenderStyle> styleForText(Text*);
 
     static PassRefPtr<RenderStyle> styleForDocument(Document*, CSSFontSelector* = 0);
 
@@ -163,6 +170,8 @@ public:
     void setZoom(float f) { m_fontDirty |= style()->setZoom(f); }
     void setEffectiveZoom(float f) { m_fontDirty |= style()->setEffectiveZoom(f); }
     void setTextSizeAdjust(bool b) { m_fontDirty |= style()->setTextSizeAdjust(b); }
+    void setWritingMode(WritingMode writingMode) { m_fontDirty |= style()->setWritingMode(writingMode); }
+    void setTextOrientation(TextOrientation textOrientation) { m_fontDirty |= style()->setTextOrientation(textOrientation); }
     bool hasParentNode() const { return m_parentNode; }
 
     void resetAuthorStyle();
@@ -245,6 +254,9 @@ public:
     bool hasSelectorForAttribute(const AtomicString&) const;
 
     CSSFontSelector* fontSelector() const { return m_fontSelector.get(); }
+#if ENABLE(CSS_DEVICE_ADAPTATION)
+    ViewportStyleResolver* viewportStyleResolver() { return m_viewportStyleResolver.get(); }
+#endif
 
     void addViewportDependentMediaQueryResult(const MediaQueryExp*, bool result);
     bool hasViewportDependentMediaQueries() const { return !m_viewportDependentMediaQueryResults.isEmpty(); }
@@ -407,6 +419,7 @@ public:
 #if ENABLE(CSS_IMAGE_SET)
     PassRefPtr<StyleImage> setOrPendingFromValue(CSSPropertyID, CSSImageSetValue*);
 #endif
+    PassRefPtr<StyleImage> cursorOrPendingFromValue(CSSPropertyID, CSSCursorImageValue*);
 
     bool applyPropertyToRegularStyle() const { return m_applyPropertyToRegularStyle; }
     bool applyPropertyToVisitedLinkStyle() const { return m_applyPropertyToVisitedLinkStyle; }
@@ -421,7 +434,7 @@ public:
 private:
     static RenderStyle* s_styleNotYetAvailable;
 
-    void addAuthorRulesAndCollectUserRulesFromSheets(const Vector<RefPtr<CSSStyleSheet> >*, RuleSet& userStyle);
+    void collectRulesFromUserStyleSheets(const Vector<RefPtr<CSSStyleSheet> >&, RuleSet& userStyle);
 
     void cacheBorderAndBackground();
 
@@ -451,6 +464,9 @@ private:
     // Every N additions to the matched declaration cache trigger a sweep where entries holding
     // the last reference to a style declaration are garbage collected.
     void sweepMatchedPropertiesCache(Timer<StyleResolver>*);
+
+    bool classNamesAffectedByRules(const SpaceSplitString&) const;
+    bool sharingCandidateHasIdenticalStyleAffectingAttributes(StyledElement*) const;
 
     unsigned m_matchedPropertiesCacheAdditionsSinceLastSweep;
 
@@ -483,6 +499,7 @@ private:
     StyledElement* m_styledElement;
     RenderRegion* m_regionForStyling;
     EInsideLink m_elementLinkState;
+    bool m_elementAffectedByClassRules;
     ContainerNode* m_parentNode;
     CSSValue* m_lineHeightValue;
     bool m_fontDirty;
@@ -492,6 +509,10 @@ private:
 
     RefPtr<CSSFontSelector> m_fontSelector;
     Vector<OwnPtr<MediaQueryResult> > m_viewportDependentMediaQueryResults;
+
+#if ENABLE(CSS_DEVICE_ADAPTATION)
+    RefPtr<ViewportStyleResolver> m_viewportStyleResolver;
+#endif
 
     bool m_applyPropertyToRegularStyle;
     bool m_applyPropertyToVisitedLinkStyle;

@@ -82,7 +82,7 @@ class DriverOutputTest(unittest.TestCase):
 
 class DriverTest(unittest.TestCase):
     def make_port(self):
-        port = Port(MockSystemHost(), MockOptions(configuration='Release'))
+        port = Port(MockSystemHost(), 'test', MockOptions(configuration='Release'))
         port._config.build_directory = lambda configuration: '/mock-build'
         return port
 
@@ -267,7 +267,3 @@ class DriverTest(unittest.TestCase):
         driver = Driver(port, 0, pixel_tests=True)
         driver.start(True, [])
         self.assertTrue(driver._server_process.started)
-
-
-if __name__ == '__main__':
-    unittest.main()

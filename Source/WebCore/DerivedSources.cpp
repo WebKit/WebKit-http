@@ -38,7 +38,7 @@
 #include "JSCanvasPattern.cpp"
 #include "JSCanvasRenderingContext.cpp"
 #include "JSCanvasRenderingContext2D.cpp"
-#if ENABLE(WEBGL)    
+#if ENABLE(WEBGL)
 #include "JSWebGLRenderingContext.cpp"
 #endif
 #include "JSCDATASection.cpp"
@@ -163,6 +163,7 @@
 #include "JSHTMLEmbedElement.cpp"
 #include "JSHTMLFieldSetElement.cpp"
 #include "JSHTMLFontElement.cpp"
+#include "JSHTMLFormControlsCollection.cpp"
 #include "JSHTMLFormElement.cpp"
 #include "JSHTMLFrameElement.cpp"
 #include "JSHTMLFrameSetElement.cpp"
@@ -210,6 +211,9 @@
 #include "JSHTMLTableElement.cpp"
 #include "JSHTMLTableRowElement.cpp"
 #include "JSHTMLTableSectionElement.cpp"
+#if ENABLE(TEMPLATE_ELEMENT)
+#include "JSHTMLTemplateElement.cpp"
+#endif
 #include "JSHTMLTextAreaElement.cpp"
 #include "JSHTMLTitleElement.cpp"
 #include "JSHTMLUnknownElement.cpp"
@@ -218,7 +222,6 @@
 #include "JSIDBAny.cpp"
 #include "JSIDBCursor.cpp"
 #include "JSIDBDatabase.cpp"
-#include "JSIDBDatabaseException.cpp"
 #include "JSIDBFactory.cpp"
 #include "JSIDBIndex.cpp"
 #include "JSIDBKey.cpp"
@@ -458,6 +461,7 @@
 #include "JSTextEvent.cpp"
 #include "JSTextMetrics.cpp"
 #if ENABLE(VIDEO_TRACK)
+#include "JSHTMLTrackElement.cpp"
 #include "JSTextTrack.cpp"
 #include "JSTextTrackCue.cpp"
 #include "JSTextTrackCueList.cpp"
@@ -476,9 +480,7 @@
 #include "JSUIEvent.cpp"
 #include "JSValidityState.cpp"
 #include "JSVoidCallback.cpp"
-#include "JSWebKitAnimation.cpp"
 #include "JSWebKitAnimationEvent.cpp"
-#include "JSWebKitAnimationList.cpp"
 #if ENABLE(CSS_FILTERS)
 #include "JSWebKitCSSFilterValue.cpp"
 #endif
@@ -486,6 +488,9 @@
 #include "JSWebKitCSSKeyframesRule.cpp"
 #include "JSWebKitCSSTransformValue.cpp"
 #include "JSWebKitCSSMatrix.cpp"
+#if ENABLE(CSS_SHADERS)
+#include "JSWebKitCSSMixFunctionValue.cpp"
+#endif
 #include "JSWebKitCSSRegionRule.cpp"
 #include "JSWebKitNamedFlow.cpp"
 #include "JSWebKitPoint.cpp"

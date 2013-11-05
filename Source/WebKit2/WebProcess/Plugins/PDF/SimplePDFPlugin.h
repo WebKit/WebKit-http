@@ -180,6 +180,10 @@ private:
     JSObjectRef makeJSPDFDoc(JSContextRef);
     static JSValueRef jsPDFDocPrint(JSContextRef, JSObjectRef function, JSObjectRef thisObject, size_t argumentCount, const JSValueRef arguments[], JSValueRef* exception);
 
+    void convertPostScriptDataIfNeeded();
+
+    virtual bool shouldAlwaysAutoStart() const OVERRIDE { return true; }
+
     WebCore::IntSize m_size;
 
     WebCore::KURL m_sourceURL;
@@ -195,6 +199,8 @@ private:
     RefPtr<WebCore::Scrollbar> m_verticalScrollbar;
 
     WebFrame* m_frame;
+
+    bool m_isPostScript;
 };
 
 } // namespace WebKit

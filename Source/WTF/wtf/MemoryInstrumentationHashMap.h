@@ -37,14 +37,14 @@
 namespace WTF {
 
 template<typename KeyArg, typename MappedArg, typename HashArg, typename KeyTraitsArg, typename MappedTraitsArg>
-void reportMemoryUsage(const HashMap<KeyArg, MappedArg, HashArg, KeyTraitsArg, MappedTraitsArg>* const& hashMap, MemoryObjectInfo* memoryObjectInfo)
+void reportMemoryUsage(const HashMap<KeyArg, MappedArg, HashArg, KeyTraitsArg, MappedTraitsArg>* hashMap, MemoryObjectInfo* memoryObjectInfo)
 {
     MemoryClassInfo info(memoryObjectInfo, hashMap);
     typedef HashMap<KeyArg, MappedArg, HashArg, KeyTraitsArg, MappedTraitsArg> HashMapType;
     info.addPrivateBuffer(sizeof(typename HashMapType::ValueType) * hashMap->capacity());
 
-    reportSequenceMemoryUsage<KeyArg, typename HashMapType::const_iterator::Keys>(hashMap->begin().keys(), hashMap->end().keys(), info);
-    reportSequenceMemoryUsage<MappedArg, typename HashMapType::const_iterator::Values>(hashMap->begin().values(), hashMap->end().values(), info);
+    SequenceMemoryInstrumentationTraits<KeyArg>::reportMemoryUsage(hashMap->begin().keys(), hashMap->end().keys(), info);
+    SequenceMemoryInstrumentationTraits<MappedArg>::reportMemoryUsage(hashMap->begin().values(), hashMap->end().values(), info);
 }
 
 }

@@ -53,6 +53,7 @@
 #include "NetworkStateNotifier.h"
 #include "PageCache.h"
 #include "PageGroup.h"
+#include "PlugInClient.h"
 #include "PluginData.h"
 #include "PluginView.h"
 #include "PointerLockController.h"
@@ -82,7 +83,6 @@
 namespace WebCore {
 
 static HashSet<Page*>* allPages;
-static const double hiddenPageTimerAlignmentInterval = 1.0; // once a second
 
 DEFINE_DEBUG_ONLY_GLOBAL(WTF::RefCountedLeakCounter, pageCounter, ("Page"));
 
@@ -134,6 +134,7 @@ Page::Page(PageClients& pageClients)
     , m_backForwardController(BackForwardController::create(this, pageClients.backForwardClient))
     , m_theme(RenderTheme::themeForPage(this))
     , m_editorClient(pageClients.editorClient)
+    , m_plugInClient(pageClients.plugInClient)
     , m_validationMessageClient(pageClients.validationMessageClient)
     , m_subframeCount(0)
     , m_openedByDOM(false)
@@ -199,6 +200,8 @@ Page::~Page()
     }
 
     m_editorClient->pageDestroyed();
+    if (m_plugInClient)
+        m_plugInClient->pageDestroyed();
     if (m_alternativeTextClient)
         m_alternativeTextClient->pageDestroyed();
 
@@ -251,6 +254,17 @@ String Page::scrollingStateTreeAsText()
 
     if (ScrollingCoordinator* scrollingCoordinator = this->scrollingCoordinator())
         return scrollingCoordinator->scrollingStateTreeAsText();
+
+    return String();
+}
+
+String Page::mainThreadScrollingReasonsAsText()
+{
+    if (Document* document = m_mainFrame->document())
+        document->updateLayout();
+
+    if (ScrollingCoordinator* scrollingCoordinator = this->scrollingCoordinator())
+        return scrollingCoordinator->mainThreadScrollingReasonsAsText();
 
     return String();
 }
@@ -676,6 +690,9 @@ void Page::setPageScaleFactor(float scale, const IntPoint& origin)
         document->renderer()->setNeedsLayout(true);
 
     document->recalcStyle(Node::Force);
+
+    // Transform change on RenderView doesn't trigger repaint on non-composited contents.
+    mainFrame()->view()->invalidateRect(IntRect(LayoutRect::infiniteRect()));
 
 #if USE(ACCELERATED_COMPOSITING)
     mainFrame()->deviceOrPageScaleFactorChanged();
@@ -1126,7 +1143,7 @@ void Page::setVisibilityState(PageVisibilityState visibilityState, bool isInitia
 
 #if ENABLE(HIDDEN_PAGE_DOM_TIMER_THROTTLING)
     if (visibilityState == WebCore::PageVisibilityStateHidden)
-        setTimerAlignmentInterval(hiddenPageTimerAlignmentInterval);
+        setTimerAlignmentInterval(Settings::hiddenPageDOMTimerAlignmentInterval());
     else
         setTimerAlignmentInterval(Settings::defaultDOMTimerAlignmentInterval());
 #if !ENABLE(PAGE_VISIBILITY_API)
@@ -1174,16 +1191,41 @@ void Page::resetRelevantPaintedObjectCounter()
     m_relevantUnpaintedRegion = Region();
 }
 
+static LayoutRect relevantViewRect(RenderView* view)
+{
+    // DidHitRelevantRepaintedObjectsAreaThreshold is a LayoutMilestone intended to indicate that
+    // a certain relevant amount of content has been drawn to the screen. This is the rect that
+    // has been determined to be relevant in the context of this goal. We may choose to tweak
+    // the rect over time, much like we may choose to tweak gMinimumPaintedAreaRatio and
+    // gMaximumUnpaintedAreaRatio. But this seems to work well right now.
+    LayoutRect relevantViewRect = LayoutRect(0, 0, 980, 1300);
+
+    LayoutRect viewRect = view->viewRect();
+    // If the viewRect is wider than the relevantViewRect, center the relevantViewRect.
+    if (viewRect.width() > relevantViewRect.width())
+        relevantViewRect.setX((viewRect.width() - relevantViewRect.width()) / 2);
+
+    return relevantViewRect;
+}
+
 void Page::addRelevantRepaintedObject(RenderObject* object, const LayoutRect& objectPaintRect)
 {
     if (!isCountingRelevantRepaintedObjects())
         return;
 
+    // Objects inside sub-frames are not considered to be relevant.
+    if (object->document()->frame() != mainFrame())
+        return;
+
+    RenderView* view = object->view();
+    if (!view)
+        return;
+
+    LayoutRect relevantRect = relevantViewRect(view);
+
     // The objects are only relevant if they are being painted within the viewRect().
-    if (RenderView* view = object->view()) {
-        if (!objectPaintRect.intersects(pixelSnappedIntRect(view->viewRect())))
-            return;
-    }
+    if (!objectPaintRect.intersects(pixelSnappedIntRect(relevantRect)))
+        return;
 
     IntRect snappedPaintRect = pixelSnappedIntRect(objectPaintRect);
 
@@ -1196,12 +1238,8 @@ void Page::addRelevantRepaintedObject(RenderObject* object, const LayoutRect& ob
     }
 
     m_relevantPaintedRegion.unite(snappedPaintRect);
-
-    RenderView* view = object->view();
-    if (!view)
-        return;
     
-    float viewArea = view->viewRect().width() * view->viewRect().height();
+    float viewArea = relevantRect.width() * relevantRect.height();
     float ratioOfViewThatIsPainted = m_relevantPaintedRegion.totalArea() / viewArea;
     float ratioOfViewThatIsUnpainted = m_relevantUnpaintedRegion.totalArea() / viewArea;
 
@@ -1218,9 +1256,9 @@ void Page::addRelevantUnpaintedObject(RenderObject* object, const LayoutRect& ob
     if (!isCountingRelevantRepaintedObjects())
         return;
 
-    // The objects are only relevant if they are being painted within the viewRect().
+    // The objects are only relevant if they are being painted within the relevantViewRect().
     if (RenderView* view = object->view()) {
-        if (!objectPaintRect.intersects(pixelSnappedIntRect(view->viewRect())))
+        if (!objectPaintRect.intersects(pixelSnappedIntRect(relevantViewRect(view))))
             return;
     }
 
@@ -1332,6 +1370,7 @@ Page::PageClients::PageClients()
     , editorClient(0)
     , dragClient(0)
     , inspectorClient(0)
+    , plugInClient(0)
     , validationMessageClient(0)
 {
 }

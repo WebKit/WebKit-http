@@ -34,12 +34,14 @@
 #include "Page.h"
 #include "RenderGeometryMap.h"
 #include "RenderLayer.h"
+#include "RenderLayerBacking.h"
 #include "RenderNamedFlowThread.h"
 #include "RenderSelectionInfo.h"
 #include "RenderWidget.h"
 #include "RenderWidgetProtector.h"
 #include "StyleInheritedData.h"
 #include "TransformState.h"
+#include "WebCoreMemoryInstrumentation.h"
 
 #if USE(ACCELERATED_COMPOSITING)
 #include "RenderLayerCompositor.h"
@@ -79,7 +81,7 @@ RenderView::RenderView(Node* node, FrameView* view)
 
     setPreferredLogicalWidthsDirty(true, MarkOnlyThis);
     
-    setPositioned(true); // to 0,0 :)
+    setPositionState(AbsolutePosition); // to 0,0 :)
 }
 
 RenderView::~RenderView()
@@ -190,7 +192,9 @@ void RenderView::layout()
     m_layoutState = &state;
 
     m_layoutPhase = RenderViewNormalLayout;
-    bool needsTwoPassLayoutForAutoLogicalHeightRegions = hasRenderNamedFlowThreads() && flowThreadController()->hasAutoLogicalHeightRegions();
+    bool needsTwoPassLayoutForAutoLogicalHeightRegions = hasRenderNamedFlowThreads()
+        && flowThreadController()->hasAutoLogicalHeightRegions()
+        && flowThreadController()->hasRenderNamedFlowThreadsNeedingLayout();
 
     if (needsTwoPassLayoutForAutoLogicalHeightRegions)
         flowThreadController()->resetRegionsOverrideLogicalContentHeight();
@@ -435,8 +439,20 @@ void RenderView::repaintRectangleInViewAndCompositedLayers(const LayoutRect& ur,
     repaintViewRectangle(ur, immediate);
     
 #if USE(ACCELERATED_COMPOSITING)
+    if (compositor()->inCompositingMode()) {
+        IntRect repaintRect = pixelSnappedIntRect(ur);
+        compositor()->repaintCompositedLayers(&repaintRect);
+    }
+#endif
+}
+
+void RenderView::repaintViewAndCompositedLayers()
+{
+    repaint();
+    
+#if USE(ACCELERATED_COMPOSITING)
     if (compositor()->inCompositingMode())
-        compositor()->repaintCompositedLayersAbsoluteRect(pixelSnappedIntRect(ur));
+        compositor()->repaintCompositedLayers();
 #endif
 }
 
@@ -521,7 +537,7 @@ IntRect RenderView::selectionBounds(bool clipToVisibleContent) const
         // RenderSelectionInfo::rect() is in the coordinates of the repaintContainer, so map to page coordinates.
         LayoutRect currRect = info->rect();
         if (RenderLayerModelObject* repaintContainer = info->repaintContainer()) {
-            FloatQuad absQuad = repaintContainer->localToAbsoluteQuad(FloatRect(currRect), SnapOffsetForTransforms);
+            FloatQuad absQuad = repaintContainer->localToAbsoluteQuad(FloatRect(currRect));
             currRect = absQuad.enclosingBoundingBox(); 
         }
         selRect.unite(currRect);
@@ -994,6 +1010,26 @@ RenderBlock::IntervalArena* RenderView::intervalArena()
     if (!m_intervalArena)
         m_intervalArena = IntervalArena::create();
     return m_intervalArena.get();
+}
+
+void RenderView::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
+{
+    MemoryClassInfo info(memoryObjectInfo, this, PlatformMemoryTypes::Rendering);
+    RenderBlock::reportMemoryUsage(memoryObjectInfo);
+    info.addWeakPointer(m_frameView);
+    info.addWeakPointer(m_selectionStart);
+    info.addWeakPointer(m_selectionEnd);
+    info.addMember(m_widgets);
+    info.addMember(m_layoutState);
+#if USE(ACCELERATED_COMPOSITING)
+    info.addMember(m_compositor);
+#endif
+#if ENABLE(CSS_SHADERS) && USE(3D_GRAPHICS)
+    info.addMember(m_customFilterGlobalContext);
+#endif
+    info.addMember(m_flowThreadController);
+    info.addMember(m_intervalArena);
+    info.addWeakPointer(m_renderQuoteHead);
 }
 
 } // namespace WebCore

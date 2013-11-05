@@ -39,41 +39,16 @@ namespace JSC { namespace DFG {
 #if ENABLE(DFG_JIT)
 // Fast check functions; if they return true it is still necessary to
 // check opcodes.
-inline bool mightCompileEval(CodeBlock* codeBlock)
-{
-    return codeBlock->instructionCount() <= Options::maximumOptimizationCandidateInstructionCount();
-}
-inline bool mightCompileProgram(CodeBlock* codeBlock)
-{
-    return codeBlock->instructionCount() <= Options::maximumOptimizationCandidateInstructionCount();
-}
-inline bool mightCompileFunctionForCall(CodeBlock* codeBlock)
-{
-    return codeBlock->instructionCount() <= Options::maximumOptimizationCandidateInstructionCount();
-}
-inline bool mightCompileFunctionForConstruct(CodeBlock* codeBlock)
-{
-    return codeBlock->instructionCount() <= Options::maximumOptimizationCandidateInstructionCount();
-}
-
-inline bool mightInlineFunctionForCall(CodeBlock* codeBlock)
-{
-    return codeBlock->instructionCount() <= Options::maximumFunctionForCallInlineCandidateInstructionCount()
-        && !codeBlock->ownerExecutable()->needsActivation();
-}
-inline bool mightInlineFunctionForConstruct(CodeBlock* codeBlock)
-{
-    return codeBlock->instructionCount() <= Options::maximumFunctionForConstructInlineCandidateInstructionCount()
-        && !codeBlock->ownerExecutable()->needsActivation();
-}
+bool mightCompileEval(CodeBlock*);
+bool mightCompileProgram(CodeBlock*);
+bool mightCompileFunctionForCall(CodeBlock*);
+bool mightCompileFunctionForConstruct(CodeBlock*);
+bool mightInlineFunctionForCall(CodeBlock*);
+bool mightInlineFunctionForConstruct(CodeBlock*);
 
 // Opcode checking.
 inline bool canInlineResolveOperations(OpcodeID opcode, ResolveOperations* operations)
 {
-    // Don't try to inline a resolve for which we have no information
-    if (operations->isEmpty())
-        return false;
-
     for (unsigned i = 0; i < operations->size(); i++) {
         switch (operations->data()[i].m_operation) {
         case ResolveOperation::ReturnGlobalObjectAsBase:
@@ -82,24 +57,29 @@ inline bool canInlineResolveOperations(OpcodeID opcode, ResolveOperations* opera
         case ResolveOperation::GetAndReturnGlobalProperty:
         case ResolveOperation::GetAndReturnGlobalVar:
         case ResolveOperation::GetAndReturnGlobalVarWatchable:
-            continue;
-
-        case ResolveOperation::Fail:
-            // The DFG can handle generic cases of failed resolves
-            ASSERT(opcode != op_resolve_base_to_global_dynamic);
-            ASSERT(opcode != op_resolve_base_to_scope_with_top_scope_check);
-            ASSERT(opcode != op_resolve_base_to_global);
-            ASSERT(opcode != op_resolve_base_to_scope);
-            if (opcode != op_resolve && opcode != op_resolve_base)
-                return false;
-
-        case ResolveOperation::SkipTopScopeNode:
         case ResolveOperation::SkipScopes:
         case ResolveOperation::SetBaseToScope:
         case ResolveOperation::ReturnScopeAsBase:
         case ResolveOperation::GetAndReturnScopedVar:
-            // These opcodes would be easy to support with inlining, but we currently don't do it.
-            // The issue is that the scope chain will not be set correctly.
+            continue;
+
+        case ResolveOperation::Fail:
+            switch (opcode) {
+            case op_resolve_base_to_global_dynamic:
+            case op_resolve_base_to_scope_with_top_scope_check:
+            case op_resolve_base_to_global:
+            case op_resolve_base_to_scope:
+                CRASH();
+            case op_resolve_with_base:
+            case op_resolve_with_this:
+                return false;
+            default:
+                continue;
+            }
+
+        case ResolveOperation::SkipTopScopeNode:
+            // We don't inline code blocks that create activations. Creation of
+            // activations is the only thing that leads to SkipTopScopeNode.
             return false;
 
         case ResolveOperation::CheckForDynamicEntriesBeforeGlobalScope:

@@ -78,6 +78,8 @@ public:
 
     void addIceCandidate(RTCIceCandidate*, ExceptionCode&);
 
+    String iceGatheringState() const;
+
     String iceState() const;
 
     MediaStreamList* localStreams() const;
@@ -100,6 +102,7 @@ public:
     DEFINE_ATTRIBUTE_EVENT_LISTENER(statechange);
     DEFINE_ATTRIBUTE_EVENT_LISTENER(addstream);
     DEFINE_ATTRIBUTE_EVENT_LISTENER(removestream);
+    DEFINE_ATTRIBUTE_EVENT_LISTENER(gatheringchange);
     DEFINE_ATTRIBUTE_EVENT_LISTENER(icechange);
     DEFINE_ATTRIBUTE_EVENT_LISTENER(datachannel);
 
@@ -107,10 +110,11 @@ public:
     virtual void negotiationNeeded() OVERRIDE;
     virtual void didGenerateIceCandidate(PassRefPtr<RTCIceCandidateDescriptor>) OVERRIDE;
     virtual void didChangeReadyState(ReadyState) OVERRIDE;
+    virtual void didChangeIceGatheringState(IceGatheringState) OVERRIDE;
     virtual void didChangeIceState(IceState) OVERRIDE;
     virtual void didAddRemoteStream(PassRefPtr<MediaStreamDescriptor>) OVERRIDE;
     virtual void didRemoveRemoteStream(MediaStreamDescriptor*) OVERRIDE;
-    virtual void didAddRemoteDataChannel(PassRefPtr<RTCDataChannelDescriptor>) OVERRIDE;
+    virtual void didAddRemoteDataChannel(PassOwnPtr<RTCDataChannelHandler>) OVERRIDE;
 
     // EventTarget
     virtual const AtomicString& interfaceName() const OVERRIDE;
@@ -140,6 +144,7 @@ private:
     void changeIceState(IceState);
 
     ReadyState m_readyState;
+    IceGatheringState m_iceGatheringState;
     IceState m_iceState;
 
     RefPtr<MediaStreamList> m_localStreams;
@@ -151,6 +156,8 @@ private:
 
     Timer<RTCPeerConnection> m_scheduledEventTimer;
     Vector<RefPtr<Event> > m_scheduledEvents;
+
+    bool m_stopped;
 };
 
 } // namespace WebCore

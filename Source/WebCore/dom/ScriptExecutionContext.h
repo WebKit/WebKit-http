@@ -32,6 +32,7 @@
 #include "ConsoleTypes.h"
 #include "KURL.h"
 #include "ScriptCallStack.h"
+#include "ScriptState.h"
 #include "SecurityContext.h"
 #include "Supplementable.h"
 #include <wtf/Forward.h>
@@ -49,6 +50,7 @@
 
 namespace WebCore {
 
+class CachedScript;
 class DOMTimer;
 class EventListener;
 class EventQueue;
@@ -81,10 +83,11 @@ public:
 
     virtual void disableEval(const String& errorMessage) = 0;
 
-    bool sanitizeScriptError(String& errorMessage, int& lineNumber, String& sourceURL);
-    void reportException(const String& errorMessage, int lineNumber, const String& sourceURL, PassRefPtr<ScriptCallStack>);
-    void addConsoleMessage(MessageSource, MessageType, MessageLevel, const String& message, const String& sourceURL = String(), unsigned lineNumber = 0, PassRefPtr<ScriptCallStack> = 0, unsigned long requestIdentifier = 0);
-    void addConsoleMessage(MessageSource, MessageType, MessageLevel, const String& message, PassRefPtr<ScriptCallStack>, unsigned long requestIdentifier = 0);
+    bool sanitizeScriptError(String& errorMessage, int& lineNumber, String& sourceURL, CachedScript* = 0);
+    void reportException(const String& errorMessage, int lineNumber, const String& sourceURL, PassRefPtr<ScriptCallStack>, CachedScript* = 0);
+
+    void addConsoleMessage(MessageSource, MessageLevel, const String& message, const String& sourceURL, unsigned lineNumber, ScriptState* = 0, unsigned long requestIdentifier = 0);
+    virtual void addConsoleMessage(MessageSource, MessageLevel, const String& message, unsigned long requestIdentifier = 0) = 0;
 
 #if ENABLE(BLOB)
     PublicURLManager& publicURLManager();
@@ -139,9 +142,12 @@ public:
 
     virtual void postTask(PassOwnPtr<Task>) = 0; // Executes the task on context's thread asynchronously.
 
-    void addTimeout(int timeoutId, DOMTimer*);
-    void removeTimeout(int timeoutId);
-    DOMTimer* findTimeout(int timeoutId);
+    // Creates a unique id for setTimeout, setInterval or navigator.geolocation.watchPosition.
+    int newUniqueID();
+
+    void addTimeout(int timeoutId, DOMTimer* timer) { ASSERT(!m_timeouts.contains(timeoutId)); m_timeouts.set(timeoutId, timer); }
+    void removeTimeout(int timeoutId) { m_timeouts.remove(timeoutId); }
+    DOMTimer* findTimeout(int timeoutId) { return m_timeouts.get(timeoutId); }
 
 #if USE(JSC)
     JSC::JSGlobalData* globalData();
@@ -166,21 +172,19 @@ public:
 protected:
     class AddConsoleMessageTask : public Task {
     public:
-        static PassOwnPtr<AddConsoleMessageTask> create(MessageSource source, MessageType type, MessageLevel level, const String& message)
+        static PassOwnPtr<AddConsoleMessageTask> create(MessageSource source, MessageLevel level, const String& message)
         {
-            return adoptPtr(new AddConsoleMessageTask(source, type, level, message));
+            return adoptPtr(new AddConsoleMessageTask(source, level, message));
         }
         virtual void performTask(ScriptExecutionContext*);
     private:
-        AddConsoleMessageTask(MessageSource source, MessageType type, MessageLevel level, const String& message)
+        AddConsoleMessageTask(MessageSource source, MessageLevel level, const String& message)
             : m_source(source)
-            , m_type(type)
             , m_level(level)
             , m_message(message.isolatedCopy())
         {
         }
         MessageSource m_source;
-        MessageType m_type;
         MessageLevel m_level;
         String m_message;
     };
@@ -189,12 +193,15 @@ private:
     virtual const KURL& virtualURL() const = 0;
     virtual KURL virtualCompleteURL(const String&) const = 0;
 
-    virtual void addMessage(MessageSource, MessageType, MessageLevel, const String& message, const String& sourceURL, unsigned lineNumber, PassRefPtr<ScriptCallStack>, unsigned long requestIdentifier = 0) = 0;
+    virtual void addMessage(MessageSource, MessageLevel, const String& message, const String& sourceURL, unsigned lineNumber, PassRefPtr<ScriptCallStack>, ScriptState* = 0, unsigned long requestIdentifier = 0) = 0;
     virtual EventTarget* errorEventTarget() = 0;
     virtual void logExceptionToConsole(const String& errorMessage, const String& sourceURL, int lineNumber, PassRefPtr<ScriptCallStack>) = 0;
-    bool dispatchErrorEvent(const String& errorMessage, int lineNumber, const String& sourceURL);
+    bool dispatchErrorEvent(const String& errorMessage, int lineNumber, const String& sourceURL, CachedScript*);
 
     void closeMessagePorts();
+
+    virtual void refScriptExecutionContext() = 0;
+    virtual void derefScriptExecutionContext() = 0;
 
     HashSet<MessagePort*> m_messagePorts;
     HashSet<ContextDestructionObserver*> m_destructionObservers;
@@ -202,24 +209,20 @@ private:
     bool m_iteratingActiveDOMObjects;
     bool m_inDestructor;
 
+    int m_sequentialID;
     typedef HashMap<int, DOMTimer*> TimeoutMap;
     TimeoutMap m_timeouts;
-
-    virtual void refScriptExecutionContext() = 0;
-    virtual void derefScriptExecutionContext() = 0;
 
     bool m_inDispatchErrorEvent;
     class PendingException;
     OwnPtr<Vector<OwnPtr<PendingException> > > m_pendingExceptions;
-#if ENABLE(BLOB)
-    OwnPtr<PublicURLManager> m_publicURLManager;
-#endif
 
     bool m_activeDOMObjectsAreSuspended;
     ActiveDOMObject::ReasonForSuspension m_reasonForSuspendingActiveDOMObjects;
     bool m_activeDOMObjectsAreStopped;
 
 #if ENABLE(BLOB)
+    OwnPtr<PublicURLManager> m_publicURLManager;
     RefPtr<FileThread> m_fileThread;
 #endif
 };

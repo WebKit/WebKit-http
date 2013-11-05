@@ -39,16 +39,19 @@
 
 namespace WebCore {
 
-V8TestCallback::V8TestCallback(v8::Local<v8::Object> callback, ScriptExecutionContext* context)
+V8TestCallback::V8TestCallback(v8::Handle<v8::Object> callback, ScriptExecutionContext* context, v8::Handle<v8::Object> owner)
     : ActiveDOMCallback(context)
-    , m_callback(v8::Persistent<v8::Object>::New(callback))
+    , m_callback(callback)
     , m_worldContext(UseCurrentWorld)
 {
+    if (owner.IsEmpty())
+        return;
+    owner->SetHiddenValue(V8HiddenPropertyName::callback(), callback);
+    m_callback.get().MakeWeak(this, &V8TestCallback::weakCallback);
 }
 
 V8TestCallback::~V8TestCallback()
 {
-    m_callback.Dispose();
 }
 
 // Functions
@@ -70,7 +73,7 @@ bool V8TestCallback::callbackWithNoParam()
     v8::Handle<v8::Value> *argv = 0;
 
     bool callbackReturnValue = false;
-    return !invokeCallback(m_callback, 0, argv, callbackReturnValue, scriptExecutionContext());
+    return !invokeCallback(m_callback.get(), 0, argv, callbackReturnValue, scriptExecutionContext());
 }
 
 bool V8TestCallback::callbackWithClass1Param(Class1* class1Param)
@@ -98,7 +101,7 @@ bool V8TestCallback::callbackWithClass1Param(Class1* class1Param)
     };
 
     bool callbackReturnValue = false;
-    return !invokeCallback(m_callback, 1, argv, callbackReturnValue, scriptExecutionContext());
+    return !invokeCallback(m_callback.get(), 1, argv, callbackReturnValue, scriptExecutionContext());
 }
 
 bool V8TestCallback::callbackWithClass2Param(Class2* class2Param, const String& strArg)
@@ -120,7 +123,7 @@ bool V8TestCallback::callbackWithClass2Param(Class2* class2Param, const String& 
             CRASH();
         return true;
     }
-    v8::Handle<v8::Value> strArgHandle = v8String(strArg);
+    v8::Handle<v8::Value> strArgHandle = deprecatedV8String(strArg);
     if (strArgHandle.IsEmpty()) {
         if (!isScriptControllerTerminating())
             CRASH();
@@ -133,7 +136,7 @@ bool V8TestCallback::callbackWithClass2Param(Class2* class2Param, const String& 
     };
 
     bool callbackReturnValue = false;
-    return !invokeCallback(m_callback, 2, argv, callbackReturnValue, scriptExecutionContext());
+    return !invokeCallback(m_callback.get(), 2, argv, callbackReturnValue, scriptExecutionContext());
 }
 
 bool V8TestCallback::callbackWithStringList(RefPtr<DOMStringList> listParam)
@@ -161,7 +164,7 @@ bool V8TestCallback::callbackWithStringList(RefPtr<DOMStringList> listParam)
     };
 
     bool callbackReturnValue = false;
-    return !invokeCallback(m_callback, 1, argv, callbackReturnValue, scriptExecutionContext());
+    return !invokeCallback(m_callback.get(), 1, argv, callbackReturnValue, scriptExecutionContext());
 }
 
 bool V8TestCallback::callbackWithBoolean(bool boolParam)
@@ -189,7 +192,7 @@ bool V8TestCallback::callbackWithBoolean(bool boolParam)
     };
 
     bool callbackReturnValue = false;
-    return !invokeCallback(m_callback, 1, argv, callbackReturnValue, scriptExecutionContext());
+    return !invokeCallback(m_callback.get(), 1, argv, callbackReturnValue, scriptExecutionContext());
 }
 
 bool V8TestCallback::callbackRequiresThisToPass(Class8* class8Param, ThisClass* thisClassParam)
@@ -226,7 +229,7 @@ bool V8TestCallback::callbackRequiresThisToPass(Class8* class8Param, ThisClass* 
     };
 
     bool callbackReturnValue = false;
-    return !invokeCallback(m_callback, v8::Handle<v8::Object>::Cast(thisClassParamHandle), 2, argv, callbackReturnValue, scriptExecutionContext());
+    return !invokeCallback(m_callback.get(), v8::Handle<v8::Object>::Cast(thisClassParamHandle), 2, argv, callbackReturnValue, scriptExecutionContext());
 }
 
 } // namespace WebCore

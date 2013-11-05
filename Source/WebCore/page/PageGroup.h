@@ -60,6 +60,7 @@ namespace WebCore {
 
         static void clearLocalStorageForAllOrigins();
         static void clearLocalStorageForOrigin(SecurityOrigin*);
+        static void closeIdleLocalStorageDatabases();
         // DumpRenderTree helper that triggers a StorageArea sync.
         static void syncLocalStorage();
 
@@ -119,7 +120,7 @@ namespace WebCore {
         PageGroup(Page*);
 
         void addVisitedLink(LinkHash stringHash);
-        void resetUserStyleCacheInAllFrames();
+        void invalidatedInjectedStyleSheetCacheInAllFrames();
   
 #if ENABLE(VIDEO_TRACK)
         CaptionUserPreferences* captionPreferences();

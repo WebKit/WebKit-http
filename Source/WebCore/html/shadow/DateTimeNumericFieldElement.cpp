@@ -27,13 +27,14 @@
 #if ENABLE(INPUT_MULTIPLE_FIELDS_UI)
 #include "DateTimeNumericFieldElement.h"
 
-#include "FontCache.h"
+#include "CSSPropertyNames.h"
+#include "CSSValueKeywords.h"
+#include "Font.h"
 #include "KeyboardEvent.h"
 #include "PlatformLocale.h"
-#include "RenderStyle.h"
-#include "StyleResolver.h"
-#include "TextRun.h"
 #include <wtf/text/StringBuilder.h>
+
+using namespace WTF::Unicode;
 
 namespace WebCore {
 
@@ -58,15 +59,27 @@ bool DateTimeNumericFieldElement::Range::isInRange(int value) const
 
 // ----------------------------
 
-DateTimeNumericFieldElement::DateTimeNumericFieldElement(Document* document, FieldOwner& fieldOwner, int minimum, int maximum, const String& placeholder)
+DateTimeNumericFieldElement::DateTimeNumericFieldElement(Document* document, FieldOwner& fieldOwner, int minimum, int maximum, const String& placeholder, const DateTimeNumericFieldElement::Parameters& parameters)
     : DateTimeFieldElement(document, fieldOwner)
     , m_lastDigitCharTime(0)
     , m_placeholder(placeholder)
     , m_range(minimum, maximum)
     , m_value(0)
     , m_hasValue(false)
+    , m_step(parameters.step)
+    , m_stepBase(parameters.stepBase)
 {
-    setHasCustomCallbacks();
+    ASSERT(m_step);
+
+    // We show a direction-neutral string such as "--" as a placeholder. It
+    // should follow the direction of numeric values.
+    if (localeForOwner().isRTL()) {
+        Direction dir = direction(formatValue(this->maximum())[0]);
+        if (dir == LeftToRight || dir == EuropeanNumber || dir == ArabicNumber) {
+            setInlineStyleProperty(CSSPropertyUnicodeBidi, CSSValueBidiOverride);
+            setInlineStyleProperty(CSSPropertyDirection, CSSValueLtr);
+        }
+    }
 }
 
 int DateTimeNumericFieldElement::clampValueForHardLimits(int value) const
@@ -74,16 +87,12 @@ int DateTimeNumericFieldElement::clampValueForHardLimits(int value) const
     return clampValue(value);
 }
 
-PassRefPtr<RenderStyle> DateTimeNumericFieldElement::customStyleForRenderer()
+float DateTimeNumericFieldElement::maximumWidth(const Font& font)
 {
-    FontCachePurgePreventer fontCachePurgePreventer;
-    RefPtr<RenderStyle> originalStyle = document()->styleResolver()->styleForElement(this);
-    RefPtr<RenderStyle> style = RenderStyle::clone(originalStyle.get());
-    float maxiumWidth = style->font().width(m_placeholder);
-    maxiumWidth = std::max(maxiumWidth, style->font().width(formatValue(maximum())));
-    maxiumWidth = std::max(maxiumWidth, style->font().width(value()));
-    style->setMinWidth(Length(maxiumWidth, Fixed));
-    return style.release();
+    float maximumWidth = font.width(m_placeholder);
+    maximumWidth = std::max(maximumWidth, font.width(formatValue(maximum())));
+    maximumWidth = std::max(maximumWidth, font.width(value()));
+    return maximumWidth + DateTimeFieldElement::maximumWidth(font);
 }
 
 int DateTimeNumericFieldElement::defaultValueForStepDown() const
@@ -145,11 +154,6 @@ bool DateTimeNumericFieldElement::hasValue() const
     return m_hasValue;
 }
 
-Locale& DateTimeNumericFieldElement::localeForOwner() const
-{
-    return document()->getCachedLocale(localeIdentifier());
-}
-
 int DateTimeNumericFieldElement::maximum() const
 {
     return m_range.maximum;
@@ -182,18 +186,18 @@ void DateTimeNumericFieldElement::setValueAsInteger(int value, EventBehavior eve
 
 void DateTimeNumericFieldElement::stepDown()
 {
-    if (m_hasValue)
-        setValueAsInteger(m_value == m_range.minimum ? m_range.maximum : clampValue(m_value - 1), DispatchEvent);
-    else
-        setValueAsInteger(defaultValueForStepDown(), DispatchEvent);
+    int newValue = roundDown(m_hasValue ? m_value - 1 : defaultValueForStepDown());
+    if (!m_range.isInRange(newValue))
+        newValue = roundDown(m_range.maximum);
+    setValueAsInteger(newValue, DispatchEvent);
 }
 
 void DateTimeNumericFieldElement::stepUp()
 {
-    if (m_hasValue)
-        setValueAsInteger(m_value == m_range.maximum ? m_range.minimum : clampValue(m_value + 1), DispatchEvent);
-    else
-        setValueAsInteger(defaultValueForStepUp(), DispatchEvent);
+    int newValue = roundUp(m_hasValue ? m_value + 1 : defaultValueForStepUp());
+    if (!m_range.isInRange(newValue))
+        newValue = roundUp(m_range.minimum);
+    setValueAsInteger(newValue, DispatchEvent);
 }
 
 String DateTimeNumericFieldElement::value() const
@@ -209,6 +213,26 @@ int DateTimeNumericFieldElement::valueAsInteger() const
 String DateTimeNumericFieldElement::visibleValue() const
 {
     return m_hasValue ? value() : m_placeholder;
+}
+
+int DateTimeNumericFieldElement::roundDown(int n) const
+{
+    n -= m_stepBase;
+    if (n >= 0)
+        n = n / m_step * m_step;
+    else
+        n = -((-n + m_step - 1) / m_step * m_step);
+    return n + m_stepBase;
+}
+
+int DateTimeNumericFieldElement::roundUp(int n) const
+{
+    n -= m_stepBase;
+    if (n >= 0)
+        n = (n + m_step - 1) / m_step * m_step;
+    else
+        n = -(-n / m_step * m_step);
+    return n + m_stepBase;
 }
 
 } // namespace WebCore

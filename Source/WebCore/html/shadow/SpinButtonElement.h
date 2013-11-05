@@ -28,11 +28,12 @@
 #define SpinButtonElement_h
 
 #include "HTMLDivElement.h"
+#include "PopupOpeningObserver.h"
 #include "Timer.h"
 
 namespace WebCore {
 
-class SpinButtonElement : public HTMLDivElement {
+class SpinButtonElement : public HTMLDivElement, public PopupOpeningObserver {
 public:
     enum UpDownState {
         Indeterminate, // Hovered, but the event is not handled.
@@ -72,9 +73,10 @@ private:
     virtual void detach();
     virtual bool isSpinButtonElement() const { return true; }
     virtual bool isEnabledFormControl() const { return shadowHost()->isEnabledFormControl(); }
-    virtual bool shouldMatchReadOnlySelector() const OVERRIDE;
-    virtual bool shouldMatchReadWriteSelector() const OVERRIDE;
+    virtual bool matchesReadOnlyPseudoClass() const OVERRIDE;
+    virtual bool matchesReadWritePseudoClass() const OVERRIDE;
     virtual void defaultEventHandler(Event*);
+    virtual void willOpenPopup() OVERRIDE;
     void doStepAction(int);
     void startRepeatingTimer();
     void stopRepeatingTimer();

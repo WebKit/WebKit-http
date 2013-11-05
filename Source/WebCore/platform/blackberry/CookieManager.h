@@ -103,6 +103,7 @@ public:
 
 private:
     friend CookieManager& cookieManager();
+    friend class CookieDatabaseBackingStore;
 
     CookieManager();
     virtual ~CookieManager();
@@ -122,6 +123,7 @@ private:
 
     bool m_privateMode;
     bool m_shouldDumpAllCookies;
+    bool m_syncedWithDatabase;
 
     String m_cookieJarFileName;
 
@@ -136,6 +138,7 @@ private:
     CookieDatabaseBackingStore* m_cookieBackingStore;
     Timer<CookieManager> m_limitTimer;
 
+    DISABLE_COPY(CookieManager)
 };
 
 // Get the global instance.

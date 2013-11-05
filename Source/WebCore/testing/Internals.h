@@ -29,6 +29,7 @@
 #include "ContextDestructionObserver.h"
 #include "ExceptionCodePlaceholder.h"
 #include "NodeList.h"
+#include <wtf/ArrayBuffer.h>
 #include <wtf/PassRefPtr.h>
 #include <wtf/RefCounted.h>
 #include <wtf/text/WTFString.h>
@@ -53,6 +54,7 @@ class ScriptExecutionContext;
 class ShadowRoot;
 class WebKitPoint;
 class MallocStatistics;
+class SerializedScriptValue;
 
 typedef int ExceptionCode;
 
@@ -78,6 +80,7 @@ public:
     typedef Node ShadowRootIfShadowDOMEnabledOrNode;
 #endif
     ShadowRootIfShadowDOMEnabledOrNode* ensureShadowRoot(Element* host, ExceptionCode&);
+    ShadowRootIfShadowDOMEnabledOrNode* createShadowRoot(Element* host, ExceptionCode&);
     ShadowRootIfShadowDOMEnabledOrNode* shadowRoot(Element* host, ExceptionCode&);
     ShadowRootIfShadowDOMEnabledOrNode* youngestShadowRoot(Element* host, ExceptionCode&);
     ShadowRootIfShadowDOMEnabledOrNode* oldestShadowRoot(Element* host, ExceptionCode&);
@@ -92,7 +95,6 @@ public:
     void setShadowPseudoId(Element*, const String&, ExceptionCode&);
 
     PassRefPtr<Element> createContentElement(Document*, ExceptionCode&);
-    Element* getElementByIdInShadowRoot(Node* shadowRoot, const String& id, ExceptionCode&);
     bool isValidContentSelect(Element* insertionPoint, ExceptionCode&);
     Node* treeScopeRootNode(Node*, ExceptionCode&);
     Node* parentTreeScope(Node*, ExceptionCode&);
@@ -116,6 +118,7 @@ public:
 #endif
     PassRefPtr<DOMStringList> formControlStateOfPreviousHistoryItem(ExceptionCode&);
     void setFormControlStateOfPreviousHistoryItem(PassRefPtr<DOMStringList>, ExceptionCode&);
+    void setEnableMockPagePopup(bool, ExceptionCode&);
 #if ENABLE(PAGE_POPUP)
     PassRefPtr<PagePopupController> pagePopupController();
 #endif
@@ -168,6 +171,9 @@ public:
 
     unsigned wheelEventHandlerCount(Document*, ExceptionCode&);
     unsigned touchEventHandlerCount(Document*, ExceptionCode&);
+#if ENABLE(TOUCH_EVENT_TRACKING)
+    PassRefPtr<ClientRectList> touchEventTargetClientRects(Document*, ExceptionCode&);
+#endif
 
     PassRefPtr<NodeList> nodesFromRect(Document*, int x, int y, unsigned topPadding, unsigned rightPadding,
         unsigned bottomPadding, unsigned leftPadding, bool ignoreClipping, bool allowShadowContent, ExceptionCode&) const;
@@ -206,9 +212,14 @@ public:
     String repaintRectsAsText(Document*, ExceptionCode&) const;
     String scrollingStateTreeAsText(Document*, ExceptionCode&) const;
 
+    String mainThreadScrollingReasons(Document*, ExceptionCode&) const;
+
     void garbageCollectDocumentResources(Document*, ExceptionCode&) const;
 
     void allowRoundingHacks() const;
+
+    void insertAuthorCSS(Document*, const String&) const;
+    void insertUserCSS(Document*, const String&) const;
 
 #if ENABLE(INSPECTOR)
     unsigned numberOfLiveNodes() const;
@@ -229,6 +240,8 @@ public:
     String pageProperty(String, int, ExceptionCode& = ASSERT_NO_EXCEPTION) const;
     String pageSizeAndMarginsInPixels(int, int, int, int, int, int, int, ExceptionCode& = ASSERT_NO_EXCEPTION) const;
 
+    void setPageScaleFactor(float scaleFactor, int x, int y, ExceptionCode&);
+
 #if ENABLE(FULLSCREEN_API)
     void webkitWillEnterFullScreenForElement(Document*, Element*);
     void webkitDidEnterFullScreenForElement(Document*, Element*);
@@ -245,6 +258,11 @@ public:
 
     void startTrackingRepaints(Document*, ExceptionCode&);
     void stopTrackingRepaints(Document*, ExceptionCode&);
+
+    PassRefPtr<ArrayBuffer> serializeObject(PassRefPtr<SerializedScriptValue>) const;
+    PassRefPtr<SerializedScriptValue> deserializeBuffer(PassRefPtr<ArrayBuffer>) const;
+
+    void setUsesOverlayScrollbars(bool enabled);
 
     String getCurrentCursorInfo(Document*, ExceptionCode&);
 

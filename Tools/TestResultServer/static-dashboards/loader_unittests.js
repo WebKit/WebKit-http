@@ -29,6 +29,7 @@
 module('loader');
 
 test('loading steps', 1, function() {
+    resetGlobals();
     var loadedSteps = [];
     var resourceLoader = new loader.Loader();
     function loadingStep1() {
@@ -53,8 +54,11 @@ test('loading steps', 1, function() {
     }
 });
 
-test('results files loading', 5, function() {
-    var expectedLoadedBuilders = ["WebKit Linux", "WebKit Win"];
+// Total number of assertions is 1 for the deepEqual of the builder lists
+// and then 2 per builder (one for ok, one for deepEqual of tests).
+test('results files loading', 11, function() {
+    resetGlobals();
+    var expectedLoadedBuilders =  ['WebKit Linux', 'WebKit Linux (dbg)', 'WebKit Mac10.7', 'WebKit Win', 'WebKit Win (dbg)'];
     var loadedBuilders = [];
     var resourceLoader = new loader.Loader();
     resourceLoader._loadNext = function() {
@@ -67,23 +71,23 @@ test('results files loading', 5, function() {
 
     var requestFunction = loader.request;
     loader.request = function(url, successCallback, errorCallback) {
-        var builderName = /builder=([\w ]+)&/.exec(url)[1];
+        var builderName = /builder=([\w ().]+)&/.exec(url)[1];
         loadedBuilders.push(builderName);
         successCallback({responseText: '{"version": 4, "' + builderName + '": {"secondsSinceEpoch": [' + Date.now() + '], "tests": {}}}'});
     }
 
-    g_builders = {"WebKit Linux": true, "WebKit Win": true};
-
+    loadBuildersList('@ToT - chromium.org', 'layout-tests');
+ 
     try {
         resourceLoader._loadResultsFiles();
     } finally {
-        g_builders = undefined;
-        g_resultsByBuilder = undefined;
         loader.request = requestFunction;
     }
 });
 
 test('expectations files loading', 1, function() {
+    resetGlobals();
+    parseCrossDashboardParameters();
     var expectedLoadedPlatforms = ["chromium", "chromium-android", "efl", "efl-wk1", "efl-wk2", "gtk",
                                    "gtk-wk2", "mac", "mac-lion", "mac-snowleopard", "qt", "win", "wk2"];
     var loadedPlatforms = [];
@@ -103,4 +107,30 @@ test('expectations files loading', 1, function() {
     } finally {
         loader.request = requestFunction;
     }
+});
+
+test('results file failing to load', 2, function() {
+    resetGlobals();
+    loadBuildersList('@ToT - chromium.org', 'layout-tests');
+    
+    // FIXME: loader shouldn't depend on state defined in dashboard_base.js.
+    g_buildersThatFailedToLoad = [];
+
+    var resourceLoader = new loader.Loader();
+    var resourceLoadCount = 0;
+    resourceLoader._handleResourceLoad = function() {
+        resourceLoadCount++;
+    }
+
+    var builder1 = 'builder1';
+    currentBuilders()[builder1] = true;
+    resourceLoader._handleResultsFileLoadError(builder1);
+
+    var builder2 = 'builder2';
+    currentBuilders()[builder2] = true;
+    resourceLoader._handleResultsFileLoadError(builder2);
+
+    deepEqual(g_buildersThatFailedToLoad, [builder1, builder2]);
+    equal(resourceLoadCount, 2);
+
 });

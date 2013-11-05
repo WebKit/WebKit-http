@@ -10,7 +10,6 @@ CONFIG += ordered
 build?(webkit1) {
     build?(testbrowser): SUBDIRS += QtTestBrowser/QtTestBrowser.pro
     build?(drt): SUBDIRS += DumpRenderTree/qt/DumpRenderTree.pro
-    build?(imagediff): SUBDIRS += DumpRenderTree/qt/ImageDiff.pro
 }
 
 build?(webkit2) {
@@ -23,6 +22,8 @@ build?(webkit2) {
     }
 }
 
+build?(imagediff): SUBDIRS += ImageDiff/ImageDiff.pro
+
 build?(test_npapi): SUBDIRS += DumpRenderTree/qt/TestNetscapePlugin/TestNetscapePlugin.pro
 
 OTHER_FILES = \
@@ -34,6 +35,7 @@ OTHER_FILES = \
     qmake/config.tests/README \
     qmake/config.tests/fontconfig/* \
     qmake/config.tests/gccdepends/* \
+    qmake/config.tests/libexecdir/* \
     qmake/mkspecs/modules/* \
     qmake/mkspecs/features/*.prf \
     qmake/mkspecs/features/*.pri \

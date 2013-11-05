@@ -28,6 +28,9 @@
   <div style='cursor: url(resources/greenbox.png) 20 10, pointer'>Image with explicit hot spot at (20,10)</div>
   <div style='cursor: url(resources/greenbox.png) -1 -1, pointer'>Image with explicit hot spot at (-1,-1)</div>
   <div style='cursor: url(resources/greenbox.png) 30 30, pointer'>Image with explicit hot spot outside image at (30,30)</div>
+  <div style='cursor: url(resources/greenbox-hotspot5-4.cur), pointer'>Image with implicit hot spot at (5,4)</div>
+  <div style='cursor: url(resources/greenbox-hotspot5-4.cur) 20 10, pointer'>Image with explicit hot spot at (20,10) overriding implicit hot spot</div>
+  <div style='cursor: url(resources/greenbox-hotspot35-4.cur), pointer'>Image with implicit hot spot outside image at (35,4)</div>
   <div style='cursor: url(resources/onload-image.png), pointer'>Over large image with fallback to pointer</div>
   <div style='cursor: url(#greenbox), pointer'>SVG cursor</div>
   <div style='cursor: url(mouse-cursor.html), url(unknown-scheme:cursor.png), pointer'>Multiple invalid cursors with fallback to pointer</div>
@@ -41,23 +44,21 @@
 <script>
 var imagesLeftToLoad = 0;
 
-function onImageLoad(e) {
+function onImageLoad(success, e) {
 
     // This debug output is non-deterministic and contains absolute URLs - only show when
     // not running in DRT
     if (!window.testRunner)
         debug( 'Event "' + e.type + '": ' + e.target.src);
+    
+    if (!success)
+        testFailed('Got unexpected \'' + e.type + '\' event for image: ' + e.target.src); 
         
     imagesLeftToLoad--;
     if (imagesLeftToLoad == 0)
         runTests();
     if (imagesLeftToLoad < 0)
         testFailed('Got more load/error callback than expected.');
-}
-
-function onImageUnexpected(e) {
-	imagesLeftToLoad--;
-    testFailed('Got unexpected \'' + e.type + '\' event for image: ' + e.target.src); 
 }
 
 function runTests() {
@@ -67,7 +68,12 @@ function runTests() {
         for (var i = 0; i < nodesToTest.length; i++) {
             var node = nodesToTest[i];
             debug('TEST CASE: ' + node.textContent);
-            eventSender.mouseMoveTo(node.offsetLeft + 3, node.offsetTop + 3);
+
+            // Make sure the node is visible and move the mouse over top of it.
+            document.body.scrollTop = node.offsetTop - 50;
+            eventSender.mouseMoveTo(node.offsetLeft + 3, node.offsetTop - document.body.scrollTop + 3);
+
+            // Get details of the current mouse cursor.
             // Note that we could return structured data which we then validate, but that's a lot more
             // work and is redundant with relying on the expected output anyway.  Better to just dump
             // it and inspect that it matches the description.
@@ -98,6 +104,8 @@ if (window.testRunner) {
 var imagesToLoad = [
     { url: 'resources/greenbox.png' },
     { url: 'resources/onload-image.png' },
+    { url: 'resources/greenbox-hotspot5-4.cur' },
+    { url: 'resources/greenbox-hotspot35-4.cur' },
     { url: 'doesntexist.png', error: true },
     { url: 'unknown-scheme:cursor.png', error: true },
     { url: 'mouse-cursor.html', error: true },
@@ -107,8 +115,8 @@ imagesLeftToLoad = imagesToLoad.length;
 for (var i = 0; i < imagesToLoad.length; i++) {
     var img = new Image();
     var expectError = imagesToLoad[i].error; 
-    img.addEventListener('load', expectError ? onImageUnexpected : onImageLoad);
-    img.addEventListener('error', expectError ? onImageLoad : onImageUnexpected);
+    img.addEventListener('load', onImageLoad.bind(undefined, !expectError));
+    img.addEventListener('error', onImageLoad.bind(undefined, expectError));
     img.src = imagesToLoad[i].url;
 }
 

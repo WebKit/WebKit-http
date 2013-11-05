@@ -26,9 +26,19 @@
 #ifndef TiledBacking_h
 #define TiledBacking_h
 
+#if PLATFORM(MAC)
+OBJC_CLASS CALayer;
+#endif
+
 namespace WebCore {
 
 class IntRect;
+
+enum ScrollingModeIndication {
+    MainThreadScrollingBecauseOfStyleIndictaion,
+    MainThreadScrollingBecauseOfEventHandlersIndication,
+    ThreadedScrollingIndication
+};
 
 class TiledBacking {
 public:
@@ -36,6 +46,8 @@ public:
 
     virtual void setVisibleRect(const IntRect&) = 0;
     virtual IntRect visibleRect() const = 0;
+
+    virtual void prepopulateRect(const IntRect&) = 0;
 
     virtual void setIsInWindow(bool) = 0;
 
@@ -60,7 +72,12 @@ public:
     
     // Exposed for testing
     virtual IntRect tileCoverageRect() const = 0;
+    virtual IntRect tileGridExtent() const = 0;
+    virtual void setScrollingModeIndication(ScrollingModeIndication) = 0;
 
+#if PLATFORM(MAC)
+    virtual CALayer *tiledScrollingIndicatorLayer() = 0;
+#endif
 };
 
 } // namespace WebCore

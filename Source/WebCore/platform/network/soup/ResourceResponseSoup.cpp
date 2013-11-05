@@ -26,6 +26,7 @@
 #include "MIMETypeRegistry.h"
 #include "SoupURIUtils.h"
 #include <wtf/text/CString.h>
+#include <wtf/text/StringBuilder.h>
 #include <wtf/text/WTFString.h>
 
 using namespace std;
@@ -62,20 +63,45 @@ void ResourceResponse::updateFromSoupMessage(SoupMessage* soupMessage)
     m_url = soupURIToKURL(soup_message_get_uri(soupMessage));
 
     m_httpStatusCode = soupMessage->status_code;
+    setHTTPStatusText(soupMessage->reason_phrase);
 
+    m_soupFlags = soup_message_get_flags(soupMessage);
+
+    GTlsCertificate* certificate = 0;
+    soup_message_get_https_status(soupMessage, &certificate, &m_tlsErrors);
+    m_certificate = certificate;
+
+    updateFromSoupMessageHeaders(soupMessage->response_headers);
+}
+
+void ResourceResponse::updateFromSoupMessageHeaders(const SoupMessageHeaders* messageHeaders)
+{
+    SoupMessageHeaders* headers = const_cast<SoupMessageHeaders*>(messageHeaders);
     SoupMessageHeadersIter headersIter;
     const char* headerName;
     const char* headerValue;
 
-    soup_message_headers_iter_init(&headersIter, soupMessage->response_headers);
-    while (soup_message_headers_iter_next(&headersIter, &headerName, &headerValue))
-        m_httpHeaderFields.set(String::fromUTF8WithLatin1Fallback(headerName, strlen(headerName)),
-                               String::fromUTF8WithLatin1Fallback(headerValue, strlen(headerValue)));
+    // updateFromSoupMessage could be called several times for the same ResourceResponse object,
+    // thus, we need to clear old header values and update m_httpHeaderFields from soupMessage headers.
+    m_httpHeaderFields.clear();
 
-    m_soupFlags = soup_message_get_flags(soupMessage);
+    soup_message_headers_iter_init(&headersIter, headers);
+    while (soup_message_headers_iter_next(&headersIter, &headerName, &headerValue)) {
+        String headerNameString = String::fromUTF8WithLatin1Fallback(headerName, strlen(headerName));
+        HTTPHeaderMap::const_iterator it = m_httpHeaderFields.find(headerNameString);
+        if (it == m_httpHeaderFields.end() || (it != m_httpHeaderFields.end() && it->value.isEmpty()))
+            m_httpHeaderFields.set(headerNameString, String::fromUTF8WithLatin1Fallback(headerValue, strlen(headerValue)));
+        else {
+            StringBuilder builder;
+            builder.append(it->value);
+            builder.appendLiteral(", ");
+            builder.append(String::fromUTF8WithLatin1Fallback(headerValue, strlen(headerValue)));
+            m_httpHeaderFields.set(headerNameString, builder.toString());
+        }
+    }
 
     String contentType;
-    const char* officialType = soup_message_headers_get_one(soupMessage->response_headers, "Content-Type");
+    const char* officialType = soup_message_headers_get_one(headers, "Content-Type");
     if (!m_sniffedContentType.isEmpty() && m_sniffedContentType != officialType)
         contentType = m_sniffedContentType;
     else
@@ -83,13 +109,7 @@ void ResourceResponse::updateFromSoupMessage(SoupMessage* soupMessage)
     setMimeType(extractMIMETypeFromMediaType(contentType));
     setTextEncodingName(extractCharsetFromMediaType(contentType));
 
-    setExpectedContentLength(soup_message_headers_get_content_length(soupMessage->response_headers));
-    setHTTPStatusText(soupMessage->reason_phrase);
-    setSuggestedFilename(filenameFromHTTPContentDisposition(httpHeaderField("Content-Disposition")));
-
-    GTlsCertificate* certificate = 0;
-    soup_message_get_https_status(soupMessage, &certificate, &m_tlsErrors);
-    m_certificate = certificate;
-}
+    setExpectedContentLength(soup_message_headers_get_content_length(headers));
+    setSuggestedFilename(filenameFromHTTPContentDisposition(httpHeaderField("Content-Disposition")));}
 
 }

@@ -119,7 +119,7 @@ void RenderWidget::destroy()
     // Grab the arena from node()->document()->renderArena() before clearing the node pointer.
     // Clear the node before deref-ing, as this may be deleted when deref is called.
     RenderArena* arena = renderArena();
-    setNode(0);
+    clearNode();
     deref(arena);
 }
 
@@ -169,7 +169,7 @@ bool RenderWidget::updateWidgetGeometry()
     if (!m_widget->transformsAffectFrameRect())
         return setWidgetGeometry(absoluteContentBox());
 
-    LayoutRect absoluteContentBox(localToAbsoluteQuad(FloatQuad(contentBox), SnapOffsetForTransforms).boundingBox());
+    LayoutRect absoluteContentBox(localToAbsoluteQuad(FloatQuad(contentBox)).boundingBox());
     if (m_widget->isFrameView()) {
         contentBox.setLocation(absoluteContentBox.location());
         return setWidgetGeometry(contentBox);

@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 # Copyright (C) 2010 Google Inc. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -98,6 +97,15 @@ class TestList(object):
     def __getitem__(self, item):
         return self.tests[item]
 
+#
+# These numbers may need to be updated whenever we add or delete tests.
+#
+TOTAL_TESTS = 104
+TOTAL_SKIPS = 28
+TOTAL_RETRIES = 14
+
+UNEXPECTED_PASSES = 6
+UNEXPECTED_FAILURES = 17
 
 def unit_test_list():
     tests = TestList()
@@ -339,6 +347,7 @@ Bug(test) passes/skipped/skip.html [ Skip ]
 
 class TestPort(Port):
     port_name = 'test'
+    default_port_name = 'test-mac-leopard'
 
     """Test implementation of the Port interface."""
     ALL_BASELINE_VARIANTS = (
@@ -350,23 +359,20 @@ class TestPort(Port):
     @classmethod
     def determine_full_port_name(cls, host, options, port_name):
         if port_name == 'test':
-            return 'test-mac-leopard'
+            return TestPort.default_port_name
         return port_name
 
     def __init__(self, host, port_name=None, **kwargs):
-        # FIXME: Consider updating all of the callers to pass in a port_name so it can be a
-        # required parameter like all of the other Port objects.
-        port_name = port_name or 'test-mac-leopard'
-        Port.__init__(self, host, port_name, **kwargs)
+        Port.__init__(self, host, port_name or TestPort.default_port_name, **kwargs)
         self._tests = unit_test_list()
         self._flakes = set()
         self._expectations_path = LAYOUT_TEST_DIR + '/platform/test/TestExpectations'
         self._results_directory = None
 
         self._operating_system = 'mac'
-        if port_name.startswith('test-win'):
+        if self._name.startswith('test-win'):
             self._operating_system = 'win'
-        elif port_name.startswith('test-linux'):
+        elif self._name.startswith('test-linux'):
             self._operating_system = 'linux'
 
         version_map = {
@@ -377,7 +383,7 @@ class TestPort(Port):
             'test-mac-snowleopard': 'snowleopard',
             'test-linux-x86_64': 'lucid',
         }
-        self._version = version_map[port_name]
+        self._version = version_map[self._name]
 
     def default_pixel_tests(self):
         return True
@@ -434,9 +440,7 @@ class TestPort(Port):
     def webkit_base(self):
         return '/test.checkout'
 
-    def skipped_layout_tests(self, test_list):
-        # This allows us to test the handling Skipped files, both with a test
-        # that actually passes, and a test that does fail.
+    def _skipped_tests_for_unsupported_features(self, test_list):
         return set(['failures/expected/skip_text.html',
                     'failures/unexpected/skip_pass.html',
                     'virtual/skipped'])
@@ -536,12 +540,23 @@ class TestPort(Port):
 
 class TestDriver(Driver):
     """Test/Dummy implementation of the DumpRenderTree interface."""
+    next_pid = 1
+
+    def __init__(self, *args, **kwargs):
+        super(TestDriver, self).__init__(*args, **kwargs)
+        self.started = False
+        self.pid = 0
 
     def cmd_line(self, pixel_tests, per_test_args):
         pixel_tests_flag = '-p' if pixel_tests else ''
         return [self._port._path_to_driver()] + [pixel_tests_flag] + self._port.get_option('additional_drt_flag', []) + per_test_args
 
     def run_test(self, test_input, stop_when_done):
+        if not self.started:
+            self.started = True
+            self.pid = TestDriver.next_pid
+            TestDriver.next_pid += 1
+
         start_time = time.time()
         test_name = test_input.test_name
         test_args = test_input.args or []
@@ -589,10 +604,7 @@ class TestDriver(Driver):
         return DriverOutput(actual_text, image, test.actual_checksum, audio,
             crash=test.crash or test.web_process_crash, crashed_process_name=crashed_process_name,
             crashed_pid=crashed_pid, crash_log=crash_log,
-            test_time=time.time() - start_time, timeout=test.timeout, error=test.error)
-
-    def start(self, pixel_tests, per_test_args):
-        pass
+            test_time=time.time() - start_time, timeout=test.timeout, error=test.error, pid=self.pid)
 
     def stop(self):
-        pass
+        self.started = False

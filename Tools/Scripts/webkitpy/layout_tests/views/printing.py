@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 # Copyright (C) 2010, 2012 Google Inc. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -33,7 +32,6 @@ import math
 import optparse
 
 from webkitpy.tool import grammar
-from webkitpy.common.net import resultsjsonparser
 from webkitpy.layout_tests.models import test_expectations
 from webkitpy.layout_tests.models.test_expectations import TestExpectations, TestExpectationParser
 from webkitpy.layout_tests.views.metered_stream import MeteredStream
@@ -56,23 +54,13 @@ def print_options():
 
 
 class Printer(object):
-    """Class handling all non-debug-logging printing done by run-webkit-tests.
+    """Class handling all non-debug-logging printing done by run-webkit-tests."""
 
-    Printing from run-webkit-tests falls into two buckets: general or
-    regular output that is read only by humans and can be changed at any
-    time, and output that is parsed by buildbots (and humans) and hence
-    must be changed more carefully and in coordination with the buildbot
-    parsing code (in chromium.org's buildbot/master.chromium/scripts/master/
-    log_parser/webkit_test_command.py script).
-
-    By default the buildbot-parsed code gets logged to stdout, and regular
-    output gets logged to stderr."""
-    def __init__(self, port, options, regular_output, buildbot_output, logger=None):
+    def __init__(self, port, options, regular_output, logger=None):
         self.num_completed = 0
         self.num_tests = 0
         self._port = port
         self._options = options
-        self._buildbot_stream = buildbot_output
         self._meter = MeteredStream(regular_output, options.debug_rwt_logging, logger=logger,
                                     number_of_columns=self._port.host.platform.terminal_width())
         self._running_tests = []
@@ -117,25 +105,26 @@ class Printer(object):
         found_str += ', skipping %d' % (num_all_test_files - num_unique_tests)
         self._print_default(found_str + '.')
 
-    def print_expected(self, result_summary, tests_with_result_type_callback):
-        self._print_expected_results_of_type(result_summary, test_expectations.PASS, "passes", tests_with_result_type_callback)
-        self._print_expected_results_of_type(result_summary, test_expectations.FAIL, "failures", tests_with_result_type_callback)
-        self._print_expected_results_of_type(result_summary, test_expectations.FLAKY, "flaky", tests_with_result_type_callback)
+    def print_expected(self, run_results, tests_with_result_type_callback):
+        self._print_expected_results_of_type(run_results, test_expectations.PASS, "passes", tests_with_result_type_callback)
+        self._print_expected_results_of_type(run_results, test_expectations.FAIL, "failures", tests_with_result_type_callback)
+        self._print_expected_results_of_type(run_results, test_expectations.FLAKY, "flaky", tests_with_result_type_callback)
         self._print_debug('')
 
     def print_workers_and_shards(self, num_workers, num_shards, num_locked_shards):
         driver_name = self._port.driver_name()
         if num_workers == 1:
-            self._print_default("Running 1 %s over %s." % (driver_name, grammar.pluralize('shard', num_shards)))
+            self._print_default("Running 1 %s." % driver_name)
+            self._print_debug("(%s)." % grammar.pluralize('shard', num_shards))
         else:
-            self._print_default("Running %d %ss in parallel over %d shards (%d locked)." %
-                (num_workers, driver_name, num_shards, num_locked_shards))
+            self._print_default("Running %d %ss in parallel." % (num_workers, driver_name))
+            self._print_debug("(%d shards; %d locked)." % (num_shards, num_locked_shards))
         self._print_default('')
 
-    def _print_expected_results_of_type(self, result_summary, result_type, result_type_str, tests_with_result_type_callback):
+    def _print_expected_results_of_type(self, run_results, result_type, result_type_str, tests_with_result_type_callback):
         tests = tests_with_result_type_callback(result_type)
-        now = result_summary.tests_by_timeline[test_expectations.NOW]
-        wontfix = result_summary.tests_by_timeline[test_expectations.WONTFIX]
+        now = run_results.tests_by_timeline[test_expectations.NOW]
+        wontfix = run_results.tests_by_timeline[test_expectations.WONTFIX]
 
         # We use a fancy format string in order to print the data out in a
         # nicely-aligned table.
@@ -149,39 +138,45 @@ class Printer(object):
             ndigits = int(math.log10(len(num))) + 1
         return ndigits
 
-    def print_results(self, run_time, thread_timings, test_timings, individual_test_timings, result_summary, unexpected_results):
-        self._print_timing_statistics(run_time, thread_timings, test_timings, individual_test_timings, result_summary)
-        self._print_result_summary(result_summary)
-        self._print_one_line_summary(result_summary.total - result_summary.expected_skips,
-                                     result_summary.expected - result_summary.expected_skips,
-                                     result_summary.unexpected)
-        self._print_unexpected_results(unexpected_results)
+    def print_results(self, run_time, run_results, summarized_results):
+        self._print_timing_statistics(run_time, run_results)
+        self._print_one_line_summary(run_results.total - run_results.expected_skips,
+                                     run_results.expected - run_results.expected_skips,
+                                     run_results.unexpected)
 
-    def _print_timing_statistics(self, total_time, thread_timings,
-                                 directory_test_timings, individual_test_timings,
-                                 result_summary):
+    def _print_timing_statistics(self, total_time, run_results):
         self._print_debug("Test timing:")
         self._print_debug("  %6.2f total testing time" % total_time)
         self._print_debug("")
+
+        self._print_worker_statistics(run_results, int(self._options.child_processes))
+        self._print_aggregate_test_statistics(run_results)
+        self._print_individual_test_times(run_results)
+        self._print_directory_timings(run_results)
+
+    def _print_worker_statistics(self, run_results, num_workers):
         self._print_debug("Thread timing:")
+        stats = {}
         cuml_time = 0
-        for t in thread_timings:
-            self._print_debug("    %10s: %5d tests, %6.2f secs" % (t['name'], t['num_tests'], t['total_time']))
-            cuml_time += t['total_time']
-        self._print_debug("   %6.2f cumulative, %6.2f optimal" % (cuml_time, cuml_time / int(self._options.child_processes)))
+        for result in run_results.results_by_name.values():
+            stats.setdefault(result.worker_name, {'num_tests': 0, 'total_time': 0})
+            stats[result.worker_name]['num_tests'] += 1
+            stats[result.worker_name]['total_time'] += result.total_run_time
+            cuml_time += result.total_run_time
+
+        for worker_name in stats:
+            self._print_debug("    %10s: %5d tests, %6.2f secs" % (worker_name, stats[worker_name]['num_tests'], stats[worker_name]['total_time']))
+        self._print_debug("   %6.2f cumulative, %6.2f optimal" % (cuml_time, cuml_time / num_workers))
         self._print_debug("")
 
-        self._print_aggregate_test_statistics(individual_test_timings)
-        self._print_individual_test_times(individual_test_timings, result_summary)
-        self._print_directory_timings(directory_test_timings)
-
-    def _print_aggregate_test_statistics(self, individual_test_timings):
-        times_for_dump_render_tree = [test_stats.test_run_time for test_stats in individual_test_timings]
+    def _print_aggregate_test_statistics(self, run_results):
+        times_for_dump_render_tree = [result.test_run_time for result in run_results.results_by_name.values()]
         self._print_statistics_for_test_timings("PER TEST TIME IN TESTSHELL (seconds):", times_for_dump_render_tree)
 
-    def _print_individual_test_times(self, individual_test_timings, result_summary):
+    def _print_individual_test_times(self, run_results):
         # Reverse-sort by the time spent in DumpRenderTree.
-        individual_test_timings.sort(lambda a, b: cmp(b.test_run_time, a.test_run_time))
+
+        individual_test_timings = sorted(run_results.results_by_name.values(), key=lambda result: result.test_run_time, reverse=True)
         num_printed = 0
         slow_tests = []
         timeout_or_crash_tests = []
@@ -189,12 +184,12 @@ class Printer(object):
         for test_tuple in individual_test_timings:
             test_name = test_tuple.test_name
             is_timeout_crash_or_slow = False
-            if test_name in result_summary.slow_tests:
+            if test_name in run_results.slow_tests:
                 is_timeout_crash_or_slow = True
                 slow_tests.append(test_tuple)
 
-            if test_name in result_summary.failures:
-                result = result_summary.results[test_name].type
+            if test_name in run_results.failures_by_name:
+                result = run_results.results_by_name[test_name].type
                 if (result == test_expectations.TIMEOUT or
                     result == test_expectations.CRASH):
                     is_timeout_crash_or_slow = True
@@ -219,18 +214,23 @@ class Printer(object):
             test_run_time = round(test_tuple.test_run_time, 1)
             self._print_debug("  %s took %s seconds" % (test_tuple.test_name, test_run_time))
 
-    def _print_directory_timings(self, directory_test_timings):
+    def _print_directory_timings(self, run_results):
+        stats = {}
+        for result in run_results.results_by_name.values():
+            stats.setdefault(result.shard_name, {'num_tests': 0, 'total_time': 0})
+            stats[result.shard_name]['num_tests'] += 1
+            stats[result.shard_name]['total_time'] += result.total_run_time
+
         timings = []
-        for directory in directory_test_timings:
-            num_tests, time_for_directory = directory_test_timings[directory]
-            timings.append((round(time_for_directory, 1), directory, num_tests))
+        for directory in stats:
+            timings.append((directory, round(stats[directory]['total_time'], 1), stats[directory]['num_tests']))
         timings.sort()
 
         self._print_debug("Time to process slowest subdirectories:")
         min_seconds_to_print = 10
         for timing in timings:
             if timing[0] > min_seconds_to_print:
-                self._print_debug("  %s took %s seconds to run %s tests." % (timing[1], timing[0], timing[2]))
+                self._print_debug("  %s took %s seconds to run %s tests." % timing)
         self._print_debug("")
 
     def _print_statistics_for_test_timings(self, title, timings):
@@ -262,44 +262,6 @@ class Printer(object):
         self._print_debug("  99th percentile: %6.3f" % percentile99)
         self._print_debug("  Standard dev:    %6.3f" % std_deviation)
         self._print_debug("")
-
-    def _print_result_summary(self, result_summary):
-        if not self._options.debug_rwt_logging:
-            return
-
-        failed = result_summary.total_failures
-        total = result_summary.total - result_summary.expected_skips
-        passed = total - failed - result_summary.remaining
-        pct_passed = 0.0
-        if total > 0:
-            pct_passed = float(passed) * 100 / total
-
-        self._print_for_bot("=> Results: %d/%d tests passed (%.1f%%)" % (passed, total, pct_passed))
-        self._print_for_bot("")
-        self._print_result_summary_entry(result_summary, test_expectations.NOW, "Tests to be fixed")
-
-        self._print_for_bot("")
-        # FIXME: We should be skipping anything marked WONTFIX, so we shouldn't bother logging these stats.
-        self._print_result_summary_entry(result_summary, test_expectations.WONTFIX,
-            "Tests that will only be fixed if they crash (WONTFIX)")
-        self._print_for_bot("")
-
-    def _print_result_summary_entry(self, result_summary, timeline, heading):
-        total = len(result_summary.tests_by_timeline[timeline])
-        not_passing = (total -
-           len(result_summary.tests_by_expectation[test_expectations.PASS] &
-               result_summary.tests_by_timeline[timeline]))
-        self._print_for_bot("=> %s (%d):" % (heading, not_passing))
-
-        for result in TestExpectations.EXPECTATION_ORDER:
-            if result in (test_expectations.PASS, test_expectations.SKIP):
-                continue
-            results = (result_summary.tests_by_expectation[result] &
-                       result_summary.tests_by_timeline[timeline])
-            desc = TestExpectations.EXPECTATION_DESCRIPTIONS[result]
-            if not_passing and len(results):
-                pct = len(results) * 100.0 / not_passing
-                self._print_for_bot("  %5d %-24s (%4.1f%%)" % (len(results), desc, pct))
 
     def _print_one_line_summary(self, total, expected, unexpected):
         incomplete = total - expected - unexpected
@@ -411,75 +373,6 @@ class Printer(object):
             relpath = '<none>'
         self._print_default('  %s: %s' % (extension[1:], relpath))
 
-    def _print_unexpected_results(self, unexpected_results):
-        # Prints to the buildbot stream
-        passes = {}
-        flaky = {}
-        regressions = {}
-
-        def add_to_dict_of_lists(dict, key, value):
-            dict.setdefault(key, []).append(value)
-
-        def add_result(test, results, passes=passes, flaky=flaky, regressions=regressions):
-            actual = results['actual'].split(" ")
-            expected = results['expected'].split(" ")
-            if actual == ['PASS']:
-                if 'CRASH' in expected:
-                    add_to_dict_of_lists(passes, 'Expected to crash, but passed', test)
-                elif 'TIMEOUT' in expected:
-                    add_to_dict_of_lists(passes, 'Expected to timeout, but passed', test)
-                else:
-                    add_to_dict_of_lists(passes, 'Expected to fail, but passed', test)
-            elif len(actual) > 1:
-                # We group flaky tests by the first actual result we got.
-                add_to_dict_of_lists(flaky, actual[0], test)
-            else:
-                add_to_dict_of_lists(regressions, results['actual'], test)
-
-        resultsjsonparser.for_each_test(unexpected_results['tests'], add_result)
-
-        if len(passes) or len(flaky) or len(regressions):
-            self._print_for_bot("")
-        if len(passes):
-            for key, tests in passes.iteritems():
-                self._print_for_bot("%s: (%d)" % (key, len(tests)))
-                tests.sort()
-                for test in tests:
-                    self._print_for_bot("  %s" % test)
-                self._print_for_bot("")
-            self._print_for_bot("")
-
-        if len(flaky):
-            descriptions = TestExpectations.EXPECTATION_DESCRIPTIONS
-            for key, tests in flaky.iteritems():
-                result = TestExpectations.EXPECTATIONS[key.lower()]
-                self._print_for_bot("Unexpected flakiness: %s (%d)" % (descriptions[result], len(tests)))
-                tests.sort()
-
-                for test in tests:
-                    result = resultsjsonparser.result_for_test(unexpected_results['tests'], test)
-                    actual = result['actual'].split(" ")
-                    expected = result['expected'].split(" ")
-                    result = TestExpectations.EXPECTATIONS[key.lower()]
-                    # FIXME: clean this up once the old syntax is gone
-                    new_expectations_list = [TestExpectationParser._inverted_expectation_tokens[exp] for exp in list(set(actual) | set(expected))]
-                    self._print_for_bot("  %s [ %s ]" % (test, " ".join(new_expectations_list)))
-                self._print_for_bot("")
-            self._print_for_bot("")
-
-        if len(regressions):
-            descriptions = TestExpectations.EXPECTATION_DESCRIPTIONS
-            for key, tests in regressions.iteritems():
-                result = TestExpectations.EXPECTATIONS[key.lower()]
-                self._print_for_bot("Regressions: Unexpected %s (%d)" % (descriptions[result], len(tests)))
-                tests.sort()
-                for test in tests:
-                    self._print_for_bot("  %s [ %s ]" % (test, TestExpectationParser._inverted_expectation_tokens[key]))
-                self._print_for_bot("")
-
-        if len(unexpected_results['tests']) and self._options.debug_rwt_logging:
-            self._print_for_bot("%s" % ("-" * 78))
-
     def _print_quiet(self, msg):
         self.writeln(msg)
 
@@ -490,9 +383,6 @@ class Printer(object):
     def _print_debug(self, msg):
         if self._options.debug_rwt_logging:
             self.writeln(msg)
-
-    def _print_for_bot(self, msg):
-        self._buildbot_stream.write(msg + "\n")
 
     def write_update(self, msg):
         self._meter.write_update(msg)

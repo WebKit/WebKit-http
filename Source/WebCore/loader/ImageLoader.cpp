@@ -31,6 +31,7 @@
 #include "ElementShadow.h"
 #include "Event.h"
 #include "EventSender.h"
+#include "Frame.h"
 #include "HTMLNames.h"
 #include "HTMLObjectElement.h"
 #include "HTMLParserIdioms.h"
@@ -82,6 +83,12 @@ static ImageEventSender& errorEventSender()
 {
     DEFINE_STATIC_LOCAL(ImageEventSender, sender, (eventNames().errorEvent));
     return sender;
+}
+
+static inline bool pageIsBeingDismissed(Document* document)
+{
+    Frame* frame = document->frame();
+    return frame && frame->loader()->pageDismissalEventBeingDispatched() != FrameLoader::NoDismissal;
 }
 
 ImageLoader::ImageLoader(ImageLoaderClient* client)
@@ -179,6 +186,7 @@ void ImageLoader::updateFromElement()
     CachedResourceHandle<CachedImage> newImage = 0;
     if (!attr.isNull() && !stripLeadingAndTrailingHTMLSpaces(attr).isEmpty()) {
         CachedResourceRequest request(ResourceRequest(document()->completeURL(sourceURI(attr))));
+        request.setInitiator(client()->sourceElement());
 
         String crossOriginMode = client()->sourceElement()->fastGetAttribute(HTMLNames::crossoriginAttr);
         if (!crossOriginMode.isNull()) {
@@ -199,8 +207,9 @@ void ImageLoader::updateFromElement()
 
         // If we do not have an image here, it means that a cross-site
         // violation occurred, or that the image was blocked via Content
-        // Security Policy. Either way, trigger an error event.
-        if (!newImage) {
+        // Security Policy, or the page is being dismissed. Trigger an
+        // error event if the page is not being dismissed.
+        if (!newImage && !pageIsBeingDismissed(document())) {
             m_failedLoadURL = attr;
             m_hasPendingErrorEvent = true;
             errorEventSender().dispatchEventSoon(this);
@@ -281,7 +290,7 @@ void ImageLoader::notifyFinished(CachedResource* resource)
         errorEventSender().dispatchEventSoon(this);
 
         DEFINE_STATIC_LOCAL(String, consoleMessage, (ASCIILiteral("Cross-origin image load denied by Cross-Origin Resource Sharing policy.")));
-        document()->addConsoleMessage(JSMessageSource, LogMessageType, ErrorMessageLevel, consoleMessage);
+        document()->addConsoleMessage(JSMessageSource, ErrorMessageLevel, consoleMessage);
 
         ASSERT(!m_hasPendingLoadEvent);
 

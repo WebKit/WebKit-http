@@ -34,7 +34,7 @@
 
 using namespace WebKit;
 
-Ewk_Popup_Menu::Ewk_Popup_Menu(EwkViewImpl* viewImpl, WebPopupMenuProxyEfl* popupMenuProxy, const Vector<WebKit::WebPopupItem>& items, unsigned selectedIndex)
+EwkPopupMenu::EwkPopupMenu(EwkViewImpl* viewImpl, WebPopupMenuProxyEfl* popupMenuProxy, const Vector<WebKit::WebPopupItem>& items, unsigned selectedIndex)
     : m_viewImpl(viewImpl)
     , m_popupMenuProxy(popupMenuProxy)
     , m_popupMenuItems(0)
@@ -42,32 +42,32 @@ Ewk_Popup_Menu::Ewk_Popup_Menu(EwkViewImpl* viewImpl, WebPopupMenuProxyEfl* popu
 {
     const size_t size = items.size();
     for (size_t i = 0; i < size; ++i)
-        m_popupMenuItems = eina_list_append(m_popupMenuItems, Ewk_Popup_Menu_Item::create(items[i]).leakPtr());
+        m_popupMenuItems = eina_list_append(m_popupMenuItems, EwkPopupMenuItem::create(items[i]).leakPtr());
 }
 
-Ewk_Popup_Menu::~Ewk_Popup_Menu()
+EwkPopupMenu::~EwkPopupMenu()
 {
     void* item;
     EINA_LIST_FREE(m_popupMenuItems, item)
-        delete static_cast<Ewk_Popup_Menu_Item*>(item);
+        delete static_cast<EwkPopupMenuItem*>(item);
 }
 
-void Ewk_Popup_Menu::close()
+void EwkPopupMenu::close()
 {
     m_viewImpl->closePopupMenu();
 }
 
-const Eina_List* Ewk_Popup_Menu::items() const
+const Eina_List* EwkPopupMenu::items() const
 {
     return m_popupMenuItems;
 }
 
-unsigned Ewk_Popup_Menu::selectedIndex() const
+unsigned EwkPopupMenu::selectedIndex() const
 {
     return m_selectedIndex;
 }
 
-bool Ewk_Popup_Menu::setSelectedIndex(unsigned selectedIndex)
+bool EwkPopupMenu::setSelectedIndex(unsigned selectedIndex)
 {
     if (!m_popupMenuProxy)
         return false;

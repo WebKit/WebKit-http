@@ -34,12 +34,14 @@
 namespace WebKit {
 
 class WebAnimationCurve;
+class WebCompositorOutputSurface;
 class WebContentLayer;
 class WebContentLayerClient;
 class WebDelegatedRendererLayer;
 class WebExternalTextureLayer;
 class WebExternalTextureLayerClient;
 class WebFloatAnimationCurve;
+class WebGraphicsContext3D;
 class WebIOSurfaceLayer;
 class WebImageLayer;
 class WebLayer;
@@ -67,16 +69,14 @@ public:
     // after shutdown.
     virtual void shutdown() { }
 
-    // These may only be called before initialize.
-    // FIXME: Remove these.
-    virtual void setPerTilePaintingEnabled(bool) { }
-    virtual void setPartialSwapEnabled(bool) { }
-    virtual void setAcceleratedAnimationEnabled(bool) { }
-    virtual void setPageScalePinchZoomEnabled(bool) { }
-
     // May return 0 if initialization fails.
     virtual WebLayerTreeView* createLayerTreeView(WebLayerTreeViewClient*, const WebLayer& root, const WebLayerTreeView::Settings&) { return 0; }
 
+    // Creates an output surface for the compositor backed by a 3d context.
+    virtual WebCompositorOutputSurface* createOutputSurfaceFor3D(WebKit::WebGraphicsContext3D*) { return 0; }
+
+    // Creates an output surface for the compositor backed by a software device.
+    virtual WebCompositorOutputSurface* createOutputSurfaceForSoftware() { return 0; }
 
     // Layers -------------------------------------------------------
 

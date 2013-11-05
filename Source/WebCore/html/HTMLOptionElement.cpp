@@ -29,6 +29,7 @@
 
 #include "Attribute.h"
 #include "Document.h"
+#include "ElementShadow.h"
 #include "ExceptionCode.h"
 #include "HTMLDataListElement.h"
 #include "HTMLNames.h"
@@ -36,6 +37,7 @@
 #include "HTMLSelectElement.h"
 #include "NodeRenderStyle.h"
 #include "NodeRenderingContext.h"
+#include "NodeTraversal.h"
 #include "RenderMenuList.h"
 #include "RenderTheme.h"
 #include "ScriptElement.h"
@@ -190,33 +192,33 @@ int HTMLOptionElement::index() const
     return 0;
 }
 
-void HTMLOptionElement::parseAttribute(const Attribute& attribute)
+void HTMLOptionElement::parseAttribute(const QualifiedName& name, const AtomicString& value)
 {
 #if ENABLE(DATALIST_ELEMENT)
-    if (attribute.name() == valueAttr) {
+    if (name == valueAttr) {
         if (HTMLDataListElement* dataList = ownerDataListElement())
             dataList->optionElementChildrenChanged();
     } else
 #endif
-    if (attribute.name() == disabledAttr) {
+    if (name == disabledAttr) {
         bool oldDisabled = m_disabled;
-        m_disabled = !attribute.isNull();
+        m_disabled = !value.isNull();
         if (oldDisabled != m_disabled) {
             setNeedsStyleRecalc();
-            invalidateParentDistributionIfNecessary(this, SelectRuleFeatureSet::RuleFeatureDisabled);
+            invalidateParentDistributionIfNecessary(this, SelectRuleFeatureSet::RuleFeatureDisabled | SelectRuleFeatureSet::RuleFeatureEnabled);
             if (renderer() && renderer()->style()->hasAppearance())
                 renderer()->theme()->stateChanged(renderer(), EnabledState);
         }
-    } else if (attribute.name() == selectedAttr) {
+    } else if (name == selectedAttr) {
         // FIXME: This doesn't match what the HTML specification says.
         // The specification implies that removing the selected attribute or
         // changing the value of a selected attribute that is already present
         // has no effect on whether the element is selected. Further, it seems
         // that we need to do more than just set m_isSelected to select in that
         // case; we'd need to do the other work from the setSelected function.
-        m_isSelected = !attribute.isNull();
+        m_isSelected = !value.isNull();
     } else
-        HTMLElement::parseAttribute(attribute);
+        HTMLElement::parseAttribute(name, value);
 }
 
 String HTMLOptionElement::value() const
@@ -383,9 +385,9 @@ String HTMLOptionElement::collectOptionInnerText() const
             text.append(node->nodeValue());
         // Text nodes inside script elements are not part of the option text.
         if (node->isElementNode() && toScriptElement(toElement(node)))
-            node = node->traverseNextSibling(this);
+            node = NodeTraversal::nextSkippingChildren(node, this);
         else
-            node = node->traverseNextNode(this);
+            node = NodeTraversal::next(node, this);
     }
     return text.toString();
 }

@@ -76,6 +76,20 @@ WebInspector.DOMPresentationUtils.decorateNodeLabel = function(node, parentEleme
     parentElement.title = title;
 }
 
+/**
+ * @param {Element} container
+ * @param {string} nodeTitle
+ */
+WebInspector.DOMPresentationUtils.createSpansForNodeTitle = function(container, nodeTitle)
+{
+    var match = nodeTitle.match(/([^#.]+)(#[^.]+)?(\..*)?/);
+    container.createChild("span", "webkit-html-tag-name").textContent = match[1];
+    if (match[2])
+        container.createChild("span", "webkit-html-attribute-value").textContent = match[2];
+    if (match[3])
+        container.createChild("span", "webkit-html-attribute-name").textContent = match[3];
+}
+
 WebInspector.DOMPresentationUtils.linkifyNodeReference = function(node)
 {
     var link = document.createElement("span");
@@ -83,7 +97,7 @@ WebInspector.DOMPresentationUtils.linkifyNodeReference = function(node)
     WebInspector.DOMPresentationUtils.decorateNodeLabel(node, link);
 
     link.addEventListener("click", WebInspector.domAgent.inspectElement.bind(WebInspector.domAgent, node.id), false);
-    link.addEventListener("mouseover", WebInspector.domAgent.highlightDOMNode.bind(WebInspector.domAgent, node.id, ""), false);
+    link.addEventListener("mouseover", WebInspector.domAgent.highlightDOMNode.bind(WebInspector.domAgent, node.id, "", undefined), false);
     link.addEventListener("mouseout", WebInspector.domAgent.hideDOMNodeHighlight.bind(WebInspector.domAgent), false);
 
     return link;

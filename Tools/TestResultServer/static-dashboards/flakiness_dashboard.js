@@ -155,7 +155,7 @@ function generatePage()
     else
         generatePageForBuilder(g_currentState.builder);
 
-    for (var builder in g_builders)
+    for (var builder in currentBuilders())
         processTestResultsForBuilderAsync(builder);
 
     postHeightChangedMessage();
@@ -186,7 +186,7 @@ function handleValidHashParameter(key, value)
     case 'builder':
         validateParameter(g_currentState, key, value,
             function() {
-                return value in g_builders;
+                return value in currentBuilders();
             });
         return true;
 
@@ -479,7 +479,7 @@ var g_allTestsTrie;
 function getAllTestsTrie()
 {
     if (!g_allTestsTrie)
-        g_allTestsTrie = new TestTrie(g_builders, g_resultsByBuilder);
+        g_allTestsTrie = new TestTrie(currentBuilders(), g_resultsByBuilder);
 
     return g_allTestsTrie;
 }
@@ -610,7 +610,7 @@ function allTestsWithSamePlatformAndBuildType(platform, buildType)
 {
     if (!g_allTestsByPlatformAndBuildType[platform][buildType]) {
         var tests = {};
-        for (var thisBuilder in g_builders) {
+        for (var thisBuilder in currentBuilders()) {
             var thisBuilderBuildInfo = platformAndBuildType(thisBuilder);
             if (thisBuilderBuildInfo.buildType == buildType && thisBuilderBuildInfo.platform == platform) {
                 addTestsForBuilder(thisBuilder, tests);
@@ -919,7 +919,7 @@ function processTestResultsForBuilderAsync(builder)
 
 function processTestRunsForAllBuilders()
 {
-    for (var builder in g_builders)
+    for (var builder in currentBuilders())
         processTestRunsForBuilder(builder);
 }
 
@@ -1223,7 +1223,7 @@ function showPopupForBuild(e, builder, index, opt_testName)
             'WebKit') +
         '</li>';
 
-    if (master == WEBKIT_BUILDER_MASTER) {
+    if (master.name == WEBKIT_BUILDER_MASTER) {
         var revision = g_resultsByBuilder[builder].webkitRevision[index];
         html += '<li><span class=link onclick="setQueryParameter(\'revision\',' +
             revision + ')">Show results for WebKit r' + revision +
@@ -1236,7 +1236,7 @@ function showPopupForBuild(e, builder, index, opt_testName)
 
         var chromeRevision = g_resultsByBuilder[builder].chromeRevision[index];
         if (chromeRevision && isLayoutTestResults()) {
-            html += '<li><a href="' + TEST_RESULTS_BASE_PATH + g_builders[builder] +
+            html += '<li><a href="' + TEST_RESULTS_BASE_PATH + currentBuilders()[builder] +
                 '/' + chromeRevision + '/layout-test-results.zip">layout-test-results.zip</a></li>';
         }
     }
@@ -1291,7 +1291,7 @@ function htmlForTestResults(test)
         var extraClassNames = '';
         var webkitRevision = g_resultsByBuilder[builder].webkitRevision;
         var isWebkitMerge = webkitRevision[i + 1] && webkitRevision[i] != webkitRevision[i + 1];
-        if (isWebkitMerge && master != WEBKIT_BUILDER_MASTER)
+        if (isWebkitMerge && master.name != WEBKIT_BUILDER_MASTER)
             extraClassNames += ' merge';
 
         html += '<td title="' + (resultString || 'NO DATA') + '. Click for more info." class="results ' + currentResult +
@@ -1626,7 +1626,7 @@ function generatePageForExpectationsUpdate()
         }
     }
 
-    for (var builder in g_builders) {
+    for (var builder in currentBuilders()) {
         var tests = g_perBuilderWithExpectationsButNoFailures[builder]
         for (var i = 0; i < tests.length; i++) {
             // Anything extra in this case is what is listed in expectations
@@ -1793,7 +1793,7 @@ function htmlForIndividualTestOnAllBuilders(test)
     }
 
     var skippedBuilders = []
-    for (builder in currentBuilderGroup().builders) {
+    for (builder in currentBuilders()) {
         if (shownBuilders.indexOf(builder) == -1)
             skippedBuilders.push(builder);
     }
@@ -1821,7 +1821,7 @@ function htmlForIndividualTestOnAllBuildersWithResultsLinks(test)
     if (isLayoutTestResults() || isGPUTestResults()) {
         if (isLayoutTestResults())
             html += ' | ' + linkHTMLToToggleState('showLargeExpectations', 'large thumbnails');
-        if (testResults && builderMaster(testResults[0].builder) == WEBKIT_BUILDER_MASTER) {
+        if (testResults && currentBuilderGroup().master().name == WEBKIT_BUILDER_MASTER) {
             var revision = g_currentState.revision || '';
             html += '<form onsubmit="setQueryParameter(\'revision\', revision.value);' +
                 'return false;">Show results for WebKit revision: ' +
@@ -2255,8 +2255,8 @@ function loadExpectationsLayoutTests(test, expectationsContainer)
     var revisionContainer = document.createElement('div');
     revisionContainer.textContent = "Showing results for: "
     expectationsContainer.appendChild(revisionContainer);
-    for (var builder in g_builders) {
-        if (builderMaster(builder) == WEBKIT_BUILDER_MASTER) {
+    for (var builder in currentBuilders()) {
+        if (builderMaster(builder).name == WEBKIT_BUILDER_MASTER) {
             var latestRevision = g_currentState.revision || g_resultsByBuilder[builder].webkitRevision[0];
             var buildInfo = buildInfoForRevision(builder, latestRevision);
             var revisionInfo = document.createElement('div');
@@ -2272,15 +2272,15 @@ function loadExpectationsLayoutTests(test, expectationsContainer)
     var testWithoutSuffix = test.substring(0, test.lastIndexOf('.'));
     var actualResultSuffixes = ['-actual.txt', '-actual.png', '-crash-log.txt', '-diff.txt', '-wdiff.html', '-diff.png'];
 
-    for (var builder in g_builders) {
+    for (var builder in currentBuilders()) {
         var actualResultsBase;
-        if (builderMaster(builder) == WEBKIT_BUILDER_MASTER) {
+        if (builderMaster(builder).name == WEBKIT_BUILDER_MASTER) {
             var latestRevision = g_currentState.revision || g_resultsByBuilder[builder].webkitRevision[0];
             var buildInfo = buildInfoForRevision(builder, latestRevision);
             actualResultsBase = 'http://build.webkit.org/results/' + builder +
                 '/r' + buildInfo.revisionStart + ' (' + buildInfo.buildNumber + ')/';
         } else
-            actualResultsBase = TEST_RESULTS_BASE_PATH + g_builders[builder] + '/results/layout-test-results/';
+            actualResultsBase = TEST_RESULTS_BASE_PATH + currentBuilders()[builder] + '/results/layout-test-results/';
 
         for (var i = 0; i < actualResultSuffixes.length; i++) {
             addExpectationItem(expectationsContainers, expectationsContainer, null,

@@ -52,7 +52,7 @@ v8::Handle<v8::Value> V8MessageEvent::dataAccessorGetter(v8::Local<v8::String> n
     case MessageEvent::DataTypeScriptValue: {
         ScriptValue scriptValue = event->dataAsScriptValue();
         if (scriptValue.hasNoValue())
-            result = v8::Null(info.GetIsolate());
+            result = v8Null(info.GetIsolate());
         else
             result = v8::Local<v8::Value>::New(scriptValue.v8Value());
         break;
@@ -62,12 +62,12 @@ v8::Handle<v8::Value> V8MessageEvent::dataAccessorGetter(v8::Local<v8::String> n
         if (SerializedScriptValue* serializedValue = event->dataAsSerializedScriptValue())
             result = serializedValue->deserialize(event->ports(), info.GetIsolate());
         else
-            result = v8::Null(info.GetIsolate());
+            result = v8Null(info.GetIsolate());
         break;
 
     case MessageEvent::DataTypeString: {
         String stringValue = event->dataAsString();
-        result = v8String(stringValue);
+        result = v8String(stringValue, info.GetIsolate());
         break;
     }
 
@@ -119,7 +119,7 @@ v8::Handle<v8::Value> V8MessageEvent::initMessageEventCallback(const v8::Argumen
     DOMWindow* sourceArg = 0;
     if (args[6]->IsObject()) {
         v8::Handle<v8::Object> wrapper = v8::Handle<v8::Object>::Cast(args[6]);
-        v8::Handle<v8::Object> window = V8DOMWrapper::lookupDOMWrapper(V8DOMWindow::GetTemplate(), wrapper);
+        v8::Handle<v8::Object> window = wrapper->FindInstanceInPrototypeChain(V8DOMWindow::GetTemplate());
         if (!window.IsEmpty())
             sourceArg = V8DOMWindow::toNative(window);
     }

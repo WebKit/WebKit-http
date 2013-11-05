@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011 Apple Inc. All Rights Reserved.
+ * Copyright (C) 2011, 2012 Apple Inc. All Rights Reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -26,10 +26,12 @@
 #import "config.h"
 #import "MemoryPressureHandler.h"
 
+#import <WebCore/CSSValuePool.h>
 #import <WebCore/GCController.h>
 #import <WebCore/FontCache.h>
 #import <WebCore/MemoryCache.h>
 #import <WebCore/PageCache.h>
+#import <WebCore/LayerPool.h>
 #import <wtf/CurrentTime.h>
 #import <wtf/FastMalloc.h>
 
@@ -147,6 +149,10 @@ void MemoryPressureHandler::releaseMemory(bool critical)
     fontCache()->purgeInactiveFontData();
 
     memoryCache()->pruneToPercentage(critical ? 0 : 0.5f);
+
+    LayerPool::sharedPool()->drain();
+
+    cssValuePool().drain();
 
     gcController().discardAllCompiledCode();
 

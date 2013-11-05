@@ -32,10 +32,10 @@
 #include "SkiaFontWin.h"
 
 #include "AffineTransform.h"
+#include "FontPlatformDataChromiumWin.h"
 #include "Gradient.h"
 #include "Pattern.h"
 #include "PlatformContextSkia.h"
-#include "PlatformSupport.h"
 #include "SimpleFontData.h"
 #include "SkCanvas.h"
 #include "SkDevice.h"
@@ -99,7 +99,7 @@ bool windowsCanHandleTextDrawingWithoutShadow(GraphicsContext* context)
 }
 #endif
 
-static void skiaDrawText(SkCanvas* canvas,
+static void skiaDrawText(PlatformContextSkia* context,
                          const SkPoint& point,
                          SkPaint* paint,
                          const WORD* glyphs,
@@ -124,7 +124,7 @@ static void skiaDrawText(SkCanvas* canvas,
                        y + -SkIntToScalar(offsets[i].dv));
             x += SkIntToScalar(advances[i]);
         }
-        canvas->drawPosText(glyphs, numGlyphs * sizeof(uint16_t), pos, *paint);
+        context->drawPosText(glyphs, numGlyphs * sizeof(uint16_t), pos, *paint);
     } else {
         SkAutoSTArray<kLocalGlyphMax * 2, SkScalar> storage(numGlyphs);
         SkScalar* xpos = storage.get();
@@ -132,7 +132,7 @@ static void skiaDrawText(SkCanvas* canvas,
             xpos[i] = x;
             x += SkIntToScalar(advances[i]);
         }
-        canvas->drawPosTextH(glyphs, numGlyphs * sizeof(uint16_t),
+        context->drawPosTextH(glyphs, numGlyphs * sizeof(uint16_t),
                              xpos, y, *paint);
     }
 }
@@ -218,11 +218,10 @@ static void paintSkiaText(GraphicsContext* context, HFONT hfont,
                           const SkPoint* origin)
 {
     PlatformContextSkia* platformContext = context->platformContext();
-    SkCanvas* canvas = platformContext->canvas();
     TextDrawingModeFlags textMode = platformContext->getTextDrawingMode();
     // Ensure font load for printing, because PDF device needs it.
-    if (canvas->getTopDevice()->getDeviceCapabilities() & SkDevice::kVector_Capability)
-        PlatformSupport::ensureFontLoaded(hfont);
+    if (platformContext->isVector())
+        FontPlatformData::ensureFontLoaded(hfont);
 
     // Filling (if necessary). This is the common case.
     SkPaint paint;
@@ -233,7 +232,7 @@ static void paintSkiaText(GraphicsContext* context, HFONT hfont,
     bool didFill = false;
 
     if ((textMode & TextModeFill) && (SkColorGetA(paint.getColor()) || paint.getLooper())) {
-        skiaDrawText(canvas, *origin, &paint, &glyphs[0], &advances[0], &offsets[0], numGlyphs);
+        skiaDrawText(platformContext, *origin, &paint, &glyphs[0], &advances[0], &offsets[0], numGlyphs);
         didFill = true;
     }
 
@@ -260,7 +259,7 @@ static void paintSkiaText(GraphicsContext* context, HFONT hfont,
             paint.setLooper(0);
         }
 
-        skiaDrawText(canvas, *origin, &paint, &glyphs[0], &advances[0], &offsets[0], numGlyphs);
+        skiaDrawText(platformContext, *origin, &paint, &glyphs[0], &advances[0], &offsets[0], numGlyphs);
     }
 }
 

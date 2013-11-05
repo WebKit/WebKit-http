@@ -1,3 +1,149 @@
+2012-12-18  Hayato Ito  <hayato@chromium.org>
+
+        Use element.webkitCreateShadowRoot instead of WebKitShadowRoot in PerformanceTests.
+        https://bugs.webkit.org/show_bug.cgi?id=105256
+
+        Reviewed by Dimitri Glazkov.
+
+        WebKitShadowRoot constructor was deleted in favor of element.webkitCreateShadowRoot().
+
+        * ShadowDOM/ChangingClassNameShadowDOM.html:
+        * ShadowDOM/ChangingSelect.html:
+        * ShadowDOM/ContentReprojection.html:
+        * ShadowDOM/DistributionWithMultipleShadowRoots.html:
+        * ShadowDOM/LargeDistributionWithLayout.html:
+        * ShadowDOM/MultipleInsertionPoints.html:
+        * ShadowDOM/ShadowReprojection.html:
+        * ShadowDOM/SmallDistributionWithLayout.html:
+
+2012-12-17  Shinya Kawanaka  <shinyak@chromium.org>
+
+        [Shadow] LargeDistributionWithLayout.html should be updated
+        https://bugs.webkit.org/show_bug.cgi?id=105242
+
+        Reviewed by Ryosuke Niwa.
+
+        Since this test was written when distribution took O(N^2). However, now it's almost O(N), so this test finishes
+        in very short time. We should convert it unit to runs/s.
+
+        This test contains a some error to cause test failure, e.g. using obsolete API, so they also should be fixed.
+
+        * ShadowDOM/LargeDistributionWithLayout.html:
+
+2012-12-13  Ryosuke Niwa  <rniwa@webkit.org>
+
+        [chromium perf] DOM/DOMWalk.html failures
+        https://bugs.webkit.org/show_bug.cgi?id=104866
+
+        Reviewed by Eric Seidel.
+
+        Use PerfTestRunner.now which in turn uses window.performance.now() when it's available.
+
+        * DOM/resources/dom-perf.js:
+        (Interval.start):
+        (Interval.stop):
+        (BenchmarkSuite.prototype.RunSingle):
+
+2012-12-05  Shinya Kawanaka  <shinyak@chromium.org>
+
+        [Shadow] Performance tests for ShadowDOM distribution
+        https://bugs.webkit.org/show_bug.cgi?id=103617
+
+        Reviewed by Dimitri Glazkov.
+
+        We would like to measure ShadowDOM distribution performance in various cases.
+        In this patch, we add performance tests for several distribution patterns.
+
+        * ShadowDOM/ContentReprojection.html: Added.
+        * ShadowDOM/DistributionWithMultipleShadowRoots.html: Added.
+        * ShadowDOM/LargeDistributionWithLayout.html: Added.
+        * ShadowDOM/MultipleInsertionPoints.html: Added.
+        * ShadowDOM/ShadowReprojection.html: Added.
+        * ShadowDOM/SmallDistributionWithLayout.html: Added.
+
+2012-12-05  Shinya Kawanaka  <shinyak@chromium.org>
+
+        [Shadow] Performance tests of distribution for changing className
+        https://bugs.webkit.org/show_bug.cgi?id=103612
+
+        Reviewed by Dimitri Glazkov.
+
+        We would like to measure ShadowDOM performance and compare it to the similar functional HTML without using ShadowDOM.
+        In this patch, we add a case when classNames of distributed elemeents are changed.
+
+        * ShadowDOM/ChangingClassName.html: Added.
+        * ShadowDOM/ChangingClassNameShadowDOM.html: Added.
+
+2012-12-03  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Dromaeo should report individual test result
+        https://bugs.webkit.org/show_bug.cgi?id=99800
+
+        Reviewed by Eric Seidel.
+
+        Made one small modification to Droameo's webrunner.js so that it reports individual runs/s values
+        for each subtest. This allows us to compute the aggregated run/s for each iteration like other
+        performance tests.
+
+        Also stop measuring memory usage in Dromaeo tests because some Dromaeo tests (e.g. jslib-modify-jquery)
+        have unrealistic memory usage, and measuring them at the time of teardown doesn't make much sense.
+
+        * Animation/balls.html: Fixed typo: measureValueAync.
+        * Dromaeo/resources/dromaeo/web/webrunner.js:
+
+        * Dromaeo/resources/dromaeorunner.js:
+        (DRT.setup): Call prepareToMeasureValuesAsync so that DRT.teardown can use meausreValueAsync, and log
+        "Running 5 times". Since the log container will be inserted before iframe, we need to explicitly insert
+        the iframe as the first child of the body element to avoid logs from affecting the iframe's position.
+        Also specify the number of iterations by calling PerfTestRunner.iterationCount() so that we may adjust
+        the number of iterations in PerfTestRunner.
+
+        (DRT.progress): Log individual measurement for each subtest.
+        (DRT.teardown): Compute the aggregated result for each iteration, and log them using measureValueAsync.
+
+        * resources/runner.js:
+        (PerfTestRunner.logStatistics): Merged printStatistics since it's no longer needed after r131638.
+        (PerfTestRunner): Removed getAndPrintMemoryStatistics since it was used only in Dromaeo tests but
+        we no longer measure memory usage in Dromaeo tests.
+
+        (start): Increment completedRuns from -1 to 0 for Dromaeo tests where we don't want to ignore the initial
+        measurement. Note that ignoreWarmUpAndLog ignores the measurements for which completedRuns is negative.
+
+        (ignoreWarmUpAndLog): We don't measure memory usage in Dromaeo tests. See above.
+        (PerfTestRunner.iterationCount): Added. This abstraction allows us to auto-adjust the number of iterations from
+        run-perf-tests in near future.
+        (PerfTestRunner.measureValueAsync): Renamed from measureValueAync.
+
+2012-11-29  Shinya Kawanaka  <shinyak@chromium.org>
+
+        [Shadow] Performance tests of distribution for changing select attribute
+        https://bugs.webkit.org/show_bug.cgi?id=103611
+
+        Reviewed by Hajime Morita.
+
+        We would like to measure ShadowDOM performance and compare it to the similar functional HTML without using ShadowDOM.
+        In this patch, we add a case when select attribute of HTMLContentElement is changed.
+
+        * ShadowDOM/ChangingSelect.html: Added.
+        * ShadowDOM/ChangingSelectWithoutShadow.html: Added.
+        * Skipped:
+
+2012-11-19  Shinya Kawanaka  <shinyak@chromium.org>
+
+        Changing id, className, or attribute should invalidate distribution
+        https://bugs.webkit.org/show_bug.cgi?id=100738
+
+        Reviewed by Dimitri Glazkov.
+
+        Added test code to modify id/class/attribute.
+
+        * DOM/ModifyAttribute.html: Added.
+        * DOM/resources/dom-perf/modify-attribute.js: Added.
+        (ModifyAttribute.CreateElementToSetUp):
+        (ModifyAttribute.ModifyId):
+        (ModifyAttribute.ModifyClass):
+        (ModifyAttribute.ModifyTitle):
+
 2012-11-14  Ryosuke Niwa  <rniwa@webkit.org>
 
         runCount in runner.js should be renamed to iterationCount

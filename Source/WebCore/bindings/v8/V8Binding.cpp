@@ -42,12 +42,13 @@
 #include "V8DOMStringList.h"
 #include "V8DOMWindow.h"
 #include "V8Element.h"
+#include "V8NodeFilterCondition.h"
 #include "V8ObjectConstructor.h"
 #include "V8WorkerContext.h"
 #include "V8XPathNSResolver.h"
 #include "WebCoreMemoryInstrumentation.h"
 #include "WorkerContext.h"
-#include "WorkerContextExecutionProxy.h"
+#include "WorkerScriptController.h"
 #include "WorldContextHandle.h"
 #include "XPathNSResolver.h"
 #include <wtf/MathExtras.h>
@@ -96,49 +97,6 @@ v8::Handle<v8::Value> throwNotEnoughArgumentsError(v8::Isolate* isolate)
     return V8ThrowException::throwNotEnoughArgumentsError(isolate);
 }
 
-static String v8NonStringValueToWebCoreString(v8::Handle<v8::Value> object)
-{
-    ASSERT(!object->IsString());
-    if (object->IsInt32())
-        return int32ToWebCoreString(object->Int32Value());
-
-    v8::TryCatch block;
-    v8::Handle<v8::String> v8String = object->ToString();
-    // Handle the case where an exception is thrown as part of invoking toString on the object.
-    if (block.HasCaught()) {
-        throwError(block.Exception());
-        return StringImpl::empty();
-    }
-    // This path is unexpected. However there is hypothesis that it
-    // might be combination of v8 and v8 bindings bugs. For now
-    // just bailout as we'll crash if attempt to convert empty handle into a string.
-    if (v8String.IsEmpty()) {
-        ASSERT_NOT_REACHED();
-        return StringImpl::empty();
-    }
-    return v8StringToWebCoreString<String>(v8String, DoNotExternalize);
-}
-
-static AtomicString v8NonStringValueToAtomicWebCoreString(v8::Handle<v8::Value> object)
-{
-    ASSERT(!object->IsString());
-    return AtomicString(v8NonStringValueToWebCoreString(object));
-}
-
-String toWebCoreString(v8::Handle<v8::Value> value)
-{
-    if (value->IsString())
-        return v8StringToWebCoreString<String>(v8::Handle<v8::String>::Cast(value), Externalize);
-    return v8NonStringValueToWebCoreString(value);
-}
-
-AtomicString toWebCoreAtomicString(v8::Handle<v8::Value> value)
-{
-    if (value->IsString())
-        return v8StringToWebCoreString<AtomicString>(v8::Handle<v8::String>::Cast(value), Externalize);
-    return v8NonStringValueToAtomicWebCoreString(value);
-}
-
 v8::Handle<v8::Value> v8Array(PassRefPtr<DOMStringList> stringList, v8::Isolate* isolate)
 {
     if (!stringList)
@@ -147,6 +105,11 @@ v8::Handle<v8::Value> v8Array(PassRefPtr<DOMStringList> stringList, v8::Isolate*
     for (unsigned i = 0; i < stringList->length(); ++i)
         result->Set(v8Integer(i, isolate), v8String(stringList->item(i), isolate));
     return result;
+}
+
+PassRefPtr<NodeFilter> toNodeFilter(v8::Handle<v8::Value> callback)
+{
+    return NodeFilter::create(V8NodeFilterCondition::create(callback));
 }
 
 int toInt32(v8::Handle<v8::Value> value, bool& ok)
@@ -233,7 +196,7 @@ void StringCache::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
     info.addMember(m_stringCache);
 }
     
-PassRefPtr<DOMStringList> toDOMStringList(v8::Handle<v8::Value> value)
+PassRefPtr<DOMStringList> toDOMStringList(v8::Handle<v8::Value> value, v8::Isolate* isolate)
 {
     v8::Local<v8::Value> v8Value(v8::Local<v8::Value>::New(value));
 
@@ -248,7 +211,7 @@ PassRefPtr<DOMStringList> toDOMStringList(v8::Handle<v8::Value> value)
     RefPtr<DOMStringList> ret = DOMStringList::create();
     v8::Local<v8::Array> v8Array = v8::Local<v8::Array>::Cast(v8Value);
     for (size_t i = 0; i < v8Array->Length(); ++i) {
-        v8::Local<v8::Value> indexedValue = v8Array->Get(v8Integer(i));
+        v8::Local<v8::Value> indexedValue = v8Array->Get(v8Integer(i, isolate));
         ret->append(toWebCoreString(indexedValue));
     }
     return ret.release();
@@ -273,7 +236,7 @@ DOMWindow* toDOMWindow(v8::Handle<v8::Context> context)
 {
     v8::Handle<v8::Object> global = context->Global();
     ASSERT(!global.IsEmpty());
-    global = V8DOMWrapper::lookupDOMWrapper(V8DOMWindow::GetTemplate(), global);
+    global = global->FindInstanceInPrototypeChain(V8DOMWindow::GetTemplate());
     ASSERT(!global.IsEmpty());
     return V8DOMWindow::toNative(global);
 }
@@ -281,11 +244,11 @@ DOMWindow* toDOMWindow(v8::Handle<v8::Context> context)
 ScriptExecutionContext* toScriptExecutionContext(v8::Handle<v8::Context> context)
 {
     v8::Handle<v8::Object> global = context->Global();
-    v8::Handle<v8::Object> windowWrapper = V8DOMWrapper::lookupDOMWrapper(V8DOMWindow::GetTemplate(), global);
+    v8::Handle<v8::Object> windowWrapper = global->FindInstanceInPrototypeChain(V8DOMWindow::GetTemplate());
     if (!windowWrapper.IsEmpty())
         return V8DOMWindow::toNative(windowWrapper)->scriptExecutionContext();
 #if ENABLE(WORKERS)
-    v8::Handle<v8::Object> workerWrapper = V8DOMWrapper::lookupDOMWrapper(V8WorkerContext::GetTemplate(), global);
+    v8::Handle<v8::Object> workerWrapper = global->FindInstanceInPrototypeChain(V8WorkerContext::GetTemplate());
     if (!workerWrapper.IsEmpty())
         return V8WorkerContext::toNative(workerWrapper)->scriptExecutionContext();
 #endif
@@ -311,8 +274,8 @@ v8::Local<v8::Context> toV8Context(ScriptExecutionContext* context, const WorldC
             return worldContext.adjustedContext(frame->script());
 #if ENABLE(WORKERS)
     } else if (context->isWorkerContext()) {
-        if (WorkerContextExecutionProxy* proxy = static_cast<WorkerContext*>(context)->script()->proxy())
-            return proxy->context();
+        if (WorkerScriptController* script = static_cast<WorkerContext*>(context)->script())
+            return script->context();
 #endif
     }
     return v8::Local<v8::Context>();

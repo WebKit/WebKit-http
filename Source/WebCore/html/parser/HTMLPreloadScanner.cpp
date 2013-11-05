@@ -74,6 +74,8 @@ public:
             if (m_tagName == scriptTag || m_tagName == imgTag) {
                 if (attributeName == srcAttr)
                     setUrlToLoad(attributeValue);
+                else if (attributeName == crossoriginAttr && !attributeValue.isNull())
+                    m_crossOriginMode = stripLeadingAndTrailingHTMLSpaces(attributeValue);
             } else if (m_tagName == linkTag) {
                 if (attributeName == hrefAttr)
                     setUrlToLoad(attributeValue);
@@ -127,9 +129,12 @@ public:
             return;
 
         CachedResourceLoader* cachedResourceLoader = document->cachedResourceLoader();
-        ResourceRequest request = document->completeURL(m_urlToLoad, baseURL);
-        if (m_tagName == scriptTag)
+        CachedResourceRequest request(ResourceRequest(document->completeURL(m_urlToLoad, baseURL)));
+        request.setInitiator(tagName());
+        if (m_tagName == scriptTag) {
+            request.mutableResourceRequest().setAllowCookies(crossOriginModeAllowsCookies());
             cachedResourceLoader->preload(CachedResource::Script, request, m_charset, scanningBody);
+        }
         else if (m_tagName == imgTag || (m_tagName == inputTag && m_inputIsImage))
             cachedResourceLoader->preload(CachedResource::ImageResource, request, String(), scanningBody);
         else if (m_tagName == linkTag && m_linkIsStyleSheet && m_linkMediaAttributeIsScreen) 
@@ -140,10 +145,17 @@ public:
     const String& baseElementHref() const { return m_baseElementHref; }
 
 private:
+
+    bool crossOriginModeAllowsCookies()
+    {
+        return m_crossOriginMode.isNull() || equalIgnoringCase(m_crossOriginMode, "use-credentials");
+    }
+
     AtomicString m_tagName;
     String m_urlToLoad;
     String m_charset;
     String m_baseElementHref;
+    String m_crossOriginMode;
     bool m_linkIsStyleSheet;
     bool m_linkMediaAttributeIsScreen;
     bool m_inputIsImage;

@@ -62,6 +62,7 @@ private:
 
     virtual bool hasChangedProperties() const OVERRIDE { return m_changedProperties; }
     virtual void resetChangedProperties() OVERRIDE { m_changedProperties = 0; }
+    virtual void syncLayerPositionForViewportRect(const LayoutRect& viewportRect) OVERRIDE;
 
     virtual void dumpProperties(TextStream&, int indent) const OVERRIDE;
 

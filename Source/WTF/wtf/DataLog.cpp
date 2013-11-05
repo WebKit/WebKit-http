@@ -26,43 +26,67 @@
 #include "config.h"
 #include "DataLog.h"
 #include <stdarg.h>
+#include <wtf/FilePrintStream.h>
+#include <wtf/WTFThreadData.h>
 #include <wtf/Threading.h>
+
+#if OS(UNIX)
+#include <unistd.h>
+#endif
+
+#if OS(WINCE)
+#ifndef _IONBF
+#define _IONBF 0x0004
+#endif
+#endif
 
 #define DATA_LOG_TO_FILE 0
 
-// Uncomment to force logging to the given file regardless of what the environment variable says.
-// #define DATA_LOG_FILENAME "/tmp/WTFLog.txt"
+// Uncomment to force logging to the given file regardless of what the environment variable says. Note that
+// we will append ".<pid>.txt" where <pid> is the PID.
+
+// This path won't work on Windows, make sure to change to something like C:\\Users\\<more path>\\log.txt.
+#define DATA_LOG_FILENAME "/tmp/WTFLog"
 
 namespace WTF {
 
-#if DATA_LOG_TO_FILE
-static FILE* file;
+#if USE(PTHREADS)
+static pthread_once_t initializeLogFileOnceKey = PTHREAD_ONCE_INIT;
+#endif
+
+static FilePrintStream* file;
 
 static void initializeLogFileOnce()
 {
+#if DATA_LOG_TO_FILE
 #ifdef DATA_LOG_FILENAME
     const char* filename = DATA_LOG_FILENAME;
 #else
     const char* filename = getenv("WTF_DATA_LOG_FILENAME");
 #endif
-    if (filename) {
-        file = fopen(filename, "w");
-        if (!file)
-            fprintf(stderr, "Warning: Could not open log file %s for writing.\n", filename);
-    }
-    if (!file)
-        file = stderr;
-    
-    setvbuf(file, 0, _IONBF, 0); // Prefer unbuffered output, so that we get a full log upon crash or deadlock.
-}
+    char actualFilename[1024];
 
-#if OS(DARWIN)
-static pthread_once_t initializeLogFileOnceKey = PTHREAD_ONCE_INIT;
+#if PLATFORM(WIN)
+    _snprintf(actualFilename, sizeof(actualFilename), "%s.%d.txt", filename, GetCurrentProcessId());
+#else
+    snprintf(actualFilename, sizeof(actualFilename), "%s.%d.txt", filename, getpid());
 #endif
+
+    if (filename) {
+        file = FilePrintStream::open(actualFilename, "w").leakPtr();
+        if (!file)
+            fprintf(stderr, "Warning: Could not open log file %s for writing.\n", actualFilename);
+    }
+#endif // DATA_LOG_TO_FILE
+    if (!file)
+        file = new FilePrintStream(stderr, FilePrintStream::Borrow);
+    
+    setvbuf(file->file(), 0, _IONBF, 0); // Prefer unbuffered output, so that we get a full log upon crash or deadlock.
+}
 
 static void initializeLogFile()
 {
-#if OS(DARWIN)
+#if USE(PTHREADS)
     pthread_once(&initializeLogFileOnceKey, initializeLogFileOnce);
 #else
     if (!file)
@@ -70,34 +94,28 @@ static void initializeLogFile()
 #endif
 }
 
-FILE* dataFile()
+FilePrintStream& dataFile()
 {
     initializeLogFile();
-    return file;
-}
-#else // DATA_LOG_TO_FILE
-FILE* dataFile()
-{
-    return stderr;
-}
-#endif // DATA_LOG_TO_FILE
-
-void dataLogV(const char* format, va_list argList)
-{
-    vfprintf(dataFile(), format, argList);
+    return *file;
 }
 
-void dataLog(const char* format, ...)
+void dataLogFV(const char* format, va_list argList)
+{
+    dataFile().vprintf(format, argList);
+}
+
+void dataLogF(const char* format, ...)
 {
     va_list argList;
     va_start(argList, format);
-    dataLogV(format, argList);
+    dataLogFV(format, argList);
     va_end(argList);
 }
 
-void dataLogString(const char* str)
+void dataLogFString(const char* str)
 {
-    fputs(str, dataFile());
+    dataFile().printf("%s", str);
 }
 
 } // namespace WTF

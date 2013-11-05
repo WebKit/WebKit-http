@@ -26,8 +26,10 @@
 #include "CachedResource.h"
 #include "ImageObserver.h"
 #include "IntRect.h"
+#include "IntSizeHash.h"
 #include "LayoutSize.h"
 #include "SVGImageCache.h"
+#include <wtf/HashMap.h>
 #include <wtf/Vector.h>
 
 namespace WebCore {
@@ -52,13 +54,14 @@ public:
     Image* image(); // Returns the nullImage() if the image is not available yet.
     Image* imageForRenderer(const RenderObject*); // Returns the nullImage() if the image is not available yet.
     bool hasImage() const { return m_image.get(); }
+    bool currentFrameHasAlpha(const RenderObject*); // Side effect: ensures decoded image is in cache, therefore should only be called when about to draw the image.
 
     std::pair<Image*, float> brokenImage(float deviceScaleFactor) const; // Returns an image and the image's resolution scale factor.
     bool willPaintBrokenImage() const; 
 
     bool canRender(const RenderObject* renderer, float multiplier) { return !errorOccurred() && !imageSizeForRenderer(renderer, multiplier).isEmpty(); }
 
-    void setContainerSizeForRenderer(const RenderObject*, const IntSize&, float);
+    void setContainerSizeForRenderer(const CachedImageClient*, const IntSize&, float);
     bool usesImageContainerSize() const;
     bool imageHasRelativeWidth() const;
     bool imageHasRelativeHeight() const;
@@ -75,7 +78,7 @@ public:
 
     virtual void data(PassRefPtr<ResourceBuffer> data, bool allDataReceived);
     virtual void error(CachedResource::Status);
-    virtual void setResponse(const ResourceResponse&);
+    virtual void responseReceived(const ResourceResponse&);
     
     // For compatibility, images keep loading even if there are HTTP errors.
     virtual bool shouldIgnoreHTTPStatusCodeErrors() const { return true; }
@@ -105,6 +108,10 @@ private:
     void notifyObservers(const IntRect* changeRect = 0);
     virtual PurgePriority purgePriority() const { return PurgeFirst; }
     void checkShouldPaintBrokenImage();
+
+    typedef pair<IntSize, float> SizeAndZoom;
+    typedef HashMap<const CachedImageClient*, SizeAndZoom> ContainerSizeRequests;
+    ContainerSizeRequests m_pendingContainerSizeRequests;
 
     RefPtr<Image> m_image;
 #if ENABLE(SVG)

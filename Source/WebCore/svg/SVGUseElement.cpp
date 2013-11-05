@@ -36,6 +36,7 @@
 #include "EventListener.h"
 #include "HTMLNames.h"
 #include "NodeRenderStyle.h"
+#include "NodeTraversal.h"
 #include "RegisteredEventListener.h"
 #include "RenderSVGResource.h"
 #include "RenderSVGTransformableContainer.h"
@@ -107,8 +108,7 @@ PassRefPtr<SVGUseElement> SVGUseElement::create(const QualifiedName& tagName, Do
 
 SVGUseElement::~SVGUseElement()
 {
-    if (m_cachedDocument)
-        m_cachedDocument->removeClient(this);
+    setCachedDocument(0);
 
     clearResourceReferences();
 }
@@ -153,28 +153,28 @@ bool SVGUseElement::isSupportedAttribute(const QualifiedName& attrName)
     return supportedAttributes.contains<QualifiedName, SVGAttributeHashTranslator>(attrName);
 }
 
-void SVGUseElement::parseAttribute(const Attribute& attribute)
+void SVGUseElement::parseAttribute(const QualifiedName& name, const AtomicString& value)
 {
     SVGParsingError parseError = NoError;
 
-    if (!isSupportedAttribute(attribute.name()))
-        SVGStyledTransformableElement::parseAttribute(attribute);
-    else if (attribute.name() == SVGNames::xAttr)
-        setXBaseValue(SVGLength::construct(LengthModeWidth, attribute.value(), parseError));
-    else if (attribute.name() == SVGNames::yAttr)
-        setYBaseValue(SVGLength::construct(LengthModeHeight, attribute.value(), parseError));
-    else if (attribute.name() == SVGNames::widthAttr)
-        setWidthBaseValue(SVGLength::construct(LengthModeWidth, attribute.value(), parseError, ForbidNegativeLengths));
-    else if (attribute.name() == SVGNames::heightAttr)
-        setHeightBaseValue(SVGLength::construct(LengthModeHeight, attribute.value(), parseError, ForbidNegativeLengths));
-    else if (SVGTests::parseAttribute(attribute)
-             || SVGLangSpace::parseAttribute(attribute)
-             || SVGExternalResourcesRequired::parseAttribute(attribute)
-             || SVGURIReference::parseAttribute(attribute)) {
+    if (!isSupportedAttribute(name))
+        SVGStyledTransformableElement::parseAttribute(name, value);
+    else if (name == SVGNames::xAttr)
+        setXBaseValue(SVGLength::construct(LengthModeWidth, value, parseError));
+    else if (name == SVGNames::yAttr)
+        setYBaseValue(SVGLength::construct(LengthModeHeight, value, parseError));
+    else if (name == SVGNames::widthAttr)
+        setWidthBaseValue(SVGLength::construct(LengthModeWidth, value, parseError, ForbidNegativeLengths));
+    else if (name == SVGNames::heightAttr)
+        setHeightBaseValue(SVGLength::construct(LengthModeHeight, value, parseError, ForbidNegativeLengths));
+    else if (SVGTests::parseAttribute(name, value)
+             || SVGLangSpace::parseAttribute(name, value)
+             || SVGExternalResourcesRequired::parseAttribute(name, value)
+             || SVGURIReference::parseAttribute(name, value)) {
     } else
         ASSERT_NOT_REACHED();
 
-    reportAttributeParsingError(parseError, attribute);
+    reportAttributeParsingError(parseError, name, value);
 }
 
 static inline bool isWellFormedDocument(Document* document)
@@ -256,18 +256,15 @@ void SVGUseElement::svgAttributeChanged(const QualifiedName& attrName)
             KURL url = document()->completeURL(href());
             if (url.hasFragmentIdentifier()) {
                 CachedResourceRequest request(ResourceRequest(url.string()));
-                m_cachedDocument = document()->cachedResourceLoader()->requestSVGDocument(request);
-                if (m_cachedDocument)
-                    m_cachedDocument->addClient(this);
+                request.setInitiator(this);
+                setCachedDocument(document()->cachedResourceLoader()->requestSVGDocument(request));
             }
-        }
+        } else
+            setCachedDocument(0);
 
-        if (m_cachedDocument && !isExternalReference) {
-            m_cachedDocument->removeClient(this);
-            m_cachedDocument = 0;
-        }
         if (!m_wasInsertedByParser)
             buildPendingResource();
+
         return;
     }
 
@@ -528,7 +525,7 @@ void SVGUseElement::buildShadowAndInstanceTree(SVGElement* target)
 
     // Rebuild all dependent use elements.
     ASSERT(document());
-    document()->accessSVGExtensions()->removeAllElementReferencesForTarget(this);
+    document()->accessSVGExtensions()->rebuildAllElementReferencesForTarget(this);
 
     // Eventually dump instance tree
 #ifdef DUMP_INSTANCE_TREE
@@ -611,7 +608,7 @@ void SVGUseElement::buildInstanceTree(SVGElement* target, SVGElementInstance* ta
         if (foundProblem)
             return;
 
-        // We only need to track fist degree <use> dependencies. Indirect references are handled
+        // We only need to track first degree <use> dependencies. Indirect references are handled
         // as the invalidation bubbles up the dependency chain.
         if (!foundUse) {
             ASSERT(document());
@@ -687,18 +684,18 @@ bool SVGUseElement::hasCycleUseReferencing(SVGUseElement* use, SVGElementInstanc
     return false;
 }
 
-static inline void removeDisallowedElementsFromSubtree(Node* subtree)
+static inline void removeDisallowedElementsFromSubtree(Element* subtree)
 {
     ASSERT(!subtree->inDocument());
-    Node* node = subtree->firstChild();
-    while (node) {
-        if (isDisallowedElement(node)) {
-            Node* next = node->traverseNextSibling(subtree);
+    Element* element = ElementTraversal::firstWithin(subtree);
+    while (element) {
+        if (isDisallowedElement(element)) {
+            Element* next = ElementTraversal::nextSkippingChildren(element, subtree);
             // The subtree is not in document so this won't generate events that could mutate the tree.
-            node->parentNode()->removeChild(node);
-            node = next;
+            element->parentNode()->removeChild(element);
+            element = next;
         } else
-            node = node->traverseNextNode(subtree);
+            element = ElementTraversal::next(element, subtree);
     }
 }
 
@@ -989,6 +986,19 @@ void SVGUseElement::finishParsingChildren()
         buildPendingResource();
         m_wasInsertedByParser = false;
     }
+}
+
+void SVGUseElement::setCachedDocument(CachedResourceHandle<CachedSVGDocument> cachedDocument)
+{
+    if (m_cachedDocument == cachedDocument)
+        return;
+
+    if (m_cachedDocument)
+        m_cachedDocument->removeClient(this);
+
+    m_cachedDocument = cachedDocument;
+    if (m_cachedDocument)
+        m_cachedDocument->addClient(this);
 }
 
 }

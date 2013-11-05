@@ -21,6 +21,7 @@
 
 #include "GStreamerVersioning.h"
 
+#if USE(GSTREAMER)
 #include "IntSize.h"
 #include <wtf/UnusedParam.h>
 
@@ -32,6 +33,23 @@ void webkitGstObjectRefSink(GstObject* gstObject)
     gst_object_ref(gstObject);
     gst_object_sink(gstObject);
 #endif
+}
+
+GstPad* webkitGstGhostPadFromStaticTemplate(GstStaticPadTemplate* staticPadTemplate, const gchar* name, GstPad* target)
+{
+    GstPad* pad;
+    GstPadTemplate* padTemplate = gst_static_pad_template_get(staticPadTemplate);
+
+    if (target)
+        pad = gst_ghost_pad_new_from_template(name, target, padTemplate);
+    else
+        pad = gst_ghost_pad_new_no_target_from_template(name, padTemplate);
+
+#ifdef GST_API_VERSION_1
+    gst_object_unref(padTemplate);
+#endif
+
+    return pad;
 }
 
 GRefPtr<GstCaps> webkitGstGetPadCaps(GstPad* pad)
@@ -46,6 +64,7 @@ GRefPtr<GstCaps> webkitGstGetPadCaps(GstPad* pad)
 #endif
 }
 
+#if ENABLE(VIDEO)
 bool getVideoSizeAndFormatFromCaps(GstCaps* caps, WebCore::IntSize& size, GstVideoFormat& format, int& pixelAspectRatioNumerator, int& pixelAspectRatioDenominator, int& stride)
 {
 #ifdef GST_API_VERSION_1
@@ -73,6 +92,7 @@ bool getVideoSizeAndFormatFromCaps(GstCaps* caps, WebCore::IntSize& size, GstVid
 
     return true;
 }
+#endif
 
 GstBuffer* createGstBuffer(GstBuffer* buffer)
 {
@@ -121,3 +141,4 @@ void notifyGstTagsOnPad(GstElement* element, GstPad* pad, GstTagList* tags)
     gst_element_found_tags_for_pad(element, pad, tags);
 #endif
 }
+#endif // USE(GSTREAMER)

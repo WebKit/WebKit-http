@@ -366,9 +366,12 @@ webkit2_sources += \
 	Source/WebKit2/Shared/BlockingResponseMap.h \
 	Source/WebKit2/Shared/ShareableBitmap.cpp \
 	Source/WebKit2/Shared/ShareableBitmap.h \
+	Source/WebKit2/Shared/CacheModel.cpp \
 	Source/WebKit2/Shared/CacheModel.h \
 	Source/WebKit2/Shared/ChildProcess.cpp \
 	Source/WebKit2/Shared/ChildProcess.h \
+	Source/WebKit2/Shared/ChildProcessProxy.cpp \
+	Source/WebKit2/Shared/ChildProcessProxy.h \
 	Source/WebKit2/Shared/CommandLine.h \
 	Source/WebKit2/Shared/ConnectionStack.cpp \
 	Source/WebKit2/Shared/ConnectionStack.h \
@@ -630,6 +633,8 @@ webkit2_sources += \
 	Source/WebKit2/UIProcess/API/cpp/WKRetainPtr.h \
 	Source/WebKit2/UIProcess/API/gtk/PageClientImpl.h \
 	Source/WebKit2/UIProcess/API/gtk/PageClientImpl.cpp \
+	Source/WebKit2/UIProcess/API/gtk/WebKit2GtkAuthenticationDialog.cpp \
+	Source/WebKit2/UIProcess/API/gtk/WebKit2GtkAuthenticationDialog.h \
 	Source/WebKit2/UIProcess/API/gtk/WebKitBackForwardList.h \
 	Source/WebKit2/UIProcess/API/gtk/WebKitBackForwardList.cpp \
 	Source/WebKit2/UIProcess/API/gtk/WebKitBackForwardListItem.h \
@@ -771,6 +776,8 @@ webkit2_sources += \
 	Source/WebKit2/UIProcess/BackingStore.h \
 	Source/WebKit2/UIProcess/Downloads/DownloadProxy.cpp \
 	Source/WebKit2/UIProcess/Downloads/DownloadProxy.h \
+	Source/WebKit2/UIProcess/Downloads/DownloadProxyMap.cpp \
+	Source/WebKit2/UIProcess/Downloads/DownloadProxyMap.h \
 	Source/WebKit2/UIProcess/DrawingAreaProxy.cpp \
 	Source/WebKit2/UIProcess/DrawingAreaProxy.h \
 	Source/WebKit2/UIProcess/DrawingAreaProxyImpl.cpp \
@@ -812,6 +819,8 @@ webkit2_sources += \
 	Source/WebKit2/UIProcess/Notifications/WebNotificationProvider.cpp \
 	Source/WebKit2/UIProcess/Notifications/WebNotificationProvider.h \
 	Source/WebKit2/UIProcess/PageClient.h \
+	Source/WebKit2/UIProcess/Plugins/PlugInAutoStartProvider.cpp \
+	Source/WebKit2/UIProcess/Plugins/PlugInAutoStartProvider.h \
 	Source/WebKit2/UIProcess/Plugins/PluginInfoStore.cpp \
 	Source/WebKit2/UIProcess/Plugins/PluginInfoStore.h \
 	Source/WebKit2/UIProcess/Plugins/PluginProcessManager.cpp \
@@ -849,6 +858,8 @@ webkit2_sources += \
 	Source/WebKit2/UIProcess/WebConnectionToWebProcess.h \
 	Source/WebKit2/UIProcess/WebContext.cpp \
 	Source/WebKit2/UIProcess/WebContext.h \
+	Source/WebKit2/UIProcess/WebContextClient.cpp \
+	Source/WebKit2/UIProcess/WebContextClient.h \
 	Source/WebKit2/UIProcess/WebContextConnectionClient.cpp \
 	Source/WebKit2/UIProcess/WebContextConnectionClient.h \
 	Source/WebKit2/UIProcess/WebContextInjectedBundleClient.cpp \
@@ -943,7 +954,7 @@ webkit2_sources += \
 	Source/WebKit2/UIProcess/InspectorServer/WebSocketServerConnection.cpp \
 	Source/WebKit2/UIProcess/InspectorServer/WebSocketServerConnection.h \
 	Source/WebKit2/UIProcess/InspectorServer/gtk/WebInspectorServerGtk.cpp \
-	Source/WebKit2/UIProcess/InspectorServer/gtk/WebSocketServerGtk.cpp \
+	Source/WebKit2/UIProcess/InspectorServer/soup/WebSocketServerSoup.cpp \
 	Source/WebKit2/UIProcess/WebVibrationProvider.cpp \
 	Source/WebKit2/UIProcess/WebVibrationProvider.h \
 	Source/WebKit2/UIProcess/WebVibrationProxy.cpp \
@@ -1113,7 +1124,6 @@ webkit2_sources += \
 	Source/WebKit2/WebProcess/WebCoreSupport/gtk/WebDragClientGtk.cpp \
 	Source/WebKit2/WebProcess/WebCoreSupport/gtk/WebEditorClientGtk.cpp \
 	Source/WebKit2/WebProcess/WebCoreSupport/gtk/WebErrorsGtk.cpp \
-	Source/WebKit2/WebProcess/WebCoreSupport/gtk/WebFrameLoaderClientGtk.cpp \
 	Source/WebKit2/WebProcess/WebCoreSupport/gtk/WebPopupMenuGtk.cpp \
 	Source/WebKit2/WebProcess/WebCoreSupport/soup/WebFrameNetworkingContext.cpp \
 	Source/WebKit2/WebProcess/WebCoreSupport/soup/WebFrameNetworkingContext.h \
@@ -1147,6 +1157,8 @@ webkit2_sources += \
 	Source/WebKit2/WebProcess/WebCoreSupport/WebNotificationClient.h \
 	Source/WebKit2/WebProcess/WebCoreSupport/WebPlatformStrategies.cpp \
 	Source/WebKit2/WebProcess/WebCoreSupport/WebPlatformStrategies.h \
+	Source/WebKit2/WebProcess/WebCoreSupport/WebPlugInClient.cpp \
+	Source/WebKit2/WebProcess/WebCoreSupport/WebPlugInClient.h \
 	Source/WebKit2/WebProcess/WebCoreSupport/WebPopupMenu.cpp \
 	Source/WebKit2/WebProcess/WebCoreSupport/WebPopupMenu.h \
 	Source/WebKit2/WebProcess/WebCoreSupport/WebSearchPopupMenu.cpp \
@@ -1167,9 +1179,9 @@ webkit2_sources += \
 	Source/WebKit2/WebProcess/WebPage/FindController.h \
 	Source/WebKit2/WebProcess/WebPage/TapHighlightController.cpp \
 	Source/WebKit2/WebProcess/WebPage/TapHighlightController.h \
+    Source/WebKit2/WebProcess/WebPage/atk/WebPageAccessibilityObject.h \
+    Source/WebKit2/WebProcess/WebPage/atk/WebPageAccessibilityObjectAtk.cpp \
 	Source/WebKit2/WebProcess/WebPage/gtk/WebInspectorGtk.cpp \
-	Source/WebKit2/WebProcess/WebPage/gtk/WebPageAccessibilityObject.h \
-	Source/WebKit2/WebProcess/WebPage/gtk/WebPageAccessibilityObject.cpp \
 	Source/WebKit2/WebProcess/WebPage/gtk/WebPageGtk.cpp \
 	Source/WebKit2/WebProcess/WebPage/gtk/WebPrintOperationGtk.cpp \
 	Source/WebKit2/WebProcess/WebPage/gtk/WebPrintOperationGtk.h \
@@ -1273,6 +1285,8 @@ webkit2_plugin_process_sources += \
 	Source/WebKit2/PluginProcess/unix/PluginProcessUnix.cpp \
 	Source/WebKit2/Shared/ChildProcess.cpp \
 	Source/WebKit2/Shared/ChildProcess.h \
+	Source/WebKit2/Shared/ChildProcessProxy.cpp \
+	Source/WebKit2/Shared/ChildProcessProxy.h \
 	Source/WebKit2/Shared/ConnectionStack.cpp \
 	Source/WebKit2/Shared/ConnectionStack.h \
 	Source/WebKit2/Shared/ProcessExecutablePath.h \

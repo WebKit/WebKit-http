@@ -37,6 +37,7 @@
 #include "InspectorFrontend.h"
 #include "InspectorOverlay.h"
 #include "InspectorValues.h"
+#include "RenderLayer.h"
 #include "Timer.h"
 
 #include <wtf/Deque.h>
@@ -141,12 +142,13 @@ public:
     virtual void pushNodeByPathToFrontend(ErrorString*, const String& path, int* nodeId);
     virtual void hideHighlight(ErrorString*);
     virtual void highlightRect(ErrorString*, int x, int y, int width, int height, const RefPtr<InspectorObject>* color, const RefPtr<InspectorObject>* outlineColor);
-    virtual void highlightNode(ErrorString*, int nodeId, const RefPtr<InspectorObject>& highlightConfig);
+    virtual void highlightNode(ErrorString*, const RefPtr<InspectorObject>& highlightConfig, const int* nodeId, const String* objectId);
     virtual void highlightFrame(ErrorString*, const String& frameId, const RefPtr<InspectorObject>* color, const RefPtr<InspectorObject>* outlineColor);
     virtual void moveTo(ErrorString*, int nodeId, int targetNodeId, const int* anchorNodeId, int* newNodeId);
     virtual void undo(ErrorString*);
     virtual void redo(ErrorString*);
     virtual void markUndoableState(ErrorString*);
+    virtual void focus(ErrorString*, int nodeId);
 
     void getEventListeners(Node*, Vector<EventListenerInfo>& listenersArray, bool includeAncestors);
 
@@ -199,6 +201,7 @@ public:
 
     // Methods called from other agents.
     InspectorPageAgent* pageAgent() { return m_pageAgent; }
+    int pushNodePathForRenderLayerToFrontend(const RenderLayer*);
 
 private:
     InspectorDOMAgent(InstrumentingAgents*, InspectorPageAgent*, InspectorState*, InjectedScriptManager*, InspectorOverlay*);

@@ -52,6 +52,8 @@ javascriptcore_sources += \
 	Source/JavaScriptCore/API/JSObjectRef.cpp \
 	Source/JavaScriptCore/API/JSObjectRefPrivate.h \
 	Source/JavaScriptCore/API/JSRetainPtr.h \
+	Source/JavaScriptCore/API/JSScriptRef.cpp \
+	Source/JavaScriptCore/API/JSScriptRefPrivate.h \
 	Source/JavaScriptCore/API/JSStringRef.cpp \
 	Source/JavaScriptCore/API/JSValueRef.cpp \
 	Source/JavaScriptCore/API/JSWeakObjectMapRefInternal.h \
@@ -94,9 +96,14 @@ javascriptcore_sources += \
 	Source/JavaScriptCore/bytecode/CallLinkStatus.cpp \
 	Source/JavaScriptCore/bytecode/CallLinkStatus.h \
 	Source/JavaScriptCore/bytecode/CallReturnOffsetToBytecodeOffset.h \
+	Source/JavaScriptCore/bytecode/CodeType.cpp \
 	Source/JavaScriptCore/bytecode/CodeType.h \
 	Source/JavaScriptCore/bytecode/CodeBlock.cpp \
 	Source/JavaScriptCore/bytecode/CodeBlock.h \
+	Source/JavaScriptCore/bytecode/CodeBlockHash.cpp \
+	Source/JavaScriptCore/bytecode/CodeBlockHash.h \
+	Source/JavaScriptCore/bytecode/CodeBlockWithJITType.h \
+	Source/JavaScriptCore/bytecode/CodeOrigin.cpp \
 	Source/JavaScriptCore/bytecode/CodeOrigin.h \
 	Source/JavaScriptCore/bytecode/Comment.h \
 	Source/JavaScriptCore/bytecode/DataFormat.h \
@@ -105,6 +112,8 @@ javascriptcore_sources += \
 	Source/JavaScriptCore/bytecode/EvalCodeCache.h \
 	Source/JavaScriptCore/bytecode/ExecutionCounter.cpp \
 	Source/JavaScriptCore/bytecode/ExecutionCounter.h \
+	Source/JavaScriptCore/bytecode/ExitKind.cpp \
+	Source/JavaScriptCore/bytecode/ExitKind.h \
 	Source/JavaScriptCore/bytecode/ExpressionRangeInfo.h \
 	Source/JavaScriptCore/bytecode/GetByIdStatus.cpp \
 	Source/JavaScriptCore/bytecode/GetByIdStatus.h \
@@ -128,6 +137,8 @@ javascriptcore_sources += \
 	Source/JavaScriptCore/bytecode/PutByIdStatus.cpp \
 	Source/JavaScriptCore/bytecode/PutByIdStatus.h \
 	Source/JavaScriptCore/bytecode/PutKind.h \
+	Source/JavaScriptCore/bytecode/ReduceWhitespace.cpp \
+	Source/JavaScriptCore/bytecode/ReduceWhitespace.h \
 	Source/JavaScriptCore/bytecode/ResolveGlobalStatus.cpp \
 	Source/JavaScriptCore/bytecode/ResolveGlobalStatus.h \
 	Source/JavaScriptCore/bytecode/ResolveOperation.h \
@@ -177,8 +188,6 @@ javascriptcore_sources += \
 	Source/JavaScriptCore/dfg/DFGCFAPhase.cpp \
 	Source/JavaScriptCore/dfg/DFGCFAPhase.h \
 	Source/JavaScriptCore/dfg/DFGCommon.h \
-	Source/JavaScriptCore/dfg/DFGCorrectableJumpPoint.cpp \
-	Source/JavaScriptCore/dfg/DFGCorrectableJumpPoint.h \
 	Source/JavaScriptCore/dfg/DFGConstantFoldingPhase.cpp \
 	Source/JavaScriptCore/dfg/DFGConstantFoldingPhase.h \
 	Source/JavaScriptCore/dfg/DFGCSEPhase.cpp \
@@ -219,6 +228,7 @@ javascriptcore_sources += \
 	Source/JavaScriptCore/dfg/DFGOSRExitCompiler.h \
 	Source/JavaScriptCore/dfg/DFGOSRExit.h \
 	Source/JavaScriptCore/dfg/DFGOSRExit.cpp \
+	Source/JavaScriptCore/dfg/DFGOSRExitCompilationInfo.h \
 	Source/JavaScriptCore/dfg/DFGPhase.cpp \
 	Source/JavaScriptCore/dfg/DFGPhase.h \
 	Source/JavaScriptCore/dfg/DFGPredictionPropagationPhase.cpp \
@@ -250,17 +260,22 @@ javascriptcore_sources += \
 	Source/JavaScriptCore/dfg/DFGValidate.cpp \
 	Source/JavaScriptCore/dfg/DFGValidate.h \
 	Source/JavaScriptCore/dfg/DFGVariableAccessData.h \
+	Source/JavaScriptCore/dfg/DFGVariableAccessDataDump.cpp \
+	Source/JavaScriptCore/dfg/DFGVariableAccessDataDump.h \
 	Source/JavaScriptCore/dfg/DFGVirtualRegisterAllocationPhase.cpp \
 	Source/JavaScriptCore/dfg/DFGVirtualRegisterAllocationPhase.h \
+	Source/JavaScriptCore/disassembler/Disassembler.cpp \
 	Source/JavaScriptCore/disassembler/Disassembler.h \
 	Source/JavaScriptCore/heap/CopiedAllocator.h \
 	Source/JavaScriptCore/heap/CopiedBlock.h \
+	Source/JavaScriptCore/heap/CopiedBlockInlines.h \
 	Source/JavaScriptCore/heap/CopiedSpace.cpp \
 	Source/JavaScriptCore/heap/CopiedSpace.h \
 	Source/JavaScriptCore/heap/CopiedSpaceInlines.h \
-    Source/JavaScriptCore/heap/CopyVisitor.h \
-    Source/JavaScriptCore/heap/CopyVisitorInlines.h \
-    Source/JavaScriptCore/heap/CopyVisitor.cpp \
+	Source/JavaScriptCore/heap/CopyVisitor.h \
+	Source/JavaScriptCore/heap/CopyVisitorInlines.h \
+	Source/JavaScriptCore/heap/CopyVisitor.cpp \
+	Source/JavaScriptCore/heap/CopyWorkList.h \
 	Source/JavaScriptCore/heap/CardSet.h \
 	Source/JavaScriptCore/heap/ConservativeRoots.cpp \
 	Source/JavaScriptCore/heap/ConservativeRoots.h \
@@ -384,6 +399,8 @@ javascriptcore_sources += \
 	Source/JavaScriptCore/interpreter/VMInspector.h \
 	Source/JavaScriptCore/JavaScriptCorePrefix.h \
 	Source/JavaScriptCore/jit/CompactJITCodeMap.h \
+	Source/JavaScriptCore/jit/ClosureCallStubRoutine.cpp \
+	Source/JavaScriptCore/jit/ClosureCallStubRoutine.h \
 	Source/JavaScriptCore/jit/ExecutableAllocator.cpp \
 	Source/JavaScriptCore/jit/ExecutableAllocator.h \
 	Source/JavaScriptCore/jit/GCAwareJITStubRoutine.cpp \
@@ -394,8 +411,11 @@ javascriptcore_sources += \
 	Source/JavaScriptCore/jit/JITArithmetic.cpp \
 	Source/JavaScriptCore/jit/JITCall32_64.cpp \
 	Source/JavaScriptCore/jit/JITCall.cpp \
+	Source/JavaScriptCore/jit/JITCode.cpp \
 	Source/JavaScriptCore/jit/JITCode.h \
 	Source/JavaScriptCore/jit/JITCompilationEffort.h \
+	Source/JavaScriptCore/jit/JITDisassembler.cpp \
+	Source/JavaScriptCore/jit/JITDisassembler.h \
 	Source/JavaScriptCore/jit/JITDriver.h \
 	Source/JavaScriptCore/jit/JIT.cpp \
 	Source/JavaScriptCore/jit/JIT.h \
@@ -458,14 +478,39 @@ javascriptcore_sources += \
 	Source/JavaScriptCore/parser/SourceProviderCacheItem.h \
 	Source/JavaScriptCore/parser/SyntaxChecker.h \
 	Source/JavaScriptCore/profiler/CallIdentifier.h \
+	Source/JavaScriptCore/profiler/ProfilerBytecode.cpp \
+	Source/JavaScriptCore/profiler/ProfilerBytecode.h \
+	Source/JavaScriptCore/profiler/ProfilerBytecodeSequence.cpp \
+	Source/JavaScriptCore/profiler/ProfilerBytecodeSequence.h \
+	Source/JavaScriptCore/profiler/ProfilerBytecodes.cpp \
+	Source/JavaScriptCore/profiler/ProfilerBytecodes.h \
+	Source/JavaScriptCore/profiler/ProfilerCompilation.cpp \
+	Source/JavaScriptCore/profiler/ProfilerCompilation.h \
+	Source/JavaScriptCore/profiler/ProfilerCompilationKind.cpp \
+	Source/JavaScriptCore/profiler/ProfilerCompilationKind.h \
+	Source/JavaScriptCore/profiler/ProfilerCompiledBytecode.cpp \
+	Source/JavaScriptCore/profiler/ProfilerCompiledBytecode.h \
+	Source/JavaScriptCore/profiler/ProfilerDatabase.cpp \
+	Source/JavaScriptCore/profiler/ProfilerDatabase.h \
+	Source/JavaScriptCore/profiler/ProfilerExecutionCounter.h \
+	Source/JavaScriptCore/profiler/ProfilerOrigin.cpp \
+	Source/JavaScriptCore/profiler/ProfilerOrigin.h \
+	Source/JavaScriptCore/profiler/ProfilerOriginStack.cpp \
+	Source/JavaScriptCore/profiler/ProfilerOriginStack.h \
+	Source/JavaScriptCore/profiler/ProfilerOSRExit.cpp \
+	Source/JavaScriptCore/profiler/ProfilerOSRExit.h \
+	Source/JavaScriptCore/profiler/ProfilerOSRExitSite.cpp \
+	Source/JavaScriptCore/profiler/ProfilerOSRExitSite.h \
+	Source/JavaScriptCore/profiler/ProfilerProfiledBytecodes.cpp \
+	Source/JavaScriptCore/profiler/ProfilerProfiledBytecodes.h \
 	Source/JavaScriptCore/profiler/Profile.cpp \
 	Source/JavaScriptCore/profiler/ProfileGenerator.cpp \
 	Source/JavaScriptCore/profiler/ProfileGenerator.h \
 	Source/JavaScriptCore/profiler/Profile.h \
 	Source/JavaScriptCore/profiler/ProfileNode.cpp \
 	Source/JavaScriptCore/profiler/ProfileNode.h \
-	Source/JavaScriptCore/profiler/Profiler.cpp \
-	Source/JavaScriptCore/profiler/Profiler.h \
+	Source/JavaScriptCore/profiler/LegacyProfiler.cpp \
+	Source/JavaScriptCore/profiler/LegacyProfiler.h \
 	Source/JavaScriptCore/runtime/ArgList.cpp \
 	Source/JavaScriptCore/runtime/ArgList.h \
 	Source/JavaScriptCore/runtime/Arguments.cpp \
@@ -492,6 +537,7 @@ javascriptcore_sources += \
 	Source/JavaScriptCore/runtime/ClassInfo.h \
 	Source/JavaScriptCore/runtime/CodeCache.cpp \
 	Source/JavaScriptCore/runtime/CodeCache.h \
+	Source/JavaScriptCore/runtime/CodeSpecializationKind.cpp \
 	Source/JavaScriptCore/runtime/CodeSpecializationKind.h \
 	Source/JavaScriptCore/runtime/CommonIdentifiers.cpp \
 	Source/JavaScriptCore/runtime/CommonIdentifiers.h \

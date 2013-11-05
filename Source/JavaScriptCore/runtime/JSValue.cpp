@@ -193,43 +193,47 @@ void JSValue::putToPrimitiveByIndex(ExecState* exec, unsigned propertyName, JSVa
         throwTypeError(exec, StrictModeReadonlyPropertyWriteError);
 }
 
-char* JSValue::description() const
+void JSValue::dump(PrintStream& out) const
 {
-    static const size_t size = 256;
-    static char description[size];
-
     if (!*this)
-        snprintf(description, size, "<JSValue()>");
+        out.print("<JSValue()>");
     else if (isInt32())
-        snprintf(description, size, "Int32: %d", asInt32());
+        out.printf("Int32: %d", asInt32());
     else if (isDouble()) {
 #if USE(JSVALUE64)
-        snprintf(description, size, "Double: %lld, %lf", (long long)reinterpretDoubleToInt64(asDouble()), asDouble());
+        out.printf("Double: %lld, %lf", (long long)reinterpretDoubleToInt64(asDouble()), asDouble());
 #else
         union {
             double asDouble;
             uint32_t asTwoInt32s[2];
         } u;
         u.asDouble = asDouble();
-        snprintf(description, size, "Double: %08x:%08x, %lf", u.asTwoInt32s[1], u.asTwoInt32s[0], asDouble());
+        out.printf("Double: %08x:%08x, %lf", u.asTwoInt32s[1], u.asTwoInt32s[0], asDouble());
 #endif
     } else if (isCell()) {
-        snprintf(
-            description, size, "Cell: %p -> %p (%p: %s, %s)",
-            asCell(), isObject() ? asObject(*this)->butterfly() : 0, asCell()->structure(), asCell()->structure()->classInfo()->className,
-            indexingTypeToString(asCell()->structure()->indexingTypeIncludingHistory()));
+        if (asCell()->inherits(&Structure::s_info)) {
+            Structure* structure = jsCast<Structure*>(asCell());
+            out.print(
+                "Structure: ", RawPointer(structure), ": ", structure->classInfo()->className,
+                ", ", IndexingTypeDump(structure->indexingTypeIncludingHistory()));
+        } else {
+            out.print("Cell: ", RawPointer(asCell()));
+            if (isObject() && asObject(*this)->butterfly())
+                out.print("->", RawPointer(asObject(*this)->butterfly()));
+            out.print(
+                " (", RawPointer(asCell()->structure()), ": ", asCell()->structure()->classInfo()->className,
+                ", ", IndexingTypeDump(asCell()->structure()->indexingTypeIncludingHistory()), ")");
+        }
     } else if (isTrue())
-        snprintf(description, size, "True");
+        out.print("True");
     else if (isFalse())
-        snprintf(description, size, "False");
+        out.print("False");
     else if (isNull())
-        snprintf(description, size, "Null");
+        out.print("Null");
     else if (isUndefined())
-        snprintf(description, size, "Undefined");
+        out.print("Undefined");
     else
-        snprintf(description, size, "INVALID");
-
-    return description;
+        out.print("INVALID");
 }
 
 // This in the ToInt32 operation is defined in section 9.5 of the ECMA-262 spec.

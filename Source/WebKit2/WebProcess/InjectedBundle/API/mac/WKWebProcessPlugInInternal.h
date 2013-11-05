@@ -32,6 +32,8 @@
 + (WKWebProcessPlugInController *)_shared;
 - (id)_initWithPrincipalClassInstance:(id<WKWebProcessPlugIn>)principalClassInstance bundleRef:(WKBundleRef)bundleRef;
 
+- (WKWebProcessPlugInBrowserContextController *)_browserContextControllerForBundlePageRef:(WKBundlePageRef)pageRef;
+
 @end
 
 #endif // defined(__LP64__) && defined(__clang__)

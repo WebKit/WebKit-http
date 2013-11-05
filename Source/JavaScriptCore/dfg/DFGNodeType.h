@@ -43,6 +43,11 @@ namespace JSC { namespace DFG {
     /* code block. */\
     macro(WeakJSConstant, NodeResultJS | NodeDoesNotExit) \
     \
+    /* Marker to indicate that an operation was optimized entirely and all that is left */\
+    /* is to make one node alias another. CSE will later usually eliminate this node, */\
+    /* though it may choose not to if it would corrupt predictions (very rare). */\
+    macro(Identity, NodeResultJS | NodeDoesNotExit) \
+    \
     /* Nodes for handling functions (both as call and as construct). */\
     macro(ConvertThis, NodeResultJS) \
     macro(CreateThis, NodeResultJS) /* Note this is not MustGenerate since we're returning it anyway. */ \
@@ -145,7 +150,9 @@ namespace JSC { namespace DFG {
     macro(GetByOffset, NodeResultJS) \
     macro(PutByOffset, NodeMustGenerate) \
     macro(GetArrayLength, NodeResultInt32) \
-    macro(GetScope, NodeResultJS) \
+    macro(GetMyScope, NodeResultJS) \
+    macro(SkipTopScope, NodeResultJS) \
+    macro(SkipScope, NodeResultJS) \
     macro(GetScopeRegisters, NodeResultStorage) \
     macro(GetScopedVar, NodeResultJS) \
     macro(PutScopedVar, NodeMustGenerate) \
@@ -237,6 +244,9 @@ namespace JSC { namespace DFG {
     macro(ThrowReferenceError, NodeMustGenerate) \
     \
     macro(GarbageValue, NodeResultJS | NodeClobbersWorld) \
+    \
+    /* Count execution. */\
+    macro(CountExecution, NodeMustGenerate) \
     \
     /* This is a pseudo-terminal. It means that execution should fall out of DFG at */\
     /* this point, but execution does continue in the basic block - just in a */\

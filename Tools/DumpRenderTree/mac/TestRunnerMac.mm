@@ -213,6 +213,11 @@ void TestRunner::setStorageDatabaseIdleInterval(double interval)
     [WebStorageManager setStorageDatabaseIdleInterval:interval];
 }
 
+void TestRunner::closeIdleLocalStorageDatabases()
+{
+    [WebStorageManager closeIdleLocalStorageDatabases];
+}
+
 JSValueRef TestRunner::originsWithLocalStorage(JSContextRef context)
 {
     return originsArrayToJS(context, [[WebStorageManager sharedWebStorageManager] origins]);
@@ -624,11 +629,6 @@ void TestRunner::setValueForUser(JSContextRef context, JSValueRef nodeObject, JS
 void TestRunner::setViewModeMediaFeature(JSStringRef mode)
 {
     // FIXME: implement
-}
-
-void TestRunner::disableImageLoading()
-{
-    [[WebPreferences standardPreferences] setLoadsImagesAutomatically:NO];
 }
 
 void TestRunner::dispatchPendingLoadRequests()

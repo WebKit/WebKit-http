@@ -35,6 +35,26 @@
 
 using namespace WebKit;
 
+/**
+ * SECTION: WebKitFaviconDatabase
+ * @Short_description: A WebKit favicon database
+ * @Title: WebKitFaviconDatabase
+ *
+ * #WebKitFaviconDatabase provides access to the icons associated with
+ * web sites.
+ *
+ * WebKit will automatically look for available icons in &lt;link&gt;
+ * elements on opened pages as well as an existing favicon.ico and
+ * load the images found into a memory cache if possible. That cache
+ * is frozen to an on-disk database for persistence.
+ *
+ * If #WebKitSettings:enable-private-browsing is %TRUE, new icons
+ * won't be added to the on-disk database and no existing icons will
+ * be deleted from it. Nevertheless, WebKit will still store them in
+ * the in-memory cache during the current execution.
+ *
+ */
+
 enum {
     FAVICON_CHANGED,
 
@@ -52,14 +72,7 @@ struct _WebKitFaviconDatabasePrivate {
     HashMap<String, String> pageURLToIconURLMap;
 };
 
-G_DEFINE_TYPE(WebKitFaviconDatabase, webkit_favicon_database, G_TYPE_OBJECT)
-
-static void webkit_favicon_database_init(WebKitFaviconDatabase* manager)
-{
-    WebKitFaviconDatabasePrivate* priv = G_TYPE_INSTANCE_GET_PRIVATE(manager, WEBKIT_TYPE_FAVICON_DATABASE, WebKitFaviconDatabasePrivate);
-    manager->priv = priv;
-    new (priv) WebKitFaviconDatabasePrivate();
-}
+WEBKIT_DEFINE_TYPE(WebKitFaviconDatabase, webkit_favicon_database, G_TYPE_OBJECT)
 
 static void webkitFaviconDatabaseDispose(GObject* object)
 {
@@ -72,18 +85,10 @@ static void webkitFaviconDatabaseDispose(GObject* object)
     G_OBJECT_CLASS(webkit_favicon_database_parent_class)->dispose(object);
 }
 
-static void webkitFaviconDatabaseFinalize(GObject* object)
-{
-    WebKitFaviconDatabase* database = WEBKIT_FAVICON_DATABASE(object);
-    database->priv->~WebKitFaviconDatabasePrivate();
-    G_OBJECT_CLASS(webkit_favicon_database_parent_class)->finalize(object);
-}
-
 static void webkit_favicon_database_class_init(WebKitFaviconDatabaseClass* faviconDatabaseClass)
 {
     GObjectClass* gObjectClass = G_OBJECT_CLASS(faviconDatabaseClass);
     gObjectClass->dispose = webkitFaviconDatabaseDispose;
-    gObjectClass->finalize = webkitFaviconDatabaseFinalize;
 
     /**
      * WebKitFaviconDatabase::favicon-changed:
@@ -108,8 +113,6 @@ static void webkit_favicon_database_class_init(WebKitFaviconDatabaseClass* favic
             G_TYPE_NONE, 2,
             G_TYPE_STRING,
             G_TYPE_STRING);
-
-    g_type_class_add_private(faviconDatabaseClass, sizeof(WebKitFaviconDatabasePrivate));
 }
 
 struct GetFaviconSurfaceAsyncData {

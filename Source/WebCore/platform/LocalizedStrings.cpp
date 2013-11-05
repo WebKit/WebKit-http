@@ -721,13 +721,19 @@ String allFilesText()
 String builtInPDFPluginName()
 {
     // Also exposed to DOM.
-    return WEB_UI_STRING("WebKit built-in PDF", "Pseudo plug-in name, visible in Installed Plug-ins page in Safari.");
+    return WEB_UI_STRING("WebKit built-in PDF", "Pseudo plug-in name, visible in the Installed Plug-ins page in Safari.");
 }
 
 String pdfDocumentTypeDescription()
 {
     // Also exposed to DOM.
-    return WEB_UI_STRING("Portable Document Format", "Description of the (only) type supported by PDF pseudo plug-in. Visible in Installed Plug-ins page in Safari.");
+    return WEB_UI_STRING("Portable Document Format", "Description of the primary type supported by the PDF pseudo plug-in. Visible in the Installed Plug-ins page in Safari.");
+}
+
+String postScriptDocumentTypeDescription()
+{
+    // Also exposed to DOM.
+    return WEB_UI_STRING("PostScript", "Description of the PostScript type supported by the PDF pseudo plug-in. Visible in the Installed Plug-ins page in Safari.");
 }
 
 String keygenMenuItem512()
@@ -991,5 +997,38 @@ String validationMessageStepMismatchText(const String&, const String&)
 {
     return WEB_UI_STRING("step mismatch", "Validation message for input form controls with value not respecting the step attribute");
 }
+
+String validationMessageBadInputForNumberText()
+{
+    notImplemented();
+    return validationMessageTypeMismatchText();
+}
+
+String clickToExitFullScreenText()
+{
+    return WEB_UI_STRING("Click to exit full screen mode", "Message to display in browser window when in webkit full screen mode.");
+}
+
+#if ENABLE(VIDEO_TRACK)
+String textTrackClosedCaptionsText()
+{
+    return WEB_UI_STRING("Closed Captions", "Menu section heading for closed captions");
+}
+
+String textTrackSubtitlesText()
+{
+    return WEB_UI_STRING("Subtitles", "Menu section heading for subtitles");
+}
+
+String textTrackOffText()
+{
+    return WEB_UI_STRING("Off", "Menu item label for the track that represents disabling closed captions");
+}
+
+String textTrackNoLabelText()
+{
+    return WEB_UI_STRING("No label", "Menu item label for a closed captions track that has no other name");
+}
+#endif
 
 } // namespace WebCore

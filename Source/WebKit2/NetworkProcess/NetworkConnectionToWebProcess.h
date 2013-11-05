@@ -28,6 +28,7 @@
 
 #if ENABLE(NETWORK_PROCESS)
 
+#include "BlockingResponseMap.h"
 #include "Connection.h"
 #include "NetworkConnectionToWebProcessMessages.h"
 #include <WebCore/ResourceLoadPriority.h>
@@ -61,6 +62,9 @@ public:
 
     bool isSerialLoadingEnabled() const { return m_serialLoadingEnabled; }
 
+    BlockingResponseMap<WebCore::ResourceRequest*>& willSendRequestResponseMap() { return m_willSendRequestResponseMap; }
+    BlockingBoolResponseMap& canAuthenticateAgainstProtectionSpaceResponseMap() { return m_canAuthenticateAgainstProtectionSpaceResponseMap; }
+
 private:
     NetworkConnectionToWebProcess(CoreIPC::Connection::Identifier);
 
@@ -82,12 +86,21 @@ private:
     void suspendPendingRequests();
     void resumePendingRequests();
     void setSerialLoadingEnabled(bool);
-    void willSendRequestHandled(uint64_t requestID, const WebCore::ResourceRequest&);
-    
+    void startDownload(bool privateBrowsingEnabled, uint64_t downloadID, const WebCore::ResourceRequest&);
+    void cookiesForDOM(bool privateBrowsingEnabled, const WebCore::KURL& firstParty, const WebCore::KURL&, String& result);
+    void setCookiesFromDOM(bool privateBrowsingEnabled, const WebCore::KURL& firstParty, const WebCore::KURL&, const String&);
+    void cookiesEnabled(bool privateBrowsingEnabled, const WebCore::KURL& firstParty, const WebCore::KURL&, bool& result);
+    void cookieRequestHeaderFieldValue(bool privateBrowsingEnabled, const WebCore::KURL& firstParty, const WebCore::KURL&, String& result);
+    void getRawCookies(bool privateBrowsingEnabled, const WebCore::KURL& firstParty, const WebCore::KURL&, Vector<WebCore::Cookie>&);
+    void deleteCookie(bool privateBrowsingEnabled, const WebCore::KURL&, const String& cookieName);
+
     RefPtr<CoreIPC::Connection> m_connection;
     
     HashSet<NetworkConnectionToWebProcessObserver*> m_observers;
-    
+
+    BlockingResponseMap<WebCore::ResourceRequest*> m_willSendRequestResponseMap;
+    BlockingBoolResponseMap m_canAuthenticateAgainstProtectionSpaceResponseMap;
+
     bool m_serialLoadingEnabled;
 };
 

@@ -72,6 +72,7 @@ interface TestRunner {
     void setTabKeyCyclesThroughElements(in boolean enabled);
     void setSerializeHTTPLoads();
     void dispatchPendingLoadRequests();
+    void setCacheModel(in int model);
 
     // Special DOM functions.
     void clearBackForwardList();
@@ -168,6 +169,7 @@ interface TestRunner {
 
     // Control full screen behavior.
     void setHasCustomFullScreenBehavior(in boolean value);
+    void setViewModeMediaFeature(in DOMString mode);
 
     // Web notifications support
     void grantWebNotificationPermission(in DOMString origin);
@@ -179,6 +181,9 @@ interface TestRunner {
     void setGeolocationPermission(in boolean value);
     void setMockGeolocationPosition(in double latitude, in double longitude, in double accuracy, in [Optional=DefaultIsUndefined] object altitude, in [Optional] object altitudeAccuracy, in [Optional] object heading, in [Optional] object speed);
     void setMockGeolocationPositionUnavailableError(in DOMString errorMessage);
+
+    // Audio testing.
+    [PassContext] void setAudioData(in object data);
 
     boolean callShouldCloseOnWebView();
 

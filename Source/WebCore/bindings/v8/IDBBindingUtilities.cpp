@@ -28,7 +28,6 @@
 
 #if ENABLE(INDEXED_DATABASE)
 
-#include "IDBDatabaseException.h"
 #include "IDBKey.h"
 #include "IDBKeyPath.h"
 #include "IDBTracing.h"
@@ -109,7 +108,7 @@ static bool get(v8::Handle<v8::Value>& object, const String& keyPathElement, v8:
         result = v8::Number::New(length);
         return true;
     }
-    return object->IsObject() && getValueFrom(v8String(keyPathElement), result);
+    return object->IsObject() && getValueFrom(deprecatedV8String(keyPathElement), result);
 }
 
 static bool canSet(v8::Handle<v8::Value>& object, const String& keyPathElement)
@@ -119,7 +118,7 @@ static bool canSet(v8::Handle<v8::Value>& object, const String& keyPathElement)
 
 static bool set(v8::Handle<v8::Value>& object, const String& keyPathElement, const v8::Handle<v8::Value>& v8Value)
 {
-    return canSet(object, keyPathElement) && setValue(object, v8String(keyPathElement), v8Value);
+    return canSet(object, keyPathElement) && setValue(object, deprecatedV8String(keyPathElement), v8Value);
 }
 
 static v8::Handle<v8::Value> getNthValueOnKeyPath(v8::Handle<v8::Value>& rootValue, const Vector<String>& keyPathElements, size_t index)
@@ -188,7 +187,7 @@ static PassRefPtr<IDBKey> createIDBKeyFromScriptValueAndKeyPath(const ScriptValu
     return createIDBKeyFromValue(v8Key);
 }
 
-PassRefPtr<IDBKey> createIDBKeyFromScriptValueAndKeyPath(const ScriptValue& value, const IDBKeyPath& keyPath)
+PassRefPtr<IDBKey> createIDBKeyFromScriptValueAndKeyPath(DOMRequestState*, const ScriptValue& value, const IDBKeyPath& keyPath)
 {
     IDB_TRACE("createIDBKeyFromScriptValueAndKeyPath");
     ASSERT(!keyPath.isNull());
@@ -222,7 +221,7 @@ ScriptValue deserializeIDBValue(DOMRequestState* state, PassRefPtr<SerializedScr
     return ScriptValue(v8::Null());
 }
 
-bool injectIDBKeyIntoScriptValue(PassRefPtr<IDBKey> key, ScriptValue& value, const IDBKeyPath& keyPath)
+bool injectIDBKeyIntoScriptValue(DOMRequestState*, PassRefPtr<IDBKey> key, ScriptValue& value, const IDBKeyPath& keyPath)
 {
     IDB_TRACE("injectIDBKeyIntoScriptValue");
     ASSERT(v8::Context::InContext());
@@ -248,7 +247,7 @@ bool injectIDBKeyIntoScriptValue(PassRefPtr<IDBKey> key, ScriptValue& value, con
     return true;
 }
 
-bool canInjectIDBKeyIntoScriptValue(const ScriptValue& scriptValue, const IDBKeyPath& keyPath)
+bool canInjectIDBKeyIntoScriptValue(DOMRequestState*, const ScriptValue& scriptValue, const IDBKeyPath& keyPath)
 {
     IDB_TRACE("canInjectIDBKeyIntoScriptValue");
     ASSERT(keyPath.type() == IDBKeyPath::StringType);

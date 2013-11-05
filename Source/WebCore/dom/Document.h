@@ -46,6 +46,7 @@
 #include "StringWithDirection.h"
 #include "Timer.h"
 #include "TreeScope.h"
+#include "UserActionElementSet.h"
 #include "ViewportArguments.h"
 #include <wtf/Deque.h>
 #include <wtf/FixedArray.h>
@@ -77,13 +78,11 @@ class DocumentFragment;
 class DocumentLoader;
 class DocumentMarkerController;
 class DocumentParser;
+class DocumentSharedObjectPool;
 class DocumentStyleSheetCollection;
 class DocumentType;
 class DocumentWeakReference;
-class DynamicNodeListCacheBase;
-class EditingText;
 class Element;
-class ElementAttributeData;
 class EntityReference;
 class Event;
 class EventListener;
@@ -107,6 +106,7 @@ class HitTestResult;
 class IntPoint;
 class LayoutPoint;
 class LayoutRect;
+class LiveNodeListBase;
 class DOMWrapperWorld;
 class JSNode;
 class Locale;
@@ -207,8 +207,7 @@ enum NodeListInvalidationType {
 };
 const int numNodeListInvalidationTypes = InvalidateOnAnyAttrChange + 1;
 
-struct ImmutableAttributeDataCacheEntry;
-typedef HashMap<unsigned, OwnPtr<ImmutableAttributeDataCacheEntry>, AlreadyHashed> ImmutableAttributeDataCache;
+typedef HashCountedSet<Node*> TouchEventTargetSet;
 
 class Document : public ContainerNode, public TreeScope, public ScriptExecutionContext {
 public:
@@ -323,6 +322,7 @@ public:
     DEFINE_ATTRIBUTE_EVENT_LISTENER(webkitvisibilitychange);
 #endif
 
+    void setViewportArguments(const ViewportArguments& viewportArguments) { m_viewportArguments = viewportArguments; }
     ViewportArguments viewportArguments() const { return m_viewportArguments; }
 #ifndef NDEBUG
     bool didDispatchViewportPropertiesChanged() const { return m_didDispatchViewportPropertiesChanged; }
@@ -439,15 +439,11 @@ public:
     PassRefPtr<HTMLCollection> links();
     PassRefPtr<HTMLCollection> forms();
     PassRefPtr<HTMLCollection> anchors();
-    PassRefPtr<HTMLCollection> objects();
     PassRefPtr<HTMLCollection> scripts();
     PassRefPtr<HTMLCollection> all();
-    void removeCachedHTMLCollection(HTMLCollection*, CollectionType);
 
     PassRefPtr<HTMLCollection> windowNamedItems(const AtomicString& name);
     PassRefPtr<HTMLCollection> documentNamedItems(const AtomicString& name);
-    void removeWindowNamedItemCache(HTMLCollection*, const AtomicString&);
-    void removeDocumentNamedItemCache(HTMLCollection*, const AtomicString&);
 
     // Other methods (not part of DOM)
     bool isHTMLDocument() const { return m_isHTML; }
@@ -503,6 +499,8 @@ public:
      */
     void styleResolverChanged(StyleResolverUpdateFlag);
 
+    void didAccessStyleResolver();
+
     void evaluateMediaQueryList();
 
     // Never returns 0.
@@ -525,7 +523,7 @@ public:
 
     // Special support for editing
     PassRefPtr<CSSStyleDeclaration> createCSSStyleDeclaration();
-    PassRefPtr<EditingText> createEditingTextNode(const String&);
+    PassRefPtr<Text> createEditingTextNode(const String&);
 
     void recalcStyle(StyleChange = NoChange);
     bool childNeedsAndNotInStyleRecalc();
@@ -687,6 +685,8 @@ public:
 
     bool setFocusedNode(PassRefPtr<Node>);
     Node* focusedNode() const { return m_focusedNode.get(); }
+    UserActionElementSet& userActionElements()  { return m_userActionElements; }
+    const UserActionElementSet& userActionElements() const { return m_userActionElements; }
 
     void getFocusableNodes(Vector<RefPtr<Node> >&);
     
@@ -719,8 +719,8 @@ public:
     bool hasPendingForcedStyleRecalc() const;
     void styleRecalcTimerFired(Timer<Document>*);
 
-    void registerNodeListCache(DynamicNodeListCacheBase*);
-    void unregisterNodeListCache(DynamicNodeListCacheBase*);
+    void registerNodeList(LiveNodeListBase*);
+    void unregisterNodeList(LiveNodeListBase*);
     bool shouldInvalidateNodeListCaches(const QualifiedName* attrName = 0) const;
     void invalidateNodeListCaches(const QualifiedName* attrName);
 
@@ -736,6 +736,7 @@ public:
     void nodeChildrenWillBeRemoved(ContainerNode*);
     // nodeWillBeRemoved is only safe when removing one node at a time.
     void nodeWillBeRemoved(Node*);
+    bool canReplaceChild(Node* newChild, Node* oldChild);
 
     void textInserted(Node*, unsigned offset, unsigned length);
     void textRemoved(Node*, unsigned offset, unsigned length);
@@ -1119,13 +1120,23 @@ public:
     void didRemoveWheelEventHandler();
 
 #if ENABLE(TOUCH_EVENTS)
-    unsigned touchEventHandlerCount() const { return m_touchEventHandlerCount; }
+    bool hasTouchEventHandlers() const { return (m_touchEventTargets.get()) ? m_touchEventTargets->size() : false; }
 #else
-    unsigned touchEventHandlerCount() const { return 0; }
+    bool hasTouchEventHandlers() const { return false; }
 #endif
 
-    void didAddTouchEventHandler();
-    void didRemoveTouchEventHandler();
+    void didAddTouchEventHandler(Node*);
+    void didRemoveTouchEventHandler(Node*);
+
+#if ENABLE(TOUCH_EVENTS)
+    void didRemoveEventTargetNode(Node*);
+#endif
+
+#if ENABLE(TOUCH_EVENTS)
+    const TouchEventTargetSet* touchEventTargets() const { return m_touchEventTargets.get(); }
+#else
+    const TouchEventTargetSet* touchEventTargets() const { return 0; }
+#endif
 
     bool visualUpdatesAllowed() const { return m_visualUpdatesAllowed; }
 
@@ -1139,6 +1150,10 @@ public:
     void resumeScheduledTasks();
 
     IntSize viewportSize() const;
+
+#if ENABLE(CSS_DEVICE_ADAPTATION)
+    IntSize initialViewportSize() const;
+#endif
 
 #if ENABLE(LINK_PRERENDER)
     Prerenderer* prerenderer() { return m_prerenderer.get(); }
@@ -1156,7 +1171,7 @@ public:
 
     virtual void reportMemoryUsage(MemoryObjectInfo*) const OVERRIDE;
 
-    PassRefPtr<ElementAttributeData> cachedImmutableAttributeData(const Element*, const Vector<Attribute>&);
+    DocumentSharedObjectPool* sharedObjectPool() { return m_sharedObjectPool.get(); }
 
     void didRemoveAllPendingStylesheet();
     void setNeedsNotifyRemoveAllPendingStylesheet() { m_needsNotifyRemoveAllPendingStylesheet = true; }
@@ -1167,6 +1182,18 @@ public:
 
     // Return a Locale for the default locale if the argument is null or empty.
     Locale& getCachedLocale(const AtomicString& locale = nullAtom);
+
+#if ENABLE(DIALOG_ELEMENT)
+    void addToTopLayer(Element*);
+    void removeFromTopLayer(Element*);
+    const Vector<RefPtr<Element> >& topLayerElements() const { return m_topLayerElements; }
+#endif
+
+#if ENABLE(TEMPLATE_ELEMENT)
+    Document* templateContentsOwnerDocument();
+#endif
+
+    virtual void addConsoleMessage(MessageSource, MessageLevel, const String& message, unsigned long requestIdentifier = 0);
 
 protected:
     Document(Frame*, const KURL&, bool isXHTML, bool isHTML);
@@ -1194,7 +1221,6 @@ private:
     virtual NodeType nodeType() const;
     virtual bool childTypeAllowed(NodeType) const;
     virtual PassRefPtr<Node> cloneNode(bool deep);
-    virtual bool canReplaceChild(Node* newChild, Node* oldChild);
 
     virtual void refScriptExecutionContext() { ref(); }
     virtual void derefScriptExecutionContext() { deref(); }
@@ -1202,7 +1228,7 @@ private:
     virtual const KURL& virtualURL() const; // Same as url(), but needed for ScriptExecutionContext to implement it without a performance loss for direct calls.
     virtual KURL virtualCompleteURL(const String&) const; // Same as completeURL() for the same reason as above.
 
-    virtual void addMessage(MessageSource, MessageType, MessageLevel, const String& message, const String& sourceURL, unsigned lineNumber, PassRefPtr<ScriptCallStack>, unsigned long requestIdentifier = 0);
+    virtual void addMessage(MessageSource, MessageLevel, const String& message, const String& sourceURL, unsigned lineNumber, PassRefPtr<ScriptCallStack>, ScriptState* = 0, unsigned long requestIdentifier = 0);
 
     virtual double minimumTimerInterval() const;
 
@@ -1233,7 +1259,7 @@ private:
     PageVisibilityState visibilityState() const;
 #endif
 
-    PassRefPtr<HTMLCollection> cachedCollection(CollectionType);
+    PassRefPtr<HTMLCollection> ensureCachedCollection(CollectionType);
 
 #if ENABLE(FULLSCREEN_API)
     void clearFullscreenElementStack();
@@ -1250,6 +1276,10 @@ private:
     void addMutationEventListenerTypeIfEnabled(ListenerType);
 
     int m_guardRefCount;
+
+    void styleResolverThrowawayTimerFired(Timer<Document>*);
+    Timer<Document> m_styleResolverThrowawayTimer;
+    double m_lastStyleResolverAccessTime;
 
     OwnPtr<StyleResolver> m_styleResolver;
     bool m_didCalculateStyleResolver;
@@ -1312,6 +1342,7 @@ private:
     RefPtr<Node> m_hoverNode;
     RefPtr<Node> m_activeNode;
     RefPtr<Element> m_documentElement;
+    UserActionElementSet m_userActionElements;
 
     uint64_t m_domTreeVersion;
     static uint64_t s_globalTreeVersion;
@@ -1402,13 +1433,8 @@ private:
 
     InheritedBool m_designMode;
 
-    HashSet<DynamicNodeListCacheBase*> m_listsInvalidatedAtDocument;
+    HashSet<LiveNodeListBase*> m_listsInvalidatedAtDocument;
     unsigned m_nodeListCounts[numNodeListInvalidationTypes];
-
-    HTMLCollection* m_collections[NumUnnamedDocumentCachedTypes];
-    typedef HashMap<AtomicString, HTMLNameCollection*> NamedCollectionMap;
-    NamedCollectionMap m_documentNamedItemCollections;
-    NamedCollectionMap m_windowNamedItemCollections;
 
     RefPtr<XPathEvaluator> m_xpathEvaluator;
 
@@ -1468,6 +1494,10 @@ private:
     RefPtr<RenderStyle> m_savedPlaceholderRenderStyle;
 #endif
 
+#if ENABLE(DIALOG_ELEMENT)
+    Vector<RefPtr<Element> > m_topLayerElements;
+#endif
+
     int m_loadEventDelayCount;
     Timer<Document> m_loadEventDelayTimer;
 
@@ -1485,7 +1515,7 @@ private:
     
     unsigned m_wheelEventHandlerCount;
 #if ENABLE(TOUCH_EVENTS)
-    unsigned m_touchEventHandlerCount;
+    OwnPtr<TouchEventTargetSet> m_touchEventTargets;
 #endif
 
 #if ENABLE(REQUEST_ANIMATION_FRAME)
@@ -1514,7 +1544,10 @@ private:
     RefPtr<DOMSecurityPolicy> m_domSecurityPolicy;
 #endif
 
-    ImmutableAttributeDataCache m_immutableAttributeDataCache;
+    void sharedObjectPoolClearTimerFired(Timer<Document>*);
+    Timer<Document> m_sharedObjectPoolClearTimer;
+
+    OwnPtr<DocumentSharedObjectPool> m_sharedObjectPool;
 
 #ifndef NDEBUG
     bool m_didDispatchViewportPropertiesChanged;
@@ -1522,6 +1555,10 @@ private:
 
     typedef HashMap<AtomicString, OwnPtr<Locale> > LocaleIdentifierToLocaleMap;
     LocaleIdentifierToLocaleMap m_localeCache;
+
+#if ENABLE(TEMPLATE_ELEMENT)
+    RefPtr<Document> m_templateContentsOwnerDocument;
+#endif
 };
 
 inline void Document::notifyRemovePendingSheetIfNeeded()
@@ -1535,6 +1572,11 @@ inline void Document::notifyRemovePendingSheetIfNeeded()
 inline bool Node::isDocumentNode() const
 {
     return this == m_document;
+}
+
+inline TreeScope* Node::treeScope() const
+{
+    return hasRareData() ? m_data.m_rareData->treeScope() : documentInternal();
 }
 
 inline Node::Node(Document* document, ConstructionType type)

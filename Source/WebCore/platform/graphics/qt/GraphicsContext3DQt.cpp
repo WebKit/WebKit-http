@@ -68,6 +68,7 @@ public:
     virtual void paintToTextureMapper(TextureMapper*, const FloatRect& target, const TransformationMatrix&, float opacity, BitmapTexture* mask);
 #endif
 #if USE(GRAPHICS_SURFACE)
+    virtual IntSize platformLayerSize() const;
     virtual uint32_t copyToGraphicsSurface();
     virtual GraphicsSurfaceToken graphicsSurfaceToken() const;
 #endif
@@ -107,17 +108,6 @@ GraphicsContext3DPrivate::GraphicsContext3DPrivate(GraphicsContext3D* context, H
     , m_platformContext(0)
     , m_surfaceOwner(0)
 {
-    if (m_hostWindow && m_hostWindow->platformPageClient()) {
-        // This is the WebKit1 code path.
-        QWebPageClient* webPageClient = m_hostWindow->platformPageClient();
-        webPageClient->createPlatformGraphicsContext3D(&m_platformContext, &m_surface, &m_surfaceOwner);
-        if (!m_surface)
-            return;
-
-        makeCurrentIfNeeded();
-        return;
-    }
-
     if (renderStyle == GraphicsContext3D::RenderToCurrentGLContext) {
         m_platformContext = QOpenGLContext::currentContext();
         m_surface = m_platformContext->surface();
@@ -143,9 +133,8 @@ GraphicsContext3DPrivate::GraphicsContext3DPrivate(GraphicsContext3D* context, H
     m_surfaceFlags = GraphicsSurface::SupportsTextureTarget
                     | GraphicsSurface::SupportsSharing;
 
-    if (!surfaceSize.isEmpty()) {
+    if (!surfaceSize.isEmpty())
         m_graphicsSurface = GraphicsSurface::create(surfaceSize, m_surfaceFlags, m_platformContext);
-    }
 #endif
 }
 
@@ -215,7 +204,7 @@ GraphicsContext3DPrivate::~GraphicsContext3DPrivate()
 
 static inline quint32 swapBgrToRgb(quint32 pixel)
 {
-    return ((pixel << 16) & 0xff0000) | ((pixel >> 16) & 0xff) | (pixel & 0xff00ff00);
+    return (((pixel << 16) | (pixel >> 16)) & 0x00ff00ff) | (pixel & 0xff00ff00);
 }
 
 #if USE(ACCELERATED_COMPOSITING)
@@ -224,10 +213,24 @@ void GraphicsContext3DPrivate::paintToTextureMapper(TextureMapper* textureMapper
     blitMultisampleFramebufferAndRestoreContext();
 
     if (textureMapper->accelerationMode() == TextureMapper::OpenGLMode) {
+#if USE(GRAPHICS_SURFACE)
+        // CGL only provides us the context, but not the view the context is currently bound to.
+        // To make sure the context is bound the the right surface we have to do a makeCurrent through QOpenGL again.
+        // FIXME: Remove this code as soon as GraphicsSurfaceMac makes use of NSOpenGL.
+        QOpenGLContext* currentContext = QOpenGLContext::currentContext();
+        QSurface* currentSurface = currentContext->surface();
+        makeCurrentIfNeeded();
+
+        m_graphicsSurface->copyFromTexture(m_context->m_texture, IntRect(0, 0, m_context->m_currentWidth, m_context->m_currentHeight));
+
+        // CGL only provides us the context, but not the view the context is currently bound to.
+        // To make sure the context is bound the the right surface we have to do a makeCurrent through QOpenGL again.
+        // FIXME: Remove this code as soon as GraphicsSurfaceMac makes use of NSOpenGL.
+        currentContext->makeCurrent(currentSurface);
+
         TextureMapperGL* texmapGL = static_cast<TextureMapperGL*>(textureMapper);
-        TextureMapperGL::Flags flags = TextureMapperGL::ShouldFlipTexture | (m_context->m_attrs.alpha ? TextureMapperGL::SupportsBlending : 0);
-        IntSize textureSize(m_context->m_currentWidth, m_context->m_currentHeight);
-        texmapGL->drawTexture(m_context->m_texture, flags, textureSize, targetRect, matrix, opacity, mask);
+        m_graphicsSurface->paintToTextureMapper(texmapGL, targetRect, matrix, opacity, mask);
+#endif
         return;
     }
 
@@ -277,16 +280,19 @@ void GraphicsContext3DPrivate::paintToTextureMapper(TextureMapper* textureMapper
 #endif // USE(ACCELERATED_COMPOSITING)
 
 #if USE(GRAPHICS_SURFACE)
+IntSize GraphicsContext3DPrivate::platformLayerSize() const
+{
+    return IntSize(m_context->m_currentWidth, m_context->m_currentHeight);
+}
+
 uint32_t GraphicsContext3DPrivate::copyToGraphicsSurface()
 {
     if (!m_graphicsSurface)
         return 0;
 
     blitMultisampleFramebufferAndRestoreContext();
-    makeCurrentIfNeeded();
     m_graphicsSurface->copyFromTexture(m_context->m_texture, IntRect(0, 0, m_context->m_currentWidth, m_context->m_currentHeight));
-    uint32_t frontBuffer = m_graphicsSurface->swapBuffers();
-    return frontBuffer;
+    return m_graphicsSurface->frontBuffer();
 }
 
 GraphicsSurfaceToken GraphicsContext3DPrivate::graphicsSurfaceToken() const
@@ -319,12 +325,12 @@ void GraphicsContext3DPrivate::blitMultisampleFramebufferAndRestoreContext() con
 
     const QOpenGLContext* currentContext = QOpenGLContext::currentContext();
     QSurface* currentSurface = 0;
-    if (currentContext != m_platformContext) {
+    if (currentContext && currentContext != m_platformContext) {
         currentSurface = currentContext->surface();
         m_platformContext->makeCurrent(m_surface);
     }
     blitMultisampleFramebuffer();
-    if (currentSurface)
+    if (currentContext && currentContext != m_platformContext)
         const_cast<QOpenGLContext*>(currentContext)->makeCurrent(currentSurface);
 }
 
@@ -408,7 +414,8 @@ GraphicsContext3D::GraphicsContext3D(GraphicsContext3D::Attributes attrs, HostWi
     glEnable(GL_VERTEX_PROGRAM_POINT_SIZE);
 #endif
 
-    glClearColor(0.0, 0.0, 0.0, 0.0);
+    if (renderStyle != RenderToCurrentGLContext)
+        glClearColor(0.0, 0.0, 0.0, 0.0);
 }
 
 GraphicsContext3D::~GraphicsContext3D()
@@ -479,54 +486,56 @@ void GraphicsContext3D::createGraphicsSurfaces(const IntSize& size)
 }
 #endif
 
-bool GraphicsContext3D::getImageData(Image* image,
-                                     GC3Denum format,
-                                     GC3Denum type,
-                                     bool premultiplyAlpha,
-                                     bool ignoreGammaAndColorProfile,
-                                     Vector<uint8_t>& outputVector)
+GraphicsContext3D::ImageExtractor::~ImageExtractor()
+{
+}
+
+bool GraphicsContext3D::ImageExtractor::extractImage(bool premultiplyAlpha, bool ignoreGammaAndColorProfile)
 {
     UNUSED_PARAM(ignoreGammaAndColorProfile);
-    if (!image)
+    if (!m_image)
         return false;
 
-    QImage qtImage;
     // Is image already loaded? If not, load it.
-    if (image->data())
-        qtImage = QImage::fromData(reinterpret_cast<const uchar*>(image->data()->data()), image->data()->size());
+    if (m_image->data())
+        m_qtImage = QImage::fromData(reinterpret_cast<const uchar*>(m_image->data()->data()), m_image->data()->size());
     else {
-        QPixmap* nativePixmap = image->nativeImageForCurrentFrame();
+        QPixmap* nativePixmap = m_image->nativeImageForCurrentFrame();
+        if (!nativePixmap)
+            return false;
+
         // With QPA, we can avoid a deep copy.
-        qtImage = *nativePixmap->handle()->buffer();
+        m_qtImage = *nativePixmap->handle()->buffer();
     }
 
-    AlphaOp alphaOp = AlphaDoNothing;
-    switch (qtImage.format()) {
+    m_alphaOp = AlphaDoNothing;
+    switch (m_qtImage.format()) {
     case QImage::Format_RGB32:
         // For opaque images, we should not premultiply or unmultiply alpha.
         break;
     case QImage::Format_ARGB32:
         if (premultiplyAlpha)
-            alphaOp = AlphaDoPremultiply;
+            m_alphaOp = AlphaDoPremultiply;
         break;
     case QImage::Format_ARGB32_Premultiplied:
         if (!premultiplyAlpha)
-            alphaOp = AlphaDoUnmultiply;
+            m_alphaOp = AlphaDoUnmultiply;
         break;
     default:
         // The image has a format that is not supported in packPixels. We have to convert it here.
-        qtImage = qtImage.convertToFormat(premultiplyAlpha ? QImage::Format_ARGB32_Premultiplied : QImage::Format_ARGB32);
+        m_qtImage = m_qtImage.convertToFormat(premultiplyAlpha ? QImage::Format_ARGB32_Premultiplied : QImage::Format_ARGB32);
         break;
     }
 
-    unsigned int packedSize;
-    // Output data is tightly packed (alignment == 1).
-    if (computeImageSizeInBytes(format, type, image->width(), image->height(), 1, &packedSize, 0) != GraphicsContext3D::NO_ERROR)
+    m_imageWidth = m_image->width();
+    m_imageHeight = m_image->height();
+    if (!m_imageWidth || !m_imageHeight)
         return false;
+    m_imagePixelData = m_qtImage.constBits();
+    m_imageSourceFormat = SourceFormatBGRA8;
+    m_imageSourceUnpackAlignment = 0;
 
-    outputVector.resize(packedSize);
-
-    return packPixels(qtImage.constBits(), SourceFormatBGRA8, image->width(), image->height(), 0, format, type, alphaOp, outputVector.data());
+    return true;
 }
 
 void GraphicsContext3D::setContextLostCallback(PassOwnPtr<ContextLostCallback>)

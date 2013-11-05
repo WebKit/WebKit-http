@@ -78,6 +78,8 @@ public:
     StringCache* stringCache() { return m_stringCache.get(); }
     IntegerCache* integerCache() { return m_integerCache.get(); }
 
+    v8::Handle<v8::Value> v8Null() { return m_v8Null.get(); }
+
     v8::Persistent<v8::Value> ensureLiveRoot();
 
 #if ENABLE(INSPECTOR)
@@ -106,8 +108,6 @@ public:
     int recursionLevel() const { return m_recursionLevel; }
     int incrementRecursionLevel() { return ++m_recursionLevel; }
     int decrementRecursionLevel() { return --m_recursionLevel; }
-
-    int nextDependentRetainedId() { return m_nextDependentRetainedId++; }
 
 #ifndef NDEBUG
     int internalScriptRecursionLevel() const { return m_internalScriptRecursionLevel; }
@@ -138,6 +138,7 @@ private:
     v8::Persistent<v8::FunctionTemplate> m_lazyEventListenerToStringTemplate;
     OwnPtr<StringCache> m_stringCache;
     OwnPtr<IntegerCache> m_integerCache;
+    ScopedPersistent<v8::Value> m_v8Null;
 
     Vector<DOMDataStore*> m_domDataList;
     DOMDataStore* m_domDataStore;
@@ -150,7 +151,6 @@ private:
     friend class ConstructorMode;
 
     int m_recursionLevel;
-    int m_nextDependentRetainedId;
 
 #ifndef NDEBUG
     int m_internalScriptRecursionLevel;

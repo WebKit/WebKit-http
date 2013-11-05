@@ -523,7 +523,7 @@ String RenderTheme::formatMediaControlsRemainingTime(float currentTime, float du
 IntPoint RenderTheme::volumeSliderOffsetFromMuteButton(RenderBox* muteButtonBox, const IntSize& size) const
 {
     int y = -size.height();
-    FloatPoint absPoint = muteButtonBox->localToAbsolute(FloatPoint(muteButtonBox->pixelSnappedOffsetLeft(), y), IsFixed | UseTransforms | SnapOffsetForTransforms);
+    FloatPoint absPoint = muteButtonBox->localToAbsolute(FloatPoint(muteButtonBox->pixelSnappedOffsetLeft(), y), IsFixed | UseTransforms);
     if (absPoint.y() < 0)
         y = muteButtonBox->height();
     return IntPoint(0, y);
@@ -832,7 +832,7 @@ bool RenderTheme::isReadOnlyControl(const RenderObject* o) const
     Node* node = o->node();
     if (!node || !node->isElementNode())
         return false;
-    return static_cast<Element*>(node)->shouldMatchReadOnlySelector();
+    return toElement(node)->matchesReadOnlyPseudoClass();
 }
 
 bool RenderTheme::isHovered(const RenderObject* o) const
@@ -1024,17 +1024,14 @@ void RenderTheme::paintSliderTicks(RenderObject* o, const PaintInfo& paintInfo, 
         tickRect.setWidth(floor(tickSize.width() * zoomFactor));
         tickRect.setHeight(floor(tickSize.height() * zoomFactor));
         tickRect.setY(floor(rect.y() + rect.height() / 2.0 + sliderTickOffsetFromTrackCenter() * zoomFactor));
-        if (o->style()->isLeftToRightDirection())
-            tickRegionSideMargin = trackBounds.x() + (thumbSize.width() - tickSize.width() * zoomFactor) / 2.0;
-        else
-            tickRegionSideMargin = trackBounds.x() - thumbSize.width() / 2.0;
-        tickRegionWidth = trackBounds.width();
+        tickRegionSideMargin = trackBounds.x() + (thumbSize.width() - tickSize.width() * zoomFactor) / 2.0;
+        tickRegionWidth = trackBounds.width() - thumbSize.width();
     } else {
         tickRect.setWidth(floor(tickSize.height() * zoomFactor));
         tickRect.setHeight(floor(tickSize.width() * zoomFactor));
         tickRect.setX(floor(rect.x() + rect.width() / 2.0 + sliderTickOffsetFromTrackCenter() * zoomFactor));
         tickRegionSideMargin = trackBounds.y() + (thumbSize.width() - tickSize.width() * zoomFactor) / 2.0;
-        tickRegionWidth = trackBounds.height();
+        tickRegionWidth = trackBounds.height() - thumbSize.width();
     }
     RefPtr<HTMLCollection> options = dataList->options();
     GraphicsContextStateSaver stateSaver(*paintInfo.context);

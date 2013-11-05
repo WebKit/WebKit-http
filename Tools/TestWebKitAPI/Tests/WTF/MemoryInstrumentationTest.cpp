@@ -45,6 +45,7 @@
 #include <wtf/MemoryInstrumentationListHashSet.h>
 #include <wtf/MemoryInstrumentationString.h>
 #include <wtf/MemoryInstrumentationVector.h>
+#include <wtf/MemoryObjectInfo.h>
 #include <wtf/RefCounted.h>
 #include <wtf/Vector.h>
 #include <wtf/text/AtomicString.h>
@@ -90,7 +91,11 @@ public:
             result.iterator->value += size;
     }
     virtual bool visited(const void* object) { return !m_visitedObjects.add(object).isNewEntry; }
-    virtual void checkCountedObject(const void*) { }
+    virtual bool checkCountedObject(const void*) { return true; }
+    virtual void reportNode(const MemoryObjectInfo&) OVERRIDE { }
+    virtual void reportEdge(const void*, const void*, const char*) OVERRIDE { }
+    virtual void reportLeaf(const void*, const MemoryObjectInfo&, const char*) OVERRIDE { }
+    virtual void reportBaseAddress(const void*, const void*) OVERRIDE { }
 
     size_t visitedObjects() const { return m_visitedObjects.size(); }
     size_t totalSize(const MemoryObjectType objectType) const
@@ -119,8 +124,8 @@ public:
         : MemoryInstrumentation(client)
         , m_client(client) { }
 
-    virtual void processDeferredInstrumentedPointers();
-    virtual void deferInstrumentedPointer(PassOwnPtr<InstrumentedPointerBase>);
+    virtual void processDeferredObjects();
+    virtual void deferObject(PassOwnPtr<WrapperBase>);
 
     size_t visitedObjects() const { return m_client->visitedObjects(); }
     size_t reportedSizeForAllTypes() const { return m_client->reportedSizeForAllTypes(); }
@@ -128,7 +133,7 @@ public:
 
 private:
     MemoryInstrumentationTestClient* m_client;
-    Vector<OwnPtr<InstrumentedPointerBase> > m_deferredInstrumentedPointers;
+    Vector<OwnPtr<WrapperBase> > m_deferredObjects;
 };
 
 class InstrumentationTestHelper : public InstrumentationTestImpl {
@@ -139,18 +144,18 @@ private:
     MemoryInstrumentationTestClient m_client;
 };
 
-void InstrumentationTestImpl::processDeferredInstrumentedPointers()
+void InstrumentationTestImpl::processDeferredObjects()
 {
-    while (!m_deferredInstrumentedPointers.isEmpty()) {
-        OwnPtr<InstrumentedPointerBase> pointer = m_deferredInstrumentedPointers.last().release();
-        m_deferredInstrumentedPointers.removeLast();
+    while (!m_deferredObjects.isEmpty()) {
+        OwnPtr<WrapperBase> pointer = m_deferredObjects.last().release();
+        m_deferredObjects.removeLast();
         pointer->process(this);
     }
 }
 
-void InstrumentationTestImpl::deferInstrumentedPointer(PassOwnPtr<InstrumentedPointerBase> pointer)
+void InstrumentationTestImpl::deferObject(PassOwnPtr<WrapperBase> pointer)
 {
-    m_deferredInstrumentedPointers.append(pointer);
+    m_deferredObjects.append(pointer);
 }
 
 class NotInstrumented {
@@ -162,13 +167,21 @@ public:
 class Instrumented {
 public:
     Instrumented() : m_notInstrumented(new NotInstrumented) { }
-    virtual ~Instrumented() { delete m_notInstrumented; }
+    virtual ~Instrumented() { disposeOwnedObject(); }
 
     virtual void reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
     {
         MemoryClassInfo info(memoryObjectInfo, this, TestType);
-        info.addMember(m_notInstrumented);
+        memoryObjectInfo->setClassName("Instrumented");
+        info.addMember(m_notInstrumented, "m_notInstrumented");
     }
+
+    void disposeOwnedObject()
+    {
+        delete m_notInstrumented;
+        m_notInstrumented = 0;
+    }
+
     NotInstrumented* m_notInstrumented;
 };
 
@@ -206,38 +219,6 @@ TEST(MemoryInstrumentationTest, ptrVsRef)
         EXPECT_EQ(sizeof(NotInstrumented), helper.reportedSizeForAllTypes());
         EXPECT_EQ(1u, helper.visitedObjects());
     }
-}
-
-TEST(MemoryInstrumentationTest, ownPtr)
-{
-    InstrumentationTestHelper helper;
-    OwnPtr<Instrumented> instrumented(adoptPtr(new Instrumented));
-    helper.addRootObject(instrumented);
-    EXPECT_EQ(sizeof(Instrumented) + sizeof(NotInstrumented), helper.reportedSizeForAllTypes());
-    EXPECT_EQ(2u, helper.visitedObjects());
-}
-
-class InstrumentedRefPtr : public RefCounted<InstrumentedRefPtr> {
-public:
-    InstrumentedRefPtr() : m_notInstrumented(new NotInstrumented) { }
-    virtual ~InstrumentedRefPtr() { delete m_notInstrumented; }
-    static PassRefPtr<InstrumentedRefPtr> create() { return adoptRef(new InstrumentedRefPtr()); }
-
-    virtual void reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
-    {
-        MemoryClassInfo info(memoryObjectInfo, this, TestType);
-        info.addMember(m_notInstrumented);
-    }
-    NotInstrumented* m_notInstrumented;
-};
-
-TEST(MemoryInstrumentationTest, refPtr)
-{
-    InstrumentationTestHelper helper;
-    RefPtr<InstrumentedRefPtr> instrumentedRefPtr(adoptRef(new InstrumentedRefPtr));
-    helper.addRootObject(instrumentedRefPtr);
-    EXPECT_EQ(sizeof(InstrumentedRefPtr) + sizeof(NotInstrumented), helper.reportedSizeForAllTypes());
-    EXPECT_EQ(2u, helper.visitedObjects());
 }
 
 class InstrumentedWithOwnPtr : public Instrumented {
@@ -289,7 +270,7 @@ TEST(MemoryInstrumentationTest, ownerTypePropagation)
 {
     InstrumentationTestHelper helper;
     OwnPtr<InstrumentedDOM> instrumentedDOM(adoptPtr(new InstrumentedDOM));
-    helper.addRootObject(instrumentedDOM);
+    helper.addRootObject(instrumentedDOM.get());
     EXPECT_EQ(sizeof(InstrumentedDOM) + sizeof(InstrumentedUndefined), helper.reportedSizeForAllTypes());
     EXPECT_EQ(sizeof(InstrumentedDOM) + sizeof(InstrumentedUndefined), helper.totalSize(TestType));
     EXPECT_EQ(2u, helper.visitedObjects());
@@ -794,6 +775,7 @@ public:
     virtual void reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
     {
         MemoryClassInfo info(memoryObjectInfo, this, TestType);
+        Instrumented::reportMemoryUsage(memoryObjectInfo);
     }
 };
 
@@ -809,17 +791,18 @@ TEST(MemoryInstrumentationTest, instrumentedWithMultipleAncestors)
 
     helper.addRootObject(descendantPointerOwner);
     helper.addRootObject(ancestorPointerOwner);
-    EXPECT_EQ(sizeof(ClassWithTwoAncestors), helper.reportedSizeForAllTypes());
-    EXPECT_EQ(2u, helper.visitedObjects());
+    EXPECT_EQ(sizeof(ClassWithTwoAncestors) + sizeof(NotInstrumented), helper.reportedSizeForAllTypes());
+    EXPECT_EQ(3u, helper.visitedObjects());
 }
 
 class CheckCountedObjectsClient : public MemoryInstrumentationTestClient {
 public:
     CheckCountedObjectsClient(const void* expectedPointer) : m_expectedPointer(expectedPointer), m_expectedPointerFound(false) { }
-    virtual void checkCountedObject(const void* pointer)
+    virtual bool checkCountedObject(const void* pointer)
     {
         EXPECT_EQ(pointer, m_expectedPointer);
         m_expectedPointerFound = true;
+        return true;
     }
     bool expectedPointerFound() { return m_expectedPointerFound; }
 
@@ -831,6 +814,7 @@ private:
 TEST(MemoryInstrumentationTest, checkCountedObjectWithMultipleAncestors)
 {
     OwnPtr<ClassWithTwoAncestors> instance = adoptPtr(new ClassWithTwoAncestors());
+    instance->disposeOwnedObject();
     ClassWithTwoAncestors* descendantPointer = instance.get();
     InstrumentedOwner<ClassWithTwoAncestors*> descendantPointerOwner(descendantPointer);
     Instrumented* ancestorPointer = descendantPointer;
@@ -842,6 +826,66 @@ TEST(MemoryInstrumentationTest, checkCountedObjectWithMultipleAncestors)
     instrumentation.addRootObject(descendantPointerOwner);
     instrumentation.addRootObject(ancestorPointerOwner);
     EXPECT_TRUE(client.expectedPointerFound());
+}
+
+class TwoPointersToSameInsrumented {
+public:
+    TwoPointersToSameInsrumented()
+        : m_ownPtr(adoptPtr(new ClassWithTwoAncestors()))
+        , m_baseClassPtr(m_ownPtr.get())
+    {
+        EXPECT_NE(static_cast<void*>(m_ownPtr.get()), static_cast<void*>(m_baseClassPtr));
+    }
+    void reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
+    {
+        MemoryClassInfo info(memoryObjectInfo, this, TestType);
+        info.addMember(m_ownPtr);
+        info.addMember(m_baseClassPtr);
+    }
+
+private:
+    OwnPtr<ClassWithTwoAncestors> m_ownPtr;
+    Instrumented* m_baseClassPtr;
+};
+
+class CountLinksFromInstrumentedObject : public MemoryInstrumentationTestClient {
+public:
+    CountLinksFromInstrumentedObject() : m_linkCount(0) { }
+    virtual void reportEdge(const void* source, const void* destination, const char* name) OVERRIDE
+    {
+        if (name && !strcmp("m_notInstrumented", name))
+            m_linkCount++;
+    }
+    int linkCount() const { return m_linkCount; }
+
+private:
+    int m_linkCount;
+};
+
+
+TEST(MemoryInstrumentationTest, doNotReportEdgeTwice)
+{
+    OwnPtr<TwoPointersToSameInsrumented> instance = adoptPtr(new TwoPointersToSameInsrumented());
+
+    CountLinksFromInstrumentedObject client;
+    InstrumentationTestImpl instrumentation(&client);
+    instrumentation.addRootObject(instance.get());
+    EXPECT_EQ(1, client.linkCount());
+}
+
+class DerivedClass : public Instrumented {
+public:
+    size_t m_member;
+};
+
+TEST(MemoryInstrumentationTest, detectBaseClassInstrumentation)
+{
+    OwnPtr<DerivedClass> instance = adoptPtr(new DerivedClass());
+
+    InstrumentationTestHelper helper;
+    helper.addRootObject(instance.get(), TestType);
+    EXPECT_EQ(sizeof(Instrumented) + sizeof(NotInstrumented), helper.reportedSizeForAllTypes());
+    EXPECT_EQ(2u, helper.visitedObjects());
 }
 
 } // namespace

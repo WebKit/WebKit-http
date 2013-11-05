@@ -31,6 +31,7 @@
 namespace JSC {
 
 class GCThreadSharedData;
+class JSCell;
 
 class CopyVisitor {
 public:
@@ -44,12 +45,13 @@ public:
     // Low-level API for copying, appropriate for cases where the object's heap references
     // are discontiguous or if the object occurs frequently enough that you need to focus on
     // performance. Use this with care as it is easy to shoot yourself in the foot.
-    bool checkIfShouldCopy(void*, size_t);
+    bool checkIfShouldCopy(void*);
     void* allocateNewSpace(size_t);
     void didCopy(void*, size_t);
 
 private:
     void* allocateNewSpaceSlow(size_t);
+    void visitCell(JSCell*);
 
     GCThreadSharedData& m_shared;
     CopiedAllocator m_copiedAllocator;

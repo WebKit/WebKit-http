@@ -48,6 +48,7 @@ WebInspector.ElementsTreeOutline = function(omitRootDOMNode, selectEnabled, show
     this.element.addEventListener("dragleave", this._ondragleave.bind(this), false);
     this.element.addEventListener("drop", this._ondrop.bind(this), false);
     this.element.addEventListener("dragend", this._ondragend.bind(this), false);
+    this.element.addEventListener("keydown", this._onkeydown.bind(this), false);
 
     TreeOutline.call(this, this.element);
 
@@ -57,7 +58,6 @@ WebInspector.ElementsTreeOutline = function(omitRootDOMNode, selectEnabled, show
     this._rootDOMNode = null;
     this._selectDOMNode = null;
     this._eventSupport = new WebInspector.Object();
-    this._editing = false;
 
     this._visible = false;
 
@@ -164,11 +164,6 @@ WebInspector.ElementsTreeOutline.prototype = {
         // node as the one passed in.
         if (this._selectedDOMNode === node)
             this._selectedNodeChanged();
-    },
-
-    get editing()
-    {
-        return this._editing;
     },
 
     update: function()
@@ -476,6 +471,24 @@ WebInspector.ElementsTreeOutline.prototype = {
         }
     },
 
+    /**
+     * @param {Event} event
+     */
+    _onkeydown: function(event)
+    {
+        var keyboardEvent = /** @type {KeyboardEvent} */ (event);
+        var node = this.selectedDOMNode();
+        var treeElement = this.getCachedTreeElement(node);
+        if (!treeElement)
+            return;
+
+        if (!treeElement._editing && WebInspector.KeyboardShortcut.hasNoModifiers(keyboardEvent) && keyboardEvent.keyCode === WebInspector.KeyboardShortcut.Keys.H.code) {
+            WebInspector.cssModel.toggleInlineVisibility(node.id);
+            event.consume(true);
+            return;
+        }
+    },
+
     _contextMenuEventFired: function(event)
     {
         if (!this._showInElementsPanelEnabled)
@@ -545,20 +558,22 @@ WebInspector.ElementsTreeOutline.prototype = {
 
         if (event.keyIdentifier === "F2") {
             this._toggleEditAsHTML(node);
+            event.handled = true;
             return;
         }
 
         if (WebInspector.KeyboardShortcut.eventHasCtrlOrMeta(event) && node.parentNode) {
             if (event.keyIdentifier === "Up" && node.previousSibling) {
                 node.moveTo(node.parentNode, node.previousSibling, this._selectNodeAfterEdit.bind(this, null, treeElement.expanded));
+                event.handled = true;
                 return;
             }
             if (event.keyIdentifier === "Down" && node.nextSibling) {
                 node.moveTo(node.parentNode, node.nextSibling.nextSibling, this._selectNodeAfterEdit.bind(this, null, treeElement.expanded));
+                event.handled = true;
                 return;
             }
         }
-
     },
 
     _toggleEditAsHTML: function(node)
@@ -1084,7 +1099,7 @@ WebInspector.ElementsTreeElement.prototype = {
     {
         // On Enter or Return start editing the first attribute
         // or create a new attribute on the selected element.
-        if (this.treeOutline.editing)
+        if (this._editing)
             return false;
 
         this._startEditing();
@@ -1170,7 +1185,8 @@ WebInspector.ElementsTreeElement.prototype = {
         var newAttribute = event.target.enclosingNodeOrSelfWithClass("add-attribute");
 
         // Add attribute-related actions.
-        contextMenu.appendItem(WebInspector.UIString(WebInspector.useLowerCaseMenuTitles() ? "Add attribute" : "Add Attribute"), this._addNewAttribute.bind(this));
+        var treeElement = this._elementCloseTag ? this.treeOutline.findTreeElement(this.representedObject) : this;
+        contextMenu.appendItem(WebInspector.UIString(WebInspector.useLowerCaseMenuTitles() ? "Add attribute" : "Add Attribute"), this._addNewAttribute.bind(treeElement));
         if (attribute && !newAttribute)
             contextMenu.appendItem(WebInspector.UIString(WebInspector.useLowerCaseMenuTitles() ? "Edit attribute" : "Edit Attribute"), this._startEditingAttribute.bind(this, attribute, event.target));
         contextMenu.appendSeparator();
@@ -1248,6 +1264,7 @@ WebInspector.ElementsTreeElement.prototype = {
 
         var tag = this.listItemElement.getElementsByClassName("webkit-html-tag")[0];
         this._insertInLastAttributePosition(tag, attr);
+        attr.scrollIntoViewIfNeeded(true);
         return this._startEditingAttribute(attr, attr);
     },
 
@@ -1315,7 +1332,7 @@ WebInspector.ElementsTreeElement.prototype = {
         }
 
         config.customFinishHandler = handleKeyDownEvents.bind(this);
-        
+
         this._editing = WebInspector.startEditing(attribute, config);
 
         window.getSelection().setBaseAndExtent(elementForSelection, 0, elementForSelection, 1);
@@ -1435,7 +1452,7 @@ WebInspector.ElementsTreeElement.prototype = {
 
         function dispose()
         {
-            this._editing = false;
+            delete this._editing;
 
             // Remove editor.
             this.listItemElement.removeChild(this._htmlEditElement);
@@ -1461,7 +1478,7 @@ WebInspector.ElementsTreeElement.prototype = {
 
     _attributeEditingCommitted: function(element, newText, oldText, attributeName, moveDirection)
     {
-        this._editing = false;
+        delete this._editing;
 
         var treeOutline = this.treeOutline;
         /**
@@ -1524,7 +1541,7 @@ WebInspector.ElementsTreeElement.prototype = {
 
     _tagNameEditingCommitted: function(element, newText, oldText, tagName, moveDirection)
     {
-        this._editing = false;
+        delete this._editing;
         var self = this;
 
         function cancel()
@@ -1580,7 +1597,7 @@ WebInspector.ElementsTreeElement.prototype = {
      */
     _textNodeEditingCommitted: function(textNode, element, newText)
     {
-        this._editing = false;
+        delete this._editing;
 
         function callback()
         {
@@ -1595,7 +1612,7 @@ WebInspector.ElementsTreeElement.prototype = {
      */
     _editingCancelled: function(element, context)
     {
-        this._editing = false;
+        delete this._editing;
 
         // Need to restore attributes structure.
         this.updateTitle();

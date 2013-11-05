@@ -41,6 +41,13 @@ namespace WebCore {
 class DateTimeNumericFieldElement : public DateTimeFieldElement {
     WTF_MAKE_NONCOPYABLE(DateTimeNumericFieldElement);
 
+public:
+    struct Parameters {
+        Parameters(int step = 1, int stepBase = 0) : step(step), stepBase(stepBase) { }
+        int step;
+        int stepBase;
+    };
+
 protected:
     struct Range {
         Range(int minimum, int maximum);
@@ -51,7 +58,7 @@ protected:
         int minimum;
     };
 
-    DateTimeNumericFieldElement(Document*, FieldOwner&, int minimum, int maximum, const String& placeholder);
+    DateTimeNumericFieldElement(Document*, FieldOwner&, int minimum, int maximum, const String& placeholder, const Parameters& = Parameters());
 
     int clampValue(int value) const { return m_range.clampValue(value); }
     virtual int clampValueForHardLimits(int) const;
@@ -68,25 +75,26 @@ protected:
     virtual String visibleValue() const OVERRIDE FINAL;
 
 private:
-    // Element function.
-    virtual PassRefPtr<RenderStyle> customStyleForRenderer() OVERRIDE;
-
     // DateTimeFieldElement functions.
     virtual void didBlur() OVERRIDE FINAL;
     virtual void handleKeyboardEvent(KeyboardEvent*) OVERRIDE FINAL;
+    virtual float maximumWidth(const Font&) OVERRIDE;
     virtual int minimum() const OVERRIDE FINAL;
     virtual void stepDown() OVERRIDE FINAL;
     virtual void stepUp() OVERRIDE FINAL;
     virtual String value() const OVERRIDE FINAL;
 
     String formatValue(int) const;
-    Locale& localeForOwner() const;
+    int roundUp(int) const;
+    int roundDown(int) const;
 
     DOMTimeStamp m_lastDigitCharTime;
     const String m_placeholder;
     const Range m_range;
     int m_value;
     bool m_hasValue;
+    int m_step;
+    int m_stepBase;
 };
 
 } // namespace WebCore

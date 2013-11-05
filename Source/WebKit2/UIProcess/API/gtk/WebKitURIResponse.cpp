@@ -30,6 +30,17 @@
 using namespace WebKit;
 using namespace WebCore;
 
+/**
+ * SECTION: WebKitURIResponse
+ * @Short_description: Represents a URI response
+ * @Title: WebKitURIResponse
+ *
+ * A #WebKitURIResponse contains information such as the URI, the
+ * status code, the content length, the mime type, the HTTP status or
+ * the suggested filename.
+ *
+ */
+
 enum {
     PROP_0,
 
@@ -40,8 +51,6 @@ enum {
     PROP_SUGGESTED_FILENAME
 };
 
-G_DEFINE_TYPE(WebKitURIResponse, webkit_uri_response, G_TYPE_OBJECT)
-
 struct _WebKitURIResponsePrivate {
     ResourceResponse resourceResponse;
     CString uri;
@@ -49,11 +58,7 @@ struct _WebKitURIResponsePrivate {
     CString suggestedFilename;
 };
 
-static void webkitURIResponseFinalize(GObject* object)
-{
-    WEBKIT_URI_RESPONSE(object)->priv->~WebKitURIResponsePrivate();
-    G_OBJECT_CLASS(webkit_uri_response_parent_class)->finalize(object);
-}
+WEBKIT_DEFINE_TYPE(WebKitURIResponse, webkit_uri_response, G_TYPE_OBJECT)
 
 static void webkitURIResponseGetProperty(GObject* object, guint propId, GValue* value, GParamSpec* paramSpec)
 {
@@ -83,8 +88,6 @@ static void webkitURIResponseGetProperty(GObject* object, guint propId, GValue* 
 static void webkit_uri_response_class_init(WebKitURIResponseClass* responseClass)
 {
     GObjectClass* objectClass = G_OBJECT_CLASS(responseClass);
-
-    objectClass->finalize = webkitURIResponseFinalize;
     objectClass->get_property = webkitURIResponseGetProperty;
 
     /**
@@ -150,15 +153,6 @@ static void webkit_uri_response_class_init(WebKitURIResponseClass* responseClass
                                                         _("The suggested filename for the URI response"),
                                                         0,
                                                         WEBKIT_PARAM_READABLE));
-
-    g_type_class_add_private(responseClass, sizeof(WebKitURIResponsePrivate));
-}
-
-static void webkit_uri_response_init(WebKitURIResponse* response)
-{
-    WebKitURIResponsePrivate* priv = G_TYPE_INSTANCE_GET_PRIVATE(response, WEBKIT_TYPE_URI_RESPONSE, WebKitURIResponsePrivate);
-    response->priv = priv;
-    new (priv) WebKitURIResponsePrivate();
 }
 
 /**

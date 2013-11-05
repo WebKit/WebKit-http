@@ -42,6 +42,7 @@ PassOwnPtr<ScrollingStateScrollingNode> ScrollingStateScrollingNode::create(Scro
 ScrollingStateScrollingNode::ScrollingStateScrollingNode(ScrollingStateTree* stateTree, ScrollingNodeID nodeID)
     : ScrollingStateNode(stateTree, nodeID)
     , m_changedProperties(0)
+    , m_frameScaleFactor(1)
     , m_wheelEventHandlerCount(0)
     , m_shouldUpdateScrollLayerPositionOnMainThread(0)
     , m_horizontalScrollElasticity(ScrollElasticityNone)
@@ -59,6 +60,7 @@ ScrollingStateScrollingNode::ScrollingStateScrollingNode(const ScrollingStateScr
     , m_changedProperties(stateNode.changedProperties())
     , m_viewportRect(stateNode.viewportRect())
     , m_contentsSize(stateNode.contentsSize())
+    , m_frameScaleFactor(stateNode.frameScaleFactor())
     , m_nonFastScrollableRegion(stateNode.nonFastScrollableRegion())
     , m_wheelEventHandlerCount(stateNode.wheelEventHandlerCount())
     , m_shouldUpdateScrollLayerPositionOnMainThread(stateNode.shouldUpdateScrollLayerPositionOnMainThread())
@@ -100,6 +102,17 @@ void ScrollingStateScrollingNode::setContentsSize(const IntSize& contentsSize)
 
     m_contentsSize = contentsSize;
     m_changedProperties |= ContentsSize;
+    m_scrollingStateTree->setHasChangedProperties(true);
+}
+
+void ScrollingStateScrollingNode::setFrameScaleFactor(float scaleFactor)
+{
+    if (m_frameScaleFactor == scaleFactor)
+        return;
+
+    m_frameScaleFactor = scaleFactor;
+
+    m_changedProperties |= FrameScaleFactor;
     m_scrollingStateTree->setHasChangedProperties(true);
 }
 
@@ -225,20 +238,14 @@ void ScrollingStateScrollingNode::dumpProperties(TextStream& ts, int indent) con
         ts << "(contents size " << m_contentsSize.width() << " " << m_contentsSize.height() << ")\n";
     }
 
+    if (m_frameScaleFactor != 1) {
+        writeIndent(ts, indent + 1);
+        ts << "(frame scale factor " << m_frameScaleFactor << ")\n";
+    }
+
     if (m_shouldUpdateScrollLayerPositionOnMainThread) {
         writeIndent(ts, indent + 1);
-        ts << "(Scrolling on main thread because: ";
-        if (m_shouldUpdateScrollLayerPositionOnMainThread & ScrollingCoordinator::ForcedOnMainThread)
-            ts << "Forced on main thread, ";
-        if (m_shouldUpdateScrollLayerPositionOnMainThread & ScrollingCoordinator::HasSlowRepaintObjects)
-            ts << "Has slow repaint objects, ";
-        if (m_shouldUpdateScrollLayerPositionOnMainThread & ScrollingCoordinator::HasViewportConstrainedObjectsWithoutSupportingFixedLayers)
-            ts << "Has viewport constrained objects without supporting fixed layers, ";
-        if (m_shouldUpdateScrollLayerPositionOnMainThread & ScrollingCoordinator::HasNonLayerFixedObjects)
-            ts << "Has non-layer fixed objects, ";
-        if (m_shouldUpdateScrollLayerPositionOnMainThread & ScrollingCoordinator::IsImageDocument)
-            ts << "Is image document";
-        ts << ")\n";
+        ts << "(Scrolling on main thread because: " << ScrollingCoordinator::mainThreadScrollingReasonsAsText(m_shouldUpdateScrollLayerPositionOnMainThread) << ")\n";
     }
 
     if (m_requestedScrollPosition != IntPoint()) {
@@ -250,7 +257,6 @@ void ScrollingStateScrollingNode::dumpProperties(TextStream& ts, int indent) con
         writeIndent(ts, indent + 1);
         ts << "(scroll origin " << m_scrollOrigin.x() << " " << m_scrollOrigin.y() << ")\n";
     }
-
 }
 
 } // namespace WebCore

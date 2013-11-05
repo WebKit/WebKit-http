@@ -86,6 +86,7 @@ namespace JSC {
 
             if (ropeBuilder.length() < oldLength) // True for overflow
                 return throwOutOfMemoryError(exec);
+            oldLength = ropeBuilder.length();
         }
 
         return ropeBuilder.release();
@@ -105,6 +106,7 @@ namespace JSC {
 
             if (ropeBuilder.length() < oldLength) // True for overflow
                 return throwOutOfMemoryError(exec);
+            oldLength = ropeBuilder.length();
         }
 
         return ropeBuilder.release();
@@ -300,13 +302,16 @@ namespace JSC {
 
 #define InvalidPrototypeChain (std::numeric_limits<size_t>::max())
 
-    inline size_t normalizePrototypeChain(CallFrame* callFrame, JSValue base, JSValue slotBase, const Identifier& propertyName, PropertyOffset& slotOffset)
+    inline size_t normalizePrototypeChainForChainAccess(CallFrame* callFrame, JSValue base, JSValue slotBase, const Identifier& propertyName, PropertyOffset& slotOffset)
     {
         JSCell* cell = base.asCell();
         size_t count = 0;
-
+        
         while (slotBase != cell) {
             if (cell->isProxy())
+                return InvalidPrototypeChain;
+            
+            if (cell->structure()->typeInfo().hasImpureGetOwnPropertySlot())
                 return InvalidPrototypeChain;
             
             JSValue v = cell->structure()->prototypeForLookup(callFrame);
@@ -326,7 +331,7 @@ namespace JSC {
                 if (slotBase == cell)
                     slotOffset = cell->structure()->get(callFrame->globalData(), propertyName); 
             }
-
+            
             ++count;
         }
         
@@ -353,6 +358,23 @@ namespace JSC {
                 asObject(base)->flattenDictionaryObject(callFrame->globalData());
 
             ++count;
+        }
+    }
+
+    inline bool isPrototypeChainNormalized(JSGlobalObject* globalObject, Structure* structure)
+    {
+        for (;;) {
+            if (structure->typeInfo().type() == ProxyType)
+                return false;
+            
+            JSValue v = structure->prototypeForLookup(globalObject);
+            if (v.isNull())
+                return true;
+            
+            structure = v.asCell()->structure();
+            
+            if (structure->isDictionary())
+                return false;
         }
     }
 

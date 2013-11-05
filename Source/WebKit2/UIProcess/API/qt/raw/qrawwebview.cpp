@@ -20,9 +20,9 @@
 #include "config.h"
 #include "qrawwebview_p.h"
 
+#include "CoordinatedLayerTreeHostProxy.h"
 #include "Cursor.h"
 #include "DrawingAreaProxyImpl.h"
-#include "LayerTreeCoordinatorProxy.h"
 #include "LayerTreeRenderer.h"
 #include "NativeWebKeyboardEvent.h"
 #include "NativeWebMouseEvent.h"
@@ -126,6 +126,11 @@ void QRawWebViewPrivate::updateAcceleratedCompositingMode(const WebKit::LayerTre
 #endif // USE(ACCELERATED_COMPOSITING)
 
 void QRawWebViewPrivate::updateTextInputState()
+{
+    notImplemented();
+}
+
+void QRawWebViewPrivate::handleWillSetInputMethodState()
 {
     notImplemented();
 }
@@ -341,7 +346,7 @@ void QRawWebView::setSize(const QSize& size)
     if (d->m_webPageProxy->useFixedLayout())
         d->m_webPageProxy->setViewportSize(size);
     else {
-        WebKit::LayerTreeCoordinatorProxy* coordinator = drawingArea->layerTreeCoordinatorProxy();
+        WebKit::CoordinatedLayerTreeHostProxy* coordinator = drawingArea->coordinatedLayerTreeHostProxy();
         if (!coordinator)
             return;
         coordinator->setContentsSize(WebCore::FloatSize(size.width(), size.height()));
@@ -363,10 +368,10 @@ WebKit::LayerTreeRenderer* QRawWebView::layerTreeRenderer() const
     WebKit::DrawingAreaProxy* drawingArea = d->m_webPageProxy->drawingArea();
     if (!drawingArea)
         return 0;
-    WebKit::LayerTreeCoordinatorProxy* layerTreeCoordinatorProxy = drawingArea->layerTreeCoordinatorProxy();
-    if (!layerTreeCoordinatorProxy)
+    WebKit::CoordinatedLayerTreeHostProxy* coordinatedLayerTreeHostProxy = drawingArea->coordinatedLayerTreeHostProxy();
+    if (!coordinatedLayerTreeHostProxy)
         return 0;
-    return layerTreeCoordinatorProxy->layerTreeRenderer();
+    return coordinatedLayerTreeHostProxy->layerTreeRenderer();
 }
 
 void QRawWebView::paint(const QMatrix4x4& transform, float opacity, unsigned paintFlags)
@@ -376,7 +381,6 @@ void QRawWebView::paint(const QMatrix4x4& transform, float opacity, unsigned pai
         return;
 
     renderer->setActive(true);
-    renderer->syncRemoteContent();
 
     WebCore::FloatRect rect(0, 0, d->m_size.width(), d->m_size.height());
 

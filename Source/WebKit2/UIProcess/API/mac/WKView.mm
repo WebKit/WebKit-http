@@ -105,13 +105,6 @@
 @end
 
 @interface NSWindow (WKNSWindowDetails)
-#if __MAC_OS_X_VERSION_MIN_REQUIRED == 1060
-- (NSRect)_growBoxRect;
-- (id)_growBoxOwner;
-- (void)_setShowOpaqueGrowBoxForOwner:(id)owner;
-- (BOOL)_updateGrowBoxForWindowFrameChange;
-#endif
-
 - (NSRect)_intersectBottomCornersWithRect:(NSRect)viewRect;
 - (void)_maskRoundedBottomCorners:(NSRect)clipRect;
 @end
@@ -215,6 +208,8 @@ struct WKViewInterpretKeyEventsParameters {
     RefPtr<WebCore::Image> _promisedImage;
     String _promisedFilename;
     String _promisedURL;
+
+    NSSize _intrinsicContentSize;
 }
 
 @end
@@ -354,6 +349,11 @@ struct WKViewInterpretKeyEventsParameters {
 - (BOOL)isFlipped
 {
     return YES;
+}
+
+- (NSSize)intrinsicContentSize
+{
+    return _data->_intrinsicContentSize;
 }
 
 - (void)setFrameSize:(NSSize)size
@@ -963,7 +963,6 @@ static void speakString(WKStringRef string, WKErrorRef error, void*)
 
 - (void)displayIfNeeded
 {
-#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1070
     // FIXME: We should remove this code when <rdar://problem/9362085> is resolved. In the meantime,
     // it is necessary to disable scren updates so we get a chance to redraw the corners before this 
     // display is visible.
@@ -971,17 +970,14 @@ static void speakString(WKStringRef string, WKErrorRef error, void*)
     BOOL shouldMaskWindow = window && !NSIsEmptyRect(_data->_windowBottomCornerIntersectionRect);
     if (shouldMaskWindow)
         NSDisableScreenUpdates();
-#endif
 
     [super displayIfNeeded];
 
-#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1070
     if (shouldMaskWindow) {
         [window _maskRoundedBottomCorners:_data->_windowBottomCornerIntersectionRect];
         NSEnableScreenUpdates();
         _data->_windowBottomCornerIntersectionRect = NSZeroRect;
     }
-#endif
 }
 
 // Events
@@ -1685,7 +1681,6 @@ static void extractUnderlines(NSAttributedString *string, Vector<CompositionUnde
     _data->_page->dragUpdated(&dragData, [[draggingInfo draggingPasteboard] name]);
     
     WebCore::DragSession dragSession = _data->_page->dragSession();
-#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1070
     NSInteger numberOfValidItemsForDrop = dragSession.numberOfItemsToBeAccepted;
     NSDraggingFormation draggingFormation = NSDraggingFormationNone;
     if (dragSession.mouseIsOverFileInput && numberOfValidItemsForDrop > 0)
@@ -1695,7 +1690,7 @@ static void extractUnderlines(NSAttributedString *string, Vector<CompositionUnde
         [draggingInfo setNumberOfValidItemsForDrop:numberOfValidItemsForDrop];
     if ([draggingInfo draggingFormation] != draggingFormation)
         [draggingInfo setDraggingFormation:draggingFormation];
-#endif
+
     return dragSession.operation;
 }
 
@@ -1797,57 +1792,6 @@ static void createSandboxExtensionsForFileUpload(NSPasteboard *pasteboard, Sandb
 }
 
 
-#if __MAC_OS_X_VERSION_MIN_REQUIRED == 1060
-- (BOOL)_ownsWindowGrowBox
-{
-    NSWindow* window = [self window];
-    if (!window)
-        return NO;
-
-    NSView *superview = [self superview];
-    if (!superview)
-        return NO;
-
-    NSRect growBoxRect = [window _growBoxRect];
-    if (NSIsEmptyRect(growBoxRect))
-        return NO;
-
-    NSRect visibleRect = [self visibleRect];
-    if (NSIsEmptyRect(visibleRect))
-        return NO;
-
-    NSRect visibleRectInWindowCoords = [self convertRect:visibleRect toView:nil];
-    if (!NSIntersectsRect(growBoxRect, visibleRectInWindowCoords))
-        return NO;
-
-    return YES;
-}
-
-- (BOOL)_updateGrowBoxForWindowFrameChange
-{
-    // Temporarily enable the resize indicator to make a the _ownsWindowGrowBox calculation work.
-    BOOL wasShowingIndicator = [[self window] showsResizeIndicator];
-    if (!wasShowingIndicator)
-        [[self window] setShowsResizeIndicator:YES];
-
-    BOOL ownsGrowBox = [self _ownsWindowGrowBox];
-    _data->_page->setWindowResizerSize(ownsGrowBox ? enclosingIntRect([[self window] _growBoxRect]).size() : IntSize());
-
-    if (ownsGrowBox)
-        [[self window] _setShowOpaqueGrowBoxForOwner:(_data->_page->hasHorizontalScrollbar() || _data->_page->hasVerticalScrollbar() ? self : nil)];
-    else
-        [[self window] _setShowOpaqueGrowBoxForOwner:nil];
-
-    // Once WebCore can draw the window resizer, this should read:
-    // if (wasShowingIndicator)
-    //     [[self window] setShowsResizeIndicator:!ownsGrowBox];
-    if (!wasShowingIndicator)
-        [[self window] setShowsResizeIndicator:NO];
-
-    return ownsGrowBox;
-}
-#endif
-
 // FIXME: Use AppKit constants for these when they are available.
 static NSString * const windowDidChangeBackingPropertiesNotification = @"NSWindowDidChangeBackingPropertiesNotification";
 static NSString * const backingPropertyOldScaleFactorKey = @"NSBackingPropertyOldScaleFactorKey";
@@ -1915,11 +1859,6 @@ static NSString * const backingPropertyOldScaleFactorKey = @"NSBackingPropertyOl
     
     [self removeWindowObservers];
     [self addWindowObserversForWindow:window];
-
-#if __MAC_OS_X_VERSION_MIN_REQUIRED == 1060
-    if ([currentWindow _growBoxOwner] == self)
-        [currentWindow _setShowOpaqueGrowBoxForOwner:nil];
-#endif
 }
 
 - (void)viewDidMoveToWindow
@@ -1956,9 +1895,7 @@ static NSString * const backingPropertyOldScaleFactorKey = @"NSBackingPropertyOl
             _data->_endGestureMonitor = nil;
         }
 #endif
-#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1070
         WKHideWordDefinitionWindow();
-#endif
     }
 
     _data->_page->setIntrinsicDeviceScaleFactor([self _intrinsicDeviceScaleFactor]);
@@ -2238,15 +2175,9 @@ static void drawPageBackground(CGContextRef context, WebPageProxy* page, const I
 - (float)_intrinsicDeviceScaleFactor
 {
     NSWindow *window = [self window];
-#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1070
     if (window)
         return [window backingScaleFactor];
     return [[NSScreen mainScreen] backingScaleFactor];
-#else
-    if (window)
-        return [window userSpaceScaleFactor];
-    return [[NSScreen mainScreen] userSpaceScaleFactor];
-#endif
 }
 
 - (void)_setDrawingAreaSize:(NSSize)size
@@ -2884,13 +2815,6 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
     }
 }
 
-- (void)_didChangeScrollbarsForMainFrame
-{
-#if __MAC_OS_X_VERSION_MIN_REQUIRED == 1060
-    [self _updateGrowBoxForWindowFrameChange];
-#endif
-}
-
 #if ENABLE(FULLSCREEN_API)
 - (BOOL)hasFullScreenWindowController
 {
@@ -2925,10 +2849,15 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
     return ![sink.get() didReceiveUnhandledCommand];
 }
 
+- (void)_setIntrinsicContentSize:(NSSize)intrinsicContentSize
+{
+    _data->_intrinsicContentSize = intrinsicContentSize;
+    [self invalidateIntrinsicContentSize];
+}
+
 - (void)_cacheWindowBottomCornerRect
 {
-#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1070
-    // FIXME: We should remove this code when <rdar://problem/9362085> is resolved. 
+    // FIXME: We should remove this code when <rdar://problem/9362085> is resolved.
     NSWindow *window = [self window];
     if (!window)
         return;
@@ -2936,7 +2865,6 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
     _data->_windowBottomCornerIntersectionRect = [window _intersectBottomCornersWithRect:[self convertRect:[self visibleRect] toView:nil]];
     if (!NSIsEmptyRect(_data->_windowBottomCornerIntersectionRect))
         [self setNeedsDisplayInRect:[self convertRect:_data->_windowBottomCornerIntersectionRect fromView:nil]];
-#endif
 }
 
 - (NSInteger)spellCheckerDocumentTag
@@ -2993,14 +2921,10 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
 
     // Legacy style scrollbars have design details that rely on tracking the mouse all the time.
     NSTrackingAreaOptions options = NSTrackingMouseMoved | NSTrackingMouseEnteredAndExited | NSTrackingInVisibleRect;
-#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1070
     if (WKRecommendedScrollerStyle() == NSScrollerStyleLegacy)
         options |= NSTrackingActiveAlways;
     else
         options |= NSTrackingActiveInKeyWindow;
-#else
-    options |= NSTrackingActiveInKeyWindow;
-#endif
 
     NSTrackingArea *trackingArea = [[NSTrackingArea alloc] initWithRect:frame
                                                                 options:options
@@ -3020,6 +2944,8 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
 #endif
     _data->_mouseDownEvent = nil;
     _data->_ignoringMouseDraggedEvents = NO;
+
+    _data->_intrinsicContentSize = NSMakeSize(NSViewNoInstrinsicMetric, NSViewNoInstrinsicMetric);
 
     [self _registerDraggedTypes];
 
@@ -3121,9 +3047,17 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
 
 + (void)hideWordDefinitionWindow
 {
-#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1070
     WKHideWordDefinitionWindow();
-#endif
+}
+
+- (CGFloat)minimumLayoutWidth
+{
+    return _data->_page->minimumLayoutWidth();
+}
+
+- (void)setMinimumLayoutWidth:(CGFloat)minimumLayoutWidth
+{
+    _data->_page->setMinimumLayoutWidth(minimumLayoutWidth);
 }
 
 @end

@@ -239,7 +239,7 @@ void XSSAuditor::init()
         }
 
         if (m_xssProtection == XSSProtectionInvalid) {
-            m_parser->document()->addConsoleMessage(JSMessageSource, LogMessageType, ErrorMessageLevel, "Error parsing header X-XSS-Protection: " + headerValue + ": "  + errorDetails + " at character position " + String::format("%u", errorPosition) + ". The default protections will be applied.");
+            m_parser->document()->addConsoleMessage(JSMessageSource, ErrorMessageLevel, "Error parsing header X-XSS-Protection: " + headerValue + ": "  + errorDetails + " at character position " + String::format("%u", errorPosition) + ". The default protections will be applied.");
             m_xssProtection = XSSProtectionEnabled;
         }
 
@@ -290,7 +290,7 @@ void XSSAuditor::filterToken(HTMLToken& token)
     if (didBlockScript) {
         // FIXME: Consider using a more helpful console message.
         DEFINE_STATIC_LOCAL(String, consoleMessage, (ASCIILiteral("Refused to execute a JavaScript script. Source code of script found within request.\n")));
-        m_parser->document()->addConsoleMessage(JSMessageSource, LogMessageType, ErrorMessageLevel, consoleMessage);
+        m_parser->document()->addConsoleMessage(JSMessageSource, ErrorMessageLevel, consoleMessage);
 
         bool didBlockEntirePage = (m_xssProtection == XSSProtectionBlockEnabled);
         if (didBlockEntirePage)
@@ -542,13 +542,16 @@ String XSSAuditor::decodedSnippetForAttribute(const HTMLToken& token, const HTML
         // In HTTP URLs, characters following the first ?, #, or third slash may come from 
         // the page itself and can be merely ignored by an attacker's server when a remote
         // script or script-like resource is requested. In DATA URLS, the payload starts at
-        // the first comma, and the the first /* or // may introduce a comment. Characters
+        // the first comma, and the the first /*, //, or <!-- may introduce a comment. Characters
         // following this may come from the page itself and may be ignored when the script is
         // executed. For simplicity, we don't differentiate based on URL scheme, and stop at
-        // the first # or ?, the third slash, or the first slash once a comma is seen.
+        // the first # or ?, the third slash, or the first slash or < once a comma is seen.
         for (size_t currentLength = 0; currentLength < decodedSnippet.length(); ++currentLength) {
             UChar currentChar = decodedSnippet[currentLength];
-            if (currentChar == '?' || currentChar == '#' || ((currentChar == '/' || currentChar == '\\') && (commaSeen || ++slashCount > 2))) {
+            if (currentChar == '?'
+                || currentChar == '#'
+                || ((currentChar == '/' || currentChar == '\\') && (commaSeen || ++slashCount > 2))
+                || (currentChar == '<' && commaSeen)) {
                 decodedSnippet.truncate(currentLength);
                 break;
             }
@@ -614,31 +617,35 @@ String XSSAuditor::decodedSnippetForJavaScript(const HTMLToken& token)
             break;
     }
 
-    // Stop at next comment (using the same rules as above for SVG/XML vs HTML), when we 
-    // encounter a comma, or when we  exceed the maximum length target. The comma rule
-    // covers a common parameter concatenation case performed by some webservers.
-    // After hitting the length target, we can only stop at a point where we know we are
-    // not in the middle of a %-escape sequence. For the sake of simplicity, approximate
-    // not stopping inside a (possibly multiply encoded) %-esacpe sequence by breaking on
-    // whitespace only. We should have enough text in these cases to avoid false positives.
-    for (foundPosition = startPosition; foundPosition < endPosition; foundPosition++) {
-        if (!m_shouldAllowCDATA) {
-            if (startsSingleLineCommentAt(string, foundPosition) || startsMultiLineCommentAt(string, foundPosition)) {
-                endPosition = foundPosition + 2;
-                break;
+    String result;
+    while (startPosition < endPosition && !result.length()) {
+        // Stop at next comment (using the same rules as above for SVG/XML vs HTML), when we 
+        // encounter a comma, or when we  exceed the maximum length target. The comma rule
+        // covers a common parameter concatenation case performed by some webservers.
+        // After hitting the length target, we can only stop at a point where we know we are
+        // not in the middle of a %-escape sequence. For the sake of simplicity, approximate
+        // not stopping inside a (possibly multiply encoded) %-esacpe sequence by breaking on
+        // whitespace only. We should have enough text in these cases to avoid false positives.
+        for (foundPosition = startPosition; foundPosition < endPosition; foundPosition++) {
+            if (!m_shouldAllowCDATA) {
+                if (startsSingleLineCommentAt(string, foundPosition) || startsMultiLineCommentAt(string, foundPosition)) {
+                    foundPosition += 2;
+                    break;
+                }
+                if (startsHTMLCommentAt(string, foundPosition)) {
+                    foundPosition += 4;
+                    break;
+                }
             }
-            if (startsHTMLCommentAt(string, foundPosition)) {
-                endPosition = foundPosition + 4;
+            if (string[foundPosition] == ',' || (foundPosition > startPosition + kMaximumFragmentLengthTarget && isHTMLSpace(string[foundPosition]))) {
                 break;
             }
         }
-        if (string[foundPosition] == ',' || (foundPosition > startPosition + kMaximumFragmentLengthTarget && isHTMLSpace(string[foundPosition]))) {
-            endPosition = foundPosition;
-            break;
-        }
-    }
 
-    return fullyDecodeString(string.substring(startPosition, endPosition - startPosition), m_parser->document()->decoder());
+        result = fullyDecodeString(string.substring(startPosition, foundPosition - startPosition), m_parser->document()->decoder());
+        startPosition = foundPosition + 1;
+    }
+    return result;
 }
 
 bool XSSAuditor::isContainedInRequest(const String& decodedSnippet)

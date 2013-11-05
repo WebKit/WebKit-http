@@ -44,6 +44,7 @@
 #include "HTMLStyleElement.h"
 #include "InspectorInstrumentation.h"
 #include "NodeRenderStyle.h"
+#include "NodeTraversal.h"
 #include "Page.h"
 #include "PageGroup.h"
 #include "RenderObject.h"
@@ -206,18 +207,14 @@ void SelectorChecker::collectIdentifierHashes(const CSSSelector* selector, unsig
     *hash = 0;
 }
 
-static inline const AtomicString* linkAttribute(Node* node)
+static inline const AtomicString* linkAttribute(Element* element)
 {
-    if (!node->isLink())
+    if (!element->isLink())
         return 0;
-
-    ASSERT(node->isElementNode());
-    Element* element = static_cast<Element*>(node);
     if (element->isHTMLElement())
         return &element->fastGetAttribute(hrefAttr);
     if (element->isSVGElement())
         return &element->getAttribute(XLinkNames::hrefAttr);
-
     return 0;
 }
 
@@ -448,7 +445,7 @@ SelectorChecker::SelectorMatch SelectorChecker::checkSelector(const SelectorChec
 
     if (context.selector->m_match == CSSSelector::PseudoElement) {
         if (context.selector->isCustomPseudoElement()) {
-            if (ShadowRoot* root = context.element->shadowRoot()) {
+            if (ShadowRoot* root = context.element->containingShadowRoot()) {
                 if (context.element->shadowPseudoId() != context.selector->value())
                     return SelectorFailsLocally;
 
@@ -523,10 +520,9 @@ SelectorChecker::SelectorMatch SelectorChecker::checkSelector(const SelectorChec
         return checkSelector(nextContext, ignoreDynamicPseudo);
 
     case CSSSelector::DirectAdjacent:
-        if (m_mode == ResolvingStyle && context.element->parentElement()) {
-            RenderStyle* parentStyle = context.elementStyle ? context.elementParentStyle : context.element->parentNode()->renderStyle();
-            if (parentStyle)
-                parentStyle->setChildrenAffectedByDirectAdjacentRules();
+        if (m_mode == ResolvingStyle) {
+            if (Element* parentElement = context.element->parentElement())
+                parentElement->setChildrenAffectedByDirectAdjacentRules();
         }
         nextContext.element = context.element->previousElementSibling();
         if (!nextContext.element)
@@ -537,10 +533,9 @@ SelectorChecker::SelectorMatch SelectorChecker::checkSelector(const SelectorChec
         return checkSelector(nextContext, ignoreDynamicPseudo);
 
     case CSSSelector::IndirectAdjacent:
-        if (m_mode == ResolvingStyle && context.element->parentElement()) {
-            RenderStyle* parentStyle = context.elementStyle ? context.elementParentStyle : context.element->parentNode()->renderStyle();
-            if (parentStyle)
-                parentStyle->setChildrenAffectedByForwardPositionalRules();
+        if (m_mode == ResolvingStyle) {
+            if (Element* parentElement = context.element->parentElement())
+                parentElement->setChildrenAffectedByForwardPositionalRules();
         }
         nextContext.element = context.element->previousElementSibling();
         nextContext.isSubSelector = false;
@@ -814,6 +809,7 @@ bool SelectorChecker::checkOneSelector(const SelectorCheckingContext& context, c
                     }
                 }
                 if (m_mode == ResolvingStyle) {
+                    element->setStyleAffectedByEmpty();
                     if (context.elementStyle)
                         context.elementStyle->setEmptyState(result);
                     else if (element->renderStyle() && (element->document()->styleSheetCollection()->usesSiblingRules() || element->renderStyle()->unique()))
@@ -823,13 +819,11 @@ bool SelectorChecker::checkOneSelector(const SelectorCheckingContext& context, c
             }
         case CSSSelector::PseudoFirstChild:
             // first-child matches the first child that is an element
-            if (element->parentElement()) {
+            if (Element* parentElement = element->parentElement()) {
                 bool result = siblingTraversalStrategy.isFirstChild(element);
                 if (m_mode == ResolvingStyle) {
                     RenderStyle* childStyle = context.elementStyle ? context.elementStyle : element->renderStyle();
-                    RenderStyle* parentStyle = context.elementStyle ? context.elementParentStyle : element->parentNode()->renderStyle();
-                    if (parentStyle)
-                        parentStyle->setChildrenAffectedByFirstChildRules();
+                    parentElement->setChildrenAffectedByFirstChildRules();
                     if (result && childStyle)
                         childStyle->setFirstChildState();
                 }
@@ -838,13 +832,10 @@ bool SelectorChecker::checkOneSelector(const SelectorCheckingContext& context, c
             break;
         case CSSSelector::PseudoFirstOfType:
             // first-of-type matches the first element of its type
-            if (element->parentElement()) {
+            if (Element* parentElement = element->parentElement()) {
                 bool result = siblingTraversalStrategy.isFirstOfType(element, element->tagQName());
-                if (m_mode == ResolvingStyle) {
-                    RenderStyle* parentStyle = context.elementStyle ? context.elementParentStyle : element->parentNode()->renderStyle();
-                    if (parentStyle)
-                        parentStyle->setChildrenAffectedByForwardPositionalRules();
-                }
+                if (m_mode == ResolvingStyle)
+                    parentElement->setChildrenAffectedByForwardPositionalRules();
                 return result;
             }
             break;
@@ -854,9 +845,7 @@ bool SelectorChecker::checkOneSelector(const SelectorCheckingContext& context, c
                 bool result = parentElement->isFinishedParsingChildren() && siblingTraversalStrategy.isLastChild(element);
                 if (m_mode == ResolvingStyle) {
                     RenderStyle* childStyle = context.elementStyle ? context.elementStyle : element->renderStyle();
-                    RenderStyle* parentStyle = context.elementStyle ? context.elementParentStyle : parentElement->renderStyle();
-                    if (parentStyle)
-                        parentStyle->setChildrenAffectedByLastChildRules();
+                    parentElement->setChildrenAffectedByLastChildRules();
                     if (result && childStyle)
                         childStyle->setLastChildState();
                 }
@@ -866,11 +855,8 @@ bool SelectorChecker::checkOneSelector(const SelectorCheckingContext& context, c
         case CSSSelector::PseudoLastOfType:
             // last-of-type matches the last element of its type
             if (Element* parentElement = element->parentElement()) {
-                if (m_mode == ResolvingStyle) {
-                    RenderStyle* parentStyle = context.elementStyle ? context.elementParentStyle : parentElement->renderStyle();
-                    if (parentStyle)
-                        parentStyle->setChildrenAffectedByBackwardPositionalRules();
-                }
+                if (m_mode == ResolvingStyle)
+                    parentElement->setChildrenAffectedByBackwardPositionalRules();
                 if (!parentElement->isFinishedParsingChildren())
                     return false;
                 return siblingTraversalStrategy.isLastOfType(element, element->tagQName());
@@ -882,11 +868,8 @@ bool SelectorChecker::checkOneSelector(const SelectorCheckingContext& context, c
                 bool onlyChild = firstChild && parentElement->isFinishedParsingChildren() && siblingTraversalStrategy.isLastChild(element);
                 if (m_mode == ResolvingStyle) {
                     RenderStyle* childStyle = context.elementStyle ? context.elementStyle : element->renderStyle();
-                    RenderStyle* parentStyle = context.elementStyle ? context.elementParentStyle : parentElement->renderStyle();
-                    if (parentStyle) {
-                        parentStyle->setChildrenAffectedByFirstChildRules();
-                        parentStyle->setChildrenAffectedByLastChildRules();
-                    }
+                    parentElement->setChildrenAffectedByFirstChildRules();
+                    parentElement->setChildrenAffectedByLastChildRules();
                     if (firstChild && childStyle)
                         childStyle->setFirstChildState();
                     if (onlyChild && childStyle)
@@ -899,11 +882,8 @@ bool SelectorChecker::checkOneSelector(const SelectorCheckingContext& context, c
             // FIXME: This selector is very slow.
             if (Element* parentElement = element->parentElement()) {
                 if (m_mode == ResolvingStyle) {
-                    RenderStyle* parentStyle = context.elementStyle ? context.elementParentStyle : parentElement->renderStyle();
-                    if (parentStyle) {
-                        parentStyle->setChildrenAffectedByForwardPositionalRules();
-                        parentStyle->setChildrenAffectedByBackwardPositionalRules();
-                    }
+                    parentElement->setChildrenAffectedByForwardPositionalRules();
+                    parentElement->setChildrenAffectedByBackwardPositionalRules();
                 }
                 if (!parentElement->isFinishedParsingChildren())
                     return false;
@@ -917,11 +897,10 @@ bool SelectorChecker::checkOneSelector(const SelectorCheckingContext& context, c
                 int count = 1 + siblingTraversalStrategy.countElementsBefore(element);
                 if (m_mode == ResolvingStyle) {
                     RenderStyle* childStyle = context.elementStyle ? context.elementStyle : element->renderStyle();
-                    RenderStyle* parentStyle = context.elementStyle ? context.elementParentStyle : parentElement->renderStyle();
+                    element->setChildIndex(count);
                     if (childStyle)
-                        childStyle->setChildIndex(count);
-                    if (parentStyle)
-                        parentStyle->setChildrenAffectedByForwardPositionalRules();
+                        childStyle->setUnique();
+                    parentElement->setChildrenAffectedByForwardPositionalRules();
                 }
 
                 if (selector->matchNth(count))
@@ -933,11 +912,8 @@ bool SelectorChecker::checkOneSelector(const SelectorCheckingContext& context, c
                 break;
             if (Element* parentElement = element->parentElement()) {
                 int count = 1 + siblingTraversalStrategy.countElementsOfTypeBefore(element, element->tagQName());
-                if (m_mode == ResolvingStyle) {
-                    RenderStyle* parentStyle = context.elementStyle ? context.elementParentStyle : parentElement->renderStyle();
-                    if (parentStyle)
-                        parentStyle->setChildrenAffectedByForwardPositionalRules();
-                }
+                if (m_mode == ResolvingStyle)
+                    parentElement->setChildrenAffectedByForwardPositionalRules();
 
                 if (selector->matchNth(count))
                     return true;
@@ -947,11 +923,8 @@ bool SelectorChecker::checkOneSelector(const SelectorCheckingContext& context, c
             if (!selector->parseNth())
                 break;
             if (Element* parentElement = element->parentElement()) {
-                if (m_mode == ResolvingStyle) {
-                    RenderStyle* parentStyle = context.elementStyle ? context.elementParentStyle : parentElement->renderStyle();
-                    if (parentStyle)
-                        parentStyle->setChildrenAffectedByBackwardPositionalRules();
-                }
+                if (m_mode == ResolvingStyle)
+                    parentElement->setChildrenAffectedByBackwardPositionalRules();
                 if (!parentElement->isFinishedParsingChildren())
                     return false;
                 int count = 1 + siblingTraversalStrategy.countElementsAfter(element);
@@ -963,11 +936,8 @@ bool SelectorChecker::checkOneSelector(const SelectorCheckingContext& context, c
             if (!selector->parseNth())
                 break;
             if (Element* parentElement = element->parentElement()) {
-                if (m_mode == ResolvingStyle) {
-                    RenderStyle* parentStyle = context.elementStyle ? context.elementParentStyle : parentElement->renderStyle();
-                    if (parentStyle)
-                        parentStyle->setChildrenAffectedByBackwardPositionalRules();
-                }
+                if (m_mode == ResolvingStyle)
+                    parentElement->setChildrenAffectedByBackwardPositionalRules();
                 if (!parentElement->isFinishedParsingChildren())
                     return false;
 
@@ -1005,10 +975,12 @@ bool SelectorChecker::checkOneSelector(const SelectorCheckingContext& context, c
             // ...except if :visited matching is disabled for ancestor/sibling matching.
             return element->isLink() && context.visitedMatchType == VisitedMatchEnabled;
         case CSSSelector::PseudoDrag:
-            if (context.elementStyle)
-                context.elementStyle->setAffectedByDragRules(true);
-            else if (element->renderStyle())
-                element->renderStyle()->setAffectedByDragRules(true);
+            if (m_mode == ResolvingStyle) {
+                if (context.elementStyle)
+                    context.elementStyle->setAffectedByDrag();
+                else
+                    element->setChildrenAffectedByDrag(true);
+            }
             if (element->renderer() && element->renderer()->isDragging())
                 return true;
             break;
@@ -1018,10 +990,12 @@ bool SelectorChecker::checkOneSelector(const SelectorCheckingContext& context, c
             // If we're in quirks mode, then hover should never match anchors with no
             // href and *:hover should not match anything. This is important for sites like wsj.com.
             if (m_strictParsing || context.isSubSelector || (selector->hasTag() && !element->hasTagName(aTag)) || element->isLink()) {
-                if (context.elementStyle)
-                    context.elementStyle->setAffectedByHoverRules(true);
-                else if (element->renderStyle())
-                    element->renderStyle()->setAffectedByHoverRules(true);
+                if (m_mode == ResolvingStyle) {
+                    if (context.elementStyle)
+                        context.elementStyle->setAffectedByHover();
+                    else
+                        element->setChildrenAffectedByHover(true);
+                }
                 if (element->hovered() || InspectorInstrumentation::forcePseudoState(element, CSSSelector::PseudoHover))
                     return true;
             }
@@ -1030,10 +1004,12 @@ bool SelectorChecker::checkOneSelector(const SelectorCheckingContext& context, c
             // If we're in quirks mode, then :active should never match anchors with no
             // href and *:active should not match anything.
             if (m_strictParsing || context.isSubSelector || (selector->hasTag() && !element->hasTagName(aTag)) || element->isLink()) {
-                if (context.elementStyle)
-                    context.elementStyle->setAffectedByActiveRules(true);
-                else if (element->renderStyle())
-                    element->renderStyle()->setAffectedByActiveRules(true);
+                if (m_mode == ResolvingStyle) {
+                    if (context.elementStyle)
+                        context.elementStyle->setAffectedByActive();
+                    else
+                        element->setChildrenAffectedByActive(true);
+                }
                 if (element->active() || InspectorInstrumentation::forcePseudoState(element, CSSSelector::PseudoActive))
                     return true;
             }
@@ -1052,13 +1028,9 @@ bool SelectorChecker::checkOneSelector(const SelectorCheckingContext& context, c
                 return !element->isEnabledFormControl();
             break;
         case CSSSelector::PseudoReadOnly:
-            if (!element || !element->isFormControlElement())
-                return false;
-            return element->isTextFormControl() && element->shouldMatchReadOnlySelector();
+            return element && element->matchesReadOnlyPseudoClass();
         case CSSSelector::PseudoReadWrite:
-            if (!element || !element->isFormControlElement())
-                return false;
-            return element->isTextFormControl() && element->shouldMatchReadWriteSelector();
+            return element && element->matchesReadWritePseudoClass();
         case CSSSelector::PseudoOptional:
             return element && element->isOptionalFormControl();
         case CSSSelector::PseudoRequired:
@@ -1072,7 +1044,7 @@ bool SelectorChecker::checkOneSelector(const SelectorCheckingContext& context, c
             if (!element)
                 return false;
             element->document()->setContainsValidityStyleRules();
-            return (element->willValidate() && !element->isValidFormControlElement()) || element->hasUnacceptableValue();
+            return element->willValidate() && !element->isValidFormControlElement();
         case CSSSelector::PseudoChecked:
             {
                 if (!element)
@@ -1160,6 +1132,20 @@ bool SelectorChecker::checkOneSelector(const SelectorCheckingContext& context, c
         }
         return false;
     }
+#if ENABLE(VIDEO_TRACK)
+    else if (selector->m_match == CSSSelector::PseudoElement && selector->pseudoType() == CSSSelector::PseudoCue) {
+        SelectorCheckingContext subContext(context);
+        subContext.isSubSelector = true;
+
+        PseudoId ignoreDynamicPseudo = NOPSEUDO;
+        CSSSelector* const & selector = context.selector;
+        for (subContext.selector = selector->selectorList()->first(); subContext.selector; subContext.selector = CSSSelectorList::next(subContext.selector)) {
+            if (checkSelector(subContext, ignoreDynamicPseudo) == SelectorMatches)
+                return true;
+        }
+        return false;
+    }
+#endif
     // ### add the rest of the checks...
     return true;
 }
@@ -1249,9 +1235,9 @@ void SelectorChecker::allVisitedStateChanged()
 {
     if (m_linksCheckedForVisitedState.isEmpty())
         return;
-    for (Node* node = m_document; node; node = node->traverseNextNode()) {
-        if (node->isLink())
-            node->setNeedsStyleRecalc();
+    for (Element* element = ElementTraversal::firstWithin(m_document); element; element = ElementTraversal::next(element)) {
+        if (element->isLink())
+            element->setNeedsStyleRecalc();
     }
 }
 
@@ -1259,14 +1245,14 @@ void SelectorChecker::visitedStateChanged(LinkHash visitedHash)
 {
     if (!m_linksCheckedForVisitedState.contains(visitedHash))
         return;
-    for (Node* node = m_document; node; node = node->traverseNextNode()) {
+    for (Element* element = ElementTraversal::firstWithin(m_document); element; element = ElementTraversal::next(element)) {
         LinkHash hash = 0;
-        if (node->hasTagName(aTag))
-            hash = static_cast<HTMLAnchorElement*>(node)->visitedLinkHash();
-        else if (const AtomicString* attr = linkAttribute(node))
+        if (element->hasTagName(aTag))
+            hash = static_cast<HTMLAnchorElement*>(element)->visitedLinkHash();
+        else if (const AtomicString* attr = linkAttribute(element))
             hash = visitedLinkHash(m_document->baseURL(), *attr);
         if (hash == visitedHash)
-            node->setNeedsStyleRecalc();
+            element->setNeedsStyleRecalc();
     }
 }
 

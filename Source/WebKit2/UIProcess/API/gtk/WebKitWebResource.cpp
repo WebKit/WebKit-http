@@ -31,6 +31,23 @@
 
 using namespace WebKit;
 
+/**
+ * SECTION: WebKitWebResource
+ * @Short_description: Represents a resource at the end of a URI
+ * @Title: WebKitWebResource
+ *
+ * A #WebKitWebResource encapsulates content for each resource at the
+ * end of a particular URI. For example, one #WebKitWebResource will
+ * be created for each separate image and stylesheet when a page is
+ * loaded.
+ *
+ * You can access the response and the URI for a given
+ * #WebKitWebResource, using webkit_web_resource_get_uri() and
+ * webkit_web_resource_get_response(), as well as the raw data, using
+ * webkit_web_resource_get_data().
+ *
+ */
+
 enum {
     SENT_REQUEST,
     RECEIVED_DATA,
@@ -55,15 +72,9 @@ struct _WebKitWebResourcePrivate {
     bool isMainResource;
 };
 
+WEBKIT_DEFINE_TYPE(WebKitWebResource, webkit_web_resource, G_TYPE_OBJECT)
+
 static guint signals[LAST_SIGNAL] = { 0, };
-
-G_DEFINE_TYPE(WebKitWebResource, webkit_web_resource, G_TYPE_OBJECT)
-
-static void webkitWebResourceFinalize(GObject* object)
-{
-    WEBKIT_WEB_RESOURCE(object)->priv->~WebKitWebResourcePrivate();
-    G_OBJECT_CLASS(webkit_web_resource_parent_class)->finalize(object);
-}
 
 static void webkitWebResourceGetProperty(GObject* object, guint propId, GValue* value, GParamSpec* paramSpec)
 {
@@ -81,18 +92,10 @@ static void webkitWebResourceGetProperty(GObject* object, guint propId, GValue* 
     }
 }
 
-static void webkit_web_resource_init(WebKitWebResource* resource)
-{
-    WebKitWebResourcePrivate* priv = G_TYPE_INSTANCE_GET_PRIVATE(resource, WEBKIT_TYPE_WEB_RESOURCE, WebKitWebResourcePrivate);
-    resource->priv = priv;
-    new (priv) WebKitWebResourcePrivate();
-}
-
 static void webkit_web_resource_class_init(WebKitWebResourceClass* resourceClass)
 {
     GObjectClass* objectClass = G_OBJECT_CLASS(resourceClass);
     objectClass->get_property = webkitWebResourceGetProperty;
-    objectClass->finalize = webkitWebResourceFinalize;
 
     /**
      * WebKitWebResource:uri:
@@ -104,7 +107,7 @@ static void webkit_web_resource_class_init(WebKitWebResourceClass* resourceClass
                                     PROP_URI,
                                     g_param_spec_string("uri",
                                                         _("URI"),
-                                                        _("The current active URI of the result"),
+                                                        _("The current active URI of the resource"),
                                                         0,
                                                         WEBKIT_PARAM_READABLE));
 
@@ -194,8 +197,6 @@ static void webkit_web_resource_class_init(WebKitWebResourceClass* resourceClass
                      g_cclosure_marshal_VOID__POINTER,
                      G_TYPE_NONE, 1,
                      G_TYPE_POINTER);
-
-    g_type_class_add_private(resourceClass, sizeof(WebKitWebResourcePrivate));
 }
 
 static void webkitWebResourceUpdateURI(WebKitWebResource* resource, const CString& requestURI)
@@ -254,7 +255,7 @@ WebFrameProxy* webkitWebResourceGetFrame(WebKitWebResource* resource)
  * webkit_web_resource_get_uri:
  * @resource: a #WebKitWebResource
  *
- * Returns the current active URI of @web_view. The active URI might change during
+ * Returns the current active URI of @resource. The active URI might change during
  * a load operation:
  *
  * <orderedlist>

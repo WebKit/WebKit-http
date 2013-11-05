@@ -34,16 +34,18 @@ Fence::~Fence()
 }
 
 TileBuffer::TileBuffer(const Platform::IntSize& size)
-    : m_size(size)
+    : m_lastRenderOrigin(-1, -1)
+    , m_size(size)
     , m_fence(Fence::create())
-    , m_buffer(0)
-    , m_scale(1.0)
+    , m_nativeBuffer(0)
+    , m_lastRenderScale(1.0)
+    , m_backgroundPainted(false)
 {
 }
 
 TileBuffer::~TileBuffer()
 {
-    destroyBuffer(m_buffer);
+    destroyBuffer(m_nativeBuffer);
 }
 
 Platform::IntSize TileBuffer::size() const
@@ -51,19 +53,24 @@ Platform::IntSize TileBuffer::size() const
     return m_size;
 }
 
-Platform::IntRect TileBuffer::rect() const
+Platform::IntRect TileBuffer::surfaceRect() const
 {
     return Platform::IntRect(Platform::IntPoint::zero(), m_size);
 }
 
-bool TileBuffer::isRendered(double scale) const
+Platform::IntRect TileBuffer::pixelContentsRect() const
 {
-    return isRendered(rect(), scale);
+    return Platform::IntRect(m_lastRenderOrigin, m_size);
 }
 
-bool TileBuffer::isRendered(const Platform::IntRectRegion& contents, double scale) const
+bool TileBuffer::isRendered(double scale) const
 {
-    return m_scale == scale && Platform::IntRectRegion::subtractRegions(contents, m_renderedRegion).isEmpty();
+    return isRendered(pixelContentsRect(), scale);
+}
+
+bool TileBuffer::isRendered(const Platform::IntRectRegion& pixelContentsRegion, double scale) const
+{
+    return m_lastRenderScale == scale && Platform::IntRectRegion::subtractRegions(pixelContentsRegion, m_renderedRegion).isEmpty();
 }
 
 void TileBuffer::clearRenderedRegion(const Platform::IntRectRegion& region)
@@ -88,90 +95,27 @@ Platform::IntRectRegion TileBuffer::renderedRegion() const
 
 Platform::IntRectRegion TileBuffer::notRenderedRegion() const
 {
-    return Platform::IntRectRegion::subtractRegions(rect(), renderedRegion());
+    return Platform::IntRectRegion::subtractRegions(pixelContentsRect(), m_renderedRegion);
 }
 
 Platform::Graphics::Buffer* TileBuffer::nativeBuffer() const
 {
-    if (!m_buffer)
-        m_buffer = createBuffer(m_size, Platform::Graphics::TileBuffer, SurfacePool::globalSurfacePool()->sharedPixmapGroup());
+    if (!m_nativeBuffer)
+        m_nativeBuffer = createBuffer(m_size, Platform::Graphics::AlwaysBacked, SurfacePool::globalSurfacePool()->sharedPixmapGroup());
 
-    return m_buffer;
+    return m_nativeBuffer;
 }
 
 bool TileBuffer::wasNativeBufferCreated() const
 {
-    return static_cast<bool>(m_buffer);
+    return static_cast<bool>(m_nativeBuffer);
 }
 
-
-BackingStoreTile::BackingStoreTile(const Platform::IntSize& size, BufferingMode mode)
-    : m_bufferingMode(mode)
-    , m_committed(false)
-    , m_backgroundPainted(false)
-    , m_horizontalShift(0)
-    , m_verticalShift(0)
-{
-    m_frontBuffer = new TileBuffer(size);
-}
-
-BackingStoreTile::~BackingStoreTile()
-{
-    delete m_frontBuffer;
-    m_frontBuffer = 0;
-}
-
-Platform::IntSize BackingStoreTile::size() const
-{
-    return frontBuffer()->size();
-}
-
-Platform::IntRect BackingStoreTile::rect() const
-{
-    return frontBuffer()->rect();
-}
-
-TileBuffer* BackingStoreTile::frontBuffer() const
-{
-    ASSERT(m_frontBuffer);
-    return m_frontBuffer;
-}
-
-TileBuffer* BackingStoreTile::backBuffer() const
-{
-    if (m_bufferingMode == SingleBuffered)
-        return frontBuffer();
-
-    return SurfacePool::globalSurfacePool()->backBuffer();
-}
-
-void BackingStoreTile::swapBuffers()
-{
-    if (m_bufferingMode == SingleBuffered)
-        return;
-
-    // Store temps.
-    unsigned front = reinterpret_cast<unsigned>(frontBuffer());
-    unsigned back = reinterpret_cast<unsigned>(backBuffer());
-
-    // Atomic change.
-    _smp_xchg(reinterpret_cast<unsigned*>(&m_frontBuffer), back);
-    _smp_xchg(reinterpret_cast<unsigned*>(&SurfacePool::globalSurfacePool()->m_backBuffer), front);
-}
-
-void BackingStoreTile::reset()
-{
-    setCommitted(false);
-    frontBuffer()->clearRenderedRegion();
-    backBuffer()->clearRenderedRegion();
-    clearShift();
-}
-
-void BackingStoreTile::paintBackground()
+void TileBuffer::paintBackground()
 {
     m_backgroundPainted = true;
 
-    clearBuffer(backBuffer()->nativeBuffer(), 0, 0, 0, 0);
+    clearBuffer(nativeBuffer(), 0, 0, 0, 0);
 }
 
 }

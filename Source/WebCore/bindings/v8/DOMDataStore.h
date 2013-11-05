@@ -32,6 +32,7 @@
 #define DOMDataStore_h
 
 #include "DOMWrapperMap.h"
+#include "DOMWrapperWorld.h"
 #include "Node.h"
 #include "V8GCController.h"
 #include <v8.h>
@@ -60,10 +61,46 @@ public:
 
     static DOMDataStore* current(v8::Isolate*);
 
+    template<typename T, typename HolderContainer, typename Wrappable>
+    static v8::Handle<v8::Object> getWrapperFast(T* object, const HolderContainer& container, Wrappable* holder)
+    {
+        // What we'd really like to check here is whether we're in the main world or
+        // in an isolated world. The fastest way we know how to do that is to check
+        // whether the wrappable's wrapper is the same as the holder
+        if (holderContainsWrapper(container, holder)) {
+            if (mainWorldWrapperIsStoredInObject(object))
+                return getWrapperFromObject(object);
+            return mainWorldStore()->m_wrapperMap.get(object);
+        }
+        return getWrapper(object, container.GetIsolate());
+    }
+
+    template<typename T>
+    static v8::Handle<v8::Object> getWrapper(T* object, v8::Isolate* isolate)
+    {
+        if (mainWorldWrapperIsStoredInObject(object) && isMainWorldObject(object)) {
+            if (LIKELY(!DOMWrapperWorld::isolatedWorldsExist()))
+                return getWrapperFromObject(object);
+        }
+        return current(isolate)->get(object);
+    }
+
+    template<typename T>
+    static void setWrapper(T* object, v8::Persistent<v8::Object> wrapper, v8::Isolate* isolate)
+    {
+        if (mainWorldWrapperIsStoredInObject(object) && isMainWorldObject(object)) {
+            if (LIKELY(!DOMWrapperWorld::isolatedWorldsExist())) {
+                setWrapperInObject(object, wrapper);
+                return;
+            }
+        }
+        return current(isolate)->set(object, wrapper);
+    }
+
     template<typename T>
     inline v8::Handle<v8::Object> get(T* object)
     {
-        if (wrapperIsStoredInObject(object))
+        if (mainWorldWrapperIsStoredInObject(object) && m_type == MainWorld)
             return getWrapperFromObject(object);
         return m_wrapperMap.get(object);
     }
@@ -71,48 +108,65 @@ public:
     template<typename T>
     inline void set(T* object, v8::Persistent<v8::Object> wrapper)
     {
-        if (setWrapperInObject(object, wrapper))
+        ASSERT(!!object);
+        ASSERT(!wrapper.IsEmpty());
+        if (mainWorldWrapperIsStoredInObject(object) && m_type == MainWorld) {
+            setWrapperInObject(object, wrapper);
             return;
+        }
         m_wrapperMap.set(object, wrapper);
     }
 
     void reportMemoryUsage(MemoryObjectInfo*) const;
 
 private:
-    bool wrapperIsStoredInObject(void*) const { return false; }
-    bool wrapperIsStoredInObject(ScriptWrappable*) const { return m_type == MainWorld; }
+    static DOMDataStore* mainWorldStore();
 
-    v8::Handle<v8::Object> getWrapperFromObject(void*) const
+    static bool mainWorldWrapperIsStoredInObject(void*) { return false; }
+    static bool mainWorldWrapperIsStoredInObject(ScriptWrappable*) { return true; }
+
+    static bool isMainWorldObject(void*) { return false; }
+    static bool isMainWorldObject(Node*) { return true; }
+
+    template<typename HolderContainer>
+    static bool holderContainsWrapper(const HolderContainer&, void*)
+    {
+        return false;
+    }
+    template<typename HolderContainer>
+    static bool holderContainsWrapper(const HolderContainer& container, ScriptWrappable* wrappable)
+    {
+        // Verify our assumptions about the main world.
+        ASSERT(wrappable->wrapper().IsEmpty() || container.Holder() != wrappable->wrapper() || current(v8::Isolate::GetCurrent())->m_type == MainWorld);
+        return container.Holder() == wrappable->wrapper();
+    }
+
+    static v8::Handle<v8::Object> getWrapperFromObject(void*)
     {
         ASSERT_NOT_REACHED();
         return v8::Handle<v8::Object>();
     }
-
-    v8::Handle<v8::Object> getWrapperFromObject(ScriptWrappable* object) const
+    static v8::Handle<v8::Object> getWrapperFromObject(ScriptWrappable* object)
     {
-        ASSERT(m_type == MainWorld);
         return object->wrapper();
     }
 
-    bool setWrapperInObject(void*, v8::Persistent<v8::Object>) { return false; }
-    bool setWrapperInObject(ScriptWrappable* object, v8::Persistent<v8::Object> wrapper)
+    static void setWrapperInObject(void*, v8::Persistent<v8::Object>)
     {
-        if (m_type != MainWorld)
-            return false;
+        ASSERT_NOT_REACHED();
+    }
+    static void setWrapperInObject(ScriptWrappable* object, v8::Persistent<v8::Object> wrapper)
+    {
         ASSERT(object->wrapper().IsEmpty());
         object->setWrapper(wrapper);
         wrapper.MakeWeak(object, weakCallback);
-        return true;
     }
-    bool setWrapperInObject(Node* object, v8::Persistent<v8::Object> wrapper)
+    static void setWrapperInObject(Node* object, v8::Persistent<v8::Object> wrapper)
     {
-        if (m_type != MainWorld)
-            return false;
         ASSERT(object->wrapper().IsEmpty());
         object->setWrapper(wrapper);
         V8GCController::didCreateWrapperForNode(object);
         wrapper.MakeWeak(static_cast<ScriptWrappable*>(object), weakCallback);
-        return true;
     }
 
     static void weakCallback(v8::Persistent<v8::Value>, void* context);

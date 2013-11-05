@@ -51,10 +51,11 @@ class BUrlProtocolHandler;
 #endif
 
 #if USE(SOUP)
-#include <wtf/gobject/GRefPtr.h>
 #define LIBSOUP_USE_UNSTABLE_REQUEST_API
+#include <libsoup/soup-multipart-input-stream.h>
 #include <libsoup/soup-request.h>
 #include <libsoup/soup.h>
+#include <wtf/gobject/GRefPtr.h>
 class Frame;
 #endif
 
@@ -70,6 +71,10 @@ class QNetworkReplyHandler;
 #if PLATFORM(MAC)
 OBJC_CLASS NSURLAuthenticationChallenge;
 OBJC_CLASS NSURLConnection;
+#endif
+
+#if PLATFORM(MAC) || USE(CFNETWORK)
+typedef const struct __CFURLStorageSession* CFURLStorageSessionRef;
 #endif
 
 // The allocations and releases in ResourceHandleInternal are
@@ -166,6 +171,9 @@ namespace WebCore {
         bool m_startWhenScheduled;
         bool m_needsSiteSpecificQuirks;
 #endif
+#if PLATFORM(MAC) || USE(CFNETWORK)
+        RetainPtr<CFURLStorageSessionRef> m_storageSession;
+#endif
 #if USE(WININET)
         Timer<ResourceHandle> m_fileLoadTimer;
         HINTERNET m_internetHandle;
@@ -200,6 +208,7 @@ namespace WebCore {
         bool m_cancelled;
         GRefPtr<SoupRequest> m_soupRequest;
         GRefPtr<GInputStream> m_inputStream;
+        GRefPtr<SoupMultipartInputStream> m_multipartInputStream;
         GRefPtr<GCancellable> m_cancellable;
         GRefPtr<GAsyncResult> m_deferredResult;
         GRefPtr<GSource> m_timeoutSource;
@@ -208,6 +217,12 @@ namespace WebCore {
         unsigned long m_bodyDataSent;
         RefPtr<NetworkingContext> m_context;
         SoupSession* soupSession();
+#endif
+#if PLATFORM(GTK)
+        struct {
+            Credential credential;
+            AuthenticationChallenge challenge;
+        } m_credentialDataToSaveInPersistentStore;
 #endif
 #if PLATFORM(QT)
         QNetworkReplyHandler* m_job;

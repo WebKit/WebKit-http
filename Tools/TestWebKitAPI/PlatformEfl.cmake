@@ -1,16 +1,16 @@
-ADD_CUSTOM_TARGET(forwarding-headersEflForTestWebKitAPI
+add_custom_target(forwarding-headersEflForTestWebKitAPI
     COMMAND ${PERL_EXECUTABLE} ${WEBKIT2_DIR}/Scripts/generate-forwarding-headers.pl ${WEBKIT2_DIR} ${DERIVED_SOURCES_WEBKIT2_DIR}/include efl
     COMMAND ${PERL_EXECUTABLE} ${WEBKIT2_DIR}/Scripts/generate-forwarding-headers.pl ${TESTWEBKITAPI_DIR} ${DERIVED_SOURCES_WEBKIT2_DIR}/include efl
 )
-SET(ForwardingHeadersForTestWebKitAPI_NAME forwarding-headersEflForTestWebKitAPI)
+set(ForwardingHeadersForTestWebKitAPI_NAME forwarding-headersEflForTestWebKitAPI)
 
-ADD_CUSTOM_TARGET(forwarding-headersSoupForTestWebKitAPI
+add_custom_target(forwarding-headersSoupForTestWebKitAPI
     COMMAND ${PERL_EXECUTABLE} ${WEBKIT2_DIR}/Scripts/generate-forwarding-headers.pl ${WEBKIT2_DIR} ${DERIVED_SOURCES_WEBKIT2_DIR}/include soup
     COMMAND ${PERL_EXECUTABLE} ${WEBKIT2_DIR}/Scripts/generate-forwarding-headers.pl ${TESTWEBKITAPI_DIR} ${DERIVED_SOURCES_WEBKIT2_DIR}/include soup
 )
-SET(ForwardingNetworkHeadersForTestWebKitAPI_NAME forwarding-headersSoupForTestWebKitAPI)
+set(ForwardingNetworkHeadersForTestWebKitAPI_NAME forwarding-headersSoupForTestWebKitAPI)
 
-INCLUDE_DIRECTORIES(
+include_directories(
     ${WEBKIT2_DIR}/UIProcess/API/C/soup
     ${WEBKIT2_DIR}/UIProcess/API/C/efl
     ${WEBKIT2_DIR}/UIProcess/API/efl
@@ -21,30 +21,37 @@ INCLUDE_DIRECTORIES(
     ${LIBSOUP_INCLUDE_DIRS}
 )
 
-SET(test_main_SOURCES
+set(test_main_SOURCES
     ${TESTWEBKITAPI_DIR}/efl/main.cpp
 )
 
-SET(bundle_harness_SOURCES
+set(bundle_harness_SOURCES
     ${TESTWEBKITAPI_DIR}/efl/InjectedBundleController.cpp
     ${TESTWEBKITAPI_DIR}/efl/PlatformUtilities.cpp
 )
 
-SET(webkit2_api_harness_SOURCES
+set(webkit2_api_harness_SOURCES
     ${TESTWEBKITAPI_DIR}/efl/PlatformUtilities.cpp
     ${TESTWEBKITAPI_DIR}/efl/PlatformWebView.cpp
 )
 
 # The list below works like a test expectation. Tests in the
-# test_webkit2_api_BINARIES list are added to the test runner and
-# tried on the bots on every build. Tests in test_webkit2_api_fail_BINARIES
+# test_{webkit2_api|webcore}_BINARIES list are added to the test runner and
+# tried on the bots on every build. Tests in test_{webkit2_api|webcore}_BINARIES
 # are compiled and suffixed with fail and skipped from the test runner.
 #
 # Make sure that the tests are passing on both Debug and
-# Release builds before adding it to test_webkit2_api_BINARIES.
+# Release builds before adding it to test_{webkit2_api|webcore}_BINARIES.
 
-SET(test_webkit2_api_BINARIES
+set(test_webcore_BINARIES
+    LayoutUnit
+    KURL
+)
+
+set(test_webkit2_api_BINARIES
+    AboutBlankLoad
     CookieManager
+    DOMWindowExtensionBasic
     DOMWindowExtensionNoCache
     DocumentStartUserScriptAlertCrash
     EvaluateJavaScript
@@ -54,45 +61,43 @@ SET(test_webkit2_api_BINARIES
     FrameMIMETypeHTML
     FrameMIMETypePNG
     GetInjectedBundleInitializationUserDataCallback
+    HitTestResultNodeHandle
     InjectedBundleBasic
     InjectedBundleInitializationUserDataCallbackWins
     LoadAlternateHTMLStringWithNonDirectoryURL
     LoadCanceledNoServerRedirectCallback
+    MouseMoveAfterCrash
     NewFirstVisuallyNonEmptyLayout
     NewFirstVisuallyNonEmptyLayoutFails
+    NewFirstVisuallyNonEmptyLayoutForImages
     PageLoadBasic
     PageLoadDidChangeLocationWithinPageForFrame
     ParentFrame
     PreventEmptyUserAgent
     PrivateBrowsingPushStateNoHistoryCallback
+    ShouldGoToBackForwardListItem
     WKConnection
+    WKPreferences
     WKString
     WKStringJSString
     WKURL
     WillSendSubmitEvent
 )
 
-SET(test_webkit2_api_fail_BINARIES
+set(test_webkit2_api_fail_BINARIES
     CanHandleRequest
-    DOMWindowExtensionBasic
     DownloadDecideDestinationCrash
-    NewFirstVisuallyNonEmptyLayoutForImages
     NewFirstVisuallyNonEmptyLayoutFrames
     RestoreSessionStateContainingFormData
-    ShouldGoToBackForwardListItem
     WKPageGetScaleFactorNotZero
 )
 
-ADD_DEFINITIONS(-DTHEME_DIR="${THEME_BINARY_DIR}")
+add_definitions(-DTHEME_DIR="${THEME_BINARY_DIR}")
 
 # Tests disabled because of missing features on the test harness:
 #
-#   AboutBlankLoad
-#   HitTestResultNodeHandle
-#   MouseMoveAfterCrash
 #   ResponsivenessTimerDoesntFireEarly
 #   SpacebarScrolling
-#   WKPreferences
 #
 # Flaky test, fails on Release but passes on Debug:
 #

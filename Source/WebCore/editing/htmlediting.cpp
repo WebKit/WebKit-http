@@ -28,7 +28,6 @@
 
 #include "AXObjectCache.h"
 #include "Document.h"
-#include "EditingText.h"
 #include "Editor.h"
 #include "Frame.h"
 #include "HTMLBRElement.h"
@@ -42,6 +41,7 @@
 #include "HTMLOListElement.h"
 #include "HTMLParagraphElement.h"
 #include "HTMLUListElement.h"
+#include "NodeTraversal.h"
 #include "PositionIterator.h"
 #include "RenderObject.h"
 #include "Range.h"
@@ -646,12 +646,12 @@ static bool hasARenderedDescendant(Node* node, Node* excludedNode)
 {
     for (Node* n = node->firstChild(); n;) {
         if (n == excludedNode) {
-            n = n->traverseNextSibling(node);
+            n = NodeTraversal::nextSkippingChildren(n, node);
             continue;
         }
         if (n->renderer())
             return true;
-        n = n->traverseNextNode(node);
+        n = NodeTraversal::next(n, node);
     }
     return false;
 }
@@ -1100,7 +1100,7 @@ int indexForVisiblePosition(const VisiblePosition& visiblePosition, RefPtr<Conta
 
     Position p(visiblePosition.deepEquivalent());
     Document* document = p.anchorNode()->document();
-    ShadowRoot* shadowRoot = p.anchorNode()->shadowRoot();
+    ShadowRoot* shadowRoot = p.anchorNode()->containingShadowRoot();
 
     if (shadowRoot)
         scope = shadowRoot;

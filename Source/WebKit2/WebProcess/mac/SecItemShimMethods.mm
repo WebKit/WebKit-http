@@ -26,8 +26,6 @@
 #import "config.h"
 #import "SecItemShimMethods.h"
 
-#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1070
-
 #import "BlockingResponseMap.h"
 #import "SecItemRequestData.h"
 #import "SecItemResponseData.h"
@@ -48,7 +46,7 @@ static BlockingResponseMap<SecItemResponseData>& responseMap()
 static uint64_t generateSecItemRequestID()
 {
     static int64_t uniqueSecItemRequestID;
-    return OSAtomicIncrement64Barrier(&uniqueSecItemRequestID);
+    return atomicIncrement(&uniqueSecItemRequestID);
 }
 
 void didReceiveSecItemResponse(uint64_t requestID, const SecItemResponseData& response)
@@ -118,5 +116,3 @@ void initializeSecItemShim()
 }
 
 } // namespace WebKit
-
-#endif // __MAC_OS_X_VERSION_MIN_REQUIRED >= 1070

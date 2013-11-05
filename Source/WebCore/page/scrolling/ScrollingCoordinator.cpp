@@ -27,8 +27,10 @@
 
 #include "ScrollingCoordinator.h"
 
+#include "Document.h"
 #include "Frame.h"
 #include "FrameView.h"
+#include "GraphicsLayer.h"
 #include "IntRect.h"
 #include "Page.h"
 #include "PlatformWheelEvent.h"
@@ -65,37 +67,32 @@ PassRefPtr<ScrollingCoordinator> ScrollingCoordinator::create(Page* page)
     return adoptRef(new ScrollingCoordinator(page));
 }
 
-static int fixedPositionScrollOffset(int scrollPosition, int maxValue, int scrollOrigin, float dragFactor)
+static int fixedPositionScrollOffset(int visibleContentSize, int contentsSize, int scrollPosition, int scrollOrigin, float frameScaleFactor, bool fixedElementsLayoutRelativeToFrame)
 {
-    if (!maxValue)
+    int maxValue = contentsSize - visibleContentSize;
+    if (maxValue <= 0)
         return 0;
 
     if (!scrollOrigin) {
-        if (scrollPosition < 0)
-            scrollPosition = 0;
-        else if (scrollPosition > maxValue)
+        if (scrollPosition <= 0)
+            return 0;
+        if (scrollPosition > maxValue)
             scrollPosition = maxValue;
     } else {
-        if (scrollPosition > 0)
-            scrollPosition = 0;
-        else if (scrollPosition < -maxValue)
+        if (scrollPosition >= 0)
+            return 0;
+        if (scrollPosition < -maxValue)
             scrollPosition = -maxValue;
     }
-    
-    return scrollPosition * dragFactor;
+
+    float dragFactor = fixedElementsLayoutRelativeToFrame ? 1 : (contentsSize - visibleContentSize * frameScaleFactor) / maxValue;
+    return scrollPosition * dragFactor / frameScaleFactor;
 }
 
 IntSize scrollOffsetForFixedPosition(const IntRect& visibleContentRect, const IntSize& contentsSize, const IntPoint& scrollPosition, const IntPoint& scrollOrigin, float frameScaleFactor, bool fixedElementsLayoutRelativeToFrame)
 {
-    IntSize maxOffset(contentsSize.width() - visibleContentRect.width(), contentsSize.height() - visibleContentRect.height());
-    
-    FloatSize dragFactor = fixedElementsLayoutRelativeToFrame ? FloatSize(1, 1) : FloatSize(
-        (contentsSize.width() - visibleContentRect.width() * frameScaleFactor) / maxOffset.width(),
-        (contentsSize.height() - visibleContentRect.height() * frameScaleFactor) / maxOffset.height());
-
-    int x = fixedPositionScrollOffset(scrollPosition.x(), maxOffset.width(), scrollOrigin.x(), dragFactor.width() / frameScaleFactor);
-    int y = fixedPositionScrollOffset(scrollPosition.y(), maxOffset.height(), scrollOrigin.y(), dragFactor.height() / frameScaleFactor);
-
+    int x = fixedPositionScrollOffset(visibleContentRect.width(), contentsSize.width(), scrollPosition.x(), scrollOrigin.x(), frameScaleFactor, fixedElementsLayoutRelativeToFrame);
+    int y = fixedPositionScrollOffset(visibleContentRect.height(), contentsSize.height(), scrollPosition.y(), scrollOrigin.y(), frameScaleFactor, fixedElementsLayoutRelativeToFrame);
     return IntSize(x, y);
 }
 
@@ -180,6 +177,57 @@ Region ScrollingCoordinator::computeNonFastScrollableRegion(Frame* frame, const 
 
     return nonFastScrollableRegion;
 }
+
+#if ENABLE(TOUCH_EVENT_TRACKING)
+static void accumulateRendererTouchEventTargetRects(Vector<IntRect>& rects, const RenderObject* renderer)
+{
+    // FIXME: This method is O(N^2) as it walks the tree to the root for every renderer. RenderGeometryMap would fix this.
+    rects.append(enclosingIntRect(renderer->clippedOverflowRectForRepaint(0)));
+    if (renderer->isRenderBlock()) {
+        const RenderBlock* block = toRenderBlock(renderer);
+        for (RenderObject* child = block->firstChild(); child; child = child->nextSibling())
+            accumulateRendererTouchEventTargetRects(rects, child);
+    }
+}
+
+static void accumulateDocumentEventTargetRects(Vector<IntRect>& rects, const Document* document)
+{
+    ASSERT(document);
+    if (!document->touchEventTargets())
+        return;
+
+    const TouchEventTargetSet* targets = document->touchEventTargets();
+    for (TouchEventTargetSet::const_iterator iter = targets->begin(); iter != targets->end(); ++iter) {
+        const Node* touchTarget = iter->key;
+        if (!touchTarget->inDocument())
+            continue;
+
+        if (touchTarget == document) {
+            if (RenderView* view = document->renderView())
+                rects.append(enclosingIntRect(view->clippedOverflowRectForRepaint(0)));
+            return;
+        }
+
+        if (touchTarget->isDocumentNode() && touchTarget != document) {
+            accumulateDocumentEventTargetRects(rects, static_cast<const Document*>(touchTarget));
+            continue;
+        }
+
+        if (RenderObject* renderer = touchTarget->renderer())
+            accumulateRendererTouchEventTargetRects(rects, renderer);
+    }
+}
+
+void ScrollingCoordinator::computeAbsoluteTouchEventTargetRects(const Document* document, Vector<IntRect>& rects)
+{
+    ASSERT(document);
+    if (!document->view())
+        return;
+
+    // FIXME: These rects won't be properly updated if the renderers are in a sub-tree that scrolls.
+    accumulateDocumentEventTargetRects(rects, document);
+}
+#endif
 
 unsigned ScrollingCoordinator::computeCurrentWheelEventHandlerCount()
 {
@@ -311,6 +359,8 @@ void ScrollingCoordinator::updateMainFrameScrollPosition(const IntPoint& scrollP
             syncChildPositions(viewportRect);
         }
     }
+#else
+    UNUSED_PARAM(scrollingLayerPositionAction);
 #endif
 }
 
@@ -341,8 +391,9 @@ bool ScrollingCoordinator::hasVisibleSlowRepaintFixedObjects(FrameView* frameVie
         RenderObject* viewportConstrainedObject = *it;
         if (!viewportConstrainedObject->isBoxModelObject() || !viewportConstrainedObject->hasLayer())
             return true;
-        RenderBoxModelObject* viewportConstrainedBoxModelObject = toRenderBoxModelObject(viewportConstrainedObject);
-        if (!viewportConstrainedBoxModelObject->layer()->backing())
+        RenderLayer* layer = toRenderBoxModelObject(viewportConstrainedObject)->layer();
+        // Any explicit reason that a fixed position element is not composited shouldn't cause slow scrolling.
+        if (!layer->isComposited() && layer->compositor()->fixedPositionLayerNotCompositedReason(layer) == RenderLayerCompositor::NoReason)
             return true;
     }
     return false;
@@ -394,6 +445,31 @@ ScrollingNodeID ScrollingCoordinator::uniqueScrollLayerID()
 String ScrollingCoordinator::scrollingStateTreeAsText() const
 {
     return String();
+}
+
+String ScrollingCoordinator::mainThreadScrollingReasonsAsText(MainThreadScrollingReasons reasons)
+{
+    StringBuilder stringBuilder;
+
+    if (reasons & ScrollingCoordinator::ForcedOnMainThread)
+        stringBuilder.append("Forced on main thread, ");
+    if (reasons & ScrollingCoordinator::HasSlowRepaintObjects)
+        stringBuilder.append("Has slow repaint objects, ");
+    if (reasons & ScrollingCoordinator::HasViewportConstrainedObjectsWithoutSupportingFixedLayers)
+        stringBuilder.append("Has viewport constrained objects without supporting fixed layers, ");
+    if (reasons & ScrollingCoordinator::HasNonLayerFixedObjects)
+        stringBuilder.append("Has non-layer fixed objects, ");
+    if (reasons & ScrollingCoordinator::IsImageDocument)
+        stringBuilder.append("Is image document, ");
+
+    if (stringBuilder.length())
+        stringBuilder.resize(stringBuilder.length() - 2);
+    return stringBuilder.toString();
+}
+
+String ScrollingCoordinator::mainThreadScrollingReasonsAsText() const
+{
+    return mainThreadScrollingReasonsAsText(mainThreadScrollingReasons());
 }
 
 } // namespace WebCore

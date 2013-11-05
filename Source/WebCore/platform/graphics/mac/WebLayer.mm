@@ -33,7 +33,7 @@
 #import "GraphicsLayerCA.h"
 #import "PlatformCALayer.h"
 #import "ThemeMac.h"
-#import <objc/objc-runtime.h>
+#import <objc/runtime.h>
 #import <QuartzCore/QuartzCore.h>
 #import <wtf/UnusedParam.h>
 #import "WebCoreSystemInterface.h"
@@ -85,17 +85,36 @@ void drawLayerContents(CGContextRef context, CALayer *layer, WebCore::PlatformCA
     ThemeMac::setFocusRingClipRect(transform.mapRect(clipBounds));
 
 #if PLATFORM(IOS) || __MAC_OS_X_VERSION_MIN_REQUIRED >= 1070
-    __block GraphicsContext* ctx = &graphicsContext;
+    const float wastedSpaceThreshold = 0.75f;
+    const unsigned maxRectsToPaint = 5;
 
-    wkCALayerEnumerateRectsBeingDrawnWithBlock(layer, context, ^(CGRect rect){
-        FloatRect rectBeingDrawn(rect);
-        rectBeingDrawn.intersect(clipBounds);
-        
-        GraphicsContextStateSaver stateSaver(*ctx);
-        ctx->clip(rectBeingDrawn);
-        
-        layerContents->platformCALayerPaintContents(*ctx, enclosingIntRect(rectBeingDrawn));
+    double clipArea = clipBounds.width() * clipBounds.height();
+    __block double totalRectArea = 0;
+    __block unsigned rectCount = 0;
+    __block Vector<FloatRect, maxRectsToPaint> dirtyRects;
+    
+    wkCALayerEnumerateRectsBeingDrawnWithBlock(layer, context, ^(CGRect rect) {
+        if (++rectCount > maxRectsToPaint)
+            return;
+
+        totalRectArea += rect.size.width * rect.size.height;
+        dirtyRects.append(rect);
     });
+
+    if (rectCount < maxRectsToPaint && totalRectArea < clipArea * wastedSpaceThreshold) {
+        for (unsigned i = 0; i < rectCount; ++i) {
+            const FloatRect& currentRect = dirtyRects[i];
+            
+            GraphicsContextStateSaver stateSaver(graphicsContext);
+            graphicsContext.clip(currentRect);
+            
+            layerContents->platformCALayerPaintContents(graphicsContext, enclosingIntRect(currentRect));
+        }
+    } else {
+        // CGContextGetClipBoundingBox() gives us the bounds of the dirty region, so clipBounds
+        // encompasses all the dirty rects.
+        layerContents->platformCALayerPaintContents(graphicsContext, enclosingIntRect(clipBounds));
+    }
 
 #else
     IntRect clip(enclosingIntRect(clipBounds));
@@ -109,11 +128,16 @@ void drawLayerContents(CGContextRef context, CALayer *layer, WebCore::PlatformCA
     // Re-fetch the layer owner, since <rdar://problem/9125151> indicates that it might have been destroyed during painting.
     layerContents = platformLayer->owner();
     ASSERT(layerContents);
+
+    // Always update the repain count so that it's accurate even if the count itself is not shown. This will be useful
+    // for the Web Inspector feeding this information through the LayerTreeAgent. 
+    int repaintCount = layerContents->platformCALayerIncrementRepaintCount();
+
     if (!platformLayer->usesTileCacheLayer() && layerContents && layerContents->platformCALayerShowRepaintCounter(platformLayer)) {
         bool isTiledLayer = [layer isKindOfClass:[CATiledLayer class]];
 
         char text[16]; // that's a lot of repaints
-        snprintf(text, sizeof(text), "%d", layerContents->platformCALayerIncrementRepaintCount());
+        snprintf(text, sizeof(text), "%d", repaintCount);
 
         CGRect indicatorBox = layerBounds;
         indicatorBox.size.width = 12 + 10 * strlen(text);

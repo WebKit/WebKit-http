@@ -26,21 +26,23 @@
 #ifndef DownloadManager_h
 #define DownloadManager_h
 
+#include <wtf/Forward.h>
 #include <wtf/HashMap.h>
 #include <wtf/Noncopyable.h>
 
-namespace WTF {
-class String;
+namespace WebCore {
+class ResourceHandle;
+class ResourceRequest;
+class ResourceResponse;
 }
 
-namespace WebCore {
-    class ResourceHandle;
-    class ResourceRequest;
-    class ResourceResponse;
+namespace CoreIPC {
+class Connection;
 }
 
 namespace WebKit {
 
+class AuthenticationManager;
 class Download;
 class WebPage;
 
@@ -48,23 +50,38 @@ class DownloadManager {
     WTF_MAKE_NONCOPYABLE(DownloadManager);
 
 public:
-    static DownloadManager& shared();
+    class Client {
+    public:
+        virtual ~Client() { }
 
-    void startDownload(uint64_t downloadID, WebPage* initiatingPage, const WebCore::ResourceRequest&);
-    void convertHandleToDownload(uint64_t downloadID, WebPage* initiatingPage, WebCore::ResourceHandle*, const WebCore::ResourceRequest&, const WebCore::ResourceResponse&);
+        virtual void didCreateDownload() = 0;
+        virtual void didDestroyDownload() = 0;
+        virtual CoreIPC::Connection* downloadProxyConnection() = 0;
+        virtual AuthenticationManager& downloadsAuthenticationManager() = 0;
+    };
+
+    explicit DownloadManager(Client*);
+
+    void startDownload(uint64_t downloadID, const WebCore::ResourceRequest&);
+    void convertHandleToDownload(uint64_t downloadID, WebCore::ResourceHandle*, const WebCore::ResourceRequest&, const WebCore::ResourceResponse&);
 
     void cancelDownload(uint64_t downloadID);
 
     void downloadFinished(Download*);
     bool isDownloading() const { return !m_downloads.isEmpty(); }
 
+    void didCreateDownload();
+    void didDestroyDownload();
+
+    CoreIPC::Connection* downloadProxyConnection();
+    AuthenticationManager& downloadsAuthenticationManager();
+
 #if PLATFORM(QT)
-    void startTransfer(uint64_t downloadID, const WTF::String& destination);
+    void startTransfer(uint64_t downloadID, const String& destination);
 #endif
 
 private:
-    DownloadManager();
-
+    Client* m_client;
     HashMap<uint64_t, Download*> m_downloads;
 };
 

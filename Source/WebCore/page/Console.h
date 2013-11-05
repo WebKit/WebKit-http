@@ -29,6 +29,7 @@
 #ifndef Console_h
 #define Console_h
 
+#include "ConsoleAPITypes.h"
 #include "ConsoleTypes.h"
 #include "DOMWindowProperty.h"
 #include "ScriptCallStack.h"
@@ -41,6 +42,7 @@
 
 namespace WebCore {
 
+class Document;
 class Frame;
 class MemoryInfo;
 class Page;
@@ -56,31 +58,32 @@ public:
     static PassRefPtr<Console> create(Frame* frame) { return adoptRef(new Console(frame)); }
     virtual ~Console();
 
-    void addMessage(MessageSource, MessageType, MessageLevel, const String& message, const String& sourceURL = String(), unsigned lineNumber = 0, PassRefPtr<ScriptCallStack> = 0, unsigned long requestIdentifier = 0);
-    void addMessage(MessageSource, MessageType, MessageLevel, const String& message, PassRefPtr<ScriptCallStack>);
+    void addMessage(MessageSource, MessageLevel, const String& message, const String& sourceURL, unsigned lineNumber, PassRefPtr<ScriptCallStack> = 0, ScriptState* = 0, unsigned long requestIdentifier = 0);
+    void addMessage(MessageSource, MessageLevel, const String& message, PassRefPtr<ScriptCallStack>);
+    void addMessage(MessageSource, MessageLevel, const String& message, unsigned long requestIdentifier = 0, Document* = 0);
 
-    void debug(PassRefPtr<ScriptArguments>, PassRefPtr<ScriptCallStack>);
-    void error(PassRefPtr<ScriptArguments>, PassRefPtr<ScriptCallStack>);
-    void info(PassRefPtr<ScriptArguments>, PassRefPtr<ScriptCallStack>);
-    void log(PassRefPtr<ScriptArguments>, PassRefPtr<ScriptCallStack>);
-    void clear(PassRefPtr<ScriptArguments>, PassRefPtr<ScriptCallStack>);
-    void warn(PassRefPtr<ScriptArguments>, PassRefPtr<ScriptCallStack>);
-    void dir(PassRefPtr<ScriptArguments>, PassRefPtr<ScriptCallStack>);
-    void dirxml(PassRefPtr<ScriptArguments>, PassRefPtr<ScriptCallStack>);
-    void trace(PassRefPtr<ScriptArguments>, PassRefPtr<ScriptCallStack>);
-    void assertCondition(PassRefPtr<ScriptArguments>, PassRefPtr<ScriptCallStack>, bool condition);
-    void count(PassRefPtr<ScriptArguments>, PassRefPtr<ScriptCallStack>);
-    void markTimeline(PassRefPtr<ScriptArguments>, PassRefPtr<ScriptCallStack>);
+    void debug(ScriptState*, PassRefPtr<ScriptArguments>);
+    void error(ScriptState*, PassRefPtr<ScriptArguments>);
+    void info(ScriptState*, PassRefPtr<ScriptArguments>);
+    void log(ScriptState*, PassRefPtr<ScriptArguments>);
+    void clear(ScriptState*, PassRefPtr<ScriptArguments>);
+    void warn(ScriptState*, PassRefPtr<ScriptArguments>);
+    void dir(ScriptState*, PassRefPtr<ScriptArguments>);
+    void dirxml(ScriptState*, PassRefPtr<ScriptArguments>);
+    void trace(ScriptState*, PassRefPtr<ScriptArguments>);
+    void assertCondition(ScriptState*, PassRefPtr<ScriptArguments>, bool condition);
+    void count(ScriptState*, PassRefPtr<ScriptArguments>);
+    void markTimeline(PassRefPtr<ScriptArguments>);
 #if ENABLE(JAVASCRIPT_DEBUGGER)
     const ProfilesArray& profiles() const { return m_profiles; }
-    void profile(const String&, ScriptState*, PassRefPtr<ScriptCallStack>);
-    void profileEnd(const String&, ScriptState*, PassRefPtr<ScriptCallStack>);
+    void profile(const String&, ScriptState*);
+    void profileEnd(const String&, ScriptState*);
 #endif
     void time(const String&);
-    void timeEnd(PassRefPtr<ScriptArguments>, PassRefPtr<ScriptCallStack>, const String&);
-    void timeStamp(PassRefPtr<ScriptArguments>, PassRefPtr<ScriptCallStack>);
-    void group(PassRefPtr<ScriptArguments>, PassRefPtr<ScriptCallStack>);
-    void groupCollapsed(PassRefPtr<ScriptArguments>, PassRefPtr<ScriptCallStack>);
+    void timeEnd(ScriptState*, const String&);
+    void timeStamp(PassRefPtr<ScriptArguments>);
+    void group(ScriptState*, PassRefPtr<ScriptArguments>);
+    void groupCollapsed(ScriptState*, PassRefPtr<ScriptArguments>);
     void groupEnd();
 
     static void mute();
@@ -93,7 +96,6 @@ public:
 
 private:
     inline Page* page() const;
-    void addMessage(MessageType, MessageLevel, PassRefPtr<ScriptArguments>, PassRefPtr<ScriptCallStack>, bool acceptNoArguments = false);
 
     explicit Console(Frame*);
 

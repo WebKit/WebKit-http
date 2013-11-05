@@ -31,40 +31,36 @@
 #include "WebKitDOMNodePrivate.h"
 #include "WebKitDOMTestEventTargetPrivate.h"
 #include "gobject/ConvertToUTF8String.h"
-#include "webkitglobalsprivate.h"
 #include <wtf/GetPtr.h>
 #include <wtf/RefPtr.h>
+
+#define WEBKIT_DOM_TEST_EVENT_TARGET_GET_PRIVATE(obj) G_TYPE_INSTANCE_GET_PRIVATE(obj, WEBKIT_TYPE_DOM_TEST_EVENT_TARGET, WebKitDOMTestEventTargetPrivate)
+
+typedef struct _WebKitDOMTestEventTargetPrivate {
+    RefPtr<WebCore::TestEventTarget> coreObject;
+} WebKitDOMTestEventTargetPrivate;
 
 namespace WebKit {
 
 WebKitDOMTestEventTarget* kit(WebCore::TestEventTarget* obj)
 {
-    g_return_val_if_fail(obj, 0);
+    if (!obj)
+        return 0;
 
     if (gpointer ret = DOMObjectCache::get(obj))
-        return static_cast<WebKitDOMTestEventTarget*>(ret);
+        return WEBKIT_DOM_TEST_EVENT_TARGET(ret);
 
-    return static_cast<WebKitDOMTestEventTarget*>(DOMObjectCache::put(obj, WebKit::wrapTestEventTarget(obj)));
+    return wrapTestEventTarget(obj);
 }
 
 WebCore::TestEventTarget* core(WebKitDOMTestEventTarget* request)
 {
-    g_return_val_if_fail(request, 0);
-
-    WebCore::TestEventTarget* coreObject = static_cast<WebCore::TestEventTarget*>(WEBKIT_DOM_OBJECT(request)->coreObject);
-    g_return_val_if_fail(coreObject, 0);
-
-    return coreObject;
+    return request ? static_cast<WebCore::TestEventTarget*>(WEBKIT_DOM_OBJECT(request)->coreObject) : 0;
 }
 
 WebKitDOMTestEventTarget* wrapTestEventTarget(WebCore::TestEventTarget* coreObject)
 {
-    g_return_val_if_fail(coreObject, 0);
-
-    // We call ref() rather than using a C++ smart pointer because we can't store a C++ object
-    // in a C-allocated GObject structure. See the finalize() code for the matching deref().
-    coreObject->ref();
-
+    ASSERT(coreObject);
     return WEBKIT_DOM_TEST_EVENT_TARGET(g_object_new(WEBKIT_TYPE_DOM_TEST_EVENT_TARGET, "core-object", coreObject, NULL));
 }
 
@@ -104,96 +100,60 @@ static void webkit_dom_event_target_init(WebKitDOMEventTargetIface* iface)
 
 G_DEFINE_TYPE_WITH_CODE(WebKitDOMTestEventTarget, webkit_dom_test_event_target, WEBKIT_TYPE_DOM_OBJECT, G_IMPLEMENT_INTERFACE(WEBKIT_TYPE_DOM_EVENT_TARGET, webkit_dom_event_target_init))
 
-enum {
-    PROP_0,
-};
-
 static void webkit_dom_test_event_target_finalize(GObject* object)
 {
+    WebKitDOMTestEventTargetPrivate* priv = WEBKIT_DOM_TEST_EVENT_TARGET_GET_PRIVATE(object);
 
-    WebKitDOMObject* domObject = WEBKIT_DOM_OBJECT(object);
-    
-    if (domObject->coreObject) {
-        WebCore::TestEventTarget* coreObject = static_cast<WebCore::TestEventTarget*>(domObject->coreObject);
+    WebKit::DOMObjectCache::forget(priv->coreObject.get());
 
-        WebKit::DOMObjectCache::forget(coreObject);
-        coreObject->deref();
-
-        domObject->coreObject = 0;
-    }
-
-
+    priv->~WebKitDOMTestEventTargetPrivate();
     G_OBJECT_CLASS(webkit_dom_test_event_target_parent_class)->finalize(object);
 }
 
-static void webkit_dom_test_event_target_set_property(GObject* object, guint propertyId, const GValue* value, GParamSpec* pspec)
+static GObject* webkit_dom_test_event_target_constructor(GType type, guint constructPropertiesCount, GObjectConstructParam* constructProperties)
 {
-    WebCore::JSMainThreadNullState state;
-    switch (propertyId) {
-    default:
-        G_OBJECT_WARN_INVALID_PROPERTY_ID(object, propertyId, pspec);
-        break;
-    }
-}
+    GObject* object = G_OBJECT_CLASS(webkit_dom_test_event_target_parent_class)->constructor(type, constructPropertiesCount, constructProperties);
 
+    WebKitDOMTestEventTargetPrivate* priv = WEBKIT_DOM_TEST_EVENT_TARGET_GET_PRIVATE(object);
+    priv->coreObject = static_cast<WebCore::TestEventTarget*>(WEBKIT_DOM_OBJECT(object)->coreObject);
+    WebKit::DOMObjectCache::put(priv->coreObject.get(), object);
 
-static void webkit_dom_test_event_target_get_property(GObject* object, guint propertyId, GValue* value, GParamSpec* pspec)
-{
-    WebCore::JSMainThreadNullState state;
-    switch (propertyId) {
-    default:
-        G_OBJECT_WARN_INVALID_PROPERTY_ID(object, propertyId, pspec);
-        break;
-    }
-}
-
-
-static void webkit_dom_test_event_target_constructed(GObject* object)
-{
-
-    if (G_OBJECT_CLASS(webkit_dom_test_event_target_parent_class)->constructed)
-        G_OBJECT_CLASS(webkit_dom_test_event_target_parent_class)->constructed(object);
+    return object;
 }
 
 static void webkit_dom_test_event_target_class_init(WebKitDOMTestEventTargetClass* requestClass)
 {
     GObjectClass* gobjectClass = G_OBJECT_CLASS(requestClass);
+    g_type_class_add_private(gobjectClass, sizeof(WebKitDOMTestEventTargetPrivate));
+    gobjectClass->constructor = webkit_dom_test_event_target_constructor;
     gobjectClass->finalize = webkit_dom_test_event_target_finalize;
-    gobjectClass->set_property = webkit_dom_test_event_target_set_property;
-    gobjectClass->get_property = webkit_dom_test_event_target_get_property;
-    gobjectClass->constructed = webkit_dom_test_event_target_constructed;
-
-
-
 }
 
 static void webkit_dom_test_event_target_init(WebKitDOMTestEventTarget* request)
 {
+    WebKitDOMTestEventTargetPrivate* priv = WEBKIT_DOM_TEST_EVENT_TARGET_GET_PRIVATE(request);
+    new (priv) WebKitDOMTestEventTargetPrivate();
 }
 
 WebKitDOMNode*
 webkit_dom_test_event_target_item(WebKitDOMTestEventTarget* self, gulong index)
 {
-    g_return_val_if_fail(self, 0);
     WebCore::JSMainThreadNullState state;
+    g_return_val_if_fail(WEBKIT_DOM_IS_TEST_EVENT_TARGET(self), 0);
     WebCore::TestEventTarget* item = WebKit::core(self);
     RefPtr<WebCore::Node> gobjectResult = WTF::getPtr(item->item(index));
-    WebKitDOMNode* result = WebKit::kit(gobjectResult.get());
-    return result;
+    return WebKit::kit(gobjectResult.get());
 }
 
 gboolean
 webkit_dom_test_event_target_dispatch_event(WebKitDOMTestEventTarget* self, WebKitDOMEvent* evt, GError** error)
 {
-    g_return_val_if_fail(self, 0);
     WebCore::JSMainThreadNullState state;
+    g_return_val_if_fail(WEBKIT_DOM_IS_TEST_EVENT_TARGET(self), FALSE);
+    g_return_val_if_fail(WEBKIT_DOM_IS_EVENT(evt), FALSE);
+    g_return_val_if_fail(!error || !*error, FALSE);
     WebCore::TestEventTarget* item = WebKit::core(self);
-    g_return_val_if_fail(evt, 0);
-    WebCore::Event* convertedEvt = 0;
-    if (evt) {
-        convertedEvt = WebKit::core(evt);
-        g_return_val_if_fail(convertedEvt, 0);
-    }
+    WebCore::Event* convertedEvt = WebKit::core(evt);
     WebCore::ExceptionCode ec = 0;
     gboolean result = item->dispatchEvent(convertedEvt, ec);
     if (ec) {

@@ -21,6 +21,8 @@ IDL_BINDINGS += \
     Bindings/TestRunner.idl \
     Bindings/TextInputController.idl \
 
+qtPrepareTool(QMAKE_MOC, moc)
+
 # GENERATOR 1: IDL compiler
 idl.output = JS${QMAKE_FILE_BASE}.cpp
 idl.input = IDL_BINDINGS
@@ -29,7 +31,6 @@ idl.commands = perl -I$${ROOT_WEBKIT_DIR}/Source/WebCore/bindings/scripts -I$$PW
 idl.depends = $${ROOT_WEBKIT_DIR}/Source/WebCore/bindings/scripts/CodeGenerator.pm \
               $$PWD/Bindings/CodeGeneratorTestRunner.pm \
               $${ROOT_WEBKIT_DIR}/Source/WebCore/bindings/scripts/IDLParser.pm \
-              $${ROOT_WEBKIT_DIR}/Source/WebCore/bindings/scripts/IDLStructure.pm \
               $${ROOT_WEBKIT_DIR}/Source/WebCore/bindings/scripts/InFilesParser.pm \
               $${ROOT_WEBKIT_DIR}/Source/WebCore/bindings/scripts/generate-bindings.pl
 GENERATORS += idl

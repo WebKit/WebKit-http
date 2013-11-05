@@ -72,6 +72,12 @@ struct PutToBaseOperationData {
     unsigned putToBaseOperationIndex;
 };
 
+enum AddSpeculationMode {
+    DontSpeculateInteger,
+    SpeculateIntegerButAlwaysWatchOverflow,
+    SpeculateInteger
+};
+    
 
 //
 // === Graph ===
@@ -190,16 +196,17 @@ public:
     }
 
     // CodeBlock is optional, but may allow additional information to be dumped (e.g. Identifier names).
-    void dump();
+    void dump(PrintStream& = WTF::dataFile());
     enum PhiNodeDumpMode { DumpLivePhisOnly, DumpAllPhis };
-    void dumpBlockHeader(const char* prefix, BlockIndex, PhiNodeDumpMode);
-    void dump(const char* prefix, NodeIndex);
+    void dumpBlockHeader(PrintStream&, const char* prefix, BlockIndex, PhiNodeDumpMode);
+    void dump(PrintStream&, Edge);
+    void dump(PrintStream&, const char* prefix, NodeIndex);
     static int amountOfNodeWhiteSpace(Node&);
-    static void printNodeWhiteSpace(Node&);
+    static void printNodeWhiteSpace(PrintStream&, Node&);
 
     // Dump the code origin of the given node as a diff from the code origin of the
-    // preceding node.
-    void dumpCodeOrigin(const char* prefix, NodeIndex, NodeIndex);
+    // preceding node. Returns true if anything was printed.
+    bool dumpCodeOrigin(PrintStream&, const char* prefix, NodeIndex, NodeIndex);
 
     BlockIndex blockIndexForBytecodeOffset(Vector<BlockIndex>& blocks, unsigned bytecodeBegin);
 
@@ -208,7 +215,7 @@ public:
         return speculationFromValue(node.valueOfJSConstant(m_codeBlock));
     }
     
-    bool addShouldSpeculateInteger(Node& add)
+    AddSpeculationMode addSpeculationMode(Node& add)
     {
         ASSERT(add.op() == ValueAdd || add.op() == ArithAdd || add.op() == ArithSub);
         
@@ -220,7 +227,12 @@ public:
         if (right.hasConstant())
             return addImmediateShouldSpeculateInteger(add, left, right);
         
-        return Node::shouldSpeculateIntegerExpectingDefined(left, right) && add.canSpeculateInteger();
+        return (Node::shouldSpeculateIntegerExpectingDefined(left, right) && add.canSpeculateInteger()) ? SpeculateInteger : DontSpeculateInteger;
+    }
+    
+    bool addShouldSpeculateInteger(Node& add)
+    {
+        return addSpeculationMode(add) != DontSpeculateInteger;
     }
     
     bool mulShouldSpeculateInteger(Node& mul)
@@ -326,9 +338,6 @@ public:
 
     static const char *opName(NodeType);
     
-    // This is O(n), and should only be used for verbose dumps.
-    const char* nameOfVariableAccessData(VariableAccessData*);
-
     void predictArgumentTypes();
     
     StructureSet* addStructureSet(const StructureSet& structureSet)
@@ -673,6 +682,7 @@ public:
     
     JSGlobalData& m_globalData;
     CodeBlock* m_codeBlock;
+    RefPtr<Profiler::Compilation> m_compilation;
     CodeBlock* m_profiledBlock;
 
     Vector< OwnPtr<BasicBlock> , 8> m_blocks;
@@ -701,26 +711,26 @@ private:
     
     void handleSuccessor(Vector<BlockIndex, 16>& worklist, BlockIndex blockIndex, BlockIndex successorIndex);
     
-    bool addImmediateShouldSpeculateInteger(Node& add, Node& variable, Node& immediate)
+    AddSpeculationMode addImmediateShouldSpeculateInteger(Node& add, Node& variable, Node& immediate)
     {
         ASSERT(immediate.hasConstant());
         
         JSValue immediateValue = immediate.valueOfJSConstant(m_codeBlock);
         if (!immediateValue.isNumber())
-            return false;
+            return DontSpeculateInteger;
         
         if (!variable.shouldSpeculateIntegerExpectingDefined())
-            return false;
+            return DontSpeculateInteger;
         
         if (immediateValue.isInt32())
-            return add.canSpeculateInteger();
+            return add.canSpeculateInteger() ? SpeculateInteger : DontSpeculateInteger;
         
         double doubleImmediate = immediateValue.asDouble();
         const double twoToThe48 = 281474976710656.0;
         if (doubleImmediate < -twoToThe48 || doubleImmediate > twoToThe48)
-            return false;
+            return DontSpeculateInteger;
         
-        return nodeCanTruncateInteger(add.arithNodeFlags());
+        return nodeCanTruncateInteger(add.arithNodeFlags()) ? SpeculateIntegerButAlwaysWatchOverflow : DontSpeculateInteger;
     }
     
     bool mulImmediateShouldSpeculateInteger(Node& mul, Node& variable, Node& immediate)
@@ -770,7 +780,7 @@ private:
 
 inline BlockIndex Graph::blockIndexForBytecodeOffset(Vector<BlockIndex>& linkingTargets, unsigned bytecodeBegin)
 {
-    return *WTF::binarySearchWithFunctor<BlockIndex, unsigned>(linkingTargets.begin(), linkingTargets.size(), bytecodeBegin, WTF::KeyMustBePresentInArray, GetBytecodeBeginForBlock(*this));
+    return *binarySearch<BlockIndex, unsigned>(linkingTargets, linkingTargets.size(), bytecodeBegin, GetBytecodeBeginForBlock(*this));
 }
 
 } } // namespace JSC::DFG

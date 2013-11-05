@@ -5,32 +5,13 @@ if (this.importScripts) {
 
 description("Test IDBTransaction.error cases.");
 
-function test()
+indexedDBTest(prepareDatabase, startTest);
+function prepareDatabase()
 {
-    removeVendorPrefixes();
-
-    evalAndLog("dbname = self.location.pathname");
-    request = evalAndLog("indexedDB.deleteDatabase(dbname)");
-    request.onblocked = unexpectedBlockedCallback;
+    db = event.target.result;
+    evalAndLog("store = db.createObjectStore('storeName')");
+    request = evalAndLog("store.add('value', 'key')");
     request.onerror = unexpectedErrorCallback;
-    request.onsuccess = function() {
-        request = evalAndLog("indexedDB.open(dbname)");
-        request.onerror = unexpectedErrorCallback;
-        request.onsuccess = function() {
-            evalAndLog("db = request.result");
-            request = evalAndLog("db.setVersion('1')");
-            request.onblocked = unexpectedBlockedCallback;
-            request.onerror = unexpectedErrorCallback;
-            request.onsuccess = function() {
-                evalAndLog("trans = event.target.result");
-                trans.onabort = unexpectedAbortCallback;
-                evalAndLog("store = db.createObjectStore('storeName')");
-                request = evalAndLog("store.add('value', 'key')");
-                request.onerror = unexpectedErrorCallback;
-                trans.oncomplete = startTest;
-            };
-        };
-    };
 }
 
 function startTest()
@@ -60,7 +41,6 @@ function testErrorFromRequest()
     evalAndLog("request = trans.objectStore('storeName').add('value2', 'key')");
     request.onsuccess = unexpectedSuccessCallback;
     request.onerror = function() {
-        shouldBe("request.errorCode", "IDBDatabaseException.CONSTRAINT_ERR");
         shouldBe("request.error.name", "'ConstraintError'");
         evalAndLog("request_error = request.error");
     };
@@ -68,6 +48,8 @@ function testErrorFromRequest()
     trans.onabort = function() {
         debug("Transaction received abort event.");
         shouldBeNonNull("trans.error");
+        debug("trans.webkitErrorMessage = " + trans.webkitErrorMessage);
+        shouldBeNonNull("trans.webkitErrorMessage");
         shouldBe("trans.error", "request_error");
         testErrorFromException();
     };
@@ -81,7 +63,6 @@ function testErrorFromException()
     evalAndLog("request = trans.objectStore('storeName').add('value2', 'key')");
     request.onsuccess = unexpectedSuccessCallback;
     request.onerror = function() {
-        shouldBe("request.errorCode", "IDBDatabaseException.CONSTRAINT_ERR");
         shouldBe("request.error.name", "'ConstraintError'");
         debug("Throwing exception...");
 
@@ -99,6 +80,8 @@ function testErrorFromException()
         self.onerror = self.originalWindowOnError;
 
         shouldBeNonNull("trans.error");
+        debug("trans.webkitErrorMessage = " + trans.webkitErrorMessage);
+        shouldBeNonNull("trans.webkitErrorMessage");
         shouldBe("trans.error.name", "'AbortError'");
         testErrorFromCommit();
     };
@@ -115,24 +98,27 @@ function testErrorFromCommit()
     request.onerror = unexpectedErrorCallback;
     trans.onabort = unexpectedAbortCallback;
     trans.oncomplete = function() {
-        evalAndLog("request = db.setVersion('2')");
-        request.onerror = unexpectedErrorCallback;
+        db.close();
+        evalAndLog("request = indexedDB.open(dbname, 2)");
+        request.onsuccess = unexpectedSuccessCallback;
         request.onblocked = unexpectedBlockedCallback;
-        request.onsuccess = function() {
-            evalAndLog("trans = request.result");
+        request.onupgradeneeded = function() {
+            evalAndLog("trans = request.transaction");
             debug("This should fail due to the unique constraint:");
-            evalAndLog("trans.objectStore('storeName').createIndex('indexName', 'id', {unique: true})");
+            evalAndLog("indexName = 'Also test utf8: \u6F22'");
+            evalAndLog("trans.objectStore('storeName').createIndex(indexName, 'id', {unique: true})");
             trans.oncomplete = unexpectedCompleteCallback;
             trans.onabort = function() {
                 debug("Transaction received abort event.");
                 shouldBeNonNull("trans.error");
-                // FIXME: Test for a specific error here, when supported.
-                shouldNotBe("trans.error.name", "'AbortError'");
+                shouldBe("trans.error.name", "'ConstraintError'");
+                debug("trans.webkitErrorMessage = " + trans.webkitErrorMessage);
+                shouldBeNonNull("trans.webkitErrorMessage");
+                debug("Note: This fails because of http://wkb.ug/37327");
+                shouldNotBe("trans.webkitErrorMessage.indexOf(indexName)", "-1");
                 debug("");
                 finishJSTest();
             };
         };
     };
 }
-
-test();

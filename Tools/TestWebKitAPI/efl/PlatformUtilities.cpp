@@ -42,7 +42,7 @@ void run(bool* done)
 
 void sleep(double seconds)
 {
-    sleep(seconds);
+    usleep(seconds * 1000000);
 }
 
 WKURLRef createURLForResource(const char* resource, const char* extension)
@@ -62,6 +62,11 @@ WKStringRef createInjectedBundlePath()
 WKURLRef URLForNonExistentResource()
 {
     return WKURLCreateWithUTF8CString("file:///does-not-exist.html");
+}
+
+WKRetainPtr<WKStringRef> MIMETypeForWKURLResponse(WKURLResponseRef wkResponse)
+{
+    return adoptWK(WKURLResponseCopyMIMEType(wkResponse));
 }
 
 } // namespace Util

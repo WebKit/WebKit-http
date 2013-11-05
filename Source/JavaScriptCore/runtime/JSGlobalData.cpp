@@ -245,10 +245,16 @@ JSGlobalData::JSGlobalData(GlobalDataType globalDataType, HeapType heapType)
     heap.notifyIsSafeToCollect();
     
     LLInt::Data::performAssertions(*this);
+    
+    if (Options::enableProfiler())
+        m_perBytecodeProfiler = adoptPtr(new Profiler::Database(*this));
 }
 
 JSGlobalData::~JSGlobalData()
 {
+    // Clear this first to ensure that nobody tries to remove themselves from it.
+    m_perBytecodeProfiler.clear();
+    
     ASSERT(!m_apiLock.currentThreadIsHoldingLock());
     heap.didStartVMShutdown();
 
@@ -425,6 +431,13 @@ void JSGlobalData::stopSampling()
     interpreter->stopSampling();
 }
 
+void JSGlobalData::discardAllCode()
+{
+    m_codeCache->clear();
+    heap.deleteAllCompiledCode();
+    heap.reportAbandonedObjectGraph();
+}
+
 void JSGlobalData::dumpSampleData(ExecState* exec)
 {
     interpreter->dumpSampleData(exec);
@@ -507,17 +520,17 @@ void JSGlobalData::dumpRegExpTrace()
     RTTraceList::iterator iter = ++m_rtTraceList->begin();
     
     if (iter != m_rtTraceList->end()) {
-        dataLog("\nRegExp Tracing\n");
-        dataLog("                                                            match()    matches\n");
-        dataLog("Regular Expression                          JIT Address      calls      found\n");
-        dataLog("----------------------------------------+----------------+----------+----------\n");
+        dataLogF("\nRegExp Tracing\n");
+        dataLogF("                                                            match()    matches\n");
+        dataLogF("Regular Expression                          JIT Address      calls      found\n");
+        dataLogF("----------------------------------------+----------------+----------+----------\n");
     
         unsigned reCount = 0;
     
         for (; iter != m_rtTraceList->end(); ++iter, ++reCount)
             (*iter)->printTraceData();
 
-        dataLog("%d Regular Expressions\n", reCount);
+        dataLogF("%d Regular Expressions\n", reCount);
     }
     
     m_rtTraceList->clear();

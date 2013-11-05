@@ -108,6 +108,7 @@ typedef void DFG_OPERATION (*V_DFGOperation_EJPP)(ExecState*, EncodedJSValue, En
 typedef void DFG_OPERATION (*V_DFGOperation_EPZJ)(ExecState*, void*, int32_t, EncodedJSValue);
 typedef void DFG_OPERATION (*V_DFGOperation_W)(WatchpointSet*);
 typedef char* DFG_OPERATION (*P_DFGOperation_E)(ExecState*);
+typedef char* DFG_OPERATION (*P_DFGOperation_EC)(ExecState*, JSCell*);
 typedef char* DFG_OPERATION (*P_DFGOperation_EO)(ExecState*, JSObject*);
 typedef char* DFG_OPERATION (*P_DFGOperation_EOS)(ExecState*, JSObject*, size_t);
 typedef char* DFG_OPERATION (*P_DFGOperation_EOZ)(ExecState*, JSObject*, int32_t);
@@ -117,6 +118,7 @@ typedef char* DFG_OPERATION (*P_DFGOperation_ESt)(ExecState*, Structure*);
 typedef char* DFG_OPERATION (*P_DFGOperation_EStPS)(ExecState*, Structure*, void*, size_t);
 typedef char* DFG_OPERATION (*P_DFGOperation_EStSS)(ExecState*, Structure*, size_t, size_t);
 typedef char* DFG_OPERATION (*P_DFGOperation_EStZ)(ExecState*, Structure*, int32_t);
+typedef StringImpl* DFG_OPERATION (*Str_DFGOperation_EJss)(ExecState*, JSString*);
 
 // These routines are provide callbacks out to C++ implementations of operations too complex to JIT.
 JSCell* DFG_OPERATION operationNewObject(ExecState*, Structure*) WTF_INTERNAL;
@@ -181,6 +183,7 @@ size_t DFG_OPERATION operationCompareStrictEqCell(ExecState*, EncodedJSValue enc
 size_t DFG_OPERATION operationCompareStrictEq(ExecState*, EncodedJSValue encodedOp1, EncodedJSValue encodedOp2) WTF_INTERNAL;
 char* DFG_OPERATION operationVirtualCall(ExecState*) WTF_INTERNAL;
 char* DFG_OPERATION operationLinkCall(ExecState*) WTF_INTERNAL;
+char* DFG_OPERATION operationLinkClosureCall(ExecState*) WTF_INTERNAL;
 char* DFG_OPERATION operationVirtualConstruct(ExecState*) WTF_INTERNAL;
 char* DFG_OPERATION operationLinkConstruct(ExecState*) WTF_INTERNAL;
 JSCell* DFG_OPERATION operationCreateActivation(ExecState*) WTF_INTERNAL;
@@ -201,10 +204,12 @@ char* DFG_OPERATION operationAllocatePropertyStorageWithInitialCapacity(ExecStat
 char* DFG_OPERATION operationAllocatePropertyStorage(ExecState*, size_t newSize) WTF_INTERNAL;
 char* DFG_OPERATION operationReallocateButterflyToHavePropertyStorageWithInitialCapacity(ExecState*, JSObject*) WTF_INTERNAL;
 char* DFG_OPERATION operationReallocateButterflyToGrowPropertyStorage(ExecState*, JSObject*, size_t newSize) WTF_INTERNAL;
-char* DFG_OPERATION operationEnsureInt32(ExecState*, JSObject*);
-char* DFG_OPERATION operationEnsureDouble(ExecState*, JSObject*);
-char* DFG_OPERATION operationEnsureContiguous(ExecState*, JSObject*);
-char* DFG_OPERATION operationEnsureArrayStorage(ExecState*, JSObject*);
+char* DFG_OPERATION operationEnsureInt32(ExecState*, JSCell*);
+char* DFG_OPERATION operationEnsureDouble(ExecState*, JSCell*);
+char* DFG_OPERATION operationEnsureContiguous(ExecState*, JSCell*);
+char* DFG_OPERATION operationRageEnsureContiguous(ExecState*, JSCell*);
+char* DFG_OPERATION operationEnsureArrayStorage(ExecState*, JSCell*);
+StringImpl* DFG_OPERATION operationResolveRope(ExecState*, JSString*);
 
 // This method is used to lookup an exception hander, keyed by faultLocation, which is
 // the return location from one of the calls out to one of the helper operations above.

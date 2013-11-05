@@ -56,11 +56,11 @@
 #include "JSPropertyNameIterator.h"
 #include "JSString.h"
 #include "JSWithScope.h"
+#include "LegacyProfiler.h"
 #include "NameInstance.h"
 #include "ObjectPrototype.h"
 #include "Operations.h"
 #include "Parser.h"
-#include "Profiler.h"
 #include "RegExpObject.h"
 #include "RegExpPrototype.h"
 #include "Register.h"
@@ -908,6 +908,7 @@ NEVER_INLINE void JITThunks::tryCacheGetByID(CallFrame* callFrame, CodeBlock* co
 
     // Uncacheable: give up.
     if (!slot.isCacheable()) {
+        stubInfo->accessType = access_get_by_id_generic;
         ctiPatchCallByReturnAddress(codeBlock, returnAddress, FunctionPtr(cti_op_get_by_id_generic));
         return;
     }
@@ -916,6 +917,7 @@ NEVER_INLINE void JITThunks::tryCacheGetByID(CallFrame* callFrame, CodeBlock* co
     Structure* structure = baseCell->structure();
 
     if (structure->isUncacheableDictionary() || structure->typeInfo().prohibitsPropertyCaching()) {
+        stubInfo->accessType = access_get_by_id_generic;
         ctiPatchCallByReturnAddress(codeBlock, returnAddress, FunctionPtr(cti_op_get_by_id_generic));
         return;
     }
@@ -934,6 +936,7 @@ NEVER_INLINE void JITThunks::tryCacheGetByID(CallFrame* callFrame, CodeBlock* co
     }
 
     if (structure->isDictionary()) {
+        stubInfo->accessType = access_get_by_id_generic;
         ctiPatchCallByReturnAddress(codeBlock, returnAddress, FunctionPtr(cti_op_get_by_id_generic));
         return;
     }
@@ -943,6 +946,12 @@ NEVER_INLINE void JITThunks::tryCacheGetByID(CallFrame* callFrame, CodeBlock* co
         
         JSObject* slotBaseObject = asObject(slot.slotBase());
         size_t offset = slot.cachedOffset();
+
+        if (structure->typeInfo().hasImpureGetOwnPropertySlot()) {
+            stubInfo->accessType = access_get_by_id_generic;
+            ctiPatchCallByReturnAddress(codeBlock, returnAddress, FunctionPtr(cti_op_get_by_id_generic));
+            return;
+        }
         
         // Since we're accessing a prototype in a loop, it's a good bet that it
         // should not be treated as a dictionary.
@@ -960,9 +969,10 @@ NEVER_INLINE void JITThunks::tryCacheGetByID(CallFrame* callFrame, CodeBlock* co
     }
 
     PropertyOffset offset = slot.cachedOffset();
-    size_t count = normalizePrototypeChain(callFrame, baseValue, slot.slotBase(), propertyName, offset);
+    size_t count = normalizePrototypeChainForChainAccess(callFrame, baseValue, slot.slotBase(), propertyName, offset);
     if (count == InvalidPrototypeChain) {
         stubInfo->accessType = access_get_by_id_generic;
+        ctiPatchCallByReturnAddress(codeBlock, returnAddress, FunctionPtr(cti_op_get_by_id_generic));
         return;
     }
 
@@ -1689,6 +1699,12 @@ DEFINE_STUB_FUNCTION(EncodedJSValue, op_get_by_id_proto_list)
         ctiPatchCallByReturnAddress(codeBlock, STUB_RETURN_ADDRESS, FunctionPtr(cti_op_get_by_id_proto_fail));
     else if (slot.slotBase() == baseValue.asCell()->structure()->prototypeForLookup(callFrame)) {
         ASSERT(!baseValue.asCell()->structure()->isDictionary());
+        
+        if (baseValue.asCell()->structure()->typeInfo().hasImpureGetOwnPropertySlot()) {
+            ctiPatchCallByReturnAddress(codeBlock, STUB_RETURN_ADDRESS, FunctionPtr(cti_op_get_by_id_proto_fail));
+            return JSValue::encode(result);
+        }
+        
         // Since we're accessing a prototype in a loop, it's a good bet that it
         // should not be treated as a dictionary.
         if (slotBaseObject->structure()->isDictionary()) {
@@ -1705,7 +1721,7 @@ DEFINE_STUB_FUNCTION(EncodedJSValue, op_get_by_id_proto_list)
                 ctiPatchCallByReturnAddress(codeBlock, STUB_RETURN_ADDRESS, FunctionPtr(cti_op_get_by_id_proto_list_full));
         }
     } else {
-        size_t count = normalizePrototypeChain(callFrame, baseValue, slot.slotBase(), propertyName, offset);
+        size_t count = normalizePrototypeChainForChainAccess(callFrame, baseValue, slot.slotBase(), propertyName, offset);
         if (count == InvalidPrototypeChain) {
             ctiPatchCallByReturnAddress(codeBlock, STUB_RETURN_ADDRESS, FunctionPtr(cti_op_get_by_id_proto_fail));
             return JSValue::encode(result);
@@ -1808,9 +1824,13 @@ DEFINE_STUB_FUNCTION(void, optimize)
     unsigned bytecodeIndex = stackFrame.args[0].int32();
 
 #if ENABLE(JIT_VERBOSE_OSR)
-    dataLog("%p: Entered optimize with bytecodeIndex = %u, executeCounter = %s, reoptimizationRetryCounter = %u, optimizationDelayCounter = %u, exitCounter = ", codeBlock, bytecodeIndex, codeBlock->jitExecuteCounter().status(), codeBlock->reoptimizationRetryCounter(), codeBlock->optimizationDelayCounter());
+    dataLog(
+        *codeBlock, ": Entered optimize with bytecodeIndex = ", bytecodeIndex,
+        ", executeCounter = ", codeBlock->jitExecuteCounter(),
+        ", optimizationDelayCounter = ", codeBlock->reoptimizationRetryCounter(),
+        ", exitCounter = ");
     if (codeBlock->hasOptimizedReplacement())
-        dataLog("%u", codeBlock->replacement()->osrExitCounter());
+        dataLog(codeBlock->replacement()->osrExitCounter());
     else
         dataLog("N/A");
     dataLog("\n");
@@ -1818,12 +1838,15 @@ DEFINE_STUB_FUNCTION(void, optimize)
 
     if (!codeBlock->checkIfOptimizationThresholdReached()) {
         codeBlock->updateAllPredictions();
+#if ENABLE(JIT_VERBOSE_OSR)
+        dataLog("Choosing not to optimize ", *codeBlock, " yet.\n");
+#endif
         return;
     }
 
     if (codeBlock->hasOptimizedReplacement()) {
 #if ENABLE(JIT_VERBOSE_OSR)
-        dataLog("Considering OSR into %p(%p).\n", codeBlock, codeBlock->replacement());
+        dataLog("Considering OSR ", *codeBlock, " -> ", *codeBlock->replacement(), ".\n");
 #endif
         // If we have an optimized replacement, then it must be the case that we entered
         // cti_optimize from a loop. That's because is there's an optimized replacement,
@@ -1840,7 +1863,7 @@ DEFINE_STUB_FUNCTION(void, optimize)
         // additional checking anyway, to reduce the amount of recompilation thrashing.
         if (codeBlock->replacement()->shouldReoptimizeFromLoopNow()) {
 #if ENABLE(JIT_VERBOSE_OSR)
-            dataLog("Triggering reoptimization of %p(%p) (in loop).\n", codeBlock, codeBlock->replacement());
+            dataLog("Triggering reoptimization of ", *codeBlock, "(", *codeBlock->replacement(), ") (in loop).\n");
 #endif
             codeBlock->reoptimize();
             return;
@@ -1848,10 +1871,14 @@ DEFINE_STUB_FUNCTION(void, optimize)
     } else {
         if (!codeBlock->shouldOptimizeNow()) {
 #if ENABLE(JIT_VERBOSE_OSR)
-            dataLog("Delaying optimization for %p (in loop) because of insufficient profiling.\n", codeBlock);
+            dataLog("Delaying optimization for ", *codeBlock, " (in loop) because of insufficient profiling.\n");
 #endif
             return;
         }
+        
+#if ENABLE(JIT_VERBOSE_OSR)
+        dataLog("Triggering optimized compilation of ", *codeBlock, "\n");
+#endif
         
         JSScope* scope = callFrame->scope();
         JSObject* error = codeBlock->compileOptimized(callFrame, scope, bytecodeIndex);
@@ -1864,7 +1891,7 @@ DEFINE_STUB_FUNCTION(void, optimize)
         
         if (codeBlock->replacement() == codeBlock) {
 #if ENABLE(JIT_VERBOSE_OSR)
-            dataLog("Optimizing %p failed.\n", codeBlock);
+            dataLog("Optimizing ", *codeBlock, " failed.\n");
 #endif
             
             ASSERT(codeBlock->getJITType() == JITCode::BaselineJIT);
@@ -1879,11 +1906,11 @@ DEFINE_STUB_FUNCTION(void, optimize)
     if (void* address = DFG::prepareOSREntry(callFrame, optimizedCodeBlock, bytecodeIndex)) {
         if (Options::showDFGDisassembly()) {
             dataLog(
-                "Performing OSR from code block %p to code block %p, address %p to %p.\n",
-                codeBlock, optimizedCodeBlock, (STUB_RETURN_ADDRESS).value(), address);
+                "Performing OSR ", *codeBlock, " -> ", *optimizedCodeBlock, ", address ",
+                RawPointer((STUB_RETURN_ADDRESS).value()), " -> ", RawPointer(address), ".\n");
         }
 #if ENABLE(JIT_VERBOSE_OSR)
-        dataLog("Optimizing %p succeeded, performing OSR after a delay of %u.\n", codeBlock, codeBlock->optimizationDelayCounter());
+        dataLog("Optimizing ", *codeBlock, " succeeded, performing OSR after a delay of ", codeBlock->optimizationDelayCounter(), ".\n");
 #endif
 
         codeBlock->optimizeSoon();
@@ -1892,7 +1919,7 @@ DEFINE_STUB_FUNCTION(void, optimize)
     }
     
 #if ENABLE(JIT_VERBOSE_OSR)
-    dataLog("Optimizing %p succeeded, OSR failed, after a delay of %u.\n", codeBlock, codeBlock->optimizationDelayCounter());
+    dataLog("Optimizing ", *codeBlock, " succeeded, OSR failed, after a delay of ", codeBlock->optimizationDelayCounter(), ".\n");
 #endif
 
     // Count the OSR failure as a speculation failure. If this happens a lot, then
@@ -1900,7 +1927,7 @@ DEFINE_STUB_FUNCTION(void, optimize)
     optimizedCodeBlock->countOSRExit();
     
 #if ENABLE(JIT_VERBOSE_OSR)
-    dataLog("Encountered OSR failure into %p(%p).\n", codeBlock, codeBlock->replacement());
+    dataLog("Encountered OSR failure ", *codeBlock, " -> ", *codeBlock->replacement(), ".\n");
 #endif
 
     // We are a lot more conservative about triggering reoptimization after OSR failure than
@@ -1913,7 +1940,7 @@ DEFINE_STUB_FUNCTION(void, optimize)
     // reoptimization trigger.
     if (optimizedCodeBlock->shouldReoptimizeNow()) {
 #if ENABLE(JIT_VERBOSE_OSR)
-        dataLog("Triggering reoptimization of %p(%p) (after OSR fail).\n", codeBlock, codeBlock->replacement());
+        dataLog("Triggering reoptimization of ", *codeBlock, " -> ", *codeBlock->replacement(), " (after OSR fail).\n");
 #endif
         codeBlock->reoptimize();
         return;
@@ -2217,7 +2244,7 @@ DEFINE_STUB_FUNCTION(void, op_profile_will_call)
 {
     STUB_INIT_STACK_FRAME(stackFrame);
 
-    if (Profiler* profiler = stackFrame.globalData->enabledProfiler())
+    if (LegacyProfiler* profiler = stackFrame.globalData->enabledProfiler())
         profiler->willExecute(stackFrame.callFrame, stackFrame.args[0].jsValue());
 }
 
@@ -2225,7 +2252,7 @@ DEFINE_STUB_FUNCTION(void, op_profile_did_call)
 {
     STUB_INIT_STACK_FRAME(stackFrame);
 
-    if (Profiler* profiler = stackFrame.globalData->enabledProfiler())
+    if (LegacyProfiler* profiler = stackFrame.globalData->enabledProfiler())
         profiler->didExecute(stackFrame.callFrame, stackFrame.args[0].jsValue());
 }
 

@@ -39,6 +39,18 @@ enum {
 };
 typedef uint32_t WKCacheModel;
 
+// Context Client
+typedef void (*WKContextPlugInAutoStartOriginHashesChangedCallback)(WKContextRef context, const void *clientInfo);
+
+struct WKContextClient {
+    int                                                                 version;
+    const void *                                                        clientInfo;
+    WKContextPlugInAutoStartOriginHashesChangedCallback                 plugInAutoStartOriginHashesChanged;
+};
+typedef struct WKContextClient WKContextClient;
+
+enum { kWKContextClientCurrentVersion = 0 };
+
 // Injected Bundle Client
 typedef void (*WKContextDidReceiveMessageFromInjectedBundleCallback)(WKContextRef page, WKStringRef messageName, WKTypeRef messageBody, const void *clientInfo);
 typedef void (*WKContextDidReceiveSynchronousMessageFromInjectedBundleCallback)(WKContextRef page, WKStringRef messageName, WKTypeRef messageBody, WKTypeRef* returnData, const void *clientInfo);
@@ -134,6 +146,7 @@ WK_EXPORT WKTypeID WKContextGetTypeID();
 WK_EXPORT WKContextRef WKContextCreate();
 WK_EXPORT WKContextRef WKContextCreateWithInjectedBundlePath(WKStringRef path);
 
+WK_EXPORT void WKContextSetClient(WKContextRef context, const WKContextClient* client);
 WK_EXPORT void WKContextSetInjectedBundleClient(WKContextRef context, const WKContextInjectedBundleClient* client);
 WK_EXPORT void WKContextSetHistoryClient(WKContextRef context, const WKContextHistoryClient* client);
 WK_EXPORT void WKContextSetDownloadClient(WKContextRef context, const WKContextDownloadClient* client);
@@ -151,6 +164,9 @@ WK_EXPORT WKCacheModel WKContextGetCacheModel(WKContextRef context);
 
 WK_EXPORT void WKContextSetProcessModel(WKContextRef context, WKProcessModel processModel);
 WK_EXPORT WKProcessModel WKContextGetProcessModel(WKContextRef context);
+
+WK_EXPORT void WKContextSetMaximumNumberOfProcesses(WKContextRef context, unsigned numberOfProcesses);
+WK_EXPORT unsigned WKContextGetMaximumNumberOfProcesses(WKContextRef context);
 
 WK_EXPORT void WKContextStartMemorySampler(WKContextRef context, WKDoubleRef interval);
 WK_EXPORT void WKContextStopMemorySampler(WKContextRef context);
@@ -173,6 +189,9 @@ WK_EXPORT void WKContextGetStatistics(WKContextRef context, void* functionContex
     
 WK_EXPORT void WKContextGarbageCollectJavaScriptObjects(WKContextRef context);
 WK_EXPORT void WKContextSetJavaScriptGarbageCollectorTimerEnabled(WKContextRef context, bool enable);
+
+WK_EXPORT WKDictionaryRef WKContextCopyPlugInAutoStartOriginHashes(WKContextRef context);
+WK_EXPORT void WKContextSetPlugInAutoStartOriginHashes(WKContextRef context, WKDictionaryRef dictionary);
 
 #ifdef __cplusplus
 }

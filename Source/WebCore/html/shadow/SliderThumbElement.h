@@ -66,8 +66,8 @@ private:
     virtual RenderObject* createRenderer(RenderArena*, RenderStyle*);
     virtual PassRefPtr<Element> cloneElementWithoutAttributesAndChildren();
     virtual bool isEnabledFormControl() const;
-    virtual bool shouldMatchReadOnlySelector() const OVERRIDE;
-    virtual bool shouldMatchReadWriteSelector() const OVERRIDE;
+    virtual bool matchesReadOnlyPseudoClass() const OVERRIDE;
+    virtual bool matchesReadWritePseudoClass() const OVERRIDE;
     virtual Node* focusDelegate();
     void startDragging();
     void stopDragging();
@@ -112,22 +112,6 @@ public:
 private:
     virtual bool isSliderThumb() const;
 };
-
-// --------------------------------
-
-class TrackLimiterElement : public HTMLDivElement {
-public:
-    static PassRefPtr<TrackLimiterElement> create(Document*);
-
-private:
-    TrackLimiterElement(Document*);
-    virtual RenderObject* createRenderer(RenderArena*, RenderStyle*);
-    virtual const AtomicString& shadowPseudoId() const;
-};
-
-// This always return a valid pointer.
-// An assertion fails if the specified node is not a range input.
-TrackLimiterElement* trackLimiterElementOf(Node*);
 
 // --------------------------------
 

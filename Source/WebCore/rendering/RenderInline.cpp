@@ -39,8 +39,7 @@
 #include "StyleInheritedData.h"
 #include "TransformState.h"
 #include "VisiblePosition.h"
-
-#include <wtf/TemporaryChange.h>
+#include "WebCoreMemoryInstrumentation.h"
 
 #if ENABLE(DASHBOARD_SUPPORT) || ENABLE(DRAGGABLE_REGION)
 #include "Frame.h"
@@ -169,18 +168,11 @@ void RenderInline::styleDidChange(StyleDifference diff, const RenderStyle* oldSt
     // need to pass its style on to anyone else.
     RenderStyle* newStyle = style();
     RenderInline* continuation = inlineElementContinuation();
-    {
-        TemporaryChange<bool> enableAfter(RenderObjectChildList::s_enableUpdateBeforeAfterContent, false);
-        RenderInline* nextInlineElementCont = 0;
-        for (RenderInline* currCont = continuation; currCont; currCont = nextInlineElementCont) {
-            nextInlineElementCont = currCont->inlineElementContinuation();
-            // We need to update :after content for the last continuation in the chain.
-            RenderObjectChildList::s_enableUpdateBeforeAfterContent = !nextInlineElementCont;
-            RenderBoxModelObject* nextCont = currCont->continuation();
-            currCont->setContinuation(0);
-            currCont->setStyle(newStyle);
-            currCont->setContinuation(nextCont);
-        }
+    for (RenderInline* currCont = continuation; currCont; currCont = currCont->inlineElementContinuation()) {
+        RenderBoxModelObject* nextCont = currCont->continuation();
+        currCont->setContinuation(0);
+        currCont->setStyle(newStyle);
+        currCont->setContinuation(nextCont);
     }
 
     // If an inline's in-flow positioning has changed then any descendant blocks will need to change their in-flow positioning accordingly.
@@ -200,12 +192,6 @@ void RenderInline::styleDidChange(StyleDifference diff, const RenderStyle* oldSt
             setNeedsLayout(true);
         }
         m_alwaysCreateLineBoxes = alwaysCreateLineBoxes;
-    }
-
-    // Update pseudos for :before and :after now.
-    if (!isAnonymous() && document()->styleSheetCollection()->usesBeforeAfterRules()) {
-        children()->updateBeforeAfterContent(this, BEFORE);
-        children()->updateBeforeAfterContent(this, AFTER);
     }
 }
 
@@ -329,16 +315,6 @@ void RenderInline::addChildIgnoringContinuation(RenderObject* newChild, RenderOb
         RenderBoxModelObject* oldContinuation = continuation();
         setContinuation(newBox);
 
-        // Someone may have put a <p> inside a <q>, causing a split.  When this happens, the :after content
-        // has to move into the inline continuation.  Call updateBeforeAfterContent to ensure that our :after
-        // content gets properly destroyed.
-        bool isLastChild = (beforeChild == lastChild());
-        if (document()->styleSheetCollection()->usesBeforeAfterRules())
-            children()->updateBeforeAfterContent(this, AFTER);
-        if (isLastChild && beforeChild != lastChild())
-            beforeChild = 0; // We destroyed the last child, so now we need to update our insertion
-                             // point to be 0.  It's just a straight append now.
-
         splitFlow(beforeChild, newBox, newChild, oldContinuation);
         return;
     }
@@ -405,12 +381,6 @@ void RenderInline::splitInlines(RenderBlock* fromBlock, RenderBlock* toBlock,
             inlineCurr->setContinuation(cloneInline);
             cloneInline->setContinuation(oldCont);
 
-            // Someone may have indirectly caused a <q> to split.  When this happens, the :after content
-            // has to move into the inline continuation.  Call updateBeforeAfterContent to ensure that the inline's :after
-            // content gets properly destroyed.
-            if (document()->styleSheetCollection()->usesBeforeAfterRules())
-                inlineCurr->children()->updateBeforeAfterContent(inlineCurr, AFTER);
-
             // Now we need to take all of the children starting from the first child
             // *after* currChild and append them all to the clone.
             o = currChild->nextSibling();
@@ -455,6 +425,7 @@ void RenderInline::splitFlow(RenderObject* beforeChild, RenderBlock* newBlockBox
         // We can reuse this block and make it the preBlock of the next continuation.
         pre = block;
         pre->removePositionedObjects(0);
+        pre->removeFloatingObjects();
         block = block->containingBlock();
     } else {
         // No anonymous block available for use.  Make one.
@@ -761,6 +732,9 @@ const char* RenderInline::renderName() const
         return "RenderInline (relative positioned)";
     if (isStickyPositioned())
         return "RenderInline (sticky positioned)";
+    // FIXME: Temporary hack while the new generated content system is being implemented.
+    if (isPseudoElement())
+        return "RenderInline (generated)";
     if (isAnonymous())
         return "RenderInline (generated)";
     if (isRunIn())
@@ -772,6 +746,47 @@ bool RenderInline::nodeAtPoint(const HitTestRequest& request, HitTestResult& res
                                 const HitTestLocation& locationInContainer, const LayoutPoint& accumulatedOffset, HitTestAction hitTestAction)
 {
     return m_lineBoxes.hitTest(this, request, result, locationInContainer, accumulatedOffset, hitTestAction);
+}
+
+namespace {
+
+class HitTestCulledInlinesGeneratorContext {
+public:
+    HitTestCulledInlinesGeneratorContext(Region& region, const HitTestLocation& location) : m_intersected(false), m_region(region), m_location(location) { }
+    void operator()(const FloatRect& rect)
+    {
+        m_intersected = m_intersected || m_location.intersects(rect);
+        m_region.unite(enclosingIntRect(rect));
+    }
+    bool intersected() const { return m_intersected; }
+private:
+    bool m_intersected;
+    Region& m_region;
+    const HitTestLocation& m_location;
+};
+
+} // unnamed namespace
+
+bool RenderInline::hitTestCulledInline(const HitTestRequest& request, HitTestResult& result, const HitTestLocation& locationInContainer, const LayoutPoint& accumulatedOffset)
+{
+    ASSERT(result.isRectBasedTest() && !alwaysCreateLineBoxes());
+    if (!visibleToHitTesting())
+        return false;
+
+    HitTestLocation tmpLocation(locationInContainer, -toLayoutSize(accumulatedOffset));
+
+    Region regionResult;
+    HitTestCulledInlinesGeneratorContext context(regionResult, tmpLocation);
+    generateCulledLineBoxRects(context, this);
+
+    if (context.intersected()) {
+        updateHitTestResult(result, tmpLocation.point());
+        // We can not use addNodeToRectBasedTestResult to determine if we fully enclose the hit-test area
+        // because it can only handle rectangular targets.
+        result.addNodeToRectBasedTestResult(node(), request, locationInContainer);
+        return regionResult.contains(enclosingIntRect(tmpLocation.boundingBox()));
+    }
+    return false;
 }
 
 VisiblePosition RenderInline::positionForPoint(const LayoutPoint& point)
@@ -1142,8 +1157,6 @@ void RenderInline::mapLocalToContainer(const RenderLayerModelObject* repaintCont
     }
 
     LayoutSize containerOffset = offsetFromContainer(o, roundedLayoutPoint(transformState.mappedPoint()));
-    if (mode & SnapOffsetForTransforms)
-        containerOffset = roundedIntSize(containerOffset);
 
     bool preserve3D = mode & UseTransforms && (o->style()->preserves3D() || style()->preserves3D());
     if (mode & UseTransforms && shouldUseTransformFromContainer(o)) {
@@ -1596,5 +1609,13 @@ void RenderInline::addAnnotatedRegions(Vector<AnnotatedRegionValue>& regions)
 #endif
 }
 #endif
+
+void RenderInline::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
+{
+    MemoryClassInfo info(memoryObjectInfo, this, PlatformMemoryTypes::Rendering);
+    RenderBoxModelObject::reportMemoryUsage(memoryObjectInfo);
+    info.addMember(m_children);
+    info.addMember(m_lineBoxes);
+}
 
 } // namespace WebCore

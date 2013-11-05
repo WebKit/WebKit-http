@@ -49,7 +49,6 @@
 #include "PlatformScreen.h"
 #include "ScheduledAction.h"
 #include "ScriptCallStack.h"
-#include "ScriptCallStackFactory.h"
 #include "ScriptSourceCode.h"
 #include "SerializedScriptValue.h"
 #include "Settings.h"
@@ -146,7 +145,7 @@ v8::Handle<v8::Value> WindowSetTimeoutImpl(const v8::Arguments& args, bool singl
 
 v8::Handle<v8::Value> V8DOMWindow::eventAccessorGetter(v8::Local<v8::String> name, const v8::AccessorInfo& info)
 {
-    v8::Handle<v8::Object> holder = V8DOMWrapper::lookupDOMWrapper(V8DOMWindow::GetTemplate(), info.This());
+    v8::Handle<v8::Object> holder = info.This()->FindInstanceInPrototypeChain(V8DOMWindow::GetTemplate());
     if (holder.IsEmpty())
         return v8::Undefined();
 
@@ -168,7 +167,7 @@ v8::Handle<v8::Value> V8DOMWindow::eventAccessorGetter(v8::Local<v8::String> nam
 
 void V8DOMWindow::eventAccessorSetter(v8::Local<v8::String> name, v8::Local<v8::Value> value, const v8::AccessorInfo& info)
 {
-    v8::Handle<v8::Object> holder = V8DOMWrapper::lookupDOMWrapper(V8DOMWindow::GetTemplate(), info.This());
+    v8::Handle<v8::Object> holder = info.This()->FindInstanceInPrototypeChain(V8DOMWindow::GetTemplate());
     if (holder.IsEmpty())
         return;
 
@@ -315,25 +314,17 @@ static v8::Handle<v8::Value> handlePostMessageCallback(const v8::Arguments& args
     //   postMessage(message, {sequence of transferrables}, targetOrigin);
     MessagePortArray portArray;
     ArrayBufferArray arrayBufferArray;
-    String targetOrigin;
-    {
-        v8::TryCatch tryCatch;
-        int targetOriginArgIndex = 1;
-        if (args.Length() > 2) {
-            int transferablesArgIndex = 2;
-            if (isLegacyTargetOriginDesignation(args[2])) {
-                targetOriginArgIndex = 2;
-                transferablesArgIndex = 1;
-            }
-            if (!extractTransferables(args[transferablesArgIndex], portArray, arrayBufferArray, args.GetIsolate()))
-                return v8::Undefined();
-        } 
-        targetOrigin = toWebCoreStringWithNullOrUndefinedCheck(args[targetOriginArgIndex]);
-
-        if (tryCatch.HasCaught())
+    int targetOriginArgIndex = 1;
+    if (args.Length() > 2) {
+        int transferablesArgIndex = 2;
+        if (isLegacyTargetOriginDesignation(args[2])) {
+            targetOriginArgIndex = 2;
+            transferablesArgIndex = 1;
+        }
+        if (!extractTransferables(args[transferablesArgIndex], portArray, arrayBufferArray, args.GetIsolate()))
             return v8::Undefined();
     }
-
+    V8TRYCATCH_FOR_V8STRINGRESOURCE(V8StringResource<WithUndefinedOrNullCheck>, targetOrigin, args[targetOriginArgIndex]);
 
     bool didThrow = false;
     RefPtr<SerializedScriptValue> message =
@@ -371,7 +362,7 @@ v8::Handle<v8::Value> V8DOMWindow::webkitPostMessageCallback(const v8::Arguments
 v8::Handle<v8::Value> V8DOMWindow::toStringCallback(const v8::Arguments& args)
 {
     INC_STATS("DOM.DOMWindow.toString()");
-    v8::Handle<v8::Object> domWrapper = V8DOMWrapper::lookupDOMWrapper(V8DOMWindow::GetTemplate(), args.This());
+    v8::Handle<v8::Object> domWrapper = args.This()->FindInstanceInPrototypeChain(V8DOMWindow::GetTemplate());
     if (domWrapper.IsEmpty())
         return args.This()->ObjectProtoToString();
     return domWrapper->ObjectProtoToString();
@@ -412,7 +403,7 @@ inline void DialogHandler::dialogCreated(DOMWindow* dialogFrame)
     if (m_dialogArguments.IsEmpty())
         return;
     v8::Context::Scope scope(m_dialogContext);
-    m_dialogContext->Global()->Set(v8::String::New("dialogArguments"), m_dialogArguments);
+    m_dialogContext->Global()->Set(v8::String::NewSymbol("dialogArguments"), m_dialogArguments);
 }
 
 inline v8::Handle<v8::Value> DialogHandler::returnValue() const
@@ -420,7 +411,7 @@ inline v8::Handle<v8::Value> DialogHandler::returnValue() const
     if (m_dialogContext.IsEmpty())
         return v8::Undefined();
     v8::Context::Scope scope(m_dialogContext);
-    v8::Handle<v8::Value> returnValue = m_dialogContext->Global()->Get(v8::String::New("returnValue"));
+    v8::Handle<v8::Value> returnValue = m_dialogContext->Global()->Get(v8::String::NewSymbol("returnValue"));
     if (returnValue.IsEmpty())
         return v8::Undefined();
     return returnValue;
@@ -440,9 +431,9 @@ v8::Handle<v8::Value> V8DOMWindow::showModalDialogCallback(const v8::Arguments& 
         return v8::Undefined();
 
     // FIXME: Handle exceptions properly.
-    String urlString = toWebCoreStringWithNullOrUndefinedCheck(args[0]);
+    String urlString = toWebCoreStringWithUndefinedOrNullCheck(args[0]);
     DialogHandler handler(args[1]);
-    String dialogFeaturesString = toWebCoreStringWithNullOrUndefinedCheck(args[2]);
+    String dialogFeaturesString = toWebCoreStringWithUndefinedOrNullCheck(args[2]);
 
     impl->showModalDialog(urlString, dialogFeaturesString, activeDOMWindow(state), firstDOMWindow(state), setUpDialog, &handler);
 
@@ -458,9 +449,9 @@ v8::Handle<v8::Value> V8DOMWindow::openCallback(const v8::Arguments& args)
         return v8::Undefined();
 
     // FIXME: Handle exceptions properly.
-    String urlString = toWebCoreStringWithNullOrUndefinedCheck(args[0]);
+    String urlString = toWebCoreStringWithUndefinedOrNullCheck(args[0]);
     AtomicString frameName = (args[1]->IsUndefined() || args[1]->IsNull()) ? "_blank" : AtomicString(toWebCoreString(args[1]));
-    String windowFeaturesString = toWebCoreStringWithNullOrUndefinedCheck(args[2]);
+    String windowFeaturesString = toWebCoreStringWithUndefinedOrNullCheck(args[2]);
 
     RefPtr<DOMWindow> openedWindow = impl->open(urlString, frameName, windowFeaturesString, activeDOMWindow(state), firstDOMWindow(state));
     if (!openedWindow)
@@ -544,7 +535,7 @@ v8::Handle<v8::Value> V8DOMWindow::setIntervalCallback(const v8::Arguments& args
 
 bool V8DOMWindow::namedSecurityCheck(v8::Local<v8::Object> host, v8::Local<v8::Value> key, v8::AccessType type, v8::Local<v8::Value>)
 {
-    v8::Handle<v8::Object> window = V8DOMWrapper::lookupDOMWrapper(V8DOMWindow::GetTemplate(), host);
+    v8::Handle<v8::Object> window = host->FindInstanceInPrototypeChain(V8DOMWindow::GetTemplate());
     if (window.IsEmpty())
         return false;  // the frame is gone.
 
@@ -577,7 +568,7 @@ bool V8DOMWindow::namedSecurityCheck(v8::Local<v8::Object> host, v8::Local<v8::V
 
 bool V8DOMWindow::indexedSecurityCheck(v8::Local<v8::Object> host, uint32_t index, v8::AccessType type, v8::Local<v8::Value>)
 {
-    v8::Handle<v8::Object> window = V8DOMWrapper::lookupDOMWrapper(V8DOMWindow::GetTemplate(), host);
+    v8::Handle<v8::Object> window = host->FindInstanceInPrototypeChain(V8DOMWindow::GetTemplate());
     if (window.IsEmpty())
         return false;
 
@@ -619,7 +610,7 @@ v8::Handle<v8::Value> toV8(DOMWindow* window, v8::Handle<v8::Object> creationCon
     // necessarily the first global object associated with that DOMWindow.
     v8::Handle<v8::Context> currentContext = v8::Context::GetCurrent();
     v8::Handle<v8::Object> currentGlobal = currentContext->Global();
-    v8::Handle<v8::Object> windowWrapper = V8DOMWrapper::lookupDOMWrapper(V8DOMWindow::GetTemplate(), currentGlobal);
+    v8::Handle<v8::Object> windowWrapper = currentGlobal->FindInstanceInPrototypeChain(V8DOMWindow::GetTemplate());
     if (!windowWrapper.IsEmpty()) {
         if (V8DOMWindow::toNative(windowWrapper) == window)
             return currentGlobal;

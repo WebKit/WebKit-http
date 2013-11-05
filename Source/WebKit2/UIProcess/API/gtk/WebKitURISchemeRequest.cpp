@@ -33,9 +33,23 @@
 
 using namespace WebKit;
 
-static const unsigned int gReadBufferSize = 8192;
+/**
+ * SECTION: WebKitURISchemeRequest
+ * @Short_description: Represents a URI scheme request
+ * @Title: WebKitURISchemeRequest
+ *
+ * If you register a particular URI scheme in a #WebKitWebContext,
+ * using webkit_web_context_register_uri_scheme(), you have to provide
+ * a #WebKitURISchemeRequestCallback. After that, when a URI request
+ * is made with that particular scheme, your callback will be
+ * called. There you will be able to access properties such as the
+ * scheme, the URI and path, and the #WebKitWebView that initiated the
+ * request, and also finish the request with
+ * webkit_uri_scheme_request_finish().
+ *
+ */
 
-G_DEFINE_TYPE(WebKitURISchemeRequest, webkit_uri_scheme_request, G_TYPE_OBJECT)
+static const unsigned int gReadBufferSize = 8192;
 
 struct _WebKitURISchemeRequestPrivate {
     WebKitWebContext* webContext;
@@ -53,24 +67,10 @@ struct _WebKitURISchemeRequestPrivate {
     CString mimeType;
 };
 
-static void webkit_uri_scheme_request_init(WebKitURISchemeRequest* request)
-{
-    WebKitURISchemeRequestPrivate* priv = G_TYPE_INSTANCE_GET_PRIVATE(request, WEBKIT_TYPE_URI_SCHEME_REQUEST, WebKitURISchemeRequestPrivate);
-    request->priv = priv;
-    new (priv) WebKitURISchemeRequestPrivate();
-}
-
-static void webkitURISchemeRequestFinalize(GObject* object)
-{
-    WEBKIT_URI_SCHEME_REQUEST(object)->priv->~WebKitURISchemeRequestPrivate();
-    G_OBJECT_CLASS(webkit_uri_scheme_request_parent_class)->finalize(object);
-}
+WEBKIT_DEFINE_TYPE(WebKitURISchemeRequest, webkit_uri_scheme_request, G_TYPE_OBJECT)
 
 static void webkit_uri_scheme_request_class_init(WebKitURISchemeRequestClass* requestClass)
 {
-    GObjectClass* objectClass = G_OBJECT_CLASS(requestClass);
-    objectClass->finalize = webkitURISchemeRequestFinalize;
-    g_type_class_add_private(requestClass, sizeof(WebKitURISchemeRequestPrivate));
 }
 
 WebKitURISchemeRequest* webkitURISchemeRequestCreate(WebKitWebContext* webContext, WebSoupRequestManagerProxy* webRequestManager, WebURL* webURL, WebPageProxy* initiatingPage, uint64_t requestID)

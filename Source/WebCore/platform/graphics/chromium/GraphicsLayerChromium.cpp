@@ -53,6 +53,7 @@
 #include "Image.h"
 #include "NativeImageSkia.h"
 #include "PlatformContextSkia.h"
+#include "PlatformMemoryInstrumentation.h"
 #include "ScrollableArea.h"
 #include "SkImageFilter.h"
 #include "SkMatrix44.h"
@@ -70,6 +71,7 @@
 #include <public/WebTransformationMatrix.h>
 #include <wtf/CurrentTime.h>
 #include <wtf/HashSet.h>
+#include <wtf/MemoryInstrumentationHashMap.h>
 #include <wtf/StringExtras.h>
 #include <wtf/text/CString.h>
 #include <wtf/text/StringHash.h>
@@ -99,7 +101,6 @@ GraphicsLayerChromium::GraphicsLayerChromium(GraphicsLayerClient* client)
     , m_contentsLayerId(0)
     , m_linkHighlight(0)
     , m_contentsLayerPurpose(NoContentsLayer)
-    , m_contentsLayerHasBackgroundColor(false)
     , m_inSetChildren(false)
     , m_scrollableArea(0)
 {
@@ -283,18 +284,11 @@ void GraphicsLayerChromium::setContentsVisible(bool contentsVisible)
 
 void GraphicsLayerChromium::setBackgroundColor(const Color& color)
 {
-    GraphicsLayer::setBackgroundColor(color.rgb());
+    if (color == m_backgroundColor)
+        return;
 
-    m_contentsLayerHasBackgroundColor = true;
+    GraphicsLayer::setBackgroundColor(color);
     updateLayerBackgroundColor();
-}
-
-void GraphicsLayerChromium::clearBackgroundColor()
-{
-    GraphicsLayer::clearBackgroundColor();
-
-    if (WebLayer* contentsLayer = contentsLayerIfRegistered())
-        contentsLayer->setBackgroundColor(static_cast<RGBA32>(0));
 }
 
 void GraphicsLayerChromium::setContentsOpaque(bool opaque)
@@ -801,15 +795,7 @@ void GraphicsLayerChromium::updateLayerIsDrawable()
 
 void GraphicsLayerChromium::updateLayerBackgroundColor()
 {
-    WebLayer* contentsLayer = contentsLayerIfRegistered();
-    if (!contentsLayer)
-        return;
-
-    // We never create the contents layer just for background color yet.
-    if (m_backgroundColorSet)
-        contentsLayer->setBackgroundColor(m_backgroundColor.rgb());
-    else
-        contentsLayer->setBackgroundColor(static_cast<RGBA32>(0));
+    m_layer->layer()->setBackgroundColor(m_backgroundColor.rgb());
 }
 
 void GraphicsLayerChromium::updateContentsVideo()
@@ -877,6 +863,21 @@ void GraphicsLayerChromium::didScroll()
 {
     if (m_scrollableArea)
         m_scrollableArea->scrollToOffsetWithoutAnimation(IntPoint(m_layer->layer()->scrollPosition()));
+}
+
+void GraphicsLayerChromium::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
+{
+    MemoryClassInfo info(memoryObjectInfo, this, PlatformMemoryTypes::Layers);
+    GraphicsLayer::reportMemoryUsage(memoryObjectInfo);
+    info.addMember(m_nameBase);
+    info.addMember(m_layer);
+    info.addMember(m_transformLayer);
+    info.addMember(m_imageLayer);
+    info.addMember(m_contentsLayer);
+    info.addMember(m_linkHighlight);
+    info.addMember(m_opaqueRectTrackingContentLayerDelegate);
+    info.addMember(m_animationIdMap);
+    info.addMember(m_scrollableArea);
 }
 
 } // namespace WebCore

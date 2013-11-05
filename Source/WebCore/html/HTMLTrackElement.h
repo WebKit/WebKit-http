@@ -68,19 +68,18 @@ public:
 
     const AtomicString& mediaElementCrossOriginAttribute() const;
 
-    bool hasBeenConfigured() const { return m_hasBeenConfigured; }
-    void setHasBeenConfigured(bool flag) { m_hasBeenConfigured = flag; }
-
 private:
     HTMLTrackElement(const QualifiedName&, Document*);
     virtual ~HTMLTrackElement();
 
-    virtual void parseAttribute(const Attribute&) OVERRIDE;
+    virtual void parseAttribute(const QualifiedName&, const AtomicString&) OVERRIDE;
 
     virtual InsertionNotificationRequest insertedInto(ContainerNode*) OVERRIDE;
 
     virtual void removedFrom(ContainerNode*) OVERRIDE;
     virtual bool isURLAttribute(const Attribute&) const OVERRIDE;
+
+    void loadTimerFired(Timer<HTMLTrackElement>*);
 
 #if ENABLE(MICRODATA)
     virtual String itemValueText() const OVERRIDE;
@@ -101,7 +100,7 @@ private:
     virtual bool canLoadUrl(const KURL&);
 
     RefPtr<LoadableTextTrack> m_track;
-    bool m_hasBeenConfigured;
+    Timer<HTMLTrackElement> m_loadTimer;
 };
 
 }

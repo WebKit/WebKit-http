@@ -28,7 +28,9 @@
 #if PLATFORM(QT)
 #include "ImageDecoderQt.h"
 #endif
+#if !PLATFORM(QT) || USE(LIBJPEG)
 #include "JPEGImageDecoder.h"
+#endif
 #include "PNGImageDecoder.h"
 #include "PlatformMemoryInstrumentation.h"
 #include "SharedBuffer.h"
@@ -224,16 +226,6 @@ void ImageFrame::setColorProfile(const ColorProfile& colorProfile)
 void ImageFrame::setStatus(FrameStatus status)
 {
     m_status = status;
-}
-
-int ImageFrame::width() const
-{
-    return m_size.width();
-}
-
-int ImageFrame::height() const
-{
-    return m_size.height();
 }
 
 void ImageFrame::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const

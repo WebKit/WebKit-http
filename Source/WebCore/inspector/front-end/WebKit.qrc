@@ -30,8 +30,7 @@
     <file>CookieParser.js</file>
     <file>CookiesTable.js</file>
     <file>CPUProfileView.js</file>
-    <file>CSSCompletions.js</file>
-    <file>CSSKeywordCompletions.js</file>
+    <file>CSSMetadata.js</file>
     <file>CSSNamedFlowCollectionsView.js</file>
     <file>CSSNamedFlowView.js</file>
     <file>CSSSelectorProfileView.js</file>
@@ -107,6 +106,7 @@
     <file>MemoryStatistics.js</file>
     <file>MetricsSidebarPane.js</file>
     <file>NativeBreakpointsSidebarPane.js</file>
+    <file>NativeHeapGraph.js</file>
     <file>NativeMemorySnapshotView.js</file>
     <file>NavigatorOverlayController.js</file>
     <file>NavigatorView.js</file>
@@ -121,6 +121,7 @@
     <file>Object.js</file>
     <file>ObjectPopoverHelper.js</file>
     <file>ObjectPropertiesSection.js</file>
+    <file>OverridesView.js</file>
     <file>Panel.js</file>
     <file>PanelEnablerView.js</file>
     <file>ParsedURL.js</file>

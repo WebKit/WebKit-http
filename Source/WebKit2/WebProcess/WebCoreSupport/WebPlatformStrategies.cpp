@@ -39,11 +39,18 @@
 #include <WebCore/KURL.h>
 #include <WebCore/LoaderStrategy.h>
 #include <WebCore/Page.h>
+#include <WebCore/PlatformCookieJar.h>
 #include <WebCore/PlatformPasteboard.h>
 #include <wtf/Atomics.h>
 
-#if USE(CF)
-#include <wtf/RetainPtr.h>
+#if ENABLE(NETWORK_PROCESS)
+#include "NetworkConnectionToWebProcessMessages.h"
+#include "NetworkProcessConnection.h"
+#endif
+
+#if PLATFORM(WIN) && USE(CFNETWORK)
+#include "WebFrameNetworkingContext.h"
+#include <WebKitSystemInterface/WebKitSystemInterface.h>
 #endif
 
 using namespace WebCore;
@@ -65,6 +72,11 @@ WebPlatformStrategies::WebPlatformStrategies()
 }
 
 CookiesStrategy* WebPlatformStrategies::createCookiesStrategy()
+{
+    return this;
+}
+
+DatabaseStrategy* WebPlatformStrategies::createDatabaseStrategy()
 {
     return this;
 }
@@ -100,6 +112,101 @@ void WebPlatformStrategies::notifyCookiesChanged()
 {
     WebCookieManager::shared().dispatchCookiesDidChange();
 }
+
+#if PLATFORM(WIN) && USE(CFNETWORK)
+RetainPtr<CFHTTPCookieStorageRef> WebPlatformStrategies::defaultCookieStorage()
+{
+    return 0;
+}
+#endif
+
+String WebPlatformStrategies::cookiesForDOM(NetworkingContext* context, const KURL& firstParty, const KURL& url)
+{
+#if ENABLE(NETWORK_PROCESS)
+    if (WebProcess::shared().usesNetworkProcess()) {
+        String result;
+        if (!WebProcess::shared().networkConnection()->connection()->sendSync(Messages::NetworkConnectionToWebProcess::CookiesForDOM(context && context->inPrivateBrowsingMode(), firstParty, url), Messages::NetworkConnectionToWebProcess::CookiesForDOM::Reply(result), 0))
+            return String();
+        return result;
+    }
+#endif
+
+    return WebCore::cookiesForDOM(context, firstParty, url);
+}
+
+void WebPlatformStrategies::setCookiesFromDOM(NetworkingContext* context, const KURL& firstParty, const KURL& url, const String& cookieString)
+{
+#if ENABLE(NETWORK_PROCESS)
+    if (WebProcess::shared().usesNetworkProcess()) {
+        WebProcess::shared().networkConnection()->connection()->send(Messages::NetworkConnectionToWebProcess::SetCookiesFromDOM(context && context->inPrivateBrowsingMode(), firstParty, url, cookieString), 0);
+        return;
+    }
+#endif
+
+    WebCore::setCookiesFromDOM(context, firstParty, url, cookieString);
+}
+
+bool WebPlatformStrategies::cookiesEnabled(NetworkingContext* context, const KURL& firstParty, const KURL& url)
+{
+#if ENABLE(NETWORK_PROCESS)
+    if (WebProcess::shared().usesNetworkProcess()) {
+        bool result;
+        if (!WebProcess::shared().networkConnection()->connection()->sendSync(Messages::NetworkConnectionToWebProcess::CookiesEnabled(context && context->inPrivateBrowsingMode(), firstParty, url), Messages::NetworkConnectionToWebProcess::CookiesEnabled::Reply(result), 0))
+            return false;
+        return result;
+    }
+#endif
+
+    return WebCore::cookiesEnabled(context, firstParty, url);
+}
+
+String WebPlatformStrategies::cookieRequestHeaderFieldValue(NetworkingContext* context, const KURL& firstParty, const KURL& url)
+{
+#if ENABLE(NETWORK_PROCESS)
+    if (WebProcess::shared().usesNetworkProcess()) {
+        String result;
+        if (!WebProcess::shared().networkConnection()->connection()->sendSync(Messages::NetworkConnectionToWebProcess::CookieRequestHeaderFieldValue(context && context->inPrivateBrowsingMode(), firstParty, url), Messages::NetworkConnectionToWebProcess::CookieRequestHeaderFieldValue::Reply(result), 0))
+            return String();
+        return result;
+    }
+#endif
+
+    return WebCore::cookieRequestHeaderFieldValue(context, firstParty, url);
+}
+
+bool WebPlatformStrategies::getRawCookies(NetworkingContext* context, const KURL& firstParty, const KURL& url, Vector<Cookie>& rawCookies)
+{
+#if ENABLE(NETWORK_PROCESS)
+    if (WebProcess::shared().usesNetworkProcess()) {
+        if (!WebProcess::shared().networkConnection()->connection()->sendSync(Messages::NetworkConnectionToWebProcess::GetRawCookies(context && context->inPrivateBrowsingMode(), firstParty, url), Messages::NetworkConnectionToWebProcess::GetRawCookies::Reply(rawCookies), 0))
+            return false;
+        return true;
+    }
+#endif
+
+    return WebCore::getRawCookies(context, firstParty, url, rawCookies);
+}
+
+void WebPlatformStrategies::deleteCookie(NetworkingContext* context, const KURL& url, const String& cookieName)
+{
+#if ENABLE(NETWORK_PROCESS)
+    if (WebProcess::shared().usesNetworkProcess()) {
+        WebProcess::shared().networkConnection()->connection()->send(Messages::NetworkConnectionToWebProcess::DeleteCookie(context && context->inPrivateBrowsingMode(), url, cookieName), 0);
+        return;
+    }
+#endif
+
+    WebCore::deleteCookie(context, url, cookieName);
+}
+
+// DatabaseStrategy
+
+#if ENABLE(SQL_DATABASE)
+AbstractDatabaseServer* WebPlatformStrategies::getDatabaseServer()
+{
+    return DatabaseStrategy::getDatabaseServer(); // Use the default for now.
+}
+#endif
 
 // LoaderStrategy
 

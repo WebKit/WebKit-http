@@ -60,9 +60,12 @@ EventRelatedTargetAdjuster::EventRelatedTargetAdjuster(PassRefPtr<Node> node, Pa
     ASSERT(m_relatedTarget);
 }
 
-void EventRelatedTargetAdjuster::adjust(Vector<EventContext>& ancestors)
+void EventRelatedTargetAdjuster::adjust(Vector<EventContext, 32>& ancestors)
 {
-    Vector<EventTarget*> relatedTargetStack;
+    // Synthetic mouse events can have a relatedTarget which is identical to the target.
+    bool targetIsIdenticalToToRelatedTarget = (m_node.get() == m_relatedTarget.get());
+
+    Vector<EventTarget*, 32> relatedTargetStack;
     TreeScope* lastTreeScope = 0;
     for (AncestorChainWalker walker(m_relatedTarget.get()); walker.get(); walker.parent()) {
         Node* node = walker.get();
@@ -83,7 +86,7 @@ void EventRelatedTargetAdjuster::adjust(Vector<EventContext>& ancestors)
 
     lastTreeScope = 0;
     EventTarget* adjustedRelatedTarget = 0;
-    for (Vector<EventContext>::iterator iter = ancestors.begin(); iter < ancestors.end(); ++iter) {
+    for (Vector<EventContext, 32>::iterator iter = ancestors.begin(); iter < ancestors.end(); ++iter) {
         TreeScope* scope = iter->node()->treeScope();
         if (scope == lastTreeScope) {
             // Re-use the previous adjustedRelatedTarget if treeScope does not change. Just for the performance optimization.
@@ -93,7 +96,12 @@ void EventRelatedTargetAdjuster::adjust(Vector<EventContext>& ancestors)
             iter->setRelatedTarget(adjustedRelatedTarget);
         }
         lastTreeScope = scope;
-        if (iter->target() == adjustedRelatedTarget) {
+        if (targetIsIdenticalToToRelatedTarget) {
+            if (m_node->treeScope()->rootNode() == iter->node()) {
+                ancestors.shrink(iter + 1 - ancestors.begin());
+                break;
+            }
+        } else if (iter->target() == adjustedRelatedTarget) {
             // Event dispatching should be stopped here.
             ancestors.shrink(iter - ancestors.begin());
             break;
@@ -103,7 +111,7 @@ void EventRelatedTargetAdjuster::adjust(Vector<EventContext>& ancestors)
 
 EventTarget* EventRelatedTargetAdjuster::findRelatedTarget(TreeScope* scope)
 {
-    Vector<TreeScope*> parentTreeScopes;
+    Vector<TreeScope*, 32> parentTreeScopes;
     EventTarget* relatedTarget = 0;
     while (scope) {
         parentTreeScopes.append(scope);
@@ -114,7 +122,7 @@ EventTarget* EventRelatedTargetAdjuster::findRelatedTarget(TreeScope* scope)
         }
         scope = scope->parentTreeScope();
     }
-    for (Vector<TreeScope*>::iterator iter = parentTreeScopes.begin(); iter < parentTreeScopes.end(); ++iter)
+    for (Vector<TreeScope*, 32>::iterator iter = parentTreeScopes.begin(); iter < parentTreeScopes.end(); ++iter)
       m_relatedTargetMap.add(*iter, relatedTarget);
     return relatedTarget;
 }
@@ -180,7 +188,7 @@ void EventDispatcher::ensureEventAncestors(Event* event)
     m_ancestorsInitialized = true;
     bool inDocument = m_node->inDocument();
     bool isSVGElement = m_node->isSVGElement();
-    Vector<EventTarget*> targetStack;
+    Vector<EventTarget*, 32> targetStack;
     for (AncestorChainWalker walker(m_node.get()); walker.get(); walker.parent()) {
         Node* node = walker.get();
         if (targetStack.isEmpty())
@@ -208,7 +216,7 @@ void EventDispatcher::dispatchScopedEvent(Node* node, PassRefPtr<EventDispatchMe
     ScopedEventQueue::instance()->enqueueEventDispatchMediator(mediator);
 }
 
-void EventDispatcher::dispatchSimulatedClick(Node* node, PassRefPtr<Event> underlyingEvent, bool sendMouseEvents, bool showPressedLook)
+void EventDispatcher::dispatchSimulatedClick(Node* node, Event* underlyingEvent, SimulatedClickMouseEventOptions mouseEventOptions, SimulatedClickVisualOptions visualOptions)
 {
     if (node->disabled())
         return;
@@ -220,11 +228,13 @@ void EventDispatcher::dispatchSimulatedClick(Node* node, PassRefPtr<Event> under
 
     gNodesDispatchingSimulatedClicks->add(node);
 
-    // send mousedown and mouseup before the click, if requested
-    if (sendMouseEvents)
+    if (mouseEventOptions == SendMouseOverUpDownEvents)
+        EventDispatcher(node).dispatchEvent(SimulatedMouseEvent::create(eventNames().mouseoverEvent, node->document()->defaultView(), underlyingEvent));
+
+    if (mouseEventOptions != SendNoEvents)
         EventDispatcher(node).dispatchEvent(SimulatedMouseEvent::create(eventNames().mousedownEvent, node->document()->defaultView(), underlyingEvent));
-    node->setActive(true, showPressedLook);
-    if (sendMouseEvents)
+    node->setActive(true, visualOptions == ShowPressedLook);
+    if (mouseEventOptions != SendNoEvents)
         EventDispatcher(node).dispatchEvent(SimulatedMouseEvent::create(eventNames().mouseupEvent, node->document()->defaultView(), underlyingEvent));
     node->setActive(false);
 

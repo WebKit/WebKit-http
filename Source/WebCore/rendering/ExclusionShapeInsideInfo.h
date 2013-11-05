@@ -34,6 +34,7 @@
 
 #include "ExclusionShape.h"
 #include "FloatRect.h"
+#include "InlineIterator.h"
 #include "LayoutUnit.h"
 #include <wtf/OwnPtr.h>
 #include <wtf/PassOwnPtr.h>
@@ -42,6 +43,17 @@
 namespace WebCore {
 
 class RenderBlock;
+
+struct LineSegmentRange {
+    InlineIterator start;
+    InlineIterator end;
+    LineSegmentRange(InlineIterator start, InlineIterator end)
+        : start(start)
+        , end(end)
+    {
+    }
+};
+typedef Vector<LineSegmentRange> SegmentRangeList;
 
 class ExclusionShapeInsideInfo {
     WTF_MAKE_FAST_ALLOCATED;
@@ -54,8 +66,16 @@ public:
     static void removeExclusionShapeInsideInfoForRenderBlock(const RenderBlock*);
     static bool isExclusionShapeInsideInfoEnabledForRenderBlock(const RenderBlock*);
 
-    LayoutUnit shapeLogicalTop() const { return shapeLogicalBoundsY(); }
-    LayoutUnit shapeLogicalBottom() const { return shapeLogicalBoundsMaxY(); }
+    LayoutUnit shapeLogicalTop() const
+    {
+        ASSERT(m_shape);
+        return floatLogicalTopToLayoutUnit(m_shape->shapeLogicalBoundingBox().y());
+    }
+    LayoutUnit shapeLogicalBottom() const
+    {
+        ASSERT(m_shape);
+        return floatLogicalBottomToLayoutUnit(m_shape->shapeLogicalBoundingBox().maxY());
+    }
     bool lineOverlapsShapeBounds() const { return m_lineTop < shapeLogicalBottom() && m_lineTop + m_lineHeight >= shapeLogicalTop(); }
 
     bool hasSegments() const
@@ -67,26 +87,29 @@ public:
         ASSERT(hasSegments());
         return m_segments;
     }
+    SegmentRangeList& segmentRanges() { return m_segmentRanges; }
+    const SegmentRangeList& segmentRanges() const { return m_segmentRanges; }
+    const LineSegment* currentSegment() const
+    {
+        if (!hasSegments())
+            return 0;
+        ASSERT(m_segmentRanges.size() < m_segments.size());
+        return &m_segments[m_segmentRanges.size()];
+    }
     bool computeSegmentsForLine(LayoutUnit lineTop, LayoutUnit lineHeight);
+    bool adjustLogicalLineTop(float minSegmentWidth);
     void computeShapeSize(LayoutUnit logicalWidth, LayoutUnit logicalHeight);
     void dirtyShapeSize() { m_shapeSizeDirty = true; }
+
+    LayoutUnit logicalLineTop() const { return m_lineTop; }
+    RenderBlock* ownerBlock() const { return m_block; }
 
 private:
     ExclusionShapeInsideInfo(RenderBlock*);
 
-    inline LayoutUnit shapeLogicalBoundsY() const
-    {
-        ASSERT(m_shape);
-        // Use fromFloatCeil() to ensure that the returned LayoutUnit value is within the shape's bounds.
-        return LayoutUnit::fromFloatCeil(m_shape->shapeLogicalBoundingBox().y());
-    }
-
-    inline LayoutUnit shapeLogicalBoundsMaxY() const
-    {
-        ASSERT(m_shape);
-        // Use fromFloatFloor() to ensure that the returned LayoutUnit value is within the shape's bounds.
-        return LayoutUnit::fromFloatFloor(m_shape->shapeLogicalBoundingBox().maxY());
-    }
+    // Use ceil and floor to ensure that the returned LayoutUnit value is within the shape's bounds.
+    LayoutUnit floatLogicalTopToLayoutUnit(float logicalTop) const { return LayoutUnit::fromFloatCeil(logicalTop); }
+    LayoutUnit floatLogicalBottomToLayoutUnit(float logicalBottom) const { return LayoutUnit::fromFloatFloor(logicalBottom); }
 
     RenderBlock* m_block;
     OwnPtr<ExclusionShape> m_shape;
@@ -97,6 +120,7 @@ private:
     LayoutUnit m_logicalHeight;
 
     SegmentList m_segments;
+    SegmentRangeList m_segmentRanges;
     bool m_shapeSizeDirty;
 };
 

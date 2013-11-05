@@ -57,6 +57,7 @@ public:
                                                     bool& didThrow, v8::Isolate* = 0);
     static PassRefPtr<SerializedScriptValue> create(v8::Handle<v8::Value>, v8::Isolate* = 0);
     static PassRefPtr<SerializedScriptValue> createFromWire(const String& data);
+    static PassRefPtr<SerializedScriptValue> createFromWireBytes(const Vector<uint8_t>& data);
     static PassRefPtr<SerializedScriptValue> create(const String& data, v8::Isolate* = 0);
     static PassRefPtr<SerializedScriptValue> create();
 
@@ -65,9 +66,12 @@ public:
     static PassRefPtr<SerializedScriptValue> booleanValue(bool value, v8::Isolate* = 0);
     static PassRefPtr<SerializedScriptValue> numberValue(double value, v8::Isolate* = 0);
 
+    static uint32_t wireFormatVersion();
+
     PassRefPtr<SerializedScriptValue> release();
 
     String toWireString() const { return m_data; }
+    Vector<uint8_t> toWireBytes() const;
 
     // Deserializes the value (in the current context). Returns a null value in
     // case of failure.

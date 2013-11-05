@@ -26,6 +26,7 @@
 #include "AudioIOCallback.h"
 #include <wtf/gobject/GOwnPtr.h>
 #include "GRefPtrGStreamer.h"
+#include "GStreamerVersioning.h"
 #include <gst/audio/multichannel.h>
 #include <gst/pbutils/pbutils.h>
 
@@ -54,7 +55,7 @@ struct _WebKitWebAudioSourcePrivate {
     GRefPtr<GstElement> wavEncoder;
 
     GRefPtr<GstTask> task;
-    GStaticRecMutex* mutex;
+    GStaticRecMutex mutex;
 
     GSList* pads; // List of queue sink pads. One queue for each planar audio channel.
     GstPad* sourcePad; // src pad of the element, interleaved wav data is pushed to it.
@@ -178,18 +179,16 @@ static void webkit_web_audio_src_init(WebKitWebAudioSrc* src)
     src->priv = priv;
     new (priv) WebKitWebAudioSourcePrivate();
 
-    GRefPtr<GstPadTemplate> padTemplate = adoptGRef(gst_static_pad_template_get(&srcTemplate));
-    priv->sourcePad = gst_ghost_pad_new_no_target_from_template("src", padTemplate.get());
+    priv->sourcePad = webkitGstGhostPadFromStaticTemplate(&srcTemplate, "src", 0);
     gst_element_add_pad(GST_ELEMENT(src), priv->sourcePad);
 
     priv->provider = 0;
     priv->bus = 0;
 
-    priv->mutex = g_new(GStaticRecMutex, 1);
-    g_static_rec_mutex_init(priv->mutex);
+    g_static_rec_mutex_init(&priv->mutex);
 
     priv->task = gst_task_create(reinterpret_cast<GstTaskFunction>(webKitWebAudioSrcLoop), src);
-    gst_task_set_lock(priv->task.get(), priv->mutex);
+    gst_task_set_lock(priv->task.get(), &priv->mutex);
 }
 
 static void webKitWebAudioSrcConstructed(GObject* object)
@@ -236,10 +235,7 @@ static void webKitWebAudioSrcConstructed(GObject* object)
         gst_bin_add_many(GST_BIN(src), queue, capsfilter, audioconvert, NULL);
         gst_element_link_pads_full(queue, "src", capsfilter, "sink", GST_PAD_LINK_CHECK_NOTHING);
         gst_element_link_pads_full(capsfilter, "src", audioconvert, "sink", GST_PAD_LINK_CHECK_NOTHING);
-
-        GRefPtr<GstPad> srcPad = adoptGRef(gst_element_get_static_pad(audioconvert, "src"));
-        GRefPtr<GstPad> sinkPad = adoptGRef(gst_element_get_request_pad(priv->interleave.get(), "sink%d"));
-        gst_pad_link(srcPad.get(), sinkPad.get());
+        gst_element_link_pads_full(audioconvert, "src", priv->interleave.get(), 0, GST_PAD_LINK_CHECK_NOTHING);
 
     }
     priv->pads = g_slist_reverse(priv->pads);
@@ -254,7 +250,7 @@ static void webKitWebAudioSrcFinalize(GObject* object)
     WebKitWebAudioSrc* src = WEBKIT_WEB_AUDIO_SRC(object);
     WebKitWebAudioSourcePrivate* priv = src->priv;
 
-    g_static_rec_mutex_free(priv->mutex);
+    g_static_rec_mutex_free(&priv->mutex);
 
     g_slist_free_full(priv->pads, reinterpret_cast<GDestroyNotify>(gst_object_unref));
 

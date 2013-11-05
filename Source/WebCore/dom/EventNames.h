@@ -229,6 +229,7 @@ namespace WebCore {
     macro(icecandidate) \
     macro(negotiationneeded) \
     macro(datachannel) \
+    macro(gatheringchange) \
     \
     macro(show) \
     \
@@ -245,6 +246,11 @@ namespace WebCore {
     \
     macro(autocomplete) \
     macro(autocompleteerror) \
+    \
+    macro(webkitprerenderstart) \
+    macro(webkitprerenderstop) \
+    macro(webkitprerenderload) \
+    macro(webkitprerenderdomcontentloaded) \
     \
 
 // end of DOM_EVENT_NAMES_FOR_EACH

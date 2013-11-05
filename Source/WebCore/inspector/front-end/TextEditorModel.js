@@ -135,6 +135,11 @@ WebInspector.TextRange.prototype = {
     shift: function(lineOffset)
     {
         return new WebInspector.TextRange(this.startLine + lineOffset, this.startColumn, this.endLine + lineOffset, this.endColumn);
+    },
+
+    toString: function()
+    {
+        return JSON.stringify(this);
     }
 }
 
@@ -262,12 +267,13 @@ WebInspector.TextEditorModel.prototype = {
     _innerEditRange: function(range, text)
     {
         var originalText = this.copyRange(range);
-        if (text === originalText)
-            return range; // Noop
+        this._lastEditedRange = range;
+        var newRange = range;
+        if (text !== originalText) {
+            newRange = this._innerSetText(range, text);
+            this._pushUndoableCommand(newRange, originalText);
+        }
 
-        var newRange = this._innerSetText(range, text);
-        this._lastEditedRange = newRange;
-        this._pushUndoableCommand(newRange, originalText);
         this.dispatchEventToListeners(WebInspector.TextEditorModel.Events.TextChanged, { oldRange: range, newRange: newRange, editRange: true });
         return newRange;
     },

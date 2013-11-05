@@ -44,14 +44,14 @@ namespace WebCore {
 using namespace HTMLNames;
 
 PropertyNodeList::PropertyNodeList(Node* rootNode, const String& name)
-    : DynamicSubtreeNodeList(rootNode, PropertyNodeListType, InvalidateOnItemAttrChange, NodeListIsRootedAtDocumentIfOwnerHasItemrefAttr)
+    : LiveNodeList(rootNode, PropertyNodeListType, InvalidateOnItemAttrChange, NodeListIsRootedAtDocumentIfOwnerHasItemrefAttr)
     , m_name(name)
 {
 }
 
 PropertyNodeList::~PropertyNodeList()
 {
-    ownerNode()->nodeLists()->removeCacheWithName(this, DynamicNodeList::PropertyNodeListType, m_name);
+    ownerNode()->nodeLists()->removeCacheWithName(this, PropertyNodeListType, m_name);
 }
 
 bool PropertyNodeList::elementIsPropertyOfRefElement(const Node* testElement, const Node *refElement) const

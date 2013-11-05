@@ -33,15 +33,14 @@
 #import "PluginProcessShim.h"
 #import "PluginProcessProxyMessages.h"
 #import "PluginProcessCreationParameters.h"
+#import <CoreAudio/AudioHardware.h>
 #import <WebCore/LocalizedStrings.h>
 #import <WebKitSystemInterface.h>
 #import <dlfcn.h>
 #import <objc/runtime.h>
 #import <wtf/HashSet.h>
 
-#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1070
 #import "NetscapeSandboxFunctions.h"
-#endif
 
 namespace WebKit {
 
@@ -273,7 +272,6 @@ void PluginProcess::setFullscreenWindowIsShowing(bool fullscreenWindowIsShowing)
     m_connection->send(Messages::PluginProcessProxy::SetFullscreenWindowIsShowing(fullscreenWindowIsShowing), 0);
 }
 
-#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1070
 static void initializeSandbox(const String& pluginPath, const String& sandboxProfileDirectoryPath)
 {
     if (sandboxProfileDirectoryPath.isEmpty())
@@ -302,7 +300,14 @@ static void initializeSandbox(const String& pluginPath, const String& sandboxPro
 
     enterSandbox([profileString.get() UTF8String], 0, 0);
 }
-#endif
+
+static void muteAudio(void)
+{
+    AudioObjectPropertyAddress propertyAddress = { kAudioHardwarePropertyProcessIsAudible, kAudioObjectPropertyScopeGlobal, kAudioObjectPropertyElementMaster };
+    UInt32 propertyData = 0;
+    OSStatus result = AudioObjectSetPropertyData(kAudioObjectSystemObject, &propertyAddress, 0, 0, sizeof(UInt32), &propertyData);
+    ASSERT_UNUSED(result, result == noErr);
+}
 
 void PluginProcess::platformInitialize(const PluginProcessCreationParameters& parameters)
 {
@@ -316,9 +321,10 @@ void PluginProcess::platformInitialize(const PluginProcessCreationParameters& pa
     
     WKSetVisibleApplicationName((CFStringRef)applicationName);
 
-#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1070
     initializeSandbox(m_pluginPath, parameters.sandboxProfileDirectoryPath);
-#endif
+
+    if (parameters.processType == TypeSnapshotProcess)
+        muteAudio();
 }
 
 } // namespace WebKit

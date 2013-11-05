@@ -36,8 +36,8 @@ enum MessageClass {
 
     // Messages sent by the UI process to the web process.
     MessageClassAuthenticationManager,
+    MessageClassCoordinatedLayerTreeHost,
     MessageClassDrawingArea,
-    MessageClassLayerTreeCoordinator,
     MessageClassWebApplicationCacheManager,
     MessageClassWebBatteryManagerProxy,
     MessageClassWebCookieManager,
@@ -60,9 +60,9 @@ enum MessageClass {
 #endif
 
     // Messages sent by the web process to the UI process.
+    MessageClassCoordinatedLayerTreeHostProxy,
     MessageClassDownloadProxy,
     MessageClassDrawingAreaProxy,
-    MessageClassLayerTreeCoordinatorProxy,
     MessageClassWebApplicationCacheManagerProxy,
     MessageClassWebBatteryManager,
     MessageClassWebConnection,
@@ -115,6 +115,7 @@ enum MessageClass {
 
     // Messages sent by the web process to the network process.
     MessageClassNetworkConnectionToWebProcess,
+    MessageClassNetworkResourceLoader,
 
     // Messages sent by the network process to a web process.
     MessageClassNetworkProcessConnection,

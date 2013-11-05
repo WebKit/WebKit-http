@@ -121,6 +121,8 @@ public:
 
     WebCore::IntRect boundingBoxForInputField();
 
+    bool isCaretAtEndOfText();
+
     // IMF driven calls.
     bool setBatchEditingActive(bool);
     bool setSelection(int start, int end, bool changeIsPartOfComposition = false);
@@ -141,8 +143,10 @@ public:
     void spellCheckingRequestProcessed(int32_t transactionId, spannable_string_t*);
     void spellCheckingRequestCancelled(int32_t transactionId);
 
-    bool shouldRequestSpellCheckingOptionsForPoint(Platform::IntPoint&, const WebCore::Element*, imf_sp_text_t&);
-    void requestSpellingCheckingOptions(imf_sp_text_t&, const WebCore::IntSize& screenOffset);
+    bool shouldRequestSpellCheckingOptionsForPoint(const Platform::IntPoint& documentContentPosition, const WebCore::Element*, imf_sp_text_t&);
+    void requestSpellingCheckingOptions(imf_sp_text_t&, WebCore::IntSize& screenOffset, const bool shouldMoveDialog = false);
+    void clearDidSpellCheckState() { m_didSpellCheckWord = false; }
+    void redrawSpellCheckDialogIfRequired(const bool shouldMoveDialog = true);
 
 private:
     enum PendingKeyboardStateChange { NoChange, Visible, NotVisible };
@@ -203,6 +207,9 @@ private:
     PassRefPtr<WebCore::Range> getRangeForSpellCheckWithFineGranularity(WebCore::VisiblePosition startPosition, WebCore::VisiblePosition endPosition);
     WebCore::SpellChecker* getSpellChecker();
     bool shouldSpellCheckElement(const WebCore::Element*) const;
+    bool didSpellCheckWord() const { return m_didSpellCheckWord; }
+
+    bool shouldNotifyWebView(const Platform::KeyboardEvent&);
 
     WebPagePrivate* m_webPage;
 
@@ -210,7 +217,7 @@ private:
     bool m_inputModeEnabled;
 
     bool m_processingChange;
-    bool m_changingFocus;
+    bool m_shouldEnsureFocusTextElementVisibleOnSelectionChanged;
 
     FocusElementType m_currentFocusElementType;
     int64_t m_currentFocusElementTextEditMask;
@@ -224,8 +231,12 @@ private:
     RefPtr<WebCore::TextCheckingRequest> m_request;
     int32_t m_processingTransactionId;
 
-    bool m_receivedBackspaceKeyDown;
+    bool m_shouldNotifyWebView;
     unsigned short m_expectedKeyUpChar;
+
+    imf_sp_text_t m_spellCheckingOptionsRequest;
+    WebCore::IntSize m_screenOffset;
+    bool m_didSpellCheckWord;
 };
 
 }

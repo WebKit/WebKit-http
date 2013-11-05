@@ -11,10 +11,6 @@ eval($$env_cache)
 
 load(functions)
 
-# Derived sources often need QMAKE_MOC
-load(qt_functions)
-load(moc)
-
 # FIXME: In this case we probably want to exit early so that we
 # don't load all of the custom build tweaks needlessly.
 pro_file = $$_PRO_FILE_ # Checking the variable directly does not work
@@ -22,8 +18,8 @@ isEmpty(pro_file): CONFIG += recursive_include
 
 # Resolve root directories for source and build
 ROOT_WEBKIT_DIR = $$replace(PWD, /Tools/qmake/mkspecs/features$,)
-WEBKIT_SUBDIR = $$replace(_PRO_FILE_PWD_, $${ROOT_WEBKIT_DIR},)
-ROOT_BUILD_DIR = $$replace(OUT_PWD, $${WEBKIT_SUBDIR}$,)
+WEBKIT_SUBDIR = $$replace(_PRO_FILE_PWD_, $$re_escape($${ROOT_WEBKIT_DIR}),)
+ROOT_BUILD_DIR = $$replace(OUT_PWD, $$re_escape($${WEBKIT_SUBDIR})$,)
 
 # Now we're ready to load default_pre from Qt
 load(default_pre)
@@ -32,7 +28,7 @@ equals(OUT_PWD, $${ROOT_BUILD_DIR}) {
     !recursive_include:CONFIG += root_project_file
     BUILD_ROOT_RELATIVE_TO_OUT_PWD = .
 } else {
-    subdir_parts = $$replace(OUT_PWD, ^$${ROOT_BUILD_DIR}/,)
+    subdir_parts = $$replace(OUT_PWD, ^$$re_escape($${ROOT_BUILD_DIR})/,)
     subdir_parts = $$split(subdir_parts, /)
     for(subdir, subdir_parts) {
         BUILD_ROOT_RELATIVE_TO_OUT_PWD += ..
@@ -66,11 +62,6 @@ TAB = $$escape_expand(\\t)
 MAKEFILE_NOOP_COMMAND = @echo -n
 win32-msvc*: MAKEFILE_NOOP_COMMAND = @echo >NUL
 
-# Help keep the build tree clean
-MOC_DIR = moc
-RCC_DIR = rcc
-OBJECTS_DIR = obj/$$activeBuildConfig()
-
 # Set up a default python version
 scratchbox: PYTHON = python2.6
 else: PYTHON = python
@@ -102,12 +93,6 @@ CONFIG += production_build
 if(win32|mac):!macx-xcode {
     contains(QT_CONFIG, debug_and_release): CONFIG += debug_and_release
     contains(QT_CONFIG, build_all): CONFIG += build_all
-}
-
-# Try to locate sqlite3 source (for WebCore)
-SQLITE3SRCDIR = $$(SQLITE3SRCDIR)
-isEmpty(SQLITE3SRCDIR) {
-    SQLITE3SRCDIR = $$QT.core.sources/../3rdparty/sqlite/
 }
 
 # A newer version of flex is required on Windows. At the moment the only

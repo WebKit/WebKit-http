@@ -109,6 +109,10 @@ public:
         bool shareResources;
         bool preferDiscreteGPU;
         bool noAutomaticFlushes;
+        // FIXME: ideally this would be a WebURL, but it is currently not
+        // possible to pass a WebURL by value across the WebKit API boundary.
+        // See https://bugs.webkit.org/show_bug.cgi?id=103793#c13 .
+        WebString topDocumentURL;
     };
 
     class WebGraphicsContextLostCallback {
@@ -165,10 +169,12 @@ public:
     virtual void setMemoryAllocationChangedCallbackCHROMIUM(WebGraphicsMemoryAllocationChangedCallbackCHROMIUM* callback) { }
     virtual void sendManagedMemoryStatsCHROMIUM(const WebGraphicsManagedMemoryStats* stats) { }
 
-    // GL_EXT_discard_framebuffer - discard/ensure existance of surface backbuffer.
-    // FIXME: make these pure virtual once they are implemented by clients.
+    // GL_EXT_discard_framebuffer - makes specified attachments of currently bound framebuffer undefined.
     virtual void discardFramebufferEXT(WGC3Denum target, WGC3Dsizei numAttachments, const WGC3Denum* attachments) { }
-    virtual void ensureFramebufferCHROMIUM() { }
+
+    // GL_CHROMIUM_discard_backbuffer - controls allocation/deallocation of the back buffer.
+    virtual void discardBackbufferCHROMIUM() { }
+    virtual void ensureBackbufferCHROMIUM() { }
 
     // Query whether it is built on top of compliant GLES2 implementation.
     virtual bool isGLES2Compliant() = 0;
@@ -233,6 +239,9 @@ public:
     virtual WebGLId createStreamTextureCHROMIUM(WebGLId texture) { return 0; }
     // Destroys the stream for the given texture.
     virtual void destroyStreamTextureCHROMIUM(WebGLId texture) { }
+
+    // GL_CHROMIUM_lose_context
+    virtual void loseContextCHROMIUM(WGC3Denum current, WGC3Denum other) { }
 
     // The entry points below map directly to the OpenGL ES 2.0 API.
     // See: http://www.khronos.org/registry/gles/
@@ -456,6 +465,14 @@ public:
     // GL_CHROMIUM_texture_from_image
     virtual void bindTexImage2DCHROMIUM(WGC3Denum target, WGC3Dint imageId) { }
     virtual void releaseTexImage2DCHROMIUM(WGC3Denum target, WGC3Dint imageId) { }
+
+    // GL_CHROMIUM_pixel_transfer_buffer_object
+    virtual void* mapBufferCHROMIUM(WGC3Denum target, WGC3Denum access) { return 0; }
+    virtual WGC3Dboolean unmapBufferCHROMIUM(WGC3Denum target) { return false; }
+
+    // GL_CHROMIUM_async_pixel_transfers
+    virtual void asyncTexImage2DCHROMIUM(WGC3Denum target, WGC3Dint level, WGC3Denum internalformat, WGC3Dsizei width, WGC3Dsizei height, WGC3Dint border, WGC3Denum format, WGC3Denum type, const void* pixels) { }
+    virtual void asyncTexSubImage2DCHROMIUM(WGC3Denum target, WGC3Dint level, WGC3Dint xoffset, WGC3Dint yoffset, WGC3Dsizei width, WGC3Dsizei height, WGC3Denum format, WGC3Denum type, const void* pixels) { }
 
     GrGLInterface* createGrGLInterface();
 

@@ -62,6 +62,7 @@ namespace WebCore {
 namespace WebKit {
 
 class DownloadAuthenticationClient;
+class DownloadManager;
 class SandboxExtension;
 class WebPage;
 
@@ -72,15 +73,15 @@ class QtFileDownloader;
 class Download : public CoreIPC::MessageSender<Download> {
     WTF_MAKE_NONCOPYABLE(Download);
 public:
-    static PassOwnPtr<Download> create(uint64_t downloadID, const WebCore::ResourceRequest&);
+    static PassOwnPtr<Download> create(DownloadManager&, uint64_t downloadID, const WebCore::ResourceRequest&);
     ~Download();
 
     // Used by MessageSender.
     CoreIPC::Connection* connection() const;
     uint64_t destinationID() const { return downloadID(); }
 
-    void start(WebPage* initiatingWebPage);
-    void startWithHandle(WebPage* initiatingPage, WebCore::ResourceHandle*, const WebCore::ResourceResponse&);
+    void start();
+    void startWithHandle(WebCore::ResourceHandle*, const WebCore::ResourceResponse&);
     void cancel();
 
     uint64_t downloadID() const { return m_downloadID; }
@@ -117,12 +118,13 @@ public:
     void cancelAuthenticationChallenge(const WebCore::AuthenticationChallenge&);
 
 private:
-    Download(uint64_t downloadID, const WebCore::ResourceRequest&);
+    Download(DownloadManager&, uint64_t downloadID, const WebCore::ResourceRequest&);
 
     void platformInvalidate();
 
     String retrieveDestinationWithSuggestedFilename(const String& filename, bool& allowOverwrite);
 
+    DownloadManager& m_downloadManager;
     uint64_t m_downloadID;
     WebCore::ResourceRequest m_request;
 

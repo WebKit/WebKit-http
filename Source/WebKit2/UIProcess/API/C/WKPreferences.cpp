@@ -28,6 +28,7 @@
 #include "WKPreferencesPrivate.h"
 
 #include "WKAPICast.h"
+#include "WebContext.h"
 #include "WebPreferences.h"
 #include <WebCore/Settings.h>
 #include <wtf/PassRefPtr.h>
@@ -330,6 +331,15 @@ WKStringRef WKPreferencesCopyDefaultTextEncodingName(WKPreferencesRef preference
 
 void WKPreferencesSetPrivateBrowsingEnabled(WKPreferencesRef preferencesRef, bool enabled)
 {
+    if (toImpl(preferencesRef)->privateBrowsingEnabled() == enabled)
+        return;
+
+    // Regardless of whether there are any open pages, we should tell WebContext, so that it could track browsing sessions.
+    if (enabled)
+        WebContext::willStartUsingPrivateBrowsing();
+    else
+        WebContext::willStopUsingPrivateBrowsing();
+
     toImpl(preferencesRef)->setPrivateBrowsingEnabled(enabled);
 }
 
@@ -428,6 +438,16 @@ bool WKPreferencesGetCompositingRepaintCountersVisible(WKPreferencesRef preferen
     return toImpl(preferencesRef)->compositingRepaintCountersVisible();
 }
 
+void WKPreferencesSetTiledScrollingIndicatorVisible(WKPreferencesRef preferencesRef, bool flag)
+{
+    toImpl(preferencesRef)->setTiledScrollingIndicatorVisible(flag);
+}
+
+bool WKPreferencesGetTiledScrollingIndicatorVisible(WKPreferencesRef preferencesRef)
+{
+    return toImpl(preferencesRef)->tiledScrollingIndicatorVisible();
+}
+
 void WKPreferencesSetCSSCustomFilterEnabled(WKPreferencesRef preferencesRef, bool flag)
 {
     toImpl(preferencesRef)->setCSSCustomFilterEnabled(flag);
@@ -446,6 +466,16 @@ void WKPreferencesSetWebGLEnabled(WKPreferencesRef preferencesRef, bool flag)
 bool WKPreferencesGetWebGLEnabled(WKPreferencesRef preferencesRef)
 {
     return toImpl(preferencesRef)->webGLEnabled();
+}
+
+void WKPreferencesSetAccelerated2DCanvasEnabled(WKPreferencesRef preferencesRef, bool flag)
+{
+    toImpl(preferencesRef)->setAccelerated2dCanvasEnabled(flag);
+}
+
+bool WKPreferencesGetAccelerated2DCanvasEnabled(WKPreferencesRef preferencesRef)
+{
+    return toImpl(preferencesRef)->accelerated2dCanvasEnabled();
 }
 
 void WKPreferencesSetCSSRegionsEnabled(WKPreferencesRef preferencesRef, bool flag)
@@ -953,3 +983,14 @@ bool WKPreferencesGetEncodingDetectorEnabled(WKPreferencesRef preferencesRef)
 {
     return toImpl(preferencesRef)->usesEncodingDetector();
 }
+
+void WKPreferencesSetTextAutosizingEnabled(WKPreferencesRef preferencesRef, bool textAutosizingEnabled)
+{
+    toImpl(preferencesRef)->setTextAutosizingEnabled(textAutosizingEnabled);
+}
+
+bool WKPreferencesGetTextAutosizingEnabled(WKPreferencesRef preferencesRef)
+{
+    return toImpl(preferencesRef)->textAutosizingEnabled();
+}
+
